@@ -216,18 +216,18 @@ let pp_rule : config -> (sym * rule) pp
 (** [pp_ctxt oc ctx] displays context [ctx] if {!val:print_contexts} is
     true, with [ ⊢ ] after; and nothing otherwise. *)
 let pp_ctxt : config -> ctxt pp = fun cfg oc ctx ->
-  let pp = pp_term cfg in
-  let pp_ctxt : ctxt pp = fun oc ctx ->
-    let pp_e oc (x,a,t) =
-      match t with
-      | None    -> Format.fprintf oc "%a:%a" pp_tvar x pp a
-      | Some(t) -> Format.fprintf oc "%a:%a ≔ %a" pp_tvar x pp a pp t
+  if !print_contexts then
+    let pp = pp_term cfg in
+    let pp_ctxt : ctxt pp = fun oc ctx ->
+      let pp_e oc (x,a,t) =
+        match t with
+        | None    -> Format.fprintf oc "%a: %a" pp_tvar x pp a
+        | Some(t) -> Format.fprintf oc "%a: %a ≔ %a" pp_tvar x pp a pp t
+      in
+      if ctx = [] then Format.pp_print_string oc "∅"
+      else List.pp pp_e ", " oc (List.rev ctx)
     in
-    if ctx = [] then Format.pp_print_string oc "∅"
-    else List.pp pp_e ", " oc (List.rev ctx)
-  in
-  let out = if !print_contexts then Format.fprintf else Format.ifprintf in
-  out oc "%a ⊢ " pp_ctxt ctx
+    Format.fprintf oc "%a ⊢ " pp_ctxt ctx
 
 (** [pp_constr oc (t,u)] prints the unification constraints [(t,u)] to the
     output channel [oc]. *)
