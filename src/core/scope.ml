@@ -28,9 +28,9 @@ let empty_sig_state : Sign.t -> sig_state = fun sign ->
     scope when (possibly masking symbols with the same name).  Builtin symbols
     are also handled in a similar way. *)
 let open_sign : sig_state -> Sign.t -> sig_state = fun ss sign ->
-  let fn _ v _ = Some(v) in
-  let in_scope = StrMap.union fn ss.in_scope Sign.(!(sign.sign_symbols)) in
-  let builtins = StrMap.union fn ss.builtins Sign.(!(sign.sign_builtins)) in
+  let f _key _v1 v2 = Some(v2) in (* open signature hides previous symbols *)
+  let in_scope = StrMap.union f ss.in_scope Sign.(!(sign.sign_symbols)) in
+  let builtins = StrMap.union f ss.builtins Sign.(!(sign.sign_builtins)) in
   {ss with in_scope; builtins}
 
 (** [find_sym ~prt ~prv b st qid] returns the symbol and printing hint
