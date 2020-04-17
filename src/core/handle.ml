@@ -105,9 +105,8 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
           fatal x.pos "We have %s : %a." x.elt pp a
         end;
       (* Actually add the symbol to the signature and the state. *)
-      let s = Sign.add_symbol ss.signature e p x a impl in
-      out 3 "(symb) %s\n" s.sym_name;
-      ({ss with in_scope = StrMap.add x.elt (s, x.pos) ss.in_scope}, None)
+      out 3 "(symb) %s : %a\n" x.elt pp a;
+      (Scope.add_symbol ss e p x a impl None, None)
   | P_rules(rs)                ->
       (* Scoping and checking each rule in turn. *)
       let handle_rule r =
@@ -166,9 +165,9 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
           fatal x.pos "We have %s : %a ≔ %a." x.elt pp a pp t
         end;
       (* Actually add the symbol to the signature. *)
+      out 3 "(symb) %s ≔ %a\n" x.elt pp t;
       let d = if op then None else Some(t) in
       let ss = Scope.add_symbol ss e Defin x a impl d in
-      out 3 "(symb) %s ≔ %a\n" x.elt pp t;
       (ss, None)
   | P_theorem(e, stmt, ts, pe) ->
       let (x,xs,a) = stmt.elt in
