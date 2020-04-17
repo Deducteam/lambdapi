@@ -163,17 +163,16 @@ The default lexer is used because the syntax is primarily made of sexps."
     (`(:before . ,(or "set" "compute" "type" "assert" "assertnot"))
      (lambdapi--query-indent))
 
-    (`(:before . ":") (lambdapi--colon-indent))
     (`(:list-intro . ,(or "with" "rule" "λ" "Π" "proof")) t)
     (`(:after . "proof") lambdapi-indent-basic)
-    (`(:after . ,(or "rule")) (* 2 lambdapi-indent-basic))
-    (`(:after . ,(or ":" "≔")) (when (smie-rule-hanging-p) lambdapi-indent-basic))
+    (`(:after . ,(or "rule" "with")) (* 2 lambdapi-indent-basic))
+    (`(,_ . ,(or ":" "≔")) (smie-rule-separator kind))
     (`(,_ . ",") (smie-rule-separator kind))
     (`(:after . "in") (smie-rule-parent))
     (`(:after . ,(or "symbol" "definition" "theorem")) lambdapi-indent-basic)
     (`(:after . ,(or "simpl" "rewrite" "assume" "apply" "refine"
                      "why3" "reflexivity" "focus" "print"))
-      (* 2 lambdapi-indent-basic))
+      lambdapi-indent-basic)
 
     ;; Toplevel
     (`(:before . "protected") '(column . 0))
@@ -181,6 +180,7 @@ The default lexer is used because the syntax is primarily made of sexps."
     (`(:before . "injective") '(column . 0))
     (`(:before . "constant") '(column . 0))
     (`(:before . "require") '(column . 0))
+    (`(:before . "open") '(column . 0))
     (`(:before . "definition") '(column . 0))
     (`(:before . "theorem") '(column . 0))
     (`(:before . "proof") '(column . 0))
