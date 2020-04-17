@@ -10,6 +10,7 @@ open Extra
 open Terms
 open Console
 open Syntax
+open Scope
 
 (** Logging function for printing. *)
 let log_prnt = new_logger 'p' "prnt" "pretty-printing"
@@ -27,12 +28,7 @@ let print_meta_type : bool ref = Console.register_flag "print_meta_type" false
 (** Flag controlling the printing of the context in unification. *)
 let print_contexts : bool ref = Console.register_flag "print_contexts" false
 
-(** Pretty-printing information associated to a symbol. *)
-type hint =
-  | No_hint
-  | Prefix of unop
-  | Infix of binop
-
+(** [assoc oc a] prints associativity [a] to channel [oc]. *)
 let assoc : assoc pp = fun oc assoc ->
   Format.fprintf oc
     (match assoc with
@@ -40,6 +36,7 @@ let assoc : assoc pp = fun oc assoc ->
      | Assoc_left -> "left"
      | Assoc_right -> "right")
 
+(** [hint oc a] prints hint [h] to channel [oc]. *)
 let hint : hint pp = fun oc pp_hint ->
   match pp_hint with
   | No_hint -> ()
@@ -52,43 +49,10 @@ type config = hint SymMap.t
 (** Default printing configuration. *)
 let empty_config = SymMap.empty
 
-let qualified : sym pp = fun oc s ->
+(** [qualified cfg s] prints symbol [s] fully qualified to channel [oc]. *)
+let qualified : config -> sym pp = fun _cfg oc s ->
   Format.fprintf oc "%a.%s" Files.Path.pp s.sym_path s.sym_name
-
-(** [config_of_sig_state ss] computes a printing configuration from [ss]. *)
-let build_config : Scope.sig_state -> config = fun ss ->
-  let fn_in_scope _ (sym,_) cfg =
-    (*log_prnt "build_config %a" qualified sym;*)
-    let sign =
-      try Files.PathMap.find sym.sym_path !Sign.loaded
-      with Not_found -> assert false (* Should not happen. *)
-    in
-    (*log_prnt "%a" Files.Path.pp sign.sign_path;
-    let pr n (s,binop) =
-      log_prnt "%s %a %a" n qualified s hint (Infix binop)
-    in
-    StrMap.iter pr !(sign.sign_binops);*)
-    let h =
-      let exception Hint of hint in
-      try
-        let fn_binop _ (s,binop) =
-          (*log_prnt "%s" s.sym_name;*)
-          if s == sym then raise (Hint (Infix binop)) in
-        StrMap.iter fn_binop !(sign.sign_binops);
-        let fn_unop _ (s,unop) =
-          (*log_prnt "%s" s.sym_name;*)
-          if s == sym then raise (Hint (Prefix unop)) in
-        StrMap.iter fn_unop !(sign.sign_unops);
-        No_hint
-      with Hint h -> h
-    in
-    (*log_prnt (mag "%a") hint h;*)
-    SymMap.add sym h cfg
-  in
-  let map = StrMap.fold fn_in_scope ss.in_scope SymMap.empty in
-  (*let pr s h = log_prnt "%a %a" qualified s hint h in
-  SymMap.iter pr map;*)
-  map
+    (*FIXME: handle aliases. *)
 
 (** Get the printing hint of a symbol. *)
 let get_hint : config -> sym -> hint = fun cfg s ->
@@ -97,8 +61,7 @@ let get_hint : config -> sym -> hint = fun cfg s ->
 (** [pp_symbol oc s] prints the name of the symbol [s] to channel [oc]. *)
 let pp_symbol : config -> sym pp = fun cfg oc s ->
   if SymMap.mem s cfg then Format.pp_print_string oc s.sym_name
-  else Format.fprintf oc "%a.%s" Files.Path.pp s.sym_path s.sym_name
-    (*FIXME: handle aliases. *)
+  else qualified cfg oc s
 
 (** [pp_tvar oc x] prints the term variable [x] to the channel [oc]. *)
 let pp_tvar : tvar pp = fun oc x ->

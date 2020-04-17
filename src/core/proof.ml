@@ -79,8 +79,7 @@ let focus_goal : Pos.popt -> proof_state -> Env.t * term = fun pos ps ->
 
 (** [pp_goals oc gl] prints the goal list [gl] to channel [oc]. *)
 let pp_goals : Scope.sig_state -> Goal.t list pp = fun ss oc gl ->
-  let cfg = Print.build_config ss in
-  let pp = Print.pp_term cfg in
+  let pp = Print.pp_term ss.hints in
   match gl with
   | []    -> Format.fprintf oc " No more goals...\n"
   | g::gs ->

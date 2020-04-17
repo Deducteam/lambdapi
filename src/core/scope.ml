@@ -9,19 +9,50 @@ open Syntax
 open Terms
 open Env
 
+(** Pretty-printing information associated to a symbol. *)
+type hint =
+  | No_hint
+  | Prefix of unop
+  | Infix of binop
+
 (** State of the signature, including aliasing and accessible symbols. *)
 type sig_state =
   { signature : Sign.t                    (** Current signature.   *)
   ; in_scope  : (sym * Pos.popt) StrMap.t (** Symbols in scope.    *)
   ; aliases   : Path.t StrMap.t           (** Established aliases. *)
-  ; builtins  : Builtin.map               (** Builtin symbols.     *) }
+  ; builtins  : Builtin.map               (** Builtin symbols.     *)
+  ; hints     : hint SymMap.t             (** Printing hints.      *) }
 
 (** [empty_sig_state] is an empty signature state, without symbols/aliases. *)
 let empty_sig_state : Sign.t -> sig_state = fun sign ->
   { signature = sign
   ; in_scope  = StrMap.empty
   ; aliases   = StrMap.empty
-  ; builtins  = StrMap.empty }
+  ; builtins  = StrMap.empty
+  ; hints     = SymMap.empty }
+
+(** [build_hints ss] computes hints from a signature [sign]. *)
+let add_hints : hint SymMap.t -> Sign.t -> hint SymMap.t = fun hints sign ->
+  let fn _ (sym,_) hints =
+    let sign =
+      try Files.PathMap.find sym.sym_path !Sign.loaded
+      with Not_found -> assert false (* Should not happen. *)
+    in
+    let h =
+      let exception Hint of hint in
+      try
+        let fn_binop _ (s,binop) =
+          if s == sym then raise (Hint (Infix binop)) in
+        StrMap.iter fn_binop !(sign.sign_binops);
+        let fn_unop _ (s,unop) =
+          if s == sym then raise (Hint (Prefix unop)) in
+        StrMap.iter fn_unop !(sign.sign_unops);
+        No_hint
+      with Hint h -> h
+    in
+    SymMap.add sym h hints
+  in
+  StrMap.fold fn !(sign.sign_symbols) hints
 
 (** [open_sign ss sign] extends the signature state [ss] with every symbol  of
     the signature [sign].  This has the effect of putting these symbols in the
@@ -31,7 +62,8 @@ let open_sign : sig_state -> Sign.t -> sig_state = fun ss sign ->
   let fn _ v _ = Some(v) in
   let in_scope = StrMap.union fn ss.in_scope Sign.(!(sign.sign_symbols)) in
   let builtins = StrMap.union fn ss.builtins Sign.(!(sign.sign_builtins)) in
-  {ss with in_scope; builtins}
+  let hints = add_hints ss.hints sign in
+  {ss with in_scope; builtins; hints}
 
 (** [find_sym ~prt ~prv b st qid] returns the symbol
     corresponding to the qualified identifier [qid]. If [fst qid.elt] is
