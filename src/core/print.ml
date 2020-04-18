@@ -192,7 +192,14 @@ let pp_ctxt : config -> ctxt pp = fun cfg oc ctx ->
     in
     Format.fprintf oc "%a ⊢ " pp_ctxt ctx
 
-(** [pp_constr oc (t,u)] prints the unification constraints [(t,u)] to the
+(** [pp_typing oc (c,t,u)] prints the typing constraint [c] to the
+    output channel [oc]. *)
+let pp_typing : config -> constr pp
+  = fun cfg oc (ctx, t, u) ->
+  Format.fprintf oc "%a%a : %a"
+    (pp_ctxt cfg) ctx (pp_term cfg) t (pp_term cfg) u
+
+(** [pp_constr oc c] prints the unification constraints [c] to the
     output channel [oc]. *)
 let pp_constr : config -> constr pp
   = fun cfg oc (ctx, t, u) ->

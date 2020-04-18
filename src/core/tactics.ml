@@ -15,8 +15,11 @@ let log_tact = log_tact.logger
      state [ps]), and returns the new proof state.  This function fails
      gracefully in case of error. *)
 let handle_tactic : sig_state -> Proof.t -> p_tactic -> Proof.t =
-    fun ss ps tac ->
-    (* First handle the tactics that do not change the goals. *)
+  fun ss ps tac ->
+  let pp_term = Print.pp_term ss.hints in
+  let pp_meta = Print.pp_meta ss.hints in
+  let pp_typing = Print.pp_typing ss.hints in
+  (* First handle the tactics that do not change the goals. *)
   match tac.elt with
   | P_tac_print         ->
       (* Just print the current proof state. *)
@@ -25,7 +28,7 @@ let handle_tactic : sig_state -> Proof.t -> p_tactic -> Proof.t =
       (* Just print the current proof term. *)
       let t = Meta(ps.Proof.proof_term, [||]) in
       let name = ps.Proof.proof_name.elt in
-      Console.out 1 "Proof term for [%s]: [%a]\n" name Print.term t; ps
+      Console.out 1 "Proof term for %s: %a\n" name pp_term t; ps
   | P_tac_query(q)      ->
       Queries.handle_query ss (Some ps) q; ps
   | _                   ->
@@ -40,17 +43,16 @@ let handle_tactic : sig_state -> Proof.t -> p_tactic -> Proof.t =
   let (env, a) = Proof.Goal.get_type g in
 
   let scope = scope_term Public ss env in
-  let infer t = Typing.infer ss.builtins (Env.to_ctxt env) t in
-  let check t a = Typing.check ss.builtins (Env.to_ctxt env) t a in
+  let infer t = Typing.infer ss (Env.to_ctxt env) t in
+  let check t a = Typing.check ss (Env.to_ctxt env) t a in
 
   let handle_refine : term -> Proof.t = fun t ->
     (* Check if the goal metavariable appears in [t]. *)
     let m = Proof.Goal.get_meta g in
-    log_tact "refining [%a] with term [%a]" Print.meta m Print.term t;
+    log_tact "refining [%a] with term [%a]" pp_meta m pp_term t;
     if Basics.occurs m t then fatal tac.pos "Circular refinement.";
     (* Check that [t] is well-typed. *)
-    log_tact "proving [%a%a : %a]"
-      Print.ctxt (Env.to_ctxt env) Print.term t Print.term a;
+    log_tact "proving %a" pp_typing (Env.to_ctxt env, t, a);
     if not (check t a) then fatal tac.pos "Ill-typed refinement.";
     (* Instantiation. *)
     set_meta m (Bindlib.unbox (Bindlib.bind_mvar (Env.vars env) (lift t)));
@@ -87,7 +89,8 @@ let handle_tactic : sig_state -> Proof.t -> p_tactic -> Proof.t =
       let nb =
         match infer t with
         | Some(a) -> Basics.count_products a
-        | None    -> fatal pt.pos "Cannot infer the type of [%a]." Print.term t
+        | None    ->
+            fatal pt.pos "Cannot infer the type of [%a]." pp_term t
       in
       (* Refine using [t] applied to [nb] wildcards (metavariables). *)
       (* NOTE it is scoping that handles wildcards as metavariables. *)
@@ -101,13 +104,13 @@ let handle_tactic : sig_state -> Proof.t -> p_tactic -> Proof.t =
       Proof.({ps with proof_goals = Proof.Goal.simpl g :: gs})
   | P_tac_rewrite(po,t) ->
       let po = Option.map (scope_rw_patt ss env) po in
-      handle_refine (Rewrite.rewrite tac.pos ps po (scope t))
+      handle_refine (Rewrite.rewrite ss tac.pos ps po (scope t))
   | P_tac_refl          ->
-      handle_refine (Rewrite.reflexivity tac.pos ps)
+      handle_refine (Rewrite.reflexivity ss tac.pos ps)
   | P_tac_sym           ->
-      handle_refine (Rewrite.symmetry tac.pos ps)
+      handle_refine (Rewrite.symmetry ss tac.pos ps)
   | P_tac_why3(config)  ->
-      handle_refine (Why3_tactic.handle tac.pos ps ss config g)
+      handle_refine (Why3_tactic.handle ss tac.pos config g)
 
 let handle_tactic : sig_state -> Proof.t -> p_tactic -> Proof.t =
     fun ss ps tac ->

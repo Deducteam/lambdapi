@@ -97,7 +97,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
       (* We scope the type of the declaration. *)
       let a = scope_basic e a in
       (* We check that [a] is typable by a sort. *)
-      Typing.sort_type ss.builtins [] a;
+      Typing.sort_type ss [] a;
       (* We check that no metavariable remains. *)
       if Basics.has_metas true a then
         begin
@@ -115,7 +115,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
         if !(sym.sym_def) <> None then
           fatal pr.pos "Rewriting rules cannot be given for defined \
                         symbol [%s]." sym.sym_name;
-        (sym, Pos.make r.pos (Sr.check_rule ss.builtins pr))
+        (sym, Pos.make r.pos (Sr.check_rule ss pr))
       in
       let rs = List.map handle_rule rs in
       (* Adding the rules all at once. *)
@@ -149,11 +149,11 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
       let a =
         match ao with
         | Some(a) ->
-            Typing.sort_type ss.builtins [] a;
-            if Typing.check ss.builtins [] t a then a else
+            Typing.sort_type ss [] a;
+            if Typing.check ss [] t a then a else
               fatal cmd.pos "The term [%a] does not have type [%a]." pp t pp a
         | None    ->
-            match Typing.infer ss.builtins [] t with
+            match Typing.infer ss [] t with
             | Some(a) -> a
             | None    -> fatal cmd.pos "Cannot infer the type of [%a]." pp t
       in
@@ -181,7 +181,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
       (* Scoping the type (statement) of the theorem. *)
       let a = scope_basic e a in
       (* Check that [a] is typable and that its type is a sort. *)
-      Typing.sort_type ss.builtins [] a;
+      Typing.sort_type ss [] a;
       (* We check that no metavariable remains in [a]. *)
       if Basics.has_metas true a then
         begin
@@ -189,7 +189,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
           fatal x.pos "We have %s : %a." x.elt pp a
         end;
       (* Initialize proof state and save configuration data. *)
-      let st = Proof.init ss.builtins x a in
+      let st = Proof.init x a in
       Console.push_state ();
       (* Build proof checking data. *)
       let finalize ss st =

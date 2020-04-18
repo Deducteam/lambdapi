@@ -24,16 +24,16 @@ let handle_query : sig_state -> Proof.t option -> p_query -> unit =
         match asrt with
         | P_assert_typing(pt,pa) ->
           let t = scope pt and a = scope pa and ctxt = Env.to_ctxt env in
-          Typing.sort_type ss.builtins ctxt a;
-          (try Typing.check ss.builtins ctxt t a with _ -> false)
+          Typing.sort_type ss ctxt a;
+          (try Typing.check ss ctxt t a with _ -> false)
         | P_assert_conv(pt,pu)   ->
           let t = scope pt and u = scope pu in
-          let infer = Typing.infer ss.builtins (Env.to_ctxt env) in
+          let infer = Typing.infer ss (Env.to_ctxt env) in
           match (infer t, infer u) with
           | (Some(a), Some(b)) ->
               let pb = {empty_problem with to_solve = [[], a, b]} in
               begin
-                match solve ss.builtins pb with
+                match solve ss pb with
                 | None -> fatal q.pos "Infered types are not convertible."
                 | Some [] -> Eval.eq_modulo [] t u
                 | Some cs ->
@@ -66,7 +66,7 @@ let handle_query : sig_state -> Proof.t option -> p_query -> unit =
       (* Infer the type of [t]. *)
       let t = scope pt in
       let a =
-        match Typing.infer ss.builtins (Env.to_ctxt env) t with
+        match Typing.infer ss (Env.to_ctxt env) t with
         | Some(a) -> Eval.eval cfg [] a
         | None    -> fatal pt.pos "Cannot infer the type of [%a]." pp t
       in
@@ -75,7 +75,7 @@ let handle_query : sig_state -> Proof.t option -> p_query -> unit =
       (* Infer a type for [t], and evaluate [t]. *)
       let t = scope pt in
       let v =
-        match Typing.infer ss.builtins (Env.to_ctxt env) t with
+        match Typing.infer ss (Env.to_ctxt env) t with
         | Some(_) -> Eval.eval cfg [] t
         | None    -> fatal pt.pos "Cannot infer the type of [%a]." pp t
       in

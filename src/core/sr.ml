@@ -76,18 +76,19 @@ let new_function_symbol name a =
 (** Mapping of pattern variable names to their reserved index. *)
 type index_tbl = (string, int) Hashtbl.t
 
-(** [symb_to_tenv pr syms htbl t] builds a RHS for the pre-rule [pr]. The term
-    [t] is expected to be a version of the RHS of [pr] whose term environments
-    have been replaced by function symbols of [syms]. This function builds the
-    reverse transformation, replacing symbols by the term environment variable
-    they stand for.  Here, [htbl] should give the index in the RHS environment
-    for the symbols of [syms] that have corresponding [term_env] variable. The
-    pre-rule [pr] is provided to give access to these variables and also their
-    expected arities. *)
-let symb_to_tenv : pre_rule Pos.loc -> sym list -> index_tbl -> term -> tbox =
-    fun {elt={pr_vars=vars;pr_arities=arities;_};pos} syms htbl t ->
+(** [symb_to_tenv ss pr syms htbl t] builds a RHS for the pre-rule [pr]. The
+   term [t] is expected to be a version of the RHS of [pr] whose term
+   environments have been replaced by function symbols of [syms]. This
+   function builds the reverse transformation, replacing symbols by the term
+   environment variable they stand for.  Here, [htbl] should give the index in
+   the RHS environment for the symbols of [syms] that have corresponding
+   [term_env] variable. The pre-rule [pr] is provided to give access to these
+   variables and also their expected arities. *)
+let symb_to_tenv
+    : sig_state -> pre_rule Pos.loc -> sym list -> index_tbl -> term -> tbox
+  = fun ss {elt={pr_vars=vars;pr_arities=arities;_};pos} syms htbl t ->
   let rec symb_to_tenv t =
-    log_subj "symb_to_tenv %a" Print.term t;
+    log_subj "symb_to_tenv %a" (Print.pp_term ss.hints) t;
     let (h, ts) = Basics.get_args t in
     let ts = List.map symb_to_tenv ts in
     let (h, ts) =
@@ -130,10 +131,13 @@ let symb_to_tenv : pre_rule Pos.loc -> sym list -> index_tbl -> term -> tbox =
   in
   symb_to_tenv t
 
-(** [check_rule bmap r] checks whether the pre-rule [r] is well-typed and then
-    construct the corresponding rule. The “bultin map” [bmap] is passed to the
-    unification engine. Note that [Fatal] is raised in case of error. *)
-let check_rule : Builtin.map -> pre_rule Pos.loc -> rule = fun bmap pr ->
+(** [check_rule ss r] checks whether the pre-rule [r] is well-typed in
+   signature state [ss] and then construct the corresponding rule. Note that
+   [Fatal] is raised in case of error. *)
+let check_rule : sig_state -> pre_rule Pos.loc -> rule = fun ss pr ->
+  let pp_term = Print.pp_term ss.hints in
+  let pp_rule = Print.pp_rule ss.hints in
+  let pp_constr = Print.pp_constr ss.hints in
   (* Unwrap the contents of the pre-rule. *)
   let (pos, s, lhs, vars, rhs_vars, arities) =
     let Pos.{elt={pr_sym;pr_lhs;pr_vars;pr_rhs;pr_arities;_}; pos} = pr in
@@ -147,7 +151,7 @@ let check_rule : Builtin.map -> pre_rule Pos.loc -> rule = fun bmap pr ->
          only used for printing. *)
       let rhs = Bindlib.(unbox (bind_mvar vars rhs_vars)) in
       let naive_rule = {lhs; rhs; arity; arities; vars} in
-      log_subj "check rule [%a]" Print.rule (s, naive_rule);
+      log_subj "check rule [%a]" pp_rule (s, naive_rule);
     end;
   (* Replace [Patt] nodes of LHS with corresponding elements of [vars]. *)
   let lhs_vars =
@@ -177,19 +181,19 @@ let check_rule : Builtin.map -> pre_rule Pos.loc -> rule = fun bmap pr ->
   in
   if !log_enabled then
     begin
-      log_subj (mag "transformed LHS is [%a]") Print.term lhs_typing;
-      log_subj (mag "transformed RHS is [%a]") Print.term rhs_typing
+      log_subj (mag "transformed LHS is [%a]") pp_term lhs_typing;
+      log_subj (mag "transformed RHS is [%a]") pp_term rhs_typing
     end;
   (* Infer the typing constraints of the LHS. *)
-  match Typing.infer_constr bmap [] lhs_typing with
+  match Typing.infer_constr ss [] lhs_typing with
   | None                      -> fatal pos "The LHS is not typable."
   | Some(ty_lhs, lhs_constrs) ->
   if !log_enabled then
     begin
-      log_subj (gre "LHS has type %a") Print.term ty_lhs;
-      List.iter (log_subj "  if %a" Print.constr) lhs_constrs;
-      log_subj (mag "LHS is now [%a]") Print.term lhs_typing;
-      log_subj (mag "RHS is now [%a]") Print.term rhs_typing
+      log_subj (gre "LHS has type %a") pp_term ty_lhs;
+      List.iter (log_subj "  if %a" pp_constr) lhs_constrs;
+      log_subj (mag "LHS is now [%a]") pp_term lhs_typing;
+      log_subj (mag "RHS is now [%a]") pp_term rhs_typing
     end;
   (* We build a map allowing to find a variable index from its name. *)
   let htbl : index_tbl = Hashtbl.create (Array.length vars) in
@@ -225,24 +229,24 @@ let check_rule : Builtin.map -> pre_rule Pos.loc -> rule = fun bmap pr ->
     Array.iter instantiate metas; Stdlib.(!symbols)
   in
   (* Compute the constraints for the RHS to have the same type as the LHS. *)
-  let to_solve = Infer.check [] rhs_typing ty_lhs in
+  let to_solve = Infer.check ss [] rhs_typing ty_lhs in
   if !log_enabled then
     begin
-      log_subj (gre "RHS has type %a") Print.term ty_lhs;
-      List.iter (log_subj "  if %a" Print.constr) to_solve;
-      log_subj (mag "LHS is now [%a]") Print.term lhs_typing;
-      log_subj (mag "RHS is now [%a]") Print.term rhs_typing
+      log_subj (gre "RHS has type %a") pp_term ty_lhs;
+      List.iter (log_subj "  if %a" pp_constr) to_solve;
+      log_subj (mag "LHS is now [%a]") pp_term lhs_typing;
+      log_subj (mag "RHS is now [%a]") pp_term rhs_typing
     end;
   (* TODO we should complete the constraints into a set of rewriting rule on
      the function symbols of [symbols]. *)
   (* Solving the typing constraints of the RHS. *)
-  match Unif.(solve bmap {empty_problem with to_solve}) with
+  match Unif.(solve ss {empty_problem with to_solve}) with
   | None     -> fatal pos "The rewriting rule does not preserve typing."
   | Some(cs) ->
   let is_constr c =
     let eq_comm (_,t1,u1) (_,t2,u2) =
       (* Contexts ignored: [Infer.check] is called with an empty context and
-         neither [Infer.check] nor [Unif.solve] generate contexts with defined
+         neither [Infer.check] nor [solve] generate contexts with defined
          variables. *)
       (Eval.eq_modulo [] t1 t2 && Eval.eq_modulo [] u1 u2) ||
       (Eval.eq_modulo [] t1 u2 && Eval.eq_modulo [] t2 u1)
@@ -252,13 +256,13 @@ let check_rule : Builtin.map -> pre_rule Pos.loc -> rule = fun bmap pr ->
   let cs = List.filter (fun c -> not (is_constr c)) cs in
   if cs <> [] then
     begin
-      List.iter (fatal_msg "Cannot solve %a\n" Print.constr) cs;
+      List.iter (fatal_msg "Cannot solve %a\n" pp_constr) cs;
       fatal pos "Unable to prove type preservation for a rewriting rule."
     end;
   (* Replace metavariable symbols by term_env variables, and bind them. *)
-  let rhs = symb_to_tenv pr symbols htbl rhs_typing in
+  let rhs = symb_to_tenv ss pr symbols htbl rhs_typing in
   if !log_enabled then
-    log_subj "final RHS is [%a]" Print.term (Bindlib.unbox rhs);
+    log_subj "final RHS is [%a]" pp_term (Bindlib.unbox rhs);
   (* TODO optimisation for evaluation: environment minimisation. *)
   (* Construct the rule. *)
   let rhs = Bindlib.unbox (Bindlib.bind_mvar vars rhs) in
