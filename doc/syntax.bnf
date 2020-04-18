@@ -65,10 +65,6 @@ reserved "why3"
 <qident> ::=
   | {<ident> "."}* <ident>
 
-// Variable of a pattern
-<pvar> ::=
-  | "&" - {<ident> | "_"}
-
 <property> ::=
   | "constant"
   | "injective"
@@ -119,7 +115,7 @@ reserved "why3"
 
 // Unification hint
 <hint> ::=
-  | <patt> "≡" <patt> "→" <pvar> "≡" <term> {"," <term> "≡" <term>}*
+  | <patt> "≡" <patt> "↪" <pvar> "≡" <term> {"," <term> "≡" <term>}*
 
 // Rewrite pattern
 <rw_patt> ::=
