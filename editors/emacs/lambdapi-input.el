@@ -265,7 +265,7 @@ An element of this list is a dotted pair (COM . CH) where com is the LaTeX
 command (e.g. \alpha) and CH is the character (e.g. α). This list is made of the
 double-struck capital letters.")
 
-(unless (lambdapi-unicode-prefer-company)
+(unless lambdapi-unicode-prefer-company
   (seq-do (lambda (com-ltx) (quail-defrule (car com-ltx) (cdr com-ltx)))
           (seq-concatenate 'list
                            lambdapi--math-symbol-list-basic
