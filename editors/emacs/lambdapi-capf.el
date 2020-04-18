@@ -1,4 +1,5 @@
 ;;; lambdapi-capf.el --- Completion for lambdapi -*- lexical-binding: t; -*-
+;; SPDX-License-Identifier: CeCILL Free Software License Agreement v2.1
 ;;; Commentary:
 ;;
 ;; If (add-to-list 'eglot-stay-out-of 'company) is not called, Eglot
@@ -7,6 +8,8 @@
 ;;; Code:
 (require 'lambdapi-vars)
 (require 'eglot)
+
+(defvar-local company-backends nil) ; Silence warnings
 
 (defconst lambdapi--all-keywords
   (append lambdapi-sig-commands
@@ -25,11 +28,10 @@
 
 (defun lambdapi--company-setup ()
   "Setup company for lambdapi."
-  (when (and (require 'company nil 1) ; To avoid free-variable warning
-             (require 'company-math nil 1)) ; load company-math if available
+  (when (require 'company-math nil 1) ; load company-math if available
     (add-to-list 'eglot-stay-out-of 'company) ; Eglot reinits backends
     (setq-local company-backends
-                  (cons 'company-math-symbols-unicode company-backends))))
+                (cons #'company-math-symbols-unicode company-backends))))
 
 ;;;###autoload
 (defun lambdapi-completion-at-point ()

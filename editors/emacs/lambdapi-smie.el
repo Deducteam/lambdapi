@@ -1,4 +1,5 @@
 ;;; lambdapi-smie.el --- Indentation for lambdapi -*- lexical-binding: t; -*-
+;; SPDX-License-Identifier: CeCILL Free Software License Agreement v2.1
 ;;; Commentary:
 ;;
 ;;; Code:
