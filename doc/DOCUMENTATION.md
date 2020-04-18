@@ -13,6 +13,8 @@ Table of contents
 
  - [Installation](sections/install.md)
 
+ - [Getting started](sections/getting_started.md)
+
  - [Command line options](sections/options.md)
 
  - [User interfaces](sections/ui.md)
