@@ -9,7 +9,7 @@
 (require 'lambdapi-vars)
 (require 'eglot)
 
-(defvar-local company-backends) ; Silence warnings
+(defvar-local company-backends nil) ; Silence warnings
 
 (defconst lambdapi--all-keywords
   (append lambdapi-sig-commands
