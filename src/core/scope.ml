@@ -109,21 +109,21 @@ let add_symbol
   let in_scope = StrMap.add x.elt (s, x.pos) ss.in_scope in
   {ss with in_scope; hints}
 
-(** [add_unop ss n (sym,unop)] declares [n] as prefix and maps it to [sym]. *)
+(** [add_unop ss n (s,unop)] declares [n] as prefix and maps it to [s]. *)
 let add_unop : sig_state -> string -> (sym * unop) -> sig_state
   = fun ss n (sym, unop) ->
   Sign.add_unop ss.signature n (sym, unop);
   let hints = SymMap.add sym (Prefix unop) (remove_hint ss sym ss.hints) in
   {ss with hints}
 
-(** [add_binop ss n (sym,binop)] declares [n] as infix and maps it to [sym]. *)
+(** [add_binop ss n (s,binop)] declares [n] as infix and maps it to [s]. *)
 let add_binop : sig_state -> string -> (sym * binop) -> sig_state
   = fun ss n (sym, binop) ->
   Sign.add_binop ss.signature n (sym, binop);
   let hints = SymMap.add sym (Infix binop) (remove_hint ss sym ss.hints) in
   {ss with hints}
 
-(** [add_builtin ] add builtin *)
+(** [add_builtin ss n s] adds builtin [n] and maps it to [s]. *)
 let add_builtin : sig_state -> string -> sym -> sig_state = fun ss s sym ->
   Sign.add_builtin ss.signature s sym;
   let builtins = StrMap.add s sym ss.builtins in
