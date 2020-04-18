@@ -52,16 +52,15 @@ type term =
   | Meta of meta * term array
   (** Metavariable application (used by unification and for proof goals). *)
   | Patt of int option * string * term array
-  (** Pattern variable application (only used in a rewriting rules LHS). *)
+  (** Pattern variable application (only used in rewriting rules LHS). *)
   | TEnv of term_env * term array
-  (** Term environment (only used in a rewriting rules RHS). *)
+  (** Term environment (only used in rewriting rules RHS). *)
   | Wild
   (** Wildcard (only used for surface matching, never in a LHS). *)
   | TRef of term option ref
   (** Reference cell (only used for surface matching). *)
   | LLet of term * term * (term, term) Bindlib.binder
-  (** Local let binding [LLet(t, a, u)] is [let x : a ≔ t in u] where
-      [u] is a binder of the form [λ x, u']. *)
+  (** [LLet(a, t, u)] is [let x : a ≔ t in u] (with [x] bound in [u]). *)
 
 (** {b NOTE} that a wildcard "_" of the concrete (source code) syntax may have
     a different representation depending on the application. For instance, the
@@ -138,14 +137,16 @@ type term =
     rule to apply, and a RHS (right hand side) giving the action to perform if
     the rule applies. More explanations are given below. *)
  and rule =
-  { lhs   : term list
+  { lhs     : term list
   (** Left hand side (or LHS). *)
-  ; rhs   : (term_env, term) Bindlib.mbinder
+  ; rhs     : (term_env, term) Bindlib.mbinder
   (** Right hand side (or RHS). *)
-  ; arity : int
+  ; arity   : int
   (** Required number of arguments to be applicable. *)
-  ; vars  : (string * int) array
-  (** Name and arity of the pattern variables bound in the RHS. *) }
+  ; arities : int array
+  (** Arrities of the pattern variables bound in the RHS. *)
+  ; vars    : term_env Bindlib.var array
+  (** Bindlib variables used to build [rhs]. *) }
 
 (** The LHS (or pattern) of a rewriting rule is always formed of a head symbol
     (on which the rule is defined) applied to a list of pattern arguments. The
@@ -161,12 +162,12 @@ type term =
     the RHS. If it is [Some(_)], then the variables is bound in the RHS, or it
     appears non-linearly in the LHS.
 
-    For instance, with the rule [f &X &Y &Y &Z → &X]:
-     - [&X] is represented by [Patt(Some 0, "X", [||])] since it occurs in the
+    For instance, with the rule [f $X $Y $Y $Z ↪ $X]:
+     - [$X] is represented by [Patt(Some 0, "X", [||])] since it occurs in the
        RHS of the rule (and it is actually the only one),
-     - [&Y] is represented by [Patt(Some 1, "Y", [||])] at it occurs more than
+     - [$Y] is represented by [Patt(Some 1, "Y", [||])] at it occurs more than
        once in the LHS (the rule is non-linear in this variable),
-     - [&Z] is represented by [Patt(None, "Z", [||])] since it is only appears
+     - [$Z] is represented by [Patt(None, "Z", [||])] since it is only appears
        once in the LHS, and it is not used in the RHS. Note that wildcards (in
        the concrete syntax) are represented in the same way, and with a unique
        name (in the rule) that is generated automatically.
@@ -185,7 +186,7 @@ type term =
     minimal number of arguments required to match the LHS of the rule. *)
 
 (** The RHS (or action) or a rewriting rule is represented by a term, in which
-    (higher-order) variables representing a "terms with environments" (see the
+    (higher-order) variables representing "terms with environments" (see the
     {!type:term_env} type) are bound. To effectively apply the rewriting rule,
     these  bound variables must be substituted using "terms with environments"
     that are constructed when matching the LHS of the rule. *)
@@ -242,12 +243,6 @@ type term =
   (** Arity of the metavariable (environment size). *)
   ; meta_value : (term, term) Bindlib.mbinder option ref
   (** Definition of the metavariable, if known. *) }
-
-(** Comparison function on metavariables. *)
-let cmp_meta : meta -> meta -> int = fun m1 m2 -> m1.meta_key - m2.meta_key
-
-(** Equality on metavariables. *)
-let eq_meta : meta -> meta -> bool = fun m1 m2 -> m1.meta_key = m2.meta_key
 
 (** [symb s] returns the term [Symb (s, Nothing)]. *)
 let symb : sym -> term = fun s -> Symb (s, Nothing)
@@ -318,33 +313,37 @@ let rec unfold : term -> term = fun t ->
       end
   | _                    -> t
 
+(** {b NOTE} [unfold] could be defined as [Ctxt.unfold []], but since [unfold]
+    is critical regarding performance, it is kept as simple as possible. *)
+
 (** {b NOTE} that {!val:unfold} must (almost) always be called before matching
     over a value of type {!type:term}. *)
 
 (** [unset m] returns [true] if [m] is not instantiated. *)
 let unset : meta -> bool = fun m -> !(m.meta_value) = None
 
-(** [fresh_meta a n] creates a new metavariable of type [a] and arity [n]. *)
+(** [fresh_meta ?name a n] creates a fresh metavariable with the optional name
+    [name], and of type [a] and arity [n]. *)
 let fresh_meta : ?name:string -> term -> int -> meta =
-  let counter = Pervasives.ref (-1) in
+  let counter = Stdlib.ref (-1) in
   let fresh_meta ?name a n =
-   { meta_key =  Pervasives.(incr counter; !counter) ; meta_name = name
-   ; meta_type = ref a ; meta_arity = n ; meta_value = ref None}
+   { meta_key =  Stdlib.(incr counter; !counter) ; meta_name = name
+   ; meta_type = ref a ; meta_arity = n ; meta_value = ref None }
   in fresh_meta
 
 (** [set_meta m v] sets the value of the metavariable [m] to [v]. Note that no
     specific check is performed, so this function may lead to cyclic terms. *)
 let set_meta : meta -> (term, term) Bindlib.mbinder -> unit = fun m v ->
-  m.meta_type := Kind (* to save memory *); m.meta_value := Some(v)
-
-(** [internal m] returns [true] if [m] is unnamed (i.e., not user-defined). *)
-let internal : meta -> bool = fun m -> m.meta_name = None
+  m.meta_type := Kind; (* to save memory *) m.meta_value := Some(v)
 
 (** [meta_name m] returns a string representation of [m]. *)
 let meta_name : meta -> string = fun m ->
-  match m.meta_name with
-  | Some(n) -> "?" ^ n
-  | None    -> "?" ^ string_of_int m.meta_key
+  let name =
+    match m.meta_name with
+    | Some(n) -> n
+    | None    -> string_of_int m.meta_key
+  in
+  "?" ^ name
 
 (** [term_of_meta m env] constructs the application of a dummy symbol with the
     same type as [m], to the element of the environment [env].  The idea is to
@@ -366,6 +365,9 @@ let term_of_meta : meta -> term array -> term = fun m e ->
 
 (** A short name for the binding of a term in a term. *)
 type tbinder = (term, term) Bindlib.binder
+
+(** A short name for the binding of multiple terms in a term. *)
+type tmbinder = (term, term) Bindlib.mbinder
 
 (** A short name for the type of a free term variable. *)
 type tvar = term Bindlib.var
@@ -446,7 +448,14 @@ let _TRef : term option ref -> tbox = fun r ->
 
 (** [_LLet t a u] lifts let binding [let x := t : a in u<x>]. *)
 let _LLet : tbox -> tbox -> tbinder Bindlib.box -> tbox =
-  Bindlib.box_apply3 (fun t a u -> LLet(t, a, u))
+  Bindlib.box_apply3 (fun a t u -> LLet(a, t, u))
+
+(** [_TE_Vari x] injects a term environment variable [x] into the {!type:tbox}
+    type so that it may be available for binding. *)
+let _TE_Vari : tevar -> tebox = Bindlib.box_var
+
+(** [_TE_None] injects the constructor [TE_None] into the {!type:tbox} type.*)
+let _TE_None : tebox = Bindlib.box TE_None
 
 (** [lift t] lifts the {!type:term} [t] to the {!type:tbox} type. This has the
     effect of gathering its free variables, making them available for binding.
@@ -454,23 +463,32 @@ let _LLet : tbox -> tbox -> tbinder Bindlib.box -> tbox =
 let rec lift : term -> tbox = fun t ->
   let lift_term_env te =
     match te with
-    | TE_Vari(x) -> Bindlib.box_var x
-    | _          -> Bindlib.box te (* closed objects *)
+    | TE_Vari(x) -> _TE_Vari x
+    | TE_None    -> _TE_None
+    | TE_Some(_) -> assert false (* Unreachable. *)
+  in
+  (* We do not use [Bindlib.box_binder] here because it is possible for a free
+     variables to disappear form a term through metavariable instantiation. As
+     a consequence we must traverse the whole term, even when we find a closed
+     binder, so that the metadata on nested binders is also updated. *)
+  let lift_binder b =
+    let (x, t) = Bindlib.unbind b in
+    Bindlib.bind_var x (lift t)
   in
   match unfold t with
   | Vari(x)     -> _Vari x
   | Type        -> _Type
   | Kind        -> _Kind
   | Symb(s,h)   -> _Symb s h
-  | Prod(a,b)   -> _Prod (lift a) (Bindlib.box_binder lift b)
-  | Abst(a,t)   -> _Abst (lift a) (Bindlib.box_binder lift t)
+  | Prod(a,b)   -> _Prod (lift a) (lift_binder b)
+  | Abst(a,t)   -> _Abst (lift a) (lift_binder t)
   | Appl(t,u)   -> _Appl (lift t) (lift u)
   | Meta(r,m)   -> _Meta r (Array.map lift m)
   | Patt(i,n,m) -> _Patt i n (Array.map lift m)
   | TEnv(te,m)  -> _TEnv (lift_term_env te) (Array.map lift m)
   | Wild        -> _Wild
   | TRef(r)     -> _TRef r
-  | LLet(t,a,u) -> _LLet (lift t) (lift a) (Bindlib.box_binder lift u)
+  | LLet(a,t,u) -> _LLet (lift a) (lift t) (lift_binder u)
 
 (** [cleanup t] builds a copy of the {!type:term} [t] where every instantiated
     metavariable,  instantiated term environment,  and reference cell has been
@@ -478,3 +496,45 @@ let rec lift : term -> tbox = fun t ->
     the names of bound variables updated.  This is useful to avoid any form of
     "visual capture" while printing terms. *)
 let cleanup : term -> term = fun t -> Bindlib.unbox (lift t)
+
+(** [fresh_meta_box ?name a n] is the boxed counterpart of [fresh_meta]. It is
+    only useful in the rare cases where the type of a metavariables contains a
+    free term variable environement. This should only happens when scoping the
+    rewriting rules, use this function with care.  The metavariable is created
+    immediately with a dummy type, and the type becomes valid at unboxing. The
+    boxed metavariable should be unboxed at most once,  otherwise its type may
+    be rendered invalid in some contexts. *)
+let fresh_meta_box : ?name:string -> tbox -> int -> meta Bindlib.box =
+  fun ?name a n ->
+    let m = fresh_meta ?name Kind n in
+    Bindlib.box_apply (fun a -> m.meta_type := a; m) a
+
+(** [_Meta_full m ar] is similar to [_Meta m ar] but works with a metavariable
+    that is boxed. This is useful in very rare cases,  when metavariables need
+    to be able to contain free term environment variables. Using this function
+    in bad places is harmful for efficiency but not unsound. *)
+let _Meta_full : meta Bindlib.box -> tbox array -> tbox = fun u ar ->
+  Bindlib.box_apply2 (fun u ar -> Meta(u,ar)) u (Bindlib.box_array ar)
+
+(** Sets and maps of metavariables. *)
+module Meta = struct
+  type t = meta
+  let compare m1 m2 = m1.meta_key - m2.meta_key
+end
+
+module MetaSet = Set.Make(Meta)
+module MetaMap = Map.Make(Meta)
+
+(** Sets of term variables. *)
+module VarSet = Set.Make(
+  struct
+    type t = tvar
+    let compare = Bindlib.compare_vars
+  end)
+
+(** Maps over term variables. *)
+module VarMap = Map.Make(
+  struct
+    type t = tvar
+    let compare = Bindlib.compare_vars
+  end)

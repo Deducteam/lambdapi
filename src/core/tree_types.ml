@@ -18,7 +18,7 @@ module TC =
     (** {b NOTE} the effective arity carried by the representation of a symbol
         is specific to a given symbol instance. Indeed, a symbol (in the sense
         of {!type:Terms.sym}) may lead to several constructors, with different
-        effective arities. In the pattern “f g (g &x)” for example, symbol [g]
+        effective arities. In the pattern “f g (g $x)” for example, symbol [g]
         is used with arity 0 (first occurence) and 1 (second occurence). *)
 
     (** [pp oc c] prints tree constructor [c] to output channel [o]. *)
@@ -28,7 +28,7 @@ module TC =
       | Symb(_,s,a) -> Format.fprintf oc "%s %d-ary" s a
 
     (** [compare c1 c2] implements a total order on constructors. *)
-    let compare : t -> t -> int = Pervasives.compare
+    let compare : t -> t -> int = Stdlib.compare
   end
 
 (** A mapping with atomic pattern constructors as keys. *)

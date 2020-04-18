@@ -24,11 +24,7 @@ let timeout : int ref = ref 2
 let why3_config : Why3.Whyconf.config = Why3.Whyconf.read_config None
 
 (** [why3_main] is the main section of the Why3 configuration. *)
-let why3_main : Why3.Whyconf.main =
-  (* Filter the configuration to get only the main information. *)
-  let m = Why3.Whyconf.get_main why3_config in
-  (* Load all plugins (TPTP, DIMACS, ...) and return the new config. *)
-  Why3.Whyconf.load_plugins m; m
+let why3_main : Why3.Whyconf.main = Why3.Whyconf.get_main why3_config
 
 (** [why3_env] is the initialized Why3 environment. *)
 let why3_env : Why3.Env.env =
@@ -46,15 +42,16 @@ type config =
   ; symb_not : sym (** Not(¬) symbol.            *) }
 
 (** [get_config pos builtins] build the configuration using [builtins]. *)
-let get_config : Pos.popt -> sym StrMap.t -> config = fun pos builtins ->
-  { symb_P   = Sign.builtin pos builtins "P"
-  ; symb_T   = Sign.builtin pos builtins "T"
-  ; symb_or  = Sign.builtin pos builtins "or"
-  ; symb_and = Sign.builtin pos builtins "and"
-  ; symb_imp = Sign.builtin pos builtins "imp"
-  ; symb_bot = Sign.builtin pos builtins "bot"
-  ; symb_top = Sign.builtin pos builtins "top"
-  ; symb_not = Sign.builtin pos builtins "not" }
+let get_config : Pos.popt -> Builtin.map -> config = fun pos map ->
+  let builtin = Builtin.get pos map in
+  { symb_P   = builtin "P"
+  ; symb_T   = builtin "T"
+  ; symb_or  = builtin "or"
+  ; symb_and = builtin "and"
+  ; symb_imp = builtin "imp"
+  ; symb_bot = builtin "bot"
+  ; symb_top = builtin "top"
+  ; symb_not = builtin "not" }
 
 (** A map from lambdapi terms to Why3 constants. *)
 type cnst_table = (term * Why3.Term.lsymbol) list
@@ -92,7 +89,9 @@ let translate_term : config -> cnst_table -> term ->
         (tbl, Why3.Term.t_true)
     | (_        , _       )                        ->
         (* If the term [p] is mapped in [tbl] then use it. *)
-        try (tbl, Why3.Term.ps_app (List.assoc_eq Basics.eq t tbl) [])
+        try
+          let sym = List.assoc_eq (Eval.eq_modulo []) t tbl in
+          (tbl, Why3.Term.ps_app sym [])
         with Not_found ->
           (* Otherwise generate a new constant in why3. *)
           let sym = Why3.Term.create_psymbol (Why3.Ident.id_fresh "P") [] in
@@ -108,7 +107,7 @@ let encode : Pos.popt -> sym StrMap.t -> Env.env -> term -> Why3.Task.task =
     fun pos builtins hs g ->
   let cfg = get_config pos builtins in
   let (constants, hypothesis) =
-    let translate_hyp (tbl, map) (name, (_, hyp)) =
+    let translate_hyp (tbl, map) (name, (_, hyp, _)) =
       match translate_term cfg tbl (Bindlib.unbox hyp) with
       | Some(tbl, why3_hyp) -> (tbl, StrMap.add name why3_hyp map)
       | None                -> (tbl, map)
@@ -145,7 +144,22 @@ let run_task : Why3.Task.task -> Pos.popt -> string -> bool =
   let provers = Why3.Whyconf.filter_provers why3_config filter in
   (* Fail if we did not find a matching prover. *)
   if Why3.Whyconf.Mprover.is_empty provers then
-    fatal pos "[%s] not installed or not configured" prover_name;
+    begin
+      fatal_msg "prover [%s] not found.\n" prover_name;
+      let provers = Why3.Whyconf.get_provers why3_config in
+      let _ =
+        if Why3.Whyconf.Mprover.is_empty provers then
+          fatal_msg "There are no available Why3 provers.\n"
+        else
+          let fn p _ = fatal_msg " - %a\n" Why3.Whyconf.print_prover p in
+          fatal_msg "The available Why3 provers are:\n";
+          Why3.Whyconf.Mprover.iter fn provers
+      in
+      fatal_msg "Why3 configuration read from [%s].\n"
+        (Why3.Whyconf.get_conf_file why3_config);
+      fatal_msg "Your prover might not be installed or detected, ";
+      fatal pos "remember to run [why3 config --detect]."
+    end;
   (* Return the prover configuration and load the driver. *)
   let prover = snd (Why3.Whyconf.Mprover.max_binding provers) in
   let driver =
@@ -186,6 +200,6 @@ let handle : Pos.popt -> Proof.proof_state -> sig_state -> string option ->
   (* Tell the user that the goal is proved (verbose 2). *)
   if !log_enabled then log_why3 "goal proved: axiom [%s] created" axiom_name;
   (* Return the variable terms of each item in the context. *)
-  let terms = List.rev_map (fun (_, (x, _)) -> Vari x) hyps in
+  let terms = List.rev_map (fun (_, (x, _, _)) -> Vari x) hyps in
   (* Apply the instance of the axiom with context. *)
   Basics.add_args (symb a) terms

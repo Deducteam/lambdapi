@@ -6,7 +6,7 @@ open Files
 open Console
 open Version
 
-(* NOTE only standard [Pervasives] references here. *)
+(* NOTE only standard [Stdlib] references here. *)
 
 (** {3 Evaluation of commands. *)
 
@@ -15,9 +15,8 @@ type config =
   { gen_obj     : bool
   ; lib_root    : string option
   ; map_dir     : (string * string) list
-  ; write_tree  : bool
   ; keep_order  : bool
-  ; verbose     : int
+  ; verbose     : int option
   ; no_warnings : bool
   ; debug       : string
   ; no_colors   : bool
@@ -32,9 +31,8 @@ let init : config -> unit = fun cfg ->
   Compile.gen_obj := cfg.gen_obj;
   Option.iter Files.set_lib_root cfg.lib_root;
   List.iter (fun (m,d) -> Files.new_lib_mapping (m ^ ":" ^ d)) cfg.map_dir;
-  Handle.write_trees := cfg.write_tree;
   Tree.rule_order := cfg.keep_order;
-  set_default_verbose cfg.verbose;
+  Option.iter set_default_verbose cfg.verbose;
   no_wrn := cfg.no_warnings;
   set_default_debug cfg.debug;
   Console.color := not cfg.no_colors;
@@ -48,18 +46,26 @@ let init : config -> unit = fun cfg ->
       Files.ModMap.iter fn (Files.current_mappings ())
     end;
   (* Register the library root. *)
-  Files.init_lib_root ()
+  Files.init_lib_root ();
+  (* Initialise the [Pure] interface (this must come last). *)
+  Pure.set_initial_time ()
 
 (** Running the main type-checking mode. *)
-let check_cmd : config -> int option -> string list -> unit =
-    fun cfg timeout files ->
-  let handle file =
-    try
+let check_cmd : config -> int option -> bool -> string list -> unit =
+    fun cfg timeout recompile files ->
+  let run _ =
+    let open Timed in
+    init cfg; Stdlib.(Compile.recompile := recompile);
+    (* We save time to run each file in the same environment. *)
+    let time = Time.save () in
+    let handle file =
+      Console.reset_default ();
+      Time.restore time;
       let sign =
         match timeout with
         | None    -> Compile.compile_file file
         | Some(i) ->
-            if i <= 0 then exit_with "Invalid timeout value [%i] (≤ 0)." i;
+            if i <= 0 then fatal_no_pos "Invalid timeout value [%i] (≤ 0)." i;
             try with_timeout i Compile.compile_file file
             with Timeout ->
               fatal_no_pos "Compilation timed out for [%s]." file
@@ -75,36 +81,48 @@ let check_cmd : config -> int option -> string list -> unit =
       in
       run_checker "confluence"  Hrs.to_HRS cfg.confluence  "confluent";
       run_checker "termination" Xtc.to_XTC cfg.termination "terminating"
-    with
-    | Fatal(None,    msg) -> exit_with "%s" msg
-    | Fatal(Some(p), msg) -> exit_with "[%a] %s" Pos.print p msg
+    in
+    List.iter handle files
   in
-  init cfg; List.iter handle files
+  Console.handle_exceptions run
 
 (** Running the parsing mode. *)
 let parse_cmd : config -> string list -> unit = fun cfg files ->
-  let handle file =
-    try ignore (Compile.parse_file file)
-    with
-    | Fatal(None,    msg) -> exit_with "%s" msg
-    | Fatal(Some(p), msg) -> exit_with "[%a] %s" Pos.print p msg
+  let run _ =
+    let open Timed in
+    init cfg;
+    (* We save time to run each file in the same environment. *)
+    let time = Time.save () in
+    let handle file = Time.restore time; ignore (Compile.parse_file file) in
+    List.iter handle files
   in
-  init cfg; List.iter handle files
+  Console.handle_exceptions run
 
 (** Running the pretty-printing mode. *)
-let beautify_cmd : config -> string list -> unit = fun cfg files ->
-  let handle file =
-    try Pretty.beautify (Compile.parse_file file)
-    with
-    | Fatal(None,    msg) -> exit_with "%s" msg
-    | Fatal(Some(p), msg) -> exit_with "[%a] %s" Pos.print p msg
-  in
-  init cfg; List.iter handle files
+let beautify_cmd : config -> string -> unit = fun cfg file ->
+  let run _ = init cfg; Pretty.beautify (Compile.parse_file file) in
+  Console.handle_exceptions run
 
 (** Running the LSP server. *)
 let lsp_server_cmd : config -> bool -> string -> unit =
     fun cfg standard_lsp lsp_log_file ->
-  init cfg; Lsp.Lp_lsp.main standard_lsp lsp_log_file
+  let run _ = init cfg; Lsp.Lp_lsp.main standard_lsp lsp_log_file in
+  Console.handle_exceptions run
+
+(** Printing a decision tree. *)
+let decision_tree_cmd : config -> (Path.t * string) -> unit =
+  fun cfg (mp, sym) ->
+  let run _ =
+    Timed.(verbose := 0); (* To avoid printing the "Checked ..." line *)
+    init cfg;
+    let sym =
+      let sign = Compile.compile false mp in
+      try fst (StrMap.find sym Timed.(!(sign.sign_symbols)))
+      with Not_found -> fatal_no_pos "Symbol not found."
+    in
+    out 0 "%a" Tree_graphviz.to_dot sym
+  in
+  Console.handle_exceptions run
 
 (** {3 Command line argument parsing} *)
 
@@ -148,13 +166,6 @@ let map_dir : (string * string) list Term.t =
   let i = Arg.(info ["map-dir"] ~docv:"MOD:DIR" ~doc) in
   Arg.(value & opt_all (pair ~sep:':' string dir) [] & i)
 
-let write_tree : bool Term.t =
-  let doc =
-    "Write decision trees to \".gv\" files when reduction rules are added \
-     for a symbol. This is mainly useful for debugging."
-  in
-  Arg.(value & flag & info ["write-trees"] ~doc)
-
 let keep_order : bool Term.t =
   let doc =
     "Respect the order of definition of the rewriting rules in files. In \
@@ -164,14 +175,14 @@ let keep_order : bool Term.t =
 
 (** Debugging and output options. *)
 
-let verbose : int Term.t =
+let verbose : int option Term.t =
   let doc =
     "Set the verbosity level to $(docv). A value smaller or equal to 0 will \
      disable all printing (on standard output). Greater numbers lead to more \
      and more informations being written to standard output. There is no \
      difference between the values of 3 and more."
   in
-  Arg.(value & opt int 1 & info ["verbose"; "v"] ~docv:"NUM" ~doc)
+  Arg.(value & opt (some int) None & info ["verbose"; "v"] ~docv:"NUM" ~doc)
 
 let no_warnings : bool Term.t =
   let doc =
@@ -232,14 +243,14 @@ let termination : string option Term.t =
 (** [global_config] gathers the command line arguments that are common to most
     of the commands. *)
 let global_config : config Term.t =
-  let fn gen_obj lib_root map_dir write_tree keep_order verbose no_warnings
+  let fn gen_obj lib_root map_dir keep_order verbose no_warnings
       debug no_colors too_long confluence termination =
-    { gen_obj ; lib_root ; map_dir ; write_tree ; keep_order ; verbose
-    ; no_warnings ; debug ; no_colors ; too_long ; confluence ; termination }
+    { gen_obj ; lib_root ; map_dir ; keep_order ; verbose ; no_warnings
+    ; debug ; no_colors ; too_long ; confluence ; termination }
   in
   let open Term in
-  const fn $ gen_obj $ lib_root $ map_dir $ write_tree $ keep_order $ verbose
-    $ no_warnings $ debug $ no_colors $ too_long $ confluence $ termination
+  const fn $ gen_obj $ lib_root $ map_dir $ keep_order $ verbose
+  $ no_warnings $ debug $ no_colors $ too_long $ confluence $ termination
 
 (** Options that are specific to the ["check"] command. *)
 
@@ -249,6 +260,12 @@ let timeout : int option Term.t =
      as soon as the specified number of seconds is elapsed."
   in
   Arg.(value & opt (some int) None & info ["timeout"] ~docv:"NUM" ~doc)
+
+let recompile : bool Term.t =
+  let doc =
+    "Recompile the files even if they have an up-to-date object file."
+  in
+  Arg.(value & flag & info ["recompile"] ~doc)
 
 (** Options that are specific to the ["lsp-server"] command. *)
 
@@ -268,7 +285,28 @@ let lsp_log_file : string Term.t =
   in
   Arg.(value & opt string default & info ["log-file"] ~docv:"FILE" ~doc)
 
+(** Specific to the ["decision-tree"] command. *)
+
+let qsym : (Path.t * string) Term.t =
+  let doc = "Fully qualified symbol name with dot separated identifiers." in
+  let i = Arg.(info [] ~docv:"MOD_PATH.SYM" ~doc) in
+  let separate l =
+    match List.rev l with
+    | []   -> assert false (* Unreachable: Cmdliner ensures [l] non-empty *)
+    | s::l -> (List.rev l, s)
+  in
+  let arg = Arg.(non_empty & pos 0 (list ~sep:'.' string) [] & i) in
+  Term.(const separate $ arg)
+
 (** Remaining arguments: source files. *)
+
+let file : string Term.t =
+  let doc =
+    Printf.sprintf
+      "Source file with the [%s] extension (or with the [%s] extension when \
+       using the legacy Dedukti syntax)." src_extension legacy_src_extension
+  in
+  Arg.(required & pos 0 (some non_dir_file) None & info [] ~docv:"FILE" ~doc)
 
 let files : string list Term.t =
   let doc =
@@ -280,47 +318,83 @@ let files : string list Term.t =
 
 (** Definition of the commands. *)
 
+let man_pkg_file =
+  let sample_pkg_file =
+    let lines =
+      [ "# Lines whose first non-whitespace charater is # are comments"
+      ; "# The end of a non-comment line cannot be commented."
+      ; "# The following two fields must be defined:"
+      ; "package_name = my_package_name"
+      ; "root_path = a.b.c"
+      ; "# Unknown fields like the following are ignored."
+      ; "unknown = this is useless" ]
+    in
+    `Pre (String.concat "\n" (List.map (Printf.sprintf "\t%s") lines))
+  in
+  [ `S Manpage.s_files
+  ; `P "A package configuration files $(b,lambdapi.pkg) can be placed at the \
+        root of a source tree, so that Lambdapi can determine under what \
+        module path the underlying modules should be registered (relative to \
+        the library root). If several candidate package configuration files \
+        are found in the parent folders of a source file, the one in the \
+        closest parent directory is used."
+  ; `P "The syntax of package configuration files is line-based. Each line \
+        can either be a comment (i.e., it starts with a '#') or a key-value \
+        association of the form \"key = value\". Two such entries should be \
+        given for a configuration file to be valid: a $(b,package_name) \
+        entry whose value is an identifier and a $(b,root_path) entry whose \
+        value is a module path."
+  ; `P "An example of package configuration file is given bellow."
+  ; sample_pkg_file ]
+
 let check_cmd =
   let doc = "Type-checks the given files." in
-  Term.(const check_cmd $ global_config $ timeout $ files),
-  Term.info "check" ~doc ~exits:Term.default_exits
+  Term.(const check_cmd $ global_config $ timeout $ recompile $ files),
+  Term.info "check" ~doc ~man:man_pkg_file
+
+let decision_tree_cmd =
+  let doc =
+    "Prints decision tree of a symbol to standard output using the \
+     Dot language. Piping to `dot -Tpng | display' displays the tree."
+  in
+  Term.(const decision_tree_cmd $ global_config $ qsym),
+  Term.info "decision-tree" ~doc ~man:man_pkg_file
 
 let parse_cmd =
   let doc = "Run the parser on the given files." in
   Term.(const parse_cmd $ global_config $ files),
-  Term.info "parse" ~doc ~exits:Term.default_exits
+  Term.info "parse" ~doc ~man:man_pkg_file
 
 let beautify_cmd =
   let doc = "Run the parser and pretty-printer on the given files." in
-  Term.(const beautify_cmd $ global_config $ files),
-  Term.info "beautify" ~doc ~exits:Term.default_exits
+  Term.(const beautify_cmd $ global_config $ file),
+  Term.info "beautify" ~doc ~man:man_pkg_file
 
 let lsp_server_cmd =
   let doc = "Runs the LSP server." in
   Term.(const lsp_server_cmd $ global_config $ standard_lsp $ lsp_log_file),
-  Term.info "lsp" ~doc ~exits:Term.default_exits
+  Term.info "lsp" ~doc ~man:man_pkg_file
 
 let help_cmd =
   let doc = "Display the main help page for Lambdapi." in
   Term.(ret (const (`Help (`Pager, None)))),
-  Term.info "help" ~doc ~exits:Term.default_exits
+  Term.info "help" ~doc
 
 let version_cmd =
   let run () = out 0 "Lambdapi version: %s\n%!" Version.version in
   let doc = "Display the current version of Lambdapi." in
   Term.(const run $ const ()),
-  Term.info "version" ~doc ~exits:Term.default_exits
+  Term.info "version" ~doc
 
 let default_cmd =
   let doc = "A type-checker for the lambdapi-calculus modulo rewriting." in
   let sdocs = Manpage.s_common_options in
-  let exits = Term.default_exits in
   Term.(ret (const (`Help (`Pager, None)))),
-  Term.info "lambdapi" ~version ~doc ~sdocs ~exits
+  Term.info "lambdapi" ~version ~doc ~sdocs
 
 let _ =
   let cmds =
     [ check_cmd ; parse_cmd ; beautify_cmd ; lsp_server_cmd
-    ; help_cmd ; version_cmd ]
+    ; decision_tree_cmd ; help_cmd ; version_cmd ]
   in
   Term.(exit (eval_choice default_cmd cmds))

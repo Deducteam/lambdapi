@@ -8,12 +8,6 @@ open Terms
 open Syntax
 open Pos
 
-(** [builtin builtins name] finds the builtin symbol named [name]
-   in [builtins] if it exists, and fails otherwise. *)
-let builtin : popt -> sym StrMap.t -> string -> sym = fun pos builtins name ->
-  try StrMap.find name builtins
-  with Not_found -> fatal pos "Builtin symbol [%s] undefined." name
-
 (** Representation of a signature. It roughly corresponds to a set of symbols,
     defined in a single module (or file). *)
 type t =
@@ -84,7 +78,7 @@ let link : t -> unit = fun sign ->
     | Symb(s,h)   -> Symb(link_symb s, h)
     | Prod(a,b)   -> Prod(link_term a, link_binder b)
     | Abst(a,t)   -> Abst(link_term a, link_binder t)
-    | LLet(t,a,u) -> LLet(link_term t, link_term a, link_binder u)
+    | LLet(a,t,u) -> LLet(link_term a, link_term t, link_binder u)
     | Appl(t,u)   -> Appl(link_term t, link_term u)
     | Meta(_,_)   -> assert false
     | Patt(i,n,m) -> Patt(i, n, Array.map link_term m)
@@ -154,7 +148,7 @@ let unlink : t -> unit = fun sign ->
     | Symb(s,_)    -> unlink_sym s
     | Prod(a,b)    -> unlink_term a; unlink_binder b
     | Abst(a,t)    -> unlink_term a; unlink_binder t
-    | LLet(t,a,u)  -> unlink_term t; unlink_term a; unlink_binder u
+    | LLet(a,t,u)  -> unlink_term a; unlink_term t; unlink_binder u
     | Appl(t,u)    -> unlink_term t; unlink_term u
     | Meta(_,_)    -> assert false (* Should not happen, uninstantiated. *)
     | Patt(_,_,_)  -> () (* The environment only contains variables. *)
@@ -241,7 +235,7 @@ let read : string -> t = fun fname ->
       | Symb(s,_)   -> shallow_reset_sym s
       | Prod(a,b)   -> reset_term a; reset_binder b
       | Abst(a,t)   -> reset_term a; reset_binder t
-      | LLet(t,a,u) -> reset_term t; reset_term a; reset_binder u
+      | LLet(a,t,u) -> reset_term a; reset_term t; reset_binder u
       | Appl(t,u)   -> reset_term t; reset_term u
       | Meta(_,_)   -> assert false
       | Patt(_,_,m) -> Array.iter reset_term m

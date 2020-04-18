@@ -41,10 +41,22 @@ module Prefix :
         of the input corresponding to a word of [t]. The corresponding, stored
         value is returned. It fails if no such longest prefix exist. *)
     val grammar : 'a t -> 'a Earley.grammar
+
+    (** Type of a saved prefix tree. Prefix trees are imperative, so they need
+        to be manually saved and restored to enforce reentrancy. Note that the
+        parser may call itself through dependency loading *)
+    type 'a saved
+
+    (** [save t] returns a snapshot of the internal state of [t]. *)
+    val save : 'a t -> 'a saved
+
+    (** [restore t s] restores the internal state of [t] as it was at the time
+        of calling [save]. *)
+    val restore : 'a t -> 'a saved -> unit
   end =
   struct
     type 'a tree = Node of 'a option * (char * 'a tree) list
-    type 'a t = 'a tree Pervasives.ref
+    type 'a t = 'a tree Stdlib.ref
 
     let init : unit -> 'a t = fun _ -> ref (Node(None, []))
 
@@ -84,6 +96,12 @@ module Prefix :
         in fn None !t buf pos
       in
       Earley.black_box fn Charset.full false "<tree>"
+
+    type 'a saved = 'a tree
+
+    let save : 'a t -> 'a saved = Stdlib.(!)
+
+    let restore : 'a t -> 'a saved -> unit = Stdlib.(:=)
   end
 
 (** Currently defined unary operators. *)
@@ -107,8 +125,8 @@ let declared_id = Prefix.grammar declared_ids
 (** The following should not appear as substrings of binary operators, as they
     would introduce ambiguity in the parsing. *)
 let forbidden_in_ops =
-  [ "("; ")"; "."; "λ"; "∀"; "&"; "["; "]"; "{"; "}"; "?"; ":"; "→"; "⇒"
-  ; "@"; ","; ";"; "\""; "\'"; "≔"; "//"; " "; "\r"; "\n"; "\t"; "\b" ]
+  [ "("; ")"; "."; "λ"; "Π"; "$"; "["; "]"; "{"; "}"; "?"; ":"; "↪"; "⊢"
+  ; "→"; "@"; ","; ";"; "\""; "\'"; "≔"; "//"; " "; "\r"; "\n"; "\t"; "\b" ]
   @ List.init 10 string_of_int
 
 (** [get_ops loc p] loads the unary and binary operators associated to  module
@@ -147,7 +165,6 @@ let _ = KW.reserve "KIND"
 (** Keyword declarations. Keep alphabetical order. *)
 let _abort_      = KW.create "abort"
 let _admit_      = KW.create "admit"
-let _and_        = KW.create "and"
 let _apply_      = KW.create "apply"
 let _as_         = KW.create "as"
 let _assert_     = KW.create "assert"
@@ -182,6 +199,7 @@ let _type_       = KW.create "type"
 let _TYPE_       = KW.create "TYPE"
 let _why3_       = KW.create "why3"
 let _wild_       = KW.create "_"
+let _with_       = KW.create "with"
 
 (** [sanity_check pos s] checks that the token [s] is appropriate for an infix
     operator or a declared identifier. If it is not the case, then the [Fatal]
@@ -307,9 +325,9 @@ let parser meta =
   | "?" - id:{regular_ident | escaped_ident} ->
       if id = "_" then Earley.give_up (); in_pos _loc id
 
-(** Pattern variable identifier (regular or escaped, prefixed with ['&']). *)
+(** Pattern variable identifier (regular or escaped, prefixed with ['$']). *)
 let parser patt =
-  | "&" - id:{regular_ident | escaped_ident} ->
+  | "$" - id:{regular_ident | escaped_ident} ->
       if id = "_" then None else Some(in_pos _loc id)
 
 (** Any path member identifier (escaped idents are stripped). *)
@@ -363,12 +381,12 @@ let parser term @(p : prio) =
   | t:(term PAppl) u:(term PAtom)
       when p >= PAppl -> in_pos _loc (P_Appl(t,u))
   (* Implication. *)
-  | a:(term PBinO) "⇒" b:(term PFunc)
+  | a:(term PBinO) "→" b:(term PFunc)
       when p >= PFunc -> in_pos _loc (P_Impl(a,b))
   (* Products. *)
-  | "∀" xs:arg+ "," b:(term PFunc)
+  | "Π" xs:arg+ "," b:(term PFunc)
       when p >= PFunc -> in_pos _loc (P_Prod(xs,b))
-  | "∀" xs:arg_ident+ ":" a:(term PFunc) "," b:(term PFunc)
+  | "Π" xs:arg_ident+ ":" a:(term PFunc) "," b:(term PFunc)
       when p >= PFunc -> in_pos _loc (P_Prod([xs,Some(a),false],b))
   (* Abstraction. *)
   | "λ" xs:arg+ "," t:(term PFunc)
@@ -376,8 +394,9 @@ let parser term @(p : prio) =
   | "λ" xs:arg_ident+ ":" a:(term PFunc) "," t:(term PFunc)
       when p >= PFunc -> in_pos _loc (P_Abst([xs,Some(a),false],t))
   (* Local let. *)
-  | _let_ x:ident a:arg* "≔" t:(term PFunc) _in_ u:(term PFunc)
-      when p >= PFunc -> in_pos _loc (P_LLet(x,a,t,u))
+  | _let_ x:ident a:arg* b:{":" (term PFunc)}? "≔" t:(term PFunc) _in_
+      u:(term PFunc)
+      when p >= PFunc -> in_pos _loc (P_LLet(x,a,b,t,u))
   (* Natural number literal. *)
   | n:nat_lit
       when p >= PAtom -> in_pos _loc (P_NLit(n))
@@ -447,7 +466,7 @@ let term = term PFunc
 
 (** [rule] is a parser for a single rewriting rule. *)
 let parser rule =
-  | l:term "→" r:term -> Pos.in_pos _loc (l, r)
+  | l:term "↪" r:term -> Pos.in_pos _loc (l, r)
 
 (** [hint_sub] parses a sub-unification problem, that is, a unification
     problem on the right-hand side of a hint. *)
@@ -460,7 +479,7 @@ let parser hint_rhs =
 
 (** [hint] is a parser for a unification hint. *)
 let parser hint =
-  | u:{term "≡" term} "→" rhs:hint_rhs ->
+  | u:{term "≡" term} "↪" rhs:hint_rhs ->
       Pos.in_pos _loc (Pos.in_pos _loc_u u,rhs)
 
 (** [rw_patt_spec] is a parser for a rewrite pattern specification. *)
@@ -495,6 +514,16 @@ let parser query =
       Pos.in_pos _loc (P_query_flag(s, b))
   | mf:assert_must_fail a:assertion ->
       Pos.in_pos _loc (P_query_assert(mf,a))
+  | mf:assert_must_fail ps:arg* "⊢" t:term "≡" u:term ->
+      let ps_t = Pos.in_pos _loc (P_Abst(ps,t)) in
+      let ps_u = Pos.in_pos _loc (P_Abst(ps,u)) in
+      let assert_conv = P_assert_conv(ps_t,ps_u) in
+      Pos.in_pos _loc (P_query_assert(mf,assert_conv))
+  | mf:assert_must_fail ps:arg* "⊢" t:term ":" u:term ->
+      let ps_t = Pos.in_pos _loc (P_Abst(ps,t)) in
+      let ps_u = Pos.in_pos _loc (P_Prod(ps,u)) in
+      let assert_typing = P_assert_typing(ps_t,ps_u) in
+      Pos.in_pos _loc (P_query_assert(mf,assert_typing))
   | _type_ t:term ->
       let c = Eval.{strategy = NONE; steps = None} in
       Pos.in_pos _loc (P_query_infer(t,c))
@@ -561,7 +590,7 @@ let parser proof =
     it is required as a dependency. This has the effect of importing notations
     exported by that module. The value of [require] is set in [Compile], and a
     reference is used to avoid to avoid cyclic dependencies. *)
-let require : (Path.t -> unit) Pervasives.ref = ref (fun _ -> ())
+let require : (Path.t -> unit) Stdlib.ref = ref (fun _ -> ())
 
 (** [do_require pos path] is a wrapper for [!require path], that takes care of
     possible exceptions. Errors are reported at given position [pos],  keeping
@@ -572,8 +601,21 @@ let do_require : Pos.pos -> p_module_path -> unit = fun loc path ->
     let fmt = "Error when loading module [%a].\n" ^^ fmt in
     parser_fatal loc fmt Path.pp path
   in
+  (* Saving/restoring parser state here is necessary for reentrancy: [require]
+     can call compilation, which in turn can call the parser. *)
+  let reentrant_call () =
+    let saved_unops = Prefix.save unops in
+    let saved_binops  = Prefix.save binops in
+    let saved_declared_ids = Prefix.save declared_ids in
+    let restore () =
+      Prefix.restore unops saved_unops;
+      Prefix.restore binops saved_binops;
+      Prefix.restore declared_ids saved_declared_ids
+    in
+    try !require path; restore () with e -> restore (); raise e
+  in
   (* We attach our position to errors comming from the outside. *)
-  try !require path with
+  try reentrant_call () with
   | Console.Fatal(None     , msg) -> local_fatal "%s" msg
   | Console.Fatal(Some(pos), msg) -> local_fatal "[%a] %s" Pos.print pos msg
   | e                             -> local_fatal "Uncaught exception: [%s]"
@@ -593,7 +635,7 @@ let parser cmd =
   | e:exposition? p:property? _symbol_ s:ident al:arg* ":" a:term
       -> P_symbol(Option.get Terms.Public e,
                   Option.get Terms.Defin p,s,al,a)
-  | _rule_ r:rule rs:{_:_and_ rule}*
+  | _rule_ r:rule rs:{_:_with_ rule}*
       -> P_rules(r::rs)
   | _hint_ h:hint
       -> P_hint(h)

@@ -1,8 +1,8 @@
 constant symbol B : TYPE
 
-symbol conj : B ⇒ B ⇒ B
-symbol disj : B ⇒ B ⇒ B
-symbol neg  : B ⇒ B
+symbol conj : B → B → B
+symbol disj : B → B → B
+symbol neg  : B → B
 
 set infix right 5 "∨" ≔ disj
 set infix right 6 "∧" ≔ conj

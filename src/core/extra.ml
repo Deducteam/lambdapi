@@ -102,13 +102,26 @@ module List =
 
     (** [filter_map f l] applies [f] to the elements of [l] and keeps the [x]
         such that [Some(x)] in [List.map f l]. *)
-    let rec filter_map : ('a -> 'b option) -> 'a list -> 'b list = fun f ->
-      function
+    let rec filter_map : ('a -> 'b option) -> 'a list -> 'b list = fun f l ->
+      match l with
       | []     -> []
       | h :: t ->
           match f h with
           | Some(x) -> x :: filter_map f t
           | None    -> filter_map f t
+
+    (** [filter_rev_map f l] is equivalent to [filter_map f (List.rev l)], but
+        it only traverses the list once and is tail-recursive. *)
+    let filter_rev_map : ('a -> 'b option) -> 'a list -> 'b list = fun f ->
+      let rec frm acc l =
+        match l with
+        | []     -> acc
+        | hd::tl ->
+            match f hd with
+            | Some(x) -> frm (x::acc) tl
+            | None    -> frm acc tl
+      in
+      frm []
 
     (** [filteri_map f l] applies [f] element wise on [l] and keeps [x] such
         that for [e] in [l], [f e = Some(x)]. *)
@@ -156,10 +169,10 @@ module List =
       try List.for_all2 eq l1 l2 with Invalid_argument _ -> false
 
     (** [max ?cmp l] finds the max of list [l] with compare function [?cmp]
-        defaulting to [Pervasives.compare].
+        defaulting to [Stdlib.compare].
         @raise Invalid_argument if [l] is empty. *)
     let max : ?cmp:('a -> 'a -> int) -> 'a list -> 'a =
-      fun ?(cmp=Pervasives.compare) li ->
+      fun ?(cmp=Stdlib.compare) li ->
       match li with
       | []   -> invalid_arg "Extra.List.max"
       | h::t -> let max e1 e2 = if cmp e1 e2 >= 0 then e1 else e2 in
@@ -238,6 +251,14 @@ module List =
             | _ -> false
       in in_sorted
 
+    (** [insert cmp x l] inserts [x] in the list [l] assuming that [l] is
+        sorted wrt [cmp]. *)
+    let insert : 'a cmp -> 'a -> 'a list -> 'a list = fun cmp x ->
+      let rec insert acc l =
+        match l with
+        | y :: l when cmp x y > 0 -> insert (y::acc) l
+        | _                       -> List.rev_append acc (x::l)
+      in insert []
   end
 
 module Array =
@@ -267,9 +288,9 @@ module Array =
 
     (** [max_index ?cmp a] returns the index of the first maximum of array [a]
         according to comparison [?cmp].  If [cmp] is not given, defaults to
-        [Pervasives.compare]. *)
+        [Stdlib.compare]. *)
     let max_index : ?cmp:('a -> 'a -> int) -> 'a array -> int =
-      fun ?(cmp=Pervasives.compare) arr ->
+      fun ?(cmp=Stdlib.compare) arr ->
       let len = Array.length arr in
       if len = 0 then invalid_arg "Extra.Array.max_index" else
       let max = ref 0 in
@@ -278,10 +299,10 @@ module Array =
       done; !max
 
     (** [max ?cmp a] returns the higher element according to comparison
-        function [?cmp], using [Pervasives.compare] if not given, in array
+        function [?cmp], using [Stdlib.compare] if not given, in array
         [a]. *)
     let max : ?cmp:('a -> 'a -> int)-> 'a array -> 'a =
-      fun ?(cmp=Pervasives.compare) arr -> arr.(max_index ~cmp:cmp arr)
+      fun ?(cmp=Stdlib.compare) arr -> arr.(max_index ~cmp:cmp arr)
 
     (** [split a] is [List.split (Array.to_list a)]. *)
     let split : ('a * 'b) array -> 'a list * 'b list = fun a ->

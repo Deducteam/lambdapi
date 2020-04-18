@@ -14,6 +14,9 @@ The available commands are:
  - `parse`: runs the parsing-only mode on input source files.
  - `beautify`: runs the parser and pretty-printer on input source files.
  - `lsp`: runs the Lambdapi LSP server.
+ - `decision-tree`: prints the decision tree for rule filtering of a symbol in
+   the Dot language on standard output. For more information on the graph and
+   how to read them, see `src/core/tree_graphviz.ml`.
 
 **Note:** the `parse` and `beautify` commands can trigger the compilation of
 dependencies if the required object files (`.lpo` extension) are not present.
@@ -35,8 +38,8 @@ Lambdapi syntax.
 
 #### Common flags
 
-The commands `check`, `parse`, `beautify` and `lsp` all support the following
-command line arguments and flags.
+The commands `check`, `parse`, `beautify`, `lsp` and `decision-tree` all support
+the following command line arguments and flags.
 
 ##### Configuration flags
 
@@ -73,11 +76,6 @@ command line arguments and flags.
  - `--timeout NUM` gives up type-checking after the given number of seconds.
    Note that the timeout is reset between each file, and that the parameter of
    the command is expected to be a natural number.
-
- - `--write-trees` writes the decision trees used for rewriting rule filtering
-   to dot files. For each symbol `s`, a file `mod_path/mod_name.s.gv` is
-   generated. For more information on trees (and how to read them), see
-   `src/tree_graphviz.ml`.
 
 ##### Confluence checking
 
@@ -125,6 +123,9 @@ dummy command: `--termination "cat > output.trs; echo MAYBE"`.
  - `--too-long FLOAT` gives a warning for each interpreted source file command
    taking more than the given number of seconds to be checked. The parameter
    `FLOAT` is expected to be a floating point number.
+
+ - `--recompile` forces the compilation of the files given on the command line
+   even if they have an up-to-date object file.
 
 ##### Specific flags for the "lsp" command
 

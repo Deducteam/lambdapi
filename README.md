@@ -24,7 +24,7 @@ with "bash on Windows".
 
 List of dependencies (for version numbers refer to `lambdapi.opam`):
  - GNU make
- - [ocaml](https://ocaml.org/) (at least 4.04.1 and at most 4.07.1)
+ - [ocaml](https://ocaml.org/) (at least 4.05.0 and at most 4.07.1)
  - [dune](https://dune.build/)
  - [odoc](https://github.com/ocaml/odoc) (for documentation only)
  - [bindlib](https://github.com/rlepigre/ocaml-bindlib)
@@ -44,9 +44,9 @@ first installation of Why3).
 
 Using Opam, a suitable OCaml environment can be setup as follows.
 ```bash
-opam switch 4.05.0
+opam switch 4.07.1
 eval `opam config env`
-opam install dune odoc menhir yojson cmdliner bindlib.5.0.0 timed.1.0 earley.2.0.0 why3.1.2.0
+opam install dune odoc menhir yojson cmdliner bindlib.5.0.0 timed.1.0 earley.2.0.0 why3.1.3.1
 why3 config --detect
 ```
 
@@ -60,10 +60,17 @@ make               # Build lambdapi.
 make doc           # Build the documentation.
 make install       # Install the program.
 make install_vim   # Install vim support.
-make install_emacs # Install emacs (>= 26.1) support (needs the eglot package)
 ```
 
 **Note:** you can run `lambdapi` without installing with `dune exec -- lambdapi`.
+
+**Note on Emacs:** `make install` installs the `lambdapi-mode`, an Emacs major
+mode for editing `lambdapi` files in `$(opam var share)/emacs/site-lisp`.
+To load the `lambdapi-mode` automatically when editing `*.lp` files, add `(load
+"lambdapi-site-file")` to your `~/.emacs.d/init.el` or `~/.emacs`.
+If `lambdapi-mode` is not activated when editing a file ending in `.lp`, read
+the installation section of the
+[documentation](doc/sections/emacs.md#installation).
 
 The following commands can be used for cleaning up the repository:
 ```bash

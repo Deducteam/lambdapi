@@ -11,26 +11,13 @@ open Files
 open Syntax
 open Scope
 
-(** [write_trees] tells whether graphviz files containing the representation
-    of decision trees should be created. *)
-let write_trees : bool Pervasives.ref = Pervasives.ref false
-
-(** [check_builtin_nat s] checks that the builtin symbol [s] for
-   non-negative literals has a good type. *)
-let check_builtin_nat : popt -> sym StrMap.t -> string -> sym -> unit
-  = fun pos builtins s sym ->
-  match s with
-  | "+1" ->
-     let builtin = Sign.builtin pos builtins in
-     let symb_0 = builtin "0" in
-     let typ_0 = !(symb_0.sym_type) in
-     let x = Bindlib.new_var mkfree "_" in
-     let ctx = [(x, typ_0, None)] in
-     let typ_s = Ctxt.to_prod ctx typ_0 in
-     if not (Basics.eq typ_s !(sym.sym_type)) then
-       fatal pos "The type of [%s] is not of the form [%a]"
-         sym.sym_name pp typ_s
-  | _ -> ()
+(* Register a check for the type of builtin successor symbol ["+1"]. *)
+let _ =
+  let expected_successor pos map =
+    let typ_0 = lift !((Builtin.get pos map "0").sym_type) in
+    Bindlib.unbox (_Impl typ_0 typ_0)
+  in
+  Builtin.Check.register_expected_type "+1" expected_successor
 
 (** Representation of a yet unchecked proof. The structure is initialized when
     the proof mode is entered, and its finalizer is called when the proof mode
@@ -108,7 +95,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
       (* We scope the type of the declaration. *)
       let a = scope_basic e a in
       (* We check that [a] is typable by a sort. *)
-      Typing.sort_type ss.builtins Ctxt.empty a;
+      Typing.sort_type ss.builtins [] a;
       (* We check that no metavariable remains. *)
       if Basics.has_metas true a then
         begin
@@ -121,12 +108,13 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
       ({ss with in_scope = StrMap.add x.elt (s, x.pos) ss.in_scope}, None)
   | P_rules(rs)                ->
       (* Scoping and checking each rule in turn. *)
-      let handle_rule pr =
-        let (s,_,_) as r = scope_rule ss pr in
-        if !(s.sym_def) <> None then
+      let handle_rule r =
+        let pr = scope_rule ss r in
+        let (sym, hint) = pr.elt.pr_sym in
+        if !(sym.sym_def) <> None then
           fatal pr.pos "Rewriting rules cannot be given for defined \
-                        symbol [%s]." s.sym_name;
-        Sr.check_rule ss.builtins r; r
+                        symbol [%s]." sym.sym_name;
+        (sym, hint, Pos.make r.pos (Sr.check_rule ss.builtins pr))
       in
       let rs = List.map handle_rule rs in
       (* Adding the rules all at once. *)
@@ -137,17 +125,6 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
       List.iter add_rule rs;
       let syms = List.remove_phys_dups (List.map (fun (s, _, _) -> s) rs) in
       List.iter Tree.update_dtree syms;
-      (* Writing decision tree if required. *)
-      if Pervasives.(!write_trees) then
-        begin
-          let write_tree s =
-            let fname = String.concat Filename.dir_sep s.sym_path in
-            let fname = Printf.sprintf "%s.%s.gv" fname s.sym_name in
-            Console.out 3 "Writing file [%s]\n" fname;
-            Tree_graphviz.to_dot fname s
-          in
-          List.iter write_tree syms
-        end;
       (ss, None)
   | P_hint(h)                    ->
       (* Approximately same processing as rules without SR checking. *)
@@ -156,12 +133,6 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
       hu.sym_rules := !(hu.sym_rules) @ [h.elt];
       out 3 "(hint) %a\n" Print.pp_hint h.elt;
       Tree.update_dtree hu;
-      if Pervasives.(!write_trees) then
-        begin
-          let fname = Printf.sprintf "hint_unif.gv" in
-          Console.out 3 "Writing file [%s]\n" fname;
-          Tree_graphviz.to_dot fname hu
-        end;
       (ss, None) (* Unchanged *)
   | P_definition(e,op,x,xs,ao,t) ->
       (* We check that [x] is not already used. *)
@@ -185,11 +156,11 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
       let a =
         match ao with
         | Some(a) ->
-            Typing.sort_type ss.builtins Ctxt.empty a;
-            if Typing.check ss.builtins Ctxt.empty t a then a else
+            Typing.sort_type ss.builtins [] a;
+            if Typing.check ss.builtins [] t a then a else
             fatal cmd.pos "The term [%a] does not have type [%a]." pp t pp a
         | None    ->
-            match Typing.infer ss.builtins Ctxt.empty t with
+            match Typing.infer ss.builtins [] t with
             | Some(a) -> a
             | None    -> fatal cmd.pos "Cannot infer the type of [%a]." pp t
       in
@@ -218,7 +189,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
       (* Scoping the type (statement) of the theorem. *)
       let a = scope_basic e a in
       (* Check that [a] is typable and that its type is a sort. *)
-      Typing.sort_type ss.builtins Ctxt.empty a;
+      Typing.sort_type ss.builtins [] a;
       (* We check that no metavariable remains in [a]. *)
       if Basics.has_metas true a then
         begin
@@ -263,28 +234,34 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
       (ss, Some(data))
   | P_set(cfg)                 ->
       let ss =
+        let with_path : Path.t -> qident -> qident = fun path qid ->
+          let path = List.map (fun s -> (s, false)) path in
+          Pos.make qid.pos (path, snd qid.elt)
+        in
         match cfg with
         | P_config_builtin(s,qid) ->
             (* Set the builtin symbol [s]. *)
-            let builtins = !(ss.signature.sign_builtins) in
-            if StrMap.mem s builtins then
+            if StrMap.mem s ss.builtins then
               fatal cmd.pos "Builtin [%s] already exists." s;
             let (sym, _) = find_sym ~prt:true ~prv:true false ss qid in
-            check_builtin_nat cmd.pos builtins s sym;
-            Rewrite.check_builtin cmd.pos builtins s sym;
+            Builtin.Check.check  cmd.pos ss.builtins s sym;
             Sign.add_builtin ss.signature s sym;
             out 3 "(conf) set builtin [%s]\n" s;
             {ss with builtins = StrMap.add s sym ss.builtins}
         | P_config_unop(unop)     ->
-            let (s, _, qid) = unop in
+            let (s, prio, qid) = unop in
             (* Define the unary operator [s]. *)
             let (sym, _) = find_sym ~prt:true ~prv:true false ss qid in
+            (* Make sure the operator has a fully qualified [qid]. *)
+            let unop = (s, prio, with_path sym.sym_path qid) in
             Sign.add_unop ss.signature s (sym, unop);
             out 3 "(conf) new prefix [%s]\n" s; ss
         | P_config_binop(binop)   ->
-            let (s, _, _, qid) = binop in
+            let (s, assoc, prio, qid) = binop in
             (* Define the binary operator [s]. *)
             let (sym, _) = find_sym ~prt:true ~prv:true false ss qid in
+            (* Make sure the operator has a fully qualified [qid]. *)
+            let binop = (s, assoc, prio, with_path sym.sym_path qid) in
             Sign.add_binop ss.signature s (sym, binop);
             out 3 "(conf) new infix [%s]\n" s; ss
         | P_config_ident(id)      ->
@@ -297,7 +274,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
 
 (** [too_long] indicates the duration after which a warning should be given to
     indicate commands that take too long to execute. *)
-let too_long = Pervasives.ref infinity
+let too_long = Stdlib.ref infinity
 
 (** [handle_cmd ss cmd] is similar to [handle_cmd_aux ss cmd] but it adds some
     exception handling. In particular, the position of [cmd] is used on errors
@@ -307,7 +284,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
     fun ss cmd ->
   try
     let (tm, ss) = time (handle_cmd ss) cmd in
-    if Pervasives.(tm >= !too_long) then
+    if Stdlib.(tm >= !too_long) then
       wrn cmd.pos "It took %.2f seconds to handle the command." tm;
     ss
   with

@@ -10,14 +10,14 @@ let log_infr = new_logger 'i' "infr" "type inference/checking"
 let log_infr = log_infr.logger
 
 (** Accumulated constraints. *)
-let constraints = Pervasives.ref []
+let constraints = Stdlib.ref []
 
 (** Function adding a constraint. *)
 let conv ctx a b =
-  if not (Basics.eq a b) then
+  if not (Eval.eq_modulo ctx a b) then
     begin
       if !log_enabled then log_infr (yel "add %a") pp_constr (ctx,a,b);
-      let open Pervasives in constraints := (ctx,a,b) :: !constraints
+      let open Stdlib in constraints := (ctx,a,b) :: !constraints
     end
 
 (** [make_meta_codomain ctx a] builds a metavariable intended as the  codomain
@@ -28,7 +28,7 @@ let make_meta_codomain : ctxt -> term -> tbinder = fun ctx a ->
   let m = Meta(fresh_meta Kind 0, [||]) in
   (* [m] can be instantiated by Type or Kind only (the type of [m] is
      therefore incorrect when [m] is instantiated by Kind. *)
-  let b = Ctxt.make_meta ((x, a, None) :: ctx) m in
+  let b = Basics.make_meta ((x, a, None) :: ctx) m in
   Bindlib.unbox (Bindlib.bind_var x (lift b))
 
 (** [infer ctx t] infers a type for the term [t] in context [ctx],
@@ -37,7 +37,7 @@ let make_meta_codomain : ctxt -> term -> tbinder = fun ctx a ->
    constraints are satisfied. [ctx] must be well-formed. This function
    never fails (but constraints may be unsatisfiable). *)
 let rec infer : ctxt -> term -> term = fun ctx t ->
-  if !log_enabled then log_infr "infer [%a]" pp t;
+  if !log_enabled then log_infr "infer %a%a" pp_ctxt ctx pp t;
   match unfold t with
   | Patt(_,_,_) -> assert false (* Forbidden case. *)
   | TEnv(_,_)   -> assert false (* Forbidden case. *)
@@ -46,20 +46,28 @@ let rec infer : ctxt -> term -> term = fun ctx t ->
   | TRef(_)     -> assert false (* Forbidden case. *)
 
   (* -------------------
-      ctx ⊢ Type ⇒ Kind  *)
+      ctx ⊢ Type → Kind  *)
   | Type        -> Kind
 
   (* ---------------------------------
-      ctx ⊢ Vari(x) ⇒ Ctxt.find x ctx  *)
-  | Vari(x)     -> (try Ctxt.type_of x ctx with Not_found -> assert false)
+      ctx ⊢ Vari(x) → Ctxt.find x ctx  *)
+  | Vari(x)     ->
+      let a = try Ctxt.type_of x ctx with Not_found -> assert false in
+      if !log_enabled then
+        log_infr (blu "%a : %a") pp_term t pp_term a;
+      a
 
   (* -------------------------------
-      ctx ⊢ Symb(s) ⇒ !(s.sym_type)  *)
-  | Symb(s,_)   -> !(s.sym_type)
+      ctx ⊢ Symb(s) → !(s.sym_type)  *)
+  | Symb(s,_)   ->
+      let a = !(s.sym_type) in
+      if !log_enabled then
+        log_infr (blu "%a : %a") pp_term t pp_term a;
+      a
 
-  (*  ctx ⊢ a ⇐ Type    ctx, x : a ⊢ b<x> ⇒ s
+  (*  ctx ⊢ a ⇐ Type    ctx, x : a ⊢ b<x> → s
      -----------------------------------------
-                ctx ⊢ Prod(a,b) ⇒ s            *)
+                ctx ⊢ Prod(a,b) → s            *)
   | Prod(a,b)   ->
       (* We ensure that [a] is of type [Type]. *)
       check ctx a Type;
@@ -77,9 +85,9 @@ let rec infer : ctxt -> term -> term = fun ctx t ->
          inside a term. So, [t] cannot be a kind. *)
       end
 
-  (*  ctx ⊢ a ⇐ Type    ctx, x : a ⊢ t<x> ⇒ b<x>
+  (*  ctx ⊢ a ⇐ Type    ctx, x : a ⊢ t<x> → b<x>
      --------------------------------------------
-             ctx ⊢ Abst(a,t) ⇒ Prod(a,b)          *)
+             ctx ⊢ Abst(a,t) → Prod(a,b)          *)
   | Abst(a,t)   ->
       (* We ensure that [a] is of type [Type]. *)
       check ctx a Type;
@@ -89,26 +97,20 @@ let rec infer : ctxt -> term -> term = fun ctx t ->
       (* We build the product type by binding [x] in [b]. *)
       Prod(a, Bindlib.unbox (Bindlib.bind_var x (lift b)))
 
-  (*  ctx ⊢ t ⇒ Prod(a,b)    ctx ⊢ u ⇐ a
+  (*  ctx ⊢ t → Prod(a,b)    ctx ⊢ u ⇐ a
      ------------------------------------
-         ctx ⊢ Appl(t,u) ⇒ subst b u      *)
+         ctx ⊢ Appl(t,u) → subst b u      *)
   | Appl(t,u)   ->
       (* We first infer a product type for [t]. *)
       let (a,b) =
-        let c = Eval.whnf (infer ctx t) in
+        let c = Eval.whnf ctx (infer ctx t) in
         match c with
         | Prod(a,b) -> (a,b)
-        | Meta(_,ts) ->
-            let ctx =
-              match Basics.distinct_vars_opt ts with
-              | None -> ctx
-              | Some vs -> Ctxt.sub ctx vs
-            in
-            let a = Ctxt.make_meta ctx Type in
-            let b = make_meta_codomain ctx a in
-            conv ctx c (Prod(a,b)); (a,b)
+        | Meta(m,ts) ->
+            let mxs, p, bp1, bp2 = Env.extend_meta_type m in
+            conv ctx mxs p; (Bindlib.msubst bp1 ts, Bindlib.msubst bp2 ts)
         | _         ->
-            let a = Ctxt.make_meta ctx Type in
+            let a = Basics.make_meta ctx Type in
             let b = make_meta_codomain ctx a in
             conv ctx c (Prod(a,b)); (a,b)
       in
@@ -117,74 +119,32 @@ let rec infer : ctxt -> term -> term = fun ctx t ->
       (* We produce the returned type. *)
       Bindlib.subst b u
 
-  (*  ctx ⊢ t ⇐ a       ctx, x := t : a ⊢ u ⇒ b
+  (*  ctx ⊢ t ⇐ a       ctx, x : a := t ⊢ u → b
      -------------------------------------------
-        ctx ⊢ let x ≔ t : a in u ⇒ subst b t     *)
-  | LLet(t,a,u) ->
+        ctx ⊢ let x : a ≔ t in u → subst b t     *)
+  | LLet(a,t,u) ->
+      check ctx a Type;
       check ctx t a;
-      (* Unbind [u] and enrich context with [x:=t:a] *)
+      (* Unbind [u] and enrich context with [x: a ≔ t] *)
       let (x,u,ctx') = Ctxt.unbind ctx a (Some(t)) u in
       let b = infer ctx' u in
       (* Build back the term *)
       let b = Bindlib.unbox (Bindlib.bind_var x (lift b)) in
       Bindlib.subst b t
 
-  (*  ctx ⊢ term_of_meta m e ⇒ a
+  (*  ctx ⊢ term_of_meta m e → a
      ----------------------------
-         ctx ⊢ Meta(m,e) ⇒ a      *)
-  | Meta(m,e)   ->
-      if !log_enabled then
-        log_infr (yel "%s is of type [%a]") (meta_name m) pp !(m.meta_type);
-      infer ctx (term_of_meta m e)
+         ctx ⊢ Meta(m,e) → a      *)
+  | Meta(m,ts)   ->
+      infer ctx (term_of_meta m ts)
 
 (** [check ctx t c] checks that the term [t] has type [c] in context
    [ctx], possibly under some constraints recorded in [constraints]
    using [conv]. [ctx] must be well-formed and [c] well-sorted. This
    function never fails (but constraints may be unsatisfiable). *)
-
-(* [check ctx t c] could be reduced to the default case [conv
-   (infer ctx t) c]. We however provide some more efficient
-   code when [t] is an abstraction, as witnessed by 'make holide':
-
-   Finished in 3:56.61 at 99% with 3180096Kb of RAM
-
-   Finished in 3:46.13 at 99% with 2724844Kb of RAM
-
-   This avoids to build a product to destructure it just after. *)
 and check : ctxt -> term -> term -> unit = fun ctx t c ->
-  if !log_enabled then log_infr "check [%a] [%a]" pp t pp c;
-  match unfold t with
-  (*  c → Prod(d,b)    a ~ d    ctx, x : A ⊢ t<x> ⇐ b<x>
-      ----------------------------------------------------
-                         ctx ⊢ Abst(a,t) ⇐ c                   *)
-  | Abst(a,t)   ->
-      (* We ensure that [a] is of type [Type]. *)
-      check ctx a Type;
-      (* We (hopefully) evaluate [c] to a product, and get its body. *)
-      let b =
-        let c = Eval.whnf c in
-        match c with
-        | Prod(d,b) -> conv ctx d a; b (* Domains must be convertible. *)
-        | Meta(_,ts) ->
-           let ctx =
-             match Basics.distinct_vars_opt ts with
-             | None -> ctx
-             | Some vs -> Ctxt.sub ctx vs
-           in
-           let b = make_meta_codomain ctx a in
-           conv ctx c (Prod(a,b)); b
-        | _         -> (* Generate product type with codomain [a]. *)
-           let b = make_meta_codomain ctx a in
-           conv ctx c (Prod(a,b)); b
-      in
-      (* We type-check the body with the codomain. *)
-      let (x,t,ctx') = Ctxt.unbind ctx a None t in
-      check ctx' t (Bindlib.subst b (Vari(x)))
-  | t           ->
-      (*  ctx ⊢ t ⇒ a
-         -------------
-          ctx ⊢ t ⇐ a  *)
-      conv ctx (infer ctx t) c
+  if !log_enabled then log_infr "check %a : %a" pp t pp c;
+  conv ctx (infer ctx t) c
 
 (** [infer ctx t] returns a pair [(a,cs)] where [a] is a type for the
    term [t] in the context [ctx], under unification constraints [cs].
@@ -192,15 +152,15 @@ and check : ctxt -> term -> term -> unit = fun ctx t c ->
    to have type [a]. [ctx] must be well-formed. This function never
    fails (but constraints may be unsatisfiable). *)
 let infer : ctxt -> term -> term * unif_constrs = fun ctx t ->
-  Pervasives.(constraints := []);
+  Stdlib.(constraints := []);
   let a = infer ctx t in
-  let constrs = Pervasives.(!constraints) in
+  let constrs = Stdlib.(!constraints) in
   if !log_enabled then
     begin
-      log_infr (gre "infer [%a] yields [%a]") pp t pp a;
-      List.iter (log_infr "  assuming %a" pp_constr) constrs;
+      log_infr (gre "infer %a : %a") pp t pp a;
+      List.iter (log_infr "  if %a" pp_constr) constrs;
     end;
-  Pervasives.(constraints := []);
+  Stdlib.(constraints := []);
   (a, constrs)
 
 (** [check ctx t c] checks returns a list [cs] of unification
@@ -209,13 +169,13 @@ let infer : ctxt -> term -> term * unif_constrs = fun ctx t ->
    well-sorted. This function never fails (but constraints may be
    unsatisfiable). *)
 let check : ctxt -> term -> term -> unif_constrs = fun ctx t c ->
-  Pervasives.(constraints := []);
+  Stdlib.(constraints := []);
   check ctx t c;
-  let constrs = Pervasives.(!constraints) in
+  let constrs = Stdlib.(!constraints) in
   if !log_enabled then
     begin
-      log_infr (gre "check [%a] [%a]") pp t pp c;
-      List.iter (log_infr "  assuming %a" pp_constr) constrs;
+      log_infr (gre "check %a : %a") pp t pp c;
+      List.iter (log_infr "  if %a" pp_constr) constrs;
     end;
-  Pervasives.(constraints := []);
+  Stdlib.(constraints := []);
   constrs

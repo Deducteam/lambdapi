@@ -101,8 +101,8 @@ and pp_term : term pp = fun oc t ->
     | Kind        -> out oc "KIND"
     | Symb(s,h)   -> pp_symbol h oc s
     | Meta(m,e)   -> out oc "%a%a" pp_meta m pp_env e
-    | Patt(_,n,e) -> out oc "&%s%a" n pp_env e
-    | TEnv(t,e)   -> out oc "&%a%a" pp_term_env t pp_env e
+    | Patt(_,n,e) -> out oc "$%s%a" n pp_env e
+    | TEnv(t,e)   -> out oc "$%a%a" pp_term_env t pp_env e
     (* Product and abstraction (only them can be wrapped). *)
     | Abst(a,t)   ->
         if wrap then out oc "(";
@@ -126,7 +126,7 @@ and pp_term : term pp = fun oc t ->
         let (x,c) = Bindlib.unbind b in
         if Bindlib.binder_occur b then
           begin
-            out oc "∀%a" pp_arg (x,a);
+            out oc "Π%a" pp_arg (x,a);
             let rec pp_prods oc c =
               match unfold c with
               | Prod(a,b) when Bindlib.binder_occur b ->
@@ -138,14 +138,14 @@ and pp_term : term pp = fun oc t ->
             pp_prods oc c
           end
         else
-          out oc "%a ⇒ %a" (pp `Appl) a (pp `Func) c;
+          out oc "%a → %a" (pp `Appl) a (pp `Func) c;
         if wrap then out oc ")"
-    | LLet(t,a,u) ->
+    | LLet(a,t,u) ->
         if wrap then out oc "(";
         let x, u = Bindlib.unbind u in
         out oc "let %a" pp_tvar x;
         if !print_domains then out oc ":%a" (pp `Atom) a;
-        out oc "≔ %a in %a" (pp `Atom) t (pp `Atom) u;
+        out oc " ≔ %a in %a" (pp `Atom) t (pp `Atom) u;
         if wrap then out oc ")"
   in
   pp `Func oc (cleanup t)
@@ -158,7 +158,22 @@ let pp : term pp = pp_term
 let pp_rule : (sym * pp_hint * rule) pp = fun oc (s,h,r) ->
   let lhs = Basics.add_args (Symb(s,h)) r.lhs in
   let (_, rhs) = Bindlib.unmbind r.rhs in
-  Format.fprintf oc "%a → %a" pp lhs pp rhs
+  Format.fprintf oc "%a ↪ %a" pp lhs pp rhs
+
+(** [pp_ctxt oc ctx] displays context [ctx] if {!val:print_contexts} is
+    true, with [ ⊢ ] after; and nothing otherwise. *)
+let pp_ctxt : ctxt pp = fun oc ctx ->
+  let pp_ctxt : ctxt pp = fun oc ctx ->
+    let pp_e oc (x,a,t) =
+      match t with
+      | None    -> Format.fprintf oc "%a:%a" pp_tvar x pp a
+      | Some(t) -> Format.fprintf oc "%a:%a ≔ %a" pp_tvar x pp a pp t
+    in
+    if ctx = [] then Format.pp_print_string oc "∅"
+    else List.pp pp_e ", " oc (List.rev ctx)
+  in
+  let out = if !print_contexts then Format.fprintf else Format.ifprintf in
+  out oc "%a ⊢ " pp_ctxt ctx
 
 (** [pp_hint oc h] prints hint [h] to channel [oc]. *)
 let pp_hint : rule pp = fun oc h ->
@@ -169,23 +184,7 @@ let pp_hint : rule pp = fun oc h ->
   in
   pp_rule oc (s, pph, h)
 
-(** [pp oc ctx] prints the context [ctx] to the channel [oc]. *)
-let pp_ctxt : ctxt pp = fun oc ctx ->
-  let pp_e oc (x,a,t) =
-    match t with
-    | None    -> Format.fprintf oc "%a : %a" pp_tvar x pp a
-    | Some(t) -> Format.fprintf oc "%a : %a ≔ %a" pp_tvar x pp a pp t
-  in
-  if ctx = [] then Format.pp_print_string oc "∅"
-  else List.pp pp_e ", " oc (List.rev ctx)
-
-(** [wrap_ctxt oc ctx] displays context [ctx] if {!val:print_contexts} is
-    true, with [ ⊢ ] after; and nothing otherwise. *)
-let wrap_ctxt : ctxt pp = fun oc ctx ->
-  let out = if !print_contexts then Format.fprintf else Format.ifprintf in
-  out oc "[%a] ⊢ " pp_ctxt ctx
-
 (** [pp_constr oc (t,u)] prints the unification constraints [(t,u)] to the
     output channel [oc]. *)
 let pp_constr : (ctxt * term * term) pp = fun oc (ctx, t, u) ->
-  Format.fprintf oc "%a%a ≡ %a" wrap_ctxt ctx pp t pp u
+  Format.fprintf oc "%a%a ≡ %a" pp_ctxt ctx pp t pp u

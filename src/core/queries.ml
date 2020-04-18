@@ -29,17 +29,13 @@ let handle_query : sig_state -> Proof.t option -> p_query -> unit =
           let infer = Typing.infer ss.builtins (Env.to_ctxt env) in
           match (infer t, infer u) with
           | (Some(a), Some(b)) ->
+              let pb = { no_problems with to_solve = [[], a, b] } in
               begin
-                match solve ss.builtins true
-                        { no_problems with to_solve = [Ctxt.empty,a,b] } with
+                match solve ss.builtins pb with
                 | None -> fatal q.pos "Infered types are not convertible."
                 | Some [] -> Eval.eq_modulo [] t u
                 | Some cs ->
-                    let fn (c,t,u) =
-                      fatal_msg "Cannot solve %a[%a] ≡ [%a].\n"
-                        wrap_ctxt c pp t pp u
-                    in
-                    List.iter fn cs;
+                    List.iter (fatal_msg "Cannot solve %a.\n" pp_constr) cs;
                     fatal q.pos "Infered types are not convertible."
               end
           | (None   , _      ) ->
@@ -69,7 +65,7 @@ let handle_query : sig_state -> Proof.t option -> p_query -> unit =
       let t = scope pt in
       let a =
         match Typing.infer ss.builtins (Env.to_ctxt env) t with
-        | Some(a) -> Eval.eval cfg a
+        | Some(a) -> Eval.eval cfg [] a
         | None    -> fatal pt.pos "Cannot infer the type of [%a]." pp t
       in
       out 3 "(infr) %a : %a\n" pp t pp a
@@ -78,7 +74,7 @@ let handle_query : sig_state -> Proof.t option -> p_query -> unit =
       let t = scope pt in
       let v =
         match Typing.infer ss.builtins (Env.to_ctxt env) t with
-        | Some(_) -> Eval.eval cfg t
+        | Some(_) -> Eval.eval cfg [] t
         | None    -> fatal pt.pos "Cannot infer the type of [%a]." pp t
       in
       out 3 "(comp) %a\n" pp v
