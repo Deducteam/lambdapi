@@ -8,9 +8,6 @@ open Basics
 open Console
 open Scope
 
-let register_builtin =
-  Builtin.register_expected_type (Eval.eq_modulo []) Print.term
-
 (** Logging function for the rewrite tactic. *)
 let log_rewr = new_logger 'r' "rewr" "the rewrite tactic"
 let log_rewr = log_rewr.logger
@@ -72,7 +69,7 @@ type eq_config =
 (** [get_eq_config ss pos] returns the current configuration for
     equality, used by tactics such as “rewrite” or “reflexivity”. *)
 let get_eq_config : sig_state -> popt -> eq_config = fun ss pos ->
-  let builtin = Builtin.get pos ss.builtins in
+  let builtin = Builtin.get ss pos in
   { symb_P     = builtin "P"
   ; symb_T     = builtin "T"
   ; symb_eq    = builtin "eq"
@@ -81,7 +78,7 @@ let get_eq_config : sig_state -> popt -> eq_config = fun ss pos ->
 
 (* Register checks for the builtin symbols related to rewriting. *)
 let _ =
-  let check_t_or_p pos _ sym =
+  let check_t_or_p _ss pos sym =
     let valid =
       match Eval.whnf [] !(sym.sym_type) with
       | Prod(_, b) -> Eval.eq_modulo [] (snd (Bindlib.unbind b)) Type
@@ -109,6 +106,9 @@ let _ =
     let term_T_a = _Appl (_Symb symb_T) (_Vari a) in
     let impls = _Impl term_T_a (_Impl term_T_a term_Prop) in
     Bindlib.unbox (_Prod term_U (Bindlib.bind_var a impls))
+  in
+  let register_builtin =
+    Builtin.register_expected_type (fun _ -> Eval.eq_modulo []) Print.pp_term
   in
   register_builtin "eq" expected_eq_type;
   let expected_refl_type pos map =

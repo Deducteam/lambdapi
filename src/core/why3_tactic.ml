@@ -43,7 +43,7 @@ type config =
 
 (** [get_config ss pos] build the configuration using [ss]. *)
 let get_config : sig_state -> Pos.popt -> config = fun ss pos ->
-  let builtin = Builtin.get pos ss.builtins in
+  let builtin = Builtin.get ss pos in
   { symb_P   = builtin "P"
   ; symb_T   = builtin "T"
   ; symb_or  = builtin "or"

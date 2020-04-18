@@ -12,11 +12,11 @@ open Scope
 
 (* Register a check for the type of builtin successor symbol ["+1"]. *)
 let _ =
-  let expected_succ_type pos map =
-    let typ_0 = lift !((Builtin.get pos map "0").sym_type) in
+  let expected_succ_type ss pos =
+    let typ_0 = lift !((Builtin.get ss pos "0").sym_type) in
     Bindlib.unbox (_Impl typ_0 typ_0)
   in
-  Builtin.register_expected_type (Eval.eq_modulo []) Print.term
+  Builtin.register_expected_type (fun _ -> Eval.eq_modulo []) Print.pp_term
     "+1" expected_succ_type
 
 (** Representation of a yet unchecked proof. The structure is initialized when
@@ -228,23 +228,23 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
           let path = List.map (fun s -> (s, false)) path in
           Pos.make qid.pos (path, snd qid.elt)
         in
+        let pp_symbol = Print.pp_symbol ss in
         match cfg with
         | P_config_builtin(s,qid) ->
             (* Set the builtin symbol [s]. *)
             if StrMap.mem s ss.builtins then
               fatal cmd.pos "Builtin [%s] already exists." s;
             let sym = find_sym ~prt:true ~prv:true false ss qid in
-            Builtin.check cmd.pos ss.builtins s sym;
-            Sign.add_builtin ss.signature s sym;
-            out 3 "(conf) set builtin [%s]\n" s;
-            {ss with builtins = StrMap.add s sym ss.builtins}
+            Builtin.check ss cmd.pos s sym;
+            out 3 "(conf) set builtin \"%s\" ≔ %a\n" s pp_symbol sym;
+            Scope.add_builtin ss s sym
         | P_config_unop(unop)     ->
             let (s, prio, qid) = unop in
             (* Define the unary operator [s]. *)
             let sym = find_sym ~prt:true ~prv:true false ss qid in
             (* Make sure the operator has a fully qualified [qid]. *)
             let unop = (s, prio, with_path sym.sym_path qid) in
-            out 3 "(conf) new prefix [%s]\n" s;
+            out 3 "(conf) %a %a\n" pp_symbol sym Print.hint (Prefix unop);
             Scope.add_unop ss s (sym, unop)
         | P_config_binop(binop)   ->
             let (s, assoc, prio, qid) = binop in
@@ -252,11 +252,11 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
             let sym = find_sym ~prt:true ~prv:true false ss qid in
             (* Make sure the operator has a fully qualified [qid]. *)
             let binop = (s, assoc, prio, with_path sym.sym_path qid) in
-            out 3 "(conf) new infix [%s]\n" s;
+            out 3 "(conf) %a %a\n" pp_symbol sym Print.hint (Infix binop);
             Scope.add_binop ss s (sym, binop);
         | P_config_ident(id)      ->
             Sign.add_ident ss.signature id;
-            out 3 "(conf) declared identifier [%s]\n" id; ss
+            out 3 "(conf) declared identifier \"%s\"\n" id; ss
       in
       (ss, None)
   | P_query(q)                 ->

@@ -20,7 +20,7 @@ type sig_state =
   { signature : Sign.t                    (** Current signature.   *)
   ; in_scope  : (sym * Pos.popt) StrMap.t (** Symbols in scope.    *)
   ; aliases   : Path.t StrMap.t           (** Established aliases. *)
-  ; builtins  : Builtin.map               (** Builtin symbols.     *)
+  ; builtins  : Sign.builtin_map          (** Builtin symbols.     *)
   ; hints     : hint SymMap.t             (** Printing hints.      *) }
 
 (** [empty_sig_state] is an empty signature state, without symbols/aliases. *)
@@ -30,6 +30,62 @@ let empty_sig_state : Sign.t -> sig_state = fun sign ->
   ; aliases   = StrMap.empty
   ; builtins  = StrMap.empty
   ; hints     = SymMap.empty }
+
+(** Interface for registering and checking builtin symbols. *)
+module Builtin :
+  sig
+    (** [get pos map name] returns the symbol mapped to the “builtin symbol”
+       named [name] i n the map [map], which should contain all the builtin
+       symbols that are in scope. If the symbol cannot be found then [Fatal]
+       is raised. *)
+    val get : sig_state -> popt -> string -> sym
+
+    (** [check ss pos name sym] runs the registered check for builtin symbol
+       [name] on the symbol [sym] (if such a check has been registered). Note
+       that the [bmap] argument is expected to contain the builtin symbols in
+       scope, and the [pos] argument is used for error reporting. *)
+    val check : sig_state -> popt -> string -> sym -> unit
+
+    (** [register name check] registers the checking function [check], for the
+       builtin symbols named [name]. When the check is run, [check] receives
+       as argument a position for error reporting as well as the map of every
+       builtin symbol in scope. It is expected to raise the [Fatal] exception
+       to signal an error. Note that this function should not be called using
+       a [name] for which a check has already been registered. *)
+    val register : string -> (sig_state -> popt -> sym -> unit) -> unit
+
+    (** [register_expected_type name build pp] registers a checking function
+       that checks the type of a symbol defining the builtin [name] against a
+       type constructed using the given [build] function. *)
+    val register_expected_type
+        : (sig_state -> term eq) -> (sig_state -> term pp)
+          -> string -> (sig_state -> popt -> term) -> unit
+  end =
+  struct
+    let get ss pos name =
+      try StrMap.find name ss.builtins with Not_found ->
+        fatal pos "Builtin symbol \"%s\" undefined." name
+
+    (** Hash-table used to record checking functions for builtins. *)
+    let htbl : (string, sig_state -> popt -> sym -> unit) Hashtbl.t
+      = Hashtbl.create 17
+
+    let check ss pos name sym =
+      try (Hashtbl.find htbl name) ss pos sym with Not_found -> ()
+
+    let register name check =
+      if Hashtbl.mem htbl name then assert false;
+      Hashtbl.add htbl name check
+
+    let register_expected_type eq pp name fn =
+      let check ss pos sym =
+        let expected = fn ss pos in
+        if not (eq ss !(sym.sym_type) expected) then
+          fatal pos "The type of %s is not of the form %a."
+            sym.sym_name (pp ss) expected
+      in
+      register name check
+  end
 
 (** [remove_hint ss s hints] removes from [hints] the mapping for [s] if
    [s.sym_name] is mapped in [ss.in_scope]. *)
@@ -54,18 +110,24 @@ let add_symbol
   {ss with in_scope; hints}
 
 (** [add_unop ss n (sym,unop)] declares [n] as prefix and maps it to [sym]. *)
-let add_unop  : sig_state -> string -> (sym * unop) -> sig_state
+let add_unop : sig_state -> string -> (sym * unop) -> sig_state
   = fun ss n (sym, unop) ->
   Sign.add_unop ss.signature n (sym, unop);
   let hints = SymMap.add sym (Prefix unop) (remove_hint ss sym ss.hints) in
   {ss with hints}
 
 (** [add_binop ss n (sym,binop)] declares [n] as infix and maps it to [sym]. *)
-let add_binop  : sig_state -> string -> (sym * binop) -> sig_state
+let add_binop : sig_state -> string -> (sym * binop) -> sig_state
   = fun ss n (sym, binop) ->
   Sign.add_binop ss.signature n (sym, binop);
   let hints = SymMap.add sym (Infix binop) (remove_hint ss sym ss.hints) in
   {ss with hints}
+
+(** [add_builtin ] add builtin *)
+let add_builtin : sig_state -> string -> sym -> sig_state = fun ss s sym ->
+  Sign.add_builtin ss.signature s sym;
+  let builtins = StrMap.add s sym ss.builtins in
+  {ss with builtins}
 
 (** [build_hints ss] computes hints from a signature [sign]. *)
 let update_hints : sig_state -> Sign.t -> hint SymMap.t = fun ss sign ->
@@ -491,8 +553,8 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
     | (P_LLet(_)       , M_Patt             ) ->
         fatal t.pos "Let-bindings are not allowed in a pattern."
     | (P_NLit(n)       , _                  ) ->
-        let sym_z = _Symb (Builtin.get t.pos ss.builtins "0")
-        and sym_s = _Symb (Builtin.get t.pos ss.builtins "+1") in
+        let sym_z = _Symb (Builtin.get ss t.pos "0")
+        and sym_s = _Symb (Builtin.get ss t.pos "+1") in
         let rec unsugar_nat_lit acc n =
           if n <= 0 then acc else unsugar_nat_lit (_Appl sym_s acc) (n-1)
         in
