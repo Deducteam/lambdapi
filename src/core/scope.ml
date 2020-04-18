@@ -744,7 +744,7 @@ let scope_hint : sig_state -> p_hint -> rule loc = fun ss h ->
   begin match lhs with
     | [t; u] ->
       let pp_binding oc (tev, t) =
-        Format.fprintf oc "@[&%a ≔ %a@]" Print.pp_tevar tev Print.pp t
+        Format.fprintf oc "@[$%a ≔ %a@]" Print.pp_tevar tev Print.pp t
       in
       if not (Eval.eq_modulo [] (subst_of_hints t) (subst_of_hints u)) then
         fatal h.pos ("[%a]@ is@ not@ convertible@ with@ [%a]@ " ^^

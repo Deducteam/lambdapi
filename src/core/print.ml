@@ -35,6 +35,11 @@ let pp_symbol : pp_hint -> sym pp = fun h oc s ->
 let pp_tvar : tvar pp = fun oc x ->
   Format.pp_print_string oc (Bindlib.name_of x)
 
+(** [pp_tvar oc x] prints term with environment variable [x] to the channel
+    [oc]. *)
+let pp_tevar : tevar pp = fun oc x ->
+  Format.pp_print_string oc (Bindlib.name_of x)
+
 (** [pp_meta oc m] prints the uninstantiated meta-variable [m] to [oc]. *)
 let rec pp_meta : meta pp = fun oc m ->
   if !print_meta_type then
