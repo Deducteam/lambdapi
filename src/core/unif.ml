@@ -121,16 +121,16 @@ let instantiate : sig_state -> ctxt -> meta -> term array -> term -> bool =
   | Some(bu) when Bindlib.is_closed bu ->
       if !log_enabled then
         log_unif (yel "%a ≔ %a")
-          (Print.pp_meta ss.hints) m (Print.pp_term ss.hints) u;
+          (Print.pp_meta ss) m (Print.pp_term ss) u;
       set_meta m (Bindlib.unbox bu); true
   | _ -> false
 
 (** [solve ss p] tries to solve the unification problem [p] and
     returns the constraints that could not be solved. *)
 let solve : sig_state -> problem -> constr list = fun ss ->
-  let pp_term = Print.pp_term ss.hints in
-  let pp_constr = Print.pp_constr ss.hints in
-  let pp_symbol = Print.pp_symbol ss.hints in
+  let pp_term = Print.pp_term ss in
+  let pp_constr = Print.pp_constr ss in
+  let pp_symbol = Print.pp_symbol ss in
 
 let rec solve : problem -> constr list = fun p ->
   match p with

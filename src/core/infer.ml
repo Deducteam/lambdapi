@@ -78,7 +78,7 @@ let conv ss ctx a b =
   if not (Eval.eq_modulo ctx a b) then
     begin
       if !log_enabled then
-        log_infr (yel "add %a") (Print.pp_constr ss.hints) (ctx,a,b);
+        log_infr (yel "add %a") (Print.pp_constr ss) (ctx,a,b);
       let open Stdlib in constraints := (ctx,a,b) :: !constraints
     end
 
@@ -89,7 +89,7 @@ let conv ss ctx a b =
    fails (but constraints may be unsatisfiable). *)
 let gen_check : sig_state -> (ctxt -> term -> term) ->
             ctxt -> term -> term -> unit = fun ss infer ctx t c ->
-  let pp_term = Print.pp_term ss.hints in
+  let pp_term = Print.pp_term ss in
   if !log_enabled then log_infr "check %a : %a" pp_term t pp_term c;
   conv ss ctx (infer ctx t) c
 
@@ -99,8 +99,8 @@ let gen_check : sig_state -> (ctxt -> term -> term) ->
    unification constraints are satisfied. [ctx] must be well-formed. This
    function never fails (but constraints may be unsatisfiable). *)
 let infer : sig_state -> ctxt -> term -> term = fun ss ->
-  let pp_term = Print.pp_term ss.hints in
-  let pp_ctxt = Print.pp_ctxt ss.hints in
+  let pp_term = Print.pp_term ss in
+  let pp_ctxt = Print.pp_ctxt ss in
 
   let rec check ctx t c = gen_check ss infer ctx t c
 
@@ -221,9 +221,9 @@ let check : sig_state -> ctxt -> term -> term -> constr list
   let constrs = Stdlib.(!constraints) in
   if !log_enabled then
     begin
-      let pp_term = Print.pp_term ss.hints in
+      let pp_term = Print.pp_term ss in
       log_infr (gre "check %a : %a") pp_term t pp_term c;
-      List.iter (log_infr "  if %a" (Print.pp_constr ss.hints)) constrs;
+      List.iter (log_infr "  if %a" (Print.pp_constr ss)) constrs;
     end;
   Stdlib.(constraints := []);
   constrs
@@ -239,9 +239,9 @@ let infer : sig_state -> ctxt -> term -> term * constr list = fun ss ctx t ->
   let constrs = Stdlib.(!constraints) in
   if !log_enabled then
     begin
-      let pp_term = Print.pp_term ss.hints in
+      let pp_term = Print.pp_term ss in
       log_infr (gre "infer %a : %a") pp_term t pp_term a;
-      List.iter (log_infr "  if %a" (Print.pp_constr ss.hints)) constrs;
+      List.iter (log_infr "  if %a" (Print.pp_constr ss)) constrs;
     end;
   Stdlib.(constraints := []);
   (a, constrs)

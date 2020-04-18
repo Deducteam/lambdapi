@@ -88,7 +88,7 @@ let symb_to_tenv
     : sig_state -> pre_rule Pos.loc -> sym list -> index_tbl -> term -> tbox
   = fun ss {elt={pr_vars=vars;pr_arities=arities;_};pos} syms htbl t ->
   let rec symb_to_tenv t =
-    log_subj "symb_to_tenv %a" (Print.pp_term ss.hints) t;
+    log_subj "symb_to_tenv %a" (Print.pp_term ss) t;
     let (h, ts) = Basics.get_args t in
     let ts = List.map symb_to_tenv ts in
     let (h, ts) =
@@ -135,9 +135,9 @@ let symb_to_tenv
    signature state [ss] and then construct the corresponding rule. Note that
    [Fatal] is raised in case of error. *)
 let check_rule : sig_state -> pre_rule Pos.loc -> rule = fun ss pr ->
-  let pp_term = Print.pp_term ss.hints in
-  let pp_rule = Print.pp_rule ss.hints in
-  let pp_constr = Print.pp_constr ss.hints in
+  let pp_term = Print.pp_term ss in
+  let pp_rule = Print.pp_rule ss in
+  let pp_constr = Print.pp_constr ss in
   (* Unwrap the contents of the pre-rule. *)
   let (pos, s, lhs, vars, rhs_vars, arities) =
     let Pos.{elt={pr_sym;pr_lhs;pr_vars;pr_rhs;pr_arities;_}; pos} = pr in

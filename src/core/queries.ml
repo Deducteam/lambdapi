@@ -10,8 +10,8 @@ open Terms
 (** [handle_query ss ps q] *)
 let handle_query : sig_state -> Proof.t option -> p_query -> unit =
   fun ss ps q ->
-  let pp = Print.pp_term ss.hints in
-  let pp_constr = Print.pp_constr ss.hints in
+  let pp = Print.pp_term ss in
+  let pp_constr = Print.pp_constr ss in
   let env =
     match ps with
     | None     -> Env.empty

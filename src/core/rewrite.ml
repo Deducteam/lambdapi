@@ -25,7 +25,7 @@ let log_rewr = log_rewr.logger
     not appear both in [t] and in [u] at the same time. Indeed, the references
     are set naively, without occurrence checking. *)
 let eq : sig_state -> ctxt -> term -> term -> bool = fun ss ->
-  let pp_term = Print.pp_term ss.hints in fun ctx a b -> a == b ||
+  let pp_term = Print.pp_term ss in fun ctx a b -> a == b ||
   let exception Not_equal in
   let rec eq l =
     match l with
@@ -159,7 +159,7 @@ let _ =
    equated terms (LHS and RHS). *)
 let get_eq_data : sig_state -> popt -> eq_config -> term -> term * term * term
   = fun ss pos cfg t ->
-  let pp_term = Print.pp_term ss.hints in
+  let pp_term = Print.pp_term ss in
   match Basics.get_args t with
   | (p, [u]) when is_symb cfg.symb_P p ->
       begin
@@ -287,7 +287,7 @@ let bind_match : sig_state -> term -> term -> tbinder =  fun ss p t ->
    the full set of SSReflect patterns. *)
 let rewrite : sig_state -> popt -> Proof.t -> rw_patt option -> term -> term =
   fun ss pos ps p t ->
-  let pp_term = Print.pp_term ss.hints in
+  let pp_term = Print.pp_term ss in
 
   (* Obtain the required symbols from the current signature. *)
   let cfg = get_eq_config ss pos in
@@ -691,7 +691,7 @@ let symmetry : sig_state -> popt -> Proof.t -> term = fun ss pos ps ->
   (* Debugging data to the log. *)
   if !log_enabled then
     begin
-      let pp_term = Print.pp_term ss.hints in
+      let pp_term = Print.pp_term ss in
       log_rewr "Symmetry with:";
       log_rewr "  goal       = [%a]" pp_term g_type;
       log_rewr "  new goal   = [%a]" pp_term meta_type;

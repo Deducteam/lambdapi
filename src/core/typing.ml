@@ -15,7 +15,7 @@ let check : sig_state -> ctxt -> term -> term -> bool =
   | None     -> false
   | Some([]) -> true
   | Some(cs) ->
-      let pp_constr = Print.pp_constr ss.hints in
+      let pp_constr = Print.pp_constr ss in
       List.iter (fatal_msg "Cannot solve %a.\n" pp_constr) cs; false
 
 (** [infer_constr ss ctx t] tries to infer a type [a], together with
@@ -36,7 +36,7 @@ let infer : sig_state -> ctxt -> term -> term option =
   | None       -> None
   | Some(a,[]) -> Some(a)
   | Some(_,cs) ->
-      let pp_constr = Print.pp_constr ss.hints in
+      let pp_constr = Print.pp_constr ss in
       List.iter (fatal_msg "Cannot solve %a.\n" pp_constr) cs; None
 
 (** [sort_type ss ctx t] checks that the type of the term [t] in context
@@ -44,7 +44,7 @@ let infer : sig_state -> ctxt -> term -> term option =
    raised. *)
 let sort_type : sig_state -> ctxt -> term -> unit =
   fun ss ctx t ->
-  let pp_term = Print.pp_term ss.hints in
+  let pp_term = Print.pp_term ss in
   match infer ss ctx t with
   | None    -> fatal None "Unable to infer a sort for %a." pp_term t
   | Some(a) ->

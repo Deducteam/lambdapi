@@ -105,7 +105,7 @@ let translate_term : config -> cnst_table -> term ->
     into Why3 terms, to construct a Why3 task. *)
 let encode : sig_state -> Pos.popt -> Env.env -> term -> Why3.Task.task =
   fun ss pos hs g ->
-  let pp_term = Print.pp_term ss.hints in
+  let pp_term = Print.pp_term ss in
   let cfg = get_config ss pos in
   let (constants, hypothesis) =
     let translate_hyp (tbl, map) (name, (_, hyp, _)) =

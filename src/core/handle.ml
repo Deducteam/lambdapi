@@ -73,8 +73,8 @@ let handle_require_as : popt -> sig_state -> Path.t -> ident -> sig_state =
     separately. Note that [Fatal] is raised in case of an error. *)
 let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
   fun ss cmd ->
-  let pp = Print.pp_term ss.hints in
-  let pp_rule = Print.pp_rule ss.hints in
+  let pp = Print.pp_term ss in
+  let pp_rule = Print.pp_rule ss in
   let scope_basic exp = Scope.scope_term exp ss Env.empty in
   match cmd.elt with
   | P_require(b,ps)            ->

@@ -43,39 +43,33 @@ let hint : hint pp = fun oc pp_hint ->
   | Prefix(n,p,_) -> Format.fprintf oc "prefix %s %f" n p
   | Infix(n,a,p,_) -> Format.fprintf oc "infix %s %a %f" n assoc a p
 
-(** Type for printing configurations. *)
-type config = hint SymMap.t
-
-(** Default printing configuration. *)
-let empty_config = SymMap.empty
-
-(** [qualified cfg s] prints symbol [s] fully qualified to channel [oc]. *)
-let qualified : config -> sym pp = fun _cfg oc s ->
+(** [qualified ss s] prints symbol [s] fully qualified to channel [oc]. *)
+let qualified : sig_state -> sym pp = fun _ss oc s ->
   Format.fprintf oc "%a.%s" Files.Path.pp s.sym_path s.sym_name
     (*FIXME: handle aliases. *)
 
 (** Get the printing hint of a symbol. *)
-let get_hint : config -> sym -> hint = fun cfg s ->
-  try SymMap.find s cfg with Not_found -> No_hint
+let get_hint : sig_state -> sym -> hint = fun ss s ->
+  try SymMap.find s ss.hints with Not_found -> No_hint
 
 (** [pp_symbol oc s] prints the name of the symbol [s] to channel [oc]. *)
-let pp_symbol : config -> sym pp = fun cfg oc s ->
-  if SymMap.mem s cfg then Format.pp_print_string oc s.sym_name
-  else qualified cfg oc s
+let pp_symbol : sig_state -> sym pp = fun ss oc s ->
+  if SymMap.mem s ss.hints then Format.pp_print_string oc s.sym_name
+  else qualified ss oc s
 
 (** [pp_tvar oc x] prints the term variable [x] to the channel [oc]. *)
 let pp_tvar : tvar pp = fun oc x ->
   Format.pp_print_string oc (Bindlib.name_of x)
 
 (** [pp_meta oc m] prints the uninstantiated meta-variable [m] to [oc]. *)
-let rec pp_meta : config -> meta pp = fun cfg oc m ->
+let rec pp_meta : sig_state -> meta pp = fun ss oc m ->
   if !print_meta_type then
-    Format.fprintf oc "(%s:%a)" (meta_name m) (pp_term cfg) !(m.meta_type)
+    Format.fprintf oc "(%s:%a)" (meta_name m) (pp_term ss) !(m.meta_type)
   else
     Format.pp_print_string oc (meta_name m)
 
 (** [pp_term oc t] prints the term [t] to the channel [oc]. *)
-and pp_term : config -> term pp = fun cfg oc t ->
+and pp_term : sig_state -> term pp = fun ss oc t ->
   let out = Format.fprintf in
   (* The possible priority levels are [`Func] (top level, including
      abstraction or product), [`Appl] (application) and [`Atom] (smallest
@@ -95,7 +89,7 @@ and pp_term : config -> term pp = fun cfg oc t ->
     | Symb(s) when not !print_implicits ->
         begin
           let args = Basics.expl_args s args in
-          match get_hint cfg s with
+          match get_hint ss s with
           | No_hint -> pp_appl h args
           | Prefix(_) -> pp_appl h args
           | Infix(op,_,_,_) ->
@@ -137,8 +131,8 @@ and pp_term : config -> term pp = fun cfg oc t ->
     | Vari(x)     -> pp_tvar oc x
     | Type        -> out oc "TYPE"
     | Kind        -> out oc "KIND"
-    | Symb(s)     -> pp_symbol cfg oc s
-    | Meta(m,e)   -> out oc "%a%a" (pp_meta cfg) m pp_env e
+    | Symb(s)     -> pp_symbol ss oc s
+    | Meta(m,e)   -> out oc "%a%a" (pp_meta ss) m pp_env e
     | Patt(_,n,e) -> out oc "$%s%a" n pp_env e
     | TEnv(t,e)   -> out oc "$%a%a" pp_term_env t pp_env e
     (* Product and abstraction (only them can be wrapped). *)
@@ -170,17 +164,17 @@ and pp_term : config -> term pp = fun cfg oc t ->
 
 (** [pp_rule oc (s,h,r)] prints the rule [r] of symbol [s] to the output
    channel [oc]. *)
-let pp_rule : config -> (sym * rule) pp
-  = fun cfg oc (s,r) ->
+let pp_rule : sig_state -> (sym * rule) pp
+  = fun ss oc (s,r) ->
   let lhs = Basics.add_args (Symb s) r.lhs in
   let (_, rhs) = Bindlib.unmbind r.rhs in
-  Format.fprintf oc "%a ↪ %a" (pp_term cfg) lhs (pp_term cfg) rhs
+  Format.fprintf oc "%a ↪ %a" (pp_term ss) lhs (pp_term ss) rhs
 
 (** [pp_ctxt oc ctx] displays context [ctx] if {!val:print_contexts} is
     true, with [ ⊢ ] after; and nothing otherwise. *)
-let pp_ctxt : config -> ctxt pp = fun cfg oc ctx ->
+let pp_ctxt : sig_state -> ctxt pp = fun ss oc ctx ->
   if !print_contexts then
-    let pp = pp_term cfg in
+    let pp = pp_term ss in
     let pp_ctxt : ctxt pp = fun oc ctx ->
       let pp_e oc (x,a,t) =
         match t with
@@ -194,31 +188,32 @@ let pp_ctxt : config -> ctxt pp = fun cfg oc ctx ->
 
 (** [pp_typing oc (c,t,u)] prints the typing constraint [c] to the
     output channel [oc]. *)
-let pp_typing : config -> constr pp
-  = fun cfg oc (ctx, t, u) ->
+let pp_typing : sig_state -> constr pp
+  = fun ss oc (ctx, t, u) ->
   Format.fprintf oc "%a%a : %a"
-    (pp_ctxt cfg) ctx (pp_term cfg) t (pp_term cfg) u
+    (pp_ctxt ss) ctx (pp_term ss) t (pp_term ss) u
 
 (** [pp_constr oc c] prints the unification constraints [c] to the
     output channel [oc]. *)
-let pp_constr : config -> constr pp
-  = fun cfg oc (ctx, t, u) ->
+let pp_constr : sig_state -> constr pp
+  = fun ss oc (ctx, t, u) ->
   Format.fprintf oc "%a%a ≡ %a"
-    (pp_ctxt cfg) ctx (pp_term cfg) t (pp_term cfg) u
+    (pp_ctxt ss) ctx (pp_term ss) t (pp_term ss) u
 
 (** [pp_constr oc p] prints the unification problem [p] to the
     output channel [oc]. *)
-let pp_problem : config -> problem pp = fun cfg oc p ->
+let pp_problem : sig_state -> problem pp = fun ss oc p ->
   Format.fprintf oc "{ to_solve = [%a]; unsolved = [%a]; recompute = %b }"
-    (List.pp (pp_constr cfg) "; ") p.to_solve
-    (List.pp (pp_constr cfg) "; ") p.unsolved
+    (List.pp (pp_constr ss) "; ") p.to_solve
+    (List.pp (pp_constr ss) "; ") p.unsolved
     p.recompute
 
-(** Default printing functions (with empty configuration). *)
-let symbol = pp_symbol empty_config
-let meta = pp_meta empty_config
-let term = pp_term empty_config
-let constr = pp_constr empty_config
-let rule = pp_rule empty_config
-let ctxt = pp_ctxt empty_config
-let problem = pp_problem empty_config
+(** Default printing functions (with empty signature state). *)
+let empty_sig_state = empty_sig_state (Sign.create [])
+let symbol = pp_symbol empty_sig_state
+let meta = pp_meta empty_sig_state
+let term = pp_term empty_sig_state
+let constr = pp_constr empty_sig_state
+let rule = pp_rule empty_sig_state
+let ctxt = pp_ctxt empty_sig_state
+let problem = pp_problem empty_sig_state
