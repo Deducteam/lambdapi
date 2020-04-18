@@ -173,8 +173,10 @@ and solve_aux : ctxt -> term -> term -> problems -> unif_constrs =
 
   let add_to_unsolved () =
     if Eval.eq_modulo ctx t1 t2 then solve p else
-    (* Keep the context *)
-    solve {p with unsolved = (ctx,t1,t2) :: p.unsolved}
+    match try_hints ctx t1 t2 with
+    | None     -> solve {p with unsolved = (ctx,t1,t2) :: p.unsolved}
+    | Some([]) -> assert false (* Hint shouldn't have been necessary *)
+    | Some(cs) -> solve {p with to_solve = cs @ p.to_solve}
   in
 
   let error () =
