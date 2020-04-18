@@ -9,7 +9,9 @@
 (require 'lambdapi-vars)
 (require 'eglot)
 
-(defvar-local company-backends nil) ; Silence warnings
+;; Silence warnings
+(defvar company-backends nil)
+(declare-function company-math-symbols-unicode "ext:company-math.el" t t)
 
 (defconst lambdapi--all-keywords
   (append lambdapi-sig-commands
