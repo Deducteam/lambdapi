@@ -23,6 +23,24 @@ module Path =
     (** [pp oc mp] prints [mp] to channel [oc]. *)
     let pp : module_path pp = fun oc mp ->
       Format.pp_print_string oc (String.concat "." mp)
+
+    (** [check_simple mp] Checks that [mp] is a “simple” module path, that is,
+        that its members are of the form ["[a-zA-Z_][a-zA-Z0-9_]*"]. *)
+    let check_simple : t -> unit = fun mod_path ->
+      let fail fmt =
+        fatal_msg "The (simple) module path [%a] is ill-formed: " pp mod_path;
+        fatal_no_pos fmt
+      in
+      let valid_path_member s =
+        if String.length s = 0 then fail "empty module path member.";
+        for i = 0 to String.length s - 1 do
+          match String.get s i with
+          | 'a'..'z' | 'A'..'Z' | '_' -> ()
+          | '0'..'9' when i <> 0      -> ()
+          | _                         -> fail "invalid path member [%s]." s
+        done
+      in
+      List.iter valid_path_member mod_path
   end
 
 (** Functional maps with module paths as keys. *)
@@ -177,29 +195,18 @@ let init_lib_root : unit -> unit = fun _ ->
     new mapping is registered. In case of failure the program terminates and a
     graceful error message is displayed. *)
 let new_lib_mapping : string -> unit = fun s ->
-  let fail fmt =
-    fatal_no_pos ("Ill-formed argument to \"--map\": " ^^ fmt ^^ ".")
-  in
   let (module_path, file_path) =
     match String.split_on_char ':' s with
     | [mp; dir] -> (String.split_on_char '.' mp, dir)
-    | _         -> fail "bad syntax (use \"--help\")"
+    | _         ->
+    fatal_no_pos "Bad syntax for \"--map-dir\" option (expecting MOD:DIR)."
   in
-  let valid_path_member s =
-    if String.length s = 0 then fail "empty module path member";
-    for i = 0 to String.length s - 1 do
-      match String.get s i with
-      | 'a'..'z' | 'A'..'Z' | '_' -> ()
-      | '0'..'9' when i <> 0      -> ()
-      | _                         -> fail "invalid path member \"%s\"" s
-    done
-  in
-  List.iter valid_path_member module_path;
+  Path.check_simple module_path;
   let file_path = Filename.realpath file_path in
   let new_mapping =
     try ModMap.add module_path file_path !lib_mappings
     with ModMap.Already_mapped ->
-      fail "module path [%a] is already mapped" Path.pp module_path
+    fatal_no_pos "Module path [%a] is already mapped." Path.pp module_path
   in
   lib_mappings := new_mapping
 
@@ -236,9 +243,15 @@ let legacy_src_extension : string = ".dk"
 let file_to_module : string -> Path.t = fun fname ->
   (* Sanity check: source file extension. *)
   let ext = Filename.extension fname in
-  if not (List.mem ext [ src_extension ; legacy_src_extension ]) then
-    fatal_no_pos "Invalid extension for [%s] (expected [%s] or [%s])." fname
-      src_extension legacy_src_extension;
+  let valid_extensions =
+    [ src_extension ; legacy_src_extension ; obj_extension ]
+  in
+  if not (List.mem ext valid_extensions) then
+    begin
+      fatal_msg "Invalid extension for [%s].\n" fname;
+      let pp_exp = List.pp (fun ff -> Format.fprintf ff "[%s]") ", " in
+      fatal_no_pos "Expected any of: %a." pp_exp valid_extensions
+    end;
   (* Normalizing the file path. *)
   let fname =
     try Filename.realpath fname with Invalid_argument(_) ->
@@ -261,8 +274,8 @@ let file_to_module : string -> Path.t = fun fname ->
     | Some(mp, path) -> (mp, path)
     | None           ->
         fatal_msg "[%s] cannot be mapped under the library root.\n" fname;
-        fatal_msg "Consider adding a package file [lambdapi.pkg] under your ";
-        fatal_no_pos "source tree, or use the [--map-dir] option."
+        fatal_msg "Consider adding a package file under your source tree, ";
+        fatal_no_pos "or use the [--map-dir] option."
   in
   ignore (mp, path);
   (* Build the module path. *)
@@ -274,6 +287,11 @@ let file_to_module : string -> Path.t = fun fname ->
   let full_mp = mp @ String.split_on_char '/' rest in
   log_file "File [%s] is module [%a]." fname Path.pp full_mp;
   full_mp
+
+let install_path : string -> string = fun fname ->
+  let mod_path = file_to_module fname in
+  let ext = Filename.extension fname in
+  List.fold_left Filename.concat (lib_root_path ()) mod_path ^ ext
 
 (** [mod_time fname] returns the modification time of file [fname] represented
     as a [float]. [neg_infinity] is returned if the file does not exist. *)

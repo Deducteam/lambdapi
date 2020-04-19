@@ -1,5 +1,0 @@
-(executable
- (name lambdapi)
- (public_name lambdapi)
- (modules lambdapi)
- (libraries cmdliner stdlib-shims lambdapi.core lambdapi.lsp))
