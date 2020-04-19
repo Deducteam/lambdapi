@@ -4,11 +4,10 @@ open Extra
 open Console
 open Terms
 open Unif
-open Scope
 
 (** [check ss ctx t a] tells whether [t] has type [a] in context
    [ctx]. *)
-let check : sig_state -> ctxt -> term -> term -> bool =
+let check : Sig_state.t -> ctxt -> term -> term -> bool =
   fun ss ctx t a ->
   let to_solve = Infer.check ss ctx t a in
   match solve ss {empty_problem with to_solve} with
@@ -22,7 +21,7 @@ let check : sig_state -> ctxt -> term -> term -> bool =
    unification constraints [cs], for the term [t] in context [ctx].  The
    function returns [Some(a,cs)] in case of success, and [None] otherwise. *)
 let infer_constr
-    : sig_state -> ctxt -> term -> (term * constr list) option =
+    : Sig_state.t -> ctxt -> term -> (term * constr list) option =
   fun ss ctx t ->
   let (a, to_solve) = Infer.infer ss ctx t in
   Option.map (fun cs -> (a, cs)) (solve ss {empty_problem with to_solve})
@@ -30,7 +29,7 @@ let infer_constr
 (** [infer ss ctx t] tries to infer a type [a] for [t] in the context
    [ctx]. The function returns [Some(a)] in case of success, and [None]
    otherwise. *)
-let infer : sig_state -> ctxt -> term -> term option =
+let infer : Sig_state.t -> ctxt -> term -> term option =
   fun ss ctx t ->
   match infer_constr ss ctx t with
   | None       -> None
@@ -42,7 +41,7 @@ let infer : sig_state -> ctxt -> term -> term option =
 (** [sort_type ss ctx t] checks that the type of the term [t] in context
    [ctx] is a sort. If that is not the case, the exception [Fatal] is
    raised. *)
-let sort_type : sig_state -> ctxt -> term -> unit =
+let sort_type : Sig_state.t -> ctxt -> term -> unit =
   fun ss ctx t ->
   let pp_term = Print.pp_term ss in
   match infer ss ctx t with

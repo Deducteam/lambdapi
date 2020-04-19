@@ -3,12 +3,11 @@
 open Console
 open Pos
 open Syntax
-open Scope
 open Unif
 open Terms
 
 (** [handle_query ss ps q] *)
-let handle_query : sig_state -> Proof.t option -> p_query -> unit =
+let handle_query : Sig_state.t -> Proof.t option -> p_query -> unit =
   fun ss ps q ->
   let pp = Print.pp_term ss in
   let pp_constr = Print.pp_constr ss in
@@ -17,7 +16,7 @@ let handle_query : sig_state -> Proof.t option -> p_query -> unit =
     | None     -> Env.empty
     | Some(ps) -> fst (Proof.focus_goal q.pos ps)
   in
-  let scope = scope_term Public ss env in
+  let scope = Scope.scope_term Public ss env in
   match q.elt with
   | P_query_assert(must_fail, asrt)  ->
       let result =

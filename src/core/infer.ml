@@ -4,7 +4,6 @@ open Timed
 open Console
 open Terms
 open Env
-open Scope
 
 (** Logging function for typing. *)
 let log_infr = new_logger 'i' "infr" "type inference/checking"
@@ -87,7 +86,7 @@ let conv ss ctx a b =
    [ss], possibly under some constraints recorded in [constraints] using
    [conv]. [ctx] must be well-formed and [c] well-sorted. This function never
    fails (but constraints may be unsatisfiable). *)
-let gen_check : sig_state -> (ctxt -> term -> term) ->
+let gen_check : Sig_state.t -> (ctxt -> term -> term) ->
             ctxt -> term -> term -> unit = fun ss infer ctx t c ->
   let pp_term = Print.pp_term ss in
   if !log_enabled then log_infr "check %a : %a" pp_term t pp_term c;
@@ -98,7 +97,7 @@ let gen_check : sig_state -> (ctxt -> term -> term) ->
    [constraints] using [conv]. The returned type is well-sorted if recorded
    unification constraints are satisfied. [ctx] must be well-formed. This
    function never fails (but constraints may be unsatisfiable). *)
-let infer : sig_state -> ctxt -> term -> term = fun ss ->
+let infer : Sig_state.t -> ctxt -> term -> term = fun ss ->
   let pp_term = Print.pp_term ss in
   let pp_ctxt = Print.pp_ctxt ss in
 
@@ -214,7 +213,7 @@ let infer : sig_state -> ctxt -> term -> term = fun ss ->
    [ss]. The context [ctx] must be well-typed, and the type [c]
    well-sorted. This function never fails (but constraints may be
    unsatisfiable). *)
-let check : sig_state -> ctxt -> term -> term -> constr list
+let check : Sig_state.t -> ctxt -> term -> term -> constr list
   = fun ss ctx t c ->
   Stdlib.(constraints := []);
   gen_check ss (infer ss) ctx t c;
@@ -233,7 +232,7 @@ let check : sig_state -> ctxt -> term -> term -> constr list
    constraints [cs].  In other words, the constraints of [cs] must be
    satisfied for [t] to have type [a]. [ctx] must be well-formed. This
    function never fails (but constraints may be unsatisfiable). *)
-let infer : sig_state -> ctxt -> term -> term * constr list = fun ss ctx t ->
+let infer : Sig_state.t -> ctxt -> term -> term * constr list = fun ss ctx t ->
   Stdlib.(constraints := []);
   let a = infer ss ctx t in
   let constrs = Stdlib.(!constraints) in

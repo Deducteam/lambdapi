@@ -4,6 +4,7 @@ open Timed
 open Extra
 open Pos
 open Terms
+open Sig_state
 
 (** Abstract representation of a goal. *)
 module Goal :
@@ -76,7 +77,7 @@ let focus_goal : Pos.popt -> proof_state -> Env.t * term = fun pos ps ->
   with Failure(_)  -> Console.fatal pos "No remaining goals..."
 
 (** [pp_goals oc gl] prints the goal list [gl] to channel [oc]. *)
-let pp_goals : Scope.sig_state -> Goal.t list pp = fun ss oc gl ->
+let pp_goals : sig_state -> Goal.t list pp = fun ss oc gl ->
   let pp = Print.pp_term ss in
   match gl with
   | []    -> Format.fprintf oc " No more goals...\n"
@@ -104,5 +105,5 @@ let pp_goals : Scope.sig_state -> Goal.t list pp = fun ss oc gl ->
       end
 
 (** [pp oc ps] prints the proof state [ps] to channel [oc]. *)
-let pp : Scope.sig_state -> t pp = fun ss oc ps ->
+let pp : sig_state -> t pp = fun ss oc ps ->
   pp_goals ss oc ps.proof_goals

@@ -5,7 +5,6 @@ open Console
 open Terms
 open Pos
 open Syntax
-open Scope
 
 (** Logging function for tactics. *)
 let log_tact = new_logger 't' "tact" "tactics"
@@ -14,7 +13,7 @@ let log_tact = log_tact.logger
 (** [handle_tactic ss ps tac] tries to apply the tactic [tac] (in the proof
      state [ps]), and returns the new proof state.  This function fails
      gracefully in case of error. *)
-let handle_tactic : sig_state -> Proof.t -> p_tactic -> Proof.t =
+let handle_tactic : Sig_state.t -> Proof.t -> p_tactic -> Proof.t =
   fun ss ps tac ->
   let pp_term = Print.pp_term ss in
   (* First handle the tactics that do not change the goals. *)
@@ -40,7 +39,7 @@ let handle_tactic : sig_state -> Proof.t -> p_tactic -> Proof.t =
   (* Obtaining the goal environment and type. *)
   let (env, a) = Proof.Goal.get_type g in
 
-  let scope = scope_term Public ss env in
+  let scope = Scope.scope_term Public ss env in
   let infer t = Typing.infer ss (Env.to_ctxt env) t in
   let check t a = Typing.check ss (Env.to_ctxt env) t a in
 
@@ -101,7 +100,7 @@ let handle_tactic : sig_state -> Proof.t -> p_tactic -> Proof.t =
   | P_tac_simpl         ->
       Proof.({ps with proof_goals = Proof.Goal.simpl g :: gs})
   | P_tac_rewrite(po,t) ->
-      let po = Option.map (scope_rw_patt ss env) po in
+      let po = Option.map (Scope.scope_rw_patt ss env) po in
       handle_refine (Rewrite.rewrite ss tac.pos ps po (scope t))
   | P_tac_refl          ->
       handle_refine (Rewrite.reflexivity ss tac.pos ps)
@@ -110,7 +109,7 @@ let handle_tactic : sig_state -> Proof.t -> p_tactic -> Proof.t =
   | P_tac_why3(config)  ->
       handle_refine (Why3_tactic.handle ss tac.pos config g)
 
-let handle_tactic : sig_state -> Proof.t -> p_tactic -> Proof.t =
+let handle_tactic : Sig_state.t -> Proof.t -> p_tactic -> Proof.t =
     fun ss ps tac ->
   try handle_tactic ss ps tac
   with Fatal(_,_) as e->

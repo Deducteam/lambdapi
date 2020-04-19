@@ -6,7 +6,8 @@ open Pos
 open Terms
 open Basics
 open Console
-open Scope
+
+module Builtin = Sig_state.Builtin
 
 (** Logging function for the rewrite tactic. *)
 let log_rewr = new_logger 'r' "rewr" "the rewrite tactic"
@@ -21,7 +22,7 @@ let log_rewr = log_rewr.logger
     matching feature is used, one should make sure that [TRef] constructors do
     not appear both in [t] and in [u] at the same time. Indeed, the references
     are set naively, without occurrence checking. *)
-let eq : sig_state -> ctxt -> term -> term -> bool = fun ss ->
+let eq : Sig_state.t -> ctxt -> term -> term -> bool = fun ss ->
   let pp_term = Print.pp_term ss in fun ctx a b -> a == b ||
   let exception Not_equal in
   let rec eq l =
@@ -68,7 +69,7 @@ type eq_config =
 
 (** [get_eq_config ss pos] returns the current configuration for
     equality, used by tactics such as “rewrite” or “reflexivity”. *)
-let get_eq_config : sig_state -> popt -> eq_config = fun ss pos ->
+let get_eq_config : Sig_state.t -> popt -> eq_config = fun ss pos ->
   let builtin = Builtin.get ss pos in
   { symb_P     = builtin "P"
   ; symb_T     = builtin "T"
@@ -157,7 +158,7 @@ let _ =
 (** [get_eq_data ss pos cfg a] extra data from an equality type [a]. It
    consists of a triple containing the type in which equality is used and the
    equated terms (LHS and RHS). *)
-let get_eq_data : sig_state -> popt -> eq_config -> term -> term * term * term
+let get_eq_data : Sig_state.t -> popt -> eq_config -> term -> term * term * term
   = fun ss pos cfg t ->
   let pp_term = Print.pp_term ss in
   match Basics.get_args t with
@@ -199,7 +200,7 @@ let break_prod : term -> term * tvar array = fun a ->
    returns [Some(ts)] where [ts] is an array of terms such that substituting
    elements of [xs] by the corresponding elements of [ts] in [p] yields a term
    that is equal to [t] (in terms of [eq]). *)
-let match_pattern : sig_state -> to_subst -> term -> term array option
+let match_pattern : Sig_state.t -> to_subst -> term -> term array option
   = fun ss (xs,p) t ->
   let ts = Array.map (fun _ -> TRef(ref None)) xs in
   let p = Bindlib.msubst (Bindlib.unbox (Bindlib.bind_mvar xs (lift p))) ts in
@@ -210,7 +211,7 @@ let match_pattern : sig_state -> to_subst -> term -> term array option
    matching) [p] in [t] (if there is any). If successful, the function returns
    an array of terms corresponding to the substitution (see
    [match_pattern]). *)
-let find_subst : sig_state -> term -> to_subst -> term array option
+let find_subst : Sig_state.t -> term -> to_subst -> term array option
   = fun ss t (xs,p) ->
   let time = Time.save () in
   let rec find_sub_aux : term -> term array option = fun t ->
@@ -235,7 +236,7 @@ let find_subst : sig_state -> term -> to_subst -> term array option
    to find a subterm of [t] that matches [p], using (instantiating) syntactic
    equality.  In case of success, the function returns [true], and the
    matching term is [p] itself (through instantiation). *)
-let make_pat : sig_state -> term -> term -> bool = fun ss t p ->
+let make_pat : Sig_state.t -> term -> term -> bool = fun ss t p ->
   let time = Time.save () in
   let rec make_pat_aux : term -> bool = fun t ->
     if eq ss [] t p then true else
@@ -255,7 +256,7 @@ let make_pat : sig_state -> term -> term -> bool = fun ss t p ->
 (** [bind_match ss p t] binds every occurence of the pattern [p] in the term
    [t].  We require [t] not to contain products, abstractions, metavariables
    or any other awkward term constructor. *)
-let bind_match : sig_state -> term -> term -> tbinder =  fun ss p t ->
+let bind_match : Sig_state.t -> term -> term -> tbinder =  fun ss p t ->
   let x = Bindlib.new_var mkfree "X" in
   let rec lift_subst : term -> tbox = fun t ->
     if eq ss [] p t then _Vari x else
@@ -285,7 +286,7 @@ let bind_match : sig_state -> term -> term -> tbinder =  fun ss p t ->
    an equality. Every occurrence of the first instance of the left-hand side
    is replaced by the right-hand side of the obtained proof. It also handles
    the full set of SSReflect patterns. *)
-let rewrite : sig_state -> popt -> Proof.t -> rw_patt option -> term -> term =
+let rewrite : Sig_state.t -> popt -> Proof.t -> rw_patt option -> term -> term =
   fun ss pos ps p t ->
   let pp_term = Print.pp_term ss in
 
@@ -650,7 +651,7 @@ let rewrite : sig_state -> popt -> Proof.t -> rw_patt option -> term -> term =
 
 (** [reflexivity ss pos ps] applies the reflexivity of equality on the focused
    goal. If successful, the corresponding proof term is returned. *)
-let reflexivity : sig_state -> popt -> Proof.t -> term = fun ss pos ps ->
+let reflexivity : Sig_state.t -> popt -> Proof.t -> term = fun ss pos ps ->
   (* Obtain the required symbols from the current signature. *)
   let cfg = get_eq_config ss pos in
   (* Get the type of the focused goal. *)
@@ -665,7 +666,7 @@ let reflexivity : sig_state -> popt -> Proof.t -> term = fun ss pos ps ->
    goal. If successful, a new goal is generated, and the corresponding proof
    term is returned. The proof of symmetry is built from the axioms of
    equality. *)
-let symmetry : sig_state -> popt -> Proof.t -> term = fun ss pos ps ->
+let symmetry : Sig_state.t -> popt -> Proof.t -> term = fun ss pos ps ->
   (* Obtain the required symbols from the current signature. *)
   let cfg = get_eq_config ss pos in
   (* Get the type of the focused goal. *)

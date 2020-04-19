@@ -6,7 +6,6 @@ open Console
 open Terms
 open Basics
 open Env
-open Scope
 
 (** Logging function for unification. *)
 let log_unif = new_logger 'u' "unif" "unification"
@@ -115,7 +114,7 @@ let instantiation : ctxt -> meta -> term array -> term ->
 
 (** [instantiate ss ctx m ts u] check whether, in a problem [m[ts]=u], [m] can
    be instantiated and, if so, instantiate it. *)
-let instantiate : sig_state -> ctxt -> meta -> term array -> term -> bool =
+let instantiate : Sig_state.t -> ctxt -> meta -> term array -> term -> bool =
   fun ss ctx m ts u ->
   match instantiation ctx m ts u with
   | Some(bu) when Bindlib.is_closed bu ->
@@ -127,7 +126,7 @@ let instantiate : sig_state -> ctxt -> meta -> term array -> term -> bool =
 
 (** [solve ss p] tries to solve the unification problem [p] and
     returns the constraints that could not be solved. *)
-let solve : sig_state -> problem -> constr list = fun ss ->
+let solve : Sig_state.t -> problem -> constr list = fun ss ->
   let pp_term = Print.pp_term ss in
   let pp_constr = Print.pp_constr ss in
   let pp_symbol = Print.pp_symbol ss in
@@ -435,5 +434,5 @@ in solve
    no solution, the value [None] is returned. Otherwise [Some(cs)] is
    returned, where the list [cs] is a list of unsolved convertibility
    constraints. *)
-let solve : sig_state -> problem -> constr list option = fun ss p ->
+let solve : Sig_state.t -> problem -> constr list option = fun ss p ->
   try Some (solve ss p) with Unsolvable -> None

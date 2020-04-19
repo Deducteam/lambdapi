@@ -4,7 +4,8 @@ open Console
 open Terms
 open Extra
 open Timed
-open Scope
+
+module Builtin = Sig_state.Builtin
 
 (** Logging function for external prover calling with Why3. *)
 let log_why3 = new_logger 'w' "why3" "why3 provers"
@@ -42,7 +43,7 @@ type config =
   ; symb_not : sym (** Not(¬) symbol.            *) }
 
 (** [get_config ss pos] build the configuration using [ss]. *)
-let get_config : sig_state -> Pos.popt -> config = fun ss pos ->
+let get_config : Sig_state.t -> Pos.popt -> config = fun ss pos ->
   let builtin = Builtin.get ss pos in
   { symb_P   = builtin "P"
   ; symb_T   = builtin "T"
@@ -103,7 +104,7 @@ let translate_term : config -> cnst_table -> term ->
 
 (** [encode ss pos hs g] translates the hypotheses [hs] and the goal [g]
     into Why3 terms, to construct a Why3 task. *)
-let encode : sig_state -> Pos.popt -> Env.env -> term -> Why3.Task.task =
+let encode : Sig_state.t -> Pos.popt -> Env.env -> term -> Why3.Task.task =
   fun ss pos hs g ->
   let pp_term = Print.pp_term ss in
   let cfg = get_config ss pos in
@@ -178,7 +179,7 @@ let run_task : Why3.Task.task -> Pos.popt -> string -> bool =
     name [prover_name] (if given or a default one otherwise) on the goal  [g].
     If the prover succeeded to prove the goal, then this is reflected by a new
     axiom that is added to signature [ss]. *)
-let handle : sig_state -> Pos.popt -> string option -> Proof.Goal.t -> term
+let handle : Sig_state.t -> Pos.popt -> string option -> Proof.Goal.t -> term
   = fun ss pos prover_name g ->
   (* Get the goal to prove. *)
   let (hyps, trm) = Proof.Goal.get_type g in

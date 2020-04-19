@@ -4,7 +4,6 @@ open Extra
 open Timed
 open Console
 open Terms
-open Scope
 
 (** Logging function for typing. *)
 let log_subj = new_logger 's' "subj" "subject-reduction"
@@ -85,7 +84,8 @@ type index_tbl = (string, int) Hashtbl.t
    [term_env] variable. The pre-rule [pr] is provided to give access to these
    variables and also their expected arities. *)
 let symb_to_tenv
-    : sig_state -> pre_rule Pos.loc -> sym list -> index_tbl -> term -> tbox
+    : Sig_state.t -> Scope.pre_rule Pos.loc -> sym list -> index_tbl -> term
+      -> tbox
   = fun ss {elt={pr_vars=vars;pr_arities=arities;_};pos} syms htbl t ->
   let rec symb_to_tenv t =
     log_subj "symb_to_tenv %a" (Print.pp_term ss) t;
@@ -134,13 +134,14 @@ let symb_to_tenv
 (** [check_rule ss r] checks whether the pre-rule [r] is well-typed in
    signature state [ss] and then construct the corresponding rule. Note that
    [Fatal] is raised in case of error. *)
-let check_rule : sig_state -> pre_rule Pos.loc -> rule = fun ss pr ->
+let check_rule : Sig_state.t -> Scope.pre_rule Pos.loc -> rule = fun ss pr ->
   let pp_term = Print.pp_term ss in
   let pp_rule = Print.pp_rule ss in
   let pp_constr = Print.pp_constr ss in
   (* Unwrap the contents of the pre-rule. *)
   let (pos, s, lhs, vars, rhs_vars, arities) =
-    let Pos.{elt={pr_sym;pr_lhs;pr_vars;pr_rhs;pr_arities;_}; pos} = pr in
+    let Pos.{elt=Scope.{pr_sym;pr_lhs;pr_vars;pr_rhs;pr_arities;_}; pos} = pr
+    in
     (pos, pr_sym, pr_lhs, pr_vars, pr_rhs, pr_arities)
   in
   let arity = List.length lhs in

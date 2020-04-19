@@ -8,6 +8,7 @@ open Sign
 open Pos
 open Files
 open Syntax
+open Sig_state
 open Scope
 
 (* Register a check for the type of builtin successor symbol ["+1"]. *)
@@ -106,7 +107,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
         end;
       (* Actually add the symbol to the signature and the state. *)
       out 3 "(symb) %s : %a\n" x.elt pp a;
-      (Scope.add_symbol ss e p x a impl None, None)
+      (Sig_state.add_symbol ss e p x a impl None, None)
   | P_rules(rs)                ->
       (* Scoping and checking each rule in turn. *)
       let handle_rule r =
@@ -167,7 +168,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
       (* Actually add the symbol to the signature. *)
       out 3 "(symb) %s ≔ %a\n" x.elt pp t;
       let d = if op then None else Some(t) in
-      let ss = Scope.add_symbol ss e Defin x a impl d in
+      let ss = Sig_state.add_symbol ss e Defin x a impl d in
       (ss, None)
   | P_theorem(e, stmt, ts, pe) ->
       let (x,xs,a) = stmt.elt in
@@ -205,7 +206,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
             (* Add a symbol corresponding to the proof, with a warning. *)
             out 3 "(symb) %s (admit)\n" x.elt;
             wrn cmd.pos "Proof admitted.";
-            Scope.add_symbol ss e Const x a impl None
+            Sig_state.add_symbol ss e Const x a impl None
         | P_proof_qed   ->
             (* Check that the proof is indeed finished. *)
             if not (Proof.finished st) then
@@ -215,7 +216,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
               end;
             (* Add a symbol corresponding to the proof. *)
             out 3 "(symb) %s (qed)\n" x.elt;
-            Scope.add_symbol ss e Const x a impl None
+            Sig_state.add_symbol ss e Const x a impl None
       in
       let data =
         { pdata_stmt_pos = stmt.pos ; pdata_p_state = st ; pdata_tactics = ts
@@ -237,7 +238,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
             let sym = find_sym ~prt:true ~prv:true false ss qid in
             Builtin.check ss cmd.pos s sym;
             out 3 "(conf) set builtin \"%s\" ≔ %a\n" s pp_symbol sym;
-            Scope.add_builtin ss s sym
+            Sig_state.add_builtin ss s sym
         | P_config_unop(unop)     ->
             let (s, prio, qid) = unop in
             (* Define the unary operator [s]. *)
@@ -245,7 +246,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
             (* Make sure the operator has a fully qualified [qid]. *)
             let unop = (s, prio, with_path sym.sym_path qid) in
             out 3 "(conf) %a %a\n" pp_symbol sym Print.hint (Prefix unop);
-            Scope.add_unop ss s (sym, unop)
+            Sig_state.add_unop ss s (sym, unop)
         | P_config_binop(binop)   ->
             let (s, assoc, prio, qid) = binop in
             (* Define the binary operator [s]. *)
@@ -253,7 +254,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
             (* Make sure the operator has a fully qualified [qid]. *)
             let binop = (s, assoc, prio, with_path sym.sym_path qid) in
             out 3 "(conf) %a %a\n" pp_symbol sym Print.hint (Infix binop);
-            Scope.add_binop ss s (sym, binop);
+            Sig_state.add_binop ss s (sym, binop);
         | P_config_ident(id)      ->
             Sign.add_ident ss.signature id;
             out 3 "(conf) declared identifier \"%s\"\n" id; ss

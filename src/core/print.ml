@@ -10,7 +10,7 @@ open Extra
 open Terms
 open Console
 open Syntax
-open Scope
+open Sig_state
 
 (** Logging function for printing. *)
 let log_prnt = new_logger 'p' "prnt" "pretty-printing"
@@ -209,11 +209,10 @@ let pp_problem : sig_state -> problem pp = fun ss oc p ->
     p.recompute
 
 (** Default printing functions (with empty signature state). *)
-let empty_sig_state = empty_sig_state (Sign.create [])
-let symbol = pp_symbol empty_sig_state
-let meta = pp_meta empty_sig_state
-let term = pp_term empty_sig_state
-let constr = pp_constr empty_sig_state
-let rule = pp_rule empty_sig_state
-let ctxt = pp_ctxt empty_sig_state
-let problem = pp_problem empty_sig_state
+let symbol = pp_symbol Sig_state.empty
+let meta = pp_meta Sig_state.empty
+let term = pp_term Sig_state.empty
+let constr = pp_constr Sig_state.empty
+let rule = pp_rule Sig_state.empty
+let ctxt = pp_ctxt Sig_state.empty
+let problem = pp_problem Sig_state.empty
