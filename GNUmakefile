@@ -55,10 +55,6 @@ real_tests: bin
 sanity_check: tools/sanity_check.sh
 	@./$<
 
-.PHONY: git-setup
-git-setup: tools/setup_git_hook.sh
-	@./$<
-
 #### Library tests ###########################################################
 
 .PHONY: matita
