@@ -11,14 +11,32 @@ open Syntax
 open Sig_state
 open Scope
 
-(* Register a check for the type of builtin successor symbol ["+1"]. *)
+(* Register a check for the type of the builtin symbol "0" and "+1". *)
 let _ =
-  let expected_succ_type ss pos =
-    let typ_0 = lift !((Builtin.get ss pos "0").sym_type) in
+  let eq ss t u =
+    let open Unif in
+    let to_solve = [([],t,u)] in
+    match solve ss {empty_problem with to_solve} with
+    | Some [] -> true
+    | _ -> false
+  in
+  let register = Builtin.register_expected_type eq Print.pp_term in
+  let expected_zero_type ss _pos =
+    try
+      match !((StrMap.find "+1" ss.builtins).sym_type) with
+      | Prod(a,_) -> a
+      | _ -> assert false
+    with Not_found -> Meta (fresh_meta Type 0, [||])
+  in
+  register "0" expected_zero_type;
+  let expected_succ_type ss _pos =
+    let typ_0 =
+      try lift !((StrMap.find "0" ss.builtins).sym_type)
+      with Not_found -> _Meta (fresh_meta Type 0) [||]
+    in
     Bindlib.unbox (_Impl typ_0 typ_0)
   in
-  Builtin.register_expected_type (fun _ -> Eval.eq_modulo []) Print.pp_term
-    "+1" expected_succ_type
+  register "+1" expected_succ_type
 
 (** Representation of a yet unchecked proof. The structure is initialized when
     the proof mode is entered, and its finalizer is called when the proof mode
