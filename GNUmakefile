@@ -56,10 +56,8 @@ sanity_check: tools/sanity_check.sh
 	@./$<
 
 .PHONY: git-setup
-git-setup:
-	@printf '#!/bin/sh\n[ -z "$$(make sanity_check)" ]\n' > \
-.git/hooks/pre-commit
-	@chmod 755 .git/hooks/pre-commit
+git-setup: tools/setup_git_hook.sh
+	@./$<
 
 #### Library tests ###########################################################
 
