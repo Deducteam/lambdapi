@@ -61,7 +61,7 @@ let set_initial_time : unit -> unit = fun _ ->
 let initial_state : file_path -> state = fun fname ->
   Console.reset_default ();
   Time.restore Stdlib.(!t0);
-  Config.apply_config fname;
+  Package.apply_config fname;
   let mp = Files.file_to_module fname in
   Sign.loading := [mp];
   let sign = Sign.create mp in

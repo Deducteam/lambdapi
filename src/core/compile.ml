@@ -92,7 +92,7 @@ let recompile = Stdlib.ref false
 (** [compile_file fname] is the main compiling function. It is called from the
     main program exclusively. *)
 let compile_file : file_path -> Sign.t = fun fname ->
-  Config.apply_config fname;
+  Package.apply_config fname;
   (* Compute the module path (checking the extension). *)
   let mp = Files.file_to_module fname in
   (* Run compilation. *)

@@ -1,11 +1,12 @@
 ;;; lambdapi-input.el --- Input method for lambdapi -*- lexical-binding: t; -*-
+;; SPDX-License-Identifier: CeCILL Free Software License Agreement v2.1
 ;;; Commentary:
 ;;
 ;;  Input method for lambdapi. Define a quail package with symbols from
-;;  `math-symbol-lists'.
-;;  The input method is augmented with more latex symbols if company is not
-;;  available because if the input method is active (that is, a sequence of
-;;  characters is candidate to be translated), compnay won't show suggestions.
+;;  package `math-symbol-lists'.
+;;  Since Company's dropdown menu is disabled as long as there are quail
+;;  candidates, some users may prefer to inhibit quail and use directly company
+;;  setting `lambdapi-unicode-prefer-company' to non-nil.
 ;;
 ;;; Code:
 (require 'lambdapi-vars)
@@ -264,7 +265,7 @@ An element of this list is a dotted pair (COM . CH) where com is the LaTeX
 command (e.g. \alpha) and CH is the character (e.g. α). This list is made of the
 double-struck capital letters.")
 
-(when (not lambdapi-unicode-prefer-company)
+(unless lambdapi-unicode-prefer-company
   (seq-do (lambda (com-ltx) (quail-defrule (car com-ltx) (cdr com-ltx)))
           (seq-concatenate 'list
                            lambdapi--math-symbol-list-basic
