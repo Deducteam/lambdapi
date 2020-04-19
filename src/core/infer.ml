@@ -232,7 +232,8 @@ let check : Sig_state.t -> ctxt -> term -> term -> constr list
    constraints [cs].  In other words, the constraints of [cs] must be
    satisfied for [t] to have type [a]. [ctx] must be well-formed. This
    function never fails (but constraints may be unsatisfiable). *)
-let infer : Sig_state.t -> ctxt -> term -> term * constr list = fun ss ctx t ->
+let infer : Sig_state.t -> ctxt -> term -> term * constr list
+  = fun ss ctx t ->
   Stdlib.(constraints := []);
   let a = infer ss ctx t in
   let constrs = Stdlib.(!constraints) in

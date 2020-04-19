@@ -158,7 +158,8 @@ let _ =
 (** [get_eq_data ss pos cfg a] extra data from an equality type [a]. It
    consists of a triple containing the type in which equality is used and the
    equated terms (LHS and RHS). *)
-let get_eq_data : Sig_state.t -> popt -> eq_config -> term -> term * term * term
+let get_eq_data
+    : Sig_state.t -> popt -> eq_config -> term -> term * term * term
   = fun ss pos cfg t ->
   let pp_term = Print.pp_term ss in
   match Basics.get_args t with
@@ -286,8 +287,8 @@ let bind_match : Sig_state.t -> term -> term -> tbinder =  fun ss p t ->
    an equality. Every occurrence of the first instance of the left-hand side
    is replaced by the right-hand side of the obtained proof. It also handles
    the full set of SSReflect patterns. *)
-let rewrite : Sig_state.t -> popt -> Proof.t -> rw_patt option -> term -> term =
-  fun ss pos ps p t ->
+let rewrite : Sig_state.t -> popt -> Proof.t -> rw_patt option -> term -> term
+  = fun ss pos ps p t ->
   let pp_term = Print.pp_term ss in
 
   (* Obtain the required symbols from the current signature. *)
