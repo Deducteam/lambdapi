@@ -51,7 +51,9 @@ let option_cata f x d = match x with | None -> d | Some x -> f x
 let option_default x d = match x with | None -> d | Some x -> x
 
 let oint_field  name dict = option_cata U.to_int List.(assoc_opt name dict) 0
-let odict_field name dict = option_default U.(to_option to_assoc (option_default List.(assoc_opt name dict) `Null)) []
+let odict_field name dict =
+  option_default U.(to_option to_assoc
+                      (option_default List.(assoc_opt name dict) `Null)) []
 
 module LIO = Lsp_io
 module LSP = Lsp_base
@@ -85,7 +87,8 @@ let do_check_text ofmt ~doc =
 
 let do_change ofmt ~doc change =
   let open Lp_doc in
-  LIO.log_error "checking file" (doc.uri ^ " / version: " ^ (string_of_int doc.version));
+  LIO.log_error "checking file"
+    (doc.uri ^ " / version: " ^ (string_of_int doc.version));
   let doc = { doc with text = string_field "text" change; } in
   do_check_text ofmt ~doc
 
@@ -98,7 +101,9 @@ let do_open ofmt params =
   let doc = Lp_doc.new_doc ~uri ~text ~version in
   begin match Hashtbl.find_opt doc_table uri with
     | None -> ()
-    | Some _ -> LIO.log_error "do_open" ("file " ^ uri ^ " not properly closed by client")
+    | Some _ ->
+        LIO.log_error "do_open"
+          ("file " ^ uri ^ " not properly closed by client")
   end;
   Hashtbl.add doc_table uri doc;
   do_check_text ofmt ~doc
@@ -121,7 +126,8 @@ let do_close _ofmt params =
 let grab_doc params =
   let document = dict_field "textDocument" params in
   let doc_file = string_field "uri" document in
-  let start_doc, end_doc = Hashtbl.(find doc_table doc_file, find completed_table doc_file) in
+  let start_doc, end_doc =
+    Hashtbl.(find doc_table doc_file, find completed_table doc_file) in
   doc_file, start_doc, end_doc
 
 let mk_syminfo file (name, _path, kind, pos) : J.t =
@@ -143,7 +149,8 @@ let mk_definfo file pos =
 let kind_of_type tm =
   let open Terms in
   let open Timed in
-  let is_undef = option_empty !(tm.sym_def) && List.length !(tm.sym_rules) = 0 in
+  let is_undef =
+    option_empty !(tm.sym_def) && List.length !(tm.sym_rules) = 0 in
   match !(tm.sym_type) with
   | Vari _ ->
     13                         (* Variable *)
@@ -155,11 +162,17 @@ let kind_of_type tm =
 let do_symbols ofmt ~id params =
   let file, _, doc = grab_doc params in
   let sym = Pure.get_symbols doc.final in
-  let sym = Extra.StrMap.fold (fun _ (s,p) l ->
-      let open Terms in
-      (* LIO.log_error "sym" (s.sym_name ^ " | " ^ Format.asprintf "%a" pp_term !(s.sym_type)); *)
-      option_cata (fun p -> mk_syminfo file
-                      (s.sym_name, s.sym_path, kind_of_type s, p) :: l) p l) sym [] in
+  let sym =
+    Extra.StrMap.fold
+      (fun _ (s,p) l ->
+        let open Terms in
+        (* LIO.log_error "sym"
+         ( s.sym_name ^ " | "
+         ^ Format.asprintf "%a" pp_term !(s.sym_type)); *)
+        option_cata
+          (fun p -> mk_syminfo file
+                      (s.sym_name, s.sym_path, kind_of_type s, p) :: l) p l)
+      sym [] in
   let msg = LSP.mk_reply ~id ~result:(`List sym) in
   LIO.send_json ofmt msg
 
@@ -179,7 +192,8 @@ let in_range ?loc (line, pos) =
   match loc with
   | None -> false
   | Some loc ->
-    let { Pos.start_line ; start_col ; end_line ; end_col ; _ } = Lazy.force loc in
+      let { Pos.start_line ; start_col ; end_line ; end_col ; _ } =
+        Lazy.force loc in
     start_line - 1 < line && line < end_line - 1 ||
     (start_line - 1 = line && start_col <= pos) ||
     (end_line - 1 = line && pos <= end_col)
@@ -190,14 +204,17 @@ let get_goals ~doc ~line ~pos =
     List.find_opt (fun { ast; _ } ->
         let loc = Pure.Command.get_pos ast in
         let res = in_range ?loc (line,pos) in
-                let ls = Format.asprintf "%B l:%d p:%d / %a " res line pos Pos.print loc in
+        let ls = Format.asprintf "%B l:%d p:%d / %a "
+                   res line pos Pos.print loc in
         LIO.log_error "get_goals" ("call: "^ls);
         res
       ) doc.Lp_doc.nodes in
   let goalsList = match node with
     | None -> []
     | Some n -> n.goals in
-  let goals = match (List.find_opt (fun (_, loc) -> in_range ?loc (line,pos)) goalsList) with
+  let goals =
+    match List.find_opt (fun (_, loc) -> in_range ?loc (line,pos)) goalsList
+    with
     | None -> None
     | Some (v,_) -> Some v in
   goals
@@ -272,9 +289,11 @@ let do_definition ofmt ~id params =
 
   let sym = Pure.get_symbols doc.final in
   let map_pp : string =
-    Extra.StrMap.bindings sym |> List.map (fun (key, (sym,pos)) ->
-        Format.asprintf "{%s} / %s: @[%a@]" key sym.Terms.sym_name Pos.print pos)
-      |> String.concat "\n"
+    Extra.StrMap.bindings sym
+    |> List.map (fun (key, (sym,pos)) ->
+           Format.asprintf "{%s} / %s: @[%a@]"
+             key sym.Terms.sym_name Pos.print pos)
+    |> String.concat "\n"
   in
   LIO.log_error "symbol map" map_pp;
 
@@ -293,9 +312,11 @@ let hover_symInfo ofmt ~id params =
   let sym_target = get_symbol doc.text line pos in
   let sym = Pure.get_symbols doc.final in
   let map_pp : string =
-    Extra.StrMap.bindings sym |> List.map (fun (key, (sym,pos)) ->
-        Format.asprintf "{%s} / %s: @[%a@]" key sym.Terms.sym_name Pos.print pos)
-      |> String.concat "\n"
+    Extra.StrMap.bindings sym
+    |> List.map (fun (key, (sym,pos)) ->
+           Format.asprintf "{%s} / %s: @[%a@]"
+             key sym.Terms.sym_name Pos.print pos)
+    |> String.concat "\n"
   in
   LIO.log_error "symbol map" map_pp;
 
