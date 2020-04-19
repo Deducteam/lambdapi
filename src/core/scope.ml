@@ -52,6 +52,10 @@ let find_sym : prt:bool -> prv:bool -> bool -> sig_state -> qident ->
     | []                               -> (* Symbol in scope. *)
         begin
           try (fst (StrMap.find s st.in_scope), Nothing) with Not_found ->
+          match List.assoc s Unif_hints.map with
+          | Symb(s, h)          -> (s, h)
+          | _                   -> assert false
+          | exception Not_found ->
           let txt = if b then " or variable" else "" in
           fatal pos "Unbound symbol%s [%s]." txt s
         end

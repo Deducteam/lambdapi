@@ -285,7 +285,7 @@ module Unif_hints = struct
     in
     Symb(sym, Nothing)
 
-  (** Mapping from symbol names to names. *)
+  (** Mapping from symbol names to symbols. *)
   let map : (string * term) list =
     [("unif_atom", atom); ("unif_list", list)]
 end
