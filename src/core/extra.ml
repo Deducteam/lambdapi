@@ -204,7 +204,7 @@ module List =
     (** [are_distinct ?eq l] returns [true] if all elements of [l] are
         pairwise distinct and false otherwise. *)
     let rec are_distinct : ?eq:('a eq) -> 'a list -> bool =
-      fun ?(eq=Pervasives.(=)) l ->
+      fun ?(eq=Stdlib.(=)) l ->
       match l with
       | hd :: tl -> if mem_eq eq hd tl then false else are_distinct ~eq tl
       | []       -> true
