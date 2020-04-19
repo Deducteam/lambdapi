@@ -24,17 +24,17 @@ determine the name space under which the objects of the package will be made
 accessible to other objects of the package, but also to other libraries if the
 package is ever installed. It is hence important to choose an appropriate name
 for the packages you create. In particular, this name should uniquely identify
-the package as it will not ever be possible to install two distinct packages
+the package as it will never be possible to install two distinct packages
 with the same name.
 
-**To create your first package**, simply run `lambdapi init my_package` in the
-directory where you would like to create your new package. The effect of this
+**To create your first package**, simply run `lambdapi init my_package`.
+The effect of this
 command is to create a new directory `my_package` containing several generated
 files, including a `Makefile` and a Lambdapi package file `lambdapi.pkg`, but
 also a somewhat minimal example of Lambdapi project containing several source
 files with the `.lp` extension. After entering the new directory, you can run
-the `make` command to build the source files of the package. And you can then
-start working on your project by modifying and creating new source files an
+the `make` command to build the object files of the package. And you can then
+start working on your project by modifying and creating new source files
 by running `make` again to type-check and run the commands they contain. Note
 that dependencies are handled automatically, and that every file having the
 `.lp` extension in the repository is considered to be part of the package.
@@ -81,7 +81,7 @@ test package, and using `make` to type-check them. Note that by default the
 system will not give you much feedback. However, once you are editing files in
 a package (i.e., when there is a `lambdapi.pkg` file available in a parent
 directory of the files you consider), you can very well call Lambdapi directly
-(i.e., without relying on the `Makefile). For example, you can try running the
+(i.e., without relying on the `Makefile`). For example, you can try running the
 command `lambdapi check --recompile --verbose 4 internal/nat.lp`. As you are
 introduced to new commands (or discover them), feel free to try them out.
 
@@ -94,6 +94,6 @@ Packages must be installed following specific conventions, and hence this
 should not be attempted directly. Instead, we provide a `lambdapi install`
 command that takes care of installing the source and object files it is given
 as argument in the right place, according to the package file. The `Makefile`
-that is generated a package creation time comes with an `install` target, so
+that is generated at package creation time comes with an `install` target, so
 installing your package is as simple as running `make install`. Of course, you
 can also uninstall your package using the command `make uninstall`.
