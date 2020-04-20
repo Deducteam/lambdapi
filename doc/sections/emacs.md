@@ -66,7 +66,7 @@ Emacs, select it and use `M-;`.
 
 #### Entering unicode
 **Company:**
-if [`company-mode`](https://github.com/company-mode/company-mode) and
+if [`company`](https://github.com/company-mode/company-mode) and
 [`company-math`](https://github.com/vspinu/company-math) are installed, 
 LaTeX commands are autocompleted with the latter tool. Any (or at least a lot
 of) LaTeX symbol can be entered via its LaTeX command: start typing it, and an
