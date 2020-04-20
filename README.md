@@ -8,7 +8,7 @@ in the [documentation](doc/DOCUMENTATION.md).
 Installation via [Opam](http://opam.ocaml.org/)
 ---------------------
 
-We will only publish a new version of `lambdapi` Opam pacakge when the
+We will only publish a new version of `lambdapi` Opam package when the
 development has reached a more stable test. For now, we advise you to
 pin the development repository to get the latest bug fixes.
 
