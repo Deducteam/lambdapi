@@ -18,9 +18,10 @@ You should at the very least run `make sanity_check` before committing anything.
 Please check you have GNU awk (gawk) installed or another UTF-8 compatible
 implementation of the AWK programming language interpreter.
 
-A git hook can be set up to ensure your code abide these rules before committing
-by executing `tools/setup_git_hook.sh`. Executing the script will make git run
-`make sanity_check` automatically *before* each commit.
+The script `tools/git_hook_helper.sh` helps setting up a git hook to run
+`make sanity_check` and `make bin` automatically *before* each commit.
+The option `-s` makes the hook only check for sanity (if you are in early stage
+of development).
 
 Type annotations and interface
 ------------------------------
