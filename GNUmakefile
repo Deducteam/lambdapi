@@ -3,7 +3,7 @@ VIMDIR   = $(HOME)/.vim
 #### Compilation (binary, library and documentation) #########################
 
 .PHONY: all
-all: bin
+all: sanity_check bin
 
 .PHONY: bin
 bin:
