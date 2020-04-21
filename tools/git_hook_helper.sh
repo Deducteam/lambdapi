@@ -43,3 +43,4 @@ Remove it or add the command
 fi
 
 printf '#!/bin/sh\n%s\n' "${hook_cmd}" > "${hook_path}"
+chmod 755 "${hook_path}"
