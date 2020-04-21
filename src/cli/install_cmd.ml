@@ -105,6 +105,6 @@ let install_cmd =
   Term.info "install" ~doc
 
 let uninstall_cmd =
-  let doc = "Uninstall the files corresponding to the given pakcage file." in
+  let doc = "Uninstall the files corresponding to the given package file." in
   Term.(const run_uninstall $ Config.minimal $ dry_run $ pkg_file),
   Term.info "uninstall" ~doc

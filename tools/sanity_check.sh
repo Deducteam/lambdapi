@@ -3,8 +3,7 @@
 # Check for long lines.
 awk 'length>78    {print "In " FILENAME ", line " FNR " more than 78 characters..."}' \
   src/cli/*.ml src/core/*.ml src/core/*.mll \
-  src/pure/*.ml src/pure/*.mli
-# FIXME src/core/*.mly src/lsp/*.ml src/lsp/*.mli
+  src/pure/*.ml src/pure/*.mli src/core/*.mly src/lsp/*.ml src/lsp/*.mli
 
 # Check for trailing spaces.
 awk '/.*\s$/      {print "In " FILENAME ", line " FNR " has trailing spaces..."}    ' \
