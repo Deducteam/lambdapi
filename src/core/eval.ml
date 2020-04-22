@@ -314,8 +314,16 @@ and tree_walk : dtree -> ctxt -> stack -> (term * stack) option =
                     let stk = List.reconstruct left (body::args) right in
                     walk tr stk cursor vars_id id_vars
               end
+          | Kind
+          | Type
+          | Prod(_)
           | Meta(_, _) -> default ()
-          | _          -> assert false
+          | TRef(_)    -> assert false (* Should be reduced by [whnf_stk]. *)
+          | Appl(_)    -> assert false (* Should be reduced by [whnf_stk]. *)
+          | LLet(_)    -> assert false (* Should be reduced by [whnf_stk]. *)
+          | Patt(_)    -> assert false (* Should not appear in terms. *)
+          | TEnv(_)    -> assert false (* Should not appear in terms. *)
+          | Wild       -> assert false (* Should not appear in terms. *)
   in
   walk tree stk 0 VarMap.empty IntMap.empty
 

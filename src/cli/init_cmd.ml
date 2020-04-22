@@ -7,62 +7,55 @@ let with_file : string -> (out_channel -> unit) -> unit = fun file fn ->
   let oc = open_out file in fn oc; close_out oc
 
 let write_makefile : out_channel -> unit = fun oc ->
-  let lines =
-    [ "LP_SRC = $(shell find . -type f -name \"*.lp\")"
-    ; "LP_OBJ = $(LP_SRC:%.lp=%.lpo)"
-    ; ""
-    ; "all: $(LP_OBJ)"
-    ; ""
-    ; "$(LP_OBJ)&: $(LP_SRC)"
-    ; "\tlambdapi check --gen-obj $^"
-    ; ""
-    ; "install: $(LP_OBJ) " ^ Package.pkg_file
-    ; "\tlambdapi install " ^ Package.pkg_file ^ " $(LP_OBJ) $(LP_SRC)"
-    ; ""
-    ; "uninstall:"
-    ; "\tlambdapi uninstall lambdapi.pkg"
-    ; ""
-    ; "clean:"
-    ; "\trm -f $(LP_OBJ)" ]
-  in
-  List.iter (Printf.fprintf oc "%s\n") lines
+  Printf.fprintf oc
+    "LP_SRC = $(shell find . -type f -name \"*.lp\")\n\
+     LP_OBJ = $(LP_SRC:%%.lp=%%.lpo)\n\
+     \n\
+     all: $(LP_OBJ)\n\
+     \n\
+     $(LP_OBJ)&: $(LP_SRC)\n\
+     \tlambdapi check --gen-obj $^\n\
+     \n\
+     install: $(LP_OBJ) %s\n\
+     \tlambdapi install %s $(LP_OBJ) $(LP_SRC)\n\
+     \n\
+     uninstall:\n\
+     \tlambdapi uninstall lambdapi.pkg\n\
+     \n\
+     clean:\n\
+     \trm -f $(LP_OBJ)\n%!" Package.pkg_file Package.pkg_file
 
 let write_ex_nat : out_channel -> unit = fun oc ->
-  let lines =
-    [ "// Generated example file: unary natural numbers."
-    ; "constant symbol N : TYPE"
-    ; ""
-    ; "constant symbol z : N"
-    ; "constant symbol s : N → N"
-    ; ""
-    ; "// Enabling built-in natural number literal, and example."
-    ; ""
-    ; "set builtin \"0\"  ≔ z"
-    ; "set builtin \"+1\" ≔ s"
-    ; ""
-    ; "definition forty_two ≔ 42"
-    ; ""
-    ; "// Addition function."
-    ; ""
-    ; "symbol add : N → N → N"
-    ; "set infix left 6 \"+\" ≔ add"
-    ; ""
-    ; "rule z      + $n     ↪ $n"
-    ; "with (s $m) + $n     ↪ s ($m + $n)"
-    ; "with $m     + z      ↪ $m"
-    ; "with $m     + (s $n) ↪ s ($m + $n)" ]
-  in
-  List.iter (Printf.fprintf oc "%s\n") lines
+  Printf.fprintf oc
+    "// Generated example file: unary natural numbers.\n\
+     constant symbol N : TYPE\n\
+     \n\
+     constant symbol z : N\n\
+     constant symbol s : N → N\n\
+     \n\
+     // Enabling built-in natural number literal, and example.\n\
+     \n\
+     set builtin \"0\"  ≔ z\n\
+     set builtin \"+1\" ≔ s\n\
+     \n\
+     definition forty_two ≔ 42\n\
+     \n\
+     // Addition function.\n\
+     \n\
+     symbol add : N → N → N\n\
+     set infix left 6 \"+\" ≔ add\n\
+     \n\
+     rule z      + $n     ↪ $n\n\
+     with (s $m) + $n     ↪ s ($m + $n)\n\
+     with $m     + z      ↪ $m\n\
+     with $m     + (s $n) ↪ s ($m + $n)\n%!"
 
 let write_ex_main : Path.t -> out_channel -> unit = fun root_path oc ->
-  let lines =
-    let mp = String.concat "." root_path in
-    [ "// Generated example file."
-    ; "require open " ^ mp ^ ".nat // Note the full module qualification."
-    ; ""
-    ; "assert 42 + 12 ≡ 54" ]
-  in
-  List.iter (Printf.fprintf oc "%s\n") lines
+  Printf.fprintf oc
+    "// Generated example file.\n\
+     require open %s.nat // Note the full module qualification.\n\
+     \n\
+     assert 42 + 12 ≡ 54\n%!" (String.concat "." root_path)
 
 let run : Path.t -> unit = fun root_path ->
   let run _ =
