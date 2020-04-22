@@ -3,16 +3,16 @@
 set -euf -o noclobber
 
 dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
-usage="Usage: $(basename "$0") [-s]
+usage="Usage: $(basename "$0") [-b]
 Set up git pre-commit hook.
 
 Arguments:
-  -s    Only check for sanity (do not build).
+  -b    Include compilation in hook.
 "
-sanity_only=''
-while getopts 'sh' arg; do
+sanity_only=true
+while getopts 'bh' arg; do
     case "${arg}" in
-        s) sanity_only=true;;
+        b) sanity_only='';;
         h) printf '%s' "${usage}"
            exit 0
            ;;
