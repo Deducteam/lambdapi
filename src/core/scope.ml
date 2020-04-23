@@ -94,6 +94,10 @@ let find_sym : prt:bool -> prv:bool -> bool -> sig_state -> qident ->
   end;
   (s, h)
 
+(** Logging function for term scoping. *)
+let log_scop = new_logger 'o' "scop" "term scoping"
+let log_scop = log_scop.logger
+
 (** [find_qid prt prv st env qid] returns a boxed term corresponding to a
     variable of the environment [env] (or to a symbol) which name corresponds
     to [qid]. In the case where the module path [fst qid.elt] is empty, we
@@ -163,15 +167,14 @@ type mode =
 
 (** [get_implicitness t] gives the specified implicitness of the parameters of
     a symbol having the (parser-level) type [t]. *)
-let get_implicitness : p_term -> bool list = fun t ->
-  let rec get_impl t =
-    match t.elt with
-    | P_Prod(xs,t) -> List.map (fun (_,_,impl) -> impl) xs @ get_impl t
-    | P_Impl(_,t)  -> false :: get_impl t
-    | P_Wrap(t)    -> get_impl t
-    | _            -> []
-  in
-  get_impl t
+let rec get_implicitness : p_term -> bool list = fun t ->
+  match t.elt with
+  | P_Prod([],t) -> get_implicitness t
+  | P_Prod((ys,_,impl)::xs,t) ->
+      List.map (fun _ -> impl) ys @ get_implicitness {t with elt=P_Prod(xs,t)}
+  | P_Impl(_,t)  -> false :: get_implicitness t
+  | P_Wrap(t)    -> get_implicitness t
+  | _            -> []
 
 (** [get_args t] decomposes the parser level term [t] into a spine [(h,args)],
     when [h] is the term at the head of the application and [args] is the list
