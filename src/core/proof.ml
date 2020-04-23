@@ -22,6 +22,9 @@ module Goal :
 
     (** [simpl g] simplifies the given goal, evaluating its type to SNF. *)
     val simpl : t -> t
+
+    (** Comparison function. *)
+    val compare : t -> t -> int
   end =
   struct
     type t =
@@ -31,15 +34,20 @@ module Goal :
 
     let of_meta : meta -> t = fun m ->
       let (goal_hyps, goal_type) =
-        Env.of_prod_arity m.meta_arity !(m.meta_type) in
-      let goal_type = Eval.simplify goal_type in
+        Env.destruct_prod m.meta_arity !(m.meta_type)
+      in
+      let goal_type = Eval.simplify (Env.to_ctxt goal_hyps) goal_type in
       {goal_meta = m; goal_hyps; goal_type}
 
     let get_meta : t -> meta = fun g -> g.goal_meta
 
     let get_type : t -> Env.t * term = fun g -> (g.goal_hyps, g.goal_type)
 
-    let simpl : t -> t = fun g -> {g with goal_type = Eval.snf g.goal_type}
+    let simpl : t -> t = fun g ->
+      {g with goal_type = Eval.snf (Env.to_ctxt g.goal_hyps) g.goal_type}
+
+    let compare : t -> t -> int = fun g1 g2 ->
+      Meta.compare g1.goal_meta g2.goal_meta
   end
 
 (** Representation of the proof state of a theorem. *)
@@ -79,7 +87,7 @@ let pp_goals : _ pp = fun oc gl ->
     let (hyps, _) = Goal.get_type g in
     if hyps <> [] then
       begin
-        let print_hyp (s,(_,t)) =
+        let print_hyp (s,(_,t,_)) =
           Format.fprintf oc "   %s : %a\n" s pp (Bindlib.unbox t)
         in
         List.iter print_hyp (List.rev hyps);

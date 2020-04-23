@@ -1,3 +1,11 @@
+#### Let bindings (2020-03-31)
+
+Adding let-bindings to the terms structure.
+- Contexts can now contain term definitions.
+- Unification is carried out with a context.
+- Reduction functions (`whnf`, `hnf`, `snf` &c.) are called with a context.
+- Type annotation for `let` in the concrete syntax.
+
 #### Prepare for modern versions of OCaml (2020-03-26)
 
  - Use `Stdlib` instead of `Pervasives` (enforced by sanity checks).

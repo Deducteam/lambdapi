@@ -32,6 +32,12 @@ depends: [
   "stdlib-shims"
 ]
 
+post-messages: [
+  "To use the Emacs mode, add the following line to ~/.emacs.d/init.el,
+or ~/.emacs:\n
+\t(load \"lambdapi-site-file\")\n"
+]
+
 build: [
   [ "dune" "subst" ]
   [ "dune" "build" "-p" name "-j" jobs ]

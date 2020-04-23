@@ -56,8 +56,8 @@ let translate_old_rule : old_p_rule -> p_rule = fun r ->
     let nb_args = List.length args in
     begin
       match h.elt with
-      | P_Appl(_,_)     -> assert false (* Cannot happen. *)
-      | P_Iden(x,_)     ->
+      | P_Appl(_,_)       -> assert false (* Cannot happen. *)
+      | P_Iden(x,_)       ->
           let (p,x) = x.elt in
           if p = [] && is_pat_var env x then
             begin
@@ -66,10 +66,10 @@ let translate_old_rule : old_p_rule -> p_rule = fun r ->
                 if nb_args > n then Hashtbl.replace arity x nb_args
               with Not_found -> Hashtbl.add arity x nb_args
             end
-      | P_Wild          -> ()
-      | P_Type          -> fatal h.pos "Type in legacy pattern."
-      | P_Prod(_,_)     -> fatal h.pos "Product in legacy pattern."
-      | P_Abst(xs,t)    ->
+      | P_Wild            -> ()
+      | P_Type            -> fatal h.pos "Type in legacy pattern."
+      | P_Prod(_,_)       -> fatal h.pos "Product in legacy pattern."
+      | P_Abst(xs,t)      ->
           begin
             match xs with
             | [(_       ,Some(a),_)] ->
@@ -80,15 +80,15 @@ let translate_old_rule : old_p_rule -> p_rule = fun r ->
                 compute_arities env t
             | _                      -> assert false
           end
-      | P_Impl(_,_)     -> fatal h.pos "Implication in legacy pattern."
-      | P_LLet(_,_,_,_) -> fatal h.pos "Let expression in legacy rule."
-      | P_Meta(_,_)     -> assert false
-      | P_Patt(_,_)     -> assert false
-      | P_NLit(_)       -> assert false
-      | P_UnaO(_,_)     -> assert false
-      | P_BinO(_,_,_)   -> assert false
-      | P_Wrap(_)       -> assert false
-      | P_Expl(_)       -> assert false
+      | P_Impl(_,_)       -> fatal h.pos "Implication in legacy pattern."
+      | P_LLet(_,_,_,_,_) -> fatal h.pos "Let expression in legacy rule."
+      | P_Meta(_,_)       -> assert false
+      | P_Patt(_,_)       -> assert false
+      | P_NLit(_)         -> assert false
+      | P_UnaO(_,_)       -> assert false
+      | P_BinO(_,_,_)     -> assert false
+      | P_Wrap(_)         -> assert false
+      | P_Expl(_)         -> assert false
     end;
     List.iter (fun (_,t) -> compute_arities env t) args
   in
@@ -147,8 +147,8 @@ let translate_old_rule : old_p_rule -> p_rule = fun r ->
     match t.elt with
     | P_Iden(_)
     | P_Type
-    | P_Wild          -> t
-    | P_Prod(xs,b)    ->
+    | P_Wild            -> t
+    | P_Prod(xs,b)      ->
         let (x,a) =
           match xs with
           | [([Some x],Some(a),_)] -> (x, build env a)
@@ -156,8 +156,8 @@ let translate_old_rule : old_p_rule -> p_rule = fun r ->
         in
         let b = build (x.elt::env) b in
         Pos.make t.pos (P_Prod([([Some x],Some(a),false)], b))
-    | P_Impl(a,b)     -> Pos.make t.pos (P_Impl(build env a, build env b))
-    | P_Abst(xs,u)    ->
+    | P_Impl(a,b)       -> Pos.make t.pos (P_Impl(build env a, build env b))
+    | P_Abst(xs,u)      ->
         let (x,a) =
           match xs with
           | [([x],ao,_)] -> (x, Option.map (build env) ao)
@@ -169,15 +169,15 @@ let translate_old_rule : old_p_rule -> p_rule = fun r ->
           | None    -> build env u
         in
         Pos.make t.pos (P_Abst([([x],a,false)], u))
-    | P_Appl(t1,t2)   -> Pos.make t.pos (P_Appl(build env t1, build env t2))
-    | P_Meta(_,_)     -> fatal t.pos "Invalid legacy rule syntax."
-    | P_Patt(_,_)     -> fatal h.pos "Pattern in legacy rule."
-    | P_LLet(_,_,_,_) -> fatal h.pos "Let expression in legacy rule."
-    | P_NLit(_)       -> fatal h.pos "Nat literal in legacy rule."
-    | P_UnaO(_,_)     -> fatal h.pos "Unary operator in legacy rule."
-    | P_BinO(_,_,_)   -> fatal h.pos "Binary operator in legacy rule."
-    | P_Wrap(_)       -> fatal h.pos "Wrapping constructor in legacy rule."
-    | P_Expl(_)       -> fatal h.pos "Explicit argument in legacy rule."
+    | P_Appl(t1,t2)     -> Pos.make t.pos (P_Appl(build env t1, build env t2))
+    | P_Meta(_,_)       -> fatal t.pos "Invalid legacy rule syntax."
+    | P_Patt(_,_)       -> fatal h.pos "Pattern in legacy rule."
+    | P_LLet(_,_,_,_,_) -> fatal h.pos "Let expression in legacy rule."
+    | P_NLit(_)         -> fatal h.pos "Nat literal in legacy rule."
+    | P_UnaO(_,_)       -> fatal h.pos "Unary operator in legacy rule."
+    | P_BinO(_,_,_)     -> fatal h.pos "Binary operator in legacy rule."
+    | P_Wrap(_)         -> fatal h.pos "Wrapping constructor in legacy rule."
+    | P_Expl(_)         -> fatal h.pos "Explicit argument in legacy rule."
   in
   (* NOTE the computation order is important for setting arities properly. *)
   let lhs = build [] lhs in
@@ -242,35 +242,65 @@ let build_config : Pos.pos -> string -> string option -> Eval.config =
 %%
 
 line:
-  | s=ID ps=param* COLON a=term DOT {
-      make_pos $loc (P_symbol(Terms.Public, Terms.Const, make_pos $loc(s) s, ps, a))
+  | s=ID ps=param* COLON a=term DOT
+    {
+      let t = P_symbol
+                (Terms.Public, Terms.Const, make_pos $loc(s) s, ps, a) in
+      make_pos $loc t
     }
-  | KW_DEF s=ID COLON a=term DOT {
-      make_pos $loc (P_symbol(Terms.Public, Terms.Defin, make_pos $loc(s) s, [], a))
+  | KW_DEF s=ID COLON a=term DOT
+    {
+      let t = P_symbol
+                (Terms.Public, Terms.Defin, make_pos $loc(s) s, [], a) in
+      make_pos $loc t
     }
-  | KW_INJ s=ID COLON a=term DOT {
-      make_pos $loc (P_symbol(Terms.Public, Terms.Injec, make_pos $loc(s) s, [], a))
+  | KW_INJ s=ID COLON a=term DOT
+    {
+      let t = P_symbol
+                (Terms.Public, Terms.Injec, make_pos $loc(s) s, [], a) in
+      make_pos $loc t
     }
-  | KW_PRV s=ID COLON a=term DOT {
-      make_pos $loc (P_symbol(Terms.Protec, Terms.Defin, make_pos $loc(s) s, [], a))
+  | KW_PRV s=ID COLON a=term DOT
+    {
+      let t = P_symbol
+                (Terms.Protec, Terms.Defin, make_pos $loc(s) s, [], a) in
+      make_pos $loc t
     }
-  | KW_DEF s=ID COLON a=term DEFEQ t=term DOT {
-      make_pos $loc (P_definition(Terms.Public, false, make_pos $loc(s) s, [], Some(a), t))
+  | KW_DEF s=ID COLON a=term DEFEQ t=term DOT
+    {
+      let t = P_definition
+                (Terms.Public, false, make_pos $loc(s) s, [], Some(a), t) in
+      make_pos $loc t
     }
-  | KW_DEF s=ID DEFEQ t=term DOT {
-      make_pos $loc (P_definition(Terms.Public, false, make_pos $loc(s) s, [], None, t))
+  | KW_DEF s=ID DEFEQ t=term DOT
+    {
+      let t = P_definition
+                (Terms.Public, false, make_pos $loc(s) s, [], None, t) in
+      make_pos $loc t
     }
-  | KW_DEF s=ID ps=param+ COLON a=term DEFEQ t=term DOT {
-      make_pos $loc (P_definition(Terms.Public, false, make_pos $loc(s) s, ps, Some(a), t))
+  | KW_DEF s=ID ps=param+ COLON a=term DEFEQ t=term DOT
+    {
+      let t = P_definition
+                (Terms.Public, false, make_pos $loc(s) s, ps, Some(a), t) in
+      make_pos $loc t
     }
-  | KW_DEF s=ID ps=param+ DEFEQ t=term DOT {
-      make_pos $loc (P_definition(Terms.Public, false, make_pos $loc(s) s, ps, None, t))
+  | KW_DEF s=ID ps=param+ DEFEQ t=term DOT
+    {
+      let t = P_definition
+                (Terms.Public, false, make_pos $loc(s) s, ps, None, t) in
+      make_pos $loc t
     }
-  | KW_THM s=ID COLON a=term DEFEQ t=term DOT {
-      make_pos $loc (P_definition(Terms.Public, true , make_pos $loc(s) s, [], Some(a), t))
+  | KW_THM s=ID COLON a=term DEFEQ t=term DOT
+    {
+      let t = P_definition
+                (Terms.Public, true , make_pos $loc(s) s, [], Some(a), t) in
+      make_pos $loc t
     }
-  | KW_THM s=ID ps=param+ COLON a=term DEFEQ t=term DOT {
-      make_pos $loc (P_definition(Terms.Public, true , make_pos $loc(s) s, ps, Some(a), t))
+  | KW_THM s=ID ps=param+ COLON a=term DEFEQ t=term DOT
+    {
+      let t = P_definition
+                (Terms.Public, true , make_pos $loc(s) s, ps, Some(a), t) in
+      make_pos $loc t
     }
   | rs=rule+ DOT {
       make_pos $loc (P_rules(List.map translate_old_rule rs))
@@ -328,10 +358,10 @@ rule:
     }
 
 sterm:
-  | qid=QID            { make_pos $loc (P_Iden(make_pos $loc qid, false)) }
-  | id=ID              { make_pos $loc (P_Iden(make_pos $loc ([], id), false)) }
-  | WILD               { make_pos $loc P_Wild }
-  | TYPE               { make_pos $loc P_Type }
+  | qid=QID { make_pos $loc (P_Iden(make_pos $loc qid, false)) }
+  | id=ID   { make_pos $loc (P_Iden(make_pos $loc ([], id), false)) }
+  | WILD    { make_pos $loc P_Wild }
+  | TYPE    { make_pos $loc P_Type }
   | L_PAR t=term R_PAR { t }
 
 aterm:

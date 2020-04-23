@@ -34,8 +34,7 @@ for more information).
 make               # Build lambdapi.
 make doc           # Build the documentation.
 make install       # Install the program.
-make install_vim   # Install vim support.
-make install_emacs # Install emacs (>= 26.1) support (needs the eglot package)
+make install_vim   # Install vim support (optionally).
 ```
 
 **Note:** you can run `lambdapi` with `dune exec lambdapi`.

@@ -15,7 +15,14 @@ In the interest of code source uniformity, we ask that:
  - lines length should be limited to *78 characters* (excluding newline).
 
 You should at the very least run `make sanity_check` before committing anything.
+Please check you have GNU awk (gawk) installed or another UTF-8 compatible
+implementation of the AWK programming language interpreter.
 
+The script `tools/git_hook_helper.sh` helps setting up a git hook to run
+`make sanity_check` automatically *before* each commit.
+It is encouraged to set up such a hook.
+The script may be called with the `-b` option to include compilation in the
+hook.
 
 Type annotations and interface
 ------------------------------

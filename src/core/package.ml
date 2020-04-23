@@ -1,23 +1,19 @@
-(** Configuration file interface. *)
+(** Package configuration file interface. *)
 
 open Extra
 open Files
 open Console
 
-(** A configuration file is expected at the root of every package. It is used,
-    in particular, to figure out the module path under which the package is to
-    be placed. This information is also useful for installation. *)
+(** A package configuration file is expected at the root of every package. The
+    file is used to figure out the module path under which the package must be
+    placed. This information is also useful for installation. *)
 
-(* NOTE the information in the configuration file will eventually be used when
-   asking Lambdapi to install a package.  It will also be generated when a new
-   package is initialized. *)
-
-(** Configuration file name. *)
-let config_file_name : string = "lambdapi.pkg"
+(** Pacage configuration file name. *)
+let pkg_file : string = "lambdapi.pkg"
 
 (** Configuration file format (using an example).
 
-==== .lambdapi.pkg ===========
+==== lambdapi.pkg ============
 # only two required fields:
 package_name = my_package
 root_path    = contrib.my_pack
@@ -39,7 +35,7 @@ let read : file_path -> config_data = fun fname ->
   let lines =
     let ic =
       try open_in fname with Sys_error(_) ->
-        fatal_no_pos "Configuration file [%s] does not exist." fname
+        fatal_no_pos "Package file [%s] does not exist." fname
     in
     let lines = input_lines ic in
     close_in ic; lines
@@ -53,17 +49,22 @@ let read : file_path -> config_data = fun fname ->
     (* Get key and value (separated by ['=']). *)
     match String.split_on_char '=' l with
     | [k; v] -> (String.trim k, String.trim v) :: dict
-    | _      -> fatal_no_pos "Ill-formed configuration file [%s]." fname
+    | _      -> fatal_no_pos "Ill-formed package file [%s]." fname
   in
   let dict = List.fold_left handle_line [] lines in
   (* Getting a value given a key. *)
   let get k =
     try List.assoc k dict with Not_found ->
-      fatal_no_pos "Ill-formed configuration file (missing field [%s])." k
+      fatal_no_pos "Ill-formed package file [%s]: missing field [%s]." fname k
   in
   (* Building the configuration. *)
-  { package_name = get "package_name"
-  ; root_path    = String.split_on_char '.' (get "root_path") }
+  let package_name = get "package_name" in
+  let root_path = String.split_on_char '.' (get "root_path") in
+  try
+    Path.check_simple root_path;
+    {package_name; root_path}
+  with Fatal(_, msg) ->
+    fatal_no_pos "Ill-formed package file [%s].\n%s" fname msg
 
 (** [find_config fname] looks for a configuration file above [fname], which is
     typically a source file or object file.  If there is no configuration file
@@ -73,7 +74,7 @@ let read : file_path -> config_data = fun fname ->
 let find_config : file_path -> file_path option = fun fname ->
   let fname = Filename.realpath fname in
   let rec find dir =
-    let file = Filename.concat dir config_file_name in
+    let file = Filename.concat dir pkg_file in
     match Sys.file_exists file with
     | true                   -> Some(file)
     | false                  -> if dir = "/" then None else

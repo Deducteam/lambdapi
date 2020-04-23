@@ -1,0 +1,5 @@
+(executable
+ (name lambdapi)
+ (public_name lambdapi)
+ (modules :standard)
+ (libraries cmdliner unix stdlib-shims lambdapi.core lambdapi.lsp))

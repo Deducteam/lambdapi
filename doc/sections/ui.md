@@ -28,8 +28,8 @@ sudo apt install npm node-typescript
 
 ### Emacs
 
-The `emacs` mode can be optionally installed using `make install_emacs` in the
-`lambdapi` repository.  Support for the LSP server is enabled by default,  but
+The `emacs` mode is automatically installed during lambdapi installation
+via `make` . Support for the LSP server is enabled by default,  but
 it requires the [eglot](https://github.com/joaotavora/eglot) plugin to be
 installed (using `M-x package-install eglot RET` should work).
 
@@ -41,7 +41,7 @@ our LSP server yet.
 
 ### Vim
 
-The `Vim` mode can be installed similarly using the command `make install_vim`
+The `Vim` mode can be installed optionally using the command `make install_vim`
 in the `lambdapi` repository. It does not have support for the LSP server yet.
 
 ### Atom

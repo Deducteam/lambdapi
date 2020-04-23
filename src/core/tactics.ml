@@ -41,8 +41,8 @@ let handle_tactic : sig_state -> Proof.t -> p_tactic -> Proof.t =
   let (env, a) = Proof.Goal.get_type g in
 
   let scope = scope_term Public ss env in
-  let infer t = Typing.infer ss.builtins (Ctxt.of_env env) t in
-  let check t a = Typing.check ss.builtins (Ctxt.of_env env) t a in
+  let infer t = Typing.infer ss.builtins (Env.to_ctxt env) t in
+  let check t a = Typing.check ss.builtins (Env.to_ctxt env) t a in
 
   let handle_refine : term -> Proof.t = fun t ->
     (* Check if the goal metavariable appears in [t]. *)
@@ -50,15 +50,18 @@ let handle_tactic : sig_state -> Proof.t -> p_tactic -> Proof.t =
     log_tact "refining [%a] with term [%a]" pp_meta m pp t;
     if Basics.occurs m t then fatal tac.pos "Circular refinement.";
     (* Check that [t] is well-typed. *)
-    log_tact "proving [%a ⊢ %a : %a]" Ctxt.pp (Ctxt.of_env env) pp t pp a;
+    log_tact "proving [%a%a : %a]" pp_ctxt (Env.to_ctxt env) pp t pp a;
     if not (check t a) then fatal tac.pos "Ill-typed refinement.";
     (* Instantiation. *)
     set_meta m (Bindlib.unbox (Bindlib.bind_mvar (Env.vars env) (lift t)));
     (* New subgoals and focus. *)
     let metas = Basics.get_metas true t in
-    let new_goals = List.map Proof.Goal.of_meta metas in
+    let add_goal m = List.insert Proof.Goal.compare (Proof.Goal.of_meta m) in
+    let new_goals = MetaSet.fold add_goal metas [] in
+    (* New goals must appear first. *)
     Proof.({ps with proof_goals = new_goals @ gs})
   in
+
   match tac.elt with
   | P_tac_print
   | P_tac_proofterm

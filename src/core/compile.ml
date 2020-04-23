@@ -84,12 +84,19 @@ let rec compile : bool -> Path.t -> Sign.t = fun force path ->
       out 2 "Loaded  [%s]\n%!" obj; sign
     end
 
+(** [recompile] indicates whether we should recompile files who have an object
+    file that is already up to date. Note that this flag only applies to files
+    that are given on the command line explicitly, not their dependencies. *)
+let recompile = Stdlib.ref false
+
+(** [compile_file fname] is the main compiling function. It is called from the
+    main program exclusively. *)
 let compile_file : file_path -> Sign.t = fun fname ->
-  Config.apply_config fname;
+  Package.apply_config fname;
   (* Compute the module path (checking the extension). *)
   let mp = Files.file_to_module fname in
   (* Run compilation. *)
-  compile true mp
+  compile Stdlib.(!recompile) mp
 
 (* NOTE we need to give access to the compilation function to the parser. This
    is the only way infix symbols can be parsed, since they may be added to the

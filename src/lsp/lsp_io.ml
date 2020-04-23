@@ -37,8 +37,8 @@ let read_request ic =
         ) in
     J.from_string raw_obj
   with
-  (* if the end of input is encountered while some more characters are needed to read the
-     current conversion specification. *)
+  (* if the end of input is encountered while some more characters are needed
+     to read the current conversion specification. *)
   | End_of_file ->
     raise (ReadError "EOF")
   (* if the input does not match the format. *)

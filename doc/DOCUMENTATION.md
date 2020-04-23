@@ -13,6 +13,8 @@ Table of contents
 
  - [Installation](sections/install.md)
 
+ - [Getting started](sections/getting_started.md)
+
  - [Command line options](sections/options.md)
 
  - [User interfaces](sections/ui.md)
@@ -24,6 +26,8 @@ Table of contents
  - [Commands](sections/commands.md)
 
  - [Tactics](sections/tactics.md)
+
+ - [Editing Lambdapi source code with Emacs](sections/emacs.md)
 
  - [Structure of directories and files](sections/structure.md)
 

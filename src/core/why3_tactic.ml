@@ -42,15 +42,16 @@ type config =
   ; symb_not : sym (** Not(¬) symbol.            *) }
 
 (** [get_config pos builtins] build the configuration using [builtins]. *)
-let get_config : Pos.popt -> sym StrMap.t -> config = fun pos builtins ->
-  { symb_P   = Sign.builtin pos builtins "P"
-  ; symb_T   = Sign.builtin pos builtins "T"
-  ; symb_or  = Sign.builtin pos builtins "or"
-  ; symb_and = Sign.builtin pos builtins "and"
-  ; symb_imp = Sign.builtin pos builtins "imp"
-  ; symb_bot = Sign.builtin pos builtins "bot"
-  ; symb_top = Sign.builtin pos builtins "top"
-  ; symb_not = Sign.builtin pos builtins "not" }
+let get_config : Pos.popt -> Builtin.map -> config = fun pos map ->
+  let builtin = Builtin.get pos map in
+  { symb_P   = builtin "P"
+  ; symb_T   = builtin "T"
+  ; symb_or  = builtin "or"
+  ; symb_and = builtin "and"
+  ; symb_imp = builtin "imp"
+  ; symb_bot = builtin "bot"
+  ; symb_top = builtin "top"
+  ; symb_not = builtin "not" }
 
 (** A map from lambdapi terms to Why3 constants. *)
 type cnst_table = (term * Why3.Term.lsymbol) list
@@ -88,7 +89,9 @@ let translate_term : config -> cnst_table -> term ->
         (tbl, Why3.Term.t_true)
     | (_        , _       )                        ->
         (* If the term [p] is mapped in [tbl] then use it. *)
-        try (tbl, Why3.Term.ps_app (List.assoc_eq Basics.eq t tbl) [])
+        try
+          let sym = List.assoc_eq (Eval.eq_modulo []) t tbl in
+          (tbl, Why3.Term.ps_app sym [])
         with Not_found ->
           (* Otherwise generate a new constant in why3. *)
           let sym = Why3.Term.create_psymbol (Why3.Ident.id_fresh "P") [] in
@@ -104,7 +107,7 @@ let encode : Pos.popt -> sym StrMap.t -> Env.env -> term -> Why3.Task.task =
     fun pos builtins hs g ->
   let cfg = get_config pos builtins in
   let (constants, hypothesis) =
-    let translate_hyp (tbl, map) (name, (_, hyp)) =
+    let translate_hyp (tbl, map) (name, (_, hyp, _)) =
       match translate_term cfg tbl (Bindlib.unbox hyp) with
       | Some(tbl, why3_hyp) -> (tbl, StrMap.add name why3_hyp map)
       | None                -> (tbl, map)
@@ -185,7 +188,7 @@ let handle : Pos.popt -> Proof.proof_state -> sig_state -> string option ->
   let tsk = encode pos ps.Proof.proof_builtins hyps trm in
   (* Run the task with the prover named [prover_name]. *)
   if not (run_task tsk pos prover_name) then
-    fatal pos "%s did not found a proof" prover_name;
+    fatal pos "%s did not find a proof" prover_name;
   (* Create a new axiom that represents the proved goal. *)
   let axiom_name = new_axiom_name () in
   (* Get the meta type of the current goal (with quantified context). *)
@@ -197,6 +200,6 @@ let handle : Pos.popt -> Proof.proof_state -> sig_state -> string option ->
   (* Tell the user that the goal is proved (verbose 2). *)
   if !log_enabled then log_why3 "goal proved: axiom [%s] created" axiom_name;
   (* Return the variable terms of each item in the context. *)
-  let terms = List.rev_map (fun (_, (x, _)) -> Vari x) hyps in
+  let terms = List.rev_map (fun (_, (x, _, _)) -> Vari x) hyps in
   (* Apply the instance of the axiom with context. *)
   Basics.add_args (symb a) terms

@@ -22,17 +22,17 @@ let rule_order : bool Stdlib.ref = Stdlib.ref false
     a cyclic dependency).
 
     {b Example:} let us consider the rewrite system for symbol [f] defined as:
-    - [f Z     (S m) → S m],
-    - [f n     Z     → n] and
-    - [f (S n) (S m) → S (S m)].
+    - [f Z     (S m) ↪ S m],
+    - [f n     Z     ↪ n] and
+    - [f (S n) (S m) ↪ S (S m)].
 
     A possible decision tree might be
     {v
-    ├─?─∘─Z─∘     → n
-    ├─Z─∘─Z─∘     → n
-    │   └─S─∘─?─∘ → S m
-    ├─S─∘─Z─∘     → n
-    └─S─∘─?─∘     → S (S m)
+    ├─?─∘─Z─∘     ↪ n
+    ├─Z─∘─Z─∘     ↪ n
+    │   └─S─∘─?─∘ ↪ S m
+    ├─S─∘─Z─∘     ↪ n
+    └─S─∘─?─∘     ↪ S (S m)
     v}
     with [∘] being a node (with an omitted label) and [─u─] being an edge with
     a matching on symbol [u] or a variable or wildcard when [?]. Typically the
@@ -56,14 +56,14 @@ type tree = rhs Tree_types.tree
     - free variable conditions ({!constructor:Tree_types.tree_cond.CondFV}).
 
     Convertibility conditions are used whenever we try to apply a rule that is
-    not left-linear, for example [f &x &x (s &y) → r]. In this case we need to
+    not left-linear, for example [f $x $x (s $y) ↪ r]. In this case we need to
     test whether the two terms at position [{0}] and [{1}] (that correspond to
-    pattern variable [&x]) are convertible: the rule may only apply if that is
+    pattern variable [$x]) are convertible: the rule may only apply if that is
     the case. Note that in general there may be more than two occurrences of a
     variable, so we may need to check convertibility several times.
 
     Free variable constraints are used to verify which variables are free in a
-    term. If there is a rule of the form [f (λ x y, &Y[y]) → &Y], then we need
+    term. If there is a rule of the form [f (λ x y, $Y[y]) ↪ $Y], then we need
     to check that the term at position [{0.0}] does not depend on [x] (or that
     among [x] and [y], only [y] is allowed). *)
 
@@ -214,7 +214,7 @@ end
     [reconstruct l m r] has a time complexity of [Θ(length l + length m)]. *)
 
 (** Clause matrices encode pattern matching problems.  The clause matrix {i C}
-    can be denoted {i C = P → A} where {i P} is a {e pattern matrix} and {i A}
+    can be denoted {i C = P ↪ A} where {i P} is a {e pattern matrix} and {i A}
     is a column of {e RHS}.  Each line of a matrix is a pattern to which a RHS
     is attached. When reducing a term,  if a line filters the term  (i.e., the
     term matches the pattern) then term is rewritten to the RHS. *)
@@ -240,7 +240,7 @@ module CM = struct
       environment using free variables [xs]. *)
   type env_builder = (int * (int * int array)) list
 
-  (** A clause matrix row (schematically {i c_lhs → c_rhs if cond_pool}). *)
+  (** A clause matrix row (schematically {i c_lhs ↪ c_rhs if cond_pool}). *)
   type clause =
     { c_lhs : term array
     (** Left hand side of a rule. *)
@@ -281,7 +281,7 @@ module CM = struct
       [pp_cond] indicates whether the condition pull should be printed. *)
   let pp : ?pp_cond:bool -> t pp = fun ?(pp_cond=false) oc m ->
     let pp_lhs oc lhs =
-      Format.fprintf oc "@[%a → … @]" (Array.pp Print.pp " | ") lhs
+      Format.fprintf oc "@[%a ↪ … @]" (Array.pp Print.pp " | ") lhs
     in
     let pp_path oc l =
       if l = [] then Format.fprintf oc "ε" else
@@ -525,9 +525,12 @@ module CM = struct
       let ph, pargs, lenp = get_args_len pat in
       let h, args, lenh = get_args_len r.c_lhs.(col) in
       match ph, h with
-      | Symb(_), Symb(_)
-      | Vari(_), Vari(_) ->
-          if lenh = lenp && Basics.eq ph h
+      | Symb(f,_), Symb(g,_) ->
+          if lenh = lenp && f == g
+          then Some({r with c_lhs = insert (Array.of_list args)})
+          else None
+      | Vari(x), Vari(y) ->
+          if lenh = lenp && Bindlib.eq_vars x y
           then Some({r with c_lhs = insert (Array.of_list args)})
           else None
       | _      , Patt(_) ->

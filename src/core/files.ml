@@ -1,5 +1,6 @@
 (** File utilities. *)
 
+open Timed
 open Extra
 open Console
 
@@ -22,6 +23,24 @@ module Path =
     (** [pp oc mp] prints [mp] to channel [oc]. *)
     let pp : module_path pp = fun oc mp ->
       Format.pp_print_string oc (String.concat "." mp)
+
+    (** [check_simple mp] Checks that [mp] is a “simple” module path, that is,
+        that its members are of the form ["[a-zA-Z_][a-zA-Z0-9_]*"]. *)
+    let check_simple : t -> unit = fun mod_path ->
+      let fail fmt =
+        fatal_msg "The (simple) module path [%a] is ill-formed: " pp mod_path;
+        fatal_no_pos fmt
+      in
+      let valid_path_member s =
+        if String.length s = 0 then fail "empty module path member.";
+        for i = 0 to String.length s - 1 do
+          match String.get s i with
+          | 'a'..'z' | 'A'..'Z' | '_' -> ()
+          | '0'..'9' when i <> 0      -> ()
+          | _                         -> fail "invalid path member [%s]." s
+        done
+      in
+      List.iter valid_path_member mod_path
   end
 
 (** Functional maps with module paths as keys. *)
@@ -126,12 +145,12 @@ let set_lib_root : string -> unit = fun path ->
   try
     let path = Filename.realpath path in
     if not (Sys.is_directory path) then
-      exit_with "Invalid library root ([%s] is not a directory)." path;
+      fatal_no_pos "Invalid library root: [%s] is not a directory." path;
     match Stdlib.(!lib_root) with
     | None    -> Stdlib.(lib_root := Some(path))
-    | Some(_) -> exit_with "The library root was already set."
+    | Some(_) -> fatal_no_pos "The library root was already set."
   with Sys_error(_) | Invalid_argument(_) ->
-    exit_with "Invalid library root (no such file or directory [%s])." path
+    fatal_no_pos "Invalid library root: no such file or directory [%s]." path
 
 (** [default_lib_root ()] returns the default library root curently configured
     for the system. It depends on the current Opam switch (if any), and it may
@@ -153,21 +172,22 @@ let lib_root_path : unit -> string = fun _ ->
   try
     let path = Filename.realpath path in
     if not (Sys.is_directory path) then
-      exit_with "Invalid default library root [%s] (not a directory)." path;
+      fatal_no_pos "Invalid default library root [%s]: this is not a \
+                    directory." path;
     path
   with Sys_error(_) | Invalid_argument(_) ->
-    exit_with "Default library root [%s] does not exist." path
+    fatal_no_pos "Default library root [%s] does not exist." path
 
 (** [lib_mappings] stores the specified mappings of library paths. *)
-let lib_mappings : ModMap.t Stdlib.ref =
-  Stdlib.ref ModMap.empty
+let lib_mappings : ModMap.t ref =
+  ref ModMap.empty
 
 (** [init_lib_root ()] registers the currently set library root as part of our
     module mapping. This function MUST be called before one can consider using
     [module_to_file] or [module_path]. *)
 let init_lib_root : unit -> unit = fun _ ->
   let root = lib_root_path () in
-  Stdlib.(lib_mappings := ModMap.set_root root !lib_mappings)
+  lib_mappings := ModMap.set_root root !lib_mappings
 
 (** [new_lib_mapping s] attempts to parse [s] as a library mapping of the form
     ["<modpath>:<path>"]. Then, if module path ["<modpath>"] is not yet mapped
@@ -175,44 +195,34 @@ let init_lib_root : unit -> unit = fun _ ->
     new mapping is registered. In case of failure the program terminates and a
     graceful error message is displayed. *)
 let new_lib_mapping : string -> unit = fun s ->
-  let fail s = exit_with ("Ill-formed argument to \"--map\": " ^^ s ^^ ".") in
   let (module_path, file_path) =
     match String.split_on_char ':' s with
     | [mp; dir] -> (String.split_on_char '.' mp, dir)
-    | _         -> fail "bad syntax (use \"--help\")"
+    | _         ->
+    fatal_no_pos "Bad syntax for \"--map-dir\" option (expecting MOD:DIR)."
   in
-  let valid_path_member s =
-    if String.length s = 0 then fail "empty module path member";
-    for i = 0 to String.length s - 1 do
-      match String.get s i with
-      | 'a'..'z' | 'A'..'Z' | '_' -> ()
-      | '0'..'9' when i <> 0      -> ()
-      | _                         -> fail "invalid path member \"%s\"" s
-    done
-  in
-  List.iter valid_path_member module_path;
+  Path.check_simple module_path;
   let file_path = Filename.realpath file_path in
   let new_mapping =
     try ModMap.add module_path file_path !lib_mappings
     with ModMap.Already_mapped ->
-      fail "module path [%a] is already mapped" Path.pp module_path
+    fatal_no_pos "Module path [%a] is already mapped." Path.pp module_path
   in
-  Stdlib.(lib_mappings := new_mapping)
+  lib_mappings := new_mapping
 
 (** [current_path ()] returns the canonical running path of the program. *)
 let current_path : unit -> string = fun _ ->
   Filename.realpath "."
 
 (** [current_mappings ()] gives the currently registered library mappings. *)
-let current_mappings : unit -> ModMap.t = fun _ ->
-  Stdlib.(!lib_mappings)
+let current_mappings : unit -> ModMap.t = fun _ -> !lib_mappings
 
 (** [module_to_file mp] converts module path [mp] into the corresponding "file
     path" (with no attached extension). It is assumed that [init_lib_root] was
     called prior to any call to this function. *)
 let module_to_file : Path.t -> file_path = fun mp ->
   let path =
-    try ModMap.get mp Stdlib.(!lib_mappings) with ModMap.Root_not_set ->
+    try ModMap.get mp !lib_mappings with ModMap.Root_not_set ->
       assert false (* Unreachable after [init_lib_root] is called. *)
   in
   log_file "[%a] points to base name [%s]." Path.pp mp path; path
@@ -233,9 +243,15 @@ let legacy_src_extension : string = ".dk"
 let file_to_module : string -> Path.t = fun fname ->
   (* Sanity check: source file extension. *)
   let ext = Filename.extension fname in
-  if not (List.mem ext [ src_extension ; legacy_src_extension ]) then
-    fatal_no_pos "Invalid extension for [%s] (expected [%s] or [%s])." fname
-      src_extension legacy_src_extension;
+  let valid_extensions =
+    [ src_extension ; legacy_src_extension ; obj_extension ]
+  in
+  if not (List.mem ext valid_extensions) then
+    begin
+      fatal_msg "Invalid extension for [%s].\n" fname;
+      let pp_exp = List.pp (fun ff -> Format.fprintf ff "[%s]") ", " in
+      fatal_no_pos "Expected any of: %a." pp_exp valid_extensions
+    end;
   (* Normalizing the file path. *)
   let fname =
     try Filename.realpath fname with Invalid_argument(_) ->
@@ -258,8 +274,8 @@ let file_to_module : string -> Path.t = fun fname ->
     | Some(mp, path) -> (mp, path)
     | None           ->
         fatal_msg "[%s] cannot be mapped under the library root.\n" fname;
-        fatal_msg "Consider adding a package file [lambdapi.pkg] under your ";
-        fatal_no_pos "source tree, or use the [--map-dir] option."
+        fatal_msg "Consider adding a package file under your source tree, ";
+        fatal_no_pos "or use the [--map-dir] option."
   in
   ignore (mp, path);
   (* Build the module path. *)
@@ -271,6 +287,11 @@ let file_to_module : string -> Path.t = fun fname ->
   let full_mp = mp @ String.split_on_char '/' rest in
   log_file "File [%s] is module [%a]." fname Path.pp full_mp;
   full_mp
+
+let install_path : string -> string = fun fname ->
+  let mod_path = file_to_module fname in
+  let ext = Filename.extension fname in
+  List.fold_left Filename.concat (lib_root_path ()) mod_path ^ ext
 
 (** [mod_time fname] returns the modification time of file [fname] represented
     as a [float]. [neg_infinity] is returned if the file does not exist. *)
