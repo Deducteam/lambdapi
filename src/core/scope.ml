@@ -52,7 +52,7 @@ let find_sym : prt:bool -> prv:bool -> bool -> sig_state -> qident ->
     | []                               -> (* Symbol in scope. *)
         begin
           try (fst (StrMap.find s st.in_scope), Nothing) with Not_found ->
-          match List.assoc s Unif_hints.map with
+          match List.assoc s Unif.Hint.map with
           | Symb(s, h)          -> (s, h)
           | _                   -> assert false
           | exception Not_found ->
@@ -658,7 +658,7 @@ let scope_hint : sig_state -> p_hint -> rule loc = fun ss h ->
     in
     let (h, args) = Basics.get_args lhs in
     assert (match h with
-        | Symb(s,_) -> s == Basics.to_sym Unif_hints.atom
+        | Symb(s,_) -> s == Basics.to_sym Unif.Hint.atom
         | _ -> false);
     args
   in
@@ -704,11 +704,11 @@ let scope_hint : sig_state -> p_hint -> rule loc = fun ss h ->
   (* Retrieve the sub unification problems in the form (xi, Hi). *)
   let bindings : (tevar * term) list =
     let (h, args) = Basics.get_args rhst in
-    assert (Basics.to_sym h == Basics.to_sym Unif_hints.list);
+    assert (Basics.to_sym h == Basics.to_sym Unif.Hint.list);
     let f t = (* [f (xi ≡ Hi)] returns [(xi, Hi)] *)
       match Basics.get_args t with
       | (Symb(s, _), [TEnv(TE_Vari(x),_); u]) ->
-          assert (s == Basics.to_sym Unif_hints.atom);
+          assert (s == Basics.to_sym Unif.Hint.atom);
           (x, u)
       | _                                     ->
           assert false (* Ill-formed hint. *)

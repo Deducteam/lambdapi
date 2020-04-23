@@ -129,9 +129,9 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
   | P_hint(h)                    ->
       (* Approximately same processing as rules without SR checking. *)
       let h = scope_hint ss h in
-      let hu = Basics.to_sym Terms.Unif_hints.atom in
+      let hu = Basics.to_sym Unif.Hint.atom in
       hu.sym_rules := !(hu.sym_rules) @ [h.elt];
-      out 3 "(hint) %a\n" Print.pp_hint h.elt;
+      out 3 "(hint) %a\n" Unif.Hint.pp h.elt;
       Tree.update_dtree hu;
       (ss, None) (* Unchanged *)
   | P_definition(e,op,x,xs,ao,t) ->

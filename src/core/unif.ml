@@ -33,6 +33,43 @@ let pp_problem oc p =
 let no_problems : problems =
   {to_solve  = []; unsolved = []; recompute = false}
 
+(** Some definitions for unification hints. *)
+module Hint = struct
+
+  (** Symbol representing an atomic unification problem. The term [atom t u]
+      represents [t =? u]. *)
+  let atom : term =
+    let sym =
+      { sym_name="unif_atom"; sym_type=ref Kind; sym_path=[]
+      ; sym_def=ref None; sym_impl=[];sym_tree=ref Tree_types.empty_dtree
+      ; sym_prop=Defin; sym_expo=Public; sym_rules=ref [] }
+    in
+    Symb(sym, Binary("≡"))
+
+  (** Symbol for a list of atoms. *)
+  let list : term =
+    let sym =
+      { sym_name="unif_list"; sym_type=ref Kind; sym_path=[]
+      ; sym_def=ref None; sym_impl=[];sym_tree=ref Tree_types.empty_dtree
+      ; sym_prop=Defin; sym_expo=Public; sym_rules=ref [] }
+    in
+    Symb(sym, Nothing)
+
+  (** Mapping from symbol names to symbols. *)
+  let map : (string * term) list =
+    [("unif_atom", atom); ("unif_list", list)]
+
+  (** [pp_hint oc h] prints hint [h] to channel [oc]. *)
+  let pp = fun oc h ->
+    let (s, pph) =
+      match atom with
+      | Symb(s, pph) -> s, pph
+      | _            -> assert false
+    in
+    pp_rule oc (s, pph, h)
+
+end
+
 (** [nl_distinct_vars ctx ts] checks that [ts] is made of variables  [vs] only
     and returns some copy of [vs] where variables occurring more than once are
     replaced by fresh variables.  Variables defined in  [ctx] are unfolded. It
@@ -126,7 +163,7 @@ let try_hints : ctxt -> term -> term -> unif_constrs option =
   fun ctx s t ->
   if !log_enabled then log_unif "hint [%a]" pp_constr (ctx,s,t);
   let exception No_match in
-  let tree = !((to_sym Unif_hints.atom).sym_tree) in
+  let tree = !((to_sym Hint.atom).sym_tree) in
   try
     let rhs =
       match Eval.tree_walk tree ctx [s;t] with
@@ -140,8 +177,8 @@ let try_hints : ctxt -> term -> term -> unif_constrs option =
     in
     let rec subpb_in t =
       match Basics.get_args (unfold t) with
-      | (Symb(u,_),[s;t]) when u == to_sym Unif_hints.atom -> [(ctx,s,t)]
-      | (Symb(u,_),ts   ) when u == to_sym Unif_hints.list ->
+      | (Symb(u,_),[s;t]) when u == to_sym Hint.atom -> [(ctx,s,t)]
+      | (Symb(u,_),ts   ) when u == to_sym Hint.list ->
           List.concat (List.map subpb_in ts)
       | _                 -> assert false
     in

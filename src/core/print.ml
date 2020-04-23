@@ -175,15 +175,6 @@ let pp_ctxt : ctxt pp = fun oc ctx ->
   let out = if !print_contexts then Format.fprintf else Format.ifprintf in
   out oc "%a ⊢ " pp_ctxt ctx
 
-(** [pp_hint oc h] prints hint [h] to channel [oc]. *)
-let pp_hint : rule pp = fun oc h ->
-  let (s, pph) =
-    match Unif_hints.atom with
-    | Symb(s, pph) -> s, pph
-    | _            -> assert false
-  in
-  pp_rule oc (s, pph, h)
-
 (** [pp_constr oc (t,u)] prints the unification constraints [(t,u)] to the
     output channel [oc]. *)
 let pp_constr : (ctxt * term * term) pp = fun oc (ctx, t, u) ->
