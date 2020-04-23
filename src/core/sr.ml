@@ -4,6 +4,7 @@ open Extra
 open Timed
 open Console
 open Terms
+open Print
 
 (** Logging function for typing. *)
 let log_subj = new_logger 's' "subj" "subject-reduction"
@@ -84,11 +85,10 @@ type index_tbl = (string, int) Hashtbl.t
    [term_env] variable. The pre-rule [pr] is provided to give access to these
    variables and also their expected arities. *)
 let symb_to_tenv
-    : Sig_state.t -> Scope.pre_rule Pos.loc -> sym list -> index_tbl -> term
-      -> tbox
-  = fun ss {elt={pr_vars=vars;pr_arities=arities;_};pos} syms htbl t ->
+    : Scope.pre_rule Pos.loc -> sym list -> index_tbl -> term -> tbox
+  = fun {elt={pr_vars=vars;pr_arities=arities;_};pos} syms htbl t ->
   let rec symb_to_tenv t =
-    log_subj "symb_to_tenv %a" (Print.pp_term ss) t;
+    log_subj "symb_to_tenv %a" pp_term t;
     let (h, ts) = Basics.get_args t in
     let ts = List.map symb_to_tenv ts in
     let (h, ts) =
@@ -131,13 +131,10 @@ let symb_to_tenv
   in
   symb_to_tenv t
 
-(** [check_rule ss r] checks whether the pre-rule [r] is well-typed in
+(** [check_rule r] checks whether the pre-rule [r] is well-typed in
    signature state [ss] and then construct the corresponding rule. Note that
    [Fatal] is raised in case of error. *)
-let check_rule : Sig_state.t -> Scope.pre_rule Pos.loc -> rule = fun ss pr ->
-  let pp_term = Print.pp_term ss in
-  let pp_rule = Print.pp_rule ss in
-  let pp_constr = Print.pp_constr ss in
+let check_rule : Scope.pre_rule Pos.loc -> rule = fun pr ->
   (* Unwrap the contents of the pre-rule. *)
   let (pos, s, lhs, vars, rhs_vars, arities) =
     let Pos.{elt=Scope.{pr_sym;pr_lhs;pr_vars;pr_rhs;pr_arities;_}; pos} = pr
@@ -186,7 +183,7 @@ let check_rule : Sig_state.t -> Scope.pre_rule Pos.loc -> rule = fun ss pr ->
       log_subj (mag "transformed RHS is [%a]") pp_term rhs_typing
     end;
   (* Infer the typing constraints of the LHS. *)
-  match Typing.infer_constr ss [] lhs_typing with
+  match Typing.infer_constr [] lhs_typing with
   | None                      -> fatal pos "The LHS is not typable."
   | Some(ty_lhs, lhs_constrs) ->
   if !log_enabled then
@@ -230,7 +227,7 @@ let check_rule : Sig_state.t -> Scope.pre_rule Pos.loc -> rule = fun ss pr ->
     Array.iter instantiate metas; Stdlib.(!symbols)
   in
   (* Compute the constraints for the RHS to have the same type as the LHS. *)
-  let to_solve = Infer.check ss [] rhs_typing ty_lhs in
+  let to_solve = Infer.check [] rhs_typing ty_lhs in
   if !log_enabled then
     begin
       log_subj (gre "RHS has type %a") pp_term ty_lhs;
@@ -241,7 +238,7 @@ let check_rule : Sig_state.t -> Scope.pre_rule Pos.loc -> rule = fun ss pr ->
   (* TODO we should complete the constraints into a set of rewriting rule on
      the function symbols of [symbols]. *)
   (* Solving the typing constraints of the RHS. *)
-  match Unif.(solve ss {empty_problem with to_solve}) with
+  match Unif.(solve {empty_problem with to_solve}) with
   | None     -> fatal pos "The rewriting rule does not preserve typing."
   | Some(cs) ->
   let is_constr c =
@@ -261,7 +258,7 @@ let check_rule : Sig_state.t -> Scope.pre_rule Pos.loc -> rule = fun ss pr ->
       fatal pos "Unable to prove type preservation for a rewriting rule."
     end;
   (* Replace metavariable symbols by term_env variables, and bind them. *)
-  let rhs = symb_to_tenv ss pr symbols htbl rhs_typing in
+  let rhs = symb_to_tenv pr symbols htbl rhs_typing in
   if !log_enabled then
     log_subj "final RHS is [%a]" pp_term (Bindlib.unbox rhs);
   (* TODO optimisation for evaluation: environment minimisation. *)

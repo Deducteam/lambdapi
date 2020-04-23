@@ -16,6 +16,9 @@ open Sig_state
 let log_prnt = new_logger 'p' "prnt" "pretty-printing"
 let log_prnt = log_prnt.logger
 
+(** Current signature state. *)
+let sig_state : sig_state ref = ref Sig_state.empty
+
 (** Flag controling the printing of the domains of λ-abstractions. *)
 let print_domains : bool ref = Console.register_flag "print_domains" false
 
@@ -29,7 +32,7 @@ let print_meta_type : bool ref = Console.register_flag "print_meta_type" false
 let print_contexts : bool ref = Console.register_flag "print_contexts" false
 
 (** [assoc oc a] prints associativity [a] to channel [oc]. *)
-let assoc : assoc pp = fun oc assoc ->
+let pp_assoc : assoc pp = fun oc assoc ->
   Format.fprintf oc
     (match assoc with
      | Assoc_none -> ""
@@ -37,39 +40,39 @@ let assoc : assoc pp = fun oc assoc ->
      | Assoc_right -> "right")
 
 (** [hint oc a] prints hint [h] to channel [oc]. *)
-let hint : hint pp = fun oc pp_hint ->
+let pp_hint : hint pp = fun oc pp_hint ->
   match pp_hint with
   | No_hint -> ()
   | Prefix(n,p,_) -> Format.fprintf oc "prefix %s %f" n p
-  | Infix(n,a,p,_) -> Format.fprintf oc "infix %s %a %f" n assoc a p
+  | Infix(n,a,p,_) -> Format.fprintf oc "infix %s %a %f" n pp_assoc a p
 
-(** [qualified ss s] prints symbol [s] fully qualified to channel [oc]. *)
-let qualified : sig_state -> sym pp = fun _ss oc s ->
+(** [qualified s] prints symbol [s] fully qualified to channel [oc]. *)
+let pp_qualified : sym pp = fun oc s ->
   Format.fprintf oc "%a.%s" Files.Path.pp s.sym_path s.sym_name
     (*FIXME: handle aliases. *)
 
 (** Get the printing hint of a symbol. *)
-let get_hint : sig_state -> sym -> hint = fun ss s ->
-  try SymMap.find s ss.hints with Not_found -> No_hint
+let get_hint : sym -> hint = fun s ->
+  try SymMap.find s (!sig_state).hints with Not_found -> No_hint
 
 (** [pp_symbol oc s] prints the name of the symbol [s] to channel [oc]. *)
-let pp_symbol : sig_state -> sym pp = fun ss oc s ->
-  if SymMap.mem s ss.hints then Format.pp_print_string oc s.sym_name
-  else qualified ss oc s
+let pp_symbol : sym pp = fun oc s ->
+  if SymMap.mem s (!sig_state).hints then Format.pp_print_string oc s.sym_name
+  else pp_qualified oc s
 
 (** [pp_tvar oc x] prints the term variable [x] to the channel [oc]. *)
 let pp_tvar : tvar pp = fun oc x ->
   Format.pp_print_string oc (Bindlib.name_of x)
 
 (** [pp_meta oc m] prints the uninstantiated meta-variable [m] to [oc]. *)
-let rec pp_meta : sig_state -> meta pp = fun ss oc m ->
+let rec pp_meta : meta pp = fun oc m ->
   if !print_meta_type then
-    Format.fprintf oc "(%s:%a)" (meta_name m) (pp_term ss) !(m.meta_type)
+    Format.fprintf oc "(%s:%a)" (meta_name m) pp_term !(m.meta_type)
   else
     Format.pp_print_string oc (meta_name m)
 
 (** [pp_term oc t] prints the term [t] to the channel [oc]. *)
-and pp_term : sig_state -> term pp = fun ss oc t ->
+and pp_term : term pp = fun oc t ->
   let out = Format.fprintf in
   (* The possible priority levels are [`Func] (top level, including
      abstraction or product), [`Appl] (application) and [`Atom] (smallest
@@ -89,7 +92,7 @@ and pp_term : sig_state -> term pp = fun ss oc t ->
     | Symb(s) when not !print_implicits ->
         begin
           let args = Basics.expl_args s args in
-          match get_hint ss s with
+          match get_hint s with
           | No_hint -> pp_appl h args
           | Prefix(_) -> pp_appl h args
           | Infix(op,_,_,_) ->
@@ -131,8 +134,8 @@ and pp_term : sig_state -> term pp = fun ss oc t ->
     | Vari(x)     -> pp_tvar oc x
     | Type        -> out oc "TYPE"
     | Kind        -> out oc "KIND"
-    | Symb(s)     -> pp_symbol ss oc s
-    | Meta(m,e)   -> out oc "%a%a" (pp_meta ss) m pp_env e
+    | Symb(s)     -> pp_symbol oc s
+    | Meta(m,e)   -> out oc "%a%a" pp_meta m pp_env e
     | Patt(_,n,e) -> out oc "$%s%a" n pp_env e
     | TEnv(t,e)   -> out oc "$%a%a" pp_term_env t pp_env e
     (* Product and abstraction (only them can be wrapped). *)
@@ -164,22 +167,22 @@ and pp_term : sig_state -> term pp = fun ss oc t ->
 
 (** [pp_rule oc (s,h,r)] prints the rule [r] of symbol [s] to the output
    channel [oc]. *)
-let pp_rule : sig_state -> (sym * rule) pp
-  = fun ss oc (s,r) ->
+let pp_rule : (sym * rule) pp
+  = fun oc (s,r) ->
   let lhs = Basics.add_args (Symb s) r.lhs in
   let (_, rhs) = Bindlib.unmbind r.rhs in
-  Format.fprintf oc "%a ↪ %a" (pp_term ss) lhs (pp_term ss) rhs
+  Format.fprintf oc "%a ↪ %a" pp_term lhs pp_term rhs
 
 (** [pp_ctxt oc ctx] displays context [ctx] if {!val:print_contexts} is
     true, with [ ⊢ ] after; and nothing otherwise. *)
-let pp_ctxt : sig_state -> ctxt pp = fun ss oc ctx ->
+let pp_ctxt : ctxt pp = fun oc ctx ->
   if !print_contexts then
-    let pp = pp_term ss in
     let pp_ctxt : ctxt pp = fun oc ctx ->
       let pp_e oc (x,a,t) =
         match t with
-        | None    -> Format.fprintf oc "%a: %a" pp_tvar x pp a
-        | Some(t) -> Format.fprintf oc "%a: %a ≔ %a" pp_tvar x pp a pp t
+        | None    -> Format.fprintf oc "%a: %a" pp_tvar x pp_term a
+        | Some(t) ->
+            Format.fprintf oc "%a: %a ≔ %a" pp_tvar x pp_term a pp_term t
       in
       if ctx = [] then Format.pp_print_string oc "∅"
       else List.pp pp_e ", " oc (List.rev ctx)
@@ -188,31 +191,18 @@ let pp_ctxt : sig_state -> ctxt pp = fun ss oc ctx ->
 
 (** [pp_typing oc (c,t,u)] prints the typing constraint [c] to the
     output channel [oc]. *)
-let pp_typing : sig_state -> constr pp
-  = fun ss oc (ctx, t, u) ->
-  Format.fprintf oc "%a%a : %a"
-    (pp_ctxt ss) ctx (pp_term ss) t (pp_term ss) u
+let pp_typing : constr pp = fun oc (ctx, t, u) ->
+  Format.fprintf oc "%a%a : %a" pp_ctxt ctx pp_term t pp_term u
 
 (** [pp_constr oc c] prints the unification constraints [c] to the
     output channel [oc]. *)
-let pp_constr : sig_state -> constr pp
-  = fun ss oc (ctx, t, u) ->
-  Format.fprintf oc "%a%a ≡ %a"
-    (pp_ctxt ss) ctx (pp_term ss) t (pp_term ss) u
+let pp_constr : constr pp = fun oc (ctx, t, u) ->
+  Format.fprintf oc "%a%a ≡ %a" pp_ctxt ctx pp_term t pp_term u
 
 (** [pp_constr oc p] prints the unification problem [p] to the
     output channel [oc]. *)
-let pp_problem : sig_state -> problem pp = fun ss oc p ->
+let pp_problem : problem pp = fun oc p ->
   Format.fprintf oc "{ to_solve = [%a]; unsolved = [%a]; recompute = %b }"
-    (List.pp (pp_constr ss) "; ") p.to_solve
-    (List.pp (pp_constr ss) "; ") p.unsolved
+    (List.pp pp_constr "; ") p.to_solve
+    (List.pp pp_constr "; ") p.unsolved
     p.recompute
-
-(** Default printing functions (with empty signature state). *)
-let symbol = pp_symbol Sig_state.empty
-let meta = pp_meta Sig_state.empty
-let term = pp_term Sig_state.empty
-let constr = pp_constr Sig_state.empty
-let rule = pp_rule Sig_state.empty
-let ctxt = pp_ctxt Sig_state.empty
-let problem = pp_problem Sig_state.empty

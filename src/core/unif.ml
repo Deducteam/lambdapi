@@ -6,6 +6,7 @@ open Console
 open Terms
 open Basics
 open Env
+open Print
 
 (** Logging function for unification. *)
 let log_unif = new_logger 'u' "unif" "unification"
@@ -112,25 +113,18 @@ let instantiation : ctxt -> meta -> term array -> term ->
         Some (Bindlib.bind_mvar vs (lift u))
   else None
 
-(** [instantiate ss ctx m ts u] check whether, in a problem [m[ts]=u], [m] can
+(** [instantiate ctx m ts u] check whether, in a problem [m[ts]=u], [m] can
    be instantiated and, if so, instantiate it. *)
-let instantiate : Sig_state.t -> ctxt -> meta -> term array -> term -> bool =
-  fun ss ctx m ts u ->
+let instantiate : ctxt -> meta -> term array -> term -> bool =
+  fun ctx m ts u ->
   match instantiation ctx m ts u with
   | Some(bu) when Bindlib.is_closed bu ->
-      if !log_enabled then
-        log_unif (yel "%a ≔ %a")
-          (Print.pp_meta ss) m (Print.pp_term ss) u;
+      if !log_enabled then log_unif (yel "%a ≔ %a") pp_meta m pp_term u;
       set_meta m (Bindlib.unbox bu); true
   | _ -> false
 
-(** [solve ss p] tries to solve the unification problem [p] and
+(** [solve p] tries to solve the unification problem [p] and
     returns the constraints that could not be solved. *)
-let solve : Sig_state.t -> problem -> constr list = fun ss ->
-  let pp_term = Print.pp_term ss in
-  let pp_constr = Print.pp_constr ss in
-  let pp_symbol = Print.pp_symbol ss in
-
 let rec solve : problem -> constr list = fun p ->
   match p with
   | { to_solve = []; unsolved = []; _ } -> []
@@ -396,9 +390,9 @@ and solve_aux : ctxt -> term -> term -> problem -> constr list =
            end
        end
 
-  | (Meta(m,ts) , _          ) when ts1 = [] && instantiate ss ctx m ts t2 ->
+  | (Meta(m,ts) , _          ) when ts1 = [] && instantiate ctx m ts t2 ->
      solve {p with recompute = true}
-  | (_          , Meta(m,ts) ) when ts2 = [] && instantiate ss ctx m ts t1 ->
+  | (_          , Meta(m,ts) ) when ts2 = [] && instantiate ctx m ts t1 ->
      solve {p with recompute = true}
 
   | (Meta(m,ts)  , Prod(_,_) )
@@ -428,11 +422,16 @@ and solve_aux : ctxt -> term -> term -> problem -> constr list =
 
   | (_          , _          ) -> add_to_unsolved ()
 
-in solve
-
-(** [solve ss problem] attempts to solve [problem]. If there is
+(** [solve problem] attempts to solve [problem]. If there is
    no solution, the value [None] is returned. Otherwise [Some(cs)] is
    returned, where the list [cs] is a list of unsolved convertibility
    constraints. *)
-let solve : Sig_state.t -> problem -> constr list option = fun ss p ->
-  try Some (solve ss p) with Unsolvable -> None
+let solve : problem -> constr list option = fun p ->
+  try Some (solve p) with Unsolvable -> None
+
+(** [eq c t u] tries to unify the terms [t] and [u] in context [c], by
+   instantiating their metavariables. *)
+let eq c t u =
+  match solve {empty_problem with to_solve=[c,t,u]} with
+  | Some [] -> true
+  | _ -> false

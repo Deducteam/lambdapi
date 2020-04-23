@@ -4,6 +4,7 @@ open Timed
 open Console
 open Terms
 open Env
+open Print
 
 (** Logging function for typing. *)
 let log_infr = new_logger 'i' "infr" "type inference/checking"
@@ -73,175 +74,156 @@ let make_meta_codomain : ctxt -> term -> tbinder = fun ctx a ->
 let constraints = Stdlib.ref []
 
 (** Function adding a constraint. *)
-let conv ss ctx a b =
+let conv ctx a b =
   if not (Eval.eq_modulo ctx a b) then
     begin
       if !log_enabled then
-        log_infr (yel "add %a") (Print.pp_constr ss) (ctx,a,b);
+        log_infr (yel "add %a") pp_constr (ctx,a,b);
       let open Stdlib in constraints := (ctx,a,b) :: !constraints
     end
 
-(** Given a type inference function [infer], [gen_check infer ss ctx t c]
-   checks that the term [t] has type [c] in context [ctx] and signature state
-   [ss], possibly under some constraints recorded in [constraints] using
-   [conv]. [ctx] must be well-formed and [c] well-sorted. This function never
-   fails (but constraints may be unsatisfiable). *)
-let gen_check : Sig_state.t -> (ctxt -> term -> term) ->
-            ctxt -> term -> term -> unit = fun ss infer ctx t c ->
-  let pp_term = Print.pp_term ss in
-  if !log_enabled then log_infr "check %a : %a" pp_term t pp_term c;
-  conv ss ctx (infer ctx t) c
-
-(** [infer ss ctx t] infers a type for the term [t] in context [ctx] and
+(** [infer ctx t] infers a type for the term [t] in context [ctx] and
    signature state [ss], possibly under some constraints recorded in
    [constraints] using [conv]. The returned type is well-sorted if recorded
    unification constraints are satisfied. [ctx] must be well-formed. This
    function never fails (but constraints may be unsatisfiable). *)
-let infer : Sig_state.t -> ctxt -> term -> term = fun ss ->
-  let pp_term = Print.pp_term ss in
-  let pp_ctxt = Print.pp_ctxt ss in
+let rec infer : ctxt -> term -> term = fun ctx t ->
+  if !log_enabled then log_infr "infer %a%a" pp_ctxt ctx pp_term t;
+  match unfold t with
+  | Patt(_,_,_) -> assert false (* Forbidden case. *)
+  | TEnv(_,_)   -> assert false (* Forbidden case. *)
+  | Kind        -> assert false (* Forbidden case. *)
+  | Wild        -> assert false (* Forbidden case. *)
+  | TRef(_)     -> assert false (* Forbidden case. *)
 
-  let rec check ctx t c = gen_check ss infer ctx t c
+  (* -------------------
+     ctx ⊢ Type ⇒ Kind  *)
+  | Type        -> Kind
 
-  and infer ctx t =
-    if !log_enabled then log_infr "infer %a%a" pp_ctxt ctx pp_term t;
-    match unfold t with
-    | Patt(_,_,_) -> assert false (* Forbidden case. *)
-    | TEnv(_,_)   -> assert false (* Forbidden case. *)
-    | Kind        -> assert false (* Forbidden case. *)
-    | Wild        -> assert false (* Forbidden case. *)
-    | TRef(_)     -> assert false (* Forbidden case. *)
+  (* ---------------------------------
+     ctx ⊢ Vari(x) ⇒ Ctxt.find x ctx  *)
+  | Vari(x)     ->
+      let a = try Ctxt.type_of x ctx with Not_found -> assert false in
+      if !log_enabled then log_infr (blu "%a : %a") pp_term t pp_term a;
+      a
 
-    (* -------------------
-       ctx ⊢ Type ⇒ Kind  *)
-    | Type        -> Kind
+  (* -------------------------------
+     ctx ⊢ Symb(s) ⇒ !(s.sym_type)  *)
+  | Symb(s)     ->
+      let a = !(s.sym_type) in
+      if !log_enabled then log_infr (blu "%a : %a") pp_term t pp_term a;
+      a
 
-    (* ---------------------------------
-       ctx ⊢ Vari(x) ⇒ Ctxt.find x ctx  *)
-    | Vari(x)     ->
-        let a = try Ctxt.type_of x ctx with Not_found -> assert false in
-        if !log_enabled then
-          log_infr (blu "%a : %a") pp_term t pp_term a;
-        a
-
-    (* -------------------------------
-       ctx ⊢ Symb(s) ⇒ !(s.sym_type)  *)
-    | Symb(s)     ->
-        let a = !(s.sym_type) in
-        if !log_enabled then
-          log_infr (blu "%a : %a") pp_term t pp_term a;
-        a
-
-    (*  ctx ⊢ a ⇐ Type    ctx, x : a ⊢ b<x> ⇒ s
-        -----------------------------------------
+  (*  ctx ⊢ a ⇐ Type    ctx, x : a ⊢ b<x> ⇒ s
+      -----------------------------------------
                 ctx ⊢ Prod(a,b) ⇒ s            *)
-    | Prod(a,b)   ->
-        (* We ensure that [a] is of type [Type]. *)
-        check ctx a Type;
-        (* We infer the type of the body, first extending the context. *)
-
-        let (_,b,ctx') = Ctxt.unbind ctx a None b in
-        let s = infer ctx' b in
-        (* We check that [s] is a sort. *)
-        begin
-          let s = unfold s in
-          match s with
-          | Type | Kind -> s
-          | _           -> conv ss ctx s Type; Type
+  | Prod(a,b)   ->
+      (* We ensure that [a] is of type [Type]. *)
+      check ctx a Type;
+      (* We infer the type of the body, first extending the context. *)
+      let (_,b,ctx') = Ctxt.unbind ctx a None b in
+      let s = infer ctx' b in
+      (* We check that [s] is a sort. *)
+      begin
+        let s = unfold s in
+        match s with
+        | Type | Kind -> s
+        | _           -> conv ctx s Type; Type
         (* We add the constraint [s = Type] because kinds cannot occur inside
-           a term. So, [t] cannot be a kind. *)
-        end
+         a term. So, [t] cannot be a kind. *)
+      end
 
-    (*  ctx ⊢ a ⇐ Type    ctx, x : a ⊢ t<x> ⇒ b<x>
-        --------------------------------------------
+  (*  ctx ⊢ a ⇐ Type    ctx, x : a ⊢ t<x> ⇒ b<x>
+      --------------------------------------------
              ctx ⊢ Abst(a,t) ⇒ Prod(a,b)          *)
-    | Abst(a,t)   ->
-        (* We ensure that [a] is of type [Type]. *)
-        check ctx a Type;
-        (* We infer the type of the body, first extending the context. *)
-        let (x,t,ctx') = Ctxt.unbind ctx a None t in
-        let b = infer ctx' t in
-        (* We build the product type by binding [x] in [b]. *)
-        Prod(a, Bindlib.unbox (Bindlib.bind_var x (lift b)))
+  | Abst(a,t)   ->
+      (* We ensure that [a] is of type [Type]. *)
+      check ctx a Type;
+      (* We infer the type of the body, first extending the context. *)
+      let (x,t,ctx') = Ctxt.unbind ctx a None t in
+      let b = infer ctx' t in
+      (* We build the product type by binding [x] in [b]. *)
+      Prod(a, Bindlib.unbox (Bindlib.bind_var x (lift b)))
 
-    (*  ctx ⊢ t ⇒ Prod(a,b)    ctx ⊢ u ⇐ a
-        ------------------------------------
+  (*  ctx ⊢ t ⇒ Prod(a,b)    ctx ⊢ u ⇐ a
+      ------------------------------------
          ctx ⊢ Appl(t,u) ⇒ subst b u      *)
-    | Appl(t,u)   ->
-        (* We first infer a product type for [t]. *)
-        let (a,b) =
-          let c = Eval.whnf ctx (infer ctx t) in
-          match c with
-          | Prod(a,b) -> (a,b)
-          | Meta(m,ts) ->
-              let mxs, p, bp1, bp2 = extend_meta_type m in
-              conv ss ctx mxs p;
-              (Bindlib.msubst bp1 ts, Bindlib.msubst bp2 ts)
-          | _         ->
-              let a = Basics.make_meta ctx Type in
-              let b = make_meta_codomain ctx a in
-              conv ss ctx c (Prod(a,b)); (a,b)
-        in
-        (* We then check the type of [u] against the domain type. *)
-        check ctx u a;
-        (* We produce the returned type. *)
-        Bindlib.subst b u
+  | Appl(t,u)   ->
+      (* We first infer a product type for [t]. *)
+      let (a,b) =
+        let c = Eval.whnf ctx (infer ctx t) in
+        match c with
+        | Prod(a,b) -> (a,b)
+        | Meta(m,ts) ->
+            let mxs, p, bp1, bp2 = extend_meta_type m in
+            conv ctx mxs p;
+            (Bindlib.msubst bp1 ts, Bindlib.msubst bp2 ts)
+        | _         ->
+            let a = Basics.make_meta ctx Type in
+            let b = make_meta_codomain ctx a in
+            conv ctx c (Prod(a,b)); (a,b)
+      in
+      (* We then check the type of [u] against the domain type. *)
+      check ctx u a;
+      (* We produce the returned type. *)
+      Bindlib.subst b u
 
-    (*  ctx ⊢ t ⇐ a       ctx, x : a := t ⊢ u ⇒ b
-        -------------------------------------------
+  (*  ctx ⊢ t ⇐ a       ctx, x : a := t ⊢ u ⇒ b
+      -------------------------------------------
         ctx ⊢ let x : a ≔ t in u ⇒ subst b t     *)
-    | LLet(a,t,u) ->
-        check ctx a Type;
-        check ctx t a;
-        (* Unbind [u] and enrich context with [x: a ≔ t] *)
-        let (x,u,ctx') = Ctxt.unbind ctx a (Some(t)) u in
-        let b = infer ctx' u in
-        (* Build back the term *)
-        let b = Bindlib.unbox (Bindlib.bind_var x (lift b)) in
-        Bindlib.subst b t
+  | LLet(a,t,u) ->
+      check ctx a Type;
+      check ctx t a;
+      (* Unbind [u] and enrich context with [x: a ≔ t] *)
+      let (x,u,ctx') = Ctxt.unbind ctx a (Some(t)) u in
+      let b = infer ctx' u in
+      (* Build back the term *)
+      let b = Bindlib.unbox (Bindlib.bind_var x (lift b)) in
+      Bindlib.subst b t
 
-    (*  ctx ⊢ term_of_meta m e ⇒ a
-        ----------------------------
+  (*  ctx ⊢ term_of_meta m e ⇒ a
+      ----------------------------
          ctx ⊢ Meta(m,e) ⇒ a      *)
-    | Meta(m,ts)   ->
-        infer ctx (term_of_meta m ts)
+  | Meta(m,ts)   ->
+      infer ctx (term_of_meta m ts)
 
-  in infer
+(** [check ctx t a] checks that the term [t] has type [a] in context [ctx],
+   possibly under some constraints recorded in [constraints] using
+   [conv]. [ctx] must be well-formed and [a] well-sorted. This function never
+   fails (but constraints may be unsatisfiable). *)
+and check : ctxt -> term -> term -> unit = fun ctx t a ->
+  if !log_enabled then log_infr "check %a : %a" pp_term t pp_term a;
+  conv ctx (infer ctx t) a
 
-(** [check ss ctx t c] checks returns a list [cs] of unification constraints
-   for [t] to be of type [c] in the context [ctx] and signature state
-   [ss]. The context [ctx] must be well-typed, and the type [c]
-   well-sorted. This function never fails (but constraints may be
-   unsatisfiable). *)
-let check : Sig_state.t -> ctxt -> term -> term -> constr list
-  = fun ss ctx t c ->
+(** [check ctx t c] checks returns a list [cs] of unification constraints for
+   [t] to be of type [c] in the context [ctx]. The context [ctx] must be
+   well-typed, and the type [c] well-sorted. This function never fails (but
+   constraints may be unsatisfiable). *)
+let check : ctxt -> term -> term -> constr list = fun ctx t a ->
   Stdlib.(constraints := []);
-  gen_check ss (infer ss) ctx t c;
+  check ctx t a;
   let constrs = Stdlib.(!constraints) in
   if !log_enabled then
     begin
-      let pp_term = Print.pp_term ss in
-      log_infr (gre "check %a : %a") pp_term t pp_term c;
-      List.iter (log_infr "  if %a" (Print.pp_constr ss)) constrs;
+      log_infr (gre "check %a : %a") pp_term t pp_term a;
+      List.iter (log_infr "  if %a" pp_constr) constrs;
     end;
   Stdlib.(constraints := []);
   constrs
 
-(** [infer ss ctx t] returns a pair [(a,cs)] where [a] is a type for the term
-   [t] in the context [ctx] and signature state [ss], under unification
-   constraints [cs].  In other words, the constraints of [cs] must be
-   satisfied for [t] to have type [a]. [ctx] must be well-formed. This
-   function never fails (but constraints may be unsatisfiable). *)
-let infer : Sig_state.t -> ctxt -> term -> term * constr list
-  = fun ss ctx t ->
+(** [infer ctx t] returns a pair [(a,cs)] where [a] is a type for the term [t]
+   in the context [ctx] under unification constraints [cs].  In other words,
+   the constraints of [cs] must be satisfied for [t] to have type [a]. [ctx]
+   must be well-formed. This function never fails (but constraints may be
+   unsatisfiable). *)
+let infer : ctxt -> term -> term * constr list = fun ctx t ->
   Stdlib.(constraints := []);
-  let a = infer ss ctx t in
+  let a = infer ctx t in
   let constrs = Stdlib.(!constraints) in
   if !log_enabled then
     begin
-      let pp_term = Print.pp_term ss in
       log_infr (gre "infer %a : %a") pp_term t pp_term a;
-      List.iter (log_infr "  if %a" (Print.pp_constr ss)) constrs;
+      List.iter (log_infr "  if %a" pp_constr) constrs;
     end;
   Stdlib.(constraints := []);
   (a, constrs)

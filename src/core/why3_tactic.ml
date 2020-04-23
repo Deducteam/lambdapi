@@ -4,6 +4,7 @@ open Console
 open Terms
 open Extra
 open Timed
+open Print
 
 module Builtin = Sig_state.Builtin
 
@@ -106,7 +107,6 @@ let translate_term : config -> cnst_table -> term ->
     into Why3 terms, to construct a Why3 task. *)
 let encode : Sig_state.t -> Pos.popt -> Env.env -> term -> Why3.Task.task =
   fun ss pos hs g ->
-  let pp_term = Print.pp_term ss in
   let cfg = get_config ss pos in
   let (constants, hypothesis) =
     let translate_hyp (tbl, map) (name, (_, hyp, _)) =

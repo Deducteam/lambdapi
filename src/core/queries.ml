@@ -5,12 +5,11 @@ open Pos
 open Syntax
 open Unif
 open Terms
+open Print
 
 (** [handle_query ss ps q] *)
 let handle_query : Sig_state.t -> Proof.t option -> p_query -> unit =
   fun ss ps q ->
-  let pp = Print.pp_term ss in
-  let pp_constr = Print.pp_constr ss in
   let env =
     match ps with
     | None     -> Env.empty
@@ -23,16 +22,16 @@ let handle_query : Sig_state.t -> Proof.t option -> p_query -> unit =
         match asrt with
         | P_assert_typing(pt,pa) ->
           let t = scope pt and a = scope pa and ctxt = Env.to_ctxt env in
-          Typing.sort_type ss ctxt a;
-          (try Typing.check ss ctxt t a with _ -> false)
+          Typing.sort_type ctxt a;
+          (try Typing.check ctxt t a with _ -> false)
         | P_assert_conv(pt,pu)   ->
           let t = scope pt and u = scope pu in
-          let infer = Typing.infer ss (Env.to_ctxt env) in
+          let infer = Typing.infer (Env.to_ctxt env) in
           match (infer t, infer u) with
           | (Some(a), Some(b)) ->
               let pb = {empty_problem with to_solve = [[], a, b]} in
               begin
-                match solve ss pb with
+                match solve pb with
                 | None -> fatal q.pos "Infered types are not convertible."
                 | Some [] -> Eval.eq_modulo [] t u
                 | Some cs ->
@@ -65,20 +64,20 @@ let handle_query : Sig_state.t -> Proof.t option -> p_query -> unit =
       (* Infer the type of [t]. *)
       let t = scope pt in
       let a =
-        match Typing.infer ss (Env.to_ctxt env) t with
+        match Typing.infer (Env.to_ctxt env) t with
         | Some(a) -> Eval.eval cfg [] a
-        | None    -> fatal pt.pos "Cannot infer the type of [%a]." pp t
+        | None    -> fatal pt.pos "Cannot infer the type of [%a]." pp_term t
       in
-      out 3 "(infr) %a : %a\n" pp t pp a
+      out 3 "(infr) %a : %a\n" pp_term t pp_term a
   | P_query_normalize(pt, cfg)        ->
       (* Infer a type for [t], and evaluate [t]. *)
       let t = scope pt in
       let v =
-        match Typing.infer ss (Env.to_ctxt env) t with
+        match Typing.infer (Env.to_ctxt env) t with
         | Some(_) -> Eval.eval cfg [] t
-        | None    -> fatal pt.pos "Cannot infer the type of [%a]." pp t
+        | None    -> fatal pt.pos "Cannot infer the type of [%a]." pp_term t
       in
-      out 3 "(comp) %a\n" pp v
+      out 3 "(comp) %a\n" pp_term v
   | P_query_prover(s)      ->
       Timed.(Why3_tactic.default_prover := s)
   | P_query_prover_timeout(n)->

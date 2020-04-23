@@ -63,8 +63,7 @@ module Builtin :
        that checks the type of a symbol defining the builtin [name] against a
        type constructed using the given [build] function. *)
     val register_expected_type
-        : (sig_state -> term eq) -> (sig_state -> term pp)
-          -> string -> (sig_state -> popt -> term) -> unit
+        : term eq -> term pp -> string -> (sig_state -> popt -> term) -> unit
   end =
   struct
     let get ss pos name =
@@ -85,9 +84,9 @@ module Builtin :
     let register_expected_type eq pp name fn =
       let check ss pos sym =
         let expected = fn ss pos in
-        if not (eq ss !(sym.sym_type) expected) then
+        if not (eq !(sym.sym_type) expected) then
           fatal pos "The type of %s is not of the form %a."
-            sym.sym_name (pp ss) expected
+            sym.sym_name pp expected
       in
       register name check
   end

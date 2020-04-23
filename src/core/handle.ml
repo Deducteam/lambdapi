@@ -10,17 +10,11 @@ open Files
 open Syntax
 open Sig_state
 open Scope
+open Print
 
 (* Register a check for the type of the builtin symbol "0" and "+1". *)
 let _ =
-  let eq ss t u =
-    let open Unif in
-    let to_solve = [([],t,u)] in
-    match solve ss {empty_problem with to_solve} with
-    | Some [] -> true
-    | _ -> false
-  in
-  let register = Builtin.register_expected_type eq Print.pp_term in
+  let register = Builtin.register_expected_type (Unif.eq []) pp_term in
   let expected_zero_type ss _pos =
     try
       match !((StrMap.find "+1" ss.builtins).sym_type) with
@@ -84,7 +78,7 @@ let handle_require_as : popt -> sig_state -> Path.t -> ident -> sig_state =
   let aliases = StrMap.add id.elt p ss.aliases in
   {ss with aliases}
 
-(** [handle_cmd_aux ss cmd] tries to handle the command [cmd] with [ss] as the
+(** [handle_cmd ss cmd] tries to handle the command [cmd] with [ss] as the
     signature state. On success, an updated signature state is returned.  When
     [cmd] leads to entering the proof mode,  a [proof_data] is also  returned.
     This structure contains the list of the tactics to be executed, as well as
@@ -92,8 +86,6 @@ let handle_require_as : popt -> sig_state -> Path.t -> ident -> sig_state =
     separately. Note that [Fatal] is raised in case of an error. *)
 let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
   fun ss cmd ->
-  let pp = Print.pp_term ss in
-  let pp_rule = Print.pp_rule ss in
   let scope_basic exp = Scope.scope_term exp ss Env.empty in
   match cmd.elt with
   | P_require(b,ps)            ->
@@ -116,15 +108,15 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
       (* We scope the type of the declaration. *)
       let a = scope_basic e a in
       (* We check that [a] is typable by a sort. *)
-      Typing.sort_type ss [] a;
+      Typing.sort_type [] a;
       (* We check that no metavariable remains. *)
       if Basics.has_metas true a then
         begin
           fatal_msg "The type of [%s] has unsolved metavariables.\n" x.elt;
-          fatal x.pos "We have %s : %a." x.elt pp a
+          fatal x.pos "We have %s : %a." x.elt pp_term a
         end;
       (* Actually add the symbol to the signature and the state. *)
-      out 3 "(symb) %s : %a\n" x.elt pp a;
+      out 3 "(symb) %s : %a\n" x.elt pp_term a;
       (Sig_state.add_symbol ss e p x a impl None, None)
   | P_rules(rs)                ->
       (* Scoping and checking each rule in turn. *)
@@ -134,7 +126,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
         if !(sym.sym_def) <> None then
           fatal pr.pos "Rewriting rules cannot be given for defined \
                         symbol [%s]." sym.sym_name;
-        (sym, Pos.make r.pos (Sr.check_rule ss pr))
+        (sym, Pos.make r.pos (Sr.check_rule pr))
       in
       let rs = List.map handle_rule rs in
       (* Adding the rules all at once. *)
@@ -168,23 +160,25 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
       let a =
         match ao with
         | Some(a) ->
-            Typing.sort_type ss [] a;
-            if Typing.check ss [] t a then a else
-              fatal cmd.pos "The term [%a] does not have type [%a]." pp t pp a
+            Typing.sort_type [] a;
+            if Typing.check [] t a then a else
+              fatal cmd.pos "The term [%a] does not have type [%a]."
+                pp_term t pp_term a
         | None    ->
-            match Typing.infer ss [] t with
+            match Typing.infer [] t with
             | Some(a) -> a
-            | None    -> fatal cmd.pos "Cannot infer the type of [%a]." pp t
+            | None    ->
+                fatal cmd.pos "Cannot infer the type of [%a]." pp_term t
       in
       (* We check that no metavariable remains. *)
       if Basics.has_metas true t || Basics.has_metas true a then
         begin
           fatal_msg "The definition of [%s] or its type \
                      have unsolved metavariables.\n" x.elt;
-          fatal x.pos "We have %s : %a ≔ %a." x.elt pp a pp t
+          fatal x.pos "We have %s : %a ≔ %a." x.elt pp_term a pp_term t
         end;
       (* Actually add the symbol to the signature. *)
-      out 3 "(symb) %s ≔ %a\n" x.elt pp t;
+      out 3 "(symb) %s ≔ %a\n" x.elt pp_term t;
       let d = if op then None else Some(t) in
       let ss = Sig_state.add_symbol ss e Defin x a impl d in
       (ss, None)
@@ -200,12 +194,12 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
       (* Scoping the type (statement) of the theorem. *)
       let a = scope_basic e a in
       (* Check that [a] is typable and that its type is a sort. *)
-      Typing.sort_type ss [] a;
+      Typing.sort_type [] a;
       (* We check that no metavariable remains in [a]. *)
       if Basics.has_metas true a then
         begin
           fatal_msg "The type of [%s] has unsolved metavariables.\n" x.elt;
-          fatal x.pos "We have %s : %a." x.elt pp a
+          fatal x.pos "We have %s : %a." x.elt pp_term a
         end;
       (* Initialize proof state and save configuration data. *)
       let st = Proof.init x a in
@@ -247,7 +241,6 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
           let path = List.map (fun s -> (s, false)) path in
           Pos.make qid.pos (path, snd qid.elt)
         in
-        let pp_symbol = Print.pp_symbol ss in
         match cfg with
         | P_config_builtin(s,qid) ->
             (* Set the builtin symbol [s]. *)
@@ -263,7 +256,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
             let sym = find_sym ~prt:true ~prv:true false ss qid in
             (* Make sure the operator has a fully qualified [qid]. *)
             let unop = (s, prio, with_path sym.sym_path qid) in
-            out 3 "(conf) %a %a\n" pp_symbol sym Print.hint (Prefix unop);
+            out 3 "(conf) %a %a\n" pp_symbol sym pp_hint (Prefix unop);
             Sig_state.add_unop ss s (sym, unop)
         | P_config_binop(binop)   ->
             let (s, assoc, prio, qid) = binop in
@@ -271,7 +264,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
             let sym = find_sym ~prt:true ~prv:true false ss qid in
             (* Make sure the operator has a fully qualified [qid]. *)
             let binop = (s, assoc, prio, with_path sym.sym_path qid) in
-            out 3 "(conf) %a %a\n" pp_symbol sym Print.hint (Infix binop);
+            out 3 "(conf) %a %a\n" pp_symbol sym pp_hint (Infix binop);
             Sig_state.add_binop ss s (sym, binop);
         | P_config_ident(id)      ->
             Sign.add_ident ss.signature id;
@@ -285,12 +278,13 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
     indicate commands that take too long to execute. *)
 let too_long = Stdlib.ref infinity
 
-(** [handle_cmd ss cmd] is similar to [handle_cmd_aux ss cmd] but it adds some
+(** [handle_cmd ss cmd] is similar to [handle_cmd ss cmd] but it adds some
     exception handling. In particular, the position of [cmd] is used on errors
     that lack a specific position. All exceptions except [Timeout] and [Fatal]
     are captured, although they should not occur. *)
 let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
-    fun ss cmd ->
+  fun ss cmd ->
+  Print.sig_state := ss;
   try
     let (tm, ss) = time (handle_cmd ss) cmd in
     if Stdlib.(tm >= !too_long) then

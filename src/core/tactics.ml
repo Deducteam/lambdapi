@@ -5,6 +5,8 @@ open Console
 open Terms
 open Pos
 open Syntax
+open Proof
+open Print
 
 (** Logging function for tactics. *)
 let log_tact = new_logger 't' "tact" "tactics"
@@ -15,16 +17,15 @@ let log_tact = log_tact.logger
      gracefully in case of error. *)
 let handle_tactic : Sig_state.t -> Proof.t -> p_tactic -> Proof.t =
   fun ss ps tac ->
-  let pp_term = Print.pp_term ss in
   (* First handle the tactics that do not change the goals. *)
   match tac.elt with
   | P_tac_print         ->
       (* Just print the current proof state. *)
-      Console.out 1 "%a" (Proof.pp ss) ps; ps
+      Console.out 1 "%a" pp_goals ps; ps
   | P_tac_proofterm     ->
       (* Just print the current proof term. *)
-      let t = Meta(ps.Proof.proof_term, [||]) in
-      let name = ps.Proof.proof_name.elt in
+      let t = Meta(ps.proof_term, [||]) in
+      let name = ps.proof_name.elt in
       Console.out 1 "Proof term for %s: %a\n" name pp_term t; ps
   | P_tac_query(q)      ->
       Queries.handle_query ss (Some ps) q; ps
@@ -32,33 +33,33 @@ let handle_tactic : Sig_state.t -> Proof.t -> p_tactic -> Proof.t =
   (* The other tactics may change the goals. *)
   (* Get the focused goal and the other goals. *)
   let (g, gs) =
-    match ps.Proof.proof_goals with
+    match ps.proof_goals with
     | []    -> fatal tac.pos "There is nothing left to prove.";
     | g::gs -> (g, gs)
   in
   (* Obtaining the goal environment and type. *)
-  let (env, a) = Proof.Goal.get_type g in
+  let (env, a) = Goal.get_type g in
 
   let scope = Scope.scope_term Public ss env in
-  let infer t = Typing.infer ss (Env.to_ctxt env) t in
-  let check t a = Typing.check ss (Env.to_ctxt env) t a in
+  let infer t = Typing.infer (Env.to_ctxt env) t in
+  let check t a = Typing.check (Env.to_ctxt env) t a in
 
   let handle_refine : term -> Proof.t = fun t ->
     (* Check if the goal metavariable appears in [t]. *)
-    let m = Proof.Goal.get_meta g in
-    log_tact "refining [%a] with term [%a]" (Print.pp_meta ss) m pp_term t;
+    let m = Goal.get_meta g in
+    log_tact "refining [%a] with term [%a]" pp_meta m pp_term t;
     if Basics.occurs m t then fatal tac.pos "Circular refinement.";
     (* Check that [t] is well-typed. *)
-    log_tact "proving %a" (Print.pp_typing ss) (Env.to_ctxt env, t, a);
+    log_tact "proving %a" pp_typing (Env.to_ctxt env, t, a);
     if not (check t a) then fatal tac.pos "Ill-typed refinement.";
     (* Instantiation. *)
     set_meta m (Bindlib.unbox (Bindlib.bind_mvar (Env.vars env) (lift t)));
     (* New subgoals and focus. *)
     let metas = Basics.get_metas true t in
-    let add_goal m = List.insert Proof.Goal.compare (Proof.Goal.of_meta m) in
+    let add_goal m = List.insert Goal.compare (Goal.of_meta m) in
     let new_goals = MetaSet.fold add_goal metas [] in
     (* New goals must appear first. *)
-    Proof.({ps with proof_goals = new_goals @ gs})
+    {ps with proof_goals = new_goals @ gs}
   in
 
   match tac.elt with
@@ -73,7 +74,7 @@ let handle_tactic : Sig_state.t -> Proof.t -> p_tactic -> Proof.t =
        | (i, g::gs) -> swap (i-1) (g::acc) gs
        | (_, _    ) -> fatal tac.pos "Invalid goal index."
      in
-     Proof.{ps with proof_goals = swap i [] ps.proof_goals}
+     {ps with proof_goals = swap i [] ps.proof_goals}
   | P_tac_refine(t)     ->
       handle_refine (scope t)
   | P_tac_intro(xs)     ->
@@ -98,7 +99,7 @@ let handle_tactic : Sig_state.t -> Proof.t -> p_tactic -> Proof.t =
       in
       handle_refine (add_wilds pt nb)
   | P_tac_simpl         ->
-      Proof.({ps with proof_goals = Proof.Goal.simpl g :: gs})
+      {ps with proof_goals = Goal.simpl g :: gs}
   | P_tac_rewrite(po,t) ->
       let po = Option.map (Scope.scope_rw_patt ss env) po in
       handle_refine (Rewrite.rewrite ss tac.pos ps po (scope t))
@@ -110,8 +111,8 @@ let handle_tactic : Sig_state.t -> Proof.t -> p_tactic -> Proof.t =
       handle_refine (Why3_tactic.handle ss tac.pos config g)
 
 let handle_tactic : Sig_state.t -> Proof.t -> p_tactic -> Proof.t =
-    fun ss ps tac ->
+  fun ss ps tac ->
   try handle_tactic ss ps tac
-  with Fatal(_,_) as e->
+  with Fatal(_,_) as e ->
     let _ = handle_tactic ss ps (none P_tac_print) in
     raise e

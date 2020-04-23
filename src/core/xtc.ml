@@ -166,7 +166,7 @@ let get_vars : sym -> rule -> (string * Terms.term) list = fun s r ->
     let fn l x = (x, (Meta(fresh_meta Type 0,[||])), None) :: l in
     List.fold_left fn [] !var_list
   in
-  let (_,l) = Infer.infer Sig_state.empty (*FIXME*) ctx lhs in
+  let (_,l) = Infer.infer ctx lhs in
   (* Discard contexts *)
   let l = List.map (fun (_,t,u) -> (t,u)) l in
   let ctx = List.map (fun (x,a,_) -> (x, a)) ctx in

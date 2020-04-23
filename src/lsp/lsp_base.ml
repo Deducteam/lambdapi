@@ -40,7 +40,7 @@ let mk_range (p : Pos.pos) : J.t =
 
 let json_of_goal g =
   let pr_hyp (s,(_,t,_)) =
-    let t = Format.asprintf "%a" Print.term (*FIXME*) (Bindlib.unbox t) in
+    let t = Format.asprintf "%a" Print.pp_term (Bindlib.unbox t) in
     `Assoc ["hname", `String s; "htype", `String t] in
   let open Proof in
   let g_meta = Goal.get_meta g in
@@ -49,7 +49,7 @@ let json_of_goal g =
   `Assoc [
     "gid", `Int g_meta.meta_key
   ; "hyps", `List j_env
-  ; "type", `String (Format.asprintf "%a" Print.term typ)]
+  ; "type", `String (Format.asprintf "%a" Print.pp_term typ)]
 
 let json_of_goals goals =
   match goals with
