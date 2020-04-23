@@ -33,17 +33,19 @@ let pp_problem oc p =
 let no_problems : problems =
   {to_solve  = []; unsolved = []; recompute = false}
 
-(** Some definitions for unification hints. *)
+(** Definition of symbols used to encode unification rules. *)
 module Hint = struct
 
   (** Symbol representing an atomic unification problem. The term [atom t u]
-      represents [t =? u]. *)
+      represents [t ≡ u]. The left-hand side of a unification rule is made
+      of only one atom. *)
   let atom : sym =
     { sym_name="unif_atom"; sym_type=ref Kind; sym_path=[]
     ; sym_def=ref None; sym_impl=[];sym_tree=ref Tree_types.empty_dtree
     ; sym_prop=Defin; sym_expo=Public; sym_rules=ref [] }
 
-  (** Symbol for a list of atoms. *)
+  (** Holds a list of atoms. The right-hand side of a unification rule is
+      made of such a list, [list (atom t u) (atom v w) ...]. *)
   let list : sym =
     { sym_name="unif_list"; sym_type=ref Kind; sym_path=[]
     ; sym_def=ref None; sym_impl=[];sym_tree=ref Tree_types.empty_dtree
@@ -205,7 +207,8 @@ and solve_aux : ctxt -> term -> term -> problems -> unif_constrs =
     if Eval.eq_modulo ctx t1 t2 then solve p else
     match try_hints ctx t1 t2 with
     | None     -> solve {p with unsolved = (ctx,t1,t2) :: p.unsolved}
-    | Some([]) -> assert false (* Hint shouldn't have been necessary *)
+    | Some([]) -> assert false
+    (* Unification rules generate non empty list of unification constraints *)
     | Some(cs) -> solve {p with to_solve = cs @ p.to_solve}
   in
 
