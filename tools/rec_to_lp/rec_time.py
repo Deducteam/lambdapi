@@ -18,6 +18,7 @@ null = open(os.devnull, "w")
 timeout = 60 * 30  # 30 min (unit is seconds)
 
 def interpret(exe, f: str) -> str:
+    print("{}".format(exe + [f]), end='\r')
     tim = timeit.Timer(stmt=lambda:subprocess.check_call(exe + [f],
         stdout=null, stderr=null, timeout=timeout))
     try:
@@ -25,13 +26,15 @@ def interpret(exe, f: str) -> str:
     except subprocess.CalledProcessError:
         return "N/A"
     except subprocess.TimeoutExpired:
-        return "TO"
+        return "T/O"
 
 
 def ocamlopt(f: str) -> str:
     def cnr():
+        print("\r{}".format(["ocamlopt", f]), end='\r')
         subprocess.check_call(["ocamlopt", f], stdout=null, stderr=null,
                 timeout=timeout)
+        print("\r{}".format(["./a.out"]))
         subprocess.check_call(["./a.out"], stdout=null, stderr=null,
                               timeout=timeout)
     tim = timeit.Timer(stmt=cnr)
@@ -47,7 +50,9 @@ def ghc(root: str) -> str:
     exe = os.path.join(src["hs"], root)
     fil = exe + ".hs"
     def cnr():
+        print("\r{}".format(["ghc", fil]), end='\r')
         subprocess.check_call(["ghc", fil], stdout=null, timeout=timeout)
+        print("\r{}".format([exe]), end='\r')
         subprocess.check_call([exe], stdout=null, timeout=timeout)
     tim = timeit.Timer(stmt=cnr)
     try:
@@ -93,25 +98,23 @@ def main():
               "co": os.path.join(src["co"], r + ".mod"),
               "ma": os.path.join(src["ma"], r + ".maude"),
               "root": r} for r in files]
-    print("\\begin{tabular}{l r r r r r}\n"
-          "\toprule\n"
-          "& Dedukti & \\texttt{cafeobj} & \\texttt{maude} & "
-          "\\texttt{runghc} & \\texttt{ocaml} & "
-          "\\texttt{ghc} & \\texttt{ocamlopt}\\\\\n"
-          "\\midrule\n")
+    with open("rectime.csv", "w") as out:
+        out.write(",".join(["Dedukti", "CajeOBJ", "Maude",
+                            "runghc", "ocaml", "ghc", "ocamlopt"]))
+        out.write("\n")
     for fs in frecs:
-        tlp = interpret(["lambdapi", "check"], fs["lp"])
-        tcafeobj = interpret(["cafeobj"], fs["co"])
-        tmaude = interpret(["maude"], fs["ma"])
-        trunghc = interpret(["runghc"], fs["hs"])
-        tocaml = interpret(["ocaml"], fs["ml"])
-        tghc = ghc(fs["root"])
-        tmlopt = ocamlopt(fs["ml"])
-        print("{} & {} & {} & {} & {} & {} & {} & {}\\\\".format(
-            fs["root"], tlp, tcafeobj, tmaude, trunghc, tocaml,
-            tghc, tmlopt))
-    print("\\bottomrule\n"
-          "\\end{tabular}\n")
+        timings = [
+            interpret(["lambdapi", "check"], fs["lp"]),
+            interpret(["cafeobj", "-batch"], fs["co"]),
+            interpret(["maude", "-batch"], fs["ma"]),
+            interpret(["runghc"], fs["hs"]),
+            interpret(["ocaml"], fs["ml"]),
+            ghc(fs["root"]),
+            ocamlopt(fs["ml"])
+        ]
+    with open("rectime.csv", "a") as out:
+            out.write(",".join(timings))
+            out.write("\n")
 
 if __name__ == "__main__":
     main()
