@@ -612,7 +612,7 @@ let scope_rule : sig_state -> p_rule -> pre_rule loc = fun ss r ->
     defined on {!val:Sign.hint_unif}. A unification hint can be seen as a
     rewriting rule that rewrite a unification problem into one or more
     sub-unification problems. *)
-let scope_hint : sig_state -> p_hint -> rule loc = fun ss h ->
+let scope_hint : sig_state -> p_unif_rule -> rule loc = fun ss h ->
   let (p_l, p_rs) = h.elt in
   (* NOTE: in the following comments, we consider a unification hint of the
      form P ≡ Q → x1 ≡ H1, ..., xn ≡ Hn. *)

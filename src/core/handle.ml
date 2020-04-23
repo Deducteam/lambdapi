@@ -126,13 +126,6 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
       let syms = List.remove_phys_dups (List.map (fun (s, _, _) -> s) rs) in
       List.iter Tree.update_dtree syms;
       (ss, None)
-  | P_hint(h)                    ->
-      (* Approximately same processing as rules without SR checking. *)
-      let h = scope_hint ss h in
-      Unif.Hint.atom.sym_rules := !(Unif.Hint.atom.sym_rules) @ [h.elt];
-      out 3 "(hint) %a\n" Unif.Hint.pp h.elt;
-      Tree.update_dtree Unif.Hint.atom;
-      (ss, None) (* Unchanged *)
   | P_definition(e,op,x,xs,ao,t) ->
       (* We check that [x] is not already used. *)
       if Sign.mem ss.signature x.elt then
@@ -266,6 +259,12 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
         | P_config_ident(id)      ->
             Sign.add_ident ss.signature id;
             out 3 "(conf) declared identifier [%s]\n" id; ss
+        | P_config_unif_rule(h)   ->
+            (* Approximately same processing as rules without SR checking. *)
+            let h = scope_hint ss h in
+            Sign.add_rule ss.signature Unif.Hint.atom h.elt;
+            Tree.update_dtree Unif.Hint.atom;
+            out 3 "(hint) [%a]\n" Unif.Hint.pp h.elt; ss
       in
       (ss, None)
   | P_query(q)                 ->

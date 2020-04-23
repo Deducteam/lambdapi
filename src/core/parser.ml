@@ -173,7 +173,6 @@ let _compute_    = KW.create "compute"
 let _constant_   = KW.create "constant"
 let _definition_ = KW.create "definition"
 let _focus_      = KW.create "focus"
-let _hint_       = KW.create "hint"
 let _in_         = KW.create "in"
 let _injective_  = KW.create "injective"
 let _intro_      = KW.create "assume"
@@ -468,18 +467,18 @@ let term = term PFunc
 let parser rule =
   | l:term "↪" r:term -> Pos.in_pos _loc (l, r)
 
-(** [hint_sub] parses a sub-unification problem, that is, a unification
+(** [unif_rule_sub] parses a sub-unification problem, that is, a unification
     problem on the right-hand side of a hint. *)
-let parser hint_sub =
+let parser unif_rule_sub =
   | v:patt "≡" t:term -> (Pos.in_pos _loc (P_Patt(v,[||])), t)
 
 (** [hint_rhs] parses the right-hand side of a unification hint. *)
-let parser hint_rhs =
-  | r:hint_sub rs:{"," hint_sub}* -> Pos.in_pos _loc (r::rs)
+let parser unif_rule_rhs =
+  | r:unif_rule_sub rs:{"," unif_rule_sub}* -> Pos.in_pos _loc (r::rs)
 
 (** [hint] is a parser for a unification hint. *)
-let parser hint =
-  | u:{term "≡" term} "↪" rhs:hint_rhs ->
+let parser unif_rule =
+  | u:{term "≡" term} "↪" rhs:unif_rule_rhs ->
       Pos.in_pos _loc (Pos.in_pos _loc_u u,rhs)
 
 (** [rw_patt_spec] is a parser for a rewrite pattern specification. *)
@@ -579,6 +578,8 @@ let parser config =
       sanity_check _loc_id id;
       Prefix.add declared_ids id id;
       P_config_ident(id)
+  | "unif_rule" h:unif_rule ->
+      P_config_unif_rule(h)
 
 let parser statement =
   _theorem_ s:ident al:arg* ":" a:term _proof_ -> Pos.in_pos _loc (s,al,a)
@@ -637,8 +638,6 @@ let parser cmd =
                   Option.get Terms.Defin p,s,al,a)
   | _rule_ r:rule rs:{_:_with_ rule}*
       -> P_rules(r::rs)
-  | _hint_ h:hint
-      -> P_hint(h)
   | e:exposition? _definition_ s:ident al:arg* ao:{":" term}? "≔" t:term
       -> P_definition(Option.get Terms.Public e,false,s,al,ao,t)
   | e:exposition? st:statement (ts,pe):proof

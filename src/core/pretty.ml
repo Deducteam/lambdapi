@@ -115,7 +115,7 @@ let pp_p_rule : bool -> p_rule pp = fun first oc r ->
   let kw = if first then "rule" else "with" in
   Format.fprintf oc "@[<hov 3>%s %a@ ↪ %a@]@?" kw pp_p_term lhs pp_p_term rhs
 
-let pp_p_hint : p_hint pp = fun oc h ->
+let pp_p_hint : p_unif_rule pp = fun oc h ->
   let (l,rs) = h.elt in
   let pp_unif oc (l,r) =
     Format.fprintf oc "@[%a@ ~ %a@]@?" pp_p_term l pp_p_term r
@@ -235,11 +235,11 @@ let pp_command : p_command pp = fun oc cmd ->
         | Assoc_right -> " right"
       in
       out "set infix%s %f \"%s\" ≔ %a" a p s pp_qident qid
+  | P_set(P_config_unif_rule(ur))   -> pp_p_hint oc ur
   | P_set(P_config_ident(id))       ->
       out "set declared \"%s\"" id
   | P_query(q)                      ->
      pp_p_query oc q
-  | P_hint(h)                       -> pp_p_hint oc h
 
 let rec pp_ast : ast pp = fun oc cs ->
   match cs with

@@ -8,7 +8,7 @@ rule T bool ↪ Bool
 //   &x ≡ bool
 // --------------
 //  T &x ≡ Bool
-hint (T $x) ≡ Bool ↪ $x ≡ bool
+set unif_rule (T $x) ≡ Bool ↪ $x ≡ bool
 
 symbol f : (Bool → Bool) → U
 
@@ -21,7 +21,7 @@ rule T nat ↪ Nat
 //   &x ≡ nat
 // -------------
 //  T &x ≡ Nat
-hint (T $x) ≡ Nat ↪ $x ≡ nat
+set unif_rule (T $x) ≡ Nat ↪ $x ≡ nat
 
 symbol G: Bool → Nat → TYPE
 type λx: T _, λy: T _, G x y
@@ -39,7 +39,7 @@ symbol iz: I z
 //    &x ≡ z   &y ≡ z
 // -------------------
 //    plus &x &y ≡ z
-hint (plus $x $y) ≡ z ↪ $x ≡ z, $y ≡ z
+set unif_rule (plus $x $y) ≡ z ↪ $x ≡ z, $y ≡ z
 // Trigger the unification problem plus ?1 ?2 ≡ z
 compute H (plus _ _) iz
 

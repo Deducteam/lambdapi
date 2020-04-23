@@ -80,14 +80,14 @@ and p_arg = ident option list * p_type option * bool
 type p_rule = (p_patt * p_term) loc
 
 (** Parser-level representation of the pattern of a unification hint. *)
-type p_hint_patt = (p_patt * p_patt) loc
+type p_unif_rule_lhs = (p_patt * p_patt) loc
 
 (** Parser-level representation of the sub unification problems of a
-    unification hint. *)
-type p_hint_supb = ((p_term * p_term) list) loc
+    unification hint (RHS of a rule). *)
+type p_unif_rule_rhs = ((p_term * p_term) list) loc
 
 (** Parser-level unification hint. *)
-type p_hint = (p_hint_patt * p_hint_supb) loc
+type p_unif_rule = (p_unif_rule_lhs * p_unif_rule_rhs) loc
 
 (** Rewrite pattern specification. *)
 type p_rw_patt =
@@ -166,14 +166,16 @@ type p_proof_end =
 
 (** Parser-level representation of a configuration command. *)
 type p_config =
-  | P_config_builtin of string * qident
+  | P_config_builtin   of string * qident
   (** Sets the configuration for a builtin syntax (e.g., nat literals). *)
-  | P_config_unop    of unop
+  | P_config_unop      of unop
   (** Defines (or redefines) a unary operator (e.g., ["!"] or ["¬"]). *)
-  | P_config_binop   of binop
+  | P_config_binop     of binop
   (** Defines (or redefines) a binary operator (e.g., ["+"] or ["×"]). *)
-  | P_config_ident of string
+  | P_config_ident     of string
   (** Defines a new, valid identifier (e.g., ["σ"], ["€"] or ["ℕ"]). *)
+  | P_config_unif_rule of p_unif_rule
+  (** Unification hint declarations. *)
 
 (** Parser-level representation of a single command. *)
 type p_statement = (ident * p_arg list * p_type) loc
@@ -189,8 +191,6 @@ type p_command_aux =
   (** Symbol declaration. *)
   | P_rules      of p_rule list
   (** Rewriting rule declarations. *)
-  | P_hint       of p_hint
-  (** Unification hints declarations. *)
   | P_definition of Terms.expo * bool * ident * p_arg list * p_type option
                   * p_term
   (** Definition of a symbol (unfoldable). *)
