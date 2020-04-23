@@ -188,7 +188,7 @@ let handle : Pos.popt -> Proof.proof_state -> sig_state -> string option ->
   let tsk = encode pos ps.Proof.proof_builtins hyps trm in
   (* Run the task with the prover named [prover_name]. *)
   if not (run_task tsk pos prover_name) then
-    fatal pos "%s did not found a proof" prover_name;
+    fatal pos "%s did not find a proof" prover_name;
   (* Create a new axiom that represents the proved goal. *)
   let axiom_name = new_axiom_name () in
   (* Get the meta type of the current goal (with quantified context). *)
