@@ -298,22 +298,6 @@ let meta_name : meta -> string = fun m ->
   in
   "?" ^ name
 
-(** [term_of_meta m env] constructs the application of a dummy symbol with the
-    same type as [m], to the element of the environment [env].  The idea is to
-    obtain a term with the same type as {!constructor:Meta}[(m,env)], but that
-    is simpler to type-check. *)
-let term_of_meta : meta -> term array -> term = fun m e ->
-  let s =
-    { sym_name = Printf.sprintf "%s" (meta_name m)
-    ; sym_type = ref !(m.meta_type) ; sym_path = [] ; sym_def = ref None
-    ; sym_impl = []; sym_rules = ref [] ; sym_prop = Const
-    ; sym_expo = Privat ; sym_tree = ref Tree_types.empty_dtree }
-  in
-  Array.fold_left (fun acc t -> Appl(acc,t)) (Symb s) e
-
-(** {b NOTE} that {!val:term_of_meta} relies on a dummy symbol and not a fresh
-    variable to avoid polluting the context. *)
-
 (** {3 Smart constructors and Bindlib infrastructure} *)
 
 (** A short name for the binding of a term in a term. *)

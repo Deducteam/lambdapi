@@ -67,6 +67,13 @@ let current_sign () =
   in
   PathMap.find mp !loaded
 
+(** [new_sym ()] creates a new (private definable) symbol. *)
+let new_sym : string -> term -> sym = fun name typ ->
+  let path = (current_sign()).sign_path in
+  { sym_name = name; sym_type = ref typ; sym_path = path; sym_def = ref None
+    ; sym_impl = []; sym_rules = ref []; sym_prop = Defin; sym_expo = Privat
+    ; sym_tree = ref Tree_types.empty_dtree }
+
 (** [link sign] establishes physical links to the external symbols. *)
 let link : t -> unit = fun sign ->
   let rec link_term t =

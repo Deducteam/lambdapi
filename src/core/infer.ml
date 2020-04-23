@@ -129,8 +129,8 @@ let rec infer : ctxt -> term -> term = fun ctx t ->
         match s with
         | Type | Kind -> s
         | _           -> conv ctx s Type; Type
-        (* We add the constraint [s = Type] because kinds cannot occur inside
-         a term. So, [t] cannot be a kind. *)
+      (* We add the constraint [s = Type] because kinds cannot occur inside a
+         term. So, [t] cannot be a kind. *)
       end
 
   (*  ctx ⊢ a ⇐ Type    ctx, x : a ⊢ t<x> ⇒ b<x>
@@ -185,7 +185,10 @@ let rec infer : ctxt -> term -> term = fun ctx t ->
       ----------------------------
          ctx ⊢ Meta(m,e) ⇒ a      *)
   | Meta(m,ts)   ->
-      infer ctx (term_of_meta m ts)
+      (* The type of [Meta(m,ts)] is the same as the one obtained by applying
+         to [ts] a new symbol having the same type as [m]. *)
+      let s = Sign.new_sym (meta_name m) !(m.meta_type) in
+      infer ctx (Array.fold_left (fun acc t -> Appl(acc,t)) (Symb s) ts)
 
 (** [check ctx t a] checks that the term [t] has type [a] in context [ctx],
    possibly under some constraints recorded in [constraints] using
