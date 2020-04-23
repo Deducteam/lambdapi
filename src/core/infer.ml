@@ -195,22 +195,6 @@ and check : ctxt -> term -> term -> unit = fun ctx t a ->
   if !log_enabled then log_infr "check %a : %a" pp_term t pp_term a;
   conv ctx (infer ctx t) a
 
-(** [check ctx t c] checks returns a list [cs] of unification constraints for
-   [t] to be of type [c] in the context [ctx]. The context [ctx] must be
-   well-typed, and the type [c] well-sorted. This function never fails (but
-   constraints may be unsatisfiable). *)
-let check : ctxt -> term -> term -> constr list = fun ctx t a ->
-  Stdlib.(constraints := []);
-  check ctx t a;
-  let constrs = Stdlib.(!constraints) in
-  if !log_enabled then
-    begin
-      log_infr (gre "check %a : %a") pp_term t pp_term a;
-      List.iter (log_infr "  if %a" pp_constr) constrs;
-    end;
-  Stdlib.(constraints := []);
-  constrs
-
 (** [infer ctx t] returns a pair [(a,cs)] where [a] is a type for the term [t]
    in the context [ctx] under unification constraints [cs].  In other words,
    the constraints of [cs] must be satisfied for [t] to have type [a]. [ctx]
@@ -227,3 +211,19 @@ let infer : ctxt -> term -> term * constr list = fun ctx t ->
     end;
   Stdlib.(constraints := []);
   (a, constrs)
+
+(** [check ctx t c] checks returns a list [cs] of unification constraints for
+   [t] to be of type [c] in the context [ctx]. The context [ctx] must be
+   well-typed, and the type [c] well-sorted. This function never fails (but
+   constraints may be unsatisfiable). *)
+let check : ctxt -> term -> term -> constr list = fun ctx t a ->
+  Stdlib.(constraints := []);
+  check ctx t a;
+  let constrs = Stdlib.(!constraints) in
+  if !log_enabled then
+    begin
+      log_infr (gre "check %a : %a") pp_term t pp_term a;
+      List.iter (log_infr "  if %a" pp_constr) constrs;
+    end;
+  Stdlib.(constraints := []);
+  constrs
