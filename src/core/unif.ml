@@ -149,7 +149,7 @@ let try_hints : ctxt -> term -> term -> unif_constrs option =
     let pp_subpbs = List.pp pp_constr ", " in
     if !log_enabled then log_unif (gre "hint [%a]") pp_subpbs subpbs;
     Some(subpbs)
-  with No_match | Eval.Type_red -> None
+  with No_match -> None
 
 (** [solve cfg p] tries to solve the unification problems of [p] and
     returns the constraints that could not be solved. *)

@@ -47,11 +47,6 @@ let appl_to_tref : term -> term = fun t ->
 (** Abstract machine stack. *)
 type stack = term list
 
-(** FIXME: unification hints must be allowed on types, which may involve
-    rewriting on products. For now, it isn't implemented and we raise the
-    following exception if a rewriting on a product is attempted. *)
-exception Type_red
-
 (** [whnf_beta t] computes a weak head beta normal form of the term [t]. *)
 let rec whnf_beta : term -> term = fun t ->
   if !log_enabled then log_eval "evaluating %a" pp t;
@@ -320,16 +315,16 @@ and tree_walk : dtree -> ctxt -> stack -> (term * stack) option =
                     let stk = List.reconstruct left (body::args) right in
                     walk tr stk cursor vars_id id_vars
               end
-          | Meta(_) -> default ()
-          | TRef(_) -> assert false
-          | TEnv(_) -> assert false
-          | Patt(_) -> assert false
-          | LLet(_) -> assert false
-          | Appl(_) -> assert false
-          | Type    -> raise Type_red
-          | Kind    -> assert false
-          | Wild    -> assert false
-          | Prod(_) -> raise Type_red
+          | Kind
+          | Type
+          | Prod(_)
+          | Meta(_, _) -> default ()
+          | TRef(_)    -> assert false (* Should be reduced by [whnf_stk]. *)
+          | Appl(_)    -> assert false (* Should be reduced by [whnf_stk]. *)
+          | LLet(_)    -> assert false (* Should be reduced by [whnf_stk]. *)
+          | Patt(_)    -> assert false (* Should not appear in terms. *)
+          | TEnv(_)    -> assert false (* Should not appear in terms. *)
+          | Wild       -> assert false (* Should not appear in terms. *)
   in
   walk tree stk 0 VarMap.empty IntMap.empty
 
