@@ -40,20 +40,20 @@ module Hint = struct
       represents [t ≡ u]. The left-hand side of a unification rule is made
       of only one atom. *)
   let atom : sym =
-    { sym_name="unif_atom"; sym_type=ref Kind; sym_path=[]
+    { sym_name="#unif_atom"; sym_type=ref Kind; sym_path=[]
     ; sym_def=ref None; sym_impl=[];sym_tree=ref Tree_types.empty_dtree
     ; sym_prop=Defin; sym_expo=Public; sym_rules=ref [] }
 
   (** Holds a list of atoms. The right-hand side of a unification rule is
       made of such a list, [list (atom t u) (atom v w) ...]. *)
   let list : sym =
-    { sym_name="unif_list"; sym_type=ref Kind; sym_path=[]
+    { sym_name="#unif_list"; sym_type=ref Kind; sym_path=[]
     ; sym_def=ref None; sym_impl=[];sym_tree=ref Tree_types.empty_dtree
     ; sym_prop=Defin; sym_expo=Public; sym_rules=ref [] }
 
   (** Mapping from symbol names to symbols. *)
   let map : (string * sym) list =
-    [("unif_atom", atom); ("unif_list", list)]
+    [("#unif_atom", atom); ("#unif_list", list)]
 
   let pp_hint: sym -> pp_hint = fun s ->
     if s == atom then Binary("≡") else
