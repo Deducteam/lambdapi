@@ -37,7 +37,7 @@ BEGIN {
     r = gensub(/^([^:]+) : (.*)$/,
                "symbol \\1 : \\2", "1") ;
     context[$1] = 1 ;
-    q = gensub(/->/, "⇒", "g", r) ;
+    q = gensub(/->/, "→", "g", r) ;
     print q
 }
 /print/ { sub(/\s*print/, "compute") ; print }
@@ -47,10 +47,10 @@ BEGIN {
 ($1 !~ /main|data/) && /=/ {
     for (i = 1; i <= NF; i++) {
         if (is_var($i))
-            $i = "\&"$i ;
+            $i = "\$"$i ;
     }
     t = gensub(/^([^=]+) = (.*)$/,
-               "rule \\1 → \\2", "1") ;
+               "rule \\1 ↪ \\2", "1") ;
     print t
 }
 ## Variant
@@ -67,8 +67,8 @@ BEGIN {
         else {
             constr = gensub(/^(\S+).*/, "\\1", "1", clean) ;
             args = gensub(/^\S+\s(.*)/, "\\1", "1", clean) ;
-            ctype = gensub(/\s/, " ⇒ ", "g", args) ;
-            printf("symbol %s : %s ⇒ %s\n", constr, ctype, type_ident) ;
+            ctype = gensub(/\s/, " → ", "g", args) ;
+            printf("symbol %s : %s → %s\n", constr, ctype, type_ident) ;
         }
     }
 }
@@ -81,7 +81,7 @@ BEGIN {
     # Get record constructor
     rec_constr = gensub(/^(\S+).*/, "\\1", "1", rhs) ;
     fields = gensub(/^\S+\s(.*)$/, "\\1", "1", rhs) ;
-    fields_arr = gensub(/\s/, " ⇒ ", "g", fields) ;
+    fields_arr = gensub(/\s/, " → ", "g", fields) ;
     printf("symbol %s : %s %s\n", rec_constr, fields_arr, type_ident) ;
 }
 END {}
