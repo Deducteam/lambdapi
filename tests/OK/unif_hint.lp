@@ -47,3 +47,4 @@ compute H (plus _ _) iz
 symbol arrow : U → U → U
 rule T (arrow $t $u) ↪ T $t → T $u
 // hint (T $a → T $b) ≡ T (arrow $c $d) ↪ $a ≡ $c, $b ≡ $d
+// FIXME: implications not allowed in LHS (scoping level)
