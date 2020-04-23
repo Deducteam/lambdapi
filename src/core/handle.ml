@@ -12,6 +12,10 @@ open Sig_state
 open Scope
 open Print
 
+(** Logging function for command handling. *)
+let log_hndl = new_logger 'h' "hndl" "command handling"
+let log_hndl = log_hndl.logger
+
 (* Register a check for the type of the builtin symbol "0" and "+1". *)
 let _ =
   let register = Builtin.register_expected_type (Unif.eq []) pp_term in
