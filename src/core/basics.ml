@@ -73,14 +73,14 @@ let is_symb : sym -> term -> bool = fun s t ->
   | Symb(r) -> r == s
   | _       -> false
 
-(** Given a symbol [s], [expl_args s ts] returns the explicit arguments of
-   [ts]. *)
+(** Given a symbol [s], [expl_args s ts] returns the non-implicit arguments of
+   [s] among [ts]. *)
 let expl_args : sym -> term list -> term list = fun s ts ->
   let rec expl bs ts =
-    match bs, ts with
-    | true::bs, _::ts -> expl bs ts
-    | false::bs, t::ts -> t :: expl bs ts
-    | _, _ -> ts
+    match (bs, ts) with
+    | (true::bs , _::ts) -> expl bs ts
+    | (false::bs, t::ts) -> t :: expl bs ts
+    | (_        , _    ) -> ts
   in
   expl s.sym_impl ts
 

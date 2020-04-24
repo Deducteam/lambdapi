@@ -120,8 +120,8 @@ let open_sign : sig_state -> Sign.t -> sig_state = fun ss sign ->
     are allowed in left-hand side of rewrite rules (only) iff [~prt] is true.
     {!constructor:Terms.expo.Privat} symbols are allowed iff [~prv]
     is [true]. *)
-let find_sym : prt:bool -> prv:bool -> bool -> sig_state -> qident -> sym
-  = fun ~prt ~prv b st qid ->
+let find_sym : prt:bool -> prv:bool -> bool -> sig_state -> qident -> sym =
+  fun ~prt ~prv b st qid ->
   let {elt = (mp, s); pos} = qid in
   let mp = List.map fst mp in
   let s =
@@ -159,14 +159,10 @@ let find_sym : prt:bool -> prv:bool -> bool -> sig_state -> qident -> sym
           fatal pos "Unbound symbol [%a.%s]." Path.pp mp s
         end
   in
-  begin
-    match (prt, prv, s.sym_expo) with
-    | (false, _    , Protec) ->
-        if s.sym_path <> st.signature.sign_path then
-          (* Fail if symbol is not defined in the current module. *)
-          fatal pos "Protected symbol not allowed here."
-    | (_    , false, Privat) ->
-        fatal pos "Private symbol not allowed here."
-    | _                      -> ()
-  end;
-  s
+  match (prt, prv, s.sym_expo) with
+  | (false, _    , Protec) ->
+      if s.sym_path = st.signature.sign_path then s else
+      (* Fail if symbol is not defined in the current module. *)
+      fatal pos "Protected symbol not allowed here."
+  | (_    , false, Privat) -> fatal pos "Private symbol not allowed here."
+  | _                      -> s
