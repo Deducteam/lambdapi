@@ -8,8 +8,6 @@ open Basics
 open Console
 open Print
 
-module Builtin = Sig_state.Builtin
-
 (** Logging function for the rewrite tactic. *)
 let log_rewr = new_logger 'r' "rewr" "the rewrite tactic"
 let log_rewr = log_rewr.logger

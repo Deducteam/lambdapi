@@ -6,8 +6,6 @@ open Extra
 open Timed
 open Print
 
-module Builtin = Sig_state.Builtin
-
 (** Logging function for external prover calling with Why3. *)
 let log_why3 = new_logger 'w' "why3" "why3 provers"
 let log_why3 = log_why3.logger
