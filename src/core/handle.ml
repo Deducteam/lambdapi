@@ -273,7 +273,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
               ; arities = pur.pr_arities
               ; vars = pur.pr_vars }
             in
-            Sign.add_rule ss.signature Unif.Hint.atom urule;
+            Sign.add_rule Unif.Hint.sign Unif.Hint.atom urule;
             Tree.update_dtree Unif.Hint.atom;
             out 3 "(hint) [%a]\n" Unif.Hint.pp urule; ss
       in

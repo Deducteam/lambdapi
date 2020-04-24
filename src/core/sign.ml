@@ -273,9 +273,7 @@ let read : string -> t = fun fname ->
     its dependencies. *)
 let add_rule : t -> sym -> rule -> unit = fun sign sym r ->
   sym.sym_rules := !(sym.sym_rules) @ [r];
-  if sym.sym_path <> sign.sign_path &&
-     not (sym == Unif.Hint.atom || sym == Unif.Hint.list)
-  then
+  if sym.sym_path <> sign.sign_path then
     let m =
       try PathMap.find sym.sym_path !(sign.sign_deps)
       with Not_found -> assert false

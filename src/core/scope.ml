@@ -19,7 +19,8 @@ type sig_state =
 (** [empty_sig_state] is an empty signature state, without symbols/aliases. *)
 let empty_sig_state : Sign.t -> sig_state = fun sign ->
   { signature = sign
-  ; in_scope  = StrMap.empty
+  ; in_scope  = !(Unif.Hint.sign.sign_symbols)
+  (* Always open unification hints. *)
   ; aliases   = StrMap.empty
   ; builtins  = StrMap.empty }
 
@@ -52,10 +53,6 @@ let find_sym : prt:bool -> prv:bool -> bool -> sig_state -> qident ->
     | []                               -> (* Symbol in scope. *)
         begin
           try (fst (StrMap.find s st.in_scope), Nothing) with Not_found ->
-          try
-            let s = List.assoc s Unif.Hint.map in
-            (s, Unif.Hint.pp_hint s)
-          with Not_found ->
           let txt = if b then " or variable" else "" in
           fatal pos "Unbound symbol%s [%s]." txt s
         end
