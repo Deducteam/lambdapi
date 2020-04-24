@@ -156,8 +156,8 @@ let _ =
 (** [get_eq_data pos cfg a] extra data from an equality type [a]. It
    consists of a triple containing the type in which equality is used and the
    equated terms (LHS and RHS). *)
-let get_eq_data : popt -> eq_config -> term -> term * term * term
-  = fun pos cfg t ->
+let get_eq_data : popt -> eq_config -> term -> term * term * term =
+  fun pos cfg t ->
   match Basics.get_args t with
   | (p, [u]) when is_symb cfg.symb_P p ->
       begin
