@@ -11,6 +11,10 @@ open Files
 open Syntax
 open Scope
 
+(** Logging function for command handling. *)
+let log_hndl = new_logger 'h' "hndl" "command handling"
+let log_hndl = log_hndl.logger
+
 (* Register a check for the type of builtin successor symbol ["+1"]. *)
 let _ =
   let expected_successor pos map =
