@@ -16,7 +16,7 @@ open Print
 let log_hndl = new_logger 'h' "hndl" "command handling"
 let log_hndl = log_hndl.logger
 
-(* Register a check for the type of the builtin symbol "0" and "+1". *)
+(* Register a check for the type of the builtin symbols "0" and "+1". *)
 let _ =
   let register = Builtin.register_expected_type (Unif.eq []) pp_term in
   let expected_zero_type ss _pos =
@@ -282,7 +282,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
     indicate commands that take too long to execute. *)
 let too_long = Stdlib.ref infinity
 
-(** [handle_cmd ss cmd] is similar to [handle_cmd ss cmd] but it adds some
+(** [handle_cmd ss cmd] adds to the previous [handle_cmd] some
     exception handling. In particular, the position of [cmd] is used on errors
     that lack a specific position. All exceptions except [Timeout] and [Fatal]
     are captured, although they should not occur. *)

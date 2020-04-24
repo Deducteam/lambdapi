@@ -83,10 +83,10 @@ let conv ctx a b =
     end
 
 (** [infer ctx t] infers a type for the term [t] in context [ctx] and
-   signature state [ss], possibly under some constraints recorded in
-   [constraints] using [conv]. The returned type is well-sorted if recorded
-   unification constraints are satisfied. [ctx] must be well-formed. This
-   function never fails (but constraints may be unsatisfiable). *)
+    signature state [ss], possibly under some constraints recorded in
+    [constraints] using [conv]. The returned type is well-sorted if recorded
+    unification constraints are satisfied. [ctx] must be well-formed. This
+    function never fails (but constraints may be unsatisfiable). *)
 let rec infer : ctxt -> term -> term = fun ctx t ->
   if !log_enabled then log_infr "infer %a%a" pp_ctxt ctx pp_term t;
   match unfold t with
@@ -191,18 +191,18 @@ let rec infer : ctxt -> term -> term = fun ctx t ->
       infer ctx (Array.fold_left (fun acc t -> Appl(acc,t)) (Symb s) ts)
 
 (** [check ctx t a] checks that the term [t] has type [a] in context [ctx],
-   possibly under some constraints recorded in [constraints] using
-   [conv]. [ctx] must be well-formed and [a] well-sorted. This function never
-   fails (but constraints may be unsatisfiable). *)
+    possibly under some constraints recorded in [constraints] using
+    [conv]. [ctx] must be well-formed and [a] well-sorted. This function never
+    fails (but constraints may be unsatisfiable). *)
 and check : ctxt -> term -> term -> unit = fun ctx t a ->
   if !log_enabled then log_infr "check %a : %a" pp_term t pp_term a;
   conv ctx (infer ctx t) a
 
 (** [infer ctx t] returns a pair [(a,cs)] where [a] is a type for the term [t]
-   in the context [ctx] under unification constraints [cs].  In other words,
-   the constraints of [cs] must be satisfied for [t] to have type [a]. [ctx]
-   must be well-formed. This function never fails (but constraints may be
-   unsatisfiable). *)
+    in the context [ctx] under unification constraints [cs].  In other words,
+    the constraints of [cs] must be satisfied for [t] to have type [a]. [ctx]
+    must be well-formed. This function never fails (but constraints may be
+    unsatisfiable). *)
 let infer : ctxt -> term -> term * constr list = fun ctx t ->
   Stdlib.(constraints := []);
   let a = infer ctx t in
@@ -216,9 +216,9 @@ let infer : ctxt -> term -> term * constr list = fun ctx t ->
   (a, constrs)
 
 (** [check ctx t c] checks returns a list [cs] of unification constraints for
-   [t] to be of type [c] in the context [ctx]. The context [ctx] must be
-   well-typed, and the type [c] well-sorted. This function never fails (but
-   constraints may be unsatisfiable). *)
+    [t] to be of type [c] in the context [ctx]. The context [ctx] must be
+    well-typed, and the type [c] well-sorted. This function never fails (but
+    constraints may be unsatisfiable). *)
 let check : ctxt -> term -> term -> constr list = fun ctx t a ->
   Stdlib.(constraints := []);
   check ctx t a;
