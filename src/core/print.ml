@@ -141,27 +141,33 @@ and pp_term : term pp = fun oc t ->
     (* Product and abstraction (only them can be wrapped). *)
     | Abst(a,b)   ->
         if wrap then out oc "(";
-        out oc "λ";
         let (x,t) = Bindlib.unbind b in
-        if Bindlib.binder_occur b then out oc "%a" pp_tvar x else out oc "_";
-        if !print_domains then out oc ": %a" (pp `Func) a;
-        out oc ", %a" (pp `Func) t;
+        if !print_domains then
+          out oc "λ%a: %a, %a" pp_var (b,x) (pp `Func) a (pp `Func) t
+        else out oc "λ%a%a" pp_var (b,x) pp_abstractions t;
         if wrap then out oc ")"
     | Prod(a,b)   ->
         if wrap then out oc "(";
         let (x,t) = Bindlib.unbind b in
         if Bindlib.binder_occur b then
           out oc "Π%a: %a, %a" pp_tvar x (pp `Func) a (pp `Func) t
-        else
-          out oc "%a → %a" (pp `Appl) a (pp `Func) t;
+        else out oc "%a → %a" (pp `Appl) a (pp `Func) t;
         if wrap then out oc ")"
     | LLet(a,t,b) ->
         if wrap then out oc "(";
         let (x,u) = Bindlib.unbind b in
-        if Bindlib.binder_occur b then out oc "%a" pp_tvar x else out oc "_";
+        pp_var oc (b,x);
         if !print_domains then out oc ": %a" (pp `Atom) a;
         out oc " ≔ %a in %a" (pp `Atom) t (pp `Atom) u;
         if wrap then out oc ")"
+  and pp_var oc (b,x) =
+    if Bindlib.binder_occur b then out oc "%a" pp_tvar x else out oc "_"
+  and pp_abstractions oc t =
+    match unfold t with
+    | Abst(_,b) ->
+        let (x,t) = Bindlib.unbind b in
+        out oc " %a" pp_var (b,x); pp_abstractions oc t
+    | t -> out oc ", %a" (pp `Func) t
   in
   pp `Func oc (cleanup t)
 
