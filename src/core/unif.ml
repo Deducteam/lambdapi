@@ -12,6 +12,27 @@ open Print
 let log_unif = new_logger 'u' "unif" "unification"
 let log_unif = log_unif.logger
 
+(** Representation of unification problems. *)
+type problem =
+  { to_solve  : constr list
+  (** List of unification problems to solve. *)
+  ; unsolved  : constr list
+  (** List of unification problems that could not be solved. *)
+  ; recompute : bool
+  (** Indicates whether unsolved problems should be rechecked. *) }
+
+(** Empty problem. *)
+let empty_problem : problem =
+  {to_solve  = []; unsolved = []; recompute = false}
+
+(** [pp_constr oc p] prints the unification problem [p] to the
+    output channel [oc]. *)
+let pp_problem : problem pp = fun oc p ->
+  Format.fprintf oc "{ to_solve = [%a]; unsolved = [%a]; recompute = %b }"
+    (List.pp pp_constr "; ") p.to_solve
+    (List.pp pp_constr "; ") p.unsolved
+    p.recompute
+
 (** Exception raised when a constraint is not solvable. *)
 exception Unsolvable
 

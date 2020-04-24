@@ -12,6 +12,18 @@ open Print
 let log_rewr = new_logger 'r' "rewr" "the rewrite tactic"
 let log_rewr = log_rewr.logger
 
+(** Rewrite patterns as in Coq/SSReflect. See "A Small Scale
+    Reflection Extension for the Coq system", by Georges Gonthier,
+    Assia Mahboubi and Enrico Tassi, INRIA Research Report 6455, 2016,
+    http://hal.inria.fr/inria-00258384, section 8, p. 48. *)
+type rw_patt =
+  | RW_Term           of term
+  | RW_InTerm         of term
+  | RW_InIdInTerm     of (term, term) Bindlib.binder
+  | RW_IdInTerm       of (term, term) Bindlib.binder
+  | RW_TermInIdInTerm of term * (term, term) Bindlib.binder
+  | RW_TermAsIdInTerm of term * (term, term) Bindlib.binder
+
 (** [eq ctx t u] tests the equality of [t] and [u] (up to α-equivalence).
     It fails if [t] or [u] contain terms of the form [Patt(i,s,e)] or
     [TEnv(te,env)].  In the process, subterms of the form [TRef(r)] in [t] and
