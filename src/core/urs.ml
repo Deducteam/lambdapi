@@ -24,13 +24,23 @@ module List = struct
     | []       -> true
 end
 
+(** [pp_tevar oc x] prints term with environment variable [x] to the channel
+    [oc]. *)
+let pp_tevar : tevar pp = fun oc x ->
+  Format.pp_print_string oc (Bindlib.name_of x)
+
+(** [to_sym t] returns [s] if [t] is of the form [Symb(s,_)] and fails
+    otherwise. *)
+let to_sym : term -> sym = fun t ->
+  match t with Symb(s,_) -> s | _ -> assert false
+
 let check : pre_unification_rule loc -> unit = fun p_pur ->
   let (p_lhs, p_rhs) = (p_pur.elt.pre_ur_lhs, p_pur.elt.pre_ur_rhs) in
   let _, rhst = Bindlib.unmbind p_rhs.elt in
   (* Retrieve the sub unification problems in the form (xi, Hi). *)
   let bindings : (tevar * term) list =
     let (h, args) = Basics.get_args rhst in
-    assert (Basics.to_sym h == Unif.Hint.list);
+    assert (to_sym h == Unif.Hint.list);
     let f t = (* [f (xi ≡ Hi)] returns [(xi, Hi)] *)
       match Basics.get_args t with
       | (Symb(s, _), [TEnv(TE_Vari(x),_); u]) ->
@@ -75,7 +85,7 @@ let check : pre_unification_rule loc -> unit = fun p_pur ->
   begin match p_lhs.elt with
     | [t; u] ->
       let pp_binding oc (tev, t) =
-        Format.fprintf oc "@[$%a ≔ %a@]" Print.pp_tevar tev Print.pp t
+        Format.fprintf oc "@[$%a ≔ %a@]" pp_tevar tev Print.pp t
       in
       if not (Eval.eq_modulo [] (subst_of_hints t) (subst_of_hints u)) then
         fatal p_pur.pos ("[%a]@ is@ not@ convertible@ with@ [%a]@ " ^^

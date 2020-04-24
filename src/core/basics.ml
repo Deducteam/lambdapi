@@ -15,11 +15,6 @@ let fresh_vars : int -> tvar array = fun n ->
 let to_tvar : term -> tvar = fun t ->
   match t with Vari(x) -> x | _ -> assert false
 
-(** [to_sym t] returns [s] if [t] is of the form [Symb(s,_)] and fails
-    otherwise. *)
-let to_sym : term -> sym = fun t ->
-  match t with Symb(s,_) -> s | _ -> assert false
-
 (** {b NOTE} the {!val:Array.map to_tvar} function is useful when working
    with multiple binders. For example, this is the case when manipulating
    pattern variables ([Patt] constructor) or metatavariables ([Meta]

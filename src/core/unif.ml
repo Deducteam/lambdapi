@@ -55,10 +55,6 @@ module Hint = struct
   let list : sym =
     Sign.add_symbol sign Public Defin (Pos.none "u_list") Kind []
 
-  (** Mapping from symbol names to symbols. *)
-  let map : (string * sym) list =
-    [("u_atom", atom); ("u_list", list)]
-
 end
 
 (** [nl_distinct_vars ctx ts] checks that [ts] is made of variables  [vs] only
