@@ -16,9 +16,19 @@ svnrep = "https://scm.gforge.inria.fr/anonscm/svn/rec/2019-CONVECS/"
 
 null = open(os.devnull, "w")
 timeout = 60 * 30  # 30 min (unit is seconds)
+"""Timeout of tests."""
+
+total = 0
+"""Total number of tests."""
+counter = 0
+"""Number of processed tests."""
+
+"""Displays progress, s is anything that can be printed."""
+def print_progress(s) -> None:
+    print("{}/{}, {}".format(counter, total, s), end='\r')
 
 def interpret(exe, f: str) -> str:
-    print("{}".format(exe + [f]), end='\r')
+    print_progress(exe + [f])
     tim = timeit.Timer(stmt=lambda:subprocess.check_call(exe + [f],
         stdout=null, stderr=null, timeout=timeout))
     try:
@@ -31,10 +41,10 @@ def interpret(exe, f: str) -> str:
 
 def ocamlopt(f: str) -> str:
     def cnr():
-        print("\r{}".format(["ocamlopt", f]), end='\r')
+        print_progress(["ocamlopt", f])
         subprocess.check_call(["ocamlopt", f], stdout=null, stderr=null,
                 timeout=timeout)
-        print("\r{}".format(["./a.out"]))
+        print_progress(["./a.out"])
         subprocess.check_call(["./a.out"], stdout=null, stderr=null,
                               timeout=timeout)
     tim = timeit.Timer(stmt=cnr)
@@ -50,9 +60,9 @@ def ghc(root: str) -> str:
     exe = os.path.join(src["hs"], root)
     fil = exe + ".hs"
     def cnr():
-        print("\r{}".format(["ghc", fil]), end='\r')
+        print_progress(["ghc", fil])
         subprocess.check_call(["ghc", fil], stdout=null, timeout=timeout)
-        print("\r{}".format([exe]), end='\r')
+        print_progress([exe])
         subprocess.check_call([exe], stdout=null, timeout=timeout)
     tim = timeit.Timer(stmt=cnr)
     try:
@@ -86,12 +96,15 @@ def produce_dk():
             with open(out, "w") as o:
                 subprocess.check_call(["./rec_hs_to_lp.awk", f],
                                       stdout=o)
-    with open(os.path.join(srcdk, "lamdapi.pkg"), "w") as lpkg:
+    with open(os.path.join(srcdk, "lambdapi.pkg"), "w") as lpkg:
         lpkg.writelines(["package_name = rec", "root_path = rec"])
 
 def main():
+    global total
+    global counter
     check_paths()
     files = [pure_name(f) for f in os.listdir(srcdk)]
+    total = len(files)
     frecs = [{"lp": os.path.join(srcdk, r + ".lp"),
               "hs": os.path.join(src["hs"], r + ".hs"),
               "ml": os.path.join(src["ml"], r + ".ml"),
@@ -112,9 +125,10 @@ def main():
             ghc(fs["root"]),
             ocamlopt(fs["ml"])
         ]
-    with open("rectime.csv", "a") as out:
-            out.write(",".join(timings))
-            out.write("\n")
+        with open("rectime.csv", "a") as out:
+                out.write(",".join([str(t) for t in timings]))
+                out.write("\n")
+        counter += 1
 
 if __name__ == "__main__":
     main()
