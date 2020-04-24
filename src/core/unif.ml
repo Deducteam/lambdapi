@@ -431,7 +431,5 @@ let solve : problem -> constr list option = fun p ->
 
 (** [eq c t u] tries to unify the terms [t] and [u] in context [c], by
    instantiating their metavariables. *)
-let eq c t u =
-  match solve {empty_problem with to_solve=[c,t,u]} with
-  | Some [] -> true
-  | _ -> false
+let eq : ctxt -> term -> term -> bool = fun c t u ->
+  solve {empty_problem with to_solve=[c,t,u]} = Some []

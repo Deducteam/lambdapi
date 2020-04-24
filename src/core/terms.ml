@@ -416,7 +416,7 @@ let rec lift : term -> tbox = fun t ->
   | Vari(x)     -> _Vari x
   | Type        -> _Type
   | Kind        -> _Kind
-  | Symb(s)     -> _Symb s
+  | Symb(_) as t -> Bindlib.box t
   | Prod(a,b)   -> _Prod (lift a) (lift_binder b)
   | Abst(a,t)   -> _Abst (lift a) (lift_binder t)
   | Appl(t,u)   -> _Appl (lift t) (lift u)

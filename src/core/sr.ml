@@ -244,7 +244,7 @@ let check_rule : Scope.pre_rule Pos.loc -> rule = fun pr ->
   let is_constr c =
     let eq_comm (_,t1,u1) (_,t2,u2) =
       (* Contexts ignored: [Infer.check] is called with an empty context and
-         neither [Infer.check] nor [solve] generate contexts with defined
+         neither [Infer.check] nor [Unif.solve] generate contexts with defined
          variables. *)
       (Eval.eq_modulo [] t1 t2 && Eval.eq_modulo [] u1 u2) ||
       (Eval.eq_modulo [] t1 u2 && Eval.eq_modulo [] t2 u1)

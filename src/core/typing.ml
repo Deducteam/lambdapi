@@ -4,16 +4,15 @@ open Extra
 open Console
 open Terms
 open Unif
+open Print
 
-(** [check ctx t a] tells whether [t] has type [a] in context
-   [ctx]. *)
+(** [check ctx t a] tells whether [t] has type [a] in context [ctx]. *)
 let check : ctxt -> term -> term -> bool = fun ctx t a ->
   let to_solve = Infer.check ctx t a in
   match solve {empty_problem with to_solve} with
   | None     -> false
   | Some([]) -> true
   | Some(cs) ->
-      let pp_constr = Print.pp_constr in
       List.iter (fatal_msg "Cannot solve %a.\n" pp_constr) cs; false
 
 (** [infer_constr ctx t] tries to infer a type [a], together with
@@ -32,14 +31,12 @@ let infer : ctxt -> term -> term option = fun ctx t ->
   | None       -> None
   | Some(a,[]) -> Some(a)
   | Some(_,cs) ->
-      let pp_constr = Print.pp_constr in
       List.iter (fatal_msg "Cannot solve %a.\n" pp_constr) cs; None
 
 (** [sort_type ctx t] checks that the type of the term [t] in context
    [ctx] is a sort. If that is not the case, the exception [Fatal] is
    raised. *)
 let sort_type : ctxt -> term -> unit = fun ctx t ->
-  let pp_term = Print.pp_term in
   match infer ctx t with
   | None    -> fatal None "Unable to infer a sort for %a." pp_term t
   | Some(a) ->
