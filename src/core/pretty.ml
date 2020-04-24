@@ -115,14 +115,6 @@ let pp_p_rule : bool -> p_rule pp = fun first oc r ->
   let kw = if first then "rule" else "with" in
   Format.fprintf oc "@[<hov 3>%s %a@ ↪ %a@]@?" kw pp_p_term lhs pp_p_term rhs
 
-let pp_p_hint : p_unif_rule pp = fun oc h ->
-  let (l,rs) = h.elt in
-  let pp_unif oc (l,r) =
-    Format.fprintf oc "@[%a@ ~ %a@]@?" pp_p_term l pp_p_term r
-  in
-  let pp_unifs = List.pp pp_unif ", " in
-  Format.fprintf oc "@[<hov 3>hint %a@ → %a@]@?" pp_unif l.elt pp_unifs rs.elt
-
 let pp_p_proof_end : p_proof_end pp = fun oc e ->
   match e with
   | P_proof_qed   -> Format.pp_print_string oc "qed"
@@ -235,7 +227,7 @@ let pp_command : p_command pp = fun oc cmd ->
         | Assoc_right -> " right"
       in
       out "set infix%s %f \"%s\" ≔ %a" a p s pp_qident qid
-  | P_set(P_config_unif_rule(ur))   -> pp_p_hint oc ur
+  | P_set(P_config_unif_rule(ur))   -> pp_p_rule true oc ur
   | P_set(P_config_ident(id))       ->
       out "set declared \"%s\"" id
   | P_query(q)                      ->

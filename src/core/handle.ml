@@ -265,10 +265,17 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
             out 3 "(conf) declared identifier [%s]\n" id; ss
         | P_config_unif_rule(h)   ->
             (* Approximately same processing as rules without SR checking. *)
-            let h = scope_hint ss h in
-            Sign.add_rule ss.signature Unif.Hint.atom h.elt;
+            let pur = (scope_rule ss h).elt in
+            let urule =
+              { lhs = pur.pr_lhs
+              ; rhs = Bindlib.unbox (Bindlib.bind_mvar pur.pr_vars pur.pr_rhs)
+              ; arity = List.length pur.pr_lhs
+              ; arities = pur.pr_arities
+              ; vars = pur.pr_vars }
+            in
+            Sign.add_rule ss.signature Unif.Hint.atom urule;
             Tree.update_dtree Unif.Hint.atom;
-            out 3 "(hint) [%a]\n" Unif.Hint.pp h.elt; ss
+            out 3 "(hint) [%a]\n" Unif.Hint.pp urule; ss
       in
       (ss, None)
   | P_query(q)                 ->

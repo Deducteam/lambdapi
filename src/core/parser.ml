@@ -467,20 +467,6 @@ let term = term PFunc
 let parser rule =
   | l:term "↪" r:term -> Pos.in_pos _loc (l, r)
 
-(** [unif_rule_sub] parses a sub-unification problem, that is, a unification
-    problem on the right-hand side of a hint. *)
-let parser unif_rule_sub =
-  | v:patt "≡" t:term -> (Pos.in_pos _loc (P_Patt(v,[||])), t)
-
-(** [hint_rhs] parses the right-hand side of a unification hint. *)
-let parser unif_rule_rhs =
-  | r:unif_rule_sub rs:{"," unif_rule_sub}* -> Pos.in_pos _loc (r::rs)
-
-(** [hint] is a parser for a unification hint. *)
-let parser unif_rule =
-  | u:{term "≡" term} "↪" rhs:unif_rule_rhs ->
-      Pos.in_pos _loc (Pos.in_pos _loc_u u,rhs)
-
 (** [rw_patt_spec] is a parser for a rewrite pattern specification. *)
 let parser rw_patt_spec =
   | t:term                          -> P_rw_Term(t)
@@ -578,8 +564,7 @@ let parser config =
       sanity_check _loc_id id;
       Prefix.add declared_ids id id;
       P_config_ident(id)
-  | "unif_rule" h:unif_rule ->
-      P_config_unif_rule(h)
+  | "unif_rule" h:rule -> P_config_unif_rule(h)
 
 let parser statement =
   _theorem_ s:ident al:arg* ":" a:term _proof_ -> Pos.in_pos _loc (s,al,a)

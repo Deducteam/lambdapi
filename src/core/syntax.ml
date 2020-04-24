@@ -79,16 +79,6 @@ and p_arg = ident option list * p_type option * bool
 (** Parser-level rewriting rule representation. *)
 type p_rule = (p_patt * p_term) loc
 
-(** Parser-level representation of the pattern of a unification hint. *)
-type p_unif_rule_lhs = (p_patt * p_patt) loc
-
-(** Parser-level representation of the sub unification problems of a
-    unification hint (RHS of a rule). *)
-type p_unif_rule_rhs = ((p_term * p_term) list) loc
-
-(** Parser-level unification hint. *)
-type p_unif_rule = (p_unif_rule_lhs * p_unif_rule_rhs) loc
-
 (** Rewrite pattern specification. *)
 type p_rw_patt =
   | P_rw_Term           of p_term
@@ -174,7 +164,7 @@ type p_config =
   (** Defines (or redefines) a binary operator (e.g., ["+"] or ["×"]). *)
   | P_config_ident     of string
   (** Defines a new, valid identifier (e.g., ["σ"], ["€"] or ["ℕ"]). *)
-  | P_config_unif_rule of p_unif_rule
+  | P_config_unif_rule of p_rule
   (** Unification hint declarations. *)
 
 (** Parser-level representation of a single command. *)
@@ -210,8 +200,8 @@ type ast = p_command list
 (** Unification hints symbols. *)
 module Unif_hints =
   struct
-    let p_atom : p_term = Pos.none (P_Iden(Pos.none ([],"#unif_atom"),false))
-    let p_list : p_term = Pos.none (P_Iden(Pos.none ([],"#unif_list"),false))
+    let p_atom : p_term = Pos.none (P_Iden(Pos.none ([],"u_atom"),false))
+    let p_list : p_term = Pos.none (P_Iden(Pos.none ([],"u_list"),false))
   end
 
 let eq_ident : ident eq = fun x1 x2 -> x1.elt = x2.elt
