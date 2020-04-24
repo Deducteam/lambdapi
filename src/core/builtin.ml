@@ -1,11 +1,11 @@
 (** Registering and checking builtin symbols. *)
 
-open Sig_state
-open Pos
-open Terms
 open Extra
-open Console
 open Timed
+open Terms
+open Console
+open Pos
+open Sig_state
 
 (** [get pos map name] returns the symbol mapped to the “builtin symbol” named
    [name] i n the map [map], which should contain all the builtin symbols that
