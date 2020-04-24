@@ -97,7 +97,8 @@ def produce_dk():
                 subprocess.check_call(["./rec_hs_to_lp.awk", f],
                                       stdout=o)
     with open(os.path.join(srcdk, "lambdapi.pkg"), "w") as lpkg:
-        lpkg.writelines(["package_name = rec", "root_path = rec"])
+        lpkg.write("package_name = rec\n"
+                   "root_path = rec\n")
 
 def main():
     global total
