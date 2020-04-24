@@ -275,7 +275,9 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
             in
             Sign.add_rule Unif.Hint.sign Unif.Hint.atom urule;
             Tree.update_dtree Unif.Hint.atom;
-            out 3 "(hint) [%a]\n" Unif.Hint.pp urule; ss
+            out 3 "(hint) [%a]\n" Print.pp_rule
+              (Unif.Hint.atom, Nothing, urule);
+            ss
       in
       (ss, None)
   | P_query(q)                 ->

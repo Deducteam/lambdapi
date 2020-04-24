@@ -58,14 +58,6 @@ module Hint = struct
   let map : (string * sym) list =
     [("u_atom", atom); ("u_list", list)]
 
-  let pp_hint: sym -> pp_hint = fun s ->
-    if s == atom then Binary("≡") else
-    if s == list then Nothing else raise (Invalid_argument "Hint.pp_hint")
-
-  (** [pp_hint oc h] prints hint [h] to channel [oc]. *)
-  let pp = fun oc h ->
-    pp_rule oc (atom, pp_hint atom, h)
-
 end
 
 (** [nl_distinct_vars ctx ts] checks that [ts] is made of variables  [vs] only
