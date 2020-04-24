@@ -113,10 +113,6 @@ reserved "why3"
 
 // TODO rule naming, positive / negative
 
-// Unification hint
-<hint> ::=
-  | <patt> "≡" <patt> "↪" <pvar> "≡" <term> {"," <term> "≡" <term>}*
-
 // Rewrite pattern
 <rw_patt> ::=
   | <term>
@@ -165,6 +161,7 @@ reserved "why3"
   | "assert" arg* "⊢" <assertion>
   | "assertnot" arg* "⊢" <assertion>
   // Set option
+  | "set" "unif_rule" <patt> "≡" <patt> "↪" <term> "≡" <term> {"," <term> "≡" <term>}*
   | "set" "verbose" RE("[1-9][0-9]*")
   | "set" "debug" RE("[-+][a-zA-Z]+")
   | "set" "builtin" <string_lit> "≔" <qident>
