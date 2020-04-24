@@ -1,16 +1,15 @@
 #!/usr/bin/python3
 
-import sys
 import os
 import subprocess
 import timeit
 from glob import glob
 
 srcdk = "DEDUKTI"
-src = { "hs": "HASKELL",
-        "ml": "OCAML",
-        "co": "CAFEOBJ-B",
-        "ma": "MAUDE" }
+src = {"hs": "HASKELL",
+       "ml": "OCAML",
+       "co": "CAFEOBJ-B",
+       "ma": "MAUDE"}
 """Mapping from system code to folder name containing rec tests."""
 svnrep = "https://scm.gforge.inria.fr/anonscm/svn/rec/2019-CONVECS/"
 
@@ -23,14 +22,16 @@ total = 0
 counter = 0
 """Number of processed tests."""
 
-"""Displays progress, s is anything that can be printed."""
+
 def print_progress(s) -> None:
+    """Displays progress, s is anything that can be printed."""
     print("{}/{}, {}".format(counter, total, s), end='\r')
+
 
 def interpret(exe, f: str) -> str:
     print_progress(exe + [f])
-    tim = timeit.Timer(stmt=lambda:subprocess.check_call(exe + [f],
-        stdout=null, stderr=null, timeout=timeout))
+    tim = timeit.Timer(stmt=lambda: subprocess.check_call(
+        exe + [f], stdout=null, stderr=null, timeout=timeout))
     try:
         return tim.timeit(number=1)
     except subprocess.CalledProcessError:
@@ -42,8 +43,8 @@ def interpret(exe, f: str) -> str:
 def ocamlopt(f: str) -> str:
     def cnr():
         print_progress(["ocamlopt", f])
-        subprocess.check_call(["ocamlopt", f], stdout=null, stderr=null,
-                timeout=timeout)
+        subprocess.check_call(
+            ["ocamlopt", f], stdout=null, stderr=null, timeout=timeout)
         print_progress(["./a.out"])
         subprocess.check_call(["./a.out"], stdout=null, stderr=null,
                               timeout=timeout)
@@ -59,6 +60,7 @@ def ocamlopt(f: str) -> str:
 def ghc(root: str) -> str:
     exe = os.path.join(src["hs"], root)
     fil = exe + ".hs"
+
     def cnr():
         print_progress(["ghc", fil])
         subprocess.check_call(["ghc", fil], stdout=null, timeout=timeout)
@@ -73,21 +75,21 @@ def ghc(root: str) -> str:
         return "T/O"
 
 
-"""Check that sources are present and download them if necessary"""
 def check_paths():
+    """Check that sources are present and download them if necessary"""
     for rep in src.values():
         subprocess.call(["svn", "co", "-q", svnrep + rep])
     if not os.path.exists(srcdk):
         produce_dk()
 
 
-"""Returns the filename without extension, without path."""
 def pure_name(fname):
+    """Returns the filename without extension, without path."""
     return os.path.splitext(os.path.basename(fname))[0]
 
 
-"""Translate haskell files to dedukti with awk script"""
 def produce_dk():
+    """Translate haskell files to dedukti with awk script"""
     os.mkdir(srcdk, mode=0o755)
     for f in glob("{}/*.hs".format(src["hs"])):
         # Skip conditional rewriting
@@ -99,6 +101,7 @@ def produce_dk():
     with open(os.path.join(srcdk, "lambdapi.pkg"), "w") as lpkg:
         lpkg.write("package_name = rec\n"
                    "root_path = rec\n")
+
 
 def main():
     global total
@@ -130,6 +133,7 @@ def main():
                 out.write(",".join([str(t) for t in timings]))
                 out.write("\n")
         counter += 1
+
 
 if __name__ == "__main__":
     main()
