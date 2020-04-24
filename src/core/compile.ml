@@ -23,7 +23,9 @@ let parse_file : string -> Syntax.ast = fun fname ->
     the corresponding object file. *)
 let rec compile : bool -> Path.t -> Sign.t = fun force path ->
   let base = Files.module_to_file path in
-  let src =
+  let src () =
+    (* Searching for source is delayed because we may not need it
+       in case of "ghost" signatures (such as for unification rules). *)
     let src = base ^ src_extension in
     let legacy = base ^ legacy_src_extension in
     match (Sys.file_exists src, Sys.file_exists legacy) with
@@ -35,17 +37,18 @@ let rec compile : bool -> Path.t -> Sign.t = fun force path ->
   let obj = base ^ obj_extension in
   if List.mem path !loading then
     begin
-      fatal_msg "Circular dependencies detected in [%s].\n" src;
+      fatal_msg "Circular dependencies detected in [%s].\n" (src ());
       fatal_msg "Dependency stack for module [%a]:\n" Path.pp path;
       List.iter (fatal_msg "  - [%a]\n" Path.pp) !loading;
       fatal_no_pos "Build aborted."
     end;
   if PathMap.mem path !loaded then
     let sign = PathMap.find path !loaded in
-    out 2 "Already loaded [%s]\n%!" src; sign
-  else if force || Files.more_recent src obj then
+    out 2 "Already loaded [%a]\n%!" Path.pp path; sign
+  else if force || Files.more_recent (src ()) obj then
     begin
       let forced = if force then " (forced)" else "" in
+      let src = src () in
       out 2 "Loading [%s]%s\n%!" src forced;
       loading := path :: !loading;
       let sign = Sign.create path in
@@ -76,7 +79,7 @@ let rec compile : bool -> Path.t -> Sign.t = fun force path ->
     end
   else
     begin
-      out 2 "Loading [%s]\n%!" src;
+      out 2 "Loading [%s]\n%!" (src ());
       let sign = Sign.read obj in
       PathMap.iter (fun mp _ -> ignore (compile false mp)) !(sign.sign_deps);
       loaded := PathMap.add path sign !loaded;

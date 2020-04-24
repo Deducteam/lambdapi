@@ -40,6 +40,7 @@ module Hint = struct
   let sign =
     let pth = [""; "unif_rule"] in
     let s = Sign.create pth in
+    s.sign_deps := Files.PathMap.empty;
     Sign.loaded := Files.PathMap.add pth s !(Sign.loaded);
     s
 
