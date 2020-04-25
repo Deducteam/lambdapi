@@ -76,6 +76,8 @@ and p_patt = p_term
     the argument is marked as implicit (i.e., between curly braces). *)
 and p_arg = ident option list * p_type option * bool
 
+(** [p_add_args t args] buils the application of syntax-level term [t] to
+    syntax-level arguments [args]. *)
 let p_add_args : p_term -> p_term list -> p_term = fun t args ->
   let rec add_args t args =
     match args with
