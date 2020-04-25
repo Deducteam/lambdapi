@@ -121,6 +121,7 @@ def main():
         out.write("\n")
     for fs in frecs:
         timings = [
+            fs["root"],
             interpret(["lambdapi", "check"], fs["lp"]),
             interpret(["cafeobj", "-batch"], fs["co"]),
             interpret(["maude", "-batch"], fs["ma"]),
