@@ -227,7 +227,8 @@ let pp_command : p_command pp = fun oc cmd ->
         | Assoc_right -> " right"
       in
       out "set infix%s %f \"%s\" ≔ %a" a p s pp_qident qid
-  | P_set(P_config_unif_rule(ur))   -> pp_p_rule true oc ur
+  | P_set(P_config_unif_rule(ur))   ->
+      out "set unif_rule %a" (pp_p_rule true) ur
   | P_set(P_config_ident(id))       ->
       out "set declared \"%s\"" id
   | P_query(q)                      ->
