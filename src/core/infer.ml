@@ -82,11 +82,11 @@ let conv ctx a b =
       let open Stdlib in constraints := (ctx,a,b) :: !constraints
     end
 
-(** [infer ctx t] infers a type for the term [t] in context [ctx] and
-    signature state [ss], possibly under some constraints recorded in
-    [constraints] using [conv]. The returned type is well-sorted if recorded
-    unification constraints are satisfied. [ctx] must be well-formed. This
-    function never fails (but constraints may be unsatisfiable). *)
+(** [infer ctx t] infers a type for the term [t] in context [ctx],
+   possibly under some constraints recorded in [constraints] using
+   [conv]. The returned type is well-sorted if recorded unification
+   constraints are satisfied. [ctx] must be well-formed. This function
+   never fails (but constraints may be unsatisfiable). *)
 let rec infer : ctxt -> term -> term = fun ctx t ->
   if !log_enabled then log_infr "infer %a%a" pp_ctxt ctx pp_term t;
   match unfold t with
@@ -97,25 +97,25 @@ let rec infer : ctxt -> term -> term = fun ctx t ->
   | TRef(_)     -> assert false (* Forbidden case. *)
 
   (* -------------------
-     ctx ⊢ Type ⇒ Kind  *)
+      ctx ⊢ Type ⇒ Kind  *)
   | Type        -> Kind
 
   (* ---------------------------------
-     ctx ⊢ Vari(x) ⇒ Ctxt.find x ctx  *)
+      ctx ⊢ Vari(x) ⇒ Ctxt.find x ctx  *)
   | Vari(x)     ->
       let a = try Ctxt.type_of x ctx with Not_found -> assert false in
       if !log_enabled then log_infr (blu "%a : %a") pp_term t pp_term a;
       a
 
   (* -------------------------------
-     ctx ⊢ Symb(s) ⇒ !(s.sym_type)  *)
+      ctx ⊢ Symb(s) ⇒ !(s.sym_type)  *)
   | Symb(s)     ->
       let a = !(s.sym_type) in
       if !log_enabled then log_infr (blu "%a : %a") pp_term t pp_term a;
       a
 
   (*  ctx ⊢ a ⇐ Type    ctx, x : a ⊢ b<x> ⇒ s
-      -----------------------------------------
+     -----------------------------------------
                 ctx ⊢ Prod(a,b) ⇒ s            *)
   | Prod(a,b)   ->
       (* We ensure that [a] is of type [Type]. *)
@@ -129,12 +129,12 @@ let rec infer : ctxt -> term -> term = fun ctx t ->
         match s with
         | Type | Kind -> s
         | _           -> conv ctx s Type; Type
-      (* We add the constraint [s = Type] because kinds cannot occur inside a
-         term. So, [t] cannot be a kind. *)
+      (* We add the constraint [s = Type] because kinds cannot occur
+         inside a term. So, [t] cannot be a kind. *)
       end
 
   (*  ctx ⊢ a ⇐ Type    ctx, x : a ⊢ t<x> ⇒ b<x>
-      --------------------------------------------
+     --------------------------------------------
              ctx ⊢ Abst(a,t) ⇒ Prod(a,b)          *)
   | Abst(a,t)   ->
       (* We ensure that [a] is of type [Type]. *)
@@ -146,7 +146,7 @@ let rec infer : ctxt -> term -> term = fun ctx t ->
       Prod(a, Bindlib.unbox (Bindlib.bind_var x (lift b)))
 
   (*  ctx ⊢ t ⇒ Prod(a,b)    ctx ⊢ u ⇐ a
-      ------------------------------------
+     ------------------------------------
          ctx ⊢ Appl(t,u) ⇒ subst b u      *)
   | Appl(t,u)   ->
       (* We first infer a product type for [t]. *)
@@ -169,7 +169,7 @@ let rec infer : ctxt -> term -> term = fun ctx t ->
       Bindlib.subst b u
 
   (*  ctx ⊢ t ⇐ a       ctx, x : a := t ⊢ u ⇒ b
-      -------------------------------------------
+     -------------------------------------------
         ctx ⊢ let x : a ≔ t in u ⇒ subst b t     *)
   | LLet(a,t,u) ->
       check ctx a Type;
@@ -182,7 +182,7 @@ let rec infer : ctxt -> term -> term = fun ctx t ->
       Bindlib.subst b t
 
   (*  ctx ⊢ term_of_meta m e ⇒ a
-      ----------------------------
+     ----------------------------
          ctx ⊢ Meta(m,e) ⇒ a      *)
   | Meta(m,ts)   ->
       (* The type of [Meta(m,ts)] is the same as the one obtained by applying
@@ -215,10 +215,11 @@ let infer : ctxt -> term -> term * constr list = fun ctx t ->
   Stdlib.(constraints := []);
   (a, constrs)
 
-(** [check ctx t c] checks returns a list [cs] of unification constraints for
-    [t] to be of type [c] in the context [ctx]. The context [ctx] must be
-    well-typed, and the type [c] well-sorted. This function never fails (but
-    constraints may be unsatisfiable). *)
+(** [check ctx t a] checks returns a list [cs] of unification
+   constraints for [t] to be of type [a] in the context [ctx]. The
+   context [ctx] must be well-typed, and the type [c]
+   well-sorted. This function never fails (but constraints may be
+   unsatisfiable). *)
 let check : ctxt -> term -> term -> constr list = fun ctx t a ->
   Stdlib.(constraints := []);
   check ctx t a;
