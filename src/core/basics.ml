@@ -70,8 +70,19 @@ let add_args : term -> term list -> term = fun t args ->
 (** [is_symb s t] tests whether [t] is of the form [Symb(s)]. *)
 let is_symb : sym -> term -> bool = fun s t ->
   match unfold t with
-  | Symb(r,_) -> r == s
-  | _         -> false
+  | Symb(r) -> r == s
+  | _       -> false
+
+(** Given a symbol [s], [expl_args s ts] returns the non-implicit arguments of
+   [s] among [ts]. *)
+let expl_args : sym -> term list -> term list = fun s ts ->
+  let rec expl bs ts =
+    match (bs, ts) with
+    | (true::bs , _::ts) -> expl bs ts
+    | (false::bs, t::ts) -> t :: expl bs ts
+    | (_        , _    ) -> ts
+  in
+  expl s.sym_impl ts
 
 (** [iter f t] applies the function [f] to every node of the term [t] with
    bound variables replaced by [Kind]. Note: [f] is called on already unfolded

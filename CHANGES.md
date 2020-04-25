@@ -1,3 +1,6 @@
+#### Pretty-printing (2020-04-25)
+- Pretty-printing hints managed in signature state now.
+
 #### Let bindings (2020-03-31)
 
 Adding let-bindings to the terms structure.
