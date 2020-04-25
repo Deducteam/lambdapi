@@ -4,7 +4,6 @@ open Extra
 open Timed
 open Console
 open Terms
-open Scope
 open Print
 
 (** Logging function for typing. *)
@@ -50,7 +49,7 @@ let patt_to_tenv : term_env Bindlib.var array -> term -> tbox = fun vars ->
   let rec trans t =
     match unfold t with
     | Vari(x)     -> _Vari x
-    | Symb(s,h)   -> _Symb s h
+    | Symb(s)     -> _Symb s
     | Abst(a,b)   -> let (x, t) = Bindlib.unbind b in
                      _Abst (trans a) (Bindlib.bind_var x (trans t))
     | Appl(t,u)   -> _Appl (trans t) (trans u)
@@ -85,15 +84,16 @@ type index_tbl = (string, int) Hashtbl.t
     for the symbols of [syms] that have corresponding [term_env] variable. The
     pre-rule [pr] is provided to give access to these variables and also their
     expected arities. *)
-let symb_to_tenv : pre_rule Pos.loc -> sym list -> index_tbl -> term -> tbox =
-    fun {elt={pr_vars=vars;pr_arities=arities;_};pos} syms htbl t ->
+let symb_to_tenv
+    : Scope.pre_rule Pos.loc -> sym list -> index_tbl -> term -> tbox =
+  fun {elt={pr_vars=vars;pr_arities=arities;_};pos} syms htbl t ->
   let rec symb_to_tenv t =
     log_subj "symb_to_tenv %a" pp_term t;
     let (h, ts) = Basics.get_args t in
     let ts = List.map symb_to_tenv ts in
     let (h, ts) =
       match h with
-      | Symb(f,_) when List.memq f syms ->
+      | Symb(f) when List.memq f syms ->
           let i =
             try Hashtbl.find htbl f.sym_name with Not_found ->
             (* A symbol may also come from a metavariable that appeared in the
@@ -103,10 +103,10 @@ let symb_to_tenv : pre_rule Pos.loc -> sym list -> index_tbl -> term -> tbox =
           in
           let (ts1, ts2) = List.cut ts arities.(i) in
           (_TEnv (Bindlib.box_var vars.(i)) (Array.of_list ts1), ts2)
-      | Symb(s,h)   -> (_Symb s h, ts)
-      | Vari(x)     -> (_Vari x  , ts)
-      | Type        -> (_Type    , ts)
-      | Kind        -> (_Kind    , ts)
+      | Symb(s)     -> (_Symb s, ts)
+      | Vari(x)     -> (_Vari x, ts)
+      | Type        -> (_Type  , ts)
+      | Kind        -> (_Kind  , ts)
       | Abst(a,b)   ->
           let (x, t) = Bindlib.unbind b in
           let b = Bindlib.bind_var x (symb_to_tenv t) in
@@ -131,13 +131,14 @@ let symb_to_tenv : pre_rule Pos.loc -> sym list -> index_tbl -> term -> tbox =
   in
   symb_to_tenv t
 
-(** [check_rule bmap r] checks whether the pre-rule [r] is well-typed and then
-    construct the corresponding rule. The “bultin map” [bmap] is passed to the
-    unification engine. Note that [Fatal] is raised in case of error. *)
-let check_rule : sym StrMap.t -> pre_rule Pos.loc -> rule = fun bmap pr ->
+(** [check_rule r] checks whether the pre-rule [r] is well-typed in
+   signature state [ss] and then construct the corresponding rule. Note that
+   [Fatal] is raised in case of error. *)
+let check_rule : Scope.pre_rule Pos.loc -> rule = fun pr ->
   (* Unwrap the contents of the pre-rule. *)
-  let (pos, (s, h), lhs, vars, rhs_vars, arities) =
-    let Pos.{elt={pr_sym;pr_lhs;pr_vars;pr_rhs;pr_arities;_}; pos} = pr in
+  let (pos, s, lhs, vars, rhs_vars, arities) =
+    let Pos.{elt=Scope.{pr_sym;pr_lhs;pr_vars;pr_rhs;pr_arities;_}; pos} = pr
+    in
     (pos, pr_sym, pr_lhs, pr_vars, pr_rhs, pr_arities)
   in
   let arity = List.length lhs in
@@ -148,12 +149,12 @@ let check_rule : sym StrMap.t -> pre_rule Pos.loc -> rule = fun bmap pr ->
          only used for printing. *)
       let rhs = Bindlib.(unbox (bind_mvar vars rhs_vars)) in
       let naive_rule = {lhs; rhs; arity; arities; vars} in
-      log_subj "check rule [%a]" pp_rule (s, h, naive_rule);
+      log_subj "check rule [%a]" pp_rule (s, naive_rule);
     end;
   (* Replace [Patt] nodes of LHS with corresponding elements of [vars]. *)
   let lhs_vars =
     let args = List.map (patt_to_tenv vars) lhs in
-    List.fold_left _Appl (_Symb s h) args
+    List.fold_left _Appl (_Symb s) args
   in
   (* Create metavariables that will stand for the variables of [vars]. *)
   let var_names = Array.map (fun x -> "$" ^ Bindlib.name_of x) vars in
@@ -178,19 +179,19 @@ let check_rule : sym StrMap.t -> pre_rule Pos.loc -> rule = fun bmap pr ->
   in
   if !log_enabled then
     begin
-      log_subj (mag "transformed LHS is [%a]") pp lhs_typing;
-      log_subj (mag "transformed RHS is [%a]") pp rhs_typing
+      log_subj (mag "transformed LHS is [%a]") pp_term lhs_typing;
+      log_subj (mag "transformed RHS is [%a]") pp_term rhs_typing
     end;
   (* Infer the typing constraints of the LHS. *)
-  match Typing.infer_constr bmap [] lhs_typing with
+  match Typing.infer_constr [] lhs_typing with
   | None                      -> fatal pos "The LHS is not typable."
   | Some(ty_lhs, lhs_constrs) ->
   if !log_enabled then
     begin
-      log_subj (gre "LHS has type %a") pp ty_lhs;
+      log_subj (gre "LHS has type %a") pp_term ty_lhs;
       List.iter (log_subj "  if %a" pp_constr) lhs_constrs;
-      log_subj (mag "LHS is now [%a]") pp lhs_typing;
-      log_subj (mag "RHS is now [%a]") pp rhs_typing
+      log_subj (mag "LHS is now [%a]") pp_term lhs_typing;
+      log_subj (mag "RHS is now [%a]") pp_term rhs_typing
     end;
   (* We build a map allowing to find a variable index from its name. *)
   let htbl : index_tbl = Hashtbl.create (Array.length vars) in
@@ -219,7 +220,7 @@ let check_rule : sym StrMap.t -> pre_rule Pos.loc -> rule = fun bmap pr ->
           Stdlib.(symbols := s :: !symbols);
           (* Build a definition for [m]. *)
           let xs = Basics.fresh_vars m.meta_arity in
-          let s = _Symb s Nothing in
+          let s = _Symb s in
           let def = Array.fold_left (fun t x -> _Appl t (_Vari x)) s xs in
           m.meta_value := Some(Bindlib.unbox (Bindlib.bind_mvar xs def))
     in
@@ -229,15 +230,15 @@ let check_rule : sym StrMap.t -> pre_rule Pos.loc -> rule = fun bmap pr ->
   let to_solve = Infer.check [] rhs_typing ty_lhs in
   if !log_enabled then
     begin
-      log_subj (gre "RHS has type %a") pp ty_lhs;
+      log_subj (gre "RHS has type %a") pp_term ty_lhs;
       List.iter (log_subj "  if %a" pp_constr) to_solve;
-      log_subj (mag "LHS is now [%a]") pp lhs_typing;
-      log_subj (mag "RHS is now [%a]") pp rhs_typing
+      log_subj (mag "LHS is now [%a]") pp_term lhs_typing;
+      log_subj (mag "RHS is now [%a]") pp_term rhs_typing
     end;
   (* TODO we should complete the constraints into a set of rewriting rule on
      the function symbols of [symbols]. *)
   (* Solving the typing constraints of the RHS. *)
-  match Unif.(solve bmap {no_problems with to_solve}) with
+  match Unif.(solve {empty_problem with to_solve}) with
   | None     -> fatal pos "The rewriting rule does not preserve typing."
   | Some(cs) ->
   let is_constr c =
@@ -259,7 +260,7 @@ let check_rule : sym StrMap.t -> pre_rule Pos.loc -> rule = fun bmap pr ->
   (* Replace metavariable symbols by term_env variables, and bind them. *)
   let rhs = symb_to_tenv pr symbols htbl rhs_typing in
   if !log_enabled then
-    log_subj "final RHS is [%a]" pp (Bindlib.unbox rhs);
+    log_subj "final RHS is [%a]" pp_term (Bindlib.unbox rhs);
   (* TODO optimisation for evaluation: environment minimisation. *)
   (* Construct the rule. *)
   let rhs = Bindlib.unbox (Bindlib.bind_mvar vars rhs) in

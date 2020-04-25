@@ -8,13 +8,16 @@ open Terms
 open Syntax
 open Pos
 
+(** Type for builtin maps. *)
+type builtin_map = sym StrMap.t
+
 (** Representation of a signature. It roughly corresponds to a set of symbols,
     defined in a single module (or file). *)
 type t =
   { sign_symbols  : (sym * Pos.popt) StrMap.t ref
   ; sign_path     : Path.t
   ; sign_deps     : (string * rule) list PathMap.t ref
-  ; sign_builtins : sym StrMap.t ref
+  ; sign_builtins : builtin_map ref
   ; sign_unops    : (sym * unop ) StrMap.t ref
   ; sign_binops   : (sym * binop) StrMap.t ref
   ; sign_idents   : StrSet.t ref }
@@ -65,6 +68,13 @@ let current_sign () =
   in
   PathMap.find mp !loaded
 
+(** [new_sym ()] creates a new (private definable) symbol. *)
+let new_sym : string -> term -> sym = fun name typ ->
+  let path = (current_sign()).sign_path in
+  { sym_name = name; sym_type = ref typ; sym_path = path; sym_def = ref None
+    ; sym_impl = []; sym_rules = ref []; sym_prop = Defin; sym_expo = Privat
+    ; sym_tree = ref Tree_types.empty_dtree }
+
 (** [link sign] establishes physical links to the external symbols. *)
 let link : t -> unit = fun sign ->
   let rec link_term t =
@@ -76,7 +86,7 @@ let link : t -> unit = fun sign ->
     | Vari(_)     -> t
     | Type        -> t
     | Kind        -> t
-    | Symb(s,h)   -> Symb(link_symb s, h)
+    | Symb(s)     -> Symb(link_symb s)
     | Prod(a,b)   -> Prod(link_term a, link_binder b)
     | Abst(a,t)   -> Abst(link_term a, link_binder t)
     | LLet(a,t,u) -> LLet(link_term a, link_term t, link_binder u)
@@ -146,7 +156,7 @@ let unlink : t -> unit = fun sign ->
     | Vari(_)      -> ()
     | Type         -> ()
     | Kind         -> ()
-    | Symb(s,_)    -> unlink_sym s
+    | Symb(s)      -> unlink_sym s
     | Prod(a,b)    -> unlink_term a; unlink_binder b
     | Abst(a,t)    -> unlink_term a; unlink_binder t
     | LLet(a,t,u)  -> unlink_term a; unlink_term t; unlink_binder u
@@ -233,7 +243,7 @@ let read : string -> t = fun fname ->
       | Vari(_)     -> ()
       | Type        -> ()
       | Kind        -> ()
-      | Symb(s,_)   -> shallow_reset_sym s
+      | Symb(s)     -> shallow_reset_sym s
       | Prod(a,b)   -> reset_term a; reset_binder b
       | Abst(a,t)   -> reset_term a; reset_binder t
       | LLet(a,t,u) -> reset_term a; reset_term t; reset_binder u

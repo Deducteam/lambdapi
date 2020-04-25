@@ -184,10 +184,9 @@ let translate_old_rule : old_p_rule -> p_rule = fun r ->
   let rhs = build [] rhs in
   Pos.make r.pos (lhs, rhs)
 
-let build_config : Pos.pos -> string -> string option -> Eval.config =
+let build_config : Pos.pos -> string -> string option -> eval_config =
     fun loc s1 s2o ->
   try
-    let open Eval in
     let config steps strategy =
       let steps =
         match steps with
@@ -306,17 +305,17 @@ line:
       make_pos $loc (P_rules(List.map translate_old_rule rs))
     }
   | EVAL t=term DOT {
-      let c = Eval.{strategy = SNF; steps = None} in
+      let c = {strategy = SNF; steps = None} in
       let q = make_pos $loc (P_query_normalize(t,c)) in
       make_pos $loc (P_query q)
     }
   | EVAL c=eval_config t=term DOT {
-      let c = Eval.(if c.strategy=NONE then {c with strategy=SNF} else c) in
+      let c = if c.strategy=NONE then {c with strategy=SNF} else c in
       let q = make_pos $loc (P_query_normalize(t, c)) in
       make_pos $loc (P_query q)
     }
   | INFER t=term DOT {
-      let c = Eval.{strategy = NONE; steps = None} in
+      let c = {strategy = NONE; steps = None} in
       let q = make_pos $loc (P_query_infer(t, c)) in
       make_pos $loc (P_query q)
     }

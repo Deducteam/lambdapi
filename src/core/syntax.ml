@@ -103,6 +103,22 @@ type p_assertion =
   | P_assert_conv   of p_term * p_term
   (** The two given terms should be convertible. *)
 
+(** Type representing the different evaluation strategies. *)
+type strategy =
+  | WHNF
+  (** Reduce to weak head-normal form. *)
+  | HNF
+  (** Reduce to head-normal form. *)
+  | SNF
+  (** Reduce to strong normal form. *)
+  | NONE
+  (** Do nothing. *)
+
+(** Configuration for evaluation. *)
+type eval_config =
+  { strategy : strategy   (** Evaluation strategy.          *)
+  ; steps    : int option (** Max number of steps if given. *) }
+
 (** Parser-level representation of a query command. *)
 type p_query_aux =
   | P_query_verbose   of int
@@ -113,9 +129,9 @@ type p_query_aux =
   (** Sets the boolean flag registered under the given name (if any). *)
   | P_query_assert    of bool * p_assertion
   (** Assertion (must fail if boolean is [true]). *)
-  | P_query_infer     of p_term * Eval.config
+  | P_query_infer     of p_term * eval_config
   (** Type inference command. *)
-  | P_query_normalize of p_term * Eval.config
+  | P_query_normalize of p_term * eval_config
   (** Normalisation command. *)
   | P_query_prover    of string
   (** Set the prover to use inside a proof. *)

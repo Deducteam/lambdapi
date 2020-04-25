@@ -8,6 +8,16 @@
 open Timed
 open Extra
 open Terms
+open Console
+open Syntax
+open Sig_state
+
+(** Logging function for printing. *)
+let log_prnt = new_logger 'p' "prnt" "pretty-printing"
+let log_prnt = log_prnt.logger
+
+(** Current signature state. *)
+let sig_state : sig_state ref = ref Sig_state.empty
 
 (** Flag controling the printing of the domains of λ-abstractions. *)
 let print_domains : bool ref = Console.register_flag "print_domains" false
@@ -21,15 +31,35 @@ let print_meta_type : bool ref = Console.register_flag "print_meta_type" false
 (** Flag controlling the printing of the context in unification. *)
 let print_contexts : bool ref = Console.register_flag "print_contexts" false
 
-(** [pp_symbol h oc s] prints the name of the symbol [s] to channel [oc] using
-    the printing hint [h] to decide qualification. *)
-let pp_symbol : pp_hint -> sym pp = fun h oc s ->
-  match h with
-  | Nothing   -> Format.pp_print_string oc s.sym_name
-  | Qualified -> Format.fprintf oc "%a.%s" Files.Path.pp s.sym_path s.sym_name
-  | Alias(a)  -> Format.fprintf oc "%s.%s" a s.sym_name
-  | Binary(o) -> Format.fprintf oc "(%s)" o
-  | Unary(o)  -> Format.fprintf oc "(%s)" o
+(** [assoc oc a] prints associativity [a] to channel [oc]. *)
+let pp_assoc : assoc pp = fun oc assoc ->
+  Format.fprintf oc
+    (match assoc with
+     | Assoc_none -> ""
+     | Assoc_left -> "left"
+     | Assoc_right -> "right")
+
+(** [hint oc a] prints hint [h] to channel [oc]. *)
+let pp_hint : pp_hint pp = fun oc pp_hint ->
+  match pp_hint with
+  | No_hint -> ()
+  | Prefix(n,p,_) -> Format.fprintf oc "prefix %s %f" n p
+  | Infix(n,a,p,_) -> Format.fprintf oc "infix %s %a %f" n pp_assoc a p
+
+(** [qualified s] prints symbol [s] fully qualified to channel [oc]. *)
+let pp_qualified : sym pp = fun oc s ->
+  Format.fprintf oc "%a.%s" Files.Path.pp s.sym_path s.sym_name
+    (*FIXME: handle aliases. *)
+
+(** Get the printing hint of a symbol. *)
+let get_pp_hint : sym -> pp_hint = fun s ->
+  try SymMap.find s (!sig_state).pp_hints with Not_found -> No_hint
+
+(** [pp_symbol oc s] prints the name of the symbol [s] to channel [oc]. *)
+let pp_symbol : sym pp = fun oc s ->
+  if SymMap.mem s (!sig_state).pp_hints then
+    Format.pp_print_string oc s.sym_name
+  else pp_qualified oc s
 
 (** [pp_tvar oc x] prints the term variable [x] to the channel [oc]. *)
 let pp_tvar : tvar pp = fun oc x ->
@@ -50,31 +80,42 @@ and pp_term : term pp = fun oc t ->
      priority). *)
   let rec pp (p : [`Func | `Appl | `Atom]) oc t =
     let (h, args) = Basics.get_args t in
-    let args =
-      if !print_implicits then args else
-      let impl =  match h with Symb(s,_) -> s.sym_impl | _ -> [] in
-      let rec filter_impl impl args =
-        match (impl, args) with
-        | ([]         , _      ) -> args
-        | (true ::impl, _::args) -> filter_impl impl args
-        | (false::impl, a::args) -> a :: filter_impl impl args
-        | (_          , []     ) -> args
-      in
-      filter_impl impl args
+    let pp_appl h args =
+      match args with
+      | []   -> pp_head (p <> `Func) oc h
+      | args ->
+          if p = `Atom then out oc "(";
+          pp_head true oc h;
+          List.iter (out oc " %a" (pp `Atom)) args;
+          if p = `Atom then out oc ")"
     in
-    match (h, args) with
-    | (Symb(_,Binary(o)), [l;r]) ->
-        if p <> `Func then out oc "(";
-        (* Can be improved by looking at symbol priority. *)
-        out oc "%a %s %a" (pp `Appl) l o (pp `Appl) r;
-        if p <> `Func then out oc ")";
-    | (h                , []   ) ->
-        pp_head (p <> `Func) oc h
-    | (h                , args ) ->
-        if p = `Atom then out oc "(";
-        pp_head true oc h;
-        List.iter (out oc " %a" (pp `Atom)) args;
-        if p = `Atom then out oc ")"
+    match h with
+    | Symb(s) when not !print_implicits ->
+        begin
+          let args = Basics.expl_args s args in
+          match get_pp_hint s with
+          | No_hint -> pp_appl h args
+          | Prefix(_) -> pp_appl h args
+          | Infix(op,_,_,_) ->
+              begin
+                match args with
+                | l::r::[] ->
+                    if p <> `Func then out oc "(";
+                    (* Can be improved by looking at symbol priority. *)
+                    out oc "%a %s %a" (pp `Appl) l op (pp `Appl) r;
+                    if p <> `Func then out oc ")"
+                | l::r::ts ->
+                    if p <> `Func then out oc "(";
+                    out oc "(";
+                    (* Can be improved by looking at symbol priority. *)
+                    out oc "%a %s %a" (pp `Appl) l op (pp `Appl) r;
+                    out oc ")";
+                    List.iter (out oc " %a" (pp `Atom)) ts;
+                    if p <> `Func then out oc ")"
+                | _ -> pp_appl h args
+              end
+        end
+    | _       -> pp_appl h args
   and pp_head wrap oc t =
     let pp_env oc ar =
       if ar <> [||] then out oc "[%a]" (Array.pp (pp `Appl) ",") ar
@@ -94,83 +135,72 @@ and pp_term : term pp = fun oc t ->
     | Vari(x)     -> pp_tvar oc x
     | Type        -> out oc "TYPE"
     | Kind        -> out oc "KIND"
-    | Symb(s,h)   -> pp_symbol h oc s
+    | Symb(s)     -> pp_symbol oc s
     | Meta(m,e)   -> out oc "%a%a" pp_meta m pp_env e
     | Patt(_,n,e) -> out oc "$%s%a" n pp_env e
     | TEnv(t,e)   -> out oc "$%a%a" pp_term_env t pp_env e
     (* Product and abstraction (only them can be wrapped). *)
-    | Abst(a,t)   ->
+    | Abst(a,b)   ->
         if wrap then out oc "(";
-        let pp_arg oc (x,a) =
-          if !print_domains then out oc "(%a:%a)" pp_tvar x (pp `Func) a
-          else pp_tvar oc x
-        in
-        let (x,t) = Bindlib.unbind t in
-        out oc "λ%a" pp_arg (x,a);
-        let rec pp_absts oc t =
-          match unfold t with
-          | Abst(a,t) -> let (x,t) = Bindlib.unbind t in
-                         out oc " %a%a" pp_arg (x,a) pp_absts t
-          | _         -> out oc ", %a" (pp `Func) t
-        in
-        pp_absts oc t;
+        let (x,t) = Bindlib.unbind b in
+        if !print_domains then
+          out oc "λ%a: %a, %a" pp_var (b,x) (pp `Func) a (pp `Func) t
+        else out oc "λ%a%a" pp_var (b,x) pp_abstractions t;
         if wrap then out oc ")"
     | Prod(a,b)   ->
         if wrap then out oc "(";
-        let pp_arg oc (x,a) = out oc "(%a:%a)" pp_tvar x (pp `Func) a in
-        let (x,c) = Bindlib.unbind b in
+        let (x,t) = Bindlib.unbind b in
         if Bindlib.binder_occur b then
-          begin
-            out oc "Π%a" pp_arg (x,a);
-            let rec pp_prods oc c =
-              match unfold c with
-              | Prod(a,b) when Bindlib.binder_occur b ->
-                  let (x,b) = Bindlib.unbind b in
-                  out oc " %a%a" pp_arg (x,a) pp_prods b
-              | _                                      ->
-                  out oc ", %a" (pp `Func) c
-            in
-            pp_prods oc c
-          end
-        else
-          out oc "%a → %a" (pp `Appl) a (pp `Func) c;
+          out oc "Π%a: %a, %a" pp_tvar x (pp `Func) a (pp `Func) t
+        else out oc "%a → %a" (pp `Appl) a (pp `Func) t;
         if wrap then out oc ")"
-    | LLet(a,t,u) ->
+    | LLet(a,t,b) ->
         if wrap then out oc "(";
-        let x, u = Bindlib.unbind u in
-        out oc "let %a" pp_tvar x;
-        if !print_domains then out oc ":%a" (pp `Atom) a;
+        let (x,u) = Bindlib.unbind b in
+        pp_var oc (b,x);
+        if !print_domains then out oc ": %a" (pp `Atom) a;
         out oc " ≔ %a in %a" (pp `Atom) t (pp `Atom) u;
         if wrap then out oc ")"
+  and pp_var oc (b,x) =
+    if Bindlib.binder_occur b then out oc "%a" pp_tvar x else out oc "_"
+  and pp_abstractions oc t =
+    match unfold t with
+    | Abst(_,b) ->
+        let (x,t) = Bindlib.unbind b in
+        out oc " %a" pp_var (b,x); pp_abstractions oc t
+    | t -> out oc ", %a" (pp `Func) t
   in
   pp `Func oc (cleanup t)
 
-(** [pp] is a short synonym of [pp_term]. *)
-let pp : term pp = pp_term
-
-(** [pp_rule oc (s,h,r)] prints the rule [r] of symbol [s] (with printing hint
-    [h]) to the output channel [oc]. *)
-let pp_rule : (sym * pp_hint * rule) pp = fun oc (s,h,r) ->
-  let lhs = Basics.add_args (Symb(s,h)) r.lhs in
+(** [pp_rule oc (s,h,r)] prints the rule [r] of symbol [s] to the output
+   channel [oc]. *)
+let pp_rule : (sym * rule) pp = fun oc (s,r) ->
+  let lhs = Basics.add_args (Symb s) r.lhs in
   let (_, rhs) = Bindlib.unmbind r.rhs in
-  Format.fprintf oc "%a ↪ %a" pp lhs pp rhs
+  Format.fprintf oc "%a ↪ %a" pp_term lhs pp_term rhs
 
 (** [pp_ctxt oc ctx] displays context [ctx] if {!val:print_contexts} is
     true, with [ ⊢ ] after; and nothing otherwise. *)
 let pp_ctxt : ctxt pp = fun oc ctx ->
-  let pp_ctxt : ctxt pp = fun oc ctx ->
-    let pp_e oc (x,a,t) =
-      match t with
-      | None    -> Format.fprintf oc "%a:%a" pp_tvar x pp a
-      | Some(t) -> Format.fprintf oc "%a:%a ≔ %a" pp_tvar x pp a pp t
+  if !print_contexts then
+    let pp_ctxt : ctxt pp = fun oc ctx ->
+      let pp_e oc (x,a,t) =
+        match t with
+        | None    -> Format.fprintf oc "%a: %a" pp_tvar x pp_term a
+        | Some(t) ->
+            Format.fprintf oc "%a: %a ≔ %a" pp_tvar x pp_term a pp_term t
+      in
+      if ctx = [] then Format.pp_print_string oc "∅"
+      else List.pp pp_e ", " oc (List.rev ctx)
     in
-    if ctx = [] then Format.pp_print_string oc "∅"
-    else List.pp pp_e ", " oc (List.rev ctx)
-  in
-  let out = if !print_contexts then Format.fprintf else Format.ifprintf in
-  out oc "%a ⊢ " pp_ctxt ctx
+    Format.fprintf oc "%a ⊢ " pp_ctxt ctx
 
-(** [pp_constr oc (t,u)] prints the unification constraints [(t,u)] to the
+(** [pp_typing oc (c,t,u)] prints the typing constraint [c] to the
     output channel [oc]. *)
-let pp_constr : (ctxt * term * term) pp = fun oc (ctx, t, u) ->
-  Format.fprintf oc "%a%a ≡ %a" pp_ctxt ctx pp t pp u
+let pp_typing : constr pp = fun oc (ctx, t, u) ->
+  Format.fprintf oc "%a%a : %a" pp_ctxt ctx pp_term t pp_term u
+
+(** [pp_constr oc c] prints the unification constraints [c] to the
+    output channel [oc]. *)
+let pp_constr : constr pp = fun oc (ctx, t, u) ->
+  Format.fprintf oc "%a%a ≡ %a" pp_ctxt ctx pp_term t pp_term u

@@ -1,99 +1,13 @@
 (** Scoping. *)
 
-open Timed
 open Console
 open Extra
-open Files
 open Pos
 open Syntax
 open Terms
 open Env
-
-(** State of the signature, including aliasing and accessible symbols. *)
-type sig_state =
-  { signature : Sign.t                    (** Current signature.   *)
-  ; in_scope  : (sym * Pos.popt) StrMap.t (** Symbols in scope.    *)
-  ; aliases   : Path.t StrMap.t           (** Established aliases. *)
-  ; builtins  : sym StrMap.t              (** Builtin symbols.     *) }
-
-(** [empty_sig_state] is an empty signature state, without symbols/aliases. *)
-let empty_sig_state : Sign.t -> sig_state = fun sign ->
-  { signature = sign
-  ; in_scope  = !(Unif.Sym.sign.sign_symbols)
-  (* Always open unification hints. *)
-  ; aliases   = StrMap.empty
-  ; builtins  = StrMap.empty }
-
-(** [open_sign ss sign] extends the signature state [ss] with every symbol  of
-    the signature [sign].  This has the effect of putting these symbols in the
-    scope when (possibly masking symbols with the same name).  Builtin symbols
-    are also handled in a similar way. *)
-let open_sign : sig_state -> Sign.t -> sig_state = fun ss sign ->
-  let f _ _ v = Some(v) in
-  let in_scope = StrMap.union f ss.in_scope Sign.(!(sign.sign_symbols)) in
-  let builtins = StrMap.union f ss.builtins Sign.(!(sign.sign_builtins)) in
-  {ss with in_scope; builtins}
-
-(** [find_sym ~prt ~prv b st qid] returns the symbol and printing hint
-    corresponding to the qualified identifier [qid]. If [fst qid.elt] is
-    empty, we search for the name [snd qid.elt] in the opened modules of [st].
-    The boolean [b] only indicates if the error message should mention
-    variables, in the case where the module path is empty and the symbol is
-    unbound. This is reported using the [Fatal] exception.
-    {!constructor:Terms.expo.Protec} symbols from other modules
-    are allowed in left-hand side of rewrite rules (only) iff [~prt] is true.
-    {!constructor:Terms.expo.Privat} symbols are allowed iff [~prv]
-    is [true]. *)
-let find_sym : prt:bool -> prv:bool -> bool -> sig_state -> qident ->
-  sym * pp_hint = fun ~prt ~prv b st qid ->
-  let {elt = (mp, s); pos} = qid in
-  let mp = List.map fst mp in
-  let (s, h) =
-    match mp with
-    | []                               -> (* Symbol in scope. *)
-        begin
-          try (fst (StrMap.find s st.in_scope), Nothing) with Not_found ->
-          let txt = if b then " or variable" else "" in
-          fatal pos "Unbound symbol%s [%s]." txt s
-        end
-    | [m] when StrMap.mem m st.aliases -> (* Aliased module path. *)
-        begin
-          (* The signature must be loaded (alias is mapped). *)
-          let sign =
-            try PathMap.find (StrMap.find m st.aliases) Timed.(!Sign.loaded)
-            with _ -> assert false (* Should not happen. *)
-          in
-          (* Look for the symbol. *)
-          try (Sign.find sign s, Alias m) with Not_found ->
-          fatal pos "Unbound symbol [%a.%s]." Path.pp mp s
-        end
-    | _                                -> (* Fully-qualified symbol. *)
-        begin
-          (* Check that the signature was required (or is the current one). *)
-          if mp <> st.signature.sign_path then
-            if not (PathMap.mem mp !(st.signature.sign_deps)) then
-              fatal pos "No module [%a] required." Path.pp mp;
-          (* The signature must have been loaded. *)
-          let sign =
-            try PathMap.find mp Timed.(!Sign.loaded)
-            with Not_found -> assert false (* Should not happen. *)
-          in
-          (* Look for the symbol. *)
-          try (Sign.find sign s, Qualified) with Not_found ->
-          fatal pos "Unbound symbol [%a.%s]." Path.pp mp s
-        end
-  in
-  begin
-    match (prt, prv, s.sym_expo) with
-    | (false, _    , Protec) ->
-        if s.sym_path <> st.signature.sign_path then
-          (* Fail if symbol is not defined in the current module. *)
-          fatal pos "Protected symbol not allowed here."
-    | (_    , false, Privat) ->
-        fatal pos "Private symbol not allowed here."
-    | _                      -> ()
-  end;
-  (s, h)
+open Sig_state
+open Rewrite
 
 (** Logging function for term scoping. *)
 let log_scop = new_logger 'o' "scop" "term scoping"
@@ -118,11 +32,10 @@ let find_qid : bool -> bool -> sig_state -> env -> qident -> tbox =
     _Vari (Env.find s env)
   with Not_found ->
     (* Check for symbols. *)
-    let (s, hint) = find_sym ~prt ~prv true st qid in
-    _Symb s hint
+    _Symb (find_sym ~prt ~prv true st qid)
 
 (** [get_root t ss] returns the symbol at the root of term [t]. *)
-let get_root : p_term -> sig_state -> sym * pp_hint = fun t ss ->
+let get_root : p_term -> sig_state -> sym = fun t ss ->
   let rec get_root t =
     match t.elt with
     | P_Iden(qid,_)
@@ -233,7 +146,7 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
       let expl = match p_head.elt with P_Iden(_,b) -> b | _ -> false in
       (* We avoid unboxing if [h] is not closed (and hence not a symbol). *)
       if expl || not (Bindlib.is_closed h) then [] else
-      match Bindlib.unbox h with Symb(s,_) -> s.sym_impl | _ -> []
+      match Bindlib.unbox h with Symb(s) -> s.sym_impl | _ -> []
     in
     (* Scope and insert the (implicit) arguments. *)
     add_impl env t.pos h impl args
@@ -308,7 +221,7 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
   and scope_head : env -> p_term -> tbox = fun env t ->
     match (t.elt, md) with
     | (P_Type          , M_LHS(_)         ) ->
-        fatal t.pos "[%a] is not allowed in a LHS." Print.pp Type
+        fatal t.pos "TYPE is not allowed in a LHS."
     | (P_Type          , _                ) -> _Type
     | (P_Iden(qid,_)   , M_LHS(p,_)       ) -> find_qid true p ss env qid
     | (P_Iden(qid,_)   , M_Term(_,Privat )) -> find_qid false true ss env qid
@@ -431,24 +344,24 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
     | (P_LLet(_)       , M_Patt             ) ->
         fatal t.pos "Let-bindings are not allowed in a pattern."
     | (P_NLit(n)       , _                  ) ->
-        let sym_z = _Symb (Builtin.get t.pos ss.builtins "0") Nothing
-        and sym_s = _Symb (Builtin.get t.pos ss.builtins "+1") Nothing in
+        let sym_z = _Symb (Builtin.get ss t.pos "0")
+        and sym_s = _Symb (Builtin.get ss t.pos "+1") in
         let rec unsugar_nat_lit acc n =
           if n <= 0 then acc else unsugar_nat_lit (_Appl sym_s acc) (n-1)
         in
         unsugar_nat_lit sym_z n
     | (P_UnaO(u,t)    , _                   ) ->
         let (s, impl) =
-          let (op,_,qid) = u in
-          let (s, _) = find_sym ~prt:true ~prv:true true ss qid in
-          (_Symb s (Unary(op)), s.sym_impl)
+          let (_op,_,qid) = u in
+          let s = find_sym ~prt:true ~prv:true true ss qid in
+          (_Symb s, s.sym_impl)
         in
         add_impl env t.pos s impl [t]
     | (P_BinO(l,b,r)  , _                   ) ->
         let (s, impl) =
-          let (op,_,_,qid) = b in
-          let (s, _) = find_sym ~prt:true ~prv:true true ss qid in
-          (_Symb s (Binary(op)), s.sym_impl)
+          let (_op,_,_,qid) = b in
+          let s = find_sym ~prt:true ~prv:true true ss qid in
+          (_Symb s, s.sym_impl)
         in
         add_impl env t.pos s impl [l; r]
     | (P_Wrap(t)      , _                   ) -> scope env t
@@ -515,8 +428,8 @@ let patt_vars : p_term -> (string * int) list * string list =
 
 (** Representation of a rewriting rule prior to SR-checking. *)
 type pre_rule =
-  { pr_sym     : sym * pp_hint
-  (** Head symbol of the LHS with its printing hint. *)
+  { pr_sym     : sym
+  (** Head symbol of the LHS. *)
   ; pr_lhs     : term list
   (** Arguments of the LHS. *)
   ; pr_vars    : term_env Bindlib.mvar
@@ -546,7 +459,7 @@ let scope_rule : sig_state -> p_rule -> pre_rule loc = fun ss r ->
   in
   List.iter check_in_lhs pvs_rhs;
   (* Get privacy of head of the rule, scope the rest accordingly. *)
-  let prv = is_private (fst (get_root p_lhs ss)) in
+  let prv = is_private (get_root p_lhs ss) in
   (* Scope the LHS and get the reserved index for named pattern variables. *)
   let (pr_lhs, data) =
     let data =
@@ -560,16 +473,16 @@ let scope_rule : sig_state -> p_rule -> pre_rule loc = fun ss r ->
     (Bindlib.unbox pr_lhs, data)
   in
   (* Check the head symbol and build actual LHS. *)
-  let (sym, hint, pr_lhs) =
+  let (sym, pr_lhs) =
     let (h, args) = Basics.get_args pr_lhs in
     match h with
-    | Symb(s,h) ->
+    | Symb(s) ->
         if is_constant s then
           fatal p_lhs.pos "Constant LHS head symbol.";
         if s.sym_expo = Protec && ss.signature.sign_path <> s.sym_path then
           fatal p_lhs.pos "Cannot define rules on foreign protected symbols.";
-        (s, h, args)
-    | _         ->
+        (s, args)
+    | _       ->
         fatal p_lhs.pos "No head symbol in LHS."
   in
   if pr_lhs = [] then wrn p_lhs.pos "LHS head symbol with no argument.";
@@ -603,7 +516,7 @@ let scope_rule : sig_state -> p_rule -> pre_rule loc = fun ss r ->
     Array.init data.m_lhs_size fn
   in
   let pr =
-    { pr_sym = (sym, hint) ; pr_lhs ; pr_vars ; pr_rhs ; pr_arities
+    { pr_sym = sym ; pr_lhs ; pr_vars ; pr_rhs ; pr_arities
     ; pr_names = data.m_lhs_names }
   in
   Pos.make r.pos pr
@@ -616,9 +529,8 @@ let scope_pattern : sig_state -> env -> p_term -> term = fun ss env t ->
 (** [scope_rw_patt ss env t] turns a parser-level rewrite tactic specification
     [s] into an actual rewrite specification (possibly containing variables of
     [env] and using [ss] for aliasing). *)
-let scope_rw_patt : sig_state ->  env -> p_rw_patt loc -> Rewrite.rw_patt =
+let scope_rw_patt : sig_state ->  env -> p_rw_patt loc -> rw_patt =
     fun ss env s ->
-  let open Rewrite in
   match s.elt with
   | P_rw_Term(t)               -> RW_Term(scope_pattern ss env t)
   | P_rw_InTerm(t)             -> RW_InTerm(scope_pattern ss env t)

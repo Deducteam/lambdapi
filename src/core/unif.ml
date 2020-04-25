@@ -5,68 +5,65 @@ open Timed
 open Console
 open Terms
 open Basics
+open Env
 open Print
 
 (** Logging function for unification. *)
 let log_unif = new_logger 'u' "unif" "unification"
 let log_unif = log_unif.logger
 
-(** Exception raised when a constraint is not solvable. *)
-exception Unsolvable
-
-(** Representation of a set of problems. *)
-type problems =
-  { to_solve  : unif_constrs
+(** Representation of unification problems. *)
+type problem =
+  { to_solve  : constr list
   (** List of unification problems to solve. *)
-  ; unsolved  : unif_constrs
+  ; unsolved  : constr list
   (** List of unification problems that could not be solved. *)
   ; recompute : bool
   (** Indicates whether unsolved problems should be rechecked. *) }
 
-let pp_problem oc p =
+(** Empty problem. *)
+let empty_problem : problem =
+  {to_solve  = []; unsolved = []; recompute = false}
+
+(** [pp_constr oc p] prints the unification problem [p] to the
+    output channel [oc]. *)
+let pp_problem : problem pp = fun oc p ->
   Format.fprintf oc "{ to_solve = [%a]; unsolved = [%a]; recompute = %b }"
     (List.pp pp_constr "; ") p.to_solve
     (List.pp pp_constr "; ") p.unsolved
     p.recompute
 
-(** Empty problem. *)
-let no_problems : problems =
-  {to_solve  = []; unsolved = []; recompute = false}
+(** Exception raised when a constraint is not solvable. *)
+exception Unsolvable
 
-(** Symbols and signature used for unification rules. *)
-module Sym =
-  struct
-
-    (** Ghost signature holding the symbols used in unification rules. This
-        signature is an automatic dependency of all other signatures, and is
-        automatically loaded. *)
-    let sign : Sign.t =
-      let open Files in
-      let pth = Path.ghost "unif_rule" in
-      let s = Sign.create pth in
-      (* Remove the dependency on itself. *)
-      s.sign_deps := PathMap.remove pth !(s.sign_deps);
-      Sign.loaded := Files.PathMap.add pth s !(Sign.loaded);
-      s
-
-    (** Symbol representing an atomic unification problem. The term [equiv t
-        u] represents [t ≡ u]. The left-hand side of a unification rule is
-        made of only one unification. *)
-    let equiv : sym =
-      Sign.add_symbol sign Public Defin (Pos.none "#equiv") Kind []
-
-    (** Holds a list of equivalences. The right-hand side of a unification
-        rule is made of such a list, [list (equiv t u) (equiv v w) ...]. *)
-    let list : sym =
-      Sign.add_symbol sign Public Defin (Pos.none "#list") Kind []
-end
+(** [copy_prod_env xs prod] constructs an environment mapping the variables of
+    [xs] to successive dependent product type domains of the term [prod]. Note
+    that dependencies are preserved in the process,  and types of the produced
+    environment can hence refer to other variables of the environment whenever
+    this is necessary. Note that the produced environment is equivalent to the
+    environment [fst (destruct_prod (Array,length xs) prod)] if the variables
+    of its domain are substituted by those of [xs]. Intuitively,  if [prod] is
+    of the form [∀ (y1:a1) ⋯ (yn:an), a]  then the environment returned by the
+    function is (roughly) [(xn, an{y1≔x1, ⋯, yn-1≔xn-1}) ; ⋯ ; (x1, a1)]. Note
+    that the function raises [Invalid_argument] if [prod] does not evaluate to
+    a sequence of [Array.length xs] dependent products. *)
+let copy_prod_env : tvar array -> term -> env = fun xs t ->
+  let n = Array.length xs in
+  let rec build_env i env t =
+    if i >= n then env else
+    match Eval.whnf [] t with
+    | Prod(a,b) -> let env = add xs.(i) (lift a) None env in
+                   build_env (i+1) env (Bindlib.subst b (Vari(xs.(i))))
+    | _         -> invalid_arg "of_prod_vars"
+  in
+  build_env 0 [] t
 
 (** [try_rules ctx s t] tries to solve unification problem [ctx ⊢ s ≡ t] using
     declared unification rules. *)
-let try_rules : ctxt -> term -> term -> unif_constrs option = fun ctx s t ->
+let try_rules : ctxt -> term -> term -> constr list option = fun ctx s t ->
   if !log_enabled then log_unif "hint [%a]" pp_constr (ctx,s,t);
   let exception No_match in
-  let tree = !(Sym.equiv.sym_tree) in
+  let tree = !(Sig_state.Unif_rule.equiv.sym_tree) in
   try
     let rhs =
       match Eval.tree_walk tree ctx [s;t] with
@@ -80,8 +77,8 @@ let try_rules : ctxt -> term -> term -> unif_constrs option = fun ctx s t ->
     in
     let rec subpb_in t =
       match Basics.get_args (unfold t) with
-      | (Symb(u,_),[s;t]) when u == Sym.equiv -> [(ctx,s,t)]
-      | (Symb(u,_),ts   ) when u == Sym.list ->
+      | (Symb(u),[s;t]) when u == Sig_state.Unif_rule.equiv -> [(ctx,s,t)]
+      | (Symb(u),ts   ) when u == Sig_state.Unif_rule.list ->
         List.concat (List.map subpb_in ts)
       | _                 -> assert false
     in
@@ -96,8 +93,8 @@ let try_rules : ctxt -> term -> term -> unif_constrs option = fun ctx s t ->
     replaced by fresh variables.  Variables defined in  [ctx] are unfolded. It
     returns [None] otherwise. *)
 let nl_distinct_vars
-    : ctxt -> term array -> (tvar array * tvar StrMap.t) option
-  = fun ctx ts ->
+    : ctxt -> term array -> (tvar array * tvar StrMap.t) option =
+  fun ctx ts ->
   let exception Not_a_var in
   let open Stdlib in
   let vars = ref VarSet.empty
@@ -109,7 +106,7 @@ let nl_distinct_vars
         if VarSet.mem v !vars then nl_vars := VarSet.add v !nl_vars
         else vars := VarSet.add v !vars;
         v
-    | Symb(f,_) when f.sym_name <> "" && f.sym_name.[0] = '$' ->
+    | Symb(f) when f.sym_name <> "" && f.sym_name.[0] = '$' ->
         (* Symbols replacing pattern variables are considered as variables. *)
         let v =
           try StrMap.find f.sym_name !patt_vars
@@ -139,16 +136,16 @@ let nl_distinct_vars
 let sym_to_var : tvar StrMap.t -> term -> term = fun m ->
   let rec to_var t =
     match unfold t with
-    | Symb(f,_) -> (try Vari (StrMap.find f.sym_name m) with Not_found -> t)
-    | Prod(a,b) -> Prod (to_var a, to_var_binder b)
-    | Abst(a,b) -> Abst (to_var a, to_var_binder b)
+    | Symb(f)     -> (try Vari (StrMap.find f.sym_name m) with Not_found -> t)
+    | Prod(a,b)   -> Prod (to_var a, to_var_binder b)
+    | Abst(a,b)   -> Abst (to_var a, to_var_binder b)
     | LLet(a,t,u) -> LLet (to_var a, to_var t, to_var_binder u)
-    | Appl(a,b) -> Appl(to_var a, to_var b)
-    | Meta(m,ts) -> Meta(m, Array.map to_var ts)
-    | Patt(_) -> assert false
-    | TEnv(_) -> assert false
-    | TRef(_) -> assert false
-    | _ -> t
+    | Appl(a,b)   -> Appl(to_var a, to_var b)
+    | Meta(m,ts)  -> Meta(m, Array.map to_var ts)
+    | Patt(_)     -> assert false
+    | TEnv(_)     -> assert false
+    | TRef(_)     -> assert false
+    | _           -> t
   and to_var_binder b =
     let (x,b) = Bindlib.unbind b in
     Bindlib.unbox (Bindlib.bind_var x (lift (to_var b)))
@@ -173,24 +170,21 @@ let instantiate : ctxt -> meta -> term array -> term -> bool =
   fun ctx m ts u ->
   match instantiation ctx m ts u with
   | Some(bu) when Bindlib.is_closed bu ->
-      if !log_enabled then
-        log_unif (yel "%a ≔ %a") pp_meta m pp_term u;
+      if !log_enabled then log_unif (yel "%a ≔ %a") pp_meta m pp_term u;
       set_meta m (Bindlib.unbox bu); true
   | _ -> false
 
-(** [solve cfg p] tries to solve the unification problems of [p] and
+(** [solve p] tries to solve the unification problem [p] and
     returns the constraints that could not be solved. *)
-let rec solve : problems -> unif_constrs = fun p ->
+let rec solve : problem -> constr list = fun p ->
   match p with
   | { to_solve = []; unsolved = []; _ } -> []
   | { to_solve = []; unsolved = cs; recompute = true } ->
-     solve {no_problems with to_solve = cs}
+     solve {empty_problem with to_solve = cs}
   | { to_solve = []; unsolved = cs; _ } -> cs
   | { to_solve = (c,t,u)::to_solve; _ } -> solve_aux c t u {p with to_solve}
 
-(** [solve_aux t1 t2 p] tries to solve the unificaton problem given by [p] and
-    the constraint [(t1,t2)], starting with the latter. *)
-and solve_aux : ctxt -> term -> term -> problems -> unif_constrs =
+and solve_aux : ctxt -> term -> term -> problem -> constr list =
   fun ctx t1 t2 p ->
   let t1 = Eval.whnf ctx t1 in
   let t2 = Eval.whnf ctx t2 in
@@ -208,7 +202,8 @@ and solve_aux : ctxt -> term -> term -> problems -> unif_constrs =
   in
 
   let error () =
-    fatal_msg "[%a] and [%a] are not convertible.\n" pp t1 pp t2;
+    fatal_msg "[%a] and [%a] are not convertible.\n"
+      pp_term t1 pp_term t2;
     raise Unsolvable
   in
 
@@ -227,10 +222,11 @@ and solve_aux : ctxt -> term -> term -> problems -> unif_constrs =
      we instantiate m by s(m0[vs],..,mn-1[vs]) where mi is a fresh
      meta of type Πv0:a0,..,Πvk-1:ak-1{y0=v0,..,yk-2=vk-2},
      bi{x0=m0[vs],..,xi-1=mi-1[vs]}. *)
-  let imitate_inj m vs us s h ts =
+  let imitate_inj m vs us s ts =
     if !log_enabled then
       log_unif "imitate_inj %a ≡ %a"
-        pp (add_args (Meta(m,vs)) us) pp (add_args (symb s) ts);
+        pp_term (add_args (Meta(m,vs)) us)
+        pp_term (add_args (Symb s) ts);
     let exception Cannot_imitate in
     try
       if not (us = [] && is_injective s) then raise Cannot_imitate;
@@ -239,12 +235,12 @@ and solve_aux : ctxt -> term -> term -> problems -> unif_constrs =
         | Some vars -> vars
       in
       (* Build the environment (yk-1,ak-1{y0=v0,..,yk-2=vk-2});..;(y0,a0). *)
-      let env = Env.copy_prod_env vars !(m.meta_type) in
+      let env = copy_prod_env vars !(m.meta_type) in
       (* Build the term s(m0[vs],..,mn-1[vs]). *)
       let k = Array.length vars in
       let t =
         let rec build i acc t =
-          if i <= 0 then add_args (Symb(s,h)) (List.rev acc)
+          if i <= 0 then add_args (Symb s) (List.rev acc)
           else match unfold t with
                | Prod(a,b) ->
                   let m = fresh_meta (Env.to_prod env (lift a)) k in
@@ -284,7 +280,7 @@ and solve_aux : ctxt -> term -> term -> problems -> unif_constrs =
      Πx1:a1,..,Πxn:an,Πx:m2[x1,..,xn],KIND, and do as in the previous case. *)
   let imitate_lam m =
     let n = m.meta_arity in
-    let (env, t) = Env.destruct_prod n !(m.meta_type) in
+    let (env, t) = Infer.destruct_prod n !(m.meta_type) in
     let x,a,env',b,p =
       match Eval.whnf [] t with
       | Prod(a,b) ->
@@ -325,17 +321,17 @@ and solve_aux : ctxt -> term -> term -> problems -> unif_constrs =
       match rule.lhs with
       | [l1] ->
           begin
-            match get_args l1 with
-            | Symb(s0,_), [_;_] ->
+            match Basics.get_args l1 with
+            | Symb(s0), [_;_] ->
                 let n = Bindlib.mbinder_arity rule.rhs in
                 begin
                   match Bindlib.msubst rule.rhs (Array.make n TE_None) with
-                  | Prod (Appl (Symb(s1,_), _), b) ->
+                  | Prod (Appl (Symb(s1), _), b) ->
                       begin
                         match Bindlib.subst b Kind with
-                        | Appl (Symb(s2,_), Appl(_,Kind)) ->
+                        | Appl (Symb(s2), Appl(_,Kind)) ->
                             (s0,s1,s2,true) :: l
-                        | Appl (Symb(s2,_), _) ->
+                        | Appl (Symb(s2), _) ->
                             (s0,s1,s2,false) :: l
                         | _ -> l
                       end
@@ -350,7 +346,7 @@ and solve_aux : ctxt -> term -> term -> problems -> unif_constrs =
       if !log_enabled then
         let f (s0,s1,s2,b) =
           log_unif (yel "inverses_for_prod %a: %a, %a, %a, %b")
-            pp (symb s) pp (symb s0) pp (symb s1) pp (symb s2) b
+            pp_symbol s pp_symbol s0 pp_symbol s1 pp_symbol s2 b
         in List.iter f l
     end;
     l
@@ -361,9 +357,10 @@ and solve_aux : ctxt -> term -> term -> problems -> unif_constrs =
   let exception Not_invertible in
 
   let rec inverse s v =
-    if !log_enabled then log_unif "inverse [%a] [%a]" pp (symb s) pp v;
-    match get_args (Eval.whnf [] v) with
-    | Symb(s',_), [u] when s' == s -> u
+    if !log_enabled then
+      log_unif "inverse [%a] [%a]" pp_symbol s pp_term v;
+    match Basics.get_args (Eval.whnf [] v) with
+    | Symb(s'), [u] when s' == s -> u
     | Prod(a,b), _ -> find_inverse_prod a b (inverses_for_prod s)
     | _, _ -> raise Not_invertible
 
@@ -379,7 +376,7 @@ and solve_aux : ctxt -> term -> term -> problems -> unif_constrs =
     let x,b = Bindlib.unbind b in
     let b' = lift (inverse s2 b) in
     let xb' = if d then _Abst (lift a) (Bindlib.bind_var x b') else b' in
-    add_args (symb s0) [a'; Bindlib.unbox xb']
+    add_args (Symb s0) [a'; Bindlib.unbox xb']
   in
 
   (* [inverse_opt s ts v] returns [Some(t,s^{-1}(v))] if [ts=[t]], [s] is
@@ -396,7 +393,8 @@ and solve_aux : ctxt -> term -> term -> problems -> unif_constrs =
      [t = s^{-1}(v)] when [s] is injective and [ts=[t]]. *)
   let solve_inj s ts v =
     if !log_enabled then
-      log_unif "solve_inj %a ≡ %a" pp (add_args (symb s) ts) pp v;
+      log_unif "solve_inj %a ≡ %a"
+        pp_term (add_args (Symb s) ts) pp_term v;
     match inverse_opt s ts v with
     | Some (a, b) -> solve_aux ctx a b p
     | None -> add_to_unsolved ()
@@ -406,7 +404,7 @@ and solve_aux : ctxt -> term -> term -> problems -> unif_constrs =
      variables, [imitate_prod m ts] instantiates [m] by a fresh product and
      continue. *)
   let imitate_prod m =
-    let mxs, prod, _, _ = Env.extend_meta_type m in
+    let mxs, prod, _, _ = Infer.extend_meta_type m in
     (* ts1 and ts2 are equal to [] *)
     solve_aux ctx mxs prod { p with to_solve = (ctx,h1,h2)::p.to_solve }
   in
@@ -423,7 +421,7 @@ and solve_aux : ctxt -> term -> term -> problems -> unif_constrs =
 
   (* Other cases. *)
   | (Vari(x1)   , Vari(x2)   ) when Bindlib.eq_vars x1 x2 -> decompose ()
-  | (Symb(s1,_) , Symb(s2,_) ) ->
+  | (Symb(s1)   , Symb(s2)   ) ->
      if s1 == s2 then
        match s1.sym_prop with
        | Const
@@ -459,14 +457,14 @@ and solve_aux : ctxt -> term -> term -> problems -> unif_constrs =
   | (Meta(m,_)  , _          ) when imitate_lam_cond h1 ts1 -> imitate_lam m
   | (_          , Meta(m,_)  ) when imitate_lam_cond h2 ts2 -> imitate_lam m
 
-  | (Meta(m,ts) , Symb(s,h)  ) -> imitate_inj m ts ts1 s h ts2
-  | (Symb(s,h)  , Meta(m,ts) ) -> imitate_inj m ts ts2 s h ts1
+  | (Meta(m,ts) , Symb(s)    ) -> imitate_inj m ts ts1 s ts2
+  | (Symb(s)    , Meta(m,ts) ) -> imitate_inj m ts ts2 s ts1
 
   | (Meta(_,_)  , _          )
   | (_          , Meta(_,_)  ) -> add_to_unsolved ()
 
-  | (Symb(s,_)  , _          ) when not (is_constant s) -> solve_inj s ts1 t2
-  | (_          , Symb(s,_)  ) when not (is_constant s) -> solve_inj s ts2 t1
+  | (Symb(s)    , _          ) when not (is_constant s) -> solve_inj s ts1 t2
+  | (_          , Symb(s)    ) when not (is_constant s) -> solve_inj s ts2 t1
 
   (* Cases of error *)
   | (Type, (Kind|Prod(_)|Symb(_)|Vari(_)|Abst(_)))
@@ -478,10 +476,14 @@ and solve_aux : ctxt -> term -> term -> problems -> unif_constrs =
 
   | (_          , _          ) -> add_to_unsolved ()
 
-(** [solve builtins flag problems] attempts to solve [problems]. If there is
+(** [solve problem] attempts to solve [problem]. If there is
    no solution, the value [None] is returned. Otherwise [Some(cs)] is
    returned, where the list [cs] is a list of unsolved convertibility
    constraints. *)
-let solve : sym StrMap.t -> problems -> unif_constrs option =
-  fun _builtins p ->
+let solve : problem -> constr list option = fun p ->
   try Some (solve p) with Unsolvable -> None
+
+(** [eq c t u] tries to unify the terms [t] and [u] in context [c], by
+   instantiating their metavariables. *)
+let eq : ctxt -> term -> term -> bool = fun c t u ->
+  solve {empty_problem with to_solve=[c,t,u]} = Some []

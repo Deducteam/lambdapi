@@ -522,10 +522,10 @@ let parser query =
       let assert_typing = P_assert_typing(ps_t,ps_u) in
       Pos.in_pos _loc (P_query_assert(mf,assert_typing))
   | _type_ t:term ->
-      let c = Eval.{strategy = NONE; steps = None} in
+      let c = {strategy = NONE; steps = None} in
       Pos.in_pos _loc (P_query_infer(t,c))
   | _compute_ t:term ->
-      let c = Eval.{strategy = SNF; steps = None} in
+      let c = {strategy = SNF; steps = None} in
       Pos.in_pos _loc (P_query_normalize(t,c))
   | _set_ "prover" s:string_lit ->
       Pos.in_pos _loc (P_query_prover(s))

@@ -41,7 +41,7 @@ type term =
   (** "TYPE" constant. *)
   | Kind
   (** "KIND" constant. *)
-  | Symb of sym * pp_hint
+  | Symb of sym
   (** User-defined symbol. *)
   | Prod of term * (term, term) Bindlib.binder
   (** Dependent product. *)
@@ -113,22 +113,6 @@ type term =
     set to {!constructor:Constant}. Moreover, a symbol should not be given at
     the same time a definition (i.e., {!field:sym_def} different from [None])
     and rewriting rules (i.e., {!field:sym_rules} is non-empty). *)
-
-(** Pretty-printing hint for a symbol. One hint is attached to each occurrence
-    of a symbol, depending on the corresponding concrete (source code) syntax.
-    The aim of hints is to preserve as much as possible the syntax used by the
-    user in the concrete (source file) syntax. *)
- and pp_hint =
-  | Nothing
-  (** Just print the name of the symbol. *)
-  | Qualified
-  (** Fully qualify the symbol name. *)
-  | Alias  of string
-  (** Use the given alias as qualifier. *)
-  | Binary of string
-  (** Show as the given binary operator. *)
-  | Unary  of string
-  (** Show as the given unary operator. *)
 
 (** {3 Representation of rewriting rules} *)
 
@@ -244,9 +228,6 @@ type term =
   ; meta_value : (term, term) Bindlib.mbinder option ref
   (** Definition of the metavariable, if known. *) }
 
-(** [symb s] returns the term [Symb (s, Nothing)]. *)
-let symb : sym -> term = fun s -> Symb (s, Nothing)
-
 (** [is_injective s] tells whether the symbol is injective. *)
 let is_injective : sym -> bool = fun s -> s.sym_prop = Injec
 
@@ -260,8 +241,8 @@ let is_private : sym -> bool = fun s -> s.sym_expo = Privat
     definition. *)
 type ctxt = (term Bindlib.var * term * term option) list
 
-(** Type of a list of unification constraints. *)
-type unif_constrs = (ctxt * term * term) list
+(** Type of unification constraints. *)
+type constr = ctxt * term * term
 
 (** [unfold t] repeatedly unfolds the definition of the surface constructor of
     [t], until a significant {!type:term} constructor is found.  The term that
@@ -317,22 +298,6 @@ let meta_name : meta -> string = fun m ->
   in
   "?" ^ name
 
-(** [term_of_meta m env] constructs the application of a dummy symbol with the
-    same type as [m], to the element of the environment [env].  The idea is to
-    obtain a term with the same type as {!constructor:Meta}[(m,env)], but that
-    is simpler to type-check. *)
-let term_of_meta : meta -> term array -> term = fun m e ->
-  let s =
-    { sym_name = Printf.sprintf "%s" (meta_name m)
-    ; sym_type = ref !(m.meta_type) ; sym_path = [] ; sym_def = ref None
-    ; sym_impl = []; sym_rules = ref [] ; sym_prop = Const
-    ; sym_expo = Privat ; sym_tree = ref Tree_types.empty_dtree }
-  in
-  Array.fold_left (fun acc t -> Appl(acc,t)) (symb s) e
-
-(** {b NOTE} that {!val:term_of_meta} relies on a dummy symbol and not a fresh
-    variable to avoid polluting the context. *)
-
 (** {3 Smart constructors and Bindlib infrastructure} *)
 
 (** A short name for the binding of a term in a term. *)
@@ -373,8 +338,8 @@ let _Kind : tbox = Bindlib.box Kind
 
 (** [_Symb s] injects the constructor [Symb(s)] into the {!type:tbox} type. As
     symbols are closed object they do not require lifting. *)
-let _Symb : sym -> pp_hint -> tbox = fun s h ->
-  Bindlib.box (Symb(s,h))
+let _Symb : sym -> tbox = fun s ->
+  Bindlib.box (Symb s)
 
 (** [_Appl t u] lifts an application node to the {!type:tbox} type given boxed
     terms [t] and [u]. *)
@@ -451,7 +416,7 @@ let rec lift : term -> tbox = fun t ->
   | Vari(x)     -> _Vari x
   | Type        -> _Type
   | Kind        -> _Kind
-  | Symb(s,h)   -> _Symb s h
+  | Symb(_) as t -> Bindlib.box t
   | Prod(a,b)   -> _Prod (lift a) (lift_binder b)
   | Abst(a,t)   -> _Abst (lift a) (lift_binder t)
   | Appl(t,u)   -> _Appl (lift t) (lift u)
@@ -497,16 +462,24 @@ end
 module MetaSet = Set.Make(Meta)
 module MetaMap = Map.Make(Meta)
 
-(** Sets of term variables. *)
-module VarSet = Set.Make(
-  struct
-    type t = tvar
-    let compare = Bindlib.compare_vars
-  end)
+(** Sets and maps of term variables. *)
+module Var = struct
+  type t = tvar
+  let compare = Bindlib.compare_vars
+end
 
-(** Maps over term variables. *)
-module VarMap = Map.Make(
-  struct
-    type t = tvar
-    let compare = Bindlib.compare_vars
-  end)
+module VarSet = Set.Make(Var)
+module VarMap = Map.Make(Var)
+
+(** Sets and maps of symbols. *)
+module Sym = struct
+  type t = sym
+  let compare s1 s2 =
+    if s1 == s2 then 0 else
+    match Stdlib.compare s1.sym_name s2.sym_name with
+    | 0 -> Stdlib.compare s1.sym_path s2.sym_path
+    | n -> n
+end
+
+module SymSet = Set.Make(Sym)
+module SymMap = Map.Make(Sym)
