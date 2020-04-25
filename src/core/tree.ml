@@ -277,9 +277,10 @@ module CM = struct
         respect to slot [s]. A condition [CondFV(vs, i)] corresponds to a free
         variable condition: only variables of [vs] are in the matched term. *)
 
+  (* May be useful for debugging:
   (** [pp ?(pp_cond=false) o m] prints matrix [m] to out channel [o]. The flag
       [pp_cond] indicates whether the condition pull should be printed. *)
-  (*let pp : ?pp_cond:bool -> t pp = fun ?(pp_cond=false) oc m ->
+  let pp : ?pp_cond:bool -> t pp = fun ?(pp_cond=false) oc m ->
     let pp_lhs oc lhs =
       Format.fprintf oc "@[%a ↪ … @]" (Array.pp Print.pp " | ") lhs
     in
