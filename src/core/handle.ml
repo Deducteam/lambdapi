@@ -273,10 +273,10 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
               ; arities = pur.pr_arities
               ; vars = pur.pr_vars }
             in
-            Sign.add_rule ss.signature Unif.Hint.atom urule;
-            Tree.update_dtree Unif.Hint.atom;
+            Sign.add_rule ss.signature Unif.Sym.equiv urule;
+            Tree.update_dtree Unif.Sym.equiv;
             out 3 "(hint) [%a]\n" Print.pp_rule
-              (Unif.Hint.atom, Nothing, urule);
+              (Unif.Sym.equiv, Nothing, urule);
             ss
       in
       (ss, None)

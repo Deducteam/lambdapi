@@ -40,11 +40,11 @@ let check : pre_unification_rule loc -> unit = fun p_pur ->
   (* Retrieve the sub unification problems in the form (xi, Hi). *)
   let bindings : (tevar * term) list =
     let (h, args) = Basics.get_args rhst in
-    assert (to_sym h == Unif.Hint.list);
+    assert (to_sym h == Unif.Sym.list);
     let f t = (* [f (xi ≡ Hi)] returns [(xi, Hi)] *)
       match Basics.get_args t with
       | (Symb(s, _), [TEnv(TE_Vari(x),_); u]) ->
-          assert (s == Unif.Hint.atom);
+          assert (s == Unif.Sym.equiv);
           (x, u)
       | _                                     ->
           assert false (* Ill-formed hint. *)

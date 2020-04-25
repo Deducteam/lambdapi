@@ -19,7 +19,7 @@ type sig_state =
 (** [empty_sig_state] is an empty signature state, without symbols/aliases. *)
 let empty_sig_state : Sign.t -> sig_state = fun sign ->
   { signature = sign
-  ; in_scope  = !(Unif.Hint.sign.sign_symbols)
+  ; in_scope  = !(Unif.Sym.sign.sign_symbols)
   (* Always open unification hints. *)
   ; aliases   = StrMap.empty
   ; builtins  = StrMap.empty }

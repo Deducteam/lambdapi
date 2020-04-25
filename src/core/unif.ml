@@ -33,29 +33,63 @@ let pp_problem oc p =
 let no_problems : problems =
   {to_solve  = []; unsolved = []; recompute = false}
 
+(** Symbols and signature used for unification rules. *)
+module Sym =
+  struct
 
-(** Definition of symbols used to encode unification rules. *)
-module Hint = struct
+    (** Ghost signature holding the symbols used in unification rules. This
+        signature is an automatic dependency of all other signatures, and is
+        automatically loaded. *)
+    let sign : Sign.t =
+      let open Files in
+      let pth = Path.ghost "unif_rule" in
+      let s = Sign.create pth in
+      (* Remove the dependency on itself. *)
+      s.sign_deps := PathMap.remove pth !(s.sign_deps);
+      Sign.loaded := Files.PathMap.add pth s !(Sign.loaded);
+      s
 
-  let sign =
-    let pth = Files.Path.ghost "unif_rule" in
-    let s = Sign.create pth in
-    s.sign_deps := Files.PathMap.empty;
-    Sign.loaded := Files.PathMap.add pth s !(Sign.loaded);
-    s
+    (** Symbol representing an atomic unification problem. The term [equiv t
+        u] represents [t ≡ u]. The left-hand side of a unification rule is
+        made of only one unification. *)
+    let equiv : sym =
+      Sign.add_symbol sign Public Defin (Pos.none "#equiv") Kind []
 
-  (** Symbol representing an atomic unification problem. The term [atom t u]
-      represents [t ≡ u]. The left-hand side of a unification rule is made
-      of only one atom. *)
-  let atom : sym =
-    Sign.add_symbol sign Public Defin (Pos.none "u_atom") Kind []
-
-  (** Holds a list of atoms. The right-hand side of a unification rule is
-      made of such a list, [list (atom t u) (atom v w) ...]. *)
-  let list : sym =
-    Sign.add_symbol sign Public Defin (Pos.none "u_list") Kind []
-
+    (** Holds a list of equivalences. The right-hand side of a unification
+        rule is made of such a list, [list (equiv t u) (equiv v w) ...]. *)
+    let list : sym =
+      Sign.add_symbol sign Public Defin (Pos.none "#list") Kind []
 end
+
+(** [try_rules ctx s t] tries to solve unification problem [ctx ⊢ s ≡ t] using
+    declared unification rules. *)
+let try_rules : ctxt -> term -> term -> unif_constrs option = fun ctx s t ->
+  if !log_enabled then log_unif "hint [%a]" pp_constr (ctx,s,t);
+  let exception No_match in
+  let tree = !(Sym.equiv.sym_tree) in
+  try
+    let rhs =
+      match Eval.tree_walk tree ctx [s;t] with
+      | Some(r,[]) -> r
+      | Some(_)    -> assert false (* Everything should be matched *)
+      | None       ->
+        match Eval.tree_walk tree ctx [t;s] with
+        | Some(r,[]) -> r
+        | Some(_)    -> assert false (* Everything should be matched *)
+        | None       -> raise No_match
+    in
+    let rec subpb_in t =
+      match Basics.get_args (unfold t) with
+      | (Symb(u,_),[s;t]) when u == Sym.equiv -> [(ctx,s,t)]
+      | (Symb(u,_),ts   ) when u == Sym.list ->
+        List.concat (List.map subpb_in ts)
+      | _                 -> assert false
+    in
+    let subpbs = subpb_in rhs in
+    let pp_subpbs = List.pp pp_constr ", " in
+    if !log_enabled then log_unif (gre "hint [%a]") pp_subpbs subpbs;
+    Some(subpbs)
+  with No_match -> None
 
 (** [nl_distinct_vars ctx ts] checks that [ts] is made of variables  [vs] only
     and returns some copy of [vs] where variables occurring more than once are
@@ -144,37 +178,6 @@ let instantiate : ctxt -> meta -> term array -> term -> bool =
       set_meta m (Bindlib.unbox bu); true
   | _ -> false
 
-(** [try_hints ctx s t] tries to solve unification problem [ctx ⊢ s ≡ t] using
-    declared unification hints. *)
-let try_hints : ctxt -> term -> term -> unif_constrs option =
-  fun ctx s t ->
-  if !log_enabled then log_unif "hint [%a]" pp_constr (ctx,s,t);
-  let exception No_match in
-  let tree = !(Hint.atom.sym_tree) in
-  try
-    let rhs =
-      match Eval.tree_walk tree ctx [s;t] with
-      | Some(r,[]) -> r
-      | Some(_)    -> assert false (* Everything should be matched *)
-      | None       ->
-      match Eval.tree_walk tree ctx [t;s] with
-      | Some(r,[]) -> r
-      | Some(_)    -> assert false (* Everything should be matched *)
-      | None       -> raise No_match
-    in
-    let rec subpb_in t =
-      match Basics.get_args (unfold t) with
-      | (Symb(u,_),[s;t]) when u == Hint.atom -> [(ctx,s,t)]
-      | (Symb(u,_),ts   ) when u == Hint.list ->
-          List.concat (List.map subpb_in ts)
-      | _                 -> assert false
-    in
-    let subpbs = subpb_in rhs in
-    let pp_subpbs = List.pp pp_constr ", " in
-    if !log_enabled then log_unif (gre "hint [%a]") pp_subpbs subpbs;
-    Some(subpbs)
-  with No_match -> None
-
 (** [solve cfg p] tries to solve the unification problems of [p] and
     returns the constraints that could not be solved. *)
 let rec solve : problems -> unif_constrs = fun p ->
@@ -197,7 +200,7 @@ and solve_aux : ctxt -> term -> term -> problems -> unif_constrs =
 
   let add_to_unsolved () =
     if Eval.eq_modulo ctx t1 t2 then solve p else
-    match try_hints ctx t1 t2 with
+    match try_rules ctx t1 t2 with
     | None     -> solve {p with unsolved = (ctx,t1,t2) :: p.unsolved}
     | Some([]) -> assert false
     (* Unification rules generate non empty list of unification constraints *)
