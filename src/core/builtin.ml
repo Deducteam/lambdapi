@@ -15,8 +15,8 @@ let get : sig_state -> popt -> string -> sym = fun ss pos name ->
     fatal pos "Builtin symbol \"%s\" undefined." name
 
 (** Hash-table used to record checking functions for builtins. *)
-let htbl : (string, sig_state -> popt -> sym -> unit) Hashtbl.t
-  = Hashtbl.create 17
+let htbl : (string, sig_state -> popt -> sym -> unit) Hashtbl.t =
+  Hashtbl.create 17
 
 (** [check ss pos name sym] runs the registered check for builtin symbol
    [name] on the symbol [sym] (if such a check has been registered). Note that
