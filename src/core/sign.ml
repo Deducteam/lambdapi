@@ -27,7 +27,7 @@ type t =
 (** [create path] creates an empty signature with module path [path]. *)
 let create : Path.t -> t = fun sign_path ->
   { sign_path; sign_symbols = ref StrMap.empty
-  ; sign_deps = ref (PathMap.singleton [""; "unif_rule"] [])
+  ; sign_deps = ref (PathMap.singleton (Path.ghost "unif_rule") [])
   ; sign_builtins = ref StrMap.empty; sign_unops = ref StrMap.empty
   ; sign_binops = ref StrMap.empty; sign_idents = ref StrSet.empty }
 
