@@ -12,18 +12,6 @@ open Print
 let log_rewr = new_logger 'r' "rewr" "the rewrite tactic"
 let log_rewr = log_rewr.logger
 
-(** Rewrite patterns as in Coq/SSReflect. See "A Small Scale
-    Reflection Extension for the Coq system", by Georges Gonthier,
-    Assia Mahboubi and Enrico Tassi, INRIA Research Report 6455, 2016,
-    http://hal.inria.fr/inria-00258384, section 8, p. 48. *)
-type rw_patt =
-  | RW_Term           of term
-  | RW_InTerm         of term
-  | RW_InIdInTerm     of (term, term) Bindlib.binder
-  | RW_IdInTerm       of (term, term) Bindlib.binder
-  | RW_TermInIdInTerm of term * (term, term) Bindlib.binder
-  | RW_TermAsIdInTerm of term * (term, term) Bindlib.binder
-
 (** [eq ctx t u] tests the equality of [t] and [u] (up to α-equivalence).
     It fails if [t] or [u] contain terms of the form [Patt(i,s,e)] or
     [TEnv(te,env)].  In the process, subterms of the form [TRef(r)] in [t] and
@@ -68,6 +56,18 @@ let eq : ctxt -> term -> term -> bool = fun ctx a b -> a == b ||
     end
   in
   try eq [(a,b)]; true with Not_equal -> false
+
+(** Rewrite patterns as in Coq/SSReflect. See "A Small Scale
+    Reflection Extension for the Coq system", by Georges Gonthier,
+    Assia Mahboubi and Enrico Tassi, INRIA Research Report 6455, 2016,
+    http://hal.inria.fr/inria-00258384, section 8, p. 48. *)
+type rw_patt =
+  | RW_Term           of term
+  | RW_InTerm         of term
+  | RW_InIdInTerm     of (term, term) Bindlib.binder
+  | RW_IdInTerm       of (term, term) Bindlib.binder
+  | RW_TermInIdInTerm of term * (term, term) Bindlib.binder
+  | RW_TermAsIdInTerm of term * (term, term) Bindlib.binder
 
 (** Equality configuration. *)
 type eq_config =
@@ -204,21 +204,20 @@ let break_prod : term -> term * tvar array = fun a ->
     | a         -> (a, Array.of_list (List.rev vs))
   in aux a []
 
-(** [match_pattern (xs,p) t] attempts to match the pattern [p] (containing
-   the “pattern variables” of [xs]) with the term [t]. If successful, it
-   returns [Some(ts)] where [ts] is an array of terms such that substituting
-   elements of [xs] by the corresponding elements of [ts] in [p] yields a term
-   that is equal to [t] (in terms of [eq]). *)
+(** [match_pattern (xs,p) t] attempts to match the pattern [p] (containing the
+    “pattern variables” of [xs]) with the term [t]. If successful,  it returns
+    [Some(ts)] where [ts] is an array of terms such that substituting elements
+    of [xs] by the corresponding elements of [ts] in [p] yields a term that is
+    equal to [t] (in terms of [eq]). *)
 let match_pattern : to_subst -> term -> term array option = fun (xs,p) t ->
   let ts = Array.map (fun _ -> TRef(ref None)) xs in
   let p = Bindlib.msubst (Bindlib.unbox (Bindlib.bind_mvar xs (lift p))) ts in
   if eq [] p t then Some(Array.map unfold ts) else None
 
-(** [find_subst t (xs,p)] is given a term [t] and a pattern [p] (with
-   “pattern variables” of [xs]), and it finds the first instance of (a term
-   matching) [p] in [t] (if there is any). If successful, the function returns
-   an array of terms corresponding to the substitution (see
-   [match_pattern]). *)
+(** [find_subst t (xs,p)] is given a term [t] and a pattern [p] (with “pattern
+    variables” of [xs]),  and it finds the first instance of (a term matching)
+    [p] in [t] (if there is any). If successful, the function returns an array
+    of terms corresponding to the substitution (see [match_pattern]). *)
 let find_subst : term -> to_subst -> term array option = fun t (xs,p) ->
   let time = Time.save () in
   let rec find_sub_aux : term -> term array option = fun t ->
@@ -238,11 +237,11 @@ let find_subst : term -> to_subst -> term array option = fun t (xs,p) ->
     | sub  -> sub
   in find_sub_aux t
 
-(** [make_pat t p] is given a term [t], and a pattern [p] containing
-   reference cells (that are not instantiated) and wildcards.  It then tries
-   to find a subterm of [t] that matches [p], using (instantiating) syntactic
-   equality.  In case of success, the function returns [true], and the
-   matching term is [p] itself (through instantiation). *)
+(** [make_pat t p] is given a term [t], and a pattern [p] containing reference
+    cells (that are not instantiated) and wildcards.  It then tries to find  a
+    subterm of [t] that matches [p], using (instantiating) syntactic equality.
+    In case of success, the function returns [true],  and the matching term is
+    [p] itself (through instantiation). *)
 let make_pat : term -> term -> bool = fun t p ->
   let time = Time.save () in
   let rec make_pat_aux : term -> bool = fun t ->
@@ -260,9 +259,9 @@ let make_pat : term -> term -> bool = fun t p ->
       end
   in make_pat_aux t
 
-(** [bind_match p t] binds every occurence of the pattern [p] in the term
-   [t].  We require [t] not to contain products, abstractions, metavariables
-   or any other awkward term constructor. *)
+(** [bind_match p t] binds every occurence of the pattern [p] in the term [t].
+    We require [t] not to contain products, abstractions, metavariables or any
+    other awkward term constructor. *)
 let bind_match : term -> term -> tbinder =  fun p t ->
   let x = Bindlib.new_var mkfree "X" in
   let rec lift_subst : term -> tbox = fun t ->
@@ -288,13 +287,14 @@ let bind_match : term -> term -> tbinder =  fun p t ->
 
 (* NOTE in [bind_match] we lift while matching for efficiency. *)
 
-(** [rewrite ss ps po t] rewrites according to the equality proved by [t] in
-   the current goal of [ps]. The term [t] should have a type corresponding to
-   an equality. Every occurrence of the first instance of the left-hand side
-   is replaced by the right-hand side of the obtained proof. It also handles
-   the full set of SSReflect patterns. *)
-let rewrite : Sig_state.t -> popt -> Proof.t -> rw_patt option -> term -> term
-  = fun ss pos ps p t ->
+(** [rewrite ps po t] rewrites according to the equality proved by [t] in  the
+    current goal of [ps].  The term [t] should have a type corresponding to an
+    equality. Every occurrence of the first instance of the left-hand side  is
+    replaced by the right-hand side of the obtained proof. It also handles the
+    full set of SSReflect patterns. *)
+let rewrite
+    : Sig_state.t -> popt -> Proof.t -> rw_patt option -> term -> term =
+  fun ss pos ps p t ->
 
   (* Obtain the required symbols from the current signature. *)
   let cfg = get_eq_config ss pos in
@@ -340,8 +340,9 @@ let rewrite : Sig_state.t -> popt -> Proof.t -> rw_patt option -> term -> term
         let sigma =
           match find_subst g_term (vars, l) with
           | Some(sigma) -> sigma
-          | None        -> fatal pos "No subterm of [%a] matches [%a]."
-                             pp_term g_term pp_term l
+          | None        ->
+              fatal pos "No subterm of [%a] matches [%a]."
+                pp_term g_term pp_term l
         in
         (* Build the required data from that substitution. *)
         let (t, l, r) = Bindlib.msubst bound sigma in
@@ -362,8 +363,9 @@ let rewrite : Sig_state.t -> popt -> Proof.t -> rw_patt option -> term -> term
         let sigma =
           match match_pattern (vars,l) match_p with
           | Some(sigma) -> sigma
-          | None        -> fatal pos "No subterm of [%a] matches [%a]."
-                             pp_term match_p pp_term l
+          | None        ->
+              fatal pos "No subterm of [%a] matches [%a]."
+                pp_term match_p pp_term l
         in
         (* Build the data from the substitution. *)
         let (t, l, r) = Bindlib.msubst bound sigma in
@@ -435,8 +437,7 @@ let rewrite : Sig_state.t -> popt -> Proof.t -> rw_patt option -> term -> term
           | None        ->
               fatal pos
                 "The value of [%s], [%a], in [%a] does not match [%a]."
-                (Bindlib.name_of id)
-                pp_term id_val pp_term p pp_term l
+                (Bindlib.name_of id) pp_term id_val pp_term p pp_term l
         in
         (* Build t, l, using the substitution we found. Note that r  *)
         (* corresponds to the value we get by applying rewrite to *)
@@ -607,8 +608,7 @@ let rewrite : Sig_state.t -> popt -> Proof.t -> rw_patt option -> term -> term
           | None        ->
               fatal pos
                 "The value of [%s], [%a], in [%a] does not match [%a]."
-                (Bindlib.name_of id)
-                pp_term id_val pp_term p pp_term l
+                (Bindlib.name_of id) pp_term id_val pp_term p pp_term l
         in
         let (t,l,r) = Bindlib.msubst bound sigma in
 

@@ -76,17 +76,17 @@ let new_function_symbol name a =
 (** Mapping of pattern variable names to their reserved index. *)
 type index_tbl = (string, int) Hashtbl.t
 
-(** [symb_to_tenv ss pr syms htbl t] builds a RHS for the pre-rule [pr]. The
-   term [t] is expected to be a version of the RHS of [pr] whose term
-   environments have been replaced by function symbols of [syms]. This
-   function builds the reverse transformation, replacing symbols by the term
-   environment variable they stand for.  Here, [htbl] should give the index in
-   the RHS environment for the symbols of [syms] that have corresponding
-   [term_env] variable. The pre-rule [pr] is provided to give access to these
-   variables and also their expected arities. *)
+(** [symb_to_tenv pr syms htbl t] builds a RHS for the pre-rule [pr]. The term
+    [t] is expected to be a version of the RHS of [pr] whose term environments
+    have been replaced by function symbols of [syms]. This function builds the
+    reverse transformation, replacing symbols by the term environment variable
+    they stand for.  Here, [htbl] should give the index in the RHS environment
+    for the symbols of [syms] that have corresponding [term_env] variable. The
+    pre-rule [pr] is provided to give access to these variables and also their
+    expected arities. *)
 let symb_to_tenv
-    : Scope.pre_rule Pos.loc -> sym list -> index_tbl -> term -> tbox
-  = fun {elt={pr_vars=vars;pr_arities=arities;_};pos} syms htbl t ->
+    : Scope.pre_rule Pos.loc -> sym list -> index_tbl -> term -> tbox =
+  fun {elt={pr_vars=vars;pr_arities=arities;_};pos} syms htbl t ->
   let rec symb_to_tenv t =
     log_subj "symb_to_tenv %a" pp_term t;
     let (h, ts) = Basics.get_args t in

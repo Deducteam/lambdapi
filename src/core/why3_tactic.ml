@@ -177,8 +177,9 @@ let run_task : Why3.Task.task -> Pos.popt -> string -> bool =
     name [prover_name] (if given or a default one otherwise) on the goal  [g].
     If the prover succeeded to prove the goal, then this is reflected by a new
     axiom that is added to signature [ss]. *)
-let handle : Sig_state.t -> Pos.popt -> string option -> Proof.Goal.t -> term
-  = fun ss pos prover_name g ->
+let handle :
+      Sig_state.t -> Pos.popt -> string option -> Proof.Goal.t -> term =
+  fun ss pos prover_name g ->
   (* Get the goal to prove. *)
   let (hyps, trm) = Proof.Goal.get_type g in
   (* Get the default or the indicated name of the prover. *)

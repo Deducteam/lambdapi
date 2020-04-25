@@ -173,8 +173,7 @@ and pp_term : term pp = fun oc t ->
 
 (** [pp_rule oc (s,h,r)] prints the rule [r] of symbol [s] to the output
    channel [oc]. *)
-let pp_rule : (sym * rule) pp
-  = fun oc (s,r) ->
+let pp_rule : (sym * rule) pp = fun oc (s,r) ->
   let lhs = Basics.add_args (Symb s) r.lhs in
   let (_, rhs) = Bindlib.unmbind r.rhs in
   Format.fprintf oc "%a ↪ %a" pp_term lhs pp_term rhs

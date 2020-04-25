@@ -63,8 +63,8 @@ let copy_prod_env : tvar array -> term -> env = fun xs t ->
     replaced by fresh variables.  Variables defined in  [ctx] are unfolded. It
     returns [None] otherwise. *)
 let nl_distinct_vars
-    : ctxt -> term array -> (tvar array * tvar StrMap.t) option
-  = fun ctx ts ->
+    : ctxt -> term array -> (tvar array * tvar StrMap.t) option =
+  fun ctx ts ->
   let exception Not_a_var in
   let open Stdlib in
   let vars = ref VarSet.empty
@@ -134,8 +134,8 @@ let instantiation : ctxt -> meta -> term array -> term ->
         Some (Bindlib.bind_mvar vs (lift u))
   else None
 
-(** [instantiate ctx m ts u] check whether, in a problem [m[ts]=u], [m] can
-   be instantiated and, if so, instantiate it. *)
+(** [instantiate ctx m ts u] check whether, in a problem [m[ts]=u], [m] can be
+    instantiated and, if so, instantiate it. *)
 let instantiate : ctxt -> meta -> term array -> term -> bool =
   fun ctx m ts u ->
   match instantiation ctx m ts u with

@@ -38,16 +38,16 @@ let empty = of_sign (Sign.create [])
 
 (** [remove_hint ss s hints] removes from [hints] the mapping for [s] if
    [s.sym_name] is mapped in [ss.in_scope]. *)
-let remove_hint : sig_state -> sym -> hint SymMap.t -> hint SymMap.t
-  = fun ss s hints ->
+let remove_hint : sig_state -> sym -> hint SymMap.t -> hint SymMap.t =
+  fun ss s hints ->
   if StrMap.mem s.sym_name ss.in_scope then SymMap.remove s hints
   else hints
 
 (** [add_symbol ss e p x a impl] adds a symbol in [ss]. *)
 let add_symbol
     : sig_state -> expo -> prop -> strloc -> term -> bool list
-      -> term option -> sig_state
-  = fun ss e p x a impl t ->
+      -> term option -> sig_state =
+  fun ss e p x a impl t ->
   let s = Sign.add_symbol ss.signature e p x a impl in
   begin
     match t with
@@ -59,15 +59,15 @@ let add_symbol
   {ss with in_scope; hints}
 
 (** [add_unop ss n (s,unop)] declares [n] as prefix and maps it to [s]. *)
-let add_unop : sig_state -> string -> (sym * unop) -> sig_state
-  = fun ss n (sym, unop) ->
+let add_unop : sig_state -> string -> (sym * unop) -> sig_state =
+  fun ss n (sym, unop) ->
   Sign.add_unop ss.signature n (sym, unop);
   let hints = SymMap.add sym (Prefix unop) (remove_hint ss sym ss.hints) in
   {ss with hints}
 
 (** [add_binop ss n (s,binop)] declares [n] as infix and maps it to [s]. *)
-let add_binop : sig_state -> string -> (sym * binop) -> sig_state
-  = fun ss n (sym, binop) ->
+let add_binop : sig_state -> string -> (sym * binop) -> sig_state =
+  fun ss n (sym, binop) ->
   Sign.add_binop ss.signature n (sym, binop);
   let hints = SymMap.add sym (Infix binop) (remove_hint ss sym ss.hints) in
   {ss with hints}
