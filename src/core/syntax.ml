@@ -76,6 +76,14 @@ and p_patt = p_term
     the argument is marked as implicit (i.e., between curly braces). *)
 and p_arg = ident option list * p_type option * bool
 
+let p_add_args : p_term -> p_term list -> p_term = fun t args ->
+  let rec add_args t args =
+    match args with
+    | []      -> t
+    | u::args -> add_args (Pos.none (P_Appl(t,u))) args
+  in
+  add_args t args
+
 (** Parser-level rewriting rule representation. *)
 type p_rule = (p_patt * p_term) loc
 

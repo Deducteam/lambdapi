@@ -467,6 +467,18 @@ let term = term PFunc
 let parser rule =
   | l:term "↪" r:term -> Pos.in_pos _loc (l, r)
 
+(** [unif_rule] is a parser for unification rules. *)
+let parser unif_rule =
+  | l:{term "≡" term} "↪" r:{term "≡" term} rs:{"," term "≡" term}* ->
+      let equiv = Pos.none (P_Iden(Pos.none ([], "#equiv"), true)) in
+      let eqlist = Pos.none (P_Iden(Pos.none([], "#list"), true)) in
+      let mkequiv (l, r) =
+        Pos.none (P_Appl(Pos.none (P_Appl(equiv, l)), r))
+      in
+      let lhs = mkequiv l in
+      let rhs = p_add_args eqlist (List.map mkequiv (r::rs)) in
+      Pos.in_pos _loc (lhs, rhs)
+
 (** [rw_patt_spec] is a parser for a rewrite pattern specification. *)
 let parser rw_patt_spec =
   | t:term                          -> P_rw_Term(t)
@@ -564,7 +576,7 @@ let parser config =
       sanity_check _loc_id id;
       Prefix.add declared_ids id id;
       P_config_ident(id)
-  | "unif_rule" h:rule -> P_config_unif_rule(h)
+  | "unif_rule" r:unif_rule -> P_config_unif_rule(r)
 
 let parser statement =
   _theorem_ s:ident al:arg* ":" a:term _proof_ -> Pos.in_pos _loc (s,al,a)
