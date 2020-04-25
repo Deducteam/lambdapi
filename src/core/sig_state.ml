@@ -9,7 +9,7 @@ open Syntax
 open Terms
 
 (** Pretty-printing information associated to a symbol. *)
-type hint =
+type pp_hint =
   | No_hint
   | Prefix of unop
   | Infix of binop
@@ -20,7 +20,7 @@ type sig_state =
   ; in_scope  : (sym * Pos.popt) StrMap.t (** Symbols in scope.    *)
   ; aliases   : Path.t StrMap.t           (** Established aliases. *)
   ; builtins  : Sign.builtin_map          (** Builtin symbols.     *)
-  ; hints     : hint SymMap.t             (** Printing hints.      *) }
+  ; pp_hints  : pp_hint SymMap.t          (** Printing hints.      *) }
 
 type t = sig_state
 
@@ -31,17 +31,18 @@ let of_sign : Sign.t -> sig_state = fun sign ->
   ; in_scope  = StrMap.empty
   ; aliases   = StrMap.empty
   ; builtins  = StrMap.empty
-  ; hints     = SymMap.empty }
+  ; pp_hints  = SymMap.empty }
 
 (** [empty] state. *)
 let empty = of_sign (Sign.create [])
 
-(** [remove_hint ss s hints] removes from [hints] the mapping for [s] if
+(** [remove_pp_hint ss s hints] removes from [hints] the mapping for [s] if
    [s.sym_name] is mapped in [ss.in_scope]. *)
-let remove_hint : sig_state -> sym -> hint SymMap.t -> hint SymMap.t =
-  fun ss s hints ->
-  if StrMap.mem s.sym_name ss.in_scope then SymMap.remove s hints
-  else hints
+let remove_pp_hint :
+      sig_state -> sym -> pp_hint SymMap.t -> pp_hint SymMap.t =
+  fun ss s pp_hints ->
+  if StrMap.mem s.sym_name ss.in_scope then SymMap.remove s pp_hints
+  else pp_hints
 
 (** [add_symbol ss e p x a impl] adds a symbol in [ss]. *)
 let add_symbol
@@ -54,23 +55,26 @@ let add_symbol
     | Some t -> s.sym_def := Some(t)
     | None -> ()
   end;
-  let hints = SymMap.add s No_hint (remove_hint ss s ss.hints) in
+  let pp_hints = remove_pp_hint ss s ss.pp_hints in
+  let pp_hints = SymMap.add s No_hint pp_hints in
   let in_scope = StrMap.add x.elt (s, x.pos) ss.in_scope in
-  {ss with in_scope; hints}
+  {ss with in_scope; pp_hints}
 
 (** [add_unop ss n (s,unop)] declares [n] as prefix and maps it to [s]. *)
 let add_unop : sig_state -> string -> (sym * unop) -> sig_state =
   fun ss n (sym, unop) ->
   Sign.add_unop ss.signature n (sym, unop);
-  let hints = SymMap.add sym (Prefix unop) (remove_hint ss sym ss.hints) in
-  {ss with hints}
+  let pp_hints = remove_pp_hint ss sym ss.pp_hints in
+  let pp_hints = SymMap.add sym (Prefix unop) pp_hints in
+  {ss with pp_hints}
 
 (** [add_binop ss n (s,binop)] declares [n] as infix and maps it to [s]. *)
 let add_binop : sig_state -> string -> (sym * binop) -> sig_state =
   fun ss n (sym, binop) ->
   Sign.add_binop ss.signature n (sym, binop);
-  let hints = SymMap.add sym (Infix binop) (remove_hint ss sym ss.hints) in
-  {ss with hints}
+  let pp_hints = remove_pp_hint ss sym ss.pp_hints in
+  let pp_hints = SymMap.add sym (Infix binop) pp_hints in
+  {ss with pp_hints}
 
 (** [add_builtin ss n s] adds builtin [n] and maps it to [s]. *)
 let add_builtin : sig_state -> string -> sym -> sig_state = fun ss s sym ->
@@ -78,11 +82,11 @@ let add_builtin : sig_state -> string -> sym -> sig_state = fun ss s sym ->
   let builtins = StrMap.add s sym ss.builtins in
   {ss with builtins}
 
-(** [build_hints ss] computes hints from a signature [sign]. *)
-let update_hints : sig_state -> Sign.t -> hint SymMap.t = fun ss sign ->
-  let fn _ (sym,_) hints =
+(** [build_pp_hints ss] computes pp_hints from a signature [sign]. *)
+let update_pp_hints : sig_state -> Sign.t -> pp_hint SymMap.t = fun ss sign ->
+  let fn _ (sym,_) pp_hints =
     let h =
-      let exception Hint of hint in
+      let exception Hint of pp_hint in
       try
         let fn_binop _ (s,binop) =
           if s == sym then raise (Hint (Infix binop)) in
@@ -95,9 +99,9 @@ let update_hints : sig_state -> Sign.t -> hint SymMap.t = fun ss sign ->
     in
     (* Remove from hints the symbols having a name occurring in the opened
        signature as it gets hidden. *)
-    SymMap.add sym h (remove_hint ss sym hints)
+    SymMap.add sym h (remove_pp_hint ss sym pp_hints)
   in
-  StrMap.fold fn !(sign.sign_symbols) ss.hints
+  StrMap.fold fn !(sign.sign_symbols) ss.pp_hints
 
 (** [open_sign ss sign] extends the signature state [ss] with every symbol  of
     the signature [sign].  This has the effect of putting these symbols in the
@@ -107,8 +111,8 @@ let open_sign : sig_state -> Sign.t -> sig_state = fun ss sign ->
   let f _key _v1 v2 = Some(v2) in (* open signature hides previous symbols *)
   let in_scope = StrMap.union f ss.in_scope Sign.(!(sign.sign_symbols)) in
   let builtins = StrMap.union f ss.builtins Sign.(!(sign.sign_builtins)) in
-  let hints = update_hints ss sign in
-  {ss with in_scope; builtins; hints}
+  let pp_hints = update_pp_hints ss sign in
+  {ss with in_scope; builtins; pp_hints}
 
 (** [find_sym ~prt ~prv b st qid] returns the symbol
     corresponding to the qualified identifier [qid]. If [fst qid.elt] is

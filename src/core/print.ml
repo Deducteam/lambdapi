@@ -40,7 +40,7 @@ let pp_assoc : assoc pp = fun oc assoc ->
      | Assoc_right -> "right")
 
 (** [hint oc a] prints hint [h] to channel [oc]. *)
-let pp_hint : hint pp = fun oc pp_hint ->
+let pp_hint : pp_hint pp = fun oc pp_hint ->
   match pp_hint with
   | No_hint -> ()
   | Prefix(n,p,_) -> Format.fprintf oc "prefix %s %f" n p
@@ -52,12 +52,13 @@ let pp_qualified : sym pp = fun oc s ->
     (*FIXME: handle aliases. *)
 
 (** Get the printing hint of a symbol. *)
-let get_hint : sym -> hint = fun s ->
-  try SymMap.find s (!sig_state).hints with Not_found -> No_hint
+let get_pp_hint : sym -> pp_hint = fun s ->
+  try SymMap.find s (!sig_state).pp_hints with Not_found -> No_hint
 
 (** [pp_symbol oc s] prints the name of the symbol [s] to channel [oc]. *)
 let pp_symbol : sym pp = fun oc s ->
-  if SymMap.mem s (!sig_state).hints then Format.pp_print_string oc s.sym_name
+  if SymMap.mem s (!sig_state).pp_hints then
+    Format.pp_print_string oc s.sym_name
   else pp_qualified oc s
 
 (** [pp_tvar oc x] prints the term variable [x] to the channel [oc]. *)
@@ -92,7 +93,7 @@ and pp_term : term pp = fun oc t ->
     | Symb(s) when not !print_implicits ->
         begin
           let args = Basics.expl_args s args in
-          match get_hint s with
+          match get_pp_hint s with
           | No_hint -> pp_appl h args
           | Prefix(_) -> pp_appl h args
           | Infix(op,_,_,_) ->
