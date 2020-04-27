@@ -36,15 +36,17 @@ let pp_assoc : assoc pp = fun oc assoc ->
   Format.fprintf oc
     (match assoc with
      | Assoc_none -> ""
-     | Assoc_left -> "left"
-     | Assoc_right -> "right")
+     | Assoc_left -> " left"
+     | Assoc_right -> " right")
 
 (** [hint oc a] prints hint [h] to channel [oc]. *)
 let pp_hint : pp_hint pp = fun oc pp_hint ->
   match pp_hint with
-  | No_hint -> ()
+  | Unqual -> ()
   | Prefix(n,p,_) -> Format.fprintf oc "prefix %s %f" n p
-  | Infix(n,a,p,_) -> Format.fprintf oc "infix %s %a %f" n pp_assoc a p
+  | Infix(n,a,p,_) -> Format.fprintf oc "infix %s%a %f" n pp_assoc a p
+  | Zero -> Format.fprintf oc "builtin \"0\""
+  | Succ -> Format.fprintf oc "builtin \"+1\""
 
 (** [qualified s] prints symbol [s] fully qualified to channel [oc]. *)
 let pp_qualified : sym pp = fun oc s ->
@@ -53,7 +55,7 @@ let pp_qualified : sym pp = fun oc s ->
 
 (** Get the printing hint of a symbol. *)
 let get_pp_hint : sym -> pp_hint = fun s ->
-  try SymMap.find s (!sig_state).pp_hints with Not_found -> No_hint
+  try SymMap.find s (!sig_state).pp_hints with Not_found -> Unqual
 
 (** [pp_symbol oc s] prints the name of the symbol [s] to channel [oc]. *)
 let pp_symbol : sym pp = fun oc s ->
@@ -64,6 +66,25 @@ let pp_symbol : sym pp = fun oc s ->
 (** [pp_tvar oc x] prints the term variable [x] to the channel [oc]. *)
 let pp_tvar : tvar pp = fun oc x ->
   Format.pp_print_string oc (Bindlib.name_of x)
+
+(** Exception raised when trying to convert a term into a nat. *)
+exception Not_a_nat
+
+(** [nat_of_term t] converts a term into a natural number. Raises [Not_a_nat]
+   if this is not possible. *)
+let nat_of_term : term -> int = fun t ->
+  let get_builtin name =
+    try StrMap.find name (!sig_state).builtins
+    with Not_found -> raise Not_a_nat
+  in
+  let zero = get_builtin "0" in
+  let succ = get_builtin "+1" in
+  let rec nat acc = fun t ->
+    match Basics.get_args t with
+    | (Symb s, [u]) when s == succ -> nat (acc+1) u
+    | (Symb s,  []) when s == zero -> acc
+    | _ -> raise Not_a_nat
+  in nat 0 t
 
 (** [pp_meta oc m] prints the uninstantiated meta-variable [m] to [oc]. *)
 let rec pp_meta : meta pp = fun oc m ->
@@ -94,7 +115,7 @@ and pp_term : term pp = fun oc t ->
         begin
           let args = Basics.expl_args s args in
           match get_pp_hint s with
-          | No_hint -> pp_appl h args
+          | Unqual -> pp_appl h args
           | Prefix(_) -> pp_appl h args
           | Infix(op,_,_,_) ->
               begin
@@ -114,6 +135,10 @@ and pp_term : term pp = fun oc t ->
                     if p <> `Func then out oc ")"
                 | _ -> pp_appl h args
               end
+          | Zero -> out oc "0"
+          | Succ ->
+              try out oc "%i" (nat_of_term t)
+              with Not_a_nat -> pp_appl h args
         end
     | _       -> pp_appl h args
   and pp_head wrap oc t =
