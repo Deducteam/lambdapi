@@ -48,8 +48,24 @@ module Unif_rule =
 
     (** Holds a list of equivalences. The right-hand side of a unification
         rule is made of such a list, [list (equiv t u) (equiv v w) ...]. *)
-    let list : sym =
-      Sign.add_symbol sign Public Defin (Pos.none "#list") Kind []
+    let comma : sym =
+      Sign.add_symbol sign Public Defin (Pos.none "#comma") Kind []
+
+    (** [unpack eqs] transforms a term of the form [t =? u, v =? w, ...]
+        into a list [[t =? u; v =? w; ...]]. *)
+    let rec unpack : term -> (term * term) list = fun eqs ->
+      match Basics.get_args eqs with
+      | (Symb(s), [v; w]) ->
+          if s == comma then
+            match Basics.get_args v with
+            | (Symb(e), [t; u]) ->
+                assert (e == equiv);
+                (t, u) :: unpack w
+            | _                 -> assert false
+          else if
+            s == equiv then [(v, w)]
+          else assert false
+      | _                    -> assert false
 end
 
 (** [init_with sign] creates a state from the signature [sign] with no symbols

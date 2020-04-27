@@ -75,14 +75,8 @@ let try_rules : ctxt -> term -> term -> constr list option = fun ctx s t ->
         | Some(_)    -> assert false (* Everything should be matched *)
         | None       -> raise No_match
     in
-    let rec subpb_in t =
-      match Basics.get_args (unfold t) with
-      | (Symb(u),[s;t]) when u == Sig_state.Unif_rule.equiv -> [(ctx,s,t)]
-      | (Symb(u),ts   ) when u == Sig_state.Unif_rule.list ->
-        List.concat (List.map subpb_in ts)
-      | _                 -> assert false
-    in
-    let subpbs = subpb_in rhs in
+    let subpbs = Sig_state.Unif_rule.unpack rhs in
+    let subpbs = List.map (fun (t,u) -> (ctx,t,u)) subpbs in
     let pp_subpbs = List.pp pp_constr ", " in
     if !log_enabled then log_unif (gre "hint [%a]") pp_subpbs subpbs;
     Some(subpbs)

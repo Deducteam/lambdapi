@@ -471,13 +471,19 @@ let parser rule =
 let parser unif_rule =
   | l:{term "≡" term} "↪" r:{term "≡" term} rs:{"," term "≡" term}* ->
       let equiv = Pos.none (P_Iden(Pos.none ([], "#equiv"), true)) in
-      let eqlist = Pos.none (P_Iden(Pos.none([], "#list"), true)) in
+      let comma = Pos.none (P_Iden(Pos.none ([], "#comma"), true)) in
       let mkequiv (l, r) =
         Pos.none (P_Appl(Pos.none (P_Appl(equiv, l)), r))
       in
       let lhs = mkequiv l in
-      let rhs = p_add_args eqlist (List.map mkequiv (r::rs)) in
-      Pos.in_pos _loc (lhs, rhs)
+      match rs with
+      | [] -> Pos.in_pos _loc (lhs, mkequiv r)
+      | _  ->
+          let cat eqlst eq =
+            Pos.none (P_Appl( Pos.none (P_Appl(comma, mkequiv eq)), eqlst))
+          in
+          let rhs = List.fold_left cat (mkequiv r) rs in
+          Pos.in_pos _loc (lhs, rhs)
 
 (** [rw_patt_spec] is a parser for a rewrite pattern specification. *)
 let parser rw_patt_spec =
