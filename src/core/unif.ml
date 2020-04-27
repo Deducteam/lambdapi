@@ -61,9 +61,10 @@ let copy_prod_env : tvar array -> term -> env = fun xs t ->
 (** [try_rules ctx s t] tries to solve unification problem [ctx ⊢ s ≡ t] using
     declared unification rules. *)
 let try_rules : ctxt -> term -> term -> constr list option = fun ctx s t ->
-  if !log_enabled then log_unif "hint [%a]" pp_constr (ctx,s,t);
+  if !log_enabled then log_unif "try rule [%a]" pp_constr (ctx,s,t);
   let exception No_match in
-  let tree = !(Sig_state.Unif_rule.equiv.sym_tree) in
+  let open Sig_state.Unif_rule in
+  let tree = !(equiv.sym_tree) in
   try
     let rhs =
       match Eval.tree_walk tree ctx [s;t] with
@@ -75,10 +76,9 @@ let try_rules : ctxt -> term -> term -> constr list option = fun ctx s t ->
         | Some(_)    -> assert false (* Everything should be matched *)
         | None       -> raise No_match
     in
-    let subpbs = Sig_state.Unif_rule.unpack rhs in
-    let subpbs = List.map (fun (t,u) -> (ctx,t,u)) subpbs in
+    let subpbs = List.map (fun (t,u) -> (ctx,t,u)) (unpack rhs) in
     let pp_subpbs = List.pp pp_constr ", " in
-    if !log_enabled then log_unif (gre "hint [%a]") pp_subpbs subpbs;
+    if !log_enabled then log_unif (gre "try rule [%a]") pp_subpbs subpbs;
     Some(subpbs)
   with No_match -> None
 
