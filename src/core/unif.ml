@@ -64,23 +64,24 @@ let try_rules : ctxt -> term -> term -> constr list option = fun ctx s t ->
   if !log_enabled then log_unif "try rule [%a]" pp_constr (ctx,s,t);
   let exception No_match in
   let open Sig_state.Unif_rule in
-  let tree = !(equiv.sym_tree) in
   try
     let rhs =
-      match Eval.tree_walk tree ctx [s;t] with
+      match Eval.tree_walk !(equiv.sym_tree) ctx [s;t] with
       | Some(r,[]) -> r
       | Some(_)    -> assert false (* Everything should be matched *)
       | None       ->
-        match Eval.tree_walk tree ctx [t;s] with
-        | Some(r,[]) -> r
-        | Some(_)    -> assert false (* Everything should be matched *)
-        | None       -> raise No_match
+      match Eval.tree_walk !(equiv.sym_tree) ctx [t;s] with
+      | Some(r,[]) -> r
+      | Some(_)    -> assert false (* Everything should be matched *)
+      | None       -> raise No_match
     in
     let subpbs = List.map (fun (t,u) -> (ctx,t,u)) (unpack rhs) in
     let pp_subpbs = List.pp pp_constr ", " in
     if !log_enabled then log_unif (gre "try rule [%a]") pp_subpbs subpbs;
     Some(subpbs)
-  with No_match -> None
+  with No_match ->
+    if !log_enabled then log_unif (red "try rule [%a]") pp_constr (ctx,s,t);
+    None
 
 (** [nl_distinct_vars ctx ts] checks that [ts] is made of variables  [vs] only
     and returns some copy of [vs] where variables occurring more than once are
