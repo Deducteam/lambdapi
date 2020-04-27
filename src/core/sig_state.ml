@@ -75,11 +75,10 @@ module Unif_rule =
             | (Symb(e), [t; u]) ->
                 assert (e == equiv);
                 (t, u) :: unpack w
-            | _                 -> assert false
-          else if
-            s == equiv then [(v, w)]
-          else assert false
-      | _                    -> assert false
+            | _                 -> assert false (* Ill-formed term. *)
+          else if s == equiv then [(v, w)] else
+          assert false (* Ill-formed term. *)
+      | _                 -> assert false (* Ill-formed term. *)
 end
 
 (** [of_sign sign] creates a state from the signature [sign] with no symbols
