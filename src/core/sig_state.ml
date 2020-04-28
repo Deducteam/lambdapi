@@ -81,18 +81,6 @@ module Unif_rule =
       | _                 -> assert false (* Ill-formed term. *)
 end
 
-(** [of_sign sign] creates a state from the signature [sign] with no symbols
-    in scope, module aliases, builtins or printing hints. *)
-let of_sign : Sign.t -> sig_state = fun sign ->
-  { signature = sign
-  ; in_scope  = !(Unif_rule.sign.sign_symbols)
-  ; aliases   = StrMap.empty
-  ; builtins  = StrMap.empty
-  ; pp_hints  = Unif_rule.pp_hints }
-
-(** [empty] state. *)
-let empty = of_sign (Sign.create [])
-
 (** [remove_pp_hint ss s hints] removes from [hints] the mapping for [s] if
    [s.sym_name] is mapped in [ss.in_scope]. *)
 let remove_pp_hint :
@@ -100,6 +88,53 @@ let remove_pp_hint :
   fun ss s pp_hints ->
   if StrMap.mem s.sym_name ss.in_scope then SymMap.remove s pp_hints
   else pp_hints
+
+(** [build_pp_hints ss] computes pp_hints from a signature [sign]. *)
+let update_pp_hints : sig_state -> Sign.t -> pp_hint SymMap.t = fun ss sign ->
+  let fn _ (sym,_) pp_hints =
+    let h =
+      let exception Hint of pp_hint in
+      try
+        let fn_binop _ (s,binop) =
+          if s == sym then raise (Hint (Infix binop)) in
+        StrMap.iter fn_binop !(sign.sign_binops);
+        let fn_unop _ (s,unop) =
+          if s == sym then raise (Hint (Prefix unop)) in
+        StrMap.iter fn_unop !(sign.sign_unops);
+        No_hint
+      with Hint h -> h
+    in
+    (* Remove from hints the symbols having a name occurring in the opened
+       signature as it gets hidden. *)
+    SymMap.add sym h (remove_pp_hint ss sym pp_hints)
+  in
+  StrMap.fold fn !(sign.sign_symbols) ss.pp_hints
+
+(** [open_sign ss sign] extends the signature state [ss] with every symbol  of
+    the signature [sign].  This has the effect of putting these symbols in the
+    scope when (possibly masking symbols with the same name).  Builtin symbols
+    are also handled in a similar way. *)
+let open_sign : sig_state -> Sign.t -> sig_state = fun ss sign ->
+  let f _key _v1 v2 = Some(v2) in (* open signature hides previous symbols *)
+  let in_scope = StrMap.union f ss.in_scope Sign.(!(sign.sign_symbols)) in
+  let builtins = StrMap.union f ss.builtins Sign.(!(sign.sign_builtins)) in
+  let pp_hints = update_pp_hints ss sign in
+  {ss with in_scope; builtins; pp_hints}
+
+(** [of_sign sign] creates a state from the signature [sign] with only
+    pervasive signatures imported. *)
+let of_sign : Sign.t -> sig_state = fun sign ->
+  let s =
+    { signature = sign
+    ; in_scope  = !(Unif_rule.sign.sign_symbols)
+    ; aliases   = StrMap.empty
+    ; builtins  = StrMap.empty
+    ; pp_hints  = Unif_rule.pp_hints }
+  in
+  open_sign s Unif_rule.sign
+
+(** [empty] state. *)
+let empty = of_sign (Sign.create [])
 
 (** [add_symbol ss e p x a impl] adds a symbol in [ss]. *)
 let add_symbol
@@ -138,38 +173,6 @@ let add_builtin : sig_state -> string -> sym -> sig_state = fun ss s sym ->
   Sign.add_builtin ss.signature s sym;
   let builtins = StrMap.add s sym ss.builtins in
   {ss with builtins}
-
-(** [build_pp_hints ss] computes pp_hints from a signature [sign]. *)
-let update_pp_hints : sig_state -> Sign.t -> pp_hint SymMap.t = fun ss sign ->
-  let fn _ (sym,_) pp_hints =
-    let h =
-      let exception Hint of pp_hint in
-      try
-        let fn_binop _ (s,binop) =
-          if s == sym then raise (Hint (Infix binop)) in
-        StrMap.iter fn_binop !(sign.sign_binops);
-        let fn_unop _ (s,unop) =
-          if s == sym then raise (Hint (Prefix unop)) in
-        StrMap.iter fn_unop !(sign.sign_unops);
-        No_hint
-      with Hint h -> h
-    in
-    (* Remove from hints the symbols having a name occurring in the opened
-       signature as it gets hidden. *)
-    SymMap.add sym h (remove_pp_hint ss sym pp_hints)
-  in
-  StrMap.fold fn !(sign.sign_symbols) ss.pp_hints
-
-(** [open_sign ss sign] extends the signature state [ss] with every symbol  of
-    the signature [sign].  This has the effect of putting these symbols in the
-    scope when (possibly masking symbols with the same name).  Builtin symbols
-    are also handled in a similar way. *)
-let open_sign : sig_state -> Sign.t -> sig_state = fun ss sign ->
-  let f _key _v1 v2 = Some(v2) in (* open signature hides previous symbols *)
-  let in_scope = StrMap.union f ss.in_scope Sign.(!(sign.sign_symbols)) in
-  let builtins = StrMap.union f ss.builtins Sign.(!(sign.sign_builtins)) in
-  let pp_hints = update_pp_hints ss sign in
-  {ss with in_scope; builtins; pp_hints}
 
 (** [find_sym ~prt ~prv b st qid] returns the symbol
     corresponding to the qualified identifier [qid]. If [fst qid.elt] is
