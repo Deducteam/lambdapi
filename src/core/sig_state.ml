@@ -30,12 +30,14 @@ let eq_pp_hint : pp_hint eq = fun h1 h2 ->
 
 type in_scope_map = (sym * Pos.popt) StrMap.t
 type pp_hint_map = pp_hint SymMap.t
+type path_map = string PathMap.t
 
 (** State of the signature, including aliasing and accessible symbols. *)
 type sig_state =
   { signature : Sign.t          (** Current signature.   *)
   ; in_scope  : in_scope_map    (** Symbols in scope.    *)
   ; aliases   : Path.t StrMap.t (** Established aliases. *)
+  ; path_map  : path_map        (** Reverse map of [aliases]. *)
   ; builtins  : builtin_map     (** Builtin symbols.     *)
   ; unops     : sym StrMap.t    (** Unary operators.     *)
   ; binops    : sym StrMap.t    (** Binary operators.    *)
@@ -46,9 +48,9 @@ type t = sig_state
 (** [init_with sign] creates a state from the signature [sign] with no symbols
    in scope, module aliases, builtins or printing hints. *)
 let of_sign : Sign.t -> sig_state = fun sign ->
-  { signature = sign ; in_scope  = StrMap.empty ; aliases   = StrMap.empty
-  ; builtins  = StrMap.empty ; unops = StrMap.empty ; binops = StrMap.empty
-  ; pp_hints  = SymMap.empty }
+  { signature = sign ; in_scope  = StrMap.empty ; aliases = StrMap.empty
+  ; path_map = PathMap.empty ; builtins  = StrMap.empty
+  ; unops = StrMap.empty ; binops = StrMap.empty ; pp_hints = SymMap.empty }
 
 (** [empty] state. *)
 let empty = of_sign (Sign.create [])

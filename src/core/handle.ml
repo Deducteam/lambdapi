@@ -80,7 +80,8 @@ let handle_require_as : popt -> sig_state -> Path.t -> ident -> sig_state =
     fun pos ss p id ->
   let ss = handle_require false pos ss p in
   let aliases = StrMap.add id.elt p ss.aliases in
-  {ss with aliases}
+  let path_map = PathMap.add p id.elt ss.path_map in
+  {ss with aliases; path_map}
 
 (** [handle_cmd ss cmd] tries to handle the command [cmd] with [ss] as the
     signature state. On success, an updated signature state is returned.  When

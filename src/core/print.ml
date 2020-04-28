@@ -50,8 +50,9 @@ let pp_hint : pp_hint pp = fun oc pp_hint ->
 
 (** [qualified s] prints symbol [s] fully qualified to channel [oc]. *)
 let pp_qualified : sym pp = fun oc s ->
-  Format.fprintf oc "%a.%s" Files.Path.pp s.sym_path s.sym_name
-    (*FIXME: handle aliases. *)
+  match Files.PathMap.find_opt s.sym_path (!sig_state).path_map with
+  | None -> Format.fprintf oc "%a.%s" Files.Path.pp s.sym_path s.sym_name
+  | Some alias -> Format.fprintf oc "%s.%s" alias s.sym_name
 
 (** Get the printing hint of a symbol. *)
 let get_pp_hint : sym -> pp_hint = fun s ->
