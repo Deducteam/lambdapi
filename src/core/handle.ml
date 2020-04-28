@@ -257,7 +257,6 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
             Sig_state.add_builtin ss s sym
         | P_config_unop(unop)     ->
             let (s, prio, qid) = unop in
-            (* Define the unary operator [s]. *)
             let sym = find_sym ~prt:true ~prv:true false ss qid in
             (* Make sure the operator has a fully qualified [qid]. *)
             let unop = (s, prio, with_path sym.sym_path qid) in
@@ -265,7 +264,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
             Sig_state.add_unop ss s (sym, unop)
         | P_config_binop(binop)   ->
             let (s, assoc, prio, qid) = binop in
-            (* Define the binary operator [s]. *)
+            (* Define the binary operator [sym]. *)
             let sym = find_sym ~prt:true ~prv:true false ss qid in
             (* Make sure the operator has a fully qualified [qid]. *)
             let binop = (s, assoc, prio, with_path sym.sym_path qid) in
