@@ -37,6 +37,15 @@ let eq_pp_hint : pp_hint eq = fun h1 h2 ->
   | (Infix (s1,_,_,_), Infix (s2,_,_,_)) -> s1 = s2
   | (_, _) -> false
 
+(** Pretty printing hints for pervasive symbols [equiv] and [comma]. *)
+let pervasive_pp_hints : pp_hint SymMap.t =
+  let open Unif_rule in
+  let pth = List.map (fun s -> (s, false)) path in
+  let h = Infix("≡", Assoc_none, 1.1, Pos.none (pth, "#equiv")) in
+  let res = SymMap.singleton equiv h in
+  let h = Infix(",", Assoc_right, 1.0, Pos.none (pth, "#comma")) in
+  SymMap.add comma h res
+
 (** State of the signature, including aliasing and accessible symbols. *)
 type sig_state =
   { signature : Sign.t                    (** Current signature.        *)
@@ -49,61 +58,6 @@ type sig_state =
   ; pp_hints  : pp_hint SymMap.t          (** Printing hints.           *) }
 
 type t = sig_state
-
-(** Symbols and signature used for unification rules. *)
-module Unif_rule =
-  struct
-
-    (** Path of the module. *)
-    let path = Path.ghost "unif_rule"
-
-    (** Ghost signature holding the symbols used in unification rules. This
-        signature is an automatic dependency of all other signatures, and is
-        automatically loaded. *)
-    let sign : Sign.t =
-      let open Sign in
-      let s =
-        { sign_path = path; sign_symbols = ref StrMap.empty
-        ; sign_deps = ref (PathMap.empty)
-        ; sign_builtins = ref StrMap.empty; sign_unops = ref StrMap.empty
-        ; sign_binops = ref StrMap.empty; sign_idents = ref StrSet.empty }
-      in
-      Sign.loaded := Files.PathMap.add path s !(Sign.loaded);
-      s
-
-    (** Symbol representing an atomic unification problem. The term [equiv t
-        u] represents [t ≡ u]. The left-hand side of a unification rule is
-        made of only one unification. *)
-    let equiv : sym =
-      Sign.add_symbol sign Public Defin (Pos.none "#equiv") Kind []
-
-    (** Holds a list of equivalences. The right-hand side of a unification
-        rule is made of such a list, [list (equiv t u) (equiv v w) ...]. *)
-    let comma : sym =
-      Sign.add_symbol sign Public Defin (Pos.none "#comma") Kind []
-
-    (** Pretty printing hints for symbols [equiv] and [comma]. *)
-    let pp_hints : pp_hint SymMap.t =
-      let open Stdlib in
-      let pth = List.map (fun s -> (s, false)) path in
-      let h = Infix("≡", Assoc_none, 1.1, Pos.none (pth, "#equiv")) in
-      let res = SymMap.singleton equiv h in
-      let h = Infix(",", Assoc_right, 1.0, Pos.none(pth, "#comma")) in
-      SymMap.add comma h res
-
-    (** [unpack eqs] transforms a term of the form [t =? u, v =? w, ...]
-        into a list [[t =? u; v =? w; ...]]. *)
-    let rec unpack : term -> (term * term) list = fun eqs ->
-      match Basics.get_args eqs with
-      | (Symb(s), [v; w]) ->
-          if s == comma then
-            match Basics.get_args v with
-            | (Symb(e), [t; u]) when e == equiv -> (t, u) :: unpack w
-            | _          (* Ill-formed term. *) -> assert false
-          else if s == equiv then [(v, w)] else
-          assert false (* Ill-formed term. *)
-      | _                 -> assert false (* Ill-formed term. *)
-end
 
 (** [create_sign path] creates a signature with pervasive modules as
     dependencies. *)
@@ -255,7 +209,7 @@ let of_sign : Sign.t -> sig_state = fun sign ->
   let empty =
     { signature = sign; in_scope = StrMap.empty; aliases = StrMap.empty
     ; path_map = PathMap.empty; builtins = StrMap.empty; unops = StrMap.empty
-    ; binops = StrMap.empty; pp_hints = SymMap.empty }
+    ; binops = StrMap.empty; pp_hints = pervasive_pp_hints }
   in
   open_sign empty Unif_rule.sign
 

@@ -63,7 +63,7 @@ let copy_prod_env : tvar array -> term -> env = fun xs t ->
 let try_rules : ctxt -> term -> term -> constr list option = fun ctx s t ->
   if !log_enabled then log_unif "try rule [%a]" pp_constr (ctx,s,t);
   let exception No_match in
-  let open Sig_state.Unif_rule in
+  let open Unif_rule in
   try
     let rhs =
       match Eval.tree_walk !(equiv.sym_tree) ctx [s;t] with
