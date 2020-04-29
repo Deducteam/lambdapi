@@ -72,10 +72,8 @@ module Unif_rule =
       | (Symb(s), [v; w]) ->
           if s == comma then
             match Basics.get_args v with
-            | (Symb(e), [t; u]) ->
-                assert (e == equiv);
-                (t, u) :: unpack w
-            | _                 -> assert false (* Ill-formed term. *)
+            | (Symb(e), [t; u]) when e == equiv -> (t, u) :: unpack w
+            | _          (* Ill-formed term. *) -> assert false
           else if s == equiv then [(v, w)] else
           assert false (* Ill-formed term. *)
       | _                 -> assert false (* Ill-formed term. *)
