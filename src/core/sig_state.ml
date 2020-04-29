@@ -37,16 +37,13 @@ let eq_pp_hint : pp_hint eq = fun h1 h2 ->
   | (Infix (s1,_,_,_), Infix (s2,_,_,_)) -> s1 = s2
   | (_, _) -> false
 
-type in_scope_map = (sym * Pos.popt) StrMap.t
-type pp_hint_map = pp_hint SymMap.t
-
 (** State of the signature, including aliasing and accessible symbols. *)
 type sig_state =
   { signature : Sign.t                    (** Current signature.        *)
   ; in_scope  : (sym * Pos.popt) StrMap.t (** Symbols in scope.         *)
   ; aliases   : Path.t StrMap.t           (** Established aliases.      *)
   ; path_map  : string PathMap.t          (** Reverse map of [aliases]. *)
-  ; builtins  : builtin_map               (** Builtin symbols.          *)
+  ; builtins  : sym StrMap.t               (** Builtin symbols.          *)
   ; unops     : sym StrMap.t              (** Unary operators.          *)
   ; binops    : sym StrMap.t              (** Binary operators.         *)
   ; pp_hints  : pp_hint SymMap.t          (** Printing hints.           *) }
@@ -166,7 +163,7 @@ let update_pp_hints_from_symbols :
    pp_hint map from [pp_hints] when adding [new_bm] to the builtin map
    [old_bm]. *)
 let update_pp_hints_from_builtins
-    : builtin_map -> builtin_map -> pp_hint SymMap.t -> pp_hint SymMap.t =
+    : sym StrMap.t -> sym StrMap.t -> pp_hint SymMap.t -> pp_hint SymMap.t =
   fun old_bm new_bm pp_hints ->
   let add_hint name h pp_hints =
     try
