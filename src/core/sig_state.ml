@@ -28,16 +28,18 @@ type t = sig_state
 module Unif_rule =
   struct
 
+    (** Path of the module. *)
+    let path = Path.ghost "unif_rule"
+
     (** Ghost signature holding the symbols used in unification rules. This
         signature is an automatic dependency of all other signatures, and is
         automatically loaded. *)
     let sign : Sign.t =
       let open Files in
-      let pth = Path.ghost "unif_rule" in
-      let s = Sign.create pth in
+      let s = Sign.create path in
       (* Remove the dependency on itself. *)
-      s.sign_deps := PathMap.remove pth !(s.sign_deps);
-      Sign.loaded := Files.PathMap.add pth s !(Sign.loaded);
+      s.sign_deps := PathMap.remove path !(s.sign_deps);
+      Sign.loaded := Files.PathMap.add path s !(Sign.loaded);
       s
 
     (** Symbol representing an atomic unification problem. The term [equiv t
@@ -54,16 +56,11 @@ module Unif_rule =
     (** Pretty printing hints for symbols [equiv] and [comma]. *)
     let pp_hints : pp_hint SymMap.t =
       let open Stdlib in
-      let res = ref SymMap.empty in
-      res := begin
-        let h = Infix("≡", Assoc_none, 1.1, Pos.none ([], "#equiv")) in
-        SymMap.add equiv h !res
-      end;
-      res := begin
-        let h = Infix(",", Assoc_right, 1.0, Pos.none([], "#comma")) in
-        SymMap.add comma h !res
-      end;
-      !res
+      let pth = List.map (fun s -> (s, false)) path in
+      let h = Infix("≡", Assoc_none, 1.1, Pos.none (pth, "#equiv")) in
+      let res = SymMap.singleton equiv h in
+      let h = Infix(",", Assoc_right, 1.0, Pos.none(pth, "#comma")) in
+      SymMap.add comma h res
 
     (** [unpack eqs] transforms a term of the form [t =? u, v =? w, ...]
         into a list [[t =? u; v =? w; ...]]. *)
