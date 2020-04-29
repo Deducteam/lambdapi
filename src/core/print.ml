@@ -36,15 +36,16 @@ let pp_assoc : assoc pp = fun oc assoc ->
   Format.fprintf oc
     (match assoc with
      | Assoc_none -> ""
-     | Assoc_left -> " left"
-     | Assoc_right -> " right")
+     | Assoc_left -> " left associative"
+     | Assoc_right -> " right associative")
 
 (** [hint oc a] prints hint [h] to channel [oc]. *)
 let pp_hint : pp_hint pp = fun oc pp_hint ->
   match pp_hint with
   | Unqual -> ()
-  | Prefix(n,p,_) -> Format.fprintf oc "prefix %s %f" n p
-  | Infix(n,a,p,_) -> Format.fprintf oc "infix %s%a %f" n pp_assoc a p
+  | Prefix(n,p,_) -> Format.fprintf oc "prefix \"%s\" with priority %f" n p
+  | Infix(n,a,p,_) ->
+      Format.fprintf oc "infix \"%s\"%a with priority %f" n pp_assoc a p
   | Zero -> Format.fprintf oc "builtin \"0\""
   | Succ -> Format.fprintf oc "builtin \"+1\""
 
@@ -71,8 +72,8 @@ let pp_tvar : tvar pp = fun oc x ->
 (** Exception raised when trying to convert a term into a nat. *)
 exception Not_a_nat
 
-(** [nat_of_term t] converts a term into a natural number. Raises [Not_a_nat]
-   if this is not possible. *)
+(** [nat_of_term t] converts a term into a natural number.
+    @raise Not_a_nat if this is not possible. *)
 let nat_of_term : term -> int = fun t ->
   let get_builtin name =
     try StrMap.find name (!sig_state).builtins

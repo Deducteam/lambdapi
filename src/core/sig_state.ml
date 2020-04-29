@@ -1,4 +1,13 @@
-(** Signature state. *)
+(** Signature state.
+
+   This module provides a record type [sig_state] containing all the
+   informations needed for scoping p_terms and printing terms, and functions
+   on this type for manipulating it. In particular, it provides functions
+   [open_sign], [add_symbol], [add_binop], etc. taking a [sig_state] as
+   argument and returning a new [sig_state] as result. These functions call
+   the corresponding functions of [Sign] which should not be called directly
+   but though the current module only, in order to setup the [sig_state]
+   properly. *)
 
 open Timed
 open Console
@@ -30,18 +39,17 @@ let eq_pp_hint : pp_hint eq = fun h1 h2 ->
 
 type in_scope_map = (sym * Pos.popt) StrMap.t
 type pp_hint_map = pp_hint SymMap.t
-type path_map = string PathMap.t
 
 (** State of the signature, including aliasing and accessible symbols. *)
 type sig_state =
-  { signature : Sign.t          (** Current signature.   *)
-  ; in_scope  : in_scope_map    (** Symbols in scope.    *)
-  ; aliases   : Path.t StrMap.t (** Established aliases. *)
-  ; path_map  : path_map        (** Reverse map of [aliases]. *)
-  ; builtins  : builtin_map     (** Builtin symbols.     *)
-  ; unops     : sym StrMap.t    (** Unary operators.     *)
-  ; binops    : sym StrMap.t    (** Binary operators.    *)
-  ; pp_hints  : pp_hint_map     (** Printing hints.      *) }
+  { signature : Sign.t                    (** Current signature.        *)
+  ; in_scope  : (sym * Pos.popt) StrMap.t (** Symbols in scope.         *)
+  ; aliases   : Path.t StrMap.t           (** Established aliases.      *)
+  ; path_map  : string PathMap.t          (** Reverse map of [aliases]. *)
+  ; builtins  : builtin_map               (** Builtin symbols.          *)
+  ; unops     : sym StrMap.t              (** Unary operators.          *)
+  ; binops    : sym StrMap.t              (** Binary operators.         *)
+  ; pp_hints  : pp_hint SymMap.t          (** Printing hints.           *) }
 
 type t = sig_state
 
@@ -57,7 +65,8 @@ let empty = of_sign (Sign.create [])
 
 (** [remove_pp_hint map name pp_hints] removes from [pp_hints] the mapping for
    [s] if [s] is mapped to [name] in [map]. *)
-let remove_pp_hint : sym StrMap.t -> string -> pp_hint_map -> pp_hint_map =
+let remove_pp_hint :
+      sym StrMap.t -> string -> pp_hint SymMap.t -> pp_hint SymMap.t =
   fun map name pp_hints ->
   try SymMap.remove (StrMap.find name map) pp_hints
   with Not_found -> pp_hints
@@ -66,7 +75,8 @@ let remove_pp_hint : sym StrMap.t -> string -> pp_hint_map -> pp_hint_map =
    mapping for [s] if [s] is mapped to [(name,h')] in [map], and [eq_pp_hint h
    h' = true]. *)
 let remove_pp_hint_eq :
-      in_scope_map -> string -> pp_hint -> pp_hint_map -> pp_hint_map =
+      (sym * Pos.popt) StrMap.t -> string -> pp_hint -> pp_hint SymMap.t
+      -> pp_hint SymMap.t =
   fun in_scope name h pp_hints ->
   try
     let (s,_) = StrMap.find name in_scope in
@@ -125,7 +135,8 @@ let add_builtin : sig_state -> string -> sym -> sig_state = fun ss name sym ->
 (** [update_pp_hints_from_symbols ss sign] computes the new pp_hints when
    adding the symbols of [sign]. *)
 let update_pp_hints_from_symbols :
-      in_scope_map -> Sign.t -> pp_hint_map -> pp_hint_map =
+      (sym * Pos.popt) StrMap.t -> Sign.t -> pp_hint SymMap.t
+      -> pp_hint SymMap.t =
   fun in_scope sign pp_hints ->
   let fn name (sym,_) pp_hints =
     let h =
@@ -149,7 +160,7 @@ let update_pp_hints_from_symbols :
 (** [update_pp_hints_from_builtins old_bm new_bm] computes the new pp_hints
    when adding [new_bm] to [old_bm]. *)
 let update_pp_hints_from_builtins
-    : builtin_map -> builtin_map -> pp_hint_map -> pp_hint_map =
+    : builtin_map -> builtin_map -> pp_hint SymMap.t -> pp_hint SymMap.t =
   fun old_bm new_bm pp_hints ->
   let add_hint name h pp_hints =
     try
