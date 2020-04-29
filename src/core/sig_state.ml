@@ -6,7 +6,7 @@
    [open_sign], [add_symbol], [add_binop], etc. taking a [sig_state] as
    argument and returning a new [sig_state] as result. These functions call
    the corresponding functions of [Sign] which should not be called directly
-   but though the current module only, in order to setup the [sig_state]
+   but through the current module only, in order to setup the [sig_state]
    properly. *)
 
 open Timed
@@ -84,7 +84,9 @@ let remove_pp_hint_eq :
     if eq_pp_hint h h' then SymMap.remove s pp_hints else pp_hints
   with Not_found -> pp_hints
 
-(** [add_symbol ss e p x a impl] adds a symbol in [ss]. *)
+(** [add_symbol ss e p x a impl] generates a new signature state from [ss] by
+   creating a new symbol with expo [e], property [p], name [x], type [a],
+   implicit arguments [impl] and optional definition [t]. *)
 let add_symbol : sig_state -> expo -> prop -> strloc -> term -> bool list
                  -> term option -> sig_state =
   fun ss e p x a impl t ->
@@ -99,7 +101,8 @@ let add_symbol : sig_state -> expo -> prop -> strloc -> term -> bool list
   let pp_hints = SymMap.add s Unqual pp_hints in
   {ss with in_scope; pp_hints}
 
-(** [add_unop ss n (s,unop)] declares [n] as prefix and maps it to [s]. *)
+(** [add_unop ss n x] generates a new signature state from [ss] by adding a
+   unary operator [x] with name [n]. *)
 let add_unop : sig_state -> string -> (sym * unop) -> sig_state =
   fun ss name ((sym, unop) as x) ->
   Sign.add_unop ss.signature name x;
@@ -108,7 +111,8 @@ let add_unop : sig_state -> string -> (sym * unop) -> sig_state =
   let pp_hints = SymMap.add sym (Prefix unop) pp_hints in
   {ss with unops; pp_hints}
 
-(** [add_binop ss n (s,binop)] declares [n] as infix and maps it to [s]. *)
+(** [add_binop ss n x] generates a new signature state from [ss] by adding a
+   binary operator [x] with name [n]. *)
 let add_binop : sig_state -> string -> (sym * binop) -> sig_state =
   fun ss name ((sym, binop) as x) ->
   Sign.add_binop ss.signature name x;
@@ -117,7 +121,8 @@ let add_binop : sig_state -> string -> (sym * binop) -> sig_state =
   let pp_hints = SymMap.add sym (Infix binop) pp_hints in
   {ss with binops; pp_hints}
 
-(** [add_builtin ss n s] adds builtin [n] and maps it to [s]. *)
+(** [add_builtin ss n s] generates a new signature state from [ss] by mapping
+   the builtin [n] to [s]. *)
 let add_builtin : sig_state -> string -> sym -> sig_state = fun ss name sym ->
   Sign.add_builtin ss.signature name sym;
   let builtins = StrMap.add name sym ss.builtins in
@@ -132,8 +137,8 @@ let add_builtin : sig_state -> string -> sym -> sig_state = fun ss name sym ->
   in
   {ss with builtins; pp_hints}
 
-(** [update_pp_hints_from_symbols ss sign] computes the new pp_hints when
-   adding the symbols of [sign]. *)
+(** [update_pp_hints_from_symbols ss sign pp_hints] generates a new pp_hint
+   map from [pp_hints] when adding the symbols of [sign]. *)
 let update_pp_hints_from_symbols :
       (sym * Pos.popt) StrMap.t -> Sign.t -> pp_hint SymMap.t
       -> pp_hint SymMap.t =
@@ -157,8 +162,9 @@ let update_pp_hints_from_symbols :
   in
   StrMap.fold fn !(sign.sign_symbols) pp_hints
 
-(** [update_pp_hints_from_builtins old_bm new_bm] computes the new pp_hints
-   when adding [new_bm] to [old_bm]. *)
+(** [update_pp_hints_from_builtins old_bm new_bm pp_hints] generates a new
+   pp_hint map from [pp_hints] when adding [new_bm] to the builtin map
+   [old_bm]. *)
 let update_pp_hints_from_builtins
     : builtin_map -> builtin_map -> pp_hint SymMap.t -> pp_hint SymMap.t =
   fun old_bm new_bm pp_hints ->
