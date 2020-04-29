@@ -156,6 +156,22 @@ reserved "why3"
   | "on"
   | "off"
 
+// Builtins
+<builtin> ::=
+  | "0"
+  | "+1"
+  | "T"
+  | "P"
+  | "eq"
+  | "refl"
+  | "eq_ind"
+  | "top"
+  | "bot"
+  | "not"
+  | "or"
+  | "and"
+  | "imp"
+  
 // Single command.
 <command> ::=
   // Require and/or open a module
@@ -176,7 +192,7 @@ reserved "why3"
   // Set option
   | "set" "verbose" RE("[1-9][0-9]*")
   | "set" "debug" RE("[-+][a-zA-Z]+")
-  | "set" "builtin" <string_lit> "≔" <qident>
+  | "set" "builtin" \"<builtin>\" "≔" <qident>
   | "set" "prefix" <float_lit> <string_lit> "≔" <qident>
   | "set" "infix" {"left" | "right"}? <float_lit> <string_lit> "≔" <qident>
   | "set" "prover" <ident>

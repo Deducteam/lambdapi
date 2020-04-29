@@ -178,7 +178,7 @@ They can overlap:
 
 ```
 rule add zero x ↪ x
-rule add x zero ↪ x
+with add x zero ↪ x
 ```
 
 And they can be non-linear:
@@ -290,10 +290,11 @@ run the command `lambdapi --help`.
 **flags** The user can set/unset some flags:
 
 ```
+set flag "eta_equality" on // default is off
 set flag "print_implicits" on // default is off
 set flag "print_contexts" on // default is off
 set flag "print_domains" on // default is off
-set flag "eta_equality" on // default is off
+set flag "print_meta_type" on // default is off
 ```
 
 **notation for natural numbers** It is possible to use the standard
@@ -319,7 +320,23 @@ whether the defined symbol is non-associative, associative to the right,
 or associative to the left. The priority levels are floating point numbers,
 hence a priority can (almost) always be inserted between two different levels.
 
-**Prover config**:
+**why3 tactic related builtins** In order to use external provers via
+the why3 tactic, one first has to define a number of builtin symbols
+as follows:
+
+```
+set builtin "P"     ≔ P     // : Prop → TYPE
+set builtin "top"   ≔ top   // : Prop
+set builtin "bot"   ≔ bot   // : Prop
+set builtin "not"   ≔ not   // : Prop → Prop
+set builtin "and"   ≔ and   // : Prop → Prop → Prop
+set builtin "or"    ≔ or    // : Prop → Prop → Prop
+set builtin "imp"   ≔ imp   // : Prop → Prop → Prop
+set builtin "T"     ≔ T     // : U → TYPE
+set builtin "eq"    ≔ eq    // : Π {a}, T a → T a → Prop
+```
+
+**prover config**:
 In order to use the `why3` tactic, a prover should be set using:
 ```
 set prover "Eprover"
