@@ -7,28 +7,28 @@ constant symbol false : B
 
 // Boolean negation.
 
-symbol bool_neg : B ⇒ B
+symbol bool_neg : B → B
 
-rule bool_neg true  → false
- and bool_neg false → true
+rule bool_neg true  ↪ false
+with bool_neg false ↪ true
 
 // Boolean disjunction.
 
-symbol bool_or : B ⇒ B ⇒ B
+symbol bool_or : B → B → B
 
-rule bool_or true  _     → true
- and bool_or false &b    → &b
- and bool_or _     true  → true
- and bool_or &b    false → &b
+rule bool_or true  _     ↪ true
+with bool_or false $b    ↪ $b
+with bool_or _     true  ↪ true
+with bool_or $b    false ↪ $b
 
 // Boolean conjunction.
 
-symbol bool_and : B ⇒ B ⇒ B
+symbol bool_and : B → B → B
 
-rule bool_and true  &b    → &b
- and bool_and false _     → false
- and bool_and &b    true  → &b
- and bool_and _     false → false
+rule bool_and true  $b    ↪ $b
+with bool_and false _     ↪ false
+with bool_and $b    true  ↪ $b
+with bool_and _     false ↪ false
 
 // More connectives.
 

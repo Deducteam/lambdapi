@@ -10,27 +10,27 @@ symbol false : B
 constant symbol Nat  : U
 constant symbol N : TYPE
 constant symbol zero : N
-constant symbol s : N ⇒ N
-symbol add : N ⇒ N ⇒ N
+constant symbol s : N → N
+symbol add : N → N → N
 set infix left 6 "+" ≔ add
 
-rule zero   + &n     → &n
-rule (s &m) + &n     → s (&m + &n)
-rule &m     + zero   → &m
-rule &m     + (s &n) → s (&m + &n)
+rule zero   + $n     ↪ $n
+rule (s $m) + $n     ↪ s ($m + $n)
+rule $m     + zero   ↪ $m
+rule $m     + (s $n) ↪ s ($m + $n)
 
 // Mini interpretation function from code of types to real types
-injective symbol T : U ⇒ TYPE
-rule T Nat     → N
-rule T Bool    → B
+injective symbol T : U → TYPE
+rule T Nat     ↪ N
+rule T Bool    ↪ B
 
 // Mini vectors of booleans
-constant symbol Vect : T Nat ⇒ U
+constant symbol Vect : T Nat → U
 
 symbol nil : T (Vect zero)
 
 // The nat is declared to be implicit
-constant symbol cons : ∀{n:T Nat}, T Bool ⇒ T (Vect n) ⇒ T (Vect (s n))
+constant symbol cons : Π{n:T Nat}, T Bool → T (Vect n) → T (Vect (s n))
 
 // TEST IMPLICIT ARGUMENTS FOR A DEFINITION, WITHOUT THE @ MARKER
 // [true]
@@ -51,9 +51,9 @@ definition l3 : T (Vect (s zero)) ≔ @cons zero true nil
 definition l4 : T (Vect (s (s zero))) ≔ @cons (s zero) true (@cons zero false nil)
 // It works.
 
-symbol append : ∀ (n:T Nat) (m:T Nat), T (Vect n) ⇒ T (Vect m) ⇒ T (Vect (n+m))
+symbol append : Π (n:T Nat) (m:T Nat), T (Vect n) → T (Vect m) → T (Vect (n+m))
 // Works, but unfortunately, we can't use implicits in RHS of rewrite rules at the moment
-rule append zero    &m nil           &v2  → &v2
-rule append (s &pn) &m (cons &h &t)  &v2  → @cons (&pn+&m) &h (append &pn &m &t &v2)
+rule append zero    $m nil           $v2  ↪ $v2
+rule append (s $pn) $m (cons $h $t)  $v2  ↪ @cons ($pn+$m) $h (append $pn $m $t $v2)
 
-rule append (s &pn) &m (cons &h &t)  &v2  → cons {&pn+&m} &h (append &pn &m &t &v2)
+rule append (s $pn) $m (cons $h $t)  $v2  ↪ cons {$pn+$m} $h (append $pn $m $t $v2)

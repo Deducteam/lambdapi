@@ -4,6 +4,7 @@ open Timed
 open Extra
 open Pos
 open Terms
+open Print
 
 (** Abstract representation of a goal. *)
 module Goal :
@@ -22,6 +23,9 @@ module Goal :
 
     (** [simpl g] simplifies the given goal, evaluating its type to SNF. *)
     val simpl : t -> t
+
+    (** Comparison function. *)
+    val compare : t -> t -> int
   end =
   struct
     type t =
@@ -31,7 +35,7 @@ module Goal :
 
     let of_meta : meta -> t = fun m ->
       let (goal_hyps, goal_type) =
-        Env.destruct_prod m.meta_arity !(m.meta_type)
+        Infer.destruct_prod m.meta_arity !(m.meta_type)
       in
       let goal_type = Eval.simplify (Env.to_ctxt goal_hyps) goal_type in
       {goal_meta = m; goal_hyps; goal_type}
@@ -42,14 +46,16 @@ module Goal :
 
     let simpl : t -> t = fun g ->
       {g with goal_type = Eval.snf (Env.to_ctxt g.goal_hyps) g.goal_type}
+
+    let compare : t -> t -> int = fun g1 g2 ->
+      Meta.compare g1.goal_meta g2.goal_meta
   end
 
 (** Representation of the proof state of a theorem. *)
 type proof_state =
   { proof_name     : Pos.strloc  (** Name of the theorem.                 *)
   ; proof_term     : meta        (** Metavariable holding the proof term. *)
-  ; proof_goals    : Goal.t list (** Open goals (focused goal is first).  *)
-  ; proof_builtins : sym StrMap.t(** Signature state, for builtins.       *) }
+  ; proof_goals    : Goal.t list (** Open goals (focused goal is first).  *) }
 
 (** Short synonym for qualified use. *)
 type t = proof_state
@@ -57,11 +63,10 @@ type t = proof_state
 (** [init builtins name a] returns an initial proof state for a theorem  named
     [name], which statement is represented by the type [a]. Builtin symbols of
     [builtins] may be used by tactics, and have been declared. *)
-let init : sym StrMap.t -> Pos.strloc -> term -> t =
-  fun proof_builtins name a ->
+let init : Pos.strloc -> term -> t = fun name a ->
   let proof_term = fresh_meta ~name:name.elt a 0 in
   let proof_goals = [Goal.of_meta proof_term] in
-  {proof_name = name; proof_term; proof_goals; proof_builtins}
+  {proof_name = name; proof_term; proof_goals}
 
 (** [finished ps] tells whether the proof represented by [ps] is finished. *)
 let finished : t -> bool = fun ps -> ps.proof_goals = []
@@ -72,9 +77,8 @@ let focus_goal : Pos.popt -> proof_state -> Env.t * term = fun pos ps ->
   with Failure(_)  -> Console.fatal pos "No remaining goals..."
 
 (** [pp_goals oc gl] prints the goal list [gl] to channel [oc]. *)
-let pp_goals : _ pp = fun oc gl ->
-  let open Print in
-  match gl with
+let pp_goals : proof_state pp = fun oc ps ->
+  match ps.proof_goals with
   | []    -> Format.fprintf oc " No more goals...\n"
   | g::gs ->
      Format.fprintf oc "\n== Goals ================================\n";
@@ -82,23 +86,19 @@ let pp_goals : _ pp = fun oc gl ->
     if hyps <> [] then
       begin
         let print_hyp (s,(_,t,_)) =
-          Format.fprintf oc "   %s : %a\n" s pp (Bindlib.unbox t)
+          Format.fprintf oc "   %s : %a\n" s pp_term (Bindlib.unbox t)
         in
         List.iter print_hyp (List.rev hyps);
         Format.fprintf oc "   --------------------------------------\n"
       end;
     let (_, a) = Goal.get_type g in
-    Format.fprintf oc "0. %a\n" pp a;
+    Format.fprintf oc "0. %a\n" pp_term a;
     if gs <> [] then
       begin
         Format.fprintf oc "\n";
         let print_goal i g =
           let (_, a) = Goal.get_type g in
-          Format.fprintf oc "%i. %a\n" (i+1) pp a
+          Format.fprintf oc "%i. %a\n" (i+1) pp_term a
         in
         List.iteri print_goal gs
       end
-
-
-(** [pp oc ps] prints the proof state [ps] to channel [oc]. *)
-let pp : t pp = fun oc ps -> pp_goals oc ps.proof_goals

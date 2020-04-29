@@ -60,13 +60,13 @@ let rec pp_p_term : p_term pp = fun oc t ->
     | (P_Iden(qid, true )  , _    ) -> out "@%a" pp_qident qid
     | (P_Wild              , _    ) -> out "_"
     | (P_Meta(x,ar)        , _    ) -> out "?%a%a" pp_ident x pp_env ar
-    | (P_Patt(None   ,ar)  , _    ) -> out "&_%a" pp_env ar
-    | (P_Patt(Some(x),ar)  , _    ) -> out "&%a%a" pp_ident x pp_env ar
+    | (P_Patt(None   ,ar)  , _    ) -> out "$_%a" pp_env ar
+    | (P_Patt(Some(x),ar)  , _    ) -> out "$%a%a" pp_ident x pp_env ar
     | (P_Appl(t,u)         , PAppl)
     | (P_Appl(t,u)         , PFunc) -> out "%a@ %a" pp_appl t pp_atom u
-    | (P_Impl(a,b)         , PFunc) -> out "%a@ ⇒ %a" pp_appl a pp_func b
+    | (P_Impl(a,b)         , PFunc) -> out "%a@ → %a" pp_appl a pp_func b
     | (P_Abst(args,t)      , PFunc) -> out "λ%a,@ %a" pp_p_args args pp_func t
-    | (P_Prod(args,b)      , PFunc) -> out "∀%a,@ %a" pp_p_args args pp_func b
+    | (P_Prod(args,b)      , PFunc) -> out "Π%a,@ %a" pp_p_args args pp_func b
     | (P_LLet(x,args,a,t,u), PFunc) ->
         out "@[<hov 2>let %a%a%a ≔@ %a@]@ in@ %a"
           pp_ident x pp_p_args args pp_p_annot a pp_func t pp_func u
@@ -85,8 +85,8 @@ let rec pp_p_term : p_term pp = fun oc t ->
   let rec pp_toplevel _ t =
     match t.elt with
     | P_Abst(args,t)       -> out "λ%a,@ %a" pp_p_args args pp_toplevel t
-    | P_Prod(args,b)       -> out "∀%a,@ %a" pp_p_args args pp_toplevel b
-    | P_Impl(a,b)          -> out "%a@ ⇒ %a" (pp PAppl) a pp_toplevel b
+    | P_Prod(args,b)       -> out "Π%a,@ %a" pp_p_args args pp_toplevel b
+    | P_Impl(a,b)          -> out "%a@ → %a" (pp PAppl) a pp_toplevel b
     | P_LLet(x,args,a,t,u) ->
         out "@[<hov 2>let %a%a%a ≔@ %a@]@ in@ %a" pp_ident x
           pp_p_args args pp_p_annot a pp_toplevel t pp_toplevel u
@@ -110,9 +110,10 @@ and pp_p_arg : p_arg pp = fun oc (ids,ao,b) ->
 and pp_p_args : p_arg list pp = fun oc ->
   List.iter (Format.fprintf oc " %a" pp_p_arg)
 
-let pp_p_rule : p_rule pp = fun oc r ->
+let pp_p_rule : bool -> p_rule pp = fun first oc r ->
   let (lhs, rhs) = r.elt in
-  Format.fprintf oc "@[<hov 3>rule %a@ → %a@]@?" pp_p_term lhs pp_p_term rhs
+  let kw = if first then "rule" else "with" in
+  Format.fprintf oc "@[<hov 3>%s %a@ ↪ %a@]@?" kw pp_p_term lhs pp_p_term rhs
 
 let pp_p_proof_end : p_proof_end pp = fun oc e ->
   match e with
@@ -195,8 +196,10 @@ let pp_command : p_command pp = fun oc cmd ->
       out "@[<hov 2>%a%asymbol %a" pp_expo e pp_prop p pp_ident s;
       List.iter (out " %a" pp_p_arg) args;
       out " :@ @[<hov>%a@]" pp_p_term a
-  | P_rules(rs)                     ->
-      out "%a" (List.pp pp_p_rule "\n") rs
+  | P_rules([])                     -> ()
+  | P_rules(r::rs)                  ->
+      out "%a@;" (pp_p_rule true) r;
+      List.iter (out "%a@;" (pp_p_rule false)) rs
   | P_definition(e,_,s,args,ao,t)   ->
       out "@[<hov 2>%adefinition %a" pp_expo e pp_ident s;
       List.iter (out " %a" pp_p_arg) args;
@@ -234,6 +237,9 @@ let rec pp_ast : ast pp = fun oc cs ->
   | []    -> ()
   | [c]   -> Format.fprintf oc "%a@." pp_command c
   | c::cs -> Format.fprintf oc "%a\n@.%a" pp_command c pp_ast cs
+
+(** Short synonym of [pp_p_term]. *)
+let pp : p_term pp = pp_p_term
 
 (** [beautify cmds] pretty-prints the commands [cmds] to standard output. *)
 let beautify : ast -> unit =

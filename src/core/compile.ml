@@ -49,7 +49,7 @@ let rec compile : bool -> Path.t -> Sign.t = fun force path ->
       out 2 "Loading [%s]%s\n%!" src forced;
       loading := path :: !loading;
       let sign = Sign.create path in
-      let sig_st = Scope.empty_sig_state sign in
+      let sig_st = Sig_state.of_sign sign in
       (* [sign] is added to [loaded] before processing the commands so that it
          is possible to qualify the symbols of the current modules. *)
       loaded := PathMap.add path sign !loaded;
@@ -92,7 +92,7 @@ let recompile = Stdlib.ref false
 (** [compile_file fname] is the main compiling function. It is called from the
     main program exclusively. *)
 let compile_file : file_path -> Sign.t = fun fname ->
-  Config.apply_config fname;
+  Package.apply_config fname;
   (* Compute the module path (checking the extension). *)
   let mp = Files.file_to_module fname in
   (* Run compilation. *)

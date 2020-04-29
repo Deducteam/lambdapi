@@ -4,15 +4,11 @@ open Extra
 open Timed
 open Terms
 
-(** Sets and maps of variables. *)
-module Var =
-  struct
-    type t = term Bindlib.var
-    let compare = Bindlib.compare_vars
-  end
-
-module VarSet = Set.Make(Var)
-module VarMap = Map.Make(Var)
+(** [fresh_vars n] creates an array of [n] fresh variables. The names of these
+    variables is ["_var_i"], where [i] is a number introduced by the [Bindlib]
+    library to avoid name clashes (minimal renaming is done). *)
+let fresh_vars : int -> tvar array = fun n ->
+  Bindlib.new_mvar mkfree (Array.make n "_var_")
 
 (** [to_tvar t] returns [x] if [t] is of the form [Vari x] and fails
     otherwise. *)
@@ -71,53 +67,22 @@ let add_args : term -> term list -> term = fun t args ->
     | u::args -> add_args (Appl(t,u)) args
   in add_args t args
 
-(** [eq ctx t u] tests the equality of [t] and [u] (up to α-equivalence). It
-    fails if [t] or [u] contain terms of the form [Patt(i,s,e)] or
-    [TEnv(te,env)].  In the process, subterms of the form [TRef(r)] in [t] and
-    [u] may be set with the corresponding value to enforce equality, and
-    variables appearing in [ctx] can be unfolded. In other words, [eq t u] can
-    be used to implement non-linear matching (see {!module:Rewrite}). When the
-    matching feature is used, one should make sure that [TRef] constructors do
-    not appear both in [t] and in [u] at the same time. Indeed, the references
-    are set naively, without checking occurrence. *)
-let eq : ctxt -> term -> term -> bool = fun ctx a b -> a == b ||
-  let exception Not_equal in
-  let rec eq l =
-    match l with
-    | []       -> ()
-    | (a,b)::l ->
-    match (Ctxt.unfold ctx a, Ctxt.unfold ctx b) with
-    | (a          , b          ) when a == b -> eq l
-    | (Vari(x1)   , Vari(x2)   ) when Bindlib.eq_vars x1 x2 -> eq l
-    | (Type       , Type       )
-    | (Kind       , Kind       ) -> eq l
-    | (Symb(s1,_) , Symb(s2,_) ) when s1 == s2 -> eq l
-    | (Prod(a1,b1), Prod(a2,b2))
-    | (Abst(a1,b1), Abst(a2,b2)) -> let (_, b1, b2) = Bindlib.unbind2 b1 b2 in
-                                    eq ((a1,a2)::(b1,b2)::l)
-    | (LLet(a1,t1,u1), LLet(a2,t2,u2)) ->
-        let (_, u1, u2) = Bindlib.unbind2 u1 u2 in
-        eq ((a1,a2)::(t1,t2)::(u1,u2)::l)
-    | (Appl(t1,u1), Appl(t2,u2)) -> eq ((t1,t2)::(u1,u2)::l)
-    | (Meta(m1,e1), Meta(m2,e2)) when m1 == m2 ->
-        eq (if e1 == e2 then l else List.add_array2 e1 e2 l)
-    | (Wild       , _          )
-    | (_          , Wild       ) -> eq l
-    | (TRef(r)    , b          ) -> r := Some(b); eq l
-    | (a          , TRef(r)    ) -> r := Some(a); eq l
-    | (Patt(_,_,_), _          )
-    | (_          , Patt(_,_,_))
-    | (TEnv(_,_)  , _          )
-    | (_          , TEnv(_,_)  ) -> assert false
-    | (_          , _          ) -> raise Not_equal
-  in
-  try eq [(a,b)]; true with Not_equal -> false
-
 (** [is_symb s t] tests whether [t] is of the form [Symb(s)]. *)
 let is_symb : sym -> term -> bool = fun s t ->
   match unfold t with
-  | Symb(r,_) -> r == s
-  | _         -> false
+  | Symb(r) -> r == s
+  | _       -> false
+
+(** Given a symbol [s], [expl_args s ts] returns the non-implicit arguments of
+   [s] among [ts]. *)
+let expl_args : sym -> term list -> term list = fun s ts ->
+  let rec expl bs ts =
+    match (bs, ts) with
+    | (true::bs , _::ts) -> expl bs ts
+    | (false::bs, t::ts) -> t :: expl bs ts
+    | (_        , _    ) -> ts
+  in
+  expl s.sym_impl ts
 
 (** [iter f t] applies the function [f] to every node of the term [t] with
    bound variables replaced by [Kind]. Note: [f] is called on already unfolded
@@ -178,13 +143,18 @@ let occurs : meta -> term -> bool =
   let fn p = if m == p then raise Found in
   try iter_meta false fn t; false with Found -> true
 
-(** [get_metas b t] returns the list of all the metavariables in [t], and in
-    the types of metavariables recursively if [b], sorted wrt [cmp_meta]. *)
-let get_metas : bool -> term -> meta list = fun b t ->
+(** [add_metas b t ms] extends [ms] with all the metavariables of [t], and
+   those in the types of these metavariables recursively if [b]. *)
+let add_metas : bool -> term -> MetaSet.t -> MetaSet.t = fun b t ms ->
   let open Stdlib in
-  let l = ref [] in
-  iter_meta b (fun m -> l := m :: !l) t;
-  List.sort_uniq cmp_meta !l
+  let ms = ref ms in
+  iter_meta b (fun m -> ms := MetaSet.add m !ms) t;
+  !ms
+
+(** [get_metas b t] returns the set of all the metavariables in [t], and in
+    the types of metavariables recursively if [b]. *)
+let get_metas : bool -> term -> MetaSet.t = fun b t ->
+  add_metas b t MetaSet.empty
 
 (** [has_metas b t] checks whether there are metavariables in [t], and in the
     types of metavariables recursively if [b] is true. *)
@@ -209,29 +179,6 @@ let distinct_vars : ctxt -> term array -> tvar array option = fun ctx ts ->
   in
   try Some (Array.map to_var ts) with Not_unique_var -> None
 
-(** [nl_distinct_vars ctx ts] checks that [ts] is made of variables  [vs] only
-    and returns some copy of [vs] where variables occurring more than once are
-    replaced by fresh variables.  Variables defined in  [ctx] are unfolded. It
-    returns [None] otherwise. *)
-let nl_distinct_vars : ctxt -> term array -> tvar array option = fun ctx ts ->
-  let exception Not_a_var in
-  let open Stdlib in
-  let vars = ref VarSet.empty
-  and nl_vars = ref VarSet.empty in
-  let to_var t =
-    match Ctxt.unfold ctx t with
-    | Vari(x) ->
-        if VarSet.mem x !vars then nl_vars := VarSet.add x !nl_vars else
-        vars := VarSet.add x !vars;
-        x
-    | _       -> raise Not_a_var
-  in
-  let replace_nl_var x =
-    if VarSet.mem x !nl_vars then Bindlib.new_var mkfree "_" else x
-  in
-  try Some (Array.map replace_nl_var (Array.map to_var ts))
-  with Not_a_var -> None
-
 (** {3 Conversion of a rule into a "pair" of terms} *)
 
 (** [terms_of_rule r] converts the RHS (right hand side) of the rewriting rule
@@ -240,7 +187,8 @@ let nl_distinct_vars : ctxt -> term array -> tvar array option = fun ctx ts ->
     LHS counterparts. This is a more convenient way of representing terms when
     analysing confluence or termination. *)
 let term_of_rhs : rule -> term = fun r ->
-  let fn i (name, arity) =
+  let fn i x =
+    let (name, arity) = (Bindlib.name_of x, r.arities.(i)) in
     let make_var i = Bindlib.new_var mkfree (Printf.sprintf "x%i" i) in
     let vars = Array.init arity make_var in
     let p = _Patt (Some(i)) name (Array.map Bindlib.box_var vars) in

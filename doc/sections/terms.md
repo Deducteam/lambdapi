@@ -22,12 +22,12 @@ A user-defined term can be either:
 
  * an anonymous function `λ(x:A) y z,t` mapping `x`, `y` and `z` (of type `A` for `x`) to `t`
 
- * a dependent product `∀(x:A) y z,T`
+ * a dependent product `Π(x:A) y z,T`
 
- * a non-dependent product `A ⇒ T` (syntactic sugar for `∀x:A,T` with `x` not occurring in `T`)
+ * a non-dependent product `A → T` (syntactic sugar for `Πx:A,T` with `x` not occurring in `T`)
 
  * a `let f (x:A) y z: T ≔ t in` construction (with `let f x : A ≔ t in u` being a
-   syntactic sugar for `let f : ∀x:_ ⇒ A ≔ λx, t in u`)
+   syntactic sugar for `let f : Πx:_ → A ≔ λx, t in u`)
 
  * application is written by space-separated juxtaposition, except for symbol identifiers declared as infix (e.g. `x+y`)
 

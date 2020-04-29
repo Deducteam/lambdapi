@@ -1,7 +1,6 @@
 reserved "_"
 reserved "abort"
 reserved "admit"
-reserved "and"
 reserved "apply"
 reserved "as"
 reserved "assert"
@@ -33,6 +32,7 @@ reserved "symbol"
 reserved "theorem"
 reserved "type"
 reserved "TYPE"
+reserved "with"
 reserved "why3"
 
 <declared_id> ::=
@@ -83,12 +83,12 @@ reserved "why3"
   | "@"? <qident>
   | "_"
   | "?" - <ident> {"[" <term> {"," <term>}* "]"}?
-  | "&" - {<ident> | "_"} {"[" <term> {"," <term>}* "]"}?
+  | "$" - {<ident> | "_"} {"[" <term> {"," <term>}* "]"}?
   | "(" <term> ")"
   | "{" <term> "}"
   | <term> <term>
-  | <type> "⇒" <type>
-  | "∀" <arg>+ "," <type>
+  | <type> "→" <type>
+  | "Π" <arg>+ "," <type>
   | "λ" <arg>+ "," <term>
   | "let" <ident> <arg>* {":" <term>}? "≔" <term> "in" <term>
   | <nat_lit>
@@ -108,7 +108,7 @@ reserved "why3"
 
 // Rewriting rule
 <rule> ::=
-  | <patt> "→" <term>
+  | <patt> "↪" <term>
 
 // TODO rule naming, positive / negative
 
@@ -142,6 +142,36 @@ reserved "why3"
   // Convertibility assertion
   | <term> "≡" <term>
 
+// Flag names
+<flag_name> ::=
+  | "eta_equality"
+  | "print_domains"
+  | "print_implicits"
+  | "print_meta_type"
+  | "print_contexts"
+  | "print_domains"
+
+// Flag values
+<flag_value> ::=
+  | "on"
+  | "off"
+
+// Builtins
+<builtin> ::=
+  | "0"
+  | "+1"
+  | "T"
+  | "P"
+  | "eq"
+  | "refl"
+  | "eq_ind"
+  | "top"
+  | "bot"
+  | "not"
+  | "or"
+  | "and"
+  | "imp"
+  
 // Single command.
 <command> ::=
   // Require and/or open a module
@@ -162,12 +192,13 @@ reserved "why3"
   // Set option
   | "set" "verbose" RE("[1-9][0-9]*")
   | "set" "debug" RE("[-+][a-zA-Z]+")
-  | "set" "builtin" <string_lit> "≔" <qident>
+  | "set" "builtin" \"<builtin>\" "≔" <qident>
   | "set" "prefix" <float_lit> <string_lit> "≔" <qident>
   | "set" "infix" {"left" | "right"}? <float_lit> <string_lit> "≔" <qident>
   | "set" "prover" <ident>
-  | "set" "prover_timeout" <nat_lit>
+  | "set" "prover_timeout" <nat_lit>
   | "set" "declared" <string_lit>
+  | "set" "flag" \"<flag_name>\" <flag_value>
   // Get the type of a term
   | "type" <term>
   // Get the normal form of a term

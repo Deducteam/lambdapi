@@ -184,10 +184,9 @@ let translate_old_rule : old_p_rule -> p_rule = fun r ->
   let rhs = build [] rhs in
   Pos.make r.pos (lhs, rhs)
 
-let build_config : Pos.pos -> string -> string option -> Eval.config =
+let build_config : Pos.pos -> string -> string option -> eval_config =
     fun loc s1 s2o ->
   try
-    let open Eval in
     let config steps strategy =
       let steps =
         match steps with
@@ -242,51 +241,81 @@ let build_config : Pos.pos -> string -> string option -> Eval.config =
 %%
 
 line:
-  | s=ID ps=param* COLON a=term DOT {
-      make_pos $loc (P_symbol(Terms.Public, Terms.Const, make_pos $loc(s) s, ps, a))
+  | s=ID ps=param* COLON a=term DOT
+    {
+      let t = P_symbol
+                (Terms.Public, Terms.Const, make_pos $loc(s) s, ps, a) in
+      make_pos $loc t
     }
-  | KW_DEF s=ID COLON a=term DOT {
-      make_pos $loc (P_symbol(Terms.Public, Terms.Defin, make_pos $loc(s) s, [], a))
+  | KW_DEF s=ID COLON a=term DOT
+    {
+      let t = P_symbol
+                (Terms.Public, Terms.Defin, make_pos $loc(s) s, [], a) in
+      make_pos $loc t
     }
-  | KW_INJ s=ID COLON a=term DOT {
-      make_pos $loc (P_symbol(Terms.Public, Terms.Injec, make_pos $loc(s) s, [], a))
+  | KW_INJ s=ID COLON a=term DOT
+    {
+      let t = P_symbol
+                (Terms.Public, Terms.Injec, make_pos $loc(s) s, [], a) in
+      make_pos $loc t
     }
-  | KW_PRV s=ID COLON a=term DOT {
-      make_pos $loc (P_symbol(Terms.Protec, Terms.Defin, make_pos $loc(s) s, [], a))
+  | KW_PRV s=ID COLON a=term DOT
+    {
+      let t = P_symbol
+                (Terms.Protec, Terms.Defin, make_pos $loc(s) s, [], a) in
+      make_pos $loc t
     }
-  | KW_DEF s=ID COLON a=term DEFEQ t=term DOT {
-      make_pos $loc (P_definition(Terms.Public, false, make_pos $loc(s) s, [], Some(a), t))
+  | KW_DEF s=ID COLON a=term DEFEQ t=term DOT
+    {
+      let t = P_definition
+                (Terms.Public, false, make_pos $loc(s) s, [], Some(a), t) in
+      make_pos $loc t
     }
-  | KW_DEF s=ID DEFEQ t=term DOT {
-      make_pos $loc (P_definition(Terms.Public, false, make_pos $loc(s) s, [], None, t))
+  | KW_DEF s=ID DEFEQ t=term DOT
+    {
+      let t = P_definition
+                (Terms.Public, false, make_pos $loc(s) s, [], None, t) in
+      make_pos $loc t
     }
-  | KW_DEF s=ID ps=param+ COLON a=term DEFEQ t=term DOT {
-      make_pos $loc (P_definition(Terms.Public, false, make_pos $loc(s) s, ps, Some(a), t))
+  | KW_DEF s=ID ps=param+ COLON a=term DEFEQ t=term DOT
+    {
+      let t = P_definition
+                (Terms.Public, false, make_pos $loc(s) s, ps, Some(a), t) in
+      make_pos $loc t
     }
-  | KW_DEF s=ID ps=param+ DEFEQ t=term DOT {
-      make_pos $loc (P_definition(Terms.Public, false, make_pos $loc(s) s, ps, None, t))
+  | KW_DEF s=ID ps=param+ DEFEQ t=term DOT
+    {
+      let t = P_definition
+                (Terms.Public, false, make_pos $loc(s) s, ps, None, t) in
+      make_pos $loc t
     }
-  | KW_THM s=ID COLON a=term DEFEQ t=term DOT {
-      make_pos $loc (P_definition(Terms.Public, true , make_pos $loc(s) s, [], Some(a), t))
+  | KW_THM s=ID COLON a=term DEFEQ t=term DOT
+    {
+      let t = P_definition
+                (Terms.Public, true , make_pos $loc(s) s, [], Some(a), t) in
+      make_pos $loc t
     }
-  | KW_THM s=ID ps=param+ COLON a=term DEFEQ t=term DOT {
-      make_pos $loc (P_definition(Terms.Public, true , make_pos $loc(s) s, ps, Some(a), t))
+  | KW_THM s=ID ps=param+ COLON a=term DEFEQ t=term DOT
+    {
+      let t = P_definition
+                (Terms.Public, true , make_pos $loc(s) s, ps, Some(a), t) in
+      make_pos $loc t
     }
   | rs=rule+ DOT {
       make_pos $loc (P_rules(List.map translate_old_rule rs))
     }
   | EVAL t=term DOT {
-      let c = Eval.{strategy = SNF; steps = None} in
+      let c = {strategy = SNF; steps = None} in
       let q = make_pos $loc (P_query_normalize(t,c)) in
       make_pos $loc (P_query q)
     }
   | EVAL c=eval_config t=term DOT {
-      let c = Eval.(if c.strategy=NONE then {c with strategy=SNF} else c) in
+      let c = if c.strategy=NONE then {c with strategy=SNF} else c in
       let q = make_pos $loc (P_query_normalize(t, c)) in
       make_pos $loc (P_query q)
     }
   | INFER t=term DOT {
-      let c = Eval.{strategy = NONE; steps = None} in
+      let c = {strategy = NONE; steps = None} in
       let q = make_pos $loc (P_query_infer(t, c)) in
       make_pos $loc (P_query q)
     }
@@ -328,10 +357,10 @@ rule:
     }
 
 sterm:
-  | qid=QID            { make_pos $loc (P_Iden(make_pos $loc qid, false)) }
-  | id=ID              { make_pos $loc (P_Iden(make_pos $loc ([], id), false)) }
-  | WILD               { make_pos $loc P_Wild }
-  | TYPE               { make_pos $loc P_Type }
+  | qid=QID { make_pos $loc (P_Iden(make_pos $loc qid, false)) }
+  | id=ID   { make_pos $loc (P_Iden(make_pos $loc ([], id), false)) }
+  | WILD    { make_pos $loc P_Wild }
+  | TYPE    { make_pos $loc P_Type }
   | L_PAR t=term R_PAR { t }
 
 aterm:

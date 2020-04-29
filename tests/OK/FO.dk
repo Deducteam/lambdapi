@@ -40,11 +40,11 @@ def imp_intro : A:Prop -> B:Prop -> (prf A -> prf B) -> prf (imp A B)
 (; disjunction ;)
 def or_intro_1 : A:Prop -> B:Prop -> prf A -> prf (or A B)
 := A:Prop => B:Prop => p:prf A =>
-	P:Prop => f:(prf A -> prf P) => g:(prf B -> prf P) => f p.
+	P:Prop => f:(prf A -> prf P) => _:(prf B -> prf P) => f p.
 
 def or_intro_2 : A:Prop -> B:Prop -> prf B -> prf (or A B)
 := A:Prop => B:Prop => p:prf B =>
-	P:Prop => f:(prf A -> prf P) => g:(prf B -> prf P) => g p.
+	P:Prop => _:(prf A -> prf P) => g:(prf B -> prf P) => g p.
 
 def or_elim : A:Prop -> B:Prop -> prf (or A B) -> C:Prop -> prf (imp A C) -> prf (imp B C)  -> prf C
 := A:Prop => B:Prop => p:prf (or A B) => p.
@@ -54,16 +54,16 @@ def conj_intro  : A:Prop -> B:Prop -> prf A -> prf B -> prf (conj A B)
 := A:Prop => B:Prop => a:prf A => b:prf B => P:Prop => f:(prf A -> prf B -> prf P) => f a b.
 
 def conj_elim_1 : A:Prop -> B:Prop -> prf (conj A B) -> prf A
-:= A:Prop => B:Prop => p:prf (conj A B) => p A (a:prf A => b:prf B => a).
+:= A:Prop => B:Prop => p:prf (conj A B) => p A (a:prf A => _:prf B => a).
 
 def conj_elim_2 : A:Prop -> B:Prop -> prf (conj A B) -> prf B
-:= A:Prop => B:Prop => p:prf (conj A B) => p B (a:prf A => b:prf B => b).
+:= A:Prop => B:Prop => p:prf (conj A B) => p B (_:prf A => b:prf B => b).
 
 (; Universal quantificator ;)
 def forall_intro: P:(Term->Prop) -> (t:Term -> prf (P t)) -> prf (forall P)
 := P:(Term->Prop) => p:(t:Term -> prf (P t)) => p.
 
-def forall_elim: P:(Term->Prop) -> t:Term -> p:prf (forall P) -> prf (P t)
+def forall_elim: P:(Term->Prop) -> t:Term -> prf (forall P) -> prf (P t)
 := P:(Term->Prop) => t:Term => p:prf (forall P) => p t.
 
 (; Existential quantificator ;)
