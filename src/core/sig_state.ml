@@ -37,15 +37,6 @@ let eq_pp_hint : pp_hint eq = fun h1 h2 ->
   | (Infix (s1,_,_,_), Infix (s2,_,_,_)) -> s1 = s2
   | (_, _) -> false
 
-(** Pretty printing hints for pervasive symbols [equiv] and [comma]. *)
-let pervasive_pp_hints : pp_hint SymMap.t =
-  let open Unif_rule in
-  let pth = List.map (fun s -> (s, false)) path in
-  let h = Infix("≡", Assoc_none, 1.1, Pos.none (pth, "#equiv")) in
-  let res = SymMap.singleton equiv h in
-  let h = Infix(",", Assoc_right, 1.0, Pos.none (pth, "#comma")) in
-  SymMap.add comma h res
-
 (** State of the signature, including aliasing and accessible symbols. *)
 type sig_state =
   { signature : Sign.t                    (** Current signature.        *)
@@ -209,7 +200,7 @@ let of_sign : Sign.t -> sig_state = fun sign ->
   let empty =
     { signature = sign; in_scope = StrMap.empty; aliases = StrMap.empty
     ; path_map = PathMap.empty; builtins = StrMap.empty; unops = StrMap.empty
-    ; binops = StrMap.empty; pp_hints = pervasive_pp_hints }
+    ; binops = StrMap.empty; pp_hints = SymMap.empty }
   in
   open_sign empty Unif_rule.sign
 

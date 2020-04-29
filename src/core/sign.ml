@@ -24,6 +24,13 @@ type t =
    list. This association list then maps definable symbols of the external
    module to additional reduction rules defined in the current signature. *)
 
+(** The empty signature. *)
+let dummy : t =
+  { sign_symbols = ref StrMap.empty; sign_path = []
+  ; sign_deps = ref PathMap.empty; sign_builtins = ref StrMap.empty
+  ; sign_unops = ref StrMap.empty; sign_binops = ref StrMap.empty
+  ; sign_idents = ref StrSet.empty }
+
 (** [find sign name] finds the symbol named [name] in [sign] if it exists, and
     raises the [Not_found] exception otherwise. *)
 let find : t -> string -> sym =

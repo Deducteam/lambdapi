@@ -5,24 +5,18 @@
     qualified to be a "ghost" signature. *)
 
 open Timed
-open Extra
 open Files
 open Terms
+open Syntax
 
 (** Path of the module. *)
 let path = Path.ghost "unif_rule"
 
 (** Ghost signature holding the symbols used in unification rules. This
-    signature is an automatic dependency of all other signatures, and is
-    automatically loaded. *)
+    signature is an automatic dependency of all other signatures, is
+    automatically loaded and automatically opened. *)
 let sign : Sign.t =
-  let open Sign in
-  let s =
-    { sign_path = path; sign_symbols = ref StrMap.empty
-    ; sign_deps = ref (PathMap.empty)
-    ; sign_builtins = ref StrMap.empty; sign_unops = ref StrMap.empty
-    ; sign_binops = ref StrMap.empty; sign_idents = ref StrSet.empty }
-  in
+  let s = {Sign.dummy with Sign.sign_path = path} in
   Sign.loaded := Files.PathMap.add path s !(Sign.loaded);
   s
 
@@ -30,14 +24,22 @@ let sign : Sign.t =
     u] represents [t ≡ u]. The left-hand side of a unification rule is
     made of only one unification. *)
 let equiv : sym =
-  Sign.add_symbol sign Public Defin (Pos.none "#equiv") Kind []
+  let path = List.map (fun s -> (s, false)) path in
+  let bo = ("≡", Assoc_none, 1.1, Pos.none (path, "#equiv")) in
+  let sym = Sign.add_symbol sign Public Defin (Pos.none "#equiv") Kind [] in
+  Sign.add_binop sign "≡" (sym, bo);
+  sym
 
 (** Cons-like symbol for equivalences. The right-hand side of a unification
     rule is made of a list of the form
     [comma (equiv t u) (comma (equiv v w) ...)] pretty-printed
     [t ≡ u, v ≡ w, ...]. *)
 let comma : sym =
-  Sign.add_symbol sign Public Defin (Pos.none "#comma") Kind []
+  let path = List.map (fun s -> (s, false)) path in
+  let bo = (",", Assoc_right, 1.0, Pos.none (path, "#comma")) in
+  let sym = Sign.add_symbol sign Public Defin (Pos.none "#comma") Kind [] in
+  Sign.add_binop sign "," (sym, bo);
+  sym
 
 (** [unpack eqs] transforms a term of the form [t =? u, v =? w, ...]
     into a list [[t =? u; v =? w; ...]]. *)
