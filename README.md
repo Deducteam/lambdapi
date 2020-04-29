@@ -5,6 +5,8 @@ Lambdapi is a proof assistant based on the λΠ-calculus modulo rewriting,
 mostly compatible with the proof checker Dedukti. More details are given
 in the [documentation](doc/DOCUMENTATION.md).
 
+[![Gitter](https://badges.gitter.im/deducteam-dedukti/lambdapi.svg)](https://gitter.im/deducteam-dedukti/lambdapi?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge)
+
 Installation via [Opam](http://opam.ocaml.org/)
 ---------------------
 
