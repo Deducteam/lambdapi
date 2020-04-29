@@ -35,10 +35,13 @@ module Unif_rule =
         signature is an automatic dependency of all other signatures, and is
         automatically loaded. *)
     let sign : Sign.t =
-      let open Files in
-      let s = Sign.create path in
-      (* Remove the dependency on itself. *)
-      s.sign_deps := PathMap.remove path !(s.sign_deps);
+      let open Sign in
+      let s =
+        { sign_path = path; sign_symbols = ref StrMap.empty
+        ; sign_deps = ref (PathMap.empty)
+        ; sign_builtins = ref StrMap.empty; sign_unops = ref StrMap.empty
+        ; sign_binops = ref StrMap.empty; sign_idents = ref StrSet.empty }
+      in
       Sign.loaded := Files.PathMap.add path s !(Sign.loaded);
       s
 
@@ -77,6 +80,14 @@ module Unif_rule =
           assert false (* Ill-formed term. *)
       | _                 -> assert false (* Ill-formed term. *)
 end
+
+(** [create_sign path] creates a signature with pervasive modules as
+    dependencies. *)
+let create_sign : Path.t -> Sign.t = fun sign_path ->
+  { sign_path; sign_symbols = ref StrMap.empty
+  ; sign_deps = ref (PathMap.singleton Unif_rule.path [])
+  ; sign_builtins = ref StrMap.empty; sign_unops = ref StrMap.empty
+  ; sign_binops = ref StrMap.empty; sign_idents = ref StrSet.empty }
 
 (** [remove_pp_hint ss s hints] removes from [hints] the mapping for [s] if
    [s.sym_name] is mapped in [ss.in_scope]. *)
@@ -118,20 +129,20 @@ let open_sign : sig_state -> Sign.t -> sig_state = fun ss sign ->
   let pp_hints = update_pp_hints ss sign in
   {ss with in_scope; builtins; pp_hints}
 
-(** [of_sign sign] creates a state from the signature [sign] with only
-    pervasive signatures imported. *)
+(** [of_sign sign] creates a state from the signature [sign] with ghost
+    signatures opened. *)
 let of_sign : Sign.t -> sig_state = fun sign ->
-  let s =
+  let empty =
     { signature = sign
-    ; in_scope  = !(Unif_rule.sign.sign_symbols)
+    ; in_scope  = StrMap.empty
     ; aliases   = StrMap.empty
     ; builtins  = StrMap.empty
-    ; pp_hints  = Unif_rule.pp_hints }
+    ; pp_hints  = SymMap.empty }
   in
-  open_sign s Unif_rule.sign
+  open_sign empty Unif_rule.sign
 
 (** [empty] state. *)
-let empty = of_sign (Sign.create [])
+let empty : sig_state = of_sign (create_sign [])
 
 (** [add_symbol ss e p x a impl] adds a symbol in [ss]. *)
 let add_symbol

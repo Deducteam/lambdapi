@@ -51,7 +51,7 @@ let rec compile : bool -> Path.t -> Sign.t = fun force path ->
       let src = src () in
       out 2 "Loading [%s]%s\n%!" src forced;
       loading := path :: !loading;
-      let sign = Sign.create path in
+      let sign = Sig_state.create_sign path in
       let sig_st = Sig_state.of_sign sign in
       (* [sign] is added to [loaded] before processing the commands so that it
          is possible to qualify the symbols of the current modules. *)
