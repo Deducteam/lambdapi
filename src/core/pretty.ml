@@ -205,10 +205,14 @@ let pp_command : p_command pp = fun oc cmd ->
       List.iter (out " %a" pp_p_arg) args;
       Option.iter (out " :@ @[<hov>%a@]" pp_p_term) ao;
       out " ≔@ @[<hov>%a@]@]" pp_p_term t
-  | P_inductive(e,s,t,tl)   ->                         (* @Moi *)
+  | P_inductive(e,s,t,tl)   ->
       out "@[<hov 2>%ainductive %a" pp_expo e pp_ident s;
-      out " :@ @[<hov>%a@]" pp_p_term t;
-      List.iter (out " :@ @[<hov>%a@]" pp_p_term) tl
+      Option.iter (out " :@ @[<hov>%a@]" pp_p_term) t;
+      let (tl_ident, tl_term) = List.split tl in
+      List.iter2 (out " ≔@ @[<hov>%a@] :@ @[<hov>%a@]" pp_ident pp_p_term)
+        tl_ident tl_term
+  (*List.iter2 (out " ≔@ @[<hov>%a@] %a" pp_ident) tl_ident tl_term*)
+  (*List.iter (out " ≔@ @[<hov>%a@] :@ @[<hov>%a@]" pp_ident pp_p_term) tl *)
   | P_theorem(e,st,ts,pe)           ->
       let (s,args,a) = st.elt in
       out "@[<hov 2>%atheorem %a" pp_expo e pp_ident s;

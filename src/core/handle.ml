@@ -187,7 +187,8 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
       let d = if op then None else Some(t) in
       let ss = Sig_state.add_symbol ss e Defin x a impl d in
       (ss, None)
-  | P_inductive(_, _, _, _) -> failwith "to be implemented" (* P_inductive(e, s, t, tl) @Moi *)
+  | P_inductive(_, _, _, _) -> wrn cmd.pos "to be implemented"
+ (* P_inductive(e, s, t, tl) *)
   | P_theorem(e, stmt, ts, pe) ->
       let (x,xs,a) = stmt.elt in
       (* We check that [x] is not already used. *)
