@@ -133,7 +133,7 @@ reserved "why3"
   | "focus" <nat_lit>
   | "print"
   | "proofterm"
-  | "why3" <string_lit>?
+  | "why3" <string_lit>?
 
 // Assertion predicate
 <assertion> ::=
@@ -199,6 +199,7 @@ reserved "why3"
   | "set" "prover_timeout" <nat_lit>
   | "set" "declared" <string_lit>
   | "set" "flag" \"<flag_name>\" <flag_value>
+  | "set" "quantifier" <qident>
   // Get the type of a term
   | "type" <term>
   // Get the normal form of a term

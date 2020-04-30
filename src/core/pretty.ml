@@ -229,6 +229,8 @@ let pp_command : p_command pp = fun oc cmd ->
       out "set infix%s %f \"%s\" ≔ %a" a p s pp_qident qid
   | P_set(P_config_ident(id))       ->
       out "set declared \"%s\"" id
+  | P_set(P_config_quant(qid))      ->
+      out "set quantifier %a" pp_qident qid
   | P_query(q)                      ->
      pp_p_query oc q
 

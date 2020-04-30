@@ -184,6 +184,7 @@ let _proof_      = KW.create "proof"
 let _proofterm_  = KW.create "proofterm"
 let _protected_  = KW.create "protected"
 let _qed_        = KW.create "qed"
+let _quantifier_ = KW.create "quantifier"
 let _refine_     = KW.create "refine"
 let _refl_       = KW.create "reflexivity"
 let _require_    = KW.create "require"
@@ -564,6 +565,8 @@ let parser config =
       sanity_check _loc_id id;
       Prefix.add declared_ids id id;
       P_config_ident(id)
+  | "quantifier" qid:qident ->
+      P_config_quant(qid)
 
 let parser statement =
   _theorem_ s:ident al:arg* ":" a:term _proof_ -> Pos.in_pos _loc (s,al,a)

@@ -180,6 +180,8 @@ type p_config =
   (** Defines (or redefines) a binary operator (e.g., ["+"] or ["×"]). *)
   | P_config_ident of string
   (** Defines a new, valid identifier (e.g., ["σ"], ["€"] or ["ℕ"]). *)
+  | P_config_quant of qident
+  (** Defines a quantifier symbol (e.g., ["∀"], ["∃"]). *)
 
 (** Parser-level representation of a single command. *)
 type p_statement = (ident * p_arg list * p_type) loc
@@ -317,6 +319,12 @@ let eq_p_config : p_config eq = fun c1 c2 ->
   match (c1, c2) with
   | (P_config_builtin(s1,q1), P_config_builtin(s2,q2)) ->
       s1 = s2 && eq_qident q1 q2
+  | (P_config_unop u1       , P_config_unop u2       ) ->
+      eq_unop u1 u2
+  | (P_config_binop b1      , P_config_binop b2      ) ->
+      eq_binop b1 b2
+  | (P_config_quant q1      , P_config_quant q2      ) ->
+      eq_qident q1 q2
   | (c1                     , c2                     ) ->
       c1 = c2
 

@@ -273,6 +273,10 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
         | P_config_ident(id)      ->
             Sign.add_ident ss.signature id;
             out 3 "(conf) declared identifier \"%s\"\n" id; ss
+        | P_config_quant(qid)     ->
+            let sym = find_sym ~prt:true ~prv:true false ss qid in
+            out 3 "(conf) %a quantifier\n" pp_symbol sym;
+            Sig_state.add_quant ss sym
       in
       (ss, None)
   | P_query(q)                 ->
