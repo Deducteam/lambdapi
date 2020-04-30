@@ -1,4 +1,4 @@
-Editing lambdapi source code with Emacs
+Editing lambdapi source code with Emacs [![MELPA][melpa-badge]][melpa-link]
 ---------------------------------------
 
 Lambdapi source code can be edited with the
@@ -148,3 +148,6 @@ To have everything configured using `use-package`, use
 (use-package lambdapi-mode
     :hook (paredit-mode rainbow-delimiters-mode-enable))
 ```
+
+[melpa-badge]: https://melpa.org/packages/lambdapi-mode-badge.svg
+[melpa-link]: https://melpa.org/#/lambdapi-mode
