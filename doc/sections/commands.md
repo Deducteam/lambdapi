@@ -391,5 +391,8 @@ rules and rewrite the problem to the right-hand side of the matched  rule.
 For instance, given the unification rule
 ```
 set unif_rule Bool ≡ T $t ↪ $t ≡ bool
+set unif_rule $x + $y ≡ 0 ↪ $x ≡ 0, $y ≡ 0
 ```
 the unification problem `T ?x ≡ Bool` will be transformed into `?x ≡ bool`.
+Note that this feature is *experimental* and there is no sanity check
+performed on the rules.
