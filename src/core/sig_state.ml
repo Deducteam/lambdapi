@@ -53,10 +53,8 @@ type t = sig_state
 (** [create_sign path] creates a signature with pervasive modules as
     dependencies. *)
 let create_sign : Path.t -> Sign.t = fun sign_path ->
-  { sign_path; sign_symbols = ref StrMap.empty
-  ; sign_deps = ref (PathMap.singleton Unif_rule.path [])
-  ; sign_builtins = ref StrMap.empty; sign_unops = ref StrMap.empty
-  ; sign_binops = ref StrMap.empty; sign_idents = ref StrSet.empty }
+  let d = Sign.dummy () in
+  { d with sign_path ; sign_deps = ref (PathMap.singleton Unif_rule.path []) }
 
 (** [remove_pp_hint map name pp_hints] removes from [pp_hints] the mapping for
    [s] if [s] is mapped to [name] in [map]. *)
@@ -204,7 +202,7 @@ let of_sign : Sign.t -> sig_state = fun sign ->
   in
   open_sign empty Unif_rule.sign
 
-(** [empty] state. *)
+(** State made from the empty signature. *)
 let empty : sig_state = of_sign (create_sign [])
 
 (** [find_sym ~prt ~prv b st qid] returns the symbol

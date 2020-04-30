@@ -24,8 +24,9 @@ type t =
    list. This association list then maps definable symbols of the external
    module to additional reduction rules defined in the current signature. *)
 
-(** The empty signature. *)
-let dummy : t =
+(** The empty signature. It's a thunk to force the creation of a new record on
+    each call (and avoid unwanted sharing). *)
+let dummy : unit -> t = fun () ->
   { sign_symbols = ref StrMap.empty; sign_path = []
   ; sign_deps = ref PathMap.empty; sign_builtins = ref StrMap.empty
   ; sign_unops = ref StrMap.empty; sign_binops = ref StrMap.empty

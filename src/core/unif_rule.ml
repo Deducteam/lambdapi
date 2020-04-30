@@ -16,7 +16,8 @@ let path = Path.ghost "unif_rule"
     signature is an automatic dependency of all other signatures, is
     automatically loaded and automatically opened. *)
 let sign : Sign.t =
-  let s = {Sign.dummy with Sign.sign_path = path} in
+  let dummy = Sign.dummy () in
+  let s = {dummy with Sign.sign_path = path} in
   Sign.loaded := Files.PathMap.add path s !(Sign.loaded);
   s
 
