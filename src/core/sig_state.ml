@@ -50,7 +50,7 @@ type sig_state =
 
 type t = sig_state
 
-(** [create_sign path] creates a signature with pervasive modules as
+(** [create_sign path] creates a signature with ghost modules as
     dependencies. *)
 let create_sign : Path.t -> Sign.t = fun sign_path ->
   let d = Sign.dummy () in
@@ -192,18 +192,20 @@ let open_sign : sig_state -> Sign.t -> sig_state = fun ss sign ->
   in
   {ss with in_scope; builtins; unops; binops; pp_hints}
 
+(** Dummy [sig_state] made from the dummy signature. *)
+let dummy : sig_state =
+  { signature = Sign.dummy (); in_scope = StrMap.empty; aliases = StrMap.empty
+  ; path_map = PathMap.empty; builtins = StrMap.empty; unops = StrMap.empty
+  ; binops = StrMap.empty; pp_hints = SymMap.empty }
+
 (** [of_sign sign] creates a state from the signature [sign] with ghost
     signatures opened. *)
 let of_sign : Sign.t -> sig_state = fun sign ->
-  let empty =
-    { signature = sign; in_scope = StrMap.empty; aliases = StrMap.empty
-    ; path_map = PathMap.empty; builtins = StrMap.empty; unops = StrMap.empty
-    ; binops = StrMap.empty; pp_hints = SymMap.empty }
-  in
-  open_sign empty Unif_rule.sign
+  open_sign {dummy with signature = sign} Unif_rule.sign
 
-(** State made from the empty signature. *)
-let empty : sig_state = of_sign (create_sign [])
+(** Dummy state made from the empty signature but with ghost modules
+    opened. *)
+let dummy : sig_state = of_sign (create_sign [])
 
 (** [find_sym ~prt ~prv b st qid] returns the symbol
     corresponding to the qualified identifier [qid]. If [fst qid.elt] is
