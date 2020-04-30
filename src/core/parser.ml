@@ -174,6 +174,7 @@ let _constant_   = KW.create "constant"
 let _definition_ = KW.create "definition"
 let _focus_      = KW.create "focus"
 let _in_         = KW.create "in"
+(* let _inductive_  = KW.create "inductive"  @Moi *)
 let _injective_  = KW.create "injective"
 let _intro_      = KW.create "assume"
 let _let_        = KW.create "let"
@@ -624,6 +625,10 @@ let parser cmd =
       -> P_rules(r::rs)
   | e:exposition? _definition_ s:ident al:arg* ao:{":" term}? "≔" t:term
       -> P_definition(Option.get Terms.Public e,false,s,al,ao,t)
+  (*| e:exposition? _inductive_ i:ident s:":" sort}? "≔"     @Moi
+                   "|"? ifirst:ident al:arg* ":" term
+               c:{ "|"       _:ident al:arg* ":" term }*
+      -> P_inductive*)
   | e:exposition? st:statement (ts,pe):proof
       -> P_theorem(Option.get Terms.Public e,st,ts,pe)
   | _set_ c:config
