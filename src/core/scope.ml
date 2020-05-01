@@ -310,9 +310,9 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
         fatal t.pos "Pattern variables are only allowed in rewriting rules."
     | (P_Appl(_,_)     , _                  ) ->
         assert false (* Unreachable. *)
-    | (P_Impl(_,_)     , M_LHS(_)           ) ->
-        (* FIXME: should be allowed for hints *)
-        fatal t.pos "Implications are not allowed in a LHS."
+    (* | (P_Impl(_,_)     , M_LHS(_)           ) ->
+     *     (\* FIXME: should be allowed for hints *\)
+     *     fatal t.pos "Implications are not allowed in a LHS." *)
     | (P_Impl(_,_)     , M_Patt             ) ->
         fatal t.pos "Implications are not allowed in a pattern."
     | (P_Impl(a,b)     , _                  ) ->

@@ -65,6 +65,8 @@ let try_rules : ctxt -> term -> term -> constr list option = fun ctx s t ->
   let exception No_match in
   let open Unif_rule in
   try
+    let s = Unif_rule.prod_obj s in
+    let t = Unif_rule.prod_obj t in
     let rhs =
       match Eval.tree_walk !(equiv.sym_tree) ctx [s;t] with
       | Some(r,[]) -> r
@@ -75,7 +77,8 @@ let try_rules : ctxt -> term -> term -> constr list option = fun ctx s t ->
       | Some(_)    -> assert false (* Everything should be matched *)
       | None       -> raise No_match
     in
-    let subpbs = List.map (fun (t,u) -> (ctx,t,u)) (unpack rhs) in
+    let f (t, u) = Unif_rule.(ctx, prod_unobj t, prod_unobj u) in
+    let subpbs = List.map f (unpack rhs) in
     let pp_subpbs = List.pp pp_constr ", " in
     if !log_enabled then log_unif (gre "try rule [%a]") pp_subpbs subpbs;
     Some(subpbs)

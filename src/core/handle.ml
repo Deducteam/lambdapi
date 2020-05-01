@@ -276,9 +276,10 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
         | P_config_unif_rule(h)   ->
             (* Approximately same processing as rules without SR checking. *)
             let pur = (scope_rule ss h).elt in
+            let rhs = Bindlib.(unbox (bind_mvar pur.pr_vars pur.pr_rhs)) in
+            let lhs = List.map Unif_rule.prod_obj pur.pr_lhs in
             let urule =
-              { lhs = pur.pr_lhs
-              ; rhs = Bindlib.unbox (Bindlib.bind_mvar pur.pr_vars pur.pr_rhs)
+              { lhs ; rhs
               ; arity = List.length pur.pr_lhs
               ; arities = pur.pr_arities
               ; vars = pur.pr_vars }

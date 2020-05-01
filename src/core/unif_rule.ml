@@ -45,7 +45,7 @@ let comma : sym =
   sym
 
 (** [unpack eqs] transforms a term of the form [t =? u, v =? w, ...]
-    into a list [[t =? u; v =? w; ...]]. *)
+    into a list [[...; v =? w; t =? u]]. *)
 let rec unpack : term -> (term * term) list = fun eqs ->
   match Basics.get_args eqs with
   | (Symb(s), [v; w]) ->
@@ -56,6 +56,9 @@ let rec unpack : term -> (term * term) list = fun eqs ->
       else if s == equiv then [(v, w)] else
       assert false (* Ill-formed term. *)
   | _                 -> assert false (* Ill-formed term. *)
+
+(* TODO: clean *)
+let unpack eqs = List.rev (unpack eqs)
 
 (** [p_unpack eqs] is [unpack eqs] on syntax-level equivalences [eqs]. *)
 let rec p_unpack : p_term -> (p_term * p_term) list = fun eqs ->
@@ -71,3 +74,26 @@ let rec p_unpack : p_term -> (p_term * p_term) list = fun eqs ->
       else if id s = "#equiv" then [(v, w)] else
       assert false (* Ill-formed term. *)
   | _                               -> assert false (* Ill-formed term. *)
+
+let p_unpack eqs = List.rev (p_unpack eqs)
+
+let prod : sym =
+  Sign.add_symbol sign Public Defin (Pos.none "#prod") Kind []
+
+let rec prod_obj : term -> term = fun t ->
+  match unfold t with
+  | Prod(a,b)         ->
+      let (x, b) = Bindlib.unbind b in
+      let b = lift (prod_obj b) in
+      let b = Bindlib.unbox (Bindlib.bind_var x b) in
+      Appl(Symb(prod), Abst(prod_obj a,b))
+  | _                 -> t
+
+let rec prod_unobj : term -> term = fun t ->
+  match unfold t with
+  | Appl(Symb(s), Abst(a,b)) when s == prod ->
+      let (x, b) = Bindlib.unbind b in
+      let b = lift (prod_unobj b) in
+      let b = Bindlib.unbox (Bindlib.bind_var x b) in
+      Prod(prod_unobj a, b)
+  | _                                       -> t
