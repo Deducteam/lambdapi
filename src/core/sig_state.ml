@@ -200,8 +200,8 @@ let dummy : sig_state =
 
 (** [of_sign sign] creates a state from the signature [sign] with ghost
     signatures opened. *)
-let of_sign : Sign.t -> sig_state = fun sign ->
-  open_sign {dummy with signature = sign} Unif_rule.sign
+let of_sign : Sign.t -> sig_state = fun signature ->
+  open_sign {dummy with signature} Unif_rule.sign
 
 (** Dummy state made from the empty signature but with ghost modules
     opened. *)
