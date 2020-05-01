@@ -64,7 +64,7 @@ let initial_state : file_path -> state = fun fname ->
   Package.apply_config fname;
   let mp = Files.file_to_module fname in
   Sign.loading := [mp];
-  let sign = Sign.create mp in
+  let sign = Sig_state.create_sign mp in
   Sign.loaded  := PathMap.add mp sign !Sign.loaded;
   (Time.save (), Sig_state.of_sign sign)
 

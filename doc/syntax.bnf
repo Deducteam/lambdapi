@@ -190,6 +190,7 @@ reserved "why3"
   | "assert" arg* "⊢" <assertion>
   | "assertnot" arg* "⊢" <assertion>
   // Set option
+  | "set" "unif_rule" <patt> "≡" <patt> "↪" <term> "≡" <term> {"," <term> "≡" <term>}*
   | "set" "verbose" RE("[1-9][0-9]*")
   | "set" "debug" RE("[-+][a-zA-Z]+")
   | "set" "builtin" \"<builtin>\" "≔" <qident>

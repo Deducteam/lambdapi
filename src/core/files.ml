@@ -41,6 +41,10 @@ module Path =
         done
       in
       List.iter valid_path_member mod_path
+
+    (** [ghost s] creates a special module path for module of name [s]. Ghost
+        modules cannot be handled by the user. *)
+    let ghost : string -> t = fun s -> [""; s]
   end
 
 (** Functional maps with module paths as keys. *)

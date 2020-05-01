@@ -50,15 +50,11 @@ type sig_state =
 
 type t = sig_state
 
-(** [init_with sign] creates a state from the signature [sign] with no symbols
-   in scope, module aliases, builtins or printing hints. *)
-let of_sign : Sign.t -> sig_state = fun sign ->
-  { signature = sign ; in_scope  = StrMap.empty ; aliases = StrMap.empty
-  ; path_map = PathMap.empty ; builtins  = StrMap.empty
-  ; unops = StrMap.empty ; binops = StrMap.empty ; pp_hints = SymMap.empty }
-
-(** [empty] state. *)
-let empty = of_sign (Sign.create [])
+(** [create_sign path] creates a signature with path [path] with ghost modules
+    as dependencies. *)
+let create_sign : Path.t -> Sign.t = fun sign_path ->
+  let d = Sign.dummy () in
+  { d with sign_path ; sign_deps = ref (PathMap.singleton Unif_rule.path []) }
 
 (** [remove_pp_hint map name pp_hints] removes from [pp_hints] the mapping for
    [s] if [s] is mapped to [name] in [map]. *)
@@ -195,6 +191,17 @@ let open_sign : sig_state -> Sign.t -> sig_state = fun ss sign ->
     update_pp_hints_from_builtins ss.builtins !(sign.sign_builtins) pp_hints
   in
   {ss with in_scope; builtins; unops; binops; pp_hints}
+
+(** Dummy [sig_state] made from the dummy signature. *)
+let dummy : sig_state =
+  { signature = Sign.dummy (); in_scope = StrMap.empty; aliases = StrMap.empty
+  ; path_map = PathMap.empty; builtins = StrMap.empty; unops = StrMap.empty
+  ; binops = StrMap.empty; pp_hints = SymMap.empty }
+
+(** [of_sign sign] creates a state from the signature [sign] with ghost
+    signatures opened. *)
+let of_sign : Sign.t -> sig_state = fun signature ->
+  open_sign {dummy with signature} Unif_rule.sign
 
 (** [find_sym ~prt ~prv b st qid] returns the symbol
     corresponding to the qualified identifier [qid]. If [fst qid.elt] is

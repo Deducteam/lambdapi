@@ -383,3 +383,16 @@ set builtin "eq"    ≔ eq    // : Π {a}, T a → T a → Prop
 set builtin "refl"  ≔ refl  // : Π {a} (x:T a), P (x=x)
 set builtin "eqind" ≔ eqind // : Π {a} x y, P (x = y) → Π (p:T a→Prop), P (p y) → P (p x)
 ```
+
+**unification rules** The unification engine can be guided using 
+*unification rules*. Given a unification problem `t ≡ u`, if the engine cannot
+find a solution, it will try to match the pattern `t ≡ u` against the defined
+rules and rewrite the problem to the right-hand side of the matched  rule.
+For instance, given the unification rule
+```
+set unif_rule Bool ≡ T $t ↪ $t ≡ bool
+set unif_rule $x + $y ≡ 0 ↪ $x ≡ 0, $y ≡ 0
+```
+the unification problem `T ?x ≡ Bool` will be transformed into `?x ≡ bool`.
+Note that this feature is *experimental* and there is no sanity check
+performed on the rules.
