@@ -54,3 +54,18 @@ let rec unpack : term -> (term * term) list = fun eqs ->
       else if s == equiv then [(v, w)] else
       assert false (* Ill-formed term. *)
   | _                 -> assert false (* Ill-formed term. *)
+
+(** [p_unpack eqs] is [unpack eqs] on syntax-level equivalences [eqs]. *)
+let rec p_unpack : p_term -> (p_term * p_term) list = fun eqs ->
+  let id s = snd s.Pos.elt in
+  match Syntax.p_get_args eqs with
+  | ({elt=P_Iden(s, _); _}, [v; w]) ->
+      if id s = "#comma" then
+        match Syntax.p_get_args v with
+        | ({elt=P_Iden(e, _); _}, [t; u]) when id e = "#equiv" ->
+            (t, u) :: p_unpack w
+        | _                                                         ->
+            assert false (* Ill-formed term. *)
+      else if id s = "#equiv" then [(v, w)] else
+      assert false (* Ill-formed term. *)
+  | _                               -> assert false (* Ill-formed term. *)

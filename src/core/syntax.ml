@@ -76,6 +76,14 @@ and p_patt = p_term
     the argument is marked as implicit (i.e., between curly braces). *)
 and p_arg = ident option list * p_type option * bool
 
+(** [p_get_args t] is {!val:Basics.get_args} on syntax-level terms. *)
+let p_get_args : p_term -> p_term * p_term list = fun t ->
+  let rec p_get_args acc t =
+    match t.elt with
+    | P_Appl(t, u) -> p_get_args (u::acc) t
+    | _            -> (t, acc)
+  in p_get_args [] t
+
 (** Parser-level rewriting rule representation. *)
 type p_rule = (p_patt * p_term) loc
 
