@@ -277,6 +277,19 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
             let sym = find_sym ~prt:true ~prv:true false ss qid in
             out 3 "(conf) %a quantifier\n" pp_symbol sym;
             Sig_state.add_quant ss sym
+        | P_config_unif_rule(h)   ->
+            (* Approximately same processing as rules without SR checking. *)
+            let pur = (scope_rule ss h).elt in
+            let urule =
+              { lhs = pur.pr_lhs
+              ; rhs = Bindlib.unbox (Bindlib.bind_mvar pur.pr_vars pur.pr_rhs)
+              ; arity = List.length pur.pr_lhs
+              ; arities = pur.pr_arities
+              ; vars = pur.pr_vars }
+            in
+            Sign.add_rule ss.signature Unif_rule.equiv urule;
+            Tree.update_dtree Unif_rule.equiv;
+            out 3 "(hint) [%a]\n" Print.pp_rule (Unif_rule.equiv, urule); ss
       in
       (ss, None)
   | P_query(q)                 ->

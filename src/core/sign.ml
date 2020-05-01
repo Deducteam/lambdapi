@@ -25,12 +25,13 @@ type t =
    list. This association list then maps definable symbols of the external
    module to additional reduction rules defined in the current signature. *)
 
-(** [create path] creates an empty signature with module path [path]. *)
-let create : Path.t -> t = fun sign_path ->
-  { sign_path; sign_symbols = ref StrMap.empty; sign_deps = ref PathMap.empty
-  ; sign_builtins = ref StrMap.empty; sign_unops = ref StrMap.empty
-  ; sign_binops = ref StrMap.empty; sign_idents = ref StrSet.empty
-  ; sign_quants = ref SymSet.empty }
+(** The empty signature. It's a thunk to force the creation of a new record on
+    each call (and avoid unwanted sharing). *)
+let dummy : unit -> t = fun () ->
+  { sign_symbols = ref StrMap.empty; sign_path = []
+  ; sign_deps = ref PathMap.empty; sign_builtins = ref StrMap.empty
+  ; sign_unops = ref StrMap.empty; sign_binops = ref StrMap.empty
+  ; sign_idents = ref StrSet.empty; sign_quants = ref SymSet.empty }
 
 (** [find sign name] finds the symbol named [name] in [sign] if it exists, and
     raises the [Not_found] exception otherwise. *)

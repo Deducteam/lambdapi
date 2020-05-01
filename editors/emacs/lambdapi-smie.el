@@ -107,6 +107,8 @@ Indent by `lambdapi-indent-basic' in proofs, and 0 otherwise."
 
       (prfcontent (tactic)
                   (query))
+      (unif-rule-rhs (sterm "≡" sterm)
+                     (unif-rule-rhs "," unif-rule-rhs))
       (symdec ("symbol" args ":" sterm))
       (command ("injective" symdec)
                ("constant" symdec)
@@ -126,6 +128,7 @@ Indent by `lambdapi-indent-basic' in proofs, and 0 otherwise."
                ("open" ident)
                ("require" ident "as" ident)
 
+               ("set" "unif_rule" sterm "≡" sterm "↪" unif-rule-rhs)
                ("set" "builtin" ident "≔" ident)
                ("set" "prefix" ident "≔" ident)
                ("set" "infix" ident "≔" ident)

@@ -17,7 +17,7 @@ let log_prnt = new_logger 'p' "prnt" "pretty-printing"
 let log_prnt = log_prnt.logger
 
 (** Current signature state. *)
-let sig_state : sig_state ref = ref Sig_state.empty
+let sig_state : sig_state ref = ref Sig_state.dummy
 
 (** Flag controling the printing of the domains of λ-abstractions. *)
 let print_domains : bool ref = Console.register_flag "print_domains" false
