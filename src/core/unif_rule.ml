@@ -12,9 +12,11 @@ open Syntax
 (** Path of the module. *)
 let path = Path.ghost "unif_rule"
 
-(** Ghost signature holding the symbols used in unification rules. This
-    signature is an automatic dependency of all other signatures, is
-    automatically loaded and automatically opened. *)
+(** Ghost signature holding the symbols used in unification rules.
+    - All signatures depend on it (dependency set in
+      {!val:Sig_state.create_sign}).
+    - All signatures open it (opened in {!val:Sig_state.of_sign}).
+    - It is automatically loaded. *)
 let sign : Sign.t =
   let dummy = Sign.dummy () in
   let s = {dummy with Sign.sign_path = path} in
