@@ -123,10 +123,10 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
           Hashtbl.add data.m_lhs_indices name i;
           Hashtbl.add data.m_lhs_names i name; i
         in
-        _Patt (Some(i)) (Printf.sprintf "%i_%s" i name) env
+        _Patt (Some(i)) (Printf.sprintf "v%i_%s" i name) env
     | None       ->
         let i = fresh_index () in
-        _Patt (Some(i)) (Printf.sprintf "%i" i) env
+        _Patt (Some(i)) (Printf.sprintf "v%i" i) env
   in
   (* Toplevel scoping function, with handling of implicit arguments. *)
   let rec scope : env -> p_term -> tbox = fun env t ->
