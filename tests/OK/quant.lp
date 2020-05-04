@@ -22,6 +22,8 @@ set quantifier ∀
 
 compute ∀ (λx,⊤) // should print ∀x,⊤
 
+compute ∀x,⊤ // should print ∀x,⊤
+
 set flag "print_implicits" on
 
 compute ∀ (λx,⊤) // should print ∀x:?5,T

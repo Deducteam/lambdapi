@@ -345,10 +345,14 @@ let parser property =
   | _constant_  -> Terms.Const
   | _injective_ -> Terms.Injec
 
-(** [exposition] parses the exposition tag of a symbol.*)
+(** [exposition] parses the exposition tag of a symbol. *)
 let parser exposition =
   | _protected_ -> Terms.Protec
   | _private_   -> Terms.Privat
+
+(** [term_ident] parses a qualified identifier and returns a p_term. *)
+let parser term_ident =
+  | expl:{"@" -> true}?[false] qid:qident -> in_pos _loc (P_Iden(qid, expl))
 
 (** Priority level for an expression (term or type). *)
 type prio = PAtom | PAppl | PUnaO | PBinO | PFunc
@@ -399,6 +403,9 @@ let parser term @(p : prio) =
   (* Natural number literal. *)
   | n:nat_lit
       when p >= PAtom -> in_pos _loc (P_NLit(n))
+  (* Quantifier. *)
+  | q:term_ident t:abstraction
+       when p >= PFunc -> in_pos _loc (P_Appl(q,t))
   (* Unary operator. *)
   | u:unop t:(term PUnaO)
       when p >= PUnaO ->
@@ -448,6 +455,11 @@ let parser term @(p : prio) =
    satifies the conditions, and reject it early if it does not.  We then parse
    the right operand in a second step, and also check whether it satisfies the
    required condition before accepting the parse tree. *)
+
+(** [abstraction] is a parser for abstractions not prefixed by λ. *)
+and parser abstraction =
+  | id:ident "," a:{":" (term PFunc)}? t:(term PFunc) ->
+      in_pos _loc (P_Abst([[Some(id)],a,false],t))
 
 (** [env] is a parser for a metavariable environment. *)
 and parser env = "[" t:(term PBinO) ts:{"," (term PBinO)}* "]" -> t::ts
