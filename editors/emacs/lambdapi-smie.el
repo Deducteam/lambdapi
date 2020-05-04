@@ -108,7 +108,7 @@ Indent by `lambdapi-indent-basic' in proofs, and 0 otherwise."
       (prfcontent (tactic)
                   (query))
       (unif-rule-rhs (sterm "≡" sterm)
-                     (unif-rule-rhs "," unif-rule-rhs))
+                     (unif-rule-rhs "," sterm "≡" sterm))
       (symdec ("symbol" args ":" sterm))
       (command ("injective" symdec)
                ("constant" symdec)
@@ -135,7 +135,7 @@ Indent by `lambdapi-indent-basic' in proofs, and 0 otherwise."
                ("set" "infix" "left" ident "≔" ident)
                ("set" "infix" "right" ident "≔" ident)
                ("set" "declared" ident)))
-    '((assoc ",") (assoc "in") (assoc "→")))))
+    '((assoc "≡") (assoc ",") (assoc "in") (assoc "→")))))
 
 (defun lambdapi--smie-forward-token ()
   "Forward lexer for Dedukti3."
