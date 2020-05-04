@@ -182,9 +182,6 @@ let pp_p_tactic : p_tactic pp = fun oc t ->
   | P_tac_why3(Some(s))      -> out "why3 %s" s
   | P_tac_query(q)           -> pp_p_query oc q
 
-let pp_pair pp_a pp_b oc fmt (a,b) =
-  Format.fprintf oc fmt pp_a a pp_b b
-
 let pp_command : p_command pp = fun oc cmd ->
   let out fmt = Format.fprintf oc fmt in
   match cmd.elt with
@@ -210,13 +207,11 @@ let pp_command : p_command pp = fun oc cmd ->
       out " ≔@ @[<hov>%a@]@]" pp_p_term t
   | P_inductive(e,s,t,tl)   ->
       out "@[<hov 2>%ainductive %a" pp_expo e pp_ident s;
-      Option.iter (out " :@ @[<hov>%a@]" pp_p_term) t;
-      List.iter (pp_pair pp_ident pp_p_term oc (" ≔@ @[<hov>%a@] :@ @[<hov>%a@]")) tl
-      (*let (tl_ident, tl_term) = List.split tl in
-      List.iter2 (out " ≔@ @[<hov>%a@] :@ @[<hov>%a@]" pp_ident pp_p_term)
-        tl_ident tl_term *)
-  (*List.iter2 (out " ≔@ @[<hov>%a@] %a" pp_ident) tl_ident tl_term*)
-  (*List.iter (out " ≔@ @[<hov>%a@] :@ @[<hov>%a@]" pp_ident pp_p_term) tl *)
+      Option.iter (out " :@ @[<hov>%a@ ≔@]" pp_p_term) t;
+      let pp_pair pp_a pp_b oc fmt (a,b) =
+        Format.fprintf oc fmt pp_a a pp_b b in
+      List.iter (pp_pair pp_ident pp_p_term oc
+                   (" |@ @[<hov>%a@] :@ @[<hov>%a@]")) tl
   | P_theorem(e,st,ts,pe)           ->
       let (s,args,a) = st.elt in
       out "@[<hov 2>%atheorem %a" pp_expo e pp_ident s;

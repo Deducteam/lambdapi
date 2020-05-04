@@ -188,7 +188,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
       let ss = Sig_state.add_symbol ss e Defin x a impl d in
       (ss, None)
   | P_inductive(_, _, _, _) -> wrn cmd.pos "to be implemented";
-                               (Sig_state.empty ,None)
+                               (ss, None)
  (* P_inductive(e, s, t, tl) *)
   | P_theorem(e, stmt, ts, pe) ->
       let (x,xs,a) = stmt.elt in

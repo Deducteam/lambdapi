@@ -343,10 +343,9 @@ let eq_p_command : p_command eq = fun c1 c2 ->
   | (P_inductive(e1,s1,t1,tl1)   , P_inductive(e2,s2,t2,tl2)    ) ->
       e1 = e2 && eq_ident s1 s2 && Option.equal eq_p_term t1 t2
       &&
-        let (t1_ident, t1_term) = List.split tl1 in
-        let (t2_ident, t2_term) = List.split tl2 in
-        List.equal eq_ident t1_ident t2_ident &&
-          List.equal eq_p_term t1_term t2_term
+        let eq_pair eq_a eq_b (a1,b1) (a2, b2) =
+          eq_a a1 a2 && eq_b b1 b2 in
+        List.equal (eq_pair eq_ident eq_p_term) tl1 tl2
   | (P_theorem(ex1,st1,ts1,e1)   , P_theorem(ex2,st2,ts2,e2)   ) ->
       let (s1,l1,a1) = st1.elt in
       let (s2,l2,a2) = st2.elt in

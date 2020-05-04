@@ -629,7 +629,6 @@ let parser cmd =
                    "|"? ifirst:ident ":" tfirst:term
                  c:{ "|"  ilist :ident ":" tlist :term }*
       -> P_inductive(Option.get Terms.Public e, i, t,
-                     (*(ifirst, tfirst)::(List.combine c.ilist tlist))*)
                      (ifirst, tfirst)::c)
   | e:exposition? st:statement (ts,pe):proof
       -> P_theorem(Option.get Terms.Public e,st,ts,pe)
