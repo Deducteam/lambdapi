@@ -4,8 +4,4 @@ inductive nat : TYPE ≔
 
 inductive list ≔
  | nil  : list
- | cons : a → list → list
-
-symbol nat : TYPE
-
-definition test (x:nat) ≔ x
+ | cons : nat → list → list
