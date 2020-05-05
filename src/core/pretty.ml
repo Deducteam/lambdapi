@@ -207,11 +207,11 @@ let pp_command : p_command pp = fun oc cmd ->
       out " ≔@ @[<hov>%a@]@]" pp_p_term t
   | P_inductive(e,s,t,tl)   ->
       out "@[<hov 2>%ainductive %a" pp_expo e pp_ident s;
-      Option.iter (out " :@ @[<hov>%a@ ≔@]" pp_p_term) t;
+      Option.iter (out " :@ @[<hov>%a@] ≔@ " pp_p_term) t;
       let pp_pair pp_a pp_b oc fmt (a,b) =
         Format.fprintf oc fmt pp_a a pp_b b in
       List.iter (pp_pair pp_ident pp_p_term oc
-                   (" |@ @[<hov>%a@] :@ @[<hov>%a@]")) tl
+                   ("\n |@ @[<hov>%a@] :@ @[<hov>%a@]")) tl
   | P_theorem(e,st,ts,pe)           ->
       let (s,args,a) = st.elt in
       out "@[<hov 2>%atheorem %a" pp_expo e pp_ident s;

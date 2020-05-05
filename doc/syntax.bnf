@@ -133,7 +133,7 @@ reserved "why3"
   | "focus" <nat_lit>
   | "print"
   | "proofterm"
-  | "why3" <string_lit>?
+  | "why3" <string_lit>?
 
 // Assertion predicate
 <assertion> ::=
