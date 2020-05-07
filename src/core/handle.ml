@@ -11,6 +11,7 @@ open Syntax
 open Sig_state
 open Scope
 open Print
+open Inductive
 
 (** Logging function for command handling. *)
 let log_hndl = new_logger 'h' "hndl" "command handling"
@@ -89,19 +90,20 @@ let handle_require_as : popt -> sig_state -> Path.t -> ident -> sig_state =
     This structure contains the list of the tactics to be executed, as well as
     the initial state of the proof.  The checking of the proof is then handled
     separately. Note that [Fatal] is raised in case of an error. *)
-let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
+let rec handle_cmd : sig_state -> p_command
+                     -> sig_state * proof_data option * inductive option =
   fun ss cmd ->
   let scope_basic exp = Scope.scope_term exp ss Env.empty in
   match cmd.elt with
   | P_require(b,ps)            ->
      let ps = List.map (List.map fst) ps in
-     (List.fold_left (handle_require b cmd.pos) ss ps, None)
+     (List.fold_left (handle_require b cmd.pos) ss ps, None, None)
   | P_require_as(p,id)         ->
      let id = Pos.make id.pos (fst id.elt) in
-     (handle_require_as cmd.pos ss (List.map fst p) id, None)
+     (handle_require_as cmd.pos ss (List.map fst p) id, None, None)
   | P_open(ps)                  ->
      let ps = List.map (List.map fst) ps in
-     (List.fold_left (handle_open cmd.pos) ss ps, None)
+     (List.fold_left (handle_open cmd.pos) ss ps, None, None)
   | P_symbol(e, p, x, xs, a) ->
       (* We check that [x] is not already used. *)
       if Sign.mem ss.signature x.elt then
@@ -122,7 +124,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
         end;
       (* Actually add the symbol to the signature and the state. *)
       out 3 "(symb) %s : %a\n" x.elt pp_term a;
-      (Sig_state.add_symbol ss e p x a impl None, None)
+      (Sig_state.add_symbol ss e p x a impl None, None, None)
   | P_rules(rs)                ->
       (* Scoping and checking each rule in turn. *)
       let handle_rule r =
@@ -142,7 +144,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
       List.iter add_rule rs;
       let syms = List.remove_phys_dups (List.map (fun (s, _) -> s) rs) in
       List.iter Tree.update_dtree syms;
-      (ss, None)
+      (ss, None, None)
   | P_definition(e,op,x,xs,ao,t) ->
       (* We check that [x] is not already used. *)
       if Sign.mem ss.signature x.elt then
@@ -186,10 +188,48 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
       out 3 "(symb) %s ≔ %a\n" x.elt pp_term t;
       let d = if op then None else Some(t) in
       let ss = Sig_state.add_symbol ss e Defin x a impl d in
-      (ss, None)
-  | P_inductive(_, _, _, _) -> wrn cmd.pos "to be implemented";
-                               (ss, None)
- (* P_inductive(e, s, t, tl) *)
+      (ss, None, None)
+  | P_inductive(e, s, t, tl) ->
+      (* Obtaining of the global type *)
+      let type_symbol_head = match t with
+        | None -> { elt = P_Type ; pos = None }
+        | Some a -> a
+      in
+      (* Add the first symbol in the signature *)
+      let (ss, _, _) = handle_cmd ss
+                      ({elt = P_symbol(e, Defin, s, [], type_symbol_head);
+                        pos = cmd.pos})
+      in
+      let create_symbol : string -> term -> term option -> sym  =
+        fun s t def ->
+        { sym_name = s ; sym_type = ref t ;
+          sym_path = file_to_module (current_path ());
+          sym_def = ref def ; sym_impl  = [] ; sym_rules = ref [];
+          sym_tree  = ref Tree_types.empty_dtree ;
+          sym_prop = Injec ; sym_expo = e }
+      in
+      (* Add recursively each constructor in signature
+         and create the sym list                    *)
+      let rec add_constructor : sig_state -> sym list -> (ident * p_term) list
+                                -> sig_state * sym list =
+        fun ss_cur syml l -> match l with
+                   | [] -> (ss_cur, syml)
+                   | (ident, pterm)::q ->
+                       let (ss_new, _, _) =
+                         handle_cmd ss_cur
+                           ({elt = P_symbol(e, Injec, ident, [], pterm);
+                             pos = cmd.pos})
+                       in
+                       let term = scope_term e ss_cur Env.empty pterm in
+                       (*empty env ?*)
+                       let sym_new = create_symbol (ident.elt) term None in
+                       add_constructor ss_new ((sym_new)::syml) q
+      in
+      let (signature, rules) = add_constructor ss [] tl in
+      let record = { name = s ; sort = type_symbol_head ; rule = rules ;
+                     _ind = None ; _rec = None ; _rect = None ; _inv = None }
+      in
+      (signature, None, Some record)
   | P_theorem(e, stmt, ts, pe) ->
       let (x,xs,a) = stmt.elt in
       (* We check that [x] is not already used. *)
@@ -242,7 +282,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
         { pdata_stmt_pos = stmt.pos ; pdata_p_state = st ; pdata_tactics = ts
         ; pdata_finalize = finalize ; pdata_term_pos = pe.pos }
       in
-      (ss, Some(data))
+      (ss, Some(data), None)
   | P_set(cfg)                 ->
       let ss =
         let with_path : Path.t -> qident -> qident = fun path qid ->
@@ -277,9 +317,9 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
             Sign.add_ident ss.signature id;
             out 3 "(conf) declared identifier \"%s\"\n" id; ss
       in
-      (ss, None)
+      (ss, None, None)
   | P_query(q)                 ->
-      Queries.handle_query ss None q; (ss, None)
+      Queries.handle_query ss None q; (ss, None, None)
 
 (** [too_long] indicates the duration after which a warning should be given to
     indicate commands that take too long to execute. *)
@@ -289,7 +329,8 @@ let too_long = Stdlib.ref infinity
     exception handling. In particular, the position of [cmd] is used on errors
     that lack a specific position. All exceptions except [Timeout] and [Fatal]
     are captured, although they should not occur. *)
-let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
+let handle_cmd : sig_state -> p_command
+                 -> sig_state * proof_data option * inductive option =
   fun ss cmd ->
   Print.sig_state := ss;
   try

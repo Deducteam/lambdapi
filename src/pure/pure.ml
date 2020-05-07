@@ -72,7 +72,7 @@ let handle_command : state -> Command.t -> command_result =
     fun (st,ss) cmd ->
   Time.restore st;
   try
-    let (ss, pst) = Handle.handle_cmd ss cmd in
+    let (ss, pst, _) = Handle.handle_cmd ss cmd in (* @TODO *)
     let t = Time.save () in
     match pst with
     | None       -> Cmd_OK(t, ss)
