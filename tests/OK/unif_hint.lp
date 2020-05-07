@@ -46,5 +46,7 @@ compute H (plus _ _) iz
 // The arrow problem
 symbol arrow : U → U → U
 rule T (arrow $t $u) ↪ T $t → T $u
-// hint (T $a → T $b) ≡ T (arrow $c $d) ↪ $a ≡ $c, $b ≡ $d
+set unif_rule $a → $b ≡ T $c ↪ $a ≡ T ?aa, $b ≡ T ?bb, $c ≡ arrow ?aa ?bb
 // FIXME: implications not allowed in LHS (scoping level)
+symbol eq (t: U): T t → T t → Bool
+compute eq _ (λ_: T _, z) (λ_: T _, z)

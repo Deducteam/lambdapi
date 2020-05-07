@@ -313,6 +313,7 @@ module CM = struct
     | Patt(_) -> false
     | Vari(_)
     | Abst(_)
+    | Prod(_)
     | Symb(_) -> true
     | _       -> assert false
 
@@ -538,6 +539,7 @@ module CM = struct
           let arity = List.length pargs in
           let e = Array.make arity (Patt(None, "", [||])) in
           Some({ r with c_lhs = insert e })
+      | _      , Prod(_)
       | _      , Abst(_) -> None
       | _      , _       -> assert false
     in
@@ -562,37 +564,55 @@ module CM = struct
               (Array.drop (col + 1) r.c_lhs)
           in
           Some({r with c_lhs})
+      | Prod(_)
       | Symb(_) | Abst(_)
       | Vari(_) | Appl(_) -> None
       | _ -> assert false in
     (pos, List.filter_map transf cls)
 
-  (** [abstract col v pos cls] selects and transforms clauses [cls] assuming
-      that terms in column [col] match an abstraction.  The term under the
-      abstraction has its bound variable substituted by [v]; [pos] is the
-      position of terms in clauses [cl]. *)
-  let abstract : int -> tvar -> arg list -> clause list ->
-    arg list * clause list = fun col v pos cls ->
+  (** [binder get col v pos cls] selects and transforms clauses [cls] assuming
+      that each  term [t] in  column [col]  is a binder  such that [get  t] is
+      [Some(b)]. The term under the  binder has its bound variable substituted
+      by [v]; [pos] is the position of terms in clause [cls]. *)
+  let binder : (term -> tbinder option) -> int -> tvar -> arg list ->
+    clause list -> arg list * clause list = fun get col v pos cls ->
     let (l, {arg_path; arg_rank}, r) = List.destruct pos col in
     let a = {arg_path = 0 :: arg_path; arg_rank = arg_rank + 1} in
     let pos = List.rev_append l (a :: r) in
-    let insert r e = [ Array.sub r.c_lhs 0 col
-                     ; [| e |]
-                     ; Array.drop (col + 1) r.c_lhs ]
+    let insert r e =
+      Array.concat [ Array.sub r.c_lhs 0 col; [| e |]
+                   ; Array.drop (col + 1) r.c_lhs ]
     in
     let transf (r:clause) =
       let ph, pargs = get_args r.c_lhs.(col) in
       match ph with
-      | Abst(_, b)     ->
-          assert (pargs = []) ; (* Patterns in β-normal form *)
-          let b = Bindlib.subst b (mkfree v) in
-          Some({r with c_lhs = Array.concat (insert r b)})
-      | Patt(_) as pat -> Some({r with c_lhs = Array.concat (insert r pat)})
+      | Patt(_) as pat -> Some({r with c_lhs = insert r pat})
       | Symb(_)
       | Vari(_)        -> None
-      | _                    -> assert false
+      | t              ->
+      match get t with
+      | Some(b) ->
+          assert (pargs = []) ; (* Patterns in β-normal form *)
+          let b = Bindlib.subst b (mkfree v) in
+          Some({r with c_lhs = insert r b})
+      | None    -> assert false (* Term is ill formed *)
+
     in
     (pos, List.filter_map transf cls)
+
+  (** [abstract col  v pos cls] selects and transforms  clauses [cls] assuming
+      that terms  in column  [col] match  an abstraction.  The term  under the
+      abstraction  has its  bound variable  substituted by  [v]; [pos]  is the
+      position of terms in clauses [cl]. *)
+  let abstract : int -> tvar -> arg list -> clause list ->
+    arg list * clause list =
+    binder (function Abst(_,b) -> Some(b) | _ -> None)
+
+  (** [product col v pos cls] is like [abstract col v pos cls] for
+      products. *)
+  let product : int -> tvar -> arg list -> clause list ->
+    arg list * clause list =
+    binder (function Prod(_, b) -> Some(b) | _ -> None)
 
   (** [cond_ok cond cls] updates the clause list [cls] assuming that condition
       [cond] is satisfied. *)
@@ -621,7 +641,7 @@ let harvest : term array -> rhs -> CM.env_builder -> int VarMap.t -> int ->
   tree = fun lhs rhs env_builder vi slot ->
   let default_node store child =
     Node { swap = 0 ; store ; children = TCMap.empty
-         ; abstraction = None ; default = Some(child) }
+         ; abstraction = None ; product = None ; default = Some(child) }
   in
   let rec loop lhs env_builder slot =
     match lhs with
@@ -657,6 +677,14 @@ let harvest : term array -> rhs -> CM.env_builder -> int VarMap.t -> int ->
     {!field:CM.store}.  The instructions to copy adequately terms from [vars]
     to the RHS are in an environment builder (of type
     {!type:CM.env_builder}). *)
+
+(** [is_abst t] returns [true] iff [t] is of the form [Abst(_)]. *)
+let is_abst : term -> bool = fun t ->
+  match t with Abst(_) -> true | _ -> false
+
+(** [is_prod t] returns [true] iff [t] is of the form [Prod(_)]. *)
+let is_prod : term -> bool = fun t ->
+  match t with Prod(_) -> true | _ -> false
 
 (** [compile m] translates the pattern matching problem encoded by the matrix
     [m] into a decision tree. *)
@@ -706,19 +734,19 @@ let compile : CM.t -> tree = fun m ->
         let ncm = CM.{clauses; slot; positions} in
         if CM.is_empty ncm then None else Some(compile_cv ncm)
       in
-      (* Abstraction specialisation*)
-      let abstraction =
-        let is_abst = function Abst(_) -> true | _ -> false in
-        if List.for_all (fun x -> not (is_abst x)) column then None else
+      let binder recon mat_transf =
+        if List.for_all (fun x -> not (recon x)) column then None else
         let var = Bindlib.new_var mkfree "var" in
         let vars_id = VarMap.add var count vars_id in
-        let (positions, clauses) = CM.abstract swap var positions updated in
+        let (positions, clauses) = mat_transf swap var positions updated in
         let next =
           compile (count + 1) vars_id CM.{clauses; slot; positions}
         in
         Some(count, next)
       in
-      Node({swap ; store ; children ; abstraction ; default})
+      let abstraction = binder is_abst CM.abstract in
+      let product = binder is_prod CM.product in
+      Node({swap ; store ; children ; abstraction ; default; product})
   in
   compile 0 VarMap.empty m
 

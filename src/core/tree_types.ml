@@ -90,6 +90,7 @@ type 'rhs tree =
       (** Subtrees representing the matching of available constructors. *)
       ; abstraction : (int * 'rhs tree) option
       (** Specialisation by an abstraction with the involved free variable. *)
+      ; product : (int * 'rhs tree) option
       ; default : 'rhs tree option
       (** When the available patterns contain a wildcard, this subtree is used
           as a last resort (if none of the {!field:children} match). *) }
@@ -110,11 +111,13 @@ let rec tree_capacity : 'r tree -> int = fun tr ->
   | Leaf(_,_)  | Fail   -> 0
   | Eos(l,r)            -> max (tree_capacity l) (tree_capacity r)
   | Cond({ok; fail; _}) -> max (tree_capacity ok) (tree_capacity fail)
-  | Node({store; children=ch; abstraction=abs; default; _}) ->
+  | Node({store; children=ch; abstraction=abs; default;
+          product=prod; _}) ->
       let c_ch = TCMap.fold (fun _ t m -> max m (tree_capacity t)) ch 0 in
       let c_default = Option.map_default tree_capacity 0 default in
       let c_abs = Option.map_default (fun (_,t) -> tree_capacity t) 0 abs in
-      let c = max c_ch (max c_default c_abs) in
+      let c_prod = Option.map_default (fun (_,t) -> tree_capacity t) 0 prod in
+      let c = List.max [c_ch; c_default; c_abs; c_prod] in
       if store then c + 1 else c
 
 (** A tree with its capacity and as lazy structures.  For the definition of
