@@ -42,13 +42,13 @@ let pp_assoc : assoc pp = fun oc assoc ->
 (** [hint oc a] prints hint [h] to channel [oc]. *)
 let pp_hint : pp_hint pp = fun oc pp_hint ->
   match pp_hint with
-  | Unqual -> ()
-  | Prefix(n,p,_) -> Format.fprintf oc "prefix \"%s\" with priority %f" n p
+  | Unqual         -> ()
+  | Prefix(n,p,_)  -> Format.fprintf oc "prefix \"%s\" with priority %f" n p
   | Infix(n,a,p,_) ->
       Format.fprintf oc "infix \"%s\"%a with priority %f" n pp_assoc a p
-  | Zero -> Format.fprintf oc "builtin \"0\""
-  | Succ -> Format.fprintf oc "builtin \"+1\""
-  | Quant -> Format.fprintf oc "quantifier"
+  | Zero           -> Format.fprintf oc "builtin \"0\""
+  | Succ           -> Format.fprintf oc "builtin \"+1\""
+  | Quant          -> Format.fprintf oc "quantifier"
 
 (** [qualified s] prints symbol [s] fully qualified to channel [oc]. *)
 let pp_qualified : sym pp = fun oc s ->
@@ -89,8 +89,9 @@ let nat_of_term : term -> int = fun t ->
     | _ -> raise Not_a_nat
   in nat 0 t
 
-(** [is_quant s args] returns [true] iff [args] are quantifier arguments. *)
-let is_quant : sym -> term list -> bool = fun s args ->
+(** [are_quant_args s args] returns [true] iff the first element of
+    [args] which is non-implicit for [s] is an abstraction. *)
+let are_quant_args : sym -> term list -> bool = fun s args ->
   let is_abst t = match unfold t with Abst(_) -> true | _ -> false in
   match (args, s.sym_impl) with
   | ([_;b], ([]|[true])) -> is_abst b
@@ -127,7 +128,7 @@ and pp_term : term pp = fun oc t ->
             if !print_implicits then args else Basics.expl_args s args
           in
           match get_pp_hint s with
-          | Quant when is_quant s args ->
+          | Quant when are_quant_args s args ->
               if p <> `Func then out oc "(";
               pp_quantifier s args;
               if p <> `Func then out oc ")"
@@ -158,7 +159,7 @@ and pp_term : term pp = fun oc t ->
     | _       -> pp_appl h args
 
   and pp_quantifier s args =
-    (* assume [is_quant s args = true] *)
+    (* assume [are_quant_args s args = true] *)
     match args with
     | [_;b] ->
         begin

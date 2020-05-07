@@ -18,8 +18,6 @@ constant symbol ∀ {a} : (τ a → Prop) → Prop
 
 set quantifier ∀
 
-//set verbose 3
-
 compute ∀ (λx,⊤) // should print ∀x,⊤
 
 compute ∀x,⊤ // should print ∀x,⊤

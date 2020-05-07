@@ -404,7 +404,7 @@ let parser term @(p : prio) =
   | n:nat_lit
       when p >= PAtom -> in_pos _loc (P_NLit(n))
   (* Quantifier. *)
-  | q:term_ident t:abstraction
+  | q:term_ident t:binder
        when p >= PFunc -> in_pos _loc (P_Appl(q,t))
   (* Unary operator. *)
   | u:unop t:(term PUnaO)
@@ -456,8 +456,8 @@ let parser term @(p : prio) =
    the right operand in a second step, and also check whether it satisfies the
    required condition before accepting the parse tree. *)
 
-(** [abstraction] is a parser for abstractions not prefixed by λ. *)
-and parser abstraction =
+(** [binder] is a parser for binders, i.e. expressions of the form [x,t]. *)
+and parser binder =
   | id:ident "," a:{":" (term PFunc)}? t:(term PFunc) ->
       in_pos _loc (P_Abst([[Some(id)],a,false],t))
 
@@ -591,10 +591,10 @@ let parser config =
       sanity_check _loc_id id;
       Prefix.add declared_ids id id;
       P_config_ident(id)
-  | "quantifier" qid:qident ->
-      P_config_quant(qid)
   | "unif_rule" r:unif_rule ->
       P_config_unif_rule(r)
+  | "quantifier" qid:qident ->
+      P_config_quant(qid)
 
 let parser statement =
   _theorem_ s:ident al:arg* ":" a:term _proof_ -> Pos.in_pos _loc (s,al,a)
