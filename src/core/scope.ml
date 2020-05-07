@@ -73,11 +73,11 @@ type mode =
   (** Scoping mode for rewriting rule left-hand sides. The constructor carries
       a flag that is set to [true] if {!constructor:Terms.expo.Privat} symbols
       are allowed, and also additional data. *)
-  | M_RHS  of bool * (string, tevar) Hashtbl.t
+  | M_RHS  of bool * (string, tevar) Hashtbl.t * meta StrMap.t Stdlib.ref
   (** Scoping mode for rewriting rule righ-hand sides. The constructor carries
       a flag that is set to [true] if {!constructor:Terms.expo.Privat} symbols
-      are allowed, and the environment for variables that we known to be bound
-      in the RHS. *)
+      are allowed,  the environment for variables that we known to be bound in
+      the RHS and a map of metavariables as in [M_Term]. *)
 
 (** [get_implicitness t] gives the specified implicitness of the parameters of
     a symbol having the (parser-level) type [t]. *)
@@ -191,8 +191,8 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
         let m = _Meta_full (fresh_meta_box a (Array.length vs)) vs in
         (* Sanity check: only variables of [env] free in [m] if not in RHS. *)
         match md with
-        | M_RHS(_,_) -> m
-        | _          ->
+        | M_RHS(_) -> m
+        | _        ->
         assert (Bindlib.is_closed (Bindlib.bind_mvar (Env.vars env) m)); m
   (* Scoping of a binder (abstraction or product). The environment made of the
      variables is also returned. *)
@@ -225,7 +225,7 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
     | (P_Type          , _                ) -> _Type
     | (P_Iden(qid,_)   , M_LHS(p,_)       ) -> find_qid true p ss env qid
     | (P_Iden(qid,_)   , M_Term(_,Privat )) -> find_qid false true ss env qid
-    | (P_Iden(qid,_)   , M_RHS(p,_)       ) -> find_qid false p ss env qid
+    | (P_Iden(qid,_)   , M_RHS(p,_,_)     ) -> find_qid false p ss env qid
     | (P_Iden(qid,_)   , _                ) -> find_qid false false ss env qid
     | (P_Wild          , M_LHS(_,d)       ) ->
         fresh_patt d None (Env.to_tbox env)
@@ -244,10 +244,11 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
         (* Sanity check: only variables of [env] free in [m] if not in RHS. *)
         begin
           match md with
-          | M_RHS(_,_) -> m
-          | _          ->
+          | M_RHS(_) -> m
+          | _        ->
           assert (Bindlib.is_closed (Bindlib.bind_mvar (Env.vars env) m)); m
         end
+    | (P_Meta(id,ts)   , M_RHS(_,_,m)     )
     | (P_Meta(id,ts)   , M_Term(m,_)      ) ->
         let m2 =
           (* We first check if the metavariable is in the map. *)
@@ -297,7 +298,7 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
           | _                                                  -> ()
         end;
         fresh_patt d (Option.map (fun id -> id.elt) id) ar
-    | (P_Patt(id,ts)   , M_RHS(_,h)         ) ->
+    | (P_Patt(id,ts)   , M_RHS(_,h,_)         ) ->
         let x =
           match id with
           | None     -> fatal t.pos "Wildcard pattern not allowed in a RHS."
@@ -502,7 +503,7 @@ let scope_rule : sig_state -> p_rule -> pre_rule loc = fun ss r ->
       let htbl_vars = Hashtbl.create (Hashtbl.length data.m_lhs_indices) in
       let fn k i = Hashtbl.add htbl_vars k pr_vars.(i) in
       Hashtbl.iter fn data.m_lhs_indices;
-      M_RHS(is_private sym, htbl_vars)
+      M_RHS(is_private sym, htbl_vars, Stdlib.ref StrMap.empty)
     in
     scope mode ss Env.empty p_rhs
   in
