@@ -25,12 +25,14 @@ type pp_hint =
   | Infix of binop
   | Zero
   | Succ
+  | Quant
 
 (** [eq_pp_hint h1 h2] says whether [h1] and [h2] are equal, ignoring
    associativity and priorities. *)
 let eq_pp_hint : pp_hint eq = fun h1 h2 ->
   match (h1, h2) with
   | (Unqual, Unqual)
+  | (Quant, Quant)
   | (Zero, Zero)
   | (Succ, Succ) -> true
   | (Prefix (s1,_,_), Prefix (s2,_,_))
@@ -43,7 +45,7 @@ type sig_state =
   ; in_scope  : (sym * Pos.popt) StrMap.t (** Symbols in scope.         *)
   ; aliases   : Path.t StrMap.t           (** Established aliases.      *)
   ; path_map  : string PathMap.t          (** Reverse map of [aliases]. *)
-  ; builtins  : sym StrMap.t               (** Builtin symbols.          *)
+  ; builtins  : sym StrMap.t              (** Builtin symbols.          *)
   ; unops     : sym StrMap.t              (** Unary operators.          *)
   ; binops    : sym StrMap.t              (** Binary operators.         *)
   ; pp_hints  : pp_hint SymMap.t          (** Printing hints.           *) }
@@ -129,6 +131,12 @@ let add_builtin : sig_state -> string -> sym -> sig_state = fun ss name sym ->
     | _    -> ss.pp_hints
   in
   {ss with builtins; pp_hints}
+
+(** [add_quant ss sym] generates a new signature state from [ss] by declaring
+   [sym] as quantifier. *)
+let add_quant : sig_state -> sym -> sig_state = fun ss sym ->
+  Sign.add_quant ss.signature sym;
+  {ss with pp_hints = SymMap.add sym Quant ss.pp_hints}
 
 (** [update_pp_hints_from_symbols ss sign pp_hints] generates a new pp_hint
    map from [pp_hints] when adding the symbols of [sign]. *)

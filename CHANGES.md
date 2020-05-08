@@ -1,3 +1,8 @@
+#### Quantifier parsing and pretty-printing (2020-05-08)
+
+- Allow users to declare a symbol [f] as quantifier. Then, [f x,t]
+  stands for [f(λx,t)].
+
 #### Unification rules (2020-04-29)
 
 Introduction of unification rules, taken from

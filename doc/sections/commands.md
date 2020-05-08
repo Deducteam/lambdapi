@@ -320,6 +320,14 @@ whether the defined symbol is non-associative, associative to the right,
 or associative to the left. The priority levels are floating point numbers,
 hence a priority can (almost) always be inserted between two different levels.
 
+**quantifier symbols** The following code declares a given symbol as
+  quantifier. This modifies the way it is printed.
+
+```
+set quantifier ∀ // : Π {a}, (T a → Prop) → Prop
+// prints [@∀ a' (λx:T a,p)] as [∀x:T a,p], and [∀ (λx:T a,p)] as [∀x,p]
+```
+
 **why3 tactic related builtins** In order to use external provers via
 the why3 tactic, one first has to define a number of builtin symbols
 as follows:
