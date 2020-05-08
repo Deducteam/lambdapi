@@ -70,6 +70,11 @@ let pp_symbol : sym pp = fun oc s ->
 let pp_tvar : tvar pp = fun oc x ->
   Format.pp_print_string oc (Bindlib.name_of x)
 
+(** [pp_tevar oc x] prints the term with environment variable [x] to the
+    channel [oc]. *)
+let pp_tevar : tevar pp = fun oc x ->
+  Format.pp_print_string oc (Bindlib.name_of x)
+
 (** Exception raised when trying to convert a term into a nat. *)
 exception Not_a_nat
 

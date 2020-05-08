@@ -457,18 +457,18 @@ type pre_rule =
 let scope_rule : sig_state -> p_rule -> pre_rule loc = fun ss r ->
   let (p_lhs, p_rhs) = r.elt in
   (* Compute the set of pattern variables on both sides. *)
-  let (_, nl) = patt_vars p_lhs in
+  let (pvs_lhs, nl) = patt_vars p_lhs in
   (* NOTE to reject non-left-linear rules check [nl = []] here. *)
   let (pvs_rhs, _ ) = patt_vars p_rhs in
-  (* Check that pattern variables of RHS exist LHS (with right arities). *)
-  (* let check_in_lhs (m,i) =
-   *   let j =
-   *     try List.assoc m pvs_lhs with Not_found ->
-   *     fatal p_rhs.pos "Unknown pattern variable [%s]." m
-   *   in
-   *   if i <> j then fatal p_lhs.pos "Arity mismatch for [%s]." m
-   * in
-   * List.iter check_in_lhs pvs_rhs; *)
+  (* Check that pattern variables of RHS that are in the LHS have the right
+     arity. *)
+  let check_arity (m,i) =
+    try
+      let j = List.assoc m pvs_lhs in
+      if i <> j then fatal p_lhs.pos "Arity mismatch for [%s]." m
+    with Not_found -> ()
+  in
+  List.iter check_arity pvs_rhs;
   (* Get privacy of head of the rule, scope the rest accordingly. *)
   let prv = is_private (get_root p_lhs ss) in
   (* Scope the LHS and get the reserved index for named pattern variables. *)

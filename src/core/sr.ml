@@ -136,11 +136,19 @@ let symb_to_tenv
    [Fatal] is raised in case of error. *)
 let check_rule : Scope.pre_rule Pos.loc -> rule = fun pr ->
   (* Unwrap the contents of the pre-rule. *)
-  let (pos, s, lhs, vars, rhs_vars, arities) =
-    let Pos.{elt=Scope.{pr_sym;pr_lhs;pr_vars;pr_rhs;pr_arities;_}; pos} = pr
+  let (pos, s, lhs, vars, rhs_vars, arities, xvars) =
+    let Pos.{elt=Scope.{pr_sym;pr_lhs;pr_vars;pr_rhs;pr_arities;
+                        pr_xvars; _}; pos} = pr
     in
-    (pos, pr_sym, pr_lhs, pr_vars, pr_rhs, pr_arities)
+    (pos, pr_sym, pr_lhs, pr_vars, pr_rhs, pr_arities, pr_xvars)
   in
+  (* Check that the variables of the RHS are in the LHS. *)
+  if xvars <> 0 then
+    begin
+      let xvars = Array.drop (Array.length vars - xvars) vars in
+      fatal pr.pos "Unknown pattern variables [%a]"
+        (Array.pp Print.pp_tevar ",") xvars
+    end;
   let arity = List.length lhs in
   if !log_enabled then
     begin
