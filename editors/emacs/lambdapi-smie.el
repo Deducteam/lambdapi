@@ -61,7 +61,7 @@ Indent by `lambdapi-indent-basic' in proofs, and 0 otherwise."
    (smie-bnf->prec2
     '((ident)
       (env (ident)
-           (csidentl "," ident))
+           (csidentl ";" ident))
       (rw-patt)
       (args (ident)
             ("{" ident ":" sterm "}")
@@ -69,8 +69,8 @@ Indent by `lambdapi-indent-basic' in proofs, and 0 otherwise."
       (sterm ("TYPE")
              ("_")
              (ident)
-             ("?" ident "[" env "]") ;; ?M[x,y,z]
-             ("$" ident "[" env "]") ;; $X[x,y,z]
+             ("?" ident "[" env "]") ;; ?M[x;y;z]
+             ("$" ident "[" env "]") ;; $X[x;y;z]
              (sterm "→" sterm)
              ("λ" args "," sterm)
              ("λ" ident ":" sterm "," sterm)
@@ -105,7 +105,7 @@ Indent by `lambdapi-indent-basic' in proofs, and 0 otherwise."
       (prfcontent (tactic)
                   (query))
       (unif-rule-rhs (sterm "≡" sterm)
-                     (unif-rule-rhs "," sterm "≡" sterm))
+                     (unif-rule-rhs ";" sterm "≡" sterm))
       (symdec ("symbol" args ":" sterm))
       (command ("injective" symdec)
                ("constant" symdec)
