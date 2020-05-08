@@ -100,7 +100,7 @@ let to_dot : Format.formatter -> sym -> unit = fun oc s ->
     let rec write_tree father_l swon t =
       incr node_count;
       match t with
-      | Leaf(_, a)                                                       ->
+      | Leaf(_,a,_)  ->
           let _, acte = Bindlib.unmbind a in
           out "@ %d [label=\"%a\"];" !node_count Print.pp_term acte;
           out "@ %d -- %d [label=<%a>];" father_l !node_count pp_dotterm swon

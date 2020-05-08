@@ -131,8 +131,8 @@ type term =
   (** Arrities of the pattern variables bound in the RHS. *)
   ; vars    : term_env Bindlib.var array
   (** Bindlib variables used to build [rhs]. *)
-  ; xvars   : int option
-  (** Index of first extra variable of RHS. *)}
+  ; xvars   : int
+  (** Number of extra RHS variable in [vars]. *)}
 
 (** The LHS (or pattern) of a rewriting rule is always formed of a head symbol
     (on which the rule is defined) applied to a list of pattern arguments. The

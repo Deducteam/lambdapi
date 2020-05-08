@@ -441,15 +441,16 @@ type pre_rule =
   ; pr_lhs     : term list
   (** Arguments of the LHS. *)
   ; pr_vars    : term_env Bindlib.mvar
-  (** Pattern variables that can appear in the RHS. *)
+  (** Pattern variables that can appear in the RHS. The [pr_xvars] last
+      variables do not appear in the LHS. *)
   ; pr_rhs     : tbox
   (** Body of the RHS, should only be unboxed once. *)
   ; pr_names   : (int, string) Hashtbl.t
   (** Gives the original name (if any) of pattern variable at given index. *)
   ; pr_arities : int array
   (** Gives the arity of all the pattern varialbes in field [pr_vars]. *)
-  ; pr_xvars: int option
-  (** Index of the first extra variable in [pr_vars]. *) }
+  ; pr_xvars: int
+  (** Number of extra variable in [pr_vars]. *) }
 
 (** [scope_rule ss r] turns a parser-level rewriting rule [r] into a rewriting
     rule (and the associated head symbol). *)
@@ -523,9 +524,8 @@ let scope_rule : sig_state -> p_rule -> pre_rule loc = fun ss r ->
   let (pr_vars, pr_xvars) =
     (* If there is no extra variable, do nothing (typically while scoping
        regular rewriting rules.) *)
-    if Stdlib.(xvars = []) then (pr_vars, None) else
-    (Array.append pr_vars (Array.of_list xvars),
-     Some(Array.length pr_vars))
+    if Stdlib.(xvars = []) then (pr_vars, 0) else
+    (Array.append pr_vars (Array.of_list xvars), List.length xvars)
   in
   (* We put everything together to build the pre-rule. *)
   let pr_arities =

@@ -242,20 +242,22 @@ module CM = struct
 
   (** A clause matrix row (schematically {i c_lhs ↪ c_rhs if cond_pool}). *)
   type clause =
-    { c_lhs : term array
+    { c_lhs       : term array
     (** Left hand side of a rule. *)
-    ; c_rhs : rhs
+    ; c_rhs       : rhs
     (** Right hand side of a rule. *)
     ; env_builder : env_builder
     (** Data required to apply the rule. *)
-    ; cond_pool : CP.t
+    ; xvars       : int
+    (** Number of extra variables in the rule RHS. *)
+    ; cond_pool   : CP.t
     (** Condition pool with convertibility and free variable constraints. *) }
 
   (** Type of clause matrices. *)
   type t =
-    { clauses : clause list
+    { clauses   : clause list
     (** The rules. *)
-    ; slot : int
+    ; slot      : int
     (** Index of next slot to use in [vars] array to store variables. *)
     ; positions : arg list
     (** Positions of the elements of the matrix in the initial term. Note that
@@ -319,9 +321,9 @@ module CM = struct
 
   (** [of_rules r] transforms rewriting rules into a clause matrix rules. *)
   let of_rules : rule list -> t = fun rs ->
-    let r2r {lhs; rhs; _} =
+    let r2r {lhs; rhs; xvars; _} =
       let c_lhs = Array.of_list lhs in
-      { c_lhs ; c_rhs = rhs ; cond_pool = CP.empty ; env_builder = [] }
+      { c_lhs; c_rhs = rhs; cond_pool = CP.empty; env_builder = []; xvars }
     in
     let size = (* Get length of longest rule *)
       if rs = [] then 0 else
@@ -633,19 +635,19 @@ module CM = struct
     List.filter (fun r -> r.c_lhs <> [||])
 end
 
-(** [harvest lhs rhs env_builder vi slot] exhausts linearly the LHS [lhs]
-    composed only of pattern variables with no constraints, to yield a leaf
-    with RHS [rhs] and the environment builder [env_builder] completed. [vi]
-    contains the indexes of variables. *)
+(** [harvest lhs rhs env_builder vi slot xvars] exhausts linearly the LHS
+    [lhs] composed only of pattern variables with no constraints, to yield a
+    leaf with RHS [rhs] and the environment builder [env_builder] completed.
+    [vi] contains the indexes of variables. *)
 let harvest : term array -> rhs -> CM.env_builder -> int VarMap.t -> int ->
-  tree = fun lhs rhs env_builder vi slot ->
+  int -> tree = fun lhs rhs env_builder vi slot xvars ->
   let default_node store child =
     Node { swap = 0 ; store ; children = TCMap.empty
          ; abstraction = None ; product = None ; default = Some(child) }
   in
   let rec loop lhs env_builder slot =
     match lhs with
-    | []                    -> Leaf(env_builder, rhs)
+    | []                    -> Leaf(env_builder, rhs, xvars)
     | Patt(Some(i),_,e)::ts ->
         let env_builder =
           (slot, (i, Array.map (CM.index_var vi) e)) :: env_builder
@@ -696,9 +698,9 @@ let compile : CM.t -> tree = fun m ->
   if CM.is_empty cm then Fail else
   let compile_cv = compile count vars_id in
   match CM.yield cm with
-  | Yield({c_rhs; env_builder; c_lhs ; _}) ->
-      if c_lhs = [||] then Leaf(env_builder, c_rhs) else
-      harvest c_lhs c_rhs env_builder vars_id slot
+  | Yield({c_rhs; env_builder; c_lhs ; xvars; _}) ->
+      if c_lhs = [||] then Leaf(env_builder, c_rhs, xvars) else
+      harvest c_lhs c_rhs env_builder vars_id slot xvars
   | Condition(cond)                        ->
       let ok   = compile_cv {cm with clauses = CM.cond_ok   cond clauses} in
       let fail = compile_cv {cm with clauses = CM.cond_fail cond clauses} in

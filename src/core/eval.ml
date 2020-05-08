@@ -192,7 +192,7 @@ and tree_walk : dtree -> ctxt -> stack -> (term * stack) option =
     let open Tree_types in
     match tree with
     | Fail                                                -> None
-    | Leaf(env_builder, act)                              ->
+    | Leaf(env_builder, act, xvars)                       ->
         (* Allocate an environment for the action. *)
         let env = Array.make (Bindlib.mbinder_arity act) TE_None in
         (* Retrieve terms needed in the action from the [vars] array. *)
@@ -214,7 +214,14 @@ and tree_walk : dtree -> ctxt -> stack -> (term * stack) option =
         (* Actually perform the action. *)
         begin
           try Some(Bindlib.msubst act env, stk)
-          with Invalid_argument(_) -> assert false
+          with Invalid_argument(_) -> (* RHS has extra variables *)
+            let fn _ =
+              let t = make_meta [] Kind in
+              let b = Bindlib.raw_mbinder [||] [||] 0 mkfree (fun _ -> t) in
+              TE_Some(b)
+            in
+            let env = Array.append env (Array.init xvars fn) in
+            Some (Bindlib.msubst act env, stk)
         end
     | Cond({ok; cond; fail})                              ->
         let next =

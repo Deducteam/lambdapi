@@ -61,12 +61,13 @@ type tree_cond =
 type 'rhs tree =
   | Fail
   (** Empty decision tree, used when there are no rewriting rules. *)
-  | Leaf of (int * (int * int array)) list * 'rhs
-  (** The value [Leaf(m, rhs)] stores the RHS [rhs] of the rewriting rule that
+  | Leaf of (int * (int * int array)) list * 'rhs * int
+  (** Triple [Leaf(m, rhs, x)] stores the RHS [rhs] of the rewriting rule that
       can be applied upon reaching the leaf.  The association list [m] is used
       to construct the environment of the RHS. Note that we do not need to use
       a map here since we only need to insert at the head, and iterate over
-      the elements of the structure. *)
+      the elements of the structure. The integer [x] indicates the extra meta-
+      variables to generate to populate the RHS. *)
   | Cond of
       { ok   : 'rhs tree
       (** Branch to follow if the condition is verified. *)
@@ -108,7 +109,7 @@ type 'rhs tree =
     define the capacity [c] of [t] is [c = max{nb_store(p) | p ∈ P}]. *)
 let rec tree_capacity : 'r tree -> int = fun tr ->
   match tr with
-  | Leaf(_,_)  | Fail   -> 0
+  | Leaf(_)  | Fail     -> 0
   | Eos(l,r)            -> max (tree_capacity l) (tree_capacity r)
   | Cond({ok; fail; _}) -> max (tree_capacity ok) (tree_capacity fail)
   | Node({store; children=ch; abstraction=abs; default;
