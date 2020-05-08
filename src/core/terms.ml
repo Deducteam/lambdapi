@@ -128,7 +128,7 @@ type term =
   ; arity   : int
   (** Required number of arguments to be applicable. *)
   ; arities : int array
-  (** Arrities of the pattern variables bound in the RHS. *)
+  (** Arities of the pattern variables bound in the RHS. *)
   ; vars    : term_env Bindlib.var array
   (** Bindlib variables used to build [rhs]. *)
   ; xvars   : int
