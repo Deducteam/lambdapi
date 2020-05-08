@@ -73,11 +73,16 @@ type mode =
   (** Scoping mode for rewriting rule left-hand sides. The constructor carries
       a flag that is set to [true] if {!constructor:Terms.expo.Privat} symbols
       are allowed, and also additional data. *)
-  | M_RHS  of bool * (string, tevar) Hashtbl.t * int Stdlib.ref * tevar list Stdlib.ref
-  (** Scoping mode for rewriting rule righ-hand sides. The constructor carries
-      a flag that is set to [true] if {!constructor:Terms.expo.Privat} symbols
-      are allowed, and the environment for variables that we known to be bound
-      in the RHS. *)
+  | M_RHS  of
+      { prv             : bool
+      (** True if {!constructor:Terms.expo.Privat} symbols are allowed. *)
+      ; data            : (string, tevar) Hashtbl.t
+      (** Environment for variables that we know to be bound in the RHS. *)
+      ; mutable xvars : (int * tevar list)
+      (** Slot of the next extra variable in the [pr_vars] array and collected
+          extra variables. NOTE this field is only used for unification rules.
+          *) }
+  (** Scoping mode for rewriting rule righ-hand sides. *)
 
 (** [get_implicitness t] gives the specified implicitness of the parameters of
     a symbol having the (parser-level) type [t]. *)
@@ -225,7 +230,7 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
     | (P_Type          , _                ) -> _Type
     | (P_Iden(qid,_)   , M_LHS(p,_)       ) -> find_qid true p ss env qid
     | (P_Iden(qid,_)   , M_Term(_,Privat )) -> find_qid false true ss env qid
-    | (P_Iden(qid,_)   , M_RHS(p,_,_,_)   ) -> find_qid false p ss env qid
+    | (P_Iden(qid,_)   , M_RHS{prv; _ }   ) -> find_qid false prv ss env qid
     | (P_Iden(qid,_)   , _                ) -> find_qid false false ss env qid
     | (P_Wild          , M_LHS(_,d)       ) ->
         fresh_patt d None (Env.to_tbox env)
@@ -297,17 +302,17 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
           | _                                                  -> ()
         end;
         fresh_patt d (Option.map (fun id -> id.elt) id) ar
-    | (P_Patt(id,ts)   , M_RHS(_,h,xi,xvs)  ) ->
+    | (P_Patt(id,ts)   , M_RHS(r)         ) ->
         let x =
           match id with
           | None     -> fatal t.pos "Wildcard pattern not allowed in a RHS."
           | Some(id) ->
-              try Hashtbl.find h id.elt
+              try Hashtbl.find r.data id.elt
               with Not_found ->
                 let open Stdlib in
-                let name = Printf.sprintf "%i_%s" !xi id.elt in
+                let name = Printf.sprintf "%i_%s" (fst r.xvars) id.elt in
                 let x = Bindlib.new_var te_mkfree name in
-                incr xi; xvs := x :: !xvs; x
+                r.xvars <- (fst r.xvars + 1, x :: snd r.xvars); x
         in
         _TEnv (Bindlib.box_var x) (Array.map (scope env) ts)
     | (P_Patt(_,_)     , _                  ) ->
@@ -502,24 +507,24 @@ let scope_rule : sig_state -> p_rule -> pre_rule loc = fun ss r ->
     in
     Array.init data.m_lhs_size fn
   in
-  (* We scope the RHS. *)
-  let xvars = Stdlib.ref [] in
-  let pr_rhs =
+  (* We scope the RHS and retrieve the extra variables. *)
+  let (pr_rhs, xvars) =
     let mode =
       let htbl_vars = Hashtbl.create (Hashtbl.length data.m_lhs_indices) in
       let fn k i = Hashtbl.add htbl_vars k pr_vars.(i) in
       Hashtbl.iter fn data.m_lhs_indices;
-      M_RHS(is_private sym, htbl_vars,
-            Stdlib.ref (Array.length pr_vars), xvars)
+      M_RHS{ prv = is_private sym; data=htbl_vars
+           ; xvars = (Array.length pr_vars, []) }
     in
-    scope mode ss Env.empty p_rhs
+    let xvars = match mode with M_RHS{xvars;_} -> xvars | _ -> assert false in
+    (scope mode ss Env.empty p_rhs, (snd xvars))
   in
   (* Add extra variables to [pr_vars] and get the index of the first one. *)
   let (pr_vars, pr_xvars) =
     (* If there is no extra variable, do nothing (typically while scoping
        regular rewriting rules.) *)
-    if Stdlib.(!xvars = []) then (pr_vars, None) else
-    (Array.append pr_vars Stdlib.(Array.of_list !xvars),
+    if Stdlib.(xvars = []) then (pr_vars, None) else
+    (Array.append pr_vars (Array.of_list xvars),
      Some(Array.length pr_vars))
   in
   (* We put everything together to build the pre-rule. *)
