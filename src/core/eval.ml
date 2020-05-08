@@ -193,8 +193,10 @@ and tree_walk : dtree -> ctxt -> stack -> (term * stack) option =
     match tree with
     | Fail                                                -> None
     | Leaf(env_builder, act, xvars)                       ->
-        (* Allocate an environment for the action. *)
-        let env = Array.make (Bindlib.mbinder_arity act) TE_None in
+        (* Allocate an environment where to place terms coming from the
+           pattern variables for the action. *)
+        (* We have [length env_builder = mbinder_arity act - xvars] *)
+        let env = Array.make (Bindlib.mbinder_arity act - xvars) TE_None in
         (* Retrieve terms needed in the action from the [vars] array. *)
         let fn (pos, (slot, xs)) =
           match bound.(pos) with
@@ -214,7 +216,8 @@ and tree_walk : dtree -> ctxt -> stack -> (term * stack) option =
         (* Actually perform the action. *)
         begin
           try Some(Bindlib.msubst act env, stk)
-          with Invalid_argument(_) -> (* RHS has extra variables *)
+          with Invalid_argument(_) ->
+            (* Extra metavariables in RHS (in unification rules only). *)
             let fn _ =
               let t = make_meta [] Kind in
               let b = Bindlib.raw_mbinder [||] [||] 0 mkfree (fun _ -> t) in

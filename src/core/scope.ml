@@ -74,11 +74,11 @@ type mode =
       a flag that is set to [true] if {!constructor:Terms.expo.Privat} symbols
       are allowed, and also additional data. *)
   | M_RHS  of
-      { prv             : bool
+      { m_r_p             : bool
       (** True if {!constructor:Terms.expo.Privat} symbols are allowed. *)
-      ; data            : (string, tevar) Hashtbl.t
+      ; m_r_data          : (string, tevar) Hashtbl.t
       (** Environment for variables that we know to be bound in the RHS. *)
-      ; mutable xvars : (int * tevar list)
+      ; mutable m_r_xvars : (int * tevar list)
       (** Slot of the next extra variable in the [pr_vars] array and collected
           extra variables. NOTE this field is only used for unification rules.
           *) }
@@ -230,7 +230,7 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
     | (P_Type          , _                ) -> _Type
     | (P_Iden(qid,_)   , M_LHS(p,_)       ) -> find_qid true p ss env qid
     | (P_Iden(qid,_)   , M_Term(_,Privat )) -> find_qid false true ss env qid
-    | (P_Iden(qid,_)   , M_RHS{prv; _ }   ) -> find_qid false prv ss env qid
+    | (P_Iden(qid,_)   , M_RHS{m_r_p; _ } ) -> find_qid false m_r_p ss env qid
     | (P_Iden(qid,_)   , _                ) -> find_qid false false ss env qid
     | (P_Wild          , M_LHS(_,d)       ) ->
         fresh_patt d None (Env.to_tbox env)
@@ -307,12 +307,12 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
           match id with
           | None     -> fatal t.pos "Wildcard pattern not allowed in a RHS."
           | Some(id) ->
-              try Hashtbl.find r.data id.elt
+              try Hashtbl.find r.m_r_data id.elt
               with Not_found ->
                 let open Stdlib in
-                let name = Printf.sprintf "%i_%s" (fst r.xvars) id.elt in
+                let name = Printf.sprintf "%i_%s" (fst r.m_r_xvars) id.elt in
                 let x = Bindlib.new_var te_mkfree name in
-                r.xvars <- (fst r.xvars + 1, x :: snd r.xvars); x
+                r.m_r_xvars <- (fst r.m_r_xvars + 1, x :: snd r.m_r_xvars); x
         in
         _TEnv (Bindlib.box_var x) (Array.map (scope env) ts)
     | (P_Patt(_,_)     , _                  ) ->
@@ -514,11 +514,15 @@ let scope_rule : sig_state -> p_rule -> pre_rule loc = fun ss r ->
       let htbl_vars = Hashtbl.create (Hashtbl.length data.m_lhs_indices) in
       let fn k i = Hashtbl.add htbl_vars k pr_vars.(i) in
       Hashtbl.iter fn data.m_lhs_indices;
-      M_RHS{ prv = is_private sym; data=htbl_vars
-           ; xvars = (Array.length pr_vars, []) }
+      M_RHS{ m_r_p = is_private sym; m_r_data=htbl_vars
+           ; m_r_xvars = (Array.length pr_vars, []) }
     in
-    let xvars = match mode with M_RHS{xvars;_} -> xvars | _ -> assert false in
-    (scope mode ss Env.empty p_rhs, (snd xvars))
+    let pr_rhs = scope mode ss Env.empty p_rhs in
+    let xvars =
+      match mode with M_RHS{m_r_xvars;_} -> m_r_xvars | _ -> assert false
+    in
+    (* Get [xvars] after [scope p_rhs] as it updates [xvars] imperatively *)
+    (pr_rhs, snd xvars)
   in
   (* Add extra variables to [pr_vars] and get the index of the first one. *)
   let (pr_vars, pr_xvars) =

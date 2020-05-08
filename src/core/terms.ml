@@ -177,6 +177,12 @@ type term =
     these  bound variables must be substituted using "terms with environments"
     that are constructed when matching the LHS of the rule. *)
 
+(** In rewriting rules,  variables of the RHS must be present in the LHS (this
+    is checked in {!mod:Sr}). In the case of unification rules,RHS can contain
+    variables that are  not in the LHS.  They are called  {b extra variables}.
+    They are stored at the end of the [vars] array of a rule and the amount of
+    extra variables is given by the [xvars] field. *)
+
 (** Representation of a "term with environment", which intuitively corresponds
     to a term with bound variables (or a "higher-order" term) represented with
     the {!constructor:TE_Some} constructor. Other constructors are included so
