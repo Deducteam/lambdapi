@@ -42,12 +42,13 @@ let pp_assoc : assoc pp = fun oc assoc ->
 (** [hint oc a] prints hint [h] to channel [oc]. *)
 let pp_hint : pp_hint pp = fun oc pp_hint ->
   match pp_hint with
-  | Unqual -> ()
-  | Prefix(n,p,_) -> Format.fprintf oc "prefix \"%s\" with priority %f" n p
+  | Unqual         -> ()
+  | Prefix(n,p,_)  -> Format.fprintf oc "prefix \"%s\" with priority %f" n p
   | Infix(n,a,p,_) ->
       Format.fprintf oc "infix \"%s\"%a with priority %f" n pp_assoc a p
-  | Zero -> Format.fprintf oc "builtin \"0\""
-  | Succ -> Format.fprintf oc "builtin \"+1\""
+  | Zero           -> Format.fprintf oc "builtin \"0\""
+  | Succ           -> Format.fprintf oc "builtin \"+1\""
+  | Quant          -> Format.fprintf oc "quantifier"
 
 (** [qualified s] prints symbol [s] fully qualified to channel [oc]. *)
 let pp_qualified : sym pp = fun oc s ->
@@ -88,6 +89,14 @@ let nat_of_term : term -> int = fun t ->
     | _ -> raise Not_a_nat
   in nat 0 t
 
+(** [are_quant_args s args] returns [true] iff the first element of
+    [args] which is non-implicit for [s] is an abstraction. *)
+let are_quant_args : sym -> term list -> bool = fun s args ->
+  let is_abst t = match unfold t with Abst(_) -> true | _ -> false in
+  match (args, s.sym_impl) with
+  | ([_;b], ([]|[true])) -> is_abst b
+  | (_    , _          ) -> false
+
 (** [pp_meta oc m] prints the uninstantiated meta-variable [m] to [oc]. *)
 let rec pp_meta : meta pp = fun oc m ->
   if !print_meta_type then
@@ -113,36 +122,57 @@ and pp_term : term pp = fun oc t ->
           if p = `Atom then out oc ")"
     in
     match h with
-    | Symb(s) when not !print_implicits ->
+    | Symb(s) ->
         begin
-          let args = Basics.expl_args s args in
+          let eargs =
+            if !print_implicits then args else Basics.expl_args s args
+          in
           match get_pp_hint s with
-          | Unqual -> pp_appl h args
-          | Prefix(_) -> pp_appl h args
-          | Infix(op,_,_,_) ->
+          | Quant when are_quant_args s args ->
+              if p <> `Func then out oc "(";
+              pp_quantifier s args;
+              if p <> `Func then out oc ")"
+          | Infix(op,_,_,_) when not !print_implicits || s.sym_impl <> [] ->
               begin
-                match args with
+                match eargs with
                 | l::r::[] ->
                     if p <> `Func then out oc "(";
                     (* Can be improved by looking at symbol priority. *)
                     out oc "%a %s %a" (pp `Appl) l op (pp `Appl) r;
                     if p <> `Func then out oc ")"
-                | l::r::ts ->
+                | l::r::eargs ->
                     if p <> `Func then out oc "(";
-                    out oc "(";
                     (* Can be improved by looking at symbol priority. *)
-                    out oc "%a %s %a" (pp `Appl) l op (pp `Appl) r;
-                    out oc ")";
-                    List.iter (out oc " %a" (pp `Atom)) ts;
+                    out oc "(%a %s %a)" (pp `Appl) l op (pp `Appl) r;
+                    List.iter (out oc " %a" (pp `Atom)) eargs;
                     if p <> `Func then out oc ")"
-                | _ -> pp_appl h args
+                | _ -> pp_appl h eargs
               end
           | Zero -> out oc "0"
           | Succ ->
-              try out oc "%i" (nat_of_term t)
-              with Not_a_nat -> pp_appl h args
+              begin
+                try out oc "%i" (nat_of_term t)
+                with Not_a_nat -> pp_appl h args
+              end
+          | _   -> pp_appl h eargs
         end
     | _       -> pp_appl h args
+
+  and pp_quantifier s args =
+    (* assume [are_quant_args s args = true] *)
+    match args with
+    | [_;b] ->
+        begin
+          match unfold b with
+          | Abst(a,b) ->
+              let (x,p) = Bindlib.unbind b in
+              out oc "%a%a" pp_symbol s pp_tvar x;
+              if !print_implicits then out oc ": %a" (pp `Func) a;
+              out oc ", %a" (pp `Func) p
+          | _ -> assert false
+        end
+      | _ -> assert false
+
   and pp_head wrap oc t =
     let pp_env oc ar =
       if ar <> [||] then out oc "[%a]" (Array.pp (pp `Appl) ",") ar
@@ -170,9 +200,9 @@ and pp_term : term pp = fun oc t ->
     | Abst(a,b)   ->
         if wrap then out oc "(";
         let (x,t) = Bindlib.unbind b in
-        if !print_domains then
-          out oc "λ%a: %a, %a" pp_var (b,x) (pp `Func) a (pp `Func) t
-        else out oc "λ%a%a" pp_var (b,x) pp_abstractions t;
+        out oc "λ%a" pp_var (b,x);
+        if !print_domains then out oc ": %a, %a" (pp `Func) a (pp `Func) t
+        else pp_abstractions oc t;
         if wrap then out oc ")"
     | Prod(a,b)   ->
         if wrap then out oc "(";

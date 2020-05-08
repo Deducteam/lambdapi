@@ -80,7 +80,6 @@ Indent by `lambdapi-indent-basic' in proofs, and 0 otherwise."
              ("let" ident ":" sterm "≔" sterm "in" sterm)
              ("let" args ":" sterm "≔" sterm "in" sterm)
              ("let" args "≔" sterm "in" sterm))
-
       (tactic ("refine" sterm)
               ("assume" sterm)
               ("apply" sterm)
@@ -97,14 +96,12 @@ Indent by `lambdapi-indent-basic' in proofs, and 0 otherwise."
              ("assertnot" sterm "≡" sterm)
              ("compute" sterm)
              ("type" sterm)
-
              ("set" "prover" ident) ; no stringlit because of conflict
              ("set" "prover_timeout" ident)
              ("set" "verbose" ident)
              ("set" "debug" ident)
              ("set" "flag" ident "on")
              ("set" "flag" ident "off"))
-
       (prfcontent (tactic)
                   (query))
       (unif-rule-rhs (sterm "≡" sterm)
@@ -120,20 +117,18 @@ Indent by `lambdapi-indent-basic' in proofs, and 0 otherwise."
                ("proof" prfcontent "admit")
                ("proof" prfcontent "abort")
                ("definition" args "≔" sterm)
-
                ("rule" sterm "↪" sterm)
                ("with" sterm "↪" sterm)
-
                ("require" ident)
                ("open" ident)
                ("require" ident "as" ident)
-
                ("set" "unif_rule" sterm "≡" sterm "↪" unif-rule-rhs)
                ("set" "builtin" ident "≔" ident)
                ("set" "prefix" ident "≔" ident)
                ("set" "infix" ident "≔" ident)
                ("set" "infix" "left" ident "≔" ident)
                ("set" "infix" "right" ident "≔" ident)
+               ("set" "quantifier" ident)
                ("set" "declared" ident)))
     '((assoc "≡") (assoc ",") (assoc "in") (assoc "→")))))
 

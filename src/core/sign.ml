@@ -17,7 +17,8 @@ type t =
   ; sign_builtins : sym StrMap.t ref
   ; sign_unops    : (sym * unop ) StrMap.t ref
   ; sign_binops   : (sym * binop) StrMap.t ref
-  ; sign_idents   : StrSet.t ref }
+  ; sign_idents   : StrSet.t ref
+  ; sign_quants   : SymSet.t ref }
 
 (* NOTE the [deps] field contains a hashtable binding the [module_path] of the
    external modules on which the current signature depends to an association
@@ -30,7 +31,7 @@ let dummy : unit -> t = fun () ->
   { sign_symbols = ref StrMap.empty; sign_path = []
   ; sign_deps = ref PathMap.empty; sign_builtins = ref StrMap.empty
   ; sign_unops = ref StrMap.empty; sign_binops = ref StrMap.empty
-  ; sign_idents = ref StrSet.empty }
+  ; sign_idents = ref StrSet.empty; sign_quants = ref SymSet.empty }
 
 (** [find sign name] finds the symbol named [name] in [sign] if it exists, and
     raises the [Not_found] exception otherwise. *)
@@ -130,7 +131,8 @@ let link : t -> unit = fun sign ->
   let hn (s,h) = (link_symb s, h) in
   sign.sign_unops := StrMap.map hn !(sign.sign_unops);
   sign.sign_binops := StrMap.map hn !(sign.sign_binops);
-  StrMap.iter (fun _ (s, _) -> Tree.update_dtree s) !(sign.sign_symbols)
+  StrMap.iter (fun _ (s, _) -> Tree.update_dtree s) !(sign.sign_symbols);
+  sign.sign_quants := SymSet.map link_symb !(sign.sign_quants)
 
 (** [unlink sign] removes references to external symbols (and thus signatures)
     in the signature [sign]. This function is used to minimize the size of our
@@ -179,7 +181,8 @@ let unlink : t -> unit = fun sign ->
   PathMap.iter gn !(sign.sign_deps);
   StrMap.iter (fun _ s -> unlink_sym s) !(sign.sign_builtins);
   StrMap.iter (fun _ (s,_) -> unlink_sym s) !(sign.sign_unops);
-  StrMap.iter (fun _ (s,_) -> unlink_sym s) !(sign.sign_binops)
+  StrMap.iter (fun _ (s,_) -> unlink_sym s) !(sign.sign_binops);
+  SymSet.iter unlink_sym !(sign.sign_quants)
 
 (** [add_symbol sign ?sym_expo mode name a impl] creates a fresh symbol with
     name [name] (which should not already be used in [sign]) and with the type
@@ -308,6 +311,10 @@ let add_binop : t -> string -> (sym * binop) -> unit = fun sign s sym ->
 (** [add_ident sign id] add the declared identifier [id] to [sign]. *)
 let add_ident : t -> string -> unit = fun sign id ->
   sign.sign_idents := StrSet.add id !(sign.sign_idents)
+
+(** [add_quant sign sym] add the quantifier [sym] to [sign]. *)
+let add_quant : t -> sym -> unit = fun sign sym ->
+  sign.sign_quants := SymSet.add sym !(sign.sign_quants)
 
 (** [dependencies sign] returns an association list containing (the transitive
     closure of) the dependencies of the signature [sign].  Note that the order
