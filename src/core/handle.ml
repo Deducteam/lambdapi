@@ -282,10 +282,11 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
             let pur = (scope_rule ss h).elt in
             let urule =
               { lhs = pur.pr_lhs
-              ; rhs = Bindlib.unbox (Bindlib.bind_mvar pur.pr_vars pur.pr_rhs)
+              ; rhs = Bindlib.(unbox (bind_mvar pur.pr_vars pur.pr_rhs))
               ; arity = List.length pur.pr_lhs
               ; arities = pur.pr_arities
-              ; vars = pur.pr_vars }
+              ; vars = pur.pr_vars
+              ; xvars = pur.pr_xvars }
             in
             Sign.add_rule ss.signature Unif_rule.equiv urule;
             Tree.update_dtree Unif_rule.equiv;

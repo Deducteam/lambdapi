@@ -212,7 +212,10 @@ and tree_walk : dtree -> ctxt -> stack -> (term * stack) option =
         in
         List.iter fn env_builder;
         (* Actually perform the action. *)
-        Some(Bindlib.msubst act env, stk)
+        begin
+          try Some(Bindlib.msubst act env, stk)
+          with Invalid_argument(_) -> assert false
+        end
     | Cond({ok; cond; fail})                              ->
         let next =
           match cond with

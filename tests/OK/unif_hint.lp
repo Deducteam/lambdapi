@@ -47,8 +47,8 @@ constant symbol Pair: U → TYPE
 constant symbol pair {t: U}:  T t → T t → Pair t
 symbol fst {t}: Pair t → T t
 symbol snd {t}: Pair t → T t
-set unif_rule fst $p ≡ $f ↪ $p ≡ pair $f ?s
-set unif_rule snd $p ≡ $s ↪ $p ≡ pair ?f $s
+set unif_rule fst $p ≡ $f ↪ $p ≡ pair $f $s
+set unif_rule snd $p ≡ $s ↪ $p ≡ pair $f $s
 constant symbol K {t}: T t → TYPE
 constant symbol J {t} (p: Pair t): K (fst p) → TYPE
 constant symbol kz: K z
