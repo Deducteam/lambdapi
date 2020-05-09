@@ -134,20 +134,17 @@ let symb_to_tenv
 (** [check_rule r] checks whether the pre-rule [r] is well-typed in
    signature state [ss] and then construct the corresponding rule. Note that
    [Fatal] is raised in case of error. *)
-let check_rule : Scope.pre_rule Pos.loc -> rule = fun pr ->
-  (* Unwrap the contents of the pre-rule. *)
-  let (pos, s, lhs, vars, rhs_vars, arities, xvars) =
-    let Pos.{elt=Scope.{pr_sym;pr_lhs;pr_vars;pr_rhs;pr_arities;
-                        pr_xvars; _}; pos} = pr
-    in
-    (pos, pr_sym, pr_lhs, pr_vars, pr_rhs, pr_arities, pr_xvars)
+let check_rule : Scope.pre_rule Pos.loc -> rule = fun ({pos; elt} as pr) ->
+  let Scope.{pr_sym = s ; pr_lhs = lhs ; pr_vars = vars
+            ; pr_rhs = rhs_vars; pr_arities = arities
+            ; pr_xvars_nb = xvars ; _} = elt
   in
   (* Check that the variables of the RHS are in the LHS. *)
   if xvars <> 0 then
     begin
       let xvars = Array.drop (Array.length vars - xvars) vars in
-      fatal pr.pos "Unknown pattern variables [%a]"
-        (Array.pp Print.pp_tevar ",") xvars
+      fatal pos "Unknown pattern variables [%a]"
+        (Array.pp Print.pp_var ",") xvars
     end;
   let arity = List.length lhs in
   if !log_enabled then
@@ -156,7 +153,7 @@ let check_rule : Scope.pre_rule Pos.loc -> rule = fun pr ->
          unboxed twice. However things should be fine here since the result is
          only used for printing. *)
       let rhs = Bindlib.(unbox (bind_mvar vars rhs_vars)) in
-      let naive_rule = {lhs; rhs; arity; arities; vars; xvars = 0} in
+      let naive_rule = {lhs; rhs; arity; arities; vars; xvars_nb = 0} in
       log_subj "check rule [%a]" pp_rule (s, naive_rule);
     end;
   (* Replace [Patt] nodes of LHS with corresponding elements of [vars]. *)
@@ -272,4 +269,4 @@ let check_rule : Scope.pre_rule Pos.loc -> rule = fun pr ->
   (* TODO optimisation for evaluation: environment minimisation. *)
   (* Construct the rule. *)
   let rhs = Bindlib.unbox (Bindlib.bind_mvar vars rhs) in
-  { lhs ; rhs ; arity ; arities ; vars; xvars = 0 }
+  { lhs ; rhs ; arity ; arities ; vars; xvars_nb = 0 }

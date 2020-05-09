@@ -248,7 +248,7 @@ module CM = struct
     (** Right hand side of a rule. *)
     ; env_builder : env_builder
     (** Data required to apply the rule. *)
-    ; xvars       : int
+    ; xvars_nb    : int
     (** Number of extra variables in the rule RHS. *)
     ; cond_pool   : CP.t
     (** Condition pool with convertibility and free variable constraints. *) }
@@ -321,9 +321,9 @@ module CM = struct
 
   (** [of_rules r] transforms rewriting rules into a clause matrix rules. *)
   let of_rules : rule list -> t = fun rs ->
-    let r2r {lhs; rhs; xvars; _} =
+    let r2r {lhs; rhs; xvars_nb; _} =
       let c_lhs = Array.of_list lhs in
-      { c_lhs; c_rhs = rhs; cond_pool = CP.empty; env_builder = []; xvars }
+      { c_lhs; c_rhs = rhs; cond_pool = CP.empty; env_builder = []; xvars_nb }
     in
     let size = (* Get length of longest rule *)
       if rs = [] then 0 else
@@ -698,9 +698,9 @@ let compile : CM.t -> tree = fun m ->
   if CM.is_empty cm then Fail else
   let compile_cv = compile count vars_id in
   match CM.yield cm with
-  | Yield({c_rhs; env_builder; c_lhs ; xvars; _}) ->
-      if c_lhs = [||] then Leaf(env_builder, c_rhs, xvars) else
-      harvest c_lhs c_rhs env_builder vars_id slot xvars
+  | Yield({c_rhs; env_builder; c_lhs ; xvars_nb; _}) ->
+      if c_lhs = [||] then Leaf(env_builder, c_rhs, xvars_nb) else
+      harvest c_lhs c_rhs env_builder vars_id slot xvars_nb
   | Condition(cond)                        ->
       let ok   = compile_cv {cm with clauses = CM.cond_ok   cond clauses} in
       let fail = compile_cv {cm with clauses = CM.cond_fail cond clauses} in

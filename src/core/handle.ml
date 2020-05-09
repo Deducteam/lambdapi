@@ -286,7 +286,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
               ; arity = List.length pur.pr_lhs
               ; arities = pur.pr_arities
               ; vars = pur.pr_vars
-              ; xvars = pur.pr_xvars }
+              ; xvars_nb = pur.pr_xvars_nb }
             in
             Sign.add_rule ss.signature Unif_rule.equiv urule;
             Tree.update_dtree Unif_rule.equiv;

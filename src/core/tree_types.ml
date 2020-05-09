@@ -65,9 +65,13 @@ type 'rhs tree =
   (** Triple [Leaf(m, rhs, x)] stores the RHS [rhs] of the rewriting rule that
       can be applied upon reaching the leaf.  The association list [m] is used
       to construct the environment of the RHS. Note that we do not need to use
-      a map here since we only need to insert at the head, and iterate over
-      the elements of the structure. The integer [x] indicates the extra meta-
-      variables to generate to populate the RHS. *)
+      a map here  since we only need  to insert at the head,  and iterate over
+      the elements of the structure. Triplet  [(p, (v, xs))] of [m] means that
+      when a rule matches,  the term to be used as the [v]th variable of the
+      RHS is found in position [p] in the array containing all the terms
+      gathered during matching. The pattern may have an environment made of
+      variables [xs]. The integer [x] indicates the number of meta variables
+      to generate to replace the extra variables of the RHS. *)
   | Cond of
       { ok   : 'rhs tree
       (** Branch to follow if the condition is verified. *)
