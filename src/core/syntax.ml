@@ -76,6 +76,14 @@ and p_patt = p_term
     the argument is marked as implicit (i.e., between curly braces). *)
 and p_arg = ident option list * p_type option * bool
 
+(** [p_get_args t] is {!val:Basics.get_args} on syntax-level terms. *)
+let p_get_args : p_term -> p_term * p_term list = fun t ->
+  let rec p_get_args acc t =
+    match t.elt with
+    | P_Appl(t, u) -> p_get_args (u::acc) t
+    | _            -> (t, acc)
+  in p_get_args [] t
+
 (** Parser-level rewriting rule representation. *)
 type p_rule = (p_patt * p_term) loc
 
@@ -95,6 +103,22 @@ type p_assertion =
   | P_assert_conv   of p_term * p_term
   (** The two given terms should be convertible. *)
 
+(** Type representing the different evaluation strategies. *)
+type strategy =
+  | WHNF
+  (** Reduce to weak head-normal form. *)
+  | HNF
+  (** Reduce to head-normal form. *)
+  | SNF
+  (** Reduce to strong normal form. *)
+  | NONE
+  (** Do nothing. *)
+
+(** Configuration for evaluation. *)
+type eval_config =
+  { strategy : strategy   (** Evaluation strategy.          *)
+  ; steps    : int option (** Max number of steps if given. *) }
+
 (** Parser-level representation of a query command. *)
 type p_query_aux =
   | P_query_verbose   of int
@@ -105,9 +129,9 @@ type p_query_aux =
   (** Sets the boolean flag registered under the given name (if any). *)
   | P_query_assert    of bool * p_assertion
   (** Assertion (must fail if boolean is [true]). *)
-  | P_query_infer     of p_term * Eval.config
+  | P_query_infer     of p_term * eval_config
   (** Type inference command. *)
-  | P_query_normalize of p_term * Eval.config
+  | P_query_normalize of p_term * eval_config
   (** Normalisation command. *)
   | P_query_prover    of string
   (** Set the prover to use inside a proof. *)
@@ -156,14 +180,18 @@ type p_proof_end =
 
 (** Parser-level representation of a configuration command. *)
 type p_config =
-  | P_config_builtin of string * qident
+  | P_config_builtin   of string * qident
   (** Sets the configuration for a builtin syntax (e.g., nat literals). *)
-  | P_config_unop    of unop
+  | P_config_unop      of unop
   (** Defines (or redefines) a unary operator (e.g., ["!"] or ["¬"]). *)
-  | P_config_binop   of binop
+  | P_config_binop     of binop
   (** Defines (or redefines) a binary operator (e.g., ["+"] or ["×"]). *)
-  | P_config_ident of string
+  | P_config_ident     of string
   (** Defines a new, valid identifier (e.g., ["σ"], ["€"] or ["ℕ"]). *)
+  | P_config_quant of qident
+  (** Defines a quantifier symbol (e.g., ["∀"], ["∃"]). *)
+  | P_config_unif_rule of p_rule
+  (** Unification hint declarations. *)
 
 (** Parser-level representation of a single command. *)
 type p_statement = (ident * p_arg list * p_type) loc
@@ -301,6 +329,12 @@ let eq_p_config : p_config eq = fun c1 c2 ->
   match (c1, c2) with
   | (P_config_builtin(s1,q1), P_config_builtin(s2,q2)) ->
       s1 = s2 && eq_qident q1 q2
+  | (P_config_unop u1       , P_config_unop u2       ) ->
+      eq_unop u1 u2
+  | (P_config_binop b1      , P_config_binop b2      ) ->
+      eq_binop b1 b2
+  | (P_config_quant q1      , P_config_quant q2      ) ->
+      eq_qident q1 q2
   | (c1                     , c2                     ) ->
       c1 = c2
 

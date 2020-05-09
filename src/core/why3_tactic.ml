@@ -4,7 +4,7 @@ open Console
 open Terms
 open Extra
 open Timed
-open Scope
+open Print
 
 (** Logging function for external prover calling with Why3. *)
 let log_why3 = new_logger 'w' "why3" "why3 provers"
@@ -30,7 +30,7 @@ let why3_main : Why3.Whyconf.main = Why3.Whyconf.get_main why3_config
 let why3_env : Why3.Env.env =
   Why3.Env.create_env (Why3.Whyconf.loadpath why3_main)
 
-(** Builtins configuration for propositional logic. *)
+(** Builtin configuration for propositional logic. *)
 type config =
   { symb_P   : sym (** Encoding of propositions. *)
   ; symb_T   : sym (** Encoding of types.        *)
@@ -41,9 +41,9 @@ type config =
   ; symb_top : sym (** Top(⊤) symbol.            *)
   ; symb_not : sym (** Not(¬) symbol.            *) }
 
-(** [get_config pos builtins] build the configuration using [builtins]. *)
-let get_config : Pos.popt -> Builtin.map -> config = fun pos map ->
-  let builtin = Builtin.get pos map in
+(** [get_config ss pos] build the configuration using [ss]. *)
+let get_config : Sig_state.t -> Pos.popt -> config = fun ss pos ->
+  let builtin = Builtin.get ss pos in
   { symb_P   = builtin "P"
   ; symb_T   = builtin "T"
   ; symb_or  = builtin "or"
@@ -68,26 +68,26 @@ let translate_term : config -> cnst_table -> term ->
                        (cnst_table * Why3.Term.term) option = fun cfg tbl t ->
   let rec translate_prop tbl t =
     match Basics.get_args t with
-    | (Symb(s,_), [t1; t2]) when s == cfg.symb_and ->
+    | (Symb(s), [t1; t2]) when s == cfg.symb_and ->
         let (tbl, t1) = translate_prop tbl t1 in
         let (tbl, t2) = translate_prop tbl t2 in
         (tbl, Why3.Term.t_and t1 t2)
-    | (Symb(s,_), [t1; t2]) when s == cfg.symb_or  ->
+    | (Symb(s), [t1; t2]) when s == cfg.symb_or  ->
         let (tbl, t1) = translate_prop tbl t1 in
         let (tbl, t2) = translate_prop tbl t2 in
         (tbl, Why3.Term.t_or t1 t2)
-    | (Symb(s,_), [t1; t2]) when s == cfg.symb_imp ->
+    | (Symb(s), [t1; t2]) when s == cfg.symb_imp ->
         let (tbl, t1) = translate_prop tbl t1 in
         let (tbl, t2) = translate_prop tbl t2 in
         (tbl, Why3.Term.t_implies t1 t2)
-    | (Symb(s,_), [t]     ) when s == cfg.symb_not ->
+    | (Symb(s), [t]     ) when s == cfg.symb_not ->
         let (tbl, t) = translate_prop tbl t in
         (tbl, Why3.Term.t_not t)
-    | (Symb(s,_), []      ) when s == cfg.symb_bot ->
+    | (Symb(s), []      ) when s == cfg.symb_bot ->
         (tbl, Why3.Term.t_false)
-    | (Symb(s,_), []      ) when s == cfg.symb_top ->
+    | (Symb(s), []      ) when s == cfg.symb_top ->
         (tbl, Why3.Term.t_true)
-    | (_        , _       )                        ->
+    | (_      , _       )                        ->
         (* If the term [p] is mapped in [tbl] then use it. *)
         try
           let sym = List.assoc_eq (Eval.eq_modulo []) t tbl in
@@ -98,14 +98,14 @@ let translate_term : config -> cnst_table -> term ->
           ((t, sym)::tbl, Why3.Term.ps_app sym [])
   in
   match Basics.get_args t with
-  | (Symb(s,_), [t]) when s == cfg.symb_P -> Some (translate_prop tbl t)
-  | _                                     -> None
+  | (Symb(s), [t]) when s == cfg.symb_P -> Some (translate_prop tbl t)
+  | _                                   -> None
 
-(** [encode pos builtins hs g] translates the hypotheses [hs] and the goal [g]
+(** [encode ss pos hs g] translates the hypotheses [hs] and the goal [g]
     into Why3 terms, to construct a Why3 task. *)
-let encode : Pos.popt -> sym StrMap.t -> Env.env -> term -> Why3.Task.task =
-    fun pos builtins hs g ->
-  let cfg = get_config pos builtins in
+let encode : Sig_state.t -> Pos.popt -> Env.env -> term -> Why3.Task.task =
+  fun ss pos hs g ->
+  let cfg = get_config ss pos in
   let (constants, hypothesis) =
     let translate_hyp (tbl, map) (name, (_, hyp, _)) =
       match translate_term cfg tbl (Bindlib.unbox hyp) with
@@ -119,7 +119,7 @@ let encode : Pos.popt -> sym StrMap.t -> Env.env -> term -> Why3.Task.task =
     match translate_term cfg constants g with
     | Some(tbl, why3_term) -> (tbl, why3_term)
     | None                 ->
-        fatal pos "The goal [%a] is not of the form [P _]" Print.pp g
+        fatal pos "The goal [%a] is not of the form [P _]" pp_term g
   in
   (* Add the declaration of every constant in a task. *)
   let fn tsk (_,t) = Why3.Task.add_param_decl tsk t in
@@ -173,19 +173,20 @@ let run_task : Why3.Task.task -> Pos.popt -> string -> bool =
   let call = Why3.Driver.prove_task ~limit ~command driver tsk in
   Why3.Call_provers.((wait_on_call call).pr_answer = Valid)
 
-(** [handle pos ps ss prover_name g] runs the Why3 prover corresponding to the
+(** [handle ss pos ps prover_name g] runs the Why3 prover corresponding to the
     name [prover_name] (if given or a default one otherwise) on the goal  [g].
     If the prover succeeded to prove the goal, then this is reflected by a new
     axiom that is added to signature [ss]. *)
-let handle : Pos.popt -> Proof.proof_state -> sig_state -> string option ->
-               Proof.Goal.t -> term = fun pos ps ss prover_name g ->
+let handle :
+      Sig_state.t -> Pos.popt -> string option -> Proof.Goal.t -> term =
+  fun ss pos prover_name g ->
   (* Get the goal to prove. *)
   let (hyps, trm) = Proof.Goal.get_type g in
   (* Get the default or the indicated name of the prover. *)
   let prover_name = Option.get !default_prover prover_name in
   if !log_enabled then log_why3 "running with configuration [%s]" prover_name;
   (* Encode the goal in Why3. *)
-  let tsk = encode pos ps.Proof.proof_builtins hyps trm in
+  let tsk = encode ss pos hyps trm in
   (* Run the task with the prover named [prover_name]. *)
   if not (run_task tsk pos prover_name) then
     fatal pos "%s did not find a proof" prover_name;
@@ -202,4 +203,4 @@ let handle : Pos.popt -> Proof.proof_state -> sig_state -> string option ->
   (* Return the variable terms of each item in the context. *)
   let terms = List.rev_map (fun (_, (x, _, _)) -> Vari x) hyps in
   (* Apply the instance of the axiom with context. *)
-  Basics.add_args (symb a) terms
+  Basics.add_args (Symb a) terms

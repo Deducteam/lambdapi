@@ -277,6 +277,7 @@ module CM = struct
         respect to slot [s]. A condition [CondFV(vs, i)] corresponds to a free
         variable condition: only variables of [vs] are in the matched term. *)
 
+  (* May be useful for debugging:
   (** [pp ?(pp_cond=false) o m] prints matrix [m] to out channel [o]. The flag
       [pp_cond] indicates whether the condition pull should be printed. *)
   let pp : ?pp_cond:bool -> t pp = fun ?(pp_cond=false) oc m ->
@@ -303,7 +304,7 @@ module CM = struct
         let lcp = List.map (fun cl -> cl.cond_pool) m.clauses in
         out "@[<v 0>%a@]@," (Format.pp_print_list ~pp_sep:cut CP.pp) lcp
       end;
-    out "### Matrix end   ###@]@."
+    out "### Matrix end   ###@]@."*)
 
   (** [is_treecons t] tells whether term [t] corresponds to a constructor (see
       {!type:Tree_types.TC.t}) that is a candidate for a specialization. *)
@@ -450,11 +451,11 @@ module CM = struct
     let keep_treecons e =
       let h, _, arity = get_args_len e in
       match h with
-      | Symb({sym_name; sym_path; _}, _) ->
+      | Symb({sym_name; sym_path; _}) ->
           Some(TC.Symb(sym_path, sym_name, arity), e)
-      | Vari(x)                          ->
+      | Vari(x)                       ->
           Some(TC.Vari(VarMap.find x vars_id), e)
-      | _                                -> None
+      | _                             -> None
     in
     let tc_fst_cmp (tca, _) (tcb, _) = TC.compare tca tcb in
     List.sort_uniq tc_fst_cmp (List.filter_map keep_treecons telst)
@@ -525,7 +526,7 @@ module CM = struct
       let ph, pargs, lenp = get_args_len pat in
       let h, args, lenh = get_args_len r.c_lhs.(col) in
       match ph, h with
-      | Symb(f,_), Symb(g,_) ->
+      | Symb(f), Symb(g) ->
           if lenh = lenp && f == g
           then Some({r with c_lhs = insert (Array.of_list args)})
           else None

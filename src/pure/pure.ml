@@ -18,7 +18,7 @@ module Tactic = struct
   let get_pos t = Pos.(t.pos)
 end
 
-type state = Time.t * Scope.sig_state
+type state = Time.t * Sig_state.t
 
 (** Exception raised by [parse_text] on error. *)
 exception Parse_error of Pos.pos * string
@@ -38,8 +38,8 @@ let parse_text : state -> string -> string -> Command.t list * state =
   | Fatal(Some(None)     , _  ) -> assert false (* Should not produce. *)
   | Fatal(None           , _  ) -> assert false (* Should not produce. *)
 
-type proof_finalizer = Scope.sig_state -> Proof.t -> Scope.sig_state
-type proof_state = Time.t * Scope.sig_state * Proof.t * proof_finalizer
+type proof_finalizer = Sig_state.t -> Proof.t -> Sig_state.t
+type proof_state = Time.t * Sig_state.t * Proof.t * proof_finalizer
 
 let current_goals : proof_state -> Proof.Goal.t list = fun (_,_,p,_) ->
   p.proof_goals
@@ -64,9 +64,9 @@ let initial_state : file_path -> state = fun fname ->
   Package.apply_config fname;
   let mp = Files.file_to_module fname in
   Sign.loading := [mp];
-  let sign = Sign.create mp in
+  let sign = Sig_state.create_sign mp in
   Sign.loaded  := PathMap.add mp sign !Sign.loaded;
-  (Time.save (), Scope.empty_sig_state sign)
+  (Time.save (), Sig_state.of_sign sign)
 
 let handle_command : state -> Command.t -> command_result =
     fun (st,ss) cmd ->

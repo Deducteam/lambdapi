@@ -49,7 +49,7 @@ type stack = term list
 
 (** [whnf_beta t] computes a weak head beta normal form of the term [t]. *)
 let rec whnf_beta : term -> term = fun t ->
-  if !log_enabled then log_eval "evaluating %a" pp t;
+  if !log_enabled then log_eval "evaluating %a" pp_term t;
   let s = Stdlib.(!steps) in
   let (u, stk) = whnf_beta_stk t [] in
   if Stdlib.(!steps) <> s then add_args u stk else unfold t
@@ -79,7 +79,7 @@ let whnf_beta : term -> term = fun t ->
 (** [whnf ctx t] computes a weak head normal form of the term [t] in context
     [ctx]. *)
 let rec whnf : ctxt -> term -> term = fun ctx t ->
-  if !log_enabled then log_eval "evaluating [%a]" pp t;
+  if !log_enabled then log_eval "evaluating [%a]" pp_term t;
   let s = Stdlib.(!steps) in
   let (u, stk) = whnf_stk ctx t [] in
   if Stdlib.(!steps) <> s then add_args u stk else Ctxt.unfold ctx t
@@ -102,7 +102,7 @@ and whnf_stk : ctxt -> term -> stack -> term * stack = fun ctx t stk ->
       Stdlib.incr steps;
       whnf_stk ctx (Bindlib.subst u t) stk
   (* Try to rewrite. *)
-  | (Symb(s,_), stk   ) ->
+  | (Symb(s), stk     ) ->
       begin
       (* First check for symbol definition. *)
       match !(s.sym_def) with
@@ -120,7 +120,7 @@ and whnf_stk : ctxt -> term -> stack -> term * stack = fun ctx t stk ->
 (** [eq_modulo ctx a b] tests the equality of [a] and [b] modulo rewriting and
     the unfolding of variables from the context [ctx] (δ-reduction). *)
 and eq_modulo : ctxt -> term -> term -> bool = fun ctx a b ->
-  if !log_enabled then log_conv "%a[%a] ≡ [%a]" pp_ctxt ctx pp a pp b;
+  if !log_enabled then log_conv "%a" pp_constr (ctx,a,b);
   let rec eq_modulo l =
     match l with
     | []       -> ()
@@ -135,7 +135,7 @@ and eq_modulo : ctxt -> term -> term -> bool = fun ctx a b ->
     | (Kind       , Kind       )
     | (Type       , Type       ) -> eq_modulo l
     | (Vari(x)    , Vari(y)    ) when Bindlib.eq_vars x y -> eq_modulo l
-    | (Symb(s1,_) , Symb(s2,_) ) when s1 == s2 -> eq_modulo l
+    | (Symb(s1)   , Symb(s2)   ) when s1 == s2 -> eq_modulo l
     | (Prod(a1,b1), Prod(a2,b2))
     | (Abst(a1,b1), Abst(a2,b2)) ->
         let (_,b1,b2) = Bindlib.unbind2 b1 b2 in
@@ -150,7 +150,7 @@ and eq_modulo : ctxt -> term -> term -> bool = fun ctx a b ->
     | (_          , _          ) -> raise Exit
   in
   let res = try eq_modulo [(a,b)]; true with Exit -> false in
-  if !log_enabled then log_conv (r_or_g res "%a == %a") pp a pp b; res
+  if !log_enabled then log_conv (r_or_g res "%a") pp_constr (ctx,a,b); res
 
 (** {b NOTE} that in {!val:tree_walk} matching with trees involves two
     collections of terms.
@@ -285,7 +285,7 @@ and tree_walk : dtree -> ctxt -> stack -> (term * stack) option =
             Option.map_default fn None default
           in
           match t with
-          | Symb(s, _) ->
+          | Symb(s)    ->
               let cons = TC.Symb(s.sym_path, s.sym_name, List.length args) in
               begin
                 try
@@ -377,25 +377,9 @@ let rec hnf : ctxt -> term -> term = fun ctx t ->
      Abst(a, Bindlib.unbox (Bindlib.bind_var x (lift (hnf ctx t))))
   | t         -> t
 
-(** Type representing the different evaluation strategies. *)
-type strategy =
-  | WHNF
-  (** Reduce to weak head-normal form. *)
-  | HNF
-  (** Reduce to head-normal form. *)
-  | SNF
-  (** Reduce to strong normal form. *)
-  | NONE
-  (** Do nothing. *)
-
-(** Configuration for evaluation. *)
-type config =
-  { strategy : strategy   (** Evaluation strategy.          *)
-  ; steps    : int option (** Max number of steps if given. *) }
-
 (** [eval cfg ctx t] evaluates the term [t] in the context [ctx] according to
     configuration [cfg]. *)
-let eval : config -> ctxt -> term -> term = fun c ctx t ->
+let eval : Syntax.eval_config -> ctxt -> term -> term = fun c ctx t ->
   match (c.strategy, c.steps) with
   | (_   , Some(0))
   | (NONE, _      ) -> t

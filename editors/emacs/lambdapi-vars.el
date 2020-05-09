@@ -45,7 +45,7 @@
   "Commands producing side-effects.")
 
 (defconst lambdapi-misc-keywords
-  '("TYPE" "left" "right" "infix" "prefix"
+  '("TYPE" "left" "right" "infix" "prefix" "quantifier"
     "protected" "private" "injective" "constant" "as"))
 
 (defcustom lambdapi-indent-basic 2

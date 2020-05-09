@@ -17,18 +17,21 @@ type t =
   ; sign_builtins : sym StrMap.t ref
   ; sign_unops    : (sym * unop ) StrMap.t ref
   ; sign_binops   : (sym * binop) StrMap.t ref
-  ; sign_idents   : StrSet.t ref }
+  ; sign_idents   : StrSet.t ref
+  ; sign_quants   : SymSet.t ref }
 
 (* NOTE the [deps] field contains a hashtable binding the [module_path] of the
    external modules on which the current signature depends to an association
    list. This association list then maps definable symbols of the external
    module to additional reduction rules defined in the current signature. *)
 
-(** [create path] creates an empty signature with module path [path]. *)
-let create : Path.t -> t = fun sign_path ->
-  { sign_path; sign_symbols = ref StrMap.empty; sign_deps = ref PathMap.empty
-  ; sign_builtins = ref StrMap.empty; sign_unops = ref StrMap.empty
-  ; sign_binops = ref StrMap.empty; sign_idents = ref StrSet.empty }
+(** The empty signature. It's a thunk to force the creation of a new record on
+    each call (and avoid unwanted sharing). *)
+let dummy : unit -> t = fun () ->
+  { sign_symbols = ref StrMap.empty; sign_path = []
+  ; sign_deps = ref PathMap.empty; sign_builtins = ref StrMap.empty
+  ; sign_unops = ref StrMap.empty; sign_binops = ref StrMap.empty
+  ; sign_idents = ref StrSet.empty; sign_quants = ref SymSet.empty }
 
 (** [find sign name] finds the symbol named [name] in [sign] if it exists, and
     raises the [Not_found] exception otherwise. *)
@@ -64,6 +67,13 @@ let current_sign () =
   in
   PathMap.find mp !loaded
 
+(** [new_sym ()] creates a new (private definable) symbol. *)
+let new_sym : string -> term -> sym = fun name typ ->
+  let path = (current_sign()).sign_path in
+  { sym_name = name; sym_type = ref typ; sym_path = path; sym_def = ref None
+    ; sym_impl = []; sym_rules = ref []; sym_prop = Defin; sym_expo = Privat
+    ; sym_tree = ref Tree_types.empty_dtree }
+
 (** [link sign] establishes physical links to the external symbols. *)
 let link : t -> unit = fun sign ->
   let rec link_term t =
@@ -75,7 +85,7 @@ let link : t -> unit = fun sign ->
     | Vari(_)     -> t
     | Type        -> t
     | Kind        -> t
-    | Symb(s,h)   -> Symb(link_symb s, h)
+    | Symb(s)     -> Symb(link_symb s)
     | Prod(a,b)   -> Prod(link_term a, link_binder b)
     | Abst(a,t)   -> Abst(link_term a, link_binder t)
     | LLet(a,t,u) -> LLet(link_term a, link_term t, link_binder u)
@@ -121,7 +131,8 @@ let link : t -> unit = fun sign ->
   let hn (s,h) = (link_symb s, h) in
   sign.sign_unops := StrMap.map hn !(sign.sign_unops);
   sign.sign_binops := StrMap.map hn !(sign.sign_binops);
-  StrMap.iter (fun _ (s, _) -> Tree.update_dtree s) !(sign.sign_symbols)
+  StrMap.iter (fun _ (s, _) -> Tree.update_dtree s) !(sign.sign_symbols);
+  sign.sign_quants := SymSet.map link_symb !(sign.sign_quants)
 
 (** [unlink sign] removes references to external symbols (and thus signatures)
     in the signature [sign]. This function is used to minimize the size of our
@@ -145,7 +156,7 @@ let unlink : t -> unit = fun sign ->
     | Vari(_)      -> ()
     | Type         -> ()
     | Kind         -> ()
-    | Symb(s,_)    -> unlink_sym s
+    | Symb(s)      -> unlink_sym s
     | Prod(a,b)    -> unlink_term a; unlink_binder b
     | Abst(a,t)    -> unlink_term a; unlink_binder t
     | LLet(a,t,u)  -> unlink_term a; unlink_term t; unlink_binder u
@@ -170,7 +181,8 @@ let unlink : t -> unit = fun sign ->
   PathMap.iter gn !(sign.sign_deps);
   StrMap.iter (fun _ s -> unlink_sym s) !(sign.sign_builtins);
   StrMap.iter (fun _ (s,_) -> unlink_sym s) !(sign.sign_unops);
-  StrMap.iter (fun _ (s,_) -> unlink_sym s) !(sign.sign_binops)
+  StrMap.iter (fun _ (s,_) -> unlink_sym s) !(sign.sign_binops);
+  SymSet.iter unlink_sym !(sign.sign_quants)
 
 (** [add_symbol sign ?sym_expo mode name a impl] creates a fresh symbol with
     name [name] (which should not already be used in [sign]) and with the type
@@ -232,7 +244,7 @@ let read : string -> t = fun fname ->
       | Vari(_)     -> ()
       | Type        -> ()
       | Kind        -> ()
-      | Symb(s,_)   -> shallow_reset_sym s
+      | Symb(s)     -> shallow_reset_sym s
       | Prod(a,b)   -> reset_term a; reset_binder b
       | Abst(a,t)   -> reset_term a; reset_binder t
       | LLet(a,t,u) -> reset_term a; reset_term t; reset_binder u
@@ -299,6 +311,10 @@ let add_binop : t -> string -> (sym * binop) -> unit = fun sign s sym ->
 (** [add_ident sign id] add the declared identifier [id] to [sign]. *)
 let add_ident : t -> string -> unit = fun sign id ->
   sign.sign_idents := StrSet.add id !(sign.sign_idents)
+
+(** [add_quant sign sym] add the quantifier [sym] to [sign]. *)
+let add_quant : t -> sym -> unit = fun sign sym ->
+  sign.sign_quants := SymSet.add sym !(sign.sign_quants)
 
 (** [dependencies sign] returns an association list containing (the transitive
     closure of) the dependencies of the signature [sign].  Note that the order
