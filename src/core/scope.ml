@@ -47,19 +47,6 @@ let get_root : p_term -> sig_state -> sym = fun t ss ->
   in
   get_root t
 
-(** Data used when scoping a LHS. *)
-type m_lhs_data =
-  { m_lhs_indices : (string, int   ) Hashtbl.t
-  (** Stores the index reserved for a pattern variable of the given name. *)
-  ; m_lhs_arities : (int   , int   ) Hashtbl.t
-  (** Stores the arity of the pattern variable at the given index. *)
-  ; m_lhs_names   : (int   , string) Hashtbl.t
-  (** Stores the name of the pattern variable at the given index (if any). *)
-  ; mutable m_lhs_size : int
-  (** Stores the current known size of the environment of the RHS. *)
-  ; m_lhs_in_env  : string list
-  (** Pattern variables definitely needed in the RHS environment. *) }
-
 (** Representation of the different scoping modes.  Note that the constructors
     hold specific information for the given mode. *)
 type mode =
@@ -69,10 +56,20 @@ type mode =
       scoped term. *)
   | M_Patt
   (** Scoping mode for patterns in the rewrite tactic. *)
-  | M_LHS  of bool * m_lhs_data
-  (** Scoping mode for rewriting rule left-hand sides. The constructor carries
-      a flag that is set to [true] if {!constructor:Terms.expo.Privat} symbols
-      are allowed, and also additional data. *)
+  | M_LHS  of
+      { m_lhs_prv              : bool
+      (** True if {!constructor:Terms.expo.Privat} symbols are allowed. *)
+      ; m_lhs_indices          : (string, int   ) Hashtbl.t
+      (** Stores index reserved for a pattern variable of the given name. *)
+      ; m_lhs_arities          : (int   , int   ) Hashtbl.t
+      (** Stores the arity of the pattern variable at the given index. *)
+      ; m_lhs_names            : (int   , string) Hashtbl.t
+      (** Stores the name of the pattern variable at given index (if any). *)
+      ; mutable m_lhs_size     : int
+      (** Stores the current known size of the environment of the RHS. *)
+      ; m_lhs_in_env           : string list
+      (** Pattern variables definitely needed in the RHS environment. *) }
+  (** Scoping mode for rewriting rule left-hand sides. *)
   | M_RHS  of
       { m_rhs_prv             : bool
       (** True if {!constructor:Terms.expo.Privat} symbols are allowed. *)
@@ -121,25 +118,30 @@ let get_args : p_term -> p_term * p_term list =
     state [ss] is used to hande module aliasing according to [find_qid]. *)
 let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
   (* Unique pattern variable generation for wildcards in a LHS. *)
-  let fresh_patt data name env =
+  let fresh_patt md name env =
+    match md with
+    | M_LHS(data) ->
     let fresh_index () =
       let i = data.m_lhs_size in
       data.m_lhs_size <- i + 1;
       let arity = Array.length env in
       Hashtbl.add data.m_lhs_arities i arity; i
     in
-    match name with
-    | Some(name) ->
-        let i =
-          try Hashtbl.find data.m_lhs_indices name with Not_found ->
+    begin
+      match name with
+      | Some(name) ->
+          let i =
+            try Hashtbl.find data.m_lhs_indices name with Not_found ->
+            let i = fresh_index () in
+            Hashtbl.add data.m_lhs_indices name i;
+            Hashtbl.add data.m_lhs_names i name; i
+          in
+          _Patt (Some(i)) (Printf.sprintf "v%i_%s" i name) env
+      | None       ->
           let i = fresh_index () in
-          Hashtbl.add data.m_lhs_indices name i;
-          Hashtbl.add data.m_lhs_names i name; i
-        in
-        _Patt (Some(i)) (Printf.sprintf "v%i_%s" i name) env
-    | None       ->
-        let i = fresh_index () in
-        _Patt (Some(i)) (Printf.sprintf "v%i" i) env
+          _Patt (Some(i)) (Printf.sprintf "v%i" i) env
+    end
+    | _           -> invalid_arg "fresh_patt mode must be M_LHS"
   in
   (* Toplevel scoping function, with handling of implicit arguments. *)
   let rec scope : env -> p_term -> tbox = fun env t ->
@@ -195,7 +197,7 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
     match (a, md) with
     | (Some(a), M_LHS(_)    ) ->
         fatal a.pos "Annotation not allowed in a LHS."
-    | (None   , M_LHS(_,d)  ) -> fresh_patt d None (Env.to_tbox env)
+    | (None   , M_LHS(_)    ) -> fresh_patt md None (Env.to_tbox env)
     | (Some(a), _           ) -> scope env a
     | (None   , _           ) ->
         (* Create a new metavariable of type [TYPE] for the missing domain. *)
@@ -236,14 +238,15 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
     | (P_Type          , M_LHS(_)          ) ->
         fatal t.pos "TYPE is not allowed in a LHS."
     | (P_Type          , _                 ) -> _Type
-    | (P_Iden(qid,_)   , M_LHS(p,_)        ) -> find_qid true p ss env qid
+    | (P_Iden(qid,_)   , M_LHS(d)          ) ->
+        find_qid true d.m_lhs_prv ss env qid
     | (P_Iden(qid,_)   , M_Term(_,Privat ) ) -> find_qid false true ss env qid
     | (P_Iden(qid,_)   , M_RHS(d)          ) ->
         find_qid false d.m_rhs_prv ss env qid
     | (P_Iden(qid,_)   , _                 ) ->
         find_qid false false ss env qid
-    | (P_Wild          , M_LHS(_,d)        ) ->
-        fresh_patt d None (Env.to_tbox env)
+    | (P_Wild          , M_LHS(_)          ) ->
+        fresh_patt md None (Env.to_tbox env)
     | (P_Wild          , M_Patt            ) -> _Wild
     | (P_Wild          , _                 ) ->
         (* We create a metavariable [m] of type [tm], which itself is also a
@@ -279,7 +282,7 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
         _Meta m2 (Array.map (scope env) ts)
     | (P_Meta(_,_)     , _                ) ->
         fatal t.pos "Metavariables are not allowed in rewriting rules."
-    | (P_Patt(id,ts)   , M_LHS(_,d)       ) ->
+    | (P_Patt(id,ts)   , M_LHS(d)         ) ->
         (* Check that [ts] are variables. *)
         let scope_var t =
           match unfold (Bindlib.unbox (scope env t)) with
@@ -311,7 +314,7 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
                            named." id.elt
           | _                                                  -> ()
         end;
-        fresh_patt d (Option.map (fun id -> id.elt) id) ar
+        fresh_patt md (Option.map (fun id -> id.elt) id) ar
     | (P_Patt(id,ts)   , M_RHS(r)         ) ->
         let x =
           match id with
@@ -484,19 +487,22 @@ let scope_rule : sig_state -> p_rule -> pre_rule loc = fun ss r ->
     with Not_found -> ()
   in
   List.iter check_arity pvs_rhs;
-  (* Get privacy of head of the rule, scope the rest accordingly. *)
-  let prv = is_private (get_root p_lhs ss) in
   (* Scope the LHS and get the reserved index for named pattern variables. *)
-  let (pr_lhs, data) =
-    let data =
-      { m_lhs_indices = Hashtbl.create 7
-      ; m_lhs_arities = Hashtbl.create 7
-      ; m_lhs_names   = Hashtbl.create 7
-      ; m_lhs_size    = 0
-      ; m_lhs_in_env  = nl @ (List.map fst pvs_rhs) }
+  let (pr_lhs, lhs_indices, lhs_arities, lhs_names, lhs_size) =
+    let mode =
+      M_LHS{ m_lhs_prv     = is_private (get_root p_lhs ss)
+           ; m_lhs_indices = Hashtbl.create 7
+           ; m_lhs_arities = Hashtbl.create 7
+           ; m_lhs_names   = Hashtbl.create 7
+           ; m_lhs_size    = 0
+           ; m_lhs_in_env  = nl @ (List.map fst pvs_rhs) }
     in
-    let pr_lhs = scope (M_LHS(prv, data)) ss Env.empty p_lhs in
-    (Bindlib.unbox pr_lhs, data)
+    let pr_lhs = scope mode ss Env.empty p_lhs in
+    match mode with
+    | M_LHS{ m_lhs_indices; m_lhs_names; m_lhs_size; m_lhs_arities; _} ->
+        (Bindlib.unbox pr_lhs, m_lhs_indices, m_lhs_arities, m_lhs_names,
+         m_lhs_size)
+    | _                                                  -> assert false
   in
   (* Check the head symbol and build actual LHS. *)
   let (sym, pr_lhs) =
@@ -516,19 +522,19 @@ let scope_rule : sig_state -> p_rule -> pre_rule loc = fun ss r ->
   let pr_vars =
     let fn i =
       let name =
-        try Printf.sprintf "%i_%s" i (Hashtbl.find data.m_lhs_names i)
+        try Printf.sprintf "%i_%s" i (Hashtbl.find lhs_names i)
         with Not_found -> Printf.sprintf "%i" i
       in
       Bindlib.new_var te_mkfree name
     in
-    Array.init data.m_lhs_size fn
+    Array.init lhs_size fn
   in
   (* We scope the RHS and retrieve the variables not occurring in the LHS. *)
   let (pr_rhs, xvars) =
     let mode =
-      let htbl_vars = Hashtbl.create (Hashtbl.length data.m_lhs_indices) in
+      let htbl_vars = Hashtbl.create (Hashtbl.length lhs_indices) in
       let fn k i = Hashtbl.add htbl_vars k pr_vars.(i) in
-      Hashtbl.iter fn data.m_lhs_indices;
+      Hashtbl.iter fn lhs_indices;
       M_RHS{ m_rhs_prv = is_private sym; m_rhs_data = htbl_vars
            ; m_rhs_vars_nb = Array.length pr_vars; m_rhs_xvars = [] }
     in
@@ -550,14 +556,14 @@ let scope_rule : sig_state -> p_rule -> pre_rule loc = fun ss r ->
   (* We put everything together to build the pre-rule. *)
   let pr_arities =
     let fn i =
-      try Hashtbl.find data.m_lhs_arities i
+      try Hashtbl.find lhs_arities i
       with Not_found -> assert false (* Unreachable. *)
     in
-    Array.init data.m_lhs_size fn
+    Array.init lhs_size fn
   in
   let pr =
     { pr_sym = sym ; pr_lhs ; pr_vars ; pr_rhs ; pr_arities
-    ; pr_names = data.m_lhs_names ; pr_xvars_nb }
+    ; pr_names = lhs_names ; pr_xvars_nb }
   in
   Pos.make r.pos pr
 
