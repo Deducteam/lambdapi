@@ -198,7 +198,7 @@ type p_command_aux =
   | P_definition of Terms.expo * bool * ident * p_arg list * p_type option
                   * p_term
   (** Definition of a symbol (unfoldable). *)
-  | P_inductive of Terms.expo * ident * p_type option * (ident * p_term) list
+  | P_inductive of Terms.expo * ident * p_term option * (ident * p_term) list
   (** Definition of inductive type *)
   | P_theorem    of Terms.expo * p_statement * p_tactic list * p_proof_end loc
   (** Theorem with its proof. *)

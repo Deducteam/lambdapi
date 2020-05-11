@@ -25,13 +25,13 @@ open Terms
 open Syntax
 
 type inductive =
-  { name  : ident      ; (* the name of the inductive type     *)
-    sort  : p_type     ; (* the sort of the inductive type     *)
-    rule  : sym list   ; (* the list of constructors           *)
-    _ind  : sym option ; (* one inductive principle (Prop one) *)
-    _rec  : sym option ; (* one recursive principle (Set one)  *)
-    _rect : sym option ; (* one recursive principle (Type one) *)
-    _inv  : sym option   (* one inversion principle            *) }
+  { name_ind       : ident      ; (* the name of the inductive type     *)
+    type_ind       : p_type     ; (* the sort of the inductive type     *)
+    rule_ind       : sym list   ; (* the list of constructors           *)
+    principle_ind  : sym option ; (* one inductive principle (Prop one) *)
+    principle_rec  : sym option ; (* one recursive principle (Set one)  *)
+    principle_rect : sym option ; (* one recursive principle (Type one) *)
+    principle_inv  : sym option   (* one inversion principle            *) }
 
 let constructor_to_term : sym -> term = fun symbol -> (* @WORK in Progress *)
   !(symbol.sym_type)
@@ -46,12 +46,12 @@ let create_inductive_principal : inductive -> inductive = fun i ->
     | [a]  -> constructor_to_term a
     | t::q -> Appl(constructor_to_term t, create_premises q)
   in
-  let premises = create_premises i.rule in
+  let premises = create_premises i.rule_ind in
   (* ending principal *)
   let ending = Wild (* Prod *) in
   let t = Appl(head, Appl(premises, ending)) in
   let induc_principle =
-    { sym_name  = (i.name.elt)^"_ind" ;
+    { sym_name  = i.name_ind.elt^"_ind" ;
       sym_type = ref t ;
       sym_path = Files.file_to_module (Files.current_path ());
       sym_def = ref None ;
@@ -61,4 +61,4 @@ let create_inductive_principal : inductive -> inductive = fun i ->
       sym_prop = Const ;
       sym_expo = Public }
   in
-  {i with _ind = Some induc_principle}
+  {i with principle_ind = Some induc_principle}
