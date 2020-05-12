@@ -76,7 +76,7 @@ let try_rules : ctxt -> term -> term -> constr list option = fun ctx s t ->
       | None       -> raise No_match
     in
     let subpbs = List.map (fun (t,u) -> (ctx,t,u)) (unpack rhs) in
-    let pp_subpbs = List.pp pp_constr ", " in
+    let pp_subpbs = List.pp pp_constr "; " in
     if !log_enabled then log_unif (gre "try rule [%a]") pp_subpbs subpbs;
     Some(subpbs)
   with No_match ->
