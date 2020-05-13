@@ -35,21 +35,22 @@ let equiv : sym =
 
 (** Cons-like symbol for equivalences. The right-hand side of a unification
     rule is made of a list of the form
-    [comma (equiv t u) (comma (equiv v w) ...)] pretty-printed
-    [t ≡ u, v ≡ w, ...]. *)
-let comma : sym =
+    [cons (equiv t u) (cons (equiv v w) ...)] pretty-printed
+    [t ≡ u; v ≡ w; ...]. *)
+let cons : sym =
   let path = List.map (fun s -> (s, false)) path in
-  let bo = (",", Assoc_right, 1.0, Pos.none (path, "#comma")) in
-  let sym = Sign.add_symbol sign Public Defin (Pos.none "#comma") Kind [] in
-  Sign.add_binop sign "," (sym, bo);
+  let bo = (";", Assoc_right, 1.0, Pos.none (path, "#cons")) in
+  let sym = Sign.add_symbol sign Public Defin (Pos.none "#cons") Kind [] in
+  Sign.add_binop sign ";" (sym, bo);
   sym
 
-(** [unpack eqs] transforms a term of the form [t =? u, v =? w, ...]
-    into a list [[t =? u; v =? w; ...]]. *)
+(** [unpack eqs] transforms a term of the form
+    [cons (equiv t u) (cons (equiv v w) ...)]
+    into a list [[(t,u); (v,w); ...]]. *)
 let rec unpack : term -> (term * term) list = fun eqs ->
   match Basics.get_args eqs with
   | (Symb(s), [v; w]) ->
-      if s == comma then
+      if s == cons then
         match Basics.get_args v with
         | (Symb(e), [t; u]) when e == equiv -> (t, u) :: unpack w
         | _          (* Ill-formed term. *) -> assert false
@@ -62,7 +63,7 @@ let rec p_unpack : p_term -> (p_term * p_term) list = fun eqs ->
   let id s = snd s.Pos.elt in
   match Syntax.p_get_args eqs with
   | ({elt=P_Iden(s, _); _}, [v; w]) ->
-      if id s = "#comma" then
+      if id s = "#cons" then
         match Syntax.p_get_args v with
         | ({elt=P_Iden(e, _); _}, [t; u]) when id e = "#equiv" ->
             (t, u) :: p_unpack w

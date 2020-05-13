@@ -92,7 +92,7 @@ set builtin "refl"  ≔ refl
 theorem add_succ_r : Πn m, P (eq nat (add n (s m)) (s (add n m)))
 proof
   assume n m
-  refine nat_ind (λn, eq nat (add n (s m)) (s (add n m))) ?CZ[n,m] ?CS[n,m] n
+  refine nat_ind (λn, eq nat (add n (s m)) (s (add n m))) ?CZ[n;m] ?CS[n;m] n
   // Case Z.
   simpl
   reflexivity
@@ -111,5 +111,3 @@ proof
   rewrite add_succ_r
   refine refl nat (add (s (add x y)) z)
 qed
-
-
