@@ -1,6 +1,6 @@
 // Simple unification hints
 symbol U: TYPE
-symbol T: U → TYPE
+injective symbol T: U → TYPE
 symbol bool: U
 symbol Bool: TYPE
 rule T bool ↪ Bool
@@ -43,8 +43,19 @@ set unif_rule (plus $x $y) ≡ z ↪ $x ≡ z; $y ≡ z
 // Trigger the unification problem plus ?1 ?2 ≡ z
 compute H (plus _ _) iz
 
+constant symbol Pair: U → TYPE
+constant symbol pair {t: U}:  T t → T t → Pair t
+symbol fst {t}: Pair t → T t
+symbol snd {t}: Pair t → T t
+set unif_rule fst $p ≡ $f ↪ $p ≡ pair $f $s
+set unif_rule snd $p ≡ $s ↪ $p ≡ pair $f $s
+constant symbol K {t}: T t → TYPE
+constant symbol J {t} (p: Pair t): K (fst p) → TYPE
+constant symbol kz: K z
+compute J (pair _ z) kz
+
 // The arrow problem
 symbol arrow : U → U → U
 rule T (arrow $t $u) ↪ T $t → T $u
-// hint (T $a → T $b) ≡ T (arrow $c $d) ↪ $a ≡ $c; $b ≡ $d
+// set unif_rule $a → $b ≡ T $c ↪ $a ≡ T $aa; $b ≡ T $bb; $c ≡ arrow $aa $bb
 // FIXME: implications not allowed in LHS (scoping level)

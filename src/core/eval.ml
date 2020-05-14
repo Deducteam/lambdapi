@@ -192,9 +192,12 @@ and tree_walk : dtree -> ctxt -> stack -> (term * stack) option =
     let open Tree_types in
     match tree with
     | Fail                                                -> None
-    | Leaf(env_builder, act)                              ->
-        (* Allocate an environment for the action. *)
-        let env = Array.make (Bindlib.mbinder_arity act) TE_None in
+    | Leaf(env_builder, (act, xvars))                     ->
+        (* Allocate an environment where to place terms coming from the
+           pattern variables for the action. *)
+        let env_len = Bindlib.mbinder_arity act in
+        (* We have [length env_builder = env_len - xvars] *)
+        let env = Array.make env_len TE_None in
         (* Retrieve terms needed in the action from the [vars] array. *)
         let fn (pos, (slot, xs)) =
           match bound.(pos) with
@@ -211,8 +214,13 @@ and tree_walk : dtree -> ctxt -> stack -> (term * stack) option =
                 env.(slot) <- TE_Some(Bindlib.unbox (Bindlib.bind_mvar xs b))
         in
         List.iter fn env_builder;
-        (* Actually perform the action. *)
-        Some(Bindlib.msubst act env, stk)
+        (* Complete the array with fresh meta-variables if needed. *)
+        for i = env_len - xvars to env_len - 1 do
+          let t = make_meta [] Kind in
+          let b = Bindlib.raw_mbinder [||] [||] 0 mkfree (fun _ -> t) in
+          env.(i) <- TE_Some(b)
+        done;
+        Some (Bindlib.msubst act env, stk)
     | Cond({ok; cond; fail})                              ->
         let next =
           match cond with

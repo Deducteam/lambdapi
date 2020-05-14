@@ -66,8 +66,8 @@ let pp_symbol : sym pp = fun oc s ->
     Format.pp_print_string oc s.sym_name
   else pp_qualified oc s
 
-(** [pp_tvar oc x] prints the term variable [x] to the channel [oc]. *)
-let pp_tvar : tvar pp = fun oc x ->
+(** [pp_var oc x] prints the Bindlib variable [x] to the channel [oc]. *)
+let pp_var : 'a Bindlib.var pp = fun oc x ->
   Format.pp_print_string oc (Bindlib.name_of x)
 
 (** Exception raised when trying to convert a term into a nat. *)
@@ -166,7 +166,7 @@ and pp_term : term pp = fun oc t ->
           match unfold b with
           | Abst(a,b) ->
               let (x,p) = Bindlib.unbind b in
-              out oc "%a%a" pp_symbol s pp_tvar x;
+              out oc "%a%a" pp_symbol s pp_var x;
               if !print_implicits then out oc ": %a" (pp `Func) a;
               out oc ", %a" (pp `Func) p
           | _ -> assert false
@@ -189,7 +189,7 @@ and pp_term : term pp = fun oc t ->
     | Wild        -> assert false
     | TRef(_)     -> assert false
     (* Atoms are printed inconditonally. *)
-    | Vari(x)     -> pp_tvar oc x
+    | Vari(x)     -> pp_var oc x
     | Type        -> out oc "TYPE"
     | Kind        -> out oc "KIND"
     | Symb(s)     -> pp_symbol oc s
@@ -200,7 +200,7 @@ and pp_term : term pp = fun oc t ->
     | Abst(a,b)   ->
         if wrap then out oc "(";
         let (x,t) = Bindlib.unbind b in
-        out oc "λ%a" pp_var (b,x);
+        out oc "λ%a" pp_bvar (b,x);
         if !print_domains then out oc ": %a, %a" (pp `Func) a (pp `Func) t
         else pp_abstractions oc t;
         if wrap then out oc ")"
@@ -208,23 +208,23 @@ and pp_term : term pp = fun oc t ->
         if wrap then out oc "(";
         let (x,t) = Bindlib.unbind b in
         if Bindlib.binder_occur b then
-          out oc "Π%a: %a, %a" pp_tvar x (pp `Func) a (pp `Func) t
+          out oc "Π%a: %a, %a" pp_var x (pp `Func) a (pp `Func) t
         else out oc "%a → %a" (pp `Appl) a (pp `Func) t;
         if wrap then out oc ")"
     | LLet(a,t,b) ->
         if wrap then out oc "(";
         let (x,u) = Bindlib.unbind b in
-        pp_var oc (b,x);
+        pp_bvar oc (b,x);
         if !print_domains then out oc ": %a" (pp `Atom) a;
         out oc " ≔ %a in %a" (pp `Atom) t (pp `Atom) u;
         if wrap then out oc ")"
-  and pp_var oc (b,x) =
-    if Bindlib.binder_occur b then out oc "%a" pp_tvar x else out oc "_"
+  and pp_bvar oc (b,x) =
+    if Bindlib.binder_occur b then out oc "%a" pp_var x else out oc "_"
   and pp_abstractions oc t =
     match unfold t with
     | Abst(_,b) ->
         let (x,t) = Bindlib.unbind b in
-        out oc " %a" pp_var (b,x); pp_abstractions oc t
+        out oc " %a" pp_bvar (b,x); pp_abstractions oc t
     | t -> out oc ", %a" (pp `Func) t
   in
   pp `Func oc (cleanup t)
@@ -243,9 +243,9 @@ let pp_ctxt : ctxt pp = fun oc ctx ->
     let pp_ctxt : ctxt pp = fun oc ctx ->
       let pp_e oc (x,a,t) =
         match t with
-        | None    -> Format.fprintf oc "%a: %a" pp_tvar x pp_term a
+        | None    -> Format.fprintf oc "%a: %a" pp_var x pp_term a
         | Some(t) ->
-            Format.fprintf oc "%a: %a ≔ %a" pp_tvar x pp_term a pp_term t
+            Format.fprintf oc "%a: %a ≔ %a" pp_var x pp_term a pp_term t
       in
       if ctx = [] then Format.pp_print_string oc "∅"
       else List.pp pp_e ", " oc (List.rev ctx)
