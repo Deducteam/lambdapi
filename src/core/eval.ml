@@ -253,10 +253,10 @@ and tree_walk : dtree -> ctxt -> stack -> (term * stack) option =
               else fail
         in
         walk next stk cursor vars_id id_vars
-    | Eos(l, r)                                           ->
+    | Eos(l, r)                                                    ->
         let next = if stk = [] then l else r in
         walk next stk cursor vars_id id_vars
-    | Node({swap; children; store; abstraction; default}) ->
+    | Node({swap; children; store; abstraction; default; product}) ->
         match List.destruct stk swap with
         | exception Not_found     -> None
         | (left, examined, right) ->
@@ -292,6 +292,13 @@ and tree_walk : dtree -> ctxt -> stack -> (term * stack) option =
             in
             Option.map_default fn None default
           in
+          let walk_binder b id tr =
+            let (bound, body) = Bindlib.unbind b in
+            let vars_id = VarMap.add bound id vars_id in
+            let id_vars = IntMap.add id bound id_vars in
+            let stk = List.reconstruct left (body::args) right in
+            walk tr stk cursor vars_id id_vars
+          in
           match t with
           | Symb(s)    ->
               let cons = TC.Symb(s.sym_path, s.sym_name, List.length args) in
@@ -316,16 +323,16 @@ and tree_walk : dtree -> ctxt -> stack -> (term * stack) option =
               begin
                 match abstraction with
                 | None        -> default ()
-                | Some(id,tr) ->
-                    let bound, body = Bindlib.unbind b in
-                    let vars_id = VarMap.add bound id vars_id in
-                    let id_vars = IntMap.add id bound id_vars in
-                    let stk = List.reconstruct left (body::args) right in
-                    walk tr stk cursor vars_id id_vars
+                | Some(id,tr) -> walk_binder b id tr
+              end
+          | Prod(_, b) ->
+              begin
+                match product with
+                | None        -> default ()
+                | Some(id,tr) -> walk_binder b id tr
               end
           | Kind
           | Type
-          | Prod(_)
           | Meta(_, _) -> default ()
           | TRef(_)    -> assert false (* Should be reduced by [whnf_stk]. *)
           | Appl(_)    -> assert false (* Should be reduced by [whnf_stk]. *)

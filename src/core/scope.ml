@@ -337,9 +337,6 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
         fatal t.pos "Pattern variables are only allowed in rewriting rules."
     | (P_Appl(_,_)     , _                  ) ->
         assert false (* Unreachable. *)
-    | (P_Impl(_,_)     , M_LHS(_)           ) ->
-        (* FIXME: should be allowed for hints *)
-        fatal t.pos "Implications are not allowed in a LHS."
     | (P_Impl(_,_)     , M_Patt             ) ->
         fatal t.pos "Implications are not allowed in a pattern."
     | (P_Impl(a,b)     , _                  ) ->
@@ -348,8 +345,6 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
         fatal t.pos "Abstractions are not allowed in a pattern."
     | (P_Abst(xs,t)    , _                  ) ->
         fst (scope_binder _Abst env xs t)
-    | (P_Prod(_,_)     , M_LHS(_)           ) ->
-        fatal t.pos "Dependent products are not allowed in a LHS."
     | (P_Prod(_,_)     , M_Patt             ) ->
         fatal t.pos "Dependent products are not allowed in a pattern."
     | (P_Prod(xs,b)    , _                  ) ->
