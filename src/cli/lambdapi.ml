@@ -78,7 +78,9 @@ let decision_tree_cmd : Config.t -> (Path.t * string) -> unit =
     Config.init cfg;
     let sym =
       let sign = Compile.compile false mp in
-      try fst (StrMap.find sym Timed.(!(sign.sign_symbols)))
+      let ss = Sig_state.of_sign sign in
+      let (prt, prv) = (true, true) in
+      try Sig_state.find_sym false ss (Pos.none ([], sym)) ~prt ~prv
       with Not_found -> fatal_no_pos "Symbol not found."
     in
     out 0 "%a" Tree_graphviz.to_dot sym
