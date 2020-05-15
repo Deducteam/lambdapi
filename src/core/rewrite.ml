@@ -709,7 +709,6 @@ let symmetry : Sig_state.t -> popt -> Proof.t -> term = fun ss pos ps ->
       log_rewr "Symmetry with:";
       log_rewr "  goal       = [%a]" pp_term g_type;
       log_rewr "  new goal   = [%a]" pp_term meta_type;
-      (*log_rewr "  predicate  = [%a]" pp_term pred;*)
       log_rewr "  proof term = [%a]" pp_term term
     end;
   (* Return the proof-term. *)

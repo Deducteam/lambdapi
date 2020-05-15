@@ -107,7 +107,7 @@ proof
   reflexivity
 qed
 
-theorem rewriteTest0 x y z : P ((x + s y) + z = (s (x + y)) + z)
+theorem test0 x y z : P ((x + s y) + z = (s (x + y)) + z)
 proof
   assume x y z
   rewrite add_succ_r
