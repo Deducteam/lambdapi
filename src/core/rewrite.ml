@@ -60,7 +60,7 @@ let eq : ctxt -> term -> term -> bool = fun ctx a b -> a == b ||
 (** Rewrite patterns as in Coq/SSReflect. See "A Small Scale
     Reflection Extension for the Coq system", by Georges Gonthier,
     Assia Mahboubi and Enrico Tassi, INRIA Research Report 6455, 2016,
-    http://hal.inria.fr/inria-00258384, section 8, p. 48. *)
+    @see <http://hal.inria.fr/inria-00258384>, section 8, p. 48. *)
 type rw_patt =
   | RW_Term           of term
   | RW_InTerm         of term
