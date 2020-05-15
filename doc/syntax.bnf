@@ -127,7 +127,7 @@ reserved "why3"
   | "assume" <ident>+
   | "apply" <term>
   | "simpl"
-  | "rewrite" {"[" <rw_patt> "]"}? <term>
+  | "rewrite" "-"? {"[" <rw_patt> "]"}? <term>
   | "reflexivity"
   | "symmetry"
   | "focus" <nat_lit>
