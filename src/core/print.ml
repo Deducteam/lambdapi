@@ -62,8 +62,9 @@ let get_pp_hint : sym -> pp_hint = fun s ->
 
 (** [pp_symbol oc s] prints the name of the symbol [s] to channel [oc]. *)
 let pp_symbol : sym pp = fun oc s ->
-  if SymMap.mem s (!sig_state).pp_hints then
-    Format.pp_print_string oc s.sym_name
+  if SymMap.mem s (!sig_state).pp_hints
+     || Files.Path.compare s.sym_path (!sig_state).signature.sign_path = 0
+  then Format.pp_print_string oc s.sym_name
   else pp_qualified oc s
 
 (** [pp_var oc x] prints the Bindlib variable [x] to the channel [oc]. *)

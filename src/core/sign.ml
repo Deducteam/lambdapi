@@ -67,7 +67,8 @@ let current_sign () =
   in
   PathMap.find mp !loaded
 
-(** [new_sym ()] creates a new (private definable) symbol. *)
+(** [new_sym n a] creates a new (private definable) symbol of name [n] and
+   type [a]. *)
 let new_sym : string -> term -> sym = fun name typ ->
   let path = (current_sign()).sign_path in
   { sym_name = name; sym_type = ref typ; sym_path = path; sym_def = ref None
