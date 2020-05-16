@@ -494,10 +494,19 @@ module CM = struct
           | None    -> cond_pool
         in
         let env_builder =
+          (* If the pattern has a slot, either it is used in the RHS, in which
+             case a  tuple [(j,vs)] consisting of  the index [j] to  which the
+             matched term is bound in the  binder of the RHS and the variables
+             making up the  environment of the term (if any)  as indexes among
+             the  variables  collected.  Or  the  variable  is  subject  to  a
+             non-linearity  constraint. In  this  case we  do  not enrich  the
+             environment builder. *)
+          let se i (_,(j,_)) = i = j in
           match i with
-          | Some(i) ->
+          | Some(i) when not (List.exists (se i) r.env_builder) ->
               (slot, (i, Array.map (index_var vi) e)) :: r.env_builder
-          | None    -> r.env_builder
+          | _                                                   ->
+              r.env_builder
         in
         {r with env_builder; cond_pool}
     | _             -> r

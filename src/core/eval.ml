@@ -196,7 +196,7 @@ and tree_walk : dtree -> ctxt -> stack -> (term * stack) option =
         (* Allocate an environment where to place terms coming from the
            pattern variables for the action. *)
         let env_len = Bindlib.mbinder_arity act in
-        (* We have [length env_builder = env_len - xvars] *)
+        assert (List.length env_builder = env_len - xvars);
         let env = Array.make env_len TE_None in
         (* Retrieve terms needed in the action from the [vars] array. *)
         let fn (pos, (slot, xs)) =
