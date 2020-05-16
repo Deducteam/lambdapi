@@ -569,31 +569,34 @@ module CM = struct
     (pos, List.filter_map transf cls)
 
   (** [binder get col v pos cls] selects and transforms clauses [cls] assuming
-      that each  term [t] in  column [col]  is a binder  such that [get  t] is
-      [Some(b)]. The term under the  binder has its bound variable substituted
-      by [v]; [pos] is the position of terms in clause [cls]. *)
-  let binder : (term -> tbinder option) -> int -> tvar -> arg list ->
+      that each term [t] in column [col] is a binder such that [get t] returns
+      [Some(a,  b)]. The  term [b]  under the  binder has  its bound  variable
+      substituted by [v]; [pos] is the  position of terms in clause [cls]. The
+      domain [a] of the binder and [b[v/x]]  are put back into the stack, with
+      [a] with argument position 0 and [b[v/x]] as argument 1. *)
+  let binder : (term -> (term * tbinder) option) -> int -> tvar -> arg list ->
     clause list -> arg list * clause list = fun get col v pos cls ->
     let (l, {arg_path; arg_rank}, r) = List.destruct pos col in
-    let a = {arg_path = 0 :: arg_path; arg_rank = arg_rank + 1} in
-    let pos = List.rev_append l (a :: r) in
+    let ab = {arg_path = 1 :: arg_path; arg_rank = arg_rank + 1} in
+    let at = {arg_path = 0 :: arg_path; arg_rank} in
+    let pos = List.rev_append l (at :: ab :: r) in
     let insert r e =
-      Array.concat [ Array.sub r.c_lhs 0 col; [| e |]
+      Array.concat [ Array.sub r.c_lhs 0 col; e
                    ; Array.drop (col + 1) r.c_lhs ]
     in
     let transf (r:clause) =
       let ph, pargs = get_args r.c_lhs.(col) in
       match ph with
-      | Patt(_) as pat -> Some({r with c_lhs = insert r pat})
+      | Patt(_)  -> Some{r with c_lhs = insert r [|Patt(None, "", [||]); ph|]}
       | Symb(_)
-      | Vari(_)        -> None
-      | t              ->
+      | Vari(_)  -> None
+      | t        ->
       match get t with
-      | Some(b) ->
+      | Some(a,b) ->
           assert (pargs = []) ; (* Patterns in β-normal form *)
           let b = Bindlib.subst b (mkfree v) in
-          Some({r with c_lhs = insert r b})
-      | None    -> assert false (* Term is ill formed *)
+          Some({r with c_lhs = insert r [|a; b|]})
+      | None      -> assert false (* Term is ill formed *)
 
     in
     (pos, List.filter_map transf cls)
@@ -604,13 +607,13 @@ module CM = struct
       position of terms in clauses [cl]. *)
   let abstract : int -> tvar -> arg list -> clause list ->
     arg list * clause list =
-    binder (function Abst(_,b) -> Some(b) | _ -> None)
+    binder (function Abst(a,b) -> Some(a, b) | _ -> None)
 
   (** [product col v pos cls] is like [abstract col v pos cls] for
       products. *)
   let product : int -> tvar -> arg list -> clause list ->
     arg list * clause list =
-    binder (function Prod(_, b) -> Some(b) | _ -> None)
+    binder (function Prod(a, b) -> Some(a, b) | _ -> None)
 
   (** [cond_ok cond cls] updates the clause list [cls] assuming that condition
       [cond] is satisfied. *)
