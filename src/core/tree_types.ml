@@ -7,13 +7,19 @@ open Extra
 (** Representation of an atomic pattern constructor. *)
 module TC =
   struct
-    (** Atomic pattern constructor. *)
+    (** Atomic pattern constructor. Terms are identified by these constructors
+        in the  trees. During  matching (in {!val:Eval.tree_walk}),  terms are
+        transformed into these constructors to get the right sub-tree. *)
     type t =
       | Symb of Files.Path.t * string * int
-      (** Symbol with its module path, name and effective arity. *)
+      (** Symbol identified by a fully qualified name (module path and name)
+          and its arity in the pattern. *)
       | Vari of int
-      (** A bound variable identified by a ({e branch}-wise) unique
-          integer. *)
+      (** A bound  variable identified by a ({e  branch}-wise) unique integer.
+          These variables  are used with  a bidirectional map  (implemented as
+          two maps) to  a higher order (Bindlib) variable. They  are also used
+          in the environment builder to refer  to the higher order variables a
+          term may depend on. *)
 
     (** {b NOTE} the effective arity carried by the representation of a symbol
         is specific to a given symbol instance. Indeed, a symbol (in the sense
