@@ -7,13 +7,19 @@ open Extra
 (** Representation of an atomic pattern constructor. *)
 module TC =
   struct
-    (** Atomic pattern constructor. *)
+    (** Atomic pattern constructor. Terms are identified by these constructors
+        in the  trees. During  matching (in {!val:Eval.tree_walk}),  terms are
+        transformed into these constructors to get the right sub-tree. *)
     type t =
       | Symb of Files.Path.t * string * int
-      (** Symbol with its module path, name and effective arity. *)
+      (** Symbol identified by a fully qualified name (module path and name)
+          and its arity in the pattern. *)
       | Vari of int
-      (** A bound variable identified by a ({e branch}-wise) unique
-          integer. *)
+      (** A bound  variable identified by a ({e  branch}-wise) unique integer.
+          These variables  are used with  a bidirectional map  (implemented as
+          two maps) to  a higher order (Bindlib) variable. They  are also used
+          in the environment builder to refer  to the higher order variables a
+          term may depend on. *)
 
     (** {b NOTE} the effective arity carried by the representation of a symbol
         is specific to a given symbol instance. Indeed, a symbol (in the sense
@@ -95,6 +101,8 @@ type 'rhs tree =
       (** Subtrees representing the matching of available constructors. *)
       ; abstraction : (int * 'rhs tree) option
       (** Specialisation by an abstraction with the involved free variable. *)
+      ; product : (int * 'rhs tree) option
+      (** Specialisation by product with the involved free variable. *)
       ; default : 'rhs tree option
       (** When the available patterns contain a wildcard, this subtree is used
           as a last resort (if none of the {!field:children} match). *) }
@@ -115,12 +123,19 @@ let rec tree_capacity : 'r tree -> int = fun tr ->
   | Leaf(_)  | Fail     -> 0
   | Eos(l,r)            -> max (tree_capacity l) (tree_capacity r)
   | Cond({ok; fail; _}) -> max (tree_capacity ok) (tree_capacity fail)
-  | Node({store; children=ch; abstraction=abs; default; _}) ->
-      let c_ch = TCMap.fold (fun _ t m -> max m (tree_capacity t)) ch 0 in
-      let c_default = Option.map_default tree_capacity 0 default in
-      let c_abs = Option.map_default (fun (_,t) -> tree_capacity t) 0 abs in
-      let c = max c_ch (max c_default c_abs) in
-      if store then c + 1 else c
+  | Node(r)             ->
+      let c_ch =
+        TCMap.fold (fun _ t m -> max m (tree_capacity t)) r.children 0
+      in
+      let c_default = Option.map_default tree_capacity 0 r.default in
+      let c_abs =
+        Option.map_default (fun (_,t) -> tree_capacity t) 0 r.abstraction
+      in
+      let c_prod =
+        Option.map_default (fun (_,t) -> tree_capacity t) 0 r.product
+      in
+      let c = List.max [c_ch; c_default; c_abs; c_prod] in
+      if r.store then c + 1 else c
 
 (** A tree with its capacity and as lazy structures.  For the definition of
     the capacity, see {!val:capacity}.  Laziness allows to (sometimes) avoid
