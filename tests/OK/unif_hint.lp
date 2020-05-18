@@ -57,5 +57,6 @@ compute J (pair _ z) kz
 // The arrow problem
 symbol arrow : U → U → U
 rule T (arrow $t $u) ↪ T $t → T $u
-// set unif_rule $a → $b ≡ T $c ↪ $a ≡ T $aa; $b ≡ T $bb; $c ≡ arrow $aa $bb
-// FIXME: implications not allowed in LHS (scoping level)
+set unif_rule $a → $b ≡ T $c ↪ $a ≡ T $ea; $b ≡ T $eb; $c ≡ arrow $ea $eb
+symbol eq (t: U): T t → T t → Bool
+compute eq _ (λ_, z) (λ_, z)

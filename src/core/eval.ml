@@ -196,7 +196,7 @@ and tree_walk : dtree -> ctxt -> stack -> (term * stack) option =
         (* Allocate an environment where to place terms coming from the
            pattern variables for the action. *)
         let env_len = Bindlib.mbinder_arity act in
-        (* We have [length env_builder = env_len - xvars] *)
+        assert (List.length env_builder = env_len - xvars);
         let env = Array.make env_len TE_None in
         (* Retrieve terms needed in the action from the [vars] array. *)
         let fn (pos, (slot, xs)) =
@@ -253,14 +253,16 @@ and tree_walk : dtree -> ctxt -> stack -> (term * stack) option =
               else fail
         in
         walk next stk cursor vars_id id_vars
-    | Eos(l, r)                                           ->
+    | Eos(l, r)                                                    ->
         let next = if stk = [] then l else r in
         walk next stk cursor vars_id id_vars
-    | Node({swap; children; store; abstraction; default}) ->
+    | Node({swap; children; store; abstraction; default; product}) ->
         match List.destruct stk swap with
         | exception Not_found     -> None
         | (left, examined, right) ->
-        if TCMap.is_empty children && abstraction = None then
+        if TCMap.is_empty children && abstraction = None && product = None
+        (* If there is no specialisation tree, try directly default case. *)
+        then
           let fn t =
             let cursor =
               if store then (vars.(cursor) <- examined; cursor + 1)
@@ -274,7 +276,9 @@ and tree_walk : dtree -> ctxt -> stack -> (term * stack) option =
           let s = Stdlib.(!steps) in
           let (t, args) = whnf_stk ctx examined [] in
           let args = if store then List.map appl_to_tref args else args in
-          (* Introduce sharing on arguments *)
+          (* If some reduction has been performed by [whnf_stk] ([steps <>
+             0]), update the value of [examined] which may be stored into
+             [vars]. *)
           if Stdlib.(!steps) <> s then
             begin
               match examined with
@@ -285,6 +289,8 @@ and tree_walk : dtree -> ctxt -> stack -> (term * stack) option =
             if store then (vars.(cursor) <- add_args t args; cursor + 1)
             else cursor
           in
+          (* [default ()] carries on the matching on the default branch of the
+             tree. Nothing is added to the stack. *)
           let default () =
             let fn d =
               let stk = List.reconstruct left [] right in
@@ -292,12 +298,25 @@ and tree_walk : dtree -> ctxt -> stack -> (term * stack) option =
             in
             Option.map_default fn None default
           in
+          (* [walk_binder a  b  id tr]  matches  on  binder  [b]  of type  [a]
+             introducing variable  [id] and branching  on tree [tr].  The type
+             [a] and [b] substituted are re-inserted in the stack.*)
+          let walk_binder a b id tr =
+            let (bound, body) = Bindlib.unbind b in
+            let vars_id = VarMap.add bound id vars_id in
+            let id_vars = IntMap.add id bound id_vars in
+            let stk = List.reconstruct left (a::body::args) right in
+            walk tr stk cursor vars_id id_vars
+          in
           match t with
           | Symb(s)    ->
               let cons = TC.Symb(s.sym_path, s.sym_name, List.length args) in
               begin
                 try
+                  (* Get the next sub-tree. *)
                   let matched = TCMap.find cons children in
+                  (* Re-insert the arguments the symbol is applied to in the
+                     stack. *)
                   let stk = List.reconstruct left args right in
                   walk matched stk cursor vars_id id_vars
                 with Not_found -> default ()
@@ -306,26 +325,27 @@ and tree_walk : dtree -> ctxt -> stack -> (term * stack) option =
               begin
                 try
                   let id = VarMap.find x vars_id in
-                  let cons = TC.Vari(id) in
-                  let matched = TCMap.find cons children in
+                  let matched = TCMap.find (TC.Vari(id)) children in
+                  (* Re-insert the arguments the variable is applied to in the
+                     stack. *)
                   let stk = List.reconstruct left args right in
                   walk matched stk cursor vars_id id_vars
                 with Not_found -> default ()
               end
-          | Abst(_, b) ->
+          | Abst(a, b) ->
               begin
                 match abstraction with
                 | None        -> default ()
-                | Some(id,tr) ->
-                    let bound, body = Bindlib.unbind b in
-                    let vars_id = VarMap.add bound id vars_id in
-                    let id_vars = IntMap.add id bound id_vars in
-                    let stk = List.reconstruct left (body::args) right in
-                    walk tr stk cursor vars_id id_vars
+                | Some(id,tr) -> walk_binder a b id tr
+              end
+          | Prod(a, b) ->
+              begin
+                match product with
+                | None        -> default ()
+                | Some(id,tr) -> walk_binder a b id tr
               end
           | Kind
           | Type
-          | Prod(_)
           | Meta(_, _) -> default ()
           | TRef(_)    -> assert false (* Should be reduced by [whnf_stk]. *)
           | Appl(_)    -> assert false (* Should be reduced by [whnf_stk]. *)
