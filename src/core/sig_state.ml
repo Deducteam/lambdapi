@@ -43,7 +43,7 @@ type sig_state =
   ; in_scope  : (sym * Pos.popt) StrMap.t (** Symbols in scope.         *)
   ; aliases   : Path.t StrMap.t           (** Established aliases.      *)
   ; path_map  : string PathMap.t          (** Reverse map of [aliases]. *)
-  ; builtins  : sym StrMap.t               (** Builtin symbols.          *)
+  ; builtins  : sym StrMap.t              (** Builtin symbols.          *)
   ; unops     : sym StrMap.t              (** Unary operators.          *)
   ; binops    : sym StrMap.t              (** Binary operators.         *)
   ; pp_hints  : pp_hint SymMap.t          (** Printing hints.           *) }

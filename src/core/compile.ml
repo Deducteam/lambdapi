@@ -54,7 +54,7 @@ let rec compile : bool -> Path.t -> Sign.t = fun force path ->
          is possible to qualify the symbols of the current modules. *)
       loaded := PathMap.add path sign !loaded;
       let handle ss c =
-        let (ss, p, _) = Handle.handle_cmd ss c in (* @TODO *)
+        let (ss, p) = Handle.handle_cmd ss c in
         match p with
         | None       -> ss
         | Some(data) ->

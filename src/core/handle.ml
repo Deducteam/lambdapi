@@ -84,9 +84,9 @@ let handle_require_as : popt -> sig_state -> Path.t -> ident -> sig_state =
   let path_map = PathMap.add p id.elt ss.path_map in
   {ss with aliases; path_map}
 
-(** [handle_symbol ss e p x xs a] handles the command [e p symbol x xs : a] with
-    [ss] as the signature state. On success, an updated signature state is
-    returned. *)
+(** [handle_symbol ss e p x xs a] handles the command [e p symbol x xs : a]
+    with [ss] as the signature state.
+    On success, an updated signature state is returned. *)
 let handle_symbol :
       sig_state -> Terms.expo -> Terms.prop -> ident -> p_arg list -> p_type
       -> sig_state = fun ss e p x xs a ->
@@ -118,23 +118,22 @@ let handle_symbol :
     This structure contains the list of the tactics to be executed, as well as
     the initial state of the proof.  The checking of the proof is then handled
     separately. Note that [Fatal] is raised in case of an error. *)
-let handle_cmd : sig_state -> p_command
-                   -> sig_state * proof_data option * inductive option =
+let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
   fun ss cmd ->
   let scope_basic exp = Scope.scope_term exp ss Env.empty in
   match cmd.elt with
-  | P_require(b,ps)            ->
+  | P_require(b,ps)              ->
      let ps = List.map (List.map fst) ps in
-     (List.fold_left (handle_require b cmd.pos) ss ps, None, None)
-  | P_require_as(p,id)         ->
+     (List.fold_left (handle_require b cmd.pos) ss ps, None)
+  | P_require_as(p,id)           ->
      let id = Pos.make id.pos (fst id.elt) in
-     (handle_require_as cmd.pos ss (List.map fst p) id, None, None)
-  | P_open(ps)                  ->
+     (handle_require_as cmd.pos ss (List.map fst p) id, None)
+  | P_open(ps)                   ->
      let ps = List.map (List.map fst) ps in
-     (List.fold_left (handle_open cmd.pos) ss ps, None, None)
-  | P_symbol(e, p, x, xs, a) ->
-      (handle_symbol ss e p x xs a, None, None)
-  | P_rules(rs)                ->
+     (List.fold_left (handle_open cmd.pos) ss ps, None)
+  | P_symbol(e, p, x, xs, a)     ->
+      (handle_symbol ss e p x xs a, None)
+  | P_rules(rs)                  ->
       (* Scoping and checking each rule in turn. *)
       let handle_rule r =
         let pr = scope_rule ss r in
@@ -153,7 +152,7 @@ let handle_cmd : sig_state -> p_command
       List.iter add_rule rs;
       let syms = List.remove_phys_dups (List.map (fun (s, _) -> s) rs) in
       List.iter Tree.update_dtree syms;
-      (ss, None, None)
+      (ss, None)
   | P_definition(e,op,x,xs,ao,t) ->
       (* We check that [x] is not already used. *)
       if Sign.mem ss.signature x.elt then
@@ -197,43 +196,36 @@ let handle_cmd : sig_state -> p_command
       out 3 "(symb) %s ≔ %a\n" x.elt pp_term t;
       let d = if op then None else Some(t) in
       let ss = Sig_state.add_symbol ss e Defin x a impl d in
-      (ss, None, None)
-  | P_inductive(e, s, t, tl) ->
+      (ss, None)
+  | P_inductive(e, s, t, tl)     ->
       (* Obtaining of the global type *)
       let type_symbol_head = match t with
         | None   -> none P_Type
         | Some a -> a
       in
-      (* Add the first symbol in the signature *)
+      (* Add the head symbol in the signature *)
       let ss = handle_symbol ss e Defin s [] type_symbol_head in
-      let create_symbol : string -> term -> term option -> sym  =
-        fun s t def ->
-        { sym_name = s ; sym_type = ref t ;
-          sym_path = file_to_module (current_path ());
-          sym_def = ref def ; sym_impl  = [] ; sym_rules = ref [];
-          sym_tree  = ref Tree_types.empty_dtree ;
-          sym_prop = Injec ; sym_expo = e }
-      in
-      (* Add recursively each constructor in signature
-         and create the sym list                    *)
+      let type_symbol_head = scope_term e ss Env.empty type_symbol_head in
+      (* Create the body of the inductive type *)
       let rec add_constructor : sig_state -> sym list -> (ident * p_term) list
-                                -> sig_state * sym list =
-        fun ss_cur syml l -> match l with
-                   | []                -> (ss_cur, syml)
-                   | (ident, pterm)::q ->
-                       let ss_new = handle_symbol ss e Injec ident [] pterm in
-                       let term = scope_term e ss_cur Env.empty pterm in
-                       (*empty env ?*)
-                       let sym_new = create_symbol (ident.elt) term None in
-                       add_constructor ss_new ((sym_new)::syml) q
+                                -> sig_state * sym list = fun ss_cur syml l ->
+        match l with
+        | []                -> (ss_cur, syml)
+        | (ident, pterm)::q ->
+            let ss = handle_symbol ss_cur e Injec ident [] pterm in
+            let term = scope_term e ss Env.empty pterm in (*empty env ?*)
+            let new_sym = create_sym (ident.elt) term Injec e in
+            add_constructor ss ((new_sym)::syml) q
       in
-      let (signature, rules) = add_constructor ss [] tl in
-      let record = { name_ind = s ; type_ind = type_symbol_head ;
-                     rule_ind = rules ;
-                     principle_ind  = None ; principle_rec = None ;
-                     principle_rect = None ; principle_inv = None }
+      let (ss, constructor) = add_constructor ss [] tl in
+      let i_record = { ind_constructors = constructor
+                     ; ind_prop         = None }
       in
-      (signature, None, Some record)
+      (* Add the inductive type in the signature *)
+      let head_sym = create_sym (s.elt) type_symbol_head Defin e            in
+      let tmp = SymMap.add head_sym i_record (!(ss.signature.sign_ind))     in
+      let ss = {ss with signature = {ss.signature with sign_ind = ref tmp}} in
+      (ss, None)
   | P_theorem(e, stmt, ts, pe) ->
       let (x,xs,a) = stmt.elt in
       (* We check that [x] is not already used. *)
@@ -286,7 +278,7 @@ let handle_cmd : sig_state -> p_command
         { pdata_stmt_pos = stmt.pos ; pdata_p_state = st ; pdata_tactics = ts
         ; pdata_finalize = finalize ; pdata_term_pos = pe.pos }
       in
-      (ss, Some(data), None)
+      (ss, Some(data))
   | P_set(cfg)                 ->
       let ss =
         let with_path : Path.t -> qident -> qident = fun path qid ->
@@ -321,9 +313,9 @@ let handle_cmd : sig_state -> p_command
             Sign.add_ident ss.signature id;
             out 3 "(conf) declared identifier \"%s\"\n" id; ss
       in
-      (ss, None, None)
+      (ss, None)
   | P_query(q)                 ->
-      Queries.handle_query ss None q; (ss, None, None)
+      Queries.handle_query ss None q; (ss, None)
 
 (** [too_long] indicates the duration after which a warning should be given to
     indicate commands that take too long to execute. *)
@@ -334,7 +326,7 @@ let too_long = Stdlib.ref infinity
     that lack a specific position. All exceptions except [Timeout] and [Fatal]
     are captured, although they should not occur. *)
 let handle_cmd : sig_state -> p_command
-                 -> sig_state * proof_data option * inductive option =
+                 -> sig_state * proof_data option =
   fun ss cmd ->
   Print.sig_state := ss;
   try

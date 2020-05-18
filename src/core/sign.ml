@@ -17,7 +17,8 @@ type t =
   ; sign_builtins : sym StrMap.t ref
   ; sign_unops    : (sym * unop ) StrMap.t ref
   ; sign_binops   : (sym * binop) StrMap.t ref
-  ; sign_idents   : StrSet.t ref }
+  ; sign_idents   : StrSet.t ref
+  ; sign_ind      : Inductive.inductive SymMap.t ref}
 
 (* NOTE the [deps] field contains a hashtable binding the [module_path] of the
    external modules on which the current signature depends to an association
@@ -28,7 +29,8 @@ type t =
 let create : Path.t -> t = fun sign_path ->
   { sign_path; sign_symbols = ref StrMap.empty; sign_deps = ref PathMap.empty
   ; sign_builtins = ref StrMap.empty; sign_unops = ref StrMap.empty
-  ; sign_binops = ref StrMap.empty; sign_idents = ref StrSet.empty }
+  ; sign_binops = ref StrMap.empty; sign_idents = ref StrSet.empty
+  ; sign_ind = ref SymMap.empty }
 
 (** [find sign name] finds the symbol named [name] in [sign] if it exists, and
     raises the [Not_found] exception otherwise. *)
@@ -64,12 +66,15 @@ let current_sign () =
   in
   PathMap.find mp !loaded
 
+let create_sym : string -> term -> prop -> expo -> sym = fun name typ p e ->
+  let path = (current_sign()).sign_path in (*file_to_module (current_path ())?*)
+  { sym_name = name ; sym_type = ref typ ; sym_path = path
+    ; sym_def = ref None ; sym_impl = []; sym_rules = ref []
+    ; sym_prop = p ; sym_expo = e ; sym_tree = ref Tree_types.empty_dtree }
+
 (** [new_sym ()] creates a new (private definable) symbol. *)
 let new_sym : string -> term -> sym = fun name typ ->
-  let path = (current_sign()).sign_path in
-  { sym_name = name; sym_type = ref typ; sym_path = path; sym_def = ref None
-    ; sym_impl = []; sym_rules = ref []; sym_prop = Defin; sym_expo = Privat
-    ; sym_tree = ref Tree_types.empty_dtree }
+  create_sym name typ Defin Privat
 
 (** [link sign] establishes physical links to the external symbols. *)
 let link : t -> unit = fun sign ->
