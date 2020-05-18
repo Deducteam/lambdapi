@@ -9,6 +9,7 @@ reserved "assume"
 reserved "compute"
 reserved "constant"
 reserved "definition"
+reserved "fail"
 reserved "focus"
 reserved "in"
 reserved "injective"
@@ -134,6 +135,7 @@ reserved "why3"
   | "print"
   | "proofterm"
   | "why3" <string_lit>?
+  | "fail"
 
 // Assertion predicate
 <assertion> ::=

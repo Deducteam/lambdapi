@@ -109,6 +109,8 @@ let handle_tactic : Sig_state.t -> Proof.t -> p_tactic -> Proof.t =
       handle_refine (Rewrite.symmetry ss tac.pos ps)
   | P_tac_why3(config)  ->
       handle_refine (Why3_tactic.handle ss tac.pos config g)
+  | P_tac_fail          ->
+      fatal tac.pos "Fail tactic"
 
 let handle_tactic : Sig_state.t -> Proof.t -> p_tactic -> Proof.t =
   fun ss ps tac ->

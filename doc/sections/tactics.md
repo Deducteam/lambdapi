@@ -161,3 +161,9 @@ that is, of the form `l` with `x1` replaced by `u1`, ..., `xn`
 replaced by `un`, then the tactic `rewrite t` replaces in the focused
 goal all occurrences of `u` by the term `r` with `x1` replaced by
 `u1`, ..., `xn` replaced by `un`.
+
+<!---------------------------------------------------------------------------->
+### `fail`
+
+The `fail` tactic always fails. It is useful when developing a proof
+to stop at some particular point.

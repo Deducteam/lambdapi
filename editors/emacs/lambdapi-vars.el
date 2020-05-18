@@ -33,7 +33,7 @@
   "Commands that enrich the signature.")
 
 (defconst lambdapi-warning
-  '("abort" "admit")
+  '("abort" "admit" "fail")
   "To be displayed in red.")
 
 (defconst lambdapi-misc-commands
