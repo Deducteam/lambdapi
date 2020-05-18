@@ -65,14 +65,6 @@ let patt_to_tenv : term_env Bindlib.var array -> term -> tbox = fun vars ->
   in
   trans
 
-(** [new_function_symbol name a] creates a fresh function symbol named [name],
-    with type [a].  The symbols created using this function should not outlive
-    the SR-checking phase. *)
-let new_function_symbol name a =
-  { sym_name = name ; sym_type = ref a ; sym_path = [] ; sym_def = ref None
-  ; sym_impl = [] ; sym_rules = ref [] ; sym_tree = ref Tree_types.empty_dtree
-  ; sym_prop  = Defin ; sym_expo  = Public }
-
 (** Mapping of pattern variable names to their reserved index. *)
 type index_tbl = (string, int) Hashtbl.t
 
@@ -221,7 +213,7 @@ let check_rule : Scope.pre_rule Pos.loc -> rule = fun ({pos; elt} as pr) ->
             | Some(n) -> n
             | None    -> string_of_int m.meta_key
           in
-          let s = new_function_symbol sym_name !(m.meta_type) in
+          let s = Sign.new_sym sym_name !(m.meta_type) in
           Stdlib.(symbols := s :: !symbols);
           (* Build a definition for [m]. *)
           let xs = Basics.fresh_vars m.meta_arity in
