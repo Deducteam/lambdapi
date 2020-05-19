@@ -209,17 +209,21 @@ curly brackets.
 
 <!---------------------------------------------------------------------------->
 ### `inductive`
-The `inductive` command is used to define an inductive type, as in Coq.
-
+The command `inductive` is used to define an inductive type.
+For example:
 ```
 inductive nat : TYPE ≔
  | z    : nat
  | succ : nat → nat
-
-inductive list : TYPE ≔
- | nil  : list
- | cons : nat → list → list
 ```
+is equivalent to:
+
+```
+constant symbol nat  : TYPE
+constant symbol z    : nat
+constant symbol succ : nat → nat
+```
+The main goal is to generate automatically an inductive principle (work in progress).
 
 <!---------------------------------------------------------------------------->
 ### `theorem`
