@@ -198,14 +198,9 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
       let ss = Sig_state.add_symbol ss e Defin x a impl d in
       (ss, None)
   | P_inductive(e, s, t, tl)     ->
-      (* Obtaining of the global type *)
-      let type_symbol_head = match t with
-        | None   -> none P_Type
-        | Some a -> a
-      in
       (* Add the head symbol in the signature *)
-      let ss = handle_symbol ss e Defin s [] type_symbol_head in
-      let type_symbol_head = scope_term e ss Env.empty type_symbol_head in
+      let ss = handle_symbol ss e Defin s [] t in
+      let type_symbol_head = scope_term e ss Env.empty t in
       (* Create the body of the inductive type *)
       let rec add_constructor : sig_state -> sym list -> (ident * p_term) list
                                 -> sig_state * sym list = fun ss_cur syml l ->
@@ -325,8 +320,7 @@ let too_long = Stdlib.ref infinity
     exception handling. In particular, the position of [cmd] is used on errors
     that lack a specific position. All exceptions except [Timeout] and [Fatal]
     are captured, although they should not occur. *)
-let handle_cmd : sig_state -> p_command
-                 -> sig_state * proof_data option =
+let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
   fun ss cmd ->
   Print.sig_state := ss;
   try

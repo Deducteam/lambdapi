@@ -184,11 +184,13 @@ reserved "why3"
   | "rule" <rule> {"and" <rule>}*
   // Definition of a symbol or theorem
   | <exposition>? "definition" <ident> <arg>* {":" <type>}? "≔" <term>
+  | <exposition>? "inductive"  <ident> ":" <term> "≔"
+       "|"? <ident> ":" <term> {"|" <ident> ":" <term>}*
   | <exposition>? "theorem" <ident> <arg>* ":" <type> "proof" <tactic>*
     {"qed"|"admit"|"abort"}
   // Assertion
-  | "assert" arg* "⊢" <assertion>
-  | "assertnot" arg* "⊢" <assertion>
+  | "assert" <arg>* "⊢" <assertion>
+  | "assertnot" <arg>* "⊢" <assertion>
   // Set option
   | "set" "verbose" RE("[1-9][0-9]*")
   | "set" "debug" RE("[-+][a-zA-Z]+")

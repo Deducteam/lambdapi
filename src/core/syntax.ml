@@ -198,7 +198,7 @@ type p_command_aux =
   | P_definition of Terms.expo * bool * ident * p_arg list * p_type option
                   * p_term
   (** Definition of a symbol (unfoldable). *)
-  | P_inductive of Terms.expo * ident * p_term option * (ident * p_term) list
+  | P_inductive of Terms.expo * ident * p_term * (ident * p_term) list
   (** Definition of inductive type *)
   | P_theorem    of Terms.expo * p_statement * p_tactic list * p_proof_end loc
   (** Theorem with its proof. *)
@@ -341,7 +341,7 @@ let eq_p_command : p_command eq = fun c1 c2 ->
       e1 = e2 && b1 = b2 && eq_ident s1 s2 && List.equal eq_p_arg l1 l2
       && Option.equal eq_p_term a1 a2 && eq_p_term t1 t2
   | (P_inductive(e1,s1,t1,tl1)   , P_inductive(e2,s2,t2,tl2)    ) ->
-      e1 = e2 && eq_ident s1 s2 && Option.equal eq_p_term t1 t2
+      e1 = e2 && eq_ident s1 s2 && eq_p_term t1 t2
       &&
         let eq_pair eq_a eq_b (a1,b1) (a2, b2) =
           eq_a a1 a2 && eq_b b1 b2 in

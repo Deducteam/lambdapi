@@ -312,6 +312,15 @@ let add_binop : t -> string -> (sym * binop) -> unit = fun sign s sym ->
 let add_ident : t -> string -> unit = fun sign id ->
   sign.sign_idents := StrSet.add id !(sign.sign_idents)
 
+(** [add_inductive sign typ ind_cons ind_prop] add the inductive type which
+    consists of a type [typ], constructors [ind_cons] and an induction
+    principle [ind_prop] to [sign]. *)
+let add_inductive : t -> sym -> sym list -> sym -> unit =
+  fun sign typ ind_cons ind_prop ->
+  let ind = { Inductive.ind_constructors=ind_cons
+            ; Inductive.ind_prop=Some ind_prop } in
+  sign.sign_ind := SymMap.add typ ind !(sign.sign_ind)
+
 (** [dependencies sign] returns an association list containing (the transitive
     closure of) the dependencies of the signature [sign].  Note that the order
     of the list gives one possible loading order for the signatures. Note also

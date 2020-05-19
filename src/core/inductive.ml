@@ -29,8 +29,64 @@ open Terms
 type inductive =
   { ind_constructors : sym list   ; (** the list of constructors           *)
     ind_prop         : sym option ; (** one inductive principle (Prop one) *) }
+
+
 (*
-let rec create_head_principle : inductive -> sym -> term = fun i s ->
+let get_symbol : term -> sym = fun t ->
+  match t with
+  | Symb s -> s
+  | _      -> assert false
+
+let rec store_index : term -> sym list -> sym list = fun t index_list ->
+  match t with
+  | Vari x       -> assert false
+  | Type         -> assert false
+  | Kind         -> assert false
+  | Symb s       -> s::index_list
+  | Prod(t, tb)  -> let s = get_symbol t in
+                      if Bindlib.binder_occur tb then
+                        wrn None "Not yet implemented..." ; index_list
+                      else
+                        let (_,tb) = Bindlib.unbind tb          in
+                        let tb = store_param tb s in
+                        _Impl t tb
+  | Abst(t, _)  -> wrn None "Not yet implemented..." ; t
+  | Appl _ | Meta _ | Patt _ | TEnv _ | Wild | TRef _ | LLet _ -> assert false
+
+let rec store_param : term -> sym list -> sym list = fun t param_list ->
+  match t with
+  | Vari x       -> assert false
+  | Type         -> assert false
+  | Kind         -> assert false
+  | Symb s       -> assert false
+  | Prod(t, tb)  -> let s = get_symbol t in
+                    if Bindlib.binder_occur tb then
+                      store_param tb (s::param_list)
+                    else
+                      let (_,tb) = Bindlib.unbind tb          in
+                      let tb = store_param tb s in
+                        _Impl t tb
+    | Abst(t, _)  -> wrn None "Not yet implemented..." ; t
+    | Appl _ | Meta _ | Patt _ | TEnv _ | Wild | TRef _ | LLet _ -> assert false
+
+
+
+let create_head_principle : sym -> sym -> tbox = fun symbol sort ->
+  match symbol.sym_type with
+  | Type         -> new_var mkfree "P" (*_Impl (Symb i) (Symb sort)*)
+  | Symb s       -> _Symb s (* Pas tjrs... *)
+  | Prod(t, tb)  -> let t  = create_head_principle_aux t s    in
+                    if Bindlib.binder_occur tb then
+                      let tb = create_head_principle_aux tb s in
+                      _Prod(t, tb)
+                    else
+                      let (_,tb) = Bindlib.unbind tb          in
+                        let tb = create_head_principle_aux tb s in
+                        _Impl t tb
+  | Var _ | Kind | Abst _
+  | Appl _ | Meta _ | Patt _ | TEnv _ | Wild | TRef _ | LLet _  -> assert false
+
+(*
   let rec create_head_principle_aux : term -> sym -> tbox = fun t s ->
     match t with
     | Vari x       -> _Vari x (* Prod(Var x, \_ -> s) *)
@@ -67,7 +123,7 @@ let rec create_head_principle : inductive -> sym -> term = fun i s ->
     | LLet(a,t,u)  -> wrn None "Let-building doesn't allow in inductive type."
                      ; t
   in
-  create_head_principle_aux Kind s(*i.type_ind s*)
+  create_head_principle_aux Kind s(*i.type_ind s*)*)
 
 
 let constructor_to_term : sym -> term = fun symbol -> (* @WORK in Progress *)
@@ -103,21 +159,22 @@ let constructor_to_term : sym -> term = fun symbol -> (* @WORK in Progress *)
   constructor_to_term_aux (!(symbol.sym_type))*)
  (!(symbol.sym_type))
 
-let create_inductive_principal : inductive -> sym -> inductive = fun i s ->
+let create_inductive_principal : sym -> sig_state -> sig_state = fun key sign ->
+  (** Some utilities for later *)
   let anything = Bindlib.new_var mkfree "_" in
   (*Donc en supposant que t'aies un symbole nat, tu appelles lift (Symb(nat))
   pour le transformer en tbox , puis tu peux faire
   Bindlib.bind_var anything (lift (Symb(nat)
 
-  val bind_var : 'a var -> 'b box -> ('a, 'b) binder box)*)
+  val bind_var : 'a var -> 'b box -> ('a, 'b) binder box)
   let impl_term : term -> term -> term = fun t1 t2 ->
     Prod(t1, Bindlib.unbox (Bindlib.bind_var anything (lift t2))) in
   let impl_sym  : term -> sym  -> term = fun t  s  ->
-    Prod(t,  Bindlib.unbox (Bindlib.bind_var anything (lift(Symb s)))) in
-  (* head principal *)
-  let _Impl : tbox -> tbox -> tbox =
+    Prod(t,  Bindlib.unbox (Bindlib.bind_var anything (lift(Symb s)))) in *)
+  (** Head principal *)
+  (*let _Impl : tbox -> tbox -> tbox =
   let dummy = Bindlib.new_var mkfree "_" in
-  fun a b -> _Prod a (Bindlib.bind_var dummy b)
+  fun a b -> _Prod a (Bindlib.bind_var dummy b)*)
   let head = create_head_principle i s in
   (* premises principal *)
   let rec create_premises : sym list -> sym -> term = fun syml s ->

@@ -208,6 +208,20 @@ in OCaml). Some arguments can be declared as implicit by enclosing them in
 curly brackets.
 
 <!---------------------------------------------------------------------------->
+### `inductive`
+The `inductive` command is used to define an inductive type, as in Coq.
+
+```
+inductive nat : TYPE ≔
+ | z    : nat
+ | succ : nat → nat
+
+inductive list : TYPE ≔
+ | nil  : list
+ | cons : nat → list → list
+```
+
+<!---------------------------------------------------------------------------->
 ### `theorem`
 
 The `theorem` command makes the user enter a new interactive mode. The
