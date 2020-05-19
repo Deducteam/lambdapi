@@ -210,19 +210,9 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
       let (ss, cons) = List.fold_left add_cons (ss, []) tl in
       (* Compute the inductive principle *)
       let pr = Inductive.principle typ cons in
-      let path = (current_sign()).sign_path in
-      let pr =  { sym_name = typ.sym_name^"_ind"
-                ; sym_type = ref pr
-                ; sym_path = path
-                ; sym_def = ref None
-                ; sym_impl = []
-                ; sym_rules = ref []
-                ; sym_prop = Const
-                ; sym_expo = Public
-                ; sym_tree = ref Tree_types.empty_dtree }
-      in
-      (* Add the inductive record in the field "sign_ind" *)
-      Sign.add_inductive ss.signature typ cons pr;
+      let ind_sym = Sign.add_symbol ss.signature e Defin
+                      ({ elt = "ind"; pos = cmd.pos }) pr [] in
+      Sign.add_inductive ss.signature typ cons ind_sym;
       (ss, None)
   | P_theorem(e, stmt, ts, pe) ->
       let (x,xs,a) = stmt.elt in
