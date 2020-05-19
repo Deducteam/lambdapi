@@ -11,7 +11,6 @@ open Syntax
 open Sig_state
 open Scope
 open Print
-open Inductive
 
 (** Logging function for command handling. *)
 let log_hndl = new_logger 'h' "hndl" "command handling"
@@ -86,10 +85,10 @@ let handle_require_as : popt -> sig_state -> Path.t -> ident -> sig_state =
 
 (** [handle_symbol ss e p x xs a] handles the command [e p symbol x xs : a]
     with [ss] as the signature state.
-    On success, an updated signature state is returned. *)
+    On success, an updated signature state and the new symbol are returned. *)
 let handle_symbol :
       sig_state -> Terms.expo -> Terms.prop -> ident -> p_arg list -> p_type
-      -> sig_state = fun ss e p x xs a ->
+      -> sig_state * sym = fun ss e p x xs a ->
       let scope_basic exp = Scope.scope_term exp ss Env.empty in
       (* We check that [x] is not already used. *)
       if Sign.mem ss.signature x.elt then
@@ -131,8 +130,8 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
   | P_open(ps)                   ->
      let ps = List.map (List.map fst) ps in
      (List.fold_left (handle_open cmd.pos) ss ps, None)
-  | P_symbol(e, p, x, xs, a)     ->
-      (handle_symbol ss e p x xs a, None)
+  | P_symbol(e, p, x, xs, a)     -> let (ss, _) = handle_symbol ss e p x xs a in
+                                    (ss, None)
   | P_rules(rs)                  ->
       (* Scoping and checking each rule in turn. *)
       let handle_rule r =
@@ -195,31 +194,35 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
       (* Actually add the symbol to the signature. *)
       out 3 "(symb) %s ≔ %a\n" x.elt pp_term t;
       let d = if op then None else Some(t) in
-      let ss = Sig_state.add_symbol ss e Defin x a impl d in
+      let (ss, _) = Sig_state.add_symbol ss e Defin x a impl d in
       (ss, None)
   | P_inductive(e, s, t, tl)     ->
       (* Add the head symbol in the signature *)
-      let ss = handle_symbol ss e Defin s [] t in
-      let type_symbol_head = scope_term e ss Env.empty t in
-      (* Create the body of the inductive type *)
-      let rec add_constructor : sig_state -> sym list -> (ident * p_term) list
-                                -> sig_state * sym list = fun ss_cur syml l ->
-        match l with
-        | []                -> (ss_cur, syml)
-        | (ident, pterm)::q ->
-            let ss = handle_symbol ss_cur e Injec ident [] pterm in
-            let term = scope_term e ss Env.empty pterm in (*empty env ?*)
-            let new_sym = create_sym (ident.elt) term Injec e in
-            add_constructor ss ((new_sym)::syml) q
-      in
-      let (ss, constructor) = add_constructor ss [] tl in
-      let i_record = { ind_constructors = constructor
-                     ; ind_prop         = None }
+      let (ss, typ) = handle_symbol ss e Const s [] t in
+      (* To create the body of the inductive type *)
+      let add_cons :
+                sig_state * sym list -> ident * p_term -> sig_state * sym list
+        = fun (ss, cons) (id, a) ->
+        let (ss, c) = handle_symbol ss e Injec id [] a in
+        (ss, c::cons)
       in
       (* Add the inductive type in the signature *)
-      let head_sym = create_sym (s.elt) type_symbol_head Defin e            in
-      let tmp = SymMap.add head_sym i_record (!(ss.signature.sign_ind))     in
-      let ss = {ss with signature = {ss.signature with sign_ind = ref tmp}} in
+      let (ss, cons) = List.fold_left add_cons (ss, []) tl in
+      (* Compute the inductive principle *)
+      let pr = Inductive.principle typ cons in
+      let path = (current_sign()).sign_path in
+      let pr =  { sym_name = ((typ.sym_name)^"_ind")
+                ; sym_type = ref pr
+                ; sym_path = path
+                ; sym_def = ref None
+                ; sym_impl = []
+                ; sym_rules = ref []
+                ; sym_prop = Const
+                ; sym_expo = Public
+                ; sym_tree = ref Tree_types.empty_dtree }
+      in
+      (* Add the inductive record in the field "sign_ind" *)
+      Sign.add_inductive ss.signature typ cons pr;
       (ss, None)
   | P_theorem(e, stmt, ts, pe) ->
       let (x,xs,a) = stmt.elt in
@@ -257,7 +260,8 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
             (* Add a symbol corresponding to the proof, with a warning. *)
             out 3 "(symb) %s (admit)\n" x.elt;
             wrn cmd.pos "Proof admitted.";
-            Sig_state.add_symbol ss e Const x a impl None
+            let (ss, _) = Sig_state.add_symbol ss e Const x a impl None
+            in ss
         | P_proof_qed   ->
             (* Check that the proof is indeed finished. *)
             if not (Proof.finished st) then
@@ -267,7 +271,8 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
               end;
             (* Add a symbol corresponding to the proof. *)
             out 3 "(symb) %s (qed)\n" x.elt;
-            Sig_state.add_symbol ss e Const x a impl None
+            let (ss,_) = Sig_state.add_symbol ss e Const x a impl None
+            in ss
       in
       let data =
         { pdata_stmt_pos = stmt.pos ; pdata_p_state = st ; pdata_tactics = ts

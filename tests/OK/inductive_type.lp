@@ -4,6 +4,6 @@ inductive nat : TYPE ≔
 
 // assert succ z : nat
 
-inductive list ≔
+inductive list : TYPE ≔
  | nil  : list
  | cons : nat → list → list
