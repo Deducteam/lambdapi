@@ -211,7 +211,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
       (* Compute the inductive principle *)
       let pr = Inductive.principle typ cons in
       let path = (current_sign()).sign_path in
-      let pr =  { sym_name = ((typ.sym_name)^"_ind")
+      let pr =  { sym_name = typ.sym_name^"_ind"
                 ; sym_type = ref pr
                 ; sym_path = path
                 ; sym_def = ref None
