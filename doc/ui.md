@@ -42,6 +42,8 @@ To enter unicode symbols using Latex commands, one can for instance use
 Note that `eglot` does not support the extended protocol information sent by
 our LSP server yet.
 
+More details on the `emacs` mode can be found [here](emacs.md).
+
 ### Vim
 
 The `Vim` mode can be installed optionally using the command `make install_vim`
