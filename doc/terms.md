@@ -3,7 +3,7 @@ Syntax of terms
 
 The BNF grammar of Lambdapi is in [syntax.bnf](syntax.bnf).
 
-A qualified identifier is an identifier of the form `dir1.`
+**Identifiers:** A qualified identifier is an identifier of the form `dir1.`
 ... `dirn.file.id` denoting the function symbol `id` defined in the
 file `dir1/` ... `/dirn/file.lp`. To be used, `dir1.` ... `dirn.file`
 must be required first.
@@ -14,13 +14,13 @@ An identifier can be:
 
   * a non-negative integer if the builtins "0" and "+1" have been previously set (see the [command](commands.md) `set builtin`)
 
-  * a unicode x character previously declared using the [command](commands.md) `set declared "x"`
+  * a unicode character previously declared using the [command](commands.md) `set declared`
 
   * an arbitrary sequence of characters enclosed between `{|` and `|}`
   
 **Convention:** identifiers starting with a capital letter denote types and predicates (e.g. `Nat`, `List`), and identifiers starting with a small letter denote constructors, functions and proofs (e.g. `zero`, `add`, `refl`).
 
-A user-defined term can be either:
+**Terms:* A user-defined term can be either:
 
  * `TYPE`
 
