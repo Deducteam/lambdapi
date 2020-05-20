@@ -1,7 +1,7 @@
 Syntax of commands
 ------------------
 
-The BNF grammar of Lambdapi is in [syntax.bnf](../syntax.bnf).
+The BNF grammar of Lambdapi is in [syntax.bnf](syntax.bnf).
 
 In this section, we will illustrate the syntax of Lambdapi using examples. The
 first thing to note is that Lambdapi files are formed of a list of commands. A
@@ -18,11 +18,6 @@ One-line comments are introduced by '//':
 ```
 
 In Emacs, one can (un)comment a region by using Meta-; .
-
-<!---------------------------------------------------------------------------->
-### Lexical conventions
-
-TODO
 
 <!---------------------------------------------------------------------------->
 ### `require`

@@ -1,7 +1,7 @@
 Syntax of terms
 ---------------
 
-The BNF grammar of Lambdapi is in [syntax.bnf](../syntax.bnf).
+The BNF grammar of Lambdapi is in [syntax.bnf](syntax.bnf).
 
 A qualified identifier is an identifier of the form `dir1.`
 ... `dirn.file.id` denoting the function symbol `id` defined in the
