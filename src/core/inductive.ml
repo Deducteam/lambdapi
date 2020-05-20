@@ -39,9 +39,9 @@ let principle : Sig_state.t -> popt -> sym -> sym list -> term =
          begin
            match unfold a with
            | Symb(s) ->
-               let b = if s == sind
-                       then _Impl (prf_of_p (Bindlib.box_var x)) b
-                       else b in
+               let b =
+                 if s == sind then _Impl (prf_of_p (Bindlib.box_var x)) b
+                 else b in
               _Prod (Bindlib.box a) (Bindlib.bind_var x b)
            | _ -> fatal pos "The type of %a is not supported"
                     pp_symbol scons
