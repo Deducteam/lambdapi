@@ -1,14 +1,26 @@
 Syntax of terms
 ---------------
 
-The BNF grammar of Lambdapi is in [syntax.bnf](../syntax.bnf).
+The BNF grammar of Lambdapi is in [syntax.bnf](syntax.bnf).
 
-A qualified identifier is an identifier of the form `dir1.`
+**Identifiers:** A qualified identifier is an identifier of the form `dir1.`
 ... `dirn.file.id` denoting the function symbol `id` defined in the
 file `dir1/` ... `/dirn/file.lp`. To be used, `dir1.` ... `dirn.file`
 must be required first.
 
-A user-defined term can be either:
+An identifier can be:
+
+  * an ASCII sequence of characters in the regular language `[a-zA-Z_][a-zA-Z0-9_]*`
+
+  * a non-negative integer if the builtins "0" and "+1" have been previously set (see the [command](commands.md) `set builtin`)
+
+  * a unicode character previously declared using the [command](commands.md) `set declared`
+
+  * an arbitrary sequence of characters enclosed between `{|` and `|}`
+  
+**Convention:** identifiers starting with a capital letter denote types and predicates (e.g. `Nat`, `List`), and identifiers starting with a small letter denote constructors, functions and proofs (e.g. `zero`, `add`, `refl`).
+
+**Terms:* A user-defined term can be either:
 
  * `TYPE`
 
@@ -17,8 +29,6 @@ A user-defined term can be either:
    - a qualified symbol or a non-qualified symbol previously declared in the current file or in some previously open module, possibly prefixed by `@` to disallow implicit arguments
    - a bound variable
    - a metavariable or goal when prefixed by `?`
-
-  **Convention:** identifiers starting with a capital letter denote types and predicates (e.g. `Nat`, `List`), and identifiers starting with a small letter denote constructors, functions and proofs (e.g. `zero`, `add`, `refl`).
 
  * an anonymous function `λ(x:A) y z,t` mapping `x`, `y` and `z` (of type `A` for `x`) to `t`
 
