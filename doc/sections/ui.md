@@ -26,6 +26,9 @@ This requires to have `npm` and `node-typescript` installed:
 sudo apt install npm node-typescript
 ```
 
+_note_: as of today the vscode mode requires a full lambdapi install,
+it won't unfortunately run from a developer tree.
+
 ### Emacs
 
 The `emacs` mode is automatically installed during lambdapi installation
