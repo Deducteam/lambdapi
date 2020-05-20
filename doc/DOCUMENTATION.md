@@ -9,36 +9,45 @@ project.
 Table of contents
 -----------------
 
- - [What is Lambdapi?](sections/about.md)
+ - [What is Lambdapi?](about.md)
 
- - [Installation](sections/install.md)
+ - [Installation](install.md)
 
- - [Getting started](sections/getting_started.md)
+ - [Getting started](getting_started.md)
 
- - [Command line options](sections/options.md)
+ - [Command line options](options.md)
 
- - [User interfaces](sections/ui.md)
+ - [User interfaces](ui.md)
 
- - [Module system](sections/module.md)
+   * [Emacs](emacs.md)
 
- - [Syntax of terms](sections/terms.md)
+   * [VSCode](ui.md)
 
- - [Commands](sections/commands.md)
+   * [Vim](ui.md)
 
- - [Tactics](sections/tactics.md)
+   * [Atom](ui.md)
+   
+ - [Module system](module.md)
 
- - [Editing Lambdapi source code with Emacs](sections/emacs.md)
+ - [Syntax of terms](terms.md)
 
- - [Structure of directories and files](sections/structure.md)
+ - [Commands](commands.md)
 
- - [Implementation choices](sections/implementation.md)
+ - [Tactics](tactics.md)
+
+ - [Compatibility with Dedukti](dedukti.md)
+
+ - [Bibliographic references](biblio.md)
+
+ - [Including Lambdapi code into a Latex document](latex.md)
+
+
+For developers:
 
  - [Contributing](../CONTRIBUTING.md)
 
- - [Compiling and profiling](sections/devel.md)
+ - [Overview of directories and files](structure.md)
 
- - [Compatibility with Dedukti](sections/dedukti.md)
+ - [Implementation choices](implementation.md)
 
- - [Bibliographic references](sections/biblio.md)
-
- - [Including Lambdapi code into a Latex document](sections/latex.md)
+ - [Compiling and profiling](devel.md)
