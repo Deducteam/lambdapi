@@ -23,9 +23,11 @@ let client: LanguageClient;
 
 export function activate(context: ExtensionContext) {
 
+    // XXX: Get from configuration
     let serverOptions = {
-        command: 'lp-lsp',    // XXX: Get from configuration
-        args: [ '--std' ]
+        command: 'lambdapi',
+        args: [ 'lsp', '' ]
+        // args: [ '--std' ]
     };
 
     let clientOptions: LanguageClientOptions = {
