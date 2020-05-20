@@ -1,10 +1,10 @@
-Structure of directories and files
+Overview of directories and files
 ----------------------------------
 
 * `doc/`: documentation
 
      - `DOCUMENTATION.md`: entry point of the documentation, each topic being
-        developed in a `.md` file of the `doc/sections` directory
+        developed in a separate `.md` file
      - `PERFS.md`: a comparison of performances of Dedukti 2.6 and Lambdapi
      - `syntax.bnf`: BNF grammar of Lambdapi
 
@@ -22,13 +22,10 @@ Structure of directories and files
      - `lp.configuration.json`: specific characters
      - `syntaxes/lp.tmLanguage.json`: grammar of lambdapi
      - `Makefile`
-     - `.gitignore`
 
 * `libraries/`: libraries of Dedukti files (see GNUmakefile)
 
-* `lp-lsp/`: source code of the Lambdapi LSP server (see https://microsoft.github.io/language-server-protocol/ and https://langserver.org/)
-
-* `src/core`: source code of Lambdapi
+* `src/core/`: source code of Lambdapi
 
    + utilities:
 
@@ -85,19 +82,21 @@ Structure of directories and files
 
      - `sr.ml`: algorithm for checking subject reduction
 
-* `src/pure`: pure interface (mainly used by the LSP server)
+* `src/cli/`: command line interface
+
+* `src/pure/`: pure interface (mainly used by the LSP server)
 
      - `pure.ml` and `pure.mli`: provide utilities to roll back state
 
-* `src/lsp/`: files related to the LSP server
+* `src/lsp/`: LSP server
 
-* `src/lambdapi.ml`: main program
+* `src/cli/lambdapi.ml`: main program
 
 * `tests/`: unit tests
    - `OK/`: tests that should succeed
    - `KO/`: tests that should fail
 
-* `lib/`: a minimal standard library for Lambdapi.
+* `lib/`: examples of Lambdapi files
 
 * `tools/`:
    - `deps.ml`: gives the `#REQUIRE` commands that should be added at the beginning of a Dedukti file
