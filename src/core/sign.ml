@@ -10,8 +10,8 @@ open Pos
 
 (** Representation of an inductive type *)
 type inductive =
-  { ind_cons : sym list (** the list of constructors           *)
-  ; ind_prop : sym      (** one inductive principle (Prop one) *) }
+  { ind_cons : sym list (** List of constructors                 *)
+  ; ind_prop : sym      (** Induction principle on propositions. *) }
 
 (** Representation of a signature. It roughly corresponds to a set of symbols,
     defined in a single module (or file). *)
@@ -71,15 +71,15 @@ let current_sign () =
   in
   PathMap.find mp !loaded
 
-let create_sym : string -> term -> prop -> expo -> sym = fun name typ p e ->
-  let path = (current_sign()).sign_path in (*file_to_module (current_path ())?*)
+(** [create_sym e p name type blist] creates a new symbol
+    with the exposition [e], the property [p], the name [name]
+    the type [type] and no implicit arguments *)
+let create_sym : expo -> prop -> string -> term -> bool list -> sym =
+  fun e p name typ blist ->
+  let path = (current_sign()).sign_path in
   { sym_name = name ; sym_type = ref typ ; sym_path = path
-    ; sym_def = ref None ; sym_impl = []; sym_rules = ref []
+    ; sym_def = ref None ; sym_impl = blist; sym_rules = ref []
     ; sym_prop = p ; sym_expo = e ; sym_tree = ref Tree_types.empty_dtree }
-
-(** [new_sym ()] creates a new (private definable) symbol. *)
-let new_sym : string -> term -> sym = fun name typ ->
-  create_sym name typ Defin Privat
 
 (** [link sign] establishes physical links to the external symbols. *)
 let link : t -> unit = fun sign ->
