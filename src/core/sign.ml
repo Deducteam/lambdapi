@@ -8,6 +8,11 @@ open Terms
 open Syntax
 open Pos
 
+(** Representation of an inductive type *)
+type inductive =
+  { ind_cons : sym list (** the list of constructors           *)
+  ; ind_prop : sym      (** one inductive principle (Prop one) *) }
+
 (** Representation of a signature. It roughly corresponds to a set of symbols,
     defined in a single module (or file). *)
 type t =
@@ -18,7 +23,7 @@ type t =
   ; sign_unops    : (sym * unop ) StrMap.t ref
   ; sign_binops   : (sym * binop) StrMap.t ref
   ; sign_idents   : StrSet.t ref
-  ; sign_ind      : Inductive.inductive SymMap.t ref}
+  ; sign_ind      : inductive SymMap.t ref}
 
 (* NOTE the [deps] field contains a hashtable binding the [module_path] of the
    external modules on which the current signature depends to an association
@@ -317,8 +322,7 @@ let add_ident : t -> string -> unit = fun sign id ->
     principle [ind_prop] to [sign]. *)
 let add_inductive : t -> sym -> sym list -> sym -> unit =
   fun sign typ ind_cons ind_prop ->
-  let ind = { Inductive.ind_constructors=ind_cons
-            ; Inductive.ind_prop=Some ind_prop } in
+  let ind = { ind_cons ; ind_prop } in
   sign.sign_ind := SymMap.add typ ind !(sign.sign_ind)
 
 (** [dependencies sign] returns an association list containing (the transitive

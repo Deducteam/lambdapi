@@ -130,8 +130,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
   | P_open(ps)                   ->
      let ps = List.map (List.map fst) ps in
      (List.fold_left (handle_open cmd.pos) ss ps, None)
-  | P_symbol(e, p, x, xs, a)     -> let (ss, _) = handle_symbol ss e p x xs a in
-                                    (ss, None)
+  | P_symbol(e, p, x, xs, a)     -> (fst (handle_symbol ss e p x xs a), None)
   | P_rules(rs)                  ->
       (* Scoping and checking each rule in turn. *)
       let handle_rule r =
@@ -194,21 +193,19 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
       (* Actually add the symbol to the signature. *)
       out 3 "(symb) %s ≔ %a\n" x.elt pp_term t;
       let d = if op then None else Some(t) in
-      let (ss, _) = Sig_state.add_symbol ss e Defin x a impl d in
-      (ss, None)
+      (fst (Sig_state.add_symbol ss e Defin x a impl d), None)
   | P_inductive(e, s, t, tl)     ->
-      (* Add the head symbol in the signature *)
+      (* Add the inductive type in the signature *)
       let (ss, typ) = handle_symbol ss e Const s [] t in
-      (* To create the body of the inductive type *)
+      (* Add the constructors in the signature. *)
       let add_cons :
                 sig_state * sym list -> ident * p_term -> sig_state * sym list
         = fun (ss, cons) (id, a) ->
         let (ss, c) = handle_symbol ss e Injec id [] a in
         (ss, c::cons)
       in
-      (* Add the inductive type in the signature *)
       let (ss, cons) = List.fold_left add_cons (ss, []) tl in
-      (* Compute the inductive principle *)
+      (* Compute the induction principle *)
       let pr = Inductive.principle typ cons in
       let ind_sym = Sign.add_symbol ss.signature e Defin
                       ({ elt = "ind"; pos = cmd.pos }) pr [] in
@@ -250,8 +247,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
             (* Add a symbol corresponding to the proof, with a warning. *)
             out 3 "(symb) %s (admit)\n" x.elt;
             wrn cmd.pos "Proof admitted.";
-            let (ss, _) = Sig_state.add_symbol ss e Const x a impl None
-            in ss
+            fst (Sig_state.add_symbol ss e Const x a impl None)
         | P_proof_qed   ->
             (* Check that the proof is indeed finished. *)
             if not (Proof.finished st) then
@@ -261,11 +257,10 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
               end;
             (* Add a symbol corresponding to the proof. *)
             out 3 "(symb) %s (qed)\n" x.elt;
-            let (ss,_) = Sig_state.add_symbol ss e Const x a impl None
-            in ss
+            fst (Sig_state.add_symbol ss e Const x a impl None)
       in
       let data =
-        { pdata_stmt_pos = stmt.pos ; pdata_p_state = st ; pdata_tactics = ts
+        { pdata_stmt_pos = stmt.pos ; pdata_p_state  = st ; pdata_tactics = ts
         ; pdata_finalize = finalize ; pdata_term_pos = pe.pos }
       in
       (ss, Some(data))
