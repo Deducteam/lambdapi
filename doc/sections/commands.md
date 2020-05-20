@@ -320,12 +320,15 @@ whether the defined symbol is non-associative, associative to the right,
 or associative to the left. The priority levels are floating point numbers,
 hence a priority can (almost) always be inserted between two different levels.
 
-**quantifier symbols** The following code declares a given symbol as
-  quantifier. This modifies the way it is printed.
-
+**quantifier symbols** The representation of a symbol can be modified to make it
+look like a usual quantifier (such as `∀`, `∃` or `λ`). Symbols declared as
+quantifiers can be input using a “quantifier” syntax and their printing is
+changed:
 ```
 set quantifier ∀ // : Π {a}, (T a → Prop) → Prop
-// prints [@∀ a' (λx:T a,p)] as [∀x:T a,p], and [∀ (λx:T a,p)] as [∀x,p]
+compute ∀ {a'} (λx:T a,p) // prints ∀x:T a,p
+compute ∀ (λx:T a, p) // prints ∀x,p
+type ∀x,p // quantifiers can be written as such
 ```
 
 **why3 tactic related builtins** In order to use external provers via
