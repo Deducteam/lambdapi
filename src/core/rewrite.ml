@@ -287,9 +287,9 @@ let bind_match : term -> term -> tbinder =  fun p t ->
 
 (* NOTE in [bind_match] we lift while matching for efficiency. *)
 
-(** [sym cfg a r l t] returns a term of type [P (eq a l r)] from a term [t] of
-   type [P (eq a r l)]. *)
-let sym : eq_config -> term -> term -> term -> term -> term =
+(** [swap cfg a r l t] returns a term of type [P (eq a l r)] from a term [t]
+   of type [P (eq a r l)]. *)
+let swap : eq_config -> term -> term -> term -> term -> term =
   fun cfg a r l t ->
   (* NOTE The proofterm is “eqind a r l M (λx,eq a l x) (refl a l)”. *)
   (* We build the predicate (“λx, eq a r x” in the above). *)
@@ -331,7 +331,7 @@ let rewrite : Sig_state.t -> popt -> Proof.t -> bool -> rw_patt option -> term
   let (a, l, r)  = get_eq_data pos cfg t_type in
 
   (* Reverse the members of the equation if l2r is false. *)
-  let (t, l, r) = if l2r then (t, l, r) else (sym cfg a l r t, r, l) in
+  let (t, l, r) = if l2r then (t, l, r) else (swap cfg a l r t, r, l) in
 
   (* Apply [t] to the variables of [vars] to get a witness of the equality. *)
   let t_args = Array.fold_left (fun t x -> Appl(t, Vari(x))) t vars in
@@ -702,7 +702,7 @@ let symmetry : Sig_state.t -> popt -> Proof.t -> term = fun ss pos ps ->
   let meta_type =
     Appl(Symb cfg.symb_P, (add_args (Symb cfg.symb_eq) [a; r; l])) in
   let meta_term = make_meta (Env.to_ctxt g_env) meta_type in
-  let term = sym cfg a r l meta_term in
+  let term = swap cfg a r l meta_term in
   (* Debugging data to the log. *)
   if !log_enabled then
     begin
