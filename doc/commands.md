@@ -83,7 +83,7 @@ We recommend to start types and predicates by a capital letter.
 
 These modifiers are used to help the unification engine.
 
-**Exposition marker**
+**Exposition markers:**
 Exposition defines how a symbol can be used outside the module where it is
 defined. By default any symbol is _public_, which means it can be used without
 restriction anywhere. There are two exposition markers available:
@@ -101,7 +101,7 @@ Exposition obeys the following rules: inside a module,
 - externally defined protected symbols cannot appear in the right hand side of a
   rewriting rule
 
-**Implicit arguments**. Some function symbol arguments can be declared
+**Implicit arguments:** Some function symbol arguments can be declared
 as implicit meaning that they must not be given by the user
 later. Implicit arguments are replaced by `_` at parsing time,
 generating a fresh metavariables. An argument declared as implicit can
@@ -117,8 +117,8 @@ symbol eq {a:U} : T a → T a → Prop
 // Hence, [eq t u], [eq {_} t u] and [@eq _ t u] are all valid and equivalent.
 ```
 
-**Infix notation**:
-An infix notation can be declared for some symbol. See the command `set`.
+**Notations**:
+Some notation can be declared for some symbol. See the [command](commands.md) `set`.
 
 <!---------------------------------------------------------------------------->
 ### `rule`
