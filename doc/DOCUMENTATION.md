@@ -19,6 +19,14 @@ Table of contents
 
  - [User interfaces](ui.md)
 
+   * [Emacs](emacs.md)
+
+   * VSCode
+
+   * Vim
+
+   * Atom
+   
  - [Module system](module.md)
 
  - [Syntax of terms](terms.md)
@@ -27,16 +35,19 @@ Table of contents
 
  - [Tactics](tactics.md)
 
- - [Structure of directories and files](structure.md)
-
- - [Implementation choices](implementation.md)
-
- - [Contributing](../CONTRIBUTING.md)
-
- - [Compiling and profiling](devel.md)
-
  - [Compatibility with Dedukti](dedukti.md)
 
  - [Bibliographic references](biblio.md)
 
  - [Including Lambdapi code into a Latex document](latex.md)
+
+
+For developers:
+
+ - [Contributing](../CONTRIBUTING.md)
+
+ - [Structure of directories and files](structure.md)
+
+ - [Implementation choices](implementation.md)
+
+ - [Compiling and profiling](devel.md)
