@@ -29,9 +29,15 @@ hook_path="${git_root}/hooks/pre-commit"
 hook_cmd=''
 ## Set hook command depending on cli arguments
 if [ -n "${sanity_only}" ]; then
-    hook_cmd='[ -z "$(make sanity_check)" ]'
+    hook_cmd='if [ ! -z "$(make sanity_check)" ]; then
+    echo "Sanity check failed."
+    exit 1
+fi'
 else
-    hook_cmd='[ -z "$(make sanity_check)" ] && make bin'
+    hook_cmd='if [ ! -z "$(make sanity_check)" ] || ! make bin; then
+    echo "Sanity check or compilation failed."
+    exit 1
+fi'
 fi
 
 if [ -f "${hook_path}" ]; then
