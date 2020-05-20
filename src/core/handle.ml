@@ -206,7 +206,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
       in
       let (ss, cons) = List.fold_left add_cons (ss, []) tl in
       (* Compute the induction principle *)
-      let pr = Inductive.principle typ cons in
+      let pr = Inductive.principle ss cmd.pos typ cons in
       let ind_sym = Sign.add_symbol ss.signature e Defin
                       ({ elt = "ind"; pos = cmd.pos }) pr [] in
       Sign.add_inductive ss.signature typ cons ind_sym;
@@ -260,7 +260,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
             fst (Sig_state.add_symbol ss e Const x a impl None)
       in
       let data =
-        { pdata_stmt_pos = stmt.pos ; pdata_p_state  = st ; pdata_tactics = ts
+        { pdata_stmt_pos = stmt.pos ; pdata_p_state = st ; pdata_tactics = ts
         ; pdata_finalize = finalize ; pdata_term_pos = pe.pos }
       in
       (ss, Some(data))
