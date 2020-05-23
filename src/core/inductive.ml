@@ -14,8 +14,8 @@ type config =
 (** [get_config ss pos] build the configuration using [ss]. *)
 let get_config : Sig_state.t -> Pos.popt -> config = fun ss pos ->
   let builtin = Builtin.get ss pos in
-  { symb_Prop = builtin "P"
-  ; symb_prf  = builtin "π" }
+  { symb_Prop = builtin "Prop"
+  ; symb_prf  = builtin "P" }
 
 let principle : Sig_state.t -> popt -> sym -> sym list -> term =
   fun ss pos sind scons_list ->
