@@ -51,7 +51,7 @@ qed
 theorem add_succ_r : Πn m, P (eq nat (n + (s m)) (s (n + m)))
 proof
   assume n m
-  refine nat_ind (λn, eq nat (n + (s m)) (s (n + m))) ?CZ[n,m] ?CS[n,m] n
+  refine nat_ind (λn, eq nat (n + (s m)) (s (n + m))) ?CZ[n;m] ?CS[n;m] n
   // Case Z
   simpl
   refine refl nat (s m)
@@ -68,7 +68,7 @@ theorem addcomm : Πn m, P (eq nat (add n m) (add m n))
 proof
   assume n m
   // FIXME try to infer nat
-  refine nat_ind (λ n, eq nat (add n m) (add m n)) ?CZ[n,m] ?CS[n,m] n
+  refine nat_ind (λ n, eq nat (add n m) (add m n)) ?CZ[n;m] ?CS[n;m] n
   // Case Z
   simpl
   refine eq_sym _ (add m z) m (add0r m) // TODO add a symmetry tactic

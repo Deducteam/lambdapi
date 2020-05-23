@@ -69,8 +69,14 @@ type term =
     the {!constructor:Patt} constructor to represend wildcards of the concrete
     syntax. They are thus considered to be fresh, unused pattern variables. *)
 
+(** Representation of a rewriting rule RHS (or action) as given in the type of
+    rewriting rules (see {!field:Terms.rhs}) with the number of variables that
+    are not in the LHS. In decision trees, a RHS is stored in every leaf since
+    they correspond to matched rules. *)
+ and rhs = (term_env, term) Bindlib.mbinder * int
+
 (** Representation of a decision tree (used for rewriting). *)
- and dtree = (term_env, term) Bindlib.mbinder Tree_types.dtree
+ and dtree = rhs Tree_types.dtree
 
 (** Representation of a user-defined symbol. Symbols carry a "mode" indicating
     whether they may be given rewriting rules or a definition. Invariants must
@@ -121,16 +127,19 @@ type term =
     rule to apply, and a RHS (right hand side) giving the action to perform if
     the rule applies. More explanations are given below. *)
  and rule =
-  { lhs     : term list
+  { lhs      : term list
   (** Left hand side (or LHS). *)
-  ; rhs     : (term_env, term) Bindlib.mbinder
+  ; rhs      : (term_env, term) Bindlib.mbinder
   (** Right hand side (or RHS). *)
-  ; arity   : int
+  ; arity    : int
   (** Required number of arguments to be applicable. *)
-  ; arities : int array
-  (** Arrities of the pattern variables bound in the RHS. *)
-  ; vars    : term_env Bindlib.var array
-  (** Bindlib variables used to build [rhs]. *) }
+  ; arities  : int array
+  (** Arities of the pattern variables bound in the RHS. *)
+  ; vars     : term_env Bindlib.var array
+  (** Bindlib variables used to build [rhs]. The last [xvars_nb] variables
+      appear only in the RHS *)
+  ; xvars_nb : int
+  (** Number of variables in RHS but not in LHS. *) }
 
 (** The LHS (or pattern) of a rewriting rule is always formed of a head symbol
     (on which the rule is defined) applied to a list of pattern arguments. The
@@ -174,6 +183,13 @@ type term =
     {!type:term_env} type) are bound. To effectively apply the rewriting rule,
     these  bound variables must be substituted using "terms with environments"
     that are constructed when matching the LHS of the rule. *)
+
+(** All variables of rewriting rules that appear in the RHS must appear in the
+    LHS. This constraint is checked in {!module:Sr}.In the case of unification
+    rules, we allow variables to appear only in the RHS.  In that case, these
+    variables are replaced by fresh meta-variables each time the rule is used.
+    The last  {!field:terms.rule.xvars} variables of  {!field:terms.rule.vars}
+    are such RHS-only variables. *)
 
 (** Representation of a "term with environment", which intuitively corresponds
     to a term with bound variables (or a "higher-order" term) represented with

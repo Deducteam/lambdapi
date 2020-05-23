@@ -23,12 +23,22 @@ type t =
   ; sign_unops    : (sym * unop ) StrMap.t ref
   ; sign_binops   : (sym * binop) StrMap.t ref
   ; sign_idents   : StrSet.t ref
-  ; sign_ind      : inductive SymMap.t ref}
+  ; sign_quants   : SymSet.t ref
+  ; sign_ind      : inductive SymMap.t ref }
 
 (* NOTE the [deps] field contains a hashtable binding the [module_path] of the
    external modules on which the current signature depends to an association
    list. This association list then maps definable symbols of the external
    module to additional reduction rules defined in the current signature. *)
+
+(** The empty signature. It's a thunk to force the creation of a new record on
+    each call (and avoid unwanted sharing). *)
+let dummy : unit -> t = fun () ->
+  { sign_symbols = ref StrMap.empty; sign_path = []
+  ; sign_deps = ref PathMap.empty; sign_builtins = ref StrMap.empty
+  ; sign_unops = ref StrMap.empty; sign_binops = ref StrMap.empty
+  ; sign_idents = ref StrSet.empty; sign_quants = ref SymSet.empty
+  ; sign_ind = ref SymMap.empt}
 
 (** [create path] creates an empty signature with module path [path]. *)
 let create : Path.t -> t = fun sign_path ->
@@ -138,7 +148,8 @@ let link : t -> unit = fun sign ->
   let hn (s,h) = (link_symb s, h) in
   sign.sign_unops := StrMap.map hn !(sign.sign_unops);
   sign.sign_binops := StrMap.map hn !(sign.sign_binops);
-  StrMap.iter (fun _ (s, _) -> Tree.update_dtree s) !(sign.sign_symbols)
+  StrMap.iter (fun _ (s, _) -> Tree.update_dtree s) !(sign.sign_symbols);
+  sign.sign_quants := SymSet.map link_symb !(sign.sign_quants)
 
 (** [unlink sign] removes references to external symbols (and thus signatures)
     in the signature [sign]. This function is used to minimize the size of our
@@ -187,7 +198,8 @@ let unlink : t -> unit = fun sign ->
   PathMap.iter gn !(sign.sign_deps);
   StrMap.iter (fun _ s -> unlink_sym s) !(sign.sign_builtins);
   StrMap.iter (fun _ (s,_) -> unlink_sym s) !(sign.sign_unops);
-  StrMap.iter (fun _ (s,_) -> unlink_sym s) !(sign.sign_binops)
+  StrMap.iter (fun _ (s,_) -> unlink_sym s) !(sign.sign_binops);
+  SymSet.iter unlink_sym !(sign.sign_quants)
 
 (** [add_symbol sign ?sym_expo mode name a impl] creates a fresh symbol with
     name [name] (which should not already be used in [sign]) and with the type
@@ -316,6 +328,10 @@ let add_binop : t -> string -> (sym * binop) -> unit = fun sign s sym ->
 (** [add_ident sign id] add the declared identifier [id] to [sign]. *)
 let add_ident : t -> string -> unit = fun sign id ->
   sign.sign_idents := StrSet.add id !(sign.sign_idents)
+
+(** [add_quant sign sym] add the quantifier [sym] to [sign]. *)
+let add_quant : t -> sym -> unit = fun sign sym ->
+  sign.sign_quants := SymSet.add sym !(sign.sign_quants)
 
 (** [add_inductive sign typ ind_cons ind_prop] add the inductive type which
     consists of a type [typ], constructors [ind_cons] and an induction

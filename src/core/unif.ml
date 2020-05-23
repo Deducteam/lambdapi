@@ -58,6 +58,31 @@ let copy_prod_env : tvar array -> term -> env = fun xs t ->
   in
   build_env 0 [] t
 
+(** [try_rules ctx s t] tries to solve unification problem [ctx ⊢ s ≡ t] using
+    declared unification rules. *)
+let try_rules : ctxt -> term -> term -> constr list option = fun ctx s t ->
+  if !log_enabled then log_unif "try rule [%a]" pp_constr (ctx,s,t);
+  let exception No_match in
+  let open Unif_rule in
+  try
+    let rhs =
+      match Eval.tree_walk !(equiv.sym_tree) ctx [s;t] with
+      | Some(r,[]) -> r
+      | Some(_)    -> assert false (* Everything should be matched *)
+      | None       ->
+      match Eval.tree_walk !(equiv.sym_tree) ctx [t;s] with
+      | Some(r,[]) -> r
+      | Some(_)    -> assert false (* Everything should be matched *)
+      | None       -> raise No_match
+    in
+    let subpbs = List.map (fun (t,u) -> (ctx,t,u)) (unpack rhs) in
+    let pp_subpbs = List.pp pp_constr "; " in
+    if !log_enabled then log_unif (gre "try rule [%a]") pp_subpbs subpbs;
+    Some(subpbs)
+  with No_match ->
+    if !log_enabled then log_unif (red "try rule [%a]") pp_constr (ctx,s,t);
+    None
+
 (** [nl_distinct_vars ctx ts] checks that [ts] is made of variables  [vs] only
     and returns some copy of [vs] where variables occurring more than once are
     replaced by fresh variables.  Variables defined in  [ctx] are unfolded. It
@@ -164,8 +189,11 @@ and solve_aux : ctxt -> term -> term -> problem -> constr list =
 
   let add_to_unsolved () =
     if Eval.eq_modulo ctx t1 t2 then solve p else
-    (* Keep the context *)
-    solve {p with unsolved = (ctx,t1,t2) :: p.unsolved}
+    match try_rules ctx t1 t2 with
+    | None     -> solve {p with unsolved = (ctx,t1,t2) :: p.unsolved}
+    | Some([]) -> assert false
+    (* Unification rules generate non empty list of unification constraints *)
+    | Some(cs) -> solve {p with to_solve = cs @ p.to_solve}
   in
 
   let error () =

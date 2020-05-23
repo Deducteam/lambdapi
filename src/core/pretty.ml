@@ -115,6 +115,21 @@ let pp_p_rule : bool -> p_rule pp = fun first oc r ->
   let kw = if first then "rule" else "with" in
   Format.fprintf oc "@[<hov 3>%s %a@ ↪ %a@]@?" kw pp_p_term lhs pp_p_term rhs
 
+let pp_p_equi : (p_term * p_term) pp = fun oc (l, r) ->
+  Format.fprintf oc "@[<hov 3>%a@ ≡ %a@]@?" pp_p_term l pp_p_term r
+
+let pp_p_unif_rule : p_rule pp = fun oc r ->
+  let (lhs, rhs) = r.elt in
+  let lhs =
+    match Syntax.p_get_args lhs with
+    | (_, [t; u]) -> (t, u)
+    | _           -> assert false
+  in
+  let eqs = Unif_rule.p_unpack rhs in
+  let pp_sep : unit pp = fun oc () -> Format.fprintf oc ", " in
+  Format.fprintf oc "@[<hov 3>%a@ ↪ %a@]@?"
+    pp_p_equi lhs (Format.pp_print_list ~pp_sep pp_p_equi) eqs
+
 let pp_p_proof_end : p_proof_end pp = fun oc e ->
   match e with
   | P_proof_qed   -> Format.pp_print_string oc "qed"
@@ -233,8 +248,12 @@ let pp_command : p_command pp = fun oc cmd ->
         | Assoc_right -> " right"
       in
       out "set infix%s %f \"%s\" ≔ %a" a p s pp_qident qid
+  | P_set(P_config_unif_rule(ur))   ->
+      out "set unif_rule %a" pp_p_unif_rule ur
   | P_set(P_config_ident(id))       ->
       out "set declared \"%s\"" id
+  | P_set(P_config_quant(qid))      ->
+      out "set quantifier %a" pp_qident qid
   | P_query(q)                      ->
      pp_p_query oc q
 

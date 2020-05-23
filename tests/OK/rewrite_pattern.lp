@@ -138,7 +138,7 @@ qed
 theorem add_succ_r : Πn m, P (eq nat (add n (s m)) (s (add n m)))
 proof
   assume n m
-  refine nat_ind (λn, eq nat (add n (s m)) (s (add n m))) ?CZ[n,m] ?CS[n,m] n
+  refine nat_ind (λn, eq nat (add n (s m)) (s (add n m))) ?CZ[n;m] ?CS[n;m] n
   // Case Z
   simpl
   refine refl nat (s m)
@@ -154,7 +154,7 @@ qed
 theorem addcomm : Πn m, P (eq nat (add n m) (add m n))
 proof
   assume n m
-  refine nat_ind (λ (n:N), eq nat (add n m) (add m n)) ?CZ[n,m] ?CS[n,m] n
+  refine nat_ind (λ (n:N), eq nat (add n m) (add m n)) ?CZ[n;m] ?CS[n;m] n
   // Case Z
   simpl
   symmetry

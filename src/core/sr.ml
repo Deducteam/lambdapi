@@ -65,14 +65,6 @@ let patt_to_tenv : term_env Bindlib.var array -> term -> tbox = fun vars ->
   in
   trans
 
-(** [new_function_symbol name a] creates a fresh function symbol named [name],
-    with type [a].  The symbols created using this function should not outlive
-    the SR-checking phase. *)
-let new_function_symbol name a =
-  { sym_name = name ; sym_type = ref a ; sym_path = [] ; sym_def = ref None
-  ; sym_impl = [] ; sym_rules = ref [] ; sym_tree = ref Tree_types.empty_dtree
-  ; sym_prop  = Defin ; sym_expo  = Public }
-
 (** Mapping of pattern variable names to their reserved index. *)
 type index_tbl = (string, int) Hashtbl.t
 
@@ -134,13 +126,18 @@ let symb_to_tenv
 (** [check_rule r] checks whether the pre-rule [r] is well-typed in
    signature state [ss] and then construct the corresponding rule. Note that
    [Fatal] is raised in case of error. *)
-let check_rule : Scope.pre_rule Pos.loc -> rule = fun pr ->
-  (* Unwrap the contents of the pre-rule. *)
-  let (pos, s, lhs, vars, rhs_vars, arities) =
-    let Pos.{elt=Scope.{pr_sym;pr_lhs;pr_vars;pr_rhs;pr_arities;_}; pos} = pr
-    in
-    (pos, pr_sym, pr_lhs, pr_vars, pr_rhs, pr_arities)
+let check_rule : Scope.pre_rule Pos.loc -> rule = fun ({pos; elt} as pr) ->
+  let Scope.{pr_sym = s ; pr_lhs = lhs ; pr_vars = vars
+            ; pr_rhs = rhs_vars; pr_arities = arities
+            ; pr_xvars_nb = xvars ; _} = elt
   in
+  (* Check that the variables of the RHS are in the LHS. *)
+  if xvars <> 0 then
+    begin
+      let xvars = Array.drop (Array.length vars - xvars) vars in
+      fatal pos "Unknown pattern variables [%a]"
+        (Array.pp Print.pp_var ",") xvars
+    end;
   let arity = List.length lhs in
   if !log_enabled then
     begin
@@ -148,7 +145,7 @@ let check_rule : Scope.pre_rule Pos.loc -> rule = fun pr ->
          unboxed twice. However things should be fine here since the result is
          only used for printing. *)
       let rhs = Bindlib.(unbox (bind_mvar vars rhs_vars)) in
-      let naive_rule = {lhs; rhs; arity; arities; vars} in
+      let naive_rule = {lhs; rhs; arity; arities; vars; xvars_nb = 0} in
       log_subj "check rule [%a]" pp_rule (s, naive_rule);
     end;
   (* Replace [Patt] nodes of LHS with corresponding elements of [vars]. *)
@@ -216,7 +213,7 @@ let check_rule : Scope.pre_rule Pos.loc -> rule = fun pr ->
             | Some(n) -> n
             | None    -> string_of_int m.meta_key
           in
-          let s = new_function_symbol sym_name !(m.meta_type) in
+          let s = Sign.new_sym sym_name !(m.meta_type) in
           Stdlib.(symbols := s :: !symbols);
           (* Build a definition for [m]. *)
           let xs = Basics.fresh_vars m.meta_arity in
@@ -264,4 +261,4 @@ let check_rule : Scope.pre_rule Pos.loc -> rule = fun pr ->
   (* TODO optimisation for evaluation: environment minimisation. *)
   (* Construct the rule. *)
   let rhs = Bindlib.unbox (Bindlib.bind_mvar vars rhs) in
-  { lhs ; rhs ; arity ; arities ; vars }
+  { lhs ; rhs ; arity ; arities ; vars; xvars_nb = 0 }

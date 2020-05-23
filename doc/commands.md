@@ -1,7 +1,7 @@
 Syntax of commands
 ------------------
 
-The BNF grammar of Lambdapi is in [syntax.bnf](../syntax.bnf).
+The BNF grammar of Lambdapi is in [syntax.bnf](syntax.bnf).
 
 In this section, we will illustrate the syntax of Lambdapi using examples. The
 first thing to note is that Lambdapi files are formed of a list of commands. A
@@ -18,11 +18,6 @@ One-line comments are introduced by '//':
 ```
 
 In Emacs, one can (un)comment a region by using Meta-; .
-
-<!---------------------------------------------------------------------------->
-### Lexical conventions
-
-TODO
 
 <!---------------------------------------------------------------------------->
 ### `require`
@@ -88,7 +83,7 @@ We recommend to start types and predicates by a capital letter.
 
 These modifiers are used to help the unification engine.
 
-**Exposition marker**
+**Exposition markers:**
 Exposition defines how a symbol can be used outside the module where it is
 defined. By default any symbol is _public_, which means it can be used without
 restriction anywhere. There are two exposition markers available:
@@ -106,7 +101,7 @@ Exposition obeys the following rules: inside a module,
 - externally defined protected symbols cannot appear in the right hand side of a
   rewriting rule
 
-**Implicit arguments**. Some function symbol arguments can be declared
+**Implicit arguments:** Some function symbol arguments can be declared
 as implicit meaning that they must not be given by the user
 later. Implicit arguments are replaced by `_` at parsing time,
 generating a fresh metavariables. An argument declared as implicit can
@@ -122,8 +117,8 @@ symbol eq {a:U} : T a → T a → Prop
 // Hence, [eq t u], [eq {_} t u] and [@eq _ t u] are all valid and equivalent.
 ```
 
-**Infix notation**:
-An infix notation can be declared for some symbol. See the command `set`.
+**Notations**:
+Some notation can be declared for some symbol. See the [command](commands.md) `set`.
 
 <!---------------------------------------------------------------------------->
 ### `rule`
@@ -236,7 +231,11 @@ metavariable by using commands specific to this mode called tactics. A
 tactic may generate new goals/metavariables. The proof of the theorem
 is complete only when all generated goals have been solved.
 
-[List of tactics](tactics.md)
+A proof must start by the keyword `proof` followed by a sequence of
+[tactics](tactics.md), and must end by the keywords `qed` (when the
+proof is complete), `admit` (when one wants to admit the theorem
+without proving it) or `abort` (when one wants to end the proof
+without adding the theorem in the environment).
 
 <!---------------------------------------------------------------------------->
 ### `type`
@@ -338,6 +337,17 @@ whether the defined symbol is non-associative, associative to the right,
 or associative to the left. The priority levels are floating point numbers,
 hence a priority can (almost) always be inserted between two different levels.
 
+**quantifier symbols** The representation of a symbol can be modified to make it
+look like a usual quantifier (such as `∀`, `∃` or `λ`). Symbols declared as
+quantifiers can be input using a “quantifier” syntax and their printing is
+changed:
+```
+set quantifier ∀ // : Π {a}, (T a → Prop) → Prop
+compute ∀ {a'} (λx:T a,p) // prints ∀x:T a,p
+compute ∀ (λx:T a, p) // prints ∀x,p
+type ∀x,p // quantifiers can be written as such
+```
+
 **why3 tactic related builtins** In order to use external provers via
 the why3 tactic, one first has to define a number of builtin symbols
 as follows:
@@ -401,3 +411,16 @@ set builtin "eq"    ≔ eq    // : Π {a}, T a → T a → Prop
 set builtin "refl"  ≔ refl  // : Π {a} (x:T a), P (x=x)
 set builtin "eqind" ≔ eqind // : Π {a} x y, P (x = y) → Π (p:T a→Prop), P (p y) → P (p x)
 ```
+
+**unification rules** The unification engine can be guided using 
+*unification rules*. Given a unification problem `t ≡ u`, if the engine cannot
+find a solution, it will try to match the pattern `t ≡ u` against the defined
+rules and rewrite the problem to the right-hand side of the matched  rule.
+For instance, given the unification rule
+```
+set unif_rule Bool ≡ T $t ↪ $t ≡ bool
+set unif_rule $x + $y ≡ 0 ↪ $x ≡ 0; $y ≡ 0
+```
+the unification problem `T ?x ≡ Bool` will be transformed into `?x ≡ bool`.
+Note that this feature is *experimental* and there is no sanity check
+performed on the rules.
