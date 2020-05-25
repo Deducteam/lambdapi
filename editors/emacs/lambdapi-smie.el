@@ -22,7 +22,7 @@
 (defconst lambdapi--queries '("set" "assert" "assertnot" "type" "compute")
   "Commands that can appear in proofs.")
 (defconst lambdapi--cmds
-  (append '("symbol" "theorem" "rule" "and" "definition" "proof" "require")
+  (append '("symbol" "theorem" "rule" "and" "definition" "proof" "require" "inductive")
           lambdapi--queries)
   "Commands at top level.")
 
@@ -107,6 +107,8 @@ Indent by `lambdapi-indent-basic' in proofs, and 0 otherwise."
       (unif-rule-rhs (sterm "≡" sterm)
                      (unif-rule-rhs ";" sterm "≡" sterm))
       (symdec ("symbol" args ":" sterm))
+      (constructor (ident ":" sterm)
+		   (constructor "|" ident ":" sterm))
       (command ("injective" symdec)
                ("constant" symdec)
                ("private" symdec)
@@ -117,6 +119,7 @@ Indent by `lambdapi-indent-basic' in proofs, and 0 otherwise."
                ("proof" prfcontent "admit")
                ("proof" prfcontent "abort")
                ("definition" args "≔" sterm)
+	       ("inductive" ident ":" sterm "≔" constructor)
                ("rule" sterm "↪" sterm)
                ("with" sterm "↪" sterm)
                ("require" ident)
@@ -172,7 +175,7 @@ The default lexer is used because the syntax is primarily made of sexps."
     (`(:after . "proof") lambdapi-indent-basic)
     (`(:after . ,(or "rule" "with")) (* 2 lambdapi-indent-basic))
     (`(:after . "in") (smie-rule-parent))
-    (`(:after . ,(or "symbol" "definition" "theorem")) lambdapi-indent-basic)
+    (`(:after . ,(or "symbol" "definition" "theorem" "inductive")) lambdapi-indent-basic)
     (`(:after . ,(or "simpl" "rewrite" "assume" "apply" "refine"
                      "why3" "reflexivity" "focus" "print"))
       lambdapi-indent-basic)
@@ -185,6 +188,7 @@ The default lexer is used because the syntax is primarily made of sexps."
     (`(:before . "require") '(column . 0))
     (`(:before . "open") '(column . 0))
     (`(:before . "definition") '(column . 0))
+    (`(:before . "induction") '(column . 0))
     (`(:before . "theorem") '(column . 0))
     (`(:before . "proof") '(column . 0))
     (`(:before . "symbol") '(column . 0))

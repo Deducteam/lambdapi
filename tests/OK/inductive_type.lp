@@ -10,6 +10,8 @@ inductive nat : TYPE ≔
  | z    : nat
  | succ : nat → nat
 
+// assert nat_ind : TYPE
+
 assert z : nat
 assert succ z : nat
 assert succ (succ (succ z)) : nat
