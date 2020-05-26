@@ -10,6 +10,7 @@
 (defconst lambdapi--tactics
   '("apply"
     "assume"
+    "fail"
     "focus"
     "print"
     "proofterm"
@@ -89,7 +90,8 @@ Indent by `lambdapi-indent-basic' in proofs, and 0 otherwise."
               ("focus" ident)
               ("print")
               ("proofterm")
-              ("why3"))
+              ("why3")
+              ("fail"))
       (query ("assert" sterm "≡" sterm)
              ("assert" sterm ":" sterm)
              ("assertnot" sterm ":" sterm)
@@ -159,6 +161,7 @@ The default lexer is used because the syntax is primarily made of sexps."
     (`(:before . "reflexivity") `(column . ,lambdapi-indent-basic))
     (`(:before . "focus") `(column . ,lambdapi-indent-basic))
     (`(:before . "print") `(column . ,lambdapi-indent-basic))
+    (`(:before . "fail") `(column . ,lambdapi-indent-basic))
 
     (`(:before . ,(or "admit" "abort" "qed")) '(column . 0))
     (`(:after . ,(or "admit" "abort" "qed")) '(column . 0))
@@ -174,7 +177,7 @@ The default lexer is used because the syntax is primarily made of sexps."
     (`(:after . "in") (smie-rule-parent))
     (`(:after . ,(or "symbol" "definition" "theorem")) lambdapi-indent-basic)
     (`(:after . ,(or "simpl" "rewrite" "assume" "apply" "refine"
-                     "why3" "reflexivity" "focus" "print"))
+                     "why3" "reflexivity" "focus" "print" "fail"))
       lambdapi-indent-basic)
 
     ;; Toplevel

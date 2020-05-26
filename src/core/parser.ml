@@ -172,6 +172,7 @@ let _assertnot_  = KW.create "assertnot"
 let _compute_    = KW.create "compute"
 let _constant_   = KW.create "constant"
 let _definition_ = KW.create "definition"
+let _fail_       = KW.create "fail"
 let _focus_      = KW.create "focus"
 let _in_         = KW.create "in"
 let _injective_  = KW.create "injective"
@@ -564,6 +565,7 @@ let parser tactic =
   | _proofterm_                 -> Pos.in_pos _loc P_tac_proofterm
   | _why3_ s:string_lit?        -> Pos.in_pos _loc (P_tac_why3(s))
   | q:query                     -> Pos.in_pos _loc (P_tac_query(q))
+  | _fail_                      -> Pos.in_pos _loc P_tac_fail
 
 (** [proof_end] is a parser for a proof terminator. *)
 let parser proof_end =

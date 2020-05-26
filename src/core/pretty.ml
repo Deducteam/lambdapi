@@ -198,6 +198,7 @@ let pp_p_tactic : p_tactic pp = fun oc t ->
       let prover oc s = Format.fprintf oc " %s" s in
       out "why3%a" (Option.pp prover) p
   | P_tac_query(q)           -> pp_p_query oc q
+  | P_tac_fail               -> out "fail"
 
 let pp_command : p_command pp = fun oc cmd ->
   let out fmt = Format.fprintf oc fmt in
