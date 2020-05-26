@@ -291,8 +291,7 @@ let bind_match : term -> term -> tbinder =  fun p t ->
    of type [P (eq a r l)]. *)
 let swap : eq_config -> term -> term -> term -> term -> term =
   fun cfg a r l t ->
-  (* NOTE The proofterm is “eqind a r l M (λx,eq a l x) (refl a l)”. *)
-  (* We build the predicate (“λx, eq a r x” in the above). *)
+  (* We build the predicate “λx:T a, eq a l x”. *)
   let pred =
     let x = Bindlib.new_var mkfree "x" in
     let pred = add_args (Symb cfg.symb_eq) [a; l; Vari(x)] in
@@ -688,9 +687,10 @@ let reflexivity : Sig_state.t -> popt -> Proof.t -> term = fun ss pos ps ->
   add_args (Symb cfg.symb_refl) [a; l]
 
 (** [symmetry ss pos ps] attempts to use symmetry of equality on the focused
-   goal. If successful, a new goal is generated, and the corresponding proof
-   term is returned. The proof of symmetry is built from the axioms of
-   equality. *)
+   goal, that is, transform a goal of the form `P (eq a l r)` into a goal of
+   the form `P (eq a r l)`. If successful, a new goal is generated, and the
+   corresponding proof term is returned. The proof of symmetry is built from
+   the axioms of equality. *)
 let symmetry : Sig_state.t -> popt -> Proof.t -> term = fun ss pos ps ->
   (* Obtain the required symbols from the current signature. *)
   let cfg = get_eq_config ss pos in
@@ -702,6 +702,7 @@ let symmetry : Sig_state.t -> popt -> Proof.t -> term = fun ss pos ps ->
   let meta_type =
     Appl(Symb cfg.symb_P, (add_args (Symb cfg.symb_eq) [a; r; l])) in
   let meta_term = make_meta (Env.to_ctxt g_env) meta_type in
+  (* NOTE The proofterm is “eqind a r l M (λx,eq a l x) (refl a l)”. *)
   let term = swap cfg a r l meta_term in
   (* Debugging data to the log. *)
   if !log_enabled then

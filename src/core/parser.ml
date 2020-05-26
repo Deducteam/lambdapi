@@ -555,8 +555,8 @@ let parser tactic =
   | _intro_ xs:arg_ident+       -> Pos.in_pos _loc (P_tac_intro(xs))
   | _apply_ t:term              -> Pos.in_pos _loc (P_tac_apply(t))
   | _simpl_                     -> Pos.in_pos _loc P_tac_simpl
-  | _rewrite_ b:{"-" -> false}?[true] p:rw_patt? t:term ->
-    Pos.in_pos _loc (P_tac_rewrite(b,p,t))
+  | _rewrite_ b:{"-" -> false}?[true] p:rw_patt? t:term
+                                -> Pos.in_pos _loc (P_tac_rewrite(b,p,t))
   | _refl_                      -> Pos.in_pos _loc P_tac_refl
   | _sym_                       -> Pos.in_pos _loc P_tac_sym
   | i:{_:_focus_ nat_lit}       -> Pos.in_pos _loc (P_tac_focus(i))
