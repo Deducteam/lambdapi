@@ -219,16 +219,21 @@
  ("`fz" ?𝔷) ("`fZ" ?ℨ))
 
 (require 'seq)
+
+;; Quail needs alists with cons cells ‘(COM . CH)’ where COM is a LaTeX command
+;; (e.g. \alpha) and CH a character (e.g. α). We define several lists extracted
+;; from the ‘math-symbol-lists’ package and formatted to suit Quail’s needs.
+;; NOTE we use ‘eval-when-compile’ to avoid traversing all the symbols when the
+;; mode is loaded.
+
 (defconst lambdapi--math-symbol-list-basic
   (eval-when-compile
     (let* ((cat-rx (rx (or "arrow" "greek" "Greek" "bin" "rel" "misc")))
            (pred (lambda (sym) (string-match-p cat-rx (car sym))))
            (filt (seq-filter pred math-symbol-list-basic)))
       (seq-map (lambda (sym) `(,(cadr sym) . ,(cddr sym))) filt)))
-  "Formatted sublist of `math-symbol-list-basic'.
-An element of this list is a dotted pair (COM . CH) where com is the LaTeX
-command (e.g. \alpha) and CH is the character (e.g. α). The list is made up of
-the arrows, greek letters (upper and lowercase), binary relations, relations and
+  "Extracted from ‘math-symbol-list-basic’.
+Arrows, greek letters (upper and lowercase), binary relations, relations and
 miscellaneous.")
 
 (defconst lambdapi--math-symbol-list-extended
@@ -237,16 +242,29 @@ miscellaneous.")
            (pred (lambda (sym) (string-match-p com-rx (cadr sym))))
            (filt (seq-filter pred math-symbol-list-extended)))
       (seq-map (lambda (sym) `(,(cadr sym) . ,(cdddr sym))) filt)))
-  "Formatted sublist of `math-symbol-list-extended'.
-An element of this list is a dotted pair (COM . CH) where com is the LaTeX
-command (e.g. \alpha) and CH is the character (e.g. α). This list is made of the
-double-struck capital letters.")
+  "Extracted from ‘math-symbol-list-extended’. Double struck capital letters.")
+
+(defconst lambdapi--math-symbol-list-subscripts
+  (eval-when-compile
+    (seq-map (lambda (sym)
+               (cons (cl-concatenate 'string "_" (cadr sym)) (cddr sym)))
+             math-symbol-list-subscripts))
+  "Extracted from ‘math-symbol-list-subscripts’.")
+
+(defconst lambdapi--math-symbol-list-superscripts
+  (eval-when-compile
+    (seq-map (lambda (sym)
+               (cons (cl-concatenate 'string "^" (cadr sym)) (cddr sym)))
+             math-symbol-list-superscripts))
+  "Extracted from ‘math-symbol-list-superscripts’.")
 
 (unless lambdapi-unicode-prefer-company
   (seq-do (lambda (com-ltx) (quail-defrule (car com-ltx) (cdr com-ltx)))
           (seq-concatenate 'list
                            lambdapi--math-symbol-list-basic
-                           lambdapi--math-symbol-list-extended)))
+                           lambdapi--math-symbol-list-extended
+                           lambdapi--math-symbol-list-subscripts
+                           lambdapi--math-symbol-list-superscripts)))
 
 (provide 'lambdapi-input)
 ;;; lambdapi-input.el ends here
