@@ -164,9 +164,11 @@ type p_tactic_aux =
   (** Print the current proof term (possibly containing open goals). *)
   | P_tac_why3 of string option
   (** Try to solve the current goal with why3. *)
-
   | P_tac_query   of p_query
   (** Query. *)
+  | P_tac_fail
+  (** A tactic that always fails. *)
+
 type p_tactic = p_tactic_aux loc
 
 (** Parser-level representation of a proof terminator. *)
