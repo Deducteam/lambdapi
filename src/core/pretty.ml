@@ -185,16 +185,18 @@ let pp_p_tactic : p_tactic pp = fun oc t ->
   | P_tac_intro(xs)          -> out "intro %a" (List.pp pp_arg_ident " ") xs
   | P_tac_apply(t)           -> out "@[<hov 2>apply@ %a@]" pp_p_term t
   | P_tac_simpl              -> out "simpl"
-  | P_tac_rewrite(None   ,t) -> out "@[<hov 2>rewrite@ %a@]" pp_p_term t
-  | P_tac_rewrite(Some(p),t) -> out "@[<hov 2>rewrite [%a]@ %a@]"
-                                  pp_p_rw_patt p.elt pp_p_term t
+  | P_tac_rewrite(b,p,t)     ->
+      let dir oc b = if not b then Format.fprintf oc " -" in
+      let pat oc p = Format.fprintf oc " [%a]@" pp_p_rw_patt p.elt in
+      out "@[<hov 2>rewrite%a%a%a@]" dir b (Option.pp pat) p pp_p_term t
   | P_tac_refl               -> out "reflexivity"
   | P_tac_sym                -> out "symmetry"
   | P_tac_focus(i)           -> out "focus %i" i
   | P_tac_print              -> out "print"
   | P_tac_proofterm          -> out "proofterm"
-  | P_tac_why3(None)         -> out "why3"
-  | P_tac_why3(Some(s))      -> out "why3 %s" s
+  | P_tac_why3(p)            ->
+      let prover oc s = Format.fprintf oc " %s" s in
+      out "why3%a" (Option.pp prover) p
   | P_tac_query(q)           -> pp_p_query oc q
   | P_tac_fail               -> out "fail"
 

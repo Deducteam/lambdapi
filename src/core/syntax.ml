@@ -150,8 +150,10 @@ type p_tactic_aux =
   (** Apply the given term to the current goal. *)
   | P_tac_simpl
   (** Normalize in the focused goal. *)
-  | P_tac_rewrite of p_rw_patt loc option * p_term
-  (** Apply rewriting using the given lemma and pattern. *)
+  | P_tac_rewrite of bool * p_rw_patt loc option * p_term
+  (** Apply rewriting using the given pattern and equational proof. The
+     boolean indicates whether the equation has to be applied from left to
+     right. *)
   | P_tac_refl
   (** Apply reflexivity of equality. *)
   | P_tac_sym
@@ -318,8 +320,8 @@ let eq_p_tactic : p_tactic eq = fun t1 t2 ->
       List.equal (Option.equal eq_ident) xs1 xs2
   | (P_tac_apply(t1)     , P_tac_apply(t2)     ) ->
       eq_p_term t1 t2
-  | (P_tac_rewrite(r1,t1), P_tac_rewrite(r2,t2)) ->
-      Option.equal eq_p_rw_patt r1 r2 && eq_p_term t1 t2
+  | (P_tac_rewrite(b1,r1,t1), P_tac_rewrite(b2,r2,t2)) ->
+      b1 = b2 && Option.equal eq_p_rw_patt r1 r2 && eq_p_term t1 t2
   | (P_tac_query(q1)     , P_tac_query(q2)     ) ->
       eq_p_query q1 q2
   | (P_tac_why3(s1)      , P_tac_why3(s2)      ) ->
