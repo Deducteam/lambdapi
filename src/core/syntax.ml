@@ -167,6 +167,8 @@ type p_tactic_aux =
   | P_tac_query   of p_query
   (** Query. *)
   | P_tac_fail
+  (** A tactic that always fails. *)
+
 type p_tactic = p_tactic_aux loc
 
 (** Parser-level representation of a proof terminator. *)
