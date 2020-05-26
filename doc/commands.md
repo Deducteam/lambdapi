@@ -218,7 +218,8 @@ constant symbol nat  : TYPE
 constant symbol z    : nat
 constant symbol succ : nat → nat
 ```
-The main goal is to generate automatically an inductive principle (work in progress).
+The main goal is to generate automatically an induction principle (work in progress).
+For the moment there is only the induction principle on propositions, which has the name of the inductive principle suffixed by "_ind".
 
 <!---------------------------------------------------------------------------->
 ### `theorem`

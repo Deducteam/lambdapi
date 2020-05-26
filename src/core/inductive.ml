@@ -1,4 +1,4 @@
-(** Builtin configuration for induction. *)
+(** Generating of induction principles. *)
 
 open Timed
 open Pos
@@ -6,6 +6,7 @@ open Console
 open Terms
 open Print
 
+(** Builtin configuration for induction. *)
 type config =
   { symb_Prop : sym (** : TYPE. Type of propositions. *)
   ; symb_prf  : sym (** : Prop → TYPE.
@@ -41,7 +42,8 @@ let principle : Sig_state.t -> popt -> sym -> sym list -> term =
            | Symb(s) ->
                let b =
                  if s == sind then _Impl (prf_of_p (Bindlib.box_var x)) b
-                 else b in
+                 else b
+               in
               _Prod (Bindlib.box a) (Bindlib.bind_var x b)
            | _ -> fatal pos "The type of %a is not supported"
                     pp_symbol scons

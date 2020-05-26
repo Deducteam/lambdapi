@@ -207,7 +207,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
       let (ss, cons_list) = List.fold_left add_cons (ss, []) l in
       (* Compute the induction principle *)
       let ind_typ = Inductive.principle ss cmd.pos sym_typ cons_list in
-      let ind_name = make cmd.pos (id.elt ^ "_ind") in
+      let ind_name = Pos.make cmd.pos (id.elt ^ "_ind") in
       let sym_ind = Sign.add_symbol ss.signature e Defin ind_name ind_typ [] in
       Sign.add_inductive ss.signature sym_typ cons_list sym_ind;
       (ss, None)
