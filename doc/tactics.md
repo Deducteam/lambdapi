@@ -109,7 +109,7 @@ new prover supported by Why3.
 ### Tactics on equality
 
 The tactics `reflexivity`, `symmetry` and `rewrite` assume the
-existence of terms of the approriate type mapped to the builtins `T`,
+existence of terms with approriate types mapped to the builtins `T`,
 `P`, `eq`, `eqind` and `refl` thanks to the following builtin
 declarations:
 
@@ -117,9 +117,9 @@ declarations:
 set builtin "T"     ≔ ... // : U → TYPE
 set builtin "P"     ≔ ... // : Prop → TYPE
 set builtin "eq"    ≔ ... // : Π {a}, T a → T a → Prop
-set infix ... "=" := eq   // optional
+set infix ... "="   ≔ eq  // optional
 set builtin "refl"  ≔ ... // : Π {a} (x:T a), P (x=x)
-set builtin "eqind" ≔ ... // : Π {a} x y, P (x=y) → Π (p:T a→Prop), P (p y) → P (p x)
+set builtin "eqind" ≔ ... // : Π {a} x y, P (x=y) → Π p:T a→Prop, P (p y) → P (p x)
 ```
 
 <!---------------------------------------------------------------------------->
@@ -137,9 +137,10 @@ The tactic `sym` replaces a goal of the form `P (t = u)` by the goal
 ### `rewrite`
 
 The `rewrite` tactic takes as argument a term `t` of type `Πx1
-.. xn,P(l=r)` prefixed by an optional rewrite pattern in square
-brackets, following the syntax and semantics of SSReflect rewrite
-patterns:
+.. xn,P(l=r)` prefixed by an optional `-` (to indicate that the
+equation should be used from right to left) and an optional rewrite
+pattern in square brackets, following the syntax and semantics of
+SSReflect rewrite patterns:
 
 ```
 <rw_patt> ::=
@@ -161,3 +162,9 @@ that is, of the form `l` with `x1` replaced by `u1`, ..., `xn`
 replaced by `un`, then the tactic `rewrite t` replaces in the focused
 goal all occurrences of `u` by the term `r` with `x1` replaced by
 `u1`, ..., `xn` replaced by `un`.
+
+<!---------------------------------------------------------------------------->
+### `fail`
+
+The `fail` tactic always fails. It is useful when developing a proof
+to stop at some particular point.

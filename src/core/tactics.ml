@@ -100,15 +100,17 @@ let handle_tactic : Sig_state.t -> Proof.t -> p_tactic -> Proof.t =
       handle_refine (add_wilds pt nb)
   | P_tac_simpl         ->
       {ps with proof_goals = Goal.simpl g :: gs}
-  | P_tac_rewrite(po,t) ->
+  | P_tac_rewrite(b,po,t) ->
       let po = Option.map (Scope.scope_rw_patt ss env) po in
-      handle_refine (Rewrite.rewrite ss tac.pos ps po (scope t))
+      handle_refine (Rewrite.rewrite ss tac.pos ps b po (scope t))
   | P_tac_refl          ->
       handle_refine (Rewrite.reflexivity ss tac.pos ps)
   | P_tac_sym           ->
       handle_refine (Rewrite.symmetry ss tac.pos ps)
   | P_tac_why3(config)  ->
       handle_refine (Why3_tactic.handle ss tac.pos config g)
+  | P_tac_fail          ->
+      fatal tac.pos "Call to tactic \"fail\""
 
 let handle_tactic : Sig_state.t -> Proof.t -> p_tactic -> Proof.t =
   fun ss ps tac ->

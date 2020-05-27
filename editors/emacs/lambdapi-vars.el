@@ -20,8 +20,11 @@
 
 (defconst lambdapi-sig-commands
   '("definition"
+    "as"
     "in"
     "let"
+    "declared"
+    "builtin"
     "open"
     "proof"
     "qed"
@@ -34,7 +37,7 @@
   "Commands that enrich the signature.")
 
 (defconst lambdapi-warning
-  '("abort" "admit")
+  '("abort" "admit" "fail")
   "To be displayed in red.")
 
 (defconst lambdapi-misc-commands
@@ -47,7 +50,7 @@
 
 (defconst lambdapi-misc-keywords
   '("TYPE" "left" "right" "infix" "prefix" "quantifier"
-    "protected" "private" "injective" "constant" "as"))
+    "protected" "private" "injective" "constant"))
 
 (defcustom lambdapi-indent-basic 2
   "Basic indentation for lambdapi-mode."

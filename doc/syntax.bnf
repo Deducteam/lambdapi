@@ -9,6 +9,7 @@ reserved "assume"
 reserved "compute"
 reserved "constant"
 reserved "definition"
+reserved "fail"
 reserved "focus"
 reserved "in"
 reserved "injective"
@@ -127,13 +128,14 @@ reserved "why3"
   | "assume" <ident>+
   | "apply" <term>
   | "simpl"
-  | "rewrite" {"[" <rw_patt> "]"}? <term>
+  | "rewrite" "-"? {"[" <rw_patt> "]"}? <term>
   | "reflexivity"
   | "symmetry"
   | "focus" <nat_lit>
   | "print"
   | "proofterm"
   | "why3" <string_lit>?
+  | "fail"
 
 // Assertion predicate
 <assertion> ::=
