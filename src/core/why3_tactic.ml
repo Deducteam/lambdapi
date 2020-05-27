@@ -135,7 +135,7 @@ let encode : Sig_state.t -> Pos.popt -> Env.env -> term -> Why3.Task.task =
   (* Return the task that contains the encoded lambdapi formula in Why3. *)
   Why3.Task.add_prop_decl tsk Why3.Decl.Pgoal goal why3_term
 
-(** [run_task tsk pos prover_name] Run the task [tsk] with the specified
+(** [run_task tsk pos prover_name] runs the task [tsk] with the specified
     prover named [prover_name] and return the answer of the prover. *)
 let run_task : Why3.Task.task -> Pos.popt -> string -> bool =
     fun tsk pos prover_name ->
@@ -173,8 +173,8 @@ let run_task : Why3.Task.task -> Pos.popt -> string -> bool =
   let call = Why3.Driver.prove_task ~limit ~command driver tsk in
   Why3.Call_provers.((wait_on_call call).pr_answer = Valid)
 
-(** [handle ss pos ps prover_name g] runs the Why3 prover corresponding to the
-    name [prover_name] (if given or a default one otherwise) on the goal  [g].
+(** [handle ss pos prover_name g] runs the Why3 prover corresponding to the
+    name [prover_name] (if given or a default one otherwise) on the goal [g].
     If the prover succeeded to prove the goal, then this is reflected by a new
     axiom that is added to signature [ss]. *)
 let handle :

@@ -25,10 +25,11 @@ let add : tvar -> tbox -> tbox option -> env -> env = fun v a t env ->
 let find : string -> env -> tvar = fun n env ->
   let (x,_,_) = List.assoc n env in x
 
-(** [to_prod env t] builds a sequence of products / let-bindings whose domains
-    are the variables of the environment [env] (from left to right), and whose
-    body is the term [t]. By calling [to_prod [(xn,an,None);⋯;(x1,a1,None)] t]
-    you obtain a term of the form [Πx1:a1,..,Πxn:an,t]. *)
+(** [to_prod_box env t] builds a sequence of products / let-bindings whose
+    domains are the variables of the environment [env] (from left to right),
+    and whose body is the term [t].
+    By calling [to_prod [(xn,an,None);⋯;(x1,a1,None)] t] you obtain a term of
+    the form [Πx1:a1,..,Πxn:an,t]. *)
 let to_prod_box : env -> tbox -> tbox = fun env t ->
   let fn t (_,(x,a,u)) =
     match u with
@@ -37,7 +38,7 @@ let to_prod_box : env -> tbox -> tbox = fun env t ->
   in
   List.fold_left fn t env
 
-(** [to_prod] is an “unboxed” version of [to_prod_box]. *)
+(** [to_prod env t] is an "unboxed" version of [to_prod_box env t]. *)
 let to_prod : env -> tbox -> term = fun env t ->
   Bindlib.unbox (to_prod_box env t)
 

@@ -20,13 +20,14 @@ type t =
   ; sign_idents   : StrSet.t ref
   ; sign_quants   : SymSet.t ref }
 
-(* NOTE the [deps] field contains a hashtable binding the [module_path] of the
-   external modules on which the current signature depends to an association
-   list. This association list then maps definable symbols of the external
-   module to additional reduction rules defined in the current signature. *)
+(** NOTE the [deps] field contains a hashtable binding the [module_path] of
+    the external modules on which the current signature depends to an
+    association list. This association list then maps definable symbols of
+    the external module to additional reduction rules defined in the current
+    signature. *)
 
-(** The empty signature. It's a thunk to force the creation of a new record on
-    each call (and avoid unwanted sharing). *)
+(** [dummy ()] The empty signature. It's a thunk to force the creation of
+    a new record on each call (and avoid unwanted sharing). *)
 let dummy : unit -> t = fun () ->
   { sign_symbols = ref StrMap.empty; sign_path = []
   ; sign_deps = ref PathMap.empty; sign_builtins = ref StrMap.empty
@@ -48,9 +49,9 @@ let mem : t -> string -> bool =
     making copies of terms when loading an object file. *)
 let loaded : t PathMap.t ref = ref PathMap.empty
 
-(* NOTE that the current module is stored in [loaded] so that the symbols that
-   it contains can be qualified with the name of the module. This behavior was
-   inherited from previous versions of Dedukti. *)
+(** NOTE that the current module is stored in [loaded] so that the symbols
+    that it contains can be qualified with the name of the module.
+    This behavior was inherited from previous versions of Dedukti. *)
 
 (** [loading] contains the [module_path] of the signatures (or files) that are
     being processed. They are stored in a stack due to dependencies. Note that
@@ -185,12 +186,12 @@ let unlink : t -> unit = fun sign ->
   StrMap.iter (fun _ (s,_) -> unlink_sym s) !(sign.sign_binops);
   SymSet.iter unlink_sym !(sign.sign_quants)
 
-(** [add_symbol sign ?sym_expo mode name a impl] creates a fresh symbol with
-    name [name] (which should not already be used in [sign]) and with the type
-    [a], in the signature [sign]. The exposition is
-    {!constructor:Terms.sym_exposition.Public} by default, unless [?sym_expo]
-    is precised. The list [impl] tells which arguments is implicit. The
-    created symbol is returned. *)
+(** [add_symbol sign sym_expo sym_prop s a impl] creates a fresh symbol with
+    name [s.elt] (which should not already be used in [sign]) and with the
+    type [a], in the signature [sign].
+    The exposition is [sym_expo] and the property is [sym_prop].
+    The list [impl] tells which arguments is implicit.
+    The created symbol is returned. *)
 let add_symbol : t -> expo -> prop -> strloc -> term -> bool list -> sym =
     fun sign sym_expo sym_prop s a impl ->
   (* Check for metavariables in the symbol type. *)
@@ -207,7 +208,7 @@ let add_symbol : t -> expo -> prop -> strloc -> term -> bool list -> sym =
   in
   sign.sign_symbols := StrMap.add s.elt (sym, s.pos) !(sign.sign_symbols); sym
 
-(** [write sign file] writes the signature [sign] to the file [fname]. *)
+(** [write sign fname] writes the signature [sign] to the file [fname]. *)
 let write : t -> string -> unit = fun sign fname ->
   match Unix.fork () with
   | 0 -> let oc = open_out fname in
@@ -215,8 +216,9 @@ let write : t -> string -> unit = fun sign fname ->
          close_out oc; exit 0
   | i -> ignore (Unix.waitpid [] i)
 
-(* NOTE [Unix.fork] is used to safely [unlink] and write an object file, while
-   preserving a valid copy of the written signature in the parent process. *)
+(** NOTE [Unix.fork] is used to safely [unlink] and write an object file,
+    while preserving a valid copy of the written signature in the parent
+    process. *)
 
 (** [read fname] reads a signature from the object file [fname]. Note that the
     file can only be read properly if it was build with the same binary as the
@@ -278,8 +280,8 @@ let read : string -> t = fun fname ->
   in
   reset_timed_refs sign
 
-(* NOTE here, we rely on the fact that a marshaled closure can only be read by
-   processes running the same binary as the one that produced it. *)
+(** NOTE here, we rely on the fact that a marshaled closure can only be read
+    by processes running the same binary as the one that produced it. *)
 
 (** [add_rule sign sym r] adds the new rule [r] to the symbol [sym].  When the
     rule does not correspond to a symbol of signature [sign],  it is stored in
@@ -294,18 +296,18 @@ let add_rule : t -> sym -> rule -> unit = fun sign sym r ->
     let m = (sym.sym_name, r) :: m in
     sign.sign_deps := PathMap.add sym.sym_path m !(sign.sign_deps)
 
-(** [add_builtin sign name sym] binds the builtin name [name] to [sym] (in the
+(** [add_builtin sign s sym] binds the builtin name [s] to [sym] (in the
     signature [sign]). The previous binding, if any, is discarded. *)
 let add_builtin : t -> string -> sym -> unit = fun sign s sym ->
   sign.sign_builtins := StrMap.add s sym !(sign.sign_builtins)
 
-(** [add_unop sign unop sym] binds the unary operator [op] to [sym] in [sign].
-    If [unop] was previously bound, the previous binding is discarded. *)
+(** [add_unop sign s sym] binds the unary operator [s] to [sym] in [sign].
+    If [s] was previously bound, the previous binding is discarded. *)
 let add_unop : t -> string -> (sym * unop) -> unit = fun sign s sym ->
   sign.sign_unops := StrMap.add s sym !(sign.sign_unops)
 
-(** [add_binop sign op sym] binds the binary operator [op] to [sym] in [sign].
-    If [op] was previously bound, the previous binding is discarded. *)
+(** [add_binop sign s sym] binds the binary operator [s] to [sym] in [sign].
+    If [s] was previously bound, the previous binding is discarded. *)
 let add_binop : t -> string -> (sym * binop) -> unit = fun sign s sym ->
   sign.sign_binops := StrMap.add s sym !(sign.sign_binops)
 

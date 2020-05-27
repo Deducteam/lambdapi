@@ -171,12 +171,12 @@ and eq_modulo : ctxt -> term -> term -> bool = fun ctx a b ->
     3. a {!constructor:Tree_types.TC.t.Vari} which is a simplified
        representation of a variable for trees. *)
 
-(** [tree_walk tr ctx stk] tries to apply a rewrite rule by matching the stack
-    [stk] against the decision tree [tr] in context [ctx]. The resulting state
-    of the abstract machine  is returned in case of success.  Even if matching
-    fails,  the stack [stk] may be imperatively updated since a reduction step
-    taken in elements of the stack is preserved (this is done using
-    {!constructor:Terms.term.TRef}). *)
+(** [tree_walk tree ctx stk] tries to apply a rewrite rule by matching the
+    stack [stk] against the decision tree [tree] in context [ctx].
+    The resulting state of the abstract machine  is returned in case of
+    success. Even if matching fails,  the stack [stk] may be imperatively
+    updated since a reduction step taken in elements of the stack is
+    preserved (this is done using {!constructor:Terms.term.TRef}). *)
 and tree_walk : dtree -> ctxt -> stack -> (term * stack) option =
   fun tree ctx stk ->
   let (lazy capacity, lazy tree) = tree in
@@ -356,7 +356,8 @@ and tree_walk : dtree -> ctxt -> stack -> (term * stack) option =
   in
   walk tree stk 0 VarMap.empty IntMap.empty
 
-(** [snf t] computes the strong normal form of the term [t]. *)
+(** [snf ctx t] computes the strong normal form of the term [t]
+    in the context [ctx]. *)
 and snf : ctxt -> term -> term = fun ctx t ->
   let h = whnf ctx t in
   match h with
@@ -382,13 +383,14 @@ and snf : ctxt -> term -> term = fun ctx t ->
   | Wild        -> assert false
   | TRef(_)     -> assert false
 
-(** [whnf t] computes a weak head-normal form of [t]. *)
+(** [whnf ctx t] computes a weak head-normal form of [t]
+    in the context [ctx]. *)
 let whnf : ctxt -> term -> term = fun ctx t ->
   Stdlib.(steps := 0);
   let u = whnf ctx t in
   if Stdlib.(!steps = 0) then unfold t else u
 
-(** [simplify t] reduces simple redexes of [t]. *)
+(** [simplify ctx t] reduces simple redexes of [t] in the context [ctx]. *)
 let rec simplify : ctxt -> term -> term = fun ctx t ->
   match get_args (whnf ctx t) with
   | Prod(a,b), _ ->
@@ -397,7 +399,8 @@ let rec simplify : ctxt -> term -> term = fun ctx t ->
      Prod (simplify ctx a, Bindlib.unbox b)
   | h, ts -> add_args h (List.map whnf_beta ts)
 
-(** [hnf t] computes a head-normal form of the term [t]. *)
+(** [hnf ctx t] computes a head-normal form of the term [t]
+    in the context [ctx]. *)
 let rec hnf : ctxt -> term -> term = fun ctx t ->
   match whnf ctx t with
   | Abst(a,t) ->
@@ -405,8 +408,8 @@ let rec hnf : ctxt -> term -> term = fun ctx t ->
      Abst(a, Bindlib.unbox (Bindlib.bind_var x (lift (hnf ctx t))))
   | t         -> t
 
-(** [eval cfg ctx t] evaluates the term [t] in the context [ctx] according to
-    configuration [cfg]. *)
+(** [eval c ctx t] evaluates the term [t] in the context [ctx] according to
+    configuration [c]. *)
 let eval : Syntax.eval_config -> ctxt -> term -> term = fun c ctx t ->
   match (c.strategy, c.steps) with
   | (_   , Some(0))

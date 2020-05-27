@@ -13,8 +13,8 @@ let log_tact = new_logger 't' "tact" "tactics"
 let log_tact = log_tact.logger
 
 (** [handle_tactic ss ps tac] tries to apply the tactic [tac] (in the proof
-     state [ps]), and returns the new proof state.  This function fails
-     gracefully in case of error. *)
+    state [ps]), and returns the new proof state.  This function fails
+    gracefully in case of error. *)
 let handle_tactic : Sig_state.t -> Proof.t -> p_tactic -> Proof.t =
   fun ss ps tac ->
   (* First handle the tactics that do not change the goals. *)

@@ -42,14 +42,14 @@ let _ =
     do not work on this structure directly,  although they act on the contents
     of its [pdata_p_state] field. *)
 type proof_data =
-  { pdata_stmt_pos : Pos.popt (* Position of the proof's statement.  *)
-  ; pdata_p_state  : Proof.t  (* Initial proof state for the proof.  *)
-  ; pdata_tactics  : p_tactic list (* Tactics for the proof.         *)
-  ; pdata_finalize : sig_state -> Proof.t -> sig_state (* Finalizer. *)
-  ; pdata_term_pos : Pos.popt (* Position of the proof's terminator. *) }
+  { pdata_stmt_pos : Pos.popt (** Position of the proof's statement.  *)
+  ; pdata_p_state  : Proof.t  (** Initial proof state for the proof.  *)
+  ; pdata_tactics  : p_tactic list (** Tactics for the proof.         *)
+  ; pdata_finalize : sig_state -> Proof.t -> sig_state (** Finalizer. *)
+  ; pdata_term_pos : Pos.popt (** Position of the proof's terminator. *) }
 
 (** [handle_open pos ss p] handles the command [open p] with [ss] as the
-   signature state. On success, an updated signature state is returned. *)
+    signature state. On success, an updated signature state is returned. *)
 let handle_open : popt -> sig_state -> Path.t -> sig_state =
     fun pos ss p ->
   (* Obtain the signature corresponding to [m]. *)
@@ -62,8 +62,8 @@ let handle_open : popt -> sig_state -> Path.t -> sig_state =
   open_sign ss sign
 
 (** [handle_require b pos ss p] handles the command [require p] (or [require
-   open p] if b is true) with [ss] as the signature state. On success, an
-   updated signature state is returned. *)
+    open p] if b is true) with [ss] as the signature state. On success, an
+    updated signature state is returned. *)
 let handle_require : bool -> popt -> sig_state -> Path.t -> sig_state =
     fun b pos ss p ->
   (* Check that the module has not already been required. *)
@@ -74,8 +74,8 @@ let handle_require : bool -> popt -> sig_state -> Path.t -> sig_state =
   if b then handle_open pos ss p else ss
 
 (** [handle_require_as pos ss p id] handles the command [require p as id] with
-   [ss] as the signature state. On success, an updated signature state is
-   returned. *)
+    [ss] as the signature state. On success, an updated signature state is
+    returned. *)
 let handle_require_as : popt -> sig_state -> Path.t -> ident -> sig_state =
     fun pos ss p id ->
   let ss = handle_require false pos ss p in

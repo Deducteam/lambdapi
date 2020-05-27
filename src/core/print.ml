@@ -31,7 +31,7 @@ let print_meta_type : bool ref = Console.register_flag "print_meta_type" false
 (** Flag controlling the printing of the context in unification. *)
 let print_contexts : bool ref = Console.register_flag "print_contexts" false
 
-(** [assoc oc a] prints associativity [a] to channel [oc]. *)
+(** [pp_assoc oc assoc] prints associativity [assoc] to channel [oc]. *)
 let pp_assoc : assoc pp = fun oc assoc ->
   Format.fprintf oc
     (match assoc with
@@ -39,7 +39,7 @@ let pp_assoc : assoc pp = fun oc assoc ->
      | Assoc_left -> " left associative"
      | Assoc_right -> " right associative")
 
-(** [hint oc a] prints hint [h] to channel [oc]. *)
+(** [pp_hint oc pp_hint] prints hint [pp_hint] to channel [oc]. *)
 let pp_hint : pp_hint pp = fun oc pp_hint ->
   match pp_hint with
   | Unqual         -> ()
@@ -50,13 +50,13 @@ let pp_hint : pp_hint pp = fun oc pp_hint ->
   | Succ           -> Format.fprintf oc "builtin \"+1\""
   | Quant          -> Format.fprintf oc "quantifier"
 
-(** [qualified s] prints symbol [s] fully qualified to channel [oc]. *)
+(** [pp_qualified oc s] prints symbol [s] fully qualified to channel [oc]. *)
 let pp_qualified : sym pp = fun oc s ->
   match Files.PathMap.find_opt s.sym_path (!sig_state).path_map with
   | None -> Format.fprintf oc "%a.%s" Files.Path.pp s.sym_path s.sym_name
   | Some alias -> Format.fprintf oc "%s.%s" alias s.sym_name
 
-(** Get the printing hint of a symbol. *)
+(** [get_pp_hint s] gets the printing hint of the symbol [s]. *)
 let get_pp_hint : sym -> pp_hint = fun s ->
   try SymMap.find s (!sig_state).pp_hints with Not_found -> Unqual
 
@@ -230,8 +230,8 @@ and pp_term : term pp = fun oc t ->
   in
   pp `Func oc (cleanup t)
 
-(** [pp_rule oc (s,h,r)] prints the rule [r] of symbol [s] to the output
-   channel [oc]. *)
+(** [pp_rule oc (s,r)] prints the rule [r] of symbol [s] to the output
+    channel [oc]. *)
 let pp_rule : (sym * rule) pp = fun oc (s,r) ->
   let lhs = Basics.add_args (Symb s) r.lhs in
   let (_, rhs) = Bindlib.unmbind r.rhs in
@@ -253,12 +253,12 @@ let pp_ctxt : ctxt pp = fun oc ctx ->
     in
     Format.fprintf oc "%a ⊢ " pp_ctxt ctx
 
-(** [pp_typing oc (c,t,u)] prints the typing constraint [c] to the
+(** [pp_typing oc (ctx,t,u)] prints the typing constraint [ctx] to the
     output channel [oc]. *)
 let pp_typing : constr pp = fun oc (ctx, t, u) ->
   Format.fprintf oc "%a%a : %a" pp_ctxt ctx pp_term t pp_term u
 
-(** [pp_constr oc c] prints the unification constraints [c] to the
+(** [pp_constr oc (ctx,t,u)] prints the unification constraints [ctx] to the
     output channel [oc]. *)
 let pp_constr : constr pp = fun oc (ctx, t, u) ->
   Format.fprintf oc "%a%a ≡ %a" pp_ctxt ctx pp_term t pp_term u

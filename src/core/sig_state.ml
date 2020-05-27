@@ -52,21 +52,21 @@ type sig_state =
 
 type t = sig_state
 
-(** [create_sign path] creates a signature with path [path] with ghost modules
-    as dependencies. *)
+(** [create_sign sign_path] creates a signature with path [sign_path]
+    with ghost modules as dependencies. *)
 let create_sign : Path.t -> Sign.t = fun sign_path ->
   let d = Sign.dummy () in
   { d with sign_path ; sign_deps = ref (PathMap.singleton Unif_rule.path []) }
 
 (** [remove_pp_hint map name pp_hints] removes from [pp_hints] the mapping for
-   [s] if [s] is mapped to [name] in [map]. *)
+    [s] if [s] is mapped to [name] in [map]. *)
 let remove_pp_hint :
       sym StrMap.t -> string -> pp_hint SymMap.t -> pp_hint SymMap.t =
   fun map name pp_hints ->
   try SymMap.remove (StrMap.find name map) pp_hints
   with Not_found -> pp_hints
 
-(** [remove_pp_hint_eq map name h pp_hints] removes from [pp_hints] the
+(** [remove_pp_hint_eq map name h pp_hints] removes from [pp_hints] the - @PROBLEM
    mapping for [s] if [s] is mapped to [(name,h')] in [map], and [eq_pp_hint h
    h' = true]. *)
 let remove_pp_hint_eq :
@@ -96,8 +96,8 @@ let add_symbol : sig_state -> expo -> prop -> strloc -> term -> bool list
   let pp_hints = SymMap.add s Unqual pp_hints in
   {ss with in_scope; pp_hints}
 
-(** [add_unop ss n x] generates a new signature state from [ss] by adding a
-   unary operator [x] with name [n]. *)
+(** [add_unop ss name x] generates a new signature state from [ss] by adding
+    a unary operator [x] with name [name]. *)
 let add_unop : sig_state -> string -> (sym * unop) -> sig_state =
   fun ss name ((sym, unop) as x) ->
   Sign.add_unop ss.signature name x;
@@ -106,8 +106,8 @@ let add_unop : sig_state -> string -> (sym * unop) -> sig_state =
   let pp_hints = SymMap.add sym (Prefix unop) pp_hints in
   {ss with unops; pp_hints}
 
-(** [add_binop ss n x] generates a new signature state from [ss] by adding a
-   binary operator [x] with name [n]. *)
+(** [add_binop ss name x] generates a new signature state from [ss] by adding
+    a binary operator [x] with name [name]. *)
 let add_binop : sig_state -> string -> (sym * binop) -> sig_state =
   fun ss name ((sym, binop) as x) ->
   Sign.add_binop ss.signature name x;
@@ -116,8 +116,8 @@ let add_binop : sig_state -> string -> (sym * binop) -> sig_state =
   let pp_hints = SymMap.add sym (Infix binop) pp_hints in
   {ss with binops; pp_hints}
 
-(** [add_builtin ss n s] generates a new signature state from [ss] by mapping
-   the builtin [n] to [s]. *)
+(** [add_builtin ss name sym] generates a new signature state from [ss]
+    by mapping the builtin [name] to [sym]. *)
 let add_builtin : sig_state -> string -> sym -> sig_state = fun ss name sym ->
   Sign.add_builtin ss.signature name sym;
   let builtins = StrMap.add name sym ss.builtins in
@@ -133,13 +133,13 @@ let add_builtin : sig_state -> string -> sym -> sig_state = fun ss name sym ->
   {ss with builtins; pp_hints}
 
 (** [add_quant ss sym] generates a new signature state from [ss] by declaring
-   [sym] as quantifier. *)
+    [sym] as quantifier. *)
 let add_quant : sig_state -> sym -> sig_state = fun ss sym ->
   Sign.add_quant ss.signature sym;
   {ss with pp_hints = SymMap.add sym Quant ss.pp_hints}
 
-(** [update_pp_hints_from_symbols ss sign pp_hints] generates a new pp_hint
-   map from [pp_hints] when adding the symbols of [sign]. *)
+(** [update_pp_hints_from_symbols in_scope sign pp_hints] generates a new
+    pp_hint map from [pp_hints] when adding the symbols of [sign]. *)
 let update_pp_hints_from_symbols :
       (sym * Pos.popt) StrMap.t -> Sign.t -> pp_hint SymMap.t
       -> pp_hint SymMap.t =
@@ -164,8 +164,8 @@ let update_pp_hints_from_symbols :
   StrMap.fold fn !(sign.sign_symbols) pp_hints
 
 (** [update_pp_hints_from_builtins old_bm new_bm pp_hints] generates a new
-   pp_hint map from [pp_hints] when adding [new_bm] to the builtin map
-   [old_bm]. *)
+    pp_hint map from [pp_hints] when adding [new_bm] to the builtin map
+    [old_bm]. *)
 let update_pp_hints_from_builtins
     : sym StrMap.t -> sym StrMap.t -> pp_hint SymMap.t -> pp_hint SymMap.t =
   fun old_bm new_bm pp_hints ->
@@ -200,14 +200,14 @@ let open_sign : sig_state -> Sign.t -> sig_state = fun ss sign ->
   in
   {ss with in_scope; builtins; unops; binops; pp_hints}
 
-(** Dummy [sig_state] made from the dummy signature. *)
+(** [dummy : sig_state] made from the dummy signature. *)
 let dummy : sig_state =
   { signature = Sign.dummy (); in_scope = StrMap.empty; aliases = StrMap.empty
   ; path_map = PathMap.empty; builtins = StrMap.empty; unops = StrMap.empty
   ; binops = StrMap.empty; pp_hints = SymMap.empty }
 
-(** [of_sign sign] creates a state from the signature [sign] with ghost
-    signatures opened. *)
+(** [of_sign signature] creates a state from the signature [signature]
+    with ghost signatures opened. *)
 let of_sign : Sign.t -> sig_state = fun signature ->
   open_sign {dummy with signature} Unif_rule.sign
 

@@ -16,12 +16,12 @@ let to_tvar : term -> tvar = fun t ->
   match t with Vari(x) -> x | _ -> assert false
 
 (** {b NOTE} the {!val:Array.map to_tvar} function is useful when working
-   with multiple binders. For example, this is the case when manipulating
-   pattern variables ([Patt] constructor) or metatavariables ([Meta]
-   constructor).  Remark that it is important for these constructors to hold
-   an array of terms, rather than an array of variables: a variable can only
-   be substituted when if it is injected in a term (using the [Vari]
-   constructor). *)
+    with multiple binders. For example, this is the case when manipulating
+    pattern variables ([Patt] constructor) or metatavariables ([Meta]
+    constructor).  Remark that it is important for these constructors to hold
+    an array of terms, rather than an array of variables: a variable can only
+    be substituted when if it is injected in a term (using the [Vari]
+    constructor). *)
 
 (** {b NOTE} the result of {!val:to_tvar} can generally NOT be precomputed. A
     first reason is that we cannot know in advance what variable identifier is
@@ -30,8 +30,8 @@ let to_tvar : term -> tvar = fun t ->
     “marshaled” (e.g., by the {!module:Sign} module), as this would break the
     freshness invariant of new variables. *)
 
-(** [count_products a] returns the number of consecutive products at the  head
-    of the term [a]. *)
+(** [count_products t] returns the number of consecutive products at the  head
+    of the term [t]. *)
 let rec count_products : term -> int = fun t ->
   match unfold t with
   | Prod(_,b) -> 1 + count_products (Bindlib.subst b Kind)
@@ -74,7 +74,7 @@ let is_symb : sym -> term -> bool = fun s t ->
   | _       -> false
 
 (** Given a symbol [s], [expl_args s ts] returns the non-implicit arguments of
-   [s] among [ts]. *)
+    [s] among [ts]. *)
 let expl_args : sym -> term list -> term list = fun s ts ->
   let rec expl bs ts =
     match (bs, ts) with
@@ -84,9 +84,9 @@ let expl_args : sym -> term list -> term list = fun s ts ->
   in
   expl s.sym_impl ts
 
-(** [iter f t] applies the function [f] to every node of the term [t] with
-   bound variables replaced by [Kind]. Note: [f] is called on already unfolded
-   terms only. *)
+(** [iter action t] applies the function [action] to every node of the
+    term [t] with bound variables replaced by [Kind].
+    Note: [action] is called on already unfolded terms only. *)
 let iter : (term -> unit) -> term -> unit = fun action ->
   let rec iter t =
     let t = unfold t in
@@ -118,7 +118,7 @@ let make_meta : ctxt -> term -> term = fun ctx a ->
   Meta(m, Array.of_list (List.rev_map get_var ctx))
 
 (** [iter_meta b f t] applies the function [f] to every metavariable of [t],
-   and to the type of every metavariable recursively if [b] is true. *)
+    and to the type of every metavariable recursively if [b] is true. *)
 let iter_meta : bool -> (meta -> unit) -> term -> unit = fun b f ->
   let rec iter t =
     match unfold t with
@@ -144,7 +144,7 @@ let occurs : meta -> term -> bool =
   try iter_meta false fn t; false with Found -> true
 
 (** [add_metas b t ms] extends [ms] with all the metavariables of [t], and
-   those in the types of these metavariables recursively if [b]. *)
+    those in the types of these metavariables recursively if [b]. *)
 let add_metas : bool -> term -> MetaSet.t -> MetaSet.t = fun b t ms ->
   let open Stdlib in
   let ms = ref ms in
@@ -181,7 +181,7 @@ let distinct_vars : ctxt -> term array -> tvar array option = fun ctx ts ->
 
 (** {3 Conversion of a rule into a "pair" of terms} *)
 
-(** [terms_of_rule r] converts the RHS (right hand side) of the rewriting rule
+(** [term_of_rhs r] converts the RHS (right hand side) of the rewriting rule
     [r] into a term.  The bound higher-order variables of the original RHS are
     substituted using [Patt] constructors.  They are thus represented as their
     LHS counterparts. This is a more convenient way of representing terms when

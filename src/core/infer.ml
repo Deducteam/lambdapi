@@ -10,14 +10,14 @@ open Print
 let log_infr = new_logger 'i' "infr" "type inference/checking"
 let log_infr = log_infr.logger
 
-(** [destruct_prod n prod] returns a tuple [(env, a)] where [a] is constructed
+(** [destruct_prod n prod] returns a tuple [(env, a)] where [a] is constructed - @PROBLEM
     from the term [prod] by destructing (i.e., by unbinding with the [Bindlib]
     terminology) a total [n] dependent products. The free variables created by
     the process are are given (with their types) in the environment [env]. The
     function raises [Invalid_argument] if [prod] does not evaluate to a series
     of (at least) [n] product types. Intuitively, if the term [prod] is of the
-    form [∀ (x1:a1) ⋯ (xn:an), a] then the function (roughly) returns [a], and
-    the environment [(xn, an) ; ⋯ ; (x1, a1)]. *)
+    form [∀ (x1:a1) ... (xn:an), a] then the function (roughly) returns [a],
+    and the environment [(xn, an) ; ... ; (x1, a1)]. *)
 let destruct_prod : int -> term -> env * term = fun n t ->
   let rec build_env i env t =
     if i >= n then (env, t) else
@@ -187,7 +187,7 @@ let rec infer : ctxt -> term -> term = fun ctx t ->
   | Meta(m,ts)   ->
       (* The type of [Meta(m,ts)] is the same as the one obtained by applying
          to [ts] a new symbol having the same type as [m]. *)
-      let s = Sign.new_sym (meta_name m) !(m.meta_type) in
+      let s = Sign.create_sym Privat Defin (meta_name m) !(m.meta_type) [] in
       infer ctx (Array.fold_left (fun acc t -> Appl(acc,t)) (Symb s) ts)
 
 (** [check ctx t a] checks that the term [t] has type [a] in context [ctx],

@@ -21,7 +21,7 @@ module Goal :
     (** [get_type g] returns the environment and expected type of the goal. *)
     val get_type : t -> Env.t * term
 
-    (** [simpl g] simplifies the given goal, evaluating its type to SNF. *)
+    (** [simpl g] simplifies the goal [g], evaluating its type to SNF. *)
     val simpl : t -> t
 
     (** Comparison function. *)
@@ -29,9 +29,9 @@ module Goal :
   end =
   struct
     type t =
-      { goal_meta : meta  (* Metavariable needing instantiation.    *)
-      ; goal_hyps : Env.t (* Precomputed scope for a suitable term. *)
-      ; goal_type : term  (* Precomputed type for a suitable term.  *) }
+      { goal_meta : meta  (** Metavariable needing instantiation.    *)
+      ; goal_hyps : Env.t (** Precomputed scope for a suitable term. *)
+      ; goal_type : term  (** Precomputed type for a suitable term.  *) }
 
     let of_meta : meta -> t = fun m ->
       let (goal_hyps, goal_type) =
@@ -71,12 +71,12 @@ let init : Pos.strloc -> term -> t = fun name a ->
 (** [finished ps] tells whether the proof represented by [ps] is finished. *)
 let finished : t -> bool = fun ps -> ps.proof_goals = []
 
-(** [focus_goal ps] returns the focused goal or fails if there is none. *)
+(** [focus_goal pos ps] returns the focused goal or fails if there is none. *)
 let focus_goal : Pos.popt -> proof_state -> Env.t * term = fun pos ps ->
   try Goal.get_type (List.hd ps.proof_goals)
   with Failure(_)  -> Console.fatal pos "No remaining goals..."
 
-(** [pp_goals oc gl] prints the goal list [gl] to channel [oc]. *)
+(** [pp_goals oc ps] prints the goal list [ps] to channel [oc]. *)
 let pp_goals : proof_state pp = fun oc ps ->
   match ps.proof_goals with
   | []    -> Format.fprintf oc " No more goals...\n"

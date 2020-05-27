@@ -17,15 +17,16 @@ module Path =
     (** Short synonym of [module_path]. *)
     type t = module_path
 
-    (** [compare] is a standard comparing function for module paths. *)
+    (** [compare t1 t2] is a standard comparing function for module paths. *)
     let compare : t -> t -> int = Stdlib.compare
 
     (** [pp oc mp] prints [mp] to channel [oc]. *)
     let pp : module_path pp = fun oc mp ->
       Format.pp_print_string oc (String.concat "." mp)
 
-    (** [check_simple mp] Checks that [mp] is a “simple” module path, that is,
-        that its members are of the form ["[a-zA-Z_][a-zA-Z0-9_]*"]. *)
+    (** [check_simple mod_pathp] checks that [mod_path] is a "simple"
+        module path, that is, that its members are of the form
+       ["[a-zA-Z_][a-zA-Z0-9_]*"]. *)
     let check_simple : t -> unit = fun mod_path ->
       let fail fmt =
         fatal_msg "The (simple) module path [%a] is ill-formed: " pp mod_path;
@@ -240,7 +241,7 @@ let obj_extension : string = ".lpo"
 (** [legacy_src_extension] is the extension for legacy source files. *)
 let legacy_src_extension : string = ".dk"
 
-(** [file_to_module path] computes the module path that corresponds to [path].
+(** [file_to_module path] computes the module path that corresponds to [path]. - @PROBLEM
     The file described by [path] is expected to have a valid extension (either
     [src_extension] or the legacy extension [legacy_src_extension]). If [path]
     is invalid, the [Fatal] exception is raised. *)

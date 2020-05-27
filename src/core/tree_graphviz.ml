@@ -65,8 +65,8 @@ type dot_term =
   | DotSuccess
   | DotFailure
 
-(** [to_dot oc sym] prints a dot graphviz representation of the tree of symbol
-    [sym] on output channel [oc]. Each node of the tree embodies a pattern
+(** [to_dot oc s] prints a dot graphviz representation of the tree of symbol
+    [s] on output channel [oc]. Each node of the tree embodies a pattern
     matrix. The label of a node is the column index in the matrix on which the
     matching is performed to give birth to the child node. The label on the
     edge between a node and one of its children represents the term matched to

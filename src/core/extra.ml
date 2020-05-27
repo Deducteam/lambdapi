@@ -147,9 +147,10 @@ module List =
       in
       if k <= 0 then ([], l) else cut [] l k
 
-    (** [add_array a1 a2 l] returns a list containing the elements of [l], and
-        the (corresponding) elements of [a1] and [a2]. Note that [a1] and [a2]
-        should have the same lenght otherwise [Invalid_argument] is raised. *)
+    (** [add_array2 a1 a2 l] returns a list containing the elements of [l],
+        and the (corresponding) elements of [a1] and [a2].
+        Note that [a1] and [a2] should have the same lenght otherwise
+        [Invalid_argument] is raised. *)
     let add_array2 : 'a array -> 'b array -> ('a * 'b) list
         -> ('a * 'b) list = fun a1 a2 l ->
       let res = ref l in
@@ -168,9 +169,9 @@ module List =
     let equal : 'a eq -> 'a list eq = fun eq l1 l2 ->
       try List.for_all2 eq l1 l2 with Invalid_argument _ -> false
 
-    (** [max ?cmp l] finds the max of list [l] with compare function [?cmp]
+    (** [max ?cmp li] finds the max of list [li] with compare function [?cmp]
         defaulting to [Stdlib.compare].
-        @raise Invalid_argument if [l] is empty. *)
+        @raise Invalid_argument if [li] is empty. *)
     let max : ?cmp:('a -> 'a -> int) -> 'a list -> 'a =
       fun ?(cmp=Stdlib.compare) li ->
       match li with
@@ -178,7 +179,7 @@ module List =
       | h::t -> let max e1 e2 = if cmp e1 e2 >= 0 then e1 else e2 in
                 List.fold_left max h t
 
-    (** [assoc_eq e k l] is [List.assoc k l] with equality function [e].
+    (** [assoc_eq eq k l] is [List.assoc k l] with equality function [eq].
         @raise Not_found if [k] is not a key of [l]. *)
     let assoc_eq : 'a eq -> 'a -> ('a * 'b) list -> 'b = fun eq k l ->
       let rec loop l =
@@ -197,7 +198,7 @@ module List =
       | x :: xs -> let xs = remove_phys_dups xs in
                    if List.memq x xs then xs else x :: xs
 
-    (** [deconstruct l i] returns a triple [(left_rev, e, right)] where [e] is
+    (** [deconstruct l i] returns a triple [(left_rev, e, right)] where [e] is - PROBLEM
         the [i]-th element of [l], [left_rev] is the reversed prefix of [l] up
         to its [i]-th element (excluded),  and [right] is the remaining suffix
         of [l] (starting at its [i+1]-th element).
@@ -213,9 +214,9 @@ module List =
       in
       destruct [] i e
 
-    (** [reconstruct left_rev l right] concatenates (reversed) [left_rev], [l]
-        and [right].  This function will typically be used in combination with
-        {!val:deconstruct} to insert a sublist [l] in the place of the element
+    (** [reconstruct l m r] concatenates (reversed) [l], [m] and [r].
+        This function will typically be used in combination with
+        {!val:destruct} to insert a sublist [m] in the place of the element
         at the specified position in the specified list. *)
     let reconstruct : 'a list -> 'a list -> 'a list -> 'a list = fun l m r ->
       List.rev_append l (m @ r)
@@ -253,8 +254,8 @@ module Array =
   struct
     include Array
 
-    (** [for_all2 p a1 a2] checks if the corresponding elements of arrays [a1]
-        and [a2] satisfy the predicate [p].  The [Invalid_argument]  exception
+    (** [for_all2 f a1 a2] checks if the corresponding elements of arrays [a1]
+        and [a2] satisfy the predicate [f].  The [Invalid_argument]  exception
         is raised if the arrays do not have the same size. *)
     let for_all2 : ('a -> 'b -> bool) -> 'a array -> 'b array -> bool =
       fun f a1 a2 ->
@@ -274,9 +275,9 @@ module Array =
     let equal : 'a eq -> 'a array eq = fun eq a1 a2 ->
       Array.length a1 = Array.length a2 && for_all2 eq a1 a2
 
-    (** [max_index ?cmp a] returns the index of the first maximum of array [a]
-        according to comparison [?cmp].  If [cmp] is not given, defaults to
-        [Stdlib.compare]. *)
+    (** [max_index ?cmp arr] returns the index of the first maximum of
+        array [arr] according to comparison [?cmp].
+        If [cmp] is not given, defaults to [Stdlib.compare]. *)
     let max_index : ?cmp:('a -> 'a -> int) -> 'a array -> int =
       fun ?(cmp=Stdlib.compare) arr ->
       let len = Array.length arr in
@@ -286,9 +287,9 @@ module Array =
         if cmp arr.(!max) arr.(i) < 0 then max := i
       done; !max
 
-    (** [max ?cmp a] returns the higher element according to comparison
+    (** [max ?cmp arr] returns the higher element according to comparison
         function [?cmp], using [Stdlib.compare] if not given, in array
-        [a]. *)
+        [arr]. *)
     let max : ?cmp:('a -> 'a -> int)-> 'a array -> 'a =
       fun ?(cmp=Stdlib.compare) arr -> arr.(max_index ~cmp:cmp arr)
 
@@ -297,8 +298,8 @@ module Array =
       let aux (el, er) (accl, accr) = (el :: accl, er :: accr) in
       Array.fold_right aux a ([], [])
 
-    (** [drop n a] discards the first [n] elements of [a].  The empty array is
-        returned if [n > length a]. *)
+    (** [drop n a] discards the first [n] elements of [a].
+        The empty array is returned if [n > length a]. *)
     let drop : int -> 'a array -> 'a array = fun n a ->
       let l = length a in
       if n >= l then [||] else Array.sub a n (l - n)

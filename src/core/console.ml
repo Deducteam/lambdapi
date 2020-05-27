@@ -25,8 +25,7 @@ let blu fmt = colorize "34" fmt
 let mag fmt = colorize "35" fmt
 let cya fmt = colorize "36" fmt
 
-(** [r_or_g cond fmt] colors the format [fmt] in green if [cond] is [true] and
-    in red otherwise. *)
+(** [r_or_g cond] colors in green if [cond] is [true] and in red otherwise. *)
 let r_or_g cond = if cond then gre else red
 
 (** [out_fmt] main output formatter. *)
@@ -57,15 +56,15 @@ let wrn : Pos.popt -> 'a outfmt -> 'a = fun pos fmt ->
     a form of desugaring). *)
 exception Fatal of Pos.popt option * string
 
-(** [fatal_str fmt] may be called an arbitrary number of times to build up the
+(** [fatal_msg fmt] may be called an arbitrary number of times to build up the
     error message of the [fatal] or [fatal_no_pos] functions prior to  calling
     them. Note that the messages are stored in a buffer that is flushed by the
     [fatal] or [fatal_no_pos] function. Hence, they must be called. *)
 let fatal_msg : 'a outfmt -> 'a =
   fun fmt -> Format.fprintf Format.str_formatter fmt
 
-(** [fatal popt fmt] raises the [Fatal(popt,msg)] exception, in which [msg] is
-    built from the format [fmt] (provided the necessary arguments. *)
+(** [fatal pos fmt] raises the [Fatal(Some pos,msg)] exception, in which [msg]
+    is built from the format [fmt] (provided the necessary arguments. *)
 let fatal : Pos.popt -> ('a,'b) koutfmt -> 'a = fun pos fmt ->
   let cont _ = raise (Fatal(Some(pos), Format.flush_str_formatter ())) in
   Format.kfprintf cont Format.str_formatter fmt
@@ -115,8 +114,8 @@ let log_summary : unit -> (char * string) list = fun () ->
   let compare (c1, _) (c2, _) = Char.compare c1 c2 in
   List.sort compare (List.map fn Stdlib.(!loggers))
 
-(** [set_log value key] enables or disables the loggers corresponding to every
-    character of [str] according to [value]. *)
+(** [set_debug value str] enables or disables the loggers corresponding to
+    every character of [str] according to [value]. *)
 let set_debug : bool -> string -> unit = fun value str ->
   let fn {logger_key; logger_enabled; _} =
     if String.contains str logger_key then logger_enabled := value
@@ -180,8 +179,9 @@ let out : int -> 'a outfmt -> 'a = fun lvl fmt ->
 let boolean_flags : (bool * bool ref) StrMap.t Stdlib.ref =
   Stdlib.ref StrMap.empty
 
-(** [register_flag id d] registers a new boolean flag named [id], with default
-    value of [d]. Note the name should not have been used previously. *)
+(** [register_flag id default] registers a new boolean flag named [id],
+    with default value of [default].
+    Note the name should not have been used previously. *)
 let register_flag : string -> bool -> bool ref = fun id default ->
   if StrMap.mem id Stdlib.(!boolean_flags) then
     invalid_arg "Console.register_flag: already registered";
@@ -227,7 +227,7 @@ let push_state : unit -> unit = fun () ->
   in
   saved_state := (verbose, loggers, flags) :: !saved_state
 
-(** [pop_state ()] restores the setting saved with [push_stack], removing them
+(** [pop_state ()] restores the setting saved with [push_stack], removing them - @puhs_state ?
     from the top of the stack at the same time. *)
 let pop_state : unit -> unit = fun () ->
   let (v,l,f) =
