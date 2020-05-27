@@ -8,11 +8,6 @@ open Terms
 open Syntax
 open Pos
 
-(** Representation of an inductive type *)
-type inductive =
-  { ind_cons : sym list (** List of constructors                 *)
-  ; ind_prop : sym      (** Induction principle on propositions. *) }
-
 (** Representation of a signature. It roughly corresponds to a set of symbols,
     defined in a single module (or file). *)
 type t =
@@ -23,8 +18,7 @@ type t =
   ; sign_unops    : (sym * unop ) StrMap.t ref
   ; sign_binops   : (sym * binop) StrMap.t ref
   ; sign_idents   : StrSet.t ref
-  ; sign_quants   : SymSet.t ref
-  ; sign_ind      : inductive SymMap.t ref }
+  ; sign_quants   : SymSet.t ref }
 
 (** NOTE the [deps] field contains a hashtable binding the [module_path] of
     the external modules on which the current signature depends to an
@@ -38,8 +32,7 @@ let dummy : unit -> t = fun () ->
   { sign_symbols = ref StrMap.empty; sign_path = []
   ; sign_deps = ref PathMap.empty; sign_builtins = ref StrMap.empty
   ; sign_unops = ref StrMap.empty; sign_binops = ref StrMap.empty
-  ; sign_idents = ref StrSet.empty; sign_quants = ref SymSet.empty
-  ; sign_ind = ref SymMap.empty }
+  ; sign_idents = ref StrSet.empty; sign_quants = ref SymSet.empty }
 
 (** [create sign_path] creates an empty signature with module path
     [sign_path]. *)
@@ -47,7 +40,7 @@ let create : Path.t -> t = fun sign_path ->
   { sign_path; sign_symbols = ref StrMap.empty; sign_deps = ref PathMap.empty
   ; sign_builtins = ref StrMap.empty; sign_unops = ref StrMap.empty
   ; sign_binops = ref StrMap.empty; sign_idents = ref StrSet.empty
-  ; sign_quants = ref SymSet.empty ; sign_ind = ref SymMap.empty }
+  ; sign_quants = ref SymSet.empty }
 
 (** [find sign name] finds the symbol named [name] in [sign] if it exists, and
     raises the [Not_found] exception otherwise. *)
@@ -335,14 +328,6 @@ let add_ident : t -> string -> unit = fun sign id ->
 (** [add_quant sign sym] add the quantifier [sym] to [sign]. *)
 let add_quant : t -> sym -> unit = fun sign sym ->
   sign.sign_quants := SymSet.add sym !(sign.sign_quants)
-
-(** [add_inductive sign typ ind_cons ind_prop] add the inductive type which
-    consists of a type [typ], constructors [ind_cons] and an induction
-    principle [ind_prop] to [sign]. *)
-let add_inductive : t -> sym -> sym list -> sym -> unit =
-  fun sign typ ind_cons ind_prop ->
-  let ind = { ind_cons ; ind_prop } in
-  sign.sign_ind := SymMap.add typ ind !(sign.sign_ind)
 
 (** [dependencies sign] returns an association list containing (the transitive
     closure of) the dependencies of the signature [sign].  Note that the order
