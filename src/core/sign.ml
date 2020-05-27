@@ -34,14 +34,6 @@ let dummy : unit -> t = fun () ->
   ; sign_unops = ref StrMap.empty; sign_binops = ref StrMap.empty
   ; sign_idents = ref StrSet.empty; sign_quants = ref SymSet.empty }
 
-(** [create sign_path] creates an empty signature with module path
-    [sign_path]. *)
-let create : Path.t -> t = fun sign_path ->
-  { sign_path; sign_symbols = ref StrMap.empty; sign_deps = ref PathMap.empty
-  ; sign_builtins = ref StrMap.empty; sign_unops = ref StrMap.empty
-  ; sign_binops = ref StrMap.empty; sign_idents = ref StrSet.empty
-  ; sign_quants = ref SymSet.empty }
-
 (** [find sign name] finds the symbol named [name] in [sign] if it exists, and
     raises the [Not_found] exception otherwise. *)
 let find : t -> string -> sym =
@@ -76,15 +68,13 @@ let current_sign () =
   in
   PathMap.find mp !loaded
 
-(** [create_sym e p name typ blist] creates a new symbol
-    with the exposition [e], the property [p], the name [name]
-    the type [typ] and no implicit arguments *)
-let create_sym : expo -> prop -> string -> term -> bool list -> sym =
-  fun e p name typ blist ->
+(** [new_sym n a] creates a new (private definable) symbol of name [n] and
+   type [a]. *)
+let new_sym : string -> term -> sym = fun name typ ->
   let path = (current_sign()).sign_path in
-  { sym_name = name ; sym_type = ref typ ; sym_path = path
-  ; sym_def = ref None ; sym_impl = blist; sym_rules = ref []
-  ; sym_prop = p ; sym_expo = e ; sym_tree = ref Tree_types.empty_dtree }
+  { sym_name = name; sym_type = ref typ; sym_path = path; sym_def = ref None
+    ; sym_impl = []; sym_rules = ref []; sym_prop = Defin; sym_expo = Privat
+    ; sym_tree = ref Tree_types.empty_dtree }
 
 (** [link sign] establishes physical links to the external symbols. *)
 let link : t -> unit = fun sign ->
