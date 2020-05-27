@@ -1,4 +1,6 @@
-(** Source code position management.  This module may be used to map sequences
+(** Source code position management.
+
+    This module may be used to map sequences
     of characters in a source file to an abstract syntax tree. *)
 
 open Earley_core
