@@ -661,11 +661,6 @@ let parser cmd =
       -> P_rules(r::rs)
   | e:exposition? _definition_ s:ident al:arg* ao:{":" term}? "≔" t:term
       -> P_definition(Option.get Terms.Public e,false,s,al,ao,t)
-  | e:exposition? _inductive_ i:ident t:{":" term} "≔"
-                     "|"? ifirst:ident ":" tfirst:term
-                 c:{ "|"  ilist :ident ":" tlist :term }*
-      -> P_inductive(Option.get Terms.Public e, i, t,
-                     (ifirst, tfirst)::c)
   | e:exposition? st:statement (ts,pe):proof
       -> P_theorem(Option.get Terms.Public e,st,ts,pe)
   | _set_ c:config
