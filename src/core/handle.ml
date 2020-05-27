@@ -74,8 +74,8 @@ let handle_require : bool -> popt -> sig_state -> Path.t -> sig_state =
   if b then handle_open pos ss p else ss
 
 (** [handle_require_as pos ss p id] handles the command [require p as id] with
-   [ss] as the signature state. On success, an updated signature state is
-   returned. *)
+    [ss] as the signature state. On success, an updated signature state is
+    returned. *)
 let handle_require_as : popt -> sig_state -> Path.t -> ident -> sig_state =
     fun pos ss p id ->
   let ss = handle_require false pos ss p in
@@ -83,26 +83,13 @@ let handle_require_as : popt -> sig_state -> Path.t -> ident -> sig_state =
   let path_map = PathMap.add p id.elt ss.path_map in
   {ss with aliases; path_map}
 
-(** [handle_cmd ss cmd] tries to handle the command [cmd] with [ss] as the
-    signature state. On success, an updated signature state is returned.  When
-    [cmd] leads to entering the proof mode,  a [proof_data] is also  returned.
-    This structure contains the list of the tactics to be executed, as well as
-    the initial state of the proof.  The checking of the proof is then handled
-    separately. Note that [Fatal] is raised in case of an error. *)
-let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
-  fun ss cmd ->
-  let scope_basic exp = Scope.scope_term exp ss Env.empty in
-  match cmd.elt with
-  | P_require(b,ps)            ->
-     let ps = List.map (List.map fst) ps in
-     (List.fold_left (handle_require b cmd.pos) ss ps, None)
-  | P_require_as(p,id)         ->
-     let id = Pos.make id.pos (fst id.elt) in
-     (handle_require_as cmd.pos ss (List.map fst p) id, None)
-  | P_open(ps)                  ->
-     let ps = List.map (List.map fst) ps in
-     (List.fold_left (handle_open cmd.pos) ss ps, None)
-  | P_symbol(e, p, x, xs, a) ->
+(** [handle_symbol ss e p x xs a] handles the command [e p symbol x xs : a]
+    with [ss] as the signature state.
+    On success, an updated signature state and the new symbol are returned. *)
+let handle_symbol :
+      sig_state -> Terms.expo -> Terms.prop -> ident -> p_arg list -> p_type
+      -> sig_state * sym = fun ss e p x xs a ->
+      let scope_basic exp = Scope.scope_term exp ss Env.empty in
       (* We check that [x] is not already used. *)
       if Sign.mem ss.signature x.elt then
         fatal x.pos "Symbol [%s] already exists." x.elt;
@@ -122,8 +109,29 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
         end;
       (* Actually add the symbol to the signature and the state. *)
       out 3 "(symb) %s : %a\n" x.elt pp_term a;
-      (Sig_state.add_symbol ss e p x a impl None, None)
-  | P_rules(rs)                ->
+      Sig_state.add_symbol ss e p x a impl None
+
+(** [handle_cmd ss cmd] tries to handle the command [cmd] with [ss] as the
+    signature state. On success, an updated signature state is returned.  When
+    [cmd] leads to entering the proof mode,  a [proof_data] is also  returned.
+    This structure contains the list of the tactics to be executed, as well as
+    the initial state of the proof.  The checking of the proof is then handled
+    separately. Note that [Fatal] is raised in case of an error. *)
+let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
+  fun ss cmd ->
+  let scope_basic exp = Scope.scope_term exp ss Env.empty in
+  match cmd.elt with
+  | P_require(b,ps)              ->
+     let ps = List.map (List.map fst) ps in
+     (List.fold_left (handle_require b cmd.pos) ss ps, None)
+  | P_require_as(p,id)           ->
+     let id = Pos.make id.pos (fst id.elt) in
+     (handle_require_as cmd.pos ss (List.map fst p) id, None)
+  | P_open(ps)                   ->
+     let ps = List.map (List.map fst) ps in
+     (List.fold_left (handle_open cmd.pos) ss ps, None)
+  | P_symbol(e, p, x, xs, a)     -> (fst (handle_symbol ss e p x xs a), None)
+  | P_rules(rs)                  ->
       (* Scoping and checking each rule in turn. *)
       let handle_rule r =
         let pr = scope_rule ss r in
@@ -185,7 +193,25 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
       (* Actually add the symbol to the signature. *)
       out 3 "(symb) %s ≔ %a\n" x.elt pp_term t;
       let d = if op then None else Some(t) in
-      let ss = Sig_state.add_symbol ss e Defin x a impl d in
+      (fst (Sig_state.add_symbol ss e Defin x a impl d), None)
+  | P_inductive(e, id, a, l)     ->
+      (* Add the inductive type in the signature *)
+      let (ss, sym_typ) = handle_symbol ss e Const id [] a in
+      (* Add the constructors in the signature. *)
+      let add_cons :
+            sig_state * sym list -> ident * p_term -> sig_state * sym list
+        = fun(ss, cons_list) (id, a) ->
+        let (ss, sym_cons) = handle_symbol ss e Const id [] a in
+        (ss, sym_cons::cons_list)
+      in
+      let (ss, cons_list) = List.fold_left add_cons (ss, []) l in
+      (* Compute the induction principle *)
+      let ind_typ = Inductive.principle ss cmd.pos sym_typ cons_list in
+      let ind_name = Pos.make cmd.pos (id.elt ^ "_ind") in
+      let (ss, sym_ind) =
+        Sig_state.add_symbol ss e Defin ind_name ind_typ [] None
+      in
+      Sign.add_inductive ss.signature sym_typ cons_list sym_ind;
       (ss, None)
   | P_theorem(e, stmt, ts, pe) ->
       let (x,xs,a) = stmt.elt in
@@ -223,7 +249,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
             (* Add a symbol corresponding to the proof, with a warning. *)
             out 3 "(symb) %s (admit)\n" x.elt;
             wrn cmd.pos "Proof admitted.";
-            Sig_state.add_symbol ss e Const x a impl None
+            fst (Sig_state.add_symbol ss e Const x a impl None)
         | P_proof_qed   ->
             (* Check that the proof is indeed finished. *)
             if not (Proof.finished st) then
@@ -233,7 +259,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
               end;
             (* Add a symbol corresponding to the proof. *)
             out 3 "(symb) %s (qed)\n" x.elt;
-            Sig_state.add_symbol ss e Const x a impl None
+            fst (Sig_state.add_symbol ss e Const x a impl None)
       in
       let data =
         { pdata_stmt_pos = stmt.pos ; pdata_p_state = st ; pdata_tactics = ts

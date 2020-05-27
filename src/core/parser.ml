@@ -175,6 +175,7 @@ let _definition_ = KW.create "definition"
 let _fail_       = KW.create "fail"
 let _focus_      = KW.create "focus"
 let _in_         = KW.create "in"
+let _inductive_  = KW.create "inductive"
 let _injective_  = KW.create "injective"
 let _intro_      = KW.create "assume"
 let _let_        = KW.create "let"
@@ -660,6 +661,11 @@ let parser cmd =
       -> P_rules(r::rs)
   | e:exposition? _definition_ s:ident al:arg* ao:{":" term}? "≔" t:term
       -> P_definition(Option.get Terms.Public e,false,s,al,ao,t)
+  | e:exposition? _inductive_ i:ident t:{":" term} "≔"
+                     "|"? ifirst:ident ":" tfirst:term
+                 c:{ "|"  ilist :ident ":" tlist :term }*
+      -> P_inductive(Option.get Terms.Public e, i, t,
+                     (ifirst, tfirst)::c)
   | e:exposition? st:statement (ts,pe):proof
       -> P_theorem(Option.get Terms.Public e,st,ts,pe)
   | _set_ c:config

@@ -81,9 +81,10 @@ let remove_pp_hint_eq :
 
 (** [add_symbol ss e p x a impl] generates a new signature state from [ss] by
    creating a new symbol with expo [e], property [p], name [x], type [a],
-   implicit arguments [impl] and optional definition [t]. *)
+   implicit arguments [impl] and optional definition [t].
+   This new symbol is returned too. *)
 let add_symbol : sig_state -> expo -> prop -> strloc -> term -> bool list
-                 -> term option -> sig_state =
+                 -> term option -> sig_state * sym =
   fun ss e p x a impl t ->
   let s = Sign.add_symbol ss.signature e p x a impl in
   begin
@@ -94,7 +95,7 @@ let add_symbol : sig_state -> expo -> prop -> strloc -> term -> bool list
   let in_scope = StrMap.add x.elt (s, x.pos) ss.in_scope in
   let pp_hints = remove_pp_hint_eq ss.in_scope x.elt Unqual ss.pp_hints in
   let pp_hints = SymMap.add s Unqual pp_hints in
-  {ss with in_scope; pp_hints}
+  ({ss with in_scope; pp_hints}, s)
 
 (** [add_unop ss n x] generates a new signature state from [ss] by adding a
    unary operator [x] with name [n]. *)

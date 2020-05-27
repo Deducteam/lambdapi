@@ -203,6 +203,25 @@ in OCaml). Some arguments can be declared as implicit by enclosing them in
 curly brackets.
 
 <!---------------------------------------------------------------------------->
+### `inductive`
+The command `inductive` is used to define an inductive type.
+For example:
+```
+inductive nat : TYPE ≔
+ | z    : nat
+ | succ : nat → nat
+```
+is equivalent to:
+
+```
+constant symbol nat  : TYPE
+constant symbol z    : nat
+constant symbol succ : nat → nat
+```
+The main goal is to generate automatically an induction principle (work in progress).
+For the moment there is only the induction principle on propositions, which has the name of the inductive principle suffixed by "_ind".
+
+<!---------------------------------------------------------------------------->
 ### `theorem`
 
 The `theorem` command makes the user enter a new interactive mode. The
