@@ -15,12 +15,16 @@ In the interest of code source uniformity, we ask that:
  - lines length should be limited to *78 characters* (excluding newline).
 
 You can add the following lines in your .emacs to check the previous constraints:
-```(require 'whitespace)
+```
+(require 'whitespace)
 (setq whitespace-line-column 78)
 (add-hook 'tuareg-mode-hook (function (lambda () (whitespace-mode t))))
-(add-hook 'lambdapi-mode-hook (function (lambda () (whitespace-mode t))))```
+(add-hook 'lambdapi-mode-hook (function (lambda () (whitespace-mode t))))
+```
 and the following line to set the default Emacs window size as the maximum size of a line:
-```(add-to-list 'default-frame-alist '(width . 82))```
+```
+(add-to-list 'default-frame-alist '(width . 82))
+```
 
 You should at the very least run `make sanity_check` before committing anything.
 *Please check you have GNU awk (gawk) installed* or another UTF-8 compatible
