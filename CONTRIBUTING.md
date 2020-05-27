@@ -36,7 +36,7 @@ It is encouraged to set up such a hook.
 The script may be called with the `-b` option to include compilation in the
 hook.
 
-About code, *remember to break the line after `=`, if it is too long*.
+About code, **remember to break the line after `=`, if it is too long**.
 You can find more details in the previous sections.
 
 Importing of librairies
