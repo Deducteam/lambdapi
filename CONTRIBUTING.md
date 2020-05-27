@@ -49,13 +49,13 @@ Naming of variables
 -------------------
 
 Type of the variable | Name of the variable
-___________________________________________
-       prop          ->        p
-       expo          ->        e
-       term          ->        t
-       sym           ->
-     Sig_state       ->        ss
-
+          -          |        :-:
+       prop          |        p
+       expo          |        e
+       term          |        t
+       sym           |
+     Sig_state       |        ss
+     
 Type annotations and interface
 ------------------------------
 
