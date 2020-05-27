@@ -110,14 +110,15 @@ type 'rhs tree =
       matching of a pattern). The node contains one subtree per switch, plus a
       possible default case as well as an abstraction case. *)
 
-(** [tree_capacity t] computes the capacity of tree [t]. During evaluation the
-    terms that are being filtered by the patterns have to be saved in order to
-    be bound in the right hand side of the rule, or because they must verify a
-    constraint. The capacity is the maximum number of such terms that may need
-    to be saved. More precisely, let [P] be the set of all paths from the root
-    to leaves in the tree [t], and let [nb_store] be a function mapping a path
-    to the number of nodes that have the {!field:store} tag to [true]. We then
-    define the capacity [c] of [t] is [c = max{nb_store(p) | p ∈ P}]. *)
+(** [tree_capacity tr] computes the capacity of tree [tr]. During evaluation
+    the terms that are being filtered by the patterns have to be saved in
+    order to be bound in the right hand side of the rule, or because they must
+    verify a constraint. The capacity is the maximum number of such terms that
+    may need to be saved. More precisely, let [P] be the set of all paths from
+    the root to leaves in the tree [tr], and let [nb_store] be a function
+    mapping a path to the number of nodes that have the {!field:store} tag to
+    [true]. We then define the capacity [c] of [tr] is
+    [c = max{nb_store(p) | p ∈ P}]. *)
 let rec tree_capacity : 'r tree -> int = fun tr ->
   match tr with
   | Leaf(_)  | Fail     -> 0

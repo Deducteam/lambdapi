@@ -8,7 +8,7 @@ open Console
     file is used to figure out the module path under which the package must be
     placed. This information is also useful for installation. *)
 
-(** Pacage configuration file name. *)
+(** Package configuration file name. *)
 let pkg_file : string = "lambdapi.pkg"
 
 (** Configuration file format (using an example).

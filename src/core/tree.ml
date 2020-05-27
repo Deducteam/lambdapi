@@ -142,12 +142,12 @@ module CP = struct
       (* First occurence of [i], register the slot as a point of reference. *)
       { pool with variables = IntMap.add i slot pool.variables }
 
-  (** [register_fv slot xs pool] registers a free variables constraint for the
+  (** [register_fv slot xs pool] registers a free variables constraint for the - @PROBLEM
       variables in [xs] on the slot [slot] of the [vars] array in [pool]. *)
   let register_fv : int -> int array -> t -> t = fun i vs pool ->
     { pool with fv_conds = IntMap.add i vs pool.fv_conds }
 
-  (** [constrained_nl i pool] tells whether index [i] in the RHS's environment
+  (** [constrained_nl i pool] tells whether index [i] in the RHS's environment - @PROBLEM
       has already been associated to a variable of the [vars] array. *)
   let constrained_nl : int -> t -> bool = fun slot pool ->
     IntMap.mem slot pool.variables
@@ -314,7 +314,7 @@ module CM = struct
     | Symb(_) -> true
     | _       -> assert false
 
-  (** [of_rules r] transforms rewriting rules into a clause matrix rules. *)
+  (** [of_rules rs] transforms rewriting rules into a clause matrix rules. *)
   let of_rules : rule list -> t = fun rs ->
     let r2r {lhs; rhs; xvars_nb; _} =
       let c_lhs = Array.of_list lhs in
@@ -335,12 +335,13 @@ module CM = struct
       empty when it has {e no} row; not when it has empty rows. *)
   let is_empty : t -> bool = fun m -> m.clauses = []
 
-  (** [get_col n m] retrieves column [n] of matrix [m]. *)
+  (** [get_col ind m] retrieves column [ind] of matrix [m]. *)
   let get_col : int -> t -> term list = fun ind m ->
     List.map (fun {c_lhs ; _} -> c_lhs.(ind)) m.clauses
 
-  (** [score c] returns the score heuristic for column [c].  This score is the
-      number of tree constructors divided by the number of conditions. *)
+  (** [score ts] returns the score heuristic for column [ts].
+      This score is the number of tree constructors divided
+      by the number of conditions. *)
   let score : term list -> float = fun ts ->
     let rec loop ((ncons, nst) as acc) = function
       | []                             -> acc
@@ -352,21 +353,22 @@ module CM = struct
     let nc, ns = loop (0, 0) ts in
     float_of_int nc /. (float_of_int ns)
 
-  (** [pick_best_among m c] returns the index of the best column of matrix [m]
-      among columns [c]. Here, we mean "best" in the sense of {!val:score}. *)
+  (** [pick_best_among mat columns] returns the index of the best
+      column of matrix [mat] among columns [columns].
+      Here, we mean "best" in the sense of {!val:score}. *)
   let pick_best_among : t -> int array -> int = fun mat columns->
     let scores = Array.map (fun ci -> score (get_col ci mat)) columns in
     Array.max_index ~cmp:(Stdlib.compare) scores
 
-  (** [can_switch_on r k] tells whether we can switch on column [k] of list of
-      clauses [r]. *)
+  (** [can_switch_on clauses k] tells whether we can switch on column
+      [k] of list of clauses [clauses]. *)
   let can_switch_on : clause list -> int -> bool = fun  clauses k ->
     List.for_all (fun r -> Array.length r.c_lhs >= k + 1) clauses &&
     List.exists (fun r -> is_treecons r.c_lhs.(k)) clauses
 
-  (** [discard_cons_free r] returns the indexes of columns that contain terms
-      with symbols on top among clauses [r].  These terms allow to
-      {!val:specialize} on the column. *)
+  (** [discard_cons_free clauses] returns the indexes of columns that
+      contain terms with symbols on top among clauses [clauses].
+      These terms allow to {!val:specialize} on the column. *)
   let discard_cons_free : clause list -> int array = fun clauses ->
     let ncols =
       let arities = List.map (fun cl -> Array.length cl.c_lhs) clauses in
@@ -381,8 +383,8 @@ module CM = struct
     let kept = discard_cons_free m.clauses in
     if kept = [||] then None else Some(kept.(pick_best_among m kept))
 
-  (** [is_exhausted p c] tells whether clause [r] whose terms are at positions
-      in [p] can be applied or not. *)
+  (** [is_exhausted positions c] tells whether clause [c] whose terms
+      are at positions in [positions] can be applied or not. *)
   let is_exhausted : arg list -> clause -> bool =
     fun positions {c_lhs = lhs ; cond_pool ; _} ->
     let nonl lhs =
@@ -442,9 +444,9 @@ module CM = struct
       | Some(c) -> Condition(c)
       | None    -> Specialise(0)
 
-  (** [get_cons id l] returns a list of unique (and sorted) tuples containing
-      tree construcors from [l] and the original term. Variables are assigned
-      id [id]. *)
+  (** [get_cons vars_id telst] returns a list of unique (and sorted) tuples
+      containing tree construcors from [telst] and the original term.
+      Variables are assigned id [vars_id]. *)
   let get_cons : int VarMap.t -> term list -> (TC.t * term) list =
     fun vars_id telst ->
     let keep_treecons e =
@@ -459,7 +461,7 @@ module CM = struct
     let tc_fst_cmp (tca, _) (tcb, _) = TC.compare tca tcb in
     List.sort_uniq tc_fst_cmp (List.filter_map keep_treecons telst)
 
-  (** [store m c] is true iff a term of column [c] of matrix [m] contains a
+  (** [store m c] is true iff a term of column [c] of matrix [m] contains a - @PROBLEM?
       pattern variable.  In that case, the term needs to be stored into the
       [vars] array (in order to build the substitution). *)
   let store : t -> int -> bool = fun cm ci ->
@@ -475,7 +477,7 @@ module CM = struct
   let index_var : int VarMap.t -> term -> int = fun vi t ->
     VarMap.find (to_tvar t) vi
 
-  (** [update_aux col slot clause] updates the fields the condition pool and
+  (** [update_aux col slot clause] updates the fields the condition pool and - @PROBLEM?
       the environment builder of clause [clause] assuming column [col] is
       inspected and the next environment slot is [slot]. *)
   let update_aux : int -> int -> arg list -> int VarMap.t -> clause ->
@@ -634,7 +636,7 @@ module CM = struct
   let cond_fail : tree_cond -> clause list -> clause list = fun cond ->
     List.filter (fun r -> not (CP.is_contained cond r.cond_pool))
 
-  (** [empty_stack c] keeps the empty clauses from [c]. *)
+  (** [empty_stack cs] keeps the empty clauses from [cs]. *)
   let empty_stack : clause list -> arg list * clause list = fun cs ->
     ([], List.filter (fun r -> r.c_lhs = [||]) cs)
 
@@ -760,7 +762,7 @@ let compile : CM.t -> tree = fun m ->
   in
   compile 0 VarMap.empty m
 
-(** [update_dtree s] updates decision tree of symbol [s]. *)
+(** [update_dtree symb] updates decision tree of symbol [symb]. *)
 let update_dtree : sym -> unit = fun symb ->
   let tree = lazy (compile (CM.of_rules !(symb.sym_rules))) in
   let cap = lazy (Tree_types.tree_capacity (Lazy.force tree)) in

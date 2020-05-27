@@ -13,7 +13,7 @@ let print_sym : sym pp = fun oc s ->
   let print_path = List.pp Format.pp_print_string "_" in
   Format.fprintf oc "c_%a_%s" print_path s.sym_path s.sym_name
 
-(** [print_patt oc p] outputs TPDB format corresponding to the pattern [p], to
+(** [print_patt oc p] outputs TPDB format corresponding to the pattern [p], to - @PROBLEM
     the channel [oc]. *)
 let print_term : bool -> term pp = fun lhs ->
   let rec pp oc t =
@@ -74,7 +74,7 @@ let print_rule : Format.formatter -> term -> term -> unit =
   Format.fprintf oc "\n    -> %a)\n" (print_term false) rhs
 
 (** [print_sym_rule oc s r] outputs the rule declaration corresponding [r] (on
-   the symbol [s]), to the output channel [oc]. *)
+    the symbol [s]), to the output channel [oc]. *)
 let print_sym_rule : Format.formatter -> sym -> rule -> unit = fun oc s r ->
   let lhs = Basics.add_args (Symb s) r.lhs in
   let rhs = Basics.term_of_rhs r in

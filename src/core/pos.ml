@@ -61,7 +61,7 @@ type strloc = string loc
 let make : popt -> 'a -> 'a loc =
   fun pos elt -> { elt ; pos }
 
-(** [in_pos pos elt] associates the position [pos] to [elt]. *)
+(** [in_pos p elt] associates the position [p] to [elt]. *)
 let in_pos : pos -> 'a -> 'a loc =
   fun p elt -> { elt ; pos = Some p }
 
@@ -70,7 +70,7 @@ let in_pos : pos -> 'a -> 'a loc =
 let none : 'a -> 'a loc =
   fun elt -> { elt ; pos = None }
 
-(** [to_string pos] transforms [pos] into a readable string. *)
+(** [to_string p] transforms [p] into a readable string. *)
 let to_string : pos -> string = fun p ->
   let {fname; start_line; start_col; end_line; end_col} = Lazy.force p in
   let fname =
@@ -85,7 +85,7 @@ let to_string : pos -> string = fun p ->
   else
     Printf.sprintf "%s%d:%d-%d" fname start_line start_col end_col
 
-(** [print oc pos] prints the optional position [pos] to [oc]. *)
+(** [print ch pos] prints the optional position [pos] to channel [ch]. *)
 let print : Format.formatter -> pos option -> unit = fun ch p ->
   match p with
   | None    -> Format.pp_print_string ch "unknown location"

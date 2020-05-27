@@ -377,7 +377,7 @@ let _Impl : tbox -> tbox -> tbox =
 let _Abst : tbox -> tbinder Bindlib.box -> tbox =
   Bindlib.box_apply2 (fun a t -> Abst(a,t))
 
-(** [_Meta m ar] lifts the metavariable [m] to the {!type:tbox} type given its
+(** [_Meta u ar] lifts the metavariable [u] to the {!type:tbox} type given its
     environment [ar]. As for symbols in {!val:_Symb}, metavariables are closed
     objects so they do not require lifting. *)
 let _Meta : meta -> tbox array -> tbox = fun u ar ->
@@ -399,7 +399,7 @@ let _Wild : tbox = Bindlib.box Wild
 let _TRef : term option ref -> tbox = fun r ->
   Bindlib.box (TRef(r))
 
-(** [_LLet t a u] lifts let binding [let x := t : a in u<x>]. *)
+(** [_LLet t a u] lifts let binding [let x := t : a in u<x>]. - @PROBLEM ? *)
 let _LLet : tbox -> tbox -> tbinder Bindlib.box -> tbox =
   Bindlib.box_apply3 (fun a t u -> LLet(a, t, u))
 
@@ -462,7 +462,7 @@ let fresh_meta_box : ?name:string -> tbox -> int -> meta Bindlib.box =
     let m = fresh_meta ?name Kind n in
     Bindlib.box_apply (fun a -> m.meta_type := a; m) a
 
-(** [_Meta_full m ar] is similar to [_Meta m ar] but works with a metavariable
+(** [_Meta_full u ar] is similar to [_Meta u ar] but works with a metavariable
     that is boxed. This is useful in very rare cases,  when metavariables need
     to be able to contain free term environment variables. Using this function
     in bad places is harmful for efficiency but not unsound. *)

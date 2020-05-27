@@ -392,11 +392,11 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
   in
   scope env t
 
-(** [scope ?exp ss env t] turns a parser-level term [t] into an actual term.
-    The variables of the environment [env] may appear in [t]. The signature
-    state [ss] is used to handle module aliasing according to [find_qid]. If
-    [?exp] is {!constructor:Public}, then the term mustn't contain any private
-    subterms. *)
+(** [scope_term expo ss env t] turns a parser-level term [t] into an actual
+    term. The variables of the environment [env] may appear in [t].
+    The signature state [ss] is used to handle module aliasing according to
+    [find_qid]. If [expo] is {!constructor:Public}, then the term mustn't
+    contain any private subterms. *)
 let scope_term : expo -> sig_state -> env -> p_term -> term =
   fun expo ss env t ->
   let m = Stdlib.ref StrMap.empty in
@@ -568,7 +568,7 @@ let scope_rule : sig_state -> p_rule -> pre_rule loc = fun ss r ->
 let scope_pattern : sig_state -> env -> p_term -> term = fun ss env t ->
   Bindlib.unbox (scope M_Patt ss env t)
 
-(** [scope_rw_patt ss env t] turns a parser-level rewrite tactic specification
+(** [scope_rw_patt ss env s] turns a parser-level rewrite tactic specification
     [s] into an actual rewrite specification (possibly containing variables of
     [env] and using [ss] for aliasing). *)
 let scope_rw_patt : sig_state ->  env -> p_rw_patt loc -> rw_patt =

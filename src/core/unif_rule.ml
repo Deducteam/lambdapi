@@ -23,9 +23,9 @@ let sign : Sign.t =
   Sign.loaded := Files.PathMap.add path s !(Sign.loaded);
   s
 
-(** Symbol representing an atomic unification problem. The term [equiv t
-    u] represents [t ≡ u]. The left-hand side of a unification rule is
-    made of only one unification. *)
+(** Symbol representing an atomic unification problem.
+    The term [equiv t u] represents [t ≡ u]. The left-hand side of
+    a unification rule is made of only one unification. *)
 let equiv : sym =
   let path = List.map (fun s -> (s, false)) path in
   let bo = ("≡", Assoc_none, 1.1, Pos.none (path, "#equiv")) in

@@ -10,9 +10,9 @@ open Print
 let log_subj = new_logger 's' "subj" "subject-reduction"
 let log_subj = log_subj.logger
 
-(** [build_meta_type k] builds the type “Πx1:A1,⋯,xk:Ak,A(k+1)” where the
-    type “Ai = Mi[x1,⋯,x(i-1)]” is defined as the metavariable “Mi” which has
-    arity “i-1” and type “Π(x1:A1) ⋯ (x(i-1):A(i-1)), TYPE”. *)
+(** [build_meta_type k] builds the type "Πx1:A1,⋯,xk:Ak,A(k+1)" where the
+    type "Ai = Mi[x1, ...,x(i-1)]" is defined as the metavariable "Mi" which
+    has arity "i-1" and type "Π(x1:A1) ... (x(i-1):A(i-1)), TYPE". *)
 let build_meta_type : int -> term = fun k ->
   assert (k >= 0);
   let xs = Basics.fresh_vars k in
@@ -123,9 +123,9 @@ let symb_to_tenv
   in
   symb_to_tenv t
 
-(** [check_rule r] checks whether the pre-rule [r] is well-typed in
-   signature state [ss] and then construct the corresponding rule. Note that
-   [Fatal] is raised in case of error. *)
+(** [check_rule pr] checks whether the pre-rule [pr] is well-typed in
+    signature state [ss] and then construct the corresponding rule.
+    Note that [Fatal] is raised in case of error. *)
 let check_rule : Scope.pre_rule Pos.loc -> rule = fun ({pos; elt} as pr) ->
   let Scope.{pr_sym = s ; pr_lhs = lhs ; pr_vars = vars
             ; pr_rhs = rhs_vars; pr_arities = arities

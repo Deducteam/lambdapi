@@ -1,6 +1,7 @@
 (** This module provides a function to translate a signature to the XTC format
     used in the termination competition.
-    @see <http://cl2-informatik.uibk.ac.at/mercurial.cgi/TPDB/file/tip/xml/xtc.xsd>
+    @see:
+    <http://cl2-informatik.uibk.ac.at/mercurial.cgi/TPDB/file/tip/xml/xtc.xsd>
 *)
 
 open Extra
@@ -28,7 +29,7 @@ let status : sym -> symb_status = fun s ->
     | _         -> Object_level
   in is_arrow_kind !(s.sym_type) false
 
-(** [print_term oc p] outputs XTC format corresponding to the term [t], to
+(** [print_term oc p] outputs XTC format corresponding to the term [t], to - @PROBLEM?
     the channel [oc]. *)
 let rec print_term : int -> string -> term pp = fun i s oc t ->
   let out fmt = Format.fprintf oc fmt in
@@ -92,7 +93,7 @@ and print_type : int -> string -> term pp = fun i s oc t ->
          (print_type i s) a (print_type i s) b
   | LLet(_,t,u)             -> print_type i s oc (Bindlib.subst u t)
 
-(** [print_rule oc s r] outputs the rule declaration corresponding [r] (on the
+(** [print_rule oc s r] outputs the rule declaration corresponding [r] (on the - PROBLEM?
     symbol [s]), to the output channel [oc]. *)
 let print_rule : Format.formatter -> int -> sym -> rule -> unit =
   fun oc i s r ->
@@ -102,7 +103,8 @@ let print_rule : Format.formatter -> int -> sym -> rule -> unit =
   let rhs = Basics.term_of_rhs r in
   Format.fprintf oc "<rhs>@.%a</rhs>@.</rule>@." (print_term i s.sym_name) rhs
 
-(** [print_tl_rule] is identical to [print_rule] but for type-level rule  *)
+(** [print_tl_rule oc i s r] is identical to [print_rule] but for
+    type-level rule  *)
 let print_tl_rule : Format.formatter -> int -> sym -> rule -> unit =
   fun oc i s r ->
   (* Print the type level rewriting rule. *)

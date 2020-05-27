@@ -202,7 +202,7 @@ let _why3_       = KW.create "why3"
 let _wild_       = KW.create "_"
 let _with_       = KW.create "with"
 
-(** [sanity_check pos s] checks that the token [s] is appropriate for an infix
+(** [sanity_check loc s] checks that the token [s] is appropriate for an infix
     operator or a declared identifier. If it is not the case, then the [Fatal]
     exception is raised. *)
 let sanity_check : Pos.pos -> string -> unit = fun loc s ->
@@ -449,7 +449,7 @@ let parser term @(p : prio) =
           in
           in_pos _loc (P_BinO(t,b,u))
 
-(* NOTE on binary operators. To handle infix binary operators, we need to rely
+(** NOTE on binary operators. To handle infix binary operators we need to rely
    on a dependent (Earley) grammar. The operands are parsed using the priority
    level [PBinO]. The left operand is parsed first, together with the operator
    to obtain the corresponding priority and associativity parameters.  We then

@@ -12,14 +12,14 @@ open Print
 let log_rewr = new_logger 'r' "rewr" "the rewrite tactic"
 let log_rewr = log_rewr.logger
 
-(** [eq ctx t u] tests the equality of [t] and [u] (up to α-equivalence).
-    It fails if [t] or [u] contain terms of the form [Patt(i,s,e)] or
-    [TEnv(te,env)].  In the process, subterms of the form [TRef(r)] in [t] and
-    [u] may be set with the corresponding value to enforce equality, and
-    variables appearing in [ctx] can be unfolded. In other words, [eq t u] can
+(** [eq ctx a b] tests the equality of [a] and [b] (up to α-equivalence).
+    It fails if [a] or [b] contain terms of the form [Patt(i,s,e)] or
+    [TEnv(te,env)].  In the process, subterms of the form [TRef(r)] in [a] and
+    [b] may be set with the corresponding value to enforce equality, and
+    variables appearing in [ctx] can be unfolded. In other words, [eq a b] can
     be used to implement non-linear matching. When the
     matching feature is used, one should make sure that [TRef] constructors do
-    not appear both in [t] and in [u] at the same time. Indeed, the references
+    not appear both in [a] and in [b] at the same time. Indeed, the references
     are set naively, without occurrence checking. *)
 let eq : ctxt -> term -> term -> bool = fun ctx a b -> a == b ||
   let exception Not_equal in
@@ -78,7 +78,7 @@ type eq_config =
   ; symb_refl  : sym (** Reflexivity of equality.         *) }
 
 (** [get_eq_config ss pos] returns the current configuration for
-    equality, used by tactics such as “rewrite” or “reflexivity”. *)
+    equality, used by tactics such as "rewrite" or "reflexivity". *)
 let get_eq_config : Sig_state.t -> popt -> eq_config = fun ss pos ->
   let builtin = Builtin.get ss pos in
   { symb_P     = builtin "P"
@@ -165,9 +165,9 @@ let _ =
   in
   register_builtin "eqind" expected_eqind_type
 
-(** [get_eq_data pos cfg a] extra data from an equality type [a]. It
-   consists of a triple containing the type in which equality is used and the
-   equated terms (LHS and RHS). *)
+(** [get_eq_data pos cfg t] extra data from an equality type [t]. It
+    consists of a triple containing the type in which equality is used and the
+    equated terms (LHS and RHS). *)
 let get_eq_data : popt -> eq_config -> term -> term * term * term =
   fun pos cfg t ->
   match Basics.get_args t with
@@ -205,7 +205,7 @@ let break_prod : term -> term * tvar array = fun a ->
   in aux a []
 
 (** [match_pattern (xs,p) t] attempts to match the pattern [p] (containing the
-    “pattern variables” of [xs]) with the term [t]. If successful,  it returns
+    "pattern variables" of [xs]) with the term [t]. If successful,  it returns
     [Some(ts)] where [ts] is an array of terms such that substituting elements
     of [xs] by the corresponding elements of [ts] in [p] yields a term that is
     equal to [t] (in terms of [eq]). *)
@@ -302,7 +302,7 @@ let swap : eq_config -> term -> term -> term -> term -> term =
   let refl_a_l = add_args (Symb cfg.symb_refl) [a; l] in
   add_args (Symb cfg.symb_eqind) [a; r; l; t; pred; refl_a_l]
 
-(** [rewrite ps b po t] rewrites according to the equality proved by [t] in
+(** [rewrite ps b po t] rewrites according to the equality proved by [t] in - @PROBLEM
    the current goal of [ps].  The term [t] should have a type corresponding to
    an equality. Every occurrence of the first instance of the left-hand side
    is replaced by the right-hand side of the obtained proof (or the reverse if
