@@ -49,7 +49,7 @@ Naming of variables
 -------------------
 
 Type of the variable | Name of the variable
-          -          |        :-:
+-------------------- | --------------------
        prop          |        p
        expo          |        e
        term          |        t
