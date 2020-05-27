@@ -1,0 +1,212 @@
+reserved "_"
+reserved "abort"
+reserved "admit"
+reserved "apply"
+reserved "as"
+reserved "assert"
+reserved "assertnot"
+reserved "assume"
+reserved "compute"
+reserved "constant"
+reserved "definition"
+reserved "fail"
+reserved "focus"
+reserved "in"
+reserved "injective"
+reserved "let"
+reserved "open"
+reserved "print"
+reserved "private"
+reserved "proof"
+reserved "proofterm"
+reserved "protected"
+reserved "qed"
+reserved "refine"
+reserved "reflexivity"
+reserved "require"
+reserved "rewrite"
+reserved "rule"
+reserved "set"
+reserved "simpl"
+reserved "symmetry"
+reserved "symbol"
+reserved "theorem"
+reserved "type"
+reserved "TYPE"
+reserved "with"
+reserved "why3"
+
+<declared_id> ::=
+  | "ℕ"
+  | "α"
+  | ... // whatever has ben defined in the scope.
+
+// Identifier
+<ident> ::=
+  | RE("[a-zA-Z_][a-zA-Z0-9_]*")     // Regular identifier
+  | RE("{|\([^|]\|\(|[^}]\)\)*|*|}") // Escaped identifier
+  | <declared_id>                    // Declared identifier
+
+// Natural number literal
+<nat_lit> ::=
+  | RE("[0-9]+")
+
+// Float literal
+<float_lit> ::=
+  | RE("[0-9]+\([.][0-9]+\)?")
+
+// String literal
+<string_lit> ::=
+  | RE("\"[^\"\n]*\"")
+
+<path> ::=
+  | {<ident> "."}* <ident>
+
+<qident> ::=
+  | {<ident> "."}* <ident>
+
+<property> ::=
+  | "constant"
+  | "injective"
+
+<exposition> ::=
+  | "protected"
+  | "private"
+
+<infix_op> ::=
+  | "+"
+  | "×"
+  | ... // whatever has been defined in the scope.
+
+// Term (including patterns and everything)
+<term> ::=
+  | "TYPE"
+  | "@"? <qident>
+  | "_"
+  | "?" - <ident> {"[" <term> {";" <term>}* "]"}?
+  | "$" - {<ident> | "_"} {"[" <term> {";" <term>}* "]"}?
+  | "(" <term> ")"
+  | "{" <term> "}"
+  | <term> <term>
+  | <type> "→" <type>
+  | "Π" <arg>+ "," <type>
+  | "λ" <arg>+ "," <term>
+  | "let" <ident> <arg>* {":" <term>}? "≔" <term> "in" <term>
+  | <nat_lit>
+  | <term> <infix_op> <term>
+
+// Synonym for types
+<type> ::= <term>
+
+// Synonym for patterns
+<patt> ::= <term>
+
+// Argument (of abstraction, product, ...), may be marked implicit
+<arg> ::=
+  | <ident>
+  | "{" <ident>+ {":" <type>}? "}"
+  | "(" <ident>+ ":" <type> ")"
+
+// Rewriting rule
+<rule> ::=
+  | <patt> "↪" <term>
+
+// TODO rule naming, positive / negative
+
+// Rewrite pattern
+<rw_patt> ::=
+  | <term>
+  | "in" <term>
+  | "in" <ident> "in" <term>
+  | <ident> "in" <term>
+  | <term> "in" <ident> "in" <term>
+  | <term> "as" <ident> "in" <term>
+
+// Proof tactics
+<tactic> ::=
+  | "refine" <term>
+  | "assume" <ident>+
+  | "apply" <term>
+  | "simpl"
+  | "rewrite" "-"? {"[" <rw_patt> "]"}? <term>
+  | "reflexivity"
+  | "symmetry"
+  | "focus" <nat_lit>
+  | "print"
+  | "proofterm"
+  | "why3" <string_lit>?
+  | "fail"
+
+// Assertion predicate
+<assertion> ::=
+  // Typing assertion
+  | <term> ":" <term>
+  // Convertibility assertion
+  | <term> "≡" <term>
+
+// Flag names
+<flag_name> ::=
+  | "eta_equality"
+  | "print_domains"
+  | "print_implicits"
+  | "print_meta_type"
+  | "print_contexts"
+  | "print_domains"
+
+// Flag values
+<flag_value> ::=
+  | "on"
+  | "off"
+
+// Builtins
+<builtin> ::=
+  | "0"
+  | "+1"
+  | "T"
+  | "P"
+  | "eq"
+  | "refl"
+  | "eq_ind"
+  | "top"
+  | "bot"
+  | "not"
+  | "or"
+  | "and"
+  | "imp"
+  
+// Single command.
+<command> ::=
+  // Require and/or open a module
+  | "require" <path> "as" <ident>
+  | "require" "open"? <path>
+  | "open" <path>
+  // Define a new symbol
+  | <exposition>? <property>? "symbol" <ident> <arg>* ":" <type>
+  // Define a new rewriting rule
+  | "rule" <rule> {"and" <rule>}*
+  // Definition of a symbol or theorem
+  | <exposition>? "definition" <ident> <arg>* {":" <type>}? "≔" <term>
+  | <exposition>? "theorem" <ident> <arg>* ":" <type> "proof" <tactic>*
+    {"qed"|"admit"|"abort"}
+  // Assertion
+  | "assert" arg* "⊢" <assertion>
+  | "assertnot" arg* "⊢" <assertion>
+  // Set option
+  | "set" "unif_rule" <patt> "≡" <patt> "↪" <term> "≡" <term> {";" <term> "≡" <term>}*
+  | "set" "verbose" RE("[1-9][0-9]*")
+  | "set" "debug" RE("[-+][a-zA-Z]+")
+  | "set" "builtin" \"<builtin>\" "≔" <qident>
+  | "set" "prefix" <float_lit> <string_lit> "≔" <qident>
+  | "set" "infix" {"left" | "right"}? <float_lit> <string_lit> "≔" <qident>
+  | "set" "prover" <ident>
+  | "set" "prover_timeout" <nat_lit>
+  | "set" "declared" <string_lit>
+  | "set" "flag" \"<flag_name>\" <flag_value>
+  | "set" "quantifier" <qident>
+  // Get the type of a term
+  | "type" <term>
+  // Get the normal form of a term
+  | "compute" <term>
+
+// Entry point: list of commands.
+<main> ::= <command>*
