@@ -35,22 +35,28 @@ let principle : Sig_state.t -> popt -> sym -> sym list -> term =
          else fatal pos "%a is not a constructor of %a"
                 pp_symbol scons pp_symbol sind
       | Prod(a,b) ->
-         let (x,b) = Bindlib.unbind b in
-         let b = case ((Bindlib.box_var x)::xs) b in
-         begin
-           match unfold a with
-           | Symb(s) ->
-               let b =
-                 if s == sind then _Impl (prf_of_p (Bindlib.box_var x)) b
-                 else b
-               in
+          let (x,b) =
+            if Bindlib.binder_occur b then
+              Bindlib.unbind b
+            else
+              let x = Bindlib.new_var mkfree "x" in
+              (x, Bindlib.subst b (Vari x))
+          in
+          let b = case ((Bindlib.box_var x)::xs) b in
+          begin
+            match unfold a with
+            | Symb(s) ->
+                let b =
+                  if s == sind then _Impl (prf_of_p (Bindlib.box_var x)) b
+                  else b
+                in
               _Prod (Bindlib.box a) (Bindlib.bind_var x b)
-           | _ -> fatal pos "The type of %a is not supported"
-                    pp_symbol scons
-         end
+            | _ -> fatal pos "The type of %a is not supported"
+                     pp_symbol scons
+          end
       | _ ->
-         fatal pos "The type of %a is not supported"
-           pp_symbol scons
+          fatal pos "The type of %a is not supported"
+            pp_symbol scons
     in
     case [] !(scons.sym_type)
   in

@@ -217,9 +217,10 @@ is equivalent to:
 constant symbol nat  : TYPE
 constant symbol z    : nat
 constant symbol succ : nat → nat
+symbol nat_ind p : π (p 0) → (Πx, π (p x) → π (p (succ x))) → Πx, π (p x)
 ```
 The main goal is to generate automatically an induction principle (work in progress).
-For the moment there is only the induction principle on propositions, which has the name of the inductive principle suffixed by "_ind".
+For the moment there is only the induction principle on propositions, which has the name of the inductive principle suffixed by "_ind". That's why, you need to set up builtin "Prop" and "P".
 
 <!---------------------------------------------------------------------------->
 ### `theorem`

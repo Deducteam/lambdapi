@@ -150,11 +150,12 @@ let link : t -> unit = fun sign ->
   sign.sign_binops := StrMap.map hn !(sign.sign_binops);
   StrMap.iter (fun _ (s, _) -> Tree.update_dtree s) !(sign.sign_symbols);
   sign.sign_quants := SymSet.map link_symb !(sign.sign_quants);
-  let ind =
-    (fun s -> { ind_cons = List.map link_symb (s.ind_cons)
-              ; ind_prop = link_symb (s.ind_prop) })
+  let link_inductive i =
+    { ind_cons = List.map link_symb i.ind_cons
+    ; ind_prop = link_symb i.ind_prop }
   in
-  sign.sign_ind := SymMap.map ind !(sign.sign_ind)
+  let fn s i m = SymMap.add (link_symb s) (link_inductive i) m in
+  sign.sign_ind := SymMap.fold fn !(sign.sign_ind) SymMap.empty
 
 (** [unlink sign] removes references to external symbols (and thus signatures)
     in the signature [sign]. This function is used to minimize the size of our
@@ -205,10 +206,11 @@ let unlink : t -> unit = fun sign ->
   StrMap.iter (fun _ (s,_) -> unlink_sym s) !(sign.sign_unops);
   StrMap.iter (fun _ (s,_) -> unlink_sym s) !(sign.sign_binops);
   SymSet.iter unlink_sym !(sign.sign_quants);
-  let ind =
-    (fun _ s -> List.iter unlink_sym (s.ind_cons); unlink_sym (s.ind_prop))
+  let unlink_inductive i =
+    List.iter unlink_sym i.ind_cons; unlink_sym i.ind_prop
   in
-  SymMap.iter ind !(sign.sign_ind)
+  let fn s i = unlink_sym s; unlink_inductive i in
+  SymMap.iter fn !(sign.sign_ind)
 
 (** [add_symbol sign ?sym_expo mode name a impl] creates a fresh symbol with
     name [name] (which should not already be used in [sign]) and with the type
@@ -299,11 +301,12 @@ let read : string -> t = fun fname ->
     StrMap.iter (fun _ s -> shallow_reset_sym s) !(sign.sign_builtins);
     let fn (_,r) = reset_rule r in
     PathMap.iter (fun _ -> List.iter fn) !(sign.sign_deps);
-    let ind =
-      (fun _ s -> List.iter shallow_reset_sym (s.ind_cons);
-                  shallow_reset_sym (s.ind_prop))
+    let shallow_reset_inductive i =
+      shallow_reset_sym i.ind_prop;
+      List.iter shallow_reset_sym i.ind_cons
     in
-    SymMap.iter ind !(sign.sign_ind);
+    let fn s i = shallow_reset_sym s; shallow_reset_inductive i in
+    SymMap.iter fn !(sign.sign_ind);
     sign
   in
   reset_timed_refs sign

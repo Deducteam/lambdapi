@@ -26,6 +26,7 @@ inductive Nat : TYPE ≔
  | z    : Nat
  | succ : Nat → Nat
 //rule Nat ↪ τ nat
+type Nat_ind
 assert Nat_ind :
   Πp:Nat → Prop, π(p z) → (Πx, π (p x) → π (p (succ x))) → Πx, π (p x)
 
