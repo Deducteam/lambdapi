@@ -21,35 +21,37 @@ set builtin "eq"    ≔ eq
 set builtin "refl"  ≔ eq_refl
 set builtin "eqind" ≔ eq_ind
 
-inductive nat : TYPE ≔
- | z    : nat
- | succ : nat → nat
+constant symbol nat : Set
+inductive Nat : TYPE ≔
+ | z    : Nat
+ | succ : Nat → Nat
+//rule Nat ↪ τ nat
+assert Nat_ind :
+  Πp:Nat → Prop, π(p z) → (Πx, π (p x) → π (p (succ x))) → Πx, π (p x)
 
-//assert nat_ind : TYPE
-type nat_ind
+assert z : Nat
+assert succ z : Nat
+assert succ (succ (succ z)) : Nat
 
-assert z : nat
-assert succ z : nat
-assert succ (succ (succ z)) : nat
+constant symbol list : Set
+inductive List : TYPE ≔
+ | nil  : List
+ | cons : Nat → List → List
 
-inductive list : TYPE ≔
- | nil  : list
- | cons : nat → list → list
-
-assert nil : list
-assert cons (succ (succ (succ z))) nil : list
-assert cons (succ (succ (succ z))) (cons (succ z) nil) : list
-assert cons (succ (succ (succ z))) (cons (succ z) (cons z nil)) : list
+assert nil : List
+assert cons (succ (succ (succ z))) nil : List
+assert cons (succ (succ (succ z))) (cons (succ z) nil) : List
+assert cons (succ (succ (succ z))) (cons (succ z) (cons z nil)) : List
 
 set builtin "0"  ≔ z
 set builtin "+1" ≔ succ
 
-symbol plus : nat → nat → nat
+symbol plus : Nat → Nat → Nat
 set infix left 6 "+" ≔ plus
 assert λx y z,x+y+z ≡ λx y z,(x+y)+z // check that x+y=z is parsed correctly
 rule       0 + $y ↪ $y
 with succ $x + $y ↪ succ ($x + $y)
 
-theorem plus_0_n : Πn, π (eq {nat} (0 + n) n)
-proof
-qed
+//theorem plus_0_n : Πn, π (eq {nat} (0 + n) n)
+//proof
+//qed
