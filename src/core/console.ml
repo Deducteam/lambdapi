@@ -25,7 +25,8 @@ let blu fmt = colorize "34" fmt
 let mag fmt = colorize "35" fmt
 let cya fmt = colorize "36" fmt
 
-(** [r_or_g cond] colors in green if [cond] is [true] and in red otherwise. *)
+(** [r_or_g cond fmt] colors in green if [cond] is [true] and in red
+    otherwise. *)
 let r_or_g cond = if cond then gre else red
 
 (** [out_fmt] main output formatter. *)

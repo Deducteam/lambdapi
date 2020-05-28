@@ -101,9 +101,9 @@ let compile_file : file_path -> Sign.t = fun fname ->
   (* Run compilation. *)
   compile Stdlib.(!recompile) mp
 
-(** NOTE we need to give access to the compilation function to the parser.
-    This is the only way infix symbols can be parsed, since they may be added
-    to the scope by a "require" command. *)
+(* NOTE we need to give access to the compilation function to the parser.
+   This is the only way infix symbols can be parsed, since they may be added
+   to the scope by a "require" command. *)
 let _ =
   let require mp =
     (* Save the current console state. *)

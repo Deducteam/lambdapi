@@ -29,7 +29,7 @@ let find : string -> env -> tvar = fun n env ->
     domains are the variables of the environment [env] (from left to right),
     and whose body is the term [t].
     By calling [to_prod [(xn,an,None);⋯;(x1,a1,None)] t] you obtain a term of
-    the form [Πx1:a1,..,Πxn:an,t]. *)
+    the form [Πx1:a1,.⋯,Πxn:an,t]. *)
 let to_prod_box : env -> tbox -> tbox = fun env t ->
   let fn t (_,(x,a,u)) =
     match u with
@@ -38,7 +38,7 @@ let to_prod_box : env -> tbox -> tbox = fun env t ->
   in
   List.fold_left fn t env
 
-(** [to_prod env t] is an "unboxed" version of [to_prod_box env t]. *)
+(** [to_prod env t] is an “unboxed” version of [to_prod_box env t]. *)
 let to_prod : env -> tbox -> term = fun env t ->
   Bindlib.unbox (to_prod_box env t)
 
@@ -46,7 +46,7 @@ let to_prod : env -> tbox -> term = fun env t ->
     depending on the definition of the elements in the environment whose
     domains are the variables of the environment [env] (from left to right),
     and which body is the term [t]:
-    [to_abst [(xn,an,None);..;(x1,a1,None)] t = λx1:a1,..,λxn:an,t]. *)
+    [to_abst [(xn,an,None);⋯;(x1,a1,None)] t = λx1:a1,⋯,λxn:an,t]. *)
 let to_abst : env -> tbox -> term = fun env t ->
   let fn t (_,(x,a,u)) =
     match u with
@@ -56,16 +56,16 @@ let to_abst : env -> tbox -> term = fun env t ->
   Bindlib.unbox (List.fold_left fn t env)
 
 (** [vars env] extracts the array of the {e not defined} Bindlib variables in
-    [env]. Note that the order is reversed: [vars [(xn,an);..;(x1,a1)] =
-    [|x1;..;xn|]]. *)
+    [env]. Note that the order is reversed: [vars [(xn,an);⋯;(x1,a1)] =
+    [|x1;⋯;xn|]]. *)
 let vars : env -> tvar array = fun env ->
   let f (_, (x, _, u)) = if u = None then Some(x) else None in
   Array.of_list (List.filter_rev_map f env)
 
 (** [to_tbox env] extracts the array of the {e not defined} variables in [env]
     and injects them in the [tbox] type.  This is the same as [Array.map _Vari
-    (vars env)]. Note that the order is reversed: [vars [(xn,an);..;(x1,a1)] =
-    [|x1;..;xn|]]. *)
+    (vars env)]. Note that the order is reversed: [vars [(xn,an);⋯;(x1,a1)] =
+    [|x1;⋯;xn|]]. *)
 let to_tbox : env -> tbox array = fun env ->
   let f (_, (x, _, u)) = if u = None then Some(_Vari x) else None in
   Array.of_list (List.filter_rev_map f env)

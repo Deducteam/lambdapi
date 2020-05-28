@@ -57,8 +57,8 @@ let eq : ctxt -> term -> term -> bool = fun ctx a b -> a == b ||
   in
   try eq [(a,b)]; true with Not_equal -> false
 
-(** Rewrite patterns as in Coq/SSReflect. See "A Small Scale
-    Reflection Extension for the Coq system", by Georges Gonthier,
+(** Rewrite patterns as in Coq/SSReflect. See “A Small Scale
+    Reflection Extension for the Coq system”, by Georges Gonthier,
     Assia Mahboubi and Enrico Tassi, INRIA Research Report 6455, 2016,
     @see <http://hal.inria.fr/inria-00258384>, section 8, p. 48. *)
 type rw_patt =
@@ -78,7 +78,7 @@ type eq_config =
   ; symb_refl  : sym (** Reflexivity of equality.         *) }
 
 (** [get_eq_config ss pos] returns the current configuration for
-    equality, used by tactics such as "rewrite" or "reflexivity". *)
+    equality, used by tactics such as “rewrite” or “reflexivity”. *)
 let get_eq_config : Sig_state.t -> popt -> eq_config = fun ss pos ->
   let builtin = Builtin.get ss pos in
   { symb_P     = builtin "P"
@@ -205,7 +205,7 @@ let break_prod : term -> term * tvar array = fun a ->
   in aux a []
 
 (** [match_pattern (xs,p) t] attempts to match the pattern [p] (containing the
-    "pattern variables" of [xs]) with the term [t]. If successful,  it returns
+    “pattern variables” of [xs]) with the term [t]. If successful,  it returns
     [Some(ts)] where [ts] is an array of terms such that substituting elements
     of [xs] by the corresponding elements of [ts] in [p] yields a term that is
     equal to [t] (in terms of [eq]). *)
@@ -288,7 +288,7 @@ let bind_match : term -> term -> tbinder =  fun p t ->
 (* NOTE in [bind_match] we lift while matching for efficiency. *)
 
 (** [swap cfg a r l t] returns a term of type [P (eq a l r)] from a term [t]
-   of type [P (eq a r l)]. *)
+    of type [P (eq a r l)]. *)
 let swap : eq_config -> term -> term -> term -> term -> term =
   fun cfg a r l t ->
   (* We build the predicate “λx:T a, eq a l x”. *)
@@ -674,7 +674,7 @@ let rewrite : Sig_state.t -> popt -> Proof.t -> bool -> rw_patt option -> term
   term
 
 (** [reflexivity ss pos ps] applies the reflexivity of equality on the focused
-   goal. If successful, the corresponding proof term is returned. *)
+    goal. If successful, the corresponding proof term is returned. *)
 let reflexivity : Sig_state.t -> popt -> Proof.t -> term = fun ss pos ps ->
   (* Obtain the required symbols from the current signature. *)
   let cfg = get_eq_config ss pos in
@@ -687,10 +687,10 @@ let reflexivity : Sig_state.t -> popt -> Proof.t -> term = fun ss pos ps ->
   add_args (Symb cfg.symb_refl) [a; l]
 
 (** [symmetry ss pos ps] attempts to use symmetry of equality on the focused
-   goal, that is, transform a goal of the form `P (eq a l r)` into a goal of
-   the form `P (eq a r l)`. If successful, a new goal is generated, and the
-   corresponding proof term is returned. The proof of symmetry is built from
-   the axioms of equality. *)
+    goal, that is, transform a goal of the form `P (eq a l r)` into a goal of
+    the form `P (eq a r l)`. If successful, a new goal is generated, and the
+    corresponding proof term is returned. The proof of symmetry is built from
+    the axioms of equality. *)
 let symmetry : Sig_state.t -> popt -> Proof.t -> term = fun ss pos ps ->
   (* Obtain the required symbols from the current signature. *)
   let cfg = get_eq_config ss pos in

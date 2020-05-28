@@ -16,8 +16,8 @@ let log_infr = log_infr.logger
     the process are are given (with their types) in the environment [env]. The
     function raises [Invalid_argument] if [prod] does not evaluate to a series
     of (at least) [n] product types. Intuitively, if the term [prod] is of the
-    form [∀ (x1:a1) ... (xn:an), a] then the function (roughly) returns [a],
-    and the environment [(xn, an) ; ... ; (x1, a1)]. *)
+    form [∀ (x1:a1) ⋯ (xn:an), a] then the function (roughly) returns [a],
+    and the environment [(xn, an) ;⋯; (x1, a1)]. *)
 let destruct_prod : int -> term -> env * term = fun n t ->
   let rec build_env i env t =
     if i >= n then (env, t) else
@@ -29,13 +29,13 @@ let destruct_prod : int -> term -> env * term = fun n t ->
   in
   build_env 0 [] t
 
-(** Given a metavariable [m] of arity [n] and type [∀x1:A1,..,∀xn:An,B] (with
+(** Given a metavariable [m] of arity [n] and type [∀x1:A1,⋯,∀xn:An,B] (with
    [B] being a sort normally), [extend_meta_type m] returns
-   [m[x1,..,xn],(∀y:p,q),bp,bq] where p=m1[x1,..,xn], q=m2[x1,..,xn,y], bp is
-   a mbinder of [x1,..,xn] over p, and bq is a mbinder of [x1,..,xn] over q,
+   [m[x1,⋯,xn],(∀y:p,q),bp,bq] where p=m1[x1,⋯,xn], q=m2[x1,⋯,xn,y], bp is
+   a mbinder of [x1,⋯,xn] over p, and bq is a mbinder of [x1,⋯,xn] over q,
    where [y] is a fresh variable, and [m1] and [m2] are fresh metavariables of
-   arity [n] and [n+1], and type [∀x1:A1,..,∀xn:An,TYPE] and
-   [∀x1:A1,..,∀xn:An,∀y:m1[x1,..,xn],B] respectively. *)
+   arity [n] and [n+1], and type [∀x1:A1,⋯,∀xn:An,TYPE] and
+   [∀x1:A1,⋯,∀xn:An,∀y:m1[x1,⋯,xn],B] respectively. *)
 let extend_meta_type : meta -> term * term *
     tmbinder * (term, tbinder) Bindlib.mbinder = fun m ->
   let n = m.meta_arity in
@@ -83,10 +83,10 @@ let conv ctx a b =
     end
 
 (** [infer ctx t] infers a type for the term [t] in context [ctx],
-   possibly under some constraints recorded in [constraints] using
-   [conv]. The returned type is well-sorted if recorded unification
-   constraints are satisfied. [ctx] must be well-formed. This function
-   never fails (but constraints may be unsatisfiable). *)
+    possibly under some constraints recorded in [constraints] using
+    [conv]. The returned type is well-sorted if recorded unification
+    constraints are satisfied. [ctx] must be well-formed. This function
+    never fails (but constraints may be unsatisfiable). *)
 let rec infer : ctxt -> term -> term = fun ctx t ->
   if !log_enabled then log_infr "infer %a%a" pp_ctxt ctx pp_term t;
   match unfold t with
@@ -216,10 +216,10 @@ let infer : ctxt -> term -> term * constr list = fun ctx t ->
   (a, constrs)
 
 (** [check ctx t a] checks returns a list [cs] of unification
-   constraints for [t] to be of type [a] in the context [ctx]. The
-   context [ctx] must be well-typed, and the type [c]
-   well-sorted. This function never fails (but constraints may be
-   unsatisfiable). *)
+    constraints for [t] to be of type [a] in the context [ctx]. The
+    context [ctx] must be well-typed, and the type [c]
+    well-sorted. This function never fails (but constraints may be
+    unsatisfiable). *)
 let check : ctxt -> term -> term -> constr list = fun ctx t a ->
   Stdlib.(constraints := []);
   check ctx t a;

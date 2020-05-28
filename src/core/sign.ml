@@ -49,9 +49,9 @@ let mem : t -> string -> bool =
     making copies of terms when loading an object file. *)
 let loaded : t PathMap.t ref = ref PathMap.empty
 
-(** NOTE that the current module is stored in [loaded] so that the symbols
-    that it contains can be qualified with the name of the module.
-    This behavior was inherited from previous versions of Dedukti. *)
+(* NOTE that the current module is stored in [loaded] so that the symbols
+   that it contains can be qualified with the name of the module.
+   This behavior was inherited from previous versions of Dedukti. *)
 
 (** [loading] contains the [module_path] of the signatures (or files) that are
     being processed. They are stored in a stack due to dependencies. Note that

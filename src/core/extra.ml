@@ -149,7 +149,7 @@ module List =
 
     (** [add_array2 a1 a2 l] returns a list containing the elements of [l],
         and the (corresponding) elements of [a1] and [a2].
-        Note that [a1] and [a2] should have the same lenght otherwise
+        @raise Note that [a1] and [a2] should have the same lenght otherwise
         [Invalid_argument] is raised. *)
     let add_array2 : 'a array -> 'b array -> ('a * 'b) list
         -> ('a * 'b) list = fun a1 a2 l ->
@@ -255,8 +255,9 @@ module Array =
     include Array
 
     (** [for_all2 f a1 a2] checks if the corresponding elements of arrays [a1]
-        and [a2] satisfy the predicate [f].  The [Invalid_argument]  exception
-        is raised if the arrays do not have the same size. *)
+        and [a2] satisfy the predicate [f].
+        @raise The [Invalid_argument] exception is raised if the arrays do not
+         have the same size. *)
     let for_all2 : ('a -> 'b -> bool) -> 'a array -> 'b array -> bool =
       fun f a1 a2 ->
         let exception Done in
@@ -276,8 +277,8 @@ module Array =
       Array.length a1 = Array.length a2 && for_all2 eq a1 a2
 
     (** [max_index ?cmp arr] returns the index of the first maximum of
-        array [arr] according to comparison [?cmp].
-        If [cmp] is not given, defaults to [Stdlib.compare]. *)
+        array [arr] according to comparison [?cmp]. If [cmp] is not given,
+        defaults to [Stdlib.compare]. *)
     let max_index : ?cmp:('a -> 'a -> int) -> 'a array -> int =
       fun ?(cmp=Stdlib.compare) arr ->
       let len = Array.length arr in

@@ -17,7 +17,7 @@ module Path =
     (** Short synonym of [module_path]. *)
     type t = module_path
 
-    (** [compare t1 t2] is a standard comparing function for module paths. *)
+    (** [compare] is a standard comparing function for module paths. *)
     let compare : t -> t -> int = Stdlib.compare
 
     (** [pp oc mp] prints [mp] to channel [oc]. *)
