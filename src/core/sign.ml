@@ -274,6 +274,7 @@ let read : string -> t = fun fname ->
     StrMap.iter (fun _ s -> shallow_reset_sym s) !(sign.sign_builtins);
     let fn (_,r) = reset_rule r in
     PathMap.iter (fun _ -> List.iter fn) !(sign.sign_deps);
+    SymSet.iter shallow_reset_sym !(sign.sign_quants);
     sign
   in
   reset_timed_refs sign
