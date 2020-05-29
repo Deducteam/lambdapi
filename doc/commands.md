@@ -145,7 +145,7 @@ Lambdapi accepts higher-order pattern variables too:
 
 ```
 rule diff (λx, sin $F[x]) ↪ λx, diff (λx, $F[x]) x × cos $F[x]
-rule lam (λx, app $F x) ↪ $F // η-reduction
+rule lam (λx, app $F[] x) ↪ $F // η-reduction
 ```
 
 It is possible to define an unnamed pattern variable with the syntax `$_[x,y]`
@@ -159,8 +159,8 @@ that is, the terms between `[` and `]` must be distinct bound
 variables only.
 
 Lambdapi uses higher-order pattern-matching (not in full generality
-though). Hence, the rule `lam (λx, app $F x) ↪ $F` implements
-η-reduction since no valid instance of `F` can contain `x`.
+though). Hence, the rule `lam (λx, app $F[] x) ↪ $F` implements
+η-reduction since no valid instance of `$F[]` can contain `x`.
 
 **Important**. In contrast to languages like OCaml, Coq, Agda, etc. rule
  left-hand sides can contain defined symbols:

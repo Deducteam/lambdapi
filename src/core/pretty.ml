@@ -49,7 +49,9 @@ let rec pp_p_term : p_term pp = fun oc t ->
   let out fmt = Format.fprintf oc fmt in
   let rec pp p _ t =
     let pp_env _ ar =
-      if Array.length ar > 0 then out "[%a]" (Array.pp (pp PFunc) ", ") ar
+      match ar with
+      | None -> ()
+      | Some ar -> out "[%a]" (Array.pp (pp PFunc) ", ") ar
     in
     let pp_atom = pp PAtom in
     let pp_appl = pp PAppl in
