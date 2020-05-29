@@ -27,8 +27,8 @@ let principle : Sig_state.t -> popt -> sym -> sym list -> term =
   let prf_of_p t = _Appl (_Symb c.symb_prf) (_Appl (_Vari p) t) in
   let app = List.fold_left _Appl in
 
-  let case_of scons =
-    let rec case xs a =
+  let case_of : sym -> tbox = fun scons ->
+    let rec case : tbox list -> term-> tbox = fun xs a ->
       match unfold a with
       | Symb(s) ->
          if s == sind then prf_of_p (app (_Symb scons) (List.rev xs))

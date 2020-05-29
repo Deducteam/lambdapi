@@ -204,23 +204,28 @@ curly brackets.
 
 <!---------------------------------------------------------------------------->
 ### `inductive`
-The command `inductive` is used to define an inductive type.
-For example:
+
+The command `inductive` can be used to define an inductive type, its constructors and its associated induction principle if it can be generated. The name of the induction principle is the name of the type suffixed with "_ind". For generating the induction principle, we assume defined the following builtins:
+
+set builtin "Prop" ≔ ... // : TYPE
+set builtin "P"      ≔ ... // : Prop → TYPE
+
+For the moment, we only support first-order data types.
+
+Here, this is an example:
 ```
-inductive nat : TYPE ≔
- | z    : nat
- | succ : nat → nat
+inductive Nat : TYPE ≔
+ | z    : Nat
+ | succ : Nat → Nat
 ```
 is equivalent to:
 
 ```
-constant symbol nat  : TYPE
-constant symbol z    : nat
-constant symbol succ : nat → nat
-symbol nat_ind p : π (p 0) → (Πx, π (p x) → π (p (succ x))) → Πx, π (p x)
+symbol Nat  : TYPE
+constant symbol z    : Nat
+constant symbol succ : Nat → Nat
+symbol Nat_ind p : π (p 0) → (Πx, π (p x) → π (p (succ x))) → Πx, π (p x)
 ```
-The main goal is to generate automatically an induction principle (work in progress).
-For the moment there is only the induction principle on propositions, which has the name of the inductive principle suffixed by "_ind". That's why, you need to set up builtin "Prop" and "P".
 
 <!---------------------------------------------------------------------------->
 ### `theorem`

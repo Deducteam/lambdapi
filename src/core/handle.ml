@@ -196,7 +196,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
       (fst (Sig_state.add_symbol ss e Defin x a impl d), None)
   | P_inductive(e, id, a, l)     ->
       (* Add the inductive type in the signature *)
-      let (ss, sym_typ) = handle_symbol ss e Const id [] a in
+      let (ss, sym_typ) = handle_symbol ss e Defin id [] a in
       (* Add the constructors in the signature. *)
       let add_cons :
             sig_state * sym list -> ident * p_term -> sig_state * sym list
@@ -208,6 +208,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
       (* Compute the induction principle *)
       let ind_typ = Inductive.principle ss cmd.pos sym_typ cons_list in
       let ind_name = Pos.make cmd.pos (id.elt ^ "_ind") in
+      Sign.add_ident (ss.signature) (id.elt^"_ind");
       let (ss, sym_ind) =
         Sig_state.add_symbol ss e Defin ind_name ind_typ [] None
       in
