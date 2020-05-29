@@ -39,10 +39,10 @@ let register : string -> (sig_state -> popt -> sym -> unit) -> unit =
   if Hashtbl.mem htbl name then assert false;
   Hashtbl.add htbl name check
 
-(* @PROBLEM *)
-(** [register_expected_type name build pp] registers a checking function that
-    checks the type of a symbol defining the builtin [name] against a type
-    constructed using the given [build] function. *)
+(** [register_expected_type eq pp name fn] calls [register] with a function
+    [check] such that [check ss pos sym] checks that the type of [sym] is
+    equal to some type built with [fn]. It uses [pp] for printing error
+    messages. *)
 let register_expected_type
     : term eq -> term pp -> string -> (sig_state -> popt -> term) -> unit =
   fun eq pp name fn ->
