@@ -39,22 +39,11 @@ hook.
 About code, **remember to break the line after `=`, if it is too long**.
 You can find more details in the previous sections.
 
-Importing of librairies
+Importing librairies
 -----------------------
 
 Import a library when you use it many times.
 But to avoid problems with generic names (make, get, ...), you have to put the name of the library before the name of the function.
-
-Naming of variables
--------------------
-
-Type of the variable | Name of the variable
--------------------- | --------------------
-       prop          |        p
-       expo          |        e
-       term          |        t
-       sym           |
-     Sig_state       |        ss
      
 Type annotations and interface
 ------------------------------
@@ -77,14 +66,6 @@ You can do the same thing for nested functions, but it's not mandatory.
 
 Pattern matching
 ----------------
-
-Pattern matching arrows should be aligned to improve readability, especially in the case where almost all of the pattern matching can be seen, as in the
-following.
-```ocaml
-match ... with
-| A(x)   -> ...
-| B(x,y) -> ...
-```
 
 When the action of a pattern does not fit on one line, it should be indented
 by two units (that is, four characters).
