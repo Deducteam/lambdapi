@@ -121,6 +121,29 @@
    '(lambdapi-mode . ("lambdapi" "lsp" "--standard-lsp")))
   (eglot-ensure))
 
+(defun display-goals (goals)
+  (let ((goalsbuf (generate-new-buffer "LambdaPi goals"))
+        (goalsstr (mapcar
+                   (lambda (goal)
+                     (let ((id (plist-get goal :gid))
+                           (hyps (plist-get goal :hyps))
+                           (type (plist-get goal :type)))
+                       (format "------\nGoal id: %d\nType: %s\n------\n"
+                               id type)
+                               )) (plist-get goals :goals))))
+    (with-current-buffer goalsbuf
+      (mapc 'insert goalsstr))))
+
+(defun eglot--signal-proof/goals ()
+  (interactive)
+  "Send proof/goals to server."
+  (let ((server (eglot--current-server-or-lose))
+        (params `(:textDocument ,(eglot--TextDocumentIdentifier)
+                  :position ,(eglot--pos-to-lsp-position))))
+    (let ((response (jsonrpc-request server :proof/goals params)))
+      (display-goals response)
+      )))
+
 ;; Register mode the the ".lp" extension
 ;;;###autoload
 (add-to-list 'auto-mode-alist '("\\.lp\\'" . lambdapi-mode))
