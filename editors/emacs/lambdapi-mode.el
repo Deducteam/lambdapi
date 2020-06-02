@@ -122,7 +122,7 @@
   (eglot-ensure))
 
 (defun display-goals (goals)
-  (let* ((goalsbuf (generate-new-buffer "LambdaPi goals"))
+  (let* ((goalsbuf (get-buffer-create "*Goals*"))
          (fstgoal  (elt goals 0))
          (hs       (plist-get fstgoal :hyps))
          (hypsstr  (mapcar
@@ -135,14 +135,18 @@
          (goalsstr (mapcar
                     (lambda (goal)
                       (let ((id (plist-get goal :gid))
-                            (hyps (plist-get goal :hyps))
                             (type (plist-get goal :type)))
                         (format "Goal %d: %s\n" id type)))
                     goals)))
     (with-current-buffer goalsbuf
+      (read-only-mode -1)
+      (goto-char (point-max))
       (mapc 'insert hypsstr)
       (insert "--------------\n")
-      (mapc 'insert goalsstr))))
+      (mapc 'insert goalsstr)
+      (insert "--------------\n")
+      (read-only-mode 1))
+    (switch-to-buffer-other-window goalsbuf)))
 
 (defun eglot--signal-proof/goals ()
   (interactive)
