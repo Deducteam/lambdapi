@@ -34,8 +34,8 @@ let dummy : unit -> t = fun () ->
   ; sign_unops = ref StrMap.empty; sign_binops = ref StrMap.empty
   ; sign_idents = ref StrSet.empty; sign_quants = ref SymSet.empty }
 
-(** [find sign name] finds the symbol named [name] in [sign] if it exists, and
-    raises the [Not_found] exception otherwise. *)
+(** [find sign name] finds the symbol named [name] in [sign] if it exists.
+    @raise Not_found otherwise. *)
 let find : t -> string -> sym =
   fun sign name -> fst (StrMap.find name !(sign.sign_symbols))
 
@@ -69,7 +69,7 @@ let current_sign () =
   PathMap.find mp !loaded
 
 (** [new_sym n a] creates a new (private definable) symbol of name [n] and
-   type [a]. *)
+    type [a]. *)
 let new_sym : string -> term -> sym = fun name typ ->
   let path = (current_sign()).sign_path in
   { sym_name = name; sym_type = ref typ; sym_path = path; sym_def = ref None

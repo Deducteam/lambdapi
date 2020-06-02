@@ -88,7 +88,8 @@ let handle_require_as : popt -> sig_state -> Path.t -> ident -> sig_state =
     [cmd] leads to entering the proof mode,  a [proof_data] is also  returned.
     This structure contains the list of the tactics to be executed, as well as
     the initial state of the proof.  The checking of the proof is then handled
-    separately. Note that [Fatal] is raised in case of an error. *)
+    separately.
+    @raise Fatal in case of an error. *)
 let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
   fun ss cmd ->
   let scope_basic exp = Scope.scope_term exp ss Env.empty in

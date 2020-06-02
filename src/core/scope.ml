@@ -17,12 +17,11 @@ let log_scop = log_scop.logger
     variable of the environment [env] (or to a symbol) which name corresponds
     to [qid]. In the case where the module path [fst qid.elt] is empty, we
     first search for the name [snd qid.elt] in the environment, and if it is
-    not mapped we also search in the opened modules. The exception [Fatal] is
-    raised if an error occurs (e.g., when the name cannot be found). If [prt]
-    is true, {!constructor:Terms.expo.Protec} symbols from
-    foreign modules are allowed (protected symbols from current modules are
-    always allowed). If [prv] is true,
-    {!constructor:Terms.expo.Privat} symbols are allowed. *)
+    not mapped we also search in the opened modules.  If [prt] is true,
+    {!constructor:Terms.expo.Protec} symbols from foreign modules are allowed
+    (protected symbols from current modules are always allowed). If [prv] is
+    true, {!constructor:Terms.expo.Privat} symbols are allowed.
+    @raise Fatal if an error occurs (e.g., when the name cannot be found). *)
 let find_qid : bool -> bool -> sig_state -> env -> qident -> tbox =
   fun prt prv st env qid ->
   let (mp, s) = qid.elt in

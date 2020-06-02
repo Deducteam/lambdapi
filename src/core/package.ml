@@ -28,8 +28,8 @@ type config_data =
   { package_name : string
   ; root_path    : Path.module_path }
 
-(** [read fname] reads configuration data from the file [fname]. The exception
-    [Fatal] is raised in case of error (non-existing file, bad format). *)
+(** [read fname] reads configuration data from the file [fname].
+    @raise Fatal in case of error (non-existing file, bad format). *)
 let read : file_path -> config_data = fun fname ->
   (* Obtaining file lines. *)
   let lines =

@@ -10,7 +10,7 @@ open Sig_state
 (** [get ss pos name] returns the symbol mapped to the "builtin symbol" named
     [name] i n the map [map], which should contain all the builtin symbols
     that are in scope.
-    If the symbol cannot be found then [Fatal] is raised. *)
+    @raise Fatal if the symbol cannot be found. *)
 let get : sig_state -> popt -> string -> sym = fun ss pos name ->
   try StrMap.find name ss.builtins with Not_found ->
     fatal pos "Builtin symbol \"%s\" undefined." name
@@ -30,10 +30,9 @@ let check : sig_state -> popt -> string -> sym -> unit =
 (** [register name check] registers the checking function [check], for the
     builtin symbols named [name]. When the check is run, [check] receives as
     argument a position for error reporting as well as the map of every
-    builtin symbol in scope. It is expected to raise the [Fatal] exception
-    to signal an error.
-    Note that this function should not be called using a [name] for which a
-    check has already been registered. *)
+    builtin symbol in scope. Note that this function should not be called
+    using a [name] for which a check has already been registered.
+    @raise Fatal to signal an error. *)
 let register : string -> (sig_state -> popt -> sym -> unit) -> unit =
   fun name check ->
   if Hashtbl.mem htbl name then assert false;

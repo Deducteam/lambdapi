@@ -67,13 +67,13 @@ module ModMap :
         (including the root). *)
     exception Already_mapped
 
-    (** [set_root path m] sets the library root of [m] to be [path]. If it was
-        already set, the the exception [Already_mapped] is raised. *)
+    (** [set_root path m] sets the library root of [m] to be [path].
+        @raise Already_mapped if it was already set *)
     val set_root : file_path -> t -> t
 
     (** [add mp path m] extends the mapping [m] by associating the module path
-        [mp] to the file path [path]. In the case where [mp] is already mapped
-        in [m], the exception [Already_mapped] is raised. *)
+        [mp] to the file path [path].
+        @raise Already_mapped if [mp] is already mapped in [m] *)
     val add : Path.t -> file_path -> t -> t
 
     (** Exception raised if an attempt is made to use the [get] function prior
@@ -81,8 +81,9 @@ module ModMap :
     exception Root_not_set
 
     (** [get mp m] obtains the file path corresponding to the module path [mp]
-        in [m] (with no particular extension). The exception [Root_not_set] is
-        raised if the root of [m] was not previously set with [set_root]. *)
+        in [m] (with no particular extension).
+        @raise  Root_not_set if the root of [m] was not previously set with
+        [set_root]. *)
     val get : Path.t -> t -> file_path
 
     (** [iter fn m] calls function [fn] on every binding stored in [m]. *)
@@ -245,7 +246,7 @@ let legacy_src_extension : string = ".dk"
     [fname]. The file described by [fname] is expected to have a valid
     extension (either [src_extension] or the legacy extension
     [legacy_src_extension]).
-    @raise If [fname] is invalid, the [Fatal] exception is raised. *)
+    @raise Fatal if [fname] is invalid. *)
 let file_to_module : string -> Path.t = fun fname ->
   (* Sanity check: source file extension. *)
   let ext = Filename.extension fname in

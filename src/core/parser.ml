@@ -33,13 +33,14 @@ module Prefix :
     val reset : 'a t -> unit
 
     (** [add k v t] inserts the value [v] with the key [k] (possibly replacing
-        a previous value associated to [k]) in the tree [t]. Note that key [k]
-        should not be [""], otherwise [Invalid_argument] is raised. *)
+        a previous value associated to [k]) in the tree [t].
+        @raise Invalid_argument if the key [k] is [""]. *)
     val add : 'a t -> string -> 'a -> unit
 
     (** [grammar t] is an [Earley] grammar parsing the longest possible prefix
         of the input corresponding to a word of [t]. The corresponding, stored
-        value is returned. It fails if no such longest prefix exist. *)
+        value is returned.
+        @raise Not_found if no such longest prefix exist. *)
     val grammar : 'a t -> 'a Earley.grammar
 
     (** Type of a saved prefix tree. Prefix trees are imperative, so they need
@@ -202,8 +203,8 @@ let _wild_       = KW.create "_"
 let _with_       = KW.create "with"
 
 (** [sanity_check loc s] checks that the token [s] is appropriate for an infix
-    operator or a declared identifier. If it is not the case, then the [Fatal]
-    exception is raised. *)
+    operator or a declared identifier.
+    @raise Fatal otherwise. *)
 let sanity_check : Pos.pos -> string -> unit = fun loc s ->
   (* Of course, the empty string and keywords are forbidden. *)
   if s = "" then parser_fatal loc "Invalid token (empty).";
@@ -671,8 +672,9 @@ let parser cmd =
 let parser cmds = {c:cmd -> in_pos _loc c}*
 
 (** [parse_file fname] attempts to parse the file [fname], to obtain a list of
-    toplevel commands. In case of failure, a graceful error message containing
-    the error position is given through the [Fatal] exception. *)
+    toplevel commands.
+    @raise Fatal with a graceful error message containing the error position
+    is given. *)
 let parse_file : string -> ast = fun fname ->
   Prefix.reset unops; Prefix.reset binops; Prefix.reset declared_ids;
   try Earley.parse_file cmds blank fname
@@ -681,10 +683,10 @@ let parse_file : string -> ast = fun fname ->
     parser_fatal loc "Parse error."
 
 (** [parse_string fname str] attempts to parse the string [str] file to obtain
-    a list of toplevel commands.  In case of failure, a graceful error message
-    containing the error position is given through the [Fatal] exception.  The
-    [fname] argument should contain a relevant file name for the error message
-    to be constructed. *)
+    a list of toplevel commands. The [fname] argument should contain a
+    relevant file name for the error message to be constructed.
+    @raise Fatal with a graceful error message containing the error position
+    is given. *)
 let parse_string : string -> string -> ast = fun fname str ->
   Prefix.reset unops; Prefix.reset binops; Prefix.reset declared_ids;
   try Earley.parse_string ~filename:fname cmds blank str

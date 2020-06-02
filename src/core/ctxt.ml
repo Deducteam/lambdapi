@@ -15,12 +15,13 @@ let unbind : ctxt -> term -> term option -> tbinder -> tvar * term * ctxt =
   (x, t, if Bindlib.binder_occur b then (x, a, def) :: ctx else ctx)
 
 (** [type_of x ctx] returns the type of [x] in the context [ctx] when it
-    appears, and raises [Not_found] otherwise. *)
+    appears.
+    @raise Not_found if x doesn't appear in the context [ctx]. *)
 let type_of : tvar -> ctxt -> term = fun x ctx ->
   let (_,a,_) = List.find (fun (y,_,_) -> Bindlib.eq_vars x y) ctx in a
 
 (** [def_of x ctx] returns the definition of [x] in the context [ctx] if it
-    appears, and [None] otherwise *)
+    appears, and [None] otherwise. *)
 let rec def_of : term Bindlib.var -> ctxt -> term option = fun x ctx ->
   match ctx with
   | []         -> None

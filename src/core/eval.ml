@@ -399,8 +399,8 @@ let rec simplify : ctxt -> term -> term = fun ctx t ->
      Prod (simplify ctx a, Bindlib.unbox b)
   | h, ts -> add_args h (List.map whnf_beta ts)
 
-(** [hnf ctx t] computes a head-normal form of the term [t]
-    in the context [ctx]. *)
+(** [hnf ctx t] computes a head-normal form of the term [t] in the context
+    [ctx]. *)
 let rec hnf : ctxt -> term -> term = fun ctx t ->
   match whnf ctx t with
   | Abst(a,t) ->

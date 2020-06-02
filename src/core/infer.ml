@@ -13,11 +13,12 @@ let log_infr = log_infr.logger
 (** [destruct_prod n prod] returns a tuple [(env, a)] where [a] is constructed - @PROBLEM
     from the term [prod] by destructing (i.e., by unbinding with the [Bindlib]
     terminology) a total [n] dependent products. The free variables created by
-    the process are are given (with their types) in the environment [env]. The
-    function raises [Invalid_argument] if [prod] does not evaluate to a series
-    of (at least) [n] product types. Intuitively, if the term [prod] is of the
-    form [∀ (x1:a1) ⋯ (xn:an), a] then the function (roughly) returns [a],
-    and the environment [(xn, an) ;⋯; (x1, a1)]. *)
+    the process are are given (with their types) in the environment [env].
+    Intuitively, if the term [prod] is of the form [∀ (x1:a1) ⋯ (xn:an), a]
+    then the function (roughly) returns [a], and the environment
+    [(xn, an) ;⋯; (x1, a1)].
+    @raise Invalid_argument if [prod] does not evaluate to a series of (at
+    least) [n] product types.*)
 let destruct_prod : int -> term -> env * term = fun n t ->
   let rec build_env i env t =
     if i >= n then (env, t) else
@@ -191,8 +192,8 @@ let rec infer : ctxt -> term -> term = fun ctx t ->
       infer ctx (Array.fold_left (fun acc t -> Appl(acc,t)) (Symb s) ts)
 
 (** [check ctx t a] checks that the term [t] has type [a] in context [ctx],
-    possibly under some constraints recorded in [constraints] using
-    [conv]. [ctx] must be well-formed and [a] well-sorted. This function never
+    possibly under some constraints recorded in [constraints] using [conv].
+    [ctx] must be well-formed and [a] well-sorted. This function never
     fails (but constraints may be unsatisfiable). *)
 and check : ctxt -> term -> term -> unit = fun ctx t a ->
   if !log_enabled then log_infr "check %a : %a" pp_term t pp_term a;

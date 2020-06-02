@@ -28,7 +28,7 @@ type pp_hint =
   | Quant
 
 (** [eq_pp_hint h1 h2] says whether [h1] and [h2] are equal, ignoring
-   associativity and priorities. *)
+    associativity and priorities. *)
 let eq_pp_hint : pp_hint eq = fun h1 h2 ->
   match (h1, h2) with
   | (Unqual, Unqual)
@@ -80,8 +80,8 @@ let remove_pp_hint_eq :
   with Not_found -> pp_hints
 
 (** [add_symbol ss e p x a impl] generates a new signature state from [ss] by
-   creating a new symbol with expo [e], property [p], name [x], type [a],
-   implicit arguments [impl] and optional definition [t]. *)
+    creating a new symbol with expo [e], property [p], name [x], type [a],
+    implicit arguments [impl] and optional definition [t]. *)
 let add_symbol : sig_state -> expo -> prop -> strloc -> term -> bool list
                  -> term option -> sig_state =
   fun ss e p x a impl t ->

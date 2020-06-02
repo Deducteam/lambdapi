@@ -181,16 +181,16 @@ let boolean_flags : (bool * bool ref) StrMap.t Stdlib.ref =
   Stdlib.ref StrMap.empty
 
 (** [register_flag id default] registers a new boolean flag named [id],
-    with default value of [default].
-    Note the name should not have been used previously. *)
+    with default value of [default]. Note the name should not have been
+    used previously. *)
 let register_flag : string -> bool -> bool ref = fun id default ->
   if StrMap.mem id Stdlib.(!boolean_flags) then
     invalid_arg "Console.register_flag: already registered";
   let r = ref default in
   Stdlib.(boolean_flags := StrMap.add id (default, r) !boolean_flags); r
 
-(** [set_flag id b] sets the value of the flag named [id] to be [b], or raises
-    [Not_found] if no flag with this name was registered. *)
+(** [set_flag id b] sets the value of the flag named [id] to be [b].
+    @raise Not_found if no flag with this name was registered. *)
 let set_flag : string -> bool -> unit = fun id b ->
   snd (StrMap.find id Stdlib.(!boolean_flags)) := b
 
@@ -228,7 +228,7 @@ let push_state : unit -> unit = fun () ->
   in
   saved_state := (verbose, loggers, flags) :: !saved_state
 
-(** [pop_state ()] restores the setting saved with [push_stack], removing them - @puhs_state ?
+(** [pop_state ()] restores the setting saved with [push_state], removing them
     from the top of the stack at the same time. *)
 let pop_state : unit -> unit = fun () ->
   let (v,l,f) =

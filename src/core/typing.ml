@@ -34,8 +34,8 @@ let infer : ctxt -> term -> term option = fun ctx t ->
       List.iter (fatal_msg "Cannot solve %a.\n" pp_constr) cs; None
 
 (** [sort_type ctx t] checks that the type of the term [t] in context
-    [ctx] is a sort. If that is not the case, the exception [Fatal] is
-    raised. *)
+    [ctx] is a sort.
+    @raise Fatal otherwise. *)
 let sort_type : ctxt -> term -> unit = fun ctx t ->
   match infer ctx t with
   | None    -> fatal None "Unable to infer a sort for %a." pp_term t

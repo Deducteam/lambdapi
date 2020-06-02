@@ -19,9 +19,10 @@ let log_xtrn = log_xtrn.logger
     a successful check, [Some false] in the case of a failed check, and [None]
     if the external tool cannot conclude.  Note  that the command [cmd] should
     write either ["YES"], ["NO"] or ["MAYBE"] as its first line of  (standard)
-    output.  The exception [Fatal] may be raised if [cmd] exhibits a different
-    behavior. The name [prop] is used to refer to the checked property when an
-    error message is displayed. *)
+    output.
+    @raise Fatal may be raised if [cmd] exhibits a different behavior. The
+    name [prop] is used to refer to the checked property when an error message
+    is displayed. *)
 let run : string -> Sign.t pp -> string -> Sign.t -> bool option =
     fun prop pp cmd sign ->
   (* Run the command. *)

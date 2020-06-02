@@ -165,9 +165,9 @@ let _ =
   in
   register_builtin "eqind" expected_eqind_type
 
-(** [get_eq_data pos cfg t] extra data from an equality type [t]. It
-    consists of a triple containing the type in which equality is used and the
-    equated terms (LHS and RHS). *)
+(** [get_eq_data pos cfg t] extra data from an equality type [t]. It consists
+    of a triple containing the type in which equality is used and the equated
+    terms (LHS and RHS). *)
 let get_eq_data : popt -> eq_config -> term -> term * term * term =
   fun pos cfg t ->
   match Basics.get_args t with

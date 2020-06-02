@@ -149,8 +149,8 @@ module List =
 
     (** [add_array2 a1 a2 l] returns a list containing the elements of [l],
         and the (corresponding) elements of [a1] and [a2].
-        @raise Note that [a1] and [a2] should have the same lenght otherwise
-        [Invalid_argument] is raised. *)
+        @raise Invalid_argument is raised if [a1] and [a2] haven't the same
+        length. *)
     let add_array2 : 'a array -> 'b array -> ('a * 'b) list
         -> ('a * 'b) list = fun a1 a2 l ->
       let res = ref l in
@@ -221,14 +221,14 @@ module List =
     let reconstruct : 'a list -> 'a list -> 'a list -> 'a list = fun l m r ->
       List.rev_append l (m @ r)
 
-    (** [init n f] creates a list with [f 0] up to [f n] as its elements. Note
-        that [Invalid_argument] is raised if [n] is negative. *)
+    (** [init n f] creates a list with [f 0] up to [f n] as its elements.
+        @raise Invalid_argument is raised if [n] is negative. *)
     let init : int -> (int -> 'a) -> 'a list = fun n f ->
       if n < 0 then invalid_arg "Extra.List.init" else
       let rec loop k = if k > n then [] else f k :: loop (k + 1) in loop 0
 
     (** [in_sorted cmp x l] tells whether [x] is in [l] assuming that [l] is
-       sorted wrt [cmp]. *)
+        sorted wrt [cmp]. *)
     let in_sorted : 'a cmp -> 'a -> 'a list -> bool = fun cmp x ->
       let rec in_sorted l =
         match l with
@@ -310,9 +310,9 @@ module Filename =
   struct
     include Filename
 
-    (** [realpath path] returns the absolute canonical path to file [path]. If
-        [path] is invalid (i.e., it does not describe an existing file),  then
-        the exception [Invalid_argument] is raised. *)
+    (** [realpath path] returns the absolute canonical path to file [path].
+        @raise Invalid_argument if [path] is invalid (i.e., it does not
+        describe an existing file). *)
     external realpath : string -> string = "c_realpath"
   end
 
@@ -337,9 +337,8 @@ let time : ('a -> 'b) -> 'a -> float * 'b = fun f x ->
 (** Exception raised by the [with_timeout] function on a timeout. *)
 exception Timeout
 
-(** [with_timeout nbs f x] computes [f x] with a timeout of [nbs] seconds. The
-    exception [Timeout] is raised if the computation takes too long, otherwise
-    everything goes the usual way. *)
+(** [with_timeout nbs f x] computes [f x] with a timeout of [nbs] seconds.
+    @raise Timeout if the computation takes too long. *)
 let with_timeout : int -> ('a -> 'b) -> 'a -> 'b = fun nbs f x ->
   let sigalrm_handler = Sys.Signal_handle (fun _ -> raise Timeout) in
   let old_behavior = Sys.signal Sys.sigalrm sigalrm_handler in
