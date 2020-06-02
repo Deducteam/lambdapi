@@ -8,7 +8,7 @@ The λΠ-calculus is also known as λP or LF. In the λΠ-calculus modulo rewrit
 Bibliographic references
 ------------------------
 
-* [Dedukti: a Logical Framework based on the λΠ-Calculus Modulo Theory](www.lsv.fr/~dowek/Publi/expressing.pdf), Ali Assaf, Guillaume Burel, Raphaël Cauderlier , David Delahaye, Gilles Dowek, Catherine Dubois, Frédéric Gilbert, Pierre Halmagrand, Olivier Hermant, and Ronan Saillard. Draft, 2016.
+* [Dedukti: a Logical Framework based on the λΠ-Calculus Modulo Theory](http://www.lsv.fr/~dowek/Publi/expressing.pdf), Ali Assaf, Guillaume Burel, Raphaël Cauderlier , David Delahaye, Gilles Dowek, Catherine Dubois, Frédéric Gilbert, Pierre Halmagrand, Olivier Hermant, and Ronan Saillard. Draft, 2016.
 
 * [Typechecking in the λΠ-Calculus Modulo: Theory and Practice](https://hal.inria.fr/tel-01299180), Ronan Saillard. PhD thesis, 2015.
 
