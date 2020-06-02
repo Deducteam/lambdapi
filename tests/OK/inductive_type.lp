@@ -14,7 +14,7 @@ set declared "τ"
 injective symbol τ : Set → TYPE  // Interpretation of set codes in TYPE
 
 /////////////////////////////
-// Egality
+// Equality
 /////////////////////////////
 constant symbol eq {a} : τ a → τ a → Prop
 set infix 8 "=" ≔ eq
@@ -102,11 +102,11 @@ rule  app      nil     $m ↪ $m
  with app (cons $x $l) $m ↪ cons $x (app $l $m)
 
 theorem length_app :
-  Π(l1 l2 : List), π (((length l1)+(length l2)) = (length (app l1 l2)))
+  Π(l1 l2 : List), π ((length l1 + length l2) = length (app l1 l2))
 proof
   assume l1 l2
   apply List_ind
-        (λz, ((length z)+(length l2)) = (length (app z l2))) _ _ l1
+        (λz, (length z+length l2) = length (app z l2)) _ _ l1
   reflexivity
   assume x l2 IHl1
   simpl rewrite IHl1 reflexivity
