@@ -37,8 +37,8 @@ inductive Nat : TYPE ≔
  | succ : Nat → Nat
 rule Nat ↪ τ nat
 
-type Nat_ind // Induction principle
-assert Nat_ind :
+type ind_Nat // Induction principle
+assert ind_Nat :
   Πp:Nat → Prop, π(p z) → (Πx, π (p x) → π (p (succ x))) → Πx, π (p x)
 
 assert z : Nat // Examples
@@ -51,8 +51,8 @@ inductive List : TYPE ≔
  | cons : Nat → List → List
 rule List ↪ τ list
 
-type List_ind // Induction principle
-assert List_ind :
+type ind_List // Induction principle
+assert ind_List :
   Π(p:List → Prop), π(p nil) → (Πx l,π(p l) → π(p(cons x l))) → Πl,π(p l)
 
 assert nil : List // Examples
@@ -82,7 +82,7 @@ qed
 theorem plus_n_0 : Πn, π ((n + 0) = n)
 proof
   assume n
-  refine Nat_ind (λz, (z + 0) = z) _ _ _
+  refine ind_Nat (λz, (z + 0) = z) _ _ _
   // Case n = O
   refine eq_refl 0
   // Case = S n'
@@ -105,7 +105,7 @@ theorem length_app :
   Π(l1 l2 : List), π ((length l1 + length l2) = length (app l1 l2))
 proof
   assume l1 l2
-  apply List_ind
+  apply ind_List
         (λz, (length z+length l2) = length (app z l2)) _ _ l1
   reflexivity
   assume x l2 IHl1
