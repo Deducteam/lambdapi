@@ -258,7 +258,7 @@ let pp_ctxt : ctxt pp = fun oc ctx ->
 let pp_typing : constr pp = fun oc (ctx, t, u) ->
   Format.fprintf oc "%a%a : %a" pp_ctxt ctx pp_term t pp_term u
 
-(** [pp_constr oc (ctx,t,u)] prints the unification constraints [ctx] to the
-    output channel [oc]. *)
+(** [pp_constr oc (ctx,t,u)] prints the unification constraints
+    [ctx |- t =? u] to the output channel [oc]. *)
 let pp_constr : constr pp = fun oc (ctx, t, u) ->
   Format.fprintf oc "%a%a ≡ %a" pp_ctxt ctx pp_term t pp_term u

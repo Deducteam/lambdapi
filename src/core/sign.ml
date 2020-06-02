@@ -280,8 +280,8 @@ let read : string -> t = fun fname ->
   in
   reset_timed_refs sign
 
-(** NOTE here, we rely on the fact that a marshaled closure can only be read
-    by processes running the same binary as the one that produced it. *)
+(* NOTE here, we rely on the fact that a marshaled closure can only be read
+   by processes running the same binary as the one that produced it. *)
 
 (** [add_rule sign sym r] adds the new rule [r] to the symbol [sym].  When the
     rule does not correspond to a symbol of signature [sign],  it is stored in

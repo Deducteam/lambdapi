@@ -59,16 +59,16 @@ let create_sign : Path.t -> Sign.t = fun sign_path ->
   { d with sign_path ; sign_deps = ref (PathMap.singleton Unif_rule.path []) }
 
 (** [remove_pp_hint map name pp_hints] removes from [pp_hints] the mapping for
-    [s] if [s] is mapped to [name] in [map]. *)
+    [s] if [name] is mapped to [s] in [map]. *)
 let remove_pp_hint :
       sym StrMap.t -> string -> pp_hint SymMap.t -> pp_hint SymMap.t =
   fun map name pp_hints ->
   try SymMap.remove (StrMap.find name map) pp_hints
   with Not_found -> pp_hints
 
-(** [remove_pp_hint_eq map name h pp_hints] removes from [pp_hints] the - @PROBLEM
-   mapping for [s] if [s] is mapped to [(name,h')] in [map], and [eq_pp_hint h
-   h' = true]. *)
+(** [remove_pp_hint_eq map name h pp_hints] removes from [pp_hints] the
+    mapping for [s] if [name] is mapped to [(s,h')] in [map], and
+    [eq_pp_hint h h' = true]. *)
 let remove_pp_hint_eq :
       (sym * Pos.popt) StrMap.t -> string -> pp_hint -> pp_hint SymMap.t
       -> pp_hint SymMap.t =
@@ -200,7 +200,7 @@ let open_sign : sig_state -> Sign.t -> sig_state = fun ss sign ->
   in
   {ss with in_scope; builtins; unops; binops; pp_hints}
 
-(** [dummy : sig_state] made from the dummy signature. *)
+(** Dummy [sig_state] made from the dummy signature. *)
 let dummy : sig_state =
   { signature = Sign.dummy (); in_scope = StrMap.empty; aliases = StrMap.empty
   ; path_map = PathMap.empty; builtins = StrMap.empty; unops = StrMap.empty

@@ -368,6 +368,9 @@ let _Appl : tbox -> tbox -> tbox =
 let _Prod : tbox -> tbinder Bindlib.box -> tbox =
   Bindlib.box_apply2 (fun a b -> Prod(a,b))
 
+(** [Impl a b] lifts a non-dependent product node to the {!type:tbox} type,
+    given a boxed term [a] for the domain of the product, and a boxed term [b]
+    for its codomain. *)
 let _Impl : tbox -> tbox -> tbox =
   let dummy = Bindlib.new_var mkfree "_" in
   fun a b -> _Prod a (Bindlib.bind_var dummy b)
@@ -377,11 +380,11 @@ let _Impl : tbox -> tbox -> tbox =
 let _Abst : tbox -> tbinder Bindlib.box -> tbox =
   Bindlib.box_apply2 (fun a t -> Abst(a,t))
 
-(** [_Meta u ar] lifts the metavariable [u] to the {!type:tbox} type given its
-    environment [ar]. As for symbols in {!val:_Symb}, metavariables are closed
+(** [_Meta m ts] lifts the metavariable [m] to the {!type:tbox} type given its
+    environment [ts]. As for symbols in {!val:_Symb}, metavariables are closed
     objects so they do not require lifting. *)
-let _Meta : meta -> tbox array -> tbox = fun u ar ->
-  Bindlib.box_apply (fun ar -> Meta(u,ar)) (Bindlib.box_array ar)
+let _Meta : meta -> tbox array -> tbox = fun m ts ->
+  Bindlib.box_apply (fun ts -> Meta(m,ts)) (Bindlib.box_array ts)
 
 (** [_Patt i n ar] lifts a pattern variable to the {!type:tbox} type. *)
 let _Patt : int option -> string -> tbox array -> tbox = fun i n ar ->
@@ -399,7 +402,9 @@ let _Wild : tbox = Bindlib.box Wild
 let _TRef : term option ref -> tbox = fun r ->
   Bindlib.box (TRef(r))
 
-(** [_LLet t a u] lifts let binding [let x := t : a in u<x>]. - @PROBLEM ? *)
+(** [_LLet t a u] lifts a let node to the {!type:tbox} type, given a boxed
+    term [t] for the definition, a boxed term [a] for the type, and a boxed
+    binder [u]. *)
 let _LLet : tbox -> tbox -> tbinder Bindlib.box -> tbox =
   Bindlib.box_apply3 (fun a t u -> LLet(a, t, u))
 

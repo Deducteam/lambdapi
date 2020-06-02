@@ -241,10 +241,11 @@ let obj_extension : string = ".lpo"
 (** [legacy_src_extension] is the extension for legacy source files. *)
 let legacy_src_extension : string = ".dk"
 
-(** [file_to_module path] computes the module path that corresponds to [path]. - @PROBLEM
-    The file described by [path] is expected to have a valid extension (either
-    [src_extension] or the legacy extension [legacy_src_extension]). If [path]
-    is invalid, the [Fatal] exception is raised. *)
+(** [file_to_module fname] computes the module path that corresponds to
+    [fname]. The file described by [fname] is expected to have a valid
+    extension (either [src_extension] or the legacy extension
+    [legacy_src_extension]).
+    @raise If [fname] is invalid, the [Fatal] exception is raised. *)
 let file_to_module : string -> Path.t = fun fname ->
   (* Sanity check: source file extension. *)
   let ext = Filename.extension fname in
