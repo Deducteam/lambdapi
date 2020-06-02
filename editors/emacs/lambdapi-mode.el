@@ -122,7 +122,7 @@
   (eglot-ensure))
 
 (defun display-goals (goals)
-  (if (> (length goals 0))
+  (if (> (length goals) 0)
       (let* ((goalsbuf (get-buffer-create "*Goals*"))
              (fstgoal  (elt goals 0))
              (hs       (plist-get fstgoal :hyps))
@@ -130,9 +130,9 @@
                         (lambda (hyp)
                           (let ((name (plist-get hyp :hname))
                                 (type (plist-get hyp :htype)))
-                            (format "Hypothesis %s of goal %d: %s\n"
-                                    name (plist-get fstgoal :gid) type)))
-                        hs))
+                            (format "%s: %s\n"
+                                    name type)))
+                        (reverse hs)))
              (goalsstr (mapcar
                         (lambda (goal)
                           (let ((id (plist-get goal :gid))
