@@ -12,15 +12,15 @@ open Print
 let log_rewr = new_logger 'r' "rewr" "the rewrite tactic"
 let log_rewr = log_rewr.logger
 
-(** [eq ctx a b] tests the equality of [a] and [b] (up to α-equivalence).
-    It fails if [a] or [b] contain terms of the form [Patt(i,s,e)] or
+(** [eq ctx a b] tests the equality of [a] and [b] (up to α-equivalence).  It
+    fails if [a] or [b] contain terms of the form [Patt(i,s,e)] or
     [TEnv(te,env)].  In the process, subterms of the form [TRef(r)] in [a] and
     [b] may be set with the corresponding value to enforce equality, and
     variables appearing in [ctx] can be unfolded. In other words, [eq a b] can
-    be used to implement non-linear matching. When the
-    matching feature is used, one should make sure that [TRef] constructors do
-    not appear both in [a] and in [b] at the same time. Indeed, the references
-    are set naively, without occurrence checking. *)
+    be used to implement non-linear matching. When the matching feature is
+    used, one should make sure that [TRef] constructors do not appear both in
+    [a] and in [b] at the same time. Indeed, the references are set naively,
+    without occurrence checking. *)
 let eq : ctxt -> term -> term -> bool = fun ctx a b -> a == b ||
   let exception Not_equal in
   let rec eq l =
@@ -302,11 +302,12 @@ let swap : eq_config -> term -> term -> term -> term -> term =
   let refl_a_l = add_args (Symb cfg.symb_refl) [a; l] in
   add_args (Symb cfg.symb_eqind) [a; r; l; t; pred; refl_a_l]
 
-(** [rewrite ps b po t] rewrites according to the equality proved by [t] in - @PROBLEM
-   the current goal of [ps].  The term [t] should have a type corresponding to
-   an equality. Every occurrence of the first instance of the left-hand side
-   is replaced by the right-hand side of the obtained proof (or the reverse if
-   b is false). It also handles the full set of SSReflect patterns. *)
+(** [rewrite ss pos ps l2r p t] rewrites the focused goal of [ps] with the
+    equality proved by [t] in the subterm described by the SSReflect pattern
+    [p]. The term [t] should have a type corresponding to an equality. Every
+    occurrence of the first instance of the left-hand side is replaced by the
+    right-hand side of the obtained proof (or the reverse if [l2r] is false).
+*)
 let rewrite : Sig_state.t -> popt -> Proof.t -> bool -> rw_patt option -> term
               -> term =
   fun ss pos ps l2r p t ->

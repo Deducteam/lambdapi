@@ -125,7 +125,7 @@ let symb_to_tenv
 
 (** [check_rule pr] checks whether the pre-rule [pr] is well-typed in
     signature state [ss] and then construct the corresponding rule.
-    Note that [Fatal] is raised in case of error. *)
+    @raise Note that [Fatal] is raised in case of error. *)
 let check_rule : Scope.pre_rule Pos.loc -> rule = fun ({pos; elt} as pr) ->
   let Scope.{pr_sym = s ; pr_lhs = lhs ; pr_vars = vars
             ; pr_rhs = rhs_vars; pr_arities = arities

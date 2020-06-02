@@ -256,8 +256,7 @@ module Array =
 
     (** [for_all2 f a1 a2] checks if the corresponding elements of arrays [a1]
         and [a2] satisfy the predicate [f].
-        @raise The [Invalid_argument] exception is raised if the arrays do not
-         have the same size. *)
+        @raise Invalid_argument if the arrays do not have the same size. *)
     let for_all2 : ('a -> 'b -> bool) -> 'a array -> 'b array -> bool =
       fun f a1 a2 ->
         let exception Done in
@@ -299,8 +298,8 @@ module Array =
       let aux (el, er) (accl, accr) = (el :: accl, er :: accr) in
       Array.fold_right aux a ([], [])
 
-    (** [drop n a] discards the first [n] elements of [a].
-        The empty array is returned if [n > length a]. *)
+    (** [drop n a] discards the first [n] elements of [a]. The empty array
+        is returned if [n > length a]. *)
     let drop : int -> 'a array -> 'a array = fun n a ->
       let l = length a in
       if n >= l then [||] else Array.sub a n (l - n)

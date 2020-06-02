@@ -26,8 +26,8 @@ type t =
     the external module to additional reduction rules defined in the current
     signature. *)
 
-(** [dummy ()] The empty signature. It's a thunk to force the creation of
-    a new record on each call (and avoid unwanted sharing). *)
+(** [dummy ()] is a fresh empty signature. Thunk allows to force the creation
+    of a new record on each call (and avoid unwanted sharing). *)
 let dummy : unit -> t = fun () ->
   { sign_symbols = ref StrMap.empty; sign_path = []
   ; sign_deps = ref PathMap.empty; sign_builtins = ref StrMap.empty
@@ -49,9 +49,9 @@ let mem : t -> string -> bool =
     making copies of terms when loading an object file. *)
 let loaded : t PathMap.t ref = ref PathMap.empty
 
-(* NOTE that the current module is stored in [loaded] so that the symbols
-   that it contains can be qualified with the name of the module.
-   This behavior was inherited from previous versions of Dedukti. *)
+(* NOTE that the current module is stored in [loaded] so that the symbols that
+   it contains can be qualified with the name of the module. This behavior was
+   inherited from previous versions of Dedukti. *)
 
 (** [loading] contains the [module_path] of the signatures (or files) that are
     being processed. They are stored in a stack due to dependencies. Note that
@@ -188,9 +188,8 @@ let unlink : t -> unit = fun sign ->
 
 (** [add_symbol sign sym_expo sym_prop s a impl] creates a fresh symbol with
     name [s.elt] (which should not already be used in [sign]) and with the
-    type [a], in the signature [sign].
-    The exposition is [sym_expo] and the property is [sym_prop].
-    The list [impl] tells which arguments is implicit.
+    type [a], in the signature [sign]. The exposition is [sym_expo] and the
+    property is [sym_prop]. The list [impl] tells which arguments is implicit.
     The created symbol is returned. *)
 let add_symbol : t -> expo -> prop -> strloc -> term -> bool list -> sym =
     fun sign sym_expo sym_prop s a impl ->

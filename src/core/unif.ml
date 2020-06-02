@@ -38,12 +38,12 @@ exception Unsolvable
 
 (** [copy_prod_env xs t] constructs an environment mapping the variables of
     [xs] to successive dependent product type domains of the term [t]. Note
-    that dependencies are preserved in the process,  and types of the produced
+    that dependencies are preserved in the process, and types of the produced
     environment can hence refer to other variables of the environment whenever
     this is necessary. Note that the produced environment is equivalent to the
-    environment [fst (destruct_prod (Array,length xs) t)] if the variables
-    of its domain are substituted by those of [xs]. Intuitively,  if [t] is of
-    the form [∀ (y1:a1) ⋯ (yn:an), a]  then the environment returned by the
+    environment [fst (destruct_prod (Array,length xs) t)] if the variables of
+    its domain are substituted by those of [xs]. Intuitively, if [t] is of the
+    form [∀ (y1:a1) ⋯ (yn:an), a] then the environment returned by the
     function is (roughly) [(xn, an{y1≔x1, ⋯, yn-1≔xn-1}) ;⋯; (x1, a1)].
     @raise Note that the function raises [Invalid_argument] if [t] does not
     evaluate to a sequence of [Array.length xs] dependent products. *)
