@@ -122,16 +122,26 @@
   (eglot-ensure))
 
 (defun display-goals (goals)
-  (let ((goalsbuf (generate-new-buffer "LambdaPi goals"))
-        (goalsstr (mapcar
-                   (lambda (goal)
-                     (let ((id (plist-get goal :gid))
-                           (hyps (plist-get goal :hyps))
-                           (type (plist-get goal :type)))
-                       (format "------\nGoal id: %d\nType: %s\n------\n"
-                               id type)
-                               )) (plist-get goals :goals))))
+  (let* ((goalsbuf (generate-new-buffer "LambdaPi goals"))
+         (fstgoal  (elt goals 0))
+         (hs       (plist-get fstgoal :hyps))
+         (hypsstr  (mapcar
+                    (lambda (hyp)
+                      (let ((name (plist-get hyp :hname))
+                            (type (plist-get hyp :htype)))
+                        (format "Hypothesis %s of goal %d: %s\n"
+                                name (plist-get fstgoal :gid) type)))
+                    hs))
+         (goalsstr (mapcar
+                    (lambda (goal)
+                      (let ((id (plist-get goal :gid))
+                            (hyps (plist-get goal :hyps))
+                            (type (plist-get goal :type)))
+                        (format "Goal %d: %s\n" id type)))
+                    goals)))
     (with-current-buffer goalsbuf
+      (mapc 'insert hypsstr)
+      (insert "--------------\n")
       (mapc 'insert goalsstr))))
 
 (defun eglot--signal-proof/goals ()
@@ -141,7 +151,7 @@
         (params `(:textDocument ,(eglot--TextDocumentIdentifier)
                   :position ,(eglot--pos-to-lsp-position))))
     (let ((response (jsonrpc-request server :proof/goals params)))
-      (display-goals response)
+      (display-goals (plist-get response :goals))
       )))
 
 ;; Register mode the the ".lp" extension
