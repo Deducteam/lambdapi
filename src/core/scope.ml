@@ -298,8 +298,7 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
         in
         let ts =
           match ts with
-          | None -> Env.to_tbox env (* [$M] is equivalent to [$M[env]] where
-                                       [env] is the current environment. *)
+          | None -> [||] (* $M stands for $M[] *)
           | Some ts ->
               let vs = Array.map scope_var ts in
               (* Check that [vs] are distinct variables. *)
@@ -347,8 +346,7 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
         in
         let ts =
           match ts with
-          | None -> Env.to_tbox env (* [$M] is equivalent to [$M[env]] where
-                                       [env] is the current environment. *)
+          | None -> [||] (* $M stands for $M[] *)
           | Some ts -> Array.map (scope env) ts
         in
         _TEnv (Bindlib.box_var x) ts
@@ -428,8 +426,6 @@ let scope_term : expo -> sig_state -> env -> p_term -> term =
     variable” occurs with different arities the program fails gracefully. *)
 let patt_vars : p_term -> (string * int) list * string list =
   let rec patt_vars k acc t =
-    (* [k] is the number of named variables of the context, and [acc] is the
-       result [(pvs,nl)]. *)
     match t.elt with
     | P_Type             -> acc
     | P_Iden(_)          -> acc
@@ -471,17 +467,16 @@ let patt_vars : p_term -> (string * int) list * string list =
         end
   and patt_vars_args k acc args =
     match args with
-    | []              -> acc
+    | []             -> acc
     | (ids,a,_)::args ->
         let acc = match a with None -> acc | Some a -> patt_vars k acc a in
-        (* We compute the number of named variables. *)
-        let rec nb_named_vars ids =
+        let rec arity ids =
           match ids with
           | [] -> 0
-          | None :: ids -> nb_named_vars ids
-          | Some _ :: ids -> 1 + nb_named_vars ids
+          | None :: ids -> arity ids
+          | Some _ :: ids -> 1 + arity ids
         in
-        patt_vars_args (k + nb_named_vars ids) acc args
+        patt_vars_args (k + arity ids) acc args
   in
   patt_vars 0 ([],[])
 
