@@ -141,6 +141,7 @@
                         goals)))
         (with-current-buffer goalsbuf
           (read-only-mode -1)
+          (erase-buffer)
           (goto-char (point-max))
           (mapc 'insert hypsstr)
           (insert "--------------\n")
