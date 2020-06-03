@@ -281,9 +281,8 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
         in
         let ts =
           match ts with
-          | None -> Env.to_tbox env
-              (* [?M] is equivalent to [?M[env]] where [env] is the current
-                 environment. *)
+          | None -> Env.to_tbox env (* [?M] is equivalent to [?M[env]] where
+                                       [env] is the current environment. *)
           | Some ts -> Array.map (scope env) ts
         in
         _Meta m2 ts
@@ -299,7 +298,8 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
         in
         let ar =
           match ts with
-          | None -> Env.to_tbox env
+          | None -> Env.to_tbox env (* [$M] is equivalent to [$M[env]] where
+                                       [env] is the current environment. *)
           | Some ts ->
               let vs = Array.map scope_var ts in
               (* Check that [vs] are distinct variables. *)
@@ -347,7 +347,8 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
         in
         let ts =
           match ts with
-          | None -> [||]
+          | None -> Env.to_tbox env (* [$M] is equivalent to [$M[env]] where
+                                       [env] is the current environment. *)
           | Some ts -> Array.map (scope env) ts
         in
         _TEnv (Bindlib.box_var x) ts
