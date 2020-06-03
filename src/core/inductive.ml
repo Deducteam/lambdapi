@@ -74,8 +74,10 @@ let principle : Sig_state.t -> popt -> sym -> sym list -> term =
 let ind_rule : Sig_state.t -> popt -> sym -> p_rule list =
   fun ss pos sind ->
   (* Find the induction principale *)
-  let i = SymMap.find sind !(ss.signature.sign_ind) in
-  (* Create the common head of the rules *)
+  let i =
+    SymMap.find sind !(ss.signature.sign_ind)
+  in
+    (* Create the common head of the rules *)
   let arg : sym list -> qident -> p_term = fun l ind_prop ->
     let empty_arr = Array.make 0 (Pos.make pos P_Type) in
     let p = Pos.make pos "p" in

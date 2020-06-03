@@ -219,11 +219,13 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
       let (ss, sym_ind) =
         Sig_state.add_symbol ss e Defin ind_name ind_typ [] None
       in
+      Sign.add_inductive ss.signature sym_typ cons_list sym_ind None;
       (* Add the rules of induction principle in the signature *)
       let rs = Inductive.ind_rule ss cmd.pos sym_typ in
       let (ss, ind_rules) = handle_rules ss rs       in
       (* Store inductive structure in the field "sign_ind" of the signature *)
-      Sign.add_inductive ss.signature sym_typ cons_list sym_ind ind_rules;
+      Sign.add_inductive ss.signature sym_typ cons_list sym_ind
+        (Some ind_rules);
       (ss, None)
   | P_theorem(e, stmt, ts, pe) ->
       let (x,xs,a) = stmt.elt in
