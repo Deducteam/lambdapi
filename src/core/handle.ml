@@ -111,6 +111,31 @@ let handle_symbol :
       out 3 "(symb) %s : %a\n" x.elt pp_term a;
       Sig_state.add_symbol ss e p x a impl None
 
+(** [handle_rules ss rs] handles the command [rule r1 with r2 ... with rn]
+    with [ss] as the signature state.
+    On success, an updated signature state and the rules list are returned. *)
+let handle_rules : sig_state -> p_rule list
+                   -> sig_state * (sym * rule loc) list = fun ss rs ->
+  (* Scoping and checking each rule in turn. *)
+  let handle_rule r =
+    let pr = scope_rule ss r in
+    let sym = pr.elt.pr_sym in
+    if !(sym.sym_def) <> None then
+      fatal pr.pos "Rewriting rules cannot be given for defined \
+                    symbol [%s]." sym.sym_name;
+    (sym, Pos.make r.pos (Sr.check_rule pr))
+  in
+  let rs = List.map handle_rule rs in
+  (* Adding the rules all at once. *)
+  let add_rule (s,r) =
+    Sign.add_rule ss.signature s r.elt;
+    out 3 "(rule) %a\n" pp_rule (s,r.elt)
+  in
+  List.iter add_rule rs;
+  let syms = List.remove_phys_dups (List.map (fun (s, _) -> s) rs) in
+  List.iter Tree.update_dtree syms;
+  (ss, rs)
+
 (** [handle_cmd ss cmd] tries to handle the command [cmd] with [ss] as the
     signature state. On success, an updated signature state is returned.  When
     [cmd] leads to entering the proof mode,  a [proof_data] is also  returned.
@@ -131,26 +156,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
      let ps = List.map (List.map fst) ps in
      (List.fold_left (handle_open cmd.pos) ss ps, None)
   | P_symbol(e, p, x, xs, a)     -> (fst (handle_symbol ss e p x xs a), None)
-  | P_rules(rs)                  ->
-      (* Scoping and checking each rule in turn. *)
-      let handle_rule r =
-        let pr = scope_rule ss r in
-        let sym = pr.elt.pr_sym in
-        if !(sym.sym_def) <> None then
-          fatal pr.pos "Rewriting rules cannot be given for defined \
-                        symbol [%s]." sym.sym_name;
-        (sym, Pos.make r.pos (Sr.check_rule pr))
-      in
-      let rs = List.map handle_rule rs in
-      (* Adding the rules all at once. *)
-      let add_rule (s,r) =
-        Sign.add_rule ss.signature s r.elt;
-        out 3 "(rule) %a\n" pp_rule (s,r.elt)
-      in
-      List.iter add_rule rs;
-      let syms = List.remove_phys_dups (List.map (fun (s, _) -> s) rs) in
-      List.iter Tree.update_dtree syms;
-      (ss, None)
+  | P_rules(rs)                  -> (fst (handle_rules  ss rs),         None)
   | P_definition(e,op,x,xs,ao,t) ->
       (* We check that [x] is not already used. *)
       if Sign.mem ss.signature x.elt then
@@ -207,12 +213,17 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
       let (ss, cons_list) = List.fold_left add_cons (ss, []) l in
       (* Compute the induction principle *)
       let ind_typ = Inductive.principle ss cmd.pos sym_typ cons_list in
+      (* Add the induction principle in the signature *)
       let ind_name = Pos.make cmd.pos ("ind_" ^ id.elt) in
       Sign.add_ident (ss.signature) ("ind_" ^ id.elt);
       let (ss, sym_ind) =
         Sig_state.add_symbol ss e Defin ind_name ind_typ [] None
       in
-      Sign.add_inductive ss.signature sym_typ cons_list sym_ind;
+      (* Add the rules of induction principle in the signature *)
+      let rs = Inductive.ind_rule ss cmd.pos sym_typ in
+      let (ss, ind_rules) = handle_rules ss rs       in
+      (* Store inductive structure in the field "sign_ind" of the signature *)
+      Sign.add_inductive ss.signature sym_typ cons_list sym_ind ind_rules;
       (ss, None)
   | P_theorem(e, stmt, ts, pe) ->
       let (x,xs,a) = stmt.elt in

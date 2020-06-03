@@ -5,6 +5,7 @@ open Pos
 open Console
 open Terms
 open Print
+open Syntax
 
 (** Builtin configuration for induction. *)
 type config =
@@ -69,3 +70,35 @@ let principle : Sig_state.t -> popt -> sym -> sym list -> term =
   let t = List.fold_left add_case t scons_list in
   let t = _Prod (_Impl ind prop) (Bindlib.bind_var p t) in
   Bindlib.unbox t
+
+let ind_rule : Sig_state.t -> popt -> sym -> p_rule list =
+  fun ss pos sind ->
+  (* Find the induction principale *)
+  let i = SymMap.find sind !(ss.signature.sign_ind) in
+  (* Create the common head of the rules *)
+  let arg : sym list -> qident -> p_term = fun l ind_prop ->
+    let empty_arr = Array.make 0 (Pos.make pos P_Type) in
+    let p = Pos.make pos "p" in
+    let p_iden = Pos.make pos (P_Iden(ind_prop, true))    in
+    let p_patt = Pos.make pos (P_Patt(Some p, empty_arr)) in
+    let head = P_Appl(p_iden, p_patt)                      in
+    let rec aux : sym list -> p_term -> p_term = fun l acc ->
+      match l with
+      | []   -> acc
+      | t::q ->
+          let t = Pos.make pos ("p" ^ t.sym_name)              in
+          let p_patt = Pos.make None (P_Patt(Some t, empty_arr)) in
+          aux q (Pos.make pos (P_Appl(acc, p_patt)))
+    in
+    aux l (Pos.make pos head)
+  in
+  let common_head = arg i.ind_cons (Pos.make pos ([],i.ind_prop.sym_name)) in
+  (*  *)
+  (*let e : sym -> sym list -> p_rule list = fun prop l ->
+    let rec aux : sym list -> p_rule list -> p_rule list = fun l acc ->
+    match l with
+    | []   -> acc
+    | t::q ->
+  in
+  e i.ind_prop i.ind_cons ()*)
+  [Pos.make pos (common_head, common_head)]
