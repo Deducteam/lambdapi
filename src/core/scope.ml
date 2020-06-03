@@ -478,8 +478,8 @@ let patt_vars : p_term -> (string * int) list * string list =
         let rec nb_named_vars ids =
           match ids with
           | [] -> 0
-          | None :: ids -> arity ids
-          | Some _ :: ids -> 1 + arity ids
+          | None :: ids -> nb_named_vars ids
+          | Some _ :: ids -> 1 + nb_named_vars ids
         in
         patt_vars_args (k + nb_named_vars ids) acc args
   in
