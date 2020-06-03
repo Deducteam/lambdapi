@@ -428,6 +428,8 @@ let scope_term : expo -> sig_state -> env -> p_term -> term =
     variable” occurs with different arities the program fails gracefully. *)
 let patt_vars : p_term -> (string * int) list * string list =
   let rec patt_vars k acc t =
+    (* [k] is the number of named variables of the context, and [acc] is the
+       result [(pvs,nl)]. *)
     match t.elt with
     | P_Type             -> acc
     | P_Iden(_)          -> acc
@@ -469,16 +471,17 @@ let patt_vars : p_term -> (string * int) list * string list =
         end
   and patt_vars_args k acc args =
     match args with
-    | []             -> acc
+    | []              -> acc
     | (ids,a,_)::args ->
         let acc = match a with None -> acc | Some a -> patt_vars k acc a in
-        let rec arity ids =
+        (* We compute the number of named variables. *)
+        let rec nb_named_vars ids =
           match ids with
           | [] -> 0
           | None :: ids -> arity ids
           | Some _ :: ids -> 1 + arity ids
         in
-        patt_vars_args (k + arity ids) acc args
+        patt_vars_args (k + nb_named_vars ids) acc args
   in
   patt_vars 0 ([],[])
 
