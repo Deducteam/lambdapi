@@ -425,35 +425,35 @@ let scope_term : expo -> sig_state -> env -> p_term -> term =
     of the “pattern variables” that appear non-linearly.  If a given  “pattern
     variable” occurs with different arities the program fails gracefully. *)
 let patt_vars : p_term -> (string * int) list * string list =
-  let rec patt_vars k acc t =
+  let rec patt_vars acc t =
     match t.elt with
     | P_Type             -> acc
     | P_Iden(_)          -> acc
     | P_Wild             -> acc
     | P_Meta(_,None)     -> acc
-    | P_Meta(_,Some ts)  -> Array.fold_left (patt_vars k) acc ts
-    | P_Patt(id,ts)      -> add_patt k acc id ts
-    | P_Appl(t,u)        -> patt_vars k (patt_vars k acc t) u
-    | P_Impl(a,b)        -> patt_vars k (patt_vars k acc a) b
-    | P_Abst(args,t)     -> patt_vars k (patt_vars_args k acc args) t
-    | P_Prod(args,b)     -> patt_vars k (patt_vars_args k acc args) b
+    | P_Meta(_,Some ts)  -> Array.fold_left (patt_vars) acc ts
+    | P_Patt(id,ts)      -> add_patt acc id ts
+    | P_Appl(t,u)        -> patt_vars (patt_vars acc t) u
+    | P_Impl(a,b)        -> patt_vars (patt_vars acc a) b
+    | P_Abst(args,t)     -> patt_vars (patt_vars_args acc args) t
+    | P_Prod(args,b)     -> patt_vars (patt_vars_args acc args) b
     | P_LLet(_,args,a,t,u) ->
-        let pvs = patt_vars k (patt_vars k (patt_vars_args k acc args) t) u in
+        let pvs = patt_vars (patt_vars (patt_vars_args acc args) t) u in
         begin
           match a with
           | None    -> pvs
-          | Some(a) -> patt_vars k pvs a
+          | Some(a) -> patt_vars pvs a
         end
     | P_NLit(_)          -> acc
-    | P_UnaO(_,t)        -> patt_vars k acc t
-    | P_BinO(t,_,u)      -> patt_vars k (patt_vars k acc t) u
-    | P_Wrap(t)          -> patt_vars k acc t
-    | P_Expl(t)          -> patt_vars k acc t
-  and add_patt k ((pvs, nl) as acc) id ts =
+    | P_UnaO(_,t)        -> patt_vars acc t
+    | P_BinO(t,_,u)      -> patt_vars (patt_vars acc t) u
+    | P_Wrap(t)          -> patt_vars acc t
+    | P_Expl(t)          -> patt_vars acc t
+  and add_patt ((pvs, nl) as acc) id ts =
     let acc, arity =
       match ts with
-      | None -> (acc, k)
-      | Some(ts) -> (Array.fold_left (patt_vars k) acc ts, Array.length ts)
+      | None     -> (acc, 0)
+      | Some(ts) -> (Array.fold_left patt_vars acc ts, Array.length ts)
     in
     match id with
     | None     -> acc
@@ -465,20 +465,14 @@ let patt_vars : p_term -> (string * int) list * string list =
             if List.mem id.elt nl then acc else (pvs, id.elt :: nl)
           with Not_found -> ((id.elt, arity) :: pvs, nl)
         end
-  and patt_vars_args k acc args =
+  and patt_vars_args acc args =
     match args with
-    | []             -> acc
-    | (ids,a,_)::args ->
-        let acc = match a with None -> acc | Some a -> patt_vars k acc a in
-        let rec arity ids =
-          match ids with
-          | [] -> 0
-          | None :: ids -> arity ids
-          | Some _ :: ids -> 1 + arity ids
-        in
-        patt_vars_args (k + arity ids) acc args
+    | []            -> acc
+    | (_,a,_)::args ->
+        let acc = match a with None -> acc | Some a -> patt_vars acc a in
+        patt_vars_args acc args
   in
-  patt_vars 0 ([],[])
+  patt_vars ([],[])
 
 (** Representation of a rewriting rule prior to SR-checking. *)
 type pre_rule =
