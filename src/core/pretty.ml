@@ -53,7 +53,7 @@ let rec pp_p_term : p_term pp = fun oc t ->
       match ar with
       | None -> ()
       | Some [||] when !empty_context -> ()
-      | Some ar -> out "[%a]" (Array.pp (pp PFunc) ", ") ar
+      | Some ar -> out "[%a]" (Array.pp (pp PFunc) "; ") ar
     in
     let pp_atom = pp PAtom in
     let pp_appl = pp PAppl in
