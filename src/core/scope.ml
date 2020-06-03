@@ -296,7 +296,7 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
           | _       -> fatal t.pos "Only bound variables are allowed in the \
                                     environment of pattern variables."
         in
-        let ar =
+        let ts =
           match ts with
           | None -> Env.to_tbox env (* [$M] is equivalent to [$M[env]] where
                                        [env] is the current environment. *)
@@ -316,10 +316,10 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
         in
         begin
           match id with
-          | None     when List.length env = Array.length ar    ->
+          | None     when List.length env = Array.length ts    ->
               wrn t.pos "Pattern [%a] could be replaced by [_]." Pretty.pp t;
           | Some(id) when not (List.mem id.elt d.m_lhs_in_env) ->
-              if List.length env = Array.length ar then
+              if List.length env = Array.length ts then
                 wrn t.pos "Pattern variable [%a] can be replaced by a \
                            wildcard [_]." Pretty.pp t
               else
@@ -327,7 +327,7 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
                            named." id.elt
           | _                                                  -> ()
         end;
-        fresh_patt md (Option.map (fun id -> id.elt) id) ar
+        fresh_patt md (Option.map (fun id -> id.elt) id) ts
     | (P_Patt(id,ts)   , M_RHS(r)         ) ->
         let x =
           match id with
