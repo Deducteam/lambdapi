@@ -203,7 +203,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
   | P_inductive(e, id, a, l)     ->
       (* Add the inductive type in the signature *)
       let (ss, sym_typ) = handle_symbol ss e Defin id [] a in
-      (* Add the constructors in the signature. *)
+      (* Add the constructors in the signature.  *)
       let add_cons :
             sig_state * sym list -> ident * p_term -> sig_state * sym list
         = fun(ss, cons_list) (id, a) ->
@@ -219,13 +219,31 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
       let (ss, sym_ind) =
         Sig_state.add_symbol ss e Defin ind_name ind_typ [] None
       in
-      Sign.add_inductive ss.signature sym_typ cons_list sym_ind None;
-      (* Add the rules of induction principle in the signature *)
-      let rs = Inductive.ind_rule ss cmd.pos sym_typ in
+      (* Compute the rules associated with the induction principle *)
+      let rs =
+        Inductive.ind_rule ss cmd.pos ("ind_"^id.elt) ind_typ cons_list
+      in
       let (ss, ind_rules) = handle_rules ss rs       in
+      (*let rec check : sym -> (sym * rule loc) list -> rule list = fun s l ->
+        match l with
+        | []  -> []
+        | ((s_curr,r) as t)::q ->
+            if s == s_curr then
+              r.elt::(check s q)
+            else
+              (wrn cmd.pos "The rules just defined aren't the
+                            same head symbol";[])
+      in*)
+      let rec split_loc :(sym * rule loc) list -> rule list = fun l ->
+        match l with
+        | []  -> []
+        | (_,r)::q -> r.elt::(split_loc q)
+      in
+      let ind_rules = split_loc ind_rules in
+      (* Add the rules of induction principle in the signature *)
+      List.iter (Sign.add_rule ss.signature sym_ind) ind_rules;
       (* Store inductive structure in the field "sign_ind" of the signature *)
-      Sign.add_inductive ss.signature sym_typ cons_list sym_ind
-        (Some ind_rules);
+      Sign.add_inductive ss.signature sym_typ cons_list sym_ind;
       (ss, None)
   | P_theorem(e, stmt, ts, pe) ->
       let (x,xs,a) = stmt.elt in

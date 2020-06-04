@@ -11,9 +11,7 @@ open Pos
 (** Representation of an inductive type *)
 type inductive =
   { ind_cons  : sym list  (** List of constructors                 *)
-  ; ind_prop  : sym       (** Induction principle on propositions. *)
-  ; ind_rules : (sym * rule loc) list option
-  (** List of rules of induction principle *) }
+  ; ind_prop  : sym       (** Induction principle on propositions. *) }
 
 (** Representation of a signature. It roughly corresponds to a set of symbols,
     defined in a single module (or file). *)
@@ -154,8 +152,7 @@ let link : t -> unit = fun sign ->
   sign.sign_quants := SymSet.map link_symb !(sign.sign_quants);
   let link_inductive i =
     { ind_cons = List.map link_symb i.ind_cons
-    ; ind_prop = link_symb i.ind_prop
-    ; ind_rules = None } (* @TODO *)
+    ; ind_prop = link_symb i.ind_prop }
   in
   let fn s i m = SymMap.add (link_symb s) (link_inductive i) m in
   sign.sign_ind := SymMap.fold fn !(sign.sign_ind) SymMap.empty
@@ -354,12 +351,12 @@ let add_ident : t -> string -> unit = fun sign id ->
 let add_quant : t -> sym -> unit = fun sign sym ->
   sign.sign_quants := SymSet.add sym !(sign.sign_quants)
 
-(** [add_inductive sign typ ind_cons ind_prop ind_rules] add the inductive
-    type which consists of a type [typ], constructors [ind_cons], an induction
-    principle [ind_prop] and rules [ind_rules] to [sign]. *)
-let add_inductive : t -> sym -> sym list -> sym -> (sym *rule loc) list option
-                    -> unit = fun sign typ ind_cons ind_prop ind_rules ->
-  let ind = { ind_cons ; ind_prop ; ind_rules } in
+(** [add_inductive sign typ ind_cons ind_prop] add the inductive type which
+    consists of a type [typ], constructors [ind_cons] and an induction
+    principle [ind_prop] to [sign]. *)
+let add_inductive : t -> sym -> sym list -> sym -> unit =
+  fun sign typ ind_cons ind_prop ->
+  let ind = { ind_cons ; ind_prop } in
   sign.sign_ind := SymMap.add typ ind !(sign.sign_ind)
 
 (** [dependencies sign] returns an association list containing (the transitive
