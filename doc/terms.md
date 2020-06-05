@@ -43,7 +43,7 @@ An identifier can be:
 
  * a meta-variable application `?M[t;u;v]`. `?M` alone, without arguments between square brackets, is a shorthand for `?M[x1;..;xn]` where `x1;..;xn` are all the variables of the context.
 
- * a pattern-variable application `$M[x;y]` (in rules only). `$M` alone, without arguments between square brackets, is a shorthand for `$M[]`.
+ * a pattern-variable application `$P[x;y]` (in rules only). `$P` alone, without arguments between square brackets, is a shorthand for `$P[]`.
 
  * `_` for an unknown term or a term we don't care about. It is replaced by a fresh metavariable (or a fresh pattern variable in a rule left-hand side) applied to all the variables of the context.
 
