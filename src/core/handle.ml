@@ -222,7 +222,8 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
       in
       (* Compute the rules associated with the induction principle *)
       let rs =
-        Inductive.ind_rule ss cmd.pos ("ind_"^id.elt) ind_typ cons_list
+        Inductive.ind_rule ss cmd.pos sym_typ.sym_name ("ind_"^id.elt) ind_typ
+          cons_list
       in
       let (ss, ind_rules) = handle_rules ss rs       in
       (*let rec check : sym -> (sym * rule loc) list -> rule list = fun s l ->
