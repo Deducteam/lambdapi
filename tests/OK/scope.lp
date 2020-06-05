@@ -1,6 +1,7 @@
 symbol A:TYPE
 symbol f:A→A
 
+// all these rules are equivalent
 rule f $x ↪ $x
 rule f $x[] ↪ $x
 rule f $x ↪ $x[]
