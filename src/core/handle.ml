@@ -215,7 +215,8 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
       let ind_typ = Inductive.principle ss cmd.pos sym_typ cons_list in
       (* Add the induction principle in the signature *)
       let ind_name = Pos.make cmd.pos ("ind_" ^ id.elt) in
-      Sign.add_ident (ss.signature) ("ind_" ^ id.elt);
+      if StrSet.mem id.elt !(ss.signature.sign_idents) then
+        Sign.add_ident (ss.signature) ("ind_" ^ id.elt);
       let (ss, sym_ind) =
         Sig_state.add_symbol ss e Defin ind_name ind_typ [] None
       in
@@ -241,7 +242,9 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
       in
       let ind_rules = split_loc ind_rules in
       (* Add the rules of induction principle in the signature *)
-      List.iter (Sign.add_rule ss.signature sym_ind) ind_rules;
+      let just_add_rule : sym -> rule -> unit = fun sym r ->
+        sym.sym_rules := r :: !(sym.sym_rules) in
+      List.iter (just_add_rule sym_ind) ind_rules;
       (* Store inductive structure in the field "sign_ind" of the signature *)
       Sign.add_inductive ss.signature sym_typ cons_list sym_ind;
       (ss, None)
