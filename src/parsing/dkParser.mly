@@ -81,6 +81,9 @@
 
     let arrow lps a b = make_pos lps (P_Arro (a, b))
     let binary lps a = arrow lps a (arrow lps a a)
+    let type_class (lps,id) = make_pos lps (P_type_class (make_pos lps id))
+    let type_class_instance (lps,id) = make_pos lps (P_type_class_instance (make_pos lps id))
+
 %}
 
 %token EOF
@@ -109,6 +112,8 @@
 %token <DkTokens.loc> UNDERSCORE
 %token <DkTokens.loc*DkBasic.mident> NAME
 %token <DkTokens.loc*DkBasic.mident> REQUIRE
+%token <DkTokens.loc*DkBasic.mident> TYPE_CLASS
+%token <DkTokens.loc*DkBasic.mident> TYPE_CLASS_INSTANCE
 %token <DkTokens.loc> TYPE
 %token <DkTokens.loc> KW_DEF
 %token <DkTokens.loc> KW_DEFAC
@@ -201,6 +206,8 @@ line:
   | GDT   QID    DOT { fail $1 "Unsupported command" }
   | n=NAME       DOT { fail (fst n) "Unsupported command" }
   | r=REQUIRE    DOT { require r }
+  | tc=TYPE_CLASS DOT { type_class tc }
+  | tci=TYPE_CLASS_INSTANCE DOT { type_class_instance tci }
   | EOF              {raise End_of_file}
 
 eval_config:

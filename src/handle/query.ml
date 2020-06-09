@@ -7,8 +7,8 @@ open Proof
 open Lplib open Base
 open Timed
 
-let infer : Pos.popt -> problem -> ctxt -> term -> term * term =
-  fun pos p ctx t ->
+let infer : ?scope:(Parsing.Syntax.p_term -> Term.term * (int * string) list) -> Sig_state.t -> Pos.popt -> problem -> ctxt -> term -> term * term =
+  fun ?scope ss pos p ctx t ->
   match Infer.infer_noexn p ctx t with
   | None ->
       let ids = Ctxt.names ctx in let term = term_in ids in
@@ -16,7 +16,13 @@ let infer : Pos.popt -> problem -> ctxt -> term -> term * term =
   | Some (t, a) ->
       if Unif.solve_noexn p then
         begin
-          if !p.unsolved = [] then (t, a)
+          if !p.unsolved = [] then begin
+            let t, a = Elpi_handle.solve_tc ?scope ss pos p ctx (t, a) in
+            match Infer.infer_noexn p ctx t with
+            | None -> fatal pos "%a is not typable AFTER TC RESOLUTION!!!!" term t
+            | _ -> Common.Console.out 1 "TC RESOLUTION OK!@ ";
+               t, a
+          end
           else
             begin
               let ids = Ctxt.names ctx in let term = term_in ids in
@@ -213,9 +219,9 @@ let handle : Sig_state.t -> proof_state option -> p_query -> result =
       Console.out 2 "assertion: it is %b that %a" (not must_fail)
         constr (ctxt, t, u);
       (* Check that [t] is typable. *)
-      let (t, a) = infer pt.pos p ctxt t in
+      let (t, a) = infer ss pt.pos p ctxt t in
       (* Check that [u] is typable. *)
-      let (u, b) = infer pu.pos p ctxt u in
+      let (u, b) = infer ss pu.pos p ctxt u in
       (* Check that [t] and [u] have the same type. *)
       p := {!p with to_solve = (ctxt,a,b)::!p.to_solve};
       if Unif.solve_noexn p then
@@ -234,11 +240,12 @@ let handle : Sig_state.t -> proof_state option -> p_query -> result =
       None
   | P_query_infer(pt, cfg) ->
       let t = scope pt in
-      let t = Eval.eval cfg ctxt (snd (infer pt.pos p ctxt t)) in
+      let scope = Scope.scope_term_w_pats ~typ:false ~mok true ss env in
+      let t = Eval.eval cfg ctxt (snd (infer ss ~scope pt.pos p ctxt t)) in
       let ids = Env.names (Proof.focus_env ps) in
       return (term_in ids) t
   | P_query_normalize(pt, cfg) ->
       let t = scope pt in
-      let t = Eval.eval cfg ctxt (fst (infer pt.pos p ctxt t)) in
+      let t = Eval.eval cfg ctxt (fst (infer ss pt.pos p ctxt t)) in
       let ids = Env.names (Proof.focus_env ps) in
       return (term_in ids) t

@@ -19,6 +19,8 @@ type token =
   | QID of (loc * mident * ident)
   | NAME of (loc * mident)
   | REQUIRE of (loc * mident)
+  | TYPE_CLASS of (loc * ident)
+  | TYPE_CLASS_INSTANCE of (loc * ident)
   | LONGARROW
   | LEFTSQU
   | LEFTPAR

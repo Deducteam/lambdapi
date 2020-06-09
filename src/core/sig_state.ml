@@ -22,6 +22,9 @@ type sig_state =
   ; alias_path: Path.t StrMap.t           (** Alias to path map. *)
   ; path_alias: string Path.Map.t         (** Path to alias map. *)
   ; builtins  : sym StrMap.t              (** Builtins. *)
+  ; active_tc       : SymSet.t            (** Active TC *)
+  ; active_tc_inst  : SymSet.t            (** Active TC instances *)
+
   ; open_paths : Path.Set.t               (** Open modules. *) }
 
 type t = sig_state
@@ -32,9 +35,9 @@ type t = sig_state
     optional definition [def]. [pos] is the position of the declaration
     without its definition. This new symbol is returned too. *)
 let add_symbol : sig_state -> expo -> prop -> match_strat
-    -> bool -> strloc -> popt -> term -> bool list -> term option ->
+    -> bool -> strloc -> popt -> term -> bool list -> bool -> bool -> term option ->
     sig_state * sym =
-  fun ss expo prop mstrat opaq id pos typ impl def ->
+  fun ss expo prop mstrat opaq id pos typ impl tc tci def ->
   let sym =
     Sign.add_symbol ss.signature expo prop mstrat opaq id pos typ impl in
   begin
@@ -42,8 +45,12 @@ let add_symbol : sig_state -> expo -> prop -> match_strat
     | Some t when not opaq -> sym.sym_def := Some (cleanup t)
     | _ -> ()
   end;
+    if tc then Sign.add_tc ss.signature sym;
+  let active_tc = if tc then SymSet.add sym ss.active_tc else ss.active_tc in
+  if tci then Sign.add_tc_inst ss.signature sym;
+  let active_tc_inst = if tci then SymSet.add sym ss.active_tc_inst else ss.active_tc_inst in
   let in_scope = StrMap.add id.elt sym ss.in_scope in
-  {ss with in_scope}, sym
+  {ss with in_scope; active_tc; active_tc_inst}, sym
 
 (** [add_builtin ss b s] generates a new signature state from [ss] by mapping
     the builtin string [b] to the symbol [s], and by updating the notation of
@@ -92,7 +99,9 @@ let of_sign : Sign.t -> sig_state = fun signature ->
     ; in_scope = StrMap.empty
     ; alias_path = StrMap.empty
     ; path_alias = Path.Map.empty
-    ; builtins = StrMap.empty
+    ; builtins = StrMap.empty  
+    ; active_tc = SymSet.empty
+    ; active_tc_inst = SymSet.empty
     ; open_paths = Path.Set.empty }
   in
   open_sign (open_sign ss Ghost.sign) signature

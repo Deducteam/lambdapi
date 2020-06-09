@@ -1,0 +1,29 @@
+main T T1 :-
+  print "before type inference" T,
+  of T _,
+  print "\nafter type inference" T,
+  T1 = T.
+
+
+pred of i:term, o:term.
+
+% API to access the type of a symbol
+of (symb S) T :- lp.sig S T.
+
+% silly rules
+of (prod A B) T :-
+  of A typ,
+  pi x\ of x A => of (B x) T.
+
+of (appl H A) Ta :-
+  of H (prod S T),
+  of A S,
+  Ta = T A.
+
+% suspension of typing on holes (type constraint)
+of U T :- var U, declare_constraint (of U T) [U].
+
+% uniqueness of typing
+constraint of {
+  rule (of (uvar X _) T) \ (of (uvar X _) S) <=> (S = T).
+}

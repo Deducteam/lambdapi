@@ -388,6 +388,9 @@ let command : p_command pp = fun ppf { elt; _ } ->
   | P_unif_rule ur -> out ppf "unif_rule %a" unif_rule ur
   | P_coercion c -> out ppf "%a" (rule "coerce_rule") c
   | P_opaque qid -> out ppf "opaque %a" qident qid
+  | P_elpi _ -> assert false
+  | P_type_class ({Pos.elt = id}) -> out ppf "existing typeclass %s" id
+  | P_type_class_instance ({Pos.elt = id}) -> out ppf "existing instance %s" id
   end;
   out ppf ";"
 

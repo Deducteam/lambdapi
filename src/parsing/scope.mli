@@ -27,6 +27,12 @@ val scope_term :
 val scope_search_pattern :
   ?find_sym:find_sym -> ?typ:bool -> ?mok:(int -> meta option) ->
   sig_state -> env -> p_term -> term
+  
+val scope_term_w_pats :
+  ?typ:bool (* default: false *) ->
+  ?mok:(int -> meta option) ->
+  bool -> sig_state -> env -> p_term -> term * (int * string) list
+
 
 (** [scope_rule ~find_sym ur ss r] turns a parser-level rewriting rule [r],
     or a unification rule if [ur] is true, into a pre-rewriting rule.

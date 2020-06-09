@@ -950,8 +950,8 @@ type cp_pos = Pos.popt * term * term * subterm_pos * term
     definition. The typing environment [x1:A1,..,xn:An] is represented by the
     list [xn:An;..;x1:A1] in reverse order (last added variable comes
     first). *)
-type ctxt = (var * term * term option) list
-
+type 'a actxt = (var * 'a * term option) list
+type ctxt = term actxt
 let decl ppf (v,a,d) =
   out ppf "%a: %a" var v term a;
   match d with

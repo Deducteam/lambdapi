@@ -490,6 +490,22 @@ let scope_search_pattern : ?find_sym:find_sym -> ?typ:bool ->
     ; m_lhs_in_env  = [] }) in
   scope ?find_sym ~typ 0 md ss env t
 
+let scope_term_w_pats: ?typ:bool -> ?mok:(int -> meta option) ->
+  bool -> sig_state -> env -> p_term -> term * (int * string) list =
+  fun ?(typ=false) ?(mok=fun _ -> None) m_term_prv ss env t ->
+    let names = Hashtbl.create 1 in
+    let md = M_LHS {
+      m_lhs_prv = false;
+      m_lhs_indices = Hashtbl.create 1;
+      m_lhs_arities = Hashtbl.create 1;
+      m_lhs_names = names;
+      m_lhs_size = 0;
+      m_lhs_in_env = []
+    } in
+    let t = (scope ~typ 0 md ss env t) in
+    t, List.of_seq (Hashtbl.to_seq names)
+  
+
 (** [patt_vars t] returns a couple [(pvs,nl)]. The first compoment [pvs] is an
     association list giving the arity of all the “pattern variables” appearing
     in the parser-level term [t]. The second component [nl] contains the names
