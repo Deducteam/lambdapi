@@ -4,13 +4,11 @@ world: compile
 clean:
 	rm -rf node_modules/ out/
 
-VSCODE_DIR=~/.vscode/extensions
-VSCODE_LP=$(VSCODE_DIR)/lp-vscode
+LP-VSCODE=~/.vscode/extensions/lp-vscode
 node_modules:
 	npm install
-	rm -f $(VSCODE_LP)
-	mkdir -p $(VSCODE_DIR)
-	ln -sf `pwd` $(VSCODE_LP)
+	rm -f $(LP-VSCODE)
+	ln -sf `pwd` $(LP-VSCODE)
 
 compile: node_modules
 	npm run compile
