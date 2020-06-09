@@ -298,7 +298,9 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
         in
         let ts =
           match ts with
-          | None -> [||] (* $M stands for $M[] *)
+          | None ->
+              if env = [] then [||] (* $M stands for $M[] *)
+              else fatal t.pos "Missing square brackets under binder."
           | Some ts ->
               let vs = Array.map scope_var ts in
               (* Check that [vs] are distinct variables. *)
