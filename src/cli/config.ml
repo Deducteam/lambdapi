@@ -191,11 +191,9 @@ let full : config Term.t =
   $ no_warnings $ debug $ no_colors $ too_long $ confluence $ termination
 
 (** [minimal] gathers the minimal command line options to enable debugging and
-    accest to the library root. *)
+    access to the library root. *)
 let minimal : config Term.t =
   let fn lib_root map_dir verbose debug no_colors =
     { default_config with lib_root ; map_dir ; verbose ; debug ; no_colors }
   in
   Term.(const fn $ lib_root $ map_dir $ verbose $ debug $ no_colors)
-
-
