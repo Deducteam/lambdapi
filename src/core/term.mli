@@ -257,7 +257,7 @@ end
     list [xn:An;..;x1:A1] in reverse order (last added variable comes
     first). *)
 type 'a actxt = (tvar * 'a * term option) list
-type ctxt = term actx
+type ctxt = term actxt
 
 (** Typing context with lifted terms. Used to optimise type checking and avoid
     lifting terms several times. Definitions are not included because these
@@ -294,10 +294,11 @@ module Sym : Map.OrderedType with type t = sym
 module SymSet : Set.S with type elt = sym
 module SymMap : Map.S with type key = sym
 
-(** [create_sym path expo prop opaq name typ impl] creates a new symbol with
+(** [create_sym path expo prop opaq name typ impl tc] creates a new symbol with
    position [pos], path [path], exposition [expo], property [prop], opacity
    [opaq], matching strategy [mstrat], name [name.elt], type [typ], implicit
-   arguments [impl], position [name.pos], no definition and no rules. *)
+   arguments [impl], position [name.pos], typeclass [tc] no definition and no
+   rules. *)
 val create_sym : Path.t -> expo -> prop -> match_strat -> bool ->
   Pos.strloc -> term -> bool list -> sym
 

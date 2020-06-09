@@ -45,6 +45,7 @@ type token =
   | COMPUTE
   | CONSTANT
   | DEBUG
+  | ELPI
   | END
   | FAIL
   | FLAG
@@ -55,6 +56,7 @@ type token =
   | INDUCTIVE
   | INFIX
   | INJECTIVE
+  | INSTANCE
   | LET
   | NOTATION
   | OPAQUE
@@ -80,6 +82,7 @@ type token =
   | SYMMETRY
   | TYPE_QUERY
   | TYPE_TERM
+  | TYPECLASS
   | UNIF_RULE
   | VERBOSE
   | WHY3
@@ -208,6 +211,7 @@ let rec token lb =
   | "compute" -> COMPUTE
   | "constant" -> CONSTANT
   | "debug" -> DEBUG
+  | "elpi" -> ELPI
   | "end" -> END
   | "fail" -> FAIL
   | "flag" -> FLAG
@@ -218,6 +222,7 @@ let rec token lb =
   | "inductive" -> INDUCTIVE
   | "infix" -> INFIX
   | "injective" -> INJECTIVE
+  | "instance" -> INSTANCE
   | "left" -> SIDE(Pratter.Left)
   | "let" -> LET
   | "notation" -> NOTATION
@@ -246,6 +251,7 @@ let rec token lb =
   | "symbol" -> SYMBOL
   | "symmetry" -> SYMMETRY
   | "type" -> TYPE_QUERY
+  | "typeclass" -> TYPECLASS
   | "TYPE" -> TYPE_TERM
   | "unif_rule" -> UNIF_RULE
   | "verbose" -> VERBOSE

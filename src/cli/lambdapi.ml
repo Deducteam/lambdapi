@@ -23,6 +23,7 @@ let check_cmd : Config.t -> int option -> string list -> unit =
   let run _ =
     let open Timed in
     Config.init cfg;
+    Elpi_handle.init ();
     (* We save time to run each file in the same environment. *)
     let time = Time.save () in
     let handle file =

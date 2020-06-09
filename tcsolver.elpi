@@ -1,0 +1,34 @@
+msolve L :- 
+  compile_all Cl,
+  Cl => std.forall L (open tc).
+
+pred open i:(term -> term -> prop), i:sealed-goal.
+open P (nabla F) :- pi x\ open P (F x).
+open P (seal (goal Ctx Ty Wit)) :-
+  print "TC PROBLEM:\n" Ctx "|-\n" Wit ":" Ty "\n",
+  Ctx => P Ty Wit,
+  print "TC INSTANCE:\n" Ctx "|-\n" Wit ":" Ty "\n".
+
+:index(_ 4)
+pred tc o:term, o:term.
+
+pred compile i:term, i:list prop, i:term, o:prop.
+compile (prod (appl T U) F) TODO H (pi x\ C x) :-
+  T = symb S, lp.tc? S,
+  !,
+  pi x\
+    compile (F x) [tc (appl T U) x |TODO] (appl H x) (C x).
+
+compile (prod _ F) TODO H (pi x\ C x) :-
+  !,
+  pi x\
+    compile (F x) TODO (appl H x) (C x).
+
+compile End TODO HD (tc End HD :- TODO).
+
+pred compile_all o:list prop.
+compile_all Props :-
+  lp.tc-instances Candidates,
+  std.map Candidates
+    (N\claus\ sigma T\ lp.sig N T, compile T [] (symb N) claus)
+    Props.

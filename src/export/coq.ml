@@ -55,6 +55,8 @@ let modifier : p_modifier pp = fun ppf {elt; _} ->
   | P_mstrat(s) -> Print.match_strat ppf s
   | P_prop(p)   -> Print.prop ppf p
   | P_opaq      -> out ppf "opaque "
+  | P_typeclass -> assert false (* TODO *)
+  | P_typeclass_instance -> assert false (* TODO *)
 
 (* ends with a space if the list is not empty *)
 let modifiers : p_modifier list pp = List.pp modifier ""
@@ -271,6 +273,7 @@ let command : p_command pp = fun ppf { elt; _ } ->
         (Option.pp (unit "@," |+ proof)) p_sym_prf
     end
   | P_unif_rule _ -> ()
+  | P_elpi _ -> ()
   end
 
 let ast : ast pp = fun ppf -> Stream.iter (command ppf)

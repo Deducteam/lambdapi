@@ -234,6 +234,8 @@ type p_modifier_aux =
   | P_expo of Term.expo (** visibility of symbol outside its modules *)
   | P_prop of Term.prop (** symbol properties: constant, definable, ... *)
   | P_opaq (** opacity *)
+  | P_typeclass
+  | P_typeclass_instance
 
 type p_modifier = p_modifier_aux loc
 
@@ -266,6 +268,7 @@ type p_command_aux =
   | P_unif_rule of p_rule
   | P_coercion of p_rule
   | P_query of p_query
+  | P_elpi of string * string * p_term
 
 (** Parser-level representation of a single (located) command. *)
 type p_command = p_command_aux loc

@@ -18,6 +18,11 @@ val scope_term :
   ?mok:(int -> meta option) ->
   bool -> sig_state -> env -> p_term -> term
 
+val scope_term_w_pats :
+  ?typ:bool (* default: false *) ->
+  ?mok:(int -> meta option) ->
+  bool -> sig_state -> env -> p_term -> term * (int * string) list
+
 (** Representation of a rewriting rule prior to SR-checking. *)
 type pre_rule =
   { pr_sym      : sym

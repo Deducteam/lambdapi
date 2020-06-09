@@ -276,7 +276,8 @@ end
     first). Note that it cannot be implemented by a map as the order is
     important. *)
 type 'a actxt = (tvar * 'a * term option) list
-type ctxt = term actx
+type ctxt = term actxt
+
 (** Typing context with lifted terms. Used to optimise type checking and avoid
     lifting terms several times. Definitions are not included because these
     contexts are used to create meta variables types, which do not use [let]
@@ -350,7 +351,7 @@ type problem = problem_aux ref
 let new_problem : unit -> problem = fun () ->
  ref {to_solve  = []; unsolved = []; recompute = false; metas = MetaSet.empty}
 
-(** [create_sym path expo prop opaq name typ impl] creates a new symbol with
+(** [create_sym path expo prop opaq name typ impl tc] creates a new symbol with
    path [path], exposition [expo], property [prop], opacity [opaq], matching
    strategy [mstrat], name [name.elt], type [typ], implicit arguments [impl],
    position [name.pos], no definition and no rules. *)
