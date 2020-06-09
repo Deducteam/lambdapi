@@ -7,7 +7,7 @@ open Timed
 (** [type_of x ctx] returns the type of [x] in the context [ctx] when it
     appears in it, and
 @raise [Not_found] otherwise. *)
-let type_of : tvar -> ctxt -> term = fun x ctx ->
+let type_of : tvar -> 'a actxt -> 'a = fun x ctx ->
   let (_,a,_) = List.find (fun (y,_,_) -> Bindlib.eq_vars x y) ctx in a
 
 (** [def_of x ctx] returns the definition of [x] in the context [ctx] if it

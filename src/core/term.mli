@@ -256,7 +256,8 @@ end
     definition. The typing environment [x1:A1,..,xn:An] is represented by the
     list [xn:An;..;x1:A1] in reverse order (last added variable comes
     first). *)
-type ctxt = (tvar * term * term option) list
+type 'a actxt = (tvar * 'a * term option) list
+type ctxt = term actx
 
 (** Typing context with lifted terms. Used to optimise type checking and avoid
     lifting terms several times. Definitions are not included because these

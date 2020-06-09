@@ -275,8 +275,8 @@ end
     list [xn:An;..;x1:A1] in reverse order (last added variable comes
     first). Note that it cannot be implemented by a map as the order is
     important. *)
-type ctxt = (tvar * term * term option) list
-
+type 'a actxt = (tvar * 'a * term option) list
+type ctxt = term actx
 (** Typing context with lifted terms. Used to optimise type checking and avoid
     lifting terms several times. Definitions are not included because these
     contexts are used to create meta variables types, which do not use [let]
