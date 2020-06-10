@@ -35,7 +35,7 @@
 
  ;; Miscellaneous
 
- ("\\Box" ?□) ("[]" ?□)
+ ("\\Box" ?□)
  ("::" ?⸬)
 
  ;; Greek letters

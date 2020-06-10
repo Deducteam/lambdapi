@@ -141,26 +141,32 @@ with add (succ $n) $m ↪ succ (add $n $m)
 Pattern variables need to be prefixed by `$`.
 
 **Higher-order pattern-matching**.
-Lambdapi accepts higher-order pattern variables too:
+Lambdapi allows higher-order pattern-matching (not in full generality
+though):
 
 ```
 rule diff (λx, sin $F[x]) ↪ λx, diff (λx, $F[x]) x × cos $F[x]
-rule lam (λx, app $F x) ↪ $F // η-reduction
+rule lam (λx, app $F[] x) ↪ $F // η-reduction
 ```
 
-It is possible to define an unnamed pattern variable with the syntax `$_[x,y]`
-(it matches any term with at most `x` and `y` as its free variables). If `x`
-and `y` are the only variables in scope, then `_` is equivalent to `$_[x,y]`.
-
-In left-hand side, λ-expressions must have no type annotations.
+Hence, the rule `lam (λx, app $F[] x) ↪ $F` implements η-reduction
+since no valid instance of `$F` can contain `x`.
 
 Pattern variables can be applied to distinct bound variables only,
 that is, the terms between `[` and `]` must be distinct bound
 variables only.
 
-Lambdapi uses higher-order pattern-matching (not in full generality
-though). Hence, the rule `lam (λx, app $F x) ↪ $F` implements
-η-reduction since no valid instance of `F` can contain `x`.
+`$P` without square brackets is a short-hand for `$P[]`. This
+short-hand cannot be used though when `$P` occurs in a rule left-hand
+side below a binder like in the rule η above.
+
+It is possible to define an unnamed pattern variable with the syntax
+`$_[x,y]`.
+
+If `x` and `y` are the only variables in scope, then `_` is equivalent
+to `$_[x,y]`.
+
+In rule left-hand sides, λ-expressions must have no type annotations.
 
 **Important**. In contrast to languages like OCaml, Coq, Agda, etc. rule
  left-hand sides can contain defined symbols:

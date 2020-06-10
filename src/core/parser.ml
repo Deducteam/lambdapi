@@ -370,11 +370,11 @@ let parser term @(p : prio) =
   | _wild_
       when p >= PAtom -> in_pos _loc P_Wild
   (* Metavariable. *)
-  | m:meta e:env?[[]]
-      when p >= PAtom -> in_pos _loc (P_Meta(m, Array.of_list e))
+  | m:meta e:env?
+      when p >= PAtom -> in_pos _loc (P_Meta(m, Option.map Array.of_list e))
   (* Pattern (LHS) or pattern application (RHS). *)
-  | p:patt e:env?[[]]
-      when p >= PAtom -> in_pos _loc (P_Patt(p, Array.of_list e))
+  | p:patt e:env?
+      when p >= PAtom -> in_pos _loc (P_Patt(p, Option.map Array.of_list e))
   (* Parentheses. *)
   | "(" t:(term PFunc) ")"
       when p >= PAtom -> in_pos _loc (P_Wrap(t))
@@ -463,7 +463,9 @@ and parser binder =
       in_pos _loc (P_Abst([[Some(id)],a,false],t))
 
 (** [env] is a parser for a metavariable environment. *)
-and parser env = "[" t:(term PBinO) ts:{";" (term PBinO)}* "]" -> t::ts
+and parser env =
+  | "[" "]" -> []
+  | "[" t:(term PBinO) ts:{";" (term PBinO)}* "]" -> t::ts
 
 (** [arg] parses a single function argument. *)
 and parser arg =

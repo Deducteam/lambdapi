@@ -41,11 +41,11 @@ An identifier can be:
 
  * application is written by space-separated juxtaposition, except for symbol identifiers declared as infix (e.g. `x+y`)
 
- * a meta-variable application `?M[t;u;v]`
+ * a meta-variable application `?M[t;u;v]`. `?M` alone, without arguments between square brackets, is a shorthand for `?M[x1;..;xn]` where `x1;..;xn` are all the variables of the context.
 
- * a pattern-variable application `$M[x;y]` (in rules only)
+ * a pattern-variable application `$P[x;y]` (in rules only). `$P` alone, without arguments between square brackets, is a shorthand for `$P[]`. This short-hand is not allowed under binders.
 
- * `_` for an unknown term or a term we don't care about. It will be infered by the system or, inside a proof, replaced by a fresh metavariable generating a new subgoal. It is replaced by a metavariable (or a pattern variable in the case of a rule left-hand side) applied to all the variables of the context.
+ * `_` for an unknown term or a term we don't care about. It is replaced by a fresh metavariable (or a fresh pattern variable in a rule left-hand side) applied to all the variables of the context.
 
  * an integer between 0 and 2^30-1 if the builtins "0" and "+1" are defined (see the [`set`](commands.md) command)
 
