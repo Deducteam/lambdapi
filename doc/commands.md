@@ -104,7 +104,7 @@ Exposition obeys the following rules: inside a module,
 **Implicit arguments:** Some function symbol arguments can be declared
 as implicit meaning that they must not be given by the user
 later. Implicit arguments are replaced by `_` at parsing time,
-generating a fresh metavariables. An argument declared as implicit can
+generating fresh metavariables. An argument declared as implicit can
 be explicitly given by enclosing it between curly brackets `{` ... `}`
 though. If a function symbol is prefixed by `@` then the implicit
 arguments mechanism is disabled and all the arguments must be
