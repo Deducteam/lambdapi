@@ -51,4 +51,4 @@ An identifier can be:
 
 Subterms can be parenthesized to avoid ambiguities.
 
-In case of a the application of a function symbol, an implicit argument can be given by enclosing it between curly brackets `{` ... `}`.
+In case of the application of a function symbol, an implicit argument can be given by enclosing it between curly brackets `{` ... `}`.
