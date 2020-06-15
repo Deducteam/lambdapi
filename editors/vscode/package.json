@@ -62,6 +62,7 @@
         "category": "Lambdapi"
       }
     ]
+
   },
   "main": "out/src/client.js",
   "scripts": {

@@ -2,17 +2,27 @@
   "scopeName": "source.lp",
   "patterns": [
     {
-      "include": "#commands"
+      "include": "#comments"
     },
     {
-      "include": "#comments"
+      "include": "#tactics"
+    },
+    {
+      "include": "#signature-commands"
+    },
+    {
+      "include": "#warning"
+    },
+    {
+      "include": "#misc"
+    },
+    {
+      "include": "#keywords"
     }
+
   ],
   "repository": {
-    "commands": {
-      "match": "\\b(abort|admit|and|apply|as|assert|assertnot|assume|compute|constant|definition|focus|in|injective|let|open|print|private|proof|proofterm|protected|qed|refine|reflexivity|require|rewrite|rule|set|simpl|symmetry|symbol|theorem|type|TYPE|why3)\\b",
-      "name": "keyword.control.lp"
-    },
+
     "comments": {
 			"patterns": [
 				{
@@ -21,6 +31,34 @@
 					"name": "comment.line.double-slash.lp"
 				}
 			]
-		}
+    },
+
+    "tactics": {
+      "match": "\\b(apply|assume|print|proofterm|refine|reflexivity|rewrite|simpl|symmetry|why3)\\b",
+      "name": "keyword.control.lp"
+    },
+
+    "signature-commands": {
+      "match": "\\b(definition|as|in|let|declared|builtin|open|proof|qed|require|rule|symbol|theorem|with)\\b",
+      "name": "storage.type.lp"
+    },
+
+    "warning": {
+      "match": "\\b(abort|admit|fail)\\b",
+      "name": "keyword.control.lp"
+    },
+
+    "misc": {
+      "match": "\\b(type|assert|assernot|compute|set)\\b",
+      "name:": "keyword.lp"
+    },
+
+    "keywords": {
+      "match": "\\b(TYPE|left|right|infix|prefix|quantifier|protected|private|injective|constant)\\b",
+      "name": "storage.modifier.lp"
+    }
+      
+
+    
   }
 }
