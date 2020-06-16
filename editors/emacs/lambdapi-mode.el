@@ -86,6 +86,23 @@
          'font-lock-constant-face))
   "Keyword highlighting for the LambdaPi mode.")
 
+;; Hook to be run when changing line
+;; From https://emacs.stackexchange.com/questions/46081/hook-when-line-number-changes
+(defvar current-line-number (line-number-at-pos))
+(defvar changed-line-hook nil)
+
+(defun update-line-number ()
+  (let ((new-line-number (line-number-at-pos)))
+    (when (not (equal new-line-number current-line-number))
+      (setq current-line-number new-line-number)
+      (run-hooks 'changed-line-hook))))
+
+(defun create-goals-buffer ()
+  (let ((goalsbuf (get-buffer-create "*Goals*"))
+        (goalswindow (split-window nil -10 'below)))
+    (set-window-buffer goalswindow goalsbuf)
+    (set-window-dedicated-p goalswindow 't)))
+
 ;; Main function creating the mode (lambdapi)
 ;;;###autoload
 (define-derived-mode lambdapi-mode prog-mode "LambdaPi"
@@ -119,7 +136,13 @@
   (add-to-list
    'eglot-server-programs
    '(lambdapi-mode . ("lambdapi" "lsp" "--standard-lsp")))
-  (eglot-ensure))
+  (eglot-ensure)
+
+  ;; Hooks for goals
+  (add-hook 'post-command-hook #'update-line-number nil :local)
+  ;; Hook binding line change to re-execution of proof/goals
+  (add-hook 'changed-line-hook #'eglot--signal-proof/goals)
+  (create-goals-buffer))
 
 (defun display-goals (goals)
   (if (> (length goals) 0)
@@ -147,18 +170,21 @@
           (insert "--------------\n")
           (mapc 'insert goalsstr)
           (insert "--------------\n")
-          (read-only-mode 1))
-        (switch-to-buffer-other-window goalsbuf))))
+          (read-only-mode 1)))))
 
 (defun eglot--signal-proof/goals ()
-  (interactive)
   "Send proof/goals to server."
-  (let ((server (eglot--current-server-or-lose))
+  (let ((server (eglot--current-server))
         (params `(:textDocument ,(eglot--TextDocumentIdentifier)
                   :position ,(eglot--pos-to-lsp-position))))
-    (let ((response (jsonrpc-request server :proof/goals params)))
-      (display-goals (plist-get response :goals))
-      )))
+    (if server
+        (let ((response (jsonrpc-request server :proof/goals params)))
+          (if response
+              (display-goals (plist-get response :goals)))))))
+
+(defun lp-show-goals ()
+  (interactive)
+  (eglot--signal-proof/goals))
 
 ;; Register mode the the ".lp" extension
 ;;;###autoload
