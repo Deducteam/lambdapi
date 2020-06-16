@@ -421,7 +421,7 @@ let rec lift : term -> tbox = fun t ->
     | TE_Some(_) -> assert false (* Unreachable. *)
   in
   (* We do not use [Bindlib.box_binder] here because it is possible for a free
-     variables to disappear form a term through metavariable instantiation. As
+     variable to disappear from a term through metavariable instantiation. As
      a consequence we must traverse the whole term, even when we find a closed
      binder, so that the metadata on nested binders is also updated. *)
   let lift_binder b =
@@ -444,10 +444,10 @@ let rec lift : term -> tbox = fun t ->
   | LLet(a,t,u) -> _LLet (lift a) (lift t) (lift_binder u)
 
 (** [cleanup t] builds a copy of the {!type:term} [t] where every instantiated
-    metavariable,  instantiated term environment,  and reference cell has been
-    eliminated using {!val:unfold}. Another effect of the function is that the
-    the names of bound variables updated.  This is useful to avoid any form of
-    "visual capture" while printing terms. *)
+   metavariable, instantiated term environment, and reference cell has been
+   eliminated using {!val:unfold}. Another effect of the function is that the
+   the names of bound variables are updated. This is useful to avoid any form
+   of "visual capture" while printing terms. *)
 let cleanup : term -> term = fun t -> Bindlib.unbox (lift t)
 
 (** [fresh_meta_box ?name a n] is the boxed counterpart of [fresh_meta]. It is
