@@ -3,7 +3,7 @@
  * Licensed under the MIT License. See License.txt in the project root for license information.
  * ------------------------------------------------------------------------------------------ */
 
-import { workspace, ExtensionContext, Position, Uri, commands, window, WebviewPanel, ViewColumn, TextEditor, TextDocument } from 'vscode';
+import { workspace, ExtensionContext, Position, Uri, commands, window, WebviewPanel, ViewColumn, TextEditor, TextDocument, SnippetString, Range as rg } from 'vscode';
 
 // Insiders API, disabled
 // import { WebviewEditorInset } from 'vscode';
@@ -20,6 +20,18 @@ import {
 } from 'vscode-languageclient';
 
 let client: LanguageClient;
+
+let proofState : Position = new Position(0, 0); //Cursor position when cursor mode is on (see l.65)
+let cursorMode : boolean = true; //(see l.65)
+
+let range : rg = new rg(proofState, proofState);
+
+
+const decorationType = window.createTextEditorDecorationType({
+    backgroundColor: 'green',
+    border: '2px solid white',
+  });
+
 
 export function activate(context: ExtensionContext) {
 
@@ -57,22 +69,69 @@ export function activate(context: ExtensionContext) {
                 {}
             );
 
-            window.onDidChangeActiveTextEditor(e => refresh(panel, e));
-            window.onDidChangeTextEditorSelection(e => refresh(panel, e.textEditor));
+            window.onDidChangeActiveTextEditor(e => refresh(panel, e, cursorMode));
+            window.onDidChangeTextEditorSelection(e => refresh(panel, e.textEditor, cursorMode));
+
+            /*Toggle cursor mode (defaults to true)
+                *if true, the "Proof" panel is updated when the cursor is moved
+                *if false, updated when "alt+up/down" is pressed
+            */
+            commands.registerCommand('extension.vscode-lp.cursor', () => {cursorMode = !cursorMode})
+
+            //Step forward in a proof (when cursor mode is off)
+            commands.registerCommand('extension.vscode-lp.fw', () => {
+                if(!cursorMode){
+
+                    proofState = proofState.translate(1, 0);
+                    console.log(proofState.line, cursorMode);
+                    refresh(panel, window.activeTextEditor, cursorMode);
+
+                    range = new rg(range.end, proofState);
+                    let openEditor = window.activeTextEditor;
+
+                    if(openEditor != undefined)
+                        openEditor.setDecorations(decorationType, [range]);
+                }
+            })
+            
+            //Step forward in a proof (when cursor mode is off)
+            commands.registerCommand('extension.vscode-lp.bw', () => {
+
+                if(!cursorMode){
+                    let step : number = proofState.line == 0 ? 0 : -1;
+                    proofState = proofState.translate(step, 0);
+                    console.log(proofState.line);
+                    refresh(panel, window.activeTextEditor, cursorMode);
+                }
+
+                range = new rg(range.end, proofState);
+                let openEditor = window.activeTextEditor;
+
+                if(openEditor != undefined)
+                    openEditor.setDecorations(decorationType, [range]);
+            })
+
 
         });
         context.subscriptions.push(client.start());
     };
 
     commands.registerCommand('extension.vscode-lp.restart', restart);
+    
+
 
     restart();
+
 }
 
-function refresh(panel : WebviewPanel, editor : TextEditor | undefined) {
+function refresh(panel : WebviewPanel, editor : TextEditor | undefined, cursorMode : boolean) {
 
-    if(editor)
+    if(editor && cursorMode)
         sendGoalsRequest(editor.selection.active, panel, editor.document.uri);
+    
+    else if(editor && !cursorMode)
+        sendGoalsRequest(proofState, panel, editor.document.uri);
+
 
 }
 
@@ -119,7 +178,7 @@ function getGoalsEnvContent(goals : Goal[]){
         codeEnvGoals = codeEnvGoals + "" + codeHyps + codeSep + codeGoals;
     }
 
-    // if there is no goals
+    // if there is no goal
     if(goals.length == 0){
         codeEnvGoals = codeEnvGoals + `No goals`;
     }

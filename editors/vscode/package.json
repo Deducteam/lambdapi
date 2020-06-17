@@ -60,6 +60,38 @@
         "command": "extension.vscode-lp.restart",
         "title": "Restart the Lambdapi VSCode mode",
         "category": "Lambdapi"
+      },
+      {
+        "command": "extension.vscode-lp.fw",
+        "title": "Step Forward in a Lambdapi proof",
+        "category": "Lambdapi"
+      },
+      {
+        "command": "extension.vscode-lp.bw",
+        "title": "Step Backwards in a Lambdapi proof",
+        "category": "Lambdapi"
+      },
+      {
+        "command": "extension.vscode-lp.cursor",
+        "title": "Toggle cursor mode (ProofView will either depend on the cursor or keybindings)",
+        "category": "Lambdapi"
+      }
+    ],
+    "keybindings": [
+      {
+        "key": "ctrl+alt+s",
+        "command": "extension.vscode-lp.fw",
+        "when": "editorTextFocus && editorLangId == lp"
+      },
+      {
+        "key": "ctrl+alt+z",
+        "command": "extension.vscode-lp.bw",
+        "when": "editorTextFocus && editorLangId == lp"
+      },
+      {
+        "key": "ctrl+alt+c",
+        "command": "extension.vscode-lp.cursor",
+        "when": "editorTextFocus && editorLangId == lp"
       }
     ]
   },
