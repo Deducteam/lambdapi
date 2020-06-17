@@ -30,7 +30,7 @@ set builtin "eqind" ≔ eq_ind
 /////////////////////////////
 // Some examples of inductive types
 /////////////////////////////
-
+set debug +induc
 constant symbol nat : Set // Natural number
 inductive Nat : TYPE ≔
  | z    : Nat
@@ -40,6 +40,13 @@ rule Nat ↪ τ nat
 type ind_Nat // Induction principle
 assert ind_Nat :
   Πp:Nat → Prop, π(p z) → (Πx, π (p x) → π (p (succ x))) → Πx, π (p x)
+
+symbol p : Nat → Prop // Tests about inductive rules
+symbol pizero : π (p z)
+symbol x : Nat
+symbol pisucc : Πx, π (p x) → π (p (succ x))
+assert ind_Nat p pizero _ z ≡ pizero
+assert ind_Nat p pizero pisucc (succ x) ≡ pisucc x (ind_Nat p pizero pisucc x)
 
 assert z : Nat // Examples
 assert succ z : Nat
@@ -54,6 +61,14 @@ rule List ↪ τ list
 type ind_List // Induction principle
 assert ind_List :
   Π(p:List → Prop), π(p nil) → (Πx l,π(p l) → π(p(cons x l))) → Πl,π(p l)
+
+symbol pL : List → Prop // Tests about inductive rules
+symbol pinil : π (p nil)
+symbol l : List
+symbol picons : Πx, π (p l) → π (p (cons x l))
+assert ind_List pL pinil _ nil ≡ pinil
+assert ind_List pL pinil picons (cons x l)
+     ≡ picons x l (ind_List pL pinil picons l)
 
 assert nil : List // Examples
 assert cons (succ (succ (succ z))) nil : List
