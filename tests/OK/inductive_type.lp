@@ -30,7 +30,7 @@ set builtin "eqind" ≔ eq_ind
 /////////////////////////////
 // Some examples of inductive types
 /////////////////////////////
-set debug +induc
+set debug +l
 constant symbol nat : Set // Natural number
 inductive Nat : TYPE ≔
  | z    : Nat
@@ -63,9 +63,9 @@ assert ind_List :
   Π(p:List → Prop), π(p nil) → (Πx l,π(p l) → π(p(cons x l))) → Πl,π(p l)
 
 symbol pL : List → Prop // Tests about inductive rules
-symbol pinil : π (p nil)
+symbol pinil : π (pL nil)
 symbol l : List
-symbol picons : Πx, π (p l) → π (p (cons x l))
+symbol picons : Πx l, π (pL l) → π (pL (cons x l))
 assert ind_List pL pinil _ nil ≡ pinil
 assert ind_List pL pinil picons (cons x l)
      ≡ picons x l (ind_List pL pinil picons l)

@@ -99,7 +99,6 @@ let ind_rule : Sig_state.t -> popt -> string -> string -> term -> sym list
     let p_iden = Pos.make pos (P_Iden(ind_prop, true)) in
     let p_patt = Pos.make pos (P_Patt(Some p, [||]))   in
     let head = P_Appl(p_iden, p_patt)                  in
-    (*if !log_enabled then log_induc_rule "try to create the common head of the rules [%a]" Pretty.pp_p_term p_iden;*)
     let rec aux : sym list -> p_term -> p_term = fun l acc ->
       match l with
       | []   -> acc
@@ -111,6 +110,9 @@ let ind_rule : Sig_state.t -> popt -> string -> string -> term -> sym list
     aux l (Pos.make pos head)
   in
   let common_head = arg cons_list (Pos.make pos ([], ind_prop_name)) in
+  if !log_enabled then
+    log_induc_rule "The common head of the rules [%a]"
+      Pretty.pp_p_term common_head;
   (* Build the whole of the rules *)
   let e : term -> sym list -> p_rule list = fun _ l ->
     let rec aux : sym list -> p_rule list -> p_rule list = fun l acc ->
@@ -128,20 +130,23 @@ let ind_rule : Sig_state.t -> popt -> string -> string -> term -> sym list
                 if s.sym_name == type_name then
                   let appl a b = Pos.make pos (P_Appl(a,b)) in
                   let (lhs_end, rhs_x_head) =
-                    match arg_list with
+                    match List.rev arg_list with
                     | []   -> t_ident, p_patt
                     | x::z ->
-                        let arg_list = List.fold_right appl z x in
-                        Pos.make pos (P_Appl(t_ident, arg_list)),
-                        Pos.make pos (P_Appl(p_patt, arg_list))
+                        (*let arg_list = List.fold_left appl x z in*)
+                        List.fold_left appl (Pos.make pos (P_Appl(t_ident, x))) z,
+                        List.fold_left appl (Pos.make pos (P_Appl(p_patt, x))) z
+                        (* Pos.make pos (P_Appl(t_ident, arg_list)),
+                        Pos.make pos (P_Appl(p_patt, arg_list)) *)
                   in
                   let lhs_x = Pos.make pos (P_Appl(common_head, lhs_end))  in
                   let rhs_x = match hyp_rec_list with
                     | []   -> rhs_x_head
                     | x::z ->
-                        let hyp_rec_list = List.fold_right appl z x in
-                        Pos.make pos (P_Appl(rhs_x_head, hyp_rec_list))
+                        List.fold_left appl (Pos.make pos (P_Appl(rhs_x_head, x))) z
                   in
+                  if !log_enabled then
+                    log_induc_rule "The rule [%a] --> %a" Pretty.pp_p_term lhs_x Pretty.pp_p_term rhs_x;
                   let t = Pos.make pos (lhs_x, rhs_x) in t::tmp
                 else assert false (* See the function named "principle" *)
             | Prod(a, b) ->
