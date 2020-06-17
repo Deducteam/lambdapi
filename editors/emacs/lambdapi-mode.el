@@ -86,6 +86,48 @@
          'font-lock-constant-face))
   "Keyword highlighting for the LambdaPi mode.")
 
+(defun display-goals (goals)
+  (if (> (length goals) 0)
+      (let* ((goalsbuf (get-buffer-create "*Goals*"))
+             (fstgoal  (elt goals 0))
+             (hs       (plist-get fstgoal :hyps))
+             (hypsstr  (mapcar
+                        (lambda (hyp)
+                          (let ((name (plist-get hyp :hname))
+                                (type (plist-get hyp :htype)))
+                            (format "%s: %s\n"
+                                    name type)))
+                        (reverse hs)))
+             (goalsstr (mapcar
+                        (lambda (goal)
+                          (let ((id (plist-get goal :gid))
+                                (type (plist-get goal :type)))
+                            (format "Goal %d: %s\n" id type)))
+                        goals)))
+        (with-current-buffer goalsbuf
+          (read-only-mode -1)
+          (erase-buffer)
+          (goto-char (point-max))
+          (mapc 'insert hypsstr)
+          (insert "--------------\n")
+          (mapc 'insert goalsstr)
+          (insert "--------------\n")
+          (read-only-mode 1)))))
+
+(defun eglot--signal-proof/goals ()
+  "Send proof/goals to server."
+  (let ((server (eglot--current-server))
+        (params `(:textDocument ,(eglot--TextDocumentIdentifier)
+                  :position ,(eglot--pos-to-lsp-position))))
+    (if server
+        (let ((response (jsonrpc-request server :proof/goals params)))
+          (if response
+              (display-goals (plist-get response :goals)))))))
+
+(defun lp-display-goals ()
+  (interactive)
+  (eglot--signal-proof/goals))
+
 ;; Hook to be run when changing line
 ;; From https://emacs.stackexchange.com/questions/46081/hook-when-line-number-changes
 (defvar current-line-number (line-number-at-pos))
@@ -149,49 +191,10 @@
   (add-hook 'post-command-hook #'update-line-number nil :local)
   ;; Hook binding line change to re-execution of proof/goals
   (add-hook 'changed-line-hook #'eglot--signal-proof/goals)
-  (create-goals-buffer))
+  (create-goals-buffer)
 
-(defun display-goals (goals)
-  (if (> (length goals) 0)
-      (let* ((goalsbuf (get-buffer-create "*Goals*"))
-             (fstgoal  (elt goals 0))
-             (hs       (plist-get fstgoal :hyps))
-             (hypsstr  (mapcar
-                        (lambda (hyp)
-                          (let ((name (plist-get hyp :hname))
-                                (type (plist-get hyp :htype)))
-                            (format "%s: %s\n"
-                                    name type)))
-                        (reverse hs)))
-             (goalsstr (mapcar
-                        (lambda (goal)
-                          (let ((id (plist-get goal :gid))
-                                (type (plist-get goal :type)))
-                            (format "Goal %d: %s\n" id type)))
-                        goals)))
-        (with-current-buffer goalsbuf
-          (read-only-mode -1)
-          (erase-buffer)
-          (goto-char (point-max))
-          (mapc 'insert hypsstr)
-          (insert "--------------\n")
-          (mapc 'insert goalsstr)
-          (insert "--------------\n")
-          (read-only-mode 1)))))
-
-(defun eglot--signal-proof/goals ()
-  "Send proof/goals to server."
-  (let ((server (eglot--current-server))
-        (params `(:textDocument ,(eglot--TextDocumentIdentifier)
-                  :position ,(eglot--pos-to-lsp-position))))
-    (if server
-        (let ((response (jsonrpc-request server :proof/goals params)))
-          (if response
-              (display-goals (plist-get response :goals)))))))
-
-(defun lp-show-goals ()
-  (interactive)
-  (eglot--signal-proof/goals))
+  ;; Keybinding for goals display
+  (local-set-key "C-g C-d" 'lp-display-goals))
 
 ;; Register mode the the ".lp" extension
 ;;;###autoload
