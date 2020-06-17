@@ -91,17 +91,24 @@
 (defvar current-line-number (line-number-at-pos))
 (defvar changed-line-hook nil)
 
+(defvar interactive-goals 't)
+
 (defun update-line-number ()
-  (let ((new-line-number (line-number-at-pos)))
-    (when (not (equal new-line-number current-line-number))
-      (setq current-line-number new-line-number)
-      (run-hooks 'changed-line-hook))))
+  (if interactive-goals
+      (let ((new-line-number (line-number-at-pos)))
+        (when (not (equal new-line-number current-line-number))
+          (setq current-line-number new-line-number)
+          (run-hooks 'changed-line-hook)))))
 
 (defun create-goals-buffer ()
   (let ((goalsbuf (get-buffer-create "*Goals*"))
         (goalswindow (split-window nil -10 'below)))
     (set-window-buffer goalswindow goalsbuf)
     (set-window-dedicated-p goalswindow 't)))
+
+(defun toggle-interactive-goals ()
+  (interactive)
+  (setq interactive-goals (not interactive-goals)))
 
 ;; Main function creating the mode (lambdapi)
 ;;;###autoload
