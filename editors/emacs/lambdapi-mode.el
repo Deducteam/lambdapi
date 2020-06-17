@@ -116,7 +116,7 @@
 
 (defun eglot--signal-proof/goals ()
   "Send proof/goals to server."
-  (let ((server (eglot--current-server))
+  (let ((server (eglot-current-server))
         (params `(:textDocument ,(eglot--TextDocumentIdentifier)
                   :position ,(eglot--pos-to-lsp-position))))
     (if server
