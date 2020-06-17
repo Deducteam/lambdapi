@@ -58,11 +58,10 @@
     "commands": [
       {
         "command": "extension.vscode-lp.restart",
-        "title": "Restart the Lambdapi VsCode mode",
+        "title": "Restart the Lambdapi VSCode mode",
         "category": "Lambdapi"
       }
     ]
-
   },
   "main": "out/src/client.js",
   "scripts": {
@@ -74,10 +73,12 @@
     "@types/mocha": "^2.2.42",
     "@types/node": "^10.14.15",
     "@types/vscode": "^1.37",
+    "@types/fs-extra": "^5.0.0",
     "tslint": "^5.12.1",
     "typescript": "^3.3.1"
   },
   "dependencies": {
+    "fs-extra": "^9.0.1",
     "vscode-languageclient": "5.2.1"
   }
 }
