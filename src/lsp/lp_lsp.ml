@@ -213,7 +213,8 @@ let rec get_goals ~doc ~line ~pos =
   let node = get_node_at_pos doc line pos in
   let goals = match node with
     | None -> None
-    | Some n -> List.find_opt (fun (_, loc) -> in_range ?loc (line,pos)) n.goals in
+    | Some n ->
+        List.find_opt (fun (_, loc) -> in_range ?loc (line,pos)) n.goals in
   match goals with
     | None -> begin match node with
               | None   -> None
