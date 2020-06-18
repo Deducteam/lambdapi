@@ -133,6 +133,16 @@
   (interactive)
   (eglot--signal-proof/goals))
 
+(defun lp-proof-forward ()
+  (interactive)
+  (lp-display-goals)
+  (forward-line))
+
+(defun lp-proof-backward ()
+  (interactive)
+  (lp-display-goals)
+  (forward-line -1))
+
 ;; Hook to be run when changing line
 ;; From https://emacs.stackexchange.com/questions/46081/hook-when-line-number-changes
 (defvar current-line-number (line-number-at-pos))
@@ -207,6 +217,8 @@
 ;; Keybinding for goals display
 (global-set-key (kbd "C-x C-d") 'lp-display-goals)
 (global-set-key (kbd "C-M-c")   'toggle-interactive-goals)
+(global-set-key (kbd "<M-up>")  'lp-proof-backward)
+(global-set-key (kbd "<M-down>") 'lp-proof-forward)
 
 (provide 'lambdapi-mode)
 ;;; lambdapi-mode.el ends here
