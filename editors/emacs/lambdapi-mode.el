@@ -87,32 +87,32 @@
   "Keyword highlighting for the LambdaPi mode.")
 
 (defun display-goals (goals)
-  (if (> (length goals) 0)
-      (let* ((goalsbuf (get-buffer-create "*Goals*"))
-             (fstgoal  (elt goals 0))
-             (hs       (plist-get fstgoal :hyps))
-             (hypsstr  (mapcar
-                        (lambda (hyp)
-                          (let ((name (plist-get hyp :hname))
-                                (type (plist-get hyp :htype)))
-                            (format "%s: %s\n"
-                                    name type)))
-                        (reverse hs)))
-             (goalsstr (mapcar
-                        (lambda (goal)
-                          (let ((id (plist-get goal :gid))
-                                (type (plist-get goal :type)))
-                            (format "Goal %d: %s\n" id type)))
-                        goals)))
-        (with-current-buffer goalsbuf
-          (read-only-mode -1)
-          (erase-buffer)
-          (goto-char (point-max))
-          (mapc 'insert hypsstr)
-          (insert "--------------\n")
-          (mapc 'insert goalsstr)
-          (insert "--------------\n")
-          (read-only-mode 1)))))
+  (let ((goalsbuf (get-buffer-create "*Goals*")))
+    (with-current-buffer goalsbuf
+      (read-only-mode -1)
+      (if (> (length goals) 0)
+          (let* ((fstgoal  (elt goals 0))
+                 (hs       (plist-get fstgoal :hyps))
+                 (hypsstr  (mapcar
+                            (lambda (hyp)
+                              (let ((name (plist-get hyp :hname))
+                                    (type (plist-get hyp :htype)))
+                                (format "%s: %s\n" name type)))
+                            (reverse hs)))
+                 (goalsstr (mapcar
+                            (lambda (goal)
+                              (let ((id (plist-get goal :gid))
+                                    (type (plist-get goal :type)))
+                                (format "Goal %d: %s\n" id type)))
+                            goals)))
+            (erase-buffer)
+            (goto-char (point-max))
+            (mapc 'insert hypsstr)
+            (insert "--------------\n")
+            (mapc 'insert goalsstr)
+            (insert "--------------\n"))
+        (erase-buffer))
+      (read-only-mode 1))))
 
 (defun eglot--signal-proof/goals ()
   "Send proof/goals to server."
@@ -122,7 +122,12 @@
     (if server
         (let ((response (jsonrpc-request server :proof/goals params)))
           (if response
-              (display-goals (plist-get response :goals)))))))
+              (display-goals (plist-get response :goals))
+            (let ((goalsbuf (get-buffer-create "*Goals*")))
+              (with-current-buffer goalsbuf
+                (read-only-mode -1)
+                (erase-buffer)
+                (read-only-mode 1))))))))
 
 (defun lp-display-goals ()
   (interactive)
@@ -191,16 +196,17 @@
   (add-hook 'post-command-hook #'update-line-number nil :local)
   ;; Hook binding line change to re-execution of proof/goals
   (add-hook 'changed-line-hook #'eglot--signal-proof/goals)
-  (create-goals-buffer)
-
-  ;; Keybinding for goals display
-  (local-set-key "C-g C-d" 'lp-display-goals))
+  (create-goals-buffer))
 
 ;; Register mode the the ".lp" extension
 ;;;###autoload
 (add-to-list 'auto-mode-alist '("\\.lp\\'" . lambdapi-mode))
 ;;;###autoload
 (add-to-list 'auto-mode-alist '("\\.dk\\'" . lambdapi-legacy-mode))
+
+;; Keybinding for goals display
+(global-set-key (kbd "C-x C-d") 'lp-display-goals)
+(global-set-key (kbd "C-M-c")   'toggle-interactive-goals)
 
 (provide 'lambdapi-mode)
 ;;; lambdapi-mode.el ends here
