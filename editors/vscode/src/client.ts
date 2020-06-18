@@ -19,6 +19,9 @@ import {
     RegistrationRequest,
 } from 'vscode-languageclient';
 
+//To read files from the file system
+import * as fs from 'fs-extra';
+
 let client: LanguageClient;
 
 let proofState : Position = new Position(0, 0); //Cursor position when cursor mode is on (see l.65)
@@ -26,12 +29,10 @@ let cursorMode : boolean = true; //(see l.65)
 
 let range : rg = new rg(proofState, proofState);
 
-
 const decorationType = window.createTextEditorDecorationType({
     backgroundColor: 'green',
     border: '2px solid white',
   });
-
 
 export function activate(context: ExtensionContext) {
 
@@ -104,7 +105,7 @@ export function activate(context: ExtensionContext) {
                     refresh(panel, window.activeTextEditor, cursorMode);
                 }
 
-                range = new rg(range.end, proofState);
+                range = new rg(proofState, range.start);
                 let openEditor = window.activeTextEditor;
 
                 if(openEditor != undefined)
@@ -118,8 +119,6 @@ export function activate(context: ExtensionContext) {
 
     commands.registerCommand('extension.vscode-lp.restart', restart);
     
-
-
     restart();
 
 }
