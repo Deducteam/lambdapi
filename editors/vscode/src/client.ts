@@ -19,9 +19,6 @@ import {
     RegistrationRequest,
 } from 'vscode-languageclient';
 
-//To read files from the file system
-import * as fs from 'fs-extra';
-
 let client: LanguageClient;
 
 let proofState : Position = new Position(0, 0); //Cursor position when cursor mode is on (see l.65)
