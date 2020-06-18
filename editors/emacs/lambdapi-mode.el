@@ -86,6 +86,8 @@
          'font-lock-constant-face))
   "Keyword highlighting for the LambdaPi mode.")
 
+(defconst lp-goal-line-prefix "---------------------------------------------------")
+
 (defun display-goals (goals)
   (let ((goalsbuf (get-buffer-create "*Goals*")))
     (with-current-buffer goalsbuf
@@ -103,14 +105,12 @@
                             (lambda (goal)
                               (let ((id (plist-get goal :gid))
                                     (type (plist-get goal :type)))
-                                (format "Goal %d: %s\n" id type)))
+                                (format "%s\nGoal %d: %s\n\n" lp-goal-line-prefix id type)))
                             goals)))
             (erase-buffer)
             (goto-char (point-max))
             (mapc 'insert hypsstr)
-            (insert "--------------\n")
-            (mapc 'insert goalsstr)
-            (insert "--------------\n"))
+            (mapc 'insert goalsstr))
         (erase-buffer))
       (read-only-mode 1))))
 
