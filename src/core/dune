@@ -12,9 +12,13 @@
  (modules :standard)
  (c_names stubs)
  (preprocess (per_module ((action (run pa_ocaml %{input-file})) parser)))
- (libraries unix stdlib-shims timed bindlib earley.core why3))
+ (libraries unix stdlib-shims timed bindlib earley.core why3 elpi))
 
 (ocamllex legacy_lexer)
 (menhir
  (flags (--external-tokens Legacy_lexer))
  (modules menhir_parser))
+
+(env
+  (dev
+    (flags (:standard -warn-error -A))))

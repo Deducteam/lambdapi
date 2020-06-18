@@ -17,6 +17,7 @@ let check_cmd : Config.t -> int option -> bool -> string list -> unit =
   let run _ =
     let open Timed in
     Config.init cfg; Stdlib.(Compile.recompile := recompile);
+    Elpi_lambdapi.init ();
     (* We save time to run each file in the same environment. *)
     let time = Time.save () in
     let handle file =

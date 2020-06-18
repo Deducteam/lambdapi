@@ -263,6 +263,8 @@ let pp_command : p_command pp = fun oc cmd ->
       out "set quantifier %a" pp_qident qid
   | P_query(q)                      ->
      pp_p_query oc q
+  | P_elpi(_,_,_)                   ->
+     out "TODO"
 
 let rec pp_ast : ast pp = fun oc cs ->
   match cs with

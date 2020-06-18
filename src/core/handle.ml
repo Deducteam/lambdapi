@@ -295,6 +295,8 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
       (ss, None)
   | P_query(q)                 ->
       Queries.handle_query ss None q; (ss, None)
+  | P_elpi(file,main,term)   ->
+      Elpi_lambdapi.run ss file main term; (ss, None)
 
 (** [too_long] indicates the duration after which a warning should be given to
     indicate commands that take too long to execute. *)

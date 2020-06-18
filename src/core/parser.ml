@@ -172,6 +172,7 @@ let _assertnot_  = KW.create "assertnot"
 let _compute_    = KW.create "compute"
 let _constant_   = KW.create "constant"
 let _definition_ = KW.create "definition"
+let _elpi_       = KW.create "elpi"
 let _fail_       = KW.create "fail"
 let _focus_      = KW.create "focus"
 let _in_         = KW.create "in"
@@ -668,6 +669,8 @@ let parser cmd =
       -> P_set(c)
   | q:query
       -> P_query(q)
+  | _elpi_ p:string_lit f:string_lit a:term
+      -> P_elpi (p,f,a)
 
 (** [cmds] is a parser for multiple (located) commands. *)
 let parser cmds = {c:cmd -> in_pos _loc c}*

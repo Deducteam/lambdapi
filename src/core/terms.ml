@@ -255,7 +255,8 @@ let is_private : sym -> bool = fun s -> s.sym_expo = Privat
 
 (** Typing context associating a [Bindlib] variable to a type and possibly a
     definition. *)
-type ctxt = (term Bindlib.var * term * term option) list
+type 'a actxt = (term Bindlib.var * 'a * term option) list
+type ctxt = term actxt
 
 (** Type of unification constraints. *)
 type constr = ctxt * term * term

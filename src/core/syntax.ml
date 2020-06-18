@@ -220,6 +220,7 @@ type p_command_aux =
   (** Set the configuration. *)
   | P_query      of p_query
   (** Query. *)
+  | P_elpi       of Files.file_path * string * p_term
 
 (** Parser-level representation of a single (located) command. *)
 type p_command = p_command_aux loc
