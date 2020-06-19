@@ -98,8 +98,11 @@ reserved "why3"
 // Synonym for types
 <type> ::= <term>
 
-// Synonym for patterns
-<patt> ::= <term>
+// Patterns
+<patt> ::=
+  | "$" - {<ident> | "_"} {"[" <ident> {";" <ident>}* "]"}?
+  | "λ" <arg>+ "," <patt>
+  | <qident> {<patt>}*
 
 // Argument (of abstraction, product, ...), may be marked implicit
 <arg> ::=
