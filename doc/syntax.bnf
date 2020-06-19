@@ -112,7 +112,7 @@ reserved "why3"
 
 // Rewriting rule
 <rule> ::=
-  | <patt> "↪" <term>
+  | <qident> {<patt>}* "↪" <term>
 
 // TODO rule naming, positive / negative
 
