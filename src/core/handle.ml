@@ -230,32 +230,17 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
       (* Add the induction principle in the signature *)
       let ind_name = Pos.make cmd.pos ("ind_" ^ id.elt) in
       if StrSet.mem id.elt !(ss.signature.sign_idents) then
-        Sign.add_ident (ss.signature) ("ind_" ^ id.elt);
+        Sign.add_ident ss.signature ind_name.elt;
       let (ss, sym_ind) =
         Sig_state.add_symbol ss e Defin ind_name ind_typ [] None
       in
       (* Compute the rules associated with the induction principle *)
       let rs =
-        Inductive.ind_rule ss cmd.pos sym_typ.sym_name ("ind_"^id.elt) ind_typ
+        Inductive.ind_rule sym_typ.sym_name ("ind_"^id.elt) ind_typ
           cons_list
       in
       let (ss, ind_rules) = handle_rules ss rs       in
-      (*let rec check : sym -> (sym * rule loc) list -> rule list = fun s l ->
-        match l with
-        | []  -> []
-        | ((s_curr,r) as t)::q ->
-            if s == s_curr then
-              r.elt::(check s q)
-            else
-              (wrn cmd.pos "The rules just defined aren't the
-                            same head symbol";[])
-      in*)
-      let rec split_loc :(sym * rule loc) list -> rule list = fun l ->
-        match l with
-        | []  -> []
-        | (_,r)::q -> r.elt::(split_loc q)
-      in
-      let ind_rules = split_loc ind_rules in
+      let ind_rules = List.map (fun (_,r) -> r.elt) ind_rules in
       (* Add the rules of induction principle in the signature *)
       let just_add_rule : sym -> rule -> unit = fun sym r ->
         sym.sym_rules := r :: !(sym.sym_rules) in

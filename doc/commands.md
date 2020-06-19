@@ -225,6 +225,8 @@ symbol Nat  : TYPE
 constant symbol z    : Nat
 constant symbol succ : Nat → Nat
 symbol ind_Nat p : π (p 0) → (Πx, π (p x) → π (p (succ x))) → Πx, π (p x)
+rule ind_Nat $p $pz $psucc     z     ↪ $pz
+with ind_Nat $p $pz $psucc (succ $n) ↪ $psucc $n (ind_Nat $p $pz $psucc $n)
 ```
 
 <!---------------------------------------------------------------------------->
