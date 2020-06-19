@@ -1,0 +1,207 @@
+{
+	"alpha": {
+		"prefix": "@a",
+		"body": "α",
+		"description": "Insert alpha"
+	},
+	"beta": {
+		"prefix": "@b",
+		"body": "β",
+		"description": "Insert beta"
+	},
+	"chi": {
+		"prefix": "@c",
+		"body": "χ",
+		"description": "Insert chi"
+	},
+	"delta": {
+		"prefix": "@d",
+		"body": "δ",
+		"description": "Insert delta"
+	},
+	"epsilon": {
+		"prefix": "@e",
+		"body": "ϵ",
+		"description": "Insert epsilon"
+	},
+	"varepsilon": {
+		"prefix": "@ve",
+		"body": "ε",
+		"description": "Insert varepsilon"
+	},
+	"phi": {
+		"prefix": "@f",
+		"body": "ϕ",
+		"description": "Insert phi"
+	},
+	"varphi": {
+		"prefix": "@vf",
+		"body": "φ",
+		"description": "Insert varphi"
+	},
+	"gamma": {
+		"prefix": "@g",
+		"body": "γ",
+		"description": "Insert gamma"
+	},
+	"eta": {
+		"prefix": "@h",
+		"body": "η",
+		"description": "Insert eta"
+	},
+	"iota": {
+		"prefix": "@i",
+		"body": "ι",
+		"description": "Insert iota"
+	},
+	"kappa": {
+		"prefix": "@k",
+		"body": "κ",
+		"description": "Insert kappa"
+	},
+	"lambda": {
+		"prefix": "@l",
+		"body": "λ",
+		"description": "Insert lambda"
+	},
+	"mu": {
+		"prefix": "@m",
+		"body": "μ",
+		"description": "Insert mu"
+	},
+	"nu": {
+		"prefix": "@n",
+		"body": "ν",
+		"description": "Insert nu"
+	},
+	"pi": {
+		"prefix": "@p",
+		"body": "π",
+		"description": "Insert pi"
+	},
+	"theta": {
+		"prefix": "@q",
+		"body": "θ",
+		"description": "Insert theta"
+	},
+	"vartheta": {
+		"prefix": "@vq",
+		"body": "ϑ",
+		"description": "Insert vartheta"
+	},
+	"rho": {
+		"prefix": "@r",
+		"body": "ρ",
+		"description": "Insert rho"
+	},
+	"varrho": {
+		"prefix": "@r",
+		"body": "ϱ",
+		"description": "Insert rho"
+	},
+	"sigma": {
+		"prefix": "@s",
+		"body": "σ",
+		"description": "Insert sigma"
+	},
+	"varsigma": {
+		"prefix": "@vs",
+		"body": "ς",
+		"description": "Insert varsigma"
+	},
+	"tau": {
+		"prefix": "@t",
+		"body": "τ",
+		"description": "Insert tau"
+	},
+	"upsilon": {
+		"prefix": "@u",
+		"body": "υ",
+		"description": "Insert upsilon"
+	},
+	"omega": {
+		"prefix": "@o",
+		"body": "ω",
+		"description": "Insert omega"
+	},
+	"wedge": {
+		"prefix": "@&",
+		"body": "∧",
+		"description": "Insert wedge"
+	},
+	"vee": {
+		"prefix": "@|",
+		"body": "∨",
+		"description": "Insert wedge"
+	},
+	"xi": {
+		"prefix": "@x",
+		"body": "ξ",
+		"description": "Insert xi"
+	},
+	"psi": {
+		"prefix": "@y",
+		"body": "ψ",
+		"description": "Insert psi"
+	},
+	"zeta": {
+		"prefix": "@z",
+		"body": "ζ",
+		"description": "Insert zeta"
+	},
+	"Delta": {
+		"prefix": "@D",
+		"body": "Δ",
+		"description": "Insert Delta"
+	},
+	"Phi": {
+		"prefix": "@F",
+		"body": "Φ",
+		"description": "Insert Phi"
+	},
+	"Gamma": {
+		"prefix": "@G",
+		"body": "Γ",
+		"description": "Insert Gamma"
+	},
+	"Theta": {
+		"prefix": "@Q",
+		"body": "Θ",
+		"description": "Insert Theta"
+	},
+	"Lambda": {
+		"prefix": "@L",
+		"body": "Λ",
+		"description": "Insert Lambda"
+	},
+	"Xi": {
+		"prefix": "@X",
+		"body": "Ξ",
+		"description": "Insert Xi"
+	},
+	"Psi": {
+		"prefix": "@Y",
+		"body": "Ψ",
+		"description": "Insert Psi"
+	},
+	"Sigma": {
+		"prefix": "@S",
+		"body": "Σ",
+		"description": "Insert Sigma"
+	},
+	"Upsilon": {
+		"prefix": "@U",
+		"body": "Υ",
+		"description": "Insert Upsilon"
+	},
+	"Omega": {
+		"prefix": "@W",
+		"body": "Ω",
+		"description": "Insert Omega"
+	},
+	"Pi": {
+		"prefix": "@P",
+		"body": "Π",
+		"description": "Insert Pi"
+	}
+}

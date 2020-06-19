@@ -73,7 +73,7 @@
       },
       {
         "command": "extension.vscode-lp.cursor",
-        "title": "Toggle cursor mode (ProofView will either depend on the cursor or keybindings)",
+        "title": "Toggle navigation w/ keybindings or cursor only",
         "category": "Lambdapi"
       }
     ],
@@ -92,6 +92,12 @@
         "key": "ctrl+alt+c",
         "command": "extension.vscode-lp.cursor",
         "when": "editorTextFocus && editorLangId == lp"
+      }
+    ],
+    "snippets": [
+      {
+        "language": "lp",
+        "path": "snippets/unicode.json"
       }
     ]
   },
