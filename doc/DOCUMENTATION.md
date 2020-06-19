@@ -21,11 +21,11 @@ Table of contents
 
    * [Emacs](emacs.md)
 
-   * [VSCode](ui.md)
+   * [VSCode](vscode.md)
 
-   * [Vim](ui.md)
+   * [Vim](vim.md)
 
-   * [Atom](ui.md)
+   * [Atom](atom.md)
    
  - [Module system](module.md)
 
