@@ -290,7 +290,7 @@ set debug -s
 
 Each functionality is represented by a single character. For instance,
 `i` stands for type inference. To get the list of debuggable functionalities,
-run the command `lambdapi --help`.
+run the command `lambdapi check --help`.
 
 **flags** The user can set/unset some flags:
 
