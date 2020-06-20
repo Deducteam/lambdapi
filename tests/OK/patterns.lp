@@ -61,7 +61,7 @@ symbol diff1: (E → E → E) → E → E → E
 // the environment.
 rule diff1 (λx, λy, $v[x]) ↪ λ_, diff (λx, $v[x])
 assertnot diff1 (λx y, bin x y) ≡ λ_ _, e
-// assert diff1 (λx _, x) ≡ λ_, λ_, succ e // FIXME: assertion failed
+assert diff1 (λx _, x) ≡ λ_, λ_, succ e
 // this rule can be written more simply as
 rule diff1 (λx _, _) ↪ λ_ _, e
 assertnot diff1 (λx y, bin x y) ≡ λ_ _, e
