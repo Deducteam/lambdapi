@@ -111,6 +111,18 @@ can be used, for this, once in the minibuffer, enter `C-x RET C-\` and select
 `TeX` in the list.
 
 #### LSP server
+
+##### Navigating goals
+
+On lambdapi-mode startup, a window showing the goals at the current
+line is open.
+
+You can toggle the interactive mode with `C-M-c`. If you were to do
+so, you still can navigate the proofs with `<M-up>` and `<M-down>`,
+and show the goals at the current line with `C-x C-d`.
+
+##### CPU usage and deactivation
+
 If for any reason the LSP server consumes too much power (e.g. if a
 non-terminating rewrite system is edited), it can be disabled with
 `M-x eglot-shutdown`.
