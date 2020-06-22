@@ -22,7 +22,7 @@ import {
 let client: LanguageClient;
 
 let proofState : Position = new Position(0, 0); //Cursor position when cursor mode is on (see l.65)
-let cursorMode : boolean = true; //(see l.65)
+let cursorMode : boolean = false; //(see l.65)
 
 let range : rg = new rg(proofState, proofState);
 
@@ -70,7 +70,7 @@ export function activate(context: ExtensionContext) {
             window.onDidChangeActiveTextEditor(e => refresh(panel, e, cursorMode));
             window.onDidChangeTextEditorSelection(e => refresh(panel, e.textEditor, cursorMode));
 
-            /*Toggle cursor mode (defaults to true)
+            /*Toggle cursor mode (defaults to false)
                 *if true, the "Proof" panel is updated when the cursor is moved
                 *if false, updated when "alt+up/down" is pressed
             */

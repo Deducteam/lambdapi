@@ -79,12 +79,12 @@
     ],
     "keybindings": [
       {
-        "key": "ctrl+alt+s",
+        "key": "ctrl+down",
         "command": "extension.vscode-lp.fw",
         "when": "editorTextFocus && editorLangId == lp"
       },
       {
-        "key": "ctrl+alt+z",
+        "key": "ctrl+up",
         "command": "extension.vscode-lp.bw",
         "when": "editorTextFocus && editorLangId == lp"
       },
