@@ -92,7 +92,7 @@ export function activate(context: ExtensionContext) {
                 }
             })
             
-            //Step forward in a proof (when cursor mode is off)
+            //Step backwards in a proof (when cursor mode is off)
             commands.registerCommand('extension.vscode-lp.bw', () => {
 
                 if(!cursorMode){
@@ -165,8 +165,8 @@ function getGoalsEnvContent(goals : Goal[]){
             + goals[i].type + `</span>`;
 
         codeGoals = codeGoals + numGoalcode
-            + `<label class ="sep"> : { </label> `
-            + typeGoal + `<label class ="sep">}</label><br/><br/></div>`;
+            + `<label class ="sep"> : </label> `
+            + typeGoal + `<label class ="sep"></label><br/><br/></div>`;
 
         codeHyps = codeHyps + `</div>`;
 
