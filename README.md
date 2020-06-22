@@ -59,17 +59,18 @@ for more information).
 make               # Build lambdapi.
 make doc           # Build the documentation.
 make install       # Install the program.
+make install_emacs # Install emacs mode, see the note below
 make install_vim   # Install vim support.
 ```
 
 **Note:** you can run `lambdapi` without installing with `dune exec -- lambdapi`.
 
-**Note on Emacs:** `make install` installs the `lambdapi-mode`, an Emacs major
-mode for editing `lambdapi` files in `$(opam var share)/emacs/site-lisp`.
-To load the `lambdapi-mode` automatically when editing `*.lp` files, add `(load
-"lambdapi-site-file")` to your `~/.emacs.d/init.el` or `~/.emacs`.
-If `lambdapi-mode` is not activated when editing a file ending in `.lp`, read
-the installation section of the
+**Note on Emacs:** `make install_emacs` installs the `lambdapi-mode`, an Emacs
+major mode for editing lambdapi files in `$(opam var share)/emacs/site-lisp`. To
+load the `lambdapi-mode` automatically when editing files with `.lp` extension,
+add `(load "lambdapi-site-file")` to your `~/.emacs.d/init.el` or `~/.emacs`.
+The mode is also available on [MELPA](https://melpa.org/#/lambdapi-mode).
+For more information or troubleshooting, see the Emacs mode
 [documentation](doc/sections/emacs.md#installation).
 
 The following commands can be used for cleaning up the repository:

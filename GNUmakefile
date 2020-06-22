@@ -146,6 +146,11 @@ else
 	@printf "\e[36mVim mode installed.\e[39m\n"
 endif
 
+.PHONY: install_emacs
+install_emacs:
+	@$(MAKE) -C editors/emacs/ install
+	@printf "\e[36mEmacs mode installed.\e[39m\n"
+
 opam-release:
 	dune-release distrib
 	dune-release opam pkg
