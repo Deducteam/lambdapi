@@ -1,4 +1,5 @@
-VIMDIR   = $(HOME)/.vim
+VIMDIR = $(HOME)/.vim
+EMACS  = $(shell which emacs)
 
 #### Compilation (binary, library and documentation) #########################
 
@@ -148,8 +149,13 @@ endif
 
 .PHONY: install_emacs
 install_emacs:
+ifeq ($(EMACS),)
+	@printf "\e[36mNo 'emacs' binary available in path and EMACS variable \
+is not set, \nEmacs mode won't be installed.\e[39m\n"
+else
 	@$(MAKE) -C editors/emacs/ install
 	@printf "\e[36mEmacs mode installed.\e[39m\n"
+endif
 
 opam-release:
 	dune-release distrib
