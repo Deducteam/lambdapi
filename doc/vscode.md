@@ -32,13 +32,9 @@ It is still under development, thus might be incomplete and buggy.
 
 Goals are visualised in a panel on the right side of the editor.
 
-- By default, goals are printed according to the current position of the cursor.
-
-- By toggling off "cursor mode" with
-```
-Ctrl+Alt+C
-```
-$\hspace{0.8cm}$ you can navigate the proof with [keybindings](#keybindings).
+- You can navigate the proof with [keybindings](#keybindings).
+- 
+- "Cursor mode" can be toggled to navigate the proff with the cursor.
 
 ##  Snippets
 
@@ -46,19 +42,19 @@ Typing "@letter" will suggest a corresponding unicode greek letter (for instance
 
 # Keybindings
 
-- Toggle cursor mode
-```
-Ctrl+Alt+C
-```
-
 - Navigate down : go forward in the proof
 
 ```
-Ctrl+Alt+S
+Ctrl+Down
 ```
 
 - Navigate up : go backwards in the proof
 
 ```
-Ctrl+Alt+Z
+Ctrl+Up
+```
+
+- Toggle cursor mode
+```
+Ctrl+Alt+C
 ```
