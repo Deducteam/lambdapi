@@ -122,6 +122,7 @@ export function activate(context: ExtensionContext) {
 
     commands.registerCommand('extension.vscode-lp.restart', restart);
     commands.executeCommand('extension.vscode-lp.fw');
+    commands.executeCommand('extension.vscode-lp.bw');
     
     restart();
 
