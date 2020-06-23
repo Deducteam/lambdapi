@@ -24,11 +24,17 @@ let client: LanguageClient;
 let proofState : Position = new Position(0, 0); //Cursor position when cursor mode is on (see l.65)
 let cursorMode : boolean = false; //(see l.65)
 
-let range : rg = new rg(proofState, proofState);
+let range : rg = new rg(proofState, proofState.translate(1, 0));
 
 const decorationType = window.createTextEditorDecorationType({
-    backgroundColor: 'green',
-    border: '2px solid white',
+    light: {
+        backgroundColor: '#CCFFCC',
+        border: '1px solid black'
+    },
+    dark: {
+        backgroundColor: '#084035',
+        border: '1px solid white'
+    }
   });
 
 export function activate(context: ExtensionContext) {
@@ -84,7 +90,7 @@ export function activate(context: ExtensionContext) {
                     console.log(proofState.line, cursorMode);
                     refresh(panel, window.activeTextEditor, cursorMode);
 
-                    range = new rg(range.end, proofState);
+                    range = new rg(range.start, proofState.translate(1,0));
                     let openEditor = window.activeTextEditor;
 
                     if(openEditor != undefined)
@@ -102,7 +108,7 @@ export function activate(context: ExtensionContext) {
                     refresh(panel, window.activeTextEditor, cursorMode);
                 }
 
-                range = new rg(proofState, range.start);
+                range = new rg(range.start, proofState.translate(1,0));
                 let openEditor = window.activeTextEditor;
 
                 if(openEditor != undefined)
@@ -115,6 +121,7 @@ export function activate(context: ExtensionContext) {
     };
 
     commands.registerCommand('extension.vscode-lp.restart', restart);
+    commands.executeCommand('extension.vscode-lp.fw');
     
     restart();
 
