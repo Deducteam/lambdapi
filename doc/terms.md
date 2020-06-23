@@ -20,7 +20,7 @@ An identifier can be:
   
 **Convention:** identifiers starting with a capital letter denote types and predicates (e.g. `Nat`, `List`), and identifiers starting with a small letter denote constructors, functions and proofs (e.g. `zero`, `add`, `refl`).
 
-**Terms:* A user-defined term can be either:
+**Terms:** A user-defined term can be either:
 
  * `TYPE`
 

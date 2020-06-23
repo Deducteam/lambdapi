@@ -128,48 +128,50 @@ Rewriting rules for definable symbols are declared using the `rule` command.
 ```
 rule add zero      $n ↪ $n
 rule add (succ $n) $m ↪ succ (add $n $m)
+rule mul zero      _  ↪ zero
 ```
 
-Note that rewriting rules can also be defined simultaneously, using the `with`
-keyword instead of the `rule` keyword for all but the first rule.
-
-```
-rule add zero      $n ↪ $n
-with add (succ $n) $m ↪ succ (add $n $m)
-```
-
-Pattern variables need to be prefixed by `$`.
+Terms prefixed by the sigil `$` and `_` are pattern variables.
 
 **Higher-order pattern-matching**.
-Lambdapi allows higher-order pattern-matching (not in full generality
-though):
+Lambdapi allows higher-order pattern-matching on patterns à la Miller but modulo
+β-equivalence only (and not βη).
 
 ```
 rule diff (λx, sin $F[x]) ↪ λx, diff (λx, $F[x]) x × cos $F[x]
+```
+
+Patterns can contain abstractions `λx, _` and the user may attach an environment
+made of *distinct* bound variables to a pattern variable to indicate which bound
+variable can occur in the matched term. The environment is a semicolon-separated
+list of variables enclosed in square brackets `[x;y;...]`. For instance, a term
+of the form `λx y,t` matches the pattern `λx y,$F[x]` only if `y` does not
+freely occur in `t`.
+
+```
 rule lam (λx, app $F[] x) ↪ $F // η-reduction
 ```
 
 Hence, the rule `lam (λx, app $F[] x) ↪ $F` implements η-reduction
 since no valid instance of `$F` can contain `x`.
 
-Pattern variables can be applied to distinct bound variables only,
-that is, the terms between `[` and `]` must be distinct bound
-variables only.
+Pattern variables cannot appear at the head of an application: `$F[] x` is not
+allowed. The converse `x $F[]` is.
 
-`$P` without square brackets is a short-hand for `$P[]`. This
-short-hand cannot be used though when `$P` occurs in a rule left-hand
-side below a binder like in the rule η above.
+A pattern variable `$P[]` can be shortened to `$P` when there is no ambiguity,
+i.e. when the variable is not under a binder (unlike in the rule η above).
 
 It is possible to define an unnamed pattern variable with the syntax
-`$_[x,y]`.
+`$_[x;y]`.
 
-If `x` and `y` are the only variables in scope, then `_` is equivalent
-to `$_[x,y]`.
+The unnamed pattern variable `_` is always the most general:
+if `x` and `y` are the only variables in scope, then `_` is equivalent
+to `$_[x;y]`.
 
-In rule left-hand sides, λ-expressions must have no type annotations.
+In rule left-hand sides, λ-expressions cannot have type annotations.
 
 **Important**. In contrast to languages like OCaml, Coq, Agda, etc. rule
- left-hand sides can contain defined symbols:
+left-hand sides can contain defined symbols:
 
 ```
 rule add (add x y) z ↪ add x (add y z)
@@ -187,6 +189,19 @@ And they can be non-linear:
 ```
 rule minus x x ↪ zero
 ```
+
+Note that rewriting rules can also be defined simultaneously, using the `with`
+keyword instead of the `rule` keyword for all but the first rule.
+
+```
+rule add zero      $n ↪ $n
+with add (succ $n) $m ↪ succ (add $n $m)
+```
+
+Adding sets of rules allows to maintain confluence.
+
+Examples of patterns are available in the file
+[`patterns.lp`](../tests/OK/patterns.lp) of the test suite.
 
 <!---------------------------------------------------------------------------->
 ### `definition`

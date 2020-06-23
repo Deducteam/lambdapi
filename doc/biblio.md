@@ -14,6 +14,8 @@ Bibliographic references
 
 * [Definitions by rewriting in the Calculus of Constructions](https://doi.org/10.1017/S0960129504004426), Frédéric Blanqui, in Mathematical Structures in Computer Science 15(1):37-92.
 
+* [The New Rewriting Engine of Dedukti](https://www.semanticscholar.org/paper/The-New-Rewriting-Engine-of-Dedukti-Hondet-Blanqui/8ff6f9790779f9345ffa9bb02679b40e8d1d83aa), Gabriel Hondet and Frédéric Blanqui, 2020.
+
 * [Hints in Unification](http://www.cs.unibo.it/~asperti/PAPERS/tphol09.pdf),
   Andrea Asperti, Wilmer Ricciotti, Claudio Sacerdoti Cohen and Enrico Tassi.
 
