@@ -29,11 +29,9 @@ let range : rg = new rg(proofState, proofState.translate(1, 0));
 const decorationType = window.createTextEditorDecorationType({
     light: {
         backgroundColor: '#CCFFCC',
-        border: '1px solid black'
     },
     dark: {
         backgroundColor: '#084035',
-        border: '1px solid white'
     }
   });
 
