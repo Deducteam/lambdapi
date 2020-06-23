@@ -1,4 +1,5 @@
-VIMDIR   = $(HOME)/.vim
+VIMDIR = $(HOME)/.vim
+EMACS  = $(shell which emacs)
 
 #### Compilation (binary, library and documentation) #########################
 
@@ -144,6 +145,16 @@ else
 	install -m 644 editors/vim/ftdetect/dedukti.vim  $(VIMDIR)/ftdetect
 	install -m 644 editors/vim/ftdetect/lambdapi.vim $(VIMDIR)/ftdetect
 	@printf "\e[36mVim mode installed.\e[39m\n"
+endif
+
+.PHONY: install_emacs
+install_emacs:
+ifeq ($(EMACS),)
+	@printf "\e[36mNo 'emacs' binary available in path and EMACS variable \
+is not set, \nEmacs mode won't be installed.\e[39m\n"
+else
+	@$(MAKE) -C editors/emacs/ install
+	@printf "\e[36mEmacs mode installed.\e[39m\n"
 endif
 
 opam-release:
