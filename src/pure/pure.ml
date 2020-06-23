@@ -96,3 +96,59 @@ let end_proof : proof_state -> command_result = fun s ->
 let get_symbols : state -> (Terms.sym * Pos.popt) StrMap.t = fun s ->
   Time.restore (fst s);
   !(Sign.((current_sign ()).sign_symbols))
+
+(* Equality on *)
+let test_file = "./foo.lp"
+
+let%test _ =
+  let st = initial_state test_file in
+  let (c,_) = parse_text st test_file "constant symbol B : TYPE" in
+  List.equal Command.equal c c
+
+(* Equality not *)
+let%test _ =
+  let st = initial_state test_file in
+  let (c,_) = parse_text st test_file "constant symbol B : TYPE" in
+  let (d,_) = parse_text st test_file "constant symbol C : TYPE" in
+  not (List.equal Command.equal c d)
+
+(* Equality is not sensitive to whitespace *)
+let%test _ =
+  let st = initial_state test_file in
+  let (c,_) = parse_text st test_file "constant   symbol  B : TYPE" in
+  let (d,_) = parse_text st test_file "  constant symbol B :   TYPE " in
+  List.equal Command.equal c d
+
+(* More complex test stressing most commands *)
+let%test _ =
+  let st = initial_state test_file in
+  let (c,_) = parse_text st test_file
+                (* copied from tests/OK/foo.lp. keep in sync. *)
+"constant symbol B : TYPE
+
+constant symbol true  : B
+constant symbol false : B
+
+symbol neg : B ⇒ B
+
+rule neg true  → false
+rule neg false → true
+
+constant symbol Prop : TYPE
+
+injective symbol P : Prop ⇒ TYPE
+
+constant symbol eq : B ⇒ B ⇒ Prop
+constant symbol refl b : P (eq b b)
+
+constant symbol case (p : B⇒Prop) : P (p true) ⇒ P (p false) ⇒ ∀b, P b
+
+theorem notK : ∀b, P (eq (neg (neg b)) b)
+proof
+  assume b
+  apply case (λb, eq (neg (neg b)) b)
+  apply refl
+  apply refl
+qed
+" in
+  List.equal Command.equal c c

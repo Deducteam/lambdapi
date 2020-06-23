@@ -21,7 +21,7 @@ doc: "https://deducteam.github.io/lambdapi/"
 
 depends: [
   "ocaml"        { >= "4.05.0" }
-  "dune"         { >= "1.3.0"  }
+  "dune"         { >= "2.0.1"  }
   "menhir"
   "bindlib"      { >= "5.0.1" }
   "earley"       { = "2.0.0" }
@@ -30,6 +30,8 @@ depends: [
   "yojson"       { >= "1.6.0" }
   "cmdliner"     { >= "1.0.3" }
   "stdlib-shims"
+  # tests
+  "ppx_inline_test" { with-test }
 ]
 
 post-messages: [

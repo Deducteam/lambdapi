@@ -20,7 +20,11 @@ LAMBDAPI     = dune exec -- lambdapi check --lib-root lib
 OK_TESTFILES = $(sort $(wildcard tests/OK/*.dk tests/OK/*.lp))
 KO_TESTFILES = $(sort $(wildcard tests/KO/*.dk tests/KO/*.lp))
 
-.PHONY: tests
+.PHONY: tests unit-tests
+
+unit-tests:
+	@dune build runtest
+
 tests: bin
 	@printf "## OK tests ##\n"
 	@for file in $(OK_TESTFILES) ; do \
