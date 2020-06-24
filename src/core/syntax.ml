@@ -207,7 +207,8 @@ type p_command_aux =
   (** Require as statement. *)
   | P_open       of p_module_path list
   (** Open statement. *)
-  | P_symbol     of Terms.expo * Terms.prop * ident * p_arg list * p_type
+  | P_symbol     of Terms.expo * Terms.prop * Terms.match_strat * ident *
+                    p_arg list * p_type
   (** Symbol declaration. *)
   | P_rules      of p_rule list
   (** Rewriting rule declarations. *)
@@ -353,8 +354,8 @@ let eq_p_command : p_command eq = fun c1 c2 ->
      List.equal (=) ps1 ps2
   | (P_require_as(p1,id1)  , P_require_as(p2,id2)              ) ->
      p1 = p2 && id1.elt = id2.elt
-  | (P_symbol(e1,l1,s1,al1,a1)   , P_symbol(e2,l2,s2,al2,a2)   ) ->
-      e1 = e2 && l1 = l2 && eq_ident s1 s2 && eq_p_term a1 a2
+  | (P_symbol(e1,l1,t1,s1,al1,a1), P_symbol(e2,l2,t2,s2,al2,a2)) ->
+      t1 = t2 && e1 = e2 && l1 = l2 && eq_ident s1 s2 && eq_p_term a1 a2
       && List.equal eq_p_arg al1 al2
   | (P_rules(rs1)                , P_rules(rs2)                ) ->
       List.equal eq_p_rule rs1 rs2

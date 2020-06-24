@@ -190,6 +190,7 @@ let _refl_       = KW.create "reflexivity"
 let _require_    = KW.create "require"
 let _rewrite_    = KW.create "rewrite"
 let _rule_       = KW.create "rule"
+let _sequential_ = KW.create "sequential"
 let _set_        = KW.create "set"
 let _simpl_      = KW.create "simpl"
 let _sym_        = KW.create "symmetry"
@@ -350,6 +351,10 @@ let parser property =
 let parser exposition =
   | _protected_ -> Terms.Protec
   | _private_   -> Terms.Privat
+
+(** [mstrat] parses the matching strategy tag of a symbol. *)
+let parser mstrat =
+  | _sequential_ -> Terms.Sequen
 
 (** [term_ident] parses a qualified identifier and returns a p_term. *)
 let parser term_ident =
@@ -655,9 +660,10 @@ let parser cmd =
   | _open_ ps:path+
       -> List.iter (get_ops _loc) ps;
          P_open(ps)
-  | e:exposition? p:property? _symbol_ s:ident al:arg* ":" a:term
+  | st:mstrat? e:exposition? p:property? _symbol_ s:ident al:arg* ":" a:term
       -> P_symbol(Option.get Terms.Public e,
-                  Option.get Terms.Defin p,s,al,a)
+                  Option.get Terms.Defin p,
+                  Option.get Terms.Eager st, s,al,a)
   | _rule_ r:rule rs:{_:_with_ rule}*
       -> P_rules(r::rs)
   | e:exposition? _definition_ s:ident al:arg* ao:{":" term}? "≔" t:term

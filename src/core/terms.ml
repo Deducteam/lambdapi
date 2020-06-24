@@ -30,6 +30,15 @@ type expo =
   | Privat
   (** Not visible and thus not usable. *)
 
+(** Pattern-matching strategy modifiers. *)
+type match_strat =
+  | Sequen
+  (** Rules are processed sequentially: a rule can be applied only if the
+      previous ones (in the order of declaration) cannot be. *)
+  | Eager
+    (** Any rule that filters a term can be applied (even if a rule defined
+        earlier filters the term as well). This is the default. *)
+
 (** Representation of a term (or types) in a general sense. Values of the type
     are also used, for example, in the representation of patterns or rewriting
     rules. Specific constructors are included for such applications,  and they
@@ -99,7 +108,9 @@ type term =
   ; sym_prop  : prop
   (** Property of the symbol. *)
   ; sym_expo  : expo
-  (** The visibility of the symbol. *) }
+  (** The visibility of the symbol. *)
+  ; sym_mstrat: match_strat ref
+  (** The reduction strategy modifier. *) }
 
 (** {b NOTE} that {!field:sym_type} holds a (timed) reference for a  technical
     reason related to the writing of signatures as binary files  (in  relation

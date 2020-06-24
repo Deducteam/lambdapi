@@ -44,6 +44,11 @@ let pp_prop : Terms.prop pp = fun oc p ->
   | Const -> Format.pp_print_string oc "constant "
   | Injec -> Format.pp_print_string oc "injective "
 
+let pp_mstrat : Terms.match_strat pp = fun oc s ->
+  match s with
+  | Eager -> ()
+  | Sequen -> Format.pp_print_string oc "sequential"
+
 let rec pp_p_term : p_term pp = fun oc t ->
   let open Parser in (* for PAtom, PAppl and PFunc *)
   let out fmt = Format.fprintf oc fmt in
@@ -220,8 +225,9 @@ let pp_command : p_command pp = fun oc cmd ->
       out "require %a as %a" (pp_path cmd.pos) p (pp_path_elt i.pos) i.elt
   | P_open(ps)                      ->
       List.iter (out "open %a" (pp_path cmd.pos)) ps
-  | P_symbol(e,p,s,args,a)    ->
-      out "@[<hov 2>%a%asymbol %a" pp_expo e pp_prop p pp_ident s;
+  | P_symbol(e,p,st,s,args,a) ->
+      out "@[<hov 2>%a%a%asymbol %a" pp_mstrat st pp_expo e pp_prop p
+        pp_ident s;
       List.iter (out " %a" pp_p_arg) args;
       out " :@ @[<hov>%a@]" pp_p_term a
   | P_rules([])                     -> ()

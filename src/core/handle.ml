@@ -102,7 +102,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
   | P_open(ps)                  ->
      let ps = List.map (List.map fst) ps in
      (List.fold_left (handle_open cmd.pos) ss ps, None)
-  | P_symbol(e, p, x, xs, a) ->
+  | P_symbol(e, p, st, x, xs, a) ->
       (* We check that [x] is not already used. *)
       if Sign.mem ss.signature x.elt then
         fatal x.pos "Symbol [%s] already exists." x.elt;
@@ -122,7 +122,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
         end;
       (* Actually add the symbol to the signature and the state. *)
       out 3 "(symb) %s : %a\n" x.elt pp_term a;
-      (Sig_state.add_symbol ss e p x a impl None, None)
+      (Sig_state.add_symbol ss e p st x a impl None, None)
   | P_rules(rs)                ->
       (* Scoping and checking each rule in turn. *)
       let handle_rule r =
@@ -185,7 +185,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
       (* Actually add the symbol to the signature. *)
       out 3 "(symb) %s ≔ %a\n" x.elt pp_term t;
       let d = if op then None else Some(t) in
-      let ss = Sig_state.add_symbol ss e Defin x a impl d in
+      let ss = Sig_state.add_symbol ss e Defin Eager x a impl d in
       (ss, None)
   | P_theorem(e, stmt, ts, pe) ->
       let (x,xs,a) = stmt.elt in
@@ -223,7 +223,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
             (* Add a symbol corresponding to the proof, with a warning. *)
             out 3 "(symb) %s (admit)\n" x.elt;
             wrn cmd.pos "Proof admitted.";
-            Sig_state.add_symbol ss e Const x a impl None
+            Sig_state.add_symbol ss e Const Eager x a impl None
         | P_proof_qed   ->
             (* Check that the proof is indeed finished. *)
             if not (Proof.finished st) then
@@ -233,7 +233,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
               end;
             (* Add a symbol corresponding to the proof. *)
             out 3 "(symb) %s (qed)\n" x.elt;
-            Sig_state.add_symbol ss e Const x a impl None
+            Sig_state.add_symbol ss e Const Eager x a impl None
       in
       let data =
         { pdata_stmt_pos = stmt.pos ; pdata_p_state = st ; pdata_tactics = ts

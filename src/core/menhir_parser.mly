@@ -243,32 +243,41 @@ let build_config : Pos.pos -> string -> string option -> eval_config =
 line:
   | s=ID ps=param* COLON a=term DOT
     {
-      let t = P_symbol
-                (Terms.Public, Terms.Const, make_pos $loc(s) s, ps, a) in
+      let t =
+        P_symbol (Terms.Public, Terms.Const, Terms.Eager,
+                  make_pos $loc(s) s, ps, a)
+      in
       make_pos $loc t
     }
   | KW_DEF s=ID COLON a=term DOT
     {
-      let t = P_symbol
-                (Terms.Public, Terms.Defin, make_pos $loc(s) s, [], a) in
+      let t =
+        P_symbol (Terms.Public, Terms.Defin, Terms.Eager,
+                  make_pos $loc(s) s, [], a)
+      in
       make_pos $loc t
     }
   | KW_INJ s=ID COLON a=term DOT
     {
-      let t = P_symbol
-                (Terms.Public, Terms.Injec, make_pos $loc(s) s, [], a) in
+      let t =
+        P_symbol (Terms.Public, Terms.Injec, Terms.Eager,
+                  make_pos $loc(s) s, [], a)
+      in
       make_pos $loc t
     }
   | KW_PRV s=ID COLON a=term DOT
     {
-      let t = P_symbol
-                (Terms.Protec, Terms.Defin, make_pos $loc(s) s, [], a) in
+      let t =
+        P_symbol (Terms.Protec, Terms.Defin, Terms.Eager,
+                  make_pos $loc(s) s, [], a)
+      in
       make_pos $loc t
     }
   | KW_DEF s=ID COLON a=term DEFEQ t=term DOT
     {
-      let t = P_definition
-                (Terms.Public, false, make_pos $loc(s) s, [], Some(a), t) in
+      let t =
+        P_definition (Terms.Public, false, make_pos $loc(s) s, [], Some(a), t)
+      in
       make_pos $loc t
     }
   | KW_DEF s=ID DEFEQ t=term DOT
