@@ -693,3 +693,11 @@ let parse_string : string -> string -> ast = fun fname str ->
   with Earley.Parse_error(buf,pos) ->
     let loc = Pos.locate buf pos buf pos in
     parser_fatal loc "Parse error."
+
+(** [parse_qident str] attempts to parse the string [str] to obtain a
+    {!type:Syntax.qident}. If it fails, the position of failure is
+    returned. *)
+let parse_qident : string -> (qident, pos) result = fun str ->
+  Prefix.reset unops; Prefix.reset binops; Prefix.reset declared_ids;
+  try Ok(Earley.parse_string ~filename:"" qident blank str)
+  with Earley.Parse_error(buf, pos) -> Error(Pos.locate buf pos buf pos)

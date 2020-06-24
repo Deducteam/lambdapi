@@ -71,15 +71,14 @@ let lsp_server_cmd : Config.t -> bool -> string -> unit =
   Console.handle_exceptions run
 
 (** Printing a decision tree. *)
-let decision_tree_cmd : Config.t -> (Path.t * string) -> unit =
+let decision_tree_cmd : Config.t -> (Syntax.p_module_path * string) -> unit =
   fun cfg (mp, sym) ->
   let run _ =
     Timed.(verbose := 0); (* To avoid printing the "Checked ..." line *)
     Config.init cfg;
     let sym =
-      let sign = Compile.compile false mp in
+      let sign = Compile.compile false (List.map fst mp) in
       let ss = Sig_state.of_sign sign in
-      let mp = List.map (fun p -> (p, false)) mp in
       try Sig_state.find_sym ~prt:true ~prv:true false ss (Pos.none (mp, sym))
       with Not_found -> fatal_no_pos "Symbol not found."
     in
@@ -128,16 +127,21 @@ let lsp_log_file : string Term.t =
 
 (** Specific to the ["decision-tree"] command. *)
 
-let qsym : (Path.t * string) Term.t =
+let qsym : (Syntax.p_module_path * string) Term.t =
+  let qsym_conv: (Syntax.p_module_path * string) Arg.conv =
+    let parse s =
+      match Parser.parse_qident s with
+      | Ok({elt; _}) -> Ok(elt)
+      | Error(p) ->
+          let msg = Format.sprintf "Parse error at %s." (Pos.to_string p) in
+          Error(`Msg(msg))
+    in
+    let print fmt qid = Pretty.pp_qident fmt (Pos.none qid) in
+    Arg.conv (parse, print)
+  in
   let doc = "Fully qualified symbol name with dot separated identifiers." in
   let i = Arg.(info [] ~docv:"MOD_PATH.SYM" ~doc) in
-  let separate l =
-    match List.rev l with
-    | []   -> assert false (* Unreachable: Cmdliner ensures [l] non-empty *)
-    | s::l -> (List.rev l, s)
-  in
-  let arg = Arg.(non_empty & pos 0 (list ~sep:'.' string) [] & i) in
-  Term.(const separate $ arg)
+  Arg.(value & pos 0 qsym_conv ([], "") & i)
 
 (** Remaining arguments: source files. *)
 
