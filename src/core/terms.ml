@@ -451,7 +451,7 @@ let rec lift : term -> tbox = fun t ->
 let cleanup : term -> term = fun t -> Bindlib.unbox (lift t)
 
 (** [fresh_meta_box ?name a n] is the boxed counterpart of [fresh_meta]. It is
-    only useful in the rare cases where the type of a metavariables contains a
+    only useful in the rare cases where the type of a metavariable contains a
     free term variable environement. This should only happens when scoping the
     rewriting rules, use this function with care.  The metavariable is created
     immediately with a dummy type, and the type becomes valid at unboxing. The
