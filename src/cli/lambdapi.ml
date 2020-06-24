@@ -83,7 +83,11 @@ let decision_tree_cmd : Config.t -> (Path.t * string) -> unit =
       try Sig_state.find_sym ~prt:true ~prv:true false ss (Pos.none (mp, sym))
       with Not_found -> fatal_no_pos "Symbol not found."
     in
-    out 0 "%a" Tree_graphviz.to_dot sym
+    if Timed.(!(sym.sym_rules)) = [] then
+      wrn None "Cannot print decision tree: \
+                symbol \"%s\" does not have any rule." sym.sym_name
+    else
+      out 0 "%a" Tree_graphviz.to_dot sym
   in
   Console.handle_exceptions run
 
