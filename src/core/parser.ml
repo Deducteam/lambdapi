@@ -682,7 +682,7 @@ let parse_file : string -> ast = fun fname ->
     let loc = Pos.locate buf pos buf pos in
     parser_fatal loc "Parse error."
 
-(** [parse_string fname str] attempts to parse the string [str] file to obtain
+(** [parse_string fname str] attempts to parse the string [str] to obtain
     a list of toplevel commands.  In case of failure, a graceful error message
     containing the error position is given through the [Fatal] exception.  The
     [fname] argument should contain a relevant file name for the error message
