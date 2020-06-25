@@ -79,8 +79,17 @@ let decision_tree_cmd : Config.t -> (Syntax.p_module_path * string) -> unit =
     let sym =
       let sign = Compile.compile false (List.map fst mp) in
       let ss = Sig_state.of_sign sign in
-      try Sig_state.find_sym ~prt:true ~prv:true false ss (Pos.none (mp, sym))
-      with Not_found -> fatal_no_pos "Symbol not found."
+      if String.contains sym '#' then
+        (* If [sym] contains a hash, it’s a ghost symbol. *)
+        try fst (StrMap.find sym Timed.(!(Unif_rule.sign.sign_symbols)))
+        with Not_found ->
+          fatal_no_pos "Symbol \"%s\" not found in ghost modules." sym
+      else
+        try
+          Sig_state.find_sym ~prt:true ~prv:true false ss (Pos.none (mp, sym))
+        with Not_found ->
+          fatal_no_pos "Symbol \"%s\" not found in module \"%a\"."
+            sym Path.pp (List.map fst mp)
     in
     if Timed.(!(sym.sym_rules)) = [] then
       wrn None "Cannot print decision tree: \
@@ -129,12 +138,25 @@ let lsp_log_file : string Term.t =
 
 let qsym : (Syntax.p_module_path * string) Term.t =
   let qsym_conv: (Syntax.p_module_path * string) Arg.conv =
-    let parse s =
-      match Parser.parse_qident s with
-      | Ok({elt; _}) -> Ok(elt)
-      | Error(p) ->
-          let msg = Format.sprintf "Parse error at %s." (Pos.to_string p) in
-          Error(`Msg(msg))
+    let parse (s: string): (Syntax.p_module_path * string, _) result =
+      if String.contains s '#' then (* Case of ghost symbols. *)
+        (* Parse with [Parser] up to the symbol id, which can’t be parsed by
+           [Parser]. *)
+        let ind = String.index s '#' in
+        match Parser.parse_qident (String.sub s 0 (ind - 1)) with
+        | Ok({elt=(mp,last); _}) -> (* [last] is the last module name. *)
+            (* Get the [id] manually *)
+            let id = String.sub s ind (String.length s - ind) in
+            Ok(mp @ [(last, false)], id)
+        | Error(p) ->
+            let msg = Format.sprintf "Parse error at %s." (Pos.to_string p) in
+            Error(`Msg(msg))
+      else
+        match Parser.parse_qident s with
+        | Ok({elt; _}) -> Ok(elt)
+        | Error(p) ->
+            let msg = Format.sprintf "Parse error at %s." (Pos.to_string p) in
+            Error(`Msg(msg))
     in
     let print fmt qid = Pretty.pp_qident fmt (Pos.none qid) in
     Arg.conv (parse, print)
