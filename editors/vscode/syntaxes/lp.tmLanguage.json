@@ -35,22 +35,25 @@
 
     "tactics": {
       "match": "\\b(apply|assume|print|proofterm|refine|reflexivity|rewrite|simpl|symmetry|why3)\\b",
-      "name": "keyword.control.lp"
+      "name": "keyword.control.tactics.lp"
     },
 
     "signature-commands": {
-      "match": "\\b(definition|as|in|let|declared|builtin|open|proof|qed|require|rule|symbol|theorem|with)\\b",
-      "name": "storage.type.lp"
+      "match": "(definition|as|in|let|declared|builtin|open|proof|qed|require|rule|symbol|theorem|with)\\s+([^\\s+]*)",
+      "captures": {
+        "1": {"name": "storage.type.lp"},
+        "2": {"name": "entity.name.function.theorem.lp"}
+      }
     },
 
     "warning": {
       "match": "\\b(abort|admit|fail)\\b",
-      "name": "keyword.control.lp"
+      "name": "keyword.control.warning.lp"
     },
 
     "misc": {
       "match": "\\b(type|assert|assernot|compute|set)\\b",
-      "name:": "keyword.lp"
+      "name:": "keyword.control.query.lp"
     },
 
     "keywords": {

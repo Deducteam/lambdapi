@@ -3,7 +3,7 @@
  * Licensed under the MIT License. See License.txt in the project root for license information.
  * ------------------------------------------------------------------------------------------ */
 
-import { workspace, ExtensionContext, Position, Uri, commands, window, WebviewPanel, ViewColumn, TextEditor, TextDocument, SnippetString, Range as rg } from 'vscode';
+import { workspace, ExtensionContext, Position, Uri, commands, window, WebviewPanel, ViewColumn, TextEditor, TextDocument, SnippetString, Range as rg, TextEditorDecorationType } from 'vscode';
 
 // Insiders API, disabled
 // import { WebviewEditorInset } from 'vscode';
@@ -17,25 +17,37 @@ import {
     NotificationType,
     TextDocumentIdentifier,
     RegistrationRequest,
+    DocumentSymbolRequest,
 } from 'vscode-languageclient';
+import { time } from 'console';
 
 let client: LanguageClient;
 
-let proofState : Position = new Position(0, 0); //Cursor position when cursor mode is on (see l.65)
-let cursorMode : boolean = false; //(see l.65)
-
-let range : rg = new rg(proofState, proofState.translate(1, 0));
-
-const decorationType = window.createTextEditorDecorationType({
-    light: {
-        backgroundColor: '#CCFFCC',
-    },
-    dark: {
-        backgroundColor: '#084035',
-    }
-  });
-
 export function activate(context: ExtensionContext) {
+
+    //___Declaration of workspace variables___
+
+    //Position of the proof cursor : colored highlights show until which point the proof was surveyed
+    let proofState : Position = new Position(1, 0);
+    context.workspaceState.update('proofState', proofState);
+
+    //Cursor mode (proof cursor is the regular cursor) activated or not
+    context.workspaceState.update('cursorMode', false);
+
+    //The range of text to highlight
+    let range : rg = new rg(proofState.translate(-1, 0), proofState);
+    context.workspaceState.update('range', range);
+
+    //The highlight parameters
+    const proofDecoration = window.createTextEditorDecorationType({
+        light: {
+            backgroundColor: '#CCFFCC' //highlight color for a light theme
+        },
+        dark: {
+            backgroundColor: '#084035' //highlight color for a dark theme
+        }
+      });
+    context.workspaceState.update('proofDecoration', proofDecoration);
 
     // XXX: Get from configuration
     let serverOptions = {
@@ -61,9 +73,9 @@ export function activate(context: ExtensionContext) {
             clientOptions
         );
 
-        client.onReady().then(() => {
+        client.onReady().then(async () => {
 
-            // Create and show panel
+            // Create and show panel for proof goals
             const panel = window.createWebviewPanel(
                 'goals',
                 'Goals',
@@ -71,70 +83,187 @@ export function activate(context: ExtensionContext) {
                 {}
             );
 
-            window.onDidChangeActiveTextEditor(e => refresh(panel, e, cursorMode));
-            window.onDidChangeTextEditorSelection(e => refresh(panel, e.textEditor, cursorMode));
+            window.onDidChangeActiveTextEditor(e => {
+                const proofState : Position = context.workspaceState.get('proofState') ?? new Position(0, 0);
+                const cursorMode : boolean = context.workspaceState.get('cursorMode') ?? false;
+                refresh(panel, e, proofState);
+            });
+
+            window.onDidChangeTextEditorSelection(e => { 
+                const proofState : Position = context.workspaceState.get('proofState') ?? new Position(0, 0);
+                const cursorMode : boolean = context.workspaceState.get('cursorMode') ?? false;
+
+                if(!cursorMode)
+                    return;
+
+                checkProofUntilCursor(context, panel, proofState);
+            });
 
             /*Toggle cursor mode (defaults to false)
                 *if true, the "Proof" panel is updated when the cursor is moved
-                *if false, updated when "alt+up/down" is pressed
+                *if false, updated when keybindings are pressed
             */
-            commands.registerCommand('extension.vscode-lp.cursor', () => {cursorMode = !cursorMode})
-
-            //Step forward in a proof (when cursor mode is off)
+            commands.registerCommand('extension.vscode-lp.cursor', () => toggleCursorMode(context));
+ 
+            //Navigate proof : step forward in a proof (when cursor mode is off)
             commands.registerCommand('extension.vscode-lp.fw', () => {
-                if(!cursorMode){
 
-                    proofState = proofState.translate(1, 0);
-                    console.log(proofState.line, cursorMode);
-                    refresh(panel, window.activeTextEditor, cursorMode);
+                const cursorMode : boolean = context.workspaceState.get('cursorMode') ?? false;
+                if(cursorMode)
+                    return;
 
-                    range = new rg(range.start, proofState.translate(1,0));
-                    let openEditor = window.activeTextEditor;
-
-                    if(openEditor != undefined)
-                        openEditor.setDecorations(decorationType, [range]);
-                }
-            })
+                const proofState : Position = context.workspaceState.get('proofState') ?? new Position(0, 0);
+                checkProofForward(context, panel, proofState);
+            });
             
-            //Step backwards in a proof (when cursor mode is off)
+            //Navigate proof : step backwards in a proof (when cursor mode is off)
             commands.registerCommand('extension.vscode-lp.bw', () => {
 
-                if(!cursorMode){
-                    let step : number = proofState.line == 0 ? 0 : -1;
-                    proofState = proofState.translate(step, 0);
-                    console.log(proofState.line);
-                    refresh(panel, window.activeTextEditor, cursorMode);
-                }
+                const cursorMode : boolean = context.workspaceState.get('cursorMode') ?? false;
+                if(cursorMode)
+                    return;
+                
+                const proofState : Position = context.workspaceState.get('proofState') ?? new Position(0, 0);
+                checkProofBackwards(context, panel, proofState);
+            });
 
-                range = new rg(range.start, proofState.translate(1,0));
-                let openEditor = window.activeTextEditor;
+            //Navigate proof : move proof higlight to cursor (when cursor mode is off)
+            commands.registerCommand('extension.vscode-lp.tc', () => {
 
-                if(openEditor != undefined)
-                    openEditor.setDecorations(decorationType, [range]);
-            })
+                const cursorMode : boolean = context.workspaceState.get('cursorMode') ?? false;
+                if(cursorMode)
+                    return;
+                
+                const proofState : Position = context.workspaceState.get('proofState') ?? new Position(0, 0);
+                checkProofUntilCursor(context, panel, proofState);
+            });
 
-
+            //Highlight first line
+            if(window.activeTextEditor)
+                decorate(window.activeTextEditor, range, proofDecoration);
         });
+
         context.subscriptions.push(client.start());
     };
-
+    
     commands.registerCommand('extension.vscode-lp.restart', restart);
-    commands.executeCommand('extension.vscode-lp.fw');
-    commands.executeCommand('extension.vscode-lp.bw');
     
     restart();
+}
+
+function toggleCursorMode(context : ExtensionContext) : boolean {
+    let cursorMode : boolean = context.workspaceState.get('cursorMode') ?? false;
+
+    cursorMode = !cursorMode;
+    context.workspaceState.update('cursorMode', cursorMode);
+
+    return cursorMode;
+}
+
+function decorate(openEditor : TextEditor, range : rg, decorationType : TextEditorDecorationType) {
+    if(openEditor != undefined)
+        openEditor.setDecorations(decorationType, [range]);
+}
+
+function updateHighlightRange(context : ExtensionContext, proofState : Position, offset : number) : rg {
+    
+
+    let range : rg = context.workspaceState.get('range') ?? new rg(new Position(0, 0), proofState);
+    
+    let rangeEnd : Position = new Position(proofState.line + 1, 0);
+
+    
+
+    range = new rg(range.start, rangeEnd);
+    context.workspaceState.update('range', range);
+
+    return range;
+}
+
+function stepProofState(context : ExtensionContext, step : number) {
+
+    let proofState : Position = context.workspaceState.get('proofState') ?? new Position(0, 0);
+
+    proofState = proofState.translate(step, 0);
+    context.workspaceState.update('proofState', proofState);
+
+    
+
+    return proofState;
 
 }
 
-function refresh(panel : WebviewPanel, editor : TextEditor | undefined, cursorMode : boolean) {
+function checkProofForward(context : ExtensionContext, panel : WebviewPanel, proofState : Position) {
 
-    if(editor && cursorMode)
-        sendGoalsRequest(editor.selection.active, panel, editor.document.uri);
+    const openEditor : TextEditor | undefined = window.activeTextEditor;
+    if(!openEditor)
+        return;
+
+    const documentTotalLines : number = openEditor.document.lineCount ?? 0;
+    const step : number = proofState.line == documentTotalLines ? 0 : 1;
+
+    if(step) {
+
+        const newProofState : Position = stepProofState(context, step);
+        
+        refresh(panel, openEditor, newProofState);
+
+        const range : rg = updateHighlightRange(context, newProofState, 1);
+        const proofDecoration : TextEditorDecorationType = context.workspaceState.get('proofDecoration') ?? window.createTextEditorDecorationType({});
+
+        decorate(openEditor, range, proofDecoration);
+    }
+}
+
+function checkProofBackwards(context : ExtensionContext, panel : WebviewPanel, proofState : Position) {
+
+    const openEditor : TextEditor | undefined = window.activeTextEditor;
+    if(!openEditor)
+        return;
+
+    const step : number = proofState.line == 1 ? 0 : -1;
+
+    if(step == -1) {
+        
+        const newProofState : Position = stepProofState(context, step);
+        refresh(panel, openEditor, newProofState);
+
+        const range : rg = updateHighlightRange(context, newProofState, 0);
+        const proofDecoration : TextEditorDecorationType = context.workspaceState.get('proofDecoration') ?? window.createTextEditorDecorationType({});
+
+        decorate(openEditor, range, proofDecoration);
+    }
+}
+
+function checkProofUntilCursor(context : ExtensionContext, panel : WebviewPanel, proofState : Position) {
+
+    const openEditor : TextEditor | undefined = window.activeTextEditor;
+    if(!openEditor)
+        return;
     
-    else if(editor && !cursorMode)
-        sendGoalsRequest(proofState, panel, editor.document.uri);
+    let cursorPosition : Position =  openEditor.selection.active;    
+    if (proofState.line == cursorPosition.line) 
+        return;
+    
+    if (cursorPosition.character != 0)
+        cursorPosition = new Position(cursorPosition.line, 0);
+    
+    context.workspaceState.update('proofState', cursorPosition);
+    
+    refresh(panel, openEditor, cursorPosition);
 
+    const range : rg = updateHighlightRange(context, cursorPosition, -1);
+    const proofDecoration : TextEditorDecorationType = context.workspaceState.get('proofDecoration') ?? window.createTextEditorDecorationType({});
 
+    decorate(openEditor, range, proofDecoration);
+}
+
+function refresh(panel : WebviewPanel, editor : TextEditor | undefined, proofState : Position) {
+
+    if(!editor)
+        return;
+    
+    sendGoalsRequest(editor.selection.active, panel, editor.document.uri);
 }
 
 // returns the HTML code of goals environment

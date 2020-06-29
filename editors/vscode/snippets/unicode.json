@@ -125,14 +125,14 @@
 		"description": "Insert omega"
 	},
 	"wedge": {
-		"prefix": "@&",
+		"prefix": ["@and"],
 		"body": "∧",
 		"description": "Insert wedge"
 	},
 	"vee": {
-		"prefix": "@|",
+		"prefix": "@or",
 		"body": "∨",
-		"description": "Insert wedge"
+		"description": "Insert vee"
 	},
 	"xi": {
 		"prefix": "@x",
@@ -203,5 +203,993 @@
 		"prefix": "@P",
 		"body": "Π",
 		"description": "Insert Pi"
+	},
+	"neg": {
+		"prefix": "@neg",
+		"body": "¬",
+		"description": "Insert negation"
+	},
+	"arr": {
+		"prefix": "@ar",
+		"body": "→",
+		"description": "Insert arrow"
+	},
+	"hook": {
+		"prefix": "@ho",
+		"body": "↪",
+		"description": "Insert hooked arrow"
+	},
+	"ass": {
+		"prefix": "@set",
+		"body": "≔",
+		"description": "Insert assignment symbol"
+	},
+	"eq": {
+		"prefix": "@eq",
+		"body": "≡",
+		"description": "Insert equivalence symbol"
+	},
+	"asse": {
+		"prefix": "@as",
+		"body": "⊢",
+		"description": "Insert assertion symbol"
+	},
+	"fa": {
+		"prefix": "@fa",
+		"body": "∀",
+		"description": "Insert 'for all' symbol"
+	},
+	"ex": {
+		"prefix": "@ex",
+		"body": "∃",
+		"description": "Insert 'there exists' symbol"
+	},
+	"imp": {
+		"prefix": "@imp",
+		"body": "⇒",
+		"description": "Insert implication symbol"
+	},
+	"box": {
+		"prefix": "@box",
+		"body": "□",
+		"description": "Insert box symbol"
+	},
+	"thus": {
+		"prefix": "@tf",
+		"body": "⸬",
+		"description": "Insert 'therefore' symbol"
+	},
+	"dba": {
+		"prefix": "@aa",
+		"body": "𝔸",
+		"description": "Insert double-struck a"
+	},
+	
+	"dbb": {
+		"prefix": "@bb",
+		"body": "𝔹",
+		"description": "Insert double-struck b"
+	},
+	
+	"dbc": {
+		"prefix": "@cc",
+		"body": "ℂ",
+		"description": "Insert double-struck c"
+	},
+	
+	"dbd": {
+		"prefix": "@dd",
+		"body": "𝔻",
+		"description": "Insert double-struck d"
+	},
+	
+	"dbe": {
+		"prefix": "@ee",
+		"body": "𝔼",
+		"description": "Insert double-struck e"
+	},
+	
+	"dbf": {
+		"prefix": "@ff",
+		"body": "𝔽",
+		"description": "Insert double-struck f"
+	},
+	
+	"dbg": {
+		"prefix": "@gg",
+		"body": "𝔾",
+		"description": "Insert double-struck g"
+	},
+	
+	"dbh": {
+		"prefix": "@hh",
+		"body": "ℍ",
+		"description": "Insert double-struck h"
+	},
+	
+	"dbi": {
+		"prefix": "@ii",
+		"body": "𝕀",
+		"description": "Insert double-struck i"
+	},
+	
+	"dbj": {
+		"prefix": "@jj",
+		"body": "𝕁",
+		"description": "Insert double-struck j"
+	},
+	
+	"dbk": {
+		"prefix": "@kk",
+		"body": "𝕂",
+		"description": "Insert double-struck k"
+	},
+	
+	"dbl": {
+		"prefix": "@ll",
+		"body": "𝕃",
+		"description": "Insert double-struck l"
+	},
+	
+	"dbm": {
+		"prefix": "@mm",
+		"body": "𝕄",
+		"description": "Insert double-struck m"
+	},
+	
+	"dbn": {
+		"prefix": "@nn",
+		"body": "ℕ",
+		"description": "Insert double-struck n"
+	},
+	
+	"dbo": {
+		"prefix": "@oo",
+		"body": "𝕆",
+		"description": "Insert double-struck o"
+	},
+	
+	"dbp": {
+		"prefix": "@pp",
+		"body": "ℙ",
+		"description": "Insert double-struck p"
+	},
+	
+	"dbq": {
+		"prefix": "@qq",
+		"body": "ℚ",
+		"description": "Insert double-struck q"
+	},
+	
+	"dbr": {
+		"prefix": "@rr",
+		"body": "ℝ",
+		"description": "Insert double-struck r"
+	},
+	
+	"dbs": {
+		"prefix": "@ss",
+		"body": "𝕊",
+		"description": "Insert double-struck s"
+	},
+	
+	"dbt": {
+		"prefix": "@tt",
+		"body": "𝕋",
+		"description": "Insert double-struck t"
+	},
+	
+	"dbu": {
+		"prefix": "@uu",
+		"body": "𝕌",
+		"description": "Insert double-struck u"
+	},
+	
+	"dbv": {
+		"prefix": "@vv",
+		"body": "𝕍",
+		"description": "Insert double-struck v"
+	},
+	
+	"dbw": {
+		"prefix": "@ww",
+		"body": "𝕎",
+		"description": "Insert double-struck w"
+	},
+	
+	"dbx": {
+		"prefix": "@xx",
+		"body": "𝕏",
+		"description": "Insert double-struck x"
+	},
+	
+	"dby": {
+		"prefix": "@yy",
+		"body": "𝕐",
+		"description": "Insert double-struck y"
+	},
+	
+	"dbz": {
+		"prefix": "@zz",
+		"body": "ℤ",
+		"description": "Insert double-struck z"
+	},
+
+	"bsa": {
+		"prefix": "@bsa",
+		"body": "𝓐",
+		"description": "Insert bold script a"
+	},
+	
+	"bsb": {
+		"prefix": "@bsb",
+		"body": "𝓑",
+		"description": "Insert bold script b"
+	},
+	
+	"bsc": {
+		"prefix": "@bsc",
+		"body": "𝓒",
+		"description": "Insert bold script c"
+	},
+	
+	"bsd": {
+		"prefix": "@bsd",
+		"body": "𝓓",
+		"description": "Insert bold script d"
+	},
+	
+	"bse": {
+		"prefix": "@bse",
+		"body": "𝓔",
+		"description": "Insert bold script e"
+	},
+	
+	"bsf": {
+		"prefix": "@bsf",
+		"body": "𝓕",
+		"description": "Insert bold script f"
+	},
+	
+	"bsg": {
+		"prefix": "@bsg",
+		"body": "𝓖",
+		"description": "Insert bold script g"
+	},
+	
+	"bsh": {
+		"prefix": "@bsh",
+		"body": "𝓗",
+		"description": "Insert bold script h"
+	},
+	
+	"bsi": {
+		"prefix": "@bsi",
+		"body": "𝓘",
+		"description": "Insert bold script i"
+	},
+	
+	"bsj": {
+		"prefix": "@bsj",
+		"body": "𝓙",
+		"description": "Insert bold script j"
+	},
+	
+	"bsk": {
+		"prefix": "@bsk",
+		"body": "𝓚",
+		"description": "Insert bold script k"
+	},
+	
+	"bsl": {
+		"prefix": "@bsl",
+		"body": "𝓛",
+		"description": "Insert bold script l"
+	},
+	
+	"bsm": {
+		"prefix": "@bsm",
+		"body": "𝓜",
+		"description": "Insert bold script m"
+	},
+	
+	"bsn": {
+		"prefix": "@bsn",
+		"body": "𝓝",
+		"description": "Insert bold script n"
+	},
+	
+	"bso": {
+		"prefix": "@bso",
+		"body": "𝓞",
+		"description": "Insert bold script o"
+	},
+	
+	"bsp": {
+		"prefix": "@bsp",
+		"body": "𝓟",
+		"description": "Insert bold script p"
+	},
+	
+	"bsq": {
+		"prefix": "@bsq",
+		"body": "𝓠",
+		"description": "Insert bold script q"
+	},
+	
+	"bsr": {
+		"prefix": "@bsr",
+		"body": "𝓡",
+		"description": "Insert bold script r"
+	},
+	
+	"bss": {
+		"prefix": "@bss",
+		"body": "𝓢",
+		"description": "Insert bold script s"
+	},
+	
+	"bst": {
+		"prefix": "@bst",
+		"body": "𝓣",
+		"description": "Insert bold script t"
+	},
+	
+	"bsu": {
+		"prefix": "@bsu",
+		"body": "𝓤",
+		"description": "Insert bold script u"
+	},
+	
+	"bsv": {
+		"prefix": "@bsv",
+		"body": "𝓥",
+		"description": "Insert bold script v"
+	},
+	
+	"bsw": {
+		"prefix": "@bsw",
+		"body": "𝓦",
+		"description": "Insert bold script w"
+	},
+	
+	"bsx": {
+		"prefix": "@bsx",
+		"body": "𝓧",
+		"description": "Insert bold script x"
+	},
+	
+	"bsy": {
+		"prefix": "@bsy",
+		"body": "𝓨",
+		"description": "Insert bold script y"
+	},
+	
+	"bsz": {
+		"prefix": "@bsz",
+		"body": "𝓩",
+		"description": "Insert bold script z"
+	},
+	"sa": {
+		"prefix": "@sca",
+		"body": "𝒜",
+		"description": "Insert script a"
+	},
+	
+	"sb": {
+		"prefix": "@scb",
+		"body": "ℬ",
+		"description": "Insert script b"
+	},
+	
+	"sc": {
+		"prefix": "@scc",
+		"body": "𝒞",
+		"description": "Insert script c"
+	},
+	
+	"sd": {
+		"prefix": "@scd",
+		"body": "𝒟",
+		"description": "Insert script d"
+	},
+	
+	"se": {
+		"prefix": "@sce",
+		"body": "ℰ",
+		"description": "Insert script e"
+	},
+	
+	"sf": {
+		"prefix": "@scf",
+		"body": "ℱ",
+		"description": "Insert script f"
+	},
+	
+	"sg": {
+		"prefix": "@scg",
+		"body": "𝒢",
+		"description": "Insert script g"
+	},
+	
+	"sh": {
+		"prefix": "@sch",
+		"body": "ℋ",
+		"description": "Insert script h"
+	},
+	
+	"si": {
+		"prefix": "@sci",
+		"body": "ℐ",
+		"description": "Insert script i"
+	},
+	
+	"sj": {
+		"prefix": "@scj",
+		"body": "𝒥",
+		"description": "Insert script j"
+	},
+	
+	"sk": {
+		"prefix": "@sck",
+		"body": "𝒦",
+		"description": "Insert script k"
+	},
+	
+	"sl": {
+		"prefix": "@scl",
+		"body": "ℒ",
+		"description": "Insert script l"
+	},
+	
+	"sm": {
+		"prefix": "@scm",
+		"body": "ℳ",
+		"description": "Insert script m"
+	},
+	
+	"sn": {
+		"prefix": "@scn",
+		"body": "𝒩",
+		"description": "Insert script n"
+	},
+	
+	"so": {
+		"prefix": "@sco",
+		"body": "𝒪",
+		"description": "Insert script o"
+	},
+	
+	"sp": {
+		"prefix": "@scp",
+		"body": "𝒫",
+		"description": "Insert script p"
+	},
+	
+	"sq": {
+		"prefix": "@scq",
+		"body": "𝒬",
+		"description": "Insert script q"
+	},
+	
+	"sr": {
+		"prefix": "@scr",
+		"body": "ℛ",
+		"description": "Insert script r"
+	},
+	
+	"ss": {
+		"prefix": "@scs",
+		"body": "𝒮",
+		"description": "Insert script s"
+	},
+	
+	"st": {
+		"prefix": "@sct",
+		"body": "𝒯",
+		"description": "Insert script t"
+	},
+	
+	"su": {
+		"prefix": "@scu",
+		"body": "𝒰",
+		"description": "Insert script u"
+	},
+	
+	"sv": {
+		"prefix": "@scv",
+		"body": "𝒱",
+		"description": "Insert script v"
+	},
+	
+	"sw": {
+		"prefix": "@scw",
+		"body": "𝒲",
+		"description": "Insert script w"
+	},
+	
+	"sx": {
+		"prefix": "@scx",
+		"body": "𝒳",
+		"description": "Insert script x"
+	},
+	
+	"sy": {
+		"prefix": "@scy",
+		"body": "𝒴",
+		"description": "Insert script y"
+	},
+	
+	"sz": {
+		"prefix": "@scz",
+		"body": "𝒵",
+		"description": "Insert script z"
+	},
+
+	"iba": {
+		"prefix": "@iba",
+		"body": "𝑨",
+		"description": "Insert italic bold a"
+	},
+	
+	"ibb": {
+		"prefix": "@ibb",
+		"body": "𝑩",
+		"description": "Insert italic bold b"
+	},
+	
+	"ibc": {
+		"prefix": "@ibc",
+		"body": "𝑪",
+		"description": "Insert italic bold c"
+	},
+	
+	"ibd": {
+		"prefix": "@ibd",
+		"body": "𝑫",
+		"description": "Insert italic bold d"
+	},
+	
+	"ibe": {
+		"prefix": "@ibe",
+		"body": "𝑬",
+		"description": "Insert italic bold e"
+	},
+	
+	"ibf": {
+		"prefix": "@ibf",
+		"body": "𝑭",
+		"description": "Insert italic bold f"
+	},
+	
+	"ibg": {
+		"prefix": "@ibg",
+		"body": "𝑮",
+		"description": "Insert italic bold g"
+	},
+	
+	"ibh": {
+		"prefix": "@ibh",
+		"body": "𝑯",
+		"description": "Insert italic bold h"
+	},
+	
+	"ibi": {
+		"prefix": "@ibi",
+		"body": "𝑰",
+		"description": "Insert italic bold i"
+	},
+	
+	"ibj": {
+		"prefix": "@ibj",
+		"body": "𝑱",
+		"description": "Insert italic bold j"
+	},
+	
+	"ibk": {
+		"prefix": "@ibk",
+		"body": "𝑲",
+		"description": "Insert italic bold k"
+	},
+	
+	"ibl": {
+		"prefix": "@ibl",
+		"body": "𝑳",
+		"description": "Insert italic bold l"
+	},
+	
+	"ibm": {
+		"prefix": "@ibm",
+		"body": "𝑴",
+		"description": "Insert italic bold m"
+	},
+	
+	"ibn": {
+		"prefix": "@ibn",
+		"body": "𝑵",
+		"description": "Insert italic bold n"
+	},
+	
+	"ibo": {
+		"prefix": "@ibo",
+		"body": "𝑶",
+		"description": "Insert italic bold o"
+	},
+	
+	"ibp": {
+		"prefix": "@ibp",
+		"body": "𝑷",
+		"description": "Insert italic bold p"
+	},
+	
+	"ibq": {
+		"prefix": "@ibq",
+		"body": "𝑸",
+		"description": "Insert italic bold q"
+	},
+	
+	"ibr": {
+		"prefix": "@ibr",
+		"body": "𝑹",
+		"description": "Insert italic bold r"
+	},
+	
+	"ibs": {
+		"prefix": "@ibs",
+		"body": "𝑺",
+		"description": "Insert italic bold s"
+	},
+	
+	"ibt": {
+		"prefix": "@ibt",
+		"body": "𝑻",
+		"description": "Insert italic bold t"
+	},
+	
+	"ibu": {
+		"prefix": "@ibu",
+		"body": "𝑼",
+		"description": "Insert italic bold u"
+	},
+	
+	"ibv": {
+		"prefix": "@ibv",
+		"body": "𝑽",
+		"description": "Insert italic bold v"
+	},
+	
+	"ibw": {
+		"prefix": "@ibw",
+		"body": "𝑾",
+		"description": "Insert italic bold w"
+	},
+	
+	"ibx": {
+		"prefix": "@ibx",
+		"body": "𝑿",
+		"description": "Insert italic bold x"
+	},
+	
+	"iby": {
+		"prefix": "@iby",
+		"body": "𝒀",
+		"description": "Insert italic bold y"
+	},
+	
+	"ibz": {
+		"prefix": "@ibz",
+		"body": "𝒁",
+		"description": "Insert italic bold z"
+	},
+
+	"ia": {
+		"prefix": "@ita",
+		"body": "𝐴",
+		"description": "Insert italic a"
+	},
+	
+	"ib": {
+		"prefix": "@itb",
+		"body": "𝐵",
+		"description": "Insert italic b"
+	},
+	
+	"ic": {
+		"prefix": "@itc",
+		"body": "𝐶",
+		"description": "Insert italic c"
+	},
+	
+	"id": {
+		"prefix": "@itd",
+		"body": "𝐷",
+		"description": "Insert italic d"
+	},
+	
+	"ie": {
+		"prefix": "@ite",
+		"body": "𝐸",
+		"description": "Insert italic e"
+	},
+	
+	"if": {
+		"prefix": "@itf",
+		"body": "𝐹",
+		"description": "Insert italic f"
+	},
+	
+	"ig": {
+		"prefix": "@itg",
+		"body": "𝐺",
+		"description": "Insert italic g"
+	},
+	
+	"ih": {
+		"prefix": "@ith",
+		"body": "𝐻",
+		"description": "Insert italic h"
+	},
+	
+	"ii": {
+		"prefix": "@iti",
+		"body": "𝐼",
+		"description": "Insert italic i"
+	},
+	
+	"ij": {
+		"prefix": "@itj",
+		"body": "𝐽",
+		"description": "Insert italic j"
+	},
+	
+	"ik": {
+		"prefix": "@itk",
+		"body": "𝐾",
+		"description": "Insert italic k"
+	},
+	
+	"il": {
+		"prefix": "@itl",
+		"body": "𝐿",
+		"description": "Insert italic l"
+	},
+	
+	"im": {
+		"prefix": "@itm",
+		"body": "𝑀",
+		"description": "Insert italic m"
+	},
+	
+	"in": {
+		"prefix": "@itn",
+		"body": "𝑁",
+		"description": "Insert italic n"
+	},
+	
+	"io": {
+		"prefix": "@ito",
+		"body": "𝑂",
+		"description": "Insert italic o"
+	},
+	
+	"ip": {
+		"prefix": "@itp",
+		"body": "𝑃",
+		"description": "Insert italic p"
+	},
+	
+	"iq": {
+		"prefix": "@itq",
+		"body": "𝑄",
+		"description": "Insert italic q"
+	},
+	
+	"ir": {
+		"prefix": "@itr",
+		"body": "𝑅",
+		"description": "Insert italic r"
+	},
+	
+	"is": {
+		"prefix": "@its",
+		"body": "𝑆",
+		"description": "Insert italic s"
+	},
+	
+	"it": {
+		"prefix": "@itt",
+		"body": "𝑇",
+		"description": "Insert italic t"
+	},
+	
+	"iu": {
+		"prefix": "@itu",
+		"body": "𝑈",
+		"description": "Insert italic u"
+	},
+	
+	"iv": {
+		"prefix": "@itv",
+		"body": "𝑉",
+		"description": "Insert italic v"
+	},
+	
+	"iw": {
+		"prefix": "@itw",
+		"body": "𝑊",
+		"description": "Insert italic w"
+	},
+	
+	"ix": {
+		"prefix": "@itx",
+		"body": "𝑋",
+		"description": "Insert italic x"
+	},
+	
+	"iy": {
+		"prefix": "@ity",
+		"body": "𝑌",
+		"description": "Insert italic y"
+	},
+	
+	"iz": {
+		"prefix": "@itz",
+		"body": "𝑍",
+		"description": "Insert italic z"
+	},
+	"fra": {
+		"prefix": "@fra",
+		"body": "𝔄",
+		"description": "Insert Fraktur a"
+	},
+	
+	"frb": {
+		"prefix": "@frb",
+		"body": "𝔅",
+		"description": "Insert Fraktur b"
+	},
+	
+	"frc": {
+		"prefix": "@frc",
+		"body": "ℭ",
+		"description": "Insert Fraktur c"
+	},
+	
+	"frd": {
+		"prefix": "@frd",
+		"body": "𝔇",
+		"description": "Insert Fraktur d"
+	},
+	
+	"fre": {
+		"prefix": "@fre",
+		"body": "𝔈",
+		"description": "Insert Fraktur e"
+	},
+	
+	"frf": {
+		"prefix": "@frf",
+		"body": "𝔉",
+		"description": "Insert Fraktur f"
+	},
+	
+	"frg": {
+		"prefix": "@frg",
+		"body": "𝔊",
+		"description": "Insert Fraktur g"
+	},
+	
+	"frh": {
+		"prefix": "@frh",
+		"body": "ℌ",
+		"description": "Insert Fraktur h"
+	},
+	
+	"fri": {
+		"prefix": "@fri",
+		"body": "ℑ",
+		"description": "Insert Fraktur i"
+	},
+	
+	"frj": {
+		"prefix": "@frj",
+		"body": "𝔍",
+		"description": "Insert Fraktur j"
+	},
+	
+	"frk": {
+		"prefix": "@frk",
+		"body": "𝔎",
+		"description": "Insert Fraktur k"
+	},
+	
+	"frl": {
+		"prefix": "@frl",
+		"body": "𝔏",
+		"description": "Insert Fraktur l"
+	},
+	
+	"frm": {
+		"prefix": "@frm",
+		"body": "𝔐",
+		"description": "Insert Fraktur m"
+	},
+	
+	"frn": {
+		"prefix": "@frn",
+		"body": "𝔑",
+		"description": "Insert Fraktur n"
+	},
+	
+	"fro": {
+		"prefix": "@fro",
+		"body": "𝔒",
+		"description": "Insert Fraktur o"
+	},
+	
+	"frp": {
+		"prefix": "@frp",
+		"body": "𝔓",
+		"description": "Insert Fraktur p"
+	},
+	
+	"frq": {
+		"prefix": "@frq",
+		"body": "𝔔",
+		"description": "Insert Fraktur q"
+	},
+	
+	"frr": {
+		"prefix": "@frr",
+		"body": "ℜ",
+		"description": "Insert Fraktur r"
+	},
+	
+	"frs": {
+		"prefix": "@frs",
+		"body": "𝔖",
+		"description": "Insert Fraktur s"
+	},
+	
+	"frt": {
+		"prefix": "@frt",
+		"body": "𝔗",
+		"description": "Insert Fraktur t"
+	},
+	
+	"fru": {
+		"prefix": "@fru",
+		"body": "𝔘",
+		"description": "Insert Fraktur u"
+	},
+	
+	"frv": {
+		"prefix": "@frv",
+		"body": "𝔙",
+		"description": "Insert Fraktur v"
+	},
+	
+	"frw": {
+		"prefix": "@frw",
+		"body": "𝔚",
+		"description": "Insert Fraktur w"
+	},
+	
+	"frx": {
+		"prefix": "@frx",
+		"body": "𝔛",
+		"description": "Insert Fraktur x"
+	},
+	
+	"fry": {
+		"prefix": "@fry",
+		"body": "𝔜",
+		"description": "Insert Fraktur y"
+	},
+	
+	"frz": {
+		"prefix": "@frz",
+		"body": "ℨ",
+		"description": "Insert Fraktur z"
 	}
 }

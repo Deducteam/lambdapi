@@ -63,17 +63,22 @@
       },
       {
         "command": "extension.vscode-lp.fw",
-        "title": "Step Forward in a Lambdapi proof",
+        "title": "Step Forward in a Lambdapi proof (when not cursor only)",
         "category": "Lambdapi"
       },
       {
         "command": "extension.vscode-lp.bw",
-        "title": "Step Backwards in a Lambdapi proof",
+        "title": "Step Backwards in a Lambdapi proof (when not cursor only)",
+        "category": "Lambdapi"
+      },
+      {
+        "command": "extension.vscode-lp.tc",
+        "title": "Navigate until cursor in a Lambdapi proof",
         "category": "Lambdapi"
       },
       {
         "command": "extension.vscode-lp.cursor",
-        "title": "Toggle navigation w/ keybindings or cursor only",
+        "title": "Toggle navigation w/ cursor only or keybindings",
         "category": "Lambdapi"
       }
     ],
@@ -86,6 +91,11 @@
       {
         "key": "ctrl+up",
         "command": "extension.vscode-lp.bw",
+        "when": "editorTextFocus && editorLangId == lp"
+      },
+      {
+        "key": "ctrl+enter",
+        "command": "extension.vscode-lp.tc",
         "when": "editorTextFocus && editorLangId == lp"
       },
       {
