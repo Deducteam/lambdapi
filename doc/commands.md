@@ -76,30 +76,35 @@ Data types and predicates must be given types of the form
 We recommend to start types and predicates by a capital letter.
 
 **Modifiers:**
- - `constant`: no rule can be added to the symbol
- - `injective`: the symbol can be considered as injective, that is,
- if `f t1 .. tn` ≡ `f u1 .. un`, then `t1`≡`u1`, ..., `tn`≡`un`.
- For the moment, the verification is left to the user.
+- Modifiers for the unification engine,
+  - `constant`: no rule can be added to the symbol
+  - `injective`: the symbol can be considered as injective, that is, if `f t1 ..
+     tn` ≡ `f u1 .. un`, then `t1`≡`u1`, ..., `tn`≡`un`. For the moment, the
+     verification is left to the user.
 
-These modifiers are used to help the unification engine.
+- Exposition markers define how a symbol can be used outside the module where it
+  is defined.
+  - `public` (default): the symbol can be used without restriction
+  - `private`: the symbol cannot be used
+  - `protected`: the symbol can only be used in left-hand side of rewrite rules.
 
-**Exposition markers:**
-Exposition defines how a symbol can be used outside the module where it is
-defined. By default any symbol is _public_, which means it can be used without
-restriction anywhere. There are two exposition markers available:
-- `private`: the symbol cannot be used outside of its module (can be compared to
-  a symbol not in the interface in OCaml);
-- `protected`: the symbol can only be used in left-hand side of rewrite rules
-  outside of its module.
+  Exposition markers obey the following rules: inside a module,
+  - private symbols cannot appear in the type of public symbols;
+  - private symbols cannot appear in the right-hand side of a rewriting rule
+    defining a public symbol
+  - externally defined protected symbols cannot appear at the head of a
+    left-hand side
+  - externally defined protected symbols cannot appear in the right hand side of
+    a rewriting rule
 
-Exposition obeys the following rules: inside a module,
-- private symbols cannot appear in the type of public symbols;
-- private symbols cannot appear in the right-hand side of a rewriting rule
-  defining a public symbol
-- externally defined protected symbols cannot appear at the head of a left-hand
-  side
-- externally defined protected symbols cannot appear in the right hand side of a
-  rewriting rule
+- `sequential`: modifies the pattern matching algorithm. By default, the order
+  of rule declarations is not taken into account. This modifier tells Lambdapi
+  to apply rules defining a sequential symbol in the order they have been
+  declared (note that the order of the rules may depend on the order of the
+  `require` commands). An example can be seen in 
+  [`rule_order.lp`](../tests/OK/rule_order.lp).  
+  *WARNING:* using this modifier can break important properties.
+
 
 **Implicit arguments:** Some function symbol arguments can be declared
 as implicit meaning that they must not be given by the user
