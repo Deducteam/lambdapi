@@ -75,6 +75,10 @@ let decision_tree_cmd : Config.t -> (Syntax.p_module_path * string) -> unit =
   fun cfg (mp, sym) ->
   let run _ =
     Timed.(verbose := 0); (* To avoid printing the "Checked ..." line *)
+    (* By default, search for a package from the current working directory. *)
+    let pth = Sys.getcwd () in
+    let pth = Filename.concat pth "." in
+    Package.apply_config pth;
     Config.init cfg;
     let sym =
       let sign = Compile.compile false (List.map fst mp) in
