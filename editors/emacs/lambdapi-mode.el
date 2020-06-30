@@ -135,50 +135,26 @@
   (eglot--signal-proof/goals (eglot--pos-to-lsp-position)))
 
 (defvar proof-line-position (list :line 0 :character 0))
+(defvar interactive-goals 't)
+
+(defun move-proof-line (move-fct)
+  (save-excursion
+    (let ((line (plist-get proof-line-position :line)))
+      (setq proof-line-position (eglot--widening
+                                 (list :line (funcall move-fct line) :character 0)))
+      (goto-line line)
+      (hlt-unhighlight-region (line-beginning-position) (line-end-position))
+      (goto-line (funcall move-fct line))
+      (hlt-highlight-region (line-beginning-position) (line-end-position))
+      (lp-display-goals))))
 
 (defun lp-proof-forward ()
   (interactive)
-  (save-excursion
-    (let ((line (plist-get proof-line-position :line)))
-      (setq proof-line-position (eglot--widening
-                                 (list :line (1+ line) :character 0)))
-      (goto-line line)
-      (hlt-unhighlight-region (line-beginning-position) (line-end-position))
-      (goto-line (1+ line))
-      (hlt-highlight-region (line-beginning-position) (line-end-position))
-      (lp-display-goals))))
+  (move-proof-line #'1+))
 
 (defun lp-proof-backward ()
   (interactive)
-  (save-excursion
-    (let ((line (plist-get proof-line-position :line)))
-      (setq proof-line-position (eglot--widening
-                                 (list :line (1- line) :character 0)))
-      (goto-line line)
-      (hlt-unhighlight-region (line-beginning-position) (line-end-position))
-      (goto-line (1- line))
-      (hlt-highlight-region (line-beginning-position) (line-end-position))
-      (lp-display-goals))))
-
-;; Hook to be run when changing line
-;; From https://emacs.stackexchange.com/questions/46081/hook-when-line-number-changes
-(defvar current-line-number (line-number-at-pos))
-(defvar changed-line-hook nil)
-
-(defvar interactive-goals 't)
-
-(defun update-line-number ()
-  (if interactive-goals
-      (let ((new-line-number (line-number-at-pos)))
-        (when (not (equal new-line-number current-line-number))
-          (setq current-line-number new-line-number)
-          (run-hooks 'changed-line-hook)))))
-
-(defun create-goals-buffer ()
-  (let ((goalsbuf (get-buffer-create "*Goals*"))
-        (goalswindow (split-window nil -10 'below)))
-    (set-window-buffer goalswindow goalsbuf)
-    (set-window-dedicated-p goalswindow 't)))
+  (move-proof-line #'1-))
 
 (defun toggle-interactive-goals ()
   (interactive)
@@ -195,6 +171,23 @@
           (hlt-unhighlight-region (line-beginning-position) (line-end-position))))))
   (setq interactive-goals (not interactive-goals)))
 
+;; Hook to be run when changing line
+;; From https://emacs.stackexchange.com/questions/46081/hook-when-line-number-changes
+(defvar current-line-number (line-number-at-pos))
+(defvar changed-line-hook nil)
+
+(defun update-line-number ()
+  (if interactive-goals
+      (let ((new-line-number (line-number-at-pos)))
+        (when (not (equal new-line-number current-line-number))
+          (setq current-line-number new-line-number)
+          (run-hooks 'changed-line-hook)))))
+
+(defun create-goals-buffer ()
+  (let ((goalsbuf (get-buffer-create "*Goals*"))
+        (goalswindow (split-window nil -10 'below)))
+    (set-window-buffer goalswindow goalsbuf)
+    (set-window-dedicated-p goalswindow 't)))
 
 ;; Main function creating the mode (lambdapi)
 ;;;###autoload
