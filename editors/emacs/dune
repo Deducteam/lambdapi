@@ -10,6 +10,7 @@
  (package lambdapi)
  (section share_root)
  (files
+  (highlight.el as emacs/site-lisp/highlight.el)
   (lambdapi-abbrev.el as emacs/site-lisp/lambdapi-abbrev.el)
   (lambdapi-capf.el as emacs/site-lisp/lambdapi-capf.el)
   (lambdapi-input.el as emacs/site-lisp/lambdapi-input.el)

@@ -23,6 +23,7 @@
 (require 'lambdapi-capf)
 (require 'lambdapi-abbrev)
 (require 'lambdapi-input)
+(require 'highlight)
 (require 'eglot)
 ;;; Legacy
 ;; Syntax table (legacy syntax)
@@ -114,11 +115,11 @@
         (erase-buffer))
       (read-only-mode 1))))
 
-(defun eglot--signal-proof/goals ()
+(defun eglot--signal-proof/goals (position)
   "Send proof/goals to server."
   (let ((server (eglot-current-server))
         (params `(:textDocument ,(eglot--TextDocumentIdentifier)
-                  :position ,(eglot--pos-to-lsp-position))))
+                  :position ,position)))
     (if server
         (let ((response (jsonrpc-request server :proof/goals params)))
           (if response
@@ -131,17 +132,33 @@
 
 (defun lp-display-goals ()
   (interactive)
-  (eglot--signal-proof/goals))
+  (eglot--signal-proof/goals (eglot--pos-to-lsp-position)))
+
+(defvar proof-line-position (list :line 0 :character 0))
 
 (defun lp-proof-forward ()
   (interactive)
-  (lp-display-goals)
-  (forward-line))
+  (save-excursion
+    (let ((line (plist-get proof-line-position :line)))
+      (setq proof-line-position (eglot--widening
+                                 (list :line (1+ line) :character 0)))
+      (goto-line line)
+      (hlt-unhighlight-region (line-beginning-position) (line-end-position))
+      (goto-line (1+ line))
+      (hlt-highlight-region (line-beginning-position) (line-end-position))
+      (lp-display-goals))))
 
 (defun lp-proof-backward ()
   (interactive)
-  (lp-display-goals)
-  (forward-line -1))
+  (save-excursion
+    (let ((line (plist-get proof-line-position :line)))
+      (setq proof-line-position (eglot--widening
+                                 (list :line (1- line) :character 0)))
+      (goto-line line)
+      (hlt-unhighlight-region (line-beginning-position) (line-end-position))
+      (goto-line (1- line))
+      (hlt-highlight-region (line-beginning-position) (line-end-position))
+      (lp-display-goals))))
 
 ;; Hook to be run when changing line
 ;; From https://emacs.stackexchange.com/questions/46081/hook-when-line-number-changes
@@ -165,7 +182,19 @@
 
 (defun toggle-interactive-goals ()
   (interactive)
+  (save-excursion
+    (let ((line (plist-get proof-line-position :line)))
+      (if interactive-goals
+          (progn
+              (setq proof-line-position (eglot--widening
+                                         (list :line (line-number-at-pos) :character 0)))
+              (goto-line (line-number-at-pos))
+              (hlt-highlight-region (line-beginning-position) (line-end-position)))
+        (progn
+          (goto-line line)
+          (hlt-unhighlight-region (line-beginning-position) (line-end-position))))))
   (setq interactive-goals (not interactive-goals)))
+
 
 ;; Main function creating the mode (lambdapi)
 ;;;###autoload
@@ -205,7 +234,7 @@
   ;; Hooks for goals
   (add-hook 'post-command-hook #'update-line-number nil :local)
   ;; Hook binding line change to re-execution of proof/goals
-  (add-hook 'changed-line-hook #'eglot--signal-proof/goals)
+  (add-hook 'changed-line-hook #'lp-display-goals)
   (create-goals-buffer))
 
 ;; Register mode the the ".lp" extension
