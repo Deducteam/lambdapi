@@ -12,11 +12,12 @@ ok() {
     printf '\033[32mOK\033[0m %s\n' "$1"
 }
 
-LAMBDAPI="lambdapi decision-tree --map-dir=tests:tests --verbose 0"
+LAMBDAPI="lambdapi decision-tree --verbose 0 \
+    --lib-root=lib --map-dir=tests:tests"
 
 printf '## decision-tree tests ##\n'
 
-out="$(${LAMBDAPI} tests.OK.nat.add 2>/dev/null)"
+out="$(${LAMBDAPI} tests.OK.nat.add)"
 if [ -z "$out" ]; then
     ko 'tests.OK.nat.add'
 else
