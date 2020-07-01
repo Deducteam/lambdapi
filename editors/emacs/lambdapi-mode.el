@@ -23,6 +23,7 @@
 (require 'lambdapi-capf)
 (require 'lambdapi-abbrev)
 (require 'lambdapi-input)
+(require 'lambdapi-proofs)
 (require 'highlight)
 (require 'eglot)
 ;;; Legacy
@@ -86,90 +87,6 @@
          (concat "\\<" (regexp-opt lambdapi-misc-keywords) "\\>")
          'font-lock-constant-face))
   "Keyword highlighting for the LambdaPi mode.")
-
-(defconst lp-goal-line-prefix "---------------------------------------------------")
-
-(defun display-goals (goals)
-  (let ((goalsbuf (get-buffer-create "*Goals*")))
-    (with-current-buffer goalsbuf
-      (read-only-mode -1)
-      (if (> (length goals) 0)
-          (let* ((fstgoal  (elt goals 0))
-                 (hs       (plist-get fstgoal :hyps))
-                 (hypsstr  (mapcar
-                            (lambda (hyp)
-                              (let ((name (plist-get hyp :hname))
-                                    (type (plist-get hyp :htype)))
-                                (format "%s: %s\n" name type)))
-                            (reverse hs)))
-                 (goalsstr (mapcar
-                            (lambda (goal)
-                              (let ((id (plist-get goal :gid))
-                                    (type (plist-get goal :type)))
-                                (format "%s\nGoal %d: %s\n\n" lp-goal-line-prefix id type)))
-                            goals)))
-            (erase-buffer)
-            (goto-char (point-max))
-            (mapc 'insert hypsstr)
-            (mapc 'insert goalsstr))
-        (erase-buffer))
-      (read-only-mode 1))))
-
-(defun eglot--signal-proof/goals (position)
-  "Send proof/goals to server."
-  (let ((server (eglot-current-server))
-        (params `(:textDocument ,(eglot--TextDocumentIdentifier)
-                  :position ,position)))
-    (if server
-        (let ((response (jsonrpc-request server :proof/goals params)))
-          (if response
-              (display-goals (plist-get response :goals))
-            (let ((goalsbuf (get-buffer-create "*Goals*")))
-              (with-current-buffer goalsbuf
-                (read-only-mode -1)
-                (erase-buffer)
-                (read-only-mode 1))))))))
-
-(defun lp-display-goals ()
-  (interactive)
-  (eglot--signal-proof/goals (eglot--pos-to-lsp-position)))
-
-(defvar proof-line-position (list :line 0 :character 0))
-(defvar interactive-goals 't)
-
-(defun move-proof-line (move-fct)
-  (save-excursion
-    (let ((line (plist-get proof-line-position :line)))
-      (setq proof-line-position (eglot--widening
-                                 (list :line (funcall move-fct line) :character 0)))
-      (goto-line line)
-      (hlt-unhighlight-region (line-beginning-position) (line-end-position))
-      (goto-line (funcall move-fct line))
-      (hlt-highlight-region (line-beginning-position) (line-end-position))
-      (lp-display-goals))))
-
-(defun lp-proof-forward ()
-  (interactive)
-  (move-proof-line #'1+))
-
-(defun lp-proof-backward ()
-  (interactive)
-  (move-proof-line #'1-))
-
-(defun toggle-interactive-goals ()
-  (interactive)
-  (save-excursion
-    (let ((line (plist-get proof-line-position :line)))
-      (if interactive-goals
-          (progn
-              (setq proof-line-position (eglot--widening
-                                         (list :line (line-number-at-pos) :character 0)))
-              (goto-line (line-number-at-pos))
-              (hlt-highlight-region (line-beginning-position) (line-end-position)))
-        (progn
-          (goto-line line)
-          (hlt-unhighlight-region (line-beginning-position) (line-end-position))))))
-  (setq interactive-goals (not interactive-goals)))
 
 ;; Hook to be run when changing line
 ;; From https://emacs.stackexchange.com/questions/46081/hook-when-line-number-changes
@@ -235,12 +152,6 @@
 (add-to-list 'auto-mode-alist '("\\.lp\\'" . lambdapi-mode))
 ;;;###autoload
 (add-to-list 'auto-mode-alist '("\\.dk\\'" . lambdapi-legacy-mode))
-
-;; Keybinding for goals display
-(global-set-key (kbd "C-x C-d") 'lp-display-goals)
-(global-set-key (kbd "C-M-c")   'toggle-interactive-goals)
-(global-set-key (kbd "<M-up>")  'lp-proof-backward)
-(global-set-key (kbd "<M-down>") 'lp-proof-forward)
 
 (provide 'lambdapi-mode)
 ;;; lambdapi-mode.el ends here

@@ -12,6 +12,7 @@
  (files
   (highlight.el as emacs/site-lisp/highlight.el)
   (lambdapi-abbrev.el as emacs/site-lisp/lambdapi-abbrev.el)
+  (lambdapi-proofs.el as emacs/site-lisp/lambdapi-proofs.el)
   (lambdapi-capf.el as emacs/site-lisp/lambdapi-capf.el)
   (lambdapi-input.el as emacs/site-lisp/lambdapi-input.el)
   (lambdapi-mode.el as emacs/site-lisp/lambdapi-mode.el)
