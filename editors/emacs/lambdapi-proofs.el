@@ -57,9 +57,9 @@
       (setq proof-line-position (eglot--widening
                                  (list :line (funcall move-fct line) :character 0)))
       (goto-line line)
-      (hlt-unhighlight-region (line-beginning-position) (line-end-position))
+      (hlt-unhighlight-region 0 (1+ (line-end-position)))
       (goto-line (funcall move-fct line))
-      (hlt-highlight-region (line-beginning-position) (line-end-position))
+      (hlt-highlight-region 0 (1+ (line-end-position)))
       (lp-display-goals))))
 
 (defun lp-proof-forward ()
@@ -82,9 +82,9 @@
               (setq proof-line-position (eglot--widening
                                          (list :line (line-number-at-pos) :character 0)))
               (goto-line (line-number-at-pos))
-              (hlt-highlight-region (line-beginning-position) (line-end-position)))
+              (hlt-highlight-region 0 (1+ (line-end-position))))
         (goto-line line)
-        (hlt-unhighlight-region (line-beginning-position) (line-end-position)))))
+        (hlt-unhighlight-region 0 (1+ (line-end-position))))))
   (setq interactive-goals (not interactive-goals)))
 
 (provide 'lambdapi-proofs)
