@@ -71,19 +71,35 @@ let lsp_server_cmd : Config.t -> bool -> string -> unit =
   Console.handle_exceptions run
 
 (** Printing a decision tree. *)
-let decision_tree_cmd : Config.t -> (Path.t * string) -> unit =
+let decision_tree_cmd : Config.t -> (Syntax.p_module_path * string) -> unit =
   fun cfg (mp, sym) ->
   let run _ =
     Timed.(verbose := 0); (* To avoid printing the "Checked ..." line *)
+    (* By default, search for a package from the current working directory. *)
+    let pth = Sys.getcwd () in
+    let pth = Filename.concat pth "." in
+    Package.apply_config pth;
     Config.init cfg;
     let sym =
-      let sign = Compile.compile false mp in
+      let sign = Compile.compile false (List.map fst mp) in
       let ss = Sig_state.of_sign sign in
-      let (prt, prv) = (true, true) in
-      try Sig_state.find_sym false ss (Pos.none ([], sym)) ~prt ~prv
-      with Not_found -> fatal_no_pos "Symbol not found."
+      if String.contains sym '#' then
+        (* If [sym] contains a hash, it’s a ghost symbol. *)
+        try fst (StrMap.find sym Timed.(!(Unif_rule.sign.sign_symbols)))
+        with Not_found ->
+          fatal_no_pos "Symbol \"%s\" not found in ghost modules." sym
+      else
+        try
+          Sig_state.find_sym ~prt:true ~prv:true false ss (Pos.none (mp, sym))
+        with Not_found ->
+          fatal_no_pos "Symbol \"%s\" not found in module \"%a\"."
+            sym Path.pp (List.map fst mp)
     in
-    out 0 "%a" Tree_graphviz.to_dot sym
+    if Timed.(!(sym.sym_rules)) = [] then
+      wrn None "Cannot print decision tree: \
+                symbol \"%s\" does not have any rule." sym.sym_name
+    else
+      out 0 "%a" Tree_graphviz.to_dot sym
   in
   Console.handle_exceptions run
 
@@ -124,16 +140,34 @@ let lsp_log_file : string Term.t =
 
 (** Specific to the ["decision-tree"] command. *)
 
-let qsym : (Path.t * string) Term.t =
+let qsym : (Syntax.p_module_path * string) Term.t =
+  let qsym_conv: (Syntax.p_module_path * string) Arg.conv =
+    let parse (s: string): (Syntax.p_module_path * string, _) result =
+      if String.contains s '#' then (* Case of ghost symbols. *)
+        (* Parse with [Parser] up to the symbol id, which can’t be parsed by
+           [Parser]. *)
+        let ind = String.index s '#' in
+        match Parser.parse_qident (String.sub s 0 (ind - 1)) with
+        | Ok({elt=(mp,last); _}) -> (* [last] is the last module name. *)
+            (* Get the [id] manually *)
+            let id = String.sub s ind (String.length s - ind) in
+            Ok(mp @ [(last, false)], id)
+        | Error(p) ->
+            let msg = Format.sprintf "Parse error at %s." (Pos.to_string p) in
+            Error(`Msg(msg))
+      else
+        match Parser.parse_qident s with
+        | Ok({elt; _}) -> Ok(elt)
+        | Error(p) ->
+            let msg = Format.sprintf "Parse error at %s." (Pos.to_string p) in
+            Error(`Msg(msg))
+    in
+    let print fmt qid = Pretty.pp_qident fmt (Pos.none qid) in
+    Arg.conv (parse, print)
+  in
   let doc = "Fully qualified symbol name with dot separated identifiers." in
   let i = Arg.(info [] ~docv:"MOD_PATH.SYM" ~doc) in
-  let separate l =
-    match List.rev l with
-    | []   -> assert false (* Unreachable: Cmdliner ensures [l] non-empty *)
-    | s::l -> (List.rev l, s)
-  in
-  let arg = Arg.(non_empty & pos 0 (list ~sep:'.' string) [] & i) in
-  Term.(const separate $ arg)
+  Arg.(value & pos 0 qsym_conv ([], "") & i)
 
 (** Remaining arguments: source files. *)
 

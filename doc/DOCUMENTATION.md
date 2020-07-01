@@ -46,6 +46,8 @@ For developers:
 
  - [Contributing](../CONTRIBUTING.md)
 
+ - [Decision trees](dtrees.md)
+
  - [Overview of directories and files](structure.md)
 
  - [Implementation choices](implementation.md)
