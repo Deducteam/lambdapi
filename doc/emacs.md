@@ -117,9 +117,11 @@ can be used, for this, once in the minibuffer, enter `C-x RET C-\` and select
 On lambdapi-mode startup, a window showing the goals at the current
 line is open.
 
-You can toggle the interactive mode with `C-M-c`. If you were to do
-so, you still can navigate the proofs with `<M-up>` and `<M-down>`,
-and show the goals at the current line with `C-x C-d`.
+You can toggle the interactive mode with `C-c C-i`. If you were to do
+so, you still can navigate the proofs with `C-c C-p` and `C-c C-n`,
+and show the goals at the current line with `C-C C-c`. As always with
+emacs, if you were to be dissatisfied with these keybindings, you can
+change them easily!
 
 ##### CPU usage and deactivation
 
