@@ -80,6 +80,21 @@
         "command": "extension.vscode-lp.cursor",
         "title": "Toggle navigation w/ cursor only or keybindings",
         "category": "Lambdapi"
+      },
+      {
+        "command": "extension.vscode-lp.reveal",
+        "title": "Toggle centered highlight",
+        "category": "Lambdapi"
+      },
+      {
+        "command": "extension.vscode-lp.nx",
+        "title": "Go to next proof",
+        "category": "Lambdapi"
+      },
+      {
+        "command": "extension.vscode-lp.pv",
+        "title": "Go to previous proof",
+        "category": "Lambdapi"
       }
     ],
     "keybindings": [
@@ -101,6 +116,26 @@
       {
         "key": "ctrl+alt+c",
         "command": "extension.vscode-lp.cursor",
+        "when": "editorTextFocus && editorLangId == lp"
+      },
+      {
+        "key": "ctrl+alt+w",
+        "command": "extension.vscode-lp.reveal",
+        "when": "editorTextFocus && editorLangId == lp"
+      },
+      {
+        "key": "shift+alt+w",
+        "command": "extension.vscode-lp.center",
+        "when": "editorTextFocus && editorLangId == lp"
+      },
+      {
+        "key": "ctrl+left",
+        "command": "extension.vscode-lp.pv",
+        "when": "editorTextFocus && editorLangId == lp"
+      },
+      {
+        "key": "ctrl+right",
+        "command": "extension.vscode-lp.nx",
         "when": "editorTextFocus && editorLangId == lp"
       }
     ],

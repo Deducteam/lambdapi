@@ -1,1195 +1,1312 @@
 {
+	"ALPHA": {
+		"prefix": "`A",
+		"body": "Α",
+		"description": "Insert uppercase ALPHA"
+	},
+	
+	"BETA": {
+		"prefix": "`B",
+		"body": "Β",
+		"description": "Insert uppercase BETA"
+	},
+	
+	"CHI": {
+		"prefix": "`C",
+		"body": "Χ",
+		"description": "Insert uppercase CHI"
+	},
+	
+	"DELTA": {
+		"prefix": "`D",
+		"body": "Δ",
+		"description": "Insert uppercase DELTA"
+	},
+	
+	"EPSILON": {
+		"prefix": "`E",
+		"body": "Ε",
+		"description": "Insert uppercase EPSILON"
+	},
+	
+	"PHI": {
+		"prefix": "`F",
+		"body": "Φ",
+		"description": "Insert uppercase PHI"
+	},
+	
+	"GAMMA": {
+		"prefix": "`G",
+		"body": "Γ",
+		"description": "Insert uppercase GAMMA"
+	},
+	
+	"ETA": {
+		"prefix": "`H",
+		"body": "Η",
+		"description": "Insert uppercase ETA"
+	},
+	
+	"IOTA": {
+		"prefix": "`I",
+		"body": "Ι",
+		"description": "Insert uppercase IOTA"
+	},
+	
+	"KAPPA": {
+		"prefix": "`K",
+		"body": "Κ",
+		"description": "Insert uppercase KAPPA"
+	},
+	
+	"LAMBDA": {
+		"prefix": "`L",
+		"body": "Λ",
+		"description": "Insert uppercase LAMBDA"
+	},
+	
+	"MU": {
+		"prefix": "`M",
+		"body": "Μ",
+		"description": "Insert uppercase MU"
+	},
+	
+	"NU": {
+		"prefix": "`N",
+		"body": "Ν",
+		"description": "Insert uppercase NU"
+	},
+	
+	"OMICRON": {
+		"prefix": "`O",
+		"body": "Ο",
+		"description": "Insert uppercase OMICRON"
+	},
+	
+	"PI": {
+		"prefix": "`P",
+		"body": "Π",
+		"description": "Insert uppercase PI"
+	},
+	
+	"THETA": {
+		"prefix": "`Q",
+		"body": "Θ",
+		"description": "Insert uppercase THETA"
+	},
+	
+	"RHO": {
+		"prefix": "`R",
+		"body": "Ρ",
+		"description": "Insert uppercase RHO"
+	},
+	
+	"SIGMA": {
+		"prefix": "`S",
+		"body": "Σ",
+		"description": "Insert uppercase SIGMA"
+	},
+	
+	"TAU": {
+		"prefix": "`T",
+		"body": "Τ",
+		"description": "Insert uppercase TAU"
+	},
+	
+	"UPSILON": {
+		"prefix": "`U",
+		"body": "Υ",
+		"description": "Insert uppercase UPSILON"
+	},
+	
+	"OMEGA": {
+		"prefix": "`W",
+		"body": "Ω",
+		"description": "Insert uppercase OMEGA"
+	},
+
+	"XI": {
+		"prefix": "`X",
+		"body": "Ξ",
+		"description": "Insert uppercase XI"
+	},
+
+	"PSI": {
+		"prefix": "`Y",
+		"body": "Ψ",
+		"description": "Insert uppercase PSI"
+	},
+	
+	"ZETA": {
+		"prefix": "`Z",
+		"body": "Ζ",
+		"description": "Insert uppercase ZETA"
+	},
+
 	"alpha": {
-		"prefix": "@a",
+		"prefix": "`a",
 		"body": "α",
 		"description": "Insert alpha"
 	},
+	
 	"beta": {
-		"prefix": "@b",
+		"prefix": "`b",
 		"body": "β",
 		"description": "Insert beta"
 	},
+	
 	"chi": {
-		"prefix": "@c",
+		"prefix": "`c",
 		"body": "χ",
 		"description": "Insert chi"
 	},
+	
 	"delta": {
-		"prefix": "@d",
+		"prefix": "`d",
 		"body": "δ",
 		"description": "Insert delta"
 	},
+	
 	"epsilon": {
-		"prefix": "@e",
+		"prefix": "`e",
 		"body": "ϵ",
 		"description": "Insert epsilon"
 	},
-	"varepsilon": {
-		"prefix": "@ve",
-		"body": "ε",
-		"description": "Insert varepsilon"
-	},
+	
 	"phi": {
-		"prefix": "@f",
+		"prefix": "`f",
 		"body": "ϕ",
 		"description": "Insert phi"
 	},
-	"varphi": {
-		"prefix": "@vf",
-		"body": "φ",
-		"description": "Insert varphi"
-	},
+	
 	"gamma": {
-		"prefix": "@g",
+		"prefix": "`g",
 		"body": "γ",
 		"description": "Insert gamma"
 	},
+	
 	"eta": {
-		"prefix": "@h",
+		"prefix": "`h",
 		"body": "η",
 		"description": "Insert eta"
 	},
+	
 	"iota": {
-		"prefix": "@i",
+		"prefix": "`i",
 		"body": "ι",
 		"description": "Insert iota"
 	},
+	
 	"kappa": {
-		"prefix": "@k",
+		"prefix": "`k",
 		"body": "κ",
 		"description": "Insert kappa"
 	},
+	
 	"lambda": {
-		"prefix": "@l",
+		"prefix": "`l",
 		"body": "λ",
 		"description": "Insert lambda"
 	},
+	
 	"mu": {
-		"prefix": "@m",
+		"prefix": "`m",
 		"body": "μ",
 		"description": "Insert mu"
 	},
+	
 	"nu": {
-		"prefix": "@n",
+		"prefix": "`n",
 		"body": "ν",
 		"description": "Insert nu"
 	},
+	
+	"omicron": {
+		"prefix": "`o",
+		"body": "ο",
+		"description": "Insert omicron"
+	},
+	
 	"pi": {
-		"prefix": "@p",
+		"prefix": "`p",
 		"body": "π",
 		"description": "Insert pi"
 	},
+	
 	"theta": {
-		"prefix": "@q",
+		"prefix": "`q",
 		"body": "θ",
 		"description": "Insert theta"
 	},
-	"vartheta": {
-		"prefix": "@vq",
-		"body": "ϑ",
-		"description": "Insert vartheta"
-	},
 	"rho": {
-		"prefix": "@r",
+		"prefix": "`r",
 		"body": "ρ",
 		"description": "Insert rho"
 	},
-	"varrho": {
-		"prefix": "@r",
-		"body": "ϱ",
-		"description": "Insert rho"
-	},
+	
 	"sigma": {
-		"prefix": "@s",
+		"prefix": "`s",
 		"body": "σ",
 		"description": "Insert sigma"
 	},
-	"varsigma": {
-		"prefix": "@vs",
-		"body": "ς",
-		"description": "Insert varsigma"
-	},
+	
 	"tau": {
-		"prefix": "@t",
+		"prefix": "`t",
 		"body": "τ",
 		"description": "Insert tau"
 	},
+	
 	"upsilon": {
-		"prefix": "@u",
+		"prefix": "`u",
 		"body": "υ",
 		"description": "Insert upsilon"
 	},
+	
 	"omega": {
-		"prefix": "@o",
+		"prefix": "`w",
 		"body": "ω",
 		"description": "Insert omega"
 	},
+	
+	"xi": {
+		"prefix": "`x",
+		"body": "ξ",
+		"description": "Insert xi"
+	},
+	
+	"psi": {
+		"prefix": "`y",
+		"body": "ψ",
+		"description": "Insert psi"
+	},
+	
+	"zeta": {
+		"prefix": "`z",
+		"body": "ζ",
+		"description": "Insert zeta"
+	},
+	"varepsilon": {
+		"prefix": "`ve",
+		"body": "ε",
+		"description": "Insert varepsilon"
+	},
+	"varphi": {
+		"prefix": "`vf",
+		"body": "φ",
+		"description": "Insert varphi"
+	},
+	"vartheta": {
+		"prefix": "`vq",
+		"body": "ϑ",
+		"description": "Insert vartheta"
+	},
+	"varrho": {
+		"prefix": "`r",
+		"body": "ϱ",
+		"description": "Insert rho"
+	},
+	"varsigma": {
+		"prefix": "`vs",
+		"body": "ς",
+		"description": "Insert varsigma"
+	},
 	"wedge": {
-		"prefix": ["@and"],
+		"prefix": ["`and"],
 		"body": "∧",
 		"description": "Insert wedge"
 	},
 	"vee": {
-		"prefix": "@or",
+		"prefix": "`or",
 		"body": "∨",
 		"description": "Insert vee"
 	},
-	"xi": {
-		"prefix": "@x",
-		"body": "ξ",
-		"description": "Insert xi"
-	},
-	"psi": {
-		"prefix": "@y",
-		"body": "ψ",
-		"description": "Insert psi"
-	},
-	"zeta": {
-		"prefix": "@z",
-		"body": "ζ",
-		"description": "Insert zeta"
-	},
-	"Delta": {
-		"prefix": "@D",
-		"body": "Δ",
-		"description": "Insert Delta"
-	},
-	"Phi": {
-		"prefix": "@F",
-		"body": "Φ",
-		"description": "Insert Phi"
-	},
-	"Gamma": {
-		"prefix": "@G",
-		"body": "Γ",
-		"description": "Insert Gamma"
-	},
-	"Theta": {
-		"prefix": "@Q",
-		"body": "Θ",
-		"description": "Insert Theta"
-	},
-	"Lambda": {
-		"prefix": "@L",
-		"body": "Λ",
-		"description": "Insert Lambda"
-	},
-	"Xi": {
-		"prefix": "@X",
-		"body": "Ξ",
-		"description": "Insert Xi"
-	},
-	"Psi": {
-		"prefix": "@Y",
-		"body": "Ψ",
-		"description": "Insert Psi"
-	},
-	"Sigma": {
-		"prefix": "@S",
-		"body": "Σ",
-		"description": "Insert Sigma"
-	},
-	"Upsilon": {
-		"prefix": "@U",
-		"body": "Υ",
-		"description": "Insert Upsilon"
-	},
-	"Omega": {
-		"prefix": "@W",
-		"body": "Ω",
-		"description": "Insert Omega"
-	},
-	"Pi": {
-		"prefix": "@P",
-		"body": "Π",
-		"description": "Insert Pi"
-	},
 	"neg": {
-		"prefix": "@neg",
+		"prefix": "`not",
 		"body": "¬",
 		"description": "Insert negation"
 	},
 	"arr": {
-		"prefix": "@ar",
+		"prefix": "`ra",
 		"body": "→",
 		"description": "Insert arrow"
 	},
 	"hook": {
-		"prefix": "@ho",
+		"prefix": "`re",
 		"body": "↪",
 		"description": "Insert hooked arrow"
 	},
 	"ass": {
-		"prefix": "@set",
+		"prefix": "`set",
 		"body": "≔",
 		"description": "Insert assignment symbol"
 	},
 	"eq": {
-		"prefix": "@eq",
+		"prefix": "`eq",
 		"body": "≡",
 		"description": "Insert equivalence symbol"
 	},
 	"asse": {
-		"prefix": "@as",
+		"prefix": "`th",
 		"body": "⊢",
 		"description": "Insert assertion symbol"
 	},
 	"fa": {
-		"prefix": "@fa",
+		"prefix": "`all",
 		"body": "∀",
 		"description": "Insert 'for all' symbol"
 	},
 	"ex": {
-		"prefix": "@ex",
+		"prefix": "`ex",
 		"body": "∃",
 		"description": "Insert 'there exists' symbol"
 	},
 	"imp": {
-		"prefix": "@imp",
+		"prefix": "`imp",
 		"body": "⇒",
 		"description": "Insert implication symbol"
 	},
 	"box": {
-		"prefix": "@box",
+		"prefix": "`box",
 		"body": "□",
 		"description": "Insert box symbol"
 	},
 	"thus": {
-		"prefix": "@tf",
+		"prefix": "`tf",
 		"body": "⸬",
 		"description": "Insert 'therefore' symbol"
 	},
 	"dba": {
-		"prefix": "@aa",
+		"prefix": "`da",
 		"body": "𝔸",
 		"description": "Insert double-struck a"
 	},
 	
 	"dbb": {
-		"prefix": "@bb",
+		"prefix": "`db",
 		"body": "𝔹",
 		"description": "Insert double-struck b"
 	},
 	
 	"dbc": {
-		"prefix": "@cc",
+		"prefix": "`dc",
 		"body": "ℂ",
 		"description": "Insert double-struck c"
 	},
 	
 	"dbd": {
-		"prefix": "@dd",
+		"prefix": "`dd",
 		"body": "𝔻",
 		"description": "Insert double-struck d"
 	},
 	
 	"dbe": {
-		"prefix": "@ee",
+		"prefix": "`de",
 		"body": "𝔼",
 		"description": "Insert double-struck e"
 	},
 	
 	"dbf": {
-		"prefix": "@ff",
+		"prefix": "`df",
 		"body": "𝔽",
 		"description": "Insert double-struck f"
 	},
 	
 	"dbg": {
-		"prefix": "@gg",
+		"prefix": "`dg",
 		"body": "𝔾",
 		"description": "Insert double-struck g"
 	},
 	
 	"dbh": {
-		"prefix": "@hh",
+		"prefix": "`dh",
 		"body": "ℍ",
 		"description": "Insert double-struck h"
 	},
 	
 	"dbi": {
-		"prefix": "@ii",
+		"prefix": "`di",
 		"body": "𝕀",
 		"description": "Insert double-struck i"
 	},
 	
 	"dbj": {
-		"prefix": "@jj",
+		"prefix": "`dj",
 		"body": "𝕁",
 		"description": "Insert double-struck j"
 	},
 	
 	"dbk": {
-		"prefix": "@kk",
+		"prefix": "`dk",
 		"body": "𝕂",
 		"description": "Insert double-struck k"
 	},
 	
 	"dbl": {
-		"prefix": "@ll",
+		"prefix": "`dl",
 		"body": "𝕃",
 		"description": "Insert double-struck l"
 	},
 	
 	"dbm": {
-		"prefix": "@mm",
+		"prefix": "`dm",
 		"body": "𝕄",
 		"description": "Insert double-struck m"
 	},
 	
 	"dbn": {
-		"prefix": "@nn",
+		"prefix": "`dn",
 		"body": "ℕ",
 		"description": "Insert double-struck n"
 	},
 	
 	"dbo": {
-		"prefix": "@oo",
+		"prefix": "`do",
 		"body": "𝕆",
 		"description": "Insert double-struck o"
 	},
 	
 	"dbp": {
-		"prefix": "@pp",
+		"prefix": "`dp",
 		"body": "ℙ",
 		"description": "Insert double-struck p"
 	},
 	
 	"dbq": {
-		"prefix": "@qq",
+		"prefix": "`dq",
 		"body": "ℚ",
 		"description": "Insert double-struck q"
 	},
 	
 	"dbr": {
-		"prefix": "@rr",
+		"prefix": "`dr",
 		"body": "ℝ",
 		"description": "Insert double-struck r"
 	},
 	
 	"dbs": {
-		"prefix": "@ss",
+		"prefix": "`ds",
 		"body": "𝕊",
 		"description": "Insert double-struck s"
 	},
 	
 	"dbt": {
-		"prefix": "@tt",
+		"prefix": "`dt",
 		"body": "𝕋",
 		"description": "Insert double-struck t"
 	},
 	
 	"dbu": {
-		"prefix": "@uu",
+		"prefix": "`du",
 		"body": "𝕌",
 		"description": "Insert double-struck u"
 	},
 	
 	"dbv": {
-		"prefix": "@vv",
+		"prefix": "`dv",
 		"body": "𝕍",
 		"description": "Insert double-struck v"
 	},
 	
 	"dbw": {
-		"prefix": "@ww",
+		"prefix": "`dw",
 		"body": "𝕎",
 		"description": "Insert double-struck w"
 	},
 	
 	"dbx": {
-		"prefix": "@xx",
+		"prefix": "`dx",
 		"body": "𝕏",
 		"description": "Insert double-struck x"
 	},
 	
 	"dby": {
-		"prefix": "@yy",
+		"prefix": "`dy",
 		"body": "𝕐",
 		"description": "Insert double-struck y"
 	},
 	
 	"dbz": {
-		"prefix": "@zz",
+		"prefix": "`dz",
 		"body": "ℤ",
 		"description": "Insert double-struck z"
 	},
 
 	"bsa": {
-		"prefix": "@bsa",
+		"prefix": "`bsa",
 		"body": "𝓐",
 		"description": "Insert bold script a"
 	},
 	
 	"bsb": {
-		"prefix": "@bsb",
+		"prefix": "`bsb",
 		"body": "𝓑",
 		"description": "Insert bold script b"
 	},
 	
 	"bsc": {
-		"prefix": "@bsc",
+		"prefix": "`bsc",
 		"body": "𝓒",
 		"description": "Insert bold script c"
 	},
 	
 	"bsd": {
-		"prefix": "@bsd",
+		"prefix": "`bsd",
 		"body": "𝓓",
 		"description": "Insert bold script d"
 	},
 	
 	"bse": {
-		"prefix": "@bse",
+		"prefix": "`bse",
 		"body": "𝓔",
 		"description": "Insert bold script e"
 	},
 	
 	"bsf": {
-		"prefix": "@bsf",
+		"prefix": "`bsf",
 		"body": "𝓕",
 		"description": "Insert bold script f"
 	},
 	
 	"bsg": {
-		"prefix": "@bsg",
+		"prefix": "`bsg",
 		"body": "𝓖",
 		"description": "Insert bold script g"
 	},
 	
 	"bsh": {
-		"prefix": "@bsh",
+		"prefix": "`bsh",
 		"body": "𝓗",
 		"description": "Insert bold script h"
 	},
 	
 	"bsi": {
-		"prefix": "@bsi",
+		"prefix": "`bsi",
 		"body": "𝓘",
 		"description": "Insert bold script i"
 	},
 	
 	"bsj": {
-		"prefix": "@bsj",
+		"prefix": "`bsj",
 		"body": "𝓙",
 		"description": "Insert bold script j"
 	},
 	
 	"bsk": {
-		"prefix": "@bsk",
+		"prefix": "`bsk",
 		"body": "𝓚",
 		"description": "Insert bold script k"
 	},
 	
 	"bsl": {
-		"prefix": "@bsl",
+		"prefix": "`bsl",
 		"body": "𝓛",
 		"description": "Insert bold script l"
 	},
 	
 	"bsm": {
-		"prefix": "@bsm",
+		"prefix": "`bsm",
 		"body": "𝓜",
 		"description": "Insert bold script m"
 	},
 	
 	"bsn": {
-		"prefix": "@bsn",
+		"prefix": "`bsn",
 		"body": "𝓝",
 		"description": "Insert bold script n"
 	},
 	
 	"bso": {
-		"prefix": "@bso",
+		"prefix": "`bso",
 		"body": "𝓞",
 		"description": "Insert bold script o"
 	},
 	
 	"bsp": {
-		"prefix": "@bsp",
+		"prefix": "`bsp",
 		"body": "𝓟",
 		"description": "Insert bold script p"
 	},
 	
 	"bsq": {
-		"prefix": "@bsq",
+		"prefix": "`bsq",
 		"body": "𝓠",
 		"description": "Insert bold script q"
 	},
 	
 	"bsr": {
-		"prefix": "@bsr",
+		"prefix": "`bsr",
 		"body": "𝓡",
 		"description": "Insert bold script r"
 	},
 	
 	"bss": {
-		"prefix": "@bss",
+		"prefix": "`bss",
 		"body": "𝓢",
 		"description": "Insert bold script s"
 	},
 	
 	"bst": {
-		"prefix": "@bst",
+		"prefix": "`bst",
 		"body": "𝓣",
 		"description": "Insert bold script t"
 	},
 	
 	"bsu": {
-		"prefix": "@bsu",
+		"prefix": "`bsu",
 		"body": "𝓤",
 		"description": "Insert bold script u"
 	},
 	
 	"bsv": {
-		"prefix": "@bsv",
+		"prefix": "`bsv",
 		"body": "𝓥",
 		"description": "Insert bold script v"
 	},
 	
 	"bsw": {
-		"prefix": "@bsw",
+		"prefix": "`bsw",
 		"body": "𝓦",
 		"description": "Insert bold script w"
 	},
 	
 	"bsx": {
-		"prefix": "@bsx",
+		"prefix": "`bsx",
 		"body": "𝓧",
 		"description": "Insert bold script x"
 	},
 	
 	"bsy": {
-		"prefix": "@bsy",
+		"prefix": "`bsy",
 		"body": "𝓨",
 		"description": "Insert bold script y"
 	},
 	
 	"bsz": {
-		"prefix": "@bsz",
+		"prefix": "`bsz",
 		"body": "𝓩",
 		"description": "Insert bold script z"
 	},
 	"sa": {
-		"prefix": "@sca",
+		"prefix": "`sa",
 		"body": "𝒜",
 		"description": "Insert script a"
 	},
 	
 	"sb": {
-		"prefix": "@scb",
+		"prefix": "`sb",
 		"body": "ℬ",
 		"description": "Insert script b"
 	},
 	
 	"sc": {
-		"prefix": "@scc",
+		"prefix": "`sc",
 		"body": "𝒞",
 		"description": "Insert script c"
 	},
 	
 	"sd": {
-		"prefix": "@scd",
+		"prefix": "`sd",
 		"body": "𝒟",
 		"description": "Insert script d"
 	},
 	
 	"se": {
-		"prefix": "@sce",
+		"prefix": "`se",
 		"body": "ℰ",
 		"description": "Insert script e"
 	},
 	
 	"sf": {
-		"prefix": "@scf",
+		"prefix": "`sf",
 		"body": "ℱ",
 		"description": "Insert script f"
 	},
 	
 	"sg": {
-		"prefix": "@scg",
+		"prefix": "`sg",
 		"body": "𝒢",
 		"description": "Insert script g"
 	},
 	
 	"sh": {
-		"prefix": "@sch",
+		"prefix": "`sh",
 		"body": "ℋ",
 		"description": "Insert script h"
 	},
 	
 	"si": {
-		"prefix": "@sci",
+		"prefix": "`si",
 		"body": "ℐ",
 		"description": "Insert script i"
 	},
 	
 	"sj": {
-		"prefix": "@scj",
+		"prefix": "`sj",
 		"body": "𝒥",
 		"description": "Insert script j"
 	},
 	
 	"sk": {
-		"prefix": "@sck",
+		"prefix": "`sk",
 		"body": "𝒦",
 		"description": "Insert script k"
 	},
 	
 	"sl": {
-		"prefix": "@scl",
+		"prefix": "`sl",
 		"body": "ℒ",
 		"description": "Insert script l"
 	},
 	
 	"sm": {
-		"prefix": "@scm",
+		"prefix": "`sm",
 		"body": "ℳ",
 		"description": "Insert script m"
 	},
 	
 	"sn": {
-		"prefix": "@scn",
+		"prefix": "`sn",
 		"body": "𝒩",
 		"description": "Insert script n"
 	},
 	
 	"so": {
-		"prefix": "@sco",
+		"prefix": "`so",
 		"body": "𝒪",
 		"description": "Insert script o"
 	},
 	
 	"sp": {
-		"prefix": "@scp",
+		"prefix": "`sp",
 		"body": "𝒫",
 		"description": "Insert script p"
 	},
 	
 	"sq": {
-		"prefix": "@scq",
+		"prefix": "`sq",
 		"body": "𝒬",
 		"description": "Insert script q"
 	},
 	
 	"sr": {
-		"prefix": "@scr",
+		"prefix": "`sr",
 		"body": "ℛ",
 		"description": "Insert script r"
 	},
 	
 	"ss": {
-		"prefix": "@scs",
+		"prefix": "`ss",
 		"body": "𝒮",
 		"description": "Insert script s"
 	},
 	
 	"st": {
-		"prefix": "@sct",
+		"prefix": "`st",
 		"body": "𝒯",
 		"description": "Insert script t"
 	},
 	
 	"su": {
-		"prefix": "@scu",
+		"prefix": "`su",
 		"body": "𝒰",
 		"description": "Insert script u"
 	},
 	
 	"sv": {
-		"prefix": "@scv",
+		"prefix": "`sv",
 		"body": "𝒱",
 		"description": "Insert script v"
 	},
 	
 	"sw": {
-		"prefix": "@scw",
+		"prefix": "`sw",
 		"body": "𝒲",
 		"description": "Insert script w"
 	},
 	
 	"sx": {
-		"prefix": "@scx",
+		"prefix": "`sx",
 		"body": "𝒳",
 		"description": "Insert script x"
 	},
 	
 	"sy": {
-		"prefix": "@scy",
+		"prefix": "`sy",
 		"body": "𝒴",
 		"description": "Insert script y"
 	},
 	
 	"sz": {
-		"prefix": "@scz",
+		"prefix": "`sz",
 		"body": "𝒵",
 		"description": "Insert script z"
 	},
 
 	"iba": {
-		"prefix": "@iba",
+		"prefix": "`iba",
 		"body": "𝑨",
 		"description": "Insert italic bold a"
 	},
 	
 	"ibb": {
-		"prefix": "@ibb",
+		"prefix": "`ibb",
 		"body": "𝑩",
 		"description": "Insert italic bold b"
 	},
 	
 	"ibc": {
-		"prefix": "@ibc",
+		"prefix": "`ibc",
 		"body": "𝑪",
 		"description": "Insert italic bold c"
 	},
 	
 	"ibd": {
-		"prefix": "@ibd",
+		"prefix": "`ibd",
 		"body": "𝑫",
 		"description": "Insert italic bold d"
 	},
 	
 	"ibe": {
-		"prefix": "@ibe",
+		"prefix": "`ibe",
 		"body": "𝑬",
 		"description": "Insert italic bold e"
 	},
 	
 	"ibf": {
-		"prefix": "@ibf",
+		"prefix": "`ibf",
 		"body": "𝑭",
 		"description": "Insert italic bold f"
 	},
 	
 	"ibg": {
-		"prefix": "@ibg",
+		"prefix": "`ibg",
 		"body": "𝑮",
 		"description": "Insert italic bold g"
 	},
 	
 	"ibh": {
-		"prefix": "@ibh",
+		"prefix": "`ibh",
 		"body": "𝑯",
 		"description": "Insert italic bold h"
 	},
 	
 	"ibi": {
-		"prefix": "@ibi",
+		"prefix": "`ibi",
 		"body": "𝑰",
 		"description": "Insert italic bold i"
 	},
 	
 	"ibj": {
-		"prefix": "@ibj",
+		"prefix": "`ibj",
 		"body": "𝑱",
 		"description": "Insert italic bold j"
 	},
 	
 	"ibk": {
-		"prefix": "@ibk",
+		"prefix": "`ibk",
 		"body": "𝑲",
 		"description": "Insert italic bold k"
 	},
 	
 	"ibl": {
-		"prefix": "@ibl",
+		"prefix": "`ibl",
 		"body": "𝑳",
 		"description": "Insert italic bold l"
 	},
 	
 	"ibm": {
-		"prefix": "@ibm",
+		"prefix": "`ibm",
 		"body": "𝑴",
 		"description": "Insert italic bold m"
 	},
 	
 	"ibn": {
-		"prefix": "@ibn",
+		"prefix": "`ibn",
 		"body": "𝑵",
 		"description": "Insert italic bold n"
 	},
 	
 	"ibo": {
-		"prefix": "@ibo",
+		"prefix": "`ibo",
 		"body": "𝑶",
 		"description": "Insert italic bold o"
 	},
 	
 	"ibp": {
-		"prefix": "@ibp",
+		"prefix": "`ibp",
 		"body": "𝑷",
 		"description": "Insert italic bold p"
 	},
 	
 	"ibq": {
-		"prefix": "@ibq",
+		"prefix": "`ibq",
 		"body": "𝑸",
 		"description": "Insert italic bold q"
 	},
 	
 	"ibr": {
-		"prefix": "@ibr",
+		"prefix": "`ibr",
 		"body": "𝑹",
 		"description": "Insert italic bold r"
 	},
 	
 	"ibs": {
-		"prefix": "@ibs",
+		"prefix": "`ibs",
 		"body": "𝑺",
 		"description": "Insert italic bold s"
 	},
 	
 	"ibt": {
-		"prefix": "@ibt",
+		"prefix": "`ibt",
 		"body": "𝑻",
 		"description": "Insert italic bold t"
 	},
 	
 	"ibu": {
-		"prefix": "@ibu",
+		"prefix": "`ibu",
 		"body": "𝑼",
 		"description": "Insert italic bold u"
 	},
 	
 	"ibv": {
-		"prefix": "@ibv",
+		"prefix": "`ibv",
 		"body": "𝑽",
 		"description": "Insert italic bold v"
 	},
 	
 	"ibw": {
-		"prefix": "@ibw",
+		"prefix": "`ibw",
 		"body": "𝑾",
 		"description": "Insert italic bold w"
 	},
 	
 	"ibx": {
-		"prefix": "@ibx",
+		"prefix": "`ibx",
 		"body": "𝑿",
 		"description": "Insert italic bold x"
 	},
 	
 	"iby": {
-		"prefix": "@iby",
+		"prefix": "`iby",
 		"body": "𝒀",
 		"description": "Insert italic bold y"
 	},
 	
 	"ibz": {
-		"prefix": "@ibz",
+		"prefix": "`ibz",
 		"body": "𝒁",
 		"description": "Insert italic bold z"
 	},
 
 	"ia": {
-		"prefix": "@ita",
+		"prefix": "`ia",
 		"body": "𝐴",
 		"description": "Insert italic a"
 	},
 	
 	"ib": {
-		"prefix": "@itb",
+		"prefix": "`ib",
 		"body": "𝐵",
 		"description": "Insert italic b"
 	},
 	
 	"ic": {
-		"prefix": "@itc",
+		"prefix": "`ic",
 		"body": "𝐶",
 		"description": "Insert italic c"
 	},
 	
 	"id": {
-		"prefix": "@itd",
+		"prefix": "`id",
 		"body": "𝐷",
 		"description": "Insert italic d"
 	},
 	
 	"ie": {
-		"prefix": "@ite",
+		"prefix": "`ie",
 		"body": "𝐸",
 		"description": "Insert italic e"
 	},
 	
 	"if": {
-		"prefix": "@itf",
+		"prefix": "`if",
 		"body": "𝐹",
 		"description": "Insert italic f"
 	},
 	
 	"ig": {
-		"prefix": "@itg",
+		"prefix": "`ig",
 		"body": "𝐺",
 		"description": "Insert italic g"
 	},
 	
 	"ih": {
-		"prefix": "@ith",
+		"prefix": "`ih",
 		"body": "𝐻",
 		"description": "Insert italic h"
 	},
 	
 	"ii": {
-		"prefix": "@iti",
+		"prefix": "`ii",
 		"body": "𝐼",
 		"description": "Insert italic i"
 	},
 	
 	"ij": {
-		"prefix": "@itj",
+		"prefix": "`ij",
 		"body": "𝐽",
 		"description": "Insert italic j"
 	},
 	
 	"ik": {
-		"prefix": "@itk",
+		"prefix": "`ik",
 		"body": "𝐾",
 		"description": "Insert italic k"
 	},
 	
 	"il": {
-		"prefix": "@itl",
+		"prefix": "`il",
 		"body": "𝐿",
 		"description": "Insert italic l"
 	},
 	
 	"im": {
-		"prefix": "@itm",
+		"prefix": "`im",
 		"body": "𝑀",
 		"description": "Insert italic m"
 	},
 	
 	"in": {
-		"prefix": "@itn",
+		"prefix": "`in",
 		"body": "𝑁",
 		"description": "Insert italic n"
 	},
 	
 	"io": {
-		"prefix": "@ito",
+		"prefix": "`io",
 		"body": "𝑂",
 		"description": "Insert italic o"
 	},
 	
 	"ip": {
-		"prefix": "@itp",
+		"prefix": "`ip",
 		"body": "𝑃",
 		"description": "Insert italic p"
 	},
 	
 	"iq": {
-		"prefix": "@itq",
+		"prefix": "`iq",
 		"body": "𝑄",
 		"description": "Insert italic q"
 	},
 	
 	"ir": {
-		"prefix": "@itr",
+		"prefix": "`ir",
 		"body": "𝑅",
 		"description": "Insert italic r"
 	},
 	
 	"is": {
-		"prefix": "@its",
+		"prefix": "`is",
 		"body": "𝑆",
 		"description": "Insert italic s"
 	},
 	
 	"it": {
-		"prefix": "@itt",
+		"prefix": "`it",
 		"body": "𝑇",
 		"description": "Insert italic t"
 	},
 	
 	"iu": {
-		"prefix": "@itu",
+		"prefix": "`iu",
 		"body": "𝑈",
 		"description": "Insert italic u"
 	},
 	
 	"iv": {
-		"prefix": "@itv",
+		"prefix": "`iv",
 		"body": "𝑉",
 		"description": "Insert italic v"
 	},
 	
 	"iw": {
-		"prefix": "@itw",
+		"prefix": "`iw",
 		"body": "𝑊",
 		"description": "Insert italic w"
 	},
 	
 	"ix": {
-		"prefix": "@itx",
+		"prefix": "`ix",
 		"body": "𝑋",
 		"description": "Insert italic x"
 	},
 	
 	"iy": {
-		"prefix": "@ity",
+		"prefix": "`iy",
 		"body": "𝑌",
 		"description": "Insert italic y"
 	},
 	
 	"iz": {
-		"prefix": "@itz",
+		"prefix": "`iz",
 		"body": "𝑍",
 		"description": "Insert italic z"
 	},
 	"fra": {
-		"prefix": "@fra",
+		"prefix": "`fa",
 		"body": "𝔄",
 		"description": "Insert Fraktur a"
 	},
 	
 	"frb": {
-		"prefix": "@frb",
+		"prefix": "`fb",
 		"body": "𝔅",
 		"description": "Insert Fraktur b"
 	},
 	
 	"frc": {
-		"prefix": "@frc",
+		"prefix": "`fc",
 		"body": "ℭ",
 		"description": "Insert Fraktur c"
 	},
 	
 	"frd": {
-		"prefix": "@frd",
+		"prefix": "`fd",
 		"body": "𝔇",
 		"description": "Insert Fraktur d"
 	},
 	
 	"fre": {
-		"prefix": "@fre",
+		"prefix": "`fe",
 		"body": "𝔈",
 		"description": "Insert Fraktur e"
 	},
 	
 	"frf": {
-		"prefix": "@frf",
+		"prefix": "`ff",
 		"body": "𝔉",
 		"description": "Insert Fraktur f"
 	},
 	
 	"frg": {
-		"prefix": "@frg",
+		"prefix": "`fg",
 		"body": "𝔊",
 		"description": "Insert Fraktur g"
 	},
 	
 	"frh": {
-		"prefix": "@frh",
+		"prefix": "`fh",
 		"body": "ℌ",
 		"description": "Insert Fraktur h"
 	},
 	
 	"fri": {
-		"prefix": "@fri",
+		"prefix": "`fi",
 		"body": "ℑ",
 		"description": "Insert Fraktur i"
 	},
 	
 	"frj": {
-		"prefix": "@frj",
+		"prefix": "`fj",
 		"body": "𝔍",
 		"description": "Insert Fraktur j"
 	},
 	
 	"frk": {
-		"prefix": "@frk",
+		"prefix": "`fk",
 		"body": "𝔎",
 		"description": "Insert Fraktur k"
 	},
 	
 	"frl": {
-		"prefix": "@frl",
+		"prefix": "`fl",
 		"body": "𝔏",
 		"description": "Insert Fraktur l"
 	},
 	
 	"frm": {
-		"prefix": "@frm",
+		"prefix": "`fm",
 		"body": "𝔐",
 		"description": "Insert Fraktur m"
 	},
 	
 	"frn": {
-		"prefix": "@frn",
+		"prefix": "`fn",
 		"body": "𝔑",
 		"description": "Insert Fraktur n"
 	},
 	
 	"fro": {
-		"prefix": "@fro",
+		"prefix": "`fo",
 		"body": "𝔒",
 		"description": "Insert Fraktur o"
 	},
 	
 	"frp": {
-		"prefix": "@frp",
+		"prefix": "`fp",
 		"body": "𝔓",
 		"description": "Insert Fraktur p"
 	},
 	
 	"frq": {
-		"prefix": "@frq",
+		"prefix": "`fq",
 		"body": "𝔔",
 		"description": "Insert Fraktur q"
 	},
 	
 	"frr": {
-		"prefix": "@frr",
+		"prefix": "`fr",
 		"body": "ℜ",
 		"description": "Insert Fraktur r"
 	},
 	
 	"frs": {
-		"prefix": "@frs",
+		"prefix": "`fs",
 		"body": "𝔖",
 		"description": "Insert Fraktur s"
 	},
 	
 	"frt": {
-		"prefix": "@frt",
+		"prefix": "`ft",
 		"body": "𝔗",
 		"description": "Insert Fraktur t"
 	},
 	
 	"fru": {
-		"prefix": "@fru",
+		"prefix": "`fu",
 		"body": "𝔘",
 		"description": "Insert Fraktur u"
 	},
 	
 	"frv": {
-		"prefix": "@frv",
+		"prefix": "`fv",
 		"body": "𝔙",
 		"description": "Insert Fraktur v"
 	},
 	
 	"frw": {
-		"prefix": "@frw",
+		"prefix": "`fw",
 		"body": "𝔚",
 		"description": "Insert Fraktur w"
 	},
 	
 	"frx": {
-		"prefix": "@frx",
+		"prefix": "`fx",
 		"body": "𝔛",
 		"description": "Insert Fraktur x"
 	},
 	
 	"fry": {
-		"prefix": "@fry",
+		"prefix": "`fy",
 		"body": "𝔜",
 		"description": "Insert Fraktur y"
 	},
 	
 	"frz": {
-		"prefix": "@frz",
+		"prefix": "`fz",
 		"body": "ℨ",
-		"description": "Insert Fraktur z"
+		"description": "Insert Fraktur z",
+		"regex" : ""
 	}
 }

@@ -18,6 +18,9 @@
     },
     {
       "include": "#keywords"
+    },
+    {
+      "include": "#external"
     }
 
   ],
@@ -39,7 +42,15 @@
     },
 
     "signature-commands": {
-      "match": "(definition|as|in|let|declared|builtin|open|proof|qed|require|rule|symbol|theorem|with)\\s+([^\\s+]*)",
+      "match": "(definition|as|in|let|declared|builtin|proof|qed|rule|symbol|theorem|with)\\s+([^\\s+]*)",
+      "captures": {
+        "1": {"name": "storage.type.lp"},
+        "2": {"name": "entity.name.function.theorem.lp"}
+      }
+    },
+
+    "external": {
+      "match": "(open|require)\\s+(([^\\s+]*\\s+)*$)",
       "captures": {
         "1": {"name": "storage.type.lp"},
         "2": {"name": "entity.name.function.theorem.lp"}
