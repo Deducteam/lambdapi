@@ -342,19 +342,13 @@ let parser path = m:path_elem ms:{"." path_elem}* $ -> m::ms
 (** [qident] parses a single (possibly qualified) identifier. *)
 let parser qident = mp:{path_elem "."}* id:any_ident -> in_pos _loc (mp,id)
 
-(** [symtag] parses a single symbol tag. *)
-let parser property =
-  | _constant_  -> Terms.Const
-  | _injective_ -> Terms.Injec
-
-(** [exposition] parses the exposition tag of a symbol. *)
-let parser exposition =
-  | _protected_ -> Terms.Protec
-  | _private_   -> Terms.Privat
-
-(** [mstrat] parses the matching strategy tag of a symbol. *)
-let parser mstrat =
-  | _sequential_ -> Terms.Sequen
+(** [modifier] parses a single modifier. *)
+let parser modifier =
+  | _constant_ -> in_pos _loc (P_prop(Terms.Const))
+  | _injective_ -> in_pos _loc (P_prop(Terms.Injec))
+  | _protected_ -> in_pos _loc (P_expo(Terms.Protec))
+  | _private_ -> in_pos _loc (P_expo(Terms.Privat))
+  | _sequential_ -> in_pos _loc (P_mstrat(Terms.Sequen))
 
 (** [term_ident] parses a qualified identifier and returns a p_term. *)
 let parser term_ident =
@@ -660,16 +654,14 @@ let parser cmd =
   | _open_ ps:path+
       -> List.iter (get_ops _loc) ps;
          P_open(ps)
-  | st:mstrat? e:exposition? p:property? _symbol_ s:ident al:arg* ":" a:term
-      -> P_symbol(Option.get Terms.Public e,
-                  Option.get Terms.Defin p,
-                  Option.get Terms.Eager st, s,al,a)
+  | mods:modifier* _symbol_ s:ident al:arg* ":" a:term
+      -> P_symbol(mods, s, al, a)
   | _rule_ r:rule rs:{_:_with_ rule}*
       -> P_rules(r::rs)
-  | e:exposition? _definition_ s:ident al:arg* ao:{":" term}? "≔" t:term
-      -> P_definition(Option.get Terms.Public e,false,s,al,ao,t)
-  | e:exposition? st:statement (ts,pe):proof
-      -> P_theorem(Option.get Terms.Public e,st,ts,pe)
+  | ms:modifier* _definition_ s:ident al:arg* ao:{":" term}? "≔" t:term
+      -> P_definition(ms,false,s,al,ao,t)
+  | ms:modifier* st:statement (ts,pe):proof
+      -> P_theorem(ms,st,ts,pe)
   | _set_ c:config
       -> P_set(c)
   | q:query

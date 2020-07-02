@@ -32,22 +32,16 @@ let pp_qident : qident pp = fun oc qid ->
 let pp_path : Pos.popt -> p_module_path pp = fun pos ->
   List.pp (pp_path_elt pos) "."
 
-let pp_expo : Terms.expo pp = fun oc e ->
-  match e with
-  | Public -> ()
-  | Protec -> Format.pp_print_string oc "protected "
-  | Privat -> Format.pp_print_string oc "private "
-
-let pp_prop : Terms.prop pp = fun oc p ->
-  match p with
-  | Defin -> ()
-  | Const -> Format.pp_print_string oc "constant "
-  | Injec -> Format.pp_print_string oc "injective "
-
-let pp_mstrat : Terms.match_strat pp = fun oc s ->
-  match s with
-  | Eager -> ()
-  | Sequen -> Format.pp_print_string oc "sequential"
+let pp_modifier : p_modifier loc pp = fun oc {elt; _} ->
+  match elt with
+  | P_expo(Public) -> ()
+  | P_expo(Protec) -> Format.pp_print_string oc "protected "
+  | P_expo(Privat) -> Format.pp_print_string oc "private "
+  | P_mstrat(Eager) -> ()
+  | P_mstrat(Sequen) -> Format.pp_print_string oc "sequential "
+  | P_prop(Defin) -> ()
+  | P_prop(Const) -> Format.pp_print_string oc "constant "
+  | P_prop(Injec) -> Format.pp_print_string oc "injective "
 
 let rec pp_p_term : p_term pp = fun oc t ->
   let open Parser in (* for PAtom, PAppl and PFunc *)
@@ -225,23 +219,25 @@ let pp_command : p_command pp = fun oc cmd ->
       out "require %a as %a" (pp_path cmd.pos) p (pp_path_elt i.pos) i.elt
   | P_open(ps)                      ->
       List.iter (out "open %a" (pp_path cmd.pos)) ps
-  | P_symbol(e,p,st,s,args,a) ->
-      out "@[<hov 2>%a%a%asymbol %a" pp_mstrat st pp_expo e pp_prop p
-        pp_ident s;
+  | P_symbol(ms,s,args,a) ->
+      out "@[<hov 2>%asymbol %a"
+        (Format.pp_print_list pp_modifier) ms pp_ident s;
       List.iter (out " %a" pp_p_arg) args;
       out " :@ @[<hov>%a@]" pp_p_term a
   | P_rules([])                     -> ()
   | P_rules(r::rs)                  ->
       out "%a" (pp_p_rule true) r;
       List.iter (out "%a" (pp_p_rule false)) rs
-  | P_definition(e,_,s,args,ao,t)   ->
-      out "@[<hov 2>%adefinition %a" pp_expo e pp_ident s;
+  | P_definition(ms,_,s,args,ao,t) ->
+      out "@[<hov 2>%adefinition %a"
+        (Format.pp_print_list pp_modifier) ms pp_ident s;
       List.iter (out " %a" pp_p_arg) args;
       Option.iter (out " : @[<hov>%a@]" pp_p_term) ao;
       out " ≔ @[<hov>%a@]@]" pp_p_term t
-  | P_theorem(e,st,ts,pe)           ->
+  | P_theorem(ms,st,ts,pe) ->
       let (s,args,a) = st.elt in
-      out "@[<hov 2>%atheorem %a" pp_expo e pp_ident s;
+      out "@[<hov 2>%atheorem %a"
+        (Format.pp_print_list pp_modifier) ms pp_ident s;
       List.iter (out " %a" pp_p_arg) args;
       out " : @[<2>%a@]@]@." pp_p_term a;
       out "proof@.";
