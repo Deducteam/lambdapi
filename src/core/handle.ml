@@ -202,7 +202,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
       (fst (Sig_state.add_symbol ss e Defin x a impl d), None)
   | P_inductive(e, id, a, l)     ->
       (* Add the inductive type in the signature *)
-      let (ss, sym_typ) = handle_symbol ss e Defin id [] a in
+      let (ss, sym_typ) = handle_symbol ss e Injec id [] a in
       (* Add the constructors in the signature.  *)
       let add_cons :
         sig_state -> (ident * p_term) list-> sig_state * sym list =
