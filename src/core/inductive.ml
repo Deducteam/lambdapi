@@ -23,6 +23,16 @@ let get_config : Sig_state.t -> Pos.popt -> config = fun ss pos ->
   { symb_Prop = builtin "Prop"
   ; symb_prf  = builtin "P" }
 
+(** [unbind_name b] unbinds the binder [b] and substitutes the variable in the
+    case of undependent product. It returns the variable and the term which
+    was the body of the binder. *)
+let unbind_name : (term, term) Bindlib.binder -> tvar * term = fun b ->
+  if Bindlib.binder_occur b then
+    Bindlib.unbind b
+  else
+    let x = Bindlib.new_var mkfree "x" in
+    (x, Bindlib.subst b (Vari x))
+
 (** [principle ss pos sind scons_list] returns an induction principle which
     is created thanks to the symbol of the inductive type [sind] (and its
     position [pos]), its constructors [scons_list] and the signature [ss]. *)
@@ -32,18 +42,20 @@ let principle : Sig_state.t -> popt -> sym -> sym list -> term =
   let ind = _Symb sind in
   let prop = _Symb c.symb_Prop in
   let p = Bindlib.new_var mkfree "p" in
-  let prf_of_p t = _Appl (_Symb c.symb_prf) (_Appl (_Vari p) t) in
-  let app = List.fold_left _Appl in
+  let app : tbox -> tbox list -> tbox = List.fold_left _Appl in
+  let fapp : sym -> tbox list -> tbox = fun f ts -> app (_Symb f) ts in
+  let prf_of_p ts t = fapp c.symb_prf [_Appl (app (_Vari p) ts) t] in
+  let prf_of_p1 t = _Appl (_Symb c.symb_prf) (_Appl (_Vari p) t) in
 
   (* [case_of scons] creates a clause according to a constructor [scons]. *)
   let case_of : sym -> tbox = fun scons ->
-    let rec case : tbox list -> term-> tbox = fun xs a ->
+    let rec case : tbox list -> term -> tbox = fun xs a ->
       match Basics.get_args a with
       | (Symb(s), l) ->
           if s == sind then
             let l = List.map lift l in
             match List.rev l with
-            | []   -> prf_of_p (app (_Symb scons) (List.rev xs))
+            | []   -> prf_of_p1 (app (_Symb scons) (List.rev xs))
             | t::q ->
                 let l = app t q in
                 let tmp t =
@@ -53,13 +65,7 @@ let principle : Sig_state.t -> popt -> sym -> sym list -> term =
           else fatal pos "%a is not a constructor of %a"
                  pp_symbol scons pp_symbol sind
       | (Prod(a,b), _) ->
-          let (x,b) =
-            if Bindlib.binder_occur b then
-              Bindlib.unbind b
-            else
-              let x = Bindlib.new_var mkfree "x" in
-              (x, Bindlib.subst b (Vari x))
-          in
+          let (x,b) = unbind_name b                in
           let b = case ((Bindlib.box_var x)::xs) b in
           begin
             match Basics.get_args a with
@@ -68,7 +74,7 @@ let principle : Sig_state.t -> popt -> sym -> sym list -> term =
                   if s == sind then
                     let l = List.map lift l in
                     match List.rev l with
-                    | []   -> _Impl (prf_of_p (Bindlib.box_var x)) b
+                    | []   -> _Impl (prf_of_p1 (Bindlib.box_var x)) b
                     | _::_ ->
                         let l = List.fold_left _Appl (_Vari p) l in
                         _Impl (_Appl (_Symb c.symb_prf)
@@ -78,7 +84,7 @@ let principle : Sig_state.t -> popt -> sym -> sym list -> term =
                 in
                 if !log_enabled then
                   log_ind "The current type : %a" Print.pp_term a;
-                let tmp = _Prod (Bindlib.box a) (Bindlib.bind_var x b) in
+                let tmp = _Prod (lift a) (Bindlib.bind_var x b) in
                 if !log_enabled then
                   log_ind "The clause of the constructor [%a] is %a"
                     Print.pp_term (Symb(scons))
@@ -92,9 +98,10 @@ let principle : Sig_state.t -> popt -> sym -> sym list -> term =
     in
     case [] !(scons.sym_type)
   in
-
-  let create_end symbol =
-    let rec aux t acc_app = match t with
+  (* [create_end symbol] creates the conclusion of the induction principle
+     of the symbol [symbol]. *)
+  let create_end =
+    (*let rec aux t acc_app = match t with
       | Type      ->
           let x = Bindlib.new_var mkfree "x" in
           let tmp =
@@ -106,31 +113,39 @@ let principle : Sig_state.t -> popt -> sym -> sym list -> term =
             log_ind "The end of the PI (2) : %a"
               Print.pp_term (Bindlib.unbox tmp); tmp
       | Prod(a,b) ->
-          let (x,b) =
-            if Bindlib.binder_occur b then
-              Bindlib.unbind b
-            else
-              let x = Bindlib.new_var mkfree "x" in
-              (x, Bindlib.subst b (Vari x))
-          in
+          let (x,b) = unbind_name b in
           if !log_enabled then
             log_ind "The current type (2) : %a" Print.pp_term a;
           let tmp =
-            _Prod (Bindlib.box a)
+            _Prod (lift a)
               (Bindlib.bind_var x (aux b (_Appl acc_app (_Vari x))))
           in
           if !log_enabled then
             log_ind "The (current) end of the PI (2) : %a"
               Print.pp_term (Bindlib.unbox tmp);tmp
-      | _ -> fatal None "Not yet implemented..."
-    in aux !(sind.sym_type) (_Vari p)
+      | _ -> fatal None "Not yet implemented..."*)
+    let rec aux : tvar list -> term -> tbox = fun xs a ->
+      match Basics.get_args a with
+      | (Type, _) ->
+          let ts = List.rev_map _Vari xs in
+          let x = Bindlib.new_var mkfree "x" in
+          let t = Bindlib.bind_var x (prf_of_p ts (_Vari x)) in
+          _Prod (fapp sind ts) t
+      | (Prod(a,b), _) ->
+          let (x,b) = unbind_name b in
+          _Prod (lift a) (Bindlib.bind_var x (aux (x::xs) b))
+      | _ ->
+          fatal pos "The type of %a is not supported"
+            pp_symbol sind
+    in aux [] !(sind.sym_type)
   in
-  let t = create_end ind in
+  let t = create_end in
   if !log_enabled then
     log_ind "The end of the PI : %a"
       Print.pp_term (Bindlib.unbox t);
 
-  let rec add_case l r = match l with
+  let rec add_case l r =
+    match l with
     | []   -> r
     | t::q -> let t = case_of t in
               _Impl t (add_case q r)
@@ -142,6 +157,7 @@ let principle : Sig_state.t -> popt -> sym -> sym list -> term =
       Print.pp_term (Symb(sind)) Print.pp_term (Bindlib.unbox t);
   Bindlib.unbox t
 
+(** [term_to_p_term t] converts the term [t] to the type p_term. *)
 let rec term_to_p_term : term -> p_term = fun t ->
   match t with
   | Vari x    -> Pos.none (P_Patt (Some (Pos.none (Bindlib.name_of x)), [||]))
@@ -224,13 +240,7 @@ let ind_rule : string -> string -> term -> sym list -> p_rule list =
                   Pos.none (lhs_x, rhs_x)
                 else assert false (* See the function named "principle" *)
             | (Prod(a, b), _) ->
-                let (_,b) =
-                  if Bindlib.binder_occur b then
-                    Bindlib.unbind b
-                  else
-                    let x = Bindlib.new_var mkfree "x" in
-                    (x, Bindlib.subst b (Vari x))
-                in
+                let (_,b) = unbind_name b in
                 begin
                   match Basics.get_args a with
                   | (Symb(s), l) ->

@@ -31,7 +31,10 @@ set builtin "eqind" ≔ eq_ind
 // Some examples of inductive types
 /////////////////////////////
 set debug +g
-constant symbol nat : Set // Natural number
+
+///////////////// Natural number
+
+constant symbol nat : Set
 inductive Nat : TYPE ≔
  | z    : Nat
  | succ : Nat → Nat
@@ -52,7 +55,9 @@ assert z : Nat // Examples
 assert succ z : Nat
 assert succ (succ (succ z)) : Nat
 
-constant symbol list : Set // Lists
+////////////////////// Lists
+
+constant symbol list : Set
 inductive List : TYPE ≔
  | nil  : List
  | cons : Nat → List → List
@@ -62,38 +67,76 @@ type ind_List // Induction principle
 assert ind_List :
   Π(p:List → Prop), π(p nil) → (Πx l,π(p l) → π(p(cons x l))) → Πl,π(p l)
 
-symbol pL : List → Prop // Tests about inductive rules
-symbol pinil : π (pL nil)
+symbol pList : List → Prop // Tests about inductive rules
+symbol pinil : π (pList nil)
 symbol l : List
-symbol picons : Πx l, π (pL l) → π (pL (cons x l))
-assert ind_List pL pinil _ nil ≡ pinil
-assert ind_List pL pinil picons (cons x l)
-     ≡ picons x l (ind_List pL pinil picons l)
+symbol picons : Πx l, π (pList l) → π (pList (cons x l))
+assert ind_List pList pinil _ nil ≡ pinil
+assert ind_List pList pinil picons (cons x l)
+     ≡ picons x l (ind_List pList pinil picons l)
 
 assert nil : List // Examples
 assert cons (succ (succ (succ z))) nil : List
 assert cons (succ (succ (succ z))) (cons (succ z) nil) : List
 assert cons (succ (succ (succ z))) (cons (succ z) (cons z nil)) : List
 
-//inductive L : Πa:Set, TYPE ≔
-//| nilL  : Πa, L a
-//| consL : Πa, τ a → L a → L a
+///////////////////// Polymorphic list
+
+inductive L : Πa:Set, TYPE ≔
+ | nilL  : Πa, L a
+ | consL : Πa, τ a → L a → L a
+
+type ind_L // Induction principle
+assert ind_L :
+  Πp, (Πa, π(p a (nilL a))) → (Πa x l, π(p a l) → π(p a (consL a x l))) → Πa l, π(p a l)
+
+symbol pL : Πa, L a → Prop // Tests about inductive rules
+symbol pinilL : Πa, π (pL a (nilL a))
+symbol a : Set
+symbol l0 : L a
+symbol piconsL : Πa x l, π (pL a l) → π (pL a (consL a x l))
+assert ind_L pL pinilL _ a nilL ≡ pinilL
+assert ind_L pL pinilL piconsL a (consL a x l0)
+     ≡ piconsL a x l (ind_L pL pinilL piconsL a l0)
+
+//assert nil : List // Examples
+//assert cons (succ (succ (succ z))) nil : List
+//assert cons (succ (succ (succ z))) (cons (succ z) nil) : List
+//assert cons (succ (succ (succ z))) (cons (succ z) (cons z nil)) : List
+
+//////////////////// Vector
+
 symbol A : TYPE
 inductive Vec : Nat → TYPE ≔
  | nil_vec   : Vec z
  | cons_vec  : A → Πn, Vec n → Vec (succ n)
 
-// inductive Vec : Π(a : Set), Π(n : Nat), TYPE ≔
-//  | nil_vec   : Πa, Vec a z
-//  | cons_vec  : Πa, Π(_:τ a), Πn, Vec a n → Vec a (succ n)
+/////////////////// Polymorphic vector
+
+//inductive Vec_param : Π(a : Set), Π(n : Nat), TYPE ≔
+// | nil_vec_p   : Πa, Vec_param a z
+// | cons_vec_p  : Πa, Π(_:τ a), Πn, Vec_param a n → Vec_param a (succ n)
+
+////////////////// Example of mutual inductive type
+
+// inductive Expr : Set ≔
+//    Lit : τ nat   → Expr
+//  | Add : Expr  → Expr → Expr
+//  | If  : BExpr → Expr → Expr → Expr
+// with BExpr : Set :=
+//  | BLit  : τ bool  → BExpr
+//  | And   : BExpr → BExpr → BExpr
+//  | Not   : BExpr → BExpr
+//  | Equal : Expr  → Expr → BExpr
+
+////////////////// Type Bush (nested inductive type)
 
 // inductive Bush : Π(_:Set), TYPE ≔
 //  | BNil : Πa, Bush a
 //  | BCons : Πa, τ a → (τ a → Bush (bush a)) → Bush a
 
-// inductive L : Πa:Set, TYPE ≔
-// | nilL  : Πa, L a
-// | consL : Πa, τ a → L a → L a
+///////////////// Forest
+
 
 /////////////////////////////
 // Some proofs
