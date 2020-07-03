@@ -95,4 +95,3 @@ let end_proof : proof_state -> command_result = fun s ->
 
 let get_symbols : state -> (Terms.sym * Pos.popt) StrMap.t = fun s ->
   (snd s).in_scope
-  
