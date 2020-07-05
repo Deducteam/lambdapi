@@ -27,6 +27,16 @@ set builtin "eq"    ≔ eq
 set builtin "refl"  ≔ eq_refl
 set builtin "eqind" ≔ eq_ind
 
+//////////////////////
+// Boolean type
+//////////////////////
+
+constant symbol bool : Set       // Type of booleans
+set declared "𝔹"
+definition 𝔹 ≔ τ bool
+constant symbol true  : 𝔹
+constant symbol false : 𝔹
+
 /////////////////////////////
 // Some examples of inductive types
 /////////////////////////////
@@ -93,29 +103,67 @@ assert ind_L :
 symbol pL : Πa, L a → Prop // Tests about inductive rules
 symbol pinilL : Πa, π (pL a (nilL a))
 symbol a : Set
+symbol x0 : τ a
 symbol l0 : L a
 symbol piconsL : Πa x l, π (pL a l) → π (pL a (consL a x l))
-assert ind_L pL pinilL _ a nilL ≡ pinilL
-assert ind_L pL pinilL piconsL a (consL a x l0)
-     ≡ piconsL a x l (ind_L pL pinilL piconsL a l0)
+assert ind_L pL pinilL _ a (nilL a) ≡ pinilL a
+assert ind_L pL pinilL piconsL a (consL a x0 l0)
+     ≡ piconsL a x0 l0 (ind_L pL pinilL piconsL a l0)
 
-//assert nil : List // Examples
-//assert cons (succ (succ (succ z))) nil : List
-//assert cons (succ (succ (succ z))) (cons (succ z) nil) : List
-//assert cons (succ (succ (succ z))) (cons (succ z) (cons z nil)) : List
+assert nilL a : L a // Examples
+assert consL nat (succ (succ (succ z))) (nilL nat) : L nat
+assert consL nat (succ (succ (succ z))) (consL nat (succ z) (nilL nat)) : L nat
+assert consL nat (succ (succ (succ z))) (consL nat (succ z) (consL nat z (nilL nat))) : L nat
+assert consL bool true (nilL bool) : L bool
 
 //////////////////// Vector
 
 symbol A : TYPE
 inductive Vec : Nat → TYPE ≔
  | nil_vec   : Vec z
- | cons_vec  : A → Πn, Vec n → Vec (succ n)
+ | cons_vec  : Πn, A → Vec n → Vec (succ n)
+
+type ind_Vec // Induction principle
+assert ind_Vec :
+ Πp, π(p z nil_vec) → (Πn x v, π(p n v) → π(p (succ n) (cons_vec n x v))) → Πn v, π(p n v)
+
+symbol pV : Πn, Vec n → Prop // Tests about inductive rules
+symbol pinil_vec : π (pV z nil_vec)
+symbol n : Nat
+symbol xV : A
+symbol v : Vec n
+symbol picons_vec : Πn x v, π(pV n v) → π(pV (succ n) (cons_vec n x v))
+assert ind_Vec pV pinil_vec _ z nil_vec ≡ pinil_vec
+assert ind_Vec pV pinil_vec picons_vec (succ n) (cons_vec n xV v)
+     ≡ picons_vec n xV v (ind_Vec pV pinil_vec picons_vec n v)
+
+assert nil_vec : Vec z // Examples
+assert cons_vec (succ z) xV (cons_vec z xV nil_vec) : Vec (succ (succ z))
 
 /////////////////// Polymorphic vector
 
-//inductive Vec_param : Π(a : Set), Π(n : Nat), TYPE ≔
-// | nil_vec_p   : Πa, Vec_param a z
-// | cons_vec_p  : Πa, Π(_:τ a), Πn, Vec_param a n → Vec_param a (succ n)
+inductive Vec_param : Π(a : Set), Π(n : Nat), TYPE ≔
+ | nil_vec_p   : Πa, Vec_param a z
+ | cons_vec_p  : Πa n (_:τ a), Vec_param a n → Vec_param a (succ n)
+
+type ind_Vec_param // Induction principle
+assert ind_Vec_param :
+  Πp, (Πa, π(p a z (nil_vec_p a))) → (Πa n x v, π(p a n v) → π(p a (succ n) (cons_vec_p a n x v))) → Πa n v, π(p a n v)
+
+symbol pV_p : Πa n, Vec_param a n → Prop // Tests about inductive rules
+symbol pinil_vec_p : Πa, π (pV_p a z (nil_vec_p a))
+symbol xV_p : τ a
+symbol v_p : Vec_param a n
+symbol picons_vec_p : Πa n x v, π(pV_p a n v) → π(pV_p a (succ n) (cons_vec_p a n x v))
+assert ind_Vec_param pV_p pinil_vec_p _ a z (nil_vec_p a) ≡ pinil_vec_p a
+assert ind_Vec_param pV_p pinil_vec_p picons_vec_p a (succ n) (cons_vec_p a n xV_p v_p)
+     ≡ picons_vec_p a n xV_p v_p (ind_Vec_param pV_p pinil_vec_p picons_vec_p a n v_p)
+
+assert nil_vec_p a : Vec_param a z // Examples
+assert nil_vec_p nat : Vec_param nat z
+assert cons_vec_p nat (succ z) (succ (succ (succ z))) (cons_vec_p nat z z (nil_vec_p nat)) : Vec_param nat (succ (succ z))
+assertnot cons_vec_p nat (succ z) (succ (succ (succ z))) (cons_vec_p nat z true (nil_vec_p nat)) : Vec_param nat (succ (succ z))
+assert cons_vec_p bool (succ z) false (cons_vec_p bool z true (nil_vec_p bool)) : Vec_param bool (succ (succ z))
 
 ////////////////// Example of mutual inductive type
 
@@ -131,12 +179,53 @@ inductive Vec : Nat → TYPE ≔
 
 ////////////////// Type Bush (nested inductive type)
 
-// inductive Bush : Π(_:Set), TYPE ≔
-//  | BNil : Πa, Bush a
-//  | BCons : Πa, τ a → (τ a → Bush (bush a)) → Bush a
+symbol bush : Set →  Set
+inductive Bush : Π(_:Set), TYPE ≔
+ | BNil : Πa, Bush a
+ | BCons : Πa, τ a → Bush (bush a) → Bush a
+rule Bush $a ↪ τ (bush $a)
+
+type ind_Bush // Induction principle
+assert ind_Bush :
+  Πp, (Πa, π(p a (BNil a))) → (Πa x l, π(p (bush a) l) → π(p a (BCons a x l))) → Πa l, π(p a l)
+
+symbol pB : Πa, Bush a → Prop // Tests about inductive rules
+symbol piBNil : Πa, π (pB a (BNil a))
+symbol B : Bush (bush a)
+symbol piBCons : Πa x l, π (pB (bush a) l) → π (pB a (BCons a x l))
+assert ind_Bush pB piBNil _ a (BNil a) ≡ piBNil a
+assert ind_Bush pB piBNil piBCons a (BCons a x0 B)
+     ≡ piBCons a x0 B (ind_Bush pB piBNil piBCons (bush a) B)
+
+assert BNil a : Bush a // Examples
+assert consL nat (succ (succ (succ z))) (nilL nat) : L nat
+assert consL nat (succ (succ (succ z))) (consL nat (succ z) (nilL nat)) : L nat
+assert consL nat (succ (succ (succ z))) (consL nat (succ z) (consL nat z (nilL nat))) : L nat
+assert consL bool true (nilL bool) : L bool
+
+///////////////// An example of the heterogenous dependent family
+
+inductive fin : Nat → TYPE ≔
+  | new : Πn, fin (succ n)
+  | inj : Πn, fin n → fin (succ n)
+
+type ind_fin // Induction principle
+assert ind_fin : Πp, (Πn, π (p (succ n) (new n))) → (Πn f, π (p n f) → π (p (succ n) (inj n f))) → Πn f, π (p n f)
+
+symbol pF : Πn, fin n → Prop // Tests about inductive rules
+symbol pinew : Πn, π (pF (succ n) (new n))
+symbol f : fin n
+symbol piinj : Πn f, π (pF n f) → π (pF (succ n) (inj n f))
+assert ind_fin pF pinew _ (succ n) (new n) ≡ pinew n
+assert ind_fin pF pinew piinj (succ n) (inj n f)
+     ≡ piinj n f (ind_fin pF pinew piinj n f)
+
+assert new n : fin (succ n) // Examples
+assert inj (succ n) (new n) : fin (succ (succ n))
 
 ///////////////// Forest
 
+// TODO ...
 
 /////////////////////////////
 // Some proofs
