@@ -27,7 +27,7 @@ type token =
   | L_SQB | R_SQB | L_PAR | R_PAR | ARROW | LARROW | FARROW | DEFEQ | COMMA
   | COLON | EQUAL | DOT | EOF
   (* Keywords. *)
-  | KW_DEF | KW_INJ | KW_THM | TYPE | KW_PRV
+  | KW_DEF | KW_INJ | KW_THM | TYPE | KW_PRV | KW_SEQ
   (* Identifiers and wildcard. *)
   | WILD
   | ID      of string

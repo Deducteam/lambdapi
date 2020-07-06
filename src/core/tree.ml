@@ -11,10 +11,6 @@ open Terms
 open Basics
 open Tree_types
 
-(** Flag indicating whether the order of rules in files should be preserved by
-    decision trees. *)
-let rule_order : bool Stdlib.ref = Stdlib.ref false
-
 (** {1 Types for decision trees}
 
     The types involved in the definition of decision trees are given in module
@@ -274,35 +270,6 @@ module CM = struct
         respect to slot [s]. A condition [CondFV(vs, i)] corresponds to a free
         variable condition: only variables of [vs] are in the matched term. *)
 
-  (* May be useful for debugging:
-  (** [pp ?(pp_cond=false) o m] prints matrix [m] to out channel [o]. The flag
-      [pp_cond] indicates whether the condition pull should be printed. *)
-  let pp : ?pp_cond:bool -> t pp = fun ?(pp_cond=false) oc m ->
-    let pp_lhs oc lhs =
-      Format.fprintf oc "@[%a ↪ … @]" (Array.pp Print.pp " | ") lhs
-    in
-    let pp_path oc l =
-      if l = [] then Format.fprintf oc "ε" else
-        List.pp (fun oc -> Format.fprintf oc "%d") "·" oc (List.rev l)
-    in
-    let out fmt = Format.fprintf oc fmt in
-    let lp = List.map (fun a -> a.arg_path) m.positions in
-    let lr = List.map (fun a -> a.arg_rank) m.positions in
-    let llhs = List.map (fun cl -> cl.c_lhs) m.clauses in
-    let cut = Format.pp_print_cut in
-    out "@[<v 0>### Matrix start ###@,";
-    out "@[<h>%s: @[%a@]@]@,"
-      "Positions" (List.pp pp_path ";") lp;
-    out "@[<h>@<9>%s: @[%a@]@]@,"
-      "Depths" (List.pp Format.pp_print_int ";") lr;
-    out "@[<v 0>%a@]@," (Format.pp_print_list ~pp_sep:cut pp_lhs) llhs;
-    if pp_cond then
-      begin
-        let lcp = List.map (fun cl -> cl.cond_pool) m.clauses in
-        out "@[<v 0>%a@]@," (Format.pp_print_list ~pp_sep:cut CP.pp) lcp
-      end;
-    out "### Matrix end   ###@]@."*)
-
   (** [is_treecons t] tells whether term [t] corresponds to a constructor (see
       {!type:Tree_types.TC.t}) that is a candidate for a specialization. *)
   let is_treecons : term -> bool = fun t ->
@@ -314,7 +281,7 @@ module CM = struct
     | Symb(_) -> true
     | _       -> assert false
 
-  (** [of_rules r] transforms rewriting rules into a clause matrix rules. *)
+  (** [of_rules rs] transforms rewriting rules [rs] into a clause matrix. *)
   let of_rules : rule list -> t = fun rs ->
     let r2r {lhs; rhs; xvars_nb; _} =
       let c_lhs = Array.of_list lhs in
@@ -415,15 +382,16 @@ module CM = struct
 
   (** [yield m] returns the next operation to carry out on matrix [m], that
       is, either specialising, solving a constraint or rewriting to a rule. *)
-  let yield : t -> decision = fun ({ clauses ; positions ; _ } as m) ->
+  let yield : match_strat -> t -> decision =
+    fun mstrat ({ clauses ; positions ; _ } as m) ->
     (* If a line is empty and priority is given to the topmost rule, we have
        to eliminate ¨empty¨ rules. *)
-    if Stdlib.(!rule_order)
+    if mstrat = Sequen
        && List.exists (fun x -> x.c_lhs = [||]) clauses
        && List.exists (fun x -> x.c_lhs <> [||]) clauses
     then Check_stack else
     try
-      if Stdlib.(!rule_order) then
+      if mstrat = Sequen then
         (* [List.hd] won't fail because if the matrix is empty, then we don't
            enter the function (see {!val:compile}). If it is not, then it has
            at least one clause. *)
@@ -699,16 +667,16 @@ let is_abst : term -> bool = fun t ->
 let is_prod : term -> bool = fun t ->
   match t with Prod(_) -> true | _ -> false
 
-(** [compile m] translates the pattern matching problem encoded by the matrix
-    [m] into a decision tree. *)
-let compile : CM.t -> tree = fun m ->
+(** [compile mstrat m] translates the pattern matching problem encoded by the
+    matrix [m] into a decision tree following strategy [mstrat]. *)
+let compile : match_strat -> CM.t -> tree = fun mstrat m ->
   (* [compile count vars_id cm] compiles clause matrix [cm] which contains
      [count] variables indexed in [vars_id] *)
   let rec compile : int -> int VarMap.t -> CM.t -> tree =
   fun count vars_id ({clauses; positions; slot} as cm) ->
   if CM.is_empty cm then Fail else
   let compile_cv = compile count vars_id in
-  match CM.yield cm with
+  match CM.yield mstrat cm with
   | Yield({c_rhs; env_builder; c_lhs; _})  ->
       if c_lhs = [||] then Leaf(env_builder, c_rhs) else
       harvest c_lhs c_rhs env_builder vars_id slot
@@ -765,6 +733,7 @@ let compile : CM.t -> tree = fun m ->
 
 (** [update_dtree s] updates decision tree of symbol [s]. *)
 let update_dtree : sym -> unit = fun symb ->
-  let tree = lazy (compile (CM.of_rules !(symb.sym_rules))) in
+  let rules = lazy (CM.of_rules !(symb.sym_rules)) in
+  let tree = lazy (compile !(symb.sym_mstrat) (Lazy.force rules)) in
   let cap = lazy (Tree_types.tree_capacity (Lazy.force tree)) in
   symb.sym_tree := (cap, tree)
