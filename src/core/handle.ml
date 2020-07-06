@@ -133,8 +133,8 @@ let handle_require_as : popt -> sig_state -> Path.t -> ident -> sig_state =
   let path_map = PathMap.add p id.elt ss.path_map in
   {ss with aliases; path_map}
 
-(** [handle_symbol ss e p x xs a] handles the command [e p symbol x xs : a]
-    with [ss] as the signature state.
+(** [handle_symbol ss e p strat x xs a] handles the command
+    [e p strat symbol x xs : a] with [ss] as the signature state.
     On success, an updated signature state and the new symbol are returned. *)
 let handle_symbol :
       sig_state -> expo -> prop -> match_strat -> ident -> p_arg list ->
@@ -276,6 +276,13 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
       let cons_list = List.rev cons_list  in
       (* Compute the induction principle *)
       let ind_typ = Inductive.principle ss cmd.pos sym_typ cons_list in
+      (* Check the type of the induction principle *)
+      (match Typing.infer [] ind_typ with
+       | Some _ -> ()
+       | None   ->
+           fatal cmd.pos "The type of the generated inductive principle of
+                          [%a] isn't correct. Please, raise an issue."
+             pp_term ind_typ);
       (* Add the induction principle in the signature *)
       let ind_name = Pos.make cmd.pos ("ind_" ^ id.elt) in
       if StrSet.mem id.elt !(ss.signature.sign_idents) then
