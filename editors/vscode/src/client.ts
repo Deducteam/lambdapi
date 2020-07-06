@@ -94,7 +94,7 @@ export function activate(context: ExtensionContext) {
                 const panel : WebviewPanel | undefined = context.workspaceState.get('panel');
 
                 if (!proofState || !panel) {
-                    console.log('Workspace variables are not properly defined');
+                    console.log('onDidChangeActiveTextEditor : workspace variables are not properly defined');
                     return;
                 }
 
@@ -119,8 +119,8 @@ export function activate(context: ExtensionContext) {
             //Navigate proof : step forward in a proof 
             commands.registerCommand('extension.vscode-lp.fw', () => checkProofForward(context));
             
-            //Navigate proof : step backwards in a proof
-            commands.registerCommand('extension.vscode-lp.bw', () => checkProofBackwards(context));
+            //Navigate proof : step backward in a proof
+            commands.registerCommand('extension.vscode-lp.bw', () => checkProofBackward(context));
 
             //Navigate proof : move proof higlight to cursor
             commands.registerCommand('extension.vscode-lp.tc', () => checkProofUntilCursor(context));
@@ -149,19 +149,45 @@ export function activate(context: ExtensionContext) {
     restart();
 }
 
+function highlight(context : ExtensionContext, newProofState : Position, openEditor : TextEditor) {
+
+    const range : rg = updateHighlightRange(context, newProofState); //Highlight range is updated
+
+    //Highlighting text
+    const proofDecoration : TextEditorDecorationType | undefined = context.workspaceState.get('proofDecoration');
+
+    if(!proofDecoration)
+        console.log('Highlights/decorations are not properly defined');
+    else
+        decorate(openEditor, range, proofDecoration);
+    
+    //Scroll until last highlight (if follow mode is toggled)
+    const follow: boolean | undefined = context.workspaceState.get('follow');
+
+    if(follow)
+        commands.executeCommand('revealLine', {lineNumber: newProofState.line, at: 'center'});
+}
+
+function lpRefresh(context : ExtensionContext, step : number, panel : WebviewPanel, openEditor : TextEditor) {
+
+    const newProofState : Position = stepProofState(context, step); //Proof goes one step earlier
+    refresh(panel, openEditor, newProofState); //Goals panel is refreshed
+
+    highlight(context, newProofState, openEditor);
+}
+
 function nextProofPosition(document: TextDocument, proofState : Position, direction : number) : Position {
 
     let current : number = proofState.line + direction; //Starting point
 
-    //The highlight can't go beyond he limits of the document
-    if( (current == 0) || (current == document.lineCount) )
+    //The highlight can't go beyond the limits of the document
+    if( current == 0 || current == document.lineCount )
         return proofState;
 
     //Looking for the next line with "proof" in it (or the beggining/end of file)
     let line : string = document.lineAt(current).text;
 
     while(!line.includes("proof") && current + direction >= 1 && current + direction <= document.lineCount - 1) {
-        console.log("current", current);
         current += direction;
         line = document.lineAt(current).text;
     }
@@ -183,35 +209,18 @@ function nextProof(context : ExtensionContext, direction : number) {
     const panel : WebviewPanel | undefined = context.workspaceState.get('panel');
 
     if (!proofState || !panel) {
-        console.log('Workspace variables are not properly defined');
+        console.log('nextProof : workspace variables are not properly defined');
         return;
     }
 
-    console.log('a',proofState.line);
     //The position of the next proof
     let nextProofPos : Position = nextProofPosition(openEditor.document, proofState, direction);
-    console.log('b',nextProofPos.line);
     
-    context.workspaceState.update('proofState', nextProofPos); //proof state is st to the cursor position
+    context.workspaceState.update('proofState', nextProofPos); //proof state is set to the position of the next proof keyword
     
     refresh(panel, openEditor, nextProofPos); //Goals panel is refreshed
 
-    const range : rg = updateHighlightRange(context, nextProofPos); //Highlight range is refreshed
-
-    //Highlighting text
-    const proofDecoration : TextEditorDecorationType | undefined = context.workspaceState.get('proofDecoration');
-
-    if(!proofDecoration)
-        console.log('Highlights/decorations are not properly defined');
-    else
-        decorate(openEditor, range, proofDecoration);
-        
-     //Scroll until last highlight (if follow mode is toggled)
-    const follow: boolean | undefined = context.workspaceState.get('follow');
-    const cursorMode: boolean | undefined = context.workspaceState.get('cursorMode');
-        
-    if(follow)
-        commands.executeCommand('revealLine', {lineNumber: nextProofPos.line, at: 'center'});
+    highlight(context, nextProofPos, openEditor);
 }
 
 function goToProofState(context : ExtensionContext){
@@ -231,11 +240,23 @@ function toggleCursorMode(context : ExtensionContext) : boolean {
     cursorMode = !cursorMode;
     context.workspaceState.update('cursorMode', cursorMode);
 
-    if(cursorMode)
+    if(cursorMode) {
+        
         window.showInformationMessage("Cursor navigation enabled");
+
+        //By default, follow mode is disabled in cursor mode (because it may be nausea-inducing)
+        if( context.workspaceState.get('follow') )
+            toggleFollowMode(context);
+    }
     
-    else
+    else {
+
         window.showInformationMessage("Cursor navigation disabled");
+
+        //By default, follow mode is enabled when cursor mode is off (because it is more practical)
+        if( !context.workspaceState.get('follow') )
+            toggleFollowMode(context);
+    }
     
     return cursorMode;
 }
@@ -257,8 +278,7 @@ function toggleFollowMode(context : ExtensionContext) : boolean {
 }
 
 function decorate(openEditor : TextEditor, range : rg, decorationType : TextEditorDecorationType) {
-    if(openEditor != undefined)
-        openEditor.setDecorations(decorationType, [range]);
+    openEditor.setDecorations(decorationType, [range]);
 }
 
 function updateHighlightRange(context : ExtensionContext, proofState : Position) : rg {
@@ -274,7 +294,14 @@ function updateHighlightRange(context : ExtensionContext, proofState : Position)
 
 function stepProofState(context : ExtensionContext, step : number) {
 
-    let proofState : Position = context.workspaceState.get('proofState') ?? new Position(0, 0);
+    let proofState : Position | undefined = context.workspaceState.get('proofState');
+
+    if(!proofState) {
+        console.log('stepProofState : proofState workspace variable is not properly defined');
+        proofState = new Position(1, 0);
+        context.workspaceState.update('proofState', proofState);
+        return proofState;
+    }
 
     proofState = proofState.translate(step, 0);
     context.workspaceState.update('proofState', proofState);
@@ -292,7 +319,7 @@ function checkProofForward(context : ExtensionContext) {
     const proofState : Position | undefined = context.workspaceState.get('proofState');
     const panel : WebviewPanel | undefined = context.workspaceState.get('panel');
     if (!proofState || !panel) {
-        console.log('Workspace variables are not properly defined');
+        console.log('checkProofForward : Workspace variables are not properly defined');
         return;
     }
 
@@ -301,31 +328,11 @@ function checkProofForward(context : ExtensionContext) {
     const step : number = proofState.line == documentTotalLines ? 0 : 1;
 
     //Case the end has not been reached
-    if(step) {
-
-        const newProofState : Position = stepProofState(context, step); //Proof goes one step further
-        
-        refresh(panel, openEditor, newProofState); //Goals are refreshed
-
-        const range : rg = updateHighlightRange(context, newProofState); //Highlight range is refreshed
-
-        //Highlighting text
-        const proofDecoration : TextEditorDecorationType | undefined = context.workspaceState.get('proofDecoration');
-
-        if(!proofDecoration)
-            console.log('Highlights/decorations are not properly defined');
-        else
-            decorate(openEditor, range, proofDecoration);
-
-        //Scroll until last highlight (if follow mode is toggled)
-        const follow: boolean | undefined = context.workspaceState.get('follow');
-
-        if(follow)
-            commands.executeCommand('revealLine', {lineNumber: newProofState.line, at: 'center'});
-    }
+    if(step)
+        lpRefresh(context, step, panel, openEditor);
 }
 
-function checkProofBackwards(context : ExtensionContext) {
+function checkProofBackward(context : ExtensionContext) {
 
     //Checking workspace
     const openEditor : TextEditor | undefined = window.activeTextEditor;
@@ -335,7 +342,7 @@ function checkProofBackwards(context : ExtensionContext) {
     const proofState : Position | undefined = context.workspaceState.get('proofState');
     const panel : WebviewPanel | undefined = context.workspaceState.get('panel');
     if (!proofState || !panel) {
-        console.log('Workspace variables are not properly defined');
+        console.log('checkProofBackward : Workspace variables are not properly defined');
         return;
     }
 
@@ -343,27 +350,8 @@ function checkProofBackwards(context : ExtensionContext) {
     const step : number = proofState.line == 1 ? 0 : -1;
 
     //Case the proof state is not at the beggining of the document
-    if(step == -1) {
-        
-        const newProofState : Position = stepProofState(context, step); //Proof goes one step earlier
-        refresh(panel, openEditor, newProofState); //Goals panel is refreshed
-
-        const range : rg = updateHighlightRange(context, newProofState); //Highlight range is updated
-
-        //Highlighting text
-        const proofDecoration : TextEditorDecorationType | undefined = context.workspaceState.get('proofDecoration');
-
-        if(!proofDecoration)
-            console.log('Highlights/decorations are not properly defined');
-        else
-            decorate(openEditor, range, proofDecoration);
-        
-        //Scroll until last highlight (if follow mode is toggled)
-        const follow: boolean | undefined = context.workspaceState.get('follow');
-
-        if(follow)
-            commands.executeCommand('revealLine', {lineNumber: newProofState.line, at: 'center'});
-    }
+    if(step == -1)
+        lpRefresh(context, step, panel, openEditor);
 }
 
 function checkProofUntilCursor(context : ExtensionContext) {
@@ -377,7 +365,7 @@ function checkProofUntilCursor(context : ExtensionContext) {
     const panel : WebviewPanel | undefined = context.workspaceState.get('panel');
 
     if (!proofState || !panel) {
-        console.log('Workspace variables are not properly defined');
+        console.log('checkProofUntilCursor : workspace variables are not properly defined');
         return;
     }
     
@@ -391,26 +379,11 @@ function checkProofUntilCursor(context : ExtensionContext) {
     if (cursorPosition.character != 0)
         cursorPosition = new Position(cursorPosition.line, 0);
     
-    context.workspaceState.update('proofState', cursorPosition); //proof state is st to the cursor position
+    context.workspaceState.update('proofState', cursorPosition); //proof state is set to the cursor position
     
     refresh(panel, openEditor, cursorPosition); //Goals panel is refreshed
 
-    const range : rg = updateHighlightRange(context, cursorPosition); //Highlight range is refreshed
-
-    //Highlighting text
-    const proofDecoration : TextEditorDecorationType | undefined = context.workspaceState.get('proofDecoration');
-
-    if(!proofDecoration)
-        console.log('Highlights/decorations are not properly defined');
-    else
-        decorate(openEditor, range, proofDecoration);
-        
-     //Scroll until last highlight (if follow mode is toggled)
-    const follow: boolean | undefined = context.workspaceState.get('follow');
-    const cursorMode: boolean | undefined = context.workspaceState.get('cursorMode');
-        
-    if(follow && !cursorMode)
-        commands.executeCommand('revealLine', {lineNumber: cursorPosition.line, at: 'center'});
+    highlight(context, cursorPosition, openEditor);
 }
 
 function refresh(panel : WebviewPanel, editor : TextEditor | undefined, proofState : Position) {

@@ -336,7 +336,7 @@
 		"description": "Insert hooked arrow"
 	},
 	"ass": {
-		"prefix": "`set",
+		"prefix": "`is",
 		"body": "≔",
 		"description": "Insert assignment symbol"
 	},
@@ -371,7 +371,7 @@
 		"description": "Insert box symbol"
 	},
 	"thus": {
-		"prefix": "`tf",
+		"prefix": "`cons",
 		"body": "⸬",
 		"description": "Insert 'therefore' symbol"
 	},
@@ -531,158 +531,158 @@
 		"description": "Insert double-struck z"
 	},
 
-	"bsa": {
-		"prefix": "`bsa",
+	"Sa": {
+		"prefix": "`Sa",
 		"body": "𝓐",
 		"description": "Insert bold script a"
 	},
 	
-	"bsb": {
-		"prefix": "`bsb",
+	"Sb": {
+		"prefix": "`Sb",
 		"body": "𝓑",
 		"description": "Insert bold script b"
 	},
 	
-	"bsc": {
-		"prefix": "`bsc",
+	"Sc": {
+		"prefix": "`Sc",
 		"body": "𝓒",
 		"description": "Insert bold script c"
 	},
 	
-	"bsd": {
-		"prefix": "`bsd",
+	"Sd": {
+		"prefix": "`Sd",
 		"body": "𝓓",
 		"description": "Insert bold script d"
 	},
 	
-	"bse": {
-		"prefix": "`bse",
+	"Se": {
+		"prefix": "`Se",
 		"body": "𝓔",
 		"description": "Insert bold script e"
 	},
 	
-	"bsf": {
-		"prefix": "`bsf",
+	"Sf": {
+		"prefix": "`Sf",
 		"body": "𝓕",
 		"description": "Insert bold script f"
 	},
 	
-	"bsg": {
-		"prefix": "`bsg",
+	"Sg": {
+		"prefix": "`Sg",
 		"body": "𝓖",
 		"description": "Insert bold script g"
 	},
 	
-	"bsh": {
-		"prefix": "`bsh",
+	"Sh": {
+		"prefix": "`Sh",
 		"body": "𝓗",
 		"description": "Insert bold script h"
 	},
 	
-	"bsi": {
-		"prefix": "`bsi",
+	"Si": {
+		"prefix": "`Si",
 		"body": "𝓘",
 		"description": "Insert bold script i"
 	},
 	
-	"bsj": {
-		"prefix": "`bsj",
+	"Sj": {
+		"prefix": "`Sj",
 		"body": "𝓙",
 		"description": "Insert bold script j"
 	},
 	
-	"bsk": {
-		"prefix": "`bsk",
+	"Sk": {
+		"prefix": "`Sk",
 		"body": "𝓚",
 		"description": "Insert bold script k"
 	},
 	
-	"bsl": {
-		"prefix": "`bsl",
+	"Sl": {
+		"prefix": "`Sl",
 		"body": "𝓛",
 		"description": "Insert bold script l"
 	},
 	
-	"bsm": {
-		"prefix": "`bsm",
+	"Sm": {
+		"prefix": "`Sm",
 		"body": "𝓜",
 		"description": "Insert bold script m"
 	},
 	
-	"bsn": {
-		"prefix": "`bsn",
+	"Sn": {
+		"prefix": "`Sn",
 		"body": "𝓝",
 		"description": "Insert bold script n"
 	},
 	
-	"bso": {
-		"prefix": "`bso",
+	"So": {
+		"prefix": "`So",
 		"body": "𝓞",
 		"description": "Insert bold script o"
 	},
 	
-	"bsp": {
-		"prefix": "`bsp",
+	"Sp": {
+		"prefix": "`Sp",
 		"body": "𝓟",
 		"description": "Insert bold script p"
 	},
 	
-	"bsq": {
-		"prefix": "`bsq",
+	"Sq": {
+		"prefix": "`Sq",
 		"body": "𝓠",
 		"description": "Insert bold script q"
 	},
 	
-	"bsr": {
-		"prefix": "`bsr",
+	"Sr": {
+		"prefix": "`Sr",
 		"body": "𝓡",
 		"description": "Insert bold script r"
 	},
 	
-	"bss": {
-		"prefix": "`bss",
+	"Ss": {
+		"prefix": "`Ss",
 		"body": "𝓢",
 		"description": "Insert bold script s"
 	},
 	
-	"bst": {
-		"prefix": "`bst",
+	"St": {
+		"prefix": "`St",
 		"body": "𝓣",
 		"description": "Insert bold script t"
 	},
 	
-	"bsu": {
-		"prefix": "`bsu",
+	"Su": {
+		"prefix": "`Su",
 		"body": "𝓤",
 		"description": "Insert bold script u"
 	},
 	
-	"bsv": {
-		"prefix": "`bsv",
+	"Sv": {
+		"prefix": "`Sv",
 		"body": "𝓥",
 		"description": "Insert bold script v"
 	},
 	
-	"bsw": {
-		"prefix": "`bsw",
+	"Sw": {
+		"prefix": "`Sw",
 		"body": "𝓦",
 		"description": "Insert bold script w"
 	},
 	
-	"bsx": {
-		"prefix": "`bsx",
+	"Sx": {
+		"prefix": "`Sx",
 		"body": "𝓧",
 		"description": "Insert bold script x"
 	},
 	
-	"bsy": {
-		"prefix": "`bsy",
+	"Sy": {
+		"prefix": "`Sy",
 		"body": "𝓨",
 		"description": "Insert bold script y"
 	},
 	
-	"bsz": {
-		"prefix": "`bsz",
+	"Sz": {
+		"prefix": "`Sz",
 		"body": "𝓩",
 		"description": "Insert bold script z"
 	},
@@ -842,158 +842,158 @@
 		"description": "Insert script z"
 	},
 
-	"iba": {
-		"prefix": "`iba",
+	"Ia": {
+		"prefix": "`Ia",
 		"body": "𝑨",
 		"description": "Insert italic bold a"
 	},
 	
-	"ibb": {
-		"prefix": "`ibb",
+	"Ib": {
+		"prefix": "`Ib",
 		"body": "𝑩",
 		"description": "Insert italic bold b"
 	},
 	
-	"ibc": {
-		"prefix": "`ibc",
+	"Ic": {
+		"prefix": "`Ic",
 		"body": "𝑪",
 		"description": "Insert italic bold c"
 	},
 	
-	"ibd": {
-		"prefix": "`ibd",
+	"Id": {
+		"prefix": "`Id",
 		"body": "𝑫",
 		"description": "Insert italic bold d"
 	},
 	
-	"ibe": {
-		"prefix": "`ibe",
+	"Ie": {
+		"prefix": "`Ie",
 		"body": "𝑬",
 		"description": "Insert italic bold e"
 	},
 	
-	"ibf": {
-		"prefix": "`ibf",
+	"If": {
+		"prefix": "`If",
 		"body": "𝑭",
 		"description": "Insert italic bold f"
 	},
 	
-	"ibg": {
-		"prefix": "`ibg",
+	"Ig": {
+		"prefix": "`Ig",
 		"body": "𝑮",
 		"description": "Insert italic bold g"
 	},
 	
-	"ibh": {
-		"prefix": "`ibh",
+	"Ih": {
+		"prefix": "`Ih",
 		"body": "𝑯",
 		"description": "Insert italic bold h"
 	},
 	
-	"ibi": {
-		"prefix": "`ibi",
+	"Ii": {
+		"prefix": "`Ii",
 		"body": "𝑰",
 		"description": "Insert italic bold i"
 	},
 	
-	"ibj": {
-		"prefix": "`ibj",
+	"Ij": {
+		"prefix": "`Ij",
 		"body": "𝑱",
 		"description": "Insert italic bold j"
 	},
 	
-	"ibk": {
-		"prefix": "`ibk",
+	"Ik": {
+		"prefix": "`Ik",
 		"body": "𝑲",
 		"description": "Insert italic bold k"
 	},
 	
-	"ibl": {
-		"prefix": "`ibl",
+	"Il": {
+		"prefix": "`Il",
 		"body": "𝑳",
 		"description": "Insert italic bold l"
 	},
 	
-	"ibm": {
-		"prefix": "`ibm",
+	"Im": {
+		"prefix": "`Im",
 		"body": "𝑴",
 		"description": "Insert italic bold m"
 	},
 	
-	"ibn": {
-		"prefix": "`ibn",
+	"In": {
+		"prefix": "`In",
 		"body": "𝑵",
 		"description": "Insert italic bold n"
 	},
 	
-	"ibo": {
-		"prefix": "`ibo",
+	"Io": {
+		"prefix": "`Io",
 		"body": "𝑶",
 		"description": "Insert italic bold o"
 	},
 	
-	"ibp": {
-		"prefix": "`ibp",
+	"Ip": {
+		"prefix": "`Ip",
 		"body": "𝑷",
 		"description": "Insert italic bold p"
 	},
 	
-	"ibq": {
-		"prefix": "`ibq",
+	"Iq": {
+		"prefix": "`Iq",
 		"body": "𝑸",
 		"description": "Insert italic bold q"
 	},
 	
-	"ibr": {
-		"prefix": "`ibr",
+	"Ir": {
+		"prefix": "`Ir",
 		"body": "𝑹",
 		"description": "Insert italic bold r"
 	},
 	
-	"ibs": {
-		"prefix": "`ibs",
+	"Is": {
+		"prefix": "`Is",
 		"body": "𝑺",
 		"description": "Insert italic bold s"
 	},
 	
-	"ibt": {
-		"prefix": "`ibt",
+	"It": {
+		"prefix": "`It",
 		"body": "𝑻",
 		"description": "Insert italic bold t"
 	},
 	
-	"ibu": {
-		"prefix": "`ibu",
+	"Iu": {
+		"prefix": "`Iu",
 		"body": "𝑼",
 		"description": "Insert italic bold u"
 	},
 	
-	"ibv": {
-		"prefix": "`ibv",
+	"Iv": {
+		"prefix": "`Iv",
 		"body": "𝑽",
 		"description": "Insert italic bold v"
 	},
 	
-	"ibw": {
-		"prefix": "`ibw",
+	"Iw": {
+		"prefix": "`Iw",
 		"body": "𝑾",
 		"description": "Insert italic bold w"
 	},
 	
-	"ibx": {
-		"prefix": "`ibx",
+	"Ix": {
+		"prefix": "`Ix",
 		"body": "𝑿",
 		"description": "Insert italic bold x"
 	},
 	
-	"iby": {
-		"prefix": "`iby",
+	"Iy": {
+		"prefix": "`Iy",
 		"body": "𝒀",
 		"description": "Insert italic bold y"
 	},
 	
-	"ibz": {
-		"prefix": "`ibz",
+	"Iz": {
+		"prefix": "`Iz",
 		"body": "𝒁",
 		"description": "Insert italic bold z"
 	},

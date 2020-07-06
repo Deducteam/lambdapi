@@ -22,7 +22,6 @@
     {
       "include": "#external"
     }
-
   ],
   "repository": {
 
@@ -70,9 +69,6 @@
     "keywords": {
       "match": "\\b(TYPE|left|right|infix|prefix|quantifier|protected|private|injective|constant)\\b",
       "name": "storage.modifier.lp"
-    }
-      
-
-    
+    }    
   }
 }

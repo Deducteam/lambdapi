@@ -30,8 +30,6 @@ It is still under development, thus might be incomplete and buggy.
 
 ##  Proof navigation
 
-
-
 Goals are visualised in a panel on the right side of the editor.
 
 - You can navigate the proof with [keybindings](#keybindings).
@@ -57,11 +55,11 @@ Some greek letters are present in a 'var' form as in LaTeX, accessible with ```"
 
 - ```"`iletter"```(`in): italic letter (𝑁)
 
-- ```"`ibletter"```(`ibn): italic bold (𝑵)
+- ```"`Iletter"```(`In): italic bold (𝑵)
 
 - ```"`sletter"```(`sn): script letter (𝒩 )
 
-- ```"`bsletter"```(`bsn): bold script letter (𝓝)
+- ```"`Sletter"```(`Sn): bold script letter (𝓝)
 
 - ```"`fletter"```(`fn): Fraktur letter (𝔑)
 
@@ -75,13 +73,11 @@ Some greek letters are present in a 'var' form as in LaTeX, accessible with ```"
 
 - ```"`not"``` : ¬
 
-- ```"`imp"```: ⇒
-
 - ```"`ra"```: →
 
 - ```"`re"```: ↪
 
-- ```"`set"```: ≔
+- ```"`is"```: ≔
 
 - ```"`eq"```: ≡
 
@@ -95,7 +91,7 @@ Some greek letters are present in a 'var' form as in LaTeX, accessible with ```"
 
 - ```"`box"```: □
 
-- ```"`tf"```: ⸬
+- ```"`cons"```: ⸬
 
 ---
 
@@ -107,24 +103,28 @@ Some greek letters are present in a 'var' form as in LaTeX, accessible with ```"
 
 ###   Troubleshoot
 
-If snippet completion does not seem to work with the VS-Code Lambdapi Extension or the recommended extension, try pressing "Ctrl+Space" to see completion suggestions.
+If snippet completion does not seem to work with the VS-Code Lambdapi Extension or the recommended extension, try pressing `Ctrl+Space` to see completion suggestions.
 
 # Keybindings
 
 For proof navigation :
 
-- ```Ctrl+Down``` : go one step forward
-- ```Ctrl+Up``` : go one step backward
-- `Ctrl+Left` : go to the previous proof (or the beginning)
-- `Ctrl+Right` : go to the next proof (or the end)
-- ```Ctrl+Enter``` : go to the position of the cursor
-- ```Ctrl+Alt+c``` : toggle cursor mode (proof highlight follows the cursor or not)
+- `Ctrl+Right` : go one step forward
+- `Ctrl+Left` : go one step backward
+- `Ctrl+Up` : go to the previous proof (or the beginning)
+- `Ctrl+Down` : go to the next proof (or the end)
+- `Ctrl+Enter` : go to the position of the cursor
+- `Ctrl+Alt+c` : toggle cursor mode (proof highlight follows the cursor or not)
 - `Ctrl+Alt+w` : toggle follow mode (proof highlight is always centered in the window when keybindings are pressed)
 - `Shift+Alt+w` : center proof highlight in the current window
 
 
 # Commands
 
-Proof navigation is also accessible via the command menu `Ctrl+Shift+P` and searching "Lambdapi".
+Proof navigation is also accessible via the command search bar (`Ctrl+Shift+P`) and searching "Lambdapi".
 
 A command to restart the Lambdapi VS Code mode is available (can be useful in case of bugs).
+
+# Hover
+
+Hovering symbols provides their type. This feature is still experimental.
