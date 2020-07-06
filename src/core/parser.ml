@@ -191,6 +191,7 @@ let _refl_       = KW.create "reflexivity"
 let _require_    = KW.create "require"
 let _rewrite_    = KW.create "rewrite"
 let _rule_       = KW.create "rule"
+let _sequential_ = KW.create "sequential"
 let _set_        = KW.create "set"
 let _simpl_      = KW.create "simpl"
 let _sym_        = KW.create "symmetry"
@@ -342,15 +343,13 @@ let parser path = m:path_elem ms:{"." path_elem}* $ -> m::ms
 (** [qident] parses a single (possibly qualified) identifier. *)
 let parser qident = mp:{path_elem "."}* id:any_ident -> in_pos _loc (mp,id)
 
-(** [symtag] parses a single symbol tag. *)
-let parser property =
-  | _constant_  -> Terms.Const
-  | _injective_ -> Terms.Injec
-
-(** [exposition] parses the exposition tag of a symbol. *)
-let parser exposition =
-  | _protected_ -> Terms.Protec
-  | _private_   -> Terms.Privat
+(** [modifier] parses a single modifier. *)
+let parser modifier =
+  | _constant_ -> in_pos _loc (P_prop(Terms.Const))
+  | _injective_ -> in_pos _loc (P_prop(Terms.Injec))
+  | _protected_ -> in_pos _loc (P_expo(Terms.Protec))
+  | _private_ -> in_pos _loc (P_expo(Terms.Privat))
+  | _sequential_ -> in_pos _loc (P_mstrat(Terms.Sequen))
 
 (** [term_ident] parses a qualified identifier and returns a p_term. *)
 let parser term_ident =
@@ -656,20 +655,19 @@ let parser cmd =
   | _open_ ps:path+
       -> List.iter (get_ops _loc) ps;
          P_open(ps)
-  | e:exposition? p:property? _symbol_ s:ident al:arg* ":" a:term
-      -> P_symbol(Option.get Terms.Public e,
-                  Option.get Terms.Defin p,s,al,a)
+  | mods:modifier* _symbol_ s:ident al:arg* ":" a:term
+      -> P_symbol(mods, s, al, a)
   | _rule_ r:rule rs:{_:_with_ rule}*
       -> P_rules(r::rs)
-  | e:exposition? _definition_ s:ident al:arg* ao:{":" term}? "≔" t:term
-      -> P_definition(Option.get Terms.Public e,false,s,al,ao,t)
-  | e:exposition? _inductive_ i:ident t:{":" term} "≔"
+  | ms:modifier* _definition_ s:ident al:arg* ao:{":" term}? "≔" t:term
+      -> P_definition(ms,false,s,al,ao,t)
+  | ms:modifier* _inductive_ i:ident t:{":" term} "≔"
                      "|"? ifirst:ident ":" tfirst:term
                  c:{ "|"  ilist :ident ":" tlist :term }*
-      -> P_inductive(Option.get Terms.Public e, i, t,
+      -> P_inductive(ms, i, t,
                      (ifirst, tfirst)::c)
-  | e:exposition? st:statement (ts,pe):proof
-      -> P_theorem(Option.get Terms.Public e,st,ts,pe)
+  | ms:modifier* st:statement (ts,pe):proof
+      -> P_theorem(ms,st,ts,pe)
   | _set_ c:config
       -> P_set(c)
   | q:query

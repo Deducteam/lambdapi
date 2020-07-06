@@ -73,6 +73,56 @@ let handle_require : bool -> popt -> sig_state -> Path.t -> sig_state =
   ss.signature.sign_deps := PathMap.add p [] !(ss.signature.sign_deps);
   if b then handle_open pos ss p else ss
 
+(** [handle_modifiers ms] verifies that the modifiers in [ms] are compatible.
+    If so, they are returned as a tuple, otherwise, the incompatible modifiers
+    are returned. *)
+let handle_modifiers : p_modifier loc list -> (prop * expo * match_strat) =
+  fun ms ->
+  let is_expo {elt; _} = match elt with P_expo(_) -> true | _ -> false in
+  let is_prop {elt; _} = match elt with P_prop(_) -> true | _ -> false in
+  let is_mstrat {elt; _} = match elt with P_mstrat(_) -> true | _ -> false in
+  let die (mods: p_modifier loc list) =
+    let pp_sep oc () = Format.pp_print_string oc "; " in
+    let pp_pmloc oc (m: p_modifier loc) =
+      Format.fprintf oc "%a:\"%a\"" Pos.print_short m.pos Pretty.pp_modifier m
+    in
+    fatal_no_pos "%a" (Format.pp_print_list ~pp_sep pp_pmloc) mods
+  in
+  let prop = List.filter is_prop ms in
+  let prop =
+    match prop with
+    | _::_::_ ->
+        fatal_msg "Only one property modifier can be used, \
+                   %d have been found: " (List.length prop);
+        die prop
+    | [{elt=P_prop(p); _}] -> p
+    | [] -> Defin
+    | _ -> assert false
+  in
+  let expo = List.filter is_expo ms in
+  let expo =
+    match expo with
+    | _::_::_ ->
+        fatal_msg "Only one exposition marker can be used, \
+                   %d have been found: " (List.length expo);
+        die expo
+    | [{elt=P_expo(e); _}] -> e
+    | [] -> Public
+    | _ -> assert false
+  in
+  let mstrat = List.filter is_mstrat ms in
+  let mstrat =
+    match mstrat with
+    | _::_::_ ->
+        fatal_msg "Only one strategy modifier can be used, \
+                   %d have been found: " (List.length mstrat);
+        die mstrat
+    | [{elt=P_mstrat(s); _ }] -> s
+    | [] -> Eager
+    | _ -> assert false
+  in
+  (prop, expo, mstrat)
+
 (** [handle_require_as pos ss p id] handles the command [require p as id] with
     [ss] as the signature state. On success, an updated signature state is
     returned. *)
@@ -87,8 +137,8 @@ let handle_require_as : popt -> sig_state -> Path.t -> ident -> sig_state =
     with [ss] as the signature state.
     On success, an updated signature state and the new symbol are returned. *)
 let handle_symbol :
-      sig_state -> Terms.expo -> Terms.prop -> ident -> p_arg list -> p_type
-      -> sig_state * sym = fun ss e p x xs a ->
+      sig_state -> expo -> prop -> match_strat -> ident -> p_arg list ->
+      p_type -> sig_state * sym = fun ss e p strat x xs a ->
       let scope_basic exp = Scope.scope_term exp ss Env.empty in
       (* We check that [x] is not already used. *)
       if Sign.mem ss.signature x.elt then
@@ -109,7 +159,7 @@ let handle_symbol :
         end;
       (* Actually add the symbol to the signature and the state. *)
       out 3 "(symb) %s : %a\n" x.elt pp_term a;
-      Sig_state.add_symbol ss e p x a impl None
+      Sig_state.add_symbol ss e p strat x a impl None
 
 (** [handle_rules ss rs] handles the command [rule r1 with r2 ... with rn]
     with [ss] as the signature state.
@@ -155,15 +205,25 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
   | P_open(ps)                   ->
      let ps = List.map (List.map fst) ps in
      (List.fold_left (handle_open cmd.pos) ss ps, None)
-  | P_symbol(e, p, x, xs, a)     -> (fst (handle_symbol ss e p x xs a), None)
+  | P_symbol(ms, x, xs, a)     ->
+      (* Verify the modifiers. *)
+      let (prop, expo, mstrat) = handle_modifiers ms in
+      (fst (handle_symbol ss expo prop mstrat x xs a), None)
   | P_rules(rs)                  -> (fst (handle_rules  ss rs),         None)
-  | P_definition(e,op,x,xs,ao,t) ->
+  | P_definition(ms, op, x, xs, ao, t) ->
       (* We check that [x] is not already used. *)
       if Sign.mem ss.signature x.elt then
         fatal x.pos "Symbol [%s] already exists." x.elt;
+      (* Verify modifiers. *)
+      let (prop, expo, mstrat) = handle_modifiers ms in
+      if prop = Const then
+        fatal cmd.pos "A definition cannot be a constant.";
+      if mstrat <> Eager then
+        fatal cmd.pos "Pattern matching strategy modifiers cannot be used \
+                       in definitions.";
       (* Desugaring of arguments and scoping of [t]. *)
       let t = if xs = [] then t else Pos.none (P_Abst(xs, t)) in
-      let t = scope_basic e t in
+      let t = scope_basic expo t in
       (* Desugaring of arguments and computation of argument impliciteness. *)
       let (ao, impl) =
         match ao with
@@ -172,7 +232,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
             let a = if xs = [] then a else Pos.none (P_Prod(xs,a)) in
             (Some(a), Scope.get_implicitness a)
       in
-      let ao = Option.map (scope_basic e) ao in
+      let ao = Option.map (scope_basic expo) ao in
       (* If a type [a] is given, then we check that [a] is typable by a sort
          and that [t] has type [a]. Otherwise, we try to infer the type of
          [t] and return it. *)
@@ -199,15 +259,17 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
       (* Actually add the symbol to the signature. *)
       out 3 "(symb) %s ≔ %a\n" x.elt pp_term t;
       let d = if op then None else Some(t) in
-      (fst (Sig_state.add_symbol ss e Defin x a impl d), None)
-  | P_inductive(e, id, a, l)     ->
+      (fst (Sig_state.add_symbol ss expo Defin Eager x a impl d), None)
+  | P_inductive(ms, id, a, l)     ->
+      (* Verify the modifiers. *)
+      let (_, e, strat) = handle_modifiers ms in
       (* Add the inductive type in the signature *)
-      let (ss, sym_typ) = handle_symbol ss e Injec id [] a in
+      let (ss, sym_typ) = handle_symbol ss e Injec strat id [] a in
       (* Add the constructors in the signature.  *)
       let add_cons :
             sig_state * sym list -> ident * p_term -> sig_state * sym list
         = fun(ss, cons_list) (id, a) ->
-        let (ss, sym_cons) = handle_symbol ss e Const id [] a in
+        let (ss, sym_cons) = handle_symbol ss e Const strat id [] a in
         (ss, sym_cons::cons_list)
       in
       let (ss, cons_list) = List.fold_left add_cons (ss, []) l in
@@ -219,7 +281,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
       if StrSet.mem id.elt !(ss.signature.sign_idents) then
         Sign.add_ident ss.signature ind_name.elt;
       let (ss, sym_ind) =
-        Sig_state.add_symbol ss e Defin ind_name ind_typ [] None
+        Sig_state.add_symbol ss e Defin strat ind_name ind_typ [] None
       in
       (* Compute the rules associated with the induction principle *)
       let rs =
@@ -233,7 +295,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
       (* Store inductive structure in the field "sign_ind" of the signature *)
       Sign.add_inductive ss.signature sym_typ cons_list sym_ind;
       (ss, None)
-  | P_theorem(e, stmt, ts, pe) ->
+  | P_theorem(ms, stmt, ts, pe) ->
       let (x,xs,a) = stmt.elt in
       (* We check that [x] is not already used. *)
       if Sign.mem ss.signature x.elt then
@@ -242,8 +304,15 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
       let a = if xs = [] then a else Pos.none (P_Prod(xs, a)) in
       (* Obtaining the implicitness of arguments. *)
       let impl = Scope.get_implicitness a in
+      (* Verify modifiers. *)
+      let (prop, expo, mstrat) = handle_modifiers ms in
+      if prop <> Defin then
+        fatal cmd.pos "Property modifiers cannot be used in theorems.";
+      if mstrat <> Eager then
+        fatal cmd.pos "Pattern matching strategy modifiers cannot be used \
+                       in theorems.";
       (* Scoping the type (statement) of the theorem. *)
-      let a = scope_basic e a in
+      let a = scope_basic expo a in
       (* Check that [a] is typable and that its type is a sort. *)
       Typing.sort_type [] a;
       (* We check that no metavariable remains in [a]. *)
@@ -269,7 +338,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
             (* Add a symbol corresponding to the proof, with a warning. *)
             out 3 "(symb) %s (admit)\n" x.elt;
             wrn cmd.pos "Proof admitted.";
-            fst (Sig_state.add_symbol ss e Const x a impl None)
+            fst (Sig_state.add_symbol ss expo Const Eager x a impl None)
         | P_proof_qed   ->
             (* Check that the proof is indeed finished. *)
             if not (Proof.finished st) then
@@ -279,7 +348,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
               end;
             (* Add a symbol corresponding to the proof. *)
             out 3 "(symb) %s (qed)\n" x.elt;
-            fst (Sig_state.add_symbol ss e Const x a impl None)
+            fst (Sig_state.add_symbol ss expo Const Eager x a impl None)
       in
       let data =
         { pdata_stmt_pos = stmt.pos ; pdata_p_state = st ; pdata_tactics = ts

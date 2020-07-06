@@ -42,6 +42,20 @@ constant symbol false : 𝔹
 /////////////////////////////
 set debug +g
 
+inductive RGB : TYPE ≔
+ | red   : RGB
+ | green : RGB
+ | blue  : RGB
+
+type ind_RGB
+
+inductive Color : TYPE ≔
+ | black : Color
+ | white : Color
+ | primary : Π(p : RGB), Color
+
+type ind_Color
+
 ///////////////// Natural number
 
 constant symbol nat : Set
@@ -254,6 +268,14 @@ assert ind_listb pbound piBnil piBcons bound (Bcons bound x prf lb)
 
 assert Bnil bound : listb bound // Examples
 assert Bcons bound x prf (Bnil bound) : listb bound
+
+///////////////// Predicat even
+
+inductive even : Nat → TYPE ≔
+| O_even      : even z
+| plus_2_even : Πn:τ nat, even n → even (succ (succ n))
+
+type ind_even
 
 ///////////////// Forest
 
