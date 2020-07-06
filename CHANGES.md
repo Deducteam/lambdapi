@@ -1,6 +1,12 @@
+#### Goals display in Emacs (2020-07-06)
+
 #### Sequential symbol (2020-07-06)
 
-Allow users to declare `sequential` symbols.
+##### Added
+- `sequential` keyword for symbol declarations
+
+##### Removed
+- `--keep-rule-order` option
 
 #### Change semantics of environments (2020-06-10)
 
@@ -33,11 +39,11 @@ set unif_rule t ≡ u ↪ v ≡ w, x ≡ y
 
 #### Syntax change (2020-04-16)
 
-- [→] is replaced by [↪] in rewriting rules,
-- [&] is replaced by [$] for pattern variables in rewriting rules,
-- the syntax [rule ... and ...] becomes [rule ... with ...],
-- [⇒] is replaced by [→] for implication, and
-- [∀] is replaced by [Π] for the dependent product type
+- `→` is replaced by `↪` in rewriting rules,
+- `&` is replaced by `$` for pattern variables in rewriting rules,
+- the syntax `rule ... and ...` becomes `rule ... with ...`,
+- `⇒` is replaced by `→` for implication, and
+- `∀` is replaced by `Π` for the dependent product type
 
 #### Let bindings (2020-03-31)
 
