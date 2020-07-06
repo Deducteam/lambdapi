@@ -1,3 +1,18 @@
+#### Sequential symbol (2020-07-06)
+
+Allow users to declare `sequential` symbols.
+
+#### Change semantics of environments (2020-06-10)
+
+- `$F` is shorthand for `$F[]`
+- Empty environment mandatory under binders
+
+#### Add tactic `fail` (2020-05-26)
+
+#### Matching on products (2020-05-18)
+
+Allow users to match on product `Πx: t, u` and on the domain of binders.
+
 #### Quantifier parsing and pretty-printing (2020-05-08)
 
 - Allow users to declare a symbol [f] as quantifier. Then, [f x,t]
@@ -15,6 +30,14 @@ set unif_rule t ≡ u ↪ v ≡ w, x ≡ y
 #### Pretty-printing (2020-04-25)
 
 - Pretty-printing hints managed in signature state now.
+
+#### Syntax change (2020-04-16)
+
+- [→] is replaced by [↪] in rewriting rules,
+- [&] is replaced by [$] for pattern variables in rewriting rules,
+- the syntax [rule ... and ...] becomes [rule ... with ...],
+- [⇒] is replaced by [→] for implication, and
+- [∀] is replaced by [Π] for the dependent product type
 
 #### Let bindings (2020-03-31)
 
@@ -44,6 +67,18 @@ Simplification of the decision tree structure
    branch-wise unique integral identifiers;
  - graph output is more consistent: variables are the same in the
    nodes and the leaves.
+   
+#### Protected symbols (2019-11-14)
+
+Introducing protected and private symbols.
+
+#### Calling provers with Why3 (2019-10-29)
+
+Introducing the `why3` tactic to call external provers.
+
+#### Eta equality as a flag (2019-10-21)
+
+#### Rewriting using decision trees (2019-09-17)
 
 ### 1.0 (2018-11-28)
 
