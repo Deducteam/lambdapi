@@ -12,13 +12,19 @@ Lambdapi source code can be edited with the
 * Type checking declarations
 
 ### Installation
-The `lambdapi-mode` can be installed with `opam` or with the package manager of
-Emacs through [MELPA](https://melpa.org).
+The `lambdapi-mode` is automatically installed when using `opam` (provided that
+emacs is available at installation time). It can be also be installed from the
+sources and from [MELPA](https://melpa.org) using any package manager of Emacs
+(`package.el`, [straight](https://github.com/raxod502/straight.el), ...).
+Installation from opam or the sources requires less configuration on the Emacs
+side, but installation through Melpa takes care automatically of dependencies.
 
-**Installing with `opam`:** the emacs mode is installed simultaneously with
-`lambdapi`, so if `lambdapi` has been installed, so is the `lambdapi-mode`. To
-activate the mode when editing `.lp` and `.dk` files, add to the configuration
-file of Emacs (`~/.emacs.d/init.el` or `~/.emacs`):
+**Installing with `opam`:** opams installs both lambdapi and the emacs mode.
+So if lambdapi has been installed using opam, the `lambdapi-mode` should be as
+well. If it is not the case, it may still be installed using one of the other
+two installation methods. To activate the mode when editing `.lp` and `.dk`
+files, add to the configuration file of Emacs (`~/.emacs.d/init.el` or
+`~/.emacs`):
 ``` emacs-lisp
 (load "lambdapi-site-file")
 ```
@@ -47,6 +53,17 @@ might be missing (available on [`elpa`](https://elpa.gnu.org)):
   completion),
 - [`company-math`](https://github.com/vspinu/company-math) (optional, for
   tooltip unicode completion).
+  
+**Installing from sources:** the lambdapi emacs mode can be installed from the
+sources:
+```shell
+cd lambdapi
+make install_emacs
+```
+This command will byte-compile a file using the emacs binary available in the
+path. The `EMACS` variable of the makefile can be modified to specify which
+emacs binary is to be used. The configuration steps are the same as for the
+installation with opam.
   
 **Installing from MELPA:** provided that Emacs is properly configured (or see
 [here](https://melpa.org/#/getting-started) to configure Emacs to use MELPA),
@@ -82,7 +99,7 @@ backquoted letters (as done in
 ), or with the LaTeX command: α can be accessed with `` `a `` or `\alpha`, β
 with `` `b `` or `\beta`, and similarly for other Greek letters.
 
-*NOTE on the interaction between the input method and company:*the dropdown
+*NOTE on the interaction between the input method and company:* the dropdown
 window of company-math will not appear as long as the current word is a
 candidate for a completion of the input method. To favour company over the input
 method, the input method can be disabled setting the variable

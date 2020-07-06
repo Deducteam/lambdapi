@@ -5,6 +5,7 @@ clean:
 	rm -rf node_modules/ out/
 
 LP-VSCODE=~/.vscode/extensions/lp-vscode
+.PHONY: node_modules
 node_modules:
 	npm install
 	rm -f $(LP-VSCODE)
