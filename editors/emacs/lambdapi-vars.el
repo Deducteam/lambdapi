@@ -5,6 +5,7 @@
 ;; The lists defined are mainly used for syntax colouring and completion.
 ;;
 ;;; Code:
+
 (defconst lambdapi-tactics
   '("apply"
     "assume"
