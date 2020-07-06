@@ -42,3 +42,8 @@ build: [
   [ "dune" "subst" ]
   [ "dune" "build" "-p" name "-j" jobs ]
 ]
+
+install: [
+  [ make "install_emacs" ]
+  [ make "install_vim" ]
+]

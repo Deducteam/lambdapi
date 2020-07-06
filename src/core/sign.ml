@@ -212,12 +212,10 @@ let unlink : t -> unit = fun sign ->
   let fn s i = unlink_sym s; unlink_inductive i in
   SymMap.iter fn !(sign.sign_ind)
 
-(** [add_symbol sign ?sym_expo mode name a impl] creates a fresh symbol with
-    name [name] (which should not already be used in [sign]) and with the type
-    [a], in the signature [sign]. The exposition is
-    {!constructor:Terms.sym_exposition.Public} by default, unless [?sym_expo]
-    is precised. The list [impl] tells which arguments is implicit. The
-    created symbol is returned. *)
+(** [add_symbol sign expo prop name a impl] creates a fresh symbol with name
+   [name], exposition [expo], property [prop], type [a] and implicit arguments
+   [impl] in the signature [sign]. [name] should not already be used in
+   [sign]. The created symbol is returned. *)
 let add_symbol : t -> expo -> prop -> strloc -> term -> bool list -> sym =
     fun sign sym_expo sym_prop s a impl ->
   (* Check for metavariables in the symbol type. *)
@@ -228,8 +226,8 @@ let add_symbol : t -> expo -> prop -> strloc -> term -> bool list -> sym =
   let sym_impl = List.rev (rem_false (List.rev impl)) in
   (* Add the symbol. *)
   let sym =
-    { sym_name = s.elt ; sym_type = ref a ; sym_path = sign.sign_path
-    ; sym_def = ref None ; sym_impl ; sym_rules = ref [] ; sym_prop
+    { sym_name = s.elt; sym_type = ref (cleanup a); sym_path = sign.sign_path
+    ; sym_def = ref None; sym_impl; sym_rules = ref []; sym_prop
     ; sym_expo ; sym_tree = ref Tree_types.empty_dtree }
   in
   sign.sign_symbols := StrMap.add s.elt (sym, s.pos) !(sign.sign_symbols); sym

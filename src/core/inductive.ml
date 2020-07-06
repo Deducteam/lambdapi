@@ -142,7 +142,7 @@ let principle : Sig_state.t -> popt -> sym -> sym list -> term =
 (** [term_to_p_term t] converts the term [t] to the type p_term. *)
 let rec term_to_p_term : term -> p_term = fun t ->
   match t with
-  | Vari x    -> Pos.none (P_Patt (Some (Pos.none (Bindlib.name_of x)), [||]))
+  | Vari x    -> Pos.none (P_Patt (Some (Pos.none (Bindlib.name_of x)), None))
   | Type         -> Pos.none P_Type
   | Kind         -> fatal None "Kind not possible"
   | Symb s       -> Pos.none (P_Iden (Pos.none ([], s.sym_name), true))
@@ -162,7 +162,7 @@ let _P_Iden : qident * bool -> p_term =
   fun (ident, b) -> Pos.none (P_Iden(ident, b))
 
 let _P_Patt : strloc option * p_term array -> p_term =
-  fun (s, arr) -> Pos.none (P_Patt(s, arr))
+  fun (s, arr) -> Pos.none (P_Patt(s, Some arr))
 
 let _P_Appl : p_term * p_term -> p_term =
   fun (t1, t2) -> Pos.none (P_Appl(t1, t2))

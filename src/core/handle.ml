@@ -205,26 +205,13 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
       let (ss, sym_typ) = handle_symbol ss e Injec id [] a in
       (* Add the constructors in the signature.  *)
       let add_cons :
-        sig_state -> (ident * p_term) list-> sig_state * sym list =
-        fun ss l ->
-        let rec aux acc ss l =
-          match l with
-          | []   -> ss, acc
-          | (id, a)::q ->
-              let (ss, acc) = aux acc ss q in
-              let (ss, sym_cons) = handle_symbol ss e Const id [] a in
-              ss, sym_cons::acc
-        in
-        aux [] ss l
-      in
-      (*let add_cons :
             sig_state * sym list -> ident * p_term -> sig_state * sym list
         = fun(ss, cons_list) (id, a) ->
         let (ss, sym_cons) = handle_symbol ss e Const id [] a in
         (ss, sym_cons::cons_list)
       in
-      let (ss, cons_list) = List.fold_left add_cons (ss, []) l in *)
-      let (ss, cons_list) = add_cons ss l in
+      let (ss, cons_list) = List.fold_left add_cons (ss, []) l in
+      let cons_list = List.rev cons_list  in
       (* Compute the induction principle *)
       let ind_typ = Inductive.principle ss cmd.pos sym_typ cons_list in
       (* Add the induction principle in the signature *)
@@ -242,9 +229,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
       let (ss, ind_rules) = handle_rules ss rs       in
       let ind_rules = List.map (fun (_,r) -> r.elt) ind_rules in
       (* Add the rules of induction principle in the signature *)
-      let just_add_rule : sym -> rule -> unit = fun sym r ->
-        sym.sym_rules := r :: !(sym.sym_rules) in
-      List.iter (just_add_rule sym_ind) ind_rules;
+      sym_ind.sym_rules := ind_rules @ !(sym_ind.sym_rules);
       (* Store inductive structure in the field "sign_ind" of the signature *)
       Sign.add_inductive ss.signature sym_typ cons_list sym_ind;
       (ss, None)

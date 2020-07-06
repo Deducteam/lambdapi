@@ -8,11 +8,13 @@ The λΠ-calculus is also known as λP or LF. In the λΠ-calculus modulo rewrit
 Bibliographic references
 ------------------------
 
-* [Dedukti: a Logical Framework based on the λΠ-Calculus Modulo Theory](www.lsv.fr/~dowek/Publi/expressing.pdf), Ali Assaf, Guillaume Burel, Raphaël Cauderlier , David Delahaye, Gilles Dowek, Catherine Dubois, Frédéric Gilbert, Pierre Halmagrand, Olivier Hermant, and Ronan Saillard. Draft, 2016.
+* [Dedukti: a Logical Framework based on the λΠ-Calculus Modulo Theory](http://www.lsv.fr/~dowek/Publi/expressing.pdf), Ali Assaf, Guillaume Burel, Raphaël Cauderlier , David Delahaye, Gilles Dowek, Catherine Dubois, Frédéric Gilbert, Pierre Halmagrand, Olivier Hermant, and Ronan Saillard. Draft, 2016.
 
 * [Typechecking in the λΠ-Calculus Modulo: Theory and Practice](https://hal.inria.fr/tel-01299180), Ronan Saillard. PhD thesis, 2015.
 
 * [Definitions by rewriting in the Calculus of Constructions](https://doi.org/10.1017/S0960129504004426), Frédéric Blanqui, in Mathematical Structures in Computer Science 15(1):37-92.
+
+* [The New Rewriting Engine of Dedukti](https://www.semanticscholar.org/paper/The-New-Rewriting-Engine-of-Dedukti-Hondet-Blanqui/8ff6f9790779f9345ffa9bb02679b40e8d1d83aa), Gabriel Hondet and Frédéric Blanqui, 2020.
 
 * [Hints in Unification](http://www.cs.unibo.it/~asperti/PAPERS/tphol09.pdf),
   Andrea Asperti, Wilmer Ricciotti, Claudio Sacerdoti Cohen and Enrico Tassi.

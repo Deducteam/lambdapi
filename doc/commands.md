@@ -104,7 +104,7 @@ Exposition obeys the following rules: inside a module,
 **Implicit arguments:** Some function symbol arguments can be declared
 as implicit meaning that they must not be given by the user
 later. Implicit arguments are replaced by `_` at parsing time,
-generating a fresh metavariables. An argument declared as implicit can
+generating fresh metavariables. An argument declared as implicit can
 be explicitly given by enclosing it between curly brackets `{` ... `}`
 though. If a function symbol is prefixed by `@` then the implicit
 arguments mechanism is disabled and all the arguments must be
@@ -128,42 +128,50 @@ Rewriting rules for definable symbols are declared using the `rule` command.
 ```
 rule add zero      $n ↪ $n
 rule add (succ $n) $m ↪ succ (add $n $m)
+rule mul zero      _  ↪ zero
 ```
 
-Note that rewriting rules can also be defined simultaneously, using the `with`
-keyword instead of the `rule` keyword for all but the first rule.
-
-```
-rule add zero      $n ↪ $n
-with add (succ $n) $m ↪ succ (add $n $m)
-```
-
-Pattern variables need to be prefixed by `$`.
+Terms prefixed by the sigil `$` and `_` are pattern variables.
 
 **Higher-order pattern-matching**.
-Lambdapi accepts higher-order pattern variables too:
+Lambdapi allows higher-order pattern-matching on patterns à la Miller but modulo
+β-equivalence only (and not βη).
 
 ```
 rule diff (λx, sin $F[x]) ↪ λx, diff (λx, $F[x]) x × cos $F[x]
-rule lam (λx, app $F x) ↪ $F // η-reduction
 ```
 
-It is possible to define an unnamed pattern variable with the syntax `$_[x,y]`
-(it matches any term with at most `x` and `y` as its free variables). If `x`
-and `y` are the only variables in scope, then `_` is equivalent to `$_[x,y]`.
+Patterns can contain abstractions `λx, _` and the user may attach an environment
+made of *distinct* bound variables to a pattern variable to indicate which bound
+variable can occur in the matched term. The environment is a semicolon-separated
+list of variables enclosed in square brackets `[x;y;...]`. For instance, a term
+of the form `λx y,t` matches the pattern `λx y,$F[x]` only if `y` does not
+freely occur in `t`.
 
-In left-hand side, λ-expressions must have no type annotations.
+```
+rule lam (λx, app $F[] x) ↪ $F // η-reduction
+```
 
-Pattern variables can be applied to distinct bound variables only,
-that is, the terms between `[` and `]` must be distinct bound
-variables only.
+Hence, the rule `lam (λx, app $F[] x) ↪ $F` implements η-reduction
+since no valid instance of `$F` can contain `x`.
 
-Lambdapi uses higher-order pattern-matching (not in full generality
-though). Hence, the rule `lam (λx, app $F x) ↪ $F` implements
-η-reduction since no valid instance of `F` can contain `x`.
+Pattern variables cannot appear at the head of an application: `$F[] x` is not
+allowed. The converse `x $F[]` is.
+
+A pattern variable `$P[]` can be shortened to `$P` when there is no ambiguity,
+i.e. when the variable is not under a binder (unlike in the rule η above).
+
+It is possible to define an unnamed pattern variable with the syntax
+`$_[x;y]`.
+
+The unnamed pattern variable `_` is always the most general:
+if `x` and `y` are the only variables in scope, then `_` is equivalent
+to `$_[x;y]`.
+
+In rule left-hand sides, λ-expressions cannot have type annotations.
 
 **Important**. In contrast to languages like OCaml, Coq, Agda, etc. rule
- left-hand sides can contain defined symbols:
+left-hand sides can contain defined symbols:
 
 ```
 rule add (add x y) z ↪ add x (add y z)
@@ -181,6 +189,19 @@ And they can be non-linear:
 ```
 rule minus x x ↪ zero
 ```
+
+Note that rewriting rules can also be defined simultaneously, using the `with`
+keyword instead of the `rule` keyword for all but the first rule.
+
+```
+rule add zero      $n ↪ $n
+with add (succ $n) $m ↪ succ (add $n $m)
+```
+
+Adding sets of rules allows to maintain confluence.
+
+Examples of patterns are available in the file
+[`patterns.lp`](../tests/OK/patterns.lp) of the test suite.
 
 <!---------------------------------------------------------------------------->
 ### `definition`
@@ -205,13 +226,14 @@ curly brackets.
 <!---------------------------------------------------------------------------->
 ### `inductive`
 
-The command `inductive` can be used to define an inductive type, its constructors and its associated induction principle if it can be generated. The name of the induction principle is the name of the type suffixed with "_ind". For generating the induction principle, we assume defined the following builtins:
+The command `inductive` can be used to define an inductive type, its constructors and its associated induction principle if it can be generated. The name of the induction principle is the name of the type prefixed with "ind_". For generating the induction principle, we assume defined the following builtins:
 ```
 set builtin "Prop" ≔ ... // : TYPE
-set builtin "P"      ≔ ... // : Prop → TYPE
+set builtin "P"    ≔ ... // : Prop → TYPE
 ```
 
-For the moment, we only support first-order data types.
+For the moment, we only support first-order data types, with dependant and polymorphic types.
+Some cases of nested type are supported too, like the type Bush.
 Example:
 ```
 inductive Nat : TYPE ≔
@@ -225,7 +247,7 @@ symbol Nat  : TYPE
 constant symbol z    : Nat
 constant symbol succ : Nat → Nat
 symbol ind_Nat p : π (p 0) → (Πx, π (p x) → π (p (succ x))) → Πx, π (p x)
-rule ind_Nat $p $pz $psucc     z     ↪ $pz
+rule ind_Nat $p $pz    _       z     ↪ $pz
 with ind_Nat $p $pz $psucc (succ $n) ↪ $psucc $n (ind_Nat $p $pz $psucc $n)
 ```
 
@@ -311,7 +333,7 @@ set debug -s
 
 Each functionality is represented by a single character. For instance,
 `i` stands for type inference. To get the list of debuggable functionalities,
-run the command `lambdapi --help`.
+run the command `lambdapi check --help`.
 
 **flags** The user can set/unset some flags:
 

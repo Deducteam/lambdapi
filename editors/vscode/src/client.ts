@@ -26,7 +26,7 @@ export function activate(context: ExtensionContext) {
     // XXX: Get from configuration
     let serverOptions = {
         command: 'lambdapi',
-        args: [ 'lsp', '' ]
+        args: [ 'lsp' ]
         // args: [ '--std' ]
     };
 
