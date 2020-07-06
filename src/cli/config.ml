@@ -102,13 +102,6 @@ let map_dir : (string * string) list Term.t =
   let i = Arg.(info ["map-dir"] ~docv:"MOD:DIR" ~doc) in
   Arg.(value & opt_all (pair ~sep:':' string dir) [] & i)
 
-let keep_order : bool Term.t =
-  let doc =
-    "Respect the order of definition of the rewriting rules in files. In \
-     other words, earlier rewriting rules are applied with higher priority."
-  in
-  Arg.(value & flag & info ["keep-rule-order"] ~doc)
-
 (** Debugging and output options. *)
 
 let verbose : int option Term.t =

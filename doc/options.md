@@ -69,9 +69,6 @@ the following command line arguments and flags.
    root of the library's source tree. More information on that is given in the
    section about the module system.
 
- - `--keep-rule-order` forces the rewriting engine to try and apply the rules
-   in the order of their declaration.
-
 ##### Debugging flags
 
  - `--debug FLAGS` enables the debugging modes specified by every character of
