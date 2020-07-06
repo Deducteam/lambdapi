@@ -223,6 +223,38 @@ assert ind_fin pF pinew piinj (succ n) (inj n f)
 assert new n : fin (succ n) // Examples
 assert inj (succ n) (new n) : fin (succ (succ n))
 
+///////////////// Bounded List
+
+symbol le : Nat → Nat → Prop
+set infix left 6 "≤" ≔ le
+
+//inductive ≤ : Π(n:τ nat), Nat → Prop ≔
+//  | le_n : Πn, π (n ≤ n)
+//  | le_S : Πn m:τ nat, π (n ≤ m) → π (n ≤ (succ m))
+
+inductive listb : Π(bound : τ nat), TYPE ≔
+   Bnil  : Πbound, listb bound
+ | Bcons : Πbound x, π (x ≤ bound) → listb bound → listb bound
+
+type ind_listb // Induction principle
+assert ind_listb :
+Πp, (Πbound, π(p bound (Bnil bound))) →
+(Πbound x (prf:π (x ≤ bound)) l, π(p bound l) → π(p bound (Bcons bound x prf l))) → 
+Πbound l, π(p bound l)
+
+symbol pbound : Πbound, listb bound → Prop // Tests about inductive rules
+symbol piBnil : Πbound, π(pbound bound (Bnil bound))
+symbol bound : τ nat
+symbol prf : π (x ≤ bound)
+symbol lb : listb bound
+symbol piBcons : Πbound x (prf:π (x ≤ bound)) l, π(pbound bound l) → π(pbound bound (Bcons bound x prf l))
+assert ind_listb pbound piBnil _ bound (Bnil bound) ≡ piBnil bound
+assert ind_listb pbound piBnil piBcons bound (Bcons bound x prf lb)
+     ≡ piBcons bound x prf lb (ind_listb pbound piBnil piBcons bound lb)
+
+assert Bnil bound : listb bound // Examples
+assert Bcons bound x prf (Bnil bound) : listb bound
+
 ///////////////// Forest
 
 // TODO ...
