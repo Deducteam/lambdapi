@@ -6,8 +6,6 @@
 ;;
 ;;; Code:
 
-(require 'lambdapi-proofs)
-
 (defconst lambdapi-tactics
   '("apply"
     "assume"
@@ -85,12 +83,6 @@
   "Set to non-nil to favour company-math over quail.
 Useful for people who prefer to have the dropdown window display systematically,
 since the window won't display if there are quail candidates.")
-
-;; Keybindings for goals display
-(global-set-key (kbd "C-c C-c") 'lp-display-goals)
-(global-set-key (kbd "C-c C-i") 'toggle-interactive-goals)
-(global-set-key (kbd "C-c C-p") 'lp-proof-backward)
-(global-set-key (kbd "C-c C-n") 'lp-proof-forward)
 
 (provide 'lambdapi-vars)
 ;;; lambdapi-vars.el ends here

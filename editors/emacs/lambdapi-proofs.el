@@ -1,3 +1,10 @@
+;;; lambdapi-proofs.el --- Proof interactivity for lambadpi-mode -*- lexical-binding: t; -*-
+;; SPDX-License-Identifier: CeCILL Free Software License Agreement v2.1
+;;; Commentary:
+;;
+;;
+;;; Code:
+
 (defconst lp-goal-line-prefix "---------------------------------------------------")
 
 (defun display-goals (goals)
@@ -86,5 +93,11 @@
         (goto-line line)
         (hlt-unhighlight-region 0 (1+ (line-end-position))))))
   (setq interactive-goals (not interactive-goals)))
+
+;; Keybindings for goals display
+(global-set-key (kbd "C-c C-c") 'lp-display-goals)
+(global-set-key (kbd "C-c C-i") 'toggle-interactive-goals)
+(global-set-key (kbd "C-c C-p") 'lp-proof-backward)
+(global-set-key (kbd "C-c C-n") 'lp-proof-forward)
 
 (provide 'lambdapi-proofs)
