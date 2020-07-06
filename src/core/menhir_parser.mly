@@ -241,64 +241,66 @@ let build_config : Pos.pos -> string -> string option -> eval_config =
 %%
 
 line:
-  | s=ID ps=param* COLON a=term DOT
+  | ms=modifier* s=ID ps=param* COLON a=term DOT
     {
-      let t = P_symbol
-                (Terms.Public, Terms.Const, make_pos $loc(s) s, ps, a) in
+      (* Add the "constant" modifier by default. *)
+      let is_prop {elt; _} = match elt with P_prop(_) -> true | _ -> false in
+      let ms =
+        match List.find_opt is_prop ms with
+        | Some(_) -> ms
+        | None -> make_pos Lexing.(dummy_pos, dummy_pos) (P_prop(Const)) :: ms
+      in
+      make_pos $loc (P_symbol(ms, make_pos $loc(s) s, ps, a))
+    }
+  | ms=modifier* KW_DEF s=ID COLON a=term DOT
+    {
+      (* Add the "definable" modifier by default. *)
+      let is_prop {elt; _} = match elt with P_prop(_) -> true | _ -> false in
+      let ms =
+        match List.find_opt is_prop ms with
+        | Some(_) -> ms
+        | None -> make_pos Lexing.(dummy_pos, dummy_pos) (P_prop(Defin)) :: ms
+      in
+      let t =
+        P_symbol (ms, make_pos $loc(s) s, [], a)
+      in
       make_pos $loc t
     }
-  | KW_DEF s=ID COLON a=term DOT
+  | ms=modifier* KW_DEF s=ID COLON a=term DEFEQ t=term DOT
     {
-      let t = P_symbol
-                (Terms.Public, Terms.Defin, make_pos $loc(s) s, [], a) in
+      let t =
+        P_definition (ms, false, make_pos $loc(s) s, [], Some(a), t)
+      in
       make_pos $loc t
     }
-  | KW_INJ s=ID COLON a=term DOT
-    {
-      let t = P_symbol
-                (Terms.Public, Terms.Injec, make_pos $loc(s) s, [], a) in
-      make_pos $loc t
-    }
-  | KW_PRV s=ID COLON a=term DOT
-    {
-      let t = P_symbol
-                (Terms.Protec, Terms.Defin, make_pos $loc(s) s, [], a) in
-      make_pos $loc t
-    }
-  | KW_DEF s=ID COLON a=term DEFEQ t=term DOT
+  | ms=modifier* KW_DEF s=ID DEFEQ t=term DOT
     {
       let t = P_definition
-                (Terms.Public, false, make_pos $loc(s) s, [], Some(a), t) in
+                (ms, false, make_pos $loc(s) s, [], None, t) in
       make_pos $loc t
     }
-  | KW_DEF s=ID DEFEQ t=term DOT
+  | ms=modifier* KW_DEF s=ID ps=param+ COLON a=term DEFEQ t=term DOT
     {
       let t = P_definition
-                (Terms.Public, false, make_pos $loc(s) s, [], None, t) in
+                (ms, false, make_pos $loc(s) s, ps, Some(a), t) in
       make_pos $loc t
     }
-  | KW_DEF s=ID ps=param+ COLON a=term DEFEQ t=term DOT
+  | ms=modifier* KW_DEF s=ID ps=param+ DEFEQ t=term DOT
     {
       let t = P_definition
-                (Terms.Public, false, make_pos $loc(s) s, ps, Some(a), t) in
+                (ms, false, make_pos $loc(s) s, ps, None, t) in
       make_pos $loc t
     }
-  | KW_DEF s=ID ps=param+ DEFEQ t=term DOT
+  | ms=modifier* KW_THM s=ID COLON a=term DEFEQ t=term DOT
     {
       let t = P_definition
-                (Terms.Public, false, make_pos $loc(s) s, ps, None, t) in
+                (ms, true , make_pos $loc(s) s, [], Some(a), t) in
       make_pos $loc t
     }
-  | KW_THM s=ID COLON a=term DEFEQ t=term DOT
+  | ms=modifier* KW_THM s=ID ps=param+ COLON a=term DEFEQ t=term DOT
     {
       let t = P_definition
-                (Terms.Public, true , make_pos $loc(s) s, [], Some(a), t) in
-      make_pos $loc t
-    }
-  | KW_THM s=ID ps=param+ COLON a=term DEFEQ t=term DOT
-    {
-      let t = P_definition
-                (Terms.Public, true , make_pos $loc(s) s, ps, Some(a), t) in
+                (ms, true , make_pos $loc(s) s, ps, Some(a), t) in
       make_pos $loc t
     }
   | rs=rule+ DOT {
@@ -347,6 +349,10 @@ param:
   | L_PAR id=ID COLON te=term R_PAR {
       ([Some (make_pos $loc(id) id)], Some(te), false)
     }
+
+modifier:
+  | KW_PRV { make_pos $loc (P_expo(Terms.Privat)) }
+  | KW_INJ { make_pos $loc (P_prop(Terms.Injec)) }
 
 context_item:
   | x=ID ao=option(COLON a=term { a }) { (make_pos $loc(x) x, ao) }
