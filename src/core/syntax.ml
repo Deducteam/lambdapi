@@ -37,9 +37,9 @@ and p_term_aux =
   (** Variable or (qualified, explicitly applied) symbol. *)
   | P_Wild
   (** Wildcard (place-holder for terms). *)
-  | P_Meta of strloc * p_term array
+  | P_Meta of strloc * p_term array option
   (** Meta-variable with the given environment. *)
-  | P_Patt of strloc option * p_term array
+  | P_Patt of strloc option * p_term array option
   (** Named or unnamed higher-order pattern (used for rules LHS / RHS). *)
   | P_Appl of p_term * p_term
   (** Application. *)
@@ -242,9 +242,10 @@ let rec eq_p_term : p_term eq = fun t1 t2 ->
   | (P_Iden(q1,b1)       , P_Iden(q2,b2)             ) ->
       eq_qident q1 q2 && b1 = b2
   | (P_Meta(x1,ts1)      , P_Meta(x2,ts2)            ) ->
-      eq_ident x1 x2 && Array.equal eq_p_term ts1 ts2
+      eq_ident x1 x2 && Option.equal (Array.equal eq_p_term) ts1 ts2
   | (P_Patt(x1,ts1)      , P_Patt(x2,ts2)            ) ->
-      Option.equal eq_ident x1 x2 && Array.equal eq_p_term ts1 ts2
+      Option.equal eq_ident x1 x2
+      && Option.equal (Array.equal eq_p_term) ts1 ts2
   | (P_Appl(t1,u1)       , P_Appl(t2,u2)             )
   | (P_Impl(t1,u1)       , P_Impl(t2,u2)             ) ->
       eq_p_term t1 t2 && eq_p_term u1 u2

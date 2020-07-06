@@ -1,0 +1,5 @@
+Editing lambdapi source code with [Vim](https://www.vim.org/)
+-------------------------------------
+
+The `Vim` mode can be installed optionally using the command `make install_vim`
+in the `lambdapi` repository. It does not have support for the LSP server yet.

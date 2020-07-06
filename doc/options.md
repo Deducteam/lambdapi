@@ -18,9 +18,9 @@ The available commands are:
  - `parse`: runs the parsing-only mode on input source files.
  - `beautify`: runs the parser and pretty-printer on input source files.
  - `lsp`: runs the Lambdapi LSP server.
- - `decision-tree`: prints the decision tree for rule filtering of a symbol in
-   the Dot language on standard output. For more information on the graph and
-   how to read them, see `src/core/tree_graphviz.ml`.
+ - `decision-tree`: compiles the decision tree of a symbol to a Dot graph and
+   prints it to the standard output. Refer to [this page](dtrees.md) for more
+   information.
 
 **Note:** the `parse` and `beautify` commands can trigger the compilation of
 dependencies if the required object files (`.lpo` extension) are not present.

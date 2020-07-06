@@ -88,7 +88,7 @@ let add_symbol : sig_state -> expo -> prop -> strloc -> term -> bool list
   let s = Sign.add_symbol ss.signature e p x a impl in
   begin
     match t with
-    | Some t -> s.sym_def := Some(t)
+    | Some t -> s.sym_def := Some (cleanup t)
     | None -> ()
   end;
   let in_scope = StrMap.add x.elt (s, x.pos) ss.in_scope in

@@ -279,7 +279,13 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
           let m2 = fresh_meta ~name:id.elt a (Array.length vs) in
           Stdlib.(m := StrMap.add id.elt m2 !m); m2
         in
-        _Meta m2 (Array.map (scope env) ts)
+        let ts =
+          match ts with
+          | None -> Env.to_tbox env (* [?M] is equivalent to [?M[env]] where
+                                       [env] is the current environment. *)
+          | Some ts -> Array.map (scope env) ts
+        in
+        _Meta m2 ts
     | (P_Meta(_,_)     , _                ) ->
         fatal t.pos "Metavariables are not allowed in rewriting rules."
     | (P_Patt(id,ts)   , M_LHS(d)         ) ->
@@ -290,23 +296,31 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
           | _       -> fatal t.pos "Only bound variables are allowed in the \
                                     environment of pattern variables."
         in
-        let vs = Array.map scope_var ts in
-        (* Check that [vs] are distinct variables. *)
-        for i = 0 to Array.length vs - 2 do
-          for j = i + 1 to Array.length vs - 1 do
-            if Bindlib.eq_vars vs.(i) vs.(j) then
-              let name = Bindlib.name_of vs.(j) in
-              fatal ts.(j).pos "Variable %s appears more than once in the \
-                                environment of a pattern variable." name
-          done
-        done;
-        let ar = Array.map Bindlib.box_var vs in
+        let ts =
+          match ts with
+          | None ->
+              if env = [] then [||] (* $M stands for $M[] *)
+              else fatal t.pos "Missing square brackets under binder."
+          | Some ts ->
+              let vs = Array.map scope_var ts in
+              (* Check that [vs] are distinct variables. *)
+              for i = 0 to Array.length vs - 2 do
+                for j = i + 1 to Array.length vs - 1 do
+                  if Bindlib.eq_vars vs.(i) vs.(j) then
+                    let name = Bindlib.name_of vs.(j) in
+                    fatal ts.(j).pos
+                      "Variable %s appears more than once \
+                       in the environment of a pattern variable." name
+                done
+              done;
+              Array.map Bindlib.box_var vs
+        in
         begin
           match id with
-          | None     when List.length env = Array.length vs    ->
+          | None     when List.length env = Array.length ts    ->
               wrn t.pos "Pattern [%a] could be replaced by [_]." Pretty.pp t;
           | Some(id) when not (List.mem id.elt d.m_lhs_in_env) ->
-              if List.length env = Array.length vs then
+              if List.length env = Array.length ts then
                 wrn t.pos "Pattern variable [%a] can be replaced by a \
                            wildcard [_]." Pretty.pp t
               else
@@ -314,7 +328,7 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
                            named." id.elt
           | _                                                  -> ()
         end;
-        fresh_patt md (Option.map (fun id -> id.elt) id) ar
+        fresh_patt md (Option.map (fun id -> id.elt) id) ts
     | (P_Patt(id,ts)   , M_RHS(r)         ) ->
         let x =
           match id with
@@ -332,7 +346,12 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
                   r.m_rhs_xvars   <- (id.elt, x) :: r.m_rhs_xvars ;
                   x
         in
-        _TEnv (Bindlib.box_var x) (Array.map (scope env) ts)
+        let ts =
+          match ts with
+          | None -> [||] (* $M stands for $M[] *)
+          | Some ts -> Array.map (scope env) ts
+        in
+        _TEnv (Bindlib.box_var x) ts
     | (P_Patt(_,_)     , _                  ) ->
         fatal t.pos "Pattern variables are only allowed in rewriting rules."
     | (P_Appl(_,_)     , _                  ) ->
@@ -413,14 +432,15 @@ let patt_vars : p_term -> (string * int) list * string list =
     | P_Type             -> acc
     | P_Iden(_)          -> acc
     | P_Wild             -> acc
-    | P_Meta(_,ts)       -> Array.fold_left patt_vars acc ts
-    | P_Patt(id,ts)      -> add_patt (Array.fold_left patt_vars acc ts) id ts
+    | P_Meta(_,None)     -> acc
+    | P_Meta(_,Some ts)  -> Array.fold_left (patt_vars) acc ts
+    | P_Patt(id,ts)      -> add_patt acc id ts
     | P_Appl(t,u)        -> patt_vars (patt_vars acc t) u
     | P_Impl(a,b)        -> patt_vars (patt_vars acc a) b
-    | P_Abst(xs,t)       -> patt_vars (arg_patt_vars acc xs) t
-    | P_Prod(xs,b)       -> patt_vars (arg_patt_vars acc xs) b
-    | P_LLet(_,xs,a,t,u) ->
-        let pvs = patt_vars (patt_vars (arg_patt_vars acc xs) t) u in
+    | P_Abst(args,t)     -> patt_vars (patt_vars_args acc args) t
+    | P_Prod(args,b)     -> patt_vars (patt_vars_args acc args) b
+    | P_LLet(_,args,a,t,u) ->
+        let pvs = patt_vars (patt_vars (patt_vars_args acc args) t) u in
         begin
           match a with
           | None    -> pvs
@@ -432,19 +452,27 @@ let patt_vars : p_term -> (string * int) list * string list =
     | P_Wrap(t)          -> patt_vars acc t
     | P_Expl(t)          -> patt_vars acc t
   and add_patt ((pvs, nl) as acc) id ts =
+    let acc, arity =
+      match ts with
+      | None     -> (acc, 0)
+      | Some(ts) -> (Array.fold_left patt_vars acc ts, Array.length ts)
+    in
     match id with
     | None     -> acc
     | Some(id) ->
-    try
-      if List.assoc id.elt pvs <> Array.length ts then
-        fatal id.pos "Arity mismatch for pattern variable [%s]." id.elt;
-      if List.mem id.elt nl then acc else (pvs, id.elt :: nl)
-    with Not_found -> ((id.elt, Array.length ts) :: pvs, nl)
-  and arg_patt_vars acc xs =
-    match xs with
-    | []                    -> acc
-    | (_, None   , _) :: xs -> arg_patt_vars acc xs
-    | (_, Some(a), _) :: xs -> arg_patt_vars (patt_vars acc a) xs
+        begin
+          try
+            if List.assoc id.elt pvs <> arity then
+              fatal id.pos "Arity mismatch for pattern variable [%s]." id.elt;
+            if List.mem id.elt nl then acc else (pvs, id.elt :: nl)
+          with Not_found -> ((id.elt, arity) :: pvs, nl)
+        end
+  and patt_vars_args acc args =
+    match args with
+    | []            -> acc
+    | (_,a,_)::args ->
+        let acc = match a with None -> acc | Some a -> patt_vars acc a in
+        patt_vars_args acc args
   in
   patt_vars ([],[])
 
@@ -491,7 +519,7 @@ let scope_rule : sig_state -> p_rule -> pre_rule loc = fun ss r ->
            ; m_lhs_arities = Hashtbl.create 7
            ; m_lhs_names   = Hashtbl.create 7
            ; m_lhs_size    = 0
-           ; m_lhs_in_env  = nl @ (List.map fst pvs_rhs) }
+           ; m_lhs_in_env  = nl @ List.map fst pvs_rhs }
     in
     let pr_lhs = scope mode ss Env.empty p_lhs in
     match mode with
@@ -500,7 +528,7 @@ let scope_rule : sig_state -> p_rule -> pre_rule loc = fun ss r ->
          m_lhs_size)
     | _                                                  -> assert false
   in
-  (* Check the head symbol and build actual LHS. *)
+  (* Check the head symbol and build the actual LHS. *)
   let (sym, pr_lhs) =
     let (h, args) = Basics.get_args pr_lhs in
     match h with

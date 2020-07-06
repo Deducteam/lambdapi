@@ -21,11 +21,11 @@ Table of contents
 
    * [Emacs](emacs.md)
 
-   * [VSCode](ui.md)
+   * [VSCode](vscode.md)
 
-   * [Vim](ui.md)
+   * [Vim](vim.md)
 
-   * [Atom](ui.md)
+   * [Atom](atom.md)
    
  - [Module system](module.md)
 
@@ -45,6 +45,8 @@ Table of contents
 For developers:
 
  - [Contributing](../CONTRIBUTING.md)
+
+ - [Decision trees](dtrees.md)
 
  - [Overview of directories and files](structure.md)
 

@@ -546,9 +546,12 @@ module CM = struct
           let arity = List.length pargs in
           let e = Array.make arity (Patt(None, "", [||])) in
           Some({ r with c_lhs = insert e })
+      | Symb(_), Vari(_)
+      | Vari(_), Symb(_)
       | _      , Prod(_)
       | _      , Abst(_) -> None
       | _      , _       -> assert false
+          (* Terms matched (in this case) should not appear in matrices. *)
     in
     (pos, List.filter_map filtrans cls)
 

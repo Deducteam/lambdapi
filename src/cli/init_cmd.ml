@@ -90,8 +90,8 @@ let root_path : Path.t Term.t =
      the package will be registered and installed (if desired), and it will \
      hence uniquely identify the package. In particular, the last identifier \
      that constitutes $(docv) will be used as package name. It is important \
-     to note that the module of the package will always be accessed through \
-     their qualified form, which is will be prefixed by $(docv). Refer to \
+     to note that the files of the package can be accessed only through \
+     their qualified form prefixed by $(docv). Refer to \
      the documentation for more information on the module system."
   in
   let i = Arg.(info [] ~docv:"MOD_PATH" ~doc) in
