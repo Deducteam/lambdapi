@@ -40,7 +40,7 @@ constant symbol false : 𝔹
 /////////////////////////////
 // Some examples of inductive types
 /////////////////////////////
-set debug +g
+set debug +gr
 
 //inductive {|sum|} : Π(A:Set) (B:Set), TYPE ≔
 //  inl : ΠA B, τ A → {|sum|} A B
@@ -52,8 +52,7 @@ set declared "ℕ"
 inductive ℕ : TYPE ≔
  | cons1 : ℕ
  | cons2 : ℕ → ℕ
-//[indu] The rule [ind_ℕ $p $pcons1 $pcons2 (cons2 $x0)] --> $pcons2 $x0 (ind_ℕ $p $pcons1 $pcons2 $x0)
-//[indu] The rule [ind_ℕ $p $pcons1 $pcons2 cons1] --> $pcons1
+
 //set declared "ind_ℕ"
 //symbol ind_ℕ : ℕ
 type ind_ℕ

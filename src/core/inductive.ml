@@ -59,7 +59,6 @@ let principle : Sig_state.t -> popt -> sym -> sym list -> term =
 
   (* STEP 0: Define some tools which will be useful *)
   let c = get_config ss pos          in
-  let prop = _Symb c.symb_Prop       in
   let p = Bindlib.new_var mkfree "p" in
   let app : tbox -> tbox list -> tbox = List.fold_left _Appl         in
   let fapp : sym -> tbox list -> tbox = fun f ts -> app (_Symb f) ts in
@@ -68,6 +67,7 @@ let principle : Sig_state.t -> popt -> sym -> sym list -> term =
   in
 
   (* STEP 1: Create the type of the property p *)
+  let prop = _Symb c.symb_Prop       in
   let to_find_p_type : tbox list -> tbox = fun ts ->
     _Impl (fapp sind ts) prop
   in
@@ -146,125 +146,120 @@ let rec term_to_p_term : term -> p_term = fun t ->
   | Type         -> Pos.none P_Type
   | Kind         -> fatal None "Kind not possible"
   | Symb s       -> Pos.none (P_Iden (Pos.none ([], s.sym_name), true))
-  | Prod _       -> fatal None "Prod - Not yet impleted"
-  | Abst _       -> fatal None "Abst - Not yet impleted"
+  | Prod _       -> fatal None "Prod - Not yet implemented"
+  | Abst _       -> fatal None "Abst - Not yet implemented"
   | Appl(t1, t2) -> Pos.none (P_Appl (term_to_p_term t1, term_to_p_term t2))
-  | Meta _       -> fatal None "Meta - Not yet impleted"
-  | Patt _       -> fatal None "Patt - Not yet impleted"
-  | TEnv _       -> fatal None "TEnv - Not yet impleted"
+  | Meta _       -> fatal None "Meta - Not yet implemented"
+  | Patt _       -> fatal None "Patt - Not yet implemented"
+  | TEnv _       -> fatal None "TEnv - Not yet implemented"
   | Wild         -> Pos.none P_Wild
-  | TRef _       -> fatal None "TRef - Not yet impleted"
-  | LLet _       -> fatal None "LLet - Not yet impleted"
+  | TRef _       -> fatal None "TRef - Not yet implemented"
+  | LLet _       -> fatal None "LLet - Not yet implemented"
 
 (** Some constructors to create a p_term without position *)
 
-let _P_Iden : qident * bool -> p_term =
-  fun (ident, b) -> Pos.none (P_Iden(ident, b))
+let _P_Iden : qident -> bool -> p_term =
+  fun ident b -> Pos.none (P_Iden(ident, b))
 
-let _P_Patt : strloc option * p_term array -> p_term =
-  fun (s, arr) -> Pos.none (P_Patt(s, Some arr))
+let _P_Patt : strloc option -> p_term array -> p_term =
+  fun s arr -> Pos.none (P_Patt(s, Some arr))
 
-let _P_Appl : p_term * p_term -> p_term =
-  fun (t1, t2) -> Pos.none (P_Appl(t1, t2))
+let _P_Appl : p_term -> p_term -> p_term =
+  fun t1 t2 -> Pos.none (P_Appl(t1, t2))
 
 (** [create_patt t] creates a pattern $[t] without position *)
-let create_patt : strloc -> p_term = fun t -> _P_Patt(Some t, [||])
-
-(** [fold_app a l ] computes f (... (f (f a l1) l2) ...) ln where
-    [l1 ; ... ln] is the list [l]. *)
-let fold_app : p_term -> p_term list -> p_term =
-  fun a l -> List.fold_left (fun a b -> _P_Appl(a,b)) a l
+let create_patt : strloc -> p_term = fun t -> _P_Patt (Some t) [||]
 
 (** [ind_rule type_name ind_prop_name ind_prop_type cons_list] returns the
     p_rules linking with an induction principle of the inductive type named
     [type_name] (with its constructors [scons_list]). The name of this induc-
     tion principle is [ind_prop_name] and its type is [ind_prop_type]. *)
-let ind_rule : string -> string -> term -> sym list -> p_rule list =
-  fun type_name ind_prop_name ind_prop_type cons_list ->
+let ind_rule : string -> sym -> sym list -> p_rule list =
+  fun type_name sym_ind cons_list ->
 
-  (* STEP 0: Create the common head of the rules *)
-  let arg : sym list -> qident -> p_term = fun l ind_prop ->
-    let p_iden = _P_Iden(ind_prop, true) in
-    let p_patt = create_patt (Pos.none "p")   in
-    let head = _P_Appl(p_iden, p_patt)   in
+  (* STEP 0: Define some tools which will be useful *)
+  let app   : p_term -> p_term list -> p_term = List.fold_left _P_Appl in
+  let fapp  : p_term list -> p_term -> p_term = fun ts f -> app f ts   in
+(*  let app2  : sym -> sym list -> p_term = fun t q ->
+    let p_patt = create_patt (Pos.none ("pi" ^ t.sym_name)) in
+    List.fold_left (fun q -> _P_Appl q p_patt)
+  in
+  let fapp2 : p_term -> sym list -> p_term = fun p ts -> app2 p ts  in*)
+
+
+  (* STEP 1: Create the common head of the rules *)
+
+  (*let p_iden = _P_Iden (Pos.none ([], sym_ind.sym_name)) true in
+  let p_patt = create_patt (Pos.none "p")                     in
+  let head =
+    List.map (fun c -> create_patt (Pos.none ("pi" ^ c.sym_name))) cons_list
+  in
+  let common_head = fapp head (_P_Appl p_iden p_patt) in*)
+  let p_iden = _P_Iden (Pos.none ([], sym_ind.sym_name)) true in
+  let p_patt = create_patt (Pos.none "p") in
+  let head   = _P_Appl p_iden p_patt      in
+  let arg : sym list -> p_term = fun l  ->
     let rec aux : sym list -> p_term -> p_term = fun l acc ->
       match l with
       | []   -> acc
       | t::q ->
           let p_patt = create_patt (Pos.none ("p" ^ t.sym_name)) in
-          aux q (_P_Appl(acc, p_patt))
+          aux q (_P_Appl acc p_patt)
     in
     aux l head
   in
-  let common_head = arg cons_list (Pos.none ([], ind_prop_name)) in
+  let common_head = arg cons_list in
 
-  (* STEP 1: Build the whole of the rules *)
-  let build_p_rules : term -> sym list -> p_rule list = fun _ l ->
-    let rec aux : sym list -> p_rule list -> p_rule list = fun l acc ->
-      match l with
-      | []   -> acc
-      | t::q ->
-          begin
-          let pt       = Pos.none ("p" ^ t.sym_name) in (* RHS *)
-          let p_patt   = create_patt pt      in
-          let qident_t = Pos.none ([], t.sym_name)   in (* LHS *)
-          let t_ident  = _P_Iden(qident_t, true)     in
-          let tmp      = aux q acc                   in
-          (* [create_p_rule arg_list t hyp_rec_list] creates a p_rule
-             according to a constructor [scons]. *)
-          let rec create_p_rule :
-                    p_term list -> term -> p_term list -> int -> p_rule =
-            fun arg_list t hyp_rec_list i -> match Basics.get_args t with
-            | (Symb(s), l) ->
-                if s.sym_name == type_name then
-                  let (lhs_end, rhs_x_head) =
-                    match List.rev arg_list with
-                    | []   -> t_ident, p_patt
-                    | x::z ->
-                        fold_app (_P_Appl(t_ident, x)) z,
-                        fold_app (_P_Appl(p_patt , x)) z
-                  in
-                  let l = List.map term_to_p_term l in
-                  let arg_type = fold_app common_head l  in
-                  let lhs_x = _P_Appl(arg_type, lhs_end) in
-                  let rhs_x = match hyp_rec_list with
-                    | []   -> rhs_x_head
-                    | x::z -> fold_app (_P_Appl(rhs_x_head, x)) z
-                  in
-                  if !log_enabled then
-                    log_ind "The rule [%a] --> %a"
-                      Pretty.pp_p_term lhs_x Pretty.pp_p_term rhs_x;
-                  Pos.none (lhs_x, rhs_x)
-                else assert false (* See the function named "principle" *)
-            | (Prod(a, b), _) ->
-                let (_,b) = unbind_name b in
-                begin
-                  match Basics.get_args a with
-                  | (Symb(s), l) ->
-                      let x =
-                        Bindlib.new_var mkfree ("x"^(string_of_int i))
-                      in
-                      let arg = Pos.none (Bindlib.name_of x)         in
-                      let arg_patt = create_patt arg in
-                      if s.sym_name == type_name then
-                        let l = List.map term_to_p_term l     in
-                        let arg_type = fold_app common_head l in
-                        let hyp_rec_x =
-                          _P_Appl (arg_type, arg_patt)
-                        in
-                        let new_hyp_rec_x = hyp_rec_x::hyp_rec_list in
-                        create_p_rule
-                          (arg_patt::arg_list) b new_hyp_rec_x (i+1)
-                      else
-                        create_p_rule
-                          (arg_patt::arg_list) b hyp_rec_list (i+1)
-                  | _ -> assert false (* See the function named "principle" *)
-                end
-            | _ -> assert false (* See the function named "principle" *)
+  (* STEP 2: Create each p_rule according to a constructor *)
+  (* [create_p_rule arg_list t hyp_rec_list] creates a p_rule
+     according to a constructor [scons]. *)
+  let rec create_p_rule :
+    p_term list -> string -> term -> p_term list -> int -> p_rule =
+    fun arg_list name t hyp_rec_list i ->
+    let pt       = Pos.none ("p" ^ name) in (* RHS *)
+    let p_patt   = create_patt pt      in
+    let qident_t = Pos.none ([], name)   in (* LHS *)
+    let t_ident  = _P_Iden qident_t true       in
+    match Basics.get_args t with
+    | (Symb(s), l) ->
+        if s.sym_name == type_name then
+          let (lhs_end, rhs_x_head) =
+            let tmp = fapp (List.rev arg_list) in
+            tmp t_ident, tmp p_patt
           in
-          (create_p_rule [] (!(t.sym_type)) [] 0)::tmp
-          end
-    in
-    aux l []
+          let l = List.map term_to_p_term l       in
+          let arg_type = app common_head l        in
+          let lhs_x = _P_Appl arg_type lhs_end    in
+          let rhs_x = app rhs_x_head hyp_rec_list in
+          if !log_enabled then
+            log_ind "The rule [%a] --> %a"
+              Pretty.pp_p_term lhs_x Pretty.pp_p_term rhs_x;
+          Pos.none (lhs_x, rhs_x)
+          else
+            assert false (* See the function named "principle" *)
+    | (Prod(a, b), _) ->
+        let (_,b) = unbind_name b in
+        begin
+          match Basics.get_args a with
+          | (Symb(s), l) ->
+              let x =
+                Bindlib.new_var mkfree ("x"^(string_of_int i))
+              in
+              let arg = Pos.none (Bindlib.name_of x)         in
+              let arg_patt = create_patt arg in
+              if s.sym_name == type_name then
+                let l = List.map term_to_p_term l     in
+                let arg_type = app common_head l in
+                let hyp_rec_x = _P_Appl arg_type arg_patt in
+                let new_hyp_rec_x = hyp_rec_x::hyp_rec_list in
+                create_p_rule (arg_patt::arg_list) name b new_hyp_rec_x (i+1)
+              else
+                create_p_rule (arg_patt::arg_list) name b hyp_rec_list (i+1)
+          | _ -> assert false (* See the function named "principle" *)
+        end
+    | _ -> assert false (* See the function named "principle" *)
   in
-  build_p_rules ind_prop_type cons_list
+
+  (* STEP 3: Build all the p_rules *)
+  List.map (fun t -> create_p_rule [] t.sym_name (!(t.sym_type)) [] 0)
+    cons_list
