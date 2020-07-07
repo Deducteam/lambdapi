@@ -30,6 +30,7 @@ depends: [
   "yojson"       { >= "1.6.0" }
   "cmdliner"     { >= "1.0.3" }
   "stdlib-shims"
+  "str"
 ]
 
 post-messages: [

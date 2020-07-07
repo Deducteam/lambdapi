@@ -262,14 +262,19 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
       (fst (Sig_state.add_symbol ss expo Defin Eager x a impl d), None)
   | P_inductive(ms, id, a, l)     ->
       (* Verify the modifiers. *)
-      let (_, e, strat) = handle_modifiers ms in
+      let (prop, e, mstrat) = handle_modifiers ms in
+      if prop <> Defin then
+        fatal cmd.pos "Property modifiers cannot be used in inductive types.";
+      if mstrat <> Eager then
+        fatal cmd.pos "Pattern matching strategy modifiers cannot be used \
+                       in inductive types.";
       (* Add the inductive type in the signature *)
-      let (ss, sym_typ) = handle_symbol ss e Injec strat id [] a in
+      let (ss, sym_typ) = handle_symbol ss e Injec Eager id [] a in
       (* Add the constructors in the signature.  *)
       let add_cons :
             sig_state * sym list -> ident * p_term -> sig_state * sym list
         = fun(ss, cons_list) (id, a) ->
-        let (ss, sym_cons) = handle_symbol ss e Const strat id [] a in
+        let (ss, sym_cons) = handle_symbol ss e Const Eager id [] a in
         (ss, sym_cons::cons_list)
       in
       let (ss, cons_list) = List.fold_left add_cons (ss, []) l in
@@ -287,8 +292,15 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
       let ind_name = Pos.make cmd.pos ("ind_" ^ id.elt) in
       if StrSet.mem id.elt !(ss.signature.sign_idents) then
         Sign.add_ident ss.signature ind_name.elt;
+      let _ = regexp "^[a-zA-Z_][a-zA-Z0-9_]*$" in
+      if Str.string_match (Str.regexp "") id.elt 0 then
+(*        () Sign.add_ident ss.signature ("ind_"^id.elt^"");
+      let escape_name s =
+        ￼  let id_regex = Str.regexp "^[a-zA-Z_][a-zA-Z0-9_]*$" in
+               ￼  if Str.string_match id_regex s 0 then s else "{|" ^ s ^ "|}"
+               in*)
       let (ss, sym_ind) =
-        Sig_state.add_symbol ss e Defin strat ind_name ind_typ [] None
+        Sig_state.add_symbol ss e Defin Eager ind_name ind_typ [] None
       in
       (* Compute the rules associated with the induction principle *)
       let rs =

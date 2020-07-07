@@ -42,6 +42,12 @@ constant symbol false : 𝔹
 /////////////////////////////
 set debug +g
 
+inductive {|sum|} : Π(A:Set) (B:Set), TYPE ≔
+  inl : ΠA B, τ A → {|sum|} A B
+| inr : ΠA B, τ B → {|sum|} A B
+
+type ind_sum
+
 inductive RGB : TYPE ≔
  | red   : RGB
  | green : RGB
