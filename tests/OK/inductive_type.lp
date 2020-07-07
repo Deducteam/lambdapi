@@ -42,21 +42,20 @@ constant symbol false : 𝔹
 /////////////////////////////
 set debug +g
 
-//inductive {|sum|} : Π(A:Set) (B:Set), TYPE ≔
-//  inl : ΠA B, τ A → {|sum|} A B
-//| inr : ΠA B, τ B → {|sum|} A B
-
-//type {|ind_sum|}
-
 set declared "ℕ"
 inductive ℕ : TYPE ≔
  | cons1 : ℕ
  | cons2 : ℕ → ℕ
-//[indu] The rule [ind_ℕ $p $pcons1 $pcons2 (cons2 $x0)] --> $pcons2 $x0 (ind_ℕ $p $pcons1 $pcons2 $x0)
-//[indu] The rule [ind_ℕ $p $pcons1 $pcons2 cons1] --> $pcons1
-//set declared "ind_ℕ"
+
+set declared "ind_ℕ"
 //symbol ind_ℕ : ℕ
-type ind_ℕ
+//type ind_ℕ
+
+inductive {|sum|} : Π(A:Set) (B:Set), TYPE ≔
+  inl : ΠA B, τ A → {|sum|} A B
+| inr : ΠA B, τ B → {|sum|} A B
+
+type {|ind_sum|}
 
 inductive RGB : TYPE ≔
  | red   : RGB
