@@ -176,7 +176,7 @@ reserved "why3"
   | "or"
   | "and"
   | "imp"
-  
+
 // Single command.
 <command> ::=
   // Require and/or open a module
