@@ -40,13 +40,22 @@ constant symbol false : 𝔹
 /////////////////////////////
 // Some examples of inductive types
 /////////////////////////////
-set debug +g
+set debug +h
 
 inductive {|sum|} : Π(A:Set) (B:Set), TYPE ≔
   inl : ΠA B, τ A → {|sum|} A B
 | inr : ΠA B, τ B → {|sum|} A B
 
-type ind_sum
+type {|ind_sum|}
+
+set declared "ℕ"
+inductive ℕ : TYPE ≔
+ | cons1 : ℕ
+ | cons2 : ℕ → ℕ
+
+//set declared "ind_ℕ"
+//symbol ind_ℕ : ℕ
+type ind_ℕ
 
 inductive RGB : TYPE ≔
  | red   : RGB

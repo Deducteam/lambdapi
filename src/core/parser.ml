@@ -309,6 +309,16 @@ let escaped_ident : bool -> string Earley.grammar = fun with_delim ->
 let escaped_ident_no_delim = escaped_ident false
 let escaped_ident = escaped_ident true
 
+(** [add_prefix p s] adds the prefix [p] at the beginning of the
+    string [s]. *)
+let add_prefix : string -> string -> string = fun p s ->
+  if Str.string_match (Str.regexp "^{|.*|}$") s 0 then
+    let len = String.length s        in
+    let s   = String.sub s 2 (len-4) in
+    "{|" ^ p ^ s ^ "|}"
+  else
+    p ^ s
+
 (** Any identifier (regular or escaped). *)
 let parser any_ident =
   | id:regular_ident -> KW.check id; id
