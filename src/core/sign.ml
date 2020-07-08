@@ -40,7 +40,8 @@ let dummy : unit -> t = fun () ->
   ; sign_idents = ref StrSet.empty; sign_quants = ref SymSet.empty
   ; sign_ind = ref SymMap.empty }
 
-(** [create path] creates an empty signature with module path [path]. *)
+(** [create sign_path] creates an empty signature with module path
+    [sign_path]. *)
 let create : Path.t -> t = fun sign_path ->
   { sign_path; sign_symbols = ref StrMap.empty; sign_deps = ref PathMap.empty
   ; sign_builtins = ref StrMap.empty; sign_unops = ref StrMap.empty

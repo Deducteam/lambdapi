@@ -367,16 +367,16 @@ let eq_p_command : p_command eq = fun c1 c2 ->
       && List.equal eq_p_arg al1 al2
   | (P_rules(rs1)                , P_rules(rs2)                ) ->
       List.equal eq_p_rule rs1 rs2
-  | (P_definition(e1,b1,s1,l1,a1,t1), P_definition(e2,b2,s2,l2,a2,t2)) ->
-      e1 = e2 && b1 = b2 && eq_ident s1 s2 && List.equal eq_p_arg l1 l2
+  | (P_definition(m1,b1,s1,l1,a1,t1), P_definition(m2,b2,s2,l2,a2,t2)) ->
+      m1 = m2 && b1 = b2 && eq_ident s1 s2 && List.equal eq_p_arg l1 l2
       && Option.equal eq_p_term a1 a2 && eq_p_term t1 t2
-  | (P_inductive(e1,s1,t1,tl1)   , P_inductive(e2,s2,t2,tl2)    ) ->
+  | (P_inductive(m1,s1,t1,tl1)   , P_inductive(m2,s2,t2,tl2)    ) ->
       let eq_id_p_term (s1,t1) (s2,t2) = eq_ident s1 s2 && eq_p_term t1 t2 in
-      e1 = e2 && List.equal eq_id_p_term ((s1,t1)::tl1) ((s2,t2)::tl2)
-  | (P_theorem(ex1,st1,ts1,e1)   , P_theorem(ex2,st2,ts2,e2)   ) ->
+      m1 = m2 && List.equal eq_id_p_term ((s1,t1)::tl1) ((s2,t2)::tl2)
+  | (P_theorem(m1,st1,ts1,e1)   , P_theorem(m2,st2,ts2,e2)   ) ->
       let (s1,l1,a1) = st1.elt in
       let (s2,l2,a2) = st2.elt in
-      ex1 = ex2 && eq_ident s1 s2 && eq_p_term a1 a2 && e1.elt = e2.elt
+      m1 = m2 && eq_ident s1 s2 && eq_p_term a1 a2 && e1.elt = e2.elt
       && List.equal eq_p_arg l1 l2 && List.equal eq_p_tactic ts1 ts2
   | (P_set(c1)                   , P_set(c2)                   ) ->
       eq_p_config c1 c2
