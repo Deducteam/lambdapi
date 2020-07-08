@@ -181,12 +181,11 @@ let create_arg : int -> p_term list = fun len ->
   in
   aux len []*)
 
-(** [ind_rule type_name ind_prop_name ind_prop_type cons_list] returns the
-    p_rules linking with an induction principle of the inductive type named
-    [type_name] (with its constructors [scons_list]). The name of this induc-
-    tion principle is [ind_prop_name] and its type is [ind_prop_type]. *)
-let ind_rule : string -> sym -> sym list -> p_rule list =
-  fun type_name sym_ind cons_list ->
+(** [ind_rule sind sym_ind cons_list] returns the p_rules linking with an
+    induction principle [sym_ind] of the inductive type [sind] (with its
+    constructors [cons_list]). *)
+let ind_rule : sym -> sym -> sym list -> p_rule list =
+  fun sind sym_ind cons_list ->
 
   (* STEP 0: Define some tools which will be useful *)
   let app   : p_term -> p_term list -> p_term = List.fold_left _P_Appl in
@@ -233,7 +232,7 @@ let ind_rule : string -> sym -> sym list -> p_rule list =
       fun arg_list t hyp_rec_list i ->
       match Basics.get_args t with
       | (Symb(s), l) ->
-          if s.sym_name == type_name then
+          if s == sind then
             let (lhs_end, rhs_x_head) =
               let tmp = fapp (List.rev arg_list) in
               tmp t_ident, tmp p_patt
@@ -260,7 +259,7 @@ let ind_rule : string -> sym -> sym list -> p_rule list =
                 in
                 let arg = Pos.none (Bindlib.name_of x) in
                 let arg_patt = create_patt arg         in
-                if s.sym_name == type_name then
+                if s == sind then
                   let l = List.map type_to_pattern l          in
                   (*let len = List.length l in
                   let arg_type = app common_head (create_arg len) in*)

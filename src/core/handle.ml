@@ -306,7 +306,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
           Pretty.pp_ident ind_name Print.pp_term ind_typ;
       (* Compute the rules associated with the induction principle *)
       let rs =
-        Inductive.ind_rule sym_typ.sym_name sym_ind cons_list
+        Inductive.ind_rule sym_typ sym_ind cons_list
       in
       let (ss, ind_rules) = handle_rules ss rs       in
       let ind_rules = List.map (fun (_,r) -> r.elt) ind_rules in
