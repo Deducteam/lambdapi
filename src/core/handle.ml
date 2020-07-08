@@ -291,7 +291,13 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
       (* Add the induction principle in the signature *)
       let ind_name = Pos.make cmd.pos (Parser.add_prefix "ind_" id.elt) in
       if StrSet.mem id.elt !(ss.signature.sign_idents) then
+        begin
         Sign.add_ident ss.signature ind_name.elt;
+        if !log_enabled then
+          log_hndl "This ident %a is already in the signature \
+                    and now the ident %a too !"
+            Pretty.pp_ident id Pretty.pp_ident ind_name;
+        end;
       let (ss, sym_ind) =
         Sig_state.add_symbol ss e Defin Eager ind_name ind_typ [] None
       in

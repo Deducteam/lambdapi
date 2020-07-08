@@ -42,13 +42,11 @@ let create_instance_of : popt -> sym -> (tbox list -> tbox) -> tbox =
   let rec aux : tvar list -> term -> tbox =
     fun xs a ->
     match Basics.get_args a with
-    | (Type, _) ->
-        let ts = List.rev_map _Vari xs in f ts
+    | (Type, _) -> let ts = List.rev_map _Vari xs in f ts
     | (Prod(a,b), _) ->
         let (x,b) = unbind_name b in
         _Prod (lift a) (Bindlib.bind_var x (aux (x::xs) b))
-    | _ ->
-        fatal pos "The type of %a is not supported" pp_symbol sind
+    | _ -> fatal pos "The type of %a is not supported" pp_symbol sind
   in aux [] !(sind.sym_type)
 
 (** [principle ss pos sind scons_list] returns an induction principle which
@@ -60,14 +58,14 @@ let principle : Sig_state.t -> popt -> sym -> sym list -> term =
   (* STEP 0: Define some tools which will be useful *)
   let c = get_config ss pos          in
   let p = Bindlib.new_var mkfree "p" in
-  let app : tbox -> tbox list -> tbox = List.fold_left _Appl         in
-  let fapp : sym -> tbox list -> tbox = fun f ts -> app (_Symb f) ts in
+  let app  : tbox -> tbox list -> tbox = List.fold_left _Appl         in
+  let fapp : sym  -> tbox list -> tbox = fun f ts -> app (_Symb f) ts in
   let prf_of_p : tbox list -> tbox -> tbox =
     fun ts t -> fapp c.symb_prf [_Appl (app (_Vari p) ts) t]
   in
 
   (* STEP 1: Create the type of the property p *)
-  let prop = _Symb c.symb_Prop       in
+  let prop = _Symb c.symb_Prop in
   let to_find_p_type : tbox list -> tbox = fun ts ->
     _Impl (fapp sind ts) prop
   in
@@ -84,8 +82,9 @@ let principle : Sig_state.t -> popt -> sym -> sym list -> term =
           if s == sind then
             let l = List.map lift l in
             prf_of_p l (app (_Symb scons) (List.rev xs))
-          else fatal pos "%a is not a constructor of %a"
-                 pp_symbol scons pp_symbol sind
+          else
+            fatal pos "%a is not a constructor of %a"
+              pp_symbol scons pp_symbol sind
       | (Prod(a,b), _) ->
           (* Take a name and the body of the term *)
           let (x,b) = unbind_name b                in
@@ -100,26 +99,25 @@ let principle : Sig_state.t -> popt -> sym -> sym list -> term =
                   if s == sind then
                     let l = List.map lift l in
                     _Impl (prf_of_p l (Bindlib.box_var x)) b
-                  else b
+                  else
+                    b
                 in
                 let res = _Prod (lift a) (Bindlib.bind_var x b) in
                 if !log_enabled then
                   log_ind "The clause of the constructor [%a] is %a"
                     Print.pp_term (Symb(scons))
-                    Print.pp_term (Bindlib.unbox res); res
-            | _ -> fatal pos "The type of %a is not supported"
-                     pp_symbol scons
+                    Print.pp_term (Bindlib.unbox res);
+                res
+            | _ -> fatal pos "The type of %a is not supported" pp_symbol scons
           end
-      | _ ->
-          fatal pos "The type of %a is not supported"
-            pp_symbol scons
+      | _ -> fatal pos "The type of %a is not supported" pp_symbol scons
     in
     case [] !(scons.sym_type)
   in
 
   (* STEP 3: Create the conclusion of the inductive principle *)
   let to_create_end  : tbox list -> tbox = fun ts ->
-    let x = Bindlib.new_var mkfree "x" in
+    let x = Bindlib.new_var mkfree "x"                 in
     let t = Bindlib.bind_var x (prf_of_p ts (_Vari x)) in
     _Prod (fapp sind ts) t
   in
@@ -132,7 +130,7 @@ let principle : Sig_state.t -> popt -> sym -> sym list -> term =
     | t::q -> let t = case_of t in
               _Impl t (add_case q r)
   in
-  let t = add_case scons_list conclusion in
+  let t = add_case scons_list conclusion      in
   let t = _Prod p_type (Bindlib.bind_var p t) in
   if !log_enabled then
     log_ind "The induction principle of the inductive type [%a] is %a"
@@ -170,6 +168,7 @@ let _P_Appl : p_term -> p_term -> p_term =
 (** [create_patt t] creates a pattern $[t] without position *)
 let create_patt : strloc -> p_term = fun t -> _P_Patt (Some t) [||]
 
+(*
 let create_arg : int -> p_term list = fun len ->
   let rec aux : int -> p_term list -> p_term list = fun i acc ->
     if i = 0 then
@@ -180,7 +179,7 @@ let create_arg : int -> p_term list = fun len ->
       in
       aux (i-1) (head::acc)
   in
-  aux len []
+  aux len []*)
 
 (** [ind_rule type_name ind_prop_name ind_prop_type cons_list] returns the
     p_rules linking with an induction principle of the inductive type named
@@ -208,8 +207,8 @@ let ind_rule : string -> sym -> sym list -> p_rule list =
   in
   let common_head = fapp head (_P_Appl p_iden p_patt) in*)
   let p_iden = _P_Iden (Pos.none ([], sym_ind.sym_name)) true in
-  let p_patt = create_patt (Pos.none "p") in
-  let head   = _P_Appl p_iden p_patt      in
+  let p_patt = create_patt (Pos.none "p")                     in
+  let head   = _P_Appl p_iden p_patt                          in
   let arg : sym list -> p_term = fun l  ->
     let rec aux : sym list -> p_term -> p_term = fun l acc ->
       match l with
@@ -226,12 +225,12 @@ let ind_rule : string -> sym -> sym list -> p_rule list =
   (* [create_p_rule scons] creates a p_rule according to a constructor
      [scons]. *)
   let create_p_rule : sym -> p_rule = fun scons ->
+    let pt       = Pos.none ("p" ^ scons.sym_name) in (* RHS *)
+    let p_patt   = create_patt pt                  in
+    let qident_t = Pos.none ([], scons.sym_name)   in (* LHS *)
+    let t_ident  = _P_Iden qident_t true           in
     let rec aux : p_term list -> term -> p_term list -> int -> p_rule =
       fun arg_list t hyp_rec_list i ->
-      let pt       = Pos.none ("p" ^ scons.sym_name) in (* RHS *)
-      let p_patt   = create_patt pt      in
-      let qident_t = Pos.none ([], scons.sym_name)   in (* LHS *)
-      let t_ident  = _P_Iden qident_t true       in
       match Basics.get_args t with
       | (Symb(s), l) ->
           if s.sym_name == type_name then
@@ -239,10 +238,10 @@ let ind_rule : string -> sym -> sym list -> p_rule list =
               let tmp = fapp (List.rev arg_list) in
               tmp t_ident, tmp p_patt
             in
-            let l = List.map type_to_pattern l       in
+            let l = List.map type_to_pattern l in
             (*let len = List.length l in
             let arg_type = app common_head (create_arg len) in*)
-            let arg_type = app common_head l in
+            let arg_type = app common_head l        in
             let lhs_x = _P_Appl arg_type lhs_end    in
             let rhs_x = app rhs_x_head hyp_rec_list in
             if !log_enabled then
@@ -257,20 +256,20 @@ let ind_rule : string -> sym -> sym list -> p_rule list =
             match Basics.get_args a with
             | (Symb(s), l) ->
                 let x =
-                  Bindlib.new_var mkfree ("x"^(string_of_int i))
+                  Bindlib.new_var mkfree ("x" ^ (string_of_int i))
                 in
-                let arg = Pos.none (Bindlib.name_of x)         in
-                let arg_patt = create_patt arg in
+                let arg = Pos.none (Bindlib.name_of x) in
+                let arg_patt = create_patt arg         in
                 if s.sym_name == type_name then
-                  let l = List.map type_to_pattern l     in
+                  let l = List.map type_to_pattern l          in
                   (*let len = List.length l in
                   let arg_type = app common_head (create_arg len) in*)
-                  let arg_type = app common_head l in
-                  let hyp_rec_x = _P_Appl arg_type arg_patt in
+                  let arg_type = app common_head l            in
+                  let hyp_rec_x = _P_Appl arg_type arg_patt   in
                   let new_hyp_rec_x = hyp_rec_x::hyp_rec_list in
                   aux (arg_patt::arg_list) b new_hyp_rec_x (i+1)
                 else
-                  aux (arg_patt::arg_list) b hyp_rec_list (i+1)
+                  aux (arg_patt::arg_list) b hyp_rec_list  (i+1)
             | _ -> assert false (* See the function named "principle" *)
           end
       | _ -> assert false (* See the function named "principle" *)

@@ -49,7 +49,7 @@ inductive ℕ : TYPE ≔
 
 //set declared "ind_ℕ"
 //symbol ind_ℕ : ℕ
-type ind_ℕ
+//type ind_ℕ
 
 inductive {|sum|} : Π(A:Set) (B:Set), TYPE ≔
   inl : ΠA B, τ A → {|sum|} A B
