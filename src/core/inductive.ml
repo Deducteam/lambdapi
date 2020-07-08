@@ -23,118 +23,97 @@ let get_config : Sig_state.t -> Pos.popt -> config = fun ss pos ->
   { symb_Prop = builtin "Prop"
   ; symb_prf  = builtin "P" }
 
-(** [unbind_name b] unbinds the binder [b] and substitutes the variable in the
-    case of undependent product. It returns the variable and the term which
-    was the body of the binder. *)
-let unbind_name : (term, term) Bindlib.binder -> tvar * term = fun b ->
-  if Bindlib.binder_occur b then
-    Bindlib.unbind b
-  else
-    let x = Bindlib.new_var mkfree "x" in
-    (x, Bindlib.subst b (Vari x))
-
-(** [create_instance_of pos sind f] creates an instance of the symbol [sind],
-    which defined on the position [pos], and applies [f] to this instance.
-    It's useful to build the type of the property p or build the conclusion
-    of the inductive principle. *)
-let create_instance_of : popt -> sym -> (tbox list -> tbox) -> tbox =
-  fun pos sind f ->
-  let rec aux : tvar list -> term -> tbox =
-    fun xs a ->
+(** [change_codom_ind_typ pos ind_sym codom] assumes that the type of
+    [ind_sym] is of the form [Πx1:a1,..., Πxn:an, TYPE]. It then generates
+    a [tbox] similar to this type except that [TYPE] is replaced by
+    [codom [x1;...;xn]]. *)
+let change_codom_ind_typ : popt -> sym -> (tbox list -> tbox) -> tbox =
+  fun pos ind_sym codom ->
+  let rec aux : tvar list -> term -> tbox = fun xs a ->
     match Basics.get_args a with
-    | (Type, _) -> let ts = List.rev_map _Vari xs in f ts
+    | (Type, _) -> codom (List.rev_map _Vari xs)
     | (Prod(a,b), _) ->
-        let (x,b) = unbind_name b in
+        let (x,b) = Basics.unbind_name b in
         _Prod (lift a) (Bindlib.bind_var x (aux (x::xs) b))
-    | _ -> fatal pos "The type of %a is not supported" pp_symbol sind
-  in aux [] !(sind.sym_type)
+    | _ -> fatal pos "The type of %a is not supported" pp_symbol ind_sym
+  in aux [] !(ind_sym.sym_type)
 
-(** [principle ss pos sind scons_list] returns an induction principle which
-    is created thanks to the symbol of the inductive type [sind] (and its
-    position [pos]), its constructors [scons_list] and the signature [ss]. *)
+(** [principle ss pos ind_sym cons_list] returns an induction principle which
+    is created thanks to the symbol of the inductive type [ind_sym] (and its
+    position [pos]), its constructors [cons_list] and the signature [ss]. *)
 let principle : Sig_state.t -> popt -> sym -> sym list -> term =
-  fun ss pos sind scons_list ->
+  fun ss pos ind_sym cons_list ->
 
   (* STEP 0: Define some tools which will be useful *)
-  let c = get_config ss pos          in
+  let c = get_config ss pos in
   let p = Bindlib.new_var mkfree "p" in
-  let app  : tbox -> tbox list -> tbox = List.fold_left _Appl         in
+  let app  : tbox -> tbox list -> tbox = List.fold_left _Appl in
   let fapp : sym  -> tbox list -> tbox = fun f ts -> app (_Symb f) ts in
-  let prf_of_p : tbox list -> tbox -> tbox =
-    fun ts t -> fapp c.symb_prf [_Appl (app (_Vari p) ts) t]
+  let prf_of_p : tbox list -> tbox -> tbox = fun ts t ->
+    fapp c.symb_prf [_Appl (app (_Vari p) ts) t]
   in
 
   (* STEP 1: Create the type of the property p *)
   let prop = _Symb c.symb_Prop in
-  let to_find_p_type : tbox list -> tbox = fun ts ->
-    _Impl (fapp sind ts) prop
-  in
-  let p_type = create_instance_of pos sind to_find_p_type in
+  let codom ts = _Impl (fapp ind_sym ts) prop in
+  let p_type = change_codom_ind_typ pos ind_sym codom in
 
   (* STEP 2: Create each clause according to a constructor *)
-  (* [case_of scons] creates a clause according to a constructor [scons]. *)
-  let case_of : sym -> tbox = fun scons ->
-    let rec case : tbox list -> term -> tbox = fun xs a ->
+  (* [case_of cons_sym] creates a clause according to a constructor
+     [cons_sym]. *)
+  let case_of : sym -> tbox = fun cons_sym ->
+    let rec aux : tbox list -> term -> tbox = fun xs a ->
       match Basics.get_args a with
-      | (Symb(s), l) ->
-          (* Check if the current constructor is a constructor of the current
-             inductive type. *)
-          if s == sind then
-            let l = List.map lift l in
-            prf_of_p l (app (_Symb scons) (List.rev xs))
+      | (Symb(s), ts) ->
+          if s == ind_sym then
+            prf_of_p (List.map lift ts) (app (_Symb cons_sym) (List.rev xs))
           else
             fatal pos "%a is not a constructor of %a"
-              pp_symbol scons pp_symbol sind
+              pp_symbol cons_sym pp_symbol ind_sym
       | (Prod(a,b), _) ->
-          (* Take a name and the body of the term *)
-          let (x,b) = unbind_name b                in
-          (* Do the same thing until the end of the constructor's type *)
-          let b = case ((Bindlib.box_var x)::xs) b in
+          let (x,b) = Basics.unbind_name b in
+          let b = aux ((Bindlib.box_var x)::xs) b in
           begin
             match Basics.get_args a with
-            | (Symb(s), l) ->
+            | (Symb(s), ts) ->
                 let b =
-                  (* If the current symbol is equal to the inductive type,
-                     we create an inductive hypothesis. *)
-                  if s == sind then
-                    let l = List.map lift l in
-                    _Impl (prf_of_p l (Bindlib.box_var x)) b
-                  else
-                    b
+                  (* In case of a recursive argument, we create an inductive
+                     hypothesis. *)
+                  if s == ind_sym then
+                    _Impl (prf_of_p (List.map lift ts) (Bindlib.box_var x)) b
+                  else b
                 in
-                let res = _Prod (lift a) (Bindlib.bind_var x b) in
-                if !log_enabled then
-                  log_ind "The clause of the constructor [%a] is %a"
-                    Print.pp_term (Symb(scons))
-                    Print.pp_term (Bindlib.unbox res);
-                res
-            | _ -> fatal pos "The type of %a is not supported" pp_symbol scons
+                _Prod (lift a) (Bindlib.bind_var x b)
+            | _ ->
+                fatal pos "The type of %a is not supported" pp_symbol cons_sym
           end
-      | _ -> fatal pos "The type of %a is not supported" pp_symbol scons
+      | _ -> fatal pos "The type of %a is not supported" pp_symbol cons_sym
     in
-    case [] !(scons.sym_type)
+    let res = aux [] !(cons_sym.sym_type) in
+    if !log_enabled then
+      log_ind "The clause of the constructor [%a] is %a"
+        Print.pp_term (Symb(cons_sym))
+        Print.pp_term (Bindlib.unbox res);
+    res
   in
 
   (* STEP 3: Create the conclusion of the inductive principle *)
-  let to_create_end  : tbox list -> tbox = fun ts ->
-    let x = Bindlib.new_var mkfree "x"                 in
+  let codom ts =
+    let x = Bindlib.new_var mkfree "x" in
     let t = Bindlib.bind_var x (prf_of_p ts (_Vari x)) in
-    _Prod (fapp sind ts) t
+    _Prod (fapp ind_sym ts) t
   in
-  let conclusion = create_instance_of pos sind to_create_end  in
+  let conclusion = change_codom_ind_typ pos ind_sym codom in
 
-  (* STEP 4: Create the inductive principle *)
-  let rec add_case l r =
-    match l with
-    | []   -> r
-    | t::q -> let t = case_of t in
-              _Impl t (add_case q r)
+  (* STEP 4: Create the induction principle *)
+
+  let t =
+    List.fold_right (fun a b -> _Impl (case_of a) b) cons_list conclusion
   in
-  let t = add_case scons_list conclusion      in
   let t = _Prod p_type (Bindlib.bind_var p t) in
   if !log_enabled then
     log_ind "The induction principle of the inductive type [%a] is %a"
-      Print.pp_term (Symb(sind)) Print.pp_term (Bindlib.unbox t);
+      Print.pp_term (Symb(ind_sym)) Print.pp_term (Bindlib.unbox t);
   Bindlib.unbox t
 
 (** [type_to_pattern t] creates a pattern which matches with the type [t]. *)
@@ -156,14 +135,14 @@ let rec type_to_pattern : term -> p_term = fun t ->
 
 (** Some constructors to create a p_term without position *)
 
-let _P_Iden : qident -> bool -> p_term =
-  fun ident b -> Pos.none (P_Iden(ident, b))
+let _P_Iden : qident -> bool -> p_term = fun ident b ->
+  Pos.none (P_Iden(ident, b))
 
-let _P_Patt : strloc option -> p_term array -> p_term =
-  fun s arr -> Pos.none (P_Patt(s, Some arr))
+let _P_Patt : strloc option -> p_term array -> p_term = fun s ts ->
+  Pos.none (P_Patt(s, Some ts))
 
-let _P_Appl : p_term -> p_term -> p_term =
-  fun t1 t2 -> Pos.none (P_Appl(t1, t2))
+let _P_Appl : p_term -> p_term -> p_term = fun t1 t2 ->
+  Pos.none (P_Appl(t1, t2))
 
 (** [create_patt t] creates a pattern $[t] without position *)
 let create_patt : strloc -> p_term = fun t -> _P_Patt (Some t) [||]
@@ -181,15 +160,15 @@ let create_arg : int -> p_term list = fun len ->
   in
   aux len []*)
 
-(** [ind_rule sind sym_ind cons_list] returns the p_rules linking with an
-    induction principle [sym_ind] of the inductive type [sind] (with its
+(** [rec_rules ind_sym rec_sym cons_list] returns the p_rules linking with an
+    induction principle [rec_sym] of the inductive type [ind_sym] (with its
     constructors [cons_list]). *)
-let ind_rule : sym -> sym -> sym list -> p_rule list =
-  fun sind sym_ind cons_list ->
+let rec_rules : sym -> sym -> sym list -> p_rule list =
+  fun ind_sym rec_sym cons_list ->
 
   (* STEP 0: Define some tools which will be useful *)
   let app   : p_term -> p_term list -> p_term = List.fold_left _P_Appl in
-  let fapp  : p_term list -> p_term -> p_term = fun ts f -> app f ts   in
+  let fapp  : p_term list -> p_term -> p_term = fun ts f -> app f ts in
 (*  let app2  : sym -> sym list -> p_term = fun t q ->
     let p_patt = create_patt (Pos.none ("pi" ^ t.sym_name)) in
     List.fold_left (fun q -> _P_Appl q p_patt)
@@ -205,9 +184,9 @@ let ind_rule : sym -> sym -> sym list -> p_rule list =
     List.map (fun c -> create_patt (Pos.none ("pi" ^ c.sym_name))) cons_list
   in
   let common_head = fapp head (_P_Appl p_iden p_patt) in*)
-  let p_iden = _P_Iden (Pos.none ([], sym_ind.sym_name)) true in
-  let p_patt = create_patt (Pos.none "p")                     in
-  let head   = _P_Appl p_iden p_patt                          in
+  let p_iden = _P_Iden (Pos.none ([], rec_sym.sym_name)) true in
+  let p_patt = create_patt (Pos.none "p") in
+  let head   = _P_Appl p_iden p_patt in
   let arg : sym list -> p_term = fun l  ->
     let rec aux : sym list -> p_term -> p_term = fun l acc ->
       match l with
@@ -221,59 +200,57 @@ let ind_rule : sym -> sym -> sym list -> p_rule list =
   let common_head = arg cons_list in
 
   (* STEP 2: Create each p_rule according to a constructor *)
-  (* [create_p_rule scons] creates a p_rule according to a constructor
-     [scons]. *)
-  let create_p_rule : sym -> p_rule = fun scons ->
-    let pt       = Pos.none ("p" ^ scons.sym_name) in (* RHS *)
-    let p_patt   = create_patt pt                  in
-    let qident_t = Pos.none ([], scons.sym_name)   in (* LHS *)
-    let t_ident  = _P_Iden qident_t true           in
+  (* [create_p_rule cons_sym] creates a p_rule according to a constructor
+     [cons_sym]. *)
+  let create_p_rule : sym -> p_rule = fun cons_sym ->
+    let pt       = Pos.none ("p" ^ cons_sym.sym_name) in (* RHS *)
+    let p_patt   = create_patt pt in
+    let qident_t = Pos.none ([], cons_sym.sym_name) in (* LHS *)
+    let t_ident  = _P_Iden qident_t true in
     let rec aux : p_term list -> term -> p_term list -> int -> p_rule =
       fun arg_list t hyp_rec_list i ->
       match Basics.get_args t with
-      | (Symb(s), l) ->
-          if s == sind then
+      | (Symb(s), ts) ->
+          if s == ind_sym then
             let (lhs_end, rhs_x_head) =
               let tmp = fapp (List.rev arg_list) in
               tmp t_ident, tmp p_patt
             in
-            let l = List.map type_to_pattern l in
+            let ts = List.map type_to_pattern ts in
             (*let len = List.length l in
             let arg_type = app common_head (create_arg len) in*)
-            let arg_type = app common_head l        in
-            let lhs_x = _P_Appl arg_type lhs_end    in
+            let arg_type = app common_head ts in
+            let lhs_x = _P_Appl arg_type lhs_end in
             let rhs_x = app rhs_x_head hyp_rec_list in
             if !log_enabled then
               log_ind "The rule [%a] --> %a"
                 Pretty.pp_p_term lhs_x Pretty.pp_p_term rhs_x;
             Pos.none (lhs_x, rhs_x)
-            else
-              assert false (* See the function named "principle" *)
+            else assert false (* See the function named "principle" *)
       | (Prod(a, b), _) ->
-          let (_,b) = unbind_name b in
+          let (_,b) = Basics.unbind_name b in
           begin
             match Basics.get_args a with
-            | (Symb(s), l) ->
+            | (Symb(s), ts) ->
                 let x =
                   Bindlib.new_var mkfree ("x" ^ (string_of_int i))
                 in
                 let arg = Pos.none (Bindlib.name_of x) in
-                let arg_patt = create_patt arg         in
-                if s == sind then
-                  let l = List.map type_to_pattern l          in
+                let arg_patt = create_patt arg in
+                if s == ind_sym then
+                  let ts = List.map type_to_pattern ts in
                   (*let len = List.length l in
                   let arg_type = app common_head (create_arg len) in*)
-                  let arg_type = app common_head l            in
-                  let hyp_rec_x = _P_Appl arg_type arg_patt   in
+                  let arg_type = app common_head ts in
+                  let hyp_rec_x = _P_Appl arg_type arg_patt in
                   let new_hyp_rec_x = hyp_rec_x::hyp_rec_list in
                   aux (arg_patt::arg_list) b new_hyp_rec_x (i+1)
-                else
-                  aux (arg_patt::arg_list) b hyp_rec_list  (i+1)
+                else aux (arg_patt::arg_list) b hyp_rec_list  (i+1)
             | _ -> assert false (* See the function named "principle" *)
           end
       | _ -> assert false (* See the function named "principle" *)
     in
-    aux [] (!(scons.sym_type)) [] 0
+    aux [] (!(cons_sym.sym_type)) [] 0
   in
 
   (* STEP 3: Build all the p_rules *)

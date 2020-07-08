@@ -27,49 +27,57 @@ set builtin "eq"    ≔ eq
 set builtin "refl"  ≔ eq_refl
 set builtin "eqind" ≔ eq_ind
 
-//////////////////////
-// Boolean type
-//////////////////////
-
-constant symbol bool : Set       // Type of booleans
-set declared "𝔹"
-definition 𝔹 ≔ τ bool
-constant symbol true  : 𝔹
-constant symbol false : 𝔹
-
 /////////////////////////////
 // Some examples of inductive types
 /////////////////////////////
-set debug +h
 
-set declared "ℕ"
-inductive ℕ : TYPE ≔
- | cons1 : ℕ
- | cons2 : ℕ → ℕ
-
-//set declared "ind_ℕ"
-//symbol ind_ℕ : ℕ
-type ind_ℕ
-
-inductive {|sum|} : Π(A:Set) (B:Set), TYPE ≔
-  inl : ΠA B, τ A → {|sum|} A B
-| inr : ΠA B, τ B → {|sum|} A B
-
-type {|ind_sum|}
+////////////////// Primary color
 
 inductive RGB : TYPE ≔
  | red   : RGB
  | green : RGB
  | blue  : RGB
 
-type ind_RGB
+assert ind_RGB : // Induction principle
+  Πp : RGB → Prop,
+  π (p red) → π (p green) → π (p blue) →
+  Πx, π (p x)
+
+////////////////// Type color
 
 inductive Color : TYPE ≔
  | black : Color
  | white : Color
  | primary : Π(p : RGB), Color
 
-type ind_Color
+assert ind_Color : // Induction principle
+  Πp : Color → Prop,
+  π (p black) → π (p white) → (Πx, π (p (primary x))) →
+  Πx, π (p x)
+
+////////////////// Type sum
+
+inductive {|sum|} : Π(A:Set) (B:Set), TYPE ≔
+  inl : ΠA B, τ A → {|sum|} A B
+| inr : ΠA B, τ B → {|sum|} A B
+
+assert {|ind_sum|} :
+  Πp, (ΠA B a, π (p A B (inl A B a))) → (ΠA B b, π (p A B (inr A B b))) →
+  ΠA B s, π (p A B s)
+
+////////////////// Boolean type
+
+constant symbol bool : Set
+set declared "𝔹"
+inductive 𝔹  : TYPE ≔
+ | true  : 𝔹
+ | false : 𝔹
+rule 𝔹 ↪ τ bool
+
+assert ind_𝔹 : // Induction principle
+  Πp : 𝔹 → Prop,
+  π (p true) → π (p false) →
+  Πb, π (p b)
 
 ///////////////// Natural number
 
@@ -79,8 +87,7 @@ inductive Nat : TYPE ≔
  | succ : Nat → Nat
 rule Nat ↪ τ nat
 
-type ind_Nat // Induction principle
-assert ind_Nat :
+assert ind_Nat : // Induction principle
   Πp:Nat → Prop, π(p z) → (Πx, π (p x) → π (p (succ x))) → Πx, π (p x)
 
 symbol p : Nat → Prop // Tests about inductive rules
@@ -94,7 +101,7 @@ assert z : Nat // Examples
 assert succ z : Nat
 assert succ (succ (succ z)) : Nat
 
-////////////////////// Lists
+////////////////////// List of natural numbers
 
 constant symbol list : Set
 inductive List : TYPE ≔
@@ -102,8 +109,7 @@ inductive List : TYPE ≔
  | cons : Nat → List → List
 rule List ↪ τ list
 
-type ind_List // Induction principle
-assert ind_List :
+assert ind_List : // Induction principle
   Π(p:List → Prop), π(p nil) → (Πx l,π(p l) → π(p(cons x l))) → Πl,π(p l)
 
 symbol pList : List → Prop // Tests about inductive rules
@@ -125,8 +131,7 @@ inductive L : Πa:Set, TYPE ≔
  | nilL  : Πa, L a
  | consL : Πa, τ a → L a → L a
 
-type ind_L // Induction principle
-assert ind_L :
+assert ind_L : // Induction principle
   Πp, (Πa, π(p a (nilL a))) → (Πa x l, π(p a l) → π(p a (consL a x l))) → Πa l, π(p a l)
 
 symbol pL : Πa, L a → Prop // Tests about inductive rules
@@ -152,8 +157,7 @@ inductive Vec : Nat → TYPE ≔
  | nil_vec   : Vec z
  | cons_vec  : Πn, A → Vec n → Vec (succ n)
 
-type ind_Vec // Induction principle
-assert ind_Vec :
+assert ind_Vec : // Induction principle
  Πp, π(p z nil_vec) → (Πn x v, π(p n v) → π(p (succ n) (cons_vec n x v))) → Πn v, π(p n v)
 
 symbol pV : Πn, Vec n → Prop // Tests about inductive rules
@@ -175,8 +179,7 @@ inductive Vec_param : Π(a : Set), Π(n : Nat), TYPE ≔
  | nil_vec_p   : Πa, Vec_param a z
  | cons_vec_p  : Πa n (_:τ a), Vec_param a n → Vec_param a (succ n)
 
-type ind_Vec_param // Induction principle
-assert ind_Vec_param :
+assert ind_Vec_param : // Induction principle
   Πp, (Πa, π(p a z (nil_vec_p a))) → (Πa n x v, π(p a n v) → π(p a (succ n) (cons_vec_p a n x v))) → Πa n v, π(p a n v)
 
 symbol pV_p : Πa n, Vec_param a n → Prop // Tests about inductive rules
@@ -194,18 +197,6 @@ assert cons_vec_p nat (succ z) (succ (succ (succ z))) (cons_vec_p nat z z (nil_v
 assertnot cons_vec_p nat (succ z) (succ (succ (succ z))) (cons_vec_p nat z true (nil_vec_p nat)) : Vec_param nat (succ (succ z))
 assert cons_vec_p bool (succ z) false (cons_vec_p bool z true (nil_vec_p bool)) : Vec_param bool (succ (succ z))
 
-////////////////// Example of mutual inductive type
-
-// inductive Expr : Set ≔
-//    Lit : τ nat   → Expr
-//  | Add : Expr  → Expr → Expr
-//  | If  : BExpr → Expr → Expr → Expr
-// with BExpr : Set :=
-//  | BLit  : τ bool  → BExpr
-//  | And   : BExpr → BExpr → BExpr
-//  | Not   : BExpr → BExpr
-//  | Equal : Expr  → Expr → BExpr
-
 ////////////////// Type Bush (nested inductive type)
 
 symbol bush : Set →  Set
@@ -214,8 +205,7 @@ inductive Bush : Π(_:Set), TYPE ≔
  | BCons : Πa, τ a → Bush (bush a) → Bush a
 rule Bush $a ↪ τ (bush $a)
 
-type ind_Bush // Induction principle
-assert ind_Bush :
+assert ind_Bush : // Induction principle
   Πp, (Πa, π(p a (BNil a))) → (Πa x l, π(p (bush a) l) → π(p a (BCons a x l))) → Πa l, π(p a l)
 
 symbol pB : Πa, Bush a → Prop // Tests about inductive rules
@@ -238,8 +228,8 @@ inductive fin : Nat → TYPE ≔
   | new : Πn, fin (succ n)
   | inj : Πn, fin n → fin (succ n)
 
-type ind_fin // Induction principle
-assert ind_fin : Πp, (Πn, π (p (succ n) (new n))) → (Πn f, π (p n f) → π (p (succ n) (inj n f))) → Πn f, π (p n f)
+assert ind_fin : // Induction principle
+  Πp, (Πn, π (p (succ n) (new n))) → (Πn f, π (p n f) → π (p (succ n) (inj n f))) → Πn f, π (p n f)
 
 symbol pF : Πn, fin n → Prop // Tests about inductive rules
 symbol pinew : Πn, π (pF (succ n) (new n))
@@ -265,8 +255,7 @@ inductive listb : Π(bound : τ nat), TYPE ≔
    Bnil  : Πbound, listb bound
  | Bcons : Πbound x, π (x ≤ bound) → listb bound → listb bound
 
-type ind_listb // Induction principle
-assert ind_listb :
+assert ind_listb : // Induction principle
 Πp, (Πbound, π(p bound (Bnil bound))) →
 (Πbound x (prf:π (x ≤ bound)) l, π(p bound l) → π(p bound (Bcons bound x prf l))) → 
 Πbound l, π(p bound l)
@@ -290,11 +279,10 @@ inductive even : Nat → TYPE ≔
 | O_even      : even z
 | plus_2_even : Πn:τ nat, even n → even (succ (succ n))
 
-type ind_even
-
-///////////////// Forest
-
-// TODO ...
+assert ind_even : Πp,
+  π (p z O_even) →
+  (Πn prf, π (p n prf) → π (p (succ (succ n)) (plus_2_even n prf))) →
+  Πn e, π (p n e)
 
 /////////////////////////////
 // Some proofs

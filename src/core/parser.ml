@@ -310,12 +310,11 @@ let escaped_ident_no_delim = escaped_ident false
 let escaped_ident = escaped_ident true
 
 (** [add_prefix p s] adds the prefix [p] at the beginning of the
-    string [s]. *)
+    identifier [s]. *)
 let add_prefix : string -> string -> string = fun p s ->
-  if Str.string_match (Str.regexp "^{|.*|}$") s 0 then
-    let len = String.length s        in
-    let s   = String.sub s 2 (len-4) in
-    "{|" ^ p ^ s ^ "|}"
+  let n = String.length s in
+  if n >= 4 && s.[0] ='{' && s.[1] = '|' then
+    "{|" ^ p ^ String.sub s 2 (n-4) ^ "|}"
   else
     p ^ s
 

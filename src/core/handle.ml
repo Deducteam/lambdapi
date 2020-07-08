@@ -163,9 +163,8 @@ let handle_symbol :
 
 (** [handle_rules ss rs] handles the command [rule r1 with r2 ... with rn]
     with [ss] as the signature state.
-    On success, an updated signature state and the rules list are returned. *)
-let handle_rules : sig_state -> p_rule list
-                   -> sig_state * (sym * rule loc) list = fun ss rs ->
+    On success, an updated signature state is returned. *)
+let handle_rules : sig_state -> p_rule list -> sig_state = fun ss rs ->
   (* Scoping and checking each rule in turn. *)
   let handle_rule r =
     let pr = scope_rule ss r in
@@ -183,8 +182,7 @@ let handle_rules : sig_state -> p_rule list
   in
   List.iter add_rule rs;
   let syms = List.remove_phys_dups (List.map (fun (s, _) -> s) rs) in
-  List.iter Tree.update_dtree syms;
-  (ss, rs)
+  List.iter Tree.update_dtree syms; ss
 
 (** [handle_cmd ss cmd] tries to handle the command [cmd] with [ss] as the
     signature state. On success, an updated signature state is returned.  When
@@ -209,7 +207,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
       (* Verify the modifiers. *)
       let (prop, expo, mstrat) = handle_modifiers ms in
       (fst (handle_symbol ss expo prop mstrat x xs a), None)
-  | P_rules(rs)                  -> (fst (handle_rules  ss rs),         None)
+  | P_rules(rs)                  -> (handle_rules  ss rs, None)
   | P_definition(ms, op, x, xs, ao, t) ->
       (* We check that [x] is not already used. *)
       if Sign.mem ss.signature x.elt then
@@ -269,51 +267,51 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
         fatal cmd.pos "Pattern matching strategy modifiers cannot be used \
                        in inductive types.";
       (* Add the inductive type in the signature *)
-      let (ss, sym_typ) = handle_symbol ss e Injec Eager id [] a in
+      let (ss, ind_sym) = handle_symbol ss e Injec Eager id [] a in
       (* Add the constructors in the signature.  *)
       let add_cons :
             sig_state * sym list -> ident * p_term -> sig_state * sym list
-        = fun(ss, cons_list) (id, a) ->
-        let (ss, sym_cons) = handle_symbol ss e Const Eager id [] a in
-        (ss, sym_cons::cons_list)
+        = fun (ss, cons_list) (id, a) ->
+        let (ss, cons_sym) = handle_symbol ss e Const Eager id [] a in
+        (ss, cons_sym::cons_list)
       in
       let (ss, cons_list) = List.fold_left add_cons (ss, []) l in
       let cons_list = List.rev cons_list  in
       (* Compute the induction principle *)
-      let ind_typ = Inductive.principle ss cmd.pos sym_typ cons_list in
+      let rec_typ = Inductive.principle ss cmd.pos ind_sym cons_list in
       (* Check the type of the induction principle *)
-      (match Typing.infer [] ind_typ with
-       | Some _ -> ()
-       | None   ->
-           fatal cmd.pos "The type of the generated inductive principle of
-                          [%a] isn't correct. Please, raise an issue."
-             pp_term ind_typ);
+      begin
+        match Typing.infer [] rec_typ with
+        | Some _ -> ()
+        | None   ->
+            fatal cmd.pos "The type of the generated inductive principle of
+                           [%a] isn't typable. Please, raise an issue."
+              pp_term rec_typ
+      end;
       (* Add the induction principle in the signature *)
-      let ind_name = Pos.make cmd.pos (Parser.add_prefix "ind_" id.elt) in
+      let rec_name = Pos.make cmd.pos (Parser.add_prefix "ind_" id.elt) in
       if StrSet.mem id.elt !(ss.signature.sign_idents) then
         begin
-        Sign.add_ident ss.signature ind_name.elt;
+        Sign.add_ident ss.signature rec_name.elt;
         if !log_enabled then
           log_hndl "This ident %a is already in the signature \
                     and now the ident %a too !"
-            Pretty.pp_ident id Pretty.pp_ident ind_name;
+            Pretty.pp_ident id Pretty.pp_ident rec_name;
         end;
-      let (ss, sym_ind) =
-        Sig_state.add_symbol ss e Defin Eager ind_name ind_typ [] None
+      let (ss, rec_sym) =
+        Sig_state.add_symbol ss e Defin Eager rec_name rec_typ [] None
       in
       if !log_enabled then
         log_hndl "The induction principle named %a is %a"
-          Pretty.pp_ident ind_name Print.pp_term ind_typ;
-      (* Compute the rules associated with the induction principle *)
+          Pretty.pp_ident rec_name Print.pp_term rec_typ;
+      (* Compute the rules associated with the induction principle,
+         and add it to the signature *)
       let rs =
-        Inductive.ind_rule sym_typ sym_ind cons_list
+        Inductive.rec_rules ind_sym rec_sym cons_list
       in
-      let (ss, ind_rules) = handle_rules ss rs       in
-      let ind_rules = List.map (fun (_,r) -> r.elt) ind_rules in
-      (* Add the rules of induction principle in the signature *)
-      sym_ind.sym_rules := ind_rules @ !(sym_ind.sym_rules);
+      let ss = handle_rules ss rs in
       (* Store inductive structure in the field "sign_ind" of the signature *)
-      Sign.add_inductive ss.signature sym_typ cons_list sym_ind;
+      Sign.add_inductive ss.signature ind_sym cons_list rec_sym;
       (ss, None)
   | P_theorem(ms, stmt, ts, pe) ->
       let (x,xs,a) = stmt.elt in

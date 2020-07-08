@@ -12,7 +12,7 @@
  (modules :standard)
  (c_names stubs)
  (preprocess (per_module ((action (run pa_ocaml %{input-file})) parser)))
- (libraries str unix stdlib-shims timed bindlib earley.core why3))
+ (libraries unix stdlib-shims timed bindlib earley.core why3))
 
 (ocamllex legacy_lexer)
 (menhir
