@@ -23,7 +23,7 @@ let get_config : Sig_state.t -> Pos.popt -> config = fun ss pos ->
   { symb_Prop = builtin "Prop"
   ; symb_prf  = builtin "P" }
 
-(** [fold_cons_typ codom domrec dom ind_sym cons_sym] generates some value
+(** [fold_cons_typ pos codom domrec dom ind_sym cons_sym] generates some value
     iteratively by going through the structure of [sym_cons.sym_type]. On
     the codomain, the function [codom] is called on the arguments to which
     [ind_sym] is applied and the variables of the products (in reverse order).
@@ -32,12 +32,11 @@ let get_config : Sig_state.t -> Pos.popt -> config = fun ss pos ->
     the terms to which [ind_sym] is applied, the variable of the product, and
     the value built from the codomain. *)
 let fold_cons_typ :
-      popt ->
-      (term list -> tvar list -> 'a)
+      popt -> (term list -> tvar list -> 'a)
       -> (term list -> term -> tvar -> 'a -> 'a)
       -> (term list -> term -> tvar -> 'a -> 'a)
-      -> sym -> sym -> 'a
-  = fun pos codom domrec dom ind_sym cons_sym ->
+      -> sym -> sym -> 'a =
+  fun pos codom domrec dom ind_sym cons_sym ->
   let rec aux xs a =
     match Basics.get_args a with
     | (Symb(s), ts) ->
@@ -171,19 +170,6 @@ module P  =
       Pos.none (P_Appl(t1, t2))
   end
 
-(*
-let create_arg : int -> p_term list = fun len ->
-  let rec aux : int -> p_term list -> p_term list = fun i acc ->
-    if i = 0 then
-      acc
-    else
-      let head =
-        Pos.none (P_Patt (Some (Pos.none ("a" ^ (string_of_int i))), None))
-      in
-      aux (i-1) (head::acc)
-  in
-  aux len []*)
-
 (** [gen_rec_rules ind_sym rec_sym cons_list] returns the p_rules linking
     with an induction principle [rec_sym] of the inductive type [ind_sym]
     (with its constructors [cons_list]). *)
@@ -227,8 +213,8 @@ let gen_rec_rules : sym -> sym -> sym list -> p_rule list =
   (* [gen_rule_cons cons_sym] creates a p_rule according to a constructor
      [cons_sym]. *)
   let gen_rule_cons : sym -> p_rule = fun cons_sym ->
-    let p_patt       = P.patt0 ("p" ^ cons_sym.sym_name) in (* RHS *)
-    let t_ident  = P.iden cons_sym.sym_name in (* LHS *)
+    let p_patt = P.patt0 ("p" ^ cons_sym.sym_name) in (* RHS *)
+    let t_ident = P.iden cons_sym.sym_name in (* LHS *)
     let rec aux : p_term list -> term -> p_term list -> int -> p_rule =
       fun arg_list t hyp_rec_list i ->
       match Basics.get_args t with
@@ -239,8 +225,6 @@ let gen_rec_rules : sym -> sym -> sym list -> p_rule list =
               tmp t_ident, tmp p_patt
             in
             let ts = List.map type_to_pattern ts in
-            (*let len = List.length l in
-            let arg_type = app common_head (create_arg len) in*)
             let arg_type = app common_head ts in
             let lhs_x = P.appl arg_type lhs_end in
             let rhs_x = app rhs_x_head hyp_rec_list in
@@ -259,8 +243,6 @@ let gen_rec_rules : sym -> sym -> sym list -> p_rule list =
                 in
                 if s == ind_sym then
                   let ts = List.map type_to_pattern ts in
-                  (*let len = List.length l in
-                  let arg_type = app common_head (create_arg len) in*)
                   let arg_type = app common_head ts in
                   let hyp_rec_x = P.appl arg_type arg_patt in
                   let new_hyp_rec_x = hyp_rec_x::hyp_rec_list in

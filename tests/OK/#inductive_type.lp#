@@ -31,6 +31,8 @@ set builtin "eqind" ≔ eq_ind
 // Some examples of inductive types
 /////////////////////////////
 
+set debug +g
+
 ////////////////// Primary color
 
 set declared "ℝ"
