@@ -31,29 +31,29 @@ set builtin "eqind" ≔ eq_ind
 // Some examples of inductive types
 /////////////////////////////
 
+set debug +g
+
 ////////////////// Primary color
 
 set declared "ℝ"
 set declared "𝔾"
-set declared "𝔹"
 inductive RGB : TYPE ≔
  | ℝ  : RGB
  | 𝔾 : RGB
- | 𝔹 : RGB
+ | Blue : RGB
 
 assert ind_RGB : // Induction principle
   Πp : RGB → Prop,
-  π (p ℝ) → π (p 𝔾) → π (p 𝔹) →
+  π (p ℝ) → π (p 𝔾) → π (p Blue) →
   Πx, π (p x)
 
 symbol pRGB : RGB → Prop // Tests about inductive rules
 symbol piR : π (pRGB ℝ)
 symbol piG : π (pRGB 𝔾)
-symbol piB: π (pRGB 𝔹)
-symbol pisucc : Πx, π (p x) → π (p (succ x))
+symbol piB: π (pRGB Blue)
 assert ind_RGB pRGB piR _ _  ℝ ≡ piR
 assert ind_RGB pRGB _ piG _ 𝔾 ≡ piG
-assert ind_RGB pRGB _ _ piB 𝔹 ≡ piB
+assert ind_RGB pRGB _ _ piB Blue ≡ piB
 
 ////////////////// Type color
 
@@ -86,10 +86,10 @@ inductive 𝔹  : TYPE ≔
  | false : 𝔹
 rule 𝔹 ↪ τ bool
 
-assert ind_𝔹 : // Induction principle
-  Πp : 𝔹 → Prop,
-  π (p true) → π (p false) →
-  Πb, π (p b)
+//assert ind_𝔹 : // Induction principle
+//  Πp : 𝔹 → Prop,
+//  π (p true) → π (p false) →
+//  Πb, π (p b)
 
 ///////////////// Natural number
 
