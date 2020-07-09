@@ -278,7 +278,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
       let (ss, cons_list) = List.fold_left add_cons (ss, []) l in
       let cons_list = List.rev cons_list  in
       (* Compute the induction principle *)
-      let rec_typ = Inductive.principle ss cmd.pos ind_sym cons_list in
+      let rec_typ = Inductive.gen_rec_type ss cmd.pos ind_sym cons_list in
       (* Check the type of the induction principle *)
       begin
         match Typing.infer [] rec_typ with
@@ -306,9 +306,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
           Pretty.pp_ident rec_name Print.pp_term rec_typ;
       (* Compute the rules associated with the induction principle,
          and add it to the signature *)
-      let rs =
-        Inductive.rec_rules ind_sym rec_sym cons_list
-      in
+      let rs = Inductive.rec_rules ind_sym rec_sym cons_list in
       let ss = handle_rules ss rs in
       (* Store inductive structure in the field "sign_ind" of the signature *)
       Sign.add_inductive ss.signature ind_sym cons_list rec_sym;

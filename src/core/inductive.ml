@@ -23,11 +23,11 @@ let get_config : Sig_state.t -> Pos.popt -> config = fun ss pos ->
   { symb_Prop = builtin "Prop"
   ; symb_prf  = builtin "P" }
 
-(** [change_codom_ind_typ pos ind_sym codom] assumes that the type of
-    [ind_sym] is of the form [Πx1:a1,..., Πxn:an, TYPE]. It then generates
-    a [tbox] similar to this type except that [TYPE] is replaced by
+(** [gen_ind_typ_codom pos ind_sym codom] assumes that the type of [ind_sym]
+    is of the form [Πx1:a1,..., Πxn:an, TYPE]. It then generates a [tbox]
+    similar to this type except that [TYPE] is replaced by
     [codom [x1;...;xn]]. *)
-let change_codom_ind_typ : popt -> sym -> (tbox list -> tbox) -> tbox =
+let gen_ind_typ_codom : popt -> sym -> (tbox list -> tbox) -> tbox =
   fun pos ind_sym codom ->
   let rec aux : tvar list -> term -> tbox = fun xs a ->
     match Basics.get_args a with
@@ -38,10 +38,10 @@ let change_codom_ind_typ : popt -> sym -> (tbox list -> tbox) -> tbox =
     | _ -> fatal pos "The type of %a is not supported" pp_symbol ind_sym
   in aux [] !(ind_sym.sym_type)
 
-(** [principle ss pos ind_sym cons_list] returns an induction principle which
+(** [gen_rec_type ss pos ind_sym cons_list] returns an induction principle which
     is created thanks to the symbol of the inductive type [ind_sym] (and its
     position [pos]), its constructors [cons_list] and the signature [ss]. *)
-let principle : Sig_state.t -> popt -> sym -> sym list -> term =
+let gen_rec_type : Sig_state.t -> popt -> sym -> sym list -> term =
   fun ss pos ind_sym cons_list ->
 
   (* STEP 0: Define some tools which will be useful *)
@@ -56,7 +56,7 @@ let principle : Sig_state.t -> popt -> sym -> sym list -> term =
   (* STEP 1: Create the type of the property p *)
   let prop = _Symb c.symb_Prop in
   let codom ts = _Impl (fapp ind_sym ts) prop in
-  let p_type = change_codom_ind_typ pos ind_sym codom in
+  let p_type = gen_ind_typ_codom pos ind_sym codom in
 
   (* STEP 2: Create each clause according to a constructor *)
   (* [case_of cons_sym] creates a clause according to a constructor
@@ -103,7 +103,7 @@ let principle : Sig_state.t -> popt -> sym -> sym list -> term =
     let t = Bindlib.bind_var x (prf_of_p ts (_Vari x)) in
     _Prod (fapp ind_sym ts) t
   in
-  let conclusion = change_codom_ind_typ pos ind_sym codom in
+  let conclusion = gen_ind_typ_codom pos ind_sym codom in
 
   (* STEP 4: Create the induction principle *)
 
@@ -232,11 +232,9 @@ let rec_rules : sym -> sym -> sym list -> p_rule list =
           begin
             match Basics.get_args a with
             | (Symb(s), ts) ->
-                let x =
-                  Bindlib.new_var mkfree ("x" ^ (string_of_int i))
+                let arg_patt =
+                  create_patt (Pos.none ("x" ^ (string_of_int i)))
                 in
-                let arg = Pos.none (Bindlib.name_of x) in
-                let arg_patt = create_patt arg in
                 if s == ind_sym then
                   let ts = List.map type_to_pattern ts in
                   (*let len = List.length l in
