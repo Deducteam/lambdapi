@@ -23,6 +23,39 @@ let get_config : Sig_state.t -> Pos.popt -> config = fun ss pos ->
   { symb_Prop = builtin "Prop"
   ; symb_prf  = builtin "P" }
 
+(** [fold_cons_typ codom domrec dom ind_sym cons_sym] generates some value
+    iteratively by going through the structure of [sym_cons.sym_type]. On
+    the codomain, the function [codom] is called on the arguments to which
+    [ind_sym] is applied and the variables of the products (in reverse order).
+    In case of a product, the functions [domrec] and [dom] are called depend-
+    ing on whether the domain type is recursive or not. They are applied to
+    the terms to which [ind_sym] is applied, the variable of the product, and
+    the value built from the codomain. *)
+let fold_cons_typ :
+      popt ->
+      (term list -> tvar list -> 'a)
+      -> (term list -> tvar -> 'a -> 'a)
+      -> (term list -> tvar -> 'a -> 'a)
+      -> sym -> sym -> 'a
+  = fun pos codom domrec dom ind_sym cons_sym ->
+  let rec aux xs a =
+    match Basics.get_args a with
+    | (Symb(s), ts) ->
+       if s == ind_sym then codom ts xs
+       else fatal pos "%a is not a constructor of %a"
+              pp_symbol cons_sym pp_symbol ind_sym
+    | (Prod(a,b), _) ->
+       let (x,b) = Basics.unbind_name b in
+       let b = aux (x::xs) b in
+       begin
+         match Basics.get_args a with
+         | (Symb(s), ts) ->
+            if s == ind_sym then domrec ts x b else dom ts x b
+         | _ -> fatal pos "The type of %a is not supported" pp_symbol cons_sym
+       end
+    | _ -> fatal pos "The type of %a is not supported" pp_symbol cons_sym
+  in aux [] !(cons_sym.sym_type)
+
 (** [gen_ind_typ_codom pos ind_sym codom] assumes that the type of [ind_sym]
     is of the form [Πx1:a1,..., Πxn:an, TYPE]. It then generates a [tbox]
     similar to this type except that [TYPE] is replaced by
@@ -65,40 +98,22 @@ let gen_rec_type : Sig_state.t -> popt -> sym -> sym list -> term =
   (* [case_of cons_sym] creates a clause according to a constructor
      [cons_sym]. *)
   let case_of : sym -> tbox = fun cons_sym ->
-    let rec aux : tvar list -> term -> tbox = fun xs a ->
-      match Basics.get_args a with
-      | (Symb(s), ts) ->
-          if s == ind_sym then
-            prf_of_p (List.map lift ts)
-              (app (_Symb cons_sym) (List.rev_map _Vari xs))
-          else
-            fatal pos "%a is not a constructor of %a"
-              pp_symbol cons_sym pp_symbol ind_sym
-      | (Prod(a,b), _) ->
-          let (x,b) = Basics.unbind_name b in
-          let b = aux (x::xs) b in
-          begin
-            match Basics.get_args a with
-            | (Symb(s), ts) ->
-                let b =
-                  (* In case of a recursive argument, we create an inductive
-                     hypothesis. *)
-                  if s == ind_sym then
-                    _Impl (prf_of_p (List.map lift ts) (_Vari x)) b
-                  else b
-                in
-                _Prod (lift a) (Bindlib.bind_var x b)
-            | _ ->
-                fatal pos "The type of %a is not supported" pp_symbol cons_sym
-          end
-      | _ -> fatal pos "The type of %a is not supported" pp_symbol cons_sym
+    let codom ts xs =
+      prf_of_p (List.map lift ts)
+        (app (_Symb cons_sym) (List.rev_map _Vari xs))
     in
-    let res = aux [] !(cons_sym.sym_type) in
-    if !log_enabled then
-      log_ind "The clause of the constructor [%a] is %a"
-        Print.pp_term (Symb(cons_sym))
-        Print.pp_term (Bindlib.unbox res);
-    res
+    let domrec ts x b =
+      let ts = List.map lift ts in
+      let a = app (_Symb ind_sym) ts in
+      let b = _Impl (prf_of_p ts (_Vari x)) b in
+      _Prod a (Bindlib.bind_var x b)
+    in
+    let dom ts x b =
+      let ts = List.map lift ts in
+      let a = app (_Symb ind_sym) ts in
+      _Prod a (Bindlib.bind_var x b)
+    in
+    fold_cons_typ pos codom domrec dom ind_sym cons_sym
   in
 
   (* STEP 3: Create the conclusion of the inductive principle *)
@@ -135,49 +150,28 @@ let rec type_to_pattern : term -> p_term = fun t ->
   | Meta _       -> fatal None "[Meta] not possible"
   | Patt _       -> fatal None "[Patt] not possible"
   | TEnv _       -> fatal None "[TEnv] not possible"
-module P 
-  (*sig
-    (** Representation of a goal. *)
-    type t
-iden, patt, app, fapp
-    (** [of_meta m] create a goal from the metavariable [m]. *)
-    val of_meta : meta -> t
 
-    (** [get_meta g] returns the metavariable associated to goal [g]. *)
-    val get_meta : t -> meta
-
-    (** [get_type g] returns the environment and expected type of the goal. *)
-    val get_type : t -> Env.t * term
-
-    (** [simpl g] simplifies the given goal, evaluating its type to SNF. *)
-    val simpl : t -> t
-
-    (** Comparison function. *)
-    val compare : t -> t -> int
-  end*) =
+module P  =
   struct
 
+    (** [iden s] creates an identifier without position thanks to the name
+        [s]. *)
     let iden : string -> p_term = fun s ->
-      Pos.none (P_Iden(Pos.none ([], s), false))
+      Pos.none (P_Iden(Pos.none ([], s), true))
 
+    (** [patt s ts] creates a pattern without position thanks to the name
+        [s] and the terms [ts]. *)
     let patt : string -> p_term array option -> p_term = fun s ts ->
       Pos.none (P_Patt (Some (Pos.none s), ts))
 
-    let p_patt0: string -> p_term = fun s -> patt s None
+    (** [patt s] creates a pattern without position thanks to the name [s]. *)
+    let patt0: string -> p_term = fun s -> patt s None
 
+    (** [appl t1 t2] creates an application of [t1] to [t2] without
+        position. *)
     let appl : p_term -> p_term -> p_term = fun t1 t2 ->
       Pos.none (P_Appl(t1, t2))
   end
-  
-(** Some constructors to create a p_term without position *)
-
-
-
-let _P_Patt : strloc option -> p_term array -> p_term = fun s ts ->
-  Pos.none (P_Patt(s, Some ts))
-
-(** [create_patt t] creates a pattern [$t] without position *)
-let create_patt : strloc -> p_term = fun t -> _P_Patt (Some t) [||]
 
 (*
 let create_arg : int -> p_term list = fun len ->
@@ -217,14 +211,14 @@ let gen_rec_rules : sym -> sym -> sym list -> p_rule list =
   in
   let common_head = fapp head (_P_Appl p_iden p_patt) in*)
   let p_iden = P.iden rec_sym.sym_name in
-  let p_patt = create_patt (Pos.none "p") in
+  let p_patt = P.patt0 "p" in
   let head   = P.appl p_iden p_patt in
   let arg : sym list -> p_term = fun l  ->
     let rec aux : sym list -> p_term -> p_term = fun l acc ->
       match l with
       | []   -> acc
       | t::q ->
-          let p_patt = create_patt (Pos.none ("p" ^ t.sym_name)) in
+          let p_patt = P.patt0 ("p" ^ t.sym_name) in
           aux q (P.appl acc p_patt)
     in
     aux l head
@@ -235,8 +229,7 @@ let gen_rec_rules : sym -> sym -> sym list -> p_rule list =
   (* [gen_rule_cons cons_sym] creates a p_rule according to a constructor
      [cons_sym]. *)
   let gen_rule_cons : sym -> p_rule = fun cons_sym ->
-    let pt       = Pos.none ("p" ^ cons_sym.sym_name) in (* RHS *)
-    let p_patt   = create_patt pt in
+    let p_patt       = P.patt0 ("p" ^ cons_sym.sym_name) in (* RHS *)
     let t_ident  = P.iden cons_sym.sym_name in (* LHS *)
     let rec aux : p_term list -> term -> p_term list -> int -> p_rule =
       fun arg_list t hyp_rec_list i ->
@@ -264,7 +257,7 @@ let gen_rec_rules : sym -> sym -> sym list -> p_rule list =
             match Basics.get_args a with
             | (Symb(s), ts) ->
                 let arg_patt =
-                  create_patt (Pos.none ("x" ^ (string_of_int i)))
+                  P.patt0 ("x" ^ (string_of_int i))
                 in
                 if s == ind_sym then
                   let ts = List.map type_to_pattern ts in
