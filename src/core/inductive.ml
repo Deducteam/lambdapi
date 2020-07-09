@@ -34,8 +34,8 @@ let get_config : Sig_state.t -> Pos.popt -> config = fun ss pos ->
 let fold_cons_typ :
       popt ->
       (term list -> tvar list -> 'a)
-      -> (term list -> tvar -> 'a -> 'a)
-      -> (term list -> tvar -> 'a -> 'a)
+      -> (term list -> term -> tvar -> 'a -> 'a)
+      -> (term list -> term -> tvar -> 'a -> 'a)
       -> sym -> sym -> 'a
   = fun pos codom domrec dom ind_sym cons_sym ->
   let rec aux xs a =
@@ -50,7 +50,7 @@ let fold_cons_typ :
        begin
          match Basics.get_args a with
          | (Symb(s), ts) ->
-            if s == ind_sym then domrec ts x b else dom ts x b
+            if s == ind_sym then domrec ts a x b else dom ts a x b
          | _ -> fatal pos "The type of %a is not supported" pp_symbol cons_sym
        end
     | _ -> fatal pos "The type of %a is not supported" pp_symbol cons_sym
@@ -102,16 +102,13 @@ let gen_rec_type : Sig_state.t -> popt -> sym -> sym list -> term =
       prf_of_p (List.map lift ts)
         (app (_Symb cons_sym) (List.rev_map _Vari xs))
     in
-    let domrec ts x b =
+    let domrec ts a x b =
       let ts = List.map lift ts in
-      let a = app (_Symb ind_sym) ts in
       let b = _Impl (prf_of_p ts (_Vari x)) b in
-      _Prod a (Bindlib.bind_var x b)
+      _Prod (lift a) (Bindlib.bind_var x b)
     in
-    let dom ts x b =
-      let ts = List.map lift ts in
-      let a = app (_Symb ind_sym) ts in
-      _Prod a (Bindlib.bind_var x b)
+    let dom _ a x b =
+      _Prod (lift a) (Bindlib.bind_var x b)
     in
     fold_cons_typ pos codom domrec dom ind_sym cons_sym
   in
@@ -164,7 +161,8 @@ module P  =
     let patt : string -> p_term array option -> p_term = fun s ts ->
       Pos.none (P_Patt (Some (Pos.none s), ts))
 
-    (** [patt s] creates a pattern without position thanks to the name [s]. *)
+    (** [patt0 s] creates a pattern without position thanks to the name
+        [s]. *)
     let patt0: string -> p_term = fun s -> patt s None
 
     (** [appl t1 t2] creates an application of [t1] to [t2] without
