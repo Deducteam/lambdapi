@@ -38,9 +38,12 @@ let gen_ind_typ_codom : popt -> sym -> (tbox list -> tbox) -> tbox =
     | _ -> fatal pos "The type of %a is not supported" pp_symbol ind_sym
   in aux [] !(ind_sym.sym_type)
 
-(** [gen_rec_type ss pos ind_sym cons_list] returns an induction principle which
-    is created thanks to the symbol of the inductive type [ind_sym] (and its
-    position [pos]), its constructors [cons_list] and the signature [ss]. *)
+(** [gen_rec_type ss pos ind_sym cons_list] generates the induction principle
+    of the inductive type [ind_sym] (and its position [pos]) with the cons-
+    tructors [cons_list]. Each recursive argument is followed by its induction
+    hypothesis. For instance, with [inductive T:TYPE := c: T->T->T], we have
+    [ind_T: Πp:T->Prop, (Πx1:T, π(p x1)-> Πx2:T, π(p x2)-> π(p(c x1 x2)) ->
+    Π x:T,π(p x)]. *)
 let gen_rec_type : Sig_state.t -> popt -> sym -> sym list -> term =
   fun ss pos ind_sym cons_list ->
 
@@ -62,17 +65,18 @@ let gen_rec_type : Sig_state.t -> popt -> sym -> sym list -> term =
   (* [case_of cons_sym] creates a clause according to a constructor
      [cons_sym]. *)
   let case_of : sym -> tbox = fun cons_sym ->
-    let rec aux : tbox list -> term -> tbox = fun xs a ->
+    let rec aux : tvar list -> term -> tbox = fun xs a ->
       match Basics.get_args a with
       | (Symb(s), ts) ->
           if s == ind_sym then
-            prf_of_p (List.map lift ts) (app (_Symb cons_sym) (List.rev xs))
+            prf_of_p (List.map lift ts)
+              (app (_Symb cons_sym) (List.rev_map _Vari xs))
           else
             fatal pos "%a is not a constructor of %a"
               pp_symbol cons_sym pp_symbol ind_sym
       | (Prod(a,b), _) ->
           let (x,b) = Basics.unbind_name b in
-          let b = aux ((Bindlib.box_var x)::xs) b in
+          let b = aux (x::xs) b in
           begin
             match Basics.get_args a with
             | (Symb(s), ts) ->
@@ -80,7 +84,7 @@ let gen_rec_type : Sig_state.t -> popt -> sym -> sym list -> term =
                   (* In case of a recursive argument, we create an inductive
                      hypothesis. *)
                   if s == ind_sym then
-                    _Impl (prf_of_p (List.map lift ts) (Bindlib.box_var x)) b
+                    _Impl (prf_of_p (List.map lift ts) (_Vari x)) b
                   else b
                 in
                 _Prod (lift a) (Bindlib.bind_var x b)
@@ -106,7 +110,6 @@ let gen_rec_type : Sig_state.t -> popt -> sym -> sym list -> term =
   let conclusion = gen_ind_typ_codom pos ind_sym codom in
 
   (* STEP 4: Create the induction principle *)
-
   let t =
     List.fold_right (fun a b -> _Impl (case_of a) b) cons_list conclusion
   in
@@ -132,19 +135,48 @@ let rec type_to_pattern : term -> p_term = fun t ->
   | Meta _       -> fatal None "[Meta] not possible"
   | Patt _       -> fatal None "[Patt] not possible"
   | TEnv _       -> fatal None "[TEnv] not possible"
+module P 
+  (*sig
+    (** Representation of a goal. *)
+    type t
+iden, patt, app, fapp
+    (** [of_meta m] create a goal from the metavariable [m]. *)
+    val of_meta : meta -> t
 
+    (** [get_meta g] returns the metavariable associated to goal [g]. *)
+    val get_meta : t -> meta
+
+    (** [get_type g] returns the environment and expected type of the goal. *)
+    val get_type : t -> Env.t * term
+
+    (** [simpl g] simplifies the given goal, evaluating its type to SNF. *)
+    val simpl : t -> t
+
+    (** Comparison function. *)
+    val compare : t -> t -> int
+  end*) =
+  struct
+
+    let iden : string -> p_term = fun s ->
+      Pos.none (P_Iden(Pos.none ([], s), false))
+
+    let patt : string -> p_term array option -> p_term = fun s ts ->
+      Pos.none (P_Patt (Some (Pos.none s), ts))
+
+    let p_patt0: string -> p_term = fun s -> patt s None
+
+    let appl : p_term -> p_term -> p_term = fun t1 t2 ->
+      Pos.none (P_Appl(t1, t2))
+  end
+  
 (** Some constructors to create a p_term without position *)
 
-let _P_Iden : qident -> bool -> p_term = fun ident b ->
-  Pos.none (P_Iden(ident, b))
+
 
 let _P_Patt : strloc option -> p_term array -> p_term = fun s ts ->
   Pos.none (P_Patt(s, Some ts))
 
-let _P_Appl : p_term -> p_term -> p_term = fun t1 t2 ->
-  Pos.none (P_Appl(t1, t2))
-
-(** [create_patt t] creates a pattern $[t] without position *)
+(** [create_patt t] creates a pattern [$t] without position *)
 let create_patt : strloc -> p_term = fun t -> _P_Patt (Some t) [||]
 
 (*
@@ -160,14 +192,14 @@ let create_arg : int -> p_term list = fun len ->
   in
   aux len []*)
 
-(** [rec_rules ind_sym rec_sym cons_list] returns the p_rules linking with an
-    induction principle [rec_sym] of the inductive type [ind_sym] (with its
-    constructors [cons_list]). *)
-let rec_rules : sym -> sym -> sym list -> p_rule list =
+(** [gen_rec_rules ind_sym rec_sym cons_list] returns the p_rules linking
+    with an induction principle [rec_sym] of the inductive type [ind_sym]
+    (with its constructors [cons_list]). *)
+let gen_rec_rules : sym -> sym -> sym list -> p_rule list =
   fun ind_sym rec_sym cons_list ->
 
   (* STEP 0: Define some tools which will be useful *)
-  let app   : p_term -> p_term list -> p_term = List.fold_left _P_Appl in
+  let app   : p_term -> p_term list -> p_term = List.fold_left P.appl in
   let fapp  : p_term list -> p_term -> p_term = fun ts f -> app f ts in
 (*  let app2  : sym -> sym list -> p_term = fun t q ->
     let p_patt = create_patt (Pos.none ("pi" ^ t.sym_name)) in
@@ -184,29 +216,28 @@ let rec_rules : sym -> sym -> sym list -> p_rule list =
     List.map (fun c -> create_patt (Pos.none ("pi" ^ c.sym_name))) cons_list
   in
   let common_head = fapp head (_P_Appl p_iden p_patt) in*)
-  let p_iden = _P_Iden (Pos.none ([], rec_sym.sym_name)) true in
+  let p_iden = P.iden rec_sym.sym_name in
   let p_patt = create_patt (Pos.none "p") in
-  let head   = _P_Appl p_iden p_patt in
+  let head   = P.appl p_iden p_patt in
   let arg : sym list -> p_term = fun l  ->
     let rec aux : sym list -> p_term -> p_term = fun l acc ->
       match l with
       | []   -> acc
       | t::q ->
           let p_patt = create_patt (Pos.none ("p" ^ t.sym_name)) in
-          aux q (_P_Appl acc p_patt)
+          aux q (P.appl acc p_patt)
     in
     aux l head
   in
   let common_head = arg cons_list in
 
   (* STEP 2: Create each p_rule according to a constructor *)
-  (* [create_p_rule cons_sym] creates a p_rule according to a constructor
+  (* [gen_rule_cons cons_sym] creates a p_rule according to a constructor
      [cons_sym]. *)
-  let create_p_rule : sym -> p_rule = fun cons_sym ->
+  let gen_rule_cons : sym -> p_rule = fun cons_sym ->
     let pt       = Pos.none ("p" ^ cons_sym.sym_name) in (* RHS *)
     let p_patt   = create_patt pt in
-    let qident_t = Pos.none ([], cons_sym.sym_name) in (* LHS *)
-    let t_ident  = _P_Iden qident_t true in
+    let t_ident  = P.iden cons_sym.sym_name in (* LHS *)
     let rec aux : p_term list -> term -> p_term list -> int -> p_rule =
       fun arg_list t hyp_rec_list i ->
       match Basics.get_args t with
@@ -220,7 +251,7 @@ let rec_rules : sym -> sym -> sym list -> p_rule list =
             (*let len = List.length l in
             let arg_type = app common_head (create_arg len) in*)
             let arg_type = app common_head ts in
-            let lhs_x = _P_Appl arg_type lhs_end in
+            let lhs_x = P.appl arg_type lhs_end in
             let rhs_x = app rhs_x_head hyp_rec_list in
             if !log_enabled then
               log_ind "The rule [%a] --> %a"
@@ -240,7 +271,7 @@ let rec_rules : sym -> sym -> sym list -> p_rule list =
                   (*let len = List.length l in
                   let arg_type = app common_head (create_arg len) in*)
                   let arg_type = app common_head ts in
-                  let hyp_rec_x = _P_Appl arg_type arg_patt in
+                  let hyp_rec_x = P.appl arg_type arg_patt in
                   let new_hyp_rec_x = hyp_rec_x::hyp_rec_list in
                   aux (arg_patt::arg_list) b new_hyp_rec_x (i+1)
                 else aux (arg_patt::arg_list) b hyp_rec_list  (i+1)
@@ -252,4 +283,4 @@ let rec_rules : sym -> sym -> sym list -> p_rule list =
   in
 
   (* STEP 3: Build all the p_rules *)
-  List.rev (List.map create_p_rule cons_list)
+  List.rev (List.map gen_rule_cons cons_list)
