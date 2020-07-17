@@ -5,9 +5,10 @@ open Files
 
 (** Abstract representation of a command (top-level item). *)
 module Command : sig
-  type t
+  type t = Syntax.p_command
   val equal : t -> t -> bool
   val get_pos : t -> Pos.popt
+  val get_qidents : t -> Syntax.qident list
 end
 
 (** Abstract representation of a tactic (proof item). *)

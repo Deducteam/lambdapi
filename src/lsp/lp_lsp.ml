@@ -11,6 +11,7 @@
 (************************************************************************)
 
 open Core
+open Lp_doc.M
 
 module F = Format
 module J = Yojson.Basic
@@ -126,6 +127,7 @@ let do_close _ofmt params =
 let grab_doc params =
   let document = dict_field "textDocument" params in
   let doc_file = string_field "uri" document in
+
   let start_doc, end_doc =
     Hashtbl.(find doc_table doc_file, find completed_table doc_file) in
   doc_file, start_doc, end_doc
@@ -233,60 +235,18 @@ let msg_fail hdr msg =
   LIO.log_error hdr msg;
   failwith msg
 
-(** [get_token line pos] tries to extract the corresponding token from
-   [line] for column [pos] ; this is used in go to definition, type on
-   hover, etc... The function is a bit complex due to the use of
-   Unicode chars in the Lambdapi code, it could surely be improved. *)
-let get_token line pos =
-  let regexp = Str.regexp "[^a-zA-Z0-9_]" in
-  let res_split = Str.full_split regexp line in
-  let count = 0 in
-  let rec iter_tokens count tokens pos =
-    match tokens with
-    | [] -> ""
-    | t::ts -> match t with
-      | Str.Text txt ->
-        let new_count = count + String.length txt in
-        if new_count >= pos
-        then txt
-        else iter_tokens new_count ts pos
-      | Str.Delim s ->
-        if String.equal s "\226"
-        then
-          let sym_table = ["\226\135\146"; "\226\134\146"; "\226\136\128"] in
-          let find_symb ts sym_table =
-            match ts with
-            | [] ->
-              msg_fail "get_token" "unicode symbol not in table"
-            | _::[] ->
-              msg_fail "get_token" "not enough chars"
-            | a::b::tl ->
-              match a,b with
-              | Str.Delim c, Str.Delim d ->
-                if List.mem ("\226"^c^d) sym_table
-                then
-                  let new_count = count + 1 in
-                  iter_tokens new_count tl pos
-                else
-                  let new_count = count + 1 in
-                  iter_tokens new_count ts pos
-              | _, _ ->
-                msg_fail "get_token" "expected Delim in split"
-          in find_symb ts sym_table
-        else
-          let new_count = (count + 1) in
-          iter_tokens new_count ts pos
-  in iter_tokens count res_split pos
-
-let get_symbol text l pos =
-  let lines = String.split_on_char '\n' text in
-  let line = List.nth lines l in
-  get_token line pos
+let get_symbol pos doc : string * interval = match (find pos doc) with
+  | None, _ -> "Lp_lsp.get_symbol : no symbol found",
+      (create_interval (create_point 0 0) (create_point 0 0))
+  | Some (_, token), interval -> token, interval
 
 let do_definition ofmt ~id params =
-  let file, _, doc = grab_doc params in
+  let _, _, doc = grab_doc params in
   let line, pos = get_textPosition params in
-  let sym_target = get_symbol doc.text line pos in
+
+  (*Positions sent by the client are one line late *)
+  let pt = create_point (line + 1) pos in
+  let sym_target, _ = get_symbol pt doc.map in
   LIO.log_error "definition" sym_target;
 
   let sym = Pure.get_symbols doc.final in
@@ -303,7 +263,12 @@ let do_definition ofmt ~id params =
     match StrMap.find_opt sym_target sym with
     | None
     | Some (_, None) -> `Null
-    | Some (_, Some pos) -> mk_definfo file pos
+    | Some (term, Some pos) ->
+      (*A JSON with the path towards the definition of the term
+      and its position is returned*)
+      (*/!\ : extension is fixed, only works for .lp files *)
+      mk_definfo Files.(module_to_file Terms.(term.sym_path)
+      ^ src_extension) pos
   in
   let msg = LSP.mk_reply ~id ~result:sym_info in
   LIO.send_json ofmt msg
@@ -311,8 +276,28 @@ let do_definition ofmt ~id params =
 let hover_symInfo ofmt ~id params =
   let _, _, doc = grab_doc params in
   let line, pos = get_textPosition params in
-  let sym_target = get_symbol doc.text line pos in
+
+  (*Positions sent by the client are one line late *)
+  let pt = create_point (line+1) pos in
+
+  (*The hovered token and its start/finish positions are stored*)
+  let sym_target, interval  = get_symbol pt doc.map in
+
+  LIO.log_error "hoverSymInfo" sym_target;
+
+  (*The information about the tokens is stored*)
   let sym = Pure.get_symbols doc.final in
+
+  (*The start/finish positions are used to hover the full qualified term,
+  not just the token*)
+  let start = interval_start interval and finish = interval_end interval in
+
+  let sl, sc, fl, fc =  (l start -1),  (c start -1),  (l finish -1),
+  (c finish -1) in
+  let s = `Assoc["line", `Int sl; "character", `Int sc] in
+  let f = `Assoc["line", `Int fl; "character", `Int fc] in
+  let range = `Assoc["start", s; "end", f] in
+
   let map_pp : string =
     Extra.StrMap.bindings sym
     |> List.map (fun (key, (sym,pos)) ->
@@ -322,19 +307,24 @@ let hover_symInfo ofmt ~id params =
   in
   LIO.log_error "symbol map" map_pp;
 
-  let sym_found = let open Timed in let open Terms in
-    match StrMap.find_opt sym_target sym with
-    | None ->
-      msg_fail "hover" "sym not found"
-    | Some (_, None) ->
-      msg_fail "hover" "sym not found"
-    | Some (sym, Some _) ->
-      !(sym.sym_type)
-  in let sym_type : string =
-    Format.asprintf "%a" Print.pp_term sym_found in
-  let result = `Assoc [ "contents", `String sym_type] in
-  let msg = LSP.mk_reply ~id ~result in
-  LIO.send_json ofmt msg
+  try
+    let sym_found = let open Timed in let open Terms in
+      match StrMap.find_opt sym_target sym with
+      | None
+      | Some (_, None) -> msg_fail "hover_SymInfo" "Sym not found"
+      | Some (sym, Some _) ->
+        !(sym.sym_type)
+    in let sym_type : string =
+      Format.asprintf "%a" Print.pp_term sym_found in
+    let result : J.t = `Assoc [ "contents", `String sym_type; "range", range ]
+    in
+
+    let msg = LSP.mk_reply ~id ~result in
+    LIO.send_json ofmt msg
+
+  with _ ->
+    let msg = LSP.mk_reply ~id ~result:`Null in
+    LIO.send_json ofmt msg
 
 let protect_dispatch p f x =
   try f x

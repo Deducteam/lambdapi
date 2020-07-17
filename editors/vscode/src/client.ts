@@ -170,7 +170,7 @@ function highlight(context : ExtensionContext, newProofState : Position, openEdi
 
 function lpRefresh(context : ExtensionContext, step : number, panel : WebviewPanel, openEditor : TextEditor) {
 
-    const newProofState : Position = stepProofState(context, step); //Proof goes one step earlier
+    const newProofState : Position = stepProofState(context, step); //Proof goes one step further/earlier
     refresh(panel, openEditor, newProofState); //Goals panel is refreshed
 
     highlight(context, newProofState, openEditor);
@@ -325,7 +325,7 @@ function checkProofForward(context : ExtensionContext) {
 
     //If the proof highlight is at the end of the document it can't go further
     const documentTotalLines : number = openEditor.document.lineCount ?? 0;
-    const step : number = proofState.line == documentTotalLines ? 0 : 1;
+    const step : number = proofState.line >= documentTotalLines ? 0 : 1;
 
     //Case the end has not been reached
     if(step)
@@ -347,7 +347,7 @@ function checkProofBackward(context : ExtensionContext) {
     }
 
     //If the proof highlight is at the beggining of the document it can't go any higher
-    const step : number = proofState.line == 1 ? 0 : -1;
+    const step : number = proofState.line <= 1 ? 0 : -1;
 
     //Case the proof state is not at the beggining of the document
     if(step == -1)

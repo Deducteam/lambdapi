@@ -38,6 +38,17 @@ Goals are visualised in a panel on the right side of the editor.
 * You can navigate the proof with `keybindings <#keybindings>`__.
 * “Cursor mode” can be toggled to navigate the proof with the cursor.
 
+Hover and definition
+^^^^^^^^^^^^^^^^^^^^
+
+Hovering a token will display its type if available. The "Go to
+definition" command is available, you can either :
+
+* press `F12` when your cursor is within the range of a certain symbol
+* `right-click` on the symbol -> "Go to definition". It is advised to
+  set up a keybinding for "Go Back" in File -> Preferences -> Keyboard
+  shortcuts.
+
 Snippets
 ^^^^^^^^
 
