@@ -4,6 +4,8 @@ open Extra
 open Console
 open Files
 
+let concat_map = Lplib.Utils.concat_map
+
 let rec pmap (l : 'a option list) : 'a list = match l with
   |[] -> []
   |h::t -> match h with
@@ -16,11 +18,7 @@ module Command = struct
   let equal = Syntax.eq_p_command
   let get_pos c = Pos.(c.pos)
 
-  let concat_map (f:'a -> 'b list) (l: 'a list) : 'b list =
-    List.concat (List.map f l)
-
-(*Messy pattern matching to get the qidents throughout the document*)
-
+  (*Messy pattern matching to get the qidents throughout the document*)
   let rec qidents_of_bound_p_arg (args: Syntax.p_arg)
   : Syntax.qident list * Pos.strloc list =
     match args with

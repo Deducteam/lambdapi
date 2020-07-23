@@ -5,7 +5,7 @@ open Files
 
 (** Abstract representation of a command (top-level item). *)
 module Command : sig
-  type t = Syntax.p_command
+  type t
   val equal : t -> t -> bool
   val get_pos : t -> Pos.popt
   val get_qidents : t -> Syntax.qident list

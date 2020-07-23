@@ -1,0 +1,6 @@
+(library
+ (name lplib)
+ (public_name lambdapi.lplib)
+ (modules cmap utils)
+ (libraries stdlib-shims str)
+)

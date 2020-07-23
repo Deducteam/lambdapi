@@ -11,107 +11,29 @@
 (************************************************************************)
 
 open Core
+
 module LSP = Lsp_base
 
 (* exception NoPosition of string *)
 
-module type RangeMap = sig
+module CursorMap = Lplib.Cmap.CursorMap
+module Range = Lplib.Cmap.Range
 
-  type point
-  type interval
-  type 'a t
+let concat_map = Lplib.Utils.concat_map
 
-  val create_point : int -> int -> point
-  val l : point -> int
-  val c : point -> int
+let interval_of_pos (p : Pos.pos) =
 
-  val interval_start : interval -> point
-  val interval_end : interval -> point
-
-  val create_interval : point -> point -> interval
-
-  type cmp = Before | In | After
-
-  val in_range : point -> interval -> cmp
-
-  val add : interval -> 'a -> 'a t -> 'a t
-  val find : point -> 'a t -> 'a option * interval
-
-  val empty : 'a t
-
-  val rangemap_to_string : ('a * string) t -> string
-end
-
-module M : RangeMap = struct
-
-  type point = { l : int; c : int }
-
-  type interval = point * point
-
-  let create_point l c = { l = l; c = c}
-
-  let l pt = pt.l
-
-  let c pt = pt .c
-
-  let interval_start (x, _) = x
-
-  let interval_end (_, y) = y
-
-  let create_interval x y =
-    assert ( (l x < l y) || (l x = l y && c x <= c y) );
-    (x, y)
-
-  type cmp = Before | In | After
-
-  let in_range pos (pos1, pos2) =
-
-    if pos.l < pos1.l || (pos.l = pos1.l && pos.c < pos1.c)
-    then Before
-
-    else if pos.l > pos2.l || (pos.l = pos2.l && pos.c > pos2.c)
-    then After
-
-    else In
-
-  type 'a t = (interval * 'a) list
-
-  let rec find (cursor_pos : point) (l: 'a t) = match l with
-    |(interval, elt)::t ->
-      if in_range cursor_pos interval = In
-      then (Some elt, interval)
-
-      else find cursor_pos t
-    |_ -> (None, (create_point 0 0, create_point 0 0))
-
-  let add (k:interval) (elt:'a) (l :'a t) = (k, elt)::l
-
-  let empty = []
-
-  let rec rangemap_to_string (map :  (_ * string) t) = match map with
-    | [] -> "End"
-    | h::t -> let ( ({l = sl; c = sc}, {l = fl; c= fc}), (_ , str) ) = h in
-    (string_of_int sl)^","^(string_of_int sc)^"|"^(string_of_int fl)^","
-    ^(string_of_int fc)^":"^str^"\n"^(rangemap_to_string t)
-end
-
-let interval_of_pos (p : Pos.pos) = let open M in
+  let open Range in
 
   let data = Lazy.force p in
-  let start : point = create_point data.start_line data.start_col in
-  let finish : point = create_point data.end_line data.end_col in
+  let start : point = make_point data.start_line data.start_col in
+  let finish : point = make_point data.end_line data.end_col in
 
-  create_interval start finish
+  make_interval start finish
 
 let interval_of_popt (p : Pos.popt) = match p with
-  | None -> failwith "interval_of_popt : no position given for the token"
+  | None -> failwith "Invalid arg"
   | Some pos -> interval_of_pos pos
-
-
-let rec maplist_of_p_command_list (doc : Syntax.qident list) = match doc with
-    | [] -> []
-    | h::t -> (h.pos, h.elt)::(maplist_of_p_command_list t)
-
 
 type doc_node =
   { ast   : Pure.Command.t
@@ -131,8 +53,7 @@ type t = {
   mutable root  : Pure.state; (* Only mutated after parsing. *)
   mutable final : Pure.state; (* Only mutated after parsing. *)
   nodes : doc_node list;
-  map : (Syntax.p_module_path * string) M.t;
-  str_map : string
+  map : (Syntax.p_module_path * string) CursorMap.t;
 }
 
 let option_default o1 d =
@@ -216,8 +137,7 @@ let new_doc ~uri ~version ~text =
     root;
     final = root;
     nodes = [];
-    map = M.empty;
-    str_map = ""
+    map = CursorMap.empty;
   }
 
 (* XXX: Save on close. *)
@@ -232,8 +152,7 @@ let dummy_loc =
         ; end_col = 2
         }
 
-let concat_map (f:'a -> 'b list) (l: 'a list) : 'b list =
-  List.concat (List.map f l)
+
 
 let check_text ~doc =
   let uri, version = doc.uri, doc.version in
@@ -249,15 +168,15 @@ let check_text ~doc =
     let qids = concat_map Pure.Command.get_qidents doc_spans in
 
     (*these qidents are then converted to a map*)
-    let f (map : (Syntax.p_module_path * string) M.t) (qid : Syntax.qident) =
-      M.add (interval_of_popt qid.pos) qid.elt map in
+    let f (map : (Syntax.p_module_path * string) CursorMap.t)
+    (qid : Syntax.qident) =
+      CursorMap.add (interval_of_popt qid.pos) qid.elt map in
 
-    let map = List.fold_left f M.empty qids in
-    let str_map = M.rangemap_to_string map in
+    let map = List.fold_left f CursorMap.empty qids in
 
     let nodes, final, diag =
       List.fold_left (process_cmd uri) ([],doc.root,[]) doc_spans in
-    let doc = { doc with nodes; final; map; str_map } in
+    let doc = { doc with nodes; final; map } in
     doc,
     LSP.mk_diagnostics ~uri ~version @@
     List.fold_left (fun acc (pos,lvl,msg,goal) ->

@@ -11,7 +11,10 @@
 (************************************************************************)
 
 open Core
-open Lp_doc.M
+open Lp_doc
+
+module CursorMap = Lplib.Cmap.CursorMap
+module Range = Lplib.Cmap.Range
 
 module F = Format
 module J = Yojson.Basic
@@ -235,19 +238,35 @@ let msg_fail hdr msg =
   LIO.log_error hdr msg;
   failwith msg
 
-let get_symbol pos doc : string * interval = match (find pos doc) with
-  | None, _ -> "Lp_lsp.get_symbol : no symbol found",
-      (create_interval (create_point 0 0) (create_point 0 0))
-  | Some (_, token), interval -> token, interval
+let get_symbol : Lp_doc.Range.point ->
+('a * 'b) Lp_doc.CursorMap.t -> ('b * Lp_doc.Range.t) option
+= fun pos doc ->
+
+  let open Lp_doc.CursorMap in
+
+  match (find pos doc) with
+  | None -> None
+  | Some(interval, (_, token)) -> Some (token, interval)
+
 
 let do_definition ofmt ~id params =
+
+  let open Lp_doc.Range in
+
   let _, _, doc = grab_doc params in
-  let line, pos = get_textPosition params in
+  let ln, pos = get_textPosition params in
 
   (*Positions sent by the client are one line late *)
-  let pt = create_point (line + 1) pos in
-  let sym_target, _ = get_symbol pt doc.map in
-  LIO.log_error "definition" sym_target;
+  let pt = make_point (ln + 1) pos in
+  let sym_target =
+    match get_symbol pt doc.map with
+    | None -> "No symbol found"
+    | Some(token,_) -> token
+  in
+
+  (*Some printing in the log*)
+  LIO.log_error "token map" (Lp_doc.CursorMap.to_string doc.map);
+  LIO.log_error "do_definition" sym_target;
 
   let sym = Pure.get_symbols doc.final in
   let map_pp : string =
@@ -274,16 +293,29 @@ let do_definition ofmt ~id params =
   LIO.send_json ofmt msg
 
 let hover_symInfo ofmt ~id params =
+
+  let open Lp_doc.Range in
+
   let _, _, doc = grab_doc params in
-  let line, pos = get_textPosition params in
+  let ln, pos = get_textPosition params in
 
   (*Positions sent by the client are one line late *)
-  let pt = create_point (line+1) pos in
+  let pt = make_point (ln + 1) pos in
+  LIO.log_error "searched point" (point_to_string pt);
 
   (*The hovered token and its start/finish positions are stored*)
-  let sym_target, interval  = get_symbol pt doc.map in
+  let sym_target, interval  =
+  match get_symbol pt doc.map with
+  |None -> "No symbol found", (make_interval pt pt)
+  |Some(token, range) -> token, range
+  in
+
+  (*Some printing in the log*)
+  LIO.log_error "token map" (Lp_doc.CursorMap.to_string doc.map);
 
   LIO.log_error "hoverSymInfo" sym_target;
+  LIO.log_error "hoverSymInfo" (interval_to_string interval);
+
 
   (*The information about the tokens is stored*)
   let sym = Pure.get_symbols doc.final in
@@ -292,8 +324,8 @@ let hover_symInfo ofmt ~id params =
   not just the token*)
   let start = interval_start interval and finish = interval_end interval in
 
-  let sl, sc, fl, fc =  (l start -1),  (c start -1),  (l finish -1),
-  (c finish -1) in
+  let sl, sc, fl, fc =  (line start -1),  (column start -1),
+  (line finish -1), (column finish -1) in
   let s = `Assoc["line", `Int sl; "character", `Int sc] in
   let f = `Assoc["line", `Int fl; "character", `Int fc] in
   let range = `Assoc["start", s; "end", f] in
