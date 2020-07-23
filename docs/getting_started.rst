@@ -97,7 +97,7 @@ command ``lambdapi check --recompile --verbose 4 internal/nat.lp``. As
 you are introduced to new commands (or discover them), feel free to try
 them out.
 
-**NOTE:** do not hesitate to report any problem you may have using our
+**Note:** do not hesitate to report any problem you may have using our
 `issue tracker <https://github.com/Deducteam/lambdapi/issues>`_.
 
 Installing a package
