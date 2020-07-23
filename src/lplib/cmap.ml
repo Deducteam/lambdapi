@@ -1,5 +1,6 @@
 (*Type of points and intervals. Used to determine if a cursor is in the range
 of a specific token, which is an interval of points (positions)*)
+(*The presence of t and compare make RangeType an OrderedType (in the sense of Map) *)
 module type RangeType = sig
 
   type point
@@ -131,12 +132,7 @@ module MakeCursorMap (Range : RangeType) = struct
   type point = Range.point
   
   let add interv elt map = 
-
-    if RangeMap.mem interv map
-    then failwith "CursorMap.add : tried to insert a token in an already mapped
-    interval"
-
-    else RangeMap.add interv elt map
+    RangeMap.add interv elt map
   
   let find cursor map =
 
