@@ -11,7 +11,6 @@
 (************************************************************************)
 
 open Core
-open Lp_doc
 
 module CursorMap = Lplib.Cmap.CursorMap
 module Range = Lplib.Cmap.Range
@@ -238,11 +237,11 @@ let msg_fail hdr msg =
   LIO.log_error hdr msg;
   failwith msg
 
-let get_symbol : Lp_doc.Range.point ->
-('a * 'b) Lp_doc.CursorMap.t -> ('b * Lp_doc.Range.t) option
+let get_symbol : Range.point ->
+('a * 'b) CursorMap.t -> ('b * Range.t) option
 = fun pos doc ->
 
-  let open Lp_doc.CursorMap in
+  let open CursorMap in
 
   match (find pos doc) with
   | None -> None
@@ -251,13 +250,11 @@ let get_symbol : Lp_doc.Range.point ->
 
 let do_definition ofmt ~id params =
 
-  let open Lp_doc.Range in
-
   let _, _, doc = grab_doc params in
   let ln, pos = get_textPosition params in
 
   (*Positions sent by the client are one line late *)
-  let pt = make_point (ln + 1) pos in
+  let pt = Range.make_point (ln + 1) pos in
   let sym_target =
     match get_symbol pt doc.map with
     | None -> "No symbol found"
@@ -265,7 +262,7 @@ let do_definition ofmt ~id params =
   in
 
   (*Some printing in the log*)
-  LIO.log_error "token map" (Lp_doc.CursorMap.to_string doc.map);
+  LIO.log_error "token map" (CursorMap.to_string doc.map);
   LIO.log_error "do_definition" sym_target;
 
   let sym = Pure.get_symbols doc.final in
@@ -294,27 +291,25 @@ let do_definition ofmt ~id params =
 
 let hover_symInfo ofmt ~id params =
 
-  let open Lp_doc.Range in
-
   let _, _, doc = grab_doc params in
   let ln, pos = get_textPosition params in
 
   (*Positions sent by the client are one line late *)
-  let pt = make_point (ln + 1) pos in
-  LIO.log_error "searched point" (point_to_string pt);
+  let pt = Range.make_point (ln + 1) pos in
+  LIO.log_error "searched point" (Range.point_to_string pt);
 
   (*The hovered token and its start/finish positions are stored*)
   let sym_target, interval  =
   match get_symbol pt doc.map with
-  |None -> "No symbol found", (make_interval pt pt)
+  |None -> "No symbol found", (Range.make_interval pt pt)
   |Some(token, range) -> token, range
   in
 
   (*Some printing in the log*)
-  LIO.log_error "token map" (Lp_doc.CursorMap.to_string doc.map);
+  LIO.log_error "token map" (CursorMap.to_string doc.map);
 
   LIO.log_error "hoverSymInfo" sym_target;
-  LIO.log_error "hoverSymInfo" (interval_to_string interval);
+  LIO.log_error "hoverSymInfo" (Range.interval_to_string interval);
 
 
   (*The information about the tokens is stored*)
@@ -322,10 +317,16 @@ let hover_symInfo ofmt ~id params =
 
   (*The start/finish positions are used to hover the full qualified term,
   not just the token*)
-  let start = interval_start interval and finish = interval_end interval in
+  let start = Range.interval_start interval
+  and finish = Range.interval_end interval in
 
-  let sl, sc, fl, fc =  (line start -1),  (column start -1),
-  (line finish -1), (column finish -1) in
+  let sl, sc, fl, fc =
+    (Range.line start -1),
+    (Range.column start -1),
+    (Range.line finish -1),
+    (Range.column finish -1)
+  in
+
   let s = `Assoc["line", `Int sl; "character", `Int sc] in
   let f = `Assoc["line", `Int fl; "character", `Int fc] in
   let range = `Assoc["start", s; "end", f] in
