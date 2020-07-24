@@ -31,8 +31,10 @@ let interval_of_pos (p : Pos.pos) =
 
   make_interval start finish
 
-let interval_of_popt (p : Pos.popt) = match p with
-  | None -> failwith "Invalid arg"
+let interval_of_popt (p : Pos.popt) =
+  match p with
+  | None -> invalid_arg "Position option with 'None' can't be converted
+      to interval"
   | Some pos -> interval_of_pos pos
 
 type doc_node =
