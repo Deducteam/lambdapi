@@ -292,7 +292,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
       let rec_name = Pos.make cmd.pos (Parser.add_prefix "ind_" id.elt) in
       if StrSet.mem id.elt !(ss.signature.sign_idents) then
         begin
-        Sign.add_ident ss.signature rec_name.elt;
+          Sign.add_ident ss.signature rec_name.elt;
         if !log_enabled then
           log_hndl "This ident %a is already in the signature \
                     and now the ident %a too !"

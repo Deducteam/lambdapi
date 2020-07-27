@@ -76,6 +76,44 @@ and p_patt = p_term
     the argument is marked as implicit (i.e., between curly braces). *)
 and p_arg = ident option list * p_type option * bool
 
+(** The previous module provides some functions to create p_term without
+    position. *)
+module P  =
+  struct
+
+    (** [iden s] creates an identifier without position thanks to the string
+        [s]. *)
+    let iden : string -> p_term = fun s ->
+      Pos.none (P_Iden(Pos.none ([], s), true))
+
+    (** [patt s ts] creates a pattern without position thanks to the string
+        [s] and the terms [ts]. *)
+    let patt : string -> p_term array option -> p_term = fun s ts ->
+      Pos.none (P_Patt (Some (Pos.none s), ts))
+
+    (** [patt0 s] creates a pattern without position thanks to the string
+        [s]. *)
+    let patt0 : string -> p_term = fun s -> patt s None
+
+    (** [appl t1 t2] creates an application of [t1] to [t2] without
+        position. *)
+    let appl : p_term -> p_term -> p_term = fun t1 t2 ->
+      Pos.none (P_Appl(t1, t2))
+
+    (** [fold_appl a [b1; ...; bn]] returns (... ((a b1) b2) ...) bn. *)
+    let fold_appl : p_term -> p_term list -> p_term = List.fold_left appl
+
+    (** [wild] creates a p_term, which represents a wildcard, without
+        position. *)
+    let wild = Pos.none P_Wild
+
+    (** [appl_wild head i] creates a p_term which has [i] wildcard(s) after
+        the head [head]. *)
+    let rec appl_wild : p_term -> int -> p_term = fun head i ->
+      if i <= 0 then head else appl_wild (appl head wild) (i-1)
+
+  end
+
 (** [p_get_args t] is {!val:Basics.get_args} on syntax-level terms. *)
 let p_get_args : p_term -> p_term * p_term list = fun t ->
   let rec p_get_args acc t =
