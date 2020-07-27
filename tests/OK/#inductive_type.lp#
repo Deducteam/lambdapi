@@ -16,6 +16,14 @@ injective symbol τ : Set → TYPE  // Interpretation of set codes in TYPE
 /////////////////////////////
 // Equality
 /////////////////////////////
+set debug +g
+
+set declared "ℝ"
+set declared "𝔾"
+inductive RGB : TYPE ≔
+ | ℝ  : RGB
+ | 𝔾 : RGB
+ | Blue : RGB
 
 constant symbol eq {a} : τ a → τ a → Prop
 set infix 8 "=" ≔ eq
