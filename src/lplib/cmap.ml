@@ -22,7 +22,6 @@ module type RangeType = sig
 
   val in_range : point -> interval -> cmp
 
-  (*Overlapping intervals can't be compared and will throw an error*)
   (*Intervals need to be well defined (i.e returned by make_interval)*)
   val compare : t -> t -> int
 
@@ -30,7 +29,18 @@ module type RangeType = sig
 
 end
 
+(*In this implementation, two intervals are considered 
+equal if one is included in the other.
+This is meant to locate a cursor (which is an interval 
+with start = finish) inside an interval
 
+In any other case, overlapping intervals
+can't be compared and will throw an error.
+
+An interval is considered "smaller" than another
+if all its points are smaller that the points
+of the other (i.e its finishing point is before
+the starting point of the other)*)
 module Range : RangeType = struct
 
   type point = { l : int; c : int }
@@ -66,14 +76,15 @@ module Range : RangeType = struct
   
   let compare (s1, f1) (s2, f2) =
 
-    if f1 = s2
+    (*Two intervals are considerd equal if one is included in the other*)
+    if (s1 >= s2 && f1 <= f2) || (s1 <= s2 && f1 >= f2)
+    then 0
+
+    else if f1 = s2
     then -1
 
     else if s1 = f2
     then 1
-
-    else if f1 = f2 && s1 = s2
-    then 0
 
     else
       let f = in_range f1 (s2, f2) in
@@ -89,10 +100,10 @@ module Range : RangeType = struct
         then 1
 
         else
-          failwith "Intervals overlap"
+          failwith "Intervals overlap, no inclusion between the two"
 
       else
-        failwith "Intervals overlap"
+        failwith "Intervals overlap, no inclusion between the two"
 
   let interval_to_string interv =
     let s, f = (interval_start interv), (interval_end interv) in
@@ -108,6 +119,9 @@ module type CursorMapSig = sig
   type point
 
   (*Adds the range for a token and the token in a map*)
+  (*Requires all keys to be non overlapping intervals*)
+  (*/!\ Does not ensure consistency if the added keys are overlapping
+  intervals, e.g might change a previously added (key, element) couple*)
   val add : interval -> 'a -> 'a t -> 'a t
   (*Given a cursor position, returns the corresponding token*)
   val find : point -> 'a t -> (interval * 'a) option
@@ -127,51 +141,26 @@ module MakeCursorMap (Range : RangeType) = struct
     - the keys for "add" are intervals
     - the keys for "find" are points
   *)
-  type 'a t = 'a RangeMap.t
+  type 'a t = (Range.interval * 'a) RangeMap.t
   type interval = Range.interval
   type point = Range.point
   
   let add interv elt map = 
-    RangeMap.add interv elt map
+    RangeMap.add interv (interv, elt) map
   
+  let point_to_interval : point -> interval =
+  fun pt ->
+    Range.make_interval pt pt
+
   let find cursor map =
-
-    (*Since the key is a cursor but the map is made of intervals,
-    we need to find the first interval in the map containing the cursor*)
-
-    (*In order to use find_first_opt, which returns this first interval,
-    we need to define a monotonically increasing function that returns false
-    given an interval if the cursor is after it, and true otherwise.
-    We'll call this function cursor_inbefore.
-    
-    Monotonically increasing means that if an interval i precedes another
-    interval j and cursor_inbefore i returns true, cursor_inbefore j will
-    return true (intuitively false < true) *)
-
-    let cursor_inbefore interv = 
-      let is_in = Range.in_range cursor interv in
-      is_in = In || is_in = Before
-    in
-
-    let found = RangeMap.find_first_opt cursor_inbefore map in
-
-    (*Now we need to make sure that we have found the interval the cursor
-    is in and not just the smallest interval (in the sense of Range.compare)
-    after the cursor *)
-    match found with
-    |Some(interv, _) ->
-        if Range.in_range cursor interv = In
-        then found
-
-        else None
-    |_ -> found
-
+    let interv = point_to_interval cursor in
+    RangeMap.find_opt interv map
 
   let empty = RangeMap.empty
 
   let to_string map =
 
-    let f key (_, elt) str = (Range.interval_to_string key)
+    let f key (_, (_, elt)) str = (Range.interval_to_string key)
     ^"Token : "^elt^"\n\n"^str
     in
 
