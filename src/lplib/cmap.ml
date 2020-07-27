@@ -65,45 +65,31 @@ module Range : RangeType = struct
 
 
   let in_range pos (pos1, pos2) = 
-
-    if pos.l < pos1.l || (pos.l = pos1.l && pos.c < pos1.c)
+    
+    (*Comparison operators work as lexicographic comparison
+    on points (meaning l is compared, then c is compared) *)
+    if pos < pos1
     then Before
 
-    else if pos.l > pos2.l || (pos.l = pos2.l && pos.c > pos2.c)
+    else if pos > pos2
     then After
 
     else In
   
   let compare (s1, f1) (s2, f2) =
 
-    (*Two intervals are considerd equal if one is included in the other*)
+    (*Two intervals are considered equal if one is included in the other*)
     if (s1 >= s2 && f1 <= f2) || (s1 <= s2 && f1 >= f2)
     then 0
 
-    else if f1 = s2
+    else if f1 <= s2
     then -1
 
-    else if s1 = f2
+    else if s1 >= f2
     then 1
 
     else
-      let f = in_range f1 (s2, f2) in
-
-      if f = Before
-      then -1
-
-      else if f = After
-      then
-        let s = in_range s1 (s2, f2) in
-
-        if s = After
-        then 1
-
-        else
-          failwith "Intervals overlap, no inclusion between the two"
-
-      else
-        failwith "Intervals overlap, no inclusion between the two"
+      failwith "Intervals overlap, no inclusion between the two"
 
   let interval_to_string interv =
     let s, f = (interval_start interv), (interval_end interv) in
