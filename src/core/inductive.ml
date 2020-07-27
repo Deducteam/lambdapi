@@ -23,21 +23,6 @@ let get_config : Sig_state.t -> Pos.popt -> config = fun ss pos ->
   { symb_Prop = builtin "Prop"
   ; symb_prf  = builtin "P" }
 
-(** [gen_ind_typ_codom pos ind_sym codom] assumes that the type of [ind_sym]
-    is of the form [Πx1:a1,..., Πxn:an, TYPE]. It then generates a [tbox]
-    similar to this type except that [TYPE] is replaced by
-    [codom [x1;...;xn]]. *)
-let gen_ind_typ_codom : popt -> sym -> (tbox list -> tbox) -> tbox =
-  fun pos ind_sym codom ->
-  let rec aux : tvar list -> term -> tbox = fun xs a ->
-    match Basics.get_args a with
-    | (Type, _) -> codom (List.rev_map _Vari xs)
-    | (Prod(a,b), _) ->
-        let (x,b) = Basics.unbind_name b in
-        _Prod (lift a) (Bindlib.bind_var x (aux (x::xs) b))
-    | _ -> fatal pos "The type of %a is not supported" pp_symbol ind_sym
-  in aux [] !(ind_sym.sym_type)
-
 (** [fold_cons_typ pos codom get_name build_rec_hyp domrec dom ind_sym
     cons_sym f_rec f_not_rec acc] generates some value iteratively by going
     through the structure of [cons_sym.sym_type]. The position [pos] is the
@@ -81,62 +66,31 @@ let fold_cons_typ (pos : popt) (codom : term list -> 'b list -> 'a -> 'c)
     | _ -> fatal pos "The type of %a is not supported" pp_symbol cons_sym
   in aux [] acc 0 !(cons_sym.sym_type)
 
-(** [gen_rec_rules ind_sym rec_sym cons_list] returns the p_rules associated
-    with an induction principle [rec_sym] of the inductive type [ind_sym]
-    (with its constructors [cons_list]). *)
-let gen_rec_rules : sym -> sym -> sym list -> p_rule list =
-  fun ind_sym rec_sym cons_list ->
-
-  (* STEP 1: Create the common head of the rules *)
-  let rec_iden = P.iden rec_sym.sym_name in
-  let p_patt = P.patt0 "p" in
-  let add_arg t s = P.appl t (P.patt0 ("pi" ^ s.sym_name)) in
-  let head = P.appl rec_iden p_patt in
-  let common_head = List.fold_left add_arg head cons_list in
-
-  (* STEP 2: Create each p_rule according to a constructor *)
-  (* [gen_rule_cons cons_sym] creates a p_rule according to a constructor
-     [cons_sym]. *)
-  let gen_rule_cons : sym -> p_rule = fun cons_sym ->
-    let codom : term list -> p_term list -> p_term -> p_rule = fun ts xs p ->
-      let lhs_end = P.fold_appl (P.iden cons_sym.sym_name) (List.rev xs) in
-      let arg_type = P.appl_wild common_head (List.length ts) in
-      let lhs_x = P.appl arg_type lhs_end in
-      if !log_enabled then
-        log_ind "The rule [%a] --> %a"
-          Pretty.pp_p_term lhs_x Pretty.pp_p_term p;
-      Pos.none (lhs_x, p)
-    in
-    let get_name : tbinder -> int -> p_term * term = fun b i ->
-      let (_,b) = Basics.unbind_name b in
-      (P.patt0 ("x" ^ (string_of_int i)), b)
-    in
-    let build_rec_hyp : term list -> p_term -> p_term = fun ts x ->
-      let arg_type = P.appl_wild common_head (List.length ts) in
-      P.appl arg_type x
-    in
-    let domrec : term -> p_term -> p_type -> p_rule -> p_rule =
-      fun _ _ _ next -> next
-    in
-    let dom : term -> p_term -> p_rule -> p_rule = fun _ _ next -> next in
-    let f_rec : p_term -> p_term -> p_term -> p_term =
-      fun p x rec_hyp -> P.appl (P.appl p x) rec_hyp
-    in
-    let f_not_rec : p_term -> p_term -> p_term = fun p x -> P.appl p x in
-    let acc : p_term = P.patt0 ("pi" ^ cons_sym.sym_name) in
-    fold_cons_typ None codom get_name build_rec_hyp domrec dom ind_sym
-      cons_sym f_rec f_not_rec acc
-  in
-
-  (* STEP 3: Build all the p_rules *)
-  List.rev_map gen_rule_cons cons_list
+(** [gen_ind_typ_codom pos ind_sym codom] assumes that the type of [ind_sym]
+    is of the form [Π(x1:a1),...,Π(xn:an), TYPE]. It then generates a [tbox]
+    similar to this type except that [TYPE] is replaced by
+    [codom [x1;...;xn]]. *)
+let gen_ind_typ_codom : popt -> sym -> (tbox list -> tbox) -> tbox =
+  fun pos ind_sym codom ->
+  let rec aux : tvar list -> term -> tbox = fun xs a ->
+    match Basics.get_args a with
+    | (Type, _) -> codom (List.rev_map _Vari xs)
+    | (Prod(a,b), _) ->
+        let (x,b) = Basics.unbind_name b in
+        _Prod (lift a) (Bindlib.bind_var x (aux (x::xs) b))
+    | _ -> fatal pos "The type of %a is not supported" pp_symbol ind_sym
+  in aux [] !(ind_sym.sym_type)
 
 (** [gen_rec_type ss pos ind_sym cons_list] generates the induction principle
     of the inductive type [ind_sym] (and its position [pos]) with the cons-
     tructors [cons_list]. Each recursive argument is followed by its induction
     hypothesis. For instance, with [inductive T:TYPE := c: T->T->T], we have
     [ind_T: Πp:T->Prop, (Πx1:T, π(p x1)-> Πx2:T, π(p x2)-> π(p(c x1 x2)) ->
-    Π x:T,π(p x)]. *)
+    Π x:T,π(p x)]. In general, thanks to this function, the command
+    inductive T : Π(x1:A1),...,Π(xm:Am), TYPE := c1:T1 | ... | cn:Tn generates
+    ind_T: Π(p:(Πx1:A1),...,Π(xm:Am), T x1 .. xm -> Prop), U1 -> ... -> Un ->
+    (Π(x1:A1),...,Π(xm:Am), Π(x:T x1 ... xm), π(p x1 ... xm x))
+    where Ui is the clause associated to the constructor ci. *)
 let gen_rec_type : Sig_state.t -> popt -> sym -> sym list -> term =
   fun ss pos ind_sym cons_list ->
 
@@ -200,3 +154,60 @@ let gen_rec_type : Sig_state.t -> popt -> sym -> sym list -> term =
       Pretty.pp_ident (Pos.none ("ind_"^ind_sym.sym_name))
       Print.pp_term (Bindlib.unbox t);
   Bindlib.unbox t
+
+(** [gen_rec_rules ind_sym rec_sym cons_list] returns the p_rules associated
+    with an induction principle [rec_sym] of the inductive type [ind_sym]
+    (with its constructors [cons_list]). That means the command
+    inductive T : Π(x1:A1),...,Π(xm:Am), TYPE := c1:T1 | ... | cn:Tn generates
+    a rule for each constructor. If Ti = Π(b1:B1),...,Π(bk:Bk), T then the
+    rule for ci is:
+    rule ind_T p pi1 ... pin _ ... _ (ci x1 ... xk) --> pii x1 t1? ... xk tk?
+    with m underscores and tj? = nothing if xj isn't a value of the inductive
+    type and tj? = (ind_T p pi1 ... pin _ ... _ xj) if xj is a value of the
+    inductive type T (i.e. xj = T v1 ... vm) *)
+let gen_rec_rules : sym -> sym -> sym list -> p_rule list =
+  fun ind_sym rec_sym cons_list ->
+
+  (* STEP 1: Create the common head of the rules *)
+  let rec_iden = P.iden rec_sym.sym_name in
+  let p_patt = P.patt0 "p" in
+  let add_arg t s = P.appl t (P.patt0 ("pi" ^ s.sym_name)) in
+  let head = P.appl rec_iden p_patt in
+  let common_head = List.fold_left add_arg head cons_list in
+
+  (* STEP 2: Create each p_rule according to a constructor *)
+  (* [gen_rule_cons cons_sym] creates a p_rule according to a constructor
+     [cons_sym]. *)
+  let gen_rule_cons : sym -> p_rule = fun cons_sym ->
+    let codom : term list -> p_term list -> p_term -> p_rule = fun ts xs p ->
+      let lhs_end = P.fold_appl (P.iden cons_sym.sym_name) (List.rev xs) in
+      let arg_type = P.appl_wild common_head (List.length ts) in
+      let lhs_x = P.appl arg_type lhs_end in
+      if !log_enabled then
+        log_ind "The rule [%a] --> %a"
+          Pretty.pp_p_term lhs_x Pretty.pp_p_term p;
+      Pos.none (lhs_x, p)
+    in
+    let get_name : tbinder -> int -> p_term * term = fun b i ->
+      let (_,b) = Basics.unbind_name b in
+      (P.patt0 ("x" ^ (string_of_int i)), b)
+    in
+    let build_rec_hyp : term list -> p_term -> p_term = fun ts x ->
+      let arg_type = P.appl_wild common_head (List.length ts) in
+      P.appl arg_type x
+    in
+    let domrec : term -> p_term -> p_term -> p_rule -> p_rule =
+      fun _ _ _ next -> next
+    in
+    let dom : term -> p_term -> p_rule -> p_rule = fun _ _ next -> next in
+    let f_rec : p_term -> p_term -> p_term -> p_term =
+      fun p x rec_hyp -> P.appl (P.appl p x) rec_hyp
+    in
+    let f_not_rec : p_term -> p_term -> p_term = fun p x -> P.appl p x in
+    let acc : p_term = P.patt0 ("pi" ^ cons_sym.sym_name) in
+    fold_cons_typ None codom get_name build_rec_hyp domrec dom ind_sym
+      cons_sym f_rec f_not_rec acc
+  in
+
+  (* STEP 3: Build all the p_rules *)
+  List.rev_map gen_rule_cons cons_list
