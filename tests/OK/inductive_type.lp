@@ -22,19 +22,6 @@ set infix 8 "=" ≔ eq
 constant symbol eq_refl {a} (x : τ a) : π (x = x)
 constant symbol eq_ind {a} (x y : τ a) : π (x = y) → Πp, π (p y) → π (p x)
 
-inductive eq2 : Πa, τ a → τ a → TYPE ≔
-  | eq2_refl : Πa x, eq2 a x x
-
-assert ind_eq2 : Π(p:Π(a:Set) x x0, eq2 a x x0 → Prop),
- (Πa x, π (p a x x (eq2_refl a x))) →
-Πa x x0 x1, π (p a x x0 x1)
-
-symbol pEQ : Π(a:Set) x x0, eq2 a x x0 → Prop
-symbol pirefl : Πa x, π (pEQ a x x (eq2_refl a x))
-symbol Aeq : Set
-symbol value : τ Aeq
-assert ind_eq2 pEQ pirefl Aeq value value (eq2_refl Aeq value) ≡ pirefl Aeq value
-
 // Set builtins for the rewrite tactic
 set builtin "T"     ≔ τ
 set builtin "eq"    ≔ eq
@@ -44,8 +31,6 @@ set builtin "eqind" ≔ eq_ind
 /////////////////////////////
 // Some examples of inductive types
 /////////////////////////////
-
-set debug +g
 
 ////////////////// Primary color
 
@@ -149,6 +134,20 @@ assert ind_Nat p pizero pisucc (succ x) ≡ pisucc x (ind_Nat p pizero pisucc x)
 assert z : Nat // Examples
 assert succ z : Nat
 assert succ (succ (succ z)) : Nat
+
+// About natural numbers
+set builtin "0"  ≔ z
+set builtin "+1" ≔ succ
+
+symbol plus : Nat → Nat → Nat
+set infix left 6 "+" ≔ plus
+rule       0 + $y ↪ $y
+with succ $x + $y ↪ succ ($x + $y)
+
+symbol mult : Nat → Nat → Nat
+set infix left 7 "×" ≔ mult
+rule       0 × _  ↪ 0
+ with succ $x × $y ↪ $y + $x × $y
 
 ////////////////////// List of natural numbers
 
@@ -361,115 +360,61 @@ assert ind_listb pbound piBnil piBcons bound (Bcons bound x prf lb)
 assert Bnil bound : listb bound // Examples
 assert Bcons bound x prf (Bnil bound) : listb bound
 
-///////////////// Predicat even
+///////////////// Type rom
 
-inductive even : Nat → TYPE ≔
-| O_even      : even z
-| plus_2_even : Πn:Nat, even n → even (succ (succ n))
+//inductive rom : Nat → TYPE ≔
+//  | mty : rom z // leaf node
+//  | bin : Πe1 e2, rom e1 → rom e2 → rom (e1+e2+1) // binary nodes
+//  | unl : Πe k, π (k ≤ 2×e) → rom e → rom (succ e) // unary labeled nodes
 
-assert ind_even : Π(p:Π(n:Nat), even n → Prop), // Induction principle
-  π (p z O_even) →
-  (Πn prf, π (p n prf) → π (p (succ (succ n)) (plus_2_even n prf))) →
-  Πn e, π (p n e)
+symbol rom : Nat → TYPE
+symbol mty : rom z
+symbol bin : Πe1 e2, rom e1 → rom e2 → rom (e1+e2+1)
+symbol unl : Πe k, π (k ≤ 2×e) → rom e → rom (succ e)
 
-symbol pE : Πn, even n → Prop // Tests about inductive rules
-symbol piO_even : π (pE z O_even)
-symbol e0 : even z
-symbol e : even n
-symbol piplus_2_even : Πn e, π (pE n e) → π (pE (succ (succ n)) (plus_2_even n e))
-assert ind_even pE piO_even piplus_2_even z O_even ≡ piO_even
-assert ind_even pE piO_even piplus_2_even (succ (succ n)) (plus_2_even n e)
-     ≡ piplus_2_even n e (ind_even pE piO_even piplus_2_even n e)
+symbol ind_rom : Πp: Πx: Nat, rom x → Prop,
+  π (p 0 mty) →
+  (Πe1: τ nat, Πe2: τ nat, Πx: rom e1, π (p e1 x) → Πx0: rom e2, π (p e2 x0) → π (p ((e1 + e2) + 1) (bin e1 e2 x x0))) → 
+  (Πe: τ nat, Πk: τ nat, Πx: π (k ≤ (2 × e)), Πx0: rom e, π (p e x0) → π (p (succ e) (unl e k x x0))) → 
+Πx: Nat, Πx0: rom x, π (p x x0)
 
-assert ind_even : Πp, // Induction principle
-  π (p z O_even) →
-  (Πn prf, π (p n prf) → π (p (succ (succ n)) (plus_2_even n prf))) →
-  Πn e, π (p n e)
+rule ind_rom $p $pmty $pbin $punl (($x0 + $x1)+1) (bin $x0 $x1 $x2 $x3)
+   ↪ $pbin $x0 $x1 $x2 (ind_rom $p $pmty $pbin $punl $x0 $x2) $x3 (ind_rom $p $pmty $pbin $punl $x1 $x3)
 
+///////////////// Fibonacci suite
 
+inductive fibo : Nat → Nat → TYPE ≔
+ | cgen' : Π (a n r1 r2 : Nat),
+    fibo n r1 → fibo (succ n) r2 →  fibo (succ (succ n)) (plus r1 r2)
+ | cbase1 : Π (a:Nat), fibo z (succ z)
+ | cbase2 : Π (a:Nat), fibo (succ z) (succ z)
 
+assert ind_fibo : Πp: Πx: Nat, Πx0: Nat, fibo x x0 → Prop,
+(Πx n r1 r2,
+     Πx0: fibo n r1, π (p n r1 x0) →
+     Πx1: fibo (succ n) r2, π (p (succ n) r2 x1) →
+π (p (succ (succ n)) (r1 + r2) (cgen' x n r1 r2 x0 x1))) →
+(Πx: Nat, π (p 0 1 (cbase1 x))) → (Πx: Nat, π (p 1 1 (cbase2 x))) →
+Πx: Nat, Πx0: Nat, Πx1: fibo x x0, π (p x x0 x1)
 
-// Inductive pc : nat -> nat -> nat_prod -> Prop :=
-// | pc0 : forall a b c d e f, add c d f -> pc a c (P d e) -> pc a b (P c O) -> pc (S a) b (P f e)
-// | pc1 : forall a b c d e f, pc a (plus d b) (P e f) -> pc a c (P O d) -> pc a b (P c O) -> pc (S a) b (P c e)
-// | pc2 : forall a b c, pc a (S b) c -> pc a b (P (S (S O)) O) -> pc (S a) b c
-// | pc3 : forall a b c d, pc a b (P c d) -> pc (S a) b (P d c)
-// | pc4 : forall a, pc O a (P O O).
-
-
-
-// Inductive fibo: nat -> nat -> Prop :=
-// | cgen’ : forall (a n r1 r2:nat),
-// fibo’ n r1 -> fibo (S n) r2 ->  fibo (S (S n)) (plus r1 r2)
-// | cbase1 : forall (a:nat), fibo O (S O)
-// | cbase2 : forall (a:nat), fibo (S O) (S O).
-
-
-
-// (** * Recursive dependent type for rooted ordinary maps
-
-//  [(rom e)] is the type of terms representing rooted ordinary maps with [e] edges. *)
-
-// Inductive rom : nat -> Type :=
-// | mty : rom 0                                           (* leaf node *)
-// | bin : forall e1 e2, rom e1 -> rom e2 -> rom (e1+e2+1) (* binary nodes *)
-// | unl : forall e k, k <= 2*e -> rom e -> rom (S e).     (* unary labeled nodes *)
-
-
-
-// Inductive is_blist (b : nat) : list nat -> Prop :=
-// | Blist_nil: is_blist b nil
-// | Blist_cons : forall v l,
-//    v < b -> is_blist b l
-//    -> is_blist b (v::l).
-
-// Paires dépendantes
-
-// Inductive DPair : forall (a : Type) (p : a -> Type) Type :=
-//    MkDPair : forall (a: Type) (p : a -> Type)  (x : a), p x -> DPair a p.
-// (* C'est une adpaptation d'un type Agda *)
-// https://cs.stackexchange.com/questions/56283/examples-of-dependent-types
-
-//inductive DPair : Π(a:TYPE) (p : a → TYPE), TYPE ≔
-//  MkDPair :Πa p x, p x → DPair a p
-
-// (* extrait du bouquin de A. Chipala - expressions bien typées.*) (* http://adam.chlipala.net/cpdt/*)
-
-// Inductive type : Set := Nat | Bool.
-
-set declared "𝕊"
-inductive 𝕊: TYPE ≔
-    nat_s  : 𝕊
-  | bool_s : 𝕊
-
-//symbol truc : TYPE → TYPE
-
-// Inductive tbinop : type -> type ->  type ->  Set :=
-// | TPlus : tbinop Nat Nat Nat
-// | TTimes : tbinop Nat Nat Nat
-// | TEq : forall t, tbinop t t Bool
-// | TLt : tbinop Nat Nat Bool.
-
-// Inductive texp : type -> Set :=
-// | TNConst : nat -> texp Nat
-// | TBConst : bool ->  texp Bool
-// | TBinop : forall t1 t2 t, tbinop t1 t2 t ->  texp t1 ->  texp t2 ->  texp t.
-
-
-
+symbol pFibo : Πx: Nat, Πx0: Nat, fibo x x0 → Prop
+symbol picgen' : (Πx n r1 r2, Πx0: fibo n r1, π (pFibo n r1 x0) → Πx1: fibo (succ n) r2,
+                  π (pFibo (succ n) r2 x1) → π (pFibo (succ (succ n)) (r1 + r2) (cgen' x n r1 r2 x0 x1)))
+symbol picbase1 : Πx: Nat, π (pFibo 0 1 (cbase1 x))
+symbol picbase2 : Πx: Nat, π (pFibo 1 1 (cbase2 x))
+symbol r1 : Nat
+symbol r2 : Nat
+symbol hypF1 : fibo n r1
+symbol hypF2 : fibo (succ n) r2
+assert ind_fibo pFibo picgen' picbase1 picbase2 _ _ (cgen' x n r1 r2 hypF1 hypF2)
+     ≡ picgen' x n r1 r2 hypF1 (ind_fibo pFibo picgen' picbase1 picbase2 _ _ hypF1) 
+                         hypF2 (ind_fibo pFibo picgen' picbase1 picbase2 _ _ hypF2)
+assert ind_fibo pFibo picgen' picbase1 picbase2 _ _ (cbase1 n) ≡ picbase1 n
+assert ind_fibo pFibo picgen' picbase1 picbase2 _ _ (cbase2 n) ≡ picbase2 n
 
 /////////////////////////////
 // Some proofs
 /////////////////////////////
-
-// About natural numbers
-set builtin "0"  ≔ z
-set builtin "+1" ≔ succ
-
-symbol plus : Nat → Nat → Nat
-set infix left 6 "+" ≔ plus
-rule       0 + $y ↪ $y
-with succ $x + $y ↪ succ ($x + $y)
 
 theorem plus_0_n : Πn, π ((0 + n) = n)
 proof
@@ -509,30 +454,3 @@ proof
   assume x l2 IHl1
   simpl rewrite IHl1 reflexivity
 qed
-
-///////////////// Type rom
-
-symbol mult : Nat → Nat → Nat
-set infix left 7 "×" ≔ mult
-rule       0 × _  ↪ 0
- with succ $x × $y ↪ $y + $x × $y
-//set debug +s
-
-//inductive rom : Nat → TYPE ≔
-//  | mty : rom z // leaf node
-//  | bin : Πe1 e2, rom e1 → rom e2 → rom (e1+e2+1) // binary nodes
-//  | unl : Πe k, π (k ≤ 2×e) → rom e → rom (succ e) // unary labeled nodes
-
-symbol rom : Nat → TYPE
-symbol mty : rom z
-symbol bin : Πe1 e2, rom e1 → rom e2 → rom (e1+e2+1)
-symbol unl : Πe k, π (k ≤ 2×e) → rom e → rom (succ e)
-
-symbol ind_rom : Πp: Πx: Nat, rom x → Prop,
-  π (p 0 mty) →
-  (Πe1: τ nat, Πe2: τ nat, Πx: rom e1, π (p e1 x) → Πx0: rom e2, π (p e2 x0) → π (p ((e1 + e2) + 1) (bin e1 e2 x x0))) → 
-  (Πe: τ nat, Πk: τ nat, Πx: π (k ≤ (2 × e)), Πx0: rom e, π (p e x0) → π (p (succ e) (unl e k x x0))) → 
-Πx: Nat, Πx0: rom x, π (p x x0)
-
-rule ind_rom $p $pmty $pbin $punl (($x0 + $x1)+1) (bin $x0 $x1 $x2 $x3)
-   ↪ $pbin $x0 $x1 $x2 (ind_rom $p $pmty $pbin $punl $x0 $x2) $x3 (ind_rom $p $pmty $pbin $punl $x1 $x3)
