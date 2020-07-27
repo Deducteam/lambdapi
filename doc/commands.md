@@ -237,7 +237,7 @@ set builtin "Prop" ≔ ... // : TYPE
 set builtin "P"    ≔ ... // : Prop → TYPE
 ```
 
-For the moment, we only support first-order data types, with dependant and polymorphic types.
+For the moment, we only support first-order data types, with dependent and polymorphic types.
 Some cases of nested type are supported too, like the type Bush.
 Example:
 ```
