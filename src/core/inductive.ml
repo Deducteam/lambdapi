@@ -86,9 +86,9 @@ let gen_ind_typ_codom : popt -> sym -> (tbox list -> tbox) -> tbox =
     tructors [cons_list]. Each recursive argument is followed by its induction
     hypothesis. For instance, with [inductive T:TYPE := c: T->T->T], we have
     [ind_T: Πp:T->Prop, (Πx1:T, π(p x1)-> Πx2:T, π(p x2)-> π(p(c x1 x2)) ->
-    Π x:T,π(p x)]. In general, thanks to this function, the command
+    Πx:T, π(p x)]. In general, thanks to this function, the command
     inductive T : Π(x1:A1),...,Π(xm:Am), TYPE := c1:T1 | ... | cn:Tn generates
-    ind_T: Π(p:(Πx1:A1),...,Π(xm:Am), T x1 .. xm -> Prop), U1 -> ... -> Un ->
+    ind_T: Π(p:Π(x1:A1),...,Π(xm:Am), T x1 ... xm -> Prop), U1 -> ... -> Un ->
     (Π(x1:A1),...,Π(xm:Am), Π(x:T x1 ... xm), π(p x1 ... xm x))
     where Ui is the clause associated to the constructor ci. *)
 let gen_rec_type : Sig_state.t -> popt -> sym -> sym list -> term =
