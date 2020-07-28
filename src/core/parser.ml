@@ -671,10 +671,8 @@ let parser cmd =
   | ms:modifier* _definition_ s:ident al:arg* ao:{":" term}? "≔" t:term
       -> P_definition(ms,false,s,al,ao,t)
   | ms:modifier* _inductive_ i:ident t:{":" term} "≔"
-                     "|"? ifirst:ident ":" tfirst:term
                  c:{ "|"  ilist :ident ":" tlist :term }*
-      -> P_inductive(ms, i, t,
-                     (ifirst, tfirst)::c)
+      -> P_inductive(ms, i, t,c)
   | ms:modifier* st:statement (ts,pe):proof
       -> P_theorem(ms,st,ts,pe)
   | _set_ c:config

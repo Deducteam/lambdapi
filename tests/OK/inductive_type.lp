@@ -54,6 +54,10 @@ assert ind_RGB pRGB piR _ _  ℝ ≡ piR
 assert ind_RGB pRGB _ piG _ 𝔾 ≡ piG
 assert ind_RGB pRGB _ _ piB Blue ≡ piB
 
+assert ℝ    : RGB // Examples
+assert 𝔾   : RGB
+assert Blue : RGB
+
 ////////////////// Type color
 
 inductive Color : TYPE ≔
@@ -75,35 +79,24 @@ assert ind_Color pC piblack piwhite piprimary black ≡ piblack
 assert ind_Color pC piblack piwhite piprimary white ≡ piwhite
 assert ind_Color pC piblack piwhite piprimary (primary rgb) ≡ piprimary rgb
 
-////////////////// Type sum
+assert white : Color // Examples
+assert black : Color
+assert primary ℝ : Color
+assert primary 𝔾 : Color
+assert primary Blue : Color
 
-inductive {|sum|} : Π(A:Set) (B:Set), TYPE ≔
-  {|inl_sum|} : ΠA B, τ A → {|sum|} A B
-| inr : ΠA B, τ B → {|sum|} A B
+////////////////// False (not predicate one)
 
-assert {|ind_sum|} : Πp,
-(ΠA B a, π (p A B ({|inl_sum|} A B a))) →
-(ΠA B b, π (p A B (inr A B b))) →
-ΠA B s, π (p A B s)
+inductive False : TYPE ≔
 
-symbol pS : Π(A:Set) (B:Set), {|sum|} A B → Prop
-symbol G : Set
-symbol g : τ G
-symbol D : Set
-symbol d : τ D
-symbol piinl : ΠA B a, π (pS A B ({|inl_sum|} A B a))
-symbol piinr : ΠA B b, π (pS A B (inr A B b))
-
-assert {|ind_sum|} pS piinl piinr G D ({|inl_sum|} G D g)
-     ≡ piinl G D g
-assert {|ind_sum|} pS piinl piinr G D (inr G D d)
-     ≡ piinr G D d
+assert ind_False : // Induction principle
+ Π(p:False → Prop) (f : False), π (p f)
 
 ////////////////// Boolean type
 
 constant symbol bool : Set
 set declared "𝔹"
-inductive 𝔹  : TYPE ≔
+inductive 𝔹 : TYPE ≔
  | true  : 𝔹
  | false : 𝔹
 rule 𝔹 ↪ τ bool
@@ -112,6 +105,16 @@ rule 𝔹 ↪ τ bool
 //  Πp : 𝔹 → Prop,
 //  π (p true) → π (p false) →
 //  Πb, π (p b)
+
+set declared "p𝔹"
+symbol pBool : 𝔹 → Prop // Tests about inductive rules
+symbol pitrue  : π (pBool true)
+symbol pifalse : π (pBool false)
+// assert ind_𝔹 p𝔹 pitrue pifalse true  ≡ pitrue
+// assert ind_𝔹 p𝔹 pitrue pifalse false ≡ pifalse
+
+assert true  : 𝔹 // Examples
+assert false : 𝔹
 
 ///////////////// Natural number
 
@@ -176,7 +179,7 @@ assert cons (succ (succ (succ z))) (cons (succ z) (cons z nil)) : List
 ///////////////// Couple of natural numbers
 
 inductive nat_prod : TYPE ≔
-  P : Nat → Nat → nat_prod
+ | P : Nat → Nat → nat_prod
 
 assert ind_nat_prod : // Induction principle
 Πp : nat_prod → Prop,
@@ -188,6 +191,11 @@ symbol piP : Πx0 x1, π (pNP (P x0 x1))
 symbol nat1 : Nat
 symbol nat2 : Nat
 assert ind_nat_prod pNP piP (P nat1 nat2) ≡ piP nat1 nat2
+
+assert P z z : nat_prod // Examples
+assert P (succ (succ (succ z))) z : nat_prod
+assert P (succ (succ (succ z))) (succ z) : nat_prod
+assert P (succ z) (succ (succ (succ z))) : nat_prod
 
 ///////////////// Binary tree
 
@@ -284,6 +292,35 @@ assert cons_vec_p nat (succ z) (succ (succ (succ z))) (cons_vec_p nat z z (nil_v
 assertnot cons_vec_p nat (succ z) (succ (succ (succ z))) (cons_vec_p nat z true (nil_vec_p nat)) : Vec_param nat (succ (succ z))
 assert cons_vec_p bool (succ z) false (cons_vec_p bool z true (nil_vec_p bool)) : Vec_param bool (succ (succ z))
 
+////////////////// Type sum
+
+inductive {|sum|} : Π(A:Set) (B:Set), TYPE ≔
+ | {|inl_sum|} : ΠA B, τ A → {|sum|} A B
+ | inr : ΠA B, τ B → {|sum|} A B
+
+assert {|ind_sum|} : Πp, // Induction principle
+(ΠA B a, π (p A B ({|inl_sum|} A B a))) →
+(ΠA B b, π (p A B (inr A B b))) →
+ΠA B s, π (p A B s)
+
+symbol pS : Π(A:Set) (B:Set), {|sum|} A B → Prop// Tests about inductive rules
+symbol G : Set
+symbol g : τ G
+symbol D : Set
+symbol d : τ D
+symbol piinl : ΠA B a, π (pS A B ({|inl_sum|} A B a))
+symbol piinr : ΠA B b, π (pS A B (inr A B b))
+
+assert {|ind_sum|} pS piinl piinr G D ({|inl_sum|} G D g)
+     ≡ piinl G D g
+assert {|ind_sum|} pS piinl piinr G D (inr G D d)
+     ≡ piinr G D d
+
+assert inr nat bool true : {|sum|} nat bool // Examples
+assert inr nat bool false : {|sum|} nat bool
+assert {|inl_sum|} nat bool z : {|sum|} nat bool
+assert {|inl_sum|} nat bool (succ z) : {|sum|} nat bool
+
 ////////////////// Type Bush (nested inductive type)
 
 symbol bush : Set →  Set
@@ -339,7 +376,7 @@ set infix left 6 "≤" ≔ le
 //  | le_S : Πn m:τ nat, π (n ≤ m) → π (n ≤ (succ m))
 
 inductive listb : Π(bound : τ nat), TYPE ≔
-   Bnil  : Πbound, listb bound
+ | Bnil  : Πbound, listb bound
  | Bcons : Πbound x, π (x ≤ bound) → listb bound → listb bound
 
 assert ind_listb : // Induction principle
@@ -362,24 +399,53 @@ assert Bcons bound x prf (Bnil bound) : listb bound
 
 ///////////////// Type rom
 
-//inductive rom : Nat → TYPE ≔
-//  | mty : rom z // leaf node
-//  | bin : Πe1 e2, rom e1 → rom e2 → rom (e1+e2+1) // binary nodes
-//  | unl : Πe k, π (k ≤ 2×e) → rom e → rom (succ e) // unary labeled nodes
+inductive rom : Nat → TYPE ≔
+ | mty : rom z // leaf node
+ | bin : Πe1 e2, rom e1 → rom e2 → rom (e1+e2+1) // binary nodes
+ | unl : Πe k, π (k ≤ 2×e) → rom e → rom (succ e) // unary labeled nodes
 
-symbol rom : Nat → TYPE
-symbol mty : rom z
-symbol bin : Πe1 e2, rom e1 → rom e2 → rom (e1+e2+1)
-symbol unl : Πe k, π (k ≤ 2×e) → rom e → rom (succ e)
-
-symbol ind_rom : Πp: Πx: Nat, rom x → Prop,
+assert ind_rom : Πp: Πx: Nat, rom x → Prop, // Induction principle
   π (p 0 mty) →
   (Πe1: τ nat, Πe2: τ nat, Πx: rom e1, π (p e1 x) → Πx0: rom e2, π (p e2 x0) → π (p ((e1 + e2) + 1) (bin e1 e2 x x0))) → 
   (Πe: τ nat, Πk: τ nat, Πx: π (k ≤ (2 × e)), Πx0: rom e, π (p e x0) → π (p (succ e) (unl e k x x0))) → 
 Πx: Nat, Πx0: rom x, π (p x x0)
 
-rule ind_rom $p $pmty $pbin $punl (($x0 + $x1)+1) (bin $x0 $x1 $x2 $x3)
-   ↪ $pbin $x0 $x1 $x2 (ind_rom $p $pmty $pbin $punl $x0 $x2) $x3 (ind_rom $p $pmty $pbin $punl $x1 $x3)
+symbol pRom : Πx: Nat, rom x → Prop // Tests about inductive rules
+symbol pimty : π (pRom z mty)
+symbol romx : rom x
+symbol romn : rom n
+symbol pibin : Πe1: τ nat, Πe2: τ nat, Πx: rom e1,
+ π (pRom e1 x) → Πx0: rom e2, π (pRom e2 x0) → π (pRom ((e1 + e2) + 1) (bin e1 e2 x x0))
+symbol prf_le : π (n ≤ 2×x)
+symbol piunl : Πe: τ nat, Πk: τ nat, Πx: π (k ≤ (2 × e)), Πx0: rom e, π (pRom e x0) → π (pRom (succ e) (unl e k x x0))
+assert ind_rom pRom pimty pibin piunl _ mty ≡ pimty
+assert ind_rom pRom pimty pibin piunl _ (unl x n prf_le romx)
+     ≡ piunl x n prf_le romx (ind_rom pRom pimty pibin piunl _ romx)
+assert ind_rom pRom pimty pibin piunl _ (bin x n romx romn)
+ ≡ pibin x n romx (ind_rom pRom pimty pibin piunl x romx) romn (ind_rom pRom pimty pibin piunl n romn)
+
+assert mty : rom z // Examples
+assert bin z z mty mty : rom (succ z)
+assert bin z (succ z) mty (bin z z mty mty) : rom (succ (succ z))
+symbol t : π (z ≤ 2×z)
+assert bin (succ z) z (unl z z t mty) mty : rom (succ (succ z))
+assert unl z z t mty : rom (succ z)
+symbol t12 : π (z ≤ 2×(succ z))
+assert unl (succ z) z t12 (bin z z mty mty) : rom (succ (succ z))
+
+//symbol rom : Nat → TYPE
+//symbol mty : rom z
+//symbol bin : Πe1 e2, rom e1 → rom e2 → rom (e1+e2+1)
+//symbol unl : Πe k, π (k ≤ 2×e) → rom e → rom (succ e)
+
+//symbol ind_rom : Πp: Πx: Nat, rom x → Prop,
+//  π (p 0 mty) →
+//  (Πe1: τ nat, Πe2: τ nat, Πx: rom e1, π (p e1 x) → Πx0: rom e2, π (p e2 x0) → π (p ((e1 + e2) + 1) (bin e1 e2 x x0))) → 
+//  (Πe: τ nat, Πk: τ nat, Πx: π (k ≤ (2 × e)), Πx0: rom e, π (p e x0) → π (p (succ e) (unl e k x x0))) → 
+//Πx: Nat, Πx0: rom x, π (p x x0)
+
+//rule ind_rom $p $pmty $pbin $punl (($x0 + $x1)+1) (bin $x0 $x1 $x2 $x3)
+//   ↪ $pbin $x0 $x1 $x2 (ind_rom $p $pmty $pbin $punl $x0 $x2) $x3 (ind_rom $p $pmty $pbin $punl $x1 $x3)
 
 ///////////////// Fibonacci suite
 
@@ -389,7 +455,7 @@ inductive fibo : Nat → Nat → TYPE ≔
  | cbase1 : Π (a:Nat), fibo z (succ z)
  | cbase2 : Π (a:Nat), fibo (succ z) (succ z)
 
-assert ind_fibo : Πp: Πx: Nat, Πx0: Nat, fibo x x0 → Prop,
+assert ind_fibo : Πp: Πx: Nat, Πx0: Nat, fibo x x0 → Prop, // Induction principle
 (Πx n r1 r2,
      Πx0: fibo n r1, π (p n r1 x0) →
      Πx1: fibo (succ n) r2, π (p (succ n) r2 x1) →
@@ -397,7 +463,7 @@ assert ind_fibo : Πp: Πx: Nat, Πx0: Nat, fibo x x0 → Prop,
 (Πx: Nat, π (p 0 1 (cbase1 x))) → (Πx: Nat, π (p 1 1 (cbase2 x))) →
 Πx: Nat, Πx0: Nat, Πx1: fibo x x0, π (p x x0 x1)
 
-symbol pFibo : Πx: Nat, Πx0: Nat, fibo x x0 → Prop
+symbol pFibo : Πx: Nat, Πx0: Nat, fibo x x0 → Prop // Tests about inductive rules
 symbol picgen' : (Πx n r1 r2, Πx0: fibo n r1, π (pFibo n r1 x0) → Πx1: fibo (succ n) r2,
                   π (pFibo (succ n) r2 x1) → π (pFibo (succ (succ n)) (r1 + r2) (cgen' x n r1 r2 x0 x1)))
 symbol picbase1 : Πx: Nat, π (pFibo 0 1 (cbase1 x))
@@ -411,6 +477,11 @@ assert ind_fibo pFibo picgen' picbase1 picbase2 _ _ (cgen' x n r1 r2 hypF1 hypF2
                          hypF2 (ind_fibo pFibo picgen' picbase1 picbase2 _ _ hypF2)
 assert ind_fibo pFibo picgen' picbase1 picbase2 _ _ (cbase1 n) ≡ picbase1 n
 assert ind_fibo pFibo picgen' picbase1 picbase2 _ _ (cbase2 n) ≡ picbase2 n
+
+assert cbase1 z : fibo z (succ z) // Examples
+assert cbase1 (succ z) : fibo z (succ z)
+assert cbase2 z : fibo (succ z) (succ z)
+assert cgen' z z (succ z) (succ z) (cbase1 z) (cbase2 z) : fibo (succ (succ z)) (succ (succ z))
 
 /////////////////////////////
 // Some proofs
