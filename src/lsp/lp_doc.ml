@@ -16,7 +16,7 @@ module LSP = Lsp_base
 
 (* exception NoPosition of string *)
 
-module CursorMap = Lplib.Cmap.CursorMap
+module RangeMap = Lplib.Cmap.RangeMap
 module Range = Lplib.Cmap.Range
 
 let concat_map = Lplib.Utils.concat_map
@@ -55,7 +55,7 @@ type t = {
   mutable root  : Pure.state; (* Only mutated after parsing. *)
   mutable final : Pure.state; (* Only mutated after parsing. *)
   nodes : doc_node list;
-  map : (Syntax.p_module_path * string) CursorMap.t;
+  map : (Syntax.p_module_path * string) RangeMap.t;
 }
 
 let option_default o1 d =
@@ -139,7 +139,7 @@ let new_doc ~uri ~version ~text =
     root;
     final = root;
     nodes = [];
-    map = CursorMap.empty;
+    map = RangeMap.empty;
   }
 
 (* XXX: Save on close. *)
@@ -170,11 +170,11 @@ let check_text ~doc =
     let qids = concat_map Pure.Command.get_qidents doc_spans in
 
     (*these qidents are then converted to a map*)
-    let f (map : (Syntax.p_module_path * string) CursorMap.t)
+    let f (map : (Syntax.p_module_path * string) RangeMap.t)
     (qid : Syntax.qident) =
-      CursorMap.add (interval_of_popt qid.pos) qid.elt map in
+      RangeMap.add (interval_of_popt qid.pos) qid.elt map in
 
-    let map = List.fold_left f CursorMap.empty qids in
+    let map = List.fold_left f RangeMap.empty qids in
 
     let nodes, final, diag =
       List.fold_left (process_cmd uri) ([],doc.root,[]) doc_spans in

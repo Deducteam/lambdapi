@@ -12,7 +12,7 @@
 
 open Core
 
-module CursorMap = Lplib.Cmap.CursorMap
+module RangeMap = Lplib.Cmap.RangeMap
 module Range = Lplib.Cmap.Range
 
 module F = Format
@@ -238,10 +238,10 @@ let msg_fail hdr msg =
   failwith msg
 
 let get_symbol : Range.point ->
-('a * 'b) CursorMap.t -> ('b * Range.t) option
+('a * 'b) RangeMap.t -> ('b * Range.t) option
 = fun pos doc ->
 
-  let open CursorMap in
+  let open RangeMap in
 
   match (find pos doc) with
   | None -> None
@@ -262,7 +262,7 @@ let do_definition ofmt ~id params =
   in
 
   (*Some printing in the log*)
-  LIO.log_error "token map" (CursorMap.to_string doc.map);
+  LIO.log_error "token map" (RangeMap.to_string snd doc.map);
   LIO.log_error "do_definition" sym_target;
 
   let sym = Pure.get_symbols doc.final in
@@ -306,7 +306,7 @@ let hover_symInfo ofmt ~id params =
   in
 
   (*Some printing in the log*)
-  LIO.log_error "token map" (CursorMap.to_string doc.map);
+  LIO.log_error "token map" (RangeMap.to_string snd doc.map);
 
   LIO.log_error "hoverSymInfo" sym_target;
   LIO.log_error "hoverSymInfo" (Range.interval_to_string interval);
