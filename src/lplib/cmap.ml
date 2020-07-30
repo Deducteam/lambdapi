@@ -7,10 +7,10 @@ module type RangeType =
   sig
     type point type t type interval = t
     
-    (**make_point ln col creates a point with line ln and column col. *)
+    (**[make_point ln col] creates a point with line [ln] and column [col]. *)
     val make_point : int -> int -> point
 
-    (**make_interval s e creates an interval with start s and end e.
+    (**[make_interval s e] creates an interval with start [s] and end [e].
        Ensures an interval is well defined (e.g with start < finish). *)
     val make_interval : point -> point -> interval
     val line : point -> int
@@ -20,8 +20,8 @@ module type RangeType =
 
     (**Type for the position of a cursor relative to an interval. *)
     type cmp = Before | In | After
-    (**in_range pt i returns Beofre, In or After depending of the
-       position of the point pt relative to the interval i.*)
+    (**[in_range pt i] returns [Before], [In] or [After] depending on the
+       position of the point [pt] relative to the interval [i].*)
     val in_range : point -> interval -> cmp
 
     (**Comparison over intervals.
@@ -38,11 +38,11 @@ module type RangeType =
     val point_to_string : point -> string
     val interval_to_string : interval -> string
 
-      (**translate i ds df returns the interval i with its starting point
-         translated by ds and finishing point translated by df. 
+      (**[translate i ds df] returns the interval [i] with its starting point
+         translated by [ds] and finishing point translated by [df]. 
          
          Will throw an error if the resulting interval is not well-defined
-         (see make_interval). On ly translates column-wise,
+         (see make_interval). Only translates column-wise,
          does not modify the line coordinates of the extremity points. *)
     val translate : interval -> int -> int -> interval
   end
@@ -101,15 +101,16 @@ module type RangeMapType =
     type interval
     type point
 
-    (**find pt map returns the only (token, range) couple such that pt
-       is a point within the interval range.
-       Requires map to be well-defined (see add). *)
+    (**[find pt map] returns the only (token, range) couple in map such
+       that [pt] is a point within the mapped interval range.
+       Requires [map] to be well-defined (see add). *)
     val find : point -> 'a t -> (interval * 'a) option
 
     (**The empty range map.*)
     val empty : 'a t
 
-    (**add range token map adds a mapping (key : range, value : token) to map.
+    (**[add range token map] adds a mapping (key : [range],
+       value : [token]) to [map].
 
        Requires all added keys to be non overlapping intervals to be well-defined.
        /!\ Does not ensure proper functionning if the added keys are overlapping
