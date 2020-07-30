@@ -1,8 +1,8 @@
 (**Module for points and intervals. Used to determine if a cursor is in the range
-  of a specific token, which is an interval of points (cursor positions).
-  The presence of t and compare make RangeType an OrderedType (in the sense of
-  Map).
-  For now, the useful modules out of this library are Range and RangeMap. *)
+   of a specific token, which is an interval of points (cursor positions).
+   The presence of t and compare make RangeType an OrderedType (in the sense of
+   Map).
+   For now, the useful modules out of this library are Range and RangeMap. *)
 module type RangeType =
   sig
     type point type t type interval = t
@@ -102,8 +102,8 @@ module type RangeMapType =
     type point
 
     (**find pt map returns the only (token, range) couple such that pt
-    is a point within the interval range.
-    Requires map to be well-defined (see add). *)
+       is a point within the interval range.
+       Requires map to be well-defined (see add). *)
     val find : point -> 'a t -> (interval * 'a) option
 
     (**The empty range map.*)

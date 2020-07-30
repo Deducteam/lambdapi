@@ -281,8 +281,8 @@ let do_definition ofmt ~id params =
     | Some (_, None) -> `Null
     | Some (term, Some pos) ->
       (*A JSON with the path towards the definition of the term
-      and its position is returned*)
-      (*/!\ : extension is fixed, only works for .lp files *)
+        and its position is returned
+        /!\ : extension is fixed, only works for .lp files *)
       mk_definfo Files.(module_to_file Terms.(term.sym_path)
       ^ src_extension) pos
   in
@@ -303,8 +303,8 @@ let hover_symInfo ofmt ~id params =
   match get_symbol pt doc.map with
   |None -> "No symbol found", (Range.make_interval pt pt)
   (*VSCode highlights the token properly if the interval is extended to
-  the character next to it. This might be handled differently in other editors
-  in the future, but it is the most practical solution for now. *)
+    the character next to it. This might be handled differently in other
+    editors in the future, but it is the most practical solution for now. *)
   |Some(token, range) -> token, (Range.translate range 0 1)
   in
 
@@ -319,7 +319,7 @@ let hover_symInfo ofmt ~id params =
   let sym = Pure.get_symbols doc.final in
 
   (*The start/finish positions are used to hover the full qualified term,
-  not just the token*)
+    not just the token*)
   let start = Range.interval_start interval
   and finish = Range.interval_end interval in
 
