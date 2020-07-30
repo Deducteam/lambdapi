@@ -258,7 +258,7 @@ let do_definition ofmt ~id params =
   let sym_target =
     match get_symbol pt doc.map with
     | None -> "No symbol found"
-    | Some(token,_) -> token
+    | Some(token, _) -> token
   in
 
   (*Some printing in the log*)
@@ -302,7 +302,10 @@ let hover_symInfo ofmt ~id params =
   let sym_target, interval  =
   match get_symbol pt doc.map with
   |None -> "No symbol found", (Range.make_interval pt pt)
-  |Some(token, range) -> token, range
+  (*VSCode highlights the token properly if the interval is extended to
+  the character next to it. This might be handled differently in other editors
+  in the future, but it is the most practical solution for now. *)
+  |Some(token, range) -> token, (Range.translate range 0 1)
   in
 
   (*Some printing in the log*)

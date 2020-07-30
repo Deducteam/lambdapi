@@ -21,17 +21,14 @@ module Range = Lplib.Cmap.Range
 
 let concat_map = Lplib.Utils.concat_map
 
-let interval_of_pos (p : Pos.pos) =
-
+let interval_of_pos : Pos.pos -> Range.interval = fun p ->
   let open Range in
-
   let data = Lazy.force p in
   let start : point = make_point data.start_line data.start_col in
   let finish : point = make_point data.end_line data.end_col in
-
   make_interval start finish
 
-let interval_of_popt (p : Pos.popt) =
+let interval_of_popt : Pos.popt -> Range.interval = fun p ->
   match p with
   | None -> invalid_arg "Position option with 'None' can't be converted
       to interval"
