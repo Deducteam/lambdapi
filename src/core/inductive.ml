@@ -24,9 +24,9 @@ let get_config : Sig_state.t -> Pos.popt -> config = fun ss pos ->
   ; symb_prf  = builtin "P" }
 
 (** [gen_ind_typ_codom pos ind_sym codom] assumes that the type of [ind_sym]
-    is of the form [Π(x1:a1),...,Π(xn:an), TYPE]. It then generates a [tbox]
+    is of the form [Π(i1:a1),...,Π(in:an), TYPE]. It then generates a [tbox]
     similar to this type except that [TYPE] is replaced by
-    [codom [x1;...;xn]]. *)
+    [codom [i1;...;in]]. *)
 let gen_ind_typ_codom : popt -> sym -> (tbox list -> tbox) -> tbox =
   fun pos ind_sym codom ->
   let rec aux : tvar list -> term -> tbox = fun xs a ->
@@ -99,11 +99,13 @@ let fold_cons_typ (pos : popt) (codom : term list -> 'b list -> 'a -> 'c)
     of the inductive type [ind_sym] (and its position [pos]) with the cons-
     tructors [cons_list]. Each recursive argument is followed by its induction
     hypothesis. For instance, with [inductive T:TYPE := c: T->T->T], we have
-    [ind_T: Πp:T->Prop, (Πx1:T, π(p x1)-> Πx2:T, π(p x2)-> π(p(c x1 x2)) ->
-    Πx:T, π(p x)]. In general, thanks to this function, the command
-    inductive T : Π(x1:A1),...,Π(xm:Am), TYPE := c1:T1 | ... | cn:Tn generates
-    ind_T: Π(p:Π(x1:A1),...,Π(xm:Am), T x1 ... xm -> Prop), U1 -> ... -> Un ->
-    (Π(x1:A1),...,Π(xm:Am), Π(x:T x1 ... xm), π(p x1 ... xm x))
+    [ind_T: Πp:T->Prop, (Πx0:T, π(p x0)-> Πx1:T, π(p x1)-> π(p (c x0 x1)) ->
+    Πx:T, π(p x)]. Indeed, if the user doesn't give a name for an argument
+    (in case of no dependent product in fact), a fresh name will create (xi
+    with a fresh i). In general, thanks to this function, the command
+    inductive T : Π(i1:A1),...,Π(im:Am), TYPE := c1:T1 | ... | cn:Tn generates
+    ind_T: Π(p:Π(i1:A1),...,Π(im:Am), T i1 ... im -> Prop), U1 -> ... -> Un ->
+    (Π(i1:A1),...,Π(im:Am), Π(t:T i1 ... im), π(p i1 ... im t))
     where Ui is the clause associated to the constructor ci. *)
 let gen_rec_type : Sig_state.t -> popt -> sym -> sym list -> term =
   fun ss pos ind_sym cons_list ->
@@ -127,8 +129,7 @@ let gen_rec_type : Sig_state.t -> popt -> sym -> sym list -> term =
      [cons_sym]. *)
   let case_of : sym -> tbox = fun cons_sym ->
     let codom : term list -> tvar list -> tbox -> tbox = fun ts xs _ ->
-      prf_of_p (List.map lift ts)
-        (fapp cons_sym (List.rev_map _Vari xs))
+      prf_of_p (List.map lift ts) (fapp cons_sym (List.rev_map _Vari xs))
     in
     let get_name : tbinder -> int -> tvar * term = fun b _ ->
       Basics.unbind_name b
@@ -172,12 +173,13 @@ let gen_rec_type : Sig_state.t -> popt -> sym -> sym list -> term =
 (** [gen_rec_rules ind_sym rec_sym cons_list] returns the p_rules associated
     with an induction principle [rec_sym] of the inductive type [ind_sym]
     (with its constructors [cons_list]). That means the command
-    inductive T : Π(x1:A1),...,Π(xm:Am), TYPE := c1:T1 | ... | cn:Tn generates
-    a rule for each constructor. If Ti = Π(b1:B1),...,Π(bk:Bk), T then the
+    inductive T : Π(i1:A1),...,Π(im:Am), TYPE := c1:T1 | ... | cn:Tn generates
+    a rule for each constructor. If Ti = Π(b1:B1), ... , Π(bk:Bk), T then the
     rule for ci is:
-    rule ind_T p pi1 ... pin _ ... _ (ci x1 ... xk) --> pii x1 t1? ... xk tk?
+    rule ind_T p pic1 ... picn _ ... _ (ci x0 ... x(k-1)) -->
+    pici x0 t0? ... x(k-1) t(k-1)?
     with m underscores and tj? = nothing if xj isn't a value of the inductive
-    type and tj? = (ind_T p pi1 ... pin _ ... _ xj) if xj is a value of the
+    type and tj? = (ind_T p pic1 ... picn _ ... _ xj) if xj is a value of the
     inductive type T (i.e. xj = T v1 ... vm) *)
 let gen_rec_rules : sym -> sym -> sym list -> p_rule list =
   fun ind_sym rec_sym cons_list ->
