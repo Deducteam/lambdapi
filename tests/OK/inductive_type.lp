@@ -63,7 +63,7 @@ assert Blue : RGB
 inductive Color : TYPE ≔
  | black : Color
  | white : Color
- | primary : Π(p : RGB), Color
+ | primary : RGB → Color
 
 assert ind_Color : // Induction principle
   Πp : Color → Prop,
@@ -224,7 +224,7 @@ assert consTree (consTree (consTree Leaf z Leaf) z Leaf) z (consTree Leaf z Leaf
 
 ///////////////////// Polymorphic list
 
-inductive L : Πa:Set, TYPE ≔
+inductive L : Set → TYPE ≔
  | nilL  : Πa, L a
  | consL : Πa, τ a → L a → L a
 
@@ -270,7 +270,7 @@ assert cons_vec (succ z) x (cons_vec z x nil_vec) : Vec (succ (succ z))
 
 /////////////////// Polymorphic vector
 
-inductive Vec_param : Π(a : Set), Π(n : Nat), TYPE ≔
+inductive Vec_param : Set → Nat → TYPE ≔
  | nil_vec_p   : Πa, Vec_param a z
  | cons_vec_p  : Πa n (_:τ a), Vec_param a n → Vec_param a (succ n)
 
@@ -294,7 +294,7 @@ assert cons_vec_p bool (succ z) false (cons_vec_p bool z true (nil_vec_p bool)) 
 
 ////////////////// Type sum
 
-inductive {|sum|} : Π(A:Set) (B:Set), TYPE ≔
+inductive {|sum|} : Set → Set → TYPE ≔
  | {|inl_sum|} : ΠA B, τ A → {|sum|} A B
  | inr : ΠA B, τ B → {|sum|} A B
 
@@ -375,7 +375,7 @@ set infix left 6 "≤" ≔ le
 //  | le_n : Πn, π (n ≤ n)
 //  | le_S : Πn m:τ nat, π (n ≤ m) → π (n ≤ (succ m))
 
-inductive listb : Π(bound : τ nat), TYPE ≔
+inductive listb : τ nat → TYPE ≔
  | Bnil  : Πbound, listb bound
  | Bcons : Πbound x, π (x ≤ bound) → listb bound → listb bound
 
@@ -450,38 +450,39 @@ assert unl (succ z) z t12 (bin z z mty mty) : rom (succ (succ z))
 ///////////////// Fibonacci suite
 
 inductive fibo : Nat → Nat → TYPE ≔
- | cgen' : Π (a n r1 r2 : Nat),
+ | cgen' : Π (n r1 r2 : Nat),
     fibo n r1 → fibo (succ n) r2 →  fibo (succ (succ n)) (plus r1 r2)
- | cbase1 : Π (a:Nat), fibo z (succ z)
- | cbase2 : Π (a:Nat), fibo (succ z) (succ z)
+ | cbase1 : fibo z (succ z)
+ | cbase2 : fibo (succ z) (succ z)
 
 assert ind_fibo : Πp: Πx: Nat, Πx0: Nat, fibo x x0 → Prop, // Induction principle
-(Πx n r1 r2,
+(Πn r1 r2,
      Πx0: fibo n r1, π (p n r1 x0) →
      Πx1: fibo (succ n) r2, π (p (succ n) r2 x1) →
-π (p (succ (succ n)) (r1 + r2) (cgen' x n r1 r2 x0 x1))) →
-(Πx: Nat, π (p 0 1 (cbase1 x))) → (Πx: Nat, π (p 1 1 (cbase2 x))) →
+π (p (succ (succ n)) (r1 + r2) (cgen' n r1 r2 x0 x1))) →
+π (p 0 1 cbase1) →
+π (p 1 1 cbase2) →
 Πx: Nat, Πx0: Nat, Πx1: fibo x x0, π (p x x0 x1)
 
 symbol pFibo : Πx: Nat, Πx0: Nat, fibo x x0 → Prop // Tests about inductive rules
-symbol picgen' : (Πx n r1 r2, Πx0: fibo n r1, π (pFibo n r1 x0) → Πx1: fibo (succ n) r2,
-                  π (pFibo (succ n) r2 x1) → π (pFibo (succ (succ n)) (r1 + r2) (cgen' x n r1 r2 x0 x1)))
-symbol picbase1 : Πx: Nat, π (pFibo 0 1 (cbase1 x))
-symbol picbase2 : Πx: Nat, π (pFibo 1 1 (cbase2 x))
+symbol picgen' : (Πn r1 r2, Πx0: fibo n r1, π (pFibo n r1 x0) → Πx1: fibo (succ n) r2,
+                  π (pFibo (succ n) r2 x1) → π (pFibo (succ (succ n)) (r1 + r2) (cgen' n r1 r2 x0 x1)))
+symbol picbase1 : π (pFibo 0 1 cbase1)
+symbol picbase2 : π (pFibo 1 1 cbase2)
 symbol r1 : Nat
 symbol r2 : Nat
 symbol hypF1 : fibo n r1
 symbol hypF2 : fibo (succ n) r2
-assert ind_fibo pFibo picgen' picbase1 picbase2 _ _ (cgen' x n r1 r2 hypF1 hypF2)
-     ≡ picgen' x n r1 r2 hypF1 (ind_fibo pFibo picgen' picbase1 picbase2 _ _ hypF1) 
+assert ind_fibo pFibo picgen' picbase1 picbase2 _ _ (cgen' n r1 r2 hypF1 hypF2)
+     ≡ picgen' n r1 r2 hypF1 (ind_fibo pFibo picgen' picbase1 picbase2 _ _ hypF1) 
                          hypF2 (ind_fibo pFibo picgen' picbase1 picbase2 _ _ hypF2)
-assert ind_fibo pFibo picgen' picbase1 picbase2 _ _ (cbase1 n) ≡ picbase1 n
-assert ind_fibo pFibo picgen' picbase1 picbase2 _ _ (cbase2 n) ≡ picbase2 n
+assert ind_fibo pFibo picgen' picbase1 picbase2 _ _ cbase1 ≡ picbase1
+assert ind_fibo pFibo picgen' picbase1 picbase2 _ _ cbase2 ≡ picbase2
 
-assert cbase1 z : fibo z (succ z) // Examples
-assert cbase1 (succ z) : fibo z (succ z)
-assert cbase2 z : fibo (succ z) (succ z)
-assert cgen' z z (succ z) (succ z) (cbase1 z) (cbase2 z) : fibo (succ (succ z)) (succ (succ z))
+assert cbase1 : fibo z (succ z) // Examples
+assert cbase1 : fibo z (succ z)
+assert cbase2 : fibo (succ z) (succ z)
+assert cgen' z (succ z) (succ z) cbase1 cbase2 : fibo (succ (succ z)) (succ (succ z))
 
 /////////////////////////////
 // Some proofs
