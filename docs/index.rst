@@ -38,7 +38,6 @@ For developers
    structure.rst
    implementation.rst
    devel.rst
-   perfs.rst
 
 
 
