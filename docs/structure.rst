@@ -4,6 +4,8 @@ Overview of directories and files
 -  ``docs/``: documentation in `ReStructured Text`_ format, to be built with
    `Sphinx`_.
 
+   - ``docs/README.md``: introduction to the user manual and guidelines
+
 -  ``editors/``: editor plugins for handling Lambdapi files
 
    -  ``emacs/``: code for emacs
