@@ -76,6 +76,17 @@ and p_patt = p_term
     the argument is marked as implicit (i.e., between curly braces). *)
 and p_arg = ident option list * p_type option * bool
 
+(** [p_get_args t] is {!val:Basics.get_args} on syntax-level terms. *)
+let p_get_args : p_term -> p_term * p_term list = fun t ->
+  let rec p_get_args acc t =
+    match t.elt with
+    | P_Appl(t, u) -> p_get_args (u::acc) t
+    | _            -> (t, acc)
+  in p_get_args [] t
+
+(** Parser-level rewriting rule representation. *)
+type p_rule = (p_patt * p_term) loc
+
 (** The previous module provides some functions to create p_term without
     position. *)
 module P  =
@@ -112,18 +123,10 @@ module P  =
     let rec appl_wild : p_term -> int -> p_term = fun head i ->
       if i <= 0 then head else appl_wild (appl head wild) (i-1)
 
+    (** [rule] creates a p_rule without position. *)
+    let rule : p_patt -> p_term -> p_rule = fun l r -> Pos.none (l,r)
+
   end
-
-(** [p_get_args t] is {!val:Basics.get_args} on syntax-level terms. *)
-let p_get_args : p_term -> p_term * p_term list = fun t ->
-  let rec p_get_args acc t =
-    match t.elt with
-    | P_Appl(t, u) -> p_get_args (u::acc) t
-    | _            -> (t, acc)
-  in p_get_args [] t
-
-(** Parser-level rewriting rule representation. *)
-type p_rule = (p_patt * p_term) loc
 
 (** Rewrite pattern specification. *)
 type p_rw_patt =
