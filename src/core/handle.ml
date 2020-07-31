@@ -137,29 +137,29 @@ let handle_require_as : popt -> sig_state -> Path.t -> ident -> sig_state =
     [e p strat symbol x xs : a] with [ss] as the signature state.
     On success, an updated signature state and the new symbol are returned. *)
 let handle_symbol :
-      sig_state -> expo -> prop -> match_strat -> ident -> p_arg list ->
-      p_type -> sig_state * sym = fun ss e p strat x xs a ->
-      let scope_basic exp = Scope.scope_term exp ss Env.empty in
-      (* We check that [x] is not already used. *)
-      if Sign.mem ss.signature x.elt then
-        fatal x.pos "Symbol [%s] already exists." x.elt;
-      (* Desugaring of arguments of [a]. *)
-      let a = if xs = [] then a else Pos.none (P_Prod(xs, a)) in
-      (* Obtaining the implicitness of arguments. *)
-      let impl = Scope.get_implicitness a in
-      (* We scope the type of the declaration. *)
-      let a = scope_basic e a in
-      (* We check that [a] is typable by a sort. *)
-      Typing.sort_type [] a;
-      (* We check that no metavariable remains. *)
-      if Basics.has_metas true a then
-        begin
-          fatal_msg "The type of [%s] has unsolved metavariables.\n" x.elt;
-          fatal x.pos "We have %s : %a." x.elt pp_term a
-        end;
-      (* Actually add the symbol to the signature and the state. *)
-      out 3 "(symb) %s : %a\n" x.elt pp_term a;
-      Sig_state.add_symbol ss e p strat x a impl None
+  sig_state -> expo -> prop -> match_strat -> ident -> p_arg list ->
+  p_type -> sig_state * sym = fun ss e p strat x xs a ->
+  let scope_basic exp = Scope.scope_term exp ss Env.empty in
+  (* We check that [x] is not already used. *)
+  if Sign.mem ss.signature x.elt then
+    fatal x.pos "Symbol [%s] already exists." x.elt;
+  (* Desugaring of arguments of [a]. *)
+  let a = if xs = [] then a else Pos.none (P_Prod(xs, a)) in
+  (* Obtaining the implicitness of arguments. *)
+  let impl = Scope.get_implicitness a in
+  (* We scope the type of the declaration. *)
+  let a = scope_basic e a in
+  (* We check that [a] is typable by a sort. *)
+  Typing.sort_type [] a;
+  (* We check that no metavariable remains. *)
+  if Basics.has_metas true a then
+    begin
+      fatal_msg "The type of [%s] has unsolved metavariables.\n" x.elt;
+      fatal x.pos "We have %s : %a." x.elt pp_term a
+    end;
+  (* Actually add the symbol to the signature and the state. *)
+  out 3 "(symb) %s : %a\n" x.elt pp_term a;
+  Sig_state.add_symbol ss e p strat x a impl None
 
 (** [handle_rules ss rs] handles the command [rule r1 with r2 ... with rn]
     with [ss] as the signature state.
@@ -275,8 +275,10 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
         let (ss, cons_sym) = handle_symbol ss e Const Eager id [] a in
         (ss, cons_sym::cons_list)
       in
-      let (ss, cons_list) = List.fold_left add_cons (ss, []) l in
-      let cons_list = List.rev cons_list  in
+      let (ss, cons_list_rev) = List.fold_left add_cons (ss, []) l in
+      (* Reverse the list of constructors previoulsy computed to preserve the
+         initial order *)
+      let cons_list = List.rev cons_list_rev  in
       (* Compute the induction principle *)
       let rec_typ = Inductive.gen_rec_type ss cmd.pos ind_sym cons_list in
       (* Check the type of the induction principle *)
