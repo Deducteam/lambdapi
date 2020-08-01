@@ -12,9 +12,10 @@ for proof interoperability should consult the OCaml documentation generated with
 Where do I start?
 -----------------
 
-The documentation should be shortly available on <https://readthedocs.org>.
-Meanwhile, the documentation can be generated from the sources and then browsed
-locally using any web browser.
+The documentation is available at <https://lambdapi.readthedocs.io>.
+
+It can also, be generated from the sources and browsed locally using any web
+browser.
 
 To generate the documentation, 
 [Sphinx](https://www.sphinx-doc.org/en/master/index.html) is required
