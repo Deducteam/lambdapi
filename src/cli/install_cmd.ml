@@ -25,7 +25,11 @@ let run_install : Config.t -> bool -> string list -> unit =
           begin
             (* Install package file at the root path. *)
             let path = Package.((read file).root_path) in
-            let lib_root = Files.lib_root_path () in
+            let lib_root =
+              match Stdlib.(!lib_root) with
+              | None -> assert false
+              | Some(p) -> p
+            in
             let dir = List.fold_left Filename.concat lib_root path in
             Filename.concat dir Package.pkg_file
           end
@@ -57,7 +61,7 @@ let run_uninstall : Config.t -> bool -> string -> unit =
       Package.(pkg_config.package_name, pkg_config.root_path)
     in
     (* Compute the expected installation directory. *)
-    let lib_root = Files.lib_root_path () in
+    let lib_root = match !lib_root with None -> assert false | Some(p) -> p in
     let pkg_dir = List.fold_left Filename.concat lib_root pkg_root_path in
     let pkg_file = Filename.concat pkg_dir Package.pkg_file in
     (* Check that a package is indeed installed there. *)
