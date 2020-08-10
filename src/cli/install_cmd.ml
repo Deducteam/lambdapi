@@ -40,10 +40,17 @@ let run_install : Config.t -> bool -> string list -> unit =
             Files.install_path file
           end
       in
+      (* Create directories as needed for [dest]. *)
+      let cmd =
+        let dest_dir = Filename.dirname dest in
+        String.concat " " ["mkdir"; "--parents"; dest_dir]
+      in
+      run_command dry_run cmd;
+      (* Copy files. *)
       let cmd =
         let file = Filename.quote file in
-        let dest = Filename.quote dest in
-        "install -D -T " ^ file ^ " " ^ dest
+        String.concat " "
+          ["cp"; "--preserve"; "--no-target-directory"; "--force"; file; dest]
       in
       run_command dry_run cmd
     in
