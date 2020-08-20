@@ -198,26 +198,28 @@ let in_range ?loc (line, pos) =
     (start_line - 1 = line && start_col <= pos) ||
     (end_line - 1 = line && pos <= end_col)
 
-let get_goals ~doc ~line ~pos =
+let get_node_at_pos doc line pos =
   let open Lp_doc in
-  let node =
-    List.find_opt (fun { ast; _ } ->
-        let loc = Pure.Command.get_pos ast in
-        let res = in_range ?loc (line,pos) in
-        let ls = Format.asprintf "%B l:%d p:%d / %a "
-                   res line pos Pos.print loc in
-        LIO.log_error "get_goals" ("call: "^ls);
-        res
-      ) doc.Lp_doc.nodes in
-  let goalsList = match node with
-    | None -> []
-    | Some n -> n.goals in
-  let goals =
-    match List.find_opt (fun (_, loc) -> in_range ?loc (line,pos)) goalsList
-    with
+  List.find_opt (fun { ast; _ } ->
+      let loc = Pure.Command.get_pos ast in
+      let res = in_range ?loc (line,pos) in
+      let ls = Format.asprintf "%B l:%d p:%d / %a "
+                 res line pos Pos.print loc in
+      LIO.log_error "get_node_at_pos" ("call: "^ls);
+      res
+    ) doc.Lp_doc.nodes
+
+let rec get_goals ~doc ~line ~pos =
+  let node = get_node_at_pos doc line pos in
+  let goals = match node with
     | None -> None
-    | Some (v,_) -> Some v in
-  goals
+    | Some n ->
+        List.find_opt (fun (_, loc) -> in_range ?loc (line,pos)) n.goals in
+  match goals with
+    | None -> begin match node with
+              | None   -> None
+              | Some _ -> get_goals ~doc ~line:(line-1) ~pos:0 end
+    | Some (v,_) -> Some v
 
 let do_goals ofmt ~id params =
   let uri, line, pos = get_docTextPosition params in

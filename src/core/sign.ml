@@ -73,7 +73,7 @@ let new_sym : string -> term -> sym = fun name typ ->
   let path = (current_sign()).sign_path in
   { sym_name = name; sym_type = ref typ; sym_path = path; sym_def = ref None
     ; sym_impl = []; sym_rules = ref []; sym_prop = Defin; sym_expo = Privat
-    ; sym_tree = ref Tree_types.empty_dtree }
+    ; sym_tree = ref Tree_types.empty_dtree; sym_mstrat = ref Eager }
 
 (** [link sign] establishes physical links to the external symbols. *)
 let link : t -> unit = fun sign ->
@@ -185,12 +185,13 @@ let unlink : t -> unit = fun sign ->
   StrMap.iter (fun _ (s,_) -> unlink_sym s) !(sign.sign_binops);
   SymSet.iter unlink_sym !(sign.sign_quants)
 
-(** [add_symbol sign expo prop name a impl] creates a fresh symbol with name
-   [name], exposition [expo], property [prop], type [a] and implicit arguments
-   [impl] in the signature [sign]. [name] should not already be used in
-   [sign]. The created symbol is returned. *)
-let add_symbol : t -> expo -> prop -> strloc -> term -> bool list -> sym =
-    fun sign sym_expo sym_prop s a impl ->
+(** [add_symbol sign expo prop mstrat name a impl] creates a fresh symbol with
+    name [name], exposition [expo], property [prop], matching strategy
+    [strat], type [a] and implicit arguments [impl] in the signature [sign].
+    [name] should not already be used in [sign]. The created symbol is
+    returned. *)
+let add_symbol : t -> expo -> prop -> match_strat -> strloc -> term ->
+  bool list -> sym = fun sign sym_expo sym_prop sym_mstrat s a impl ->
   (* Check for metavariables in the symbol type. *)
   if Basics.has_metas true a then
     fatal s.pos "The type of [%s] contains metavariables" s.elt;
@@ -201,7 +202,8 @@ let add_symbol : t -> expo -> prop -> strloc -> term -> bool list -> sym =
   let sym =
     { sym_name = s.elt; sym_type = ref (cleanup a); sym_path = sign.sign_path
     ; sym_def = ref None; sym_impl; sym_rules = ref []; sym_prop
-    ; sym_expo ; sym_tree = ref Tree_types.empty_dtree }
+    ; sym_expo ; sym_tree = ref Tree_types.empty_dtree
+    ; sym_mstrat = ref sym_mstrat }
   in
   sign.sign_symbols := StrMap.add s.elt (sym, s.pos) !(sign.sign_symbols); sym
 

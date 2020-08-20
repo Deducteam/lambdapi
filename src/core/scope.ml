@@ -546,8 +546,8 @@ let scope_rule : sig_state -> p_rule -> pre_rule loc = fun ss r ->
   let pr_vars =
     let fn i =
       let name =
-        try Printf.sprintf "%i_%s" i (Hashtbl.find lhs_names i)
-        with Not_found -> Printf.sprintf "%i" i
+        try Printf.sprintf "v%i_%s" i (Hashtbl.find lhs_names i)
+        with Not_found -> Printf.sprintf "v%i" i
       in
       Bindlib.new_var te_mkfree name
     in
