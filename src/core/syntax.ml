@@ -34,7 +34,7 @@ and p_term_aux =
   | P_Type
   (** TYPE constant. *)
   | P_Iden of qident * bool
-  (** Variable or (qualified, explicitly applied) symbol. *)
+  (** Identifier (the boolean indicates whether it is prefixed by "@"). *)
   | P_Wild
   (** Wildcard (place-holder for terms). *)
   | P_Meta of strloc * p_term array option

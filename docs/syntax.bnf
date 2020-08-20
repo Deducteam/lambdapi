@@ -176,7 +176,7 @@ reserved "why3"
   | "or"
   | "and"
   | "imp"
-  
+
 // Single command.
 <command> ::=
   // Require and/or open a module
@@ -189,8 +189,7 @@ reserved "why3"
   | "rule" <rule> {"and" <rule>}*
   // Definition of a symbol or theorem
   | <exposition>? "definition" <ident> <arg>* {":" <type>}? "≔" <term>
-  | <exposition>? "inductive"  <ident> ":" <term> "≔"
-       "|"? <ident> ":" <term> {"|" <ident> ":" <term>}*
+  | <exposition>? "inductive"  <ident> ":" <term> "≔" {"|" <ident> ":" <term>}*
   | <exposition>? "theorem" <ident> <arg>* ":" <type> "proof" <tactic>*
     {"qed"|"admit"|"abort"}
   // Assertion

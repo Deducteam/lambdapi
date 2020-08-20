@@ -1,0 +1,1312 @@
+{
+	"ALPHA": {
+		"prefix": "`A",
+		"body": "Α",
+		"description": "Insert uppercase ALPHA"
+	},
+	
+	"BETA": {
+		"prefix": "`B",
+		"body": "Β",
+		"description": "Insert uppercase BETA"
+	},
+	
+	"CHI": {
+		"prefix": "`C",
+		"body": "Χ",
+		"description": "Insert uppercase CHI"
+	},
+	
+	"DELTA": {
+		"prefix": "`D",
+		"body": "Δ",
+		"description": "Insert uppercase DELTA"
+	},
+	
+	"EPSILON": {
+		"prefix": "`E",
+		"body": "Ε",
+		"description": "Insert uppercase EPSILON"
+	},
+	
+	"PHI": {
+		"prefix": "`F",
+		"body": "Φ",
+		"description": "Insert uppercase PHI"
+	},
+	
+	"GAMMA": {
+		"prefix": "`G",
+		"body": "Γ",
+		"description": "Insert uppercase GAMMA"
+	},
+	
+	"ETA": {
+		"prefix": "`H",
+		"body": "Η",
+		"description": "Insert uppercase ETA"
+	},
+	
+	"IOTA": {
+		"prefix": "`I",
+		"body": "Ι",
+		"description": "Insert uppercase IOTA"
+	},
+	
+	"KAPPA": {
+		"prefix": "`K",
+		"body": "Κ",
+		"description": "Insert uppercase KAPPA"
+	},
+	
+	"LAMBDA": {
+		"prefix": "`L",
+		"body": "Λ",
+		"description": "Insert uppercase LAMBDA"
+	},
+	
+	"MU": {
+		"prefix": "`M",
+		"body": "Μ",
+		"description": "Insert uppercase MU"
+	},
+	
+	"NU": {
+		"prefix": "`N",
+		"body": "Ν",
+		"description": "Insert uppercase NU"
+	},
+	
+	"OMICRON": {
+		"prefix": "`O",
+		"body": "Ο",
+		"description": "Insert uppercase OMICRON"
+	},
+	
+	"PI": {
+		"prefix": "`P",
+		"body": "Π",
+		"description": "Insert uppercase PI"
+	},
+	
+	"THETA": {
+		"prefix": "`Q",
+		"body": "Θ",
+		"description": "Insert uppercase THETA"
+	},
+	
+	"RHO": {
+		"prefix": "`R",
+		"body": "Ρ",
+		"description": "Insert uppercase RHO"
+	},
+	
+	"SIGMA": {
+		"prefix": "`S",
+		"body": "Σ",
+		"description": "Insert uppercase SIGMA"
+	},
+	
+	"TAU": {
+		"prefix": "`T",
+		"body": "Τ",
+		"description": "Insert uppercase TAU"
+	},
+	
+	"UPSILON": {
+		"prefix": "`U",
+		"body": "Υ",
+		"description": "Insert uppercase UPSILON"
+	},
+	
+	"OMEGA": {
+		"prefix": "`W",
+		"body": "Ω",
+		"description": "Insert uppercase OMEGA"
+	},
+
+	"XI": {
+		"prefix": "`X",
+		"body": "Ξ",
+		"description": "Insert uppercase XI"
+	},
+
+	"PSI": {
+		"prefix": "`Y",
+		"body": "Ψ",
+		"description": "Insert uppercase PSI"
+	},
+	
+	"ZETA": {
+		"prefix": "`Z",
+		"body": "Ζ",
+		"description": "Insert uppercase ZETA"
+	},
+
+	"alpha": {
+		"prefix": "`a",
+		"body": "α",
+		"description": "Insert alpha"
+	},
+	
+	"beta": {
+		"prefix": "`b",
+		"body": "β",
+		"description": "Insert beta"
+	},
+	
+	"chi": {
+		"prefix": "`c",
+		"body": "χ",
+		"description": "Insert chi"
+	},
+	
+	"delta": {
+		"prefix": "`d",
+		"body": "δ",
+		"description": "Insert delta"
+	},
+	
+	"epsilon": {
+		"prefix": "`e",
+		"body": "ϵ",
+		"description": "Insert epsilon"
+	},
+	
+	"phi": {
+		"prefix": "`f",
+		"body": "ϕ",
+		"description": "Insert phi"
+	},
+	
+	"gamma": {
+		"prefix": "`g",
+		"body": "γ",
+		"description": "Insert gamma"
+	},
+	
+	"eta": {
+		"prefix": "`h",
+		"body": "η",
+		"description": "Insert eta"
+	},
+	
+	"iota": {
+		"prefix": "`i",
+		"body": "ι",
+		"description": "Insert iota"
+	},
+	
+	"kappa": {
+		"prefix": "`k",
+		"body": "κ",
+		"description": "Insert kappa"
+	},
+	
+	"lambda": {
+		"prefix": "`l",
+		"body": "λ",
+		"description": "Insert lambda"
+	},
+	
+	"mu": {
+		"prefix": "`m",
+		"body": "μ",
+		"description": "Insert mu"
+	},
+	
+	"nu": {
+		"prefix": "`n",
+		"body": "ν",
+		"description": "Insert nu"
+	},
+	
+	"omicron": {
+		"prefix": "`o",
+		"body": "ο",
+		"description": "Insert omicron"
+	},
+	
+	"pi": {
+		"prefix": "`p",
+		"body": "π",
+		"description": "Insert pi"
+	},
+	
+	"theta": {
+		"prefix": "`q",
+		"body": "θ",
+		"description": "Insert theta"
+	},
+	"rho": {
+		"prefix": "`r",
+		"body": "ρ",
+		"description": "Insert rho"
+	},
+	
+	"sigma": {
+		"prefix": "`s",
+		"body": "σ",
+		"description": "Insert sigma"
+	},
+	
+	"tau": {
+		"prefix": "`t",
+		"body": "τ",
+		"description": "Insert tau"
+	},
+	
+	"upsilon": {
+		"prefix": "`u",
+		"body": "υ",
+		"description": "Insert upsilon"
+	},
+	
+	"omega": {
+		"prefix": "`w",
+		"body": "ω",
+		"description": "Insert omega"
+	},
+	
+	"xi": {
+		"prefix": "`x",
+		"body": "ξ",
+		"description": "Insert xi"
+	},
+	
+	"psi": {
+		"prefix": "`y",
+		"body": "ψ",
+		"description": "Insert psi"
+	},
+	
+	"zeta": {
+		"prefix": "`z",
+		"body": "ζ",
+		"description": "Insert zeta"
+	},
+	"varepsilon": {
+		"prefix": "`ve",
+		"body": "ε",
+		"description": "Insert varepsilon"
+	},
+	"varphi": {
+		"prefix": "`vf",
+		"body": "φ",
+		"description": "Insert varphi"
+	},
+	"vartheta": {
+		"prefix": "`vq",
+		"body": "ϑ",
+		"description": "Insert vartheta"
+	},
+	"varrho": {
+		"prefix": "`r",
+		"body": "ϱ",
+		"description": "Insert rho"
+	},
+	"varsigma": {
+		"prefix": "`vs",
+		"body": "ς",
+		"description": "Insert varsigma"
+	},
+	"wedge": {
+		"prefix": ["`and"],
+		"body": "∧",
+		"description": "Insert wedge"
+	},
+	"vee": {
+		"prefix": "`or",
+		"body": "∨",
+		"description": "Insert vee"
+	},
+	"neg": {
+		"prefix": "`not",
+		"body": "¬",
+		"description": "Insert negation"
+	},
+	"arr": {
+		"prefix": "`ra",
+		"body": "→",
+		"description": "Insert arrow"
+	},
+	"hook": {
+		"prefix": "`re",
+		"body": "↪",
+		"description": "Insert hooked arrow"
+	},
+	"ass": {
+		"prefix": "`is",
+		"body": "≔",
+		"description": "Insert assignment symbol"
+	},
+	"eq": {
+		"prefix": "`eq",
+		"body": "≡",
+		"description": "Insert equivalence symbol"
+	},
+	"asse": {
+		"prefix": "`th",
+		"body": "⊢",
+		"description": "Insert assertion symbol"
+	},
+	"fa": {
+		"prefix": "`all",
+		"body": "∀",
+		"description": "Insert 'for all' symbol"
+	},
+	"ex": {
+		"prefix": "`ex",
+		"body": "∃",
+		"description": "Insert 'there exists' symbol"
+	},
+	"imp": {
+		"prefix": "`imp",
+		"body": "⇒",
+		"description": "Insert implication symbol"
+	},
+	"box": {
+		"prefix": "`box",
+		"body": "□",
+		"description": "Insert box symbol"
+	},
+	"thus": {
+		"prefix": "`cons",
+		"body": "⸬",
+		"description": "Insert 'therefore' symbol"
+	},
+	"dba": {
+		"prefix": "`da",
+		"body": "𝔸",
+		"description": "Insert double-struck a"
+	},
+	
+	"dbb": {
+		"prefix": "`db",
+		"body": "𝔹",
+		"description": "Insert double-struck b"
+	},
+	
+	"dbc": {
+		"prefix": "`dc",
+		"body": "ℂ",
+		"description": "Insert double-struck c"
+	},
+	
+	"dbd": {
+		"prefix": "`dd",
+		"body": "𝔻",
+		"description": "Insert double-struck d"
+	},
+	
+	"dbe": {
+		"prefix": "`de",
+		"body": "𝔼",
+		"description": "Insert double-struck e"
+	},
+	
+	"dbf": {
+		"prefix": "`df",
+		"body": "𝔽",
+		"description": "Insert double-struck f"
+	},
+	
+	"dbg": {
+		"prefix": "`dg",
+		"body": "𝔾",
+		"description": "Insert double-struck g"
+	},
+	
+	"dbh": {
+		"prefix": "`dh",
+		"body": "ℍ",
+		"description": "Insert double-struck h"
+	},
+	
+	"dbi": {
+		"prefix": "`di",
+		"body": "𝕀",
+		"description": "Insert double-struck i"
+	},
+	
+	"dbj": {
+		"prefix": "`dj",
+		"body": "𝕁",
+		"description": "Insert double-struck j"
+	},
+	
+	"dbk": {
+		"prefix": "`dk",
+		"body": "𝕂",
+		"description": "Insert double-struck k"
+	},
+	
+	"dbl": {
+		"prefix": "`dl",
+		"body": "𝕃",
+		"description": "Insert double-struck l"
+	},
+	
+	"dbm": {
+		"prefix": "`dm",
+		"body": "𝕄",
+		"description": "Insert double-struck m"
+	},
+	
+	"dbn": {
+		"prefix": "`dn",
+		"body": "ℕ",
+		"description": "Insert double-struck n"
+	},
+	
+	"dbo": {
+		"prefix": "`do",
+		"body": "𝕆",
+		"description": "Insert double-struck o"
+	},
+	
+	"dbp": {
+		"prefix": "`dp",
+		"body": "ℙ",
+		"description": "Insert double-struck p"
+	},
+	
+	"dbq": {
+		"prefix": "`dq",
+		"body": "ℚ",
+		"description": "Insert double-struck q"
+	},
+	
+	"dbr": {
+		"prefix": "`dr",
+		"body": "ℝ",
+		"description": "Insert double-struck r"
+	},
+	
+	"dbs": {
+		"prefix": "`ds",
+		"body": "𝕊",
+		"description": "Insert double-struck s"
+	},
+	
+	"dbt": {
+		"prefix": "`dt",
+		"body": "𝕋",
+		"description": "Insert double-struck t"
+	},
+	
+	"dbu": {
+		"prefix": "`du",
+		"body": "𝕌",
+		"description": "Insert double-struck u"
+	},
+	
+	"dbv": {
+		"prefix": "`dv",
+		"body": "𝕍",
+		"description": "Insert double-struck v"
+	},
+	
+	"dbw": {
+		"prefix": "`dw",
+		"body": "𝕎",
+		"description": "Insert double-struck w"
+	},
+	
+	"dbx": {
+		"prefix": "`dx",
+		"body": "𝕏",
+		"description": "Insert double-struck x"
+	},
+	
+	"dby": {
+		"prefix": "`dy",
+		"body": "𝕐",
+		"description": "Insert double-struck y"
+	},
+	
+	"dbz": {
+		"prefix": "`dz",
+		"body": "ℤ",
+		"description": "Insert double-struck z"
+	},
+
+	"Sa": {
+		"prefix": "`Sa",
+		"body": "𝓐",
+		"description": "Insert bold script a"
+	},
+	
+	"Sb": {
+		"prefix": "`Sb",
+		"body": "𝓑",
+		"description": "Insert bold script b"
+	},
+	
+	"Sc": {
+		"prefix": "`Sc",
+		"body": "𝓒",
+		"description": "Insert bold script c"
+	},
+	
+	"Sd": {
+		"prefix": "`Sd",
+		"body": "𝓓",
+		"description": "Insert bold script d"
+	},
+	
+	"Se": {
+		"prefix": "`Se",
+		"body": "𝓔",
+		"description": "Insert bold script e"
+	},
+	
+	"Sf": {
+		"prefix": "`Sf",
+		"body": "𝓕",
+		"description": "Insert bold script f"
+	},
+	
+	"Sg": {
+		"prefix": "`Sg",
+		"body": "𝓖",
+		"description": "Insert bold script g"
+	},
+	
+	"Sh": {
+		"prefix": "`Sh",
+		"body": "𝓗",
+		"description": "Insert bold script h"
+	},
+	
+	"Si": {
+		"prefix": "`Si",
+		"body": "𝓘",
+		"description": "Insert bold script i"
+	},
+	
+	"Sj": {
+		"prefix": "`Sj",
+		"body": "𝓙",
+		"description": "Insert bold script j"
+	},
+	
+	"Sk": {
+		"prefix": "`Sk",
+		"body": "𝓚",
+		"description": "Insert bold script k"
+	},
+	
+	"Sl": {
+		"prefix": "`Sl",
+		"body": "𝓛",
+		"description": "Insert bold script l"
+	},
+	
+	"Sm": {
+		"prefix": "`Sm",
+		"body": "𝓜",
+		"description": "Insert bold script m"
+	},
+	
+	"Sn": {
+		"prefix": "`Sn",
+		"body": "𝓝",
+		"description": "Insert bold script n"
+	},
+	
+	"So": {
+		"prefix": "`So",
+		"body": "𝓞",
+		"description": "Insert bold script o"
+	},
+	
+	"Sp": {
+		"prefix": "`Sp",
+		"body": "𝓟",
+		"description": "Insert bold script p"
+	},
+	
+	"Sq": {
+		"prefix": "`Sq",
+		"body": "𝓠",
+		"description": "Insert bold script q"
+	},
+	
+	"Sr": {
+		"prefix": "`Sr",
+		"body": "𝓡",
+		"description": "Insert bold script r"
+	},
+	
+	"Ss": {
+		"prefix": "`Ss",
+		"body": "𝓢",
+		"description": "Insert bold script s"
+	},
+	
+	"St": {
+		"prefix": "`St",
+		"body": "𝓣",
+		"description": "Insert bold script t"
+	},
+	
+	"Su": {
+		"prefix": "`Su",
+		"body": "𝓤",
+		"description": "Insert bold script u"
+	},
+	
+	"Sv": {
+		"prefix": "`Sv",
+		"body": "𝓥",
+		"description": "Insert bold script v"
+	},
+	
+	"Sw": {
+		"prefix": "`Sw",
+		"body": "𝓦",
+		"description": "Insert bold script w"
+	},
+	
+	"Sx": {
+		"prefix": "`Sx",
+		"body": "𝓧",
+		"description": "Insert bold script x"
+	},
+	
+	"Sy": {
+		"prefix": "`Sy",
+		"body": "𝓨",
+		"description": "Insert bold script y"
+	},
+	
+	"Sz": {
+		"prefix": "`Sz",
+		"body": "𝓩",
+		"description": "Insert bold script z"
+	},
+	"sa": {
+		"prefix": "`sa",
+		"body": "𝒜",
+		"description": "Insert script a"
+	},
+	
+	"sb": {
+		"prefix": "`sb",
+		"body": "ℬ",
+		"description": "Insert script b"
+	},
+	
+	"sc": {
+		"prefix": "`sc",
+		"body": "𝒞",
+		"description": "Insert script c"
+	},
+	
+	"sd": {
+		"prefix": "`sd",
+		"body": "𝒟",
+		"description": "Insert script d"
+	},
+	
+	"se": {
+		"prefix": "`se",
+		"body": "ℰ",
+		"description": "Insert script e"
+	},
+	
+	"sf": {
+		"prefix": "`sf",
+		"body": "ℱ",
+		"description": "Insert script f"
+	},
+	
+	"sg": {
+		"prefix": "`sg",
+		"body": "𝒢",
+		"description": "Insert script g"
+	},
+	
+	"sh": {
+		"prefix": "`sh",
+		"body": "ℋ",
+		"description": "Insert script h"
+	},
+	
+	"si": {
+		"prefix": "`si",
+		"body": "ℐ",
+		"description": "Insert script i"
+	},
+	
+	"sj": {
+		"prefix": "`sj",
+		"body": "𝒥",
+		"description": "Insert script j"
+	},
+	
+	"sk": {
+		"prefix": "`sk",
+		"body": "𝒦",
+		"description": "Insert script k"
+	},
+	
+	"sl": {
+		"prefix": "`sl",
+		"body": "ℒ",
+		"description": "Insert script l"
+	},
+	
+	"sm": {
+		"prefix": "`sm",
+		"body": "ℳ",
+		"description": "Insert script m"
+	},
+	
+	"sn": {
+		"prefix": "`sn",
+		"body": "𝒩",
+		"description": "Insert script n"
+	},
+	
+	"so": {
+		"prefix": "`so",
+		"body": "𝒪",
+		"description": "Insert script o"
+	},
+	
+	"sp": {
+		"prefix": "`sp",
+		"body": "𝒫",
+		"description": "Insert script p"
+	},
+	
+	"sq": {
+		"prefix": "`sq",
+		"body": "𝒬",
+		"description": "Insert script q"
+	},
+	
+	"sr": {
+		"prefix": "`sr",
+		"body": "ℛ",
+		"description": "Insert script r"
+	},
+	
+	"ss": {
+		"prefix": "`ss",
+		"body": "𝒮",
+		"description": "Insert script s"
+	},
+	
+	"st": {
+		"prefix": "`st",
+		"body": "𝒯",
+		"description": "Insert script t"
+	},
+	
+	"su": {
+		"prefix": "`su",
+		"body": "𝒰",
+		"description": "Insert script u"
+	},
+	
+	"sv": {
+		"prefix": "`sv",
+		"body": "𝒱",
+		"description": "Insert script v"
+	},
+	
+	"sw": {
+		"prefix": "`sw",
+		"body": "𝒲",
+		"description": "Insert script w"
+	},
+	
+	"sx": {
+		"prefix": "`sx",
+		"body": "𝒳",
+		"description": "Insert script x"
+	},
+	
+	"sy": {
+		"prefix": "`sy",
+		"body": "𝒴",
+		"description": "Insert script y"
+	},
+	
+	"sz": {
+		"prefix": "`sz",
+		"body": "𝒵",
+		"description": "Insert script z"
+	},
+
+	"Ia": {
+		"prefix": "`Ia",
+		"body": "𝑨",
+		"description": "Insert italic bold a"
+	},
+	
+	"Ib": {
+		"prefix": "`Ib",
+		"body": "𝑩",
+		"description": "Insert italic bold b"
+	},
+	
+	"Ic": {
+		"prefix": "`Ic",
+		"body": "𝑪",
+		"description": "Insert italic bold c"
+	},
+	
+	"Id": {
+		"prefix": "`Id",
+		"body": "𝑫",
+		"description": "Insert italic bold d"
+	},
+	
+	"Ie": {
+		"prefix": "`Ie",
+		"body": "𝑬",
+		"description": "Insert italic bold e"
+	},
+	
+	"If": {
+		"prefix": "`If",
+		"body": "𝑭",
+		"description": "Insert italic bold f"
+	},
+	
+	"Ig": {
+		"prefix": "`Ig",
+		"body": "𝑮",
+		"description": "Insert italic bold g"
+	},
+	
+	"Ih": {
+		"prefix": "`Ih",
+		"body": "𝑯",
+		"description": "Insert italic bold h"
+	},
+	
+	"Ii": {
+		"prefix": "`Ii",
+		"body": "𝑰",
+		"description": "Insert italic bold i"
+	},
+	
+	"Ij": {
+		"prefix": "`Ij",
+		"body": "𝑱",
+		"description": "Insert italic bold j"
+	},
+	
+	"Ik": {
+		"prefix": "`Ik",
+		"body": "𝑲",
+		"description": "Insert italic bold k"
+	},
+	
+	"Il": {
+		"prefix": "`Il",
+		"body": "𝑳",
+		"description": "Insert italic bold l"
+	},
+	
+	"Im": {
+		"prefix": "`Im",
+		"body": "𝑴",
+		"description": "Insert italic bold m"
+	},
+	
+	"In": {
+		"prefix": "`In",
+		"body": "𝑵",
+		"description": "Insert italic bold n"
+	},
+	
+	"Io": {
+		"prefix": "`Io",
+		"body": "𝑶",
+		"description": "Insert italic bold o"
+	},
+	
+	"Ip": {
+		"prefix": "`Ip",
+		"body": "𝑷",
+		"description": "Insert italic bold p"
+	},
+	
+	"Iq": {
+		"prefix": "`Iq",
+		"body": "𝑸",
+		"description": "Insert italic bold q"
+	},
+	
+	"Ir": {
+		"prefix": "`Ir",
+		"body": "𝑹",
+		"description": "Insert italic bold r"
+	},
+	
+	"Is": {
+		"prefix": "`Is",
+		"body": "𝑺",
+		"description": "Insert italic bold s"
+	},
+	
+	"It": {
+		"prefix": "`It",
+		"body": "𝑻",
+		"description": "Insert italic bold t"
+	},
+	
+	"Iu": {
+		"prefix": "`Iu",
+		"body": "𝑼",
+		"description": "Insert italic bold u"
+	},
+	
+	"Iv": {
+		"prefix": "`Iv",
+		"body": "𝑽",
+		"description": "Insert italic bold v"
+	},
+	
+	"Iw": {
+		"prefix": "`Iw",
+		"body": "𝑾",
+		"description": "Insert italic bold w"
+	},
+	
+	"Ix": {
+		"prefix": "`Ix",
+		"body": "𝑿",
+		"description": "Insert italic bold x"
+	},
+	
+	"Iy": {
+		"prefix": "`Iy",
+		"body": "𝒀",
+		"description": "Insert italic bold y"
+	},
+	
+	"Iz": {
+		"prefix": "`Iz",
+		"body": "𝒁",
+		"description": "Insert italic bold z"
+	},
+
+	"ia": {
+		"prefix": "`ia",
+		"body": "𝐴",
+		"description": "Insert italic a"
+	},
+	
+	"ib": {
+		"prefix": "`ib",
+		"body": "𝐵",
+		"description": "Insert italic b"
+	},
+	
+	"ic": {
+		"prefix": "`ic",
+		"body": "𝐶",
+		"description": "Insert italic c"
+	},
+	
+	"id": {
+		"prefix": "`id",
+		"body": "𝐷",
+		"description": "Insert italic d"
+	},
+	
+	"ie": {
+		"prefix": "`ie",
+		"body": "𝐸",
+		"description": "Insert italic e"
+	},
+	
+	"if": {
+		"prefix": "`if",
+		"body": "𝐹",
+		"description": "Insert italic f"
+	},
+	
+	"ig": {
+		"prefix": "`ig",
+		"body": "𝐺",
+		"description": "Insert italic g"
+	},
+	
+	"ih": {
+		"prefix": "`ih",
+		"body": "𝐻",
+		"description": "Insert italic h"
+	},
+	
+	"ii": {
+		"prefix": "`ii",
+		"body": "𝐼",
+		"description": "Insert italic i"
+	},
+	
+	"ij": {
+		"prefix": "`ij",
+		"body": "𝐽",
+		"description": "Insert italic j"
+	},
+	
+	"ik": {
+		"prefix": "`ik",
+		"body": "𝐾",
+		"description": "Insert italic k"
+	},
+	
+	"il": {
+		"prefix": "`il",
+		"body": "𝐿",
+		"description": "Insert italic l"
+	},
+	
+	"im": {
+		"prefix": "`im",
+		"body": "𝑀",
+		"description": "Insert italic m"
+	},
+	
+	"in": {
+		"prefix": "`in",
+		"body": "𝑁",
+		"description": "Insert italic n"
+	},
+	
+	"io": {
+		"prefix": "`io",
+		"body": "𝑂",
+		"description": "Insert italic o"
+	},
+	
+	"ip": {
+		"prefix": "`ip",
+		"body": "𝑃",
+		"description": "Insert italic p"
+	},
+	
+	"iq": {
+		"prefix": "`iq",
+		"body": "𝑄",
+		"description": "Insert italic q"
+	},
+	
+	"ir": {
+		"prefix": "`ir",
+		"body": "𝑅",
+		"description": "Insert italic r"
+	},
+	
+	"is": {
+		"prefix": "`is",
+		"body": "𝑆",
+		"description": "Insert italic s"
+	},
+	
+	"it": {
+		"prefix": "`it",
+		"body": "𝑇",
+		"description": "Insert italic t"
+	},
+	
+	"iu": {
+		"prefix": "`iu",
+		"body": "𝑈",
+		"description": "Insert italic u"
+	},
+	
+	"iv": {
+		"prefix": "`iv",
+		"body": "𝑉",
+		"description": "Insert italic v"
+	},
+	
+	"iw": {
+		"prefix": "`iw",
+		"body": "𝑊",
+		"description": "Insert italic w"
+	},
+	
+	"ix": {
+		"prefix": "`ix",
+		"body": "𝑋",
+		"description": "Insert italic x"
+	},
+	
+	"iy": {
+		"prefix": "`iy",
+		"body": "𝑌",
+		"description": "Insert italic y"
+	},
+	
+	"iz": {
+		"prefix": "`iz",
+		"body": "𝑍",
+		"description": "Insert italic z"
+	},
+	"fra": {
+		"prefix": "`fa",
+		"body": "𝔄",
+		"description": "Insert Fraktur a"
+	},
+	
+	"frb": {
+		"prefix": "`fb",
+		"body": "𝔅",
+		"description": "Insert Fraktur b"
+	},
+	
+	"frc": {
+		"prefix": "`fc",
+		"body": "ℭ",
+		"description": "Insert Fraktur c"
+	},
+	
+	"frd": {
+		"prefix": "`fd",
+		"body": "𝔇",
+		"description": "Insert Fraktur d"
+	},
+	
+	"fre": {
+		"prefix": "`fe",
+		"body": "𝔈",
+		"description": "Insert Fraktur e"
+	},
+	
+	"frf": {
+		"prefix": "`ff",
+		"body": "𝔉",
+		"description": "Insert Fraktur f"
+	},
+	
+	"frg": {
+		"prefix": "`fg",
+		"body": "𝔊",
+		"description": "Insert Fraktur g"
+	},
+	
+	"frh": {
+		"prefix": "`fh",
+		"body": "ℌ",
+		"description": "Insert Fraktur h"
+	},
+	
+	"fri": {
+		"prefix": "`fi",
+		"body": "ℑ",
+		"description": "Insert Fraktur i"
+	},
+	
+	"frj": {
+		"prefix": "`fj",
+		"body": "𝔍",
+		"description": "Insert Fraktur j"
+	},
+	
+	"frk": {
+		"prefix": "`fk",
+		"body": "𝔎",
+		"description": "Insert Fraktur k"
+	},
+	
+	"frl": {
+		"prefix": "`fl",
+		"body": "𝔏",
+		"description": "Insert Fraktur l"
+	},
+	
+	"frm": {
+		"prefix": "`fm",
+		"body": "𝔐",
+		"description": "Insert Fraktur m"
+	},
+	
+	"frn": {
+		"prefix": "`fn",
+		"body": "𝔑",
+		"description": "Insert Fraktur n"
+	},
+	
+	"fro": {
+		"prefix": "`fo",
+		"body": "𝔒",
+		"description": "Insert Fraktur o"
+	},
+	
+	"frp": {
+		"prefix": "`fp",
+		"body": "𝔓",
+		"description": "Insert Fraktur p"
+	},
+	
+	"frq": {
+		"prefix": "`fq",
+		"body": "𝔔",
+		"description": "Insert Fraktur q"
+	},
+	
+	"frr": {
+		"prefix": "`fr",
+		"body": "ℜ",
+		"description": "Insert Fraktur r"
+	},
+	
+	"frs": {
+		"prefix": "`fs",
+		"body": "𝔖",
+		"description": "Insert Fraktur s"
+	},
+	
+	"frt": {
+		"prefix": "`ft",
+		"body": "𝔗",
+		"description": "Insert Fraktur t"
+	},
+	
+	"fru": {
+		"prefix": "`fu",
+		"body": "𝔘",
+		"description": "Insert Fraktur u"
+	},
+	
+	"frv": {
+		"prefix": "`fv",
+		"body": "𝔙",
+		"description": "Insert Fraktur v"
+	},
+	
+	"frw": {
+		"prefix": "`fw",
+		"body": "𝔚",
+		"description": "Insert Fraktur w"
+	},
+	
+	"frx": {
+		"prefix": "`fx",
+		"body": "𝔛",
+		"description": "Insert Fraktur x"
+	},
+	
+	"fry": {
+		"prefix": "`fy",
+		"body": "𝔜",
+		"description": "Insert Fraktur y"
+	},
+	
+	"frz": {
+		"prefix": "`fz",
+		"body": "ℨ",
+		"description": "Insert Fraktur z",
+		"regex" : ""
+	}
+}
