@@ -74,7 +74,7 @@ let new_sym : string -> term -> sym = fun name typ ->
   let path = (current_sign()).sign_path in
   { sym_name = name; sym_type = ref typ; sym_path = path; sym_def = ref None
     ; sym_impl = []; sym_rules = ref []; sym_prop = Defin; sym_expo = Privat
-    ; sym_tree = ref Tree_types.empty_dtree }
+    ; sym_tree = ref Tree_types.empty_dtree; sym_mstrat = ref Eager }
 
 (** [link sign] establishes physical links to the external symbols. *)
 let link : t -> unit = fun sign ->
@@ -186,13 +186,14 @@ let unlink : t -> unit = fun sign ->
   StrMap.iter (fun _ (s,_) -> unlink_sym s) !(sign.sign_binops);
   SymSet.iter unlink_sym !(sign.sign_quants)
 
-(** [add_symbol sign sym_expo sym_prop s a impl] creates a fresh symbol with
-    name [s.elt] (which should not already be used in [sign]) and with the
-    type [a], in the signature [sign]. The exposition is [sym_expo] and the
-    property is [sym_prop]. The list [impl] tells which arguments is implicit.
-    The created symbol is returned. *)
-let add_symbol : t -> expo -> prop -> strloc -> term -> bool list -> sym =
-    fun sign sym_expo sym_prop s a impl ->
+(** [add_symbol sign sym_expo sym_prop sym_mstrat s a impl] creates a fresh
+    symbol with name [s.elt], exposition [sym_expo], property [sym_prop],
+    matching strategy [sym_mstrat], type [a] and implicit arguments [impl]
+    in the signature [sign].
+    [s.elt] should not already be used in [sign]. The created symbol is
+    returned. *)
+let add_symbol : t -> expo -> prop -> match_strat -> strloc -> term ->
+  bool list -> sym = fun sign sym_expo sym_prop sym_mstrat s a impl ->
   (* Check for metavariables in the symbol type. *)
   if Basics.has_metas true a then
     fatal s.pos "The type of [%s] contains metavariables" s.elt;
@@ -201,9 +202,10 @@ let add_symbol : t -> expo -> prop -> strloc -> term -> bool list -> sym =
   let sym_impl = List.rev (rem_false (List.rev impl)) in
   (* Add the symbol. *)
   let sym =
-    { sym_name = s.elt ; sym_type = ref a ; sym_path = sign.sign_path
-    ; sym_def = ref None ; sym_impl ; sym_rules = ref [] ; sym_prop
-    ; sym_expo ; sym_tree = ref Tree_types.empty_dtree }
+    { sym_name = s.elt; sym_type = ref (cleanup a); sym_path = sign.sign_path
+    ; sym_def = ref None; sym_impl; sym_rules = ref []; sym_prop
+    ; sym_expo ; sym_tree = ref Tree_types.empty_dtree
+    ; sym_mstrat = ref sym_mstrat }
   in
   sign.sign_symbols := StrMap.add s.elt (sym, s.pos) !(sign.sign_symbols); sym
 
@@ -275,6 +277,7 @@ let read : string -> t = fun fname ->
     StrMap.iter (fun _ s -> shallow_reset_sym s) !(sign.sign_builtins);
     let fn (_,r) = reset_rule r in
     PathMap.iter (fun _ -> List.iter fn) !(sign.sign_deps);
+    SymSet.iter shallow_reset_sym !(sign.sign_quants);
     sign
   in
   reset_timed_refs sign

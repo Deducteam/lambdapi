@@ -114,7 +114,7 @@ let translate_old_rule : old_p_rule -> p_rule = fun r ->
           (* No η-expansion required (enough arguments). *)
           let (lts1, lts2) = List.cut lts max in
           let ts1 = Array.of_list (List.map snd lts1) in
-          let patt = Pos.make p (P_Patt(Some(Pos.make h.pos x), ts1)) in
+          let patt = Pos.make p (P_Patt(Some(Pos.make h.pos x), Some ts1)) in
           add_args patt lts2
         else
           (* We need to η-expense (not enough arguments). *)
@@ -135,14 +135,14 @@ let translate_old_rule : old_p_rule -> p_rule = fun r ->
           (* Build the pattern. *)
           let fn x = Pos.none (P_Iden(Pos.none ([],x), false)) in
           let args = Array.append ts (Array.map fn vars) in
-          let patt = Pos.make p (P_Patt(Some(Pos.make h.pos x), args)) in
+          let patt = Pos.make p (P_Patt(Some(Pos.make h.pos x), Some args)) in
           (* Build the abstraction. *)
           let xs = Array.map (fun x -> Some(Pos.none x)) vars in
           Pos.make p (P_Abst([Array.to_list xs, None, false], patt))
     | P_Wild when lts = [] && env = []                   -> t
     | P_Wild                                             ->
         let lts = List.map (fun (_, t) -> build env t) lts in
-        Pos.make t.pos (P_Patt(None, Array.of_list lts))
+        Pos.make t.pos (P_Patt(None, Some (Array.of_list lts)))
     | _                                                  ->
     match t.elt with
     | P_Iden(_)
@@ -241,64 +241,66 @@ let build_config : Pos.pos -> string -> string option -> eval_config =
 %%
 
 line:
-  | s=ID ps=param* COLON a=term DOT
+  | ms=modifier* s=ID ps=param* COLON a=term DOT
     {
-      let t = P_symbol
-                (Terms.Public, Terms.Const, make_pos $loc(s) s, ps, a) in
+      (* Add the "constant" modifier by default. *)
+      let is_prop {elt; _} = match elt with P_prop(_) -> true | _ -> false in
+      let ms =
+        match List.find_opt is_prop ms with
+        | Some(_) -> ms
+        | None -> make_pos Lexing.(dummy_pos, dummy_pos) (P_prop(Const)) :: ms
+      in
+      make_pos $loc (P_symbol(ms, make_pos $loc(s) s, ps, a))
+    }
+  | ms=modifier* KW_DEF s=ID COLON a=term DOT
+    {
+      (* Add the "definable" modifier by default. *)
+      let is_prop {elt; _} = match elt with P_prop(_) -> true | _ -> false in
+      let ms =
+        match List.find_opt is_prop ms with
+        | Some(_) -> ms
+        | None -> make_pos Lexing.(dummy_pos, dummy_pos) (P_prop(Defin)) :: ms
+      in
+      let t =
+        P_symbol (ms, make_pos $loc(s) s, [], a)
+      in
       make_pos $loc t
     }
-  | KW_DEF s=ID COLON a=term DOT
+  | ms=modifier* KW_DEF s=ID COLON a=term DEFEQ t=term DOT
     {
-      let t = P_symbol
-                (Terms.Public, Terms.Defin, make_pos $loc(s) s, [], a) in
+      let t =
+        P_definition (ms, false, make_pos $loc(s) s, [], Some(a), t)
+      in
       make_pos $loc t
     }
-  | KW_INJ s=ID COLON a=term DOT
-    {
-      let t = P_symbol
-                (Terms.Public, Terms.Injec, make_pos $loc(s) s, [], a) in
-      make_pos $loc t
-    }
-  | KW_PRV s=ID COLON a=term DOT
-    {
-      let t = P_symbol
-                (Terms.Protec, Terms.Defin, make_pos $loc(s) s, [], a) in
-      make_pos $loc t
-    }
-  | KW_DEF s=ID COLON a=term DEFEQ t=term DOT
+  | ms=modifier* KW_DEF s=ID DEFEQ t=term DOT
     {
       let t = P_definition
-                (Terms.Public, false, make_pos $loc(s) s, [], Some(a), t) in
+                (ms, false, make_pos $loc(s) s, [], None, t) in
       make_pos $loc t
     }
-  | KW_DEF s=ID DEFEQ t=term DOT
+  | ms=modifier* KW_DEF s=ID ps=param+ COLON a=term DEFEQ t=term DOT
     {
       let t = P_definition
-                (Terms.Public, false, make_pos $loc(s) s, [], None, t) in
+                (ms, false, make_pos $loc(s) s, ps, Some(a), t) in
       make_pos $loc t
     }
-  | KW_DEF s=ID ps=param+ COLON a=term DEFEQ t=term DOT
+  | ms=modifier* KW_DEF s=ID ps=param+ DEFEQ t=term DOT
     {
       let t = P_definition
-                (Terms.Public, false, make_pos $loc(s) s, ps, Some(a), t) in
+                (ms, false, make_pos $loc(s) s, ps, None, t) in
       make_pos $loc t
     }
-  | KW_DEF s=ID ps=param+ DEFEQ t=term DOT
+  | ms=modifier* KW_THM s=ID COLON a=term DEFEQ t=term DOT
     {
       let t = P_definition
-                (Terms.Public, false, make_pos $loc(s) s, ps, None, t) in
+                (ms, true , make_pos $loc(s) s, [], Some(a), t) in
       make_pos $loc t
     }
-  | KW_THM s=ID COLON a=term DEFEQ t=term DOT
+  | ms=modifier* KW_THM s=ID ps=param+ COLON a=term DEFEQ t=term DOT
     {
       let t = P_definition
-                (Terms.Public, true , make_pos $loc(s) s, [], Some(a), t) in
-      make_pos $loc t
-    }
-  | KW_THM s=ID ps=param+ COLON a=term DEFEQ t=term DOT
-    {
-      let t = P_definition
-                (Terms.Public, true , make_pos $loc(s) s, ps, Some(a), t) in
+                (ms, true , make_pos $loc(s) s, ps, Some(a), t) in
       make_pos $loc t
     }
   | rs=rule+ DOT {
@@ -347,6 +349,10 @@ param:
   | L_PAR id=ID COLON te=term R_PAR {
       ([Some (make_pos $loc(id) id)], Some(te), false)
     }
+
+modifier:
+  | KW_PRV { make_pos $loc (P_expo(Terms.Privat)) }
+  | KW_INJ { make_pos $loc (P_prop(Terms.Injec)) }
 
 context_item:
   | x=ID ao=option(COLON a=term { a }) { (make_pos $loc(x) x, ao) }

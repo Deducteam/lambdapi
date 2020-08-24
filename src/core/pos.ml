@@ -70,10 +70,14 @@ let in_pos : pos -> 'a -> 'a loc =
 let none : 'a -> 'a loc =
   fun elt -> { elt ; pos = None }
 
-(** [to_string p] transforms [p] into a readable string. *)
-let to_string : pos -> string = fun p ->
-  let {fname; start_line; start_col; end_line; end_col} = Lazy.force p in
+(** [to_string ?print_fname pos] transforms [pos] into a readable string. If
+    [print_fname] is [true] (the default), the filename contained in [pos] is
+    printed. *)
+let to_string : ?print_fname:bool -> pos -> string =
+  fun ?(print_fname=true) pos ->
+  let {fname; start_line; start_col; end_line; end_col} = Lazy.force pos in
   let fname =
+    if not print_fname then "" else
     match fname with
     | None    -> ""
     | Some(n) -> n ^ ", "
@@ -86,7 +90,14 @@ let to_string : pos -> string = fun p ->
     Printf.sprintf "%s%d:%d-%d" fname start_line start_col end_col
 
 (** [print ch pos] prints the optional position [pos] to channel [ch]. *)
-let print : Format.formatter -> pos option -> unit = fun ch p ->
-  match p with
+let print : Format.formatter -> pos option -> unit = fun ch pos ->
+  match pos with
   | None    -> Format.pp_print_string ch "unknown location"
   | Some(p) -> Format.pp_print_string ch (to_string p)
+
+(** [print_short ch pos] prints the optional position [pos] to channel [ch]
+    without the filename. *)
+let print_short : Format.formatter -> pos option -> unit = fun ch pos ->
+  match pos with
+  | None -> Format.pp_print_string ch "unknown location"
+  | Some(p) -> Format.pp_print_string ch (to_string ~print_fname:false p)

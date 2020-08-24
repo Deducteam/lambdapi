@@ -67,12 +67,16 @@ let read : file_path -> config_data = fun fname ->
     fatal_no_pos "Ill-formed package file [%s].\n%s" fname msg
 
 (** [find_config fname] looks for a configuration file above [fname], which is
-    typically a source file or object file.  If there is no configuration file
-    in the same directory as [fname], then we look in the parent directory and
-    so on, until this is possible.  Note that [fname] is first normalized with
-    a call to [Filename.realpath]. *)
+    typically a source file or an object file (it can also be a directory). If
+    there is no configuration file in the same directory as [fname], then we
+    look in the parent directory and so on, up to the root or as long as no
+    [Sys_error] is raised. Note that [fname] is first normalized with a call
+    to [Filename.realpath]. *)
 let find_config : file_path -> file_path option = fun fname ->
   let fname = Filename.realpath fname in
+  let fname =
+    if Sys.is_directory fname then fname else Filename.dirname fname
+  in
   let rec find dir =
     let file = Filename.concat dir pkg_file in
     match Sys.file_exists file with
@@ -81,7 +85,7 @@ let find_config : file_path -> file_path option = fun fname ->
                                 find (Filename.dirname dir)
     | exception Sys_error(_) -> None
   in
-  find (Filename.dirname fname)
+  find fname
 
 (** [apply_config fname] attempts to find a configuration file that applies to
     the (source) file [fname], and applies the corresponding configuration. *)

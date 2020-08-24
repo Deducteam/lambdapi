@@ -3,7 +3,7 @@ Lambdapi, a proof assistant based on the λΠ-calculus modulo rewriting [![Gitte
 
 Lambdapi is a proof assistant based on the λΠ-calculus modulo rewriting,
 mostly compatible with the proof checker Dedukti. More details are given
-in the [documentation](doc/DOCUMENTATION.md).
+in the [documentation](https://lambdapi.readthedocs.io).
 
 Installation via [Opam](http://opam.ocaml.org/)
 ---------------------
@@ -59,18 +59,14 @@ for more information).
 make               # Build lambdapi.
 make doc           # Build the documentation.
 make install       # Install the program.
-make install_vim   # Install vim support.
+make install_emacs # Install emacs mode, see note on UI.
+make install_vim   # Install vim support, see note UI.
 ```
 
 **Note:** you can run `lambdapi` without installing with `dune exec -- lambdapi`.
 
-**Note on Emacs:** `make install` installs the `lambdapi-mode`, an Emacs major
-mode for editing `lambdapi` files in `$(opam var share)/emacs/site-lisp`.
-To load the `lambdapi-mode` automatically when editing `*.lp` files, add `(load
-"lambdapi-site-file")` to your `~/.emacs.d/init.el` or `~/.emacs`.
-If `lambdapi-mode` is not activated when editing a file ending in `.lp`, read
-the installation section of the
-[documentation](doc/sections/emacs.md#installation).
+**Note on user interfaces:** more instructions on supported editors can be found
+in the [documentation](doc/ui.md).
 
 The following commands can be used for cleaning up the repository:
 ```bash

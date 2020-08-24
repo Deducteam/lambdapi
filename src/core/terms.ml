@@ -30,6 +30,15 @@ type expo =
   | Privat
   (** Not visible and thus not usable. *)
 
+(** Pattern-matching strategy modifiers. *)
+type match_strat =
+  | Sequen
+  (** Rules are processed sequentially: a rule can be applied only if the
+      previous ones (in the order of declaration) cannot be. *)
+  | Eager
+    (** Any rule that filters a term can be applied (even if a rule defined
+        earlier filters the term as well). This is the default. *)
+
 (** Representation of a term (or types) in a general sense. Values of the type
     are also used, for example, in the representation of patterns or rewriting
     rules. Specific constructors are included for such applications,  and they
@@ -99,7 +108,9 @@ type term =
   ; sym_prop  : prop
   (** Property of the symbol. *)
   ; sym_expo  : expo
-  (** The visibility of the symbol. *) }
+  (** The visibility of the symbol. *)
+  ; sym_mstrat: match_strat ref
+  (** The reduction strategy modifier. *) }
 
 (** {b NOTE} that {!field:sym_type} holds a (timed) reference for a  technical
     reason related to the writing of signatures as binary files  (in  relation
@@ -158,7 +169,7 @@ type term =
     For instance, with the rule [f $X $Y $Y $Z ↪ $X]:
      - [$X] is represented by [Patt(Some 0, "X", [||])] since it occurs in the
        RHS of the rule (and it is actually the only one),
-     - [$Y] is represented by [Patt(Some 1, "Y", [||])] at it occurs more than
+     - [$Y] is represented by [Patt(Some 1, "Y", [||])] as it occurs more than
        once in the LHS (the rule is non-linear in this variable),
      - [$Z] is represented by [Patt(None, "Z", [||])] since it is only appears
        once in the LHS, and it is not used in the RHS. Note that wildcards (in
@@ -426,7 +437,7 @@ let rec lift : term -> tbox = fun t ->
     | TE_Some(_) -> assert false (* Unreachable. *)
   in
   (* We do not use [Bindlib.box_binder] here because it is possible for a free
-     variables to disappear form a term through metavariable instantiation. As
+     variable to disappear from a term through metavariable instantiation. As
      a consequence we must traverse the whole term, even when we find a closed
      binder, so that the metadata on nested binders is also updated. *)
   let lift_binder b =
@@ -449,14 +460,14 @@ let rec lift : term -> tbox = fun t ->
   | LLet(a,t,u) -> _LLet (lift a) (lift t) (lift_binder u)
 
 (** [cleanup t] builds a copy of the {!type:term} [t] where every instantiated
-    metavariable,  instantiated term environment,  and reference cell has been
-    eliminated using {!val:unfold}. Another effect of the function is that the
-    the names of bound variables updated.  This is useful to avoid any form of
-    "visual capture" while printing terms. *)
+   metavariable, instantiated term environment, and reference cell has been
+   eliminated using {!val:unfold}. Another effect of the function is that the
+   the names of bound variables are updated. This is useful to avoid any form
+   of "visual capture" while printing terms. *)
 let cleanup : term -> term = fun t -> Bindlib.unbox (lift t)
 
 (** [fresh_meta_box ?name a n] is the boxed counterpart of [fresh_meta]. It is
-    only useful in the rare cases where the type of a metavariables contains a
+    only useful in the rare cases where the type of a metavariable contains a
     free term variable environement. This should only happens when scoping the
     rewriting rules, use this function with care.  The metavariable is created
     immediately with a dummy type, and the type becomes valid at unboxing. The

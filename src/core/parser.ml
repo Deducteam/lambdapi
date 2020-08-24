@@ -191,6 +191,7 @@ let _refl_       = KW.create "reflexivity"
 let _require_    = KW.create "require"
 let _rewrite_    = KW.create "rewrite"
 let _rule_       = KW.create "rule"
+let _sequential_ = KW.create "sequential"
 let _set_        = KW.create "set"
 let _simpl_      = KW.create "simpl"
 let _sym_        = KW.create "symmetry"
@@ -342,15 +343,13 @@ let parser path = m:path_elem ms:{"." path_elem}* $ -> m::ms
 (** [qident] parses a single (possibly qualified) identifier. *)
 let parser qident = mp:{path_elem "."}* id:any_ident -> in_pos _loc (mp,id)
 
-(** [symtag] parses a single symbol tag. *)
-let parser property =
-  | _constant_  -> Terms.Const
-  | _injective_ -> Terms.Injec
-
-(** [exposition] parses the exposition tag of a symbol. *)
-let parser exposition =
-  | _protected_ -> Terms.Protec
-  | _private_   -> Terms.Privat
+(** [modifier] parses a single modifier. *)
+let parser modifier =
+  | _constant_ -> in_pos _loc (P_prop(Terms.Const))
+  | _injective_ -> in_pos _loc (P_prop(Terms.Injec))
+  | _protected_ -> in_pos _loc (P_expo(Terms.Protec))
+  | _private_ -> in_pos _loc (P_expo(Terms.Privat))
+  | _sequential_ -> in_pos _loc (P_mstrat(Terms.Sequen))
 
 (** [term_ident] parses a qualified identifier and returns a p_term. *)
 let parser term_ident =
@@ -371,11 +370,11 @@ let parser term @(p : prio) =
   | _wild_
       when p >= PAtom -> in_pos _loc P_Wild
   (* Metavariable. *)
-  | m:meta e:env?[[]]
-      when p >= PAtom -> in_pos _loc (P_Meta(m, Array.of_list e))
+  | m:meta e:env?
+      when p >= PAtom -> in_pos _loc (P_Meta(m, Option.map Array.of_list e))
   (* Pattern (LHS) or pattern application (RHS). *)
-  | p:patt e:env?[[]]
-      when p >= PAtom -> in_pos _loc (P_Patt(p, Array.of_list e))
+  | p:patt e:env?
+      when p >= PAtom -> in_pos _loc (P_Patt(p, Option.map Array.of_list e))
   (* Parentheses. *)
   | "(" t:(term PFunc) ")"
       when p >= PAtom -> in_pos _loc (P_Wrap(t))
@@ -464,7 +463,9 @@ and parser binder =
       in_pos _loc (P_Abst([[Some(id)],a,false],t))
 
 (** [env] is a parser for a metavariable environment. *)
-and parser env = "[" t:(term PBinO) ts:{";" (term PBinO)}* "]" -> t::ts
+and parser env =
+  | "[" "]" -> []
+  | "[" t:(term PBinO) ts:{";" (term PBinO)}* "]" -> t::ts
 
 (** [arg] parses a single function argument. *)
 and parser arg =
@@ -654,15 +655,14 @@ let parser cmd =
   | _open_ ps:path+
       -> List.iter (get_ops _loc) ps;
          P_open(ps)
-  | e:exposition? p:property? _symbol_ s:ident al:arg* ":" a:term
-      -> P_symbol(Option.get Terms.Public e,
-                  Option.get Terms.Defin p,s,al,a)
+  | mods:modifier* _symbol_ s:ident al:arg* ":" a:term
+      -> P_symbol(mods, s, al, a)
   | _rule_ r:rule rs:{_:_with_ rule}*
       -> P_rules(r::rs)
-  | e:exposition? _definition_ s:ident al:arg* ao:{":" term}? "≔" t:term
-      -> P_definition(Option.get Terms.Public e,false,s,al,ao,t)
-  | e:exposition? st:statement (ts,pe):proof
-      -> P_theorem(Option.get Terms.Public e,st,ts,pe)
+  | ms:modifier* _definition_ s:ident al:arg* ao:{":" term}? "≔" t:term
+      -> P_definition(ms,false,s,al,ao,t)
+  | ms:modifier* st:statement (ts,pe):proof
+      -> P_theorem(ms,st,ts,pe)
   | _set_ c:config
       -> P_set(c)
   | q:query
@@ -682,7 +682,7 @@ let parse_file : string -> ast = fun fname ->
     let loc = Pos.locate buf pos buf pos in
     parser_fatal loc "Parse error."
 
-(** [parse_string fname str] attempts to parse the string [str] file to obtain
+(** [parse_string fname str] attempts to parse the string [str] to obtain
     a list of toplevel commands. The [fname] argument should contain a
     relevant file name for the error message to be constructed.
     @raise Fatal with a graceful error message containing the error position
@@ -693,3 +693,11 @@ let parse_string : string -> string -> ast = fun fname str ->
   with Earley.Parse_error(buf,pos) ->
     let loc = Pos.locate buf pos buf pos in
     parser_fatal loc "Parse error."
+
+(** [parse_qident str] attempts to parse the string [str] to obtain a
+    {!type:Syntax.qident}. If it fails, the position of failure is
+    returned. *)
+let parse_qident : string -> (qident, pos) result = fun str ->
+  Prefix.reset unops; Prefix.reset binops; Prefix.reset declared_ids;
+  try Ok(Earley.parse_string ~filename:"" qident blank str)
+  with Earley.Parse_error(buf, pos) -> Error(Pos.locate buf pos buf pos)

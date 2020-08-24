@@ -4,52 +4,8 @@
     module handles the conversion from {!type:Tree.t} data structures files in
     the [dot] language that can be interpreted by graphviz.
 
-    A [dot] file [tree.gv] can be converted to a [png] file [tree.png] using
-    [dot -Tpng tree.gv > tree.png].  To output to [tex], one can use
-    {{:https://dot2tex.readthedocs.io/}dot2tex}.  For more output formats,
-    see
-    {{:https://graphviz.gitlab.io/_pages/doc/info/output.html}graphviz doc}.
-*)
-
-(** {b Description of output} we remind that trees are interpreted during
-    evaluation of terms to get the correct rule to apply. A node is thus an
-    instruction for the evaluation algorithm. There are labeled nodes, labeled
-    edges and leaves. A node can be
-    - a regular node, represented by a circle, whose label indicates on which
-      column the next operation to reach the following node will be performed;
-    - a store node, represented by a rectangle, which is the same as a regular
-      node, except that the term at the index of the label is saved into the
-      [vars] array (see {!val:Eval.tree_walk});
-    - a conditional node, represented by a diamond, indicating that a
-      conditional check shall be performed to reach the next node;
-    - a stack check node, represented by a triangle, its left child is used if
-      the stack of arguments is empty, otherwise the right child is used; this
-      node only appears when {!val:Tree.rule_order} is set.
-
-    The label of a node is either
-    - [@n] on a regular or storage node if the algorithm inspects the column
-      [n] to continue evaluation;
-    - [n ≡ m] on a conditional node, meaning that a convertibility check
-      between index [n] and index [m] of the [vars] array must be carried out;
-    - [xs ⊊ FV(n)] on a conditional node, meaning that free variables in [xs]
-      are allowed in the term stored at index [n] of the [vars] array.
-
-    The label of an edge is either
-    - [*] if the operation to go from a regular or storage node to another
-      node is a {!val:Tree.CM.default};
-    - [s_n] where [s] is a symbol if the operation to go from a regular or
-      storage node to another node is a {!val:Tree.CM.specialize} on symbol
-      [s] with arity [n];
-    - [λvarn] if the operation to go from a regular or storage node to another
-      node is a specialisation by an abstraction {!val:Tree.CM.abstract},
-      [var]{e n} (with {e n} an integer) is the name of fresh variables which
-      can be used in conditional tests;
-    - [✓] if the operation to go from a conditional node to another node is
-      the assumption of satisfaction of the constraint indicated as label of
-      the condition node;
-    - [✗] if the operation to go from a conditional node to another node is
-      the assumption of failure of satisfaction of the constraint indicated as
-      label of the condition node. *)
+    See the chapter [doc/options.md#printing-decision-trees] of the
+    documentation for more information. *)
 
 open Timed
 open Extra

@@ -94,5 +94,4 @@ let end_proof : proof_state -> command_result = fun s ->
   try Cmd_OK(Time.save (), finalize ss p) with Fatal(p,m) -> Cmd_Error(p,m)
 
 let get_symbols : state -> (Terms.sym * Pos.popt) StrMap.t = fun s ->
-  Time.restore (fst s);
-  !(Sign.((current_sign ()).sign_symbols))
+  (snd s).in_scope

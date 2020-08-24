@@ -79,16 +79,15 @@ let remove_pp_hint_eq :
     if eq_pp_hint h h' then SymMap.remove s pp_hints else pp_hints
   with Not_found -> pp_hints
 
-(** [add_symbol ss e p x a impl] generates a new signature state from [ss] by
-    creating a new symbol with expo [e], property [p], name [x], type [a],
-    implicit arguments [impl] and optional definition [t]. *)
-let add_symbol : sig_state -> expo -> prop -> strloc -> term -> bool list
-                 -> term option -> sig_state =
-  fun ss e p x a impl t ->
-  let s = Sign.add_symbol ss.signature e p x a impl in
+(** [add_symbol ss e p st x a impl] generates a new signature state from [ss]
+   by creating a new symbol with expo [e], property [p], strategy [st], name
+   [x], type [a], implicit arguments [impl] and optional definition [t]. *)
+let add_symbol : sig_state -> expo -> prop -> match_strat -> strloc -> term ->
+  bool list -> term option -> sig_state = fun ss e p st x a impl t ->
+  let s = Sign.add_symbol ss.signature e p st x a impl in
   begin
     match t with
-    | Some t -> s.sym_def := Some(t)
+    | Some t -> s.sym_def := Some (cleanup t)
     | None -> ()
   end;
   let in_scope = StrMap.add x.elt (s, x.pos) ss.in_scope in

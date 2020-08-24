@@ -98,8 +98,11 @@ reserved "why3"
 // Synonym for types
 <type> ::= <term>
 
-// Synonym for patterns
-<patt> ::= <term>
+// Patterns
+<patt> ::=
+  | "$" - {<ident> | "_"} {"[" <ident> {";" <ident>}* "]"}?
+  | "λ" <arg>+ "," <patt>
+  | <qident> {<patt>}*
 
 // Argument (of abstraction, product, ...), may be marked implicit
 <arg> ::=
@@ -109,7 +112,7 @@ reserved "why3"
 
 // Rewriting rule
 <rule> ::=
-  | <patt> "↪" <term>
+  | <qident> {<patt>}* "↪" <term>
 
 // TODO rule naming, positive / negative
 
@@ -173,7 +176,7 @@ reserved "why3"
   | "or"
   | "and"
   | "imp"
-  
+
 // Single command.
 <command> ::=
   // Require and/or open a module

@@ -1,4 +1,5 @@
-VIMDIR   = $(HOME)/.vim
+VIMDIR = $(HOME)/.vim
+EMACS  = $(shell which emacs)
 
 #### Compilation (binary, library and documentation) #########################
 
@@ -28,6 +29,9 @@ tests: bin
 	  || { printf "\033[31mKO\033[0m $$file\n" \
 		&& $(LAMBDAPI) --verbose 0 $$file ; } ; \
 	done || true
+	@dune exec -- tests/commands.sh \
+&& printf '\033[32mOK\033[0m commands.sh\n' \
+|| { printf '\033[31mKO\033[0m commands.sh\n'; exit 1; }
 	@printf "## KO tests ##\n"
 	@for file in $(KO_TESTFILES) ; do \
 		$(LAMBDAPI) --verbose 0 $$file 2> /dev/null \
@@ -44,6 +48,9 @@ real_tests: bin
 	  || { printf "\033[31mKO\033[0m $$file\n" \
 		&& $(LAMBDAPI) --verbose 0 $$file ; exit 1 ; } ; \
 	done
+	@dune exec -- tests/commands.sh \
+&& printf '\033[32mOK\033[0m commands.sh\n' \
+|| { printf '\033[31mKO\033[0m commands.sh\n'; exit 1; }
 	@printf "## KO tests ##\n"
 	@for file in $(KO_TESTFILES) ; do \
 		$(LAMBDAPI) --verbose 0 $$file 2> /dev/null \
@@ -144,6 +151,16 @@ else
 	install -m 644 editors/vim/ftdetect/dedukti.vim  $(VIMDIR)/ftdetect
 	install -m 644 editors/vim/ftdetect/lambdapi.vim $(VIMDIR)/ftdetect
 	@printf "\e[36mVim mode installed.\e[39m\n"
+endif
+
+.PHONY: install_emacs
+install_emacs:
+ifeq ($(EMACS),)
+	@printf "\e[36mNo 'emacs' binary available in path and EMACS variable \
+is not set, \nEmacs mode won't be installed.\e[39m\n"
+else
+	@$(MAKE) -C editors/emacs/ install
+	@printf "\e[36mEmacs mode installed.\e[39m\n"
 endif
 
 opam-release:
