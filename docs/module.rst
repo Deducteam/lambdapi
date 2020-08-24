@@ -2,8 +2,8 @@ Module system
 =============
 
 Lambdapi has a (very) light module system based on file paths. It allows
-us to split our developments into several files, and even several
-folders. The main thing to know is that a file holds a single module,
+us to split our developments across files, and even across folders.
+The main thing to know is that a file holds a single module,
 and accessing this module in other files requires using its *full*
 module path.
 
@@ -15,6 +15,12 @@ name of the file, but also the position of the file under the *library
 root* (a folder under which the standard library and all packages are
 installed).
 
+By default, the library root is ``/usr/local/lib/lambdapi/lib_root`` or
+``$OPAM_SWITCH_PREFIX/lib/lambdapi/lib_root`` if ``OPAM_SWITCH_PREFIX``
+is defined. An alternative library root can be specified using the environment
+variable ``LAMBDAPI_LIB_ROOT`` or the :doc:`command line flag </options>`
+``--lib-root``.
+
 The typical case is when we want to access a module of some installed
 library, for example the standard library. In that case, the module path
 is built using the file path as follows: if our source file is at
@@ -22,23 +28,22 @@ is built using the file path as follows: if our source file is at
 And if there are nested folders then the module path gets more members.
 File ``<LIB_ROOT>/std/a/b/c/d.lp`` has module path ``std.a.b.c.d``.
 
-By default, every modules are looked up under the library root. However,
+*By default, all modules are looked up under the library root*. However,
 there are cases where the files we want to work with are not (yet!)
 placed under the library root. The typical case is when a library (or
-package) is still under development. In that case, what we can do is map
-the development folder under the library root, similarly to what would
-happen when mounting a volume in our file system. There are two ways of
-doing that, the first one being to use the ``--map-dir MOD:DIR`` command
-line option. However, the best way is to use a package configuration
-file.
+package) is still under development. In that case, the development folder can
+be mapped under the library root, similarly to what would
+happen when mounting a volume in a file system. There are two ways of
+doing that, the first one being to use the ``--map-dir MOD:DIR``
+:doc:`command line option </options>`.
+However, the best way is to use a package configuration file.
 
 Package configuration file
 --------------------------
 
-A package configuration file can be placed at the root of the source
-tree of a library (or package) under development. It should be named
-``lambdapi.pkg``, and contain the following fields (an example is given
-below for the syntax):
+A package configuration file ``lambdapi.pkg`` can be placed at the root of the
+source tree of a library (or package) under development.
+It must contain the following fields (an example is given below for the syntax):
 
 * ``package_name`` giving a globally unique name for the package being defined.
   This is not yet used, but will be necessary when we eventually publish our
