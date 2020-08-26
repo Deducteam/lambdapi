@@ -9,15 +9,13 @@ ko() {
 
 ok() {
     printf '\033[32mOK\033[0m %s\n' "$1"
-    exit 0
 }
 
-LAMBDAPI="lambdapi check --termination 'cat > /dev/null; printf YES' \
---verbose 0"
+LP_FLAGS="--verbose 0 --termination 'cat > /dev/null; echo YES'"
 
-if "${LAMBDAPI}" tests/OK/nat.lp 2>/dev/null; then
-    ko "XTC"
+if lambdapi check "${LP_FLAGS}" tests/OK/nat.lp 2> /dev/null; then
+    ok "tests/OK/nat.lp"
 else
-    ok "XTC"
+    ko "tests/OK/nat.lp"
 fi
 exit 0
