@@ -29,9 +29,8 @@ tests: bin
 	  || { printf "\033[31mKO\033[0m $$file\n" \
 		&& $(LAMBDAPI) --verbose 0 $$file ; } ; \
 	done || true
-	@dune exec -- tests/commands.sh \
-&& printf '\033[32mOK\033[0m commands.sh\n' \
-|| { printf '\033[31mKO\033[0m commands.sh\n'; exit 1; }
+	@printf "## Decision tree tests ##\n"
+	@dune exec -- tests/dtrees.sh
 	@printf "## XTC tests ##\n"
 	@dune exec -- tests/xtc.sh
 	@printf "## KO tests ##\n"
@@ -50,9 +49,8 @@ real_tests: bin
 	  || { printf "\033[31mKO\033[0m $$file\n" \
 		&& $(LAMBDAPI) --verbose 0 $$file ; exit 1 ; } ; \
 	done
-	@dune exec -- tests/commands.sh \
-&& printf '\033[32mOK\033[0m commands.sh\n' \
-|| { printf '\033[31mKO\033[0m commands.sh\n'; exit 1; }
+	@printf "## Decision tree tests ##\n"
+	@dune exec -- tests/dtrees.sh
 	@printf "## XTC tests ##\n"
 	@dune exec -- tests/xtc.sh
 	@printf "## KO tests ##\n"

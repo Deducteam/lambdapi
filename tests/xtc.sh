@@ -1,5 +1,5 @@
 #!/bin/sh
-# xtc.sh         Test XTC export
+# Test XTC export
 set -euf
 
 ko() {
@@ -15,7 +15,7 @@ ok() {
 LAMBDAPI="lambdapi check --termination 'cat > /dev/null; printf YES' \
 --verbose 0"
 
-if ${LAMBDAPI} tests/OK/nat.lp 2>/dev/null; then
+if "${LAMBDAPI}" tests/OK/nat.lp 2>/dev/null; then
     ko "XTC"
 else
     ok "XTC"
