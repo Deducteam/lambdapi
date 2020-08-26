@@ -31,8 +31,10 @@ tests: bin
 	done || true
 	@printf "## Decision tree tests ##\n"
 	@dune exec -- tests/dtrees.sh
-	@printf "## XTC tests ##\n"
-	@dune exec -- tests/xtc.sh
+	@printf "## Confluence check tests ##\n"
+	@dune exec -- tests/confluence.sh
+	@printf "## Termination tests ##\n"
+	@dune exec -- tests/termination.sh
 	@printf "## KO tests ##\n"
 	@for file in $(KO_TESTFILES) ; do \
 		$(LAMBDAPI) --verbose 0 $$file 2> /dev/null \
@@ -51,8 +53,10 @@ real_tests: bin
 	done
 	@printf "## Decision tree tests ##\n"
 	@dune exec -- tests/dtrees.sh
-	@printf "## XTC tests ##\n"
-	@dune exec -- tests/xtc.sh
+	@printf "## Confluence check tests ##\n"
+	@dune exec -- tests/confluence.sh
+	@printf "## Termination tests ##\n"
+	@dune exec -- tests/termination.sh
 	@printf "## KO tests ##\n"
 	@for file in $(KO_TESTFILES) ; do \
 		$(LAMBDAPI) --verbose 0 $$file 2> /dev/null \
