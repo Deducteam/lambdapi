@@ -48,6 +48,10 @@ module String =
       let len_s = String.length s in
       let rec for_all i = i >= len_s || (p s.[i] && for_all (i+1)) in
       for_all 0
+
+    (** [tail s] returns all [s] but its first character. *)
+    let tail : string -> string = fun s ->
+      String.sub s 1 (String.length s - 1)
   end
 
 module Option =

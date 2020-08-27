@@ -10,8 +10,11 @@ open Console
 open Pos
 open Syntax
 
+(* True if argument is a keyword *)
+let kw_mem _ = assert false
+
 let pp_ident : ident pp = fun oc id ->
-  if Parser.KW.mem id.elt then
+  if kw_mem id.elt then
     fatal id.pos "Identifier [%s] is a Lambdapi keyword." id.elt;
   Format.pp_print_string oc id.elt
 
@@ -21,7 +24,7 @@ let pp_arg_ident : ident option pp = fun oc id ->
   | None     -> Format.pp_print_string oc "_"
 
 let pp_path_elt : Pos.popt -> (string * bool) pp = fun pos oc (s,b) ->
-  if not b && Parser.KW.mem s then
+  if not b && kw_mem s then
     fatal pos "Module path member [%s] is a Lambdapi keyword." s;
   if b then Format.fprintf oc "{|%s|}" s else Format.pp_print_string oc s
 

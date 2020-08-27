@@ -1,7 +1,7 @@
 (** Source code position management.  This module may be used to map sequences
     of characters in a source file to an abstract syntax tree. *)
 
-open Earley_core
+(* open Earley_core *)
 
 (** Type of a position, corresponding to a continuous range of characters in a
     (utf8-encoded) source file. Elements of this type are (lazily) constructed
@@ -21,18 +21,18 @@ and pos_data =
     input buffers. This function is used by Earley to generate the position of
     elements during parsing.
     @see <https://github.com/rlepigre/earley/> Earley *)
-let locate : Input.buffer -> int -> Input.buffer -> int -> pos =
-  fun buf1 pos1 buf2 pos2 ->
-    let fn () =
-      let fname = Input.filename buf1 in
-      let fname = if fname = "" then None else Some(fname) in
-      let start_line = Input.line_num buf1 in
-      let end_line = Input.line_num buf2 in
-      let start_col = Input.utf8_col_num buf1 pos1 in
-      let end_col = Input.utf8_col_num buf2 pos2 in
-      { fname ; start_line ; start_col ; end_line ; end_col }
-    in
-    Lazy.from_fun fn
+(* let locate : Input.buffer -> int -> Input.buffer -> int -> pos =
+ *   fun buf1 pos1 buf2 pos2 ->
+ *     let fn () =
+ *       let fname = Input.filename buf1 in
+ *       let fname = if fname = "" then None else Some(fname) in
+ *       let start_line = Input.line_num buf1 in
+ *       let end_line = Input.line_num buf2 in
+ *       let start_col = Input.utf8_col_num buf1 pos1 in
+ *       let end_col = Input.utf8_col_num buf2 pos2 in
+ *       { fname ; start_line ; start_col ; end_line ; end_col }
+ *     in
+ *     Lazy.from_fun fn *)
 
 (** Convenient short name for an optional position. *)
 type popt = pos option
@@ -101,3 +101,16 @@ let print_short : Format.formatter -> pos option -> unit = fun ch p ->
   match p with
   | None -> Format.pp_print_string ch "unknown location"
   | Some(p) -> Format.pp_print_string ch (to_string ~print_fname:false p)
+
+(** [map f loc] applies function [f] on the value of [loc] and keeps the
+    position unchanged. *)
+let map : ('a -> 'b) -> 'a loc -> 'b loc = fun f loc ->
+  {loc with elt = f loc.elt}
+
+let locate : Lexing.position * Lexing.position -> pos = fun (p1, p2) ->
+  let fname = None in
+  let start_line = p1.pos_lnum in
+  let start_col = p1.pos_cnum - p1.pos_bol in
+  let end_line = p2.pos_lnum in
+  let end_col = p2.pos_cnum - p2.pos_bol in
+  Lazy.from_val {fname; start_line; start_col; end_line; end_col}

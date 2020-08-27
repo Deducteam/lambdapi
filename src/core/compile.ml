@@ -104,16 +104,16 @@ let compile_file : file_path -> Sign.t = fun fname ->
 (* NOTE we need to give access to the compilation function to the parser. This
    is the only way infix symbols can be parsed, since they may be added to the
    scope by a “require” command. *)
-let _ =
-  let require mp =
-    (* Save the current console state. *)
-    Console.push_state ();
-    (* Restore the console state to default for compiling. *)
-    Console.reset_default ();
-    (* Compile and go back to previous state. *)
-    try
-      ignore (compile false mp);
-      try Console.pop_state () with _ -> assert false (* Unreachable. *)
-    with e -> Console.pop_state (); raise e
-  in
-  Stdlib.(Parser.require := require)
+(* let _ =
+ *   let require mp =
+ *     (\* Save the current console state. *\)
+ *     Console.push_state ();
+ *     (\* Restore the console state to default for compiling. *\)
+ *     Console.reset_default ();
+ *     (\* Compile and go back to previous state. *\)
+ *     try
+ *       ignore (compile false mp);
+ *       try Console.pop_state () with _ -> assert false (\* Unreachable. *\)
+ *     with e -> Console.pop_state (); raise e
+ *   in
+ *   Stdlib.(Parser.require := require) *)
