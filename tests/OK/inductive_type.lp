@@ -152,6 +152,13 @@ set infix left 7 "×" ≔ mult
 rule       0 × _  ↪ 0
  with succ $x × $y ↪ $y + $x × $y
 
+symbol le : Nat → Nat → Prop
+set infix left 6 "≤" ≔ le
+
+//inductive ≤ : Π(n:τ nat), Nat → Prop ≔
+//  | le_n : Πn, π (n ≤ n)
+//  | le_S : Πn m:τ nat, π (n ≤ m) → π (n ≤ (succ m))
+
 ////////////////////// List of natural numbers
 
 constant symbol list : Set
@@ -247,51 +254,6 @@ assert consL nat (succ (succ (succ z))) (consL nat (succ z) (nilL nat)) : L nat
 assert consL nat (succ (succ (succ z))) (consL nat (succ z) (consL nat z (nilL nat))) : L nat
 assert consL bool true (nilL bool) : L bool
 
-//////////////////// Vector
-
-inductive Vec : Nat → TYPE ≔
- | nil_vec   : Vec z
- | cons_vec  : Πn, Nat → Vec n → Vec (succ n)
-
-assert ind_Vec : // Induction principle
- Πp, π(p z nil_vec) → (Πn x v, π(p n v) → π(p (succ n) (cons_vec n x v))) → Πn v, π(p n v)
-
-symbol pV : Πn, Vec n → Prop // Tests about inductive rules
-symbol pinil_vec : π (pV z nil_vec)
-symbol n : Nat
-symbol v : Vec n
-symbol picons_vec : Πn x v, π(pV n v) → π(pV (succ n) (cons_vec n x v))
-assert ind_Vec pV pinil_vec _ z nil_vec ≡ pinil_vec
-assert ind_Vec pV pinil_vec picons_vec (succ n) (cons_vec n x v)
-     ≡ picons_vec n x v (ind_Vec pV pinil_vec picons_vec n v)
-
-assert nil_vec : Vec z // Examples
-assert cons_vec (succ z) x (cons_vec z x nil_vec) : Vec (succ (succ z))
-
-/////////////////// Polymorphic vector
-
-inductive Vec_param : Set → Nat → TYPE ≔
- | nil_vec_p   : Πa, Vec_param a z
- | cons_vec_p  : Πa n (_:τ a), Vec_param a n → Vec_param a (succ n)
-
-assert ind_Vec_param : // Induction principle
-  Πp, (Πa, π(p a z (nil_vec_p a))) → (Πa n x v, π(p a n v) → π(p a (succ n) (cons_vec_p a n x v))) → Πa n v, π(p a n v)
-
-symbol pV_p : Πa n, Vec_param a n → Prop // Tests about inductive rules
-symbol pinil_vec_p : Πa, π (pV_p a z (nil_vec_p a))
-symbol xV_p : τ a
-symbol v_p : Vec_param a n
-symbol picons_vec_p : Πa n x v, π(pV_p a n v) → π(pV_p a (succ n) (cons_vec_p a n x v))
-assert ind_Vec_param pV_p pinil_vec_p _ a z (nil_vec_p a) ≡ pinil_vec_p a
-assert ind_Vec_param pV_p pinil_vec_p picons_vec_p a (succ n) (cons_vec_p a n xV_p v_p)
-     ≡ picons_vec_p a n xV_p v_p (ind_Vec_param pV_p pinil_vec_p picons_vec_p a n v_p)
-
-assert nil_vec_p a : Vec_param a z // Examples
-assert nil_vec_p nat : Vec_param nat z
-assert cons_vec_p nat (succ z) (succ (succ (succ z))) (cons_vec_p nat z z (nil_vec_p nat)) : Vec_param nat (succ (succ z))
-assertnot cons_vec_p nat (succ z) (succ (succ (succ z))) (cons_vec_p nat z true (nil_vec_p nat)) : Vec_param nat (succ (succ z))
-assert cons_vec_p bool (succ z) false (cons_vec_p bool z true (nil_vec_p bool)) : Vec_param bool (succ (succ z))
-
 ////////////////// Type sum
 
 inductive {|sum|} : Set → Set → TYPE ≔
@@ -321,30 +283,26 @@ assert inr nat bool false : {|sum|} nat bool
 assert {|inl_sum|} nat bool z : {|sum|} nat bool
 assert {|inl_sum|} nat bool (succ z) : {|sum|} nat bool
 
-////////////////// Type Bush (nested inductive type)
+//////////////////// Vector
 
-symbol bush : Set →  Set
-inductive Bush : Π(_:Set), TYPE ≔
- | BNil : Πa, Bush a
- | BCons : Πa, τ a → Bush (bush a) → Bush a
-rule Bush $a ↪ τ (bush $a)
+inductive Vec : Nat → TYPE ≔
+ | nil_vec   : Vec z
+ | cons_vec  : Πn, Nat → Vec n → Vec (succ n)
 
-assert ind_Bush : // Induction principle
-  Πp, (Πa, π(p a (BNil a))) → (Πa x l, π(p (bush a) l) → π(p a (BCons a x l))) → Πa l, π(p a l)
+assert ind_Vec : // Induction principle
+ Πp, π(p z nil_vec) → (Πn x v, π(p n v) → π(p (succ n) (cons_vec n x v))) → Πn v, π(p n v)
 
-symbol pB : Πa, Bush a → Prop // Tests about inductive rules
-symbol piBNil : Πa, π (pB a (BNil a))
-symbol B : Bush (bush a)
-symbol piBCons : Πa x l, π (pB (bush a) l) → π (pB a (BCons a x l))
-assert ind_Bush pB piBNil _ a (BNil a) ≡ piBNil a
-assert ind_Bush pB piBNil piBCons a (BCons a x0 B)
-     ≡ piBCons a x0 B (ind_Bush pB piBNil piBCons (bush a) B)
+symbol pV : Πn, Vec n → Prop // Tests about inductive rules
+symbol pinil_vec : π (pV z nil_vec)
+symbol n : Nat
+symbol v : Vec n
+symbol picons_vec : Πn x v, π(pV n v) → π(pV (succ n) (cons_vec n x v))
+assert ind_Vec pV pinil_vec _ z nil_vec ≡ pinil_vec
+assert ind_Vec pV pinil_vec picons_vec (succ n) (cons_vec n x v)
+     ≡ picons_vec n x v (ind_Vec pV pinil_vec picons_vec n v)
 
-assert BNil a : Bush a // Examples
-assert consL nat (succ (succ (succ z))) (nilL nat) : L nat
-assert consL nat (succ (succ (succ z))) (consL nat (succ z) (nilL nat)) : L nat
-assert consL nat (succ (succ (succ z))) (consL nat (succ z) (consL nat z (nilL nat))) : L nat
-assert consL bool true (nilL bool) : L bool
+assert nil_vec : Vec z // Examples
+assert cons_vec (succ z) x (cons_vec z x nil_vec) : Vec (succ (succ z))
 
 ///////////////// An example of the heterogenous dependent family
 
@@ -367,13 +325,6 @@ assert new n : fin (succ n) // Examples
 assert inj (succ n) (new n) : fin (succ (succ n))
 
 ///////////////// Bounded List
-
-symbol le : Nat → Nat → Prop
-set infix left 6 "≤" ≔ le
-
-//inductive ≤ : Π(n:τ nat), Nat → Prop ≔
-//  | le_n : Πn, π (n ≤ n)
-//  | le_S : Πn m:τ nat, π (n ≤ m) → π (n ≤ (succ m))
 
 inductive listb : τ nat → TYPE ≔
  | Bnil  : Πbound, listb bound
@@ -401,7 +352,7 @@ assert Bcons bound x prf (Bnil bound) : listb bound
 
 inductive rom : Nat → TYPE ≔
  | mty : rom z // leaf node
- | bin : Πe1 e2, rom e1 → rom e2 → rom (e1+e2+1) // binary nodes
+ | bin : Πe1 e2, rom e1 → rom e2 → rom (e1+e2+1)  // binary nodes
  | unl : Πe k, π (k ≤ 2×e) → rom e → rom (succ e) // unary labeled nodes
 
 assert ind_rom : Πp: Πx: Nat, rom x → Prop, // Induction principle
@@ -447,42 +398,54 @@ assert unl (succ z) z t12 (bin z z mty mty) : rom (succ (succ z))
 //rule ind_rom $p $pmty $pbin $punl (($x0 + $x1)+1) (bin $x0 $x1 $x2 $x3)
 //   ↪ $pbin $x0 $x1 $x2 (ind_rom $p $pmty $pbin $punl $x0 $x2) $x3 (ind_rom $p $pmty $pbin $punl $x1 $x3)
 
-///////////////// Fibonacci suite
+/////////////////// Polymorphic vector
 
-inductive fibo : Nat → Nat → TYPE ≔
- | cgen' : Π (n r1 r2 : Nat),
-    fibo n r1 → fibo (succ n) r2 →  fibo (succ (succ n)) (plus r1 r2)
- | cbase1 : fibo z (succ z)
- | cbase2 : fibo (succ z) (succ z)
+inductive Vec_param : Set → Nat → TYPE ≔
+ | nil_vec_p   : Πa, Vec_param a z
+ | cons_vec_p  : Πa n (_:τ a), Vec_param a n → Vec_param a (succ n)
 
-assert ind_fibo : Πp: Πx: Nat, Πx0: Nat, fibo x x0 → Prop, // Induction principle
-(Πn r1 r2,
-     Πx0: fibo n r1, π (p n r1 x0) →
-     Πx1: fibo (succ n) r2, π (p (succ n) r2 x1) →
-π (p (succ (succ n)) (r1 + r2) (cgen' n r1 r2 x0 x1))) →
-π (p 0 1 cbase1) →
-π (p 1 1 cbase2) →
-Πx: Nat, Πx0: Nat, Πx1: fibo x x0, π (p x x0 x1)
+assert ind_Vec_param : // Induction principle
+  Πp, (Πa, π(p a z (nil_vec_p a))) → (Πa n x v, π(p a n v) → π(p a (succ n) (cons_vec_p a n x v))) → Πa n v, π(p a n v)
 
-symbol pFibo : Πx: Nat, Πx0: Nat, fibo x x0 → Prop // Tests about inductive rules
-symbol picgen' : (Πn r1 r2, Πx0: fibo n r1, π (pFibo n r1 x0) → Πx1: fibo (succ n) r2,
-                  π (pFibo (succ n) r2 x1) → π (pFibo (succ (succ n)) (r1 + r2) (cgen' n r1 r2 x0 x1)))
-symbol picbase1 : π (pFibo 0 1 cbase1)
-symbol picbase2 : π (pFibo 1 1 cbase2)
-symbol r1 : Nat
-symbol r2 : Nat
-symbol hypF1 : fibo n r1
-symbol hypF2 : fibo (succ n) r2
-assert ind_fibo pFibo picgen' picbase1 picbase2 _ _ (cgen' n r1 r2 hypF1 hypF2)
-     ≡ picgen' n r1 r2 hypF1 (ind_fibo pFibo picgen' picbase1 picbase2 _ _ hypF1) 
-                         hypF2 (ind_fibo pFibo picgen' picbase1 picbase2 _ _ hypF2)
-assert ind_fibo pFibo picgen' picbase1 picbase2 _ _ cbase1 ≡ picbase1
-assert ind_fibo pFibo picgen' picbase1 picbase2 _ _ cbase2 ≡ picbase2
+symbol pV_p : Πa n, Vec_param a n → Prop // Tests about inductive rules
+symbol pinil_vec_p : Πa, π (pV_p a z (nil_vec_p a))
+symbol xV_p : τ a
+symbol v_p : Vec_param a n
+symbol picons_vec_p : Πa n x v, π(pV_p a n v) → π(pV_p a (succ n) (cons_vec_p a n x v))
+assert ind_Vec_param pV_p pinil_vec_p _ a z (nil_vec_p a) ≡ pinil_vec_p a
+assert ind_Vec_param pV_p pinil_vec_p picons_vec_p a (succ n) (cons_vec_p a n xV_p v_p)
+     ≡ picons_vec_p a n xV_p v_p (ind_Vec_param pV_p pinil_vec_p picons_vec_p a n v_p)
 
-assert cbase1 : fibo z (succ z) // Examples
-assert cbase1 : fibo z (succ z)
-assert cbase2 : fibo (succ z) (succ z)
-assert cgen' z (succ z) (succ z) cbase1 cbase2 : fibo (succ (succ z)) (succ (succ z))
+assert nil_vec_p a : Vec_param a z // Examples
+assert nil_vec_p nat : Vec_param nat z
+assert cons_vec_p nat (succ z) (succ (succ (succ z))) (cons_vec_p nat z z (nil_vec_p nat)) : Vec_param nat (succ (succ z))
+assertnot cons_vec_p nat (succ z) (succ (succ (succ z))) (cons_vec_p nat z true (nil_vec_p nat)) : Vec_param nat (succ (succ z))
+assert cons_vec_p bool (succ z) false (cons_vec_p bool z true (nil_vec_p bool)) : Vec_param bool (succ (succ z))
+
+////////////////// Type Bush (nested inductive type)
+
+symbol bush : Set →  Set
+inductive Bush : Π(_:Set), TYPE ≔
+ | BNil : Πa, Bush a
+ | BCons : Πa, τ a → Bush (bush a) → Bush a
+rule Bush $a ↪ τ (bush $a)
+
+assert ind_Bush : // Induction principle
+  Πp, (Πa, π(p a (BNil a))) → (Πa x l, π(p (bush a) l) → π(p a (BCons a x l))) → Πa l, π(p a l)
+
+symbol pB : Πa, Bush a → Prop // Tests about inductive rules
+symbol piBNil : Πa, π (pB a (BNil a))
+symbol B : Bush (bush a)
+symbol piBCons : Πa x l, π (pB (bush a) l) → π (pB a (BCons a x l))
+assert ind_Bush pB piBNil _ a (BNil a) ≡ piBNil a
+assert ind_Bush pB piBNil piBCons a (BCons a x0 B)
+     ≡ piBCons a x0 B (ind_Bush pB piBNil piBCons (bush a) B)
+
+assert BNil a : Bush a // Examples
+assert consL nat (succ (succ (succ z))) (nilL nat) : L nat
+assert consL nat (succ (succ (succ z))) (consL nat (succ z) (nilL nat)) : L nat
+assert consL nat (succ (succ (succ z))) (consL nat (succ z) (consL nat z (nilL nat))) : L nat
+assert consL bool true (nilL bool) : L bool
 
 /////////////////////////////
 // Some proofs
