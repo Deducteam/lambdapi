@@ -124,14 +124,65 @@ let handle_modifiers : p_modifier loc list -> (prop * expo * match_strat) =
   (prop, expo, mstrat)
 
 (** [handle_require_as pos ss p id] handles the command [require p as id] with
-   [ss] as the signature state. On success, an updated signature state is
-   returned. *)
+    [ss] as the signature state. On success, an updated signature state is
+    returned. *)
 let handle_require_as : popt -> sig_state -> Path.t -> ident -> sig_state =
     fun pos ss p id ->
   let ss = handle_require false pos ss p in
   let aliases = StrMap.add id.elt p ss.aliases in
   let path_map = PathMap.add p id.elt ss.path_map in
   {ss with aliases; path_map}
+
+(** [handle_symbol ss e p strat x xs a] handles the command
+    [e p strat symbol x xs : a] with [ss] as the signature state.
+    On success, an updated signature state and the new symbol are returned. *)
+let handle_symbol :
+  sig_state -> expo -> prop -> match_strat -> ident -> p_arg list ->
+  p_type -> sig_state * sym = fun ss e p strat x xs a ->
+  let scope_basic exp = Scope.scope_term exp ss Env.empty in
+  (* We check that [x] is not already used. *)
+  if Sign.mem ss.signature x.elt then
+    fatal x.pos "Symbol [%s] already exists." x.elt;
+  (* Desugaring of arguments of [a]. *)
+  let a = if xs = [] then a else Pos.none (P_Prod(xs, a)) in
+  (* Obtaining the implicitness of arguments. *)
+  let impl = Scope.get_implicitness a in
+  (* We scope the type of the declaration. *)
+  let a = scope_basic e a in
+  (* We check that [a] is typable by a sort. *)
+  Typing.sort_type [] a;
+  (* We check that no metavariable remains. *)
+  if Basics.has_metas true a then
+    begin
+      fatal_msg "The type of [%s] has unsolved metavariables.\n" x.elt;
+      fatal x.pos "We have %s : %a." x.elt pp_term a
+    end;
+  (* Actually add the symbol to the signature and the state. *)
+  out 3 "(symb) %s : %a\n" x.elt pp_term a;
+  Sig_state.add_symbol ss e p strat x a impl None
+
+(** [handle_rules ss rs] handles the command [rule r1 with r2 ... with rn]
+    with [ss] as the signature state.
+    On success, an updated signature state is returned. *)
+let handle_rules : sig_state -> p_rule list -> sig_state = fun ss rs ->
+  (* Scoping and checking each rule in turn. *)
+  let handle_rule r =
+    let pr = scope_rule ss r in
+    let sym = pr.elt.pr_sym in
+    if !(sym.sym_def) <> None then
+      fatal pr.pos "Rewriting rules cannot be given for defined \
+                    symbol [%s]." sym.sym_name;
+    (sym, Pos.make r.pos (Sr.check_rule pr))
+  in
+  let rs = List.map handle_rule rs in
+  (* Adding the rules all at once. *)
+  let add_rule (s,r) =
+    Sign.add_rule ss.signature s r.elt;
+    out 3 "(rule) %a\n" pp_rule (s,r.elt)
+  in
+  List.iter add_rule rs;
+  let syms = List.remove_phys_dups (List.map (fun (s, _) -> s) rs) in
+  List.iter Tree.update_dtree syms; ss
 
 (** [handle_cmd ss cmd] tries to handle the command [cmd] with [ss] as the
     signature state. On success, an updated signature state is returned.  When
@@ -143,59 +194,20 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
   fun ss cmd ->
   let scope_basic exp = Scope.scope_term exp ss Env.empty in
   match cmd.elt with
-  | P_require(b,ps)            ->
+  | P_require(b,ps)              ->
      let ps = List.map (List.map fst) ps in
      (List.fold_left (handle_require b cmd.pos) ss ps, None)
-  | P_require_as(p,id)         ->
+  | P_require_as(p,id)           ->
      let id = Pos.make id.pos (fst id.elt) in
      (handle_require_as cmd.pos ss (List.map fst p) id, None)
-  | P_open(ps)                  ->
+  | P_open(ps)                   ->
      let ps = List.map (List.map fst) ps in
      (List.fold_left (handle_open cmd.pos) ss ps, None)
-  | P_symbol(ms, x, xs, a) ->
-      (* We check that [x] is not already used. *)
-      if Sign.mem ss.signature x.elt then
-        fatal x.pos "Symbol [%s] already exists." x.elt;
-      (* Desugaring of arguments of [a]. *)
-      let a = if xs = [] then a else Pos.none (P_Prod(xs, a)) in
+  | P_symbol(ms, x, xs, a)     ->
       (* Verify the modifiers. *)
       let (prop, expo, mstrat) = handle_modifiers ms in
-      (* Obtaining the implicitness of arguments. *)
-      let impl = Scope.get_implicitness a in
-      (* We scope the type of the declaration. *)
-      let a = scope_basic expo a in
-      (* We check that [a] is typable by a sort. *)
-      Typing.sort_type [] a;
-      (* We check that no metavariable remains. *)
-      if Basics.has_metas true a then
-        begin
-          fatal_msg "The type of [%s] has unsolved metavariables.\n" x.elt;
-          fatal x.pos "We have %s : %a." x.elt pp_term a
-        end;
-      (* Actually add the symbol to the signature and the state. *)
-      out 3 "(symb) %s : %a\n" x.elt pp_term a;
-      (Sig_state.add_symbol ss expo prop mstrat x a impl None,
-       None)
-  | P_rules(rs)                ->
-      (* Scoping and checking each rule in turn. *)
-      let handle_rule r =
-        let pr = scope_rule ss r in
-        let sym = pr.elt.pr_sym in
-        if !(sym.sym_def) <> None then
-          fatal pr.pos "Rewriting rules cannot be given for defined \
-                        symbol [%s]." sym.sym_name;
-        (sym, Pos.make r.pos (Sr.check_rule pr))
-      in
-      let rs = List.map handle_rule rs in
-      (* Adding the rules all at once. *)
-      let add_rule (s,r) =
-        Sign.add_rule ss.signature s r.elt;
-        out 3 "(rule) %a\n" pp_rule (s,r.elt)
-      in
-      List.iter add_rule rs;
-      let syms = List.remove_phys_dups (List.map (fun (s, _) -> s) rs) in
-      List.iter Tree.update_dtree syms;
-      (ss, None)
+      (fst (handle_symbol ss expo prop mstrat x xs a), None)
+  | P_rules(rs)                  -> (handle_rules  ss rs, None)
   | P_definition(ms, op, x, xs, ao, t) ->
       (* We check that [x] is not already used. *)
       if Sign.mem ss.signature x.elt then
@@ -245,7 +257,113 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
       (* Actually add the symbol to the signature. *)
       out 3 "(symb) %s ≔ %a\n" x.elt pp_term t;
       let d = if op then None else Some(t) in
-      let ss = Sig_state.add_symbol ss expo Defin Eager x a impl d in
+      (fst (Sig_state.add_symbol ss expo Defin Eager x a impl d), None)
+  | P_inductive(ms, il)     ->
+      (* Verify the modifiers. *)
+      let (prop, e, mstrat) = handle_modifiers ms in
+      if prop <> Defin then
+        fatal cmd.pos "Property modifiers cannot be used in inductive types.";
+      if mstrat <> Eager then
+        fatal cmd.pos "Pattern matching strategy modifiers cannot be used \
+                       in inductive types.";
+      (* Add the inductive types in the signature *)
+      let add_ind_types :
+        sig_state * sym list -> (ident * p_term * (ident * p_term) list) loc
+        -> sig_state * sym list
+        = fun (ss, ind_typ_list) x ->
+        let (id, a, _) = x.elt in
+        let (ss, ind_sym) = handle_symbol ss e Injec Eager id [] a in
+        (ss, ind_sym::ind_typ_list)
+      in
+      let (ss, ind_typ_list_rev) = List.fold_left add_ind_types (ss, []) il in
+      let ind_typ_list_rev = List.rev ind_typ_list_rev in
+      (* Add the constructors in the signature. *)
+      let add_constructors :
+        sig_state*(sym list) list -> (ident*p_term*(ident*p_term) list) loc
+        -> sig_state*(sym list) list
+        = fun (ss, cons_list_list) x ->
+        let (_, _, l) = x.elt in
+        let add_cons :
+              sig_state * sym list -> ident * p_term -> sig_state * sym list
+          = fun (ss, cons_list) (id, a) ->
+          let (ss, cons_sym) = handle_symbol ss e Const Eager id [] a in
+          (ss, cons_sym::cons_list)
+        in
+        let (ss, cons_list_rev) = List.fold_left add_cons (ss, []) l in
+        (* Reverse the list of constructors previoulsy computed to preserve
+           the initial order *)
+        let cons_list = List.rev cons_list_rev in
+        (ss, cons_list::cons_list_list)
+      in
+      let (ss, cons_list_list_rev) =
+        List.fold_left add_constructors (ss, []) il
+      in
+      let cons_list_list_rev = List.rev cons_list_list_rev in
+      (* Compute the induction principle *)
+      let rec_typ_list, map =
+        Inductive.gen_rec_type ss cmd.pos ind_typ_list_rev cons_list_list_rev
+      in
+      let check rec_typ id ss =
+        (* Check the type of the induction principle *)
+        begin
+          match Typing.infer [] rec_typ with
+          | Some _ -> ()
+          | None   ->
+              fatal cmd.pos "The type of the generated inductive principle of
+                             [%a] isn't typable. Please, raise an issue."
+                pp_term rec_typ
+        end;
+        (* Add the induction principle in the signature *)
+        let rec_name = Pos.make cmd.pos (Parser.add_prefix "ind_" id.sym_name) in
+        if StrSet.mem id.sym_name !(ss.signature.sign_idents) then
+          begin
+            Sign.add_ident ss.signature rec_name.elt;
+            if !log_enabled then
+              log_hndl "This ident %s is already in the signature \
+                        and now the ident %a too !"
+                id.sym_name Pretty.pp_ident rec_name;
+          end;
+        let (ss, rec_sym) =
+          Sig_state.add_symbol ss e Defin Eager rec_name rec_typ [] None
+        in
+        if !log_enabled then
+          log_hndl "The induction principle named %a is %a"
+            Pretty.pp_ident rec_name Print.pp_term rec_typ;
+        ss, rec_sym
+      in
+      (*let rec_sym_list = List.map2 check rec_typ_list ind_typ_list_rev in *)
+      let tred :
+        Sig_state.t -> term list -> sym list -> Sig_state.t * sym list =
+        fun ss rec_typ_list ind_typ_list_rev ->
+        let rec aux ss rec_typ_list ind_typ_list acc =
+          match rec_typ_list, ind_typ_list with
+          | [], [] -> ss, acc
+          | t::q, n::r ->
+              let ss, rec_sym = check t n ss in
+              aux ss q r (rec_sym::acc)
+          | _ -> assert false
+        in
+        aux ss rec_typ_list ind_typ_list_rev []
+      in
+      let ss, rec_sym_list = tred ss rec_typ_list ind_typ_list_rev in
+      (* Compute the rules associated with the induction principle,
+         check the type preservation of the rules and add it to the
+         signature *)
+      let open Stdlib in
+      no_wrn := true;
+      let rs_list = Inductive.gen_rec_rules ind_typ_list_rev cons_list_list_rev map in
+      let ss = List.fold_left (fun ss rs -> handle_rules ss rs) ss rs_list in
+      (* Store inductive structure in the field "sign_ind" of the signature *)
+      let rec test l1 l2 l3 = match l1, l2, l3 with
+        | [], [], [] -> ()
+        | t1::q1, t2::q2, t3::q3 ->
+            Sign.add_inductive ss.signature t1 t2 t3;
+            test q1 q2 q3
+        | _ -> assert false
+      in
+      test ind_typ_list_rev cons_list_list_rev rec_sym_list;
+      (*Sign.add_inductive ss.signature ind_sym cons_list rec_sym_list;*)
+      no_wrn := false;
       (ss, None)
   | P_theorem(ms, stmt, ts, pe) ->
       let (x,xs,a) = stmt.elt in
@@ -290,7 +408,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
             (* Add a symbol corresponding to the proof, with a warning. *)
             out 3 "(symb) %s (admit)\n" x.elt;
             wrn cmd.pos "Proof admitted.";
-            Sig_state.add_symbol ss expo Const Eager x a impl None
+            fst (Sig_state.add_symbol ss expo Const Eager x a impl None)
         | P_proof_qed   ->
             (* Check that the proof is indeed finished. *)
             if not (Proof.finished st) then
@@ -300,7 +418,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
               end;
             (* Add a symbol corresponding to the proof. *)
             out 3 "(symb) %s (qed)\n" x.elt;
-            Sig_state.add_symbol ss expo Const Eager x a impl None
+            fst (Sig_state.add_symbol ss expo Const Eager x a impl None)
       in
       let data =
         { pdata_stmt_pos = stmt.pos ; pdata_p_state = st ; pdata_tactics = ts

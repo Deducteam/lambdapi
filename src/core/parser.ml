@@ -175,6 +175,7 @@ let _definition_ = KW.create "definition"
 let _fail_       = KW.create "fail"
 let _focus_      = KW.create "focus"
 let _in_         = KW.create "in"
+let _inductive_  = KW.create "inductive"
 let _injective_  = KW.create "injective"
 let _intro_      = KW.create "assume"
 let _let_        = KW.create "let"
@@ -307,6 +308,15 @@ let escaped_ident : bool -> string Earley.grammar = fun with_delim ->
 
 let escaped_ident_no_delim = escaped_ident false
 let escaped_ident = escaped_ident true
+
+(** [add_prefix p s] adds the prefix [p] at the beginning of the
+    identifier [s]. *)
+let add_prefix : string -> string -> string = fun p s ->
+  let n = String.length s in
+  if n >= 4 && s.[0] ='{' && s.[1] = '|' then
+    "{|" ^ p ^ String.sub s 2 (n-4) ^ "|}"
+  else
+    p ^ s
 
 (** Any identifier (regular or escaped). *)
 let parser any_ident =
@@ -480,6 +490,12 @@ let term = term PFunc
 (** [rule] is a parser for a single rewriting rule. *)
 let parser rule =
   | l:term "↪" r:term -> Pos.in_pos _loc (l, r)
+
+(** [inductive] is a parser for a single inductive type. *)
+let parser inductive =
+  |     i:ident t:{":" term} "≔"
+    c:{ "|" ilist:ident ":" tlist:term }*
+        -> Pos.in_pos _loc (i, t, c)
 
 (** [unif_rule] is a parser for unification rules. *)
 let parser unif_rule =
@@ -660,6 +676,8 @@ let parser cmd =
       -> P_rules(r::rs)
   | ms:modifier* _definition_ s:ident al:arg* ao:{":" term}? "≔" t:term
       -> P_definition(ms,false,s,al,ao,t)
+  | ms:modifier* _inductive_ i:inductive il:{ _:_with_ inductive}*
+      -> P_inductive(ms, i::il)
   | ms:modifier* st:statement (ts,pe):proof
       -> P_theorem(ms,st,ts,pe)
   | _set_ c:config
