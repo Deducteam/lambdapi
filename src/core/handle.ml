@@ -282,24 +282,11 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
       (* Compute the induction principle *)
       let rec_typ = Inductive.gen_rec_type ss cmd.pos ind_sym cons_list in
       (* Check the type of the induction principle *)
-      begin
-        match Typing.infer [] rec_typ with
-        | Some _ -> ()
-        | None   ->
-            fatal cmd.pos "The type of the generated inductive principle of
-                           [%a] isn't typable. Please, raise an issue."
-              pp_term rec_typ
-      end;
+      Inductive.check_type_ind cmd.pos rec_typ;
       (* Add the induction principle in the signature *)
       let rec_name = Pos.make cmd.pos (Parser.add_prefix "ind_" id.elt) in
       if StrSet.mem id.elt !(ss.signature.sign_idents) then
-        begin
           Sign.add_ident ss.signature rec_name.elt;
-        if !log_enabled then
-          log_hndl "This ident %a is already in the signature \
-                    and now the ident %a too !"
-            Pretty.pp_ident id Pretty.pp_ident rec_name;
-        end;
       let (ss, rec_sym) =
         Sig_state.add_symbol ss e Defin Eager rec_name rec_typ [] None
       in
@@ -307,15 +294,12 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
         log_hndl "The induction principle named %a is %a"
           Pretty.pp_ident rec_name Print.pp_term rec_typ;
       (* Compute the rules associated with the induction principle,
-         check the type preservation of the rules and add it to the
+         check the type preservation of the rules and add them to the
          signature *)
-      let open Stdlib in
-      no_wrn := true;
       let rs = Inductive.gen_rec_rules ind_sym rec_sym cons_list in
-      let ss = handle_rules ss rs in
+      let ss = with_no_wrn (handle_rules ss) rs in
       (* Store inductive structure in the field "sign_ind" of the signature *)
       Sign.add_inductive ss.signature ind_sym cons_list rec_sym;
-      no_wrn := false;
       (ss, None)
   | P_theorem(ms, stmt, ts, pe) ->
       let (x,xs,a) = stmt.elt in

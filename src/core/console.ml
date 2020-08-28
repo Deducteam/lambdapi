@@ -49,6 +49,17 @@ let wrn : Pos.popt -> 'a outfmt -> 'a = fun pos fmt ->
   | None    -> fprintf !err_fmt (yel (fmt ^^ "\n"))
   | Some(_) -> fprintf !err_fmt (yel ("[%a] " ^^ fmt ^^ "\n")) Pos.print pos
 
+(** [with_no_wrn f x] disables warnings before executing [f x] and then
+    restores the initial state of warnings. The result of [f x] is returned.
+ *)
+let with_no_wrn : ('a -> 'b) -> 'a -> 'b = fun f x ->
+  let open Stdlib in
+  let w = !no_wrn in
+  no_wrn := true;
+  let res = f x in
+  no_wrn := w;
+  res
+
 (** Exception raised in case of failure. Note that we use an optional optional
     source position. [None] is used on errors that are independant from source
     code position (e.g., errors related to command-line arguments parsing). In

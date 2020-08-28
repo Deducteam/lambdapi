@@ -23,6 +23,37 @@ let get_config : Sig_state.t -> Pos.popt -> config = fun ss pos ->
   { symb_Prop = builtin "Prop"
   ; symb_prf  = builtin "P" }
 
+(** [check_typ_ind rec_typ] checks if the type of the term [rec_typ] is the
+    constant TYPE. *)
+let check_type_ind : popt -> term -> unit = fun pos rec_typ ->
+  match Typing.infer [] rec_typ with
+  | Some t ->
+      begin
+        let err_msg t =
+          fatal pos "The type of the generated inductive \
+                     principle of [%a] can't begin by %s. \
+                     Please, raise an issue." pp_term rec_typ t
+        in
+        match t with
+        | Type   -> ()
+        | Symb _ -> err_msg "a symbol"
+        | Prod _ -> err_msg "a dependent product"
+        | Appl _ -> err_msg "an application"
+        | Vari _ -> err_msg "a variable"
+        | Kind   -> err_msg "the constant KIND"
+        | Meta _ -> err_msg "a meta-variable application"
+        | Patt _ -> err_msg "a pattern variable application"
+        | TEnv _ -> err_msg "a term environment"
+        | Wild   -> err_msg "a wildcard"
+        | TRef _ -> err_msg "a reference cell"
+        | LLet _ -> err_msg "a let-construction"
+        | Abst _ -> err_msg "a abstraction"
+      end
+  | None   ->
+      fatal pos "The type of the generated inductive principle of
+                 [%a] isn't typable. Please, raise an issue."
+        pp_term rec_typ
+
 (** [gen_ind_typ_codom pos ind_sym codom] assumes that the type of [ind_sym]
     is of the form [Π(i1:a1),...,Π(in:an), TYPE]. It then generates a [tbox]
     similar to this type except that [TYPE] is replaced by
