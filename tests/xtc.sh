@@ -13,7 +13,7 @@ ok() {
 }
 
 LAMBDAPI="lambdapi check --termination 'cat > /dev/null; printf YES' \
---verbose 0 --lib-root=lib"
+--verbose 0"
 
 if ${LAMBDAPI} tests/OK/nat.lp 2>/dev/null; then
     ko "XTC"
