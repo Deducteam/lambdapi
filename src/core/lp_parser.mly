@@ -11,11 +11,32 @@
  %}
 
 %token EOF
-%token AT
-%token DOT
+
+// Command keywords
+%token THEOREM
+%token COLON
+%token SYMBOL
+%token RULE
+%token WITH
+%token OPEN
+%token REQUIRE
+%token AS
+%token DEFINITION
+%token REWRITE
+// Modifiers
+%token CONSTANT
+%token INJECTIVE
+%token PROTECTED
+%token PRIVATE
+%token SEQUENTIAL
+// Terms
 %token ARROW
 %token COMMA
-%token COLON
+// Sigils
+%token AT
+%token DOLLAR
+%token QUESTION_MARK
+%token DOT
 %token ASSIGN
 %token WILD
 %token LAMBDA
@@ -29,28 +50,17 @@
 %token L_SQ_BRACKET
 %token R_SQ_BRACKET
 %token SEMICOLON
-%token THEOREM
 %token TYPE
-%token SYMBOL
-%token RULE
-%token WITH
-%token OPEN
-%token REQUIRE
-%token AS
-%token DEFINITION
-%token REWRITE
-%token CONSTANT
-%token INJECTIVE
-%token PROTECTED
-%token PRIVATE
+// Proofs
 %token PROOF
 %token ABORT
 %token ADMIT
 %token QED
+// Tactics
 %token INTRO
-%token SEQUENTIAL
-%token <string> META
-%token <string> PATT
+%token APPLY
+%token SIMPL
+// Identifiers
 %token <string * bool> ID
 %token <Syntax.p_module_path * string> QID
 
@@ -62,6 +72,8 @@
 %type <Syntax.ident * bool> ident
 %type <Syntax.ident option> patt
 %type <Syntax.p_rule> rule
+%type <Syntax.p_tactic> tactic
+%type <Syntax.p_modifier loc> modifier
 
 // Precedences listed from low to high
 %nonassoc IN
@@ -70,20 +82,12 @@
 
 %%
 
-ident:
-  | i=ID { (make_pos $loc (fst i), snd i) }
+ident: i=ID { (make_pos $loc (fst i), snd i) }
 
-qident:
-  | qid=QID { make_pos $loc qid }
-
-// Meta variable identifier (without sigil)
-// FIXME: what happens if meta is "_"?
-meta:
-  | m=META { make_pos $loc m }
+qident: qid=QID { make_pos $loc qid }
 
 // Rewrite pattern identifier (without the sigil)
-patt:
-  | p=PATT { if p = "_" then None else Some(make_pos $loc p) }
+patt: DOLLAR p=ident { if (fst p).elt = "_" then None else Some(fst p) }
 
 arg_ident:
   | i=ident { Some(fst i) }
@@ -101,6 +105,8 @@ arg:
 
 tactic:
   | INTRO xs=arg_ident+ { make_pos $loc (P_tac_intro(xs)) }
+  | APPLY t=term { make_pos $loc (P_tac_apply(t)) }
+  | SIMPL { make_pos $loc P_tac_simpl }
 
 modifier:
   | CONSTANT { make_pos $loc (P_prop(Terms.Const)) }
@@ -117,8 +123,7 @@ prfend:
 
 // Theorem statement REVIEW: can it be inlined?
 statement:
-  | THEOREM s=ident al=arg* COLON a=term PROOF { make_pos $loc (fst s, al, a) }
-proof: ts=tactic* e=prfend { (ts, e) } // REVIEW: can it be inlined?
+  THEOREM s=ident al=arg* COLON a=term PROOF { make_pos $loc (fst s, al, a) }
 
 command:
   // REVIEW: is it correct to use qident? Answer: it is, according to the
@@ -136,8 +141,8 @@ command:
   | ms=modifier* DEFINITION s=ident al=arg* ao=preceded(COLON, term)?
     ASSIGN b=term DOT
       { make_pos $loc (P_definition(ms, false, fst s, al, ao, b))}
-  | ms=modifier* st=statement prf=proof
-      { let (ts, pe) = prf in make_pos $loc (P_theorem(ms, st, ts, pe)) }
+  | ms=modifier* st=statement ts=tactic* pe=prfend
+      { make_pos $loc (P_theorem(ms, st, ts, pe)) }
   | RULE r=rule rs=preceded(WITH, rule)* DOT { make_pos $loc (P_rules(r::rs)) }
   | EOF { raise End_of_file }
 
@@ -156,7 +161,8 @@ sterm:
   | WILD { make_pos $loc P_Wild }
   | TYPE { make_pos $loc P_Type }
   // Metavariable
-  | m=meta e=env? { make_pos $loc (P_Meta(m, Option.map Array.of_list e)) }
+  | QUESTION_MARK m=ident e=env?
+      { make_pos $loc (P_Meta(fst m, Option.map Array.of_list e)) }
   // Pattern of rewrite rules
   | p=patt e=env? { make_pos $loc (P_Patt(p, Option.map Array.of_list e)) }
   // Parentheses
@@ -164,6 +170,7 @@ sterm:
   // Explicitly given argument
   | L_CU_BRACKET t=term R_CU_BRACKET { make_pos $loc (P_Expl(t)) }
 
+// Applied terms
 aterm:
   | t=aterm u=sterm { make_pos $loc (P_Appl(t,u)) }
   | t=sterm { t }
@@ -173,13 +180,9 @@ term:
   | t=term ARROW u=term { make_pos $loc (P_Impl(t, u)) }
   | PI xs=arg+ COMMA b=term { make_pos $loc (P_Prod(xs, b)) }
   | LAMBDA xs=arg+ COMMA t=term { make_pos $loc (P_Abst(xs, t)) }
-  | LET x=ID a=arg* b=preceded(COLON, term)? ASSIGN t=term IN u=term
-      {
-        let x = make_pos $loc(x) (fst x) in
-        make_pos $loc (P_LLet(x, a, b, t, u))
-      }
+  | LET x=ident a=arg* b=preceded(COLON, term)? ASSIGN t=term IN u=term
+      { make_pos $loc (P_LLet(fst x, a, b, t, u)) }
 
-rule:
-  | l=term REWRITE r=term { make_pos $loc (l, r) }
+rule: l=term REWRITE r=term { make_pos $loc (l, r) }
 
 %%

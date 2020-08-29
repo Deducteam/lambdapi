@@ -37,9 +37,7 @@ type token =
   | INTRO
   | LAMBDA
   | LET
-  | META of string
   | OPEN
-  | PATT of string
   | PI
   | PRINT
   | PRIVATE
@@ -87,7 +85,8 @@ let rec nom : lexbuf -> unit = fun buf ->
   | _ -> ()
 
 (** [is_escaped s] returns whether string [s] uses the escaped syntax. *)
-let is_escaped: string -> bool = fun _ -> assert false
+let is_escaped: string -> bool = fun s ->
+  String.length s >= 2 && String.sub s 0 2 = "{|"
 
 let token buf =
   nom buf;
@@ -106,25 +105,27 @@ let token buf =
   | '.' -> DOT
   | ';' -> SEMICOLON
   | '@' -> AT
+  | '?' -> QUESTION_MARK
+  | '$' -> DOLLAR
   | 0x2254 (* ≔ *)-> ASSIGN
   | 0x21aa (* ↪ *) -> REWRITE
   | 0x2192 (* → *)-> ARROW
   | 0x03bb (* λ *)-> LAMBDA
   | 0x03a0 (* Π *)-> PI
+  | "as" -> AS
   | "let" -> LET
   | "in" -> IN
   | "TYPE" -> TYPE
   | "rule" -> RULE
+  | "open" -> OPEN
   | "symbol" -> SYMBOL
+  | "require" -> REQUIRE
   | "definition" -> DEFINITION
   | "constant" -> CONSTANT
   | "injective" -> INJECTIVE
   | "protected" -> PROTECTED
   | "private" -> PRIVATE
   | "sequential" -> SEQUENTIAL
-  (* We discard the sigils '?' and '$'. *)
-  | meta_id -> META(String.tail (Utf8.lexeme buf))
-  | patt_id -> PATT(String.tail (Utf8.lexeme buf))
   | id -> ID(Utf8.lexeme buf, false)
   | escid -> ID(Utf8.lexeme buf, true)
   | qid ->
