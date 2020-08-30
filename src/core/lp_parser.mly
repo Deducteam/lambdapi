@@ -8,6 +8,11 @@
 
     let make_pos : Lexing.position * Lexing.position -> 'a -> 'a Pos.loc =
       fun lps elt -> {pos = Some(locate lps); elt}
+
+    let rev_tl : (string * bool) list -> p_module_path * string = fun p ->
+      match List.rev p with
+      | hd :: tl -> (List.rev tl, fst hd)
+      | [] -> assert false
  %}
 
 %token EOF
@@ -62,7 +67,6 @@
 %token SIMPL
 // Identifiers
 %token <string * bool> ID
-%token <Syntax.p_module_path * string> QID
 
 %start <Syntax.p_command> command
 %type <Syntax.p_term> term
@@ -74,6 +78,7 @@
 %type <Syntax.p_rule> rule
 %type <Syntax.p_tactic> tactic
 %type <Syntax.p_modifier loc> modifier
+%type <Syntax.p_module_path> path
 
 // Precedences listed from low to high
 %nonassoc IN
@@ -84,7 +89,7 @@
 
 ident: i=ID { (make_pos $loc (fst i), snd i) }
 
-qident: qid=QID { make_pos $loc qid }
+path: ms=separated_nonempty_list(DOT, ID) { ms }
 
 // Rewrite pattern identifier (without the sigil)
 patt: DOLLAR p=ident { if (fst p).elt = "_" then None else Some(fst p) }
@@ -121,29 +126,27 @@ prfend:
   | ADMIT { make_pos $loc P_proof_admit }
   | ABORT { make_pos $loc P_proof_abort }
 
-// Theorem statement REVIEW: can it be inlined?
 statement:
   THEOREM s=ident al=arg* COLON a=term PROOF { make_pos $loc (fst s, al, a) }
 
 command:
-  // REVIEW: is it correct to use qident? Answer: it is, according to the
-  // documented BNF where path and qident are the same regular expressions.
-  | REQUIRE p=qident DOT { make_pos $loc (P_require(false, [fst p.elt])) }
-  | REQUIRE OPEN p=qident DOT { make_pos $loc (P_require(true,[fst p.elt])) }
-  | REQUIRE qid=qident AS p=ident DOT
+  | REQUIRE OPEN p=path SEMICOLON { make_pos $loc (P_require(true,[p])) }
+  | REQUIRE p=path SEMICOLON { make_pos $loc (P_require(false, [p])) }
+  | REQUIRE p=path AS a=ident SEMICOLON
       {
-        let alias = Pos.make (fst p).pos ((fst p).elt, snd p) in
-        make_pos $loc (P_require_as(fst qid.elt, alias))
+        let alias = Pos.make (fst a).pos ((fst a).elt, snd a) in
+        make_pos $loc (P_require_as(p, alias))
       }
-  | OPEN qid=qident { make_pos $loc (P_open([fst qid.elt])) }
-  | ms=modifier* SYMBOL s=ident al=arg* COLON a=term DOT
+  | OPEN p=path SEMICOLON { make_pos $loc (P_open([p])) }
+  | ms=modifier* SYMBOL s=ident al=arg* COLON a=term SEMICOLON
       { make_pos $loc (P_symbol(ms, fst s, al, a)) }
   | ms=modifier* DEFINITION s=ident al=arg* ao=preceded(COLON, term)?
-    ASSIGN b=term DOT
+    ASSIGN b=term SEMICOLON
       { make_pos $loc (P_definition(ms, false, fst s, al, ao, b))}
   | ms=modifier* st=statement ts=tactic* pe=prfend
       { make_pos $loc (P_theorem(ms, st, ts, pe)) }
-  | RULE r=rule rs=preceded(WITH, rule)* DOT { make_pos $loc (P_rules(r::rs)) }
+  | RULE rs=separated_nonempty_list(WITH, rule) SEMICOLON
+      { make_pos $loc (P_rules(rs)) }
   | EOF { raise End_of_file }
 
 // Environment of a metavariable or rewrite pattern
@@ -151,12 +154,19 @@ env: L_SQ_BRACKET ts=separated_list(SEMICOLON, term) R_SQ_BRACKET { ts }
 
 sterm:
   // Explicited identifier (with @)
-  | AT qid=qident { make_pos $loc (P_Iden(qid, true)) }
+  | AT p=path
+    {
+      let qid = rev_tl p in
+      let qid = make_pos $loc(p) qid in
+      make_pos $loc (P_Iden(qid, true))
+    }
   // Qualified identifier
-  | qid=qident { make_pos $loc (P_Iden(qid, false)) }
-  // Identifier
-  | id=ident
-      { make_pos $loc (P_Iden(Pos.map (fun i -> ([], i)) (fst id), false)) }
+  | p=path
+    {
+      let qid = rev_tl p in
+      let qid = make_pos $loc(p) qid in
+      make_pos $loc (P_Iden(qid, false))
+    }
   // The wildcard "_"
   | WILD { make_pos $loc P_Wild }
   | TYPE { make_pos $loc P_Type }
@@ -166,7 +176,7 @@ sterm:
   // Pattern of rewrite rules
   | p=patt e=env? { make_pos $loc (P_Patt(p, Option.map Array.of_list e)) }
   // Parentheses
-  | L_PAREN t=term R_PAREN { t }
+  | L_PAREN t=term R_PAREN { make_pos $loc (P_Wrap(t)) }
   // Explicitly given argument
   | L_CU_BRACKET t=term R_CU_BRACKET { make_pos $loc (P_Expl(t)) }
 

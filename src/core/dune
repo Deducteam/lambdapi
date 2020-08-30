@@ -16,7 +16,7 @@
  (preprocess (pps sedlex.ppx))
  (libraries sedlex sedlex.ppx unix stdlib-shims timed bindlib why3))
 
-(menhir (flags --external-tokens Lp_lexer) (modules lp_parser))
+(menhir (flags --explain --external-tokens Lp_lexer) (modules lp_parser))
 
 (ocamllex legacy_lexer)
 (menhir

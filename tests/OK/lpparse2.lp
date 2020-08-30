@@ -1,3 +1,4 @@
-require open tests.OK.lpparse.
+require tests.OK.lpparse;
+open tests.OK.lpparse;
 
-symbol f2: A → A.
+symbol f2: A → A;

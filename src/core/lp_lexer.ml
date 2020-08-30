@@ -30,7 +30,6 @@ type token =
   | FOCUS
   | ID of (string * bool)
    (** Boolean is true if ident is escaped *)
-  | QID of (Syntax.p_module_path * string)
   | IN
   | INFERTYPE
   | INJECTIVE
@@ -68,9 +67,9 @@ exception SyntaxError of strloc
 let digit = [%sedlex.regexp? '0' .. '9']
 let letter = [%sedlex.regexp? 'a' .. 'z' | 'A' .. 'Z']
 let id = [%sedlex.regexp? letter, Star (letter | digit | '_')]
-let qid = [%sedlex.regexp? Star (id, '.'), id]
 let escid =
   [%sedlex.regexp? "{|", Star (Compl '|' | '|', Compl '}'), Star '|', "|}"]
+let qid = [%sedlex.regexp? Star (id | escid, '.'), id | escid]
 let meta_id = [%sedlex.regexp? '?', id | escid]
 let patt_id = [%sedlex.regexp? '$', id | escid]
 
@@ -128,15 +127,6 @@ let token buf =
   | "sequential" -> SEQUENTIAL
   | id -> ID(Utf8.lexeme buf, false)
   | escid -> ID(Utf8.lexeme buf, true)
-  | qid ->
-      let mp = Utf8.lexeme buf in
-      let elts = String.split_on_char '.' mp in
-      let (sym, path) =
-        match List.rev elts with
-        | [] -> assert false
-        | hd :: tl -> (hd, List.rev tl)
-      in
-      QID(List.map (fun e -> (e, is_escaped e)) path, sym)
   | _ ->
       let loc = lexing_positions buf in
       let loc = locate loc in
