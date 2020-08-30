@@ -10,15 +10,15 @@ type token =
   | R_SQ_BRACKET
   | L_CU_BRACKET
   | R_CU_BRACKET
-  | ABORT
-  | ADMIT
   | APPLY
   | ARROW
   | AS
   | ASSERT
   | ASSERTNOT
   | ASSIGN
+  | ASSOC of Syntax.assoc
   | AT
+  | BUILTIN
   | COLON
   | COMMA
   | COMPUTE
@@ -27,23 +27,28 @@ type token =
   | DOLLAR
   | DOT
   | FAIL
+  | FLAG
+  | FLOAT of float
   | FOCUS
   | ID of (string * bool)
    (** Boolean is true if ident is escaped *)
   | IN
   | INFERTYPE
+  | INFIX
   | INJECTIVE
+  | INT of int
   | INTRO
   | LAMBDA
   | LET
   | OPEN
   | PI
+  | PREFIX
   | PRINT
   | PRIVATE
   | PROOF
+  | PROOF_END of Syntax.p_proof_end
   | PROOFTERM
   | PROTECTED
-  | QED
   | QUESTION_MARK
   | REFINE
   | REFL
@@ -54,10 +59,14 @@ type token =
   | SEQUENTIAL
   | SET
   | SIMPL
+  | STRINGLIT of string
+  | SWITCH of bool
+  (** [on] or [off], for flags. *)
   | SYMMETRY
   | SYMBOL
   | THEOREM
   | TYPE
+  | VERBOSE
   | WHY3
   | WILD
   | WITH
@@ -65,13 +74,13 @@ type token =
 exception SyntaxError of strloc
 
 let digit = [%sedlex.regexp? '0' .. '9']
+let integer = [%sedlex.regexp? Plus digit]
 let letter = [%sedlex.regexp? 'a' .. 'z' | 'A' .. 'Z']
 let id = [%sedlex.regexp? letter, Star (letter | digit | '_')]
 let escid =
   [%sedlex.regexp? "{|", Star (Compl '|' | '|', Compl '}'), Star '|', "|}"]
-let qid = [%sedlex.regexp? Star (id | escid, '.'), id | escid]
-let meta_id = [%sedlex.regexp? '?', id | escid]
-let patt_id = [%sedlex.regexp? '$', id | escid]
+let stringlit = [%sedlex.regexp? '"', Star (Compl ('"' | '\n')), '"']
+let float = [%sedlex.regexp? integer, Opt ('.', integer)]
 
 (** [nom buf] eats whitespaces in buffer [buf]. *)
 let rec nom : lexbuf -> unit = fun buf ->
@@ -112,11 +121,22 @@ let token buf =
   | 0x03bb (* λ *)-> LAMBDA
   | 0x03a0 (* Π *)-> PI
   | "as" -> AS
-  | "let" -> LET
   | "in" -> IN
+  | "on" -> SWITCH(true)
+  | "off" -> SWITCH(false)
+  | "qed" -> PROOF_END(Syntax.P_proof_qed)
+  | "set" -> SET
+  | "let" -> LET
+  | "flag" -> FLAG
+  | "right" -> ASSOC(Syntax.Assoc_right)
+  | "left" -> ASSOC(Syntax.Assoc_left)
+  | "infix" -> INFIX
   | "TYPE" -> TYPE
   | "rule" -> RULE
   | "open" -> OPEN
+  | "verbose" -> VERBOSE
+  | "prefix" -> PREFIX
+  | "builtin" -> BUILTIN
   | "symbol" -> SYMBOL
   | "require" -> REQUIRE
   | "definition" -> DEFINITION
@@ -125,6 +145,12 @@ let token buf =
   | "protected" -> PROTECTED
   | "private" -> PRIVATE
   | "sequential" -> SEQUENTIAL
+  | stringlit ->
+      (* Remove the quotes from [lexbuf] *)
+      let len = lexeme_length buf in
+      STRINGLIT(Utf8.sub_lexeme buf (len - 2) 1)
+  | integer -> INT(int_of_string (Utf8.lexeme buf))
+  | float -> FLOAT(float_of_string (Utf8.lexeme buf))
   | id -> ID(Utf8.lexeme buf, false)
   | escid -> ID(Utf8.lexeme buf, true)
   | _ ->

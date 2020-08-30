@@ -13,6 +13,11 @@
       match List.rev p with
       | hd :: tl -> (List.rev tl, fst hd)
       | [] -> assert false
+
+    (** [sanity_check pos s] checks that the token [s] is appropriate for an
+        infix operator or a declared identifier. If it is not the case, then the
+        [Fatal] exception is raised. *)
+    let sanity_check : Pos.pos -> string -> unit = fun _ _ -> assert false
  %}
 
 %token EOF
@@ -28,6 +33,18 @@
 %token AS
 %token DEFINITION
 %token REWRITE
+// Other commands and utils
+%token PREFIX
+%token SET
+%token BUILTIN
+%token <assoc> ASSOC
+%token INFIX
+%token VERBOSE
+%token FLAG
+%token <bool> SWITCH
+%token <string> STRINGLIT
+%token <int> INT
+%token <float> FLOAT
 // Modifiers
 %token CONSTANT
 %token INJECTIVE
@@ -58,9 +75,7 @@
 %token TYPE
 // Proofs
 %token PROOF
-%token ABORT
-%token ADMIT
-%token QED
+%token <p_proof_end> PROOF_END
 // Tactics
 %token INTRO
 %token APPLY
@@ -79,6 +94,8 @@
 %type <Syntax.p_tactic> tactic
 %type <Syntax.p_modifier loc> modifier
 %type <Syntax.p_module_path> path
+%type <Syntax.p_config> config
+%type <Syntax.qident> qident
 
 // Precedences listed from low to high
 %nonassoc IN
@@ -90,6 +107,9 @@
 ident: i=ID { (make_pos $loc (fst i), snd i) }
 
 path: ms=separated_nonempty_list(DOT, ID) { ms }
+
+// [path] with a post processing
+qident: p=path { let qid = rev_tl p in make_pos $loc(p) qid }
 
 // Rewrite pattern identifier (without the sigil)
 patt: DOLLAR p=ident { if (fst p).elt = "_" then None else Some(fst p) }
@@ -121,17 +141,33 @@ modifier:
   | SEQUENTIAL { make_pos $loc (P_mstrat(Terms.Sequen)) }
 
 // Marker of end of proof
-prfend:
-  | QED { make_pos $loc P_proof_qed }
-  | ADMIT { make_pos $loc P_proof_admit }
-  | ABORT { make_pos $loc P_proof_abort }
+prfend: p=PROOF_END { make_pos $loc p }
 
 statement:
   THEOREM s=ident al=arg* COLON a=term PROOF { make_pos $loc (fst s, al, a) }
 
+config:
+  | BUILTIN s=STRINGLIT ASSIGN qid=qident { P_config_builtin(s, qid) }
+  | PREFIX p=FLOAT s=STRINGLIT ASSIGN qid=qident
+      {
+        let unop = (s, p, qid) in
+        sanity_check (locate $loc(s)) s;
+        P_config_unop(unop)
+      }
+  | INFIX a=ASSOC? p=FLOAT s=STRINGLIT ASSIGN qid=qident
+      {
+        let binop = (s, Option.get Assoc_none a, p, qid) in
+        sanity_check (locate $loc(s)) s;
+        P_config_binop(binop)
+      }
+
+query:
+  | SET VERBOSE i=INT { make_pos $loc (P_query_verbose(i)) }
+  | SET FLAG s=STRINGLIT b=SWITCH { make_pos $loc (P_query_flag(s,b)) }
+
 command:
-  | REQUIRE OPEN p=path SEMICOLON { make_pos $loc (P_require(true,[p])) }
-  | REQUIRE p=path SEMICOLON { make_pos $loc (P_require(false, [p])) }
+  | REQUIRE OPEN p=path+ SEMICOLON { make_pos $loc (P_require(true,p)) }
+  | REQUIRE p=path+ SEMICOLON { make_pos $loc (P_require(false, p)) }
   | REQUIRE p=path AS a=ident SEMICOLON
       {
         let alias = Pos.make (fst a).pos ((fst a).elt, snd a) in
@@ -147,6 +183,8 @@ command:
       { make_pos $loc (P_theorem(ms, st, ts, pe)) }
   | RULE rs=separated_nonempty_list(WITH, rule) SEMICOLON
       { make_pos $loc (P_rules(rs)) }
+  | SET c=config SEMICOLON { make_pos $loc (P_set(c)) }
+  | q=query SEMICOLON { make_pos $loc (P_query(q)) }
   | EOF { raise End_of_file }
 
 // Environment of a metavariable or rewrite pattern
@@ -154,19 +192,9 @@ env: L_SQ_BRACKET ts=separated_list(SEMICOLON, term) R_SQ_BRACKET { ts }
 
 sterm:
   // Explicited identifier (with @)
-  | AT p=path
-    {
-      let qid = rev_tl p in
-      let qid = make_pos $loc(p) qid in
-      make_pos $loc (P_Iden(qid, true))
-    }
+  | AT qid=qident { make_pos $loc (P_Iden(qid, true)) }
   // Qualified identifier
-  | p=path
-    {
-      let qid = rev_tl p in
-      let qid = make_pos $loc(p) qid in
-      make_pos $loc (P_Iden(qid, false))
-    }
+  | qid=qident { make_pos $loc (P_Iden(qid, false)) }
   // The wildcard "_"
   | WILD { make_pos $loc P_Wild }
   | TYPE { make_pos $loc P_Type }
