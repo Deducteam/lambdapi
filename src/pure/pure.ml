@@ -71,8 +71,9 @@ let initial_state : file_path -> state = fun fname ->
 let handle_command : state -> Command.t -> command_result =
     fun (st,ss) cmd ->
   Time.restore st;
+  let compile = Compile.compile false in
   try
-    let (ss, pst) = Handle.handle_cmd ss cmd in
+    let (ss, pst) = Handle.handle_cmd compile ss cmd in
     let t = Time.save () in
     match pst with
     | None       -> Cmd_OK(t, ss)

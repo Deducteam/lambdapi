@@ -57,7 +57,9 @@ let rec compile : bool -> Path.t -> Sign.t = fun force path ->
          is possible to qualify the symbols of the current modules. *)
       loaded := PathMap.add path sign !loaded;
       let handle ss c =
-        let (ss, p) = Handle.handle_cmd ss c in
+        (* We provide the compilation function to the handle commands, so that
+           "require" is able to compile files. *)
+        let (ss, p) = Handle.handle_cmd (compile false) ss c in
         match p with
         | None       -> ss
         | Some(data) ->
@@ -100,20 +102,3 @@ let compile_file : file_path -> Sign.t = fun fname ->
   let mp = Files.file_to_module fname in
   (* Run compilation. *)
   compile Stdlib.(!recompile) mp
-
-(* NOTE we need to give access to the compilation function to the parser. This
-   is the only way infix symbols can be parsed, since they may be added to the
-   scope by a “require” command. *)
-(* let _ =
- *   let require mp =
- *     (\* Save the current console state. *\)
- *     Console.push_state ();
- *     (\* Restore the console state to default for compiling. *\)
- *     Console.reset_default ();
- *     (\* Compile and go back to previous state. *\)
- *     try
- *       ignore (compile false mp);
- *       try Console.pop_state () with _ -> assert false (\* Unreachable. *\)
- *     with e -> Console.pop_state (); raise e
- *   in
- *   Stdlib.(Parser.require := require) *)

@@ -61,15 +61,17 @@ let handle_open : popt -> sig_state -> Path.t -> sig_state =
   (* Open the module. *)
   open_sign ss sign
 
-(** [handle_require b pos ss p] handles the command [require p] (or [require
-   open p] if b is true) with [ss] as the signature state. On success, an
-   updated signature state is returned. *)
-let handle_require : bool -> popt -> sig_state -> Path.t -> sig_state =
-    fun b pos ss p ->
+(** [handle_require compile b pos ss p] handles the command [require p] (or
+    [require open p] if b is true) with [ss] the signature state and [compile]
+    the main compile function (passed as argument to avoid cyclic
+    dependencies). On success, an updated signature state is returned. *)
+let handle_require : (Path.t -> Sign.t) -> bool -> popt -> sig_state ->
+  Path.t -> sig_state = fun compile b pos ss p ->
   (* Check that the module has not already been required. *)
   if PathMap.mem p !(ss.signature.sign_deps) then
     fatal pos "Module [%a] is already required." Path.pp p;
-  (* Add the dependency (it was compiled already while parsing). *)
+  (* Compile required path (adds it to [Sign.loaded] among other things). *)
+  ignore (compile p);
   ss.signature.sign_deps := PathMap.add p [] !(ss.signature.sign_deps);
   if b then handle_open pos ss p else ss
 
@@ -123,16 +125,27 @@ let handle_modifiers : p_modifier loc list -> (prop * expo * match_strat) =
   in
   (prop, expo, mstrat)
 
+<<<<<<< HEAD
 (** [handle_require_as pos ss p id] handles the command [require p as id] with
     [ss] as the signature state. On success, an updated signature state is
     returned. *)
 let handle_require_as : popt -> sig_state -> Path.t -> ident -> sig_state =
     fun pos ss p id ->
   let ss = handle_require false pos ss p in
+=======
+(** [handle_require_as compile pos ss p id] handles the command [require p as
+    id] with [ss] as the signature state and [compile] the compile function
+    used to compile the module (and passed as argument to avoid cyclic
+    dependencies). On success, an updated signature state is returned. *)
+let handle_require_as : (Path.t -> Sign.t) -> popt -> sig_state -> Path.t ->
+  ident -> sig_state = fun compile pos ss p id ->
+  let ss = handle_require compile false pos ss p in
+>>>>>>> providing the compilation function to handle
   let aliases = StrMap.add id.elt p ss.aliases in
   let path_map = PathMap.add p id.elt ss.path_map in
   {ss with aliases; path_map}
 
+<<<<<<< HEAD
 (** [handle_symbol ss e p strat x xs a] handles the command
     [e p strat symbol x xs : a] with [ss] as the signature state.
     On success, an updated signature state and the new symbol are returned. *)
@@ -187,20 +200,36 @@ let handle_rules : sig_state -> p_rule list -> sig_state = fun ss rs ->
 (** [handle_cmd ss cmd] tries to handle the command [cmd] with [ss] as the
     signature state. On success, an updated signature state is returned.  When
     [cmd] leads to entering the proof mode,  a [proof_data] is also  returned.
+=======
+(** [handle_cmd compile ss cmd] tries to handle the command [cmd] with [ss] as
+    the signature state and [compile] as the main compilation function
+    processing lambdapi modules (passed as argument to avoid cyclic
+    dependencies). On success, an updated signature state is returned. When
+    [cmd] leads to entering the proof mode, a [proof_data] is also returned.
+>>>>>>> providing the compilation function to handle
     This structure contains the list of the tactics to be executed, as well as
-    the initial state of the proof.  The checking of the proof is then handled
+    the initial state of the proof. The checking of the proof is then handled
     separately. Note that [Fatal] is raised in case of an error. *)
-let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
-  fun ss cmd ->
+let handle_cmd : (Path.t -> Sign.t) -> sig_state -> p_command ->
+  sig_state * proof_data option =
+  fun compile ss cmd ->
   let scope_basic exp = Scope.scope_term exp ss Env.empty in
   match cmd.elt with
   | P_require(b,ps)              ->
      let ps = List.map (List.map fst) ps in
+<<<<<<< HEAD
      (List.fold_left (handle_require b cmd.pos) ss ps, None)
   | P_require_as(p,id)           ->
      let id = Pos.make id.pos (fst id.elt) in
      (handle_require_as cmd.pos ss (List.map fst p) id, None)
   | P_open(ps)                   ->
+=======
+     (List.fold_left (handle_require compile b cmd.pos) ss ps, None)
+  | P_require_as(p,id)         ->
+     let id = Pos.make id.pos (fst id.elt) in
+     (handle_require_as compile cmd.pos ss (List.map fst p) id, None)
+  | P_open(ps)                  ->
+>>>>>>> providing the compilation function to handle
      let ps = List.map (List.map fst) ps in
      (List.fold_left (handle_open cmd.pos) ss ps, None)
   | P_symbol(ms, x, xs, a)     ->
@@ -423,15 +452,16 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
     indicate commands that take too long to execute. *)
 let too_long = Stdlib.ref infinity
 
-(** [handle_cmd ss cmd] adds to the previous [handle_cmd] some
-    exception handling. In particular, the position of [cmd] is used on errors
-    that lack a specific position. All exceptions except [Timeout] and [Fatal]
-    are captured, although they should not occur. *)
-let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
-  fun ss cmd ->
+(** [handle_cmd ss cmd] adds to the previous [handle_cmd] some exception
+    handling. In particular, the position of [cmd] is used on errors that lack
+    a specific position. All exceptions except [Timeout] and [Fatal] are
+    captured, although they should not occur. *)
+let handle_cmd : (Path.t -> Sign.t) -> sig_state -> p_command ->
+  sig_state * proof_data option =
+  fun compile ss cmd ->
   Print.sig_state := ss;
   try
-    let (tm, ss) = time (handle_cmd ss) cmd in
+    let (tm, ss) = time (handle_cmd compile ss) cmd in
     if Stdlib.(tm >= !too_long) then
       wrn cmd.pos "It took %.2f seconds to handle the command." tm;
     ss
