@@ -259,14 +259,14 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
       let d = if op then None else Some(t) in
       (fst (Sig_state.add_symbol ss expo Defin Eager x a impl d), None)
   | P_inductive(ms, il)     ->
-      (* Verify the modifiers. *)
+      (* STEP 0 - Verify the modifiers. *)
       let (prop, e, mstrat) = handle_modifiers ms in
       if prop <> Defin then
         fatal cmd.pos "Property modifiers cannot be used in inductive types.";
       if mstrat <> Eager then
         fatal cmd.pos "Pattern matching strategy modifiers cannot be used \
                        in inductive types.";
-      (* Add the inductive types in the signature *)
+      (* STEP 1 - Add the inductive types in the signature *)
       let add_ind_types :
         sig_state * sym list -> (ident * p_term * (ident * p_term) list) loc
         -> sig_state * sym list
@@ -276,8 +276,8 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
         (ss, ind_sym::ind_typ_list)
       in
       let (ss, ind_typ_list_rev) = List.fold_left add_ind_types (ss, []) il in
-      let ind_typ_list_rev = List.rev ind_typ_list_rev in
-      (* Add the constructors in the signature. *)
+      let ind_typ_list = List.rev ind_typ_list_rev in
+      (* STEP 2 - Add the constructors in the signature. *)
       let add_constructors :
         sig_state*(sym list) list -> (ident*p_term*(ident*p_term) list) loc
         -> sig_state*(sym list) list
@@ -298,31 +298,21 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
       let (ss, cons_list_list_rev) =
         List.fold_left add_constructors (ss, []) il
       in
-      let cons_list_list_rev = List.rev cons_list_list_rev in
-      (* Compute the induction principle *)
+      let cons_list_list = List.rev cons_list_list_rev in
+      (* STEP 3 - Generate the induction principle. *)
+        (* A - Compute the induction principle *)
       let rec_typ_list, map =
-        Inductive.gen_rec_type ss cmd.pos ind_typ_list_rev cons_list_list_rev
+        Inductive.gen_rec_type ss cmd.pos ind_typ_list cons_list_list
       in
-      let check rec_typ id ss =
-        (* Check the type of the induction principle *)
-        begin
-          match Typing.infer [] rec_typ with
-          | Some _ -> ()
-          | None   ->
-              fatal cmd.pos "The type of the generated inductive principle of
-                             [%a] isn't typable. Please, raise an issue."
-                pp_term rec_typ
-        end;
-        (* Add the induction principle in the signature *)
-        let rec_name = Pos.make cmd.pos (Parser.add_prefix "ind_" id.sym_name) in
+      let check_and_add rec_typ id ss =
+        (* B - Check the type of the induction principle *)
+        Inductive.check_type_ind cmd.pos rec_typ;
+        (* C - Add the induction principle in the signature *)
+        let rec_name =
+          Pos.make cmd.pos (Parser.add_prefix "ind_" id.sym_name)
+        in
         if StrSet.mem id.sym_name !(ss.signature.sign_idents) then
-          begin
-            Sign.add_ident ss.signature rec_name.elt;
-            if !log_enabled then
-              log_hndl "This ident %s is already in the signature \
-                        and now the ident %a too !"
-                id.sym_name Pretty.pp_ident rec_name;
-          end;
+          Sign.add_ident ss.signature rec_name.elt;
         let (ss, rec_sym) =
           Sig_state.add_symbol ss e Defin Eager rec_name rec_typ [] None
         in
@@ -334,36 +324,31 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
       (*let rec_sym_list = List.map2 check rec_typ_list ind_typ_list_rev in *)
       let tred :
         Sig_state.t -> term list -> sym list -> Sig_state.t * sym list =
-        fun ss rec_typ_list ind_typ_list_rev ->
+        fun ss rec_typ_list ind_typ_list ->
         let rec aux ss rec_typ_list ind_typ_list acc =
           match rec_typ_list, ind_typ_list with
           | [], [] -> ss, acc
           | t::q, n::r ->
-              let ss, rec_sym = check t n ss in
+              let ss, rec_sym = check_and_add t n ss in
               aux ss q r (rec_sym::acc)
           | _ -> assert false
         in
-        aux ss rec_typ_list ind_typ_list_rev []
+        aux ss rec_typ_list ind_typ_list []
       in
-      let ss, rec_sym_list = tred ss rec_typ_list ind_typ_list_rev in
-      (* Compute the rules associated with the induction principle,
-         check the type preservation of the rules and add it to the
+      let ss, rec_sym_list = tred ss rec_typ_list ind_typ_list in
+      (* STEP 4 - Generate the associated rules
+          i.e. Compute the rules associated with the induction principle,
+               check the type preservation of the rules and add them to the
+               signature *)
+      let rs_list = Inductive.gen_rec_rules ind_typ_list cons_list_list map in
+      let ss =
+        with_no_wrn (List.fold_left (fun ss rs -> handle_rules ss rs) ss)
+          rs_list
+      in
+      (* STEP 5 - Store inductive structure in the field "sign_ind" of the
          signature *)
-      let open Stdlib in
-      no_wrn := true;
-      let rs_list = Inductive.gen_rec_rules ind_typ_list_rev cons_list_list_rev map in
-      let ss = List.fold_left (fun ss rs -> handle_rules ss rs) ss rs_list in
-      (* Store inductive structure in the field "sign_ind" of the signature *)
-      let rec test l1 l2 l3 = match l1, l2, l3 with
-        | [], [], [] -> ()
-        | t1::q1, t2::q2, t3::q3 ->
-            Sign.add_inductive ss.signature t1 t2 t3;
-            test q1 q2 q3
-        | _ -> assert false
-      in
-      test ind_typ_list_rev cons_list_list_rev rec_sym_list;
-      (*Sign.add_inductive ss.signature ind_sym cons_list rec_sym_list;*)
-      no_wrn := false;
+      Extra.List.iter3 (Sign.add_inductive ss.signature)
+        ind_typ_list cons_list_list rec_sym_list;
       (ss, None)
   | P_theorem(ms, stmt, ts, pe) ->
       let (x,xs,a) = stmt.elt in

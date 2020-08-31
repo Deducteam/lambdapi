@@ -100,6 +100,18 @@ module List =
       | e::es -> let fn e = Format.fprintf oc "%s%a" sep pp_elt e in
                  pp_elt oc e; iter fn es
 
+    (** [iter3 f [a1;...; an] [b1;...; bn] [c1;...;cn]] calls in turn
+        f a1 b1 c1; ...; f an bn cn.
+        @raise Invalid_argument if the three lists are determined to have
+        different lengths. *)
+    let rec iter3 :
+      ('a -> 'b -> 'c -> unit) -> 'a list -> 'b list -> 'c list  -> unit =
+      fun f l1 l2 l3 ->
+      match l1, l2, l3 with
+      | [], [], [] -> ()
+      | t1::q1, t2::q2, t3::q3 -> f t1 t2 t3; iter3 f q1 q2 q3
+      | _ -> raise (Invalid_argument "Yours 3 lists have different lengths.")
+
     (** [filter_map f l] applies [f] to the elements of [l] and keeps the [x]
         such that [Some(x)] in [List.map f l]. *)
     let rec filter_map : ('a -> 'b option) -> 'a list -> 'b list = fun f l ->
