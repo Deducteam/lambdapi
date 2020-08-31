@@ -75,45 +75,46 @@ module T =
     (** [fold_app a [b1;...;bn]] returns (... ((a b1) b2) ...) bn. *)
     let fold_app  : tbox -> tbox list -> tbox = List.fold_left _Appl
 
-    (** [fapp f ts] returns the application (f ts). *)
-    let fapp : sym -> tbox list -> tbox = fun f ts -> fold_app (_Symb f) ts
+    (** [fold_app_special f ts] returns the same result that
+        fold_app (_Symb [f]) [ts]. *)
+    let fold_app_special : sym -> tbox list -> tbox = fun f ts ->
+      fold_app (_Symb f) ts
 
-    (** [prf_of p c ts t] returns a proof of [p], i.e.
+    (** [prf_of p c ts t] returns a proof of the form
         c.symb_prf ( (((p ts1) ...) tsn) t) where ts = [ts1;...;tsn]. *)
     let prf_of : tvar -> config -> tbox list -> tbox -> tbox = fun p c ts t ->
-      fapp c.symb_prf [_Appl (fold_app (_Vari p) ts) t]
+      fold_app_special c.symb_prf [_Appl (fold_app (_Vari p) ts) t]
   end
 
 let preprocessing :
-  popt -> config -> sym list -> ((tvar * tbox) SymMap.t * tbox list) =
+  popt -> config -> sym list -> ((sym * (tvar * tbox)) list * tbox list) =
   fun pos c ind_typ_list ->
   let prop = _Symb c.symb_Prop in
 
   let rec aux :
-    int -> (tvar * tbox) SymMap.t -> tbox list -> sym list
-    -> ((tvar * tbox) SymMap.t * tbox list) =
-    fun i map conclusion_list ind_typ_list ->
+    int -> (sym * (tvar * tbox)) list -> tbox list -> sym list
+    -> ((sym * (tvar * tbox)) list * tbox list) =
+    fun i assoc_predicat conclusion_list ind_typ_list ->
     match ind_typ_list with
-    | [] -> map, conclusion_list
+    | [] -> assoc_predicat, conclusion_list
     | ind_sym::q ->
         (* Create the predicat (name + type) associated to [ind_sym] *)
         let p_name = "p" ^ (string_of_int i) in
         let p = Bindlib.new_var mkfree p_name in
         (* STEP 1: Create the type of the property p *)
-        let codom ts = _Impl (T.fapp ind_sym ts) prop in
+        let codom ts = _Impl (T.fold_app_special ind_sym ts) prop in
         let p_type = gen_ind_typ_codom pos ind_sym codom in
-        let map = SymMap.add ind_sym (p, p_type) map in
         (* Create the conclusion of the inductive principle
            associated to [ind_sym] *)
         let codom ts =
           let x = Bindlib.new_var mkfree "x" in
           let t = Bindlib.bind_var x (T.prf_of p c ts (_Vari x)) in
-          _Prod (T.fapp ind_sym ts) t
+          _Prod (T.fold_app_special ind_sym ts) t
         in
         let conclusion = gen_ind_typ_codom pos ind_sym codom in
-        aux (i+1) map (conclusion::conclusion_list) q
+        aux (i+1) ((ind_sym, (p, p_type))::assoc_predicat) (conclusion::conclusion_list) q
   in
-  aux 0 SymMap.empty [] ind_typ_list
+  aux 0 [] [] ind_typ_list
 
 (** [fold_cons_typ pos codom get_name build_rec_hyp domrec dom ind_sym
     cons_sym f_rec f_not_rec acc] generates some value iteratively by going
@@ -146,15 +147,17 @@ let preprocessing :
 let fold_cons_typ (pos : popt)
       (codom : tvar -> term list -> 'b list -> 'a -> 'c)
       (get_name : tbinder -> int -> 'b * term )
-      (build_rec_hyp : sym -> term list -> 'b -> 'a)
+      (build_rec_hyp : sym * (tvar * tbox) -> term list -> 'b -> 'a)
       (domrec : term -> 'b -> 'a -> 'c -> 'c) (dom : term -> 'b -> 'c -> 'c)
       (ind_sym : sym) (cons_sym : sym) (f_rec : 'a -> 'b -> 'a -> 'a)
       (f_not_rec : 'a -> 'b -> 'a) (acc : 'a)
-      (map : (tvar * tbox) SymMap.t) : 'c =
+      (assoc_predicat : (sym * (tvar * tbox)) list) : 'c =
   let rec aux : 'b list -> 'a -> int -> term -> 'c = fun xs res i a ->
     match Basics.get_args a with
     | (Symb(s), ts) ->
-        if s == ind_sym then let p,_= (SymMap.find s map) in codom p ts xs res
+        if s == ind_sym then
+          let p,_ = List.assq s assoc_predicat in
+          codom p ts xs res
         else fatal pos "%a is not a constructor of %a"
                pp_symbol cons_sym pp_symbol ind_sym
     | (Prod(a,b), _) ->
@@ -163,9 +166,9 @@ let fold_cons_typ (pos : popt)
          match Basics.get_args a with
          | (Symb(s), ts) ->
              begin
-               match SymMap.find_opt s map with
-               | Some (_) ->
-                   let rec_hyp = build_rec_hyp s ts x in
+               match List.assq_opt s assoc_predicat with
+               | Some p ->
+                   let rec_hyp = build_rec_hyp (s,p) ts x in
                    let next = aux (x::xs) (f_rec res x rec_hyp) (i+1) b in
                    domrec a x rec_hyp next
                | None ->
@@ -192,10 +195,10 @@ let fold_cons_typ (pos : popt)
 (* UPDATE DOC *)
 let gen_rec_type :
       Sig_state.t -> popt -> sym list -> (sym list) list
-      -> (term list * (tvar * tbox) SymMap.t) =
+      -> (term list * (sym * (tvar * tbox)) list) =
   fun ss pos ind_typ_list cons_list_list ->
   let c = get_config ss pos in
-  let map, conclusion_list = preprocessing pos c ind_typ_list in
+  let assoc_predicat, conclusion_list = preprocessing pos c ind_typ_list in
 
   (* STEP 2: Create each clause according to a constructor *)
   (* [case_of cons_sym] creates a clause according to a constructor
@@ -204,13 +207,13 @@ let gen_rec_type :
     let codom : tvar -> term list -> tvar list -> 'a -> tbox =
       fun p ts xs _ ->
       T.prf_of p c (List.map lift ts)
-        (T.fapp cons_sym (List.rev_map _Vari xs))
+        (T.fold_app_special cons_sym (List.rev_map _Vari xs))
     in
     let get_name : tbinder -> int -> tvar * term = fun b _ ->
       Basics.unbind_name b
     in
-    let build_rec_hyp : sym -> term list -> tvar -> tbox = fun s ts x ->
-      let (p,_) = SymMap.find s map in
+    let build_rec_hyp : sym * (tvar * tbox) -> term list -> tvar -> tbox =
+      fun (_,(p,_)) ts x ->
       T.prf_of p c (List.map lift ts) (_Vari x)
     in
     let domrec : term -> tvar -> tbox -> tbox -> tbox =
@@ -224,26 +227,18 @@ let gen_rec_type :
     let f_not_rec : tbox -> tvar -> tbox = fun a _ -> a in
     let acc : tbox = _Type in
     fold_cons_typ pos codom get_name build_rec_hyp domrec dom ind_sym
-      cons_sym f_rec f_not_rec acc map
+      cons_sym f_rec f_not_rec acc assoc_predicat
   in
-
+  (* Very closed to the function "fold_right2", but "f" is the function
+     "fold_right" and it needs a neutral element. *)
   let rec clauses ind_typ_list cons_list_list e =
     match ind_typ_list, cons_list_list with
     | [], [] -> e
-    | [i], [cl] -> List.fold_right (fun a b -> _Impl (case_of i a) b) cl e
     | i::qi, cl::qcl ->
         let res = clauses qi qcl e in
         List.fold_right (fun a b -> _Impl (case_of i a) b) cl res
     | _ -> assert false
   in
-  (* fold_right2 : ('a -> 'b -> 'c -> 'c) -> 'a list -> 'b list -> 'c -> 'c
-     List.fold_right2 f [a1; ...; an] [b1; ...; bn] c is f a1 b1 (f a2 b2 (... (f an bn c) ...)).
-
-     let clauses = fun e -> List.fold_right2
-                         (fun ind_sym cons_list
-                          -> List.fold_right (fun a b -> _Impl (case_of ind_sym a) b)
-                               cons_list e) ind_typ_list cons_list_list e *)
-
   (* STEP 4: Create the induction principle *)
   (*let t =
     List.fold_right (fun a b -> _Impl (case_of a) b) cons_list e
@@ -253,8 +248,8 @@ let gen_rec_type :
 
 
   let f t =
-    SymMap.fold
-      (fun _ (name,typ) e -> _Prod typ (Bindlib.bind_var name e)) map t
+    List.fold_left
+      (fun e (_,(name,typ)) -> _Prod typ (Bindlib.bind_var name e)) t assoc_predicat
   in
   let t = List.map f t in
   (*let t = _Prod p_type (Bindlib.bind_var p t) in
@@ -271,7 +266,7 @@ let gen_rec_type :
     in
     List.iter2 f ind_typ_list t
   else ();
-  (List.map Bindlib.unbox t, map)
+  (List.map Bindlib.unbox t, assoc_predicat)
 
 (** [gen_rec_rules ind_sym rec_sym cons_list] returns the p_rules associated
     with an induction principle [rec_sym] of the inductive type [ind_sym]
@@ -288,15 +283,14 @@ let gen_rec_rules :
   (*    sym list -> sym list -> (sym list) list -> (tvar * tbox) SymMap.t
       -> p_rule list list =
   fun ind_typ_list rec_sym_list cons_list_list map -> *)
-      sym list -> (sym list) list -> (tvar * tbox) SymMap.t
+      sym list -> (sym list) list -> (sym * (tvar * tbox)) list
       -> p_rule list list =
-  fun ind_typ_list cons_list_list map ->
+  fun ind_typ_list cons_list_list assoc_predicat ->
 
   (* STEP 1: Create the common head of the rules *)
   (* Note: No fold_left for maps *)
-  let l = SymMap.bindings map in
   let f e (_, (name, _)) = P.appl e (P.patt0 (Bindlib.name_of name)) in
-  let properties head_sym = List.fold_left f head_sym l in
+  let properties head_sym = List.fold_left f head_sym assoc_predicat in
   let add_arg e s =
     P.appl e (P.patt0 ("pi" ^ s.sym_name))
   in
@@ -324,8 +318,8 @@ let gen_rec_rules :
       let (_,b) = Basics.unbind_name b in
       (P.patt0 ("x" ^ (string_of_int i)), b)
     in
-    let build_rec_hyp : sym -> term list -> p_term -> p_term =
-      fun s ts x ->
+    let build_rec_hyp : sym * (tvar * tbox) -> term list -> p_term -> p_term =
+      fun (s,_) ts x ->
       let common_head = common_head ("ind_"^s.sym_name) in
       let arg_type = P.appl_wild common_head (List.length ts) in
       P.appl arg_type x
@@ -340,7 +334,7 @@ let gen_rec_rules :
     let f_not_rec : p_term -> p_term -> p_term = fun p x -> P.appl p x in
     let acc : p_term = P.patt0 ("pi" ^ cons_sym.sym_name) in
     fold_cons_typ pos codom get_name build_rec_hyp domrec dom ind_sym
-      cons_sym f_rec f_not_rec acc map
+      cons_sym f_rec f_not_rec acc assoc_predicat
   in
 
   (* STEP 3: Build all the p_rules *)

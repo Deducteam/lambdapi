@@ -290,7 +290,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
           (ss, cons_sym::cons_list)
         in
         let (ss, cons_list_rev) = List.fold_left add_cons (ss, []) l in
-        (* Reverse the list of constructors previoulsy computed to preserve
+        (* Reverse the list of constructors previously computed to preserve
            the initial order *)
         let cons_list = List.rev cons_list_rev in
         (ss, cons_list::cons_list_list)
@@ -301,7 +301,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
       let cons_list_list = List.rev cons_list_list_rev in
       (* STEP 3 - Generate the induction principle. *)
         (* A - Compute the induction principle *)
-      let rec_typ_list, map =
+      let rec_typ_list, assoc_predicat =
         Inductive.gen_rec_type ss cmd.pos ind_typ_list cons_list_list
       in
       let check_and_add rec_typ id ss =
@@ -321,8 +321,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
             Pretty.pp_ident rec_name Print.pp_term rec_typ;
         ss, rec_sym
       in
-      (*let rec_sym_list = List.map2 check rec_typ_list ind_typ_list_rev in *)
-      let tred :
+      let fold_left2_map :
         Sig_state.t -> term list -> sym list -> Sig_state.t * sym list =
         fun ss rec_typ_list ind_typ_list ->
         let rec aux ss rec_typ_list ind_typ_list acc =
@@ -331,16 +330,19 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
           | t::q, n::r ->
               let ss, rec_sym = check_and_add t n ss in
               aux ss q r (rec_sym::acc)
-          | _ -> assert false
+          | _ -> raise
+                   (Invalid_argument "Yours 3 lists have different lengths.")
         in
         aux ss rec_typ_list ind_typ_list []
       in
-      let ss, rec_sym_list = tred ss rec_typ_list ind_typ_list in
+      let ss, rec_sym_list = fold_left2_map ss rec_typ_list ind_typ_list in
       (* STEP 4 - Generate the associated rules
           i.e. Compute the rules associated with the induction principle,
                check the type preservation of the rules and add them to the
                signature *)
-      let rs_list = Inductive.gen_rec_rules ind_typ_list cons_list_list map in
+      let rs_list =
+        Inductive.gen_rec_rules ind_typ_list cons_list_list assoc_predicat
+      in
       let ss =
         with_no_wrn (List.fold_left (fun ss rs -> handle_rules ss rs) ss)
           rs_list

@@ -227,14 +227,14 @@ with odd : Nat → TYPE ≔
   | odd_S : Πn, even n → odd (succ n)
 
 assert ind_even : // Induction principle for even
-  Πp1: Πx: Nat, odd x → Prop, Πp0: Πx: Nat, even x → Prop,
+  Πp0: Πx: Nat, even x → Prop, Πp1: Πx: Nat, odd x → Prop,
     π (p0 0 even_O) →
    (Πn: τ nat, Πx: odd n, π (p1 n x) → π (p0 (succ n) (even_S n x))) →
    (Πn: τ nat, Πx: even n, π (p0 n x) → π (p1 (succ n) (odd_S n x))) →
   Πx: Nat, Πx0: even x, π (p0 x x0)
 
 assert ind_odd : // Induction principle for odd
-  Πp1: Πx: Nat, odd x → Prop, Πp0: Πx: Nat, even x → Prop,
+  Πp0: Πx: Nat, even x → Prop, Πp1: Πx: Nat, odd x → Prop,
     π (p0 0 even_O) →
     (Πn: τ nat, Πx: odd n, π (p1 n x) → π (p0 (succ n) (even_S n x))) →
     (Πn: τ nat, Πx: even n, π (p0 n x) → π (p1 (succ n) (odd_S n x))) →
@@ -248,11 +248,11 @@ symbol pieven_O : π (p0_ z even_O)
 symbol pieven_S : Πn: τ nat, Πx: odd n, π (p1_ n x) → π (p0_ (succ n) (even_S n x))
 symbol piodd_S : Πn: τ nat, Πx: even n, π (p0_ n x) → π (p1_ (succ n) (odd_S n x))
 
-assert ind_odd p1_ p0_ pieven_O pieven_S piodd_S _ (odd_S x evenx)
-  ≡ piodd_S x evenx (ind_even p1_ p0_ pieven_O pieven_S piodd_S _ evenx)
-assert ind_even p1_ p0_ pieven_O pieven_S piodd_S _ even_O ≡ pieven_O
-assert ind_even p1_ p0_ pieven_O pieven_S piodd_S _ (even_S x oddx)
-  ≡ pieven_S x oddx (ind_odd p1_ p0_ pieven_O pieven_S piodd_S _ oddx)
+assert ind_odd p0_ p1_ pieven_O pieven_S piodd_S _ (odd_S x evenx)
+  ≡ piodd_S x evenx (ind_even p0_ p1_ pieven_O pieven_S piodd_S _ evenx)
+assert ind_even p0_ p1_ pieven_O pieven_S piodd_S _ even_O ≡ pieven_O
+assert ind_even p0_ p1_ pieven_O pieven_S piodd_S _ (even_S x oddx)
+  ≡ pieven_S x oddx (ind_odd p0_ p1_ pieven_O pieven_S piodd_S _ oddx)
 
 // inductive even : Nat → TYPE ≔
 //   | even_O : even 0
