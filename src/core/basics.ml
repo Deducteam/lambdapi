@@ -113,7 +113,7 @@ let unbind_name : (term, term) Bindlib.binder -> tvar * term = fun b ->
   if Bindlib.binder_occur b then
     Bindlib.unbind b
   else
-    let x = Bindlib.new_var mkfree "x" in
+    let x = Bindlib.new_var mkfree "^x" in
     (x, Bindlib.subst b (Vari x))
 
 (** {3 Metavariables} *)

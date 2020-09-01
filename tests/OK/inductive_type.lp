@@ -241,12 +241,12 @@ assert ind_L : // Induction principle
 symbol pL : Πa, L a → Prop // Tests about inductive rules
 symbol pinilL : Πa, π (pL a (nilL a))
 symbol a : Set
-symbol x0 : τ a
-symbol l0 : L a
+symbol xa : τ a
+symbol la : L a
 symbol piconsL : Πa x l, π (pL a l) → π (pL a (consL a x l))
 assert ind_L pL pinilL _ a (nilL a) ≡ pinilL a
-assert ind_L pL pinilL piconsL a (consL a x0 l0)
-     ≡ piconsL a x0 l0 (ind_L pL pinilL piconsL a l0)
+assert ind_L pL pinilL piconsL a (consL a xa la)
+     ≡ piconsL a xa la (ind_L pL pinilL piconsL a la)
 
 assert nilL a : L a // Examples
 assert consL nat (succ (succ (succ z))) (nilL nat) : L nat
@@ -438,8 +438,8 @@ symbol pibnil : Πa, π (pB a (bnil a))
 symbol B : Bush (bush a)
 symbol pibcons : Πa x l, π (pB (bush a) l) → π (pB a (bcons a x l))
 assert ind_Bush pB pibnil _ a (bnil a) ≡ pibnil a
-assert ind_Bush pB pibnil pibcons a (bcons a x0 B)
-     ≡ pibcons a x0 B (ind_Bush pB pibnil pibcons (bush a) B)
+assert ind_Bush pB pibnil pibcons a (bcons a xa B)
+     ≡ pibcons a xa B (ind_Bush pB pibnil pibcons (bush a) B)
 
 assert bnil a : Bush a // Examples
 assert bcons nat (succ (succ (succ z))) (bnil (bush nat)) : Bush nat

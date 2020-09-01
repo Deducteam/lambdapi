@@ -29,25 +29,11 @@ let check_type_ind : popt -> term -> unit = fun pos rec_typ ->
   match Typing.infer [] rec_typ with
   | Some t ->
       begin
-        let err_msg t =
-          fatal pos "The type of the generated inductive \
-                     principle of [%a] can't begin by %s. \
-                     Please, raise an issue." pp_term rec_typ t
-        in
-        match t with
-        | Type   -> ()
-        | Symb _ -> err_msg "a symbol"
-        | Prod _ -> err_msg "a dependent product"
-        | Appl _ -> err_msg "an application"
-        | Vari _ -> err_msg "a variable"
-        | Kind   -> err_msg "the constant KIND"
-        | Meta _ -> err_msg "a meta-variable application"
-        | Patt _ -> err_msg "a pattern variable application"
-        | TEnv _ -> err_msg "a term environment"
-        | Wild   -> err_msg "a wildcard"
-        | TRef _ -> err_msg "a reference cell"
-        | LLet _ -> err_msg "a let-construction"
-        | Abst _ -> err_msg "a abstraction"
+      match unfold t with
+      | Type   -> ()
+      | _ -> fatal pos "The type of the generated inductive principle of [%a]
+                        isn't the constant TYPE. Please, raise an issue."
+               pp_term rec_typ
       end
   | None   ->
       fatal pos "The type of the generated inductive principle of
@@ -98,7 +84,7 @@ let gen_ind_typ_codom : popt -> sym -> (tbox list -> tbox) -> tbox =
       function [f_rec p x rec_hyp], and on the other case with the function
       [f_not_rec p x]. *)
 let fold_cons_typ (pos : popt) (codom : term list -> 'b list -> 'a -> 'c)
-      (get_name : tbinder -> int -> 'b * term )
+      (inj_var : 'b list -> tvar -> 'b)
       (build_rec_hyp : term list -> 'b -> 'a)
       (domrec : term -> 'b -> 'a -> 'c -> 'c) (dom : term -> 'b -> 'c -> 'c)
       (ind_sym : sym) (cons_sym : sym) (f_rec : 'a -> 'b -> 'a -> 'a)
@@ -110,7 +96,8 @@ let fold_cons_typ (pos : popt) (codom : term list -> 'b list -> 'a -> 'c)
        else fatal pos "%a is not a constructor of %a"
               pp_symbol cons_sym pp_symbol ind_sym
     | (Prod(a,b), _) ->
-       let (x,b) = get_name b i in
+        let (x,b) = Basics.unbind_name b in
+        let x = inj_var xs x in
        begin
          match Basics.get_args a with
          | (Symb(s), ts) ->
@@ -143,7 +130,7 @@ let gen_rec_type : Sig_state.t -> popt -> sym -> sym list -> term =
 
   (* STEP 0: Define some tools which will be useful *)
   let c = get_config ss pos in
-  let p = Bindlib.new_var mkfree "p" in
+  let p = Bindlib.new_var mkfree "^p" in
   let app  : tbox -> tbox list -> tbox = List.fold_left _Appl in
   let fapp : sym  -> tbox list -> tbox = fun f ts -> app (_Symb f) ts in
   let prf_of_p : tbox list -> tbox -> tbox = fun ts t ->
@@ -162,9 +149,7 @@ let gen_rec_type : Sig_state.t -> popt -> sym -> sym list -> term =
     let codom : term list -> tvar list -> tbox -> tbox = fun ts xs _ ->
       prf_of_p (List.map lift ts) (fapp cons_sym (List.rev_map _Vari xs))
     in
-    let get_name : tbinder -> int -> tvar * term = fun b _ ->
-      Basics.unbind_name b
-    in
+    let inj_var : tvar list -> tvar -> tvar = fun _ x -> x in
     let build_rec_hyp : term list -> tvar -> tbox = fun ts x ->
       prf_of_p (List.map lift ts) (_Vari x)
     in
@@ -178,7 +163,7 @@ let gen_rec_type : Sig_state.t -> popt -> sym -> sym list -> term =
     let f_rec : tbox -> tvar -> tbox -> tbox = fun a _ _ -> a in
     let f_not_rec : tbox -> tvar -> tbox = fun a _ -> a in
     let acc : tbox = _Type in
-    fold_cons_typ pos codom get_name build_rec_hyp domrec dom ind_sym
+    fold_cons_typ pos codom inj_var build_rec_hyp domrec dom ind_sym
       cons_sym f_rec f_not_rec acc
   in
 
@@ -235,9 +220,8 @@ let gen_rec_rules : sym -> sym -> sym list -> p_rule list =
           Pretty.pp_p_term lhs Pretty.pp_p_term p;
       P.rule lhs p
     in
-    let get_name : tbinder -> int -> p_term * term = fun b i ->
-      let (_,b) = Basics.unbind_name b in
-      (P.patt0 ("x" ^ (string_of_int i)), b)
+    let inj_var : p_term list -> tvar -> p_term = fun xs _ ->
+      P.patt0 ("x" ^ (string_of_int (List.length xs)))
     in
     let build_rec_hyp : term list -> p_term -> p_term = fun ts x ->
       let arg_type = P.appl_wild common_head (List.length ts) in
@@ -252,7 +236,7 @@ let gen_rec_rules : sym -> sym -> sym list -> p_rule list =
     in
     let f_not_rec : p_term -> p_term -> p_term = fun p x -> P.appl p x in
     let acc : p_term = P.patt0 ("pi" ^ cons_sym.sym_name) in
-    fold_cons_typ pos codom get_name build_rec_hyp domrec dom ind_sym
+    fold_cons_typ pos codom inj_var build_rec_hyp domrec dom ind_sym
       cons_sym f_rec f_not_rec acc
   in
 

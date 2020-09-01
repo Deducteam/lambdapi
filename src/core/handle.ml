@@ -285,8 +285,10 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
       Inductive.check_type_ind cmd.pos rec_typ;
       (* Add the induction principle in the signature *)
       let rec_name = Pos.make cmd.pos (Parser.add_prefix "ind_" id.elt) in
+      if Sign.mem ss.signature rec_name.elt then
+        fatal cmd.pos "Symbol [%s] already exists." rec_name.elt;
       if StrSet.mem id.elt !(ss.signature.sign_idents) then
-          Sign.add_ident ss.signature rec_name.elt;
+        Sign.add_ident ss.signature rec_name.elt;
       let (ss, rec_sym) =
         Sig_state.add_symbol ss e Defin Eager rec_name rec_typ [] None
       in
