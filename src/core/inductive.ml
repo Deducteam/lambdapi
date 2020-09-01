@@ -245,7 +245,7 @@ let gen_rec_type :
     | i::qi, cl::qcl ->
         let res = clauses qi qcl e in
         List.fold_right (fun a b -> _Impl (case_of i a) b) cl res
-    | _ -> assert false
+    | _ -> raise (Invalid_argument "Yours 2 lists have different lengths.")
   in
   let t = List.map (clauses ind_typ_list cons_list_list) conclusion_list in
 
@@ -259,7 +259,7 @@ let gen_rec_type :
   if !log_enabled then
     let f ind_sym elt =
       log_ind "The induction principle of the inductive type [%a] is %a"
-        Pretty.pp_ident (Pos.none ("ind_"^ind_sym.sym_name))
+        Pretty.pp_ident (Pos.none ind_sym.sym_name)
         Print.pp_term (Bindlib.unbox elt)
     in
     List.iter2 f ind_typ_list t
@@ -279,9 +279,9 @@ let gen_rec_type :
     type and tj? = (ind_T p pic1 ... picn _ ... _ xj) if xj is a value of the
     inductive type T (i.e. xj = T v1 ... vm) *)
 let gen_rec_rules :
-      sym list -> (sym list) list -> (sym * (tvar * tbox)) list
+      sym list -> sym list -> (sym list) list -> (sym * (tvar * tbox)) list
       -> p_rule list list =
-  fun ind_typ_list cons_list_list assoc_predicats ->
+  fun ind_typ_list rec_sym_list cons_list_list assoc_predicats ->
 
   (* STEP 1 - Create the common head of the rules *)
   let f e (_, (name, _)) = P.appl e (P.patt0 (Bindlib.name_of name)) in
@@ -298,12 +298,12 @@ let gen_rec_rules :
   (* [gen_rule_cons cons_sym] creates a p_rule according to a constructor
      [cons_sym]. *)
   let gen_rule_cons :
-        sym -> sym -> p_rule = fun ind_sym cons_sym ->
+        sym -> sym -> sym -> p_rule = fun ind_sym rec_sym cons_sym ->
     let pos : popt = None in
     let codom : tvar -> term list -> p_term list -> p_term -> p_rule =
       fun _ ts xs p ->
       let rec_arg = P.fold_appl (P.iden cons_sym.sym_name) (List.rev xs) in
-      let common_head = common_head ("ind_"^ind_sym.sym_name) in
+      let common_head = common_head rec_sym.sym_name in
       let lhs = P.appl (P.appl_wild common_head (List.length ts)) rec_arg in
       if !log_enabled then
         log_ind "The rule [%a] --> %a"
@@ -316,7 +316,7 @@ let gen_rec_rules :
     in
     let build_rec_hyp : sym * (tvar * tbox) -> term list -> p_term -> p_term =
       fun (s,_) ts x ->
-      let common_head = common_head ("ind_"^s.sym_name) in
+      let common_head = common_head ("ind_"^s.sym_name) in (* @FIX *)
       let arg_type = P.appl_wild common_head (List.length ts) in
       P.appl arg_type x
     in
@@ -334,5 +334,12 @@ let gen_rec_rules :
   in
 
   (* STEP 3 - Build all the p_rules *)
-  let f ind_sym cons_list = List.rev_map (gen_rule_cons ind_sym) cons_list in
-  List.map2 f ind_typ_list cons_list_list
+  let f ind_sym rec_sym cons_list =
+    List.rev_map (gen_rule_cons ind_sym rec_sym) cons_list
+  in
+  let rec map3 f l1 l2 l3 = match l1, l2, l3 with
+    | [], [], [] -> []
+    | t1::q1, t2::q2, t3::q3 -> (f t1 t2 t3)::(map3 f q1 q2 q3)
+    | _ -> raise (Invalid_argument "Yours 3 lists have different lengths.")
+  in
+  map3 f ind_typ_list rec_sym_list cons_list_list

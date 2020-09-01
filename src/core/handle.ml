@@ -311,6 +311,8 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
         let rec_name =
           Pos.make cmd.pos (Parser.add_prefix "ind_" id.sym_name)
         in
+        if Sign.mem ss.signature rec_name.elt then
+          fatal cmd.pos "Symbol [%s] already exists." rec_name.elt;
         if StrSet.mem id.sym_name !(ss.signature.sign_idents) then
           Sign.add_ident ss.signature rec_name.elt;
         let (ss, rec_sym) =
@@ -336,12 +338,14 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
         aux ss rec_typ_list ind_typ_list []
       in
       let ss, rec_sym_list = fold_left2_map ss rec_typ_list ind_typ_list in
+      let rec_sym_list = List.rev rec_sym_list in
       (* STEP 4 - Generate the associated rules
           i.e. Compute the rules associated with the induction principle,
                check the type preservation of the rules and add them to the
                signature *)
       let rs_list =
-        Inductive.gen_rec_rules ind_typ_list cons_list_list assoc_predicat
+        Inductive.gen_rec_rules
+          ind_typ_list rec_sym_list cons_list_list assoc_predicat
       in
       let ss =
         with_no_wrn (List.fold_left (fun ss rs -> handle_rules ss rs) ss)
