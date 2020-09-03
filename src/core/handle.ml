@@ -276,7 +276,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
         (ss, cons_sym::cons_list)
       in
       let (ss, cons_list_rev) = List.fold_left add_cons (ss, []) l in
-      (* Reverse the list of constructors previoulsy computed to preserve the
+      (* Reverse the list of constructors previously computed to preserve the
          initial order *)
       let cons_list = List.rev cons_list_rev  in
       (* Compute the induction principle *)

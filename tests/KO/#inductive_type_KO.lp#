@@ -11,7 +11,7 @@ set debug +g
 
 symbol ind_plane : TYPE
 inductive plane : TYPE ≔
- | x0 : Nat → Nat → plane
+ | x000001 : Nat → Nat → plane
 
 assert ind_plane : Π (p : plane → Prop),
 (Π z x1 : Nat, π (p (x0 z x1))) → Πx: plane, π (p x)

@@ -109,11 +109,12 @@ let iter : (term -> unit) -> term -> unit = fun action ->
 
 (** [unbind_name b] is like [Bindlib.unbind b] but returns a valid variable
     name when [b] binds no variable. *)
-let unbind_name : (term, term) Bindlib.binder -> tvar * term = fun b ->
+let unbind_name :
+      (term, term) Bindlib.binder -> string -> tvar * term = fun b s ->
   if Bindlib.binder_occur b then
     Bindlib.unbind b
   else
-    let x = Bindlib.new_var mkfree "^x" in
+    let x = Bindlib.new_var mkfree s in
     (x, Bindlib.subst b (Vari x))
 
 (** {3 Metavariables} *)

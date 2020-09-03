@@ -40,17 +40,53 @@ let check_type_ind : popt -> term -> unit = fun pos rec_typ ->
                  [%a] isn't typable. Please, raise an issue."
         pp_term rec_typ
 
+let check_name_constructor : sym -> sym list -> string * string = fun i l ->
+  let rec aux_2acc l acc1 acc2 = match l with
+    | [] -> acc1, acc2
+    | t::q ->
+        let s = t.sym_name in
+        if Str.string_match (Str.regexp "^x[0-9]*$") s 0 then
+          aux_2acc q (s::acc1) acc2
+        else
+          if Str.string_match (Str.regexp "^p[0-9]*$") s 0 then
+            aux_2acc q acc1 (s::acc2)
+          else
+            aux_2acc q acc1 acc2
+  in
+  let get_prefix l e = match l with
+    | [] -> e
+    | _ ->
+        let rec aux l acc = match l with
+          | [] -> acc
+          | t::q ->
+              let len = String.length t - 1 in
+              let curr_int =
+                try
+                  int_of_string (String.sub t 1 len)
+                with _ -> 0
+              in
+              if acc < curr_int then
+                aux q curr_int
+              else
+                aux q acc
+        in
+        let res = aux l (-1) in
+        e ^ (string_of_int (res+1))
+  in
+  let acc1, acc2 = aux_2acc (i::l) [] [] in
+  (get_prefix acc1 "x", get_prefix acc2 "p")
+
 (** [gen_ind_typ_codom pos ind_sym codom] assumes that the type of [ind_sym]
     is of the form [Π(i1:a1),...,Π(in:an), TYPE]. It then generates a [tbox]
     similar to this type except that [TYPE] is replaced by
     [codom [i1;...;in]]. *)
-let gen_ind_typ_codom : popt -> sym -> (tbox list -> tbox) -> tbox =
-  fun pos ind_sym codom ->
+let gen_ind_typ_codom : popt -> sym -> (tbox list -> tbox) -> string -> tbox =
+  fun pos ind_sym codom s ->
   let rec aux : tvar list -> term -> tbox = fun xs a ->
     match Basics.get_args a with
     | (Type, _) -> codom (List.rev_map _Vari xs)
     | (Prod(a,b), _) ->
-        let (x,b) = Basics.unbind_name b in
+        let (x,b) = Basics.unbind_name b s in
         _Prod (lift a) (Bindlib.bind_var x (aux (x::xs) b))
     | _ -> fatal pos "The type of %a is not supported" pp_symbol ind_sym
   in aux [] !(ind_sym.sym_type)
@@ -88,7 +124,7 @@ let fold_cons_typ (pos : popt) (codom : term list -> 'b list -> 'a -> 'c)
       (build_rec_hyp : term list -> 'b -> 'a)
       (domrec : term -> 'b -> 'a -> 'c -> 'c) (dom : term -> 'b -> 'c -> 'c)
       (ind_sym : sym) (cons_sym : sym) (f_rec : 'a -> 'b -> 'a -> 'a)
-      (f_not_rec : 'a -> 'b -> 'a) (acc : 'a) : 'c =
+      (f_not_rec : 'a -> 'b -> 'a) (acc : 'a) (s : string) : 'c =
   let rec aux : 'b list -> 'a -> int -> term -> 'c = fun xs p i a ->
     match Basics.get_args a with
     | (Symb(s), ts) ->
@@ -96,7 +132,7 @@ let fold_cons_typ (pos : popt) (codom : term list -> 'b list -> 'a -> 'c)
        else fatal pos "%a is not a constructor of %a"
               pp_symbol cons_sym pp_symbol ind_sym
     | (Prod(a,b), _) ->
-        let (x,b) = Basics.unbind_name b in
+        let (x,b) = Basics.unbind_name b s in
         let x = inj_var xs x in
        begin
          match Basics.get_args a with
@@ -130,7 +166,10 @@ let gen_rec_type : Sig_state.t -> popt -> sym -> sym list -> term =
 
   (* STEP 0: Define some tools which will be useful *)
   let c = get_config ss pos in
-  let p = Bindlib.new_var mkfree "^p" in
+  let x_str, p_str = check_name_constructor ind_sym cons_list in
+  if !log_enabled then
+    log_ind "x_str : %s ; p_str : %s" x_str p_str;
+  let p = Bindlib.new_var mkfree p_str in
   let app  : tbox -> tbox list -> tbox = List.fold_left _Appl in
   let fapp : sym  -> tbox list -> tbox = fun f ts -> app (_Symb f) ts in
   let prf_of_p : tbox list -> tbox -> tbox = fun ts t ->
@@ -140,7 +179,7 @@ let gen_rec_type : Sig_state.t -> popt -> sym -> sym list -> term =
   (* STEP 1: Create the type of the property p *)
   let prop = _Symb c.symb_Prop in
   let codom ts = _Impl (fapp ind_sym ts) prop in
-  let p_type = gen_ind_typ_codom pos ind_sym codom in
+  let p_type = gen_ind_typ_codom pos ind_sym codom x_str in
 
   (* STEP 2: Create each clause according to a constructor *)
   (* [case_of cons_sym] creates a clause according to a constructor
@@ -164,16 +203,16 @@ let gen_rec_type : Sig_state.t -> popt -> sym -> sym list -> term =
     let f_not_rec : tbox -> tvar -> tbox = fun a _ -> a in
     let acc : tbox = _Type in
     fold_cons_typ pos codom inj_var build_rec_hyp domrec dom ind_sym
-      cons_sym f_rec f_not_rec acc
+      cons_sym f_rec f_not_rec acc x_str
   in
 
   (* STEP 3: Create the conclusion of the inductive principle *)
   let codom ts =
-    let x = Bindlib.new_var mkfree "x" in
+    let x = Bindlib.new_var mkfree x_str in
     let t = Bindlib.bind_var x (prf_of_p ts (_Vari x)) in
     _Prod (fapp ind_sym ts) t
   in
-  let conclusion = gen_ind_typ_codom pos ind_sym codom in
+  let conclusion = gen_ind_typ_codom pos ind_sym codom x_str in
 
   (* STEP 4: Create the induction principle *)
   let t =
@@ -237,7 +276,7 @@ let gen_rec_rules : sym -> sym -> sym list -> p_rule list =
     let f_not_rec : p_term -> p_term -> p_term = fun p x -> P.appl p x in
     let acc : p_term = P.patt0 ("pi" ^ cons_sym.sym_name) in
     fold_cons_typ pos codom inj_var build_rec_hyp domrec dom ind_sym
-      cons_sym f_rec f_not_rec acc
+      cons_sym f_rec f_not_rec acc ""
   in
 
   (* STEP 3: Build all the p_rules *)
