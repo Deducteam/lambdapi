@@ -41,6 +41,10 @@
 %token INFIX
 %token VERBOSE
 %token FLAG
+%token PROVER
+%token PROVER_TIMEOUT
+%token COMPUTE
+%token COMPUTE_TYPE
 %token <bool> SWITCH
 %token <string> STRINGLIT
 %token <int> INT
@@ -164,6 +168,12 @@ config:
 query:
   | SET VERBOSE i=INT { make_pos $loc (P_query_verbose(i)) }
   | SET FLAG s=STRINGLIT b=SWITCH { make_pos $loc (P_query_flag(s,b)) }
+  | COMPUTE_TYPE t=term
+    { make_pos $loc (P_query_infer(t, {strategy=NONE; steps=None}))}
+  | COMPUTE t=term
+    { make_pos $loc (P_query_normalize(t, {strategy=SNF; steps=None})) }
+  | SET PROVER s=STRINGLIT { make_pos $loc (P_query_prover(s)) }
+  | SET PROVER_TIMEOUT n=INT { make_pos $loc (P_query_prover_timeout(n)) }
 
 command:
   | REQUIRE OPEN p=path+ SEMICOLON { make_pos $loc (P_require(true,p)) }

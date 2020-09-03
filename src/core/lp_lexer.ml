@@ -22,6 +22,7 @@ type token =
   | COLON
   | COMMA
   | COMPUTE
+  | COMPUTE_TYPE
   | CONSTANT
   | DEFINITION
   | DOLLAR
@@ -49,6 +50,8 @@ type token =
   | PROOF_END of Syntax.p_proof_end
   | PROOFTERM
   | PROTECTED
+  | PROVER
+  | PROVER_TIMEOUT
   | QUESTION_MARK
   | REFINE
   | REFL
@@ -128,12 +131,14 @@ let token buf =
   | "set" -> SET
   | "let" -> LET
   | "flag" -> FLAG
+  | "type" -> COMPUTE_TYPE
   | "right" -> ASSOC(Syntax.Assoc_right)
   | "left" -> ASSOC(Syntax.Assoc_left)
   | "infix" -> INFIX
   | "TYPE" -> TYPE
   | "rule" -> RULE
   | "open" -> OPEN
+  | "prover" -> PROVER
   | "verbose" -> VERBOSE
   | "prefix" -> PREFIX
   | "builtin" -> BUILTIN
