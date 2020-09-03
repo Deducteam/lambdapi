@@ -100,6 +100,7 @@
 %type <Syntax.p_module_path> path
 %type <Syntax.p_config> config
 %type <Syntax.qident> qident
+%type <Syntax.p_rw_patt> rw_patt_spec
 
 // Precedences listed from low to high
 %nonassoc IN
@@ -132,10 +133,21 @@ arg:
   | L_CU_BRACKET xs=arg_ident+ a=preceded(COLON, term)? R_CU_BRACKET
       { (xs, a, true) }
 
+rw_patt_spec:
+  | t=term { P_rw_Term(t) }
+  | IN t=term { P_rw_InTerm(t) }
+  | IN x=ident IN t=term { P_rw_InIdInTerm(fst x, t) }
+  /* | x=ident IN t=term { P_rw_IdInTerm(fst x, t) } */
+  | u=term IN x=ident IN t=term { P_rw_TermInIdInTerm(u, fst x, t) }
+  | u=term AS x=ident IN t=term { P_rw_TermAsIdInTerm(u, fst x, t) }
+
+rw_patt: L_SQ_BRACKET r=rw_patt_spec R_SQ_BRACKET { make_pos $loc r }
+
 tactic:
   | INTRO xs=arg_ident+ { make_pos $loc (P_tac_intro(xs)) }
   | APPLY t=term { make_pos $loc (P_tac_apply(t)) }
   | SIMPL { make_pos $loc P_tac_simpl }
+  | REWRITE p=rw_patt? t=term { make_pos $loc (P_tac_rewrite(true,p,t)) }
 
 modifier:
   | CONSTANT { make_pos $loc (P_prop(Terms.Const)) }
