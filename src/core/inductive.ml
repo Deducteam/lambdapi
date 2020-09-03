@@ -40,7 +40,14 @@ let check_type_ind : popt -> term -> unit = fun pos rec_typ ->
                  [%a] isn't typable. Please, raise an issue."
         pp_term rec_typ
 
+(** [check_name_constructor i l] creates the prefixes for variables' name and
+    predicats' name according to the name of the inductive type [i] and its
+    constructors [l]. *)
 let check_name_constructor : sym -> sym list -> string * string = fun i l ->
+  (* [aux_2acc l acc1 acc2] returns the list of constructors' name which are
+     in conflict with the names of the form "x" with a number or not (stored
+     in [acc1]) or in conflict with the names of the form "p" with a number
+     or not (stored in [acc2]). *)
   let rec aux_2acc l acc1 acc2 = match l with
     | [] -> acc1, acc2
     | t::q ->
@@ -53,6 +60,9 @@ let check_name_constructor : sym -> sym list -> string * string = fun i l ->
           else
             aux_2acc q acc1 acc2
   in
+  (* [get_prefix l e] returns a string of the form "e(i+1)" where i is the
+     maximum of the list [l]. Indeed, each element in the list [l] should
+     have the form "ei". In case of l = ["e"], the result is "e1". *)
   let get_prefix l e = match l with
     | [] -> e
     | _ ->
@@ -76,10 +86,10 @@ let check_name_constructor : sym -> sym list -> string * string = fun i l ->
   let acc1, acc2 = aux_2acc (i::l) [] [] in
   (get_prefix acc1 "x", get_prefix acc2 "p")
 
-(** [gen_ind_typ_codom pos ind_sym codom] assumes that the type of [ind_sym]
+(** [gen_ind_typ_codom pos ind_sym codom s] assumes that the type of [ind_sym]
     is of the form [Π(i1:a1),...,Π(in:an), TYPE]. It then generates a [tbox]
     similar to this type except that [TYPE] is replaced by
-    [codom [i1;...;in]]. *)
+    [codom [i1;...;in]]. The string [s] is the prefix of variables' name. *)
 let gen_ind_typ_codom : popt -> sym -> (tbox list -> tbox) -> string -> tbox =
   fun pos ind_sym codom s ->
   let rec aux : tvar list -> term -> tbox = fun xs a ->
@@ -92,7 +102,7 @@ let gen_ind_typ_codom : popt -> sym -> (tbox list -> tbox) -> string -> tbox =
   in aux [] !(ind_sym.sym_type)
 
 (** [fold_cons_typ pos codom get_name build_rec_hyp domrec dom ind_sym
-    cons_sym f_rec f_not_rec acc] generates some value iteratively by going
+    cons_sym f_rec f_not_rec acc s] generates some value iteratively by going
     through the structure of [cons_sym.sym_type].
     We introduce some notations:
       - A product Π([x] : [a]), [b]
@@ -100,14 +110,14 @@ let gen_ind_typ_codom : popt -> sym -> (tbox list -> tbox) -> string -> tbox =
       - [ts] is the arguments of the current symbol
       - [rec_hyp] is the current recursive hypothesis
       - [next] is the result of the recursive call
-      - [p] is a computation built incrementally
+      - [res] is a computation built incrementally
     Now, we can describe each argument of the function [fold_cons_typ]:
       - The argument [pos] is the position of the command inductive where the
       constructors were defined.
-      - On the codomain, the function [codom ts xs p] is called on the
+      - On the codomain, the function [codom ts xs res] is called on the
       arguments to which [ind_sym] is applied [ts], the variables of the
       products [xs] (in reverse order) and a computation built incrementally
-      [p].
+      [res].
       - In case of a product, the function [get_name b i] splits the product
       [b] and gives a name to the variable if it has none, thanks to the
       number [i].
@@ -117,18 +127,19 @@ let gen_ind_typ_codom : popt -> sym -> (tbox list -> tbox) -> string -> tbox =
       - Otherwise, the function [dom a x next] is called.
       - If you would like to store a temporary result, the initial value is
       [acc], and you can change this value in the recursive case with the
-      function [f_rec p x rec_hyp], and on the other case with the function
-      [f_not_rec p x]. *)
+      function [f_rec res x rec_hyp], and on the other case with the function
+      [f_not_rec res x].
+      - The string [s] is the prefix of variables' name. *)
 let fold_cons_typ (pos : popt) (codom : term list -> 'b list -> 'a -> 'c)
       (inj_var : 'b list -> tvar -> 'b)
       (build_rec_hyp : term list -> 'b -> 'a)
       (domrec : term -> 'b -> 'a -> 'c -> 'c) (dom : term -> 'b -> 'c -> 'c)
       (ind_sym : sym) (cons_sym : sym) (f_rec : 'a -> 'b -> 'a -> 'a)
       (f_not_rec : 'a -> 'b -> 'a) (acc : 'a) (s : string) : 'c =
-  let rec aux : 'b list -> 'a -> int -> term -> 'c = fun xs p i a ->
+  let rec aux : 'b list -> 'a -> int -> term -> 'c = fun xs res i a ->
     match Basics.get_args a with
     | (Symb(s), ts) ->
-       if s == ind_sym then codom ts xs p
+       if s == ind_sym then codom ts xs res
        else fatal pos "%a is not a constructor of %a"
               pp_symbol cons_sym pp_symbol ind_sym
     | (Prod(a,b), _) ->
@@ -139,10 +150,10 @@ let fold_cons_typ (pos : popt) (codom : term list -> 'b list -> 'a -> 'c)
          | (Symb(s), ts) ->
              if s == ind_sym then
                let rec_hyp = build_rec_hyp ts x in
-               let next = aux (x::xs) (f_rec p x rec_hyp) (i+1) b in
+               let next = aux (x::xs) (f_rec res x rec_hyp) (i+1) b in
                domrec a x rec_hyp next
              else
-               let next = aux (x::xs) (f_not_rec p x) (i+1) b in
+               let next = aux (x::xs) (f_not_rec res x) (i+1) b in
                dom a x next
          | _ -> fatal pos "The type of %a is not supported" pp_symbol cons_sym
        end
@@ -167,8 +178,6 @@ let gen_rec_type : Sig_state.t -> popt -> sym -> sym list -> term =
   (* STEP 0: Define some tools which will be useful *)
   let c = get_config ss pos in
   let x_str, p_str = check_name_constructor ind_sym cons_list in
-  if !log_enabled then
-    log_ind "x_str : %s ; p_str : %s" x_str p_str;
   let p = Bindlib.new_var mkfree p_str in
   let app  : tbox -> tbox list -> tbox = List.fold_left _Appl in
   let fapp : sym  -> tbox list -> tbox = fun f ts -> app (_Symb f) ts in

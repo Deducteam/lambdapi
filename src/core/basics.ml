@@ -107,8 +107,9 @@ let iter : (term -> unit) -> term -> unit = fun action ->
     | LLet(a,t,u) -> iter a; iter t; iter (Bindlib.subst u Kind)
   in iter
 
-(** [unbind_name b] is like [Bindlib.unbind b] but returns a valid variable
-    name when [b] binds no variable. *)
+(** [unbind_name b s] is like [Bindlib.unbind b] but returns a valid variable
+    name when [b] binds no variable. The string [s] is the prefix of the
+    variable's name.*)
 let unbind_name :
       (term, term) Bindlib.binder -> string -> tvar * term = fun b s ->
   if Bindlib.binder_occur b then
