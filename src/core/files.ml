@@ -142,56 +142,57 @@ module ModMap :
 let lib_root : string option Stdlib.ref =
   Stdlib.ref None
 
-(** [set_lib_root path] sets the library root to the given file [path]. If the
-    given [path] does not refer to a valid (existing) directory the program is
-    terminated with a graceful error message. *)
-let set_lib_root : string -> unit = fun path ->
-  try
-    let path = Filename.realpath path in
-    if not (Sys.is_directory path) then
-      fatal_no_pos "Invalid library root: [%s] is not a directory." path;
-    match Stdlib.(!lib_root) with
-    | None    -> Stdlib.(lib_root := Some(path))
-    | Some(_) -> fatal_no_pos "The library root was already set."
-  with Sys_error(_) | Invalid_argument(_) ->
-    fatal_no_pos "Invalid library root: no such file or directory [%s]." path
-
-(** [default_lib_root ()] returns the default library root curently configured
-    for the system. It depends on the current Opam switch (if any), and it may
-    or may not correspond to an existing directory. *)
-let default_lib_root : unit -> string = fun _ ->
-  let prefix =
-    try Sys.getenv "OPAM_SWITCH_PREFIX"
-    with Not_found -> "/usr/local"
-  in
-  Filename.concat prefix "lib/lambdapi/lib_root"
-
-(** [lib_root_path ()] returns the canonical library root path. It corresponds
-    to a valid path to a directory. The function fails gracefully if it is not
-    able to find such a directory. Note that prior to installation, the option
-    ["--lib-root"] must be used so that this function does not fail. *)
-let lib_root_path : unit -> string = fun _ ->
-  match Stdlib.(!lib_root) with Some(path) -> path | None ->
-  let path = default_lib_root () in
-  try
-    let path = Filename.realpath path in
-    if not (Sys.is_directory path) then
-      fatal_no_pos "Invalid default library root [%s]: this is not a \
-                    directory." path;
-    path
-  with Sys_error(_) | Invalid_argument(_) ->
-    fatal_no_pos "Default library root [%s] does not exist." path
-
 (** [lib_mappings] stores the specified mappings of library paths. *)
 let lib_mappings : ModMap.t ref =
   ref ModMap.empty
 
-(** [init_lib_root ()] registers the currently set library root as part of our
-    module mapping. This function MUST be called before one can consider using
-    [module_to_file] or [module_path]. *)
-let init_lib_root : unit -> unit = fun _ ->
-  let root = lib_root_path () in
-  lib_mappings := ModMap.set_root root !lib_mappings
+(** [set_lib_root path] sets the library root. The following paths are
+    set sequentially, such that the active one is the last valid path
+    - [/usr/local/lib/lambdapi/lib_root/]
+    - [$OPAM_SWITCH_PREFIX/lib/lambdapi/lib_root]
+    - [$LAMBDAPI_LIB_ROOT/lib/lambdapi/lib_root]
+    - the path given as parameter of the [--lib-root] command line argument;
+      if the path given on command line is not a valid (existing) directory,
+      the program terminates with a graceful error message. *)
+let set_lib_root : string option -> unit = fun path ->
+  let open Stdlib in
+  let prefix = Stdlib.ref "/usr/local" in
+  let set_prefx p = prefix := p in
+  Option.iter set_prefx (Sys.getenv_opt "OPAM_SWITCH_PREFIX");
+  Option.iter set_prefx (Sys.getenv_opt "LAMBDAPI_LIB_ROOT");
+  lib_root := Some(Filename.concat !prefix "lib/lambdapi/lib_root");
+  let set_lr p =
+    try lib_root := Some(Extra.Filename.realpath p) with
+    Invalid_argument(_) -> ()
+  in
+  Option.iter set_lr path;
+  (* Verify that the path exists and is a directory *)
+  match !lib_root with
+  | None -> assert false (* Path is set above. *)
+  | Some(pth) ->
+      begin
+        try if not (Sys.is_directory pth) then
+            fatal_no_pos "Invalid library root: [%s] is not a directory." pth
+        with Sys_error(_) ->
+          (* [Sys_error] is raised if [pth] does not exist. *)
+          (* We try to create [pth]. *)
+          let target = Filename.quote pth in
+          let cmd = String.concat " " ["mkdir"; "--parent"; target] in
+          begin
+            match Sys.command cmd  with
+            | 0 -> ()
+            | _ ->
+                fatal_msg "Library root cannot be set:\n";
+                fatal_no_pos "Command \"%s\" had a non-zero exit." cmd
+            | exception Failure(msg) ->
+                fatal_msg "Library root cannot be set:\n";
+                fatal_msg "Command \"%s\" failed:\n" cmd;
+                fatal_no_pos "%s" msg
+          end
+      end;
+      (* Register the library root as part of the module mapping.
+         Required by [module_to_file] and [module_path]. *)
+      Timed.(lib_mappings := ModMap.set_root pth !lib_mappings)
 
 (** [new_lib_mapping s] attempts to parse [s] as a library mapping of the form
     ["<modpath>:<path>"]. Then, if module path ["<modpath>"] is not yet mapped
@@ -295,7 +296,10 @@ let file_to_module : string -> Path.t = fun fname ->
 let install_path : string -> string = fun fname ->
   let mod_path = file_to_module fname in
   let ext = Filename.extension fname in
-  List.fold_left Filename.concat (lib_root_path ()) mod_path ^ ext
+  match Stdlib.(!lib_root) with
+  | None -> assert false
+  | Some(pth) ->
+    List.fold_left Filename.concat pth mod_path ^ ext
 
 (** [mod_time fname] returns the modification time of file [fname] represented
     as a [float]. [neg_infinity] is returned if the file does not exist. *)
