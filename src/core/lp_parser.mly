@@ -4,6 +4,7 @@
 %{
     open Syntax
     open Pos
+    open Parser_utils
     open Extra
 
     let make_pos : Lexing.position * Lexing.position -> 'a -> 'a Pos.loc =
@@ -13,11 +14,6 @@
       match List.rev p with
       | hd :: tl -> (List.rev tl, fst hd)
       | [] -> assert false
-
-    (** [sanity_check pos s] checks that the token [s] is appropriate for an
-        infix operator or a declared identifier. If it is not the case, then the
-        [Fatal] exception is raised. *)
-    let sanity_check : Pos.pos -> string -> unit = fun _ _ -> assert false
  %}
 
 %token EOF
@@ -168,12 +164,14 @@ config:
       {
         let unop = (s, p, qid) in
         sanity_check (locate $loc(s)) s;
+        StrHtbl.add una_operators s unop;
         P_config_unop(unop)
       }
   | INFIX a=ASSOC? p=FLOAT s=STRINGLIT ASSIGN qid=qident
       {
         let binop = (s, Option.get Assoc_none a, p, qid) in
         sanity_check (locate $loc(s)) s;
+        StrHtbl.add bin_operators s binop;
         P_config_binop(binop)
       }
 

@@ -49,9 +49,8 @@ module String =
       let rec for_all i = i >= len_s || (p s.[i] && for_all (i+1)) in
       for_all 0
 
-    (** [tail s] returns all [s] but its first character. *)
-    let tail : string -> string = fun s ->
-      String.sub s 1 (String.length s - 1)
+    (** A hash function for hash tables. *)
+    let hash = Hashtbl.hash
   end
 
 module Option =
@@ -331,6 +330,7 @@ module StrMap = Map.Make(String)
 (* Functional sets of strings. *)
 module StrSet = Set.Make(String)
 
+<<<<<<< HEAD
 (** [get_safe_prefix p strings] returns a string starting with [p] and so
     that, there is no non-negative integer [k] such that [p ^ string_of_int k]
     belongs to [strings]. *)
@@ -349,6 +349,9 @@ let get_safe_prefix : string -> StrSet.t -> string = fun head set ->
   in
   let res = StrSet.fold f set (-1) in
   head ^ (string_of_int (res+1))
+=======
+module StrHtbl = Hashtbl.Make(String)
+>>>>>>> Pratt parser, relocation
 
 (** [time f x] times the application of [f] to [x], and returns the evaluation
     time in seconds together with the result of the application. *)

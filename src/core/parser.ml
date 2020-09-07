@@ -1,10 +1,6 @@
 open Syntax
 open Pos
-
-(** [parser_fatal loc fmt] is a wrapper for [Console.fatal] that enforces that
-    the error has an attached source code position. *)
-let parser_fatal : Pos.pos -> ('a,'b) Console.koutfmt -> 'a = fun loc fmt ->
-  Console.fatal (Some(loc)) fmt
+open Parser_utils
 
 (* TODO: move to right place *)
 type prio = PFunc | PAtom | PAppl
@@ -50,3 +46,38 @@ let parse_string : string -> string -> Syntax.ast = fun _ _ -> assert false
 let parse_qident : string -> (qident, pos) result = fun _ -> assert false
 
 let do_require : _ -> _ -> unit = fun _ _ -> assert false
+
+module Legacy = struct
+  (** Interface for the legacy parser. *)
+
+  (** {b NOTE} we maintain the invariant described in the [Parser] module:
+      every error should have an attached position. We do not open [Console]
+      to avoid calls to [Console.fatal] and [Console.fatal_no_pos]. In case of
+      an error, the [parser_fatal] function should be used instead. *)
+
+  let parse_lexbuf : string -> Lexing.lexbuf -> Syntax.ast =
+    fun fname lexbuf ->
+    Stdlib.(Legacy_lexer.filename := fname);
+    let lines = ref [] in
+    try
+      while true do
+        let l = Menhir_parser.line Legacy_lexer.token lexbuf in
+        lines := l :: !lines
+      done;
+      assert false (* Unreachable. *)
+    with
+    | End_of_file         -> List.rev !lines
+    | Menhir_parser.Error ->
+        let loc = Lexing.(lexbuf.lex_start_p) in
+        let loc = Legacy_lexer.locate (loc, loc) in
+        parser_fatal loc "Unexpected token [%s]." (Lexing.lexeme lexbuf)
+
+  let parse_file : string -> Syntax.ast = fun fname ->
+    let ic = open_in fname in
+    let lexbuf = Lexing.from_channel ic in
+    try let l = parse_lexbuf fname lexbuf in close_in ic; l
+    with e -> close_in ic; raise e
+
+  let parse_string : string -> string -> Syntax.ast = fun fname s ->
+    parse_lexbuf fname (Lexing.from_string s)
+end

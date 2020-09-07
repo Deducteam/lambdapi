@@ -3,8 +3,8 @@ open Extra
 open Timed
 open Pos
 open Syntax
+open Parser_utils
 open Legacy_lexer
-open Parser
 
 (** {b NOTE} we maintain the invariant described in the [Parser] module: every
     error should have an attached position.  We do not open [Console] to avoid
@@ -205,6 +205,8 @@ let build_config : Pos.pos -> string -> string option -> eval_config =
     | (i     , None       ) -> config (Some(i)) NONE
     | (_     , _          ) -> raise Exit (* captured below *)
   with _ -> parser_fatal loc "Invalid command configuration."
+
+  let do_require : Pos.pos -> p_module_path -> unit = fun _ _ -> assert false
 %}
 
 %token EOF

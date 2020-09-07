@@ -154,8 +154,8 @@ let token buf =
       (* Remove the quotes from [lexbuf] *)
       let len = lexeme_length buf in
       STRINGLIT(Utf8.sub_lexeme buf (len - 2) 1)
-  | integer -> INT(int_of_string (Utf8.lexeme buf))
   | float -> FLOAT(float_of_string (Utf8.lexeme buf))
+  | integer -> INT(int_of_string (Utf8.lexeme buf))
   | id -> ID(Utf8.lexeme buf, false)
   | escid -> ID(Utf8.lexeme buf, true)
   | _ ->

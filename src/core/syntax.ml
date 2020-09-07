@@ -28,6 +28,12 @@ type unop = string * priority * qident
 (** Representation of a binary operator. *)
 type binop = string * assoc * priority * qident
 
+(** Table containing defined binary operators. *)
+let bin_operators : binop StrHtbl.t = StrHtbl.create 17
+
+(** Table containing defined unary operators. *)
+let una_operators : unop StrHtbl.t = StrHtbl.create 17
+
 (** Parser-level (located) term representation. *)
 type p_term = p_term_aux loc
 and p_term_aux =
