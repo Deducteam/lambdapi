@@ -1,6 +1,5 @@
 open Sedlexing
 open Pos
-open Extra
 
 type token =
   | EOF
@@ -27,6 +26,7 @@ type token =
   | DEFINITION
   | DOLLAR
   | DOT
+  | EQUIV
   | FAIL
   | FLAG
   | FLOAT of float
@@ -95,9 +95,20 @@ let rec nom : lexbuf -> unit = fun buf ->
   | "\r\n" -> nom buf
   | _ -> ()
 
-(** [is_escaped s] returns whether string [s] uses the escaped syntax. *)
-let is_escaped: string -> bool = fun s ->
-  String.length s >= 2 && String.sub s 0 2 = "{|"
+(** [is_escaped s] is true if string [s] is escaped: i.e. enclosed in "{|
+    |}". *)
+let is_escaped : string -> bool = fun s ->
+  let buf = Utf8.from_string s in
+  match%sedlex buf with
+  | escid -> true
+  | _ -> false
+
+(** [is_identifier s] is true if [s] is an identifier. *)
+let is_identifier : string -> bool = fun s ->
+  let lexbuf = Sedlexing.Utf8.from_string s in
+  match%sedlex lexbuf with
+  | id -> true
+  | _ -> false
 
 let token buf =
   nom buf;
@@ -118,12 +129,14 @@ let token buf =
   | '@' -> AT
   | '?' -> QUESTION_MARK
   | '$' -> DOLLAR
-  | 0x2254 (* ≔ *)-> ASSIGN
+  | 0x2254 (* ≔ *) -> ASSIGN
   | 0x21aa (* ↪ *) -> REWRITE
-  | 0x2192 (* → *)-> ARROW
-  | 0x03bb (* λ *)-> LAMBDA
-  | 0x03a0 (* Π *)-> PI
+  | 0x2192 (* → *) -> ARROW
+  | 0x03bb (* λ *) -> LAMBDA
+  | 0x03a0 (* Π *) -> PI
+  | 0x2261 (* ≡ *) -> EQUIV
   | "as" -> AS
+  | "assert" -> ASSERT
   | "in" -> IN
   | "on" -> SWITCH(true)
   | "off" -> SWITCH(false)

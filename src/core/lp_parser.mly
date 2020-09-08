@@ -29,9 +29,11 @@
 %token AS
 %token DEFINITION
 %token REWRITE
+// Queries
+%token SET
+%token ASSERT
 // Other commands and utils
 %token PREFIX
-%token SET
 %token BUILTIN
 %token <assoc> ASSOC
 %token INFIX
@@ -41,6 +43,7 @@
 %token PROVER_TIMEOUT
 %token COMPUTE
 %token COMPUTE_TYPE
+%token EQUIV
 %token <bool> SWITCH
 %token <string> STRINGLIT
 %token <int> INT
@@ -175,6 +178,10 @@ config:
         P_config_binop(binop)
       }
 
+assertion:
+  | t=term COLON a=term { P_assert_typing(t, a) }
+  | t=term EQUIV u=term { P_assert_conv(t, u) }
+
 query:
   | SET VERBOSE i=INT { make_pos $loc (P_query_verbose(i)) }
   | SET FLAG s=STRINGLIT b=SWITCH { make_pos $loc (P_query_flag(s,b)) }
@@ -184,6 +191,7 @@ query:
     { make_pos $loc (P_query_normalize(t, {strategy=SNF; steps=None})) }
   | SET PROVER s=STRINGLIT { make_pos $loc (P_query_prover(s)) }
   | SET PROVER_TIMEOUT n=INT { make_pos $loc (P_query_prover_timeout(n)) }
+  | ASSERT a=assertion { make_pos $loc (P_query_assert(false, a)) }
 
 command:
   | REQUIRE OPEN p=path+ SEMICOLON { make_pos $loc (P_require(true,p)) }
@@ -198,7 +206,7 @@ command:
       { make_pos $loc (P_symbol(ms, fst s, al, a)) }
   | ms=modifier* DEFINITION s=ident al=arg* ao=preceded(COLON, term)?
     ASSIGN b=term SEMICOLON
-      { make_pos $loc (P_definition(ms, false, fst s, al, ao, b))}
+      { make_pos $loc (P_definition(ms, false, fst s, al, ao, b)) }
   | ms=modifier* st=statement ts=tactic* pe=prfend
       { make_pos $loc (P_theorem(ms, st, ts, pe)) }
   | RULE rs=separated_nonempty_list(WITH, rule) SEMICOLON
@@ -234,7 +242,7 @@ aterm:
   | t=sterm { t }
 
 term:
-  | t=aterm { t }
+  | t=aterm { Pratt.parse t }
   | t=term ARROW u=term { make_pos $loc (P_Impl(t, u)) }
   | PI xs=arg+ COMMA b=term { make_pos $loc (P_Prod(xs, b)) }
   | LAMBDA xs=arg+ COMMA t=term { make_pos $loc (P_Abst(xs, t)) }

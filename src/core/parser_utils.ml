@@ -1,3 +1,4 @@
+(** Some functions for the parser. *)
 open Extra
 
 (** [parser_fatal loc fmt] is a wrapper for [Console.fatal] that enforces that
@@ -5,9 +6,9 @@ open Extra
 let parser_fatal : Pos.pos -> ('a,'b) Console.koutfmt -> 'a = fun loc fmt ->
   Console.fatal (Some(loc)) fmt
 
-let is_keyword : string -> bool = fun _ -> assert false
-
-let is_identifier : string -> bool = fun _ -> assert false
+let is_keyword : string -> bool = fun s ->
+  List.mem s
+    ["as"; "in"; "TYPE"; "let"] (* TODO: finish *)
 
 (** The following should not appear as substrings of binary operators, as they
     would introduce ambiguity in the parsing. *)
@@ -25,7 +26,7 @@ let sanity_check : Pos.pos -> string -> unit = fun loc s ->
   if is_keyword s then
     parser_fatal loc "Invalid token (reserved).";
   (* We forbid valid (non-escaped) identifiers. *)
-  if is_identifier s then
+  if Lp_lexer.is_identifier s then
     parser_fatal loc "Invalid token (only identifier characters).";
   (* We also reject symbols with certain substrings. *)
   let check_substring w =
