@@ -13,7 +13,7 @@ type token =
   | ARROW
   | AS
   | ASSERT
-  | ASSERTNOT
+  | ASSERT_NOT
   | ASSIGN
   | ASSOC of Syntax.assoc
   | AT
@@ -137,6 +137,7 @@ let token buf =
   | 0x2261 (* ≡ *) -> EQUIV
   | "as" -> AS
   | "assert" -> ASSERT
+  | "assertnot" -> ASSERT_NOT
   | "in" -> IN
   | "on" -> SWITCH(true)
   | "off" -> SWITCH(false)
