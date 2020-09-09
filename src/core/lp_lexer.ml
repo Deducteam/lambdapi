@@ -69,6 +69,7 @@ type token =
   | SYMBOL
   | THEOREM
   | TYPE
+  | UNIF_RULE
   | VERBOSE
   | WHY3
   | WILD
@@ -138,6 +139,7 @@ let token buf =
   | "as" -> AS
   | "assert" -> ASSERT
   | "assertnot" -> ASSERT_NOT
+  | "unif_rule" -> UNIF_RULE
   | "in" -> IN
   | "on" -> SWITCH(true)
   | "off" -> SWITCH(false)
@@ -166,8 +168,7 @@ let token buf =
   | "sequential" -> SEQUENTIAL
   | stringlit ->
       (* Remove the quotes from [lexbuf] *)
-      let len = lexeme_length buf in
-      STRINGLIT(Utf8.sub_lexeme buf (len - 2) 1)
+      STRINGLIT(Utf8.sub_lexeme buf 1 (lexeme_length buf - 2))
   | float -> FLOAT(float_of_string (Utf8.lexeme buf))
   | integer -> INT(int_of_string (Utf8.lexeme buf))
   | id -> ID(Utf8.lexeme buf, false)

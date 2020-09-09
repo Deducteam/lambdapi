@@ -45,6 +45,7 @@
 %token COMPUTE
 %token COMPUTE_TYPE
 %token EQUIV
+%token UNIF_RULE
 %token <bool> SWITCH
 %token <string> STRINGLIT
 %token <int> INT
@@ -205,6 +206,7 @@ config:
         StrHtbl.add bin_operators s binop;
         P_config_binop(binop)
       }
+  | UNIF_RULE r=unif_rule { P_config_unif_rule(r) }
 
 // Typing or convertibility assertions
 assertion:
@@ -287,5 +289,21 @@ term:
 
 // A rewrite rule [lhs ↪ rhs]
 rule: l=term REWRITE r=term { make_pos $loc (l, r) }
+
+unification: l=term EQUIV r=term { (l, r) }
+
+unif_rule: l=unification REWRITE rs=separated_nonempty_list(DOT, unification)
+    {
+      let equiv = Pos.none (P_Iden(Pos.none ([], "#equiv"), true)) in
+      let p_appl t u = Pos.none (P_Appl(t, u)) in
+      let mkequiv (l, r) = p_appl (p_appl equiv l) r in
+      let lhs = mkequiv l in
+      let cons = Pos.none (P_Iden(Pos.none ([], "#cons"), true)) in
+      let rs = List.map mkequiv rs in
+      let (r, rs) = List.(hd rs, tl rs) in
+      let cat eqlst eq = p_appl (p_appl cons eq) eqlst in
+      let rhs = List.fold_left cat r rs in
+      make_pos $loc (lhs, rhs)
+    }
 
 %%
