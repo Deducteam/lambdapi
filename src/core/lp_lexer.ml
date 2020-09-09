@@ -90,24 +90,25 @@ end = struct
     [%sedlex.regexp? "{|", Star (Compl '|' | '|', Compl '}'), Star '|', "|}"]
   let stringlit = [%sedlex.regexp? '"', Star (Compl ('"' | '\n')), '"']
   let float = [%sedlex.regexp? integer, Opt ('.', integer)]
+  let comment = [%sedlex.regexp? "//", Star (Compl ('\n' | '\r'))]
 
   (** [nom buf] eats whitespaces and comments in buffer [buf]. *)
   let rec nom : lexbuf -> unit = fun buf ->
-    (* Eats up to newline: useful for one line comments. *)
-    let nom_line buf =
-      match%sedlex buf with
-      | '\n' -> ()
-      | any -> nom_line
-      | _ -> assert false
-    in
     match%sedlex buf with
     | ' ' -> nom buf
     | '\t' -> nom buf
     | '\n' -> nom buf
     | '\r' -> nom buf
     | "\r\n" -> nom buf
-    | "//" -> nom_line
+    | "/*" -> nom_comment buf
+    | comment -> nom buf
     | _ -> ()
+and nom_comment : lexbuf -> unit = fun buf ->
+    match%sedlex buf with
+    | eof -> raise (SyntaxError (Pos.none "Unterminated comment."))
+    | "*/" -> nom buf
+    | any -> nom_comment buf
+    | _ -> assert false
 
   (** [is_escaped s] is true if string [s] is escaped: i.e. enclosed in "{|
       |}". *)
