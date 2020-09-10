@@ -6,79 +6,34 @@ open Pos
 
 type token =
   | EOF
-  | L_PAREN
-  | R_PAREN
-  | L_SQ_BRACKET
-  | R_SQ_BRACKET
-  | L_CU_BRACKET
-  | R_CU_BRACKET
-  | APPLY
-  | ARROW
-  | AS
-  | ASSERT
-  | ASSERT_NOT
-  | ASSIGN
-  | ASSOC of Syntax.assoc
+  | L_PAREN | R_PAREN | L_SQ_BRACKET | R_SQ_BRACKET
+  | L_CU_BRACKET | R_CU_BRACKET
+  | APPLY | ARROW | AS | ASSERT | ASSERT_NOT | ASSIGN | ASSOC of Syntax.assoc
   | AT
   | BUILTIN
-  | COLON
-  | COMMA
-  | COMPUTE
-  | COMPUTE_TYPE
-  | CONSTANT
+  | COLON | COMMA | COMPUTE | COMPUTE_TYPE | CONSTANT
   | DEBUG_FLAGS of (bool * string)
   (** Flags such as [+eiu] or [-eiu]. *)
-  | DEFINITION
-  | DOLLAR
-  | DOT
+  | DEFINITION | DOLLAR | DOT
   | EQUIV
-  | FAIL
-  | FLAG
-  | FLOAT of float
-  | FOCUS
+  | FAIL | FLAG | FLOAT of float | FOCUS
   | ID of (string * bool)
    (** Boolean is true if ident is escaped *)
-  | IN
-  | INFERTYPE
-  | INFIX
-  | INJECTIVE
-  | INT of int
-  | INTRO
-  | LAMBDA
-  | LET
+  | IN | INFERTYPE | INFIX | INJECTIVE | INT of int | INTRO
+  | LAMBDA | LET
   | OPEN
-  | PI
-  | PREFIX
-  | PRINT
-  | PRIVATE
-  | PROOF
-  | PROOF_END of Syntax.p_proof_end
-  | PROOFTERM
-  | PROTECTED
-  | PROVER
-  | PROVER_TIMEOUT
+  | PI | PREFIX | PRINT | PRIVATE | PROOF | PROOF_END of Syntax.p_proof_end
+  | PROOFTERM | PROTECTED | PROVER | PROVER_TIMEOUT
   | QUESTION_MARK
-  | REFINE
-  | REFL
-  | REQUIRE
-  | REWRITE
-  | RULE
-  | SEMICOLON
-  | SEQUENTIAL
-  | SET
-  | SIMPL
-  | STRINGLIT of string
+  | REFINE | REFL | REQUIRE | REWRITE | RULE
+  | SEMICOLON | SEQUENTIAL | SET | SIMPL | STRINGLIT of string
   | SWITCH of bool
   (** [on] or [off], for flags. *)
-  | SYMMETRY
-  | SYMBOL
-  | THEOREM
-  | TYPE
+  | SYMMETRY | SYMBOL
+  | THEOREM | TYPE
   | UNIF_RULE
   | VERBOSE
-  | WHY3
-  | WILD
-  | WITH
+  | WHY3 | WILD | WITH
 
 exception SyntaxError of strloc
 
