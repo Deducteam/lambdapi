@@ -1,3 +1,6 @@
+(** Lexer for Lambdapi syntax. Uses Sedlex, a Utf8 friendly lexer. Some helper
+    functions to check if a string conflicts with the syntax are also
+    provided. *)
 open Sedlexing
 open Pos
 
@@ -23,6 +26,8 @@ type token =
   | COMPUTE
   | COMPUTE_TYPE
   | CONSTANT
+  | DEBUG_FLAGS of (bool * string)
+  (** Flags such as [+eiu] or [-eiu]. *)
   | DEFINITION
   | DOLLAR
   | DOT
@@ -80,6 +85,7 @@ exception SyntaxError of strloc
 module Lp_lexer : sig
   val is_escaped : string -> bool
   val is_identifier : string -> bool
+  val is_debug_flag : string -> bool
   val lexer : lexbuf -> unit -> token * Lexing.position * Lexing.position
 end = struct
   let digit = [%sedlex.regexp? '0' .. '9']
@@ -125,6 +131,14 @@ and nom_comment : lexbuf -> unit = fun buf ->
     | id -> true
     | _ -> false
 
+  (** [is_debug_flag s] is true if [s] is a debug flag of the form [+...] or
+      [-...] where the dots are a sequence of letters. *)
+  let is_debug_flag : string -> bool = fun s ->
+    let lexbuf = Utf8.from_string s in
+    match%sedlex lexbuf with
+    | ('+' | '-'), Plus lowercase -> true
+    | _ -> false
+
   let token buf =
     nom buf;
     match%sedlex buf with
@@ -144,6 +158,10 @@ and nom_comment : lexbuf -> unit = fun buf ->
     | '@' -> AT
     | '?' -> QUESTION_MARK
     | '$' -> DOLLAR
+    | '+', Plus letter ->
+        DEBUG_FLAGS(true, Utf8.sub_lexeme buf 1 (lexeme_length buf - 1))
+    | '-', Plus letter ->
+        DEBUG_FLAGS(false, Utf8.sub_lexeme buf 1 (lexeme_length buf - 1))
     | 0x2254 (* ≔ *) -> ASSIGN
     | 0x21aa (* ↪ *) -> REWRITE
     | 0x2192 (* → *) -> ARROW

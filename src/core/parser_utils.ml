@@ -14,7 +14,8 @@ let is_keyword : string -> bool = fun s ->
     would introduce ambiguity in the parsing. *)
 let forbidden_in_ops =
   [ "("; ")"; "."; "λ"; "Π"; "$"; "["; "]"; "{"; "}"; "?"; ":"; "↪"; "⊢"
-  ; "→"; "@"; ","; ";"; "\""; "\'"; "≔"; "//"; " "; "\r"; "\n"; "\t"; "\b" ]
+  ; "→"; "@"; ","; ";"; "\""; "\'"; "≔"; "//"; " "; "\r"; "\n"; "\t"; "\b"
+  ; "/*" ]
   @ List.init 10 string_of_int
 
 (** [sanity_check pos s] checks that the token [s] is appropriate for an
@@ -28,6 +29,9 @@ let sanity_check : Pos.pos -> string -> unit = fun loc s ->
   (* We forbid valid (non-escaped) identifiers. *)
   if Lp_lexer.is_identifier s then
     parser_fatal loc "Invalid token (only identifier characters).";
+  (* Special case for debug flags *)
+  if Lp_lexer.is_debug_flag s then
+    parser_fatal loc "Invalid token (is a debug flag).";
   (* We also reject symbols with certain substrings. *)
   let check_substring w =
     if String.is_substring w s then

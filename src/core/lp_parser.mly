@@ -46,6 +46,7 @@
 %token COMPUTE_TYPE
 %token EQUIV
 %token UNIF_RULE
+%token <bool * string> DEBUG_FLAGS
 %token <bool> SWITCH
 %token <string> STRINGLIT
 %token <int> INT
@@ -219,6 +220,8 @@ query:
   // Set verbosity level
   | SET VERBOSE i=INT { make_pos $loc (P_query_verbose(i)) }
   | SET FLAG s=STRINGLIT b=SWITCH { make_pos $loc (P_query_flag(s,b)) }
+  | SET fl=DEBUG_FLAGS
+      { let (b, s) = fl in make_pos $loc (P_query_debug(b, s)) }
   | COMPUTE_TYPE t=term
     { make_pos $loc (P_query_infer(t, {strategy=NONE; steps=None}))}
   | COMPUTE t=term
