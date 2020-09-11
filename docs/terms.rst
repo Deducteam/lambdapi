@@ -70,7 +70,7 @@ A user-defined term can be either:
   applied to all the variables of the context.
 
 * an integer between 0 and 2^30-1 if the builtins “0” and “+1” are defined (see
-  the ```set`` <commands.md>`__ command)
+  the ```set`` <commands.rst>`__ command)
 
 Subterms can be parenthesized to avoid ambiguities.
 

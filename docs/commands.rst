@@ -50,7 +50,7 @@ module. It can also be combined with the ``require`` command.
 
 Symbols are declared using the ``symbol`` command, possibly associated
 with some modifier or an exposition marker. In the following example,
-``const`` is a modifier and ``private`` is an exposition marker.
+``constant`` is a modifier and ``private`` is an exposition marker.
 
 ::
 
@@ -247,7 +247,7 @@ tactic may generate new goals/metavariables. The proof of the theorem is
 complete only when all generated goals have been solved.
 
 A proof must start by the keyword ``proof`` followed by a sequence of
-`tactics <tactics.md>`__, and must end by the keywords ``qed`` (when the
+`tactics <tactics.rst>`__, and must end by the keywords ``qed`` (when the
 proof is complete), ``admit`` (when one wants to admit the theorem
 without proving it) or ``abort`` (when one wants to end the proof
 without adding the theorem in the environment).
