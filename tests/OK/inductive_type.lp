@@ -160,7 +160,7 @@ set infix left 6 "≤" ≔ le
 //  | le_S : Πn m:τ nat, π (n ≤ m) → π (n ≤ (succ m))
 
 ////////////////////// List of natural numbers
-
+set debug +gl
 constant symbol list : Set
 inductive List : TYPE ≔
  | nil  : List
