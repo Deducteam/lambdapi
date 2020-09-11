@@ -55,45 +55,41 @@ let gen_ind_typ_codom : popt -> sym -> (tbox list -> tbox) -> string -> tbox =
     | _ -> fatal pos "The type of %a is not supported" pp_symbol ind_sym
   in aux [] !(ind_sym.sym_type)
 
-(** [fold_cons_typ pos codom get_name build_rec_hyp domrec dom ind_sym
-    cons_sym f_rec f_not_rec acc s] generates some value iteratively by going
-    through the structure of [cons_sym.sym_type].
-    We introduce some notations:
-      - A product Π([x] : [a]), [b]
-      - [xs] stores each variable of the intial product during the computation
-      - [ts] is the arguments of the current symbol
-      - [rec_hyp] is the current recursive hypothesis
-      - [next] is the result of the recursive call
-      - [res] is a computation built incrementally
-    Now, we can describe each argument of the function [fold_cons_typ]:
-      - The argument [pos] is the position of the command inductive where the
-      constructors were defined.
-      - On the codomain, the function [codom ts xs res] is called on the
-      arguments to which [ind_sym] is applied [ts], the variables of the
-      products [xs] (in reverse order) and a computation built incrementally
-      [res].
-      - In case of a product, the function [get_name b i] splits the product
-      [b] and gives a name to the variable if it has none, thanks to the
-      number [i].
-      - In case of recursive occurrences, the function [build_rec_hyp ts x]
-      builds the recursive hypothesis associated, and then the function
-      [domrec a x rec_hyp next] is applied to conclude the building.
-      - Otherwise, the function [dom a x next] is called.
-      - If you would like to store a temporary result, the initial value is
-      [acc], and you can change this value in the recursive case with the
-      function [f_rec res x rec_hyp], and on the other case with the function
-      [f_not_rec res x].
-      - The string [s] is the prefix of variables' name. *)
+(** [fold_cons_typ pos codom inj_var build_rec_hyp domrec dom ind_sym cons_sym
+    f_rec f_not_rec init s] generates some value iteratively by going through
+    the structure of [cons_sym.sym_type]. The argument [pos] is the position
+    of the command inductive where the inductive type was defined. The symbol
+    [ind_sym] is the type of the current inductive type, and the symbol
+    [cons_sym] is the current constructor. If you would like to store a
+    temporary result, the initial value is [init], and you can change this
+    value in the recursive case with the function [f_rec res x rec_hyp], and
+    on the other case with the function [f_not_rec res x]. The string [s] is
+    the prefix of variables' name. It's useful for the function [inj_var] to
+    have names with no clash.
+    In this iteration, we keep track of the variables [xs] we went through
+    (the last variable comes first) and some accumulor [acc:'a]. There are
+    several cases:
+      1) If the current type is of the form [ind_sym ts], then we call
+         [codom ts xs acc].
+      2) If the current type is a product of the form [Π(x:ind_sym ts), b],
+         then we are in case of recursive occurrences, so the function
+         [build_rec_hyp ts x] builds the recursive hypothesis associated, and
+         then the function [domrec a x rec_hyp next] is applied to conclude
+         the building. ([rec_hyp] is the current recursive hypothesis and
+         [next] is the result of the recursive call.
+      3) If the current type is a product [Π(x:a), b] not of the previous
+         form, then the function [dom a x next] is called.
+      4) Any other case is an error.*)
 let fold_cons_typ (pos : popt) (codom : term list -> 'b list -> 'a -> 'c)
       (inj_var : 'b list -> tvar -> 'b)
       (build_rec_hyp : term list -> 'b -> 'a)
       (domrec : term -> 'b -> 'a -> 'c -> 'c) (dom : term -> 'b -> 'c -> 'c)
       (ind_sym : sym) (cons_sym : sym) (f_rec : 'a -> 'b -> 'a -> 'a)
-      (f_not_rec : 'a -> 'b -> 'a) (acc : 'a) (s : string) : 'c =
-  let rec aux : 'b list -> 'a -> int -> term -> 'c = fun xs res i a ->
+      (f_not_rec : 'a -> 'b -> 'a) (init : 'a) (s : string) : 'c =
+  let rec aux : 'b list -> 'a -> term -> 'c = fun xs acc a ->
     match Basics.get_args a with
     | (Symb(s), ts) ->
-       if s == ind_sym then codom ts xs res
+       if s == ind_sym then codom ts xs acc
        else fatal pos "%a is not a constructor of %a"
               pp_symbol cons_sym pp_symbol ind_sym
     | (Prod(a,b), _) ->
@@ -104,15 +100,15 @@ let fold_cons_typ (pos : popt) (codom : term list -> 'b list -> 'a -> 'c)
          | (Symb(s), ts) ->
              if s == ind_sym then
                let rec_hyp = build_rec_hyp ts x in
-               let next = aux (x::xs) (f_rec res x rec_hyp) (i+1) b in
+               let next = aux (x::xs) (f_rec acc x rec_hyp) b in
                domrec a x rec_hyp next
              else
-               let next = aux (x::xs) (f_not_rec res x) (i+1) b in
+               let next = aux (x::xs) (f_not_rec acc x) b in
                dom a x next
          | _ -> fatal pos "The type of %a is not supported" pp_symbol cons_sym
        end
     | _ -> fatal pos "The type of %a is not supported" pp_symbol cons_sym
-  in aux [] acc 0 !(cons_sym.sym_type)
+  in aux [] init !(cons_sym.sym_type)
 
 (** [gen_rec_type ss pos ind_sym cons_list] generates the induction principle
     of the inductive type [ind_sym] (and its position [pos]) with the cons-
