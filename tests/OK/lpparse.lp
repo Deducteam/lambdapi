@@ -16,4 +16,6 @@ rule g $x ↪ f $x;
 comment */
 
 symbol plus: A → A → A;
-set infix left 6 "+" ≔ plus;
+set infix left 6 "pl" ≔ plus;
+
+assert a pl a: A;

@@ -21,14 +21,13 @@ let forbidden_in_ops =
 (** [sanity_check pos s] checks that the token [s] is appropriate for an
     infix operator or a declared identifier. If it is not the case, then the
     [Fatal] exception is raised. *)
+(* REVIEW: this function might be removed since operators are now regular
+   identifiers. *)
 let sanity_check : Pos.pos -> string -> unit = fun loc s ->
   (* Of course, the empty string and keywords are forbidden. *)
   if s = "" then parser_fatal loc "Invalid token (empty).";
   if is_keyword s then
     parser_fatal loc "Invalid token (reserved).";
-  (* We forbid valid (non-escaped) identifiers. *)
-  if Lp_lexer.is_identifier s then
-    parser_fatal loc "Invalid token (only identifier characters).";
   (* Special case for debug flags *)
   if Lp_lexer.is_debug_flag s then
     parser_fatal loc "Invalid token (is a debug flag).";
