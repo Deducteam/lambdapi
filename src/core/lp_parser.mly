@@ -295,7 +295,8 @@ rule: l=term REWRITE r=term { make_pos $loc (l, r) }
 
 unification: l=term EQUIV r=term { (l, r) }
 
-unif_rule: l=unification REWRITE rs=separated_nonempty_list(DOT, unification)
+unif_rule: l=unification REWRITE
+L_SQ_BRACKET rs=separated_nonempty_list(SEMICOLON, unification) R_SQ_BRACKET
     {
       let equiv = Pos.none (P_Iden(Pos.none ([], "#equiv"), true)) in
       let p_appl t u = Pos.none (P_Appl(t, u)) in
