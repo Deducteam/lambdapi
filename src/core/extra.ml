@@ -327,6 +327,25 @@ module StrMap = Map.Make(String)
 (* Functional sets of strings. *)
 module StrSet = Set.Make(String)
 
+(** [get_safe_prefix p strings] returns a string starting with [p] and so
+    that, there is no positive integer [k] such that [p ^ string_of_int k]
+    belongs to [strings]. *)
+let get_safe_prefix : string -> StrSet.t -> string = fun head set ->
+  let head_len = String.length head in
+  let f s acc =
+    let s_len = String.length s in
+    if head_len <= s_len && String.equal head (String.sub s 0 head_len) then
+      let curr_int =
+        try
+          int_of_string (String.sub s head_len (s_len-1))
+        with _ -> 0
+      in
+      if acc < curr_int then curr_int else acc
+    else acc
+  in
+  let res = StrSet.fold f set (-1) in
+  head ^ (string_of_int (res+1))
+
 (** [time f x] times the application of [f] to [x], and returns the evaluation
     time in seconds together with the result of the application. *)
 let time : ('a -> 'b) -> 'a -> float * 'b = fun f x ->

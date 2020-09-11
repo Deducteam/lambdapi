@@ -40,52 +40,6 @@ let check_type_ind : popt -> term -> unit = fun pos rec_typ ->
                  [%a] isn't typable. Please, raise an issue."
         pp_term rec_typ
 
-(** [check_name_constructor i l] creates the prefixes for variables' name and
-    predicats' name according to the name of the inductive type [i] and its
-    constructors [l]. *)
-let check_name_constructor : sym -> sym list -> string * string = fun i l ->
-  (* [aux_2acc l acc1 acc2] returns the list of constructors' name which are
-     in conflict with the names of the form "x" with a number or not (stored
-     in [acc1]) or in conflict with the names of the form "p" with a number
-     or not (stored in [acc2]). *)
-  let rec aux_2acc l acc1 acc2 = match l with
-    | [] -> acc1, acc2
-    | t::q ->
-        let s = t.sym_name in
-        if Str.string_match (Str.regexp "^x[0-9]*$") s 0 then
-          aux_2acc q (s::acc1) acc2
-        else
-          if Str.string_match (Str.regexp "^p[0-9]*$") s 0 then
-            aux_2acc q acc1 (s::acc2)
-          else
-            aux_2acc q acc1 acc2
-  in
-  (* [get_prefix l e] returns a string of the form "e(i+1)" where i is the
-     maximum of the list [l]. Indeed, each element in the list [l] should
-     have the form "ei". In case of l = ["e"], the result is "e1". *)
-  let get_prefix l e = match l with
-    | [] -> e
-    | _ ->
-        let rec aux l acc = match l with
-          | [] -> acc
-          | t::q ->
-              let len = String.length t - 1 in
-              let curr_int =
-                try
-                  int_of_string (String.sub t 1 len)
-                with _ -> 0
-              in
-              if acc < curr_int then
-                aux q curr_int
-              else
-                aux q acc
-        in
-        let res = aux l (-1) in
-        e ^ (string_of_int (res+1))
-  in
-  let acc1, acc2 = aux_2acc (i::l) [] [] in
-  (get_prefix acc1 "x", get_prefix acc2 "p")
-
 (** [gen_ind_typ_codom pos ind_sym codom s] assumes that the type of [ind_sym]
     is of the form [Π(i1:a1),...,Π(in:an), TYPE]. It then generates a [tbox]
     similar to this type except that [TYPE] is replaced by
@@ -177,7 +131,10 @@ let gen_rec_type : Sig_state.t -> popt -> sym -> sym list -> term =
 
   (* STEP 0: Define some tools which will be useful *)
   let c = get_config ss pos in
-  let x_str, p_str = check_name_constructor ind_sym cons_list in
+  let l = List.map (fun e -> e.sym_name) (ind_sym::cons_list) in
+  let set = Extra.StrSet.of_list l in
+  let x_str = Extra.get_safe_prefix "x" set in
+  let p_str = Extra.get_safe_prefix "p" set in
   let p = Bindlib.new_var mkfree p_str in
   let app  : tbox -> tbox list -> tbox = List.fold_left _Appl in
   let fapp : sym  -> tbox list -> tbox = fun f ts -> app (_Symb f) ts in
