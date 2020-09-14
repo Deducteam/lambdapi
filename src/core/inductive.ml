@@ -184,8 +184,8 @@ let gen_rec_type : Sig_state.t -> popt -> sym -> sym list -> term =
       Print.pp_term (Bindlib.unbox t);
   Bindlib.unbox t
 
-(** [gen_rec_rules ind_sym rec_sym cons_list] returns the p_rules associated
-    with an induction principle [rec_sym] of the inductive type [ind_sym]
+(** [gen_rec_rules pos ind_sym rec_sym cons_list] returns the p_rules associa-
+    ted with an induction principle [rec_sym] of the inductive type [ind_sym]
     (with its constructors [cons_list]). That means the command
     inductive T : Π(i1:A1),...,Π(im:Am), TYPE := c1:T1 | ... | cn:Tn generates
     a rule for each constructor. If Ti = Π(b1:B1), ... , Π(bk:Bk), T then the
@@ -195,8 +195,8 @@ let gen_rec_type : Sig_state.t -> popt -> sym -> sym list -> term =
     with m underscores and tj? = nothing if xj isn't a value of the inductive
     type and tj? = (ind_T p pic1 ... picn _ ... _ xj) if xj is a value of the
     inductive type T (i.e. xj = T v1 ... vm) *)
-let gen_rec_rules : sym -> sym -> sym list -> p_rule list =
-  fun ind_sym rec_sym cons_list ->
+let gen_rec_rules : popt -> sym -> sym -> sym list -> p_rule list =
+  fun pos ind_sym rec_sym cons_list ->
 
   (* STEP 1: Create the common head of the rules *)
   let rec_iden = P.iden rec_sym.sym_name in
@@ -206,12 +206,11 @@ let gen_rec_rules : sym -> sym -> sym list -> p_rule list =
   let common_head = List.fold_left add_arg head cons_list in
   let appl2 : p_term -> tvar -> p_term = fun p t ->
     Pos.none (P_Appl(p, P.patt0 (Bindlib.name_of t))) in
-      
+
   (* STEP 2: Create each p_rule according to a constructor *)
   (* [gen_rule_cons cons_sym] creates a p_rule according to a constructor
      [cons_sym]. *)
   let gen_rule_cons : sym -> p_rule = fun cons_sym ->
-    let pos : popt = None in
     let codom : term list -> tvar list -> p_term -> p_rule = fun ts xs p ->
       let rec_arg = P.fold_appl (P.iden cons_sym.sym_name) (List.rev_map (fun t -> P.patt0 (Bindlib.name_of t)) xs) in
       let lhs = P.appl (P.appl_wild common_head (List.length ts)) rec_arg in

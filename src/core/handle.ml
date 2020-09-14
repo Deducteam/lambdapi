@@ -298,7 +298,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
       (* Compute the rules associated with the induction principle,
          check the type preservation of the rules and add them to the
          signature *)
-      let rs = Inductive.gen_rec_rules ind_sym rec_sym cons_list in
+      let rs = Inductive.gen_rec_rules cmd.pos ind_sym rec_sym cons_list in
       let ss = with_no_wrn (handle_rules ss) rs in
       (* Store inductive structure in the field "sign_ind" of the signature *)
       Sign.add_inductive ss.signature ind_sym cons_list rec_sym;
