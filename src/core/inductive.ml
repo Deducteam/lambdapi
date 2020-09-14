@@ -81,6 +81,7 @@ let gen_ind_typ_codom : popt -> sym -> (tbox list -> tbox) -> string -> tbox =
          form, then the function [dom a x next] is called.
       4) Any other case is an error.*)
 let fold_cons_typ (pos : popt) (codom : term list -> 'b list -> 'a -> 'c)
+      (inj_var : 'b list -> tvar -> 'b)
       (build_rec_hyp : term list -> 'b -> 'a)
       (domrec : term -> 'b -> 'a -> 'c -> 'c) (dom : term -> 'b -> 'c -> 'c)
       (ind_sym : sym) (cons_sym : sym) (f_rec : 'a -> 'b -> 'a -> 'a)
@@ -93,6 +94,7 @@ let fold_cons_typ (pos : popt) (codom : term list -> 'b list -> 'a -> 'c)
               pp_symbol cons_sym pp_symbol ind_sym
     | (Prod(a,b), _) ->
         let (x,b) = Basics.unbind_name b s in
+        let x = inj_var xs x in
        begin
          match Basics.get_args a with
          | (Symb(s), ts) ->
@@ -148,6 +150,7 @@ let gen_rec_type : Sig_state.t -> popt -> sym -> sym list -> term =
     let codom : term list -> tvar list -> tbox -> tbox = fun ts xs _ ->
       prf_of_p (List.map lift ts) (fapp cons_sym (List.rev_map _Vari xs))
     in
+    let inj_var : tvar list -> tvar -> tvar = fun _ x -> x in
     let build_rec_hyp : term list -> tvar -> tbox = fun ts x ->
       prf_of_p (List.map lift ts) (_Vari x)
     in
@@ -161,7 +164,7 @@ let gen_rec_type : Sig_state.t -> popt -> sym -> sym list -> term =
     let f_rec : tbox -> tvar -> tbox -> tbox = fun a _ _ -> a in
     let f_not_rec : tbox -> tvar -> tbox = fun a _ -> a in
     let init : tbox = _Type in
-    fold_cons_typ pos codom build_rec_hyp domrec dom ind_sym
+    fold_cons_typ pos codom inj_var build_rec_hyp domrec dom ind_sym
       cons_sym f_rec f_not_rec init x_str
   in
 
@@ -204,35 +207,36 @@ let gen_rec_rules : popt -> sym -> sym -> sym list -> p_rule list =
   let add_arg t s = P.appl t (P.patt0 ("pi" ^ s.sym_name)) in
   let head = P.appl rec_iden p_patt in
   let common_head = List.fold_left add_arg head cons_list in
-  let appl2 : p_term -> tvar -> p_term = fun p t ->
-    Pos.none (P_Appl(p, P.patt0 (Bindlib.name_of t))) in
 
   (* STEP 2: Create each p_rule according to a constructor *)
   (* [gen_rule_cons cons_sym] creates a p_rule according to a constructor
      [cons_sym]. *)
   let gen_rule_cons : sym -> p_rule = fun cons_sym ->
-    let codom : term list -> tvar list -> p_term -> p_rule = fun ts xs p ->
-      let rec_arg = P.fold_appl (P.iden cons_sym.sym_name) (List.rev_map (fun t -> P.patt0 (Bindlib.name_of t)) xs) in
+    let codom : term list -> p_term list -> p_term -> p_rule = fun ts xs p ->
+      let rec_arg = P.fold_appl (P.iden cons_sym.sym_name) (List.rev xs) in
       let lhs = P.appl (P.appl_wild common_head (List.length ts)) rec_arg in
       if !log_enabled then
         log_ind "The rule [%a] --> %a"
           Pretty.pp_p_term lhs Pretty.pp_p_term p;
       P.rule lhs p
     in
-    let build_rec_hyp : term list -> tvar -> p_term = fun ts x ->
-      let arg_type = P.appl_wild common_head (List.length ts) in
-      appl2 arg_type x
+    let inj_var : p_term list -> tvar -> p_term = fun xs _ ->
+      P.patt0 ("x" ^ (string_of_int (List.length xs)))
     in
-    let domrec : term -> tvar -> p_term -> p_rule -> p_rule =
+    let build_rec_hyp : term list -> p_term -> p_term = fun ts x ->
+      let arg_type = P.appl_wild common_head (List.length ts) in
+      P.appl arg_type x
+    in
+    let domrec : term -> p_term -> p_term -> p_rule -> p_rule =
       fun _ _ _ next -> next
     in
-    let dom : term -> tvar -> p_rule -> p_rule = fun _ _ next -> next in
-    let f_rec : p_term -> tvar -> p_term -> p_term =
-      fun p x rec_hyp -> P.appl (appl2 p x) rec_hyp
+    let dom : term -> p_term -> p_rule -> p_rule = fun _ _ next -> next in
+    let f_rec : p_term -> p_term -> p_term -> p_term =
+      fun p x rec_hyp -> P.appl (P.appl p x) rec_hyp
     in
-    let f_not_rec : p_term -> tvar -> p_term = fun p x -> appl2 p x in
+    let f_not_rec : p_term -> p_term -> p_term = fun p x -> P.appl p x in
     let init : p_term = P.patt0 ("pi" ^ cons_sym.sym_name) in
-    fold_cons_typ pos codom build_rec_hyp domrec dom ind_sym
+    fold_cons_typ pos codom inj_var build_rec_hyp domrec dom ind_sym
       cons_sym f_rec f_not_rec init ""
   in
 
