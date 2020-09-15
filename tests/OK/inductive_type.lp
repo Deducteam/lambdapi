@@ -34,8 +34,6 @@ set builtin "eqind" ≔ eq_ind
 
 ////////////////// Primary color
 
-set debug +g
-
 set declared "ℝ"
 set declared "𝔾"
 inductive RGB : TYPE ≔
@@ -219,6 +217,106 @@ assert ind_BExpr p0 p1 piLit piAdd piIf piBLit piAnd piNot piEqual (Not bexpr1)
 assert ind_BExpr p0 p1 piLit piAdd piIf piBLit piAnd piNot piEqual (Equal expr1 expr2)
   ≡ piEqual expr1 (ind_Expr p0 p1 piLit piAdd piIf piBLit piAnd piNot piEqual expr1) 
             expr2 (ind_Expr p0 p1 piLit piAdd piIf piBLit piAnd piNot piEqual expr2)
+
+set debug +g
+
+inductive AExp : TYPE ≔
+ | lit : Nat → AExp
+ | add : AExp → AExp → AExp
+ | if  : BExp → AExp → AExp → AExp
+with BExp : TYPE ≔
+ | bLit : 𝔹 → BExp
+ | equal : AExp → AExp → BExp
+with Com : TYPE ≔
+ | cSkip : Com
+ | cAss  : Π(x : Set) (a : AExp), Com
+ | cSeq  : Π(c1 c2 : Com), Com
+ | cIf   : Π(b : BExp) (c1 c2 : Com), Com
+
+assert ind_AExp :
+  Πp0: AExp → Prop, Πp1: BExp → Prop, Πp2: Com → Prop,
+   (Πx: Nat, π (p0 (lit x))) →
+   (Πx: AExp, π (p0 x) → Πx0: AExp, π (p0 x0) → π (p0 (add x x0))) →
+   (Πx: BExp, π (p1 x) → Πx0: AExp, π (p0 x0) → Πx1: AExp, π (p0 x1) → π (p0 (if x x0 x1))) →
+   (Πx: 𝔹, π (p1 (bLit x))) →
+   (Πx: AExp, π (p0 x) → Πx0: AExp, π (p0 x0) → π (p1 (equal x x0))) →
+   π (p2 cSkip) →
+   (Πx: Set, Πx0: AExp, π (p0 x0) → π (p2 (cAss x x0))) →
+   (Πx: Com, π (p2 x) → Πx0: Com, π (p2 x0) → π (p2 (cSeq x x0))) →
+   (Πx: BExp, π (p1 x) → Πx0: Com, π (p2 x0) → Πx1: Com, π (p2 x1) → π (p2 (cIf x x0 x1))) →
+  Πx: AExp, π (p0 x)
+
+assert ind_BExp :
+  Πp0: AExp → Prop, Πp1: BExp → Prop, Πp2: Com → Prop,
+   (Πx: Nat, π (p0 (lit x))) →
+   (Πx: AExp, π (p0 x) → Πx0: AExp, π (p0 x0) → π (p0 (add x x0))) →
+   (Πx: BExp, π (p1 x) → Πx0: AExp, π (p0 x0) → Πx1: AExp, π (p0 x1) → π (p0 (if x x0 x1))) →
+   (Πx: 𝔹, π (p1 (bLit x))) →
+   (Πx: AExp, π (p0 x) → Πx0: AExp, π (p0 x0) → π (p1 (equal x x0))) →
+   π (p2 cSkip) →
+   (Πx: Set, Πx0: AExp, π (p0 x0) → π (p2 (cAss x x0))) →
+   (Πx: Com, π (p2 x) → Πx0: Com, π (p2 x0) → π (p2 (cSeq x x0))) →
+   (Πx: BExp, π (p1 x) → Πx0: Com, π (p2 x0) → Πx1: Com, π (p2 x1) → π (p2 (cIf x x0 x1))) →
+  Πx: BExp, π (p1 x)
+
+assert ind_Com :
+  Πp0: AExp → Prop, Πp1: BExp → Prop, Πp2: Com → Prop,
+   (Πx: Nat, π (p0 (lit x))) →
+   (Πx: AExp, π (p0 x) → Πx0: AExp, π (p0 x0) → π (p0 (add x x0))) →
+   (Πx: BExp, π (p1 x) → Πx0: AExp, π (p0 x0) → Πx1: AExp, π (p0 x1) → π (p0 (if x x0 x1))) →
+   (Πx: 𝔹, π (p1 (bLit x))) →
+   (Πx: AExp, π (p0 x) → Πx0: AExp, π (p0 x0) → π (p1 (equal x x0))) →
+   π (p2 cSkip) →
+   (Πx: Set, Πx0: AExp, π (p0 x0) → π (p2 (cAss x x0))) →
+   (Πx: Com, π (p2 x) → Πx0: Com, π (p2 x0) → π (p2 (cSeq x x0))) →
+   (Πx: BExp, π (p1 x) → Πx0: Com, π (p2 x0) → Πx1: Com, π (p2 x1) → π (p2 (cIf x x0 x1))) →
+  Πx: Com, π (p2 x)
+
+symbol pA : AExp → Prop
+symbol pB : BExp → Prop
+symbol pCom : Com → Prop
+symbol pilit : Πx: Nat, π (pA (lit x))
+symbol piadd : Πx: AExp, π (pA x) → Πx0: AExp, π (pA x0) → π (pA (add x x0))
+symbol piif : Πx: BExp, π (pB x) → Πx0: AExp, π (pA x0) → Πx1: AExp, π (pA x1) → π (pA (if x x0 x1))
+symbol pibLit : Πx: 𝔹, π (pB (bLit x))
+symbol piequal :Πx: AExp, π (pA x) → Πx0: AExp, π (pA x0) → π (pB (equal x x0))
+symbol picSkip : π (pCom cSkip)
+symbol picAss : Πx: Set, Πx0: AExp, π (pA x0) → π (pCom (cAss x x0))
+symbol picSeq : Πx: Com, π (pCom x) → Πx0: Com, π (pCom x0) → π (pCom (cSeq x x0))
+symbol picIf : Πx: BExp, π (pB x) → Πx0: Com, π (pCom x0) → Πx1: Com, π (pCom x1) → π (pCom (cIf x x0 x1))
+symbol xAE1 : AExp
+symbol xAE2 : AExp
+symbol xBE1 : BExp
+symbol xBE2 : BExp
+symbol xCom1 : Com
+symbol xCom2 : Com
+symbol xS : Set
+assert ind_Com _ _ pCom _ _ _ _ _ picSkip _ _ _ cSkip ≡ picSkip
+assert ind_Com _ _ pCom pilit piadd piif pibLit piequal picSkip picAss picSeq picIf (cAss xS xAE1) 
+ ≡ picAss xS xAE1 (ind_AExp _ _ pCom pilit piadd piif pibLit piequal picSkip picAss picSeq picIf xAE1)
+assert ind_Com _ _ pCom pilit piadd piif pibLit piequal picSkip picAss picSeq picIf (cSeq xCom1 xCom2) 
+ ≡ picSeq xCom1 (ind_Com _ _ pCom pilit piadd piif pibLit piequal picSkip picAss picSeq picIf xCom1)
+          xCom2 (ind_Com _ _ pCom pilit piadd piif pibLit piequal picSkip picAss picSeq picIf xCom2)
+assert ind_Com _ _ pCom pilit piadd piif pibLit piequal picSkip picAss picSeq picIf (cIf xBE1 xCom1 xCom2) 
+ ≡ picIf xBE1  (ind_BExp _ _ pCom pilit piadd piif pibLit piequal picSkip picAss picSeq picIf xBE1)
+         xCom1 (ind_Com _ _ pCom pilit piadd piif pibLit piequal picSkip picAss picSeq picIf xCom1)
+         xCom2 (ind_Com _ _ pCom pilit piadd piif pibLit piequal picSkip picAss picSeq picIf xCom2)
+assert ind_BExp _ pB _ _ _ _ pibLit _ _ _ _ _ (bLit b) ≡ pibLit b
+assert ind_BExp _ _ pCom pilit piadd piif pibLit piequal picSkip picAss picSeq picIf (equal xAE1 xAE2) 
+ ≡ piequal xAE1 (ind_AExp _ _ pCom pilit piadd piif pibLit piequal picSkip picAss picSeq picIf xAE1)
+           xAE2 (ind_AExp _ _ pCom pilit piadd piif pibLit piequal picSkip picAss picSeq picIf xAE2)
+assert ind_AExp pA _ _ pilit _ _ _ _ _ _ _ _ (lit x) ≡ pilit x
+assert ind_AExp _ _ pCom pilit piadd piif pibLit piequal picSkip picAss picSeq picIf (add xAE1 xAE2) 
+ ≡ piadd xAE1 (ind_AExp _ _ pCom pilit piadd piif pibLit piequal picSkip picAss picSeq picIf xAE1)
+         xAE2 (ind_AExp _ _ pCom pilit piadd piif pibLit piequal picSkip picAss picSeq picIf xAE2)
+assert ind_AExp _ _ pCom pilit piadd piif pibLit piequal picSkip picAss picSeq picIf (if xBE1 xAE1 xAE2) 
+ ≡ piif xBE1  (ind_BExp _ _ pCom pilit piadd piif pibLit piequal picSkip picAss picSeq picIf xBE1)
+         xAE1 (ind_AExp _ _ pCom pilit piadd piif pibLit piequal picSkip picAss picSeq picIf xAE1)
+         xAE2 (ind_AExp _ _ pCom pilit piadd piif pibLit piequal picSkip picAss picSeq picIf xAE2)
+
+
+
+
 
 inductive even : Nat → TYPE ≔
   | even_O : even 0
