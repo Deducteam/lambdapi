@@ -9,6 +9,8 @@
 (defconst lambdapi-tactics
   '("apply"
     "assume"
+    "fail"
+    "focus"
     "print"
     "proofterm"
     "refine"
