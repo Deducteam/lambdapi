@@ -7,19 +7,6 @@
 (require 'smie)
 
 ;; Lists of keywords
-(defconst lambdapi--tactics
-  '("apply"
-    "assume"
-    "fail"
-    "focus"
-    "print"
-    "proofterm"
-    "refine"
-    "reflexivity"
-    "rewrite"
-    "simpl"
-    "symmetry"
-    "why3"))
 (defconst lambdapi--queries '("set" "assert" "assertnot" "type" "compute")
   "Commands that can appear in proofs.")
 (defconst lambdapi--cmds
