@@ -75,8 +75,8 @@ let gen_ind_typ_codom : popt -> sym -> (tbox list -> tbox) -> string -> tbox =
          then we are in case of recursive occurrences, so the function
          [build_rec_hyp ts x] builds the recursive hypothesis associated, and
          then the function [domrec a x rec_hyp next] is applied to conclude
-         the building. ([rec_hyp] is the current recursive hypothesis and
-         [next] is the result of the recursive call.
+         the building ([rec_hyp] is the current recursive hypothesis and
+         [next] is the result of the recursive call).
       3) If the current type is a product [Π(x:a), b] not of the previous
          form, then the function [dom a x next] is called.
       4) Any other case is an error.*)
@@ -197,7 +197,9 @@ let gen_rec_type : Sig_state.t -> popt -> sym -> sym list -> term =
     pici x0 t0? ... x(k-1) t(k-1)?
     with m underscores and tj? = nothing if xj isn't a value of the inductive
     type and tj? = (ind_T p pic1 ... picn _ ... _ xj) if xj is a value of the
-    inductive type T (i.e. xj = T v1 ... vm) *)
+    inductive type T (i.e. xj = T v1 ... vm).
+    Note: There cannot be name clashes between pattern variable names and
+    function symbols names since pattern variables are prefixed by $. *)
 let gen_rec_rules : popt -> sym -> sym -> sym list -> p_rule list =
   fun pos ind_sym rec_sym cons_list ->
 

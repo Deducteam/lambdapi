@@ -397,6 +397,8 @@ assert unl (succ z) z t12 (bin z z mty mty) : rom (succ (succ z))
 
 //rule ind_rom $p $pmty $pbin $punl (($x0 + $x1)+1) (bin $x0 $x1 $x2 $x3)
 //   ↪ $pbin $x0 $x1 $x2 (ind_rom $p $pmty $pbin $punl $x0 $x2) $x3 (ind_rom $p $pmty $pbin $punl $x1 $x3)
+rule ind_rom $p $pmty $pbin $punl _ (bin $x0 $x1 $x2 $x3)
+  ↪ $pbin $x0 $x1 $x2 (ind_rom $p $pmty $pbin $punl _ $x2) $x3 (ind_rom $p $pmty $pbin $punl _ $x3)
 
 /////////////////// Polymorphic vector
 
@@ -463,7 +465,7 @@ proof
   refine ind_Nat (λz, (z + 0) = z) _ _ _
   // Case n = O
   refine eq_refl 0
-  // Case n = S n'
+  // Case = S n'
   assume n' Hn'
   simpl
   rewrite Hn'
