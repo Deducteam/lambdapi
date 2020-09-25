@@ -67,8 +67,11 @@ let gen_ind_typ_codom : popt -> sym -> (tbox list -> tbox) -> string -> tbox =
     the prefix of variables' name. It's useful for the function [inj_var] to
     have names with no clash.
     In this iteration, we keep track of the variables [xs] we went through
-    (the last variable comes first) and some accumulor [acc:'a]. There are
-    several cases:
+    (the last variable comes first) and some accumulor [acc:'a]. Note that, at
+    the beginning, the function [fold_cons_typ] is equal to
+    [aux [] init  !(cons_sym.sym_type)] where
+    [aux : 'b list -> 'a -> term -> 'c = fun xs acc a].
+    During an iteration, there are several cases:
       1) If the current type is of the form [ind_sym ts], then we call
          [codom ts xs acc].
       2) If the current type is a product of the form [Π(x:ind_sym ts), b],
@@ -127,8 +130,15 @@ let gen_rec_type : Sig_state.t -> popt -> sym -> sym list -> term =
 
   (* STEP 0: Define some tools which will be useful *)
   let c = get_config ss pos in
-  let l = List.map (fun e -> e.sym_name) (ind_sym::cons_list) in
-  let set = Extra.StrSet.of_list l in
+  let set =
+    let f set sym =
+      let s = sym.sym_name in
+      if s <> "" && (s.[0] = 'x' || s.[0] = 'p') then
+        Extra.StrSet.add s set
+      else set
+    in
+    List.fold_left f Extra.StrSet.empty (ind_sym::cons_list)
+  in
   let x_str = Extra.get_safe_prefix "x" set in
   let p_str = Extra.get_safe_prefix "p" set in
   let p = Bindlib.new_var mkfree p_str in
