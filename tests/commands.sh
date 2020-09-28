@@ -13,7 +13,7 @@ ok() {
 }
 
 LAMBDAPI="lambdapi decision-tree --verbose 0 \
-    --lib-root=lib --map-dir=tests:tests"
+--map-dir=tests:tests"
 
 printf '## decision-tree tests ##\n'
 

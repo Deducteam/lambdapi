@@ -10,8 +10,11 @@ tmp="$(mktemp -d)"
 cp "dist/lambdapi-mode-$1.tar" "${tmp}"
 (cd "${tmp}" || exit 1
  curl https://sanemacs.com/sanemacs.el > sanemacs.el
- echo '(use-package eglot)' >> sanemacs.el
- echo '(use-package math-symbol-lists)' >> sanemacs.el
+ {
+     echo '(use-package eglot)';
+     echo '(use-package math-symbol-lists)';
+     echo '(use-package highlight)';
+ } >> sanemacs.el
  emacs --quick -l sanemacs.el \
      --eval "(package-install-file \"lambdapi-mode-$1.tar\")")
 rm -rf "${tmp}"

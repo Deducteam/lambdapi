@@ -16,7 +16,7 @@ doc:
 
 #### Unit tests and sanity check #############################################
 
-LAMBDAPI     = dune exec -- lambdapi check --lib-root lib
+LAMBDAPI     = dune exec -- lambdapi check
 OK_TESTFILES = $(sort $(wildcard tests/OK/*.dk tests/OK/*.lp))
 KO_TESTFILES = $(sort $(wildcard tests/KO/*.dk tests/KO/*.lp))
 
@@ -32,6 +32,8 @@ tests: bin
 	@dune exec -- tests/commands.sh \
 && printf '\033[32mOK\033[0m commands.sh\n' \
 || { printf '\033[31mKO\033[0m commands.sh\n'; exit 1; }
+	@printf "## XTC tests ##\n"
+	@dune exec -- tests/xtc.sh
 	@printf "## KO tests ##\n"
 	@for file in $(KO_TESTFILES) ; do \
 		$(LAMBDAPI) --verbose 0 $$file 2> /dev/null \
@@ -51,6 +53,8 @@ real_tests: bin
 	@dune exec -- tests/commands.sh \
 && printf '\033[32mOK\033[0m commands.sh\n' \
 || { printf '\033[31mKO\033[0m commands.sh\n'; exit 1; }
+	@printf "## XTC tests ##\n"
+	@dune exec -- tests/xtc.sh
 	@printf "## KO tests ##\n"
 	@for file in $(KO_TESTFILES) ; do \
 		$(LAMBDAPI) --verbose 0 $$file 2> /dev/null \

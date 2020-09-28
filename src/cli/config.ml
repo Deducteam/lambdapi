@@ -42,7 +42,7 @@ let default_config =
 let init : config -> unit = fun cfg ->
   (* Set all the flags and configs. *)
   Compile.gen_obj := cfg.gen_obj;
-  Option.iter Files.set_lib_root cfg.lib_root;
+  Files.set_lib_root cfg.lib_root;
   List.iter (fun (m,d) -> Files.new_lib_mapping (m ^ ":" ^ d)) cfg.map_dir;
   Option.iter set_default_verbose cfg.verbose;
   no_wrn := cfg.no_warnings;
@@ -53,12 +53,11 @@ let init : config -> unit = fun cfg ->
   if Timed.(!log_enabled) then
     begin
       Files.log_file "running directory: [%s]" (Files.current_path ());
-      Files.log_file "library root path: [%s]" (Files.lib_root_path ());
+      Files.log_file "library root path: [%s]"
+        (match !lib_root with None -> assert false | Some(p) -> p);
       let fn = Files.log_file "mapping: [%a] → [%s]" Files.Path.pp in
       Files.ModMap.iter fn (Files.current_mappings ())
     end;
-  (* Register the library root. *)
-  Files.init_lib_root ();
   (* Initialise the [Pure] interface (this must come last). *)
   Pure.set_initial_time ()
 
@@ -79,15 +78,17 @@ let gen_obj : bool Term.t =
 
 let lib_root : string option Term.t =
   let doc =
-    Printf.sprintf
-      "Set the library root to be the directory $(docv). Roughly, the \
-       library root is common path under which every module is placed. It \
-       has the same purpose as the root directory \"/\" of Unix systems. \
-       In fact it is possible to \"mount\" directories under the library \
-       root with the \"--map-dir\" option. The default library root of the \
-       system (set to \"%s\") should always be preferred. This option is \
-       only provided for advanced usages."
-      (Files.default_lib_root ())
+    "Set the library root to be the directory $(docv). The library root \
+     is a common path under which every module is placed. \
+     It has the same purpose as the root directory \"/\" of Unix systems. \
+     In fact it is possible to \"mount\" directories under the library \
+     root with the \"--map-dir\" option. \
+     Lambdapi uses $(docv) as library root if it is provided, \
+     otherwise it uses $(b,\\$LAMBDAPI_LIB_ROOT/lib/lambdapi/lib_root) \
+     if the environment variable $(b,LAMBDAPI_LIB_ROOT) is set, \
+     then $(b,\\$OPAM_SWITCH_PREFIX/lib/lambdapi/lib_root) \
+     if $(b,OPAM_SWITCH_PREFIX) is set or it uses \
+     /usr/local/lib/lambdapi/lib_root."
   in
   Arg.(value & opt (some dir) None & info ["lib-root"] ~docv:"DIR" ~doc)
 

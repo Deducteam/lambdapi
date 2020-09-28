@@ -9,7 +9,7 @@
 ;; Homepage: https://github.com/Deducteam/lambdapi
 ;; Keywords: languages
 ;; Compatibility: GNU Emacs 26.1
-;; Package-Requires: ((emacs "26.1") (eglot "1.5") (math-symbol-lists "1.2.1"))
+;; Package-Requires: ((emacs "26.1") (eglot "1.5") (math-symbol-lists "1.2.1") (highlight "20190710.1527"))
 
 ;;; Commentary:
 
@@ -18,14 +18,13 @@
 
 ;;; Code:
 
+(require 'eglot)
 (require 'lambdapi-vars)
 (require 'lambdapi-smie)
 (require 'lambdapi-capf)
 (require 'lambdapi-abbrev)
 (require 'lambdapi-input)
 (require 'lambdapi-proofs)
-(require 'highlight)
-(require 'eglot)
 ;;; Legacy
 ;; Syntax table (legacy syntax)
 (defvar lambdapi-mode-legacy-syntax-table nil "Syntax table for LambdaPi.")
@@ -90,17 +89,17 @@
 
 ;; Hook to be run when changing line
 ;; From https://emacs.stackexchange.com/questions/46081/hook-when-line-number-changes
-(defvar current-line-number (line-number-at-pos))
-(defvar changed-line-hook nil)
+(defvar lambdapi-current-line-number (line-number-at-pos))
+(defvar lambdapi-changed-line-hook nil)
 
-(defun update-line-number ()
+(defun lambdapi-update-line-number ()
   (if interactive-goals
       (let ((new-line-number (line-number-at-pos)))
-        (when (not (equal new-line-number current-line-number))
-          (setq current-line-number new-line-number)
+        (when (not (equal new-line-number lambdapi-current-line-number))
+          (setq lambdapi-current-line-number new-line-number)
           (run-hooks 'changed-line-hook)))))
 
-(defun create-goals-buffer ()
+(defun lambdapi-create-goals-buffer ()
   (let ((goalsbuf (get-buffer-create "*Goals*"))
         (goalswindow (split-window nil -10 'below)))
     (set-window-buffer goalswindow goalsbuf)
@@ -142,10 +141,10 @@
   (eglot-ensure)
 
   ;; Hooks for goals
-  (add-hook 'post-command-hook #'update-line-number nil :local)
+  (add-hook 'post-command-hook #'lambdapi-update-line-number nil :local)
   ;; Hook binding line change to re-execution of proof/goals
-  (add-hook 'changed-line-hook #'lp-display-goals)
-  (create-goals-buffer))
+  (add-hook 'lambdapi-changed-line-hook #'lp-display-goals)
+  (lambdapi-create-goals-buffer))
 
 ;; Register mode the the ".lp" extension
 ;;;###autoload
