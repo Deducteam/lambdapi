@@ -107,6 +107,17 @@ let iter : (term -> unit) -> term -> unit = fun action ->
     | LLet(a,t,u) -> iter a; iter t; iter (Bindlib.subst u Kind)
   in iter
 
+(** [unbind_name b s] is like [Bindlib.unbind b] but returns a valid variable
+    name when [b] binds no variable. The string [s] is the prefix of the
+    variable's name.*)
+let unbind_name :
+      (term, term) Bindlib.binder -> string -> tvar * term = fun b s ->
+  if Bindlib.binder_occur b then
+    Bindlib.unbind b
+  else
+    let x = Bindlib.new_var mkfree s in
+    (x, Bindlib.subst b (Vari x))
+
 (** {3 Metavariables} *)
 
 (** [make_meta ctx a] creates a metavariable of type [a],  with an environment

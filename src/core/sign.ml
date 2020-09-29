@@ -8,6 +8,11 @@ open Terms
 open Syntax
 open Pos
 
+(** Representation of an inductive type *)
+type inductive =
+  { ind_cons  : sym list  (** List of constructors                 *)
+  ; ind_prop  : sym       (** Induction principle on propositions. *) }
+
 (** Representation of a signature. It roughly corresponds to a set of symbols,
     defined in a single module (or file). *)
 type t =
@@ -18,7 +23,8 @@ type t =
   ; sign_unops    : (sym * unop ) StrMap.t ref
   ; sign_binops   : (sym * binop) StrMap.t ref
   ; sign_idents   : StrSet.t ref
-  ; sign_quants   : SymSet.t ref }
+  ; sign_quants   : SymSet.t ref
+  ; sign_ind      : inductive SymMap.t ref }
 
 (* NOTE the [deps] field contains a hashtable binding the [module_path] of the
    external modules on which the current signature depends to an association
@@ -31,7 +37,16 @@ let dummy : unit -> t = fun () ->
   { sign_symbols = ref StrMap.empty; sign_path = []
   ; sign_deps = ref PathMap.empty; sign_builtins = ref StrMap.empty
   ; sign_unops = ref StrMap.empty; sign_binops = ref StrMap.empty
-  ; sign_idents = ref StrSet.empty; sign_quants = ref SymSet.empty }
+  ; sign_idents = ref StrSet.empty; sign_quants = ref SymSet.empty
+  ; sign_ind = ref SymMap.empty }
+
+(** [create sign_path] creates an empty signature with module path
+    [sign_path]. *)
+let create : Path.t -> t = fun sign_path ->
+  { sign_path; sign_symbols = ref StrMap.empty; sign_deps = ref PathMap.empty
+  ; sign_builtins = ref StrMap.empty; sign_unops = ref StrMap.empty
+  ; sign_binops = ref StrMap.empty; sign_idents = ref StrSet.empty
+  ; sign_quants = ref SymSet.empty ; sign_ind = ref SymMap.empty }
 
 (** [find sign name] finds the symbol named [name] in [sign] if it exists, and
     raises the [Not_found] exception otherwise. *)
@@ -67,13 +82,16 @@ let current_sign () =
   in
   PathMap.find mp !loaded
 
-(** [new_sym n a] creates a new (private definable) symbol of name [n] and
-   type [a]. *)
-let new_sym : string -> term -> sym = fun name typ ->
+(** [create_sym e p name type blist] creates a new symbol
+    with the exposition [e], the property [p], the name [name]
+    the type [type] and no implicit arguments *)
+let create_sym : expo -> prop -> string -> term -> bool list -> sym =
+  fun e p name typ blist ->
   let path = (current_sign()).sign_path in
-  { sym_name = name; sym_type = ref typ; sym_path = path; sym_def = ref None
-    ; sym_impl = []; sym_rules = ref []; sym_prop = Defin; sym_expo = Privat
-    ; sym_tree = ref Tree_types.empty_dtree; sym_mstrat = ref Eager }
+  { sym_name = name ; sym_type = ref typ ; sym_path = path
+    ; sym_def = ref None ; sym_impl = blist; sym_rules = ref []
+    ; sym_prop = p ; sym_expo = e ; sym_tree = ref Tree_types.empty_dtree
+    ; sym_mstrat = ref Eager }
 
 (** [link sign] establishes physical links to the external symbols. *)
 let link : t -> unit = fun sign ->
@@ -133,7 +151,13 @@ let link : t -> unit = fun sign ->
   sign.sign_unops := StrMap.map hn !(sign.sign_unops);
   sign.sign_binops := StrMap.map hn !(sign.sign_binops);
   StrMap.iter (fun _ (s, _) -> Tree.update_dtree s) !(sign.sign_symbols);
-  sign.sign_quants := SymSet.map link_symb !(sign.sign_quants)
+  sign.sign_quants := SymSet.map link_symb !(sign.sign_quants);
+  let link_inductive i =
+    { ind_cons = List.map link_symb i.ind_cons
+    ; ind_prop = link_symb i.ind_prop }
+  in
+  let fn s i m = SymMap.add (link_symb s) (link_inductive i) m in
+  sign.sign_ind := SymMap.fold fn !(sign.sign_ind) SymMap.empty
 
 (** [unlink sign] removes references to external symbols (and thus signatures)
     in the signature [sign]. This function is used to minimize the size of our
@@ -183,7 +207,12 @@ let unlink : t -> unit = fun sign ->
   StrMap.iter (fun _ s -> unlink_sym s) !(sign.sign_builtins);
   StrMap.iter (fun _ (s,_) -> unlink_sym s) !(sign.sign_unops);
   StrMap.iter (fun _ (s,_) -> unlink_sym s) !(sign.sign_binops);
-  SymSet.iter unlink_sym !(sign.sign_quants)
+  SymSet.iter unlink_sym !(sign.sign_quants);
+  let unlink_inductive i =
+    List.iter unlink_sym i.ind_cons; unlink_sym i.ind_prop
+  in
+  let fn s i = unlink_sym s; unlink_inductive i in
+  SymMap.iter fn !(sign.sign_ind)
 
 (** [add_symbol sign expo prop mstrat name a impl] creates a fresh symbol with
     name [name], exposition [expo], property [prop], matching strategy
@@ -275,6 +304,12 @@ let read : string -> t = fun fname ->
     let fn (_,r) = reset_rule r in
     PathMap.iter (fun _ -> List.iter fn) !(sign.sign_deps);
     SymSet.iter shallow_reset_sym !(sign.sign_quants);
+    let shallow_reset_inductive i =
+      shallow_reset_sym i.ind_prop;
+      List.iter shallow_reset_sym i.ind_cons
+    in
+    let fn s i = shallow_reset_sym s; shallow_reset_inductive i in
+    SymMap.iter fn !(sign.sign_ind);
     sign
   in
   reset_timed_refs sign
@@ -317,6 +352,14 @@ let add_ident : t -> string -> unit = fun sign id ->
 (** [add_quant sign sym] add the quantifier [sym] to [sign]. *)
 let add_quant : t -> sym -> unit = fun sign sym ->
   sign.sign_quants := SymSet.add sym !(sign.sign_quants)
+
+(** [add_inductive sign typ ind_cons ind_prop] add the inductive type which
+    consists of a type [typ], constructors [ind_cons] and an induction
+    principle [ind_prop] to [sign]. *)
+let add_inductive : t -> sym -> sym list -> sym -> unit =
+  fun sign typ ind_cons ind_prop ->
+  let ind = { ind_cons ; ind_prop } in
+  sign.sign_ind := SymMap.add typ ind !(sign.sign_ind)
 
 (** [dependencies sign] returns an association list containing (the transitive
     closure of) the dependencies of the signature [sign].  Note that the order
