@@ -15,7 +15,7 @@
 
 (defconst lambdapi--all-keywords
   (append lambdapi-sig-commands
-          lambdapi-tactics
+          lambdapi--tactics
           lambdapi-misc-commands
           lambdapi-misc-keywords)
   "All keywords to complete.")

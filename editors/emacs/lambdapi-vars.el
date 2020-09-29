@@ -6,7 +6,7 @@
 ;;
 ;;; Code:
 
-(defconst lambdapi-tactics
+(defconst lambdapi--tactics
   '("apply"
     "assume"
     "fail"
