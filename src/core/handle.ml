@@ -353,7 +353,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
       in
       (* STEP 5 - Store inductive structure in the field "sign_ind" of the
          signature *)
-      Extra.List.iter3 (Sign.add_inductive ss.signature)
+      List.iter3 (Sign.add_inductive ss.signature)
         ind_typ_list cons_list_list rec_sym_list;
       (ss, None)
   | P_theorem(ms, stmt, ts, pe) ->

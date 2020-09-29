@@ -110,7 +110,8 @@ module List =
       match l1, l2, l3 with
       | [], [], [] -> ()
       | t1::q1, t2::q2, t3::q3 -> f t1 t2 t3; iter3 f q1 q2 q3
-      | _ -> raise (Invalid_argument "Yours 3 lists have different lengths.")
+      | _ ->
+          raise (Invalid_argument "Argument lists must have the same length")
 
     (** [filter_map f l] applies [f] to the elements of [l] and keeps the [x]
         such that [Some(x)] in [List.map f l]. *)

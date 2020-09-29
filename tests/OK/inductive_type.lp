@@ -33,7 +33,7 @@ set builtin "eqind" ≔ eq_ind
 /////////////////////////////
 
 ////////////////// Primary color
-set debug +g
+
 set declared "ℝ"
 set declared "𝔾"
 inductive RGB : TYPE ≔

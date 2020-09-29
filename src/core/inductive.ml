@@ -246,7 +246,7 @@ let gen_rec_type :
     | i::qi, cl::qcl ->
         let res = clauses qi qcl e in
         List.fold_right (fun a b -> _Impl (case_of i a) b) cl res
-    | _ -> raise (Invalid_argument "Yours 2 lists have different lengths.")
+    | _ -> raise (Invalid_argument "Argument lists must have the same length")
   in
   let t = List.map (clauses ind_typ_list cons_list_list) conclusion_list in
 
@@ -342,6 +342,6 @@ let gen_rec_rules :
   let rec map3 f l1 l2 l3 = match l1, l2, l3 with
     | [], [], [] -> []
     | t1::q1, t2::q2, t3::q3 -> (f t1 t2 t3)::(map3 f q1 q2 q3)
-    | _ -> raise (Invalid_argument "Yours 3 lists have different lengths.")
+    | _ -> raise (Invalid_argument "Argument lists must have the same length")
   in
   map3 f ind_typ_list rec_sym_list cons_list_list
