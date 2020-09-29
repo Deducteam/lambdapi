@@ -12,5 +12,5 @@
   "A mode for editing LambdaPi files." t nil)
 (add-to-list 'auto-mode-alist '("\\.lp\\'" . lambdapi-mode))
 
-(autoload 'lambdapi-completion-at-point "lambdapi-capf"
+(autoload 'lambdapi--completion-at-point "lambdapi-capf"
   "Completion of symbol at point for lambdapi." t nil)
