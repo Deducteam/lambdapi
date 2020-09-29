@@ -301,7 +301,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
       let cons_list_list = List.rev cons_list_list_rev in
       (* STEP 3 - Generate the induction principle. *)
         (* A - Compute the induction principle *)
-      let rec_typ_list, assoc_predicat =
+      let rec_typ_list, assoc_predicats =
         Inductive.gen_rec_type ss cmd.pos ind_typ_list cons_list_list
       in
       let check_and_add rec_typ id ss =
@@ -345,7 +345,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
                signature *)
       let rs_list =
         Inductive.gen_rec_rules
-          ind_typ_list rec_sym_list cons_list_list assoc_predicat
+          cmd.pos ind_typ_list rec_sym_list cons_list_list assoc_predicats
       in
       let ss =
         with_no_wrn (List.fold_left (fun ss rs -> handle_rules ss rs) ss)

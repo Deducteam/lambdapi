@@ -8,6 +8,7 @@ open Timed
 open Files
 open Terms
 open Syntax
+open Extra
 
 (** Path of the module. *)
 let path = Path.ghost "unif_rule"
@@ -76,3 +77,6 @@ let rec p_unpack : p_term -> (p_term * p_term) list = fun eqs ->
       else if id s = "#equiv" then [(v, w)] else
       assert false (* Ill-formed term. *)
   | _                               -> assert false (* Ill-formed term. *)
+
+(** [is_ghost s] is true iff [s] is a symbol of the ghost signature. *)
+let is_ghost : sym -> bool = fun s -> s == equiv || s == cons

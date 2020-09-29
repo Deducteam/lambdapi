@@ -32,6 +32,7 @@
     "require"
     "rule"
     "symbol"
+    "inductive"
     "theorem"
     "with")
   "Commands that enrich the signature.")
