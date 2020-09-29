@@ -6,7 +6,7 @@
 ;;  package `math-symbol-lists'.
 ;;  Since Company's dropdown menu is disabled as long as there are quail
 ;;  candidates, some users may prefer to inhibit quail and use directly company
-;;  setting `lambdapi--unicode-prefer-company' to non-nil.
+;;  setting `lambdapi-unicode-prefer-company' to non-nil.
 ;;
 ;;; Code:
 (require 'lambdapi-vars)
@@ -258,7 +258,7 @@ miscellaneous.")
              math-symbol-list-superscripts))
   "Extracted from ‘math-symbol-list-superscripts’.")
 
-(unless lambdapi--unicode-prefer-company
+(unless lambdapi-unicode-prefer-company
   (seq-do (lambda (com-ltx) (quail-defrule (car com-ltx) (cdr com-ltx)))
           (seq-concatenate 'list
                            lambdapi--math-symbol-list-basic

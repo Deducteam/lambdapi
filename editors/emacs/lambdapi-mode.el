@@ -27,9 +27,9 @@
 (require 'lambdapi-proofs)
 ;;; Legacy
 ;; Syntax table (legacy syntax)
-(defvar lambdapi--mode-legacy-syntax-table nil "Syntax table for LambdaPi.")
+(defvar lambdapi-mode-legacy-syntax-table nil "Syntax table for LambdaPi.")
 
-(setq lambdapi--mode-legacy-syntax-table
+(setq lambdapi-mode-legacy-syntax-table
   (let ((syn-table (make-syntax-table)))
     (modify-syntax-entry ?\( "()1n" syn-table)
     (modify-syntax-entry ?\) ")(4n" syn-table)
@@ -37,7 +37,7 @@
     syn-table))
 
 ;; Keywords (legacy syntax)
-(defconst lambdapi--legacy-font-lock-keywords
+(defconst lambdapi-legacy-font-lock-keywords
   (list
    (cons
     (concat
@@ -56,8 +56,8 @@
 ;;;###autoload
 (define-derived-mode lambdapi-legacy-mode prog-mode "LambdaPi (legacy)"
   "A mode for editing LambdaPi files (in legacy syntax)."
-  (set-syntax-table lambdapi--mode-legacy-syntax-table)
-  (setq-local font-lock-defaults '(lambdapi--legacy-font-lock-keywords))
+  (set-syntax-table lambdapi-mode-legacy-syntax-table)
+  (setq-local font-lock-defaults '(lambdapi-legacy-font-lock-keywords))
   (setq-local comment-start "(;")
   (setq-local comment-end ";)")
   (setq-default indent-tabs-mode nil)
@@ -69,37 +69,37 @@
 
 ;;; lambdapi
 ;; Keywords
-(defconst lambdapi--font-lock-keywords
+(defconst lambdapi-font-lock-keywords
   (list (cons
-         (concat "\\<" (regexp-opt lambdapi--sig-commands) "\\>")
+         (concat "\\<" (regexp-opt lambdapi-sig-commands) "\\>")
          'font-lock-keyword-face)
         (cons
-         (concat "\\<" (regexp-opt lambdapi--misc-commands) "\\>")
+         (concat "\\<" (regexp-opt lambdapi-misc-commands) "\\>")
          'font-lock-preprocessor-face)
         (cons
-         (concat "\\<" (regexp-opt lambdapi--tactics) "\\>")
+         (concat "\\<" (regexp-opt lambdapi-tactics) "\\>")
          'font-lock-builtin-face)
         (cons
-         (concat "\\<" (regexp-opt lambdapi--warning) "\\>")
+         (concat "\\<" (regexp-opt lambdapi-warning) "\\>")
          'font-lock-warning-face)
         (cons
-         (concat "\\<" (regexp-opt lambdapi--misc-keywords) "\\>")
+         (concat "\\<" (regexp-opt lambdapi-misc-keywords) "\\>")
          'font-lock-constant-face))
   "Keyword highlighting for the LambdaPi mode.")
 
 ;; Hook to be run when changing line
 ;; From https://emacs.stackexchange.com/questions/46081/hook-when-line-number-changes
-(defvar lambdapi--current-line-number (line-number-at-pos))
-(defvar lambdapi--changed-line-hook nil)
+(defvar lambdapi-current-line-number (line-number-at-pos))
+(defvar lambdapi-changed-line-hook nil)
 
-(defun lambdapi--update-line-number ()
+(defun lambdapi-update-line-number ()
   (if interactive-goals
       (let ((new-line-number (line-number-at-pos)))
-        (when (not (equal new-line-number lambdapi--current-line-number))
-          (setq lambdapi--current-line-number new-line-number)
+        (when (not (equal new-line-number lambdapi-current-line-number))
+          (setq lambdapi-current-line-number new-line-number)
           (run-hooks 'changed-line-hook)))))
 
-(defun lambdapi--create-goals-buffer ()
+(defun lambdapi-create-goals-buffer ()
   (let ((goalsbuf (get-buffer-create "*Goals*"))
         (goalswindow (split-window nil -10 'below)))
     (set-window-buffer goalswindow goalsbuf)
@@ -109,8 +109,8 @@
 ;;;###autoload
 (define-derived-mode lambdapi-mode prog-mode "LambdaPi"
   "A mode for editing LambdaPi files."
-  (set-syntax-table lambdapi--syntax-table)
-  (setq-local font-lock-defaults '(lambdapi--font-lock-keywords))
+  (set-syntax-table lambdapi-syntax-table)
+  (setq-local font-lock-defaults '(lambdapi-font-lock-keywords))
   (setq-default indent-tabs-mode nil) ; Indent with spaces
   (set-input-method "LambdaPi")
 
@@ -119,7 +119,7 @@
   (setq-local comment-end "")
 
   ;; Completion
-  (lambdapi--capf-setup)
+  (lambdapi-capf-setup)
 
   ;; Indentation
   (smie-setup
@@ -132,7 +132,7 @@
   (setq-local electric-indent-chars (append '(?↪ ?≔ ?:) electric-indent-chars))
 
   ;; Abbrev mode
-  (lambdapi--abbrev-setup)
+  (lambdapi-abbrev-setup)
 
   ;; LSP
   (add-to-list
@@ -141,10 +141,10 @@
   (eglot-ensure)
 
   ;; Hooks for goals
-  (add-hook 'post-command-hook #'lambdapi--update-line-number nil :local)
+  (add-hook 'post-command-hook #'lambdapi-update-line-number nil :local)
   ;; Hook binding line change to re-execution of proof/goals
-  (add-hook 'lambdapi--changed-line-hook #'lp-display-goals)
-  (lambdapi--create-goals-buffer))
+  (add-hook 'lambdapi-changed-line-hook #'lp-display-goals)
+  (lambdapi-create-goals-buffer))
 
 ;; Register mode the the ".lp" extension
 ;;;###autoload

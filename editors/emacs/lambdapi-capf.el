@@ -14,10 +14,10 @@
 (declare-function company-math-symbols-unicode "ext:company-math.el" t t)
 
 (defconst lambdapi--all-keywords
-  (append lambdapi--sig-commands
-          lambdapi--tactics
-          lambdapi--misc-commands
-          lambdapi--misc-keywords)
+  (append lambdapi-sig-commands
+          lambdapi-tactics
+          lambdapi-misc-commands
+          lambdapi-misc-keywords)
   "All keywords to complete.")
 
 (defun lambdapi--static-completion (words)
@@ -36,13 +36,13 @@
                 (cons #'company-math-symbols-unicode company-backends))))
 
 ;;;###autoload
-(defun lambdapi--completion-at-point ()
+(defun lambdapi-completion-at-point ()
   "Completion of symbol at point for lambdapi."
   (lambdapi--static-completion lambdapi--all-keywords))
 
-(defun lambdapi--capf-setup ()
+(defun lambdapi-capf-setup ()
   "Setup for `completion-at-point-functions`."
-  (let ((capf #'lambdapi--completion-at-point))
+  (let ((capf #'lambdapi-completion-at-point))
     (unless (memq capf completion-at-point-functions)
       (add-hook 'completion-at-point-functions capf nil 'local))
     (lambdapi--company-setup)))
