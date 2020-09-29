@@ -245,7 +245,7 @@ The command ``inductive`` can be used to define an inductive type, its construct
    ￼set builtin "Prop" ≔ ... // : TYPE
    ￼set builtin "P"    ≔ ... // : Prop → TYPE
 ￼
-For the moment, we only support first-order data types, with dependent and polymorphic types.
+For the moment, we only support first-order data types, potentially mutually dependent, with dependent and polymorphic types.
 Some cases of nested type are supported too, like the type Bush.
 Example:
 
@@ -266,6 +266,8 @@ is equivalent to:
    ￼rule ind_Nat _  $pz    _       z     ↪ $pz
    ￼with ind_Nat $p $pz $psucc (succ $n) ↪ $psucc $n (ind_Nat $p $pz $psucc $n)
 
+Note that to define mutually defined inductive types, you need the ``with`` keyword to link
+all inductive types together.
 
 ``theorem``
 -----------

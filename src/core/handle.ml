@@ -332,8 +332,8 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
           | t::q, n::r ->
               let ss, rec_sym = check_and_add t n ss in
               aux ss q r (rec_sym::acc)
-          | _ -> raise
-                   (Invalid_argument "Yours 3 lists have different lengths.")
+          | _ -> raise (Invalid_argument
+                          "Argument lists must have the same length")
         in
         aux ss rec_typ_list ind_typ_list []
       in

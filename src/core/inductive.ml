@@ -23,8 +23,9 @@ let get_config : Sig_state.t -> Pos.popt -> config = fun ss pos ->
   { symb_Prop = builtin "Prop"
   ; symb_prf  = builtin "P" }
 
-(** [check_typ_ind rec_typ] checks if the type of the term [rec_typ] is the
-    constant TYPE. *)
+(** [check_typ_ind pos rec_typ] checks if the type of the term [rec_typ] is
+    the constant TYPE. The position of the inductive type which defines the
+    inductive principle [rec_typ] is [pos]. *)
 let check_type_ind : popt -> term -> unit = fun pos rec_typ ->
   match Typing.infer [] rec_typ with
   | Some t ->
@@ -72,9 +73,11 @@ module T =
       fold_app_special c.symb_prf [_Appl (fold_app (_Vari p) ts) t]
   end
 
-(** [preprocessing pos c ind_typ_list] creates an associated list between
-    an inductive type and its predicat, and the list of conclusions, according
-    to the list of the type of the inductive types [ind_typ_list]. *)
+(** [preprocessing pos c ind_typ_list p_str x_str] creates an associated list
+    between an inductive type and its predicat, and the list of conclusions,
+    according to the list of the type of the inductive types [ind_typ_list].
+    The strings [p_str] and [x_str] are useful to avoid name clashes.
+*)
 let preprocessing :
       popt -> config -> sym list -> string -> string
       -> ((sym * (tvar * tbox)) list * tbox list) =
@@ -192,9 +195,9 @@ let gen_rec_type :
       Sig_state.t -> popt -> sym list -> (sym list) list
       -> (term list * (sym * (tvar * tbox)) list) =
   fun ss pos ind_typ_list cons_list_list ->
-  let c = get_config ss pos in
 
   (* STEP 1 - Do preprocessing *)
+  let c = get_config ss pos in
   let set =
     let f set sym =
       let s = sym.sym_name in
@@ -213,7 +216,7 @@ let gen_rec_type :
 
   (* STEP 2 - Create each clause according to a constructor *)
   (* [case_of ind_sym cons_sym] creates a clause according to a constructor
-     [cons_sym]. The inductive type is [ind_sym]. *)
+     [cons_sym]. The inductive type of this constructor is [ind_sym]. *)
   let case_of : sym -> sym -> tbox = fun ind_sym cons_sym ->
     let codom : tvar -> term list -> tvar list -> 'a -> tbox =
       fun p ts xs _ ->
@@ -267,9 +270,11 @@ let gen_rec_type :
   else ();
   (List.map Bindlib.unbox t, assoc_predicats)
 
-(** [gen_rec_rules ind_typ_list cons_list_list assoc_predicats] returns the
-    p_rules associated to the list of inductive types [ind_typ_list] and the
-    list of lists of constructors [cons_list_list].
+(** [gen_rec_rules pos ind_typ_list rec_sym_list cons_list_list
+    assoc_predicats] returns the p_rules associated to the list of inductive
+    types [ind_typ_list], defined at the position [pos], the list of theirs
+    induction principles and the list of lists of constructors
+    [cons_list_list].
     That means, for only one inductive type, the command
     inductive T : Π(i1:A1),...,Π(im:Am), TYPE := c1:T1 | ... | cn:Tn generates
     a rule for each constructor. If Ti = Π(b1:B1), ... , Π(bk:Bk), T then the
@@ -282,8 +287,8 @@ let gen_rec_type :
     Note: There cannot be name clashes between pattern variable names and
     function symbols names since pattern variables are prefixed by $. *)
 let gen_rec_rules :
-      popt -> sym list -> sym list -> (sym list) list -> (sym * (tvar * tbox)) list
-      -> p_rule list list =
+      popt -> sym list -> sym list -> (sym list) list ->
+      (sym * (tvar * tbox)) list -> p_rule list list =
   fun pos ind_typ_list rec_sym_list cons_list_list assoc_predicats ->
 
   (* STEP 1 - Create the common head of the rules *)
@@ -299,8 +304,8 @@ let gen_rec_rules :
 
   (* STEP 2 - Create each p_rule according to a constructor *)
   (* [gen_rule_cons ind_sym rec_sym cons_sym] creates a p_rule according to an
-     inductive type [ind_sym], its induction principle [rec_sym] and a
-     constructor [cons_sym]. *)
+     inductive type [ind_sym], its induction principle [rec_sym] and one of
+     its constructors [cons_sym]. *)
   let gen_rule_cons :
         sym -> sym -> sym -> p_rule = fun ind_sym rec_sym cons_sym ->
     let codom : tvar -> term list -> p_term list -> p_term -> p_rule =
@@ -318,7 +323,7 @@ let gen_rec_rules :
     in
     let build_rec_hyp : sym * (tvar * tbox) -> term list -> p_term -> p_term =
       fun (s,_) ts x ->
-      let common_head = common_head ("ind_"^s.sym_name) in (* @FIX *)
+      let common_head = common_head ("ind_" ^ s.sym_name) in (* @FIX *)
       let arg_type = P.appl_wild common_head (List.length ts) in
       P.appl arg_type x
     in

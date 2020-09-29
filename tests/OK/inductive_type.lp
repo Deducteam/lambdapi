@@ -150,11 +150,10 @@ with succ $x + $y ↪ succ ($x + $y)
 symbol mult : Nat → Nat → Nat
 set infix left 7 "×" ≔ mult
 rule       0 × _  ↪ 0
- with succ $x × $y ↪ $y + $x × $y
+with succ $x × $y ↪ $y + $x × $y
+
 symbol le : Nat → Nat → Prop
-
 set infix left 6 "≤" ≔ le
-
 //inductive ≤ : Π(n:τ nat), Nat → Prop ≔
 //  | le_n : Πn, π (n ≤ n)
 //  | le_S : Πn m:τ nat, π (n ≤ m) → π (n ≤ (succ m))
