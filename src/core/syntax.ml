@@ -87,6 +87,47 @@ let p_get_args : p_term -> p_term * p_term list = fun t ->
 (** Parser-level rewriting rule representation. *)
 type p_rule = (p_patt * p_term) loc
 
+(** The previous module provides some functions to create p_term without
+    position. *)
+module P  =
+  struct
+
+    (** [iden s] creates an identifier without position thanks to the string
+        [s]. *)
+    let iden : string -> p_term = fun s ->
+      Pos.none (P_Iden(Pos.none ([], s), true))
+
+    (** [patt s ts] creates a pattern without position thanks to the string
+        [s] and the terms [ts]. *)
+    let patt : string -> p_term array option -> p_term = fun s ts ->
+      Pos.none (P_Patt (Some (Pos.none s), ts))
+
+    (** [patt0 s] creates a pattern without position thanks to the string
+        [s]. *)
+    let patt0 : string -> p_term = fun s -> patt s None
+
+    (** [appl t1 t2] creates an application of [t1] to [t2] without
+        position. *)
+    let appl : p_term -> p_term -> p_term = fun t1 t2 ->
+      Pos.none (P_Appl(t1, t2))
+
+    (** [fold_appl a [b1; ...; bn]] returns (... ((a b1) b2) ...) bn. *)
+    let fold_appl : p_term -> p_term list -> p_term = List.fold_left appl
+
+    (** [wild] creates a p_term, which represents a wildcard, without
+        position. *)
+    let wild = Pos.none P_Wild
+
+    (** [appl_wild head i] creates a p_term which has [i] wildcard(s) after
+        the head [head]. *)
+    let rec appl_wild : p_term -> int -> p_term = fun head i ->
+      if i <= 0 then head else appl_wild (appl head wild) (i-1)
+
+    (** [rule] creates a p_rule without position. *)
+    let rule : p_patt -> p_term -> p_rule = fun l r -> Pos.none (l,r)
+
+  end
+
 (** Rewrite pattern specification. *)
 type p_rw_patt =
   | P_rw_Term           of p_term
@@ -220,6 +261,8 @@ type p_command_aux =
   | P_definition of p_modifier loc list * bool * ident * p_arg list *
                     p_type option * p_term
   (** Definition of a symbol (unfoldable). *)
+  | P_inductive of p_modifier loc list * ident * p_term * (ident*p_term) list
+  (** Definition of inductive type *)
   | P_theorem    of p_modifier loc list * p_statement * p_tactic list *
                     p_proof_end loc
   (** Theorem with its proof. *)
@@ -365,13 +408,16 @@ let eq_p_command : p_command eq = fun c1 c2 ->
       && List.equal eq_p_arg al1 al2
   | (P_rules(rs1)                , P_rules(rs2)                ) ->
       List.equal eq_p_rule rs1 rs2
-  | (P_definition(e1,b1,s1,l1,a1,t1), P_definition(e2,b2,s2,l2,a2,t2)) ->
-      e1 = e2 && b1 = b2 && eq_ident s1 s2 && List.equal eq_p_arg l1 l2
+  | (P_definition(m1,b1,s1,l1,a1,t1), P_definition(m2,b2,s2,l2,a2,t2)) ->
+      m1 = m2 && b1 = b2 && eq_ident s1 s2 && List.equal eq_p_arg l1 l2
       && Option.equal eq_p_term a1 a2 && eq_p_term t1 t2
-  | (P_theorem(ex1,st1,ts1,e1)   , P_theorem(ex2,st2,ts2,e2)   ) ->
+  | (P_inductive(m1,s1,t1,tl1)   , P_inductive(m2,s2,t2,tl2)    ) ->
+      let eq_id_p_term (s1,t1) (s2,t2) = eq_ident s1 s2 && eq_p_term t1 t2 in
+      m1 = m2 && List.equal eq_id_p_term ((s1,t1)::tl1) ((s2,t2)::tl2)
+  | (P_theorem(m1,st1,ts1,e1)   , P_theorem(m2,st2,ts2,e2)   ) ->
       let (s1,l1,a1) = st1.elt in
       let (s2,l2,a2) = st2.elt in
-      ex1 = ex2 && eq_ident s1 s2 && eq_p_term a1 a2 && e1.elt = e2.elt
+      m1 = m2 && eq_ident s1 s2 && eq_p_term a1 a2 && e1.elt = e2.elt
       && List.equal eq_p_arg l1 l2 && List.equal eq_p_tactic ts1 ts2
   | (P_set(c1)                   , P_set(c2)                   ) ->
       eq_p_config c1 c2

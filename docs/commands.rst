@@ -50,7 +50,7 @@ module. It can also be combined with the ``require`` command.
 
 Symbols are declared using the ``symbol`` command, possibly associated
 with some modifier or an exposition marker. In the following example,
-``const`` is a modifier and ``private`` is an exposition marker.
+``constant`` is a modifier and ``private`` is an exposition marker.
 
 ::
 
@@ -235,6 +235,38 @@ to put arguments on the left side of the ``≔`` symbol (similarly to a
 value declaration in OCaml). Some arguments can be declared as implicit
 by enclosing them in curly brackets.
 
+
+``inductive``
+-------------
+The command ``inductive`` can be used to define an inductive type, its constructors and its associated induction principle if it can be generated. The name of the induction principle is the name of the type prefixed with "ind_". For generating the induction principle, we assume defined the following builtins:
+
+::
+   
+   ￼set builtin "Prop" ≔ ... // : TYPE
+   ￼set builtin "P"    ≔ ... // : Prop → TYPE
+￼
+For the moment, we only support first-order data types, with dependent and polymorphic types.
+Some cases of nested type are supported too, like the type Bush.
+Example:
+
+::
+   
+   ￼inductive Nat : TYPE ≔
+   ￼ | z    : Nat
+   ￼ | succ : Nat → Nat
+   
+is equivalent to:
+￼
+::
+   
+   ￼injective symbol Nat  : TYPE
+   ￼constant  symbol z    : Nat
+   ￼constant  symbol succ : Nat → Nat
+   ￼symbol ind_Nat p : π (p 0) → (Πx, π (p x) → π (p (succ x))) → Πx, π (p x)
+   ￼rule ind_Nat _  $pz    _       z     ↪ $pz
+   ￼with ind_Nat $p $pz $psucc (succ $n) ↪ $psucc $n (ind_Nat $p $pz $psucc $n)
+
+
 ``theorem``
 -----------
 
@@ -247,7 +279,7 @@ tactic may generate new goals/metavariables. The proof of the theorem is
 complete only when all generated goals have been solved.
 
 A proof must start by the keyword ``proof`` followed by a sequence of
-`tactics <tactics.md>`__, and must end by the keywords ``qed`` (when the
+`tactics <tactics.rst>`__, and must end by the keywords ``qed`` (when the
 proof is complete), ``admit`` (when one wants to admit the theorem
 without proving it) or ``abort`` (when one wants to end the proof
 without adding the theorem in the environment).

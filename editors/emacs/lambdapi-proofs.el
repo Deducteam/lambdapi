@@ -5,10 +5,12 @@
 ;;
 ;;; Code:
 
+(require 'highlight)
+
 (defconst lp-goal-line-prefix "---------------------------------------------------")
 
 (defun display-goals (goals)
-  "Actually display GOALS returned by the LSP server in the dedicated emacs buffer"
+  "Display GOALS returned by the LSP server in the dedicated Emacs buffer."
   (let ((goalsbuf (get-buffer-create "*Goals*")))
     (with-current-buffer goalsbuf
       (read-only-mode -1)
@@ -25,7 +27,8 @@
                             (lambda (goal)
                               (let ((id (plist-get goal :gid))
                                     (type (plist-get goal :type)))
-                                (format "%s\nGoal %d: %s\n\n" lp-goal-line-prefix id type)))
+                                (format "%s\nGoal %d: %s\n\n"
+                                        lp-goal-line-prefix id type)))
                             goals)))
             (erase-buffer)
             (goto-char (point-max))
@@ -51,7 +54,7 @@
                 (read-only-mode 1))))))))
 
 (defun lp-display-goals ()
-  "Display goals at cursor position"
+  "Display goals at cursor position."
   (interactive)
   (eglot--signal-proof/goals (eglot--pos-to-lsp-position)))
 
@@ -61,8 +64,8 @@
 (defun move-proof-line (move-fct)
   (save-excursion
     (let ((line (plist-get proof-line-position :line)))
-      (setq proof-line-position (eglot--widening
-                                 (list :line (funcall move-fct line) :character 0)))
+      (setq proof-line-position
+            (eglot--widening (list :line (funcall move-fct line) :character 0)))
       (goto-line line)
       (hlt-unhighlight-region 0 (1+ (line-end-position)))
       (goto-line (funcall move-fct line))
@@ -70,24 +73,25 @@
       (lp-display-goals))))
 
 (defun lp-proof-forward ()
-  "Moves the proof cursor forward"
+  "Move the proof cursor forward."
   (interactive)
   (move-proof-line #'1+))
 
 (defun lp-proof-backward ()
-  "Moves the proof cursor backward"
+  "Move the proof cursor backward."
   (interactive)
   (move-proof-line #'1-))
 
 (defun toggle-interactive-goals ()
-  "Toggles the goals display between two modes: interactive and step by step"
+  "Toggle the goals display between two modes: interactive and step by step."
   (interactive)
   (save-excursion
     (let ((line (plist-get proof-line-position :line)))
       (if interactive-goals
           (progn
-              (setq proof-line-position (eglot--widening
-                                         (list :line (line-number-at-pos) :character 0)))
+              (setq proof-line-position
+                    (eglot--widening
+                     (list :line (line-number-at-pos) :character 0)))
               (goto-line (line-number-at-pos))
               (hlt-highlight-region 0 (1+ (line-end-position))))
         (goto-line line)
@@ -101,3 +105,4 @@
 (global-set-key (kbd "C-c C-n") 'lp-proof-forward)
 
 (provide 'lambdapi-proofs)
+;;; lambdapi-proofs.el ends here
