@@ -55,14 +55,14 @@ for mldependency in "${interesting_modules[@]}" ; do
     mlfilewithupper=$(uppercasefirst $mlfile)
     if [ $mlfile != $mldependency ] ; then
       cd $lambdapidir || { echo $errordirectory ; exit 1; }
-      mlfiledependsonmldependency=$(ocamldep -modules src/core/${mlfile}.ml | grep $mldependencywithupper)
+      mlfiledependsonmldependency=$(ocamldep -modules src/core/${mlfile}.ml | grep $mldependencywithupper) || true
       if [ -n "$mlfiledependsonmldependency" ] ; then
         cd $lambdapidir/_build/default || { echo $errordirectory ; exit 1; }
-        mldependencyfunctions=$(ocamlc -i -I src/core/.core.objs/byte -open Core src/core/${mldependency}.ml 2>&1 | grep -e "^val" | grep -v "type t =" | awk '{print $2}')
+        mldependencyfunctions=$(ocamlc -i -I src/core/.core.objs/byte -open Core src/core/${mldependency}.ml 2>&1 | grep -e "^val" | grep -v "type t =" | awk '{print $2}' ) || true
         cd $lambdapidir || { echo $errordirectory ; exit 1; }
         mldependencyfunctioninmlfile=( )
         for function in ${mldependencyfunctions[*]} ; do
-          present=$(grep $mldependencywithupper.$function src/core/$mlfile.ml)
+          present=$(grep $mldependencywithupper.$function src/core/$mlfile.ml) || true
           if [ -n "$present" ] ; then
             mldependencyfunctioninmlfile+=( "$function\n" )
           fi
