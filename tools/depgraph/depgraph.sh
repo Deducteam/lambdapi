@@ -1,6 +1,7 @@
 #!/bin/bash
+# shellcheck disable=SC2086
 
-set -o nounset
+set -eu -o pipefail
 
 # UPPERCASE THE FIRST LETTER OF A WORD
 function uppercasefirst ()
