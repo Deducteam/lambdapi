@@ -22,7 +22,13 @@ graphdot=$workingdir/$graph.dot
 graphpng=$workingdir/$graph.png
 
 # CHOOSE THE INTERESTING_MODULES MODULES
-interesting_modules=( compile handle infer proof sr tactics typing unif )
+concat_modules="$@"
+if [ -z "$concat_modules" ] ; then
+  interesting_modules=( compile handle infer proof sr tactics typing unif )
+else
+  interesting_modules=( $@ )
+fi
+
 # cd $lambdapidir/src/core
 # interesting_modules=( )
 # for mlfile in $(ls *.ml) ; do
