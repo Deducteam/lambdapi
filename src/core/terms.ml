@@ -373,6 +373,14 @@ let _Symb : sym -> tbox = fun s ->
 let _Appl : tbox -> tbox -> tbox =
   Bindlib.box_apply2 (fun t u -> Appl(t,u))
 
+(** [_Appl_list a [b1;...;bn]] returns (... ((a b1) b2) ...) bn. *)
+let _Appl_list : tbox -> tbox list -> tbox = List.fold_left _Appl
+
+(** [_Appl_symb f ts] returns the same result that
+    _Appl_l ist (_Symb [f]) [ts]. *)
+let _Appl_symb : sym -> tbox list -> tbox = fun f ts ->
+  _Appl_list (_Symb f) ts
+
 (** [_Prod a b] lifts a dependent product node to the {!type:tbox} type, given
     a boxed term [a] for the domain of the product, and a boxed binder [b] for
     its codomain. *)

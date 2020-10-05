@@ -676,7 +676,7 @@ let parser cmd =
       -> P_rules(r::rs)
   | ms:modifier* _definition_ s:ident al:arg* ao:{":" term}? "≔" t:term
       -> P_definition(ms,false,s,al,ao,t)
-  | ms:modifier* _inductive_ i:inductive il:{ _:_with_ inductive}*
+  | ms:modifier* _inductive_ i:inductive il:{_:_with_ inductive}*
       -> P_inductive(ms, i::il)
   | ms:modifier* st:statement (ts,pe):proof
       -> P_theorem(ms,st,ts,pe)
