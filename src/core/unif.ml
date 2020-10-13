@@ -166,10 +166,19 @@ let instantiation : ctxt -> meta -> term array -> term ->
     instantiated and, if so, instantiate it. *)
 let instantiate : ctxt -> meta -> term array -> term -> bool =
   fun ctx m ts u ->
+  let type_meta_app m ts =
+    let rec aux a ts =
+      match (Eval.whnf [] a), ts with
+      | Prod(_,b), t :: ts -> aux (Bindlib.subst b t) ts
+      | _, [] -> a
+      | _, _ -> assert false
+    in
+    aux !(m.meta_type) ts
+  in
   match instantiation ctx m ts u with
-  | Some(bu) when Bindlib.is_closed bu ->
-      if !log_enabled then log_unif (yel "%a ≔ %a") pp_meta m pp_term u;
-      set_meta m (Bindlib.unbox bu); true
+  | Some(bu) when Bindlib.is_closed bu && (Infer.check ctx u (type_meta_app m (Array.to_list ts))) = [] ->
+    if !log_enabled then log_unif (yel "%a ≔ %a") pp_meta m pp_term u;
+    set_meta m (Bindlib.unbox bu); true
   | _ -> false
 
 (** [solve p] tries to solve the unification problem [p] and
