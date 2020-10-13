@@ -176,9 +176,15 @@ let instantiate : ctxt -> meta -> term array -> term -> bool =
     aux !(m.meta_type) ts
   in
   match instantiation ctx m ts u with
-  | Some(bu) when Bindlib.is_closed bu && (Infer.check ctx u (type_meta_app m (Array.to_list ts))) = [] ->
-    if !log_enabled then log_unif (yel "%a ≔ %a") pp_meta m pp_term u;
-    set_meta m (Bindlib.unbox bu); true
+  | Some(bu) when Bindlib.is_closed bu ->
+    let m_app = type_meta_app m (Array.to_list ts) in
+    let constr = Infer.check ctx u m_app in
+    if (constr <> []) then
+      false
+    else (
+      if !log_enabled then log_unif (yel "%a ≔ %a") pp_meta m pp_term u;
+      set_meta m (Bindlib.unbox bu); true
+    )
   | _ -> false
 
 (** [solve p] tries to solve the unification problem [p] and
