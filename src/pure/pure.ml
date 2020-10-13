@@ -48,7 +48,8 @@ let current_goals : proof_state -> Proof.Goal.t list = fun (_,_,p,_) ->
 
 type command_result =
   | Cmd_OK    of state
-  | Cmd_Proof of proof_state * Tactic.t list * Pos.popt * Pos.popt
+  | Cmd_Proof of
+      proof_state * Terms.expo * Tactic.t list * Pos.popt * Pos.popt
   | Cmd_Error of Pos.popt option * string
 
 type tactic_result =
@@ -81,13 +82,15 @@ let handle_command : state -> Command.t -> command_result =
     | Some(data) ->
         let pst = (t, ss, data.pdata_p_state, data.pdata_finalize) in
         let ts = data.pdata_tactics in
-        Cmd_Proof(pst, ts, data.pdata_stmt_pos, data.pdata_term_pos)
+        let expo = data.pdata_expo in
+        Cmd_Proof(pst, expo, ts, data.pdata_stmt_pos, data.pdata_end_pos)
   with Fatal(p,m) -> Cmd_Error(p,m)
 
-let handle_tactic : proof_state -> Tactic.t -> tactic_result = fun s t ->
+let handle_tactic : proof_state -> Terms.expo -> Tactic.t -> tactic_result =
+  fun s e t ->
   let (_, ss, p, finalize) = s in
   try
-    let p = Tactics.handle_tactic ss p t in
+    let p = Tactics.handle_tactic ss e p t in
     Tac_OK(Time.save (), ss, p, finalize)
   with Fatal(p,m) -> Tac_Error(p,m)
 

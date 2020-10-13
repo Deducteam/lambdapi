@@ -209,6 +209,8 @@ type p_tactic_aux =
   (** Print the current proof term (possibly containing open goals). *)
   | P_tac_why3 of string option
   (** Try to solve the current goal with why3. *)
+  | P_unif_solve
+  (** Apply default unification solving algorithm. *)
   | P_tac_query   of p_query
   (** Query. *)
   | P_tac_fail
@@ -218,7 +220,7 @@ type p_tactic = p_tactic_aux loc
 
 (** Parser-level representation of a proof terminator. *)
 type p_proof_end =
-  | P_proof_qed
+  | P_proof_end
   (** The proof is done and fully checked. *)
   | P_proof_admit
   (** Give up current state and admit the theorem. *)
@@ -241,13 +243,18 @@ type p_config =
   (** Unification hint declarations. *)
 
 (** Parser-level representation of a single command. *)
-type p_statement = (ident * p_arg list * p_type) loc
+type p_statement = (ident * p_arg list * p_type option) loc
 
 (** Parser-level representation of modifiers. *)
 type p_modifier =
   | P_mstrat of Terms.match_strat
   | P_expo of Terms.expo
   | P_prop of Terms.prop
+  | P_opaq of Terms.opacity
+
+type proof_meaning =
+  | Tac
+  | Def
 
 type p_command_aux =
   | P_require    of bool * p_module_path list
@@ -256,18 +263,13 @@ type p_command_aux =
   (** Require as statement. *)
   | P_open       of p_module_path list
   (** Open statement. *)
-  | P_symbol     of p_modifier loc list * ident * p_arg list * p_type
+  | P_symbol     of p_modifier loc list * p_statement * p_term option
+                   * (p_tactic list * p_proof_end loc) option * proof_meaning
   (** Symbol declaration. *)
   | P_rules      of p_rule list
   (** Rewriting rule declarations. *)
-  | P_definition of p_modifier loc list * bool * ident * p_arg list *
-                    p_type option * p_term
-  (** Definition of a symbol (unfoldable). *)
   | P_inductive of p_modifier loc list * ident * p_term * (ident*p_term) list
   (** Definition of inductive type *)
-  | P_theorem    of p_modifier loc list * p_statement * p_tactic list *
-                    p_proof_end loc
-  (** Theorem with its proof. *)
   | P_set        of p_config
   (** Set the configuration. *)
   | P_query      of p_query
@@ -405,22 +407,22 @@ let eq_p_command : p_command eq = fun c1 c2 ->
      List.equal (=) ps1 ps2
   | (P_require_as(p1,id1)  , P_require_as(p2,id2)              ) ->
      p1 = p2 && id1.elt = id2.elt
-  | (P_symbol(m1,s1,al1,a1), P_symbol(m2,s2,al2,a2)) ->
-      m1 = m2 && eq_ident s1 s2 && eq_p_term a1 a2
-      && List.equal eq_p_arg al1 al2
+  | (P_symbol(ms1,st1,t1,ts_pe1,m1),
+     P_symbol(ms2,st2,t2,ts_pe2,m2))                         ->
+      let s1,l1,a1 = st1.elt in
+      let s2,l2,a2 = st2.elt in
+      let eq_tactic =
+        fun (ts1,_) (ts2,_) -> (List.equal eq_p_tactic) ts1 ts2
+      in
+      ms1 = ms2 && eq_ident s1 s2 && List.equal eq_p_arg l1 l2
+      && Option.equal eq_p_term a1 a2 && Option.equal eq_p_term t1 t2
+      && Option.equal eq_tactic ts_pe1 ts_pe2
+      && m1 = m2
   | (P_rules(rs1)                , P_rules(rs2)                ) ->
       List.equal eq_p_rule rs1 rs2
-  | (P_definition(m1,b1,s1,l1,a1,t1), P_definition(m2,b2,s2,l2,a2,t2)) ->
-      m1 = m2 && b1 = b2 && eq_ident s1 s2 && List.equal eq_p_arg l1 l2
-      && Option.equal eq_p_term a1 a2 && eq_p_term t1 t2
   | (P_inductive(m1,s1,t1,tl1)   , P_inductive(m2,s2,t2,tl2)    ) ->
       let eq_id_p_term (s1,t1) (s2,t2) = eq_ident s1 s2 && eq_p_term t1 t2 in
       m1 = m2 && List.equal eq_id_p_term ((s1,t1)::tl1) ((s2,t2)::tl2)
-  | (P_theorem(m1,st1,ts1,e1)   , P_theorem(m2,st2,ts2,e2)   ) ->
-      let (s1,l1,a1) = st1.elt in
-      let (s2,l2,a2) = st2.elt in
-      m1 = m2 && eq_ident s1 s2 && eq_p_term a1 a2 && e1.elt = e2.elt
-      && List.equal eq_p_arg l1 l2 && List.equal eq_p_tactic ts1 ts2
   | (P_set(c1)                   , P_set(c2)                   ) ->
       eq_p_config c1 c2
   | (P_query(q1)                 , P_query(q2)                 ) ->

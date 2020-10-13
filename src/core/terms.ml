@@ -38,6 +38,13 @@ type match_strat =
     (** Any rule that filters a term can be applied (even if a rule defined
         earlier filters the term as well). This is the default. *)
 
+(** A symbol is Opaque if its term definition (explicitly given or
+    incrementally builded with a proof-script) should not be added in the
+    signature *)
+type opacity =
+  | Opaque
+  | Nonopaque
+
 (** Representation of a term (or types) in a general sense. Values of the type
     are also used, for example, in the representation of patterns or rewriting
     rules. Specific constructors are included for such applications,  and they

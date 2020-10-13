@@ -448,17 +448,17 @@ assert bcons nat (succ (succ (succ z))) (bnil (bush nat)) : Bush nat
 assert bcons bool true (bnil (bush bool)) : Bush bool
 
 /////////////////////////////
-// Some proofs
+// Some begins
 /////////////////////////////
 
-theorem plus_0_n : Πn, π ((0 + n) = n)
-proof
+opaque symbol plus_0_n : Πn, π ((0 + n) = n) ≔
+begin
   assume n
   reflexivity
-qed
+end
 
-theorem plus_n_0 : Πn, π ((n + 0) = n)
-proof
+opaque symbol plus_n_0 : Πn, π ((n + 0) = n) ≔
+begin
   assume n
   refine ind_Nat (λz, (z + 0) = z) _ _ _
   // Case n = O
@@ -468,7 +468,7 @@ proof
   simpl
   rewrite Hn'
   reflexivity
-qed
+end
 
 // About lists
 symbol length : List → Nat
@@ -479,13 +479,13 @@ symbol app : List → List → List
 rule  app      nil     $m ↪ $m
  with app (cons $x $l) $m ↪ cons $x (app $l $m)
 
-theorem length_app :
-  Π(l1 l2 : List), π ((length l1 + length l2) = length (app l1 l2))
-proof
+opaque symbol length_app :
+  Π(l1 l2 : List), π ((length l1 + length l2) = length (app l1 l2)) ≔
+begin
   assume l1 l2
   apply ind_List
         (λz, (length z+length l2) = length (app z l2)) _ _ l1
   reflexivity
   assume x l2 IHl1
   simpl rewrite IHl1 reflexivity
-qed
+end

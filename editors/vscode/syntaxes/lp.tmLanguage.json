@@ -24,7 +24,10 @@
     }
   ],
   "repository": {
-
+    "commands": {
+      "match": "\\b(abort|admit|and|apply|as|assert|assertnot|assume|begin|compute|constant|definition|end|focus|in|injective|let|open|print|private|proofterm|protected|refine|reflexivity|require|rewrite|rule|set|simpl|symmetry|symbol|theorem|type|TYPE|why3)\\b",
+      "name": "keyword.control.lp"
+    },
     "comments": {
 			"patterns": [
 				{

@@ -428,3 +428,6 @@ let eq_constr : constr -> constr -> bool = fun (ctx1,t1,u1) (ctx2,t2,u2) ->
   let u2,_ = Ctxt.to_abst ctx2 u2 in
   (eq_modulo [] t1 t2) && (eq_modulo [] u1 u2) ||
   (eq_modulo [] t1 u2) && (eq_modulo [] t2 u1)
+
+let compare_constr : constr -> constr -> int = fun c1 c2 ->
+  if eq_constr c1 c2 then 0 else 1

@@ -15,7 +15,7 @@ injective symbol τ : Set → TYPE
 
 constant symbol nat : Set
 
-definition N ≔ τ nat
+symbol N ≔ τ nat
 
 constant symbol zero : N
 constant symbol succ : N → N
@@ -24,7 +24,7 @@ constant symbol succ : N → N
 
 constant symbol list : Set → Set
 
-definition L a ≔ τ (list a)
+symbol L a ≔ τ (list a)
 
 set declared "□"
 
