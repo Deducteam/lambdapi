@@ -268,8 +268,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
                        in inductive types.";
       (* STEP 1 - Add the inductive types in the signature *)
       let add_ind_types :
-        sig_state * sym list -> (ident * p_term * (ident * p_term) list) loc
-        -> sig_state * sym list
+        sig_state * sym list -> p_inductive -> sig_state * sym list
         = fun (ss, ind_typ_list) x ->
         let (id, a, _) = x.elt in
         let (ss, ind_sym) = handle_symbol ss e Injec Eager id [] a in
@@ -279,9 +278,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
       let ind_typ_list = List.rev ind_typ_list_rev in
       (* STEP 2 - Add the constructors in the signature. *)
       let add_constructors :
-          sig_state * sym list list ->
-          (ident * p_term * (ident * p_term) list) loc ->
-          sig_state * sym list list
+        sig_state * sym list list -> p_inductive -> sig_state * sym list list
         = fun (ss, cons_list_list) x ->
         let (_, _, l) = x.elt in
         let add_cons :
@@ -300,6 +297,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
         List.fold_left add_constructors (ss, []) il
       in
       let cons_list_list = List.rev cons_list_list_rev in
+      (*let ind_list = List.combine_rev ind_typ_list_rev cons_list_list_rev in*)
       (* STEP 3 - Generate the induction principle. *)
         (* A - Compute the induction principle *)
       let rec_typ_list, assoc_predicates =

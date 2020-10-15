@@ -1,4 +1,4 @@
-(** Generating of induction principles.
+(** Generation of induction principles.
     Note that the induction principle associated to a mutually defined
     inductive type speaks only about this inductive type. Also, there is
     one induction principle for each inductive type. The user should define
@@ -61,13 +61,10 @@ let gen_ind_typ_codom : popt -> sym -> (tbox list -> tbox) -> string -> tbox =
     | _ -> fatal pos "The type of %a is not supported" pp_symbol ind_sym
   in aux [] !(ind_sym.sym_type)
 
-module T =
-  struct
-    (** [prf_of p c ts t] returns a proof of the form
-        c.symb_prf ( (((p ts1) ...) tsn) t) where ts = [ts1;...;tsn]. *)
-    let prf_of : tvar -> config -> tbox list -> tbox -> tbox = fun p c ts t ->
-      _Appl_symb c.symb_prf [_Appl (_Appl_list (_Vari p) ts) t]
-  end
+(** [prf_of p c ts t] returns a proof of the form
+    c.symb_prf ( (((p ts1) ...) tsn) t) where ts = [ts1;...;tsn]. *)
+let prf_of : tvar -> config -> tbox list -> tbox -> tbox = fun p c ts t ->
+  _Appl_symb c.symb_prf [_Appl (_Appl_list (_Vari p) ts) t]
 
 (** [preprocessing pos c ind_typ_list p_str x_str] computes elements of the
     induction principles that we want to associate to a list of mutually
@@ -105,7 +102,7 @@ let preprocessing :
            associated to [ind_sym]. *)
         let codom ts =
           let x = Bindlib.new_var mkfree x_str in
-          let t = Bindlib.bind_var x (T.prf_of p c ts (_Vari x)) in
+          let t = Bindlib.bind_var x (prf_of p c ts (_Vari x)) in
           _Prod (_Appl_symb ind_sym ts) t
         in
         let conclusion = gen_ind_typ_codom pos ind_sym codom p_str in
@@ -231,13 +228,13 @@ let gen_rec_type :
   let case_of : sym -> sym -> tbox = fun ind_sym cons_sym ->
     let codom : tvar -> term list -> tvar list -> 'a -> tbox =
       fun p ts xs _ ->
-      T.prf_of p c (List.map lift ts)
+      prf_of p c (List.map lift ts)
         (_Appl_symb cons_sym (List.rev_map _Vari xs))
     in
     let inj_var : tvar list -> tvar -> tvar = fun _ x -> x in
     let build_rec_hyp : sym -> tvar -> term list -> tvar -> tbox =
       fun _ p ts x ->
-      T.prf_of p c (List.map lift ts) (_Vari x)
+      prf_of p c (List.map lift ts) (_Vari x)
     in
     let domrec : term -> tvar -> tbox -> tbox -> tbox =
       fun a x rec_hyp next ->
