@@ -191,9 +191,9 @@ let fold_cons_typ (pos : popt)
     (Π(i1:A1),...,Π(im:Am), Π(t:T i1 ... im), π(p i1 ... im t))
     where Ui is the clause associated to the constructor ci. *)
 let gen_rec_type :
-      Sig_state.t -> popt -> sym list -> (sym list) list
+      Sig_state.t -> popt -> (sym * sym list) list
       -> (term list * (sym * (tvar * tbox)) list) =
-  fun ss pos ind_typ_list cons_list_list ->
+  fun ss pos ind_list ->
 
   (* STEP 1 - Do preprocessing *)
     (* A - Avoiding name clashes *)
@@ -204,19 +204,20 @@ let gen_rec_type :
         Extra.StrSet.add s set
       else set
     in
-    let add_names_from_cons_list set l =
+    let add_names_from_cons_list set (_, l) =
       List.fold_left add_name_from_sym set l
     in
     let set =
       List.fold_left add_names_from_cons_list
-        Extra.StrSet.empty cons_list_list
+        Extra.StrSet.empty ind_list
     in
-    List.fold_left add_name_from_sym set ind_typ_list
+    List.fold_left (fun set (a,_) -> add_name_from_sym set a) set ind_list
   in
   let p_str = Extra.get_safe_prefix "p" set_names_clash in
   let x_str = Extra.get_safe_prefix "x" set_names_clash in
     (* B - Building a conclusion and a predicate for each inductive type *)
   let c = get_config ss pos in
+  let ind_typ_list = List.map (fun (a,_) -> a) ind_list in
   let assoc_predicates, conclusion_list =
     preprocessing pos c ind_typ_list p_str x_str
   in
@@ -251,15 +252,13 @@ let gen_rec_type :
   in
   (* Very close to the function "fold_right2", but "f" is the function
      "fold_right" and it needs a neutral element. *)
-  let rec clauses ind_typ_list cons_list_list e =
-    match ind_typ_list, cons_list_list with
-    | [], [] -> e
-    | i::qi, cl::qcl ->
-        let res = clauses qi qcl e in
+  let rec clauses ind_list e : tbox = match ind_list with
+    | [] -> e
+    | (i,cl)::q ->
+        let res = clauses q e in
         List.fold_right (fun a b -> _Impl (case_of i a) b) cl res
-    | _ -> raise (Invalid_argument "Argument lists must have the same length")
   in
-  let t = List.map (clauses ind_typ_list cons_list_list) conclusion_list in
+  let t = List.map (clauses ind_list) conclusion_list in
 
   (* STEP 3 - Create the induction principle. *)
   let f t =
@@ -295,9 +294,9 @@ let gen_rec_type :
     Note: There cannot be name clashes between pattern variable names and
     function symbols names since pattern variables are prefixed by $. *)
 let gen_rec_rules :
-      popt -> sym list -> sym list -> (sym list) list ->
+      popt -> (sym * (sym list) * sym) list ->
       (sym * (tvar * tbox)) list -> p_rule list list =
-  fun pos ind_typ_list rec_sym_list cons_list_list assoc_predicates ->
+  fun pos ind_list assoc_predicates ->
 
   (* STEP 1 - Create the common head of the rules *)
   let f e (_, (name, _)) = P.appl e (P.patt0 (Bindlib.name_of name)) in
@@ -305,9 +304,14 @@ let gen_rec_rules :
   let add_arg e s =
     P.appl e (P.patt0 ("pi" ^ s.sym_name))
   in
+  let rec flatten_snd : ('a * 'b list * 'c) list -> 'b list = function
+  | []          -> []
+  | (_, [] , _)  :: t -> flatten_snd t
+  | (i, x::y, r) :: t -> x :: (flatten_snd ((i, y, r)::t))
+  in
   let common_head head_sym =
     List.fold_left add_arg (properties (P.iden head_sym))
-      (List.flatten cons_list_list)
+      (flatten_snd ind_list)
   in
 
   (* STEP 2 - Create each p_rule according to a constructor *)
@@ -349,12 +353,8 @@ let gen_rec_rules :
   in
 
   (* STEP 3 - Build all the p_rules *)
-  let f ind_sym rec_sym cons_list =
-    List.rev_map (gen_rule_cons ind_sym rec_sym) cons_list
+  let f (ind_sym, cons_list, rec_sym) =
+    (*List.rev_map (gen_rule_cons ind_sym rec_sym) cons_list*)
+    List.map (gen_rule_cons ind_sym rec_sym) cons_list
   in
-  let rec map3 f l1 l2 l3 = match l1, l2, l3 with
-    | [], [], [] -> []
-    | t1::q1, t2::q2, t3::q3 -> (f t1 t2 t3)::(map3 f q1 q2 q3)
-    | _ -> raise (Invalid_argument "Argument lists must have the same length")
-  in
-  map3 f ind_typ_list rec_sym_list cons_list_list
+  List.map f ind_list
