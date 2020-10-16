@@ -75,8 +75,7 @@ let prf_of : tvar -> config -> tbox list -> tbox -> tbox = fun p c ts t ->
       - The second list is composed of the conclusions of the induction
       principles.
     The string [p_str] is used as prefix for predicate variables, and the
-    string [x_str] as prefix for type parameters.
-*)
+    string [x_str] as prefix for type parameters. *)
 let preprocessing :
       popt -> config -> sym list -> string -> string
       -> ((sym * (tvar * tbox)) list * tbox list) =
@@ -139,7 +138,7 @@ let preprocessing :
          [next] is the result of the recursive call).
       3) If the current type is a product [Π(x:a), b] not of the previous
          form, then the function [dom a x next] is called.
-      4) Any other case is an error.*)
+      4) Any other case is an error. *)
 let fold_cons_typ (pos : popt)
       (codom : tvar -> term list -> 'b list -> 'a -> 'c)
       (inj_var : 'b list -> tvar -> 'b)
@@ -177,11 +176,12 @@ let fold_cons_typ (pos : popt)
     | _ -> fatal pos "The type of %a is not supported" pp_symbol cons_sym
   in aux [] init !(cons_sym.sym_type)
 
-(** [gen_rec_type ss pos ind_typ_list cons_list_list] generates the induction
-    principle for each inductive type in the list [ind_typ_list] (defined at
-    the position [pos]) with the list of constructors [cons_list]. Each
-    recursive argument is followed by its induction hypothesis. For instance,
-    with only one inductive type [inductive T:TYPE := c: T->T->T], we have
+(** [gen_rec_type ss pos ind_list] generates the induction principle for each
+    inductive type in the list [ind_typ_list] (defined at the position [pos])
+    with the list of constructors [cons_list_list], where
+    [ind_list = List.combine ind_typ_list cons_list_list]. Each recursive ar-
+    gument is followed by its induction hypothesis. For instance, with only
+    one inductive type [inductive T:TYPE := c: T->T->T], we have
     [ind_T: Πp:T->Prop, (Πx0:T, π(p x0)-> Πx1:T, π(p x1)-> π(p (c x0 x1)) ->
     Πx:T, π(p x)]. Indeed, if the user doesn't give a name for an argument
     (in case of no dependent product in fact), a fresh name will create (xi
@@ -221,7 +221,6 @@ let gen_rec_type :
   let assoc_predicates, conclusion_list =
     preprocessing pos c ind_typ_list p_str x_str
   in
-  let conclusion_list = List.rev conclusion_list in
 
   (* STEP 2 - Create each clause according to a constructor *)
   (* [case_of ind_sym cons_sym] creates a clause according to a constructor
@@ -277,11 +276,11 @@ let gen_rec_type :
   else ();
   (List.map Bindlib.unbox t, assoc_predicates)
 
-(** [gen_rec_rules pos ind_typ_list rec_sym_list cons_list_list
-    assoc_predicates] returns the p_rules associated to the list of inductive
-    types [ind_typ_list], defined at the position [pos], the list of theirs
-    induction principles and the list of lists of constructors
-    [cons_list_list].
+(** [gen_rec_rules pos ind_list assoc_predicates] returns the p_rules associa-
+    ted to the list of inductive types [ind_typ_list], defined at the position
+    [pos], the list of theirs induction principles [rec_sym_list] and the list
+    of lists of constructors [cons_list_list], where
+    [ind_list = List.combine3 ind_typ_list cons_list_list rec_sym_list].
     That means, for only one inductive type, the command
     inductive T : Π(i1:A1),...,Π(im:Am), TYPE := c1:T1 | ... | cn:Tn generates
     a rule for each constructor. If Ti = Π(b1:B1), ... , Π(bk:Bk), T then the
@@ -301,13 +300,11 @@ let gen_rec_rules :
   (* STEP 1 - Create the common head of the rules *)
   let f e (_, (name, _)) = P.appl e (P.patt0 (Bindlib.name_of name)) in
   let properties head_sym = List.fold_left f head_sym assoc_predicates in
-  let add_arg e s =
-    P.appl e (P.patt0 ("pi" ^ s.sym_name))
-  in
+  let add_arg e s = P.appl e (P.patt0 ("pi" ^ s.sym_name)) in
   let rec flatten_snd : ('a * 'b list * 'c) list -> 'b list = function
-  | []          -> []
-  | (_, [] , _)  :: t -> flatten_snd t
-  | (i, x::y, r) :: t -> x :: (flatten_snd ((i, y, r)::t))
+    | []          -> []
+    | (_, [] , _)  :: t -> flatten_snd t
+    | (i, x::y, r) :: t -> x :: (flatten_snd ((i, y, r)::t))
   in
   let common_head head_sym =
     List.fold_left add_arg (properties (P.iden head_sym))
@@ -354,7 +351,6 @@ let gen_rec_rules :
 
   (* STEP 3 - Build all the p_rules *)
   let f (ind_sym, cons_list, rec_sym) =
-    (*List.rev_map (gen_rule_cons ind_sym rec_sym) cons_list*)
     List.map (gen_rule_cons ind_sym rec_sym) cons_list
   in
   List.map f ind_list

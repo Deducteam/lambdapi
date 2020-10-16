@@ -275,7 +275,6 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
         (ss, ind_sym::ind_typ_list)
       in
       let (ss, ind_typ_list_rev) = List.fold_left add_ind_types (ss, []) il in
-      (* let ind_typ_list = List.rev ind_typ_list_rev in *)
       (* STEP 2 - Add the constructors in the signature. *)
       let add_constructors :
         sig_state * sym list list -> p_inductive -> sig_state * sym list list
@@ -296,7 +295,6 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
       let (ss, cons_list_list_rev) =
         List.fold_left add_constructors (ss, []) il
       in
-      (*let cons_list_list = List.rev cons_list_list_rev in*)
       let ind_list = List.combine_rev ind_typ_list_rev cons_list_list_rev in
       (* STEP 3 - Generate the induction principle. *)
         (* A - Compute the induction principle *)
@@ -322,54 +320,29 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
             Pretty.pp_ident rec_name Print.pp_term rec_typ;
         ss, rec_sym
       in
-      (*
-      let map3 :
-        Sig_state.t -> (sym*sym list*term) list -> Sig_state.t * (sym*sym list*sym) list =
-        fun ss ind_list ->
+      let ind_list =
+        List.combine3
+          ind_typ_list_rev cons_list_list_rev rec_typ_list_rev
+      in
+      let map_triplet :
+            Sig_state.t -> (sym * sym list * term) list
+            -> Sig_state.t * (sym * sym list * sym) list = fun ss ind_list ->
         let rec aux ss ind_list acc =
           match ind_list with
           | [] -> ss, acc
-          | (i, c, r)::q ->
+          | (i,c,r)::q ->
               let ss, rec_sym = check_and_add r i ss in
               aux ss q ((i, c, rec_sym)::acc)
         in
         aux ss ind_list []
       in
-      let ind_list =
-        List.combine3_rev
-          ind_typ_list_rev cons_list_list_rev rec_typ_list_rev
-      in
-      let ss, ind_list = map3 ss ind_list in *)
-      let ind_list =
-        List.combine3
-          ind_typ_list_rev cons_list_list_rev rec_typ_list_rev
-      in
-      let fold_left2_map :
-        Sig_state.t -> (sym * sym list * term) list -> Sig_state.t * (sym * sym list * sym) list =
-        fun ss ind_list ->
-        let rec aux ss ind_list acc =
-          match ind_list with
-          | [] -> ss, acc
-          | (i,c,r)::q ->
-              let ss, rec_sym = check_and_add r i  ss in
-              aux ss q ((i, c, rec_sym)::acc)
-        in
-        aux ss ind_list []
-      in
-      let ss, ind_list = fold_left2_map ss ind_list in
-      (*let rec_sym_list = List.rev rec_sym_list in*)
-      
-
-
-
-      
-      (*let rec_sym_list = List.rev rec_sym_list in*)
+      let ss, ind_list = map_triplet ss ind_list in
       (* STEP 4 - Generate the associated rules
           i.e. Compute the rules associated with the induction principle,
                check the type preservation of the rules and add them to the
                signature *)
       let rs_list =
-        Inductive.gen_rec_rules cmd.pos ind_list assoc_predicates
+        Inductive.gen_rec_rules cmd.pos ind_list (List.rev assoc_predicates)
       in
       let ss =
         with_no_wrn (List.fold_left (fun ss rs -> handle_rules ss rs) ss)
@@ -377,7 +350,8 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
       in
       (* STEP 5 - Store inductive structure in the field "sign_ind" of the
          signature *)
-      List.iter (fun (a,b,c) -> Sign.add_inductive ss.signature a b c) ind_list;
+      List.iter
+        (fun (a,b,c) -> Sign.add_inductive ss.signature a b c) ind_list;
       (ss, None)
   | P_theorem(ms, stmt, ts, pe) ->
       let (x,xs,a) = stmt.elt in

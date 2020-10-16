@@ -159,7 +159,7 @@ set infix left 6 "≤" ≔ le
 //  | le_S : Πn m:τ nat, π (n ≤ m) → π (n ≤ (succ m))
 
 /////////////////// Arithmetic and boolean expressions
-set debug +g
+
 inductive Expr : TYPE ≔
  | Lit : Nat → Expr
  | Add : Expr → Expr → Expr
@@ -357,12 +357,6 @@ assert ind_odd p0_ p1_ pieven_O pieven_S piodd_S _ (odd_S x evenx)
 assert ind_even p0_ p1_ pieven_O pieven_S piodd_S _ even_O ≡ pieven_O
 assert ind_even p0_ p1_ pieven_O pieven_S piodd_S _ (even_S x oddx)
   ≡ pieven_S x oddx (ind_odd p0_ p1_ pieven_O pieven_S piodd_S _ oddx)
-
-// inductive even : Nat → TYPE ≔
-//   | even_O : even 0
-//   | even_S : Πn, odd n → even (succ n)
-// with odd : Nat → TYPE ≔
-//   | odd_S : Πn, even n → odd (succ n)
 
 ////////////////////// List of natural numbers
 
