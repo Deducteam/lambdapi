@@ -1,7 +1,7 @@
 /////////////////////////////
 // Configuration
 /////////////////////////////
-set debug +g
+
 constant symbol Prop : TYPE      // Type of propositions
 set declared "π"
 injective symbol π : Prop → TYPE // Interpretation of propositions in TYPE
@@ -159,7 +159,7 @@ set infix left 6 "≤" ≔ le
 //  | le_S : Πn m:τ nat, π (n ≤ m) → π (n ≤ (succ m))
 
 /////////////////// Arithmetic and boolean expressions
-
+set debug +g
 inductive Expr : TYPE ≔
  | Lit : Nat → Expr
  | Add : Expr → Expr → Expr

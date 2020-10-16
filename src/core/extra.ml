@@ -114,6 +114,14 @@ module List =
       in
       aux l1 l2 l3 []
 
+    let rec combine3 : 'a list -> 'b list -> 'c list -> ('a*'b*'c) list =
+      fun l1 l2 l3 ->
+      match l1, l2, l3 with
+      | [], [], [] -> []
+      | t1::q1, t2::q2, t3::q3 -> (t1,t2,t3)::(combine3 q1 q2 q3)
+      | _ ->
+          raise (Invalid_argument "Argument lists must have the same length")
+
     (** [combine_rev [a1;...;an] [b1;...;bn]] returns [(an,bn);...;(a1,b1)].
         @raise Invalid_argument if the two lists are determined to have
         different lengths. *)
