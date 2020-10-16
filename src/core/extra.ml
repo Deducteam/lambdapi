@@ -100,20 +100,10 @@ module List =
       | e::es -> let fn e = Format.fprintf oc "%s%a" sep pp_elt e in
                  pp_elt oc e; iter fn es
 
-    (** [combine3_rev [a1;...; an] [b1;...; bn] [c1;...;cn]] returns
-        [(an,bn,cn);...;(a1,b1,c1)].
+    (** [combine3 [a1;...; an] [b1;...; bn] [c1;...;cn]] returns
+        [(a1,b1,c1);...;(an,bn,cn)].
         @raise Invalid_argument if the three lists are determined to have
         different lengths. *)
-    let combine3_rev : 'a list -> 'b list -> 'c list -> ('a*'b*'c) list =
-      fun l1 l2 l3 ->
-      let rec aux l1 l2 l3 acc = match l1, l2, l3 with
-        | [], [], [] -> acc
-        | t1::q1, t2::q2, t3::q3 -> aux q1 q2 q3 ((t1,t2,t3)::acc)
-        | _ ->
-           raise (Invalid_argument "Argument lists must have the same length")
-      in
-      aux l1 l2 l3 []
-
     let rec combine3 : 'a list -> 'b list -> 'c list -> ('a*'b*'c) list =
       fun l1 l2 l3 ->
       match l1, l2, l3 with
