@@ -24,7 +24,7 @@ with "bash on Windows".
 
 List of dependencies (for version numbers refer to `lambdapi.opam`):
  - GNU make
- - [ocaml](https://ocaml.org/) (at least 4.05.0 and at most 4.07.1)
+ - [ocaml](https://ocaml.org/) (at least 4.07.0)
  - [dune](https://dune.build/)
  - [odoc](https://github.com/ocaml/odoc) (for documentation only)
  - [bindlib](https://github.com/rlepigre/ocaml-bindlib)
@@ -44,9 +44,9 @@ first installation of Why3).
 
 Using Opam, a suitable OCaml environment can be setup as follows.
 ```bash
-opam switch 4.07.1
+opam switch 4.11.1
 eval `opam config env`
-opam install dune odoc menhir yojson cmdliner bindlib.5.0.0 timed.1.0 earley.2.0.0 why3.1.3.1
+opam install dune odoc menhir yojson cmdliner bindlib.5.0.0 timed.1.0 earley.3.0.0 why3.1.3.1
 why3 config --detect
 ```
 
