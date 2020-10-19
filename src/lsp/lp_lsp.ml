@@ -11,9 +11,7 @@
 (************************************************************************)
 
 open Core
-
-module RangeMap = Lplib.Cmap.RangeMap
-module Range = Lplib.Cmap.Range
+open Lplib
 
 module F = Format
 module J = Yojson.Basic

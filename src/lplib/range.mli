@@ -10,4 +10,4 @@
 (* Status: Experimental                                                 *)
 (************************************************************************)
 
-let concat_map f l = List.concat (List.map f l)
+include Range_intf.S

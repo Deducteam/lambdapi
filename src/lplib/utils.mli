@@ -10,4 +10,4 @@
 (* Status: Experimental                                                 *)
 (************************************************************************)
 
-let concat_map f l = List.concat (List.map f l)
+val concat_map : ('a -> 'b list) -> 'a list -> 'b list
