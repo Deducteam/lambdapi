@@ -1,5 +1,5 @@
 (library
  (name pure)
  (public_name lambdapi.pure)
- (modules pure)
+ (modules :standard)
  (libraries stdlib-shims core lplib))
