@@ -267,14 +267,14 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
         fatal cmd.pos "Pattern matching strategy modifiers cannot be used \
                        in inductive types.";
       (* STEP 1 - Add the inductive types in the signature *)
-      let add_ind_types :
+      let add_ind_type :
         sig_state * sym list -> p_inductive -> sig_state * sym list
         = fun (ss, ind_typ_list) x ->
         let (id, a, _) = x.elt in
         let (ss, ind_sym) = handle_symbol ss e Injec Eager id [] a in
         (ss, ind_sym::ind_typ_list)
       in
-      let (ss, ind_typ_list_rev) = List.fold_left add_ind_types (ss, []) il in
+      let (ss, ind_typ_list_rev) = List.fold_left add_ind_type (ss, []) il in
       (* STEP 2 - Add the constructors in the signature. *)
       let add_constructors :
         sig_state * sym list list -> p_inductive -> sig_state * sym list list
@@ -295,7 +295,10 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
       let (ss, cons_list_list_rev) =
         List.fold_left add_constructors (ss, []) il
       in
-      let ind_list = List.combine_rev ind_typ_list_rev cons_list_list_rev in
+      let ind_list =
+        List.fold_left2 (fun acc x y -> (x,y)::acc)
+          ind_typ_list_rev cons_list_list_rev
+      in
       (* STEP 3 - Generate the induction principle. *)
         (* A - Compute the induction principle *)
       let rec_typ_list_rev, assoc_predicates =

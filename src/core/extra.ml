@@ -112,18 +112,6 @@ module List =
       | _ ->
           raise (Invalid_argument "Argument lists must have the same length")
 
-    (** [combine_rev [a1;...;an] [b1;...;bn]] returns [(an,bn);...;(a1,b1)].
-        @raise Invalid_argument if the two lists are determined to have
-        different lengths. *)
-    let combine_rev : 'a list -> 'b list -> ('a * 'b) list = fun l1 l2 ->
-      let rec aux l1 l2 acc = match l1, l2 with
-        | [], [] -> acc
-        | t1::q1, t2::q2 -> aux q1 q2 ((t1,t2)::acc)
-        | _ ->
-           raise (Invalid_argument "Argument lists must have the same length")
-      in
-      aux l1 l2 []
-
     (** [filter_map f l] applies [f] to the elements of [l] and keeps the [x]
         such that [Some(x)] in [List.map f l]. *)
     let rec filter_map : ('a -> 'b option) -> 'a list -> 'b list = fun f l ->
