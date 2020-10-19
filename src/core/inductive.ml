@@ -120,8 +120,8 @@ let preprocessing :
     this value in the recursive case with the function [f_rec res x rec_hyp],
     and on the other case with the function [f_not_rec res x]. The string [s]
     is the prefix of variables' name. It's useful for the function [inj_var]
-    to have names with no clash. The data structure [assoc_predicates] stores
-    the link between an inductive type and a predicate with its type.
+    to have names with no clash. The data structure [assoc_predicate] maps
+    every inductive type to a predicate variable and its type.
     In this iteration, we keep track of the variables [xs] we went through
     (the last variable comes first) and some accumulor [acc:'a]. Note that, at
     the beginning, the function [fold_cons_typ] is equal to
@@ -266,14 +266,13 @@ let gen_rec_type :
       assoc_predicates
   in
   let t = List.map f t in
-  if !log_enabled then
+  (if !log_enabled then
     let f ind_sym elt =
       log_ind "The induction principle of the inductive type [%a] is %a"
         Pretty.pp_ident (Pos.none ind_sym.sym_name)
         Print.pp_term (Bindlib.unbox elt)
     in
-    List.iter2 f ind_typ_list t
-  else ();
+    List.iter2 f ind_typ_list t);
   (List.map Bindlib.unbox t, assoc_predicates)
 
 (** [gen_rec_rules pos ind_list assoc_predicates] returns the p_rules associa-

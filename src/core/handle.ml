@@ -296,11 +296,13 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
         List.fold_left add_constructors (ss, []) il
       in
       let ind_list =
-        List.fold_left2 (fun acc x y -> (x,y)::acc)
+        List.fold_left2 (fun acc x y -> (x,y)::acc) []
           ind_typ_list_rev cons_list_list_rev
       in
       (* STEP 3 - Generate the induction principle. *)
-        (* A - Compute the induction principle *)
+      (* A - Compute the induction principle *)
+      (* Note: [assoc_predicate] maps every inductive type to a predicate
+               variable and its type. *)
       let rec_typ_list_rev, assoc_predicates =
         Inductive.gen_rec_type ss cmd.pos ind_list
       in
@@ -348,7 +350,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
         Inductive.gen_rec_rules cmd.pos ind_list (List.rev assoc_predicates)
       in
       let ss =
-        with_no_wrn (List.fold_left (fun ss rs -> handle_rules ss rs) ss)
+        with_no_wrn (List.fold_left handle_rules ss)
           rs_list
       in
       (* STEP 5 - Store inductive structure in the field "sign_ind" of the
