@@ -10,12 +10,9 @@
  (public_name lambdapi.core)
  (synopsis "LambdaPi interactive theorem prover [core]")
  (modules :standard)
- (foreign_stubs
-  (language c)
-  (names stubs))
  (preprocess (per_module ((action (run pa_ocaml %{input-file})) parser)))
  (flags (:standard -w -27))
- (libraries unix stdlib-shims timed bindlib earley.core why3))
+ (libraries unix stdlib-shims timed bindlib earley.core why3 lplib))
 
 (ocamllex legacy_lexer)
 (menhir

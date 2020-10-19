@@ -1,5 +1,7 @@
 (** Interface to LSP. *)
 
+open Lplib
+
 open Core
 open Files
 

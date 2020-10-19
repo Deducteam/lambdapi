@@ -1,6 +1,5 @@
 (** Typing context. *)
 
-open Extra
 open Terms
 open Timed
 

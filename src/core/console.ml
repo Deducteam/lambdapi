@@ -1,7 +1,7 @@
 (** Output and debugging utilities. *)
 
 open Timed
-open Extra
+open Lplib.Extra
 
 (** Short name for a standard formatter. *)
 type 'a outfmt = ('a, Format.formatter, unit) format

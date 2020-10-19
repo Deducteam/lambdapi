@@ -1,9 +1,9 @@
 (************************************************************************)
-(* The λΠ-modulo Interactive Proof Assistant                            *)
+(* The λΠ-modulo Interactive Proof Assistant *)
 (************************************************************************)
 
 (************************************************************************)
-(* λΠ-modulo serialization Toplevel                                     *)
+(* λΠ-modulo serialization Toplevel *)
 (* Copyright Inria -- Dual License LGPL 2.1 / GPL3+                     *)
 (* Written by: F. Blanqui, E. J. Gallego Arias, F. Lefoulon             *)
 (************************************************************************)
@@ -16,7 +16,6 @@
     (in the sense of [Map]). For now, the useful modules out of this library are
     [Range] and [RangeMap]. *)
 module type S = sig
-
   type point
   type t
 
@@ -24,8 +23,8 @@ module type S = sig
   val make_point : int -> int -> point
 
   (** [make_interval s e] creates an interval with start [s] and end [e].
-     Requires the interval to be well defined (e.g with start < finish) or it
-     will assert *)
+      Requires the interval to be well defined (e.g with start < finish) or it
+      will assert *)
   val make_interval : point -> point -> t
 
   val line : point -> int

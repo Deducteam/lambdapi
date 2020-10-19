@@ -1,16 +1,12 @@
+open! Lplib
+
 open Timed
 open Core
-open Extra
 open Console
 open Files
 
-let concat_map = Lplib.Utils.concat_map
-
-let rec pmap (l : 'a option list) : 'a list = match l with
-  |[] -> []
-  |h::t -> match h with
-    | None -> pmap t
-    |Some elt -> elt::(pmap t)
+let pmap = List.pmap (fun x -> x)
+let concat_map = List.concat_map
 
 (** Representation of a single command (abstract). *)
 module Command = struct
@@ -22,7 +18,7 @@ module Command = struct
   let rec qidents_of_bound_p_arg (args: Syntax.p_arg)
   : Syntax.qident list * Pos.strloc list =
     match args with
-    |idents , None, _ -> [], pmap idents
+    | idents , None, _ -> [], pmap idents
     | idents, Some ty,_ ->
       qidents_of_p_term ty, pmap idents
 
@@ -202,5 +198,5 @@ let end_proof : proof_state -> command_result = fun s ->
   let (_, ss, p, finalize) = s in
   try Cmd_OK(Time.save (), finalize ss p) with Fatal(p,m) -> Cmd_Error(p,m)
 
-let get_symbols : state -> (Terms.sym * Pos.popt) StrMap.t = fun s ->
+let get_symbols : state -> (Terms.sym * Pos.popt) Extra.StrMap.t = fun s ->
   (snd s).in_scope

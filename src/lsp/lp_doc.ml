@@ -11,13 +11,11 @@
 (************************************************************************)
 
 open Core
-open Lplib
+open! Lplib
 
 module LSP = Lsp_base
 
 (* exception NoPosition of string *)
-
-let concat_map = Lplib.Utils.concat_map
 
 let interval_of_pos : Pos.pos -> Range.t = fun p ->
   let open Range in
@@ -124,7 +122,7 @@ let process_cmd _file (nodes,st,dg) ast =
 let new_doc ~uri ~version ~text =
   let root =
     (* We remove the ["file://"] prefix. *)
-    assert(Extra.String.is_prefix "file://" uri);
+    assert(String.is_prefix "file://" uri);
     let path = String.sub uri 7 (String.length uri - 7) in
     Pure.initial_state path
   in
@@ -162,7 +160,7 @@ let check_text ~doc =
 
     (* doc spans are converted to q_idents, which are basically tokens with a
        position *)
-    let qids = concat_map Pure.Command.get_qidents doc_spans in
+    let qids = List.concat_map Pure.Command.get_qidents doc_spans in
 
     (* these qidents are then converted to a map *)
     let f (map : (Syntax.p_module_path * string) RangeMap.t) (qid : Syntax.qident) =

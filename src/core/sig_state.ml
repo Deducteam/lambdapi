@@ -9,9 +9,11 @@
    but through the current module only, in order to setup the [sig_state]
    properly. *)
 
+open Lplib.Base
+open Lplib.Extra
+
 open Timed
 open Console
-open Extra
 open Files
 open Pos
 open Syntax

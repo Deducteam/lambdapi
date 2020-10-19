@@ -1,9 +1,9 @@
 (************************************************************************)
-(* The λΠ-modulo Interactive Proof Assistant                            *)
+(* The λΠ-modulo Interactive Proof Assistant *)
 (************************************************************************)
 
 (************************************************************************)
-(* λΠ-modulo serialization Toplevel                                     *)
+(* λΠ-modulo serialization Toplevel *)
 (* Copyright Inria -- Dual License LGPL 2.1 / GPL3+                     *)
 (* Written by: F. Blanqui, E. J. Gallego Arias, F. Lefoulon             *)
 (************************************************************************)
@@ -12,10 +12,9 @@
 
 (* The functor for cursor maps. *)
 module Make (Range : Range_intf.S) = struct
-
   (* A map of which keys are intervals. *)
   module Range = Range
-  module RangeMap = Map.Make(Range)
+  module RangeMap = Map.Make (Range)
 
   (* Now we need to transform the map so that : - the keys for "add" are
      intervals - the keys for "find" are points. *)
@@ -39,4 +38,4 @@ module Make (Range : Range_intf.S) = struct
 end
 
 (* The implementation of CursorMap using a functor. *)
-include Make(Range)
+include Make (Range)

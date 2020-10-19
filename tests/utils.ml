@@ -1,8 +1,9 @@
 (** Testing miscellanous utilities provided by Lambdapi, such as decision tree
     printing, XTC file generation, HRS file generation. *)
 
+open Lplib.Extra
+
 open Core (* Lambdapi core *)
-open Extra
 
 let _ =
   Files.set_lib_root None;

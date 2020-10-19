@@ -1,6 +1,7 @@
 (** Type-checking and inference. *)
 
-open Extra
+open! Lplib
+
 open Timed
 open Console
 open Terms
