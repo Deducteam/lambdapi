@@ -25,3 +25,7 @@ let equal : 'a eq -> 'a option eq =
     [o = Some e]. *)
 let pp : 'a pp -> 'a option pp =
  fun pp_elt oc o -> match o with None -> () | Some e -> pp_elt oc e
+
+let empty x = match x with | None -> true | Some _ -> false
+let default x d = match x with | None -> d | Some x -> x
+
