@@ -22,45 +22,15 @@ KO_TESTFILES = $(sort $(wildcard tests/KO/*.dk tests/KO/*.lp))
 
 .PHONY: tests
 tests: bin
-	@printf "## OK tests ##\n"
-	@for file in $(OK_TESTFILES) ; do \
-		$(LAMBDAPI) --verbose 0 $$file 2> /dev/null \
-		&& printf "\033[32mOK\033[0m $$file\n" \
-	  || { printf "\033[31mKO\033[0m $$file\n" \
-		&& $(LAMBDAPI) --verbose 0 $$file ; } ; \
-	done || true
-	@dune exec -- tests/commands.sh \
-&& printf '\033[32mOK\033[0m commands.sh\n' \
-|| { printf '\033[31mKO\033[0m commands.sh\n'; exit 1; }
-	@printf "## XTC tests ##\n"
-	@dune exec -- tests/xtc.sh
-	@printf "## KO tests ##\n"
-	@for file in $(KO_TESTFILES) ; do \
-		$(LAMBDAPI) --verbose 0 $$file 2> /dev/null \
-		&& printf "\033[31mOK\033[0m $$file\n" \
-		|| printf "\033[32mKO\033[0m $$file\n" ; \
-	done || true
+	@dune test
+	@printf "## Decision tree tests ##\n"
+	@dune exec -- tests/dtrees.sh
 
 .PHONY: real_tests
 real_tests: bin
-	@printf "## OK tests ##\n"
-	@for file in $(OK_TESTFILES) ; do \
-		$(LAMBDAPI) --verbose 0 $$file 2> /dev/null \
-		&& printf "\033[32mOK\033[0m $$file\n" \
-	  || { printf "\033[31mKO\033[0m $$file\n" \
-		&& $(LAMBDAPI) --verbose 0 $$file ; exit 1 ; } ; \
-	done
-	@dune exec -- tests/commands.sh \
-&& printf '\033[32mOK\033[0m commands.sh\n' \
-|| { printf '\033[31mKO\033[0m commands.sh\n'; exit 1; }
-	@printf "## XTC tests ##\n"
-	@dune exec -- tests/xtc.sh
-	@printf "## KO tests ##\n"
-	@for file in $(KO_TESTFILES) ; do \
-		$(LAMBDAPI) --verbose 0 $$file 2> /dev/null \
-		&& { printf "\033[31mOK\033[0m $$file\n" ; exit 1 ; } \
-		|| printf "\033[32mKO\033[0m $$file\n" ; \
-	done
+	@dune test
+	@printf "## Decision tree tests ##\n"
+	@dune exec -- tests/dtrees.sh
 
 .PHONY: sanity_check
 sanity_check: tools/sanity_check.sh
