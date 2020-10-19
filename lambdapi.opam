@@ -30,6 +30,7 @@ depends: [
   "yojson"       { >= "1.6.0" }
   "cmdliner"     { >= "1.0.3" }
   "stdlib-shims"
+  "alcotest"     { with-test }
 ]
 
 post-messages: [
@@ -42,6 +43,8 @@ build: [
   [ "dune" "subst" ]
   [ "dune" "build" "-p" name "-j" jobs ]
 ]
+
+run-test: [ "dune" "test" ]
 
 install: [
   [ make "install_emacs" ]
