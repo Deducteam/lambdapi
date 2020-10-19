@@ -1,7 +1,7 @@
 #!/bin/sh
-# commands.sh    Test Lambdapi commands
+# Test Lambdapi decision-tree command
 
-set -eu
+set -euf
 
 ko() {
     printf '\033[31mKO\033[0m %s\n' "$1"
@@ -14,8 +14,6 @@ ok() {
 
 LAMBDAPI="lambdapi decision-tree --verbose 0 \
 --map-dir=tests:tests"
-
-printf '## decision-tree tests ##\n'
 
 out="$(${LAMBDAPI} tests.OK.nat.add)"
 if [ -z "$out" ]; then
@@ -57,3 +55,4 @@ if [ "$?" = 1 ] || [ -z "$out" ]; then
 else
     ok 'tests.OK.unif_hint.#equiv'
 fi
+exit 0

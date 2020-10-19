@@ -24,12 +24,13 @@ depends: [
   "dune"         { >= "1.3.0"  }
   "menhir"
   "bindlib"      { >= "5.0.1" }
-  "earley"       { = "2.0.0" }
+  "earley"       { >= "3.0.0" }
   "timed"        { = "1.0"   }
   "why3"         { >= "1.3.1" }
   "yojson"       { >= "1.6.0" }
   "cmdliner"     { >= "1.0.3" }
   "stdlib-shims"
+  "alcotest"     { with-test }
 ]
 
 post-messages: [
@@ -42,6 +43,8 @@ build: [
   [ "dune" "subst" ]
   [ "dune" "build" "-p" name "-j" jobs ]
 ]
+
+run-test: [ "dune" "test" ]
 
 install: [
   [ make "install_emacs" ]
