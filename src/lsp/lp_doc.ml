@@ -147,7 +147,16 @@ let dummy_loc =
         ; end_col = 2
         }
 
+(** Update document identifier range map *)
+let update_rangemap doc_spans =
+  (* extract q_idents from spans *)
+  let qids = List.concat_map Pure.Command.get_qidents doc_spans in
 
+  (* add to the map *)
+  let f (map : (Syntax.p_module_path * string) RangeMap.t) (qid : Syntax.qident) =
+    RangeMap.add (interval_of_popt qid.pos) qid.elt map
+  in
+  List.fold_left f RangeMap.empty qids
 
 let check_text ~doc =
   let uri, version = doc.uri, doc.version in
@@ -158,19 +167,12 @@ let check_text ~doc =
       doc.root <- root; doc.final <- root; doc_spans
     in
 
-    (* doc spans are converted to q_idents, which are basically tokens with a
-       position *)
-    let qids = List.concat_map Pure.Command.get_qidents doc_spans in
-
-    (* these qidents are then converted to a map *)
-    let f (map : (Syntax.p_module_path * string) RangeMap.t) (qid : Syntax.qident) =
-      RangeMap.add (interval_of_popt qid.pos) qid.elt map
-    in
-
-    let map = List.fold_left f RangeMap.empty qids in
+    (* update rangemap *)
+    let map = update_rangemap doc_spans in
 
     let nodes, final, diag =
       List.fold_left (process_cmd uri) ([],doc.root,[]) doc_spans in
+
     let doc = { doc with nodes; final; map } in
     doc,
     LSP.mk_diagnostics ~uri ~version @@
