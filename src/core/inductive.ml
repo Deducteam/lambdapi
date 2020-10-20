@@ -249,31 +249,35 @@ let gen_rec_type :
     fold_cons_typ pos codom inj_var build_rec_hyp domrec dom ind_sym
       cons_sym f_rec f_not_rec init x_str assoc_predicates
   in
-  (* Very close to the function "fold_right2", but "f" is the function
-     "fold_right" and it needs a neutral element. *)
+
+  (* STEP 3 - Create the induction principle. *)
+    (* A - Merge all the clauses. *)
+    (* Very close to the function "fold_right2", but "f" is the function
+       "fold_right" and it needs a neutral element. *)
   let rec clauses ind_list e : tbox = match ind_list with
     | [] -> e
     | (i,cl)::q ->
         let res = clauses q e in
         List.fold_right (fun a b -> _Impl (case_of i a) b) cl res
   in
-  let t = List.map (clauses ind_list) conclusion_list in
-
-  (* STEP 3 - Create the induction principle. *)
+    (* B - Merge all the clauses with each conclusion. *)
+  let res = List.map (clauses ind_list) conclusion_list in
+    (* C - Add the quantifiers at the beginning of the induction principle,
+           one for each predicate variable. *)
   let f t =
     List.fold_left
-      (fun e (_,(name,typ)) -> _Prod typ (Bindlib.bind_var name e)) t
-      assoc_predicates
+      (fun e (_,(name,typ)) -> _Prod typ (Bindlib.bind_var name e))
+      t assoc_predicates
   in
-  let t = List.map f t in
+  let res = List.map (fun x -> Bindlib.unbox (f x)) res in
+    (* D - Print informative message. *)
   (if !log_enabled then
-    let f ind_sym elt =
+    let print_informative_message ind_sym elt =
       log_ind "The induction principle of the inductive type [%a] is %a"
-        Pretty.pp_ident (Pos.none ind_sym.sym_name)
-        Print.pp_term (Bindlib.unbox elt)
+        Pretty.pp_ident (Pos.none ind_sym.sym_name) Print.pp_term elt
     in
-    List.iter2 f ind_typ_list t);
-  (List.map Bindlib.unbox t, assoc_predicates)
+    List.iter2 print_informative_message ind_typ_list res);
+  (res, assoc_predicates)
 
 (** [gen_rec_rules pos ind_list assoc_predicates] returns the p_rules associa-
     ted to the list of inductive types [ind_typ_list], defined at the position
