@@ -223,12 +223,12 @@ let current_path : unit -> string = fun _ ->
 let current_mappings : unit -> ModMap.t = fun _ -> !lib_mappings
 
 (** [module_to_file mp] converts module path [mp] into the corresponding "file
-    path" (with no attached extension). It is assumed that [init_lib_root] was
-    called prior to any call to this function. *)
+    path" (with no attached extension). It is assumed that [lib_root] has been
+    set, possibly with [set_lib_root]. *)
 let module_to_file : Path.t -> file_path = fun mp ->
   let path =
     try ModMap.get mp !lib_mappings with ModMap.Root_not_set ->
-      assert false (* Unreachable after [init_lib_root] is called. *)
+      fatal_no_pos "Library root not set."
   in
   log_file "[%a] points to base name [%s]." Path.pp mp path; path
 

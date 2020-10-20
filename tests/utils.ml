@@ -4,7 +4,8 @@
 open Core (* Lambdapi core *)
 open Extra
 
-let _ = Files.set_lib_root (Some(".."));;
+let _ = Files.set_lib_root None
+
 let bool_file = "OK/bool.lp"
 let bool_sign = Compile.compile_file bool_file
 let bool_ss = Sig_state.of_sign bool_sign
