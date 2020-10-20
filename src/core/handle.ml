@@ -306,16 +306,16 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
       let rec_typ_list_rev, assoc_predicates =
         Inductive.gen_rec_type ss cmd.pos ind_list
       in
-      let check_and_add rec_typ id ss =
+      let add_recursor (ss, rec_sym_list) ind_sym rec_typ =
         (* B - Check the type of the induction principle *)
         Inductive.check_type_ind cmd.pos rec_typ;
         (* C - Add the induction principle in the signature *)
         let rec_name =
-          Pos.make cmd.pos (Parser.add_prefix "ind_" id.sym_name)
+          Pos.make cmd.pos (Parser.add_prefix "ind_" ind_sym.sym_name)
         in
         if Sign.mem ss.signature rec_name.elt then
           fatal cmd.pos "Symbol [%s] already exists." rec_name.elt;
-        if StrSet.mem id.sym_name !(ss.signature.sign_idents) then
+        if StrSet.mem ind_sym.sym_name !(ss.signature.sign_idents) then
           Sign.add_ident ss.signature rec_name.elt;
         let (ss, rec_sym) =
           Sig_state.add_symbol ss e Defin Eager rec_name rec_typ [] None
@@ -323,25 +323,16 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
         if !log_enabled then
           log_hndl "The induction principle named %a is %a"
             Pretty.pp_ident rec_name Print.pp_term rec_typ;
-        ss, rec_sym
+        (ss, rec_sym::rec_sym_list)
+      in
+      let (ss, rec_sym_list) =
+        List.fold_left2 add_recursor (ss, [])
+          ind_typ_list_rev rec_typ_list_rev
       in
       let ind_list =
-        List.combine3
-          ind_typ_list_rev cons_list_list_rev rec_typ_list_rev
+        List.combine3_rev
+          ind_typ_list_rev cons_list_list_rev (List.rev rec_sym_list)
       in
-      let map_triplet :
-            Sig_state.t -> (sym * sym list * term) list
-            -> Sig_state.t * (sym * sym list * sym) list = fun ss ind_list ->
-        let rec aux ss ind_list acc =
-          match ind_list with
-          | [] -> ss, acc
-          | (i,c,r)::q ->
-              let ss, rec_sym = check_and_add r i ss in
-              aux ss q ((i, c, rec_sym)::acc)
-        in
-        aux ss ind_list []
-      in
-      let ss, ind_list = map_triplet ss ind_list in
       (* STEP 4 - Generate the associated rules
           i.e. Compute the rules associated with the induction principle,
                check the type preservation of the rules and add them to the
@@ -349,10 +340,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
       let rs_list =
         Inductive.gen_rec_rules cmd.pos ind_list (List.rev assoc_predicates)
       in
-      let ss =
-        with_no_wrn (List.fold_left handle_rules ss)
-          rs_list
-      in
+      let ss = with_no_wrn (List.fold_left handle_rules ss) rs_list in
       (* STEP 5 - Store inductive structure in the field "sign_ind" of the
          signature *)
       List.iter

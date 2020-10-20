@@ -73,7 +73,7 @@ let prf_of : tvar -> config -> tbox list -> tbox -> tbox = fun p c ts t ->
         a pair made of a predicate variable and its type.The name of a
         predicate variable has the type tvar and its type has the type tbox.
       - The second list is composed of the conclusions of the induction
-      principles.
+        principles.
     The string [p_str] is used as prefix for predicate variables, and the
     string [x_str] as prefix for type parameters. *)
 let preprocessing :
@@ -123,8 +123,8 @@ let preprocessing :
     to have names with no clash. The data structure [assoc_predicate] maps
     every inductive type to a predicate variable and its type.
     In this iteration, we keep track of the variables [xs] we went through
-    (the last variable comes first) and some accumulor [acc:'a]. Note that, at
-    the beginning, the function [fold_cons_typ] is equal to
+    (the last variable comes first) and some accumulator [acc:'a]. Note that,
+    at the beginning, the function [fold_cons_typ] is equal to
     [aux [] init  !(cons_sym.sym_type)] where
     [aux : 'b list -> 'a -> term -> 'c = fun xs acc a].
     During an iteration, there are several cases:
@@ -146,7 +146,7 @@ let fold_cons_typ (pos : popt)
       (domrec : term -> 'b -> 'a -> 'c -> 'c) (dom : term -> 'b -> 'c -> 'c)
       (ind_sym : sym) (cons_sym : sym) (f_rec : 'a -> 'b -> 'a -> 'a)
       (f_not_rec : 'a -> 'b -> 'a) (init : 'a) (s : string)
-      (assoc_predicates : (sym * (tvar * tbox)) list) : 'c =
+      (assoc_predicates : (sym * (tvar * 'd)) list) : 'c =
   let rec aux : 'b list -> 'a -> term -> 'c = fun xs acc a ->
     match Basics.get_args a with
     | (Symb(s), ts) ->
