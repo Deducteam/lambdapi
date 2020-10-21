@@ -211,7 +211,7 @@ let new_lib_mapping : string -> unit = fun s ->
   let new_mapping =
     try ModMap.add module_path file_path !lib_mappings
     with ModMap.Already_mapped ->
-    fatal_no_pos "Module path [%a] is already mapped." Path.pp module_path
+      fatal_no_pos "Module path [%a] is already mapped." Path.pp module_path
   in
   lib_mappings := new_mapping
 
