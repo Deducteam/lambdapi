@@ -162,6 +162,25 @@ let instantiation : ctxt -> meta -> term array -> term ->
         Some (Bindlib.bind_mvar vs (lift u))
   else None
 
+let g_constr : constr list Stdlib.ref = Stdlib.ref []
+
+let eq_constr : constr -> constr -> int = fun (ctx1,ta1,tb1) (_ctx2,ta2,tb2) ->
+  (* we consider that ctx1 = ctx2 *)
+  if (Eval.eq_modulo ctx1 ta1 ta2) && (Eval.eq_modulo ctx1 tb1 tb2) ||
+     (Eval.eq_modulo ctx1 ta1 tb2) && (Eval.eq_modulo ctx1 tb1 ta2)
+  then
+    0
+  else
+    1
+
+let mymem compare x l =
+  let rec mem x = function
+      [] -> false
+    | a::l -> compare a x = 0 || mem x l
+  in mem x l
+
+let mymem = mymem eq_constr
+
 (** [instantiate ctx m ts u] check whether, in a problem [m[ts]=u], [m] can be
     instantiated and, if so, instantiate it. *)
 let instantiate : ctxt -> meta -> term array -> term -> bool =
@@ -178,8 +197,9 @@ let instantiate : ctxt -> meta -> term array -> term -> bool =
   match instantiation ctx m ts u with
   | Some(bu) when Bindlib.is_closed bu ->
     let m_app = type_meta_app m (Array.to_list ts) in
-    let constr = Infer.check ctx u m_app in
-    if (constr <> []) then
+    let constrs = Infer.check ctx u m_app in
+    if List.for_all (function constr -> not (mymem constr Stdlib.(!g_constr))) constrs then
+(*     if constrs <> [] then *)
       false
     else (
       if !log_enabled then log_unif (yel "%a ≔ %a") pp_meta m pp_term u;
@@ -190,6 +210,7 @@ let instantiate : ctxt -> meta -> term array -> term -> bool =
 (** [solve p] tries to solve the unification problem [p] and
     returns the constraints that could not be solved. *)
 let rec solve : problem -> constr list = fun p ->
+  Pervasives.(g_constr := p.to_solve);
   match p with
   | { to_solve = []; unsolved = []; _ } -> []
   | { to_solve = []; unsolved = cs; recompute = true } ->
