@@ -66,13 +66,13 @@ module ModMap :
         (including the root). *)
     exception Already_mapped
 
-    (** [set_root path m] sets the library root of [m] to be [path]. If it was
-        already set, the the exception [Already_mapped] is raised. *)
+    (** [set_root path m] sets the library root of [m] to be [path].
+        @raise Already_mapped if library root of [m] is already set. *)
     val set_root : file_path -> t -> t
 
     (** [add mp path m] extends the mapping [m] by associating the module path
-        [mp] to the file path [path]. In the case where [mp] is already mapped
-        in [m], the exception [Already_mapped] is raised. *)
+        [mp] to the file path [path].
+        @raise Already_mapped when [mp] is already mapped in [m]. *)
     val add : Path.t -> file_path -> t -> t
 
     (** Exception raised if an attempt is made to use the [get] function prior
@@ -80,8 +80,9 @@ module ModMap :
     exception Root_not_set
 
     (** [get mp m] obtains the file path corresponding to the module path [mp]
-        in [m] (with no particular extension). The exception [Root_not_set] is
-        raised if the root of [m] was not previously set with [set_root]. *)
+        in [m] (with no particular extension).
+        @raise Root_not_set when the root of [m] has not been set using
+        [set_root].  *)
     val get : Path.t -> t -> file_path
 
     (** [iter fn m] calls function [fn] on every binding stored in [m]. *)
@@ -207,7 +208,11 @@ let new_lib_mapping : string -> unit = fun s ->
     fatal_no_pos "Bad syntax for \"--map-dir\" option (expecting MOD:DIR)."
   in
   Path.check_simple module_path;
-  let file_path = Filename.realpath file_path in
+  let file_path =
+    try Filename.realpath file_path
+    with Invalid_argument(f) ->
+      fatal_no_pos "new_lib_mapping: %s: No such file or directory" f
+  in
   let new_mapping =
     try ModMap.add module_path file_path !lib_mappings
     with ModMap.Already_mapped ->
