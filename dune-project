@@ -1,4 +1,4 @@
-(lang dune 1.11)
+(lang dune 2.1)
 (name lambdapi)
 
 (using menhir 1.0)
