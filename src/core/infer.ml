@@ -206,6 +206,7 @@ and check : ctxt -> term -> term -> unit = fun ctx t a ->
 let infer : ctxt -> term -> term * constr list = fun ctx t ->
   Stdlib.(constraints := []);
   let a = infer ctx t in
+(*
   let eq_constr : constr -> constr -> int = fun (ctx1,ta1,tb1) (_ctx2,ta2,tb2) ->
     (* we consider that ctx1 = ctx2 *)
     if (Eval.eq_modulo ctx1 ta1 ta2) && (Eval.eq_modulo ctx1 tb1 tb2) ||
@@ -215,8 +216,9 @@ let infer : ctxt -> term -> term * constr list = fun ctx t ->
     else
       1
   in
+*)
   let constrs = Stdlib.(!constraints) in
-  let constrs = List.sort_uniq eq_constr constrs in
+(*   let constrs = List.sort_uniq eq_constr constrs in *)
   if !log_enabled then
     begin
       log_infr (gre "infer %a : %a") pp_term t pp_term a;
