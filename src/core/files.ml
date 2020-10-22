@@ -287,7 +287,6 @@ let file_to_module : string -> Path.t = fun fname ->
         fatal_msg "Consider adding a package file under your source tree, ";
         fatal_no_pos "or use the [--map-dir] option."
   in
-  ignore (mp, path);
   (* Build the module path. *)
   let rest =
     let len_path = String.length path in
