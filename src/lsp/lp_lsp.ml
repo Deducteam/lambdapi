@@ -25,7 +25,8 @@ let   list_field name dict = U.to_list   List.(assoc name dict)
 let string_field name dict = U.to_string List.(assoc name dict)
 
 (* Conditionals *)
-let oint_field  name dict = Option.map_default U.to_int 0 List.(assoc_opt name dict)
+let oint_field  name dict =
+  Option.map_default U.to_int 0 List.(assoc_opt name dict)
 let odict_field name dict =
   Option.default U.(to_option to_assoc
                       (Option.default List.(assoc_opt name dict) `Null)) []
@@ -275,9 +276,10 @@ let hover_symInfo ofmt ~id params =
   match get_symbol pt doc.map with
     | None ->
       "No symbol found", (Range.make_interval pt pt)
-    (* VSCode highlights the token properly if the interval is extended to
-       the character next to it. This might be handled differently in other
-       editors in the future, but it is the most practical solution for now. *)
+    (* VSCode highlights the token properly if the interval is extended to the
+       character next to it. This might be handled differently in other
+       editors in the future, but it is the most practical solution for
+       now. *)
     | Some(token, range) ->
       token, (Range.translate range 0 1)
   in
@@ -329,7 +331,8 @@ let hover_symInfo ofmt ~id params =
         !(sym.sym_type)
     in
     let sym_type = Format.asprintf "%a" Print.pp_term sym_found in
-    let result : J.t = `Assoc [ "contents", `String sym_type; "range", range ] in
+    let result : J.t =
+      `Assoc [ "contents", `String sym_type; "range", range ] in
     let msg = LSP.mk_reply ~id ~result in
     LIO.send_json ofmt msg
 

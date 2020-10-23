@@ -153,7 +153,8 @@ let update_rangemap doc_spans =
   let qids = List.concat_map Pure.Command.get_qidents doc_spans in
 
   (* add to the map *)
-  let f (map : (Syntax.p_module_path * string) RangeMap.t) (qid : Syntax.qident) =
+  let f (map : (Syntax.p_module_path * string) RangeMap.t)
+        (qid : Syntax.qident) =
     RangeMap.add (interval_of_popt qid.pos) qid.elt map
   in
   List.fold_left f RangeMap.empty qids
