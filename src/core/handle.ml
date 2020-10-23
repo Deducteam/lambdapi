@@ -125,14 +125,6 @@ let handle_modifiers : p_modifier loc list -> (prop * expo * match_strat) =
   in
   (prop, expo, mstrat)
 
-<<<<<<< HEAD
-(** [handle_require_as pos ss p id] handles the command [require p as id] with
-    [ss] as the signature state. On success, an updated signature state is
-    returned. *)
-let handle_require_as : popt -> sig_state -> Path.t -> ident -> sig_state =
-    fun pos ss p id ->
-  let ss = handle_require false pos ss p in
-=======
 (** [handle_require_as compile pos ss p id] handles the command [require p as
     id] with [ss] as the signature state and [compile] the compile function
     used to compile the module (and passed as argument to avoid cyclic
@@ -140,12 +132,10 @@ let handle_require_as : popt -> sig_state -> Path.t -> ident -> sig_state =
 let handle_require_as : (Path.t -> Sign.t) -> popt -> sig_state -> Path.t ->
   ident -> sig_state = fun compile pos ss p id ->
   let ss = handle_require compile false pos ss p in
->>>>>>> providing the compilation function to handle
   let aliases = StrMap.add id.elt p ss.aliases in
   let path_map = PathMap.add p id.elt ss.path_map in
   {ss with aliases; path_map}
 
-<<<<<<< HEAD
 (** [handle_symbol ss e p strat x xs a] handles the command
     [e p strat symbol x xs : a] with [ss] as the signature state.
     On success, an updated signature state and the new symbol are returned. *)
@@ -197,16 +187,11 @@ let handle_rules : sig_state -> p_rule list -> sig_state = fun ss rs ->
   let syms = List.remove_phys_dups (List.map (fun (s, _) -> s) rs) in
   List.iter Tree.update_dtree syms; ss
 
-(** [handle_cmd ss cmd] tries to handle the command [cmd] with [ss] as the
-    signature state. On success, an updated signature state is returned.  When
-    [cmd] leads to entering the proof mode,  a [proof_data] is also  returned.
-=======
 (** [handle_cmd compile ss cmd] tries to handle the command [cmd] with [ss] as
     the signature state and [compile] as the main compilation function
     processing lambdapi modules (passed as argument to avoid cyclic
     dependencies). On success, an updated signature state is returned. When
     [cmd] leads to entering the proof mode, a [proof_data] is also returned.
->>>>>>> providing the compilation function to handle
     This structure contains the list of the tactics to be executed, as well as
     the initial state of the proof. The checking of the proof is then handled
     separately. Note that [Fatal] is raised in case of an error. *)
@@ -217,19 +202,11 @@ let handle_cmd : (Path.t -> Sign.t) -> sig_state -> p_command ->
   match cmd.elt with
   | P_require(b,ps)              ->
      let ps = List.map (List.map fst) ps in
-<<<<<<< HEAD
-     (List.fold_left (handle_require b cmd.pos) ss ps, None)
-  | P_require_as(p,id)           ->
-     let id = Pos.make id.pos (fst id.elt) in
-     (handle_require_as cmd.pos ss (List.map fst p) id, None)
-  | P_open(ps)                   ->
-=======
      (List.fold_left (handle_require compile b cmd.pos) ss ps, None)
   | P_require_as(p,id)         ->
      let id = Pos.make id.pos (fst id.elt) in
      (handle_require_as compile cmd.pos ss (List.map fst p) id, None)
   | P_open(ps)                  ->
->>>>>>> providing the compilation function to handle
      let ps = List.map (List.map fst) ps in
      (List.fold_left (handle_open cmd.pos) ss ps, None)
   | P_symbol(ms, x, xs, a)     ->
