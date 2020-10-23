@@ -1,6 +1,7 @@
 (** Toplevel commands. *)
 
-open Extra
+open! Lplib
+
 open Console
 open Terms
 open Pos

@@ -1,7 +1,9 @@
 (** Scoping. *)
 
+open! Lplib
+open Lplib.Extra
+
 open Console
-open Extra
 open Pos
 open Syntax
 open Terms

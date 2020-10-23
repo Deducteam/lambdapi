@@ -1,7 +1,10 @@
 (** File utilities. *)
 
+open Lplib
+open Lplib.Base
+open Lplib.Extra
+
 open Timed
-open Extra
 open Console
 
 (** Logging function for evaluation. *)
@@ -163,7 +166,7 @@ let set_lib_root : string option -> unit = fun path ->
   Option.iter set_prefx (Sys.getenv_opt "LAMBDAPI_LIB_ROOT");
   lib_root := Some(Filename.concat !prefix "lib/lambdapi/lib_root");
   let set_lr p =
-    try lib_root := Some(Extra.Filename.realpath p) with
+    try lib_root := Some(Lplib.Filename.realpath p) with
     Invalid_argument(_) -> ()
   in
   Option.iter set_lr path;

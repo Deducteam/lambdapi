@@ -1,5 +1,7 @@
 %{
-open Extra
+
+open! Lplib
+
 open Timed
 open Pos
 open Syntax

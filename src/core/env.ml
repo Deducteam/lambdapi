@@ -1,6 +1,7 @@
 (** Scoping environment for variables. *)
 
-open Extra
+open Lplib
+
 open Terms
 
 (** Type of an environment, used in scoping to associate names to

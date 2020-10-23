@@ -7,7 +7,6 @@
 
     @see <https://rlepigre.github.io/ocaml-bindlib/> *)
 
-open Extra
 open Timed
 
 (** {3 Term (and symbol) representation} *)

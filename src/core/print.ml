@@ -5,8 +5,11 @@
     log messages, and feedback in case of success or error while type-checking
     terms or testing convertibility. *)
 
+open! Lplib
+open Lplib.Base
+open Lplib.Extra
+
 open Timed
-open Extra
 open Terms
 open Console
 open Syntax

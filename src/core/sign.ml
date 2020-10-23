@@ -1,6 +1,8 @@
 (** Signature for symbols. *)
 
-open Extra
+open! Lplib
+open Lplib.Extra
+
 open Timed
 open Console
 open Files

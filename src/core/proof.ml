@@ -1,7 +1,9 @@
 (** Proofs and tactics. *)
 
+open! Lplib
+open Lplib.Base
+
 open Timed
-open Extra
 open Pos
 open Terms
 open Print

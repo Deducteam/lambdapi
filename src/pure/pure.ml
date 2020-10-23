@@ -1,6 +1,7 @@
+open! Lplib
+
 open Timed
 open Core
-open Extra
 open Console
 open Files
 
@@ -9,6 +10,7 @@ module Command = struct
   type t = Syntax.p_command
   let equal = Syntax.eq_p_command
   let get_pos c = Pos.(c.pos)
+  let get_qidents = Cmd_analysis.get_qidents
 end
 
 (** Representation of a single tactic (abstract). *)
@@ -93,5 +95,5 @@ let end_proof : proof_state -> command_result = fun s ->
   let (_, ss, p, finalize) = s in
   try Cmd_OK(Time.save (), finalize ss p) with Fatal(p,m) -> Cmd_Error(p,m)
 
-let get_symbols : state -> (Terms.sym * Pos.popt) StrMap.t = fun s ->
+let get_symbols : state -> (Terms.sym * Pos.popt) Extra.StrMap.t = fun s ->
   (snd s).in_scope

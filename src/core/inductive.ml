@@ -1,5 +1,7 @@
 (** Generating of induction principles. *)
 
+open! Lplib
+
 open Timed
 open Pos
 open Console

@@ -1,6 +1,8 @@
 (** Package configuration file interface. *)
 
-open Extra
+open Lplib
+open Lplib.Extra
+
 open Files
 open Console
 
