@@ -450,8 +450,11 @@ and solve_aux : ctxt -> term -> term -> problem -> constr list =
 
   | (Prod(a1,b1), Prod(a2,b2))
   | (Abst(a1,b1), Abst(a2,b2)) ->
-     let (_,b1,b2) = Bindlib.unbind2 b1 b2 in
-     solve_aux ctx a1 a2 {p with to_solve = (ctx,b1,b2) :: p.to_solve}
+     let (_,b1,ctx1) = Ctxt.unbind ctx a1 None b1 in
+     let (_,b2,_) = Ctxt.unbind ctx a2 None b2 in (* This is wrong TODO *)
+  if !log_enabled then log_unif "                     CONTEXT EXTENSION";
+(*      let (_,b1,b2) = Bindlib.unbind2 b1 b2 in *)
+     solve_aux ctx a1 a2 {p with to_solve = (ctx1,b1,b2) :: p.to_solve}
 
   (* Other cases. *)
   | (Vari(x1)   , Vari(x2)   ) when Bindlib.eq_vars x1 x2 -> decompose ()
