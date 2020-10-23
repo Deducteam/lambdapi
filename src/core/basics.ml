@@ -1,6 +1,5 @@
 (** Basic operations on terms. *)
 
-open Extra
 open Timed
 open Terms
 

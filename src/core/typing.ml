@@ -1,6 +1,7 @@
 (** Type inference and type checking. *)
 
-open Extra
+open! Lplib
+
 open Console
 open Terms
 open Unif

@@ -1,5 +1,5 @@
 (** Some functions for the parser. *)
-open Extra
+open Lplib
 
 (** [parser_fatal loc fmt] is a wrapper for [Console.fatal] that enforces that
     the error has an attached source code position. *)

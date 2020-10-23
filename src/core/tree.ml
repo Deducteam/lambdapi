@@ -5,8 +5,11 @@
 
     @see <https://dblp.uni-trier.de/rec/html/conf/ml/Maranget08> *)
 
+open! Lplib
+open Lplib.Base
+open Lplib.Extra
+
 open Timed
-open Extra
 open Terms
 open Basics
 open Tree_types

@@ -8,7 +8,6 @@ open Timed
 open Files
 open Terms
 open Syntax
-open Extra
 
 (** Path of the module. *)
 let path = Path.ghost "unif_rule"

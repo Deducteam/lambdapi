@@ -1,6 +1,8 @@
 (** Parser-level abstract syntax. *)
 
-open Extra
+open Lplib
+open Lplib.Base
+
 open Pos
 
 (** Representation of a (located) identifier. *)
@@ -29,10 +31,10 @@ type unop = string * priority * qident
 type binop = string * assoc * priority * qident
 
 (** Table containing defined binary operators. *)
-let bin_operators : binop StrHtbl.t = StrHtbl.create 17
+let bin_operators : binop Extra.StrHtbl.t = Extra.StrHtbl.create 17
 
 (** Table containing defined unary operators. *)
-let una_operators : unop StrHtbl.t = StrHtbl.create 17
+let una_operators : unop Extra.StrHtbl.t = Extra.StrHtbl.create 17
 
 (** Parser-level (located) term representation. *)
 type p_term = p_term_aux loc

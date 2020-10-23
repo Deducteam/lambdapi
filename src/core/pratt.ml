@@ -4,8 +4,9 @@
     <https://dev.to/jrop/pratt-parsing>
     <https://effbot.org/zone/simple-top-down-parsing.htm> *)
 
+open Lplib.Extra
+
 open Syntax
-open Extra
 
 module Pratt : sig
   val expression : ?rbp:priority -> p_term Stream.t -> p_term

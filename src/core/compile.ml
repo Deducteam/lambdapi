@@ -1,6 +1,8 @@
 (** High-level compilation functions. *)
 
-open Extra
+open! Lplib
+open Lplib.Extra
+
 open Timed
 open Sign
 open Console

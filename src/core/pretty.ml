@@ -5,7 +5,9 @@
     file in the Lambdapi syntax, given the AST obtained when parsing a file in
     the legacy (Dedukti) syntax. *)
 
-open Extra
+open! Lplib
+open Lplib.Base
+
 open Console
 open Pos
 open Syntax

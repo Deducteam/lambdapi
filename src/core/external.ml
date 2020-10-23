@@ -4,7 +4,9 @@
     calling a Unix command. This is used, for instance, to run a confluence or
     termination checker. *)
 
-open Extra
+open Lplib.Base
+open Lplib.Extra
+
 open Timed
 open Console
 

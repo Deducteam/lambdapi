@@ -5,7 +5,8 @@
     open Syntax
     open Pos
     open Parser_utils
-    open Extra
+    open Lplib
+    open Lplib.Extra
 
     let make_pos : Lexing.position * Lexing.position -> 'a -> 'a Pos.loc =
       fun lps elt -> {pos = Some(locate lps); elt}

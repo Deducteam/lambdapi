@@ -1,3 +1,9 @@
+(** Parsing functions for the Lambdapi syntax based on the Earley library. See
+    https://github.com/rlepigre/ocaml-earley/blob/master/README.md for details
+    on using the library and its syntax extension. *)
+
+open! Lplib
+
 open Syntax
 open Pos
 open Parser_utils

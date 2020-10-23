@@ -1,8 +1,10 @@
 (** Main program. *)
 
+open! Lplib
+open Lplib.Extra
+
 open Cmdliner
 open Core
-open Extra
 open Files
 open Console
 open Version

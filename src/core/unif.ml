@@ -1,6 +1,9 @@
 (** Solving unification constraints. *)
 
-open Extra
+open! Lplib
+open Lplib.Base
+open Lplib.Extra
+
 open Timed
 open Console
 open Terms
