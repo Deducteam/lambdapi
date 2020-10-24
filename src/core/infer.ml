@@ -195,7 +195,7 @@ let rec infer : ctxt -> term -> term = fun ctx t ->
     [conv]. [ctx] must be well-formed and [a] well-sorted. This function never
     fails (but constraints may be unsatisfiable). *)
 and check : ctxt -> term -> term -> unit = fun ctx t a ->
-  if !log_enabled then log_infr "check %a : %a" pp_term t pp_term a;
+  if !log_enabled then log_infr "check %a%a : %a" pp_ctxt ctx pp_term t pp_term a;
   conv ctx (infer ctx t) a
 
 (** [infer ctx t] returns a pair [(a,cs)] where [a] is a type for the term [t]
