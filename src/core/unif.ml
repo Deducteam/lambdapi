@@ -206,6 +206,12 @@ let instantiate : ctxt -> meta -> term array -> term -> bool =
       if !log_enabled then log_unif (yel "%a ≔ %a") pp_meta m pp_term u;
       set_meta m (Bindlib.unbox bu); true
     ) else (
+      if !log_enabled then (
+        log_unif "ONE OF";
+        List.iter (log_unif (yel "%a") pp_constr) constrs;
+        log_unif "IS NOT IN";
+        List.iter (log_unif (yel "%a") pp_constr) Stdlib.(!g_constr);
+      );
       false
     )
   | _ -> false
