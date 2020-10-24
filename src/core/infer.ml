@@ -128,7 +128,7 @@ let rec infer : ctxt -> term -> term = fun ctx t ->
         let s = unfold s in
         match s with
         | Type | Kind -> s
-        | _           -> conv ctx s Type; Type
+        | _           -> conv ctx' s Type; Type
       (* We add the constraint [s = Type] because kinds cannot occur
          inside a term. So, [t] cannot be a kind. *)
       end
