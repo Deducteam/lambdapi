@@ -164,10 +164,13 @@ let instantiation : ctxt -> meta -> term array -> term ->
 
 let g_constr : constr list Stdlib.ref = Stdlib.ref []
 
-let eq_constr : constr -> constr -> int = fun (ctx1,ta1,tb1) (_ctx2,ta2,tb2) ->
-  (* we consider that ctx1 = ctx2 *)
-  if (Eval.eq_modulo ctx1 ta1 ta2) && (Eval.eq_modulo ctx1 tb1 tb2) ||
-     (Eval.eq_modulo ctx1 ta1 tb2) && (Eval.eq_modulo ctx1 tb1 ta2)
+let eq_constr : constr -> constr -> int = fun (ctx1,ta1,tb1) (ctx2,ta2,tb2) ->
+  let ta1,_ = Ctxt.to_prod ctx1 ta1 in
+  let tb1,_ = Ctxt.to_prod ctx1 tb1 in
+  let ta2,_ = Ctxt.to_prod ctx2 ta2 in
+  let tb2,_ = Ctxt.to_prod ctx2 tb2 in
+  if (Eval.eq_modulo [] ta1 ta2) && (Eval.eq_modulo [] tb1 tb2) ||
+     (Eval.eq_modulo [] ta1 tb2) && (Eval.eq_modulo [] tb1 ta2)
   then
     0
   else
@@ -198,7 +201,7 @@ let instantiate : ctxt -> meta -> term array -> term -> bool =
   | Some(bu) when Bindlib.is_closed bu ->
     let m_app = type_meta_app m (Array.to_list ts) in
     let constrs = Infer.check ctx u m_app in
-    let constrs = List.filter (function constr -> eq_constr constr ([],Type,Kind) = 1) constrs in
+    let constrs = List.filter (function (ctx,t1,t2) -> eq_constr (ctx,t1,t2) (ctx,Type,Kind) = 1) constrs in
     if List.for_all (function constr -> mymem constr Stdlib.(!g_constr)) constrs then (
       if !log_enabled then log_unif (yel "%a ≔ %a") pp_meta m pp_term u;
       set_meta m (Bindlib.unbox bu); true
