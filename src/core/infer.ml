@@ -155,8 +155,9 @@ let rec infer : ctxt -> term -> term = fun ctx t ->
         match c with
         | Prod(a,b) -> (a,b)
         | Meta(m,ts) ->
-            let _, mxs, p, bp1, bp2 = extend_meta_type m in
-            conv ctx mxs p;
+            let env , mxs, p, bp1, bp2 = extend_meta_type m in
+            let ctx' = Env.to_ctxt env in
+            conv ctx' mxs p;
             (Bindlib.msubst bp1 ts, Bindlib.msubst bp2 ts)
         | _         ->
             let a = Basics.make_meta ctx Type in
