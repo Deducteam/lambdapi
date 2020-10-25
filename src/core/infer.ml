@@ -36,7 +36,7 @@ let destruct_prod : int -> term -> env * term = fun n t ->
    where [y] is a fresh variable, and [m1] and [m2] are fresh metavariables of
    arity [n] and [n+1], and type [∀x1:A1,..,∀xn:An,TYPE] and
    [∀x1:A1,..,∀xn:An,∀y:m1[x1,..,xn],B] respectively. *)
-let extend_meta_type : meta -> term * term *
+let extend_meta_type : meta -> env * term * term *
     tmbinder * (term, tbinder) Bindlib.mbinder = fun m ->
   let n = m.meta_arity in
   let (env, s) = destruct_prod n Timed.(!(m.meta_type)) in
@@ -47,8 +47,8 @@ let extend_meta_type : meta -> term * term *
   let m1 = fresh_meta t1 n in
 
   let y = Bindlib.new_var mkfree "y" in
-  let env = add y (_Meta m1 xs) None env in
-  let t2 = to_prod env (lift s) in
+  let env' = add y (_Meta m1 xs) None env in
+  let t2 = to_prod env' (lift s) in
   let m2 = fresh_meta t2 (n+1) in
 
   let r1 = Bindlib.unbox (_Meta m xs) in
@@ -57,7 +57,7 @@ let extend_meta_type : meta -> term * term *
   let r2 = Bindlib.unbox (_Prod p q) in
 
   let f x = Bindlib.unbox (Bindlib.bind_mvar vs x) in
-  r1, r2, f p, f q
+  env, r1, r2, f p, f q
 
 (** [make_meta_codomain ctx a] builds a metavariable intended as the  codomain
     type for a product of domain type [a].  It has access to the variables  of
@@ -155,7 +155,7 @@ let rec infer : ctxt -> term -> term = fun ctx t ->
         match c with
         | Prod(a,b) -> (a,b)
         | Meta(m,ts) ->
-            let mxs, p, bp1, bp2 = extend_meta_type m in
+            let _, mxs, p, bp1, bp2 = extend_meta_type m in
             conv ctx mxs p;
             (Bindlib.msubst bp1 ts, Bindlib.msubst bp2 ts)
         | _         ->

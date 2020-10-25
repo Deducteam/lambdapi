@@ -441,9 +441,9 @@ and solve_aux : ctxt -> term -> term -> problem -> constr list =
      variables, [imitate_prod m ts] instantiates [m] by a fresh product and
      continue. *)
   let imitate_prod m =
-    let mxs, prod, _, _ = Infer.extend_meta_type m in
+    let env, mxs, prod, _, _ = Infer.extend_meta_type m in
     (* ts1 and ts2 are equal to [] *)
-    solve_aux ctx mxs prod { p with to_solve = (ctx,h1,h2)::p.to_solve }
+    solve_aux (Env.to_ctxt env) mxs prod { p with to_solve = (ctx,h1,h2)::p.to_solve }
   in
 
   match (h1, h2) with
