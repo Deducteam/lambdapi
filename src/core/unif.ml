@@ -201,7 +201,7 @@ let instantiate : ctxt -> meta -> term array -> term -> bool =
   | Some(bu) when Bindlib.is_closed bu ->
     let m_app = type_meta_app m (Array.to_list ts) in
     let constrs = Infer.check ctx u m_app in
-    let constrs = List.filter (function (ctx,t1,t2) -> eq_constr (ctx,t1,t2) (ctx,Type,Kind) = 1) constrs in
+(*     let constrs = List.filter (function (ctx,t1,t2) -> eq_constr (ctx,t1,t2) (ctx,Type,Kind) = 1) constrs in *)
     if List.for_all (function constr -> mymem constr Stdlib.(!g_constr)) constrs then (
       if !log_enabled then log_unif (yel "%a ≔ %a") pp_meta m pp_term u;
       set_meta m (Bindlib.unbox bu); true
