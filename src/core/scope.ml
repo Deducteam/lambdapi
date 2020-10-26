@@ -195,7 +195,7 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
         (* NOTE this could be improved with more general implicits. *)
         fatal loc "More arguments are required to instantiate implicits."
   (* Create a new metavariable of type [TYPE] for a missing domain. *)
-  and _Meta_Type env =
+  and _Meta_Type : env -> tbox = fun env ->
     let vs = Env.to_tbox env in
     let a = Env.to_prod_box env _Type in
     let m = _Meta_full (fresh_meta_box a (Array.length vs)) vs in
