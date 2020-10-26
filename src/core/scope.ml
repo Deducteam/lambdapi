@@ -372,23 +372,57 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
         fst (scope_binder _Prod env xs b)
     | (P_LLet(x,xs,a,t,u), M_Term(_)        )
     | (P_LLet(x,xs,a,t,u), M_RHS(_)         ) ->
-        let a =
-          match a with
-          | Some a -> scope env (if xs = [] then a else Pos.none (P_Prod(xs, a)))
-          | None ->
-            if xs = [] then
-              (* Create a new metavariable of type [TYPE] for the missing domain. *)
-              let vs = Env.to_tbox env in
-              let a = Env.to_prod_box env _Type in
-              let m = _Meta_full (fresh_meta_box a (Array.length vs)) vs in
-              (* Sanity check: only variables of [env] free in [m] if not in RHS. *)
-              match md with
-              | M_RHS(_) -> m
-              | _        ->
-                assert (Bindlib.is_closed (Bindlib.bind_mvar (Env.vars env) m)); m
-            else
-              scope env (Pos.none (P_Prod(xs, Pos.none (P_Wild))))
-        in
+      let a =
+        match a with
+        | Some a -> scope env (if xs = [] then a else Pos.none (P_Prod(xs, a)))
+        | None ->
+          let _scope_binder cons env xs =
+            let rec aux env xs =
+              match xs with
+              | []                  ->
+                (* Create a new metavariable of type [TYPE] for the missing domain. *)
+                let vs = Env.to_tbox env in
+                let a = Env.to_prod_box env _Type in
+                let m = _Meta_full (fresh_meta_box a (Array.length vs)) vs in
+                (* Sanity check: only variables of [env] free in [m] if not in RHS. *)
+                let m =
+                  match md with
+                  | M_RHS(_) -> m
+                  | _        ->
+                    assert (Bindlib.is_closed (Bindlib.bind_mvar (Env.vars env) m)); m
+                in
+                (m, [])
+              | ([]       ,_,_)::xs -> aux env xs
+              | (None  ::l,d,i)::xs ->
+                let v = Bindlib.new_var mkfree "_" in
+                let a = scope_domain env d in
+                let (t,env) = aux env ((l,d,i)::xs) in
+                (cons a (Bindlib.bind_var v t), Env.add v a None env)
+              | (Some x::l,d,i)::xs ->
+                let v = Bindlib.new_var mkfree x.elt in
+                let a = scope_domain env d in
+                let (t,env) =
+                  aux ((x.elt,(v,a,None)) :: env) ((l,d,i) :: xs)
+                in
+                if x.elt.[0] <> '_' && not (Bindlib.occur v t) then
+                  wrn x.pos "Variable [%s] could be replaced by [_]." x.elt;
+                (cons a (Bindlib.bind_var v t), Env.add v a None env)
+            in
+            aux env xs
+          in
+          if xs = [] then
+            (* Create a new metavariable of type [TYPE] for the missing domain. *)
+            let vs = Env.to_tbox env in
+            let a = Env.to_prod_box env _Type in
+            let m = _Meta_full (fresh_meta_box a (Array.length vs)) vs in
+            (* Sanity check: only variables of [env] free in [m] if not in RHS. *)
+            match md with
+            | M_RHS(_) -> m
+            | _        ->
+              assert (Bindlib.is_closed (Bindlib.bind_mvar (Env.vars env) m)); m
+          else
+            scope env (Pos.none (P_Prod(xs, Pos.none (P_Wild))))
+      in
 (*         let a = scope env (if xs = [] then a else Pos.none (P_Prod(xs, a))) in *)
         let t = scope env (if xs = [] then t else Pos.none (P_Abst(xs, t))) in
         let v = Bindlib.new_var mkfree x.elt in
