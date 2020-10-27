@@ -186,7 +186,7 @@ let mymem compare x l =
 let mymem = mymem eq_constr
 
 type type_check = | NoTypeCheck | TypeCheckInstanciation | TypeCheckLater
-let type_check : type_check = TypeCheckInstanciation
+let type_check : type_check = NoTypeCheck
 
 (** [instantiate ctx m ts u] check whether, in a problem [m[ts]=u], [m] can be
     instantiated and, if so, instantiate it. *)
@@ -238,6 +238,7 @@ let instantiate : ctxt -> meta -> term array -> term -> bool =
 (** [solve p] tries to solve the unification problem [p] and
     returns the constraints that could not be solved. *)
 let rec solve : problem -> constr list = fun p ->
+  log_unif (yel "%a") pp_problem p;
   Stdlib.(main_constr := p.to_solve);
   match p with
   | { to_solve = []; unsolved = []; _ } -> []
@@ -557,10 +558,13 @@ let solve : problem -> constr list option = fun p ->
   Stdlib.(new_constr := []);
   try
     let main_constr = solve p in
-(*
-    let other_constr = solve {empty_problem with to_solve = Stdlib.(!new_constr)} in
-    List.iter (log_unif "other_constr [%a]" pp_constr ) other_constr;
-*)
+    (
+        match type_check with
+        | TypeCheckLater ->
+          let other_constr = solve {empty_problem with to_solve = Stdlib.(!new_constr)} in
+          List.iter (log_unif "THESE ARE NEW [%a]" pp_constr ) other_constr
+        | _ -> ()
+    );
     Some main_constr
   with Unsolvable ->
     None
