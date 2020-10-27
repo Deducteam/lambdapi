@@ -420,10 +420,10 @@ let eval : Syntax.eval_config -> ctxt -> term -> term = fun c ctx t ->
   | (_   , Some(_)) -> wrn None "Number of steps not supported."; t
 
 (** Function comparing two constraints *)
-let eq_constr : constr -> constr -> bool = fun (ctx1,ta1,tb1) (ctx2,ta2,tb2) ->
-  let ta1,_ = Ctxt.to_prod ctx1 ta1 in
-  let tb1,_ = Ctxt.to_prod ctx1 tb1 in
-  let ta2,_ = Ctxt.to_prod ctx2 ta2 in
-  let tb2,_ = Ctxt.to_prod ctx2 tb2 in
-  (eq_modulo [] ta1 ta2) && (eq_modulo [] tb1 tb2) ||
-  (eq_modulo [] ta1 tb2) && (eq_modulo [] tb1 ta2)
+let eq_constr : constr -> constr -> bool = fun (ctx1,t1,u1) (ctx2,t2,u2) ->
+  let t1,_ = Ctxt.to_prod ctx1 t1 in
+  let u1,_ = Ctxt.to_prod ctx1 u1 in
+  let t2,_ = Ctxt.to_prod ctx2 t2 in
+  let u2,_ = Ctxt.to_prod ctx2 u2 in
+  (eq_modulo [] t1 t2) && (eq_modulo [] u1 u2) ||
+  (eq_modulo [] t1 u2) && (eq_modulo [] t2 u1)
