@@ -162,7 +162,7 @@ let instantiation : ctxt -> meta -> term array -> term ->
         Some (Bindlib.bind_mvar vs (lift u))
   else None
 
-let g_constr : constr list Stdlib.ref = Stdlib.ref []
+let main_constr : constr list Stdlib.ref = Stdlib.ref []
 let new_constr : constr list Stdlib.ref = Stdlib.ref []
 
 let eq_constr : constr -> constr -> int = fun (ctx1,ta1,tb1) (ctx2,ta2,tb2) ->
@@ -185,6 +185,9 @@ let mymem compare x l =
 
 let mymem = mymem eq_constr
 
+type type_check = | NoTypeCheck | TypeCheckInstanciation | TypeCheckLater
+let type_check : type_check = TypeCheckInstanciation
+
 (** [instantiate ctx m ts u] check whether, in a problem [m[ts]=u], [m] can be
     instantiated and, if so, instantiate it. *)
 let instantiate : ctxt -> meta -> term array -> term -> bool =
@@ -202,23 +205,40 @@ let instantiate : ctxt -> meta -> term array -> term -> bool =
   | Some(bu) when Bindlib.is_closed bu ->
     let m_app = type_meta_app m (Array.to_list ts) in
     let constrs = Infer.check ctx u m_app in
-(*     let constrs = List.filter (function (ctx,t1,t2) -> eq_constr (ctx,t1,t2) (ctx,Type,Kind) = 1) constrs in *)
-    if List.exists (function constr -> not (mymem constr Stdlib.(!g_constr))) constrs then (
-      if !log_enabled then (
-        log_unif "ONE OF";
-        List.iter (log_unif (yel "%a") pp_constr) constrs;
-        log_unif "IS NOT IN";
-        List.iter (log_unif (yel "%a") pp_constr) Stdlib.(!g_constr);
+    let is_new_constr = function constr ->
+      if not (mymem constr Stdlib.(!main_constr)) then (
+        log_unif (yel "NEW CONSTR %a") pp_constr constr;
+        true
+      ) else
+        false
+    in
+    let there_is_new_constr =
+      if List.exists is_new_constr constrs then (
+        if !log_enabled then (
+          log_unif "IS NOT IN";
+          List.iter (log_unif (yel "%a") pp_constr) Stdlib.(!main_constr);
+        ) ; true
+      ) else (
+        false
       )
-    );
-    if !log_enabled then log_unif (yel "%a ≔ %a") pp_meta m pp_term u;
-    Stdlib.(new_constr := constrs @ (!new_constr));
-    set_meta m (Bindlib.unbox bu); true
+    in
+    let the_instanciation () =
+      if !log_enabled then log_unif (yel "%a ≔ %a") pp_meta m pp_term u;
+      Stdlib.(new_constr := constrs @ (!new_constr));
+      set_meta m (Bindlib.unbox bu)
+    in
+    begin
+    match (there_is_new_constr,type_check) with
+    | false,_
+    | true,(NoTypeCheck|TypeCheckLater) -> the_instanciation (); true
+    | true,TypeCheckInstanciation -> false
+  end
   | _ -> false
 
 (** [solve p] tries to solve the unification problem [p] and
     returns the constraints that could not be solved. *)
 let rec solve : problem -> constr list = fun p ->
+  Stdlib.(main_constr := p.to_solve);
   match p with
   | { to_solve = []; unsolved = []; _ } -> []
   | { to_solve = []; unsolved = cs; recompute = true } ->
@@ -534,12 +554,13 @@ and solve_aux : ctxt -> term -> term -> problem -> constr list =
    returned, where the list [cs] is a list of unsolved convertibility
    constraints. *)
 let solve : problem -> constr list option = fun p ->
-  Stdlib.(g_constr := p.to_solve);
   Stdlib.(new_constr := []);
   try
     let main_constr = solve p in
+(*
     let other_constr = solve {empty_problem with to_solve = Stdlib.(!new_constr)} in
-    List.iter (log_unif "try rule [%a]" pp_constr ) other_constr;
+    List.iter (log_unif "other_constr [%a]" pp_constr ) other_constr;
+*)
     Some main_constr
   with Unsolvable ->
     None
