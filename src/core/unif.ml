@@ -174,7 +174,7 @@ let mymem eq x l =
 let mymem = mymem Eval.eq_constr
 
 type type_check = | NoTypeCheck | TypeCheckInstanciation | TypeCheckLater
-let type_check : type_check = TypeCheckInstanciation
+let g_type_check = Stdlib.ref NoTypeCheck
 
 (** [instantiate ctx m ts u] check whether, in a problem [m[ts]=u], [m] can be
     instantiated and, if so, instantiate it. *)
@@ -217,7 +217,7 @@ let instantiate : ctxt -> meta -> term array -> term -> bool =
       set_meta m (Bindlib.unbox bu)
     in
     begin
-    match (there_is_new_constr,type_check) with
+    match (there_is_new_constr,Stdlib.(!g_type_check)) with
     | false,_
     | true,(NoTypeCheck|TypeCheckLater) -> the_instanciation (); true
     | true,TypeCheckInstanciation -> false
@@ -543,8 +543,10 @@ and solve_aux : ctxt -> term -> term -> problem -> constr list =
    no solution, the value [None] is returned. Otherwise [Some(cs)] is
    returned, where the list [cs] is a list of unsolved convertibility
    constraints. *)
-let solve : problem -> constr list option = fun p ->
+let solve : ?type_check:type_check -> problem -> constr list option =
+  fun ?(type_check=NoTypeCheck) p ->
   Stdlib.(new_constr := []);
+  Stdlib.(g_type_check := type_check);
   try
     let main_constr = solve p in
     (
