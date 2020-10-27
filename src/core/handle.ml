@@ -152,7 +152,7 @@ let handle_symbol :
   (* We scope the type of the declaration. *)
   let a = scope_basic e a in
   (* We check that [a] is typable by a sort. *)
-  Typing.sort_type [] a;
+  Typing.sort_type ~type_check:Unif.TypeCheckInstanciation [] a;
   (* We check that no metavariable remains. *)
   if Basics.has_metas true a then
     begin
