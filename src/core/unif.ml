@@ -195,7 +195,8 @@ let instantiate : ctxt -> meta -> term array -> term -> bool =
     let constrs = Infer.check ctx u m_app in
     let is_new_constr = function constr ->
       if not (mymem constr Stdlib.(!main_constr)) then (
-        log_unif (yel "NEW CONSTR %a") pp_constr constr;
+        log_unif (yel "NEW CONSTR");
+        log_unif (yel "           %a") pp_constr constr;
         true
       ) else
         false
@@ -204,7 +205,7 @@ let instantiate : ctxt -> meta -> term array -> term -> bool =
       if List.exists is_new_constr constrs then (
         if !log_enabled then (
           log_unif "IS NOT IN";
-          List.iter (log_unif (yel "%a") pp_constr) Stdlib.(!main_constr);
+          List.iter (log_unif (yel "          %a") pp_constr) Stdlib.(!main_constr);
         ) ; true
       ) else (
         false
@@ -549,8 +550,12 @@ let solve : problem -> constr list option = fun p ->
     (
         match type_check with
         | TypeCheckLater ->
-          let other_constr = solve {empty_problem with to_solve = Stdlib.(!new_constr)} in
-          List.iter (log_unif "THESE ARE NEW [%a]" pp_constr ) other_constr
+          let p = {empty_problem with to_solve = Stdlib.(!new_constr)} in
+          log_unif (yel "THESE IS THE NEW PROBLEM");
+          log_unif (yel "                         %a") pp_problem p;
+          let other_constr = solve p in
+          log_unif (yel "GIVING THESE NEW NEW CONSTR");
+          List.iter (log_unif "                            %a" pp_constr ) other_constr
         | _ -> ()
     );
     Some main_constr
