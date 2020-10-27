@@ -418,3 +418,12 @@ let eval : Syntax.eval_config -> ctxt -> term -> term = fun c ctx t ->
   | (HNF , None   ) -> hnf ctx t
   (* TODO implement the rest. *)
   | (_   , Some(_)) -> wrn None "Number of steps not supported."; t
+
+(** Function comparing two constraints *)
+let eq_constr : constr -> constr -> bool = fun (ctx1,ta1,tb1) (ctx2,ta2,tb2) ->
+  let ta1,_ = Ctxt.to_prod ctx1 ta1 in
+  let tb1,_ = Ctxt.to_prod ctx1 tb1 in
+  let ta2,_ = Ctxt.to_prod ctx2 ta2 in
+  let tb2,_ = Ctxt.to_prod ctx2 tb2 in
+  (eq_modulo [] ta1 ta2) && (eq_modulo [] tb1 tb2) ||
+  (eq_modulo [] ta1 tb2) && (eq_modulo [] tb1 ta2)

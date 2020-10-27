@@ -165,28 +165,16 @@ let instantiation : ctxt -> meta -> term array -> term ->
 let main_constr : constr list Stdlib.ref = Stdlib.ref []
 let new_constr : constr list Stdlib.ref = Stdlib.ref []
 
-let eq_constr : constr -> constr -> int = fun (ctx1,ta1,tb1) (ctx2,ta2,tb2) ->
-  let ta1,_ = Ctxt.to_prod ctx1 ta1 in
-  let tb1,_ = Ctxt.to_prod ctx1 tb1 in
-  let ta2,_ = Ctxt.to_prod ctx2 ta2 in
-  let tb2,_ = Ctxt.to_prod ctx2 tb2 in
-  if (Eval.eq_modulo [] ta1 ta2) && (Eval.eq_modulo [] tb1 tb2) ||
-     (Eval.eq_modulo [] ta1 tb2) && (Eval.eq_modulo [] tb1 ta2)
-  then
-    0
-  else
-    1
-
-let mymem compare x l =
+let mymem eq x l =
   let rec mem x = function
       [] -> false
-    | a::l -> compare a x = 0 || mem x l
+    | a::l -> eq a x || mem x l
   in mem x l
 
-let mymem = mymem eq_constr
+let mymem = mymem Eval.eq_constr
 
 type type_check = | NoTypeCheck | TypeCheckInstanciation | TypeCheckLater
-let type_check : type_check = NoTypeCheck
+let type_check : type_check = TypeCheckInstanciation
 
 (** [instantiate ctx m ts u] check whether, in a problem [m[ts]=u], [m] can be
     instantiated and, if so, instantiate it. *)
