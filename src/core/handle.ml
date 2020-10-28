@@ -324,7 +324,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
       (* Scoping the type (statement) of the theorem. *)
       let a = scope_basic expo a in
       (* Check that [a] is typable and that its type is a sort. *)
-      Typing.sort_type [] a;
+      Typing.sort_type ~type_check:Unif.TypeCheckInstanciation [] a;
       (* We check that no metavariable remains in [a]. *)
       if Basics.has_metas true a then
         begin
