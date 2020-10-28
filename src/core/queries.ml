@@ -22,7 +22,7 @@ let handle_query : Sig_state.t -> Proof.t option -> p_query -> unit =
         match asrt with
         | P_assert_typing(pt,pa) ->
           let t = scope pt and a = scope pa and ctxt = Env.to_ctxt env in
-          Typing.sort_type ctxt a;
+          Typing.sort_type ~type_check:Unif.TypeCheckInstanciation ctxt a;
           (try Typing.check ctxt t a with _ -> false)
         | P_assert_conv(pt,pu)   ->
           let t = scope pt and u = scope pu in
