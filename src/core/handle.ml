@@ -18,9 +18,13 @@ open Print
 let log_hndl = new_logger 'h' "hndl" "command handling"
 let log_hndl = log_hndl.logger
 
+let type_check = Unif.TypeCheckInstanciation
+
 (* Register a check for the type of the builtin symbols "0" and "+1". *)
 let _ =
-  let register = Builtin.register_expected_type (Unif.eq []) pp_term in
+  let register =
+    Builtin.register_expected_type (Unif.eq ~type_check []) pp_term
+  in
   let expected_zero_type ss _pos =
     try
       match !((StrMap.find "+1" ss.builtins).sym_type) with
@@ -152,7 +156,7 @@ let handle_symbol :
   (* We scope the type of the declaration. *)
   let a = scope_basic e a in
   (* We check that [a] is typable by a sort. *)
-  Typing.sort_type ~type_check:Unif.TypeCheckInstanciation [] a;
+  Typing.sort_type ~type_check [] a;
   (* We check that no metavariable remains. *)
   if Basics.has_metas true a then
     begin
@@ -239,14 +243,14 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
       let a =
         match ao with
         | Some(a) ->
-            Typing.sort_type ~type_check:Unif.TypeCheckInstanciation [] a;
-            if Typing.check ~type_check:Unif.TypeCheckInstanciation [] t a then
+            Typing.sort_type ~type_check [] a;
+            if Typing.check ~type_check [] t a then
               a
             else
               fatal cmd.pos "The term [%a] does not have type [%a]."
                 pp_term t pp_term a
         | None    ->
-            match Typing.infer ~type_check:Unif.TypeCheckInstanciation [] t with
+            match Typing.infer ~type_check [] t with
             | Some(a) -> a
             | None    ->
                 fatal cmd.pos "Cannot infer the type of [%a]." pp_term t
@@ -326,7 +330,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
       (* Scoping the type (statement) of the theorem. *)
       let a = scope_basic expo a in
       (* Check that [a] is typable and that its type is a sort. *)
-      Typing.sort_type ~type_check:Unif.TypeCheckInstanciation [] a;
+      Typing.sort_type ~type_check [] a;
       (* We check that no metavariable remains in [a]. *)
       if Basics.has_metas true a then
         begin
