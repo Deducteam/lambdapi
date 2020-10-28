@@ -240,11 +240,13 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
         match ao with
         | Some(a) ->
             Typing.sort_type ~type_check:Unif.TypeCheckInstanciation [] a;
-            if Typing.check [] t a then a else
+            if Typing.check ~type_check:Unif.TypeCheckInstanciation [] t a then
+              a
+            else
               fatal cmd.pos "The term [%a] does not have type [%a]."
                 pp_term t pp_term a
         | None    ->
-            match Typing.infer [] t with
+            match Typing.infer ~type_check:Unif.TypeCheckInstanciation [] t with
             | Some(a) -> a
             | None    ->
                 fatal cmd.pos "Cannot infer the type of [%a]." pp_term t
