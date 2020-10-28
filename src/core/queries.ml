@@ -23,7 +23,9 @@ let handle_query : Sig_state.t -> Proof.t option -> p_query -> unit =
         | P_assert_typing(pt,pa) ->
           let t = scope pt and a = scope pa and ctxt = Env.to_ctxt env in
           Typing.sort_type ~type_check:Unif.TypeCheckInstanciation ctxt a;
-          (try Typing.check ctxt t a with _ -> false)
+          (try
+             Typing.check ~type_check:Unif.TypeCheckInstanciation ctxt t a
+           with _ -> false)
         | P_assert_conv(pt,pu)   ->
           let t = scope pt and u = scope pu in
           let infer = Typing.infer (Env.to_ctxt env) in
