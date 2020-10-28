@@ -566,5 +566,6 @@ let solve : ?type_check:type_check -> problem -> constr list option =
 
 (** [eq c t u] tries to unify the terms [t] and [u] in context [c], by
    instantiating their metavariables. *)
-let eq : ctxt -> term -> term -> bool = fun c t u ->
-  solve {empty_problem with to_solve=[c,t,u]} = Some []
+let eq : ?type_check:type_check -> ctxt -> term -> term -> bool =
+  fun ?(type_check=NoTypeCheck) c t u ->
+  solve ~type_check {empty_problem with to_solve=[c,t,u]} = Some []
