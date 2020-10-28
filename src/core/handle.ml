@@ -239,7 +239,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
       let a =
         match ao with
         | Some(a) ->
-            Typing.sort_type [] a;
+            Typing.sort_type ~type_check:Unif.TypeCheckInstanciation [] a;
             if Typing.check [] t a then a else
               fatal cmd.pos "The term [%a] does not have type [%a]."
                 pp_term t pp_term a
