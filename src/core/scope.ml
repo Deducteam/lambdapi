@@ -226,11 +226,21 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
       | ([]       ,_,_)::xs -> aux env xs
       | (None  ::l,d,i)::xs ->
           let v = Bindlib.new_var mkfree "_" in
+          let d =
+            match d with
+            | Some {elt=P_Wild ; _ } -> None
+            | _ -> d
+          in
           let a = scope_domain env d in
           let (t,env) = aux env ((l,d,i)::xs) in
           (cons a (Bindlib.bind_var v t), Env.add v a None env)
       | (Some x::l,d,i)::xs ->
           let v = Bindlib.new_var mkfree x.elt in
+          let d =
+            match d with
+            | Some {elt=P_Wild ; _ } -> None
+            | _ -> d
+          in
           let a = scope_domain env d in
           let (t,env) =
             aux ((x.elt,(v,a,None)) :: env) ((l,d,i) :: xs)
