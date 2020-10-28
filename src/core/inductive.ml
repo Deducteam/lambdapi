@@ -25,10 +25,12 @@ let get_config : Sig_state.t -> Pos.popt -> config = fun ss pos ->
   { symb_Prop = builtin "Prop"
   ; symb_prf  = builtin "P" }
 
+let type_check = Unif.TypeCheckInstanciation
+
 (** [check_typ_ind rec_typ] checks if the type of the term [rec_typ] is the
     constant TYPE. *)
 let check_type_ind : popt -> term -> unit = fun pos rec_typ ->
-  match Typing.infer [] rec_typ with
+  match Typing.infer ~type_check [] rec_typ with
   | Some t ->
       begin
       match unfold t with
