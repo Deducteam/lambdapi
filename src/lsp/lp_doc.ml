@@ -24,12 +24,6 @@ let interval_of_pos : Pos.pos -> Range.t = fun p ->
   let finish : point = make_point data.end_line data.end_col in
   make_interval start finish
 
-let interval_of_popt : Pos.popt -> Range.t = fun p ->
-  match p with
-  | None -> invalid_arg "Position option with 'None' can't be converted
-      to interval"
-  | Some pos -> interval_of_pos pos
-
 type doc_node =
   { ast   : Pure.Command.t
   ; exec  : bool
@@ -155,7 +149,10 @@ let update_rangemap doc_spans =
   (* add to the map *)
   let f (map : (Syntax.p_module_path * string) RangeMap.t)
         (qid : Syntax.qident) =
-    RangeMap.add (interval_of_popt qid.pos) qid.elt map
+    (* Only add if the symbol contains a position *)
+    Option.map_default
+      (fun pos -> RangeMap.add (interval_of_pos pos) qid.elt map)
+      map qid.pos
   in
   List.fold_left f RangeMap.empty qids
 
