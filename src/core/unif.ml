@@ -204,26 +204,23 @@ let instantiate : ctxt -> meta -> term array -> term -> bool =
   | Some(bu) when Bindlib.is_closed bu ->
     let m_app = type_meta_app m (Array.to_list ts) in
     let constrs = Infer.check ctx u m_app in
-    log_unif (yel "TYPECHECK CONSTR");
-    List.iter (log_unif (yel "           %a") pp_constr) constrs;
-    log_unif (yel "MAIN      CONSTR");
-    List.iter (log_unif (yel "           %a") pp_constr) Stdlib.(!main_constr);
     let is_new_constr constr = not (mymem constr Stdlib.(!main_constr)) in
-    let new_constr = List.exists is_new_constr constrs in
+    let there_is_new_constr = List.exists is_new_constr constrs in
     begin
-      match (new_constr,Stdlib.(!g_type_check)) with
+      match (there_is_new_constr,Stdlib.(!g_type_check)) with
       | false,_
       | true,NoTypeCheck ->
         if !log_enabled then log_unif (yel "%a ≔ %a") pp_meta m pp_term u;
         set_meta m (Bindlib.unbox bu); true
-      | true,TypeCheckInstanciation -> false
+      | true,TypeCheckInstanciation ->
+        if !log_enabled then log_unif (red "new constraints unknown");
+        false
     end
   | _ -> false
 
 (** [solve p] tries to solve the unification problem [p] and
     returns the constraints that could not be solved. *)
 let rec solve : problem -> constr list = fun p ->
-  Stdlib.(main_constr := p.to_solve);
   match p with
   | { to_solve = []; unsolved = []; _ } -> []
   | { to_solve = []; unsolved = cs; recompute = true } ->
