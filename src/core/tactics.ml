@@ -44,7 +44,7 @@ let handle_tactic : Sig_state.t -> Proof.t -> p_tactic -> Proof.t =
   let scope = Scope.scope_term Public ss env in
   let type_check = Unif.TypeCheckInstanciation in
   let infer t = Typing.infer ~type_check (Env.to_ctxt env) t in
-  let check t a = Typing.check (Env.to_ctxt env) t a in
+  let check t a = Typing.check ~type_check (Env.to_ctxt env) t a in
 
   let handle_refine : term -> Proof.t = fun t ->
     (* Check if the goal metavariable appears in [t]. *)
