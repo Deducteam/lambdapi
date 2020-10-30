@@ -68,11 +68,7 @@ let try_rules : ctxt -> term -> term -> constr list option = fun ctx s t ->
   let exception No_match in
   let open Unif_rule in
   try
-    let rhs =
-      match Eval.tree_walk !(equiv.sym_tree) ctx [s;t] with
-      | Some(r,[]) -> r
-      | Some(_)    -> assert false (* Everything should be matched *)
-      | None       ->
+    let meta_type =
       let a_s,constrs_s = Infer.infer ctx s in
       let a_t,constrs_t = Infer.infer ctx t in
       if !log_enabled then
@@ -82,7 +78,17 @@ let try_rules : ctxt -> term -> term -> constr list option = fun ctx s t ->
           log_unif (red "HAOUHHHHHHHHHHH %a : %a") pp_term t pp_term a_t;
           List.iter (log_unif "  if %a" pp_constr) constrs_t;
         end;
-      match Eval.tree_walk !(equiv.sym_tree) ctx [t;s] with
+      match constrs_s,constrs_t with
+      | ([],_) -> Some a_s
+      | (_,[]) -> Some a_t
+      | (_,_) -> None
+    in
+    let rhs =
+      match Eval.tree_walk !(equiv.sym_tree) ctx [s;t] meta_type with
+      | Some(r,[]) -> r
+      | Some(_)    -> assert false (* Everything should be matched *)
+      | None       ->
+      match Eval.tree_walk !(equiv.sym_tree) ctx [t;s] meta_type with
       | Some(r,[]) -> r
       | Some(_)    -> assert false (* Everything should be matched *)
       | None       -> raise No_match

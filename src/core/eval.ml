@@ -111,7 +111,7 @@ and whnf_stk : ctxt -> term -> stack -> term * stack = fun ctx t stk ->
       | Some(t) -> Stdlib.incr steps; whnf_stk ctx t stk
       | None    ->
       (* Otherwise try rewriting using decision tree. *)
-      match tree_walk !(s.sym_tree) ctx stk with
+      match tree_walk !(s.sym_tree) ctx stk None with
       (* If no rule is found, return the original term *)
       | None        -> st
       | Some(t,stk) -> Stdlib.incr steps; whnf_stk ctx t stk
@@ -179,8 +179,8 @@ and eq_modulo : ctxt -> term -> term -> bool = fun ctx a b ->
     fails,  the stack [stk] may be imperatively updated since a reduction step
     taken in elements of the stack is preserved (this is done using
     {!constructor:Terms.term.TRef}). *)
-and tree_walk : dtree -> ctxt -> stack -> (term * stack) option =
-  fun tree ctx stk ->
+and tree_walk : dtree -> ctxt -> stack -> term option -> (term * stack) option =
+  fun tree ctx stk meta_type ->
   let (lazy capacity, lazy tree) = tree in
   let vars = Array.make capacity Kind in (* dummy terms *)
   let bound = Array.make capacity TE_None in
@@ -217,9 +217,16 @@ and tree_walk : dtree -> ctxt -> stack -> (term * stack) option =
         in
         List.iter fn env_builder;
         (* Complete the array with fresh meta-variables if needed. *)
+        let make_t =
+          begin
+            match meta_type with
+            | Some meta_type -> (function _ -> make_meta [] meta_type)
+            | None -> (function () -> let x = make_meta [] Type in
+                make_meta [] x)
+          end
+        in
         for i = env_len - xvars to env_len - 1 do
-          let x = make_meta [] Type in
-          let t = make_meta [] x in
+          let t = make_t () in
           let b = Bindlib.raw_mbinder [||] [||] 0 mkfree (fun _ -> t) in
           env.(i) <- TE_Some(b)
         done;
