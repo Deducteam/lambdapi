@@ -195,17 +195,18 @@ let instantiate : ctxt -> meta -> term array -> term -> bool =
     let constrs = Infer.check ctx u m_app in
     log_unif (yel "TYPECHECK CONSTR");
     List.iter (log_unif (yel "           %a") pp_constr) constrs;
+    log_unif (yel "MAIN      CONSTR");
+    List.iter (log_unif (yel "           %a") pp_constr) Stdlib.(!main_constr);
     let is_new_constr = function constr ->
-      if not (mymem constr Stdlib.(!main_constr)) then (
+      if not (mymem constr Stdlib.(!main_constr)) then
         true
-      ) else
+      else
         false
     in
     let there_is_new_constr =
       if List.exists is_new_constr constrs then (
         if !log_enabled then (
           log_unif "IS NOT IN";
-          List.iter (log_unif (yel "          %a") pp_constr) Stdlib.(!main_constr);
         ) ; true
       ) else (
         false
