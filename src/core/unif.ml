@@ -261,9 +261,9 @@ and solve_aux : ctxt -> term -> term -> problem -> constr list =
 
   let decompose () =
     (* Propagate context *)
-    let add_arg_pb l a b = (ctx,a,b)::l in
+    let add_arg_pb a b l = (ctx,a,b)::l in
     let to_solve =
-      try List.fold_left2 add_arg_pb p.to_solve ts1 ts2
+      try List.fold_right2 add_arg_pb ts1 ts2 p.to_solve
       with Invalid_argument _ -> error () in
     solve {p with to_solve}
   in
