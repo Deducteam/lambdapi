@@ -64,7 +64,7 @@ let copy_prod_env : tvar array -> term -> env = fun xs t ->
 (** [try_rules ctx s t] tries to solve unification problem [ctx ⊢ s ≡ t] using
     declared unification rules. *)
 let try_rules : ctxt -> term -> term -> constr list option = fun ctx s t ->
-  if !log_enabled then log_unif "try rule [%a]" pp_constr (ctx,s,t);
+  if !log_enabled then log_unif "try rule on [%a]" pp_constr (ctx,s,t);
   let exception No_match in
   let open Unif_rule in
   try
@@ -193,10 +193,10 @@ let instantiate : ctxt -> meta -> term array -> term -> bool =
   | Some(bu) when Bindlib.is_closed bu ->
     let m_app = type_meta_app m (Array.to_list ts) in
     let constrs = Infer.check ctx u m_app in
+    log_unif (yel "TYPECHECK CONSTR");
+    List.iter (log_unif (yel "           %a") pp_constr) constrs;
     let is_new_constr = function constr ->
       if not (mymem constr Stdlib.(!main_constr)) then (
-        log_unif (yel "NEW CONSTR");
-        log_unif (yel "           %a") pp_constr constr;
         true
       ) else
         false
