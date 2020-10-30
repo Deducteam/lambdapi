@@ -184,7 +184,7 @@ let mymem eq x l =
 
 let mymem = mymem Eval.eq_constr
 
-type type_check = | NoTypeCheck | TypeCheckInstanciation | TypeCheckLater
+type type_check = | NoTypeCheck | TypeCheckInstanciation
 let g_type_check = Stdlib.ref NoTypeCheck
 
 (** [instantiate ctx m ts u] check whether, in a problem [m[ts]=u], [m] can be
@@ -208,31 +208,16 @@ let instantiate : ctxt -> meta -> term array -> term -> bool =
     List.iter (log_unif (yel "           %a") pp_constr) constrs;
     log_unif (yel "MAIN      CONSTR");
     List.iter (log_unif (yel "           %a") pp_constr) Stdlib.(!main_constr);
-    let is_new_constr = function constr ->
-      if not (mymem constr Stdlib.(!main_constr)) then
-        true
-      else
-        false
-    in
-    let there_is_new_constr =
-      if List.exists is_new_constr constrs then (
-        if !log_enabled then (
-          log_unif "IS NOT IN";
-        ) ; true
-      ) else (
-        false
-      )
-    in
-    let the_instanciation () =
-      if !log_enabled then log_unif (yel "%a ≔ %a") pp_meta m pp_term u;
-      set_meta m (Bindlib.unbox bu)
-    in
+    let is_new_constr constr = not (mymem constr Stdlib.(!main_constr)) in
+    let new_constr = List.exists is_new_constr constrs in
     begin
-    match (there_is_new_constr,Stdlib.(!g_type_check)) with
-    | false,_
-    | true,(NoTypeCheck|TypeCheckLater) -> the_instanciation (); true
-    | true,TypeCheckInstanciation -> false
-  end
+      match (new_constr,Stdlib.(!g_type_check)) with
+      | false,_
+      | true,NoTypeCheck ->
+        if !log_enabled then log_unif (yel "%a ≔ %a") pp_meta m pp_term u;
+        set_meta m (Bindlib.unbox bu); true
+      | true,TypeCheckInstanciation -> false
+    end
   | _ -> false
 
 (** [solve p] tries to solve the unification problem [p] and
