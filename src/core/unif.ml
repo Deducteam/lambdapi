@@ -208,8 +208,12 @@ let instantiate : ctxt -> meta -> term array -> term -> bool =
     let there_is_new_constr = List.exists is_new_constr constrs in
     begin
       match (there_is_new_constr,Stdlib.(!g_type_check)) with
-      | false,_
+      | false,_ ->
+        if !log_enabled then log_unif (gre "no new constraints");
+        if !log_enabled then log_unif (yel "%a ≔ %a") pp_meta m pp_term u;
+        set_meta m (Bindlib.unbox bu); true
       | true,NoTypeCheck ->
+        if !log_enabled then log_unif (yel "new constraints unknown ignored");
         if !log_enabled then log_unif (yel "%a ≔ %a") pp_meta m pp_term u;
         set_meta m (Bindlib.unbox bu); true
       | true,TypeCheckInstanciation ->
