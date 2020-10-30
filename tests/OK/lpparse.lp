@@ -15,7 +15,10 @@ rule g $x ↪ f $x;
 /* A multiline
 comment */
 
-symbol plus: A → A → A;
-set infix left 6 "pl" ≔ plus;
-
-assert a pl a: A;
+symbol B: TYPE;
+symbol b: B;
+symbol comb: B → B → A;
+set infix left 6 "mob" ≔ comb;
+type comb b b;
+type b mob b;
+assert b mob b: A;

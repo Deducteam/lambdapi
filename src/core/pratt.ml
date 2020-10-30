@@ -26,6 +26,22 @@ end = struct
         end
     | _ -> 0.
 
+  (* NOTE: among the four functions operating on streams, only [expression]
+     consumes elements from it. *)
+
+  (** [is_binop t] returns [true] iff term [t] is a binary operator. *)
+  let is_binop : p_term -> bool = fun t ->
+    match t.elt with
+    | P_Iden({elt = (_, s); pos}, _) ->
+      StrHtbl.mem bin_operators s
+    | _ -> false
+
+  (** [is_unop t] returns [true] iff term [t] is a unary operator. *)
+  let is_unop : p_term -> bool = fun {elt; _} ->
+    match elt with
+    | P_Iden({elt = (_, s); pos}, _) -> StrHtbl.mem una_operators s
+    | _ -> false
+
   (** [nud t] is the production of term [t] with {b no} left context. If [t]
       is not an operator, [nud] is the identity. Otherwise, the output is a
       production rule. *)
@@ -39,13 +55,13 @@ end = struct
         end
     | _ -> t
 
-  (** [led left t] is the production of operator [op] with left context
+  (** [led left t] is the production of term [t] with left context
       [left]. *)
   and led : p_term Stream.t -> p_term -> p_term -> p_term = fun strm left t ->
     match t.elt with
     | P_Iden({elt = (_, s); pos}, _) ->
         begin match StrHtbl.find_opt bin_operators s with
-          | None -> t
+          | None -> Pos.make pos (P_Appl(left, t))
           | Some((_, assoc, bp, _) as op) ->
               let rbp =
                 if assoc = Assoc_right then bp -. epsilon_float else bp
@@ -53,7 +69,7 @@ end = struct
               (* REVIEW: and for non associative? *)
               Pos.make pos (P_BinO(left, op, expression ~rbp strm))
         end
-    | _ -> t
+    | _ -> Pos.none (P_Appl(left, t))
 
   (** [expression rbp s] parses stream of tokens [s] with right binding power
       [rbp]. It transforms a sequence of applications to a structured
@@ -67,12 +83,25 @@ end = struct
     let rec aux left =
       match Stream.peek strm with
       | None -> left
-      | Some(pt) ->
-          if lbp pt > rbp then
-            (* Performed before to execute side effect on stream. *)
-            let next = Stream.next strm in
-            aux (led strm left next) else
-           left
+      | Some(pt) when is_binop pt ->
+        if lbp pt > rbp then
+          (* Performed before to execute side effect on stream. *)
+          let next = Stream.next strm in
+          aux (led strm left next)
+        else
+          left
+      | Some(pt) when is_unop pt ->
+        (* FIXME: processing of prefix might be incorrect. *)
+        if lbp pt > rbp then
+          let next = Stream.next strm in
+          aux (Pos.none (P_Appl(left, nud strm next)))
+        else
+          left
+      | Some(_) ->
+        let next = Stream.next strm in
+        (* FIXME: compute position *)
+        aux (Pos.none (P_Appl(left, next)))
+
     in
     let next = Stream.next strm in
     let left = nud strm next in
