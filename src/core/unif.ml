@@ -544,7 +544,7 @@ and solve_aux : ctxt -> term -> term -> problem -> constr list =
    returned, where the list [cs] is a list of unsolved convertibility
    constraints. *)
 let solve : ?type_check:type_check -> problem -> constr list option =
-  fun ?(type_check=NoTypeCheck) p ->
+  fun ?(type_check=TypeCheckInstanciation) p ->
   Stdlib.(new_constr := []);
   Stdlib.(g_type_check := type_check);
   try
