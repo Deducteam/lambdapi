@@ -42,7 +42,8 @@ let handle_tactic : Sig_state.t -> Proof.t -> p_tactic -> Proof.t =
   let (env, a) = Goal.get_type g in
 
   let scope = Scope.scope_term Public ss env in
-  let infer t = Typing.infer (Env.to_ctxt env) t in
+  let type_check = Unif.TypeCheckInstanciation in
+  let infer t = Typing.infer ~type_check (Env.to_ctxt env) t in
   let check t a = Typing.check (Env.to_ctxt env) t a in
 
   let handle_refine : term -> Proof.t = fun t ->
