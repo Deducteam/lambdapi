@@ -64,23 +64,20 @@ let copy_prod_env : tvar array -> term -> env = fun xs t ->
 (** [try_rules ctx s t] tries to solve unification problem [ctx ⊢ s ≡ t] using
     declared unification rules. *)
 let try_rules : ctxt -> term -> term -> constr list option = fun ctx s t ->
-  if !log_enabled then log_unif "try rule on [%a]" pp_constr (ctx,s,t);
+  if !log_enabled then log_unif "try rule [%a]" pp_constr (ctx,s,t);
   let exception No_match in
   let open Unif_rule in
   try
     let meta_type =
       let a_s,constrs_s = Infer.infer ctx s in
       let a_t,constrs_t = Infer.infer ctx t in
-      if !log_enabled then
-        begin
-          log_unif (red "HAOUHHHHHHHHHHH %a : %a") pp_term s pp_term a_s;
-          List.iter (log_unif "  if %a" pp_constr) constrs_s;
-          log_unif (red "HAOUHHHHHHHHHHH %a : %a") pp_term t pp_term a_t;
-          List.iter (log_unif "  if %a" pp_constr) constrs_t;
-        end;
       match constrs_s,constrs_t with
-      | ([],_) -> Some a_s
-      | (_,[]) -> Some a_t
+      | ([],_) ->
+        if !log_enabled then
+          log_unif "with precomputed meta type %a" pp_term a_s ; Some a_s
+      | (_,[]) ->
+        if !log_enabled then
+          log_unif "with precomputed meta type %a" pp_term a_t ; Some a_t
       | (_,_) -> None
     in
     let rhs =
