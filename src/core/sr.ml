@@ -181,8 +181,7 @@ let check_rule : Scope.pre_rule Pos.loc -> rule = fun ({pos; elt} as pr) ->
       log_subj (mag "transformed RHS is [%a]") pp_term rhs_typing
     end;
   (* Infer the typing constraints of the LHS. *)
-  let type_check = Unif.TypeCheckInstanciation in
-  match Typing.infer_constr ~type_check [] lhs_typing with
+  match Typing.infer_constr [] lhs_typing with
   | None                      -> fatal pos "The LHS is not typable."
   | Some(ty_lhs, lhs_constrs) ->
   if !log_enabled then
@@ -237,7 +236,8 @@ let check_rule : Scope.pre_rule Pos.loc -> rule = fun ({pos; elt} as pr) ->
   (* TODO we should complete the constraints into a set of rewriting rule on
      the function symbols of [symbols]. *)
   (* Solving the typing constraints of the RHS. *)
-  match Unif.(solve {empty_problem with to_solve}) with
+  let type_check = Unif.TypeCheckInstanciation in
+  match Unif.(solve ~type_check {empty_problem with to_solve}) with
   | None     -> fatal pos "The rewriting rule does not preserve typing."
   | Some(cs) ->
   let is_constr c =
