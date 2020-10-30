@@ -179,7 +179,8 @@ and eq_modulo : ctxt -> term -> term -> bool = fun ctx a b ->
     fails,  the stack [stk] may be imperatively updated since a reduction step
     taken in elements of the stack is preserved (this is done using
     {!constructor:Terms.term.TRef}). *)
-and tree_walk : dtree -> ctxt -> stack -> term option -> (term * stack) option =
+and tree_walk :
+  dtree -> ctxt -> stack -> term option -> (term * stack) option =
   fun tree ctx stk meta_type ->
   let (lazy capacity, lazy tree) = tree in
   let vars = Array.make capacity Kind in (* dummy terms *)

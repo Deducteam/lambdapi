@@ -196,7 +196,8 @@ let rec infer : ctxt -> term -> term = fun ctx t ->
     [conv]. [ctx] must be well-formed and [a] well-sorted. This function never
     fails (but constraints may be unsatisfiable). *)
 and check : ctxt -> term -> term -> unit = fun ctx t a ->
-  if !log_enabled then log_infr "check %a%a : %a" pp_ctxt ctx pp_term t pp_term a;
+  if !log_enabled then
+    log_infr "check %a%a : %a" pp_ctxt ctx pp_term t pp_term a;
   conv ctx (infer ctx t) a
 
 (** [infer ctx t] returns a pair [(a,cs)] where [a] is a type for the term [t]
@@ -207,19 +208,7 @@ and check : ctxt -> term -> term -> unit = fun ctx t a ->
 let infer : ctxt -> term -> term * constr list = fun ctx t ->
   Stdlib.(constraints := []);
   let a = infer ctx t in
-(*
-  let eq_constr : constr -> constr -> int = fun (ctx1,ta1,tb1) (_ctx2,ta2,tb2) ->
-    (* we consider that ctx1 = ctx2 *)
-    if (Eval.eq_modulo ctx1 ta1 ta2) && (Eval.eq_modulo ctx1 tb1 tb2) ||
-       (Eval.eq_modulo ctx1 ta1 tb2) && (Eval.eq_modulo ctx1 tb1 ta2)
-    then
-      0
-    else
-      1
-  in
-*)
   let constrs = Stdlib.(!constraints) in
-(*   let constrs = List.sort_uniq eq_constr constrs in *)
   if !log_enabled then
     begin
       log_infr (gre "infer %a : %a") pp_term t pp_term a;
