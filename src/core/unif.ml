@@ -179,13 +179,13 @@ let mymem eq x l =
 let mymem = mymem Eval.eq_constr
 
 type type_check = | NoTypeCheck | TypeCheckInstanciation
-let g_type_check = Stdlib.ref NoTypeCheck
+let g_type_check = Stdlib.ref TypeCheckInstanciation
 
 (** [instantiate ctx m ts u] check whether, in a problem [m[ts]=u], [m] can be
     instantiated and, if so, instantiate it. *)
-let instantiate : ?type_check:type_check -> ctxt -> meta -> term array ->
+let instantiate : ctxt -> meta -> term array ->
   term -> constr list -> bool =
-  fun ?(type_check=NoTypeCheck) ctx m ts u initial ->
+  fun ctx m ts u initial ->
   let type_meta_app m ts =
     let rec aux a ts =
       match (Eval.whnf ctx a), ts with
@@ -202,7 +202,7 @@ let instantiate : ?type_check:type_check -> ctxt -> meta -> term array ->
     let is_new_constr constr = not (mymem constr initial) in
     let there_is_new_constr = List.exists is_new_constr constrs in
     begin
-      match (there_is_new_constr,type_check) with
+      match (there_is_new_constr,Stdlib.(!g_type_check)) with
       | false,_ ->
         if !log_enabled then log_unif (gre "no new constraints");
         if !log_enabled then log_unif (yel "%a ≔ %a") pp_meta m pp_term u;
@@ -219,17 +219,17 @@ let instantiate : ?type_check:type_check -> ctxt -> meta -> term array ->
 
 (** [solve p] tries to solve the unification problem [p] and
     returns the constraints that could not be solved. *)
-let rec solve : ?type_check:type_check -> problem -> constr list =
-  fun ?type_check p ->
+let rec solve : problem -> constr list =
+  fun p ->
   match p with
   | { to_solve = []; unsolved = []; _ } -> []
   | { to_solve = []; unsolved = cs; recompute = true } ->
-     solve ?type_check {empty_problem with to_solve = cs}
+     solve {empty_problem with to_solve = cs}
   | { to_solve = []; unsolved = cs; _ } -> cs
-  | { to_solve = (c,t,u)::to_solve; _ } -> solve_aux ?type_check c t u {p with to_solve}
+  | { to_solve = (c,t,u)::to_solve; _ } -> solve_aux c t u {p with to_solve}
 
-and solve_aux : ?type_check:type_check -> ctxt -> term -> term -> problem -> constr list =
-  fun ?type_check ctx t1 t2 p ->
+and solve_aux : ctxt -> term -> term -> problem -> constr list =
+  fun ctx t1 t2 p ->
   let initial = (ctx,t1,t2)::p.to_solve in
   let t1 = Eval.whnf ctx t1 in
   let t2 = Eval.whnf ctx t2 in
@@ -533,10 +533,11 @@ and solve_aux : ?type_check:type_check -> ctxt -> term -> term -> problem -> con
    constraints. *)
 let solve : ?type_check:type_check -> problem -> constr list option =
   fun ?(type_check=TypeCheckInstanciation) p ->
-  try Some (solve ~type_check p) with Unsolvable -> None
+  Stdlib.(g_type_check := type_check);
+  try Some (solve p) with Unsolvable -> None
 
 (** [eq c t u] tries to unify the terms [t] and [u] in context [c], by
    instantiating their metavariables. *)
 let eq : ?type_check:type_check -> ctxt -> term -> term -> bool =
-  fun ?(type_check=NoTypeCheck) c t u ->
+  fun ?(type_check=TypeCheckInstanciation) c t u ->
   solve ~type_check {empty_problem with to_solve=[c,t,u]} = Some []
