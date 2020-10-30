@@ -221,7 +221,7 @@ and tree_walk :
         let make_t =
           begin
             match meta_type with
-            | Some meta_type -> (function _ -> make_meta [] meta_type)
+            | Some meta_type -> (function () -> make_meta [] meta_type)
             | None -> (function () -> let x = make_meta [] Type in
                 make_meta [] x)
           end

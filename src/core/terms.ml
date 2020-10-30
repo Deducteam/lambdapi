@@ -313,8 +313,7 @@ let fresh_meta : ?name:string -> term -> int -> meta =
 (** [set_meta m v] sets the value of the metavariable [m] to [v]. Note that no
     specific check is performed, so this function may lead to cyclic terms. *)
 let set_meta : meta -> (term, term) Bindlib.mbinder -> unit = fun m v ->
-(*   m.meta_type := Kind; (* to save memory *)  *)
-  m.meta_value := Some(v)
+  m.meta_type := Kind; (* to save memory *)
 
 (** [meta_name m] returns a string representation of [m]. *)
 let meta_name : meta -> string = fun m ->

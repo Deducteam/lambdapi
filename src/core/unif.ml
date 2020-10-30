@@ -170,14 +170,6 @@ let instantiation : ctxt -> meta -> term array -> term ->
         Some (Bindlib.bind_mvar vs (lift u))
   else None
 
-let mymem eq x l =
-  let rec mem x = function
-      [] -> false
-    | a::l -> eq a x || mem x l
-  in mem x l
-
-let mymem = mymem Eval.eq_constr
-
 type type_check = | NoTypeCheck | TypeCheckInstanciation
 let g_type_check = Stdlib.ref TypeCheckInstanciation
 
@@ -199,10 +191,12 @@ let instantiate : ctxt -> meta -> term array ->
   | Some(bu) when Bindlib.is_closed bu ->
     let m_app = type_meta_app m (Array.to_list ts) in
     let constrs = Infer.check ctx u m_app in
-    let is_new_constr constr = not (mymem constr initial) in
-    let there_is_new_constr = List.exists is_new_constr constrs in
+    let is_initial constr = List.exists (Eval.eq_constr constr) initial in
+    let new_constr = List.filter
+        (function constr -> not (is_initial constr)) constrs
+    in
     begin
-      match (there_is_new_constr,Stdlib.(!g_type_check)) with
+      match (new_constr <> [],Stdlib.(!g_type_check)) with
       | false,_ ->
         if !log_enabled then log_unif (gre "no new constraints");
         if !log_enabled then log_unif (yel "%a ≔ %a") pp_meta m pp_term u;
