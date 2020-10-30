@@ -319,10 +319,9 @@ let rewrite : Sig_state.t -> popt -> Proof.t -> bool -> rw_patt option -> term
   let (g_env, g_type) = Proof.focus_goal pos ps in
 
   (* Infer the type of [t] (the argument given to the tactic). *)
-  let type_check = Unif.TypeCheckInstanciation in
   let g_ctxt = Env.to_ctxt g_env in
   let t_type =
-    match Typing.infer ~type_check g_ctxt t with
+    match Typing.infer g_ctxt t with
     | Some(a) -> a
     | None    -> fatal pos "Cannot infer the type of [%a]." pp_term t
   in
