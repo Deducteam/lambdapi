@@ -72,12 +72,8 @@ let try_rules : ctxt -> term -> term -> constr list option = fun ctx s t ->
       let a_s,constrs_s = Infer.infer ctx s in
       let a_t,constrs_t = Infer.infer ctx t in
       match constrs_s,constrs_t with
-      | ([],_) ->
-        if !log_enabled then
-          log_unif "with precomputed meta type %a" pp_term a_s ; Some a_s
-      | (_,[]) ->
-        if !log_enabled then
-          log_unif "with precomputed meta type %a" pp_term a_t ; Some a_t
+      | ([],_) -> Some a_s
+      | (_,[]) -> Some a_t
       | (_,_) -> None
     in
     let rhs =
@@ -298,7 +294,7 @@ and solve_aux : ctxt -> term -> term -> problem -> constr list =
         in build (List.length ts) [] !(s.sym_type)
       in
       set_meta m (Bindlib.unbox (Bindlib.bind_mvar vars (lift t)));
-      solve_aux ctx t1 t2 p
+      solve { p with to_solve = (ctx,t1,t2)::p.to_solve }
     with Cannot_imitate -> add_to_unsolved ()
   in
 
@@ -358,7 +354,7 @@ and solve_aux : ctxt -> term -> term -> problem -> constr list =
     let v = Bindlib.bind_mvar (Env.vars env) xu1 in
     set_meta m (Bindlib.unbox v);
     let t1 = add_args h1 ts1 and t2 = add_args h2 ts2 in
-    solve_aux ctx t1 t2 p
+    solve { p with to_solve = (ctx,t1,t2)::p.to_solve }
   in
 
   (* [inverses_for_prod s] returns the list of triples [(s0,s1,s2,b)] such
@@ -444,7 +440,7 @@ and solve_aux : ctxt -> term -> term -> problem -> constr list =
       log_unif "solve_inj %a ≡ %a"
         pp_term (add_args (Symb s) ts) pp_term v;
     match inverse_opt s ts v with
-    | Some (a, b) -> solve_aux ctx a b p
+    | Some (a, b) -> solve { p with to_solve = (ctx,a,b)::p.to_solve }
     | None -> add_to_unsolved ()
   in
 
@@ -455,7 +451,7 @@ and solve_aux : ctxt -> term -> term -> problem -> constr list =
     let env, mxs, prod, _, _ = Infer.extend_meta_type m in
     (* ts1 and ts2 are equal to [] *)
     let ctx' = Env.to_ctxt env in
-    solve_aux ctx' mxs prod { p with to_solve = (ctx,h1,h2)::p.to_solve }
+    solve { p with to_solve = (ctx',mxs,prod)::(ctx,h1,h2)::p.to_solve }
   in
 
   match (h1, h2) with
@@ -467,7 +463,7 @@ and solve_aux : ctxt -> term -> term -> problem -> constr list =
   | (Abst(a1,b1), Abst(a2,b2)) ->
      let (x,b1,b2) = Bindlib.unbind2 b1 b2 in
      let ctx' = (x,a1,None) :: ctx in
-     solve_aux ctx a1 a2 {p with to_solve = (ctx',b1,b2) :: p.to_solve}
+     solve { p with to_solve = (ctx,a1,a2)::(ctx',b1,b2)::p.to_solve}
 
   (* Other cases. *)
   | (Vari(x1)   , Vari(x2)   ) when Bindlib.eq_vars x1 x2 -> decompose ()
@@ -484,11 +480,13 @@ and solve_aux : ctxt -> term -> term -> problem -> constr list =
          | _, _ ->
            begin
              match inverse_opt s1 ts1 t2 with
-             | Some (t, u) -> solve_aux ctx t u p
+             | Some (t, u) ->
+               solve { p with to_solve = (ctx,t,u)::p.to_solve }
              | None ->
                begin
                  match inverse_opt s2 ts2 t1 with
-                 | Some (t, u) -> solve_aux ctx t u p
+                 | Some (t, u) ->
+                     solve { p with to_solve = (ctx,t,u)::p.to_solve }
                  | None -> add_to_unsolved ()
                end
            end
