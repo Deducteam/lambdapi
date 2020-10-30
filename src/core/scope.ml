@@ -210,8 +210,8 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
     | (Some(a), M_LHS(_)    ) ->
         fatal a.pos "Annotation not allowed in a LHS."
     | (None   , M_LHS(_)    ) -> fresh_patt md None (Env.to_tbox env)
-    | (Some(a), _           ) -> scope env a
-    | (None   , _           ) -> _Meta_Type env
+    | ((Some({elt=P_Wild;_})|None), _           ) -> _Meta_Type env
+    | (Some(a)   , _           ) -> scope env a
   (* Scoping of a binder (abstraction or product). The environment made of the
      variables is also returned. *)
   and scope_binder cons env xs t =
@@ -226,21 +226,11 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
       | ([]       ,_,_)::xs -> aux env xs
       | (None  ::l,d,i)::xs ->
           let v = Bindlib.new_var mkfree "_" in
-          let d =
-            match d with
-            | Some {elt=P_Wild ; _ } -> None
-            | _ -> d
-          in
           let a = scope_domain env d in
           let (t,env) = aux env ((l,d,i)::xs) in
           (cons a (Bindlib.bind_var v t), Env.add v a None env)
       | (Some x::l,d,i)::xs ->
           let v = Bindlib.new_var mkfree x.elt in
-          let d =
-            match d with
-            | Some {elt=P_Wild ; _ } -> None
-            | _ -> d
-          in
           let a = scope_domain env d in
           let (t,env) =
             aux ((x.elt,(v,a,None)) :: env) ((l,d,i) :: xs)
