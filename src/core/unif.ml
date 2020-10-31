@@ -215,6 +215,7 @@ let instantiate : ctxt -> meta -> term array ->
     returns the constraints that could not be solved. *)
 let rec solve : problem -> constr list =
   fun p ->
+  if !log_enabled then log_unif "problem %a" pp_problem p;
   match p with
   | { to_solve = []; unsolved = []; _ } -> []
   | { to_solve = []; unsolved = cs; recompute = true } ->
