@@ -68,14 +68,21 @@ let try_rules : ctxt -> term -> term -> constr list option = fun ctx s t ->
   let exception No_match in
   let open Unif_rule in
   try
+    let a_s,constrs_s = Infer.infer ctx s in
+    let a_t,constrs_t = Infer.infer ctx t in
     let meta_type =
-      let a_s,constrs_s = Infer.infer ctx s in
-      let a_t,constrs_t = Infer.infer ctx t in
       match constrs_s,constrs_t with
       | ([],_) -> Some a_s
       | (_,[]) -> Some a_t
       | (_,_) -> None
+(*
+        if !log_enabled then
+          fatal_msg (red "tree walk with defaut meta array");
+        assert false
+*)
     in
+    List.iter (log_unif (red "DEBUG [%a]") pp_constr) constrs_s;
+    List.iter (log_unif (red "DEBUG [%a]") pp_constr) constrs_t;
     let rhs =
       match Eval.tree_walk !(equiv.sym_tree) ctx [s;t] meta_type with
       | Some(r,[]) -> r
@@ -170,6 +177,7 @@ let instantiation : ctxt -> meta -> term array -> term ->
         Some (Bindlib.bind_mvar vs (lift u))
   else None
 
+(** Checking type or not during meta instanciation *)
 type type_check = | NoTypeCheck | TypeCheckInstanciation
 let g_type_check = Stdlib.ref TypeCheckInstanciation
 
@@ -233,12 +241,24 @@ and solve_aux : ctxt -> term -> term -> problem -> constr list =
   if !log_enabled then log_unif "solve %a" pp_constr (ctx, t1, t2);
 
   let add_to_unsolved () =
-    if Eval.eq_modulo ctx t1 t2 then solve p else
-    match try_rules ctx t1 t2 with
-    | None     -> solve {p with unsolved = (ctx,t1,t2) :: p.unsolved}
-    | Some([]) -> assert false
-    (* Unification rules generate non empty list of unification constraints *)
-    | Some(cs) -> solve {p with to_solve = cs @ p.to_solve}
+    if Eval.eq_modulo ctx t1 t2 then
+      solve p
+    else
+      match try_rules ctx t1 t2 with
+      | None     -> solve {p with unsolved = (ctx,t1,t2) :: p.unsolved}
+      | Some([]) -> assert false
+      (* Unification rules generate non empty list of unification constraints *)
+      | Some(cs) ->
+        let lost_constrs = []
+(*
+          try
+            let to_solve = (ctx,t1,t2)::cs in
+            solve {empty_problem with to_solve}
+          with _ -> log_unif (red "nothing recovered") ; []
+*)
+        in
+        List.iter (log_unif (red "DEBUG [%a]") pp_constr) lost_constrs;
+        solve {p with to_solve = lost_constrs @ cs @ p.to_solve}
   in
 
   let error () =
