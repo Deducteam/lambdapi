@@ -19,6 +19,7 @@ let _ =
   | Some(f) -> Package.apply_config f;
   let open Alcotest in
   let files = Sys.readdir "OK" |> Array.map (fun f -> "OK/" ^ f)
+(* TODO put back OK/unif_hint.lp when it is fixed *)
   |> Array.to_list
   |> List.filter (function f -> f <> "OK/unif_hint.lp")
   |> Array.of_list in

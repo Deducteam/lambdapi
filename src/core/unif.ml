@@ -68,23 +68,12 @@ let try_rules : ctxt -> term -> term -> constr list option = fun ctx s t ->
   let exception No_match in
   let open Unif_rule in
   try
-    let a_s,constrs_s = Infer.infer ctx s in
-    let a_t,constrs_t = Infer.infer ctx t in
-    let meta_type =
-      match constrs_s,constrs_t with
-      | ([],_) -> Some a_s
-      | (_,[]) -> Some a_t
-      | (_,_) ->
-        if !log_enabled then
-          log_unif (yel "tree walk with defaut meta array");
-        None
-    in
     let rhs =
-      match Eval.tree_walk !(equiv.sym_tree) ctx [s;t] meta_type with
+      match Eval.tree_walk !(equiv.sym_tree) ctx [s;t] with
       | Some(r,[]) -> r
       | Some(_)    -> assert false (* Everything should be matched *)
       | None       ->
-      match Eval.tree_walk !(equiv.sym_tree) ctx [t;s] meta_type with
+      match Eval.tree_walk !(equiv.sym_tree) ctx [t;s] with
       | Some(r,[]) -> r
       | Some(_)    -> assert false (* Everything should be matched *)
       | None       -> raise No_match
@@ -182,18 +171,13 @@ let g_type_check = Stdlib.ref TypeCheckInstanciation
 let instantiate : ctxt -> meta -> term array ->
   term -> constr list -> bool =
   fun ctx m ts u initial ->
-  let type_meta_app m ts =
-    let rec aux a ts =
-      match (Eval.whnf ctx a), ts with
-      | Prod(_,b), t :: ts -> aux (Bindlib.subst b t) ts
-      | _, [] -> a
-      | _, _ -> assert false
-    in
-    aux !(m.meta_type) ts
-  in
   match instantiation ctx m ts u with
   | Some(bu) when Bindlib.is_closed bu ->
-    let m_app = type_meta_app m (Array.to_list ts) in
+    let m_app =
+      match Eval.type_app ctx !(m.meta_type) (Array.to_list ts) with
+      | Some a -> a
+      | None -> assert false
+    in
     let constrs = Infer.check ctx u m_app in
     let is_initial constr = List.exists (Eval.eq_constr constr) initial in
     let new_constr = List.filter
@@ -217,8 +201,7 @@ let instantiate : ctxt -> meta -> term array ->
 
 (** [solve p] tries to solve the unification problem [p] and
     returns the constraints that could not be solved. *)
-let rec solve : problem -> constr list =
-  fun p ->
+let rec solve : problem -> constr list = fun p ->
   if !log_enabled then log_unif "problem %a" pp_problem p;
   match p with
   | { to_solve = []; unsolved = []; _ } -> []
@@ -237,24 +220,12 @@ and solve_aux : ctxt -> term -> term -> problem -> constr list =
   if !log_enabled then log_unif "solve %a" pp_constr (ctx, t1, t2);
 
   let add_to_unsolved () =
-    if Eval.eq_modulo ctx t1 t2 then
-      solve p
-    else
-      match try_rules ctx t1 t2 with
-      | None     -> solve {p with unsolved = (ctx,t1,t2) :: p.unsolved}
-      | Some([]) -> assert false
-      (* Unification rules generate non empty list of unification
-         constraints *)
-      | Some(cs) ->
-        let lost_constrs = []
-(*
-          try (* TODO to get constraints on the type of implicit argument *)
-            let to_solve = something in
-            solve {empty_problem with to_solve}
-          with _ -> log_unif (red "nothing recovered") ; []
-*)
-        in
-        solve {p with to_solve = lost_constrs @ cs @ p.to_solve}
+    if Eval.eq_modulo ctx t1 t2 then solve p else
+    match try_rules ctx t1 t2 with
+    | None     -> solve {p with unsolved = (ctx,t1,t2) :: p.unsolved}
+    | Some([]) -> assert false
+    (* Unification rules generate non empty list of unification constraints *)
+    | Some(cs) -> solve {p with to_solve = cs @ p.to_solve}
   in
 
   let error () =

@@ -111,7 +111,7 @@ and whnf_stk : ctxt -> term -> stack -> term * stack = fun ctx t stk ->
       | Some(t) -> Stdlib.incr steps; whnf_stk ctx t stk
       | None    ->
       (* Otherwise try rewriting using decision tree. *)
-      match tree_walk !(s.sym_tree) ctx stk None with
+      match tree_walk !(s.sym_tree) ctx stk with
       (* If no rule is found, return the original term *)
       | None        -> st
       | Some(t,stk) -> Stdlib.incr steps; whnf_stk ctx t stk
@@ -179,9 +179,8 @@ and eq_modulo : ctxt -> term -> term -> bool = fun ctx a b ->
     fails,  the stack [stk] may be imperatively updated since a reduction step
     taken in elements of the stack is preserved (this is done using
     {!constructor:Terms.term.TRef}). *)
-and tree_walk :
-  dtree -> ctxt -> stack -> term option -> (term * stack) option =
-  fun tree ctx stk meta_type ->
+and tree_walk : dtree -> ctxt -> stack -> (term * stack) option =
+  fun tree ctx stk ->
   let (lazy capacity, lazy tree) = tree in
   let vars = Array.make capacity Kind in (* dummy terms *)
   let bound = Array.make capacity TE_None in
@@ -218,16 +217,8 @@ and tree_walk :
         in
         List.iter fn env_builder;
         (* Complete the array with fresh meta-variables if needed. *)
-        let make_t =
-          begin
-            match meta_type with
-            | Some meta_type -> (function () -> make_meta [] meta_type)
-            | None -> (function () -> let x = make_meta [] Type in
-                make_meta [] x)
-          end
-        in
         for i = env_len - xvars to env_len - 1 do
-          let t = make_t () in
+          let t = make_meta [] Kind in
           let b = Bindlib.raw_mbinder [||] [||] 0 mkfree (fun _ -> t) in
           env.(i) <- TE_Some(b)
         done;
@@ -415,6 +406,15 @@ let rec hnf : ctxt -> term -> term = fun ctx t ->
      let x,t = Bindlib.unbind t in
      Abst(a, Bindlib.unbox (Bindlib.bind_var x (lift (hnf ctx t))))
   | t         -> t
+
+(** [type_app a ts] returns the type of [add_args x ts] where [x] is any term of type [a], if it exists. *)
+let rec type_app : ctxt -> term -> term list -> term option =
+  fun ctx a ts ->
+  match (whnf ctx a), ts with
+  | Prod(_,b), t :: ts -> type_app ctx (Bindlib.subst b t) ts
+  | _, [] -> Some a
+  | _, _ -> None
+
 
 (** [eval cfg ctx t] evaluates the term [t] in the context [ctx] according to
     configuration [cfg]. *)
