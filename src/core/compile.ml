@@ -119,3 +119,14 @@ let _ =
     with e -> Console.pop_state (); raise e
   in
   Stdlib.(Parser.require := require)
+
+(** Pure wrappers around compilation functions. *)
+module Pure : sig
+  val compile : bool -> Path.t -> Sign.t
+  val compile_file : file_path -> Sign.t
+end = struct
+  let app2 : ('a -> 'b -> 'c) -> ('a * 'b) -> 'c = fun f (x, y) -> f x y
+
+  let compile force path = pure_apply (app2 compile) (force, path)
+  let compile_file = pure_apply compile_file
+end
