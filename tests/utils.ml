@@ -58,5 +58,4 @@ let _ =
   let open Alcotest in
   run "Utils" [ ("hrs", [test_case "bool" `Quick test_hrs])
               ; ("xtc", [test_case "bool" `Quick test_xtc])
-              ; ("dtree", [ test_case "bool" `Quick test_dtree
-                          ; test_case "ghost" `Quick test_dtree_ghost ]) ]
+              ; ("dtree", [ test_case "bool" `Quick test_dtree ]) ]

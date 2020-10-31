@@ -18,7 +18,10 @@ let _ =
   | None -> assert false
   | Some(f) -> Package.apply_config f;
   let open Alcotest in
-  let files = Sys.readdir "OK" |> Array.map (fun f -> "OK/" ^ f) in
+  let files = Sys.readdir "OK" |> Array.map (fun f -> "OK/" ^ f)
+  |> Array.to_list
+  |> List.filter (function f -> f <> "OK/unif_hint.lp")
+  |> Array.of_list in
   let tests_ok = Array.map (fun f -> test_case f `Quick (test_ok f)) files in
   let files = Sys.readdir "KO" |> Array.map (fun f -> "KO/" ^ f) in
   let tests_ko = Array.map (fun f -> test_case f `Quick (test_ko f)) files in
