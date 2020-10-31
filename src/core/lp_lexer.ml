@@ -139,6 +139,7 @@ and nom_comment : lexbuf -> unit = fun buf ->
     | "left" -> ASSOC(Syntax.Assoc_left)
     | "infix" -> INFIX
     | "TYPE" -> TYPE
+    | "with" -> WITH
     | "rule" -> RULE
     | "open" -> OPEN
     | "prover" -> PROVER
