@@ -407,7 +407,8 @@ let rec hnf : ctxt -> term -> term = fun ctx t ->
      Abst(a, Bindlib.unbox (Bindlib.bind_var x (lift (hnf ctx t))))
   | t         -> t
 
-(** [type_app a ts] returns the type of [add_args x ts] where [x] is any term of type [a], if it exists. *)
+(** [type_app a ts] returns the type of [add_args x ts] where [x] is any
+    term of type [a], if it exists. *)
 let rec type_app : ctxt -> term -> term list -> term option =
   fun ctx a ts ->
   match (whnf ctx a), ts with
