@@ -74,15 +74,11 @@ let try_rules : ctxt -> term -> term -> constr list option = fun ctx s t ->
       match constrs_s,constrs_t with
       | ([],_) -> Some a_s
       | (_,[]) -> Some a_t
-      | (_,_) -> None
-(*
+      | (_,_) ->
         if !log_enabled then
-          fatal_msg (red "tree walk with defaut meta array");
-        assert false
-*)
+          log_unif (yel "tree walk with defaut meta array");
+        None
     in
-    List.iter (log_unif (red "DEBUG [%a]") pp_constr) constrs_s;
-    List.iter (log_unif (red "DEBUG [%a]") pp_constr) constrs_t;
     let rhs =
       match Eval.tree_walk !(equiv.sym_tree) ctx [s;t] meta_type with
       | Some(r,[]) -> r
@@ -247,17 +243,17 @@ and solve_aux : ctxt -> term -> term -> problem -> constr list =
       match try_rules ctx t1 t2 with
       | None     -> solve {p with unsolved = (ctx,t1,t2) :: p.unsolved}
       | Some([]) -> assert false
-      (* Unification rules generate non empty list of unification constraints *)
+      (* Unification rules generate non empty list of unification
+         constraints *)
       | Some(cs) ->
         let lost_constrs = []
 (*
-          try
-            let to_solve = (ctx,t1,t2)::cs in
+          try (* TODO to get constraints on the type of implicit argument *)
+            let to_solve = something in
             solve {empty_problem with to_solve}
           with _ -> log_unif (red "nothing recovered") ; []
 *)
         in
-        List.iter (log_unif (red "DEBUG [%a]") pp_constr) lost_constrs;
         solve {p with to_solve = lost_constrs @ cs @ p.to_solve}
   in
 
