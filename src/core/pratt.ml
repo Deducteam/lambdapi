@@ -21,10 +21,10 @@ end = struct
           | None ->
               begin match StrHtbl.find_opt una_operators s with
                 | Some(_, bp, _) -> bp
-                | None -> 0.
+                | None -> assert false (* [t] must be an operator *)
               end
         end
-    | _ -> 0.
+    | _ -> assert false (* [t] must be an operator *)
 
   (* NOTE: among the four functions operating on streams, only [expression]
      consumes elements from it. *)
@@ -34,12 +34,6 @@ end = struct
     match t.elt with
     | P_Iden({elt = (_, s); pos}, _) ->
       StrHtbl.mem bin_operators s
-    | _ -> false
-
-  (** [is_unop t] returns [true] iff term [t] is a unary operator. *)
-  let is_unop : p_term -> bool = fun {elt; _} ->
-    match elt with
-    | P_Iden({elt = (_, s); pos}, _) -> StrHtbl.mem una_operators s
     | _ -> false
 
   (** [nud t] is the production of term [t] with {b no} left context. If [t]
@@ -61,7 +55,7 @@ end = struct
     match t.elt with
     | P_Iden({elt = (_, s); pos}, _) ->
         begin match StrHtbl.find_opt bin_operators s with
-          | None -> Pos.make pos (P_Appl(left, t))
+          | None -> assert false (* [t] must be an operator. *)
           | Some((_, assoc, bp, _) as op) ->
               let rbp =
                 if assoc = Assoc_right then bp -. epsilon_float else bp
@@ -69,7 +63,7 @@ end = struct
               (* REVIEW: and for non associative? *)
               Pos.make pos (P_BinO(left, op, expression ~rbp strm))
         end
-    | _ -> Pos.none (P_Appl(left, t))
+    | _ -> assert false (* [t] must be an operator. *)
 
   (** [expression rbp s] parses stream of tokens [s] with right binding power
       [rbp]. It transforms a sequence of applications to a structured
@@ -90,17 +84,9 @@ end = struct
           aux (led strm left next)
         else
           left
-      | Some(pt) when is_unop pt ->
-        (* FIXME: processing of prefix might be incorrect. *)
-        if lbp pt > rbp then
-          let next = Stream.next strm in
-          aux (Pos.none (P_Appl(left, nud strm next)))
-        else
-          left
-      | Some(_) ->
+      | Some(pt) ->
         let next = Stream.next strm in
-        (* FIXME: compute position *)
-        aux (Pos.none (P_Appl(left, next)))
+        aux (Pos.none (P_Appl(left, nud strm next)))
 
     in
     let next = Stream.next strm in
