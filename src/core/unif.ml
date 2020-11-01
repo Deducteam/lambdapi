@@ -174,7 +174,7 @@ let instantiate : ctxt -> meta -> term array ->
   match instantiation ctx m ts u with
   | Some(bu) when Bindlib.is_closed bu ->
     let m_app =
-      match Eval.type_app ctx !(m.meta_type) (Array.to_list ts) with
+      match Infer.type_app ctx !(m.meta_type) (Array.to_list ts) with
       | Some a -> a
       | None -> assert false
     in

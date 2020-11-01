@@ -407,16 +407,6 @@ let rec hnf : ctxt -> term -> term = fun ctx t ->
      Abst(a, Bindlib.unbox (Bindlib.bind_var x (lift (hnf ctx t))))
   | t         -> t
 
-(** [type_app a ts] returns the type of [add_args x ts] where [x] is any
-    term of type [a], if it exists. *)
-let rec type_app : ctxt -> term -> term list -> term option =
-  fun ctx a ts ->
-  match (whnf ctx a), ts with
-  | Prod(_,b), t :: ts -> type_app ctx (Bindlib.subst b t) ts
-  | _, [] -> Some a
-  | _, _ -> None
-
-
 (** [eval cfg ctx t] evaluates the term [t] in the context [ctx] according to
     configuration [cfg]. *)
 let eval : Syntax.eval_config -> ctxt -> term -> term = fun c ctx t ->

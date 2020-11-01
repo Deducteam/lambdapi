@@ -59,6 +59,15 @@ let extend_meta_type : meta -> env * term * term *
   let f x = Bindlib.unbox (Bindlib.bind_mvar vs x) in
   env, r1, r2, f p, f q
 
+(** [type_app a ts] returns the type of [add_args x ts] where [x] is any
+    term of type [a], if it exists. *)
+let rec type_app : ctxt -> term -> term list -> term option =
+  fun ctx a ts ->
+  match (Eval.whnf ctx a), ts with
+  | Prod(_,b), t :: ts -> type_app ctx (Bindlib.subst b t) ts
+  | _, [] -> Some a
+  | _, _ -> None
+
 (** [make_meta_codomain ctx a] builds a metavariable intended as the  codomain
     type for a product of domain type [a].  It has access to the variables  of
     the context [ctx] and a fresh variables corresponding to the argument. *)
