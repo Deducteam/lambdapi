@@ -49,7 +49,7 @@ else
 fi
 
 # Ghost symbols
-# TODO put back test_dtree_ghost when OK/unif_hint.lp is fixed
+# TODO put back tests.OK.unif_hint.#equiv when OK/unif_hint.lp is fixed
 # out="$(${LAMBDAPI} 'tests.OK.unif_hint.#equiv' 2>/dev/null)"
 # if [ "$?" = 1 ] || [ -z "$out" ]; then
 #     ko 'tests.OK.unif_hint.#equiv'
