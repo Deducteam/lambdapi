@@ -1,7 +1,7 @@
 #!/bin/sh
 # Test Lambdapi decision-tree command
 
-set -euf
+set -uf
 
 ko() {
     printf '\033[31mKO\033[0m %s\n' "$1"
