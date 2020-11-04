@@ -221,31 +221,34 @@ let reset_default : unit -> unit = fun () ->
   let reset _ (default, r) = r := default in
   StrMap.iter reset Stdlib.(!boolean_flags)
 
+(** Settings used to compile files. *)
+type state = { st_verbose: int
+             (** Verbosity level. *)
+             ; st_loggers: (char * bool) list
+             (** Loggers enabled. *)
+             ; st_bflags: bool StrMap.t
+             (** Boolean flags. *) }
+
 (** Stack of saved state for verbosity, loggers and boolean flags. *)
-let saved_state : (int * (char * bool) list * bool StrMap.t) list ref = ref []
+let saved_state : state list ref = ref []
 
 (** [push_state ()] saves the current state of [verbose], the loggers, and the
     boolean flags, pushing it to the stack. *)
 let push_state : unit -> unit = fun () ->
-  let verbose = !verbose in
-  let loggers =
+  let st_verbose = !verbose in
+  let st_loggers =
     let fn l = (l.logger_key, !(l.logger_enabled)) in
     List.map fn Stdlib.(!loggers)
   in
-  let flags : bool StrMap.t =
+  let st_bflags : bool StrMap.t =
     let fn (_,r) = !r in
     StrMap.map fn Stdlib.(!boolean_flags)
   in
-  saved_state := (verbose, loggers, flags) :: !saved_state
+  saved_state := {st_verbose; st_loggers; st_bflags} :: !saved_state
 
-(** [pop_state ()] restores the setting saved with [push_stack], removing them
-    from the top of the stack at the same time. *)
-let pop_state : unit -> unit = fun () ->
-  let (v,l,f) =
-    match !saved_state with
-    | []   -> failwith "[Console.pop_state] not well-bracketed."
-    | e::s -> saved_state := s; e
-  in
+(** [apply_state st] restores the setting in [st]. *)
+let apply_state : state -> unit =
+  fun {st_verbose=v; st_loggers=l; st_bflags=f} ->
   (* Reset verbosity level. *)
   verbose := v;
   (* Reset debugging flags. *)
@@ -261,3 +264,13 @@ let pop_state : unit -> unit = fun () ->
     with Not_found -> ()
   in
   StrMap.iter reset Stdlib.(!boolean_flags)
+
+(** [pop_state ()] restores the settings saved by [push_state], removing it
+    from [saved_state]. *)
+let pop_state : unit -> unit = fun () ->
+  let e =
+    match !saved_state with
+    | [] -> failwith "[Console.pop_state] not well-bracketed."
+    | e::s -> saved_state := s; e
+  in
+  apply_state e

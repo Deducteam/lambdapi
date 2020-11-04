@@ -120,13 +120,21 @@ let _ =
   in
   Stdlib.(Parser.require := require)
 
-(** Pure wrappers around compilation functions. *)
+(** Pure wrappers around compilation functions. Functions provided perform the
+    same computations as the ones defined earlier, but restores the state when
+    they have finished. An optional state can be passed as argument to chnage
+    the settings. *)
 module Pure : sig
-  val compile : bool -> Path.t -> Sign.t
-  val compile_file : file_path -> Sign.t
+  val compile : ?st:Console.state -> bool -> Path.t -> Sign.t
+  val compile_file : ?st:Console.state -> file_path -> Sign.t
 end = struct
-  let app2 : ('a -> 'b -> 'c) -> ('a * 'b) -> 'c = fun f (x, y) -> f x y
+  let compile ?st force path =
+    let f (force, path) =
+      Option.iter apply_state st;
+      compile force path
+    in
+    pure_apply f (force, path)
 
-  let compile force path = pure_apply (app2 compile) (force, path)
-  let compile_file = pure_apply compile_file
+  let compile_file ?st =
+    pure_apply (fun f -> Option.iter apply_state st; compile_file f)
 end
