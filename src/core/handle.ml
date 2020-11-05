@@ -333,10 +333,10 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
         end;
       (* Initialize proof state and save configuration data. *)
       let st = Proof.init x a in
-      Console.push_state ();
+      Console.State.push ();
       (* Build proof checking data. *)
       let finalize ss st =
-        Console.pop_state ();
+        Console.State.pop ();
         match pe.elt with
         | P_proof_abort ->
             (* Just ignore the command, with a warning. *)

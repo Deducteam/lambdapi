@@ -109,14 +109,14 @@ let compile_file : file_path -> Sign.t = fun fname ->
 let _ =
   let require mp =
     (* Save the current console state. *)
-    Console.push_state ();
+    State.push ();
     (* Restore the console state to default for compiling. *)
     Console.reset_default ();
     (* Compile and go back to previous state. *)
     try
       ignore (compile false mp);
-      try Console.pop_state () with _ -> assert false (* Unreachable. *)
-    with e -> Console.pop_state (); raise e
+      try State.pop () with _ -> assert false (* Unreachable. *)
+    with e -> State.pop (); raise e
   in
   Stdlib.(Parser.require := require)
 
@@ -125,16 +125,16 @@ let _ =
     they have finished. An optional state can be passed as argument to chnage
     the settings. *)
 module Pure : sig
-  val compile : ?st:Console.state -> bool -> Path.t -> Sign.t
-  val compile_file : ?st:Console.state -> file_path -> Sign.t
+  val compile : ?st:State.t -> bool -> Path.t -> Sign.t
+  val compile_file : ?st:State.t -> file_path -> Sign.t
 end = struct
   let compile ?st force path =
     let f (force, path) =
-      Option.iter apply_state st;
+      Option.iter State.apply st;
       compile force path
     in
     pure_apply f (force, path)
 
   let compile_file ?st =
-    pure_apply (fun f -> Option.iter apply_state st; compile_file f)
+    pure_apply (fun f -> Option.iter State.apply st; compile_file f)
 end
