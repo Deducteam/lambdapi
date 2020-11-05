@@ -111,7 +111,10 @@ type logger_data =
   ; logger_desc    : string   (** Description of the log displayed in help. *)
   ; logger_enabled : bool ref (** Is the log enabled? *) }
 
-(** [log_enabled] is set to true when logging functions may print messages. *)
+(** [log_enabled] is (automatically) set to true by {!val:set_debug} or
+    functions of {!module:State} when some logging functions may print
+    messages. Its main use is to guard logging operations to avoid performing
+    unnecessary computations. *)
 let log_enabled : bool ref = ref false
 
 (** [loggers] constains the registered logging functions. *)
