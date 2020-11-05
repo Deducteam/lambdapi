@@ -194,29 +194,35 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
     | (false::_   , []     ) ->
         (* NOTE this could be improved with more general implicits. *)
         fatal loc "More arguments are required to instantiate implicits."
+  (* Create a new metavariable of type [TYPE] for a missing domain. *)
+  and _Meta_Type : env -> tbox = fun env ->
+    let vs = Env.to_tbox env in
+    let a = Env.to_prod_box env _Type in
+    let m = _Meta_full (fresh_meta_box a (Array.length vs)) vs in
+    (* Sanity check: only variables of [env] free in [m] if not in RHS. *)
+    match md with
+    | M_RHS(_) -> m
+    | _        ->
+      assert (Bindlib.is_closed (Bindlib.bind_mvar (Env.vars env) m)); m
   (* Scoping function for the domain of functions or products. *)
   and scope_domain : env -> p_term option -> tbox = fun env a ->
     match (a, md) with
     | (Some(a), M_LHS(_)    ) ->
         fatal a.pos "Annotation not allowed in a LHS."
     | (None   , M_LHS(_)    ) -> fresh_patt md None (Env.to_tbox env)
-    | (Some(a), _           ) -> scope env a
-    | (None   , _           ) ->
-        (* Create a new metavariable of type [TYPE] for the missing domain. *)
-        let vs = Env.to_tbox env in
-        let a = Env.to_prod_box env _Type in
-        let m = _Meta_full (fresh_meta_box a (Array.length vs)) vs in
-        (* Sanity check: only variables of [env] free in [m] if not in RHS. *)
-        match md with
-        | M_RHS(_) -> m
-        | _        ->
-        assert (Bindlib.is_closed (Bindlib.bind_mvar (Env.vars env) m)); m
+    | ((Some({elt=P_Wild;_})|None), _           ) -> _Meta_Type env
+    | (Some(a)   , _           ) -> scope env a
   (* Scoping of a binder (abstraction or product). The environment made of the
      variables is also returned. *)
   and scope_binder cons env xs t =
     let rec aux env xs =
       match xs with
-      | []                  -> (scope env t, [])
+      | []                  ->
+        begin
+          match t with
+          | Some t -> (scope env t, [])
+          | None -> (_Meta_Type env, [])
+        end
       | ([]       ,_,_)::xs -> aux env xs
       | (None  ::l,d,i)::xs ->
           let v = Bindlib.new_var mkfree "_" in
@@ -365,18 +371,15 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
     | (P_Abst(_,_)     , M_Patt             ) ->
         fatal t.pos "Abstractions are not allowed in a pattern."
     | (P_Abst(xs,t)    , _                  ) ->
-        fst (scope_binder _Abst env xs t)
+        fst (scope_binder _Abst env xs (Some(t)))
     | (P_Prod(_,_)     , M_Patt             ) ->
         fatal t.pos "Dependent products are not allowed in a pattern."
     | (P_Prod(xs,b)    , _                  ) ->
-        fst (scope_binder _Prod env xs b)
+        fst (scope_binder _Prod env xs (Some(b)))
     | (P_LLet(x,xs,a,t,u), M_Term(_)        )
     | (P_LLet(x,xs,a,t,u), M_RHS(_)         ) ->
-        let a =
-          let a = Option.get (Pos.none P_Wild) a in
-          scope env (if xs = [] then a else Pos.none (P_Prod(xs, a)))
-        in
-        let t = scope env (if xs = [] then t else Pos.none (P_Abst(xs, t))) in
+        let a = fst (scope_binder _Prod env xs a) in
+        let t = fst (scope_binder _Abst env xs (Some(t))) in
         let v = Bindlib.new_var mkfree x.elt in
         let u = scope (Env.add v a (Some(t)) env) u in
         if not (Bindlib.occur v u) then
