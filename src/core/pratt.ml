@@ -58,7 +58,9 @@ end = struct
           | None -> assert false (* [t] must be an operator. *)
           | Some((_, assoc, bp, _) as op) ->
               let rbp =
-                if assoc = Assoc_right then bp -. epsilon_float else bp
+                if assoc = Assoc_right then
+                  bp *. (1. -. epsilon_float)
+                else bp
               in
               (* REVIEW: and for non associative? *)
               Pos.make pos (P_BinO(left, op, expression ~rbp strm))
