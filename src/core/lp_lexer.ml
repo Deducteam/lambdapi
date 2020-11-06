@@ -45,7 +45,7 @@ module Lp_lexer : sig
 end = struct
   let digit = [%sedlex.regexp? '0' .. '9']
   let integer = [%sedlex.regexp? Plus digit]
-  let letter = [%sedlex.regexp? 'a' .. 'z' | 'A' .. 'Z']
+  let letter = [%sedlex.regexp? 'a' .. 'z' | 'A' .. 'Z' | math]
   let id = [%sedlex.regexp? letter, Star (letter | digit | '_')]
   let escid =
     [%sedlex.regexp? "{|", Star (Compl '|' | '|', Compl '}'), Star '|', "|}"]
