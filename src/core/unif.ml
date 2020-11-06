@@ -188,11 +188,11 @@ let instantiate : ctxt -> meta -> term array ->
       | false,_ ->
         if !log_enabled then log_unif (gre "no new constraints");
         if !log_enabled then log_unif (yel "%a ≔ %a") pp_meta m pp_term u;
-        set_meta m (Bindlib.unbox bu); true
+        Meta.set m (Bindlib.unbox bu); true
       | true,NoTypeCheck ->
         if !log_enabled then log_unif (yel "new constraints unknown ignored");
         if !log_enabled then log_unif (yel "%a ≔ %a") pp_meta m pp_term u;
-        set_meta m (Bindlib.unbox bu); true
+        Meta.set m (Bindlib.unbox bu); true
       | true,TypeCheckInstanciation ->
         if !log_enabled then log_unif (red "new constraints unknown");
         false
@@ -273,13 +273,13 @@ and solve_aux : ctxt -> term -> term -> problem -> constr list =
           if i <= 0 then add_args (Symb s) (List.rev acc)
           else match unfold t with
                | Prod(a,b) ->
-                  let m = fresh_meta (Env.to_prod env (lift a)) k in
+                  let m = Meta.fresh (Env.to_prod env (lift a)) k in
                   let u = Meta (m,vs) in
                   build (i-1) (u::acc) (Bindlib.subst b u)
                | _ -> raise Cannot_imitate
         in build (List.length ts) [] !(s.sym_type)
       in
-      set_meta m (Bindlib.unbox (Bindlib.bind_mvar vars (lift t)));
+      Meta.set m (Bindlib.unbox (Bindlib.bind_mvar vars (lift t)));
       solve { p with to_solve = (ctx,t1,t2)::p.to_solve }
     with Cannot_imitate -> add_to_unsolved ()
   in
@@ -322,23 +322,23 @@ and solve_aux : ctxt -> term -> term -> problem -> constr list =
          (* After type inference, a similar constraint should have already
             been generated but has not been processed yet. *)
          let tm2 = Env.to_prod env _Kind in
-         let m2 = fresh_meta tm2 n in
+         let m2 = Meta.fresh tm2 n in
          let a = _Meta m2 (Env.to_tbox env) in
          let x = Bindlib.new_var mkfree "x" in
          let env' = Env.add x a None env in
          let tm3 = Env.to_prod env' _Kind in
-         let m3 = fresh_meta tm3 (n+1) in
+         let m3 = Meta.fresh tm3 (n+1) in
          let b = _Meta m3 (Env.to_tbox env') in
          (* Could be optimized by extending [Env.to_tbox env]. *)
          let u = Bindlib.unbox (_Prod a (Bindlib.bind_var x b)) in
          x,a,env',b,{p with to_solve = (ctx,u,t)::p.to_solve}
     in
     let tm1 = Env.to_prod env' b in
-    let m1 = fresh_meta tm1 (n+1) in
+    let m1 = Meta.fresh tm1 (n+1) in
     let u1 = _Meta m1 (Env.to_tbox env') in
     let xu1 = _Abst a (Bindlib.bind_var x u1) in
     let v = Bindlib.bind_mvar (Env.vars env) xu1 in
-    set_meta m (Bindlib.unbox v);
+    Meta.set m (Bindlib.unbox v);
     let t1 = add_args h1 ts1 and t2 = add_args h2 ts2 in
     solve { p with to_solve = (ctx,t1,t2)::p.to_solve }
   in

@@ -201,7 +201,7 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
   and _Meta_Type : env -> tbox = fun env ->
     let vs = Env.to_tbox env in
     let a = Env.to_prod_box env _Type in
-    let m = _Meta_full (fresh_meta_box a (Array.length vs)) vs in
+    let m = _Meta_full (Meta.fresh_box a (Array.length vs)) vs in
     (* Sanity check: only variables of [env] free in [m] if not in RHS. *)
     match md with
     | M_RHS(_) -> m
@@ -275,10 +275,10 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
         let vs = Env.to_tbox env in
         let arity = Array.length vs in
         let tm =
-          let x = fresh_meta_box (Env.to_prod_box env _Type) arity in
+          let x = Meta.fresh_box (Env.to_prod_box env _Type) arity in
           Env.to_prod_box env (_Meta_full x vs)
         in
-        let m = _Meta_full (fresh_meta_box tm arity) vs in
+        let m = _Meta_full (Meta.fresh_box tm arity) vs in
         (* Sanity check: only variables of [env] free in [m] if not in RHS. *)
         begin
           match md with
@@ -294,9 +294,9 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
              and a new metavariable [m2] of name [id] and type [m1], and
              return [m2]. *)
           let vs = Env.to_tbox env in
-          let m1 = fresh_meta (Env.to_prod env _Type) (Array.length vs) in
+          let m1 = Meta.fresh (Env.to_prod env _Type) (Array.length vs) in
           let a = Env.to_prod env (_Meta m1 vs) in
-          let m2 = fresh_meta ~name:id.elt a (Array.length vs) in
+          let m2 = Meta.fresh ~name:id.elt a (Array.length vs) in
           Stdlib.(m := StrMap.add id.elt m2 !m); m2
         in
         let ts =

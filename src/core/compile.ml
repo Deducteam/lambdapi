@@ -122,19 +122,33 @@ let _ =
 
 (** Pure wrappers around compilation functions. Functions provided perform the
     same computations as the ones defined earlier, but restores the state when
-    they have finished. An optional state can be passed as argument to chnage
-    the settings. *)
+    they have finished. An optional library mapping or state can be passed as
+    argument to change the settings. *)
 module Pure : sig
-  val compile : ?st:State.t -> bool -> Path.t -> Sign.t
-  val compile_file : ?st:State.t -> file_path -> Sign.t
+  val compile : ?lm:string -> ?st:State.t -> bool -> Path.t -> Sign.t
+  val compile_file : ?lm:string -> ?st:State.t -> file_path -> Sign.t
 end = struct
-  let compile ?st force path =
-    let f (force, path) =
-      Option.iter State.apply st;
-      compile force path
-    in
-    pure_apply f (force, path)
 
-  let compile_file ?st =
-    pure_apply (fun f -> Option.iter State.apply st; compile_file f)
+  (* [pure_apply_cfg ?lm ?st f] is function [f] but pure (without side
+     effects).  The side effects taken into account occur in
+     {!val:Console.State.t}, {!val:Files.lib_mappings} and in the meta
+     variable counter {!module:Terms.Meta}. Arguments [?lm] allows to set the
+     library mappings and [?st] sets the state. *)
+  let pure_apply_cfg : ?lm:string -> ?st:State.t -> ('a -> 'b) -> 'a -> 'b =
+    fun ?lm ?st f x ->
+    let libmap = !lib_mappings in
+    State.push ();
+    Option.iter new_lib_mapping lm;
+    Option.iter State.apply st;
+    let res = f x in
+    State.pop ();
+    Terms.Meta.reset_key_counter ();
+    lib_mappings := libmap;
+    res
+
+  let compile ?lm ?st force path =
+    let f (force, path) = compile force path in
+    pure_apply_cfg ?lm ?st f (force, path)
+
+  let compile_file ?lm ?st = pure_apply_cfg ?lm ?st compile_file
 end
