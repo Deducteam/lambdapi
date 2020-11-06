@@ -126,6 +126,8 @@ and nom_comment : lexbuf -> unit = fun buf ->
     | "as" -> AS
     | "assert" -> ASSERT
     | "assertnot" -> ASSERT_NOT
+    | "compute" -> COMPUTE
+    | "type" -> COMPUTE_TYPE
     | "unif_rule" -> UNIF_RULE
     | "in" -> IN
     | "on" -> SWITCH(true)
