@@ -188,12 +188,17 @@ prfend: p=PROOF_END { make_pos $loc p }
 statement:
   THEOREM s=ident al=arg* COLON a=term PROOF { make_pos $loc (fst s, al, a) }
 
+// Converts floats and integers to floats
+float_of_int:
+  | p=FLOAT { p }
+  | n=INT   { float_of_int n }
+
 // Configurations
 config:
   // Add a builtin: [builtin "0" ≔ zero]
   | BUILTIN s=STRINGLIT ASSIGN qid=qident { P_config_builtin(s, qid) }
   // Add a prefix operator: [prefix 1.2 "!" ≔ factorial]
-  | PREFIX p=FLOAT s=STRINGLIT ASSIGN qid=qident
+  | PREFIX p=float_of_int s=STRINGLIT ASSIGN qid=qident
       {
         let unop = (s, p, qid) in
         sanity_check (locate $loc(s)) s;
@@ -201,7 +206,7 @@ config:
         P_config_unop(unop)
       }
   // Add an infix operator: [infix right 6.3 "+" ≔ plus]
-  | INFIX a=ASSOC? p=FLOAT s=STRINGLIT ASSIGN qid=qident
+  | INFIX a=ASSOC? p=float_of_int s=STRINGLIT ASSIGN qid=qident
       {
         let binop = (s, Option.get Assoc_none a, p, qid) in
         sanity_check (locate $loc(s)) s;
@@ -276,6 +281,8 @@ sterm:
   | L_PAREN t=term R_PAREN { make_pos $loc (P_Wrap(t)) }
   // Explicitly given argument
   | L_CU_BRACKET t=term R_CU_BRACKET { make_pos $loc (P_Expl(t)) }
+  // Natural number
+  | n=INT { make_pos $loc (P_NLit(n)) }
 
 // Applied terms
 aterm:

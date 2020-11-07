@@ -166,8 +166,8 @@ and nom_comment : lexbuf -> unit = fun buf ->
     | stringlit ->
         (* Remove the quotes from [lexbuf] *)
         STRINGLIT(Utf8.sub_lexeme buf 1 (lexeme_length buf - 2))
-    | float -> FLOAT(float_of_string (Utf8.lexeme buf))
     | integer -> INT(int_of_string (Utf8.lexeme buf))
+    | float -> FLOAT(float_of_string (Utf8.lexeme buf))
     | id -> ID(Utf8.lexeme buf, false)
     | escid -> ID(Utf8.lexeme buf, true)
     | _ ->
