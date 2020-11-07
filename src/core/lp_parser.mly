@@ -295,6 +295,9 @@ term:
   | t=term ARROW u=term { make_pos $loc (P_Impl(t, u)) }
   | PI xs=arg+ COMMA b=term { make_pos $loc (P_Prod(xs, b)) }
   | LAMBDA xs=arg+ COMMA t=term { make_pos $loc (P_Abst(xs, t)) }
+  /* REVIEW: allow pattern of the form \x y z: N, t */
+  /* | LAMBDA xs=arg_ident+ COLON a=term COMMA t=term */
+  /*     { make_pos $loc (P_Abst([xs, Some(a), false], t)) } */
   | LET x=ident a=arg* b=preceded(COLON, term)? ASSIGN t=term IN u=term
       { make_pos $loc (P_LLet(fst x, a, b, t, u)) }
 
