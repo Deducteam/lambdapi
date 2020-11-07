@@ -9,7 +9,7 @@ set infix right 6 "∧" ≔ conj;
 
 set prefix 7 "¬" ≔ neg;
 
-assert λ x y z t, x ∨ ¬ y ∧ z ∨ t ≡ λx y z t, x ∨ (((¬ y) ∧ z) ∨ t);
+assert λ x y z t, x ∨ ¬ y ∧ z ∨ t ≡ λ x y z t, x ∨ (((¬ y) ∧ z) ∨ t);
 
 assert λ p, ¬ ¬ p ≡ λ p, ¬ (¬ p);
 
