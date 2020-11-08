@@ -8,6 +8,12 @@ open Lplib.Extra
 
 open Syntax
 
+(** Table containing defined binary operators. *)
+let bin_operators : binop StrHtbl.t = StrHtbl.create 17
+
+(** Table containing defined unary operators. *)
+let una_operators : unop StrHtbl.t = StrHtbl.create 17
+
 module Pratt : sig
   val expression : ?rbp:priority -> p_term Stream.t -> p_term
 end = struct
@@ -32,8 +38,7 @@ end = struct
   (** [is_binop t] returns [true] iff term [t] is a binary operator. *)
   let is_binop : p_term -> bool = fun t ->
     match t.elt with
-    | P_Iden({elt = (_, s); pos}, _) ->
-      StrHtbl.mem bin_operators s
+    | P_Iden({elt = (_, s); pos}, _) -> StrHtbl.mem bin_operators s
     | _ -> false
 
   (** [nud t] is the production of term [t] with {b no} left context. If [t]
@@ -76,18 +81,23 @@ end = struct
       as abstractions or arrows. *)
   and expression : ?rbp:priority -> p_term Stream.t -> p_term =
     fun ?(rbp = 0.) strm ->
+    (* [aux left] inspects the stream and may consume one of its elements, or
+       return [left] unchanged. *)
     let rec aux left =
       match Stream.peek strm with
       | None -> left
       | Some(pt) when is_binop pt ->
+        (* If [pt] has a higher left binding power than the binding power of
+           the previous operator in the stream. *)
         if lbp pt > rbp then
           (* Performed before to execute side effect on stream. *)
           let next = Stream.next strm in
           aux (led strm left next)
         else
           left
-      | Some(pt) ->
+      | Some(pt) -> (* [pt] is the argument of an application *)
         let next = Stream.next strm in
+        (* REVIEW: position to compute. *)
         aux (Pos.none (P_Appl(left, nud strm next)))
 
     in
