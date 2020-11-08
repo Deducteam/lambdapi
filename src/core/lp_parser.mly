@@ -89,6 +89,7 @@
 %token APPLY
 %token SIMPL
 %token REFL
+%token REFINE
 %token SYMMETRY
 %token WHY3
 %token PROOFTERM
@@ -169,6 +170,7 @@ tactic:
   | APPLY t=term { make_pos $loc (P_tac_apply(t)) }
   | SIMPL { make_pos $loc P_tac_simpl }
   | REWRITE p=rw_patt? t=term { make_pos $loc (P_tac_rewrite(true,p,t)) }
+  | REFINE t=term { make_pos $loc (P_tac_refine(t)) }
   | REFL { make_pos $loc P_tac_refl }
   | SYMMETRY { make_pos $loc P_tac_sym }
   | PRINT { make_pos $loc P_tac_print }
@@ -177,6 +179,10 @@ tactic:
   | q=query { make_pos $loc (P_tac_query(q)) }
   | FAIL { make_pos $loc P_tac_fail }
 
+// Terminated tactic. The semicolon isn't necessary, it is added for
+// uniformity.
+ttactic: t=tactic SEMICOLON { t }
+
 // Modifiers of declarations.
 modifier:
   | CONSTANT { make_pos $loc (P_prop(Terms.Const)) }
@@ -184,14 +190,6 @@ modifier:
   | PROTECTED { make_pos $loc (P_expo(Terms.Protec)) }
   | PRIVATE { make_pos $loc (P_expo(Terms.Privat)) }
   | SEQUENTIAL { make_pos $loc (P_mstrat(Terms.Sequen)) }
-
-// Marker of end of proof
-prfend: p=PROOF_END { make_pos $loc p }
-
-// Statement of theorems. For example,
-// [theorem foo x y : bar proof]
-statement:
-  THEOREM s=ident al=arg* COLON a=term PROOF { make_pos $loc (fst s, al, a) }
 
 // Converts floats and integers to floats
 float_of_int:
@@ -257,8 +255,14 @@ command:
   | ms=modifier* DEFINITION s=ident al=arg* ao=preceded(COLON, term)?
     ASSIGN b=term SEMICOLON
       { make_pos $loc (P_definition(ms, false, fst s, al, ao, b)) }
-  | ms=modifier* st=statement ts=tactic* pe=prfend
-      { make_pos $loc (P_theorem(ms, st, ts, pe)) }
+  // The semicolon isn't necessary in theorems.
+  | ms=modifier* THEOREM s=ident al=arg* COLON a=term
+    PROOF ts=ttactic* pe=PROOF_END SEMICOLON
+      {
+        (* REVIEW: location of statement [st]. *)
+        let st = make_pos $loc(s) (fst s, al, a) in
+        let pe = make_pos $loc(pe) pe in
+        make_pos $loc (P_theorem(ms, st, ts, pe)) }
   | RULE rs=separated_nonempty_list(WITH, rule) SEMICOLON
       { make_pos $loc (P_rules(rs)) }
   | SET c=config SEMICOLON { make_pos $loc (P_set(c)) }

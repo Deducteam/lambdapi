@@ -131,12 +131,22 @@ and nom_comment : lexbuf -> unit = fun buf ->
     | 0x03bb (* λ *) -> LAMBDA
     | 0x03a0 (* Π *) -> PI
     | 0x2261 (* ≡ *) -> EQUIV
+    | "assume" -> INTRO
+    | "simpl" -> SIMPL
+    | "refine" -> REFINE
+    | "apply" -> APPLY
+    | "proof" -> PROOF
+    | "reflexivity" -> REFL
+    | "symmetry" -> SYMMETRY
+    | "refine" -> REFINE
+    | "why3" -> WHY3
     | "as" -> AS
     | "assert" -> ASSERT
     | "assertnot" -> ASSERT_NOT
     | "compute" -> COMPUTE
     | "type" -> COMPUTE_TYPE
     | "unif_rule" -> UNIF_RULE
+    | "theorem" -> THEOREM
     | "in" -> IN
     | "on" -> SWITCH(true)
     | "off" -> SWITCH(false)
