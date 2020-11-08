@@ -38,6 +38,9 @@ let parse_file : string -> Syntax.ast = fun fname ->
       assert false (* Should raise end of file before *)
     with
     | End_of_file -> List.rev !cmds
+    | Lp_lexer.SyntaxError(s) ->
+        let loc = match s.pos with Some(l) -> l | None -> assert false in
+        parser_fatal loc "Unexpected character: [%s]" s.elt
     | Lp_parser.Error ->
         let loc = Sedlexing.lexing_positions lexbuf in
         let loc = Pos.locate loc in

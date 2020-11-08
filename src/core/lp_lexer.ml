@@ -48,12 +48,14 @@ end = struct
   let superscript = [%sedlex.regexp? 0x2070 | 0x00b9 | 0x00b2 | 0x00b3
                                    | 0x2074 .. 0x207c]
   let subscript = [%sedlex.regexp? 0x208 .. 0x208c]
+  let alphabet = [%sedlex.regexp? 'a' .. 'z' | 'A' .. 'Z']
   (* NOTE: lambda character now counts as a letter, so a sequence λx is an
      identifier, so [λx t u,] fails on unexpected token [,]. But [λ x t u,]
      works. *)
-  let letter = [%sedlex.regexp? lowercase | uppercase
+  (* REVIEW: decide which set of unicode characters to use. *)
+  let letter = [%sedlex.regexp? lowercase | uppercase | '-'
                               | math | subscript | superscript]
-  let id = [%sedlex.regexp? letter, Star (letter | digit | '_')]
+  let id = [%sedlex.regexp? (letter | '_'), Star (letter | digit | '_')]
   let escid =
     [%sedlex.regexp? "{|", Star (Compl '|' | '|', Compl '}'), Star '|', "|}"]
   let stringlit = [%sedlex.regexp? '"', Star (Compl ('"' | '\n')), '"']
@@ -105,7 +107,6 @@ and nom_comment : lexbuf -> unit = fun buf ->
     nom buf;
     match%sedlex buf with
     | eof -> EOF
-    | "" -> EOF
     | '(' -> L_PAREN
     | ')' -> R_PAREN
     | '[' -> L_SQ_BRACKET
@@ -121,9 +122,9 @@ and nom_comment : lexbuf -> unit = fun buf ->
     | '?' -> QUESTION_MARK
     | '$' -> DOLLAR
     | '`' -> BACKQUOTE
-    | '+', Plus letter ->
+    | '+', Plus alphabet ->
         DEBUG_FLAGS(true, Utf8.sub_lexeme buf 1 (lexeme_length buf - 1))
-    | '-', Plus letter ->
+    | '-', Plus alphabet ->
         DEBUG_FLAGS(false, Utf8.sub_lexeme buf 1 (lexeme_length buf - 1))
     | 0x2254 (* ≔ *) -> ASSIGN
     | 0x21aa (* ↪ *) -> REWRITE
@@ -182,6 +183,7 @@ and nom_comment : lexbuf -> unit = fun buf ->
     | id -> ID(Utf8.lexeme buf, false)
     | escid -> ID(Utf8.lexeme buf, true)
     | _ ->
+        (* REVIEW: verify position. *)
         let loc = lexing_positions buf in
         let loc = locate loc in
         raise (SyntaxError(Pos.make (Some(loc)) (Utf8.lexeme buf)))
