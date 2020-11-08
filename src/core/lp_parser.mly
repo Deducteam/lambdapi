@@ -72,6 +72,7 @@
 %token PI
 %token LET
 %token IN
+%token BACKQUOTE
 %token L_PAREN
 %token R_PAREN
 %token L_CU_BRACKET
@@ -126,6 +127,10 @@ path: ms=separated_nonempty_list(DOT, ID) { ms }
 
 // [path] with a post processing to yield a [qident]
 qident: p=path { let qid = rev_tl p in make_pos $loc(p) qid }
+
+term_ident:
+  | AT qid=qident { make_pos $loc (P_Iden(qid, true)) }
+  | qid=qident { make_pos $loc (P_Iden(qid, false)) }
 
 // Rewrite pattern identifier
 patt: DOLLAR p=ident { if (fst p).elt = "_" then None else Some(fst p) }
@@ -294,12 +299,20 @@ term:
   | t=aterm { Pratt.parse t }
   | t=term ARROW u=term { make_pos $loc (P_Impl(t, u)) }
   | PI xs=arg+ COMMA b=term { make_pos $loc (P_Prod(xs, b)) }
+  // Quantifier
+  | BACKQUOTE q=term_ident b=binder { make_pos $loc (P_Appl(q, b)) }
   | LAMBDA xs=arg+ COMMA t=term { make_pos $loc (P_Abst(xs, t)) }
   /* REVIEW: allow pattern of the form \x y z: N, t */
   /* | LAMBDA xs=arg_ident+ COLON a=term COMMA t=term */
   /*     { make_pos $loc (P_Abst([xs, Some(a), false], t)) } */
   | LET x=ident a=arg* b=preceded(COLON, term)? ASSIGN t=term IN u=term
       { make_pos $loc (P_LLet(fst x, a, b, t, u)) }
+
+binder:
+  | id=ident COMMA t=term
+      { make_pos $loc (P_Abst([[Some(fst id)], None, false], t)) }
+  | id=ident COLON a=term COMMA t=term
+      { make_pos $loc (P_Abst([[Some(fst id)], Some(a), false], t)) }
 
 // A rewrite rule [lhs ↪ rhs]
 rule: l=term REWRITE r=term { make_pos $loc (l, r) }

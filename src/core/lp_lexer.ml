@@ -10,7 +10,7 @@ type token =
   | L_CU_BRACKET | R_CU_BRACKET
   | APPLY | ARROW | AS | ASSERT | ASSERT_NOT | ASSIGN | ASSOC of Syntax.assoc
   | AT
-  | BUILTIN
+  | BUILTIN | BACKQUOTE
   | COLON | COMMA | COMPUTE | COMPUTE_TYPE | CONSTANT
   | DEBUG_FLAGS of (bool * string)
   (** Flags such as [+eiu] or [-eiu]. *)
@@ -120,6 +120,7 @@ and nom_comment : lexbuf -> unit = fun buf ->
     | '@' -> AT
     | '?' -> QUESTION_MARK
     | '$' -> DOLLAR
+    | '`' -> BACKQUOTE
     | '+', Plus letter ->
         DEBUG_FLAGS(true, Utf8.sub_lexeme buf 1 (lexeme_length buf - 1))
     | '-', Plus letter ->
