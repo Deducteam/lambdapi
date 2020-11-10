@@ -53,7 +53,7 @@ end = struct
      identifier, so [λx t u,] fails on unexpected token [,]. But [λ x t u,]
      works. *)
   (* REVIEW: decide which set of unicode characters to use. *)
-  let letter = [%sedlex.regexp? lowercase | uppercase | '-'
+  let letter = [%sedlex.regexp? lowercase | uppercase | '-' | '\''
                               | math | subscript | superscript]
   let id = [%sedlex.regexp? (letter | '_'), Star (letter | digit | '_')]
   let escid =
