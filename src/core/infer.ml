@@ -44,12 +44,12 @@ let extend_meta_type : meta -> env * term * term *
   let xs = Array.map _Vari vs in
 
   let t1 = to_prod env _Type in
-  let m1 = fresh_meta t1 n in
+  let m1 = Meta.fresh t1 n in
 
   let y = Bindlib.new_var mkfree "y" in
   let env' = add y (_Meta m1 xs) None env in
   let t2 = to_prod env' (lift s) in
-  let m2 = fresh_meta t2 (n+1) in
+  let m2 = Meta.fresh t2 (n+1) in
 
   let r1 = Bindlib.unbox (_Meta m xs) in
   let p = _Meta m1 xs in
@@ -73,7 +73,7 @@ let rec type_app : ctxt -> term -> term list -> term option =
     the context [ctx] and a fresh variables corresponding to the argument. *)
 let make_meta_codomain : ctxt -> term -> tbinder = fun ctx a ->
   let x = Bindlib.new_var mkfree "x" in
-  let m = Meta(fresh_meta Kind 0, [||]) in
+  let m = Meta(Meta.fresh Kind 0, [||]) in
   (* [m] can be instantiated by Type or Kind only (the type of [m] is
      therefore incorrect when [m] is instantiated by Kind. *)
   let b = Basics.make_meta ((x, a, None) :: ctx) m in
@@ -197,7 +197,7 @@ let rec infer : ctxt -> term -> term = fun ctx t ->
   | Meta(m,ts)   ->
       (* The type of [Meta(m,ts)] is the same as the one obtained by applying
          to [ts] a new symbol having the same type as [m]. *)
-      let s = Sign.create_sym Privat Defin (meta_name m) !(m.meta_type) [] in
+      let s = Sign.create_sym Privat Defin (Meta.name m) !(m.meta_type) [] in
       infer ctx (Array.fold_left (fun acc t -> Appl(acc,t)) (Symb s) ts)
 
 (** [check ctx t a] checks that the term [t] has type [a] in context [ctx],

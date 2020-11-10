@@ -27,7 +27,7 @@ let build_meta_type : int -> term = fun k ->
   done;
   (* We create the “Ai” terms and the “Mi” metavariables. *)
   let fn i =
-    let m = fresh_meta (Bindlib.unbox ty_m.(i)) i in
+    let m = Meta.fresh (Bindlib.unbox ty_m.(i)) i in
     _Meta m (Array.sub ts 0 i)
   in
   let a = Array.init (k+1) fn in
@@ -159,7 +159,7 @@ let check_rule : Scope.pre_rule Pos.loc -> rule = fun ({pos; elt} as pr) ->
   let metas =
     let fn i name =
       let arity = arities.(i) in
-      fresh_meta ~name (build_meta_type arity) arity
+      Meta.fresh ~name (build_meta_type arity) arity
     in
     Array.mapi fn var_names
   in

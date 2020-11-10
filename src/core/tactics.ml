@@ -54,7 +54,7 @@ let handle_tactic : Sig_state.t -> Proof.t -> p_tactic -> Proof.t =
     log_tact "proving %a" pp_typing (Env.to_ctxt env, t, a);
     if not (check t a) then fatal tac.pos "Ill-typed refinement.";
     (* Instantiation. *)
-    set_meta m (Bindlib.unbox (Bindlib.bind_mvar (Env.vars env) (lift t)));
+    Meta.set m (Bindlib.unbox (Bindlib.bind_mvar (Env.vars env) (lift t)));
     (* New subgoals and focus. *)
     let metas = Basics.get_metas true t in
     let add_goal m = List.insert Goal.compare (Goal.of_meta m) in

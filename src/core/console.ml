@@ -111,7 +111,10 @@ type logger_data =
   ; logger_desc    : string   (** Description of the log displayed in help. *)
   ; logger_enabled : bool ref (** Is the log enabled? *) }
 
-(** [log_enabled] is set to true when logging functions may print messages. *)
+(** [log_enabled] is (automatically) set to true by {!val:set_debug} or
+    functions of {!module:State} when some logging functions may print
+    messages. Its main use is to guard logging operations to avoid performing
+    unnecessary computations. *)
 let log_enabled : bool ref = ref false
 
 (** [loggers] constains the registered logging functions. *)
@@ -221,43 +224,61 @@ let reset_default : unit -> unit = fun () ->
   let reset _ (default, r) = r := default in
   StrMap.iter reset Stdlib.(!boolean_flags)
 
-(** Stack of saved state for verbosity, loggers and boolean flags. *)
-let saved_state : (int * (char * bool) list * bool StrMap.t) list ref = ref []
+(** Module to manipulate imperative state of the typechecker. *)
+module State = struct
+  (** Settings used to compile files. *)
+  type t =
+    { verbose: int
+    (** Verbosity level. *)
+    ; loggers: (char * bool) list
+    (** Loggers enabled. *)
+    ; bflags: bool StrMap.t
+    (** Boolean flags. *) }
 
-(** [push_state ()] saves the current state of [verbose], the loggers, and the
-    boolean flags, pushing it to the stack. *)
-let push_state : unit -> unit = fun () ->
-  let verbose = !verbose in
-  let loggers =
-    let fn l = (l.logger_key, !(l.logger_enabled)) in
-    List.map fn Stdlib.(!loggers)
-  in
-  let flags : bool StrMap.t =
-    let fn (_,r) = !r in
-    StrMap.map fn Stdlib.(!boolean_flags)
-  in
-  saved_state := (verbose, loggers, flags) :: !saved_state
+  (** Stack of saved state for verbosity, loggers and boolean flags. *)
+  let saved : t list ref = ref []
+  (* NOTE: could be hidden in the signature declaration. *)
 
-(** [pop_state ()] restores the setting saved with [push_stack], removing them
-    from the top of the stack at the same time. *)
-let pop_state : unit -> unit = fun () ->
-  let (v,l,f) =
-    match !saved_state with
-    | []   -> failwith "[Console.pop_state] not well-bracketed."
-    | e::s -> saved_state := s; e
-  in
-  (* Reset verbosity level. *)
-  verbose := v;
-  (* Reset debugging flags. *)
-  log_enabled := false;
-  let reset logger =
-    let v = try List.assoc logger.logger_key l with Not_found -> false in
-    logger.logger_enabled := v; if v then log_enabled := true;
-  in
-  List.iter reset Stdlib.(!loggers);
-  (* Reset boolean flags. *)
-  let reset k (_,r) =
-    try r := StrMap.find k f
-    with Not_found -> ()
-  in
-  StrMap.iter reset Stdlib.(!boolean_flags)
+  (** [push ()] saves the current state of [verbose], the loggers, and the
+      boolean flags, pushing it to the stack. *)
+  let push : unit -> unit = fun () ->
+    let verbose = !verbose in
+    let loggers =
+      let fn l = (l.logger_key, !(l.logger_enabled)) in
+      List.map fn Stdlib.(!loggers)
+    in
+    let bflags : bool StrMap.t =
+      let fn (_,r) = !r in
+      StrMap.map fn Stdlib.(!boolean_flags)
+    in
+    saved := {verbose; loggers; bflags} :: !saved
+
+  (** [apply st] restores the setting in [st]. *)
+  let apply : t -> unit =
+    fun {verbose=v; loggers=l; bflags=f} ->
+    (* Reset verbosity level. *)
+    verbose := v;
+    (* Reset debugging flags. *)
+    log_enabled := false;
+    let reset logger =
+      let v = try List.assoc logger.logger_key l with Not_found -> false in
+      logger.logger_enabled := v; if v then log_enabled := true;
+    in
+    List.iter reset Stdlib.(!loggers);
+    (* Reset boolean flags. *)
+    let reset k (_,r) =
+      try r := StrMap.find k f
+      with Not_found -> ()
+    in
+    StrMap.iter reset Stdlib.(!boolean_flags)
+
+  (** [pop ()] restores the settings saved by [push_state], removing it
+      from [saved_state]. *)
+  let pop : unit -> unit = fun () ->
+    let e =
+      match !saved with
+      | [] -> failwith "[Console.pop_state] not well-bracketed."
+      | e::s -> saved := s; e
+    in
+    apply e
+end
