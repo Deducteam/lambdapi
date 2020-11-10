@@ -169,7 +169,7 @@ let handle_symbol :
 let handle_rules : sig_state -> p_rule list -> sig_state = fun ss rs ->
   (* Scoping and checking each rule in turn. *)
   let handle_rule r =
-    let pr = scope_rule ss r in
+    let pr = scope_rule false ss r in
     let sym = pr.elt.pr_sym in
     if !(sym.sym_def) <> None then
       fatal pr.pos "Rewriting rules cannot be given for defined \
@@ -404,7 +404,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
             Sig_state.add_quant ss sym
         | P_config_unif_rule(h)   ->
             (* Approximately same processing as rules without SR checking. *)
-            let pur = (scope_rule ss h).elt in
+            let pur = (scope_rule true ss h).elt in
             let urule =
               { lhs = pur.pr_lhs
               ; rhs = Bindlib.(unbox (bind_mvar pur.pr_vars pur.pr_rhs))
