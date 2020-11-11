@@ -123,7 +123,7 @@ let unbind_name :
     containing the variables of context [ctx]. *)
 let make_meta : ctxt -> term -> term = fun ctx a ->
   let prd, len = Ctxt.to_prod ctx a in
-  let m = fresh_meta prd len in
+  let m = Meta.fresh prd len in
   let get_var (x,_,_) = Vari(x) in
   Meta(m, Array.of_list (List.rev_map get_var ctx))
 

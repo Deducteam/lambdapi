@@ -26,13 +26,13 @@ let _ =
       match !((StrMap.find "+1" ss.builtins).sym_type) with
       | Prod(a,_) -> a
       | _ -> assert false
-    with Not_found -> Meta (fresh_meta Type 0, [||])
+    with Not_found -> Meta (Meta.fresh Type 0, [||])
   in
   register "0" expected_zero_type;
   let expected_succ_type ss _pos =
     let typ_0 =
       try lift !((StrMap.find "0" ss.builtins).sym_type)
-      with Not_found -> _Meta (fresh_meta Type 0) [||]
+      with Not_found -> _Meta (Meta.fresh Type 0) [||]
     in
     Bindlib.unbox (_Impl typ_0 typ_0)
   in
@@ -172,7 +172,7 @@ let handle_symbol :
 let handle_rules : sig_state -> p_rule list -> sig_state = fun ss rs ->
   (* Scoping and checking each rule in turn. *)
   let handle_rule r =
-    let pr = scope_rule ss r in
+    let pr = scope_rule false ss r in
     let sym = pr.elt.pr_sym in
     if !(sym.sym_def) <> None then
       fatal pr.pos "Rewriting rules cannot be given for defined \
@@ -339,10 +339,10 @@ let handle_cmd : (Path.t -> Sign.t) -> sig_state -> p_command ->
         end;
       (* Initialize proof state and save configuration data. *)
       let st = Proof.init x a in
-      Console.push_state ();
+      Console.State.push ();
       (* Build proof checking data. *)
       let finalize ss st =
-        Console.pop_state ();
+        Console.State.pop ();
         match pe.elt with
         | P_proof_abort ->
             (* Just ignore the command, with a warning. *)
@@ -410,7 +410,7 @@ let handle_cmd : (Path.t -> Sign.t) -> sig_state -> p_command ->
             Sig_state.add_quant ss sym
         | P_config_unif_rule(h)   ->
             (* Approximately same processing as rules without SR checking. *)
-            let pur = (scope_rule ss h).elt in
+            let pur = (scope_rule true ss h).elt in
             let urule =
               { lhs = pur.pr_lhs
               ; rhs = Bindlib.(unbox (bind_mvar pur.pr_vars pur.pr_rhs))
