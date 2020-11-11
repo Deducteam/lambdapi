@@ -75,7 +75,12 @@ let read : file_path -> config_data = fun fname ->
     [Sys_error] is raised. Note that [fname] is first normalized with a call
     to [Filename.realpath]. *)
 let find_config : file_path -> file_path option = fun fname ->
-  let fname = Filename.realpath fname in
+  (* workaround #432 , this whole code should be reworked tho *)
+  let fname =
+    if Sys.file_exists fname
+    then Filename.realpath fname
+    else fname
+  in
   let fname =
     if Sys.is_directory fname then fname else Filename.dirname fname
   in
