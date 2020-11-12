@@ -109,7 +109,7 @@ let map : ('a -> 'b) -> 'a loc -> 'b loc = fun f loc ->
 
 let locate : Lexing.position * Lexing.position -> pos = fun (p1, p2) ->
   (* TODO: set fname, using Sedlex *)
-  let fname = None in
+  let fname = Some(p1.pos_fname) in
   let start_line = p1.pos_lnum in
   let start_col = p1.pos_cnum - p1.pos_bol in
   let end_line = p2.pos_lnum in

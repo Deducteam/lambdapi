@@ -98,7 +98,7 @@ proof
     apply bot_elim;
     apply not_elim (not A) nnp;
     apply pna;
-qed;
+qed
 
 set builtin "P"     ≔ P;
 set builtin "T"     ≔ T;

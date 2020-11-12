@@ -157,7 +157,8 @@ rw_patt_spec:
   | t=term { P_rw_Term(t) }
   | IN t=term { P_rw_InTerm(t) }
   | IN x=ident IN t=term { P_rw_InIdInTerm(fst x, t) }
-  /* | x=ident IN t=term { P_rw_IdInTerm(fst x, t) } */
+  // FIXME: backquote is a quickfix
+  | BACKQUOTE x=ident IN t=term { P_rw_IdInTerm(fst x, t) }
   | u=term IN x=ident IN t=term { P_rw_TermInIdInTerm(u, fst x, t) }
   | u=term AS x=ident IN t=term { P_rw_TermAsIdInTerm(u, fst x, t) }
 
@@ -181,7 +182,7 @@ tactic:
 
 // Terminated tactic. The semicolon isn't necessary, it is added for
 // uniformity.
-ttactic: t=tactic SEMICOLON { t }
+ttactic: t=tactic SEMICOLON? { t }
 
 // Modifiers of declarations.
 modifier:
@@ -255,9 +256,8 @@ command:
   | ms=modifier* DEFINITION s=ident al=arg* ao=preceded(COLON, term)?
     ASSIGN b=term SEMICOLON
       { make_pos $loc (P_definition(ms, false, fst s, al, ao, b)) }
-  // The semicolon isn't necessary in theorems.
   | ms=modifier* THEOREM s=ident al=arg* COLON a=term
-    PROOF ts=ttactic* pe=PROOF_END SEMICOLON
+    PROOF ts=ttactic* pe=PROOF_END
       {
         (* REVIEW: location of statement [st]. *)
         let st = make_pos $loc(s) (fst s, al, a) in
