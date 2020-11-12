@@ -300,7 +300,7 @@ aterm:
 
 term:
   // Pratt parse applied terms to set correctly infix and prefix operators
-  | t=aterm { Pratt.parse t }
+  | t=aterm { t }
   | t=term ARROW u=term { make_pos $loc (P_Impl(t, u)) }
   | PI xs=arg+ COMMA b=term { make_pos $loc (P_Prod(xs, b)) }
   // Quantifier
