@@ -1,18 +1,18 @@
-constant symbol A : TYPE
+constant symbol A : TYPE;
 
-constant symbol f : A → A
+constant symbol f : A → A;
 
-constant symbol B : A → TYPE
-constant symbol consB : Πx, B (f x)
+constant symbol B : A → TYPE;
+constant symbol consB : Π x, B (f x);
 
-constant symbol C : A → A → TYPE
-constant symbol consC : Πx, C x (f x)
+constant symbol C : A → A → TYPE;
+constant symbol consC : Π x, C x (f x);
 
-symbol k : Πa, B a → A
-rule k _ (consB $b) ↪ $b
+symbol k : Π a, B a → A;
+rule k _ (consB $b) ↪ $b;
 
-symbol calc : Πa b, C (f a) (k a b) → TYPE
+symbol calc : Π a b, C (f a) (k a b) → TYPE;
 
-constant symbol D : Πx, B (f (f x)) → TYPE
+constant symbol D : Π x, B (f (f x)) → TYPE;
 
-rule calc $a (consB $b) (consC _) ↪ D $b (consB $a)
+rule calc $a (consB $b) (consC _) ↪ D $b (consB $a);

@@ -59,6 +59,7 @@ let rec compile : bool -> Path.t -> Sign.t = fun force path ->
          is possible to qualify the symbols of the current modules. *)
       loaded := PathMap.add path sign !loaded;
       let handle ss c =
+        Terms.Meta.reset_key_counter ();
         (* We provide the compilation function to the handle commands, so that
            "require" is able to compile files. *)
         let (ss, p) = Handle.handle_cmd (compile false) ss c in
@@ -105,3 +106,35 @@ let compile_file : file_path -> Sign.t = fun fname ->
   let mp = Files.file_to_module fname in
   (* Run compilation. *)
   compile Stdlib.(!recompile) mp
+(** Pure wrappers around compilation functions. Functions provided perform the
+    same computations as the ones defined earlier, but restores the state when
+    they have finished. An optional library mapping or state can be passed as
+    argument to change the settings. *)
+module Pure : sig
+  val compile : ?lm:string -> ?st:State.t -> bool -> Path.t -> Sign.t
+  val compile_file : ?lm:string -> ?st:State.t -> file_path -> Sign.t
+end = struct
+
+  (* [pure_apply_cfg ?lm ?st f] is function [f] but pure (without side
+     effects).  The side effects taken into account occur in
+     {!val:Console.State.t}, {!val:Files.lib_mappings} and in the meta
+     variable counter {!module:Terms.Meta}. Arguments [?lm] allows to set the
+     library mappings and [?st] sets the state. *)
+  let pure_apply_cfg : ?lm:string -> ?st:State.t -> ('a -> 'b) -> 'a -> 'b =
+    fun ?lm ?st f x ->
+    let libmap = !lib_mappings in
+    State.push ();
+    Option.iter new_lib_mapping lm;
+    Option.iter State.apply st;
+    let res = f x in
+    State.pop ();
+    Terms.Meta.reset_key_counter ();
+    lib_mappings := libmap;
+    res
+
+  let compile ?lm ?st force path =
+    let f (force, path) = compile force path in
+    pure_apply_cfg ?lm ?st f (force, path)
+
+  let compile_file ?lm ?st = pure_apply_cfg ?lm ?st compile_file
+end
