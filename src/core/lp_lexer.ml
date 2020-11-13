@@ -132,6 +132,7 @@ and nom_comment : lexbuf -> unit = fun buf ->
     | 0x03bb (* λ *) -> LAMBDA
     | 0x03a0 (* Π *) -> PI
     | 0x2261 (* ≡ *) -> EQUIV
+    | "prover_timeout" -> PROVER_TIMEOUT
     | "reflexivity" -> REFL
     | "symmetry" -> SYMMETRY
     | "rewrite" -> REWRITE
