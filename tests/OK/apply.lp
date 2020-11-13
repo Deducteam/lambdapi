@@ -1,5 +1,5 @@
-constant symbol A : TYPE
-constant symbol B : TYPE
+constant symbol A : TYPE;
+constant symbol B : TYPE;
 
 theorem test1 : (A → B) → A → B
 proof
@@ -8,7 +8,7 @@ proof
   apply h2
 qed
 
-constant symbol C : TYPE
+constant symbol C : TYPE;
 
 theorem test2 : (A → B → C) → A → B → C
 proof
