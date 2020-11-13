@@ -126,11 +126,14 @@ end = struct
     State.push ();
     Option.iter new_lib_mapping lm;
     Option.iter State.apply st;
-    let res = f x in
-    State.pop ();
-    Terms.Meta.reset_key_counter ();
-    lib_mappings := libmap;
-    res
+    let restore () =
+      State.pop ();
+      lib_mappings := libmap
+    in
+    try
+      let res = f x in
+      restore (); res
+    with e -> restore (); raise e
 
   let compile ?lm ?st force path =
     let f (force, path) = compile force path in
