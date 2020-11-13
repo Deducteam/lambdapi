@@ -4,8 +4,9 @@
     error should have an attached position.  We do not open [Console] to avoid
     calls to [Console.fatal] and [Console.fatal_no_pos].  In case of an error,
     the [parser_fatal] function should be used instead. *)
+type ast = Syntax.p_term Syntax.ast
 
-let parse_lexbuf : string -> Lexing.lexbuf -> Syntax.ast = fun fname lexbuf ->
+let parse_lexbuf : string -> Lexing.lexbuf -> ast = fun fname lexbuf ->
   Stdlib.(Legacy_lexer.filename := fname);
   let lines = ref [] in
   try
@@ -21,11 +22,11 @@ let parse_lexbuf : string -> Lexing.lexbuf -> Syntax.ast = fun fname lexbuf ->
       let loc = Legacy_lexer.locate (loc, loc) in
       Parser.parser_fatal loc "Unexpected token [%s]." (Lexing.lexeme lexbuf)
 
-let parse_file : string -> Syntax.ast = fun fname ->
+let parse_file : string -> ast = fun fname ->
   let ic = open_in fname in
   let lexbuf = Lexing.from_channel ic in
   try let l = parse_lexbuf fname lexbuf in close_in ic; l
   with e -> close_in ic; raise e
 
-let parse_string : string -> string -> Syntax.ast = fun fname s ->
+let parse_string : string -> string -> ast = fun fname s ->
   parse_lexbuf fname (Lexing.from_string s)

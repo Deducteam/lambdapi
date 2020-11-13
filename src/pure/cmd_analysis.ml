@@ -16,10 +16,10 @@ open Core
 let pmap = List.pmap (fun x -> x)
 let concat_map = List.concat_map
 
-type t = Syntax.p_command
+type t = Syntax.p_term Syntax.p_command
 
 (*Messy pattern matching to get the qidents throughout the document*)
-let rec qidents_of_bound_p_arg (args : Syntax.p_arg) :
+let rec qidents_of_bound_p_arg (args : Syntax.p_term Syntax.p_arg) :
     Syntax.qident list * Pos.strloc list =
   match args with
   | idents, None, _ -> ([], pmap idents)
@@ -52,7 +52,7 @@ and qidents_of_p_term (term : Syntax.p_term) =
   | Syntax.P_Wrap term -> qidents_of_p_term term
   | Syntax.P_Expl term -> qidents_of_p_term term
 
-and filter_bound_qidents (args : Syntax.p_arg list)
+and filter_bound_qidents (args : Syntax.p_term Syntax.p_arg list)
     (terms_list : Syntax.p_term list) =
   let qids, qargs = List.split (List.map qidents_of_bound_p_arg args) in
   let qids, qargs = (List.concat qids, List.concat qargs) in
@@ -63,7 +63,7 @@ and filter_bound_qidents (args : Syntax.p_arg list)
   (* Format.eprintf "Bound identifiers :%s\n%!" (String.concat " " args); *)
   qids @ qterm
 
-and qidents_of_p_config (cfg : Syntax.p_config) =
+and qidents_of_p_config (cfg : Syntax.p_term Syntax.p_config) =
   match cfg with
   | Syntax.P_config_builtin (_, qid) -> [ qid ]
   | Syntax.P_config_unop u ->
@@ -76,11 +76,11 @@ and qidents_of_p_config (cfg : Syntax.p_config) =
   | Syntax.P_config_quant qid -> [ qid ]
   | Syntax.P_config_unif_rule rule -> qidents_of_p_rule rule
 
-and qidents_of_p_rule (rule : Syntax.p_rule) =
+and qidents_of_p_rule (rule : Syntax.p_term Syntax.p_rule) =
   let patt, term = rule.elt in
   qidents_of_p_term patt @ qidents_of_p_term term
 
-let qidents_of_p_inductive (pind : Syntax.p_inductive) =
+let qidents_of_p_inductive (pind : Syntax.p_term Syntax.p_inductive) =
   let f (_, pt) = qidents_of_p_term pt in
   let _, pt, idptlist = pind.elt in
   qidents_of_p_term pt @ concat_map f idptlist
@@ -102,13 +102,13 @@ let qidents_of_cmd (cmd : t) =
     filter_bound_qidents args [ body ]
   | Syntax.P_set set -> qidents_of_p_config set
   | Syntax.P_query q ->
-    let f (q : Syntax.p_query_aux) =
+    let f (q : Syntax.p_term Syntax.p_query_aux) =
       match q with
       | Syntax.P_query_verbose _ -> []
       | Syntax.P_query_debug (_, _) -> []
       | Syntax.P_query_flag (_, _) -> []
       | Syntax.P_query_assert (_, assertion) ->
-        let g (assertion : Syntax.p_assertion) =
+        let g (assertion : Syntax.p_term Syntax.p_assertion) =
           match assertion with
           | Syntax.P_assert_typing (t1, t2) ->
             qidents_of_p_term t1 @ qidents_of_p_term t2

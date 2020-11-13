@@ -47,11 +47,11 @@ and p_term_aux =
   (** Application. *)
   | P_Impl of p_term * p_term
   (** Implication. *)
-  | P_Abst of p_arg list * p_term
+  | P_Abst of p_term p_arg list * p_term
   (** Abstraction over several variables. *)
-  | P_Prod of p_arg list * p_term
+  | P_Prod of p_term p_arg list * p_term
   (** Product over several variables. *)
-  | P_LLet of ident * p_arg list * p_type option * p_term * p_term
+  | P_LLet of ident * p_term p_arg list * p_type option * p_term * p_term
   (** Local let. *)
   | P_NLit of int
   (** Natural number literal. *)
@@ -76,7 +76,7 @@ and p_patt = p_term
 
 (** Parser-level representation of a function argument. The boolean is true if
     the argument is marked as implicit (i.e., between curly braces). *)
-and p_arg = ident option list * p_type option * bool
+and 'term p_arg = ident option list * 'term option * bool
 
 (** [p_get_args t] is {!val:Basics.get_args} on syntax-level terms. *)
 let p_get_args : p_term -> p_term * p_term list = fun t ->
@@ -87,10 +87,10 @@ let p_get_args : p_term -> p_term * p_term list = fun t ->
   in p_get_args [] t
 
 (** Parser-level rewriting rule representation. *)
-type p_rule = (p_patt * p_term) loc
+type 'term p_rule = ('term * 'term) loc
 
 (** Parser-level inductive type representation. *)
-type p_inductive = (ident * p_term * (ident * p_term) list) loc
+type 'term p_inductive = (ident * 'term * (ident * 'term) list) loc
 
 (** The previous module provides some functions to create p_term without
     position. *)
@@ -129,24 +129,24 @@ module P  =
       if i <= 0 then head else appl_wild (appl head wild) (i-1)
 
     (** [rule] creates a p_rule without position. *)
-    let rule : p_patt -> p_term -> p_rule = fun l r -> Pos.none (l,r)
+    let rule : p_patt -> p_term -> p_term p_rule = fun l r -> Pos.none (l,r)
 
   end
 
 (** Rewrite pattern specification. *)
-type p_rw_patt =
-  | P_rw_Term           of p_term
-  | P_rw_InTerm         of p_term
-  | P_rw_InIdInTerm     of ident * p_term
-  | P_rw_IdInTerm       of ident * p_term
-  | P_rw_TermInIdInTerm of p_term * ident * p_term
-  | P_rw_TermAsIdInTerm of p_term * ident * p_term
+type 'term p_rw_patt =
+  | P_rw_Term           of 'term
+  | P_rw_InTerm         of 'term
+  | P_rw_InIdInTerm     of ident * 'term
+  | P_rw_IdInTerm       of ident * 'term
+  | P_rw_TermInIdInTerm of 'term * ident * 'term
+  | P_rw_TermAsIdInTerm of 'term * ident * 'term
 
 (** Parser-level representation of an assertion. *)
-type p_assertion =
-  | P_assert_typing of p_term * p_type
+type 'term p_assertion =
+  | P_assert_typing of 'term * 'term
   (** The given term should have the given type. *)
-  | P_assert_conv   of p_term * p_term
+  | P_assert_conv   of 'term * 'term
   (** The two given terms should be convertible. *)
 
 (** Type representing the different evaluation strategies. *)
@@ -166,37 +166,37 @@ type eval_config =
   ; steps    : int option (** Max number of steps if given. *) }
 
 (** Parser-level representation of a query command. *)
-type p_query_aux =
+type 'term p_query_aux =
   | P_query_verbose   of int
   (** Sets the verbosity level. *)
   | P_query_debug     of bool * string
   (** Toggles logging functions described by string according to boolean. *)
   | P_query_flag      of string * bool
   (** Sets the boolean flag registered under the given name (if any). *)
-  | P_query_assert    of bool * p_assertion
+  | P_query_assert    of bool * 'term p_assertion
   (** Assertion (must fail if boolean is [true]). *)
-  | P_query_infer     of p_term * eval_config
+  | P_query_infer     of 'term * eval_config
   (** Type inference command. *)
-  | P_query_normalize of p_term * eval_config
+  | P_query_normalize of 'term * eval_config
   (** Normalisation command. *)
   | P_query_prover    of string
   (** Set the prover to use inside a proof. *)
   | P_query_prover_timeout of int
   (** Set the timeout of the prover (in seconds). *)
 
-type p_query = p_query_aux loc
+type 'term p_query = 'term p_query_aux loc
 
 (** Parser-level representation of a proof tactic. *)
-type p_tactic_aux =
-  | P_tac_refine  of p_term
+type 'term p_tactic_aux =
+  | P_tac_refine  of 'term
   (** Refine the current goal using the given term. *)
   | P_tac_intro   of ident option list
   (** Eliminate quantifiers using the given names for hypotheses. *)
-  | P_tac_apply   of p_term
+  | P_tac_apply   of 'term
   (** Apply the given term to the current goal. *)
   | P_tac_simpl
   (** Normalize in the focused goal. *)
-  | P_tac_rewrite of bool * p_rw_patt loc option * p_term
+  | P_tac_rewrite of bool * 'term p_rw_patt loc option * 'term
   (** Apply rewriting using the given pattern and equational proof. The
      boolean indicates whether the equation has to be applied from left to
      right. *)
@@ -212,12 +212,12 @@ type p_tactic_aux =
   (** Print the current proof term (possibly containing open goals). *)
   | P_tac_why3 of string option
   (** Try to solve the current goal with why3. *)
-  | P_tac_query   of p_query
+  | P_tac_query   of 'term p_query
   (** Query. *)
   | P_tac_fail
   (** A tactic that always fails. *)
 
-type p_tactic = p_tactic_aux loc
+type 'term p_tactic = 'term p_tactic_aux loc
 
 (** Parser-level representation of a proof terminator. *)
 type p_proof_end =
@@ -229,7 +229,7 @@ type p_proof_end =
   (** Abort the proof (theorem not admitted). *)
 
 (** Parser-level representation of a configuration command. *)
-type p_config =
+type 'term p_config =
   | P_config_builtin   of string * qident
   (** Sets the configuration for a builtin syntax (e.g., nat literals). *)
   | P_config_unop      of unop
@@ -240,11 +240,11 @@ type p_config =
   (** Defines a new, valid identifier (e.g., ["σ"], ["€"] or ["ℕ"]). *)
   | P_config_quant of qident
   (** Defines a quantifier symbol (e.g., ["∀"], ["∃"]). *)
-  | P_config_unif_rule of p_rule
+  | P_config_unif_rule of 'term p_rule
   (** Unification hint declarations. *)
 
 (** Parser-level representation of a single command. *)
-type p_statement = (ident * p_arg list * p_type) loc
+type 'term p_statement = (ident * 'term p_arg list * p_type) loc
 
 (** Parser-level representation of modifiers. *)
 type p_modifier =
@@ -252,35 +252,35 @@ type p_modifier =
   | P_expo of Terms.expo
   | P_prop of Terms.prop
 
-type p_command_aux =
+type 'term p_command_aux =
   | P_require    of bool * p_module_path list
   (** Require statement (require open if the boolean is true). *)
   | P_require_as of p_module_path * (string * bool) loc
   (** Require as statement. *)
   | P_open       of p_module_path list
   (** Open statement. *)
-  | P_symbol     of p_modifier loc list * ident * p_arg list * p_type
+  | P_symbol     of p_modifier loc list * ident * 'term p_arg list * 'term
   (** Symbol declaration. *)
-  | P_rules      of p_rule list
+  | P_rules      of 'term p_rule list
   (** Rewriting rule declarations. *)
-  | P_definition of p_modifier loc list * bool * ident * p_arg list *
-                    p_type option * p_term
+  | P_definition of p_modifier loc list * bool * ident * 'term p_arg list *
+                    'term option * 'term
   (** Definition of a symbol (unfoldable). *)
-  | P_inductive of p_modifier loc list * p_inductive list
+  | P_inductive of p_modifier loc list * 'term p_inductive list
   (** Definition of inductive type *)
-  | P_theorem    of p_modifier loc list * p_statement * p_tactic list *
+  | P_theorem    of p_modifier loc list * 'term p_statement * 'term p_tactic list *
                     p_proof_end loc
   (** Theorem with its proof. *)
-  | P_set        of p_config
+  | P_set        of 'term p_config
   (** Set the configuration. *)
-  | P_query      of p_query
+  | P_query      of 'term p_query
   (** Query. *)
 
 (** Parser-level representation of a single (located) command. *)
-type p_command = p_command_aux loc
+type 'term p_command = 'term p_command_aux loc
 
 (** Top level AST returned by the parser. *)
-type ast = p_command list
+type 'term ast = ('term p_command) list
 
 let eq_ident : ident eq = fun x1 x2 -> x1.elt = x2.elt
 
@@ -321,22 +321,22 @@ let rec eq_p_term : p_term eq = fun t1 t2 ->
   | (t1                  ,                   t2      ) ->
       t1 = t2
 
-and eq_p_arg : p_arg eq = fun (x1,ao1,b1) (x2,ao2,b2) ->
+and eq_p_arg : p_term p_arg eq = fun (x1,ao1,b1) (x2,ao2,b2) ->
   List.equal (Option.equal (fun x1 x2 -> x1.elt = x2.elt)) x1 x2
   && Option.equal eq_p_term ao1 ao2 && b1 = b2
 
-let eq_p_rule : p_rule eq = fun r1 r2 ->
+let eq_p_rule : p_term p_rule eq = fun r1 r2 ->
   let {elt = (lhs1, rhs1); _} = r1 in
   let {elt = (lhs2, rhs2); _} = r2 in
   eq_p_term lhs1 lhs2 && eq_p_term rhs1 rhs2
 
-let eq_p_inductive : p_inductive eq = fun i1 i2 ->
+let eq_p_inductive : p_term p_inductive eq = fun i1 i2 ->
   let {elt = (s1, t1, tl1); _} = i1 in
   let {elt = (s2, t2, tl2); _} = i2 in
   let eq_id_p_term (s1,t1) (s2,t2) = eq_ident s1 s2 && eq_p_term t1 t2 in
   List.equal eq_id_p_term ((s1,t1)::tl1) ((s2,t2)::tl2)
 
-let eq_p_rw_patt : p_rw_patt loc eq = fun r1 r2 ->
+let eq_p_rw_patt : p_term p_rw_patt loc eq = fun r1 r2 ->
   match (r1.elt, r2.elt) with
   | (P_rw_Term(t1)                , P_rw_Term(t2)                )
   | (P_rw_InTerm(t1)              , P_rw_InTerm(t2)              ) ->
@@ -350,7 +350,7 @@ let eq_p_rw_patt : p_rw_patt loc eq = fun r1 r2 ->
   | (_                            , _                            ) ->
       false
 
-let eq_p_assertion : p_assertion eq = fun a1 a2 ->
+let eq_p_assertion : p_term p_assertion eq = fun a1 a2 ->
   match (a1, a2) with
   | (P_assert_typing(t1,a1), P_assert_typing(t2,a2)) ->
       eq_p_term t1 t2 && eq_p_term a1 a2
@@ -359,7 +359,7 @@ let eq_p_assertion : p_assertion eq = fun a1 a2 ->
   | (_                     , _                     ) ->
       false
 
-let eq_p_query : p_query eq = fun q1 q2 ->
+let eq_p_query : p_term p_query eq = fun q1 q2 ->
   match (q1.elt, q2.elt) with
   | (P_query_assert(b1,a1)     , P_query_assert(b2,a2)     ) ->
      b1 = b2 && eq_p_assertion a1 a2
@@ -374,7 +374,7 @@ let eq_p_query : p_query eq = fun q1 q2 ->
   | (_                         , _                         ) ->
       false
 
-let eq_p_tactic : p_tactic eq = fun t1 t2 ->
+let eq_p_tactic : p_term p_tactic eq = fun t1 t2 ->
   match (t1.elt, t2.elt) with
   | (P_tac_refine(t1)    , P_tac_refine(t2)    ) ->
       eq_p_term t1 t2
@@ -391,7 +391,7 @@ let eq_p_tactic : p_tactic eq = fun t1 t2 ->
   | (t1                  , t2                  ) ->
       t1 = t2
 
-let eq_p_config : p_config eq = fun c1 c2 ->
+let eq_p_config : p_term p_config eq = fun c1 c2 ->
   match (c1, c2) with
   | (P_config_builtin(s1,q1), P_config_builtin(s2,q2)) ->
       s1 = s2 && eq_qident q1 q2
@@ -406,7 +406,7 @@ let eq_p_config : p_config eq = fun c1 c2 ->
 
 (** [eq_command c1 c2] tells whether [c1] and [c2] are the same commands. They
     are compared up to source code positions. *)
-let eq_p_command : p_command eq = fun c1 c2 ->
+let eq_p_command : p_term p_command eq = fun c1 c2 ->
   match (c1.elt, c2.elt) with
   | (P_require(b1,ps1)           , P_require(b2,ps2)           ) ->
      b1 = b2 && List.equal (=) ps1 ps2

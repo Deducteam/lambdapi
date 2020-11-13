@@ -14,7 +14,7 @@ let gen_obj = Stdlib.ref false
 
 (** [parse_file fname] selects and runs the correct parser on file [fname], by
     looking at its extension. *)
-let parse_file : string -> Syntax.ast = fun fname ->
+let parse_file : string -> Syntax.p_term Syntax.ast = fun fname ->
   match Filename.check_suffix fname src_extension with
   | true  -> Parser.parse_file fname
   | false -> Legacy_parser.parse_file fname

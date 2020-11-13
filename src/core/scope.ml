@@ -11,6 +11,15 @@ open Env
 open Sig_state
 open Rewrite
 
+type  ast         = p_term Syntax.ast
+and   p_command   = p_term Syntax.p_command
+and   p_arg       = p_term Syntax.p_arg
+and   p_rule      = p_term Syntax.p_rule
+and   p_rw_patt   = p_term Syntax.p_rw_patt
+and   p_tactic    = p_term Syntax.p_tactic
+and   p_assertion = p_term Syntax.p_assertion
+and   p_query     = p_term Syntax.p_query
+
 (** Logging function for term scoping. *)
 let log_scop = new_logger 'o' "scop" "term scoping"
 let log_scop = log_scop.logger

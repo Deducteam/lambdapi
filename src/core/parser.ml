@@ -10,6 +10,8 @@ open Syntax
 open Files
 open Pos
 
+type ast        = p_term Syntax.ast
+
 (** {b NOTE} we maintain the invariant that errors reported by the parser have
     a position. To help enforce that, we avoid opening the [Console] module so
     that [Console.fatal] and [Console.fatal_no_pos] are not in scope. To raise

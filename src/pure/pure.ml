@@ -7,7 +7,7 @@ open Files
 
 (** Representation of a single command (abstract). *)
 module Command = struct
-  type t = Syntax.p_command
+  type t = Syntax.p_term Syntax.p_command
   let equal = Syntax.eq_p_command
   let get_pos c = Pos.(c.pos)
   let get_qidents = Cmd_analysis.get_qidents
@@ -15,7 +15,7 @@ end
 
 (** Representation of a single tactic (abstract). *)
 module Tactic = struct
-  type t = Syntax.p_tactic
+  type t = Syntax.p_term Syntax.p_tactic
   let equal = Syntax.eq_p_tactic
   let get_pos t = Pos.(t.pos)
 end
