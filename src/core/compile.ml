@@ -62,7 +62,15 @@ let rec compile : bool -> Path.t -> Sign.t = fun force path ->
         Terms.Meta.reset_key_counter ();
         (* We provide the compilation function to the handle commands, so that
            "require" is able to compile files. *)
-        let (ss, p) = Handle.handle_cmd (compile false) ss c in
+        let compile p =
+          (* Remove escaping quotes from module paths. *)
+          let remove_quote p =
+            if Lp_lexer.is_escaped p then
+              String.(sub p 2 (length p - 4))
+            else p
+          in
+          compile false (List.map remove_quote p) in
+        let (ss, p) = Handle.handle_cmd compile ss c in
         match p with
         | None       -> ss
         | Some(data) ->

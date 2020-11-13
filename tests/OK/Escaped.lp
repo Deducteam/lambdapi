@@ -1,12 +1,12 @@
 // The following is forbidden as [KIND] is reserved.
-//symbol KIND : TYPE
+//symbol KIND : TYPE;
 
 // The following is accepted.
-symbol {|KIND|} : TYPE
+symbol {|KIND|} : TYPE;
 
 // Escaped with dots (used to test module resolution)
-symbol {|KIND.OF.BLUE|}: TYPE
+symbol {|KIND.OF.BLUE|}: TYPE;
 
 // Escaped with some rules
-symbol {|set|} : TYPE
-rule {|set|} ↪ {|KIND|}
+symbol {|set|} : TYPE;
+rule {|set|} ↪ {|KIND|};
