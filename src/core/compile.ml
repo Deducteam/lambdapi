@@ -24,7 +24,13 @@ let parse_file : string -> Syntax.ast = fun fname ->
     or [force] is [true]).  In that case,  the produced signature is stored in
     the corresponding object file. *)
 let rec compile : bool -> Path.t -> Sign.t = fun force path ->
-  let base = Files.module_to_file path in
+  (* Remove escaping quotes from module paths. *)
+  let remove_quote p =
+    if Lp_lexer.is_escaped p then
+      String.(sub p 2 (length p - 4))
+    else p
+  in
+  let base = Files.module_to_file (List.map remove_quote path) in
   let src () =
     (* Searching for source is delayed because we may not need it
        in case of "ghost" signatures (such as for unification rules). *)
@@ -62,15 +68,7 @@ let rec compile : bool -> Path.t -> Sign.t = fun force path ->
         Terms.Meta.reset_key_counter ();
         (* We provide the compilation function to the handle commands, so that
            "require" is able to compile files. *)
-        let compile p =
-          (* Remove escaping quotes from module paths. *)
-          let remove_quote p =
-            if Lp_lexer.is_escaped p then
-              String.(sub p 2 (length p - 4))
-            else p
-          in
-          compile false (List.map remove_quote p) in
-        let (ss, p) = Handle.handle_cmd compile ss c in
+        let (ss, p) = Handle.handle_cmd (compile false) ss c in
         match p with
         | None       -> ss
         | Some(data) ->
