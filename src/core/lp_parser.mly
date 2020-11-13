@@ -303,6 +303,8 @@ term:
   // Quantifier
   | BACKQUOTE q=term_ident b=binder { make_pos $loc (P_Appl(q, b)) }
   | LAMBDA xs=arg+ COMMA t=term { make_pos $loc (P_Abst(xs, t)) }
+  | LAMBDA x=arg_ident COLON a=term COMMA t=term
+      { make_pos $loc (P_Abst([[x], Some(a), false], t)) }
   /* REVIEW: allow pattern of the form \x y z: N, t */
   /* | LAMBDA xs=arg_ident+ COLON a=term COMMA t=term */
   /*     { make_pos $loc (P_Abst([xs, Some(a), false], t)) } */
