@@ -1,7 +1,7 @@
-constant symbol Type : TYPE
-injective symbol eta : Type → TYPE
+constant symbol Type : TYPE;
+injective symbol eta : Type → TYPE;
 
-symbol o : Type
+symbol o : Type;
 
-constant symbol neg : eta o → eta o
-type neg o
+constant symbol neg : eta o → eta o;
+type neg o;
