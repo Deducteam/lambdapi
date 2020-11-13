@@ -133,7 +133,9 @@ term_ident:
   | qid=qident { make_pos $loc (P_Iden(qid, false)) }
 
 // Rewrite pattern identifier
-patt: DOLLAR p=ident { if (fst p).elt = "_" then None else Some(fst p) }
+patt:
+  | DOLLAR p=ident { Some(fst p) }
+  | DOLLAR WILD { None }
 
 // Identifiers for arguments
 arg_ident:
