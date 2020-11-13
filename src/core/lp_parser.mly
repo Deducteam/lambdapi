@@ -6,7 +6,6 @@
     open Pos
     open Parser_utils
     open Lplib
-    open Lplib.Extra
 
     let make_pos : Lexing.position * Lexing.position -> 'a -> 'a Pos.loc =
       fun lps elt -> {pos = Some(locate lps); elt}
@@ -206,7 +205,6 @@ config:
       {
         let unop = (s, p, qid) in
         sanity_check (locate $loc(s)) s;
-        StrHtbl.add Pratt.una_operators s unop;
         P_config_unop(unop)
       }
   // Add an infix operator: [infix right 6.3 "+" ≔ plus]
@@ -214,7 +212,6 @@ config:
       {
         let binop = (s, Option.get Assoc_none a, p, qid) in
         sanity_check (locate $loc(s)) s;
-        StrHtbl.add Pratt.bin_operators s binop;
         P_config_binop(binop)
       }
   | UNIF_RULE r=unif_rule { P_config_unif_rule(r) }

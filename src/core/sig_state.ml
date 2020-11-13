@@ -201,6 +201,8 @@ let open_sign : sig_state -> Sign.t -> sig_state = fun ss sign ->
   let pp_hints =
     update_pp_hints_from_builtins ss.builtins !(sign.sign_builtins) pp_hints
   in
+  (* Add operators to {!module:Pratt} parser table. *)
+  Sign.import_ops sign;
   {ss with in_scope; builtins; unops; binops; pp_hints}
 
 (** Dummy [sig_state] made from the dummy signature. *)
