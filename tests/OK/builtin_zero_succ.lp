@@ -8,4 +8,4 @@ set infix 5 "+" ≔ add;
 rule 0 + $y ↪ $y
 with s $x + $y ↪ s($x + $y);
 compute 5 + 5;
-assert 5 + 5 ≡ 10;
+assert ⊢ 5 + 5 ≡ 10;

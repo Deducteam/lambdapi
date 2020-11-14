@@ -15,5 +15,5 @@ symbol f : N → R;
 rule f (c 0)   ↪ r
 with f (c 1 _) ↪ s;
 
-assert f (c 0)   : R;
-assert f (c 1 2) : R;
+assert ⊢ f (c 0)   : R;
+assert ⊢ f (c 1 2) : R;

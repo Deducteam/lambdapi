@@ -7,16 +7,16 @@ type let x ≔ a in x;
 
 // Nested
 type let x ≔ a in let y ≔ a in λ _, y;
-assert let x ≔ a in let y ≔ a in λ _, y ≡ λ _, a;
+assert ⊢ let x ≔ a in let y ≔ a in λ _, y ≡ λ _, a;
 
 // With arguments
 type let f x ≔ x in f a;
-assert let f x ≔ x in f a ≡ a;
+assert ⊢ let f x ≔ x in f a ≡ a;
 
 // In rewrite rules
 symbol f : T → T;
 rule f _ ↪ let x ≔ a in x;
-assert f a ≡ a;
+assert ⊢ f a ≡ a;
 
 // With type annotated arguments
 set flag "print_domains" on;
@@ -24,7 +24,7 @@ compute let x : T ≔ a in x;
 // Type annotation on products
 type let f x : T ≔ a in f;
 type let f (x : T) ≔ λ _, x in f a;
-assert let f (x:T) : T → T ≔ λ(_:T), x in f a ≡ λ(_:T), a;
+assert ⊢ let f (x:T) : T → T ≔ λ(_:T), x in f a ≡ λ(_:T), a;
 // dependent type let
 symbol Dt : T → TYPE;
 symbol dt x : Dt x;

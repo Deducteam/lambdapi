@@ -9,4 +9,4 @@ symbol x : R;
 symbol y : R;
 
 compute flip (λ x, λ y, f x y);
-assert flip (λ x, λ y, f x y) ≡ λ x, λ y, f y x;
+assert ⊢ flip (λ x, λ y, f x y) ≡ λ x, λ y, f y x;

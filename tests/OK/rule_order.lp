@@ -18,5 +18,5 @@ rule mem2 $e (cons $e _) ↪ true;
 rule mem2 $e (cons _ $l) ↪ mem $e $l;
 rule mem2 _ nil ↪ false;
 
-assert mem e (cons e nil) ≡ true;
-assert mem2 e (cons e nil) ≡ false;
+assert ⊢ mem e (cons e nil) ≡ true;
+assert ⊢ mem2 e (cons e nil) ≡ false;

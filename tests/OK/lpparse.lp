@@ -21,4 +21,4 @@ symbol comb: B → B → A;
 set infix left 6 "mob" ≔ comb;
 type comb b b;
 type b mob b;
-assert b mob b: A;
+assert ⊢ b mob b: A;

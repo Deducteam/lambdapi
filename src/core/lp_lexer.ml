@@ -30,7 +30,7 @@ type token =
   | SWITCH of bool
   (** [on] or [off], for flags. *)
   | SYMMETRY | SYMBOL
-  | THEOREM | TYPE
+  | THEOREM | TYPE | TURNSTILE
   | UNIF_RULE
   | VBAR
   | VERBOSE
@@ -134,6 +134,7 @@ and nom_comment : lexbuf -> unit = fun buf ->
     | 0x03bb (* λ *) -> LAMBDA
     | 0x03a0 (* Π *) -> PI
     | 0x2261 (* ≡ *) -> EQUIV
+    | 0x22a2 (* ⊢ *) -> TURNSTILE
     | "prover_timeout" -> PROVER_TIMEOUT
     | "reflexivity" -> REFL
     | "inductive" -> INDUCTIVE

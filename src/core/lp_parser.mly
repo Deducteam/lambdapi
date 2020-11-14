@@ -67,6 +67,7 @@
 %token QUESTION_MARK
 %token DOT
 %token VBAR
+%token TURNSTILE
 %token ASSIGN
 %token WILD
 %token LAMBDA
@@ -222,12 +223,9 @@ config:
       }
   | UNIF_RULE r=unif_rule { P_config_unif_rule(r) }
 
-// Typing or convertibility assertions
-assertion:
-  // [t: A]
-  | t=term COLON a=term { P_assert_typing(t, a) }
-  // [t ≡ u]
-  | t=term EQUIV u=term { P_assert_conv(t, u) }
+assert_not:
+  | ASSERT { false }
+  | ASSERT_NOT { true }
 
 query:
   // Set verbosity level
@@ -241,8 +239,20 @@ query:
     { make_pos $loc (P_query_normalize(t, {strategy=SNF; steps=None})) }
   | SET PROVER s=STRINGLIT { make_pos $loc (P_query_prover(s)) }
   | SET PROVER_TIMEOUT n=INT { make_pos $loc (P_query_prover_timeout(n)) }
-  | ASSERT a=assertion { make_pos $loc (P_query_assert(false, a)) }
-  | ASSERT_NOT a=assertion { make_pos $loc (P_query_assert(true, a)) }
+  | k=assert_not ps=arg* TURNSTILE t=term COLON a=term
+    {
+      (* REVIEW: positions *)
+      let t = if ps = [] then t else make_pos $loc(t) (P_Abst(ps, t)) in
+      let a = if ps = [] then a else make_pos $loc(a) (P_Prod(ps, a)) in
+      make_pos $loc (P_query_assert(k, P_assert_typing(t, a)))
+    }
+  | k=assert_not ps=arg* TURNSTILE t=term EQUIV a=term
+    {
+      (* REVIEW: positions *)
+      let t = if ps = [] then t else make_pos $loc(t) (P_Abst(ps, t)) in
+      let a = if ps = [] then a else make_pos $loc(a) (P_Abst(ps, a)) in
+      make_pos $loc (P_query_assert(k, P_assert_conv(t, a)))
+    }
 
 // Top level commands
 command:
