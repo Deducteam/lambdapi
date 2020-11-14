@@ -38,31 +38,47 @@ type token =
 
 exception SyntaxError of strloc
 
+(** Lexer for Lambdapi syntax. *)
 module Lp_lexer : sig
+
   val is_escaped : string -> bool
+  (** [is_escped s] is true if [s] is an escaped identifier, that is, an
+     identifier enclosed between [{|] and [|}]. *)
+
   val is_identifier : string -> bool
+  (** [is_identifier s] is [true] if [s] is a valid identifier. *)
+
   val is_debug_flag : string -> bool
+  (** [is_debug_flag s] is true if [s] is a debug flag. *)
+
   val lexer : lexbuf -> unit -> token * Lexing.position * Lexing.position
+  (** [lexer buf] is a lexing function on buffer [buf] that can be passed to
+      a parser. *)
 end = struct
   let digit = [%sedlex.regexp? '0' .. '9']
   let integer = [%sedlex.regexp? Plus digit]
-  let superscript = [%sedlex.regexp? 0x2070 | 0x00b9 | 0x00b2 | 0x00b3
-                                   | 0x2074 .. 0x207c]
+
+  (* We define the set of UTF8 codepoints that make up identifiers. *)
+  let superscript =
+    [%sedlex.regexp? 0x2070 | 0x00b9 | 0x00b2 | 0x00b3 | 0x2074 .. 0x207c]
   let subscript = [%sedlex.regexp? 0x208 .. 0x208c]
   let supplemental_punctuation = [%sedlex.regexp? 0x2e00 .. 0x2e52]
   let alphabet = [%sedlex.regexp? 'a' .. 'z' | 'A' .. 'Z']
+  let ascii_sub =
+    [%sedlex.regexp? '-' | '\'' | '&' | '^' | '\\'
+                   | '%' | '#' | '~']
   (* NOTE: lambda character now counts as a letter, so a sequence λx is an
      identifier, so [λx t u,] fails on unexpected token [,]. But [λ x t u,]
      works. *)
-  (* REVIEW: decide which set of unicode characters to use. *)
-  let letter = [%sedlex.regexp? lowercase | uppercase | '-' | '\''
-                              | math | subscript | superscript
-                              | supplemental_punctuation ]
+  let letter =
+    [%sedlex.regexp? lowercase | uppercase | ascii_sub
+                   | math | other_math | subscript | superscript
+                   | supplemental_punctuation ]
   let id = [%sedlex.regexp? (letter | '_'), Star (letter | digit | '_')]
   let escid =
     [%sedlex.regexp? "{|", Star (Compl '|' | '|', Compl '}'), Star '|', "|}"]
   let stringlit = [%sedlex.regexp? '"', Star (Compl ('"' | '\n')), '"']
-  let float = [%sedlex.regexp? integer, Opt ('.', integer)]
+  let float = [%sedlex.regexp? integer, '.', Opt (integer)]
   let comment = [%sedlex.regexp? "//", Star (Compl ('\n' | '\r'))]
 
   (** [nom buf] eats whitespaces and comments in buffer [buf]. *)
@@ -183,15 +199,14 @@ and nom_comment : lexbuf -> unit = fun buf ->
     | "protected" -> PROTECTED
     | "private" -> PRIVATE
     | "sequential" -> SEQUENTIAL
+    | integer -> INT(int_of_string (Utf8.lexeme buf))
+    | float -> FLOAT(float_of_string (Utf8.lexeme buf))
     | stringlit ->
         (* Remove the quotes from [lexbuf] *)
         STRINGLIT(Utf8.sub_lexeme buf 1 (lexeme_length buf - 2))
-    | integer -> INT(int_of_string (Utf8.lexeme buf))
-    | float -> FLOAT(float_of_string (Utf8.lexeme buf))
-    | id -> ID(Utf8.lexeme buf, false)
     | escid -> ID(Utf8.lexeme buf, true)
+    | id -> ID(Utf8.lexeme buf, false)
     | _ ->
-        (* REVIEW: verify position. *)
         let loc = lexing_positions buf in
         let loc = locate loc in
         raise (SyntaxError(Pos.make (Some(loc)) (Utf8.lexeme buf)))
