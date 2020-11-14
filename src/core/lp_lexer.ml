@@ -19,7 +19,7 @@ type token =
   | FAIL | FLAG | FLOAT of float | FOCUS
   | ID of (string * bool)
    (** Boolean is true if ident is escaped *)
-  | IN | INFERTYPE | INFIX | INJECTIVE | INT of int | INTRO
+  | IN | INFERTYPE | INDUCTIVE | INFIX | INJECTIVE | INT of int | INTRO
   | LAMBDA | LET
   | OPEN
   | PI | PREFIX | PRINT | PRIVATE | PROOF | PROOF_END of Syntax.p_proof_end
@@ -32,6 +32,7 @@ type token =
   | SYMMETRY | SYMBOL
   | THEOREM | TYPE
   | UNIF_RULE
+  | VBAR
   | VERBOSE
   | WHY3 | WILD | WITH
 
@@ -122,6 +123,7 @@ and nom_comment : lexbuf -> unit = fun buf ->
     | '?' -> QUESTION_MARK
     | '$' -> DOLLAR
     | '`' -> BACKQUOTE
+    | '|' -> VBAR
     | '+', Plus alphabet ->
         DEBUG_FLAGS(true, Utf8.sub_lexeme buf 1 (lexeme_length buf - 1))
     | '-', Plus alphabet ->
@@ -134,6 +136,7 @@ and nom_comment : lexbuf -> unit = fun buf ->
     | 0x2261 (* ≡ *) -> EQUIV
     | "prover_timeout" -> PROVER_TIMEOUT
     | "reflexivity" -> REFL
+    | "inductive" -> INDUCTIVE
     | "symmetry" -> SYMMETRY
     | "rewrite" -> REWRITE
     | "assume" -> INTRO

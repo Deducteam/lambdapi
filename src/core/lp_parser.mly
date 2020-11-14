@@ -22,6 +22,7 @@
 %token THEOREM
 %token COLON
 %token SYMBOL
+%token INDUCTIVE
 %token RULE
 %token WITH
 %token OPEN
@@ -65,6 +66,7 @@
 %token DOLLAR
 %token QUESTION_MARK
 %token DOT
+%token VBAR
 %token ASSIGN
 %token WILD
 %token LAMBDA
@@ -121,6 +123,8 @@
 
 // An identifier with a boolean to true if it uses escaped syntax.
 ident: i=ID { (make_pos $loc (fst i), snd i) }
+// Identifier without the boolean
+any_ident: i=ID { make_pos $loc (fst i) }
 
 // A list of [ident] separated by dots
 path: ms=separated_nonempty_list(DOT, ID) { ms }
@@ -252,6 +256,10 @@ command:
   | OPEN p=path SEMICOLON { make_pos $loc (P_open([p])) }
   | ms=modifier* SYMBOL s=ident al=arg* COLON a=term SEMICOLON
       { make_pos $loc (P_symbol(ms, fst s, al, a)) }
+  | ms=modifier* INDUCTIVE i=any_ident COLON a=term ASSIGN VBAR?
+    c=separated_nonempty_list(VBAR, separated_pair(any_ident, COLON, term))
+    SEMICOLON
+      { make_pos $loc (P_inductive(ms, i, a, c)) }
   | ms=modifier* DEFINITION s=ident al=arg* ao=preceded(COLON, term)?
     ASSIGN b=term SEMICOLON
       { make_pos $loc (P_definition(ms, false, fst s, al, ao, b)) }
@@ -301,9 +309,11 @@ term:
   // Pratt parse applied terms to set correctly infix and prefix operators
   | t=aterm { t }
   | t=term ARROW u=term { make_pos $loc (P_Impl(t, u)) }
-  | PI xs=arg+ COMMA b=term { make_pos $loc (P_Prod(xs, b)) }
   // Quantifier
   | BACKQUOTE q=term_ident b=binder { make_pos $loc (P_Appl(q, b)) }
+  | PI xs=arg+ COMMA b=term { make_pos $loc (P_Prod(xs, b)) }
+  | PI x=arg_ident COLON a=term COMMA b=term
+      { make_pos $loc (P_Prod([[x], Some(a), false], b)) }
   | LAMBDA xs=arg+ COMMA t=term { make_pos $loc (P_Abst(xs, t)) }
   | LAMBDA x=arg_ident COLON a=term COMMA t=term
       { make_pos $loc (P_Abst([[x], Some(a), false], t)) }
