@@ -49,13 +49,15 @@ end = struct
   let superscript = [%sedlex.regexp? 0x2070 | 0x00b9 | 0x00b2 | 0x00b3
                                    | 0x2074 .. 0x207c]
   let subscript = [%sedlex.regexp? 0x208 .. 0x208c]
+  let supplemental_punctuation = [%sedlex.regexp? 0x2e00 .. 0x2e52]
   let alphabet = [%sedlex.regexp? 'a' .. 'z' | 'A' .. 'Z']
   (* NOTE: lambda character now counts as a letter, so a sequence λx is an
      identifier, so [λx t u,] fails on unexpected token [,]. But [λ x t u,]
      works. *)
   (* REVIEW: decide which set of unicode characters to use. *)
   let letter = [%sedlex.regexp? lowercase | uppercase | '-' | '\''
-                              | math | subscript | superscript]
+                              | math | subscript | superscript 
+                              | supplemental_punctuation ]
   let id = [%sedlex.regexp? (letter | '_'), Star (letter | digit | '_')]
   let escid =
     [%sedlex.regexp? "{|", Star (Compl '|' | '|', Compl '}'), Star '|', "|}"]
