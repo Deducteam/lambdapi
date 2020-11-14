@@ -257,7 +257,7 @@ command:
   | ms=modifier* SYMBOL s=ident al=arg* COLON a=term SEMICOLON
       { make_pos $loc (P_symbol(ms, fst s, al, a)) }
   | ms=modifier* INDUCTIVE i=any_ident COLON a=term ASSIGN VBAR?
-    c=separated_nonempty_list(VBAR, separated_pair(any_ident, COLON, term))
+    c=separated_list(VBAR, separated_pair(any_ident, COLON, term))
     SEMICOLON
       { make_pos $loc (P_inductive(ms, i, a, c)) }
   | ms=modifier* DEFINITION s=ident al=arg* ao=preceded(COLON, term)?
