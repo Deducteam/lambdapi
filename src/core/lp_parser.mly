@@ -116,8 +116,7 @@
 %type <Syntax.p_rw_patt> rw_patt_spec
 
 // Precedences listed from low to high
-%nonassoc IN
-%left COMMA
+%nonassoc COMMA IN
 %right ARROW
 
 %%
@@ -311,7 +310,6 @@ aterm:
   | t=sterm { t }
 
 term:
-  // Pratt parse applied terms to set correctly infix and prefix operators
   | t=aterm { t }
   | t=term ARROW u=term { make_pos $loc (P_Impl(t, u)) }
   // Quantifier
