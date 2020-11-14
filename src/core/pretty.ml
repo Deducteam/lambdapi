@@ -12,10 +12,61 @@ open Console
 open Pos
 open Syntax
 
+(** [is_keyword s] returns [true] if [s] is a keyword (defined by the lexer)
+    in {!module:Lp_lexer}. *)
+let is_keyword : string -> bool = fun s ->
+  List.mem s
+    [ "TYPE"
+    ; "apply"
+    ; "as"
+    ; "assert"
+    ; "assertnot"
+    ; "assume"
+    ; "builtin"
+    ; "compute"
+    ; "constant"
+    ; "definition"
+    ; "flag"
+    ; "in"
+    ; "inductive"
+    ; "infix"
+    ; "injective"
+    ; "left"
+    ; "let"
+    ; "off"
+    ; "on"
+    ; "open"
+    ; "prefix"
+    ; "private"
+    ; "proof"
+    ; "protected"
+    ; "prover"
+    ; "prover_timeout"
+    ; "qed"
+    ; "refine"
+    ; "refine"
+    ; "reflexivity"
+    ; "require"
+    ; "rewrite"
+    ; "right"
+    ; "rule"
+    ; "set"
+    ; "sequential"
+    ; "simpl"
+    ; "symbol"
+    ; "symmetry"
+    ; "theorem"
+    ; "type"
+    ; "type"
+    ; "unif_rule"
+    ; "verbose"
+    ; "why3"
+    ; "with" ]
+
 type prio = PFunc | PAtom | PAppl
 
 let pp_ident : ident pp = fun oc id ->
-  if Parser_utils.is_keyword id.elt then
+  if is_keyword id.elt then
     fatal id.pos "Identifier [%s] is a Lambdapi keyword." id.elt;
   Format.pp_print_string oc id.elt
 
@@ -25,7 +76,7 @@ let pp_arg_ident : ident option pp = fun oc id ->
   | None     -> Format.pp_print_string oc "_"
 
 let pp_path_elt : Pos.popt -> (string * bool) pp = fun pos oc (s,b) ->
-  if not b && Parser_utils.is_keyword s then
+  if not b && is_keyword s then
     fatal pos "Module path member [%s] is a Lambdapi keyword." s;
   if b then Format.fprintf oc "{|%s|}" s else Format.pp_print_string oc s
 

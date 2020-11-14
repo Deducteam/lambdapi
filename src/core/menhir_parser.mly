@@ -5,7 +5,6 @@ open! Lplib
 open Timed
 open Pos
 open Syntax
-open Parser_utils
 open Legacy_lexer
 
 (** {b NOTE} we maintain the invariant described in the [Parser] module: every
@@ -206,7 +205,7 @@ let build_config : Pos.pos -> string -> string option -> eval_config =
     | (i     , Some "WHNF") -> config (Some(i)) WHNF
     | (i     , None       ) -> config (Some(i)) NONE
     | (_     , _          ) -> raise Exit (* captured below *)
-  with _ -> parser_fatal loc "Invalid command configuration."
+  with _ -> Console.fatal (Some(loc)) "Invalid command configuration."
 %}
 
 %token EOF

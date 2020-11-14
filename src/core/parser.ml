@@ -3,7 +3,11 @@
 open! Lplib
 
 open Pos
-open Parser_utils
+
+(** [parser_fatal loc fmt] is a wrapper for [Console.fatal] that enforces
+    that the error has an attached source code position. *)
+let parser_fatal : Pos.pos -> ('a,'b) Console.koutfmt -> 'a = fun loc fmt ->
+  Console.fatal (Some(loc)) fmt
 
 (** [add_prefix p s] adds the prefix [p] at the beginning of the
     identifier [s]. *)
