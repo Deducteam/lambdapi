@@ -144,25 +144,18 @@ let lsp_log_file : string Term.t =
 
 let qsym : (Syntax.p_module_path * string) Term.t =
   let qsym_conv: (Syntax.p_module_path * string) Arg.conv =
-    let parse (s: string): (Syntax.p_module_path * string, _) result =
-      if String.contains s '#' then (* Case of ghost symbols. *)
-        (* Parse with [Parser] up to the symbol id, which can’t be parsed by
-           [Parser]. *)
-        let ind = String.index s '#' in
-        match Parser.parse_qident (String.sub s 0 (ind - 1)) with
-        | Ok({elt=(mp,last); _}) -> (* [last] is the last module name. *)
-            (* Get the [id] manually *)
-            let id = String.sub s ind (String.length s - ind) in
-            Ok(mp @ [(last, false)], id)
-        | Error(p) ->
-            let msg = Format.sprintf "Parse error at %s." (Pos.to_string p) in
-            Error(`Msg(msg))
-      else
-        match Parser.parse_qident s with
-        | Ok({elt; _}) -> Ok(elt)
-        | Error(p) ->
-            let msg = Format.sprintf "Parse error at %s." (Pos.to_string p) in
-            Error(`Msg(msg))
+    let parse (s: string):
+      (Syntax.p_module_path * string, [>`Msg of string]) result =
+      match Parser.parse_qident s with
+      | Error(i, Some(pos)) ->
+        let msg =
+          Format.sprintf "[%d:%s] invalid identifier" i (Pos.to_string pos)
+        in
+        Error(`Msg(msg))
+      | Error(i, None) ->
+        let msg = Format.sprintf "[%d] invalid identifier" i in
+        Error(`Msg(msg))
+      | Ok(e) -> Ok(e)
     in
     let print fmt qid = Pretty.pp_qident fmt (Pos.none qid) in
     Arg.conv (parse, print)

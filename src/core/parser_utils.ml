@@ -17,23 +17,3 @@ let forbidden_in_ops =
   ; "→"; "@"; ","; ";"; "\""; "\'"; "≔"; "//"; " "; "\r"; "\n"; "\t"; "\b"
   ; "/*" ]
   @ List.init 10 string_of_int
-
-(** [sanity_check pos s] checks that the token [s] is appropriate for an
-    infix operator or a declared identifier. If it is not the case, then the
-    [Fatal] exception is raised. *)
-(* REVIEW: this function might be removed since operators are now regular
-   identifiers. *)
-let sanity_check : Pos.pos -> string -> unit = fun loc s ->
-  (* Of course, the empty string and keywords are forbidden. *)
-  if s = "" then parser_fatal loc "Invalid token (empty).";
-  if is_keyword s then
-    parser_fatal loc "Invalid token (reserved).";
-  (* Special case for debug flags *)
-  if Lp_lexer.is_debug_flag s then
-    parser_fatal loc "Invalid token (is a debug flag).";
-  (* We also reject symbols with certain substrings. *)
-  let check_substring w =
-    if String.is_substring w s then
-      parser_fatal loc "Invalid token (has [%s] as a substring)." w
-  in
-  List.iter check_substring forbidden_in_ops

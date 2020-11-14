@@ -4,7 +4,6 @@
 %{
     open Syntax
     open Pos
-    open Parser_utils
     open Lplib
 
     let make_pos : Lexing.position * Lexing.position -> 'a -> 'a Pos.loc =
@@ -101,6 +100,7 @@
 %token <string * bool> ID
 
 %start <Syntax.p_command> command
+%start ident
 %type <Syntax.p_term> term
 %type <Syntax.p_term> aterm
 %type <Syntax.p_term> sterm
@@ -209,16 +209,11 @@ config:
   | BUILTIN s=STRINGLIT ASSIGN qid=qident { P_config_builtin(s, qid) }
   // Add a prefix operator: [prefix 1.2 "!" ≔ factorial]
   | PREFIX p=float_of_int s=STRINGLIT ASSIGN qid=qident
-      {
-        let unop = (s, p, qid) in
-        sanity_check (locate $loc(s)) s;
-        P_config_unop(unop)
-      }
+      { let unop = (s, p, qid) in P_config_unop(unop) }
   // Add an infix operator: [infix right 6.3 "+" ≔ plus]
   | INFIX a=ASSOC? p=float_of_int s=STRINGLIT ASSIGN qid=qident
       {
         let binop = (s, Option.get Assoc_none a, p, qid) in
-        sanity_check (locate $loc(s)) s;
         P_config_binop(binop)
       }
   | UNIF_RULE r=unif_rule { P_config_unif_rule(r) }

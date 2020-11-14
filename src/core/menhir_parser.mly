@@ -207,8 +207,6 @@ let build_config : Pos.pos -> string -> string option -> eval_config =
     | (i     , None       ) -> config (Some(i)) NONE
     | (_     , _          ) -> raise Exit (* captured below *)
   with _ -> parser_fatal loc "Invalid command configuration."
-
-  let do_require : Pos.pos -> p_module_path -> unit = fun _ _ -> assert false
 %}
 
 %token EOF
@@ -337,10 +335,7 @@ line:
       let q = make_pos $loc (P_query_assert(mf, P_assert_conv(t,u))) in
       make_pos $loc (P_query q)
     }
-  | r=REQUIRE    DOT {
-      do_require (locate $loc) r;
-      make_pos $loc (P_require(false,[r]))
-    }
+  | r=REQUIRE DOT { make_pos $loc (P_require(false,[r])) }
   | EOF {
       raise End_of_file
     }

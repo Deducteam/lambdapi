@@ -37,7 +37,9 @@ let test_xtc () =
 let test_dtree () =
   match Parser.parse_qident "tests.OK.bool.bool_or" with
   | Ok(e) ->
-      let sym = Sig_state.find_sym ~prt:true ~prv:true false bool_ss e in
+      let sym =
+        Sig_state.find_sym ~prt:true ~prv:true false bool_ss (Pos.none e)
+      in
       let buf = Buffer.create 16 in
       let fmt = Format.formatter_of_buffer buf in
       Tree_graphviz.to_dot fmt sym;

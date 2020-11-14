@@ -1,15 +1,9 @@
-(** Parsing functions for the Lambdapi syntax based on the Earley library. See
-    https://github.com/rlepigre/ocaml-earley/blob/master/README.md for details
-    on using the library and its syntax extension. *)
+(** Parsing functions for the Lambdapi. *)
 
 open! Lplib
 
-open Syntax
 open Pos
 open Parser_utils
-
-(* TODO: move to right place *)
-type prio = PFunc | PAtom | PAppl
 
 (** [add_prefix p s] adds the prefix [p] at the beginning of the
     identifier [s]. *)
@@ -20,16 +14,25 @@ let add_prefix : string -> string -> string = fun p s ->
   else
     p ^ s
 
-let parse_file : string -> Syntax.ast = fun fname ->
-  let inchan = open_in fname in
-  let parse =
-    MenhirLib.Convert.Simplified.traditional2revised Lp_parser.command
-  in
-  let lexbuf = Sedlexing.Utf8.from_channel inchan in
-  Sedlexing.set_filename lexbuf fname;
-  let lexer = Lp_lexer.lexer lexbuf in
-  let cmds = ref [] in
-  let res =
+(** Module type of a parser. *)
+module type PARSER = sig
+
+  val parse_file : string -> Syntax.ast
+  (** [parse_file s] parses file at path [s]. *)
+
+  val parse_string : string -> string -> Syntax.ast
+  (** [parse_string f s] parses string [s] comming from file [f] ([f] can be
+      anything). *)
+end
+
+module Lp : PARSER = struct
+  let parse_lexbuf : string -> Sedlexing.lexbuf -> Syntax.ast =
+    fun fname lexbuf ->
+    let parse =
+      MenhirLib.Convert.Simplified.traditional2revised Lp_parser.command
+    in
+    let lexer = Lp_lexer.lexer lexbuf in
+    let cmds = ref [] in
     try
       while true do
         let cmd = parse lexer in
@@ -46,24 +49,57 @@ let parse_file : string -> Syntax.ast = fun fname ->
         let loc = Pos.locate loc in
         parser_fatal loc "Unexpected token [%s]."
           (Sedlexing.Utf8.lexeme lexbuf)
+
+  let parse_file : string -> Syntax.ast = fun fname ->
+    let inchan = open_in fname in
+    let res = parse_lexbuf fname (Sedlexing.Utf8.from_channel inchan) in
+    close_in inchan;
+    res
+
+  let parse_string : string -> string -> Syntax.ast = fun fname s ->
+    parse_lexbuf fname (Sedlexing.Utf8.from_string s)
+end
+
+(** [parse_qident s] parses the identifier [s] and returns the parsed
+    identifier (with location) and a boolean being [true] if [s] is
+    escaped (with [{| |}]). We use [parse_ident] of menhir parser because
+    exposing [parse_qident] caused an end of stream conflict. *)
+let parse_qident : string ->
+  (Syntax.p_module_path * string, int * popt) result =
+  fun s ->
+  let parse_ident (s: string): (Syntax.ident * bool, popt) result =
+    let parse =
+      MenhirLib.Convert.Simplified.traditional2revised Lp_parser.ident
+    in
+    let lexbuf = Sedlexing.Utf8.from_string s in
+    let lexer = Lp_lexer.lexer lexbuf in
+    try Ok(parse lexer)
+    with Lp_lexer.SyntaxError(s) -> Error(s.pos)
+       | Lp_parser.Error ->
+         let loc = Pos.locate (Sedlexing.lexing_positions lexbuf) in
+         Error(Some(loc))
   in
-  close_in inchan;
-  res
+  (* We get individual identifiers. *)
+  let ids = String.split_on_char '.' s in
+  (* Here we'd like a bind operation on result: if there is an error. *)
+  let exception Invalid_id of int * popt in
+  let f (i: int) (e: string) =
+    (* Parse string [e] and raise error to interrupt if [e] is not valid. *)
+    let (e, b) =
+      match parse_ident e with
+      | Ok(e, b) -> (e, b)
+      | Error(pos) -> raise (Invalid_id(i, pos))
+    in
+    (e.Pos.elt, b)
+  in
+  try
+    let ids = List.mapi f ids in
+    let (ids, last) = List.split_last ids in
+    Ok(ids, fst last)
+with Invalid_id(i, pos) -> Error(i, pos)
 
-let parse_string : string -> string -> Syntax.ast = fun _ _ -> assert false
-
-let parse_qident : string -> (qident, pos) result = fun _ -> assert false
-
-let do_require : _ -> _ -> unit = fun _ _ -> assert false
-
-module Legacy = struct
-  (** Interface for the legacy parser. *)
-
-  (** {b NOTE} we maintain the invariant described in the [Parser] module:
-      every error should have an attached position. We do not open [Console]
-      to avoid calls to [Console.fatal] and [Console.fatal_no_pos]. In case of
-      an error, the [parser_fatal] function should be used instead. *)
-
+(** Parsing legacy (Dedukti2) syntax. *)
+module Legacy : PARSER = struct
   let parse_lexbuf : string -> Lexing.lexbuf -> Syntax.ast =
     fun fname lexbuf ->
     Stdlib.(Legacy_lexer.filename := fname);
@@ -90,3 +126,6 @@ module Legacy = struct
   let parse_string : string -> string -> Syntax.ast = fun fname s ->
     parse_lexbuf fname (Lexing.from_string s)
 end
+
+(* Include parser of new syntax so that functions are directly available.*)
+include Lp

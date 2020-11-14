@@ -12,6 +12,8 @@ open Console
 open Pos
 open Syntax
 
+type prio = PFunc | PAtom | PAppl
+
 let pp_ident : ident pp = fun oc id ->
   if Parser_utils.is_keyword id.elt then
     fatal id.pos "Identifier [%s] is a Lambdapi keyword." id.elt;
@@ -46,7 +48,6 @@ let pp_modifier : p_modifier loc pp = fun oc {elt; _} ->
   | P_prop(Injec) -> Format.pp_print_string oc "injective "
 
 let rec pp_p_term : p_term pp = fun oc t ->
-  let open Parser in (* for PAtom, PAppl and PFunc *)
   let out fmt = Format.fprintf oc fmt in
   let empty_context = ref true in
   let rec pp p _ t =

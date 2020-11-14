@@ -56,7 +56,7 @@ end = struct
      works. *)
   (* REVIEW: decide which set of unicode characters to use. *)
   let letter = [%sedlex.regexp? lowercase | uppercase | '-' | '\''
-                              | math | subscript | superscript 
+                              | math | subscript | superscript
                               | supplemental_punctuation ]
   let id = [%sedlex.regexp? (letter | '_'), Star (letter | digit | '_')]
   let escid =
