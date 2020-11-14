@@ -63,8 +63,6 @@ let is_keyword : string -> bool = fun s ->
     ; "why3"
     ; "with" ]
 
-type prio = PFunc | PAtom | PAppl
-
 let pp_ident : ident pp = fun oc id ->
   if is_keyword id.elt then
     fatal id.pos "Identifier [%s] is a Lambdapi keyword." id.elt;
@@ -106,11 +104,11 @@ let rec pp_p_term : p_term pp = fun oc t ->
       match ar with
       | None -> ()
       | Some [||] when !empty_context -> ()
-      | Some ar -> out "[%a]" (Array.pp (pp PFunc) "; ") ar
+      | Some ar -> out "[%a]" (Array.pp (pp `PFunc) "; ") ar
     in
-    let pp_atom = pp PAtom in
-    let pp_appl = pp PAppl in
-    let pp_func = pp PFunc in
+    let pp_atom = pp `PAtom in
+    let pp_appl = pp `PAppl in
+    let pp_func = pp `PFunc in
     match (t.elt, p) with
     | (P_Type              , _    ) -> out "TYPE"
     | (P_Iden(qid, false)  , _    ) -> out "%a" pp_qident qid
@@ -119,18 +117,18 @@ let rec pp_p_term : p_term pp = fun oc t ->
     | (P_Meta(x,ar)        , _    ) -> out "?%a%a" pp_ident x pp_env ar
     | (P_Patt(None   ,ar)  , _    ) -> out "$_%a" pp_env ar
     | (P_Patt(Some(x),ar)  , _    ) -> out "$%a%a" pp_ident x pp_env ar
-    | (P_Appl(t,u)         , PAppl)
-    | (P_Appl(t,u)         , PFunc) -> out "%a %a" pp_appl t pp_atom u
-    | (P_Impl(a,b)         , PFunc) -> out "%a → %a" pp_appl a pp_func b
-    | (P_Abst(args,t)      , PFunc) ->
+    | (P_Appl(t,u)         , `PAppl)
+    | (P_Appl(t,u)         , `PFunc) -> out "%a %a" pp_appl t pp_atom u
+    | (P_Impl(a,b)         , `PFunc) -> out "%a → %a" pp_appl a pp_func b
+    | (P_Abst(args,t)      , `PFunc) ->
         out "λ%a, " pp_p_args args;
         let fn (ids,_,_) = List.for_all ((=) None) ids in
         let ec = !empty_context in
         empty_context := ec && List.for_all fn args;
         out "%a" pp_func t;
         empty_context := ec
-    | (P_Prod(args,b)      , PFunc) -> out "Π%a, %a" pp_p_args args pp_func b
-    | (P_LLet(x,args,a,t,u), PFunc) ->
+    | (P_Prod(args,b)      , `PFunc) -> out "Π%a, %a" pp_p_args args pp_func b
+    | (P_LLet(x,args,a,t,u), `PFunc) ->
         out "@[<hov 2>let %a%a%a ≔@ %a@] in %a"
           pp_ident x pp_p_args args pp_p_annot a pp_func t pp_func u
     | (P_NLit(i)           , _    ) -> out "%i" i
@@ -149,11 +147,11 @@ let rec pp_p_term : p_term pp = fun oc t ->
     match t.elt with
     | P_Abst(args,t)       -> out "λ%a, %a" pp_p_args args pp_toplevel t
     | P_Prod(args,b)       -> out "Π%a, %a" pp_p_args args pp_toplevel b
-    | P_Impl(a,b)          -> out "%a → %a" (pp PAppl) a pp_toplevel b
+    | P_Impl(a,b)          -> out "%a → %a" (pp `PAppl) a pp_toplevel b
     | P_LLet(x,args,a,t,u) ->
         out "@[<hov 2>let %a%a%a ≔ %a@] in %a" pp_ident x
           pp_p_args args pp_p_annot a pp_toplevel t pp_toplevel u
-    | _                    -> out "%a" (pp PFunc) t
+    | _                    -> out "%a" (pp `PFunc) t
   in
   pp_toplevel oc t
 
