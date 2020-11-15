@@ -1,14 +1,9 @@
 (** Source code position management.  This module may be used to map sequences
     of characters in a source file to an abstract syntax tree. *)
 
-(* REVIEW: all positions should be changed because they we do not rely on
-   Earley anymore. We can hence shift to [Lexing.position]. *)
-
 (** Type of a position, corresponding to a continuous range of characters in a
-    (utf8-encoded) source file. Elements of this type are (lazily) constructed
-    by [Earley], using the following [locate] function. *)
-type pos = pos_data Lazy.t
-and pos_data =
+    (utf8-encoded) source. *)
+type pos =
   { fname      : string option (** File name for the position.       *)
   ; start_line : int (** Line number of the starting point.          *)
   ; start_col  : int (** Column number (utf8) of the starting point. *)
@@ -21,14 +16,10 @@ and pos_data =
 (** Convenient short name for an optional position. *)
 type popt = pos option
 
-(** [equal_pos p1 p2] tells whether [p1] and [p2] denote the same location. *)
-let equal_pos : pos -> pos -> bool = fun p1 p2 ->
-  Lazy.force p1 = Lazy.force p2
-
 (** [equal p1 p2] tells whether [p1] and [p2] denote the same position. *)
 let equal : popt -> popt -> bool = fun p1 p2 ->
   match (p1, p2) with
-  | (Some(p1), Some(p2)) -> equal_pos p1 p2
+  | (Some(p1), Some(p2)) -> p1 = p2
   | (None    , None    ) -> true
   | (_       , _       ) -> false
 
@@ -58,8 +49,7 @@ let none : 'a -> 'a loc =
     [print_fname] is [true] (the default), the filename contained in [pos] is
     printed. *)
 let to_string : ?print_fname:bool -> pos -> string =
-  fun ?(print_fname=true) p ->
-  let {fname; start_line; start_col; end_line; end_col} = Lazy.force p in
+  fun ?(print_fname=true) {fname; start_line; start_col; end_line; end_col} ->
   let fname =
     if not print_fname then "" else
     match fname with
@@ -97,4 +87,4 @@ let locate : Lexing.position * Lexing.position -> pos = fun (p1, p2) ->
   let start_col = p1.pos_cnum - p1.pos_bol in
   let end_line = p2.pos_lnum in
   let end_col = p2.pos_cnum - p2.pos_bol in
-  Lazy.from_val {fname; start_line; start_col; end_line; end_col}
+ {fname; start_line; start_col; end_line; end_col}

@@ -3,16 +3,11 @@
 (* Menhir which abstracts the Lexing buffer. *)
 %{
     open Syntax
-    open Pos
     open Lplib
+    open Pos
 
-    let make_pos : Lexing.position * Lexing.position -> 'a -> 'a Pos.loc =
+    let make_pos : Lexing.position * Lexing.position -> 'a -> 'a loc =
       fun lps elt -> {pos = Some(locate lps); elt}
-
-    let rev_tl : (string * bool) list -> p_module_path * string = fun p ->
-      match List.rev p with
-      | hd :: tl -> (List.rev tl, fst hd)
-      | [] -> assert false
  %}
 
 %token EOF
@@ -130,7 +125,11 @@ any_ident: i=ID { make_pos $loc (fst i) }
 path: ms=separated_nonempty_list(DOT, ID) { ms }
 
 // [path] with a post processing to yield a [qident]
-qident: p=path { let qid = rev_tl p in make_pos $loc(p) qid }
+qident: p=path
+    {
+      let (mp, id) = List.split_last p in
+      make_pos $loc(p) (mp, fst id)
+    }
 
 term_ident:
   | AT qid=qident { make_pos $loc (P_Iden(qid, true)) }

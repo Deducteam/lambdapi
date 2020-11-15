@@ -170,7 +170,7 @@ let in_range ?loc (line, pos) =
   | None -> false
   | Some loc ->
       let { Pos.start_line ; start_col ; end_line ; end_col ; _ } =
-        Lazy.force loc in
+        loc in
     start_line - 1 < line && line < end_line - 1 ||
     (start_line - 1 = line && start_col <= pos) ||
     (end_line - 1 = line && pos <= end_col)
