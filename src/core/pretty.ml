@@ -12,6 +12,8 @@ open Console
 open Pos
 open Syntax
 
+type p_term = P_term.p_term
+type p_type = P_term.p_type
 
 let pp_ident : ident pp = fun oc id ->
   if Parser.KW.mem id.elt then
@@ -48,6 +50,7 @@ let pp_modifier : p_modifier loc pp = fun oc {elt; _} ->
 
 let rec pp_p_term : p_term pp = fun oc t ->
   let open Parser in (* for PAtom, PAppl and PFunc *)
+  let open P_term in
   let out fmt = Format.fprintf oc fmt in
   let empty_context = ref true in
   let rec pp p _ t =
@@ -263,7 +266,7 @@ let pp_command : 'term.
       out "@[<hov 2>%atheorem %a"
         (Format.pp_print_list pp_modifier) ms pp_ident s;
       List.iter (out " %a" (pp_p_arg _pp_term)) args;
-      out " : @[<2>%a@]@]@." pp_p_term a;
+      out " : @[<2>%a@]@]@." _pp_term a;
       out "proof@.";
       List.iter (out "  @[<hov>%a@]@." (pp_p_tactic _pp_term)) ts;
       out "%a" pp_p_proof_end pe.elt
@@ -291,7 +294,7 @@ let pp_command : 'term.
      pp_p_query _pp_term oc q
 
 let pp_parser_command : p_term p_command pp =
-  pp_command p_get_args Unif_rule.p_unpack pp_p_term
+  pp_command P_term.p_get_args Unif_rule.p_unpack pp_p_term
 
 let pp_ast_command : Terms.term p_command pp =
   pp_command Basics.get_args Unif_rule.unpack Print.pp_term

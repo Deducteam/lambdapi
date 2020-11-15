@@ -12,6 +12,6 @@
 
 open Core
 
-type t = Syntax.p_term Syntax.p_command
+type t = P_term.p_term Syntax.p_command
 
 val get_qidents : t -> Syntax.qident list

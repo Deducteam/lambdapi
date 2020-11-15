@@ -4,7 +4,7 @@
     error should have an attached position.  We do not open [Console] to avoid
     calls to [Console.fatal] and [Console.fatal_no_pos].  In case of an error,
     the [parser_fatal] function should be used instead. *)
-type ast = Syntax.p_term Syntax.ast
+type ast = P_term.p_term Syntax.ast
 
 let parse_lexbuf : string -> Lexing.lexbuf -> ast = fun fname lexbuf ->
   Stdlib.(Legacy_lexer.filename := fname);

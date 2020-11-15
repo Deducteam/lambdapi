@@ -10,6 +10,7 @@ open Syntax
 open Files
 open Pos
 
+open P_term
 type ast        = p_term Syntax.ast
 
 (** {b NOTE} we maintain the invariant that errors reported by the parser have

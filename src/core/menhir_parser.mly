@@ -5,6 +5,7 @@ open! Lplib
 open Timed
 open Pos
 open Syntax
+open P_term
 open Legacy_lexer
 open Parser
 
@@ -237,7 +238,7 @@ let build_config : Pos.pos -> string -> string option -> eval_config =
 %token <Syntax.p_module_path * string> QID
 
 %start line
-%type <Syntax.p_term Syntax.p_command> line
+%type <P_term.p_term Syntax.p_command> line
 
 %right ARROW FARROW
 

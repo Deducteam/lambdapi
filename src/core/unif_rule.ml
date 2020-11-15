@@ -8,6 +8,7 @@ open Timed
 open Files
 open Terms
 open Syntax
+open P_term
 
 (** Path of the module. *)
 let path = Path.ghost "unif_rule"
@@ -65,10 +66,10 @@ let rec unpack : term -> (term * term) list = fun eqs ->
 (** [p_unpack eqs] is [unpack eqs] on syntax-level equivalences [eqs]. *)
 let rec p_unpack : p_term -> (p_term * p_term) list = fun eqs ->
   let id s = snd s.Pos.elt in
-  match Syntax.p_get_args eqs with
+  match P_term.p_get_args eqs with
   | ({elt=P_Iden(s, _); _}, [v; w]) ->
       if id s = "#cons" then
-        match Syntax.p_get_args v with
+        match P_term.p_get_args v with
         | ({elt=P_Iden(e, _); _}, [t; u]) when id e = "#equiv" ->
             (t, u) :: p_unpack w
         | _                                                         ->
