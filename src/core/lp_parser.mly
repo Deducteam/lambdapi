@@ -234,16 +234,26 @@ query:
   | SET PROVER_TIMEOUT n=INT { make_pos $loc (P_query_prover_timeout(n)) }
   | k=assert_not ps=arg* TURNSTILE t=term COLON a=term
     {
-      (* REVIEW: positions *)
-      let t = if ps = [] then t else make_pos $loc(t) (P_Abst(ps, t)) in
-      let a = if ps = [] then a else make_pos $loc(a) (P_Prod(ps, a)) in
+      let t =
+        if ps = [] then t else
+        make_pos ($startpos(ps), $endpos(a)) (P_Abst(ps, t))
+      in
+      let a =
+        if ps = [] then a else
+        make_pos ($startpos(ps), $endpos(a)) (P_Prod(ps, a))
+      in
       make_pos $loc (P_query_assert(k, P_assert_typing(t, a)))
     }
   | k=assert_not ps=arg* TURNSTILE t=term EQUIV a=term
     {
-      (* REVIEW: positions *)
-      let t = if ps = [] then t else make_pos $loc(t) (P_Abst(ps, t)) in
-      let a = if ps = [] then a else make_pos $loc(a) (P_Abst(ps, a)) in
+      let t =
+        if ps = [] then t else
+        make_pos ($startpos(ps), $endpos(a)) (P_Abst(ps, t))
+      in
+      let a =
+        if ps = [] then a else
+        make_pos ($startpos(ps), $endpos(a)) (P_Abst(ps, a))
+      in
       make_pos $loc (P_query_assert(k, P_assert_conv(t, a)))
     }
 
@@ -269,8 +279,7 @@ command:
   | ms=modifier* THEOREM s=ident al=arg* COLON a=term
     PROOF ts=ttactic* pe=PROOF_END
       {
-        (* REVIEW: location of statement [st]. *)
-        let st = make_pos $loc(s) (fst s, al, a) in
+        let st = make_pos ($startpos(s), $endpos(a)) (fst s, al, a) in
         let pe = make_pos $loc(pe) pe in
         make_pos $loc (P_theorem(ms, st, ts, pe)) }
   | RULE rs=separated_nonempty_list(WITH, rule) SEMICOLON
