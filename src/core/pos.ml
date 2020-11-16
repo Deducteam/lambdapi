@@ -45,6 +45,15 @@ let in_pos : pos -> 'a -> 'a loc =
 let none : 'a -> 'a loc =
   fun elt -> { elt ; pos = None }
 
+(** [cat p1 p2] is the concatenation of positon [p1] and [p2]. If [p1] and
+    [p2] have different filenames, the resulting filename is [None]. *)
+let cat : pos -> pos -> pos = fun p1 p2 ->
+  { fname = if p1.fname <> p2.fname then None else p1.fname
+  ; start_line = p1.start_line
+  ; start_col = p1.start_col
+  ; end_line = p2.end_line
+  ; end_col = p2.end_col }
+
 (** [to_string ?print_fname pos] transforms [pos] into a readable string. If
     [print_fname] is [true] (the default), the filename contained in [pos] is
     printed. *)

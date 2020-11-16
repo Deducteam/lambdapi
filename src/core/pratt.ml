@@ -4,6 +4,7 @@
     <https://dev.to/jrop/pratt-parsing>
     <https://effbot.org/zone/simple-top-down-parsing.htm> *)
 
+open Lplib
 open Lplib.Extra
 
 open Syntax
@@ -38,7 +39,7 @@ end = struct
   (** [is_binop t] returns [true] iff term [t] is a binary operator. *)
   let is_binop : p_term -> bool = fun t ->
     match t.elt with
-    | P_Iden({elt = (_, s); pos}, _) -> StrHtbl.mem bin_operators s
+    | P_Iden({elt = (_, s); _}, _) -> StrHtbl.mem bin_operators s
     | _ -> false
 
   (** [nud t] is the production of term [t] with {b no} left context. If [t]
@@ -95,10 +96,13 @@ end = struct
           aux (led strm left next)
         else
           left
-      | Some(pt) -> (* [pt] is the argument of an application *)
+      | Some(_) -> (* argument of an application *)
         let next = Stream.next strm in
-        (* REVIEW: position to compute. *)
-        aux (Pos.none (P_Appl(left, nud strm next)))
+        let right = nud strm next in
+        let pos =
+          let open Lplib.Option.Infix in
+          Pos.(Option.pure cat <*> next.pos <*> right.pos) in
+        aux (Pos.make pos (P_Appl(left, right)))
 
     in
     let next = Stream.next strm in

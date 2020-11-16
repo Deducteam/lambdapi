@@ -29,3 +29,15 @@ let pp : 'a pp -> 'a option pp =
 let empty x = match x with | None -> true | Some _ -> false
 let default x d = match x with | None -> d | Some x -> x
 
+(** [pure x] lifts [x] to an option. *)
+let pure : 'a -> 'a t = fun x -> Some(x)
+
+(** [apply] is the application for options. *)
+let apply : ('a -> 'b) t -> 'a t -> 'b t = fun f x ->
+  match f with
+  | None -> None
+  | Some(f) -> map f x
+
+module Infix = struct
+  let ( <*> ) = apply
+end

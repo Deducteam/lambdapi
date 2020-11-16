@@ -32,6 +32,7 @@ end
 module Lp : PARSER = struct
   let parse_lexbuf : string -> Sedlexing.lexbuf -> Syntax.ast =
     fun fname lexbuf ->
+    Sedlexing.set_filename lexbuf fname;
     let parse =
       MenhirLib.Convert.Simplified.traditional2revised Lp_parser.command
     in
