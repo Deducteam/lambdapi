@@ -317,3 +317,138 @@ module EqAst (T: sig type t val eq : t eq end) = struct
     | (_                           , _                           ) ->
         false
 end
+
+(** Map functions on parameters. *)
+
+(** [p_rw_patt_map f rw_patt] maps function [f] on terms of [rw_patt]. *)
+let p_rwt_patt_map :
+  'term_src 'term_tgt. ('term_src -> 'term_tgt) ->
+  'term_src p_rw_patt ->
+  'term_tgt p_rw_patt =
+  fun f rw_patt ->
+  match rw_patt with
+  | P_rw_Term(t)                    -> P_rw_Term(f t)
+  | P_rw_InTerm(t)                  -> P_rw_InTerm(f t)
+  | P_rw_InIdInTerm(id, t)          -> P_rw_InIdInTerm(id, f t)
+  | P_rw_IdInTerm(id, t)            -> P_rw_IdInTerm(id, f t)
+  | P_rw_TermInIdInTerm(t1, id, t2) -> P_rw_TermInIdInTerm(f t1, id, f t2)
+  | P_rw_TermAsIdInTerm(t1, id, t2) -> P_rw_TermAsIdInTerm(f t1, id, f t2)
+
+(** [p_assertion_map f assertion] maps function [f] on terms of [assertion]. *)
+let p_assertion_map :
+  'term_src 'term_tgt. ('term_src -> 'term_tgt) ->
+  'term_src p_assertion ->
+  'term_tgt p_assertion =
+  fun f assertion ->
+  match assertion with
+  | P_assert_typing(t1, t2) -> P_assert_typing(f t1, f t2)
+  | P_assert_conv(t1, t2)   -> P_assert_conv(f t1, f t2)
+
+(** [p_query_map f query] maps function [f] on terms of [query]. *)
+let p_query_map :
+  'term_src 'term_tgt. ('term_src -> 'term_tgt) ->
+  'term_src p_query ->
+  'term_tgt p_query =
+  fun f {elt = p_query; pos = loc} ->
+  let new_query =
+    match p_query with
+    | P_query_verbose(n)            -> P_query_verbose(n)
+    | P_query_debug(b, s)           -> P_query_debug(b, s)
+    | P_query_flag(s, b)            -> P_query_flag(s, b)
+    | P_query_assert(b, assertion)  -> P_query_assert(b, p_assertion_map f assertion)
+    | P_query_infer(t, eval_cfg)    -> P_query_infer(f t, eval_cfg)
+    | P_query_normalize(t,eval_cfg) -> P_query_normalize(f t, eval_cfg)
+    | P_query_prover(s)             -> P_query_prover(s)
+    | P_query_prover_timeout(n)     -> P_query_prover_timeout(n)
+  in
+  Pos.make loc new_query
+
+(** [p_tactic_map f tactic] maps function [f] on terms of [tactic]. *)
+let p_tactic_map :
+  'term_src 'term_tgt. ('term_src -> 'term_tgt) ->
+  'term_src p_tactic ->
+  'term_tgt p_tactic =
+  fun f {elt = p_tactic; pos = loc} ->
+  let new_tactic =
+    match p_tactic with
+    | P_tac_refine(t)                       -> P_tac_refine(f t)
+    | P_tac_intro(idopt_l)                  -> P_tac_intro(idopt_l)
+    | P_tac_apply(t)                        -> P_tac_apply(f t)
+    | P_tac_simpl                           -> P_tac_simpl
+    | P_tac_rewrite(b, rw_patt_loc_opt, t)  ->
+      let map_rw_patt_loc {elt = rw_patt; pos = loc} =
+        Pos.make loc (p_rwt_patt_map f rw_patt)
+      in
+      P_tac_rewrite(b, Option.map map_rw_patt_loc rw_patt_loc_opt, f t)
+    | P_tac_refl                            -> P_tac_refl
+    | P_tac_sym                             -> P_tac_sym
+    | P_tac_focus(n)                        -> P_tac_focus(n)
+    | P_tac_print                           -> P_tac_print
+    | P_tac_proofterm                       -> P_tac_proofterm
+    | P_tac_why3(s_opt)                     -> P_tac_why3(s_opt)
+    | P_tac_query(query)                    -> P_tac_query(p_query_map f query)
+    | P_tac_fail                            -> P_tac_fail
+  in
+  Pos.make loc new_tactic
+
+(** [p_config_map f p_config] maps function [f] on terms of [p_config]. *)
+let p_config_map :
+  'term_src 'term_tgt. ('term_src -> 'term_tgt) ->
+  'term_src p_config ->
+  'term_tgt p_config =
+  fun f p_config ->
+  match p_config with
+  | P_config_builtin(s, qid)      -> P_config_builtin(s, qid)
+  | P_config_unop(unop)           -> P_config_unop(unop)
+  | P_config_binop(binop)         -> P_config_binop(binop)
+  | P_config_ident(s)             -> P_config_ident(s)
+  | P_config_quant(qid)           -> P_config_quant(qid)
+  | P_config_unif_rule(rule_loc)  ->
+    let {elt = (lhs,rhs); pos = loc} = rule_loc in
+    P_config_unif_rule(Pos.make loc (f lhs, f rhs))
+
+
+(** [p_cmd_map f cmd] maps function [f] on terms of [cmd]. *)
+let p_cmd_map :
+  'term_src 'term_tgt. ('term_src -> 'term_tgt) ->
+  'term_src p_command ->
+  'term_tgt p_command =
+  fun f cmd ->
+  let map_trip : 'term_src p_arg -> 'term_tgt p_arg =
+    fun (sloptl, termopt, b) ->
+    (sloptl, Option.map f termopt, b)
+  in
+  let map_arg_list : 'term_src p_arg list -> 'term_tgt p_arg list =
+    fun p_arg_l -> List.map map_trip p_arg_l
+  in
+  let statement_map : 'term_src p_statement -> 'term_tgt p_statement =
+    fun {elt = (id, p_arg_l, t); pos = loc} ->
+      Pos.make loc (id, map_arg_list p_arg_l, f t)
+  in
+  let cmd_elt =
+    match cmd.elt with
+    | P_require(b, pl) -> P_require(b,pl)
+    | P_require_as(pl,sbl) -> P_require_as(pl,sbl)
+    | P_open(pl) -> P_open(pl)
+    | P_symbol(pl, id, argl, t) ->
+      P_symbol(pl, id, map_arg_list argl, f t)
+    | P_rules(rules) ->
+      let map_pair_loc pair_loc =
+        let pair = pair_loc.elt in
+        let loc = pair_loc.pos in
+        Pos.make loc (f (fst pair), f (snd pair))
+      in
+      P_rules(List.map map_pair_loc rules)
+    | P_definition(pl, b, id, argl, topt, t) ->
+      P_definition(pl, b, id, map_arg_list argl, Option.map f topt, f t)
+    | P_inductive(p_mod, id, t, constr) ->
+      let new_constr = List.map (fun (id,t) -> (id, f t)) constr in
+      P_inductive(p_mod, id, f t, new_constr)
+    | P_theorem(pl, statement, tactics, proof_end) ->
+      let new_statement = statement_map statement in
+      let new_tactics   = List.map (p_tactic_map f) tactics in
+      P_theorem(pl, new_statement, new_tactics, proof_end)
+    | P_set(p_config) -> P_set(p_config_map f p_config)
+    | P_query(query)  -> P_query(p_query_map f query)
+  in
+  Pos.make cmd.pos cmd_elt
