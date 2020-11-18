@@ -65,7 +65,7 @@ end = struct
   let supplemental_punctuation = [%sedlex.regexp? 0x2e00 .. 0x2e52]
   let alphabet = [%sedlex.regexp? 'a' .. 'z' | 'A' .. 'Z']
   let ascii_sub =
-    [%sedlex.regexp? '-' | '\'' | '&' | '^' | '\\'
+    [%sedlex.regexp? '-' | '\'' | '&' | '^' | '\\' | '*'
                    | '%' | '#' | '~']
   (* NOTE: lambda character now counts as a letter, so a sequence λx is an
      identifier, so [λx t u,] fails on unexpected token [,]. But [λ x t u,]

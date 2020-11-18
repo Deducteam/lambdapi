@@ -105,7 +105,7 @@ theorem rewriteTest2 : Π a b, P (eq nat (a + b + b) (b + a + b))
 proof
   assume a b
   //print
-  rewrite [`x in x + b] addcomm
+  rewrite [x in x + b] addcomm
   refine refl nat (b + a + b)
 qed
 
@@ -116,7 +116,7 @@ theorem rewriteTest3 : Π a b,
 proof
   assume a b
   //print
-  rewrite [`x in (add x b)] addcomm
+  rewrite [x in (add x b)] addcomm
   refine refl nat (add (add (add b a) b) (add (add b a) b))
 qed
 
@@ -126,7 +126,7 @@ theorem rewriteTest4 : Π a b,
             (add (add (add b a) (add a b)) a))
 proof
   assume a b
-  rewrite [`x in (add x (add a b))] addcomm
+  rewrite [x in (add x (add a b))] addcomm
   refine refl nat (add (add (add b a) (add a b)) a)
 qed
 
@@ -135,7 +135,7 @@ theorem rewriteTest5 : Π a b,
   P (eq nat (add (add a b) (add a b)) (add (add b a) (add b a)))
 proof
   assume a b
-  rewrite [`x in add x x] addcomm
+  rewrite [x in add x x] addcomm
   refine refl nat (add (add b a) (add b a))
 qed
 
@@ -145,7 +145,7 @@ theorem rewriteTest6 : Π a b,
 proof
   // print
   assume a b
-  rewrite [`x in (add x _)] addcomm
+  rewrite [x in (add x _)] addcomm
   refine refl nat (add (add a (add a b)) a)
 qed
 
