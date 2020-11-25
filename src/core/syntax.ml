@@ -5,6 +5,16 @@ open Lplib.Base
 
 open Pos
 
+(** Set of identifier characters. *)
+let id_charset = Earley_core.Charset.from_string "a-zA-Z0-9_'"
+
+(** Keywords module, used by parser and {!module:Pretty}. *)
+module KW =
+  Earley_core.Keywords.Make(struct
+    let id_charset = id_charset
+    let reserved = []
+  end)
+
 (** Representation of a (located) identifier. *)
 type ident = strloc
 
@@ -49,28 +59,28 @@ type binop = string * assoc * priority * qident
 
 (** Parser-level representation of a function argument. The boolean is true if
     the argument is marked as implicit (i.e., between curly braces). *)
-type 'term p_arg = ident option list * 'term option * bool
+type 't p_arg = ident option list * 't option * bool
 
 (** Parser-level rewriting rule representation. *)
-type 'term p_rule = ('term * 'term) loc
+type 't p_rule = ('t * 't) loc
 
 (** Parser-level inductive type representation. *)
 type 'term p_inductive = (ident * 'term * (ident * 'term) list) loc
 
 (** Rewrite pattern specification. *)
-type 'term p_rw_patt =
-  | P_rw_Term           of 'term
-  | P_rw_InTerm         of 'term
-  | P_rw_InIdInTerm     of ident * 'term
-  | P_rw_IdInTerm       of ident * 'term
-  | P_rw_TermInIdInTerm of 'term * ident * 'term
-  | P_rw_TermAsIdInTerm of 'term * ident * 'term
+type 't p_rw_patt =
+  | P_rw_Term           of 't
+  | P_rw_InTerm         of 't
+  | P_rw_InIdInTerm     of ident * 't
+  | P_rw_IdInTerm       of ident * 't
+  | P_rw_TermInIdInTerm of 't * ident * 't
+  | P_rw_TermAsIdInTerm of 't * ident * 't
 
 (** Parser-level representation of an assertion. *)
-type 'term p_assertion =
-  | P_assert_typing of 'term * 'term
+type 't p_assertion =
+  | P_assert_typing of 't * 't
   (** The given term should have the given type. *)
-  | P_assert_conv   of 'term * 'term
+  | P_assert_conv   of 't * 't
   (** The two given terms should be convertible. *)
 
 (** Configuration for evaluation. *)
@@ -79,37 +89,37 @@ type eval_config =
   ; steps    : int option (** Max number of steps if given. *) }
 
 (** Parser-level representation of a query command. *)
-type 'term p_query_aux =
+type 't p_query_aux =
   | P_query_verbose   of int
   (** Sets the verbosity level. *)
   | P_query_debug     of bool * string
   (** Toggles logging functions described by string according to boolean. *)
   | P_query_flag      of string * bool
   (** Sets the boolean flag registered under the given name (if any). *)
-  | P_query_assert    of bool * 'term p_assertion
+  | P_query_assert    of bool * 't p_assertion
   (** Assertion (must fail if boolean is [true]). *)
-  | P_query_infer     of 'term * eval_config
+  | P_query_infer     of 't * eval_config
   (** Type inference command. *)
-  | P_query_normalize of 'term * eval_config
+  | P_query_normalize of 't * eval_config
   (** Normalisation command. *)
   | P_query_prover    of string
   (** Set the prover to use inside a proof. *)
   | P_query_prover_timeout of int
   (** Set the timeout of the prover (in seconds). *)
 
-type 'term p_query = 'term p_query_aux loc
+type 't p_query = 't p_query_aux loc
 
 (** Parser-level representation of a proof tactic. *)
-type 'term p_tactic_aux =
-  | P_tac_refine  of 'term
+type 't p_tactic_aux =
+  | P_tac_refine  of 't
   (** Refine the current goal using the given term. *)
   | P_tac_intro   of ident option list
   (** Eliminate quantifiers using the given names for hypotheses. *)
-  | P_tac_apply   of 'term
+  | P_tac_apply   of 't
   (** Apply the given term to the current goal. *)
   | P_tac_simpl
   (** Normalize in the focused goal. *)
-  | P_tac_rewrite of bool * 'term p_rw_patt loc option * 'term
+  | P_tac_rewrite of bool * 't p_rw_patt loc option * 't
   (** Apply rewriting using the given pattern and equational proof. The
      boolean indicates whether the equation has to be applied from left to
      right. *)
@@ -125,12 +135,12 @@ type 'term p_tactic_aux =
   (** Print the current proof term (possibly containing open goals). *)
   | P_tac_why3 of string option
   (** Try to solve the current goal with why3. *)
-  | P_tac_query   of 'term p_query
+  | P_tac_query   of 't p_query
   (** Query. *)
   | P_tac_fail
   (** A tactic that always fails. *)
 
-type 'term p_tactic = 'term p_tactic_aux loc
+type 't p_tactic = 't p_tactic_aux loc
 
 (** Parser-level representation of a proof terminator. *)
 type p_proof_end =
@@ -142,7 +152,7 @@ type p_proof_end =
   (** Abort the proof (theorem not admitted). *)
 
 (** Parser-level representation of a configuration command. *)
-type 'term p_config =
+type 't p_config =
   | P_config_builtin   of string * qident
   (** Sets the configuration for a builtin syntax (e.g., nat literals). *)
   | P_config_unop      of unop
@@ -153,41 +163,41 @@ type 'term p_config =
   (** Defines a new, valid identifier (e.g., ["σ"], ["€"] or ["ℕ"]). *)
   | P_config_quant of qident
   (** Defines a quantifier symbol (e.g., ["∀"], ["∃"]). *)
-  | P_config_unif_rule of 'term p_rule
+  | P_config_unif_rule of 't p_rule
   (** Unification hint declarations. *)
 
 (** Parser-level representation of a single command. *)
-type 'term p_statement = (ident * 'term p_arg list * 'term) loc
+type 't p_statement = (ident * 't p_arg list * 't) loc
 
-type 'term p_command_aux =
+type 't p_command_aux =
   | P_require    of bool * p_module_path list
   (** Require statement (require open if the boolean is true). *)
   | P_require_as of p_module_path * (string * bool) loc
   (** Require as statement. *)
   | P_open       of p_module_path list
   (** Open statement. *)
-  | P_symbol     of p_modifier loc list * ident * 'term p_arg list * 'term
+  | P_symbol     of p_modifier loc list * ident * 't p_arg list * 't
   (** Symbol declaration. *)
-  | P_rules      of 'term p_rule list
+  | P_rules      of 't p_rule list
   (** Rewriting rule declarations. *)
-  | P_definition of p_modifier loc list * bool * ident * 'term p_arg list *
-                    'term option * 'term
+  | P_definition of p_modifier loc list * bool * ident * 't p_arg list *
+                    't option * 't
   (** Definition of a symbol (unfoldable). *)
-  | P_inductive of p_modifier loc list * 'term p_inductive list
+  | P_inductive of p_modifier loc list * 't p_inductive list
   (** Definition of inductive type *)
-  | P_theorem    of p_modifier loc list * 'term p_statement * 'term p_tactic list *
+  | P_theorem    of p_modifier loc list * 't p_statement * 't p_tactic list *
                     p_proof_end loc
   (** Theorem with its proof. *)
-  | P_set        of 'term p_config
+  | P_set        of 't p_config
   (** Set the configuration. *)
-  | P_query      of 'term p_query
+  | P_query      of 't p_query
   (** Query. *)
 
 (** Parser-level representation of a single (located) command. *)
-type 'term p_command = 'term p_command_aux loc
+type 't p_command = 't p_command_aux loc
 
 (** Top level AST returned by the parser. *)
-type 'term ast = 'term p_command list
+type 't ast = 't p_command list
 
 let eq_ident : ident eq = fun x1 x2 -> x1.elt = x2.elt
 
@@ -321,10 +331,7 @@ end
 (** Map functions on parameters. *)
 
 (** [p_rw_patt_map f rw_patt] maps function [f] on terms of [rw_patt]. *)
-let p_rwt_patt_map :
-  'term_src 'term_tgt. ('term_src -> 'term_tgt) ->
-  'term_src p_rw_patt ->
-  'term_tgt p_rw_patt =
+let p_rw_patt_map : ('a -> 'b) -> 'a p_rw_patt -> 'b p_rw_patt =
   fun f rw_patt ->
   match rw_patt with
   | P_rw_Term(t)                    -> P_rw_Term(f t)
@@ -334,28 +341,24 @@ let p_rwt_patt_map :
   | P_rw_TermInIdInTerm(t1, id, t2) -> P_rw_TermInIdInTerm(f t1, id, f t2)
   | P_rw_TermAsIdInTerm(t1, id, t2) -> P_rw_TermAsIdInTerm(f t1, id, f t2)
 
-(** [p_assertion_map f assertion] maps function [f] on terms of [assertion]. *)
-let p_assertion_map :
-  'term_src 'term_tgt. ('term_src -> 'term_tgt) ->
-  'term_src p_assertion ->
-  'term_tgt p_assertion =
+(** [p_assertion_map f assertion] maps function [f] on terms of
+    [assertion]. *)
+let p_assertion_map : 'a 'b. ('a -> 'b) -> 'a p_assertion -> 'b p_assertion =
   fun f assertion ->
   match assertion with
   | P_assert_typing(t1, t2) -> P_assert_typing(f t1, f t2)
   | P_assert_conv(t1, t2)   -> P_assert_conv(f t1, f t2)
 
 (** [p_query_map f query] maps function [f] on terms of [query]. *)
-let p_query_map :
-  'term_src 'term_tgt. ('term_src -> 'term_tgt) ->
-  'term_src p_query ->
-  'term_tgt p_query =
+let p_query_map : 'a 'b. ('a -> 'b) -> 'a p_query -> 'b p_query =
   fun f {elt = p_query; pos = loc} ->
   let new_query =
     match p_query with
     | P_query_verbose(n)            -> P_query_verbose(n)
     | P_query_debug(b, s)           -> P_query_debug(b, s)
     | P_query_flag(s, b)            -> P_query_flag(s, b)
-    | P_query_assert(b, assertion)  -> P_query_assert(b, p_assertion_map f assertion)
+    | P_query_assert(b, assertion)  ->
+        P_query_assert(b, p_assertion_map f assertion)
     | P_query_infer(t, eval_cfg)    -> P_query_infer(f t, eval_cfg)
     | P_query_normalize(t,eval_cfg) -> P_query_normalize(f t, eval_cfg)
     | P_query_prover(s)             -> P_query_prover(s)
@@ -364,10 +367,7 @@ let p_query_map :
   Pos.make loc new_query
 
 (** [p_tactic_map f tactic] maps function [f] on terms of [tactic]. *)
-let p_tactic_map :
-  'term_src 'term_tgt. ('term_src -> 'term_tgt) ->
-  'term_src p_tactic ->
-  'term_tgt p_tactic =
+let p_tactic_map : 'a 'b. ('a -> 'b) -> 'a p_tactic -> 'b p_tactic =
   fun f {elt = p_tactic; pos = loc} ->
   let new_tactic =
     match p_tactic with
@@ -377,7 +377,7 @@ let p_tactic_map :
     | P_tac_simpl                           -> P_tac_simpl
     | P_tac_rewrite(b, rw_patt_loc_opt, t)  ->
       let map_rw_patt_loc {elt = rw_patt; pos = loc} =
-        Pos.make loc (p_rwt_patt_map f rw_patt)
+        Pos.make loc (p_rw_patt_map f rw_patt)
       in
       P_tac_rewrite(b, Option.map map_rw_patt_loc rw_patt_loc_opt, f t)
     | P_tac_refl                            -> P_tac_refl
@@ -386,16 +386,13 @@ let p_tactic_map :
     | P_tac_print                           -> P_tac_print
     | P_tac_proofterm                       -> P_tac_proofterm
     | P_tac_why3(s_opt)                     -> P_tac_why3(s_opt)
-    | P_tac_query(query)                    -> P_tac_query(p_query_map f query)
+    | P_tac_query(query) -> P_tac_query(p_query_map f query)
     | P_tac_fail                            -> P_tac_fail
   in
   Pos.make loc new_tactic
 
 (** [p_config_map f p_config] maps function [f] on terms of [p_config]. *)
-let p_config_map :
-  'term_src 'term_tgt. ('term_src -> 'term_tgt) ->
-  'term_src p_config ->
-  'term_tgt p_config =
+let p_config_map : 'a 'b. ('a -> 'b) -> 'a p_config -> 'b p_config =
   fun f p_config ->
   match p_config with
   | P_config_builtin(s, qid)      -> P_config_builtin(s, qid)
@@ -409,19 +406,16 @@ let p_config_map :
 
 
 (** [p_cmd_map f cmd] maps function [f] on terms of [cmd]. *)
-let p_cmd_map :
-  'term_src 'term_tgt. ('term_src -> 'term_tgt) ->
-  'term_src p_command ->
-  'term_tgt p_command =
+let p_cmd_map : ('a -> 'b) -> 'a p_command -> 'b p_command =
   fun f cmd ->
-  let map_trip : 'term_src p_arg -> 'term_tgt p_arg =
+  let map_trip : 'a p_arg -> 'b p_arg =
     fun (sloptl, termopt, b) ->
     (sloptl, Option.map f termopt, b)
   in
-  let map_arg_list : 'term_src p_arg list -> 'term_tgt p_arg list =
+  let map_arg_list : 'a p_arg list -> 'b p_arg list =
     fun p_arg_l -> List.map map_trip p_arg_l
   in
-  let statement_map : 'term_src p_statement -> 'term_tgt p_statement =
+  let statement_map : 'a p_statement -> 'b p_statement =
     fun {elt = (id, p_arg_l, t); pos = loc} ->
       Pos.make loc (id, map_arg_list p_arg_l, f t)
   in
@@ -441,9 +435,14 @@ let p_cmd_map :
       P_rules(List.map map_pair_loc rules)
     | P_definition(pl, b, id, argl, topt, t) ->
       P_definition(pl, b, id, map_arg_list argl, Option.map f topt, f t)
-    | P_inductive(p_mod, id, t, constr) ->
-      let new_constr = List.map (fun (id,t) -> (id, f t)) constr in
-      P_inductive(p_mod, id, f t, new_constr)
+    | P_inductive(ms, is) ->
+        let im : 'a p_inductive -> 'b p_inductive =
+          fun {elt=(id,t,its); pos} ->
+            let t = f t in
+            let its = List.map (fun (i,t) -> (i, f t)) its in
+            Pos.make pos (id, t, its)
+        in
+        P_inductive(ms, List.map im is)
     | P_theorem(pl, statement, tactics, proof_end) ->
       let new_statement = statement_map statement in
       let new_tactics   = List.map (p_tactic_map f) tactics in

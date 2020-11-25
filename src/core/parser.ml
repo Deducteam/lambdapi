@@ -9,9 +9,7 @@ open Earley_core
 open Syntax
 open Files
 open Pos
-
 open P_term
-type ast        = p_term Syntax.ast
 
 (** {b NOTE} we maintain the invariant that errors reported by the parser have
     a position. To help enforce that, we avoid opening the [Console] module so
@@ -154,16 +152,6 @@ let get_ops : Pos.pos -> p_module_path -> unit = fun loc p ->
 (** Blank function (for comments and white spaces). *)
 let blank = Blanks.line_comments "//"
 
-(** Set of identifier characters. *)
-let id_charset = Charset.from_string "a-zA-Z0-9_'"
-
-(** Keyword module. *)
-module KW = Keywords.Make(
-  struct
-    let id_charset = id_charset
-    let reserved = []
-  end)
-
 (** Reserve ["KIND"] to disallow it as an identifier. *)
 let _ = KW.reserve "KIND"
 
@@ -216,7 +204,7 @@ let sanity_check : Pos.pos -> string -> unit = fun loc s ->
   if s = "" then parser_fatal loc "Invalid token (empty).";
   if KW.mem s then parser_fatal loc "Invalid token (reserved).";
   (* We forbid valid (non-escaped) identifiers. *)
-  if String.for_all (Charset.mem id_charset) s then
+  if String.for_all (Charset.mem Syntax.id_charset) s then
     parser_fatal loc "Invalid token (only identifier characters).";
   (* We also reject symbols with certain substrings. *)
   let check_substring w =
@@ -696,7 +684,7 @@ let parser cmds = {c:cmd -> in_pos _loc c}*
 (** [parse_file fname] attempts to parse the file [fname], to obtain a list of
     toplevel commands. In case of failure, a graceful error message containing
     the error position is given through the [Fatal] exception. *)
-let parse_file : string -> ast = fun fname ->
+let parse_file : string -> p_term ast = fun fname ->
   Prefix.reset unops; Prefix.reset binops; Prefix.reset declared_ids;
   try Earley.parse_file cmds blank fname
   with Earley.Parse_error(buf,pos) ->
@@ -708,7 +696,7 @@ let parse_file : string -> ast = fun fname ->
     containing the error position is given through the [Fatal] exception.  The
     [fname] argument should contain a relevant file name for the error message
     to be constructed. *)
-let parse_string : string -> string -> ast = fun fname str ->
+let parse_string : string -> string -> p_term ast = fun fname str ->
   Prefix.reset unops; Prefix.reset binops; Prefix.reset declared_ids;
   try Earley.parse_string ~filename:fname cmds blank str
   with Earley.Parse_error(buf,pos) ->

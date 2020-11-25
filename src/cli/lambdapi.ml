@@ -63,7 +63,7 @@ let parse_cmd : Config.t -> string list -> unit = fun cfg files ->
 
 (** Running the pretty-printing mode. *)
 let beautify_cmd : Config.t -> string -> unit = fun cfg file ->
-  let run _ = Config.init cfg; Pretty.beautify (Compile.parse_file file) in
+  let run _ = Config.init cfg; P_term.beautify (Compile.parse_file file) in
   Console.handle_exceptions run
 
 (** Running the LSP server. *)

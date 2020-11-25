@@ -12,11 +12,8 @@ open Console
 open Pos
 open Syntax
 
-type p_term = P_term.p_term
-type p_type = P_term.p_type
-
 let pp_ident : ident pp = fun oc id ->
-  if Parser.KW.mem id.elt then
+  if Syntax.KW.mem id.elt then
     fatal id.pos "Identifier [%s] is a Lambdapi keyword." id.elt;
   Format.pp_print_string oc id.elt
 
@@ -26,7 +23,7 @@ let pp_arg_ident : ident option pp = fun oc id ->
   | None     -> Format.pp_print_string oc "_"
 
 let pp_path_elt : Pos.popt -> (string * bool) pp = fun pos oc (s,b) ->
-  if not b && Parser.KW.mem s then
+  if not b && Syntax.KW.mem s then
     fatal pos "Module path member [%s] is a Lambdapi keyword." s;
   if b then Format.fprintf oc "{|%s|}" s else Format.pp_print_string oc s
 
@@ -61,18 +58,22 @@ module type PPTERM = sig
 
   val pp : t pp
   (** [pp oc t] prints term [t] to formatter [oc]. *)
+
+  val pp_unif_rule : (t * t) loc pp option
+  (** [pp_unif_rule oc ur] pretty prints unification rule [ur] to formatter
+      [oc]. If [None], unification rules are ignored. *)
 end
 
 (** [Make(T)] contains a set of printing functions for terms specified by
     module [T]. *)
 module Make (T: PPTERM) = struct
 
-  let rec pp_p_annot : T.t option pp = fun oc a ->
+  let pp_p_annot : T.t option pp = fun oc a ->
     match a with
     | Some(a) -> Format.fprintf oc " :@ %a" T.pp a
     | None    -> ()
 
-  and pp_p_arg : T.t p_arg pp = fun oc (ids,ao,b) ->
+  let pp_p_arg : T.t p_arg pp = fun oc (ids,ao,b) ->
     let pp_ids = List.pp pp_arg_ident " " in
     match (ao,b) with
     | (None   , false) -> Format.fprintf oc "%a" pp_ids ids
@@ -80,7 +81,7 @@ module Make (T: PPTERM) = struct
     | (Some(a), false) -> Format.fprintf oc "(%a : %a)" pp_ids ids T.pp a
     | (Some(a), true ) -> Format.fprintf oc "{%a : %a}" pp_ids ids T.pp a
 
-  and pp_p_args : T.t p_arg list pp = fun oc ->
+  let pp_p_args : T.t p_arg list pp = fun oc ->
     List.iter (Format.fprintf oc " %a" pp_p_arg)
 
   let pp_p_rule : bool -> T.t p_rule pp = fun first oc r ->
@@ -177,8 +178,7 @@ let pp_p_inductive : string -> T.t p_inductive pp =
     | P_tac_query(q)           -> pp_p_query oc q
     | P_tac_fail               -> out "fail"
 
-  let pp_command : (T.t -> T.t * T.t list) -> (T.t -> (T.t * T.t ) list) ->
-    T.t p_command pp = fun get_args unpack oc cmd ->
+  let pp_command : T.t p_command pp = fun oc cmd ->
     let out fmt = Format.fprintf oc fmt in
     match cmd.elt with
     | P_require(b,ps)             ->
@@ -232,104 +232,24 @@ let pp_p_inductive : string -> T.t p_inductive pp =
         in
         out "set infix%s %f %S ≔ %a" a p s pp_qident qid
     | P_set(P_config_unif_rule(ur))   ->
-        out "set unif_rule %a" (pp_p_unif_rule get_args unpack) ur
+        begin
+          match T.pp_unif_rule with
+            | Some(urpp) -> out "set unif_rule %a" urpp ur
+            | None -> ()
+        end
     | P_set(P_config_ident(id))       ->
         out "set declared %S" id
     | P_set(P_config_quant(qid))      ->
         out "set quantifier %a" pp_qident qid
     | P_query(q)                      ->
        pp_p_query oc q
+
+  (** [pp_ast oc ast] pretty prints abstract syntax tree [ast] to formatter
+      [oc]. *)
+  let rec pp_ast : T.t ast pp = fun oc cs ->
+    match cs with
+    | []    -> ()
+    | [c]   -> Format.fprintf oc "%a@." pp_command c
+    | c::cs ->
+      Format.fprintf oc "%a\n@.%a" pp_command c pp_ast cs
 end
-
-(** [pp_p_term oc t] prints parser term [t] to out channel [oc]. *)
-let rec pp_p_term : p_term pp = fun oc t ->
-  let open Parser in (* for PAtom, PAppl and PFunc *)
-  let open P_term in
-  let module Ptp = Make(struct type t = p_term let pp = pp_p_term end) in
-  let out fmt = Format.fprintf oc fmt in
-  let empty_context = ref true in
-  let rec pp p _ t =
-    let pp_env _ ar =
-      match ar with
-      | None -> ()
-      | Some [||] when !empty_context -> ()
-      | Some ar -> out "[%a]" (Array.pp (pp PFunc) "; ") ar
-    in
-    let pp_atom = pp PAtom in
-    let pp_appl = pp PAppl in
-    let pp_func = pp PFunc in
-    match (t.elt, p) with
-    | (P_Type              , _    ) -> out "TYPE"
-    | (P_Iden(qid, false)  , _    ) -> out "%a" pp_qident qid
-    | (P_Iden(qid, true )  , _    ) -> out "%a" pp_qident qid
-    | (P_Wild              , _    ) -> out "_"
-    | (P_Meta(x,ar)        , _    ) -> out "?%a%a" pp_ident x pp_env ar
-    | (P_Patt(None   ,ar)  , _    ) -> out "$_%a" pp_env ar
-    | (P_Patt(Some(x),ar)  , _    ) -> out "$%a%a" pp_ident x pp_env ar
-    | (P_Appl(t,u)         , PAppl)
-    | (P_Appl(t,u)         , PFunc) -> out "%a %a" pp_appl t pp_atom u
-    | (P_Impl(a,b)         , PFunc) -> out "%a → %a" pp_appl a pp_func b
-    | (P_Abst(args,t)      , PFunc) ->
-        out "λ%a, " Ptp.pp_p_args args;
-        let fn (ids,_,_) = List.for_all ((=) None) ids in
-        let ec = !empty_context in
-        empty_context := ec && List.for_all fn args;
-        out "%a" pp_func t;
-        empty_context := ec
-    | (P_Prod(args,b)      , PFunc) ->
-        out "Π%a, %a" Ptp.pp_p_args args pp_func b
-    | (P_LLet(x,args,a,t,u), PFunc) ->
-        out "@[<hov 2>let %a%a%a ≔@ %a@] in %a"
-          pp_ident x Ptp.pp_p_args args Ptp.pp_p_annot a pp_func t pp_func u
-    | (P_NLit(i)           , _    ) -> out "%i" i
-    | (P_UnaO(u,t)         , _    ) ->
-        let (u, _, _) = u in
-        out "(%s %a)" u pp_atom t
-    | (P_BinO(t,b,u)       , _    ) ->
-        let (b, _, _, _) = b in
-        out "(%a %s %a)" pp_atom t b pp_atom u
-    (* We print minimal parentheses, and ignore the [Wrap] constructor. *)
-    | (P_Wrap(t)           , _    ) -> out "%a" (pp p) t
-    | (P_Expl(t)           , _    ) -> out "{%a}" pp_func t
-    | (_                   , _    ) -> out "(%a)" pp_func t
-  in
-  let rec pp_toplevel _ t =
-    match t.elt with
-    | P_Abst(args,t)       -> out "λ%a, %a" Ptp.pp_p_args args pp_toplevel t
-    | P_Prod(args,b)       -> out "Π%a, %a" Ptp.pp_p_args args pp_toplevel b
-    | P_Impl(a,b)          -> out "%a → %a" (pp PAppl) a pp_toplevel b
-    | P_LLet(x,args,a,t,u) ->
-        out "@[<hov 2>let %a%a%a ≔ %a@] in %a" pp_ident x
-          Ptp.pp_p_args args Ptp.pp_p_annot a pp_toplevel t pp_toplevel u
-    | _                    -> out "%a" (pp PFunc) t
-  in
-  pp_toplevel oc t
-
-(** Short synonym of [pp_p_term]. *)
-let pp : p_term pp = pp_p_term
-
-(** [P_termPP] provides printing functions for {!type:P_term.p_term}
-    commands. *)
-module P_termPP = Make(struct type t = P_term.p_term let pp = pp_p_term end)
-
-(** [TermPP] provides printing functions for {!type:Terms.term} commands. *)
-module TermPP = Make(struct type t = Terms.term let pp = Print.pp_term end)
-
-(** [pp_parser_command oc cmd] prints parser term command [cmd] to [oc]. *)
-let pp_parser_command : p_term p_command pp =
-  P_termPP.pp_command P_term.p_get_args Unif_rule.p_unpack
-
-(** [pp_ast_command oc cmd] prints term command [cmd] to [oc].*)
-let pp_ast_command : Terms.term p_command pp =
-  TermPP.pp_command Basics.get_args Unif_rule.unpack
-
-let rec pp_ast : p_term ast pp = fun oc cs ->
-  match cs with
-  | []    -> ()
-  | [c]   -> Format.fprintf oc "%a@." pp_parser_command c
-  | c::cs ->
-    Format.fprintf oc "%a\n@.%a" pp_parser_command c pp_ast cs
-
-(** [beautify cmds] pretty-prints the commands [cmds] to standard output. *)
-let beautify : p_term ast -> unit =
-  pp_ast Format.std_formatter
