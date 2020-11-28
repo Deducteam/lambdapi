@@ -9,7 +9,7 @@ open Earley_core
 open Syntax
 open Files
 open Pos
-open P_term
+open P_terms
 
 (** {b NOTE} we maintain the invariant that errors reported by the parser have
     a position. To help enforce that, we avoid opening the [Console] module so
@@ -684,7 +684,7 @@ let parser cmds = {c:cmd -> in_pos _loc c}*
 (** [parse_file fname] attempts to parse the file [fname], to obtain a list of
     toplevel commands. In case of failure, a graceful error message containing
     the error position is given through the [Fatal] exception. *)
-let parse_file : string -> p_term ast = fun fname ->
+let parse_file : string -> (p_term, p_rule) ast = fun fname ->
   Prefix.reset unops; Prefix.reset binops; Prefix.reset declared_ids;
   try Earley.parse_file cmds blank fname
   with Earley.Parse_error(buf,pos) ->
@@ -696,7 +696,7 @@ let parse_file : string -> p_term ast = fun fname ->
     containing the error position is given through the [Fatal] exception.  The
     [fname] argument should contain a relevant file name for the error message
     to be constructed. *)
-let parse_string : string -> string -> p_term ast = fun fname str ->
+let parse_string : string -> string -> (p_term, p_rule) ast = fun fname str ->
   Prefix.reset unops; Prefix.reset binops; Prefix.reset declared_ids;
   try Earley.parse_string ~filename:fname cmds blank str
   with Earley.Parse_error(buf,pos) ->

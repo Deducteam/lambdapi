@@ -5,7 +5,7 @@ open! Lplib
 open Timed
 open Pos
 open Syntax
-open P_term
+open P_terms
 open Legacy_lexer
 open Parser
 
@@ -39,7 +39,7 @@ type old_p_rule = ((strloc * p_term option) list * p_term * p_term) Pos.loc
 
 (** [translate_old_rule r] transforms the legacy representation of a rule into
     the new representation. This function will be removed soon. *)
-let translate_old_rule : old_p_rule -> p_term p_rule = fun r ->
+let translate_old_rule : old_p_rule -> p_rule = fun r ->
   let (ctx, lhs, rhs) = r.elt in
   (* Check for (deprecated) annotations in the context. *)
   let get_var (x,ao) =
@@ -238,7 +238,7 @@ let build_config : Pos.pos -> string -> string option -> eval_config =
 %token <Syntax.p_module_path * string> QID
 
 %start line
-%type <P_term.p_term Syntax.p_command> line
+%type <(P_terms.p_term, P_terms.p_rule) Syntax.p_command> line
 
 %right ARROW FARROW
 

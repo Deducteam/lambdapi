@@ -49,6 +49,9 @@ and p_type = p_term
 (** Synonym of [p_term] for semantic hints. *)
 and p_patt = p_term
 
+(** Parser-level rewriting rule representation. *)
+type p_rule = (p_term * p_term) loc
+
 (** [p_get_args t] is {!val:Basics.get_args} on syntax-level terms. *)
 let p_get_args : p_term -> p_term * p_term list = fun t ->
   let rec p_get_args acc t =
@@ -94,13 +97,17 @@ module P  =
       if i <= 0 then head else appl_wild (appl head wild) (i-1)
 
     (** [rule] creates a p_rule without position. *)
-    let rule : p_patt -> p_term -> p_term p_rule = fun l r -> Pos.none (l,r)
+    let rule : p_patt -> p_term -> p_rule = fun l r -> Pos.none (l,r)
 
   end
 
-let rec eq_p_term : p_term eq = fun t1 t2 ->
+(** [eq] is an equality function on parser level terms [t1] and [t2]. *)
+let rec eq_p_term: p_term eq = fun t1 t2 ->
+  (* We define this function recursively using the equality defined on
+     arguments by the modules of {!module:Syntax}. *)
   let module EqAst =
-    Syntax.EqAst(struct type t = p_term let eq = eq_p_term end)
+    EqAst (struct type t = p_term let eq = eq_p_term end)
+      (struct type t = p_rule let eq = eq_p_rule end)
   in
   let eq_p_arg = EqAst.eq_p_arg in
   match (t1.elt, t2.elt) with
@@ -131,20 +138,24 @@ let rec eq_p_term : p_term eq = fun t1 t2 ->
   | (t1                  ,                   t2      ) ->
       t1 = t2
 
-(** Parser terms with equalities on commands and structures. *)
-module Eq = Syntax.EqAst(struct
-    type t = p_term
-    let eq = eq_p_term
-  end)
+(** [eq_p_rule] is an equality function between parser level rules. *)
+and eq_p_rule : p_rule eq = fun {elt=(lhs1,rhs1);_} {elt=(lhs2,rhs2);_} ->
+  eq_p_term lhs1 lhs2 && eq_p_term rhs1 rhs2
+
+(** Parser terms with equalities on commands and structures. Defined after
+    [eq_p_term] and [eq_p_rule] because we cannot have mutual recursive
+    definitions of modules and functions. *)
+module Eq =
+  Syntax.EqAst
+    (struct type t = p_term let eq = eq_p_term end)
+    (struct type t = p_rule let eq = eq_p_rule end)
 
 (** [pp oc t] prints parser term [t] to out channel [oc]. *)
 let rec pp : p_term pp = fun oc t ->
   let module Ptp =
-    Pretty.Make(struct
-      type t = p_term
-      let pp = pp
-      let pp_unif_rule = None (* REVIEW *)
-    end)
+    Pretty.Make
+      (struct type t = p_term let pp = pp end)
+      (struct type t = p_rule let pp = pp_p_rule end)
   in
   let out fmt = Format.fprintf oc fmt in
   let empty_context = ref true in
@@ -206,12 +217,14 @@ let rec pp : p_term pp = fun oc t ->
   in
   pp_toplevel oc t
 
-(** [Pp] provides printing functions for {!type:P_term.p_term} commands. *)
-module Pp = Pretty.Make(struct
-    type t = p_term
-    let pp = pp
-    let pp_unif_rule = None (* REVIEW *)
-  end)
+and pp_p_rule : p_rule pp = fun oc {elt=(lhs,rhs);_} ->
+  Format.fprintf oc "@[<hov 3>%a ↪ %a@]@?" pp lhs pp rhs
+
+(** [Pp] provides printing functions for {!type:P_terms.p_term} commands. *)
+module Pp =
+  Pretty.Make
+    (struct type t = p_term let pp = pp end)
+    (struct type t = p_rule let pp = pp_p_rule end)
 
 (** [beautify cmds] pretty-prints the commands [cmds] to standard output. *)
-let beautify : p_term ast -> unit = Pp.pp_ast Format.std_formatter
+let beautify : (p_term, p_rule) ast -> unit = Pp.pp_ast Format.std_formatter

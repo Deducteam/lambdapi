@@ -10,7 +10,7 @@ open Sign
 open Pos
 open Files
 open Syntax
-open P_term
+open P_terms
 open Sig_state
 open Scope
 open Print

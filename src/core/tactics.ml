@@ -8,16 +8,16 @@ open Pos
 open Syntax
 open Proof
 open Print
-open P_term
+open P_terms
 
-type ast         = p_term Syntax.ast
-type p_command   = p_term Syntax.p_command
-type p_arg       = p_term Syntax.p_arg
-type p_rule      = p_term Syntax.p_rule
-type p_rw_patt   = p_term Syntax.p_rw_patt
-type p_tactic    = p_term Syntax.p_tactic
-type p_assertion = p_term Syntax.p_assertion
-type p_query     = p_term Syntax.p_query
+type nonrec ast         = (p_term, p_rule) ast
+type nonrec p_command   = (p_term, p_rule) p_command
+type nonrec p_arg       = p_term Syntax.p_arg
+type nonrec p_rule      = p_rule
+type nonrec p_rw_patt   = p_term p_rw_patt
+type nonrec p_tactic    = p_term p_tactic
+type nonrec p_assertion = p_term p_assertion
+type nonrec p_query     = p_term p_query
 
 (** Logging function for tactics. *)
 let log_tact = new_logger 't' "tact" "tactics"

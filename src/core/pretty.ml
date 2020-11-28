@@ -58,15 +58,11 @@ module type PPTERM = sig
 
   val pp : t pp
   (** [pp oc t] prints term [t] to formatter [oc]. *)
-
-  val pp_unif_rule : (t * t) loc pp option
-  (** [pp_unif_rule oc ur] pretty prints unification rule [ur] to formatter
-      [oc]. If [None], unification rules are ignored. *)
 end
 
 (** [Make(T)] contains a set of printing functions for terms specified by
     module [T]. *)
-module Make (T: PPTERM) = struct
+module Make (T: PPTERM)(R: PPTERM) = struct
 
   let pp_p_annot : T.t option pp = fun oc a ->
     match a with
@@ -84,11 +80,6 @@ module Make (T: PPTERM) = struct
   let pp_p_args : T.t p_arg list pp = fun oc ->
     List.iter (Format.fprintf oc " %a" pp_p_arg)
 
-  let pp_p_rule : bool -> T.t p_rule pp = fun first oc r ->
-    let (lhs, rhs) = r.elt in
-    let kw = if first then "rule" else "with" in
-    Format.fprintf oc "@[<hov 3>%s %a ↪ %a@]@?" kw T.pp lhs T.pp rhs
-
 let pp_p_inductive : string -> T.t p_inductive pp =
   fun kw oc i ->
   let (s, t, tl) = i.elt in
@@ -101,18 +92,19 @@ let pp_p_inductive : string -> T.t p_inductive pp =
   let pp_p_equi : (T.t * T.t) pp = fun oc (l, r) ->
     Format.fprintf oc "@[<hov 3>%a ≡ %a@]@?" T.pp l T.pp r
 
-  let pp_p_unif_rule : (T.t -> T.t * T.t list) -> (T.t -> (T.t * T.t) list) ->
-    T.t p_rule pp = fun get_args unpack oc r ->
-    let (lhs, rhs) = r.elt in
-    let lhs =
-      match get_args lhs with
-      | (_, [t; u]) -> (t, u)
-      | _           -> assert false
-    in
-    let eqs = unpack rhs in
-    let pp_sep : unit pp = fun oc () -> Format.fprintf oc ", " in
-    Format.fprintf oc "@[<hov 3>%a ↪ %a@]@?"
-      pp_p_equi lhs (Format.pp_print_list ~pp_sep pp_p_equi) eqs
+  (* let pp_p_unif_rule : (T.t -> T.t * T.t list) ->
+   *  (T.t -> (T.t * T.t) list) ->
+   *   T.t p_rule pp = fun get_args unpack oc r ->
+   *   let (lhs, rhs) = r.elt in
+   *   let lhs =
+   *     match get_args lhs with
+   *     | (_, [t; u]) -> (t, u)
+   *     | _           -> assert false
+   *   in
+   *   let eqs = unpack rhs in
+   *   let pp_sep : unit pp = fun oc () -> Format.fprintf oc ", " in
+   *   Format.fprintf oc "@[<hov 3>%a ↪ %a@]@?"
+   *     pp_p_equi lhs (Format.pp_print_list ~pp_sep pp_p_equi) eqs *)
 
   let pp_p_rw_patt : T.t p_rw_patt pp = fun oc p ->
     let out fmt = Format.fprintf oc fmt in
@@ -178,7 +170,7 @@ let pp_p_inductive : string -> T.t p_inductive pp =
     | P_tac_query(q)           -> pp_p_query oc q
     | P_tac_fail               -> out "fail"
 
-  let pp_command : T.t p_command pp = fun oc cmd ->
+  let pp_command : (T.t, R.t) p_command pp = fun oc cmd ->
     let out fmt = Format.fprintf oc fmt in
     match cmd.elt with
     | P_require(b,ps)             ->
@@ -195,8 +187,8 @@ let pp_p_inductive : string -> T.t p_inductive pp =
         out " :@ @[<hov>%a@]" T.pp a
     | P_rules([])                     -> ()
     | P_rules(r::rs)                  ->
-        out "%a" (pp_p_rule true) r;
-        List.iter (out "%a" (pp_p_rule false)) rs
+        out "first %a" R.pp r;
+        List.iter (out "with %a" R.pp) rs
     | P_definition(ms,_,s,args,ao,t) ->
         out "@[<hov 2>%adefinition %a"
           (Format.pp_print_list pp_modifier) ms pp_ident s;
@@ -231,12 +223,7 @@ let pp_p_inductive : string -> T.t p_inductive pp =
           | Assoc_right -> " right"
         in
         out "set infix%s %f %S ≔ %a" a p s pp_qident qid
-    | P_set(P_config_unif_rule(ur))   ->
-        begin
-          match T.pp_unif_rule with
-            | Some(urpp) -> out "set unif_rule %a" urpp ur
-            | None -> ()
-        end
+    | P_set(P_config_unif_rule(ur))   -> R.pp oc ur
     | P_set(P_config_ident(id))       ->
         out "set declared %S" id
     | P_set(P_config_quant(qid))      ->
@@ -246,7 +233,7 @@ let pp_p_inductive : string -> T.t p_inductive pp =
 
   (** [pp_ast oc ast] pretty prints abstract syntax tree [ast] to formatter
       [oc]. *)
-  let rec pp_ast : T.t ast pp = fun oc cs ->
+  let rec pp_ast : (T.t, R.t) ast pp = fun oc cs ->
     match cs with
     | []    -> ()
     | [c]   -> Format.fprintf oc "%a@." pp_command c

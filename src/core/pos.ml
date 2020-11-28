@@ -61,6 +61,11 @@ type strloc = string loc
 let make : popt -> 'a -> 'a loc =
   fun pos elt -> { elt ; pos }
 
+(** [map f l] maps function [f] over the element of [l]. The position is
+    unchanged. *)
+let map : ('a -> 'b) -> 'a loc -> 'b loc = fun f {elt; pos} ->
+  {elt=f elt; pos}
+
 (** [in_pos pos elt] associates the position [pos] to [elt]. *)
 let in_pos : pos -> 'a -> 'a loc =
   fun p elt -> { elt ; pos = Some p }

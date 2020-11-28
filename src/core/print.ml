@@ -267,8 +267,7 @@ let pp_constr : constr pp = fun oc (ctx, t, u) ->
   Format.fprintf oc "%a%a ≡ %a" pp_ctxt ctx pp_term t pp_term u
 
 (** [Ast] provides functions to print AST with terms. *)
-module Ast = Pretty.Make(struct
-    type t = term
-    let pp = pp_term
-    let pp_unif_rule = None
-  end)
+module Ast =
+  Pretty.Make
+    (struct type t = term let pp = pp_term end)
+    (struct type t = (sym * rule) let pp = pp_rule end)

@@ -15,16 +15,7 @@ open Pos
 open Console
 open Terms
 open Print
-open P_term
-
-type ast         = p_term Syntax.ast
-type p_command   = p_term Syntax.p_command
-type p_arg       = p_term Syntax.p_arg
-type p_rule      = p_term Syntax.p_rule
-type p_rw_patt   = p_term Syntax.p_rw_patt
-type p_tactic    = p_term Syntax.p_tactic
-type p_assertion = p_term Syntax.p_assertion
-type p_query     = p_term Syntax.p_query
+open P_terms
 
 (** Logging function for generating of inductive principle. *)
 let log_ind = new_logger 'g' "indu" "generating induction principle"

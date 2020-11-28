@@ -61,9 +61,6 @@ type binop = string * assoc * priority * qident
     the argument is marked as implicit (i.e., between curly braces). *)
 type 't p_arg = ident option list * 't option * bool
 
-(** Parser-level rewriting rule representation. *)
-type 't p_rule = ('t * 't) loc
-
 (** Parser-level inductive type representation. *)
 type 'term p_inductive = (ident * 'term * (ident * 'term) list) loc
 
@@ -152,7 +149,7 @@ type p_proof_end =
   (** Abort the proof (theorem not admitted). *)
 
 (** Parser-level representation of a configuration command. *)
-type 't p_config =
+type 'r p_config =
   | P_config_builtin   of string * qident
   (** Sets the configuration for a builtin syntax (e.g., nat literals). *)
   | P_config_unop      of unop
@@ -163,13 +160,13 @@ type 't p_config =
   (** Defines a new, valid identifier (e.g., ["σ"], ["€"] or ["ℕ"]). *)
   | P_config_quant of qident
   (** Defines a quantifier symbol (e.g., ["∀"], ["∃"]). *)
-  | P_config_unif_rule of 't p_rule
+  | P_config_unif_rule of 'r
   (** Unification hint declarations. *)
 
 (** Parser-level representation of a single command. *)
 type 't p_statement = (ident * 't p_arg list * 't) loc
 
-type 't p_command_aux =
+type ('t, 'r) p_command_aux =
   | P_require    of bool * p_module_path list
   (** Require statement (require open if the boolean is true). *)
   | P_require_as of p_module_path * (string * bool) loc
@@ -178,7 +175,7 @@ type 't p_command_aux =
   (** Open statement. *)
   | P_symbol     of p_modifier loc list * ident * 't p_arg list * 't
   (** Symbol declaration. *)
-  | P_rules      of 't p_rule list
+  | P_rules      of 'r list
   (** Rewriting rule declarations. *)
   | P_definition of p_modifier loc list * bool * ident * 't p_arg list *
                     't option * 't
@@ -188,16 +185,21 @@ type 't p_command_aux =
   | P_theorem    of p_modifier loc list * 't p_statement * 't p_tactic list *
                     p_proof_end loc
   (** Theorem with its proof. *)
-  | P_set        of 't p_config
+  | P_set        of 'r p_config
   (** Set the configuration. *)
   | P_query      of 't p_query
   (** Query. *)
 
-(** Parser-level representation of a single (located) command. *)
-type 't p_command = 't p_command_aux loc
+(** Parser-level representation of a single (located) command. The first type
+    parameter can be instanciated by parser terms of {!module:P_terms s} or
+    terms of {!module:Terms}. The second parameter is the type of rewriting
+    rules. The two have been separated because a parser level AST has a rule
+    type of [(p_term * p_term) loc], but a scoped AST does not have
+    [(term * term) loc] rules, but {!type:Scope.pre_rule}. *)
+type ('t, 'r) p_command = ('t, 'r) p_command_aux loc
 
 (** Top level AST returned by the parser. *)
-type 't ast = 't p_command list
+type ('t, 'r) ast = ('t, 'r) p_command list
 
 let eq_ident : ident eq = fun x1 x2 -> x1.elt = x2.elt
 
@@ -210,16 +212,12 @@ let eq_binop : binop eq = fun (n1,a1,p1,id1) (n2,a2,p2,id2) ->
   n1 = n2 && a1 = a2 && p1 = p2 && eq_qident id1 id2
 
 (** Equality functions parametrised by terms and equality on terms. *)
-module EqAst (T: sig type t val eq : t eq end) = struct
+module EqAst (T: sig type t val eq : t eq end)
+    (R: sig type t val eq : t eq end) = struct
 
   let eq_p_arg : T.t p_arg eq = fun (x1,ao1,b1) (x2,ao2,b2) ->
     List.equal (Option.equal (fun x1 x2 -> x1.elt = x2.elt)) x1 x2
     && Option.equal T.eq ao1 ao2 && b1 = b2
-
-  let eq_p_rule : T.t p_rule eq = fun r1 r2 ->
-    let {elt = (lhs1, rhs1); _} = r1 in
-    let {elt = (lhs2, rhs2); _} = r2 in
-    T.eq lhs1 lhs2 && T.eq rhs1 rhs2
 
   let eq_p_rw_patt : T.t p_rw_patt loc eq = fun r1 r2 ->
     match (r1.elt, r2.elt) with
@@ -282,7 +280,7 @@ module EqAst (T: sig type t val eq : t eq end) = struct
     | (t1                  , t2                  ) ->
         t1 = t2
 
-  let eq_p_config : T.t p_config eq = fun c1 c2 ->
+  let eq_p_config : R.t p_config eq = fun c1 c2 ->
     match (c1, c2) with
     | (P_config_builtin(s1,q1), P_config_builtin(s2,q2)) ->
         s1 = s2 && eq_qident q1 q2
@@ -297,7 +295,7 @@ module EqAst (T: sig type t val eq : t eq end) = struct
 
   (** [eq_command c1 c2] tells whether [c1] and [c2] are the same commands.
       They are compared up to source code positions. *)
-  let eq_p_command : T.t p_command eq = fun c1 c2 ->
+  let eq_p_command : (T.t, R.t) p_command eq = fun c1 c2 ->
     match (c1.elt, c2.elt) with
     | (P_require(b1,ps1)           , P_require(b2,ps2)           ) ->
        b1 = b2 && List.equal (=) ps1 ps2
@@ -309,7 +307,7 @@ module EqAst (T: sig type t val eq : t eq end) = struct
         m1 = m2 && eq_ident s1 s2 && T.eq a1 a2
         && List.equal eq_p_arg al1 al2
     | (P_rules(rs1)                , P_rules(rs2)                ) ->
-        List.equal eq_p_rule rs1 rs2
+        List.equal R.eq rs1 rs2
     | (P_definition(m1,b1,s1,l1,a1,t1), P_definition(m2,b2,s2,l2,a2,t2)) ->
         m1 = m2 && b1 = b2 && eq_ident s1 s2 && List.equal eq_p_arg l1 l2
         && Option.equal T.eq a1 a2 && T.eq t1 t2
@@ -328,10 +326,10 @@ module EqAst (T: sig type t val eq : t eq end) = struct
         false
 end
 
-(** Map functions on parameters. *)
+(** Map functions on the first parameter of commands (the terms). *)
 
 (** [p_rw_patt_map f rw_patt] maps function [f] on terms of [rw_patt]. *)
-let p_rw_patt_map : ('a -> 'b) -> 'a p_rw_patt -> 'b p_rw_patt =
+let p_rw_patt_map : 'a 'b. ('a -> 'b) -> 'a p_rw_patt -> 'b p_rw_patt =
   fun f rw_patt ->
   match rw_patt with
   | P_rw_Term(t)                    -> P_rw_Term(f t)
@@ -400,39 +398,25 @@ let p_config_map : 'a 'b. ('a -> 'b) -> 'a p_config -> 'b p_config =
   | P_config_binop(binop)         -> P_config_binop(binop)
   | P_config_ident(s)             -> P_config_ident(s)
   | P_config_quant(qid)           -> P_config_quant(qid)
-  | P_config_unif_rule(rule_loc)  ->
-    let {elt = (lhs,rhs); pos = loc} = rule_loc in
-    P_config_unif_rule(Pos.make loc (f lhs, f rhs))
+  | P_config_unif_rule(r)         -> P_config_unif_rule(f r)
 
 
 (** [p_cmd_map f cmd] maps function [f] on terms of [cmd]. *)
-let p_cmd_map : ('a -> 'b) -> 'a p_command -> 'b p_command =
-  fun f cmd ->
-  let map_trip : 'a p_arg -> 'b p_arg =
-    fun (sloptl, termopt, b) ->
-    (sloptl, Option.map f termopt, b)
+let p_cmd_map : 'a 'b 'c. ('a -> 'b) -> ('a, 'c) p_command ->
+  ('b, 'c) p_command = fun f cmd ->
+  let map_arg_list =
+    let arg_map : 'a p_arg -> 'b p_arg = fun (sloptl, termopt, b) ->
+      (sloptl, Option.map f termopt, b)
+    in
+    List.map arg_map
   in
-  let map_arg_list : 'a p_arg list -> 'b p_arg list =
-    fun p_arg_l -> List.map map_trip p_arg_l
-  in
-  let statement_map : 'a p_statement -> 'b p_statement =
-    fun {elt = (id, p_arg_l, t); pos = loc} ->
-      Pos.make loc (id, map_arg_list p_arg_l, f t)
-  in
-  let cmd_elt =
-    match cmd.elt with
-    | P_require(b, pl) -> P_require(b,pl)
-    | P_require_as(pl,sbl) -> P_require_as(pl,sbl)
+  let f e =
+    match e with
+    | P_require(b, pl) -> P_require(b, pl)
+    | P_require_as(pl, sbl) -> P_require_as(pl, sbl)
     | P_open(pl) -> P_open(pl)
-    | P_symbol(pl, id, argl, t) ->
-      P_symbol(pl, id, map_arg_list argl, f t)
-    | P_rules(rules) ->
-      let map_pair_loc pair_loc =
-        let pair = pair_loc.elt in
-        let loc = pair_loc.pos in
-        Pos.make loc (f (fst pair), f (snd pair))
-      in
-      P_rules(List.map map_pair_loc rules)
+    | P_symbol(pl, id, argl, t) -> P_symbol(pl, id, map_arg_list argl, f t)
+    | P_rules(rs) -> P_rules(rs)
     | P_definition(pl, b, id, argl, topt, t) ->
       P_definition(pl, b, id, map_arg_list argl, Option.map f topt, f t)
     | P_inductive(ms, is) ->
@@ -444,10 +428,12 @@ let p_cmd_map : ('a -> 'b) -> 'a p_command -> 'b p_command =
         in
         P_inductive(ms, List.map im is)
     | P_theorem(pl, statement, tactics, proof_end) ->
-      let new_statement = statement_map statement in
-      let new_tactics   = List.map (p_tactic_map f) tactics in
-      P_theorem(pl, new_statement, new_tactics, proof_end)
-    | P_set(p_config) -> P_set(p_config_map f p_config)
+        let st_map st =
+          Pos.map (fun (id, p_arg_l, t) -> (id,map_arg_list p_arg_l, f t)) st
+        in
+        let tactics   = List.map (p_tactic_map f) tactics in
+        P_theorem(pl, st_map statement, tactics, proof_end)
+    | P_set(p_config) -> P_set(p_config)
     | P_query(query)  -> P_query(p_query_map f query)
   in
-  Pos.make cmd.pos cmd_elt
+  Pos.map f cmd
