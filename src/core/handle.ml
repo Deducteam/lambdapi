@@ -338,7 +338,6 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
       (ss, None)
   | P_symbol(ms, st, t, ts_pe, e) ->
     let x,xs,ao = st.elt in
-    (*   : U  := V begin..end *)
     begin
       match (ao, e, t, ts_pe) with
       | (   None, Def, None  , Some _) ->
