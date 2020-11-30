@@ -39,7 +39,7 @@ type match_strat =
         earlier filters the term as well). This is the default. *)
 
 (** A symbol is Opaque if its term definition (explicitly given or
-    incrementally builded with a proof-script) should not be added in the
+    incrementally built with a proof-script) should not be added in the
     signature *)
 type opacity =
   | Opaque
