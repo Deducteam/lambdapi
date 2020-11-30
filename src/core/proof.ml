@@ -107,7 +107,8 @@ let goals_of_metas : term -> Goal.t list = fun a ->
 
 (** [goals_of_typ typ ter] returns a list of goals corresponding to the
     typability of [typ] by a sort and checking eventually that term
-    [ter] has type [typ] *)
+    [ter] has type [typ]. [ter] and [typ] should not be both equal to
+    None *)
 let goals_of_typ : Pos.popt -> term option -> term option ->
   Goal.t list * term =
   fun pos typ ter ->
