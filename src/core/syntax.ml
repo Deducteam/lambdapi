@@ -247,14 +247,10 @@ type p_statement = (ident * p_arg list * p_type option) loc
 
 (** Parser-level representation of modifiers. *)
 type p_modifier =
-  | P_mstrat of Terms.match_strat
-  | P_expo of Terms.expo
-  | P_prop of Terms.prop
-  | P_opaq of Terms.opacity
-
-type proof_meaning =
-  | Tac
-  | Def
+  | P_mstrat of Terms.match_strat (** pattern matching strategy *)
+  | P_expo of Terms.expo (** visibility of symbol outside their modules *)
+  | P_prop of Terms.prop (** symbol properties : constant, definable, ... *)
+  | P_opaq of Terms.opacity (** opacity of the eventual definition *)
 
 type p_command_aux =
   | P_require    of bool * p_module_path list
@@ -264,7 +260,7 @@ type p_command_aux =
   | P_open       of p_module_path list
   (** Open statement. *)
   | P_symbol     of p_modifier loc list * p_statement * p_term option
-                   * (p_tactic list * p_proof_end loc) option * proof_meaning
+                   * (p_tactic list * p_proof_end loc) option * Terms.proof_meaning
   (** Symbol declaration. *)
   | P_rules      of p_rule list
   (** Rewriting rule declarations. *)
