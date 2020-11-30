@@ -87,7 +87,10 @@ module Goal :
 (** Representation of the proof state of a theorem. *)
 type proof_state =
   { proof_name     : Pos.strloc  (** Name of the theorem.                 *)
-  ; proof_term     : meta option (** Metavariable holding the proof term. *)
+  ; proof_term     : meta option (** Optional metavariable holding the goal
+                                     associated to a symbol used as a
+                                     theorem/definition and not just a
+                                     simple declaration *)
   ; proof_goals    : Goal.t list (** Open goals (focused goal is first).  *) }
 
 (** Short synonym for qualified use. *)
