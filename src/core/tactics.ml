@@ -15,7 +15,8 @@ let log_tact = new_logger 't' "tact" "tactics"
 let log_tact = log_tact.logger
 
 (** [solve ps pos] calls the default solve algorithm on the unification
-    goals of the proof state [ps] and does not fail *)
+    goals of the proof state [ps] and fails only if constraints are
+    unsolvable *)
 let solve ps pos =
   try
     let gs_typ,gs_unif = List.partition Goal.is_typ ps.proof_goals in
