@@ -8,10 +8,10 @@ open Terms
 open Print
 
 (** Abstract representation of a goal. *)
-module Goal :
-  sig
+module Goal =
+  struct
     (** Representation of a proof type goal. *)
-    type goal_typ = (* TODO have to hide this *)
+    type goal_typ =
       { goal_meta : meta  (* Metavariable needing instantiation.          *)
       ; goal_hyps : Env.t (* Precomputed scope for a suitable term.       *)
       ; goal_type : term  (* Precomputed type for a suitable term.        *) }
@@ -19,41 +19,9 @@ module Goal :
     (** Representation of a general goal : type, unification *)
     type t =
       | Typ of goal_typ (* The usual proof type goal. *)
-      | Unif of constr (* Two terms we'd like equal in some ctxt. *)
-
-    (** Helper functions *)
-    val is_typ  : t -> bool
-    val is_unif : t -> bool
-    val typ : goal_typ -> t
-    val unif : constr  -> t
-    val goal_typ_of : t -> goal_typ
-    val constr_of   : t -> constr
-
-    (** [goal_typ_of_meta m] create a goal from the metavariable [m]. *)
-    val goal_typ_of_meta : meta -> goal_typ
-
-    (** [get_meta g] returns the metavariable associated to goal [g]. *)
-    val get_meta : goal_typ -> meta
-
-    (** [get_type g] returns the environment and expected type of the goal. *)
-    val get_type : goal_typ -> Env.t * term
-
-    (** [simpl g] simplifies the given goal, evaluating its type to SNF. *)
-    val simpl : goal_typ -> goal_typ
-
-    (** Comparison function. *)
-    val compare : goal_typ -> goal_typ -> int
-  end =
-  struct
-    type goal_typ =
-      { goal_meta : meta  (* Metavariable needing instantiation.          *)
-      ; goal_hyps : Env.t (* Precomputed scope for a suitable term.       *)
-      ; goal_type : term  (* Precomputed type for a suitable term.        *) }
-
-    type t =
-      | Typ of goal_typ (* The usual proof type goal. *)
       | Unif of constr (* Two terms we'd like equal in ctxt. *)
 
+    (** Helper functions *)
     let is_typ  = function Typ _ -> true  | Unif _ -> false
     let is_unif = function Typ _ -> false | Unif _ -> true
     let typ = function x -> (Typ x)
@@ -65,6 +33,7 @@ module Goal :
       | Unif cs -> cs
       | _ -> failwith "Internal error : not an unification goal"
 
+    (** [goal_typ_of_meta m] create a goal from the metavariable [m]. *)
     let goal_typ_of_meta : meta -> goal_typ = fun m ->
       let (goal_hyps, goal_type) =
         Infer.destruct_prod m.meta_arity !(m.meta_type)
@@ -72,14 +41,18 @@ module Goal :
       let goal_type = Eval.simplify (Env.to_ctxt goal_hyps) goal_type in
       {goal_meta = m; goal_hyps; goal_type}
 
+    (** [get_meta g] returns the metavariable associated to goal [g]. *)
     let get_meta : goal_typ -> meta = fun g -> g.goal_meta
 
+    (** [get_type g] returns the environment and expected type of the goal. *)
     let get_type : goal_typ -> Env.t * term = fun g ->
       (g.goal_hyps, g.goal_type)
 
+    (** [simpl g] simplifies the given goal, evaluating its type to SNF. *)
     let simpl : goal_typ -> goal_typ = fun g ->
       {g with goal_type = Eval.snf (Env.to_ctxt g.goal_hyps) g.goal_type}
 
+    (** Comparison function. *)
     let compare : goal_typ -> goal_typ -> int = fun g1 g2 ->
       Meta.compare g1.goal_meta g2.goal_meta
   end
