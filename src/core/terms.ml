@@ -49,7 +49,7 @@ type opacity =
 type proof_meaning =
   | Tac (** the proof script helps the unification solver *)
   | Def (** the proof script tries to build an element and helps
-            the unification solver *)
+            the unification solver if necessary *)
 
 (** Representation of a term (or types) in a general sense. Values of the type
     are also used, for example, in the representation of patterns or rewriting
