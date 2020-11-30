@@ -248,7 +248,7 @@ type p_statement = (ident * p_arg list * p_type option) loc
 (** Parser-level representation of modifiers. *)
 type p_modifier =
   | P_mstrat of Terms.match_strat (** pattern matching strategy *)
-  | P_expo of Terms.expo (** visibility of symbol outside their modules *)
+  | P_expo of Terms.expo (** visibility of symbol outside its modules *)
   | P_prop of Terms.prop (** symbol properties : constant, definable, ... *)
   | P_opaq of Terms.opacity (** opacity of the eventual definition *)
 
