@@ -436,15 +436,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
           |     _, true ,      _ , _    , _      ->
             fatal cmd.pos "Pattern matching strategy modifiers cannot \
                            be used in theorems."
-(*
-                |     _, true , None   , _    , _      ->
-                  fatal cmd.pos "Theorem should have an explicit type !"
-*)
           (* Definition *)
-(*
-                |     _, false, _      , Const, _      ->
-                  fatal cmd.pos "A definition cannot be a constant."
-*)
           |     _, false, _      , _    , Sequen ->
             fatal cmd.pos "Pattern matching strategy modifiers cannot \
                            be used in definitions."
