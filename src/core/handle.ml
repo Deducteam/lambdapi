@@ -389,7 +389,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
       in
       (* If a type [ao = Some a] is given, then we check that it is
          typable by a sort and that [t] has type [a]. Otherwise, we
-             try to infer thetype of [t]. Unification goals are collected *)
+         try to infer the type of [t]. Unification goals are collected *)
       (* Proof script *)
       let (ts,pe) =
         let p_end = Pos.make cmd.pos P_proof_end in
