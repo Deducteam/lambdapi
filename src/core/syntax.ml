@@ -260,7 +260,8 @@ type p_command_aux =
   | P_open       of p_module_path list
   (** Open statement. *)
   | P_symbol     of p_modifier loc list * p_statement * p_term option
-                   * (p_tactic list * p_proof_end loc) option * Terms.proof_meaning
+                    * (p_tactic list * p_proof_end loc) option
+                    * Terms.proof_meaning
   (** Symbol declaration. *)
   | P_rules      of p_rule list
   (** Rewriting rule declarations. *)
