@@ -404,11 +404,10 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
           | None,None -> [],p_end
         end
       in
-      let metas_a_t = MetaSet.union metas_a MetaSet.empty in
       let add_goal m =
         List.insert Proof.Goal.compare (Proof.Goal.goal_typ_of_meta m)
       in
-      let typ_goals_a = MetaSet.fold add_goal metas_a_t [] in
+      let typ_goals_a = MetaSet.fold add_goal metas_a [] in
       let typ_goals_a = List.map Proof.Goal.typ typ_goals_a in
       let proof_term,goals,sig_symbol,pdata_expo =
         let sort_goals, a = Proof.goals_of_typ x.pos ao t in
