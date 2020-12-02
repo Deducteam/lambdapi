@@ -431,6 +431,5 @@ let eq_constr : constr -> constr -> bool = fun (ctx1,t1,u1) (ctx2,t2,u2) ->
 
 (** Comparing function for two contraints. For the non equal case, we forward
     to the standard library compare function *)
-    http://caml.inria.fr/pub/docs/manual-ocaml/libref/List.html *)
 let compare_constr : constr -> constr -> int = fun c1 c2 ->
   if eq_constr c1 c2 then 0 else Stdlib.compare c1 c2
