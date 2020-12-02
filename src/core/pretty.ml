@@ -224,7 +224,7 @@ let pp_command : p_command pp = fun oc cmd ->
       out "require %a as %a" (pp_path cmd.pos) p (pp_path_elt i.pos) i.elt
   | P_open(ps)                      ->
       List.iter (out "open %a" (pp_path cmd.pos)) ps
-  | P_symbol(ms,st,t,ts_pe,_e) (* TODO *) ->
+  | P_symbol(ms,st,t,ts_pe,_e) ->
     begin
       match (t,ts_pe) with
       | (Some _,_) | (_,Some _) ->
