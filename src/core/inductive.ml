@@ -7,6 +7,8 @@
 
 open! Lplib
 
+open! Lplib
+
 open Timed
 open Pos
 open Console
