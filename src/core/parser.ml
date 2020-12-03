@@ -2,8 +2,10 @@
     https://github.com/rlepigre/ocaml-earley/blob/master/README.md for details
     on using the library and its syntax extension. *)
 
+open! Lplib
+open Lplib.Extra
+
 open Earley_core
-open Extra
 open Syntax
 open Files
 open Pos

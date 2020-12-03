@@ -11,7 +11,18 @@
 (************************************************************************)
 
 open Core
+open! Lplib
+
 module LSP = Lsp_base
+
+(* exception NoPosition of string *)
+
+let interval_of_pos : Pos.pos -> Range.t = fun p ->
+  let open Range in
+  let data = Lazy.force p in
+  let start : point = make_point data.start_line data.start_col in
+  let finish : point = make_point data.end_line data.end_col in
+  make_interval start finish
 
 type doc_node =
   { ast   : Pure.Command.t
@@ -31,6 +42,7 @@ type t = {
   mutable root  : Pure.state; (* Only mutated after parsing. *)
   mutable final : Pure.state; (* Only mutated after parsing. *)
   nodes : doc_node list;
+  map : (Syntax.p_module_path * string) RangeMap.t;
 }
 
 let option_default o1 d =
@@ -104,7 +116,7 @@ let process_cmd _file (nodes,st,dg) ast =
 let new_doc ~uri ~version ~text =
   let root =
     (* We remove the ["file://"] prefix. *)
-    assert(Extra.String.is_prefix "file://" uri);
+    assert(String.is_prefix "file://" uri);
     let path = String.sub uri 7 (String.length uri - 7) in
     Pure.initial_state path
   in
@@ -114,6 +126,7 @@ let new_doc ~uri ~version ~text =
     root;
     final = root;
     nodes = [];
+    map = RangeMap.empty;
   }
 
 (* XXX: Save on close. *)
@@ -128,6 +141,21 @@ let dummy_loc =
         ; end_col = 2
         }
 
+(** Update document identifier range map *)
+let update_rangemap doc_spans =
+  (* extract q_idents from spans *)
+  let qids = List.concat_map Pure.Command.get_qidents doc_spans in
+
+  (* add to the map *)
+  let f (map : (Syntax.p_module_path * string) RangeMap.t)
+        (qid : Syntax.qident) =
+    (* Only add if the symbol contains a position *)
+    Option.map_default
+      (fun pos -> RangeMap.add (interval_of_pos pos) qid.elt map)
+      map qid.pos
+  in
+  List.fold_left f RangeMap.empty qids
+
 let check_text ~doc =
   let uri, version = doc.uri, doc.version in
   try
@@ -136,10 +164,14 @@ let check_text ~doc =
       (* One shot state update after parsing. *)
       doc.root <- root; doc.final <- root; doc_spans
     in
-    (* let doc = { doc with nodes = List.map doc_spans } in *)
+
+    (* update rangemap *)
+    let map = update_rangemap doc_spans in
+
     let nodes, final, diag =
       List.fold_left (process_cmd uri) ([],doc.root,[]) doc_spans in
-    let doc = { doc with nodes; final } in
+
+    let doc = { doc with nodes; final; map } in
     doc,
     LSP.mk_diagnostics ~uri ~version @@
     List.fold_left (fun acc (pos,lvl,msg,goal) ->

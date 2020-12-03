@@ -66,7 +66,7 @@ make install_vim   # Install vim support, see note UI.
 **Note:** you can run `lambdapi` without installing with `dune exec -- lambdapi`.
 
 **Note on user interfaces:** more instructions on supported editors can be found
-in the [documentation](doc/ui.md).
+in the [documentation](https://lambdapi.readthedocs.io/en/latest/ui/ui.html).
 
 The following commands can be used for cleaning up the repository:
 ```bash

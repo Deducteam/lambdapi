@@ -3,7 +3,10 @@
     @see <http://cl2-informatik.uibk.ac.at/mercurial.cgi/TPDB/file/tip/xml/xtc.xsd>
 *)
 
-open Extra
+open! Lplib
+open Lplib.Base
+open Lplib.Extra
+
 open Timed
 open Terms
 
@@ -162,7 +165,7 @@ let get_vars : sym -> rule -> (string * Terms.term) list = fun s r ->
       (Symb s) r.lhs
   in
   let ctx =
-    let fn l x = (x, (Meta(fresh_meta Type 0,[||])), None) :: l in
+    let fn l x = (x, (Meta(Meta.fresh Type 0,[||])), None) :: l in
     List.fold_left fn [] !var_list
   in
   let (_,l) = Infer.infer ctx lhs in

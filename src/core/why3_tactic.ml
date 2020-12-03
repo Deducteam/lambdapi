@@ -1,8 +1,10 @@
 (** Calling a prover using Why3. *)
 
+open! Lplib
+open Lplib.Extra
+
 open Console
 open Terms
-open Extra
 open Timed
 open Print
 

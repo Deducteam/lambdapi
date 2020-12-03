@@ -7,8 +7,10 @@
     See the chapter [doc/options.md#printing-decision-trees] of the
     documentation for more information. *)
 
+open! Lplib
+open Lplib.Base
+
 open Timed
-open Extra
 open Terms
 open Tree_types
 

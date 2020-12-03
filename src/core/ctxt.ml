@@ -1,6 +1,5 @@
 (** Typing context. *)
 
-open Extra
 open Terms
 open Timed
 
@@ -36,6 +35,17 @@ let to_prod : ctxt -> term -> term * int = fun ctx t ->
   let fn (t,c) elt =
     match elt with
     | (x,a,None   ) -> (_Prod (lift a) (Bindlib.bind_var x t), c + 1)
+    | (x,a,Some(u)) -> (_LLet (lift a) (lift u) (Bindlib.bind_var x t), c)
+  in
+  let (t, c) = List.fold_left fn (lift t, 0) ctx in
+  (Bindlib.unbox t, c)
+
+(** [to_abst ctx t] builds a sequence of abstractions over the context [ctx],
+    in the term [t]. It returns the number of products as well. *)
+let to_abst : ctxt -> term -> term * int = fun ctx t ->
+  let fn (t,c) elt =
+    match elt with
+    | (x,a,None   ) -> (_Abst (lift a) (Bindlib.bind_var x t), c + 1)
     | (x,a,Some(u)) -> (_LLet (lift a) (lift u) (Bindlib.bind_var x t), c)
   in
   let (t, c) = List.fold_left fn (lift t, 0) ctx in

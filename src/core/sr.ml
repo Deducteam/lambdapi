@@ -1,6 +1,7 @@
 (** Type-checking and inference. *)
 
-open Extra
+open! Lplib
+
 open Timed
 open Console
 open Terms
@@ -26,7 +27,7 @@ let build_meta_type : int -> term = fun k ->
   done;
   (* We create the “Ai” terms and the “Mi” metavariables. *)
   let fn i =
-    let m = fresh_meta (Bindlib.unbox ty_m.(i)) i in
+    let m = Meta.fresh (Bindlib.unbox ty_m.(i)) i in
     _Meta m (Array.sub ts 0 i)
   in
   let a = Array.init (k+1) fn in
@@ -158,7 +159,7 @@ let check_rule : Scope.pre_rule Pos.loc -> rule = fun ({pos; elt} as pr) ->
   let metas =
     let fn i name =
       let arity = arities.(i) in
-      fresh_meta ~name (build_meta_type arity) arity
+      Meta.fresh ~name (build_meta_type arity) arity
     in
     Array.mapi fn var_names
   in
@@ -180,7 +181,8 @@ let check_rule : Scope.pre_rule Pos.loc -> rule = fun ({pos; elt} as pr) ->
       log_subj (mag "transformed RHS is [%a]") pp_term rhs_typing
     end;
   (* Infer the typing constraints of the LHS. *)
-  match Typing.infer_constr [] lhs_typing with
+  let type_check = Unif.NoTypeCheck in
+  match Typing.infer_constr ~type_check [] lhs_typing with
   | None                      -> fatal pos "The LHS is not typable."
   | Some(ty_lhs, lhs_constrs) ->
   if !log_enabled then
@@ -235,17 +237,15 @@ let check_rule : Scope.pre_rule Pos.loc -> rule = fun ({pos; elt} as pr) ->
   (* TODO we should complete the constraints into a set of rewriting rule on
      the function symbols of [symbols]. *)
   (* Solving the typing constraints of the RHS. *)
-  match Unif.(solve {empty_problem with to_solve}) with
+  let type_check = Unif.TypeCheckInstanciation in
+  match Unif.(solve ~type_check {empty_problem with to_solve}) with
   | None     -> fatal pos "The rewriting rule does not preserve typing."
   | Some(cs) ->
   let is_constr c =
-    let eq_comm (_,t1,u1) (_,t2,u2) =
-      (* Contexts ignored: [Infer.check] is called with an empty context and
-         neither [Infer.check] nor [Unif.solve] generate contexts with defined
-         variables. *)
-      (Eval.eq_modulo [] t1 t2 && Eval.eq_modulo [] u1 u2) ||
-      (Eval.eq_modulo [] t1 u2 && Eval.eq_modulo [] t2 u1)
-    in
+    (* Contexts ignored: [Infer.check] is called with an empty context and
+       neither [Infer.check] nor [Unif.solve] generate contexts with defined
+       variables. *)
+    let eq_comm (_,t1,u1) (_,t2,u2) = Eval.eq_constr ([],t1,u1) ([],t2,u2) in
     List.exists (eq_comm c) lhs_constrs
   in
   let cs = List.filter (fun c -> not (is_constr c)) cs in

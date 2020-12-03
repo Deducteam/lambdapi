@@ -7,7 +7,6 @@
 
     @see <https://rlepigre.github.io/ocaml-bindlib/> *)
 
-open Extra
 open Timed
 
 (** {3 Term (and symbol) representation} *)
@@ -302,28 +301,68 @@ let rec unfold : term -> term = fun t ->
 (** [unset m] returns [true] if [m] is not instantiated. *)
 let unset : meta -> bool = fun m -> !(m.meta_value) = None
 
-(** [fresh_meta ?name a n] creates a fresh metavariable with the optional name
-    [name], and of type [a] and arity [n]. *)
-let fresh_meta : ?name:string -> term -> int -> meta =
-  let counter = Stdlib.ref (-1) in
-  let fresh_meta ?name a n =
-   { meta_key =  Stdlib.(incr counter; !counter) ; meta_name = name
-   ; meta_type = ref a ; meta_arity = n ; meta_value = ref None }
-  in fresh_meta
+(** Basic management of meta variables. *)
+module Meta : sig
+  type t = meta
+  (** Type of metavariables. *)
 
-(** [set_meta m v] sets the value of the metavariable [m] to [v]. Note that no
-    specific check is performed, so this function may lead to cyclic terms. *)
-let set_meta : meta -> (term, term) Bindlib.mbinder -> unit = fun m v ->
-  m.meta_type := Kind; (* to save memory *) m.meta_value := Some(v)
+  val compare : t -> t -> int
+  (** Comparison function for metavariables. *)
 
-(** [meta_name m] returns a string representation of [m]. *)
-let meta_name : meta -> string = fun m ->
-  let name =
-    match m.meta_name with
-    | Some(n) -> n
-    | None    -> string_of_int m.meta_key
-  in
-  "?" ^ name
+  val fresh : ?name:string -> term -> int -> t
+  (** [fresh ?name a n] creates a fresh metavariable with the optional name
+      [name], and of type [a] and arity [n]. *)
+
+  val fresh_box : ?name:string -> term Bindlib.box -> int -> t Bindlib.box
+  (** [fresh_box ?name a n] is the boxed counterpart of [fresh_meta]. It is
+      only useful in the rare cases where the type of a metavariable contains
+      a free term variable environement. This should only happens when scoping
+      the rewriting rules, use this function with care.  The metavariable is
+      created immediately with a dummy type, and the type becomes valid at
+      unboxing. The boxed metavariable should be unboxed at most once,
+      otherwise its type may be rendered invalid in some contexts. *)
+
+  val set : t -> (term, term) Bindlib.mbinder -> unit
+  (** [set m v] sets the value of the metavariable [m] to [v]. Note that no
+      specific check is performed, so this function may lead to cyclic
+      terms. *)
+
+  val name : t -> string
+  (** [name m] returns a string representation of [m]. *)
+
+  val reset_key_counter : unit -> unit
+  (** [reset_counter ()] resets the counter used to produce meta keys. *)
+end = struct
+  type t = meta
+  let compare m1 m2 = m1.meta_key - m2.meta_key
+  let key_counter : int Stdlib.ref = Stdlib.ref (-1)
+  let reset_key_counter () = Stdlib.(key_counter := -1)
+
+  let fresh : ?name:string -> term -> int -> t = fun ?name a n ->
+      { meta_key =  Stdlib.(incr key_counter; !key_counter) ; meta_name = name
+      ; meta_type = ref a ; meta_arity = n ; meta_value = ref None }
+
+  let set : t -> (term, term) Bindlib.mbinder -> unit = fun m v ->
+    m.meta_type := Kind; (* to save memory *) m.meta_value := Some(v)
+
+  let name : t -> string = fun m ->
+    let name =
+      match m.meta_name with
+      | Some(n) -> n
+      | None    -> string_of_int m.meta_key
+    in
+    "?" ^ name
+
+  let fresh_box : ?name:string -> term Bindlib.box -> int -> t Bindlib.box =
+    fun ?name a n ->
+    let m = fresh ?name Kind n in
+    Bindlib.box_apply (fun a -> m.meta_type := a; m) a
+
+end
+
+(** Sets and maps of metavariables. *)
+module MetaSet = Set.Make(Meta)
+module MetaMap = Map.Make(Meta)
 
 (** {3 Smart constructors and Bindlib infrastructure} *)
 
@@ -469,33 +508,12 @@ let rec lift : term -> tbox = fun t ->
    of "visual capture" while printing terms. *)
 let cleanup : term -> term = fun t -> Bindlib.unbox (lift t)
 
-(** [fresh_meta_box ?name a n] is the boxed counterpart of [fresh_meta]. It is
-    only useful in the rare cases where the type of a metavariable contains a
-    free term variable environement. This should only happens when scoping the
-    rewriting rules, use this function with care.  The metavariable is created
-    immediately with a dummy type, and the type becomes valid at unboxing. The
-    boxed metavariable should be unboxed at most once,  otherwise its type may
-    be rendered invalid in some contexts. *)
-let fresh_meta_box : ?name:string -> tbox -> int -> meta Bindlib.box =
-  fun ?name a n ->
-    let m = fresh_meta ?name Kind n in
-    Bindlib.box_apply (fun a -> m.meta_type := a; m) a
-
 (** [_Meta_full m ar] is similar to [_Meta m ar] but works with a metavariable
     that is boxed. This is useful in very rare cases,  when metavariables need
     to be able to contain free term environment variables. Using this function
     in bad places is harmful for efficiency but not unsound. *)
 let _Meta_full : meta Bindlib.box -> tbox array -> tbox = fun u ar ->
   Bindlib.box_apply2 (fun u ar -> Meta(u,ar)) u (Bindlib.box_array ar)
-
-(** Sets and maps of metavariables. *)
-module Meta = struct
-  type t = meta
-  let compare m1 m2 = m1.meta_key - m2.meta_key
-end
-
-module MetaSet = Set.Make(Meta)
-module MetaMap = Map.Make(Meta)
 
 (** Sets and maps of term variables. *)
 module Var = struct

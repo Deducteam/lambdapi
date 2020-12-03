@@ -1,7 +1,9 @@
 (** Proofs and tactics. *)
 
+open! Lplib
+open Lplib.Base
+
 open Timed
-open Extra
 open Pos
 open Terms
 open Print
@@ -64,7 +66,7 @@ type t = proof_state
     [name], which statement is represented by the type [a]. Builtin symbols of
     [builtins] may be used by tactics, and have been declared. *)
 let init : Pos.strloc -> term -> t = fun name a ->
-  let proof_term = fresh_meta ~name:name.elt a 0 in
+  let proof_term = Meta.fresh ~name:name.elt a 0 in
   let proof_goals = [Goal.of_meta proof_term] in
   {proof_name = name; proof_term; proof_goals}
 

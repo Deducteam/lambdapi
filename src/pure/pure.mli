@@ -1,5 +1,7 @@
 (** Interface to LSP. *)
 
+open Lplib
+
 open Core
 open Files
 
@@ -8,6 +10,7 @@ module Command : sig
   type t
   val equal : t -> t -> bool
   val get_pos : t -> Pos.popt
+  val get_qidents : t -> Syntax.qident list
 end
 
 (** Abstract representation of a tactic (proof item). *)

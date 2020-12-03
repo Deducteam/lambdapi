@@ -1,6 +1,8 @@
 (** Parser-level abstract syntax. *)
 
-open Extra
+open Lplib
+open Lplib.Base
+
 open Pos
 
 (** Representation of a (located) identifier. *)

@@ -5,8 +5,11 @@
     log messages, and feedback in case of success or error while type-checking
     terms or testing convertibility. *)
 
+open! Lplib
+open Lplib.Base
+open Lplib.Extra
+
 open Timed
-open Extra
 open Terms
 open Console
 open Syntax
@@ -101,9 +104,9 @@ let are_quant_args : sym -> term list -> bool = fun s args ->
 (** [pp_meta oc m] prints the uninstantiated meta-variable [m] to [oc]. *)
 let rec pp_meta : meta pp = fun oc m ->
   if !print_meta_type then
-    Format.fprintf oc "(%s:%a)" (meta_name m) pp_term !(m.meta_type)
+    Format.fprintf oc "(%s:%a)" (Meta.name m) pp_term !(m.meta_type)
   else
-    Format.pp_print_string oc (meta_name m)
+    Format.pp_print_string oc (Meta.name m)
 
 (** [pp_term oc t] prints the term [t] to the channel [oc]. *)
 and pp_term : term pp = fun oc t ->

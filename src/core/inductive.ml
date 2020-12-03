@@ -5,6 +5,8 @@
     the conjunction of each induction principle thanks to a conjunction
     operator /\:Prop → Prop → Prop. *)
 
+open! Lplib
+
 open Timed
 open Pos
 open Console

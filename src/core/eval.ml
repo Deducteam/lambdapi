@@ -1,6 +1,8 @@
 (** Evaluation and conversion. *)
 
-open Extra
+open! Lplib
+open Lplib.Extra
+
 open Timed
 open Console
 open Terms
@@ -216,7 +218,8 @@ and tree_walk : dtree -> ctxt -> stack -> (term * stack) option =
         List.iter fn env_builder;
         (* Complete the array with fresh meta-variables if needed. *)
         for i = env_len - xvars to env_len - 1 do
-          let t = make_meta [] Kind in
+          let mt = make_meta ctx Type in
+          let t = make_meta ctx mt in
           let b = Bindlib.raw_mbinder [||] [||] 0 mkfree (fun _ -> t) in
           env.(i) <- TE_Some(b)
         done;
@@ -416,3 +419,12 @@ let eval : Syntax.eval_config -> ctxt -> term -> term = fun c ctx t ->
   | (HNF , None   ) -> hnf ctx t
   (* TODO implement the rest. *)
   | (_   , Some(_)) -> wrn None "Number of steps not supported."; t
+
+(** Function comparing two constraints *)
+let eq_constr : constr -> constr -> bool = fun (ctx1,t1,u1) (ctx2,t2,u2) ->
+  let t1,_ = Ctxt.to_abst ctx1 t1 in
+  let u1,_ = Ctxt.to_abst ctx1 u1 in
+  let t2,_ = Ctxt.to_abst ctx2 t2 in
+  let u2,_ = Ctxt.to_abst ctx2 u2 in
+  (eq_modulo [] t1 t2) && (eq_modulo [] u1 u2) ||
+  (eq_modulo [] t1 u2) && (eq_modulo [] t2 u1)

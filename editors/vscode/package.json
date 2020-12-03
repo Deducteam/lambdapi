@@ -4,7 +4,8 @@
   "description": "Proof-checking mode for the lambdapi proof assistant",
   "contributors": [
     "Emilio Jesús Gallego Arias <e@x80.org>",
-    "Houda Mouzoun <houda.mouzoun@gmail.com>"
+    "Houda Mouzoun <houda.mouzoun@gmail.com>",
+    "François Lefoulon <francois.lefoulon@lilo.org>"
   ],
   "version": "0.1.0",
   "publisher": "MINES ParisTech / INRIA",

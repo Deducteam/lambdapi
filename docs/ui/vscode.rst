@@ -36,13 +36,24 @@ Proof navigation
 Goals are visualised in a panel on the right side of the editor.
 
 * You can navigate the proof with `keybindings <#keybindings>`__.
-* “Cursor mode” can be toggled to navigate the proof with the cursor.
+* “Cursor mode” can be toggled to navigate the proof with the cursor, using `Ctrl+Alt+c`. Other keybindings are still available in this mode.
+
+Hover and definition
+^^^^^^^^^^^^^^^^^^^^
+
+Hovering a token will display its type if available. The "Go to
+definition" command is available, you can either :
+
+* press `F12` when your cursor is within the range of a certain symbol
+* `right-click` on the symbol -> "Go to definition". It is advised to
+  set up a keybinding for "Go Back" in File -> Preferences -> Keyboard
+  shortcuts.
 
 Snippets
 ^^^^^^^^
 
-Type the advised snippets described below, then press Enter or Tab to
-confirm adding the chosen Unicode character.
+Type one of the suggested snippets described below, then press Enter
+or Tab to confirm adding the chosen Unicode character.
 
 Greek letters
 ^^^^^^^^^^^^^
@@ -96,6 +107,14 @@ Troubleshoot
 If snippet completion does not seem to work with the VS-Code Lambdapi
 Extension or the recommended extension, try pressing ``Ctrl+Space`` to
 see completion suggestions.
+
+Outline
+-------
+
+The outline of the document with its user-defined symbols is available with :
+
+1. ``Ctrl+Shift+E`` (or clicking on the ``explorer`` in left side-bar)
+2. Clicking ``outline`` in the bottom left corner.
 
 Keybindings
 -----------
