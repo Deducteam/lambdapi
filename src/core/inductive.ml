@@ -258,12 +258,10 @@ let gen_rec_type :
   let res = List.map (clauses ind_list) conclusion_list in
     (* C - Add the quantifiers at the beginning of the induction principle,
            one for each predicate variable. *)
-  let assoc_predicates =
-    List.map (fun (s,(x,y,_)) -> (s,(x,y))) sym_pred_map in
   let f t =
     List.fold_left
-      (fun e (_,(name,typ)) -> _Prod typ (Bindlib.bind_var name e))
-      t assoc_predicates
+      (fun e (_,(v,typ,_)) -> _Prod typ (Bindlib.bind_var v e))
+      t sym_pred_map
   in
   let res = List.map (fun x -> Bindlib.unbox (f x)) res in
     (* D - Print informative message. *)
