@@ -121,14 +121,12 @@ and pp_p_arg : p_arg pp = fun oc (ids,ao,b) ->
 and pp_p_args : p_arg list pp = fun oc ->
   List.iter (Format.fprintf oc " %a" pp_p_arg)
 
-let pp_p_rule : bool -> p_rule pp = fun first oc r ->
+let pp_p_rule : string -> p_rule pp = fun kw oc r ->
   let (lhs, rhs) = r.elt in
-  let kw = if first then "rule" else "with" in
   Format.fprintf oc "@[<hov 3>%s %a ↪ %a@]@?" kw pp_p_term lhs pp_p_term rhs
 
-let pp_p_inductive : bool -> p_inductive pp = fun first oc i ->
+let pp_p_inductive : string -> p_inductive pp = fun kw oc i ->
   let (s, t, tl) = i.elt in
-  let kw = if first then "inductive" else "with" in
   Format.fprintf oc "@[<hov 2>]%s %a" kw pp_ident s;
   Format.fprintf oc " :@ @[<hov>%a@] ≔@ \n  " pp_p_term t;
   let pp_cons oc (id,a) =
@@ -235,25 +233,21 @@ let pp_command : p_command pp = fun oc cmd ->
         (Format.pp_print_list pp_modifier) ms pp_ident s;
       List.iter (out " %a" pp_p_arg) args;
       out " :@ @[<hov>%a@]" pp_p_term a
-  | P_rules l                 ->
-      (match l with
-       | []    -> ()
-       | r::rs ->
-           out "%a" (pp_p_rule true) r;
-           List.iter (out "%a" (pp_p_rule false)) rs)
+  | P_rules [] -> ()
+  | P_rules (r::rs) ->
+      out "%a" (pp_p_rule "rule") r;
+      List.iter (out "%a" (pp_p_rule "with")) rs
   | P_definition(ms,_,s,args,ao,t) ->
       out "@[<hov 2>%adefinition %a"
         (Format.pp_print_list pp_modifier) ms pp_ident s;
       List.iter (out " %a" pp_p_arg) args;
       Option.iter (out " : @[<hov>%a@]" pp_p_term) ao;
       out " ≔ @[<hov>%a@]@]" pp_p_term t
-  | P_inductive(ms, l)         ->
-      (match l with
-       | []    -> ()
-       | i::il ->
-           out "%a" (Format.pp_print_list pp_modifier) ms;
-           out "%a" (pp_p_inductive true) i;
-           List.iter (out "%a" (pp_p_inductive false)) il)
+  | P_inductive(_, []) -> ()
+  | P_inductive(ms, i::il) ->
+      out "%a" (Format.pp_print_list pp_modifier) ms;
+      out "%a" (pp_p_inductive "inductive") i;
+      List.iter (out "%a" (pp_p_inductive "with")) il
   | P_theorem(ms,st,ts,pe) ->
       let (s,args,a) = st.elt in
       out "@[<hov 2>%atheorem %a"
