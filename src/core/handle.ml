@@ -310,7 +310,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
       in
       let add_recursor (ss, rec_sym_list) ind_sym rec_typ =
         (* B - Check the type of the induction principle *)
-        Inductive.check_type_ind cmd.pos rec_typ;
+        Inductive.check_rec_typ cmd.pos rec_typ;
         (* C - Add the induction principle in the signature *)
         let rec_name =
           Pos.make cmd.pos (Parser.add_prefix "ind_" ind_sym.sym_name)

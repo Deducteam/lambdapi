@@ -1,14 +1,15 @@
 (** Generation of induction principles.
-    Note that the induction principle associated to a mutually defined
-    inductive type speaks only about this inductive type. Also, there is
-    one induction principle for each inductive type. The user should define
-    the conjunction of each induction principle thanks to a conjunction
-    operator /\:Prop → Prop → Prop. *)
+
+   We only consider first-order dependent types (no functional
+   arguments). Polymorphic types can be encoded by using codes. In case of a
+   mutually defined types, we generate an induction for each type. A single
+   induction principle can be defined from those individual induction
+   principles by using a conjunction operator.
+
+   In the OCaml code, the prefix "ind" is used for inductive types. The prefix
+   "rec" is used for recursors, aka induction principles. *)
 
 open! Lplib
-
-open! Lplib
-
 open Timed
 open Pos
 open Console
@@ -32,10 +33,9 @@ let get_config : Sig_state.t -> Pos.popt -> config = fun ss pos ->
   { symb_Prop = builtin "Prop"
   ; symb_prf  = builtin "P" }
 
-(** [check_typ_ind pos rec_typ] checks if the type of the term [rec_typ] is
-    the constant TYPE. The position of the inductive type which defines the
-    inductive principle [rec_typ] is [pos]. *)
-let check_type_ind : popt -> term -> unit = fun pos rec_typ ->
+(** [check_typ_ind pos rec_typ] checks that the type of [rec_typ] is
+    TYPE. [pos] is the position of the correspoding inductive type. *)
+let check_rec_typ : popt -> term -> unit = fun pos rec_typ ->
   match Typing.infer [] rec_typ with
   | Some t ->
       begin
@@ -51,9 +51,9 @@ let check_type_ind : popt -> term -> unit = fun pos rec_typ ->
         pp_term rec_typ
 
 (** [gen_ind_typ_codom pos ind_sym codom s] assumes that the type of [ind_sym]
-    is of the form [Π(i1:a1),...,Π(in:an), TYPE]. It then generates a [tbox]
-    similar to this type except that [TYPE] is replaced by
-    [codom [i1;...;in]]. The string [s] is the prefix of variables' name. *)
+   is of the form [Π(i1:a1),...,Π(in:an), TYPE]. It then generates a [tbox]
+   similar to this type except that [TYPE] is replaced by [codom
+   [i1;...;in]]. The string [s] is used as prefix for the variables [ik]. *)
 let gen_ind_typ_codom : popt -> sym -> (tbox list -> tbox) -> string -> tbox =
   fun pos ind_sym codom s ->
   let rec aux : tvar list -> term -> tbox = fun xs a ->
@@ -65,9 +65,9 @@ let gen_ind_typ_codom : popt -> sym -> (tbox list -> tbox) -> string -> tbox =
     | _ -> fatal pos "The type of %a is not supported" pp_symbol ind_sym
   in aux [] !(ind_sym.sym_type)
 
-(** [prf_of p c ts t] returns a proof of the form
-    c.symb_prf ( (((p ts1) ...) tsn) t) where ts = [ts1;...;tsn]. *)
-let prf_of : tvar -> config -> tbox list -> tbox -> tbox = fun p c ts t ->
+(** [prf_of p c ts t] returns the term [c.symb_prf (p t1 ... tn t)] where ts =
+   [ts1;...;tsn]. *)
+let prf_of : config -> tvar -> tbox list -> tbox -> tbox = fun c p ts t ->
   _Appl_symb c.symb_prf [_Appl (_Appl_list (_Vari p) ts) t]
 
 (** [preprocessing pos c ind_typ_list p_str x_str] computes elements of the
@@ -105,7 +105,7 @@ let preprocessing :
            associated to [ind_sym]. *)
         let codom ts =
           let x = Bindlib.new_var mkfree x_str in
-          let t = Bindlib.bind_var x (prf_of p c ts (_Vari x)) in
+          let t = Bindlib.bind_var x (prf_of c p ts (_Vari x)) in
           _Prod (_Appl_symb ind_sym ts) t
         in
         let conclusion = gen_ind_typ_codom pos ind_sym codom p_str in
@@ -232,13 +232,13 @@ let gen_rec_type :
   let case_of : sym -> sym -> tbox = fun ind_sym cons_sym ->
     let codom : tvar -> term list -> tvar list -> 'a -> tbox =
       fun p ts xs _ ->
-      prf_of p c (List.map lift ts)
+      prf_of c p (List.map lift ts)
         (_Appl_symb cons_sym (List.rev_map _Vari xs))
     in
     let inj_var : tvar list -> tvar -> tvar = fun _ x -> x in
     let build_rec_hyp : sym -> tvar -> term list -> tvar -> tbox =
       fun _ p ts x ->
-      prf_of p c (List.map lift ts) (_Vari x)
+      prf_of c p (List.map lift ts) (_Vari x)
     in
     let domrec : term -> tvar -> tbox -> tbox -> tbox =
       fun a x rec_hyp next ->
