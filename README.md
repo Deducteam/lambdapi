@@ -77,5 +77,5 @@ make fullclean # Same as distclean, but also removes downloaded libraries.
 
 [gitter-badge]: https://badges.gitter.im/Deducteam/lambdapi.svg
 [gitter-link]: https://gitter.im/Deducteam/lambdapi
-[matrix-badge]: https://matrix.org/images/matrix-logo.svg
+[matrix-badge]: http://strk.kbt.io/tmp/matrix_badge.svg
 [matrix-link]: https://riot.im/app/#/room/#lambdapi:matrix.org
