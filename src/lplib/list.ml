@@ -127,7 +127,7 @@ let rec remove_phys_dups : 'a list -> 'a list =
     let xs = remove_phys_dups xs in
     if L.memq x xs then xs else x :: xs
 
-(** [deconstruct l i] returns a triple [(left_rev, e, right)] where [e] is the
+(** [destruct l i] returns a triple [(left_rev, e, right)] where [e] is the
     [i]-th element of [l], [left_rev] is the reversed prefix of [l] up to its
     [i]-th element (excluded), and [right] is the remaining suffix of [l]
     (starting at its [i+1]-th element).
@@ -193,6 +193,14 @@ let rec pmap (f : 'a -> 'b option) (l : 'a list) : 'b list =
 (** Concat the result of a map *)
 let concat_map (f : 'a -> 'b list) (l : 'a list) : 'b list =
   L.concat (L.map f l)
+
+(** [rev_mapi f [x1;..;xn]] returns [f (n-1) xn; ..; f 0 x1]. *)
+let rev_mapi f =
+  let rec aux acc i l =
+    match l with
+    | [] -> acc
+    | x::l -> aux (f i x :: acc) (i+1) l
+  in aux [] 0
 
 (** [combine3 [a1;...; an] [b1;...; bn] [c1;...;cn]] returns
     [(a1,b1,c1);...;(an,bn,cn)].

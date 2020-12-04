@@ -303,14 +303,14 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
       in
       (* STEP 3 - Generate the induction principle. *)
       (* A - Compute the induction principle *)
-      (* Note: [assoc_predicate] maps every inductive type to a predicate
+      (* Note: [sym_pred_map] maps every inductive type to a predicate
                variable and its type. *)
-      let rec_typ_list_rev, assoc_predicates =
+      let rec_typ_list_rev, sym_pred_map =
         Inductive.gen_rec_type ss cmd.pos ind_list
       in
       let add_recursor (ss, rec_sym_list) ind_sym rec_typ =
         (* B - Check the type of the induction principle *)
-        Inductive.check_rec_typ cmd.pos rec_typ;
+        Inductive.check_rec_type cmd.pos rec_typ;
         (* C - Add the induction principle in the signature *)
         let rec_name =
           Pos.make cmd.pos (Parser.add_prefix "ind_" ind_sym.sym_name)
@@ -340,7 +340,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
                check the type preservation of the rules and add them to the
                signature *)
       let rs_list =
-        Inductive.gen_rec_rules cmd.pos ind_list (List.rev assoc_predicates)
+        Inductive.gen_rec_rules cmd.pos ind_list (List.rev sym_pred_map)
       in
       let ss = with_no_wrn (List.fold_left handle_rules ss) rs_list in
       (* STEP 5 - Store inductive structure in the field "sign_ind" of the

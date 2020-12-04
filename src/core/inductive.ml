@@ -17,6 +17,8 @@ open Terms
 open Print
 open Syntax
 
+type inductive = (sym * sym list) list
+
 (** Logging function for generating of inductive principle. *)
 let log_ind = new_logger 'g' "indu" "generating induction principle"
 let log_ind = log_ind.logger
@@ -35,7 +37,7 @@ let get_config : Sig_state.t -> Pos.popt -> config = fun ss pos ->
 
 (** [check_typ_ind pos rec_typ] checks that the type of [rec_typ] is
     TYPE. [pos] is the position of the correspoding inductive type. *)
-let check_rec_typ : popt -> term -> unit = fun pos rec_typ ->
+let check_rec_type : popt -> term -> unit = fun pos rec_typ ->
   match Typing.infer [] rec_typ with
   | Some t ->
       begin
@@ -70,52 +72,44 @@ let gen_ind_typ_codom : popt -> sym -> (tbox list -> tbox) -> string -> tbox =
 let prf_of : config -> tvar -> tbox list -> tbox -> tbox = fun c p ts t ->
   _Appl_symb c.symb_prf [_Appl (_Appl_list (_Vari p) ts) t]
 
-(** [preprocessing pos c ind_typ_list p_str x_str] computes elements of the
-    induction principles that we want to associate to a list of mutually
-    defined inductive types [ind_typ_list]. It returns a pair of lists:
-      - The first list is an association list mapping every inductive type to
-        a pair made of a predicate variable and its type.The name of a
-        predicate variable has the type tvar and its type has the type tbox.
-      - The second list is composed of the conclusions of the induction
-        principles.
-    The string [p_str] is used as prefix for predicate variables, and the
-    string [x_str] as prefix for type parameters. *)
-let preprocessing :
-      popt -> config -> sym list -> string -> string
-      -> ((sym * (tvar * tbox)) list * tbox list) =
-  fun pos c ind_typ_list p_str x_str ->
-  let prop = _Symb c.symb_Prop in
+type sym_pred_map = (sym * (tvar * tbox * tbox)) list
 
-  let rec aux :
-    int -> (sym * (tvar * tbox)) list -> tbox list -> sym list
-    -> ((sym * (tvar * tbox)) list * tbox list) =
-    fun i assoc_predicates conclusion_list ind_typ_list ->
-    match ind_typ_list with
-    | [] -> assoc_predicates, conclusion_list
-    | ind_sym::q ->
-        (* STEP 1 - Create the predicate (name + type) associated to the
-           symbol [ind_sym]. *)
-          (* A - Create the name of the predicate. *)
-        let p_str = p_str ^ string_of_int i in
-        let p = Bindlib.new_var mkfree p_str in
-          (* B - Create the type of the predicate p. *)
-        let codom ts = _Impl (_Appl_symb ind_sym ts) prop in
-        let p_type = gen_ind_typ_codom pos ind_sym codom p_str in
-        (* STEP 2 - Create the conclusion of the inductive principle
-           associated to [ind_sym]. *)
-        let codom ts =
-          let x = Bindlib.new_var mkfree x_str in
-          let t = Bindlib.bind_var x (prf_of c p ts (_Vari x)) in
-          _Prod (_Appl_symb ind_sym ts) t
-        in
-        let conclusion = gen_ind_typ_codom pos ind_sym codom p_str in
-        aux (i+1) ((ind_sym, (p, p_type))::assoc_predicates)
-          (conclusion::conclusion_list) q
+(** [create_sym_pred_map pos c ind_list p_str x_str] builds an association
+   list mapping each inductive type symbol of [ind_list] to some data that
+   will be useful for generating the induction principles:
+
+- a predicate variable (e.g. p)
+
+- its type (e.g. Nat -> Prop)
+
+- its conclusion (e.g. Πx, π (p x))
+
+[p_str] is used as prefix for predicate variable names, and [x_str] as prefix
+for the names of the variable arguments of the predicate. *)
+let create_sym_pred_map :
+      popt -> config -> inductive -> string -> string -> sym_pred_map =
+  fun pos c ind_list p_str x_str ->
+  let prop = _Symb c.symb_Prop in
+  let create_sym_pred_data i (ind_sym,_) =
+    (* predicate variable *)
+    let p_str = p_str ^ string_of_int i in
+    let p = Bindlib.new_var mkfree p_str in
+    (* predicate type *)
+    let codom ts = _Impl (_Appl_symb ind_sym ts) prop in
+    let p_type = gen_ind_typ_codom pos ind_sym codom p_str in
+    (* predicate conclusion *)
+    let codom ts =
+      let x = Bindlib.new_var mkfree x_str in
+      let t = Bindlib.bind_var x (prf_of c p ts (_Vari x)) in
+      _Prod (_Appl_symb ind_sym ts) t
+    in
+    let conclusion = gen_ind_typ_codom pos ind_sym codom p_str in
+    (ind_sym, (p, p_type, conclusion))
   in
-  aux 0 [] [] ind_typ_list
+  List.rev_mapi create_sym_pred_data ind_list
 
 (** [fold_cons_typ pos codom inj_var build_rec_hyp domrec dom ind_sym cons_sym
-    f_rec f_not_rec init s assoc_predicates] generates some value iteratively
+    f_rec f_not_rec init s sym_pred_map] generates some value iteratively
     by going through the structure of [cons_sym.sym_type]. The argument [pos]
     is the position of the command inductive where the inductive type was
     defined. The symbol [ind_sym] is the type of the current inductive type,
@@ -124,38 +118,43 @@ let preprocessing :
     this value in the recursive case with the function [f_rec res x rec_hyp],
     and on the other case with the function [f_not_rec res x]. The string [s]
     is the prefix of variables' name. It's useful for the function [inj_var]
-    to have names with no clash. The data structure [assoc_predicate] maps
+    to have names with no clash. The data structure [sym_pred_map] maps
     every inductive type to a predicate variable and its type.
     In this iteration, we keep track of the variables [xs] we went through
     (the last variable comes first) and some accumulator [acc:'a]. Note that,
     at the beginning, the function [fold_cons_typ] is equal to
     [aux [] init  !(cons_sym.sym_type)] where
     [aux : 'b list -> 'a -> term -> 'c = fun xs acc a].
+
     During an iteration, there are several cases:
+
       1) If the current type is of the form [ind_sym ts], then we call
          [codom ts xs acc].
+
       2) If the current type is a product of the form [Π(x:ind_sym ts), b],
          then we are in case of recursive occurrences, so the function
          [build_rec_hyp s p ts x] builds the recursive hypothesis associated,
          then the function [domrec a x rec_hyp next] is applied to conclude
          the building ([rec_hyp] is the current recursive hypothesis and
          [next] is the result of the recursive call).
+
       3) If the current type is a product [Π(x:a), b] not of the previous
          form, then the function [dom a x next] is called.
+
       4) Any other case is an error. *)
-let fold_cons_typ (pos : popt)
+let fold_cons_type (pos : popt)
       (codom : tvar -> term list -> 'b list -> 'a -> 'c)
       (inj_var : 'b list -> tvar -> 'b)
       (build_rec_hyp : sym -> tvar -> term list -> 'b -> 'a)
       (domrec : term -> 'b -> 'a -> 'c -> 'c) (dom : term -> 'b -> 'c -> 'c)
       (ind_sym : sym) (cons_sym : sym) (f_rec : 'a -> 'b -> 'a -> 'a)
       (f_not_rec : 'a -> 'b -> 'a) (init : 'a) (s : string)
-      (assoc_predicates : (sym * (tvar * 'd)) list) : 'c =
+      (sym_pred_map : sym_pred_map) : 'c =
   let rec aux : 'b list -> 'a -> term -> 'c = fun xs acc a ->
     match Basics.get_args a with
     | (Symb(s), ts) ->
         if s == ind_sym then
-          let p,_ = List.assq s assoc_predicates in
+          let p,_,_ = List.assq s sym_pred_map in
           codom p ts xs acc
         else fatal pos "%a is not a constructor of %a"
                pp_symbol cons_sym pp_symbol ind_sym
@@ -166,8 +165,8 @@ let fold_cons_typ (pos : popt)
          match Basics.get_args a with
          | (Symb(s), ts) ->
              begin
-               match List.assq_opt s assoc_predicates with
-               | Some (p,_) ->
+               match List.assq_opt s sym_pred_map with
+               | Some (p,_,_) ->
                    let rec_hyp = build_rec_hyp s p ts x in
                    let next = aux (x::xs) (f_rec acc x rec_hyp) b in
                    domrec a x rec_hyp next
@@ -180,26 +179,17 @@ let fold_cons_typ (pos : popt)
     | _ -> fatal pos "The type of %a is not supported" pp_symbol cons_sym
   in aux [] init !(cons_sym.sym_type)
 
-(** [gen_rec_type ss pos ind_list] generates the induction principle for each
-    inductive type in the list [ind_typ_list] (defined at the position [pos])
-    with the list of constructors [cons_list_list], where
-    [ind_list = List.combine ind_typ_list cons_list_list]. Each recursive ar-
-    gument is followed by its induction hypothesis. For instance, with only
-    one inductive type [inductive T:TYPE := c: T->T->T], we have
-    [ind_T: Πp:T->Prop, (Πx0:T, π(p x0)-> Πx1:T, π(p x1)-> π(p (c x0 x1)) ->
-    Πx:T, π(p x)]. Indeed, if the user doesn't give a name for an argument
-    (in case of no dependent product in fact), a fresh name will create (xi
-    with a fresh i). In general, thanks to this function, the command
-    inductive T : Π(i1:A1),...,Π(im:Am), TYPE := c1:T1 | ... | cn:Tn generates
-    ind_T: Π(p:Π(i1:A1),...,Π(im:Am), T i1 ... im -> Prop), U1 -> ... -> Un ->
-    (Π(i1:A1),...,Π(im:Am), Π(t:T i1 ... im), π(p i1 ... im t))
-    where Ui is the clause associated to the constructor ci. *)
+(** [gen_rec_type ss pos ind_list] generates the induction principles for each
+   inductive type in the list [ind_list] defined at the position [pos]. Each
+   recursive argument is followed by its induction hypothesis. For instance,
+   with [inductive T:TYPE := c: T->T->T], we get [ind_T: Πp:T->Prop, (Πx0:T,
+   π(p x0)-> Πx1:T, π(p x1)-> π(p (c x0 x1)) -> Πx:T, π(p x)]. *)
 let gen_rec_type :
-      Sig_state.t -> popt -> (sym * sym list) list
-      -> (term list * (sym * (tvar * tbox)) list) =
+      Sig_state.t -> popt -> inductive -> term list * sym_pred_map =
   fun ss pos ind_list ->
+  let c = get_config ss pos in
 
-  (* STEP 1 - Do preprocessing *)
+  (* STEP 1 - Create the sym_pred_map *)
     (* A - Avoiding name clashes *)
   let set_names_clash =
     let add_name_from_sym set sym =
@@ -219,16 +209,12 @@ let gen_rec_type :
   in
   let p_str = Extra.get_safe_prefix "p" set_names_clash in
   let x_str = Extra.get_safe_prefix "x" set_names_clash in
-    (* B - Building a conclusion and a predicate for each inductive type *)
-  let c = get_config ss pos in
-  let ind_typ_list = List.map (fun (a,_) -> a) ind_list in
-  let assoc_predicates, conclusion_list =
-    preprocessing pos c ind_typ_list p_str x_str
-  in
+    (* B - Create the sym_pred_map *)
+  let sym_pred_map = create_sym_pred_map pos c ind_list p_str x_str in
 
   (* STEP 2 - Create each clause according to a constructor *)
-  (* [case_of ind_sym cons_sym] creates a clause according to a constructor
-     [cons_sym]. The inductive type of this constructor is [ind_sym]. *)
+  (* [case_of ind_sym cons_sym] creates the clause of the induction principle
+     of [ind_sym] related to the constructor [cons_sym]. *)
   let case_of : sym -> sym -> tbox = fun ind_sym cons_sym ->
     let codom : tvar -> term list -> tvar list -> 'a -> tbox =
       fun p ts xs _ ->
@@ -250,24 +236,30 @@ let gen_rec_type :
     let f_rec : tbox -> tvar -> tbox -> tbox = fun a _ _ -> a in
     let f_not_rec : tbox -> tvar -> tbox = fun a _ -> a in
     let init : tbox = _Type in
-    fold_cons_typ pos codom inj_var build_rec_hyp domrec dom ind_sym
-      cons_sym f_rec f_not_rec init x_str assoc_predicates
+    fold_cons_type pos codom inj_var build_rec_hyp domrec dom ind_sym
+      cons_sym f_rec f_not_rec init x_str sym_pred_map
   in
 
   (* STEP 3 - Create the induction principle. *)
     (* A - Merge all the clauses. *)
     (* Very close to the function "fold_right2", but "f" is the function
        "fold_right" and it needs a neutral element. *)
-  let rec clauses ind_list e : tbox = match ind_list with
+  let rec clauses ind_list e : tbox =
+    match ind_list with
     | [] -> e
-    | (i,cl)::q ->
-        let res = clauses q e in
-        List.fold_right (fun a b -> _Impl (case_of i a) b) cl res
+    | (sym_ind, sym_cons_list)::q ->
+        List.fold_right
+          (fun sym_cons b -> _Impl (case_of sym_ind sym_cons) b)
+          sym_cons_list
+          (clauses q e)
   in
-    (* B - Merge all the clauses with each conclusion. *)
+  (* B - Merge all the clauses with each conclusion. *)
+  let conclusion_list = List.map (fun (_,(_,_,x)) -> x) sym_pred_map in
   let res = List.map (clauses ind_list) conclusion_list in
     (* C - Add the quantifiers at the beginning of the induction principle,
            one for each predicate variable. *)
+  let assoc_predicates =
+    List.map (fun (s,(x,y,_)) -> (s,(x,y))) sym_pred_map in
   let f t =
     List.fold_left
       (fun e (_,(name,typ)) -> _Prod typ (Bindlib.bind_var name e))
@@ -276,14 +268,14 @@ let gen_rec_type :
   let res = List.map (fun x -> Bindlib.unbox (f x)) res in
     (* D - Print informative message. *)
   (if !log_enabled then
-    let print_informative_message ind_sym elt =
+    let print_informative_message (ind_sym,_) elt =
       log_ind "The induction principle of the inductive type [%a] is %a"
         Pretty.pp_ident (Pos.none ind_sym.sym_name) Print.pp_term elt
     in
-    List.iter2 print_informative_message ind_typ_list res);
-  (res, assoc_predicates)
+    List.iter2 print_informative_message sym_pred_map res);
+  (res, sym_pred_map)
 
-(** [gen_rec_rules pos ind_list assoc_predicates] returns the p_rules associa-
+(** [gen_rec_rules pos ind_list sym_pred_map] returns the p_rules associa-
     ted to the list of inductive types [ind_typ_list], defined at the position
     [pos], the list of theirs induction principles [rec_sym_list] and the list
     of lists of constructors [cons_list_list], where
@@ -301,12 +293,12 @@ let gen_rec_type :
     function symbols names since pattern variables are prefixed by $. *)
 let gen_rec_rules :
       popt -> (sym * (sym list) * sym) list ->
-      (sym * (tvar * tbox)) list -> p_rule list list =
-  fun pos ind_list assoc_predicates ->
+      sym_pred_map -> p_rule list list =
+  fun pos ind_list sym_pred_map ->
 
   (* STEP 1 - Create the common head of the rules *)
-  let f e (_, (name, _)) = P.appl e (P.patt0 (Bindlib.name_of name)) in
-  let properties head_sym = List.fold_left f head_sym assoc_predicates in
+  let f e (_,(v,_,_)) = P.appl e (P.patt0 (Bindlib.name_of v)) in
+  let properties head_sym = List.fold_left f head_sym sym_pred_map in
   let add_arg e s = P.appl e (P.patt0 ("pi" ^ s.sym_name)) in
   let rec flatten_snd : ('a * 'b list * 'c) list -> 'b list = function
     | []          -> []
@@ -352,8 +344,8 @@ let gen_rec_rules :
     in
     let f_not_rec : p_term -> p_term -> p_term = fun p x -> P.appl p x in
     let init : p_term = P.patt0 ("pi" ^ cons_sym.sym_name) in
-    fold_cons_typ pos codom inj_var build_rec_hyp domrec dom ind_sym
-      cons_sym f_rec f_not_rec init "" assoc_predicates
+    fold_cons_type pos codom inj_var build_rec_hyp domrec dom ind_sym
+      cons_sym f_rec f_not_rec init "" sym_pred_map
   in
 
   (* STEP 3 - Build all the p_rules *)
