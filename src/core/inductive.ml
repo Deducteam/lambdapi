@@ -17,11 +17,12 @@ open Terms
 open Print
 open Syntax
 
-type inductive = (sym * sym list) list
-
 (** Logging function for generating of inductive principle. *)
 let log_ind = new_logger 'g' "indu" "generating induction principle"
 let log_ind = log_ind.logger
+
+(** Type for inductive type definitions. *)
+type inductive = (sym * sym list) list
 
 (** Builtin configuration for induction. *)
 type config =
