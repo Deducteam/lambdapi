@@ -259,7 +259,7 @@ let gen_rec_types :
     List.iter2 print_informative_message sym_pred_map res);
   res
 
-(** [gen_rec_rules pos ind_list rec_sym_list sym_pred_map] generates the
+(** [iter_rec_rules pos ind_list rec_sym_list sym_pred_map] generates the
    recursor rules for the inductive type definition [ind_list] and associated
    recursors [rec_sym_list] and [sym_pred_map].
 
@@ -268,9 +268,9 @@ let gen_rec_types :
    then the rule for ci is [ind_T p pc1 .. pcn _ .. _ (ci x1 .. xk) --> pci x1
    t1? ... xk tk? with m underscores, [tj? = ind_T p pc1 .. pcn _ .. _ xj] if
    [Bj = T v1 ... vm], and nothing otherwise. *)
-let gen_rec_rules :
-      popt -> inductive -> sym list -> sym_pred_map -> p_rule list list =
-  fun pos ind_list rec_sym_list sym_pred_map ->
+let iter_rec_rules :
+  popt -> inductive -> sym list -> sym_pred_map -> (p_rule -> unit) -> unit =
+  fun pos ind_list rec_sym_list sym_pred_map f ->
 
   (* [commond_head n] generates the common head of the rule LHS's of a
      recursor symbol of name [n]. *)
@@ -329,8 +329,10 @@ let gen_rec_rules :
       cons_sym f_rec f_not_rec init "" sym_pred_map
   in
 
-  (* generates all rules *)
-  let gen_rules_ind (ind_sym, cons_sym_list) rec_sym =
-    List.map (gen_rule_cons ind_sym rec_sym) cons_sym_list
+  (* Iterate [f] over every rule. *)
+  let g (ind_sym, cons_sym_list) rec_sym =
+    List.iter
+      (fun cons_sym -> f (gen_rule_cons ind_sym rec_sym cons_sym))
+      cons_sym_list
   in
-  List.map2 gen_rules_ind ind_list rec_sym_list
+  List.iter2 g ind_list rec_sym_list

@@ -334,13 +334,12 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
       let (ss, rec_sym_list) =
         List.fold_left2 add_recursor (ss, []) ind_sym_list_rev rec_typ_list_rev
       in
-      (* STEP 4 - Generate the recursor p_rule's and handle them *)
-      let rs_list =
-        Inductive.gen_rec_rules cmd.pos ind_list rec_sym_list sym_pred_map
-      in
-      let ss = with_no_wrn (List.fold_left handle_rules ss) rs_list in
-      (* STEP 5 - Store inductive structure in the field "sign_ind" of the
-         signature *)
+      (* STEP 4 - Add recursor rules in the signature. *)
+      with_no_wrn
+        (Inductive.iter_rec_rules cmd.pos ind_list rec_sym_list sym_pred_map)
+        (fun r -> ignore (add_rule ss r));
+      List.iter Tree.update_dtree rec_sym_list;
+      (* STEP 5 - Store the inductive structure in the signature *)
       List.iter2
         (fun (ind_sym, cons_sym_list) rec_sym ->
           Sign.add_inductive ss.signature ind_sym cons_sym_list rec_sym)
