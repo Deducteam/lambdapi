@@ -306,7 +306,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
       (* Note: [sym_pred_map] maps every inductive type to a predicate
                variable and its type. *)
       let rec_typ_list_rev, sym_pred_map =
-        Inductive.gen_rec_type ss cmd.pos ind_list
+        Inductive.gen_rec_types ss cmd.pos ind_list
       in
       let add_recursor (ss, rec_sym_list) ind_sym rec_typ =
         (* B - Check the type of the induction principle *)

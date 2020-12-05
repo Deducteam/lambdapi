@@ -184,13 +184,12 @@ let fold_cons_type (pos : popt)
    [pos]. Each recursive argument is followed by its induction hypothesis. For
    instance, with [inductive T:TYPE := c: T->T->T], we get [ind_T: Πp:T->Prop,
    (Πx0:T, π(p x0)-> Πx1:T, π(p x1)-> π(p (c x0 x1)) -> Πx:T, π(p x)]. *)
-let gen_rec_type :
+let gen_rec_types :
       Sig_state.t -> popt -> inductive -> term list * sym_pred_map =
   fun ss pos ind_list ->
   let c = get_config ss pos in
 
-  (* STEP 1 - Create the sym_pred_map *)
-    (* A - Avoiding name clashes *)
+  (* Create the sym_pred_map. *)
   let clashing_names =
     let add_name_from_sym set sym =
       let s = sym.sym_name in
@@ -205,12 +204,10 @@ let gen_rec_type :
   in
   let p_str = Extra.get_safe_prefix "p" clashing_names in
   let x_str = Extra.get_safe_prefix "x" clashing_names in
-    (* B - Create the sym_pred_map *)
   let sym_pred_map = create_sym_pred_map pos c ind_list p_str x_str in
 
-  (* STEP 2 - Create each clause according to a constructor *)
-  (* [case_of ind_sym cons_sym] creates the clause of the induction principle
-     of [ind_sym] for the constructor [cons_sym]. *)
+  (* [case_of ind_sym cons_sym] creates the clause for the constructor
+     [cons_sym] in the induction principle of [ind_sym]. *)
   let case_of : sym -> sym -> tbox = fun ind_sym cons_sym ->
     let codom : tvar -> term list -> tvar list -> 'a -> tbox =
       fun p ts xs _ ->
@@ -236,30 +233,20 @@ let gen_rec_type :
       cons_sym f_rec f_not_rec init x_str sym_pred_map
   in
 
-  (* STEP 3 - Create the induction principle. *)
-    (* A - Gather all the clauses. *)
-    (* Very close to the function "fold_right2", but "f" is the function
-       "fold_right" and it needs a neutral element. *)
-  let rec clauses ind_list e : tbox =
-    match ind_list with
-    | [] -> e
-    | (sym_ind, sym_cons_list)::q ->
-        List.fold_right
-          (fun sym_cons b -> _Impl (case_of sym_ind sym_cons) b)
-          sym_cons_list
-          (clauses q e)
+  (* Create the induction principle. *)
+  let gen_rec_type (_, (_,_,conclusion)) =
+    let add_clause_cons ind_sym cons_sym conclusion =
+      _Impl (case_of ind_sym cons_sym) conclusion
+    in
+    let add_clauses_ind (ind_sym, cons_sym_list) conclusion =
+      List.fold_right (add_clause_cons ind_sym) cons_sym_list conclusion
+    in
+    let conclusion = List.fold_right add_clauses_ind ind_list conclusion in
+    let add_quantifier c (_,(v,a,_)) = _Prod a (Bindlib.bind_var v c) in
+    let conclusion = List.fold_left add_quantifier conclusion sym_pred_map in
+    Bindlib.unbox conclusion
   in
-  (* B - Merge all the clauses with each conclusion. *)
-  let conclusion_list = List.map (fun (_,(_,_,x)) -> x) sym_pred_map in
-  let res = List.map (clauses ind_list) conclusion_list in
-    (* C - Add the quantifiers at the beginning of the induction principle,
-           one for each predicate variable. *)
-  let f t =
-    List.fold_left
-      (fun e (_,(v,typ,_)) -> _Prod typ (Bindlib.bind_var v e))
-      t sym_pred_map
-  in
-  let res = List.map (fun x -> Bindlib.unbox (f x)) res in
+  let res = List.map gen_rec_type sym_pred_map in
     (* D - Print informative message. *)
   (if !log_enabled then
     let print_informative_message (ind_sym,_) elt =
