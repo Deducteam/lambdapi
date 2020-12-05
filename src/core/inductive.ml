@@ -191,24 +191,20 @@ let gen_rec_type :
 
   (* STEP 1 - Create the sym_pred_map *)
     (* A - Avoiding name clashes *)
-  let set_names_clash =
+  let clashing_names =
     let add_name_from_sym set sym =
       let s = sym.sym_name in
-      if s <> "" && (s.[0] = 'x' || s.[0] = 'p') then
-        Extra.StrSet.add s set
+      if s <> "" && (s.[0] = 'x' || s.[0] = 'p') then Extra.StrSet.add s set
       else set
     in
-    let add_names_from_cons_list set (_, l) =
-      List.fold_left add_name_from_sym set l
+    let add_names_from_ind set (sym_ind, sym_cons_list) =
+      let set = add_name_from_sym set sym_ind in
+      List.fold_left add_name_from_sym set sym_cons_list
     in
-    let set =
-      List.fold_left add_names_from_cons_list
-        Extra.StrSet.empty ind_list
-    in
-    List.fold_left (fun set (a,_) -> add_name_from_sym set a) set ind_list
+    List.fold_left add_names_from_ind Extra.StrSet.empty ind_list
   in
-  let p_str = Extra.get_safe_prefix "p" set_names_clash in
-  let x_str = Extra.get_safe_prefix "x" set_names_clash in
+  let p_str = Extra.get_safe_prefix "p" clashing_names in
+  let x_str = Extra.get_safe_prefix "x" clashing_names in
     (* B - Create the sym_pred_map *)
   let sym_pred_map = create_sym_pred_map pos c ind_list p_str x_str in
 
