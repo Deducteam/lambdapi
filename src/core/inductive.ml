@@ -284,8 +284,8 @@ let gen_rec_rules :
     let add_patt t n = P.appl t (P.patt0 n) in
     (* add a predicate variable for each inductive type *)
     let head =
-      let add_pred head (_,(v,_,_)) = add_patt head (Bindlib.name_of v) in
-      List.fold_left add_pred head sym_pred_map
+      let add_pred (_,(v,_,_)) head = add_patt head (Bindlib.name_of v) in
+      List.fold_right add_pred sym_pred_map head
     in
     (* add a case variable for each constructor *)
     let add_case head cons_sym = add_patt head ("pi" ^ cons_sym.sym_name) in

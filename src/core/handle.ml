@@ -342,7 +342,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
                check the type preservation of the rules and add them to the
                signature *)
       let rs_list =
-        Inductive.gen_rec_rules cmd.pos ind_rec_list (List.rev sym_pred_map)
+        Inductive.gen_rec_rules cmd.pos ind_rec_list sym_pred_map
       in
       let ss = with_no_wrn (List.fold_left handle_rules ss) rs_list in
       (* STEP 5 - Store inductive structure in the field "sign_ind" of the
