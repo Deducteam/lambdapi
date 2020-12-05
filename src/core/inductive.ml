@@ -279,8 +279,9 @@ let gen_rec_rules :
       popt -> inductive -> sym list -> sym_pred_map -> p_rule list list =
   fun pos ind_list rec_sym_list sym_pred_map ->
 
-  (* STEP 1 - Create the common head of the rules *)
-  let common_head (sym_name : string) : p_term =
+  (* [commond_head n] generates the common head of the rule LHS's of a
+     recursor symbol of name [n]. *)
+  let lhs_head : string -> p_term = fun sym_name ->
     let head = P.iden sym_name in
     let add_patt t n = P.appl t (P.patt0 n) in
     (* add a predicate variable for each inductive type *)
@@ -296,8 +297,7 @@ let gen_rec_rules :
     List.fold_left add_ind head ind_list
   in
 
-  (* STEP 2 - Create each p_rule according to a constructor *)
-  (* [gen_rule_cons ind_sym rec_sym cons_sym] creates the p_rule of the
+  (* [gen_rule_cons ind_sym rec_sym cons_sym] generates the p_rule of the
      recursor [rec_sym] of the inductive type [ind_sym] for the constructor
      [cons_sym]. *)
   let gen_rule_cons : sym -> sym -> sym -> p_rule =
@@ -305,8 +305,8 @@ let gen_rec_rules :
     let codom : tvar -> term list -> p_term list -> p_term -> p_rule =
       fun _ ts xs p ->
       let rec_arg = P.fold_appl (P.iden cons_sym.sym_name) (List.rev xs) in
-      let common_head = common_head rec_sym.sym_name in
-      let lhs = P.appl (P.appl_wild common_head (List.length ts)) rec_arg in
+      let lhs_head = lhs_head rec_sym.sym_name in
+      let lhs = P.appl (P.appl_wild lhs_head (List.length ts)) rec_arg in
       if !log_enabled then
         log_ind "The rule [%a] --> %a"
           Pretty.pp_p_term lhs Pretty.pp_p_term p;
@@ -317,8 +317,8 @@ let gen_rec_rules :
     in
     let build_rec_hyp : sym -> tvar -> term list -> p_term -> p_term =
       fun s _ ts x ->
-      let common_head = common_head ("ind_" ^ s.sym_name) in (* @FIX *)
-      let arg_type = P.appl_wild common_head (List.length ts) in
+      let lhs_head = lhs_head ("ind_" ^ s.sym_name) in (* @FIX *)
+      let arg_type = P.appl_wild lhs_head (List.length ts) in
       P.appl arg_type x
     in
     let domrec : term -> p_term -> p_term -> p_rule -> p_rule =
@@ -334,7 +334,7 @@ let gen_rec_rules :
       cons_sym f_rec f_not_rec init "" sym_pred_map
   in
 
-  (* STEP 3 - Build all the p_rules *)
+  (* generates all rules *)
   let gen_rules_ind (ind_sym, cons_sym_list) rec_sym =
     List.map (gen_rule_cons ind_sym rec_sym) cons_sym_list
   in

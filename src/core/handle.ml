@@ -183,7 +183,7 @@ let handle_rules : sig_state -> p_rule list -> sig_state = fun ss rs ->
     out 3 "(rule) %a\n" pp_rule (s,r.elt)
   in
   List.iter add_rule rs;
-  let syms = List.remove_phys_dups (List.map (fun (s, _) -> s) rs) in
+  let syms = List.remove_phys_dups (List.map fst rs) in
   List.iter Tree.update_dtree syms; ss
 
 (** [handle_cmd ss cmd] tries to handle the command [cmd] with [ss] as the
@@ -333,7 +333,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
       let (ss, rec_sym_list) =
         List.fold_left2 add_recursor (ss, []) ind_sym_list_rev rec_typ_list_rev
       in
-      (* STEP 4 - Generate the recursor p_rules and handle them *)
+      (* STEP 4 - Generate the recursor p_rule's and handle them *)
       let rs_list =
         Inductive.gen_rec_rules cmd.pos ind_list rec_sym_list sym_pred_map
       in
