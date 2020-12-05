@@ -163,28 +163,25 @@ let handle_symbol :
   out 3 "(symb) %s : %a\n" x.elt pp_term a;
   Sig_state.add_symbol ss e p strat x a impl None
 
-(** [handle_rules ss rs] handles the command [rule r1 with r2 ... with rn]
-    with [ss] as the signature state.
-    On success, an updated signature state is returned. *)
+(** [add_rule ss syms r] checks rule [r], adds it in [ss] and returns the set
+   [syms] extended with the symbol defined by [r]. *)
+let add_rule : sig_state -> p_rule -> sym = fun ss r ->
+  let pr = scope_rule false ss r in
+  let sym = pr.elt.pr_sym in
+  if !(sym.sym_def) <> None then
+    fatal pr.pos "Rewriting rules cannot be given for defined symbol [%s]."
+      sym.sym_name;
+  let rule = Sr.check_rule pr in
+  Sign.add_rule ss.signature sym rule;
+  out 3 "(rule) %a\n" pp_rule (sym, rule);
+  sym
+
+(** [handle_rules ss rs] handles the rules [rs] in signature state [ss]. *)
 let handle_rules : sig_state -> p_rule list -> sig_state = fun ss rs ->
-  (* Scoping and checking each rule in turn. *)
-  let handle_rule r =
-    let pr = scope_rule false ss r in
-    let sym = pr.elt.pr_sym in
-    if !(sym.sym_def) <> None then
-      fatal pr.pos "Rewriting rules cannot be given for defined \
-                    symbol [%s]." sym.sym_name;
-    (sym, Pos.make r.pos (Sr.check_rule pr))
-  in
-  let rs = List.map handle_rule rs in
-  (* Adding the rules all at once. *)
-  let add_rule (s,r) =
-    Sign.add_rule ss.signature s r.elt;
-    out 3 "(rule) %a\n" pp_rule (s,r.elt)
-  in
-  List.iter add_rule rs;
-  let syms = List.remove_phys_dups (List.map fst rs) in
-  List.iter Tree.update_dtree syms; ss
+  let add_rule syms r = SymSet.add (add_rule ss r) syms in
+  let syms = List.fold_left add_rule SymSet.empty rs in
+  SymSet.iter Tree.update_dtree syms;
+  ss
 
 (** [handle_cmd ss cmd] tries to handle the command [cmd] with [ss] as the
     signature state. On success, an updated signature state is returned.  When
@@ -209,7 +206,11 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
       (* Verify the modifiers. *)
       let (prop, expo, mstrat) = handle_modifiers ms in
       (fst (handle_symbol ss expo prop mstrat x xs a), None)
-  | P_rules(rs)                  -> (handle_rules  ss rs, None)
+  | P_rules(rs)                  ->
+      let add_rule syms r = SymSet.add (add_rule ss r) syms in
+      let syms = List.fold_left add_rule SymSet.empty rs in
+      SymSet.iter Tree.update_dtree syms;
+      (ss, None)
   | P_definition(ms, op, x, xs, ao, t) ->
       (* We check that [x] is not already used. *)
       if Sign.mem ss.signature x.elt then
