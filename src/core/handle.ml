@@ -269,37 +269,37 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
         fatal cmd.pos "Pattern matching strategy modifiers cannot be used \
                        in inductive types.";
       (* STEP 1 - Add the inductive types in the signature *)
-      let add_ind_type :
+      let add_ind_sym :
         sig_state * sym list -> p_inductive -> sig_state * sym list
-        = fun (ss, ind_typ_list) x ->
+        = fun (ss, ind_sym_list) x ->
         let (id, a, _) = x.elt in
         let (ss, ind_sym) = handle_symbol ss e Injec Eager id [] a in
-        (ss, ind_sym::ind_typ_list)
+        (ss, ind_sym::ind_sym_list)
       in
-      let (ss, ind_typ_list_rev) = List.fold_left add_ind_type (ss, []) il in
+      let (ss, ind_sym_list_rev) = List.fold_left add_ind_sym (ss, []) il in
       (* STEP 2 - Add the constructors in the signature. *)
       let add_constructors :
         sig_state * sym list list -> p_inductive -> sig_state * sym list list
-        = fun (ss, cons_list_list) x ->
+        = fun (ss, cons_sym_list_list) x ->
         let (_, _, l) = x.elt in
-        let add_cons :
+        let add_cons_sym :
               sig_state * sym list -> ident * p_term -> sig_state * sym list
-          = fun (ss, cons_list) (id, a) ->
+          = fun (ss, cons_sym_list) (id, a) ->
           let (ss, cons_sym) = handle_symbol ss e Const Eager id [] a in
-          (ss, cons_sym::cons_list)
+          (ss, cons_sym::cons_sym_list)
         in
-        let (ss, cons_list_rev) = List.fold_left add_cons (ss, []) l in
+        let (ss, cons_sym_list_rev) = List.fold_left add_cons_sym (ss, []) l in
         (* Reverse the list of constructors previously computed to preserve
            the initial order *)
-        let cons_list = List.rev cons_list_rev in
-        (ss, cons_list::cons_list_list)
+        let cons_sym_list = List.rev cons_sym_list_rev in
+        (ss, cons_sym_list::cons_sym_list_list)
       in
-      let (ss, cons_list_list_rev) =
+      let (ss, cons_sym_list_list_rev) =
         List.fold_left add_constructors (ss, []) il
       in
       let ind_list =
         List.fold_left2 (fun acc x y -> (x,y)::acc) []
-          ind_typ_list_rev cons_list_list_rev
+          ind_sym_list_rev cons_sym_list_list_rev
       in
       (* STEP 3 - Generate the induction principle. *)
       (* A - Compute the induction principle *)
@@ -329,24 +329,24 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
       in
       let (ss, rec_sym_list) =
         List.fold_left2 add_recursor (ss, [])
-          ind_typ_list_rev rec_typ_list_rev
+          ind_sym_list_rev rec_typ_list_rev
       in
-      let ind_list =
+      let ind_rec_list =
         List.combine3_rev
-          ind_typ_list_rev cons_list_list_rev (List.rev rec_sym_list)
+          ind_sym_list_rev cons_sym_list_list_rev (List.rev rec_sym_list)
       in
       (* STEP 4 - Generate the associated rules
           i.e. Compute the rules associated with the induction principle,
                check the type preservation of the rules and add them to the
                signature *)
       let rs_list =
-        Inductive.gen_rec_rules cmd.pos ind_list (List.rev sym_pred_map)
+        Inductive.gen_rec_rules cmd.pos ind_rec_list (List.rev sym_pred_map)
       in
       let ss = with_no_wrn (List.fold_left handle_rules ss) rs_list in
       (* STEP 5 - Store inductive structure in the field "sign_ind" of the
          signature *)
       List.iter
-        (fun (a,b,c) -> Sign.add_inductive ss.signature a b c) ind_list;
+        (fun (a,b,c) -> Sign.add_inductive ss.signature a b c) ind_rec_list;
       (ss, None)
   | P_theorem(ms, stmt, ts, pe) ->
       let (x,xs,a) = stmt.elt in

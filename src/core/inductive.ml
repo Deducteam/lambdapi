@@ -180,10 +180,10 @@ let fold_cons_type (pos : popt)
   in aux [] init !(cons_sym.sym_type)
 
 (** [gen_rec_type ss pos ind_list] generates the induction principles for each
-   inductive type in the list [ind_list] defined at the position [pos]. Each
-   recursive argument is followed by its induction hypothesis. For instance,
-   with [inductive T:TYPE := c: T->T->T], we get [ind_T: Πp:T->Prop, (Πx0:T,
-   π(p x0)-> Πx1:T, π(p x1)-> π(p (c x0 x1)) -> Πx:T, π(p x)]. *)
+   type in the inductive definition [ind_list] defined at the position
+   [pos]. Each recursive argument is followed by its induction hypothesis. For
+   instance, with [inductive T:TYPE := c: T->T->T], we get [ind_T: Πp:T->Prop,
+   (Πx0:T, π(p x0)-> Πx1:T, π(p x1)-> π(p (c x0 x1)) -> Πx:T, π(p x)]. *)
 let gen_rec_type :
       Sig_state.t -> popt -> inductive -> term list * sym_pred_map =
   fun ss pos ind_list ->
@@ -214,7 +214,7 @@ let gen_rec_type :
 
   (* STEP 2 - Create each clause according to a constructor *)
   (* [case_of ind_sym cons_sym] creates the clause of the induction principle
-     of [ind_sym] related to the constructor [cons_sym]. *)
+     of [ind_sym] for the constructor [cons_sym]. *)
   let case_of : sym -> sym -> tbox = fun ind_sym cons_sym ->
     let codom : tvar -> term list -> tvar list -> 'a -> tbox =
       fun p ts xs _ ->
@@ -241,7 +241,7 @@ let gen_rec_type :
   in
 
   (* STEP 3 - Create the induction principle. *)
-    (* A - Merge all the clauses. *)
+    (* A - Gather all the clauses. *)
     (* Very close to the function "fold_right2", but "f" is the function
        "fold_right" and it needs a neutral element. *)
   let rec clauses ind_list e : tbox =
@@ -290,30 +290,32 @@ let gen_rec_type :
     Note: There cannot be name clashes between pattern variable names and
     function symbols names since pattern variables are prefixed by $. *)
 let gen_rec_rules :
-      popt -> (sym * (sym list) * sym) list ->
-      sym_pred_map -> p_rule list list =
-  fun pos ind_list sym_pred_map ->
+      popt -> (sym * sym list * sym) list -> sym_pred_map -> p_rule list list =
+  fun pos ind_rec_list sym_pred_map ->
 
   (* STEP 1 - Create the common head of the rules *)
-  let f e (_,(v,_,_)) = P.appl e (P.patt0 (Bindlib.name_of v)) in
-  let properties head_sym = List.fold_left f head_sym sym_pred_map in
-  let add_arg e s = P.appl e (P.patt0 ("pi" ^ s.sym_name)) in
-  let rec flatten_snd : ('a * 'b list * 'c) list -> 'b list = function
-    | []          -> []
-    | (_, [] , _)  :: t -> flatten_snd t
-    | (i, x::y, r) :: t -> x :: (flatten_snd ((i, y, r)::t))
-  in
-  let common_head head_sym =
-    List.fold_left add_arg (properties (P.iden head_sym))
-      (flatten_snd ind_list)
+  let common_head (sym_name : string) : p_term =
+    let head = P.iden sym_name in
+    let add_patt t n = P.appl t (P.patt0 n) in
+    (* add a predicate variable for each inductive type *)
+    let head =
+      let add_pred head (_,(v,_,_)) = add_patt head (Bindlib.name_of v) in
+      List.fold_left add_pred head sym_pred_map
+    in
+    (* add a case variable for each constructor *)
+    let add_case head cons_sym = add_patt head ("pi" ^ cons_sym.sym_name) in
+    let add_ind head (_, cons_sym_list, _) =
+      List.fold_left add_case head cons_sym_list
+    in
+    List.fold_left add_ind head ind_rec_list
   in
 
   (* STEP 2 - Create each p_rule according to a constructor *)
-  (* [gen_rule_cons ind_sym rec_sym cons_sym] creates a p_rule according to an
-     inductive type [ind_sym], its induction principle [rec_sym] and one of
-     its constructors [cons_sym]. *)
-  let gen_rule_cons :
-        sym -> sym -> sym -> p_rule = fun ind_sym rec_sym cons_sym ->
+  (* [gen_rule_cons ind_sym rec_sym cons_sym] creates the p_rule of the
+     recursor [rec_sym] of the inductive type [ind_sym] for the constructor
+     [cons_sym]. *)
+  let gen_rule_cons : sym -> sym -> sym -> p_rule =
+    fun ind_sym rec_sym cons_sym ->
     let codom : tvar -> term list -> p_term list -> p_term -> p_rule =
       fun _ ts xs p ->
       let rec_arg = P.fold_appl (P.iden cons_sym.sym_name) (List.rev xs) in
@@ -347,7 +349,7 @@ let gen_rec_rules :
   in
 
   (* STEP 3 - Build all the p_rules *)
-  let f (ind_sym, cons_list, rec_sym) =
-    List.map (gen_rule_cons ind_sym rec_sym) cons_list
+  let gen_rules_ind (ind_sym, cons_sym_list, rec_sym) =
+    List.map (gen_rule_cons ind_sym rec_sym) cons_sym_list
   in
-  List.map f ind_list
+  List.map gen_rules_ind ind_rec_list
