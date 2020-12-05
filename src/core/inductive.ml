@@ -276,8 +276,8 @@ let gen_rec_types :
     Note: There cannot be name clashes between pattern variable names and
     function symbols names since pattern variables are prefixed by $. *)
 let gen_rec_rules :
-      popt -> (sym * sym list * sym) list -> sym_pred_map -> p_rule list list =
-  fun pos ind_rec_list sym_pred_map ->
+      popt -> inductive -> sym list -> sym_pred_map -> p_rule list list =
+  fun pos ind_list rec_sym_list sym_pred_map ->
 
   (* STEP 1 - Create the common head of the rules *)
   let common_head (sym_name : string) : p_term =
@@ -290,10 +290,10 @@ let gen_rec_rules :
     in
     (* add a case variable for each constructor *)
     let add_case head cons_sym = add_patt head ("pi" ^ cons_sym.sym_name) in
-    let add_ind head (_, cons_sym_list, _) =
+    let add_ind head (_, cons_sym_list) =
       List.fold_left add_case head cons_sym_list
     in
-    List.fold_left add_ind head ind_rec_list
+    List.fold_left add_ind head ind_list
   in
 
   (* STEP 2 - Create each p_rule according to a constructor *)
@@ -335,7 +335,7 @@ let gen_rec_rules :
   in
 
   (* STEP 3 - Build all the p_rules *)
-  let gen_rules_ind (ind_sym, cons_sym_list, rec_sym) =
+  let gen_rules_ind (ind_sym, cons_sym_list) rec_sym =
     List.map (gen_rule_cons ind_sym rec_sym) cons_sym_list
   in
-  List.map gen_rules_ind ind_rec_list
+  List.map2 gen_rules_ind ind_list rec_sym_list
