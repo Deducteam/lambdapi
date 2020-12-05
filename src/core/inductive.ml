@@ -75,8 +75,8 @@ let prf_of : config -> tvar -> tbox list -> tbox -> tbox = fun c p ts t ->
 type sym_pred_map = (sym * (tvar * tbox * tbox)) list
 
 (** [create_sym_pred_map pos c ind_list p_str x_str] builds an association
-   list mapping each inductive type symbol of [ind_list] to some data that
-   will be useful for generating the induction principles:
+   list mapping each inductive type symbol of [ind_list] in reverse order to
+   some data useful for generating the induction principles:
 
 - a predicate variable (e.g. p)
 
@@ -85,7 +85,7 @@ type sym_pred_map = (sym * (tvar * tbox * tbox)) list
 - its conclusion (e.g. Πx, π (p x))
 
 [p_str] is used as prefix for predicate variable names, and [x_str] as prefix
-for the names of the variable arguments of the predicate. *)
+   for the names of the variable arguments of the predicate. *)
 let create_sym_pred_map :
       popt -> config -> inductive -> string -> string -> sym_pred_map =
   fun pos c ind_list p_str x_str ->
@@ -233,13 +233,13 @@ let gen_rec_types :
       cons_sym f_rec f_not_rec init x_str sym_pred_map
   in
 
-  (* Create the induction principle. *)
+  (* Generates an induction principle for each type. *)
   let gen_rec_type (_, (_,_,conclusion)) =
-    let add_clause_cons ind_sym cons_sym conclusion =
-      _Impl (case_of ind_sym cons_sym) conclusion
+    let add_clause_cons ind_sym cons_sym c =
+      _Impl (case_of ind_sym cons_sym) c
     in
-    let add_clauses_ind (ind_sym, cons_sym_list) conclusion =
-      List.fold_right (add_clause_cons ind_sym) cons_sym_list conclusion
+    let add_clauses_ind (ind_sym, cons_sym_list) c =
+      List.fold_right (add_clause_cons ind_sym) cons_sym_list c
     in
     let conclusion = List.fold_right add_clauses_ind ind_list conclusion in
     let add_quantifier c (_,(v,a,_)) = _Prod a (Bindlib.bind_var v c) in
@@ -247,7 +247,6 @@ let gen_rec_types :
     Bindlib.unbox conclusion
   in
   let res = List.map gen_rec_type sym_pred_map in
-    (* D - Print informative message. *)
   (if !log_enabled then
     let print_informative_message (ind_sym,_) elt =
       log_ind "The induction principle of the inductive type [%a] is %a"
