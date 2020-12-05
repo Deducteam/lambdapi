@@ -259,22 +259,15 @@ let gen_rec_types :
     List.iter2 print_informative_message sym_pred_map res);
   res
 
-(** [gen_rec_rules pos ind_list sym_pred_map] returns the p_rules associa-
-    ted to the list of inductive types [ind_typ_list], defined at the position
-    [pos], the list of theirs induction principles [rec_sym_list] and the list
-    of lists of constructors [cons_list_list], where
-    [ind_list = List.combine3 ind_typ_list cons_list_list rec_sym_list].
-    That means, for only one inductive type, the command
-    inductive T : Π(i1:A1),...,Π(im:Am), TYPE := c1:T1 | ... | cn:Tn generates
-    a rule for each constructor. If Ti = Π(b1:B1), ... , Π(bk:Bk), T then the
-    rule for ci is:
-    rule ind_T p pic1 ... picn _ ... _ (ci x0 ... x(k-1)) -->
-    pici x0 t0? ... x(k-1) t(k-1)?
-    with m underscores and tj? = nothing if xj isn't a value of the inductive
-    type and tj? = (ind_T p pic1 ... picn _ ... _ xj) if xj is a value of the
-    inductive type T (i.e. xj = T v1 ... vm).
-    Note: There cannot be name clashes between pattern variable names and
-    function symbols names since pattern variables are prefixed by $. *)
+(** [gen_rec_rules pos ind_list rec_sym_list sym_pred_map] generates the
+   recursor rules for the inductive type definition [ind_list] and associated
+   recursors [rec_sym_list] and [sym_pred_map].
+
+   For instance, [inductive T : Π(i1:A1),..,Π(im:Am), TYPE := c1:T1 | .. |
+   cn:Tn] generates a rule for each constructor. If [Ti = Πx1:B1,..,Πxk:Bk,T]
+   then the rule for ci is [ind_T p pc1 .. pcn _ .. _ (ci x1 .. xk) --> pci x1
+   t1? ... xk tk? with m underscores, [tj? = ind_T p pc1 .. pcn _ .. _ xj] if
+   [Bj = T v1 ... vm], and nothing otherwise. *)
 let gen_rec_rules :
       popt -> inductive -> sym list -> sym_pred_map -> p_rule list list =
   fun pos ind_list rec_sym_list sym_pred_map ->
@@ -283,6 +276,8 @@ let gen_rec_rules :
      recursor symbol of name [n]. *)
   let lhs_head : string -> p_term = fun sym_name ->
     let head = P.iden sym_name in
+    (* Note: there cannot be name clashes between pattern variable names and
+       function symbol names since pattern variables are prefixed by $. *)
     let add_patt t n = P.appl t (P.patt0 n) in
     (* add a predicate variable for each inductive type *)
     let head =
