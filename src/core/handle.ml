@@ -301,12 +301,15 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
         List.fold_left2 (fun acc x y -> (x,y)::acc) []
           ind_sym_list_rev cons_sym_list_list_rev
       in
-      (* STEP 3 - Generate the induction principle. *)
-      (* A - Compute the induction principle *)
-      (* Note: [sym_pred_map] maps every inductive type to a predicate
-               variable and its type. *)
-      let rec_typ_list_rev, sym_pred_map =
-        Inductive.gen_rec_types ss cmd.pos ind_list
+      (* STEP 3 - Add the induction principles in the signature. *)
+      let c = Inductive.get_config ss cmd.pos in
+      let p_str, x_str = Inductive.gen_safe_prefixes ind_list in
+      let sym_pred_map =
+        Inductive.create_sym_pred_map cmd.pos c ind_list p_str x_str
+      in
+      (* A - Compute the induction principles. *)
+      let rec_typ_list_rev =
+        Inductive.gen_rec_types c ss cmd.pos ind_list sym_pred_map x_str
       in
       let add_recursor (ss, rec_sym_list) ind_sym rec_typ =
         (* B - Check the type of the induction principle *)
@@ -328,8 +331,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
         (ss, rec_sym::rec_sym_list)
       in
       let (ss, rec_sym_list) =
-        List.fold_left2 add_recursor (ss, [])
-          ind_sym_list_rev rec_typ_list_rev
+        List.fold_left2 add_recursor (ss, []) ind_sym_list_rev rec_typ_list_rev
       in
       let ind_rec_list =
         List.combine3_rev

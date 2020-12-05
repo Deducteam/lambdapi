@@ -72,6 +72,26 @@ let gen_ind_typ_codom : popt -> sym -> (tbox list -> tbox) -> string -> tbox =
 let prf_of : config -> tvar -> tbox list -> tbox -> tbox = fun c p ts t ->
   _Appl_symb c.symb_prf [_Appl (_Appl_list (_Vari p) ts) t]
 
+(** compute safe prefixes for predicate and constructor argument variables. *)
+let gen_safe_prefixes : inductive -> string * string = fun ind_list ->
+  let clashing_names =
+    let add_name_from_sym set sym =
+      let s = sym.sym_name in
+      if s <> "" && (s.[0] = 'x' || s.[0] = 'p') then Extra.StrSet.add s set
+      else set
+    in
+    let add_names_from_ind set (sym_ind, sym_cons_list) =
+      let set = add_name_from_sym set sym_ind in
+      List.fold_left add_name_from_sym set sym_cons_list
+    in
+    List.fold_left add_names_from_ind Extra.StrSet.empty ind_list
+  in
+  let p_str = Extra.get_safe_prefix "p" clashing_names in
+  let x_str = Extra.get_safe_prefix "x" clashing_names in
+  p_str, x_str
+
+(** Type of association maps for associating some useful data for the
+   generation of induction principles to each inductive type. *)
 type sym_pred_map = (sym * (tvar * tbox * tbox)) list
 
 (** [create_sym_pred_map pos c ind_list p_str x_str] builds an association
@@ -185,26 +205,9 @@ let fold_cons_type (pos : popt)
    instance, with [inductive T:TYPE := c: T->T->T], we get [ind_T: Πp:T->Prop,
    (Πx0:T, π(p x0)-> Πx1:T, π(p x1)-> π(p (c x0 x1)) -> Πx:T, π(p x)]. *)
 let gen_rec_types :
-      Sig_state.t -> popt -> inductive -> term list * sym_pred_map =
-  fun ss pos ind_list ->
-  let c = get_config ss pos in
-
-  (* Create the sym_pred_map. *)
-  let clashing_names =
-    let add_name_from_sym set sym =
-      let s = sym.sym_name in
-      if s <> "" && (s.[0] = 'x' || s.[0] = 'p') then Extra.StrSet.add s set
-      else set
-    in
-    let add_names_from_ind set (sym_ind, sym_cons_list) =
-      let set = add_name_from_sym set sym_ind in
-      List.fold_left add_name_from_sym set sym_cons_list
-    in
-    List.fold_left add_names_from_ind Extra.StrSet.empty ind_list
-  in
-  let p_str = Extra.get_safe_prefix "p" clashing_names in
-  let x_str = Extra.get_safe_prefix "x" clashing_names in
-  let sym_pred_map = create_sym_pred_map pos c ind_list p_str x_str in
+      config -> Sig_state.t -> popt -> inductive -> sym_pred_map -> string
+      -> term list =
+  fun c ss pos ind_list sym_pred_map x_str ->
 
   (* [case_of ind_sym cons_sym] creates the clause for the constructor
      [cons_sym] in the induction principle of [ind_sym]. *)
@@ -253,7 +256,7 @@ let gen_rec_types :
         Pretty.pp_ident (Pos.none ind_sym.sym_name) Print.pp_term elt
     in
     List.iter2 print_informative_message sym_pred_map res);
-  (res, sym_pred_map)
+  res
 
 (** [gen_rec_rules pos ind_list sym_pred_map] returns the p_rules associa-
     ted to the list of inductive types [ind_typ_list], defined at the position
