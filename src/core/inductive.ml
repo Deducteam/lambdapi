@@ -64,9 +64,9 @@ let gen_safe_prefixes : inductive -> string * string = fun ind_list ->
       if s <> "" && (s.[0] = 'x' || s.[0] = 'p') then Extra.StrSet.add s set
       else set
     in
-    let add_names_from_ind set (sym_ind, sym_cons_list) =
-      let set = add_name_from_sym set sym_ind in
-      List.fold_left add_name_from_sym set sym_cons_list
+    let add_names_from_ind set (ind_sym, cons_sym_list) =
+      let set = add_name_from_sym set ind_sym in
+      List.fold_left add_name_from_sym set cons_sym_list
     in
     List.fold_left add_names_from_ind Extra.StrSet.empty ind_list
   in
