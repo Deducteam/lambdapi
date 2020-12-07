@@ -163,9 +163,10 @@ let handle_symbol :
   out 3 "(symb) %s : %a\n" x.elt pp_term a;
   Sig_state.add_symbol ss e p strat x a impl None
 
-(** [add_rule ss syms r] checks rule [r], adds it in [ss] and returns the set
-   [syms] extended with the symbol defined by [r]. *)
-let add_rule : sig_state -> p_rule -> sym = fun ss r ->
+(** [handle_rule ss syms r] checks rule [r], adds it in [ss] and returns the
+   set [syms] extended with the symbol [s] defined by [r]. However, it does
+   not update the decision tree of [s]. *)
+let handle_rule : sig_state -> p_rule -> sym = fun ss r ->
   let pr = scope_rule false ss r in
   let sym = pr.elt.pr_sym in
   if !(sym.sym_def) <> None then
@@ -176,10 +177,11 @@ let add_rule : sig_state -> p_rule -> sym = fun ss r ->
   out 3 "(rule) %a\n" pp_rule (sym, rule);
   sym
 
-(** [handle_rules ss rs] handles the rules [rs] in signature state [ss]. *)
+(** [handle_rules ss rs] handles the rules [rs] in signature state [ss], and
+   update the decision trees of the symboles defined by [rs]. *)
 let handle_rules : sig_state -> p_rule list -> sig_state = fun ss rs ->
-  let add_rule syms r = SymSet.add (add_rule ss r) syms in
-  let syms = List.fold_left add_rule SymSet.empty rs in
+  let handle_rule syms r = SymSet.add (handle_rule ss r) syms in
+  let syms = List.fold_left handle_rule SymSet.empty rs in
   SymSet.iter Tree.update_dtree syms;
   ss
 
@@ -194,21 +196,21 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
   let scope_basic exp = Scope.scope_term exp ss Env.empty in
   match cmd.elt with
   | P_require(b,ps)              ->
-     let ps = List.map (List.map fst) ps in
-     (List.fold_left (handle_require b cmd.pos) ss ps, None)
+      let ps = List.map (List.map fst) ps in
+      (List.fold_left (handle_require b cmd.pos) ss ps, None)
   | P_require_as(p,id)           ->
-     let id = Pos.make id.pos (fst id.elt) in
-     (handle_require_as cmd.pos ss (List.map fst p) id, None)
+      let id = Pos.make id.pos (fst id.elt) in
+      (handle_require_as cmd.pos ss (List.map fst p) id, None)
   | P_open(ps)                   ->
-     let ps = List.map (List.map fst) ps in
-     (List.fold_left (handle_open cmd.pos) ss ps, None)
+      let ps = List.map (List.map fst) ps in
+      (List.fold_left (handle_open cmd.pos) ss ps, None)
   | P_symbol(ms, x, xs, a)     ->
       (* Verify the modifiers. *)
       let (prop, expo, mstrat) = handle_modifiers ms in
       (fst (handle_symbol ss expo prop mstrat x xs a), None)
   | P_rules(rs)                  ->
-      let add_rule syms r = SymSet.add (add_rule ss r) syms in
-      let syms = List.fold_left add_rule SymSet.empty rs in
+      let handle_rule syms r = SymSet.add (handle_rule ss r) syms in
+      let syms = List.fold_left handle_rule SymSet.empty rs in
       SymSet.iter Tree.update_dtree syms;
       (ss, None)
   | P_definition(ms, op, x, xs, ao, t) ->
@@ -261,85 +263,80 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
       out 3 "(symb) %s ≔ %a\n" x.elt pp_term t;
       let d = if op then None else Some(t) in
       (fst (Sig_state.add_symbol ss expo Defin Eager x a impl d), None)
-  | P_inductive(ms, il)     ->
-      (* STEP 0 - Verify the modifiers. *)
+  | P_inductive(ms, p_ind_list)     ->
+      (* Check modifiers. *)
       let (prop, e, mstrat) = handle_modifiers ms in
       if prop <> Defin then
-        fatal cmd.pos "Property modifiers cannot be used in inductive types.";
+        fatal cmd.pos "Property modifiers cannot be used on inductive types.";
       if mstrat <> Eager then
-        fatal cmd.pos "Pattern matching strategy modifiers cannot be used \
-                       in inductive types.";
-      (* STEP 1 - Add the inductive types in the signature *)
-      let add_ind_sym :
-        sig_state * sym list -> p_inductive -> sig_state * sym list
-        = fun (ss, ind_sym_list) x ->
-        let (id, a, _) = x.elt in
-        let (ss, ind_sym) = handle_symbol ss e Injec Eager id [] a in
+        fatal cmd.pos "Pattern matching strategy modifiers cannot be used on \
+                       inductive types.";
+      (* Add inductive types in the signature. *)
+      let add_ind_sym (ss, ind_sym_list) p_ind =
+        let (id, pt, _) = p_ind.elt in
+        let (ss, ind_sym) = handle_symbol ss e Injec Eager id [] pt in
         (ss, ind_sym::ind_sym_list)
       in
-      let (ss, ind_sym_list_rev) = List.fold_left add_ind_sym (ss, []) il in
-      (* STEP 2 - Add the constructors in the signature. *)
-      let add_constructors :
-        sig_state * sym list list -> p_inductive -> sig_state * sym list list
-        = fun (ss, cons_sym_list_list) x ->
-        let (_, _, l) = x.elt in
-        let add_cons_sym :
-              sig_state * sym list -> ident * p_term -> sig_state * sym list
-          = fun (ss, cons_sym_list) (id, a) ->
-          let (ss, cons_sym) = handle_symbol ss e Const Eager id [] a in
+      let (ss, ind_sym_list_rev) =
+        List.fold_left add_ind_sym (ss, []) p_ind_list in
+      (* Add constructors in the signature. *)
+      let add_constructors (ss, cons_sym_list_list) p_ind =
+        let (_, _, p_cons_list) = p_ind.elt in
+        let add_cons_sym (ss, cons_sym_list) (id, pt) =
+          let (ss, cons_sym) = handle_symbol ss e Const Eager id [] pt in
           (ss, cons_sym::cons_sym_list)
         in
-        let (ss, cons_sym_list_rev) = List.fold_left add_cons_sym (ss, []) l in
+        let (ss, cons_sym_list_rev) =
+          List.fold_left add_cons_sym (ss, []) p_cons_list in
         (* Reverse the list of constructors previously computed to preserve
-           the initial order *)
+           the initial order. *)
         let cons_sym_list = List.rev cons_sym_list_rev in
         (ss, cons_sym_list::cons_sym_list_list)
       in
       let (ss, cons_sym_list_list_rev) =
-        List.fold_left add_constructors (ss, []) il
+        List.fold_left add_constructors (ss, []) p_ind_list
       in
       let ind_list =
         List.fold_left2 (fun acc x y -> (x,y)::acc) []
           ind_sym_list_rev cons_sym_list_list_rev
       in
-      (* STEP 3 - Add the induction principles in the signature. *)
+      (* Compute data useful for generating the induction principles. *)
       let c = Inductive.get_config ss cmd.pos in
       let p_str, x_str = Inductive.gen_safe_prefixes ind_list in
-      let sym_pred_map =
-        Inductive.create_sym_pred_map cmd.pos c ind_list p_str x_str
+      let ind_pred_map =
+        Inductive.create_ind_pred_map cmd.pos c ind_list p_str x_str
       in
-      (* A - Compute the induction principles. *)
+      (* Compute the induction principles. *)
       let rec_typ_list_rev =
-        Inductive.gen_rec_types c ss cmd.pos ind_list sym_pred_map x_str
+        Inductive.gen_rec_types c ss cmd.pos ind_list ind_pred_map x_str
       in
+      (* Add the induction principles in the signature. *)
       let add_recursor (ss, rec_sym_list) ind_sym rec_typ =
-        (* B - Check the type of the induction principle *)
+        (* Check the type of the induction principle. *)
         Inductive.check_rec_type cmd.pos rec_typ;
-        (* C - Add the induction principle in the signature *)
-        let rec_name =
-          Pos.make cmd.pos (Parser.add_prefix "ind_" ind_sym.sym_name)
-        in
-        if Sign.mem ss.signature rec_name.elt then
-          fatal cmd.pos "Symbol [%s] already exists." rec_name.elt;
+        let rec_name = Parser.add_prefix "ind_" ind_sym.sym_name in
+        if Sign.mem ss.signature rec_name then
+          fatal cmd.pos "Symbol [%s] already exists." rec_name;
+        (* If [ind_sym] is a declared identifier, then [rec_sym] must be
+           declared too. *)
         if StrSet.mem ind_sym.sym_name !(ss.signature.sign_idents) then
-          Sign.add_ident ss.signature rec_name.elt;
+          Sign.add_ident ss.signature rec_name;
         let (ss, rec_sym) =
+          out 3 "(symb) %s : %a\n" rec_name pp_term rec_typ;
+          let rec_name = Pos.make cmd.pos rec_name in
           Sig_state.add_symbol ss e Defin Eager rec_name rec_typ [] None
         in
-        if !log_enabled then
-          log_hndl "The induction principle named %a is %a"
-            Pretty.pp_ident rec_name Print.pp_term rec_typ;
         (ss, rec_sym::rec_sym_list)
       in
       let (ss, rec_sym_list) =
         List.fold_left2 add_recursor (ss, []) ind_sym_list_rev rec_typ_list_rev
       in
-      (* STEP 4 - Add recursor rules in the signature. *)
+      (* Add recursor rules in the signature. *)
       with_no_wrn
-        (Inductive.iter_rec_rules cmd.pos ind_list rec_sym_list sym_pred_map)
-        (fun r -> ignore (add_rule ss r));
+        (Inductive.iter_rec_rules cmd.pos ind_list rec_sym_list ind_pred_map)
+        (fun r -> ignore (handle_rule ss r));
       List.iter Tree.update_dtree rec_sym_list;
-      (* STEP 5 - Store the inductive structure in the signature *)
+      (* Store the inductive structure in the signature *)
       List.iter2
         (fun (ind_sym, cons_sym_list) rec_sym ->
           Sign.add_inductive ss.signature ind_sym cons_sym_list rec_sym)
@@ -403,7 +400,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
       in
       let data =
         { pdata_stmt_pos = stmt.pos ; pdata_p_state = st ; pdata_tactics = ts
-        ; pdata_finalize = finalize ; pdata_term_pos = pe.pos }
+          ; pdata_finalize = finalize ; pdata_term_pos = pe.pos }
       in
       (ss, Some(data))
   | P_set(cfg)                 ->

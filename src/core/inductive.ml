@@ -93,9 +93,9 @@ let gen_safe_prefixes : inductive -> string * string = fun ind_list ->
 
 (** Type of association maps for associating some useful data for the
    generation of induction principles to each inductive type. *)
-type sym_pred_map = (sym * (tvar * tbox * tbox)) list
+type ind_pred_map = (sym * (tvar * tbox * tbox)) list
 
-(** [create_sym_pred_map pos c ind_list p_str x_str] builds an association
+(** [create_ind_pred_map pos c ind_list p_str x_str] builds an association
    list mapping each inductive type symbol of [ind_list] in reverse order to
    some data useful for generating the induction principles:
 
@@ -107,8 +107,8 @@ type sym_pred_map = (sym * (tvar * tbox * tbox)) list
 
 [p_str] is used as prefix for predicate variable names, and [x_str] as prefix
    for the names of the variable arguments of the predicate. *)
-let create_sym_pred_map :
-      popt -> config -> inductive -> string -> string -> sym_pred_map =
+let create_ind_pred_map :
+      popt -> config -> inductive -> string -> string -> ind_pred_map =
   fun pos c ind_list p_str x_str ->
   let prop = _Symb c.symb_Prop in
   let create_sym_pred_data i (ind_sym,_) =
@@ -130,7 +130,7 @@ let create_sym_pred_map :
   List.rev_mapi create_sym_pred_data ind_list
 
 (** [fold_cons_typ pos codom inj_var build_rec_hyp domrec dom ind_sym cons_sym
-    f_rec f_not_rec init s sym_pred_map] generates some value iteratively
+    f_rec f_not_rec init s ind_pred_map] generates some value iteratively
     by going through the structure of [cons_sym.sym_type]. The argument [pos]
     is the position of the command inductive where the inductive type was
     defined. The symbol [ind_sym] is the type of the current inductive type,
@@ -139,7 +139,7 @@ let create_sym_pred_map :
     this value in the recursive case with the function [f_rec res x rec_hyp],
     and on the other case with the function [f_not_rec res x]. The string [s]
     is the prefix of variables' name. It's useful for the function [inj_var]
-    to have names with no clash. The data structure [sym_pred_map] maps
+    to have names with no clash. The data structure [ind_pred_map] maps
     every inductive type to a predicate variable and its type.
     In this iteration, we keep track of the variables [xs] we went through
     (the last variable comes first) and some accumulator [acc:'a]. Note that,
@@ -170,12 +170,12 @@ let fold_cons_type (pos : popt)
       (domrec : term -> 'b -> 'a -> 'c -> 'c) (dom : term -> 'b -> 'c -> 'c)
       (ind_sym : sym) (cons_sym : sym) (f_rec : 'a -> 'b -> 'a -> 'a)
       (f_not_rec : 'a -> 'b -> 'a) (init : 'a) (s : string)
-      (sym_pred_map : sym_pred_map) : 'c =
+      (ind_pred_map : ind_pred_map) : 'c =
   let rec aux : 'b list -> 'a -> term -> 'c = fun xs acc a ->
     match Basics.get_args a with
     | (Symb(s), ts) ->
         if s == ind_sym then
-          let p,_,_ = List.assq s sym_pred_map in
+          let p,_,_ = List.assq s ind_pred_map in
           codom p ts xs acc
         else fatal pos "%a is not a constructor of %a"
                pp_symbol cons_sym pp_symbol ind_sym
@@ -186,7 +186,7 @@ let fold_cons_type (pos : popt)
          match Basics.get_args a with
          | (Symb(s), ts) ->
              begin
-               match List.assq_opt s sym_pred_map with
+               match List.assq_opt s ind_pred_map with
                | Some (p,_,_) ->
                    let rec_hyp = build_rec_hyp s p ts x in
                    let next = aux (x::xs) (f_rec acc x rec_hyp) b in
@@ -206,9 +206,9 @@ let fold_cons_type (pos : popt)
    instance, with [inductive T:TYPE := c: T->T->T], we get [ind_T: Πp:T->Prop,
    (Πx0:T, π(p x0)-> Πx1:T, π(p x1)-> π(p (c x0 x1)) -> Πx:T, π(p x)]. *)
 let gen_rec_types :
-      config -> Sig_state.t -> popt -> inductive -> sym_pred_map -> string
+      config -> Sig_state.t -> popt -> inductive -> ind_pred_map -> string
       -> term list =
-  fun c ss pos ind_list sym_pred_map x_str ->
+  fun c ss pos ind_list ind_pred_map x_str ->
 
   (* [case_of ind_sym cons_sym] creates the clause for the constructor
      [cons_sym] in the induction principle of [ind_sym]. *)
@@ -234,7 +234,7 @@ let gen_rec_types :
     let f_not_rec : tbox -> tvar -> tbox = fun a _ -> a in
     let init : tbox = _Type in
     fold_cons_type pos codom inj_var build_rec_hyp domrec dom ind_sym
-      cons_sym f_rec f_not_rec init x_str sym_pred_map
+      cons_sym f_rec f_not_rec init x_str ind_pred_map
   in
 
   (* Generates an induction principle for each type. *)
@@ -247,21 +247,15 @@ let gen_rec_types :
     in
     let conclusion = List.fold_right add_clauses_ind ind_list conclusion in
     let add_quantifier c (_,(v,a,_)) = _Prod a (Bindlib.bind_var v c) in
-    let conclusion = List.fold_left add_quantifier conclusion sym_pred_map in
+    let conclusion = List.fold_left add_quantifier conclusion ind_pred_map in
     Bindlib.unbox conclusion
   in
-  let res = List.map gen_rec_type sym_pred_map in
-  (if !log_enabled then
-    let print_informative_message (ind_sym,_) elt =
-      log_ind "The induction principle of the inductive type [%a] is %a"
-        Pretty.pp_ident (Pos.none ind_sym.sym_name) Print.pp_term elt
-    in
-    List.iter2 print_informative_message sym_pred_map res);
-  res
 
-(** [iter_rec_rules pos ind_list rec_sym_list sym_pred_map] generates the
+  List.map gen_rec_type ind_pred_map
+
+(** [iter_rec_rules pos ind_list rec_sym_list ind_pred_map] generates the
    recursor rules for the inductive type definition [ind_list] and associated
-   recursors [rec_sym_list] and [sym_pred_map].
+   recursors [rec_sym_list] and [ind_pred_map].
 
    For instance, [inductive T : Π(i1:A1),..,Π(im:Am), TYPE := c1:T1 | .. |
    cn:Tn] generates a rule for each constructor. If [Ti = Πx1:B1,..,Πxk:Bk,T]
@@ -269,8 +263,8 @@ let gen_rec_types :
    t1? ... xk tk? with m underscores, [tj? = ind_T p pc1 .. pcn _ .. _ xj] if
    [Bj = T v1 ... vm], and nothing otherwise. *)
 let iter_rec_rules :
-  popt -> inductive -> sym list -> sym_pred_map -> (p_rule -> unit) -> unit =
-  fun pos ind_list rec_sym_list sym_pred_map f ->
+  popt -> inductive -> sym list -> ind_pred_map -> (p_rule -> unit) -> unit =
+  fun pos ind_list rec_sym_list ind_pred_map f ->
 
   (* [commond_head n] generates the common head of the rule LHS's of a
      recursor symbol of name [n]. *)
@@ -282,7 +276,7 @@ let iter_rec_rules :
     (* add a predicate variable for each inductive type *)
     let head =
       let add_pred (_,(v,_,_)) head = add_patt head (Bindlib.name_of v) in
-      List.fold_right add_pred sym_pred_map head
+      List.fold_right add_pred ind_pred_map head
     in
     (* add a case variable for each constructor *)
     let add_case head cons_sym = add_patt head ("pi" ^ cons_sym.sym_name) in
@@ -326,7 +320,7 @@ let iter_rec_rules :
     let f_not_rec : p_term -> p_term -> p_term = fun p x -> P.appl p x in
     let init : p_term = P.patt0 ("pi" ^ cons_sym.sym_name) in
     fold_cons_type pos codom inj_var build_rec_hyp domrec dom ind_sym
-      cons_sym f_rec f_not_rec init "" sym_pred_map
+      cons_sym f_rec f_not_rec init "" ind_pred_map
   in
 
   (* Iterate [f] over every rule. *)
