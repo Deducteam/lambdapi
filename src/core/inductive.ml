@@ -112,49 +112,59 @@ let create_ind_pred_map :
   in
   List.rev_mapi create_sym_pred_data ind_list
 
-(** [fold_cons_typ pos codom inj_var build_rec_hyp domrec dom ind_sym cons_sym
-    f_rec f_not_rec init s ind_pred_map] generates some value iteratively
-    by going through the structure of [cons_sym.sym_type]. The argument [pos]
-    is the position of the command inductive where the inductive type was
-    defined. The symbol [ind_sym] is the type of the current inductive type,
-    and the symbol [cons_sym] is the current constructor. If you would like to
-    store a temporary result, the initial value is [init], and you can change
-    this value in the recursive case with the function [f_rec res x rec_hyp],
-    and on the other case with the function [f_not_rec res x]. The string [s]
-    is the prefix of variables' name. It's useful for the function [inj_var]
-    to have names with no clash. The data structure [ind_pred_map] maps
-    every inductive type to a predicate variable and its type.
-    In this iteration, we keep track of the variables [xs] we went through
-    (the last variable comes first) and some accumulator [acc:'a]. Note that,
-    at the beginning, the function [fold_cons_typ] is equal to
-    [aux [] init  !(cons_sym.sym_type)] where
-    [aux : 'b list -> 'a -> term -> 'c = fun xs acc a].
+(** [fold_cons_type pos codom inj_var build_rec_hyp domrec dom ind_sym
+   cons_sym f_rec f_not_rec init s ind_pred_map] generates some value of type
+   ['c] by traversing the structure of [cons_sym.sym_type].
 
-    During an iteration, there are several cases:
+   [pos] is the position of the inductive command.
 
-      1) If the current type is of the form [ind_sym ts], then we call
-         [codom ts xs acc].
+   [ind_pred_map] is defined above.
 
-      2) If the current type is a product of the form [Π(x:ind_sym ts), b],
-         then we are in case of recursive occurrences, so the function
-         [build_rec_hyp s p ts x] builds the recursive hypothesis associated,
-         then the function [domrec a x rec_hyp next] is applied to conclude
-         the building ([rec_hyp] is the current recursive hypothesis and
-         [next] is the result of the recursive call).
+   [ind_sym] is an inductive type symbol of [ind_pred_map].
 
-      3) If the current type is a product [Π(x:a), b] not of the previous
-         form, then the function [dom a x next] is called.
+   [cons_sym] is a constructor symbol of [ind_sym].
 
-      4) Any other case is an error. *)
+   [init] is the initial value of type ['c].
+
+   [s] is a string used as prefix for generating variable names when
+   deconstructing a product with [Basics.unbind_name].
+
+   The traversal function is [aux : (xs : 'var list) -> (acc : 'a) -> term ->
+   'c] below. It keeps track of the variables [xs] we went through (the last
+   variable comes first) and some accumulator [acc] set to [init] at the
+   beginning.
+
+   During the traversal, there are several possible cases:
+
+   1) If the type argument is of the form [ind_sym ts], then the result is
+   [codom ts xs acc].
+
+   2) If the type argument is a product of the form [Πx:s ts, b], then the
+   result is [domrec (s ts) x rec_hyp next] where [rec_hyp = build_rec_hyp s p
+   ts x], [p] is the variable to which [s] is mapped in [ind_pred_map], and
+   [next = aux (x::xs) acc' b] is the result of the traversal of [b] with the
+   list of variables extended with [x] and the accumulator [acc' = f_rec acc x
+   rec_hyp].
+
+   3) If the type argument is a product [Πx:a, b] not of the previous form,
+   then the result is [dom a x next] where [next = aux (x::xs) acc' b] and
+   [acc' = f_not_rec acc x].
+
+   4) Any other case is an error. *)
 let fold_cons_type (pos : popt)
-      (codom : tvar -> term list -> 'b list -> 'a -> 'c)
-      (inj_var : 'b list -> tvar -> 'b)
-      (build_rec_hyp : sym -> tvar -> term list -> 'b -> 'a)
-      (domrec : term -> 'b -> 'a -> 'c -> 'c) (dom : term -> 'b -> 'c -> 'c)
-      (ind_sym : sym) (cons_sym : sym) (f_rec : 'a -> 'b -> 'a -> 'a)
-      (f_not_rec : 'a -> 'b -> 'a) (init : 'a) (s : string)
+      (codom : tvar -> term list -> 'var list -> 'a -> 'c)
+      (inj_var : 'var list -> tvar -> 'var)
+      (build_rec_hyp : sym -> tvar -> term list -> 'var -> 'a)
+      (domrec : term -> 'var -> 'a -> 'c -> 'c)
+      (dom : term -> 'var -> 'c -> 'c)
+      (ind_sym : sym)
+      (cons_sym : sym)
+      (f_rec : 'a -> 'var -> 'a -> 'a)
+      (f_not_rec : 'a -> 'var -> 'a)
+      (init : 'a)
+      (s : string)
       (ind_pred_map : ind_pred_map) : 'c =
-  let rec aux : 'b list -> 'a -> term -> 'c = fun xs acc a ->
+  let rec aux : 'var list -> 'a -> term -> 'c = fun xs acc a ->
     match Basics.get_args a with
     | (Symb(s), ts) ->
         if s == ind_sym then
