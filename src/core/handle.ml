@@ -327,7 +327,8 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
         (ss, rec_sym::rec_sym_list)
       in
       let (ss, rec_sym_list) =
-        List.fold_left2 add_recursor (ss, []) ind_sym_list_rev rec_typ_list_rev
+        List.fold_left2 add_recursor (ss, [])
+          ind_sym_list_rev rec_typ_list_rev
       in
       (* Add recursor rules in the signature. *)
       with_no_wrn
