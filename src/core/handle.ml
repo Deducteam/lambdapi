@@ -312,8 +312,6 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
       in
       (* Add the induction principles in the signature. *)
       let add_recursor (ss, rec_sym_list) ind_sym rec_typ =
-        (* Check the type of the induction principle. *)
-        Inductive.check_rec_type cmd.pos rec_typ;
         let rec_name = Parser.add_prefix "ind_" ind_sym.sym_name in
         if Sign.mem ss.signature rec_name then
           fatal cmd.pos "Symbol [%s] already exists." rec_name;

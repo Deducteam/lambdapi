@@ -36,23 +36,6 @@ let get_config : Sig_state.t -> Pos.popt -> config = fun ss pos ->
   { symb_Prop = builtin "Prop"
   ; symb_prf  = builtin "P" }
 
-(** [check_typ_ind pos rec_typ] checks that the type of [rec_typ] is
-    TYPE. [pos] is the position of the correspoding inductive type. *)
-let check_rec_type : popt -> term -> unit = fun pos rec_typ ->
-  match Typing.infer [] rec_typ with
-  | Some t ->
-      begin
-      match unfold t with
-      | Type   -> ()
-      | _ -> fatal pos "The type of the generated inductive principle of [%a]
-                        isn't the constant TYPE. Please, raise an issue."
-               pp_term rec_typ
-      end
-  | None   ->
-      fatal pos "The type of the generated inductive principle of
-                 [%a] isn't typable. Please, raise an issue."
-        pp_term rec_typ
-
 (** [gen_ind_typ_codom pos ind_sym codom s] assumes that the type of [ind_sym]
    is of the form [Π(i1:a1),...,Π(in:an), TYPE]. It then generates a [tbox]
    similar to this type except that [TYPE] is replaced by [codom
@@ -245,10 +228,22 @@ let gen_rec_types :
     let add_clauses_ind (ind_sym, cons_sym_list) c =
       List.fold_right (add_clause_cons ind_sym) cons_sym_list c
     in
-    let conclusion = List.fold_right add_clauses_ind ind_list conclusion in
+    let rec_typ = List.fold_right add_clauses_ind ind_list conclusion in
     let add_quantifier c (_,(v,a,_)) = _Prod a (Bindlib.bind_var v c) in
-    let conclusion = List.fold_left add_quantifier conclusion ind_pred_map in
-    Bindlib.unbox conclusion
+    let rec_typ = List.fold_left add_quantifier rec_typ ind_pred_map in
+    Bindlib.unbox rec_typ
+    (* Check the type of rec_typ. *)
+    (*match Typing.infer [] rec_typ with
+    | Some t ->
+        (match unfold t with
+         | Type -> rec_typ
+         | _ ->
+             fatal pos "[%a] is of [%a] instead of TYPE.
+                        Please, raise an issue."
+               pp_term rec_typ pp_term t)
+    | None   ->
+        fatal pos "[%a] is not typable. Please, raise an issue."
+          pp_term rec_typ*)
   in
 
   List.map gen_rec_type ind_pred_map
