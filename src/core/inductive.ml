@@ -212,9 +212,9 @@ let gen_rec_types :
   (* [case_of ind_sym cons_sym] creates the clause for the constructor
      [cons_sym] in the induction principle of [ind_sym]. *)
   let case_of : sym -> sym -> tbox = fun ind_sym cons_sym ->
-    (* 'var = tvar, 'a = tbox, 'aux = tbox, 'c = tbox *)
+    (* 'var = tvar, 'aux = tbox, 'c = tbox *)
     let inj_var _ x = x in
-    let init = _Type in
+    let init = () in (* the accumulator 'a is not used *)
     let aux_rec_dom _ p ts x = prf_of c p (List.map lift ts) (_Vari x) in
     let acc_rec_dom a _ _ = a in
     let acc_nonrec_dom a _ = a in
@@ -274,10 +274,10 @@ let iter_rec_rules :
   (* variable name used for a recursor case argument *)
   let rec_arg_name cons_sym = cons_sym.sym_name in
 
-  (* [commond_head n] generates the common head of the rule LHS's of a
-     recursor symbol of name [n]. *)
-  let lhs_head : string -> p_term = fun sym_name ->
-    let head = P.iden sym_name in
+  (* [lhs_head n] generates the common head of the rule LHS's of a recursor
+     symbol of name [n]. *)
+  let lhs_head : string -> p_term = fun s ->
+    let head = P.iden s in
     (* Note: there cannot be name clashes between pattern variable names and
        function symbol names since pattern variables are prefixed by $. *)
     let add_patt t n = P.appl t (P.patt0 n) in
@@ -299,23 +299,22 @@ let iter_rec_rules :
      [cons_sym]. *)
   let gen_rule_cons : sym -> sym -> sym -> p_rule =
     fun ind_sym rec_sym cons_sym ->
-    (* 'var = p_term, 'a = p_term, 'c = p_rule *)
+    (* 'var = p_term, 'aux = p_term, 'a = p_term, 'c = p_rule *)
     let inj_var xs _ = P.patt0 ("x" ^ string_of_int (List.length xs)) in
     let init = P.patt0 (rec_arg_name cons_sym) in
+    let app_typ_args h ts = P.appl_wild h (List.length ts) in
     let aux_rec_dom s _ ts x =
-      let lhs_head = lhs_head (Parser.add_prefix "ind_" s.sym_name) in
-      let arg_type = P.appl_wild lhs_head (List.length ts) in
-      P.appl arg_type x
+      let n = Parser.add_prefix "ind_" s.sym_name in
+      P.appl (app_typ_args (lhs_head n) ts) x
     in
     let acc_rec_dom p x aux = P.appl (P.appl p x) aux in
     let acc_nonrec_dom p x = P.appl p x in
     let rec_dom _ _ _ next = next in
     let nonrec_dom _ _ next = next in
-    let codom xs p _ ts =
-      let rec_arg = P.fold_appl (P.iden cons_sym.sym_name) (List.rev xs) in
-      let lhs_head = lhs_head rec_sym.sym_name in
-      let lhs = P.appl (P.appl_wild lhs_head (List.length ts)) rec_arg in
-      P.rule lhs p
+    let codom xs rhs _ ts =
+      let cons_arg = P.appl_list (P.iden cons_sym.sym_name) (List.rev xs) in
+      let n = rec_sym.sym_name in
+      P.rule (P.appl (app_typ_args (lhs_head n) ts) cons_arg) rhs
     in
     fold_cons_type pos ind_pred_map "" ind_sym cons_sym inj_var
       init aux_rec_dom acc_rec_dom acc_nonrec_dom rec_dom nonrec_dom codom

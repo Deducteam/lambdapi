@@ -116,8 +116,8 @@ module P  =
     let appl : p_term -> p_term -> p_term = fun t1 t2 ->
       Pos.none (P_Appl(t1, t2))
 
-    (** [fold_appl a [b1; ...; bn]] returns (... ((a b1) b2) ...) bn. *)
-    let fold_appl : p_term -> p_term list -> p_term = List.fold_left appl
+    (** [appl_list a [b1; ...; bn]] returns (... ((a b1) b2) ...) bn. *)
+    let appl_list : p_term -> p_term list -> p_term = List.fold_left appl
 
     (** [wild] creates a p_term, which represents a wildcard, without
         position. *)
