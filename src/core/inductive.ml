@@ -112,58 +112,64 @@ let create_ind_pred_map :
   in
   List.rev_mapi create_sym_pred_data ind_list
 
-(** [fold_cons_type pos codom inj_var build_rec_hyp domrec dom ind_sym
-   cons_sym f_rec f_not_rec init s ind_pred_map] generates some value of type
-   ['c] by traversing the structure of [cons_sym.sym_type].
+(** [fold_cons_type] generates some value of type ['c] by traversing the
+   structure of [cons_sym.sym_type] and accumulating some data of type ['a].
 
    [pos] is the position of the inductive command.
 
    [ind_pred_map] is defined above.
 
+   [var_prefix] is a string used as prefix for generating variable names when
+   deconstructing a product with [Basics.unbind_name].
+
    [ind_sym] is an inductive type symbol of [ind_pred_map].
 
    [cons_sym] is a constructor symbol of [ind_sym].
 
-   [init] is the initial value of type ['c].
+   [init] is the initial value of type ['a].
 
-   [s] is a string used as prefix for generating variable names when
-   deconstructing a product with [Basics.unbind_name].
-
-   The traversal function is [aux : (xs : 'var list) -> (acc : 'a) -> term ->
-   'c] below. It keeps track of the variables [xs] we went through (the last
-   variable comes first) and some accumulator [acc] set to [init] at the
-   beginning.
+   The traversal is made by the function [aux : (xs : 'var list) -> (acc : 'a)
+   -> term -> 'c] below. It keeps track of the variables [xs] we went through
+   (the last variable comes first) and some accumulator [acc] set to [init] at
+   the beginning.
 
    During the traversal, there are several possible cases:
 
-   1) If the type argument is of the form [ind_sym ts], then the result is
+   1) If the type argument is a product of the form [Πx:s ts, b], then the
+   result is [rec_dom (s ts) x rec_hyp next] where [rec_hyp = build_rec_hyp s
+   p ts x], [p] is the variable to which [s] is mapped in [ind_pred_map], and
+   [next = aux (x::xs) acc' b] is the result of the traversal of [b] with the
+   list of variables extended with [x] and the accumulator [acc' = rec_acc acc
+   x rec_hyp].
+
+   2) If the type argument is a product [Πx:a, b] not of the previous form,
+   then the result is [nonrec_dom a x next] where [next = aux (x::xs) acc' b]
+   and [acc' = nonrec_acc acc x].
+
+   3) If the type argument is of the form [ind_sym ts], then the result is
    [codom ts xs acc].
 
-   2) If the type argument is a product of the form [Πx:s ts, b], then the
-   result is [domrec (s ts) x rec_hyp next] where [rec_hyp = build_rec_hyp s p
-   ts x], [p] is the variable to which [s] is mapped in [ind_pred_map], and
-   [next = aux (x::xs) acc' b] is the result of the traversal of [b] with the
-   list of variables extended with [x] and the accumulator [acc' = f_rec acc x
-   rec_hyp].
-
-   3) If the type argument is a product [Πx:a, b] not of the previous form,
-   then the result is [dom a x next] where [next = aux (x::xs) acc' b] and
-   [acc' = f_not_rec acc x].
-
    4) Any other case is an error. *)
-let fold_cons_type (pos : popt)
-      (codom : tvar -> term list -> 'var list -> 'a -> 'c)
-      (inj_var : 'var list -> tvar -> 'var)
-      (build_rec_hyp : sym -> tvar -> term list -> 'var -> 'a)
-      (domrec : term -> 'var -> 'a -> 'c -> 'c)
-      (dom : term -> 'var -> 'c -> 'c)
+let fold_cons_type
+      (pos : popt)
+      (ind_pred_map : ind_pred_map)
+      (var_prefix : string)
+
       (ind_sym : sym)
       (cons_sym : sym)
-      (f_rec : 'a -> 'var -> 'a -> 'a)
-      (f_not_rec : 'a -> 'var -> 'a)
+
+      (inj_var : 'var list -> tvar -> 'var)
+
       (init : 'a)
-      (s : string)
-      (ind_pred_map : ind_pred_map) : 'c =
+      (build_rec_hyp : sym -> tvar -> term list -> 'var -> 'a)
+      (rec_acc : 'a -> 'var -> 'a -> 'a)
+      (nonrec_acc : 'a -> 'var -> 'a)
+
+      (rec_dom : term -> 'var -> 'a -> 'c -> 'c)
+      (nonrec_dom : term -> 'var -> 'c -> 'c)
+      (codom : tvar -> term list -> 'var list -> 'a -> 'c)
+
+    : 'c =
   let rec aux : 'var list -> 'a -> term -> 'c = fun xs acc a ->
     match Basics.get_args a with
     | (Symb(s), ts) ->
@@ -173,7 +179,7 @@ let fold_cons_type (pos : popt)
         else fatal pos "%a is not a constructor of %a"
                pp_symbol cons_sym pp_symbol ind_sym
     | (Prod(a,b), _) ->
-       let (x,b) = Basics.unbind_name b s in
+       let (x,b) = Basics.unbind_name b var_prefix in
        let x = inj_var xs x in
        begin
          match Basics.get_args a with
@@ -182,11 +188,11 @@ let fold_cons_type (pos : popt)
                match List.assq_opt s ind_pred_map with
                | Some (p,_,_) ->
                    let rec_hyp = build_rec_hyp s p ts x in
-                   let next = aux (x::xs) (f_rec acc x rec_hyp) b in
-                   domrec a x rec_hyp next
+                   let next = aux (x::xs) (rec_acc acc x rec_hyp) b in
+                   rec_dom a x rec_hyp next
                | None ->
-                   let next = aux (x::xs) (f_not_rec acc x) b in
-                   dom a x next
+                   let next = aux (x::xs) (nonrec_acc acc x) b in
+                   nonrec_dom a x next
              end
          | _ -> fatal pos "The type of %a is not supported" pp_symbol cons_sym
        end
@@ -201,33 +207,33 @@ let fold_cons_type (pos : popt)
 let gen_rec_types :
       config -> Sig_state.t -> popt -> inductive -> ind_pred_map -> string
       -> term list =
-  fun c ss pos ind_list ind_pred_map x_str ->
+  fun c ss pos ind_list ind_pred_map var_prefix ->
 
   (* [case_of ind_sym cons_sym] creates the clause for the constructor
      [cons_sym] in the induction principle of [ind_sym]. *)
   let case_of : sym -> sym -> tbox = fun ind_sym cons_sym ->
+    let inj_var : tvar list -> tvar -> tvar = fun _ x -> x in
+    let init : tbox = _Type in
+    let build_rec_hyp : sym -> tvar -> term list -> tvar -> tbox =
+      fun _ p ts x ->
+      prf_of c p (List.map lift ts) (_Vari x)
+    in
+    let rec_acc : tbox -> tvar -> tbox -> tbox = fun a _ _ -> a in
+    let nonrec_acc : tbox -> tvar -> tbox = fun a _ -> a in
+    let rec_dom : term -> tvar -> tbox -> tbox -> tbox =
+      fun a x rec_hyp next ->
+      _Prod (lift a) (Bindlib.bind_var x (_Impl rec_hyp next))
+    in
+    let nonrec_dom : term -> tvar -> tbox -> tbox = fun a x next ->
+      _Prod (lift a) (Bindlib.bind_var x next)
+    in
     let codom : tvar -> term list -> tvar list -> 'a -> tbox =
       fun p ts xs _ ->
       prf_of c p (List.map lift ts)
         (_Appl_symb cons_sym (List.rev_map _Vari xs))
     in
-    let inj_var : tvar list -> tvar -> tvar = fun _ x -> x in
-    let build_rec_hyp : sym -> tvar -> term list -> tvar -> tbox =
-      fun _ p ts x ->
-      prf_of c p (List.map lift ts) (_Vari x)
-    in
-    let domrec : term -> tvar -> tbox -> tbox -> tbox =
-      fun a x rec_hyp next ->
-      _Prod (lift a) (Bindlib.bind_var x (_Impl rec_hyp next))
-    in
-    let dom : term -> tvar -> tbox -> tbox = fun a x next ->
-      _Prod (lift a) (Bindlib.bind_var x next)
-    in
-    let f_rec : tbox -> tvar -> tbox -> tbox = fun a _ _ -> a in
-    let f_not_rec : tbox -> tvar -> tbox = fun a _ -> a in
-    let init : tbox = _Type in
-    fold_cons_type pos codom inj_var build_rec_hyp domrec dom ind_sym
-      cons_sym f_rec f_not_rec init x_str ind_pred_map
+    fold_cons_type pos ind_pred_map var_prefix ind_sym cons_sym inj_var
+      init build_rec_hyp rec_acc nonrec_acc rec_dom nonrec_dom codom
   in
 
   (* Generates an induction principle for each type. *)
@@ -296,6 +302,25 @@ let iter_rec_rules :
      [cons_sym]. *)
   let gen_rule_cons : sym -> sym -> sym -> p_rule =
     fun ind_sym rec_sym cons_sym ->
+    let inj_var : p_term list -> tvar -> p_term = fun xs _ ->
+      P.patt0 ("x" ^ (string_of_int (List.length xs)))
+    in
+    let init : p_term = P.patt0 ("pi" ^ cons_sym.sym_name) in
+    let build_rec_hyp : sym -> tvar -> term list -> p_term -> p_term =
+      fun s _ ts x ->
+      let lhs_head = lhs_head ("ind_" ^ s.sym_name) in (* @FIX *)
+      let arg_type = P.appl_wild lhs_head (List.length ts) in
+      P.appl arg_type x
+    in
+    let rec_acc : p_term -> p_term -> p_term -> p_term =
+      fun p x rec_hyp -> P.appl (P.appl p x) rec_hyp
+    in
+    let nonrec_acc : p_term -> p_term -> p_term = fun p x -> P.appl p x in
+    let rec_dom : term -> p_term -> p_term -> p_rule -> p_rule =
+      fun _ _ _ next -> next
+    in
+    let nonrec_dom : term -> p_term -> p_rule -> p_rule =
+      fun _ _ next -> next in
     let codom : tvar -> term list -> p_term list -> p_term -> p_rule =
       fun _ ts xs p ->
       let rec_arg = P.fold_appl (P.iden cons_sym.sym_name) (List.rev xs) in
@@ -306,26 +331,8 @@ let iter_rec_rules :
           Pretty.pp_p_term lhs Pretty.pp_p_term p;
       P.rule lhs p
     in
-    let inj_var : p_term list -> tvar -> p_term = fun xs _ ->
-      P.patt0 ("x" ^ (string_of_int (List.length xs)))
-    in
-    let build_rec_hyp : sym -> tvar -> term list -> p_term -> p_term =
-      fun s _ ts x ->
-      let lhs_head = lhs_head ("ind_" ^ s.sym_name) in (* @FIX *)
-      let arg_type = P.appl_wild lhs_head (List.length ts) in
-      P.appl arg_type x
-    in
-    let domrec : term -> p_term -> p_term -> p_rule -> p_rule =
-      fun _ _ _ next -> next
-    in
-    let dom : term -> p_term -> p_rule -> p_rule = fun _ _ next -> next in
-    let f_rec : p_term -> p_term -> p_term -> p_term =
-      fun p x rec_hyp -> P.appl (P.appl p x) rec_hyp
-    in
-    let f_not_rec : p_term -> p_term -> p_term = fun p x -> P.appl p x in
-    let init : p_term = P.patt0 ("pi" ^ cons_sym.sym_name) in
-    fold_cons_type pos codom inj_var build_rec_hyp domrec dom ind_sym
-      cons_sym f_rec f_not_rec init "" ind_pred_map
+    fold_cons_type pos ind_pred_map "" ind_sym cons_sym inj_var
+      init build_rec_hyp rec_acc nonrec_acc rec_dom nonrec_dom codom
   in
 
   (* Iterate [f] over every rule. *)
