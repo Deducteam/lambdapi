@@ -258,6 +258,10 @@ let gen_rec_types :
 
   List.map gen_rec_type ind_pred_map
 
+(** [rec_name ind_sym] returns the name of the induction principle associated
+   to the inductive type symbol [ind_sym]. *)
+let rec_name ind_sym = Parser.add_prefix "ind_" ind_sym.sym_name
+
 (** [iter_rec_rules pos ind_list rec_sym_list ind_pred_map] generates the
    recursor rules for the inductive type definition [ind_list] and associated
    recursors [rec_sym_list] and [ind_pred_map].
@@ -268,62 +272,56 @@ let gen_rec_types :
    t1? ... xk tk? with m underscores, [tj? = ind_T p pc1 .. pcn _ .. _ xj] if
    [Bj = T v1 ... vm], and nothing otherwise. *)
 let iter_rec_rules :
-  popt -> inductive -> sym list -> ind_pred_map -> (p_rule -> unit) -> unit =
-  fun pos ind_list rec_sym_list ind_pred_map f ->
+      popt -> inductive -> ind_pred_map -> (p_rule -> unit) -> unit =
+  fun pos ind_list ind_pred_map f ->
 
   (* variable name used for a recursor case argument *)
   let rec_arg_name cons_sym = cons_sym.sym_name in
 
   (* [lhs_head n] generates the common head of the rule LHS's of a recursor
      symbol of name [n]. *)
-  let lhs_head : string -> p_term = fun s ->
-    let head = P.iden s in
+  let lhs_head : sym -> p_term = fun sym_ind ->
     (* Note: there cannot be name clashes between pattern variable names and
        function symbol names since pattern variables are prefixed by $. *)
-    let add_patt t n = P.appl t (P.patt0 n) in
+    let app_patt t n = P.appl t (P.patt0 n) in
     (* add a predicate variable for each inductive type *)
     let head =
-      let add_pred (_,(v,_,_)) head = add_patt head (Bindlib.name_of v) in
-      List.fold_right add_pred ind_pred_map head
+      let app_pred (_,(v,_,_)) t = app_patt t (Bindlib.name_of v) in
+      List.fold_right app_pred ind_pred_map (P.iden (rec_name sym_ind))
     in
     (* add a case variable for each constructor *)
-    let add_case head cons_sym = add_patt head (rec_arg_name cons_sym) in
-    let add_ind head (_, cons_sym_list) =
-      List.fold_left add_case head cons_sym_list
+    let app_case t cons_sym = app_patt t (rec_arg_name cons_sym) in
+    let app_cases t (_, cons_sym_list) =
+      List.fold_left app_case t cons_sym_list
     in
-    List.fold_left add_ind head ind_list
+    List.fold_left app_cases head ind_list
   in
 
   (* [gen_rule_cons ind_sym rec_sym cons_sym] generates the p_rule of the
      recursor [rec_sym] of the inductive type [ind_sym] for the constructor
      [cons_sym]. *)
-  let gen_rule_cons : sym -> sym -> sym -> p_rule =
-    fun ind_sym rec_sym cons_sym ->
+  let gen_rule_cons : sym -> sym -> p_rule = fun ind_sym cons_sym ->
     (* 'var = p_term, 'aux = p_term, 'a = p_term, 'c = p_rule *)
     let inj_var xs _ = P.patt0 ("x" ^ string_of_int (List.length xs)) in
     let init = P.patt0 (rec_arg_name cons_sym) in
     let app_typ_args h ts = P.appl_wild h (List.length ts) in
-    let aux_rec_dom s _ ts x =
-      let n = Parser.add_prefix "ind_" s.sym_name in
-      P.appl (app_typ_args (lhs_head n) ts) x
-    in
-    let acc_rec_dom p x aux = P.appl (P.appl p x) aux in
+    let aux_rec_dom s _ ts t = P.appl (app_typ_args (lhs_head s) ts) t in
+    let acc_rec_dom p x t = P.appl (P.appl p x) t in
     let acc_nonrec_dom p x = P.appl p x in
     let rec_dom _ _ _ next = next in
     let nonrec_dom _ _ next = next in
     let codom xs rhs _ ts =
       let cons_arg = P.appl_list (P.iden cons_sym.sym_name) (List.rev xs) in
-      let n = rec_sym.sym_name in
-      P.rule (P.appl (app_typ_args (lhs_head n) ts) cons_arg) rhs
+      let lhs = P.appl (app_typ_args (lhs_head ind_sym) ts) cons_arg in
+      P.rule lhs rhs
     in
     fold_cons_type pos ind_pred_map "" ind_sym cons_sym inj_var
       init aux_rec_dom acc_rec_dom acc_nonrec_dom rec_dom nonrec_dom codom
   in
 
   (* Iterate [f] over every rule. *)
-  let g (ind_sym, cons_sym_list) rec_sym =
-    List.iter
-      (fun cons_sym -> f (gen_rule_cons ind_sym rec_sym cons_sym))
+  let g (ind_sym, cons_sym_list) =
+    List.iter (fun cons_sym -> f (gen_rule_cons ind_sym cons_sym))
       cons_sym_list
   in
-  List.iter2 g ind_list rec_sym_list
+  List.iter g ind_list

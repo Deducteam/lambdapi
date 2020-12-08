@@ -312,7 +312,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
       in
       (* Add the induction principles in the signature. *)
       let add_recursor (ss, rec_sym_list) ind_sym rec_typ =
-        let rec_name = Parser.add_prefix "ind_" ind_sym.sym_name in
+        let rec_name = Inductive.rec_name ind_sym in
         if Sign.mem ss.signature rec_name then
           fatal cmd.pos "Symbol [%s] already exists." rec_name;
         (* If [ind_sym] is a declared identifier, then [rec_sym] must be
@@ -332,7 +332,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
       in
       (* Add recursor rules in the signature. *)
       with_no_wrn
-        (Inductive.iter_rec_rules cmd.pos ind_list rec_sym_list ind_pred_map)
+        (Inductive.iter_rec_rules cmd.pos ind_list ind_pred_map)
         (fun r -> ignore (handle_rule ss r));
       List.iter Tree.update_dtree rec_sym_list;
       (* Store the inductive structure in the signature *)
