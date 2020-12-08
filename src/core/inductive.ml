@@ -128,23 +128,23 @@ let create_ind_pred_map :
 
    [init] is the initial value of type ['a].
 
-   The traversal is made by the function [aux : (xs : 'var list) -> (acc : 'a)
-   -> term -> 'c] below. It keeps track of the variables [xs] we went through
-   (the last variable comes first) and some accumulator [acc] set to [init] at
-   the beginning.
+   The traversal is made by the function [fold : (xs : 'var list) -> (acc :
+   'a) -> term -> 'c] below. It keeps track of the variables [xs] we went
+   through (the last variable comes first) and some accumulator [acc] set to
+   [init] at the beginning.
 
    During the traversal, there are several possible cases:
 
    1) If the type argument is a product of the form [Πx:s ts, b], then the
-   result is [rec_dom (s ts) x rec_hyp next] where [rec_hyp = build_rec_hyp s
-   p ts x], [p] is the variable to which [s] is mapped in [ind_pred_map], and
-   [next = aux (x::xs) acc' b] is the result of the traversal of [b] with the
-   list of variables extended with [x] and the accumulator [acc' = rec_acc acc
-   x rec_hyp].
+   result is [rec_dom (s ts) x aux next] where [aux = aux_rec_dom s p ts x],
+   [p] is the variable to which [s] is mapped in [ind_pred_map], and [next =
+   fold (x::xs) acc' b] is the result of the traversal of [b] with the list of
+   variables extended with [x] and the accumulator [acc' = acc_rec_dom acc x
+   aux].
 
    2) If the type argument is a product [Πx:a, b] not of the previous form,
-   then the result is [nonrec_dom a x next] where [next = aux (x::xs) acc' b]
-   and [acc' = nonrec_acc acc x].
+   then the result is [nonrec_dom a x next] where [next = fold (x::xs) acc' b]
+   and [acc' = acc_nonrec_dom acc x].
 
    3) If the type argument is of the form [ind_sym ts], then the result is
    [codom ts xs acc].
@@ -161,21 +161,21 @@ let fold_cons_type
       (inj_var : 'var list -> tvar -> 'var)
 
       (init : 'a)
-      (build_rec_hyp : sym -> tvar -> term list -> 'var -> 'a)
-      (rec_acc : 'a -> 'var -> 'a -> 'a)
-      (nonrec_acc : 'a -> 'var -> 'a)
+      (aux_rec_dom : sym -> tvar -> term list -> 'var -> 'aux)
+      (acc_rec_dom : 'a -> 'var -> 'aux -> 'a)
+      (acc_nonrec_dom : 'a -> 'var -> 'a)
 
-      (rec_dom : term -> 'var -> 'a -> 'c -> 'c)
+      (rec_dom : term -> 'var -> 'aux -> 'c -> 'c)
       (nonrec_dom : term -> 'var -> 'c -> 'c)
-      (codom : tvar -> term list -> 'var list -> 'a -> 'c)
+      (codom : 'var list -> 'a -> tvar -> term list -> 'c)
 
     : 'c =
-  let rec aux : 'var list -> 'a -> term -> 'c = fun xs acc a ->
+  let rec fold : 'var list -> 'a -> term -> 'c = fun xs acc a ->
     match Basics.get_args a with
     | (Symb(s), ts) ->
         if s == ind_sym then
-          let p,_,_ = List.assq s ind_pred_map in
-          codom p ts xs acc
+          let pred_var,_,_ = List.assq ind_sym ind_pred_map in
+          codom xs acc pred_var ts
         else fatal pos "%a is not a constructor of %a"
                pp_symbol cons_sym pp_symbol ind_sym
     | (Prod(a,b), _) ->
@@ -186,18 +186,18 @@ let fold_cons_type
          | (Symb(s), ts) ->
              begin
                match List.assq_opt s ind_pred_map with
-               | Some (p,_,_) ->
-                   let rec_hyp = build_rec_hyp s p ts x in
-                   let next = aux (x::xs) (rec_acc acc x rec_hyp) b in
-                   rec_dom a x rec_hyp next
+               | Some (pred_var,_,_) ->
+                   let aux = aux_rec_dom s pred_var ts x in
+                   let next = fold (x::xs) (acc_rec_dom acc x aux) b in
+                   rec_dom a x aux next
                | None ->
-                   let next = aux (x::xs) (nonrec_acc acc x) b in
+                   let next = fold (x::xs) (acc_nonrec_dom acc x) b in
                    nonrec_dom a x next
              end
          | _ -> fatal pos "The type of %a is not supported" pp_symbol cons_sym
        end
     | _ -> fatal pos "The type of %a is not supported" pp_symbol cons_sym
-  in aux [] init !(cons_sym.sym_type)
+  in fold [] init !(cons_sym.sym_type)
 
 (** [gen_rec_type ss pos ind_list] generates the induction principles for each
    type in the inductive definition [ind_list] defined at the position
@@ -212,28 +212,22 @@ let gen_rec_types :
   (* [case_of ind_sym cons_sym] creates the clause for the constructor
      [cons_sym] in the induction principle of [ind_sym]. *)
   let case_of : sym -> sym -> tbox = fun ind_sym cons_sym ->
-    let inj_var : tvar list -> tvar -> tvar = fun _ x -> x in
-    let init : tbox = _Type in
-    let build_rec_hyp : sym -> tvar -> term list -> tvar -> tbox =
-      fun _ p ts x ->
-      prf_of c p (List.map lift ts) (_Vari x)
+    (* 'var = tvar, 'a = tbox, 'aux = tbox, 'c = tbox *)
+    let inj_var _ x = x in
+    let init = _Type in
+    let aux_rec_dom _ p ts x = prf_of c p (List.map lift ts) (_Vari x) in
+    let acc_rec_dom a _ _ = a in
+    let acc_nonrec_dom a _ = a in
+    let rec_dom a x aux next =
+      _Prod (lift a) (Bindlib.bind_var x (_Impl aux next))
     in
-    let rec_acc : tbox -> tvar -> tbox -> tbox = fun a _ _ -> a in
-    let nonrec_acc : tbox -> tvar -> tbox = fun a _ -> a in
-    let rec_dom : term -> tvar -> tbox -> tbox -> tbox =
-      fun a x rec_hyp next ->
-      _Prod (lift a) (Bindlib.bind_var x (_Impl rec_hyp next))
-    in
-    let nonrec_dom : term -> tvar -> tbox -> tbox = fun a x next ->
-      _Prod (lift a) (Bindlib.bind_var x next)
-    in
-    let codom : tvar -> term list -> tvar list -> 'a -> tbox =
-      fun p ts xs _ ->
+    let nonrec_dom a x next = _Prod (lift a) (Bindlib.bind_var x next) in
+    let codom xs _ p ts =
       prf_of c p (List.map lift ts)
         (_Appl_symb cons_sym (List.rev_map _Vari xs))
     in
     fold_cons_type pos ind_pred_map var_prefix ind_sym cons_sym inj_var
-      init build_rec_hyp rec_acc nonrec_acc rec_dom nonrec_dom codom
+      init aux_rec_dom acc_rec_dom acc_nonrec_dom rec_dom nonrec_dom codom
   in
 
   (* Generates an induction principle for each type. *)
@@ -277,6 +271,9 @@ let iter_rec_rules :
   popt -> inductive -> sym list -> ind_pred_map -> (p_rule -> unit) -> unit =
   fun pos ind_list rec_sym_list ind_pred_map f ->
 
+  (* variable name used for a recursor case argument *)
+  let rec_arg_name cons_sym = cons_sym.sym_name in
+
   (* [commond_head n] generates the common head of the rule LHS's of a
      recursor symbol of name [n]. *)
   let lhs_head : string -> p_term = fun sym_name ->
@@ -290,7 +287,7 @@ let iter_rec_rules :
       List.fold_right add_pred ind_pred_map head
     in
     (* add a case variable for each constructor *)
-    let add_case head cons_sym = add_patt head ("pi" ^ cons_sym.sym_name) in
+    let add_case head cons_sym = add_patt head (rec_arg_name cons_sym) in
     let add_ind head (_, cons_sym_list) =
       List.fold_left add_case head cons_sym_list
     in
@@ -302,37 +299,26 @@ let iter_rec_rules :
      [cons_sym]. *)
   let gen_rule_cons : sym -> sym -> sym -> p_rule =
     fun ind_sym rec_sym cons_sym ->
-    let inj_var : p_term list -> tvar -> p_term = fun xs _ ->
-      P.patt0 ("x" ^ (string_of_int (List.length xs)))
-    in
-    let init : p_term = P.patt0 ("pi" ^ cons_sym.sym_name) in
-    let build_rec_hyp : sym -> tvar -> term list -> p_term -> p_term =
-      fun s _ ts x ->
-      let lhs_head = lhs_head ("ind_" ^ s.sym_name) in (* @FIX *)
+    (* 'var = p_term, 'a = p_term, 'c = p_rule *)
+    let inj_var xs _ = P.patt0 ("x" ^ string_of_int (List.length xs)) in
+    let init = P.patt0 (rec_arg_name cons_sym) in
+    let aux_rec_dom s _ ts x =
+      let lhs_head = lhs_head (Parser.add_prefix "ind_" s.sym_name) in
       let arg_type = P.appl_wild lhs_head (List.length ts) in
       P.appl arg_type x
     in
-    let rec_acc : p_term -> p_term -> p_term -> p_term =
-      fun p x rec_hyp -> P.appl (P.appl p x) rec_hyp
-    in
-    let nonrec_acc : p_term -> p_term -> p_term = fun p x -> P.appl p x in
-    let rec_dom : term -> p_term -> p_term -> p_rule -> p_rule =
-      fun _ _ _ next -> next
-    in
-    let nonrec_dom : term -> p_term -> p_rule -> p_rule =
-      fun _ _ next -> next in
-    let codom : tvar -> term list -> p_term list -> p_term -> p_rule =
-      fun _ ts xs p ->
+    let acc_rec_dom p x aux = P.appl (P.appl p x) aux in
+    let acc_nonrec_dom p x = P.appl p x in
+    let rec_dom _ _ _ next = next in
+    let nonrec_dom _ _ next = next in
+    let codom xs p _ ts =
       let rec_arg = P.fold_appl (P.iden cons_sym.sym_name) (List.rev xs) in
       let lhs_head = lhs_head rec_sym.sym_name in
       let lhs = P.appl (P.appl_wild lhs_head (List.length ts)) rec_arg in
-      if !log_enabled then
-        log_ind "The rule [%a] --> %a"
-          Pretty.pp_p_term lhs Pretty.pp_p_term p;
       P.rule lhs p
     in
     fold_cons_type pos ind_pred_map "" ind_sym cons_sym inj_var
-      init build_rec_hyp rec_acc nonrec_acc rec_dom nonrec_dom codom
+      init aux_rec_dom acc_rec_dom acc_nonrec_dom rec_dom nonrec_dom codom
   in
 
   (* Iterate [f] over every rule. *)
