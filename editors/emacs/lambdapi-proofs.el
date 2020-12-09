@@ -9,9 +9,26 @@
 
 (defconst lp-goal-line-prefix "---------------------------------------------------")
 
+
+(defun lp-focus-goal (goalno &optional proofbuf)
+  (interactive)
+  (if (null proofbuf)
+      (setq proofbuf (current-buffer)))
+  (with-current-buffer proofbuf
+    (goto-line (plist-get proof-line-position :line))
+    (goto-char (line-end-position))
+    (newline)
+    (insert (format "focus %S" goalno))
+    (smie-indent-line)
+    (eglot--signal-textDocument/didChange)
+    (lp-proof-forward))
+  (select-window (get-buffer-window proofbuf)))
+
+
 (defun display-goals (goals)
   "Display GOALS returned by the LSP server in the dedicated Emacs buffer."
-  (let ((goalsbuf (get-buffer-create "*Goals*")))
+  (let ((goalsbuf (get-buffer-create "*Goals*"))
+        (proofbuf (current-buffer)))
     (with-current-buffer goalsbuf
       (read-only-mode -1)
       (if (> (length goals) 0)
@@ -23,12 +40,34 @@
                                     (type (plist-get hyp :htype)))
                                 (format "%s: %s\n" name type)))
                             (reverse hs)))
+                 (goalnum  0)
                  (goalsstr (mapcar
                             (lambda (goal)
-                              (let ((id (plist-get goal :gid))
-                                    (type (plist-get goal :type)))
-                                (format "%s\nGoal %d: %s\n\n"
-                                        lp-goal-line-prefix id type)))
+                              (let* ((id (plist-get goal :gid))
+                                     (type (plist-get goal :type))
+                                     (goalkeymap (make-sparse-keymap))
+                                     (goalstr (format "%s\nGoal %d: %s\n\n"
+                                                      lp-goal-line-prefix
+                                                      id type)))
+                                (if (> goalnum 0)
+                                    (define-key goalkeymap [mouse-1]
+                                      `(lambda ()
+                                         (interactive)
+                                         (lp-focus-goal ,goalnum ,proofbuf))))
+                                (add-text-properties
+                                 (1+ (length lp-goal-line-prefix))
+                                 (- (length goalstr) 2)
+                                 `(face         ,(pcase goalnum
+						   (0 'bold)
+						   (_ 'default))
+                                   mouse-face   highlight
+                                   help-echo    ,(pcase goalnum
+						   (0  "current goal")
+						   (_  "click to focus"))
+                                   keymap       ,goalkeymap)
+                                 goalstr)
+                                (setq goalnum (1+ goalnum))
+                                goalstr))
                             goals)))
             (erase-buffer)
             (goto-char (point-max))
