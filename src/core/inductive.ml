@@ -139,7 +139,7 @@ let create_ind_pred_map :
 
    1) If the type argument is a product of the form [Πx:s ts, b], then the
    result is [rec_dom (s ts) x' aux next] where [x' = inj_var xs x], [aux =
-   aux_rec_dom x' s ts p], [p] is the variable to which [s] is mapped in
+   aux x' s ts p], [p] is the variable to which [s] is mapped in
    [ind_pred_map], and [next = fold (x'::xs) acc' b] is the result of the
    traversal of [b] with the list of variables extended with [x] and the
    accumulator [acc' = acc_rec_dom acc x' aux].
@@ -156,19 +156,18 @@ let fold_cons_type
       (pos : popt)
       (ind_pred_map : ind_pred_map)
       (var_prefix : string)
-
       (ind_sym : sym)
       (cons_sym : sym)
-
       (inj_var : 'var list -> tvar -> 'var)
-
       (init : 'a)
-      (aux_rec_dom : sym -> tvar -> term list -> 'var -> 'aux)
-      (acc_rec_dom : 'a -> 'var -> 'aux -> 'a)
-      (acc_nonrec_dom : 'a -> 'var -> 'a)
 
+      (aux : sym -> tvar -> term list -> 'var -> 'aux)
+      (acc_rec_dom : 'a -> 'var -> 'aux -> 'a)
       (rec_dom : term -> 'var -> 'aux -> 'c -> 'c)
+
+      (acc_nonrec_dom : 'a -> 'var -> 'a)
       (nonrec_dom : term -> 'var -> 'c -> 'c)
+
       (codom : 'var list -> 'a -> tvar -> term list -> 'c)
 
     : 'c =
@@ -189,7 +188,7 @@ let fold_cons_type
              begin
                match List.assq_opt s ind_pred_map with
                | Some (pred_var,_,_) ->
-                   let aux = aux_rec_dom s pred_var ts x in
+                   let aux = aux s pred_var ts x in
                    let next = fold (x::xs) (acc_rec_dom acc x aux) u in
                    rec_dom t x aux next
                | None ->
@@ -214,23 +213,24 @@ let gen_rec_types :
   (* [case_of ind_sym cons_sym] creates the clause for the constructor
      [cons_sym] in the induction principle of [ind_sym]. *)
   let case_of : sym -> sym -> tbox = fun ind_sym cons_sym ->
-    (* 'var = tvar, 'a = unit, 'aux = tbox, 'c = tbox *)
-    (* the accumulator 'a is not used *)
+    (* 'var = tvar, 'a = unit, 'aux = unit, 'c = tbox *)
+      (* the accumulator is not used *)
     let inj_var _ x = x in
     let init = () in
-    let aux_rec_dom _ p ts x = prf_of c p (List.map lift ts) (_Vari x) in
+    (* aux computes the induction hypothesis *)
+    let aux _ p ts x = prf_of c p (List.map lift ts) (_Vari x) in
     let acc_rec_dom _ _ _ = () in
-    let acc_nonrec_dom _ _ = () in
     let rec_dom t x aux next =
       _Prod (lift t) (Bindlib.bind_var x (_Impl aux next))
     in
+    let acc_nonrec_dom _ _ = () in
     let nonrec_dom t x next = _Prod (lift t) (Bindlib.bind_var x next) in
     let codom xs _ p ts =
       prf_of c p (List.map lift ts)
         (_Appl_symb cons_sym (List.rev_map _Vari xs))
     in
     fold_cons_type pos ind_pred_map var_prefix ind_sym cons_sym inj_var
-      init aux_rec_dom acc_rec_dom acc_nonrec_dom rec_dom nonrec_dom codom
+      init aux acc_rec_dom rec_dom acc_nonrec_dom nonrec_dom codom
   in
 
   (* Generates an induction principle for each type. *)
@@ -310,17 +310,18 @@ let iter_rec_rules :
     (* the accumulator is used to compute the RHS *)
     let inj_var xs _ = P.patt0 ("x" ^ string_of_int (List.length xs)) in
     let init = P.patt0 (case_arg_name cons_sym) in
-    let aux_rec_dom s _ ts x = app_rec s ts x in
+    (* aux computes the recursive call *)
+    let aux s _ ts x = app_rec s ts x in
     let acc_rec_dom acc x aux = P.appl (P.appl acc x) aux in
-    let acc_nonrec_dom a x = P.appl a x in
     let rec_dom _ _ _ next = next in
+    let acc_nonrec_dom a x = P.appl a x in
     let nonrec_dom _ _ next = next in
     let codom xs rhs _ ts =
       let cons_arg = P.appl_list (P.iden cons_sym.sym_name) (List.rev xs) in
       P.rule (app_rec ind_sym ts cons_arg) rhs
     in
     fold_cons_type pos ind_pred_map "" ind_sym cons_sym inj_var
-      init aux_rec_dom acc_rec_dom acc_nonrec_dom rec_dom nonrec_dom codom
+      init aux acc_rec_dom rec_dom acc_nonrec_dom nonrec_dom codom
   in
 
   (* Iterate [f] over every rule. *)
