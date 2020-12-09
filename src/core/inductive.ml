@@ -126,6 +126,8 @@ let create_ind_pred_map :
 
    [cons_sym] is a constructor symbol of [ind_sym].
 
+   [inj_var] injects traversed bound variables into the type ['var].
+
    [init] is the initial value of type ['a].
 
    The traversal is made by the function [fold : (xs : 'var list) -> (acc :
@@ -136,15 +138,15 @@ let create_ind_pred_map :
    During the traversal, there are several possible cases:
 
    1) If the type argument is a product of the form [Πx:s ts, b], then the
-   result is [rec_dom (s ts) x aux next] where [aux = aux_rec_dom s p ts x],
-   [p] is the variable to which [s] is mapped in [ind_pred_map], and [next =
-   fold (x::xs) acc' b] is the result of the traversal of [b] with the list of
-   variables extended with [x] and the accumulator [acc' = acc_rec_dom acc x
-   aux].
+   result is [rec_dom (s ts) x' aux next] where [x' = inj_var xs x], [aux =
+   aux_rec_dom x' s ts p], [p] is the variable to which [s] is mapped in
+   [ind_pred_map], and [next = fold (x'::xs) acc' b] is the result of the
+   traversal of [b] with the list of variables extended with [x] and the
+   accumulator [acc' = acc_rec_dom acc x' aux].
 
    2) If the type argument is a product [Πx:a, b] not of the previous form,
-   then the result is [nonrec_dom a x next] where [next = fold (x::xs) acc' b]
-   and [acc' = acc_nonrec_dom acc x].
+   then the result is [nonrec_dom a x' next] where [next = fold (x'::xs) acc'
+   b] and [acc' = acc_nonrec_dom acc x'].
 
    3) If the type argument is of the form [ind_sym ts], then the result is
    [codom ts xs acc].
@@ -170,29 +172,29 @@ let fold_cons_type
       (codom : 'var list -> 'a -> tvar -> term list -> 'c)
 
     : 'c =
-  let rec fold : 'var list -> 'a -> term -> 'c = fun xs acc a ->
-    match Basics.get_args a with
+  let rec fold : 'var list -> 'a -> term -> 'c = fun xs acc t ->
+    match Basics.get_args t with
     | (Symb(s), ts) ->
         if s == ind_sym then
           let pred_var,_,_ = List.assq ind_sym ind_pred_map in
           codom xs acc pred_var ts
         else fatal pos "%a is not a constructor of %a"
                pp_symbol cons_sym pp_symbol ind_sym
-    | (Prod(a,b), _) ->
-       let (x,b) = Basics.unbind_name b var_prefix in
+    | (Prod(t,u), _) ->
+       let (x,u) = Basics.unbind_name u var_prefix in
        let x = inj_var xs x in
        begin
-         match Basics.get_args a with
+         match Basics.get_args t with
          | (Symb(s), ts) ->
              begin
                match List.assq_opt s ind_pred_map with
                | Some (pred_var,_,_) ->
                    let aux = aux_rec_dom s pred_var ts x in
-                   let next = fold (x::xs) (acc_rec_dom acc x aux) b in
-                   rec_dom a x aux next
+                   let next = fold (x::xs) (acc_rec_dom acc x aux) u in
+                   rec_dom t x aux next
                | None ->
-                   let next = fold (x::xs) (acc_nonrec_dom acc x) b in
-                   nonrec_dom a x next
+                   let next = fold (x::xs) (acc_nonrec_dom acc x) u in
+                   nonrec_dom t x next
              end
          | _ -> fatal pos "The type of %a is not supported" pp_symbol cons_sym
        end
@@ -212,16 +214,17 @@ let gen_rec_types :
   (* [case_of ind_sym cons_sym] creates the clause for the constructor
      [cons_sym] in the induction principle of [ind_sym]. *)
   let case_of : sym -> sym -> tbox = fun ind_sym cons_sym ->
-    (* 'var = tvar, 'aux = tbox, 'c = tbox *)
+    (* 'var = tvar, 'a = unit, 'aux = tbox, 'c = tbox *)
+    (* the accumulator 'a is not used *)
     let inj_var _ x = x in
-    let init = () in (* the accumulator 'a is not used *)
+    let init = () in
     let aux_rec_dom _ p ts x = prf_of c p (List.map lift ts) (_Vari x) in
-    let acc_rec_dom a _ _ = a in
-    let acc_nonrec_dom a _ = a in
-    let rec_dom a x aux next =
-      _Prod (lift a) (Bindlib.bind_var x (_Impl aux next))
+    let acc_rec_dom _ _ _ = () in
+    let acc_nonrec_dom _ _ = () in
+    let rec_dom t x aux next =
+      _Prod (lift t) (Bindlib.bind_var x (_Impl aux next))
     in
-    let nonrec_dom a x next = _Prod (lift a) (Bindlib.bind_var x next) in
+    let nonrec_dom t x next = _Prod (lift t) (Bindlib.bind_var x next) in
     let codom xs _ p ts =
       prf_of c p (List.map lift ts)
         (_Appl_symb cons_sym (List.rev_map _Vari xs))
@@ -276,11 +279,12 @@ let iter_rec_rules :
   fun pos ind_list ind_pred_map f ->
 
   (* variable name used for a recursor case argument *)
-  let rec_arg_name cons_sym = cons_sym.sym_name in
+  let case_arg_name cons_sym = cons_sym.sym_name in
 
-  (* [lhs_head n] generates the common head of the rule LHS's of a recursor
-     symbol of name [n]. *)
-  let lhs_head : sym -> p_term = fun sym_ind ->
+  (* [app_rec sym_ind ts t] generates the application of the recursor of
+     [ind_sym] to the type parameters [ts] and the constructor argument
+     [t]. *)
+  let app_rec : sym -> term list -> p_term -> p_term = fun sym_ind ts t ->
     (* Note: there cannot be name clashes between pattern variable names and
        function symbol names since pattern variables are prefixed by $. *)
     let app_patt t n = P.appl t (P.patt0 n) in
@@ -290,11 +294,12 @@ let iter_rec_rules :
       List.fold_right app_pred ind_pred_map (P.iden (rec_name sym_ind))
     in
     (* add a case variable for each constructor *)
-    let app_case t cons_sym = app_patt t (rec_arg_name cons_sym) in
+    let app_case t cons_sym = app_patt t (case_arg_name cons_sym) in
     let app_cases t (_, cons_sym_list) =
       List.fold_left app_case t cons_sym_list
     in
-    List.fold_left app_cases head ind_list
+    let head = List.fold_left app_cases head ind_list in
+    P.appl (P.appl_wild head (List.length ts)) t
   in
 
   (* [gen_rule_cons ind_sym rec_sym cons_sym] generates the p_rule of the
@@ -302,18 +307,17 @@ let iter_rec_rules :
      [cons_sym]. *)
   let gen_rule_cons : sym -> sym -> p_rule = fun ind_sym cons_sym ->
     (* 'var = p_term, 'aux = p_term, 'a = p_term, 'c = p_rule *)
+    (* the accumulator is used to compute the RHS *)
     let inj_var xs _ = P.patt0 ("x" ^ string_of_int (List.length xs)) in
-    let init = P.patt0 (rec_arg_name cons_sym) in
-    let app_typ_args h ts = P.appl_wild h (List.length ts) in
-    let aux_rec_dom s _ ts t = P.appl (app_typ_args (lhs_head s) ts) t in
-    let acc_rec_dom p x t = P.appl (P.appl p x) t in
-    let acc_nonrec_dom p x = P.appl p x in
+    let init = P.patt0 (case_arg_name cons_sym) in
+    let aux_rec_dom s _ ts x = app_rec s ts x in
+    let acc_rec_dom acc x aux = P.appl (P.appl acc x) aux in
+    let acc_nonrec_dom a x = P.appl a x in
     let rec_dom _ _ _ next = next in
     let nonrec_dom _ _ next = next in
     let codom xs rhs _ ts =
       let cons_arg = P.appl_list (P.iden cons_sym.sym_name) (List.rev xs) in
-      let lhs = P.appl (app_typ_args (lhs_head ind_sym) ts) cons_arg in
-      P.rule lhs rhs
+      P.rule (app_rec ind_sym ts cons_arg) rhs
     in
     fold_cons_type pos ind_pred_map "" ind_sym cons_sym inj_var
       init aux_rec_dom acc_rec_dom acc_nonrec_dom rec_dom nonrec_dom codom
