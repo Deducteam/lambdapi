@@ -89,6 +89,9 @@ let p_get_args : p_term -> p_term * p_term list = fun t ->
 (** Parser-level rewriting rule representation. *)
 type p_rule = (p_patt * p_term) loc
 
+(** Parser-level inductive type representation. *)
+type p_inductive = (ident * p_term * (ident * p_term) list) loc
+
 (** The previous module provides some functions to create p_term without
     position. *)
 module P  =
@@ -113,8 +116,8 @@ module P  =
     let appl : p_term -> p_term -> p_term = fun t1 t2 ->
       Pos.none (P_Appl(t1, t2))
 
-    (** [fold_appl a [b1; ...; bn]] returns (... ((a b1) b2) ...) bn. *)
-    let fold_appl : p_term -> p_term list -> p_term = List.fold_left appl
+    (** [appl_list a [b1; ...; bn]] returns (... ((a b1) b2) ...) bn. *)
+    let appl_list : p_term -> p_term list -> p_term = List.fold_left appl
 
     (** [wild] creates a p_term, which represents a wildcard, without
         position. *)
@@ -263,7 +266,7 @@ type p_command_aux =
   | P_definition of p_modifier loc list * bool * ident * p_arg list *
                     p_type option * p_term
   (** Definition of a symbol (unfoldable). *)
-  | P_inductive of p_modifier loc list * ident * p_term * (ident*p_term) list
+  | P_inductive of p_modifier loc list * p_inductive list
   (** Definition of inductive type *)
   | P_theorem    of p_modifier loc list * p_statement * p_tactic list *
                     p_proof_end loc
@@ -326,6 +329,12 @@ let eq_p_rule : p_rule eq = fun r1 r2 ->
   let {elt = (lhs1, rhs1); _} = r1 in
   let {elt = (lhs2, rhs2); _} = r2 in
   eq_p_term lhs1 lhs2 && eq_p_term rhs1 rhs2
+
+let eq_p_inductive : p_inductive eq = fun i1 i2 ->
+  let {elt = (s1, t1, tl1); _} = i1 in
+  let {elt = (s2, t2, tl2); _} = i2 in
+  let eq_id_p_term (s1,t1) (s2,t2) = eq_ident s1 s2 && eq_p_term t1 t2 in
+  List.equal eq_id_p_term ((s1,t1)::tl1) ((s2,t2)::tl2)
 
 let eq_p_rw_patt : p_rw_patt loc eq = fun r1 r2 ->
   match (r1.elt, r2.elt) with
@@ -413,9 +422,8 @@ let eq_p_command : p_command eq = fun c1 c2 ->
   | (P_definition(m1,b1,s1,l1,a1,t1), P_definition(m2,b2,s2,l2,a2,t2)) ->
       m1 = m2 && b1 = b2 && eq_ident s1 s2 && List.equal eq_p_arg l1 l2
       && Option.equal eq_p_term a1 a2 && eq_p_term t1 t2
-  | (P_inductive(m1,s1,t1,tl1)   , P_inductive(m2,s2,t2,tl2)    ) ->
-      let eq_id_p_term (s1,t1) (s2,t2) = eq_ident s1 s2 && eq_p_term t1 t2 in
-      m1 = m2 && List.equal eq_id_p_term ((s1,t1)::tl1) ((s2,t2)::tl2)
+  | (P_inductive(m1,i1)   , P_inductive(m2,i2)    ) ->
+      m1 = m2 && List.equal eq_p_inductive i1 i2
   | (P_theorem(m1,st1,ts1,e1)   , P_theorem(m2,st2,ts2,e2)   ) ->
       let (s1,l1,a1) = st1.elt in
       let (s2,l2,a2) = st2.elt in

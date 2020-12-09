@@ -493,6 +493,12 @@ let term = term PFunc
 let parser rule =
   | l:term "↪" r:term -> Pos.in_pos _loc (l, r)
 
+(** [inductive] is a parser for a single inductive type. *)
+let parser inductive =
+  |     i:ident ":" t:term "≔"
+    c:{ "|" ident ":" term }*
+        -> Pos.in_pos _loc (i, t, c)
+
 (** [unif_rule] is a parser for unification rules. *)
 let parser unif_rule =
   | l:{term "≡" term} "↪" r:{term "≡" term} rs:{";" term "≡" term}* ->
@@ -672,9 +678,8 @@ let parser cmd =
       -> P_rules(r::rs)
   | ms:modifier* _definition_ s:ident al:arg* ao:{":" term}? "≔" t:term
       -> P_definition(ms,false,s,al,ao,t)
-  | ms:modifier* _inductive_ i:ident t:{":" term} "≔"
-                 c:{ "|"  ilist:ident ":" tlist:term }*
-      -> P_inductive(ms, i, t, c)
+  | ms:modifier* _inductive_ i:inductive il:{_:_with_ inductive}*
+      -> P_inductive(ms, i::il)
   | ms:modifier* st:statement (ts,pe):proof
       -> P_theorem(ms,st,ts,pe)
   | _set_ c:config
