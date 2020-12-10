@@ -11,7 +11,10 @@
 
 
 (defun lp-focus-goal (goalno &optional proofbuf)
-  (interactive)
+  "Focus on 'goalno'th goal (zero-indexed)
+proofbuf is the buffer containing the corresponding proof
+for *Goals* buffer"
+  (interactive "nEnter Goal Number: ")
   (if (null proofbuf)
       (setq proofbuf (current-buffer)))
   (with-current-buffer proofbuf
@@ -41,7 +44,7 @@
                                 (format "%s: %s\n" name type)))
                             (reverse hs)))
                  (goalnum  0)
-                 (goalsstr (mapcar
+                 (goalsstr (mapcar      ; map goals to clickable texts
                             (lambda (goal)
                               (let* ((id (plist-get goal :gid))
                                      (type (plist-get goal :type))
