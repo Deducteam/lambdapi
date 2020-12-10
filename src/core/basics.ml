@@ -238,7 +238,7 @@ let cmp_term : term Lplib.Extra.cmp =
     | Appl(t,u), Appl(t',u') ->
         let c = cmp t t' in if c <> 0 then c else cmp u u'
     | Meta(m,ts), Meta(m',ts') ->
-        let c = Stdlib.compare m.meta_key m'.meta_key in
+        let c = Meta.compare m m' in
         if c <> 0 then c
         else Lplib.List.cmp_list cmp (Array.to_list ts) (Array.to_list ts')
     | Patt _, _ | _, Patt _
