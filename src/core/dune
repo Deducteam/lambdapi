@@ -11,7 +11,7 @@
  (synopsis "LambdaPi interactive theorem prover [core]")
  (modules :standard)
  (preprocess (per_module ((action (run pa_ocaml %{input-file})) parser)))
- (flags (:standard -w -27))
+ (flags (:standard -w -27 -w -52))
  (libraries unix stdlib-shims timed bindlib earley.core why3 lplib))
 
 (ocamllex legacy_lexer)

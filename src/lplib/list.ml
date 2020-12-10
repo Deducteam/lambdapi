@@ -202,14 +202,12 @@ let rev_mapi f =
     | x::l -> aux (f i x :: acc) (i+1) l
   in aux [] 0
 
-(** [combine3 [a1;...; an] [b1;...; bn] [c1;...;cn]] returns
-    [(a1,b1,c1);...;(an,bn,cn)].
-    @raise Invalid_argument if the three lists are determined to have
-    different lengths. *)
-let rec combine3 : 'a list -> 'b list -> 'c list -> ('a*'b*'c) list =
-  fun l1 l2 l3 ->
-  match l1, l2, l3 with
-  | [], [], [] -> []
-  | t1::q1, t2::q2, t3::q3 -> (t1,t2,t3) :: combine3 q1 q2 q3
-  | _ ->
-      raise (Invalid_argument "Argument lists must have the same length")
+(** Total order on lists. *)
+let cmp_list : 'a cmp -> 'a list cmp = fun cmp ->
+  let rec cmp_list l l' =
+    match l, l' with
+    | [], [] -> 0
+    | [], _::_ -> -1
+    | _::_, [] -> 1
+    | x::l, x'::l' -> let c = cmp x x' in if c <> 0 then c else cmp_list l l'
+  in cmp_list
