@@ -75,43 +75,26 @@ let handle_tactic :
   | _                   ->
 
   (* Get the unif goals, the first type goal and the following goals *)
-  let pre_g, g, post_g =
+  let pre_g, gt, post_g =
     let rec first_goal_typ pre post =
       match post with
-      | [] -> pre,None,post
-      | (Goal.Typ gt) :: post -> pre,Some(gt),post
+      | [] -> assert false
+      | Goal.Typ gt :: post -> pre, gt, post
       | (Goal.Unif _ as gu) :: post -> first_goal_typ (pre @ [gu]) post
     in
     first_goal_typ [] ps.proof_goals
   in
+  let (env, a), m = Goal.get_type gt, Goal.get_meta gt in
+  let scope = Scope.scope_term e ss env in
 
-  (* Obtaining the goal environment and type. *)
-  let scope t =
-    let (env, _a) = match g with
-      | Some gt -> Goal.get_type gt
-      | None -> assert false
-    in
-    let tt = Scope.scope_term e ss env t in
-    env, tt
-  in
-
-  let handle_refine : Proof.t -> term -> Proof.t =
-    fun ps t ->
-    (* Check if the goal metavariable appears in [t]. *)
-    let ((env, a), m) = match g with
-      | Some gt -> (Goal.get_type gt),(Goal.get_meta gt)
-      | None -> assert false
-    in
+  let handle_refine : Proof.t -> term -> Proof.t = fun ps t ->
     log_tact "refining [%a] with term [%a]" pp_meta m pp_term t;
     if Basics.occurs m t then fatal tac.pos "Circular refinement.";
     (* Check that [t] is well-typed. *)
     log_tact "proving %a" pp_typing (Env.to_ctxt env, t, a);
     let to_solve = Infer.check (Env.to_ctxt env) t a in
     let gs_unif = List.map Goal.unif to_solve in
-(*
-   TODO : use the new Unif.instantiate ?
-*)
-    (* Instantiation. *)
+    (* Instantiation. Use Unif.instantiate instead ? *)
     Meta.set m (Bindlib.unbox (Bindlib.bind_mvar (Env.vars env) (lift t)));
     (* New subgoals and focus. *)
     let metas = Basics.get_metas true t in
@@ -139,15 +122,13 @@ let handle_tactic :
        | (_, _    ) -> fatal tac.pos "Invalid goal index."
      in
      {ps with proof_goals = swap i [] ps.proof_goals}
-  | P_tac_refine(t)     ->
-    let (_, tt) = scope t in
-      handle_refine ps tt
+  | P_tac_refine(pt)     ->
+      handle_refine ps (scope pt)
   | P_tac_intro(xs)     ->
-      let t = Pos.none (P_Abst([(xs,None,false)], Pos.none P_Wild)) in
-      let _,tt = scope t in
-      handle_refine ps tt
+      let pt = Pos.none (P_Abst([(xs,None,false)], Pos.none P_Wild)) in
+      handle_refine ps (scope pt)
   | P_tac_apply(pt)      ->
-      let env,t = scope pt in
+      let t = scope pt in
       (* Infer the type of [t] and count the number of products. *)
       (* NOTE there is room for improvement here. *)
       let (a, to_solve) = Infer.infer (Env.to_ctxt env) t in
@@ -158,38 +139,24 @@ let handle_tactic :
       (* NOTE it is scoping that handles wildcards as metavariables. *)
       let rec add_wilds pt n =
         match n with
-        | 0 -> let _,tt = scope pt in tt
+        | 0 -> scope pt
         | _ -> add_wilds (Pos.none (P_Appl(pt, Pos.none P_Wild))) (n-1)
       in
       let tt = add_wilds pt nb in
       handle_refine ps tt
   | P_tac_simpl         ->
-    begin
-      match g with
-      | Some gt ->
-        let new_goal_typ = Goal.Typ (Goal.simpl gt) in
-        let proof_goals = pre_g @ [new_goal_typ] @ post_g in
-        {ps with proof_goals}
-      | None    ->
-        wrn tac.pos "No goal typ";
-        ps
-    end
-  | P_tac_rewrite(b,po,t) ->
-    let env,tt = scope t in
+      let new_goal_typ = Goal.Typ (Goal.simpl gt) in
+      let proof_goals = pre_g @ new_goal_typ :: post_g in
+      {ps with proof_goals}
+  | P_tac_rewrite(b,po,pt) ->
       let po = Option.map (Scope.scope_rw_patt ss env) po in
-      handle_refine ps (Rewrite.rewrite ss tac.pos ps b po tt)
+      handle_refine ps (Rewrite.rewrite ss tac.pos ps b po (scope pt))
   | P_tac_refl          ->
       handle_refine ps (Rewrite.reflexivity ss tac.pos ps)
   | P_tac_sym           ->
       handle_refine ps (Rewrite.symmetry ss tac.pos ps)
   | P_tac_why3(config)  ->
-    begin
-      match g with
-      | Some gt ->
-        let t = Why3_tactic.handle ss tac.pos config (Goal.Typ gt) in
-        handle_refine ps t
-      | None -> wrn tac.pos "No goal typ" ; ps
-    end
+      handle_refine ps (Why3_tactic.handle ss tac.pos config gt)
   | P_tac_fail          ->
       fatal tac.pos "Call to tactic \"fail\""
 
