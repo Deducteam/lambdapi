@@ -522,7 +522,7 @@ export interface Goal {
 }
 
 export interface UnifGoal extends Goal {
-    constr : String // constraint
+    constr : String
 }
 
 export interface TypGoal extends Goal {
