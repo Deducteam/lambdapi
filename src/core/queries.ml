@@ -22,10 +22,12 @@ let handle_query : Sig_state.t -> Proof.t option -> p_query -> unit =
         match asrt with
         | P_assert_typing(pt,pa) ->
           let t = scope pt and a = scope pa and ctxt = Env.to_ctxt env in
+          out 3 "(asrt) %a\n" pp_typing (ctxt, t, a);
           Typing.sort_type ctxt a;
           (try Typing.check ctxt t a with _ -> false)
         | P_assert_conv(pt,pu)   ->
           let t = scope pt and u = scope pu in
+          out 3 "(asrt) %a\n" pp_constr ([], t, u);
           let infer = Typing.infer (Env.to_ctxt env) in
           match (infer t, infer u) with
           | (Some(a), Some(b)) ->
@@ -43,8 +45,7 @@ let handle_query : Sig_state.t -> Proof.t option -> p_query -> unit =
           | (_      , None   ) ->
               fatal pu.pos "The type of the RHS cannot be infered."
       in
-      if result = must_fail then fatal q.pos "Assertion failed.";
-      out 3 "(asrt) assertion OK\n";
+      if result = must_fail then fatal q.pos "Assertion failed."
   | P_query_debug(e,s)     ->
       (* Just update the option, state not modified. *)
       Console.set_debug e s;
@@ -52,7 +53,7 @@ let handle_query : Sig_state.t -> Proof.t option -> p_query -> unit =
   | P_query_verbose(i)     ->
       (* Just update the option, state not modified. *)
       Timed.(Console.verbose := i);
-      out 3 "(flag) verbose → %i\n" i
+      out 0 "(flag) verbose → %i\n" i
   | P_query_flag(id,b)     ->
       (* We set the value of the flag, if it exists. *)
       begin
