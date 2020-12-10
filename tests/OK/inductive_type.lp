@@ -54,8 +54,8 @@ symbol pred : π (pRGB red)
 symbol pgreen : π (pRGB green)
 symbol pblue: π (pRGB blue)
 //FIXME: the following command loops
-//definition indRGB ≔ pRGB pred pgreen pblue
-definition indRGB ≔ ind_RGB pRGB pred pgreen pblue
+//symbol indRGB ≔ pRGB pred pgreen pblue
+symbol indRGB ≔ ind_RGB pRGB pred pgreen pblue
 assert indRGB red ≡ pred
 assert indRGB green ≡ pgreen
 assert indRGB blue ≡ pblue
@@ -81,7 +81,7 @@ symbol pColor : Color → Prop
 symbol pblack : π (pColor black)
 symbol pwhite : π (pColor white)
 symbol pprimary: Πx, π (pColor (primary x))
-definition indColor ≔ ind_Color pColor pblack pwhite pprimary
+symbol indColor ≔ ind_Color pColor pblack pwhite pprimary
 assert indColor black ≡ pblack
 assert indColor white ≡ pwhite
 symbol rgb : RGB
@@ -112,7 +112,7 @@ assert ind_B :
 symbol pBool : B → Prop
 symbol pitrue  : π (pBool true)
 symbol pifalse : π (pBool false)
-definition indBool ≔ ind_B pBool pitrue pifalse
+symbol indBool ≔ ind_B pBool pitrue pifalse
 assert indBool true  ≡ pitrue
 assert indBool false ≡ pifalse
 
@@ -142,7 +142,7 @@ assert ind_N :
 symbol pN : N → Prop
 symbol pz : π (pN z)
 symbol psucc : Πx, π (pN x) → π (pN (succ x))
-definition indN ≔ ind_N pN pz psucc
+symbol indN ≔ ind_N pN pz psucc
 assert indN z ≡ pz
 symbol n : N
 assert indN (succ n) ≡ psucc n (indN n)
@@ -223,8 +223,8 @@ symbol pBLit : Πx: B, π (p1 (BLit x))
 symbol pAnd : Πx: BExpr, π (p1 x) → Πx0: BExpr, π (p1 x0) → π (p1 (And x x0))
 symbol pNot : Πx: BExpr, π (p1 x) → π (p1 (Not x))
 symbol pEqual : Πx: Expr, π (p0 x) → Πx0: Expr, π (p0 x0) → π (p1 (Equal x x0))
-definition indE ≔ ind_Expr p0 p1 pLit pAdd pIf pBLit pAnd pNot pEqual
-definition indBE ≔ ind_BExpr p0 p1 pLit pAdd pIf pBLit pAnd pNot pEqual
+symbol indE ≔ ind_Expr p0 p1 pLit pAdd pIf pBLit pAnd pNot pEqual
+symbol indBE ≔ ind_BExpr p0 p1 pLit pAdd pIf pBLit pAnd pNot pEqual
 symbol x : B
 symbol e1 : Expr
 symbol e2 : Expr
@@ -317,9 +317,9 @@ symbol pcSkip : π (pC cSkip)
 symbol pcAss : Πx: Set, Πx0: AExp, π (pA x0) → π (pC (cAss x x0))
 symbol pcSeq : Πx: CExp, π (pC x) → Πx0: CExp, π (pC x0) → π (pC (cSeq x x0))
 symbol pcIf : Πx: BExp, π (pB x) → Πx0: CExp, π (pC x0) → Πx1: CExp, π (pC x1) → π (pC (cIf x x0 x1))
-definition indA ≔ ind_AExp pA pB pC paLit paAdd paIf pbLit pbEq pcSkip pcAss pcSeq pcIf
-definition indB ≔ ind_BExp pA pB pC paLit paAdd paIf pbLit pbEq pcSkip pcAss pcSeq pcIf
-definition indC ≔ ind_CExp pA pB pC paLit paAdd paIf pbLit pbEq pcSkip pcAss pcSeq pcIf
+symbol indA ≔ ind_AExp pA pB pC paLit paAdd paIf pbLit pbEq pcSkip pcAss pcSeq pcIf
+symbol indB ≔ ind_BExp pA pB pC paLit paAdd paIf pbLit pbEq pcSkip pcAss pcSeq pcIf
+symbol indC ≔ ind_CExp pA pB pC paLit paAdd paIf pbLit pbEq pcSkip pcAss pcSeq pcIf
 symbol a1 : AExp
 symbol a2 : AExp
 symbol b : BExp
@@ -369,8 +369,8 @@ symbol peven : Πx: N, even x → Prop
 symbol peven_O : π (peven z even_O)
 symbol peven_S : Πn: τ nat, Πx: odd n, π (podd n x) → π (peven (succ n) (even_S n x))
 symbol podd_S : Πn: τ nat, Πx: even n, π (peven n x) → π (podd (succ n) (odd_S n x))
-definition indodd ≔ ind_odd peven podd peven_O peven_S podd_S
-definition indeven ≔ ind_even peven podd peven_O peven_S podd_S
+symbol indodd ≔ ind_odd peven podd peven_O peven_S podd_S
+symbol indeven ≔ ind_even peven podd peven_O peven_S podd_S
 symbol evenn : even n
 symbol oddn : odd n
 assert indodd _ (odd_S n evenn) ≡ podd_S n evenn (indeven _ evenn)
@@ -393,7 +393,7 @@ assert ind_List :
 symbol pL : List → Prop
 symbol pnil : π (pL nil)
 symbol pcons : Πx l, π (pL l) → π (pL (cons x l))
-definition indL ≔ ind_List pL pnil pcons
+symbol indL ≔ ind_List pL pnil pcons
 symbol l : List
 assert indL nil ≡ pnil
 assert indL (cons n l) ≡ pcons n l (indL l)
@@ -416,7 +416,7 @@ assert ind_nat_prod :
 
 symbol pNP : nat_prod → Prop
 symbol pprod : Πx0 x1, π (pNP (prod x0 x1))
-definition indNP ≔ ind_nat_prod pNP pprod
+symbol indNP ≔ ind_nat_prod pNP pprod
 symbol n1 : N
 symbol n2 : N
 assert indNP (prod n1 n2) ≡ pprod n1 n2
@@ -441,7 +441,7 @@ symbol pleaf : π (pT leaf)
 symbol pconsTree : Πt1, π (pT t1) → Πx t2, π (pT t2) → π (pT (consTree t1 x t2))
 symbol t1 : Tree
 symbol t2 : Tree
-definition indT ≔ ind_Tree pT pleaf pconsTree
+symbol indT ≔ ind_Tree pT pleaf pconsTree
 assert indT leaf ≡ pleaf
 assert indT (consTree t1 n t2) ≡ pconsTree t1 (indT t1) n t2 (indT t2)
 
@@ -461,7 +461,7 @@ assert ind_L :
 symbol pList : Πa, L a → Prop
 symbol pnilL : Πa, π (pList a (nilL a))
 symbol pconsL : Πa x l, π (pList a l) → π (pList a (consL a x l))
-definition indList ≔ ind_L pList pnilL pconsL
+symbol indList ≔ ind_L pList pnilL pconsL
 symbol a : Set
 symbol xa : τ a
 symbol la : L a
@@ -490,7 +490,7 @@ symbol g : Set
 symbol xg : τ g
 symbol d : Set
 symbol xd : τ d
-definition indsum ≔ {|ind_sum|} pS pinl pinr
+symbol indsum ≔ {|ind_sum|} pS pinl pinr
 assert indsum g d ({|inl_sum|} g d xg) ≡ pinl g d xg
 assert indsum g d (inr g d xd) ≡ pinr g d xd
 
@@ -510,7 +510,7 @@ assert ind_V :
 symbol pV : Πn, V n → Prop
 symbol pVnil : π (pV z nil_vec)
 symbol pVcons : Πn x v, π(pV n v) → π(pV (succ n) (cons_vec n x v))
-definition indV ≔ ind_V pV pVnil pVcons
+symbol indV ≔ ind_V pV pVnil pVcons
 symbol v : V n
 symbol y : N
 assert indV z nil_vec ≡ pVnil
@@ -532,7 +532,7 @@ assert ind_fin :
 symbol pF : Πn, fin n → Prop
 symbol pnew : Πn, π (pF (succ n) (new n))
 symbol pinj : Πn f, π (pF n f) → π (pF (succ n) (inj n f))
-definition indF ≔ ind_fin pF pnew pinj
+symbol indF ≔ ind_fin pF pnew pinj
 symbol f : fin n
 assert indF (succ n) (new n) ≡ pnew n
 assert indF (succ n) (inj n f) ≡ pinj n f (indF n f)
@@ -555,7 +555,7 @@ assert ind_listb :
 symbol pbound : Πbound, listb bound → Prop
 symbol pnilb : Πbound, π(pbound bound (nilb bound))
 symbol pconsb : Πbound x (prf:π (x ≤ bound)) l, π(pbound bound l) → π(pbound bound (consb bound x prf l))
-definition indb ≔ ind_listb pbound pnilb pconsb
+symbol indb ≔ ind_listb pbound pnilb pconsb
 symbol prf : π (y ≤ n)
 symbol lb : listb n
 assert indb n (nilb n) ≡ pnilb n
@@ -584,7 +584,7 @@ symbol pmty : π (pRom z mty)
 symbol pbin : Πe1: τ nat, Πe2: τ nat, Πx: rom e1,
  π (pRom e1 x) → Πx0: rom e2, π (pRom e2 x0) → π (pRom ((e1 + e2) + 1) (bin e1 e2 x x0))
 symbol punl : Πe: τ nat, Πk: τ nat, Πx: π (k ≤ (2 × e)), Πx0: rom e, π (pRom e x0) → π (pRom (succ e) (unl e k x x0))
-definition indr ≔ ind_rom pRom pmty pbin punl
+symbol indr ≔ ind_rom pRom pmty pbin punl
 symbol prf_le : π (n ≤ 2×y)
 symbol romy : rom y
 symbol romn : rom n
@@ -620,7 +620,7 @@ symbol pcgen' : (Πn r1 r2, Πx0: fibo n r1, π (pFibo n r1 x0) → Πx1: fibo (
                   π (pFibo (succ n) r2 x1) → π (pFibo (succ (succ n)) (r1 + r2) (cgen' n r1 r2 x0 x1)))
 symbol pcbase1 : π (pFibo 0 1 cbase1)
 symbol pcbase2 : π (pFibo 1 1 cbase2)
-definition indfibo ≔ ind_fibo pFibo pcgen' pcbase1 pcbase2
+symbol indfibo ≔ ind_fibo pFibo pcgen' pcbase1 pcbase2
 symbol r1 : N
 symbol r2 : N
 symbol hypF1 : fibo n r1
@@ -647,7 +647,7 @@ assert ind_Vec :
 symbol pVec : Πa n, Vec a n → Prop
 symbol pVecnil : Πa, π (pVec a z (Vnil a))
 symbol pVeccons : Πa n x v, π(pVec a n v) → π(pVec a (succ n) (Vcons a n x v))
-definition indVec ≔ ind_Vec pVec pVecnil pVeccons
+symbol indVec ≔ ind_Vec pVec pVecnil pVeccons
 symbol xV_p : τ a
 symbol v_p : Vec a n
 assert ind_Vec pVec pVecnil _ a z (Vnil a) ≡ pVecnil a
@@ -674,7 +674,7 @@ assert ind_Bush :
 symbol pBush : Πa, Bush a → Prop
 symbol pbnil : Πa, π (pBush a (bnil a))
 symbol pbcons : Πa x l, π (pBush (bush a) l) → π (pBush a (bcons a x l))
-definition indbush ≔ ind_Bush pBush pbnil pbcons
+symbol indbush ≔ ind_Bush pBush pbnil pbcons
 symbol tb : Bush (bush a)
 assert indbush a (bnil a) ≡ pbnil a
 assert indbush a (bcons a xa tb) ≡ pbcons a xa tb (indbush (bush a) tb)
