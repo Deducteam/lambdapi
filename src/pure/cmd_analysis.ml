@@ -60,7 +60,7 @@ and filter_bound_qidents (args : Syntax.p_arg list)
   let filter_args (id : Syntax.qident) = not (List.mem (snd id.elt) args) in
   let get_qterm term = List.filter filter_args (qidents_of_p_term term) in
   let qterm = concat_map get_qterm terms_list in
-  (* Format.eprintf "Bound indetifiers :%s\n%!" (String.concat " " args); *)
+  (* Format.eprintf "Bound identifiers :%s\n%!" (String.concat " " args); *)
   qids @ qterm
 
 and qidents_of_p_config (cfg : Syntax.p_config) =
@@ -80,9 +80,14 @@ and qidents_of_p_rule (rule : Syntax.p_rule) =
   let patt, term = rule.elt in
   qidents_of_p_term patt @ qidents_of_p_term term
 
+let qidents_of_p_inductive (pind : Syntax.p_inductive) =
+  let f (_, pt) = qidents_of_p_term pt in
+  let _, pt, idptlist = pind.elt in
+  qidents_of_p_term pt @ concat_map f idptlist
+
 let qidents_of_cmd (cmd : t) =
   match cmd.elt with
-  | Syntax.P_inductive (_, _, _, _) -> []
+  | Syntax.P_inductive (_, pil) -> concat_map qidents_of_p_inductive pil
   | Syntax.P_require (_, _) -> []
   | Syntax.P_require_as (_, _) -> []
   | Syntax.P_open _ -> []

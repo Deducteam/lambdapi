@@ -89,6 +89,9 @@ let p_get_args : p_term -> p_term * p_term list = fun t ->
 (** Parser-level rewriting rule representation. *)
 type p_rule = (p_patt * p_term) loc
 
+(** Parser-level inductive type representation. *)
+type p_inductive = (ident * p_term * (ident * p_term) list) loc
+
 (** The previous module provides some functions to create p_term without
     position. *)
 module P  =
@@ -113,8 +116,8 @@ module P  =
     let appl : p_term -> p_term -> p_term = fun t1 t2 ->
       Pos.none (P_Appl(t1, t2))
 
-    (** [fold_appl a [b1; ...; bn]] returns (... ((a b1) b2) ...) bn. *)
-    let fold_appl : p_term -> p_term list -> p_term = List.fold_left appl
+    (** [appl_list a [b1; ...; bn]] returns (... ((a b1) b2) ...) bn. *)
+    let appl_list : p_term -> p_term list -> p_term = List.fold_left appl
 
     (** [wild] creates a p_term, which represents a wildcard, without
         position. *)
@@ -265,8 +268,8 @@ type p_command_aux =
   (** Symbol declaration. *)
   | P_rules      of p_rule list
   (** Rewriting rule declarations. *)
-  | P_inductive of p_modifier loc list * ident * p_term * (ident*p_term) list
-  (** Definition of inductive type *)
+  | P_inductive of p_modifier loc list * p_inductive list
+  (** Definition of inductive types *)
   | P_set        of p_config
   (** Set the configuration. *)
   | P_query      of p_query
@@ -325,6 +328,12 @@ let eq_p_rule : p_rule eq = fun r1 r2 ->
   let {elt = (lhs1, rhs1); _} = r1 in
   let {elt = (lhs2, rhs2); _} = r2 in
   eq_p_term lhs1 lhs2 && eq_p_term rhs1 rhs2
+
+let eq_p_inductive : p_inductive eq = fun i1 i2 ->
+  let {elt = (s1, t1, tl1); _} = i1 in
+  let {elt = (s2, t2, tl2); _} = i2 in
+  let eq_id_p_term (s1,t1) (s2,t2) = eq_ident s1 s2 && eq_p_term t1 t2 in
+  List.equal eq_id_p_term ((s1,t1)::tl1) ((s2,t2)::tl2)
 
 let eq_p_rw_patt : p_rw_patt loc eq = fun r1 r2 ->
   match (r1.elt, r2.elt) with
@@ -405,7 +414,7 @@ let eq_p_command : p_command eq = fun c1 c2 ->
   | (P_require_as(p1,id1)  , P_require_as(p2,id2)              ) ->
      p1 = p2 && id1.elt = id2.elt
   | (P_symbol(ms1,st1,t1,ts_pe1,m1),
-     P_symbol(ms2,st2,t2,ts_pe2,m2))                         ->
+     P_symbol(ms2,st2,t2,ts_pe2,m2))                             ->
       let s1,l1,a1 = st1.elt in
       let s2,l2,a2 = st2.elt in
       let eq_tactic =
@@ -417,9 +426,8 @@ let eq_p_command : p_command eq = fun c1 c2 ->
       && m1 = m2
   | (P_rules(rs1)                , P_rules(rs2)                ) ->
       List.equal eq_p_rule rs1 rs2
-  | (P_inductive(m1,s1,t1,tl1)   , P_inductive(m2,s2,t2,tl2)    ) ->
-      let eq_id_p_term (s1,t1) (s2,t2) = eq_ident s1 s2 && eq_p_term t1 t2 in
-      m1 = m2 && List.equal eq_id_p_term ((s1,t1)::tl1) ((s2,t2)::tl2)
+  | (P_inductive(m1,il1)         , P_inductive(m2,il2)         ) ->
+      m1 = m2 && List.equal eq_p_inductive il1 il2
   | (P_set(c1)                   , P_set(c2)                   ) ->
       eq_p_config c1 c2
   | (P_query(q1)                 , P_query(q2)                 ) ->

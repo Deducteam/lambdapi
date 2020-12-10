@@ -15,7 +15,9 @@ open Syntax
 let pp_ident : ident pp = fun oc id ->
   if Parser.KW.mem id.elt then
     fatal id.pos "Identifier [%s] is a Lambdapi keyword." id.elt;
-  Format.pp_print_string oc id.elt
+  let c = Char.code id.elt.[0] in
+  if c >= 48 && c <= 57 then Format.pp_print_string oc ("_" ^ id.elt)
+  else Format.pp_print_string oc id.elt
 
 let pp_arg_ident : ident option pp = fun oc id ->
   match id with
@@ -123,10 +125,17 @@ and pp_p_arg : p_arg pp = fun oc (ids,ao,b) ->
 and pp_p_args : p_arg list pp = fun oc ->
   List.iter (Format.fprintf oc " %a" pp_p_arg)
 
-let pp_p_rule : bool -> p_rule pp = fun first oc r ->
+let pp_p_rule : string -> p_rule pp = fun kw oc r ->
   let (lhs, rhs) = r.elt in
-  let kw = if first then "rule" else "with" in
   Format.fprintf oc "@[<hov 3>%s %a ↪ %a@]@?" kw pp_p_term lhs pp_p_term rhs
+
+let pp_p_inductive : string -> p_inductive pp = fun kw oc i ->
+  let (s, t, tl) = i.elt in
+  Format.fprintf oc "@[<hov 2>]%s %a" kw pp_ident s;
+  Format.fprintf oc " :@ @[<hov>%a@] ≔@ \n  " pp_p_term t;
+  let pp_cons oc (id,a) =
+    Format.fprintf oc "%a:@ @[<hov>%a@]" pp_ident id pp_p_term a in
+  List.pp pp_cons "\n| " oc tl
 
 let pp_p_equi : (p_term * p_term) pp = fun oc (l, r) ->
   Format.fprintf oc "@[<hov 3>%a ≡ %a@]@?" pp_p_term l pp_p_term r
@@ -217,12 +226,12 @@ let pp_p_tactic : p_tactic pp = fun oc t ->
 let pp_command : p_command pp = fun oc cmd ->
   let out fmt = Format.fprintf oc fmt in
   match cmd.elt with
-  | P_require(b,ps)             ->
+  | P_require(b,ps) ->
       let op = if b then " open" else "" in
       out "require%s %a" op (List.pp (pp_path cmd.pos) " ") ps
-  | P_require_as(p,i)               ->
+  | P_require_as(p,i) ->
       out "require %a as %a" (pp_path cmd.pos) p (pp_path_elt i.pos) i.elt
-  | P_open(ps)                      ->
+  | P_open(ps) ->
       List.iter (out "open %a" (pp_path cmd.pos)) ps
   | P_symbol(ms,st,t,ts_pe,_e) ->
     begin
@@ -254,23 +263,21 @@ let pp_command : p_command pp = fun oc cmd ->
         List.iter (out " %a" pp_p_arg) args;
         out " :@ @[<hov>%a@]" pp_p_term a
     end
-  | P_rules([])                     -> ()
-  | P_rules(r::rs)                  ->
-      out "%a" (pp_p_rule true) r;
-      List.iter (out "%a" (pp_p_rule false)) rs
-  | P_inductive(ms,s,t,tl)   ->
-      out "@[<hov 2>%ainductive %a"
-        (Format.pp_print_list pp_modifier) ms pp_ident s;
-      out " :@ @[<hov>%a@] ≔@ \n  " pp_p_term t;
-      let pp_cons oc (id,a) =
-        Format.fprintf oc "%a:@ @[<hov>%a@]" pp_ident id pp_p_term a in
-      List.pp pp_cons "\n| " oc tl
-  | P_set(P_config_builtin(n,i))    ->
+  | P_rules [] -> ()
+  | P_rules (r::rs) ->
+      out "%a" (pp_p_rule "rule") r;
+      List.iter (out "%a" (pp_p_rule "\nwith")) rs
+  | P_inductive(_, []) -> ()
+  | P_inductive(ms, i::il) ->
+      out "%a" (Format.pp_print_list pp_modifier) ms;
+      out "%a" (pp_p_inductive "inductive") i;
+      List.iter (out "%a" (pp_p_inductive "\nwith")) il
+  | P_set(P_config_builtin(n,i)) ->
       out "set builtin %S ≔ %a" n pp_qident i
-  | P_set(P_config_unop(unop))      ->
+  | P_set(P_config_unop(unop)) ->
       let (s, p, qid) = unop in
       out "set prefix %f %S ≔ %a" p s pp_qident qid
-  | P_set(P_config_binop(binop))    ->
+  | P_set(P_config_binop(binop)) ->
       let (s, a, p, qid) = binop in
       let a =
         match a with
@@ -279,13 +286,13 @@ let pp_command : p_command pp = fun oc cmd ->
         | Assoc_right -> " right"
       in
       out "set infix%s %f %S ≔ %a" a p s pp_qident qid
-  | P_set(P_config_unif_rule(ur))   ->
+  | P_set(P_config_unif_rule(ur)) ->
       out "set unif_rule %a" pp_p_unif_rule ur
-  | P_set(P_config_ident(id))       ->
+  | P_set(P_config_ident(id)) ->
       out "set declared %S" id
-  | P_set(P_config_quant(qid))      ->
+  | P_set(P_config_quant(qid)) ->
       out "set quantifier %a" pp_qident qid
-  | P_query(q)                      ->
+  | P_query(q) ->
      pp_p_query oc q
 
 let rec pp_ast : ast pp = fun oc cs ->
