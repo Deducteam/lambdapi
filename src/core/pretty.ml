@@ -15,9 +15,7 @@ open Syntax
 let pp_ident : ident pp = fun oc id ->
   if Parser.KW.mem id.elt then
     fatal id.pos "Identifier [%s] is a Lambdapi keyword." id.elt;
-  let c = Char.code id.elt.[0] in
-  if c >= 48 && c <= 57 then Format.pp_print_string oc ("_" ^ id.elt)
-  else Format.pp_print_string oc id.elt
+  Format.pp_print_string oc id.elt
 
 let pp_arg_ident : ident option pp = fun oc id ->
   match id with
