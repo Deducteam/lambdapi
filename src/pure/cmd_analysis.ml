@@ -94,8 +94,8 @@ let qidents_of_cmd (cmd : t) =
   | Syntax.P_rules rules -> concat_map qidents_of_p_rule rules
   | Syntax.P_symbol(_, st, t, _, _) ->
     let _,args,ao = st.elt in
-    let some_or_empty = function | Some arg -> [arg] | None -> [] in
-    let terms_list = (some_or_empty ao) @ (some_or_empty t) in
+    let some_or_empty = function Some arg -> [arg] | None -> [] in
+    let terms_list = some_or_empty ao @ some_or_empty t in
     filter_bound_qidents args terms_list
   | Syntax.P_set set -> qidents_of_p_config set
   | Syntax.P_query q ->

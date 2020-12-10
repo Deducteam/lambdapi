@@ -45,7 +45,7 @@ type opacity =
   | Opaque
   | Nonopaque
 
-(** Meaning of an eventual proof script following a symbol *)
+(** Meaning of a proof script following a symbol *)
 type proof_meaning =
   | Tac (** the proof script helps the unification solver *)
   | Def (** the proof script tries to build an element and helps
