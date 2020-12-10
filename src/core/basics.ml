@@ -207,7 +207,7 @@ let term_of_rhs : rule -> term = fun r ->
 (** Total order on alpha-equivalence classes of terms not containing [Patt],
    [TEnv] or [TRef]. @raise Invalid_argument otherwise. *)
 let cmp_term : term Lplib.Extra.cmp =
-  let pos = __MODULE__ ^ ".cmp: " ^ __LOC__ in
+  let pos = __MODULE__ ^ ".cmp_term: " ^ __LOC__ in
   (* Total precedence on term constructors (must be injective). *)
   let prec t =
     match unfold t with
