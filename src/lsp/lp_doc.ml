@@ -51,19 +51,19 @@ let option_default o1 d =
 let mk_error ~doc pos msg =
   LSP.mk_diagnostics ~uri:doc.uri ~version:doc.version [pos, 1, msg, None]
 
-let process_pstep (pstate,expo,diags) tac =
+let process_pstep (pstate,diags) tac =
   let open Pure in
   let tac_loc = Tactic.get_pos tac in
-  match handle_tactic pstate expo tac with
+  match handle_tactic pstate tac with
   | Tac_OK pstate ->
     let goals = Some (current_goals pstate) in
-    pstate, expo, (tac_loc, 4, "OK", goals) :: diags
+    pstate, (tac_loc, 4, "OK", goals) :: diags
   | Tac_Error(loc,msg) ->
     let loc = option_default loc tac_loc in
-    pstate, expo, (loc, 1, msg, None) :: diags
+    pstate, (loc, 1, msg, None) :: diags
 
-let process_proof pstate expo tacs =
-  List.fold_left process_pstep (pstate,expo,[]) tacs
+let process_proof pstate tacs =
+  List.fold_left process_pstep (pstate,[]) tacs
 
 let get_goals dg_proof =
   let rec get_goals_aux goals dg_proof =
@@ -88,9 +88,9 @@ let process_cmd _file (nodes,st,dg) ast =
     let ok_diag = cmd_loc, 4, "OK", None in
     nodes, st, ok_diag :: dg
 
-  | Cmd_Proof (pst, expo, tlist, thm_loc, qed_loc) ->
+  | Cmd_Proof (pst, tlist, thm_loc, qed_loc) ->
     let start_goals = current_goals pst in
-    let pst, _expo, dg_proof = process_proof pst expo tlist in
+    let pst, dg_proof = process_proof pst tlist in
     let dg_proof = (thm_loc, 4, "OK", Some start_goals) :: dg_proof in
     let goals = get_goals dg_proof in
     let nodes = { ast; exec = true; goals } :: nodes in

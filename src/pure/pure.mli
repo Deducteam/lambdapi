@@ -41,8 +41,7 @@ val current_goals : proof_state -> Proof.Goal.t list
 type command_result =
   | Cmd_OK    of state
   (** Command is done. *)
-  | Cmd_Proof of
-      proof_state * Terms.expo * Tactic.t list * Pos.popt * Pos.popt
+  | Cmd_Proof of proof_state * Tactic.t list * Pos.popt * Pos.popt
   (** Enter proof mode (positions are for statement and qed). *)
   | Cmd_Error of Pos.popt option * string
   (** Error report. *)
@@ -63,10 +62,8 @@ val initial_state : file_path -> state
     [Cmd_Error] constuctor). *)
 val handle_command : state -> Command.t -> command_result
 
-(** [handle_tactic st tac] evaluates the tactic [tac] in state [st], for a
-    symbol or a definition with exposition [expo] returning a new proof state
-    (with [Tac_OK]) or an error (with [Tac_Error]). *)
-val handle_tactic : proof_state -> Terms.expo -> Tactic.t -> tactic_result
+(** [handle_tactic st tac] evaluates the tactic [tac] in state [st]. *)
+val handle_tactic : proof_state -> Tactic.t -> tactic_result
 
 (** [end_proof st] finalises the proof which state is [st], returning a result
     at the command level for the whole theorem. This function should be called
