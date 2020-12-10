@@ -53,8 +53,6 @@ symbol pRGB : RGB → Prop
 symbol pred : π (pRGB red)
 symbol pgreen : π (pRGB green)
 symbol pblue: π (pRGB blue)
-//FIXME: the following command loops
-//symbol indRGB ≔ pRGB pred pgreen pblue
 symbol indRGB ≔ ind_RGB pRGB pred pgreen pblue
 assert indRGB red ≡ pred
 assert indRGB green ≡ pgreen
