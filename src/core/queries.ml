@@ -53,7 +53,7 @@ let handle_query : Sig_state.t -> Proof.t option -> p_query -> unit =
   | P_query_verbose(i)     ->
       (* Just update the option, state not modified. *)
       Timed.(Console.verbose := i);
-      out 0 "(flag) verbose → %i\n" i
+      out 1 "(flag) verbose → %i\n" i
   | P_query_flag(id,b)     ->
       (* We set the value of the flag, if it exists. *)
       begin
@@ -69,7 +69,7 @@ let handle_query : Sig_state.t -> Proof.t option -> p_query -> unit =
         | Some(a) -> Eval.eval cfg [] a
         | None    -> fatal pt.pos "Cannot infer the type of [%a]." pp_term t
       in
-      out 3 "(infr) %a : %a\n" pp_term t pp_term a
+      out 1 "(infr) %a : %a\n" pp_term t pp_term a
   | P_query_normalize(pt, cfg)        ->
       (* Infer a type for [t], and evaluate [t]. *)
       let t = scope pt in
@@ -78,7 +78,7 @@ let handle_query : Sig_state.t -> Proof.t option -> p_query -> unit =
         | Some(_) -> Eval.eval cfg [] t
         | None    -> fatal pt.pos "Cannot infer the type of [%a]." pp_term t
       in
-      out 3 "(comp) %a\n" pp_term v
+      out 1 "(comp) %a\n" pp_term v
   | P_query_prover(s)      ->
       Timed.(Why3_tactic.default_prover := s)
   | P_query_prover_timeout(n)->
