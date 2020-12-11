@@ -405,7 +405,7 @@ function getGoalsEnvContent(goals : Goal[]){
     for(let i=0; i < goals.length; i++) {
         
         // check if this is a Type Goal
-        if ("gid" in goals[i]){
+        if (goals[i].typeofgoal == "Typ "){
             
             let curGoal = goals[i] as TypGoal;
             codeHyps = `<div class="hypothesis">`;
