@@ -35,10 +35,6 @@ module Goal =
     let simpl : goal_typ -> goal_typ = fun g ->
       {g with goal_type = Eval.snf (Env.to_ctxt g.goal_hyps) g.goal_type}
 
-    (** Comparison function. *)
-    let compare : goal_typ -> goal_typ -> int = fun g1 g2 ->
-      Meta.compare g1.goal_meta g2.goal_meta
-
     (** Representation of a general goal : type, unification *)
     type t =
       | Typ of goal_typ (* The usual proof type goal. *)
@@ -49,10 +45,24 @@ module Goal =
     let is_unif = function Typ _ -> false | Unif _ -> true
     let typ = function x -> Typ x
     let unif = function x -> Unif x
-    let goal_typ_of = function Typ gt -> gt | _ -> invalid_arg __LOC__
-    let constr_of = function Unif c -> c | _ -> invalid_arg __LOC__
+    let get_goal_typ = function Typ gt -> gt | _ -> invalid_arg __LOC__
+    let get_constr = function Unif c -> c | _ -> invalid_arg __LOC__
+    let of_meta m = Typ (goal_typ_of_meta m)
+
+    (** Comparison function. *)
+    let compare : t cmp = fun g g' ->
+      match g, g' with
+      | Typ gt, Typ gt' -> Meta.compare gt.goal_meta gt'.goal_meta
+      | Unif c, Unif c' -> Basics.cmp_constr c c'
+      | Unif _, Typ _ -> 1
+      | Typ _, Unif _ -> -1
 
   end
+
+(** [goals_of_metas ms] returns a list of goals from a set of metas. *)
+let goals_of_metas : MetaSet.t -> Goal.t list = fun ms ->
+  let add_goal m = List.insert Goal.compare (Goal.of_meta m) in
+  MetaSet.fold add_goal ms []
 
 (** Representation of the proof state of a theorem. *)
 type proof_state =
@@ -66,14 +76,9 @@ type proof_state =
 (** Short synonym for qualified use. *)
 type t = proof_state
 
-(** [goal_of_meta m] returns a goal associated to the meta m *)
-let goal_of_meta : meta -> Goal.t = fun m ->
-  Goal.Typ (Goal.goal_typ_of_meta m)
-
 (** [goals_of_typ typ ter] returns a list of goals corresponding to the
-    typability of [typ] by a sort and checking eventually that term
-    [ter] has type [typ]. [ter] and [typ] should not be both equal to
-    None *)
+   typability of [typ] by a sort and that the term [ter] has type [typ]. [ter]
+   and [typ] should not be both equal to None. *)
 let goals_of_typ : Pos.popt -> term option -> term option ->
   Goal.t list * term =
   fun pos typ ter ->
@@ -112,20 +117,19 @@ let goals_of_typ : Pos.popt -> term option -> term option ->
         | _ -> Console.fatal pos "%a has type %a (not a sort)."
                  pp_term typ pp_term sort
       end
-    | None,None    -> assert false (* already rejected by parser *)
+    | None,None -> assert false (* already rejected by parser *)
   in
-  let _sort = sort in
-  (List.map (fun x -> Goal.Unif x) to_solve), typ
+  (List.map Goal.unif to_solve), typ
 
-(** [finished ps] tells whether the proof represented by [ps] is finished. *)
+(** [finished ps] tells whether there are unsolved goals in [ps]. *)
 let finished : t -> bool = fun ps -> ps.proof_goals = []
 
 (** [focus_goal ps] returns the focused goal or fails if there is none. *)
 let focus_goal : Pos.popt -> proof_state -> Env.t * term = fun pos ps ->
   match List.hd ps.proof_goals with
-    | Goal.Typ g       -> Goal.get_type g
-    | Goal.Unif _      -> Console.fatal pos "No remaining typing goals..."
-    | exception Failure(_) -> Console.fatal pos "No remaining goals..."
+    | Goal.Typ g -> Goal.get_type g
+    | Goal.Unif _ -> Console.fatal pos "No remaining typing goals ..."
+    | exception Failure(_) -> Console.fatal pos "No remaining goals ..."
 
 (** [pp_goals oc gl] prints the goal list [gl] to channel [oc]. *)
 let pp_goals : proof_state pp = fun oc ps ->

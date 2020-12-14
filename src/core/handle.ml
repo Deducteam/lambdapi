@@ -13,6 +13,7 @@ open Syntax
 open Sig_state
 open Scope
 open Print
+open Proof
 
 (** Logging function for command handling. *)
 let log_hndl = new_logger 'h' "hndl" "command handling"
@@ -193,14 +194,14 @@ let handle_rules : sig_state -> p_rule list -> sig_state = fun ss rs ->
     of the symbols used in the proof script : Public (= only public symbols)
     or Privat (= public and private symbols) *)
 let data_proof : sig_symbol -> expo -> p_tactic list ->
-  p_proof_end loc -> Proof.Goal.t list -> meta option -> proof_data =
+  p_proof_end loc -> Goal.t list -> meta option -> proof_data =
   fun sig_symbol pdata_expo ts pe goals proof_term ->
   let ident = sig_symbol.ident in
   let typ   = sig_symbol.typ   in
   let def   = sig_symbol.def   in
   let pos = ident.pos in
   (* Initialize proof state and save configuration data. *)
-  let ps = Proof.{proof_name = ident ; proof_term ; proof_goals = goals} in
+  let ps = {proof_name = ident ; proof_term ; proof_goals = goals} in
   Console.State.push ();
   (* Build proof checking data. *)
   let finalize ss ps =
@@ -235,7 +236,7 @@ let data_proof : sig_symbol -> expo -> p_tactic list ->
       | P_proof_abort -> assert false (* Handled above *)
       | P_proof_admit ->
         (* If the proof is finished, display a warning. *)
-        if Proof.finished ps then
+        if finished ps then
           wrn pos "The proof is finished. You can use 'end' instead.";
         (* Add a symbol corresponding to the proof, with a warning. *)
         out 3 "(symb) %s (admit)\n" ident.elt;
@@ -243,7 +244,7 @@ let data_proof : sig_symbol -> expo -> p_tactic list ->
         fst (add_symbol ss sig_symbol)
       | P_proof_end   ->
         (* Check that the proof is indeed finished. *)
-        if not (Proof.finished ps) then
+        if not (finished ps) then
           begin
             let _ =
               Tactics.handle_tactic ss pdata_expo ps (none P_tac_print)
@@ -430,19 +431,15 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
       (* If [ao = Some a], then we check that [a] is typable by a sort and
          that [t] has type [a]. Otherwise, we try to infer the type of
          [t]. Unification goals are collected. *)
-      let add_goal m =
-        List.insert Proof.Goal.compare (Proof.Goal.goal_typ_of_meta m)
-      in
-      let typ_goals_a = MetaSet.fold add_goal metas_a [] in
-      let typ_goals_a = List.map Proof.Goal.typ typ_goals_a in
+      let typ_goals_a = goals_of_metas metas_a in
       let proof_term, goals, sig_symbol, pdata_expo =
-        let sort_goals, a = Proof.goals_of_typ x.pos ao t in
+        let sort_goals, a = goals_of_typ x.pos ao t in
         (* And the main "type" goal *)
         let proof_term, typ_goal =
           match e with
           | Def ->
             let proof_term = Meta.fresh ~name:x.elt a 0 in
-            let proof_goal = Proof.goal_of_meta proof_term in
+            let proof_goal = Goal.of_meta proof_term in
             Some proof_term, proof_goal :: typ_goals_a
           | Tac ->
             None, typ_goals_a

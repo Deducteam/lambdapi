@@ -20,7 +20,7 @@ let log_tact = log_tact.logger
 let solve ps pos =
   try
     let gs_typ,gs_unif = List.partition Goal.is_typ ps.proof_goals in
-    let to_solve = List.map Goal.constr_of gs_unif in
+    let to_solve = List.map Goal.get_constr gs_unif in
     let new_cs = Unif.solve {Unif.empty_problem with to_solve} in
     let new_gs_unif = List.map Goal.unif new_cs in
     let goal_has_no_meta_value = function
@@ -97,13 +97,9 @@ let handle_tactic :
     (* Instantiation. Use Unif.instantiate instead ? *)
     Meta.set m (Bindlib.unbox (Bindlib.bind_mvar (Env.vars env) (lift t)));
     (* New subgoals and focus. *)
-    let metas = Basics.get_metas true t in
-    let add_goal m = List.insert Goal.compare (Goal.goal_typ_of_meta m) in
-    let new_typ_goals = MetaSet.fold add_goal metas [] in
+    let new_typ_goals = goals_of_metas (Basics.get_metas true t) in
     (* New goals must appear first. *)
-    let proof_goals =
-      pre_g @ gs_unif @ (List.map Goal.typ new_typ_goals) @ post_g
-    in
+    let proof_goals = pre_g @ gs_unif @ new_typ_goals @ post_g in
     let ps = {ps with proof_goals} in
     solve ps tac.pos
   in
