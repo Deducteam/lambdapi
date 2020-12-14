@@ -405,7 +405,7 @@ function getGoalsEnvContent(goals : Goal[]){
     for(let i=0; i < goals.length; i++) {
         
         // check if this is a Type Goal
-    	// extra space is not a typo
+    	// extra space is not a typo, this is defined in lsp_base.ml
         if (goals[i].typeofgoal == "Typ "){
             
             let curGoal = goals[i] as TypGoal;
