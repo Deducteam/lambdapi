@@ -520,7 +520,7 @@ export interface Env {
 }
 
 export interface Goal {
-    typeofgoal : String // type of goal
+    typeofgoal : String // type of goal, values defined in lsp_base.ml
 }
 
 export interface UnifGoal extends Goal {
