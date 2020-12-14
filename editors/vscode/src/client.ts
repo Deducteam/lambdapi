@@ -456,6 +456,8 @@ function buildGoalsContent(goals : Goal[]) {
 
     // Note that the style.css file is missing as we don't know yet
     // where it should be placed; this is a TODO.
+    // NOTE: multiline strings will introduce character sequences
+    //       which WebviewPanel can't display
     header =  `<!DOCTYPE html>
 ￼       <html lang="en">
 ￼       <head>
@@ -487,6 +489,10 @@ function buildGoalsContent(goals : Goal[]) {
     footer =` </p>
 ￼       </body>
 ￼       </html>`;
+
+    // remove character sequences caused by multiline strings
+    header = header.replace(/[\u{0080}-\u{FFFF}]/gu,"");
+    footer = footer.replace(/[\u{0080}-\u{FFFF}]/gu,"");
     
     return header + codeEnvGoals + footer;
 }
