@@ -29,14 +29,14 @@ export function activate(context: ExtensionContext) {
     //___Declaration of workspace variables___
 
     //Position of the proof cursor : colored highlights show until which point the proof was surveyed
-    let proofState : Position = new Position(1, 0);
+    let proofState : Position = new Position(0, 0);
     context.workspaceState.update('proofState', proofState);
 
     //Cursor mode (proof cursor is the regular cursor) activated or not
     context.workspaceState.update('cursorMode', false);
 
     //The range of text to highlight
-    let range : rg = new rg(proofState.translate(-1, 0), proofState);
+    let range : rg = new rg(proofState, proofState.translate(1,0));
     context.workspaceState.update('range', range);
 
     //The highlight parameters
@@ -347,7 +347,7 @@ function checkProofBackward(context : ExtensionContext) {
     }
 
     //If the proof highlight is at the beggining of the document it can't go any higher
-    const step : number = proofState.line <= 1 ? 0 : -1;
+    const step : number = proofState.line <= 0 ? 0 : -1;
 
     //Case the proof state is not at the beggining of the document
     if(step == -1)
