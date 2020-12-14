@@ -52,8 +52,10 @@ let handle_query : Sig_state.t -> Proof.t option -> p_query -> unit =
       out 3 "(flag) debug → %s%s\n" (if e then "+" else "-") s
   | P_query_verbose(i)     ->
       (* Just update the option, state not modified. *)
-      Timed.(Console.verbose := i);
-      out 1 "(flag) verbose → %i\n" i
+      if Timed.(!Console.verbose) = 0 then
+        (Timed.(Console.verbose := i); out 1 "(flag) verbose → %i\n" i)
+      else
+        (out 1 "(flag) verbose → %i\n" i; Timed.(Console.verbose := i))
   | P_query_flag(id,b)     ->
       (* We set the value of the flag, if it exists. *)
       begin
