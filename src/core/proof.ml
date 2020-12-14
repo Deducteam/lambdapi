@@ -16,22 +16,12 @@ module Goal =
       ; goal_hyps : Env.t (* Precomputed scope for a suitable term.       *)
       ; goal_type : term  (* Precomputed type for a suitable term.        *) }
 
-    (** Representation of a general goal : type, unification *)
-    type t =
-      | Typ of goal_typ (* The usual proof type goal. *)
-      | Unif of constr (* Two terms we'd like equal in ctxt. *)
+    (** [get_meta g] returns the metavariable associated to goal [g]. *)
+    let get_meta : goal_typ -> meta = fun g -> g.goal_meta
 
-    (** Helper functions *)
-    let is_typ  = function Typ _ -> true  | Unif _ -> false
-    let is_unif = function Typ _ -> false | Unif _ -> true
-    let typ = function x -> (Typ x)
-    let unif = function x -> (Unif x)
-    let goal_typ_of = function
-      | Typ  gt -> gt
-      | _ -> failwith "Internal error : not a type goal"
-    let constr_of   = function
-      | Unif cs -> cs
-      | _ -> failwith "Internal error : not an unification goal"
+    (** [get_type g] returns the environment and expected type of the goal. *)
+    let get_type : goal_typ -> Env.t * term = fun g ->
+      (g.goal_hyps, g.goal_type)
 
     (** [goal_typ_of_meta m] create a goal from the metavariable [m]. *)
     let goal_typ_of_meta : meta -> goal_typ = fun m ->
@@ -41,13 +31,6 @@ module Goal =
       let goal_type = Eval.simplify (Env.to_ctxt goal_hyps) goal_type in
       {goal_meta = m; goal_hyps; goal_type}
 
-    (** [get_meta g] returns the metavariable associated to goal [g]. *)
-    let get_meta : goal_typ -> meta = fun g -> g.goal_meta
-
-    (** [get_type g] returns the environment and expected type of the goal. *)
-    let get_type : goal_typ -> Env.t * term = fun g ->
-      (g.goal_hyps, g.goal_type)
-
     (** [simpl g] simplifies the given goal, evaluating its type to SNF. *)
     let simpl : goal_typ -> goal_typ = fun g ->
       {g with goal_type = Eval.snf (Env.to_ctxt g.goal_hyps) g.goal_type}
@@ -55,6 +38,20 @@ module Goal =
     (** Comparison function. *)
     let compare : goal_typ -> goal_typ -> int = fun g1 g2 ->
       Meta.compare g1.goal_meta g2.goal_meta
+
+    (** Representation of a general goal : type, unification *)
+    type t =
+      | Typ of goal_typ (* The usual proof type goal. *)
+      | Unif of constr (* Two terms we'd like equal in ctxt. *)
+
+    (** Helper functions *)
+    let is_typ  = function Typ _ -> true  | Unif _ -> false
+    let is_unif = function Typ _ -> false | Unif _ -> true
+    let typ = function x -> Typ x
+    let unif = function x -> Unif x
+    let goal_typ_of = function Typ gt -> gt | _ -> invalid_arg __LOC__
+    let constr_of = function Unif c -> c | _ -> invalid_arg __LOC__
+
   end
 
 (** Representation of the proof state of a theorem. *)
