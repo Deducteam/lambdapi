@@ -269,7 +269,7 @@ let data_proof : sig_symbol -> expo -> p_tactic list ->
     separately. Note that [Fatal] is raised in case of an error. *)
 let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
   fun ss cmd ->
-  let scope_basic exp p_t = Scope.scope_term exp ss Env.empty p_t in
+  let scope_basic exp pt = Scope.scope_term exp ss Env.empty pt in
   match cmd.elt with
   | P_require(b,ps)              ->
       let ps = List.map (List.map fst) ps in
@@ -372,99 +372,91 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
         ind_list
         rec_sym_list;
       (ss, None)
-  | P_symbol(ms, st, t, ts_pe, e) ->
+  | P_symbol(ms, st, pt, ts_pe, e) ->
     let x,xs,ao = st.elt in
+    (* Check that this is a syntactically valid symbol declaration. *)
     begin
-      match (ao, e, t, ts_pe) with
-      | (   None, Def, None  , Some _) ->
+      match (ao, e, pt, ts_pe) with
+      | (None, Def, None, Some _) ->
         fatal x.pos ":= proofterm via proofscript but without type"
-      | (      _, Def, None  , None  ) ->
+      | (   _, Def, None, None  ) ->
         fatal x.pos ":= without definition term nor proofscript"
       | _ -> ()
     end;
-    let is_opaq {elt; _} =
-      match elt with
-      | P_opaq(Opaque) -> true
-      | _ -> false
-    in
-    let op = List.exists is_opaq ms in
+    (* Get opacity. *)
+    let op = List.exists Syntax.is_opaq ms in
     (* Verify modifiers. *)
     let (prop, expo, mstrat) = handle_modifiers ms in
     (* We check that [x] is not already used. *)
     if Sign.mem ss.signature x.elt then
       fatal x.pos "Symbol [%s] already exists." x.elt;
     let data =
-      (* Desugaring of arguments and scoping of [t]. *)
-      let p_t,t,_metas_t =
-        match t with
-        | Some t ->
-          let p_t = if xs = [] then t else Pos.none (P_Abst(xs, t)) in
-          let t = scope_basic expo p_t in
-          let metas_t = Basics.get_metas true t in
-          Some p_t, Some t, metas_t
-        | None -> None, None, MetaSet.empty
+      (* Desugaring of arguments and scoping of [pt]. *)
+      let pt, t =
+        match pt with
+        | Some pt ->
+          let pt = if xs = [] then pt else Pos.none (P_Abst(xs,pt)) in
+          Some pt, Some (scope_basic expo pt)
+        | None -> None, None
       in
-      (* Desugaring of arguments and argument impliciteness. *)
-      let (ao, impl) =
+      (* Argument impliciteness. *)
+      let ao, impl =
         match ao with
         | None    -> (None, List.map (fun (_,_,impl) -> impl) xs)
         | Some(a) ->
           let a = if xs = [] then a else Pos.none (P_Prod(xs,a)) in
           (Some(a), Scope.get_implicitness a)
       in
-      let ao,metas_a =
+      (* Scope the type and get its metavariables. *)
+      let ao, metas_a =
         begin
           match ao with
-          | Some ao ->
-            let a = scope_basic expo ao in
+          | Some a ->
+            let a = scope_basic expo a in
             let metas_a = Basics.get_metas true a in
             Some a, metas_a
           | None -> None, MetaSet.empty
         end
       in
-      (* If a type [ao = Some a] is given, then we check that it is
-         typable by a sort and that [t] has type [a]. Otherwise, we
-         try to infer the type of [t]. Unification goals are collected *)
       (* Proof script *)
-      let (ts,pe) =
-        let p_end = Pos.make cmd.pos P_proof_end in
-        let _solve = Pos.make cmd.pos P_unif_solve in
-        match p_t,ts_pe with
-        | Some p_t,None ->
-            [Pos.make cmd.pos (P_tac_refine(p_t))], p_end
-        | Some p_t,Some(ts,pe) ->
-            Pos.make cmd.pos (P_tac_refine(p_t))::ts, pe
-        | None,Some(ts,pe) -> ts,pe
-        | None,None -> [],p_end
+      let ts, pe =
+        let make x = Pos.make cmd.pos x in
+        match pt, ts_pe with
+        | Some pt, None -> [make (P_tac_refine(pt))], make P_proof_end
+        | Some pt, Some(ts,pe) -> make (P_tac_refine(pt))::ts, pe
+        | None, Some(ts,pe) -> ts, pe
+        | None, None -> [], make P_proof_end
       in
+      (* If [ao = Some a], then we check that [a] is typable by a sort and
+         that [t] has type [a]. Otherwise, we try to infer the type of
+         [t]. Unification goals are collected. *)
       let add_goal m =
         List.insert Proof.Goal.compare (Proof.Goal.goal_typ_of_meta m)
       in
       let typ_goals_a = MetaSet.fold add_goal metas_a [] in
       let typ_goals_a = List.map Proof.Goal.typ typ_goals_a in
-      let proof_term,goals,sig_symbol,pdata_expo =
+      let proof_term, goals, sig_symbol, pdata_expo =
         let sort_goals, a = Proof.goals_of_typ x.pos ao t in
         (* And the main "type" goal *)
-        let proof_term,typ_goal =
+        let proof_term, typ_goal =
           match e with
           | Def ->
             let proof_term = Meta.fresh ~name:x.elt a 0 in
             let proof_goal = Proof.goal_of_meta proof_term in
             Some proof_term, proof_goal :: typ_goals_a
           | Tac ->
-            None,typ_goals_a
+            None, typ_goals_a
         in
         let goals = sort_goals @ typ_goal in
         let sig_symbol = {expo;prop;mstrat;ident=x;typ=a;impl;def=t} in
         (* Depending on opacity : theorem = false / definition = true *)
         let pdata_expo =
-          match e, op,ao,prop,mstrat with
+          match e, op, ao, prop, mstrat with
           (* Theorem *)
           |   Tac,     _,      _ ,    _ ,     _  -> expo
           |     _, true ,      _ , Defin, Eager  -> Privat
           |     _, true ,      _ , _    , Eager  ->
-            fatal cmd.pos "Property modifiers can't be used in \
-                           theorems."
+            fatal cmd.pos "Property modifiers can't be used in theorems."
           |     _, true ,      _ , _    , _      ->
             fatal cmd.pos "Pattern matching strategy modifiers cannot \
                            be used in theorems."
@@ -474,7 +466,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
                            be used in definitions."
           |     _, false, _      , _    , _      -> expo
         in
-        proof_term,goals,sig_symbol,pdata_expo
+        proof_term, goals, sig_symbol, pdata_expo
       in
       data_proof sig_symbol pdata_expo ts pe goals proof_term
     in

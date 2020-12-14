@@ -255,6 +255,11 @@ type p_modifier =
   | P_prop of Terms.prop (** symbol properties : constant, definable, ... *)
   | P_opaq of Terms.opacity (** opacity of the definition *)
 
+let is_opaq : p_modifier loc -> bool = fun {elt; _} ->
+  match elt with
+  | P_opaq(Opaque) -> true
+  | _ -> false
+
 type p_command_aux =
   | P_require    of bool * p_module_path list
   (** Require statement (require open if the boolean is true). *)
