@@ -211,6 +211,7 @@ let data_proof : sig_symbol -> expo -> p_tactic list ->
       (* Just ignore the command, with a warning. *)
       wrn pos "Proof aborted."; ss
     | _ ->
+      (* We try to solve remaining unification goals. *)
       let ps = Tactics.solve ps pos in
       (* We check that no metavariable remains. *)
       if Basics.has_metas true typ then
@@ -421,12 +422,13 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
       in
       (* Proof script *)
       let ts, pe =
-        let make x = Pos.make cmd.pos x in
         match pt, ts_pe with
-        | Some pt, None -> [make (P_tac_refine(pt))], make P_proof_end
-        | Some pt, Some(ts,pe) -> make (P_tac_refine(pt))::ts, pe
+        | Some pt, None ->
+            [Pos.make pt.pos (P_tac_refine pt)],
+            Pos.make (*FIXME?*)st.pos P_proof_end
+        | Some pt, Some(ts,pe) -> Pos.make pt.pos (P_tac_refine pt)::ts, pe
         | None, Some(ts,pe) -> ts, pe
-        | None, None -> [], make P_proof_end
+        | None, None -> [], Pos.make (*FIXME?*)st.pos P_proof_end
       in
       (* If [ao = Some a], then we check that [a] is typable by a sort and
          that [t] has type [a]. Otherwise, we try to infer the type of
