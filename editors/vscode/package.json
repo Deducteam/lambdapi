@@ -157,7 +157,6 @@
     "@types/mocha": "^2.2.42",
     "@types/node": "^10.14.15",
     "@types/vscode": "^1.37",
-    "tslint": "^5.12.1",
     "typescript": "^3.3.1"
   },
   "dependencies": {
