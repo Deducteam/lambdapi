@@ -42,10 +42,10 @@ export function activate(context: ExtensionContext) {
     //The highlight parameters
     const proofDecoration = window.createTextEditorDecorationType({
         light: {
-            backgroundColor: '#CCFFCC' //highlight color for a light theme
+            backgroundColor: '#33CC3355' //highlight color for a light theme
         },
         dark: {
-            backgroundColor: '#084035' //highlight color for a dark theme
+            backgroundColor: '#08883555' //highlight color for a dark theme
         }
       });
     context.workspaceState.update('proofDecoration', proofDecoration);
