@@ -400,12 +400,12 @@ function getGoalsEnvContent(goals : Goal[]){
     let codeHyps : String = ""; //hypothesis HTML code
     let codeGoals : String = ""; //goals HTML code
     let codeEnvGoals : String = ""; //result code HTML
-    let goalNo = 0;
+    let typGoalNo = 0;
     
     for(let i=0; i < goals.length; i++) {
         
         // check if this is a Type Goal
-	// extra space is not a typo
+    	// extra space is not a typo
         if (goals[i].typeofgoal == "Typ "){
             
             let curGoal = goals[i] as TypGoal;
@@ -428,7 +428,7 @@ function getGoalsEnvContent(goals : Goal[]){
             }
 
             let numGoalcode = `<label class="numGoal">`
-                + goalNo + `</label>`;
+                + typGoalNo + `</label>`;
 
             let typeGoal = `<span class="goal">`
                 + curGoal.type + `</span>`;
@@ -439,14 +439,15 @@ function getGoalsEnvContent(goals : Goal[]){
 
             codeHyps = codeHyps + `</div>`;
 
-            goalNo++;
+            typGoalNo++;
 
             let codeSep = `<hr/>`;
             codeEnvGoals = codeEnvGoals + "" + codeHyps + codeSep + codeGoals;
 
         } else {    // case if this is a Unification Goal
             let curGoal = goals[i] as UnifGoal;
-            codeEnvGoals = codeEnvGoals + "" + `<hr/>` + curGoal.constr
+            codeEnvGoals = codeEnvGoals + "" + `<hr/>` +
+                           `<span class="goal">`+curGoal.constr+`</span>`
         }
     }
 
