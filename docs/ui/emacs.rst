@@ -61,6 +61,8 @@ Installing with `opam`_:
   packages might be missing (available on `elpa`_):
 
   * `eglot`_,
+  * `highlight`_,
+  * `math-symbol-lists`_,
   * `company`_ (optional) for tooltip unicode completion,
   * `company-math`_ (optional) for tooltip unicode completion).
 
@@ -163,6 +165,9 @@ and show the goals at the current line with ``C-C C-c``. As always with
 emacs, if you were to be dissatisfied with these keybindings, you can
 change them easily!
 
+To focus a goal, you can click on the goal in the ``*Goals*`` buffer
+or you can run the command ``M-x lp-focus-goal <goal-number>``
+
 CPU usage and deactivation
 ''''''''''''''''''''''''''
 
@@ -218,3 +223,5 @@ To have everything configured using `use-package`_, use
 .. _quickrun: https://github.com/emacsorphanage/quickrun
 .. _emacs: https://www.gnu.org/software/emacs/
 .. _opam: http://opam.ocaml.org
+.. _highlight: https://www.emacswiki.org/emacs/HighlightLibrary
+.. _math-symbol-lists: https://elpa.gnu.org/packages/math-symbol-lists.html
