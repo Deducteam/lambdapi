@@ -12,15 +12,6 @@ open Sig_state
 open Rewrite
 open P_terms
 
-type nonrec ast         = (p_term, p_rule) ast
-type nonrec p_command   = (p_term, p_rule) p_command
-type nonrec p_arg       = p_term Syntax.p_arg
-type nonrec p_rule      = p_rule
-type nonrec p_rw_patt   = p_term p_rw_patt
-type nonrec p_tactic    = p_term p_tactic
-type nonrec p_assertion = p_term p_assertion
-type nonrec p_query     = p_term p_query
-
 (** Logging function for term scoping. *)
 let log_scop = new_logger 'o' "scop" "term scoping"
 let log_scop = log_scop.logger
@@ -651,7 +642,7 @@ let scope_pattern : sig_state -> env -> p_term -> term = fun ss env t ->
 (** [scope_rw_patt ss env t] turns a parser-level rewrite tactic specification
     [s] into an actual rewrite specification (possibly containing variables of
     [env] and using [ss] for aliasing). *)
-let scope_rw_patt : sig_state ->  env -> p_rw_patt loc -> rw_patt =
+let scope_rw_patt : sig_state ->  env -> (p_term p_rw_patt) loc -> rw_patt =
     fun ss env s ->
   match s.elt with
   | P_rw_Term(t)               -> RW_Term(scope_pattern ss env t)

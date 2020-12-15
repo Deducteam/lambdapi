@@ -8,17 +8,8 @@ open Terms
 open Print
 open P_terms
 
-type nonrec ast         = (p_term, p_rule) ast
-type nonrec p_command   = (p_term, p_rule) p_command
-type nonrec p_arg       = p_term Syntax.p_arg
-type nonrec p_rule      = p_rule
-type nonrec p_rw_patt   = p_term p_rw_patt
-type nonrec p_tactic    = p_term p_tactic
-type nonrec p_assertion = p_term p_assertion
-type nonrec p_query     = p_term p_query
-
 (** [handle_query ss ps q] *)
-let handle_query : Sig_state.t -> Proof.t option -> p_query -> unit =
+let handle_query : Sig_state.t -> Proof.t option -> p_term p_query -> unit =
   fun ss ps q ->
   let env =
     match ps with

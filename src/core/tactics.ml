@@ -11,14 +11,6 @@ open Print
 open P_terms
 open Timed
 
-type nonrec ast         = (p_term, p_rule) ast
-type nonrec p_command   = (p_term, p_rule) p_command
-type nonrec p_arg       = p_term Syntax.p_arg
-type nonrec p_rw_patt   = p_term p_rw_patt
-type nonrec p_tactic    = p_term p_tactic
-type nonrec p_assertion = p_term p_assertion
-type nonrec p_query     = p_term p_query
-
 (** Logging function for tactics. *)
 let log_tact = new_logger 't' "tact" "tactics"
 let log_tact = log_tact.logger
@@ -50,7 +42,7 @@ let solve ps pos =
      state [ps]), and returns the new proof state.  This function fails
      gracefully in case of error. *)
 let handle_tactic :
-  Sig_state.t -> Terms.expo -> Proof.t -> p_tactic -> Proof.t =
+  Sig_state.t -> Terms.expo -> Proof.t -> p_term p_tactic -> Proof.t =
   fun ss e ps tac ->
   (* First handle the tactics that do not change the goals. *)
   match tac.elt with
@@ -166,7 +158,7 @@ let handle_tactic :
       fatal tac.pos "Call to tactic \"fail\""
 
 let handle_tactic :
-  Sig_state.t -> Terms.expo -> Proof.t -> p_tactic -> Proof.t =
+  Sig_state.t -> Terms.expo -> Proof.t -> p_term p_tactic -> Proof.t =
   fun ss exp ps tac ->
   try handle_tactic ss exp ps tac
   with Fatal(_,_) as e ->

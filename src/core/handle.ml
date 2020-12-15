@@ -45,10 +45,10 @@ let _ =
     is exited (i.e., when a terminator like “end” is used).  Note that tactics
     do not work on this structure directly,  although they act on the contents
     of its [pdata_p_state] field. *)
-type proof_data =
+type 't proof_data =
   { pdata_stmt_pos : Pos.popt (* Position of the proof's statement.  *)
   ; pdata_p_state  : Proof.t  (* Initial proof state for the proof.  *)
-  ; pdata_tactics  : p_tactic list (* Tactics for the proof.         *)
+  ; pdata_tactics  : 't p_tactic list (* Tactics for the proof.      *)
   ; pdata_finalize : sig_state -> Proof.t -> sig_state (* Finalizer. *)
   ; pdata_end_pos  : Pos.popt (* Position of the proof's terminator. *)
   ; pdata_expo     : Terms.expo (* Allow use of private symbols      *) }
@@ -142,7 +142,7 @@ let handle_require_as : popt -> sig_state -> Path.t -> ident -> sig_state =
     [e p strat symbol x xs : a] with [ss] as the signature state.
     On success, an updated signature state and the new symbol are returned. *)
 let handle_symbol :
-  sig_state -> expo -> prop -> match_strat -> ident -> p_arg list ->
+  sig_state -> expo -> prop -> match_strat -> ident -> p_term p_arg list ->
   p_type -> sig_state * sym = fun ss e p strat x xs a ->
   let scope_basic exp = Scope.scope_term exp ss Env.empty in
   (* We check that [x] is not already used. *)
@@ -194,8 +194,8 @@ let handle_rules : sig_state -> p_rule list -> sig_state = fun ss rs ->
     with the proof script [ts pe]. [pdata_expo] sets the authorized exposition
     of the symbols used in the proof script : Public (= only public symbols)
     or Privat (= public and private symbols) *)
-let data_proof : sig_symbol -> expo -> p_tactic list ->
-  p_proof_end loc -> Goal.t list -> meta option -> proof_data =
+let data_proof : sig_symbol -> expo -> p_term p_tactic list ->
+  p_proof_end loc -> Goal.t list -> meta option -> p_term proof_data =
   fun sig_symbol pdata_expo ts pe goals proof_term ->
   let ident = sig_symbol.ident in
   let typ   = sig_symbol.typ   in
@@ -270,7 +270,8 @@ let data_proof : sig_symbol -> expo -> p_tactic list ->
     This structure contains the list of the tactics to be executed, as well as
     the initial state of the proof.  The checking of the proof is then handled
     separately. Note that [Fatal] is raised in case of an error. *)
-let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
+let handle_cmd : sig_state -> (p_term, p_rule) p_command ->
+  sig_state * p_term proof_data option =
   fun ss cmd ->
   let scope_basic exp pt = Scope.scope_term exp ss Env.empty pt in
   match cmd.elt with
@@ -535,7 +536,8 @@ let too_long = Stdlib.ref infinity
     exception handling. In particular, the position of [cmd] is used on errors
     that lack a specific position. All exceptions except [Timeout] and [Fatal]
     are captured, although they should not occur. *)
-let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
+let handle_cmd : sig_state -> (p_term, p_rule) p_command ->
+  sig_state * p_term proof_data option =
   fun ss cmd ->
   Print.sig_state := ss;
   try
