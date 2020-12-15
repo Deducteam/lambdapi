@@ -512,17 +512,26 @@ and solve_aux : ctxt -> term -> term -> problem -> constr list =
 
   | (_          , _          ) -> add_to_unsolved ()
 
-(** [solve problem] attempts to solve [problem]. If there is
+(** [solve p] tries to solve the unification problem [p] and
+    returns the constraints that could not be solved.
+    This is the entry point setting the flag type_check *)
+let solve : ?type_check:type_check -> problem -> constr list =
+  fun ?(type_check=TypeCheckInstanciation) p ->
+  Stdlib.(g_type_check := type_check);
+  let constrs = solve p in
+  Stdlib.(g_type_check := TypeCheckInstanciation); (* default *)
+  constrs
+
+(** [solve_noexn problem] attempts to solve [problem]. If there is
    no solution, the value [None] is returned. Otherwise [Some(cs)] is
    returned, where the list [cs] is a list of unsolved convertibility
    constraints. *)
-let solve : ?type_check:type_check -> problem -> constr list option =
+let solve_noexn : ?type_check:type_check -> problem -> constr list option =
   fun ?(type_check=TypeCheckInstanciation) p ->
-  Stdlib.(g_type_check := type_check);
-  try Some (solve p) with Unsolvable -> None
+  try Some (solve ~type_check p) with Unsolvable -> None
 
-(** [eq c t u] tries to unify the terms [t] and [u] in context [c], by
+(** [eq_noexn c t u] tries to unify the terms [t] and [u] in context [c], by
    instantiating their metavariables. *)
-let eq : ?type_check:type_check -> ctxt -> term -> term -> bool =
+let eq_noexn : ?type_check:type_check -> ctxt -> term -> term -> bool =
   fun ?(type_check=TypeCheckInstanciation) c t u ->
-  solve ~type_check {empty_problem with to_solve=[c,t,u]} = Some []
+  solve_noexn ~type_check {empty_problem with to_solve=[c,t,u]} = Some []

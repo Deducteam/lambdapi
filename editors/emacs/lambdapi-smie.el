@@ -18,12 +18,13 @@
     "reflexivity"
     "rewrite"
     "simpl"
+    "solve"
     "symmetry"
     "why3"))
 (defconst lambdapi--queries '("set" "assert" "assertnot" "type" "compute")
   "Commands that can appear in proofs.")
 (defconst lambdapi--cmds
-  (append '("symbol" "theorem" "rule" "and" "definition" "proof" "require" "inductive")
+  (append '("symbol" "rule" "and" "begin" "require" "inductive")
           lambdapi--queries)
   "Commands at top level.")
 
@@ -34,7 +35,7 @@ Indent by `lambdapi-indent-basic' in proofs, and 0 otherwise."
     (forward-line -1)
     (back-to-indentation)
     (cond
-     ((looking-at-p (regexp-opt (cons "proof" lambdapi--tactics)))
+     ((looking-at-p (regexp-opt (cons "begin" lambdapi--tactics)))
       `(column . ,lambdapi-indent-basic))
      ((looking-at-p (regexp-opt lambdapi--queries))
       ;; If the previous line is a query, indent similarly
@@ -76,6 +77,7 @@ Indent by `lambdapi-indent-basic' in proofs, and 0 otherwise."
               ("reflexivity")
               ("rewrite" "[" rw-patt "]")
               ("simpl")
+              ("solve")
               ("why3"))
       (query ("assert" sterm ":" sterm)
              ("assert" sterm "≡" sterm)
@@ -98,17 +100,17 @@ Indent by `lambdapi-indent-basic' in proofs, and 0 otherwise."
                ("|" ident ":" sterm))
       (inddec ("inductive" ident ":" sterm "≔" indcons))
       (command ("constant" symdec)
-               ("definition" args "≔" sterm)
                ("injective" inddec)
                ("injective" symdec)
                ("open" ident)
                ("private" inddec)
                ("private" symdec)
-               ("proof" prfcontent "abort")
-               ("proof" prfcontent "admit")
-               ("proof" prfcontent "qed")
                ("protected" inddec)
                ("protected" symdec)
+               ("opaque" symdec)
+               ("begin" prfcontent "abort")
+               ("begin" prfcontent "admit")
+               ("begin" prfcontent "end")
                ("require" ident "as" ident)
                ("require" ident)
                ("rule" sterm "↪" sterm)
@@ -120,7 +122,6 @@ Indent by `lambdapi-indent-basic' in proofs, and 0 otherwise."
                ("set" "prefix" ident "≔" sterm)
                ("set" "quantifier" ident)
                ("set" "unif_rule" sterm "≡" sterm "↪" unif-rule-rhs)
-               ("theorem" args ":" sterm)
                ("with" sterm "↪" sterm)
                (symdec)))
     '((assoc "≡") (assoc ",") (assoc "in") (assoc "→")))))
@@ -154,8 +155,8 @@ The default lexer is used because the syntax is primarily made of sexps."
     (`(:before . "print") `(column . ,lambdapi-indent-basic))
     (`(:before . "fail") `(column . ,lambdapi-indent-basic))
 
-    (`(:before . ,(or "admit" "abort" "qed")) '(column . 0))
-    (`(:after . ,(or "admit" "abort" "qed")) '(column . 0))
+    (`(:before . ,(or "admit" "abort" "end")) '(column . 0))
+    (`(:after . ,(or "admit" "abort" "end")) '(column . 0))
 
     (`(:before . ,(or "set" "compute" "type" "assert" "assertnot"))
      (lambdapi--query-indent))
@@ -165,12 +166,11 @@ The default lexer is used because the syntax is primarily made of sexps."
     (`(,(or :before :list-intro) . ,(or "≔" ":")) (smie-rule-separator kind))
     (`(:after . ,(or "≔" ":")) lambdapi-indent-basic)
 
-    (`(:list-intro . ,(or "with" "rule" "λ" "Π" "proof")) t)
-    (`(:after . "proof") lambdapi-indent-basic)
+    (`(:list-intro . ,(or "with" "rule" "λ" "Π" "begin")) t)
+    (`(:after . "begin") lambdapi-indent-basic)
     (`(:after . ,(or "rule" "with")) (* 2 lambdapi-indent-basic))
     (`(:after . "in") (smie-rule-parent))
-    (`(:after . ,(or "symbol" "definition" "theorem" "inductive"))
-     lambdapi-indent-basic)
+    (`(:after . ,(or "symbol" "inductive")) lambdapi-indent-basic)
     (`(:after . ,(or "simpl" "rewrite" "assume" "apply" "refine"
                      "why3" "reflexivity" "focus" "print" "fail"))
      lambdapi-indent-basic)
@@ -182,11 +182,9 @@ The default lexer is used because the syntax is primarily made of sexps."
     (`(:before . "constant") '(column . 0))
     (`(:before . "require") '(column . 0))
     (`(:before . "open") '(column . 0))
-    (`(:before . "definition") '(column . 0))
     (`(:before . "induction") '(column . 0))
-    (`(:before . "theorem") '(column . 0))
-    (`(:before . "proof") '(column . 0))
     (`(:before . "symbol") '(column . 0))
+    (`(:before . "begin") '(column . 0))
 
     (`(:before . ,(or "with" "rule")) '(column . 0))))
 

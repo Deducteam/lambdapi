@@ -33,7 +33,7 @@ let handle_query : Sig_state.t -> Proof.t option -> p_query -> unit =
           | (Some(a), Some(b)) ->
               let pb = {empty_problem with to_solve = [[], a, b]} in
               begin
-                match solve pb with
+                match solve_noexn pb with
                 | None -> fatal q.pos "Infered types are not convertible."
                 | Some [] -> Eval.eq_modulo [] t u
                 | Some cs ->

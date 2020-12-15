@@ -180,10 +180,10 @@ let run_task : Why3.Task.task -> Pos.popt -> string -> bool =
     If the prover succeeded to prove the goal, then this is reflected by a new
     axiom that is added to signature [ss]. *)
 let handle :
-      Sig_state.t -> Pos.popt -> string option -> Proof.Goal.t -> term =
-  fun ss pos prover_name g ->
+  Sig_state.t -> Pos.popt -> string option -> Proof.Goal.goal_typ -> term =
+  fun ss pos prover_name gt ->
   (* Get the goal to prove. *)
-  let (hyps, trm) = Proof.Goal.get_type g in
+  let (hyps, trm) = Proof.Goal.get_type gt in
   (* Get the default or the indicated name of the prover. *)
   let prover_name = Option.get !default_prover prover_name in
   if !log_enabled then log_why3 "running with configuration [%s]" prover_name;
@@ -195,7 +195,7 @@ let handle :
   (* Create a new axiom that represents the proved goal. *)
   let axiom_name = new_axiom_name () in
   (* Get the meta type of the current goal (with quantified context). *)
-  let trm = !((Proof.Goal.get_meta g).meta_type) in
+  let trm = !((Proof.Goal.get_meta gt).meta_type) in
   (* Add the axiom to the current signature. *)
   let a =
     Sign.add_symbol ss.signature Privat Const Eager

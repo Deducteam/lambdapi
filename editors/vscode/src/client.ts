@@ -400,41 +400,55 @@ function getGoalsEnvContent(goals : Goal[]){
     let codeHyps : String = ""; //hypothesis HTML code
     let codeGoals : String = ""; //goals HTML code
     let codeEnvGoals : String = ""; //result code HTML
-
+    let typGoalNo = 0;
+    
     for(let i=0; i < goals.length; i++) {
+        
+        // check if this is a Type Goal
+    	// extra space is not a typo, this is defined in lsp_base.ml
+        if (goals[i].typeofgoal == "Typ "){
+            
+            let curGoal = goals[i] as TypGoal;
+            codeHyps = `<div class="hypothesis">`;
+            codeGoals = `<div class="pp_goals">`;
+            
+            for(let j=0; j<curGoal.hyps.length; j++){
 
-        codeHyps = `<div class="hypothesis">`;
-        codeGoals = `<div class="pp_goals">`;
+                let hnameCode = `<label class="hname">`
+                    + curGoal.hyps[j].hname
+                    + `</label>`;
 
-        for(let j=0; j<goals[i].hyps.length; j++){
+                let htypeCode = `<span class="htype">`
+                    + curGoal.hyps[j].htype
+                + `</span> <br/>`;
 
-            let hnameCode = `<label class="hname">`
-                + goals[i].hyps[j].hname
-                + `</label>`;
+                codeHyps = codeHyps + hnameCode
+                    + `<label class="sep"> : </label>`
+                    + htypeCode;
+            }
 
-            let htypeCode = `<span class="htype">`
-                + goals[i].hyps[j].htype
-               + `</span> <br/>`;
+            let numGoalcode = `<label class="numGoal">`
+                + typGoalNo + `</label>`;
 
-            codeHyps = codeHyps + hnameCode
-                + `<label class="sep"> : </label>`
-                + htypeCode;
+            let typeGoal = `<span class="goal">`
+                + curGoal.type + `</span>`;
+
+            codeGoals = codeGoals + numGoalcode
+                + `<label class ="sep"> : </label> `
+                + typeGoal + `<label class ="sep"></label><br/><br/></div>`;
+
+            codeHyps = codeHyps + `</div>`;
+
+            typGoalNo++;
+
+            let codeSep = `<hr/>`;
+            codeEnvGoals = codeEnvGoals + "" + codeHyps + codeSep + codeGoals;
+
+        } else {    // case if this is a Unification Goal
+            let curGoal = goals[i] as UnifGoal;
+            codeEnvGoals = codeEnvGoals + "" + `<hr/>` +
+                           `<span class="goal">`+curGoal.constr+`</span>`
         }
-
-        let numGoalcode = `<label class="numGoal">`
-            + i + `</label>`;
-
-        let typeGoal = `<span class="goal">`
-            + goals[i].type + `</span>`;
-
-        codeGoals = codeGoals + numGoalcode
-            + `<label class ="sep"> : </label> `
-            + typeGoal + `<label class ="sep"></label><br/><br/></div>`;
-
-        codeHyps = codeHyps + `</div>`;
-
-        let codeSep = `<hr/>`;
-        codeEnvGoals = codeEnvGoals + "" + codeHyps + codeSep + codeGoals;
     }
 
     // if there is no goal
@@ -506,6 +520,14 @@ export interface Env {
 }
 
 export interface Goal {
+    typeofgoal : String // type of goal, values defined in lsp_base.ml
+}
+
+export interface UnifGoal extends Goal {
+    constr : String
+}
+
+export interface TypGoal extends Goal {
 	gid :  number // goal id
 	hyps : Env[] // hypothesis
 	type : String // goals

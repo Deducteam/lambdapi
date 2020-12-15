@@ -24,7 +24,10 @@
     }
   ],
   "repository": {
-
+    "commands": {
+      "match": "\\b(abort|admit|and|apply|as|assert|assertnot|assume|begin|compute|constant|definition|end|focus|in|injective|let|open|print|private|proofterm|protected|refine|reflexivity|require|rewrite|rule|set|simpl|symmetry|symbol|theorem|type|TYPE|why3)\\b",
+      "name": "keyword.control.lp"
+    },
     "comments": {
 			"patterns": [
 				{
@@ -41,7 +44,7 @@
     },
 
     "signature-commands": {
-      "match": "(definition|as|in|let|declared|builtin|proof|qed|rule|symbol|theorem|with)\\s+([^\\s+]*)",
+      "match": "(begin|end|definition|as|in|let|declared|builtin|rule|symbol|with)\\s+([^\\s+]*)",
       "captures": {
         "1": {"name": "storage.type.lp"},
         "2": {"name": "entity.name.function.theorem.lp"}
@@ -67,7 +70,7 @@
     },
 
     "keywords": {
-      "match": "\\b(TYPE|left|right|infix|prefix|quantifier|protected|private|injective|constant)\\b",
+      "match": "\\b(TYPE|left|right|infix|prefix|quantifier|protected|private|injective|constant|opaque)\\b",
       "name": "storage.modifier.lp"
     }    
   }
