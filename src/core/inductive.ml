@@ -93,21 +93,20 @@ type ind_pred_map = (sym * (tvar * tbox * tbox)) list
 let create_ind_pred_map :
       popt -> config -> inductive -> string -> string -> ind_pred_map =
   fun pos c ind_list p_str x_str ->
-  let prop = _Symb c.symb_Prop in
   let create_sym_pred_data i (ind_sym,_) =
     (* predicate variable *)
     let p_str = p_str ^ string_of_int i in
     let p = Bindlib.new_var mkfree p_str in
     (* predicate type *)
-    let codom ts = _Impl (_Appl_symb ind_sym ts) prop in
-    let p_type = gen_ind_typ_codom pos ind_sym codom p_str in
+    let codom ts = _Impl (_Appl_symb ind_sym ts) (_Symb c.symb_Prop) in
+    let p_type = gen_ind_typ_codom pos ind_sym codom x_str in
     (* predicate conclusion *)
     let codom ts =
       let x = Bindlib.new_var mkfree x_str in
       let t = Bindlib.bind_var x (prf_of c p ts (_Vari x)) in
       _Prod (_Appl_symb ind_sym ts) t
     in
-    let conclusion = gen_ind_typ_codom pos ind_sym codom p_str in
+    let conclusion = gen_ind_typ_codom pos ind_sym codom x_str in
     (ind_sym, (p, p_type, conclusion))
   in
   List.rev_mapi create_sym_pred_data ind_list
