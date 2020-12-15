@@ -218,6 +218,7 @@ let infer : ctxt -> term -> term * constr list = fun ctx t ->
   Stdlib.(constraints := []);
   let a = infer ctx t in
   let constrs = Stdlib.(!constraints) in
+  let constrs = List.sort_uniq Eval.compare_constr constrs in
   if !log_enabled then
     begin
       log_infr (gre "infer %a : %a") pp_term t pp_term a;

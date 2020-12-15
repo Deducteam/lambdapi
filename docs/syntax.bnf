@@ -6,21 +6,21 @@ reserved "as"
 reserved "assert"
 reserved "assertnot"
 reserved "assume"
+reserved "begin"
 reserved "compute"
 reserved "constant"
-reserved "definition"
+reserved "end"
 reserved "fail"
 reserved "focus"
 reserved "in"
 reserved "injective"
 reserved "let"
+reserved "opaque"
 reserved "open"
 reserved "print"
 reserved "private"
-reserved "proof"
 reserved "proofterm"
 reserved "protected"
-reserved "qed"
 reserved "refine"
 reserved "reflexivity"
 reserved "require"
@@ -30,7 +30,6 @@ reserved "set"
 reserved "simpl"
 reserved "symmetry"
 reserved "symbol"
-reserved "theorem"
 reserved "type"
 reserved "TYPE"
 reserved "with"
@@ -72,6 +71,9 @@ reserved "why3"
 <exposition> ::=
   | "protected"
   | "private"
+
+<opacity> ::=
+  | "opaque"
 
 <infix_op> ::=
   | "+"
@@ -184,12 +186,13 @@ reserved "why3"
   | "require" "open"? <path>
   | "open" <path>
   // Define a new symbol
-  | <exposition>? <property>? "symbol" <ident> <arg>* ":" <type>
+  | <opacity>? <exposition>? <property>? "symbol" <ident> <arg>* {":" <type>}? {"≔" <term>}?
+    {"begin" <tactic>* {"end"|"admit"|"abort"}}?
   // Define a new rewriting rule
   | "rule" <rule> {"and" <rule>}*
+  | <exposition>? "inductive"  <ident> ":" <term> "≔" {"|" <ident> ":" <term>}*
   // Definition of a symbol or theorem
   | <exposition>? "definition" <ident> <arg>* {":" <type>}? "≔" <term>
-  | <exposition>? "inductive"  <ident> ":" <term> "≔" {"|" <ident> ":" <term>}*
   | <exposition>? "theorem" <ident> <arg>* ":" <type> "proof" <tactic>*
     {"qed"|"admit"|"abort"}
   // Assertion

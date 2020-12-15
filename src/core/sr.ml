@@ -238,7 +238,7 @@ let check_rule : Scope.pre_rule Pos.loc -> rule = fun ({pos; elt} as pr) ->
      the function symbols of [symbols]. *)
   (* Solving the typing constraints of the RHS. *)
   let type_check = Unif.TypeCheckInstanciation in
-  match Unif.(solve ~type_check {empty_problem with to_solve}) with
+  match Unif.(solve_noexn ~type_check {empty_problem with to_solve}) with
   | None     -> fatal pos "The rewriting rule does not preserve typing."
   | Some(cs) ->
   let is_constr c =

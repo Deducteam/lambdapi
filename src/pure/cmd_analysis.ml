@@ -91,15 +91,12 @@ let qidents_of_cmd (cmd : t) =
   | Syntax.P_require (_, _) -> []
   | Syntax.P_require_as (_, _) -> []
   | Syntax.P_open _ -> []
-  | Syntax.P_symbol (_, _, args, term) -> filter_bound_qidents args [ term ]
   | Syntax.P_rules rules -> concat_map qidents_of_p_rule rules
-  | Syntax.P_definition (_pl, _b, _location, args, Some ty, body) ->
-    filter_bound_qidents args [ ty; body ]
-  | Syntax.P_definition (_pl, _b, _location, args, None, body) ->
-    filter_bound_qidents args [ body ]
-  | Syntax.P_theorem (_, statement, _, _) ->
-    let _, args, body = statement.elt in
-    filter_bound_qidents args [ body ]
+  | Syntax.P_symbol(_, st, t, _, _) ->
+    let _,args,ao = st.elt in
+    let some_or_empty = function Some arg -> [arg] | None -> [] in
+    let terms_list = some_or_empty ao @ some_or_empty t in
+    filter_bound_qidents args terms_list
   | Syntax.P_set set -> qidents_of_p_config set
   | Syntax.P_query q ->
     let f (q : Syntax.p_query_aux) =
