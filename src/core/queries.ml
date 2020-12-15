@@ -22,12 +22,12 @@ let handle_query : Sig_state.t -> Proof.t option -> p_query -> unit =
         match asrt with
         | P_assert_typing(pt,pa) ->
           let t = scope pt and a = scope pa and ctxt = Env.to_ctxt env in
-          out 3 "(asrt) %a\n" pp_typing (ctxt, t, a);
+          out 1 "(asrt) %a\n" pp_typing (ctxt, t, a);
           Typing.sort_type ctxt a;
           (try Typing.check ctxt t a with _ -> false)
         | P_assert_conv(pt,pu)   ->
           let t = scope pt and u = scope pu in
-          out 3 "(asrt) %a\n" pp_constr ([], t, u);
+          out 1 "(asrt) %a\n" pp_constr ([], t, u);
           let infer = Typing.infer (Env.to_ctxt env) in
           match (infer t, infer u) with
           | (Some(a), Some(b)) ->
