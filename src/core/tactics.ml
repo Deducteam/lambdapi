@@ -14,7 +14,6 @@ open Timed
 type nonrec ast         = (p_term, p_rule) ast
 type nonrec p_command   = (p_term, p_rule) p_command
 type nonrec p_arg       = p_term Syntax.p_arg
-type nonrec p_rule      = p_rule
 type nonrec p_rw_patt   = p_term p_rw_patt
 type nonrec p_tactic    = p_term p_tactic
 type nonrec p_assertion = p_term p_assertion

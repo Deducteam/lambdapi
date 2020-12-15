@@ -9,7 +9,6 @@ open P_terms
 open Legacy_lexer
 open Parser
 
-
 (** {b NOTE} we maintain the invariant described in the [Parser] module: every
     error should have an attached position.  We do not open [Console] to avoid
     calls to [Console.fatal] and [Console.fatal_no_pos].  In case of an error,
