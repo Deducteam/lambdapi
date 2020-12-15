@@ -1,27 +1,23 @@
+body {
+    font-size:medium;
+}
+
 .hname{
-    color : #F08080;
+    color : var(--vscode-editorLineNumber-foreground);
 }
 
 .htype {
-    color : #FFFFF0;
+    color : var(--vscode-editor-foreground);
 }
 
 .numGoal{
-    color : #90EE90;
+    color : var(--vscode-editorLineNumber-foreground);
 }
 
 .goal {
-    color : #FFEFD5;
+    color: var(--vscode-editor-foreground);
 }
 
 .sep, hr {
-    color : #DAA520;
-}
-
-.pp_goals {
-
-}
-
-.hypothesis {
-    
+    color : var(--vscode-editorRuler-foreground);
 }
