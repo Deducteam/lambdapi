@@ -25,12 +25,6 @@ type p_module_path = (string * bool) list
 (** Representation of a possibly qualified (and located) identifier. *)
 type qident = (p_module_path * string) loc
 
-(** Parser-level representation of modifiers. *)
-type p_modifier =
-  | P_mstrat of Terms.match_strat
-  | P_expo of Terms.expo
-  | P_prop of Terms.prop
-
 (** Type representing the different evaluation strategies. *)
 type strategy =
   | WHNF
@@ -62,7 +56,7 @@ type binop = string * assoc * priority * qident
 type 't p_arg = ident option list * 't option * bool
 
 (** Parser-level inductive type representation. *)
-type 'term p_inductive = (ident * 'term * (ident * 'term) list) loc
+type 't p_inductive = (ident * 't * (ident * 't) list) loc
 
 (** Rewrite pattern specification. *)
 type 't p_rw_patt =
@@ -132,6 +126,8 @@ type 't p_tactic_aux =
   (** Print the current proof term (possibly containing open goals). *)
   | P_tac_why3 of string option
   (** Try to solve the current goal with why3. *)
+  | P_unif_solve
+  (** Apply default unification solving algorithm. *)
   | P_tac_query   of 't p_query
   (** Query. *)
   | P_tac_fail
@@ -141,7 +137,7 @@ type 't p_tactic = 't p_tactic_aux loc
 
 (** Parser-level representation of a proof terminator. *)
 type p_proof_end =
-  | P_proof_qed
+  | P_proof_end
   (** The proof is done and fully checked. *)
   | P_proof_admit
   (** Give up current state and admit the theorem. *)
@@ -164,7 +160,19 @@ type 'r p_config =
   (** Unification hint declarations. *)
 
 (** Parser-level representation of a single command. *)
-type 't p_statement = (ident * 't p_arg list * 't) loc
+type 't p_statement = (ident * 't p_arg list * 't option) loc
+
+(** Parser-level representation of modifiers. *)
+type p_modifier =
+  | P_mstrat of Terms.match_strat (** pattern matching strategy *)
+  | P_expo of Terms.expo (** visibility of symbol outside its modules *)
+  | P_prop of Terms.prop (** symbol properties : constant, definable, ... *)
+  | P_opaq of Terms.opacity (** opacity of the definition *)
+
+let is_opaq : p_modifier loc -> bool = fun {elt; _} ->
+  match elt with
+  | P_opaq(Opaque) -> true
+  | _ -> false
 
 type ('t, 'r) p_command_aux =
   | P_require    of bool * p_module_path list
@@ -173,18 +181,14 @@ type ('t, 'r) p_command_aux =
   (** Require as statement. *)
   | P_open       of p_module_path list
   (** Open statement. *)
-  | P_symbol     of p_modifier loc list * ident * 't p_arg list * 't
+  | P_symbol     of p_modifier loc list * 't p_statement * 't option
+                    * ('t p_tactic list * p_proof_end loc) option
+                    * Terms.proof_meaning
   (** Symbol declaration. *)
   | P_rules      of 'r list
   (** Rewriting rule declarations. *)
-  | P_definition of p_modifier loc list * bool * ident * 't p_arg list *
-                    't option * 't
-  (** Definition of a symbol (unfoldable). *)
   | P_inductive of p_modifier loc list * 't p_inductive list
-  (** Definition of inductive type *)
-  | P_theorem    of p_modifier loc list * 't p_statement * 't p_tactic list *
-                    p_proof_end loc
-  (** Theorem with its proof. *)
+  (** Definition of inductive types *)
   | P_set        of 'r p_config
   (** Set the configuration. *)
   | P_query      of 't p_query
@@ -303,21 +307,21 @@ module EqAst (T: sig type t val eq : t eq end)
        List.equal (=) ps1 ps2
     | (P_require_as(p1,id1)  , P_require_as(p2,id2)              ) ->
        p1 = p2 && id1.elt = id2.elt
-    | (P_symbol(m1,s1,al1,a1), P_symbol(m2,s2,al2,a2)) ->
-        m1 = m2 && eq_ident s1 s2 && T.eq a1 a2
-        && List.equal eq_p_arg al1 al2
+    | (P_symbol(ms1,st1,t1,ts_pe1,m1),
+       P_symbol(ms2,st2,t2,ts_pe2,m2))                             ->
+        let s1,l1,a1 = st1.elt in
+        let s2,l2,a2 = st2.elt in
+        let eq_tactic =
+          fun (ts1,_) (ts2,_) -> (List.equal eq_p_tactic) ts1 ts2
+        in
+        ms1 = ms2 && eq_ident s1 s2 && List.equal eq_p_arg l1 l2
+        && Option.equal T.eq a1 a2 && Option.equal T.eq t1 t2
+        && Option.equal eq_tactic ts_pe1 ts_pe2
+        && m1 = m2
     | (P_rules(rs1)                , P_rules(rs2)                ) ->
         List.equal R.eq rs1 rs2
-    | (P_definition(m1,b1,s1,l1,a1,t1), P_definition(m2,b2,s2,l2,a2,t2)) ->
-        m1 = m2 && b1 = b2 && eq_ident s1 s2 && List.equal eq_p_arg l1 l2
-        && Option.equal T.eq a1 a2 && T.eq t1 t2
     | (P_inductive(m1,i1), P_inductive(m2, i2)) ->
         m1 = m2 && List.equal eq_p_inductive i1 i2
-    | (P_theorem(m1,st1,ts1,e1)   , P_theorem(m2,st2,ts2,e2)   ) ->
-        let (s1,l1,a1) = st1.elt in
-        let (s2,l2,a2) = st2.elt in
-        m1 = m2 && eq_ident s1 s2 && T.eq a1 a2 && e1.elt = e2.elt
-        && List.equal eq_p_arg l1 l2 && List.equal eq_p_tactic ts1 ts2
     | (P_set(c1)                   , P_set(c2)                   ) ->
         eq_p_config c1 c2
     | (P_query(q1)                 , P_query(q2)                 ) ->
@@ -385,6 +389,7 @@ let p_tactic_map : 'a 'b. ('a -> 'b) -> 'a p_tactic -> 'b p_tactic =
     | P_tac_proofterm                       -> P_tac_proofterm
     | P_tac_why3(s_opt)                     -> P_tac_why3(s_opt)
     | P_tac_query(query) -> P_tac_query(p_query_map f query)
+    | P_unif_solve                          -> P_unif_solve
     | P_tac_fail                            -> P_tac_fail
   in
   Pos.make loc new_tactic
@@ -400,25 +405,32 @@ let p_config_map : 'a 'b. ('a -> 'b) -> 'a p_config -> 'b p_config =
   | P_config_quant(qid)           -> P_config_quant(qid)
   | P_config_unif_rule(r)         -> P_config_unif_rule(f r)
 
+let p_arg_map : 'a 'b. ('a -> 'b) -> 'a p_arg -> 'b p_arg =
+  fun f (ido, topt, imp) -> (ido, Option.map f topt, imp)
+
+let p_statement_map : 'a 'b. ('a -> 'b) -> 'a p_statement -> 'b p_statement =
+  fun f ->
+  let f (id, args, topt) =
+    (id, List.map (p_arg_map f) args, Option.map f topt)
+  in
+  Pos.map f
 
 (** [p_cmd_map f cmd] maps function [f] on terms of [cmd]. *)
 let p_cmd_map : 'a 'b 'c. ('a -> 'b) -> ('a, 'c) p_command ->
   ('b, 'c) p_command = fun f cmd ->
-  let map_arg_list =
-    let arg_map : 'a p_arg -> 'b p_arg = fun (sloptl, termopt, b) ->
-      (sloptl, Option.map f termopt, b)
-    in
-    List.map arg_map
-  in
   let f e =
     match e with
     | P_require(b, pl) -> P_require(b, pl)
     | P_require_as(pl, sbl) -> P_require_as(pl, sbl)
     | P_open(pl) -> P_open(pl)
-    | P_symbol(pl, id, argl, t) -> P_symbol(pl, id, map_arg_list argl, f t)
+    | P_symbol(ms, st, ty, scr, me) ->
+        let scr_map f:
+          ('a p_tactic list * _) option -> ('b p_tactic list * _) option =
+          let sub f (ts, pe) = (List.map (p_tactic_map f) ts, pe) in
+          Option.map (sub f)
+        in
+        P_symbol(ms, p_statement_map f st, Option.map f ty, scr_map f scr, me)
     | P_rules(rs) -> P_rules(rs)
-    | P_definition(pl, b, id, argl, topt, t) ->
-      P_definition(pl, b, id, map_arg_list argl, Option.map f topt, f t)
     | P_inductive(ms, is) ->
         let im : 'a p_inductive -> 'b p_inductive =
           fun {elt=(id,t,its); pos} ->
@@ -427,12 +439,6 @@ let p_cmd_map : 'a 'b 'c. ('a -> 'b) -> ('a, 'c) p_command ->
             Pos.make pos (id, t, its)
         in
         P_inductive(ms, List.map im is)
-    | P_theorem(pl, statement, tactics, proof_end) ->
-        let st_map st =
-          Pos.map (fun (id, p_arg_l, t) -> (id,map_arg_list p_arg_l, f t)) st
-        in
-        let tactics   = List.map (p_tactic_map f) tactics in
-        P_theorem(pl, st_map statement, tactics, proof_end)
     | P_set(p_config) -> P_set(p_config)
     | P_query(query)  -> P_query(p_query_map f query)
   in

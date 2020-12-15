@@ -44,10 +44,12 @@ let pp_modifier : p_modifier loc pp = fun oc {elt; _} ->
   | P_prop(Defin) -> ()
   | P_prop(Const) -> Format.pp_print_string oc "constant "
   | P_prop(Injec) -> Format.pp_print_string oc "injective "
+  | P_opaq(Nonopaque) -> ()
+  | P_opaq(Opaque) -> Format.pp_print_string oc "opaque"
 
 let pp_p_proof_end : p_proof_end pp = fun oc e ->
   match e with
-  | P_proof_qed   -> Format.pp_print_string oc "qed"
+  | P_proof_end   -> Format.pp_print_string oc "end"
   | P_proof_admit -> Format.pp_print_string oc "admit"
   | P_proof_abort -> Format.pp_print_string oc "abort"
 
@@ -80,14 +82,14 @@ module Make (T: PPTERM)(R: PPTERM) = struct
   let pp_p_args : T.t p_arg list pp = fun oc ->
     List.iter (Format.fprintf oc " %a" pp_p_arg)
 
-let pp_p_inductive : string -> T.t p_inductive pp =
-  fun kw oc i ->
-  let (s, t, tl) = i.elt in
-  Format.fprintf oc "@[<hov 2>]%s %a" kw pp_ident s;
-  Format.fprintf oc " :@ @[<hov>%a@] ≔@ \n  " T.pp t;
-  let pp_cons oc (id,a) =
-    Format.fprintf oc "%a:@ @[<hov>%a@]" pp_ident id T.pp a in
-  List.pp pp_cons "\n| " oc tl
+  let pp_p_inductive : string -> T.t p_inductive pp =
+    fun kw oc i ->
+    let (s, t, tl) = i.elt in
+    Format.fprintf oc "@[<hov 2>]%s %a" kw pp_ident s;
+    Format.fprintf oc " :@ @[<hov>%a@] ≔@ \n  " T.pp t;
+    let pp_cons oc (id,a) =
+      Format.fprintf oc "%a:@ @[<hov>%a@]" pp_ident id T.pp a in
+    List.pp pp_cons "\n| " oc tl
 
   let pp_p_equi : (T.t * T.t) pp = fun oc (l, r) ->
     Format.fprintf oc "@[<hov 3>%a ≡ %a@]@?" T.pp l T.pp r
@@ -169,6 +171,7 @@ let pp_p_inductive : string -> T.t p_inductive pp =
         out "why3%a" (Option.pp prover) p
     | P_tac_query(q)           -> pp_p_query oc q
     | P_tac_fail               -> out "fail"
+    | P_unif_solve             -> out "solve"
 
   let pp_command : (T.t, R.t) p_command pp = fun oc cmd ->
     let out fmt = Format.fprintf oc fmt in
@@ -180,35 +183,45 @@ let pp_p_inductive : string -> T.t p_inductive pp =
         out "require %a as %a" (pp_path cmd.pos) p (pp_path_elt i.pos) i.elt
     | P_open(ps)                      ->
         List.iter (out "open %a" (pp_path cmd.pos)) ps
-    | P_symbol(ms,s,args,a) ->
-        out "@[<hov 2>%asymbol %a"
-          (Format.pp_print_list pp_modifier) ms pp_ident s;
-        List.iter (out " %a" pp_p_arg) args;
-        out " :@ @[<hov>%a@]" T.pp a
+    | P_symbol(ms,st,t,ts_pe,_e) ->
+      begin
+        match (t,ts_pe) with
+        | (Some _,_) | (_,Some _) ->
+          let s,args,ao = st.elt in
+          out "@[<hov 2>%a symbol %a"
+            (Format.pp_print_list pp_modifier) ms pp_ident s;
+          List.iter (out " %a" pp_p_arg) args;
+          Option.iter (out " : @[<hov>%a@]" T.pp) ao;
+          Option.iter (out " ≔ @[<hov>%a@]@]" T.pp) t;
+          begin
+            match ts_pe with
+            | Some(ts,pe) ->
+              out "proof@.";
+              List.iter (out "  @[<hov>%a@]@." pp_p_tactic) ts;
+              out "%a" pp_p_proof_end pe.elt
+            | None -> ()
+          end
+        | (None,None) ->
+          let (s,args,a) = st.elt in
+          let a =
+            match a with
+            | Some(a) -> a
+            | None -> failwith "Internal error : P_symbol has a type"
+          in
+          out "@[<hov 2>%asymbol %a"
+            (Format.pp_print_list pp_modifier) ms pp_ident s;
+          List.iter (out " %a" pp_p_arg) args;
+          out " :@ @[<hov>%a@]" T.pp a
+      end
     | P_rules([])                     -> ()
     | P_rules(r::rs)                  ->
         out "first %a" R.pp r;
         List.iter (out "with %a" R.pp) rs
-    | P_definition(ms,_,s,args,ao,t) ->
-        out "@[<hov 2>%adefinition %a"
-          (Format.pp_print_list pp_modifier) ms pp_ident s;
-        List.iter (out " %a" pp_p_arg) args;
-        Option.iter (out " : @[<hov>%a@]" T.pp) ao;
-        out " ≔ @[<hov>%a@]@]" T.pp t
     | P_inductive(_, []) -> ()
     | P_inductive(ms, i::il) ->
         out "%a" (Format.pp_print_list pp_modifier) ms;
         out "%a" (pp_p_inductive "inductive") i;
-        List.iter (out "%a" (pp_p_inductive "with")) il;
-    | P_theorem(ms,st,ts,pe) ->
-        let (s,args,a) = st.elt in
-        out "@[<hov 2>%atheorem %a"
-          (Format.pp_print_list pp_modifier) ms pp_ident s;
-        List.iter (out " %a" pp_p_arg) args;
-        out " : @[<2>%a@]@]@." T.pp a;
-        out "proof@.";
-        List.iter (out "  @[<hov>%a@]@." pp_p_tactic) ts;
-        out "%a" pp_p_proof_end pe.elt
+        List.iter (out "%a" (pp_p_inductive "\nwith")) il;
     | P_set(P_config_builtin(n,i))    ->
         out "set builtin %S ≔ %a" n pp_qident i
     | P_set(P_config_unop(unop))      ->

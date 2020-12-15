@@ -9,34 +9,44 @@
 
 (defconst lp-goal-line-prefix "---------------------------------------------------")
 
+(defun format-string-hyps-typ-goal (goal)
+  "Return the string associated to the hypotheses of a single typ goal"
+  (let ((tog (plist-get goal :typeofgoal)))
+    (if (string= tog "Typ ")
+	(let ((hs (plist-get goal :hyps)))
+	  (mapcar (lambda (hyp)
+		    (let ((name (plist-get hyp :hname))
+			  (type (plist-get hyp :htype)))
+		      (format "%s: %s\n" name type)))
+		  (reverse hs))))))
+
+(defun format-string-goal (goal)
+  "Return the string associated to a single goal"
+  (let ((tog (plist-get goal :typeofgoal)))
+    (if (string= tog "Typ ")
+	(let ((id (plist-get goal :gid))
+	      (type (plist-get goal :type)))
+	  (format "%s\n%s   %d: %s\n\n"
+		  lp-goal-line-prefix tog id type))
+      (let ((constr (plist-get goal :constr)))
+	(format "%s\n%s    : %s\n\n"
+		lp-goal-line-prefix tog constr)))))
+
 (defun display-goals (goals)
   "Display GOALS returned by the LSP server in the dedicated Emacs buffer."
   (let ((goalsbuf (get-buffer-create "*Goals*")))
     (with-current-buffer goalsbuf
       (read-only-mode -1)
       (if (> (length goals) 0)
-          (let* ((fstgoal  (elt goals 0))
-                 (hs       (plist-get fstgoal :hyps))
-                 (hypsstr  (mapcar
-                            (lambda (hyp)
-                              (let ((name (plist-get hyp :hname))
-                                    (type (plist-get hyp :htype)))
-                                (format "%s: %s\n" name type)))
-                            (reverse hs)))
-                 (goalsstr (mapcar
-                            (lambda (goal)
-                              (let ((id (plist-get goal :gid))
-                                    (type (plist-get goal :type)))
-                                (format "%s\nGoal %d: %s\n\n"
-                                        lp-goal-line-prefix id type)))
-                            goals)))
-            (erase-buffer)
-            (goto-char (point-max))
-            (mapc 'insert hypsstr)
-            (mapc 'insert goalsstr))
-        (erase-buffer))
+	  (let* ((fstgoal (elt goals 0))
+		 (hypsstr (format-string-hyps-typ-goal fstgoal))
+		 (goalsstr (mapcar (symbol-function 'format-string-goal) goals)))
+	    (erase-buffer)
+	    (goto-char (point-max))
+	    (mapc 'insert hypsstr)
+	    (mapc 'insert goalsstr))
+	(erase-buffer))
       (read-only-mode 1))))
-
 
 (defun eglot--signal-proof/goals (position)
   "Send proof/goals to server, requesting the list of goals at POSITION."

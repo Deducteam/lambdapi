@@ -1,12 +1,17 @@
+#### Unification goals (2020-12-15)
+
+#### Mutually defined inductive types (2020-12-09)
+
+#### Inductive types (2020-09-29)
+
+#### Documentation in Sphinx (2020-07-31)
+
 #### Goals display in Emacs (2020-07-06)
 
 #### Sequential symbol (2020-07-06)
 
-##### Added
-- `sequential` keyword for symbol declarations
-
-##### Removed
-- `--keep-rule-order` option
+- Added `sequential` keyword for symbol declarations
+- Removed `--keep-rule-order` option
 
 #### Change semantics of environments (2020-06-10)
 

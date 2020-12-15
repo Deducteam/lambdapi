@@ -162,9 +162,10 @@ let _apply_      = KW.create "apply"
 let _as_         = KW.create "as"
 let _assert_     = KW.create "assert"
 let _assertnot_  = KW.create "assertnot"
+let _begin_      = KW.create "begin"
 let _compute_    = KW.create "compute"
 let _constant_   = KW.create "constant"
-let _definition_ = KW.create "definition"
+let _end_        = KW.create "end"
 let _fail_       = KW.create "fail"
 let _focus_      = KW.create "focus"
 let _in_         = KW.create "in"
@@ -172,13 +173,12 @@ let _inductive_  = KW.create "inductive"
 let _injective_  = KW.create "injective"
 let _intro_      = KW.create "assume"
 let _let_        = KW.create "let"
+let _opaque_     = KW.create "opaque"
 let _open_       = KW.create "open"
 let _print_      = KW.create "print"
 let _private_    = KW.create "private"
-let _proof_      = KW.create "proof"
 let _proofterm_  = KW.create "proofterm"
 let _protected_  = KW.create "protected"
-let _qed_        = KW.create "qed"
 let _refine_     = KW.create "refine"
 let _refl_       = KW.create "reflexivity"
 let _require_    = KW.create "require"
@@ -187,9 +187,9 @@ let _rule_       = KW.create "rule"
 let _sequential_ = KW.create "sequential"
 let _set_        = KW.create "set"
 let _simpl_      = KW.create "simpl"
+let _solve_      = KW.create "solve"
 let _sym_        = KW.create "symmetry"
 let _symbol_     = KW.create "symbol"
-let _theorem_    = KW.create "theorem"
 let _type_       = KW.create "type"
 let _TYPE_       = KW.create "TYPE"
 let _why3_       = KW.create "why3"
@@ -349,6 +349,7 @@ let parser qident = mp:{path_elem "."}* id:any_ident -> in_pos _loc (mp,id)
 let parser modifier =
   | _constant_ -> in_pos _loc (P_prop(Terms.Const))
   | _injective_ -> in_pos _loc (P_prop(Terms.Injec))
+  | _opaque_ -> in_pos _loc (P_opaq(Terms.Opaque))
   | _protected_ -> in_pos _loc (P_expo(Terms.Protec))
   | _private_ -> in_pos _loc (P_expo(Terms.Privat))
   | _sequential_ -> in_pos _loc (P_mstrat(Terms.Sequen))
@@ -576,10 +577,11 @@ let parser tactic =
   | _why3_ s:string_lit?        -> Pos.in_pos _loc (P_tac_why3(s))
   | q:query                     -> Pos.in_pos _loc (P_tac_query(q))
   | _fail_                      -> Pos.in_pos _loc P_tac_fail
+  | _solve_                     -> Pos.in_pos _loc P_unif_solve
 
 (** [proof_end] is a parser for a proof terminator. *)
 let parser proof_end =
-  | _qed_   -> P_proof_qed
+  | _end_   -> P_proof_end
   | _admit_ -> P_proof_admit
   | _abort_ -> P_proof_abort
 
@@ -611,11 +613,8 @@ let parser config =
   | "quantifier" qid:qident ->
       P_config_quant(qid)
 
-let parser statement =
-  _theorem_ s:ident al:arg* ":" a:term _proof_ -> Pos.in_pos _loc (s,al,a)
-
 let parser proof =
-  ts:tactic* e:proof_end -> (ts, Pos.in_pos _loc_e e)
+  _begin_ ts:tactic* e:proof_end -> (ts, Pos.in_pos _loc_e e)
 
 (** [!require mp] can be used to require the compilation of a module [mp] when
     it is required as a dependency. This has the effect of importing notations
@@ -663,16 +662,18 @@ let parser cmd =
   | _open_ ps:path+
       -> List.iter (get_ops _loc) ps;
          P_open(ps)
-  | mods:modifier* _symbol_ s:ident al:arg* ":" a:term
-      -> P_symbol(mods, s, al, a)
+  | ms:modifier* _symbol_ s:ident al:arg* ":" a:term
+         ts_pe:proof?
+      -> let st = Pos.in_pos _loc (s,al,Some(a)) in
+         P_symbol(ms,st,None,ts_pe,Tac)
+  | ms:modifier* _symbol_ s:ident al:arg* a:{":" term}? "≔" t:term?
+         ts_pe:proof?
+      -> let st = Pos.in_pos _loc (s,al,a) in
+         P_symbol(ms,st,t,ts_pe,Def)
   | _rule_ r:rule rs:{_:_with_ rule}*
       -> P_rules(r::rs)
-  | ms:modifier* _definition_ s:ident al:arg* ao:{":" term}? "≔" t:term
-      -> P_definition(ms,false,s,al,ao,t)
   | ms:modifier* _inductive_ i:inductive il:{_:_with_ inductive}*
       -> P_inductive(ms, i::il)
-  | ms:modifier* st:statement (ts,pe):proof
-      -> P_theorem(ms,st,ts,pe)
   | _set_ c:config
       -> P_set(c)
   | q:query
