@@ -74,7 +74,7 @@ Examples:
    symbol double n ≔ add n n // no type but a definition
    symbol triple n : N ≔ add n (double n) // a type and a definition
 
-   // with a proof script
+   // with a proof script (theorem or interactive definition)
    symbol F : N → TYPE
    symbol idF n : F n → F n ≔
    begin
