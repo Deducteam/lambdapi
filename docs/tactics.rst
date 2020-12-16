@@ -170,3 +170,8 @@ replaced by ``u1``, …, ``xn`` replaced by ``un``.
 
 The ``fail`` tactic always fails. It is useful when developing a proof
 to stop at some particular point.
+
+``proofterm``
+-------------
+
+Outputs the current proof term.
