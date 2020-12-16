@@ -93,8 +93,7 @@ It is possible to put arguments on the left side of ``:``
    modifier tells Lambdapi to apply rules defining a sequential symbol
    in the order they have been declared (note that the order of the
    rules may depend on the order of the ``require`` commands). An
-   example can be seen in
-   ```rule_order.lp`` <../tests/OK/rule_order.lp>`__.
+   example can be seen in ``tests/OK/rule_order.lp``.
    *WARNING:* using this modifier can break important properties.
 
 Examples:
