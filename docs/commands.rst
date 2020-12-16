@@ -48,7 +48,7 @@ module. It can also be combined with the ``require`` command.
 ``symbol``
 ----------
 
-This commands allows to declare or define some symbols. The syntax is
+This commands allows to declare or define a symbol. The syntax is
 as follows:
 
 ``symbol`` modifiers identifier parameters [``:`` type] [``≔`` term] [``begin`` proof ``end``]
@@ -58,9 +58,9 @@ been used in the current module).
 
 We recommend to start types by a capital letter.
 
-The symbol must be followed by a type or a definition.
+The symbol must be followed by a type or a definition (or both).
 
-It is possible to put arguments on the left side of the ``:`` symbol
+It is possible to put arguments on the left side of ``:``
 (similarly to a value declaration in OCaml).
 
 **Modifiers:**
@@ -68,8 +68,7 @@ It is possible to put arguments on the left side of the ``:`` symbol
 - Modifiers for the unification engine:
 
   - ``constant``: no rule can be added to the symbol
-  - ``injective``: the symbol can be considered as injective, that is, if ``f t1 .. tn`` ≡ ``f u1 .. un``, then ``t1``\ ≡\ ``u1``, …, ``tn``\ ≡\ ``un``. For the
-moment, the verification is left to the user.
+  - ``injective``: the symbol can be considered as injective, that is, if ``f t1 .. tn`` ≡ ``f u1 .. un``, then ``t1``\ ≡\ ``u1``, …, ``tn``\ ≡\ ``un``. For the moment, the verification is left to the user.
 
 -  Exposition markers define how a symbol can be used outside the module
    where it is defined.
@@ -134,13 +133,13 @@ arguments must be explicitly given.
 
 ``inductive``
 -------------
-The command ``inductive`` can be used to define an inductive type, its constructors and its associated induction principle if it can be generated. The name of the induction principle is the name of the type prefixed with "ind_". For generating the induction principle, we assume defined the following builtins:
+The command ``inductive`` can be used to define an inductive type, its constructors and its associated induction principle if it can be generated. The name of the induction principle is the name of the type prefixed with ``ind_``. For generating the induction principle, we assume defined the following builtins:
 
 ::
    
    ￼set builtin "Prop" ≔ ... // : TYPE
    ￼set builtin "P"    ≔ ... // : Prop → TYPE
-￼
+
 For the moment, we only support (mutually defined) first-order dependent types.
 Polymorphic types can be encoded by defining a type Set and a function τ:Set→TYPE.
 
