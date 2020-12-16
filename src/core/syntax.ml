@@ -252,12 +252,12 @@ type p_modifier_aux =
   | P_mstrat of Terms.match_strat (** pattern matching strategy *)
   | P_expo of Terms.expo (** visibility of symbol outside its modules *)
   | P_prop of Terms.prop (** symbol properties : constant, definable, ... *)
-  | P_opaq of Terms.opacity (** opacity of the definition *)
+  | P_opaq (** opacity *)
 
 type p_modifier = p_modifier_aux loc
 
 let is_prop {elt; _} = match elt with P_prop(_) -> true | _ -> false
-let is_opaq {elt; _} = match elt with P_opaq(Opaque) -> true | _ -> false
+let is_opaq {elt; _} = match elt with P_opaq -> true | _ -> false
 let is_expo {elt; _} = match elt with P_expo(_) -> true | _ -> false
 let is_mstrat {elt; _} = match elt with P_mstrat(_) -> true | _ -> false
 

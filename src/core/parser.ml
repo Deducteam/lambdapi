@@ -358,7 +358,7 @@ let parser qident = mp:{path_elem "."}* id:any_ident -> in_pos _loc (mp,id)
 let parser modifier =
   | _constant_ -> in_pos _loc (P_prop(Terms.Const))
   | _injective_ -> in_pos _loc (P_prop(Terms.Injec))
-  | _opaque_ -> in_pos _loc (P_opaq(Terms.Opaque))
+  | _opaque_ -> in_pos _loc P_opaq
   | _protected_ -> in_pos _loc (P_expo(Terms.Protec))
   | _private_ -> in_pos _loc (P_expo(Terms.Privat))
   | _sequential_ -> in_pos _loc (P_mstrat(Terms.Sequen))

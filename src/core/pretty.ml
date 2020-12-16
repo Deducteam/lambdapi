@@ -46,8 +46,7 @@ let modifier : p_modifier pp = fun oc {elt; _} ->
   | P_prop(Defin) -> ()
   | P_prop(Const) -> string oc "constant "
   | P_prop(Injec) -> string oc "injective "
-  | P_opaq(Nonopaque) -> ()
-  | P_opaq(Opaque) -> string oc "opaque "
+  | P_opaq -> string oc "opaque "
 
 let rec term : p_term pp = fun oc t ->
   let out fmt = Format.fprintf oc fmt in
