@@ -268,7 +268,7 @@ type p_symbol =
   ; p_sym_typ : p_type option (** symbol type *)
   ; p_sym_trm : p_term option (** symbol definition *)
   ; p_sym_prf : (p_tactic list * p_proof_end) option (** proof script *)
-  ; p_sym_def : bool (** is the proof-script a definition? *) }
+  ; p_sym_def : bool (** is the symbol defined ? *) }
 
 (** Parser-level representation of a single command. *)
 type p_command_aux =
