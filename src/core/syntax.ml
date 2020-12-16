@@ -262,13 +262,13 @@ let is_expo {elt; _} = match elt with P_expo(_) -> true | _ -> false
 let is_mstrat {elt; _} = match elt with P_mstrat(_) -> true | _ -> false
 
 type p_symbol =
-  { p_sym_mod : p_modifier list
-  ; p_sym_nam : ident
-  ; p_sym_arg : p_arg list
-  ; p_sym_typ : p_type option
-  ; p_sym_def : p_term option
-  ; p_sym_prf : (p_tactic list * p_proof_end) option
-  ; p_sym_pmg : Terms.proof_meaning }
+  { p_sym_mod : p_modifier list (** modifiers *)
+  ; p_sym_nam : ident (** symbol name *)
+  ; p_sym_arg : p_arg list (** arguments before ":" *)
+  ; p_sym_typ : p_type option (** symbol type *)
+  ; p_sym_trm : p_term option (** symbol definition *)
+  ; p_sym_prf : (p_tactic list * p_proof_end) option (** proof script *)
+  ; p_sym_def : bool (** is the proof-script a definition? *) }
 
 (** Parser-level representation of a single command. *)
 type p_command_aux =
@@ -419,19 +419,19 @@ let eq_p_config : p_config eq = fun c1 c2 ->
 
 let eq_p_symbol : p_symbol eq = fun
     { p_sym_mod=p_sym_mod1; p_sym_nam=p_sym_nam1; p_sym_arg=p_sym_arg1;
-      p_sym_typ=p_sym_typ1; p_sym_def=p_sym_def1; p_sym_prf=p_sym_prf1;
-      p_sym_pmg=p_sym_pmg1}
+      p_sym_typ=p_sym_typ1; p_sym_trm=p_sym_trm1; p_sym_prf=p_sym_prf1;
+      p_sym_def=p_sym_def1}
     { p_sym_mod=p_sym_mod2; p_sym_nam=p_sym_nam2; p_sym_arg=p_sym_arg2;
-      p_sym_typ=p_sym_typ2; p_sym_def=p_sym_def2; p_sym_prf=p_sym_prf2;
-      p_sym_pmg=p_sym_pmg2} ->
+      p_sym_typ=p_sym_typ2; p_sym_trm=p_sym_trm2; p_sym_prf=p_sym_prf2;
+      p_sym_def=p_sym_def2} ->
   let eq_tactic (ts1,_) (ts2,_) = List.equal eq_p_tactic ts1 ts2 in
   p_sym_mod1 = p_sym_mod2
   && eq_ident p_sym_nam1 p_sym_nam2
   && List.equal eq_p_arg p_sym_arg1 p_sym_arg2
   && Option.equal eq_p_term p_sym_typ1 p_sym_typ2
-  && Option.equal eq_p_term p_sym_def1 p_sym_def2
+  && Option.equal eq_p_term p_sym_trm1 p_sym_trm2
   && Option.equal eq_tactic p_sym_prf1 p_sym_prf2
-  && p_sym_pmg1 = p_sym_pmg2
+  && p_sym_def1 = p_sym_def2
 
 (** [eq_command c1 c2] tells whether [c1] and [c2] are the same commands. They
     are compared up to source code positions. *)

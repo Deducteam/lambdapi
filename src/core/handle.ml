@@ -370,13 +370,13 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
         ind_list
         rec_sym_list;
       (ss, None)
-  | P_symbol {p_sym_mod;p_sym_nam;p_sym_arg;p_sym_typ;p_sym_def;p_sym_prf;
-              p_sym_pmg} ->
+  | P_symbol {p_sym_mod;p_sym_nam;p_sym_arg;p_sym_typ;p_sym_trm;p_sym_prf;
+              p_sym_def} ->
     (* Check that this is a syntactically valid symbol declaration. *)
     begin
-      match (p_sym_typ, p_sym_pmg, p_sym_def, p_sym_prf) with
-      | (None, Def, None, Some _) -> fatal p_sym_nam.pos "missing type"
-      | (   _, Def, None, None  ) -> fatal p_sym_nam.pos "missing definition"
+      match (p_sym_typ, p_sym_def, p_sym_trm, p_sym_prf) with
+      | (None, true, None, Some _) -> fatal p_sym_nam.pos "missing type"
+      | (   _, true, None, None  ) -> fatal p_sym_nam.pos "missing definition"
       | _ -> ()
     end;
     (* Get opacity. *)
@@ -387,9 +387,9 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
     if Sign.mem ss.signature p_sym_nam.elt then
       fatal p_sym_nam.pos "Symbol [%s] already exists." p_sym_nam.elt;
     let data =
-      (* Desugaring of arguments and scoping of [p_sym_def]. *)
+      (* Desugaring of arguments and scoping of [p_sym_trm]. *)
       let pt, t =
-        match p_sym_def with
+        match p_sym_trm with
         | Some pt ->
             let pt =
               if p_sym_arg = [] then pt
@@ -438,12 +438,11 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
         let sort_goals, a = goals_of_typ p_sym_nam.pos ao t in
         (* And the main "type" goal *)
         let proof_term, typ_goal =
-          match p_sym_pmg with
-          | Def ->
+          if p_sym_def then
             let proof_term = Meta.fresh ~name:p_sym_nam.elt a 0 in
             let proof_goal = Goal.of_meta proof_term in
             Some proof_term, proof_goal :: typ_goals_a
-          | Tac ->
+          else
             None, typ_goals_a
         in
         let goals = sort_goals @ typ_goal in
@@ -451,9 +450,9 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
           {expo;prop;mstrat;ident=p_sym_nam;typ=a;impl;def=t} in
         (* Depending on opacity : theorem = false / definition = true *)
         let pdata_expo =
-          match p_sym_pmg, op, ao, prop, mstrat with
+          match p_sym_def, op, ao, prop, mstrat with
           (* Theorem *)
-          |   Tac,     _,      _ ,    _ ,     _  -> expo
+          | false,     _,      _ ,    _ ,     _  -> expo
           |     _, true ,      _ , Defin, Eager  -> Privat
           |     _, true ,      _ , _    , Eager  ->
             fatal cmd.pos "Property modifiers can't be used in theorems."

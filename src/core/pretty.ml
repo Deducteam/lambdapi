@@ -225,15 +225,15 @@ let command : p_command pp = fun oc cmd ->
       out "require %a as %a" (path cmd.pos) p (path_elt i.pos) i.elt
   | P_open(ps) ->
       List.iter (out "open %a" (path cmd.pos)) ps
-  | P_symbol{p_sym_mod;p_sym_nam;p_sym_arg;p_sym_typ;p_sym_def;p_sym_prf;_} ->
+  | P_symbol{p_sym_mod;p_sym_nam;p_sym_arg;p_sym_typ;p_sym_trm;p_sym_prf;_} ->
     begin
-      match (p_sym_def,p_sym_prf) with
+      match (p_sym_trm,p_sym_prf) with
       | (Some _,_) | (_,Some _) ->
         out "@[<hov 2>%asymbol %a"
           (List.pp modifier " ") p_sym_mod ident p_sym_nam;
         List.iter (out " %a" arg) p_sym_arg;
         Option.iter (out " : @[<hov>%a@]" term) p_sym_typ;
-        Option.iter (out " ≔ @[<hov>%a@]@]" term) p_sym_def;
+        Option.iter (out " ≔ @[<hov>%a@]@]" term) p_sym_trm;
         begin
           match p_sym_prf with
           | Some(ts,pe) ->

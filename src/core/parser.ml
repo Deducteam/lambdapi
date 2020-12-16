@@ -674,15 +674,15 @@ let parser cmd =
   | p_sym_mod:modifier* _symbol_ p_sym_nam:ident p_sym_arg:arg*
          ":" a:term p_sym_prf:proof?
       -> let p_sym_typ = Some a in
-         let p_sym_def = None in
-         let p_sym_pmg = Terms.Tac in
-         P_symbol {p_sym_mod;p_sym_nam;p_sym_arg;p_sym_typ;p_sym_def
-                  ;p_sym_prf;p_sym_pmg}
+         let p_sym_trm = None in
+         let p_sym_def = false in
+         P_symbol {p_sym_mod;p_sym_nam;p_sym_arg;p_sym_typ;p_sym_trm
+                  ;p_sym_prf;p_sym_def}
   | p_sym_mod:modifier* _symbol_ p_sym_nam:ident p_sym_arg:arg*
-         p_sym_typ:{":" term}? "≔" p_sym_def:term? p_sym_prf:proof?
-      -> let p_sym_pmg = Terms.Def in
-         P_symbol {p_sym_mod;p_sym_nam;p_sym_arg;p_sym_typ;p_sym_def
-                  ;p_sym_prf;p_sym_pmg}
+         p_sym_typ:{":" term}? "≔" p_sym_trm:term? p_sym_prf:proof?
+      -> let p_sym_def = true in
+         P_symbol {p_sym_mod;p_sym_nam;p_sym_arg;p_sym_typ;p_sym_trm
+                  ;p_sym_prf;p_sym_def}
   | _rule_ r:rule rs:{_:_with_ rule}*
       -> P_rules(r::rs)
   | ms:modifier* _inductive_ i:inductive il:{_:_with_ inductive}*
