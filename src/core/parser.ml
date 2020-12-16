@@ -671,16 +671,18 @@ let parser cmd =
   | _open_ ps:path+
       -> List.iter (get_ops _loc) ps;
          P_open(ps)
-  | p_sym_mod:modifier* _symbol_ s:ident al:arg* ":" a:term p_sym_prf:proof?
-      -> let p_sym_stm = Pos.in_pos _loc (s,al,Some(a)) in
-      let p_sym_def = None in
-      let p_sym_pmg = Terms.Tac in
-      P_symbol {p_sym_mod;p_sym_stm;p_sym_def;p_sym_prf;p_sym_pmg}
-  | p_sym_mod:modifier* _symbol_ s:ident al:arg* a:{":" term}?
-         "≔" p_sym_def:term? p_sym_prf:proof?
-      -> let p_sym_stm = Pos.in_pos _loc (s,al,a) in
-         let p_sym_pmg = Terms.Def in
-         P_symbol {p_sym_mod;p_sym_stm;p_sym_def;p_sym_prf;p_sym_pmg}
+  | p_sym_mod:modifier* _symbol_ p_sym_nam:ident p_sym_arg:arg*
+         ":" a:term p_sym_prf:proof?
+      -> let p_sym_typ = Some a in
+         let p_sym_def = None in
+         let p_sym_pmg = Terms.Tac in
+         P_symbol {p_sym_mod;p_sym_nam;p_sym_arg;p_sym_typ;p_sym_def
+                  ;p_sym_prf;p_sym_pmg}
+  | p_sym_mod:modifier* _symbol_ p_sym_nam:ident p_sym_arg:arg*
+         p_sym_typ:{":" term}? "≔" p_sym_def:term? p_sym_prf:proof?
+      -> let p_sym_pmg = Terms.Def in
+         P_symbol {p_sym_mod;p_sym_nam;p_sym_arg;p_sym_typ;p_sym_def
+                  ;p_sym_prf;p_sym_pmg}
   | _rule_ r:rule rs:{_:_with_ rule}*
       -> P_rules(r::rs)
   | ms:modifier* _inductive_ i:inductive il:{_:_with_ inductive}*

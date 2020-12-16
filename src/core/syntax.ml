@@ -222,13 +222,15 @@ type p_tactic_aux =
 type p_tactic = p_tactic_aux loc
 
 (** Parser-level representation of a proof terminator. *)
-type p_proof_end =
+type p_proof_end_aux =
   | P_proof_end
   (** The proof is done and fully checked. *)
   | P_proof_admit
   (** Give up current state and admit the theorem. *)
   | P_proof_abort
   (** Abort the proof (theorem not admitted). *)
+
+type p_proof_end = p_proof_end_aux loc
 
 (** Parser-level representation of a configuration command. *)
 type p_config =
@@ -245,9 +247,6 @@ type p_config =
   | P_config_unif_rule of p_rule
   (** Unification hint declarations. *)
 
-(** Parser-level representation of a single command. *)
-type p_statement = (ident * p_arg list * p_type option) loc
-
 (** Parser-level representation of modifiers. *)
 type p_modifier_aux =
   | P_mstrat of Terms.match_strat (** pattern matching strategy *)
@@ -259,14 +258,19 @@ type p_modifier = p_modifier_aux loc
 
 let is_prop {elt; _} = match elt with P_prop(_) -> true | _ -> false
 let is_opaq {elt; _} = match elt with P_opaq(Opaque) -> true | _ -> false
+let is_expo {elt; _} = match elt with P_expo(_) -> true | _ -> false
+let is_mstrat {elt; _} = match elt with P_mstrat(_) -> true | _ -> false
 
 type p_symbol =
   { p_sym_mod : p_modifier list
-  ; p_sym_stm : p_statement
+  ; p_sym_nam : ident
+  ; p_sym_arg : p_arg list
+  ; p_sym_typ : p_type option
   ; p_sym_def : p_term option
-  ; p_sym_prf : (p_tactic list * p_proof_end loc) option
+  ; p_sym_prf : (p_tactic list * p_proof_end) option
   ; p_sym_pmg : Terms.proof_meaning }
 
+(** Parser-level representation of a single command. *)
 type p_command_aux =
   | P_require    of bool * p_module_path list
   (** Require statement (require open if the boolean is true). *)
@@ -414,17 +418,17 @@ let eq_p_config : p_config eq = fun c1 c2 ->
       c1 = c2
 
 let eq_p_symbol : p_symbol eq = fun
-    { p_sym_mod=p_sym_mod1; p_sym_stm=p_sym_stm1; p_sym_def=p_sym_def1;
-      p_sym_prf=p_sym_prf1; p_sym_pmg=p_sym_pmg1}
-    { p_sym_mod=p_sym_mod2; p_sym_stm=p_sym_stm2; p_sym_def=p_sym_def2;
-      p_sym_prf=p_sym_prf2; p_sym_pmg=p_sym_pmg2} ->
-  let s1,l1,a1 = p_sym_stm1.elt in
-  let s2,l2,a2 = p_sym_stm2.elt in
+    { p_sym_mod=p_sym_mod1; p_sym_nam=p_sym_nam1; p_sym_arg=p_sym_arg1;
+      p_sym_typ=p_sym_typ1; p_sym_def=p_sym_def1; p_sym_prf=p_sym_prf1;
+      p_sym_pmg=p_sym_pmg1}
+    { p_sym_mod=p_sym_mod2; p_sym_nam=p_sym_nam2; p_sym_arg=p_sym_arg2;
+      p_sym_typ=p_sym_typ2; p_sym_def=p_sym_def2; p_sym_prf=p_sym_prf2;
+      p_sym_pmg=p_sym_pmg2} ->
   let eq_tactic (ts1,_) (ts2,_) = List.equal eq_p_tactic ts1 ts2 in
   p_sym_mod1 = p_sym_mod2
-  && eq_ident s1 s2
-  && List.equal eq_p_arg l1 l2
-  && Option.equal eq_p_term a1 a2
+  && eq_ident p_sym_nam1 p_sym_nam2
+  && List.equal eq_p_arg p_sym_arg1 p_sym_arg2
+  && Option.equal eq_p_term p_sym_typ1 p_sym_typ2
   && Option.equal eq_p_term p_sym_def1 p_sym_def2
   && Option.equal eq_tactic p_sym_prf1 p_sym_prf2
   && p_sym_pmg1 = p_sym_pmg2
