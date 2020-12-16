@@ -34,7 +34,7 @@ let pp_qident : qident pp = fun oc qid ->
 let pp_path : Pos.popt -> p_module_path pp = fun pos ->
   List.pp (pp_path_elt pos) "."
 
-let pp_modifier : p_modifier loc pp = fun oc {elt; _} ->
+let pp_modifier : p_modifier pp = fun oc {elt; _} ->
   match elt with
   | P_expo(Public) -> ()
   | P_expo(Protec) -> Format.pp_print_string oc "protected "

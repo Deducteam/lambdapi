@@ -249,19 +249,19 @@ type p_config =
 type p_statement = (ident * p_arg list * p_type option) loc
 
 (** Parser-level representation of modifiers. *)
-type p_modifier =
+type p_modifier_aux =
   | P_mstrat of Terms.match_strat (** pattern matching strategy *)
   | P_expo of Terms.expo (** visibility of symbol outside its modules *)
   | P_prop of Terms.prop (** symbol properties : constant, definable, ... *)
   | P_opaq of Terms.opacity (** opacity of the definition *)
 
-let is_opaq : p_modifier loc -> bool = fun {elt; _} ->
-  match elt with
-  | P_opaq(Opaque) -> true
-  | _ -> false
+type p_modifier = p_modifier_aux loc
+
+let is_prop {elt; _} = match elt with P_prop(_) -> true | _ -> false
+let is_opaq {elt; _} = match elt with P_opaq(Opaque) -> true | _ -> false
 
 type p_symbol =
-  { p_sym_mod : p_modifier loc list
+  { p_sym_mod : p_modifier list
   ; p_sym_stm : p_statement
   ; p_sym_def : p_term option
   ; p_sym_prf : (p_tactic list * p_proof_end loc) option
@@ -278,7 +278,7 @@ type p_command_aux =
   (** Symbol declaration. *)
   | P_rules      of p_rule list
   (** Rewriting rule declarations. *)
-  | P_inductive of p_modifier loc list * p_inductive list
+  | P_inductive of p_modifier list * p_inductive list
   (** Definition of inductive types *)
   | P_set        of p_config
   (** Set the configuration. *)

@@ -80,14 +80,14 @@ let handle_require : bool -> popt -> sig_state -> Path.t -> sig_state =
 (** [handle_modifiers ms] verifies that the modifiers in [ms] are compatible.
     If so, they are returned as a tuple, otherwise, the incompatible modifiers
     are returned. *)
-let handle_modifiers : p_modifier loc list -> (prop * expo * match_strat) =
+let handle_modifiers : p_modifier list -> (prop * expo * match_strat) =
   fun ms ->
   let is_expo {elt; _} = match elt with P_expo(_) -> true | _ -> false in
   let is_prop {elt; _} = match elt with P_prop(_) -> true | _ -> false in
   let is_mstrat {elt; _} = match elt with P_mstrat(_) -> true | _ -> false in
-  let die (mods: p_modifier loc list) =
+  let die (mods: p_modifier list) =
     let pp_sep oc () = Format.pp_print_string oc "; " in
-    let pp_pmloc oc (m: p_modifier loc) =
+    let pp_pmloc oc (m: p_modifier) =
       Format.fprintf oc "%a:\"%a\"" Pos.print_short m.pos Pretty.pp_modifier m
     in
     fatal_no_pos "%a" (Format.pp_print_list ~pp_sep pp_pmloc) mods

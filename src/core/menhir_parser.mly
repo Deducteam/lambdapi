@@ -246,7 +246,6 @@ let build_config : Pos.pos -> string -> string option -> eval_config =
 line:
   | p_sym_mod=modifier* s=ID ps=param* COLON a=term DOT
     {
-      let is_prop {elt; _} = match elt with P_prop(_) -> true | _ -> false in
       let p_sym_mod =
         match List.find_opt is_prop p_sym_mod with
         | Some(_) -> p_sym_mod
