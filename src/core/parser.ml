@@ -671,14 +671,16 @@ let parser cmd =
   | _open_ ps:path+
       -> List.iter (get_ops _loc) ps;
          P_open(ps)
-  | ms:modifier* _symbol_ s:ident al:arg* ":" a:term
-         ts_pe:proof?
-      -> let st = Pos.in_pos _loc (s,al,Some(a)) in
-         P_symbol(ms,st,None,ts_pe,Tac)
-  | ms:modifier* _symbol_ s:ident al:arg* a:{":" term}? "≔" t:term?
-         ts_pe:proof?
-      -> let st = Pos.in_pos _loc (s,al,a) in
-         P_symbol(ms,st,t,ts_pe,Def)
+  | p_sym_mod:modifier* _symbol_ s:ident al:arg* ":" a:term p_sym_prf:proof?
+      -> let p_sym_stm = Pos.in_pos _loc (s,al,Some(a)) in
+      let p_sym_def = None in
+      let p_sym_pmg = Terms.Tac in
+      P_symbol {p_sym_mod;p_sym_stm;p_sym_def;p_sym_prf;p_sym_pmg}
+  | p_sym_mod:modifier* _symbol_ s:ident al:arg* a:{":" term}?
+         "≔" p_sym_def:term? p_sym_prf:proof?
+      -> let p_sym_stm = Pos.in_pos _loc (s,al,a) in
+         let p_sym_pmg = Terms.Def in
+         P_symbol {p_sym_mod;p_sym_stm;p_sym_def;p_sym_prf;p_sym_pmg}
   | _rule_ r:rule rs:{_:_with_ rule}*
       -> P_rules(r::rs)
   | ms:modifier* _inductive_ i:inductive il:{_:_with_ inductive}*

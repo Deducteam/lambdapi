@@ -374,28 +374,26 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
         ind_list
         rec_sym_list;
       (ss, None)
-  | P_symbol(ms, st, pt, ts_pe, e) ->
-    let x,xs,ao = st.elt in
+  | P_symbol {p_sym_mod;p_sym_stm;p_sym_def;p_sym_prf;p_sym_pmg} ->
+    let x,xs,ao = p_sym_stm.elt in
     (* Check that this is a syntactically valid symbol declaration. *)
     begin
-      match (ao, e, pt, ts_pe) with
-      | (None, Def, None, Some _) ->
-        fatal x.pos ":= proofterm via proofscript but without type"
-      | (   _, Def, None, None  ) ->
-        fatal x.pos ":= without definition term nor proofscript"
+      match (ao, p_sym_pmg, p_sym_def, p_sym_prf) with
+      | (None, Def, None, Some _) -> fatal x.pos "missing type"
+      | (   _, Def, None, None  ) -> fatal x.pos "missing definition"
       | _ -> ()
     end;
     (* Get opacity. *)
-    let op = List.exists Syntax.is_opaq ms in
+    let op = List.exists Syntax.is_opaq p_sym_mod in
     (* Verify modifiers. *)
-    let (prop, expo, mstrat) = handle_modifiers ms in
+    let (prop, expo, mstrat) = handle_modifiers p_sym_mod in
     (* We check that [x] is not already used. *)
     if Sign.mem ss.signature x.elt then
       fatal x.pos "Symbol [%s] already exists." x.elt;
     let data =
-      (* Desugaring of arguments and scoping of [pt]. *)
+      (* Desugaring of arguments and scoping of [p_sym_def]. *)
       let pt, t =
-        match pt with
+        match p_sym_def with
         | Some pt ->
           let pt = if xs = [] then pt else Pos.none (P_Abst(xs,pt)) in
           Some pt, Some (scope_basic expo pt)
@@ -422,13 +420,13 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
       in
       (* Proof script *)
       let ts, pe =
-        match pt, ts_pe with
+        match pt, p_sym_prf with
         | Some pt, None ->
             [Pos.make pt.pos (P_tac_refine pt)],
-            Pos.make (*FIXME?*)st.pos P_proof_end
+            Pos.make (*FIXME?*)p_sym_stm.pos P_proof_end
         | Some pt, Some(ts,pe) -> Pos.make pt.pos (P_tac_refine pt)::ts, pe
         | None, Some(ts,pe) -> ts, pe
-        | None, None -> [], Pos.make (*FIXME?*)st.pos P_proof_end
+        | None, None -> [], Pos.make (*FIXME?*)p_sym_stm.pos P_proof_end
       in
       (* If [ao = Some a], then we check that [a] is typable by a sort and
          that [t] has type [a]. Otherwise, we try to infer the type of
@@ -438,7 +436,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
         let sort_goals, a = goals_of_typ x.pos ao t in
         (* And the main "type" goal *)
         let proof_term, typ_goal =
-          match e with
+          match p_sym_pmg with
           | Def ->
             let proof_term = Meta.fresh ~name:x.elt a 0 in
             let proof_goal = Goal.of_meta proof_term in
@@ -450,7 +448,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
         let sig_symbol = {expo;prop;mstrat;ident=x;typ=a;impl;def=t} in
         (* Depending on opacity : theorem = false / definition = true *)
         let pdata_expo =
-          match e, op, ao, prop, mstrat with
+          match p_sym_pmg, op, ao, prop, mstrat with
           (* Theorem *)
           |   Tac,     _,      _ ,    _ ,     _  -> expo
           |     _, true ,      _ , Defin, Eager  -> Privat

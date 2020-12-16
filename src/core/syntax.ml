@@ -260,6 +260,13 @@ let is_opaq : p_modifier loc -> bool = fun {elt; _} ->
   | P_opaq(Opaque) -> true
   | _ -> false
 
+type p_symbol =
+  { p_sym_mod : p_modifier loc list
+  ; p_sym_stm : p_statement
+  ; p_sym_def : p_term option
+  ; p_sym_prf : (p_tactic list * p_proof_end loc) option
+  ; p_sym_pmg : Terms.proof_meaning }
+
 type p_command_aux =
   | P_require    of bool * p_module_path list
   (** Require statement (require open if the boolean is true). *)
@@ -267,9 +274,7 @@ type p_command_aux =
   (** Require as statement. *)
   | P_open       of p_module_path list
   (** Open statement. *)
-  | P_symbol     of p_modifier loc list * p_statement * p_term option
-                    * (p_tactic list * p_proof_end loc) option
-                    * Terms.proof_meaning
+  | P_symbol     of p_symbol
   (** Symbol declaration. *)
   | P_rules      of p_rule list
   (** Rewriting rule declarations. *)
@@ -408,6 +413,22 @@ let eq_p_config : p_config eq = fun c1 c2 ->
   | (c1                     , c2                     ) ->
       c1 = c2
 
+let eq_p_symbol : p_symbol eq = fun
+    { p_sym_mod=p_sym_mod1; p_sym_stm=p_sym_stm1; p_sym_def=p_sym_def1;
+      p_sym_prf=p_sym_prf1; p_sym_pmg=p_sym_pmg1}
+    { p_sym_mod=p_sym_mod2; p_sym_stm=p_sym_stm2; p_sym_def=p_sym_def2;
+      p_sym_prf=p_sym_prf2; p_sym_pmg=p_sym_pmg2} ->
+  let s1,l1,a1 = p_sym_stm1.elt in
+  let s2,l2,a2 = p_sym_stm2.elt in
+  let eq_tactic (ts1,_) (ts2,_) = List.equal eq_p_tactic ts1 ts2 in
+  p_sym_mod1 = p_sym_mod2
+  && eq_ident s1 s2
+  && List.equal eq_p_arg l1 l2
+  && Option.equal eq_p_term a1 a2
+  && Option.equal eq_p_term p_sym_def1 p_sym_def2
+  && Option.equal eq_tactic p_sym_prf1 p_sym_prf2
+  && p_sym_pmg1 = p_sym_pmg2
+
 (** [eq_command c1 c2] tells whether [c1] and [c2] are the same commands. They
     are compared up to source code positions. *)
 let eq_p_command : p_command eq = fun c1 c2 ->
@@ -418,17 +439,8 @@ let eq_p_command : p_command eq = fun c1 c2 ->
      List.equal (=) ps1 ps2
   | (P_require_as(p1,id1)  , P_require_as(p2,id2)              ) ->
      p1 = p2 && id1.elt = id2.elt
-  | (P_symbol(ms1,st1,t1,ts_pe1,m1),
-     P_symbol(ms2,st2,t2,ts_pe2,m2))                             ->
-      let s1,l1,a1 = st1.elt in
-      let s2,l2,a2 = st2.elt in
-      let eq_tactic =
-        fun (ts1,_) (ts2,_) -> (List.equal eq_p_tactic) ts1 ts2
-      in
-      ms1 = ms2 && eq_ident s1 s2 && List.equal eq_p_arg l1 l2
-      && Option.equal eq_p_term a1 a2 && Option.equal eq_p_term t1 t2
-      && Option.equal eq_tactic ts_pe1 ts_pe2
-      && m1 = m2
+  | (P_symbol s1                 , P_symbol s2                 ) ->
+      eq_p_symbol s1 s2
   | (P_rules(rs1)                , P_rules(rs2)                ) ->
       List.equal eq_p_rule rs1 rs2
   | (P_inductive(m1,il1)         , P_inductive(m2,il2)         ) ->

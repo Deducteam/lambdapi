@@ -231,18 +231,18 @@ let pp_command : p_command pp = fun oc cmd ->
       out "require %a as %a" (pp_path cmd.pos) p (pp_path_elt i.pos) i.elt
   | P_open(ps) ->
       List.iter (out "open %a" (pp_path cmd.pos)) ps
-  | P_symbol(ms,st,t,ts_pe,_e) ->
+  | P_symbol {p_sym_mod;p_sym_stm;p_sym_def;p_sym_prf;_} ->
     begin
-      match (t,ts_pe) with
+      match (p_sym_def,p_sym_prf) with
       | (Some _,_) | (_,Some _) ->
-        let s,args,ao = st.elt in
+        let s,args,ao = p_sym_stm.elt in
         out "@[<hov 2>%a symbol %a"
-          (Format.pp_print_list pp_modifier) ms pp_ident s;
+          (Format.pp_print_list pp_modifier) p_sym_mod pp_ident s;
         List.iter (out " %a" pp_p_arg) args;
         Option.iter (out " : @[<hov>%a@]" pp_p_term) ao;
-        Option.iter (out " ≔ @[<hov>%a@]@]" pp_p_term) t;
+        Option.iter (out " ≔ @[<hov>%a@]@]" pp_p_term) p_sym_def;
         begin
-          match ts_pe with
+          match p_sym_prf with
           | Some(ts,pe) ->
             out "proof@.";
             List.iter (out "  @[<hov>%a@]@." pp_p_tactic) ts;
@@ -250,14 +250,14 @@ let pp_command : p_command pp = fun oc cmd ->
           | None -> ()
         end
       | (None,None) ->
-        let (s,args,a) = st.elt in
+        let (s,args,a) = p_sym_stm.elt in
         let a =
           match a with
           | Some(a) -> a
           | None -> failwith "Internal error : P_symbol has a type"
         in
         out "@[<hov 2>%asymbol %a"
-          (Format.pp_print_list pp_modifier) ms pp_ident s;
+          (Format.pp_print_list pp_modifier) p_sym_mod pp_ident s;
         List.iter (out " %a" pp_p_arg) args;
         out " :@ @[<hov>%a@]" pp_p_term a
     end
