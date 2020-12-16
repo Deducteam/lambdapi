@@ -48,39 +48,27 @@ module. It can also be combined with the ``require`` command.
 ``symbol``
 ----------
 
-Symbols are declared using the ``symbol`` command, possibly associated
-with some modifier or an exposition marker. In the following example,
-``constant`` is a modifier and ``private`` is an exposition marker.
+This commands allows to declare or define some symbols. The syntax is
+as follows:
 
-::
+``symbol`` modifiers identifier parameters [``:`` type] [``≔`` term] [``begin`` proof ``end``]
 
-   constant symbol Nat : TYPE
-   constant symbol zero : Nat
-   constant symbol succ (x:Nat) : Nat
-   symbol add : Nat → Nat → Nat
-   constant symbol list : Nat → TYPE
-   constant symbol nil : List zero
-   constant symbol cons : Nat → Πn, List n → List(succ n)
-   private symbol aux : Πn, List n → Nat
+The command requires a fresh identifier (it should not have already
+been used in the current module).
 
-The command requires a fresh symbol name (it should not have already
-been used in the current module) and a type for the symbol.
+We recommend to start types by a capital letter.
+
+The symbol must be followed by a type or a definition.
 
 It is possible to put arguments on the left side of the ``:`` symbol
 (similarly to a value declaration in OCaml).
 
-Data types and predicates must be given types of the form
-``Πx1:T1,..,Πxn:Tn,TYPE``.
+**Modifiers:**
 
-``T→U`` is a shorthand for ``Πx:T,U`` when ``x`` does not occur in
-``U``.
+- Modifiers for the unification engine:
 
-We recommend to start types and predicates by a capital letter.
-
-**Modifiers:** - Modifiers for the unification engine, - ``constant``:
-no rule can be added to the symbol - ``injective``: the symbol can be
-considered as injective, that is, if ``f t1 ..      tn`` ≡
-``f u1 .. un``, then ``t1``\ ≡\ ``u1``, …, ``tn``\ ≡\ ``un``. For the
+  - ``constant``: no rule can be added to the symbol
+  - ``injective``: the symbol can be considered as injective, that is, if ``f t1 .. tn`` ≡ ``f u1 .. un``, then ``t1``\ ≡\ ``u1``, …, ``tn``\ ≡\ ``un``. For the
 moment, the verification is left to the user.
 
 -  Exposition markers define how a symbol can be used outside the module
@@ -110,13 +98,29 @@ moment, the verification is left to the user.
    ```rule_order.lp`` <../tests/OK/rule_order.lp>`__.
    *WARNING:* using this modifier can break important properties.
 
-**Implicit arguments:** Some function symbol arguments can be declared
-as implicit meaning that they must not be given by the user later.
-Implicit arguments are replaced by ``_`` at parsing time, generating
-fresh metavariables. An argument declared as implicit can be explicitly
-given by enclosing it between curly brackets ``{`` … ``}`` though. If a
-function symbol is prefixed by ``@`` then the implicit arguments
-mechanism is disabled and all the arguments must be explicitly given.
+Examples:
+
+::
+
+   constant symbol Nat : TYPE
+   constant symbol zero : Nat
+   constant symbol succ (x:Nat) : Nat
+   symbol add : Nat → Nat → Nat
+   opaque symbol add0 n : add n 0 = n ≔ begin ... end // theorem
+   injective symbol double n ≔ add n n
+   constant symbol list : Nat → TYPE
+   constant symbol nil : List zero
+   constant symbol cons : Nat → Πn, List n → List(succ n)
+   private symbol aux : Πn, List n → Nat
+
+**Implicit arguments:** Some arguments can be declared as implicit by
+encloding them into curly brackets ``{`` … ``}``. Then, they must not
+be given by the user later.  Implicit arguments are replaced by ``_``
+at parsing time, generating fresh metavariables. An argument declared
+as implicit can be explicitly given by enclosing it between curly
+brackets ``{`` … ``}`` though. If a function symbol is prefixed by
+``@`` then the implicit arguments mechanism is disabled and all the
+arguments must be explicitly given.
 
 ::
 
@@ -127,6 +131,53 @@ mechanism is disabled and all the arguments must be explicitly given.
 
 **Notations**: Some notation can be declared for some symbol. See the command
 ``set``.
+
+``inductive``
+-------------
+The command ``inductive`` can be used to define an inductive type, its constructors and its associated induction principle if it can be generated. The name of the induction principle is the name of the type prefixed with "ind_". For generating the induction principle, we assume defined the following builtins:
+
+::
+   
+   ￼set builtin "Prop" ≔ ... // : TYPE
+   ￼set builtin "P"    ≔ ... // : Prop → TYPE
+￼
+For the moment, we only support (mutually defined) first-order dependent types.
+Polymorphic types can be encoded by defining a type Set and a function τ:Set→TYPE.
+
+Some cases of nested type are supported too, like the type Bush.
+Example:
+
+::
+   
+   ￼inductive Nat : TYPE ≔
+   ￼ | z    : Nat
+   ￼ | succ : Nat → Nat
+   
+is equivalent to:
+￼
+::
+   
+   ￼injective symbol Nat  : TYPE
+   ￼constant  symbol z    : Nat
+   ￼constant  symbol succ : Nat → Nat
+   ￼symbol ind_Nat p : π (p 0) → (Πx, π (p x) → π (p (succ x))) → Πx, π (p x)
+   ￼rule ind_Nat _  $pz    _       z     ↪ $pz
+   ￼with ind_Nat $p $pz $psucc (succ $n) ↪ $psucc $n (ind_Nat $p $pz $psucc $n)
+
+Note that to define mutually defined inductive types, you need the ``with`` keyword to link
+all inductive types together. For instance:
+
+::
+   
+   ￼inductive Expr : TYPE ≔
+      | Lit : Nat → Expr
+      | Add : Expr → Expr → Expr
+      | If  : BExpr → Expr → Expr → Expr
+    with BExpr : TYPE ≔
+      | BLit  : Bool → BExpr
+      | And   : BExpr → BExpr → BExpr
+      | Not   : BExpr → BExpr
+      | Equal : Expr → Expr → BExpr
 
 ``rule``
 --------
@@ -214,91 +265,6 @@ Adding sets of rules allows to maintain confluence.
 
 Examples of patterns are available in the file
 ```patterns.lp`` <../tests/OK/patterns.lp>`__ of the test suite.
-
-``definition``
---------------
-
-The ``definition`` command is used to immediately define a new symbol,
-for it to be equal to some (closed) term. Definitions can use exposition
-markers the same way the ``symbol`` command use them.
-
-::
-
-   definition plus_two : Nat → Nat ≔ λn,add n (succ (succ zero))
-   definition plus_two (n : Nat) : Nat ≔ add n (succ (succ zero))
-   definition plus_two (n : Nat) ≔ add n (succ (succ zero))
-   definition plus_two n ≔ add n (succ (succ zero))
-   protected definition plus_two n ≔ add n (succ (succ zero))
-
-Note that some type annotations can be omitted, and that it is possible
-to put arguments on the left side of the ``≔`` symbol (similarly to a
-value declaration in OCaml). Some arguments can be declared as implicit
-by enclosing them in curly brackets.
-
-
-``inductive``
--------------
-The command ``inductive`` can be used to define an inductive type, its constructors and its associated induction principle if it can be generated. The name of the induction principle is the name of the type prefixed with "ind_". For generating the induction principle, we assume defined the following builtins:
-
-::
-   
-   ￼set builtin "Prop" ≔ ... // : TYPE
-   ￼set builtin "P"    ≔ ... // : Prop → TYPE
-￼
-For the moment, we only support (mutually defined) first-order dependent types.
-Polymorphic types can be encoded by defining a type Set and a function τ:Set→TYPE.
-
-Some cases of nested type are supported too, like the type Bush.
-Example:
-
-::
-   
-   ￼inductive Nat : TYPE ≔
-   ￼ | z    : Nat
-   ￼ | succ : Nat → Nat
-   
-is equivalent to:
-￼
-::
-   
-   ￼injective symbol Nat  : TYPE
-   ￼constant  symbol z    : Nat
-   ￼constant  symbol succ : Nat → Nat
-   ￼symbol ind_Nat p : π (p 0) → (Πx, π (p x) → π (p (succ x))) → Πx, π (p x)
-   ￼rule ind_Nat _  $pz    _       z     ↪ $pz
-   ￼with ind_Nat $p $pz $psucc (succ $n) ↪ $psucc $n (ind_Nat $p $pz $psucc $n)
-
-Note that to define mutually defined inductive types, you need the ``with`` keyword to link
-all inductive types together. For instance:
-
-::
-   
-   ￼inductive Expr : TYPE ≔
-      | Lit : Nat → Expr
-      | Add : Expr → Expr → Expr
-      | If  : BExpr → Expr → Expr → Expr
-    with BExpr : TYPE ≔
-      | BLit  : Bool → BExpr
-      | And   : BExpr → BExpr → BExpr
-      | Not   : BExpr → BExpr
-      | Equal : Expr → Expr → BExpr
-
-``theorem``
------------
-
-The ``theorem`` command makes the user enter a new interactive mode. The
-user has to provide a term of some given type. Such a goal is
-materialized by a metavariable of the given type (goals and
-metavariables are synonyms). One can then partially instantiate a goal
-metavariable by using commands specific to this mode called tactics. A
-tactic may generate new goals/metavariables. The proof of the theorem is
-complete only when all generated goals have been solved.
-
-A proof must start by the keyword ``begin`` followed by a sequence of
-`tactics <tactics.rst>`__, and must end by the keywords ``end`` (when the
-proof is complete), ``admit`` (when one wants to admit the theorem
-without proving it) or ``abort`` (when one wants to end the proof
-without adding the theorem in the environment).
 
 ``type``
 --------

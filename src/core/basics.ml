@@ -205,7 +205,8 @@ let term_of_rhs : rule -> term = fun r ->
   Bindlib.msubst r.rhs (Array.mapi fn r.vars)
 
 (** Total order on alpha-equivalence classes of terms not containing [Patt],
-   [TEnv] or [TRef]. @raise Invalid_argument otherwise. *)
+   [TEnv] or [TRef].
+@raise Invalid_argument otherwise. *)
 let cmp_term : term Lplib.Extra.cmp =
   let pos = __MODULE__ ^ ".cmp_term: " ^ __LOC__ in
   (* Total precedence on term constructors (must be injective). *)
@@ -260,8 +261,8 @@ let cmp_term : term Lplib.Extra.cmp =
   and cmp_binder u u' = let (_,u,u') = Bindlib.unbind2 u u' in cmp u u'
   in cmp
 
-(** Total order on contexts not containing [Patt], [TEnv] or [TRef]. @raise
-   Invalid_argument otherwise. *)
+(** Total order on contexts not containing [Patt], [TEnv] or [TRef].
+@raise Invalid_argument otherwise. *)
 let cmp_ctxt : ctxt Lplib.Extra.cmp =
   let cmp_decl (x,t,a) (x',t',a') =
     let c = Bindlib.compare_vars x x' in
@@ -270,8 +271,8 @@ let cmp_ctxt : ctxt Lplib.Extra.cmp =
          if c <> 0 then c else Lplib.Option.cmp_option cmp_term a a'
   in Lplib.List.cmp_list cmp_decl
 
-(** Total order on constraints not containing [Patt], [TEnv] or [TRef]. @raise
-   Invalid_argument otherwise. *)
+(** Total order on constraints not containing [Patt], [TEnv] or [TRef].
+@raise Invalid_argument otherwise. *)
 let cmp_constr : constr Lplib.Extra.cmp = fun (c,t,u) (c',t',u') ->
   let r = cmp_ctxt c c' in
   if r <> 0 then r

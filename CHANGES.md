@@ -1,5 +1,11 @@
 #### Unification goals (2020-12-15)
 
+changes in the syntax:
+- definition -> symbol
+- theorem -> opaque symbol
+- proof -> begin
+- qed -> end
+
 #### Mutually defined inductive types (2020-12-09)
 
 #### Inductive types (2020-09-29)
