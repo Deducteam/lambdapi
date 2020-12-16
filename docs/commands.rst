@@ -56,8 +56,6 @@ as follows:
 The command requires a fresh identifier (it should not have already
 been used in the current module).
 
-We recommend to start types by a capital letter.
-
 The symbol must be followed by a type or a definition (or both).
 
 It is possible to put arguments on the left side of ``:``
@@ -65,7 +63,30 @@ It is possible to put arguments on the left side of ``:``
 
 The following proof (if any) allows the user to solve typing goals and unification goals the system could not solve automatically. It can also be used to give a definition interactively (if no defining term is provided).
 
+Examples:
+
+::
+
+   symbol N:TYPE
+
+   // with no proof script
+   symbol add : N → N → N // a type but no definition (axiom)
+   symbol double n ≔ add n n // no type but a definition
+   symbol triple n : N ≔ add n (double n) // a type and a definition
+
+   // with a proof script
+   symbol F : N → TYPE
+   symbol idF n : F n → F n ≔
+   begin
+     solve
+     assume n x
+     apply x
+   end
+
 **Modifiers:**
+
+Modifiers are keywords that precede a symbol declaration to provide
+the system with additional information on its properties or behavior.
 
 - Modifiers for the unification engine:
 
