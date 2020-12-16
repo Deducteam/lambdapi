@@ -63,6 +63,8 @@ The symbol must be followed by a type or a definition (or both).
 It is possible to put arguments on the left side of ``:``
 (similarly to a value declaration in OCaml).
 
+The following proof (if any) allows the user to solve typing goals and unification goals the system could not solve automatically. It can also be used to give a definition interactively (if no defining term is provided).
+
 **Modifiers:**
 
 - Modifiers for the unification engine:
