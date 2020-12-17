@@ -2,7 +2,7 @@
 
 ;; Copyright (C) 2020 Deducteam
 
-;; Author: Rodolphe Lepigre, Gabriel Hondet
+;; Author: Rodolphe Lepigre, Gabriel Hondet, Ashish Barnawal
 ;; Maintainer: Deducteam <dedukti-dev@inria.fr>
 ;; Version: 1.0
 ;; SPDX-License-Identifier: CeCILL Free Software License Agreement v2.1
@@ -99,11 +99,80 @@
           (setq lambdapi-current-line-number new-line-number)
           (run-hooks 'changed-line-hook)))))
 
-(defun lambdapi-create-goals-buffer ()
-  (let ((goalsbuf (get-buffer-create "*Goals*"))
-        (goalswindow (split-window nil nil 'right)))
-    (set-window-buffer goalswindow goalsbuf)
-    (set-window-dedicated-p goalswindow 't)))
+
+
+
+(defun lambdapi-refresh-window-layout ()
+  "Create *Goals* buffer if it not present. Create a window
+for the goals buffer using the lambdapi-goals-window-* variables
+(defined below)."
+  (interactive)
+  (let* ((goalsbuf (get-buffer-create "*Goals*"))
+         (goalswindow (get-buffer-window goalsbuf))
+         (gwin-height (truncate
+                      (* lambdapi-goals-window-height-ratio
+                         (frame-height))))
+         (gwin-width  (truncate
+                      (* lambdapi-goals-window-width-ratio
+                         (frame-width)))))
+    (if goalswindow
+        (delete-window goalswindow))
+
+    ;; try to display goals in a side window
+    (setq goalswindow
+          (display-buffer-in-side-window
+           goalsbuf
+           `((side . ,lambdapi-goals-window-side)
+             (slot . nil)
+             ,(pcase lambdapi-goals-window-side
+                ((and (or 'right 'left)
+                      (guard (> gwin-width
+                                lambdapi-goals-window-min-width)))
+                 `(window-width . ,gwin-width))
+                ((and (or 'top 'bottom)
+                      (guard (> gwin-height
+                                lambdapi-goals-window-min-height)))
+                 `(window-height . ,gwin-height))))))
+
+    ;; if we failed to display goals window due to constraints
+    ;; display in bottom or right whichever possible
+    (if (not goalswindow)
+        (display-buffer-in-side-window
+           goalsbuf
+           `((side . ,lambdapi-goals-window-side)
+             (slot . nil)
+             ,(pcase lambdapi-goals-window-side
+                ((guard (> gwin-height
+                           lambdapi-goals-window-min-height))
+                 `(window-height . ,gwin-height))
+                ((guard (> gwin-width
+                          lambdapi-goals-window-min-width))
+                 `(window-width . ,gwin-width))))))
+
+    ;; if we succeed in assigning a window
+    (if goalswindow
+        (progn
+          (set-window-buffer goalswindow goalsbuf)
+          (set-window-dedicated-p goalswindow 't)))))
+
+
+(defcustom lambdapi-goals-window-side 'right
+  "Side at which to show goals window"
+  :options '(right bottom top left)
+  :type 'symbol)
+
+(defvar lambdapi-goals-window-height-ratio 0.20
+  "Ratio of height taken by Goals window if split right or left")
+
+(defvar lambdapi-goals-window-width-ratio 0.1
+  "Ratio of width taken by Goals window if split top or bottom")
+
+(defvar lambdapi-goals-window-min-width 30
+  "Minimum width of Goals window")
+
+(defvar lambdapi-goals-window-min-height 4
+  "Minimum height of Goals window")
+
 
 
 (defvar lambdapi-mode-map nil "Keymap for `lambdapi-mode'")
@@ -162,7 +231,7 @@
   (add-hook 'post-command-hook #'lambdapi-update-line-number nil :local)
   ;; Hook binding line change to re-execution of proof/goals
   (add-hook 'lambdapi-changed-line-hook #'lp-display-goals)
-  (lambdapi-create-goals-buffer))
+  (lambdapi-refresh-window-layout))
 
 ;; Register mode the the ".lp" extension
 ;;;###autoload
