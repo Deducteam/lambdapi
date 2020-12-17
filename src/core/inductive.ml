@@ -268,10 +268,12 @@ let rec_name ind_sym = Parser.add_prefix "ind_" ind_sym.sym_name
    recursor rules for the inductive type definition [ind_list] and associated
    recursors [rec_sym_list] and [ind_pred_map].
 
-   For instance, [inductive T : Π(i1:A1),..,Π(im:Am), TYPE := c1:T1 | .. |
-   cn:Tn] generates a rule for each constructor. If [Ti = Πx1:B1,..,Πxk:Bk,T]
-   then the rule for ci is [ind_T p pc1 .. pcn _ .. _ (ci x1 .. xk) --> pci x1
-   t1? ... xk tk? with m underscores, [tj? = ind_T p pc1 .. pcn _ .. _ xj] if
+   For instance,
+   [inductive T : Π(i1:A1),..,Π(im:Am), TYPE := c1:T1 | .. | cn:Tn]
+   generates a rule for each constructor. If [Ti = Πx1:B1,..,Πxk:Bk,T]
+   then the rule for ci is
+   [ind_T p pc1 .. pcn _ .. _ (ci x1 .. xk) --> pci x1 t1? ... xk tk?]
+   with m underscores, [tj? = ind_T p pc1 .. pcn _ .. _ xj] if
    [Bj = T v1 ... vm], and nothing otherwise. *)
 let iter_rec_rules :
       popt -> inductive -> ind_pred_map -> (p_rule -> unit) -> unit =
