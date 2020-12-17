@@ -91,11 +91,14 @@ let conv ctx a b =
       let open Stdlib in constraints := (ctx,a,b) :: !constraints
     end
 
-(** [infer ctx t] infers a type for the term [t] in context [ctx],
-   possibly under some constraints recorded in [constraints] using
-   [conv]. The returned type is well-sorted if recorded unification
-   constraints are satisfied. [ctx] must be well-formed. This function
-   never fails (but constraints may be unsatisfiable). *)
+(** Exception that may be raised by type inference. *)
+exception Invalid_Abst
+
+(** [infer ctx t] infers a type for the term [t] in context [ctx], possibly
+   under some constraints recorded in [constraints] using [conv]. The returned
+   type is well-sorted if recorded unification constraints are
+   satisfisfiable. [ctx] must be well-formed.
+@raise Invalid_Abst when encountering an abstraction over a kind. *)
 let rec infer : ctxt -> term -> term = fun ctx t ->
   if !log_enabled then log_infr "infer %a%a" pp_ctxt ctx pp_term t;
   match unfold t with
@@ -151,8 +154,13 @@ let rec infer : ctxt -> term -> term = fun ctx t ->
       (* We infer the type of the body, first extending the context. *)
       let (x,t,ctx') = Ctxt.unbind ctx a None t in
       let b = infer ctx' t in
-      (* We build the product type by binding [x] in [b]. *)
-      Prod(a, Bindlib.unbox (Bindlib.bind_var x (lift b)))
+      begin
+        match unfold b with
+        | Kind ->
+            fatal_msg "Abstraction on [%a] is not allowed. " Print.pp_term t;
+            raise Invalid_Abst
+        | _ -> Prod(a, Bindlib.unbox (Bindlib.bind_var x (lift b)))
+      end
 
   (*  ctx ⊢ t ⇒ Prod(a,b)    ctx ⊢ u ⇐ a
      ------------------------------------
