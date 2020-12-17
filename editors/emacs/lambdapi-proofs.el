@@ -6,9 +6,9 @@
 ;;; Code:
 
 (require 'highlight)
+(require 'cl-lib)
 
 (defconst lp-goal-line-prefix "---------------------------------------------------")
-
 
 (defun lp-focus-goal (goalno &optional proofbuf)
   "Focus on 'goalno'th goal (zero-indexed)
@@ -27,6 +27,64 @@ for *Goals* buffer"
     (lp-proof-forward))
   (select-window (get-buffer-window proofbuf)))
 
+(defun lp-make-goal-clickable (goalstr goalNo proofbuf)
+  "Returns goalstr with text properties added
+making the string call lp-focus-goal with goalNo
+and proofbuf on click.
+Also makes the string bold if goalNo is 0"
+  (let ((goalkeymap (make-sparse-keymap)))
+    (if (not (eq goalNo 0))
+        (define-key goalkeymap [mouse-1]
+          `(lambda ()
+             (interactive)
+             (lp-focus-goal ,goalNo ,proofbuf))))
+    (add-text-properties
+     0 (length goalstr)
+     `(face      ,(pcase goalNo
+                    (0 'bold)
+                    (_ 'default))
+       mouse-face highlight
+       help-echo ,(pcase goalNo
+                    (0 "current goal")
+                    (_ "click to focus"))
+       keymap    ,goalkeymap)
+     goalstr)
+    goalstr))
+
+
+
+
+(defun lp-format-string-hyps-typ-goal (goal)
+  "Return the string associated to the hypotheses of a single typ goal"
+  (let ((tog (plist-get goal :typeofgoal)))
+    (if (string= tog "Typ ")
+	(let ((hs (plist-get goal :hyps)))
+	  (mapcar (lambda (hyp)
+		    (let ((name (plist-get hyp :hname))
+			  (type (plist-get hyp :htype)))
+		      (format "%s: %s\n" name type)))
+		  (reverse hs))))))
+
+(defun lp-format-string-goal (goal proofbuf goalNo)
+  "Return the string associated to a single goal.
+Adds text-properties to make it clickable"
+  (let ((tog (plist-get goal :typeofgoal)))
+    (if (string= tog "Typ ")
+	(let* ((id (plist-get goal :gid))
+               (type (plist-get goal :type))
+               (clk-text (lp-make-goal-clickable
+                          (format "%s  %d: %s"
+                                  tog id type)
+                          goalNo proofbuf)))
+               (format "%s\n%s\n\n"
+                       lp-goal-line-prefix clk-text))
+      (let* ((constr (plist-get goal :constr))
+             (clk-text (lp-make-goal-clickable
+                        (format "%s    : %s"
+                                tog constr)
+                        goalNo proofbuf)))
+        (format "%s\n%s\n\n"
+                lp-goal-line-prefix clk-text)))))
 
 (defun display-goals (goals)
   "Display GOALS returned by the LSP server in the dedicated Emacs buffer."
@@ -35,50 +93,21 @@ for *Goals* buffer"
     (with-current-buffer goalsbuf
       (read-only-mode -1)
       (if (> (length goals) 0)
-          (let* ((fstgoal  (elt goals 0))
-                 (hs       (plist-get fstgoal :hyps))
-                 (hypsstr  (mapcar
-                            (lambda (hyp)
-                              (let ((name (plist-get hyp :hname))
-                                    (type (plist-get hyp :htype)))
-                                (format "%s: %s\n" name type)))
-                            (reverse hs)))
-                 (goalnum  0)
-                 (goalsstr (mapcar      ; map goals to clickable texts
-                            (lambda (goal)
-                              (let* ((id (plist-get goal :gid))
-                                     (type (plist-get goal :type))
-                                     (goalkeymap (make-sparse-keymap))
-                                     (goalstr (format "%s\nGoal %d: %s\n\n"
-                                                      lp-goal-line-prefix
-                                                      id type)))
-                                (if (> goalnum 0)
-                                    (define-key goalkeymap [mouse-1]
-                                      `(lambda ()
-                                         (interactive)
-                                         (lp-focus-goal ,goalnum ,proofbuf))))
-                                (add-text-properties
-                                 (1+ (length lp-goal-line-prefix))
-                                 (- (length goalstr) 2)
-                                 `(face         ,(pcase goalnum
-						   (0 'bold)
-						   (_ 'default))
-                                   mouse-face   highlight
-                                   help-echo    ,(pcase goalnum
-						   (0  "current goal")
-						   (_  "click to focus"))
-                                   keymap       ,goalkeymap)
-                                 goalstr)
-                                (setq goalnum (1+ goalnum))
-                                goalstr))
-                            goals)))
-            (erase-buffer)
-            (goto-char (point-max))
-            (mapc 'insert hypsstr)
-            (mapc 'insert goalsstr))
-        (erase-buffer))
+	  (let* ((fstgoal (elt goals 0))
+		 (hypsstr (lp-format-string-hyps-typ-goal fstgoal))
+                 ;; map each goal to formatted goal string
+		 (goalsstr (cl-mapcar `(lambda (goal goalNo)
+                                      (lp-format-string-goal
+                                       goal ,proofbuf goalNo))
+                                   goals
+                                   (cl-loop for x below (length goals)
+                                            collect x))))
+	    (erase-buffer)
+	    (goto-char (point-max))
+	    (mapc 'insert hypsstr)
+	    (mapc 'insert goalsstr))
+	(erase-buffer))
       (read-only-mode 1))))
-
 
 (defun eglot--signal-proof/goals (position)
   "Send proof/goals to server, requesting the list of goals at POSITION."
@@ -100,8 +129,8 @@ for *Goals* buffer"
   (interactive)
   (eglot--signal-proof/goals (eglot--pos-to-lsp-position)))
 
-(defvar proof-line-position (list :line 0 :character 0))
-(defvar interactive-goals 't)
+(defvar-local proof-line-position (list :line 0 :character 0))
+(defvar-local interactive-goals 't)
 
 (defun move-proof-line (move-fct)
   (save-excursion
@@ -140,11 +169,6 @@ for *Goals* buffer"
         (hlt-unhighlight-region 0 (1+ (line-end-position))))))
   (setq interactive-goals (not interactive-goals)))
 
-;; Keybindings for goals display
-(global-set-key (kbd "C-c C-c") 'lp-display-goals)
-(global-set-key (kbd "C-c C-i") 'toggle-interactive-goals)
-(global-set-key (kbd "C-c C-p") 'lp-proof-backward)
-(global-set-key (kbd "C-c C-n") 'lp-proof-forward)
 
 (provide 'lambdapi-proofs)
 ;;; lambdapi-proofs.el ends here

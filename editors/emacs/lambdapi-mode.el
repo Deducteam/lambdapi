@@ -101,9 +101,22 @@
 
 (defun lambdapi-create-goals-buffer ()
   (let ((goalsbuf (get-buffer-create "*Goals*"))
-        (goalswindow (split-window nil -10 'below)))
+        (goalswindow (split-window nil nil 'right)))
+        ;; (goalswindow (split-window nil -10 'right)))
     (set-window-buffer goalswindow goalsbuf)
     (set-window-dedicated-p goalswindow 't)))
+
+
+(defvar lambdapi-mode-map nil "Keymap for `lambdapi-mode'")
+
+;; define keybindings
+(progn
+  (setq lambdapi-mode-map (make-sparse-keymap))
+  (define-key lambdapi-mode-map (kbd "C-c C-c") 'lp-display-goals)
+  (define-key lambdapi-mode-map (kbd "C-c C-i") 'toggle-interactive-goals)
+  (define-key lambdapi-mode-map (kbd "C-c C-p") 'lp-proof-backward)
+  (define-key lambdapi-mode-map (kbd "C-c C-n") 'lp-proof-forward))
+
 
 ;; Main function creating the mode (lambdapi)
 ;;;###autoload
@@ -134,11 +147,17 @@
   ;; Abbrev mode
   (lambdapi-abbrev-setup)
 
+  ;; define keybindings
+  (use-local-map lambdapi-mode-map)
+
   ;; LSP
   (add-to-list
    'eglot-server-programs
    '(lambdapi-mode . ("lambdapi" "lsp" "--standard-lsp")))
   (eglot-ensure)
+
+  ;; set column offsets for lambdapi's LSP server
+  (setq-local eglot-move-to-column-function #'eglot-move-to-column)
 
   ;; Hooks for goals
   (add-hook 'post-command-hook #'lambdapi-update-line-number nil :local)
