@@ -195,6 +195,16 @@ display goals while doing a proof. To display the result of ``compute``,
 ``type``, and simlar commmand as well, write ``"%c --verbose 1 %s"``
 instead of ``"%c %s"``.
 
+
+Change position of goals buffer
+'''''''''''''''''''''''''''''''
+The position of ``*Goals*`` buffer can be changed doing
+``M-x customize-variable lambdapi-goals-window-side`` and setting
+the value to one of ``left``, ``right``, ``bottom`` or ``top``.
+
+The layout can be reset by doing ``M-x lambdapi-refresh-window-layout``.
+
+
 Other relevant packages
 -----------------------
 
