@@ -358,7 +358,7 @@ let parser qident = mp:{path_elem "."}* id:any_ident -> in_pos _loc (mp,id)
 let parser modifier =
   | _constant_ -> in_pos _loc (P_prop(Terms.Const))
   | _injective_ -> in_pos _loc (P_prop(Terms.Injec))
-  | _opaque_ -> in_pos _loc (P_opaq(Terms.Opaque))
+  | _opaque_ -> in_pos _loc P_opaq
   | _protected_ -> in_pos _loc (P_expo(Terms.Protec))
   | _private_ -> in_pos _loc (P_expo(Terms.Privat))
   | _sequential_ -> in_pos _loc (P_mstrat(Terms.Sequen))
@@ -671,14 +671,18 @@ let parser cmd =
   | _open_ ps:path+
       -> List.iter (get_ops _loc) ps;
          P_open(ps)
-  | ms:modifier* _symbol_ s:ident al:arg* ":" a:term
-         ts_pe:proof?
-      -> let st = Pos.in_pos _loc (s,al,Some(a)) in
-         P_symbol(ms,st,None,ts_pe,Tac)
-  | ms:modifier* _symbol_ s:ident al:arg* a:{":" term}? "≔" t:term?
-         ts_pe:proof?
-      -> let st = Pos.in_pos _loc (s,al,a) in
-         P_symbol(ms,st,t,ts_pe,Def)
+  | p_sym_mod:modifier* _symbol_ p_sym_nam:ident p_sym_arg:arg*
+         ":" a:term p_sym_prf:proof?
+      -> let p_sym_typ = Some a in
+         let p_sym_trm = None in
+         let p_sym_def = false in
+         P_symbol {p_sym_mod;p_sym_nam;p_sym_arg;p_sym_typ;p_sym_trm
+                  ;p_sym_prf;p_sym_def}
+  | p_sym_mod:modifier* _symbol_ p_sym_nam:ident p_sym_arg:arg*
+         p_sym_typ:{":" term}? "≔" p_sym_trm:term? p_sym_prf:proof?
+      -> let p_sym_def = true in
+         P_symbol {p_sym_mod;p_sym_nam;p_sym_arg;p_sym_typ;p_sym_trm
+                  ;p_sym_prf;p_sym_def}
   | _rule_ r:rule rs:{_:_with_ rule}*
       -> P_rules(r::rs)
   | ms:modifier* _inductive_ i:inductive il:{_:_with_ inductive}*
