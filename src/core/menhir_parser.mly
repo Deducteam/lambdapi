@@ -1,5 +1,7 @@
 %{
-open Extra
+
+open! Lplib
+
 open Timed
 open Pos
 open Syntax
@@ -205,6 +207,7 @@ let build_config : Pos.pos -> string -> string option -> eval_config =
     | (i     , None       ) -> config (Some(i)) NONE
     | (_     , _          ) -> raise Exit (* captured below *)
   with _ -> parser_fatal loc "Invalid command configuration."
+
 %}
 
 %token EOF
@@ -250,57 +253,51 @@ line:
         | Some(_) -> ms
         | None -> make_pos Lexing.(dummy_pos, dummy_pos) (P_prop(Const)) :: ms
       in
-      make_pos $loc (P_symbol(ms, make_pos $loc(s) s, ps, a))
+      let st = make_pos $loc(s) (make_pos $loc(s) s, ps, Some(a)) in
+      let t = P_symbol(ms, st, None, None, Tac)
+      in
+      make_pos $loc t
     }
   | ms=modifier* KW_DEF s=ID COLON a=term DOT
     {
-      (* Add the "definable" modifier by default. *)
-      let is_prop {elt; _} = match elt with P_prop(_) -> true | _ -> false in
-      let ms =
-        match List.find_opt is_prop ms with
-        | Some(_) -> ms
-        | None -> make_pos Lexing.(dummy_pos, dummy_pos) (P_prop(Defin)) :: ms
-      in
-      let t =
-        P_symbol (ms, make_pos $loc(s) s, [], a)
-      in
+      let st = make_pos $loc(s) (make_pos $loc(s) s, [], Some(a)) in
+      let t = P_symbol (ms, st, None, None, Tac) in
       make_pos $loc t
     }
   | ms=modifier* KW_DEF s=ID COLON a=term DEFEQ t=term DOT
     {
-      let t =
-        P_definition (ms, false, make_pos $loc(s) s, [], Some(a), t)
-      in
+      let st = make_pos $loc (make_pos $loc s,[],Some(a)) in
+      let t = P_symbol(ms, st, Some(t), None, Def) in
       make_pos $loc t
     }
   | ms=modifier* KW_DEF s=ID DEFEQ t=term DOT
     {
-      let t = P_definition
-                (ms, false, make_pos $loc(s) s, [], None, t) in
+      let st = make_pos $loc (make_pos $loc s,[],None) in
+      let t = P_symbol (ms, st, Some(t), None, Def) in
       make_pos $loc t
     }
   | ms=modifier* KW_DEF s=ID ps=param+ COLON a=term DEFEQ t=term DOT
     {
-      let t = P_definition
-                (ms, false, make_pos $loc(s) s, ps, Some(a), t) in
+      let st = make_pos $loc (make_pos $loc s,ps,Some(a)) in
+      let t = P_symbol (ms, st, Some(t), None, Def) in
       make_pos $loc t
     }
   | ms=modifier* KW_DEF s=ID ps=param+ DEFEQ t=term DOT
     {
-      let t = P_definition
-                (ms, false, make_pos $loc(s) s, ps, None, t) in
+      let st = make_pos $loc (make_pos $loc s,ps,None) in
+      let t = P_symbol (ms, st, Some(t), None, Def) in
       make_pos $loc t
     }
   | ms=modifier* KW_THM s=ID COLON a=term DEFEQ t=term DOT
     {
-      let t = P_definition
-                (ms, true , make_pos $loc(s) s, [], Some(a), t) in
+      let st = make_pos $loc (make_pos $loc s,[],Some(a)) in
+      let t = P_symbol (ms, st, Some(t), None, Def) in
       make_pos $loc t
     }
   | ms=modifier* KW_THM s=ID ps=param+ COLON a=term DEFEQ t=term DOT
     {
-      let t = P_definition
-                (ms, true , make_pos $loc(s) s, ps, Some(a), t) in
+      let st = make_pos $loc (make_pos $loc s,ps,Some(a)) in
+      let t = P_symbol (ms, st, Some(t), None, Def) in
       make_pos $loc t
     }
   | rs=rule+ DOT {

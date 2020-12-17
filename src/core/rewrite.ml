@@ -1,7 +1,8 @@
 (** Implementation of the rewrite tactic. *)
 
+open! Lplib
+
 open Timed
-open Extra
 open Pos
 open Terms
 open Basics

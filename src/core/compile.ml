@@ -1,6 +1,8 @@
 (** High-level compilation functions. *)
 
-open Extra
+open! Lplib
+open Lplib.Extra
+
 open Timed
 open Sign
 open Console
@@ -57,12 +59,14 @@ let rec compile : bool -> Path.t -> Sign.t = fun force path ->
          is possible to qualify the symbols of the current modules. *)
       loaded := PathMap.add path sign !loaded;
       let handle ss c =
+        Terms.Meta.reset_key_counter ();
         let (ss, p) = Handle.handle_cmd ss c in
         match p with
         | None       -> ss
         | Some(data) ->
             let (st,ts) = (data.pdata_p_state, data.pdata_tactics) in
-            let st = List.fold_left (Tactics.handle_tactic ss) st ts in
+            let e = data.pdata_expo in
+            let st = List.fold_left (Tactics.handle_tactic ss e) st ts in
             data.pdata_finalize ss st
       in
       ignore (List.fold_left handle sig_st (parse_file src));
@@ -107,13 +111,49 @@ let compile_file : file_path -> Sign.t = fun fname ->
 let _ =
   let require mp =
     (* Save the current console state. *)
-    Console.push_state ();
+    State.push ();
     (* Restore the console state to default for compiling. *)
     Console.reset_default ();
     (* Compile and go back to previous state. *)
     try
       ignore (compile false mp);
-      try Console.pop_state () with _ -> assert false (* Unreachable. *)
-    with e -> Console.pop_state (); raise e
+      try State.pop () with _ -> assert false (* Unreachable. *)
+    with e -> State.pop (); raise e
   in
   Stdlib.(Parser.require := require)
+
+(** Pure wrappers around compilation functions. Functions provided perform the
+    same computations as the ones defined earlier, but restores the state when
+    they have finished. An optional library mapping or state can be passed as
+    argument to change the settings. *)
+module Pure : sig
+  val compile : ?lm:string -> ?st:State.t -> bool -> Path.t -> Sign.t
+  val compile_file : ?lm:string -> ?st:State.t -> file_path -> Sign.t
+end = struct
+
+  (* [pure_apply_cfg ?lm ?st f] is function [f] but pure (without side
+     effects).  The side effects taken into account occur in
+     {!val:Console.State.t}, {!val:Files.lib_mappings} and in the meta
+     variable counter {!module:Terms.Meta}. Arguments [?lm] allows to set the
+     library mappings and [?st] sets the state. *)
+  let pure_apply_cfg : ?lm:string -> ?st:State.t -> ('a -> 'b) -> 'a -> 'b =
+    fun ?lm ?st f x ->
+    let libmap = !lib_mappings in
+    State.push ();
+    Option.iter new_lib_mapping lm;
+    Option.iter State.apply st;
+    let restore () =
+      State.pop ();
+      lib_mappings := libmap
+    in
+    try
+      let res = f x in
+      restore (); res
+    with e -> restore (); raise e
+
+  let compile ?lm ?st force path =
+    let f (force, path) = compile force path in
+    pure_apply_cfg ?lm ?st f (force, path)
+
+  let compile_file ?lm ?st = pure_apply_cfg ?lm ?st compile_file
+end

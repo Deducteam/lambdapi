@@ -7,8 +7,6 @@ set builtin "P"     ≔ π
 
 symbol Nat : TYPE
 
-set debug +g
-
 symbol ind_plane : TYPE
 inductive plane : TYPE ≔
  | x0 : Nat → Nat → plane

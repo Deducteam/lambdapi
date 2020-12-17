@@ -3,7 +3,10 @@
 
     @see <http://project-coco.uibk.ac.at/problems/hrs.php>. *)
 
-open Extra
+open! Lplib
+open Lplib.Base
+open Lplib.Extra
+
 open Timed
 open Terms
 

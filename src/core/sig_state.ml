@@ -9,9 +9,11 @@
    but through the current module only, in order to setup the [sig_state]
    properly. *)
 
+open Lplib.Base
+open Lplib.Extra
+
 open Timed
 open Console
-open Extra
 open Files
 open Pos
 open Syntax
@@ -79,13 +81,22 @@ let remove_pp_hint_eq :
     if eq_pp_hint h h' then SymMap.remove s pp_hints else pp_hints
   with Not_found -> pp_hints
 
-(** [add_symbol ss e p st x a impl t] generates a new signature state from
-    [ss] by creating a new symbol with expo [e], property [p], strategy [st],
-    name [x], type [a], implicit arguments [impl] and optional definition [t].
-    This new symbol is returned too. *)
-let add_symbol : sig_state -> expo -> prop -> match_strat -> strloc -> term ->
-                 bool list -> term option -> sig_state * sym =
-  fun ss e p st x a impl t ->
+(** Symbol properties needed for the signature *)
+type sig_symbol =
+  { expo   : expo        (** exposition          *)
+  ; prop   : prop        (** property            *)
+  ; mstrat : match_strat (** strategy            *)
+  ; ident  : ident       (** name                *)
+  ; typ    : term        (** type                *)
+  ; impl   : bool list   (** implicit arguments  *)
+  ; def    : term option (** optional definition *) }
+
+(** [add_symbol ss sig_symbol={e,p,st,x,a,impl,def}] generates a new signature
+   state from [ss] by creating a new symbol with expo [e], property [p],
+   strategy [st], name [x], type [a], implicit arguments [impl] and optional
+   definition [t]. This new symbol is returned too. *)
+let add_symbol : sig_state -> sig_symbol -> sig_state * sym =
+  fun ss {expo=e;prop=p;mstrat=st;ident=x;typ=a;impl;def=t} ->
   let s = Sign.add_symbol ss.signature e p st x a impl in
   begin
     match t with

@@ -36,7 +36,7 @@ let destruct_prod : int -> term -> env * term = fun n t ->
    where [y] is a fresh variable, and [m1] and [m2] are fresh metavariables of
    arity [n] and [n+1], and type [∀x1:A1,..,∀xn:An,TYPE] and
    [∀x1:A1,..,∀xn:An,∀y:m1[x1,..,xn],B] respectively. *)
-let extend_meta_type : meta -> term * term *
+let extend_meta_type : meta -> env * term * term *
     tmbinder * (term, tbinder) Bindlib.mbinder = fun m ->
   let n = m.meta_arity in
   let (env, s) = destruct_prod n Timed.(!(m.meta_type)) in
@@ -44,12 +44,12 @@ let extend_meta_type : meta -> term * term *
   let xs = Array.map _Vari vs in
 
   let t1 = to_prod env _Type in
-  let m1 = fresh_meta t1 n in
+  let m1 = Meta.fresh t1 n in
 
   let y = Bindlib.new_var mkfree "y" in
-  let env = add y (_Meta m1 xs) None env in
-  let t2 = to_prod env (lift s) in
-  let m2 = fresh_meta t2 (n+1) in
+  let env' = add y (_Meta m1 xs) None env in
+  let t2 = to_prod env' (lift s) in
+  let m2 = Meta.fresh t2 (n+1) in
 
   let r1 = Bindlib.unbox (_Meta m xs) in
   let p = _Meta m1 xs in
@@ -57,14 +57,23 @@ let extend_meta_type : meta -> term * term *
   let r2 = Bindlib.unbox (_Prod p q) in
 
   let f x = Bindlib.unbox (Bindlib.bind_mvar vs x) in
-  r1, r2, f p, f q
+  env, r1, r2, f p, f q
+
+(** [type_app a ts] returns the type of [add_args x ts] where [x] is any
+    term of type [a], if it exists. *)
+let rec type_app : ctxt -> term -> term list -> term option =
+  fun ctx a ts ->
+  match (Eval.whnf ctx a), ts with
+  | Prod(_,b), t :: ts -> type_app ctx (Bindlib.subst b t) ts
+  | _, [] -> Some a
+  | _, _ -> None
 
 (** [make_meta_codomain ctx a] builds a metavariable intended as the  codomain
     type for a product of domain type [a].  It has access to the variables  of
     the context [ctx] and a fresh variables corresponding to the argument. *)
 let make_meta_codomain : ctxt -> term -> tbinder = fun ctx a ->
   let x = Bindlib.new_var mkfree "x" in
-  let m = Meta(fresh_meta Kind 0, [||]) in
+  let m = Meta(Meta.fresh Kind 0, [||]) in
   (* [m] can be instantiated by Type or Kind only (the type of [m] is
      therefore incorrect when [m] is instantiated by Kind. *)
   let b = Basics.make_meta ((x, a, None) :: ctx) m in
@@ -128,7 +137,7 @@ let rec infer : ctxt -> term -> term = fun ctx t ->
         let s = unfold s in
         match s with
         | Type | Kind -> s
-        | _           -> conv ctx s Type; Type
+        | _           -> conv ctx' s Type; Type
       (* We add the constraint [s = Type] because kinds cannot occur
          inside a term. So, [t] cannot be a kind. *)
       end
@@ -155,8 +164,9 @@ let rec infer : ctxt -> term -> term = fun ctx t ->
         match c with
         | Prod(a,b) -> (a,b)
         | Meta(m,ts) ->
-            let mxs, p, bp1, bp2 = extend_meta_type m in
-            conv ctx mxs p;
+            let env, mxs, p, bp1, bp2 = extend_meta_type m in
+            let ctx' = Env.to_ctxt env in
+            conv ctx' mxs p;
             (Bindlib.msubst bp1 ts, Bindlib.msubst bp2 ts)
         | _         ->
             let a = Basics.make_meta ctx Type in
@@ -187,7 +197,7 @@ let rec infer : ctxt -> term -> term = fun ctx t ->
   | Meta(m,ts)   ->
       (* The type of [Meta(m,ts)] is the same as the one obtained by applying
          to [ts] a new symbol having the same type as [m]. *)
-      let s = Sign.create_sym Privat Defin (meta_name m) !(m.meta_type) [] in
+      let s = Sign.create_sym Privat Defin (Meta.name m) !(m.meta_type) [] in
       infer ctx (Array.fold_left (fun acc t -> Appl(acc,t)) (Symb s) ts)
 
 (** [check ctx t a] checks that the term [t] has type [a] in context [ctx],
@@ -195,7 +205,8 @@ let rec infer : ctxt -> term -> term = fun ctx t ->
     [conv]. [ctx] must be well-formed and [a] well-sorted. This function never
     fails (but constraints may be unsatisfiable). *)
 and check : ctxt -> term -> term -> unit = fun ctx t a ->
-  if !log_enabled then log_infr "check %a : %a" pp_term t pp_term a;
+  if !log_enabled then
+    log_infr "check %a%a : %a" pp_ctxt ctx pp_term t pp_term a;
   conv ctx (infer ctx t) a
 
 (** [infer ctx t] returns a pair [(a,cs)] where [a] is a type for the term [t]
@@ -207,6 +218,7 @@ let infer : ctxt -> term -> term * constr list = fun ctx t ->
   Stdlib.(constraints := []);
   let a = infer ctx t in
   let constrs = Stdlib.(!constraints) in
+  let constrs = List.sort_uniq Eval.compare_constr constrs in
   if !log_enabled then
     begin
       log_infr (gre "infer %a : %a") pp_term t pp_term a;
