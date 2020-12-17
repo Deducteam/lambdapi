@@ -17,15 +17,19 @@ for *Goals* buffer"
   (interactive "nEnter Goal Number: ")
   (if (null proofbuf)
       (setq proofbuf (current-buffer)))
+
+  (select-window (get-buffer-window proofbuf))
   (with-current-buffer proofbuf
     (goto-line (plist-get proof-line-position :line))
     (goto-char (line-end-position))
-    (newline)
-    (insert (format "focus %S" goalno))
-    (smie-indent-line)
-    (eglot--signal-textDocument/didChange)
-    (lp-proof-forward))
-  (select-window (get-buffer-window proofbuf)))
+    ;; Don't focus the goalno 0
+    (if (not (eq goalno 0))
+        (progn
+          (newline)
+          (insert (format "focus %S" goalno))
+          (smie-indent-line)
+          (eglot--signal-textDocument/didChange)
+          (lp-proof-forward)))))
 
 (defun lp-make-goal-clickable (goalstr goalNo proofbuf)
   "Returns goalstr with text properties added
@@ -33,11 +37,10 @@ making the string call lp-focus-goal with goalNo
 and proofbuf on click.
 Also makes the string bold if goalNo is 0"
   (let ((goalkeymap (make-sparse-keymap)))
-    (if (not (eq goalNo 0))
-        (define-key goalkeymap [mouse-1]
-          `(lambda ()
-             (interactive)
-             (lp-focus-goal ,goalNo ,proofbuf))))
+    (define-key goalkeymap [mouse-1]
+      `(lambda ()
+         (interactive)
+         (lp-focus-goal ,goalNo ,proofbuf)))
     (add-text-properties
      0 (length goalstr)
      `(face      ,(pcase goalNo
@@ -50,9 +53,6 @@ Also makes the string bold if goalNo is 0"
        keymap    ,goalkeymap)
      goalstr)
     goalstr))
-
-
-
 
 (defun lp-format-string-hyps-typ-goal (goal)
   "Return the string associated to the hypotheses of a single typ goal"
@@ -76,8 +76,8 @@ Adds text-properties to make it clickable"
                           (format "%s  %d: %s"
                                   tog id type)
                           goalNo proofbuf)))
-               (format "%s\n%s\n\n"
-                       lp-goal-line-prefix clk-text))
+	  (format "%s\n%s\n\n"
+		  lp-goal-line-prefix clk-text))
       (let* ((constr (plist-get goal :constr))
              (clk-text (lp-make-goal-clickable
                         (format "%s    : %s"
