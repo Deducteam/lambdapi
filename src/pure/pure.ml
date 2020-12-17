@@ -41,9 +41,10 @@ let parse_text : state -> string -> string -> Command.t list * state =
   | Fatal(None           , _  ) -> assert false (* Should not produce. *)
 
 type proof_finalizer = Sig_state.t -> Proof.t -> Sig_state.t
-type proof_state = Time.t * Sig_state.t * Proof.t * proof_finalizer
+type proof_state =
+  Time.t * Sig_state.t * Proof.t * proof_finalizer * Terms.expo
 
-let current_goals : proof_state -> Proof.Goal.t list = fun (_,_,p,_) ->
+let current_goals : proof_state -> Proof.Goal.t list = fun (_,_,p,_,_) ->
   p.proof_goals
 
 type command_result =
@@ -79,20 +80,22 @@ let handle_command : state -> Command.t -> command_result =
     match pst with
     | None       -> Cmd_OK(t, ss)
     | Some(data) ->
-        let pst = (t, ss, data.pdata_p_state, data.pdata_finalize) in
+        let pst =
+          (t, ss, data.pdata_p_state, data.pdata_finalize, data.pdata_expo) in
         let ts = data.pdata_tactics in
-        Cmd_Proof(pst, ts, data.pdata_stmt_pos, data.pdata_term_pos)
+        Cmd_Proof(pst, ts, data.pdata_stmt_pos, data.pdata_end_pos)
   with Fatal(p,m) -> Cmd_Error(p,m)
 
-let handle_tactic : proof_state -> Tactic.t -> tactic_result = fun s t ->
-  let (_, ss, p, finalize) = s in
+let handle_tactic : proof_state -> Tactic.t -> tactic_result =
+  fun s t ->
+  let (_, ss, p, finalize, e) = s in
   try
-    let p = Tactics.handle_tactic ss p t in
-    Tac_OK(Time.save (), ss, p, finalize)
+    let p = Tactics.handle_tactic ss e p t in
+    Tac_OK(Time.save (), ss, p, finalize, e)
   with Fatal(p,m) -> Tac_Error(p,m)
 
 let end_proof : proof_state -> command_result = fun s ->
-  let (_, ss, p, finalize) = s in
+  let (_, ss, p, finalize, _) = s in
   try Cmd_OK(Time.save (), finalize ss p) with Fatal(p,m) -> Cmd_Error(p,m)
 
 let get_symbols : state -> (Terms.sym * Pos.popt) Extra.StrMap.t = fun s ->

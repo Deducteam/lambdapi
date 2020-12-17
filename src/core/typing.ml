@@ -11,7 +11,7 @@ open Print
 let check : ?type_check:type_check -> ctxt -> term -> term -> bool =
   fun ?(type_check=TypeCheckInstanciation) ctx t a ->
   let to_solve = Infer.check ctx t a in
-  match solve ~type_check {empty_problem with to_solve} with
+  match solve_noexn ~type_check {empty_problem with to_solve} with
   | None     -> false
   | Some([]) -> true
   | Some(cs) ->
@@ -25,7 +25,7 @@ let infer_constr :
   fun ?(type_check=TypeCheckInstanciation) ctx t ->
   let (a, to_solve) = Infer.infer ctx t in
   Option.map (fun cs -> (a, cs))
-    (solve ~type_check {empty_problem with to_solve})
+    (solve_noexn ~type_check {empty_problem with to_solve})
 
 (** [infer ctx t] tries to infer a type [a] for [t] in the context
    [ctx]. The function returns [Some(a)] in case of success, and [None]
