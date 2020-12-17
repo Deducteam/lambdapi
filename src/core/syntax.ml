@@ -261,6 +261,7 @@ let is_opaq {elt; _} = match elt with P_opaq -> true | _ -> false
 let is_expo {elt; _} = match elt with P_expo(_) -> true | _ -> false
 let is_mstrat {elt; _} = match elt with P_mstrat(_) -> true | _ -> false
 
+(** Parser-level representation of symbol declarations. *)
 type p_symbol =
   { p_sym_mod : p_modifier list (** modifiers *)
   ; p_sym_nam : ident (** symbol name *)

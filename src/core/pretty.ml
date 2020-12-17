@@ -245,7 +245,9 @@ let command : p_command pp = fun oc cmd ->
         let a =
           match p_sym_typ with
           | Some(a) -> a
-          | None -> failwith "no type and no definition"
+          | None ->
+              fatal cmd.pos
+                "symbol declaration with no type and no definition"
         in
         out "@[<hov 2>%asymbol %a"
           (List.pp modifier "") p_sym_mod ident p_sym_nam;
@@ -284,9 +286,6 @@ let command : p_command pp = fun oc cmd ->
      query oc q
 
 let ast : ast pp = fun oc cs -> List.pp command "\n@." oc cs
-
-(** Short synonym of [term]. *)
-let pp : p_term pp = term
 
 (** [beautify cmds] pretty-prints the commands [cmds] to standard output. *)
 let beautify : ast -> unit = ast Format.std_formatter

@@ -425,10 +425,10 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
         match pt, p_sym_prf with
         | Some pt, None ->
             [Pos.make pt.pos (P_tac_refine pt)],
-            Pos.make (*FIXME?*)p_sym_nam.pos P_proof_end
+            Pos.make (Pos.end_pos cmd.pos) P_proof_end
         | Some pt, Some(ts,pe) -> Pos.make pt.pos (P_tac_refine pt)::ts, pe
         | None, Some(ts,pe) -> ts, pe
-        | None, None -> [], Pos.make (*FIXME?*)p_sym_nam.pos P_proof_end
+        | None, None -> [], Pos.make (Pos.end_pos cmd.pos) P_proof_end
       in
       (* If [ao = Some a], then we check that [a] is typable by a sort and
          that [t] has type [a]. Otherwise, we try to infer the type of

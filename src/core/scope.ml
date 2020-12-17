@@ -337,12 +337,13 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
         in
         begin
           match id with
-          | None     when List.length env = Array.length ts    ->
-              wrn t.pos "Pattern [%a] could be replaced by [_]." Pretty.pp t;
+          | None when List.length env = Array.length ts ->
+              wrn t.pos
+                "Pattern [%a] could be replaced by [_]." Pretty.term t;
           | Some(id) when not (List.mem id.elt d.m_lhs_in_env) ->
               if List.length env = Array.length ts then
                 wrn t.pos "Pattern variable [%a] can be replaced by a \
-                           wildcard [_]." Pretty.pp t
+                           wildcard [_]." Pretty.term t
               else
                 wrn t.pos "Pattern variable [$%s] does not need to be \
                            named." id.elt
