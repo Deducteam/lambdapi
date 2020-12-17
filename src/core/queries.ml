@@ -22,16 +22,18 @@ let handle_query : Sig_state.t -> Proof.t option -> p_query -> unit =
         match asrt with
         | P_assert_typing(pt,pa) ->
           let t = scope pt and a = scope pa and ctxt = Env.to_ctxt env in
+          out 1 "(asrt) %a\n" pp_typing (ctxt, t, a);
           Typing.sort_type ctxt a;
           (try Typing.check ctxt t a with _ -> false)
         | P_assert_conv(pt,pu)   ->
           let t = scope pt and u = scope pu in
+          out 1 "(asrt) %a\n" pp_constr ([], t, u);
           let infer = Typing.infer (Env.to_ctxt env) in
           match (infer t, infer u) with
           | (Some(a), Some(b)) ->
               let pb = {empty_problem with to_solve = [[], a, b]} in
               begin
-                match solve pb with
+                match solve_noexn pb with
                 | None -> fatal q.pos "Infered types are not convertible."
                 | Some [] -> Eval.eq_modulo [] t u
                 | Some cs ->
@@ -43,16 +45,17 @@ let handle_query : Sig_state.t -> Proof.t option -> p_query -> unit =
           | (_      , None   ) ->
               fatal pu.pos "The type of the RHS cannot be infered."
       in
-      if result = must_fail then fatal q.pos "Assertion failed.";
-      out 3 "(asrt) assertion OK\n";
+      if result = must_fail then fatal q.pos "Assertion failed."
   | P_query_debug(e,s)     ->
       (* Just update the option, state not modified. *)
       Console.set_debug e s;
       out 3 "(flag) debug → %s%s\n" (if e then "+" else "-") s
   | P_query_verbose(i)     ->
       (* Just update the option, state not modified. *)
-      Timed.(Console.verbose := i);
-      out 3 "(flag) verbose → %i\n" i
+      if Timed.(!Console.verbose) = 0 then
+        (Timed.(Console.verbose := i); out 1 "(flag) verbose → %i\n" i)
+      else
+        (out 1 "(flag) verbose → %i\n" i; Timed.(Console.verbose := i))
   | P_query_flag(id,b)     ->
       (* We set the value of the flag, if it exists. *)
       begin
@@ -68,7 +71,7 @@ let handle_query : Sig_state.t -> Proof.t option -> p_query -> unit =
         | Some(a) -> Eval.eval cfg [] a
         | None    -> fatal pt.pos "Cannot infer the type of [%a]." pp_term t
       in
-      out 3 "(infr) %a : %a\n" pp_term t pp_term a
+      out 1 "(infr) %a : %a\n" pp_term t pp_term a
   | P_query_normalize(pt, cfg)        ->
       (* Infer a type for [t], and evaluate [t]. *)
       let t = scope pt in
@@ -77,7 +80,7 @@ let handle_query : Sig_state.t -> Proof.t option -> p_query -> unit =
         | Some(_) -> Eval.eval cfg [] t
         | None    -> fatal pt.pos "Cannot infer the type of [%a]." pp_term t
       in
-      out 3 "(comp) %a\n" pp_term v
+      out 1 "(comp) %a\n" pp_term v
   | P_query_prover(s)      ->
       Timed.(Why3_tactic.default_prover := s)
   | P_query_prover_timeout(n)->

@@ -102,7 +102,6 @@
 (defun lambdapi-create-goals-buffer ()
   (let ((goalsbuf (get-buffer-create "*Goals*"))
         (goalswindow (split-window nil nil 'right)))
-        ;; (goalswindow (split-window nil -10 'right)))
     (set-window-buffer goalswindow goalsbuf)
     (set-window-dedicated-p goalswindow 't)))
 
