@@ -100,79 +100,71 @@
           (run-hooks 'changed-line-hook)))))
 
 
-
-
-(defun lambdapi-refresh-window-layout ()
-  "Create *Goals* buffer if it not present. Create a window
-for the goals buffer using the lambdapi-goals-window-* variables
-(defined below)."
-  (interactive)
-  (let* ((goalsbuf (get-buffer-create "*Goals*"))
-         (goalswindow (get-buffer-window goalsbuf))
-         (gwin-height (truncate
-                      (* lambdapi-goals-window-height-ratio
-                         (frame-height))))
-         (gwin-width  (truncate
-                      (* lambdapi-goals-window-width-ratio
-                         (frame-width)))))
-    (if goalswindow
-        (delete-window goalswindow))
-
-    ;; try to display goals in a side window
-    (setq goalswindow
-          (display-buffer-in-side-window
-           goalsbuf
-           `((side . ,lambdapi-goals-window-side)
-             (slot . nil)
-             ,(pcase lambdapi-goals-window-side
-                ((and (or 'right 'left)
-                      (guard (> gwin-width
-                                lambdapi-goals-window-min-width)))
-                 `(window-width . ,gwin-width))
-                ((and (or 'top 'bottom)
-                      (guard (> gwin-height
-                                lambdapi-goals-window-min-height)))
-                 `(window-height . ,gwin-height))))))
-
-    ;; if we failed to display goals window due to constraints
-    ;; display in bottom or right whichever possible
-    (if (not goalswindow)
-        (display-buffer-in-side-window
-           goalsbuf
-           `((side . ,lambdapi-goals-window-side)
-             (slot . nil)
-             ,(pcase lambdapi-goals-window-side
-                ((guard (> gwin-height
-                           lambdapi-goals-window-min-height))
-                 `(window-height . ,gwin-height))
-                ((guard (> gwin-width
-                          lambdapi-goals-window-min-width))
-                 `(window-width . ,gwin-width))))))
-
-    ;; if we succeed in assigning a window
-    (if goalswindow
-        (progn
-          (set-window-buffer goalswindow goalsbuf)
-          (set-window-dedicated-p goalswindow 't)))))
-
-
 (defcustom lambdapi-goals-window-side 'right
   "Side at which to show goals window"
   :options '(right bottom top left)
   :type 'symbol)
 
-(defvar lambdapi-goals-window-height-ratio 0.20
-  "Ratio of height taken by Goals window if split right or left")
+(defvar lambdapi-goals-window-height-ratio 0.30
+  "Ratio of height taken by Goals window if split top or bottom")
 
-(defvar lambdapi-goals-window-width-ratio 0.1
-  "Ratio of width taken by Goals window if split top or bottom")
+(defvar lambdapi-goals-window-width-ratio 0.5
+  "Ratio of width taken by Goals window if split left or right")
 
-(defvar lambdapi-goals-window-min-width 30
+(defvar lambdapi-goals-window-min-width 40
   "Minimum width of Goals window")
 
 (defvar lambdapi-goals-window-min-height 4
   "Minimum height of Goals window")
 
+
+(defun lambdapi-refresh-window-layout ()
+  "Create *Goals* buffer if it not present. Create a side window
+for the goals buffer using the lambdapi-goals-window-* variables."
+  (interactive)
+  (let* ((goalsbuf (get-buffer-create "*Goals*"))
+	 (goalswindow (get-buffer-window goalsbuf))
+	 (gwin-height (truncate
+		       (* lambdapi-goals-window-height-ratio
+			  (frame-height))))
+	 (gwin-width (truncate
+		      (* lambdapi-goals-window-width-ratio
+			 (frame-width)))))
+    ;; Allocate window for *Goals* buffer
+    (if goalswindow
+	(delete-window goalswindow))
+    (setq goalswindow
+	  (display-buffer-in-side-window
+	   goalsbuf
+	   `((side . ,lambdapi-goals-window-side)
+	     (slot . nil)
+	     ,(pcase lambdapi-goals-window-side
+		((or 'right 'left)
+		 `(window-width . ,gwin-width))
+		((or 'top 'bottom)
+		 `(window-height . ,gwin-height))))))
+    ;; if goals window violated lambdapi-goals-window-min-*
+    ;; allocate a new window
+    (if (and goalswindow
+	     (< (window-width goalswindow)
+		lambdapi-goals-window-min-width))
+	(progn
+	  (delete-window goalswindow)
+	  (setq goalswindow
+		(display-buffer-in-side-window
+		 goalsbuf `((side . bottom)
+			    (slot . nil)
+			    (window-height . ,gwin-height))))))
+    (if (and goalswindow
+	     (< (window-height goalswindow)
+		lambdapi-goals-window-min-height))
+	(progn
+	  (delete-window goalswindow)
+	  (setq goalswindow
+		(display-buffer-in-side-window
+		 goalsbuf `((side . right)
+			    (slot . nil)
+			    (window-width . ,gwin-width))))))))
 
 
 (defvar lambdapi-mode-map nil "Keymap for `lambdapi-mode'")
