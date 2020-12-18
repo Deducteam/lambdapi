@@ -177,7 +177,8 @@ for the goals buffer using the lambdapi-goals-window-* variables."
   (define-key lambdapi-mode-map (kbd "C-c C-p") #'lp-proof-backward)
   (define-key lambdapi-mode-map (kbd "C-c C-n") #'lp-proof-forward)
   (define-key lambdapi-mode-map (kbd "C-c C-f") #'lp-jump-proof-forward)
-  (define-key lambdapi-mode-map (kbd "C-c C-b") #'lp-jump-proof-backward))
+  (define-key lambdapi-mode-map (kbd "C-c C-b") #'lp-jump-proof-backward)
+  (define-key lambdapi-mode-map (kbd "C-c C-r") #'lambdapi-refresh-window-layout))
 
 
 ;; Main function creating the mode (lambdapi)
