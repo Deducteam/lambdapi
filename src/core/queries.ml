@@ -48,13 +48,13 @@ let handle_query : Sig_state.t -> Proof.t option -> p_query -> unit =
           (* Check that [t] and [u] have the same type. *)
           match solve_noexn {empty_problem with to_solve = [ctxt,a,b]} with
           | None ->
-              fatal q.pos "[%a] has type [%a]\n[%a] has type [%a]\n\
-                         The two types are not unifiable."
+              fatal q.pos "[%a] has type [%a].\n[%a] has type [%a].\n\
+                           Those two types are not unifiable."
                 pp_term t pp_term a pp_term u pp_term b
           | Some ((_::_) as cs) ->
               List.iter (wrn q.pos "Cannot solve [%a].\n" pp_constr) cs;
               fatal q.pos "[%a] has type [%a]\n[%a] has type [%a]\n\
-                         The two types are not unifiable."
+                           Those two types are not unifiable."
                 pp_term t pp_term a pp_term u pp_term b
           | Some [] ->
               if Eval.eq_modulo ctxt t u = must_fail then

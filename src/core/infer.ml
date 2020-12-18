@@ -160,7 +160,7 @@ let rec infer : ctxt -> term -> term = fun ctx t ->
       begin
         match unfold b with
         | Kind ->
-            fatal_msg "Abstraction on [%a] is not allowed. " Print.pp_term t;
+            wrn None "Abstraction on [%a] is not allowed." Print.pp_term t;
             raise NotTypable
         | _ -> Prod(a, Bindlib.unbox (Bindlib.bind_var x (lift b)))
       end
