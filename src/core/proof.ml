@@ -8,7 +8,6 @@ open Terms
 open Print
 open Console
 open Pos
-open Infer
 
 (** Abstract representation of a goal. *)
 module Goal =
@@ -88,7 +87,7 @@ let goals_of_typ : popt -> term option -> term option -> Goal.t list * term =
     match typ, ter with
     | Some(typ), Some(ter) ->
         begin
-          match infer_noexn [] typ with
+          match Infer.infer_noexn [] typ with
           | None -> fatal pos "[%a] is not typable." pp_term typ
           | Some(sort, to_solve1) ->
               let to_solve2 =
@@ -107,14 +106,14 @@ let goals_of_typ : popt -> term option -> term option -> Goal.t list * term =
         end
     | None, Some(ter) ->
         begin
-          match infer_noexn [] ter with
+          match Infer.infer_noexn [] ter with
           | None -> fatal pos "[%a] is not typable." pp_term ter
           | Some (typ, to_solve2) ->
               let to_solve1 =
                 match unfold typ with
                 | Kind -> fatal pos "Kind definitions are not allowed."
                 | _ ->
-                    match infer_noexn [] typ with
+                    match Infer.infer_noexn [] typ with
                     | None ->
                         fatal pos "[%a] has type [%a] which is not typable"
                           pp_term ter pp_term typ
@@ -131,7 +130,7 @@ let goals_of_typ : popt -> term option -> term option -> Goal.t list * term =
         end
     | Some(typ), None ->
         begin
-          match infer_noexn [] typ with
+          match Infer.infer_noexn [] typ with
           | None -> fatal pos "[%a] is not typable." pp_term typ
           | Some (sort, to_solve) ->
               match unfold sort with

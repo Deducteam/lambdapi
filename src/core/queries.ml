@@ -3,7 +3,6 @@
 open Console
 open Pos
 open Syntax
-open Unif
 open Terms
 open Print
 
@@ -22,31 +21,25 @@ let handle_query : Sig_state.t -> Proof.t option -> p_query -> unit =
       begin
       match asrt with
       | P_assert_typing(pt,pa) ->
-          begin
-            let t = scope pt and a = scope pa in
-            out 1 "(asrt) it is %b that %a\n" (not must_fail)
-              pp_typing (ctxt, t, a);
-            (* Check that [a] is typable by a sort. *)
-            match unfold (infer q.pos ctxt a) with
-            | Type | Kind ->
-                (* Check that [t] is of type [a]. *)
-                let result =
-                  try check q.pos ctxt t a; true with Fatal _ -> false
-                in if result = must_fail then fatal q.pos "Assertion failed."
-            | s -> fatal q.pos "[%a] has type [%a] and not a sort."
-                     pp_term a pp_term s
-          end
+          let t = scope pt and a = scope pa in
+          out 1 "(asrt) it is %b that %a\n" (not must_fail)
+            pp_typing (ctxt, t, a);
+          (* Check that [a] is typable by a sort. *)
+          Unif.check_sort q.pos ctxt a;
+          let result =
+            try Unif.check q.pos ctxt t a; true with Fatal _ -> false
+          in if result = must_fail then fatal q.pos "Assertion failed."
       | P_assert_conv(pt,pu)   ->
-          begin
           let t = scope pt and u = scope pu in
           out 1 "(asrt) it is %b that %a\n" (not must_fail)
             pp_constr (ctxt, t, u);
           (* Check that [t] is typable. *)
-          let a = infer pt.pos ctxt t in
+          let a = Unif.infer pt.pos ctxt t in
           (* Check that [u] is typable. *)
-          let b = infer pu.pos ctxt u in
+          let b = Unif.infer pu.pos ctxt u in
           (* Check that [t] and [u] have the same type. *)
-          match solve_noexn {empty_problem with to_solve = [ctxt,a,b]} with
+          let to_solve = [ctxt,a,b] in
+          match Unif.(solve_noexn {empty_problem with to_solve}) with
           | None ->
               fatal q.pos "[%a] has type [%a].\n[%a] has type [%a].\n\
                            Those two types are not unifiable."
@@ -59,7 +52,6 @@ let handle_query : Sig_state.t -> Proof.t option -> p_query -> unit =
           | Some [] ->
               if Eval.eq_modulo ctxt t u = must_fail then
                 fatal q.pos "Assertion failed."
-          end
       end
   | P_query_debug(e,s)     ->
       (* Just update the option, state not modified. *)
@@ -81,13 +73,13 @@ let handle_query : Sig_state.t -> Proof.t option -> p_query -> unit =
   | P_query_infer(pt, cfg) ->
       (* Infer the type of [pt]. *)
       let t = scope pt in
-      let a = infer pt.pos ctxt t in
+      let a = Unif.infer pt.pos ctxt t in
       out 1 "(infr) %a : %a\n" pp_term t pp_term (Eval.eval cfg ctxt a)
   | P_query_normalize(pt, cfg)        ->
       (* Normalize [pt]. *)
       let t = scope pt in
       (* Check that [t] is typable. *)
-      ignore (infer pt.pos ctxt t);
+      ignore (Unif.infer pt.pos ctxt t);
       out 1 "(comp) %a\n" pp_term (Eval.eval cfg ctxt t)
   | P_query_prover(s)      ->
       Timed.(Why3_tactic.default_prover := s)
