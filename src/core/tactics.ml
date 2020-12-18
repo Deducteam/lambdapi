@@ -92,7 +92,7 @@ let handle_tactic :
     if Basics.occurs m t then fatal tac.pos "Circular refinement.";
     (* Check that [t] is well-typed. *)
     log_tact "proving %a" pp_typing (Env.to_ctxt env, t, a);
-    match Infer.check (Env.to_ctxt env) t a with
+    match Infer.check_noexn (Env.to_ctxt env) t a with
     | None -> fatal tac.pos "[%a] cannot have type [%a]." pp_term t pp_term a
     | Some to_solve ->
     let gs_unif = List.map Goal.unif to_solve in
@@ -129,7 +129,7 @@ let handle_tactic :
       let t = scope pt in
       (* Compute the product arity of the type of [t]. *)
       let n =
-        match Infer.infer (Env.to_ctxt env) t with
+        match Infer.infer_noexn (Env.to_ctxt env) t with
         | None -> fatal tac.pos "[%a] is not typable." pp_term t
         | Some (a, to_solve) -> Basics.count_products a
       in

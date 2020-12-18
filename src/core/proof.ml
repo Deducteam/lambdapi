@@ -8,6 +8,7 @@ open Terms
 open Print
 open Console
 open Pos
+open Infer
 
 (** Abstract representation of a goal. *)
 module Goal =
@@ -87,14 +88,14 @@ let goals_of_typ : popt -> term option -> term option -> Goal.t list * term =
     match typ, ter with
     | Some(typ), Some(ter) ->
         begin
-          match Infer.infer [] typ with
+          match infer_noexn [] typ with
           | None -> fatal pos "[%a] is not typable." pp_term typ
           | Some(sort, to_solve1) ->
               let to_solve2 =
                 match unfold sort with
                 | Type | Kind ->
                     begin
-                      match Infer.check [] ter typ with
+                      match Infer.check_noexn [] ter typ with
                       | None -> fatal pos "[%a] cannot have type [%a]"
                                   pp_term ter pp_term typ
                       | Some cs -> cs
@@ -106,14 +107,14 @@ let goals_of_typ : popt -> term option -> term option -> Goal.t list * term =
         end
     | None, Some(ter) ->
         begin
-          match Infer.infer [] ter with
+          match infer_noexn [] ter with
           | None -> fatal pos "[%a] is not typable." pp_term ter
           | Some (typ, to_solve2) ->
               let to_solve1 =
                 match unfold typ with
                 | Kind -> fatal pos "Kind definitions are not allowed."
                 | _ ->
-                    match Infer.infer [] typ with
+                    match infer_noexn [] typ with
                     | None ->
                         fatal pos "[%a] has type [%a] which is not typable"
                           pp_term ter pp_term typ
@@ -130,7 +131,7 @@ let goals_of_typ : popt -> term option -> term option -> Goal.t list * term =
         end
     | Some(typ), None ->
         begin
-          match Infer.infer [] typ with
+          match infer_noexn [] typ with
           | None -> fatal pos "[%a] is not typable." pp_term typ
           | Some (sort, to_solve) ->
               match unfold sort with

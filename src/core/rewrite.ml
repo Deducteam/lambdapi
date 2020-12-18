@@ -320,17 +320,7 @@ let rewrite : Sig_state.t -> popt -> Proof.t -> bool -> rw_patt option -> term
 
   (* Infer the type of [t] (the argument given to the tactic). *)
   let g_ctxt = Env.to_ctxt g_env in
-  let t_type =
-    match Infer.infer g_ctxt t with
-    | None    -> fatal pos "[%a] is not typable." pp_term t
-    | Some(a, to_solve) ->
-    match Unif.(solve_noexn {empty_problem with to_solve}) with
-    | None -> fatal pos "[%a] is not typable." pp_term a
-    | Some [] -> a
-    | Some cs ->
-        List.iter (fatal_msg "Cannot solve [%a].\n" pp_constr) cs;
-        fatal pos "[%a] is not typable." pp_term a
-  in
+  let t_type = Unif.infer pos g_ctxt t in
 
   (* Check that the type of [t] is of the form “P (eq a l r)”. *)
   let (t_type, vars) = break_prod t_type in

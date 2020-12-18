@@ -150,7 +150,7 @@ let handle_symbol :
   (* We scope the type of the declaration. *)
   let a = scope_basic e a in
   (* We check that [a] is typable by a sort. *)
-  match Infer.infer [] a with
+  match Infer.infer_noexn [] a with
   | None -> fatal x.pos "[%a] is not typable." pp_term a
   | Some(sort, to_solve) ->
   match Unif.(solve_noexn {empty_problem with to_solve}) with

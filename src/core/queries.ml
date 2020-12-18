@@ -26,33 +26,15 @@ let handle_query : Sig_state.t -> Proof.t option -> p_query -> unit =
             let t = scope pt and a = scope pa in
             out 1 "(asrt) it is %b that %a\n" (not must_fail)
               pp_typing (ctxt, t, a);
-          (* Check that [a] is typable by a sort. *)
-          match Infer.infer ctxt a with
-          | None -> fatal q.pos "[%a] is not typable." pp_term a
-          | Some(sort, to_solve) ->
-          match solve_noexn {empty_problem with to_solve} with
-          | None -> fatal q.pos "[%a] is not typable." pp_term a
-          | Some ((_::_) as cs) ->
-              List.iter (wrn q.pos "Cannot solve [%a].\n" pp_constr) cs;
-              fatal q.pos "[%a] may be not typable." pp_term a
-          | Some [] ->
-          match unfold sort with
-          | Type | Kind ->
-              (* Check that [t] is of type [a]. *)
-              let result =
-                match Infer.check ctxt t a with
-                | None -> false
-                | Some to_solve ->
-                    match solve_noexn {empty_problem with to_solve} with
-                    | None -> false
-                    | Some cs ->
-                        List.iter
-                          (wrn q.pos "Cannot solve [%a].\n" pp_constr) cs;
-                        cs = []
-              in
-              if result = must_fail then fatal q.pos "Assertion failed."
-          | _ -> fatal q.pos "[%a] has type [%a] and not a sort."
-                   pp_term a pp_term sort
+            (* Check that [a] is typable by a sort. *)
+            match unfold (infer q.pos ctxt a) with
+            | Type | Kind ->
+                (* Check that [t] is of type [a]. *)
+                let result =
+                  try check q.pos ctxt t a; true with Fatal _ -> false
+                in if result = must_fail then fatal q.pos "Assertion failed."
+            | s -> fatal q.pos "[%a] has type [%a] and not a sort."
+                     pp_term a pp_term s
           end
       | P_assert_conv(pt,pu)   ->
           begin
@@ -60,25 +42,9 @@ let handle_query : Sig_state.t -> Proof.t option -> p_query -> unit =
           out 1 "(asrt) it is %b that %a\n" (not must_fail)
             pp_constr (ctxt, t, u);
           (* Check that [t] is typable. *)
-          match Infer.infer ctxt t with
-          | None -> fatal q.pos "[%a] is not typable." pp_term t
-          | Some(a, to_solve) ->
-          match Unif.(solve_noexn {empty_problem with to_solve}) with
-          | None -> fatal q.pos "[%a] is not typable." pp_term t
-          | Some ((_::_) as cs) ->
-              List.iter (wrn q.pos "Cannot solve [%a].\n" pp_constr) cs;
-              fatal q.pos "[%a] may be not typable." pp_term t
-          | Some [] ->
+          let a = infer pt.pos ctxt t in
           (* Check that [u] is typable. *)
-          match Infer.infer ctxt u with
-          | None -> fatal q.pos "[%a] is not typable." pp_term u
-          | Some(b, to_solve) ->
-          match Unif.(solve_noexn {empty_problem with to_solve}) with
-          | None -> fatal q.pos "[%a] is not typable." pp_term u
-          | Some ((_::_) as cs) ->
-              List.iter (wrn q.pos "Cannot solve [%a].\n" pp_constr) cs;
-              fatal q.pos "[%a] may be not typable." pp_term u
-          | Some [] ->
+          let b = infer pu.pos ctxt u in
           (* Check that [t] and [u] have the same type. *)
           match solve_noexn {empty_problem with to_solve = [ctxt,a,b]} with
           | None ->
@@ -113,35 +79,16 @@ let handle_query : Sig_state.t -> Proof.t option -> p_query -> unit =
       end;
       out 3 "(flag) %s → %b\n" id b
   | P_query_infer(pt, cfg) ->
-      (* Infer the type of [t]. *)
-      begin
+      (* Infer the type of [pt]. *)
       let t = scope pt in
-      match Infer.infer ctxt t with
-      | None -> fatal pt.pos "[%a] is not typable." pp_term t
-      | Some(a, to_solve) ->
-      match solve_noexn {empty_problem with to_solve} with
-      | None -> fatal q.pos "[%a] is not typable." pp_term t
-      | Some ((_::_) as cs) ->
-          List.iter (wrn q.pos "Cannot solve [%a].\n" pp_constr) cs;
-          fatal q.pos "[%a] is not typable." pp_term t
-      | Some [] ->
-          out 1 "(infr) %a : %a\n" pp_term t pp_term (Eval.eval cfg ctxt a)
-      end
+      let a = infer pt.pos ctxt t in
+      out 1 "(infr) %a : %a\n" pp_term t pp_term (Eval.eval cfg ctxt a)
   | P_query_normalize(pt, cfg)        ->
-      (* Normalize [t]. *)
-      begin
+      (* Normalize [pt]. *)
       let t = scope pt in
-      match Infer.infer ctxt t with
-      | None -> fatal pt.pos "[%a] is not typable." pp_term t
-      | Some(a, to_solve) ->
-      match solve_noexn {empty_problem with to_solve} with
-      | None -> fatal q.pos "[%a] is not typable." pp_term t
-      | Some ((_::_) as cs) ->
-          List.iter (wrn q.pos "Cannot solve [%a].\n" pp_constr) cs;
-          fatal q.pos "[%a] is not typable." pp_term t
-      | Some [] ->
-          out 1 "(comp) %a\n" pp_term (Eval.eval cfg ctxt t)
-      end
+      (* Check that [t] is typable. *)
+      ignore (infer pt.pos ctxt t);
+      out 1 "(comp) %a\n" pp_term (Eval.eval cfg ctxt t)
   | P_query_prover(s)      ->
       Timed.(Why3_tactic.default_prover := s)
   | P_query_prover_timeout(n)->

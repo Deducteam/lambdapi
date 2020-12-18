@@ -220,11 +220,11 @@ and check : ctxt -> term -> term -> unit = fun ctx t a ->
     log_infr "check %a%a : %a" pp_ctxt ctx pp_term t pp_term a;
   conv ctx (infer ctx t) a
 
-(** [infer ctx t] returns [None] if the type of [t] in context [ctx] cannot be
-   infered, or [Some(a,cs)] where [a] is some type of [t] in the context [ctx]
-   if the constraints [cs] are satisfiable (which may not be the case). [ctx]
-   must well sorted. *)
-let infer : ctxt -> term -> (term * constr list) option = fun ctx t ->
+(** [infer_noexn ctx t] returns [None] if the type of [t] in context [ctx]
+   cannot be infered, or [Some(a,cs)] where [a] is some type of [t] in the
+   context [ctx] if the constraints [cs] are satisfiable (which may not be the
+   case). [ctx] must well sorted. *)
+let infer_noexn : ctxt -> term -> (term * constr list) option = fun ctx t ->
   let res =
     try
       Stdlib.(constraints := []);
@@ -240,11 +240,11 @@ let infer : ctxt -> term -> (term * constr list) option = fun ctx t ->
     with NotTypable -> None
   in Stdlib.(constraints := []); res
 
-(** [check ctx t a] returns [None] if [t] does not have type [a] in context
-   [ctx] and [Some(cs)] where [cs] is a list of constraints under which [t]
-   may have type [a] (but constraints may be unsatisfiable). The context [ctx]
-   and the type [a] must be well sorted. *)
-let check : ctxt -> term -> term -> constr list option = fun ctx t a ->
+(** [check_noexn ctx t a] returns [None] if [t] does not have type [a] in
+   context [ctx] and [Some(cs)] where [cs] is a list of constraints under
+   which [t] may have type [a] (but constraints may be unsatisfiable). The
+   context [ctx] and the type [a] must be well sorted. *)
+let check_noexn : ctxt -> term -> term -> constr list option = fun ctx t a ->
   let res =
     try
       Stdlib.(constraints := []);
