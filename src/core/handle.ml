@@ -150,7 +150,15 @@ let handle_symbol :
   (* We scope the type of the declaration. *)
   let a = scope_basic e a in
   (* We check that [a] is typable by a sort. *)
-  Typing.sort_type [] a;
+  match Infer.infer [] a with
+  | None -> fatal x.pos "[%a] is not typable." pp_term a
+  | Some(sort, to_solve) ->
+  match Unif.(solve_noexn {empty_problem with to_solve}) with
+  | None -> fatal x.pos "[%a] is not typable." pp_term a
+  | Some ((_::_) as cs) ->
+      List.iter (fatal_msg "Cannot solve [%a].\n" pp_constr) cs;
+      fatal x.pos "[%a] is not typable." pp_term a
+  | Some [] ->
   (* We check that no metavariable remains. *)
   if Basics.has_metas true a then
     begin

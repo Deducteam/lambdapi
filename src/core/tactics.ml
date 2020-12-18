@@ -92,7 +92,9 @@ let handle_tactic :
     if Basics.occurs m t then fatal tac.pos "Circular refinement.";
     (* Check that [t] is well-typed. *)
     log_tact "proving %a" pp_typing (Env.to_ctxt env, t, a);
-    let to_solve = Infer.check (Env.to_ctxt env) t a in
+    match Infer.check (Env.to_ctxt env) t a with
+    | None -> fatal tac.pos "[%a] cannot have type [%a]." pp_term t pp_term a
+    | Some to_solve ->
     let gs_unif = List.map Goal.unif to_solve in
     (* Instantiation. Use Unif.instantiate instead ? *)
     Meta.set m (Bindlib.unbox (Bindlib.bind_mvar (Env.vars env) (lift t)));
@@ -125,21 +127,20 @@ let handle_tactic :
       handle_refine ps (scope pt)
   | P_tac_apply(pt)      ->
       let t = scope pt in
-      (* Infer the type of [t] and count the number of products. *)
-      (* NOTE there is room for improvement here. *)
-      let (a, to_solve) = Infer.infer (Env.to_ctxt env) t in
-      let goal_sort_unif = List.map Goal.unif to_solve in
-      let ps = {ps with proof_goals = goal_sort_unif @ ps.proof_goals} in
-      let nb = Basics.count_products a in
-      (* Refine using [t] applied to [nb] wildcards (metavariables). *)
-      (* NOTE it is scoping that handles wildcards as metavariables. *)
-      let rec add_wilds pt n =
-        match n with
-        | 0 -> scope pt
-        | _ -> add_wilds (Pos.none (P_Appl(pt, Pos.none P_Wild))) (n-1)
+      (* Compute the product arity of the type of [t]. *)
+      let n =
+        match Infer.infer (Env.to_ctxt env) t with
+        | None -> fatal tac.pos "[%a] is not typable." pp_term t
+        | Some (a, to_solve) -> Basics.count_products a
       in
-      let tt = add_wilds pt nb in
-      handle_refine ps tt
+      (* Refine the goal with [pt] applied to [n] wildcards. *)
+      let rec add_wilds pt n =
+        if n <= 0 then pt
+        else add_wilds (Pos.none (P_Appl(pt, Pos.none P_Wild))) (n-1)
+      in
+      (*FIXME: this code does not take into account implicit arguments*)
+      let t = if n <= 0 then t else scope (add_wilds pt n) in
+      handle_refine ps t
   | P_tac_simpl         ->
       let new_goal_typ = Goal.Typ (Goal.simpl gt) in
       let proof_goals = pre_g @ new_goal_typ :: post_g in

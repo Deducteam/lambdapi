@@ -173,30 +173,32 @@ let instantiate : ctxt -> meta -> term array ->
   fun ctx m ts u initial ->
   match instantiation ctx m ts u with
   | Some(bu) when Bindlib.is_closed bu ->
-    let m_app =
-      match Infer.type_app ctx !(m.meta_type) (Array.to_list ts) with
-      | Some a -> a
-      | None -> assert false
-    in
-    let constrs = Infer.check ctx u m_app in
-    let is_initial constr = List.exists (Eval.eq_constr constr) initial in
-    let new_constr = List.filter
-        (function constr -> not (is_initial constr)) constrs
-    in
-    begin
-      match (new_constr <> [],Stdlib.(!g_type_check)) with
-      | false,_ ->
-        if !log_enabled then log_unif (gre "no new constraints");
-        if !log_enabled then log_unif (yel "%a ≔ %a") pp_meta m pp_term u;
-        Meta.set m (Bindlib.unbox bu); true
-      | true,NoTypeCheck ->
-        if !log_enabled then log_unif (yel "new constraints unknown ignored");
-        if !log_enabled then log_unif (yel "%a ≔ %a") pp_meta m pp_term u;
-        Meta.set m (Bindlib.unbox bu); true
-      | true,TypeCheckInstanciation ->
-        if !log_enabled then log_unif (red "new constraints unknown");
-        false
-    end
+      begin
+        let typ_mts =
+          match Infer.type_app ctx !(m.meta_type) (Array.to_list ts) with
+          | Some a -> a
+          | None -> assert false
+        in
+        match Infer.check ctx u typ_mts with
+        | None -> false
+        | Some cs ->
+            let is_initial c = List.exists (Eval.eq_constr c) initial in
+            let cs = List.filter (fun c -> not (is_initial c)) cs in
+            match cs <> [], Stdlib.(!g_type_check) with
+            | false,_ ->
+                if !log_enabled then
+                  (log_unif (gre "no new constraints");
+                   log_unif (yel "%a ≔ %a") pp_meta m pp_term u);
+                Meta.set m (Bindlib.unbox bu); true
+            | true, NoTypeCheck ->
+                if !log_enabled then
+                  (log_unif (yel "new constraints ignored");
+                   log_unif (yel "%a ≔ %a") pp_meta m pp_term u);
+                Meta.set m (Bindlib.unbox bu); true
+            | true, TypeCheckInstanciation ->
+                if !log_enabled then log_unif (red "new constraints");
+                false
+      end
   | _ -> false
 
 (** [solve p] tries to solve the unification problem [p] and

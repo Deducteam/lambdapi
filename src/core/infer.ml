@@ -10,14 +10,15 @@ open Print
 let log_infr = new_logger 'i' "infr" "type inference/checking"
 let log_infr = log_infr.logger
 
-(** [destruct_prod n prod] returns a tuple [(env, a)] where [a] is constructed
-    from the term [prod] by destructing (i.e., by unbinding with the [Bindlib]
-    terminology) a total [n] dependent products. The free variables created by
-    the process are are given (with their types) in the environment [env]. The
-    function raises [Invalid_argument] if [prod] does not evaluate to a series
-    of (at least) [n] product types. Intuitively, if the term [prod] is of the
-    form [∀ (x1:a1) ⋯ (xn:an), a] then the function (roughly) returns [a], and
-    the environment [(xn, an) ; ⋯ ; (x1, a1)]. *)
+(** [destruct_prod n prod] returns a tuple [(env,a)] where [a] is constructed
+   from the term [prod] by destructing (i.e., by unbinding with the [Bindlib]
+   terminology) [n] dependent products. The free variables created by this
+   process are given (with their types) in the environment [env] (in reverse
+   order). The function raises [Invalid_argument] if [prod] does not evaluate
+   to a series of (at least) [n] product types. Intuitively, if the term
+   [prod] is of the form [Πx1:a1, ⋯, Πxn:an, a] then the function (roughly)
+   returns [a], and the environment [(xn,an); ⋯;(x1,a1)] (note the reserve
+   order). *)
 let destruct_prod : int -> term -> env * term = fun n t ->
   let rec build_env i env t =
     if i >= n then (env, t) else
@@ -29,13 +30,13 @@ let destruct_prod : int -> term -> env * term = fun n t ->
   in
   build_env 0 [] t
 
-(** Given a metavariable [m] of arity [n] and type [∀x1:A1,..,∀xn:An,B] (with
+(** Given a metavariable [m] of arity [n] and type [Πx1:A1,..,Πxn:An,B] (with
    [B] being a sort normally), [extend_meta_type m] returns
-   [m[x1,..,xn],(∀y:p,q),bp,bq] where p=m1[x1,..,xn], q=m2[x1,..,xn,y], bp is
+   [m[x1,..,xn],(Πy:p,q),bp,bq] where p=m1[x1,..,xn], q=m2[x1,..,xn,y], bp is
    a mbinder of [x1,..,xn] over p, and bq is a mbinder of [x1,..,xn] over q,
    where [y] is a fresh variable, and [m1] and [m2] are fresh metavariables of
-   arity [n] and [n+1], and type [∀x1:A1,..,∀xn:An,TYPE] and
-   [∀x1:A1,..,∀xn:An,∀y:m1[x1,..,xn],B] respectively. *)
+   arity [n] and [n+1], and type [Πx1:A1,..,Πxn:An,TYPE] and
+   [Πx1:A1,..,Πxn:An,Πy:m1[x1,..,xn],B] respectively. *)
 let extend_meta_type : meta -> env * term * term *
     tmbinder * (term, tbinder) Bindlib.mbinder = fun m ->
   let n = m.meta_arity in
@@ -92,13 +93,15 @@ let conv ctx a b =
     end
 
 (** Exception that may be raised by type inference. *)
-exception Invalid_Abst
+exception NotTypable
 
-(** [infer ctx t] infers a type for the term [t] in context [ctx], possibly
-   under some constraints recorded in [constraints] using [conv]. The returned
-   type is well-sorted if recorded unification constraints are
-   satisfisfiable. [ctx] must be well-formed.
-@raise Invalid_Abst when encountering an abstraction over a kind. *)
+(** [infer ctx t] tries to infer a type for the term [t] in context [ctx],
+   possibly under some constraints recorded in [constraints] using [conv]. The
+   returned type is well-sorted if the recorded constraints are
+   satisfied. [ctx] must be well sorted.
+
+@raise NotTypable when the term is not typable (when encountering an
+   abstraction over a kind). *)
 let rec infer : ctxt -> term -> term = fun ctx t ->
   if !log_enabled then log_infr "infer %a%a" pp_ctxt ctx pp_term t;
   match unfold t with
@@ -158,7 +161,7 @@ let rec infer : ctxt -> term -> term = fun ctx t ->
         match unfold b with
         | Kind ->
             fatal_msg "Abstraction on [%a] is not allowed. " Print.pp_term t;
-            raise Invalid_Abst
+            raise NotTypable
         | _ -> Prod(a, Bindlib.unbox (Bindlib.bind_var x (lift b)))
       end
 
@@ -217,37 +220,42 @@ and check : ctxt -> term -> term -> unit = fun ctx t a ->
     log_infr "check %a%a : %a" pp_ctxt ctx pp_term t pp_term a;
   conv ctx (infer ctx t) a
 
-(** [infer ctx t] returns a pair [(a,cs)] where [a] is a type for the term [t]
-    in the context [ctx] under unification constraints [cs].  In other words,
-    the constraints of [cs] must be satisfied for [t] to have type [a]. [ctx]
-    must be well-formed. This function never fails (but constraints may be
-    unsatisfiable). *)
-let infer : ctxt -> term -> term * constr list = fun ctx t ->
-  Stdlib.(constraints := []);
-  let a = infer ctx t in
-  let constrs = Stdlib.(!constraints) in
-  let constrs = List.sort_uniq Eval.compare_constr constrs in
-  if !log_enabled then
-    begin
-      log_infr (gre "infer %a : %a") pp_term t pp_term a;
-      List.iter (log_infr "  if %a" pp_constr) constrs;
-    end;
-  Stdlib.(constraints := []);
-  (a, constrs)
+(** [infer ctx t] returns [None] if the type of [t] in context [ctx] cannot be
+   infered, or [Some(a,cs)] where [a] is some type of [t] in the context [ctx]
+   if the constraints [cs] are satisfiable (which may not be the case). [ctx]
+   must well sorted. *)
+let infer : ctxt -> term -> (term * constr list) option = fun ctx t ->
+  let res =
+    try
+      Stdlib.(constraints := []);
+      let a = infer ctx t in
+      let cs = Stdlib.(!constraints) in
+      let cs = List.sort_uniq Eval.compare_constr cs in
+      if !log_enabled then
+        begin
+          log_infr (gre "infer %a : %a") pp_term t pp_term a;
+          List.iter (log_infr "  if %a" pp_constr) cs;
+        end;
+      Some (a,cs)
+    with NotTypable -> None
+  in Stdlib.(constraints := []); res
 
-(** [check ctx t a] checks returns a list [cs] of unification
-   constraints for [t] to be of type [a] in the context [ctx]. The
-   context [ctx] must be well-typed, and the type [c]
-   well-sorted. This function never fails (but constraints may be
-   unsatisfiable). *)
-let check : ctxt -> term -> term -> constr list = fun ctx t a ->
-  Stdlib.(constraints := []);
-  check ctx t a;
-  let constrs = Stdlib.(!constraints) in
-  if !log_enabled then
-    begin
-      log_infr (gre "check %a : %a") pp_term t pp_term a;
-      List.iter (log_infr "  if %a" pp_constr) constrs;
-    end;
-  Stdlib.(constraints := []);
-  constrs
+(** [check ctx t a] returns [None] if [t] does not have type [a] in context
+   [ctx] and [Some(cs)] where [cs] is a list of constraints under which [t]
+   may have type [a] (but constraints may be unsatisfiable). The context [ctx]
+   and the type [a] must be well sorted. *)
+let check : ctxt -> term -> term -> constr list option = fun ctx t a ->
+  let res =
+    try
+      Stdlib.(constraints := []);
+      check ctx t a;
+      let cs = Stdlib.(!constraints) in
+      if !log_enabled then
+        begin
+          log_infr (gre "check %a : %a") pp_term t pp_term a;
+          List.iter (log_infr "  if %a" pp_constr) cs;
+        end;
+      Stdlib.(constraints := []);
+      Some cs
+    with NotTypable -> None
+  in Stdlib.(constraints := []); res
