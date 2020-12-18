@@ -1,0 +1,18 @@
+The content of this folder is a test suite on set option.
+More precisely, here we check the commands:
+  - set unif_rule ?
+  - set verbose   ?
+  - set debug     ?
+  - set builtin
+  - set prefix
+  - set infix
+  - set prover ?
+  - set prover_timeout ?
+  - set declared
+  - set flag eta_equality
+             print_domains   ?
+             print_implicits ?
+             print_meta_type ?
+             print_contexts  ?
+             print_domains   ?
+  - set quantifier

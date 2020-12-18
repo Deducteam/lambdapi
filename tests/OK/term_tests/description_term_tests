@@ -1,0 +1,6 @@
+The content of this folder is a lot of tests on terms.
+More precisely, here we check:
+  - implicit argument
+  - lambda construction
+  - let construction
+  - wildcard

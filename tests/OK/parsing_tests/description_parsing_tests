@@ -1,0 +1,4 @@
+The content of this folder is a test suite on parsing.
+More precisely, here we check:
+  - empty file
+  - escaped identifier

@@ -1,0 +1,5 @@
+The content of this folder is a test suite on imports.
+More precisely, here we check the commands:
+  - require
+  - require as
+  - open

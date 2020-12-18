@@ -1,0 +1,4 @@
+#REQUIRE tests.OK.require_open_tests.dummy1.
+
+[n, m] tests.OK.require_open_tests.dummy1.plus (tests.OK.require_open_tests.dummy1.s n) m
+         --> tests.OK.require_open_tests.dummy1.s (tests.OK.require_open_tests.dummy1.plus n m).

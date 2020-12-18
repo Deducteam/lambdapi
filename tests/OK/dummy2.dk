@@ -1,4 +1,0 @@
-#REQUIRE tests.OK.dummy1.
-
-[n, m] tests.OK.dummy1.plus (tests.OK.dummy1.s n) m
-         --> tests.OK.dummy1.s (tests.OK.dummy1.plus n m).
