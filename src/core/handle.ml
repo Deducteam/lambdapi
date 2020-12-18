@@ -208,7 +208,7 @@ let data_proof : sig_symbol -> expo -> p_tactic list ->
       wrn pos "Proof aborted."; ss
     | _ ->
       (* We try to solve remaining unification goals. *)
-      let ps = Tactics.solve ps pos in
+      let ps = Tactics.solve_tac ps pos in
       (* We check that no metavariable remains. *)
       if Basics.has_metas true typ then
         begin

@@ -14,28 +14,24 @@ open Timed
 let log_tact = new_logger 't' "tact" "tactics"
 let log_tact = log_tact.logger
 
-(** [solve ps pos] calls the default solve algorithm on the unification
-    goals of the proof state [ps] and fails only if constraints are
-    unsolvable *)
-let solve ps pos =
+(** [solve_tac ps pos] calls the default solve algorithm on the unification
+   goals of the proof state [ps] and fails if constraints are unsolvable. *)
+let solve_tac ps pos =
   try
-    let gs_typ,gs_unif = List.partition Goal.is_typ ps.proof_goals in
+    let gs_typ, gs_unif = List.partition Goal.is_typ ps.proof_goals in
     let to_solve = List.map Goal.get_constr gs_unif in
     let new_cs = Unif.solve {Unif.empty_problem with to_solve} in
     let new_gs_unif = List.map Goal.unif new_cs in
     let goal_has_no_meta_value = function
       | Goal.Unif _ -> true
-      | Goal.Typ gt -> (
+      | Goal.Typ gt ->
           match !(gt.goal_meta.meta_value) with
           | Some _ -> false
           | None -> true
-        )
     in
     let gs_typ = List.filter goal_has_no_meta_value gs_typ in
     {ps with proof_goals = new_gs_unif @ gs_typ}
-  with
-  | Unif.Unsolvable ->
-    fatal pos "Constraints are unsolvable !"
+  with Unif.Unsolvable -> fatal pos "Unsolvable constraints."
 
 (** [handle_tactic ss ps tac] tries to apply the tactic [tac] (in the proof
      state [ps]), and returns the new proof state.  This function fails
@@ -71,7 +67,7 @@ let handle_tactic :
   | P_tac_print
   | P_tac_proofterm
   | P_tac_query(_)      -> assert false (* Handled above. *)
-  | P_unif_solve        -> solve ps tac.pos
+  | P_unif_solve        -> solve_tac ps tac.pos
   | _                   ->
 
   (* Get the unif goals, the first type goal and the following goals *)
@@ -103,7 +99,7 @@ let handle_tactic :
     (* New goals must appear first. *)
     let proof_goals = pre_g @ gs_unif @ new_typ_goals @ post_g in
     let ps = {ps with proof_goals} in
-    solve ps tac.pos
+    solve_tac ps tac.pos
   in
 
   match tac.elt with
