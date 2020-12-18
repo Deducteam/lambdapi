@@ -180,10 +180,12 @@ for the goals buffer using the lambdapi-goals-window-* variables
 ;; define keybindings
 (progn
   (setq lambdapi-mode-map (make-sparse-keymap))
-  (define-key lambdapi-mode-map (kbd "C-c C-c") 'lp-display-goals)
-  (define-key lambdapi-mode-map (kbd "C-c C-i") 'toggle-interactive-goals)
-  (define-key lambdapi-mode-map (kbd "C-c C-p") 'lp-proof-backward)
-  (define-key lambdapi-mode-map (kbd "C-c C-n") 'lp-proof-forward))
+  (define-key lambdapi-mode-map (kbd "C-c C-c") #'lp-display-goals)
+  (define-key lambdapi-mode-map (kbd "C-c C-i") #'toggle-interactive-goals)
+  (define-key lambdapi-mode-map (kbd "C-c C-p") #'lp-proof-backward)
+  (define-key lambdapi-mode-map (kbd "C-c C-n") #'lp-proof-forward)
+  (define-key lambdapi-mode-map (kbd "C-c C-f") #'lp-jump-proof-forward)
+  (define-key lambdapi-mode-map (kbd "C-c C-b") #'lp-jump-proof-backward))
 
 
 ;; Main function creating the mode (lambdapi)

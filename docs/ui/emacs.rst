@@ -161,12 +161,12 @@ is open.
 
 You can toggle the interactive mode with ``C-c C-i``. If you were to do
 so, you still can navigate the proofs with ``C-c C-p`` and ``C-c C-n``,
-and show the goals at the current line with ``C-C C-c``. As always with
-emacs, if you were to be dissatisfied with these keybindings, you can
-change them easily!
+or ``C-c C-b`` and ``C-c C-f``, and show the goals at the current line 
+with ``C-C C-c``. As always with emacs, if you were to be dissatisfied with
+these keybindings, you can change them easily!
 
-To focus a goal, you can click on the goal in the ``*Goals*`` buffer
-or you can run the command ``M-x lp-focus-goal <goal-number>``
+Clicking on a goal in the ``*Goals*`` buffer focuses it in the proof script
+by inserting a ``focus G`` tactic.
 
 CPU usage and deactivation
 ''''''''''''''''''''''''''

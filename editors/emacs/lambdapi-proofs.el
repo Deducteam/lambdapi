@@ -143,6 +143,32 @@ Adds text-properties to make it clickable"
       (hlt-highlight-region 0 (1+ (line-end-position)))
       (lp-display-goals))))
 
+(defun lp-get-next-proof-line (lineNo)
+  "returns line number of next proof"
+  (save-excursion
+    (goto-line (1+ lineNo))
+    (if (not (search-forward "opaque symbol" nil t))
+	(goto-char (point-max)))
+    (line-number-at-pos)))
+
+(defun lp-get-prev-proof-line (lineNo)
+  "returns line number of prev proof"
+  (save-excursion
+    (goto-line lineNo)
+    (if (not (search-backward "opaque symbol" nil t))
+	(goto-char (point-min)))
+    (line-number-at-pos)))
+
+(defun lp-jump-proof-forward ()
+  "Move the proof cursor to the next proof"
+  (interactive)
+  (move-proof-line #'lp-get-next-proof-line))
+
+(defun lp-jump-proof-backward ()
+  "Move the proof cursor to the previous proof"
+  (interactive)
+  (move-proof-line #'lp-get-prev-proof-line))
+
 (defun lp-proof-forward ()
   "Move the proof cursor forward."
   (interactive)
@@ -168,7 +194,6 @@ Adds text-properties to make it clickable"
         (goto-line line)
         (hlt-unhighlight-region 0 (1+ (line-end-position))))))
   (setq interactive-goals (not interactive-goals)))
-
 
 (provide 'lambdapi-proofs)
 ;;; lambdapi-proofs.el ends here
