@@ -201,7 +201,7 @@ Change position of goals buffer
 The position of ``*Goals*`` buffer can be changed doing
 ``M-x customize-variable lambdapi-goals-window-side`` and setting
 the value to one of ``left``, ``right``, ``bottom`` or ``top``.
-If the ``*Goals*`` window is too small, then the window will open 
+If the space too small, then the window will open
 either at right or bottom, whichever is more suitable.
 
 The layout can be refreshed with ``C-c C-r``.
