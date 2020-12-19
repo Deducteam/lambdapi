@@ -119,13 +119,23 @@ let unbind_name :
 
 (** {3 Metavariables} *)
 
-(** [make_meta ctx a] creates a metavariable of type [a],  with an environment
-    containing the variables of context [ctx]. *)
+(** [make_meta ctx a] creates a fresh metavariable term of type [a] in the
+   context [ctx]. *)
 let make_meta : ctxt -> term -> term = fun ctx a ->
   let prd, len = Ctxt.to_prod ctx a in
   let m = Meta.fresh prd len in
   let get_var (x,_,_) = Vari(x) in
   Meta(m, Array.of_list (List.rev_map get_var ctx))
+
+(** [make_meta_codomain ctx a] creates a fresh metavariable term [b] for the
+   codomain a product of domain [a]. [b] itself is of type a fresh
+   metavariable [m] of type Kind in the empty environment which should be
+   instanciated by Type only. FIXME? *)
+let make_meta_codomain : ctxt -> term -> tbinder = fun ctx a ->
+  let x = Bindlib.new_var mkfree "x" in
+  let m = Meta(Meta.fresh Kind 0, [||]) in
+  let b = make_meta ((x, a, None) :: ctx) m in
+  Bindlib.unbox (Bindlib.bind_var x (lift b))
 
 (** [iter_meta b f t] applies the function [f] to every metavariable of [t],
    and to the type of every metavariable recursively if [b] is true. *)

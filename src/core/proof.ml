@@ -28,7 +28,7 @@ module Goal =
     (** [goal_typ_of_meta m] create a goal from the metavariable [m]. *)
     let goal_typ_of_meta : meta -> goal_typ = fun m ->
       let (goal_hyps, goal_type) =
-        Infer.destruct_prod m.meta_arity !(m.meta_type)
+        Env.destruct_prod m.meta_arity !(m.meta_type)
       in
       let goal_type = Eval.simplify (Env.to_ctxt goal_hyps) goal_type in
       {goal_meta = m; goal_hyps; goal_type}

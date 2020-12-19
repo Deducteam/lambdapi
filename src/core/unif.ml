@@ -17,28 +17,6 @@ let log_unif = log_unif.logger
 (** Exception raised when a constraint is not solvable. *)
 exception Unsolvable
 
-(** [copy_prod_env xs prod] constructs an environment mapping the variables of
-    [xs] to successive dependent product type domains of the term [prod]. Note
-    that dependencies are preserved in the process,  and types of the produced
-    environment can hence refer to other variables of the environment whenever
-    this is necessary. Note that the produced environment is equivalent to the
-    environment [fst (destruct_prod (Array,length xs) prod)] if the variables
-    of its domain are substituted by those of [xs]. Intuitively,  if [prod] is
-    of the form [∀ (y1:a1) ⋯ (yn:an), a]  then the environment returned by the
-    function is (roughly) [(xn, an{y1≔x1, ⋯, yn-1≔xn-1}) ; ⋯ ; (x1, a1)]. Note
-    that the function raises [Invalid_argument] if [prod] does not evaluate to
-    a sequence of [Array.length xs] dependent products. *)
-let copy_prod_env : tvar array -> term -> env = fun xs t ->
-  let n = Array.length xs in
-  let rec build_env i env t =
-    if i >= n then env else
-    match Eval.whnf [] t with
-    | Prod(a,b) -> let env = add xs.(i) (lift a) None env in
-                   build_env (i+1) env (Bindlib.subst b (Vari(xs.(i))))
-    | _         -> invalid_arg "of_prod_vars"
-  in
-  build_env 0 [] t
-
 (** [try_rules ctx s t] tries to solve unification problem [ctx ⊢ s ≡ t] using
     declared unification rules. *)
 let try_rules : ctxt -> term -> term -> constr list option = fun ctx s t ->
@@ -245,7 +223,7 @@ and solve_aux : ctxt -> term -> term -> problem -> constr list =
         | Some vars -> vars
       in
       (* Build the environment (yk-1,ak-1{y0=v0,..,yk-2=vk-2});..;(y0,a0). *)
-      let env = copy_prod_env vars !(m.meta_type) in
+      let env = env_of_prod vars !(m.meta_type) in
       (* Build the term s(m0[vs],..,mn-1[vs]). *)
       let k = Array.length vars in
       let t =
@@ -290,7 +268,7 @@ and solve_aux : ctxt -> term -> term -> problem -> constr list =
      Πx1:a1,..,Πxn:an,Πx:m2[x1,..,xn],KIND, and do as in the previous case. *)
   let imitate_lam m =
     let n = m.meta_arity in
-    let (env, t) = Infer.destruct_prod n !(m.meta_type) in
+    let (env, t) = Env.destruct_prod n !(m.meta_type) in
     let x,a,env',b,p =
       match Eval.whnf [] t with
       | Prod(a,b) ->
@@ -414,7 +392,7 @@ and solve_aux : ctxt -> term -> term -> problem -> constr list =
      variables, [imitate_prod m ts] instantiates [m] by a fresh product and
      continue. *)
   let imitate_prod m =
-    let env, mxs, prod, _, _ = Infer.extend_meta_type m in
+    let env, mxs, prod, _, _ = Env.extend_meta_type m in
     (* ts1 and ts2 are equal to [] *)
     let ctx' = Env.to_ctxt env in
     solve { p with to_solve = (ctx',mxs,prod)::(ctx,h1,h2)::p.to_solve }
