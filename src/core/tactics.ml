@@ -20,7 +20,7 @@ let solve_tac ps pos =
   try
     let gs_typ, gs_unif = List.partition Goal.is_typ ps.proof_goals in
     let to_solve = List.map Goal.get_constr gs_unif in
-    let new_cs = Unif.solve {Unif.empty_problem with to_solve} in
+    let new_cs = Unif.solve {empty_problem with to_solve} in
     let new_gs_unif = List.map Goal.unif new_cs in
     let goal_has_no_meta_value = function
       | Goal.Unif _ -> true

@@ -150,13 +150,11 @@ let handle_symbol :
   (* We scope the type of the declaration. *)
   let a = scope_basic e a in
   (* We check that [a] is typable by a sort. *)
-  Unif.check_sort x.pos [] a;
+  Infer.check_sort Unif.solve_noexn x.pos [] a;
   (* We check that no metavariable remains. *)
   if Basics.has_metas true a then
-    begin
-      fatal_msg "The type of [%s] has unsolved metavariables.\n" x.elt;
-      fatal x.pos "We have %s : %a." x.elt pp_term a
-    end;
+    (fatal_msg "The type of [%s] has unsolved metavariables.\n" x.elt;
+     fatal x.pos "We have %s : %a." x.elt pp_term a);
   (* Actually add the symbol to the signature and the state. *)
   out 3 "(symb) %s : %a\n" x.elt pp_term a;
   let sig_symbol = {expo=e;prop=p;mstrat=strat;ident=x;typ=a;impl;def=None} in

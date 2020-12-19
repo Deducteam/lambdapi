@@ -95,14 +95,14 @@ let conv ctx a b =
 (** Exception that may be raised by type inference. *)
 exception NotTypable
 
-(** [infer_aux ctx t] tries to infer a type for the term [t] in context [ctx],
+(** [infer ctx t] tries to infer a type for the term [t] in context [ctx],
    possibly under some constraints recorded in [constraints] using [conv]. The
    returned type is well-sorted if the recorded constraints are
    satisfied. [ctx] must be well sorted.
 
 @raise NotTypable when the term is not typable (when encountering an
    abstraction over a kind). *)
-let rec infer_aux : ctxt -> term -> term = fun ctx t ->
+let rec infer : ctxt -> term -> term = fun ctx t ->
   if !log_enabled then log_infr "infer %a%a" pp_ctxt ctx pp_term t;
   match unfold t with
   | Patt(_,_,_) -> assert false (* Forbidden case. *)
@@ -134,10 +134,10 @@ let rec infer_aux : ctxt -> term -> term = fun ctx t ->
                 ctx ⊢ Prod(a,b) ⇒ s            *)
   | Prod(a,b)   ->
       (* We ensure that [a] is of type [Type]. *)
-      check_aux ctx a Type;
+      check ctx a Type;
       (* We infer the type of the body, first extending the context. *)
       let (_,b,ctx') = Ctxt.unbind ctx a None b in
-      let s = infer_aux ctx' b in
+      let s = infer ctx' b in
       (* We check that [s] is a sort. *)
       begin
         let s = unfold s in
@@ -153,10 +153,10 @@ let rec infer_aux : ctxt -> term -> term = fun ctx t ->
              ctx ⊢ Abst(a,t) ⇒ Prod(a,b)          *)
   | Abst(a,t)   ->
       (* We ensure that [a] is of type [Type]. *)
-      check_aux ctx a Type;
+      check ctx a Type;
       (* We infer the type of the body, first extending the context. *)
       let (x,t,ctx') = Ctxt.unbind ctx a None t in
-      let b = infer_aux ctx' t in
+      let b = infer ctx' t in
       begin
         match unfold b with
         | Kind ->
@@ -171,7 +171,7 @@ let rec infer_aux : ctxt -> term -> term = fun ctx t ->
   | Appl(t,u)   ->
       (* We first infer a product type for [t]. *)
       let (a,b) =
-        let c = Eval.whnf ctx (infer_aux ctx t) in
+        let c = Eval.whnf ctx (infer ctx t) in
         match c with
         | Prod(a,b) -> (a,b)
         | Meta(m,ts) ->
@@ -185,7 +185,7 @@ let rec infer_aux : ctxt -> term -> term = fun ctx t ->
             conv ctx c (Prod(a,b)); (a,b)
       in
       (* We then check the type of [u] against the domain type. *)
-      check_aux ctx u a;
+      check ctx u a;
       (* We produce the returned type. *)
       Bindlib.subst b u
 
@@ -193,11 +193,11 @@ let rec infer_aux : ctxt -> term -> term = fun ctx t ->
      -------------------------------------------
         ctx ⊢ let x : a ≔ t in u ⇒ subst b t     *)
   | LLet(a,t,u) ->
-      check_aux ctx a Type;
-      check_aux ctx t a;
+      check ctx a Type;
+      check ctx t a;
       (* Unbind [u] and enrich context with [x: a ≔ t] *)
       let (x,u,ctx') = Ctxt.unbind ctx a (Some(t)) u in
-      let b = infer_aux ctx' u in
+      let b = infer ctx' u in
       (* Build back the term *)
       let b = Bindlib.unbox (Bindlib.bind_var x (lift b)) in
       Bindlib.subst b t
@@ -209,16 +209,16 @@ let rec infer_aux : ctxt -> term -> term = fun ctx t ->
       (* The type of [Meta(m,ts)] is the same as the one obtained by applying
          to [ts] a new symbol having the same type as [m]. *)
       let s = Sign.create_sym Privat Defin (Meta.name m) !(m.meta_type) [] in
-      infer_aux ctx (Array.fold_left (fun acc t -> Appl(acc,t)) (Symb s) ts)
+      infer ctx (Array.fold_left (fun acc t -> Appl(acc,t)) (Symb s) ts)
 
-(** [check_aux ctx t a] checks that the term [t] has type [a] in context
+(** [check ctx t a] checks that the term [t] has type [a] in context
    [ctx], possibly under some constraints recorded in [constraints] using
    [conv]. [ctx] must be well-formed and [a] well-sorted. This function never
    fails (but constraints may be unsatisfiable). *)
-and check_aux : ctxt -> term -> term -> unit = fun ctx t a ->
+and check : ctxt -> term -> term -> unit = fun ctx t a ->
   if !log_enabled then
     log_infr "check %a%a : %a" pp_ctxt ctx pp_term t pp_term a;
-  conv ctx (infer_aux ctx t) a
+  conv ctx (infer ctx t) a
 
 (** [infer_noexn ctx t] returns [None] if the type of [t] in context [ctx]
    cannot be infered, or [Some(a,cs)] where [a] is some type of [t] in the
@@ -228,7 +228,7 @@ let infer_noexn : ctxt -> term -> (term * constr list) option = fun ctx t ->
   let res =
     try
       Stdlib.(constraints := []);
-      let a = infer_aux ctx t in
+      let a = infer ctx t in
       let cs = Stdlib.(!constraints) in
       let cs = List.sort_uniq Eval.compare_constr cs in
       if !log_enabled then
@@ -248,7 +248,7 @@ let check_noexn : ctxt -> term -> term -> constr list option = fun ctx t a ->
   let res =
     try
       Stdlib.(constraints := []);
-      check_aux ctx t a;
+      check ctx t a;
       let cs = Stdlib.(!constraints) in
       if !log_enabled then
         begin
@@ -259,3 +259,55 @@ let check_noexn : ctxt -> term -> term -> constr list option = fun ctx t a ->
       Some cs
     with NotTypable -> None
   in Stdlib.(constraints := []); res
+
+(** Type for unification constraints solvers. *)
+type solver = problem -> constr list option
+
+(** [infer solve pos ctx t] returns a type for [t] in context [ctx] if there
+   is one, using the constraint solver [solve].
+@raise Fatal otherwise. [ctx] must well sorted. *)
+let infer : solver -> Pos.popt -> ctxt -> term -> term =
+  fun solve_noexn pos ctx t ->
+  match infer_noexn ctx t with
+  | None -> fatal pos "[%a] is not typable." pp_term t
+  | Some(a, to_solve) ->
+      match solve_noexn {empty_problem with to_solve} with
+      | None -> fatal pos "[%a] is not typable." pp_term t
+      | Some [] -> a
+      | Some cs ->
+          List.iter (wrn pos "Cannot solve [%a].\n" pp_constr) cs;
+          fatal pos "[%a] is not typable." pp_term a
+
+(** [check pos ctx t a] checks that [t] has type [a] in context [ctx],
+using the constraint solver [solve].
+@raise Fatal otherwise. [ctx] must well sorted. *)
+let check : solver -> Pos.popt -> ctxt -> term -> term -> unit =
+  fun solve_noexn pos ctx t a ->
+  match check_noexn ctx t a with
+  | None -> fatal pos "[%a] does not have type [%a]." pp_term t pp_term a
+  | Some(to_solve) ->
+      match solve_noexn {empty_problem with to_solve} with
+      | None -> fatal pos "[%a] does not have type [%a]." pp_term t pp_term a
+      | Some [] -> ()
+      | Some cs ->
+          List.iter (wrn pos "Cannot solve [%a].\n" pp_constr) cs;
+          fatal pos "[%a] does not have type [%a]." pp_term t pp_term a
+
+(** [check_sort pos ctx t] checks that [t] has type [Type] or [Kind] in
+   context [ctx], using the constraint solver [solve].
+@raise Fatal otherwise. [ctx] must well sorted. *)
+let check_sort : solver -> Pos.popt -> ctxt -> term -> unit
+  = fun solve_noexn pos ctx t ->
+  match infer_noexn ctx t with
+  | None -> fatal pos "[%a] is not typable." pp_term t
+  | Some(a, to_solve) ->
+      match solve_noexn {empty_problem with to_solve} with
+      | None -> fatal pos "[%a] is not typable." pp_term t
+      | Some ((_::_) as cs) ->
+          List.iter (wrn pos "Cannot solve [%a].\n" pp_constr) cs;
+          fatal pos "[%a] is not typable." pp_term a
+      | Some [] ->
+          match unfold a with
+          | Type | Kind -> ()
+          | _ -> fatal pos "[%a] has type [%a] and not a sort."
+                   pp_term t pp_term a

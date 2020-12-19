@@ -1,7 +1,6 @@
 (** Solving unification constraints. *)
 
 open! Lplib
-open Lplib.Base
 open Lplib.Extra
 
 open Timed
@@ -14,27 +13,6 @@ open Print
 (** Logging function for unification. *)
 let log_unif = new_logger 'u' "unif" "unification"
 let log_unif = log_unif.logger
-
-(** Representation of unification problems. *)
-type problem =
-  { to_solve  : constr list
-  (** List of unification problems to solve. *)
-  ; unsolved  : constr list
-  (** List of unification problems that could not be solved. *)
-  ; recompute : bool
-  (** Indicates whether unsolved problems should be rechecked. *) }
-
-(** Empty problem. *)
-let empty_problem : problem =
-  {to_solve  = []; unsolved = []; recompute = false}
-
-(** [pp_constr oc p] prints the unification problem [p] to the
-    output channel [oc]. *)
-let pp_problem : problem pp = fun oc p ->
-  Format.fprintf oc "{ to_solve = [%a]; unsolved = [%a]; recompute = %b }"
-    (List.pp pp_constr "; ") p.to_solve
-    (List.pp pp_constr "; ") p.unsolved
-    p.recompute
 
 (** Exception raised when a constraint is not solvable. *)
 exception Unsolvable
@@ -162,8 +140,8 @@ let instantiation : ctxt -> meta -> term array -> term ->
         Some (Bindlib.bind_mvar vs (lift u))
   else None
 
-(** Checking type or not during meta instanciation *)
-type type_check = | NoTypeCheck | TypeCheckInstanciation
+(** Checking type or not during meta instanciation. *)
+type type_check = NoTypeCheck | TypeCheckInstanciation
 let g_type_check = Stdlib.ref TypeCheckInstanciation
 
 (** [instantiate ctx m ts u] check whether, in a problem [m[ts]=u], [m] can be
@@ -537,47 +515,3 @@ let solve_noexn : ?type_check:type_check -> problem -> constr list option =
 let eq_noexn : ?type_check:type_check -> ctxt -> term -> term -> bool =
   fun ?(type_check=TypeCheckInstanciation) c t u ->
   solve_noexn ~type_check {empty_problem with to_solve=[c,t,u]} = Some []
-
-(** [infer pos ctx t] returns a type for [t] in context [ctx] if there is one,
-@raise Fatal otherwise. [ctx] must well sorted. *)
-let infer : Pos.popt -> ctxt -> term -> term = fun pos ctx t ->
-  match Infer.infer_noexn ctx t with
-  | None -> fatal pos "[%a] is not typable." pp_term t
-  | Some(a, to_solve) ->
-      match solve_noexn {empty_problem with to_solve} with
-      | None -> fatal pos "[%a] is not typable." pp_term t
-      | Some [] -> a
-      | Some cs ->
-          List.iter (wrn pos "Cannot solve [%a].\n" pp_constr) cs;
-          fatal pos "[%a] is not typable." pp_term a
-
-(** [check pos ctx t a] checks that [t] has type [a] in context [ctx],
-@raise Fatal otherwise. [ctx] must well sorted. *)
-let check : Pos.popt -> ctxt -> term -> term -> unit = fun pos ctx t a ->
-  match Infer.check_noexn ctx t a with
-  | None -> fatal pos "[%a] does not have type [%a]." pp_term t pp_term a
-  | Some(to_solve) ->
-      match solve_noexn {empty_problem with to_solve} with
-      | None -> fatal pos "[%a] does not have type [%a]." pp_term t pp_term a
-      | Some [] -> ()
-      | Some cs ->
-          List.iter (wrn pos "Cannot solve [%a].\n" pp_constr) cs;
-          fatal pos "[%a] does not have type [%a]." pp_term t pp_term a
-
-(** [check_sort pos ctx t] checks that [t] has type [Type] or [Kind] in
-   context [ctx],
-@raise Fatal otherwise. [ctx] must well sorted. *)
-let check_sort : Pos.popt -> ctxt -> term -> unit = fun pos ctx t ->
-  match Infer.infer_noexn ctx t with
-  | None -> fatal pos "[%a] is not typable." pp_term t
-  | Some(a, to_solve) ->
-      match solve_noexn {empty_problem with to_solve} with
-      | None -> fatal pos "[%a] is not typable." pp_term t
-      | Some ((_::_) as cs) ->
-          List.iter (wrn pos "Cannot solve [%a].\n" pp_constr) cs;
-          fatal pos "[%a] is not typable." pp_term a
-      | Some [] ->
-          match unfold a with
-          | Type | Kind -> ()
-          | _ -> fatal pos "[%a] has type [%a] and not a sort."
-                   pp_term t pp_term a
