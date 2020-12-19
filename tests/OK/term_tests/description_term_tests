@@ -1,6 +1,6 @@
-The content of this folder is a lot of tests on terms.
+The content of this folder is a test suite on terms.
 More precisely, here we check:
   - implicit argument
-  - lambda construction
+  - lambda construction (with substitution)
   - let construction
   - wildcard

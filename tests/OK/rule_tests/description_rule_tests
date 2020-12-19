@@ -1,0 +1,9 @@
+The content of this folder is a test suite on rules.
+More precisely, here we check:
+  - arity
+  - free variable in LHS
+  - patterns
+  - non linearity
+  - order
+  - instanciation
+  - performance

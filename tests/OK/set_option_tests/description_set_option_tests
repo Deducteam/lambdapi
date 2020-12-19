@@ -1,6 +1,6 @@
 The content of this folder is a test suite on set option.
 More precisely, here we check the commands:
-  - set unif_rule ?
+  - set unif_rule
   - set verbose   ?
   - set debug     ?
   - set builtin

@@ -1,9 +1,6 @@
-The content of this folder is a lot of tests on queries.
+The content of this folder is a test suite on queries.
 More precisely, here we check the commands:
   - assert
   - assertnot
   - type
   - compute
-  
-  - infer
-  - normalize
