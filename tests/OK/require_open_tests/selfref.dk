@@ -1,0 +1,2 @@
+T : Type.
+x : tests.OK.require_open_tests.selfref.T.

@@ -3,3 +3,4 @@ More precisely, here we check the commands:
   - require
   - require as
   - open
+and we check the possible paths too.
