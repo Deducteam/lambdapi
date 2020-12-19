@@ -36,6 +36,7 @@ let _ =
   let test_symbol = test_one_folder "OK" "symbol" in
   let test_rewriting = test_one_folder "OK" "rewriting" in
   let test_tactic = test_one_folder "OK" "tactic" in
+  let test_examples = test_one_folder "OK" "examples" in
   Alcotest.run "Std"
     [ ("OK_parsing", Array.to_list test_parsing)
     ; ("OK_scoping", Array.to_list test_scoping)
@@ -44,8 +45,8 @@ let _ =
     ; ("OK_queries", Array.to_list test_queries)
     ; ("OK_symbol", Array.to_list test_symbol)
     ; ("OK_rewriting", Array.to_list test_rewriting)
-    ; ("OK_tactic", Array.to_list test_tactic) ]     
-    
+    ; ("OK_tactic", Array.to_list test_tactic) 
+    ; ("OK_examples", Array.to_list test_examples) ]    
 
   (*                 
   
