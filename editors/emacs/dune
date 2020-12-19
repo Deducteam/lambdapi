@@ -1,0 +1,19 @@
+; Byte compile for files that are loaded at Emacs' startup
+(rule
+ (targets lambdapi-site-file.elc)
+ (action
+  (run %{bin:emacs} --batch --quick --funcall batch-byte-compile
+       %{dep:lambdapi-site-file.el})))
+
+(install
+ (section share_root)
+ (package lambdapi)
+ (files
+  (lambdapi-abbrev.el as emacs/site-lisp/lambdapi-abbrev.el)
+  (lambdapi-capf.el as emacs/site-lisp/lambdapi-capf.el)
+  (lambdapi-input.el as emacs/site-lisp/lambdapi-input.el)
+  (lambdapi-mode.el as emacs/site-lisp/lambdapi-mode.el)
+  (lambdapi-site-file.elc as emacs/site-lisp/lambdapi-site-file.elc)
+  (lambdapi-smie.el as emacs/site-lisp/lambdapi-smie.el)
+  (lambdapi-vars.el as emacs/site-lisp/lambdapi-vars.el)
+  (lambdapi-proofs.el as emacs/site-lisp/lambdapi-proofs.el)))
