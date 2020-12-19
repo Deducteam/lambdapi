@@ -212,7 +212,7 @@ let tactic : p_tactic pp = fun oc t ->
       out "why3%a" (Option.pp prover) p
   | P_tac_query(q)           -> query oc q
   | P_tac_fail               -> out "fail"
-  | P_unif_solve             -> out "solve"
+  | P_tac_solve             -> out "solve"
 
 let command : p_command pp = fun oc cmd ->
   let out fmt = Format.fprintf oc fmt in

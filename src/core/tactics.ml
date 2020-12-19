@@ -22,6 +22,7 @@ let solve_tac ps pos =
     let to_solve = List.map Goal.get_constr gs_unif in
     let new_cs = Unif.solve {empty_problem with to_solve} in
     let new_gs_unif = List.map Goal.unif new_cs in
+    (* remove in [gs_typ] the goals that have been instanciated. *)
     let goal_has_no_meta_value = function
       | Goal.Unif _ -> true
       | Goal.Typ gt ->
@@ -31,7 +32,7 @@ let solve_tac ps pos =
     in
     let gs_typ = List.filter goal_has_no_meta_value gs_typ in
     {ps with proof_goals = new_gs_unif @ gs_typ}
-  with Unif.Unsolvable -> fatal pos "Unsolvable constraints."
+  with Unif.Unsolvable -> fatal pos "Unification goals are unsatisfiable."
 
 (** [handle_tactic ss ps tac] tries to apply the tactic [tac] (in the proof
      state [ps]), and returns the new proof state.  This function fails
@@ -67,7 +68,7 @@ let handle_tactic :
   | P_tac_print
   | P_tac_proofterm
   | P_tac_query(_)      -> assert false (* Handled above. *)
-  | P_unif_solve        -> solve_tac ps tac.pos
+  | P_tac_solve        -> solve_tac ps tac.pos
   | _                   ->
 
   (* Get the unif goals, the first type goal and the following goals *)
@@ -106,7 +107,7 @@ let handle_tactic :
   | P_tac_print
   | P_tac_proofterm
   | P_tac_query(_)
-  | P_unif_solve        -> assert false (* Handled above. *)
+  | P_tac_solve        -> assert false (* Handled above. *)
   | P_tac_focus(i)      ->
       (* Put the [i]-th goal in focus (if possible). *)
       (try {ps with proof_goals = List.swap i ps.proof_goals}

@@ -193,7 +193,7 @@ type p_tactic_aux =
   (** Print the current proof term (possibly containing open goals). *)
   | P_tac_why3 of string option
   (** Try to solve the current goal with why3. *)
-  | P_unif_solve
+  | P_tac_solve
   (** Apply default unification solving algorithm. *)
   | P_tac_query   of p_query
   (** Query. *)
