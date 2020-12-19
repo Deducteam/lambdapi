@@ -124,13 +124,8 @@ let handle_tactic :
         | None -> fatal tac.pos "[%a] is not typable." pp_term t
         | Some (a, to_solve) -> Basics.count_products a
       in
-      (* Refine the goal with [pt] applied to [n] wildcards. *)
-      let rec add_wilds pt n =
-        if n <= 0 then pt
-        else add_wilds (Pos.none (P_Appl(pt, Pos.none P_Wild))) (n-1)
-      in
-      (*FIXME: this code does not take into account implicit arguments*)
-      let t = if n <= 0 then t else scope (add_wilds pt n) in
+      (*FIXME: this does not take into account implicit arguments. *)
+      let t = if n <= 0 then t else scope (P.appl_wild pt n) in
       handle_refine ps t
   | P_tac_simpl         ->
       let new_goal_typ = Goal.Typ (Goal.simpl gt) in
