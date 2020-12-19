@@ -119,6 +119,7 @@ let rec infer : ctxt -> term -> term = fun ctx t ->
             (Bindlib.msubst bp1 ts, Bindlib.msubst bp2 ts)
         | _         ->
             let a = Basics.make_meta ctx Type in
+            (* Here, we force [b] to be of type [Type]. FIXME? *)
             let b = Basics.make_meta_codomain ctx a in
             conv ctx c (Prod(a,b)); (a,b)
       in
