@@ -99,7 +99,6 @@ exception NotTypable
    possibly under some constraints recorded in [constraints] using [conv]. The
    returned type is well-sorted if the recorded constraints are
    satisfied. [ctx] must be well sorted.
-
 @raise NotTypable when the term is not typable (when encountering an
    abstraction over a kind). *)
 let rec infer : ctxt -> term -> term = fun ctx t ->

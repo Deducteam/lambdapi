@@ -108,14 +108,9 @@ let handle_tactic :
   | P_tac_query(_)
   | P_unif_solve        -> assert false (* Handled above. *)
   | P_tac_focus(i)      ->
-     (* Put the [i]-th goal in focus (if possible). *)
-     let rec swap i acc gs =
-       match (i, gs) with
-       | (0, g::gs) -> g :: List.rev_append acc gs
-       | (i, g::gs) -> swap (i-1) (g::acc) gs
-       | (_, _    ) -> fatal tac.pos "Invalid goal index."
-     in
-     {ps with proof_goals = swap i [] ps.proof_goals}
+      (* Put the [i]-th goal in focus (if possible). *)
+      (try {ps with proof_goals = List.swap i ps.proof_goals}
+      with Invalid_argument _ -> fatal tac.pos "Invalid goal index.")
   | P_tac_refine(pt)     ->
       handle_refine ps (scope pt)
   | P_tac_intro(xs)     ->
