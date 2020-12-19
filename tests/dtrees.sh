@@ -23,29 +23,29 @@ else
 fi
 
 # Escaped characters (with no rule)
-out="$(${LAMBDAPI} 'tests.OK.Escaped.{|KIND|}' 2>/dev/null)"
+out="$(${LAMBDAPI} 'tests.OK.parsing.Escaped.{|KIND|}' 2>/dev/null)"
 if [ "$?" = 1 ]; then
-    ko 'tests.OK.Escaped.{|KIND|}'
+    ko 'tests.OK.parsing.Escaped.{|KIND|}'
 fi
 if [ -z "$out" ]; then
-    ok 'tests.OK.Escaped.{|KIND|}'
+    ok 'tests.OK.parsing.Escaped.{|KIND|}'
 fi
 
 # Escaped with dots (no rule on symbol)
-out="$(${LAMBDAPI} 'tests.OK.Escaped.{|KIND.OF.BLUE|}' 2>/dev/null)"
+out="$(${LAMBDAPI} 'tests.OK.parsing.Escaped.{|KIND.OF.BLUE|}' 2>/dev/null)"
 if [ "$?" = 1 ]; then
-    ko 'tests.OK.Escaped.{|KIND.OF.BLUE|}'
+    ko 'tests.OK.parsing.Escaped.{|KIND.OF.BLUE|}'
 fi
 if [ -z "$out" ]; then
-    ok 'tests.OK.Escaped.{|KIND.OF.BLUE|}'
+    ok 'tests.OK.parsing.Escaped.{|KIND.OF.BLUE|}'
 fi
 
 # Escaped with rules
-out="$(${LAMBDAPI} 'tests.OK.Escaped.{|set|}' 2>/dev/null)"
+out="$(${LAMBDAPI} 'tests.OK.parsing.Escaped.{|set|}' 2>/dev/null)"
 if [ -z "$out" ]; then
-    ko 'tests.OK.Escaped.{|set|}'
+    ko 'tests.OK.parsing.Escaped.{|set|}'
 else
-    ok 'tests.OK.Escaped.{|set|}'
+    ok 'tests.OK.parsing.Escaped.{|set|}'
 fi
 
 # Ghost symbols

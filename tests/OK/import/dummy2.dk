@@ -1,0 +1,4 @@
+#REQUIRE tests.OK.import.dummy1.
+
+[n, m] tests.OK.import.dummy1.plus (tests.OK.import.dummy1.s n) m
+         --> tests.OK.import.dummy1.s (tests.OK.import.dummy1.plus n m).
