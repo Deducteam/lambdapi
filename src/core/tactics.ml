@@ -22,7 +22,7 @@ let solve_tac ps pos =
     let to_solve = List.map Goal.get_constr gs_unif in
     let new_cs = Unif.solve {empty_problem with to_solve} in
     let new_gs_unif = List.map Goal.unif new_cs in
-    (* remove in [gs_typ] the goals that have been instanciated. *)
+    (* remove in [gs_typ] the goals that have been instantiated. *)
     let goal_has_no_meta_value = function
       | Goal.Unif _ -> true
       | Goal.Typ gt ->

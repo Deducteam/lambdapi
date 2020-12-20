@@ -13,7 +13,7 @@ open Print
 - λx:_,h if t=λx:a,u and h is the head-structure of u
 - Π if t=Πx:a,u
 - h _ if t=uv and h is the head-structure of u
-- ? if t=?M[t1,..,tn] (and ?M is not instanciated)
+- ? if t=?M[t1,..,tn] (and ?M is not instantiated)
 - t itself otherwise (TYPE, KIND, x, f)
 
 A term t is in head-normal form (hnf) if its head-structure is invariant by

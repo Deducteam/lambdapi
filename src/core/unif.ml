@@ -119,8 +119,7 @@ let instantiation : ctxt -> meta -> term array -> term ->
   else None
 
 (** Checking type or not during meta instanciation. *)
-type type_check = NoTypeCheck | TypeCheckInstanciation
-let g_type_check = Stdlib.ref TypeCheckInstanciation
+let g_type_check = Stdlib.ref true
 
 (** [instantiate ctx m ts u] check whether, in a problem [m[ts]=u], [m] can be
     instantiated and, if so, instantiate it. *)
@@ -141,17 +140,17 @@ let instantiate : ctxt -> meta -> term array ->
             let is_initial c = List.exists (Eval.eq_constr c) initial in
             let cs = List.filter (fun c -> not (is_initial c)) cs in
             match cs <> [], Stdlib.(!g_type_check) with
-            | false,_ ->
+            | false, _ ->
                 if !log_enabled then
                   (log_unif (gre "no new constraints");
                    log_unif (yel "%a ≔ %a") pp_meta m pp_term u);
                 Meta.set m (Bindlib.unbox bu); true
-            | true, NoTypeCheck ->
+            | true, false ->
                 if !log_enabled then
                   (log_unif (yel "new constraints ignored");
                    log_unif (yel "%a ≔ %a") pp_meta m pp_term u);
                 Meta.set m (Bindlib.unbox bu); true
-            | true, TypeCheckInstanciation ->
+            | true, true ->
                 if !log_enabled then log_unif (red "new constraints");
                 false
       end
@@ -488,23 +487,19 @@ and solve_aux : ctxt -> term -> term -> problem -> constr list =
 (** [solve p] tries to solve the unification problem [p] and
     returns the constraints that could not be solved.
     This is the entry point setting the flag type_check *)
-let solve : ?type_check:type_check -> problem -> constr list =
-  fun ?(type_check=TypeCheckInstanciation) p ->
-  Stdlib.(g_type_check := type_check);
-  let constrs = solve p in
-  Stdlib.(g_type_check := TypeCheckInstanciation); (* default *)
-  constrs
+let solve : ?type_check:bool -> problem -> constr list =
+  fun ?(type_check=true) p -> Stdlib.(g_type_check := type_check); solve p
 
 (** [solve_noexn problem] attempts to solve [problem]. If there is
    no solution, the value [None] is returned. Otherwise [Some(cs)] is
    returned, where the list [cs] is a list of unsolved convertibility
    constraints. *)
-let solve_noexn : ?type_check:type_check -> problem -> constr list option =
-  fun ?(type_check=TypeCheckInstanciation) p ->
+let solve_noexn : ?type_check:bool -> problem -> constr list option =
+  fun ?(type_check=true) p ->
   try Some (solve ~type_check p) with Unsolvable -> None
 
 (** [eq_noexn c t u] tries to unify the terms [t] and [u] in context [c], by
    instantiating their metavariables. *)
-let eq_noexn : ?type_check:type_check -> ctxt -> term -> term -> bool =
-  fun ?(type_check=TypeCheckInstanciation) c t u ->
+let eq_noexn : ?type_check:bool -> ctxt -> term -> term -> bool =
+  fun ?(type_check=true) c t u ->
   solve_noexn ~type_check {empty_problem with to_solve=[c,t,u]} = Some []
