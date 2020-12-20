@@ -101,17 +101,17 @@ let handle_tactic :
   match tac.elt with
   | P_tac_proofterm
   | P_tac_query(_)
-  | P_tac_solve        -> assert false (* Handled above. *)
-  | P_tac_focus(i)      ->
+  | P_tac_solve -> assert false (* Handled above. *)
+  | P_tac_focus(i) ->
       (* Put the [i]-th goal in focus (if possible). *)
       (try {ps with proof_goals = List.swap i ps.proof_goals}
       with Invalid_argument _ -> fatal tac.pos "Invalid goal index.")
-  | P_tac_refine(pt)     ->
+  | P_tac_refine(pt) ->
       handle_refine ps (scope pt)
-  | P_tac_intro(xs)     ->
+  | P_tac_intro(xs) ->
       let pt = Pos.none (P_Abst([(xs,None,false)], Pos.none P_Wild)) in
       handle_refine ps (scope pt)
-  | P_tac_apply(pt)      ->
+  | P_tac_apply(pt) ->
       let t = scope pt in
       (* Compute the product arity of the type of [t]. *)
       let n =
@@ -122,21 +122,20 @@ let handle_tactic :
       (*FIXME: this does not take into account implicit arguments. *)
       let t = if n <= 0 then t else scope (P.appl_wild pt n) in
       handle_refine ps t
-  | P_tac_simpl         ->
+  | P_tac_simpl ->
       let new_goal_typ = Goal.Typ (Goal.simpl gt) in
       let proof_goals = pre_g @ new_goal_typ :: post_g in
       {ps with proof_goals}
   | P_tac_rewrite(b,po,pt) ->
       let po = Option.map (Scope.scope_rw_patt ss env) po in
       handle_refine ps (Rewrite.rewrite ss tac.pos ps b po (scope pt))
-  | P_tac_refl          ->
+  | P_tac_refl ->
       handle_refine ps (Rewrite.reflexivity ss tac.pos ps)
-  | P_tac_sym           ->
+  | P_tac_sym ->
       handle_refine ps (Rewrite.symmetry ss tac.pos ps)
-  | P_tac_why3(config)  ->
+  | P_tac_why3(config) ->
       handle_refine ps (Why3_tactic.handle ss tac.pos config gt)
-  | P_tac_fail          ->
-      fatal tac.pos "Call to tactic \"fail\""
+  | P_tac_fail -> fatal tac.pos "Call to tactic \"fail\""
 
 let handle_tactic :
   Sig_state.t -> Terms.expo -> Proof.t -> p_tactic -> Proof.t =
