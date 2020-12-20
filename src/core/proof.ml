@@ -6,6 +6,8 @@ open Lplib.Base
 open Timed
 open Terms
 open Print
+open Console
+open Pos
 
 (** Abstract representation of a goal. *)
 module Goal =
@@ -26,7 +28,7 @@ module Goal =
     (** [goal_typ_of_meta m] create a goal from the metavariable [m]. *)
     let goal_typ_of_meta : meta -> goal_typ = fun m ->
       let (goal_hyps, goal_type) =
-        Infer.destruct_prod m.meta_arity !(m.meta_type)
+        Env.destruct_prod m.meta_arity !(m.meta_type)
       in
       let goal_type = Eval.simplify (Env.to_ctxt goal_hyps) goal_type in
       {goal_meta = m; goal_hyps; goal_type}
@@ -66,7 +68,7 @@ let goals_of_metas : MetaSet.t -> Goal.t list = fun ms ->
 
 (** Representation of the proof state of a theorem. *)
 type proof_state =
-  { proof_name     : Pos.strloc  (** Name of the theorem.                 *)
+  { proof_name     : strloc  (** Name of the theorem.                 *)
   ; proof_term     : meta option (** Optional metavariable holding the goal
                                      associated to a symbol used as a
                                      theorem/definition and not just a
@@ -76,60 +78,79 @@ type proof_state =
 (** Short synonym for qualified use. *)
 type t = proof_state
 
-(** [goals_of_typ typ ter] returns a list of goals corresponding to the
-   typability of [typ] by a sort and that the term [ter] has type [typ]. [ter]
-   and [typ] should not be both equal to None. *)
-let goals_of_typ : Pos.popt -> term option -> term option ->
-  Goal.t list * term =
+(** [goals_of_typ typ ter] returns a list of goals for [typ] to be typable by
+   by a sort and [ter] to have type [typ] in the empty context. [ter] and
+   [typ] must not be both equal to [None]. *)
+let goals_of_typ : popt -> term option -> term option -> Goal.t list * term =
   fun pos typ ter ->
-  let (typ, sort, to_solve) =
+  let (typ, to_solve) =
     match typ, ter with
-    | Some(typ),Some(ter) ->
-      let sort, to_solve1 = Infer.infer [] typ in
-      let to_solve2 =
-        match sort with
-        | Type | Kind -> Infer.check [] ter typ
-        | _ -> Console.fatal pos "%a has type %a (not a sort)."
-                 pp_term typ pp_term sort
-      in
-      typ, sort, to_solve1 @ to_solve2
-    | None,Some(ter) ->
-      let typ, to_solve2 = Infer.infer [] ter in
-      let sort, to_solve1 =
+    | Some(typ), Some(ter) ->
         begin
-          match typ with
-          | Kind -> Console.fatal pos "Forbidded definition x := _ -> TYPE"
-          | _ -> let sort, to_solve1 = Infer.infer [] typ in
-            begin
-              match sort with
-              | Type | Kind -> sort,to_solve1
-              | _ -> Console.fatal pos "[%a] has type %a (not a sort)."
-                                        pp_term typ pp_term sort
-            end
+          match Infer.infer_noexn [] typ with
+          | None -> fatal pos "[%a] is not typable." pp_term typ
+          | Some(sort, to_solve1) ->
+              let to_solve2 =
+                match unfold sort with
+                | Type | Kind ->
+                    begin
+                      match Infer.check_noexn [] ter typ with
+                      | None -> fatal pos "[%a] cannot have type [%a]"
+                                  pp_term ter pp_term typ
+                      | Some cs -> cs
+                    end
+                | _ -> fatal pos "[%a] has type [%a] and not a sort."
+                         pp_term typ pp_term sort
+              in
+              typ, to_solve1 @ to_solve2
         end
-      in
-      typ, sort, to_solve1 @ to_solve2
-    | Some(typ),None ->
-      let sort, to_solve = Infer.infer [] typ in
-      begin
-        match sort with
-        | Type | Kind -> typ,sort,to_solve
-        | _ -> Console.fatal pos "%a has type %a (not a sort)."
-                 pp_term typ pp_term sort
-      end
-    | None,None -> assert false (* already rejected by parser *)
+    | None, Some(ter) ->
+        begin
+          match Infer.infer_noexn [] ter with
+          | None -> fatal pos "[%a] is not typable." pp_term ter
+          | Some (typ, to_solve2) ->
+              let to_solve1 =
+                match unfold typ with
+                | Kind -> fatal pos "Kind definitions are not allowed."
+                | _ ->
+                    match Infer.infer_noexn [] typ with
+                    | None ->
+                        fatal pos "[%a] has type [%a] which is not typable"
+                          pp_term ter pp_term typ
+                    | Some (sort, to_solve1) ->
+                        match unfold sort with
+                        | Type | Kind -> to_solve1
+                        | _ ->
+                            fatal pos
+                              "[%a] has type [%a] which has type [%a] \
+                               and not a sort."
+                              pp_term ter pp_term typ pp_term sort
+              in
+              typ, to_solve1 @ to_solve2
+        end
+    | Some(typ), None ->
+        begin
+          match Infer.infer_noexn [] typ with
+          | None -> fatal pos "[%a] is not typable." pp_term typ
+          | Some (sort, to_solve) ->
+              match unfold sort with
+              | Type | Kind -> typ, to_solve
+              | _ -> fatal pos "[%a] has type [%a] and not a sort."
+                       pp_term typ pp_term sort
+        end
+    | None, None -> assert false (* already rejected by parser *)
   in
-  (List.map Goal.unif to_solve), typ
+  (List.map Goal.unif to_solve, typ)
 
 (** [finished ps] tells whether there are unsolved goals in [ps]. *)
 let finished : t -> bool = fun ps -> ps.proof_goals = []
 
 (** [focus_goal ps] returns the focused goal or fails if there is none. *)
-let focus_goal : Pos.popt -> proof_state -> Env.t * term = fun pos ps ->
+let focus_goal : popt -> proof_state -> Env.t * term = fun pos ps ->
   match List.hd ps.proof_goals with
     | Goal.Typ g -> Goal.get_type g
-    | Goal.Unif _ -> Console.fatal pos "No remaining typing goals ..."
-    | exception Failure(_) -> Console.fatal pos "No remaining goals ..."
+    | Goal.Unif _ -> fatal pos "No remaining typing goals ..."
+    | exception Failure(_) -> fatal pos "No remaining goals ..."
 
 (** [pp_goals oc gl] prints the goal list [gl] to channel [oc]. *)
 let pp_goals : proof_state pp = fun oc ps ->

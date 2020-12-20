@@ -586,7 +586,7 @@ let parser tactic =
   | _why3_ s:string_lit?        -> Pos.in_pos _loc (P_tac_why3(s))
   | q:query                     -> Pos.in_pos _loc (P_tac_query(q))
   | _fail_                      -> Pos.in_pos _loc P_tac_fail
-  | _solve_                     -> Pos.in_pos _loc P_unif_solve
+  | _solve_                     -> Pos.in_pos _loc P_tac_solve
 
 (** [proof_end] is a parser for a proof terminator. *)
 let parser proof_end =

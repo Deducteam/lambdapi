@@ -92,46 +92,27 @@ type p_rule = (p_patt * p_term) loc
 (** Parser-level inductive type representation. *)
 type p_inductive = (ident * p_term * (ident * p_term) list) loc
 
-(** The previous module provides some functions to create p_term without
-    position. *)
-module P  =
-  struct
+(** Module to create p_term's with no positions. *)
+module P  = struct
+  let iden : string -> p_term = fun s ->
+    Pos.none (P_Iden(Pos.none ([], s), true))
 
-    (** [iden s] creates an identifier without position thanks to the string
-        [s]. *)
-    let iden : string -> p_term = fun s ->
-      Pos.none (P_Iden(Pos.none ([], s), true))
+  let patt : string -> p_term array option -> p_term = fun s ts ->
+    Pos.none (P_Patt (Some (Pos.none s), ts))
 
-    (** [patt s ts] creates a pattern without position thanks to the string
-        [s] and the terms [ts]. *)
-    let patt : string -> p_term array option -> p_term = fun s ts ->
-      Pos.none (P_Patt (Some (Pos.none s), ts))
+  let patt0 : string -> p_term = fun s -> patt s None
 
-    (** [patt0 s] creates a pattern without position thanks to the string
-        [s]. *)
-    let patt0 : string -> p_term = fun s -> patt s None
+  let appl : p_term -> p_term -> p_term = fun t1 t2 ->
+    Pos.none (P_Appl(t1, t2))
 
-    (** [appl t1 t2] creates an application of [t1] to [t2] without
-        position. *)
-    let appl : p_term -> p_term -> p_term = fun t1 t2 ->
-      Pos.none (P_Appl(t1, t2))
+  let appl_list : p_term -> p_term list -> p_term = List.fold_left appl
 
-    (** [appl_list a [b1; ...; bn]] returns (... ((a b1) b2) ...) bn. *)
-    let appl_list : p_term -> p_term list -> p_term = List.fold_left appl
+  let wild = Pos.none P_Wild
 
-    (** [wild] creates a p_term, which represents a wildcard, without
-        position. *)
-    let wild = Pos.none P_Wild
-
-    (** [appl_wild head i] creates a p_term which has [i] wildcard(s) after
-        the head [head]. *)
-    let rec appl_wild : p_term -> int -> p_term = fun head i ->
-      if i <= 0 then head else appl_wild (appl head wild) (i-1)
-
-    (** [rule] creates a p_rule without position. *)
-    let rule : p_patt -> p_term -> p_rule = fun l r -> Pos.none (l,r)
-
-  end
+  let rec appl_wild : p_term -> int -> p_term = fun t i ->
+      if i <= 0 then t else appl_wild (appl t wild) (i-1)
+  let rule : p_patt -> p_term -> p_rule = fun l r -> Pos.none (l,r)
+end
 
 (** Rewrite pattern specification. *)
 type p_rw_patt =
@@ -212,7 +193,7 @@ type p_tactic_aux =
   (** Print the current proof term (possibly containing open goals). *)
   | P_tac_why3 of string option
   (** Try to solve the current goal with why3. *)
-  | P_unif_solve
+  | P_tac_solve
   (** Apply default unification solving algorithm. *)
   | P_tac_query   of p_query
   (** Query. *)
