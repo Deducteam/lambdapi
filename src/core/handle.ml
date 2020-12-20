@@ -240,12 +240,8 @@ let data_proof : sig_symbol -> expo -> p_tactic list ->
       | P_proof_end   ->
         (* Check that the proof is indeed finished. *)
         if not (finished ps) then
-          begin
-            let print =
-              Pos.make pe.pos (P_tac_query (none (P_query_print None))) in
-            ignore (Tactics.handle_tactic ss pdata_expo ps print);
-            fatal pos "The proof is not finished."
-          end;
+          (out 1 "%a" Proof.pp_goals ps;
+           fatal pos "The proof is not finished.");
         (* Add a symbol corresponding to the proof. *)
         out 3 "(symb) %s (end)\n" ident.elt;
         fst (add_symbol ss sig_symbol)
