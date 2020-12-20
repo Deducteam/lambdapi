@@ -119,7 +119,7 @@ let instantiation : ctxt -> meta -> term array -> term ->
   else None
 
 (** Checking type or not during meta instanciation. *)
-let g_type_check = Stdlib.ref true
+let do_type_check = Stdlib.ref true
 
 (** [instantiate ctx m ts u] check whether, in a problem [m[ts]=u], [m] can be
     instantiated and, if so, instantiate it. *)
@@ -139,7 +139,7 @@ let instantiate : ctxt -> meta -> term array ->
         | Some cs ->
             let is_initial c = List.exists (Eval.eq_constr c) initial in
             let cs = List.filter (fun c -> not (is_initial c)) cs in
-            match cs <> [], Stdlib.(!g_type_check) with
+            match cs <> [], Stdlib.(!do_type_check) with
             | false, _ ->
                 if !log_enabled then
                   (log_unif (gre "no new constraints");
@@ -488,7 +488,7 @@ and solve_aux : ctxt -> term -> term -> problem -> constr list =
     returns the constraints that could not be solved.
     This is the entry point setting the flag type_check *)
 let solve : ?type_check:bool -> problem -> constr list =
-  fun ?(type_check=true) p -> Stdlib.(g_type_check := type_check); solve p
+  fun ?(type_check=true) p -> Stdlib.(do_type_check := type_check); solve p
 
 (** [solve_noexn problem] attempts to solve [problem]. If there is
    no solution, the value [None] is returned. Otherwise [Some(cs)] is

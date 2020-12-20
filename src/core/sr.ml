@@ -185,8 +185,7 @@ let check_rule : Scope.pre_rule Pos.loc -> rule = fun ({pos; elt} as pr) ->
   | None -> fatal pos "The LHS is not typable."
   | Some(ty_lhs, to_solve) ->
   (* Try to simplify constraints. *)
-      let type_check = false in
-      (* don't check typing when instantiating metas *)
+  let type_check = false in (* Don't check typing when instantiating metas. *)
   match Unif.(solve_noexn ~type_check {empty_problem with to_solve}) with
   | None -> fatal pos "The LHS is not typable."
   | Some lhs_constrs ->
