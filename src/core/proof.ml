@@ -67,7 +67,8 @@ module Goal =
       | Typ gt -> out "%a: %a\n" pp_meta gt.goal_meta pp_term gt.goal_type
       | Unif (_, t, u) -> out "%a ≡ %a" pp_term t pp_term u
 
-    (** [pp oc g] prints on channel [oc] the goal [g] and its hypotheses. *)
+    (** [pp_hyps oc g] prints on channel [oc] the goal [g] and its
+       hypotheses. *)
     let pp_hyps : t pp =
       let env_elt oc (s,(_,t,_)) =
         Format.fprintf oc "%s: %a\n" s pp_term (Bindlib.unbox t)
