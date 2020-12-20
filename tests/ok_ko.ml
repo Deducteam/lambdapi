@@ -24,29 +24,15 @@ let test_one_folder : string -> string -> 'a array = fun main_folder specific_fo
   in
   let test_fct = if main_folder = "OK" then test_ok else test_ko in
   Array.map (fun f -> Alcotest.test_case f `Quick (test_fct f)) files
-  
+
+let test_suite = [ ("OK", "parsing") ; ("OK", "scoping") ; ("OK", "import") ;
+                   ("OK", "set_option") ; ("OK", "queries") ; ("OK", "symbol") ;
+                   ("OK", "rewriting") ; ("OK", "tactic") ; ("OK", "examples") ]
+
 let _ =
   Files.set_lib_root None;
-  
-  let test_parsing = test_one_folder "OK" "parsing" in
-  let test_scoping = test_one_folder "OK" "scoping" in
-  let test_import  = test_one_folder "OK" "import" in 
-  let test_set_option = test_one_folder "OK" "set_option" in
-  let test_queries = test_one_folder "OK" "queries" in
-  let test_symbol = test_one_folder "OK" "symbol" in
-  let test_rewriting = test_one_folder "OK" "rewriting" in
-  let test_tactic = test_one_folder "OK" "tactic" in
-  let test_examples = test_one_folder "OK" "examples" in
-  Alcotest.run "Std"
-    [ ("OK_parsing", Array.to_list test_parsing)
-    ; ("OK_scoping", Array.to_list test_scoping)
-    ; ("OK_import", Array.to_list test_import)
-    ; ("OK_set_option", Array.to_list test_set_option)
-    ; ("OK_queries", Array.to_list test_queries)
-    ; ("OK_symbol", Array.to_list test_symbol)
-    ; ("OK_rewriting", Array.to_list test_rewriting)
-    ; ("OK_tactic", Array.to_list test_tactic) 
-    ; ("OK_examples", Array.to_list test_examples) ]    
+  let run_test (a,b) = (a ^"_"^ b, Array.to_list (test_one_folder a b)) in
+  Alcotest.run "Std" ((List.map run_test) test_suite)
 
   (*                 
   
