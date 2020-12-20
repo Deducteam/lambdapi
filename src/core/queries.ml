@@ -5,8 +5,6 @@ open Pos
 open Syntax
 open Terms
 open Print
-open Infer
-open Unif
 
 (** [handle_query ss ps q] *)
 let handle_query : Sig_state.t -> Proof.t option -> p_query -> unit =
@@ -27,21 +25,22 @@ let handle_query : Sig_state.t -> Proof.t option -> p_query -> unit =
           out 1 "(asrt) it is %b that %a\n" (not must_fail)
             pp_typing (ctxt, t, a);
           (* Check that [a] is typable by a sort. *)
-          check_sort solve_noexn q.pos ctxt a;
+          Infer.check_sort Unif.solve_noexn q.pos ctxt a;
           let result =
-            try check solve_noexn q.pos ctxt t a; true with Fatal _ -> false
+            try Infer.check Unif.solve_noexn q.pos ctxt t a; true
+            with Fatal _ -> false
           in if result = must_fail then fatal q.pos "Assertion failed."
       | P_assert_conv(pt,pu)   ->
           let t = scope pt and u = scope pu in
           out 1 "(asrt) it is %b that %a\n" (not must_fail)
             pp_constr (ctxt, t, u);
           (* Check that [t] is typable. *)
-          let a = infer solve_noexn pt.pos ctxt t in
+          let a = Infer.infer Unif.solve_noexn pt.pos ctxt t in
           (* Check that [u] is typable. *)
-          let b = infer solve_noexn pu.pos ctxt u in
+          let b = Infer.infer Unif.solve_noexn pu.pos ctxt u in
           (* Check that [t] and [u] have the same type. *)
           let to_solve = [ctxt,a,b] in
-          match (solve_noexn {empty_problem with to_solve}) with
+          match Unif.(solve_noexn {empty_problem with to_solve}) with
           | None ->
               fatal q.pos "[%a] has type [%a].\n[%a] has type [%a].\n\
                            Those two types are not unifiable."
@@ -75,13 +74,13 @@ let handle_query : Sig_state.t -> Proof.t option -> p_query -> unit =
   | P_query_infer(pt, cfg) ->
       (* Infer the type of [pt]. *)
       let t = scope pt in
-      let a = infer solve_noexn pt.pos ctxt t in
+      let a = Infer.infer Unif.solve_noexn pt.pos ctxt t in
       out 1 "(infr) %a : %a\n" pp_term t pp_term (Eval.eval cfg ctxt a)
   | P_query_normalize(pt, cfg)        ->
       (* Normalize [pt]. *)
       let t = scope pt in
       (* Check that [t] is typable. *)
-      ignore (infer solve_noexn pt.pos ctxt t);
+      ignore (Infer.infer Unif.solve_noexn pt.pos ctxt t);
       out 1 "(comp) %a\n" pp_term (Eval.eval cfg ctxt t)
   | P_query_prover(s)      ->
       Timed.(Why3_tactic.default_prover := s)
