@@ -241,9 +241,9 @@ let data_proof : sig_symbol -> expo -> p_tactic list ->
         (* Check that the proof is indeed finished. *)
         if not (finished ps) then
           begin
-            let _ =
-              Tactics.handle_tactic ss pdata_expo ps (none P_tac_print)
-            in
+            let print =
+              Pos.make pe.pos (P_tac_query (none (P_query_print None))) in
+            ignore (Tactics.handle_tactic ss pdata_expo ps print);
             fatal pos "The proof is not finished."
           end;
         (* Add a symbol corresponding to the proof. *)
