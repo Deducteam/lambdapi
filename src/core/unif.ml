@@ -389,11 +389,26 @@ and solve_aux : ctxt -> term -> term -> problem -> constr list =
   in
 
   (* For a problem of the form [m[ts] = Πx:_,_] with [ts] distinct bound
-     variables, [imitate_prod m ts] instantiates [m] by a fresh product and
-     continue. *)
+     variables, and ts1 and ts2 equal to [], [imitate_prod m ts] instantiates
+     [m] by a fresh product and continue. *)
   let imitate_prod m =
-    let env, mxs, prod, _, _ = Env.extend_meta_type m in
-    (* ts1 and ts2 are equal to [] *)
+    let n = m.meta_arity in
+    let (env, s) = destruct_prod n Timed.(!(m.meta_type)) in
+    let xs = Array.map _Vari (vars env) in
+
+    let t1 = to_prod env _Type in
+    let m1 = Meta.fresh t1 n in
+
+    let y = Bindlib.new_var mkfree "y" in
+    let env' = add y (_Meta m1 xs) None env in
+    let t2 = to_prod env' (lift s) in
+    let m2 = Meta.fresh t2 (n+1) in
+
+    let mxs = Bindlib.unbox (_Meta m xs) in
+    let a = _Meta m1 xs in
+    let b = Bindlib.bind_var y (_Meta m2 (Array.append xs [|_Vari y|])) in
+    let prod = Bindlib.unbox (_Prod a b) in
+
     let ctx' = Env.to_ctxt env in
     solve { p with to_solve = (ctx',mxs,prod)::(ctx,h1,h2)::p.to_solve }
   in

@@ -133,6 +133,8 @@ let make_meta_codomain : ctxt -> term -> tbinder = fun ctx a ->
   let x = Bindlib.new_var mkfree "x" in
   let b = make_meta ((x, a, None) :: ctx) Type in
   Bindlib.unbox (Bindlib.bind_var x (lift b))
+(* Possible improvement: avoir lift by defining a function _make_meta
+   returning a tbox. *)
 
 (** [iter_meta b f t] applies the function [f] to every metavariable of [t],
    and to the type of every metavariable recursively if [b] is true. *)

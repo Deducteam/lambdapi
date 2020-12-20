@@ -3,17 +3,16 @@
 open Timed
 open Console
 open Terms
-open Env
 open Print
 
 (** Logging function for typing. *)
 let log_infr = new_logger 'i' "infr" "type inference/checking"
 let log_infr = log_infr.logger
 
-(** [type_app a ts] returns the type of [add_args x ts] where [x] is any
-    term of type [a], if it exists. *)
-let rec type_app : ctxt -> term -> term list -> term option =
-  fun ctx a ts ->
+(** [type_app a ts] returns [Some(u)] where [u] is a type of [add_args x ts]
+   where [x] is any term of type [a] if [x] can be applied to at least
+   [List.length ts] arguments, and [None] otherwise. *)
+let rec type_app : ctxt -> term -> term list -> term option = fun ctx a ts ->
   match Eval.whnf ctx a, ts with
   | Prod(_,b), t::ts -> type_app ctx (Bindlib.subst b t) ts
   | _, [] -> Some a
@@ -82,8 +81,8 @@ let rec infer : ctxt -> term -> term = fun ctx t ->
         match s with
         | Type | Kind -> s
         | _           -> conv ctx' s Type; Type
-      (* We add the constraint [s = Type] because kinds cannot occur
-         inside a term. So, [t] cannot be a kind. *)
+      (* Here, we force [s] to be equivalent to [Type] as there is little
+         chance (no?) that it can be a kind. FIXME? *)
       end
 
   (*  ctx ⊢ a ⇐ Type    ctx, x : a ⊢ t<x> ⇒ b<x>
@@ -112,14 +111,10 @@ let rec infer : ctxt -> term -> term = fun ctx t ->
         let c = Eval.whnf ctx (infer ctx t) in
         match c with
         | Prod(a,b) -> (a,b)
-        | Meta(m,ts) ->
-            let env, mxs, p, bp1, bp2 = extend_meta_type m in
-            let ctx' = Env.to_ctxt env in
-            conv ctx' mxs p;
-            (Bindlib.msubst bp1 ts, Bindlib.msubst bp2 ts)
         | _         ->
             let a = Basics.make_meta ctx Type in
-            (* Here, we force [b] to be of type [Type]. FIXME? *)
+            (* Here, we force [b] to be of type [Type] as there is little
+               (no?) chance that it can be a kind. FIXME? *)
             let b = Basics.make_meta_codomain ctx a in
             conv ctx c (Prod(a,b)); (a,b)
       in
