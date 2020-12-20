@@ -71,7 +71,7 @@ let rec term : p_term pp = fun oc t ->
         out "%a" func t;
         empty_context := ec
     | (P_Prod(xs,b)        , Parser.PFunc) -> out "Π%a, %a" args xs func b
-    | (P_LLet(x,xs,a,t,u), Parser.PFunc) ->
+    | (P_LLet(x,xs,a,t,u)  , Parser.PFunc) ->
         out "@[<hov 2>let %a%a%a ≔@ %a@] in %a"
           ident x args xs annot a func t func u
     | (P_NLit(i)           , _    ) -> out "%i" i
@@ -87,13 +87,13 @@ let rec term : p_term pp = fun oc t ->
   in
   let rec toplevel _ t =
     match t.elt with
-    | P_Abst(xs,t)       -> out "λ%a, %a" args xs toplevel t
-    | P_Prod(xs,b)       -> out "Π%a, %a" args xs toplevel b
-    | P_Impl(a,b)          -> out "%a → %a" appl a toplevel b
+    | P_Abst(xs,t) -> out "λ%a, %a" args xs toplevel t
+    | P_Prod(xs,b) -> out "Π%a, %a" args xs toplevel b
+    | P_Impl(a,b) -> out "%a → %a" appl a toplevel b
     | P_LLet(x,xs,a,t,u) ->
         out "@[<hov 2>let %a%a%a ≔ %a@] in %a" ident x
           args xs annot a toplevel t toplevel u
-    | _                    -> out "%a" func t
+    | _ -> out "%a" func t
   in
   toplevel oc t
 
@@ -182,24 +182,24 @@ let query : p_query pp = fun oc q ->
 let tactic : p_tactic pp = fun oc t ->
   let out fmt = Format.fprintf oc fmt in
   match t.elt with
-  | P_tac_refine(t)          -> out "@[<hov 2>refine@ %a@]" term t
-  | P_tac_intro(xs)          -> out "intro %a" (List.pp arg_ident " ") xs
-  | P_tac_apply(t)           -> out "@[<hov 2>apply %a@]" term t
-  | P_tac_simpl              -> out "simpl"
+  | P_tac_refine(t) -> out "@[<hov 2>refine@ %a@]" term t
+  | P_tac_intro(xs) -> out "intro %a" (List.pp arg_ident " ") xs
+  | P_tac_apply(t) -> out "@[<hov 2>apply %a@]" term t
+  | P_tac_simpl -> out "simpl"
   | P_tac_rewrite(b,p,t)     ->
       let dir oc b = if not b then Format.fprintf oc " -" in
       let pat oc p = Format.fprintf oc " [%a]@" rw_patt p.elt in
       out "@[<hov 2>rewrite%a%a%a@]" dir b (Option.pp pat) p term t
-  | P_tac_refl               -> out "reflexivity"
-  | P_tac_sym                -> out "symmetry"
-  | P_tac_focus(i)           -> out "focus %i" i
-  | P_tac_proofterm          -> out "proofterm"
-  | P_tac_why3(p)            ->
+  | P_tac_refl -> out "reflexivity"
+  | P_tac_sym -> out "symmetry"
+  | P_tac_focus(i) -> out "focus %i" i
+  | P_tac_proofterm -> out "proofterm"
+  | P_tac_why3(p) ->
       let prover oc s = Format.fprintf oc " %s" s in
       out "why3%a" (Option.pp prover) p
-  | P_tac_query(q)           -> query oc q
-  | P_tac_fail               -> out "fail"
-  | P_tac_solve              -> out "solve"
+  | P_tac_query(q) -> query oc q
+  | P_tac_fail -> out "fail"
+  | P_tac_solve -> out "solve"
 
 let command : p_command pp = fun oc cmd ->
   let out fmt = Format.fprintf oc fmt in
