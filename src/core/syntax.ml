@@ -47,11 +47,11 @@ and p_term_aux =
   (** Application. *)
   | P_Impl of p_term * p_term
   (** Implication. *)
-  | P_Abst of p_arg list * p_term
+  | P_Abst of p_args list * p_term
   (** Abstraction over several variables. *)
-  | P_Prod of p_arg list * p_term
+  | P_Prod of p_args list * p_term
   (** Product over several variables. *)
-  | P_LLet of ident * p_arg list * p_type option * p_term * p_term
+  | P_LLet of ident * p_args list * p_type option * p_term * p_term
   (** Local let. *)
   | P_NLit of int
   (** Natural number literal. *)
@@ -76,7 +76,7 @@ and p_patt = p_term
 
 (** Parser-level representation of a function argument. The boolean is true if
     the argument is marked as implicit (i.e., between curly braces). *)
-and p_arg = ident option list * p_type option * bool
+and p_args = ident option list * p_type option * bool
 
 (** [p_get_args t] is {!val:Basics.get_args} on syntax-level terms. *)
 let p_get_args : p_term -> p_term * p_term list = fun t ->
@@ -111,6 +111,13 @@ module P  = struct
 
   let rec appl_wild : p_term -> int -> p_term = fun t i ->
       if i <= 0 then t else appl_wild (appl t wild) (i-1)
+
+  let abst : ident option -> p_term -> p_term = fun idopt t ->
+    Pos.none (P_Abst([[idopt],None,false], t))
+
+  let abst_list : ident option list -> p_term -> p_term = fun idopts t ->
+    List.fold_right abst idopts t
+
   let rule : p_patt -> p_term -> p_rule = fun l r -> Pos.none (l,r)
 end
 
@@ -242,7 +249,7 @@ let is_mstrat {elt; _} = match elt with P_mstrat(_) -> true | _ -> false
 type p_symbol =
   { p_sym_mod : p_modifier list (** modifiers *)
   ; p_sym_nam : ident (** symbol name *)
-  ; p_sym_arg : p_arg list (** arguments before ":" *)
+  ; p_sym_arg : p_args list (** arguments before ":" *)
   ; p_sym_typ : p_type option (** symbol type *)
   ; p_sym_trm : p_term option (** symbol definition *)
   ; p_sym_prf : (p_tactic list * p_proof_end) option (** proof script *)
@@ -297,10 +304,10 @@ let rec eq_p_term : p_term eq = fun t1 t2 ->
       eq_p_term t1 t2 && eq_p_term u1 u2
   | (P_Abst(xs1,t1)      , P_Abst(xs2,t2)            )
   | (P_Prod(xs1,t1)      , P_Prod(xs2,t2)            ) ->
-      List.equal eq_p_arg xs1 xs2 && eq_p_term t1 t2
+      List.equal eq_p_args xs1 xs2 && eq_p_term t1 t2
   | (P_LLet(x1,xs1,a1,t1,u1), P_LLet(x2,xs2,a2,t2,u2)) ->
       eq_ident x1 x2 && Option.equal eq_p_term a1 a2 && eq_p_term t1 t2
-      && eq_p_term u1 u2 && List.equal eq_p_arg xs1 xs2
+      && eq_p_term u1 u2 && List.equal eq_p_args xs1 xs2
   | (P_UnaO(u1,t1)       , P_UnaO(u2,t2)             ) ->
       eq_unop u1 u2 && eq_p_term t1 t2
   | (P_BinO(t1,b1,u1)    , P_BinO(t2,b2,u2)          ) ->
@@ -312,7 +319,7 @@ let rec eq_p_term : p_term eq = fun t1 t2 ->
   | (t1                  ,                   t2      ) ->
       t1 = t2
 
-and eq_p_arg : p_arg eq = fun (x1,ao1,b1) (x2,ao2,b2) ->
+and eq_p_args : p_args eq = fun (x1,ao1,b1) (x2,ao2,b2) ->
   List.equal (Option.equal (fun x1 x2 -> x1.elt = x2.elt)) x1 x2
   && Option.equal eq_p_term ao1 ao2 && b1 = b2
 
@@ -406,7 +413,7 @@ let eq_p_symbol : p_symbol eq = fun
       p_sym_def=p_sym_def2} ->
   p_sym_mod1 = p_sym_mod2
   && eq_ident p_sym_nam1 p_sym_nam2
-  && List.equal eq_p_arg p_sym_arg1 p_sym_arg2
+  && List.equal eq_p_args p_sym_arg1 p_sym_arg2
   && Option.equal eq_p_term p_sym_typ1 p_sym_typ2
   && Option.equal eq_p_term p_sym_trm1 p_sym_trm2
   && let eq_tac (ts1,_) (ts2,_) = List.equal eq_p_tactic ts1 ts2 in

@@ -90,9 +90,8 @@ let handle_tactic :
       with Invalid_argument _ -> fatal tac.pos "Invalid goal index.")
   | P_tac_refine(pt) ->
       handle_refine ps (scope pt)
-  | P_tac_intro(xs) ->
-      let pt = Pos.none (P_Abst([(xs,None,false)], Pos.none P_Wild)) in
-      handle_refine ps (scope pt)
+  | P_tac_intro(idopts) ->
+      handle_refine ps (scope (P.abst_list idopts P.wild))
   | P_tac_apply(pt) ->
       let t = scope pt in
       (* Compute the product arity of the type of [t]. *)

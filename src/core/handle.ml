@@ -137,7 +137,7 @@ let handle_require_as : popt -> sig_state -> Path.t -> ident -> sig_state =
     [e p strat symbol x xs : a] with [ss] as the signature state.
     On success, an updated signature state and the new symbol are returned. *)
 let handle_symbol :
-  sig_state -> expo -> prop -> match_strat -> ident -> p_arg list ->
+  sig_state -> expo -> prop -> match_strat -> ident -> p_args list ->
   p_type -> sig_state * sym = fun ss e p strat x xs a ->
   let scope_basic exp = Scope.scope_term exp ss Env.empty in
   (* We check that [x] is not already used. *)

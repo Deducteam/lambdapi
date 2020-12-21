@@ -64,16 +64,17 @@ let rec term : p_term pp = fun oc t ->
     | (P_Appl(t,u)         , Parser.PFunc) -> out "%a %a" appl t atom u
     | (P_Impl(a,b)         , Parser.PFunc) -> out "%a → %a" appl a func b
     | (P_Abst(xs,t)        , Parser.PFunc) ->
-        out "λ%a, " args xs;
+        out "λ%a, " args_list xs;
         let fn (ids,_,_) = List.for_all ((=) None) ids in
         let ec = !empty_context in
         empty_context := ec && List.for_all fn xs;
         out "%a" func t;
         empty_context := ec
-    | (P_Prod(xs,b)        , Parser.PFunc) -> out "Π%a, %a" args xs func b
+    | (P_Prod(xs,b)        , Parser.PFunc) ->
+        out "Π%a, %a" args_list xs func b
     | (P_LLet(x,xs,a,t,u)  , Parser.PFunc) ->
         out "@[<hov 2>let %a%a%a ≔@ %a@] in %a"
-          ident x args xs annot a func t func u
+          ident x args_list xs annot a func t func u
     | (P_NLit(i)           , _    ) -> out "%i" i
     | (P_UnaO((u,_,_),t)   , _    ) -> out "(%s %a)" u atom t
     | (P_BinO(t,(b,_,_,_),u), _   ) -> out "(%a %s %a)" atom t b atom u
@@ -87,12 +88,12 @@ let rec term : p_term pp = fun oc t ->
   in
   let rec toplevel _ t =
     match t.elt with
-    | P_Abst(xs,t) -> out "λ%a, %a" args xs toplevel t
-    | P_Prod(xs,b) -> out "Π%a, %a" args xs toplevel b
+    | P_Abst(xs,t) -> out "λ%a, %a" args_list xs toplevel t
+    | P_Prod(xs,b) -> out "Π%a, %a" args_list xs toplevel b
     | P_Impl(a,b) -> out "%a → %a" appl a toplevel b
     | P_LLet(x,xs,a,t,u) ->
         out "@[<hov 2>let %a%a%a ≔ %a@] in %a" ident x
-          args xs annot a toplevel t toplevel u
+          args_list xs annot a toplevel t toplevel u
     | _ -> out "%a" func t
   in
   toplevel oc t
@@ -102,7 +103,7 @@ and annot : p_type option pp = fun oc a ->
   | Some(a) -> Format.fprintf oc " :@ %a" term a
   | None    -> ()
 
-and arg : p_arg pp = fun oc (ids,ao,b) ->
+and args : p_args pp = fun oc (ids,ao,b) ->
   let args = List.pp arg_ident " " in
   match (ao,b) with
   | (None   , false) -> Format.fprintf oc "%a" args ids
@@ -110,8 +111,8 @@ and arg : p_arg pp = fun oc (ids,ao,b) ->
   | (Some(a), false) -> Format.fprintf oc "(%a : %a)" args ids term a
   | (Some(a), true ) -> Format.fprintf oc "{%a : %a}" args ids term a
 
-and args : p_arg list pp = fun oc ->
-  List.iter (Format.fprintf oc " %a" arg)
+and args_list : p_args list pp = fun oc ->
+  List.iter (Format.fprintf oc " %a" args)
 
 let rule : string -> p_rule pp = fun kw oc r ->
   let (lhs, rhs) = r.elt in
@@ -217,7 +218,7 @@ let command : p_command pp = fun oc cmd ->
       | (Some _,_) | (_,Some _) ->
         out "@[<hov 2>%asymbol %a"
           (List.pp modifier "") p_sym_mod ident p_sym_nam;
-        List.iter (out " %a" arg) p_sym_arg;
+        args_list oc p_sym_arg;
         Option.iter (out " : @[<hov>%a@]" term) p_sym_typ;
         Option.iter (out " ≔ @[<hov>%a@]@]" term) p_sym_trm;
         begin
@@ -238,7 +239,7 @@ let command : p_command pp = fun oc cmd ->
         in
         out "@[<hov 2>%asymbol %a"
           (List.pp modifier "") p_sym_mod ident p_sym_nam;
-        List.iter (out " %a" arg) p_sym_arg;
+        args_list oc p_sym_arg;
         out " :@ @[<hov>%a@]" term a
     end
   | P_rules [] -> ()
