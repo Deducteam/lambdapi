@@ -330,7 +330,13 @@ negative tests.
    assertnot zero ≡ succ zero
    assertnot succ : Nat
 
-``set``
+``print``
+---------
+
+Prints information (type, notation, rules, etc.) about the symbol
+given in argument of the command.
+
+``set`` 
 -------
 
 The ``set`` command is used to control the behaviour of Lambdapi and
