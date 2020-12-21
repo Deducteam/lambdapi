@@ -137,7 +137,7 @@ let handle_require_as : popt -> sig_state -> Path.t -> ident -> sig_state =
     [e p strat symbol x xs : a] with [ss] as the signature state.
     On success, an updated signature state and the new symbol are returned. *)
 let handle_symbol :
-  sig_state -> expo -> prop -> match_strat -> ident -> p_arg list ->
+  sig_state -> expo -> prop -> match_strat -> ident -> p_args list ->
   p_type -> sig_state * sym = fun ss e p strat x xs a ->
   let scope_basic exp = Scope.scope_term exp ss Env.empty in
   (* We check that [x] is not already used. *)
@@ -150,13 +150,11 @@ let handle_symbol :
   (* We scope the type of the declaration. *)
   let a = scope_basic e a in
   (* We check that [a] is typable by a sort. *)
-  Typing.sort_type [] a;
+  Infer.check_sort Unif.solve_noexn x.pos [] a;
   (* We check that no metavariable remains. *)
   if Basics.has_metas true a then
-    begin
-      fatal_msg "The type of [%s] has unsolved metavariables.\n" x.elt;
-      fatal x.pos "We have %s : %a." x.elt pp_term a
-    end;
+    (fatal_msg "The type of [%s] has unsolved metavariables.\n" x.elt;
+     fatal x.pos "We have %s : %a." x.elt pp_term a);
   (* Actually add the symbol to the signature and the state. *)
   out 3 "(symb) %s : %a\n" x.elt pp_term a;
   let sig_symbol = {expo=e;prop=p;mstrat=strat;ident=x;typ=a;impl;def=None} in
@@ -208,7 +206,7 @@ let data_proof : sig_symbol -> expo -> p_tactic list ->
       wrn pos "Proof aborted."; ss
     | _ ->
       (* We try to solve remaining unification goals. *)
-      let ps = Tactics.solve ps pos in
+      let ps = Tactics.solve_tac ps pos in
       (* We check that no metavariable remains. *)
       if Basics.has_metas true typ then
         begin
@@ -242,12 +240,8 @@ let data_proof : sig_symbol -> expo -> p_tactic list ->
       | P_proof_end   ->
         (* Check that the proof is indeed finished. *)
         if not (finished ps) then
-          begin
-            let _ =
-              Tactics.handle_tactic ss pdata_expo ps (none P_tac_print)
-            in
-            fatal pos "The proof is not finished."
-          end;
+          (out 1 "%a" Proof.pp_goals ps;
+           fatal pos "The proof is not finished.");
         (* Add a symbol corresponding to the proof. *)
         out 3 "(symb) %s (end)\n" ident.elt;
         fst (add_symbol ss sig_symbol)
