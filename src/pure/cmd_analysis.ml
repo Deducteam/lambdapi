@@ -118,6 +118,7 @@ let qidents_of_cmd (cmd : t) =
       | Syntax.P_query_prover_timeout _ -> []
       | Syntax.P_query_print None -> []
       | Syntax.P_query_print (Some qid) -> [qid]
+      | Syntax.P_query_proofterm -> []
     in
     f q.elt
 

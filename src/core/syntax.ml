@@ -162,6 +162,8 @@ type p_query_aux =
   (** Set the timeout of the prover (in seconds). *)
   | P_query_print of qident option
   (** Print information about a symbol or the current goals. *)
+  | P_query_proofterm
+  (** Print the current proof term (possibly containing open goals). *)
 
 type p_query = p_query_aux loc
 
@@ -185,8 +187,6 @@ type p_tactic_aux =
   (** Apply symmetry of equality. *)
   | P_tac_focus of int
   (** Focus on the given goal. *)
-  | P_tac_proofterm
-  (** Print the current proof term (possibly containing open goals). *)
   | P_tac_why3 of string option
   (** Try to solve the current goal with why3. *)
   | P_tac_solve

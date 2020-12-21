@@ -85,11 +85,9 @@ let handle_query : Sig_state.t -> Proof.t option -> p_query -> unit =
   | P_query_prover_timeout(n) ->
       Timed.(Why3_tactic.timeout := n)
   | P_query_print(None) ->
-      begin
-        match ps with
-        | None -> Console.fatal q.pos "Not in a proof."
-        | Some ps -> Console.out 1 "%a" Proof.pp_goals ps
-      end
+      (match ps with
+       | None -> fatal q.pos "Not in a proof."
+       | Some ps -> out 1 "%a" Proof.pp_goals ps)
   | P_query_print(Some qid) ->
       let sym = Sig_state.find_sym ~prt:true ~prv:true false ss qid in
       let open Timed in
@@ -98,8 +96,15 @@ let handle_query : Sig_state.t -> Proof.t option -> p_query -> unit =
         pp_symbol sym pp_term !(sym.sym_type);
       let h = get_pp_hint sym in
       if h <> Unqual then out 1 " [%a]" pp_hint h;
-      match !(sym.sym_def) with
+      (match !(sym.sym_def) with
       | Some t -> out 1 " ≔ %a\n" pp_term t
       | None ->
           out 1 "\n";
-          List.iter (fun r -> out 1 "%a\n" pp_rule (sym, r)) !(sym.sym_rules)
+          List.iter (fun r -> out 1 "%a\n" pp_rule (sym, r)) !(sym.sym_rules))
+  | P_query_proofterm ->
+      (match ps with
+       | None -> fatal q.pos "Not in a proof"
+       | Some ps ->
+           match ps.proof_term with
+           | Some t -> out 1 "%a\n" pp_term (Meta(t,[||]))
+           | None -> fatal q.pos "Not in a definition")

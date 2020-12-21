@@ -178,6 +178,7 @@ let query : p_query pp = fun oc q ->
   | P_query_prover_timeout(n) -> out "set prover_timeout %d" n
   | P_query_print(None) -> out "print"
   | P_query_print(Some s) -> out "print %a" qident s
+  | P_query_proofterm -> out "proofterm"
 
 let tactic : p_tactic pp = fun oc t ->
   let out fmt = Format.fprintf oc fmt in
@@ -193,7 +194,6 @@ let tactic : p_tactic pp = fun oc t ->
   | P_tac_refl -> out "reflexivity"
   | P_tac_sym -> out "symmetry"
   | P_tac_focus(i) -> out "focus %i" i
-  | P_tac_proofterm -> out "proofterm"
   | P_tac_why3(p) ->
       let prover oc s = Format.fprintf oc " %s" s in
       out "why3%a" (Option.pp prover) p

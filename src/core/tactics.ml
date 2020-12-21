@@ -40,28 +40,11 @@ let solve_tac ps pos =
 let handle_tactic :
   Sig_state.t -> Terms.expo -> Proof.t -> p_tactic -> Proof.t =
   fun ss e ps tac ->
-  (* First handle the tactics that do not change the goals. *)
   match tac.elt with
-  | P_tac_proofterm ->
-    begin
-      match ps.proof_term with
-      | Some proof_term ->
-        (* Just print the current proof term. *)
-        let t = Meta(proof_term, [||]) in
-        let name = ps.proof_name.elt in
-        Console.out 1 "Proof term for %s: %a\n" name pp_term t; ps
-      | None ->
-        Console.out 1 "No proof term"; ps
-    end
   | P_tac_query(q) -> Queries.handle_query ss (Some ps) q; ps
   | _ ->
-  (* The other tactics may change the goals. *)
-  (* Get the focused goal and the other goals. *)
-    if ps.proof_goals = [] then
-      fatal tac.pos "There is nothing left to prove.";
-
+  if ps.proof_goals = [] then fatal tac.pos "There is nothing left to prove.";
   match tac.elt with
-  | P_tac_proofterm
   | P_tac_query(_) -> assert false (* Handled above. *)
   | P_tac_solve -> solve_tac ps tac.pos
   | _ ->
@@ -99,7 +82,6 @@ let handle_tactic :
   in
 
   match tac.elt with
-  | P_tac_proofterm
   | P_tac_query(_)
   | P_tac_solve -> assert false (* Handled above. *)
   | P_tac_focus(i) ->
