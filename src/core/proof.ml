@@ -59,6 +59,41 @@ module Goal =
       | Unif _, Typ _ -> 1
       | Typ _, Unif _ -> -1
 
+    (** [pp oc g] prints on channel [oc] the goal [g] without its
+       hypotheses. *)
+    let pp : t pp = fun oc g ->
+      let out fmt = Format.fprintf oc fmt in
+      match g with
+      | Typ gt -> out "%a: %a\n" pp_meta gt.goal_meta pp_term gt.goal_type
+      | Unif (_, t, u) -> out "%a ≡ %a" pp_term t pp_term u
+
+    (** [pp_hyps oc g] prints on channel [oc] the goal [g] and its
+       hypotheses. *)
+    let pp_hyps : t pp =
+      let env_elt oc (s,(_,t,_)) =
+        Format.fprintf oc "%s: %a\n" s pp_term (Bindlib.unbox t)
+      in
+      let ctx_elt oc (x,a,t) =
+        Format.fprintf oc "%a: %a" pp_var x pp_term a;
+        match t with
+        | None -> Format.fprintf oc "\n"
+        | Some(t) -> Format.fprintf oc " ≔ %a\n" pp_term t
+      in
+      let hyps hyp oc l =
+        if l <> [] then
+          (List.iter (hyp oc) (List.rev l);
+           Format.fprintf oc "-----------------------------------------------\
+                              ---------------------------------\n")
+      in
+      fun oc g ->
+      match g with
+      | Typ gt ->
+          hyps env_elt oc gt.goal_hyps;
+          Format.fprintf oc "0. %a\n" pp_term gt.goal_type
+      | Unif (c, t, u) ->
+          hyps ctx_elt oc c;
+          Format.fprintf oc "0. %a ≡ %a" pp_term t pp_term u
+
   end
 
 (** [goals_of_metas ms] returns a list of goals from a set of metas. *)
@@ -154,50 +189,8 @@ let focus_goal : popt -> proof_state -> Env.t * term = fun pos ps ->
 
 (** [pp_goals oc gl] prints the goal list [gl] to channel [oc]. *)
 let pp_goals : proof_state pp = fun oc ps ->
+  let out fmt = Format.fprintf oc fmt in
   match ps.proof_goals with
-  | []    -> Format.fprintf oc " No more goals...\n"
+  | []    -> out "No goals ...\n"
   | g::gs ->
-    Format.fprintf oc "\n== Goals ================================\n";
-    match g with
-    | Goal.Typ g ->
-      let (hyps, a) = Goal.get_type g in
-      if hyps <> [] then
-        begin
-          let print_hyp (s,(_,t,_)) =
-            Format.fprintf oc "   %s : %a\n" s pp_term (Bindlib.unbox t)
-          in
-          List.iter print_hyp (List.rev hyps);
-          Format.fprintf oc "   --------------------------------------\n"
-        end;
-      Format.fprintf oc "Typ  0. %a (precomputed %a)\n"
-        Print.pp_meta g.goal_meta pp_term a;
-      if gs <> [] then
-        begin
-          Format.fprintf oc "\n";
-          let print_goal i g =
-            match g with
-            | Goal.Typ g ->
-              let (_, a) = Goal.get_type g in
-              Format.fprintf oc "Typ  %i. %a (precomputed %a)\n"
-                (i+1) Print.pp_meta g.goal_meta pp_term a
-            | Goal.Unif cs ->
-              Format.fprintf oc "Unif %i. %a\n" (i+1) pp_constr cs
-          in
-          List.iteri print_goal gs
-        end
-    | Goal.Unif cs -> Format.fprintf oc "Unif 0. %a\n" pp_constr cs;
-      if gs <> [] then
-        begin
-          Format.fprintf oc "\n";
-          let print_goal i g =
-            match g with
-            | Goal.Typ g ->
-              let (_, a) = Goal.get_type g in
-              Format.fprintf oc "Typ  %i. %a (precomputed %a)\n"
-                (i+1) Print.pp_meta g.goal_meta pp_term a
-            | Goal.Unif cs ->
-              Format.fprintf oc "Unif %i. %a\n"
-                (i+1) pp_constr cs
-          in
-          List.iteri print_goal gs
-        end
+      Goal.pp_hyps oc g; List.iteri (fun i g -> out "%d. %a" i Goal.pp g) gs

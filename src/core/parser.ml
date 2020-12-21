@@ -569,6 +569,10 @@ let parser query =
       Pos.in_pos _loc (P_query_prover(s))
   | _set_ "prover_timeout" n:nat_lit ->
       Pos.in_pos _loc (P_query_prover_timeout(n))
+  | _print_ qid:qident? ->
+      Pos.in_pos _loc (P_query_print qid)
+  | _proofterm_ ->
+      Pos.in_pos _loc P_query_proofterm
 
 (** [tactic] is a parser for a single tactic. *)
 let parser tactic =
@@ -581,8 +585,6 @@ let parser tactic =
   | _refl_                      -> Pos.in_pos _loc P_tac_refl
   | _sym_                       -> Pos.in_pos _loc P_tac_sym
   | i:{_:_focus_ nat_lit}       -> Pos.in_pos _loc (P_tac_focus(i))
-  | _print_                     -> Pos.in_pos _loc P_tac_print
-  | _proofterm_                 -> Pos.in_pos _loc P_tac_proofterm
   | _why3_ s:string_lit?        -> Pos.in_pos _loc (P_tac_why3(s))
   | q:query                     -> Pos.in_pos _loc (P_tac_query(q))
   | _fail_                      -> Pos.in_pos _loc P_tac_fail
