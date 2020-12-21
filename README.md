@@ -65,7 +65,8 @@ Use the `--help` option for more information. Other make targets are:
 
 ```bash
 make                        # Build lambdapi
-make doc                    # Build the source code documentation
+make doc                    # Build the user documentation (avalaible on readthedocs)
+make odoc                   # Build the developer documentation
 make install                # Install lambdapi
 make install_emacs          # Install emacs mode
 make install_vim            # Install vim support
