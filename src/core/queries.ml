@@ -97,8 +97,9 @@ let handle_query : Sig_state.t -> Proof.t option -> p_query -> unit =
         pp_prop sym.sym_prop pp_match_strat !(sym.sym_mstrat)
         pp_symbol sym pp_term !(sym.sym_type);
       let h = get_pp_hint sym in
-      if h <> Unqual then out 1 "notation: %a" pp_hint h;
-      (match !(sym.sym_def) with
+      if h <> Unqual then out 1 " [%a]" pp_hint h;
+      match !(sym.sym_def) with
       | Some t -> out 1 " ≔ %a\n" pp_term t
-      | None -> out 1 "\n");
-      List.iter (fun r -> out 1 "%a\n" pp_rule (sym, r)) !(sym.sym_rules)
+      | None ->
+          out 1 "\n";
+          List.iter (fun r -> out 1 "%a\n" pp_rule (sym, r)) !(sym.sym_rules)
