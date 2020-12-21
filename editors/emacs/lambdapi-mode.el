@@ -100,22 +100,37 @@
           (run-hooks 'changed-line-hook)))))
 
 
+(defgroup lambdapi nil
+  "LambdaPi is proof assistant based on λΠ-calculus modulo rewriting"
+  :group 'languages)
+
 (defcustom lambdapi-goals-window-side 'right
   "Side at which to show goals window"
-  :options '(right bottom top left)
-  :type 'symbol)
+  :type '(choice (const :tag "right"  right)
+                 (const :tag "left"   left)
+                 (const :tag "top"    top)
+                 (const :tag "bottom" bottom))
+  :group 'lambdapi)
 
-(defvar lambdapi-goals-window-height-ratio 0.30
-  "Ratio of height taken by Goals window if split top or bottom")
+(defcustom lambdapi-goals-window-height-ratio 0.30
+  "Ratio of height taken by Goals window if split top or bottom"
+  :type '(float)
+  :group 'lambdapi)
 
-(defvar lambdapi-goals-window-width-ratio 0.5
-  "Ratio of width taken by Goals window if split left or right")
+(defcustom lambdapi-goals-window-width-ratio 0.5
+  "Ratio of width taken by Goals window if split left or right"
+  :type '(float)
+  :group 'lambdapi)
 
-(defvar lambdapi-goals-window-min-width 40
-  "Minimum width of Goals window")
+(defcustom lambdapi-goals-window-min-width 40
+  "Minimum width of Goals window"
+  :type '(integer)
+  :group 'lambdapi)
 
-(defvar lambdapi-goals-window-min-height 4
-  "Minimum height of Goals window")
+(defcustom lambdapi-goals-window-min-height 4
+  "Minimum height of Goals window"
+  :type '(integer)
+  :group 'lambdapi)
 
 
 (defun lambdapi-refresh-window-layout ()

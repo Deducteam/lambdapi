@@ -124,26 +124,10 @@ Adds text-properties to make it clickable"
                 (erase-buffer)
                 (read-only-mode 1))))))))
 
-(defun lp-is-proof-empty ()
-  "return true if proof till proof-line-position is empty"
-  (interactive)
-  (save-excursion
-    (let ((line (plist-get proof-line-position :line )))
-      (goto-line line)
-      (while (and (> (line-number-at-pos) 1)
-		  (eq 0
-		      (string-match "[\t ]*\\(//.*\\)?$"
-				    (thing-at-point 'line t))))
-	(previous-line)))
-    (eq 0 (string-match "[\t ]*\\(begin\\|opaque *symbol\\).*" (thing-at-point 'line t)))))
-
 (defun lp-display-goals ()
   "Display goals at cursor position."
   (interactive)
-  (if (lp-is-proof-empty)
-      (with-current-buffer (get-buffer-create "*Goals*")
-        (erase-buffer))
-    (eglot--signal-proof/goals (eglot--pos-to-lsp-position))))
+  (eglot--signal-proof/goals (eglot--pos-to-lsp-position)))
 
 (defvar-local proof-line-position (list :line 0 :character 0))
 (defvar-local interactive-goals 't)
