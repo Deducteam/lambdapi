@@ -38,14 +38,9 @@ let path : Pos.popt -> p_module_path pp = fun pos ->
 
 let modifier : p_modifier pp = fun oc {elt; _} ->
   match elt with
-  | P_expo(Public) -> ()
-  | P_expo(Protec) -> string oc "protected "
-  | P_expo(Privat) -> string oc "private "
-  | P_mstrat(Eager) -> ()
-  | P_mstrat(Sequen) -> string oc "sequential "
-  | P_prop(Defin) -> ()
-  | P_prop(Const) -> string oc "constant "
-  | P_prop(Injec) -> string oc "injective "
+  | P_expo(e) -> Print.pp_expo oc e
+  | P_mstrat(s) -> Print.pp_match_strat oc s
+  | P_prop(p) -> Print.pp_prop oc p
   | P_opaq -> string oc "opaque "
 
 let rec term : p_term pp = fun oc t ->
@@ -76,7 +71,7 @@ let rec term : p_term pp = fun oc t ->
         out "%a" func t;
         empty_context := ec
     | (P_Prod(xs,b)        , Parser.PFunc) -> out "Π%a, %a" args xs func b
-    | (P_LLet(x,xs,a,t,u), Parser.PFunc) ->
+    | (P_LLet(x,xs,a,t,u)  , Parser.PFunc) ->
         out "@[<hov 2>let %a%a%a ≔@ %a@] in %a"
           ident x args xs annot a func t func u
     | (P_NLit(i)           , _    ) -> out "%i" i
@@ -92,13 +87,13 @@ let rec term : p_term pp = fun oc t ->
   in
   let rec toplevel _ t =
     match t.elt with
-    | P_Abst(xs,t)       -> out "λ%a, %a" args xs toplevel t
-    | P_Prod(xs,b)       -> out "Π%a, %a" args xs toplevel b
-    | P_Impl(a,b)          -> out "%a → %a" appl a toplevel b
+    | P_Abst(xs,t) -> out "λ%a, %a" args xs toplevel t
+    | P_Prod(xs,b) -> out "Π%a, %a" args xs toplevel b
+    | P_Impl(a,b) -> out "%a → %a" appl a toplevel b
     | P_LLet(x,xs,a,t,u) ->
         out "@[<hov 2>let %a%a%a ≔ %a@] in %a" ident x
           args xs annot a toplevel t toplevel u
-    | _                    -> out "%a" func t
+    | _ -> out "%a" func t
   in
   toplevel oc t
 
@@ -170,49 +165,41 @@ let assertion : p_assertion pp = fun oc asrt ->
 let query : p_query pp = fun oc q ->
   let out fmt = Format.fprintf oc fmt in
   match q.elt with
-  | P_query_assert(true , asrt)           ->
-      out "assertnot %a" assertion asrt
-  | P_query_assert(false, asrt)           ->
-      out "assert %a" assertion asrt
-  | P_query_verbose(i)                    ->
-      out "set verbose %i" i
-  | P_query_debug(true ,s)                ->
-      out "set debug \"+%s\"" s
-  | P_query_debug(false,s)                ->
-      out "set debug \"-%s\"" s
-  | P_query_flag(s, b)                    ->
+  | P_query_assert(true , asrt) -> out "assertnot %a" assertion asrt
+  | P_query_assert(false, asrt) -> out "assert %a" assertion asrt
+  | P_query_verbose(i) -> out "set verbose %i" i
+  | P_query_debug(true ,s) -> out "set debug \"+%s\"" s
+  | P_query_debug(false,s) -> out "set debug \"-%s\"" s
+  | P_query_flag(s, b) ->
       out "set flag \"%s\" %s" s (if b then "on" else "off")
-  | P_query_infer(t, _)                   ->
-      out "@[<hov 4>type %a@]" term t
-  | P_query_normalize(t, _)               ->
-      out "@[<hov 2>compute@ %a@]" term t
-  | P_query_prover(s)                     ->
-      out "set prover \"%s\"" s
-  | P_query_prover_timeout(n)               ->
-      out "set prover_timeout %d" n
+  | P_query_infer(t, _) -> out "@[<hov 4>type %a@]" term t
+  | P_query_normalize(t, _) -> out "@[<hov 2>compute@ %a@]" term t
+  | P_query_prover(s) -> out "set prover \"%s\"" s
+  | P_query_prover_timeout(n) -> out "set prover_timeout %d" n
+  | P_query_print(None) -> out "print"
+  | P_query_print(Some s) -> out "print %a" qident s
+  | P_query_proofterm -> out "proofterm"
 
 let tactic : p_tactic pp = fun oc t ->
   let out fmt = Format.fprintf oc fmt in
   match t.elt with
-  | P_tac_refine(t)          -> out "@[<hov 2>refine@ %a@]" term t
-  | P_tac_intro(xs)          -> out "intro %a" (List.pp arg_ident " ") xs
-  | P_tac_apply(t)           -> out "@[<hov 2>apply %a@]" term t
-  | P_tac_simpl              -> out "simpl"
+  | P_tac_refine(t) -> out "@[<hov 2>refine@ %a@]" term t
+  | P_tac_intro(xs) -> out "intro %a" (List.pp arg_ident " ") xs
+  | P_tac_apply(t) -> out "@[<hov 2>apply %a@]" term t
+  | P_tac_simpl -> out "simpl"
   | P_tac_rewrite(b,p,t)     ->
       let dir oc b = if not b then Format.fprintf oc " -" in
       let pat oc p = Format.fprintf oc " [%a]@" rw_patt p.elt in
       out "@[<hov 2>rewrite%a%a%a@]" dir b (Option.pp pat) p term t
-  | P_tac_refl               -> out "reflexivity"
-  | P_tac_sym                -> out "symmetry"
-  | P_tac_focus(i)           -> out "focus %i" i
-  | P_tac_print              -> out "print"
-  | P_tac_proofterm          -> out "proofterm"
-  | P_tac_why3(p)            ->
+  | P_tac_refl -> out "reflexivity"
+  | P_tac_sym -> out "symmetry"
+  | P_tac_focus(i) -> out "focus %i" i
+  | P_tac_why3(p) ->
       let prover oc s = Format.fprintf oc " %s" s in
       out "why3%a" (Option.pp prover) p
-  | P_tac_query(q)           -> query oc q
-  | P_tac_fail               -> out "fail"
-  | P_tac_solve             -> out "solve"
+  | P_tac_query(q) -> query oc q
+  | P_tac_fail -> out "fail"
+  | P_tac_solve -> out "solve"
 
 let command : p_command pp = fun oc cmd ->
   let out fmt = Format.fprintf oc fmt in
@@ -229,7 +216,7 @@ let command : p_command pp = fun oc cmd ->
       match (p_sym_trm,p_sym_prf) with
       | (Some _,_) | (_,Some _) ->
         out "@[<hov 2>%asymbol %a"
-          (List.pp modifier " ") p_sym_mod ident p_sym_nam;
+          (List.pp modifier "") p_sym_mod ident p_sym_nam;
         List.iter (out " %a" arg) p_sym_arg;
         Option.iter (out " : @[<hov>%a@]" term) p_sym_typ;
         Option.iter (out " ≔ @[<hov>%a@]@]" term) p_sym_trm;

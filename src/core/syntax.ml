@@ -132,14 +132,10 @@ type p_assertion =
 
 (** Type representing the different evaluation strategies. *)
 type strategy =
-  | WHNF
-  (** Reduce to weak head-normal form. *)
-  | HNF
-  (** Reduce to head-normal form. *)
-  | SNF
-  (** Reduce to strong normal form. *)
-  | NONE
-  (** Do nothing. *)
+  | WHNF (** Reduce to weak head-normal form. *)
+  | HNF  (** Reduce to head-normal form. *)
+  | SNF  (** Reduce to strong normal form. *)
+  | NONE (** Do nothing. *)
 
 (** Configuration for evaluation. *)
 type eval_config =
@@ -148,32 +144,36 @@ type eval_config =
 
 (** Parser-level representation of a query command. *)
 type p_query_aux =
-  | P_query_verbose   of int
+  | P_query_verbose of int
   (** Sets the verbosity level. *)
-  | P_query_debug     of bool * string
+  | P_query_debug of bool * string
   (** Toggles logging functions described by string according to boolean. *)
-  | P_query_flag      of string * bool
+  | P_query_flag of string * bool
   (** Sets the boolean flag registered under the given name (if any). *)
-  | P_query_assert    of bool * p_assertion
+  | P_query_assert of bool * p_assertion
   (** Assertion (must fail if boolean is [true]). *)
-  | P_query_infer     of p_term * eval_config
+  | P_query_infer of p_term * eval_config
   (** Type inference command. *)
   | P_query_normalize of p_term * eval_config
   (** Normalisation command. *)
-  | P_query_prover    of string
+  | P_query_prover of string
   (** Set the prover to use inside a proof. *)
   | P_query_prover_timeout of int
   (** Set the timeout of the prover (in seconds). *)
+  | P_query_print of qident option
+  (** Print information about a symbol or the current goals. *)
+  | P_query_proofterm
+  (** Print the current proof term (possibly containing open goals). *)
 
 type p_query = p_query_aux loc
 
 (** Parser-level representation of a proof tactic. *)
 type p_tactic_aux =
-  | P_tac_refine  of p_term
+  | P_tac_refine of p_term
   (** Refine the current goal using the given term. *)
-  | P_tac_intro   of ident option list
+  | P_tac_intro of ident option list
   (** Eliminate quantifiers using the given names for hypotheses. *)
-  | P_tac_apply   of p_term
+  | P_tac_apply of p_term
   (** Apply the given term to the current goal. *)
   | P_tac_simpl
   (** Normalize in the focused goal. *)
@@ -185,17 +185,13 @@ type p_tactic_aux =
   (** Apply reflexivity of equality. *)
   | P_tac_sym
   (** Apply symmetry of equality. *)
-  | P_tac_focus   of int
+  | P_tac_focus of int
   (** Focus on the given goal. *)
-  | P_tac_print
-  (** Print the current goal. *)
-  | P_tac_proofterm
-  (** Print the current proof term (possibly containing open goals). *)
   | P_tac_why3 of string option
   (** Try to solve the current goal with why3. *)
   | P_tac_solve
   (** Apply default unification solving algorithm. *)
-  | P_tac_query   of p_query
+  | P_tac_query of p_query
   (** Query. *)
   | P_tac_fail
   (** A tactic that always fails. *)
@@ -215,13 +211,13 @@ type p_proof_end = p_proof_end_aux loc
 
 (** Parser-level representation of a configuration command. *)
 type p_config =
-  | P_config_builtin   of string * qident
+  | P_config_builtin of string * qident
   (** Sets the configuration for a builtin syntax (e.g., nat literals). *)
-  | P_config_unop      of unop
+  | P_config_unop of unop
   (** Defines (or redefines) a unary operator (e.g., ["!"] or ["¬"]). *)
-  | P_config_binop     of binop
+  | P_config_binop of binop
   (** Defines (or redefines) a binary operator (e.g., ["+"] or ["×"]). *)
-  | P_config_ident     of string
+  | P_config_ident of string
   (** Defines a new, valid identifier (e.g., ["σ"], ["€"] or ["ℕ"]). *)
   | P_config_quant of qident
   (** Defines a quantifier symbol (e.g., ["∀"], ["∃"]). *)
@@ -254,21 +250,21 @@ type p_symbol =
 
 (** Parser-level representation of a single command. *)
 type p_command_aux =
-  | P_require    of bool * p_module_path list
+  | P_require  of bool * p_module_path list
   (** Require statement (require open if the boolean is true). *)
   | P_require_as of p_module_path * (string * bool) loc
   (** Require as statement. *)
-  | P_open       of p_module_path list
+  | P_open of p_module_path list
   (** Open statement. *)
-  | P_symbol     of p_symbol
+  | P_symbol of p_symbol
   (** Symbol declaration. *)
-  | P_rules      of p_rule list
+  | P_rules of p_rule list
   (** Rewriting rule declarations. *)
   | P_inductive of p_modifier list * p_inductive list
   (** Definition of inductive types *)
-  | P_set        of p_config
+  | P_set of p_config
   (** Set the configuration. *)
-  | P_query      of p_query
+  | P_query of p_query
   (** Query. *)
 
 (** Parser-level representation of a single (located) command. *)
@@ -366,6 +362,8 @@ let eq_p_query : p_query eq = fun q1 q2 ->
      s1 = s2
   | (P_query_prover_timeout(t1), P_query_prover_timeout(t2)) ->
      t1 = t2
+  | (P_query_print(s1)         , P_query_print(s2)         ) ->
+     Option.equal eq_qident s1 s2
   | (_                         , _                         ) ->
       false
 
@@ -406,13 +404,13 @@ let eq_p_symbol : p_symbol eq = fun
     { p_sym_mod=p_sym_mod2; p_sym_nam=p_sym_nam2; p_sym_arg=p_sym_arg2;
       p_sym_typ=p_sym_typ2; p_sym_trm=p_sym_trm2; p_sym_prf=p_sym_prf2;
       p_sym_def=p_sym_def2} ->
-  let eq_tactic (ts1,_) (ts2,_) = List.equal eq_p_tactic ts1 ts2 in
   p_sym_mod1 = p_sym_mod2
   && eq_ident p_sym_nam1 p_sym_nam2
   && List.equal eq_p_arg p_sym_arg1 p_sym_arg2
   && Option.equal eq_p_term p_sym_typ1 p_sym_typ2
   && Option.equal eq_p_term p_sym_trm1 p_sym_trm2
-  && Option.equal eq_tactic p_sym_prf1 p_sym_prf2
+  && let eq_tac (ts1,_) (ts2,_) = List.equal eq_p_tactic ts1 ts2 in
+     Option.equal eq_tac p_sym_prf1 p_sym_prf2
   && p_sym_def1 = p_sym_def2
 
 (** [eq_command c1 c2] tells whether [c1] and [c2] are the same commands. They
