@@ -1,0 +1,5 @@
+#REQUIRE tests.KO.import.circular_b.
+
+TA : Type.
+
+b : tests.KO.import.circular_b.TB.
