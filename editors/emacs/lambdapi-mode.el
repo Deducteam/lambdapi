@@ -134,7 +134,7 @@
 
 
 (defun lambdapi-refresh-window-layout ()
-  "Create *Goals* buffer if it not present. Create a side window
+  "Create *Goals* buffer if it is not present. Create a side window
 for the goals buffer using the lambdapi-goals-window-* variables."
   (interactive)
   (let* ((goalsbuf (get-buffer-create "*Goals*"))
