@@ -99,38 +99,9 @@ reserved "why3"
 // Rewriting rule
 <rule> ::= <qident> {<patt>}* "↪" <term>
 
-// Unification rule
-<unif_rule> ::= <patt> "≡" <patt> "↪" <term> "≡" <term> {";" <term> "≡" <term>}*
-
-// Rewrite pattern
-<rw_patt> ::=
-  | <term>
-  | "in" <term>
-  | "in" <ident> "in" <term>
-  | <ident> "in" <term>
-  | <term> "in" <ident> "in" <term>
-  | <term> "as" <ident> "in" <term>
-
-// Proof tactics
-<tactic> ::=
-  | "refine" <term>
-  | "assume" <ident>+
-  | "apply" <term>
-  | "simpl"
-  | "rewrite" "-"? {"[" <rw_patt> "]"}? <term>
-  | "reflexivity"
-  | "symmetry"
-  | "focus" <nat_lit>
-  | "print"
-  | "proofterm"
-  | "why3" <string_lit>?
-  | "fail"
-
 // Assertion predicate
 <assertion> ::=
-  // Typing assertion
   | <arg>* "⊢" <term> ":" <term>
-  // Convertibility assertion
   | <arg>* "⊢" <term> "≡" <term>
 
 // Flag names
@@ -146,6 +117,43 @@ reserved "why3"
 <flag_value> ::=
   | "on"
   | "off"
+
+// Queries
+<query> ::=
+  | "print" <ident>?
+  | "proofterm"
+  | "type" <term>
+  | "compute" <term>
+  | "set" "verbose" RE("[1-9][0-9]*")
+  | "set" "debug" RE("[-+][a-zA-Z]+")
+  | "set" "flag" \"<flag_name>\" <flag_value>
+  | "set" "prover" <ident>
+  | "set" "prover_timeout" <nat_lit>
+  | "assert" <assertion>
+  | "assertnot" <assertion>
+
+// Rewrite pattern
+<rw_patt> ::=
+  | <term>
+  | "in" <term>
+  | "in" <ident> "in" <term>
+  | <ident> "in" <term>
+  | <term> "in" <ident> "in" <term>
+  | <term> "as" <ident> "in" <term>
+  
+// Proof tactics
+<tactic> ::=
+  | <query>
+  | "refine" <term>
+  | "assume" <ident>+
+  | "apply" <term>
+  | "simpl"
+  | "rewrite" "-"? {"[" <rw_patt> "]"}? <term>
+  | "reflexivity"
+  | "symmetry"
+  | "focus" <nat_lit>
+  | "why3" <string_lit>?
+  | "fail"
 
 // Builtins
 <builtin> ::=
@@ -169,43 +177,24 @@ reserved "why3"
 // Proof
 <proof> ::= "begin" <tactic>* {"end"|"admit"|"abort"}
 
+// Unification rule
+<unif_rule> ::= <patt> "≡" <patt> "↪" <term> "≡" <term> {";" <term> "≡" <term>}*
+
 // Commands
 <command> ::=
-
-  // Require and/or open a module
+  | <query>
   | "require" <path> "as" <ident>
   | "require" "open"? <path>
   | "open" <path>
-
-  // Declare new symbols
   | <opacity>? <exposition>? <property>? "symbol" <ident> <arg>* {":" <type>}? {"≔" <term>}? proof?
   | <exposition>? "inductive" <inductive> {"with" <inductive>}*
-
-  // Define new rewriting rules
   | "rule" <rule> {"with" <rule>}*
-
-  // Assertion
-  | "assert" <assertion>
-  | "assertnot" <assertion>
-
-  // Set option
-  | "set" "unif_rule" <unif_rule>
-  | "set" "verbose" RE("[1-9][0-9]*")
-  | "set" "debug" RE("[-+][a-zA-Z]+")
-  | "set" "builtin" \"<builtin>\" "≔" <qident>
+  | "set" "declared" <string_lit>
   | "set" "prefix" <float_lit> <string_lit> "≔" <qident>
   | "set" "infix" {"left" | "right"}? <float_lit> <string_lit> "≔" <qident>
-  | "set" "prover" <ident>
-  | "set" "prover_timeout" <nat_lit>
-  | "set" "declared" <string_lit>
-  | "set" "flag" \"<flag_name>\" <flag_value>
   | "set" "quantifier" <qident>
-
-  // Get the type of a term
-  | "type" <term>
-
-  // Get the normal form of a term
-  | "compute" <term>
+  | "set" "builtin" \"<builtin>\" "≔" <qident>
+  | "set" "unif_rule" <unif_rule>
 
 // Entry point: list of commands.
 <main> ::= <command>*

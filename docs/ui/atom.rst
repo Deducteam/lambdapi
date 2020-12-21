@@ -1,5 +1,5 @@
-Editing lambdapi source code with `Atom <https://atom.io/>`__
--------------------------------------------------------------
+`Atom <https://atom.io/>`__
+===========================
 
 Support for the ``Atom`` editor exists but is deprecated.
 
