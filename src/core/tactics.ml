@@ -141,6 +141,4 @@ let handle_tactic :
   Sig_state.t -> Terms.expo -> Proof.t -> p_tactic -> Proof.t =
   fun ss exp ps tac ->
   try handle_tactic ss exp ps tac
-  with Fatal(_,_) as e ->
-    let print = none (P_tac_query (none (P_query_print None))) in
-    ignore (handle_tactic ss exp ps print); raise e
+  with Fatal(_,_) as e -> out 1 "%a" Proof.pp_goals ps; raise e
