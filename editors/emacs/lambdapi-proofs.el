@@ -145,7 +145,7 @@ make it clickable"
     (eglot--signal-proof/goals (eglot--pos-to-lsp-position))))
 
 (defvar-local proof-line-position (list :line 0 :character 0 :buffer nil))
-(defvar-local interactive-goals 't)
+(defvar-local interactive-goals nil)
 
 (defun move-proof-line (move-fct)
   (save-excursion
