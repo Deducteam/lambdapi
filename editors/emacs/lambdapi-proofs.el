@@ -16,7 +16,6 @@ containing the corresponding proof for *Goals* buffer"
   (interactive "nEnter Goal Number: ")
   (if (null proofbuf)
       (setq proofbuf (current-buffer)))
-
   (select-window (get-buffer-window proofbuf))
   (with-current-buffer proofbuf
     (goto-line (or lineNo (plist-get proof-line-position :line)))
@@ -28,7 +27,17 @@ containing the corresponding proof for *Goals* buffer"
           (insert (format "focus %S" goalno))
           (smie-indent-line)
           (eglot--signal-textDocument/didChange)
-          (move-proof-line `(lambda (_) ,(1+  lineNo)))))))
+          ;; if interactive mode is on move the proofline
+          ;; to the newly inserting focus k
+          (message "interactive mode = %S" interactive-goals)
+          (if interactive-goals
+              (move-proof-line `(lambda (_) ,(1+  lineNo)))
+            (progn
+              ;; otherwise just update the goals
+              ;; we need to call interactively because we
+              ;; need its behaviour similar to C-c C-c by user i.e.
+              ;; to display goals without changing proof-line-position
+              (call-interactively #'lp-display-goals)))))))
 
 (defun lp-make-goal-clickable (goalstr goalNo proofbuf lineNo)
   "Returns goalstr with text properties added making the string call
@@ -169,26 +178,31 @@ make it clickable"
 (defun lp-jump-proof-forward ()
   "Move the proof cursor to the next proof"
   (interactive)
+  (setq interactive-goals t)
   (move-proof-line #'lp-get-next-proof-line))
 
 (defun lp-jump-proof-backward ()
   "Move the proof cursor to the previous proof"
   (interactive)
+  (setq interactive-goals t)
   (move-proof-line #'lp-get-prev-proof-line))
 
 (defun lp-proof-forward ()
   "Move the proof cursor forward."
   (interactive)
+  (setq interactive-goals t)
   (move-proof-line #'1+))
 
 (defun lp-proof-backward ()
   "Move the proof cursor backward."
   (interactive)
+  (setq interactive-goals t)
   (move-proof-line #'1-))
 
 (defun toggle-interactive-goals ()
   "Toggle the goals display between two modes: interactive and step by step."
   (interactive)
+  (setq interactive-goals (not interactive-goals))
   (save-excursion
     (let ((line (plist-get proof-line-position :line)))
       (if interactive-goals
@@ -200,8 +214,7 @@ make it clickable"
               (hlt-highlight-region 0 (1+ (line-end-position)))
               (lp-display-goals))
         (goto-line line)
-        (hlt-unhighlight-region 0 (point-max)))))
-  (setq interactive-goals (not interactive-goals)))
+        (hlt-unhighlight-region 0 (point-max))))))
 
 (provide 'lambdapi-proofs)
 ;;; lambdapi-proofs.el ends here
