@@ -19,7 +19,7 @@ let concat_map = List.concat_map
 type t = Syntax.p_command
 
 (*Messy pattern matching to get the qidents throughout the document*)
-let rec qidents_of_bound_p_arg (args : Syntax.p_arg) :
+let rec qidents_of_bound_p_args (args : Syntax.p_args) :
     Syntax.qident list * Pos.strloc list =
   match args with
   | idents, None, _ -> ([], pmap idents)
@@ -52,9 +52,9 @@ and qidents_of_p_term (term : Syntax.p_term) =
   | Syntax.P_Wrap term -> qidents_of_p_term term
   | Syntax.P_Expl term -> qidents_of_p_term term
 
-and filter_bound_qidents (args : Syntax.p_arg list)
+and filter_bound_qidents (args : Syntax.p_args list)
     (terms_list : Syntax.p_term list) =
-  let qids, qargs = List.split (List.map qidents_of_bound_p_arg args) in
+  let qids, qargs = List.split (List.map qidents_of_bound_p_args args) in
   let qids, qargs = (List.concat qids, List.concat qargs) in
   let args = List.map (fun (id : Syntax.ident) -> id.elt) qargs in
   let filter_args (id : Syntax.qident) = not (List.mem (snd id.elt) args) in
@@ -116,6 +116,9 @@ let qidents_of_cmd (cmd : t) =
       | Syntax.P_query_normalize (term, _) -> qidents_of_p_term term
       | Syntax.P_query_prover _ -> []
       | Syntax.P_query_prover_timeout _ -> []
+      | Syntax.P_query_print None -> []
+      | Syntax.P_query_print (Some qid) -> [qid]
+      | Syntax.P_query_proofterm -> []
     in
     f q.elt
 

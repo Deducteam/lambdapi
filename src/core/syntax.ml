@@ -47,11 +47,11 @@ and p_term_aux =
   (** Application. *)
   | P_Impl of p_term * p_term
   (** Implication. *)
-  | P_Abst of p_arg list * p_term
+  | P_Abst of p_args list * p_term
   (** Abstraction over several variables. *)
-  | P_Prod of p_arg list * p_term
+  | P_Prod of p_args list * p_term
   (** Product over several variables. *)
-  | P_LLet of ident * p_arg list * p_type option * p_term * p_term
+  | P_LLet of ident * p_args list * p_type option * p_term * p_term
   (** Local let. *)
   | P_NLit of int
   (** Natural number literal. *)
@@ -76,7 +76,7 @@ and p_patt = p_term
 
 (** Parser-level representation of a function argument. The boolean is true if
     the argument is marked as implicit (i.e., between curly braces). *)
-and p_arg = ident option list * p_type option * bool
+and p_args = ident option list * p_type option * bool
 
 (** [p_get_args t] is {!val:Basics.get_args} on syntax-level terms. *)
 let p_get_args : p_term -> p_term * p_term list = fun t ->
@@ -92,46 +92,34 @@ type p_rule = (p_patt * p_term) loc
 (** Parser-level inductive type representation. *)
 type p_inductive = (ident * p_term * (ident * p_term) list) loc
 
-(** The previous module provides some functions to create p_term without
-    position. *)
-module P  =
-  struct
+(** Module to create p_term's with no positions. *)
+module P  = struct
+  let iden : string -> p_term = fun s ->
+    Pos.none (P_Iden(Pos.none ([], s), true))
 
-    (** [iden s] creates an identifier without position thanks to the string
-        [s]. *)
-    let iden : string -> p_term = fun s ->
-      Pos.none (P_Iden(Pos.none ([], s), true))
+  let patt : string -> p_term array option -> p_term = fun s ts ->
+    Pos.none (P_Patt (Some (Pos.none s), ts))
 
-    (** [patt s ts] creates a pattern without position thanks to the string
-        [s] and the terms [ts]. *)
-    let patt : string -> p_term array option -> p_term = fun s ts ->
-      Pos.none (P_Patt (Some (Pos.none s), ts))
+  let patt0 : string -> p_term = fun s -> patt s None
 
-    (** [patt0 s] creates a pattern without position thanks to the string
-        [s]. *)
-    let patt0 : string -> p_term = fun s -> patt s None
+  let appl : p_term -> p_term -> p_term = fun t1 t2 ->
+    Pos.none (P_Appl(t1, t2))
 
-    (** [appl t1 t2] creates an application of [t1] to [t2] without
-        position. *)
-    let appl : p_term -> p_term -> p_term = fun t1 t2 ->
-      Pos.none (P_Appl(t1, t2))
+  let appl_list : p_term -> p_term list -> p_term = List.fold_left appl
 
-    (** [appl_list a [b1; ...; bn]] returns (... ((a b1) b2) ...) bn. *)
-    let appl_list : p_term -> p_term list -> p_term = List.fold_left appl
+  let wild = Pos.none P_Wild
 
-    (** [wild] creates a p_term, which represents a wildcard, without
-        position. *)
-    let wild = Pos.none P_Wild
+  let rec appl_wild : p_term -> int -> p_term = fun t i ->
+      if i <= 0 then t else appl_wild (appl t wild) (i-1)
 
-    (** [appl_wild head i] creates a p_term which has [i] wildcard(s) after
-        the head [head]. *)
-    let rec appl_wild : p_term -> int -> p_term = fun head i ->
-      if i <= 0 then head else appl_wild (appl head wild) (i-1)
+  let abst : ident option -> p_term -> p_term = fun idopt t ->
+    Pos.none (P_Abst([[idopt],None,false], t))
 
-    (** [rule] creates a p_rule without position. *)
-    let rule : p_patt -> p_term -> p_rule = fun l r -> Pos.none (l,r)
+  let abst_list : ident option list -> p_term -> p_term = fun idopts t ->
+    List.fold_right abst idopts t
 
-  end
+  let rule : p_patt -> p_term -> p_rule = fun l r -> Pos.none (l,r)
+end
 
 (** Rewrite pattern specification. *)
 type p_rw_patt =
@@ -151,14 +139,10 @@ type p_assertion =
 
 (** Type representing the different evaluation strategies. *)
 type strategy =
-  | WHNF
-  (** Reduce to weak head-normal form. *)
-  | HNF
-  (** Reduce to head-normal form. *)
-  | SNF
-  (** Reduce to strong normal form. *)
-  | NONE
-  (** Do nothing. *)
+  | WHNF (** Reduce to weak head-normal form. *)
+  | HNF  (** Reduce to head-normal form. *)
+  | SNF  (** Reduce to strong normal form. *)
+  | NONE (** Do nothing. *)
 
 (** Configuration for evaluation. *)
 type eval_config =
@@ -167,32 +151,36 @@ type eval_config =
 
 (** Parser-level representation of a query command. *)
 type p_query_aux =
-  | P_query_verbose   of int
+  | P_query_verbose of int
   (** Sets the verbosity level. *)
-  | P_query_debug     of bool * string
+  | P_query_debug of bool * string
   (** Toggles logging functions described by string according to boolean. *)
-  | P_query_flag      of string * bool
+  | P_query_flag of string * bool
   (** Sets the boolean flag registered under the given name (if any). *)
-  | P_query_assert    of bool * p_assertion
+  | P_query_assert of bool * p_assertion
   (** Assertion (must fail if boolean is [true]). *)
-  | P_query_infer     of p_term * eval_config
+  | P_query_infer of p_term * eval_config
   (** Type inference command. *)
   | P_query_normalize of p_term * eval_config
   (** Normalisation command. *)
-  | P_query_prover    of string
+  | P_query_prover of string
   (** Set the prover to use inside a proof. *)
   | P_query_prover_timeout of int
   (** Set the timeout of the prover (in seconds). *)
+  | P_query_print of qident option
+  (** Print information about a symbol or the current goals. *)
+  | P_query_proofterm
+  (** Print the current proof term (possibly containing open goals). *)
 
 type p_query = p_query_aux loc
 
 (** Parser-level representation of a proof tactic. *)
 type p_tactic_aux =
-  | P_tac_refine  of p_term
+  | P_tac_refine of p_term
   (** Refine the current goal using the given term. *)
-  | P_tac_intro   of ident option list
+  | P_tac_intro of ident option list
   (** Eliminate quantifiers using the given names for hypotheses. *)
-  | P_tac_apply   of p_term
+  | P_tac_apply of p_term
   (** Apply the given term to the current goal. *)
   | P_tac_simpl
   (** Normalize in the focused goal. *)
@@ -204,17 +192,13 @@ type p_tactic_aux =
   (** Apply reflexivity of equality. *)
   | P_tac_sym
   (** Apply symmetry of equality. *)
-  | P_tac_focus   of int
+  | P_tac_focus of int
   (** Focus on the given goal. *)
-  | P_tac_print
-  (** Print the current goal. *)
-  | P_tac_proofterm
-  (** Print the current proof term (possibly containing open goals). *)
   | P_tac_why3 of string option
   (** Try to solve the current goal with why3. *)
-  | P_unif_solve
+  | P_tac_solve
   (** Apply default unification solving algorithm. *)
-  | P_tac_query   of p_query
+  | P_tac_query of p_query
   (** Query. *)
   | P_tac_fail
   (** A tactic that always fails. *)
@@ -234,13 +218,13 @@ type p_proof_end = p_proof_end_aux loc
 
 (** Parser-level representation of a configuration command. *)
 type p_config =
-  | P_config_builtin   of string * qident
+  | P_config_builtin of string * qident
   (** Sets the configuration for a builtin syntax (e.g., nat literals). *)
-  | P_config_unop      of unop
+  | P_config_unop of unop
   (** Defines (or redefines) a unary operator (e.g., ["!"] or ["¬"]). *)
-  | P_config_binop     of binop
+  | P_config_binop of binop
   (** Defines (or redefines) a binary operator (e.g., ["+"] or ["×"]). *)
-  | P_config_ident     of string
+  | P_config_ident of string
   (** Defines a new, valid identifier (e.g., ["σ"], ["€"] or ["ℕ"]). *)
   | P_config_quant of qident
   (** Defines a quantifier symbol (e.g., ["∀"], ["∃"]). *)
@@ -265,7 +249,7 @@ let is_mstrat {elt; _} = match elt with P_mstrat(_) -> true | _ -> false
 type p_symbol =
   { p_sym_mod : p_modifier list (** modifiers *)
   ; p_sym_nam : ident (** symbol name *)
-  ; p_sym_arg : p_arg list (** arguments before ":" *)
+  ; p_sym_arg : p_args list (** arguments before ":" *)
   ; p_sym_typ : p_type option (** symbol type *)
   ; p_sym_trm : p_term option (** symbol definition *)
   ; p_sym_prf : (p_tactic list * p_proof_end) option (** proof script *)
@@ -273,21 +257,21 @@ type p_symbol =
 
 (** Parser-level representation of a single command. *)
 type p_command_aux =
-  | P_require    of bool * p_module_path list
+  | P_require  of bool * p_module_path list
   (** Require statement (require open if the boolean is true). *)
   | P_require_as of p_module_path * (string * bool) loc
   (** Require as statement. *)
-  | P_open       of p_module_path list
+  | P_open of p_module_path list
   (** Open statement. *)
-  | P_symbol     of p_symbol
+  | P_symbol of p_symbol
   (** Symbol declaration. *)
-  | P_rules      of p_rule list
+  | P_rules of p_rule list
   (** Rewriting rule declarations. *)
   | P_inductive of p_modifier list * p_inductive list
   (** Definition of inductive types *)
-  | P_set        of p_config
+  | P_set of p_config
   (** Set the configuration. *)
-  | P_query      of p_query
+  | P_query of p_query
   (** Query. *)
 
 (** Parser-level representation of a single (located) command. *)
@@ -320,10 +304,10 @@ let rec eq_p_term : p_term eq = fun t1 t2 ->
       eq_p_term t1 t2 && eq_p_term u1 u2
   | (P_Abst(xs1,t1)      , P_Abst(xs2,t2)            )
   | (P_Prod(xs1,t1)      , P_Prod(xs2,t2)            ) ->
-      List.equal eq_p_arg xs1 xs2 && eq_p_term t1 t2
+      List.equal eq_p_args xs1 xs2 && eq_p_term t1 t2
   | (P_LLet(x1,xs1,a1,t1,u1), P_LLet(x2,xs2,a2,t2,u2)) ->
       eq_ident x1 x2 && Option.equal eq_p_term a1 a2 && eq_p_term t1 t2
-      && eq_p_term u1 u2 && List.equal eq_p_arg xs1 xs2
+      && eq_p_term u1 u2 && List.equal eq_p_args xs1 xs2
   | (P_UnaO(u1,t1)       , P_UnaO(u2,t2)             ) ->
       eq_unop u1 u2 && eq_p_term t1 t2
   | (P_BinO(t1,b1,u1)    , P_BinO(t2,b2,u2)          ) ->
@@ -335,7 +319,7 @@ let rec eq_p_term : p_term eq = fun t1 t2 ->
   | (t1                  ,                   t2      ) ->
       t1 = t2
 
-and eq_p_arg : p_arg eq = fun (x1,ao1,b1) (x2,ao2,b2) ->
+and eq_p_args : p_args eq = fun (x1,ao1,b1) (x2,ao2,b2) ->
   List.equal (Option.equal (fun x1 x2 -> x1.elt = x2.elt)) x1 x2
   && Option.equal eq_p_term ao1 ao2 && b1 = b2
 
@@ -385,6 +369,8 @@ let eq_p_query : p_query eq = fun q1 q2 ->
      s1 = s2
   | (P_query_prover_timeout(t1), P_query_prover_timeout(t2)) ->
      t1 = t2
+  | (P_query_print(s1)         , P_query_print(s2)         ) ->
+     Option.equal eq_qident s1 s2
   | (_                         , _                         ) ->
       false
 
@@ -425,13 +411,13 @@ let eq_p_symbol : p_symbol eq = fun
     { p_sym_mod=p_sym_mod2; p_sym_nam=p_sym_nam2; p_sym_arg=p_sym_arg2;
       p_sym_typ=p_sym_typ2; p_sym_trm=p_sym_trm2; p_sym_prf=p_sym_prf2;
       p_sym_def=p_sym_def2} ->
-  let eq_tactic (ts1,_) (ts2,_) = List.equal eq_p_tactic ts1 ts2 in
   p_sym_mod1 = p_sym_mod2
   && eq_ident p_sym_nam1 p_sym_nam2
-  && List.equal eq_p_arg p_sym_arg1 p_sym_arg2
+  && List.equal eq_p_args p_sym_arg1 p_sym_arg2
   && Option.equal eq_p_term p_sym_typ1 p_sym_typ2
   && Option.equal eq_p_term p_sym_trm1 p_sym_trm2
-  && Option.equal eq_tactic p_sym_prf1 p_sym_prf2
+  && let eq_tac (ts1,_) (ts2,_) = List.equal eq_p_tactic ts1 ts2 in
+     Option.equal eq_tac p_sym_prf1 p_sym_prf2
   && p_sym_def1 = p_sym_def2
 
 (** [eq_command c1 c2] tells whether [c1] and [c2] are the same commands. They

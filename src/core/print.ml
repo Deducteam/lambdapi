@@ -34,13 +34,29 @@ let print_meta_type : bool ref = Console.register_flag "print_meta_type" false
 (** Flag controlling the printing of the context in unification. *)
 let print_contexts : bool ref = Console.register_flag "print_contexts" false
 
+let pp_prop : prop pp = fun oc p ->
+  match p with
+  | Defin -> ()
+  | Const -> Format.fprintf oc "constant "
+  | Injec -> Format.fprintf oc "injective "
+
+let pp_expo : expo pp = fun oc e ->
+  match e with
+  | Public -> ()
+  | Protec -> Format.fprintf oc "protected "
+  | Privat -> Format.fprintf oc "private "
+
+let pp_match_strat : match_strat pp = fun oc s ->
+  match s with
+  | Sequen -> Format.fprintf oc "sequential "
+  | Eager -> ()
+
 (** [assoc oc a] prints associativity [a] to channel [oc]. *)
 let pp_assoc : assoc pp = fun oc assoc ->
-  Format.fprintf oc
-    (match assoc with
-     | Assoc_none -> ""
-     | Assoc_left -> " left associative"
-     | Assoc_right -> " right associative")
+  match assoc with
+  | Assoc_none -> ()
+  | Assoc_left -> Format.fprintf oc " left associative"
+  | Assoc_right -> Format.fprintf oc " right associative"
 
 (** [hint oc a] prints hint [h] to channel [oc]. *)
 let pp_hint : pp_hint pp = fun oc pp_hint ->
@@ -265,3 +281,11 @@ let pp_typing : constr pp = fun oc (ctx, t, u) ->
     output channel [oc]. *)
 let pp_constr : constr pp = fun oc (ctx, t, u) ->
   Format.fprintf oc "%a%a ≡ %a" pp_ctxt ctx pp_term t pp_term u
+
+(** [pp_constr oc p] prints the unification problem [p] to the
+    output channel [oc]. *)
+let pp_problem : problem pp = fun oc p ->
+  Format.fprintf oc "{ to_solve = [%a]; unsolved = [%a]; recompute = %b }"
+    (List.pp pp_constr "; ") p.to_solve
+    (List.pp pp_constr "; ") p.unsolved
+    p.recompute
