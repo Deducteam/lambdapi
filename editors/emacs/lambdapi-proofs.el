@@ -10,17 +10,16 @@
 
 (defconst lp-goal-line-prefix "---------------------------------------------------")
 
-(defun lp-focus-goal (goalno &optional proofbuf)
-  "Focus on 'goalno'th goal (zero-indexed)
-proofbuf is the buffer containing the corresponding proof
-for *Goals* buffer"
+(defun lp-focus-goal (goalno &optional proofbuf lineNo)
+  "Focus on 'goalno'th goal (zero-indexed). proofbuf is the buffer
+containing the corresponding proof for *Goals* buffer"
   (interactive "nEnter Goal Number: ")
   (if (null proofbuf)
       (setq proofbuf (current-buffer)))
 
   (select-window (get-buffer-window proofbuf))
   (with-current-buffer proofbuf
-    (goto-line (plist-get proof-line-position :line))
+    (goto-line (or lineNo (plist-get proof-line-position :line)))
     (goto-char (line-end-position))
     ;; Don't focus the goalno 0
     (if (not (eq goalno 0))
@@ -29,18 +28,17 @@ for *Goals* buffer"
           (insert (format "focus %S" goalno))
           (smie-indent-line)
           (eglot--signal-textDocument/didChange)
-          (lp-proof-forward)))))
+          (move-proof-line `(lambda (_) ,(1+  lineNo)))))))
 
-(defun lp-make-goal-clickable (goalstr goalNo proofbuf)
-  "Returns goalstr with text properties added
-making the string call lp-focus-goal with goalNo
-and proofbuf on click.
-Also makes the string bold if goalNo is 0"
+(defun lp-make-goal-clickable (goalstr goalNo proofbuf lineNo)
+  "Returns goalstr with text properties added making the string call
+lp-focus-goal with goalNo and proofbuf on click. Also makes the string
+bold if goalNo is 0"
   (let ((goalkeymap (make-sparse-keymap)))
     (define-key goalkeymap [mouse-1]
       `(lambda ()
          (interactive)
-         (lp-focus-goal ,goalNo ,proofbuf)))
+         (lp-focus-goal ,goalNo ,proofbuf ,lineNo)))
     (add-text-properties
      0 (length goalstr)
      `(face      ,(pcase goalNo
@@ -65,9 +63,10 @@ Also makes the string bold if goalNo is 0"
 		      (format "%s: %s\n" name type)))
 		  (reverse hs))))))
 
-(defun lp-format-string-goal (goal proofbuf goalNo)
-  "Return the string associated to a single goal.
-Adds text-properties to make it clickable"
+
+(defun lp-format-string-goal (goal goalNo proofbuf proofline)
+  "Return the string associated to a single goal. Adds text-properties to
+make it clickable"
   (let ((tog (plist-get goal :typeofgoal)))
     (if (string= tog "Typ ")
 	(let* ((id (plist-get goal :gid))
@@ -75,39 +74,40 @@ Adds text-properties to make it clickable"
                (clk-text (lp-make-goal-clickable
                           (format "%s  %d: %s"
                                   tog id type)
-                          goalNo proofbuf)))
+                          goalNo proofbuf proofline)))
 	  (format "%s\n%s\n\n"
 		  lp-goal-line-prefix clk-text))
       (let* ((constr (plist-get goal :constr))
              (clk-text (lp-make-goal-clickable
                         (format "%s    : %s"
                                 tog constr)
-                        goalNo proofbuf)))
+                        goalNo proofbuf proofline)))
         (format "%s\n%s\n\n"
                 lp-goal-line-prefix clk-text)))))
 
 (defun display-goals (goals)
   "Display GOALS returned by the LSP server in the dedicated Emacs buffer."
-  (let ((goalsbuf (get-buffer-create "*Goals*"))
-        (proofbuf (current-buffer)))
-    (with-current-buffer goalsbuf
-      (read-only-mode -1)
-      (if (> (length goals) 0)
-	  (let* ((fstgoal (elt goals 0))
-		 (hypsstr (lp-format-string-hyps-typ-goal fstgoal))
-                 ;; map each goal to formatted goal string
-		 (goalsstr (cl-mapcar `(lambda (goal goalNo)
-                                      (lp-format-string-goal
-                                       goal ,proofbuf goalNo))
-                                   goals
-                                   (cl-loop for x below (length goals)
-                                            collect x))))
-	    (erase-buffer)
-	    (goto-char (point-max))
-	    (mapc 'insert hypsstr)
-	    (mapc 'insert goalsstr))
-	(erase-buffer))
-      (read-only-mode 1))))
+  (let ((goalsbuf   (get-buffer-create "*Goals*"))
+        (proofbuf   (plist-get proof-line-position :buffer))
+        (proofline  (plist-get proof-line-position :line)))
+        (with-current-buffer goalsbuf
+          (read-only-mode -1)
+          (if (> (length goals) 0)
+              (let* ((fstgoal (elt goals 0))
+                     (hypsstr (lp-format-string-hyps-typ-goal fstgoal))
+                     ;; map each goal to formatted goal string
+                     (goalsstr (cl-mapcar `(lambda (goal goalNo)
+                                             (lp-format-string-goal
+                                              goal goalNo ,proofbuf ,proofline))
+                                          goals
+                                          (cl-loop for x below (length goals)
+                                                   collect x))))
+                (erase-buffer)
+                (goto-char (point-max))
+                (mapc 'insert hypsstr)
+                (mapc 'insert goalsstr))
+            (erase-buffer))
+          (read-only-mode 1))))
 
 (defun eglot--signal-proof/goals (position)
   "Send proof/goals to server, requesting the list of goals at POSITION."
@@ -127,18 +127,25 @@ Adds text-properties to make it clickable"
 (defun lp-display-goals ()
   "Display goals at cursor position."
   (interactive)
-  (eglot--signal-proof/goals (eglot--pos-to-lsp-position)))
+  (if (called-interactively-p 'any)
+      (let ((temp-pfline proof-line-position))
+        (setq proof-line-position (list :line (1+ (current-line)) :character 0
+                                        :buffer (current-buffer)))
+        (eglot--signal-proof/goals (eglot--pos-to-lsp-position))
+        (setq proof-line-position temp-pfline))
+    (eglot--signal-proof/goals (eglot--pos-to-lsp-position))))
 
-(defvar-local proof-line-position (list :line 0 :character 0))
+(defvar-local proof-line-position (list :line 0 :character 0 :buffer nil))
 (defvar-local interactive-goals 't)
 
 (defun move-proof-line (move-fct)
   (save-excursion
     (let ((line (plist-get proof-line-position :line)))
       (setq proof-line-position
-            (eglot--widening (list :line (funcall move-fct line) :character 0)))
+            (eglot--widening (list :line (funcall move-fct line) :character 0
+                                   :buffer (current-buffer))))
       (goto-line line)
-      (hlt-unhighlight-region 0 (1+ (line-end-position)))
+      (hlt-unhighlight-region 0 (point-max))
       (goto-line (funcall move-fct line))
       (hlt-highlight-region 0 (1+ (line-end-position)))
       (lp-display-goals))))
@@ -190,9 +197,10 @@ Adds text-properties to make it clickable"
                     (eglot--widening
                      (list :line (line-number-at-pos) :character 0)))
               (goto-line (line-number-at-pos))
-              (hlt-highlight-region 0 (1+ (line-end-position))))
+              (hlt-highlight-region 0 (1+ (line-end-position)))
+              (lp-display-goals))
         (goto-line line)
-        (hlt-unhighlight-region 0 (1+ (line-end-position))))))
+        (hlt-unhighlight-region 0 (point-max)))))
   (setq interactive-goals (not interactive-goals)))
 
 (provide 'lambdapi-proofs)
