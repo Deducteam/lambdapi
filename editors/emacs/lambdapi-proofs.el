@@ -29,7 +29,6 @@ containing the corresponding proof for *Goals* buffer"
           (eglot--signal-textDocument/didChange)
           ;; if interactive mode is on move the proofline
           ;; to the newly inserting focus k
-          (message "interactive mode = %S" interactive-goals)
           (if interactive-goals
               (move-proof-line `(lambda (_) ,(1+  lineNo)))
             (progn
