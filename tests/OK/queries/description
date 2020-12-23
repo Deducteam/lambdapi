@@ -1,6 +1,0 @@
-The content of this folder is a test suite on queries.
-More precisely, here we check the commands:
-  - assert
-  - assertnot
-  - type
-  - compute
