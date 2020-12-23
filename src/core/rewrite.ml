@@ -320,11 +320,7 @@ let rewrite : Sig_state.t -> popt -> Proof.t -> bool -> rw_patt option -> term
 
   (* Infer the type of [t] (the argument given to the tactic). *)
   let g_ctxt = Env.to_ctxt g_env in
-  let t_type =
-    match Typing.infer g_ctxt t with
-    | Some(a) -> a
-    | None    -> fatal pos "Cannot infer the type of [%a]." pp_term t
-  in
+  let t_type = Infer.infer Unif.solve_noexn pos g_ctxt t in
 
   (* Check that the type of [t] is of the form “P (eq a l r)”. *)
   let (t_type, vars) = break_prod t_type in

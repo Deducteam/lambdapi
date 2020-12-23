@@ -244,18 +244,6 @@ let gen_rec_types :
     let add_quantifier c (_,(v,a,_)) = _Prod a (Bindlib.bind_var v c) in
     let rec_typ = List.fold_left add_quantifier rec_typ ind_pred_map in
     Bindlib.unbox rec_typ
-    (* Check the type of rec_typ. *)
-    (*match Typing.infer [] rec_typ with
-    | Some t ->
-        (match unfold t with
-         | Type -> rec_typ
-         | _ ->
-             fatal pos "[%a] is of [%a] instead of TYPE.
-                        Please, raise an issue."
-               pp_term rec_typ pp_term t)
-    | None   ->
-        fatal pos "[%a] is not typable. Please, raise an issue."
-          pp_term rec_typ*)
   in
 
   List.map gen_rec_type ind_pred_map
@@ -268,10 +256,12 @@ let rec_name ind_sym = Parser.add_prefix "ind_" ind_sym.sym_name
    recursor rules for the inductive type definition [ind_list] and associated
    recursors [rec_sym_list] and [ind_pred_map].
 
-   For instance, [inductive T : Π(i1:A1),..,Π(im:Am), TYPE := c1:T1 | .. |
-   cn:Tn] generates a rule for each constructor. If [Ti = Πx1:B1,..,Πxk:Bk,T]
-   then the rule for ci is [ind_T p pc1 .. pcn _ .. _ (ci x1 .. xk) --> pci x1
-   t1? ... xk tk? with m underscores, [tj? = ind_T p pc1 .. pcn _ .. _ xj] if
+   For instance,
+   [inductive T : Π(i1:A1),..,Π(im:Am), TYPE := c1:T1 | .. | cn:Tn]
+   generates a rule for each constructor. If [Ti = Πx1:B1,..,Πxk:Bk,T]
+   then the rule for ci is
+   [ind_T p pc1 .. pcn _ .. _ (ci x1 .. xk) --> pci x1 t1? ... xk tk?]
+   with m underscores, [tj? = ind_T p pc1 .. pcn _ .. _ xj] if
    [Bj = T v1 ... vm], and nothing otherwise. *)
 let iter_rec_rules :
       popt -> inductive -> ind_pred_map -> (p_rule -> unit) -> unit =

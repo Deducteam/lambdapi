@@ -101,7 +101,7 @@
 
 (defun lambdapi-create-goals-buffer ()
   (let ((goalsbuf (get-buffer-create "*Goals*"))
-        (goalswindow (split-window nil -10 'right)))
+        (goalswindow (split-window nil -10 'below)))
     (set-window-buffer goalswindow goalsbuf)
     (set-window-dedicated-p goalswindow 't)))
 
@@ -139,6 +139,9 @@
    'eglot-server-programs
    '(lambdapi-mode . ("lambdapi" "lsp" "--standard-lsp")))
   (eglot-ensure)
+
+  ;; set column offsets for lambdapi's LSP server
+  (setq-local eglot-move-to-column-function #'eglot-move-to-column)
 
   ;; Hooks for goals
   (add-hook 'post-command-hook #'lambdapi-update-line-number nil :local)

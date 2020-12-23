@@ -164,7 +164,7 @@ let qsym : (Syntax.p_module_path * string) Term.t =
             let msg = Format.sprintf "Parse error at %s." (Pos.to_string p) in
             Error(`Msg(msg))
     in
-    let print fmt qid = Pretty.pp_qident fmt (Pos.none qid) in
+    let print fmt qid = Pretty.qident fmt (Pos.none qid) in
     Arg.conv (parse, print)
   in
   let doc = "Fully qualified symbol name with dot separated identifiers." in

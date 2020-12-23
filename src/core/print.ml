@@ -266,6 +266,14 @@ let pp_typing : constr pp = fun oc (ctx, t, u) ->
 let pp_constr : constr pp = fun oc (ctx, t, u) ->
   Format.fprintf oc "%a%a ≡ %a" pp_ctxt ctx pp_term t pp_term u
 
+(** [pp_constr oc p] prints the unification problem [p] to the
+    output channel [oc]. *)
+let pp_problem : problem pp = fun oc p ->
+  Format.fprintf oc "{ to_solve = [%a]; unsolved = [%a]; recompute = %b }"
+    (List.pp pp_constr "; ") p.to_solve
+    (List.pp pp_constr "; ") p.unsolved
+    p.recompute
+
 (** [Ast] provides functions to print AST with terms. *)
 module Ast =
   Pretty.Make

@@ -12,46 +12,47 @@ open Console
 open Pos
 open Syntax
 
-let pp_ident : ident pp = fun oc id ->
-  if Syntax.KW.mem id.elt then
+let string = Format.pp_print_string
+
+let ident : ident pp = fun oc id ->
+  if KW.mem id.elt then
     fatal id.pos "Identifier [%s] is a Lambdapi keyword." id.elt;
-  Format.pp_print_string oc id.elt
+  string oc id.elt
 
-let pp_arg_ident : ident option pp = fun oc id ->
+let arg_ident : ident option pp = fun oc id ->
   match id with
-  | Some(id) -> pp_ident oc id
-  | None     -> Format.pp_print_string oc "_"
+  | Some(id) -> ident oc id
+  | None     -> string oc "_"
 
-let pp_path_elt : Pos.popt -> (string * bool) pp = fun pos oc (s,b) ->
-  if not b && Syntax.KW.mem s then
+let path_elt : Pos.popt -> (string * bool) pp = fun pos oc (s,b) ->
+  if not b && KW.mem s then
     fatal pos "Module path member [%s] is a Lambdapi keyword." s;
-  if b then Format.fprintf oc "{|%s|}" s else Format.pp_print_string oc s
+  if b then Format.fprintf oc "{|%s|}" s else string oc s
 
-let pp_qident : qident pp = fun oc qid ->
-  List.iter (Format.fprintf oc "%a." (pp_path_elt qid.pos)) (fst qid.elt);
-  pp_ident oc (Pos.make qid.pos (snd qid.elt))
+let qident : qident pp = fun oc qid ->
+  List.iter (Format.fprintf oc "%a." (path_elt qid.pos)) (fst qid.elt);
+  ident oc (Pos.make qid.pos (snd qid.elt))
 
-let pp_path : Pos.popt -> p_module_path pp = fun pos ->
-  List.pp (pp_path_elt pos) "."
+let path : Pos.popt -> p_module_path pp = fun pos ->
+  List.pp (path_elt pos) "."
 
-let pp_modifier : p_modifier loc pp = fun oc {elt; _} ->
+let modifier : p_modifier pp = fun oc {elt; _} ->
   match elt with
   | P_expo(Public) -> ()
-  | P_expo(Protec) -> Format.pp_print_string oc "protected "
-  | P_expo(Privat) -> Format.pp_print_string oc "private "
+  | P_expo(Protec) -> string oc "protected "
+  | P_expo(Privat) -> string oc "private "
   | P_mstrat(Eager) -> ()
-  | P_mstrat(Sequen) -> Format.pp_print_string oc "sequential "
+  | P_mstrat(Sequen) -> string oc "sequential "
   | P_prop(Defin) -> ()
-  | P_prop(Const) -> Format.pp_print_string oc "constant "
-  | P_prop(Injec) -> Format.pp_print_string oc "injective "
-  | P_opaq(Nonopaque) -> ()
-  | P_opaq(Opaque) -> Format.pp_print_string oc "opaque"
+  | P_prop(Const) -> string oc "constant "
+  | P_prop(Injec) -> string oc "injective "
+  | P_opaq -> string oc "opaque "
 
-let pp_p_proof_end : p_proof_end pp = fun oc e ->
-  match e with
-  | P_proof_end   -> Format.pp_print_string oc "end"
-  | P_proof_admit -> Format.pp_print_string oc "admit"
-  | P_proof_abort -> Format.pp_print_string oc "abort"
+let proof_end : p_proof_end pp = fun oc e ->
+  match e.elt with
+  | P_proof_end   -> string oc "end"
+  | P_proof_admit -> string oc "admit"
+  | P_proof_abort -> string oc "abort"
 
 (** Module type of printable terms. *)
 module type PPTERM = sig
@@ -66,32 +67,31 @@ end
     module [T]. *)
 module Make (T: PPTERM)(R: PPTERM) = struct
 
-  let pp_p_annot : T.t option pp = fun oc a ->
+  let annot : T.t option pp = fun oc a ->
     match a with
     | Some(a) -> Format.fprintf oc " :@ %a" T.pp a
     | None    -> ()
 
-  let pp_p_arg : T.t p_arg pp = fun oc (ids,ao,b) ->
-    let pp_ids = List.pp pp_arg_ident " " in
+  let arg : T.t p_arg pp = fun oc (ids,ao,b) ->
+    let pp_ids = List.pp arg_ident " " in
     match (ao,b) with
     | (None   , false) -> Format.fprintf oc "%a" pp_ids ids
     | (None   , true ) -> Format.fprintf oc "{%a}" pp_ids ids
     | (Some(a), false) -> Format.fprintf oc "(%a : %a)" pp_ids ids T.pp a
     | (Some(a), true ) -> Format.fprintf oc "{%a : %a}" pp_ids ids T.pp a
 
-  let pp_p_args : T.t p_arg list pp = fun oc ->
-    List.iter (Format.fprintf oc " %a" pp_p_arg)
+  let args : T.t p_arg list pp = fun oc ->
+    List.iter (Format.fprintf oc " %a" arg)
 
-  let pp_p_inductive : string -> T.t p_inductive pp =
-    fun kw oc i ->
+  let inductive : string -> T.t p_inductive pp = fun kw oc i ->
     let (s, t, tl) = i.elt in
-    Format.fprintf oc "@[<hov 2>]%s %a" kw pp_ident s;
+    Format.fprintf oc "@[<hov 2>]%s %a" kw ident s;
     Format.fprintf oc " :@ @[<hov>%a@] ≔@ \n  " T.pp t;
     let pp_cons oc (id,a) =
-      Format.fprintf oc "%a:@ @[<hov>%a@]" pp_ident id T.pp a in
+      Format.fprintf oc "%a:@ @[<hov>%a@]" ident id T.pp a in
     List.pp pp_cons "\n| " oc tl
 
-  let pp_p_equi : (T.t * T.t) pp = fun oc (l, r) ->
+  let equi : (T.t * T.t) pp = fun oc (l, r) ->
     Format.fprintf oc "@[<hov 3>%a ≡ %a@]@?" T.pp l T.pp r
 
   (* let pp_p_unif_rule : (T.t -> T.t * T.t list) ->
@@ -108,31 +108,31 @@ module Make (T: PPTERM)(R: PPTERM) = struct
    *   Format.fprintf oc "@[<hov 3>%a ↪ %a@]@?"
    *     pp_p_equi lhs (Format.pp_print_list ~pp_sep pp_p_equi) eqs *)
 
-  let pp_p_rw_patt : T.t p_rw_patt pp = fun oc p ->
+  let rw_patt : T.t p_rw_patt pp = fun oc p ->
     let out fmt = Format.fprintf oc fmt in
     match p with
     | P_rw_Term(t)               -> out "%a" T.pp t
     | P_rw_InTerm(t)             -> out "in %a" T.pp t
-    | P_rw_InIdInTerm(x,t)       -> out "in %a in %a" pp_ident x T.pp t
-    | P_rw_IdInTerm(x,t)         -> out "%a in %a" pp_ident x T.pp t
+    | P_rw_InIdInTerm(x,t)       -> out "in %a in %a" ident x T.pp t
+    | P_rw_IdInTerm(x,t)         -> out "%a in %a" ident x T.pp t
     | P_rw_TermInIdInTerm(u,x,t) -> out "%a in %a in %a" T.pp u
-                                      pp_ident x T.pp t
+                                      ident x T.pp t
     | P_rw_TermAsIdInTerm(u,x,t) -> out "%a as %a in %a" T.pp u
-                                      pp_ident x T.pp t
+                                      ident x T.pp t
 
-  let pp_p_assertion : T.t p_assertion pp = fun oc asrt ->
+  let assertion : T.t p_assertion pp = fun oc asrt ->
     let out fmt = Format.fprintf oc fmt in
     match asrt with
     | P_assert_typing(t,a) -> out "%a : %a" T.pp t T.pp a
     | P_assert_conv(t,u)   -> out "%a ≡ %a" T.pp t T.pp u
 
-  let pp_p_query : T.t p_query pp = fun oc q ->
+  let query : T.t p_query pp = fun oc q ->
     let out fmt = Format.fprintf oc fmt in
     match q.elt with
     | P_query_assert(true , asrt)           ->
-        out "assertnot %a" pp_p_assertion asrt
+        out "assertnot %a" assertion asrt
     | P_query_assert(false, asrt)           ->
-        out "assert %a" pp_p_assertion asrt
+        out "assert %a" assertion asrt
     | P_query_verbose(i)                    ->
         out "set verbose %i" i
     | P_query_debug(true ,s)                ->
@@ -150,16 +150,16 @@ module Make (T: PPTERM)(R: PPTERM) = struct
     | P_query_prover_timeout(n)               ->
         out "set prover_timeout %d" n
 
-  let pp_p_tactic : T.t p_tactic pp = fun oc t ->
+  let tactic : T.t p_tactic pp = fun oc t ->
     let out fmt = Format.fprintf oc fmt in
     match t.elt with
     | P_tac_refine(t)          -> out "@[<hov 2>refine@ %a@]" T.pp t
-    | P_tac_intro(xs)          -> out "intro %a" (List.pp pp_arg_ident " ") xs
+    | P_tac_intro(xs)          -> out "intro %a" (List.pp arg_ident " ") xs
     | P_tac_apply(t)           -> out "@[<hov 2>apply %a@]" T.pp t
     | P_tac_simpl              -> out "simpl"
     | P_tac_rewrite(b,p,t)     ->
         let dir oc b = if not b then Format.fprintf oc " -" in
-        let pat oc p = Format.fprintf oc " [%a]@" pp_p_rw_patt p.elt in
+        let pat oc p = Format.fprintf oc " [%a]@" rw_patt p.elt in
         out "@[<hov 2>rewrite%a%a%a@]" dir b (Option.pp pat) p T.pp t
     | P_tac_refl               -> out "reflexivity"
     | P_tac_sym                -> out "symmetry"
@@ -169,48 +169,49 @@ module Make (T: PPTERM)(R: PPTERM) = struct
     | P_tac_why3(p)            ->
         let prover oc s = Format.fprintf oc " %s" s in
         out "why3%a" (Option.pp prover) p
-    | P_tac_query(q)           -> pp_p_query oc q
+    | P_tac_query(q)           -> query oc q
     | P_tac_fail               -> out "fail"
-    | P_unif_solve             -> out "solve"
+    | P_tac_solve              -> out "solve"
 
-  let pp_command : (T.t, R.t) p_command pp = fun oc cmd ->
+  let command : (T.t, R.t) p_command pp = fun oc cmd ->
     let out fmt = Format.fprintf oc fmt in
     match cmd.elt with
     | P_require(b,ps)             ->
         let op = if b then " open" else "" in
-        out "require%s %a" op (List.pp (pp_path cmd.pos) " ") ps
+        out "require%s %a" op (List.pp (path cmd.pos) " ") ps
     | P_require_as(p,i)               ->
-        out "require %a as %a" (pp_path cmd.pos) p (pp_path_elt i.pos) i.elt
+        out "require %a as %a" (path cmd.pos) p (path_elt i.pos) i.elt
     | P_open(ps)                      ->
-        List.iter (out "open %a" (pp_path cmd.pos)) ps
-    | P_symbol(ms,st,t,ts_pe,_e) ->
+        List.iter (out "open %a" (path cmd.pos)) ps
+    | P_symbol{p_sym_mod;p_sym_nam;p_sym_arg;p_sym_typ;p_sym_trm;p_sym_prf;_}
+                                      ->
       begin
-        match (t,ts_pe) with
+        match (p_sym_trm,p_sym_prf) with
         | (Some _,_) | (_,Some _) ->
-          let s,args,ao = st.elt in
-          out "@[<hov 2>%a symbol %a"
-            (Format.pp_print_list pp_modifier) ms pp_ident s;
-          List.iter (out " %a" pp_p_arg) args;
-          Option.iter (out " : @[<hov>%a@]" T.pp) ao;
-          Option.iter (out " ≔ @[<hov>%a@]@]" T.pp) t;
+          out "@[<hov 2>%asymbol %a"
+            (List.pp modifier " ") p_sym_mod ident p_sym_nam;
+          List.iter (out " %a" arg) p_sym_arg;
+          Option.iter (out " : @[<hov>%a@]" T.pp) p_sym_typ;
+          Option.iter (out " ≔ @[<hov>%a@]@]" T.pp) p_sym_trm;
           begin
-            match ts_pe with
+            match p_sym_prf with
             | Some(ts,pe) ->
               out "proof@.";
-              List.iter (out "  @[<hov>%a@]@." pp_p_tactic) ts;
-              out "%a" pp_p_proof_end pe.elt
+              List.iter (out "  @[<hov>%a@]@." tactic) ts;
+              out "%a" proof_end pe
             | None -> ()
           end
         | (None,None) ->
-          let (s,args,a) = st.elt in
           let a =
-            match a with
+            match p_sym_typ with
             | Some(a) -> a
-            | None -> failwith "Internal error : P_symbol has a type"
+            | None ->
+                fatal cmd.pos
+                  "symbol declaration with no type and no definition"
           in
           out "@[<hov 2>%asymbol %a"
-            (Format.pp_print_list pp_modifier) ms pp_ident s;
-          List.iter (out " %a" pp_p_arg) args;
+            (List.pp modifier "") p_sym_mod ident p_sym_nam;
+          List.iter (out " %a" arg) p_sym_arg;
           out " :@ @[<hov>%a@]" T.pp a
       end
     | P_rules([])                     -> ()
@@ -219,14 +220,14 @@ module Make (T: PPTERM)(R: PPTERM) = struct
         List.iter (out "with %a" R.pp) rs
     | P_inductive(_, []) -> ()
     | P_inductive(ms, i::il) ->
-        out "%a" (Format.pp_print_list pp_modifier) ms;
-        out "%a" (pp_p_inductive "inductive") i;
-        List.iter (out "%a" (pp_p_inductive "\nwith")) il;
+        out "%a" (Format.pp_print_list modifier) ms;
+        out "%a" (inductive "inductive") i;
+        List.iter (out "%a" (inductive "\nwith")) il;
     | P_set(P_config_builtin(n,i))    ->
-        out "set builtin %S ≔ %a" n pp_qident i
+        out "set builtin %S ≔ %a" n qident i
     | P_set(P_config_unop(unop))      ->
         let (s, p, qid) = unop in
-        out "set prefix %f %S ≔ %a" p s pp_qident qid
+        out "set prefix %f %S ≔ %a" p s qident qid
     | P_set(P_config_binop(binop))    ->
         let (s, a, p, qid) = binop in
         let a =
@@ -235,21 +236,15 @@ module Make (T: PPTERM)(R: PPTERM) = struct
           | Assoc_left  -> " left"
           | Assoc_right -> " right"
         in
-        out "set infix%s %f %S ≔ %a" a p s pp_qident qid
+        out "set infix%s %f %S ≔ %a" a p s qident qid
     | P_set(P_config_unif_rule(ur))   -> R.pp oc ur
     | P_set(P_config_ident(id))       ->
         out "set declared %S" id
     | P_set(P_config_quant(qid))      ->
-        out "set quantifier %a" pp_qident qid
-    | P_query(q)                      ->
-       pp_p_query oc q
+        out "set quantifier %a" qident qid
+    | P_query(q)                      -> query oc q
 
   (** [pp_ast oc ast] pretty prints abstract syntax tree [ast] to formatter
       [oc]. *)
-  let rec pp_ast : (T.t, R.t) ast pp = fun oc cs ->
-    match cs with
-    | []    -> ()
-    | [c]   -> Format.fprintf oc "%a@." pp_command c
-    | c::cs ->
-      Format.fprintf oc "%a\n@.%a" pp_command c pp_ast cs
+  let ast : (T.t, R.t) ast pp = List.pp command "\n@."
 end

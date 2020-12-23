@@ -119,13 +119,22 @@ let unbind_name :
 
 (** {3 Metavariables} *)
 
-(** [make_meta ctx a] creates a metavariable of type [a],  with an environment
-    containing the variables of context [ctx]. *)
+(** [make_meta ctx a] creates a fresh metavariable term of type [a] in the
+   context [ctx]. *)
 let make_meta : ctxt -> term -> term = fun ctx a ->
   let prd, len = Ctxt.to_prod ctx a in
   let m = Meta.fresh prd len in
   let get_var (x,_,_) = Vari(x) in
   Meta(m, Array.of_list (List.rev_map get_var ctx))
+
+(** [make_meta_codomain ctx a] creates a fresh metavariable term [b] of type
+   [Type] in the context [ctx] extended with a fresh variable of type [a]. *)
+let make_meta_codomain : ctxt -> term -> tbinder = fun ctx a ->
+  let x = Bindlib.new_var mkfree "x" in
+  let b = make_meta ((x, a, None) :: ctx) Type in
+  Bindlib.unbox (Bindlib.bind_var x (lift b))
+(* Possible improvement: avoid lift by defining a function _make_meta
+   returning a tbox. *)
 
 (** [iter_meta b f t] applies the function [f] to every metavariable of [t],
    and to the type of every metavariable recursively if [b] is true. *)
@@ -205,7 +214,8 @@ let term_of_rhs : rule -> term = fun r ->
   Bindlib.msubst r.rhs (Array.mapi fn r.vars)
 
 (** Total order on alpha-equivalence classes of terms not containing [Patt],
-   [TEnv] or [TRef]. @raise Invalid_argument otherwise. *)
+   [TEnv] or [TRef].
+@raise Invalid_argument otherwise. *)
 let cmp_term : term Lplib.Extra.cmp =
   let pos = __MODULE__ ^ ".cmp_term: " ^ __LOC__ in
   (* Total precedence on term constructors (must be injective). *)
@@ -260,8 +270,8 @@ let cmp_term : term Lplib.Extra.cmp =
   and cmp_binder u u' = let (_,u,u') = Bindlib.unbind2 u u' in cmp u u'
   in cmp
 
-(** Total order on contexts not containing [Patt], [TEnv] or [TRef]. @raise
-   Invalid_argument otherwise. *)
+(** Total order on contexts not containing [Patt], [TEnv] or [TRef].
+@raise Invalid_argument otherwise. *)
 let cmp_ctxt : ctxt Lplib.Extra.cmp =
   let cmp_decl (x,t,a) (x',t',a') =
     let c = Bindlib.compare_vars x x' in
@@ -270,8 +280,8 @@ let cmp_ctxt : ctxt Lplib.Extra.cmp =
          if c <> 0 then c else Lplib.Option.cmp_option cmp_term a a'
   in Lplib.List.cmp_list cmp_decl
 
-(** Total order on constraints not containing [Patt], [TEnv] or [TRef]. @raise
-   Invalid_argument otherwise. *)
+(** Total order on constraints not containing [Patt], [TEnv] or [TRef].
+@raise Invalid_argument otherwise. *)
 let cmp_constr : constr Lplib.Extra.cmp = fun (c,t,u) (c',t',u') ->
   let r = cmp_ctxt c c' in
   if r <> 0 then r
