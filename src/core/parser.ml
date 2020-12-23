@@ -494,17 +494,15 @@ let parser inductive =
 (** [unif_rule] is a parser for unification rules. *)
 let parser unif_rule =
   | l:{term "≡" term} "↪" r:{term "≡" term} rs:{";" term "≡" term}* ->
-      let equiv = Pos.none (P_Iden(Pos.none ([], "#equiv"), true)) in
-      let p_appl t u = Pos.none (P_Appl(t, u)) in
-      let mkequiv (l, r) = p_appl (p_appl equiv l) r in
+      let p_bin t b u = Pos.none (P_BinO(t, b, u)) in
+      let mkequiv (l, r) = p_bin l Syntax.equiv r in
       let lhs = mkequiv l in
       match rs with
       | [] -> Pos.in_pos _loc (lhs, mkequiv r)
       | _  ->
-          let cons = Pos.none (P_Iden(Pos.none ([], "#cons"), true)) in
           let rs = List.rev_map mkequiv (r::rs) in
           let (r, rs) = (List.hd rs, List.tl rs) in
-          let cat eqlst eq = p_appl (p_appl cons eq) eqlst in
+          let cat eqlst eq = p_bin eq Syntax.cons eqlst in
           let rhs = List.fold_left cat r rs in
           Pos.in_pos _loc (lhs, rhs)
 

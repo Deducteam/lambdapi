@@ -98,20 +98,6 @@ module Make (T: PP)(R: PP) = struct
   let equi : (T.t * T.t) pp = fun oc (l, r) ->
     Format.fprintf oc "@[<hov 3>%a ≡ %a@]@?" T.pp l T.pp r
 
-  (* let pp_p_unif_rule : (T.t -> T.t * T.t list) ->
-   *  (T.t -> (T.t * T.t) list) ->
-   *   T.t p_rule pp = fun get_args unpack oc r ->
-   *   let (lhs, rhs) = r.elt in
-   *   let lhs =
-   *     match get_args lhs with
-   *     | (_, [t; u]) -> (t, u)
-   *     | _           -> assert false
-   *   in
-   *   let eqs = unpack rhs in
-   *   let pp_sep : unit pp = fun oc () -> Format.fprintf oc ", " in
-   *   Format.fprintf oc "@[<hov 3>%a ↪ %a@]@?"
-   *     pp_p_equi lhs (Format.pp_print_list ~pp_sep pp_p_equi) eqs *)
-
   let rw_patt : T.t p_rw_patt pp = fun oc p ->
     let out fmt = Format.fprintf oc fmt in
     match p with

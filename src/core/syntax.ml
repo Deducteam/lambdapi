@@ -455,3 +455,17 @@ let p_cmd_map : 'a 'b 'c. ('a -> 'b) -> ('a, 'c) p_command ->
     | P_query(query)  -> P_query(p_query_map f query)
   in
   Pos.map f cmd
+
+(** {1 Builtin symbols for unification rules}. *)
+
+(** NOTE ghost identifiers are unqualified because ghost signatures are opened
+    in the current module (see {!module:Sig_state} and
+    {!val:Sig_state.open_sign}). *)
+
+(** Expression [t equiv u] for [t] and [u] two parser terms, is a unification
+    problem where [t] must unify with [u]. *)
+let equiv : binop = ("≡", Assoc_none, 1.1, Pos.none ([], "#equiv"))
+
+(** Expression [cons e e'] represents a cons cell of unification problems [e]
+    and [e']. *)
+let cons : binop = (";", Assoc_none, 1.0, Pos.none ([], "#cons"))
