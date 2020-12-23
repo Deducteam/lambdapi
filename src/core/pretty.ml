@@ -1,9 +1,10 @@
 (** Pretty-printing the parser-level AST.
 
     This module defines functions that allow printing elements of syntax found
-    in the parser-level abstract syntax. This is used, for example, to print a
-    file in the Lambdapi syntax, given the AST obtained when parsing a file in
-    the legacy (Dedukti) syntax. *)
+    in the parser-level abstract syntax. The module provides a functor that
+    allows to print abstract syntax trees parametrised by terms and rewrite
+    rules. It is used in conjunction with the {!module:P_terms} to print an
+    AST parsed from the legacy (Dedukti) syntax. *)
 
 open! Lplib
 open Lplib.Base
@@ -66,18 +67,9 @@ let proof_end : p_proof_end pp = fun oc {elt;_} ->
   | P_proof_admit -> string oc "admit"
   | P_proof_abort -> string oc "abort"
 
-(** Module type of printable terms. *)
-module type PPTERM = sig
-  type t
-  (** Type of term. *)
-
-  val pp : t pp
-  (** [pp oc t] prints term [t] to formatter [oc]. *)
-end
-
-(** [Make(T)] contains a set of printing functions for terms specified by
-    module [T]. *)
-module Make (T: PPTERM)(R: PPTERM) = struct
+(** [Make(T)(R)] contains a set of printing functions for terms specified by
+    module of printable terms [T] and printable rewrite rules [R]. *)
+module Make (T: PP)(R: PP) = struct
 
   let annot : T.t option pp = fun oc a ->
     match a with

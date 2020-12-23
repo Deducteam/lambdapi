@@ -221,9 +221,10 @@ let eq_unop : unop eq = fun (n1,p1,id1) (n2,p2,id2) ->
 let eq_binop : binop eq = fun (n1,a1,p1,id1) (n2,a2,p2,id2) ->
   n1 = n2 && a1 = a2 && p1 = p2 && eq_qident id1 id2
 
-(** Equality functions parametrised by terms and equality on terms. *)
-module EqAst (T: sig type t val eq : t eq end)
-    (R: sig type t val eq : t eq end) = struct
+(** [EqAst(T)(R)] produces equality functions for syntax elements, given
+    module [T] of terms with equality and [R] of rewrite rules with
+    equality. *)
+module EqAst (T: EQ) (R: EQ) = struct
 
   let eq_p_arg : T.t p_args eq = fun (x1,ao1,b1) (x2,ao2,b2) ->
     List.equal (Option.equal (fun x1 x2 -> x1.elt = x2.elt)) x1 x2
@@ -343,7 +344,7 @@ module EqAst (T: sig type t val eq : t eq end)
         false
 end
 
-(** Map functions on the first parameter of commands (the terms). *)
+(** {1 Mapping functions on the first parameter of commands (the terms).} *)
 
 (** [p_rw_patt_map f rw_patt] maps function [f] on terms of [rw_patt]. *)
 let p_rw_patt_map : 'a 'b. ('a -> 'b) -> 'a p_rw_patt -> 'b p_rw_patt =

@@ -1,4 +1,10 @@
-(** Parser level terms. *)
+(** Parser level terms.
+
+    This module defines the type of parser level terms, along with a printing
+    and equality function. It also instantiates the functors
+    {!module:Syntax.EqAst} and {!module:Pretty.Make} to provide functions that
+    print or equate ASTs of parser terms (that is obtained with
+    {!val:Parser.parse_file}). *)
 
 open Lplib
 open Lplib.Base
@@ -204,7 +210,8 @@ let rec pp : p_term pp = fun oc t ->
 and pp_p_rule : p_rule pp = fun oc {elt=(lhs,rhs);_} ->
   Format.fprintf oc "@[<hov 3>%a ↪ %a@]@?" pp lhs pp rhs
 
-(** [Pp] provides printing functions for {!type:P_terms.p_term} commands. *)
+(** [Pp] provides printing functions for Abstract Syntax Tree's command with
+    {!type:P_terms.p_term}. *)
 module Pp =
   Pretty.Make
     (struct type t = p_term let pp = pp end)
