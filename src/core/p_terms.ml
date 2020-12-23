@@ -168,17 +168,17 @@ let rec pp : p_term pp = fun oc t ->
     | (P_Appl(t,u)         , `PFunc) -> out "%a %a" appl t atom u
     | (P_Impl(a,b)         , `PFunc) -> out "%a → %a" appl a func b
     | (P_Abst(xs,t)        , `PFunc) ->
-        out "λ%a, " Ptp.args xs;
+        out "λ%a, " Ptp.args_list xs;
         let fn (ids,_,_) = List.for_all ((=) None) ids in
         let ec = !empty_context in
         empty_context := ec && List.for_all fn xs;
         out "%a" func t;
         empty_context := ec
     | (P_Prod(xs,b)        , `PFunc) ->
-        out "Π%a, %a" Ptp.args xs func b
+        out "Π%a, %a" Ptp.args_list xs func b
     | (P_LLet(x,xs,a,t,u), `PFunc)   ->
         out "@[<hov 2>let %a%a%a ≔@ %a@] in %a"
-          Pretty.ident x Ptp.args xs Ptp.annot a
+          Pretty.ident x Ptp.args_list xs Ptp.annot a
           func t func u
     | (P_NLit(i)           , _    ) -> out "%i" i
     | (P_UnaO((u,_,_),t)   , _    ) -> out "(%s %a)" u atom t
@@ -191,12 +191,12 @@ let rec pp : p_term pp = fun oc t ->
   and func oc t = pp `PFunc oc t in
   let rec toplevel _ t =
     match t.elt with
-    | P_Abst(args,t)       -> out "λ%a, %a" Ptp.args args toplevel t
-    | P_Prod(args,b)       -> out "Π%a, %a" Ptp.args args toplevel b
+    | P_Abst(args,t)       -> out "λ%a, %a" Ptp.args_list args toplevel t
+    | P_Prod(args,b)       -> out "Π%a, %a" Ptp.args_list args toplevel b
     | P_Impl(a,b)          -> out "%a → %a" appl a toplevel b
-    | P_LLet(x,args,a,t,u) ->
+    | P_LLet(x,xs,a,t,u) ->
         out "@[<hov 2>let %a%a%a ≔ %a@] in %a" Pretty.ident x
-          Ptp.args args Ptp.annot a toplevel t toplevel u
+          Ptp.args_list xs Ptp.annot a toplevel t toplevel u
     | _                    -> out "%a" func t
   in
   toplevel oc t

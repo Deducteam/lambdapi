@@ -84,7 +84,7 @@ module Make (T: PPTERM)(R: PPTERM) = struct
     | Some(a) -> Format.fprintf oc " :@ %a" T.pp a
     | None    -> ()
 
-  let arg : T.t p_args pp = fun oc (ids,ao,b) ->
+  let args : T.t p_args pp = fun oc (ids,ao,b) ->
     let pp_ids = List.pp arg_ident " " in
     match (ao,b) with
     | (None   , false) -> Format.fprintf oc "%a" pp_ids ids
@@ -92,8 +92,8 @@ module Make (T: PPTERM)(R: PPTERM) = struct
     | (Some(a), false) -> Format.fprintf oc "(%a : %a)" pp_ids ids T.pp a
     | (Some(a), true ) -> Format.fprintf oc "{%a : %a}" pp_ids ids T.pp a
 
-  let args : T.t p_args list pp = fun oc ->
-    List.iter (Format.fprintf oc " %a" arg)
+  let args_list : T.t p_args list pp = fun oc ->
+    List.iter (Format.fprintf oc " %a" args)
 
   let inductive : string -> T.t p_inductive pp = fun kw oc i ->
     let (s, t, tl) = i.elt in
@@ -194,7 +194,7 @@ module Make (T: PPTERM)(R: PPTERM) = struct
         | (Some _,_) | (_,Some _) ->
           out "@[<hov 2>%asymbol %a"
             (List.pp modifier " ") p_sym_mod ident p_sym_nam;
-          List.iter (out " %a" arg) p_sym_arg;
+          args_list oc p_sym_arg;
           Option.iter (out " : @[<hov>%a@]" T.pp) p_sym_typ;
           Option.iter (out " ≔ @[<hov>%a@]@]" T.pp) p_sym_trm;
           begin
@@ -215,7 +215,7 @@ module Make (T: PPTERM)(R: PPTERM) = struct
           in
           out "@[<hov 2>%asymbol %a"
             (List.pp modifier "") p_sym_mod ident p_sym_nam;
-          List.iter (out " %a" arg) p_sym_arg;
+          args_list oc p_sym_arg;
           out " :@ @[<hov>%a@]" T.pp a
       end
     | P_rules([])                     -> ()
