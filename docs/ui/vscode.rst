@@ -1,5 +1,5 @@
-Editing lambdapi source code with `VSCode`_
-===========================================
+`VSCode`_
+=========
 
 There is an extension for VSCode >= 1.37 derived from VSCoq. To install
 it do from the ``lambdapi`` repository:

@@ -1,16 +1,13 @@
-Syntax of commands
-==================
+Commands
+========
 
 The BNF grammar of Lambdapi is in `syntax.bnf <syntax.bnf>`__.
 
 In this section, we will illustrate the syntax of Lambdapi using
 examples. The first thing to note is that Lambdapi files are formed of a
-list of commands. A command starts with a particular, reserved keyword.
-And it ends either at the start of a new command or at the end of the
+list of commands. A command starts with a particular reserved keyword
+and ends either at the start of a new command or at the end of the
 file.
-
-Comments
---------
 
 One-line comments are introduced by ‘//’:
 
@@ -23,7 +20,7 @@ In Emacs, one can (un)comment a region by using Meta-; .
 ``require``
 -----------
 
-The ``require`` command informs the type-checker that the current module
+Informs the type-checker that the current module
 depends on some other module, which must hence be compiled.
 
 ::
@@ -37,7 +34,7 @@ can be referred to with the provided name.
 ``open``
 --------
 
-The ``open`` command puts into scope the symbols defined in the given
+Puts into scope the symbols defined in the given
 module. It can also be combined with the ``require`` command.
 
 ::
@@ -48,20 +45,17 @@ module. It can also be combined with the ``require`` command.
 ``symbol``
 ----------
 
-This commands allows to declare or define a symbol. The syntax is
-as follows:
+Allows to declare or define a symbol as follows:
 
 ``symbol`` modifiers identifier parameters [``:`` type] [``≔`` term] [``begin`` proof ``end``]
 
-The command requires a fresh identifier (it should not have already
-been used in the current module).
+The identifier should not have already been used in the current module.
+It must be followed by a type or a definition (or both).
 
-The symbol must be followed by a type or a definition (or both).
-
-It is possible to put arguments on the left side of ``:``
-(similarly to a value declaration in OCaml).
-
-The following proof (if any) allows the user to solve typing goals and unification goals the system could not solve automatically. It can also be used to give a definition interactively (if no defining term is provided).
+The following proof (if any) allows the user to solve typing and
+unification goals the system could not solve automatically. It can
+also be used to give a definition interactively (if no defining term
+is provided).
 
 Examples:
 
@@ -96,7 +90,7 @@ the system with additional information on its properties or behavior.
 -  Exposition markers define how a symbol can be used outside the module
    where it is defined.
 
-   -  ``public`` (default): the symbol can be used without restriction
+   -  by default, the symbol can be used without restriction
    -  ``private``: the symbol cannot be used
    -  ``protected``: the symbol can only be used in left-hand side of
       rewrite rules.
@@ -284,99 +278,42 @@ rule.
 
 Adding sets of rules allows to maintain confluence.
 
-Examples of patterns are available in the file
-```patterns.lp`` <../tests/OK/patterns.lp>`__ of the test suite.
+Examples of patterns are available in ``tests/OK/patterns.lp``.
 
-``type``
---------
+``print``
+---------
 
-The ``type`` command returns the type of a term.
+Prints information (type, notation, rules, etc.) about the symbol
+given in argument of the command.
 
-::
-
-   symbol N : TYPE
-   symbol z : N
-   symbol s : N→N
-   type N→N // returns TYPE
-   type s z // returns N
-
-``compute``
------------
-
-The ``compute`` command computes the normal form of a term.
-
-::
-
-   symbol N : TYPE
-   symbol z : N
-   symbol s : N→N
-   symbol add : N→N→N
-   rule add z $x ↪ $x
-   with add (s $x) $y ↪ add $x (s $y)
-   compute add (s (s z)) (s (s z)) // returns s (s (s (s z)))
-
-``assert`` and ``assertnot``
-----------------------------
-
-The ``assert`` and ``assertnot`` are convenient for checking that the
-validity, or the invalidity, of typing judgments or convertibilities.
-This can be used for unit testing of Lambdapi, with both positive and
-negative tests.
-
-::
-
-   assert zero : Nat
-   assert add (succ zero) zero ≡ succ zero
-   assertnot zero ≡ succ zero
-   assertnot succ : Nat
-
-``set``
+``set`` 
 -------
 
 The ``set`` command is used to control the behaviour of Lambdapi and
 extension points in its syntax.
 
-**verbose level** The verbose level can be set to an integer between 0
-and 3. Higher is the verbose level, more details are printed.
+**declared identifiers** The following code declares a new valid identifier.
 
 ::
 
-   set verbose 1
+   set declared "ℕ"
+   set declared "α"
+   set declared "β"
+   set declared "γ"
+   set declared "x₁"
+   set declared "x₂"
+   set declared "x₃"
 
-**debug mode** The user can activate (with ``+``) or deactivate (with
-``-``) the debug mode for some functionalities as follows:
-
-::
-
-   set debug +ts
-   set debug -s
-
-Each functionality is represented by a single character. For instance,
-``i`` stands for type inference. To get the list of debuggable
-functionalities, run the command ``lambdapi check --help``.
-
-**flags** The user can set/unset some flags:
+**prefix symbols** The following code defines a prefix symbol for
+negation.
 
 ::
 
-   set flag "eta_equality" on // default is off
-   set flag "print_implicits" on // default is off
-   set flag "print_contexts" on // default is off
-   set flag "print_domains" on // default is off
-   set flag "print_meta_type" on // default is off
-
-**notation for natural numbers** It is possible to use the standard
-decimal notation for natural numbers by specifying the symbols
-representing 0 and the successor function as follows:
-
-::
-
-   set builtin "0"  ≔ zero // : N
-   set builtin "+1" ≔ succ // : N → N
+   set prefix 5 "¬" ≔ neg
 
 **infix symbols** The following code defines infix symbols for addition
 and multiplication. Both are associative to the left, and they have
-priority levels ``6`` and ``7``.
+priority levels ``6`` and ``7`` respectively.
 
 ::
 
@@ -388,6 +325,10 @@ to specify whether the defined symbol is non-associative, associative to
 the right, or associative to the left. The priority levels are floating
 point numbers, hence a priority can (almost) always be inserted between
 two different levels.
+
+*WARNING:* some checks are performed upon the declaration of infix
+symbols and identifiers, but they are by no means sufficient (it is
+still possible to break the parser by defining well-chosen tokens).
 
 **quantifier symbols** The representation of a symbol can be modified to
 make it look like a usual quantifier (such as ``∀``, ``∃`` or ``λ``).
@@ -401,87 +342,41 @@ and their printing is changed:
    compute ∀ (λx:T a, p) // prints ∀x,p
    type ∀x,p // quantifiers can be written as such
 
-**why3 tactic related builtins** In order to use external provers via
-the why3 tactic, one first has to define a number of builtin symbols as
-follows:
+**builtins** The command ``set builtin`` allows to map a “builtin“
+string to a user-defined symbol identifier. Those mappings are
+necessary for other commands or tactics. For instance, to use decimal
+numbers, one needs to map the builtins “0“ and “+1“ to some symbol
+identifiers for zero and the successor function (see hereafter); to
+use tactics on equality, one needs to define some specific builtins;
+etc.
+
+**notation for natural numbers** It is possible to use the standard
+decimal notation for natural numbers by specifying the symbols
+representing 0 and the successor function as follows:
 
 ::
 
-   set builtin "P"     ≔ P     // : Prop → TYPE
-   set builtin "top"   ≔ top   // : Prop
-   set builtin "bot"   ≔ bot   // : Prop
-   set builtin "not"   ≔ not   // : Prop → Prop
-   set builtin "and"   ≔ and   // : Prop → Prop → Prop
-   set builtin "or"    ≔ or    // : Prop → Prop → Prop
-   set builtin "imp"   ≔ imp   // : Prop → Prop → Prop
-   set builtin "T"     ≔ T     // : U → TYPE
-   set builtin "eq"    ≔ eq    // : Π {a}, T a → T a → Prop
-
-**prover config**: In order to use the ``why3`` tactic, a prover should
-be set using:
-
-::
-
-   set prover "Eprover"
-
-*Alt-Ergo* is set by default if the user didn’t specify a prover.
-
-The user can also specify the timeout (in seconds) of the prover:
-
-::
-
-   set prover_timeout 60
-
-The default time limit of a prover is set to 2 seconds.
-
-**prefix symbols** The following code defines a prefix symbol for
-negation.
-
-::
-
-   set prefix 5 "¬" ≔ neg
-
-**declared identifiers** The following code declares a new valid symbol,
-that can then be used in the place of a symbol or variable.
-
-::
-
-   set declared "ℕ"
-   set declared "α"
-   set declared "β"
-   set declared "γ"
-   set declared "x₁"
-   set declared "x₂"
-   set declared "x₃"
-
-**Warning:** some checks are performed upon the declaration of infix
-symbols and identifiers, but they are by no means sufficient (it is
-still possible to break the parser by defining well-chosen tokens).
-
-**equality-related builtins** In order to use tactics related to Leibniz
-equality, one first has to define a number of builtin symbols as
-follows:
-
-::
-
-   set builtin "T"     ≔ T     // : U → TYPE
-   set builtin "P"     ≔ P     // : Prop → TYPE
-   set builtin "eq"    ≔ eq    // : Π {a}, T a → T a → Prop
-   set builtin "refl"  ≔ refl  // : Π {a} (x:T a), P (x=x)
-   set builtin "eqind" ≔ eqind // : Π {a} x y, P (x = y) → Π (p:T a→Prop), P (p y) → P (p x)
+   set builtin "0"  ≔ zero // : N
+   set builtin "+1" ≔ succ // : N → N
 
 **unification rules** The unification engine can be guided using
 *unification rules*. Given a unification problem ``t ≡ u``, if the
 engine cannot find a solution, it will try to match the pattern
-``t ≡ u`` against the defined rules and rewrite the problem to the
-right-hand side of the matched rule. For instance, given the unification
-rule
+``t ≡ u`` against the defined rules (modulo commutativity of ≡)
+and rewrite the problem to the
+right-hand side of the matched rule. Variables of the RHS that do
+not appear in the LHS are replaced by fresh metavariables on rule application.
+
+Examples:
 
 ::
 
    set unif_rule Bool ≡ T $t ↪ $t ≡ bool
    set unif_rule $x + $y ≡ 0 ↪ $x ≡ 0; $y ≡ 0
+   set unif_rule $a → $b ≡ T $c ↪ $a ≡ T $a'; $b ≡ T $b'; $c ≡ arrow $a' $b'
 
-the unification problem ``T ?x ≡ Bool`` will be transformed into
-``?x ≡ bool``. Note that this feature is *experimental* and there is no
-sanity check performed on the rules.
+Thanks to the first unification rule, a problem ``T ?x ≡ Bool`` is
+transformed into ``?x ≡ bool``.
+
+*WARNING* This feature is experimental and there is no sanity check
+performed on the rules.

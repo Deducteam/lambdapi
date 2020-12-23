@@ -22,11 +22,11 @@ and p_term_aux =
   (** Application. *)
   | P_Impl of p_term * p_term
   (** Implication. *)
-  | P_Abst of p_term p_arg list * p_term
+  | P_Abst of p_term p_args list * p_term
   (** Abstraction over several variables. *)
-  | P_Prod of p_term p_arg list * p_term
+  | P_Prod of p_term p_args list * p_term
   (** Product over several variables. *)
-  | P_LLet of ident * p_term p_arg list * p_type option * p_term * p_term
+  | P_LLet of ident * p_term p_args list * p_type option * p_term * p_term
   (** Local let. *)
   | P_NLit of int
   (** Natural number literal. *)
@@ -82,8 +82,13 @@ module P  =
     let rec appl_wild : p_term -> int -> p_term = fun head i ->
       if i <= 0 then head else appl_wild (appl head wild) (i-1)
 
-    let rule : p_patt -> p_term -> p_rule = fun l r -> Pos.none (l,r)
+    let abst : ident option -> p_term -> p_term = fun idopt t ->
+      Pos.none (P_Abst([[idopt], None, false], t))
 
+    let abst_list : ident option list -> p_term -> p_term = fun idopts t ->
+      List.fold_right abst idopts t
+
+    let rule : p_patt -> p_term -> p_rule = fun l r -> Pos.none (l,r)
   end
 
 (** [eq] is an equality function on parser level terms [t1] and [t2]. *)

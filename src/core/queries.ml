@@ -18,7 +18,7 @@ let handle_query : Sig_state.t -> Proof.t option -> p_term p_query -> unit =
   let ctxt = Env.to_ctxt env in
   let scope = Scope.scope_term Public ss env in
   match q.elt with
-  | P_query_assert(must_fail, asrt)  ->
+  | P_query_assert(must_fail, asrt) ->
       begin
       match asrt with
       | P_assert_typing(pt,pa) ->
@@ -31,7 +31,7 @@ let handle_query : Sig_state.t -> Proof.t option -> p_term p_query -> unit =
             try Infer.check Unif.solve_noexn q.pos ctxt t a; true
             with Fatal _ -> false
           in if result = must_fail then fatal q.pos "Assertion failed."
-      | P_assert_conv(pt,pu)   ->
+      | P_assert_conv(pt,pu) ->
           let t = scope pt and u = scope pu in
           out 1 "(asrt) it is %b that %a\n" (not must_fail)
             pp_constr (ctxt, t, u);
@@ -55,35 +55,57 @@ let handle_query : Sig_state.t -> Proof.t option -> p_term p_query -> unit =
               if Eval.eq_modulo ctxt t u = must_fail then
                 fatal q.pos "Assertion failed."
       end
-  | P_query_debug(e,s)     ->
+  | P_query_debug(e,s) ->
       (* Just update the option, state not modified. *)
       Console.set_debug e s;
       out 3 "(flag) debug → %s%s\n" (if e then "+" else "-") s
-  | P_query_verbose(i)     ->
+  | P_query_verbose(i) ->
       (* Just update the option, state not modified. *)
       if Timed.(!Console.verbose) = 0 then
         (Timed.(Console.verbose := i); out 1 "(flag) verbose → %i\n" i)
       else
         (out 1 "(flag) verbose → %i\n" i; Timed.(Console.verbose := i))
-  | P_query_flag(id,b)     ->
+  | P_query_flag(id,b) ->
       (* We set the value of the flag, if it exists. *)
-      begin
-        try Console.set_flag id b with Not_found ->
-          wrn q.pos "Unknown flag \"%s\"." id
-      end;
+      (try Console.set_flag id b
+       with Not_found -> wrn q.pos "Unknown flag \"%s\"." id);
       out 3 "(flag) %s → %b\n" id b
   | P_query_infer(pt, cfg) ->
       (* Infer the type of [pt]. *)
       let t = scope pt in
       let a = Infer.infer Unif.solve_noexn pt.pos ctxt t in
       out 1 "(infr) %a : %a\n" pp_term t pp_term (Eval.eval cfg ctxt a)
-  | P_query_normalize(pt, cfg)        ->
+  | P_query_normalize(pt, cfg) ->
       (* Normalize [pt]. *)
       let t = scope pt in
       (* Check that [t] is typable. *)
       ignore (Infer.infer Unif.solve_noexn pt.pos ctxt t);
       out 1 "(comp) %a\n" pp_term (Eval.eval cfg ctxt t)
-  | P_query_prover(s)      ->
+  | P_query_prover(s) ->
       Timed.(Why3_tactic.default_prover := s)
-  | P_query_prover_timeout(n)->
+  | P_query_prover_timeout(n) ->
       Timed.(Why3_tactic.timeout := n)
+  | P_query_print(None) ->
+      (match ps with
+       | None -> fatal q.pos "Not in a proof."
+       | Some ps -> out 1 "%a" Proof.pp_goals ps)
+  | P_query_print(Some qid) ->
+      let sym = Sig_state.find_sym ~prt:true ~prv:true false ss qid in
+      let open Timed in
+      out 1 "(prnt) %a%a%asymbol %a: %a" Pretty.expo sym.sym_expo
+        Pretty.prop sym.sym_prop Pretty.match_strat !(sym.sym_mstrat)
+        pp_symbol sym pp_term !(sym.sym_type);
+      let h = get_pp_hint sym in
+      if h <> Unqual then out 1 " [%a]" pp_hint h;
+      (match !(sym.sym_def) with
+      | Some t -> out 1 " ≔ %a\n" pp_term t
+      | None ->
+          out 1 "\n";
+          List.iter (fun r -> out 1 "%a\n" pp_rule (sym, r)) !(sym.sym_rules))
+  | P_query_proofterm ->
+      (match ps with
+       | None -> fatal q.pos "Not in a proof"
+       | Some ps ->
+           match ps.proof_term with
+           | Some t -> out 1 "%a\n" pp_term (Meta(t,[||]))
+           | None -> fatal q.pos "Not in a definition")

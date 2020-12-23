@@ -36,20 +36,32 @@ let qident : qident pp = fun oc qid ->
 let path : Pos.popt -> p_module_path pp = fun pos ->
   List.pp (path_elt pos) "."
 
+let expo : Terms.expo pp = fun oc e ->
+  match e with
+  | Public -> ()
+  | Protec -> Format.fprintf oc "protected "
+  | Privat -> Format.fprintf oc "private "
+
+let match_strat : Terms.match_strat pp = fun oc s ->
+  match s with
+  | Sequen -> Format.fprintf oc "sequential "
+  | Eager -> ()
+
+let prop : Terms.prop pp = fun oc p ->
+  match p with
+  | Defin -> ()
+  | Const -> Format.fprintf oc "constant "
+  | Injec -> Format.fprintf oc "injective "
+
 let modifier : p_modifier pp = fun oc {elt; _} ->
   match elt with
-  | P_expo(Public) -> ()
-  | P_expo(Protec) -> string oc "protected "
-  | P_expo(Privat) -> string oc "private "
-  | P_mstrat(Eager) -> ()
-  | P_mstrat(Sequen) -> string oc "sequential "
-  | P_prop(Defin) -> ()
-  | P_prop(Const) -> string oc "constant "
-  | P_prop(Injec) -> string oc "injective "
+  | P_expo(e) -> expo oc e
+  | P_mstrat(s) -> match_strat oc s
+  | P_prop(p) -> prop oc p
   | P_opaq -> string oc "opaque "
 
-let proof_end : p_proof_end pp = fun oc e ->
-  match e.elt with
+let proof_end : p_proof_end pp = fun oc {elt;_} ->
+  match elt with
   | P_proof_end   -> string oc "end"
   | P_proof_admit -> string oc "admit"
   | P_proof_abort -> string oc "abort"
@@ -72,7 +84,7 @@ module Make (T: PPTERM)(R: PPTERM) = struct
     | Some(a) -> Format.fprintf oc " :@ %a" T.pp a
     | None    -> ()
 
-  let arg : T.t p_arg pp = fun oc (ids,ao,b) ->
+  let arg : T.t p_args pp = fun oc (ids,ao,b) ->
     let pp_ids = List.pp arg_ident " " in
     match (ao,b) with
     | (None   , false) -> Format.fprintf oc "%a" pp_ids ids
@@ -80,7 +92,7 @@ module Make (T: PPTERM)(R: PPTERM) = struct
     | (Some(a), false) -> Format.fprintf oc "(%a : %a)" pp_ids ids T.pp a
     | (Some(a), true ) -> Format.fprintf oc "{%a : %a}" pp_ids ids T.pp a
 
-  let args : T.t p_arg list pp = fun oc ->
+  let args : T.t p_args list pp = fun oc ->
     List.iter (Format.fprintf oc " %a" arg)
 
   let inductive : string -> T.t p_inductive pp = fun kw oc i ->
@@ -129,26 +141,20 @@ module Make (T: PPTERM)(R: PPTERM) = struct
   let query : T.t p_query pp = fun oc q ->
     let out fmt = Format.fprintf oc fmt in
     match q.elt with
-    | P_query_assert(true , asrt)           ->
-        out "assertnot %a" assertion asrt
-    | P_query_assert(false, asrt)           ->
-        out "assert %a" assertion asrt
-    | P_query_verbose(i)                    ->
-        out "set verbose %i" i
-    | P_query_debug(true ,s)                ->
-        out "set debug \"+%s\"" s
-    | P_query_debug(false,s)                ->
-        out "set debug \"-%s\"" s
-    | P_query_flag(s, b)                    ->
+    | P_query_assert(true , asrt) -> out "assertnot %a" assertion asrt
+    | P_query_assert(false, asrt) -> out "assert %a" assertion asrt
+    | P_query_verbose(i) -> out "set verbose %i" i
+    | P_query_debug(true ,s) -> out "set debug \"+%s\"" s
+    | P_query_debug(false,s) -> out "set debug \"-%s\"" s
+    | P_query_flag(s, b) ->
         out "set flag \"%s\" %s" s (if b then "on" else "off")
-    | P_query_infer(t, _)                   ->
-        out "@[<hov 4>type %a@]" T.pp t
-    | P_query_normalize(t, _)               ->
-        out "@[<hov 2>compute@ %a@]" T.pp t
-    | P_query_prover(s)                     ->
-        out "set prover \"%s\"" s
-    | P_query_prover_timeout(n)               ->
-        out "set prover_timeout %d" n
+    | P_query_infer(t, _) -> out "@[<hov 4>type %a@]" T.pp t
+    | P_query_normalize(t, _) -> out "@[<hov 2>compute@ %a@]" T.pp t
+    | P_query_prover(s) -> out "set prover \"%s\"" s
+    | P_query_prover_timeout(n) -> out "set prover_timeout %d" n
+    | P_query_print(None) -> out "print"
+    | P_query_print(Some s) -> out "print %a" qident s
+    | P_query_proofterm -> out "proofterm"
 
   let tactic : T.t p_tactic pp = fun oc t ->
     let out fmt = Format.fprintf oc fmt in
@@ -164,8 +170,6 @@ module Make (T: PPTERM)(R: PPTERM) = struct
     | P_tac_refl               -> out "reflexivity"
     | P_tac_sym                -> out "symmetry"
     | P_tac_focus(i)           -> out "focus %i" i
-    | P_tac_print              -> out "print"
-    | P_tac_proofterm          -> out "proofterm"
     | P_tac_why3(p)            ->
         let prover oc s = Format.fprintf oc " %s" s in
         out "why3%a" (Option.pp prover) p

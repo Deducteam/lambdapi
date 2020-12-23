@@ -36,11 +36,10 @@ let print_contexts : bool ref = Console.register_flag "print_contexts" false
 
 (** [assoc oc a] prints associativity [a] to channel [oc]. *)
 let pp_assoc : assoc pp = fun oc assoc ->
-  Format.fprintf oc
-    (match assoc with
-     | Assoc_none -> ""
-     | Assoc_left -> " left associative"
-     | Assoc_right -> " right associative")
+  match assoc with
+  | Assoc_none -> ()
+  | Assoc_left -> Format.fprintf oc " left associative"
+  | Assoc_right -> Format.fprintf oc " right associative"
 
 (** [hint oc a] prints hint [h] to channel [oc]. *)
 let pp_hint : pp_hint pp = fun oc pp_hint ->
