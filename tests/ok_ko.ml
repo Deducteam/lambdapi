@@ -17,7 +17,6 @@ let test_one_folder : string -> string -> 'a array = fun main_folder specific_fo
   let files =
     Sys.readdir current_folder |> Array.map (fun f -> current_folder ^ "/" ^ f)
     |> Array.to_list
-    |> List.filter (function f -> f <> current_folder ^ "/" ^ "description")
     (* TODO put back OK/unif_hint.lp when it is fixed *)
     |> List.filter (function f -> f <> "OK/set_option/unif_hint.lp")
     |> Array.of_list
@@ -27,13 +26,15 @@ let test_one_folder : string -> string -> 'a array = fun main_folder specific_fo
 
 let test_suite = [ ("OK", "parsing") ; ("OK", "scoping") ; ("OK", "import") ;
                    ("OK", "set_option") ; ("OK", "queries") ; ("OK", "symbol") ;
-                   ("OK", "rewriting") ; ("OK", "tactic") ; ("OK", "examples") ]
+                   ("OK", "rewriting") ; ("OK", "tactic") ; ("OK", "examples") ;
+                   ("KO", "parsing") ; ("KO", "import") ; ("KO", "set_option") ;
+                   ("KO", "queries") ; ("KO", "symbol") ; ("KO", "rewriting") ;
+                   ("KO", "examples") ]
 
 let _ =
   Files.set_lib_root None;
   let run_test (a,b) = (a ^"_"^ b, Array.to_list (test_one_folder a b)) in
   Alcotest.run "Std" ((List.map run_test) test_suite)
-
   (*                 
   
   let files = Sys.readdir "OK" |> Array.map (fun f -> "OK/" ^ f)
