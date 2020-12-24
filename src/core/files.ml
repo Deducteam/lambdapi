@@ -268,7 +268,9 @@ let file_to_module : string -> Path.t = fun fname ->
   (* Normalizing the file path. *)
   let fname =
     try
-      Filename.concat (Filename.realpath (Filename.dirname fname)) fname
+      let basenm = Filename.basename fname in
+      let dirnm = Filename.dirname fname in
+      Filename.concat (Filename.realpath dirnm) basenm
     with Invalid_argument(_) ->
       fatal_no_pos "No such file or directory [%s]." fname
   in
