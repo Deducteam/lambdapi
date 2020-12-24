@@ -168,11 +168,12 @@ let get_vars : sym -> rule -> (string * Terms.term) list = fun s r ->
     let fn l x = (x, (Meta(Meta.fresh Type 0,[||])), None) :: l in
     List.fold_left fn [] !var_list
   in
-  let (_,l) = Infer.infer ctx lhs in
-  (* Discard contexts *)
-  let l = List.map (fun (_,t,u) -> (t,u)) l in
-  let ctx = List.map (fun (x,a,_) -> (x, a)) ctx in
-  List.map (fun (v,ty) -> Bindlib.name_of v, List.assoc ty l) ctx
+  match Infer.infer_noexn ctx lhs with
+  | None -> assert false (*FIXME?*)
+  | Some (_,cs) ->
+  let cs = List.map (fun (_,t,u) -> (t,u)) cs in
+  let ctx = List.map (fun (x,a,_) -> (x,a)) ctx in
+  List.map (fun (v,ty) -> Bindlib.name_of v, List.assoc ty cs(*FIXME?*)) ctx
 
 (** [to_XTC oc sign] outputs a XTC representation of the rewriting system of
     the signature [sign] to the output channel [oc]. *)

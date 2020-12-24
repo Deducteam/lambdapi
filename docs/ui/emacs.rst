@@ -1,7 +1,7 @@
 .. _editing-lambdapi-source-code-with-emacs-melpamelpa-badgemelpa-link:
 
-Editing lambdapi source code with Emacs
-=======================================
+Emacs
+=====
 `MELPA <https://melpa.org/#/lambdapi-mode>`_
 
 Lambdapi source code can be edited with the `emacs`_ editor with the major

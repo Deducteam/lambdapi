@@ -181,10 +181,14 @@ let check_rule : Scope.pre_rule Pos.loc -> rule = fun ({pos; elt} as pr) ->
       log_subj (mag "transformed RHS is [%a]") pp_term rhs_typing
     end;
   (* Infer the typing constraints of the LHS. *)
-  let type_check = Unif.NoTypeCheck in
-  match Typing.infer_constr ~type_check [] lhs_typing with
-  | None                      -> fatal pos "The LHS is not typable."
-  | Some(ty_lhs, lhs_constrs) ->
+  match Infer.infer_noexn [] lhs_typing with
+  | None -> fatal pos "The LHS is not typable."
+  | Some(ty_lhs, to_solve) ->
+  (* Try to simplify constraints. *)
+  let type_check = false in (* Don't check typing when instantiating metas. *)
+  match Unif.(solve_noexn ~type_check {empty_problem with to_solve}) with
+  | None -> fatal pos "The LHS is not typable."
+  | Some lhs_constrs ->
   if !log_enabled then
     begin
       log_subj (gre "LHS has type %a") pp_term ty_lhs;
@@ -226,7 +230,9 @@ let check_rule : Scope.pre_rule Pos.loc -> rule = fun ({pos; elt} as pr) ->
     Array.iter instantiate metas; Stdlib.(!symbols)
   in
   (* Compute the constraints for the RHS to have the same type as the LHS. *)
-  let to_solve = Infer.check [] rhs_typing ty_lhs in
+  match Infer.check_noexn [] rhs_typing ty_lhs with
+  | None -> fatal pos "[%a] is not typable." pp_term rhs_typing
+  | Some to_solve ->
   if !log_enabled then
     begin
       log_subj (gre "RHS has type %a") pp_term ty_lhs;
@@ -237,8 +243,7 @@ let check_rule : Scope.pre_rule Pos.loc -> rule = fun ({pos; elt} as pr) ->
   (* TODO we should complete the constraints into a set of rewriting rule on
      the function symbols of [symbols]. *)
   (* Solving the typing constraints of the RHS. *)
-  let type_check = Unif.TypeCheckInstanciation in
-  match Unif.(solve_noexn ~type_check {empty_problem with to_solve}) with
+  match Unif.(solve_noexn {empty_problem with to_solve}) with
   | None     -> fatal pos "The rewriting rule does not preserve typing."
   | Some(cs) ->
   let is_constr c =

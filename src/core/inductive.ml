@@ -244,18 +244,6 @@ let gen_rec_types :
     let add_quantifier c (_,(v,a,_)) = _Prod a (Bindlib.bind_var v c) in
     let rec_typ = List.fold_left add_quantifier rec_typ ind_pred_map in
     Bindlib.unbox rec_typ
-    (* Check the type of rec_typ. *)
-    (*match Typing.infer [] rec_typ with
-    | Some t ->
-        (match unfold t with
-         | Type -> rec_typ
-         | _ ->
-             fatal pos "[%a] is of [%a] instead of TYPE.
-                        Please, raise an issue."
-               pp_term rec_typ pp_term t)
-    | None   ->
-        fatal pos "[%a] is not typable. Please, raise an issue."
-          pp_term rec_typ*)
   in
 
   List.map gen_rec_type ind_pred_map
