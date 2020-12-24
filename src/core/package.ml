@@ -79,6 +79,8 @@ let find_config : file_path -> file_path option = fun fname ->
   let fname =
     if Sys.file_exists fname
     then Filename.realpath fname
+    else if Sys.file_exists (Filename.dirname fname)
+    then Filename.dirname fname
     else fname
   in
   let fname =
