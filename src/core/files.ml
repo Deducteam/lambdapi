@@ -267,12 +267,15 @@ let file_to_module : string -> Path.t = fun fname ->
     end;
   (* Normalizing the file path. *)
   let fname =
-    try
-      let basenm = Filename.basename fname in
-      let dirnm = Filename.dirname fname in
-      Filename.concat (Filename.realpath dirnm) basenm
-    with Invalid_argument(_) ->
-      fatal_no_pos "No such file or directory [%s]." fname
+    let rec normalize fname =
+      if Sys.file_exists fname then
+        Filename.realpath fname
+      else
+        let dirnm = Filename.dirname fname in
+        let basenm = Filename.basename fname in
+        Filename.concat (normalize dirnm) basenm
+    in
+    normalize fname
   in
   let base = Filename.chop_extension fname in
   (* Finding the best mapping under the root. *)
