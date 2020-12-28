@@ -39,7 +39,7 @@ negative tests.
    assertnot succ : Nat
 
 ``set verbose|debug|flag|prover|prover_timeout``
--------
+------------------------------------------------
 
 The ``set`` command is used to control the behaviour of Lambdapi and
 extension points in its syntax.

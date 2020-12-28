@@ -291,8 +291,8 @@ Adding sets of rules allows to maintain confluence.
 
 Examples of patterns are available in ``tests/OK/patterns.lp``.
 
-``set declared|prefix|infix|quantifier|builtin|unif_rule`` 
--------
+``set declared|prefix|infix|quantifier|builtin|unif_rule``
+----------------------------------------------------------
 
 The ``set`` command is used to control the behaviour of Lambdapi and
 extension points in its syntax.
