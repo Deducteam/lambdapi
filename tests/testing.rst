@@ -1,7 +1,7 @@
 Overview of directories and files
 =================================
 
-- ``examples/``: some examples (integration tests?).
+- ``examples/``: some examples (integration tests).
 
 - ``import/``: a test suite on imports.
 More precisely, here we check the commands:
@@ -46,20 +46,20 @@ More precisely, here we check:
 - ``set_option/``: a test suite on set option.
 More precisely, here we check the commands:
   - set unif_rule
-  - set verbose   ?
-  - set debug     ?
+  - set verbose   (no tests)
+  - set debug     (no tests)
   - set builtin
   - set prefix
   - set infix
-  - set prover ?
-  - set prover_timeout ?
+  - set prover    (no tests)
+  - set prover_timeout (no tests)
   - set declared
   - set flag eta_equality
-             print_domains   ?
-             print_implicits ?
-             print_meta_type ?
-             print_contexts  ?
-             print_domains   ?
+             print_domains   (no tests)
+             print_implicits (no tests)
+             print_meta_type (no tests)
+             print_contexts  (no tests)
+             print_domains   (no tests)
   - set quantifier
   
 - ``symbol/``: a test suite on symbols.
@@ -69,11 +69,11 @@ More precisely, here we check:
 
 - ``tactics/``: a test suite on tactics.
 More precisely, here we check the commands:
-  - print     ? 
-  - end / admit / abort ?
-  - focus     ?
-  - fail      ?
-  - proofterm ?
+  - print     (no tests)
+  - end / admit / abort (no tests)
+  - focus     (no tests)
+  - fail      (no tests)
+  - proofterm (no tests)
   - solve
   - assume
   - simpl
