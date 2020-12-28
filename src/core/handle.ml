@@ -45,12 +45,12 @@ let _ =
     do not work on this structure directly,  although they act on the contents
     of its [pdata_p_state] field. *)
 type proof_data =
-  { pdata_stmt_pos : Pos.popt (* Position of the proof's statement.  *)
-  ; pdata_p_state  : Proof.t  (* Initial proof state for the proof.  *)
-  ; pdata_tactics  : p_tactic list (* Tactics for the proof.         *)
-  ; pdata_finalize : sig_state -> Proof.t -> sig_state (* Finalizer. *)
+  { pdata_stmt_pos : Pos.popt (* Position of the proof's statement. *)
+  ; pdata_p_state  : proof_state (* Proof state. *)
+  ; pdata_tactics  : p_tactic list (* Tactics. *)
+  ; pdata_finalize : sig_state -> proof_state -> sig_state (* Finalizer. *)
   ; pdata_end_pos  : Pos.popt (* Position of the proof's terminator. *)
-  ; pdata_expo     : Terms.expo (* Allow use of private symbols      *) }
+  ; pdata_expo     : Terms.expo (* Allow private symbols. *) }
 
 (** [handle_open pos ss p] handles the command [open p] with [ss] as the
    signature state. On success, an updated signature state is returned. *)
@@ -190,12 +190,15 @@ let handle_rules : sig_state -> p_rule list -> sig_state = fun ss rs ->
 let data_proof : sig_symbol -> expo -> p_tactic list ->
   p_proof_end -> Goal.t list -> meta option -> proof_data =
   fun sig_symbol pdata_expo ts pe goals proof_term ->
-  let ident = sig_symbol.ident in
-  let typ   = sig_symbol.typ   in
-  let def   = sig_symbol.def   in
-  let pos = ident.pos in
+  let {elt=id; pos} = sig_symbol.ident in
   (* Initialize proof state and save configuration data. *)
-  let ps = {proof_name = ident ; proof_term ; proof_goals = goals} in
+  let proof_goals =
+    match proof_term with
+    | None -> goals
+    | Some m -> (* Put focus on proof_term to be able to refine on it. *)
+        Goal.of_meta m :: goals
+  in
+  let ps = {proof_name = sig_symbol.ident; proof_term; proof_goals} in
   Console.State.push ();
   (* Build proof checking data. *)
   let finalize ss ps =
@@ -205,28 +208,19 @@ let data_proof : sig_symbol -> expo -> p_tactic list ->
       (* Just ignore the command, with a warning. *)
       wrn pos "Proof aborted."; ss
     | _ ->
-      (* We try to solve remaining unification goals. *)
-      let ps = Tactics.solve_tac ps pos in
+      (* We try to solve the remaining unification goals. *)
+      let ps = Tactics.tac_solve pos ps in
       (* We check that no metavariable remains. *)
-      if Basics.has_metas true typ then
-        begin
-          fatal_msg "The type of [%s] has unsolved metavariables.\n"
-            ident.elt;
-          fatal ident.pos "We have %s : %a." ident.elt pp_term typ
-        end;
-      begin
-        match def with
-        | Some(t) ->
-          if Basics.has_metas true t then
-            begin
-              fatal_msg
-                "The definition of [%s] has unsolved metavariables.\n"
-                ident.elt;
-              fatal ident.pos "We have %s : %a ≔ %a."
-                ident.elt pp_term typ pp_term t
-            end;
-        | None -> ()
-      end;
+      if Basics.has_metas true sig_symbol.typ then
+        (fatal_msg "The type of [%s] has unsolved metavariables.\n" id;
+         fatal pos "We have %s : %a." id pp_term sig_symbol.typ);
+      (match sig_symbol.def with
+       | Some(t) when Basics.has_metas true t ->
+           (fatal_msg
+              "The definition of [%s] has unsolved metavariables.\n" id;
+            fatal pos "We have %s : %a ≔ %a."
+              id pp_term sig_symbol.typ pp_term t)
+       | _ -> ());
       match pe.elt with
       | P_proof_abort -> assert false (* Handled above *)
       | P_proof_admit ->
@@ -234,7 +228,7 @@ let data_proof : sig_symbol -> expo -> p_tactic list ->
         if finished ps then
           wrn pos "The proof is finished. You can use 'end' instead.";
         (* Add a symbol corresponding to the proof, with a warning. *)
-        out 3 "(symb) %s (admit)\n" ident.elt;
+        out 3 "(symb) %s (admit)\n" id;
         wrn pos "Proof admitted.";
         fst (add_symbol ss sig_symbol)
       | P_proof_end   ->
@@ -243,7 +237,7 @@ let data_proof : sig_symbol -> expo -> p_tactic list ->
           (out 1 "%a" Proof.pp_goals ps;
            fatal pos "The proof is not finished.");
         (* Add a symbol corresponding to the proof. *)
-        out 3 "(symb) %s (end)\n" ident.elt;
+        out 3 "(symb) %s (end)\n" id;
         fst (add_symbol ss sig_symbol)
   in
   let data =
@@ -427,19 +421,13 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
       (* If [ao = Some a], then we check that [a] is typable by a sort and
          that [t] has type [a]. Otherwise, we try to infer the type of
          [t]. Unification goals are collected. *)
-      let typ_goals_a = goals_of_metas metas_a in
       let proof_term, goals, sig_symbol, pdata_expo =
         let sort_goals, a = goals_of_typ p_sym_nam.pos ao t in
-        (* And the main "type" goal *)
-        let proof_term, typ_goal =
-          if p_sym_def then
-            let proof_term = Meta.fresh ~name:p_sym_nam.elt a 0 in
-            let proof_goal = Goal.of_meta proof_term in
-            Some proof_term, proof_goal :: typ_goals_a
-          else
-            None, typ_goals_a
+        let proof_term =
+          if p_sym_def then Some (Meta.fresh ~name:p_sym_nam.elt a 0)
+          else None
         in
-        let goals = sort_goals @ typ_goal in
+        let goals = sort_goals @ goals_of_metas metas_a in
         let sig_symbol =
           {expo;prop;mstrat;ident=p_sym_nam;typ=a;impl;def=t} in
         (* Depending on opacity : theorem = false / definition = true *)

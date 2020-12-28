@@ -8,6 +8,7 @@ open Terms
 open Basics
 open Console
 open Print
+open Proof
 
 (** Logging function for the rewrite tactic. *)
 let log_rewr = new_logger 'r' "rewr" "the rewrite tactic"
@@ -308,15 +309,18 @@ let swap : eq_config -> term -> term -> term -> term -> term =
    an equality. Every occurrence of the first instance of the left-hand side
    is replaced by the right-hand side of the obtained proof (or the reverse if
    b is false). It also handles the full set of SSReflect patterns. *)
-let rewrite : Sig_state.t -> popt -> Proof.t -> bool -> rw_patt option -> term
-              -> term =
+let rewrite : Sig_state.t -> popt -> proof_state -> bool -> rw_patt option
+              -> term -> term =
   fun ss pos ps l2r p t ->
+
+  (* Check that the focused goal is a typing goal. *)
+  match ps.proof_goals with
+  | [] -> fatal pos "No remaining goals."
+  | Unif _::_ -> fatal pos "Not a typing goal."
+  | Typ {goal_hyps = g_env; goal_type = g_type; _}::_ ->
 
   (* Obtain the required symbols from the current signature. *)
   let cfg = get_eq_config ss pos in
-
-  (* Get the focused goal. *)
-  let (g_env, g_type) = Proof.focus_goal pos ps in
 
   (* Infer the type of [t] (the argument given to the tactic). *)
   let g_ctxt = Env.to_ctxt g_env in
@@ -672,11 +676,15 @@ let rewrite : Sig_state.t -> popt -> Proof.t -> bool -> rw_patt option -> term
 
 (** [reflexivity ss pos ps] applies the reflexivity of equality on the focused
    goal. If successful, the corresponding proof term is returned. *)
-let reflexivity : Sig_state.t -> popt -> Proof.t -> term = fun ss pos ps ->
+let reflexivity : Sig_state.t -> popt -> proof_state -> term =
+  fun ss pos ps ->
+  (* Check that the focused goal is a typing goal. *)
+  match ps.proof_goals with
+  | [] -> fatal pos "No remaining goals."
+  | Unif _::_ -> fatal pos "Not a typing goal."
+  | Typ {goal_type = g_type; _}::_ ->
   (* Obtain the required symbols from the current signature. *)
   let cfg = get_eq_config ss pos in
-  (* Get the type of the focused goal. *)
-  let _, g_type = Proof.focus_goal pos ps in
   (* Check that the type of [g] is of the form “P (eq a t t)”. *)
   let (a, l, r)  = get_eq_data pos cfg (Eval.whnf [] g_type) in
   if not (Eval.eq_modulo [] l r) then fatal pos "Cannot apply reflexivity.";
@@ -688,11 +696,14 @@ let reflexivity : Sig_state.t -> popt -> Proof.t -> term = fun ss pos ps ->
    the form `P (eq a r l)`. If successful, a new goal is generated, and the
    corresponding proof term is returned. The proof of symmetry is built from
    the axioms of equality. *)
-let symmetry : Sig_state.t -> popt -> Proof.t -> term = fun ss pos ps ->
+let symmetry : Sig_state.t -> popt -> proof_state -> term = fun ss pos ps ->
+  (* Check that the focused goal is a typing goal. *)
+  match ps.proof_goals with
+  | [] -> fatal pos "No remaining goals."
+  | Unif _::_ -> fatal pos "Not a typing goal."
+  | Typ {goal_hyps = g_env; goal_type = g_type; _}::_ ->
   (* Obtain the required symbols from the current signature. *)
   let cfg = get_eq_config ss pos in
-  (* Get the type of the focused goal. *)
-  let (g_env, g_type) = Proof.focus_goal pos ps in
   (* Check that the type of [g] is of the form “P (eq a l r)”. *)
   let (a, l, r) = get_eq_data pos cfg g_type in
   (* We create a new metavariable of type [P (eq a r l)]. *)

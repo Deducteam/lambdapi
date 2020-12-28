@@ -40,9 +40,9 @@ let parse_text : state -> string -> string -> Command.t list * state =
   | Fatal(Some(None)     , _  ) -> assert false (* Should not produce. *)
   | Fatal(None           , _  ) -> assert false (* Should not produce. *)
 
-type proof_finalizer = Sig_state.t -> Proof.t -> Sig_state.t
+type proof_finalizer = Sig_state.t -> Proof.proof_state -> Sig_state.t
 type proof_state =
-  Time.t * Sig_state.t * Proof.t * proof_finalizer * Terms.expo
+  Time.t * Sig_state.t * Proof.proof_state * proof_finalizer * Terms.expo
 
 let current_goals : proof_state -> Proof.Goal.t list = fun (_,_,p,_,_) ->
   p.proof_goals
