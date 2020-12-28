@@ -215,34 +215,36 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
     | (None   , M_LHS(_)    ) -> fresh_patt md None (Env.to_tbox env)
     | ((Some({elt=P_Wild;_})|None), _           ) -> _Meta_Type env
     | (Some(a)   , _           ) -> scope env a
-  (* Scoping of a binder (abstraction or product). The environment made of the
-     variables is also returned. *)
-  and scope_binder cons env xs t =
-    let rec aux env xs =
-      match xs with
-      | []                  ->
-        begin
-          match t with
-          | Some t -> (scope env t, [])
-          | None -> (_Meta_Type env, [])
-        end
-      | ([]       ,_,_)::xs -> aux env xs
-      | (None  ::l,d,i)::xs ->
-          let v = Bindlib.new_var mkfree "_" in
-          let a = scope_domain env d in
-          let (t,env) = aux env ((l,d,i)::xs) in
-          (cons a (Bindlib.bind_var v t), Env.add v a None env)
-      | (Some x::l,d,i)::xs ->
-          let v = Bindlib.new_var mkfree x.elt in
-          let a = scope_domain env d in
-          let (t,env) =
-            aux ((x.elt,(v,a,None)) :: env) ((l,d,i) :: xs)
-          in
-          if x.elt.[0] <> '_' && not (Bindlib.occur v t) then
-            wrn x.pos "Variable [%s] could be replaced by [_]." x.elt;
-          (cons a (Bindlib.bind_var v t), Env.add v a None env)
+  (* Scoping function for binders (abstractions or produtcs). [scope_binder
+     cons env args_list t] scopes [t] in the environment [env] extended with
+     the parameters of [args_list]. For each parameter, a tbox is built using
+     [cons] (either _Abst or _Prod). *)
+  and scope_binder : (tbox -> tbinder Bindlib.box -> tbox)
+                     -> Env.t -> p_args list -> p_term option -> tbox =
+    fun cons env args_list t ->
+    let rec scope_args_list env args_list =
+      match args_list with
+      | [] -> (match t with Some t -> scope env t | None -> _Meta_Type env)
+      | (idopts,typopt,_implicit)::args_list ->
+          scope_args env idopts (scope_domain env typopt) args_list
+    and scope_args env idopts a args_list =
+      let rec aux env idopts =
+        match idopts with
+        | [] -> scope_args_list env args_list
+        | None::idopts ->
+            let v = Bindlib.new_var mkfree "_" in
+            let t = aux env idopts in
+            cons a (Bindlib.bind_var v t)
+        | Some id::idopts ->
+            let v = Bindlib.new_var mkfree id.elt in
+            let env = Env.add v a None env in
+            let t = aux env idopts in
+            if id.elt.[0] <> '_' && not (Bindlib.occur v t) then
+              wrn id.pos "Variable [%s] could be replaced by [_]." id.elt;
+            cons a (Bindlib.bind_var v t)
+      in aux env idopts
     in
-    aux env xs
+    scope_args_list env args_list
   (* Scoping function for head terms. *)
   and scope_head : env -> p_term -> tbox = fun env t ->
     match (t.elt, md) with
@@ -337,12 +339,13 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
         in
         begin
           match id with
-          | None     when List.length env = Array.length ts    ->
-              wrn t.pos "Pattern [%a] could be replaced by [_]." Pretty.pp t;
+          | None when List.length env = Array.length ts ->
+              wrn t.pos
+                "Pattern [%a] could be replaced by [_]." Pretty.term t;
           | Some(id) when not (List.mem id.elt d.m_lhs_in_env) ->
               if List.length env = Array.length ts then
                 wrn t.pos "Pattern variable [%a] can be replaced by a \
-                           wildcard [_]." Pretty.pp t
+                           wildcard [_]." Pretty.term t
               else
                 wrn t.pos "Pattern variable [$%s] does not need to be \
                            named." id.elt
@@ -400,16 +403,16 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
     | (P_Abst(_,_)     , M_Patt             ) ->
         fatal t.pos "Abstractions are not allowed in a pattern."
     | (P_Abst(xs,t)    , _                  ) ->
-        fst (scope_binder _Abst env xs (Some(t)))
+        scope_binder _Abst env xs (Some(t))
     | (P_Prod(_,_)     , M_Patt             ) ->
         fatal t.pos "Dependent products are not allowed in a pattern."
     | (P_Prod(xs,b)    , _                  ) ->
-        fst (scope_binder _Prod env xs (Some(b)))
+        scope_binder _Prod env xs (Some(b))
     | (P_LLet(x,xs,a,t,u), M_Term(_)        )
     | (P_LLet(x,xs,a,t,u), M_URHS(_)        )
     | (P_LLet(x,xs,a,t,u), M_RHS(_)         ) ->
-        let a = fst (scope_binder _Prod env xs a) in
-        let t = fst (scope_binder _Abst env xs (Some(t))) in
+        let a = scope_binder _Prod env xs a in
+        let t = scope_binder _Abst env xs (Some(t)) in
         let v = Bindlib.new_var mkfree x.elt in
         let u = scope (Env.add v a (Some(t)) env) u in
         if not (Bindlib.occur v u) then

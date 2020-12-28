@@ -211,3 +211,13 @@ let cmp_list : 'a cmp -> 'a list cmp = fun cmp ->
     | _::_, [] -> 1
     | x::l, x'::l' -> let c = cmp x x' in if c <> 0 then c else cmp_list l l'
   in cmp_list
+
+(** [swap i xs] put the i-th element (counted from 0) of [xs] at the head.
+@raise Invalid_argument if the i-th element does not exist. *)
+let swap : int -> 'a list -> 'a list = fun i xs ->
+  let rec swap acc i xs =
+    match (i, xs) with
+    | (0, x::xs) -> x :: rev_append acc xs
+    | (i, x::xs) -> swap (x::acc) (i-1) xs
+    | (_, _    ) -> invalid_arg (__LOC__ ^ "swap")
+  in swap [] i xs

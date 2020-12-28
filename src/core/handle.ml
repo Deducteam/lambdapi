@@ -80,17 +80,13 @@ let handle_require : bool -> popt -> sig_state -> Path.t -> sig_state =
 (** [handle_modifiers ms] verifies that the modifiers in [ms] are compatible.
     If so, they are returned as a tuple, otherwise, the incompatible modifiers
     are returned. *)
-let handle_modifiers : p_modifier loc list -> (prop * expo * match_strat) =
+let handle_modifiers : p_modifier list -> (prop * expo * match_strat) =
   fun ms ->
-  let is_expo {elt; _} = match elt with P_expo(_) -> true | _ -> false in
-  let is_prop {elt; _} = match elt with P_prop(_) -> true | _ -> false in
-  let is_mstrat {elt; _} = match elt with P_mstrat(_) -> true | _ -> false in
-  let die (mods: p_modifier loc list) =
-    let pp_sep oc () = Format.pp_print_string oc "; " in
-    let pp_pmloc oc (m: p_modifier loc) =
-      Format.fprintf oc "%a:\"%a\"" Pos.print_short m.pos Pretty.pp_modifier m
+  let die (ms: p_modifier list) =
+    let modifier oc (m: p_modifier) =
+      Format.fprintf oc "%a:\"%a\"" Pos.print_short m.pos Pretty.modifier m
     in
-    fatal_no_pos "%a" (Format.pp_print_list ~pp_sep pp_pmloc) mods
+    fatal_no_pos "%a" (List.pp modifier "; ") ms
   in
   let prop = List.filter is_prop ms in
   let prop =
@@ -141,7 +137,7 @@ let handle_require_as : popt -> sig_state -> Path.t -> ident -> sig_state =
     [e p strat symbol x xs : a] with [ss] as the signature state.
     On success, an updated signature state and the new symbol are returned. *)
 let handle_symbol :
-  sig_state -> expo -> prop -> match_strat -> ident -> p_arg list ->
+  sig_state -> expo -> prop -> match_strat -> ident -> p_args list ->
   p_type -> sig_state * sym = fun ss e p strat x xs a ->
   let scope_basic exp = Scope.scope_term exp ss Env.empty in
   (* We check that [x] is not already used. *)
@@ -154,13 +150,11 @@ let handle_symbol :
   (* We scope the type of the declaration. *)
   let a = scope_basic e a in
   (* We check that [a] is typable by a sort. *)
-  Typing.sort_type [] a;
+  Infer.check_sort Unif.solve_noexn x.pos [] a;
   (* We check that no metavariable remains. *)
   if Basics.has_metas true a then
-    begin
-      fatal_msg "The type of [%s] has unsolved metavariables.\n" x.elt;
-      fatal x.pos "We have %s : %a." x.elt pp_term a
-    end;
+    (fatal_msg "The type of [%s] has unsolved metavariables.\n" x.elt;
+     fatal x.pos "We have %s : %a." x.elt pp_term a);
   (* Actually add the symbol to the signature and the state. *)
   out 3 "(symb) %s : %a\n" x.elt pp_term a;
   let sig_symbol = {expo=e;prop=p;mstrat=strat;ident=x;typ=a;impl;def=None} in
@@ -194,7 +188,7 @@ let handle_rules : sig_state -> p_rule list -> sig_state = fun ss rs ->
     of the symbols used in the proof script : Public (= only public symbols)
     or Privat (= public and private symbols) *)
 let data_proof : sig_symbol -> expo -> p_tactic list ->
-  p_proof_end loc -> Goal.t list -> meta option -> proof_data =
+  p_proof_end -> Goal.t list -> meta option -> proof_data =
   fun sig_symbol pdata_expo ts pe goals proof_term ->
   let ident = sig_symbol.ident in
   let typ   = sig_symbol.typ   in
@@ -212,7 +206,7 @@ let data_proof : sig_symbol -> expo -> p_tactic list ->
       wrn pos "Proof aborted."; ss
     | _ ->
       (* We try to solve remaining unification goals. *)
-      let ps = Tactics.solve ps pos in
+      let ps = Tactics.solve_tac ps pos in
       (* We check that no metavariable remains. *)
       if Basics.has_metas true typ then
         begin
@@ -246,12 +240,8 @@ let data_proof : sig_symbol -> expo -> p_tactic list ->
       | P_proof_end   ->
         (* Check that the proof is indeed finished. *)
         if not (finished ps) then
-          begin
-            let _ =
-              Tactics.handle_tactic ss pdata_expo ps (none P_tac_print)
-            in
-            fatal pos "The proof is not finished."
-          end;
+          (out 1 "%a" Proof.pp_goals ps;
+           fatal pos "The proof is not finished.");
         (* Add a symbol corresponding to the proof. *)
         out 3 "(symb) %s (end)\n" ident.elt;
         fst (add_symbol ss sig_symbol)
@@ -374,40 +364,44 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
         ind_list
         rec_sym_list;
       (ss, None)
-  | P_symbol(ms, st, pt, ts_pe, e) ->
-    let x,xs,ao = st.elt in
+  | P_symbol {p_sym_mod;p_sym_nam;p_sym_arg;p_sym_typ;p_sym_trm;p_sym_prf;
+              p_sym_def} ->
     (* Check that this is a syntactically valid symbol declaration. *)
     begin
-      match (ao, e, pt, ts_pe) with
-      | (None, Def, None, Some _) ->
-        fatal x.pos ":= proofterm via proofscript but without type"
-      | (   _, Def, None, None  ) ->
-        fatal x.pos ":= without definition term nor proofscript"
+      match (p_sym_typ, p_sym_def, p_sym_trm, p_sym_prf) with
+      | (None, true, None, Some _) -> fatal p_sym_nam.pos "missing type"
+      | (   _, true, None, None  ) -> fatal p_sym_nam.pos "missing definition"
       | _ -> ()
     end;
     (* Get opacity. *)
-    let op = List.exists Syntax.is_opaq ms in
+    let op = List.exists Syntax.is_opaq p_sym_mod in
     (* Verify modifiers. *)
-    let (prop, expo, mstrat) = handle_modifiers ms in
+    let (prop, expo, mstrat) = handle_modifiers p_sym_mod in
     (* We check that [x] is not already used. *)
-    if Sign.mem ss.signature x.elt then
-      fatal x.pos "Symbol [%s] already exists." x.elt;
+    if Sign.mem ss.signature p_sym_nam.elt then
+      fatal p_sym_nam.pos "Symbol [%s] already exists." p_sym_nam.elt;
     let data =
-      (* Desugaring of arguments and scoping of [pt]. *)
+      (* Desugaring of arguments and scoping of [p_sym_trm]. *)
       let pt, t =
-        match pt with
+        match p_sym_trm with
         | Some pt ->
-          let pt = if xs = [] then pt else Pos.none (P_Abst(xs,pt)) in
-          Some pt, Some (scope_basic expo pt)
+            let pt =
+              if p_sym_arg = [] then pt
+              else Pos.make p_sym_nam.pos (P_Abst(p_sym_arg,pt))
+            in
+            Some pt, Some (scope_basic expo pt)
         | None -> None, None
       in
       (* Argument impliciteness. *)
       let ao, impl =
-        match ao with
-        | None    -> (None, List.map (fun (_,_,impl) -> impl) xs)
+        match p_sym_typ with
+        | None    -> (None, List.map (fun (_,_,impl) -> impl) p_sym_arg)
         | Some(a) ->
-          let a = if xs = [] then a else Pos.none (P_Prod(xs,a)) in
-          (Some(a), Scope.get_implicitness a)
+            let a =
+              if p_sym_arg = [] then a
+              else Pos.make p_sym_nam.pos (P_Prod(p_sym_arg,a))
+            in
+            (Some(a), Scope.get_implicitness a)
       in
       (* Scope the type and get its metavariables. *)
       let ao, metas_a =
@@ -422,37 +416,37 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
       in
       (* Proof script *)
       let ts, pe =
-        match pt, ts_pe with
+        match pt, p_sym_prf with
         | Some pt, None ->
             [Pos.make pt.pos (P_tac_refine pt)],
-            Pos.make (*FIXME?*)st.pos P_proof_end
+            Pos.make (Pos.end_pos cmd.pos) P_proof_end
         | Some pt, Some(ts,pe) -> Pos.make pt.pos (P_tac_refine pt)::ts, pe
         | None, Some(ts,pe) -> ts, pe
-        | None, None -> [], Pos.make (*FIXME?*)st.pos P_proof_end
+        | None, None -> [], Pos.make (Pos.end_pos cmd.pos) P_proof_end
       in
       (* If [ao = Some a], then we check that [a] is typable by a sort and
          that [t] has type [a]. Otherwise, we try to infer the type of
          [t]. Unification goals are collected. *)
       let typ_goals_a = goals_of_metas metas_a in
       let proof_term, goals, sig_symbol, pdata_expo =
-        let sort_goals, a = goals_of_typ x.pos ao t in
+        let sort_goals, a = goals_of_typ p_sym_nam.pos ao t in
         (* And the main "type" goal *)
         let proof_term, typ_goal =
-          match e with
-          | Def ->
-            let proof_term = Meta.fresh ~name:x.elt a 0 in
+          if p_sym_def then
+            let proof_term = Meta.fresh ~name:p_sym_nam.elt a 0 in
             let proof_goal = Goal.of_meta proof_term in
             Some proof_term, proof_goal :: typ_goals_a
-          | Tac ->
+          else
             None, typ_goals_a
         in
         let goals = sort_goals @ typ_goal in
-        let sig_symbol = {expo;prop;mstrat;ident=x;typ=a;impl;def=t} in
+        let sig_symbol =
+          {expo;prop;mstrat;ident=p_sym_nam;typ=a;impl;def=t} in
         (* Depending on opacity : theorem = false / definition = true *)
         let pdata_expo =
-          match e, op, ao, prop, mstrat with
+          match p_sym_def, op, ao, prop, mstrat with
           (* Theorem *)
-          |   Tac,     _,      _ ,    _ ,     _  -> expo
+          | false,     _,      _ ,    _ ,     _  -> expo
           |     _, true ,      _ , Defin, Eager  -> Privat
           |     _, true ,      _ , _    , Eager  ->
             fatal cmd.pos "Property modifiers can't be used in theorems."

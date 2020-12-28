@@ -75,3 +75,38 @@ let to_tbox : env -> tbox array = fun env ->
 let to_ctxt : env -> ctxt =
   let f (_,(v,bt,bu)) = (v, Bindlib.unbox bt, Option.map Bindlib.unbox bu) in
   List.map f
+
+(** [destruct_prod n t] returns a tuple [(env,b)] where [b] is constructed
+   from the term [t] by unbinding [n] dependent products. The free variables
+   created by this process are given (with their types) in the environment
+   [env] (in reverse order). For instance, if [t] is of the form [Πx1:a1, ⋯,
+   Πxn:an, b] then the function returns [b] and the environment [(xn,an);
+   ⋯;(x1,a1)]. [n] must be non-negative.
+@raise [Invalid_argument] if [t] does not evaluate to a series of (at least)
+   [n] products. *)
+let destruct_prod : int -> term -> env * term = fun n t ->
+  let rec build_env i env t =
+    if i >= n then (env, t) else
+    match Eval.whnf [] t with
+    | Prod(a,b) ->
+        let (x, b) = Bindlib.unbind b in
+        build_env (i+1) (add x (lift (Eval.simplify [] a)) None env) b
+    | _         -> invalid_arg (__LOC__ ^ "destruct_prod")
+  in
+  build_env 0 [] t
+
+(** [env_of_prod xs t] is similar to [destruct_prod n t] where [n =
+   Array.length xs] except that it does not return the final codomain [b] and
+   replaces unbound variables by those of [xs].
+@raise [Invalid_argument] if [t] does not evaluate to a series of (at least)
+   [n] products. *)
+let env_of_prod : tvar array -> term -> env = fun xs t ->
+  let n = Array.length xs in
+  let rec build_env i env t =
+    if i >= n then env else
+    match Eval.whnf [] t with
+    | Prod(a,b) -> let env = add xs.(i) (lift a) None env in
+                   build_env (i+1) env (Bindlib.subst b (Vari(xs.(i))))
+    | _         -> invalid_arg (__LOC__ ^ "env_of_prod")
+  in
+  build_env 0 [] t

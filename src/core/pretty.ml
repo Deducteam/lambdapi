@@ -12,133 +12,124 @@ open Console
 open Pos
 open Syntax
 
-let pp_ident : ident pp = fun oc id ->
+let string = Format.pp_print_string
+
+let ident : ident pp = fun oc id ->
   if Parser.KW.mem id.elt then
     fatal id.pos "Identifier [%s] is a Lambdapi keyword." id.elt;
-  Format.pp_print_string oc id.elt
+  string oc id.elt
 
-let pp_arg_ident : ident option pp = fun oc id ->
+let arg_ident : ident option pp = fun oc id ->
   match id with
-  | Some(id) -> pp_ident oc id
-  | None     -> Format.pp_print_string oc "_"
+  | Some(id) -> ident oc id
+  | None     -> string oc "_"
 
-let pp_path_elt : Pos.popt -> (string * bool) pp = fun pos oc (s,b) ->
+let path_elt : Pos.popt -> (string * bool) pp = fun pos oc (s,b) ->
   if not b && Parser.KW.mem s then
     fatal pos "Module path member [%s] is a Lambdapi keyword." s;
-  if b then Format.fprintf oc "{|%s|}" s else Format.pp_print_string oc s
+  if b then Format.fprintf oc "{|%s|}" s else string oc s
 
-let pp_qident : qident pp = fun oc qid ->
-  List.iter (Format.fprintf oc "%a." (pp_path_elt qid.pos)) (fst qid.elt);
-  pp_ident oc (Pos.make qid.pos (snd qid.elt))
+let qident : qident pp = fun oc qid ->
+  List.iter (Format.fprintf oc "%a." (path_elt qid.pos)) (fst qid.elt);
+  ident oc (Pos.make qid.pos (snd qid.elt))
 
-let pp_path : Pos.popt -> p_module_path pp = fun pos ->
-  List.pp (pp_path_elt pos) "."
+let path : Pos.popt -> p_module_path pp = fun pos ->
+  List.pp (path_elt pos) "."
 
-let pp_modifier : p_modifier loc pp = fun oc {elt; _} ->
+let modifier : p_modifier pp = fun oc {elt; _} ->
   match elt with
-  | P_expo(Public) -> ()
-  | P_expo(Protec) -> Format.pp_print_string oc "protected "
-  | P_expo(Privat) -> Format.pp_print_string oc "private "
-  | P_mstrat(Eager) -> ()
-  | P_mstrat(Sequen) -> Format.pp_print_string oc "sequential "
-  | P_prop(Defin) -> ()
-  | P_prop(Const) -> Format.pp_print_string oc "constant "
-  | P_prop(Injec) -> Format.pp_print_string oc "injective "
-  | P_opaq(Nonopaque) -> ()
-  | P_opaq(Opaque) -> Format.pp_print_string oc "opaque"
+  | P_expo(e) -> Print.pp_expo oc e
+  | P_mstrat(s) -> Print.pp_match_strat oc s
+  | P_prop(p) -> Print.pp_prop oc p
+  | P_opaq -> string oc "opaque "
 
-let rec pp_p_term : p_term pp = fun oc t ->
-  let open Parser in (* for PAtom, PAppl and PFunc *)
+let rec term : p_term pp = fun oc t ->
   let out fmt = Format.fprintf oc fmt in
   let empty_context = ref true in
   let rec pp p _ t =
-    let pp_env _ ar =
+    let env _ ar =
       match ar with
       | None -> ()
       | Some [||] when !empty_context -> ()
-      | Some ar -> out "[%a]" (Array.pp (pp PFunc) "; ") ar
+      | Some ar -> out "[%a]" (Array.pp func "; ") ar
     in
-    let pp_atom = pp PAtom in
-    let pp_appl = pp PAppl in
-    let pp_func = pp PFunc in
     match (t.elt, p) with
     | (P_Type              , _    ) -> out "TYPE"
-    | (P_Iden(qid, false)  , _    ) -> out "%a" pp_qident qid
-    | (P_Iden(qid, true )  , _    ) -> out "%a" pp_qident qid
+    | (P_Iden(qid,_)       , _    ) -> out "%a" qident qid
     | (P_Wild              , _    ) -> out "_"
-    | (P_Meta(x,ar)        , _    ) -> out "?%a%a" pp_ident x pp_env ar
-    | (P_Patt(None   ,ar)  , _    ) -> out "$_%a" pp_env ar
-    | (P_Patt(Some(x),ar)  , _    ) -> out "$%a%a" pp_ident x pp_env ar
-    | (P_Appl(t,u)         , PAppl)
-    | (P_Appl(t,u)         , PFunc) -> out "%a %a" pp_appl t pp_atom u
-    | (P_Impl(a,b)         , PFunc) -> out "%a → %a" pp_appl a pp_func b
-    | (P_Abst(args,t)      , PFunc) ->
-        out "λ%a, " pp_p_args args;
+    | (P_Meta(x,ar)        , _    ) -> out "?%a%a" ident x env ar
+    | (P_Patt(None   ,ar)  , _    ) -> out "$_%a" env ar
+    | (P_Patt(Some(x),ar)  , _    ) -> out "$%a%a" ident x env ar
+    | (P_Appl(t,u)         , Parser.PAppl)
+    | (P_Appl(t,u)         , Parser.PFunc) -> out "%a %a" appl t atom u
+    | (P_Impl(a,b)         , Parser.PFunc) -> out "%a → %a" appl a func b
+    | (P_Abst(xs,t)        , Parser.PFunc) ->
+        out "λ%a, " args_list xs;
         let fn (ids,_,_) = List.for_all ((=) None) ids in
         let ec = !empty_context in
-        empty_context := ec && List.for_all fn args;
-        out "%a" pp_func t;
+        empty_context := ec && List.for_all fn xs;
+        out "%a" func t;
         empty_context := ec
-    | (P_Prod(args,b)      , PFunc) -> out "Π%a, %a" pp_p_args args pp_func b
-    | (P_LLet(x,args,a,t,u), PFunc) ->
+    | (P_Prod(xs,b)        , Parser.PFunc) ->
+        out "Π%a, %a" args_list xs func b
+    | (P_LLet(x,xs,a,t,u)  , Parser.PFunc) ->
         out "@[<hov 2>let %a%a%a ≔@ %a@] in %a"
-          pp_ident x pp_p_args args pp_p_annot a pp_func t pp_func u
+          ident x args_list xs annot a func t func u
     | (P_NLit(i)           , _    ) -> out "%i" i
-    | (P_UnaO(u,t)         , _    ) ->
-        let (u, _, _) = u in
-        out "(%s %a)" u pp_atom t
-    | (P_BinO(t,b,u)       , _    ) ->
-        let (b, _, _, _) = b in
-        out "(%a %s %a)" pp_atom t b pp_atom u
+    | (P_UnaO((u,_,_),t)   , _    ) -> out "(%s %a)" u atom t
+    | (P_BinO(t,(b,_,_,_),u), _   ) -> out "(%a %s %a)" atom t b atom u
     (* We print minimal parentheses, and ignore the [Wrap] constructor. *)
     | (P_Wrap(t)           , _    ) -> out "%a" (pp p) t
-    | (P_Expl(t)           , _    ) -> out "{%a}" pp_func t
-    | (_                   , _    ) -> out "(%a)" pp_func t
+    | (P_Expl(t)           , _    ) -> out "{%a}" func t
+    | (_                   , _    ) -> out "(%a)" func t
+  and atom oc t = pp Parser.PAtom oc t
+  and appl oc t = pp Parser.PAppl oc t
+  and func oc t = pp Parser.PFunc oc t
   in
-  let rec pp_toplevel _ t =
+  let rec toplevel _ t =
     match t.elt with
-    | P_Abst(args,t)       -> out "λ%a, %a" pp_p_args args pp_toplevel t
-    | P_Prod(args,b)       -> out "Π%a, %a" pp_p_args args pp_toplevel b
-    | P_Impl(a,b)          -> out "%a → %a" (pp PAppl) a pp_toplevel b
-    | P_LLet(x,args,a,t,u) ->
-        out "@[<hov 2>let %a%a%a ≔ %a@] in %a" pp_ident x
-          pp_p_args args pp_p_annot a pp_toplevel t pp_toplevel u
-    | _                    -> out "%a" (pp PFunc) t
+    | P_Abst(xs,t) -> out "λ%a, %a" args_list xs toplevel t
+    | P_Prod(xs,b) -> out "Π%a, %a" args_list xs toplevel b
+    | P_Impl(a,b) -> out "%a → %a" appl a toplevel b
+    | P_LLet(x,xs,a,t,u) ->
+        out "@[<hov 2>let %a%a%a ≔ %a@] in %a" ident x
+          args_list xs annot a toplevel t toplevel u
+    | _ -> out "%a" func t
   in
-  pp_toplevel oc t
+  toplevel oc t
 
-and pp_p_annot : p_type option pp = fun oc a ->
+and annot : p_type option pp = fun oc a ->
   match a with
-  | Some(a) -> Format.fprintf oc " :@ %a" pp_p_term a
+  | Some(a) -> Format.fprintf oc " :@ %a" term a
   | None    -> ()
 
-and pp_p_arg : p_arg pp = fun oc (ids,ao,b) ->
-  let pp_ids = List.pp pp_arg_ident " " in
+and args : p_args pp = fun oc (ids,ao,b) ->
+  let args = List.pp arg_ident " " in
   match (ao,b) with
-  | (None   , false) -> Format.fprintf oc "%a" pp_ids ids
-  | (None   , true ) -> Format.fprintf oc "{%a}" pp_ids ids
-  | (Some(a), false) -> Format.fprintf oc "(%a : %a)" pp_ids ids pp_p_term a
-  | (Some(a), true ) -> Format.fprintf oc "{%a : %a}" pp_ids ids pp_p_term a
+  | (None   , false) -> Format.fprintf oc "%a" args ids
+  | (None   , true ) -> Format.fprintf oc "{%a}" args ids
+  | (Some(a), false) -> Format.fprintf oc "(%a : %a)" args ids term a
+  | (Some(a), true ) -> Format.fprintf oc "{%a : %a}" args ids term a
 
-and pp_p_args : p_arg list pp = fun oc ->
-  List.iter (Format.fprintf oc " %a" pp_p_arg)
+and args_list : p_args list pp = fun oc ->
+  List.iter (Format.fprintf oc " %a" args)
 
-let pp_p_rule : string -> p_rule pp = fun kw oc r ->
+let rule : string -> p_rule pp = fun kw oc r ->
   let (lhs, rhs) = r.elt in
-  Format.fprintf oc "@[<hov 3>%s %a ↪ %a@]@?" kw pp_p_term lhs pp_p_term rhs
+  Format.fprintf oc "@[<hov 3>%s %a ↪ %a@]@?" kw term lhs term rhs
 
-let pp_p_inductive : string -> p_inductive pp = fun kw oc i ->
+let inductive : string -> p_inductive pp = fun kw oc i ->
   let (s, t, tl) = i.elt in
-  Format.fprintf oc "@[<hov 2>]%s %a" kw pp_ident s;
-  Format.fprintf oc " :@ @[<hov>%a@] ≔@ \n  " pp_p_term t;
-  let pp_cons oc (id,a) =
-    Format.fprintf oc "%a:@ @[<hov>%a@]" pp_ident id pp_p_term a in
-  List.pp pp_cons "\n| " oc tl
+  Format.fprintf oc "@[<hov 2>]%s %a" kw ident s;
+  Format.fprintf oc " :@ @[<hov>%a@] ≔@ \n  " term t;
+  let cons oc (id,a) =
+    Format.fprintf oc "%a:@ @[<hov>%a@]" ident id term a in
+  List.pp cons "\n| " oc tl
 
-let pp_p_equi : (p_term * p_term) pp = fun oc (l, r) ->
-  Format.fprintf oc "@[<hov 3>%a ≡ %a@]@?" pp_p_term l pp_p_term r
+let equi : (p_term * p_term) pp = fun oc (l, r) ->
+  Format.fprintf oc "@[<hov 3>%a ≡ %a@]@?" term l term r
 
-let pp_p_unif_rule : p_rule pp = fun oc r ->
+let unif_rule : p_rule pp = fun oc r ->
   let (lhs, rhs) = r.elt in
   let lhs =
     match Syntax.p_get_args lhs with
@@ -146,162 +137,143 @@ let pp_p_unif_rule : p_rule pp = fun oc r ->
     | _           -> assert false
   in
   let eqs = Unif_rule.p_unpack rhs in
-  let pp_sep : unit pp = fun oc () -> Format.fprintf oc ", " in
-  Format.fprintf oc "@[<hov 3>%a ↪ %a@]@?"
-    pp_p_equi lhs (Format.pp_print_list ~pp_sep pp_p_equi) eqs
+  Format.fprintf oc "@[<hov 3>%a ↪ %a@]@?" equi lhs (List.pp equi ", ") eqs
 
-let pp_p_proof_end : p_proof_end pp = fun oc e ->
-  match e with
-  | P_proof_end   -> Format.pp_print_string oc "end"
-  | P_proof_admit -> Format.pp_print_string oc "admit"
-  | P_proof_abort -> Format.pp_print_string oc "abort"
+let proof_end : p_proof_end pp = fun oc {elt;_} ->
+  match elt with
+  | P_proof_end   -> string oc "end"
+  | P_proof_admit -> string oc "admit"
+  | P_proof_abort -> string oc "abort"
 
-let pp_p_rw_patt : p_rw_patt pp = fun oc p ->
+let rw_patt : p_rw_patt pp = fun oc p ->
   let out fmt = Format.fprintf oc fmt in
   match p with
-  | P_rw_Term(t)               -> out "%a" pp_p_term t
-  | P_rw_InTerm(t)             -> out "in %a" pp_p_term t
-  | P_rw_InIdInTerm(x,t)       -> out "in %a in %a" pp_ident x pp_p_term t
-  | P_rw_IdInTerm(x,t)         -> out "%a in %a" pp_ident x pp_p_term t
-  | P_rw_TermInIdInTerm(u,x,t) -> out "%a in %a in %a" pp_p_term u
-                                    pp_ident x pp_p_term t
-  | P_rw_TermAsIdInTerm(u,x,t) -> out "%a as %a in %a" pp_p_term u
-                                    pp_ident x pp_p_term t
+  | P_rw_Term(t)               -> out "%a" term t
+  | P_rw_InTerm(t)             -> out "in %a" term t
+  | P_rw_InIdInTerm(x,t)       -> out "in %a in %a" ident x term t
+  | P_rw_IdInTerm(x,t)         -> out "%a in %a" ident x term t
+  | P_rw_TermInIdInTerm(u,x,t) -> out "%a in %a in %a" term u
+                                    ident x term t
+  | P_rw_TermAsIdInTerm(u,x,t) -> out "%a as %a in %a" term u
+                                    ident x term t
 
-let pp_p_assertion : p_assertion pp = fun oc asrt ->
+let assertion : p_assertion pp = fun oc asrt ->
   let out fmt = Format.fprintf oc fmt in
   match asrt with
-  | P_assert_typing(t,a) -> out "%a : %a" pp_p_term t pp_p_term a
-  | P_assert_conv(t,u)   -> out "%a ≡ %a" pp_p_term t pp_p_term u
+  | P_assert_typing(t,a) -> out "%a : %a" term t term a
+  | P_assert_conv(t,u)   -> out "%a ≡ %a" term t term u
 
-let pp_p_query : p_query pp = fun oc q ->
+let query : p_query pp = fun oc q ->
   let out fmt = Format.fprintf oc fmt in
   match q.elt with
-  | P_query_assert(true , asrt)           ->
-      out "assertnot %a" pp_p_assertion asrt
-  | P_query_assert(false, asrt)           ->
-      out "assert %a" pp_p_assertion asrt
-  | P_query_verbose(i)                    ->
-      out "set verbose %i" i
-  | P_query_debug(true ,s)                ->
-      out "set debug \"+%s\"" s
-  | P_query_debug(false,s)                ->
-      out "set debug \"-%s\"" s
-  | P_query_flag(s, b)                    ->
+  | P_query_assert(true , asrt) -> out "assertnot %a" assertion asrt
+  | P_query_assert(false, asrt) -> out "assert %a" assertion asrt
+  | P_query_verbose(i) -> out "set verbose %i" i
+  | P_query_debug(true ,s) -> out "set debug \"+%s\"" s
+  | P_query_debug(false,s) -> out "set debug \"-%s\"" s
+  | P_query_flag(s, b) ->
       out "set flag \"%s\" %s" s (if b then "on" else "off")
-  | P_query_infer(t, _)                   ->
-      out "@[<hov 4>type %a@]" pp_p_term t
-  | P_query_normalize(t, _)               ->
-      out "@[<hov 2>compute@ %a@]" pp_p_term t
-  | P_query_prover(s)                     ->
-      out "set prover \"%s\"" s
-  | P_query_prover_timeout(n)               ->
-      out "set prover_timeout %d" n
+  | P_query_infer(t, _) -> out "@[<hov 4>type %a@]" term t
+  | P_query_normalize(t, _) -> out "@[<hov 2>compute@ %a@]" term t
+  | P_query_prover(s) -> out "set prover \"%s\"" s
+  | P_query_prover_timeout(n) -> out "set prover_timeout %d" n
+  | P_query_print(None) -> out "print"
+  | P_query_print(Some s) -> out "print %a" qident s
+  | P_query_proofterm -> out "proofterm"
 
-let pp_p_tactic : p_tactic pp = fun oc t ->
+let tactic : p_tactic pp = fun oc t ->
   let out fmt = Format.fprintf oc fmt in
   match t.elt with
-  | P_tac_refine(t)          -> out "@[<hov 2>refine@ %a@]" pp_p_term t
-  | P_tac_intro(xs)          -> out "intro %a" (List.pp pp_arg_ident " ") xs
-  | P_tac_apply(t)           -> out "@[<hov 2>apply %a@]" pp_p_term t
-  | P_tac_simpl              -> out "simpl"
+  | P_tac_refine(t) -> out "@[<hov 2>refine@ %a@]" term t
+  | P_tac_intro(xs) -> out "intro %a" (List.pp arg_ident " ") xs
+  | P_tac_apply(t) -> out "@[<hov 2>apply %a@]" term t
+  | P_tac_simpl -> out "simpl"
   | P_tac_rewrite(b,p,t)     ->
       let dir oc b = if not b then Format.fprintf oc " -" in
-      let pat oc p = Format.fprintf oc " [%a]@" pp_p_rw_patt p.elt in
-      out "@[<hov 2>rewrite%a%a%a@]" dir b (Option.pp pat) p pp_p_term t
-  | P_tac_refl               -> out "reflexivity"
-  | P_tac_sym                -> out "symmetry"
-  | P_tac_focus(i)           -> out "focus %i" i
-  | P_tac_print              -> out "print"
-  | P_tac_proofterm          -> out "proofterm"
-  | P_tac_why3(p)            ->
+      let pat oc p = Format.fprintf oc " [%a]@" rw_patt p.elt in
+      out "@[<hov 2>rewrite%a%a%a@]" dir b (Option.pp pat) p term t
+  | P_tac_refl -> out "reflexivity"
+  | P_tac_sym -> out "symmetry"
+  | P_tac_focus(i) -> out "focus %i" i
+  | P_tac_why3(p) ->
       let prover oc s = Format.fprintf oc " %s" s in
       out "why3%a" (Option.pp prover) p
-  | P_tac_query(q)           -> pp_p_query oc q
-  | P_tac_fail               -> out "fail"
-  | P_unif_solve             -> out "solve"
+  | P_tac_query(q) -> query oc q
+  | P_tac_fail -> out "fail"
+  | P_tac_solve -> out "solve"
 
-let pp_command : p_command pp = fun oc cmd ->
+let command : p_command pp = fun oc cmd ->
   let out fmt = Format.fprintf oc fmt in
   match cmd.elt with
   | P_require(b,ps) ->
       let op = if b then " open" else "" in
-      out "require%s %a" op (List.pp (pp_path cmd.pos) " ") ps
+      out "require%s %a" op (List.pp (path cmd.pos) " ") ps
   | P_require_as(p,i) ->
-      out "require %a as %a" (pp_path cmd.pos) p (pp_path_elt i.pos) i.elt
+      out "require %a as %a" (path cmd.pos) p (path_elt i.pos) i.elt
   | P_open(ps) ->
-      List.iter (out "open %a" (pp_path cmd.pos)) ps
-  | P_symbol(ms,st,t,ts_pe,_e) ->
+      List.iter (out "open %a" (path cmd.pos)) ps
+  | P_symbol{p_sym_mod;p_sym_nam;p_sym_arg;p_sym_typ;p_sym_trm;p_sym_prf;_} ->
     begin
-      match (t,ts_pe) with
+      match (p_sym_trm,p_sym_prf) with
       | (Some _,_) | (_,Some _) ->
-        let s,args,ao = st.elt in
-        out "@[<hov 2>%a symbol %a"
-          (Format.pp_print_list pp_modifier) ms pp_ident s;
-        List.iter (out " %a" pp_p_arg) args;
-        Option.iter (out " : @[<hov>%a@]" pp_p_term) ao;
-        Option.iter (out " ≔ @[<hov>%a@]@]" pp_p_term) t;
+        out "@[<hov 2>%asymbol %a"
+          (List.pp modifier "") p_sym_mod ident p_sym_nam;
+        args_list oc p_sym_arg;
+        Option.iter (out " : @[<hov>%a@]" term) p_sym_typ;
+        Option.iter (out " ≔ @[<hov>%a@]@]" term) p_sym_trm;
         begin
-          match ts_pe with
+          match p_sym_prf with
           | Some(ts,pe) ->
             out "proof@.";
-            List.iter (out "  @[<hov>%a@]@." pp_p_tactic) ts;
-            out "%a" pp_p_proof_end pe.elt
+            List.iter (out "  @[<hov>%a@]@." tactic) ts;
+            out "%a" proof_end pe
           | None -> ()
         end
       | (None,None) ->
-        let (s,args,a) = st.elt in
         let a =
-          match a with
+          match p_sym_typ with
           | Some(a) -> a
-          | None -> failwith "Internal error : P_symbol has a type"
+          | None ->
+              fatal cmd.pos
+                "symbol declaration with no type and no definition"
         in
         out "@[<hov 2>%asymbol %a"
-          (Format.pp_print_list pp_modifier) ms pp_ident s;
-        List.iter (out " %a" pp_p_arg) args;
-        out " :@ @[<hov>%a@]" pp_p_term a
+          (List.pp modifier "") p_sym_mod ident p_sym_nam;
+        args_list oc p_sym_arg;
+        out " :@ @[<hov>%a@]" term a
     end
   | P_rules [] -> ()
   | P_rules (r::rs) ->
-      out "%a" (pp_p_rule "rule") r;
-      List.iter (out "%a" (pp_p_rule "\nwith")) rs
+      out "%a" (rule "rule") r;
+      List.iter (out "%a" (rule "\nwith")) rs
   | P_inductive(_, []) -> ()
   | P_inductive(ms, i::il) ->
-      out "%a" (Format.pp_print_list pp_modifier) ms;
-      out "%a" (pp_p_inductive "inductive") i;
-      List.iter (out "%a" (pp_p_inductive "\nwith")) il
+      out "%a" (List.pp modifier "") ms;
+      out "%a" (inductive "inductive") i;
+      List.iter (out "%a" (inductive "\nwith")) il
   | P_set(P_config_builtin(n,i)) ->
-      out "set builtin %S ≔ %a" n pp_qident i
+      out "set builtin %S ≔ %a" n qident i
   | P_set(P_config_unop(unop)) ->
       let (s, p, qid) = unop in
-      out "set prefix %f %S ≔ %a" p s pp_qident qid
-  | P_set(P_config_binop(binop)) ->
-      let (s, a, p, qid) = binop in
+      out "set prefix %f %S ≔ %a" p s qident qid
+  | P_set(P_config_binop(s,a,p,qid)) ->
       let a =
         match a with
         | Assoc_none  -> ""
         | Assoc_left  -> " left"
         | Assoc_right -> " right"
       in
-      out "set infix%s %f %S ≔ %a" a p s pp_qident qid
+      out "set infix%s %f %S ≔ %a" a p s qident qid
   | P_set(P_config_unif_rule(ur)) ->
-      out "set unif_rule %a" pp_p_unif_rule ur
+      out "set unif_rule %a" unif_rule ur
   | P_set(P_config_ident(id)) ->
       out "set declared %S" id
   | P_set(P_config_quant(qid)) ->
-      out "set quantifier %a" pp_qident qid
+      out "set quantifier %a" qident qid
   | P_query(q) ->
-     pp_p_query oc q
+     query oc q
 
-let rec pp_ast : ast pp = fun oc cs ->
-  match cs with
-  | []    -> ()
-  | [c]   -> Format.fprintf oc "%a@." pp_command c
-  | c::cs -> Format.fprintf oc "%a\n@.%a" pp_command c pp_ast cs
-
-(** Short synonym of [pp_p_term]. *)
-let pp : p_term pp = pp_p_term
+let ast : ast pp = fun oc cs -> List.pp command "\n@." oc cs
 
 (** [beautify cmds] pretty-prints the commands [cmds] to standard output. *)
-let beautify : ast -> unit =
-  pp_ast Format.std_formatter
+let beautify : ast -> unit = ast Format.std_formatter
