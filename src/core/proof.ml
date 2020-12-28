@@ -73,8 +73,7 @@ module Goal = struct
     | Typ gt -> out "%a\n" pp_term gt.goal_type
     | Unif (_, t, u) -> out "%a ≡ %a\n" pp_term t pp_term u
 
-  (** [pp_hyps oc g] prints on channel [oc] the goal [g] and its
-     hypotheses. *)
+  (** [pp_hyps oc g] prints on channel [oc] the hypotheses of the goal [g]. *)
   let pp_hyps : goal pp =
     let env_elt oc (s,(_,t,_)) =
       Format.fprintf oc "%s: %a\n" s pp_term (Bindlib.unbox t)
@@ -117,7 +116,7 @@ let finished : proof_state -> bool = fun ps -> ps.proof_goals = []
 let pp_goals : proof_state pp = fun oc ps ->
   let out fmt = Format.fprintf oc fmt in
   match ps.proof_goals with
-  | []    -> out "No goals.\n"
+  | [] -> out "No goals.\n"
   | g::_ ->
       Goal.pp_hyps oc g;
       List.iteri (fun i g -> out "%d. %a" i Goal.pp g) ps.proof_goals
@@ -126,7 +125,7 @@ let pp_goals : proof_state pp = fun oc ps ->
    empty environment if there is none. *)
 let focus_env : proof_state option -> Env.t = fun ps ->
   match ps with
-  | None     -> Env.empty
+  | None -> Env.empty
   | Some(ps) ->
       match ps.proof_goals with
       | [] -> Env.empty

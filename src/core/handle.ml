@@ -216,10 +216,10 @@ let data_proof : sig_symbol -> expo -> p_tactic list ->
          fatal pos "We have %s : %a." id pp_term sig_symbol.typ);
       (match sig_symbol.def with
        | Some(t) when Basics.has_metas true t ->
-           (fatal_msg
-              "The definition of [%s] has unsolved metavariables.\n" id;
-            fatal pos "We have %s : %a ≔ %a."
-              id pp_term sig_symbol.typ pp_term t)
+           fatal_msg
+             "The definition of [%s] has unsolved metavariables.\n" id;
+           fatal pos "We have %s : %a ≔ %a."
+             id pp_term sig_symbol.typ pp_term t
        | _ -> ());
       match pe.elt with
       | P_proof_abort -> assert false (* Handled above *)
