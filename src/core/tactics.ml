@@ -31,7 +31,7 @@ let tac_solve : popt -> proof_state -> proof_state = fun pos ps ->
           | None -> true
     in
     let gs_typ = List.filter goal_has_no_meta_value gs_typ in
-    {ps with proof_goals = gs_typ @ new_gs_unif}
+    {ps with proof_goals = new_gs_unif @ gs_typ}
   with Unif.Unsolvable -> fatal pos "Unification goals are unsatisfiable."
 
 (** [tac_refine pos ps t] refines the focused typing goal with [t]. *)
@@ -71,7 +71,6 @@ let handle_tactic :
   | P_tac_query(q) -> Queries.handle_query ss (Some ps) q; ps
   | P_tac_solve -> tac_solve tac.pos ps
   | P_tac_focus(i) ->
-      (* Put the [i]-th goal in focus (if possible). *)
       (try {ps with proof_goals = List.swap i ps.proof_goals}
       with Invalid_argument _ -> fatal tac.pos "Invalid goal index.")
   | P_tac_refine(pt) ->
