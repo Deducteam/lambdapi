@@ -58,7 +58,7 @@ let tac_refine : popt -> proof_state -> term -> proof_state =
           (*FIXME: add new metas only. *)
           let new_goals_metas = goals_of_metas (Basics.get_metas true t) in
           let new_goals_solve = List.map (fun c -> Unif c) to_solve in
-          let proof_goals = new_goals_metas @ gs @ new_goals_solve in
+          let proof_goals = new_goals_solve @ new_goals_metas @ gs in
           tac_solve pos {ps with proof_goals}
 
 (** [handle_tactic ss e ps tac] applies tactic [tac] in the proof state
