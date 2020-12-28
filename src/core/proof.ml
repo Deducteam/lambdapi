@@ -93,12 +93,8 @@ module Goal = struct
     in
     fun oc g ->
     match g with
-    | Typ gt ->
-        hyps env_elt oc gt.goal_hyps;
-        Format.fprintf oc "0. %a\n" pp_term gt.goal_type
-    | Unif (c, t, u) ->
-        hyps ctx_elt oc c;
-        Format.fprintf oc "0. %a ≡ %a" pp_term t pp_term u
+    | Typ gt -> hyps env_elt oc gt.goal_hyps
+    | Unif (c,_,_) -> hyps ctx_elt oc c
 end
 
 (** [goals_of_metas ms] returns a list of goals from a set of metas. *)
@@ -121,9 +117,10 @@ let finished : proof_state -> bool = fun ps -> ps.proof_goals = []
 let pp_goals : proof_state pp = fun oc ps ->
   let out fmt = Format.fprintf oc fmt in
   match ps.proof_goals with
-  | []    -> out "No goals ...\n"
-  | g::gs ->
-      Goal.pp_hyps oc g; List.iteri (fun i g -> out "%d. %a" i Goal.pp g) gs
+  | []    -> out "No goals.\n"
+  | g::_ ->
+      Goal.pp_hyps oc g;
+      List.iteri (fun i g -> out "%d. %a" i Goal.pp g) ps.proof_goals
 
 (** [focus_env ps] returns the scoping environment of the focused goal or the
    empty environment if there is none. *)
