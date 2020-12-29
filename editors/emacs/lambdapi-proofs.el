@@ -61,7 +61,7 @@ bold if goalNo is 0"
     goalstr))
 
 (defun lp-format-string-hyps-typ-goal (goal)
-  "Return the string associated to the hypotheses of a single typ goal"
+  "Return the string associated to the hypotheses of a single typing goal"
   (let ((tog (plist-get goal :typeofgoal)))
     (if (string= tog "Typ ")
 	(let ((hs (plist-get goal :hyps)))
@@ -162,15 +162,15 @@ make it clickable"
   "returns line number of next proof"
   (save-excursion
     (goto-line (1+ lineNo))
-    (if (not (search-forward "opaque symbol" nil t))
+    (if (not (search-forward "begin" nil t))
 	(goto-char (point-max)))
     (line-number-at-pos)))
 
 (defun lp-get-prev-proof-line (lineNo)
-  "returns line number of prev proof"
+  "returns line number of previous proof"
   (save-excursion
     (goto-line lineNo)
-    (if (not (search-backward "opaque symbol" nil t))
+    (if (not (search-backward "begin" nil t))
 	(goto-char (point-min)))
     (line-number-at-pos)))
 

@@ -101,10 +101,10 @@
 
 
 (defgroup lambdapi nil
-  "LambdaPi is proof assistant based on λΠ-calculus modulo rewriting"
+  "LambdaPi is a proof assistant based on the λΠ-calculus modulo rewriting"
   :group 'languages)
 
-(defcustom lambdapi-goals-window-side 'right
+(defcustom lambdapi-goals-window-side 'bottom
   "Side at which to show goals window"
   :type '(choice (const :tag "right"  right)
                  (const :tag "left"   left)

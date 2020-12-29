@@ -165,8 +165,8 @@ jump between proofs with ``C-c C-b`` and ``C-c C-f``, and show the goals
 at the current line with ``C-c C-c``. As always with emacs, if you were
 to be dissatisfied with these keybindings, you can change them easily!
 
-Clicking on a goal in the ``*Goals*`` buffer focuses it in the proof script
-by inserting a ``focus G`` tactic.
+Clicking on the ``i``-th goal of the ``*Goals*`` buffer puts the focus on it
+by inserting a ``focus i`` tactic in the proof script.
 
 CPU usage and deactivation
 ''''''''''''''''''''''''''
@@ -198,10 +198,10 @@ instead of ``"%c %s"``.
 
 Customize goals buffer
 ''''''''''''''''''''''
-The position and amount of space taken by goals buffer can be changed
+The position and amount of space taken by the ``*Goals*`` buffer can be changed
 in the LambdaPi customization group (Do ``M-x customize-group lambdapi``).
 If the space is too small, then the window will open
-either at right or bottom, whichever is more suitable.
+either on the right side or at the bottom, whichever is more suitable.
 
 The layout can be refreshed with ``C-c C-r``.
 
