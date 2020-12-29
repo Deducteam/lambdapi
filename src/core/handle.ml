@@ -427,7 +427,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
           if p_sym_def then Some (Meta.fresh ~name:p_sym_nam.elt a 0)
           else None
         in
-        let goals = sort_goals @ goals_of_metas metas_a in
+        let goals = sort_goals @ goals_of_metas metas_a [] in
         let sig_symbol =
           {expo;prop;mstrat;ident=p_sym_nam;typ=a;impl;def=t} in
         (* Depending on opacity : theorem = false / definition = true *)

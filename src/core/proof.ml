@@ -58,10 +58,11 @@ module Goal = struct
         Typ {gt with goal_type}
     | Unif (c,t,u) -> Unif (c, Eval.snf c t, Eval.snf c u)
 
-  (** Comparison function. *)
+  (** Comparison function. Unification goals are greater than typing goals. *)
   let compare : goal cmp = fun g g' ->
     match g, g' with
-    | Typ gt, Typ gt' -> Meta.compare gt.goal_meta gt'.goal_meta
+    | Typ gt, Typ gt' -> (* Smaller (= older) metas are put first. *)
+        Meta.compare gt.goal_meta gt'.goal_meta
     | Unif c, Unif c' -> Basics.cmp_constr c c'
     | Unif _, Typ _ -> 1
     | Typ _, Unif _ -> -1
@@ -70,7 +71,7 @@ module Goal = struct
   let pp : goal pp = fun oc g ->
     let out fmt = Format.fprintf oc fmt in
     match g with
-    | Typ gt -> out "%a\n" pp_term gt.goal_type
+    | Typ gt -> out "%a : %a\n" pp_meta gt.goal_meta pp_term gt.goal_type
     | Unif (_, t, u) -> out "%a ≡ %a\n" pp_term t pp_term u
 
   (** [pp_hyps oc g] prints on channel [oc] the hypotheses of the goal [g]. *)
@@ -96,9 +97,15 @@ module Goal = struct
     | Unif (c,_,_) -> hyps ctx_elt oc c
 end
 
-(** [goals_of_metas ms] returns a list of goals from a set of metas. *)
-let goals_of_metas : MetaSet.t -> goal list = fun ms ->
-  let add_goal m = List.insert compare (Goal.of_meta m) in
+(** [goals_of_metas ms gs] turns the metas of [ms] that are not in [gs] into a
+   list of goals. *)
+let goals_of_metas : MetaSet.t -> goal list -> goal list = fun ms gs ->
+  let f = function Typ gt -> Some gt.goal_meta.meta_key | Unif _ -> None in
+  let metakeys_gs = List.filter_rev_map f gs in
+  let add_goal m goals =
+    if List.mem m.meta_key metakeys_gs then goals
+    else List.insert Goal.compare (Goal.of_meta m) goals
+  in
   MetaSet.fold add_goal ms []
 
 (** Representation of the proof state of a theorem. *)
@@ -118,6 +125,7 @@ let pp_goals : proof_state pp = fun oc ps ->
   match ps.proof_goals with
   | [] -> out "No goals.\n"
   | g::_ ->
+      out "\n";
       Goal.pp_hyps oc g;
       List.iteri (fun i g -> out "%d. %a" i Goal.pp g) ps.proof_goals
 
