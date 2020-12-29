@@ -45,12 +45,13 @@ let _ =
     do not work on this structure directly,  although they act on the contents
     of its [pdata_p_state] field. *)
 type proof_data =
-  { pdata_stmt_pos : Pos.popt (* Position of the proof's statement. *)
-  ; pdata_p_state  : proof_state (* Proof state. *)
-  ; pdata_tactics  : p_tactic list (* Tactics. *)
-  ; pdata_finalize : sig_state -> proof_state -> sig_state (* Finalizer. *)
-  ; pdata_end_pos  : Pos.popt (* Position of the proof's terminator. *)
-  ; pdata_expo     : Terms.expo (* Allow private symbols. *) }
+  { pdata_stmt_pos : Pos.popt (** Position of the proof's statement. *)
+  ; pdata_p_state  : proof_state (** Proof state. *)
+  ; pdata_tactics  : p_tactic list (** Tactics. *)
+  ; pdata_finalize : sig_state -> proof_state -> sig_state (** Finalizer. *)
+  ; pdata_end_pos  : Pos.popt (** Position of the proof's terminator. *)
+  ; pdata_expo     : Terms.expo (** Allowed exposition of symbols in the proof
+                                   script. *) }
 
 (** [handle_open pos ss p] handles the command [open p] with [ss] as the
    signature state. On success, an updated signature state is returned. *)
@@ -182,12 +183,12 @@ let handle_rules : sig_state -> p_rule list -> sig_state = fun ss rs ->
   SymSet.iter Tree.update_dtree syms;
   ss
 
-(** [data_proof] returns the datas needed for the symbol or definition
+(** [proof_data] returns the datas needed for the symbol or definition
     [sig_symbol] to be added in the signature and the [goals] we wish to prove
     with the proof script [ts pe]. [pdata_expo] sets the authorized exposition
     of the symbols used in the proof script : Public (= only public symbols)
     or Privat (= public and private symbols) *)
-let data_proof : sig_symbol -> expo -> p_tactic list ->
+let proof_data : sig_symbol -> expo -> p_tactic list ->
   p_proof_end -> Goal.t list -> meta option -> proof_data =
   fun sig_symbol pdata_expo ts pe goals proof_term ->
   let {elt=id; pos} = sig_symbol.ident in
@@ -363,17 +364,25 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
     (* Check that this is a syntactically valid symbol declaration. *)
     begin
       match (p_sym_typ, p_sym_def, p_sym_trm, p_sym_prf) with
-      | (None, true, None, Some _) -> fatal p_sym_nam.pos "missing type"
-      | (   _, true, None, None  ) -> fatal p_sym_nam.pos "missing definition"
+      | (None, true, None, Some _) -> fatal cmd.pos "missing type"
+      | (   _, true, None, None  ) -> fatal cmd.pos "missing definition"
       | _ -> ()
     end;
-    (* Get opacity. *)
-    let op = List.exists Syntax.is_opaq p_sym_mod in
-    (* Verify modifiers. *)
-    let (prop, expo, mstrat) = handle_modifiers p_sym_mod in
     (* We check that [x] is not already used. *)
     if Sign.mem ss.signature p_sym_nam.elt then
       fatal p_sym_nam.pos "Symbol [%s] already exists." p_sym_nam.elt;
+    (* Verify modifiers. *)
+    let (prop, expo, mstrat) = handle_modifiers p_sym_mod in
+    let op = List.exists Syntax.is_opaq p_sym_mod in
+    (match p_sym_def, op, prop, mstrat with
+     | false, true, _, _ ->
+         fatal cmd.pos "Symbol declarations cannot be opaque."
+     | true, _, Const, _ ->
+         fatal cmd.pos "Definitions cannot be constant."
+     | true, _, _, Sequen ->
+         fatal cmd.pos "Definitions cannot have matching strategies."
+     | _, _, _, _ -> ());
+    (* Get proof data. *)
     let data =
       (* Desugaring of arguments and scoping of [p_sym_trm]. *)
       let pt, t =
@@ -430,26 +439,11 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
         let goals = sort_goals @ goals_of_metas metas_a [] in
         let sig_symbol =
           {expo;prop;mstrat;ident=p_sym_nam;typ=a;impl;def=t} in
-        (* Depending on opacity : theorem = false / definition = true *)
-        let pdata_expo =
-          match p_sym_def, op, ao, prop, mstrat with
-          (* Theorem *)
-          | false,     _,      _ ,    _ ,     _  -> expo
-          |     _, true ,      _ , Defin, Eager  -> Privat
-          |     _, true ,      _ , _    , Eager  ->
-            fatal cmd.pos "Property modifiers can't be used in theorems."
-          |     _, true ,      _ , _    , _      ->
-            fatal cmd.pos "Pattern matching strategy modifiers cannot \
-                           be used in theorems."
-          (* Definition *)
-          |     _, false, _      , _    , Sequen ->
-            fatal cmd.pos "Pattern matching strategy modifiers cannot \
-                           be used in definitions."
-          |     _, false, _      , _    , _      -> expo
-        in
+        (* Allowed exposition of symbols in the proof script. *)
+        let pdata_expo = if p_sym_def && op then Privat else expo in
         proof_term, goals, sig_symbol, pdata_expo
       in
-      data_proof sig_symbol pdata_expo ts pe goals proof_term
+      proof_data sig_symbol pdata_expo ts pe goals proof_term
     in
     (ss, Some(data))
   | P_set(cfg)                 ->
