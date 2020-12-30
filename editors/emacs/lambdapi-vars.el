@@ -56,7 +56,7 @@
   "Basic indentation for lambdapi-mode."
   :type 'number
   :options '(2 4)
-  :group 'indent)
+  :group 'lambdapi)
 
 (defvar lambdapi-syntax-table
   (let ((table (make-syntax-table)))
