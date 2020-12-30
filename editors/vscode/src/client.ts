@@ -187,7 +187,7 @@ function nextProofPosition(document: TextDocument, proofState : Position, direct
     //Looking for the next line with "proof" in it (or the beggining/end of file)
     let line : string = document.lineAt(current).text;
 
-    while(!line.includes("proof") && current + direction >= 1 && current + direction <= document.lineCount - 1) {
+    while(!line.includes("begin") && current + direction >= 1 && current + direction <= document.lineCount - 1) {
         current += direction;
         line = document.lineAt(current).text;
     }
@@ -401,18 +401,18 @@ function getGoalsEnvContent(goals : Goal[]){
     let codeHyps : String = ""; //hypothesis HTML code
     let codeGoals : String = ""; //goals HTML code
     let codeEnvGoals : String = ""; //result code HTML
-    let typGoalNo = 0;
     
     for(let i=0; i < goals.length; i++) {
+        
+        codeHyps = `<div class="hypothesis">`;
+        codeGoals = `<div class="pp_goals">`;
         
         // check if this is a Type Goal
     	// extra space is not a typo, this is defined in lsp_base.ml
         if (goals[i].typeofgoal == "Typ "){
-            
+
             let curGoal = goals[i] as TypGoal;
-            codeHyps = `<div class="hypothesis">`;
-            codeGoals = `<div class="pp_goals">`;
-            
+
             for(let j=0; j<curGoal.hyps.length; j++){
 
                 let hnameCode = `<label class="hname">`
@@ -427,29 +427,28 @@ function getGoalsEnvContent(goals : Goal[]){
                     + `<label class="sep"> : </label>`
                     + htypeCode;
             }
-
-            let numGoalcode = `<label class="numGoal">`
-                + typGoalNo + `</label>`;
-
-            let typeGoal = `<span class="goal">`
-                + curGoal.type + `</span>`;
-
-            codeGoals = codeGoals + numGoalcode
-                + `<label class ="sep"> : </label> `
-                + typeGoal + `<label class ="sep"></label><br/><br/></div>`;
-
-            codeHyps = codeHyps + `</div>`;
-
-            typGoalNo++;
-
-            let codeSep = `<hr/>`;
-            codeEnvGoals = codeEnvGoals + "" + codeHyps + codeSep + codeGoals;
-
-        } else {    // case if this is a Unification Goal
-            let curGoal = goals[i] as UnifGoal;
-            codeEnvGoals = codeEnvGoals + "" + `<hr/>` +
-                           `<span class="goal">`+curGoal.constr+`</span>`
         }
+
+        let numGoalcode = `<label class="numGoal">`
+            + i + `</label>`;
+
+        let goalstr = "";
+        if(goals[i].typeofgoal == "Typ "){
+            goalstr = `<span class="goal">`
+                + (goals[i] as TypGoal).type + `</span>`;
+        } else {
+            goalstr = `<span class="goal">`
+                + (goals[i] as UnifGoal).constr + `</span>`;
+        }
+
+        codeGoals += numGoalcode + `<label class ="sep"> : </label> `
+                    + goalstr + `<label class ="sep"></label><br/><br/></div>`;
+
+        codeHyps = codeHyps + `</div>`;
+
+        let codeSep = `<hr/>`;
+        codeEnvGoals = codeEnvGoals + "" + codeHyps + codeSep + codeGoals;
+
     }
 
     // if there is no goal
