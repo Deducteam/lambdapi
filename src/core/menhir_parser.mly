@@ -244,61 +244,105 @@ let build_config : Pos.pos -> string -> string option -> eval_config =
 %%
 
 line:
-  | ms=modifier* s=ID ps=param* COLON a=term DOT
+  | p_sym_mod=modifier* s=ID p_sym_arg=param* COLON a=term DOT
     {
-      (* Add the "constant" modifier by default. *)
-      let is_prop {elt; _} = match elt with P_prop(_) -> true | _ -> false in
-      let ms =
-        match List.find_opt is_prop ms with
-        | Some(_) -> ms
-        | None -> make_pos Lexing.(dummy_pos, dummy_pos) (P_prop(Const)) :: ms
+      let p_sym_mod =
+        match List.find_opt is_prop p_sym_mod with
+        | Some(_) -> p_sym_mod
+        | None -> (* we add the property "constant" *)
+           make_pos Lexing.(dummy_pos, dummy_pos) (P_prop(Const)) :: p_sym_mod
       in
-      let st = make_pos $loc(s) (make_pos $loc(s) s, ps, Some(a)) in
-      let t = P_symbol(ms, st, None, None, Tac)
-      in
-      make_pos $loc t
+      let p_sym_nam = make_pos $loc(s) s in
+      let p_sym_typ = Some a in
+      let p_sym_trm = None in
+      let p_sym_prf = None in
+      let p_sym_def = false in
+      make_pos $loc
+        (P_symbol {p_sym_mod;p_sym_nam;p_sym_arg;p_sym_typ;p_sym_trm;p_sym_prf
+                   ;p_sym_def})
     }
-  | ms=modifier* KW_DEF s=ID COLON a=term DOT
+  | p_sym_mod=modifier* KW_DEF s=ID COLON a=term DOT
     {
-      let st = make_pos $loc(s) (make_pos $loc(s) s, [], Some(a)) in
-      let t = P_symbol (ms, st, None, None, Tac) in
-      make_pos $loc t
+      let p_sym_nam = make_pos $loc(s) s in
+      let p_sym_arg = [] in
+      let p_sym_typ = Some a in
+      let p_sym_trm = None in
+      let p_sym_prf = None in
+      let p_sym_def = false in
+      make_pos $loc
+        (P_symbol {p_sym_mod;p_sym_nam;p_sym_arg;p_sym_typ;p_sym_trm;p_sym_prf
+                   ;p_sym_def})
     }
-  | ms=modifier* KW_DEF s=ID COLON a=term DEFEQ t=term DOT
+  | p_sym_mod=modifier* KW_DEF s=ID COLON a=term DEFEQ t=term DOT
     {
-      let st = make_pos $loc (make_pos $loc s,[],Some(a)) in
-      let t = P_symbol(ms, st, Some(t), None, Def) in
-      make_pos $loc t
+      let p_sym_nam = make_pos $loc(s) s in
+      let p_sym_arg = [] in
+      let p_sym_typ = Some a in
+      let p_sym_trm = Some t in
+      let p_sym_prf = None in
+      let p_sym_def = true in
+      make_pos $loc
+        (P_symbol {p_sym_mod;p_sym_nam;p_sym_arg;p_sym_typ;p_sym_trm;p_sym_prf
+                   ;p_sym_def})
     }
-  | ms=modifier* KW_DEF s=ID DEFEQ t=term DOT
+  | p_sym_mod=modifier* KW_DEF s=ID DEFEQ t=term DOT
     {
-      let st = make_pos $loc (make_pos $loc s,[],None) in
-      let t = P_symbol (ms, st, Some(t), None, Def) in
-      make_pos $loc t
+      let p_sym_nam = make_pos $loc(s) s in
+      let p_sym_arg = [] in
+      let p_sym_typ = None in
+      let p_sym_trm = Some t in
+      let p_sym_prf = None in
+      let p_sym_def = true in
+      make_pos $loc
+        (P_symbol {p_sym_mod;p_sym_nam;p_sym_arg;p_sym_typ;p_sym_trm;p_sym_prf
+                   ;p_sym_def})
     }
-  | ms=modifier* KW_DEF s=ID ps=param+ COLON a=term DEFEQ t=term DOT
+  | p_sym_mod=modifier* KW_DEF s=ID p_sym_arg=param+ COLON a=term
+    DEFEQ t=term DOT
     {
-      let st = make_pos $loc (make_pos $loc s,ps,Some(a)) in
-      let t = P_symbol (ms, st, Some(t), None, Def) in
-      make_pos $loc t
+      let p_sym_nam = make_pos $loc(s) s in
+      let p_sym_typ = Some a in
+      let p_sym_trm = Some t in
+      let p_sym_prf = None in
+      let p_sym_def = true in
+      make_pos $loc
+        (P_symbol {p_sym_mod;p_sym_nam;p_sym_arg;p_sym_typ;p_sym_trm;p_sym_prf
+                   ;p_sym_def})
     }
-  | ms=modifier* KW_DEF s=ID ps=param+ DEFEQ t=term DOT
+  | p_sym_mod=modifier* KW_DEF s=ID p_sym_arg=param+ DEFEQ t=term DOT
     {
-      let st = make_pos $loc (make_pos $loc s,ps,None) in
-      let t = P_symbol (ms, st, Some(t), None, Def) in
-      make_pos $loc t
+      let p_sym_nam = make_pos $loc(s) s in
+      let p_sym_typ = None in
+      let p_sym_trm = Some t in
+      let p_sym_prf = None in
+      let p_sym_def = true in
+      make_pos $loc
+        (P_symbol {p_sym_mod;p_sym_nam;p_sym_arg;p_sym_typ;p_sym_trm;p_sym_prf
+                   ;p_sym_def})
     }
-  | ms=modifier* KW_THM s=ID COLON a=term DEFEQ t=term DOT
+  | p_sym_mod=modifier* KW_THM s=ID COLON a=term DEFEQ t=term DOT
     {
-      let st = make_pos $loc (make_pos $loc s,[],Some(a)) in
-      let t = P_symbol (ms, st, Some(t), None, Def) in
-      make_pos $loc t
+      let p_sym_nam = make_pos $loc(s) s in
+      let p_sym_arg = [] in
+      let p_sym_typ = Some a in
+      let p_sym_trm = Some t in
+      let p_sym_prf = None in
+      let p_sym_def = true in
+      make_pos $loc
+        (P_symbol {p_sym_mod;p_sym_nam;p_sym_arg;p_sym_typ;p_sym_trm;p_sym_prf
+                   ;p_sym_def})
     }
-  | ms=modifier* KW_THM s=ID ps=param+ COLON a=term DEFEQ t=term DOT
+  | p_sym_mod=modifier* KW_THM s=ID p_sym_arg=param+ COLON a=term
+    DEFEQ t=term DOT
     {
-      let st = make_pos $loc (make_pos $loc s,ps,Some(a)) in
-      let t = P_symbol (ms, st, Some(t), None, Def) in
-      make_pos $loc t
+      let p_sym_nam = make_pos $loc(s) s in
+      let p_sym_typ = Some a in
+      let p_sym_trm = Some t in
+      let p_sym_prf = None in
+      let p_sym_def = true in
+      make_pos $loc
+        (P_symbol {p_sym_mod;p_sym_nam;p_sym_arg;p_sym_typ;p_sym_trm;p_sym_prf
+                   ;p_sym_def})
     }
   | rs=rule+ DOT {
       make_pos $loc (P_rules(List.map translate_old_rule rs))

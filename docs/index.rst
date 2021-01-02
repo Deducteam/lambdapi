@@ -23,7 +23,16 @@ project.
    module.rst
    terms.rst
    commands.rst
+
+.. toctree::
+   :maxdepth: 3
+
    tactics.rst
+
+.. toctree::
+   :maxdepth: 2
+
+   queries.rst
    dedukti.rst
    biblio.rst
    latex.rst

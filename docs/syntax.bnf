@@ -35,42 +35,39 @@ reserved "TYPE"
 reserved "with"
 reserved "why3"
 
-<declared_id> ::= "ℕ" | "α" | ... // whatever has been defined in the scope
+// Identifiers declared with the command "set declared"
+<declared_id> ::= "ℕ" | "α" | ...
 
-// Identifier
+// Identifiers
 <ident> ::=
   | RE("[a-zA-Z_][a-zA-Z0-9_]*")     // Regular identifier
   | RE("{|\([^|]\|\(|[^}]\)\)*|*|}") // Escaped identifier
   | <declared_id>                    // Declared identifier
 
-// Natural number literal
+// Natural number literals
 <nat_lit> ::= RE("[0-9]+")
 
-// Float literal
+// Float literals
 <float_lit> ::= RE("[0-9]+\([.][0-9]+\)?")
 
-// String literal
+// String literals
 <string_lit> ::= RE("\"[^\"\n]*\"")
 
+// Module paths
 <path> ::= {<ident> "."}* <ident>
 
+// Qualified identifiers
 <qident> ::= {<ident> "."}* <ident>
 
-<property> ::= "constant" | "injective"
+// Infix operators declared with the command "set infix"
+<infix_op> ::= "+" | "×" | ...
 
-<exposition> ::= "protected" | "private"
-
-<opacity> ::= "opaque"
-
-<infix_op> ::= "+" | "×" | ... // whatever has been defined in the scope
-
-// Term (including patterns and everything)
+// Terms
 <term> ::=
   | "TYPE"
   | "@"? <qident>
   | "_"
   | "?" - <ident> {"[" <term> {";" <term>}* "]"}?
-  | "$" - {<ident> | "_"} {"[" <term> {";" <term>}* "]"}?
   | "(" <term> ")"
   | "{" <term> "}"
   | <term> <term>
@@ -81,56 +78,27 @@ reserved "why3"
   | <nat_lit>
   | <term> <infix_op> <term>
 
-// Types
-<type> ::= <term>
-
-// Patterns
-<patt> ::=
-  | "$" - {<ident> | "_"} {"[" <ident> {";" <ident>}* "]"}?
-  | "λ" <arg>+ "," <patt>
-  | <qident> {<patt>}*
-
-// Argument (of abstraction, product, ...), may be marked implicit
+// Arguments (of abstraction, product, ...) maybe marked as implicit
 <arg> ::=
   | <ident>
   | "{" <ident>+ {":" <type>}? "}"
   | "(" <ident>+ ":" <type> ")"
 
-// Rewriting rule
+// Types
+<type> ::= <term>
+
+// Rewrite patterns for rewriting rule left hand-sides
+<patt> ::=
+  | "$" - {<ident> | "_"} {"[" <ident> {";" <ident>}* "]"}?
+  | "λ" <arg>+ "," <patt>
+  | <qident> {<patt>}*
+
+// Rewriting rules
 <rule> ::= <qident> {<patt>}* "↪" <term>
 
-// Unification rule
-<unif_rule> ::= <patt> "≡" <patt> "↪" <term> "≡" <term> {";" <term> "≡" <term>}*
-
-// Rewrite pattern
-<rw_patt> ::=
-  | <term>
-  | "in" <term>
-  | "in" <ident> "in" <term>
-  | <ident> "in" <term>
-  | <term> "in" <ident> "in" <term>
-  | <term> "as" <ident> "in" <term>
-
-// Proof tactics
-<tactic> ::=
-  | "refine" <term>
-  | "assume" <ident>+
-  | "apply" <term>
-  | "simpl"
-  | "rewrite" "-"? {"[" <rw_patt> "]"}? <term>
-  | "reflexivity"
-  | "symmetry"
-  | "focus" <nat_lit>
-  | "print"
-  | "proofterm"
-  | "why3" <string_lit>?
-  | "fail"
-
-// Assertion predicate
+// Assertion predicates
 <assertion> ::=
-  // Typing assertion
   | <arg>* "⊢" <term> ":" <term>
-  // Convertibility assertion
   | <arg>* "⊢" <term> "≡" <term>
 
 // Flag names
@@ -146,6 +114,43 @@ reserved "why3"
 <flag_value> ::=
   | "on"
   | "off"
+
+// Queries
+<query> ::=
+  | "print" <ident>?
+  | "proofterm"
+  | "type" <term>
+  | "compute" <term>
+  | "set" "verbose" RE("[1-9][0-9]*")
+  | "set" "debug" RE("[-+][a-zA-Z]+")
+  | "set" "flag" \"<flag_name>\" <flag_value>
+  | "set" "prover" <ident>
+  | "set" "prover_timeout" <nat_lit>
+  | "assert" <assertion>
+  | "assertnot" <assertion>
+
+// Patterns for the rewrite tactic
+<rw_patt> ::=
+  | <term>
+  | "in" <term>
+  | "in" <ident> "in" <term>
+  | <ident> "in" <term>
+  | <term> "in" <ident> "in" <term>
+  | <term> "as" <ident> "in" <term>
+  
+// Proof tactics
+<tactic> ::=
+  | <query>
+  | "refine" <term>
+  | "assume" <ident>+
+  | "apply" <term>
+  | "simpl"
+  | "rewrite" "-"? {"[" <rw_patt> "]"}? <term>
+  | "reflexivity"
+  | "symmetry"
+  | "focus" <nat_lit>
+  | "why3" <string_lit>?
+  | "fail"
 
 // Builtins
 <builtin> ::=
@@ -163,49 +168,36 @@ reserved "why3"
   | "and"
   | "imp"
 
-// Inductive type
+// Inductive types
 <inductive> ::= <ident> ":" <term> "≔" {"|" <ident> ":" <term>}*
 
-// Proof
+// Proofs
 <proof> ::= "begin" <tactic>* {"end"|"admit"|"abort"}
+
+// Unification rules
+<unif_rule> ::= <patt> "≡" <patt> "↪" <term> "≡" <term> {";" <term> "≡" <term>}*
+
+// Modifiers
+<property> ::= "constant" | "injective"
+<exposition> ::= "protected" | "private"
+<opacity> ::= "opaque"
+<modifier> ::= <opacity> | <exposition> | <property>
 
 // Commands
 <command> ::=
-
-  // Require and/or open a module
+  | <query>
   | "require" <path> "as" <ident>
   | "require" "open"? <path>
   | "open" <path>
-
-  // Declare new symbols
-  | <opacity>? <exposition>? <property>? "symbol" <ident> <arg>* {":" <type>}? {"≔" <term>}? proof?
+  | <modifier>* "symbol" <ident> <arg>* {":" <type>}? {"≔" <term>}? proof?
   | <exposition>? "inductive" <inductive> {"with" <inductive>}*
-
-  // Define new rewriting rules
   | "rule" <rule> {"with" <rule>}*
-
-  // Assertion
-  | "assert" <assertion>
-  | "assertnot" <assertion>
-
-  // Set option
-  | "set" "unif_rule" <unif_rule>
-  | "set" "verbose" RE("[1-9][0-9]*")
-  | "set" "debug" RE("[-+][a-zA-Z]+")
-  | "set" "builtin" \"<builtin>\" "≔" <qident>
+  | "set" "declared" <string_lit>
   | "set" "prefix" <float_lit> <string_lit> "≔" <qident>
   | "set" "infix" {"left" | "right"}? <float_lit> <string_lit> "≔" <qident>
-  | "set" "prover" <ident>
-  | "set" "prover_timeout" <nat_lit>
-  | "set" "declared" <string_lit>
-  | "set" "flag" \"<flag_name>\" <flag_value>
   | "set" "quantifier" <qident>
+  | "set" "builtin" \"<builtin>\" "≔" <qident>
+  | "set" "unif_rule" <unif_rule>
 
-  // Get the type of a term
-  | "type" <term>
-
-  // Get the normal form of a term
-  | "compute" <term>
-
-// Entry point: list of commands.
+// Entry point: list of commands
 <main> ::= <command>*
