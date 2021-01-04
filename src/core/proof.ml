@@ -201,4 +201,4 @@ let goals_of_typ : popt -> term option -> term option -> goal list * term =
         end
     | None, None -> assert false (* already rejected by parser *)
   in
-  (List.map (fun c -> Unif c) to_solve, typ)
+  (List.rev_map (fun c -> Unif c) to_solve, typ)
