@@ -1,3 +1,4 @@
+set debug +c
 require open tests.OK.logic
 require open tests.OK.bool
 require open tests.OK.nat
