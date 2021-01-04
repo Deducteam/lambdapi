@@ -18,9 +18,6 @@ let concat_map = List.concat_map
 
 type t = Syntax.p_command
 
-let ident_to_qident : Syntax.ident -> Syntax.qident = fun p ->
-  {elt=([], p.elt); pos=p.pos}
-
 (*Messy pattern matching to get the qidents throughout the document*)
 let rec qidents_of_bound_p_args (args : Syntax.p_args) :
     Syntax.qident list * Pos.strloc list =
@@ -61,8 +58,10 @@ and qidents_of_rw_patt (rwpat : Syntax.p_rw_patt) =
   | Syntax.P_rw_InTerm pt -> qidents_of_p_term pt
   | Syntax.P_rw_InIdInTerm (_, pt) -> qidents_of_p_term pt
   | Syntax.P_rw_IdInTerm (_, pt) -> qidents_of_p_term pt
-  | Syntax.P_rw_TermInIdInTerm (pt1, _, pt2) -> (qidents_of_p_term pt1) @ (qidents_of_p_term pt2)
-  | Syntax.P_rw_TermAsIdInTerm (pt1, _, pt2) -> (qidents_of_p_term pt1) @ (qidents_of_p_term pt2)
+  | Syntax.P_rw_TermInIdInTerm (pt1, _, pt2) ->
+      (qidents_of_p_term pt1) @ (qidents_of_p_term pt2)
+  | Syntax.P_rw_TermAsIdInTerm (pt1, _, pt2) ->
+      (qidents_of_p_term pt1) @ (qidents_of_p_term pt2)
 
 and qidents_of_p_assertion (pasrtn : Syntax.p_assertion) =
   match pasrtn with
@@ -135,9 +134,8 @@ let qidents_of_cmd (cmd : t) =
   | Syntax.P_require_as (_, _) -> []
   | Syntax.P_open _ -> []
   | Syntax.P_rules rules -> concat_map qidents_of_p_rule rules
-  | Syntax.P_symbol {p_sym_nam;p_sym_arg;p_sym_typ;p_sym_trm;p_sym_prf;_} ->
+  | Syntax.P_symbol {p_sym_arg;p_sym_typ;p_sym_trm;p_sym_prf;_} ->
     let some_or_empty = function Some arg -> [arg] | None -> [] in
-    let symqidlist = [ident_to_qident p_sym_nam] in
     let prfqidlist = begin
       match p_sym_prf with
       | Some (ptac_list, _) -> List.concat_map qidents_of_p_tactic ptac_list
@@ -145,7 +143,7 @@ let qidents_of_cmd (cmd : t) =
     end in
     let terms_list = some_or_empty p_sym_typ @ some_or_empty p_sym_trm in
     let res =  (filter_bound_qidents p_sym_arg terms_list) in
-    res @ symqidlist @ prfqidlist
+    res @ prfqidlist
 
   | Syntax.P_set set -> qidents_of_p_config set
   | Syntax.P_query q ->
