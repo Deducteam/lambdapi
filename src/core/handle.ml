@@ -259,24 +259,24 @@ let data_proof : sig_symbol -> expo -> p_tactic list ->
     This structure contains the list of the tactics to be executed, as well as
     the initial state of the proof.  The checking of the proof is then handled
     separately. Note that [Fatal] is raised in case of an error. *)
-let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
+let handle_cmd : sig_state -> p_command -> sig_state * proof_data option * string option=
   fun ss cmd ->
   let scope_basic exp pt = Scope.scope_term exp ss Env.empty pt in
   match cmd.elt with
   | P_require(b,ps)              ->
       let ps = List.map (List.map fst) ps in
-      (List.fold_left (handle_require b cmd.pos) ss ps, None)
+      (List.fold_left (handle_require b cmd.pos) ss ps, None, None)
   | P_require_as(p,id)           ->
       let id = Pos.make id.pos (fst id.elt) in
-      (handle_require_as cmd.pos ss (List.map fst p) id, None)
+      (handle_require_as cmd.pos ss (List.map fst p) id, None, None)
   | P_open(ps)                   ->
       let ps = List.map (List.map fst) ps in
-      (List.fold_left (handle_open cmd.pos) ss ps, None)
+      (List.fold_left (handle_open cmd.pos) ss ps, None, None)
   | P_rules(rs)                  ->
       let handle_rule syms r = SymSet.add (handle_rule ss r) syms in
       let syms = List.fold_left handle_rule SymSet.empty rs in
       SymSet.iter Tree.update_dtree syms;
-      (ss, None)
+      (ss, None, None)
   | P_inductive(ms, p_ind_list)     ->
       (* Check modifiers. *)
       let (prop, e, mstrat) = handle_modifiers ms in
@@ -363,7 +363,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
           Sign.add_inductive ss.signature ind_sym cons_sym_list rec_sym)
         ind_list
         rec_sym_list;
-      (ss, None)
+      (ss, None, None)
   | P_symbol {p_sym_mod;p_sym_nam;p_sym_arg;p_sym_typ;p_sym_trm;p_sym_prf;
               p_sym_def} ->
     (* Check that this is a syntactically valid symbol declaration. *)
@@ -463,7 +463,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
       in
       data_proof sig_symbol pdata_expo ts pe goals proof_term
     in
-    (ss, Some(data))
+    (ss, Some(data), None)
   | P_set(cfg)                 ->
       let ss =
         let with_path : Path.t -> qident -> qident = fun path qid ->
@@ -516,9 +516,9 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
             Tree.update_dtree Unif_rule.equiv;
             out 3 "(hint) [%a]\n" Print.pp_rule (Unif_rule.equiv, urule); ss
       in
-      (ss, None)
+      (ss, None, None)
   | P_query(q)                 ->
-      Queries.handle_query ss None q; (ss, None)
+      let res = Queries.handle_query ss None q in (ss, None, res)
 
 (** [too_long] indicates the duration after which a warning should be given to
     indicate commands that take too long to execute. *)
@@ -528,7 +528,7 @@ let too_long = Stdlib.ref infinity
     exception handling. In particular, the position of [cmd] is used on errors
     that lack a specific position. All exceptions except [Timeout] and [Fatal]
     are captured, although they should not occur. *)
-let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
+let handle_cmd : sig_state -> p_command -> sig_state * proof_data option * Queries.q_res =
   fun ss cmd ->
   Print.sig_state := ss;
   try

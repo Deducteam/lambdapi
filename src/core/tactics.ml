@@ -38,15 +38,17 @@ let solve_tac ps pos =
      state [ps]), and returns the new proof state.  This function fails
      gracefully in case of error. *)
 let handle_tactic :
-  Sig_state.t -> Terms.expo -> Proof.t -> p_tactic -> Proof.t =
+  Sig_state.t -> Terms.expo -> Proof.t ->
+     p_tactic -> Proof.t * Queries.q_res =
   fun ss e ps tac ->
   match tac.elt with
-  | P_tac_query(q) -> Queries.handle_query ss (Some ps) q; ps
+  | P_tac_query(q) -> 
+      let res = Queries.handle_query ss (Some ps) q in (ps, res)
   | _ ->
   if ps.proof_goals = [] then fatal tac.pos "There is nothing left to prove.";
   match tac.elt with
   | P_tac_query(_) -> assert false (* Handled above. *)
-  | P_tac_solve -> solve_tac ps tac.pos
+  | P_tac_solve -> solve_tac ps tac.pos, None
   | _ ->
 
   (* Get the unif goals, the first type goal and the following goals *)
@@ -86,12 +88,12 @@ let handle_tactic :
   | P_tac_solve -> assert false (* Handled above. *)
   | P_tac_focus(i) ->
       (* Put the [i]-th goal in focus (if possible). *)
-      (try {ps with proof_goals = List.swap i ps.proof_goals}
+      (try {ps with proof_goals = List.swap i ps.proof_goals}, None
       with Invalid_argument _ -> fatal tac.pos "Invalid goal index.")
   | P_tac_refine(pt) ->
-      handle_refine ps (scope pt)
+      handle_refine ps (scope pt), None
   | P_tac_intro(idopts) ->
-      handle_refine ps (scope (P.abst_list idopts P.wild))
+      handle_refine ps (scope (P.abst_list idopts P.wild)), None
   | P_tac_apply(pt) ->
       let t = scope pt in
       (* Compute the product arity of the type of [t]. *)
@@ -102,24 +104,25 @@ let handle_tactic :
       in
       (*FIXME: this does not take into account implicit arguments. *)
       let t = if n <= 0 then t else scope (P.appl_wild pt n) in
-      handle_refine ps t
+      handle_refine ps t, None
   | P_tac_simpl ->
       let new_goal_typ = Goal.Typ (Goal.simpl gt) in
       let proof_goals = pre_g @ new_goal_typ :: post_g in
-      {ps with proof_goals}
+      {ps with proof_goals}, None
   | P_tac_rewrite(b,po,pt) ->
       let po = Option.map (Scope.scope_rw_patt ss env) po in
-      handle_refine ps (Rewrite.rewrite ss tac.pos ps b po (scope pt))
+      handle_refine ps (Rewrite.rewrite ss tac.pos ps b po (scope pt)), None
   | P_tac_refl ->
-      handle_refine ps (Rewrite.reflexivity ss tac.pos ps)
+      handle_refine ps (Rewrite.reflexivity ss tac.pos ps), None
   | P_tac_sym ->
-      handle_refine ps (Rewrite.symmetry ss tac.pos ps)
+      handle_refine ps (Rewrite.symmetry ss tac.pos ps), None
   | P_tac_why3(config) ->
-      handle_refine ps (Why3_tactic.handle ss tac.pos config gt)
+      handle_refine ps (Why3_tactic.handle ss tac.pos config gt), None
   | P_tac_fail -> fatal tac.pos "Call to tactic \"fail\""
 
 let handle_tactic :
-  Sig_state.t -> Terms.expo -> Proof.t -> p_tactic -> Proof.t =
+  Sig_state.t -> Terms.expo -> Proof.t -> p_tactic -> 
+    Proof.t * Queries.q_res =
   fun ss exp ps tac ->
   try handle_tactic ss exp ps tac
   with Fatal(_,_) as e -> out 1 "%a" Proof.pp_goals ps; raise e

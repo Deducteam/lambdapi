@@ -55,9 +55,10 @@ let process_pstep (pstate,diags) tac =
   let open Pure in
   let tac_loc = Tactic.get_pos tac in
   match handle_tactic pstate tac with
-  | Tac_OK pstate ->
+  | Tac_OK (pstate, qres) ->
     let goals = Some (current_goals pstate) in
-    pstate, (tac_loc, 4, "OK", goals) :: diags
+    let qres = match qres with None -> "OK" | Some x -> x in
+    pstate, (tac_loc, 4, qres, goals) :: diags
   | Tac_Error(loc,msg) ->
     let loc = option_default loc tac_loc in
     pstate, (loc, 1, msg, None) :: diags
@@ -83,9 +84,10 @@ let process_cmd _file (nodes,st,dg) ast =
    * Console.err_fmt := lp_fmt; *)
   let cmd_loc = Command.get_pos ast in
   match handle_command st ast with
-  | Cmd_OK st ->
+  | Cmd_OK (st, qres) ->
+    let qres = match qres with None -> "OK" | Some x -> x in
     let nodes = { ast; exec = true; goals = [] } :: nodes in
-    let ok_diag = cmd_loc, 4, "OK", None in
+    let ok_diag = cmd_loc, 4, qres, None in
     nodes, st, ok_diag :: dg
 
   | Cmd_Proof (pst, tlist, thm_loc, qed_loc) ->
@@ -96,8 +98,9 @@ let process_cmd _file (nodes,st,dg) ast =
     let nodes = { ast; exec = true; goals } :: nodes in
     let st, dg_proof =
       match end_proof pst with
-      | Cmd_OK st          ->
-        let pg = qed_loc, 4, "OK", None in
+      | Cmd_OK (st, qres)   ->
+        let qres = match qres with None -> "OK" | Some x -> x in
+        let pg = qed_loc, 4, qres, None in
         st, pg :: dg_proof
       | Cmd_Error(_loc,msg) ->
         let pg = qed_loc, 1, msg, None in
