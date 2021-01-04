@@ -97,16 +97,16 @@ module Goal = struct
     | Unif (c,_,_) -> hyps ctx_elt oc c
 end
 
-(** [goals_of_metas ms gs] turns the metas of [ms] that are not in [gs] into a
-   list of goals. *)
-let goals_of_metas : MetaSet.t -> goal list -> goal list = fun ms gs ->
+(** [add_goals_of_metas ms gs] extends [gs] with the metas of [ms] that are
+   not already in [gs]. *)
+let add_goals_of_metas : MetaSet.t -> goal list -> goal list = fun ms gs ->
   let f = function Typ gt -> Some gt.goal_meta.meta_key | Unif _ -> None in
   let metakeys_gs = List.filter_rev_map f gs in
   let add_goal m goals =
     if List.mem m.meta_key metakeys_gs then goals
     else List.insert Goal.compare (Goal.of_meta m) goals
   in
-  MetaSet.fold add_goal ms []
+  MetaSet.fold add_goal ms [] @ gs
 
 (** Representation of the proof state of a theorem. *)
 type proof_state =

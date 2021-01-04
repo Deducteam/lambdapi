@@ -172,9 +172,11 @@ let _ =
    equated terms (LHS and RHS). *)
 let get_eq_data : popt -> eq_config -> term -> term * term * term =
   fun pos cfg t ->
+  let t = Eval.whnf [] t in
   match Basics.get_args t with
   | (p, [u]) when is_symb cfg.symb_P p ->
       begin
+        let u = Eval.whnf [] u in
         match Basics.get_args u with
         | (eq, [a;l;r]) when is_symb cfg.symb_eq eq -> (a, l, r)
         | _ ->
@@ -686,7 +688,7 @@ let reflexivity : Sig_state.t -> popt -> proof_state -> term =
   (* Obtain the required symbols from the current signature. *)
   let cfg = get_eq_config ss pos in
   (* Check that the type of [g] is of the form “P (eq a t t)”. *)
-  let (a, l, r)  = get_eq_data pos cfg (Eval.whnf [] g_type) in
+  let (a, l, r)  = get_eq_data pos cfg g_type in
   if not (Eval.eq_modulo [] l r) then fatal pos "Cannot apply reflexivity.";
   (* Build the witness. *)
   add_args (Symb cfg.symb_refl) [a; l]

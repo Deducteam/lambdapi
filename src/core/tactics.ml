@@ -55,9 +55,8 @@ let tac_refine : popt -> proof_state -> term -> proof_state =
             (Bindlib.unbox (Bindlib.bind_mvar (Env.vars gt.goal_hyps)
                               (lift t)));
           (* Convert the metas of [t] not in [gs] into new goals. *)
-          let new_goals_metas = goals_of_metas (Basics.get_metas true t) gs in
-          let new_goals_solve = List.map (fun c -> Unif c) to_solve in
-          let proof_goals = new_goals_solve @ new_goals_metas @ gs in
+          let gs = add_goals_of_metas (Basics.get_metas true t) gs in
+          let proof_goals = List.rev_map (fun c -> Unif c) to_solve @ gs in
           tac_solve pos {ps with proof_goals}
 
 (** [handle_tactic ss e ps tac] applies tactic [tac] in the proof state

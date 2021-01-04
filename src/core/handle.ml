@@ -359,7 +359,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
          to be well-typed. *)
       let proof_goals, a = goals_of_typ pos ao t in
       (* Add the metas of [a] as goals. *)
-      let proof_goals = proof_goals @ goals_of_metas metas_a [] in
+      let proof_goals = add_goals_of_metas metas_a proof_goals in
       (* Add the definition as focused goal so that we can refine on it. *)
       let proof_term, proof_goals =
         if p_sym_def then
