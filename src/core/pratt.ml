@@ -9,11 +9,16 @@ open Lplib.Extra
 
 open Syntax
 
-(** Table containing defined binary operators. *)
-let bin_operators : binop StrHtbl.t = StrHtbl.create 17
+(** Type of operators with additional data. *)
+(* REVIEW: simplify the type into [Unary of float * assoc] and remove [unop]
+   and [binop] *)
+type operator =
+  | Unary of unop
+  | Binary of binop
 
-(** Table containing defined unary operators. *)
-let una_operators : unop StrHtbl.t = StrHtbl.create 17
+(** Table containing all registered binary and unary operators that may appear
+    in terms parsed by {!val:Pratt.expression}. *)
+let operators : operator StrHtbl.t = StrHtbl.create 17
 
 module Pratt : sig
   val expression : ?rbp:priority -> p_term Stream.t -> p_term
@@ -30,13 +35,10 @@ end = struct
   let lbp : p_term -> priority = fun {elt=t; _} ->
     match t with
     | P_Iden({elt=(_,s); _}, _) ->
-        begin match StrHtbl.find_opt bin_operators s with
-          | Some(_, _, bp, _) -> bp
-          | None ->
-              begin match StrHtbl.find_opt una_operators s with
-                | Some(_, bp, _) -> bp
-                | None -> assert false (* [t] must be an operator *)
-              end
+        begin match StrHtbl.find_opt operators s with
+          | Some (Binary(_, _, bp, _))
+          | Some (Unary(_, bp, _)) -> bp
+          | None -> assert false
         end
     | _ -> assert false (* [t] must be an operator *)
 
@@ -46,7 +48,10 @@ end = struct
   (** [is_binop t] returns [true] iff term [t] is a binary operator. *)
   let is_binop : p_term -> bool = fun t ->
     match t.elt with
-    | P_Iden({elt = (_, s); _}, _) -> StrHtbl.mem bin_operators s
+    | P_Iden({elt = (_, s); _}, _) -> (
+        match StrHtbl.find_opt operators s with
+        | Some(Binary(_)) -> true
+        | _ -> false )
     | _ -> false
 
   (** [nud t] is the production of term [t] with {b no} left context. If [t]
@@ -55,10 +60,10 @@ end = struct
   let rec nud : p_term Stream.t -> p_term -> p_term = fun strm t ->
     match t.elt with
     | P_Iden({elt = (_, s); pos}, _) ->
-        begin match StrHtbl.find_opt una_operators s with
-          | None -> t
-          | Some((_, rbp, _) as op) ->
+        begin match StrHtbl.find_opt operators s with
+          | Some(Unary((_, rbp, _) as op)) ->
               Pos.make pos (P_UnaO(op, expression ~rbp strm))
+          | _ -> t
         end
     | _ -> t
 
@@ -67,9 +72,8 @@ end = struct
   and led : p_term Stream.t -> p_term -> p_term -> p_term = fun strm left t ->
     match t.elt with
     | P_Iden({elt = (_, s); pos}, _) ->
-        begin match StrHtbl.find_opt bin_operators s with
-          | None -> assert false (* [t] must be an operator. *)
-          | Some((_, assoc, bp, _) as op) ->
+        begin match StrHtbl.find_opt operators s with
+          | Some(Binary((_, assoc, bp, _) as op)) ->
               let rbp =
                 if assoc = Assoc_right then
                   bp *. (1. -. epsilon_float)
@@ -77,6 +81,7 @@ end = struct
               in
               (* REVIEW: and for non associative? *)
               Pos.make pos (P_BinO(left, op, expression ~rbp strm))
+          | _ -> assert false (* [t] must be an operator. *)
         end
     | _ -> assert false (* [t] must be an operator. *)
 
