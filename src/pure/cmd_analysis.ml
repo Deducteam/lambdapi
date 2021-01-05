@@ -59,9 +59,9 @@ and qidents_of_rw_patt (rwpat : Syntax.p_rw_patt) =
   | Syntax.P_rw_InIdInTerm (_, pt) -> qidents_of_p_term pt
   | Syntax.P_rw_IdInTerm (_, pt) -> qidents_of_p_term pt
   | Syntax.P_rw_TermInIdInTerm (pt1, _, pt2) ->
-      (qidents_of_p_term pt1) @ (qidents_of_p_term pt2)
+      qidents_of_p_term pt1 @ qidents_of_p_term pt2
   | Syntax.P_rw_TermAsIdInTerm (pt1, _, pt2) ->
-      (qidents_of_p_term pt1) @ (qidents_of_p_term pt2)
+      qidents_of_p_term pt1 @ qidents_of_p_term pt2
 
 and qidents_of_p_assertion (pasrtn : Syntax.p_assertion) =
   match pasrtn with
@@ -84,11 +84,8 @@ and qidents_of_p_tactic (term: Syntax.p_tactic) =
   | Syntax.P_tac_refine pt -> qidents_of_p_term pt
   | Syntax.P_tac_apply pt -> qidents_of_p_term pt
   | Syntax.P_tac_rewrite (_, rwpat_lo, pt) ->
-    let rwqids =
-      match rwpat_lo with
-      | Some rwpat -> qidents_of_rw_patt rwpat.elt
-      | None -> []
-    in
+    let rwqids = Option.map_default (fun x -> qidents_of_rw_patt x.Pos.elt)
+                   [] rwpat_lo in
     let ptqids = qidents_of_p_term pt in
     rwqids @ ptqids
   | Syntax.P_tac_query pq -> qidents_of_p_query pq
@@ -135,15 +132,14 @@ let qidents_of_cmd (cmd : t) =
   | Syntax.P_open _ -> []
   | Syntax.P_rules rules -> concat_map qidents_of_p_rule rules
   | Syntax.P_symbol {p_sym_arg;p_sym_typ;p_sym_trm;p_sym_prf;_} ->
-    let some_or_empty = function Some arg -> [arg] | None -> [] in
-    let prfqidlist = begin
+    let prfqidlist =
       match p_sym_prf with
       | Some (ptac_list, _) -> List.concat_map qidents_of_p_tactic ptac_list
       | None -> []
-    end in
-    let terms_list = some_or_empty p_sym_typ @ some_or_empty p_sym_trm in
-    let res =  (filter_bound_qidents p_sym_arg terms_list) in
-    res @ prfqidlist
+    in
+    let terms_list = Option.map_default (fun x -> [x]) [] p_sym_typ @
+                     Option.map_default (fun x -> [x]) [] p_sym_trm in
+    filter_bound_qidents p_sym_arg terms_list @ prfqidlist
 
   | Syntax.P_set set -> qidents_of_p_config set
   | Syntax.P_query q ->
