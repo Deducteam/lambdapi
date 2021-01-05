@@ -18,8 +18,8 @@ let una_operators : unop StrHtbl.t = StrHtbl.create 17
 module Pratt : sig
   val expression : ?rbp:priority -> p_term Stream.t -> p_term
 end = struct
-  (** [lbp t] returns the binding power of term [t] (which is 0 if [t] is not
-      an operator). *)
+  (** [lbp t] returns the left binding power of term [t] (which is 0 if [t] is
+      not an operator). *)
   let lbp : p_term -> priority = fun {elt=t; _} ->
     match t with
     | P_Iden({elt=(_,s); _}, _) ->
