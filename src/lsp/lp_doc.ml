@@ -55,7 +55,7 @@ let option_default o1 d =
 let mk_error ~doc pos msg =
   LSP.mk_diagnostics ~uri:doc.uri ~version:doc.version [pos, 1, msg, None]
 
-let buf_clear_and_get buf =
+let buf_get_and_clear buf =
   let res = Buffer.contents buf in
   Buffer.clear buf; res
 
@@ -63,7 +63,7 @@ let process_pstep (pstate,diags,logs) tac =
   let open Pure in
   let tac_loc = Tactic.get_pos tac in
   let hndl_tac_res = handle_tactic pstate tac in
-  let logs = (buf_clear_and_get lp_logger, tac_loc) :: logs in
+  let logs = (buf_get_and_clear lp_logger, tac_loc) :: logs in
   match hndl_tac_res with
   | Tac_OK (pstate, qres) ->
     let goals = Some (current_goals pstate) in
@@ -94,7 +94,7 @@ let process_cmd _file (nodes,st,dg,logs) ast =
    * Console.err_fmt := lp_fmt; *)
   let cmd_loc = Command.get_pos ast in
   let hndl_cmd_res = handle_command st ast in
-  let logs = (buf_clear_and_get lp_logger, cmd_loc) :: logs in
+  let logs = (buf_get_and_clear lp_logger, cmd_loc) :: logs in
   match hndl_cmd_res with
   | Cmd_OK (st, qres) ->
     let qres = match qres with None -> "OK" | Some x -> x in
