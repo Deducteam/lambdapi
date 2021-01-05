@@ -13,7 +13,8 @@ type token =
   | BUILTIN | BACKQUOTE | BEGIN
   | COLON | COMMA | COMPUTE | COMPUTE_TYPE | CONSTANT
   | DEBUG_FLAGS of (bool * string)
-  (** Flags such as [+eiu] or [-eiu]. *)
+  (** Flags such as [+eiu] or [-eiu]. Tuple constructor (with parens) is
+      needed by Menhir. *)
   | DOLLAR | DOT
   | END | EQUIV
   | FAIL | FLAG | FLOAT of float | FOCUS
@@ -22,7 +23,7 @@ type token =
   | IN | INFERTYPE | INDUCTIVE | INFIX | INJECTIVE | INT of int | INTRO
   | LAMBDA | LET
   | OPAQUE | OPEN
-  | PI | PREFIX | PRINT | PRIVATE | PROOF_END of Syntax.p_proof_end_aux
+  | PI | PREFIX | PRINT | PRIVATE
   | PROOFTERM | PROTECTED | PROVER | PROVER_TIMEOUT
   | QUESTION_MARK
   | REFINE | REFL | REQUIRE | REWRITE | RULE
@@ -58,7 +59,10 @@ end = struct
   let digit = [%sedlex.regexp? '0' .. '9']
   let integer = [%sedlex.regexp? Plus digit]
 
-  (* We define the set of UTF8 codepoints that make up identifiers. *)
+  (* We define the set of UTF8 codepoints that make up identifiers. The
+     builtin categories are described on the home page of sedlex
+     @see https://github.com/ocaml-community/sedlex *)
+
   let superscript =
     [%sedlex.regexp? 0x2070 | 0x00b9 | 0x00b2 | 0x00b3 | 0x2074 .. 0x207c]
   let subscript = [%sedlex.regexp? 0x208 .. 0x208c]
@@ -67,9 +71,6 @@ end = struct
   let ascii_sub =
     [%sedlex.regexp? '-' | '\'' | '&' | '^' | '\\' | '*'
                    | '%' | '#' | '~']
-  (* NOTE: lambda character now counts as a letter, so a sequence λx is an
-     identifier, so [λx t u,] fails on unexpected token [,]. But [λ x t u,]
-     works. *)
   let letter =
     [%sedlex.regexp? lowercase | uppercase | ascii_sub
                    | math | other_math | subscript | superscript
@@ -211,6 +212,10 @@ and nom_comment : lexbuf -> unit = fun buf ->
         let loc = lexing_positions buf in
         let loc = locate loc in
         raise (SyntaxError(Pos.make (Some(loc)) (Utf8.lexeme buf)))
+
+  (* Using the default case to lex identifiers result in a *very* slow lexing.
+     This is why a regular expression which includes many characters is
+     preferred over using anything for identifiers. *)
 
   let lexer = with_tokenizer token
 end
