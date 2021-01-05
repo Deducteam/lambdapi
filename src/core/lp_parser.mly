@@ -50,6 +50,7 @@
 %token PROTECTED
 %token PRIVATE
 %token SEQUENTIAL
+%token OPAQUE
 // Terms
 %token ARROW
 %token COMMA
@@ -210,6 +211,7 @@ modifier:
   | PROTECTED { make_pos $loc (P_expo(Terms.Protec)) }
   | PRIVATE { make_pos $loc (P_expo(Terms.Privat)) }
   | SEQUENTIAL { make_pos $loc (P_mstrat(Terms.Sequen)) }
+  | OPAQUE { make_pos $loc (P_opaq) }
 
 // Converts floats and integers to floats
 float_of_int:

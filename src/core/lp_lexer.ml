@@ -21,7 +21,7 @@ type token =
    (** Boolean is true if ident is escaped *)
   | IN | INFERTYPE | INDUCTIVE | INFIX | INJECTIVE | INT of int | INTRO
   | LAMBDA | LET
-  | OPEN
+  | OPAQUE | OPEN
   | PI | PREFIX | PRINT | PRIVATE | PROOF_END of Syntax.p_proof_end_aux
   | PROOFTERM | PROTECTED | PROVER | PROVER_TIMEOUT
   | QUESTION_MARK
@@ -160,6 +160,7 @@ and nom_comment : lexbuf -> unit = fun buf ->
     | "rewrite" -> REWRITE
     | "assume" -> INTRO
     | "refine" -> REFINE
+    | "opaque" -> OPAQUE
     | "simpl" -> SIMPL
     | "admit" -> ADMIT
     | "abort" -> ABORT
