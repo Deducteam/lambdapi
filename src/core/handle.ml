@@ -316,6 +316,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
     (* Verify modifiers. *)
     let (prop, expo, mstrat) = handle_modifiers p_sym_mod in
     let opaq = List.exists Syntax.is_opaq p_sym_mod in
+    let pdata_expo = if p_sym_def && opaq then Privat else expo in
     (match p_sym_def, opaq, prop, mstrat with
      | false, true, _, _ ->
          fatal pos "Symbol declarations cannot be opaque."
@@ -367,15 +368,11 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
           Some m, Goal.of_meta m :: proof_goals
         else None, proof_goals
       in
-      (* Add a refine tactic in the proof script in case of a definition. *)
+      (* Get tactics and proof end. *)
       let ts, pe =
-        match pt, p_sym_prf with
-        | Some pt, None ->
-            [Pos.make pt.pos (P_tac_refine pt)],
-            Pos.make (Pos.end_pos pos) P_proof_end
-        | Some pt, Some(ts,pe) -> Pos.make pt.pos (P_tac_refine pt)::ts, pe
-        | None, Some(ts,pe) -> ts, pe
-        | None, None -> [], Pos.make (Pos.end_pos pos) P_proof_end
+        match p_sym_prf with
+        | None -> [], Pos.make (Pos.end_pos pos) P_proof_end
+        | Some (ts, pe) -> ts, pe
       in
       (* Initialize proof state. *)
       Console.State.push ();
@@ -387,8 +384,6 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
             (* Just ignore the command with a warning. *)
             wrn pos "Proof aborted."; ss
         | _ ->
-            (* Try to solve the remaining unification goals. *)
-            let ps = Tactics.tac_solve pos ps in
             (* Check that no metavariable remains. *)
             if Basics.has_metas true a then
               (fatal_msg "The type of [%s] has unsolved metavariables.\n" id;
@@ -422,11 +417,20 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
                   {expo;prop;mstrat;ident=p_sym_nam;typ=a;impl;def=t} in
                 fst (add_symbol ss sig_symbol)
       in
+      (* Create proof state. *)
       let ps = {proof_name = p_sym_nam; proof_term; proof_goals} in
-      let pdata_expo = if p_sym_def && opaq then Privat else expo in
+      (* Apply tac_solve. *)
+      let ps = Tactics.tac_solve pos ps in
+      (* Apply tac_refine in case of a definition. *)
+      let ps =
+        match pt with
+        | None -> ps
+        | Some pt ->
+            let t = Scope.scope_term pdata_expo ss [] pt in
+            Tactics.tac_refine pt.pos ps t
+      in
       { pdata_stmt_pos = pos; pdata_p_state = ps; pdata_tactics = ts
-      ; pdata_finalize = finalize ; pdata_end_pos = pe.pos
-      ; pdata_expo = pdata_expo }
+      ; pdata_finalize = finalize ; pdata_end_pos = pe.pos; pdata_expo }
     in
     (ss, Some(data))
 
