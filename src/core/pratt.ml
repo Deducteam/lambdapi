@@ -17,6 +17,13 @@ let una_operators : unop StrHtbl.t = StrHtbl.create 17
 
 module Pratt : sig
   val expression : ?rbp:priority -> p_term Stream.t -> p_term
+  (** [expression rbp s] parses stream of tokens [s] with right binding power
+      [rbp]. It transforms a sequence of applications to a structured
+      application tree containing infix and prefix operators. For instance,
+      assuming that [+] is declared infix, it transforms [3 + 5 + 2],
+      represented as [@(@(@(@(3,+),5),+),2)] (where [@] is the application)
+      into [(@(+(@(+,3,5)),2)]. Note that it doesn't recurse into terms such
+      as abstractions or arrows. *)
 end = struct
   (** [lbp t] returns the left binding power of term [t] (which is 0 if [t] is
       not an operator). *)
@@ -73,13 +80,6 @@ end = struct
         end
     | _ -> assert false (* [t] must be an operator. *)
 
-  (** [expression rbp s] parses stream of tokens [s] with right binding power
-      [rbp]. It transforms a sequence of applications to a structured
-      application tree containing infix and prefix operators. For instance,
-      assuming that [+] is declared infix, it transforms [3 + 5 + 2],
-      represented as [@(@(@(@(3,+),5),+),2)] (where [@] is the application)
-      into [(@(+(@(+,3,5)),2)]. Note that it doesn't recurse into terms such
-      as abstractions or arrows. *)
   and expression : ?rbp:priority -> p_term Stream.t -> p_term =
     fun ?(rbp = 0.) strm ->
     (* [aux left] inspects the stream and may consume one of its elements, or
