@@ -367,16 +367,21 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
           Some m, Goal.of_meta m :: proof_goals
         else None, proof_goals
       in
-      (* Add a refine tactic in the proof script in case of a definition. *)
+      (* Get tactics and proof end. *)
       let ts, pe =
-        match pt, p_sym_prf with
-        | Some pt, None ->
-            [Pos.make pt.pos (P_tac_refine pt)],
-            Pos.make (Pos.end_pos pos) P_proof_end
-        | Some pt, Some(ts,pe) -> Pos.make pt.pos (P_tac_refine pt)::ts, pe
-        | None, Some(ts,pe) -> ts, pe
-        | None, None -> [], Pos.make (Pos.end_pos pos) P_proof_end
+        match p_sym_prf with
+        | None -> [], Pos.make (Pos.end_pos pos) P_proof_end
+        | Some (ts, pe) -> ts, pe
       in
+      (* Add a refine tactic at the beginning of the proof script in case of a
+         definition. *)
+      let ts =
+        match pt with
+        | Some pt -> Pos.make pt.pos (P_tac_refine pt) :: ts
+        | None -> ts
+      in
+      (* Add a solve tactic at the beginning of the proof script. *)
+      let ts = Pos.make pos P_tac_solve :: ts in
       (* Initialize proof state. *)
       Console.State.push ();
       (* Build finalizer. *)
@@ -387,8 +392,6 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
             (* Just ignore the command with a warning. *)
             wrn pos "Proof aborted."; ss
         | _ ->
-            (* Try to solve the remaining unification goals. *)
-            let ps = Tactics.tac_solve pos ps in
             (* Check that no metavariable remains. *)
             if Basics.has_metas true a then
               (fatal_msg "The type of [%s] has unsolved metavariables.\n" id;
@@ -425,8 +428,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
       let ps = {proof_name = p_sym_nam; proof_term; proof_goals} in
       let pdata_expo = if p_sym_def && opaq then Privat else expo in
       { pdata_stmt_pos = pos; pdata_p_state = ps; pdata_tactics = ts
-      ; pdata_finalize = finalize ; pdata_end_pos = pe.pos
-      ; pdata_expo = pdata_expo }
+      ; pdata_finalize = finalize ; pdata_end_pos = pe.pos; pdata_expo }
     in
     (ss, Some(data))
 
