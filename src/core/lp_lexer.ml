@@ -154,53 +154,53 @@ and nom_comment : lexbuf -> unit = fun buf ->
     | 0x03a0 (* Π *) -> PI
     | 0x2261 (* ≡ *) -> EQUIV
     | 0x22a2 (* ⊢ *) -> TURNSTILE
-    | "prover_timeout" -> PROVER_TIMEOUT
-    | "reflexivity" -> REFL
-    | "inductive" -> INDUCTIVE
-    | "symmetry" -> SYMMETRY
-    | "rewrite" -> REWRITE
-    | "assume" -> INTRO
-    | "refine" -> REFINE
-    | "opaque" -> OPAQUE
-    | "simpl" -> SIMPL
-    | "admit" -> ADMIT
     | "abort" -> ABORT
+    | "admit" -> ADMIT
     | "apply" -> APPLY
-    | "refine" -> REFINE
-    | "begin" -> BEGIN
-    | "why3" -> WHY3
     | "as" -> AS
     | "assert" -> ASSERT
     | "assertnot" -> ASSERT_NOT
-    | "compute" -> COMPUTE
-    | "type" -> COMPUTE_TYPE
-    | "unif_rule" -> UNIF_RULE
-    | "in" -> IN
-    | "on" -> SWITCH(true)
-    | "off" -> SWITCH(false)
-    | "end" -> END
-    | "set" -> SET
-    | "let" -> LET
-    | "flag" -> FLAG
-    | "type" -> COMPUTE_TYPE
-    | "right" -> ASSOC(Syntax.Assoc_right)
-    | "left" -> ASSOC(Syntax.Assoc_left)
-    | "infix" -> INFIX
-    | "TYPE" -> TYPE
-    | "with" -> WITH
-    | "rule" -> RULE
-    | "open" -> OPEN
-    | "prover" -> PROVER
-    | "verbose" -> VERBOSE
-    | "prefix" -> PREFIX
+    | "assume" -> INTRO
+    | "begin" -> BEGIN
     | "builtin" -> BUILTIN
-    | "symbol" -> SYMBOL
-    | "require" -> REQUIRE
+    | "compute" -> COMPUTE
     | "constant" -> CONSTANT
+    | "end" -> END
+    | "flag" -> FLAG
+    | "inductive" -> INDUCTIVE
+    | "infix" -> INFIX
+    | "in" -> IN
     | "injective" -> INJECTIVE
-    | "protected" -> PROTECTED
+    | "left" -> ASSOC(Syntax.Assoc_left)
+    | "let" -> LET
+    | "off" -> SWITCH(false)
+    | "on" -> SWITCH(true)
+    | "opaque" -> OPAQUE
+    | "open" -> OPEN
+    | "prefix" -> PREFIX
     | "private" -> PRIVATE
+    | "protected" -> PROTECTED
+    | "prover" -> PROVER
+    | "prover_timeout" -> PROVER_TIMEOUT
+    | "refine" -> REFINE
+    | "refine" -> REFINE
+    | "reflexivity" -> REFL
+    | "require" -> REQUIRE
+    | "rewrite" -> REWRITE
+    | "right" -> ASSOC(Syntax.Assoc_right)
+    | "rule" -> RULE
     | "sequential" -> SEQUENTIAL
+    | "set" -> SET
+    | "simpl" -> SIMPL
+    | "symbol" -> SYMBOL
+    | "symmetry" -> SYMMETRY
+    | "type" -> COMPUTE_TYPE
+    | "type" -> COMPUTE_TYPE
+    | "TYPE" -> TYPE
+    | "unif_rule" -> UNIF_RULE
+    | "verbose" -> VERBOSE
+    | "why3" -> WHY3
+    | "with" -> WITH
     | integer -> INT(int_of_string (Utf8.lexeme buf))
     | float -> FLOAT(float_of_string (Utf8.lexeme buf))
     | stringlit ->
