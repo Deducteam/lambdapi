@@ -9,114 +9,140 @@ open Print
 open Console
 open Pos
 
-(** Abstract representation of a goal. *)
-module Goal =
-  struct
-    (** Representation of a proof type goal. *)
-    type goal_typ =
-      { goal_meta : meta  (* Metavariable needing instantiation.          *)
-      ; goal_hyps : Env.t (* Precomputed scope for a suitable term.       *)
-      ; goal_type : term  (* Precomputed type for a suitable term.        *) }
+(** Type of goals. *)
+type goal_typ =
+  { goal_meta : meta  (* Goal metavariable. *)
+  ; goal_hyps : Env.t (* Precomputed scoping environment. *)
+  ; goal_type : term  (* Precomputed type. *) }
 
-    (** [get_meta g] returns the metavariable associated to goal [g]. *)
-    let get_meta : goal_typ -> meta = fun g -> g.goal_meta
+type goal =
+  | Typ of goal_typ
+  (** Typing goal. *)
+  | Unif of constr
+  (** Unification goal. *)
 
-    (** [get_type g] returns the environment and expected type of the goal. *)
-    let get_type : goal_typ -> Env.t * term = fun g ->
-      (g.goal_hyps, g.goal_type)
+let is_typ : goal -> bool = function Typ _ -> true  | Unif _ -> false
+let is_unif : goal -> bool = function Typ _ -> false | Unif _ -> true
+let get_constr : goal -> constr =
+  function Unif c -> c | Typ _ -> invalid_arg (__FILE__ ^ "get_constr")
 
-    (** [goal_typ_of_meta m] create a goal from the metavariable [m]. *)
-    let goal_typ_of_meta : meta -> goal_typ = fun m ->
-      let (goal_hyps, goal_type) =
-        Env.destruct_prod m.meta_arity !(m.meta_type)
-      in
-      let goal_type = Eval.simplify (Env.to_ctxt goal_hyps) goal_type in
-      {goal_meta = m; goal_hyps; goal_type}
+module Goal = struct
 
-    (** [simpl g] simplifies the given goal, evaluating its type to SNF. *)
-    let simpl : goal_typ -> goal_typ = fun g ->
-      {g with goal_type = Eval.snf (Env.to_ctxt g.goal_hyps) g.goal_type}
+  type t = goal
 
-    (** Representation of a general goal : type, unification *)
-    type t =
-      | Typ of goal_typ (* The usual proof type goal. *)
-      | Unif of constr (* Two terms we'd like equal in ctxt. *)
+  (** [ctxt g] returns the typing context of the goal [g]. *)
+  let ctxt : goal -> ctxt = fun g ->
+    match g with
+    | Typ gt -> Env.to_ctxt gt.goal_hyps
+    | Unif (c,_,_) -> c
 
-    (** Helper functions *)
-    let is_typ  = function Typ _ -> true  | Unif _ -> false
-    let is_unif = function Typ _ -> false | Unif _ -> true
-    let typ = function x -> Typ x
-    let unif = function x -> Unif x
-    let get_goal_typ = function Typ gt -> gt | _ -> invalid_arg __LOC__
-    let get_constr = function Unif c -> c | _ -> invalid_arg __LOC__
-    let of_meta m = Typ (goal_typ_of_meta m)
+  (** [env g] returns the scoping environment of the goal [g]. *)
+  let env : goal -> Env.t = fun g ->
+    match g with
+    | Unif (c,_,_) ->
+        let t, n = Ctxt.to_prod c Type in fst (Env.destruct_prod n t)
+    | Typ gt -> gt.goal_hyps
 
-    (** Comparison function. *)
-    let compare : t cmp = fun g g' ->
-      match g, g' with
-      | Typ gt, Typ gt' -> Meta.compare gt.goal_meta gt'.goal_meta
-      | Unif c, Unif c' -> Basics.cmp_constr c c'
-      | Unif _, Typ _ -> 1
-      | Typ _, Unif _ -> -1
+  (** [of_meta m] creates a goal from the meta [m]. *)
+  let of_meta : meta -> goal = fun m ->
+    let (goal_hyps, goal_type) =
+      Env.destruct_prod m.meta_arity !(m.meta_type) in
+    let goal_type = Eval.simplify (Env.to_ctxt goal_hyps) goal_type in
+    Typ {goal_meta = m; goal_hyps; goal_type}
 
-    (** [pp oc g] prints on channel [oc] the goal [g] without its
-       hypotheses. *)
-    let pp : t pp = fun oc g ->
-      let out fmt = Format.fprintf oc fmt in
-      match g with
-      | Typ gt -> out "%a: %a\n" pp_meta gt.goal_meta pp_term gt.goal_type
-      | Unif (_, t, u) -> out "%a ≡ %a" pp_term t pp_term u
+  (** [simpl g] normalizes the goal [g]. *)
+  let simpl : goal -> goal = fun g ->
+    match g with
+    | Typ gt ->
+        let goal_type =  Eval.snf (Env.to_ctxt gt.goal_hyps) gt.goal_type in
+        Typ {gt with goal_type}
+    | Unif (c,t,u) -> Unif (c, Eval.snf c t, Eval.snf c u)
 
-    (** [pp_hyps oc g] prints on channel [oc] the goal [g] and its
-       hypotheses. *)
-    let pp_hyps : t pp =
-      let env_elt oc (s,(_,t,_)) =
-        Format.fprintf oc "%s: %a\n" s pp_term (Bindlib.unbox t)
-      in
-      let ctx_elt oc (x,a,t) =
-        Format.fprintf oc "%a: %a" pp_var x pp_term a;
-        match t with
-        | None -> Format.fprintf oc "\n"
-        | Some(t) -> Format.fprintf oc " ≔ %a\n" pp_term t
-      in
-      let hyps hyp oc l =
-        if l <> [] then
-          (List.iter (hyp oc) (List.rev l);
-           Format.fprintf oc "-----------------------------------------------\
-                              ---------------------------------\n")
-      in
-      fun oc g ->
-      match g with
-      | Typ gt ->
-          hyps env_elt oc gt.goal_hyps;
-          Format.fprintf oc "0. %a\n" pp_term gt.goal_type
-      | Unif (c, t, u) ->
-          hyps ctx_elt oc c;
-          Format.fprintf oc "0. %a ≡ %a" pp_term t pp_term u
+  (** Comparison function. Unification goals are greater than typing goals. *)
+  let compare : goal cmp = fun g g' ->
+    match g, g' with
+    | Typ gt, Typ gt' -> (* Smaller (= older) metas are put first. *)
+        Meta.compare gt.goal_meta gt'.goal_meta
+    | Unif c, Unif c' -> Basics.cmp_constr c c'
+    | Unif _, Typ _ -> 1
+    | Typ _, Unif _ -> -1
 
-  end
+  (** [pp oc g] prints on channel [oc] the goal [g] without its hypotheses. *)
+  let pp : goal pp = fun oc g ->
+    let out fmt = Format.fprintf oc fmt in
+    match g with
+    | Typ gt -> out "%a : %a\n" pp_meta gt.goal_meta pp_term gt.goal_type
+    | Unif (_, t, u) -> out "%a ≡ %a\n" pp_term t pp_term u
 
-(** [goals_of_metas ms] returns a list of goals from a set of metas. *)
-let goals_of_metas : MetaSet.t -> Goal.t list = fun ms ->
-  let add_goal m = List.insert Goal.compare (Goal.of_meta m) in
-  MetaSet.fold add_goal ms []
+  (** [pp_hyps oc g] prints on channel [oc] the hypotheses of the goal [g]. *)
+  let pp_hyps : goal pp =
+    let env_elt oc (s,(_,t,_)) =
+      Format.fprintf oc "%s: %a\n" s pp_term (Bindlib.unbox t)
+    in
+    let ctx_elt oc (x,a,t) =
+      Format.fprintf oc "%a: %a" pp_var x pp_term a;
+      match t with
+      | None -> Format.fprintf oc "\n"
+      | Some(t) -> Format.fprintf oc " ≔ %a\n" pp_term t
+    in
+    let hyps hyp oc l =
+      if l <> [] then
+        (List.iter (hyp oc) (List.rev l);
+         Format.fprintf oc "-----------------------------------------------\
+                            ---------------------------------\n")
+    in
+    fun oc g ->
+    match g with
+    | Typ gt -> hyps env_elt oc gt.goal_hyps
+    | Unif (c,_,_) -> hyps ctx_elt oc c
+end
+
+(** [add_goals_of_metas ms gs] extends [gs] with the metas of [ms] that are
+   not already in [gs]. *)
+let add_goals_of_metas : MetaSet.t -> goal list -> goal list = fun ms gs ->
+  let f = function Typ gt -> Some gt.goal_meta.meta_key | Unif _ -> None in
+  let metakeys_gs = List.filter_rev_map f gs in
+  let add_goal m goals =
+    if List.mem m.meta_key metakeys_gs then goals
+    else List.insert Goal.compare (Goal.of_meta m) goals
+  in
+  MetaSet.fold add_goal ms [] @ gs
 
 (** Representation of the proof state of a theorem. *)
 type proof_state =
-  { proof_name     : strloc  (** Name of the theorem.                 *)
-  ; proof_term     : meta option (** Optional metavariable holding the goal
-                                     associated to a symbol used as a
-                                     theorem/definition and not just a
-                                     simple declaration *)
-  ; proof_goals    : Goal.t list (** Open goals (focused goal is first).  *) }
+  { proof_name  : strloc (** Name of the theorem. *)
+  ; proof_term  : meta option
+  (** Optional metavariable holding the goal associated to a symbol used as a
+     theorem/definition and not just a simple declaration *)
+  ; proof_goals : goal list (** Open goals (focused goal is first). *) }
 
-(** Short synonym for qualified use. *)
-type t = proof_state
+(** [finished ps] tells whether there are unsolved goals in [ps]. *)
+let finished : proof_state -> bool = fun ps -> ps.proof_goals = []
+
+(** [pp_goals oc gl] prints the goal list [gl] to channel [oc]. *)
+let pp_goals : proof_state pp = fun oc ps ->
+  let out fmt = Format.fprintf oc fmt in
+  match ps.proof_goals with
+  | [] -> out "No goals.\n"
+  | g::_ ->
+      out "\n";
+      Goal.pp_hyps oc g;
+      List.iteri (fun i g -> out "%d. %a" i Goal.pp g) ps.proof_goals
+
+(** [focus_env ps] returns the scoping environment of the focused goal or the
+   empty environment if there is none. *)
+let focus_env : proof_state option -> Env.t = fun ps ->
+  match ps with
+  | None -> Env.empty
+  | Some(ps) ->
+      match ps.proof_goals with
+      | [] -> Env.empty
+      | g::_ -> Goal.env g
 
 (** [goals_of_typ typ ter] returns a list of goals for [typ] to be typable by
    by a sort and [ter] to have type [typ] in the empty context. [ter] and
    [typ] must not be both equal to [None]. *)
-let goals_of_typ : popt -> term option -> term option -> Goal.t list * term =
+let goals_of_typ : popt -> term option -> term option -> goal list * term =
   fun pos typ ter ->
   let (typ, to_solve) =
     match typ, ter with
@@ -175,22 +201,4 @@ let goals_of_typ : popt -> term option -> term option -> Goal.t list * term =
         end
     | None, None -> assert false (* already rejected by parser *)
   in
-  (List.map Goal.unif to_solve, typ)
-
-(** [finished ps] tells whether there are unsolved goals in [ps]. *)
-let finished : t -> bool = fun ps -> ps.proof_goals = []
-
-(** [focus_goal ps] returns the focused goal or fails if there is none. *)
-let focus_goal : popt -> proof_state -> Env.t * term = fun pos ps ->
-  match List.hd ps.proof_goals with
-    | Goal.Typ g -> Goal.get_type g
-    | Goal.Unif _ -> fatal pos "No remaining typing goals ..."
-    | exception Failure(_) -> fatal pos "No remaining goals ..."
-
-(** [pp_goals oc gl] prints the goal list [gl] to channel [oc]. *)
-let pp_goals : proof_state pp = fun oc ps ->
-  let out fmt = Format.fprintf oc fmt in
-  match ps.proof_goals with
-  | []    -> out "No goals ...\n"
-  | g::gs ->
-      Goal.pp_hyps oc g; List.iteri (fun i g -> out "%d. %a" i Goal.pp g) gs
+  (List.rev_map (fun c -> Unif c) to_solve, typ)
