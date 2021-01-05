@@ -5,7 +5,8 @@
   "contributors": [
     "Emilio Jesús Gallego Arias <e@x80.org>",
     "Houda Mouzoun <houda.mouzoun@gmail.com>",
-    "François Lefoulon <francois.lefoulon@lilo.org>"
+    "François Lefoulon <francois.lefoulon@lilo.org>",
+    "Ashish Barnawal <ashbrnwl.2000@gmail.com>"
   ],
   "version": "0.1.0",
   "publisher": "MINES ParisTech / INRIA",
@@ -157,7 +158,6 @@
     "@types/mocha": "^2.2.42",
     "@types/node": "^10.14.15",
     "@types/vscode": "^1.37",
-    "tslint": "^5.12.1",
     "typescript": "^3.3.1"
   },
   "dependencies": {

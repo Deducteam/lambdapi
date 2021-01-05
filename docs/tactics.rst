@@ -1,78 +1,54 @@
-Syntax of proof tactics
-=======================
+Proof tactics
+=============
 
-The ``theorem`` command makes the user enter an interactive mode. The
-user has to provide a term of some given type. Such a goal is
-materialized by a metavariable of the given type (goals and
-metavariables are synonyms). One can then partially instantiate a goal
-metavariable by using commands specific to this proof mode called
-tactics. A tactic may generate new goals/metavariables. The proof of the
-theorem is complete only when all generated goals have been solved.
+The ``symbol`` command allows the user to enter an interactive mode to
+solve typing goals (find a term of a given type) and unification goals
+(prove that two terms are equivalent). In a typing goal, the term to
+find is materialized by a metavariable. The following tactics help
+users to refine typing goals and transform unification goals step by
+step. A tactic application may generate new
+goals/metavariables. Except for the ``solve`` tactic which applies to
+all the unification goals at once, all the tactics applies to the
+first goal only, which is called the *focused* goal. One can change
+the focus goal by using the ``focus`` tactic. The proof is complete
+only when all generated goals have been solved.
 
-Reminder: the BNF grammar of Lambdapi is in :download:`syntax.bnf`.
+Reminder: the BNF grammar of tactics is in :download:`syntax.bnf`.
 
-``print``
+``solve``
 ---------
 
-The ``print`` command displays the list of current goals. The first one
-is called the focused goal. Tactics apply to the focused goal.
+Simplify unification goals as much as possible.
 
-``qed``
--------
+``assume``
+----------
 
-The ``qed`` command allows one to quit the proof mode when all goals
-have been solved. It then adds in the environment a new opaque
-definition whose type is the theorem statement.
-
-``admit``
----------
-
-The ``admit`` command allows one to quit the proof mode even if all
-goals have not been solved. It then adds in the environment a new symbol
-(axiom) whose type is the theorem statement.
-
-``abort``
----------
-
-The ``abort`` command allows one to quit the proof mode without changing
-the environment.
-
-``focus``
----------
-
-The ``focus`` command allows the user to change the focus to another
-goal. A goal is identified by its number in the list of goals displayed
-by the ``print`` command.
+The tactic ``assume h1 .. hn`` replaces the focused goal of type ``Πx1 .. xn,T``
+by a goal of type ``T`` with ``xi`` replaced by ``hi``.
 
 ``simpl``
 ---------
 
-The ``simpl`` tactic normalizes the focused goal with respect to
-β-reduction and the user-defined rewriting rules.
+Normalizes the focused goal with respect to β-reduction and the
+user-defined rewriting rules.
 
 ``refine``
 ----------
 
-The tactic ``refine t`` tries to instantiate the current goal by the
+The tactic ``refine t`` tries to instantiate the focused goal by the
 term ``t``. ``t`` can contain references to other goals by using ``?n``
-where ``n`` is a goal number or a goal name. ``t`` can contain
+where ``n`` is a goal name. ``t`` can contain
 underscores ``_`` or new metavariable names ``?n`` which will be
 replaced by new metavariables. The unification and type-checking
 algorithms will then try to instantiate some of the generated
 metavariables. The metavariables that cannot be solved are added as new
 goals.
 
-``assume``
-----------
-
-The tactic ``assume h1 .. hn`` replaces a goal of type ``Πx1 .. xn,T``
-by a goal of type ``T`` with ``xi`` replaced by ``hi``.
-
 ``apply``
 ---------
 
 The tactic ``apply t`` replaces a goal of type ``T`` by possibly new
-goals ``?0`` of type ``TO``, …, ``?n`` of type ``Tn`` if ``t`` is of
+goals: ``?0`` of type ``TO``, …, ``?n`` of type ``Tn`` if ``t`` is of
 type ``Πx1:T1,..,Πxn:Tn,?0`` and ``t ?1 .. ?n`` is of type ``T``.
 
 ``why3``
@@ -81,7 +57,7 @@ type ``Πx1:T1,..,Πxn:Tn,?0`` and ``t ?1 .. ?n`` is of type ``T``.
 The tactic ``why3`` calls a prover (using the why3 platform) to solve
 the current goal. The user can specify the prover in two ways :
 
-* globally by using the command ``set prover`` (described in :doc:`commands`)
+* globally by using the command ``set prover`` described in :doc:`queries`
 
 * locally by the tactic ``why3 "<prover_name>"`` if the user wants to change the
   prover inside an interactive mode.
@@ -90,7 +66,7 @@ If no prover name is given, then the globally set prover is used
 (``Alt-Ergo`` by default).
 
 A set of symbols should be defined in order to use the ``why3`` tactic.
-The user should define those symbols using builtins as follow :
+The user should define those symbols using builtins as follows :
 
 ::
 
@@ -103,8 +79,8 @@ The user should define those symbols using builtins as follow :
    set builtin "or"    ≔ or      // : Prop → Prop → Prop
    set builtin "not"   ≔ not     // : Prop → Prop
 
-**Important note:** you must run ``why3 config --detect`` whenever
-installing a new prover supported by Why3.
+**Important note:** you must run ``why3 config --full-config`` to make
+Why3 know about the available provers.
 
 Tactics on equality
 -------------------
@@ -124,19 +100,17 @@ declarations:
    set builtin "eqind" ≔ ... // : Π {a} x y, P (x=y) → Π p:T a→Prop, P (p y) → P (p x)
 
 ``reflexivity``
----------------
+^^^^^^^^^^^^^^^
 
-The tactic ``refl`` solves a goal of the form ``P (t = u)`` when
-``t ≡ u``.
+Solves a goal of the form ``P (t = u)`` when ``t ≡ u``.
 
 ``symmetry``
-------------
+^^^^^^^^^^^^
 
-The tactic ``sym`` replaces a goal of the form ``P (t = u)`` by the goal
-``P (u = t)``.
+Replaces a goal of the form ``P (t = u)`` by the goal ``P (u = t)``.
 
 ``rewrite``
------------
+^^^^^^^^^^^
 
 The ``rewrite`` tactic takes as argument a term ``t`` of type
 ``Πx1 .. xn,P(l=r)`` prefixed by an optional ``-`` (to indicate that the
@@ -165,8 +139,36 @@ replaced by ``un``, then the tactic ``rewrite t`` replaces in the
 focused goal all occurrences of ``u`` by the term ``r`` with ``x1``
 replaced by ``u1``, …, ``xn`` replaced by ``un``.
 
-``fail``
---------
+Proof mode management
+---------------------
 
-The ``fail`` tactic always fails. It is useful when developing a proof
-to stop at some particular point.
+``end``
+^^^^^^^
+
+Allows one to quit the proof mode when all goals have been solved. It
+then adds in the environment the symbol the proof is about.
+
+``admit``
+^^^^^^^^^
+
+Allows one to quit the proof mode even if all goals have not been
+solved. It then adds in the environment a new symbol (axiom) whose
+type is given by the ``symbol`` command.
+
+``abort``
+^^^^^^^^^
+
+Allows one to quit the proof mode without changing the environment.
+
+``focus``
+^^^^^^^^^
+
+Allows the user to change the focus to another goal. A goal is
+identified by its number in the list of goals displayed by the
+``print`` command.
+
+``fail``
+^^^^^^^^
+
+Always fails. It is useful when developing a proof to stop at some
+particular point.
