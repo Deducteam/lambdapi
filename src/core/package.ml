@@ -75,6 +75,7 @@ let read : file_path -> config_data = fun fname ->
     [Sys_error] is raised. Note that [fname] is first normalized with a call
     to [Filename.realpath]. *)
 let find_config : file_path -> file_path option = fun fname ->
+  let fname = Filename.normalize fname in
   let rec find dir =
     let file = Filename.concat dir pkg_file in
     match Sys.file_exists file with
