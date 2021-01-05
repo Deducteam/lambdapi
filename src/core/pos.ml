@@ -55,7 +55,9 @@ let none : 'a -> 'a loc =
 (** [cat p1 p2] is the concatenation of positon [p1] and [p2]. If [p1] and
     [p2] have different filenames, the resulting filename is [None]. *)
 let cat : pos -> pos -> pos = fun p1 p2 ->
-  { fname = if p1.fname <> p2.fname then None else p1.fname
+  { fname =
+      if p1.fname <> p2.fname then invalid_arg "Pos.cat: filename mismatch"
+      else p1.fname
   ; start_line = p1.start_line
   ; start_col = p1.start_col
   ; end_line = p2.end_line

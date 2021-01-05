@@ -113,7 +113,7 @@ let rec get_implicitness : p_term -> bool list = fun t ->
     symbols) are not expanded, so [h] may still be unsugared to an
     application. *)
 (* REVIEW: this function is one of the few that use the Pratt parser, and the
-   term is converted from appl to list in [Pratt.parse], then rebuild into
+   term is converted from appl to list in [Pratt.parse], then rebuilt into
    appl node (still by Pratt.parse), then again decomposed into a list by the
    function. We may make [Pratt.parse] to return already a list of terms. *)
 let get_parsed_args : p_term -> p_term * p_term list = fun t ->
