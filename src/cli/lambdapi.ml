@@ -157,7 +157,7 @@ let qsym : (Syntax.p_module_path * string) Term.t =
         Error(`Msg(msg))
       | Ok(e) -> Ok(e)
     in
-    let print fmt qid = Pretty.pp_qident fmt (Pos.none qid) in
+    let print fmt qid = Pretty.qident fmt (Pos.none qid) in
     Arg.conv (parse, print)
   in
   let doc = "Fully qualified symbol name with dot separated identifiers." in

@@ -19,7 +19,7 @@ let concat_map = List.concat_map
 type t = Syntax.p_command
 
 (*Messy pattern matching to get the qidents throughout the document*)
-let rec qidents_of_bound_p_arg (args : Syntax.p_arg) :
+let rec qidents_of_bound_p_args (args : Syntax.p_args) :
     Syntax.qident list * Pos.strloc list =
   match args with
   | idents, None, _ -> ([], pmap idents)
@@ -52,15 +52,15 @@ and qidents_of_p_term (term : Syntax.p_term) =
   | Syntax.P_Wrap term -> qidents_of_p_term term
   | Syntax.P_Expl term -> qidents_of_p_term term
 
-and filter_bound_qidents (args : Syntax.p_arg list)
+and filter_bound_qidents (args : Syntax.p_args list)
     (terms_list : Syntax.p_term list) =
-  let qids, qargs = List.split (List.map qidents_of_bound_p_arg args) in
+  let qids, qargs = List.split (List.map qidents_of_bound_p_args args) in
   let qids, qargs = (List.concat qids, List.concat qargs) in
   let args = List.map (fun (id : Syntax.ident) -> id.elt) qargs in
   let filter_args (id : Syntax.qident) = not (List.mem (snd id.elt) args) in
   let get_qterm term = List.filter filter_args (qidents_of_p_term term) in
   let qterm = concat_map get_qterm terms_list in
-  (* Format.eprintf "Bound indetifiers :%s\n%!" (String.concat " " args); *)
+  (* Format.eprintf "Bound identifiers :%s\n%!" (String.concat " " args); *)
   qids @ qterm
 
 and qidents_of_p_config (cfg : Syntax.p_config) =
@@ -80,21 +80,22 @@ and qidents_of_p_rule (rule : Syntax.p_rule) =
   let patt, term = rule.elt in
   qidents_of_p_term patt @ qidents_of_p_term term
 
+let qidents_of_p_inductive (pind : Syntax.p_inductive) =
+  let f (_, pt) = qidents_of_p_term pt in
+  let _, pt, idptlist = pind.elt in
+  qidents_of_p_term pt @ concat_map f idptlist
+
 let qidents_of_cmd (cmd : t) =
   match cmd.elt with
-  | Syntax.P_inductive (_, _, _, _) -> []
+  | Syntax.P_inductive (_, pil) -> concat_map qidents_of_p_inductive pil
   | Syntax.P_require (_, _) -> []
   | Syntax.P_require_as (_, _) -> []
   | Syntax.P_open _ -> []
-  | Syntax.P_symbol (_, _, args, term) -> filter_bound_qidents args [ term ]
   | Syntax.P_rules rules -> concat_map qidents_of_p_rule rules
-  | Syntax.P_definition (_pl, _b, _location, args, Some ty, body) ->
-    filter_bound_qidents args [ ty; body ]
-  | Syntax.P_definition (_pl, _b, _location, args, None, body) ->
-    filter_bound_qidents args [ body ]
-  | Syntax.P_theorem (_, statement, _, _) ->
-    let _, args, body = statement.elt in
-    filter_bound_qidents args [ body ]
+  | Syntax.P_symbol {p_sym_arg;p_sym_typ;p_sym_trm;_} ->
+    let some_or_empty = function Some arg -> [arg] | None -> [] in
+    let terms_list = some_or_empty p_sym_typ @ some_or_empty p_sym_trm in
+    filter_bound_qidents p_sym_arg terms_list
   | Syntax.P_set set -> qidents_of_p_config set
   | Syntax.P_query q ->
     let f (q : Syntax.p_query_aux) =
@@ -115,6 +116,9 @@ let qidents_of_cmd (cmd : t) =
       | Syntax.P_query_normalize (term, _) -> qidents_of_p_term term
       | Syntax.P_query_prover _ -> []
       | Syntax.P_query_prover_timeout _ -> []
+      | Syntax.P_query_print None -> []
+      | Syntax.P_query_print (Some qid) -> [qid]
+      | Syntax.P_query_proofterm -> []
     in
     f q.elt
 

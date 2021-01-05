@@ -35,8 +35,8 @@ type match_strat =
   (** Rules are processed sequentially: a rule can be applied only if the
       previous ones (in the order of declaration) cannot be. *)
   | Eager
-    (** Any rule that filters a term can be applied (even if a rule defined
-        earlier filters the term as well). This is the default. *)
+  (** Any rule that filters a term can be applied (even if a rule defined
+      earlier filters the term as well). This is the default. *)
 
 (** Representation of a term (or types) in a general sense. Values of the type
     are also used, for example, in the representation of patterns or rewriting
@@ -412,6 +412,14 @@ let _Symb : sym -> tbox = fun s ->
 let _Appl : tbox -> tbox -> tbox =
   Bindlib.box_apply2 (fun t u -> Appl(t,u))
 
+(** [_Appl_list a [b1;...;bn]] returns (... ((a b1) b2) ...) bn. *)
+let _Appl_list : tbox -> tbox list -> tbox = List.fold_left _Appl
+
+(** [_Appl_symb f ts] returns the same result that
+    _Appl_l ist (_Symb [f]) [ts]. *)
+let _Appl_symb : sym -> tbox list -> tbox = fun f ts ->
+  _Appl_list (_Symb f) ts
+
 (** [_Prod a b] lifts a dependent product node to the {!type:tbox} type, given
     a boxed term [a] for the domain of the product, and a boxed binder [b] for
     its codomain. *)
@@ -528,3 +536,16 @@ end
 
 module SymSet = Set.Make(Sym)
 module SymMap = Map.Make(Sym)
+
+(** Representation of unification problems. *)
+type problem =
+  { to_solve  : constr list
+  (** List of unification problems to solve. *)
+  ; unsolved  : constr list
+  (** List of unification problems that could not be solved. *)
+  ; recompute : bool
+  (** Indicates whether unsolved problems should be rechecked. *) }
+
+(** Empty problem. *)
+let empty_problem : problem =
+  {to_solve  = []; unsolved = []; recompute = false}

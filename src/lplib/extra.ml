@@ -1,3 +1,6 @@
+(** Type of comparison functions. *)
+type 'a cmp = 'a -> 'a -> int
+
 (* Functional maps with [int] keys. *)
 module IntMap = Map.Make (Base.Int)
 
@@ -12,7 +15,6 @@ module StrSet = Set.Make (String)
 
 (** Imperative hash table with strings as keys. *)
 module StrHtbl = Hashtbl.Make (String)
-
 
 (** [get_safe_prefix p strings] returns a string starting with [p] and so that,
     there is no non-negative integer [k] such that [p ^ string_of_int k] belongs

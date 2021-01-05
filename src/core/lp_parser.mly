@@ -13,7 +13,6 @@
 %token EOF
 
 // Command keywords
-%token THEOREM
 %token COLON
 %token SYMBOL
 %token INDUCTIVE
@@ -22,7 +21,6 @@
 %token OPEN
 %token REQUIRE
 %token AS
-%token DEFINITION
 %token REWRITE
 // Queries
 %token SET
@@ -78,8 +76,10 @@
 %token SEMICOLON
 %token TYPE
 // Proofs
-%token PROOF
-%token <p_proof_end> PROOF_END
+%token BEGIN
+%token END
+%token ABORT
+%token ADMIT
 // Tactics
 %token INTRO
 %token APPLY
@@ -99,16 +99,17 @@
 %type <Syntax.p_term> term
 %type <Syntax.p_term> aterm
 %type <Syntax.p_term> sterm
-%type <Syntax.p_arg> arg
+%type <Syntax.p_args> arg
 %type <Syntax.ident * bool> ident
 %type <Syntax.ident option> patt
 %type <Syntax.p_rule> rule
 %type <Syntax.p_tactic> tactic
-%type <Syntax.p_modifier loc> modifier
+%type <Syntax.p_modifier> modifier
 %type <Syntax.p_module_path> path
 %type <Syntax.p_config> config
 %type <Syntax.qident> qident
 %type <Syntax.p_rw_patt> rw_patt_spec
+%type <Syntax.p_tactic list * Syntax.p_proof_end> proof
 
 // Precedences listed from low to high
 %nonassoc COMMA IN
@@ -194,8 +195,6 @@ tactic:
   | REFINE t=term { make_pos $loc (P_tac_refine(t)) }
   | REFL { make_pos $loc P_tac_refl }
   | SYMMETRY { make_pos $loc P_tac_sym }
-  | PRINT { make_pos $loc P_tac_print }
-  | PROOFTERM { make_pos $loc P_tac_proofterm }
   | WHY3 s=STRINGLIT? { make_pos $loc (P_tac_why3(s)) }
   | q=query { make_pos $loc (P_tac_query(q)) }
   | FAIL { make_pos $loc P_tac_fail }
@@ -272,6 +271,21 @@ query:
       in
       make_pos $loc (P_query_assert(k, P_assert_conv(t, a)))
     }
+  | PRINT qid=qident? { make_pos $loc (P_query_print qid) }
+  | PROOFTERM { make_pos $loc P_query_proofterm }
+
+proof_end:
+  | END { make_pos $loc Syntax.P_proof_end }
+  | ADMIT { make_pos $loc Syntax.P_proof_admit }
+  | ABORT { make_pos $loc Syntax.P_proof_abort }
+
+proof: BEGIN ts=ttactic* pe=proof_end { ts, pe }
+
+inductive:
+  | i=ident COLON t=term ASSIGN VBAR?
+c=separated_list(VBAR, separated_pair(any_ident, COLON, term))
+      { make_pos $loc (fst i, t, c) }
+
 
 // Top level commands
 command:
@@ -284,20 +298,34 @@ command:
       }
   | OPEN p=path SEMICOLON { make_pos $loc (P_open([p])) }
   | ms=modifier* SYMBOL s=ident al=arg* COLON a=term SEMICOLON
-      { make_pos $loc (P_symbol(ms, fst s, al, a)) }
-  | ms=modifier* INDUCTIVE i=any_ident COLON a=term ASSIGN VBAR?
-    c=separated_list(VBAR, separated_pair(any_ident, COLON, term))
-    SEMICOLON
-      { make_pos $loc (P_inductive(ms, i, a, c)) }
-  | ms=modifier* DEFINITION s=ident al=arg* ao=preceded(COLON, term)?
-    ASSIGN b=term SEMICOLON
-      { make_pos $loc (P_definition(ms, false, fst s, al, ao, b)) }
-  | ms=modifier* THEOREM s=ident al=arg* COLON a=term
-    PROOF ts=ttactic* pe=PROOF_END
       {
-        let st = make_pos ($startpos(s), $endpos(a)) (fst s, al, a) in
-        let pe = make_pos $loc(pe) pe in
-        make_pos $loc (P_theorem(ms, st, ts, pe)) }
+        let sym =
+          {p_sym_mod=ms; p_sym_nam=fst s; p_sym_arg=al; p_sym_typ=Some(a);
+           p_sym_trm=None; p_sym_def=false; p_sym_prf=None}
+        in
+        make_pos $loc (P_symbol(sym))
+      }
+  | ms=modifier* SYMBOL s=ident al=arg* ao=preceded(COLON, term)? p=proof
+      {
+        let sym =
+            {p_sym_mod=ms; p_sym_nam=fst s; p_sym_arg=al; p_sym_typ=ao;
+             p_sym_trm=None; p_sym_def=false; p_sym_prf=Some(p)}
+          in
+          make_pos $loc (P_symbol(sym))
+      }
+  | ms=modifier* SYMBOL s=ident al=arg* ao=preceded(COLON, term)?
+    ASSIGN de=term? SEMICOLON
+      {
+        let sym =
+          {p_sym_mod=ms; p_sym_nam=fst s; p_sym_arg=al; p_sym_typ=ao;
+           p_sym_trm=de; p_sym_prf=None; p_sym_def=true}
+        in
+        make_pos $loc (P_symbol(sym))
+      }
+
+  | ms=modifier* INDUCTIVE is=separated_nonempty_list(WITH, inductive)
+    SEMICOLON
+      { make_pos $loc (P_inductive(ms, is)) }
   | RULE rs=separated_nonempty_list(WITH, rule) SEMICOLON
       { make_pos $loc (P_rules(rs)) }
   | SET c=config SEMICOLON { make_pos $loc (P_set(c)) }

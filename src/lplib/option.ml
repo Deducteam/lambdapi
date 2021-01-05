@@ -41,3 +41,11 @@ let apply : ('a -> 'b) t -> 'a t -> 'b t = fun f x ->
 module Infix = struct
   let ( <*> ) = apply
 end
+
+(** Total order on option types. *)
+let cmp_option : 'a cmp -> 'a option cmp = fun cmp o o' ->
+  match o, o' with
+  | None, None -> 0
+  | None, Some _ -> -1
+  | Some _, None -> 1
+  | Some x, Some x' -> cmp x x'

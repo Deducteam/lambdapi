@@ -119,13 +119,22 @@ let unbind_name :
 
 (** {3 Metavariables} *)
 
-(** [make_meta ctx a] creates a metavariable of type [a],  with an environment
-    containing the variables of context [ctx]. *)
+(** [make_meta ctx a] creates a fresh metavariable term of type [a] in the
+   context [ctx]. *)
 let make_meta : ctxt -> term -> term = fun ctx a ->
   let prd, len = Ctxt.to_prod ctx a in
   let m = Meta.fresh prd len in
   let get_var (x,_,_) = Vari(x) in
   Meta(m, Array.of_list (List.rev_map get_var ctx))
+
+(** [make_meta_codomain ctx a] creates a fresh metavariable term [b] of type
+   [Type] in the context [ctx] extended with a fresh variable of type [a]. *)
+let make_meta_codomain : ctxt -> term -> tbinder = fun ctx a ->
+  let x = Bindlib.new_var mkfree "x" in
+  let b = make_meta ((x, a, None) :: ctx) Type in
+  Bindlib.unbox (Bindlib.bind_var x (lift b))
+(* Possible improvement: avoid lift by defining a function _make_meta
+   returning a tbox. *)
 
 (** [iter_meta b f t] applies the function [f] to every metavariable of [t],
    and to the type of every metavariable recursively if [b] is true. *)
@@ -189,11 +198,9 @@ let distinct_vars : ctxt -> term array -> tvar array option = fun ctx ts ->
   in
   try Some (Array.map to_var ts) with Not_unique_var -> None
 
-(** {3 Conversion of a rule into a "pair" of terms} *)
-
-(** [terms_of_rule r] converts the RHS (right hand side) of the rewriting rule
-    [r] into a term.  The bound higher-order variables of the original RHS are
-    substituted using [Patt] constructors.  They are thus represented as their
+(** [term_of_rhs r] converts the RHS (right hand side) of the rewriting rule
+    [r] into a term. The bound higher-order variables of the original RHS are
+    substituted using [Patt] constructors. They are thus represented as their
     LHS counterparts. This is a more convenient way of representing terms when
     analysing confluence or termination. *)
 let term_of_rhs : rule -> term = fun r ->
@@ -205,3 +212,77 @@ let term_of_rhs : rule -> term = fun r ->
     TE_Some(Bindlib.unbox (Bindlib.bind_mvar vars p))
   in
   Bindlib.msubst r.rhs (Array.mapi fn r.vars)
+
+(** Total order on alpha-equivalence classes of terms not containing [Patt],
+   [TEnv] or [TRef].
+@raise Invalid_argument otherwise. *)
+let cmp_term : term Lplib.Extra.cmp =
+  let pos = __MODULE__ ^ ".cmp_term: " ^ __LOC__ in
+  (* Total precedence on term constructors (must be injective). *)
+  let prec t =
+    match unfold t with
+    | Vari _ -> 0
+    | Type -> 1
+    | Kind -> 2
+    | Symb _ -> 3
+    | Prod _ -> 4
+    | Abst _ -> 5
+    | Appl _ -> 6
+    | Meta _ -> 7
+    | Patt _ -> 8
+    | TEnv _ -> 9
+    | Wild -> 10
+    | TRef _ -> 11
+    | LLet _ -> 12
+  in
+  let rec cmp t t' =
+    match unfold t, unfold t' with
+    | Vari x, Vari x' -> Bindlib.compare_vars x x'
+    | Type, Type
+    | Kind, Kind
+    | Wild, Wild -> 0
+    | Symb f, Symb f' -> Sym.compare f f'
+    | Prod(t,u), Prod(t',u')
+    | Abst(t,u), Abst(t',u') ->
+        let c = cmp t t' in if c <> 0 then c else cmp_binder u u'
+    | Appl(t,u), Appl(t',u') ->
+        let c = cmp t t' in if c <> 0 then c else cmp u u'
+    | Meta(m,ts), Meta(m',ts') ->
+        let c = Meta.compare m m' in
+        if c <> 0 then c
+        else Lplib.List.cmp_list cmp (Array.to_list ts) (Array.to_list ts')
+    | Patt _, _ | _, Patt _
+    | TEnv _, _ | _, TEnv _ -> invalid_arg pos
+    | TRef r, TRef r' ->
+        if r == r' then 0 else
+          begin
+            match !r, !r' with
+            | None, None -> invalid_arg pos
+            | Some t, Some t' -> cmp t t'
+            | None, Some _ -> -1
+            | Some _, None -> 1
+          end
+    | LLet(a,t,u), LLet(a',t',u') ->
+        let c = cmp a a' in
+        if c <> 0 then c
+        else let c = cmp t t' in if c <> 0 then c else cmp_binder u u'
+    | t, t' -> Stdlib.compare (prec t) (prec t')
+  and cmp_binder u u' = let (_,u,u') = Bindlib.unbind2 u u' in cmp u u'
+  in cmp
+
+(** Total order on contexts not containing [Patt], [TEnv] or [TRef].
+@raise Invalid_argument otherwise. *)
+let cmp_ctxt : ctxt Lplib.Extra.cmp =
+  let cmp_decl (x,t,a) (x',t',a') =
+    let c = Bindlib.compare_vars x x' in
+    if c <> 0 then c
+    else let c = cmp_term t t' in
+         if c <> 0 then c else Lplib.Option.cmp_option cmp_term a a'
+  in Lplib.List.cmp_list cmp_decl
+
+(** Total order on constraints not containing [Patt], [TEnv] or [TRef].
+@raise Invalid_argument otherwise. *)
+let cmp_constr : constr Lplib.Extra.cmp = fun (c,t,u) (c',t',u') ->
+  let r = cmp_ctxt c c' in
+  if r <> 0 then r
+  else let r = cmp_term t t' in if r <> 0 then r else cmp_term u u'

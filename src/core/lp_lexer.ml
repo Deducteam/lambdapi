@@ -8,21 +8,21 @@ type token =
   | EOF
   | L_PAREN | R_PAREN | L_SQ_BRACKET | R_SQ_BRACKET
   | L_CU_BRACKET | R_CU_BRACKET
-  | APPLY | ARROW | AS | ASSERT | ASSERT_NOT | ASSIGN | ASSOC of Syntax.assoc
-  | AT
-  | BUILTIN | BACKQUOTE
+  | ABORT | ADMIT | APPLY | ARROW | AS | ASSERT | ASSERT_NOT | ASSIGN
+  | ASSOC of Syntax.assoc | AT
+  | BUILTIN | BACKQUOTE | BEGIN
   | COLON | COMMA | COMPUTE | COMPUTE_TYPE | CONSTANT
   | DEBUG_FLAGS of (bool * string)
   (** Flags such as [+eiu] or [-eiu]. *)
-  | DEFINITION | DOLLAR | DOT
-  | EQUIV
+  | DOLLAR | DOT
+  | END | EQUIV
   | FAIL | FLAG | FLOAT of float | FOCUS
   | ID of (string * bool)
    (** Boolean is true if ident is escaped *)
   | IN | INFERTYPE | INDUCTIVE | INFIX | INJECTIVE | INT of int | INTRO
   | LAMBDA | LET
   | OPEN
-  | PI | PREFIX | PRINT | PRIVATE | PROOF | PROOF_END of Syntax.p_proof_end
+  | PI | PREFIX | PRINT | PRIVATE | PROOF_END of Syntax.p_proof_end_aux
   | PROOFTERM | PROTECTED | PROVER | PROVER_TIMEOUT
   | QUESTION_MARK
   | REFINE | REFL | REQUIRE | REWRITE | RULE
@@ -30,7 +30,7 @@ type token =
   | SWITCH of bool
   (** [on] or [off], for flags. *)
   | SYMMETRY | SYMBOL
-  | THEOREM | TYPE | TURNSTILE
+  | TYPE | TURNSTILE
   | UNIF_RULE
   | VBAR
   | VERBOSE
@@ -161,9 +161,11 @@ and nom_comment : lexbuf -> unit = fun buf ->
     | "assume" -> INTRO
     | "refine" -> REFINE
     | "simpl" -> SIMPL
+    | "admit" -> ADMIT
+    | "abort" -> ABORT
     | "apply" -> APPLY
-    | "proof" -> PROOF
     | "refine" -> REFINE
+    | "begin" -> BEGIN
     | "why3" -> WHY3
     | "as" -> AS
     | "assert" -> ASSERT
@@ -171,11 +173,10 @@ and nom_comment : lexbuf -> unit = fun buf ->
     | "compute" -> COMPUTE
     | "type" -> COMPUTE_TYPE
     | "unif_rule" -> UNIF_RULE
-    | "theorem" -> THEOREM
     | "in" -> IN
     | "on" -> SWITCH(true)
     | "off" -> SWITCH(false)
-    | "qed" -> PROOF_END(Syntax.P_proof_qed)
+    | "end" -> END
     | "set" -> SET
     | "let" -> LET
     | "flag" -> FLAG
@@ -193,7 +194,6 @@ and nom_comment : lexbuf -> unit = fun buf ->
     | "builtin" -> BUILTIN
     | "symbol" -> SYMBOL
     | "require" -> REQUIRE
-    | "definition" -> DEFINITION
     | "constant" -> CONSTANT
     | "injective" -> INJECTIVE
     | "protected" -> PROTECTED

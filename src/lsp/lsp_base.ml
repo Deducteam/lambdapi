@@ -41,15 +41,22 @@ let mk_range (p : Pos.pos) : J.t =
 let json_of_goal g =
   let pr_hyp (s,(_,t,_)) =
     let t = Format.asprintf "%a" Print.pp_term (Bindlib.unbox t) in
-    `Assoc ["hname", `String s; "htype", `String t] in
+    `Assoc ["hname", `String s; "htype", `String t]
+  in
   let open Proof in
-  let g_meta = Goal.get_meta g in
-  let hyp, typ = Goal.get_type g in
-  let j_env = List.map pr_hyp hyp in
-  `Assoc [
-    "gid", `Int g_meta.meta_key
-  ; "hyps", `List j_env
-  ; "type", `String (Format.asprintf "%a" Print.pp_term typ)]
+  match g with
+  | Typ {goal_meta; goal_hyps; goal_type} ->
+    let j_env = List.map pr_hyp goal_hyps in
+    `Assoc [
+      "typeofgoal", `String "Typ "
+    ; "gid", `Int goal_meta.meta_key
+    ; "hyps", `List j_env
+    ; "type", `String (Format.asprintf "%a" Print.pp_term goal_type)]
+  | Unif (ctx,t1,t2) ->
+    let constr = Format.asprintf "%a" Print.pp_constr (ctx,t1,t2) in
+    `Assoc [
+      "typeofgoal", `String "Unif"
+    ; "constr", `String constr]
 
 let json_of_goals goals =
   match goals with

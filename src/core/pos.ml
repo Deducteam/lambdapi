@@ -40,6 +40,13 @@ let make : popt -> 'a -> 'a loc =
 let in_pos : pos -> 'a -> 'a loc =
   fun p elt -> { elt ; pos = Some p }
 
+(** [end_pos po] creates a position from the end of position [po]. *)
+let end_pos : popt -> popt = fun po ->
+  match po with
+  | None -> None
+  | Some p ->
+    Some { p with start_line = p.end_line; start_col = p.end_line }
+
 (** [none elt] wraps [elt] in a ['a loc] structure without any specific source
     code position. *)
 let none : 'a -> 'a loc =
