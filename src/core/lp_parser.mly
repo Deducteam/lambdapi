@@ -338,7 +338,7 @@ command:
 env: L_SQ_BRACKET ts=separated_list(SEMICOLON, term) R_SQ_BRACKET { ts }
 
 sterm:
-  // Explicited identifier (with @)
+  // Explicit identifier (with @)
   | AT qid=qident { make_pos $loc (P_Iden(qid, true)) }
   // Qualified identifier
   | qid=qident { make_pos $loc (P_Iden(qid, false)) }
@@ -392,7 +392,7 @@ rule: l=term REWRITE r=term { make_pos $loc (l, r) }
 unification: l=term EQUIV r=term { (l, r) }
 
 unif_rule: l=unification REWRITE
-L_SQ_BRACKET rs=separated_nonempty_list(SEMICOLON, unification) R_SQ_BRACKET
+BEGIN rs=separated_nonempty_list(SEMICOLON, unification) END
     {
       let equiv = Pos.none (P_Iden(Pos.none ([], "#equiv"), true)) in
       let p_appl t u = Pos.none (P_Appl(t, u)) in
