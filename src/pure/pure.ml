@@ -61,6 +61,9 @@ let t0 : Time.t Stdlib.ref = Stdlib.ref (Time.save ())
 let set_initial_time : unit -> unit = fun _ ->
   Stdlib.(t0 := Time.save ())
 
+let get_initial_time : unit -> Time.t = fun _ ->
+  Stdlib.(!t0)
+
 let initial_state : file_path -> state = fun fname ->
   Console.reset_default ();
   Time.restore Stdlib.(!t0);
@@ -69,6 +72,9 @@ let initial_state : file_path -> state = fun fname ->
   Sign.loading := [mp];
   let sign = Sig_state.create_sign mp in
   Sign.loaded  := PathMap.add mp sign !Sign.loaded;
+  let tempoc = open_out_gen [Open_append; Open_creat] 0o666 "aksdjfla.txt" in
+  Printf.fprintf tempoc "%B\n%!" Timed.(!Console.log_enabled);
+  close_out tempoc;
   (Time.save (), Sig_state.of_sign sign)
 
 let handle_command : state -> Command.t -> command_result =

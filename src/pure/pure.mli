@@ -79,3 +79,7 @@ val get_symbols : state -> (Terms.sym * Pos.popt) Extra.StrMap.t
     "time" for the [initial_state] function. This is only useful to initialise
     or reinitialise the pure interface. *)
 val set_initial_time : unit -> unit
+
+(** [get_intial_time ()] returns the rollback "time" for the [initial_state]
+    function.*)
+val get_initial_time : unit -> Timed.Time.t
