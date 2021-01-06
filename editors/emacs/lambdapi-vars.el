@@ -15,25 +15,24 @@
     "reflexivity"
     "rewrite"
     "simpl"
+    "solve"
     "symmetry"
     "why3")
   "Proof tactics.")
 
 (defconst lambdapi-sig-commands
-  '("definition"
-    "as"
+  '("as"
     "in"
     "let"
     "declared"
     "builtin"
     "open"
-    "proof"
-    "qed"
+    "begin"
+    "end"
     "require"
     "rule"
     "symbol"
     "inductive"
-    "theorem"
     "with")
   "Commands that enrich the signature.")
 
@@ -51,13 +50,13 @@
 
 (defconst lambdapi-misc-keywords
   '("TYPE" "left" "right" "infix" "prefix" "quantifier"
-    "protected" "private" "injective" "constant"))
+    "protected" "private" "injective" "constant" "opaque"))
 
 (defcustom lambdapi-indent-basic 2
   "Basic indentation for lambdapi-mode."
   :type 'number
   :options '(2 4)
-  :group 'indent)
+  :group 'lambdapi)
 
 (defvar lambdapi-syntax-table
   (let ((table (make-syntax-table)))
