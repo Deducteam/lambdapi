@@ -324,7 +324,15 @@ command:
         in
         make_pos $loc (P_symbol(sym))
       }
-
+  | ms=modifier* SYMBOL s=ident al=arg* ao=preceded(COLON, term)?
+    ASSIGN de=term? p=proof
+      {
+        let sym =
+          {p_sym_mod=ms; p_sym_nam=fst s; p_sym_arg=al; p_sym_typ=ao;
+           p_sym_trm=de; p_sym_prf=Some(p); p_sym_def=true}
+        in
+        make_pos $loc (P_symbol(sym))
+      }
   | ms=modifier* INDUCTIVE is=separated_nonempty_list(WITH, inductive)
     SEMICOLON
       { make_pos $loc (P_inductive(ms, is)) }
