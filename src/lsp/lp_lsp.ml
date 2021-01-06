@@ -64,12 +64,15 @@ let do_check_text ?(reply=true) ofmt ~doc =
 
 let do_debugFlags ofmt params =
   let flags = string_field "flags" params in
+  LIO.log_error "debugFlags" ("flags="^flags);
+  let open Console in
+  let logger_keys = List.map (fun {logger_key; _} -> logger_key) !loggers in
   (* let verbose = int_field "verbose" params in *)
   Timed.Time.restore @@ Pure.get_initial_time ();
+  Console.set_debug false @@ String.of_list logger_keys;
   Console.set_default_debug flags;
   (* Console.set_default_verbose verbose; *)
   Pure.set_initial_time ();
-  LIO.log_error "debugFlags" ("flags="^flags);
   Hashtbl.iter
     (fun _ doc ->
       let open Lp_doc in
