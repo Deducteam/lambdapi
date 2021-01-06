@@ -89,39 +89,39 @@ set builtin "eqind" ≔ eqind;
 set builtin "refl"  ≔ refl;
 
 // Symmetry of the equality (first option, rewrite).
-theorem eq_sym : Π a x y, P (eq a x y) → P (eq a y x)
-proof
+opaque symbol eq_sym : Π a x y, P (eq a x y) → P (eq a y x)
+≔ begin
   assume a x y h
   rewrite h
   refine refl a y
-qed
+end
 
 // Symmetry of the equality (second option, by hand).
-theorem eq_sym_other_1 : Π a x y, P (eq a x y) → P (eq a y x)
-proof
+opaque symbol eq_sym_other_1 : Π a x y, P (eq a x y) → P (eq a y x)
+≔ begin
   assume a x y h
   refine eqind a x y h (λ z, eq a y z) (refl a y)
-qed
+end
 
 // Symmetry of the equality (third option, by hand with a wildcard).
-theorem eq_sym_other_2 : Π a x y, P (eq a x y) → P (eq a y x)
-proof
+opaque symbol eq_sym_other_2 : Π a x y, P (eq a x y) → P (eq a y x)
+≔ begin
   assume a x y h;
   refine eqind a x y h (λ z, eq a y z) _;
   simpl;
   refine refl a y;
-qed
+end
 
 // [s] is compatible with Leibniz equality.
-theorem s_eq : Π x y, P (eq nat x y) → P (eq nat (s x) (s y))
-proof
+opaque symbol s_eq : Π x y, P (eq nat x y) → P (eq nat (s x) (s y))
+≔ begin
   assume x y xy;
   refine eqind nat x y xy (λ z, eq nat (s z) (s y)) (refl nat (s y));
-qed
+end
 
 // [z] is right neutral for add.
-theorem add0r : Π n, P (eq nat (add n z) n)
-proof
+opaque symbol add0r : Π n, P (eq nat (add n z) n)
+≔ begin
   // FIXME try to infer nat.;
   // FIXME try to infer the predicate;
   refine nat_ind (λ n, eq nat (add n z) n) ?CZ ?CS;
@@ -132,11 +132,11 @@ proof
   assume n h;
   simpl;
   refine s_eq (add n z) n h;
-qed
+end
 
 // [Π n m, n + S m = S (n+m)]
-theorem add_succ_r : Π n m, P (eq nat (add n (s m)) (s (add n m)))
-proof
+opaque symbol add_succ_r : Π n m, P (eq nat (add n (s m)) (s (add n m)))
+≔ begin
   assume n m;
   refine nat_ind (λ n, eq nat (add n (s m)) (s (add n m))) ?CZ[n;m] ?CS[n;m] n;
   // Case Z;
@@ -148,11 +148,11 @@ proof
   rewrite ih;
   simpl;
   refine refl nat (s (s (add pn m)));
-qed
+end
 
 // Commutativity of the addition.
-theorem addcomm : Π n m, P (eq nat (add n m) (add m n))
-proof
+opaque symbol addcomm : Π n m, P (eq nat (add n m) (add m n))
+≔ begin
   assume n m;
   refine nat_ind (λ (n:N), eq nat (add n m) (add m n)) ?CZ[n;m] ?CS[n;m] n;
   // Case Z;
@@ -165,134 +165,134 @@ proof
   rewrite ih;
   rewrite add_succ_r m k;
   refine refl nat (s (add m k));
-qed
+end
 
 // Adding the same value is the same as multiplying by 2.
-theorem add_same_times_two : Π x, P (eq nat (add x x) (mul 2 x))
-proof
+opaque symbol add_same_times_two : Π x, P (eq nat (add x x) (mul 2 x))
+≔ begin
   assume x;
   simpl;
   rewrite add0r;
   refine refl nat (add x x);
-qed
+end
 
 //////////////////////////////////////////////////////////////////////////////
 // Rewrite tests with quantified variables in the hypothesis.               //
 //////////////////////////////////////////////////////////////////////////////
 
 // This stupid test directly uses the addcomm lemma.
-theorem rewriteTest1 : Π a b, P (eq nat (add a b) (add b a))
-proof
+opaque symbol rewriteTest1 : Π a b, P (eq nat (add a b) (add b a))
+≔ begin
   assume a b;
   //print;
   rewrite [add _ b] addcomm;
   refine refl nat (add b a);
-qed
+end
 
 // This stupid test directly uses the addcomm lemma in one place.
-theorem rewriteTest2 : Π a b, P (eq nat (add (add a b) b) (add (add b a) b))
-proof
+opaque symbol rewriteTest2 : Π a b, P (eq nat (add (add a b) b) (add (add b a) b))
+≔ begin
   assume a b;
   //print;
   rewrite [x in (add x b)] addcomm;
   refine refl nat (add (add b a) b);
-qed
+end
 
 // This stupid test directly uses the addcomm lemma in two places.
-theorem rewriteTest3 : Π a b,
+opaque symbol rewriteTest3 : Π a b,
   P (eq nat (add (add (add a b) b) (add (add a b) b))
             (add (add (add b a) b) (add (add b a) b)))
-proof
+≔ begin
   assume a b;
   //print;
   rewrite [x in (add x b)] addcomm;
   refine refl nat (add (add (add b a) b) (add (add b a) b));
-qed
+end
 
 // An easy contextual rewrite.
-theorem rewriteTest4 : Π a b,
+opaque symbol rewriteTest4 : Π a b,
   P (eq nat (add (add (add a b) (add a b)) a)
             (add (add (add b a) (add a b)) a))
-proof
+≔ begin
   assume a b;
   rewrite [x in (add x (add a b))] addcomm;
   refine refl nat (add (add (add b a) (add a b)) a);
-qed
+end
 
 // A slightly more complicated contextual rewrite.
-theorem rewriteTest5 : Π a b,
+opaque symbol rewriteTest5 : Π a b,
   P (eq nat (add (add a b) (add a b)) (add (add b a) (add b a)))
-proof
+≔ begin
   assume a b;
   rewrite [x in add x x] addcomm;
   refine refl nat (add (add b a) (add b a));
-qed
+end
 
 // An even more complicated rewrite, combining both wildcards and binders.
-theorem rewriteTest6 : Π a b,
+opaque symbol rewriteTest6 : Π a b,
   P (eq nat (add (add (add a b) a) a) (add (add a (add a b)) a))
-proof
+≔ begin
   // print;
   assume a b;
   rewrite [x in (add x _)] addcomm;
   refine refl nat (add (add a (add a b)) a);
-qed
+end
 
 // Example 17: Very trivial SSReflect example.
 symbol silly_axiom : Π m n, P (eq nat m n);
 
-theorem rewriteTest7 : Π a b c,
+opaque symbol rewriteTest7 : Π a b c,
  P (eq nat (add (add (add a b) c) (add a b))
            (add (add (add c b) c) (add a b)))
-proof
+≔ begin
   assume a b c;
   rewrite [in x in (add x c)] (silly_axiom a c);
   refine refl nat (add (add (add c b) c) (add a b));
-qed
+end
 
 // Very trivial SSReflect example.
-theorem rewriteTest8 : Π a b c,
+opaque symbol rewriteTest8 : Π a b c,
  P (eq nat (add (add (add a b) c) (add a b))
            (add (add (add c b) c) (add a b)))
-proof
+≔ begin
   assume a b c;
   rewrite [in (add (_) c)] (silly_axiom a c);
   refine refl nat (add (add (add c b) c) (add a b));
-qed
+end
 
-theorem rewriteTest9 : Π a b c,
+opaque symbol rewriteTest9 : Π a b c,
   P (eq nat (add (add a b) (add c (add a b)))
             (add (add a b) (add c (add b a))))
-proof
+≔ begin
   assume a b c;
   rewrite [(add a  _) in x in (add c x)] addcomm;
   refine refl nat (add (add a b) (add c (add b a)));
-qed
+end
 
-theorem rewriteTest10 : Π a b c,
+opaque symbol rewriteTest10 : Π a b c,
   P (eq nat (add (add c (add a b)) (add (add a b) (add c (add a b))))
             (add (add c (add b a)) (add (add a b) (add c (add b a)))))
-proof
+≔ begin
   assume a b c;
   rewrite [(add a _) in x in (add c x)] addcomm;
   refine refl nat (add (add c (add b a)) (add (add a b) (add c (add b a))));
-qed
+end
 
-theorem rewriteTest11 : Π a b c,
+opaque symbol rewriteTest11 : Π a b c,
   P (eq nat (add (add (add (add a b) c) (add (add a b) c)) (add (add a b) c))
             (add (add (add (add a b) c) (add (add b a) c)) (add (add a b) c)))
-proof
+≔ begin
   assume a b c;
   rewrite [(add a _) in x in (add (add _ x) _)] addcomm;
   refine refl nat (add (add (add (add a b) c)
            (add (add b a) c)) (add (add a b) c));
-qed
+end
 
-theorem rewriteTest12 : Π a b c,
+opaque symbol rewriteTest12 : Π a b c,
   P (eq nat (add (add c (add a b)) (add (add a b) (add c (add a b))))
             (add (add c (add b a)) (add (add a b) (add c (add b a)))))
-proof
+≔ begin
   assume a b c;
   rewrite [(add a b) as x in (add _ x)] addcomm;
   refine refl nat (add (add c (add b a)) (add (add a b) (add c (add b a))));
-qed
+end

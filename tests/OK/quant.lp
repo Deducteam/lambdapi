@@ -4,7 +4,7 @@ injective symbol τ : Set → TYPE;
 
 constant symbol prop : Set;
 
-definition Prop ≔ τ prop;
+symbol Prop ≔ τ prop;
 
 constant symbol ⊤ : Prop;
 

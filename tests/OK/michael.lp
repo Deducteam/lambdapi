@@ -18,9 +18,9 @@ set infix right 6 "-->" ≔ imp;
 constant symbol all : Π {A : Type}, eta ((A > o) > o);
 rule eps (@all $a $b) ↪ Π (x : eta $a), eps ($b x);
 
-definition false : eta o ≔ all (λ p, p);
+symbol false : eta o ≔ all (λ p, p);
 
-definition not : eta (o > o) ≔ λ p, p --> false;
+symbol not : eta (o > o) ≔ λ p, p --> false;
 set prefix 40 "~" ≔ not;
 
 // these expressions typecheck

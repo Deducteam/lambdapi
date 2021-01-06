@@ -1,7 +1,7 @@
 // Performance on non linear tests.
 require open tests.OK.nat;
 
-definition upper ≔ 500;
+symbol upper ≔ 500;
 
 symbol loop : N → N → N → N;
 rule loop $x $x (s $y) ↪ loop $x $x $y

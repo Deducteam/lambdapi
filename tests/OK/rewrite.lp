@@ -12,7 +12,7 @@ rule T (pi $f) ↪ Π x, T ($f x);
 
 constant symbol bool : U;
 
-definition B ≔ T bool;
+symbol B ≔ T bool;
 
 constant symbol true  : B;
 constant symbol false : B;
@@ -21,7 +21,7 @@ constant symbol false : B;
 
 constant symbol nat  : U;
 
-definition N ≔ T nat;
+symbol N ≔ T nat;
 
 constant symbol z : N;
 constant symbol s : N → N;
@@ -93,8 +93,8 @@ set builtin "eqind" ≔ eqind;
 set builtin "refl"  ≔ refl;
 
 // [Π n m, n + S m = S (n+m)]
-theorem add_succ_r n m : P (n + s m = s (n + m))
-proof
+opaque symbol add_succ_r n m : P (n + s m = s (n + m))
+≔ begin
   assume n m;
   refine nat_ind (λ n, n + s m = s (n + m)) _ _ n;
   // Case 0;
@@ -105,18 +105,18 @@ proof
   assume pn ih;
   rewrite ih;
   reflexivity;
-qed
+end
 
-theorem test0 x y z : P ((x + s y) + z = (s (x + y)) + z)
-proof
+opaque symbol test0 x y z : P ((x + s y) + z = (s (x + y)) + z)
+≔ begin
   assume x y z;
   rewrite add_succ_r;
   refine refl nat (add (s (add x y)) z);
-qed
+end
 
-theorem test1 a (x y : T a) : P(x = y) → P(y = x)
-proof
+opaque symbol test1 a (x y : T a) : P(x = y) → P(y = x)
+≔ begin
   assume a x y xy;
   rewrite left xy;
   reflexivity;
-qed
+end

@@ -87,8 +87,8 @@ symbol imp_intro        : Π (p : Prop) (q : Prop), (P p → P q) → P (imp p q
 symbol imp_elim         : Π (p : Prop) (q : Prop), P (imp p q) → P p → P q;
 
 
-theorem not_elimp : Π (A : Prop), P (not (not A)) → P A
-proof
+opaque symbol not_elimp : Π (A : Prop), P (not (not A)) → P A
+≔ begin
     assume A nnp;
     refine or_elim A (not A) A _ _ _;
     refine excl_mid A;
@@ -98,7 +98,7 @@ proof
     apply bot_elim;
     apply not_elim (not A) nnp;
     apply pna;
-qed
+end
 
 set builtin "P"     ≔ P;
 set builtin "T"     ≔ T;

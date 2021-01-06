@@ -17,14 +17,14 @@ constant symbol id : Π{Typ:U}, T Typ → T Typ;
 constant symbol idF : Π(Typ:U), T Typ → T Typ;
 
 // We would like to do :
-// definition zero2 ≔ id zero
+// symbol zero2 ≔ id zero
 
 // But it won't work for now because we need to find a Typ:U such that
 // T Typ = Tgiven
 // where Tgiven here is N
 // Obviously, we know that T Nat = N, but we don't have yet implemented a way to reverse the
 // rewrite rules for T (hoping that T really is injective, otherwise obviously we'll have to make a choice).
-// We will need to implement that to make implicit arguments useful for polymorphic definitions,
+// We will need to implement that to make implicit arguments useful for polymorphic symbols,
 // but it's beyong the usage of implicit arguments for now
 
 // Question :

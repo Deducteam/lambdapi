@@ -12,7 +12,7 @@ constant symbol s : N → N;
 set builtin "0"  ≔ z;
 set builtin "+1" ≔ s;
 
-definition forty_two ≔ 42;
+symbol forty_two ≔ 42;
 
 // Addition function.
 
@@ -36,7 +36,7 @@ with $m     × (s $n) ↪ $m + $m × $n;
 
 // Doubling function.
 
-definition double n ≔ mul n 2;
+symbol double n ≔ mul n 2;
 
 // Equality function.
 

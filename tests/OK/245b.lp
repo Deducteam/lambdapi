@@ -18,7 +18,7 @@ set infix right 6 "-->" ≔ imp;
 constant symbol all : Π {A : Type}, eta ((A > o) > o);
 rule eps (@all $a $b) ↪ Π (x : eta $a), eps ($b x);
 
-definition id : Π {A : Type}, eta (A > A) ≔ λ A x, x;
+symbol id : Π {A : Type}, eta (A > A) ≔ λ A x, x;
 
 constant symbol zero : eta i;
 constant symbol succ : eta (i > i);
@@ -28,10 +28,10 @@ type id zero;
 type @id (i > i) succ;
 type id succ;
 
-definition true : eta o ≔ all (λ p, p --> p);
-definition trueI : eps true ≔ λ P p, p;
-definition imp_refl : Π {P : eta o}, eps (P --> P) ≔ λ P prf, prf;
-definition true_imp_true : eps (true --> true) ≔ @imp_refl true;
+symbol true : eta o ≔ all (λ p, p --> p);
+symbol trueI : eps true ≔ λ P p, p;
+symbol imp_refl : Π {P : eta o}, eps (P --> P) ≔ λ P prf, prf;
+symbol true_imp_true : eps (true --> true) ≔ @imp_refl true;
 
 // works
 type @imp_refl true trueI;

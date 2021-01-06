@@ -34,21 +34,21 @@ constant symbol cons : Π{n:T Nat}, T Bool → T (Vect n) → T (Vect (s n));
 
 // TEST IMPLICIT ARGUMENTS FOR A DEFINITION, WITHOUT THE @ MARKER
 // [true]
-definition l1  : T (Vect (s zero)) ≔ cons true nil;
+symbol l1  : T (Vect (s zero)) ≔ cons true nil;
 // It works.
 
 // TEST NESTED IMPLICIT ARGUMENTS FOR A DEFINITION, WITHOUT THE @ MARKER
-definition l2 : T (Vect (s (s zero))) ≔ cons true (cons false nil);
+symbol l2 : T (Vect (s (s zero))) ≔ cons true (cons false nil);
 // It works
 
 // TEST IMPLICIT ARGUMENTS FOR A DEFINITION, WITH THE @ MARKER
 // Same as l1 but fully explicit
-definition l3 : T (Vect (s zero)) ≔ @cons zero true nil;
+symbol l3 : T (Vect (s zero)) ≔ @cons zero true nil;
 // It works.
 
 // TEST NESTED IMPLICIT ARGUMENTS FOR A DEFINITION, WITH THE @ MARKER
 // Same as l2 but fully explicit
-definition l4 : T (Vect (s (s zero))) ≔ @cons (s zero) true (@cons zero false nil);
+symbol l4 : T (Vect (s (s zero))) ≔ @cons (s zero) true (@cons zero false nil);
 // It works.
 
 symbol append : Π (n:T Nat) (m:T Nat), T (Vect n) → T (Vect m) → T (Vect (n + m));

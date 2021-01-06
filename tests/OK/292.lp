@@ -17,6 +17,6 @@ rule d2_1 (λ _ y, _    ) ↪ λ _ _,zero; // no warning
 // of the "y" variable. That is not the case in the second line.
 
 // New warnings for (unused) bound λ-variables.
-definition fst1 : R → R → R ≔ λ x y , x; // warning since y not bound.
-definition fst2 : R → R → R ≔ λ x _ , x; // no warning
-definition fst3 : R → R → R ≔ λ x _y, x; // no warning either
+symbol fst1 : R → R → R ≔ λ x y , x; // warning since y not bound.
+symbol fst2 : R → R → R ≔ λ x _ , x; // no warning
+symbol fst3 : R → R → R ≔ λ x _y, x; // no warning either

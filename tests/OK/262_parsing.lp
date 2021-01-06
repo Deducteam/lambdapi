@@ -5,14 +5,14 @@ constant symbol A : TYPE;
 private symbol f : A → A;
 protected symbol g : A → A;
 
-private definition fdouble x ≔ f (f x);
-protected definition gdouble x ≔ g (g x);
+private symbol fdouble x ≔ f (f x);
+protected symbol gdouble x ≔ g (g x);
 
 // Mixing public, protected and private: if the head is private, so is the
 // rest
-private definition fog x ≔ f (g x); // Private and protected
+private symbol fog x ≔ f (g x); // Private and protected
 symbol h : A → A;
-private definition fogoh x ≔ f (g (h x)); // Public, private, protected
+private symbol fogoh x ≔ f (g (h x)); // Public, private, protected
 
 // Rewriting rules from private symbols to private symbols are allowed
 private symbol a : A;
