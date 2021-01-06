@@ -186,11 +186,13 @@ and pp_term : term pp = fun oc t ->
       | _          -> assert false
     in
     match unfold t with
-    (* Application is handled separately, unreachable. *)
     | Appl(_,_)   -> assert false
-    (* Forbidden cases. *)
-    | Wild        -> assert false
-    | TRef(_)     -> assert false
+    (* Application is handled separately, unreachable. *)
+    | Wild        -> out oc "_"
+    | TRef(r)     ->
+        (match !r with
+         | None -> out oc "<TRef>"
+         | Some t -> pp `Atom oc t)
     (* Atoms are printed inconditonally. *)
     | Vari(x)     -> pp_var oc x
     | Type        -> out oc "TYPE"

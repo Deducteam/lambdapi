@@ -61,6 +61,8 @@ Installing with `opam`_:
   packages might be missing (available on `elpa`_):
 
   * `eglot`_,
+  * `highlight`_,
+  * `math-symbol-lists`_,
   * `company`_ (optional) for tooltip unicode completion,
   * `company-math`_ (optional) for tooltip unicode completion).
 
@@ -159,9 +161,12 @@ is open.
 
 You can toggle the interactive mode with ``C-c C-i``. If you were to do
 so, you still can navigate the proofs with ``C-c C-p`` and ``C-c C-n``,
-and show the goals at the current line with ``C-C C-c``. As always with
-emacs, if you were to be dissatisfied with these keybindings, you can
-change them easily!
+jump between proofs with ``C-c C-b`` and ``C-c C-f``, and show the goals
+at the current line with ``C-c C-c``. As always with emacs, if you were
+to be dissatisfied with these keybindings, you can change them easily!
+
+Clicking on the ``i``-th goal of the ``*Goals*`` buffer puts the focus on it
+by inserting a ``focus i`` tactic in the proof script.
 
 CPU usage and deactivation
 ''''''''''''''''''''''''''
@@ -189,6 +194,17 @@ to run lambdapi on the edited buffer with ``C-c r``. It can be used to
 display goals while doing a proof. To display the result of ``compute``,
 ``type``, and simlar commmand as well, write ``"%c --verbose 1 %s"``
 instead of ``"%c %s"``.
+
+
+Customize goals buffer
+''''''''''''''''''''''
+The position and amount of space taken by the ``*Goals*`` buffer can be changed
+in the LambdaPi customization group (Do ``M-x customize-group lambdapi``).
+If the space is too small, then the window will open
+either on the right side or at the bottom, whichever is more suitable.
+
+The layout can be refreshed with ``C-c C-r``.
+
 
 Other relevant packages
 -----------------------
@@ -218,3 +234,5 @@ To have everything configured using `use-package`_, use
 .. _quickrun: https://github.com/emacsorphanage/quickrun
 .. _emacs: https://www.gnu.org/software/emacs/
 .. _opam: http://opam.ocaml.org
+.. _highlight: https://www.emacswiki.org/emacs/HighlightLibrary
+.. _math-symbol-lists: https://elpa.gnu.org/packages/math-symbol-lists.html

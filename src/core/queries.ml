@@ -6,19 +6,17 @@ open Syntax
 open Terms
 open Print
 open P_terms
+open Proof
 
 (** [handle_query ss ps q] *)
-let handle_query : Sig_state.t -> Proof.t option -> p_term p_query -> unit =
+let handle_query : Sig_state.t -> proof_state option -> p_term p_query ->
+  unit =
   fun ss ps q ->
-  let env =
-    match ps with
-    | None     -> Env.empty
-    | Some(ps) -> fst (Proof.focus_goal q.pos ps)
-  in
-  let ctxt = Env.to_ctxt env in
-  let scope = Scope.scope_term Public ss env in
   match q.elt with
   | P_query_assert(must_fail, asrt) ->
+      let env = Proof.focus_env ps in
+      let ctxt = Env.to_ctxt env in
+      let scope = Scope.scope_term Public ss env in
       begin
       match asrt with
       | P_assert_typing(pt,pa) ->
@@ -71,12 +69,16 @@ let handle_query : Sig_state.t -> Proof.t option -> p_term p_query -> unit =
        with Not_found -> wrn q.pos "Unknown flag \"%s\"." id);
       out 3 "(flag) %s → %b\n" id b
   | P_query_infer(pt, cfg) ->
-      (* Infer the type of [pt]. *)
+      let env = Proof.focus_env ps in
+      let ctxt = Env.to_ctxt env in
+      let scope = Scope.scope_term Public ss env in
       let t = scope pt in
       let a = Infer.infer Unif.solve_noexn pt.pos ctxt t in
       out 1 "(infr) %a : %a\n" pp_term t pp_term (Eval.eval cfg ctxt a)
   | P_query_normalize(pt, cfg) ->
-      (* Normalize [pt]. *)
+      let env = Proof.focus_env ps in
+      let ctxt = Env.to_ctxt env in
+      let scope = Scope.scope_term Public ss env in
       let t = scope pt in
       (* Check that [t] is typable. *)
       ignore (Infer.infer Unif.solve_noexn pt.pos ctxt t);

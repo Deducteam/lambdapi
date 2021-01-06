@@ -266,10 +266,7 @@ let file_to_module : string -> Path.t = fun fname ->
       fatal_no_pos "Expected any of: %a." pp_exp valid_extensions
     end;
   (* Normalizing the file path. *)
-  let fname =
-    try Filename.realpath fname with Invalid_argument(_) ->
-      fatal_no_pos "No such file or directory [%s]." fname
-  in
+  let fname = Filename.normalize fname in
   let base = Filename.chop_extension fname in
   (* Finding the best mapping under the root. *)
   let mapping = ref None in

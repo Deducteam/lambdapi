@@ -4,7 +4,7 @@ Queries
 ``print``
 ---------
 
-When called to a symbol identifier as argument, displays information
+When called with a symbol identifier as argument, displays information
 (type, notation, rules, etc.) about that symbol. Without argument,
 displays the list of current goals (in proof mode only).
 
@@ -38,8 +38,8 @@ negative tests.
    assertnot zero ≡ succ zero
    assertnot succ : Nat
 
-``set``
--------
+``set verbose|debug|flag|prover|prover_timeout``
+------------------------------------------------
 
 The ``set`` command is used to control the behaviour of Lambdapi and
 extension points in its syntax.

@@ -52,6 +52,45 @@ and qidents_of_p_term (term : P_terms.p_term) =
   | P_terms.P_Wrap term -> qidents_of_p_term term
   | P_terms.P_Expl term -> qidents_of_p_term term
 
+and qidents_of_rw_patt (rwpat : P_terms.p_term Syntax.p_rw_patt) =
+  match rwpat with
+  | Syntax.P_rw_Term pt -> qidents_of_p_term pt
+  | Syntax.P_rw_InTerm pt -> qidents_of_p_term pt
+  | Syntax.P_rw_InIdInTerm (_, pt) -> qidents_of_p_term pt
+  | Syntax.P_rw_IdInTerm (_, pt) -> qidents_of_p_term pt
+  | Syntax.P_rw_TermInIdInTerm (pt1, _, pt2) ->
+      qidents_of_p_term pt1 @ qidents_of_p_term pt2
+  | Syntax.P_rw_TermAsIdInTerm (pt1, _, pt2) ->
+      qidents_of_p_term pt1 @ qidents_of_p_term pt2
+
+and qidents_of_p_assertion (pasrtn : P_terms.p_term Syntax.p_assertion) =
+  match pasrtn with
+  | Syntax.P_assert_typing (pt, _) -> qidents_of_p_term pt
+  | Syntax.P_assert_conv (pt1, pt2) ->
+    qidents_of_p_term pt1 @ qidents_of_p_term pt2
+
+and qidents_of_p_query (pq : P_terms.p_term Syntax.p_query) =
+  match pq.elt with
+  | Syntax.P_query_assert (_, pasrt)-> qidents_of_p_assertion pasrt
+  | Syntax.P_query_infer (pt, _) -> qidents_of_p_term pt
+  | Syntax.P_query_normalize (pt, _) -> qidents_of_p_term pt
+  | Syntax.P_query_print qidnt_opt ->
+    (match qidnt_opt with Some qidnt -> [qidnt] | None -> [])
+  | _ -> []
+
+
+and qidents_of_p_tactic (term: P_terms.p_term Syntax.p_tactic) =
+  match term.elt with
+  | Syntax.P_tac_refine pt -> qidents_of_p_term pt
+  | Syntax.P_tac_apply pt -> qidents_of_p_term pt
+  | Syntax.P_tac_rewrite (_, rwpat_lo, pt) ->
+    let rwqids = Option.map_default (fun x -> qidents_of_rw_patt x.Pos.elt)
+                   [] rwpat_lo in
+    let ptqids = qidents_of_p_term pt in
+    rwqids @ ptqids
+  | Syntax.P_tac_query pq -> qidents_of_p_query pq
+  | _ -> []
+
 and filter_bound_qidents (args : P_terms.p_term Syntax.p_args list)
     (terms_list : P_terms.p_term list) =
   let qids, qargs = List.split (List.map qidents_of_bound_p_args args) in
@@ -92,10 +131,16 @@ let qidents_of_cmd (cmd : t) =
   | Syntax.P_require_as (_, _) -> []
   | Syntax.P_open _ -> []
   | Syntax.P_rules rules -> concat_map qidents_of_p_rule rules
-  | Syntax.P_symbol {p_sym_arg;p_sym_typ;p_sym_trm;_} ->
-    let some_or_empty = function Some arg -> [arg] | None -> [] in
-    let terms_list = some_or_empty p_sym_typ @ some_or_empty p_sym_trm in
-    filter_bound_qidents p_sym_arg terms_list
+  | Syntax.P_symbol {p_sym_arg;p_sym_typ;p_sym_trm;p_sym_prf;_} ->
+    let prfqidlist =
+      match p_sym_prf with
+      | Some (ptac_list, _) -> List.concat_map qidents_of_p_tactic ptac_list
+      | None -> []
+    in
+    let terms_list = Option.map_default (fun x -> [x]) [] p_sym_typ @
+                     Option.map_default (fun x -> [x]) [] p_sym_trm in
+    filter_bound_qidents p_sym_arg terms_list @ prfqidlist
+
   | Syntax.P_set set -> qidents_of_p_config set
   | Syntax.P_query q ->
     let f (q : P_terms.p_term Syntax.p_query_aux) =

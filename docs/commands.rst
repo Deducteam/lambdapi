@@ -47,7 +47,7 @@ module. It can also be combined with the ``require`` command.
 
 Allows to declare or define a symbol as follows:
 
-``symbol`` modifiers identifier parameters [``:`` type] [``≔`` term] [``begin`` proof ``end``]
+``symbol`` *modifiers* *identifier* *parameters* [``:`` *type*] [``≔`` *term*] [``begin`` *proof* ``end``]
 
 The identifier should not have already been used in the current module.
 It must be followed by a type or a definition (or both).
@@ -56,6 +56,17 @@ The following proof (if any) allows the user to solve typing and
 unification goals the system could not solve automatically. It can
 also be used to give a definition interactively (if no defining term
 is provided).
+
+Without ``≔``, this is just a symbol declaration. The following proof
+script does *not* provide a proof of *type* but help the system solve
+unification constraints it couldn't solve automatically for checking
+the well-sortedness of *type*.
+
+For defining a symbol or proving a theorem, which is the same thing,
+``≔`` is mandatory. If no defining *term* is provided, then the
+following proof script must indeed include a proof of *type*. Note
+that ``symbol f:A ≔ t`` is equivalent to ``symbol f:A ≔ begin refine t
+end``.
 
 Examples:
 
@@ -280,14 +291,8 @@ Adding sets of rules allows to maintain confluence.
 
 Examples of patterns are available in ``tests/OK/patterns.lp``.
 
-``print``
----------
-
-Prints information (type, notation, rules, etc.) about the symbol
-given in argument of the command.
-
-``set`` 
--------
+``set declared|prefix|infix|quantifier|builtin|unif_rule``
+----------------------------------------------------------
 
 The ``set`` command is used to control the behaviour of Lambdapi and
 extension points in its syntax.
