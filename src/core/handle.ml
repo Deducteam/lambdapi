@@ -175,7 +175,7 @@ let handle_inductive_symbol :
     do not work on this structure directly,  although they act on the contents
     of its [pdata_p_state] field. *)
 type proof_data =
-  { pdata_stmt_pos : Pos.popt (** Position of the proof's statement. *)
+  { pdata_stmt_pos : Pos.popt (** Position of the declared symbol. *)
   ; pdata_p_state  : proof_state (** Proof state. *)
   ; pdata_tactics  : p_term p_tactic list (** Tactics. *)
   ; pdata_finalize : sig_state -> proof_state -> sig_state (** Finalizer. *)
@@ -384,35 +384,35 @@ let handle_cmd : sig_state -> (p_term, p_rule) p_command ->
         match pe.elt with
         | P_proof_abort ->
             (* Just ignore the command with a warning. *)
-            wrn pos "Proof aborted."; ss
+            wrn pe.pos "Proof aborted."; ss
         | _ ->
             (* Check that no metavariable remains. *)
             if Basics.has_metas true a then
               (fatal_msg "The type of [%s] has unsolved metavariables.\n" id;
-               fatal pos "We have %s : %a." id pp_term a);
+               fatal pe.pos "We have %s : %a." id pp_term a);
             (match t with
              | Some(t) when Basics.has_metas true t ->
                  fatal_msg
                    "The definition of [%s] has unsolved metavariables.\n" id;
-                 fatal pos "We have %s : %a ≔ %a." id pp_term a pp_term t
+                 fatal pe.pos "We have %s : %a ≔ %a." id pp_term a pp_term t
              | _ -> ());
             match pe.elt with
             | P_proof_abort -> assert false (* Handled above *)
             | P_proof_admit ->
                 (* If the proof is finished, display a warning. *)
                 if finished ps then
-                  wrn pos "The proof is finished. You can use 'end' instead.";
+                  wrn pe.pos "The proof is finished. Use 'end' instead.";
                 (* Add the symbol in the signature with a warning. *)
                 out 3 "(symb) %s (admit)\n" id;
-                wrn pos "Proof admitted.";
+                wrn pe.pos "Proof admitted.";
                 let sig_symbol =
                   {expo;prop;mstrat;ident=p_sym_nam;typ=a;impl;def=t} in
                 fst (add_symbol ss sig_symbol)
-            | P_proof_end   ->
+            | P_proof_end ->
                 (* Check that the proof is indeed finished. *)
                 if not (finished ps) then
                   (out 1 "%a" Proof.pp_goals ps;
-                   fatal pos "The proof is not finished.");
+                   fatal pe.pos "The proof is not finished.");
                 (* Add the symbol in the signature. *)
                 out 3 "(symb) %s (end)\n" id;
                 let sig_symbol =
@@ -431,7 +431,7 @@ let handle_cmd : sig_state -> (p_term, p_rule) p_command ->
             let t = Scope.scope_term pdata_expo ss [] pt in
             Tactics.tac_refine pt.pos ps t
       in
-      { pdata_stmt_pos = pos; pdata_p_state = ps; pdata_tactics = ts
+      { pdata_stmt_pos = p_sym_nam.pos; pdata_p_state = ps; pdata_tactics = ts
       ; pdata_finalize = finalize ; pdata_end_pos = pe.pos; pdata_expo }
     in
     (ss, Some(data))
