@@ -222,9 +222,6 @@ let reset_default : unit -> unit = fun () ->
   List.iter reset Stdlib.(!loggers);
   (* Reset flags to their default values. *)
   let reset _ (default, r) = r := default in
-  let tempoc = open_out_gen [Open_append; Open_creat] 0o666 "deb-out" in
-  Printf.fprintf tempoc "log_enabled:%B\n" !log_enabled;
-  close_out tempoc;
   StrMap.iter reset Stdlib.(!boolean_flags)
 
 (** Module to manipulate imperative state of the typechecker. *)

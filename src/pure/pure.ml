@@ -72,9 +72,6 @@ let initial_state : file_path -> state = fun fname ->
   Sign.loading := [mp];
   let sign = Sig_state.create_sign mp in
   Sign.loaded  := PathMap.add mp sign !Sign.loaded;
-  let tempoc = open_out_gen [Open_append; Open_creat] 0o666 "aksdjfla.txt" in
-  Printf.fprintf tempoc "%B\n%!" Timed.(!Console.log_enabled);
-  close_out tempoc;
   (Time.save (), Sig_state.of_sign sign)
 
 let handle_command : state -> Command.t -> command_result =

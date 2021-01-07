@@ -26,6 +26,9 @@ let client: LanguageClient;
 
 export function activate(context: ExtensionContext) {
 
+    const provider = new DebugViewProvider(context.extensionUri);
+    context.subscriptions.push(window.registerWebviewViewProvider('lambdapi.debugView', provider));
+
     //___Declaration of workspace variables___
 
     //Position of the proof cursor : colored highlights show until which point the proof was surveyed
@@ -477,7 +480,7 @@ function updateTerminalText(logstr: string){
                 data = data.replace(/\r/g, '\r\n');
                 console.log(`TermWritable=${termWritable}`)
                 console.log("data=" + JSON.stringify(data)+"\n\n");
-                if(termWritable){
+                if(termWritable || true){
                     writeEmitter.fire(data)
                     termWritable = false;
                 }
@@ -583,17 +586,77 @@ function sendGoalsRequest(position: Position, panel : WebviewPanel, docUri : Uri
     }, () => { panel.webview.html = buildGoalsContent([], styleUri); });
 }
 
-class DebugViewProvider implements WebviewViewProvider {
-    resolveWebviewView(webviewView: WebviewView, context: WebviewViewResolveContext<unknown>, token: CancellationToken): void | Thenable<void> {
-        this._view = webviewView
-    }
-    
-}
-
 
 export function deactivate(): Thenable<void> | undefined {
     if (!client) {
         return undefined;
     }
     return client.stop();
+}
+
+
+
+import * as vscode from 'vscode';
+
+class DebugViewProvider implements vscode.WebviewViewProvider {
+	public static readonly viewType = 'lambdapi.debugView';
+
+	private _view?: vscode.WebviewView;
+
+	constructor(
+		private readonly _extensionUri: vscode.Uri,
+	) { }
+	resolveWebviewView(webviewView: vscode.WebviewView, context: vscode.WebviewViewResolveContext<unknown>, _token: vscode.CancellationToken): void | Thenable<void> {
+		this._view = webviewView;
+
+		webviewView.webview.options = {
+			// Allow scripts in the webview
+			enableScripts: true,
+
+			localResourceRoots: [
+				this._extensionUri
+			]
+		};
+
+		webviewView.webview.html = this._getHtmlForWebview();
+
+		webviewView.webview.onDidReceiveMessage(data => {
+            console.log("Recieved" + JSON.stringify(data) + "\n\n");
+			switch (data.type) {
+				case 'debug':
+					{
+                        let params = {'flags': data.flags};
+                        client.sendNotification('proof/debugFlags', params);
+                        console.log(`sent : ${JSON.stringify(params)}\n`);
+					}
+			}
+		});
+	}
+
+	private _getHtmlForWebview(){
+		const html = `<!DOCTYPE html>
+		<html lang="en">
+		<head>
+			<meta charset="UTF-8">
+			<meta name="viewport" content="width=device-width, initial-scale=1.0">
+		</head>
+		<body>
+			<button id="debug">Debug!</button>
+
+			<script>
+				const vscode = acquireVsCodeApi();
+				
+				document.getElementById('debug').addEventListener('click', () => {
+					vscode.postMessage({
+						'type': 'debug',
+						'flags': 'r'
+					});
+				});
+				
+			</script>
+		</body>
+		</html>`;
+		return html;
+	}
+	
 }
