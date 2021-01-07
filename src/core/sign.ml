@@ -216,6 +216,17 @@ let unlink : t -> unit = fun sign ->
   let fn s i = unlink_sym s; unlink_inductive i in
   SymMap.iter fn !(sign.sign_ind)
 
+(** [import_ops sign] import operators defined in signature [sign] to make
+    them available to the parser. Operators are added to
+    {!val:Syntax.una_operators} and {!val:Syntax.bin_operators}. *)
+let import_ops : t -> unit = fun {sign_unops; sign_binops; _} ->
+  let add_unop s (_, unop) = Pratt.(StrHtbl.add operators s (Unary(unop))) in
+  StrMap.iter add_unop !sign_unops;
+  let add_binop s (_, binop) =
+    Pratt.(StrHtbl.add operators s (Binary(binop)))
+  in
+  StrMap.iter add_binop !sign_binops
+
 (** [add_symbol sign expo prop mstrat name a impl] creates a fresh symbol with
     name [name], exposition [expo], property [prop], matching strategy
     [strat], type [a] and implicit arguments [impl] in the signature [sign].

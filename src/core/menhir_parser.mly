@@ -6,7 +6,6 @@ open Timed
 open Pos
 open Syntax
 open Legacy_lexer
-open Parser
 
 (** {b NOTE} we maintain the invariant described in the [Parser] module: every
     error should have an attached position.  We do not open [Console] to avoid
@@ -206,8 +205,7 @@ let build_config : Pos.pos -> string -> string option -> eval_config =
     | (i     , Some "WHNF") -> config (Some(i)) WHNF
     | (i     , None       ) -> config (Some(i)) NONE
     | (_     , _          ) -> raise Exit (* captured below *)
-  with _ -> parser_fatal loc "Invalid command configuration."
-
+  with _ -> Console.fatal (Some(loc)) "Invalid command configuration."
 %}
 
 %token EOF
@@ -374,10 +372,7 @@ line:
       let q = make_pos $loc (P_query_assert(mf, P_assert_conv(t,u))) in
       make_pos $loc (P_query q)
     }
-  | r=REQUIRE    DOT {
-      do_require (locate $loc) r;
-      make_pos $loc (P_require(false,[r]))
-    }
+  | r=REQUIRE DOT { make_pos $loc (P_require(false,[r])) }
   | EOF {
       raise End_of_file
     }

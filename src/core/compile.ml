@@ -17,14 +17,20 @@ let gen_obj = Stdlib.ref false
 let parse_file : string -> Syntax.ast = fun fname ->
   match Filename.check_suffix fname src_extension with
   | true  -> Parser.parse_file fname
-  | false -> Legacy_parser.parse_file fname
+  | false -> Parser.Legacy.parse_file fname
 
 (** [compile force path] compiles the file corresponding to [path], when it is
     necessary (the corresponding object file does not exist,  must be updated,
     or [force] is [true]).  In that case,  the produced signature is stored in
     the corresponding object file. *)
 let rec compile : bool -> Path.t -> Sign.t = fun force path ->
-  let base = Files.module_to_file path in
+  (* Remove escaping quotes from module paths. *)
+  let remove_quote p =
+    if Lp_lexer.is_escaped p then
+      String.(sub p 2 (length p - 4))
+    else p
+  in
+  let base = Files.module_to_file (List.map remove_quote path) in
   let src () =
     (* Searching for source is delayed because we may not need it
        in case of "ghost" signatures (such as for unification rules). *)
@@ -60,7 +66,9 @@ let rec compile : bool -> Path.t -> Sign.t = fun force path ->
       loaded := PathMap.add path sign !loaded;
       let handle ss c =
         Terms.Meta.reset_key_counter ();
-        let (ss, p) = Handle.handle_cmd ss c in
+        (* We provide the compilation function to the handle commands, so that
+           "require" is able to compile files. *)
+        let (ss, p) = Handle.handle_cmd (compile false) ss c in
         match p with
         | None       -> ss
         | Some(data) ->
@@ -87,6 +95,7 @@ let rec compile : bool -> Path.t -> Sign.t = fun force path ->
       let sign = Sign.read obj in
       PathMap.iter (fun mp _ -> ignore (compile false mp)) !(sign.sign_deps);
       loaded := PathMap.add path sign !loaded;
+      Sign.import_ops sign;
       Sign.link sign;
       out 2 "Loaded  [%s]\n%!" obj; sign
     end
@@ -104,24 +113,6 @@ let compile_file : file_path -> Sign.t = fun fname ->
   let mp = Files.file_to_module fname in
   (* Run compilation. *)
   compile Stdlib.(!recompile) mp
-
-(* NOTE we need to give access to the compilation function to the parser. This
-   is the only way infix symbols can be parsed, since they may be added to the
-   scope by a “require” command. *)
-let _ =
-  let require mp =
-    (* Save the current console state. *)
-    State.push ();
-    (* Restore the console state to default for compiling. *)
-    Console.reset_default ();
-    (* Compile and go back to previous state. *)
-    try
-      ignore (compile false mp);
-      try State.pop () with _ -> assert false (* Unreachable. *)
-    with e -> State.pop (); raise e
-  in
-  Stdlib.(Parser.require := require)
-
 (** Pure wrappers around compilation functions. Functions provided perform the
     same computations as the ones defined earlier, but restores the state when
     they have finished. An optional library mapping or state can be passed as

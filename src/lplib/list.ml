@@ -194,6 +194,11 @@ let rec pmap (f : 'a -> 'b option) (l : 'a list) : 'b list =
 let concat_map (f : 'a -> 'b list) (l : 'a list) : 'b list =
   L.concat (L.map f l)
 
+let split_last : 'a list -> 'a list * 'a = fun l ->
+  match rev l with
+  | hd::tl -> (rev tl, hd)
+  | [] -> invalid_arg "split_last: empty list"
+
 (** [rev_mapi f [x1;..;xn]] returns [f (n-1) xn; ..; f 0 x1]. *)
 let rev_mapi f =
   let rec aux acc i l =

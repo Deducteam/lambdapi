@@ -19,9 +19,8 @@ module LSP = Lsp_base
 
 let interval_of_pos : Pos.pos -> Range.t = fun p ->
   let open Range in
-  let data = Lazy.force p in
-  let start : point = make_point data.start_line data.start_col in
-  let finish : point = make_point data.end_line data.end_col in
+  let start : point = make_point p.start_line p.start_col in
+  let finish : point = make_point p.end_line p.end_col in
   make_interval start finish
 
 type doc_node =
@@ -51,7 +50,7 @@ let option_default o1 d =
 let mk_error ~doc pos msg =
   LSP.mk_diagnostics ~uri:doc.uri ~version:doc.version [pos, 1, msg, None]
 
-let process_pstep (pstate,diags) tac =
+let process_pstep (pstate, diags) tac =
   let open Pure in
   let tac_loc = Tactic.get_pos tac in
   match handle_tactic pstate tac with

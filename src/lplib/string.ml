@@ -35,3 +35,5 @@ let for_all : (char -> bool) -> string -> bool =
   let len_s = S.length s in
   let rec for_all i = i >= len_s || (p (S.get s i) && for_all (i + 1)) in
   for_all 0
+
+let hash : string -> int = Hashtbl.hash

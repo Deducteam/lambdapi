@@ -31,7 +31,7 @@ let parse_text : state -> string -> string -> Command.t list * state =
   try
     Time.restore t;
     let ast =
-      if old_syntax then Legacy_parser.parse_string fname s
+      if old_syntax then Parser.Legacy.parse_string fname s
       else Parser.parse_string fname s
     in
     (ast, (Time.save (), st))
@@ -75,7 +75,7 @@ let handle_command : state -> Command.t -> command_result =
     fun (st,ss) cmd ->
   Time.restore st;
   try
-    let (ss, pst) = Handle.handle_cmd ss cmd in
+    let (ss, pst) = Handle.handle_cmd (Compile.compile false) ss cmd in
     let t = Time.save () in
     match pst with
     | None       -> Cmd_OK(t, ss)

@@ -12,10 +12,60 @@ open Console
 open Pos
 open Syntax
 
+(** [is_keyword s] returns [true] if [s] is a keyword (defined by the lexer)
+    in {!module:Lp_lexer}. *)
+let is_keyword : string -> bool = fun s ->
+  List.mem s
+    [ "TYPE"
+    ; "apply"
+    ; "as"
+    ; "assert"
+    ; "assertnot"
+    ; "assume"
+    ; "builtin"
+    ; "compute"
+    ; "constant"
+    ; "definition"
+    ; "flag"
+    ; "in"
+    ; "inductive"
+    ; "infix"
+    ; "injective"
+    ; "left"
+    ; "let"
+    ; "off"
+    ; "on"
+    ; "open"
+    ; "prefix"
+    ; "private"
+    ; "proof"
+    ; "protected"
+    ; "prover"
+    ; "prover_timeout"
+    ; "qed"
+    ; "refine"
+    ; "refine"
+    ; "reflexivity"
+    ; "require"
+    ; "rewrite"
+    ; "right"
+    ; "rule"
+    ; "set"
+    ; "sequential"
+    ; "simpl"
+    ; "symbol"
+    ; "symmetry"
+    ; "theorem"
+    ; "type"
+    ; "type"
+    ; "unif_rule"
+    ; "verbose"
+    ; "why3"
+    ; "with" ]
 let string = Format.pp_print_string
 
 let ident : ident pp = fun oc id ->
-  if Parser.KW.mem id.elt then
+  if is_keyword id.elt then
     fatal id.pos "Identifier [%s] is a Lambdapi keyword." id.elt;
   string oc id.elt
 
@@ -25,7 +75,7 @@ let arg_ident : ident option pp = fun oc id ->
   | None     -> string oc "_"
 
 let path_elt : Pos.popt -> (string * bool) pp = fun pos oc (s,b) ->
-  if not b && Parser.KW.mem s then
+  if not b && is_keyword s then
     fatal pos "Module path member [%s] is a Lambdapi keyword." s;
   if b then Format.fprintf oc "{|%s|}" s else string oc s
 
@@ -60,19 +110,19 @@ let rec term : p_term pp = fun oc t ->
     | (P_Meta(x,ar)        , _    ) -> out "?%a%a" ident x env ar
     | (P_Patt(None   ,ar)  , _    ) -> out "$_%a" env ar
     | (P_Patt(Some(x),ar)  , _    ) -> out "$%a%a" ident x env ar
-    | (P_Appl(t,u)         , Parser.PAppl)
-    | (P_Appl(t,u)         , Parser.PFunc) -> out "%a %a" appl t atom u
-    | (P_Impl(a,b)         , Parser.PFunc) -> out "%a → %a" appl a func b
-    | (P_Abst(xs,t)        , Parser.PFunc) ->
+    | (P_Appl(t,u)         , `PAppl)
+    | (P_Appl(t,u)         , `PFunc) -> out "%a %a" appl t atom u
+    | (P_Impl(a,b)         , `PFunc) -> out "%a → %a" appl a func b
+    | (P_Abst(xs,t)        , `PFunc) ->
         out "λ%a, " args_list xs;
         let fn (ids,_,_) = List.for_all ((=) None) ids in
         let ec = !empty_context in
         empty_context := ec && List.for_all fn xs;
         out "%a" func t;
         empty_context := ec
-    | (P_Prod(xs,b)        , Parser.PFunc) ->
+    | (P_Prod(xs,b)        , `PFunc) ->
         out "Π%a, %a" args_list xs func b
-    | (P_LLet(x,xs,a,t,u)  , Parser.PFunc) ->
+    | (P_LLet(x,xs,a,t,u)  , `PFunc) ->
         out "@[<hov 2>let %a%a%a ≔@ %a@] in %a"
           ident x args_list xs annot a func t func u
     | (P_NLit(i)           , _    ) -> out "%i" i
@@ -82,9 +132,9 @@ let rec term : p_term pp = fun oc t ->
     | (P_Wrap(t)           , _    ) -> out "%a" (pp p) t
     | (P_Expl(t)           , _    ) -> out "{%a}" func t
     | (_                   , _    ) -> out "(%a)" func t
-  and atom oc t = pp Parser.PAtom oc t
-  and appl oc t = pp Parser.PAppl oc t
-  and func oc t = pp Parser.PFunc oc t
+  and atom oc t = pp `PAtom oc t
+  and appl oc t = pp `PAppl oc t
+  and func oc t = pp `PFunc oc t
   in
   let rec toplevel _ t =
     match t.elt with

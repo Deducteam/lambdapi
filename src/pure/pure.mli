@@ -62,7 +62,8 @@ val initial_state : file_path -> state
     [Cmd_Error] constuctor). *)
 val handle_command : state -> Command.t -> command_result
 
-(** [handle_tactic st tac] evaluates the tactic [tac] in state [st]. *)
+(** [handle_tactic st tac] evaluated the tactic [tac] in state [st], returning
+    a new proof state (with [Tac_OK]) or an error (with [Tac_Error]). *)
 val handle_tactic : proof_state -> Tactic.t -> tactic_result
 
 (** [end_proof st] finalises the proof which state is [st], returning a result

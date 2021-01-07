@@ -1,13 +1,9 @@
 (** Source code position management.  This module may be used to map sequences
     of characters in a source file to an abstract syntax tree. *)
 
-open Earley_core
-
 (** Type of a position, corresponding to a continuous range of characters in a
-    (utf8-encoded) source file. Elements of this type are (lazily) constructed
-    by [Earley], using the following [locate] function. *)
-type pos = pos_data Lazy.t
-and pos_data =
+    (utf8-encoded) source. *)
+type pos =
   { fname      : string option (** File name for the position.       *)
   ; start_line : int (** Line number of the starting point.          *)
   ; start_col  : int (** Column number (utf8) of the starting point. *)
@@ -17,34 +13,13 @@ and pos_data =
 (* NOTE laziness is essential on big files (especially those with long lines),
    because computing utf8 positions is expensive. *)
 
-(** [locate buf1 pos1 buf2 pos2] builds a [pos] structure,  given two [Earley]
-    input buffers. This function is used by Earley to generate the position of
-    elements during parsing.
-    @see <https://github.com/rlepigre/earley/> Earley *)
-let locate : Input.buffer -> int -> Input.buffer -> int -> pos =
-  fun buf1 pos1 buf2 pos2 ->
-    let fn () =
-      let fname = Input.filename buf1 in
-      let fname = if fname = "" then None else Some(fname) in
-      let start_line = Input.line_num buf1 in
-      let end_line = Input.line_num buf2 in
-      let start_col = Input.utf8_col_num buf1 pos1 in
-      let end_col = Input.utf8_col_num buf2 pos2 in
-      { fname ; start_line ; start_col ; end_line ; end_col }
-    in
-    Lazy.from_fun fn
-
 (** Convenient short name for an optional position. *)
 type popt = pos option
-
-(** [equal_pos p1 p2] tells whether [p1] and [p2] denote the same location. *)
-let equal_pos : pos -> pos -> bool = fun p1 p2 ->
-  Lazy.force p1 = Lazy.force p2
 
 (** [equal p1 p2] tells whether [p1] and [p2] denote the same position. *)
 let equal : popt -> popt -> bool = fun p1 p2 ->
   match (p1, p2) with
-  | (Some(p1), Some(p2)) -> equal_pos p1 p2
+  | (Some(p1), Some(p2)) -> p1 = p2
   | (None    , None    ) -> true
   | (_       , _       ) -> false
 
@@ -65,17 +40,34 @@ let make : popt -> 'a -> 'a loc =
 let in_pos : pos -> 'a -> 'a loc =
   fun p elt -> { elt ; pos = Some p }
 
+(** [end_pos po] creates a position from the end of position [po]. *)
+let end_pos : popt -> popt = fun po ->
+  match po with
+  | None -> None
+  | Some p ->
+    Some { p with start_line = p.end_line; start_col = p.end_line }
+
 (** [none elt] wraps [elt] in a ['a loc] structure without any specific source
     code position. *)
 let none : 'a -> 'a loc =
   fun elt -> { elt ; pos = None }
 
+(** [cat p1 p2] is the concatenation of positon [p1] and [p2]. If [p1] and
+    [p2] have different filenames, the resulting filename is [None]. *)
+let cat : pos -> pos -> pos = fun p1 p2 ->
+  { fname =
+      if p1.fname <> p2.fname then invalid_arg "Pos.cat: filename mismatch"
+      else p1.fname
+  ; start_line = p1.start_line
+  ; start_col = p1.start_col
+  ; end_line = p2.end_line
+  ; end_col = p2.end_col }
+
 (** [to_string ?print_fname pos] transforms [pos] into a readable string. If
     [print_fname] is [true] (the default), the filename contained in [pos] is
     printed. *)
 let to_string : ?print_fname:bool -> pos -> string =
-  fun ?(print_fname=true) p ->
-  let {fname; start_line; start_col; end_line; end_col} = Lazy.force p in
+  fun ?(print_fname=true) {fname; start_line; start_col; end_line; end_col} ->
   let fname =
     if not print_fname then "" else
     match fname with
@@ -90,24 +82,27 @@ let to_string : ?print_fname:bool -> pos -> string =
     Printf.sprintf "%s%d:%d-%d" fname start_line start_col end_col
 
 (** [print oc pos] prints the optional position [pos] to [oc]. *)
-let print : Format.formatter -> popt -> unit = fun ch p ->
+let print : Format.formatter -> pos option -> unit = fun ch p ->
   match p with
   | None    -> Format.pp_print_string ch "unknown location"
   | Some(p) -> Format.pp_print_string ch (to_string p)
 
 (** [print_short oc pos] prints the optional position [pos] to [oc] without
     the filename. *)
-let print_short : Format.formatter -> popt -> unit = fun ch p ->
+let print_short : Format.formatter -> pos option -> unit = fun ch p ->
   match p with
   | None -> Format.pp_print_string ch "unknown location"
   | Some(p) -> Format.pp_print_string ch (to_string ~print_fname:false p)
 
-(** [end_pos pos] creates a position from the end of [pos]. *)
-let end_pos : popt -> popt = fun po ->
-  match po with
-  | None -> None
-  | Some p ->
-      let compute_pos_data () =
-        let p = Lazy.force_val p in
-        { p with start_line = p.end_line; start_col = p.end_line } in
-      Some (Lazy.from_fun compute_pos_data)
+(** [map f loc] applies function [f] on the value of [loc] and keeps the
+    position unchanged. *)
+let map : ('a -> 'b) -> 'a loc -> 'b loc = fun f loc ->
+  {loc with elt = f loc.elt}
+
+let locate : Lexing.position * Lexing.position -> pos = fun (p1, p2) ->
+  let fname = Some(p1.pos_fname) in
+  let start_line = p1.pos_lnum in
+  let start_col = p1.pos_cnum - p1.pos_bol in
+  let end_line = p2.pos_lnum in
+  let end_col = p2.pos_cnum - p2.pos_bol in
+ {fname; start_line; start_col; end_line; end_col}
