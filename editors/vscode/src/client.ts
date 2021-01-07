@@ -3,7 +3,7 @@
  * Licensed under the MIT License. See License.txt in the project root for license information.
  * ------------------------------------------------------------------------------------------ */
 
-import { workspace, ExtensionContext, Position, Uri, commands, window, WebviewPanel, ViewColumn, TextEditor, TextDocument, SnippetString, Range as rg, TextEditorDecorationType } from 'vscode';
+import { workspace, ExtensionContext, Position, Uri, commands, window, WebviewPanel, ViewColumn, TextEditor, TextDocument, SnippetString, Range as rg, TextEditorDecorationType, Pseudoterminal, EventEmitter, TreeItemCollapsibleState, WebviewViewProvider, CancellationToken, WebviewView, WebviewViewResolveContext } from 'vscode';
 
 // Insiders API, disabled
 // import { WebviewEditorInset } from 'vscode';
@@ -401,7 +401,7 @@ function getGoalsEnvContent(goals : Goal[]){
     let codeHyps : String = ""; //hypothesis HTML code
     let codeGoals : String = ""; //goals HTML code
     let codeEnvGoals : String = ""; //result code HTML
-    
+
     for(let i=0; i < goals.length; i++) {
         
         codeHyps = `<div class="hypothesis">`;
@@ -456,6 +456,39 @@ function getGoalsEnvContent(goals : Goal[]){
         codeEnvGoals = codeEnvGoals + `No goals`;
     }
     return codeEnvGoals;
+}
+
+var termWritable = true;
+// to ensure user can't send text to terminal
+function updateTerminalText(logstr: string){
+    const termName = "Lambdapi Debug";
+    const clearTextSeq = '\x1b[2J\x1b[3J\x1b[;H';
+
+    let term = window.terminals.find((t) => t.name == termName);
+    console.log("Term=");
+    console.log(term);
+    if(!term){
+        const writeEmitter = new EventEmitter<string>();
+        const pty : Pseudoterminal = {
+            onDidWrite: writeEmitter.event,
+            open: () => {},
+            close: () => {},
+            handleInput: (data: string) => {
+                data = data.replace(/\r/g, '\r\n');
+                console.log(`TermWritable=${termWritable}`)
+                console.log("data=" + JSON.stringify(data)+"\n\n");
+                if(termWritable){
+                    writeEmitter.fire(data)
+                    termWritable = false;
+                }
+            }
+        };
+        term = window.createTerminal({name: termName, pty});
+        term.show(true);
+    }
+
+    termWritable=true; term.sendText(clearTextSeq);
+    termWritable=true; term.sendText(logstr);
 }
 
 // Returns the HTML code of the panel and the inset ccontent
@@ -524,6 +557,7 @@ export interface TypGoal extends Goal {
 
 export interface GoalResp {
     goals : Goal[]
+    logs : string
 }
 
 function sendGoalsRequest(position: Position, panel : WebviewPanel, docUri : Uri, styleUri : Uri) {
@@ -532,7 +566,12 @@ function sendGoalsRequest(position: Position, panel : WebviewPanel, docUri : Uri
     let cursor = {textDocument : doc, position : position};
     const req = new RequestType<ParamsGoals, GoalResp, void, void>("proof/goals");
     client.sendRequest(req, cursor).then((goals) => {
-        if(goals) {
+        
+        if(goals.logs){
+            updateTerminalText(goals.logs);
+        }
+
+        if(goals.goals) {
             let goal_render = buildGoalsContent(goals.goals, styleUri);
             panel.webview.html = goal_render
             // Disabled as this is experimental
@@ -543,6 +582,93 @@ function sendGoalsRequest(position: Position, panel : WebviewPanel, docUri : Uri
         }
     }, () => { panel.webview.html = buildGoalsContent([], styleUri); });
 }
+
+class ColorsViewProvider implements vscode.WebviewViewProvider {
+
+	public static readonly viewType = 'calicoColors.colorsView';
+
+	private _view?: WebviewView;
+
+	public resolveWebviewView(
+		webviewView: WebviewView,
+		context: WebviewViewResolveContext,
+		_token: CancellationToken,
+	) {
+		this._view = webviewView;
+
+		webviewView.webview.options = {
+			// Allow scripts in the webview
+			enableScripts: true,
+
+			localResourceRoots: [
+				this._extensionUri
+			]
+		};
+
+		webviewView.webview.html = this._getHtmlForWebview(webviewView.webview);
+
+		webviewView.webview.onDidReceiveMessage(data => {
+			switch (data.type) {
+				case 'colorSelected':
+					{
+						vscode.window.activeTextEditor?.insertSnippet(new vscode.SnippetString(`#${data.value}`));
+						break;
+					}
+			}
+		});
+	}
+
+	public addColor() {
+		if (this._view) {
+			this._view.show?.(true); // `show` is not implemented in 1.49 but is for 1.50 insiders
+			this._view.webview.postMessage({ type: 'addColor' });
+		}
+	}
+
+	public clearColors() {
+		if (this._view) {
+			this._view.webview.postMessage({ type: 'clearColors' });
+		}
+	}
+
+	private _getHtmlForWebview(webview: vscode.Webview) {
+		// Get the local path to main script run in the webview, then convert it to a uri we can use in the webview.
+		const scriptUri = webview.asWebviewUri(vscode.Uri.joinPath(this._extensionUri, 'media', 'main.js'));
+
+		// Do the same for the stylesheet.
+		const styleResetUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, 'media', 'reset.css'));
+		const styleVSCodeUri = webview.asWebviewUriUri.joinPath(this._extensionUri, 'media', 'vscode.css'));
+		const styleMainUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, 'media', 'main.css'));
+
+		// Use a nonce to only allow a specific script to be run.
+		const nonce = getNonce();
+
+		return `<!DOCTYPE html>
+			<html lang="en">
+			<head>
+				<meta charset="UTF-8">
+				<!--
+					Use a content security policy to only allow loading images from https or from our extension directory,
+					and only allow scripts that have a specific nonce.
+				-->
+				<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${webview.cspSource}; script-src 'nonce-${nonce}';">
+				<meta name="viewport" content="width=device-width, initial-scale=1.0">
+				<link href="${styleResetUri}" rel="stylesheet">
+				<link href="${styleVSCodeUri}" rel="stylesheet">
+				<link href="${styleMainUri}" rel="stylesheet">
+				
+				<title>Cat Colors</title>
+			</head>
+			<body>
+				<ul class="color-list">
+				</ul>
+				<button class="add-color-button">Add Color</button>
+				<script nonce="${nonce}" src="${scriptUri}"></script>
+			</body>
+			</html>`;
+	}
+}
+
 
 export function deactivate(): Thenable<void> | undefined {
     if (!client) {
