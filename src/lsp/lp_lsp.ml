@@ -80,7 +80,6 @@ let do_debugFlags ofmt params =
       let version = doc.version in
       let text = doc.text in
       let doc = new_doc ~uri ~version ~text in
-      LIO.log_error "hashiter" (Printf.sprintf "log_enabled:%B\n" Timed.(!Console.log_enabled));
       do_check_text ~reply:false ofmt ~doc)
     doc_table
 
@@ -230,24 +229,25 @@ let get_logs ~doc ~line ~pos =
   in
   (* DEBUG LOG START *)
   let log_to_str (log, posopt) =
-    let pos_str = 
+    let pos_str =
       match posopt with
       | None -> "None"
-      | Some pos -> 
+      | Some pos ->
           let Pos.{start_line; start_col; _} = Lazy.force pos in
           Printf.sprintf "(%d, %d)" start_line start_col
-    in 
-    let log_str = 
+    in
+    let log_str =
       let len = String.length log in
-      Printf.sprintf "length: %d | %s" len (String.sub log 0 (min 30 len))in 
+      Printf.sprintf "length: %d | %s" len (String.sub log 0 (min 30 len))in
     Format.asprintf "element: %s -> %s\n " pos_str log_str
   in
-  Lsp_io.log_error "get_logs" (List.fold_left (^) "\n" (List.map log_to_str doc.Lp_doc.logs));
+  Lsp_io.log_error "get_logs"
+    (List.fold_left (^) "\n" (List.map log_to_str doc.Lp_doc.logs));
   (* DEBUG LOG END *)
   let before_cursor (npos : Pos.popt) =
     match npos with
     | None -> Lsp_io.log_error "get_logs" "None pos"; true
-    | Some npos -> 
+    | Some npos ->
         let Pos.{start_line; start_col; _} = Lazy.force npos in
         (line = start_line-1 && start_col < pos) || start_line-1 < line
   in
@@ -493,7 +493,7 @@ let main std log_file =
     let com = LIO.read_request stdin in
     LIO.log_object "read" com;
     process_input oc com;
-    F.pp_print_flush lp_fmt (); 
+    F.pp_print_flush lp_fmt ();
     loop ()
   in
   try loop ()

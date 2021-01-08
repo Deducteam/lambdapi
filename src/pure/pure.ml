@@ -99,7 +99,8 @@ let handle_tactic : proof_state -> Tactic.t -> tactic_result =
 
 let end_proof : proof_state -> command_result = fun s ->
   let (_, ss, p, finalize, _) = s in
-  try Cmd_OK((Time.save (), finalize ss p), None) with Fatal(p,m) -> Cmd_Error(p,m)
+  try Cmd_OK((Time.save (), finalize ss p), None)
+  with Fatal(p,m) -> Cmd_Error(p,m)
 
 let get_symbols : state -> (Terms.sym * Pos.popt) Extra.StrMap.t = fun s ->
   (snd s).in_scope

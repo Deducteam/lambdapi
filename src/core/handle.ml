@@ -188,7 +188,8 @@ type proof_data =
     This structure contains the list of the tactics to be executed, as well as
     the initial state of the proof.  The checking of the proof is then handled
     separately. Note that [Fatal] is raised in case of an error. *)
-let handle_cmd : sig_state -> p_command -> sig_state * proof_data option * string option=
+let handle_cmd : sig_state -> p_command ->
+    sig_state * proof_data option * string option =
   fun ss cmd ->
   let scope_basic exp pt = Scope.scope_term exp ss Env.empty pt in
   match cmd.elt with
@@ -496,7 +497,8 @@ let too_long = Stdlib.ref infinity
     exception handling. In particular, the position of [cmd] is used on errors
     that lack a specific position. All exceptions except [Timeout] and [Fatal]
     are captured, although they should not occur. *)
-let handle_cmd : sig_state -> p_command -> sig_state * proof_data option * Queries.q_res =
+let handle_cmd : sig_state -> p_command ->
+   sig_state * proof_data option * Queries.q_res =
   fun ss cmd ->
   Print.sig_state := ss;
   try

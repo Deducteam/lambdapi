@@ -79,7 +79,8 @@ let handle_query : Sig_state.t -> proof_state option -> p_query -> q_res =
       let t = scope pt in
       let a = Infer.infer Unif.solve_noexn pt.pos ctxt t in
       out 1 "(infr) %a : %a\n" pp_term t pp_term (Eval.eval cfg ctxt a);
-      Some (Format.asprintf "%a : %a" pp_term t pp_term (Eval.eval cfg ctxt a))
+      Some (Format.asprintf "%a : %a" pp_term t pp_term
+              (Eval.eval cfg ctxt a))
   | P_query_normalize(pt, cfg) ->
       let env = Proof.focus_env ps in
       let ctxt = Env.to_ctxt env in
@@ -98,7 +99,7 @@ let handle_query : Sig_state.t -> proof_state option -> p_query -> q_res =
   | P_query_print(None) ->
       (match ps with
        | None -> fatal q.pos "Not in a proof."
-       | Some ps -> out 1 "%a" Proof.pp_goals ps; 
+       | Some ps -> out 1 "%a" Proof.pp_goals ps;
                     Some (Format.asprintf "%a" Proof.pp_goals ps))
   | P_query_print(Some qid) ->
       let sym = Sig_state.find_sym ~prt:true ~prv:true false ss qid in
@@ -109,14 +110,14 @@ let handle_query : Sig_state.t -> proof_state option -> p_query -> q_res =
       let h = get_pp_hint sym in
       if h <> Unqual then out 1 " [%a]" pp_hint h;
       (match !(sym.sym_def) with
-      | Some t -> 
+      | Some t ->
           out 1 " ≔ %a\n" pp_term t;
           Some (Format.asprintf " ≔ %a" pp_term t)
       | None ->
           out 1 "\n";
           List.iter (fun r -> out 1 "%a\n" pp_rule (sym, r)) !(sym.sym_rules);
           Some (
-            List.fold_left (^) "" 
+            List.fold_left (^) ""
               (List.map (fun r -> Format.asprintf "%a\n" pp_rule (sym, r))
                 !(sym.sym_rules))))
   | P_query_proofterm ->
@@ -124,7 +125,7 @@ let handle_query : Sig_state.t -> proof_state option -> p_query -> q_res =
        | None -> fatal q.pos "Not in a proof"
        | Some ps ->
            match ps.proof_term with
-           | Some t -> 
-              out 1 "%a\n" pp_term (Meta(t,[||])); 
+           | Some t ->
+              out 1 "%a\n" pp_term (Meta(t,[||]));
               Some (Format.asprintf "%a" pp_term (Meta(t,[||])))
            | None -> fatal q.pos "Not in a definition")

@@ -63,7 +63,8 @@ let tac_refine : popt -> proof_state -> term -> proof_state =
    [ps] and returns the new proof state. This function fails gracefully in
    case of error. *)
 let handle_tactic :
-  Sig_state.t -> Terms.expo -> proof_state -> p_tactic -> proof_state * Queries.q_res =
+  Sig_state.t -> Terms.expo -> proof_state -> p_tactic ->
+    proof_state * Queries.q_res =
   fun ss e ps tac ->
   match tac.elt with
   | P_tac_query(q) -> ps, Queries.handle_query ss (Some ps) q
@@ -109,11 +110,13 @@ let handle_tactic :
        | [] -> fatal tac.pos "No remaining goals."
        | Unif _::_ -> fatal tac.pos "Not a typing goal."
        | Typ gt::_ ->
-           tac_refine tac.pos ps (Why3_tactic.handle ss tac.pos config gt)), None
+          (tac_refine tac.pos ps (Why3_tactic.handle ss tac.pos config gt)),
+            None)
   | P_tac_fail -> fatal tac.pos "Call to tactic \"fail\""
 
 let handle_tactic :
-  Sig_state.t -> Terms.expo -> proof_state -> p_tactic -> proof_state * Queries.q_res =
+  Sig_state.t -> Terms.expo -> proof_state -> p_tactic ->
+    proof_state * Queries.q_res =
   fun ss exp ps tac ->
   try handle_tactic ss exp ps tac
   with Fatal(_,_) as e -> out 1 "%a" Proof.pp_goals ps; raise e
