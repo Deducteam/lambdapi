@@ -228,6 +228,8 @@ let get_logs ~doc ~line ~pos =
     | [] -> acc
   in
   (* DEBUG LOG START *)
+  LIO.log_error "get_logs"
+    (Printf.sprintf "%s:%d,%d" doc.Lp_doc.uri line pos);
   let log_to_str (log, posopt) =
     let pos_str =
       match posopt with
@@ -248,8 +250,8 @@ let get_logs ~doc ~line ~pos =
     match npos with
     | None -> Lsp_io.log_error "get_logs" "None pos"; true
     | Some npos ->
-        let Pos.{start_line; start_col; _} = Lazy.force npos in
-        (line = start_line-1 && start_col < pos) || start_line-1 < line
+        let Pos.{start_line; _} = Lazy.force npos in
+        start_line-1 <= line
   in
   fold_left_while (fun acc x -> acc^(fst x))
                   (fun (_, p) -> before_cursor p) "" doc.Lp_doc.logs

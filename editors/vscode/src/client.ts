@@ -477,8 +477,6 @@ function updateTerminalText(logstr: string){
             close: () => {},
             handleInput: (data: string) => {
                 data = data.replace(/\r/g, '\r\n');
-                console.log(`TermWritable=${termWritable}`)
-                console.log("data=" + JSON.stringify(data)+"\n\n");
                 if(termWritable || true){
                     writeEmitter.fire(data)
                     termWritable = false;
@@ -593,18 +591,14 @@ export function deactivate(): Thenable<void> | undefined {
     return client.stop();
 }
 
+class DebugViewProvider implements WebviewViewProvider {
 
-
-import * as vscode from 'vscode';
-
-class DebugViewProvider implements vscode.WebviewViewProvider {
-
-	private _view?: vscode.WebviewView;
+	private _view?: WebviewView;
 
 	constructor(
-		private readonly _extensionUri: vscode.Uri,
+		private readonly _extensionUri: Uri,
 	) { }
-	resolveWebviewView(webviewView: vscode.WebviewView, context: vscode.WebviewViewResolveContext<unknown>, _token: vscode.CancellationToken): void | Thenable<void> {
+	resolveWebviewView(webviewView: WebviewView, context: WebviewViewResolveContext<unknown>, _token: CancellationToken): void | Thenable<void> {
 		this._view = webviewView;
 
 		webviewView.webview.options = {
@@ -619,13 +613,11 @@ class DebugViewProvider implements vscode.WebviewViewProvider {
 		webviewView.webview.html = this._getHtmlForWebview();
 
 		webviewView.webview.onDidReceiveMessage(data => {
-            console.log("Recieved" + JSON.stringify(data) + "\n\n");
 			switch (data.type) {
 				case 'debug':
 					{
                         let params = {'flags': data.flags};
                         client.sendNotification('proof/debugFlags', params);
-                        console.log(`sent : ${JSON.stringify(params)}\n`);
 					}
 			}
 		});

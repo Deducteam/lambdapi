@@ -7,6 +7,7 @@ open Terms
 open Print
 open Proof
 
+(** Result of query displayed on hover in the editor*)
 type q_res = string option
 
 (** [handle_query ss ps q] *)

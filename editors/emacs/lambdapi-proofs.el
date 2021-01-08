@@ -168,8 +168,7 @@ make it clickable"
   (let ((server (eglot-current-server))
         (params `(:flags ,(concat lp-debug-flags))))
     (if server
-        (jsonrpc-notify server :proof/debugFlags params))
-    (message (format "Sent %S to server" params))))
+        (jsonrpc-notify server :proof/debugFlags params))))
 
 (defun lp-toggle-debug-flag (flag)
   (setq lp-debug-flags

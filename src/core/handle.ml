@@ -189,7 +189,7 @@ type proof_data =
     the initial state of the proof.  The checking of the proof is then handled
     separately. Note that [Fatal] is raised in case of an error. *)
 let handle_cmd : sig_state -> p_command ->
-    sig_state * proof_data option * string option =
+    sig_state * proof_data option * Queries.q_res =
   fun ss cmd ->
   let scope_basic exp pt = Scope.scope_term exp ss Env.empty pt in
   match cmd.elt with

@@ -173,28 +173,22 @@ will produce
   (define-key lambdapi-mode-map (kbd "C-c C-n") #'lp-proof-forward)
   (define-key lambdapi-mode-map (kbd "C-c C-f") #'lp-jump-proof-forward)
   (define-key lambdapi-mode-map (kbd "C-c C-b") #'lp-jump-proof-backward)
-  (define-key lambdapi-mode-map (kbd "C-c C-r") #'lambdapi-refresh-window-layout)
-  (define-key lambdapi-mode-map (kbd "RET")     #'lp-newline))
+  (define-key lambdapi-mode-map (kbd "C-c C-r") #'lambdapi-refresh-window-layout))
 
-;;;###autoload
 (defgroup lambdapi nil
   "LambdaPi is a proof assistant based on the λΠ-calculus modulo rewriting"
   :group 'languages)
 
-;;;###autoload
 (defcustom lambdapi-window-X-ratio 0.5
   "Ratio of height taken in horizontal split during window layout"
   :type '(float)
   :group 'lambdapi)
 
-;;;###autoload
 (defcustom lambdapi-window-Y-ratio 0.8
   "Ratio of width taken in vertical split during window layout"
   :type '(float)
   :group 'lambdapi)
 
-
-;;;###autoload
 (defcustom lambdapi-window-layout '(v lambdapi-window-Y-ratio
                                       (h lambdapi-window-X-ratio
                                          lambdapi--temp-buffer-name
