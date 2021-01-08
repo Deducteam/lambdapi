@@ -490,8 +490,8 @@ function updateTerminalText(logstr: string){
         term.show(true);
     }
 
-    termWritable=true; term.sendText(clearTextSeq);
-    termWritable=true; term.sendText(logstr);
+    term.sendText(clearTextSeq);
+    term.sendText(logstr);
 }
 
 // Returns the HTML code of the panel and the inset ccontent
@@ -634,29 +634,51 @@ class DebugViewProvider implements vscode.WebviewViewProvider {
 	}
 
 	private _getHtmlForWebview(){
-		const html = `<!DOCTYPE html>
-		<html lang="en">
-		<head>
-			<meta charset="UTF-8">
-			<meta name="viewport" content="width=device-width, initial-scale=1.0">
-		</head>
-		<body>
-			<button id="debug">Debug!</button>
+        // TODO use external stylesheet
+        let html = `<!DOCTYPE html>
+        <html lang="en">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <style type="text/css">
+                .key {
+                    font-weight: bold;
+                    text-decoration: underline;
+                }
+            </style>
+        </head>
+        <body>
+            <input type="checkbox" value="c" onchange="sendFlags()">[c]onversion</input><br>
+            <input type="checkbox" value="e" onchange="sendFlags()">[e]valuation</input><br>
+            <input type="checkbox" value="f" onchange="sendFlags()">[f]ile system</input><br>
+            <input type="checkbox" value="g" onchange="sendFlags()">[g]enerating induction principle</input><br>
+            <input type="checkbox" value="h" onchange="sendFlags()">command [h]andling</input><br>
+            <input type="checkbox" value="i" onchange="sendFlags()">[i]nference/checking</input><br>
+            <input type="checkbox" value="p" onchange="sendFlags()">[p]retty-printing</input><br>
+            <input type="checkbox" value="r" onchange="sendFlags()">[r]ewrite tactic</input><br>
+            <input type="checkbox" value="s" onchange="sendFlags()">[s]ubject reduction</input><br>
+            <input type="checkbox" value="t" onchange="sendFlags()">[t]actic</input><br>
+            <input type="checkbox" value="u" onchange="sendFlags()">[u]nification</input><br>
+            <input type="checkbox" value="w" onchange="sendFlags()">[w]hy3 prover</input><br>
+            <input type="checkbox" value="x" onchange="sendFlags()">e[x]ternal tools</input><br>
 
-			<script>
-				const vscode = acquireVsCodeApi();
-				
-				document.getElementById('debug').addEventListener('click', () => {
-					vscode.postMessage({
-						'type': 'debug',
-						'flags': 'r'
-					});
-				});
-				
-			</script>
-		</body>
-		</html>`;
-		return html;
-	}
+            <script>
+                const vscode = acquireVsCodeApi();
+                function sendFlags(){
+                    const checkboxes = document.querySelectorAll('input:checked')
+                    let flags = "";
+                    checkboxes.forEach((cb) => {flags += cb.value});
+                    vscode.postMessage({
+                        'type': 'debug',
+                        'flags': flags
+                    });
+                }
+            </script>
+        </body>
+        </html>`;
+        // replace [x]
+        html = html.replace(/\[(.)\]/g, '<span class="key">$1</span>');
+        return html;
+     }
 	
 }
