@@ -26,9 +26,6 @@ let client: LanguageClient;
 
 export function activate(context: ExtensionContext) {
 
-    const provider = new DebugViewProvider(context.extensionUri);
-    context.subscriptions.push(window.registerWebviewViewProvider('lambdapi.debugView', provider));
-
     //___Declaration of workspace variables___
 
     //Position of the proof cursor : colored highlights show until which point the proof was surveyed
@@ -81,6 +78,10 @@ export function activate(context: ExtensionContext) {
         );
 
         client.onReady().then( () => {
+
+            // setup debug flags menu in debug view container
+            const provider = new DebugViewProvider(context.extensionUri);
+            context.subscriptions.push(window.registerWebviewViewProvider('lambdapi.debugView', provider));
 
             // Create and show panel for proof goals
             const panel = window.createWebviewPanel(
