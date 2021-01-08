@@ -200,29 +200,41 @@ will produce
          (setq lambdapi-window-layout newval)
          (lambdapi-refresh-window-layout))
   :type '(radio (sexp :tag "Layout 1"
-                      :format "%t"
+                      :format "%t\n"
                       :value
                       (v lambdapi-window-Y-ratio
-                          (h lambdapi-window-X-ratio
-                             lambdapi--temp-buffer-name
-                             "*lp-logs*")
-                          "*Goals*"))
+                         (h lambdapi-window-X-ratio
+                            lambdapi--temp-buffer-name
+                            "*lp-logs*")
+                         "*Goals*"))
                 (sexp :tag "Layout 2"
-                      :format "%t"
+                      :format "%t\n"
                       :value
                       (h lambdapi-window-X-ratio
-                          lambdapi--temp-buffer-name
-                          (v lambdapi-window-Y-ratio
-                             "*lp-logs*"
-                             "*Goals*")))
+                         lambdapi--temp-buffer-name
+                         (v lambdapi-window-Y-ratio
+                            "*lp-logs*"
+                            "*Goals*")))
                 (sexp :tag "Layout 3"
-                      :format "%t"
+                      :format "%t\n"
                       :value
                       (h lambdapi-window-X-ratio
-                          (v lambdapi-window-Y-ratio
-                             lambdapi--temp-buffer-name
-                             "*Goals*")
-                          "*lp-logs*"))))
+                         (v lambdapi-window-Y-ratio
+                            lambdapi--temp-buffer-name
+                            "*Goals*")
+                         "*lp-logs*"))
+                (sexp :tag "Goal bottom"
+                      :format "%t\n"
+                      :value
+                      (v lambdapi-window-Y-ratio
+                         lambdapi--temp-buffer-name
+                         "*Goals*"))
+                (sexp :tag "Goal right"
+                      :format "%t\n"
+                      :value
+                      (h lambdapi-window-X-ratio
+                         lambdapi--temp-buffer-name
+                         "*Goals*"))))
 
 ;; Debug menu
 (easy-menu-define lambdapi-mode-menu lambdapi-mode-map
