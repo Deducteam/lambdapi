@@ -42,12 +42,12 @@ exception SyntaxError of strloc
 (** Lexer for Lambdapi syntax. *)
 module Lp_lexer : sig
 
-  val is_escaped : string -> bool
-  (** [is_escped s] is true if [s] is an escaped identifier, that is, an
-     identifier enclosed between [{|] and [|}]. *)
-
   val is_identifier : string -> bool
   (** [is_identifier s] is [true] if [s] is a valid identifier. *)
+
+  val unquote : string -> string
+  (** [unquote s] removes the quotation marks [{|] and [|}] from [s] if it has
+      some. Otherwise, the argument is returned. *)
 
   val is_debug_flag : string -> bool
   (** [is_debug_flag s] is true if [s] is a debug flag. *)
@@ -107,6 +107,9 @@ and nom_comment : lexbuf -> unit = fun buf ->
     match%sedlex buf with
     | escid -> true
     | _ -> false
+
+  let unquote : string -> string = fun s ->
+    if is_escaped s then String.(sub s 2 (length s - 4)) else s
 
   (** [is_identifier s] is true if [s] is an identifier. *)
   let is_identifier : string -> bool = fun s ->

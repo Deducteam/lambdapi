@@ -24,13 +24,7 @@ let parse_file : string -> Syntax.ast = fun fname ->
     or [force] is [true]).  In that case,  the produced signature is stored in
     the corresponding object file. *)
 let rec compile : bool -> Path.t -> Sign.t = fun force path ->
-  (* Remove escaping quotes from module paths. *)
-  let remove_quote p =
-    if Lp_lexer.is_escaped p then
-      String.(sub p 2 (length p - 4))
-    else p
-  in
-  let base = Files.module_to_file (List.map remove_quote path) in
+  let base = Files.module_to_file (List.map Lp_lexer.unquote path) in
   let src () =
     (* Searching for source is delayed because we may not need it
        in case of "ghost" signatures (such as for unification rules). *)
