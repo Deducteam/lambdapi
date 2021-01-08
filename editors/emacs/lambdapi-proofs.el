@@ -9,6 +9,7 @@
 (require 'cl-lib)
 
 (defconst lp-goal-line-prefix "---------------------------------------------------")
+(defvar lp-debug-flags '() "Debug flags")
 
 (defun lp-focus-goal (goalno &optional proofbuf lineNo)
   "Focus on 'goalno'th goal (zero-indexed). proofbuf is the buffer
@@ -117,6 +118,30 @@ make it clickable"
             (erase-buffer))
           (read-only-mode 1))))
 
+(defun lp-display-logs (logs)
+  "Display logs in *lp-logs* buffer"
+  (let ((logbuf (get-buffer-create "*lp-logs*")))
+    (with-current-buffer logbuf
+      (read-only-mode +1)
+      (with-silent-modifications
+        (set (make-local-variable 'window-point-insertion-type) t)
+	(erase-buffer)
+	(insert logs)
+        ;; TODO: fix performance issue
+        ;; See: https://emacs.stackexchange.com/a/38608/30239
+        (let ((ansi-color-apply-face-function
+               (lambda (beg end face)
+                 (when face
+                   (put-text-property beg end 'face face)))))
+          (ansi-color-apply-on-region (point-min) (point-max)))))
+    (let ((logwin (get-buffer-window logbuf)))
+      (if logwin
+          (with-selected-window logwin
+            (goto-char (point-max))
+            (beginning-of-line)
+            (recenter -1))))))
+
+
 (defun eglot--signal-proof/goals (position)
   "Send proof/goals to server, requesting the list of goals at POSITION."
   (let ((server (eglot-current-server))
@@ -125,12 +150,33 @@ make it clickable"
     (if server
         (let ((response (jsonrpc-request server :proof/goals params)))
           (if response
-              (display-goals (plist-get response :goals))
-            (let ((goalsbuf (get-buffer-create "*Goals*")))
+              (progn
+		(display-goals (plist-get response :goals))
+		(lp-display-logs (plist-get response :logs)))
+            (let ((goalsbuf (get-buffer-create "*Goals*"))
+                  (logsbuf (get-buffer-create "*lp-logs*")))
               (with-current-buffer goalsbuf
                 (read-only-mode -1)
                 (erase-buffer)
+                (read-only-mode 1))
+              (with-current-buffer logsbuf
+                (read-only-mode -1)
+                (erase-buffer)
                 (read-only-mode 1))))))))
+
+(defun eglot--signal-proof/debugFlags ()
+  (let ((server (eglot-current-server))
+        (params `(:flags ,(concat lp-debug-flags))))
+    (if server
+        (jsonrpc-notify server :proof/debugFlags params))
+    (message (format "Sent %S to server" params))))
+
+(defun lp-toggle-debug-flag (flag)
+  (setq lp-debug-flags
+        (if (member flag lp-debug-flags)
+            (delete flag lp-debug-flags)
+          (cons flag lp-debug-flags)))
+  (eglot--signal-proof/debugFlags))
 
 (defun lp-display-goals ()
   "Display goals at cursor position."
@@ -177,25 +223,21 @@ make it clickable"
 (defun lp-jump-proof-forward ()
   "Move the proof cursor to the next proof"
   (interactive)
-  (setq interactive-goals t)
   (move-proof-line #'lp-get-next-proof-line))
 
 (defun lp-jump-proof-backward ()
   "Move the proof cursor to the previous proof"
   (interactive)
-  (setq interactive-goals t)
   (move-proof-line #'lp-get-prev-proof-line))
 
 (defun lp-proof-forward ()
   "Move the proof cursor forward."
   (interactive)
-  (setq interactive-goals t)
   (move-proof-line #'1+))
 
 (defun lp-proof-backward ()
   "Move the proof cursor backward."
   (interactive)
-  (setq interactive-goals t)
   (move-proof-line #'1-))
 
 (defun toggle-interactive-goals ()
@@ -213,7 +255,9 @@ make it clickable"
               (hlt-highlight-region 0 (1+ (line-end-position)))
               (lp-display-goals))
         (goto-line line)
-        (hlt-unhighlight-region 0 (point-max))))))
+        (hlt-unhighlight-region 0 (point-max)))))
+  (message (format "Interactive mode is %s"
+                   (if interactive-goals "ON" "OFF"))))
 
 (provide 'lambdapi-proofs)
 ;;; lambdapi-proofs.el ends here
