@@ -150,9 +150,10 @@ experimental.
 Logs
 ----
 
-Logs are displayed in a terminal window. The debug flags menu can be
-found by selecting Run in the Activity Bar (in the left by default).
-If you want, you can also drag it to another place.
+Logs are displayed in a terminal window. The debug flags can be set
+from the debug flags menu. The menu found by selecting Run in the 
+Activity Bar (in the left by default).
+If you want, you can drag the menu to another place.
 
 
 .. _VSCode: https://code.visualstudio.com/
