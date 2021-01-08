@@ -45,16 +45,14 @@ let json_of_goal g =
   in
   let open Proof in
   match g with
-  | Goal.Typ g ->
-    let g_meta = Goal.get_meta g in
-    let hyp, typ = Goal.get_type g in
-    let j_env = List.map pr_hyp hyp in
+  | Typ {goal_meta; goal_hyps; goal_type} ->
+    let j_env = List.map pr_hyp goal_hyps in
     `Assoc [
       "typeofgoal", `String "Typ "
-    ; "gid", `Int g_meta.meta_key
+    ; "gid", `Int goal_meta.meta_key
     ; "hyps", `List j_env
-    ; "type", `String (Format.asprintf "%a" Print.pp_term typ)]
-  | Goal.Unif (ctx,t1,t2) ->
+    ; "type", `String (Format.asprintf "%a" Print.pp_term goal_type)]
+  | Unif (ctx,t1,t2) ->
     let constr = Format.asprintf "%a" Print.pp_constr (ctx,t1,t2) in
     `Assoc [
       "typeofgoal", `String "Unif"
