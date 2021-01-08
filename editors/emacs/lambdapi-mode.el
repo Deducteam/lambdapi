@@ -2,7 +2,7 @@
 
 ;; Copyright (C) 2020 Deducteam
 
-;; Author: Rodolphe Lepigre, Gabriel Hondet, Ashish Barnawal
+;; Authors: Ashish Barnawal, Diego Riviero, Gabriel Hondet, Rodolphe Lepigre 
 ;; Maintainer: Deducteam <dedukti-dev@inria.fr>
 ;; Version: 1.0
 ;; SPDX-License-Identifier: CeCILL Free Software License Agreement v2.1
