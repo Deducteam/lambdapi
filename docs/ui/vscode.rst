@@ -147,4 +147,12 @@ Hover
 Hovering symbols provides their type. This feature is still
 experimental.
 
+Logs
+----
+
+Logs are displayed in a terminal window. The debug flags menu can be
+found by selecting Run in the Activity Bar (in the left by default).
+If you want, you can also drag it to another place.
+
+
 .. _VSCode: https://code.visualstudio.com/

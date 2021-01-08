@@ -196,13 +196,10 @@ display goals while doing a proof. To display the result of ``compute``,
 instead of ``"%c %s"``.
 
 
-Customize goals buffer
-''''''''''''''''''''''
-The position and amount of space taken by the ``*Goals*`` buffer can be changed
-in the LambdaPi customization group (Do ``M-x customize-group lambdapi``).
-If the space is too small, then the window will open
-either on the right side or at the bottom, whichever is more suitable.
-
+Customize window layout
+'''''''''''''''''''''''
+The window layout can be customized in the LambdaPi customization group
+(Do ``M-x customize-group lambdapi``).
 The layout can be refreshed with ``C-c C-r``.
 
 
