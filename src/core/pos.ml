@@ -10,9 +10,6 @@ type pos =
   ; end_line   : int (** Line number of the ending point.            *)
   ; end_col    : int (** Column number (utf8) of the ending point.   *) }
 
-(* NOTE laziness is essential on big files (especially those with long lines),
-   because computing utf8 positions is expensive. *)
-
 (** Convenient short name for an optional position. *)
 type popt = pos option
 
