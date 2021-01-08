@@ -148,7 +148,7 @@
       }
     ],
     "views": {
-      "explorer": [
+      "debug": [
         {
           "type": "webview",
           "id": "lambdapi.debugView",

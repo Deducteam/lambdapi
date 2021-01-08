@@ -461,6 +461,7 @@ function getGoalsEnvContent(goals : Goal[]){
     return codeEnvGoals;
 }
 
+// TODO: make LambdaPi debug nonwritable by user
 var termWritable = true;
 // to ensure user can't send text to terminal
 function updateTerminalText(logstr: string){
@@ -468,8 +469,6 @@ function updateTerminalText(logstr: string){
     const clearTextSeq = '\x1b[2J\x1b[3J\x1b[;H';
 
     let term = window.terminals.find((t) => t.name == termName);
-    console.log("Term=");
-    console.log(term);
     if(!term){
         const writeEmitter = new EventEmitter<string>();
         const pty : Pseudoterminal = {
@@ -599,7 +598,6 @@ export function deactivate(): Thenable<void> | undefined {
 import * as vscode from 'vscode';
 
 class DebugViewProvider implements vscode.WebviewViewProvider {
-	public static readonly viewType = 'lambdapi.debugView';
 
 	private _view?: vscode.WebviewView;
 
@@ -634,7 +632,6 @@ class DebugViewProvider implements vscode.WebviewViewProvider {
 	}
 
 	private _getHtmlForWebview(){
-        // TODO use external stylesheet
         let html = `<!DOCTYPE html>
         <html lang="en">
         <head>
@@ -642,8 +639,7 @@ class DebugViewProvider implements vscode.WebviewViewProvider {
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
             <style type="text/css">
                 .key {
-                    font-weight: bold;
-                    text-decoration: underline;
+                    color : var(--vscode-textLink-foreground);
                 }
             </style>
         </head>
@@ -653,7 +649,7 @@ class DebugViewProvider implements vscode.WebviewViewProvider {
             <input type="checkbox" value="f" onchange="sendFlags()">[f]ile system</input><br>
             <input type="checkbox" value="g" onchange="sendFlags()">[g]enerating induction principle</input><br>
             <input type="checkbox" value="h" onchange="sendFlags()">command [h]andling</input><br>
-            <input type="checkbox" value="i" onchange="sendFlags()">[i]nference/checking</input><br>
+            <input type="checkbox" value="i" onchange="sendFlags()">[i]nference / checking</input><br>
             <input type="checkbox" value="p" onchange="sendFlags()">[p]retty-printing</input><br>
             <input type="checkbox" value="r" onchange="sendFlags()">[r]ewrite tactic</input><br>
             <input type="checkbox" value="s" onchange="sendFlags()">[s]ubject reduction</input><br>
