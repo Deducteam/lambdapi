@@ -86,8 +86,6 @@ let translate_old_rule : old_p_rule -> p_rule = fun r ->
       | P_Meta(_,_)       -> assert false
       | P_Patt(_,_)       -> assert false
       | P_NLit(_)         -> assert false
-      | P_UnaO(_,_)       -> assert false
-      | P_BinO(_,_,_)     -> assert false
       | P_Wrap(_)         -> assert false
       | P_Expl(_)         -> assert false
     end;
@@ -175,8 +173,6 @@ let translate_old_rule : old_p_rule -> p_rule = fun r ->
     | P_Patt(_,_)       -> fatal h.pos "Pattern in legacy rule."
     | P_LLet(_,_,_,_,_) -> fatal h.pos "Let expression in legacy rule."
     | P_NLit(_)         -> fatal h.pos "Nat literal in legacy rule."
-    | P_UnaO(_,_)       -> fatal h.pos "Unary operator in legacy rule."
-    | P_BinO(_,_,_)     -> fatal h.pos "Binary operator in legacy rule."
     | P_Wrap(_)         -> fatal h.pos "Wrapping constructor in legacy rule."
     | P_Expl(_)         -> fatal h.pos "Explicit argument in legacy rule."
   in

@@ -40,9 +40,7 @@ let find_qid : bool -> bool -> sig_state -> env -> qident -> tbox =
 let get_root : p_term -> sig_state -> sym = fun t ss ->
   let rec get_root t =
     match t.elt with
-    | P_Iden(qid,_)
-    | P_BinO(_,(_,_,_,qid),_)
-    | P_UnaO((_,_,qid),_)   -> find_sym ~prt:true ~prv:true true ss qid
+    | P_Iden(qid,_)         -> find_sym ~prt:true ~prv:true true ss qid
     | P_Appl(t, _)          -> get_root t
     | P_Wrap(t)             -> get_root (Pratt.parse ss t)
     | _                     -> assert false
@@ -437,20 +435,6 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
           if n <= 0 then acc else unsugar_nat_lit (_Appl sym_s acc) (n-1)
         in
         unsugar_nat_lit sym_z n
-    | (P_UnaO(u,t)    , _                   ) ->
-        let (s, impl) =
-          let (_op,_,qid) = u in
-          let s = find_sym ~prt:true ~prv:true true ss qid in
-          (_Symb s, s.sym_impl)
-        in
-        add_impl env t.pos s impl [t]
-    | (P_BinO(l,b,r)  , _                   ) ->
-        let (s, impl) =
-          let (_op,_,_,qid) = b in
-          let s = find_sym ~prt:true ~prv:true true ss qid in
-          (_Symb s, s.sym_impl)
-        in
-        add_impl env t.pos s impl [l; r]
     | (P_Wrap(t)      , _                   ) -> scope env t
     | (P_Expl(_)      , _                   ) ->
         fatal t.pos "Explicit argument not allowed here."
@@ -493,8 +477,6 @@ let patt_vars : p_term -> (string * int) list * string list =
           | Some(a) -> patt_vars pvs a
         end
     | P_NLit(_)          -> acc
-    | P_UnaO(_,t)        -> patt_vars acc t
-    | P_BinO(t,_,u)      -> patt_vars (patt_vars acc t) u
     | P_Wrap(t)          -> patt_vars acc t
     | P_Expl(t)          -> patt_vars acc t
   and add_patt ((pvs, nl) as acc) id ts =

@@ -47,8 +47,6 @@ and qidents_of_p_term (term : Syntax.p_term) =
   | Syntax.P_LLet (_, args, None, t1, t2) ->
     filter_bound_qidents args [ t1; t2 ]
   | Syntax.P_NLit _ -> []
-  | Syntax.P_UnaO (_, term) -> qidents_of_p_term term
-  | Syntax.P_BinO (t1, _, t2) -> qidents_of_p_term t1 @ qidents_of_p_term t2
   | Syntax.P_Wrap term -> qidents_of_p_term term
   | Syntax.P_Expl term -> qidents_of_p_term term
 

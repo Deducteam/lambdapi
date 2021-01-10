@@ -126,8 +126,6 @@ let rec term : p_term pp = fun oc t ->
         out "@[<hov 2>let %a%a%a ≔@ %a@] in %a"
           ident x args_list xs annot a func t func u
     | (P_NLit(i)           , _    ) -> out "%i" i
-    | (P_UnaO((u,_,_),t)   , _    ) -> out "(%s %a)" u atom t
-    | (P_BinO(t,(b,_,_,_),u), _   ) -> out "(%a %s %a)" atom t b atom u
     (* We print minimal parentheses, and ignore the [Wrap] constructor. *)
     | (P_Wrap(t)           , _    ) -> out "%a" (pp p) t
     | (P_Expl(t)           , _    ) -> out "{%a}" func t
