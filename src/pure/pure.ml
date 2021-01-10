@@ -48,12 +48,12 @@ let current_goals : proof_state -> Proof.Goal.t list = fun (_,_,p,_,_) ->
   p.proof_goals
 
 type command_result =
-  | Cmd_OK    of state * Queries.q_res
+  | Cmd_OK    of state * Queries.result
   | Cmd_Proof of proof_state * Tactic.t list * Pos.popt * Pos.popt
   | Cmd_Error of Pos.popt option * string
 
 type tactic_result =
-  | Tac_OK    of proof_state * Queries.q_res
+  | Tac_OK    of proof_state * Queries.result
   | Tac_Error of Pos.popt option * string
 
 let t0 : Time.t Stdlib.ref = Stdlib.ref (Time.save ())

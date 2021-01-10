@@ -189,7 +189,7 @@ type proof_data =
     the initial state of the proof.  The checking of the proof is then handled
     separately. Note that [Fatal] is raised in case of an error. *)
 let handle_cmd : sig_state -> p_command ->
-    sig_state * proof_data option * Queries.q_res =
+    sig_state * proof_data option * Queries.result =
   fun ss cmd ->
   let scope_basic exp pt = Scope.scope_term exp ss Env.empty pt in
   match cmd.elt with
@@ -498,7 +498,7 @@ let too_long = Stdlib.ref infinity
     that lack a specific position. All exceptions except [Timeout] and [Fatal]
     are captured, although they should not occur. *)
 let handle_cmd : sig_state -> p_command ->
-   sig_state * proof_data option * Queries.q_res =
+   sig_state * proof_data option * Queries.result =
   fun ss cmd ->
   Print.sig_state := ss;
   try

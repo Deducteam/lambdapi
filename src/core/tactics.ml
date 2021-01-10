@@ -64,7 +64,7 @@ let tac_refine : popt -> proof_state -> term -> proof_state =
    case of error. *)
 let handle_tactic :
   Sig_state.t -> Terms.expo -> proof_state -> p_tactic ->
-    proof_state * Queries.q_res =
+    proof_state * Queries.result =
   fun ss e ps tac ->
   match tac.elt with
   | P_tac_query(q) -> ps, Queries.handle_query ss (Some ps) q
@@ -116,7 +116,7 @@ let handle_tactic :
 
 let handle_tactic :
   Sig_state.t -> Terms.expo -> proof_state -> p_tactic ->
-    proof_state * Queries.q_res =
+    proof_state * Queries.result =
   fun ss exp ps tac ->
   try handle_tactic ss exp ps tac
   with Fatal(_,_) as e -> out 1 "%a" Proof.pp_goals ps; raise e

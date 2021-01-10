@@ -8,10 +8,10 @@ open Print
 open Proof
 
 (** Result of query displayed on hover in the editor*)
-type q_res = string option
+type result = string option
 
 (** [handle_query ss ps q] *)
-let handle_query : Sig_state.t -> proof_state option -> p_query -> q_res =
+let handle_query : Sig_state.t -> proof_state option -> p_query -> result =
   fun ss ps q ->
   match q.elt with
   | P_query_assert(must_fail, asrt) ->
@@ -79,9 +79,9 @@ let handle_query : Sig_state.t -> proof_state option -> p_query -> q_res =
       let scope = Scope.scope_term Public ss env in
       let t = scope pt in
       let a = Infer.infer Unif.solve_noexn pt.pos ctxt t in
-      out 1 "(infr) %a : %a\n" pp_term t pp_term (Eval.eval cfg ctxt a);
-      Some (Format.asprintf "%a : %a" pp_term t pp_term
-              (Eval.eval cfg ctxt a))
+      let res = Eval.eval cfg ctxt a in
+      out 1 "(infr) %a : %a\n" pp_term t pp_term res;
+      Some (Format.asprintf "%a : %a" pp_term t pp_term res)
   | P_query_normalize(pt, cfg) ->
       let env = Proof.focus_env ps in
       let ctxt = Env.to_ctxt env in
@@ -99,7 +99,7 @@ let handle_query : Sig_state.t -> proof_state option -> p_query -> q_res =
       None
   | P_query_print(None) ->
       (match ps with
-       | None -> fatal q.pos "Not in a proof."
+       | None -> None
        | Some ps -> out 1 "%a" Proof.pp_goals ps;
                     Some (Format.asprintf "%a" Proof.pp_goals ps))
   | P_query_print(Some qid) ->

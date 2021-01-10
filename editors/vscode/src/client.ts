@@ -463,8 +463,6 @@ function getGoalsEnvContent(goals : Goal[]){
 }
 
 // TODO: make LambdaPi debug nonwritable by user
-var termWritable = true;
-// to ensure user can't send text to terminal
 function updateTerminalText(logstr: string){
     const termName = "Lambdapi Debug";
     const clearTextSeq = '\x1b[2J\x1b[3J\x1b[;H';
@@ -478,10 +476,7 @@ function updateTerminalText(logstr: string){
             close: () => {},
             handleInput: (data: string) => {
                 data = data.replace(/\r/g, '\r\n');
-                if(termWritable || true){
-                    writeEmitter.fire(data)
-                    termWritable = false;
-                }
+                writeEmitter.fire(data);
             }
         };
         term = window.createTerminal({name: termName, pty});

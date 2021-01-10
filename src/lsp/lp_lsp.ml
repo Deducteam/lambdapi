@@ -221,12 +221,6 @@ let rec get_goals ~doc ~line ~pos =
     | Some (v,_) -> Some v
 
 let get_logs ~doc ~line ~pos =
-  let rec fold_left_while f cond acc l =
-    match l with
-    | x :: _ when not (cond x) -> acc
-    | x :: xs -> fold_left_while f cond (f acc x) xs
-    | [] -> acc
-  in
   (* DEBUG LOG START *)
   LIO.log_error "get_logs"
     (Printf.sprintf "%s:%d,%d" doc.Lp_doc.uri line pos);
@@ -253,7 +247,7 @@ let get_logs ~doc ~line ~pos =
         let Pos.{start_line; _} = Lazy.force npos in
         start_line-1 <= line
   in
-  fold_left_while (fun acc x -> acc^(fst x))
+  List.fold_left_while (fun acc x -> acc^(fst x))
                   (fun (_, p) -> before_cursor p) "" doc.Lp_doc.logs
 
 let do_goals ofmt ~id params =
