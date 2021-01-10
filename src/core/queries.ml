@@ -6,6 +6,7 @@ open Syntax
 open Terms
 open Print
 open Proof
+open! Lplib
 
 (** Result of query displayed on hover in the editor*)
 type result = string option
@@ -116,7 +117,8 @@ let handle_query : Sig_state.t -> proof_state option -> p_query -> result =
           Some (Format.asprintf " ≔ %a" pp_term t)
       | None ->
           out 1 "\n";
-          List.iter (fun r -> out 1 "%a\n" pp_rule (sym, r)) !(sym.sym_rules);
+          let rule oc r = Format.fprintf oc "%a\n" pp_rule (sym, r) in
+          out 1 "%a" (List.pp rule "") !(sym.sym_rules);
           Some (
             List.fold_left (^) ""
               (List.map (fun r -> Format.asprintf "%a\n" pp_rule (sym, r))
