@@ -89,7 +89,6 @@ let rec compile : bool -> Path.t -> Sign.t = fun force path ->
       let sign = Sign.read obj in
       PathMap.iter (fun mp _ -> ignore (compile false mp)) !(sign.sign_deps);
       loaded := PathMap.add path sign !loaded;
-      Sign.import_ops sign;
       Sign.link sign;
       out 2 "Loaded  [%s]\n%!" obj; sign
     end

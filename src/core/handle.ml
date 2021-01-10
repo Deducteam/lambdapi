@@ -460,7 +460,6 @@ let handle_cmd : (Path.t -> Sign.t) -> sig_state -> p_command ->
             let sym = find_sym ~prt:true ~prv:true false ss qid in
             (* Make sure the operator has a fully qualified [qid]. *)
             let unop = (s, prio, with_path sym.sym_path qid) in
-            StrHtbl.add Pratt.operators s (Pratt.Unary(unop));
             out 3 "(conf) %a %a\n" pp_symbol sym pp_hint (Prefix unop);
             add_unop ss s (sym, unop)
         | P_config_binop(binop)   ->
@@ -469,7 +468,6 @@ let handle_cmd : (Path.t -> Sign.t) -> sig_state -> p_command ->
             let sym = find_sym ~prt:true ~prv:true false ss qid in
             (* Make sure the operator has a fully qualified [qid]. *)
             let binop = (s, assoc, prio, with_path sym.sym_path qid) in
-            StrHtbl.add Pratt.operators s (Pratt.Binary(binop));
             out 3 "(conf) %a %a\n" pp_symbol sym pp_hint (Infix binop);
             add_binop ss s (sym, binop);
         | P_config_ident(id)      ->

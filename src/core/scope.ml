@@ -44,11 +44,11 @@ let get_root : p_term -> sig_state -> sym = fun t ss ->
     | P_BinO(_,(_,_,_,qid),_)
     | P_UnaO((_,_,qid),_)   -> find_sym ~prt:true ~prv:true true ss qid
     | P_Appl(t, _)          -> get_root t
-    | P_Wrap(t)             -> get_root (Pratt.parse t)
+    | P_Wrap(t)             -> get_root (Pratt.parse ss t)
     | _                     -> assert false
   in
   (* Pratt parse to order terms correctly. *)
-  get_root (Pratt.parse t)
+  get_root (Pratt.parse ss t)
 
 (** Representation of the different scoping modes.  Note that the constructors
     hold specific information for the given mode. *)
@@ -116,13 +116,14 @@ let rec get_implicitness : p_term -> bool list = fun t ->
    term is converted from appl to list in [Pratt.parse], then rebuilt into
    appl node (still by Pratt.parse), then again decomposed into a list by the
    function. We may make [Pratt.parse] to return already a list of terms. *)
-let get_parsed_args : p_term -> p_term * p_term list = fun t ->
+let get_parsed_args : Sig_state.t -> p_term -> p_term * p_term list =
+  fun ss t ->
   let rec get_args args t =
     match t.elt with
     | P_Appl(t,u) -> get_args (u::args) t
-    | P_Wrap(t)   -> get_args args (Pratt.parse t)
+    | P_Wrap(t)   -> get_args args (Pratt.parse ss t)
     | _           -> (t, args)
-  in get_args [] (Pratt.parse t)
+  in get_args [] (Pratt.parse ss t)
 
 (** [scope md ss env t] turns a parser-level term [t] into an actual term. The
     variables of the environment [env] may appear in [t], and the scoping mode
@@ -158,7 +159,7 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
   (* Toplevel scoping function, with handling of implicit arguments. *)
   let rec scope : env -> p_term -> tbox = fun env t ->
     (* Extract the spine. *)
-    let (p_head, args) = get_parsed_args t in
+    let (p_head, args) = get_parsed_args ss t in
     (* Check that LHS pattern variables are applied to no argument. *)
     begin
       match (p_head.elt, md) with
