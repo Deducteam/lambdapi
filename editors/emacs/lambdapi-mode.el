@@ -190,12 +190,11 @@ will produce
   :group 'lambdapi)
 
 (defcustom lambdapi-window-layout '(v lambdapi-window-Y-ratio
-                                      (h lambdapi-window-X-ratio
-                                         lambdapi--temp-buffer-name
-                                         "*lp-logs*")
-                                      "*Goals*")
+                                      lambdapi--temp-buffer-name
+                                      (h 0.5 "*Goals*" "*lp-logs*"))
   "Window layout of LambdaPi."
   :group 'lambdapi
+  ;; :set might change window layout at an unexpected time
   :set (lambda (option newval)
          (setq lambdapi-window-layout newval)
          (lambdapi-refresh-window-layout))
@@ -203,11 +202,17 @@ will produce
                       :format "%t\n"
                       :value
                       (v lambdapi-window-Y-ratio
+                         lambdapi--temp-buffer-name
+                         (h 0.5 "*Goals*" "*lp-logs*")))
+                (sexp :tag "Layout 2"
+                      :format "%t\n"
+                      :value
+                      (v lambdapi-window-Y-ratio
                          (h lambdapi-window-X-ratio
                             lambdapi--temp-buffer-name
                             "*lp-logs*")
                          "*Goals*"))
-                (sexp :tag "Layout 2"
+                (sexp :tag "Layout 3"
                       :format "%t\n"
                       :value
                       (h lambdapi-window-X-ratio
@@ -215,7 +220,7 @@ will produce
                          (v lambdapi-window-Y-ratio
                             "*lp-logs*"
                             "*Goals*")))
-                (sexp :tag "Layout 3"
+                (sexp :tag "Layout 4"
                       :format "%t\n"
                       :value
                       (h lambdapi-window-X-ratio
