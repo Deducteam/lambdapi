@@ -146,16 +146,7 @@
         "language": "lp",
         "path": "snippets/unicode.json"
       }
-    ],
-    "views": {
-      "debug": [
-        {
-          "type": "webview",
-          "id": "lambdapi.debugView",
-          "name": "LambdaPi Debug"
-        }
-      ]
-    }
+    ]
   },
   "main": "out/src/client.js",
   "scripts": {

@@ -9,7 +9,6 @@
 (require 'cl-lib)
 
 (defconst lp-goal-line-prefix "---------------------------------------------------")
-(defvar lp-debug-flags '() "Debug flags")
 
 (defun lp-focus-goal (goalno &optional proofbuf lineNo)
   "Focus on 'goalno'th goal (zero-indexed). proofbuf is the buffer
@@ -163,19 +162,6 @@ make it clickable"
                 (read-only-mode -1)
                 (erase-buffer)
                 (read-only-mode 1))))))))
-
-(defun eglot--signal-proof/debugFlags ()
-  (let ((server (eglot-current-server))
-        (params `(:flags ,(concat lp-debug-flags))))
-    (if server
-        (jsonrpc-notify server :proof/debugFlags params))))
-
-(defun lp-toggle-debug-flag (flag)
-  (setq lp-debug-flags
-        (if (member flag lp-debug-flags)
-            (delete flag lp-debug-flags)
-          (cons flag lp-debug-flags)))
-  (eglot--signal-proof/debugFlags))
 
 (defun lp-display-goals ()
   "Display goals at cursor position."

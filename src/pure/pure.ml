@@ -61,9 +61,6 @@ let t0 : Time.t Stdlib.ref = Stdlib.ref (Time.save ())
 let set_initial_time : unit -> unit = fun _ ->
   Stdlib.(t0 := Time.save ())
 
-let get_initial_time : unit -> Time.t = fun _ ->
-  Stdlib.(!t0)
-
 let initial_state : file_path -> state = fun fname ->
   Console.reset_default ();
   Time.restore Stdlib.(!t0);

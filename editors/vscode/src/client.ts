@@ -79,10 +79,6 @@ export function activate(context: ExtensionContext) {
 
         client.onReady().then( () => {
 
-            // setup debug flags menu in debug view container
-            const provider = new DebugViewProvider(context.extensionUri);
-            context.subscriptions.push(window.registerWebviewViewProvider('lambdapi.debugView', provider));
-
             // Create and show panel for proof goals
             const panel = window.createWebviewPanel(
                 'goals',
@@ -585,84 +581,4 @@ export function deactivate(): Thenable<void> | undefined {
         return undefined;
     }
     return client.stop();
-}
-
-class DebugViewProvider implements WebviewViewProvider {
-
-	private _view?: WebviewView;
-
-	constructor(
-		private readonly _extensionUri: Uri,
-	) { }
-	resolveWebviewView(webviewView: WebviewView, context: WebviewViewResolveContext<unknown>, _token: CancellationToken): void | Thenable<void> {
-		this._view = webviewView;
-
-		webviewView.webview.options = {
-			// Allow scripts in the webview
-			enableScripts: true,
-
-			localResourceRoots: [
-				this._extensionUri
-			]
-		};
-
-		webviewView.webview.html = this._getHtmlForWebview();
-
-		webviewView.webview.onDidReceiveMessage(data => {
-			switch (data.type) {
-				case 'debug':
-					{
-                        let params = {'flags': data.flags};
-                        client.sendNotification('proof/debugFlags', params);
-					}
-			}
-		});
-	}
-
-	private _getHtmlForWebview(){
-        let html = `<!DOCTYPE html>
-        <html lang="en">
-        <head>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <style type="text/css">
-                .key {
-                    color : var(--vscode-textLink-foreground);
-                }
-            </style>
-        </head>
-        <body>
-            <input type="checkbox" value="c" onchange="sendFlags()">[c]onversion</input><br>
-            <input type="checkbox" value="e" onchange="sendFlags()">[e]valuation</input><br>
-            <input type="checkbox" value="f" onchange="sendFlags()">[f]ile system</input><br>
-            <input type="checkbox" value="g" onchange="sendFlags()">[g]enerating induction principle</input><br>
-            <input type="checkbox" value="h" onchange="sendFlags()">command [h]andling</input><br>
-            <input type="checkbox" value="i" onchange="sendFlags()">[i]nference / checking</input><br>
-            <input type="checkbox" value="p" onchange="sendFlags()">[p]retty-printing</input><br>
-            <input type="checkbox" value="r" onchange="sendFlags()">[r]ewrite tactic</input><br>
-            <input type="checkbox" value="s" onchange="sendFlags()">[s]ubject reduction</input><br>
-            <input type="checkbox" value="t" onchange="sendFlags()">[t]actic</input><br>
-            <input type="checkbox" value="u" onchange="sendFlags()">[u]nification</input><br>
-            <input type="checkbox" value="w" onchange="sendFlags()">[w]hy3 prover</input><br>
-            <input type="checkbox" value="x" onchange="sendFlags()">e[x]ternal tools</input><br>
-
-            <script>
-                const vscode = acquireVsCodeApi();
-                function sendFlags(){
-                    const checkboxes = document.querySelectorAll('input:checked')
-                    let flags = "";
-                    checkboxes.forEach((cb) => {flags += cb.value});
-                    vscode.postMessage({
-                        'type': 'debug',
-                        'flags': flags
-                    });
-                }
-            </script>
-        </body>
-        </html>`;
-        // replace [x]
-        html = html.replace(/\[(.)\]/g, '<span class="key">$1</span>');
-        return html;
-     }
-	
 }

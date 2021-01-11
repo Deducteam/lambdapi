@@ -67,9 +67,9 @@ let rec compile : bool -> Path.t -> Sign.t = fun force path ->
             let (st,ts) = (data.pdata_p_state, data.pdata_tactics) in
             let e = data.pdata_expo in
             let st =
-              (List.fold_left
+              List.fold_left
                 (fun st tac -> fst (Tactics.handle_tactic ss e st tac))
-                st ts)
+                st ts
             in
             data.pdata_finalize ss st
       in

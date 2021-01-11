@@ -55,33 +55,11 @@ let doc_table : (string, _) Hashtbl.t = Hashtbl.create 39
 let completed_table : (string, Lp_doc.t) Hashtbl.t = Hashtbl.create 39
 
 (* Notification handling; reply is optional / asynchronous *)
-let do_check_text ?(reply=true) ofmt ~doc =
+let do_check_text ofmt ~doc =
   let doc, diags = Lp_doc.check_text ~doc in
   Hashtbl.replace doc_table doc.uri doc;
   Hashtbl.replace completed_table doc.uri doc;
-  if reply then
-    LIO.send_json ofmt @@ diags
-
-let do_debugFlags ofmt params =
-  let flags = string_field "flags" params in
-  LIO.log_error "debugFlags" ("flags="^flags);
-  let open Console in
-  let logger_keys = List.map (fun {logger_key; _} -> logger_key) !loggers in
-  (* let verbose = int_field "verbose" params in *)
-  Timed.Time.restore @@ Pure.get_initial_time ();
-  Console.set_debug false @@ String.of_list logger_keys;
-  Console.set_default_debug flags;
-  (* Console.set_default_verbose verbose; *)
-  Pure.set_initial_time ();
-  Hashtbl.iter
-    (fun _ doc ->
-      let open Lp_doc in
-      let uri = doc.uri in
-      let version = doc.version in
-      let text = doc.text in
-      let doc = new_doc ~uri ~version ~text in
-      do_check_text ~reply:false ofmt ~doc)
-    doc_table
+  LIO.send_json ofmt @@ diags
 
 let do_change ofmt ~doc change =
   let open Lp_doc in
@@ -443,10 +421,6 @@ let dispatch_message ofmt dict =
   | "textDocument/didClose" ->
     protect_dispatch "didClose"
       (do_close ofmt) params
-
-  | "proof/debugFlags" ->
-    protect_dispatch "debugFlags"
-      (do_debugFlags ofmt) params
 
   | "exit" ->
     exit 0

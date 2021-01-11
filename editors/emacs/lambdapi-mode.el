@@ -236,39 +236,6 @@ will produce
                          lambdapi--temp-buffer-name
                          "*Goals*"))))
 
-;; Debug menu
-(easy-menu-define lambdapi-mode-menu lambdapi-mode-map
-  "LambdaPi Mode Menu"
-  `("LambdaPi-Debug"
-    ["Conversion"
-     (lp-toggle-debug-flag ?c) :style toggle :selected (memq ?c lp-debug-flags)]
-    ["Evaluation"
-     (lp-toggle-debug-flag ?e) :style toggle :selected (memq ?e lp-debug-flags)]
-    ["File system"
-     (lp-toggle-debug-flag ?f) :style toggle :selected (memq ?f lp-debug-flags)]
-    ["Generate induction principle"
-     (lp-toggle-debug-flag ?g) :style toggle :selected (memq ?g lp-debug-flags)]
-    ["command Handling"
-     (lp-toggle-debug-flag ?h) :style toggle :selected (memq ?h lp-debug-flags)]
-    ["type Inference/checking"
-     (lp-toggle-debug-flag ?i) :style toggle :selected (memq ?i lp-debug-flags)]
-    ["term scOping"
-     (lp-toggle-debug-flag ?o) :style toggle :selected (memq ?o lp-debug-flags)]
-    ["Pretty-printing"
-     (lp-toggle-debug-flag ?p) :style toggle :selected (memq ?p lp-debug-flags)]
-    ["Rewrite tactic"
-     (lp-toggle-debug-flag ?r) :style toggle :selected (memq ?r lp-debug-flags)]
-    ["Subject-reduction"
-     (lp-toggle-debug-flag ?s) :style toggle :selected (memq ?s lp-debug-flags)]
-    ["Tactics"
-     (lp-toggle-debug-flag ?t) :style toggle :selected (memq ?t lp-debug-flags)]
-    ["Unification"
-     (lp-toggle-debug-flag ?u) :style toggle :selected (memq ?u lp-debug-flags)]
-    ["Why3 provers"
-     (lp-toggle-debug-flag ?w) :style toggle :selected (memq ?w lp-debug-flags)]
-    ["eXternal tools"
-     (lp-toggle-debug-flag ?x) :style toggle :selected (memq ?x lp-debug-flags)]))
-
 
 ;; Main function creating the mode (lambdapi)
 ;;;###autoload
