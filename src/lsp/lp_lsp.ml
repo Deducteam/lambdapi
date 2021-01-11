@@ -168,9 +168,7 @@ let get_textPosition params =
 let in_range ?loc (line, pos) =
   match loc with
   | None -> false
-  | Some loc ->
-      let { Pos.start_line ; start_col ; end_line ; end_col ; _ } =
-        loc in
+  | Some Pos.{start_line; start_col; end_line; end_col; _} ->
     start_line - 1 < line && line < end_line - 1 ||
     (start_line - 1 = line && start_col <= pos) ||
     (end_line - 1 = line && pos <= end_col)

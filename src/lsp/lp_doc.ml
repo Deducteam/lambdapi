@@ -50,7 +50,7 @@ let option_default o1 d =
 let mk_error ~doc pos msg =
   LSP.mk_diagnostics ~uri:doc.uri ~version:doc.version [pos, 1, msg, None]
 
-let process_pstep (pstate, diags) tac =
+let process_pstep (pstate,diags) tac =
   let open Pure in
   let tac_loc = Tactic.get_pos tac in
   match handle_tactic pstate tac with

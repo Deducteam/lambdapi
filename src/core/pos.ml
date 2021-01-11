@@ -79,14 +79,14 @@ let to_string : ?print_fname:bool -> pos -> string =
     Printf.sprintf "%s%d:%d-%d" fname start_line start_col end_col
 
 (** [print oc pos] prints the optional position [pos] to [oc]. *)
-let print : Format.formatter -> pos option -> unit = fun ch p ->
+let print : Format.formatter -> popt -> unit = fun ch p ->
   match p with
   | None    -> Format.pp_print_string ch "unknown location"
   | Some(p) -> Format.pp_print_string ch (to_string p)
 
 (** [print_short oc pos] prints the optional position [pos] to [oc] without
     the filename. *)
-let print_short : Format.formatter -> pos option -> unit = fun ch p ->
+let print_short : Format.formatter -> popt -> unit = fun ch p ->
   match p with
   | None -> Format.pp_print_string ch "unknown location"
   | Some(p) -> Format.pp_print_string ch (to_string ~print_fname:false p)
