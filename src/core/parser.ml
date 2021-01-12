@@ -1,7 +1,12 @@
-(** Parsing functions for the Lambdapi. *)
+(** Parsing functions for Lambdapi.
+
+    This module includes two parsers: a parser for the Lambdapi syntax whose
+    functions are available either through the submodule
+    {!module:Parser.Lp}, or directly in {!module:Parser}; and another
+    parser for the Dedukti 2.7 syntax, available through
+    {!module:Parser.Dk}. *)
 
 open! Lplib
-
 open Pos
 
 (** [parser_fatal loc fmt] is a wrapper for [Console.fatal] that enforces
@@ -104,20 +109,20 @@ let parse_qident : string ->
 with Invalid_id(i, pos) -> Error(i, pos)
 
 (** Parsing legacy (Dedukti2) syntax. *)
-module Legacy : PARSER = struct
+module Dk : PARSER = struct
   let parse_lexbuf : string -> Lexing.lexbuf -> Syntax.ast =
     fun fname lexbuf ->
-    Stdlib.(Legacy_lexer.filename := fname);
+    Stdlib.(Dk_lexer.filename := fname);
     let lines = ref [] in
     try
       while true do
-        let l = Menhir_parser.line Legacy_lexer.token lexbuf in
+        let l = Dk_parser.line Dk_lexer.token lexbuf in
         lines := l :: !lines
       done;
       assert false (* Unreachable. *)
     with
-    | End_of_file         -> List.rev !lines
-    | Menhir_parser.Error ->
+    | End_of_file -> List.rev !lines
+    | Dk_parser.Error ->
         let loc =
           Lexing.(lexbuf.lex_start_p, lexbuf.lex_curr_p) in
         let loc = Pos.locate loc in

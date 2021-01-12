@@ -16,7 +16,7 @@
 
 (menhir (flags --explain --external-tokens Lp_lexer) (modules lp_parser))
 
-(ocamllex legacy_lexer)
+(ocamllex dk_lexer)
 (menhir
- (flags (--external-tokens Legacy_lexer))
- (modules menhir_parser))
+ (flags (--external-tokens Dk_lexer))
+ (modules dk_parser))

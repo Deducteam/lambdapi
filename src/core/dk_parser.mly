@@ -5,7 +5,7 @@ open! Lplib
 open Timed
 open Pos
 open Syntax
-open Legacy_lexer
+open Dk_lexer
 
 (** {b NOTE} we maintain the invariant described in the [Parser] module: every
     error should have an attached position.  We do not open [Console] to avoid

@@ -1,8 +1,5 @@
-(** A simple parser for operators. See Pratt parsing or the Shunting Yard
-    algorithm.
-
-    <https://dev.to/jrop/pratt-parsing>
-    <https://effbot.org/zone/simple-top-down-parsing.htm> *)
+(** This module defines functions needed by the Pratt parser of the Pratter
+    library. *)
 
 open Syntax
 

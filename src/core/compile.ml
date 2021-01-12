@@ -17,7 +17,7 @@ let gen_obj = Stdlib.ref false
 let parse_file : string -> Syntax.ast = fun fname ->
   match Filename.check_suffix fname src_extension with
   | true  -> Parser.parse_file fname
-  | false -> Parser.Legacy.parse_file fname
+  | false -> Parser.Dk.parse_file fname
 
 (** [compile force path] compiles the file corresponding to [path], when it is
     necessary (the corresponding object file does not exist,  must be updated,
