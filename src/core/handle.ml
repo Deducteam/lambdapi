@@ -434,6 +434,8 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
                 let t = Scope.scope_term pdata_expo ss [] pt in
                 Tactics.tac_refine pt.pos ps t
       in
+      if p_sym_prf = None && not (finished ps) then wrn pos
+        "Some metavariables could not be solved: a proof must be given";
       { pdata_stmt_pos = p_sym_nam.pos; pdata_p_state = ps; pdata_tactics = ts
       ; pdata_finalize = finalize ; pdata_end_pos = pe.pos; pdata_expo }
     in
