@@ -40,7 +40,7 @@ exception NotTypable
 @raise NotTypable when the term is not typable (when encountering an
    abstraction over a kind). *)
 let rec infer : ctxt -> term -> term = fun ctx t ->
-  if !log_enabled then log_infr "infer %a%a" pp_ctxt ctx pp_term t;
+  if !log_enabled then log_infr "infer type of %a%a" pp_ctxt ctx pp_term t;
   match unfold t with
   | Patt(_,_,_) -> assert false (* Forbidden case. *)
   | TEnv(_,_)   -> assert false (* Forbidden case. *)
@@ -168,7 +168,7 @@ let infer_noexn : ctxt -> term -> (term * constr list) option = fun ctx t ->
       if !log_enabled then
         begin
           log_infr (gre "infer %a : %a") pp_term t pp_term a;
-          List.iter (log_infr "  if %a" pp_constr) cs;
+          List.iter (log_infr (gre "  if %a") pp_constr) cs;
         end;
       Some (a,cs)
     with NotTypable -> None
@@ -187,7 +187,7 @@ let check_noexn : ctxt -> term -> term -> constr list option = fun ctx t a ->
       if !log_enabled then
         begin
           log_infr (gre "check %a : %a") pp_term t pp_term a;
-          List.iter (log_infr "  if %a" pp_constr) cs;
+          List.iter (log_infr (gre "  if %a") pp_constr) cs;
         end;
       Stdlib.(constraints := []);
       Some cs
