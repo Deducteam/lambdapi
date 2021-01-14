@@ -100,7 +100,7 @@ let handle_query : Sig_state.t -> proof_state option -> p_query -> result =
       None
   | P_query_print(None) ->
       (match ps with
-       | None -> None
+       | None -> fatal q.pos "Not in a proof."
        | Some ps -> out 1 "%a" Proof.pp_goals ps;
                     Some (Format.asprintf "%a" Proof.pp_goals ps))
   | P_query_print(Some qid) ->
