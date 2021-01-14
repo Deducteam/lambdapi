@@ -464,7 +464,7 @@ let main std log_file =
     LIO.log_object "read" com;
     process_input oc com;
     F.pp_print_flush lp_fmt ();
-    (* flush lp_oc *)
+    (* flush lp_oc ;*)
     loop ()
   in
   try loop ()
@@ -474,6 +474,7 @@ let main std log_file =
     LIO.log_error "[BT]" bt;
     F.pp_print_flush !LIO.debug_fmt ();
     flush_all ();
+    (* close_out lp_oc; *)
     close_out debug_oc
 
 let default_log_file : string = "/tmp/lambdapi_lsp_log.txt"
