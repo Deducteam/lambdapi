@@ -118,6 +118,5 @@ let handle_tactic :
 let handle_tactic :
   Sig_state.t -> Terms.expo -> proof_state -> p_tactic -> proof_state =
   fun ss exp ps tac ->
-  Print.sig_state := ss;
   try handle_tactic ss exp ps tac
   with Fatal(_,_) as e -> out 1 "%a" Proof.pp_goals ps; raise e
