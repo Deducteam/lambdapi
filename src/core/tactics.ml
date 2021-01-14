@@ -86,11 +86,9 @@ let handle_tactic :
       let t = Scope.scope_term e ss env pt in
       (* Compute the product arity of the type of [t]. *)
       let n =
-        let gs_typ, gs_unif = List.partition is_typ ps.proof_goals in
-        let to_solve = List.map get_constr gs_unif in
-        match Infer.infer_noexn to_solve (Env.to_ctxt env) t with
+        match Infer.infer_noexn [] (Env.to_ctxt env) t with
         | None -> fatal tac.pos "[%a] is not typable." pp_term t
-        | Some (a, to_solve) -> Basics.count_products a
+        | Some (a, _) -> Basics.count_products a
       in
       (*FIXME: this does not take into account implicit arguments. *)
       let t = if n <= 0 then t
