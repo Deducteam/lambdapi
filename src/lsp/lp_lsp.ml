@@ -464,6 +464,7 @@ let main std log_file =
     LIO.log_object "read" com;
     process_input oc com;
     F.pp_print_flush lp_fmt ();
+    (* flush lp_oc *)
     loop ()
   in
   try loop ()
