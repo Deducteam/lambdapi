@@ -45,6 +45,9 @@ module Lp_lexer : sig
   val is_identifier : string -> bool
   (** [is_identifier s] is [true] if [s] is a valid identifier. *)
 
+  val is_keyword : string -> bool
+  (** [is_keyword s] retunrs [true] if [s] is a keyword. *)
+
   val unquote : string -> string
   (** [unquote s] removes the quotation marks [{|] and [|}] from [s] if it has
       some. Otherwise, the argument is returned. *)
@@ -117,6 +120,55 @@ and nom_comment : lexbuf -> unit = fun buf ->
     match%sedlex lexbuf with
     | id -> true
     | _ -> false
+
+  let is_keyword : string -> bool = fun s ->
+    List.mem s
+      [ "TYPE"
+      ; "apply"
+      ; "as"
+      ; "assert"
+      ; "assertnot"
+      ; "assume"
+      ; "builtin"
+      ; "compute"
+      ; "constant"
+      ; "definition"
+      ; "flag"
+      ; "in"
+      ; "inductive"
+      ; "infix"
+      ; "injective"
+      ; "left"
+      ; "let"
+      ; "off"
+      ; "on"
+      ; "open"
+      ; "prefix"
+      ; "private"
+      ; "proof"
+      ; "protected"
+      ; "prover"
+      ; "prover_timeout"
+      ; "qed"
+      ; "refine"
+      ; "refine"
+      ; "reflexivity"
+      ; "require"
+      ; "rewrite"
+      ; "right"
+      ; "rule"
+      ; "set"
+      ; "sequential"
+      ; "simpl"
+      ; "symbol"
+      ; "symmetry"
+      ; "theorem"
+      ; "type"
+      ; "type"
+      ; "unif_rule"
+      ; "verbose"
+      ; "why3"
+      ; "with" ]
 
   (** [is_debug_flag s] is true if [s] is a debug flag of the form [+...] or
       [-...] where the dots are a sequence of letters. *)

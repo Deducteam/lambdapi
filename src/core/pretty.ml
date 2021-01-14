@@ -12,60 +12,10 @@ open Console
 open Pos
 open Syntax
 
-(** [is_keyword s] returns [true] if [s] is a keyword (defined by the lexer)
-    in {!module:Lp_lexer}. *)
-let is_keyword : string -> bool = fun s ->
-  List.mem s
-    [ "TYPE"
-    ; "apply"
-    ; "as"
-    ; "assert"
-    ; "assertnot"
-    ; "assume"
-    ; "builtin"
-    ; "compute"
-    ; "constant"
-    ; "definition"
-    ; "flag"
-    ; "in"
-    ; "inductive"
-    ; "infix"
-    ; "injective"
-    ; "left"
-    ; "let"
-    ; "off"
-    ; "on"
-    ; "open"
-    ; "prefix"
-    ; "private"
-    ; "proof"
-    ; "protected"
-    ; "prover"
-    ; "prover_timeout"
-    ; "qed"
-    ; "refine"
-    ; "refine"
-    ; "reflexivity"
-    ; "require"
-    ; "rewrite"
-    ; "right"
-    ; "rule"
-    ; "set"
-    ; "sequential"
-    ; "simpl"
-    ; "symbol"
-    ; "symmetry"
-    ; "theorem"
-    ; "type"
-    ; "type"
-    ; "unif_rule"
-    ; "verbose"
-    ; "why3"
-    ; "with" ]
 let string = Format.pp_print_string
 
 let ident : ident pp = fun oc id ->
-  if is_keyword id.elt then
+  if Lp_lexer.is_keyword id.elt then
     fatal id.pos "Identifier [%s] is a Lambdapi keyword." id.elt;
   string oc id.elt
 
@@ -75,7 +25,7 @@ let arg_ident : ident option pp = fun oc id ->
   | None     -> string oc "_"
 
 let path_elt : Pos.popt -> (string * bool) pp = fun pos oc (s,b) ->
-  if not b && is_keyword s then
+  if not b && Lp_lexer.is_keyword s then
     fatal pos "Module path member [%s] is a Lambdapi keyword." s;
   if b then Format.fprintf oc "{|%s|}" s else string oc s
 
