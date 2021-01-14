@@ -11,8 +11,10 @@
  (synopsis "LambdaPi interactive theorem prover [core]")
  (modules :standard)
  (preprocess (pps sedlex.ppx))
- (libraries pratter sedlex sedlex.ppx unix stdlib-shims timed bindlib why3
-            lplib))
+ (libraries
+  ; pratter
+  sedlex sedlex.ppx unix stdlib-shims timed bindlib why3
+  lplib))
 
 (menhir (flags --explain --external-tokens Lp_lexer) (modules lp_parser))
 
