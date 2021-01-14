@@ -204,11 +204,6 @@ The window layout can be customized in the LambdaPi customization group
 The layout can be refreshed with ``C-c C-r``.
 
 
-Debug
-'''''
-
-The debug flags can be set from the LambdaPi-Debug menu
-
 
 Other relevant packages
 -----------------------
