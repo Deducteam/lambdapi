@@ -165,7 +165,7 @@ let run_task : Why3.Task.task -> Pos.popt -> string -> bool =
   (* Return the prover configuration and load the driver. *)
   let prover = snd (Why3.Whyconf.Mprover.max_binding provers) in
   let driver =
-    try Why3.Whyconf.(load_driver why3_main why3_env prover.driver [])
+    try Why3.Whyconf.(load_driver why3_main why3_env prover)
     with e -> fatal pos "Failed to load driver for %s (%a)"
                 prover.prover.prover_name Why3.Exn_printer.exn_printer e
   in
