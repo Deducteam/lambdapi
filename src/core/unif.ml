@@ -134,7 +134,7 @@ let instantiate : ctxt -> meta -> term array ->
           | Some a -> a
           | None -> assert false
         in
-        match Infer.check_noexn ctx u typ_mts with
+        match Infer.check_noexn [] ctx u typ_mts with
         | None -> false
         | Some cs ->
             let is_initial c = List.exists (Eval.eq_constr c) initial in

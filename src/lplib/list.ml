@@ -161,17 +161,17 @@ let init : int -> (int -> 'a) -> 'a list =
     let rec loop k = if k > n then [] else f k :: loop (k + 1) in
     loop 0
 
-(** [in_sorted cmp x l] tells whether [x] is in [l] assuming that [l] is sorted
-    wrt [cmp]. *)
-let in_sorted : 'a cmp -> 'a -> 'a list -> bool =
+(** [mem_sorted cmp x l] tells whether [x] is in [l] assuming that [l] is
+   sorted wrt [cmp]. *)
+let mem_sorted : 'a cmp -> 'a -> 'a list -> bool =
  fun cmp x ->
-  let rec in_sorted l =
+  let rec mem_sorted l =
     match l with
     | [] -> false
-    | y :: l -> (
-      match cmp x y with 0 -> true | n when n > 0 -> in_sorted l | _ -> false )
+    | y :: l ->
+      match cmp x y with 0 -> true | n when n > 0 -> mem_sorted l | _ -> false
   in
-  in_sorted
+  mem_sorted
 
 (** [insert cmp x l] inserts [x] in the list [l] assuming that [l] is sorted wrt
     [cmp]. *)
