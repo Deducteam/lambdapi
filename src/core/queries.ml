@@ -119,10 +119,7 @@ let handle_query : Sig_state.t -> proof_state option -> p_query -> result =
           out 1 "\n";
           let rule oc r = Format.fprintf oc "%a\n" pp_rule (sym, r) in
           out 1 "%a" (List.pp rule "") !(sym.sym_rules);
-          Some (
-            List.fold_left (^) ""
-              (List.map (fun r -> Format.asprintf "%a\n" pp_rule (sym, r))
-                !(sym.sym_rules))))
+          Some (Format.asprintf "%a" (List.pp rule "") !(sym.sym_rules)))
   | P_query_proofterm ->
       (match ps with
        | None -> fatal q.pos "Not in a proof"
