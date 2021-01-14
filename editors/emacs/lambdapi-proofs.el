@@ -132,7 +132,11 @@ make it clickable"
                (lambda (beg end face)
                  (when face
                    (put-text-property beg end 'face face)))))
-          (ansi-color-apply-on-region (point-min) (point-max)))))
+          (ansi-color-apply-on-region (point-min) (point-max)))
+        ;;; remove whitespace at end of buffer
+        (goto-char (point-max))
+        (while (member (char-before) '(?  ?\C-j ?\C-i))
+          (delete-backward-char 1))))
     (let ((logwin (get-buffer-window logbuf)))
       (if logwin
           (with-selected-window logwin

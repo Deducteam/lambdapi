@@ -180,30 +180,39 @@ will produce
   :group 'languages)
 
 (defcustom lambdapi-window-X-ratio 0.5
-  "Ratio of height taken in horizontal split during window layout"
+  "Ratio of height taken in horizontal split during window layout.
+(Not applicable to Layout 0)"
   :type '(float)
   :group 'lambdapi)
 
 (defcustom lambdapi-window-Y-ratio 0.8
-  "Ratio of width taken in vertical split during window layout"
+  "Ratio of width taken in vertical split during window layout
+(Not applicable to Layout 0)"
   :type '(float)
   :group 'lambdapi)
 
-(defcustom lambdapi-window-layout '(v lambdapi-window-Y-ratio
+(defcustom lambdapi-window-layout '(v 0.75
                                       lambdapi--temp-buffer-name
-                                      (h 0.5 "*Goals*" "*lp-logs*"))
+                                      (v 0.8 "*Goals*" "*lp-logs*"))
   "Window layout of LambdaPi."
   :group 'lambdapi
   ;; :set might change window layout at an unexpected time
   :set (lambda (option newval)
          (setq lambdapi-window-layout newval)
          (lambdapi-refresh-window-layout))
-  :type '(radio (sexp :tag "Layout 1"
+  :type '(radio (sexp :tag "Layout 0"
+		      :format "%t\n"
+		      :value
+		      (v 0.75
+                         lambdapi--temp-buffer-name
+                         (v 0.8 "*Goals*" "*lp-logs*")))
+	        (sexp :tag "Layout 1"
                       :format "%t\n"
                       :value
                       (v lambdapi-window-Y-ratio
                          lambdapi--temp-buffer-name
-                         (h 0.5 "*Goals*" "*lp-logs*")))
+                         (h lambdapi-window-X-ratio
+			    "*Goals*" "*lp-logs*")))
                 (sexp :tag "Layout 2"
                       :format "%t\n"
                       :value
