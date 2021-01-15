@@ -361,13 +361,9 @@ let handle_cmd : sig_state -> p_command ->
       let proof_goals, a = goals_of_typ pos ao t in
       (* Add the metas of [a] as goals. *)
       let proof_goals = add_goals_of_metas metas_a proof_goals in
-      (* Add the definition as focused goal so that we can refine on it. *)
-      let proof_term, proof_goals =
-        if p_sym_def then
-          let m =  Meta.fresh ~name:id a 0 in
-          Some m, Goal.of_meta m :: proof_goals
-        else None, proof_goals
-      in
+      (* Add the definition as goal so that we can refine on it. *)
+      let proof_term =
+        if p_sym_def then Some (Meta.fresh ~name:id a 0) else None in
       (* Get tactics and proof end. *)
       let ts, pe =
         match p_sym_prf with
@@ -421,14 +417,25 @@ let handle_cmd : sig_state -> p_command ->
       let ps = {proof_name = p_sym_nam; proof_term; proof_goals} in
       (* Apply tac_solve. *)
       let ps = Tactics.tac_solve pos ps in
+      (* Add proof_term as focused goal. *)
+      let ps =
+        match proof_term with
+        | None -> ps
+        | Some m -> {ps with proof_goals = Goal.of_meta m :: ps.proof_goals}
+      in
       (* Apply tac_refine in case of a definition. *)
       let ps =
         match pt with
         | None -> ps
         | Some pt ->
-            let t = Scope.scope_term pdata_expo ss [] pt in
-            Tactics.tac_refine pt.pos ps t
+            match proof_term with
+            | None -> assert false
+            | Some _ ->
+                let t = Scope.scope_term pdata_expo ss [] pt in
+                Tactics.tac_refine pt.pos ps t
       in
+      if p_sym_prf = None && not (finished ps) then wrn pos
+        "Some metavariables could not be solved: a proof must be given";
       { pdata_stmt_pos = p_sym_nam.pos; pdata_p_state = ps; pdata_tactics = ts
       ; pdata_finalize = finalize ; pdata_end_pos = pe.pos; pdata_expo }
     in

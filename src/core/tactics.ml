@@ -17,6 +17,7 @@ let log_tact = log_tact.logger
 (** [tac_solve pos ps] tries to simplify the unification goals of the proof
    state [ps] and fails if constraints are unsolvable. *)
 let tac_solve : popt -> proof_state -> proof_state = fun pos ps ->
+  if !log_enabled then log_tact "solve";
   try
     let gs_typ, gs_unif = List.partition is_typ ps.proof_goals in
     let to_solve = List.map get_constr gs_unif in
@@ -41,22 +42,24 @@ let tac_refine : popt -> proof_state -> term -> proof_state =
   | [] -> fatal pos "No remaining goals."
   | Unif _::_ -> fatal pos "Not a typing goal."
   | Typ gt::gs ->
-      log_tact "refine [%a] with [%a]" pp_meta gt.goal_meta pp_term t;
+      if !log_enabled then
+        log_tact "refine %a with %a" pp_meta gt.goal_meta pp_term t;
       if Basics.occurs gt.goal_meta t then fatal pos "Circular refinement.";
       (* Check that [t] is well-typed. *)
+      let gs_typ, gs_unif = List.partition is_typ gs in
+      let to_solve = List.map get_constr gs_unif in
       let c = Env.to_ctxt gt.goal_hyps in
-      log_tact "check %a ..." pp_typing (c,t,gt.goal_type);
-      match Infer.check_noexn c t gt.goal_type with
+      match Infer.check_noexn to_solve c t gt.goal_type with
       | None -> fatal pos "[%a] cannot have type [%a]."
                   pp_term t pp_term gt.goal_type
-      | Some to_solve ->
+      | Some cs ->
           (* Instantiation. Use Unif.instantiate instead ? *)
           Meta.set gt.goal_meta
             (Bindlib.unbox (Bindlib.bind_mvar (Env.vars gt.goal_hyps)
                               (lift t)));
           (* Convert the metas of [t] not in [gs] into new goals. *)
-          let gs = add_goals_of_metas (Basics.get_metas true t) gs in
-          let proof_goals = List.rev_map (fun c -> Unif c) to_solve @ gs in
+          let gs_typ = add_goals_of_metas (Basics.get_metas true t) gs_typ in
+          let proof_goals = List.rev_map (fun c -> Unif c) cs @ gs_typ in
           tac_solve pos {ps with proof_goals}
 
 (** [handle_tactic ss e ps tac] applies tactic [tac] in the proof state
@@ -84,9 +87,9 @@ let handle_tactic :
       let t = Scope.scope_term e ss env pt in
       (* Compute the product arity of the type of [t]. *)
       let n =
-        match Infer.infer_noexn (Env.to_ctxt env) t with
+        match Infer.infer_noexn [] (Env.to_ctxt env) t with
         | None -> fatal tac.pos "[%a] is not typable." pp_term t
-        | Some (a, to_solve) -> Basics.count_products a
+        | Some (a, _) -> Basics.count_products a
       in
       (*FIXME: this does not take into account implicit arguments. *)
       let t = if n <= 0 then t

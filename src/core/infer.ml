@@ -23,11 +23,12 @@ let constraints = Stdlib.ref []
 
 (** Function adding a constraint. *)
 let conv ctx a b =
-  if not (Eval.eq_modulo ctx a b) then
+  if not (Lplib.List.mem_sorted Basics.cmp_constr (ctx,a,b)
+            Stdlib.(!constraints)) && not (Eval.eq_modulo ctx a b) then
     begin
-      if !log_enabled then
-        log_infr (yel "add %a") pp_constr (ctx,a,b);
-      let open Stdlib in constraints := (ctx,a,b) :: !constraints
+      if !log_enabled then log_infr (yel "add %a") pp_constr (ctx,a,b);
+      Stdlib.(constraints :=
+                Lplib.List.insert Basics.cmp_constr (ctx,a,b) !constraints)
     end
 
 (** Exception that may be raised by type inference. *)
@@ -40,7 +41,7 @@ exception NotTypable
 @raise NotTypable when the term is not typable (when encountering an
    abstraction over a kind). *)
 let rec infer : ctxt -> term -> term = fun ctx t ->
-  if !log_enabled then log_infr "infer %a%a" pp_ctxt ctx pp_term t;
+  if !log_enabled then log_infr "infer type of %a%a" pp_ctxt ctx pp_term t;
   match unfold t with
   | Patt(_,_,_) -> assert false (* Forbidden case. *)
   | TEnv(_,_)   -> assert false (* Forbidden case. *)
@@ -151,45 +152,43 @@ let rec infer : ctxt -> term -> term = fun ctx t ->
    fails (but constraints may be unsatisfiable). *)
 and check : ctxt -> term -> term -> unit = fun ctx t a ->
   if !log_enabled then
-    log_infr "check %a%a : %a" pp_ctxt ctx pp_term t pp_term a;
+    log_infr "check %a%a\n: %a" pp_ctxt ctx pp_term t pp_term a;
   conv ctx (infer ctx t) a
 
-(** [infer_noexn ctx t] returns [None] if the type of [t] in context [ctx]
-   cannot be infered, or [Some(a,cs)] where [a] is some type of [t] in the
-   context [ctx] if the constraints [cs] are satisfiable (which may not be the
-   case). [ctx] must well sorted. *)
-let infer_noexn : ctxt -> term -> (term * constr list) option = fun ctx t ->
+(** [infer_noexn cs ctx t] returns [None] if the type of [t] in context [ctx]
+   and constraints [cs] cannot be infered, or [Some(a,cs')] where [a] is some
+   type of [t] in the context [ctx] if the constraints [cs'] are satisfiable
+   (which may not be the case). [ctx] must well sorted. *)
+let infer_noexn : constr list -> ctxt -> term -> (term * constr list) option =
+  fun cs ctx t ->
+  Stdlib.(constraints := cs);
   let res =
     try
-      Stdlib.(constraints := []);
       let a = infer ctx t in
       let cs = Stdlib.(!constraints) in
-      let cs = List.sort_uniq Eval.compare_constr cs in
-      if !log_enabled then
-        begin
-          log_infr (gre "infer %a : %a") pp_term t pp_term a;
-          List.iter (log_infr "  if %a" pp_constr) cs;
-        end;
+      (if !log_enabled then
+        let cond oc c = Format.fprintf oc "\n  if %a" pp_constr c in
+        log_infr (gre "infer %a : %a%a")
+          pp_term t pp_term a (Lplib.List.pp cond "") cs);
       Some (a,cs)
     with NotTypable -> None
   in Stdlib.(constraints := []); res
 
-(** [check_noexn ctx t a] returns [None] if [t] does not have type [a] in
-   context [ctx] and [Some(cs)] where [cs] is a list of constraints under
-   which [t] may have type [a] (but constraints may be unsatisfiable). The
-   context [ctx] and the type [a] must be well sorted. *)
-let check_noexn : ctxt -> term -> term -> constr list option = fun ctx t a ->
+(** [check_noexn cs ctx t a] returns [None] if [t] does not have type [a] in
+   context [ctx] and constraints [cs], and [Some(cs')] where [cs'] is a list
+   of constraints under which [t] may have type [a] (but constraints may be
+   unsatisfiable). The context [ctx] and the type [a] must be well sorted. *)
+let check_noexn : constr list -> ctxt -> term -> term -> constr list option =
+  fun cs ctx t a ->
+  Stdlib.(constraints := cs);
   let res =
     try
-      Stdlib.(constraints := []);
       check ctx t a;
       let cs = Stdlib.(!constraints) in
-      if !log_enabled then
-        begin
-          log_infr (gre "check %a : %a") pp_term t pp_term a;
-          List.iter (log_infr "  if %a" pp_constr) cs;
-        end;
-      Stdlib.(constraints := []);
+      (if !log_enabled then
+        let cond oc c = Format.fprintf oc "\n  if %a" pp_constr c in
+        log_infr (gre "check %a\n: %a%a")
+          pp_term t pp_term a (Lplib.List.pp cond "") cs);
       Some cs
     with NotTypable -> None
   in Stdlib.(constraints := []); res
@@ -202,7 +201,7 @@ type solver = problem -> constr list option
 @raise Fatal otherwise. [ctx] must well sorted. *)
 let infer : solver -> Pos.popt -> ctxt -> term -> term =
   fun solve_noexn pos ctx t ->
-  match infer_noexn ctx t with
+  match infer_noexn [] ctx t with
   | None -> fatal pos "[%a] is not typable." pp_term t
   | Some(a, to_solve) ->
       match solve_noexn {empty_problem with to_solve} with
@@ -217,7 +216,7 @@ using the constraint solver [solve].
 @raise Fatal otherwise. [ctx] must well sorted. *)
 let check : solver -> Pos.popt -> ctxt -> term -> term -> unit =
   fun solve_noexn pos ctx t a ->
-  match check_noexn ctx t a with
+  match check_noexn [] ctx t a with
   | None -> fatal pos "[%a] does not have type [%a]." pp_term t pp_term a
   | Some(to_solve) ->
       match solve_noexn {empty_problem with to_solve} with
@@ -232,7 +231,7 @@ let check : solver -> Pos.popt -> ctxt -> term -> term -> unit =
 @raise Fatal otherwise. [ctx] must well sorted. *)
 let check_sort : solver -> Pos.popt -> ctxt -> term -> unit
   = fun solve_noexn pos ctx t ->
-  match infer_noexn ctx t with
+  match infer_noexn [] ctx t with
   | None -> fatal pos "[%a] is not typable." pp_term t
   | Some(a, to_solve) ->
       match solve_noexn {empty_problem with to_solve} with
