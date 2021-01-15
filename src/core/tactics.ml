@@ -66,21 +66,22 @@ let tac_refine : popt -> proof_state -> term -> proof_state =
    [ps] and returns the new proof state. This function fails gracefully in
    case of error. *)
 let handle_tactic :
-  Sig_state.t -> Terms.expo -> proof_state -> p_tactic -> proof_state =
+  Sig_state.t -> Terms.expo -> proof_state -> p_tactic ->
+    proof_state * Queries.result =
   fun ss e ps tac ->
   match tac.elt with
-  | P_tac_query(q) -> Queries.handle_query ss (Some ps) q; ps
-  | P_tac_solve -> tac_solve tac.pos ps
+  | P_tac_query(q) -> ps, Queries.handle_query ss (Some ps) q
+  | P_tac_solve -> tac_solve tac.pos ps, None
   | P_tac_focus(i) ->
-      (try {ps with proof_goals = List.swap i ps.proof_goals}
+      (try {ps with proof_goals = List.swap i ps.proof_goals}, None
       with Invalid_argument _ -> fatal tac.pos "Invalid goal index.")
   | P_tac_refine(pt) ->
       let env = Proof.focus_env (Some ps) in
-      tac_refine tac.pos ps (Scope.scope_term e ss env pt)
+      tac_refine tac.pos ps (Scope.scope_term e ss env pt), None
   | P_tac_intro(idopts) ->
       let env = Proof.focus_env (Some ps) in
       let t = Scope.scope_term e ss env (P.abst_list idopts P.wild) in
-      tac_refine tac.pos ps t
+      tac_refine tac.pos ps t, None
   | P_tac_apply(pt) ->
       let env = Proof.focus_env (Some ps) in
       let t = Scope.scope_term e ss env pt in
@@ -93,30 +94,32 @@ let handle_tactic :
       (*FIXME: this does not take into account implicit arguments. *)
       let t = if n <= 0 then t
               else Scope.scope_term e ss env (P.appl_wild pt n) in
-      tac_refine tac.pos ps t
+      tac_refine tac.pos ps t, None
   | P_tac_simpl ->
       (match ps.proof_goals with
        | [] -> fatal tac.pos "No remaining goals."
-       | g::gs -> {ps with proof_goals = Goal.simpl g :: gs})
+       | g::gs -> {ps with proof_goals = Goal.simpl g :: gs}), None
   | P_tac_rewrite(b,po,pt) ->
       let env = Proof.focus_env (Some ps) in
       let po = Option.map (Scope.scope_rw_patt ss env) po in
       let t = Scope.scope_term e ss env pt in
-      tac_refine tac.pos ps (Rewrite.rewrite ss tac.pos ps b po t)
+      tac_refine tac.pos ps (Rewrite.rewrite ss tac.pos ps b po t), None
   | P_tac_refl ->
-      tac_refine tac.pos ps (Rewrite.reflexivity ss tac.pos ps)
+      tac_refine tac.pos ps (Rewrite.reflexivity ss tac.pos ps), None
   | P_tac_sym ->
-      tac_refine tac.pos ps (Rewrite.symmetry ss tac.pos ps)
+      tac_refine tac.pos ps (Rewrite.symmetry ss tac.pos ps), None
   | P_tac_why3(config) ->
       (match ps.proof_goals with
        | [] -> fatal tac.pos "No remaining goals."
        | Unif _::_ -> fatal tac.pos "Not a typing goal."
        | Typ gt::_ ->
-           tac_refine tac.pos ps (Why3_tactic.handle ss tac.pos config gt))
+          (tac_refine tac.pos ps (Why3_tactic.handle ss tac.pos config gt)),
+            None)
   | P_tac_fail -> fatal tac.pos "Call to tactic \"fail\""
 
 let handle_tactic :
-  Sig_state.t -> Terms.expo -> proof_state -> p_tactic -> proof_state =
+  Sig_state.t -> Terms.expo -> proof_state -> p_tactic ->
+    proof_state * Queries.result =
   fun ss exp ps tac ->
   try handle_tactic ss exp ps tac
   with Fatal(_,_) as e -> out 1 "%a" Proof.pp_goals ps; raise e

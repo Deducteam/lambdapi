@@ -48,12 +48,12 @@ let current_goals : proof_state -> Proof.Goal.t list = fun (_,_,p,_,_) ->
   p.proof_goals
 
 type command_result =
-  | Cmd_OK    of state
+  | Cmd_OK    of state * Queries.result
   | Cmd_Proof of proof_state * Tactic.t list * Pos.popt * Pos.popt
   | Cmd_Error of Pos.popt option * string
 
 type tactic_result =
-  | Tac_OK    of proof_state
+  | Tac_OK    of proof_state * Queries.result
   | Tac_Error of Pos.popt option * string
 
 let t0 : Time.t Stdlib.ref = Stdlib.ref (Time.save ())
@@ -75,10 +75,10 @@ let handle_command : state -> Command.t -> command_result =
     fun (st,ss) cmd ->
   Time.restore st;
   try
-    let (ss, pst) = Handle.handle_cmd ss cmd in
+    let (ss, pst, qres) = Handle.handle_cmd ss cmd in
     let t = Time.save () in
     match pst with
-    | None       -> Cmd_OK(t, ss)
+    | None       -> Cmd_OK ((t, ss), qres)
     | Some(data) ->
         let pst =
           (t, ss, data.pdata_p_state, data.pdata_finalize, data.pdata_expo) in
@@ -90,13 +90,14 @@ let handle_tactic : proof_state -> Tactic.t -> tactic_result =
   fun s t ->
   let (_, ss, p, finalize, e) = s in
   try
-    let p = Tactics.handle_tactic ss e p t in
-    Tac_OK(Time.save (), ss, p, finalize, e)
+    let p, qres = Tactics.handle_tactic ss e p t in
+    Tac_OK((Time.save (), ss, p, finalize, e), qres)
   with Fatal(p,m) -> Tac_Error(p,m)
 
 let end_proof : proof_state -> command_result = fun s ->
   let (_, ss, p, finalize, _) = s in
-  try Cmd_OK(Time.save (), finalize ss p) with Fatal(p,m) -> Cmd_Error(p,m)
+  try Cmd_OK((Time.save (), finalize ss p), None)
+  with Fatal(p,m) -> Cmd_Error(p,m)
 
 let get_symbols : state -> (Terms.sym * Pos.popt) Extra.StrMap.t = fun s ->
   (snd s).in_scope

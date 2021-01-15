@@ -221,3 +221,12 @@ let swap : int -> 'a list -> 'a list = fun i xs ->
     | (i, x::xs) -> swap (x::acc) (i-1) xs
     | (_, _    ) -> invalid_arg (__LOC__ ^ "swap")
   in swap [] i xs
+
+(** [fold_left_while f cond a [b1 b2 ..]] computes (f..(f (f a b1) b2)..bm)
+where [cond] is true for b1..bm and false for b_m+1 or bm is last element *)
+let rec fold_left_while f cond acc l =
+  match l with
+  | x :: _ when not (cond x) -> acc
+  | x :: xs -> fold_left_while f cond (f acc x) xs
+  | [] -> acc
+  
