@@ -60,13 +60,17 @@ let rec compile : bool -> Path.t -> Sign.t = fun force path ->
       loaded := PathMap.add path sign !loaded;
       let handle ss c =
         Terms.Meta.reset_key_counter ();
-        let (ss, p) = Handle.handle_cmd ss c in
+        let (ss, p, _) = Handle.handle_cmd ss c in
         match p with
         | None       -> ss
         | Some(data) ->
             let (st,ts) = (data.pdata_p_state, data.pdata_tactics) in
             let e = data.pdata_expo in
-            let st = List.fold_left (Tactics.handle_tactic ss e) st ts in
+            let st =
+              List.fold_left
+                (fun st tac -> fst (Tactics.handle_tactic ss e st tac))
+                st ts
+            in
             data.pdata_finalize ss st
       in
       ignore (List.fold_left handle sig_st (parse_file src));

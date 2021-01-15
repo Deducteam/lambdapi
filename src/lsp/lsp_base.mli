@@ -25,4 +25,4 @@ val mk_diagnostics
   -> (Pos.pos * int * string * Proof.Goal.t list option) list
   -> J.t
 
-val json_of_goals : Proof.Goal.t list option -> J.t
+val json_of_goals : ?logs:string -> Proof.Goal.t list option -> J.t
