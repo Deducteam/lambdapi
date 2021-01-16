@@ -20,7 +20,7 @@ exception Unsolvable
 (** [try_rules ctx s t] tries to solve unification problem [ctx ⊢ s ≡ t] using
     declared unification rules. *)
 let try_rules : ctxt -> term -> term -> constr list option = fun ctx s t ->
-  if !log_enabled then log_unif "try rule [%a]" pp_constr (ctx,s,t);
+  if !log_enabled then log_unif "check unif_rules for %a" pp_constr (ctx,s,t);
   let exception No_match in
   let open Unif_rule in
   try
@@ -36,10 +36,10 @@ let try_rules : ctxt -> term -> term -> constr list option = fun ctx s t ->
     in
     let subpbs = List.map (fun (t,u) -> (ctx,t,u)) (unpack rhs) in
     let pp_subpbs = List.pp pp_constr "; " in
-    if !log_enabled then log_unif (gre "try rule [%a]") pp_subpbs subpbs;
+    if !log_enabled then log_unif (gre "get [%a]") pp_subpbs subpbs;
     Some(subpbs)
   with No_match ->
-    if !log_enabled then log_unif (red "try rule [%a]") pp_constr (ctx,s,t);
+    if !log_enabled then log_unif "found no unif_rule";
     None
 
 (** [nl_distinct_vars ctx ts] checks that [ts] is made of variables  [vs] only
@@ -134,7 +134,7 @@ let instantiate : ctxt -> meta -> term array ->
           | Some a -> a
           | None -> assert false
         in
-        match Infer.check_noexn ctx u typ_mts with
+        match Infer.check_noexn [] ctx u typ_mts with
         | None -> false
         | Some cs ->
             let is_initial c = List.exists (Eval.eq_constr c) initial in
@@ -159,7 +159,7 @@ let instantiate : ctxt -> meta -> term array ->
 (** [solve p] tries to solve the unification problem [p] and
     returns the constraints that could not be solved. *)
 let rec solve : problem -> constr list = fun p ->
-  if !log_enabled then log_unif "problem %a" pp_problem p;
+  if !log_enabled then log_unif "%a" pp_problem p;
   match p with
   | { to_solve = []; unsolved = []; _ } -> []
   | { to_solve = []; unsolved = cs; recompute = true } ->

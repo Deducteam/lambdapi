@@ -181,7 +181,7 @@ let check_rule : Scope.pre_rule Pos.loc -> rule = fun ({pos; elt} as pr) ->
       log_subj (mag "transformed RHS is [%a]") pp_term rhs_typing
     end;
   (* Infer the typing constraints of the LHS. *)
-  match Infer.infer_noexn [] lhs_typing with
+  match Infer.infer_noexn [] [] lhs_typing with
   | None -> fatal pos "The LHS is not typable."
   | Some(ty_lhs, to_solve) ->
   (* Try to simplify constraints. *)
@@ -230,7 +230,7 @@ let check_rule : Scope.pre_rule Pos.loc -> rule = fun ({pos; elt} as pr) ->
     Array.iter instantiate metas; Stdlib.(!symbols)
   in
   (* Compute the constraints for the RHS to have the same type as the LHS. *)
-  match Infer.check_noexn [] rhs_typing ty_lhs with
+  match Infer.check_noexn [] [] rhs_typing ty_lhs with
   | None -> fatal pos "[%a] is not typable." pp_term rhs_typing
   | Some to_solve ->
   if !log_enabled then

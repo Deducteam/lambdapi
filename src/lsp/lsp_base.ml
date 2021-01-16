@@ -58,13 +58,17 @@ let json_of_goal g =
       "typeofgoal", `String "Unif"
     ; "constr", `String constr]
 
-let json_of_goals goals =
+let json_of_goals ?logs goals =
+  let logs = match logs with None -> "" | Some s -> s in
   match goals with
   | None ->
-    `Null
+    `Assoc [
+      "logs", `String logs
+    ]
   | Some goals ->
     `Assoc [
-      "goals", `List List.(map json_of_goal goals)
+      "goals", `List List.(map json_of_goal goals);
+      "logs" , `String logs
     ]
 
 let mk_diagnostic
