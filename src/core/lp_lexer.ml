@@ -46,7 +46,7 @@ module Lp_lexer : sig
   (** [is_identifier s] is [true] if [s] is a valid identifier. *)
 
   val is_keyword : string -> bool
-  (** [is_keyword s] retunrs [true] if [s] is a keyword. *)
+  (** [is_keyword s] returns [true] if [s] is a keyword. *)
 
   val unquote : string -> string
   (** [unquote s] removes the quotation marks [{|] and [|}] from [s] if it has
