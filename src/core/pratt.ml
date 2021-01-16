@@ -82,11 +82,7 @@ end = struct
       | _ -> None
 
     let make_appl (tbl, env) t u =
-      let pos =
-        match t.pos, u.pos with
-        | Some(pt), Some(pu) -> Some(cat pt pu)
-        | None, _ | _, None -> None
-      in
+      let pos = Option.(Infix.(pure cat <*> t.pos <*> u.pos)) in
       let t =
         make t.pos
           (match t.elt with
