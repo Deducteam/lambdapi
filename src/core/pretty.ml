@@ -15,7 +15,7 @@ open Syntax
 let string = Format.pp_print_string
 
 let ident : ident pp = fun oc id ->
-  if Lp_lexer.is_keyword id.elt then
+  if LpLexer.is_keyword id.elt then
     fatal id.pos "Identifier [%s] is a Lambdapi keyword." id.elt;
   string oc id.elt
 
@@ -25,7 +25,7 @@ let arg_ident : ident option pp = fun oc id ->
   | None     -> string oc "_"
 
 let path_elt : Pos.popt -> (string * bool) pp = fun pos oc (s,b) ->
-  if not b && Lp_lexer.is_keyword s then
+  if not b && LpLexer.is_keyword s then
     fatal pos "Module path member [%s] is a Lambdapi keyword." s;
   if b then Format.fprintf oc "{|%s|}" s else string oc s
 

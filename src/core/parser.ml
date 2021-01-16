@@ -39,9 +39,9 @@ module Lp : PARSER = struct
     fun fname lexbuf ->
     Sedlexing.set_filename lexbuf fname;
     let parse =
-      MenhirLib.Convert.Simplified.traditional2revised Lp_parser.command
+      MenhirLib.Convert.Simplified.traditional2revised LpParser.command
     in
-    let lexer = Lp_lexer.lexer lexbuf in
+    let lexer = LpLexer.lexer lexbuf in
     let cmds = ref [] in
     try
       while true do
@@ -51,10 +51,10 @@ module Lp : PARSER = struct
       assert false (* Should raise end of file before *)
     with
     | End_of_file -> List.rev !cmds
-    | Lp_lexer.SyntaxError(s) ->
+    | LpLexer.SyntaxError(s) ->
         let loc = match s.pos with Some(l) -> l | None -> assert false in
         parser_fatal loc "Unexpected character: [%s]" s.elt
-    | Lp_parser.Error ->
+    | LpParser.Error ->
         let loc = Sedlexing.lexing_positions lexbuf in
         let loc = Pos.locate loc in
         parser_fatal loc "Unexpected token [%s]."
@@ -79,13 +79,13 @@ let parse_qident : string ->
   fun s ->
   let parse_ident (s: string): (Syntax.ident * bool, popt) result =
     let parse =
-      MenhirLib.Convert.Simplified.traditional2revised Lp_parser.ident
+      MenhirLib.Convert.Simplified.traditional2revised LpParser.ident
     in
     let lexbuf = Sedlexing.Utf8.from_string s in
-    let lexer = Lp_lexer.lexer lexbuf in
+    let lexer = LpLexer.lexer lexbuf in
     try Ok(parse lexer)
-    with Lp_lexer.SyntaxError(s) -> Error(s.pos)
-       | Lp_parser.Error ->
+    with LpLexer.SyntaxError(s) -> Error(s.pos)
+       | LpParser.Error ->
          let loc = Pos.locate (Sedlexing.lexing_positions lexbuf) in
          Error(Some(loc))
   in
@@ -112,17 +112,17 @@ with Invalid_id(i, pos) -> Error(i, pos)
 module Dk : PARSER = struct
   let parse_lexbuf : string -> Lexing.lexbuf -> Syntax.ast =
     fun fname lexbuf ->
-    Stdlib.(Dk_lexer.filename := fname);
+    Stdlib.(DkLexer.filename := fname);
     let lines = ref [] in
     try
       while true do
-        let l = Dk_parser.line Dk_lexer.token lexbuf in
+        let l = DkParser.line DkLexer.token lexbuf in
         lines := l :: !lines
       done;
       assert false (* Unreachable. *)
     with
     | End_of_file -> List.rev !lines
-    | Dk_parser.Error ->
+    | DkParser.Error ->
         let loc =
           Lexing.(lexbuf.lex_start_p, lexbuf.lex_curr_p) in
         let loc = Pos.locate loc in

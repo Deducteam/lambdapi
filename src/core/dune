@@ -16,9 +16,9 @@
   sedlex sedlex.ppx unix stdlib-shims timed bindlib why3
   lplib))
 
-(menhir (flags --explain --external-tokens Lp_lexer) (modules lp_parser))
+(menhir (flags --explain --external-tokens LpLexer) (modules lpParser))
 
-(ocamllex dk_lexer)
+(ocamllex dkLexer)
 (menhir
- (flags (--external-tokens Dk_lexer))
- (modules dk_parser))
+ (flags (--external-tokens DkLexer))
+ (modules dkParser))
