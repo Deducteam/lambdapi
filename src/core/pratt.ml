@@ -51,37 +51,42 @@ end = struct
     type term = p_term
     type table = Sig_state.t * Env.t
 
-    let get_binary (tbl, _) t =
+    let get (tbl, _) t =
       let open Sig_state in
       match t.elt with
-      | P_Iden(id, _) -> (
+      | P_Iden (id, _) -> (
           let {elt=(_, suffix); _} = id in
-          match StrMap.find_opt suffix tbl.binops with
-          | None -> None
-          | Some(sym) ->
-          match Terms.SymMap.find_opt sym tbl.pp_hints with
-          | Some(Infix((_, assoc, prio, _))) -> (
-              let assoc =
-                match assoc with
-                | Assoc_left -> Pratter.Left
-                | Assoc_right -> Pratter.Right
-                | Assoc_none -> assert false
-              in
-              Some(prio,assoc))
-          | _ -> None )
-      | _ -> None
-
-    let get_unary (tbl, _) t =
-      let open Sig_state in
-      match t.elt with
-      | P_Iden(id, _) -> (
-          let {elt=(_, suffix); _} = id in
-          match StrMap.find_opt suffix tbl.unops with
-          | None -> None
-          | Some(sym) ->
-          match Terms.SymMap.find_opt sym tbl.pp_hints with
-          | Some(Prefix((_, prio, _))) -> Some(prio)
-          | _ -> None )
+          let bin =
+            (* TODO: Replace by find_qid with in_scope fixed *)
+            match StrMap.find_opt suffix tbl.binops with
+            | None -> None
+            | Some sym ->
+              match Terms.SymMap.find_opt sym tbl.pp_hints with
+              | Some(Infix(_, assoc, prio, _)) -> (
+                  let assoc =
+                    match assoc with
+                    | Assoc_left -> Pratter.Left
+                    | Assoc_right -> Pratter.Right
+                    | Assoc_none -> Pratter.Neither
+                  in
+                  Some(prio, assoc) )
+              | _ -> None
+          in
+          let una =
+            (* TODO: Replace by find_qid with in_scope fixed *)
+            match StrMap.find_opt suffix tbl.unops with
+            | None -> None
+            | Some sym ->
+              match Terms.SymMap.find_opt sym tbl.pp_hints with
+              | Some(Prefix(_, prio, _)) -> Some(prio)
+              | _ -> None
+          in
+          match bin, una with
+          | Some _, Some _ -> assert false
+          | Some(bp, assoc), _ -> Some(Pratter.Bin assoc, bp)
+          | _, Some(bp) -> Some(Pratter.Una, bp)
+          | None, None -> None
+        )
       | _ -> None
 
     let make_appl (tbl, env) t u =
