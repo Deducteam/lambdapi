@@ -109,24 +109,26 @@ let add_symbol : sig_state -> sig_symbol -> sig_state * sym =
   ({ss with in_scope; pp_hints}, s)
 
 (** [add_unop ss n x] generates a new signature state from [ss] by adding a
-   unary operator [x] with name [n]. *)
-let add_unop : sig_state -> string -> (sym * unop) -> sig_state =
+    unary operator [x] with name [n]. This name is added to the scope. *)
+let add_unop : sig_state -> string loc -> (sym * unop) -> sig_state =
   fun ss name ((sym, unop) as x) ->
-  Sign.add_unop ss.signature name x;
-  let unops = StrMap.add name sym ss.unops in
-  let pp_hints = remove_pp_hint ss.unops name ss.pp_hints in
+  Sign.add_unop ss.signature name.elt x;
+  let in_scope = StrMap.add name.elt (sym, name.pos) ss.in_scope in
+  let unops = StrMap.add name.elt sym ss.unops in
+  let pp_hints = remove_pp_hint ss.unops name.elt ss.pp_hints in
   let pp_hints = SymMap.add sym (Prefix unop) pp_hints in
-  {ss with unops; pp_hints}
+  {ss with in_scope; unops; pp_hints}
 
 (** [add_binop ss n x] generates a new signature state from [ss] by adding a
-   binary operator [x] with name [n]. *)
-let add_binop : sig_state -> string -> (sym * binop) -> sig_state =
+    binary operator [x] with name [n]. This name is added to scope. *)
+let add_binop : sig_state -> string loc -> (sym * binop) -> sig_state =
   fun ss name ((sym, binop) as x) ->
-  Sign.add_binop ss.signature name x;
-  let binops = StrMap.add name sym ss.binops in
-  let pp_hints = remove_pp_hint ss.binops name ss.pp_hints in
+  Sign.add_binop ss.signature name.elt x;
+  let in_scope = StrMap.add name.elt (sym, name.pos) ss.in_scope in
+  let binops = StrMap.add name.elt sym ss.binops in
+  let pp_hints = remove_pp_hint ss.binops name.elt ss.pp_hints in
   let pp_hints = SymMap.add sym (Infix binop) pp_hints in
-  {ss with binops; pp_hints}
+  {ss with in_scope; binops; pp_hints}
 
 (** [add_builtin ss n s] generates a new signature state from [ss] by mapping
    the builtin [n] to [s]. *)
@@ -206,6 +208,10 @@ let open_sign : sig_state -> Sign.t -> sig_state = fun ss sign ->
   in
   let unops = add_ops ss.unops !(sign.sign_unops) in
   let binops = add_ops ss.binops !(sign.sign_binops) in
+  (* Bring operators in scope *)
+  let open_op k s ssis = StrMap.add k (s, None) ssis in
+  let in_scope = StrMap.fold open_op unops in_scope in
+  let in_scope = StrMap.fold open_op binops in_scope in
   let pp_hints = update_pp_hints_from_symbols ss.in_scope sign ss.pp_hints in
   let pp_hints =
     update_pp_hints_from_builtins ss.builtins !(sign.sign_builtins) pp_hints

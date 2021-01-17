@@ -11,38 +11,30 @@ module Pratt : sig
 end = struct
 
   open Lplib
-  open Extra
   open Pos
 
-  (** [find_qid ss env qid] fetches the qualified identifier associated to
+  (** [find_op_qid ss env qid] fetches the qualified identifier associated to
       [qid] if [qid] is the identifier of an infix operator defined in
       signature state [ss]. If [qid] is defined in environment [env], then it
       designates a variable, and is thus returned as-is. *)
-  (* REVIEW: this function relies on a lot of invariants and performs many
-     [Map.find_opt]s. Things may be optimised by modifying the data structure
-     of the signature state, notably making the qualified identfier to which
-     operators are linked available in the [unops] field of the signature
-     state. *)
-  let find_qid : Sig_state.t -> Env.t -> qident -> qident =
+  let find_op_qid : Sig_state.t -> Env.t -> qident -> qident option =
     fun ss env ({elt=(mp, s); _} as qid) ->
     try
       if mp <> [] then raise Not_found;
       ignore (Env.find s env);
-      qid
+      None
     with Not_found ->
-    match StrMap.find_opt s ss.Sig_state.unops with
-    | Some sym -> (
-        match Terms.SymMap.find_opt sym ss.Sig_state.pp_hints with
-        | Some (Prefix(_, _, qid)) -> qid
-        | _ -> assert false )
-    | None -> (
-        match StrMap.find_opt s ss.Sig_state.binops with
-        | Some sym -> (
-            match Terms.SymMap.find_opt sym ss.Sig_state.pp_hints with
-            | Some (Infix (_, _, _, qid)) -> qid
-            | _ -> assert false )
-        | None -> qid )
-
+      let sym =
+        try Some(Sig_state.find_sym ~prt:true ~prv:true true ss qid)
+        with Not_found -> None
+      in
+      let get_hint s = Terms.SymMap.find_opt s ss.Sig_state.pp_hints in
+      let qid_of_hint hint =
+        match hint with
+        | Sig_state.Prefix(_,_,qid) | Sig_state.Infix(_,_,_,qid) -> Some qid
+        | _ -> None
+      in
+      Option.(Infix.(sym >>= get_hint >>= qid_of_hint ))
 
   module Pratt_terms : Pratter.SUPPORT
     with type term = p_term
@@ -51,58 +43,47 @@ end = struct
     type term = p_term
     type table = Sig_state.t * Env.t
 
-    let get (tbl, _) t =
-      let open Sig_state in
+    let get (tbl, env) t =
       match t.elt with
-      | P_Iden (id, _) -> (
-          let {elt=(_, suffix); _} = id in
-          let bin =
-            (* TODO: Replace by find_qid with in_scope fixed *)
-            match StrMap.find_opt suffix tbl.binops with
-            | None -> None
-            | Some sym ->
-              match Terms.SymMap.find_opt sym tbl.pp_hints with
-              | Some(Infix(_, assoc, prio, _)) -> (
-                  let assoc =
-                    match assoc with
-                    | Assoc_left -> Pratter.Left
-                    | Assoc_right -> Pratter.Right
-                    | Assoc_none -> Pratter.Neither
-                  in
-                  Some(prio, assoc) )
-              | _ -> None
+      | P_Iden(id, _) -> (
+          let sym =
+            let qid = find_op_qid tbl env id in
+            Option.map (Sig_state.find_sym ~prt:true ~prv:true false tbl) qid
           in
-          let una =
-            (* TODO: Replace by find_qid with in_scope fixed *)
-            match StrMap.find_opt suffix tbl.unops with
-            | None -> None
-            | Some sym ->
-              match Terms.SymMap.find_opt sym tbl.pp_hints with
-              | Some(Prefix(_, prio, _)) -> Some(prio)
-              | _ -> None
+          let f sym =
+            match Terms.SymMap.find_opt sym tbl.pp_hints with
+            | Some(Infix(_, assoc, prio, _)) ->
+                let assoc =
+                  match assoc with
+                  | Assoc_left -> Pratter.Left
+                  | Assoc_right -> Pratter.Right
+                  | Assoc_none -> Pratter.Neither
+                in
+                Some (Pratter.Bin(assoc), prio)
+            | Some(Prefix(_, prio, _)) -> Some (Pratter.Una, prio)
+            | _ -> None
           in
-          match bin, una with
-          | Some _, Some _ -> assert false
-          | Some(bp, assoc), _ -> Some(Pratter.Bin assoc, bp)
-          | _, Some(bp) -> Some(Pratter.Una, bp)
-          | None, None -> None
-        )
+          Option.bind f sym )
       | _ -> None
 
     let make_appl (tbl, env) t u =
       let pos = Option.(Infix.(pure cat <*> t.pos <*> u.pos)) in
-      let t =
-        make t.pos
-          (match t.elt with
-           | P_Iden(qid, b) -> P_Iden(find_qid tbl env qid, b)
-           | _ -> t.elt)
+      let build =
+        let f e =
+          match e with
+          | P_Iden(qid, b) ->
+            let qid =
+              match find_op_qid tbl env qid with
+              | Some(qid) -> qid
+              | None -> qid
+            in
+            P_Iden(qid, b)
+          | _ -> e
+        in
+        Pos.map f
       in
-      let u =
-        make u.pos
-          (match u.elt with
-           | P_Iden(qid, b) -> P_Iden(find_qid tbl env qid, b)
-           | _ -> u.elt)
-      in
+      let t = build t in
+      let u = build u in
       make pos (P_Appl(t, u))
   end
 

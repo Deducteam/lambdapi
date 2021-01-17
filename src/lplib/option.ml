@@ -5,6 +5,9 @@ type 'a t = 'a option
 let map : ('a -> 'b) -> 'a t -> 'b t =
  fun f o -> match o with None -> None | Some e -> Some (f e)
 
+let bind : ('a -> 'b t) -> 'a t -> 'b t =
+  fun f o -> match o with None -> None | Some e -> f e
+
 let map_default : ('a -> 'b) -> 'b -> 'a option -> 'b =
  fun f d o -> match o with None -> d | Some e -> f e
 
@@ -40,6 +43,8 @@ let apply : ('a -> 'b) t -> 'a t -> 'b t = fun f x ->
 
 module Infix = struct
   let ( <*> ) = apply
+
+  let ( >>= ) o f = bind f o
 end
 
 (** Total order on option types. *)
