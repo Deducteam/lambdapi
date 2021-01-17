@@ -29,7 +29,7 @@
 // Other commands and utils
 %token PREFIX
 %token BUILTIN
-%token <assoc> ASSOC
+%token <Pratter.associativity> ASSOC
 %token INFIX
 %token VERBOSE
 %token FLAG
@@ -188,7 +188,7 @@ tactic:
     {
       let b =
         match l with
-        | Some(Syntax.Assoc_left) -> false
+        | Some(Pratter.Left) -> false
         | _ -> true
       in
       make_pos $loc (P_tac_rewrite(b,p,t))
@@ -228,7 +228,7 @@ config:
   // Add an infix operator: [infix right 6.3 "+" ≔ plus]
   | INFIX a=ASSOC? p=float_of_int s=STRINGLIT ASSIGN qid=qident
       {
-        let binop = (s, Option.get Assoc_none a, p, qid) in
+        let binop = (s, Option.get Pratter.Neither a, p, qid) in
         P_config_binop(binop)
       }
   | UNIF_RULE r=unif_rule { P_config_unif_rule(r) }

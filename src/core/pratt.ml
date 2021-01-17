@@ -52,14 +52,7 @@ end = struct
           in
           let f sym =
             match Terms.SymMap.find_opt sym tbl.pp_hints with
-            | Some(Infix(_, assoc, prio, _)) ->
-                let assoc =
-                  match assoc with
-                  | Assoc_left -> Pratter.Left
-                  | Assoc_right -> Pratter.Right
-                  | Assoc_none -> Pratter.Neither
-                in
-                Some (Pratter.Bin(assoc), prio)
+            | Some(Infix(_, assoc, prio, _)) -> Some(Pratter.Bin assoc, prio)
             | Some(Prefix(_, prio, _)) -> Some (Pratter.Una, prio)
             | _ -> None
           in

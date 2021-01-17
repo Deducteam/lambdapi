@@ -9,7 +9,7 @@ type token =
   | L_PAREN | R_PAREN | L_SQ_BRACKET | R_SQ_BRACKET
   | L_CU_BRACKET | R_CU_BRACKET
   | ABORT | ADMIT | APPLY | ARROW | AS | ASSERT | ASSERT_NOT | ASSIGN
-  | ASSOC of Syntax.assoc | AT
+  | ASSOC of Pratter.associativity | AT
   | BUILTIN | BACKQUOTE | BEGIN
   | COLON | COMMA | COMPUTE | COMPUTE_TYPE | CONSTANT
   | DEBUG_FLAGS of (bool * string)
@@ -226,7 +226,7 @@ and nom_comment : lexbuf -> unit = fun buf ->
     | "infix" -> INFIX
     | "in" -> IN
     | "injective" -> INJECTIVE
-    | "left" -> ASSOC(Syntax.Assoc_left)
+    | "left" -> ASSOC(Pratter.Left)
     | "let" -> LET
     | "off" -> SWITCH(false)
     | "on" -> SWITCH(true)
@@ -242,7 +242,7 @@ and nom_comment : lexbuf -> unit = fun buf ->
     | "reflexivity" -> REFL
     | "require" -> REQUIRE
     | "rewrite" -> REWRITE
-    | "right" -> ASSOC(Syntax.Assoc_right)
+    | "right" -> ASSOC(Pratter.Right)
     | "rule" -> RULE
     | "sequential" -> SEQUENTIAL
     | "set" -> SET

@@ -257,9 +257,9 @@ let command : p_command pp = fun oc cmd ->
   | P_set(P_config_binop(s,a,p,qid)) ->
       let a =
         match a with
-        | Assoc_none  -> ""
-        | Assoc_left  -> " left"
-        | Assoc_right -> " right"
+        | Pratter.Neither -> ""
+        | Pratter.Left -> " left"
+        | Pratter.Right -> " right"
       in
       out "set infix%s %f %S ≔ %a" a p s qident qid
   | P_set(P_config_unif_rule(ur)) ->

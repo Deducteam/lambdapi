@@ -15,12 +15,6 @@ type p_module_path = (string * bool) list
 (** Representation of a possibly qualified (and located) identifier. *)
 type qident = (p_module_path * string) loc
 
-(** Representation of the associativity of an infix operator. *)
-type assoc =
-  | Assoc_none
-  | Assoc_left
-  | Assoc_right
-
 (** The priority of an infix operator is a floating-point number. *)
 type priority = float
 
@@ -28,7 +22,7 @@ type priority = float
 type unop = string * priority * qident
 
 (** Representation of a binary operator. *)
-type binop = string * assoc * priority * qident
+type binop = string * Pratter.associativity * priority * qident
 
 (** Parser-level (located) term representation. *)
 type p_term = p_term_aux loc

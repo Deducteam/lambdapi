@@ -12,7 +12,6 @@ open Lplib.Extra
 open Timed
 open Terms
 open Console
-open Syntax
 open Sig_state
 
 (** Logging function for printing. *)
@@ -52,11 +51,11 @@ let pp_match_strat : match_strat pp = fun oc s ->
   | Eager -> ()
 
 (** [assoc oc a] prints associativity [a] to channel [oc]. *)
-let pp_assoc : assoc pp = fun oc assoc ->
+let pp_assoc : Pratter.associativity pp = fun oc assoc ->
   match assoc with
-  | Assoc_none -> ()
-  | Assoc_left -> Format.fprintf oc " left associative"
-  | Assoc_right -> Format.fprintf oc " right associative"
+  | Neither -> ()
+  | Left -> Format.fprintf oc " left associative"
+  | Right -> Format.fprintf oc " right associative"
 
 (** [hint oc a] prints hint [h] to channel [oc]. *)
 let pp_hint : pp_hint pp = fun oc pp_hint ->
