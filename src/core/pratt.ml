@@ -8,15 +8,19 @@ open Syntax
 
 module Pratt : sig
   val parse : Sig_state.t -> Env.t -> p_term -> p_term
+  (** [parse ss env t] Pratt parses term [t], unsugaring infix operators and
+      prefix operators using signature state [ss] and environment [env] to
+      determine which term is an operator, and to build new terms. Note that
+      it doesn't recurse into abstractions or implications and alike. *)
 end = struct
 
   open Lplib
   open Pos
 
   (** [find_op_qid ss env qid] fetches the qualified identifier associated to
-      [qid] if [qid] is the identifier of an infix operator defined in
-      signature state [ss]. If [qid] is defined in environment [env], then it
-      designates a variable, and is thus returned as-is. *)
+      [qid] if [qid] is the identifier of an infix or prefix operator defined
+      in signature state [ss]. If [qid] does not designate an operator, [None]
+      is returned. *)
   let find_op_qid : Sig_state.t -> Env.t -> qident -> qident option =
     fun ss env ({elt=(mp, s); _} as qid) ->
     try
@@ -43,6 +47,7 @@ end = struct
     type term = p_term
     type table = Sig_state.t * Env.t
 
+    (* Get properties of term [t] if its an operator. *)
     let get (tbl, env) t =
       match t.elt with
       | P_Iden(id, _) -> (
@@ -59,6 +64,9 @@ end = struct
           Option.bind f sym )
       | _ -> None
 
+    (* [make_appl (tbl, env) t u] applies [t] to [u]. If [t] or [u] are
+       operators, their [qid] is resolved. That is, if [+] has been declared
+       to be [Nat.plus], then [Nat.plus] is returned in the application. *)
     let make_appl (tbl, env) t u =
       let pos = Option.(Infix.(pure cat <*> t.pos <*> u.pos)) in
       let build =
@@ -80,8 +88,6 @@ end = struct
       make pos (P_Appl(t, u))
   end
 
-  (** [parse t] Pratt parses applications in term [t]. Note that it doesn't
-      recurse into abstractions or implications and alike. *)
   let parse : Sig_state.t -> Env.t -> p_term -> p_term = fun st env t ->
     let (h,args) = Syntax.p_get_args t in
     let strm = Stream.of_list (h::args) in

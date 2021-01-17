@@ -105,17 +105,18 @@ let rec get_implicitness : p_term -> bool list = fun t ->
   | P_Wrap(t)    -> get_implicitness t
   | _            -> []
 
-(** [get_parsed_args t] decomposes the parser level term [t] into a spine
-    [(h,args)], when [h] is the term at the head of the application and [args]
-    is the list of all its arguments with infix and prefix operators added
-    using {!module:Pratt}.  Note that sugared applications (e.g., infix
-    symbols) are not expanded, so [h] may still be unsugared to an
-    application. *)
-(* REVIEW: this function is one of the few that use the Pratt parser, and the
+(** [get_pratt_args ss env t] decomposes the parser level term [t] into a
+    spine [(h,args)], when [h] is the term at the head of the application and
+    [args] is the list of all its arguments. The function also reorders the
+    term taking infix and prefix operators into account using a Pratt
+    parser that signature state [ss] and environment [env] to determine which
+    terms are operators, and which aren't. *)
+(* NOTE this function is one of the few that use the Pratt parser, and the
    term is converted from appl to list in [Pratt.parse], then rebuilt into
    appl node (still by Pratt.parse), then again decomposed into a list by the
-   function. We may make [Pratt.parse] to return already a list of terms. *)
-let get_parsed_args : Sig_state.t -> Env.t -> p_term -> p_term * p_term list =
+   function. We may make [Pratt.parse] to return already a list of terms,
+   or have the application represented as a non empty list. *)
+let get_pratt_args : Sig_state.t -> Env.t -> p_term -> p_term * p_term list =
   fun ss env t ->
   let rec get_args args t =
     match t.elt with
@@ -158,7 +159,7 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
   (* Toplevel scoping function, with handling of implicit arguments. *)
   let rec scope : env -> p_term -> tbox = fun env t ->
     (* Extract the spine. *)
-    let (p_head, args) = get_parsed_args ss env t in
+    let (p_head, args) = get_pratt_args ss env t in
     (* Check that LHS pattern variables are applied to no argument. *)
     begin
       match (p_head.elt, md) with

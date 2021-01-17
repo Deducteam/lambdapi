@@ -122,6 +122,8 @@ and nom_comment : lexbuf -> unit = fun buf ->
     | _ -> false
 
   let is_keyword : string -> bool = fun s ->
+    (* NOTE this function may be optimised using a map, a hashtable, or using
+       [match%sedlex]. *)
     List.mem s
       [ "TYPE"
       ; "apply"
