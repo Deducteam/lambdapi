@@ -230,14 +230,14 @@ let build_config : Pos.pos -> string -> string option -> eval_config =
 %token <string> ID
 %token <Syntax.p_module_path * string> QID
 
-%start line
-%type <Syntax.p_command> line
+%start command
+%type <Syntax.p_command> command
 
 %right ARROW FARROW
 
 %%
 
-line:
+command:
   | p_sym_mod=modifier* s=ID p_sym_arg=param* COLON a=term DOT
     {
       let p_sym_mod =

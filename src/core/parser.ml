@@ -112,16 +112,16 @@ with Invalid_id(i, pos) -> Error(i, pos)
 module Dk : PARSER = struct
   let parse_lexbuf : string -> Lexing.lexbuf -> Syntax.ast =
     fun fname lexbuf ->
-    Stdlib.(DkLexer.filename := fname);
-    let lines = ref [] in
+    DkLexer.filename := fname;
+    let cmds = ref [] in
     try
       while true do
-        let l = DkParser.line DkLexer.token lexbuf in
-        lines := l :: !lines
+        let c = DkParser.command DkLexer.token lexbuf in
+        cmds := c :: !cmds
       done;
       assert false (* Unreachable. *)
     with
-    | End_of_file -> List.rev !lines
+    | End_of_file -> List.rev !cmds
     | DkParser.Error ->
         let loc =
           Lexing.(lexbuf.lex_start_p, lexbuf.lex_curr_p) in
