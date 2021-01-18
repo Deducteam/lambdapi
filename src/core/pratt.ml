@@ -29,21 +29,6 @@ end = struct
     with Not_found ->
       Some(Sig_state.find_sym ~prt:true ~prv:true true ss qid)
 
-  (** [find_op_qid ss env qid] fetches the qualified identifier associated to
-      [qid] if [qid] is the identifier of an infix or prefix operator defined
-      in signature state [ss]. If [qid] does not designate an operator, [None]
-      is returned. *)
-  let find_op_qid : Sig_state.t -> Env.t -> qident -> qident option =
-    fun ss env qid ->
-    let sym = find_sym ss env qid in
-    let get_hint s = Terms.SymMap.find_opt s ss.Sig_state.pp_hints in
-    let qid_of_hint hint =
-      match hint with
-      | Sig_state.Prefix(_,_,qid) | Sig_state.Infix(_,_,_,qid) -> Some qid
-      | _ -> None
-    in
-    Option.(Infix.(sym >>= get_hint >>= qid_of_hint))
-
   module Pratt_terms : Pratter.SUPPORT
     with type term = p_term
      and type table = Sig_state.t * Env.t
@@ -65,27 +50,8 @@ end = struct
           Option.bind f sym )
       | _ -> None
 
-    (* [make_appl (tbl, env) t u] applies [t] to [u]. If [t] or [u] are
-       operators, their [qid] is resolved. That is, if [+] has been declared
-       to be [Nat.plus], then [Nat.plus] is returned in the application. *)
-    let make_appl (tbl, env) t u =
+    let make_appl _ t u =
       let pos = Option.(Infix.(pure cat <*> t.pos <*> u.pos)) in
-      let build =
-        let f e =
-          match e with
-          | P_Iden(qid, b) ->
-            let qid =
-              match find_op_qid tbl env qid with
-              | Some(qid) -> qid
-              | None -> qid
-            in
-            P_Iden(qid, b)
-          | _ -> e
-        in
-        Pos.map f
-      in
-      let t = build t in
-      let u = build u in
       make pos (P_Appl(t, u))
   end
 
