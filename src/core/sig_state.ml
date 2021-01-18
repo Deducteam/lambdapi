@@ -48,8 +48,6 @@ type sig_state =
   ; aliases   : Path.t StrMap.t           (** Established aliases.      *)
   ; path_map  : string PathMap.t          (** Reverse map of [aliases]. *)
   ; builtins  : sym StrMap.t              (** Builtin symbols.          *)
-  ; unops     : sym StrMap.t              (** Unary operators.          *)
-  ; binops    : sym StrMap.t              (** Binary operators.         *)
   ; pp_hints  : pp_hint SymMap.t          (** Printing hints.           *) }
 
 type t = sig_state
@@ -114,10 +112,12 @@ let add_unop : sig_state -> string loc -> (sym * unop) -> sig_state =
   fun ss name ((sym, unop) as x) ->
   Sign.add_unop ss.signature name.elt x;
   let in_scope = StrMap.add name.elt (sym, name.pos) ss.in_scope in
-  let unops = StrMap.add name.elt sym ss.unops in
-  let pp_hints = remove_pp_hint ss.unops name.elt ss.pp_hints in
+  let pp_hints =
+    let unops = StrMap.map fst !(ss.signature.sign_unops) in
+    remove_pp_hint unops name.elt ss.pp_hints
+  in
   let pp_hints = SymMap.add sym (Prefix unop) pp_hints in
-  {ss with in_scope; unops; pp_hints}
+  {ss with in_scope; pp_hints}
 
 (** [add_binop ss n x] generates a new signature state from [ss] by adding a
     binary operator [x] with name [n]. This name is added to scope. *)
@@ -125,10 +125,12 @@ let add_binop : sig_state -> string loc -> (sym * binop) -> sig_state =
   fun ss name ((sym, binop) as x) ->
   Sign.add_binop ss.signature name.elt x;
   let in_scope = StrMap.add name.elt (sym, name.pos) ss.in_scope in
-  let binops = StrMap.add name.elt sym ss.binops in
-  let pp_hints = remove_pp_hint ss.binops name.elt ss.pp_hints in
+  let pp_hints =
+    let binops = StrMap.map fst !(ss.signature.sign_binops) in
+    remove_pp_hint binops name.elt ss.pp_hints
+  in
   let pp_hints = SymMap.add sym (Infix binop) pp_hints in
-  {ss with in_scope; binops; pp_hints}
+  {ss with in_scope; pp_hints}
 
 (** [add_builtin ss n s] generates a new signature state from [ss] by mapping
    the builtin [n] to [s]. *)
@@ -202,27 +204,21 @@ let open_sign : sig_state -> Sign.t -> sig_state = fun ss sign ->
   let f _key _v1 v2 = Some(v2) in (* hides previous symbols *)
   let in_scope = StrMap.union f ss.in_scope !(sign.sign_symbols) in
   let builtins = StrMap.union f ss.builtins !(sign.sign_builtins) in
-  let add_ops old_om som =
-    let add_op name (sym,_) om = StrMap.add name sym om in
-    StrMap.fold add_op som old_om
-  in
-  let unops = add_ops ss.unops !(sign.sign_unops) in
-  let binops = add_ops ss.binops !(sign.sign_binops) in
   (* Bring operators in scope *)
-  let open_op k s ssis = StrMap.add k (s, None) ssis in
-  let in_scope = StrMap.fold open_op unops in_scope in
-  let in_scope = StrMap.fold open_op binops in_scope in
+  let open_op k (s, _) ssis = StrMap.add k (s, None) ssis in
+  let in_scope = StrMap.fold open_op !(sign.sign_unops) in_scope in
+  let in_scope = StrMap.fold open_op !(sign.sign_binops) in_scope in
   let pp_hints = update_pp_hints_from_symbols ss.in_scope sign ss.pp_hints in
   let pp_hints =
     update_pp_hints_from_builtins ss.builtins !(sign.sign_builtins) pp_hints
   in
-  {ss with in_scope; builtins; unops; binops; pp_hints}
+  {ss with in_scope; builtins; pp_hints}
 
 (** Dummy [sig_state] made from the dummy signature. *)
 let dummy : sig_state =
   { signature = Sign.dummy (); in_scope = StrMap.empty; aliases = StrMap.empty
-  ; path_map = PathMap.empty; builtins = StrMap.empty; unops = StrMap.empty
-  ; binops = StrMap.empty; pp_hints = SymMap.empty }
+  ; path_map = PathMap.empty; builtins = StrMap.empty
+  ; pp_hints = SymMap.empty }
 
 (** [of_sign sign] creates a state from the signature [sign] with ghost
     signatures opened. *)
