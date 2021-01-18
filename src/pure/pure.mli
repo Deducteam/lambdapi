@@ -62,10 +62,6 @@ type tactic_result =
     file [fname]. The resulting state can be used by [handle_command]. *)
 val initial_state : file_path -> state
 
-(** Printing functions. *)
-val pp_term : state -> Terms.term Base.pp
-val pp_constr : state -> Terms.constr Base.pp
-
 (** [handle_command st cmd] evaluates the command [cmd] in state [st],  giving
     one of three possible results: the command is fully handled (corresponding
     to the [Cmd_OK] constructor,  the command starts a proof (corresponding to

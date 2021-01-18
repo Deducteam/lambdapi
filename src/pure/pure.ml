@@ -101,16 +101,6 @@ let initial_state : file_path -> state = fun fname ->
   Sign.loaded  := PathMap.add mp sign !Sign.loaded;
   (Time.save (), Sig_state.of_sign sign)
 
-let pp_term : state -> Terms.term Base.pp = fun (time,ss) oc t ->
-  Time.restore time;
-  Print.sig_state := ss;
-  Print.pp_term oc t
-
-let pp_constr : state -> Terms.constr Base.pp = fun (time,ss) oc c ->
-  Time.restore time;
-  Print.sig_state := ss;
-  Print.pp_constr oc c
-
 let handle_command : state -> Command.t -> command_result =
     fun (st,ss) cmd ->
   Time.restore st;
