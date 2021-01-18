@@ -17,25 +17,32 @@ end = struct
   open Lplib
   open Pos
 
-  (** [find_op_qid ss env qid] fetches the qualified identifier associated to
-      [qid] if [qid] is the identifier of an infix or prefix operator defined
-      in signature state [ss]. If [qid] does not designate an operator, [None]
-      is returned. *)
-  let find_op_qid : Sig_state.t -> Env.t -> qident -> qident option =
+  (** [find_sym ss env qid] is [{!val:Sig_state.find_sym} ss qid], but
+      doesn't fail if [qid] is in the environment [env]. It fetches private
+      and protected symbols as well. *)
+  let find_sym : Sig_state.t -> Env.t -> qident -> Terms.sym option =
     fun ss env ({elt=(mp, s); _} as qid) ->
     try
       if mp <> [] then raise Not_found;
       ignore (Env.find s env);
       None
     with Not_found ->
-      let sym = Sig_state.find_sym ~prt:true ~prv:true true ss qid in
-      let get_hint s = Terms.SymMap.find_opt s ss.Sig_state.pp_hints in
-      let qid_of_hint hint =
-        match hint with
-        | Sig_state.Prefix(_,_,qid) | Sig_state.Infix(_,_,_,qid) -> Some qid
-        | _ -> None
-      in
-      Option.(Infix.(pure sym >>= get_hint >>= qid_of_hint ))
+      Some(Sig_state.find_sym ~prt:true ~prv:true true ss qid)
+
+  (** [find_op_qid ss env qid] fetches the qualified identifier associated to
+      [qid] if [qid] is the identifier of an infix or prefix operator defined
+      in signature state [ss]. If [qid] does not designate an operator, [None]
+      is returned. *)
+  let find_op_qid : Sig_state.t -> Env.t -> qident -> qident option =
+    fun ss env qid ->
+    let sym = find_sym ss env qid in
+    let get_hint s = Terms.SymMap.find_opt s ss.Sig_state.pp_hints in
+    let qid_of_hint hint =
+      match hint with
+      | Sig_state.Prefix(_,_,qid) | Sig_state.Infix(_,_,_,qid) -> Some qid
+      | _ -> None
+    in
+    Option.(Infix.(sym >>= get_hint >>= qid_of_hint))
 
   module Pratt_terms : Pratter.SUPPORT
     with type term = p_term
@@ -48,14 +55,11 @@ end = struct
     let get (tbl, env) t =
       match t.elt with
       | P_Iden(id, _) -> (
-          let sym =
-            let qid = find_op_qid tbl env id in
-            Option.map (Sig_state.find_sym ~prt:true ~prv:true false tbl) qid
-          in
+          let sym = find_sym tbl env id in
           let f sym =
             match Terms.SymMap.find_opt sym tbl.pp_hints with
             | Some(Infix(_, assoc, prio, _)) -> Some(Pratter.Bin assoc, prio)
-            | Some(Prefix(_, prio, _)) -> Some (Pratter.Una, prio)
+            | Some(Prefix(_, prio, _)) -> Some(Pratter.Una, prio)
             | _ -> None
           in
           Option.bind f sym )
