@@ -34,8 +34,15 @@ exception Parse_error of Pos.pos * string
     and an updated state is returned. The function may raise [Parse_error]. *)
 val parse_text : state -> string -> string -> Command.t list * state
 
+(** A goal is given by a list of assumptions and a conclusion. Each assumption
+   has a name and a type. *)
+type conclusion =
+  | Typ of string * string
+  | Unif of string * string
+type goal = (string * string) list * conclusion
+
 (** [current_goals s] returns the list of open goals for proof state [s]. *)
-val current_goals : proof_state -> Proof.Goal.t list
+val current_goals : proof_state -> goal list
 
 (** Result type of the [handle_command] function. *)
 type command_result =
@@ -54,6 +61,10 @@ type tactic_result =
 (** [initial_state fname] gives an initial state for working with the (source)
     file [fname]. The resulting state can be used by [handle_command]. *)
 val initial_state : file_path -> state
+
+(** Printing functions. *)
+val pp_term : state -> Terms.term Base.pp
+val pp_constr : state -> Terms.constr Base.pp
 
 (** [handle_command st cmd] evaluates the command [cmd] in state [st],  giving
     one of three possible results: the command is fully handled (corresponding

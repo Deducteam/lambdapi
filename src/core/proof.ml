@@ -95,6 +95,7 @@ module Goal = struct
     match g with
     | Typ gt -> hyps env_elt oc gt.goal_hyps
     | Unif (c,_,_) -> hyps ctx_elt oc c
+
 end
 
 (** [add_goals_of_metas ms gs] extends [gs] with the metas of [ms] that are

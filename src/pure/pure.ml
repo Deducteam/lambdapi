@@ -43,9 +43,39 @@ let parse_text : state -> string -> string -> Command.t list * state =
 type proof_finalizer = Sig_state.t -> Proof.proof_state -> Sig_state.t
 type proof_state =
   Time.t * Sig_state.t * Proof.proof_state * proof_finalizer * Terms.expo
+type conclusion =
+  | Typ of string * string
+  | Unif of string * string
+type goal = (string * string) list * conclusion
 
-let current_goals : proof_state -> Proof.Goal.t list = fun (_,_,p,_,_) ->
-  p.proof_goals
+let string_of_goal : Proof.goal -> goal =
+  let buf = Buffer.create 80 in
+  let fmt = Format.formatter_of_buffer buf in
+  let to_string f x =
+    f fmt x;
+    Format.pp_print_flush fmt ();
+    let res = Buffer.contents buf in
+    Buffer.clear buf;
+    res
+  in
+  let open Print in
+  let env_elt (s,(_,t,_)) = s, to_string pp_term (Bindlib.unbox t) in
+  let ctx_elt (x,a,_) = to_string pp_var x, to_string pp_term a in
+  fun g ->
+  match g with
+  | Proof.Typ gt ->
+      let meta = to_string pp_meta gt.goal_meta in
+      let typ = to_string pp_term gt.goal_type in
+      List.rev_map env_elt gt.goal_hyps, Typ (meta, typ)
+  | Proof.Unif (c,t,u) ->
+      let t = to_string pp_term t and u = to_string pp_term u in
+      List.rev_map ctx_elt c, Unif (t,u)
+
+let current_goals : proof_state -> goal list =
+  fun (time, st, ps, _, _) ->
+  Time.restore time;
+  Print.sig_state := st;
+  List.map string_of_goal ps.proof_goals
 
 type command_result =
   | Cmd_OK    of state * Queries.result
@@ -70,6 +100,16 @@ let initial_state : file_path -> state = fun fname ->
   let sign = Sig_state.create_sign mp in
   Sign.loaded  := PathMap.add mp sign !Sign.loaded;
   (Time.save (), Sig_state.of_sign sign)
+
+let pp_term : state -> Terms.term Base.pp = fun (time,ss) oc t ->
+  Time.restore time;
+  Print.sig_state := ss;
+  Print.pp_term oc t
+
+let pp_constr : state -> Terms.constr Base.pp = fun (time,ss) oc c ->
+  Time.restore time;
+  Print.sig_state := ss;
+  Print.pp_constr oc c
 
 let handle_command : state -> Command.t -> command_result =
     fun (st,ss) cmd ->
