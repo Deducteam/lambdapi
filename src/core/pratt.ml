@@ -28,17 +28,14 @@ end = struct
       ignore (Env.find s env);
       None
     with Not_found ->
-      let sym =
-        try Some(Sig_state.find_sym ~prt:true ~prv:true true ss qid)
-        with Not_found -> None
-      in
+      let sym = Sig_state.find_sym ~prt:true ~prv:true true ss qid in
       let get_hint s = Terms.SymMap.find_opt s ss.Sig_state.pp_hints in
       let qid_of_hint hint =
         match hint with
         | Sig_state.Prefix(_,_,qid) | Sig_state.Infix(_,_,_,qid) -> Some qid
         | _ -> None
       in
-      Option.(Infix.(sym >>= get_hint >>= qid_of_hint ))
+      Option.(Infix.(pure sym >>= get_hint >>= qid_of_hint ))
 
   module Pratt_terms : Pratter.SUPPORT
     with type term = p_term
