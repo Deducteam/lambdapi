@@ -271,7 +271,8 @@ let command : p_command pp = fun oc cmd ->
   | P_query(q) ->
      query oc q
 
-let ast : ast pp = fun oc cs -> List.pp command "\n@." oc cs
+let ast : ast pp = fun oc ->
+  Stream.iter (fun c -> command oc c; Format.pp_print_newline oc ())
 
 (** [beautify cmds] pretty-prints the commands [cmds] to standard output. *)
 let beautify : ast -> unit = ast Format.std_formatter

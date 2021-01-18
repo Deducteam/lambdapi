@@ -31,8 +31,13 @@ let parse_text : state -> string -> string -> Command.t list * state =
   try
     Time.restore t;
     let ast =
-      if old_syntax then Parser.Dk.parse_string fname s
-      else Parser.parse_string fname s
+      let strm =
+        if old_syntax then Parser.Dk.parse_string fname s
+        else Parser.parse_string fname s
+      in
+      let cmds = Stdlib.ref [] in
+      Stream.iter (fun c -> Stdlib.(cmds := c :: !cmds)) strm;
+      List.rev Stdlib.(!cmds)
     in
     (ast, (Time.save (), st))
   with

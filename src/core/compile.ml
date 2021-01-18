@@ -14,7 +14,7 @@ let gen_obj = Stdlib.ref false
 
 (** [parse_file fname] selects and runs the correct parser on file [fname], by
     looking at its extension. *)
-let parse_file : string -> Syntax.ast = fun fname ->
+let parse_file : string -> Syntax.p_command Stream.t = fun fname ->
   match Filename.check_suffix fname src_extension with
   | true  -> Parser.parse_file fname
   | false -> Parser.Dk.parse_file fname
@@ -54,7 +54,7 @@ let rec compile : bool -> Path.t -> Sign.t = fun force path ->
       out 2 "Loading [%s]%s\n%!" src forced;
       loading := path :: !loading;
       let sign = Sig_state.create_sign path in
-      let sig_st = Sig_state.of_sign sign in
+      let sig_st = Stdlib.ref (Sig_state.of_sign sign) in
       (* [sign] is added to [loaded] before processing the commands so that it
          is possible to qualify the symbols of the current modules. *)
       loaded := PathMap.add path sign !loaded;
@@ -75,7 +75,8 @@ let rec compile : bool -> Path.t -> Sign.t = fun force path ->
             in
             data.pdata_finalize ss st
       in
-      ignore (List.fold_left handle sig_st (parse_file src));
+      let consume cmd = Stdlib.(sig_st := handle !sig_st cmd) in
+      Stream.iter consume (parse_file src);
       (* Removing private symbols from signature. *)
       let not_prv _ sym = not (Terms.is_private sym) in
       let not_prv_fst k s_ = not_prv k (fst s_) in
