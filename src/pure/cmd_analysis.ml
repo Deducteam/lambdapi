@@ -109,7 +109,6 @@ and qidents_of_p_config (cfg : Syntax.p_config) =
   | Syntax.P_config_binop b ->
     let _, _, _, qid = b in
     [ qid ]
-  | Syntax.P_config_ident _ -> []
   | Syntax.P_config_quant qid -> [ qid ]
   | Syntax.P_config_unif_rule rule -> qidents_of_p_rule rule
 

@@ -269,10 +269,6 @@ fun compile ss cmd ->
         let rec_name = Inductive.rec_name ind_sym in
         if Sign.mem ss.signature rec_name then
           fatal cmd.pos "Symbol [%s] already exists." rec_name;
-        (* If [ind_sym] is a declared identifier, then [rec_sym] must be
-           declared too. *)
-        if StrSet.mem ind_sym.sym_name !(ss.signature.sign_idents) then
-          Sign.add_ident ss.signature rec_name;
         let (ss, rec_sym) =
           out 3 "(symb) %s : %a\n" rec_name pp_term rec_typ;
           let sig_symbol =
@@ -477,9 +473,6 @@ fun compile ss cmd ->
             let binop = (s, assoc, prio, with_path sym.sym_path qid) in
             out 3 "(conf) %a %a\n" pp_symbol sym pp_hint (Infix binop);
             add_binop ss (Pos.make cmd.pos s) (sym, binop);
-        | P_config_ident(id)      ->
-            Sign.add_ident ss.signature id;
-            out 3 "(conf) declared identifier \"%s\"\n" id; ss
         | P_config_quant(qid)     ->
             let sym = find_sym ~prt:true ~prv:true false ss qid in
             out 3 "(conf) %a quantifier\n" pp_symbol sym;

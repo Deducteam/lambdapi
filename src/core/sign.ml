@@ -24,7 +24,6 @@ type t =
   ; sign_builtins : sym StrMap.t ref
   ; sign_unops    : (sym * unop ) StrMap.t ref
   ; sign_binops   : (sym * binop) StrMap.t ref
-  ; sign_idents   : StrSet.t ref
   ; sign_quants   : SymSet.t ref
   ; sign_ind      : inductive SymMap.t ref }
 
@@ -39,7 +38,7 @@ let dummy : unit -> t = fun () ->
   { sign_symbols = ref StrMap.empty; sign_path = []
   ; sign_deps = ref PathMap.empty; sign_builtins = ref StrMap.empty
   ; sign_unops = ref StrMap.empty; sign_binops = ref StrMap.empty
-  ; sign_idents = ref StrSet.empty; sign_quants = ref SymSet.empty
+  ; sign_quants = ref SymSet.empty
   ; sign_ind = ref SymMap.empty }
 
 (** [create sign_path] creates an empty signature with module path
@@ -47,8 +46,8 @@ let dummy : unit -> t = fun () ->
 let create : Path.t -> t = fun sign_path ->
   { sign_path; sign_symbols = ref StrMap.empty; sign_deps = ref PathMap.empty
   ; sign_builtins = ref StrMap.empty; sign_unops = ref StrMap.empty
-  ; sign_binops = ref StrMap.empty; sign_idents = ref StrSet.empty
-  ; sign_quants = ref SymSet.empty ; sign_ind = ref SymMap.empty }
+  ; sign_binops = ref StrMap.empty; sign_quants = ref SymSet.empty
+  ; sign_ind = ref SymMap.empty }
 
 (** [find sign name] finds the symbol named [name] in [sign] if it exists, and
     raises the [Not_found] exception otherwise. *)
@@ -346,10 +345,6 @@ let add_unop : t -> string -> (sym * unop) -> unit = fun sign s sym ->
     If [op] was previously bound, the previous binding is discarded. *)
 let add_binop : t -> string -> (sym * binop) -> unit = fun sign s sym ->
   sign.sign_binops := StrMap.add s sym !(sign.sign_binops)
-
-(** [add_ident sign id] add the declared identifier [id] to [sign]. *)
-let add_ident : t -> string -> unit = fun sign id ->
-  sign.sign_idents := StrSet.add id !(sign.sign_idents)
 
 (** [add_quant sign sym] add the quantifier [sym] to [sign]. *)
 let add_quant : t -> sym -> unit = fun sign sym ->

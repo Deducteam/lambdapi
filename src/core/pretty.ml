@@ -264,8 +264,6 @@ let command : p_command pp = fun oc cmd ->
       out "set infix%s %f %S ≔ %a" a p s qident qid
   | P_set(P_config_unif_rule(ur)) ->
       out "set unif_rule %a" unif_rule ur
-  | P_set(P_config_ident(id)) ->
-      out "set declared %S" id
   | P_set(P_config_quant(qid)) ->
       out "set quantifier %a" qident qid
   | P_query(q) ->
