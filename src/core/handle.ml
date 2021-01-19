@@ -468,7 +468,7 @@ fun compile ss cmd ->
             (* Make sure the operator has a fully qualified [qid]. *)
             let unop = (s, prio, with_path sym.sym_path qid) in
             out 3 "(conf) %a %a\n" pp_symbol sym pp_hint (Prefix unop);
-            add_unop ss (Pos.none s) (sym, unop)
+            add_unop ss (Pos.make cmd.pos s) (sym, unop)
         | P_config_binop(binop)   ->
             let (s, assoc, prio, qid) = binop in
             (* Define the binary operator [sym]. *)
@@ -476,7 +476,7 @@ fun compile ss cmd ->
             (* Make sure the operator has a fully qualified [qid]. *)
             let binop = (s, assoc, prio, with_path sym.sym_path qid) in
             out 3 "(conf) %a %a\n" pp_symbol sym pp_hint (Infix binop);
-            add_binop ss (Pos.none s) (sym, binop);
+            add_binop ss (Pos.make cmd.pos s) (sym, binop);
         | P_config_ident(id)      ->
             Sign.add_ident ss.signature id;
             out 3 "(conf) declared identifier \"%s\"\n" id; ss

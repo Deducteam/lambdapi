@@ -17,18 +17,6 @@ end = struct
   open Lplib
   open Pos
 
-  (** [find_sym ss env qid] is [{!val:Sig_state.find_sym} ss qid], but
-      doesn't fail if [qid] is in the environment [env]. It fetches private
-      and protected symbols as well. *)
-  let find_sym : Sig_state.t -> Env.t -> qident -> Terms.sym option =
-    fun ss env ({elt=(mp, s); _} as qid) ->
-    try
-      if mp <> [] then raise Not_found;
-      ignore (Env.find s env);
-      None
-    with Not_found ->
-      Some(Sig_state.find_sym ~prt:true ~prv:true true ss qid)
-
   module Pratt_terms : Pratter.SUPPORT
     with type term = p_term
      and type table = Sig_state.t * Env.t
@@ -40,7 +28,14 @@ end = struct
     let get (tbl, env) t =
       match t.elt with
       | P_Iden(id, _) -> (
-          let sym = find_sym tbl env id in
+          let sym =
+            let {elt=(mp, s); _} = id in
+            try (* Look if [id] is in [env]... *)
+              if mp <> [] then raise Not_found;
+              ignore (Env.find s env); None
+            with Not_found -> (* ... or look into the signature *)
+              Some(Sig_state.find_sym ~prt:true ~prv:true true tbl id)
+          in
           let f sym =
             match Terms.SymMap.find_opt sym tbl.pp_hints with
             | Some(Infix(_, assoc, prio, _)) -> Some(Pratter.Bin assoc, prio)

@@ -108,7 +108,7 @@ let add_symbol : sig_state -> sig_symbol -> sig_state * sym =
 
 (** [add_unop ss n x] generates a new signature state from [ss] by adding a
     unary operator [x] with name [n]. This name is added to the scope. *)
-let add_unop : sig_state -> string loc -> (sym * unop) -> sig_state =
+let add_unop : sig_state -> strloc -> (sym * unop) -> sig_state =
   fun ss name ((sym, unop) as x) ->
   Sign.add_unop ss.signature name.elt x;
   let in_scope = StrMap.add name.elt (sym, name.pos) ss.in_scope in
@@ -121,7 +121,7 @@ let add_unop : sig_state -> string loc -> (sym * unop) -> sig_state =
 
 (** [add_binop ss n x] generates a new signature state from [ss] by adding a
     binary operator [x] with name [n]. This name is added to scope. *)
-let add_binop : sig_state -> string loc -> (sym * binop) -> sig_state =
+let add_binop : sig_state -> strloc -> (sym * binop) -> sig_state =
   fun ss name ((sym, binop) as x) ->
   Sign.add_binop ss.signature name.elt x;
   let in_scope = StrMap.add name.elt (sym, name.pos) ss.in_scope in
