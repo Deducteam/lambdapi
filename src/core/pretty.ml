@@ -252,7 +252,7 @@ let command : p_command pp = fun ff cmd ->
   | P_query(q) ->
      query ff q
 
-let ast : ast pp = fun ff cs -> List.pp command "\n@." ff cs
+let ast : ast pp = fun ff cs -> List.pp command "\n" ff cs
 
 (** [beautify cmds] pretty-prints the commands [cmds] to standard output. *)
 let beautify : ast -> unit = ast Format.std_formatter
