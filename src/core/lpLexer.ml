@@ -1,6 +1,7 @@
 (** Lexer for Lambdapi syntax. Uses Sedlex, a Utf8 friendly lexer. Some helper
     functions to check if a string conflicts with the syntax are also
     provided. *)
+open Lplib
 open Sedlexing
 open Pos
 
@@ -121,56 +122,60 @@ and nom_comment : lexbuf -> unit = fun buf ->
     | id -> true
     | _ -> false
 
-  let is_keyword : string -> bool = fun s ->
+  let is_keyword : string -> bool =
+    let kws =
+      List.sort String.compare
+        [ "TYPE"
+        ; "apply"
+        ; "as"
+        ; "assert"
+        ; "assertnot"
+        ; "assume"
+        ; "builtin"
+        ; "compute"
+        ; "constant"
+        ; "definition"
+        ; "flag"
+        ; "in"
+        ; "inductive"
+        ; "infix"
+        ; "injective"
+        ; "left"
+        ; "let"
+        ; "off"
+        ; "on"
+        ; "open"
+        ; "prefix"
+        ; "private"
+        ; "proof"
+        ; "protected"
+        ; "prover"
+        ; "prover_timeout"
+        ; "qed"
+        ; "refine"
+        ; "refine"
+        ; "reflexivity"
+        ; "require"
+        ; "rewrite"
+        ; "right"
+        ; "rule"
+        ; "set"
+        ; "sequential"
+        ; "simpl"
+        ; "symbol"
+        ; "symmetry"
+        ; "theorem"
+        ; "type"
+        ; "type"
+        ; "unif_rule"
+        ; "verbose"
+        ; "why3"
+        ; "with" ]
+    in
+    fun s ->
     (* NOTE this function may be optimised using a map, a hashtable, or using
        [match%sedlex]. *)
-    List.mem s
-      [ "TYPE"
-      ; "apply"
-      ; "as"
-      ; "assert"
-      ; "assertnot"
-      ; "assume"
-      ; "builtin"
-      ; "compute"
-      ; "constant"
-      ; "definition"
-      ; "flag"
-      ; "in"
-      ; "inductive"
-      ; "infix"
-      ; "injective"
-      ; "left"
-      ; "let"
-      ; "off"
-      ; "on"
-      ; "open"
-      ; "prefix"
-      ; "private"
-      ; "proof"
-      ; "protected"
-      ; "prover"
-      ; "prover_timeout"
-      ; "qed"
-      ; "refine"
-      ; "refine"
-      ; "reflexivity"
-      ; "require"
-      ; "rewrite"
-      ; "right"
-      ; "rule"
-      ; "set"
-      ; "sequential"
-      ; "simpl"
-      ; "symbol"
-      ; "symmetry"
-      ; "theorem"
-      ; "type"
-      ; "type"
-      ; "unif_rule"
-      ; "verbose"
-      ; "why3"
-      ; "with" ]
+      List.mem_sorted String.compare s kws
 
   (** [is_debug_flag s] is true if [s] is a debug flag of the form [+...] or
       [-...] where the dots are a sequence of letters. *)
