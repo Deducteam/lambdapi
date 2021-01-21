@@ -409,7 +409,7 @@ function getGoalsEnvContent(goals : Goal[]){
         
         // check if this is a Type Goal
     	// extra space is not a typo, this is defined in lsp_base.ml
-        if (goals[i].typeofgoal == "Typ "){
+        if (goals[i].typeofgoal == "Typ"){
 
             let curGoal = goals[i] as TypGoal;
 
@@ -433,7 +433,7 @@ function getGoalsEnvContent(goals : Goal[]){
             + i + `</label>`;
 
         let goalstr = "";
-        if(goals[i].typeofgoal == "Typ "){
+        if(goals[i].typeofgoal == "Typ"){
             goalstr = `<span class="goal">`
                 + (goals[i] as TypGoal).type + `</span>`;
         } else {

@@ -43,7 +43,7 @@ let json_of_goal (hyps, concl) =
   match concl with
   | Pure.Typ (_meta, typ) ->
     `Assoc [
-      "typeofgoal", `String "Typ "
+      "typeofgoal", `String "Typ"
     ; "gid", `Int 0 (*FIXME: should be a `String*)
     ; "hyps", `List (List.map json_of_hyp hyps)
     ; "type", `String typ]

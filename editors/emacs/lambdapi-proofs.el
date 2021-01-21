@@ -63,7 +63,7 @@ bold if goalNo is 0"
 (defun lp-format-string-hyps-typ-goal (goal)
   "Return the string associated to the hypotheses of a single typing goal"
   (let ((tog (plist-get goal :typeofgoal)))
-    (if (string= tog "Typ ")
+    (if (string= tog "Typ")
 	(let ((hs (plist-get goal :hyps)))
 	  (mapcar (lambda (hyp)
 		    (let ((name (plist-get hyp :hname))
@@ -76,7 +76,7 @@ bold if goalNo is 0"
   "Return the string associated to a single goal. Adds text-properties to
 make it clickable"
   (let ((tog (plist-get goal :typeofgoal)))
-    (if (string= tog "Typ ")
+    (if (string= tog "Typ")
 	(let* ((id (plist-get goal :gid))
                (type (plist-get goal :type))
                (clk-text (lp-make-goal-clickable
