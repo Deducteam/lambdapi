@@ -80,15 +80,13 @@ make it clickable"
 	(let* ((id (plist-get goal :gid))
                (type (plist-get goal :type))
                (clk-text (lp-make-goal-clickable
-                          (format "%s  %d: %s"
-                                  tog id type)
+                          (format "?%s: %s" id type)
                           goalNo proofbuf proofline)))
 	  (format "%s\n%s\n\n"
 		  lp-goal-line-prefix clk-text))
       (let* ((constr (plist-get goal :constr))
              (clk-text (lp-make-goal-clickable
-                        (format "%s    : %s"
-                                tog constr)
+                        (format "%s" constr)
                         goalNo proofbuf proofline)))
         (format "%s\n%s\n\n"
                 lp-goal-line-prefix clk-text)))))

@@ -41,10 +41,10 @@ let mk_range (p : Pos.pos) : J.t =
 let json_of_goal (hyps, concl) =
   let json_of_hyp (s,t) = `Assoc ["hname", `String s; "htype", `String t] in
   match concl with
-  | Pure.Typ (_meta, typ) ->
+  | Pure.Typ (meta, typ) ->
     `Assoc [
       "typeofgoal", `String "Typ"
-    ; "gid", `Int 0 (*FIXME: should be a `String*)
+    ; "gid", `String meta
     ; "hyps", `List (List.map json_of_hyp hyps)
     ; "type", `String typ]
   | Pure.Unif (t,u) ->

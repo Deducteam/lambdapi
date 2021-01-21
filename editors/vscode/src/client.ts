@@ -541,7 +541,7 @@ export interface UnifGoal extends Goal {
 }
 
 export interface TypGoal extends Goal {
-	gid :  number // goal id
+	gid :  String // goal id
 	hyps : Env[] // hypothesis
 	type : String // goals
 }
