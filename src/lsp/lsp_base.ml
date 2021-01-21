@@ -50,7 +50,8 @@ let json_of_goal (hyps, concl) =
   | Pure.Unif (t,u) ->
     `Assoc [
       "typeofgoal", `String "Unif"
-    ; "constr", `String (t ^ " ≡ " ^ u)] (*FIXME: fields for hyps missing*)
+    ; "hyps", `List (List.map json_of_hyp hyps)
+    ; "constr", `String (t ^ " ≡ " ^ u)]
 
 let json_of_goals ?logs goals =
   let logs = match logs with None -> "" | Some s -> s in

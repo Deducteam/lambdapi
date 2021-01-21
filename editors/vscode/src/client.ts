@@ -407,10 +407,27 @@ function getGoalsEnvContent(goals : Goal[]){
         codeHyps = `<div class="hypothesis">`;
         codeGoals = `<div class="pp_goals">`;
         
-        // check if this is a Type Goal
         if (goals[i].typeofgoal == "Typ"){
 
             let curGoal = goals[i] as TypGoal;
+
+            for(let j=0; j<curGoal.hyps.length; j++){
+
+                let hnameCode = `<label class="hname">`
+                    + curGoal.hyps[j].hname
+                    + `</label>`;
+
+                let htypeCode = `<span class="htype">`
+                    + curGoal.hyps[j].htype
+                + `</span> <br/>`;
+
+                codeHyps = codeHyps + hnameCode
+                    + `<label class="sep"> : </label>`
+                    + htypeCode;
+            }
+        } else {
+
+            let curGoal = goals[i] as UnifGoal;
 
             for(let j=0; j<curGoal.hyps.length; j++){
 
@@ -537,12 +554,13 @@ export interface Goal {
 }
 
 export interface UnifGoal extends Goal {
+    hyps : Env[] // hypotheses
     constr : String
 }
 
 export interface TypGoal extends Goal {
 	gid :  String // goal id
-	hyps : Env[] // hypothesis
+	hyps : Env[] // hypotheses
 	type : String // goals
 }
 
