@@ -10,7 +10,7 @@ constant symbol ⊤ : Prop;
 
 constant symbol ∀ {a} : (τ a → Prop) → Prop;
 
-// set quantifier ∀;
+set quantifier ∀;
 
 constant symbol imp : Prop → Prop → Prop;
 

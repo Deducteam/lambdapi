@@ -31,6 +31,7 @@
 %token BUILTIN
 %token <Pratter.associativity> ASSOC
 %token INFIX
+%token QUANTIFIER
 %token VERBOSE
 %token FLAG
 %token PROVER
@@ -231,6 +232,7 @@ config:
         let binop = (s, Option.get Pratter.Neither a, p, qid) in
         P_config_binop(binop)
       }
+  | QUANTIFIER qid=qident { P_config_quant qid }
   | UNIF_RULE r=unif_rule { P_config_unif_rule(r) }
 
 assert_not:

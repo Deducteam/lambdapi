@@ -185,7 +185,7 @@ and pp_term : term pp = fun oc t ->
           match unfold b with
           | Abst(a,b) ->
               let (x,p) = Bindlib.unbind b in
-              out oc "%a%a" pp_symbol s pp_var x;
+              out oc "`%a%a" pp_symbol s pp_var x;
               if !print_implicits then out oc ": %a" (pp `Func) a;
               out oc ", %a" (pp `Func) p
           | _ -> assert false

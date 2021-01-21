@@ -26,7 +26,7 @@ type token =
   | OPAQUE | OPEN
   | PI | PREFIX | PRINT | PRIVATE
   | PROOFTERM | PROTECTED | PROVER | PROVER_TIMEOUT
-  | QUESTION_MARK
+  | QUANTIFIER | QUESTION_MARK
   | REFINE | REFL | REQUIRE | REWRITE | RULE
   | SEMICOLON | SEQUENTIAL | SET | SIMPL | STRINGLIT of string
   | SWITCH of bool
@@ -244,6 +244,7 @@ and nom_comment : lexbuf -> unit = fun buf ->
     | "protected" -> PROTECTED
     | "prover" -> PROVER
     | "prover_timeout" -> PROVER_TIMEOUT
+    | "quantifier" -> QUANTIFIER
     | "refine" -> REFINE
     | "refine" -> REFINE
     | "reflexivity" -> REFL
