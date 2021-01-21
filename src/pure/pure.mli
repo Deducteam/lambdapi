@@ -37,8 +37,8 @@ val parse_text : state -> string -> string -> Command.t list * state
 (** A goal is given by a list of assumptions and a conclusion. Each assumption
    has a name and a type. *)
 type conclusion =
-  | Typ of string * string
-  | Unif of string * string
+  | Typ of string * string (** Metavariable name and type. *)
+  | Unif of string * string (** LHS and RHS of the unification goal. *)
 type goal = (string * string) list * conclusion
 
 (** [current_goals s] returns the list of open goals for proof state [s]. *)

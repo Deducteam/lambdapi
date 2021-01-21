@@ -71,7 +71,7 @@ module Goal = struct
   let pp : goal pp = fun oc g ->
     let out fmt = Format.fprintf oc fmt in
     match g with
-    | Typ gt -> out "%a : %a\n" pp_meta gt.goal_meta pp_term gt.goal_type
+    | Typ gt -> out "%a: %a\n" pp_meta gt.goal_meta pp_term gt.goal_type
     | Unif (_, t, u) -> out "%a ≡ %a\n" pp_term t pp_term u
 
   (** [pp_hyps oc g] prints on channel [oc] the hypotheses of the goal [g]. *)

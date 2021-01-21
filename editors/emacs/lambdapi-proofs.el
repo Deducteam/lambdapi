@@ -8,7 +8,7 @@
 (require 'highlight)
 (require 'cl-lib)
 
-(defconst lp-goal-line-prefix "---------------------------------------------------")
+(defconst lp-goal-line-prefix "--------------------------------------------------------------------------------")
 
 (defun lp-focus-goal (goalno &optional proofbuf lineNo)
   "Focus on 'goalno'th goal (zero-indexed). proofbuf is the buffer
@@ -78,7 +78,7 @@ make it clickable"
 	(let* ((id (plist-get goal :gid))
                (type (plist-get goal :type))
                (clk-text (lp-make-goal-clickable
-                          (format "?%s: %s" id type)
+                          (format "%s: %s" id type)
                           goalNo proofbuf proofline)))
 	  (format "%s\n%s\n\n"
 		  lp-goal-line-prefix clk-text))
