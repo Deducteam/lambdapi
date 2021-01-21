@@ -191,6 +191,7 @@ type proof_data =
 let handle_cmd : sig_state -> p_command ->
     sig_state * proof_data option * Queries.result =
   fun ss cmd ->
+  if !log_enabled then log_hndl "%a" Pretty.command cmd;
   let scope_basic exp pt = Scope.scope_term exp ss Env.empty pt in
   match cmd.elt with
   | P_query(q) ->
