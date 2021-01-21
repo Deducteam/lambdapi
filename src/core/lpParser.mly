@@ -375,24 +375,22 @@ term:
   | t=aterm { t }
   | t=term ARROW u=term { make_pos $loc (P_Impl(t, u)) }
   // Quantifier
-  | BACKQUOTE q=term_ident b=binder { make_pos $loc (P_Appl(q, b)) }
-  | PI xs=arg+ COMMA b=term { make_pos $loc (P_Prod(xs, b)) }
-  | PI x=arg_ident COLON a=term COMMA b=term
-      { make_pos $loc (P_Prod([[x], Some(a), false], b)) }
-  | LAMBDA xs=arg+ COMMA t=term { make_pos $loc (P_Abst(xs, t)) }
-  | LAMBDA x=arg_ident COLON a=term COMMA t=term
-      { make_pos $loc (P_Abst([[x], Some(a), false], t)) }
-  /* REVIEW: allow pattern of the form \x y z: N, t */
-  /* | LAMBDA xs=arg_ident+ COLON a=term COMMA t=term */
-  /*     { make_pos $loc (P_Abst([xs, Some(a), false], t)) } */
+  | BACKQUOTE q=term_ident b=binder
+      {
+        let bder = Pos.make b.pos (P_Abst(fst b.elt, snd b.elt)) in
+        make_pos $loc (P_Appl(q, bder))
+      }
+  | PI b=binder { make_pos $loc (P_Prod(fst b.elt, snd b.elt)) }
+  | LAMBDA b=binder { make_pos $loc (P_Abst(fst b.elt, snd b.elt)) }
   | LET x=ident a=arg* b=preceded(COLON, term)? ASSIGN t=term IN u=term
       { make_pos $loc (P_LLet(fst x, a, b, t, u)) }
 
+/* REVIEW: allow pattern of the form \x y z: N, t */
 binder:
-  | id=ident COMMA t=term
-      { make_pos $loc (P_Abst([[Some(fst id)], None, false], t)) }
-  | id=ident COLON a=term COMMA t=term
-      { make_pos $loc (P_Abst([[Some(fst id)], Some(a), false], t)) }
+  | xs=arg+ COMMA t=term
+      { make_pos $loc (xs, t) }
+  | x=arg_ident COLON a=term COMMA t=term
+      { make_pos $loc ([[x], Some a, false], t) }
 
 // A rewrite rule [lhs ↪ rhs]
 rule: l=term REWRITE r=term { make_pos $loc (l, r) }
