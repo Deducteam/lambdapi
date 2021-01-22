@@ -286,7 +286,7 @@ let pp_constr : constr pp = fun oc (ctx, t, u) ->
 (** [pp_constr oc p] prints the unification problem [p] to the
     output channel [oc]. *)
 let pp_problem : problem pp = fun oc p ->
-  Format.fprintf oc "{ to_solve = [%a]; unsolved = [%a]; recompute = %b }"
-    (List.pp pp_constr "; ") p.to_solve
-    (List.pp pp_constr "; ") p.unsolved
-    p.recompute
+  let constr oc c = Format.fprintf oc "\n; %a" pp_constr c in
+  Format.fprintf oc
+    "{ recompute = %b;\nto_solve = [%a];\nunsolved = [%a] }"
+    p.recompute (List.pp constr "") p.to_solve (List.pp constr "") p.unsolved

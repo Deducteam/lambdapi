@@ -71,23 +71,23 @@ module Goal = struct
   let pp : goal pp = fun oc g ->
     let out fmt = Format.fprintf oc fmt in
     match g with
-    | Typ gt -> out "%a : %a\n" pp_meta gt.goal_meta pp_term gt.goal_type
-    | Unif (_, t, u) -> out "%a ≡ %a\n" pp_term t pp_term u
+    | Typ gt -> out "%a: %a" pp_meta gt.goal_meta pp_term gt.goal_type
+    | Unif (_, t, u) -> out "%a ≡ %a" pp_term t pp_term u
 
   (** [pp_hyps oc g] prints on channel [oc] the hypotheses of the goal [g]. *)
   let pp_hyps : goal pp =
     let env_elt oc (s,(_,t,_)) =
-      Format.fprintf oc "%s: %a\n" s pp_term (Bindlib.unbox t)
+      Format.fprintf oc "%s: %a" s pp_term (Bindlib.unbox t)
     in
     let ctx_elt oc (x,a,t) =
       Format.fprintf oc "%a: %a" pp_var x pp_term a;
       match t with
-      | None -> Format.fprintf oc "\n"
-      | Some(t) -> Format.fprintf oc " ≔ %a\n" pp_term t
+      | None -> ()
+      | Some(t) -> Format.fprintf oc " ≔ %a" pp_term t
     in
     let hyps hyp oc l =
       if l <> [] then
-        (List.iter (hyp oc) (List.rev l);
+        (List.iter (Format.fprintf oc "%a\n" hyp) (List.rev l);
          Format.fprintf oc "-----------------------------------------------\
                             ---------------------------------\n")
     in
@@ -95,6 +95,7 @@ module Goal = struct
     match g with
     | Typ gt -> hyps env_elt oc gt.goal_hyps
     | Unif (c,_,_) -> hyps ctx_elt oc c
+
 end
 
 (** [add_goals_of_metas ms gs] extends [gs] with the metas of [ms] that are
@@ -127,7 +128,7 @@ let pp_goals : proof_state pp = fun oc ps ->
   | g::_ ->
       out "\n";
       Goal.pp_hyps oc g;
-      List.iteri (fun i g -> out "%d. %a" i Goal.pp g) ps.proof_goals
+      List.iteri (fun i g -> out "%d. %a\n" i Goal.pp g) ps.proof_goals
 
 (** [focus_env ps] returns the scoping environment of the focused goal or the
    empty environment if there is none. *)

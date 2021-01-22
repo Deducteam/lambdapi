@@ -30,7 +30,7 @@ type doc_node =
   { ast   : Pure.Command.t
   ; exec  : bool
   (*; tactics : Proof.Tactic.t list*)
-  ; goals : (Proof.Goal.t list * Pos.popt) list
+  ; goals : (Pure.goal list * Pos.popt) list
   }
 
 (* Private. A doc is a list of nodes for now. The first element in

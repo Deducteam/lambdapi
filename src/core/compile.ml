@@ -51,7 +51,7 @@ let rec compile : bool -> Path.t -> Sign.t = fun force path ->
     begin
       let forced = if force then " (forced)" else "" in
       let src = src () in
-      out 2 "Loading [%s]%s\n%!" src forced;
+      out 2 "Loading %s%s ...\n%!" src forced;
       loading := path :: !loading;
       let sign = Sig_state.create_sign path in
       let sig_st = Stdlib.ref (Sig_state.of_sign sign) in
@@ -87,16 +87,16 @@ let rec compile : bool -> Path.t -> Sign.t = fun force path ->
         Terms.SymMap.filter (fun s _ -> not_prv s) !(sign.sign_syntax);
       if Stdlib.(!gen_obj) then Sign.write sign obj;
       loading := List.tl !loading;
-      out 1 "Checked [%s]\n%!" src; sign
+      out 1 "Checked %s\n%!" src; sign
     end
   else
     begin
-      out 2 "Loading [%s]\n%!" (src ());
+      out 2 "Loading %s ...\n%!" (src ());
       let sign = Sign.read obj in
       PathMap.iter (fun mp _ -> ignore (compile false mp)) !(sign.sign_deps);
       loaded := PathMap.add path sign !loaded;
       Sign.link sign;
-      out 2 "Loaded  [%s]\n%!" obj; sign
+      out 2 "Loaded %s\n%!" obj; sign
     end
 
 (** [recompile] indicates whether we should recompile files who have an object

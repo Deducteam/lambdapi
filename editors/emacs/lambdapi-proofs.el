@@ -8,7 +8,7 @@
 (require 'highlight)
 (require 'cl-lib)
 
-(defconst lp-goal-line-prefix "---------------------------------------------------")
+(defconst lp-goal-line-prefix "--------------------------------------------------------------------------------")
 
 (defun lp-focus-goal (goalno &optional proofbuf lineNo)
   "Focus on 'goalno'th goal (zero-indexed). proofbuf is the buffer
@@ -60,35 +60,31 @@ bold if goalNo is 0"
      goalstr)
     goalstr))
 
-(defun lp-format-string-hyps-typ-goal (goal)
+(defun lp-format-string-hyps-goal (goal)
   "Return the string associated to the hypotheses of a single typing goal"
   (let ((tog (plist-get goal :typeofgoal)))
-    (if (string= tog "Typ ")
 	(let ((hs (plist-get goal :hyps)))
 	  (mapcar (lambda (hyp)
 		    (let ((name (plist-get hyp :hname))
 			  (type (plist-get hyp :htype)))
 		      (format "%s: %s\n" name type)))
-		  (reverse hs))))))
-
+		  (reverse hs)))))
 
 (defun lp-format-string-goal (goal goalNo proofbuf proofline)
   "Return the string associated to a single goal. Adds text-properties to
 make it clickable"
   (let ((tog (plist-get goal :typeofgoal)))
-    (if (string= tog "Typ ")
+    (if (string= tog "Typ")
 	(let* ((id (plist-get goal :gid))
                (type (plist-get goal :type))
                (clk-text (lp-make-goal-clickable
-                          (format "%s  %d: %s"
-                                  tog id type)
+                          (format "%s: %s" id type)
                           goalNo proofbuf proofline)))
 	  (format "%s\n%s\n\n"
 		  lp-goal-line-prefix clk-text))
       (let* ((constr (plist-get goal :constr))
              (clk-text (lp-make-goal-clickable
-                        (format "%s    : %s"
-                                tog constr)
+                        (format "%s" constr)
                         goalNo proofbuf proofline)))
         (format "%s\n%s\n\n"
                 lp-goal-line-prefix clk-text)))))
@@ -102,7 +98,7 @@ make it clickable"
           (read-only-mode -1)
           (if (> (length goals) 0)
               (let* ((fstgoal (elt goals 0))
-                     (hypsstr (lp-format-string-hyps-typ-goal fstgoal))
+                     (hypsstr (lp-format-string-hyps-goal fstgoal))
                      ;; map each goal to formatted goal string
                      (goalsstr (cl-mapcar `(lambda (goal goalNo)
                                              (lp-format-string-goal

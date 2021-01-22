@@ -69,6 +69,13 @@ let handle_tactic :
   Sig_state.t -> Terms.expo -> proof_state -> p_tactic ->
     proof_state * Queries.result =
   fun ss e ps tac ->
+  if !log_enabled then
+    begin
+      (match ps.proof_goals with
+       | g::_ -> log_tact "%a" Proof.Goal.pp g
+       | [] -> ());
+      log_tact "%a" Pretty.tactic tac
+    end;
   match tac.elt with
   | P_tac_query(q) -> ps, Queries.handle_query ss (Some ps) q
   | P_tac_solve -> tac_solve tac.pos ps, None
