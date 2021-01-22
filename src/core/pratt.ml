@@ -45,7 +45,7 @@ end = struct
           Option.bind f sym )
       | _ -> None
 
-    let make_appl _ t u =
+    let make_appl t u =
       let pos = Option.(Infix.(pure cat <*> t.pos <*> u.pos)) in
       make pos (P_Appl(t, u))
   end
@@ -54,6 +54,11 @@ end = struct
     let (h,args) = Syntax.p_get_args t in
     let strm = Stream.of_list (h::args) in
     let module Parse = Pratter.Make(Pratt_terms) in
-    Parse.expression (st, env) strm
+    try Parse.expression (st, env) strm with
+    | Parse.OpConflict(t, u) ->
+        Console.fatal t.pos "Operator conflict between \"%a\" and \"%a\""
+          Pretty.term t Pretty.term u
+    | Parse.TooFewArguments ->
+        Console.fatal t.pos "Malformed application in \"%a\"" Pretty.term t
 end
 include Pratt
