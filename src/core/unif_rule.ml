@@ -32,7 +32,7 @@ let equiv : sym =
   let sym =
     Sign.add_symbol sign Public Defin Eager (Pos.none "#equiv") Kind []
   in
-  Sign.add_binop sign "≡" (sym, bo);
+  Sign.add_binop sign sym bo;
   sym
 
 (** Cons-like symbol for equivalences. The right-hand side of a unification
@@ -45,7 +45,7 @@ let cons : sym =
   let sym =
     Sign.add_symbol sign Public Defin Eager (Pos.none "#cons") Kind []
   in
-  Sign.add_binop sign ";" (sym, bo);
+  Sign.add_binop sign sym bo;
   sym
 
 (** [unpack eqs] transforms a term of the form

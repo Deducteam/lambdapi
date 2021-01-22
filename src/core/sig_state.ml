@@ -60,10 +60,9 @@ let create_sign : Path.t -> Sign.t = fun sign_path ->
 
 (** [remove_pp_hint map name pp_hints] removes from [pp_hints] the mapping for
    [s] if [s] is mapped to [name] in [map]. *)
-let remove_pp_hint :
-      sym StrMap.t -> string -> pp_hint SymMap.t -> pp_hint SymMap.t =
-  fun map name pp_hints ->
-  try SymMap.remove (StrMap.find name map) pp_hints
+let remove_pp_hint : sym -> pp_hint SymMap.t -> pp_hint SymMap.t =
+  fun sym pp_hints ->
+  try SymMap.remove sym pp_hints
   with Not_found -> pp_hints
 
 (** [remove_pp_hint_eq map name h pp_hints] removes from [pp_hints] the
@@ -109,26 +108,20 @@ let add_symbol : sig_state -> sig_symbol -> sig_state * sym =
 (** [add_unop ss n x] generates a new signature state from [ss] by adding a
     unary operator [x] with name [n]. This name is added to the scope. *)
 let add_unop : sig_state -> strloc -> (sym * unop) -> sig_state =
-  fun ss name ((sym, unop) as x) ->
-  Sign.add_unop ss.signature name.elt x;
+  fun ss name (sym, unop) ->
+  Sign.add_unop ss.signature sym unop;
   let in_scope = StrMap.add name.elt (sym, name.pos) ss.in_scope in
-  let pp_hints =
-    let unops = StrMap.map fst !(ss.signature.sign_unops) in
-    remove_pp_hint unops name.elt ss.pp_hints
-  in
+  let pp_hints = remove_pp_hint sym ss.pp_hints in
   let pp_hints = SymMap.add sym (Prefix unop) pp_hints in
   {ss with in_scope; pp_hints}
 
 (** [add_binop ss n x] generates a new signature state from [ss] by adding a
     binary operator [x] with name [n]. This name is added to scope. *)
 let add_binop : sig_state -> strloc -> (sym * binop) -> sig_state =
-  fun ss name ((sym, binop) as x) ->
-  Sign.add_binop ss.signature name.elt x;
+  fun ss name (sym, binop) ->
+  Sign.add_binop ss.signature sym binop;
   let in_scope = StrMap.add name.elt (sym, name.pos) ss.in_scope in
-  let pp_hints =
-    let binops = StrMap.map fst !(ss.signature.sign_binops) in
-    remove_pp_hint binops name.elt ss.pp_hints
-  in
+  let pp_hints = remove_pp_hint sym ss.pp_hints in
   let pp_hints = SymMap.add sym (Infix binop) pp_hints in
   {ss with in_scope; pp_hints}
 
@@ -138,7 +131,7 @@ let add_builtin : sig_state -> string -> sym -> sig_state = fun ss name sym ->
   Sign.add_builtin ss.signature name sym;
   let builtins = StrMap.add name sym ss.builtins in
   let add_pp_hint hint =
-    SymMap.add sym hint (remove_pp_hint ss.builtins name ss.pp_hints)
+    SymMap.add sym hint (remove_pp_hint sym ss.pp_hints)
   in
   let pp_hints =
     match name with
@@ -164,14 +157,15 @@ let update_pp_hints_from_symbols :
     let h =
       let exception Hint of pp_hint in
       try
-        let fn_binop _ (s,binop) =
-          if s == sym then raise (Hint (Infix binop))
+        let fn s synt =
+          match synt with
+          | Sign.Infix binop ->
+              if s == sym then raise (Hint (Infix binop))
+          | Sign.Prefix unop ->
+              if s == sym then raise (Hint (Prefix unop))
+          | _ -> ()
         in
-        StrMap.iter fn_binop !(sign.sign_binops);
-        let fn_unop _ (s,unop) =
-          if s == sym then raise (Hint (Prefix unop))
-        in
-        StrMap.iter fn_unop !(sign.sign_unops);
+        SymMap.iter fn !(sign.sign_syntax);
         Unqual
       with Hint h -> h
     in
@@ -205,9 +199,13 @@ let open_sign : sig_state -> Sign.t -> sig_state = fun ss sign ->
   let in_scope = StrMap.union f ss.in_scope !(sign.sign_symbols) in
   let builtins = StrMap.union f ss.builtins !(sign.sign_builtins) in
   (* Bring operators in scope *)
-  let open_op k (s, _) ssis = StrMap.add k (s, None) ssis in
-  let in_scope = StrMap.fold open_op !(sign.sign_unops) in_scope in
-  let in_scope = StrMap.fold open_op !(sign.sign_binops) in_scope in
+  let open_synt s syn ssis =
+    match syn with
+    | Sign.Infix (k,_, _, _) -> StrMap.add k (s, None) ssis
+    | Sign.Prefix (k,_,_) -> StrMap.add k (s, None) ssis
+    | _ -> ssis
+  in
+  let in_scope = SymMap.fold open_synt !(sign.sign_syntax) in_scope in
   let pp_hints = update_pp_hints_from_symbols ss.in_scope sign ss.pp_hints in
   let pp_hints =
     update_pp_hints_from_builtins ss.builtins !(sign.sign_builtins) pp_hints
