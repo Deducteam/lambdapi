@@ -15,9 +15,9 @@ type inductive =
   { ind_cons  : sym list  (** List of constructors                 *)
   ; ind_prop  : sym       (** Induction principle on propositions. *) }
 
-(** Syntactic sugar properties of symbols. They are linked to symbols to
-    provide syntax extensions to these symbols. *)
-type synt_sugar =
+(** Notation properties of symbols. They are linked to symbols to provide
+    syntax extensions to these symbols. *)
+type notation =
   | Prefix of unop (** Prefix (or unary) operator. *)
   | Infix of binop (** Infix (or binary) operator. *)
   | Quant (** Quantifier. *)
@@ -29,7 +29,7 @@ type t =
   ; sign_path     : Path.t
   ; sign_deps     : (string * rule) list PathMap.t ref
   ; sign_builtins : sym StrMap.t ref
-  ; sign_syntax   : synt_sugar SymMap.t ref
+  ; sign_syntax   : notation SymMap.t ref
     (** Maps symbols to their syntax properties if they have some. *)
   ; sign_ind      : inductive SymMap.t ref }
 
@@ -237,8 +237,15 @@ let add_symbol : t -> expo -> prop -> match_strat -> strloc -> term ->
   in
   sign.sign_symbols := StrMap.add s.elt (sym, s.pos) !(sign.sign_symbols); sym
 
-(** [write sign file] writes the signature [sign] to the file [fname]. *)
+(** [write sign file] writes the signature [sign] to the file [fname].
+    Private symbols are removed from the signature. *)
 let write : t -> string -> unit = fun sign fname ->
+  (* Removing private symbols from signature. *)
+  let not_prv sym = not (Terms.is_private sym) in
+  sign.sign_symbols :=
+    StrMap.filter (fun _ s -> not_prv (fst s)) !(sign.sign_symbols);
+  sign.sign_syntax :=
+    Terms.SymMap.filter (fun s _ -> not_prv s) !(sign.sign_syntax);
   match Unix.fork () with
   | 0 -> let oc = open_out fname in
          unlink sign; Marshal.to_channel oc sign [Marshal.Closures];

@@ -1,7 +1,6 @@
 (** High-level compilation functions. *)
 
 open! Lplib
-open Lplib.Extra
 
 open Timed
 open Sign
@@ -77,14 +76,6 @@ let rec compile : bool -> Path.t -> Sign.t = fun force path ->
       in
       let consume cmd = Stdlib.(sig_st := handle !sig_st cmd) in
       Stream.iter consume (parse_file src);
-      (* Removing private symbols from signature. *)
-      let not_prv sym = not (Terms.is_private sym) in
-      sign.sign_symbols :=
-        StrMap.filter (fun _ s -> not_prv (fst s)) !(sign.sign_symbols);
-      sign.sign_builtins :=
-        StrMap.filter (fun _ s -> not_prv s) !(sign.sign_builtins);
-      sign.sign_syntax :=
-        Terms.SymMap.filter (fun s _ -> not_prv s) !(sign.sign_syntax);
       if Stdlib.(!gen_obj) then Sign.write sign obj;
       loading := List.tl !loading;
       out 1 "Checked %s\n%!" src; sign
