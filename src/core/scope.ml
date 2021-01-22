@@ -92,7 +92,7 @@ type mode =
           with the same name are scoped as the same variable. *)
       ; m_urhs_data : (string, tevar) Hashtbl.t }
   (** Scoping mode for unification rule right-hand sides. During  scoping, we
-      always have [m_rhs_vars_nb = m_lhs_size + length m_rhs_xvars]. *)
+      always have [m_urhs_vars_nb = m_lhs_size + length m_urhs_xvars]. *)
 
 (** [get_implicitness t] gives the specified implicitness of the parameters of
     a symbol having the (parser-level) type [t]. *)
@@ -521,7 +521,7 @@ type pre_rule =
   ; pr_lhs      : term list
   (** Arguments of the LHS. *)
   ; pr_vars     : term_env Bindlib.mvar
-  (** Pattern  variables that can  appear in  the RHS. The  last [pr_xvars_nb]
+  (** Pattern variables that appear in the RHS. The last [pr_xvars_nb]
       variables do not appear in the LHS. *)
   ; pr_rhs      : tbox
   (** Body of the RHS, should only be unboxed once. *)

@@ -407,11 +407,27 @@ function getGoalsEnvContent(goals : Goal[]){
         codeHyps = `<div class="hypothesis">`;
         codeGoals = `<div class="pp_goals">`;
         
-        // check if this is a Type Goal
-    	// extra space is not a typo, this is defined in lsp_base.ml
-        if (goals[i].typeofgoal == "Typ "){
+        if (goals[i].typeofgoal == "Typ"){
 
             let curGoal = goals[i] as TypGoal;
+
+            for(let j=0; j<curGoal.hyps.length; j++){
+
+                let hnameCode = `<label class="hname">`
+                    + curGoal.hyps[j].hname
+                    + `</label>`;
+
+                let htypeCode = `<span class="htype">`
+                    + curGoal.hyps[j].htype
+                + `</span> <br/>`;
+
+                codeHyps = codeHyps + hnameCode
+                    + `<label class="sep"> : </label>`
+                    + htypeCode;
+            }
+        } else {
+
+            let curGoal = goals[i] as UnifGoal;
 
             for(let j=0; j<curGoal.hyps.length; j++){
 
@@ -433,7 +449,7 @@ function getGoalsEnvContent(goals : Goal[]){
             + i + `</label>`;
 
         let goalstr = "";
-        if(goals[i].typeofgoal == "Typ "){
+        if(goals[i].typeofgoal == "Typ"){
             goalstr = `<span class="goal">`
                 + (goals[i] as TypGoal).type + `</span>`;
         } else {
@@ -538,12 +554,13 @@ export interface Goal {
 }
 
 export interface UnifGoal extends Goal {
+    hyps : Env[] // hypotheses
     constr : String
 }
 
 export interface TypGoal extends Goal {
-	gid :  number // goal id
-	hyps : Env[] // hypothesis
+	gid :  String // goal id
+	hyps : Env[] // hypotheses
 	type : String // goals
 }
 
