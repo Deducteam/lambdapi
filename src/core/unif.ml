@@ -17,9 +17,10 @@ let log_unif = log_unif.logger
 (** Exception raised when a constraint is not solvable. *)
 exception Unsolvable
 
-(** [try_rules ctx s t] tries to solve unification problem [ctx ⊢ s ≡ t] using
-    declared unification rules. *)
-let try_rules : ctxt -> term -> term -> constr list option = fun ctx s t ->
+(** [try_unif_rules ctx s t] tries to solve unification problem [ctx ⊢ s ≡ t]
+   using declared unification rules. *)
+let try_unif_rules : ctxt -> term -> term -> constr list option =
+  fun ctx s t ->
   if !log_enabled then log_unif "check unif_rules for %a" pp_constr (ctx,s,t);
   let exception No_match in
   let open Unif_rule in
@@ -143,17 +144,17 @@ let instantiate : ctxt -> meta -> term array -> term -> constr list -> bool =
             match cs <> [], Stdlib.(!do_type_check) with
             | false, _ ->
                 if !log_enabled then
-                  (log_unif (gre "can instantiate (no new constraints)");
+                  (log_unif "can instantiate (no new constraints)";
                    log_unif (yel "%a ≔ %a") pp_meta m pp_term u);
                 Meta.set m (Bindlib.unbox bu); true
             | true, false ->
                 if !log_enabled then
-                  (log_unif (yel "can instantiate (new constraints ignored)");
+                  (log_unif "can instantiate (new constraints ignored)";
                    log_unif (yel "%a ≔ %a") pp_meta m pp_term u);
                 Meta.set m (Bindlib.unbox bu); true
             | true, true ->
                 if !log_enabled then
-                  log_unif (red "cannot instantiate (new constraints)");
+                  log_unif "cannot instantiate (new constraints)";
                 false
       end
   | _ ->
@@ -182,7 +183,7 @@ and solve_aux : ctxt -> term -> term -> problem -> constr list =
 
   let add_to_unsolved () =
     if Eval.eq_modulo ctx t1 t2 then solve p else
-    match try_rules ctx t1 t2 with
+    match try_unif_rules ctx t1 t2 with
     | None     -> solve {p with unsolved = (ctx,t1,t2) :: p.unsolved}
     | Some([]) -> assert false
     (* Unification rules generate non empty list of unification constraints *)

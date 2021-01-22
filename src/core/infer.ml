@@ -41,7 +41,7 @@ exception NotTypable
 @raise NotTypable when the term is not typable (when encountering an
    abstraction over a kind). *)
 let rec infer : ctxt -> term -> term = fun ctx t ->
-  if !log_enabled then log_infr "infer type of %a%a" pp_ctxt ctx pp_term t;
+  if !log_enabled then log_infr "infer %a%a" pp_ctxt ctx pp_term t;
   match unfold t with
   | Patt(_,_,_) -> assert false (* Forbidden case. *)
   | TEnv(_,_)   -> assert false (* Forbidden case. *)
@@ -57,14 +57,14 @@ let rec infer : ctxt -> term -> term = fun ctx t ->
       ctx ⊢ Vari(x) ⇒ Ctxt.find x ctx  *)
   | Vari(x)     ->
       let a = try Ctxt.type_of x ctx with Not_found -> assert false in
-      if !log_enabled then log_infr (blu "%a : %a") pp_term t pp_term a;
+      if !log_enabled then log_infr (yel "%a : %a") pp_term t pp_term a;
       a
 
   (* -------------------------------
       ctx ⊢ Symb(s) ⇒ !(s.sym_type)  *)
   | Symb(s)     ->
       let a = !(s.sym_type) in
-      if !log_enabled then log_infr (blu "%a : %a") pp_term t pp_term a;
+      if !log_enabled then log_infr (yel "%a : %a") pp_term t pp_term a;
       a
 
   (*  ctx ⊢ a ⇐ Type    ctx, x : a ⊢ b<x> ⇒ s

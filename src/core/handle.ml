@@ -130,7 +130,7 @@ let handle_rule : sig_state -> p_rule -> sym = fun ss r ->
       sym.sym_name;
   let rule = Sr.check_rule pr in
   Sign.add_rule ss.signature sym rule;
-  out 3 "(rule) %a\n" pp_rule (sym, rule);
+  out 3 (red "(rule) add %a\n") pp_rule (sym, rule);
   sym
 
 (** [handle_rules ss rs] handles the rules [rs] in signature state [ss], and
@@ -164,7 +164,7 @@ let handle_inductive_symbol :
     (fatal_msg "The type of [%s] has unsolved metavariables.\n" x.elt;
      fatal x.pos "We have %s : %a." x.elt pp_term a);
   (* Actually add the symbol to the signature and the state. *)
-  out 3 "(symb) %s : %a\n" x.elt pp_term a;
+  out 3 (red "(symb) %s : %a\n") x.elt pp_term a;
   let sig_symbol = {expo=e;prop=p;mstrat=strat;ident=x;typ=a;impl;def=None} in
   add_symbol ss sig_symbol
 
@@ -191,7 +191,7 @@ type proof_data =
 let handle_cmd : sig_state -> p_command ->
     sig_state * proof_data option * Queries.result =
   fun ss cmd ->
-  if !log_enabled then log_hndl "%a" Pretty.command cmd;
+  if !log_enabled then log_hndl (blu "%a") Pretty.command cmd;
   let scope_basic exp pt = Scope.scope_term exp ss Env.empty pt in
   match cmd.elt with
   | P_query(q) ->
@@ -269,7 +269,7 @@ let handle_cmd : sig_state -> p_command ->
         if StrSet.mem ind_sym.sym_name !(ss.signature.sign_idents) then
           Sign.add_ident ss.signature rec_name;
         let (ss, rec_sym) =
-          out 3 "(symb) %s : %a\n" rec_name pp_term rec_typ;
+          out 3 (red "(symb) %s : %a\n") rec_name pp_term rec_typ;
           let sig_symbol =
             {expo = e;
              prop = Defin;
@@ -398,7 +398,7 @@ let handle_cmd : sig_state -> p_command ->
                 if finished ps then
                   wrn pe.pos "The proof is finished. Use 'end' instead.";
                 (* Add the symbol in the signature with a warning. *)
-                out 3 "(symb) %s (admit)\n" id;
+                out 3 (red "(symb) add %s : %a\n") id pp_term a;
                 wrn pe.pos "Proof admitted.";
                 let sig_symbol =
                   {expo;prop;mstrat;ident=p_sym_nam;typ=a;impl;def=t} in
@@ -409,7 +409,7 @@ let handle_cmd : sig_state -> p_command ->
                   (out 1 "%a" Proof.pp_goals ps;
                    fatal pe.pos "The proof is not finished.");
                 (* Add the symbol in the signature. *)
-                out 3 "(symb) %s (end)\n" id;
+                out 3 (red "(symb) add %s : %a\n") id pp_term a;
                 let sig_symbol =
                   {expo;prop;mstrat;ident=p_sym_nam;typ=a;impl;def=t} in
                 fst (add_symbol ss sig_symbol)
