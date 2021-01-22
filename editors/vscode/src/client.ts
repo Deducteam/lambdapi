@@ -420,7 +420,7 @@ function getGoalsEnvContent(goals : Goal[]){
     }).reduce((acc, cur) => acc + cur, "");
 }
 
-// number of write operations todo on the psuedo terminal
+// number of write operations todo on the pseudoterminal
 let ptyWriteCnt = 0;
 
 function updateTerminalText(logstr: string){
@@ -446,7 +446,7 @@ function updateTerminalText(logstr: string){
         term.show(true);
     }
 
-    // increase ptyWriteCnt to allow write operation on psuedoterminal
+    // increase ptyWriteCnt to allow write operation on pseudoterminal
     ptyWriteCnt++; term.sendText(clearTextSeq);
     ptyWriteCnt++; term.sendText(logstr);
 }
