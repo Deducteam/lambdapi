@@ -237,15 +237,16 @@ let add_symbol : t -> expo -> prop -> match_strat -> strloc -> term ->
   in
   sign.sign_symbols := StrMap.add s.elt (sym, s.pos) !(sign.sign_symbols); sym
 
-(** [write sign file] writes the signature [sign] to the file [fname].
-    Private symbols are removed from the signature. *)
-let write : t -> string -> unit = fun sign fname ->
-  (* Removing private symbols from signature. *)
+(** [strip_private sign] removes private symbols from signature [sign]. *)
+let strip_private : t -> unit = fun sign ->
   let not_prv sym = not (Terms.is_private sym) in
   sign.sign_symbols :=
     StrMap.filter (fun _ s -> not_prv (fst s)) !(sign.sign_symbols);
   sign.sign_syntax :=
-    Terms.SymMap.filter (fun s _ -> not_prv s) !(sign.sign_syntax);
+    Terms.SymMap.filter (fun s _ -> not_prv s) !(sign.sign_syntax)
+
+(** [write sign file] writes the signature [sign] to the file [fname]. *)
+let write : t -> string -> unit = fun sign fname ->
   match Unix.fork () with
   | 0 -> let oc = open_out fname in
          unlink sign; Marshal.to_channel oc sign [Marshal.Closures];

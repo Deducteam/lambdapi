@@ -76,6 +76,7 @@ let rec compile : bool -> Path.t -> Sign.t = fun force path ->
       in
       let consume cmd = Stdlib.(sig_st := handle !sig_st cmd) in
       Stream.iter consume (parse_file src);
+      Sign.strip_private sign;
       if Stdlib.(!gen_obj) then Sign.write sign obj;
       loading := List.tl !loading;
       out 1 "Checked %s\n%!" src; sign
