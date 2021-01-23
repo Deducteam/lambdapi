@@ -228,7 +228,7 @@ and solve_aux : ctxt -> term -> term -> problem -> constr list =
         | Some vars -> vars
       in
       (* Build the environment (yk-1,ak-1{y0=v0,..,yk-2=vk-2});..;(y0,a0). *)
-      let env = env_of_prod vars !(m.meta_type) in
+      let env = Env.of_prod_using ctx vars !(m.meta_type) in
       (* Build the term s(m0[vs],..,mn-1[vs]). *)
       let k = Array.length vars in
       let t =
@@ -274,9 +274,9 @@ and solve_aux : ctxt -> term -> term -> problem -> constr list =
   let imitate_lam m =
     if !log_enabled then log_unif "imitate_lam %a" pp_meta m;
     let n = m.meta_arity in
-    let (env, t) = Env.destruct_prod n !(m.meta_type) in
+    let (env, t) = Env.of_prod ctx n !(m.meta_type) in
     let x,a,env',b,p =
-      match Eval.whnf [] t with
+      match Eval.whnf ctx t with
       | Prod(a,b) ->
          let x,b = Bindlib.unbind b in
          let a = lift a in
@@ -295,7 +295,7 @@ and solve_aux : ctxt -> term -> term -> problem -> constr list =
          let b = _Meta m3 (Env.to_tbox env') in
          (* Could be optimized by extending [Env.to_tbox env]. *)
          let u = Bindlib.unbox (_Prod a (Bindlib.bind_var x b)) in
-         x,a,env',b,{p with to_solve = (ctx,u,t)::p.to_solve}
+         x,a,env',b,{p with to_solve = (Env.to_ctxt env,u,t)::p.to_solve}
     in
     let tm1 = Env.to_prod env' b in
     let m1 = Meta.fresh tm1 (n+1) in
@@ -400,7 +400,7 @@ and solve_aux : ctxt -> term -> term -> problem -> constr list =
   let imitate_prod m =
     if !log_enabled then log_unif "imitate_prod %a" pp_meta m;
     let n = m.meta_arity in
-    let (env, s) = destruct_prod n !(m.meta_type) in
+    let (env, s) = Env.of_prod ctx n !(m.meta_type) in
     let xs = Array.map _Vari (vars env) in
 
     let t1 = to_prod env _Type in
