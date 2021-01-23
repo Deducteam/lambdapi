@@ -238,7 +238,6 @@ let add_symbol : t -> expo -> prop -> match_strat -> strloc -> term ->
     ; sym_expo ; sym_tree = ref Tree_types.empty_dtree
     ; sym_mstrat = ref sym_mstrat }
   in
-  sign.sign_syntax := SymMap.add sym Unqual !(sign.sign_syntax);
   sign.sign_symbols := StrMap.add s.elt (sym, s.pos) !(sign.sign_symbols); sym
 
 (** [strip_private sign] removes private symbols from signature [sign]. *)
@@ -345,9 +344,10 @@ let add_rule : t -> sym -> rule -> unit = fun sign sym r ->
     signature [sign]). The previous binding, if any, is discarded. *)
 let add_builtin : t -> string -> sym -> unit = fun sign s sym ->
   sign.sign_builtins := StrMap.add s sym !(sign.sign_builtins);
-  if s = "0" then sign.sign_syntax := SymMap.add sym Zero !(sign.sign_syntax);
-  if s = "+1" then
-    sign.sign_syntax := SymMap.add sym Succ !(sign.sign_syntax)
+  match s with
+  | "0" -> sign.sign_syntax := SymMap.add sym Zero !(sign.sign_syntax)
+  | "+1" -> sign.sign_syntax := SymMap.add sym Succ !(sign.sign_syntax)
+  | _ -> ()
 
 (** [add_unop sign sym unop] binds the unary operator [unop] to [sym] in
     [sign]. If [unop] was previously bound, the previous binding is

@@ -46,6 +46,10 @@ type sig_symbol =
   ; impl   : bool list   (** implicit arguments  *)
   ; def    : term option (** optional definition *) }
 
+(** NOTE: there is no need to map an unqualified symbol [sym] to [Unqual] in
+    the [pp_hints] map because the function {!val:Print:notation_of} returns
+    [Unqual] if [sym] has no binding in [pp_hints]. *)
+
 (** [add_symbol ss sig_symbol={e,p,st,x,a,impl,def}] generates a new signature
    state from [ss] by creating a new symbol with expo [e], property [p],
    strategy [st], name [x], type [a], implicit arguments [impl] and optional
@@ -59,8 +63,7 @@ let add_symbol : sig_state -> sig_symbol -> sig_state * sym =
     | None -> ()
   end;
   let in_scope = StrMap.add x.elt (s, x.pos) ss.in_scope in
-  let pp_hints = SymMap.add s Unqual ss.pp_hints in
-  ({ss with in_scope; pp_hints}, s)
+  ({ss with in_scope}, s)
 
 (** [add_unop ss n x] generates a new signature state from [ss] by adding a
     unary operator [x] with name [n]. This name is added to the scope. *)
