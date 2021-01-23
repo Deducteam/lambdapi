@@ -8,13 +8,6 @@ in the [documentation](https://lambdapi.readthedocs.io).
 Installation via [Opam](http://opam.ocaml.org/)
 ---------------------
 
-We will only publish a new version of `lambdapi` Opam package when the
-development has reached a more stable test. For now, we advise you to
-pin the development repository to get the latest bug fixes.
-
-```bash
-opam pin add lambdapi https://github.com/Deducteam/lambdapi.git
-```
 Dependencies and compilation
 ----------------------------
 
@@ -26,6 +19,7 @@ List of dependencies (for version numbers refer to `lambdapi.opam`):
 GNU make,
 [ocaml](https://ocaml.org/) >= 4.07.0,
 [dune](https://dune.build/),
+[pratter](https://github.com/gabrielhdt/pratter),
 [bindlib](https://github.com/rlepigre/ocaml-bindlib),
 [earley](https://github.com/rlepigre/ocaml-earley),
 [timed](https://github.com/rlepigre/ocaml-timed),
@@ -44,7 +38,7 @@ installed (including on the first installation of Why3).
 Using Opam, a suitable OCaml environment can be setup as follows.
 ```bash
 opam switch 4.11.1
-opam install dune bindlib earley timed menhir yojson cmdliner why3 alcotest alt-ergo odoc
+opam install dune bindlib timed menhir pratter yojson cmdliner why3 alcotest alt-ergo odoc
 why3 config --full-config
 ```
 
