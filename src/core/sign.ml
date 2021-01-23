@@ -18,8 +18,11 @@ type inductive =
 (** Notation properties of symbols. They are linked to symbols to provide
     syntax extensions to these symbols. *)
 type notation =
+  | Unqual
   | Prefix of unop (** Prefix (or unary) operator. *)
   | Infix of binop (** Infix (or binary) operator. *)
+  | Zero
+  | Succ (** Successor*)
   | Quant (** Quantifier. *)
 
 (** Representation of a signature. It roughly corresponds to a set of symbols,
@@ -235,6 +238,7 @@ let add_symbol : t -> expo -> prop -> match_strat -> strloc -> term ->
     ; sym_expo ; sym_tree = ref Tree_types.empty_dtree
     ; sym_mstrat = ref sym_mstrat }
   in
+  sign.sign_syntax := SymMap.add sym Unqual !(sign.sign_syntax);
   sign.sign_symbols := StrMap.add s.elt (sym, s.pos) !(sign.sign_symbols); sym
 
 (** [strip_private sign] removes private symbols from signature [sign]. *)
@@ -340,7 +344,10 @@ let add_rule : t -> sym -> rule -> unit = fun sign sym r ->
 (** [add_builtin sign name sym] binds the builtin name [name] to [sym] (in the
     signature [sign]). The previous binding, if any, is discarded. *)
 let add_builtin : t -> string -> sym -> unit = fun sign s sym ->
-  sign.sign_builtins := StrMap.add s sym !(sign.sign_builtins)
+  sign.sign_builtins := StrMap.add s sym !(sign.sign_builtins);
+  if s = "0" then sign.sign_syntax := SymMap.add sym Zero !(sign.sign_syntax);
+  if s = "+1" then
+    sign.sign_syntax := SymMap.add sym Succ !(sign.sign_syntax)
 
 (** [add_unop sign sym unop] binds the unary operator [unop] to [sym] in
     [sign]. If [unop] was previously bound, the previous binding is

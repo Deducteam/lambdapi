@@ -58,7 +58,7 @@ let pp_assoc : Pratter.associativity pp = fun oc assoc ->
   | Right -> Format.fprintf oc " right associative"
 
 (** [hint oc a] prints hint [h] to channel [oc]. *)
-let pp_hint : pp_hint pp = fun oc pp_hint ->
+let pp_hint : Sign.notation pp = fun oc pp_hint ->
   match pp_hint with
   | Unqual         -> ()
   | Prefix(n,p,_)  -> Format.fprintf oc "prefix \"%s\" with priority %f" n p
@@ -74,8 +74,8 @@ let pp_qualified : sym pp = fun oc s ->
   | None -> Format.fprintf oc "%a.%s" Files.Path.pp s.sym_path s.sym_name
   | Some alias -> Format.fprintf oc "%s.%s" alias s.sym_name
 
-(** Get the printing hint of a symbol. *)
-let get_pp_hint : sym -> pp_hint = fun s ->
+(** [notatin_of sym] returns the notation properties symbol [sym]. *)
+let notation_of : sym -> Sign.notation = fun s ->
   try SymMap.find s (!sig_state).pp_hints with Not_found -> Unqual
 
 (** [pp_symbol oc s] prints the name of the symbol [s] to channel [oc]. *)
@@ -146,7 +146,7 @@ and pp_term : term pp = fun oc t ->
           let eargs =
             if !print_implicits then args else Basics.expl_args s args
           in
-          match get_pp_hint s with
+          match notation_of s with
           | Quant when are_quant_args s args ->
               if p <> `Func then out oc "(";
               pp_quantifier s args;

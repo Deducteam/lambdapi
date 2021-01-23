@@ -109,7 +109,7 @@ let handle_query : Sig_state.t -> proof_state option -> p_query -> result =
       out 1 "(prnt) %a%a%asymbol %a: %a" pp_expo sym.sym_expo
         pp_prop sym.sym_prop pp_match_strat !(sym.sym_mstrat)
         pp_symbol sym pp_term !(sym.sym_type);
-      let h = get_pp_hint sym in
+      let h = notation_of sym in
       if h <> Unqual then out 1 " [%a]" pp_hint h;
       (match !(sym.sym_def) with
       | Some t ->

@@ -9,7 +9,6 @@
    but through the current module only, in order to setup the [sig_state]
    properly. *)
 
-open Lplib.Base
 open Lplib.Extra
 
 open Timed
@@ -20,27 +19,6 @@ open Syntax
 open Terms
 open Sign
 
-(** Pretty-printing information associated to a symbol. *)
-type pp_hint =
-  | Unqual
-  | Prefix of unop
-  | Infix of binop
-  | Zero
-  | Succ
-  | Quant
-
-(** [eq_pp_hint h1 h2] says whether [h1] and [h2] are equal, ignoring
-   associativity and priorities. *)
-let eq_pp_hint : pp_hint eq = fun h1 h2 ->
-  match (h1, h2) with
-  | (Unqual, Unqual)
-  | (Quant, Quant)
-  | (Zero, Zero)
-  | (Succ, Succ) -> true
-  | (Prefix (s1,_,_), Prefix (s2,_,_))
-  | (Infix (s1,_,_,_), Infix (s2,_,_,_)) -> s1 = s2
-  | (_, _) -> false
-
 (** State of the signature, including aliasing and accessible symbols. *)
 type sig_state =
   { signature : Sign.t                    (** Current signature.        *)
@@ -48,7 +26,7 @@ type sig_state =
   ; aliases   : Path.t StrMap.t           (** Established aliases.      *)
   ; path_map  : string PathMap.t          (** Reverse map of [aliases]. *)
   ; builtins  : sym StrMap.t              (** Builtin symbols.          *)
-  ; pp_hints  : pp_hint SymMap.t          (** Printing hints.           *) }
+  ; pp_hints  : notation SymMap.t         (** Printing hints.           *) }
 
 type t = sig_state
 
@@ -57,26 +35,6 @@ type t = sig_state
 let create_sign : Path.t -> Sign.t = fun sign_path ->
   let d = Sign.dummy () in
   { d with sign_path ; sign_deps = ref (PathMap.singleton Unif_rule.path []) }
-
-(** [remove_pp_hint map name pp_hints] removes from [pp_hints] the mapping for
-   [s] if [s] is mapped to [name] in [map]. *)
-let remove_pp_hint : sym -> pp_hint SymMap.t -> pp_hint SymMap.t =
-  fun sym pp_hints ->
-  try SymMap.remove sym pp_hints
-  with Not_found -> pp_hints
-
-(** [remove_pp_hint_eq map name h pp_hints] removes from [pp_hints] the
-   mapping for [s] if [s] is mapped to [(name,h')] in [map], and [eq_pp_hint h
-   h' = true]. *)
-let remove_pp_hint_eq :
-      (sym * Pos.popt) StrMap.t -> string -> pp_hint -> pp_hint SymMap.t
-      -> pp_hint SymMap.t =
-  fun in_scope name h pp_hints ->
-  try
-    let (s,_) = StrMap.find name in_scope in
-    let h' = SymMap.find s pp_hints in
-    if eq_pp_hint h h' then SymMap.remove s pp_hints else pp_hints
-  with Not_found -> pp_hints
 
 (** Symbol properties needed for the signature *)
 type sig_symbol =
@@ -101,8 +59,7 @@ let add_symbol : sig_state -> sig_symbol -> sig_state * sym =
     | None -> ()
   end;
   let in_scope = StrMap.add x.elt (s, x.pos) ss.in_scope in
-  let pp_hints = remove_pp_hint_eq ss.in_scope x.elt Unqual ss.pp_hints in
-  let pp_hints = SymMap.add s Unqual pp_hints in
+  let pp_hints = SymMap.add s Unqual ss.pp_hints in
   ({ss with in_scope; pp_hints}, s)
 
 (** [add_unop ss n x] generates a new signature state from [ss] by adding a
@@ -111,8 +68,7 @@ let add_unop : sig_state -> strloc -> (sym * unop) -> sig_state =
   fun ss name (sym, unop) ->
   Sign.add_unop ss.signature sym unop;
   let in_scope = StrMap.add name.elt (sym, name.pos) ss.in_scope in
-  let pp_hints = remove_pp_hint sym ss.pp_hints in
-  let pp_hints = SymMap.add sym (Prefix unop) pp_hints in
+  let pp_hints = SymMap.add sym (Prefix unop) ss.pp_hints in
   {ss with in_scope; pp_hints}
 
 (** [add_binop ss n x] generates a new signature state from [ss] by adding a
@@ -121,8 +77,7 @@ let add_binop : sig_state -> strloc -> (sym * binop) -> sig_state =
   fun ss name (sym, binop) ->
   Sign.add_binop ss.signature sym binop;
   let in_scope = StrMap.add name.elt (sym, name.pos) ss.in_scope in
-  let pp_hints = remove_pp_hint sym ss.pp_hints in
-  let pp_hints = SymMap.add sym (Infix binop) pp_hints in
+  let pp_hints = SymMap.add sym (Infix binop) ss.pp_hints in
   {ss with in_scope; pp_hints}
 
 (** [add_builtin ss n s] generates a new signature state from [ss] by mapping
@@ -131,7 +86,7 @@ let add_builtin : sig_state -> string -> sym -> sig_state = fun ss name sym ->
   Sign.add_builtin ss.signature name sym;
   let builtins = StrMap.add name sym ss.builtins in
   let add_pp_hint hint =
-    SymMap.add sym hint (remove_pp_hint sym ss.pp_hints)
+    SymMap.add sym hint ss.pp_hints
   in
   let pp_hints =
     match name with
@@ -147,37 +102,11 @@ let add_quant : sig_state -> sym -> sig_state = fun ss sym ->
   Sign.add_quant ss.signature sym;
   {ss with pp_hints = SymMap.add sym Quant ss.pp_hints}
 
-(** [update_pp_hints_from_symbols ss sign pp_hints] generates a new pp_hint
-   map from [pp_hints] when adding the symbols of [sign]. *)
-let update_pp_hints_from_symbols :
-      (sym * Pos.popt) StrMap.t -> Sign.t -> pp_hint SymMap.t
-      -> pp_hint SymMap.t =
-  fun in_scope sign pp_hints ->
-  let fn name (sym,_) pp_hints =
-    let h =
-      let exception Hint of pp_hint in
-      try
-        let fn s synt =
-          match synt with
-          | Sign.Infix binop ->
-              if s == sym then raise (Hint (Infix binop))
-          | Sign.Prefix unop ->
-              if s == sym then raise (Hint (Prefix unop))
-          | _ -> ()
-        in
-        SymMap.iter fn !(sign.sign_syntax);
-        Unqual
-      with Hint h -> h
-    in
-    SymMap.add sym h (remove_pp_hint_eq in_scope name h pp_hints)
-  in
-  StrMap.fold fn !(sign.sign_symbols) pp_hints
-
 (** [update_pp_hints_from_builtins old_bm new_bm pp_hints] generates a new
    pp_hint map from [pp_hints] when adding [new_bm] to the builtin map
    [old_bm]. *)
 let update_pp_hints_from_builtins
-    : sym StrMap.t -> sym StrMap.t -> pp_hint SymMap.t -> pp_hint SymMap.t =
+    : sym StrMap.t -> sym StrMap.t -> notation SymMap.t -> notation SymMap.t =
   fun old_bm new_bm pp_hints ->
   let add_hint name h pp_hints =
     try
@@ -206,7 +135,7 @@ let open_sign : sig_state -> Sign.t -> sig_state = fun ss sign ->
     | _ -> ssis
   in
   let in_scope = SymMap.fold open_synt !(sign.sign_syntax) in_scope in
-  let pp_hints = update_pp_hints_from_symbols ss.in_scope sign ss.pp_hints in
+  let pp_hints = SymMap.fold SymMap.add !(sign.sign_syntax) ss.pp_hints in
   let pp_hints =
     update_pp_hints_from_builtins ss.builtins !(sign.sign_builtins) pp_hints
   in
