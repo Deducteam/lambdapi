@@ -26,7 +26,7 @@ type sig_state =
   ; aliases   : Path.t StrMap.t           (** Established aliases.      *)
   ; path_map  : string PathMap.t          (** Reverse map of [aliases]. *)
   ; builtins  : sym StrMap.t              (** Builtin symbols.          *)
-  ; pp_hints  : notation SymMap.t         (** Printing hints.           *) }
+  ; notations : notation SymMap.t         (** Printing hints.           *) }
 
 type t = sig_state
 
@@ -67,8 +67,8 @@ let add_unop : sig_state -> strloc -> (sym * unop) -> sig_state =
   fun ss name (sym, unop) ->
   Sign.add_unop ss.signature sym unop;
   let in_scope = StrMap.add name.elt (sym, name.pos) ss.in_scope in
-  let pp_hints = SymMap.add sym (Prefix unop) ss.pp_hints in
-  {ss with in_scope; pp_hints}
+  let notations = SymMap.add sym (Prefix unop) ss.notations in
+  {ss with in_scope; notations}
 
 (** [add_binop ss n x] generates a new signature state from [ss] by adding a
     binary operator [x] with name [n]. This name is added to scope. *)
@@ -76,45 +76,45 @@ let add_binop : sig_state -> strloc -> (sym * binop) -> sig_state =
   fun ss name (sym, binop) ->
   Sign.add_binop ss.signature sym binop;
   let in_scope = StrMap.add name.elt (sym, name.pos) ss.in_scope in
-  let pp_hints = SymMap.add sym (Infix binop) ss.pp_hints in
-  {ss with in_scope; pp_hints}
+  let notations = SymMap.add sym (Infix binop) ss.notations in
+  {ss with in_scope; notations}
 
 (** [add_builtin ss n s] generates a new signature state from [ss] by mapping
    the builtin [n] to [s]. *)
 let add_builtin : sig_state -> string -> sym -> sig_state = fun ss name sym ->
   Sign.add_builtin ss.signature name sym;
   let builtins = StrMap.add name sym ss.builtins in
-  let add_pp_hint hint = SymMap.add sym hint ss.pp_hints in
-  let pp_hints =
+  let add_pp_hint hint = SymMap.add sym hint ss.notations in
+  let notations =
     match name with
     | "0"  -> add_pp_hint Zero
     | "+1" -> add_pp_hint Succ
-    | _    -> ss.pp_hints
+    | _    -> ss.notations
   in
-  {ss with builtins; pp_hints}
+  {ss with builtins; notations}
 
 (** [add_quant ss sym] generates a new signature state from [ss] by declaring
    [sym] as quantifier. *)
 let add_quant : sig_state -> sym -> sig_state = fun ss sym ->
   Sign.add_quant ss.signature sym;
-  {ss with pp_hints = SymMap.add sym Quant ss.pp_hints}
+  {ss with notations = SymMap.add sym Quant ss.notations}
 
-(** [update_pp_hints_from_builtins old_bm new_bm pp_hints] generates a new
-   pp_hint map from [pp_hints] when adding [new_bm] to the builtin map
+(** [update_notations_from_builtins old_bm new_bm notations] generates a new
+   pp_hint map from [notations] when adding [new_bm] to the builtin map
    [old_bm]. *)
-let update_pp_hints_from_builtins
+let update_notations_from_builtins
     : sym StrMap.t -> sym StrMap.t -> notation SymMap.t -> notation SymMap.t =
-  fun old_bm new_bm pp_hints ->
-  let add_hint name h pp_hints =
+  fun old_bm new_bm notations ->
+  let add_hint name h notations =
     try
       let s_new = StrMap.find name new_bm in
       try
         let s_old = StrMap.find name old_bm in
-        SymMap.add s_new h (SymMap.remove s_old pp_hints)
-      with Not_found -> SymMap.add s_new h pp_hints
-    with Not_found -> pp_hints
+        SymMap.add s_new h (SymMap.remove s_old notations)
+      with Not_found -> SymMap.add s_new h notations
+    with Not_found -> notations
   in
-  add_hint "0" Zero (add_hint "+1" Succ pp_hints)
+  add_hint "0" Zero (add_hint "+1" Succ notations)
 
 (** [open_sign ss sign] extends the signature state [ss] with every symbol  of
     the signature [sign].  This has the effect of putting these symbols in the
@@ -131,18 +131,20 @@ let open_sign : sig_state -> Sign.t -> sig_state = fun ss sign ->
     | Sign.Prefix (k,_,_) -> StrMap.add k (s, None) ssis
     | _ -> ssis
   in
-  let in_scope = SymMap.fold open_synt !(sign.sign_syntax) in_scope in
-  let pp_hints = SymMap.fold SymMap.add !(sign.sign_syntax) ss.pp_hints in
-  let pp_hints =
-    update_pp_hints_from_builtins ss.builtins !(sign.sign_builtins) pp_hints
+  let in_scope = SymMap.fold open_synt !(sign.sign_notations) in_scope in
+  let notations =
+    SymMap.fold SymMap.add !(sign.sign_notations) ss.notations
   in
-  {ss with in_scope; builtins; pp_hints}
+  let notations =
+    update_notations_from_builtins ss.builtins !(sign.sign_builtins) notations
+  in
+  {ss with in_scope; builtins; notations}
 
 (** Dummy [sig_state] made from the dummy signature. *)
 let dummy : sig_state =
   { signature = Sign.dummy (); in_scope = StrMap.empty; aliases = StrMap.empty
   ; path_map = PathMap.empty; builtins = StrMap.empty
-  ; pp_hints = SymMap.empty }
+  ; notations = SymMap.empty }
 
 (** [of_sign sign] creates a state from the signature [sign] with ghost
     signatures opened. *)

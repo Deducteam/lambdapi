@@ -76,12 +76,12 @@ let pp_qualified : sym pp = fun oc s ->
 (** [notatin_of sym] returns the notation properties symbol [sym] or
     [None]. *)
 let notation_of : sym -> Sign.notation option = fun s ->
-  SymMap.find_opt s (!sig_state).pp_hints
+  SymMap.find_opt s !sig_state.notations
 
 (** [pp_symbol oc s] prints the name of the symbol [s] to channel [oc]. *)
 let pp_symbol : sym pp = fun oc s ->
-  if SymMap.mem s (!sig_state).pp_hints
-     || Files.Path.compare s.sym_path (!sig_state).signature.sign_path = 0
+  if SymMap.mem s !sig_state.notations
+     || Files.Path.compare s.sym_path !sig_state.signature.sign_path = 0
   then Format.pp_print_string oc s.sym_name
   else pp_qualified oc s
 
