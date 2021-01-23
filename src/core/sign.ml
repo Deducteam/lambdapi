@@ -18,7 +18,6 @@ type inductive =
 (** Notation properties of symbols. They are linked to symbols to provide
     syntax extensions to these symbols. *)
 type notation =
-  | Unqual
   | Prefix of unop (** Prefix (or unary) operator. *)
   | Infix of binop (** Infix (or binary) operator. *)
   | Zero

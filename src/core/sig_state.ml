@@ -46,10 +46,6 @@ type sig_symbol =
   ; impl   : bool list   (** implicit arguments  *)
   ; def    : term option (** optional definition *) }
 
-(** NOTE: there is no need to map an unqualified symbol [sym] to [Unqual] in
-    the [pp_hints] map because the function {!val:Print:notation_of} returns
-    [Unqual] if [sym] has no binding in [pp_hints]. *)
-
 (** [add_symbol ss sig_symbol={e,p,st,x,a,impl,def}] generates a new signature
    state from [ss] by creating a new symbol with expo [e], property [p],
    strategy [st], name [x], type [a], implicit arguments [impl] and optional
@@ -88,9 +84,7 @@ let add_binop : sig_state -> strloc -> (sym * binop) -> sig_state =
 let add_builtin : sig_state -> string -> sym -> sig_state = fun ss name sym ->
   Sign.add_builtin ss.signature name sym;
   let builtins = StrMap.add name sym ss.builtins in
-  let add_pp_hint hint =
-    SymMap.add sym hint ss.pp_hints
-  in
+  let add_pp_hint hint = SymMap.add sym hint ss.pp_hints in
   let pp_hints =
     match name with
     | "0"  -> add_pp_hint Zero

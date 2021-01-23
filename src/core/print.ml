@@ -57,10 +57,9 @@ let pp_assoc : Pratter.associativity pp = fun oc assoc ->
   | Left -> Format.fprintf oc " left associative"
   | Right -> Format.fprintf oc " right associative"
 
-(** [hint oc a] prints hint [h] to channel [oc]. *)
-let pp_hint : Sign.notation pp = fun oc pp_hint ->
-  match pp_hint with
-  | Unqual         -> ()
+(** [notation oc n] notation setter [n] to output [oc]. *)
+let notation : Sign.notation pp = fun oc notation ->
+  match notation with
   | Prefix(n,p,_)  -> Format.fprintf oc "prefix \"%s\" with priority %f" n p
   | Infix(n,a,p,_) ->
       Format.fprintf oc "infix \"%s\"%a with priority %f" n pp_assoc a p
@@ -74,9 +73,10 @@ let pp_qualified : sym pp = fun oc s ->
   | None -> Format.fprintf oc "%a.%s" Files.Path.pp s.sym_path s.sym_name
   | Some alias -> Format.fprintf oc "%s.%s" alias s.sym_name
 
-(** [notatin_of sym] returns the notation properties symbol [sym]. *)
-let notation_of : sym -> Sign.notation = fun s ->
-  try SymMap.find s (!sig_state).pp_hints with Not_found -> Unqual
+(** [notatin_of sym] returns the notation properties symbol [sym] or
+    [None]. *)
+let notation_of : sym -> Sign.notation option = fun s ->
+  SymMap.find_opt s (!sig_state).pp_hints
 
 (** [pp_symbol oc s] prints the name of the symbol [s] to channel [oc]. *)
 let pp_symbol : sym pp = fun oc s ->
@@ -147,11 +147,12 @@ and pp_term : term pp = fun oc t ->
             if !print_implicits then args else Basics.expl_args s args
           in
           match notation_of s with
-          | Quant when are_quant_args s args ->
+          | Some Quant when are_quant_args s args ->
               if p <> `Func then out oc "(";
               pp_quantifier s args;
               if p <> `Func then out oc ")"
-          | Infix(op,_,_,_) when not !print_implicits || s.sym_impl <> [] ->
+          | Some (Infix(op,_,_,_))
+            when not !print_implicits || s.sym_impl <> [] ->
               begin
                 match eargs with
                 | l::r::[] ->
@@ -167,8 +168,8 @@ and pp_term : term pp = fun oc t ->
                     if p <> `Func then out oc ")"
                 | _ -> pp_appl h eargs
               end
-          | Zero -> out oc "0"
-          | Succ ->
+          | Some Zero -> out oc "0"
+          | Some Succ ->
               begin
                 try out oc "%i" (nat_of_term t)
                 with Not_a_nat -> pp_appl h args

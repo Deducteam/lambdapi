@@ -464,7 +464,7 @@ fun compile ss cmd ->
             let sym = find_sym ~prt:true ~prv:true false ss qid in
             (* Make sure the operator has a fully qualified [qid]. *)
             let unop = (s, prio, with_path sym.sym_path qid) in
-            out 3 "(conf) %a %a\n" pp_symbol sym pp_hint (Prefix unop);
+            out 3 "(conf) %a %a\n" pp_symbol sym notation (Prefix unop);
             add_unop ss (Pos.make cmd.pos s) (sym, unop)
         | P_config_binop(binop)   ->
             let (s, assoc, prio, qid) = binop in
@@ -472,7 +472,7 @@ fun compile ss cmd ->
             let sym = find_sym ~prt:true ~prv:true false ss qid in
             (* Make sure the operator has a fully qualified [qid]. *)
             let binop = (s, assoc, prio, with_path sym.sym_path qid) in
-            out 3 "(conf) %a %a\n" pp_symbol sym pp_hint (Infix binop);
+            out 3 "(conf) %a %a\n" pp_symbol sym notation (Infix binop);
             add_binop ss (Pos.make cmd.pos s) (sym, binop);
         | P_config_quant(qid)     ->
             let sym = find_sym ~prt:true ~prv:true false ss qid in
