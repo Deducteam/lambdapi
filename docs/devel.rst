@@ -12,9 +12,9 @@ List of dependencies:
 * Dune (>= 1.2.0)
 * odoc (for documentation only)
 * bindlib 5.0.0 (https://github.com/rlepigre/ocaml-bindlib)
-* earley 2.0.0 (https://github.com/rlepigre/ocaml-earley)
 * timed 1.0 (https://github.com/rlepigre/ocaml-timed)
 * menhir
+* pratter (>= 1.1)
 * yojson (>= 1.6.0)
 * cmdliner
 * ppx_inline_test
@@ -25,7 +25,7 @@ Using Opam, a suitable OCaml environment can be setup as follows.
 
    opam switch 4.05.0
    eval `opam config env`
-   opam install dune odoc menhir yojson cmdliner bindlib.5.0.0 timed.1.0 earley.2.0.0 ppx_inline_test
+   opam install dune odoc menhir yojson cmdliner bindlib.5.0.0 timed.1.0 pratter ppx_inline_test
 
 To compile Lambdapi, just run the command ``make`` in the source
 directory. This produces the ``_build/install/default/bin/lambdapi``

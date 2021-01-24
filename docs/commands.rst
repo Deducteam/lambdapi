@@ -15,7 +15,13 @@ One-line comments are introduced by ‘//’:
 
    // all this is ignored
 
-In Emacs, one can (un)comment a region by using Meta-; .
+And multi-line comments are opened with ‘/*’ and closed with ‘*/’.
+
+::
+
+   /* These
+      words are
+      ignored */
 
 ``require``
 -----------
@@ -25,8 +31,8 @@ depends on some other module, which must hence be compiled.
 
 ::
 
-   require boolean
-   require church.list as list
+   require boolean;
+   require church.list as list;
 
 Note that a required module can optionally be aliased, in which case it
 can be referred to with the provided name.
@@ -39,15 +45,15 @@ module. It can also be combined with the ``require`` command.
 
 ::
 
-   open booleans
-   require open church.sums
+   open booleans;
+   require open church.sums;
 
 ``symbol``
 ----------
 
 Allows to declare or define a symbol as follows:
 
-``symbol`` *modifiers* *identifier* *parameters* [``:`` *type*] [``≔`` *term*] [``begin`` *proof* ``end``]
+``symbol`` *modifiers* *identifier* *parameters* [``:`` *type*] [``≔`` *term*] {[``begin`` *proof* ``end``] | ``;``}
 
 The identifier should not have already been used in the current module.
 It must be followed by a type or a definition (or both).
@@ -72,15 +78,15 @@ Examples:
 
 ::
 
-   symbol N:TYPE
+   symbol N:TYPE;
 
    // with no proof script
-   symbol add : N → N → N // a type but no definition (axiom)
-   symbol double n ≔ add n n // no type but a definition
-   symbol triple n : N ≔ add n (double n) // a type and a definition
+   symbol add : N → N → N; // a type but no definition (axiom)
+   symbol double n ≔ add n n; // no type but a definition
+   symbol triple n : N ≔ add n (double n); // a type and a definition
 
    // with a proof script (theorem or interactive definition)
-   symbol F : N → TYPE
+   symbol F : N → TYPE;
    symbol idF n : F n → F n ≔
    begin
      solve
@@ -128,16 +134,16 @@ Examples:
 
 ::
 
-   constant symbol Nat : TYPE
-   constant symbol zero : Nat
-   constant symbol succ (x:Nat) : Nat
-   symbol add : Nat → Nat → Nat
-   opaque symbol add0 n : add n 0 = n ≔ begin ... end // theorem
-   injective symbol double n ≔ add n n
-   constant symbol list : Nat → TYPE
-   constant symbol nil : List zero
-   constant symbol cons : Nat → Πn, List n → List(succ n)
-   private symbol aux : Πn, List n → Nat
+   constant symbol Nat : TYPE;
+   constant symbol zero : Nat;
+   constant symbol succ (x:Nat) : Nat;
+   symbol add : Nat → Nat → Nat;
+   opaque symbol add0 n : add n 0 = n ≔ begin ... end; // theorem
+   injective symbol double n ≔ add n n;
+   constant symbol list : Nat → TYPE;
+   constant symbol nil : List zero;
+   constant symbol cons : Nat → Π n, List n → List(succ n);
+   private symbol aux : Π n, List n → Nat;
 
 **Implicit arguments:** Some arguments can be declared as implicit by
 encloding them into curly brackets ``{`` … ``}``. Then, they must not
@@ -150,7 +156,7 @@ arguments must be explicitly given.
 
 ::
 
-   symbol eq {a:U} : T a → T a → Prop
+   symbol eq {a:U} : T a → T a → Prop;
    // The first argument of `eq` is declared as implicit and must not be given
    // unless `eq` is prefixed by `@`.
    // Hence, [eq t u], [eq {_} t u] and [@eq _ t u] are all valid and equivalent.
@@ -164,11 +170,12 @@ The command ``inductive`` can be used to define an inductive type, its construct
 
 ::
    
-   ￼set builtin "Prop" ≔ ... // : TYPE
-   ￼set builtin "P"    ≔ ... // : Prop → TYPE
+   ￼set builtin "Prop" ≔ ...; // : TYPE
+   ￼set builtin "P"    ≔ ...; // : Prop → TYPE
 
 For the moment, we only support (mutually defined) first-order dependent types.
-Polymorphic types can be encoded by defining a type Set and a function τ:Set→TYPE.
+Polymorphic types can be encoded by defining a type Set and a function
+τ:Set → TYPE.
 
 Some cases of nested type are supported too, like the type Bush.
 Example:
@@ -177,18 +184,18 @@ Example:
    
    ￼inductive Nat : TYPE ≔
    ￼ | z    : Nat
-   ￼ | succ : Nat → Nat
+   ￼ | succ : Nat → Nat;
    
 is equivalent to:
 ￼
 ::
    
-   ￼injective symbol Nat  : TYPE
-   ￼constant  symbol z    : Nat
-   ￼constant  symbol succ : Nat → Nat
-   ￼symbol ind_Nat p : π (p 0) → (Πx, π (p x) → π (p (succ x))) → Πx, π (p x)
+   ￼injective symbol Nat  : TYPE;
+   ￼constant  symbol z    : Nat;
+   ￼constant  symbol succ : Nat → Nat;
+   ￼symbol ind_Nat p : π (p 0) → (Π x, π (p x) → π (p (succ x))) → Π x, π (p x);
    ￼rule ind_Nat _  $pz    _       z     ↪ $pz
-   ￼with ind_Nat $p $pz $psucc (succ $n) ↪ $psucc $n (ind_Nat $p $pz $psucc $n)
+   ￼with ind_Nat $p $pz $psucc (succ $n) ↪ $psucc $n (ind_Nat $p $pz $psucc $n);
 
 Note that to define mutually defined inductive types, you need the ``with`` keyword to link
 all inductive types together. For instance:
@@ -203,7 +210,7 @@ all inductive types together. For instance:
       | BLit  : Bool → BExpr
       | And   : BExpr → BExpr → BExpr
       | Not   : BExpr → BExpr
-      | Equal : Expr → Expr → BExpr
+      | Equal : Expr → Expr → BExpr;
 
 ``rule``
 --------
@@ -213,9 +220,9 @@ command.
 
 ::
 
-   rule add zero      $n ↪ $n
-   rule add (succ $n) $m ↪ succ (add $n $m)
-   rule mul zero      _  ↪ zero
+   rule add zero      $n ↪ $n;
+   rule add (succ $n) $m ↪ succ (add $n $m);
+   rule mul zero      _  ↪ zero;
 
 Terms prefixed by the sigil ``$`` and ``_`` are pattern variables.
 
@@ -225,7 +232,7 @@ pattern-matching on patterns à la Miller but modulo β-equivalence only
 
 ::
 
-   rule diff (λx, sin $F[x]) ↪ λx, diff (λx, $F[x]) x × cos $F[x]
+   rule diff (λx, sin $F[x]) ↪ λx, diff (λx, $F[x]) x × cos $F[x];
 
 Patterns can contain abstractions ``λx, _`` and the user may attach an
 environment made of *distinct* bound variables to a pattern variable to
@@ -237,7 +244,7 @@ freely occur in ``t``.
 
 ::
 
-   rule lam (λx, app $F[] x) ↪ $F // η-reduction
+   rule lam (λx, app $F[] x) ↪ $F; // η-reduction
 
 Hence, the rule ``lam (λx, app $F[] x) ↪ $F`` implements η-reduction
 since no valid instance of ``$F`` can contain ``x``.
@@ -263,20 +270,20 @@ left-hand sides can contain defined symbols:
 
 ::
 
-   rule add (add x y) z ↪ add x (add y z)
+   rule add (add x y) z ↪ add x (add y z);
 
 They can overlap:
 
 ::
 
    rule add zero x ↪ x
-   with add x zero ↪ x
+   with add x zero ↪ x;
 
 And they can be non-linear:
 
 ::
 
-   rule minus x x ↪ zero
+   rule minus x x ↪ zero;
 
 Note that rewriting rules can also be defined simultaneously, using the
 ``with`` keyword instead of the ``rule`` keyword for all but the first
@@ -285,7 +292,7 @@ rule.
 ::
 
    rule add zero      $n ↪ $n
-   with add (succ $n) $m ↪ succ (add $n $m)
+   with add (succ $n) $m ↪ succ (add $n $m);
 
 Adding sets of rules allows to maintain confluence.
 
@@ -297,24 +304,12 @@ Examples of patterns are available in ``tests/OK/patterns.lp``.
 The ``set`` command is used to control the behaviour of Lambdapi and
 extension points in its syntax.
 
-**declared identifiers** The following code declares a new valid identifier.
-
-::
-
-   set declared "ℕ"
-   set declared "α"
-   set declared "β"
-   set declared "γ"
-   set declared "x₁"
-   set declared "x₂"
-   set declared "x₃"
-
 **prefix symbols** The following code defines a prefix symbol for
 negation.
 
 ::
 
-   set prefix 5 "¬" ≔ neg
+   set prefix 5 "¬" ≔ neg;
 
 **infix symbols** The following code defines infix symbols for addition
 and multiplication. Both are associative to the left, and they have
@@ -322,8 +317,8 @@ priority levels ``6`` and ``7`` respectively.
 
 ::
 
-   set infix left 6 "+" ≔ add
-   set infix left 7 "×" ≔ mul
+   set infix left 6 "+" ≔ add;
+   set infix left 7 "×" ≔ mul;
 
 The modifier ``infix``, ``infix right`` and ``infix left`` can be used
 to specify whether the defined symbol is non-associative, associative to
@@ -331,21 +326,18 @@ the right, or associative to the left. The priority levels are floating
 point numbers, hence a priority can (almost) always be inserted between
 two different levels.
 
-*WARNING:* some checks are performed upon the declaration of infix
-symbols and identifiers, but they are by no means sufficient (it is
-still possible to break the parser by defining well-chosen tokens).
-
-**quantifier symbols** The representation of a symbol can be modified to
-make it look like a usual quantifier (such as ``∀``, ``∃`` or ``λ``).
-Symbols declared as quantifiers can be input using a “quantifier” syntax
-and their printing is changed:
+**quantifier symbols** Any symbol can be input as a quantifier (as done usually
+with symbols such as ``∀``, ``∃`` or ``λ``), provided that it
+is prefixed with a backquote `` \` ``. However, such terms will be printed as
+quantifiers only if they are declared so using the command ``set quantifier``:
 
 ::
 
-   set quantifier ∀ // : Π {a}, (T a → Prop) → Prop
-   compute ∀ {a'} (λx:T a,p) // prints ∀x:T a,p
-   compute ∀ (λx:T a, p) // prints ∀x,p
-   type ∀x,p // quantifiers can be written as such
+   set quantifier ∀; // : Π {a}, (T a → Prop) → Prop
+   compute ∀ {a'} (λx:T a,p); // prints `∀x:T a,p
+   compute ∀ (λx:T a, p); // prints `∀x,p
+   type `∀ x, p; // quantifiers can be written as such
+   type `f x, p; // works as well if f is defined
 
 **builtins** The command ``set builtin`` allows to map a “builtin“
 string to a user-defined symbol identifier. Those mappings are
@@ -361,8 +353,8 @@ representing 0 and the successor function as follows:
 
 ::
 
-   set builtin "0"  ≔ zero // : N
-   set builtin "+1" ≔ succ // : N → N
+   set builtin "0"  ≔ zero; // : N
+   set builtin "+1" ≔ succ; // : N → N
 
 **unification rules** The unification engine can be guided using
 *unification rules*. Given a unification problem ``t ≡ u``, if the
@@ -376,9 +368,9 @@ Examples:
 
 ::
 
-   set unif_rule Bool ≡ T $t ↪ $t ≡ bool
-   set unif_rule $x + $y ≡ 0 ↪ $x ≡ 0; $y ≡ 0
-   set unif_rule $a → $b ≡ T $c ↪ $a ≡ T $a'; $b ≡ T $b'; $c ≡ arrow $a' $b'
+   set unif_rule Bool ≡ T $t ↪ begin $t ≡ bool end
+   set unif_rule $x + $y ≡ 0 ↪ begin $x ≡ 0; $y ≡ 0 end
+   set unif_rule $a → $b ≡ T $c ↪ begin $a ≡ T $a'; $b ≡ T $b'; $c ≡ arrow $a' $b' end
 
 Thanks to the first unification rule, a problem ``T ?x ≡ Bool`` is
 transformed into ``?x ≡ bool``.

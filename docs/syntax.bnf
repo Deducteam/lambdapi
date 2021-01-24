@@ -1,203 +1,128 @@
-reserved "_"
-reserved "abort"
-reserved "admit"
-reserved "apply"
-reserved "as"
-reserved "assert"
-reserved "assertnot"
-reserved "assume"
-reserved "begin"
-reserved "compute"
-reserved "constant"
-reserved "end"
-reserved "fail"
-reserved "focus"
-reserved "in"
-reserved "injective"
-reserved "let"
-reserved "opaque"
-reserved "open"
-reserved "print"
-reserved "private"
-reserved "proofterm"
-reserved "protected"
-reserved "refine"
-reserved "reflexivity"
-reserved "require"
-reserved "rewrite"
-reserved "rule"
-reserved "set"
-reserved "simpl"
-reserved "symmetry"
-reserved "symbol"
-reserved "type"
-reserved "TYPE"
-reserved "with"
-reserved "why3"
+<ident> ::= ID
 
-// Identifiers declared with the command "set declared"
-<declared_id> ::= "ℕ" | "α" | ...
+<path> ::= ID (DOT ID)*
 
-// Identifiers
-<ident> ::=
-  | RE("[a-zA-Z_][a-zA-Z0-9_]*")     // Regular identifier
-  | RE("{|\([^|]\|\(|[^}]\)\)*|*|}") // Escaped identifier
-  | <declared_id>                    // Declared identifier
+<qident> ::= <path>
 
-// Natural number literals
-<nat_lit> ::= RE("[0-9]+")
+<term_ident> ::= AT <qident>
+               | <qident>
 
-// Float literals
-<float_lit> ::= RE("[0-9]+\([.][0-9]+\)?")
+<patt> ::= DOLLAR <ident>
+         | DOLLAR WILD
 
-// String literals
-<string_lit> ::= RE("\"[^\"\n]*\"")
+<arg_ident> ::= <ident>
+              | WILD
 
-// Module paths
-<path> ::= {<ident> "."}* <ident>
+<arg> ::= <arg_ident>
+        | L_PAREN <arg_ident>+ COLON <term> R_PAREN
+        | L_CU_BRACKET <arg_ident>+ [COLON <term>] R_CU_BRACKET
 
-// Qualified identifiers
-<qident> ::= {<ident> "."}* <ident>
+<rw_patt_spec> ::= <term>
+                 | IN <term>
+                 | IN <ident> IN <term>
+                 | <term> IN <term> [IN <term>]
+                 | <term> AS <ident> IN <term>
 
-// Infix operators declared with the command "set infix"
-<infix_op> ::= "+" | "×" | ...
+<rw_patt> ::= L_SQ_BRACKET <rw_patt_spec> R_SQ_BRACKET
 
-// Terms
-<term> ::=
-  | "TYPE"
-  | "@"? <qident>
-  | "_"
-  | "?" - <ident> {"[" <term> {";" <term>}* "]"}?
-  | "(" <term> ")"
-  | "{" <term> "}"
-  | <term> <term>
-  | <type> "→" <type>
-  | "Π" <arg>+ "," <type>
-  | "λ" <arg>+ "," <term>
-  | "let" <ident> <arg>* {":" <term>}? "≔" <term> "in" <term>
-  | <nat_lit>
-  | <term> <infix_op> <term>
+<tactic> ::= INTRO <arg_ident>+
+           | APPLY <term>
+           | SIMPL
+           | REWRITE [ASSOC] [<rw_patt>] <term>
+           | REFINE <term>
+           | REFL
+           | SYMMETRY
+           | WHY3 [STRINGLIT]
+           | <query>
+           | FAIL
 
-// Arguments (of abstraction, product, ...) maybe marked as implicit
-<arg> ::=
-  | <ident>
-  | "{" <ident>+ {":" <type>}? "}"
-  | "(" <ident>+ ":" <type> ")"
+<ttactic> ::= <tactic> [SEMICOLON]
 
-// Types
-<type> ::= <term>
+<modifier> ::= CONSTANT
+             | INJECTIVE
+             | PROTECTED
+             | PRIVATE
+             | SEQUENTIAL
+             | OPAQUE
 
-// Rewrite patterns for rewriting rule left hand-sides
-<patt> ::=
-  | "$" - {<ident> | "_"} {"[" <ident> {";" <ident>}* "]"}?
-  | "λ" <arg>+ "," <patt>
-  | <qident> {<patt>}*
+<float_of_int> ::= FLOAT
+                 | INT
 
-// Rewriting rules
-<rule> ::= <qident> {<patt>}* "↪" <term>
+<config> ::= BUILTIN STRINGLIT ASSIGN <qident>
+           | PREFIX <float_of_int> STRINGLIT ASSIGN <qident>
+           | INFIX [ASSOC] <float_of_int> STRINGLIT ASSIGN <qident>
+           | QUANTIFIER <qident>
+           | UNIF_RULE <unif_rule>
 
-// Assertion predicates
-<assertion> ::=
-  | <arg>* "⊢" <term> ":" <term>
-  | <arg>* "⊢" <term> "≡" <term>
+<assert_not> ::= ASSERT
+               | ASSERT_NOT
 
-// Flag names
-<flag_name> ::=
-  | "eta_equality"
-  | "print_domains"
-  | "print_implicits"
-  | "print_meta_type"
-  | "print_contexts"
-  | "print_domains"
+<query> ::= SET VERBOSE INT
+          | SET FLAG STRINGLIT SWITCH
+          | SET DEBUG_FLAGS
+          | COMPUTE_TYPE <term>
+          | COMPUTE <term>
+          | SET PROVER STRINGLIT
+          | SET PROVER_TIMEOUT INT
+          | <assert_not> <arg>* TURNSTILE <term> COLON <term>
+          | <assert_not> <arg>* TURNSTILE <term> EQUIV <term>
+          | PRINT [<qident>]
+          | PROOFTERM
 
-// Flag values
-<flag_value> ::=
-  | "on"
-  | "off"
+<proof_end> ::= END
+              | ADMIT
+              | ABORT
 
-// Queries
-<query> ::=
-  | "print" <ident>?
-  | "proofterm"
-  | "type" <term>
-  | "compute" <term>
-  | "set" "verbose" RE("[1-9][0-9]*")
-  | "set" "debug" RE("[-+][a-zA-Z]+")
-  | "set" "flag" \"<flag_name>\" <flag_value>
-  | "set" "prover" <ident>
-  | "set" "prover_timeout" <nat_lit>
-  | "assert" <assertion>
-  | "assertnot" <assertion>
+<proof> ::= BEGIN <ttactic>* <proof_end>
 
-// Patterns for the rewrite tactic
-<rw_patt> ::=
-  | <term>
-  | "in" <term>
-  | "in" <ident> "in" <term>
-  | <ident> "in" <term>
-  | <term> "in" <ident> "in" <term>
-  | <term> "as" <ident> "in" <term>
-  
-// Proof tactics
-<tactic> ::=
-  | <query>
-  | "refine" <term>
-  | "assume" <ident>+
-  | "apply" <term>
-  | "simpl"
-  | "rewrite" "-"? {"[" <rw_patt> "]"}? <term>
-  | "reflexivity"
-  | "symmetry"
-  | "focus" <nat_lit>
-  | "why3" <string_lit>?
-  | "fail"
+<inductive> ::= <ident> COLON <term> ASSIGN [VBAR] [<ident> COLON <term>
+                (VBAR <ident> COLON <term>)*]
 
-// Builtins
-<builtin> ::=
-  | "0"
-  | "+1"
-  | "T"
-  | "P"
-  | "eq"
-  | "refl"
-  | "eq_ind"
-  | "top"
-  | "bot"
-  | "not"
-  | "or"
-  | "and"
-  | "imp"
+<command> ::= REQUIRE OPEN <path>+ SEMICOLON
+            | REQUIRE <path>+ SEMICOLON
+            | REQUIRE <path> AS <ident> SEMICOLON
+            | OPEN <path> SEMICOLON
+            | <modifier>* SYMBOL <ident> <arg>* COLON <term> SEMICOLON
+            | <modifier>* SYMBOL <ident> <arg>* [COLON <term>] <proof>
+            | <modifier>* SYMBOL <ident> <arg>* [COLON <term>] ASSIGN
+              [<term>] SEMICOLON
+            | <modifier>* SYMBOL <ident> <arg>* [COLON <term>] ASSIGN
+              [<term>] <proof>
+            | <modifier>* INDUCTIVE <inductive> (WITH <inductive>)* SEMICOLON
+            | RULE <rule> (WITH <rule>)* SEMICOLON
+            | SET <config> SEMICOLON
+            | <query> SEMICOLON
+            | EOF
 
-// Inductive types
-<inductive> ::= <ident> ":" <term> "≔" {"|" <ident> ":" <term>}*
+<env> ::= L_SQ_BRACKET [<term> (SEMICOLON <term>)*] R_SQ_BRACKET
 
-// Proofs
-<proof> ::= "begin" <tactic>* {"end"|"admit"|"abort"}
+<sterm> ::= AT <qident>
+          | <qident>
+          | WILD
+          | TYPE
+          | QUESTION_MARK <ident> [<env>]
+          | <patt> [<env>]
+          | L_PAREN <term> R_PAREN
+          | L_CU_BRACKET <term> R_CU_BRACKET
+          | INT
 
-// Unification rules
-<unif_rule> ::= <patt> "≡" <patt> "↪" <term> "≡" <term> {";" <term> "≡" <term>}*
+<aterm> ::= <sterm>+
 
-// Modifiers
-<property> ::= "constant" | "injective"
-<exposition> ::= "protected" | "private"
-<opacity> ::= "opaque"
-<modifier> ::= <opacity> | <exposition> | <property>
+<term> ::= <aterm>
+         | <term> ARROW <term>
+         | BACKQUOTE <term_ident> <binder>
+         | PI <binder>
+         | LAMBDA <binder>
+         | LET <ident> <arg>* [COLON <term>] ASSIGN <term> IN <term>
 
-// Commands
-<command> ::=
-  | <query>
-  | "require" <path> "as" <ident>
-  | "require" "open"? <path>
-  | "open" <path>
-  | <modifier>* "symbol" <ident> <arg>* {":" <type>}? {"≔" <term>}? proof?
-  | <exposition>? "inductive" <inductive> {"with" <inductive>}*
-  | "rule" <rule> {"with" <rule>}*
-  | "set" "declared" <string_lit>
-  | "set" "prefix" <float_lit> <string_lit> "≔" <qident>
-  | "set" "infix" {"left" | "right"}? <float_lit> <string_lit> "≔" <qident>
-  | "set" "quantifier" <qident>
-  | "set" "builtin" \"<builtin>\" "≔" <qident>
-  | "set" "unif_rule" <unif_rule>
+<binder> ::= <arg>+ COMMA <term>
+           | <arg_ident> COLON <term> COMMA <term>
 
-// Entry point: list of commands
-<main> ::= <command>*
+<rule> ::= <term> REWRITE <term>
+
+<unification> ::= <term> EQUIV <term>
+
+<unif_rule> ::= <unification> REWRITE BEGIN <unification> (SEMICOLON
+                <unification>)* END
+
+

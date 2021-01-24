@@ -43,3 +43,6 @@ To write documentation, open a pull request. We have a few guidelines on writing
   3. `^^^^`
   4. `''''`
 * for lists, use stars `*`.
+* BNF grammars are auto generated using 
+  [Obelisk](https://github.com/Lelio-Brun/Obelisk), they should not be edited 
+  directly.
