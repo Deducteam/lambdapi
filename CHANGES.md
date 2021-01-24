@@ -1,3 +1,60 @@
+### Unreleased
+
+#### Parser (2021-01-??)
+
+Replace Earley by Menhir, Pratter and Sedlex
+
+**Syntax modifications:**
+
+- The semi colon as termination token has been added. Hence, a symbol is
+  declared with symbol `foo: bar;`.
+
+- The syntax `λx y z: nat, ...` is not authorised anymore, but 
+  `λ(x y z: nat), ...` is, and `λ x : N, t` is as well.
+
+- Unification rules syntax has changed: the left hand side must be enclosed in
+  `begin ... end`, so
+  ```
+  set unif_rule $x + $y ≡ 0 ↪ $x ≡ 0; $y ≡ 0
+  ```
+  becomes
+  ```
+  set unif_rule $x + $y ≡ 0 ↪ begin $x ≡ 0; $y ≡ 0 end
+  ```
+- `set declared "?"` is not needed anymore,
+
+- Any (depending on accepted utf8 codepoints) UTF8 identifier is by default
+  valid.
+  *Warning:* string `λx` is now a valid identifier. Hence, expression `λx, t`
+  isn't valid, but `λ x, t` is.
+
+- Symbols can be input as quantifiers using the backquote: the syntax 
+  `` `f x, t`` is valid to represent `f (λ x, t)` (and a fortiori 
+  `f {T} (λ x, t)`).
+
+- `assert` always take a turnstile (or vdash) to specify (even empty) context,
+  so the syntax is `assert ⊢ t: A`
+
+- the unary minus before a rewrite pattern becomes the keyword left
+
+**Code modifications:**
+
+- Parsing and handling are interleaved: the parser returns a stream of parsed
+  commands. Requesting an item of the stream parses one command in the file.
+  
+- `pp_hint` is renamed to `notation`
+
+- `notation` is moved to `sign.ml` and the signature takes a `SymMap` to keep
+  the notations
+  
+- Notations (that is, ex-`pp_hint`) are kept in a `SymMap`, which allowed to
+  simplify some code in `sig_state.ml`
+  
+- positions are not lazy anymore, because Sedlex doesn't use lazy positions
+
+- `p_terms` do not have `P_BinO` and `P_UnaO` constructors anymore
+
+
 #### Unification goals (2020-12-15)
 
 changes in the syntax:
