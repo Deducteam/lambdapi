@@ -2,7 +2,7 @@
 
 open Lplib
 open Lplib.Base
-
+open Lplib.Extra
 open Pos
 
 (** Representation of a (located) identifier. *)
@@ -13,7 +13,8 @@ type ident = strloc
 type p_module_path = (string * bool) list
 
 (** Representation of a possibly qualified (and located) identifier. *)
-type qident = (p_module_path * string) loc
+type qident_aux = p_module_path * string
+type qident = qident_aux loc
 
 (** Representation of the associativity of an infix operator. *)
 type assoc =
@@ -87,10 +88,12 @@ let p_get_args : p_term -> p_term * p_term list = fun t ->
   in p_get_args [] t
 
 (** Parser-level rewriting rule representation. *)
-type p_rule = (p_patt * p_term) loc
+type p_rule_aux = p_patt * p_term
+type p_rule = p_rule_aux loc
 
 (** Parser-level inductive type representation. *)
-type p_inductive = (ident * p_term * (ident * p_term) list) loc
+type p_inductive_aux = (ident * p_term * (ident * p_term) list)
+type p_inductive = p_inductive_aux loc
 
 (** Module to create p_term's with no positions. *)
 module P  = struct
@@ -122,13 +125,14 @@ module P  = struct
 end
 
 (** Rewrite pattern specification. *)
-type p_rw_patt =
+type p_rw_patt_aux =
   | P_rw_Term           of p_term
   | P_rw_InTerm         of p_term
   | P_rw_InIdInTerm     of ident * p_term
   | P_rw_IdInTerm       of ident * p_term
   | P_rw_TermInIdInTerm of p_term * ident * p_term
   | P_rw_TermAsIdInTerm of p_term * ident * p_term
+type p_rw_patt = p_rw_patt_aux loc
 
 (** Parser-level representation of an assertion. *)
 type p_assertion =
@@ -184,7 +188,7 @@ type p_tactic_aux =
   (** Apply the given term to the current goal. *)
   | P_tac_simpl
   (** Normalize in the focused goal. *)
-  | P_tac_rewrite of bool * p_rw_patt loc option * p_term
+  | P_tac_rewrite of bool * p_rw_patt option * p_term
   (** Apply rewriting using the given pattern and equational proof. The
      boolean indicates whether the equation has to be applied from left to
      right. *)
@@ -280,6 +284,8 @@ type p_command = p_command_aux loc
 (** Top level AST returned by the parser. *)
 type ast = p_command list
 
+(** Equality functions on the syntactic expressions ignoring positions. *)
+
 let eq_ident : ident eq = fun x1 x2 -> x1.elt = x2.elt
 
 let eq_qident : qident eq = fun q1 q2 -> q1.elt = q2.elt
@@ -334,7 +340,7 @@ let eq_p_inductive : p_inductive eq = fun i1 i2 ->
   let eq_id_p_term (s1,t1) (s2,t2) = eq_ident s1 s2 && eq_p_term t1 t2 in
   List.equal eq_id_p_term ((s1,t1)::tl1) ((s2,t2)::tl2)
 
-let eq_p_rw_patt : p_rw_patt loc eq = fun r1 r2 ->
+let eq_p_rw_patt : p_rw_patt eq = fun r1 r2 ->
   match (r1.elt, r2.elt) with
   | (P_rw_Term(t1)                , P_rw_Term(t2)                )
   | (P_rw_InTerm(t1)              , P_rw_InTerm(t2)              ) ->
@@ -442,3 +448,174 @@ let eq_p_command : p_command eq = fun c1 c2 ->
       eq_p_query q1 q2
   | (_                           , _                           ) ->
       false
+
+(** [fold_idents f a ast] allows to recursively build a value of type ['a]
+   starting from [a] and by applying [f] on each identifier occurring in [ast]
+   corresponding to a function symbol: variables (term variables or assumption
+   names) are excluded.
+
+NOTE: This function is incomplete if an assumption name hides a function
+symbol. Example:
+
+symbol A:TYPE;
+symbol a:A;
+symbol p:((A->A)->A->A)->A :=
+begin
+  intro h
+  apply h
+  // proof of A->A
+  intro a
+  apply a // here a is an assumption
+  // proof of A
+  apply a // here a is a function symbol
+end; *)
+
+let fold_idents : ('a -> qident -> 'a) -> 'a -> ast -> 'a = fun f ->
+
+  let add_idopt : StrSet.t -> ident option -> StrSet.t = fun vs idopt ->
+    match idopt with
+    | None -> vs
+    | Some id -> StrSet.add id.elt vs
+  in
+
+  let add_idopts = List.fold_left add_idopt in
+
+  let rec fold_term_vars : StrSet.t -> 'a -> p_term -> 'a =
+    fun vs a {elt;pos} ->
+    match elt with
+    | P_Iden ({elt=(mp,s);_} as qid, _) ->
+        if mp = [] && StrSet.mem s vs then a else f a qid
+
+    | P_Type
+    | P_Wild
+    | P_Meta (_, None)
+    | P_Patt (_, None)
+    | P_NLit _ -> a
+
+    | P_Meta (_, Some ts)
+    | P_Patt (_, Some ts) -> Array.fold_left (fold_term_vars vs) a ts
+
+    | P_Appl (t, u)
+    | P_Impl (t, u) -> fold_term_vars vs (fold_term_vars vs a t) u
+
+    | P_Abst ((idopts,Some t,_)::args_list, u)
+    | P_Prod ((idopts,Some t,_)::args_list, u) ->
+        fold_term_vars (add_idopts vs idopts) (fold_term_vars vs a t)
+          (Pos.make pos (P_Abst (args_list, u)))
+
+    | P_Abst ((idopts,None,_)::args_list, u)
+    | P_Prod ((idopts,None,_)::args_list, u) ->
+        fold_term_vars (add_idopts vs idopts) a
+          (Pos.make pos (P_Abst (args_list, u)))
+
+    | P_Abst ([], t)
+    | P_Prod ([], t)
+    | P_Wrap t
+    | P_Expl t -> fold_term_vars vs a t
+
+    | P_LLet (id, (idopts,None,_)::args_list, u, v, w) ->
+        fold_term_vars (add_idopts vs idopts) a
+          (Pos.make pos (P_LLet (id, args_list, u, v, w)))
+    | P_LLet (id, (idopts,Some t,_)::args_list, u, v, w) ->
+        fold_term_vars (add_idopts vs idopts) (fold_term_vars vs a t)
+          (Pos.make pos (P_LLet (id, args_list, u, v, w)))
+
+    | P_LLet (id, [], None, v, w) ->
+        fold_term_vars (StrSet.add id.elt vs) (fold_term_vars vs a v) w
+    | P_LLet (id, [], Some u, v, w) ->
+        fold_term_vars (StrSet.add id.elt vs)
+          (fold_term_vars vs (fold_term_vars vs a u) v) w
+
+    | P_UnaO (_, _)
+    | P_BinO (_, _, _) -> assert false
+  in
+
+  let fold_term : 'a -> p_term -> 'a = fold_term_vars StrSet.empty in
+
+  let fold_rule : 'a -> p_rule -> 'a = fun a {elt=(l,r);_} ->
+    fold_term (fold_term a l) r
+  in
+
+  let fold_rw_patt : 'a -> p_rw_patt -> 'a = fun a p ->
+    match p.elt with
+    | P_rw_Term t
+    | P_rw_InTerm t
+    | P_rw_InIdInTerm (_, t)
+    | P_rw_IdInTerm (_, t) -> fold_term a t
+    | P_rw_TermInIdInTerm (t, _, u)
+    | P_rw_TermAsIdInTerm (t, _, u) -> fold_term (fold_term a t) u
+  in
+
+  let fold_query : 'a -> p_query -> 'a = fun a q ->
+    match q.elt with
+    | P_query_verbose _
+    | P_query_debug (_, _)
+    | P_query_flag (_, _)
+    | P_query_prover _
+    | P_query_prover_timeout _
+    | P_query_print None
+    | P_query_proofterm -> a
+    | P_query_assert (_, P_assert_typing(t,u))
+    | P_query_assert (_, P_assert_conv(t,u)) -> fold_term (fold_term a t) u
+    | P_query_infer (t, _)
+    | P_query_normalize (t, _) -> fold_term a t
+    | P_query_print (Some qid) -> f a qid
+  in
+
+  let fold_config : 'a -> p_config -> 'a = fun a c ->
+    match c with
+    | P_config_builtin (_, qid)
+    | P_config_unop (_, _, qid)
+    | P_config_binop (_, _, _, qid)
+    | P_config_quant qid -> f a qid
+    | P_config_ident _ -> a
+    | P_config_unif_rule r -> fold_rule a r
+  in
+
+  let fold_tactic : 'a -> p_tactic -> 'a = fun a t ->
+    match t.elt with
+    | P_tac_refine t
+    | P_tac_apply t
+    | P_tac_rewrite (_, None, t) -> fold_term a t
+    | P_tac_rewrite (_, Some p, t) -> fold_term (fold_rw_patt a p) t
+    | P_tac_query q -> fold_query a q
+    | P_tac_intro _
+    | P_tac_simpl
+    | P_tac_refl
+    | P_tac_sym
+    | P_tac_focus _
+    | P_tac_why3 _
+    | P_tac_solve
+    | P_tac_fail -> a
+  in
+
+  let fold_inductive : 'a -> p_inductive -> 'a =
+    fun a {elt = (id, t, cons_list); _} ->
+    let fold_cons a (_,t) = fold_term a t in
+    List.fold_left fold_cons a ((id,t)::cons_list)
+  in
+
+  let fold_proof : 'a -> (p_tactic list * p_proof_end) -> 'a =
+    fun a (ts, _) -> List.fold_left fold_tactic a ts
+  in
+
+  let fold_command : 'a -> p_command -> 'a = fun a {elt;pos} ->
+    match elt with
+    | P_require (_, _)
+    | P_require_as (_, _)
+    | P_open _ -> a
+    | P_query q -> fold_query a q
+    | P_set c -> fold_config a c
+    | P_rules rs -> List.fold_left fold_rule a rs
+    | P_inductive (_, ind_list) -> List.fold_left fold_inductive a ind_list
+    | P_symbol {p_sym_nam;p_sym_arg;p_sym_typ;p_sym_trm;p_sym_prf;_} ->
+        let d = Pos.none P_Type in
+        let t = match p_sym_trm with Some t -> t | None -> d in
+        Option.fold fold_proof
+          (fold_term a
+             (Pos.make pos
+                (P_LLet (p_sym_nam, p_sym_arg, p_sym_typ, t, d))))
+        p_sym_prf
+  in
+
+  List.fold_left fold_command
