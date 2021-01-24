@@ -7,7 +7,7 @@
     open Pos
 
     let make_pos : Lexing.position * Lexing.position -> 'a -> 'a loc =
-      fun lps elt -> {pos = Some(locate lps); elt}
+      fun lps elt -> Pos.in_pos (locate lps) elt
  %}
 
 %token EOF
@@ -121,8 +121,6 @@
 
 // An identifier with a boolean to true if it uses escaped syntax.
 ident: i=ID { (make_pos $loc (fst i), snd i) }
-// Identifier without the boolean
-any_ident: i=ID { make_pos $loc (fst i) }
 
 // A list of [ident] separated by dots
 path: ms=separated_nonempty_list(DOT, ID) { ms }
@@ -287,8 +285,11 @@ proof: BEGIN ts=ttactic* pe=proof_end { ts, pe }
 
 inductive:
   | i=ident COLON t=term ASSIGN VBAR?
-c=separated_list(VBAR, separated_pair(any_ident, COLON, term))
-      { make_pos $loc (fst i, t, c) }
+c=separated_list(VBAR, separated_pair(ident, COLON, term))
+      {
+        let c = List.map (fun (id, t) -> (fst id, t)) c in
+        make_pos $loc (fst i, t, c)
+      }
 
 
 // Top level commands
