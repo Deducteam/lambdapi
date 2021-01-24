@@ -537,6 +537,18 @@ end
 module SymSet = Set.Make(Sym)
 module SymMap = Map.Make(Sym)
 
+(** Rewrite patterns as in Coq/SSReflect. See "A Small Scale
+    Reflection Extension for the Coq system", by Georges Gonthier,
+    Assia Mahboubi and Enrico Tassi, INRIA Research Report 6455, 2016,
+    @see <http://hal.inria.fr/inria-00258384>, section 8, p. 48. *)
+type rw_patt =
+  | RW_Term           of term
+  | RW_InTerm         of term
+  | RW_InIdInTerm     of (term, term) Bindlib.binder
+  | RW_IdInTerm       of (term, term) Bindlib.binder
+  | RW_TermInIdInTerm of term * (term, term) Bindlib.binder
+  | RW_TermAsIdInTerm of term * (term, term) Bindlib.binder
+
 (** Representation of unification problems. *)
 type problem =
   { to_solve  : constr list

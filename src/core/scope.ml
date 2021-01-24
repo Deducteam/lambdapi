@@ -9,7 +9,6 @@ open Syntax
 open Terms
 open Env
 open Sig_state
-open Rewrite
 
 (** Logging function for term scoping. *)
 let log_scop = new_logger 'o' "scop" "term scoping"
