@@ -50,13 +50,13 @@ module Lp : PARSER = struct
         with
         | End_of_file -> Option.iter close_in inchan; None
         | LpLexer.SyntaxError(s) ->
-          let loc = match s.pos with Some(l) -> l | None -> assert false in
-          parser_fatal loc "Unexpected character: [%s]" s.elt
+            let loc = match s.pos with Some(l) -> l | None -> assert false in
+            parser_fatal loc "Unexpected character: [%s]" s.elt
         | LpParser.Error ->
-          let loc = Sedlexing.lexing_positions lexbuf in
-          let loc = Pos.locate loc in
-          parser_fatal loc "Unexpected token [%s]."
-            (Sedlexing.Utf8.lexeme lexbuf)
+            let loc = Sedlexing.lexing_positions lexbuf in
+            let loc = Pos.locate loc in
+            parser_fatal loc "Unexpected token [%s]."
+              (Sedlexing.Utf8.lexeme lexbuf)
       in
       Stream.from generator
 

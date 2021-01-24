@@ -35,6 +35,8 @@ let parse_text : state -> string -> string -> Command.t list * state =
         if old_syntax then Parser.Dk.parse_string fname s
         else Parser.parse_string fname s
       in
+      (* NOTE this processing could be avoided with a parser for a list of
+         commands. Such a parser is not trivially done. *)
       let cmds = Stdlib.ref [] in
       Stream.iter (fun c -> Stdlib.(cmds := c :: !cmds)) strm;
       List.rev Stdlib.(!cmds)
