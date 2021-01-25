@@ -90,7 +90,8 @@ let p_get_args : p_term -> p_term * p_term list = fun t ->
 type p_rule = (p_patt * p_term) loc
 
 (** Parser-level inductive type representation. *)
-type p_inductive = (ident * p_term * (ident * p_term) list) loc
+type p_inductive_aux = ident * p_args list * p_term * (ident * p_term) list
+type p_inductive = p_inductive_aux loc
 
 (** Module to create p_term's with no positions. *)
 module P  = struct
@@ -319,8 +320,8 @@ let rec eq_p_term : p_term eq = fun t1 t2 ->
   | (t1                  ,                   t2      ) ->
       t1 = t2
 
-and eq_p_args : p_args eq = fun (x1,ao1,b1) (x2,ao2,b2) ->
-  List.equal (Option.equal (fun x1 x2 -> x1.elt = x2.elt)) x1 x2
+and eq_p_args : p_args eq = fun (il1,ao1,b1) (il2,ao2,b2) ->
+  List.equal (Option.equal eq_ident) il1 il2
   && Option.equal eq_p_term ao1 ao2 && b1 = b2
 
 let eq_p_rule : p_rule eq = fun r1 r2 ->
@@ -328,11 +329,11 @@ let eq_p_rule : p_rule eq = fun r1 r2 ->
   let {elt = (lhs2, rhs2); _} = r2 in
   eq_p_term lhs1 lhs2 && eq_p_term rhs1 rhs2
 
-let eq_p_inductive : p_inductive eq = fun i1 i2 ->
-  let {elt = (s1, t1, tl1); _} = i1 in
-  let {elt = (s2, t2, tl2); _} = i2 in
-  let eq_id_p_term (s1,t1) (s2,t2) = eq_ident s1 s2 && eq_p_term t1 t2 in
-  List.equal eq_id_p_term ((s1,t1)::tl1) ((s2,t2)::tl2)
+let eq_p_inductive : p_inductive eq =
+  let eq_cons (i1,t1) (i2,t2) = eq_ident i1 i2 && eq_p_term t1 t2 in
+  fun {elt = (i1, ps1, t1, il1); _} {elt = (i2, ps2, t2, il2); _} ->
+  List.equal eq_p_args ps1 ps2
+  && List.equal eq_cons ((i1,t1)::il1) ((i2,t2)::il2)
 
 let eq_p_rw_patt : p_rw_patt loc eq = fun r1 r2 ->
   match (r1.elt, r2.elt) with

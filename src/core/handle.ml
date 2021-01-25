@@ -219,20 +219,19 @@ let handle_cmd : sig_state -> p_command ->
         fatal cmd.pos "Pattern matching strategy modifiers cannot be used on \
                        inductive types.";
       (* Add inductive types in the signature. *)
-      let add_ind_sym (ss, ind_sym_list) p_ind =
-        let (id, pt, _) = p_ind.elt in
+      let add_ind_sym (ss, ind_sym_list) {elt=(id,xs,pt,_); _} =
         let (ss, ind_sym) =
-          handle_inductive_symbol ss e Injec Eager id [] pt in
+          handle_inductive_symbol ss e Injec Eager id xs pt in
         (ss, ind_sym::ind_sym_list)
       in
       let (ss, ind_sym_list_rev) =
         List.fold_left add_ind_sym (ss, []) p_ind_list in
       (* Add constructors in the signature. *)
-      let add_constructors (ss, cons_sym_list_list) p_ind =
-        let (_, _, p_cons_list) = p_ind.elt in
+      let add_constructors
+            (ss, cons_sym_list_list) {elt=(_,xs,_,p_cons_list); _} =
         let add_cons_sym (ss, cons_sym_list) (id, pt) =
           let (ss, cons_sym) =
-            handle_inductive_symbol ss e Const Eager id [] pt in
+            handle_inductive_symbol ss e Const Eager id xs pt in
           (ss, cons_sym::cons_sym_list)
         in
         let (ss, cons_sym_list_rev) =

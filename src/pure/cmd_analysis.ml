@@ -121,7 +121,7 @@ and qidents_of_p_rule (rule : Syntax.p_rule) =
 
 let qidents_of_p_inductive (pind : Syntax.p_inductive) =
   let f (_, pt) = qidents_of_p_term pt in
-  let _, pt, idptlist = pind.elt in
+  let _, _, pt, idptlist = pind.elt in
   qidents_of_p_term pt @ concat_map f idptlist
 
 let qidents_of_cmd (cmd : t) =

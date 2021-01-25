@@ -117,9 +117,11 @@ and args_list : p_args list pp = fun ff ->
 let rule : string -> p_rule pp = fun kw ff {elt=(l,r);_} ->
   Format.fprintf ff "%s %a ↪ %a" kw term l term r
 
-let inductive : string -> p_inductive pp = fun kw ff {elt=(id,a,cs);_} ->
+let inductive : string -> p_inductive pp =
   let cons ff (id,a) = Format.fprintf ff "\n| %a : %a" ident id term a in
-  Format.fprintf ff "%s %a : %a ≔%a" kw ident id term a (List.pp cons "") cs
+  fun kw ff {elt=(id,ps,a,cs);_} ->
+  Format.fprintf ff "%s %a%a : %a ≔%a"
+    kw ident id args_list ps term a (List.pp cons "") cs
 
 let equiv : (p_term * p_term) pp = fun ff (l, r) ->
   Format.fprintf ff "%a ≡ %a" term l term r

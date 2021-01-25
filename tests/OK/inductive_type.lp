@@ -445,9 +445,9 @@ assert indT (consTree t1 n t2) ≡ pconsTree t1 (indT t1) n t2 (indT t2)
 
 ///////////////////// Polymorphic list
 
-inductive L : Set → TYPE ≔
- | nilL  : Πa, L a
- | consL : Πa, τ a → L a → L a
+inductive L (a:Set) : TYPE ≔
+ | nilL  : L a
+ | consL : τ a → L a → L a
 
 assert L : Set → TYPE
 assert nilL  : Πa, L a

@@ -74,22 +74,20 @@ let gen_safe_prefixes : inductive -> string * string = fun ind_list ->
   let x_str = Extra.get_safe_prefix "x" clashing_names in
   p_str, x_str
 
-(** Type of association maps for associating some useful data for the
-   generation of induction principles to each inductive type. *)
-type ind_pred_map = (sym * (tvar * tbox * tbox)) list
-
-(** [create_ind_pred_map pos c ind_list p_str x_str] builds an association
-   list mapping each inductive type symbol of [ind_list] in reverse order to
-   some data useful for generating the induction principles:
+(** Type of maps associating to every inductive type some data useful for
+   generating the induction principles:
 
 - a predicate variable (e.g. p)
 
 - its type (e.g. Nat -> Prop)
 
-- its conclusion (e.g. Πx, π (p x))
+- its conclusion (e.g. Πx, π (p x)). *)
+type ind_pred_map = (sym * (tvar * tbox * tbox)) list
 
-[p_str] is used as prefix for predicate variable names, and [x_str] as prefix
-   for the names of the variable arguments of the predicate. *)
+(** [create_ind_pred_map pos c ind_list p_str x_str] builds an [ind_pred_map]
+   from [ind_list]. The resulting list is in reverse order wrt [ind_list].
+   [p_str] is used as prefix for predicate variable names, and [x_str] as
+   prefix for the names of the variable arguments of the predicate. *)
 let create_ind_pred_map :
       popt -> config -> inductive -> string -> string -> ind_pred_map =
   fun pos c ind_list p_str x_str ->
