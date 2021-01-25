@@ -29,6 +29,11 @@ let pp : 'a pp -> 'a option pp =
 let empty x = match x with | None -> true | Some _ -> false
 let default x d = match x with | None -> d | Some x -> x
 
+let fold : ('a -> 'b -> 'a) -> 'a -> 'b option -> 'a = fun f a o ->
+  match o with
+  | None -> a
+  | Some b -> f a b
+
 (** Total order on option types. *)
 let cmp_option : 'a cmp -> 'a option cmp = fun cmp o o' ->
   match o, o' with
