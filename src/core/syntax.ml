@@ -536,17 +536,18 @@ let fold_idents : ('a -> qident -> 'a) -> 'a -> ast -> 'a = fun f ->
     fold_term (fold_term a l) r
   in
 
-  let fold_rw_patt : 'a -> p_rw_patt -> 'a = fun a p ->
+  let fold_rw_patt_vars : StrSet.t -> 'a -> p_rw_patt -> 'a = fun vs a p ->
     match p.elt with
     | P_rw_Term t
-    | P_rw_InTerm t
-    | P_rw_InIdInTerm (_, t)
-    | P_rw_IdInTerm (_, t) -> fold_term a t
-    | P_rw_TermInIdInTerm (t, _, u)
-    | P_rw_TermAsIdInTerm (t, _, u) -> fold_term (fold_term a t) u
+    | P_rw_InTerm t -> fold_term_vars vs a t
+    | P_rw_InIdInTerm (id, t)
+    | P_rw_IdInTerm (id, t) -> fold_term_vars (StrSet.add id.elt vs) a t
+    | P_rw_TermInIdInTerm (t, id, u)
+    | P_rw_TermAsIdInTerm (t, id, u) ->
+        fold_term_vars (StrSet.add id.elt vs) (fold_term_vars vs a t) u
   in
 
-  let fold_query : 'a -> p_query -> 'a = fun a q ->
+  let fold_query_vars : StrSet.t -> 'a -> p_query -> 'a = fun vs a q ->
     match q.elt with
     | P_query_verbose _
     | P_query_debug (_, _)
@@ -556,9 +557,10 @@ let fold_idents : ('a -> qident -> 'a) -> 'a -> ast -> 'a = fun f ->
     | P_query_print None
     | P_query_proofterm -> a
     | P_query_assert (_, P_assert_typing(t,u))
-    | P_query_assert (_, P_assert_conv(t,u)) -> fold_term (fold_term a t) u
+    | P_query_assert (_, P_assert_conv(t,u)) ->
+        fold_term_vars vs (fold_term_vars vs a t) u
     | P_query_infer (t, _)
-    | P_query_normalize (t, _) -> fold_term a t
+    | P_query_normalize (t, _) -> fold_term_vars vs a t
     | P_query_print (Some qid) -> f a qid
   in
 
@@ -572,21 +574,23 @@ let fold_idents : ('a -> qident -> 'a) -> 'a -> ast -> 'a = fun f ->
     | P_config_unif_rule r -> fold_rule a r
   in
 
-  let fold_tactic : 'a -> p_tactic -> 'a = fun a t ->
+  let fold_tactic : StrSet.t * 'a -> p_tactic -> StrSet.t * 'a =
+    fun (vs,a) t ->
     match t.elt with
     | P_tac_refine t
     | P_tac_apply t
-    | P_tac_rewrite (_, None, t) -> fold_term a t
-    | P_tac_rewrite (_, Some p, t) -> fold_term (fold_rw_patt a p) t
-    | P_tac_query q -> fold_query a q
-    | P_tac_intro _
+    | P_tac_rewrite (_, None, t) -> (vs, fold_term_vars vs a t)
+    | P_tac_rewrite (_, Some p, t) ->
+        (vs, fold_term_vars vs (fold_rw_patt_vars vs a p) t)
+    | P_tac_query q -> (vs, fold_query_vars vs a q)
+    | P_tac_intro idopts -> (add_idopts vs idopts, a)
     | P_tac_simpl
     | P_tac_refl
     | P_tac_sym
     | P_tac_focus _
     | P_tac_why3 _
     | P_tac_solve
-    | P_tac_fail -> a
+    | P_tac_fail -> (vs, a)
   in
 
   let fold_inductive : 'a -> p_inductive -> 'a =
@@ -596,7 +600,7 @@ let fold_idents : ('a -> qident -> 'a) -> 'a -> ast -> 'a = fun f ->
   in
 
   let fold_proof : 'a -> (p_tactic list * p_proof_end) -> 'a =
-    fun a (ts, _) -> List.fold_left fold_tactic a ts
+    fun a (ts, _) -> snd (List.fold_left fold_tactic (StrSet.empty, a) ts)
   in
 
   let fold_command : 'a -> p_command -> 'a = fun a {elt;pos} ->
@@ -604,7 +608,7 @@ let fold_idents : ('a -> qident -> 'a) -> 'a -> ast -> 'a = fun f ->
     | P_require (_, _)
     | P_require_as (_, _)
     | P_open _ -> a
-    | P_query q -> fold_query a q
+    | P_query q -> fold_query_vars StrSet.empty a q
     | P_set c -> fold_config a c
     | P_rules rs -> List.fold_left fold_rule a rs
     | P_inductive (_, ind_list) -> List.fold_left fold_inductive a ind_list
