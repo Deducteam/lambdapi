@@ -396,7 +396,10 @@ let eq_p_config : p_config eq = fun c1 c2 ->
   | P_config_unif_rule r1, P_config_unif_rule r2 -> eq_p_rule r1 r2
   | _, _ -> false
 
-let eq_p_symbol : p_symbol eq = fun
+let eq_p_symbol : p_symbol eq =
+  let eq_tac (ts1,pe1) (ts2,pe2) =
+    List.equal eq_p_tactic ts1 ts2 && pe1.elt = pe2.elt in
+  fun
     { p_sym_mod=p_sym_mod1; p_sym_nam=p_sym_nam1; p_sym_arg=p_sym_arg1;
       p_sym_typ=p_sym_typ1; p_sym_trm=p_sym_trm1; p_sym_prf=p_sym_prf1;
       p_sym_def=p_sym_def1}
@@ -408,8 +411,7 @@ let eq_p_symbol : p_symbol eq = fun
   && List.equal eq_p_args p_sym_arg1 p_sym_arg2
   && Option.equal eq_p_term p_sym_typ1 p_sym_typ2
   && Option.equal eq_p_term p_sym_trm1 p_sym_trm2
-  && let eq_tac (ts1,_) (ts2,_) = List.equal eq_p_tactic ts1 ts2 in
-     Option.equal eq_tac p_sym_prf1 p_sym_prf2
+  && Option.equal eq_tac p_sym_prf1 p_sym_prf2
   && p_sym_def1 = p_sym_def2
 
 (** [eq_command c1 c2] tells whether [c1] and [c2] are the same commands. They
