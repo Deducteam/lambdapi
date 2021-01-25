@@ -527,7 +527,7 @@ let fold_idents : ('a -> qident -> 'a) -> 'a -> ast -> 'a = fun f ->
           (fold_term_vars vs (fold_term_vars vs a u) v) w
 
     | P_UnaO (_, _)
-    | P_BinO (_, _, _) -> assert false
+    | P_BinO (_, _, _) -> a (*FIXME*)
   in
 
   let fold_term : 'a -> p_term -> 'a = fold_term_vars StrSet.empty in
