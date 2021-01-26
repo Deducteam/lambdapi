@@ -222,7 +222,7 @@ let handle_cmd : sig_state -> p_command ->
       let add_ind_sym (ss, ind_sym_list) {elt=(id,xs,pt,_); _} =
         let (ss, ind_sym) =
           handle_inductive_symbol ss e Injec Eager id xs pt in
-        (ss, ind_sym::ind_sym_list)
+        (ss, (ind_sym,List.length xs)::ind_sym_list)
       in
       let (ss, ind_sym_list_rev) =
         List.fold_left add_ind_sym (ss, []) p_ind_list in
@@ -245,7 +245,10 @@ let handle_cmd : sig_state -> p_command ->
         List.fold_left add_constructors (ss, []) p_ind_list
       in
       let ind_list =
-        List.fold_left2 (fun acc x y -> (x,y)::acc) []
+        List.fold_left2
+          (fun acc (ind_sym,n) cons_sym_list ->
+            (ind_sym,n,cons_sym_list)::acc)
+          []
           ind_sym_list_rev cons_sym_list_list_rev
       in
       (* Compute data useful for generating the induction principles. *)
@@ -259,7 +262,7 @@ let handle_cmd : sig_state -> p_command ->
         Inductive.gen_rec_types c ss cmd.pos ind_list ind_pred_map x_str
       in
       (* Add the induction principles in the signature. *)
-      let add_recursor (ss, rec_sym_list) ind_sym rec_typ =
+      let add_recursor (ss, rec_sym_list) (ind_sym, _) rec_typ =
         let rec_name = Inductive.rec_name ind_sym in
         if Sign.mem ss.signature rec_name then
           fatal cmd.pos "Symbol [%s] already exists." rec_name;
@@ -293,7 +296,7 @@ let handle_cmd : sig_state -> p_command ->
       List.iter Tree.update_dtree rec_sym_list;
       (* Store the inductive structure in the signature *)
       List.iter2
-        (fun (ind_sym, cons_sym_list) rec_sym ->
+        (fun (ind_sym, _, cons_sym_list) rec_sym ->
           Sign.add_inductive ss.signature ind_sym cons_sym_list rec_sym)
         ind_list
         rec_sym_list;

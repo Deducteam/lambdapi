@@ -22,7 +22,7 @@ let log_ind = new_logger 'g' "indu" "generating induction principle"
 let log_ind = log_ind.logger
 
 (** Type for inductive type definitions. *)
-type inductive = (sym * sym list) list
+type inductive = (sym * int * sym list) list
 
 (** Builtin configuration for induction. *)
 type config =
@@ -64,7 +64,7 @@ let gen_safe_prefixes : inductive -> string * string = fun ind_list ->
       if s <> "" && (s.[0] = 'x' || s.[0] = 'p') then Extra.StrSet.add s set
       else set
     in
-    let add_names_from_ind set (ind_sym, cons_sym_list) =
+    let add_names_from_ind set (ind_sym, _, cons_sym_list) =
       let set = add_name_from_sym set ind_sym in
       List.fold_left add_name_from_sym set cons_sym_list
     in
@@ -91,7 +91,7 @@ type ind_pred_map = (sym * (tvar * tbox * tbox)) list
 let create_ind_pred_map :
       popt -> config -> inductive -> string -> string -> ind_pred_map =
   fun pos c ind_list p_str x_str ->
-  let create_sym_pred_data i (ind_sym,_) =
+  let create_sym_pred_data i (ind_sym,_,_) =
     (* predicate variable *)
     let p_str = p_str ^ string_of_int i in
     let p = Bindlib.new_var mkfree p_str in
@@ -235,7 +235,7 @@ let gen_rec_types :
     let add_clause_cons ind_sym cons_sym c =
       _Impl (case_of ind_sym cons_sym) c
     in
-    let add_clauses_ind (ind_sym, cons_sym_list) c =
+    let add_clauses_ind (ind_sym, _, cons_sym_list) c =
       List.fold_right (add_clause_cons ind_sym) cons_sym_list c
     in
     let rec_typ = List.fold_right add_clauses_ind ind_list conclusion in
@@ -282,7 +282,7 @@ let iter_rec_rules :
     in
     (* add a case variable for each constructor *)
     let app_case t cons_sym = app_patt t (case_arg_name cons_sym) in
-    let app_cases t (_, cons_sym_list) =
+    let app_cases t (_, _, cons_sym_list) =
       List.fold_left app_case t cons_sym_list
     in
     let head = List.fold_left app_cases head ind_list in
@@ -312,7 +312,7 @@ let iter_rec_rules :
   in
 
   (* Iterate [f] over every rule. *)
-  let g (ind_sym, cons_sym_list) =
+  let g (ind_sym, _, cons_sym_list) =
     List.iter (fun cons_sym -> f (gen_rule_cons ind_sym cons_sym))
       cons_sym_list
   in
