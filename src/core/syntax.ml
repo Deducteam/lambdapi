@@ -2,7 +2,7 @@
 
 open Lplib
 open Lplib.Base
-
+open Lplib.Extra
 open Pos
 
 (** Representation of a (located) identifier. *)
@@ -13,7 +13,8 @@ type ident = strloc
 type p_module_path = (string * bool) list
 
 (** Representation of a possibly qualified (and located) identifier. *)
-type qident = (p_module_path * string) loc
+type qident_aux = p_module_path * string
+type qident = qident_aux loc
 
 (** Representation of the associativity of an infix operator. *)
 type assoc =
@@ -87,7 +88,8 @@ let p_get_args : p_term -> p_term * p_term list = fun t ->
   in p_get_args [] t
 
 (** Parser-level rewriting rule representation. *)
-type p_rule = (p_patt * p_term) loc
+type p_rule_aux = p_patt * p_term
+type p_rule = p_rule_aux loc
 
 (** Parser-level inductive type representation. *)
 type p_inductive_aux = ident * p_args list * p_term * (ident * p_term) list
@@ -123,13 +125,14 @@ module P  = struct
 end
 
 (** Rewrite pattern specification. *)
-type p_rw_patt =
+type p_rw_patt_aux =
   | P_rw_Term           of p_term
   | P_rw_InTerm         of p_term
   | P_rw_InIdInTerm     of ident * p_term
   | P_rw_IdInTerm       of ident * p_term
   | P_rw_TermInIdInTerm of p_term * ident * p_term
   | P_rw_TermAsIdInTerm of p_term * ident * p_term
+type p_rw_patt = p_rw_patt_aux loc
 
 (** Parser-level representation of an assertion. *)
 type p_assertion =
@@ -185,7 +188,7 @@ type p_tactic_aux =
   (** Apply the given term to the current goal. *)
   | P_tac_simpl
   (** Normalize in the focused goal. *)
-  | P_tac_rewrite of bool * p_rw_patt loc option * p_term
+  | P_tac_rewrite of bool * p_rw_patt option * p_term
   (** Apply rewriting using the given pattern and equational proof. The
      boolean indicates whether the equation has to be applied from left to
      right. *)
@@ -281,7 +284,9 @@ type p_command = p_command_aux loc
 (** Top level AST returned by the parser. *)
 type ast = p_command list
 
-let eq_ident : ident eq = fun x1 x2 -> x1.elt = x2.elt
+(** Equality functions on the syntactic expressions ignoring positions. *)
+
+let eq_ident : ident eq = fun i1 i2 -> i1.elt = i2.elt
 
 let eq_qident : qident eq = fun q1 q2 -> q1.elt = q2.elt
 
@@ -291,121 +296,111 @@ let eq_unop : unop eq = fun (n1,p1,id1) (n2,p2,id2) ->
 let eq_binop : binop eq = fun (n1,a1,p1,id1) (n2,a2,p2,id2) ->
   n1 = n2 && a1 = a2 && p1 = p2 && eq_qident id1 id2
 
-let rec eq_p_term : p_term eq = fun t1 t2 ->
-  match (t1.elt, t2.elt) with
-  | (P_Iden(q1,b1)       , P_Iden(q2,b2)             ) ->
-      eq_qident q1 q2 && b1 = b2
-  | (P_Meta(x1,ts1)      , P_Meta(x2,ts2)            ) ->
-      eq_ident x1 x2 && Option.equal (Array.equal eq_p_term) ts1 ts2
-  | (P_Patt(x1,ts1)      , P_Patt(x2,ts2)            ) ->
-      Option.equal eq_ident x1 x2
+let rec eq_p_term : p_term eq = fun {elt=t1;_} {elt=t2;_} ->
+  match t1, t2 with
+  | P_Type, P_Type
+  | P_Wild, P_Wild -> true
+  | P_Iden(q1,b1), P_Iden(q2,b2) -> eq_qident q1 q2 && b1 = b2
+  | P_Meta(i1,ts1), P_Meta(i2,ts2) ->
+      eq_ident i1 i2 && Option.equal (Array.equal eq_p_term) ts1 ts2
+  | P_Patt(io1,ts1), P_Patt(io2,ts2) ->
+      Option.equal eq_ident io1 io2
       && Option.equal (Array.equal eq_p_term) ts1 ts2
-  | (P_Appl(t1,u1)       , P_Appl(t2,u2)             )
-  | (P_Impl(t1,u1)       , P_Impl(t2,u2)             ) ->
-      eq_p_term t1 t2 && eq_p_term u1 u2
-  | (P_Abst(xs1,t1)      , P_Abst(xs2,t2)            )
-  | (P_Prod(xs1,t1)      , P_Prod(xs2,t2)            ) ->
+  | P_Appl(t1,u1), P_Appl(t2,u2)
+  | P_Impl(t1,u1), P_Impl(t2,u2) -> eq_p_term t1 t2 && eq_p_term u1 u2
+  | P_Abst(xs1,t1), P_Abst(xs2,t2)
+  | P_Prod(xs1,t1), P_Prod(xs2,t2) ->
       List.equal eq_p_args xs1 xs2 && eq_p_term t1 t2
-  | (P_LLet(x1,xs1,a1,t1,u1), P_LLet(x2,xs2,a2,t2,u2)) ->
-      eq_ident x1 x2 && Option.equal eq_p_term a1 a2 && eq_p_term t1 t2
-      && eq_p_term u1 u2 && List.equal eq_p_args xs1 xs2
-  | (P_UnaO(u1,t1)       , P_UnaO(u2,t2)             ) ->
-      eq_unop u1 u2 && eq_p_term t1 t2
-  | (P_BinO(t1,b1,u1)    , P_BinO(t2,b2,u2)          ) ->
-      eq_binop b1 b2 && eq_p_term t1 t2 && eq_p_term u1 u2
-  | (P_Wrap(t1)          , P_Wrap(t2)                ) ->
-      eq_p_term t1 t2
-  | (P_Expl(t1)          , P_Expl(t2)                ) ->
-      eq_p_term t1 t2
-  | (t1                  ,                   t2      ) ->
-      t1 = t2
+  | P_LLet(i1,xs1,a1,t1,u1), P_LLet(i2,xs2,a2,t2,u2) ->
+      eq_ident i1 i2 && List.equal eq_p_args xs1 xs2
+      && Option.equal eq_p_term a1 a2 && eq_p_term t1 t2 && eq_p_term u1 u2
+  | P_UnaO(u1,t1), P_UnaO(u2,t2) -> eq_unop u1 u2 && eq_p_term t1 t2
+  | P_BinO(t1,b1,u1), P_BinO(t2,b2,u2) ->
+      eq_p_term t1 t2 && eq_binop b1 b2 && eq_p_term u1 u2
+  | P_Wrap t1, P_Wrap t2
+  | P_Expl t1, P_Expl t2 -> eq_p_term t1 t2
+  | P_NLit n1, P_NLit n2 -> n1 = n2
+  | _,_ -> false
 
-and eq_p_args : p_args eq = fun (il1,ao1,b1) (il2,ao2,b2) ->
-  List.equal (Option.equal eq_ident) il1 il2
+and eq_p_args : p_args eq = fun (i1,ao1,b1) (i2,ao2,b2) ->
+  List.equal (Option.equal eq_ident) i1 i2
   && Option.equal eq_p_term ao1 ao2 && b1 = b2
 
-let eq_p_rule : p_rule eq = fun r1 r2 ->
-  let {elt = (lhs1, rhs1); _} = r1 in
-  let {elt = (lhs2, rhs2); _} = r2 in
-  eq_p_term lhs1 lhs2 && eq_p_term rhs1 rhs2
+let eq_p_rule : p_rule eq = fun {elt=(l1,r1);_} {elt=(l2,r2);_} ->
+  eq_p_term l1 l2 && eq_p_term r1 r2
 
 let eq_p_inductive : p_inductive eq =
   let eq_cons (i1,t1) (i2,t2) = eq_ident i1 i2 && eq_p_term t1 t2 in
-  fun {elt = (i1, ps1, t1, il1); _} {elt = (i2, ps2, t2, il2); _} ->
-  List.equal eq_p_args ps1 ps2
-  && List.equal eq_cons ((i1,t1)::il1) ((i2,t2)::il2)
+  fun {elt=(i1,xs1,t1,l1);_} {elt=(i2,xs2,t2,l2);_} ->
+  List.equal eq_p_args xs1 xs2
+  && List.equal eq_cons ((i1,t1)::l1) ((i2,t2)::l2)
 
-let eq_p_rw_patt : p_rw_patt loc eq = fun r1 r2 ->
-  match (r1.elt, r2.elt) with
-  | (P_rw_Term(t1)                , P_rw_Term(t2)                )
-  | (P_rw_InTerm(t1)              , P_rw_InTerm(t2)              ) ->
-      eq_p_term t1 t2
-  | (P_rw_InIdInTerm(x1,t1)       , P_rw_InIdInTerm(x2,t2)       )
-  | (P_rw_IdInTerm(x1,t1)         , P_rw_IdInTerm(x2,t2)         ) ->
-      eq_ident x1 x2 && eq_p_term t1 t2
-  | (P_rw_TermInIdInTerm(t1,x1,u1), P_rw_TermInIdInTerm(t2,x2,u2))
-  | (P_rw_TermAsIdInTerm(t1,x1,u1), P_rw_TermAsIdInTerm(t2,x2,u2)) ->
-      eq_ident x1 x2 && eq_p_term t1 t2 && eq_p_term u1 u2
-  | (_                            , _                            ) ->
-      false
+let eq_p_rw_patt : p_rw_patt eq = fun {elt=r1;_} {elt=r2;_} ->
+  match r1, r2 with
+  | P_rw_Term t1, P_rw_Term t2
+  | P_rw_InTerm t1, P_rw_InTerm t2 -> eq_p_term t1 t2
+  | P_rw_InIdInTerm(i1,t1), P_rw_InIdInTerm(i2,t2)
+  | P_rw_IdInTerm(i1,t1), P_rw_IdInTerm(i2,t2) ->
+      eq_ident i1 i2 && eq_p_term t1 t2
+  | P_rw_TermInIdInTerm(t1,i1,u1), P_rw_TermInIdInTerm(t2,i2,u2)
+  | P_rw_TermAsIdInTerm(t1,i1,u1), P_rw_TermAsIdInTerm(t2,i2,u2) ->
+      eq_p_term t1 t2 && eq_ident i1 i2 && eq_p_term u1 u2
+  | _, _ -> false
 
 let eq_p_assertion : p_assertion eq = fun a1 a2 ->
-  match (a1, a2) with
-  | (P_assert_typing(t1,a1), P_assert_typing(t2,a2)) ->
-      eq_p_term t1 t2 && eq_p_term a1 a2
-  | (P_assert_conv(t1,u1)  , P_assert_conv(t2,u2)  ) ->
+  match a1, a2 with
+  | P_assert_typing(t1,u1), P_assert_typing(t2,u2)
+  | P_assert_conv(t1,u1), P_assert_conv(t2,u2) ->
       eq_p_term t1 t2 && eq_p_term u1 u2
-  | (_                     , _                     ) ->
-      false
+  | _, _ -> false
 
-let eq_p_query : p_query eq = fun q1 q2 ->
-  match (q1.elt, q2.elt) with
-  | (P_query_assert(b1,a1)     , P_query_assert(b2,a2)     ) ->
+let eq_p_query : p_query eq = fun {elt=q1;_} {elt=q2;_} ->
+  match q1, q2 with
+  | P_query_assert(b1,a1), P_query_assert(b2,a2) ->
      b1 = b2 && eq_p_assertion a1 a2
-  | (P_query_infer(t1,c1)      , P_query_infer(t2,c2)      ) ->
-     eq_p_term t1 t2 && c1 = c2
-  | (P_query_normalize(t1,c1)  , P_query_normalize(t2,c2)  ) ->
-     eq_p_term t1 t2 && c1 = c2
-  | (P_query_prover(s1)        , P_query_prover(s2)        ) ->
-     s1 = s2
-  | (P_query_prover_timeout(t1), P_query_prover_timeout(t2)) ->
-     t1 = t2
-  | (P_query_print(s1)         , P_query_print(s2)         ) ->
-     Option.equal eq_qident s1 s2
-  | (_                         , _                         ) ->
-      false
+  | P_query_infer(t1,c1), P_query_infer(t2,c2)
+  | P_query_normalize(t1,c1), P_query_normalize(t2,c2) ->
+      eq_p_term t1 t2 && c1 = c2
+  | P_query_prover s1, P_query_prover s2 -> s1 = s2
+  | P_query_prover_timeout t1, P_query_prover_timeout t2 -> t1 = t2
+  | P_query_print io1, P_query_print(io2) -> Option.equal eq_qident io1 io2
+  | P_query_verbose n1, P_query_verbose n2 -> n1 = n2
+  | P_query_debug (b1,s1), P_query_debug (b2,s2) -> b1 = b2 && s1 = s2
+  | P_query_proofterm, P_query_proofterm -> true
+  | _, _ -> false
 
-let eq_p_tactic : p_tactic eq = fun t1 t2 ->
-  match (t1.elt, t2.elt) with
-  | (P_tac_refine(t1)    , P_tac_refine(t2)    ) ->
-      eq_p_term t1 t2
-  | (P_tac_intro(xs1)    , P_tac_intro(xs2)    ) ->
+let eq_p_tactic : p_tactic eq = fun {elt=t1;_} {elt=t2;_} ->
+  match t1, t2 with
+  | P_tac_apply t1, P_tac_apply t2
+  | P_tac_refine t1, P_tac_refine t2 -> eq_p_term t1 t2
+  | P_tac_intro xs1, P_tac_intro xs2 ->
       List.equal (Option.equal eq_ident) xs1 xs2
-  | (P_tac_apply(t1)     , P_tac_apply(t2)     ) ->
-      eq_p_term t1 t2
-  | (P_tac_rewrite(b1,r1,t1), P_tac_rewrite(b2,r2,t2)) ->
-      b1 = b2 && Option.equal eq_p_rw_patt r1 r2 && eq_p_term t1 t2
-  | (P_tac_query(q1)     , P_tac_query(q2)     ) ->
-      eq_p_query q1 q2
-  | (P_tac_why3(s1)      , P_tac_why3(s2)      ) ->
-      s1 = s2
-  | (t1                  , t2                  ) ->
-      t1 = t2
+  | P_tac_rewrite(b1,p1,t1), P_tac_rewrite(b2,p2,t2) ->
+      b1 = b2 && Option.equal eq_p_rw_patt p1 p2 && eq_p_term t1 t2
+  | P_tac_query q1, P_tac_query q2 -> eq_p_query q1 q2
+  | P_tac_why3 so1, P_tac_why3 so2 -> so1 = so2
+  | P_tac_focus n1, P_tac_focus n2 -> n1 = n2
+  | P_tac_simpl, P_tac_simpl
+  | P_tac_solve, P_tac_solve
+  | P_tac_fail, P_tac_fail
+  | P_tac_refl, P_tac_refl
+  | P_tac_sym, P_tac_sym -> true
+  | _, _ -> false
 
 let eq_p_config : p_config eq = fun c1 c2 ->
   match (c1, c2) with
-  | (P_config_builtin(s1,q1), P_config_builtin(s2,q2)) ->
+  | P_config_builtin(s1,q1), P_config_builtin(s2,q2) ->
       s1 = s2 && eq_qident q1 q2
-  | (P_config_unop u1       , P_config_unop u2       ) ->
-      eq_unop u1 u2
-  | (P_config_binop b1      , P_config_binop b2      ) ->
-      eq_binop b1 b2
-  | (P_config_quant q1      , P_config_quant q2      ) ->
-      eq_qident q1 q2
-  | (c1                     , c2                     ) ->
-      c1 = c2
+  | P_config_unop u1, P_config_unop u2 -> eq_unop u1 u2
+  | P_config_binop b1, P_config_binop b2 -> eq_binop b1 b2
+  | P_config_quant q1, P_config_quant q2 -> eq_qident q1 q2
+  | P_config_unif_rule r1, P_config_unif_rule r2 -> eq_p_rule r1 r2
+  | _, _ -> false
 
-let eq_p_symbol : p_symbol eq = fun
+let eq_p_symbol : p_symbol eq =
+  let eq_tac (ts1,pe1) (ts2,pe2) =
+    List.equal eq_p_tactic ts1 ts2 && pe1.elt = pe2.elt in
+  fun
     { p_sym_mod=p_sym_mod1; p_sym_nam=p_sym_nam1; p_sym_arg=p_sym_arg1;
       p_sym_typ=p_sym_typ1; p_sym_trm=p_sym_trm1; p_sym_prf=p_sym_prf1;
       p_sym_def=p_sym_def1}
@@ -417,29 +412,196 @@ let eq_p_symbol : p_symbol eq = fun
   && List.equal eq_p_args p_sym_arg1 p_sym_arg2
   && Option.equal eq_p_term p_sym_typ1 p_sym_typ2
   && Option.equal eq_p_term p_sym_trm1 p_sym_trm2
-  && let eq_tac (ts1,_) (ts2,_) = List.equal eq_p_tactic ts1 ts2 in
-     Option.equal eq_tac p_sym_prf1 p_sym_prf2
+  && Option.equal eq_tac p_sym_prf1 p_sym_prf2
   && p_sym_def1 = p_sym_def2
 
 (** [eq_command c1 c2] tells whether [c1] and [c2] are the same commands. They
     are compared up to source code positions. *)
-let eq_p_command : p_command eq = fun c1 c2 ->
-  match (c1.elt, c2.elt) with
-  | (P_require(b1,ps1)           , P_require(b2,ps2)           ) ->
-     b1 = b2 && List.equal (=) ps1 ps2
-  | (P_open(ps1)                 , P_open(ps2)                 ) ->
-     List.equal (=) ps1 ps2
-  | (P_require_as(p1,id1)  , P_require_as(p2,id2)              ) ->
-     p1 = p2 && id1.elt = id2.elt
-  | (P_symbol s1                 , P_symbol s2                 ) ->
-      eq_p_symbol s1 s2
-  | (P_rules(rs1)                , P_rules(rs2)                ) ->
-      List.equal eq_p_rule rs1 rs2
-  | (P_inductive(m1,il1)         , P_inductive(m2,il2)         ) ->
-      m1 = m2 && List.equal eq_p_inductive il1 il2
-  | (P_set(c1)                   , P_set(c2)                   ) ->
-      eq_p_config c1 c2
-  | (P_query(q1)                 , P_query(q2)                 ) ->
-      eq_p_query q1 q2
-  | (_                           , _                           ) ->
-      false
+let eq_p_command : p_command eq = fun {elt=c1;_} {elt=c2;_} ->
+  match c1, c2 with
+  | P_require(b1,ps1), P_require(b2,ps2) -> b1 = b2 && List.equal (=) ps1 ps2
+  | P_open ps1, P_open ps2 -> List.equal (=) ps1 ps2
+  | P_require_as(p1,{elt=(s1,b1);_}),
+    P_require_as(p2,{elt=(s2,b2);_}) -> p1 = p2 && s1 = s2 && b1 = b2
+  | P_symbol s1, P_symbol s2 -> eq_p_symbol s1 s2
+  | P_rules(r1), P_rules(r2) ->  List.equal eq_p_rule r1 r2
+  | P_inductive(m1,l1), P_inductive(m2,l2) ->
+      m1 = m2 && List.equal eq_p_inductive l1 l2
+  | P_set(c1), P_set(c2) -> eq_p_config c1 c2
+  | P_query(q1), P_query(q2) -> eq_p_query q1 q2
+  | _, _ -> false
+
+(** [fold_idents f a ast] allows to recursively build a value of type ['a]
+   starting from [a] and by applying [f] on each identifier occurring in [ast]
+   corresponding to a function symbol: variables (term variables or assumption
+   names) are excluded.
+
+NOTE: This function is incomplete if an assumption name hides a function
+symbol. Example:
+
+symbol A:TYPE;
+symbol a:A;
+symbol p:((A->A)->A->A)->A :=
+begin
+  intro h
+  apply h
+  // proof of A->A
+  intro a
+  apply a // here a is an assumption
+  // proof of A
+  apply a // here a is a function symbol
+end; *)
+
+let fold_idents : ('a -> qident -> 'a) -> 'a -> ast -> 'a = fun f ->
+
+  let add_idopt : StrSet.t -> ident option -> StrSet.t = fun vs idopt ->
+    match idopt with
+    | None -> vs
+    | Some id -> StrSet.add id.elt vs
+  in
+
+  let add_idopts = List.fold_left add_idopt in
+
+  let rec fold_term_vars : StrSet.t -> 'a -> p_term -> 'a =
+    fun vs a {elt;pos} ->
+    match elt with
+    | P_Iden ({elt=(mp,s);_} as qid, _) ->
+        if mp = [] && StrSet.mem s vs then a else f a qid
+
+    | P_Type
+    | P_Wild
+    | P_Meta (_, None)
+    | P_Patt (_, None)
+    | P_NLit _ -> a
+
+    | P_Meta (_, Some ts)
+    | P_Patt (_, Some ts) -> Array.fold_left (fold_term_vars vs) a ts
+
+    | P_Appl (t, u)
+    | P_Impl (t, u) -> fold_term_vars vs (fold_term_vars vs a t) u
+
+    | P_Abst ((idopts,Some t,_)::args_list, u)
+    | P_Prod ((idopts,Some t,_)::args_list, u) ->
+        fold_term_vars (add_idopts vs idopts) (fold_term_vars vs a t)
+          (Pos.make pos (P_Abst (args_list, u)))
+
+    | P_Abst ((idopts,None,_)::args_list, u)
+    | P_Prod ((idopts,None,_)::args_list, u) ->
+        fold_term_vars (add_idopts vs idopts) a
+          (Pos.make pos (P_Abst (args_list, u)))
+
+    | P_Abst ([], t)
+    | P_Prod ([], t)
+    | P_Wrap t
+    | P_Expl t -> fold_term_vars vs a t
+
+    | P_LLet (id, (idopts,None,_)::args_list, u, v, w) ->
+        fold_term_vars (add_idopts vs idopts) a
+          (Pos.make pos (P_LLet (id, args_list, u, v, w)))
+    | P_LLet (id, (idopts,Some t,_)::args_list, u, v, w) ->
+        fold_term_vars (add_idopts vs idopts) (fold_term_vars vs a t)
+          (Pos.make pos (P_LLet (id, args_list, u, v, w)))
+
+    | P_LLet (id, [], None, v, w) ->
+        fold_term_vars (StrSet.add id.elt vs) (fold_term_vars vs a v) w
+    | P_LLet (id, [], Some u, v, w) ->
+        fold_term_vars (StrSet.add id.elt vs)
+          (fold_term_vars vs (fold_term_vars vs a u) v) w
+
+    | P_UnaO (_, _)
+    | P_BinO (_, _, _) -> a (*FIXME*)
+  in
+
+  let fold_term : 'a -> p_term -> 'a = fold_term_vars StrSet.empty in
+
+  let fold_rule : 'a -> p_rule -> 'a = fun a {elt=(l,r);_} ->
+    fold_term (fold_term a l) r
+  in
+
+  let fold_rw_patt_vars : StrSet.t -> 'a -> p_rw_patt -> 'a = fun vs a p ->
+    match p.elt with
+    | P_rw_Term t
+    | P_rw_InTerm t -> fold_term_vars vs a t
+    | P_rw_InIdInTerm (id, t)
+    | P_rw_IdInTerm (id, t) -> fold_term_vars (StrSet.add id.elt vs) a t
+    | P_rw_TermInIdInTerm (t, id, u)
+    | P_rw_TermAsIdInTerm (t, id, u) ->
+        fold_term_vars (StrSet.add id.elt vs) (fold_term_vars vs a t) u
+  in
+
+  let fold_query_vars : StrSet.t -> 'a -> p_query -> 'a = fun vs a q ->
+    match q.elt with
+    | P_query_verbose _
+    | P_query_debug (_, _)
+    | P_query_flag (_, _)
+    | P_query_prover _
+    | P_query_prover_timeout _
+    | P_query_print None
+    | P_query_proofterm -> a
+    | P_query_assert (_, P_assert_typing(t,u))
+    | P_query_assert (_, P_assert_conv(t,u)) ->
+        fold_term_vars vs (fold_term_vars vs a t) u
+    | P_query_infer (t, _)
+    | P_query_normalize (t, _) -> fold_term_vars vs a t
+    | P_query_print (Some qid) -> f a qid
+  in
+
+  let fold_config : 'a -> p_config -> 'a = fun a c ->
+    match c with
+    | P_config_builtin (_, qid)
+    | P_config_unop (_, _, qid)
+    | P_config_binop (_, _, _, qid)
+    | P_config_quant qid -> f a qid
+    | P_config_ident _ -> a
+    | P_config_unif_rule r -> fold_rule a r
+  in
+
+  let fold_tactic : StrSet.t * 'a -> p_tactic -> StrSet.t * 'a =
+    fun (vs,a) t ->
+    match t.elt with
+    | P_tac_refine t
+    | P_tac_apply t
+    | P_tac_rewrite (_, None, t) -> (vs, fold_term_vars vs a t)
+    | P_tac_rewrite (_, Some p, t) ->
+        (vs, fold_term_vars vs (fold_rw_patt_vars vs a p) t)
+    | P_tac_query q -> (vs, fold_query_vars vs a q)
+    | P_tac_intro idopts -> (add_idopts vs idopts, a)
+    | P_tac_simpl
+    | P_tac_refl
+    | P_tac_sym
+    | P_tac_focus _
+    | P_tac_why3 _
+    | P_tac_solve
+    | P_tac_fail -> (vs, a)
+  in
+
+  let fold_inductive : 'a -> p_inductive -> 'a =
+    fun a {elt = (id,xs,t,cons_list); pos} ->
+    let fold_cons a (_,t) = fold_term a (Pos.make pos (P_Prod(xs,t))) in
+    List.fold_left fold_cons a ((id,t)::cons_list)
+  in
+
+  let fold_proof : 'a -> (p_tactic list * p_proof_end) -> 'a =
+    fun a (ts, _) -> snd (List.fold_left fold_tactic (StrSet.empty, a) ts)
+  in
+
+  let fold_command : 'a -> p_command -> 'a = fun a {elt;pos} ->
+    match elt with
+    | P_require (_, _)
+    | P_require_as (_, _)
+    | P_open _ -> a
+    | P_query q -> fold_query_vars StrSet.empty a q
+    | P_set c -> fold_config a c
+    | P_rules rs -> List.fold_left fold_rule a rs
+    | P_inductive (_, ind_list) -> List.fold_left fold_inductive a ind_list
+    | P_symbol {p_sym_nam;p_sym_arg;p_sym_typ;p_sym_trm;p_sym_prf;_} ->
+        let d = Pos.none P_Type in
+        let t = match p_sym_trm with Some t -> t | None -> d in
+        Option.fold fold_proof
+          (fold_term a
+             (Pos.make pos
+                (P_LLet (p_sym_nam, p_sym_arg, p_sym_typ, t, d))))
+        p_sym_prf
+  in
+
+  List.fold_left fold_command

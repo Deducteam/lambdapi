@@ -143,7 +143,7 @@ let proof_end : p_proof_end pp = fun ff {elt;_} ->
 
 let rw_patt : p_rw_patt pp = fun ff p ->
   let out fmt = Format.fprintf ff fmt in
-  match p with
+  match p.elt with
   | P_rw_Term(t)               -> out "%a" term t
   | P_rw_InTerm(t)             -> out "in %a" term t
   | P_rw_InIdInTerm(x,t)       -> out "in %a in %a" ident x term t
@@ -184,7 +184,7 @@ let tactic : p_tactic pp = fun ff t ->
   | P_tac_simpl -> out "simpl"
   | P_tac_rewrite(b,p,t)     ->
       let dir ff b = if not b then Format.fprintf ff " -" in
-      let pat ff p = Format.fprintf ff " [%a]" rw_patt p.elt in
+      let pat ff p = Format.fprintf ff " [%a]" rw_patt p in
       out "rewrite%a%a%a" dir b (Option.pp pat) p term t
   | P_tac_refl -> out "reflexivity"
   | P_tac_sym -> out "symmetry"
