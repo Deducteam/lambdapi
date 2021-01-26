@@ -75,14 +75,12 @@ let gen_safe_prefixes : inductive -> string * string = fun ind_list ->
   p_str, x_str
 
 (** Type of maps associating to every inductive type some data useful for
-   generating the induction principles:
-
-- a predicate variable (e.g. p)
-
-- its type (e.g. Nat -> Prop)
-
-- its conclusion (e.g. Πx, π (p x)). *)
-type ind_pred_map = (sym * (tvar * tbox * tbox)) list
+   generating the induction principles. *)
+type data = { ind_arity : int (** number of parameters *)
+            ; ind_var : tvar (** predicate variable *)
+            ; ind_type : tbox (** predicate variable type *)
+            ; ind_conclu : tbox (** induction principle conlusion *) }
+type ind_pred_map = (sym * data) list
 
 (** [create_ind_pred_map pos c ind_list p_str x_str] builds an [ind_pred_map]
    from [ind_list]. The resulting list is in reverse order wrt [ind_list].
@@ -91,21 +89,21 @@ type ind_pred_map = (sym * (tvar * tbox * tbox)) list
 let create_ind_pred_map :
       popt -> config -> inductive -> string -> string -> ind_pred_map =
   fun pos c ind_list p_str x_str ->
-  let create_sym_pred_data i (ind_sym,_,_) =
+  let create_sym_pred_data i (ind_sym,ind_arity,_) =
     (* predicate variable *)
     let p_str = p_str ^ string_of_int i in
-    let p = Bindlib.new_var mkfree p_str in
+    let ind_var = Bindlib.new_var mkfree p_str in
     (* predicate type *)
     let codom ts = _Impl (_Appl_symb ind_sym ts) (_Symb c.symb_Prop) in
-    let p_type = gen_ind_typ_codom pos ind_sym codom x_str in
+    let ind_type = gen_ind_typ_codom pos ind_sym codom x_str in
     (* predicate conclusion *)
     let codom ts =
       let x = Bindlib.new_var mkfree x_str in
-      let t = Bindlib.bind_var x (prf_of c p ts (_Vari x)) in
+      let t = Bindlib.bind_var x (prf_of c ind_var ts (_Vari x)) in
       _Prod (_Appl_symb ind_sym ts) t
     in
-    let conclusion = gen_ind_typ_codom pos ind_sym codom x_str in
-    (ind_sym, (p, p_type, conclusion))
+    let ind_conclu = gen_ind_typ_codom pos ind_sym codom x_str in
+    (ind_sym, {ind_arity; ind_var; ind_type; ind_conclu})
   in
   List.rev_mapi create_sym_pred_data ind_list
 
@@ -172,8 +170,8 @@ let fold_cons_type
     match Basics.get_args t with
     | (Symb(s), ts) ->
         if s == ind_sym then
-          let pred_var,_,_ = List.assq ind_sym ind_pred_map in
-          codom xs acc pred_var ts
+          let d = List.assq ind_sym ind_pred_map in
+          codom xs acc d.ind_var ts
         else fatal pos "%a is not a constructor of %a"
                pp_symbol cons_sym pp_symbol ind_sym
     | (Prod(t,u), _) ->
@@ -184,8 +182,8 @@ let fold_cons_type
          | (Symb(s), ts) ->
              begin
                match List.assq_opt s ind_pred_map with
-               | Some (pred_var,_,_) ->
-                   let aux = aux s pred_var ts x in
+               | Some d ->
+                   let aux = aux s d.ind_var ts x in
                    let next = fold (x::xs) (acc_rec_dom acc x aux) u in
                    rec_dom t x aux next
                | None ->
@@ -231,15 +229,16 @@ let gen_rec_types :
   in
 
   (* Generates an induction principle for each type. *)
-  let gen_rec_type (_, (_,_,conclusion)) =
+  let gen_rec_type (_, d) =
     let add_clause_cons ind_sym cons_sym c =
       _Impl (case_of ind_sym cons_sym) c
     in
     let add_clauses_ind (ind_sym, _, cons_sym_list) c =
       List.fold_right (add_clause_cons ind_sym) cons_sym_list c
     in
-    let rec_typ = List.fold_right add_clauses_ind ind_list conclusion in
-    let add_quantifier c (_,(v,a,_)) = _Prod a (Bindlib.bind_var v c) in
+    let rec_typ = List.fold_right add_clauses_ind ind_list d.ind_conclu in
+    let add_quantifier c (_,d) =
+      _Prod d.ind_type (Bindlib.bind_var d.ind_var c) in
     let rec_typ = List.fold_left add_quantifier rec_typ ind_pred_map in
     Bindlib.unbox rec_typ
   in
@@ -277,7 +276,7 @@ let iter_rec_rules :
     let app_patt t n = P.appl t (P.patt0 n) in
     (* add a predicate variable for each inductive type *)
     let head =
-      let app_pred (_,(v,_,_)) t = app_patt t (Bindlib.name_of v) in
+      let app_pred (_,d) t = app_patt t (Bindlib.name_of d.ind_var) in
       List.fold_right app_pred ind_pred_map (P.iden (rec_name sym_ind))
     in
     (* add a case variable for each constructor *)
