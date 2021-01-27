@@ -12,7 +12,7 @@ Replace Earley by Menhir, Pratter and Sedlex
 - The syntax `λx y z: nat, ...` is not authorised anymore, but 
   `λ(x y z: nat), ...` is, and `λ x : N, t` is as well.
 
-- Unification rules syntax has changed: the left hand side must be enclosed in
+- Unification rules syntax has changed: the right hand side must be enclosed in
   `begin ... end`, so
   ```
   set unif_rule $x + $y ≡ 0 ↪ $x ≡ 0; $y ≡ 0
@@ -21,7 +21,7 @@ Replace Earley by Menhir, Pratter and Sedlex
   ```
   set unif_rule $x + $y ≡ 0 ↪ begin $x ≡ 0; $y ≡ 0 end
   ```
-- `set declared "?"` is not needed anymore,
+- `set declared "?"` has been removed,
 
 - Any (depending on accepted utf8 codepoints) UTF8 identifier is by default
   valid.
@@ -41,6 +41,7 @@ Replace Earley by Menhir, Pratter and Sedlex
 
 - Parsing and handling are interleaved: the parser returns a stream of parsed
   commands. Requesting an item of the stream parses one command in the file.
+  *Note:* this does not apply for the LSP server
   
 - `pp_hint` is renamed to `notation`
 
