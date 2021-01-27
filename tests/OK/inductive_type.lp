@@ -34,10 +34,11 @@ set builtin "eqind" ≔ eq_ind
 
 ////////////////// Primary color
 
-inductive RGB : TYPE ≔
+begin inductive RGB : TYPE ≔
  | red  : RGB
  | green : RGB
  | blue : RGB
+end
 
 assert RGB : TYPE
 assert red : RGB
@@ -60,10 +61,11 @@ assert indRGB blue ≡ pblue
 
 ////////////////// Type color
 
-inductive Color : TYPE ≔
+begin inductive Color : TYPE ≔
  | black : Color
  | white : Color
  | primary : RGB → Color
+end
 
 assert Color : TYPE
 assert white : Color
@@ -94,9 +96,10 @@ assert indColor (primary rgb) ≡ pprimary rgb
 // | false : 𝔹
 // identifier ind_𝔹 not recognized
 
-inductive B : TYPE ≔
+begin inductive B : TYPE ≔
  | true  : B
  | false : B
+end
 
 assert B: TYPE
 assert true  : B
@@ -119,16 +122,17 @@ rule B ↪ τ bool
 
 ////////////////// False (not predicate one)
 
-inductive False : TYPE ≔
+begin inductive False : TYPE ≔ end
 
 assert False : TYPE
 assert ind_False : Π(p:False → Prop) (f : False), π (p f)
 
 ///////////////// Natural number
 
-inductive N : TYPE ≔
+begin inductive N : TYPE ≔
  | z    : N
  | succ : N → N
+end
 
 assert N : TYPE
 assert z : N
@@ -170,7 +174,7 @@ set infix left 6 "≤" ≔ le
 
 /////////////////// Arithmetic and boolean expressions
 
-inductive Expr : TYPE ≔
+begin inductive Expr : TYPE ≔
  | Lit : N → Expr
  | Add : Expr → Expr → Expr
  | If  : BExpr → Expr → Expr → Expr
@@ -179,6 +183,7 @@ with BExpr : TYPE ≔
  | And  : BExpr → BExpr → BExpr
  | Not  : BExpr → BExpr
  | Equal  : Expr → Expr → BExpr
+end
 
 assert Expr : TYPE
 assert Lit : N → Expr
@@ -238,7 +243,7 @@ assert indBE (Equal e1 e2) ≡ pEqual e1 (indE e1) e2 (indE e2)
 
 /////////////////// Arithmetic and boolean expressions, and commands
 
-inductive AExp : TYPE ≔
+begin inductive AExp : TYPE ≔
  | aLit : N → AExp
  | aAdd : AExp → AExp → AExp
  | aIf  : BExp → AExp → AExp → AExp
@@ -250,6 +255,7 @@ with CExp : TYPE ≔
  | cAss  : Set → AExp → CExp // FIXME: What is Set here ?
  | cSeq  : CExp → CExp → CExp
  | cIf   : BExp → CExp → CExp → CExp
+end
 
 assert AExp : TYPE
 assert aLit : N → AExp
@@ -336,11 +342,12 @@ assert indC (cIf b c1 c2) ≡ pcIf b (indB b) c1 (indC c1) c2 (indC c2)
 
 ////////////////////// Even and odd
 
-inductive even : N → TYPE ≔
+begin inductive even : N → TYPE ≔
   | even_O : even 0
   | even_S : Πn, odd n → even (succ n)
 with odd : N → TYPE ≔
   | odd_S : Πn, even n → odd (succ n)
+end
 
 assert even : N → TYPE
 assert even_O : even 0
@@ -377,9 +384,10 @@ assert indeven _ (even_S n oddn) ≡ peven_S n oddn (indodd _ oddn)
 
 ////////////////////// List of natural numbers
 
-inductive List : TYPE ≔
+begin inductive List : TYPE ≔
  | nil  : List
  | cons : N → List → List
+end
 
 assert List : TYPE
 assert nil  : List
@@ -401,8 +409,9 @@ rule List ↪ τ list
 
 ///////////////// Couple of natural numbers
 
-inductive nat_prod : TYPE ≔
+begin inductive nat_prod : TYPE ≔
  | prod : N → N → nat_prod
+end
 
 assert nat_prod : TYPE
 assert prod : N → N → nat_prod
@@ -421,9 +430,10 @@ assert indNP (prod n1 n2) ≡ pprod n1 n2
 
 ///////////////// Binary tree
 
-inductive Tree : TYPE ≔
+begin inductive Tree : TYPE ≔
   | leaf : Tree
   | consTree : Tree → N → Tree → Tree
+end
 
 assert Tree : TYPE
 assert leaf : Tree
@@ -445,32 +455,34 @@ assert indT (consTree t1 n t2) ≡ pconsTree t1 (indT t1) n t2 (indT t2)
 
 ///////////////////// Polymorphic list
 
-inductive L (a:Set) : TYPE ≔
+begin (a:Set) inductive L : TYPE ≔
  | nilL  : L a
  | consL : τ a → L a → L a
+end
 
 assert L : Set → TYPE
-assert nilL  : Πa, L a
-assert consL : Πa, τ a → L a → L a
+assert nilL : Π a, L a
+assert consL : Π a, τ a → L a → L a
 
-assert ind_L :
-  Πp, (Πa, π(p a (nilL a))) → (Πa x l, π(p a l) → π(p a (consL a x l))) → Πa l, π(p a l)
+assert ind_L : Π a p,
+  π(p (nilL a)) → (Π x l, π(p l) → π(p (consL a x l))) → Π l, π(p l)
 
-symbol pList : Πa, L a → Prop
-symbol pnilL : Πa, π (pList a (nilL a))
-symbol pconsL : Πa x l, π (pList a l) → π (pList a (consL a x l))
-symbol indList ≔ ind_L pList pnilL pconsL
 symbol a : Set
 symbol xa : τ a
 symbol la : L a
-assert indList a (nilL a) ≡ pnilL a
-assert indList a (consL a xa la) ≡ pconsL a xa la (indList a la)
+symbol pList : L a → Prop
+symbol pnilL : π (pList (nilL a))
+symbol pconsL : Π x l, π (pList l) → π (pList (consL a x l))
+symbol indList ≔ ind_L a pList pnilL pconsL
+assert indList (nilL a) ≡ pnilL
+assert indList (consL a xa la) ≡ pconsL xa la (indList la)
 
 ////////////////// Type sum - test names between {|...|} too
 
-inductive {|sum|} : Set → Set → TYPE ≔
+begin inductive {|sum|} : Set → Set → TYPE ≔
  | {|inl_sum|} : Πa b, τ a → {|sum|} a b
  | inr : Πa b, τ b → {|sum|} a b
+end
 
 assert {|sum|} : Set → Set → TYPE
 assert {|inl_sum|} : Πa b, τ a → {|sum|} a b
@@ -494,9 +506,10 @@ assert indsum g d (inr g d xd) ≡ pinr g d xd
 
 //////////////////// Vector
 
-inductive V : N → TYPE ≔
+begin inductive V : N → TYPE ≔
  | nil_vec   : V z
  | cons_vec  : Πn, N → V n → V (succ n)
+end
 
 assert V : N → TYPE
 assert nil_vec   : V z
@@ -516,9 +529,10 @@ assert indV (succ n) (cons_vec n y v) ≡ pVcons n y v (indV n v)
 
 ///////////////// An example of heterogenous dependent family
 
-inductive fin : N → TYPE ≔
+begin inductive fin : N → TYPE ≔
   | new : Πn, fin (succ n)
   | inj : Πn, fin n → fin (succ n)
+end
 
 assert fin : N → TYPE
 assert new : Πn, fin (succ n)
@@ -537,9 +551,10 @@ assert indF (succ n) (inj n f) ≡ pinj n f (indF n f)
 
 ///////////////// Bounded List
 
-inductive listb : τ nat → TYPE ≔
+begin inductive listb : τ nat → TYPE ≔
  | nilb  : Πbound, listb bound
  | consb : Πbound x, π (x ≤ bound) → listb bound → listb bound
+end
 
 assert listb : τ nat → TYPE
 assert nilb  : Πbound, listb bound
@@ -561,10 +576,11 @@ assert indb n (consb n y prf lb) ≡ pconsb n y prf lb (indb n lb)
 
 ///////////////// Type rom
 
-inductive rom : N → TYPE ≔
+begin inductive rom : N → TYPE ≔
  | mty : rom z // leaf node
  | bin : Πe1 e2, rom e1 → rom e2 → rom (e1+e2+1)  // binary nodes
  | unl : Πe k, π (k ≤ 2×e) → rom e → rom (succ e) // unary labeled nodes
+end
 
 assert rom : N → TYPE
 assert mty : rom z
@@ -592,11 +608,12 @@ assert indr _ (bin y n romy romn) ≡ pbin y n romy (indr y romy) romn (indr n r
 
 ///////////////// Fibonacci suite
 
-inductive fibo : N → N → TYPE ≔
+begin inductive fibo : N → N → TYPE ≔
  | cgen' : Π (n r1 r2 : N),
     fibo n r1 → fibo (succ n) r2 →  fibo (succ (succ n)) (plus r1 r2)
  | cbase1 : fibo z (succ z)
  | cbase2 : fibo (succ z) (succ z)
+end
 
 assert fibo : N → N → TYPE
 assert cgen' : Π (n r1 r2 : N),
@@ -631,9 +648,10 @@ assert indfibo _ _ cbase2 ≡ pcbase2
 
 /////////////////// Polymorphic vector
 
-inductive Vec : Set → N → TYPE ≔
+begin inductive Vec : Set → N → TYPE ≔
  | Vnil   : Πa, Vec a z
  | Vcons  : Πa n (_:τ a), Vec a n → Vec a (succ n)
+end
 
 assert Vec : Set → N → TYPE
 assert Vnil   : Πa, Vec a z
@@ -656,9 +674,10 @@ assert indVec a (succ n) (Vcons a n xV_p v_p)
 
 symbol bush : Set →  Set
 
-inductive Bush : Π(_:Set), TYPE ≔
+begin inductive Bush : Π(_:Set), TYPE ≔
  | bnil : Πa, Bush a
  | bcons : Πa, τ a → Bush (bush a) → Bush a
+end
 
 rule Bush $a ↪ τ (bush $a)
 

@@ -686,7 +686,8 @@ let parser cmd =
                   ;p_sym_prf;p_sym_def}
   | _rule_ r:rule rs:{_:_with_ rule}*
       -> P_rules(r::rs)
-  | ms:modifier* ps:arg* _inductive_ i:inductive il:{_:_with_ inductive}*
+  | ms:modifier* _begin_ ps:arg* _inductive_ i:inductive
+                           il:{_:_with_ inductive}* _end_
       -> P_inductive(ms, ps, i::il)
   | _set_ c:config
       -> P_set(c)
