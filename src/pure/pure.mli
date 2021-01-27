@@ -34,12 +34,19 @@ exception Parse_error of Pos.pos * string
     and an updated state is returned. The function may raise [Parse_error]. *)
 val parse_text : state -> string -> string -> Command.t list * state
 
+(** A goal is given by a list of assumptions and a conclusion. Each assumption
+   has a name and a type. *)
+type conclusion =
+  | Typ of string * string (** Metavariable name and type. *)
+  | Unif of string * string (** LHS and RHS of the unification goal. *)
+type goal = (string * string) list * conclusion
+
 (** [current_goals s] returns the list of open goals for proof state [s]. *)
-val current_goals : proof_state -> Proof.Goal.t list
+val current_goals : proof_state -> goal list
 
 (** Result type of the [handle_command] function. *)
 type command_result =
-  | Cmd_OK    of state
+  | Cmd_OK    of state * Queries.result
   (** Command is done. *)
   | Cmd_Proof of proof_state * Tactic.t list * Pos.popt * Pos.popt
   (** Enter proof mode (positions are for statement and qed). *)
@@ -48,7 +55,7 @@ type command_result =
 
 (** Result type of the [handle_tactic] function. *)
 type tactic_result =
-  | Tac_OK    of proof_state
+  | Tac_OK    of proof_state * Queries.result
   | Tac_Error of Pos.popt option * string
 
 (** [initial_state fname] gives an initial state for working with the (source)

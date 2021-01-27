@@ -1,6 +1,3 @@
-(** Type of comparison functions. *)
-type 'a cmp = 'a -> 'a -> int
-
 (* Functional maps with [int] keys. *)
 module IntMap = Map.Make (Base.Int)
 

@@ -168,7 +168,7 @@ let get_vars : sym -> rule -> (string * Terms.term) list = fun s r ->
     let fn l x = (x, (Meta(Meta.fresh Type 0,[||])), None) :: l in
     List.fold_left fn [] !var_list
   in
-  match Infer.infer_noexn ctx lhs with
+  match Infer.infer_noexn [] ctx lhs with
   | None -> assert false (*FIXME?*)
   | Some (_,cs) ->
   let cs = List.map (fun (_,t,u) -> (t,u)) cs in

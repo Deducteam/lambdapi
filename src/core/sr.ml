@@ -81,7 +81,6 @@ let symb_to_tenv
     : Scope.pre_rule Pos.loc -> sym list -> index_tbl -> term -> tbox =
   fun {elt={pr_vars=vars;pr_arities=arities;_};pos} syms htbl t ->
   let rec symb_to_tenv t =
-    log_subj "symb_to_tenv %a" pp_term t;
     let (h, ts) = Basics.get_args t in
     let ts = List.map symb_to_tenv ts in
     let (h, ts) =
@@ -129,32 +128,32 @@ let symb_to_tenv
    [Fatal] is raised in case of error. *)
 let check_rule : Scope.pre_rule Pos.loc -> rule = fun ({pos; elt} as pr) ->
   let Scope.{pr_sym = s ; pr_lhs = lhs ; pr_vars = vars
-            ; pr_rhs = rhs_vars; pr_arities = arities
-            ; pr_xvars_nb = xvars ; _} = elt
+            ; pr_rhs ; pr_arities = arities ; pr_xvars_nb ; _} = elt
   in
   (* Check that the variables of the RHS are in the LHS. *)
-  if xvars <> 0 then
+  if pr_xvars_nb <> 0 then
     begin
-      let xvars = Array.drop (Array.length vars - xvars) vars in
+      let xvars = Array.drop (Array.length vars - pr_xvars_nb) vars in
       fatal pos "Unknown pattern variables [%a]"
         (Array.pp Print.pp_var ",") xvars
     end;
   let arity = List.length lhs in
   if !log_enabled then
     begin
-      (* The unboxing here could be harmful since it leads to [rhs_vars] being
+      (* The unboxing here could be harmful since it leads to [pr_rhs] being
          unboxed twice. However things should be fine here since the result is
          only used for printing. *)
-      let rhs = Bindlib.(unbox (bind_mvar vars rhs_vars)) in
+      let rhs = Bindlib.(unbox (bind_mvar vars pr_rhs)) in
       let naive_rule = {lhs; rhs; arity; arities; vars; xvars_nb = 0} in
-      log_subj "check rule [%a]" pp_rule (s, naive_rule);
+      log_subj (mag "check %a") pp_rule (s, naive_rule);
     end;
   (* Replace [Patt] nodes of LHS with corresponding elements of [vars]. *)
   let lhs_vars =
     let args = List.map (patt_to_tenv vars) lhs in
     _Appl_symb s args
   in
-  (* Create metavariables that will stand for the variables of [vars]. *)
+  (* Create metavariables that will stand for the variables of [vars].
+     These metavariables are prefixed by "$" so that we recognize them. *)
   let var_names = Array.map (fun x -> "$" ^ Bindlib.name_of x) vars in
   let metas =
     let fn i name =
@@ -165,7 +164,7 @@ let check_rule : Scope.pre_rule Pos.loc -> rule = fun ({pos; elt} as pr) ->
   in
   (* Substitute them in the LHS and in the RHS. *)
   let (lhs_typing, rhs_typing) =
-    let lhs_rhs = Bindlib.box_pair lhs_vars rhs_vars in
+    let lhs_rhs = Bindlib.box_pair lhs_vars pr_rhs in
     let b = Bindlib.(unbox (bind_mvar vars lhs_rhs)) in
     let meta_to_tenv m =
       let xs = Basics.fresh_vars m.meta_arity in
@@ -177,11 +176,12 @@ let check_rule : Scope.pre_rule Pos.loc -> rule = fun ({pos; elt} as pr) ->
   in
   if !log_enabled then
     begin
-      log_subj (mag "transformed LHS is [%a]") pp_term lhs_typing;
-      log_subj (mag "transformed RHS is [%a]") pp_term rhs_typing
+      log_subj "replace pattern variables by metavariables";
+      log_subj "transformed LHS: %a" pp_term lhs_typing;
+      log_subj "transformed RHS: %a" pp_term rhs_typing
     end;
   (* Infer the typing constraints of the LHS. *)
-  match Infer.infer_noexn [] lhs_typing with
+  match Infer.infer_noexn [] [] lhs_typing with
   | None -> fatal pos "The LHS is not typable."
   | Some(ty_lhs, to_solve) ->
   (* Try to simplify constraints. *)
@@ -191,10 +191,11 @@ let check_rule : Scope.pre_rule Pos.loc -> rule = fun ({pos; elt} as pr) ->
   | Some lhs_constrs ->
   if !log_enabled then
     begin
-      log_subj (gre "LHS has type %a") pp_term ty_lhs;
-      List.iter (log_subj "  if %a" pp_constr) lhs_constrs;
-      log_subj (mag "LHS is now [%a]") pp_term lhs_typing;
-      log_subj (mag "RHS is now [%a]") pp_term rhs_typing
+      log_subj (gre "LHS has type: %a") pp_term ty_lhs;
+      List.iter (log_subj (gre "  if %a") pp_constr) lhs_constrs;
+      log_subj "LHS is now: %a" pp_term lhs_typing;
+      log_subj "RHS is now: %a" pp_term rhs_typing;
+      log_subj "check that the RHS has the same type as the LHS"
     end;
   (* We build a map allowing to find a variable index from its name. *)
   let htbl : index_tbl = Hashtbl.create (Array.length vars) in
@@ -230,15 +231,13 @@ let check_rule : Scope.pre_rule Pos.loc -> rule = fun ({pos; elt} as pr) ->
     Array.iter instantiate metas; Stdlib.(!symbols)
   in
   (* Compute the constraints for the RHS to have the same type as the LHS. *)
-  match Infer.check_noexn [] rhs_typing ty_lhs with
+  match Infer.check_noexn [] [] rhs_typing ty_lhs with
   | None -> fatal pos "[%a] is not typable." pp_term rhs_typing
   | Some to_solve ->
   if !log_enabled then
     begin
-      log_subj (gre "RHS has type %a") pp_term ty_lhs;
-      List.iter (log_subj "  if %a" pp_constr) to_solve;
-      log_subj (mag "LHS is now [%a]") pp_term lhs_typing;
-      log_subj (mag "RHS is now [%a]") pp_term rhs_typing
+      log_subj "LHS is now: %a" pp_term lhs_typing;
+      log_subj "RHS is now: %a" pp_term rhs_typing
     end;
   (* TODO we should complete the constraints into a set of rewriting rule on
      the function symbols of [symbols]. *)
@@ -261,8 +260,6 @@ let check_rule : Scope.pre_rule Pos.loc -> rule = fun ({pos; elt} as pr) ->
     end;
   (* Replace metavariable symbols by term_env variables, and bind them. *)
   let rhs = symb_to_tenv pr symbols htbl rhs_typing in
-  if !log_enabled then
-    log_subj "final RHS is [%a]" pp_term (Bindlib.unbox rhs);
   (* TODO optimisation for evaluation: environment minimisation. *)
   (* Construct the rule. *)
   let rhs = Bindlib.unbox (Bindlib.bind_mvar vars rhs) in

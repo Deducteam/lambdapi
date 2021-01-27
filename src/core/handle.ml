@@ -131,7 +131,7 @@ let handle_rule : sig_state -> p_rule -> sym = fun ss r ->
       sym.sym_name;
   let rule = Sr.check_rule pr in
   Sign.add_rule ss.signature sym rule;
-  out 3 "(rule) %a\n" pp_rule (sym, rule);
+  out 3 (red "(rule) add %a\n") pp_rule (sym, rule);
   sym
 
 (** [handle_rules ss rs] handles the rules [rs] in signature state [ss], and
@@ -165,7 +165,7 @@ let handle_inductive_symbol :
     (fatal_msg "The type of [%s] has unsolved metavariables.\n" x.elt;
      fatal x.pos "We have %s : %a." x.elt pp_term a);
   (* Actually add the symbol to the signature and the state. *)
-  out 3 "(symb) %s : %a\n" x.elt pp_term a;
+  out 3 (red "(symb) %s : %a\n") x.elt pp_term a;
   let sig_symbol = {expo=e;prop=p;mstrat=strat;ident=x;typ=a;impl;def=None} in
   add_symbol ss sig_symbol
 
@@ -190,28 +190,28 @@ type proof_data =
     the initial state of the proof.  The checking of the proof is then handled
     separately. Note that [Fatal] is raised in case of an error. *)
 let handle_cmd : sig_state -> (p_term, p_rule) p_command ->
-  sig_state * proof_data option =
+    sig_state * proof_data option * Queries.result =
   fun ss cmd ->
+  if !log_enabled then log_hndl (blu "%a") P_terms.Pp.command cmd;
   let scope_basic exp pt = Scope.scope_term exp ss Env.empty pt in
   match cmd.elt with
   | P_query(q) ->
-      Queries.handle_query ss None q; (ss, None)
+      let res = Queries.handle_query ss None q in (ss, None, res)
   | P_require(b,ps) ->
       let ps = List.map (List.map fst) ps in
-      (List.fold_left (handle_require b cmd.pos) ss ps, None)
+      (List.fold_left (handle_require b cmd.pos) ss ps, None, None)
   | P_require_as(p,id) ->
       let id = Pos.make id.pos (fst id.elt) in
-      (handle_require_as cmd.pos ss (List.map fst p) id, None)
+      (handle_require_as cmd.pos ss (List.map fst p) id, None, None)
   | P_open(ps) ->
       let ps = List.map (List.map fst) ps in
-      (List.fold_left (handle_open cmd.pos) ss ps, None)
+      (List.fold_left (handle_open cmd.pos) ss ps, None, None)
   | P_rules(rs) ->
       let handle_rule syms r = SymSet.add (handle_rule ss r) syms in
       let syms = List.fold_left handle_rule SymSet.empty rs in
       SymSet.iter Tree.update_dtree syms;
-      (ss, None)
-
-  | P_inductive(ms, p_ind_list)     ->
+      (ss, None, None)
+  | P_inductive(ms, p_ind_list) ->
       (* Check modifiers. *)
       let (prop, e, mstrat) = handle_modifiers ms in
       if prop <> Defin then
@@ -270,7 +270,7 @@ let handle_cmd : sig_state -> (p_term, p_rule) p_command ->
         if StrSet.mem ind_sym.sym_name !(ss.signature.sign_idents) then
           Sign.add_ident ss.signature rec_name;
         let (ss, rec_sym) =
-          out 3 "(symb) %s : %a\n" rec_name pp_term rec_typ;
+          out 3 (red "(symb) %s : %a\n") rec_name pp_term rec_typ;
           let sig_symbol =
             {expo = e;
              prop = Defin;
@@ -299,7 +299,7 @@ let handle_cmd : sig_state -> (p_term, p_rule) p_command ->
           Sign.add_inductive ss.signature ind_sym cons_sym_list rec_sym)
         ind_list
         rec_sym_list;
-      (ss, None)
+      (ss, None, None)
 
   | P_symbol {p_sym_mod;p_sym_nam;p_sym_arg;p_sym_typ;p_sym_trm;p_sym_prf;
               p_sym_def} ->
@@ -363,13 +363,9 @@ let handle_cmd : sig_state -> (p_term, p_rule) p_command ->
       let proof_goals, a = goals_of_typ pos ao t in
       (* Add the metas of [a] as goals. *)
       let proof_goals = add_goals_of_metas metas_a proof_goals in
-      (* Add the definition as focused goal so that we can refine on it. *)
-      let proof_term, proof_goals =
-        if p_sym_def then
-          let m =  Meta.fresh ~name:id a 0 in
-          Some m, Goal.of_meta m :: proof_goals
-        else None, proof_goals
-      in
+      (* Add the definition as goal so that we can refine on it. *)
+      let proof_term =
+        if p_sym_def then Some (Meta.fresh ~name:id a 0) else None in
       (* Get tactics and proof end. *)
       let ts, pe =
         match p_sym_prf with
@@ -403,7 +399,7 @@ let handle_cmd : sig_state -> (p_term, p_rule) p_command ->
                 if finished ps then
                   wrn pe.pos "The proof is finished. Use 'end' instead.";
                 (* Add the symbol in the signature with a warning. *)
-                out 3 "(symb) %s (admit)\n" id;
+                out 3 (red "(symb) add %s : %a\n") id pp_term a;
                 wrn pe.pos "Proof admitted.";
                 let sig_symbol =
                   {expo;prop;mstrat;ident=p_sym_nam;typ=a;impl;def=t} in
@@ -414,7 +410,7 @@ let handle_cmd : sig_state -> (p_term, p_rule) p_command ->
                   (out 1 "%a" Proof.pp_goals ps;
                    fatal pe.pos "The proof is not finished.");
                 (* Add the symbol in the signature. *)
-                out 3 "(symb) %s (end)\n" id;
+                out 3 (red "(symb) add %s : %a\n") id pp_term a;
                 let sig_symbol =
                   {expo;prop;mstrat;ident=p_sym_nam;typ=a;impl;def=t} in
                 fst (add_symbol ss sig_symbol)
@@ -423,18 +419,29 @@ let handle_cmd : sig_state -> (p_term, p_rule) p_command ->
       let ps = {proof_name = p_sym_nam; proof_term; proof_goals} in
       (* Apply tac_solve. *)
       let ps = Tactics.tac_solve pos ps in
+      (* Add proof_term as focused goal. *)
+      let ps =
+        match proof_term with
+        | None -> ps
+        | Some m -> {ps with proof_goals = Goal.of_meta m :: ps.proof_goals}
+      in
       (* Apply tac_refine in case of a definition. *)
       let ps =
         match pt with
         | None -> ps
         | Some pt ->
-            let t = Scope.scope_term pdata_expo ss [] pt in
-            Tactics.tac_refine pt.pos ps t
+            match proof_term with
+            | None -> assert false
+            | Some _ ->
+                let t = Scope.scope_term pdata_expo ss [] pt in
+                Tactics.tac_refine pt.pos ps t
       in
+      if p_sym_prf = None && not (finished ps) then wrn pos
+        "Some metavariables could not be solved: a proof must be given";
       { pdata_stmt_pos = p_sym_nam.pos; pdata_p_state = ps; pdata_tactics = ts
       ; pdata_finalize = finalize ; pdata_end_pos = pe.pos; pdata_expo }
     in
-    (ss, Some(data))
+    (ss, Some(data), None)
 
   | P_set(cfg)                 ->
       let ss =
@@ -488,7 +495,8 @@ let handle_cmd : sig_state -> (p_term, p_rule) p_command ->
             Tree.update_dtree Unif_rule.equiv;
             out 3 "(hint) [%a]\n" Print.pp_rule (Unif_rule.equiv, urule); ss
       in
-      (ss, None)
+      (ss, None, None)
+
 
 (** [too_long] indicates the duration after which a warning should be given to
     indicate commands that take too long to execute. *)
@@ -499,7 +507,7 @@ let too_long = Stdlib.ref infinity
     that lack a specific position. All exceptions except [Timeout] and [Fatal]
     are captured, although they should not occur. *)
 let handle_cmd : sig_state -> (p_term, p_rule) p_command ->
-  sig_state * proof_data option =
+   sig_state * proof_data option * Queries.result =
   fun ss cmd ->
   Print.sig_state := ss;
   try

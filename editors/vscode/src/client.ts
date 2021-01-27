@@ -3,7 +3,7 @@
  * Licensed under the MIT License. See License.txt in the project root for license information.
  * ------------------------------------------------------------------------------------------ */
 
-import { workspace, ExtensionContext, Position, Uri, commands, window, WebviewPanel, ViewColumn, TextEditor, TextDocument, SnippetString, Range as rg, TextEditorDecorationType } from 'vscode';
+import { workspace, ExtensionContext, Position, Uri, commands, window, WebviewPanel, ViewColumn, TextEditor, TextDocument, SnippetString, Range as rg, TextEditorDecorationType, Pseudoterminal, EventEmitter, TreeItemCollapsibleState, WebviewViewProvider, CancellationToken, WebviewView, WebviewViewResolveContext } from 'vscode';
 
 // Insiders API, disabled
 // import { WebviewEditorInset } from 'vscode';
@@ -401,17 +401,33 @@ function getGoalsEnvContent(goals : Goal[]){
     let codeHyps : String = ""; //hypothesis HTML code
     let codeGoals : String = ""; //goals HTML code
     let codeEnvGoals : String = ""; //result code HTML
-    
+
     for(let i=0; i < goals.length; i++) {
         
         codeHyps = `<div class="hypothesis">`;
         codeGoals = `<div class="pp_goals">`;
         
-        // check if this is a Type Goal
-    	// extra space is not a typo, this is defined in lsp_base.ml
-        if (goals[i].typeofgoal == "Typ "){
+        if (goals[i].typeofgoal == "Typ"){
 
             let curGoal = goals[i] as TypGoal;
+
+            for(let j=0; j<curGoal.hyps.length; j++){
+
+                let hnameCode = `<label class="hname">`
+                    + curGoal.hyps[j].hname
+                    + `</label>`;
+
+                let htypeCode = `<span class="htype">`
+                    + curGoal.hyps[j].htype
+                + `</span> <br/>`;
+
+                codeHyps = codeHyps + hnameCode
+                    + `<label class="sep"> : </label>`
+                    + htypeCode;
+            }
+        } else {
+
+            let curGoal = goals[i] as UnifGoal;
 
             for(let j=0; j<curGoal.hyps.length; j++){
 
@@ -433,7 +449,7 @@ function getGoalsEnvContent(goals : Goal[]){
             + i + `</label>`;
 
         let goalstr = "";
-        if(goals[i].typeofgoal == "Typ "){
+        if(goals[i].typeofgoal == "Typ"){
             goalstr = `<span class="goal">`
                 + (goals[i] as TypGoal).type + `</span>`;
         } else {
@@ -456,6 +472,31 @@ function getGoalsEnvContent(goals : Goal[]){
         codeEnvGoals = codeEnvGoals + `No goals`;
     }
     return codeEnvGoals;
+}
+
+// TODO: make LambdaPi debug nonwritable by user
+function updateTerminalText(logstr: string){
+    const termName = "Lambdapi Debug";
+    const clearTextSeq = '\x1b[2J\x1b[3J\x1b[;H';
+
+    let term = window.terminals.find((t) => t.name == termName);
+    if(!term){
+        const writeEmitter = new EventEmitter<string>();
+        const pty : Pseudoterminal = {
+            onDidWrite: writeEmitter.event,
+            open: () => {},
+            close: () => {},
+            handleInput: (data: string) => {
+                data = data.replace(/\r/g, '\r\n');
+                writeEmitter.fire(data);
+            }
+        };
+        term = window.createTerminal({name: termName, pty});
+        term.show(true);
+    }
+
+    term.sendText(clearTextSeq);
+    term.sendText(logstr);
 }
 
 // Returns the HTML code of the panel and the inset ccontent
@@ -513,17 +554,19 @@ export interface Goal {
 }
 
 export interface UnifGoal extends Goal {
+    hyps : Env[] // hypotheses
     constr : String
 }
 
 export interface TypGoal extends Goal {
-	gid :  number // goal id
-	hyps : Env[] // hypothesis
+	gid :  String // goal id
+	hyps : Env[] // hypotheses
 	type : String // goals
 }
 
 export interface GoalResp {
     goals : Goal[]
+    logs : string
 }
 
 function sendGoalsRequest(position: Position, panel : WebviewPanel, docUri : Uri, styleUri : Uri) {
@@ -532,7 +575,12 @@ function sendGoalsRequest(position: Position, panel : WebviewPanel, docUri : Uri
     let cursor = {textDocument : doc, position : position};
     const req = new RequestType<ParamsGoals, GoalResp, void, void>("proof/goals");
     client.sendRequest(req, cursor).then((goals) => {
-        if(goals) {
+        
+        if(goals.logs){
+            updateTerminalText(goals.logs);
+        }
+
+        if(goals.goals) {
             let goal_render = buildGoalsContent(goals.goals, styleUri);
             panel.webview.html = goal_render
             // Disabled as this is experimental
@@ -543,6 +591,7 @@ function sendGoalsRequest(position: Position, panel : WebviewPanel, docUri : Uri
         }
     }, () => { panel.webview.html = buildGoalsContent([], styleUri); });
 }
+
 
 export function deactivate(): Thenable<void> | undefined {
     if (!client) {
