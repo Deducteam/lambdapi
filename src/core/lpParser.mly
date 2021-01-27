@@ -110,7 +110,7 @@
 %type <Syntax.p_module_path> path
 %type <Syntax.p_config> config
 %type <Syntax.qident> qident
-%type <Syntax.p_rw_patt> rw_patt_spec
+%type <Syntax.p_rw_patt> rw_patt
 %type <Syntax.p_tactic list * Syntax.p_proof_end> proof
 
 // Precedences listed from low to high
@@ -158,7 +158,7 @@ arg:
       { (xs, a, true) }
 
 // Patterns of the rewrite tactic
-rw_patt_spec:
+rw_patt:
   | t=term { make_pos $loc (P_rw_Term(t)) }
   | IN t=term { make_pos $loc (P_rw_InTerm(t)) }
   | IN x=ident IN t=term { make_pos $loc (P_rw_InIdInTerm(fst x, t)) }
@@ -176,15 +176,12 @@ rw_patt_spec:
   | u=term AS x=ident IN t=term
       { make_pos $loc (P_rw_TermAsIdInTerm(u, fst x, t)) }
 
-// Rewrite tactic pattern with enclosing brackets.
-rw_patt: L_SQ_BRACKET r=rw_patt_spec R_SQ_BRACKET { r }
-
 // Tactics available in proof mode.
 tactic:
   | INTRO xs=arg_ident+ { make_pos $loc (P_tac_intro(xs)) }
   | APPLY t=term { make_pos $loc (P_tac_apply(t)) }
   | SIMPL { make_pos $loc P_tac_simpl }
-  | REWRITE l=ASSOC? p=rw_patt? t=term
+  | REWRITE l=ASSOC? p=delimited(L_SQ_BRACKET, rw_patt, R_SQ_BRACKET)? t=term
     {
       let b =
         match l with
@@ -199,10 +196,6 @@ tactic:
   | WHY3 s=STRINGLIT? { make_pos $loc (P_tac_why3(s)) }
   | q=query { make_pos $loc (P_tac_query(q)) }
   | FAIL { make_pos $loc P_tac_fail }
-
-// Terminated tactic. The semicolon isn't necessary, it is added for
-// uniformity.
-ttactic: t=tactic SEMICOLON? { t }
 
 // Modifiers of declarations.
 modifier:
@@ -282,7 +275,7 @@ proof_end:
   | ADMIT { make_pos $loc Syntax.P_proof_admit }
   | ABORT { make_pos $loc Syntax.P_proof_abort }
 
-proof: BEGIN ts=ttactic* pe=proof_end { ts, pe }
+proof: BEGIN ts=terminated(tactic, SEMICOLON?)* pe=proof_end { ts, pe }
 
 inductive:
   | i=ident COLON t=term ASSIGN VBAR?
@@ -349,7 +342,8 @@ command:
 // Environment of a metavariable or rewrite pattern
 env: L_SQ_BRACKET ts=separated_list(SEMICOLON, term) R_SQ_BRACKET { ts }
 
-sterm:
+// Atomic terms
+aterm:
   // Explicit identifier (with @)
   | AT qid=qident { make_pos $loc (P_Iden(qid, true)) }
   // Qualified identifier
@@ -370,13 +364,13 @@ sterm:
   // Natural number
   | n=INT { make_pos $loc (P_NLit(n)) }
 
-// Applied terms
-aterm:
-  | t=aterm u=sterm { make_pos $loc (P_Appl(t,u)) }
-  | t=sterm { t }
+// Symbolic terms (as with S-expressions)
+sterm:
+  | t=sterm u=aterm { make_pos $loc (P_Appl(t,u)) }
+  | t=aterm { t }
 
 term:
-  | t=aterm { t }
+  | t=sterm { t }
   | t=term ARROW u=term { make_pos $loc (P_Impl(t, u)) }
   // Quantifier
   | BACKQUOTE q=term_ident b=binder
@@ -399,10 +393,10 @@ binder:
 // A rewrite rule [lhs ↪ rhs]
 rule: l=term REWRITE r=term { make_pos $loc (l, r) }
 
-unification: l=term EQUIV r=term { (l, r) }
+equation: l=term EQUIV r=term { (l, r) }
 
-unif_rule: l=unification REWRITE
-BEGIN rs=separated_nonempty_list(SEMICOLON, unification) END
+unif_rule: l=equation REWRITE
+BEGIN rs=separated_nonempty_list(SEMICOLON, equation) END
     {
       let equiv = Pos.none (P_Iden(Pos.none ([], "#equiv"), true)) in
       let p_appl t u = Pos.none (P_Appl(t, u)) in
