@@ -20,12 +20,6 @@ module LSP = Lsp_base
 (* Buffer for storing the log messages *)
 let lp_logger = Buffer.create 100
 
-let interval_of_pos : Pos.pos -> Range.t = fun p ->
-  let open Range in
-  let start : point = make_point p.start_line p.start_col in
-  let finish : point = make_point p.end_line p.end_col in
-  make_interval start finish
-
 type doc_node =
   { ast   : Pure.Command.t
   ; exec  : bool
@@ -156,35 +150,20 @@ let dummy_loc =
         ; end_col = 2
         }
 
-(** Update document identifier range map *)
-let update_rangemap doc_spans =
-  (* extract q_idents from spans *)
-  let qids = List.concat_map Pure.Command.get_qidents doc_spans in
-
-  (* add to the map *)
-  let f (map : (Syntax.p_module_path * string) RangeMap.t)
-        (qid : Syntax.qident) =
-    (* Only add if the symbol contains a position *)
-    Option.map_default
-      (fun pos -> RangeMap.add (interval_of_pos pos) qid.elt map)
-      map qid.pos
-  in
-  List.fold_left f RangeMap.empty qids
-
 let check_text ~doc =
   let uri, version = doc.uri, doc.version in
   try
-    let doc_spans =
-      let (doc_spans, root) = Pure.parse_text doc.root uri doc.text in
+    let cmds =
+      let (cmds, root) = Pure.parse_text doc.root uri doc.text in
       (* One shot state update after parsing. *)
-      doc.root <- root; doc.final <- root; doc_spans
+      doc.root <- root; doc.final <- root; cmds
     in
 
-    (* update rangemap *)
-    let map = update_rangemap doc_spans in
+    (* compute rangemap *)
+    let map = Pure.rangemap cmds in
 
     let nodes, final, diag, logs =
-      List.fold_left (process_cmd uri) ([],doc.root,[],[]) doc_spans in
+      List.fold_left (process_cmd uri) ([],doc.root,[],[]) cmds in
     let logs = List.rev logs in
     let doc = { doc with nodes; final; map; logs } in
     doc,

@@ -47,6 +47,11 @@ module Infix = struct
   let ( >>= ) o f = bind f o
 end
 
+let fold : ('a -> 'b -> 'a) -> 'a -> 'b option -> 'a = fun f a o ->
+  match o with
+  | None -> a
+  | Some b -> f a b
+
 (** Total order on option types. *)
 let cmp_option : 'a cmp -> 'a option cmp = fun cmp o o' ->
   match o, o' with

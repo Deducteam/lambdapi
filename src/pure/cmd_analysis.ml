@@ -51,7 +51,7 @@ and qidents_of_p_term (term : Syntax.p_term) =
   | Syntax.P_Expl term -> qidents_of_p_term term
 
 and qidents_of_rw_patt (rwpat : Syntax.p_rw_patt) =
-  match rwpat with
+  match rwpat.elt with
   | Syntax.P_rw_Term pt -> qidents_of_p_term pt
   | Syntax.P_rw_InTerm pt -> qidents_of_p_term pt
   | Syntax.P_rw_InIdInTerm (_, pt) -> qidents_of_p_term pt
@@ -82,7 +82,7 @@ and qidents_of_p_tactic (term: Syntax.p_tactic) =
   | Syntax.P_tac_refine pt -> qidents_of_p_term pt
   | Syntax.P_tac_apply pt -> qidents_of_p_term pt
   | Syntax.P_tac_rewrite (_, rwpat_lo, pt) ->
-    let rwqids = Option.map_default (fun x -> qidents_of_rw_patt x.Pos.elt)
+    let rwqids = Option.map_default (fun x -> qidents_of_rw_patt x)
                    [] rwpat_lo in
     let ptqids = qidents_of_p_term pt in
     rwqids @ ptqids

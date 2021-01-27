@@ -159,9 +159,9 @@ arg:
 
 // Patterns of the rewrite tactic
 rw_patt_spec:
-  | t=term { P_rw_Term(t) }
-  | IN t=term { P_rw_InTerm(t) }
-  | IN x=ident IN t=term { P_rw_InIdInTerm(fst x, t) }
+  | t=term { make_pos $loc (P_rw_Term(t)) }
+  | IN t=term { make_pos $loc (P_rw_InTerm(t)) }
+  | IN x=ident IN t=term { make_pos $loc (P_rw_InIdInTerm(fst x, t)) }
   | u=term IN x=term t=preceded(IN, term)?
     {
       let ident_of_term {elt; _} =
@@ -170,13 +170,14 @@ rw_patt_spec:
           | _ -> $syntaxerror
       in
       match t with
-      | Some(t) -> P_rw_TermInIdInTerm(u, ident_of_term x, t)
-      | None -> P_rw_IdInTerm(ident_of_term u, x)
+      | Some(t) -> make_pos $loc (P_rw_TermInIdInTerm(u, ident_of_term x, t))
+      | None -> make_pos $loc (P_rw_IdInTerm(ident_of_term u, x))
     }
-  | u=term AS x=ident IN t=term { P_rw_TermAsIdInTerm(u, fst x, t) }
+  | u=term AS x=ident IN t=term
+      { make_pos $loc (P_rw_TermAsIdInTerm(u, fst x, t)) }
 
 // Rewrite tactic pattern with enclosing brackets.
-rw_patt: L_SQ_BRACKET r=rw_patt_spec R_SQ_BRACKET { make_pos $loc r }
+rw_patt: L_SQ_BRACKET r=rw_patt_spec R_SQ_BRACKET { r }
 
 // Tactics available in proof mode.
 tactic:

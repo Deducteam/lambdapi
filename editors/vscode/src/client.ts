@@ -398,83 +398,31 @@ function refresh(panel : WebviewPanel, editor : TextEditor | undefined, proofSta
 // returns the HTML code of goals environment
 function getGoalsEnvContent(goals : Goal[]){
 
-    let codeHyps : String = ""; //hypothesis HTML code
-    let codeGoals : String = ""; //goals HTML code
-    let codeEnvGoals : String = ""; //result code HTML
+    if(goals.length == 0)
+        return "No goals";
 
-    for(let i=0; i < goals.length; i++) {
-        
-        codeHyps = `<div class="hypothesis">`;
-        codeGoals = `<div class="pp_goals">`;
-        
-        if (goals[i].typeofgoal == "Typ"){
-
-            let curGoal = goals[i] as TypGoal;
-
-            for(let j=0; j<curGoal.hyps.length; j++){
-
-                let hnameCode = `<label class="hname">`
-                    + curGoal.hyps[j].hname
-                    + `</label>`;
-
-                let htypeCode = `<span class="htype">`
-                    + curGoal.hyps[j].htype
-                + `</span> <br/>`;
-
-                codeHyps = codeHyps + hnameCode
-                    + `<label class="sep"> : </label>`
-                    + htypeCode;
-            }
-        } else {
-
-            let curGoal = goals[i] as UnifGoal;
-
-            for(let j=0; j<curGoal.hyps.length; j++){
-
-                let hnameCode = `<label class="hname">`
-                    + curGoal.hyps[j].hname
-                    + `</label>`;
-
-                let htypeCode = `<span class="htype">`
-                    + curGoal.hyps[j].htype
-                + `</span> <br/>`;
-
-                codeHyps = codeHyps + hnameCode
-                    + `<label class="sep"> : </label>`
-                    + htypeCode;
-            }
-        }
-
-        let numGoalcode = `<label class="numGoal">`
-            + i + `</label>`;
-
-        let goalstr = "";
-        if(goals[i].typeofgoal == "Typ"){
-            goalstr = `<span class="goal">`
-                + (goals[i] as TypGoal).type + `</span>`;
-        } else {
-            goalstr = `<span class="goal">`
-                + (goals[i] as UnifGoal).constr + `</span>`;
-        }
-
-        codeGoals += numGoalcode + `<label class ="sep"> : </label> `
-                    + goalstr + `<label class ="sep"></label><br/><br/></div>`;
-
-        codeHyps = codeHyps + `</div>`;
-
-        let codeSep = `<hr/>`;
-        codeEnvGoals = codeEnvGoals + "" + codeHyps + codeSep + codeGoals;
-
-    }
-
-    // if there is no goal
-    if(goals.length == 0){
-        codeEnvGoals = codeEnvGoals + `No goals`;
-    }
-    return codeEnvGoals;
+    return goals.map((curGoal, itr) => {
+        let goalStr = curGoal.typeofgoal == "Typ" ? (curGoal as TypGoal).type : (curGoal as UnifGoal).constr;
+        return '<div class="hypothesis">' +
+                curGoal.hyps.map((hyp) => {
+                    return `<label class="hname">${hyp.hname}</label>` +
+                        `<label class="sep"> : </label>` +
+                        `<span class="htype">${hyp.htype}</span><br/>`;
+                }).reduce((acc, cur) => acc + cur, "") +
+                '</div>' +
+                '<hr/>' +
+                `<div class="pp_goals">` +
+                    `<label class="numGoal">${itr}</label>` +
+                    `<label class="sep"> : </label>` +
+                    `<span class="goal">${goalStr}</span>` +
+                    `<label class ="sep"></label><br/><br/>` +
+                `</div>`;
+    }).reduce((acc, cur) => acc + cur, "");
 }
 
-// TODO: make LambdaPi debug nonwritable by user
+// number of write operations todo on the pseudoterminal
+let ptyWriteCnt = 0;
+
 function updateTerminalText(logstr: string){
     const termName = "Lambdapi Debug";
     const clearTextSeq = '\x1b[2J\x1b[3J\x1b[;H';
@@ -487,16 +435,20 @@ function updateTerminalText(logstr: string){
             open: () => {},
             close: () => {},
             handleInput: (data: string) => {
-                data = data.replace(/\r/g, '\r\n');
-                writeEmitter.fire(data);
+                if(ptyWriteCnt > 0){
+                    ptyWriteCnt--;
+                    data = data.replace(/\r/g, '\r\n');
+                    writeEmitter.fire(data);
+                }
             }
         };
         term = window.createTerminal({name: termName, pty});
         term.show(true);
     }
 
-    term.sendText(clearTextSeq);
-    term.sendText(logstr);
+    // increase ptyWriteCnt to allow write operation on pseudoterminal
+    ptyWriteCnt++; term.sendText(clearTextSeq);
+    ptyWriteCnt++; term.sendText(logstr);
 }
 
 // Returns the HTML code of the panel and the inset ccontent
@@ -509,8 +461,6 @@ function buildGoalsContent(goals : Goal[], styleUri : Uri) {
 
     // Use #FA8072 color too?
 
-    // Note that the style.css file is missing as we don't know yet
-    // where it should be placed; this is a TODO.
     // NOTE: multiline strings will introduce character sequences
     //       which WebviewPanel can't display
     header =  `<!DOCTYPE html>
@@ -551,16 +501,15 @@ export interface Env {
 
 export interface Goal {
     typeofgoal : String // type of goal, values defined in lsp_base.ml
+    hyps : Env[] // hypotheses
 }
 
 export interface UnifGoal extends Goal {
-    hyps : Env[] // hypotheses
     constr : String
 }
 
 export interface TypGoal extends Goal {
 	gid :  String // goal id
-	hyps : Env[] // hypotheses
 	type : String // goals
 }
 

@@ -10,8 +10,24 @@ module Command = struct
   type t = Syntax.p_command
   let equal = Syntax.eq_p_command
   let get_pos c = Pos.(c.pos)
-  let get_qidents = Cmd_analysis.get_qidents
 end
+
+let interval_of_pos : Pos.pos -> Range.t =
+  fun {start_line; start_col; end_line; end_col; _} ->
+  let open Range in
+  let start : point = make_point start_line start_col in
+  let finish : point = make_point end_line end_col in
+  make_interval start finish
+
+(** Document identifier range map. *)
+let rangemap : Command.t list -> Syntax.qident_aux RangeMap.t =
+  let f map ({elt;pos} : Syntax.qident) =
+    (* Only add if the symbol has a position. *)
+    match pos with
+    | Some pos -> RangeMap.add (interval_of_pos pos) elt map
+    | None -> map
+  in
+  Syntax.fold_idents f RangeMap.empty
 
 (** Representation of a single tactic (abstract). *)
 module Tactic = struct
