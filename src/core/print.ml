@@ -186,7 +186,7 @@ and pp_term : term pp = fun oc t ->
           match unfold b with
           | Abst(a,b) ->
               let (x,p) = Bindlib.unbind b in
-              out oc "`%a%a" pp_symbol s pp_var x;
+              out oc "`%a %a" pp_symbol s pp_var x;
               if !print_implicits then out oc ": %a" (pp `Func) a;
               out oc ", %a" (pp `Func) p
           | _ -> assert false
@@ -222,7 +222,7 @@ and pp_term : term pp = fun oc t ->
     | Abst(a,b)   ->
         if wrap then out oc "(";
         let (x,t) = Bindlib.unbind b in
-        out oc "λ%a" pp_bvar (b,x);
+        out oc "λ %a" pp_bvar (b,x);
         if !print_domains then out oc ": %a, %a" (pp `Func) a (pp `Func) t
         else pp_abstractions oc t;
         if wrap then out oc ")"
@@ -230,7 +230,7 @@ and pp_term : term pp = fun oc t ->
         if wrap then out oc "(";
         let (x,t) = Bindlib.unbind b in
         if Bindlib.binder_occur b then
-          out oc "Π%a: %a, %a" pp_var x (pp `Func) a (pp `Func) t
+          out oc "Π %a: %a, %a" pp_var x (pp `Func) a (pp `Func) t
         else out oc "%a → %a" (pp `Appl) a (pp `Func) t;
         if wrap then out oc ")"
     | LLet(a,t,b) ->
