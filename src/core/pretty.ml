@@ -119,9 +119,8 @@ let rule : string -> p_rule pp = fun kw ff {elt=(l,r);_} ->
 
 let inductive : string -> p_inductive pp =
   let cons ff (id,a) = Format.fprintf ff "\n| %a : %a" ident id term a in
-  fun kw ff {elt=(id,ps,a,cs);_} ->
-  Format.fprintf ff "%s %a%a : %a ≔%a"
-    kw ident id args_list ps term a (List.pp cons "") cs
+  fun kw ff {elt=(id,a,cs);_} ->
+  Format.fprintf ff "%s %a : %a ≔%a" kw ident id term a (List.pp cons "") cs
 
 let equiv : (p_term * p_term) pp = fun ff (l, r) ->
   Format.fprintf ff "%a ≡ %a" term l term r
@@ -227,11 +226,13 @@ let command : p_command pp = fun ff cmd ->
   | P_rules (r::rs) ->
       out "%a" (rule "rule") r;
       List.iter (out "%a" (rule "\nwith")) rs
-  | P_inductive(_, []) -> ()
-  | P_inductive(ms, i::il) ->
-      out "%a" (List.pp modifier "") ms;
-      out "%a" (inductive "inductive") i;
-      List.iter (out "%a" (inductive "\nwith")) il
+  | P_inductive(_, _, []) -> assert false (* not possible *)
+  | P_inductive(ms, xs, i::il) ->
+      out "%a%a %a%a"
+        (List.pp modifier "") ms
+        (List.pp args " ") xs
+        (inductive "inductive") i
+        (List.pp (inductive "\nwith") "") il
   | P_set(P_config_builtin(n,i)) ->
       out "set builtin %S ≔ %a" n qident i
   | P_set(P_config_unop(unop)) ->

@@ -92,7 +92,7 @@ type p_rule_aux = p_patt * p_term
 type p_rule = p_rule_aux loc
 
 (** Parser-level inductive type representation. *)
-type p_inductive_aux = ident * p_args list * p_term * (ident * p_term) list
+type p_inductive_aux = ident * p_term * (ident * p_term) list
 type p_inductive = p_inductive_aux loc
 
 (** Module to create p_term's with no positions. *)
@@ -271,7 +271,7 @@ type p_command_aux =
   (** Symbol declaration. *)
   | P_rules of p_rule list
   (** Rewriting rule declarations. *)
-  | P_inductive of p_modifier list * p_inductive list
+  | P_inductive of p_modifier list * p_args list * p_inductive list
   (** Definition of inductive types *)
   | P_set of p_config
   (** Set the configuration. *)
@@ -331,9 +331,8 @@ let eq_p_rule : p_rule eq = fun {elt=(l1,r1);_} {elt=(l2,r2);_} ->
 
 let eq_p_inductive : p_inductive eq =
   let eq_cons (i1,t1) (i2,t2) = eq_ident i1 i2 && eq_p_term t1 t2 in
-  fun {elt=(i1,xs1,t1,l1);_} {elt=(i2,xs2,t2,l2);_} ->
-  List.equal eq_p_args xs1 xs2
-  && List.equal eq_cons ((i1,t1)::l1) ((i2,t2)::l2)
+  fun {elt=(i1,t1,l1);_} {elt=(i2,t2,l2);_} ->
+  List.equal eq_cons ((i1,t1)::l1) ((i2,t2)::l2)
 
 let eq_p_rw_patt : p_rw_patt eq = fun {elt=r1;_} {elt=r2;_} ->
   match r1, r2 with
@@ -425,8 +424,9 @@ let eq_p_command : p_command eq = fun {elt=c1;_} {elt=c2;_} ->
     P_require_as(p2,{elt=(s2,b2);_}) -> p1 = p2 && s1 = s2 && b1 = b2
   | P_symbol s1, P_symbol s2 -> eq_p_symbol s1 s2
   | P_rules(r1), P_rules(r2) ->  List.equal eq_p_rule r1 r2
-  | P_inductive(m1,l1), P_inductive(m2,l2) ->
-      m1 = m2 && List.equal eq_p_inductive l1 l2
+  | P_inductive(m1,xs1,l1), P_inductive(m2,xs2,l2) ->
+      m1 = m2 && List.equal eq_p_args xs1 xs2
+      && List.equal eq_p_inductive l1 l2
   | P_set(c1), P_set(c2) -> eq_p_config c1 c2
   | P_query(q1), P_query(q2) -> eq_p_query q1 q2
   | _, _ -> false
@@ -575,14 +575,22 @@ let fold_idents : ('a -> qident -> 'a) -> 'a -> ast -> 'a = fun f ->
     | P_tac_fail -> (vs, a)
   in
 
-  let fold_inductive : 'a -> p_inductive -> 'a =
-    fun a {elt = (id,xs,t,cons_list); pos} ->
-    let fold_cons a (_,t) = fold_term a (Pos.make pos (P_Prod(xs,t))) in
+  let fold_inductive_vars : StrSet.t -> 'a -> p_inductive -> 'a =
+    fun vs a {elt = (id,t,cons_list); _} ->
+    let fold_cons a (_,t) = fold_term_vars vs a t in
     List.fold_left fold_cons a ((id,t)::cons_list)
   in
 
   let fold_proof : 'a -> (p_tactic list * p_proof_end) -> 'a =
     fun a (ts, _) -> snd (List.fold_left fold_tactic (StrSet.empty, a) ts)
+  in
+
+  let fold_args : StrSet.t * 'a -> p_args -> StrSet.t * 'a =
+    fun (vs,a) (idopts, tyopt, _) ->
+    add_idopts vs idopts,
+    match tyopt with
+    | None -> a
+    | Some t -> fold_term_vars vs a t
   in
 
   let fold_command : 'a -> p_command -> 'a = fun a {elt;pos} ->
@@ -593,7 +601,9 @@ let fold_idents : ('a -> qident -> 'a) -> 'a -> ast -> 'a = fun f ->
     | P_query q -> fold_query_vars StrSet.empty a q
     | P_set c -> fold_config a c
     | P_rules rs -> List.fold_left fold_rule a rs
-    | P_inductive (_, ind_list) -> List.fold_left fold_inductive a ind_list
+    | P_inductive (_, xs, ind_list) ->
+        let vs, a = List.fold_left fold_args (StrSet.empty, a) xs in
+        List.fold_left (fold_inductive_vars vs) a ind_list
     | P_symbol {p_sym_nam;p_sym_arg;p_sym_typ;p_sym_trm;p_sym_prf;_} ->
         let d = Pos.none P_Type in
         let t = match p_sym_trm with Some t -> t | None -> d in

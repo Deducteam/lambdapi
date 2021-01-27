@@ -228,7 +228,7 @@ and solve_aux : ctxt -> term -> term -> problem -> constr list =
         | Some vars -> vars
       in
       (* Build the environment (yk-1,ak-1{y0=v0,..,yk-2=vk-2});..;(y0,a0). *)
-      let env = Env.of_prod_using ctx vars !(m.meta_type) in
+      let env, _ = Env.of_prod_using ctx vars !(m.meta_type) in
       (* Build the term s(m0[vs],..,mn-1[vs]). *)
       let k = Array.length vars in
       let t =

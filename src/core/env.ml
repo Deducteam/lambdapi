@@ -95,14 +95,14 @@ let of_prod : ctxt -> int -> term -> env * term = fun c n t ->
   build_env 0 [] t
 
 (** [of_prod_using c xs t] is similar to [of_prod c n t] where [n =
-   Array.length xs] except that it does not return the final codomain [b] and
-   replaces unbound variables by those of [xs].
+   Array.length xs] except that it replaces unbound variables by those of
+   [xs].
 @raise [Invalid_argument] if [t] does not evaluate to a series of (at least)
    [n] products. *)
-let of_prod_using : ctxt -> tvar array -> term -> env = fun c xs t ->
+let of_prod_using : ctxt -> tvar array -> term -> env * term = fun c xs t ->
   let n = Array.length xs in
   let rec build_env i env t =
-    if i >= n then env else
+    if i >= n then env, t else
     match Eval.whnf c t with
     | Prod(a,b) -> let env = add xs.(i) (lift a) None env in
                    build_env (i+1) env (Bindlib.subst b (Vari(xs.(i))))

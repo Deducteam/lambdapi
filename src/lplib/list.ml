@@ -229,4 +229,9 @@ let rec fold_left_while f cond acc l =
   | x :: _ when not (cond x) -> acc
   | x :: xs -> fold_left_while f cond (f acc x) xs
   | [] -> acc
-  
+
+(** [remove_first n xs] remove the min(n,length xs) elements of [xs]. *)
+let rec remove_first n xs =
+  match xs with
+  | _::xs when n>0 -> remove_first (n-1) xs
+  | _ -> xs

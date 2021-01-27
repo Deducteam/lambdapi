@@ -496,8 +496,8 @@ let parser rule =
 
 (** [inductive] is a parser for a single inductive type. *)
 let parser inductive =
-  | i:ident ps:arg* ":" t:term "≔" c:{ "|" ident ":" term }*
-        -> Pos.in_pos _loc (i, ps, t, c)
+  | i:ident ":" t:term "≔" c:{ "|" ident ":" term }*
+        -> Pos.in_pos _loc (i, t, c)
 
 (** [unif_rule] is a parser for unification rules. *)
 let parser unif_rule =
@@ -686,8 +686,8 @@ let parser cmd =
                   ;p_sym_prf;p_sym_def}
   | _rule_ r:rule rs:{_:_with_ rule}*
       -> P_rules(r::rs)
-  | ms:modifier* _inductive_ i:inductive il:{_:_with_ inductive}*
-      -> P_inductive(ms, i::il)
+  | ms:modifier* ps:arg* _inductive_ i:inductive il:{_:_with_ inductive}*
+      -> P_inductive(ms, ps, i::il)
   | _set_ c:config
       -> P_set(c)
   | q:query
