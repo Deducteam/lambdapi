@@ -209,7 +209,7 @@ modifier:
   | OPAQUE { make_pos $loc (P_opaq) }
 
 // Converts floats and integers to floats
-float_of_int:
+float_or_int:
   | p=FLOAT { p }
   | n=INT   { float_of_int n }
 
@@ -218,10 +218,10 @@ config:
   // Add a builtin: [builtin "0" ≔ zero]
   | BUILTIN s=STRINGLIT ASSIGN qid=qident { P_config_builtin(s, qid) }
   // Add a prefix operator: [prefix 1.2 "!" ≔ factorial]
-  | PREFIX p=float_of_int s=STRINGLIT ASSIGN qid=qident
+  | PREFIX p=float_or_int s=STRINGLIT ASSIGN qid=qident
       { let unop = (s, p, qid) in P_config_unop(unop) }
   // Add an infix operator: [infix right 6.3 "+" ≔ plus]
-  | INFIX a=ASSOC? p=float_of_int s=STRINGLIT ASSIGN qid=qident
+  | INFIX a=ASSOC? p=float_or_int s=STRINGLIT ASSIGN qid=qident
       {
         let binop = (s, Option.get Pratter.Neither a, p, qid) in
         P_config_binop(binop)
