@@ -6,54 +6,51 @@ Replace Earley by Menhir, Pratter and Sedlex
 
 **Syntax modifications:**
 
-- The semi colon as termination token has been added. Hence, a symbol is
-  declared with symbol `foo: bar;`.
+- Commands and tactics must now be ended by a semi-colon `;`.
 
-- The syntax `λx y z: nat, ...` is not authorised anymore, but 
-  `λ(x y z: nat), ...` is, and `λ x : N, t` is as well.
+- The syntax `λx y z: nat, ...` with multiple variables is not
+  authorised anymore, but `λ(x y z: nat), ...` is, as well as `λ x :
+  N, t` with a single variable.
 
-- Unification rules syntax has changed: the right hand side must be enclosed in
+- In unification rules, the right hand-side must now be enclosed in
   `begin ... end`, so
   ```
   set unif_rule $x + $y ≡ 0 ↪ $x ≡ 0; $y ≡ 0
   ```
   becomes
   ```
-  set unif_rule $x + $y ≡ 0 ↪ begin $x ≡ 0; $y ≡ 0 end
+  set unif_rule $x + $y ≡ 0 ↪ begin $x ≡ 0; $y ≡ 0 end;
   ```
-- `set declared "?"` has been removed,
+- `set declared "?"` has been removed.
 
-- Any (depending on accepted utf8 codepoints) UTF8 identifier is by default
+- Any (depending on accepted codepoints) UTF8 identifier is by default
   valid.
   *Warning:* string `λx` is now a valid identifier. Hence, expression `λx, t`
   isn't valid, but `λ x, t` is.
 
-- Symbols can be input as quantifiers using the backquote: the syntax 
-  `` `f x, t`` is valid to represent `f (λ x, t)` (and a fortiori 
-  `f {T} (λ x, t)`).
+- Declared quantifiers now need a backquote to be applied. The syntax 
+  `` `f x, t`` represents `f (λ x, t)` (and a fortiori `f {T} (λ x, t)`).
 
-- `assert` always take a turnstile (or vdash) to specify (even empty) context,
-  so the syntax is `assert ⊢ t: A`
+- `assert` always takes a turnstile (or vdash) to specify a (even
+  empty) context, so the syntax is `assert ⊢ t: A;`
 
-- the unary minus before a rewrite pattern becomes the keyword left
+- The minus sign `-` in the rewrite tactic has been replaced by the
+  keyword `left`.
 
 **Code modifications:**
 
-- Parsing and handling are interleaved: the parser returns a stream of parsed
-  commands. Requesting an item of the stream parses one command in the file.
-  *Note:* this does not apply for the LSP server
+- Parsing and handling are interleaved (except in the LSP server): the
+  parser returns a stream of parsed commands. Requesting an item of
+  the stream parses one command in the file.
   
-- `pp_hint` is renamed to `notation`
-
-- `notation` is moved to `sign.ml` and the signature takes a `SymMap` to keep
-  the notations
+- The type `pp_hint` is renamed to `notation` and moved to `sign.ml`.
   
 - Notations (that is, ex-`pp_hint`) are kept in a `SymMap`, which allowed to
-  simplify some code in `sig_state.ml`
+  simplify some code in `sig_state.ml` and `sign.ml`.
   
-- positions are not lazy anymore, because Sedlex doesn't use lazy positions
+- Positions are not lazy anymore, because Sedlex doesn't use lazy positions.
 
-- `p_terms` do not have `P_BinO` and `P_UnaO` constructors anymore
+- `p_terms` do not have `P_BinO` and `P_UnaO` constructors anymore.
 
 
 #### Unification goals (2020-12-15)
