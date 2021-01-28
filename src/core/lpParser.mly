@@ -8,6 +8,10 @@
 
     let make_pos : Lexing.position * Lexing.position -> 'a -> 'a loc =
       fun lps elt -> Pos.in_pos (locate lps) elt
+
+    let qid_of_path loc p =
+      let (mp, id) = List.split_last p in
+      make_pos loc (mp, fst id)
  %}
 
 %token EOF
@@ -56,10 +60,6 @@
 %token ARROW
 %token COMMA
 // Sigils
-%token AT
-%token DOLLAR
-%token QUESTION_MARK
-%token DOT
 %token VBAR
 %token TURNSTILE
 %token ASSIGN
@@ -94,7 +94,12 @@
 %token PRINT
 %token FAIL
 // Identifiers
+%token <(string * bool) list> PATH
 %token <string * bool> ID
+%token <string> ID_PAT
+%token <string> ID_META
+%token <string> ID_EXPL
+%token <(string * bool) list> QID_EXPL
 
 %start <Syntax.p_command> command
 %start ident
@@ -107,7 +112,6 @@
 %type <Syntax.p_rule> rule
 %type <Syntax.p_tactic> tactic
 %type <Syntax.p_modifier> modifier
-%type <Syntax.p_module_path> path
 %type <Syntax.p_config> config
 %type <Syntax.qident> qident
 %type <Syntax.p_rw_patt> rw_patt
@@ -119,27 +123,25 @@
 
 %%
 
-// An identifier with a boolean to true if it uses escaped syntax.
-ident: i=ID { (make_pos $loc (fst i), snd i) }
-
-// A list of [ident] separated by dots
-path: ms=separated_nonempty_list(DOT, ID) { ms }
+ident: i=ID { make_pos $loc (fst i), snd i}
 
 // [path] with a post processing to yield a [qident]
-qident: p=path
-    {
-      let (mp, id) = List.split_last p in
-      make_pos $loc(p) (mp, fst id)
-    }
+qident:
+  | p=PATH { qid_of_path $loc p}
+  | i=ID { make_pos $loc ([], fst i) }
 
 term_ident:
-  | AT qid=qident { make_pos $loc (P_Iden(qid, true)) }
+  | p=QID_EXPL
+      { make_pos $loc (P_Iden(qid_of_path $loc p, true)) }
   | qid=qident { make_pos $loc (P_Iden(qid, false)) }
+  | id=ID_EXPL
+      {
+        let id = make_pos $loc ([], id) in
+        make_pos $loc (P_Iden(id, true))
+      }
 
 // Rewrite pattern identifier
-patt:
-  | DOLLAR p=ident { Some(fst p) }
-  | DOLLAR WILD { None }
+patt: p=ID_PAT { if p = "_" then None else Some(make_pos $loc p) }
 
 // Identifiers for arguments
 arg_ident:
@@ -288,14 +290,14 @@ c=separated_list(VBAR, separated_pair(ident, COLON, term))
 
 // Top level commands
 command:
-  | REQUIRE OPEN p=path+ SEMICOLON { make_pos $loc (P_require(true,p)) }
-  | REQUIRE p=path+ SEMICOLON { make_pos $loc (P_require(false, p)) }
-  | REQUIRE p=path AS a=ident SEMICOLON
+  | REQUIRE OPEN p=PATH+ SEMICOLON { make_pos $loc (P_require(true,p)) }
+  | REQUIRE p=PATH+ SEMICOLON { make_pos $loc (P_require(false, p)) }
+  | REQUIRE p=PATH AS a=ident SEMICOLON
       {
         let alias = Pos.make (fst a).pos ((fst a).elt, snd a) in
         make_pos $loc (P_require_as(p, alias))
       }
-  | OPEN p=path SEMICOLON { make_pos $loc (P_open([p])) }
+  | OPEN p=PATH SEMICOLON { make_pos $loc (P_open([p])) }
   | ms=modifier* SYMBOL s=ident al=arg* COLON a=term SEMICOLON
       {
         let sym =
@@ -344,17 +346,17 @@ env: L_SQ_BRACKET ts=separated_list(SEMICOLON, term) R_SQ_BRACKET { ts }
 
 // Atomic terms
 aterm:
-  // Explicit identifier (with @)
-  | AT qid=qident { make_pos $loc (P_Iden(qid, true)) }
-  // Qualified identifier
-  | qid=qident { make_pos $loc (P_Iden(qid, false)) }
+  | ti=term_ident { ti }
   // The wildcard "_"
   | WILD { make_pos $loc P_Wild }
   // The constant [TYPE] (of type Kind)
   | TYPE { make_pos $loc P_Type }
   // Metavariable
-  | QUESTION_MARK m=ident e=env?
-      { make_pos $loc (P_Meta(fst m, Option.map Array.of_list e)) }
+  | m=ID_META e=env?
+      {
+        let mid = make_pos $loc(m) m in
+        make_pos $loc (P_Meta(mid, Option.map Array.of_list e))
+      }
   // Pattern of rewrite rules
   | p=patt e=env? { make_pos $loc (P_Patt(p, Option.map Array.of_list e)) }
   // Parentheses

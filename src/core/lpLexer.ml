@@ -10,23 +10,23 @@ type token =
   | L_PAREN | R_PAREN | L_SQ_BRACKET | R_SQ_BRACKET
   | L_CU_BRACKET | R_CU_BRACKET
   | ABORT | ADMIT | APPLY | ARROW | AS | ASSERT | ASSERT_NOT | ASSIGN
-  | ASSOC of Pratter.associativity | AT
-  | BUILTIN | BACKQUOTE | BEGIN
+  | ASSOC of Pratter.associativity
+  | BACKQUOTE | BUILTIN | BEGIN
   | COLON | COMMA | COMPUTE | COMPUTE_TYPE | CONSTANT
   | DEBUG_FLAGS of (bool * string)
   (** Flags such as [+eiu] or [-eiu]. Tuple constructor (with parens) is
       needed by Menhir. *)
-  | DOLLAR | DOT
+  | DOT
   | END | EQUIV
   | FAIL | FLAG | FLOAT of float | FOCUS
-  | ID of (string * bool)
-   (** Boolean is true if ident is escaped *)
+  | ID of (string * bool)  (* Boolean is true if the identifier is escaped. *)
+  | ID_EXPL of string | ID_META of string | ID_PAT of string
   | IN | INFERTYPE | INDUCTIVE | INFIX | INJECTIVE | INT of int | INTRO
   | LAMBDA | LET
   | OPAQUE | OPEN
-  | PI | PREFIX | PRINT | PRIVATE
+  | PATH of (string * bool) list | PI | PREFIX | PRINT | PRIVATE
   | PROOFTERM | PROTECTED | PROVER | PROVER_TIMEOUT
-  | QUANTIFIER | QUESTION_MARK
+  | QID_EXPL of (string * bool) list | QUANTIFIER
   | REFINE | REFL | REQUIRE | REWRITE | RULE
   | SEMICOLON | SEQUENTIAL | SET | SIMPL | STRINGLIT of string
   | SWITCH of bool
@@ -82,6 +82,7 @@ end = struct
   let id = [%sedlex.regexp? (letter | '_'), Star (letter | digit | '_')]
   let escid =
     [%sedlex.regexp? "{|", Star (Compl '|' | '|', Compl '}'), Star '|', "|}"]
+  let path = [%sedlex.regexp? (id | escid), Plus ('.', (id | escid))]
   let stringlit = [%sedlex.regexp? '"', Star (Compl ('"' | '\n')), '"']
   let float = [%sedlex.regexp? integer, '.', Opt (integer)]
   let comment = [%sedlex.regexp? "//", Star (Compl ('\n' | '\r'))]
@@ -112,8 +113,8 @@ and nom_comment : lexbuf -> unit = fun buf ->
     | escid -> true
     | _ -> false
 
-  let unquote : string -> string = fun s ->
-    if is_escaped s then String.(sub s 2 (length s - 4)) else s
+  let unquote : string -> string * bool = fun s ->
+    if is_escaped s then String.(sub s 2 (length s - 4)), true else s, false
 
   (** [is_identifier s] is true if [s] is an identifier. *)
   let is_identifier : string -> bool = fun s ->
@@ -185,6 +186,12 @@ and nom_comment : lexbuf -> unit = fun buf ->
     | ('+' | '-'), Plus lowercase -> true
     | _ -> false
 
+  (** [split_qid b] splits buffer [b] on dots, parsing identifiers between
+      them. Each identifier is translated to a string, attached to a boolean
+      which indicates whether it was escaped. *)
+  let split_qid : string -> (string * bool) list = fun s ->
+    String.split_on_char '.' s |> List.map unquote
+
   let token buf =
     nom buf;
     match%sedlex buf with
@@ -200,11 +207,8 @@ and nom_comment : lexbuf -> unit = fun buf ->
     | ',' -> COMMA
     | '.' -> DOT
     | ';' -> SEMICOLON
-    | '@' -> AT
-    | '?' -> QUESTION_MARK
-    | '$' -> DOLLAR
-    | '`' -> BACKQUOTE
     | '|' -> VBAR
+    | '`' -> BACKQUOTE
     | '+', Plus alphabet ->
         DEBUG_FLAGS(true, Utf8.sub_lexeme buf 1 (lexeme_length buf - 1))
     | '-', Plus alphabet ->
@@ -264,13 +268,21 @@ and nom_comment : lexbuf -> unit = fun buf ->
     | "verbose" -> VERBOSE
     | "why3" -> WHY3
     | "with" -> WITH
+    | id -> ID(Utf8.lexeme buf, false)
+    | '@', id -> ID_EXPL(Utf8.sub_lexeme buf 1 (lexeme_length buf - 1))
+    | '@', path ->
+        QID_EXPL(split_qid (Utf8.sub_lexeme buf 1 (lexeme_length buf - 1)))
+    | '?', id -> ID_META(Utf8.sub_lexeme buf 1 (lexeme_length buf - 1))
+    | '$', id -> ID_PAT(Utf8.sub_lexeme buf 1 (lexeme_length buf - 1))
+    | path -> PATH(split_qid (Utf8.lexeme buf))
     | integer -> INT(int_of_string (Utf8.lexeme buf))
     | float -> FLOAT(float_of_string (Utf8.lexeme buf))
     | stringlit ->
         (* Remove the quotes from [lexbuf] *)
         STRINGLIT(Utf8.sub_lexeme buf 1 (lexeme_length buf - 2))
-    | escid -> ID(Utf8.lexeme buf, true)
-    | id -> ID(Utf8.lexeme buf, false)
+    | escid ->
+        (* Remove the escape markers [{|] and [|}] from [lexbuf]. *)
+        ID(Utf8.sub_lexeme buf 2 (lexeme_length buf - 4), true)
     | _ ->
         let loc = lexing_positions buf in
         let loc = locate loc in
@@ -281,5 +293,7 @@ and nom_comment : lexbuf -> unit = fun buf ->
      preferred over using anything for identifiers. *)
 
   let lexer = with_tokenizer token
+
+  let unquote s = fst (unquote s)
 end
 include Lp_lexer
