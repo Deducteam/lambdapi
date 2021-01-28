@@ -449,7 +449,7 @@ opaque symbol plus_0_n : Π n, π ((0 + n) = n)
 ≔ begin
   assume n;
   reflexivity;
-end
+end;
 
 opaque symbol plus_n_0 : Π n, π ((n + 0) = n)
 ≔ begin
@@ -462,7 +462,7 @@ opaque symbol plus_n_0 : Π n, π ((n + 0) = n)
   simpl;
   rewrite Hn';
   reflexivity;
-end
+end;
 
 // About lists
 symbol length : List → Nat;
@@ -482,4 +482,4 @@ opaque symbol length_app :
   reflexivity;
   assume x l2 IHl1;
   simpl; rewrite IHl1; reflexivity;
-end
+end;

@@ -6,8 +6,7 @@ The BNF grammar of Lambdapi is in `syntax.bnf <syntax.bnf>`__.
 In this section, we will illustrate the syntax of Lambdapi using
 examples. The first thing to note is that Lambdapi files are formed of a
 list of commands. A command starts with a particular reserved keyword
-and ends either at the start of a new command or at the end of the
-file.
+and ends with a semi-colon.
 
 One-line comments are introduced by ‘//’:
 
@@ -53,7 +52,7 @@ module. It can also be combined with the ``require`` command.
 
 Allows to declare or define a symbol as follows:
 
-``symbol`` *modifiers* *identifier* *parameters* [``:`` *type*] [``≔`` *term*] {[``begin`` *proof* ``end``] | ``;``}
+``symbol`` *modifiers* *identifier* *parameters* [``:`` *type*] [``≔`` *term*] [``begin`` *proof* ``end``] ``;``
 
 The identifier should not have already been used in the current module.
 It must be followed by a type or a definition (or both).
@@ -89,10 +88,9 @@ Examples:
    symbol F : N → TYPE;
    symbol idF n : F n → F n ≔
    begin
-     solve
-     assume n x
-     apply x
-   end
+     assume n x;
+     apply x;
+   end;
 
 **Modifiers:**
 
@@ -368,9 +366,9 @@ Examples:
 
 ::
 
-   set unif_rule Bool ≡ T $t ↪ begin $t ≡ bool end
-   set unif_rule $x + $y ≡ 0 ↪ begin $x ≡ 0; $y ≡ 0 end
-   set unif_rule $a → $b ≡ T $c ↪ begin $a ≡ T $a'; $b ≡ T $b'; $c ≡ arrow $a' $b' end
+   set unif_rule Bool ≡ T $t ↪ begin $t ≡ bool end;
+   set unif_rule $x + $y ≡ 0 ↪ begin $x ≡ 0; $y ≡ 0 end;
+   set unif_rule $a → $b ≡ T $c ↪ begin $a ≡ T $a'; $b ≡ T $b'; $c ≡ arrow $a' $b' end;
 
 Thanks to the first unification rule, a problem ``T ?x ≡ Bool`` is
 transformed into ``?x ≡ bool``.

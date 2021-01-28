@@ -44,6 +44,7 @@
 %token COMPUTE_TYPE
 %token EQUIV
 %token UNIF_RULE
+%token DEBUG
 %token <bool * string> DEBUG_FLAGS
 %token <bool> SWITCH
 %token <string> STRINGLIT
@@ -234,10 +235,9 @@ assert_not:
   | ASSERT_NOT { true }
 
 query:
-  // Set verbosity level
   | SET VERBOSE i=INT { make_pos $loc (P_query_verbose(i)) }
   | SET FLAG s=STRINGLIT b=SWITCH { make_pos $loc (P_query_flag(s,b)) }
-  | SET fl=DEBUG_FLAGS
+  | SET DEBUG fl=DEBUG_FLAGS
       { let (b, s) = fl in make_pos $loc (P_query_debug(b, s)) }
   | COMPUTE_TYPE t=term
     { make_pos $loc (P_query_infer(t, {strategy=NONE; steps=None}))}
@@ -281,12 +281,16 @@ proof: BEGIN ts=terminated(tactic, SEMICOLON)* pe=proof_end { ts, pe }
 
 inductive:
   | i=ident COLON t=term ASSIGN VBAR?
-c=separated_list(VBAR, separated_pair(ident, COLON, term))
+    c=separated_list(VBAR, separated_pair(ident, COLON, term))
       {
         let c = List.map (fun (id, t) -> (fst id, t)) c in
         make_pos $loc (fst i, t, c)
       }
 
+term_proof:
+  | t=term { Some t, None }
+  | p=proof { None, Some p }
+  | t=term p=proof { Some t, Some p }
 
 // Top level commands
 command:
@@ -298,37 +302,20 @@ command:
         make_pos $loc (P_require_as(p, alias))
       }
   | OPEN p=PATH SEMICOLON { make_pos $loc (P_open([p])) }
-  | ms=modifier* SYMBOL s=ident al=arg* COLON a=term SEMICOLON
+  | ms=modifier* SYMBOL s=ident al=arg* COLON a=term po=proof? SEMICOLON
       {
         let sym =
           {p_sym_mod=ms; p_sym_nam=fst s; p_sym_arg=al; p_sym_typ=Some(a);
-           p_sym_trm=None; p_sym_def=false; p_sym_prf=None}
-        in
-        make_pos $loc (P_symbol(sym))
-      }
-  | ms=modifier* SYMBOL s=ident al=arg* ao=preceded(COLON, term)? p=proof
-      {
-        let sym =
-            {p_sym_mod=ms; p_sym_nam=fst s; p_sym_arg=al; p_sym_typ=ao;
-             p_sym_trm=None; p_sym_def=false; p_sym_prf=Some(p)}
-          in
-          make_pos $loc (P_symbol(sym))
-      }
-  | ms=modifier* SYMBOL s=ident al=arg* ao=preceded(COLON, term)?
-    ASSIGN de=term? SEMICOLON
-      {
-        let sym =
-          {p_sym_mod=ms; p_sym_nam=fst s; p_sym_arg=al; p_sym_typ=ao;
-           p_sym_trm=de; p_sym_prf=None; p_sym_def=true}
+           p_sym_trm=None; p_sym_def=false; p_sym_prf=po}
         in
         make_pos $loc (P_symbol(sym))
       }
   | ms=modifier* SYMBOL s=ident al=arg* ao=preceded(COLON, term)?
-    ASSIGN de=term? p=proof
+    ASSIGN tp=term_proof SEMICOLON
       {
         let sym =
           {p_sym_mod=ms; p_sym_nam=fst s; p_sym_arg=al; p_sym_typ=ao;
-           p_sym_trm=de; p_sym_prf=Some(p); p_sym_def=true}
+           p_sym_trm=fst tp; p_sym_prf=snd tp; p_sym_def=true}
         in
         make_pos $loc (P_symbol(sym))
       }
@@ -398,7 +385,7 @@ rule: l=term REWRITE r=term { make_pos $loc (l, r) }
 equation: l=term EQUIV r=term { (l, r) }
 
 unif_rule: l=equation REWRITE
-BEGIN rs=separated_nonempty_list(SEMICOLON, equation) END
+L_SQ_BRACKET rs=separated_nonempty_list(SEMICOLON, equation) R_SQ_BRACKET
     {
       let equiv = Pos.none (P_Iden(Pos.none ([], "#equiv"), true)) in
       let p_appl t u = Pos.none (P_Appl(t, u)) in

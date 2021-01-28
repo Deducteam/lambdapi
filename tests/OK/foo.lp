@@ -23,4 +23,4 @@ opaque symbol notK : Π b, P (eq (neg (neg b)) b)
   apply case (λ b, eq (neg (neg b)) b);
   apply refl;
   apply refl;
-end
+end;

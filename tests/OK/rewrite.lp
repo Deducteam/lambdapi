@@ -105,18 +105,18 @@ opaque symbol add_succ_r n m : P (n + s m = s (n + m))
   assume pn ih;
   rewrite ih;
   reflexivity;
-end
+end;
 
 opaque symbol test0 x y z : P ((x + s y) + z = (s (x + y)) + z)
 ≔ begin
   assume x y z;
   rewrite add_succ_r;
   refine refl nat (add (s (add x y)) z);
-end
+end;
 
 opaque symbol test1 a (x y : T a) : P(x = y) → P(y = x)
 ≔ begin
   assume a x y xy;
   rewrite left xy;
   reflexivity;
-end
+end;

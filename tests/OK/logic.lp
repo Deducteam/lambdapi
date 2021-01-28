@@ -98,7 +98,7 @@ opaque symbol not_elimp : Π (A : Prop), P (not (not A)) → P A
     apply bot_elim;
     apply not_elim (not A) nnp;
     apply pna;
-end
+end;
 
 set builtin "P"     ≔ P;
 set builtin "T"     ≔ T;

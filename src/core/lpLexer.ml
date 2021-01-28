@@ -13,7 +13,7 @@ type token =
   | ASSOC of Pratter.associativity
   | BACKQUOTE | BUILTIN | BEGIN
   | COLON | COMMA | COMPUTE | COMPUTE_TYPE | CONSTANT
-  | DEBUG_FLAGS of (bool * string)
+  | DEBUG | DEBUG_FLAGS of (bool * string)
   (** Flags such as [+eiu] or [-eiu]. Tuple constructor (with parens) is
       needed by Menhir. *)
   | DOT
@@ -231,6 +231,7 @@ and nom_comment : lexbuf -> unit = fun buf ->
     | "builtin" -> BUILTIN
     | "compute" -> COMPUTE
     | "constant" -> CONSTANT
+    | "debug" -> DEBUG
     | "end" -> END
     | "flag" -> FLAG
     | "inductive" -> INDUCTIVE

@@ -8,7 +8,7 @@ opaque symbol and_idempotent : Π a, P (eq bool (bool_and a a) a)
   refine bool_ind (λ a, eq bool (bool_and a a) a) ?CT[a] ?CF[a] a;
   reflexivity;
   reflexivity;
-end
+end;
 
 // Same with a reduction rule.
 
@@ -18,4 +18,4 @@ opaque symbol and_idempotent_rw : Π a, P (eq bool (bool_and a a) a)
 ≔ begin
   assume a;
   reflexivity;
-end
+end;
