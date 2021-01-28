@@ -407,7 +407,7 @@ assert indL (cons n l) ≡ pcons n l (indL l)
 constant symbol list : Set
 rule List ↪ τ list
 
-///////////////// Couple of natural numbers
+///////////////// Pair of natural numbers
 
 begin inductive nat_prod : TYPE ≔
  | prod : N → N → nat_prod
@@ -476,6 +476,41 @@ symbol pconsL : Π x l, π (pList l) → π (pList (consL a x l))
 symbol indList ≔ ind_L a pList pnilL pconsL
 assert indList (nilL a) ≡ pnilL
 assert indList (consL a xa la) ≡ pconsL xa la (indList la)
+
+////////////////// Polymorphic trees
+
+begin (a:Set)
+inductive T:TYPE ≔
+| node:τ a → F a → T a
+with F:TYPE ≔
+| nilF:F a
+| consF:T a → F a → F a
+end
+
+assert T:Set→TYPE
+assert F:Set→TYPE
+assert node:Π a, τ a → F a → T a
+assert nilF:Π a, F a
+assert consF:Π a, T a → F a → F a
+assert ind_F: Π a, Π p:T a→Prop, Π q:F a→Prop,
+  (Π x, Π l, π(q l) → π(p (node a x l))) →
+  π(q (nilF a)) →
+  (Π t, π(p t) → Π l, π(q l) → π(q (consF a t l))) →
+  Π l, π(q l)
+assert ind_T: Π a, Π p:T a→Prop, Π q:F a→Prop,
+  (Π x, Π l, π(q l) → π(p (node a x l))) →
+  π(q (nilF a)) →
+  (Π t, π(p t) → Π l, π(q l) → π(q (consF a t l))) →
+  Π t, π(p t)
+assert a p q pnode pnil pcons x l ⊢
+  ind_T a p q pnode pnil pcons (node a x l)
+  ≡ pnode x l (ind_F a p q pnode pnil pcons l)
+assert a p q pnode pnil pcons ⊢
+  ind_F a p q pnode pnil pcons (nilF a)
+  ≡ pnil
+assert a p q pnode pnil pcons t l ⊢
+  ind_F a p q pnode pnil pcons (consF a t l)
+  ≡ pcons t (ind_T a p q pnode pnil pcons t) l (ind_F a p q pnode pnil pcons l)
 
 ////////////////// Type sum - test names between {|...|} too
 
