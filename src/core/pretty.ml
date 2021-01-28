@@ -173,7 +173,7 @@ let query : p_query pp = fun ff q ->
 
 let tactic : p_tactic pp = fun ff t ->
   let out fmt = Format.fprintf ff fmt in
-  match t.elt with
+  begin match t.elt with
   | P_tac_refine(t) -> out "refine %a" term t
   | P_tac_intro(xs) -> out "intro %a" (List.pp arg_ident " ") xs
   | P_tac_apply(t) -> out "apply %a" term t
@@ -191,10 +191,12 @@ let tactic : p_tactic pp = fun ff t ->
   | P_tac_query(q) -> query ff q
   | P_tac_fail -> out "fail"
   | P_tac_solve -> out "solve"
+  end;
+  out ";"
 
 let command : p_command pp = fun ff cmd ->
   let out fmt = Format.fprintf ff fmt in
-  match cmd.elt with
+  begin match cmd.elt with
   | P_require(b,ps) ->
       let op = if b then " open" else "" in
       out "require%s %a" op (List.pp (path cmd.pos) " ") ps
@@ -247,6 +249,8 @@ let command : p_command pp = fun ff cmd ->
       out "set quantifier %a" qident qid
   | P_query(q) ->
      query ff q
+  end;
+  out ";"
 
 let ast : ast pp = fun ff ->
   Stream.iter (fun c -> command ff c; Format.pp_print_newline ff ())

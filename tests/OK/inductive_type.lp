@@ -447,21 +447,21 @@ assert ⊢ bcons bool true (bnil (bush bool)) : Bush bool;
 
 opaque symbol plus_0_n : Π n, π ((0 + n) = n)
 ≔ begin
-  assume n
-  reflexivity
+  assume n;
+  reflexivity;
 end
 
 opaque symbol plus_n_0 : Π n, π ((n + 0) = n)
 ≔ begin
-  assume n
-  refine ind_Nat (λ z, (z + 0) = z) _ _ _
+  assume n;
+  refine ind_Nat (λ z, (z + 0) = z) _ _ _;
   // Case n = O
-  refine eq_refl 0
+  refine eq_refl 0;
   // Case n = S n'
-  assume n' Hn'
-  simpl
-  rewrite Hn'
-  reflexivity
+  assume n' Hn';
+  simpl;
+  rewrite Hn';
+  reflexivity;
 end
 
 // About lists
@@ -476,10 +476,10 @@ rule  app      nil     $m ↪ $m
 opaque symbol length_app :
   Π(l1 l2 : List), π ((length l1 + length l2) = length (app l1 l2))
 ≔ begin
-  assume l1 l2
+  assume l1 l2;
   apply ind_List
-        (λ z, (length z + length l2) = length (app z l2)) _ _ l1
-  reflexivity
-  assume x l2 IHl1
-  simpl rewrite IHl1 reflexivity
+        (λ z, (length z + length l2) = length (app z l2)) _ _ l1;
+  reflexivity;
+  assume x l2 IHl1;
+  simpl; rewrite IHl1; reflexivity;
 end

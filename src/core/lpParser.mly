@@ -277,7 +277,7 @@ proof_end:
   | ADMIT { make_pos $loc Syntax.P_proof_admit }
   | ABORT { make_pos $loc Syntax.P_proof_abort }
 
-proof: BEGIN ts=terminated(tactic, SEMICOLON?)* pe=proof_end { ts, pe }
+proof: BEGIN ts=terminated(tactic, SEMICOLON)* pe=proof_end { ts, pe }
 
 inductive:
   | i=ident COLON t=term ASSIGN VBAR?

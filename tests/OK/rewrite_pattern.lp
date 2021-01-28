@@ -91,16 +91,16 @@ set builtin "refl"  ≔ refl;
 // Symmetry of the equality (first option, rewrite).
 opaque symbol eq_sym : Π a x y, P (eq a x y) → P (eq a y x)
 ≔ begin
-  assume a x y h
-  rewrite h
-  refine refl a y
+  assume a x y h;
+  rewrite h;
+  refine refl a y;
 end
 
 // Symmetry of the equality (second option, by hand).
 opaque symbol eq_sym_other_1 : Π a x y, P (eq a x y) → P (eq a y x)
 ≔ begin
-  assume a x y h
-  refine eqind a x y h (λ z, eq a y z) (refl a y)
+  assume a x y h;
+  refine eqind a x y h (λ z, eq a y z) (refl a y);
 end
 
 // Symmetry of the equality (third option, by hand with a wildcard).

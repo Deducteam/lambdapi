@@ -6,6 +6,6 @@ symbol snd : T → U → U ≔ λ _ x, x;
 
 opaque symbol trivial : T → T → T → T
 ≔ begin
-  assume _ _ x
-  refine x
+  assume _ _ x;
+  refine x;
 end
