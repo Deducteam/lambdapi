@@ -29,13 +29,18 @@
       "name": "keyword.control.lp"
     },
     "comments": {
-			"patterns": [
-				{
-					"begin": "//",
-					"end": "$",
-					"name": "comment.line.double-slash.lp"
-				}
-			]
+      "patterns": [
+        {
+          "begin": "//",
+          "end": "$",
+          "name": "comment.line.double-slash.lp"
+        },
+        {
+          "begin": "/\\*",
+          "end": "\\*/",
+          "name": "comment.block.lp"
+        }
+      ]
     },
 
     "tactics": {
@@ -66,7 +71,7 @@
 
     "misc": {
       "match": "\\b(type|assert|assernot|compute|set)\\b",
-      "name:": "keyword.control.query.lp"
+      "name": "keyword.control.query.lp"
     },
 
     "keywords": {
