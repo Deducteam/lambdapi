@@ -227,6 +227,9 @@ let handle_cmd : sig_state -> p_command ->
       in
       let (ss, ind_sym_list_rev) =
         List.fold_left add_ind_sym (ss, []) p_ind_list in
+      (* Set parameters as implicit in the type of constructors. *)
+      let params =
+        List.map (fun (idopts,typopt,_) -> (idopts,typopt,true)) params in
       (* Add constructors in the signature. *)
       let add_constructors
             (ss, cons_sym_list_list) {elt=(_,_,p_cons_list); _} =
