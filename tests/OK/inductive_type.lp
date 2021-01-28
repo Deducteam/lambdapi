@@ -1,6 +1,8 @@
 /////////////////////////////
-// Configuration
+// Some examples of inductive types
 /////////////////////////////
+
+// Configuration
 
 constant symbol Prop : TYPE      // Type of propositions
 set declared "π"
@@ -13,26 +15,7 @@ constant symbol Set : TYPE       // Type of set codes
 set declared "τ"
 injective symbol τ : Set → TYPE  // Interpretation of set codes in TYPE
 
-/////////////////////////////
-// Equality
-/////////////////////////////
-
-constant symbol eq {a} : τ a → τ a → Prop
-set infix 8 "=" ≔ eq
-constant symbol eq_refl {a} (x : τ a) : π (x = x)
-constant symbol eq_ind {a} (x y : τ a) : π (x = y) → Πp, π (p y) → π (p x)
-
-// Set builtins for the rewrite tactic
-set builtin "T"     ≔ τ
-set builtin "eq"    ≔ eq
-set builtin "refl"  ≔ eq_refl
-set builtin "eqind" ≔ eq_ind
-
-/////////////////////////////
-// Some examples of inductive types
-/////////////////////////////
-
-////////////////// Primary color
+////////////////// Primary colors
 
 begin inductive RGB : TYPE ≔
  | red  : RGB
@@ -50,16 +33,11 @@ assert ind_RGB :
   π (p red) → π (p green) → π (p blue) →
   Πx, π (p x)
 
-symbol pRGB : RGB → Prop
-symbol pred : π (pRGB red)
-symbol pgreen : π (pRGB green)
-symbol pblue: π (pRGB blue)
-symbol indRGB ≔ ind_RGB pRGB pred pgreen pblue
-assert indRGB red ≡ pred
-assert indRGB green ≡ pgreen
-assert indRGB blue ≡ pblue
+assert p pred pgreen pblue ⊢ ind_RGB p pred pgreen pblue red ≡ pred
+assert p pred pgreen pblue ⊢ ind_RGB p pred pgreen pblue green ≡ pgreen
+assert p pred pgreen pblue ⊢ ind_RGB p pred pgreen pblue blue ≡ pblue
 
-////////////////// Type color
+////////////////// More colors
 
 begin inductive Color : TYPE ≔
  | black : Color
@@ -77,15 +55,12 @@ assert ind_Color :
   π (p black) → π (p white) → (Πx, π (p (primary x))) →
   Πx, π (p x)
 
-symbol pColor : Color → Prop
-symbol pblack : π (pColor black)
-symbol pwhite : π (pColor white)
-symbol pprimary: Πx, π (pColor (primary x))
-symbol indColor ≔ ind_Color pColor pblack pwhite pprimary
-assert indColor black ≡ pblack
-assert indColor white ≡ pwhite
-symbol rgb : RGB
-assert indColor (primary rgb) ≡ pprimary rgb
+assert pColor pblack pwhite pprimary
+⊢ ind_Color pColor pblack pwhite pprimary black ≡ pblack
+assert pColor pblack pwhite pprimary
+⊢ ind_Color pColor pblack pwhite pprimary white ≡ pwhite
+assert pColor pblack pwhite pprimary rgb
+⊢ ind_Color pColor pblack pwhite pprimary (primary rgb) ≡ pprimary rgb
 
 ////////////////// Boolean type
 
@@ -110,24 +85,20 @@ assert ind_B :
   π (p true) → π (p false) →
   Πb, π (p b)
 
-symbol pBool : B → Prop
-symbol pitrue  : π (pBool true)
-symbol pifalse : π (pBool false)
-symbol indBool ≔ ind_B pBool pitrue pifalse
-assert indBool true  ≡ pitrue
-assert indBool false ≡ pifalse
+assert p ptrue pfalse ⊢ ind_B p ptrue pfalse true ≡ ptrue
+assert p ptrue pfalse ⊢ ind_B p ptrue pfalse false ≡ pfalse
 
 constant symbol bool : Set
 rule B ↪ τ bool
 
-////////////////// False (not predicate one)
+////////////////// False (empty type)
 
 begin inductive False : TYPE ≔ end
 
 assert False : TYPE
 assert ind_False : Π(p:False → Prop) (f : False), π (p f)
 
-///////////////// Natural number
+///////////////// Natural numbers
 
 begin inductive N : TYPE ≔
  | z    : N
@@ -141,18 +112,12 @@ assert succ : N → N
 assert ind_N :
   Πp:N → Prop, π(p z) → (Πx, π (p x) → π (p (succ x))) → Πx, π (p x)
 
-symbol pN : N → Prop
-symbol pz : π (pN z)
-symbol psucc : Πx, π (pN x) → π (pN (succ x))
-symbol indN ≔ ind_N pN pz psucc
-assert indN z ≡ pz
-symbol n : N
-assert indN (succ n) ≡ psucc n (indN n)
+assert p pz psucc ⊢ ind_N p pz psucc z ≡ pz
+assert p pz psucc n ⊢ ind_N p pz psucc (succ n) ≡ psucc n (ind_N p pz psucc n)
 
 constant symbol nat : Set
 rule N ↪ τ nat
 
-// About natural numbers
 set builtin "0"  ≔ z
 set builtin "+1" ≔ succ
 
@@ -168,9 +133,6 @@ with succ $x × $y ↪ $y + $x × $y
 
 symbol le : N → N → Prop
 set infix left 6 "≤" ≔ le
-//inductive ≤ : Π(n:τ nat), N → Prop ≔
-//  | le_n : Πn, π (n ≤ n)
-//  | le_S : Πn m:τ nat, π (n ≤ m) → π (n ≤ (succ m))
 
 /////////////////// Arithmetic and boolean expressions
 
@@ -233,6 +195,7 @@ symbol e1 : Expr
 symbol e2 : Expr
 symbol be1 : BExpr
 symbol be2 : BExpr
+symbol n : N
 assert indE (Lit n) ≡ pLit n
 assert indE (Add e1 e2) ≡ pAdd e1 (indE e1) e2 (indE e2)
 assert indE (If be1 e1 e2) ≡ pIf be1 (indBE be1) e1 (indE e1) e2 (indE e2)
@@ -240,6 +203,14 @@ assert indBE (BLit x) ≡ pBLit x
 assert indBE (And be1 be2) ≡ pAnd be1 (indBE be1) be2 (indBE be2)
 assert indBE (Not be1) ≡ pNot be1 (indBE be1)
 assert indBE (Equal e1 e2) ≡ pEqual e1 (indE e1) e2 (indE e2)
+
+assert p0 p1 pLit pAdd pIf pBLit pAnd pNot pEqual n
+⊢ ind_Expr p0 p1 pLit pAdd pIf pBLit pAnd pNot pEqual (Lit n) ≡ pLit n
+
+assert p0 p1 pLit pAdd pIf pBLit pAnd pNot pEqual e1 e2
+⊢ ind_Expr p0 p1 pLit pAdd pIf pBLit pAnd pNot pEqual (Add e1 e2)
+≡ pAdd e1 (ind_Expr p0 p1 pLit pAdd pIf pBLit pAnd pNot pEqual e1)
+       e2 (ind_Expr p0 p1 pLit pAdd pIf pBLit pAnd pNot pEqual e2)
 
 /////////////////// Arithmetic and boolean expressions, and commands
 
@@ -252,7 +223,7 @@ with BExp : TYPE ≔
  | bEq : AExp → AExp → BExp
 with CExp : TYPE ≔
  | cSkip : CExp
- | cAss  : Set → AExp → CExp // FIXME: What is Set here ?
+ | cAss  : Set → AExp → CExp // FIXME: What Set is doing here ?
  | cSeq  : CExp → CExp → CExp
  | cIf   : BExp → CExp → CExp → CExp
 end
@@ -369,20 +340,18 @@ assert ind_odd :
     (Πn: τ nat, Πx: even n, π (p0 n x) → π (p1 (succ n) (odd_S n x))) →
   Πx: N, Πx0: odd x, π (p1 x x0)
 
-symbol podd : Πx: N, odd x → Prop
-symbol peven : Πx: N, even x → Prop
-symbol peven_O : π (peven z even_O)
-symbol peven_S : Πn: τ nat, Πx: odd n, π (podd n x) → π (peven (succ n) (even_S n x))
-symbol podd_S : Πn: τ nat, Πx: even n, π (peven n x) → π (podd (succ n) (odd_S n x))
-symbol indodd ≔ ind_odd peven podd peven_O peven_S podd_S
-symbol indeven ≔ ind_even peven podd peven_O peven_S podd_S
-symbol evenn : even n
-symbol oddn : odd n
-assert indodd _ (odd_S n evenn) ≡ podd_S n evenn (indeven _ evenn)
-assert indeven _ even_O ≡ peven_O
-assert indeven _ (even_S n oddn) ≡ peven_S n oddn (indodd _ oddn)
+assert peven podd peven_O peven_S podd_S n evenn
+⊢ ind_odd peven podd peven_O peven_S podd_S _ (odd_S n evenn)
+≡ podd_S n evenn (ind_even peven podd peven_O peven_S podd_S _ evenn)
 
-////////////////////// List of natural numbers
+assert peven podd peven_O peven_S podd_S n evenn
+⊢ ind_even peven podd peven_O peven_S podd_S _ even_O ≡ peven_O
+
+assert peven podd peven_O peven_S podd_S n oddn
+⊢ ind_even peven podd peven_O peven_S podd_S _ (even_S n oddn)
+≡ peven_S n oddn (ind_odd peven podd peven_O peven_S podd_S _ oddn)
+
+////////////////////// Lists of natural numbers
 
 begin inductive List : TYPE ≔
  | nil  : List
@@ -396,18 +365,14 @@ assert cons : N → List → List
 assert ind_List :
   Π(p:List → Prop), π(p nil) → (Πx l,π(p l) → π(p(cons x l))) → Πl,π(p l)
 
-symbol pL : List → Prop
-symbol pnil : π (pL nil)
-symbol pcons : Πx l, π (pL l) → π (pL (cons x l))
-symbol indL ≔ ind_List pL pnil pcons
-symbol l : List
-assert indL nil ≡ pnil
-assert indL (cons n l) ≡ pcons n l (indL l)
+assert p pnil pcons ⊢ ind_List p pnil pcons nil ≡ pnil
+assert p pnil pcons n l
+⊢ ind_List p pnil pcons (cons n l) ≡ pcons n l (ind_List p pnil pcons l)
 
 constant symbol list : Set
 rule List ↪ τ list
 
-///////////////// Pair of natural numbers
+///////////////// Pairs of natural numbers
 
 begin inductive nat_prod : TYPE ≔
  | prod : N → N → nat_prod
@@ -421,14 +386,9 @@ assert ind_nat_prod :
 (Πx0 x1, π (p (prod x0 x1))) →
 Πx, π (p x)
 
-symbol pNP : nat_prod → Prop
-symbol pprod : Πx0 x1, π (pNP (prod x0 x1))
-symbol indNP ≔ ind_nat_prod pNP pprod
-symbol n1 : N
-symbol n2 : N
-assert indNP (prod n1 n2) ≡ pprod n1 n2
+assert p pprod n1 n2 ⊢ ind_nat_prod p pprod (prod n1 n2) ≡ pprod n1 n2
 
-///////////////// Binary tree
+///////////////// Binary trees
 
 begin inductive Tree : TYPE ≔
   | leaf : Tree
@@ -444,14 +404,11 @@ assert ind_Tree : Πp,
 (Πt1, π (p t1) → Πx t2, π (p t2) → π (p (consTree t1 x t2))) →
 Πt, π (p t)
 
-symbol pT : Tree → Prop
-symbol pleaf : π (pT leaf)
-symbol pconsTree : Πt1, π (pT t1) → Πx t2, π (pT t2) → π (pT (consTree t1 x t2))
-symbol t1 : Tree
-symbol t2 : Tree
-symbol indT ≔ ind_Tree pT pleaf pconsTree
-assert indT leaf ≡ pleaf
-assert indT (consTree t1 n t2) ≡ pconsTree t1 (indT t1) n t2 (indT t2)
+assert p pleaf pconsTree ⊢ ind_Tree p pleaf pconsTree leaf ≡ pleaf
+assert p pleaf pconsTree t1 x t2
+⊢ ind_Tree p pleaf pconsTree (consTree t1 n t2)
+≡ pconsTree t1 (ind_Tree p pleaf pconsTree t1)
+  n t2 (ind_Tree p pleaf pconsTree t2)
 
 ///////////////////// Polymorphic list
 
@@ -461,21 +418,14 @@ begin (a:Set) inductive L : TYPE ≔
 end
 
 assert L : Set → TYPE
-assert nilL : Π a, L a
-assert consL : Π a, τ a → L a → L a
-
+assert @nilL : Π a, L a
+assert @consL : Π a, τ a → L a → L a
 assert ind_L : Π a p,
-  π(p (nilL a)) → (Π x l, π(p l) → π(p (consL a x l))) → Π l, π(p l)
+  π(p nilL) → (Π x l, π(p l) → π(p (consL x l))) → Π l, π(p l)
 
-symbol a : Set
-symbol xa : τ a
-symbol la : L a
-symbol pList : L a → Prop
-symbol pnilL : π (pList (nilL a))
-symbol pconsL : Π x l, π (pList l) → π (pList (consL a x l))
-symbol indList ≔ ind_L a pList pnilL pconsL
-assert indList (nilL a) ≡ pnilL
-assert indList (consL a xa la) ≡ pconsL xa la (indList la)
+assert a p pnil pcons ⊢ ind_L a p pnil pcons nilL ≡ pnil
+assert a p pnil pcons x l ⊢ ind_L a p pnil pcons (consL x l)
+≡ pcons x l (ind_L a p pnil pcons l)
 
 ////////////////// Polymorphic trees
 
@@ -489,27 +439,27 @@ end
 
 assert T:Set→TYPE
 assert F:Set→TYPE
-assert node:Π a, τ a → F a → T a
-assert nilF:Π a, F a
-assert consF:Π a, T a → F a → F a
+assert @node:Π a, τ a → F a → T a
+assert @nilF:Π a, F a
+assert @consF:Π a, T a → F a → F a
 assert ind_F: Π a, Π p:T a→Prop, Π q:F a→Prop,
-  (Π x, Π l, π(q l) → π(p (node a x l))) →
-  π(q (nilF a)) →
-  (Π t, π(p t) → Π l, π(q l) → π(q (consF a t l))) →
+  (Π x, Π l, π(q l) → π(p (node x l))) →
+  π(q nilF) →
+  (Π t, π(p t) → Π l, π(q l) → π(q (consF t l))) →
   Π l, π(q l)
 assert ind_T: Π a, Π p:T a→Prop, Π q:F a→Prop,
-  (Π x, Π l, π(q l) → π(p (node a x l))) →
-  π(q (nilF a)) →
-  (Π t, π(p t) → Π l, π(q l) → π(q (consF a t l))) →
+  (Π x, Π l, π(q l) → π(p (node x l))) →
+  π(q nilF) →
+  (Π t, π(p t) → Π l, π(q l) → π(q (consF t l))) →
   Π t, π(p t)
 assert a p q pnode pnil pcons x l ⊢
-  ind_T a p q pnode pnil pcons (node a x l)
+  ind_T a p q pnode pnil pcons (node x l)
   ≡ pnode x l (ind_F a p q pnode pnil pcons l)
 assert a p q pnode pnil pcons ⊢
-  ind_F a p q pnode pnil pcons (nilF a)
+  ind_F a p q pnode pnil pcons nilF
   ≡ pnil
 assert a p q pnode pnil pcons t l ⊢
-  ind_F a p q pnode pnil pcons (consF a t l)
+  ind_F a p q pnode pnil pcons (consF t l)
   ≡ pcons t (ind_T a p q pnode pnil pcons t) l (ind_F a p q pnode pnil pcons l)
 
 ////////////////// Type sum - test names between {|...|} too
@@ -528,18 +478,12 @@ assert {|ind_sum|} : Πp,
 (Πa b xb, π (p a b (inr a b xb))) →
 Πa b s, π (p a b s)
 
-symbol pS : Π(a:Set) (b:Set), {|sum|} a b → Prop
-symbol pinl : Πa b xa, π (pS a b ({|inl_sum|} a b xa))
-symbol pinr : Πa b xb, π (pS a b (inr a b xb))
-symbol g : Set
-symbol xg : τ g
-symbol d : Set
-symbol xd : τ d
-symbol indsum ≔ {|ind_sum|} pS pinl pinr
-assert indsum g d ({|inl_sum|} g d xg) ≡ pinl g d xg
-assert indsum g d (inr g d xd) ≡ pinr g d xd
+assert pS pinl pinr g d xg
+⊢ {|ind_sum|} pS pinl pinr g d ({|inl_sum|} g d xg) ≡ pinl g d xg
+assert pS pinl pinr g d xd
+⊢ {|ind_sum|} pS pinl pinr g d (inr g d xd) ≡ pinr g d xd
 
-//////////////////// Vector
+//////////////////// Vectors of natural numbers
 
 begin inductive V : N → TYPE ≔
  | nil_vec   : V z
@@ -553,16 +497,12 @@ assert cons_vec  : Πn, N → V n → V (succ n)
 assert ind_V :
  Πp, π(p z nil_vec) → (Πn x v, π(p n v) → π(p (succ n) (cons_vec n x v))) → Πn v, π(p n v)
 
-symbol pV : Πn, V n → Prop
-symbol pVnil : π (pV z nil_vec)
-symbol pVcons : Πn x v, π(pV n v) → π(pV (succ n) (cons_vec n x v))
-symbol indV ≔ ind_V pV pVnil pVcons
-symbol v : V n
-symbol y : N
-assert indV z nil_vec ≡ pVnil
-assert indV (succ n) (cons_vec n y v) ≡ pVcons n y v (indV n v)
+assert p pnil pcons ⊢ ind_V p pnil pcons z nil_vec ≡ pnil
+assert p pnil pcons n y v
+⊢ ind_V p pnil pcons (succ n) (cons_vec n y v)
+≡ pcons n y v (ind_V p pnil pcons n v)
 
-///////////////// An example of heterogenous dependent family
+/////////////////
 
 begin inductive fin : N → TYPE ≔
   | new : Πn, fin (succ n)
@@ -604,6 +544,7 @@ symbol pbound : Πbound, listb bound → Prop
 symbol pnilb : Πbound, π(pbound bound (nilb bound))
 symbol pconsb : Πbound x (prf:π (x ≤ bound)) l, π(pbound bound l) → π(pbound bound (consb bound x prf l))
 symbol indb ≔ ind_listb pbound pnilb pconsb
+symbol y : N
 symbol prf : π (y ≤ n)
 symbol lb : listb n
 assert indb n (nilb n) ≡ pnilb n
@@ -699,6 +640,7 @@ symbol pVec : Πa n, Vec a n → Prop
 symbol pVecnil : Πa, π (pVec a z (Vnil a))
 symbol pVeccons : Πa n x v, π(pVec a n v) → π(pVec a (succ n) (Vcons a n x v))
 symbol indVec ≔ ind_Vec pVec pVecnil pVeccons
+symbol a : Set
 symbol xV_p : τ a
 symbol v_p : Vec a n
 assert ind_Vec pVec pVecnil _ a z (Vnil a) ≡ pVecnil a
@@ -729,10 +671,26 @@ symbol pbcons : Πa x l, π (pBush (bush a) l) → π (pBush a (bcons a x l))
 symbol indbush ≔ ind_Bush pBush pbnil pbcons
 symbol tb : Bush (bush a)
 assert indbush a (bnil a) ≡ pbnil a
+symbol xa : τ a
 assert indbush a (bcons a xa tb) ≡ pbcons a xa tb (indbush (bush a) tb)
 
 /////////////////////////////
-// Some begins
+// Equality
+/////////////////////////////
+
+constant symbol eq {a} : τ a → τ a → Prop
+set infix 8 "=" ≔ eq
+constant symbol eq_refl {a} (x : τ a) : π (x = x)
+constant symbol eq_ind {a} (x y : τ a) : π (x = y) → Πp, π (p y) → π (p x)
+
+// Set builtins for the rewrite tactic
+set builtin "T"     ≔ τ
+set builtin "eq"    ≔ eq
+set builtin "refl"  ≔ eq_refl
+set builtin "eqind" ≔ eq_ind
+
+/////////////////////////////
+// Some proofs
 /////////////////////////////
 
 opaque symbol plus_0_n : Πn, π ((0 + n) = n) ≔
