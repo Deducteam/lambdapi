@@ -14,96 +14,111 @@
       make_pos loc (mp, fst id)
  %}
 
+// end of file
+
 %token EOF
 
-// Command keywords
-%token COLON
-%token SYMBOL
-%token INDUCTIVE
-%token RULE
-%token WITH
-%token OPEN
-%token REQUIRE
-%token AS
-%token REWRITE
-// Queries
-%token SET
-%token ASSERT
-%token ASSERT_NOT
-// Other commands and utils
-%token PREFIX
-%token BUILTIN
-%token <Pratter.associativity> ASSOC
-%token INFIX
-%token QUANTIFIER
-%token VERBOSE
-%token FLAG
-%token PROVER
-%token PROVER_TIMEOUT
-%token COMPUTE
-%token COMPUTE_TYPE
-%token EQUIV
-%token UNIF_RULE
-%token DEBUG
-%token <bool * string> DEBUG_FLAGS
-%token <bool> SWITCH
-%token <string> STRINGLIT
-%token <int> INT
-%token <float> FLOAT
-// Modifiers
-%token CONSTANT
-%token INJECTIVE
-%token PROTECTED
-%token PRIVATE
-%token SEQUENTIAL
-%token OPAQUE
-// Terms
-%token ARROW
-%token COMMA
-// Sigils
-%token VBAR
-%token TURNSTILE
-%token ASSIGN
-%token WILD
-%token LAMBDA
-%token PI
-%token LET
-%token IN
-%token BACKQUOTE
-%token L_PAREN
-%token R_PAREN
-%token L_CU_BRACKET
-%token R_CU_BRACKET
-%token L_SQ_BRACKET
-%token R_SQ_BRACKET
-%token SEMICOLON
-%token TYPE
-// Proofs
-%token BEGIN
-%token END
+// keywords in alphabetical order
+
 %token ABORT
 %token ADMIT
-// Tactics
-%token INTRO
 %token APPLY
-%token SIMPL
-%token REFL
-%token REFINE
-%token SYMMETRY
-%token WHY3
-%token PROOFTERM
-%token PRINT
+%token AS
+%token ASSERT
+%token ASSERT_NOT
+%token ASSUME
+%token BEGIN
+%token BUILTIN
+%token COMPUTE
+%token CONSTANT
+%token DEBUG
+%token END
 %token FAIL
-// Identifiers
-%token <(string * bool) list> PATH
+%token FLAG
+%token FOCUS
+%token IN
+%token INDUCTIVE
+%token INFIX
+%token INJECTIVE
+//%token LEFT // replaced by ASSOC(Pratter.Left)
+%token LET
+//%token OFF // replaced by SWITCH(false)
+//%token ON // SWITCH(true)
+%token OPEN
+%token OPAQUE
+%token PREFIX
+%token PRINT
+%token PRIVATE
+%token PROOFTERM
+%token PROTECTED
+%token PROVER
+%token PROVER_TIMEOUT
+%token QUANTIFIER
+%token REFINE
+%token REFLEXIVITY
+%token REQUIRE
+%token REWRITE
+//%token RIGHT // replaced by ASSOC(Pratter.Right)
+%token RULE
+%token SEQUENTIAL
+%token SET
+%token SIMPL
+%token SYMBOL
+%token SYMMETRY
+%token TYPE_QUERY
+%token TYPE_TERM
+%token UNIF_RULE
+%token VERBOSE
+%token WHY3
+%token WITH
+
+// other tokens
+
+%token <Pratter.associativity> ASSOC
+%token <bool * string> DEBUG_FLAGS
+%token <int> INT
+%token <float> FLOAT
+%token <string> STRINGLIT
+%token <bool> SWITCH
+
+// symbols
+
+%token ASSIGN
+%token ARROW
+%token BACKQUOTE
+%token COMMA
+%token COLON
+%token EQUIV
+%token HOOK_ARROW
+%token LAMBDA
+%token L_CU_BRACKET
+%token L_PAREN
+%token L_SQ_BRACKET
+%token PI
+%token R_CU_BRACKET
+%token R_PAREN
+%token R_SQ_BRACKET
+%token SEMICOLON
+%token TURNSTILE
+%token VBAR
+%token WILD
+
+// identifiers
+
 %token <string * bool> ID
-%token <string> ID_PAT
-%token <string> ID_META
 %token <string> ID_EXPL
+%token <string> ID_META
+%token <string> ID_PAT
+%token <(string * bool) list> PATH
 %token <(string * bool) list> QID_EXPL
+
+// start symbols
 
 %start <Syntax.p_command> command
 %start ident
+
+// types
+
 %type <Syntax.p_term> term
 %type <Syntax.p_term> aterm
 %type <Syntax.p_term> sterm
@@ -119,6 +134,7 @@
 %type <Syntax.p_tactic list * Syntax.p_proof_end> proof
 
 // Precedences listed from low to high
+
 %nonassoc COMMA IN
 %right ARROW
 
@@ -136,10 +152,7 @@ term_ident:
       { make_pos $loc (P_Iden(qid_of_path $loc p, true)) }
   | qid=qident { make_pos $loc (P_Iden(qid, false)) }
   | id=ID_EXPL
-      {
-        let id = make_pos $loc ([], id) in
-        make_pos $loc (P_Iden(id, true))
-      }
+      { let id = make_pos $loc ([], id) in make_pos $loc (P_Iden(id, true)) }
 
 // Rewrite pattern identifier
 patt: p=ID_PAT { if p = "_" then None else Some(make_pos $loc p) }
@@ -181,9 +194,13 @@ rw_patt:
 
 // Tactics available in proof mode.
 tactic:
-  | INTRO xs=arg_ident+ { make_pos $loc (P_tac_intro(xs)) }
-  | APPLY t=term { make_pos $loc (P_tac_apply(t)) }
-  | SIMPL { make_pos $loc P_tac_simpl }
+  | q=query { make_pos $loc (P_tac_query q) }
+  | APPLY t=term { make_pos $loc (P_tac_apply t) }
+  | ASSUME xs=arg_ident+ { make_pos $loc (P_tac_intro xs) }
+  | FAIL { make_pos $loc P_tac_fail }
+  | FOCUS i=INT { make_pos $loc (P_tac_focus i) }
+  | REFINE t=term { make_pos $loc (P_tac_refine t) }
+  | REFLEXIVITY { make_pos $loc P_tac_refl }
   | REWRITE l=ASSOC? p=delimited(L_SQ_BRACKET, rw_patt, R_SQ_BRACKET)? t=term
     {
       let b =
@@ -193,40 +210,37 @@ tactic:
       in
       make_pos $loc (P_tac_rewrite(b,p,t))
     }
-  | REFINE t=term { make_pos $loc (P_tac_refine(t)) }
-  | REFL { make_pos $loc P_tac_refl }
+  | SIMPL { make_pos $loc P_tac_simpl }
   | SYMMETRY { make_pos $loc P_tac_sym }
-  | WHY3 s=STRINGLIT? { make_pos $loc (P_tac_why3(s)) }
-  | q=query { make_pos $loc (P_tac_query(q)) }
-  | FAIL { make_pos $loc P_tac_fail }
+  | WHY3 s=STRINGLIT? { make_pos $loc (P_tac_why3 s) }
 
 // Modifiers of declarations.
 modifier:
-  | CONSTANT { make_pos $loc (P_prop(Terms.Const)) }
-  | INJECTIVE { make_pos $loc (P_prop(Terms.Injec)) }
-  | PROTECTED { make_pos $loc (P_expo(Terms.Protec)) }
-  | PRIVATE { make_pos $loc (P_expo(Terms.Privat)) }
-  | SEQUENTIAL { make_pos $loc (P_mstrat(Terms.Sequen)) }
-  | OPAQUE { make_pos $loc (P_opaq) }
+  | CONSTANT { make_pos $loc (P_prop Terms.Const) }
+  | INJECTIVE { make_pos $loc (P_prop Terms.Injec) }
+  | OPAQUE { make_pos $loc P_opaq }
+  | PRIVATE { make_pos $loc (P_expo Terms.Privat) }
+  | PROTECTED { make_pos $loc (P_expo Terms.Protec) }
+  | SEQUENTIAL { make_pos $loc (P_mstrat Terms.Sequen) }
 
 // Converts floats and integers to floats
 float_or_int:
-  | p=FLOAT { p }
   | n=INT   { float_of_int n }
+  | p=FLOAT { p }
 
 // Configurations
 config:
   // Add a builtin: [builtin "0" ≔ zero]
   | BUILTIN s=STRINGLIT ASSIGN qid=qident { P_config_builtin(s, qid) }
-  // Add a prefix operator: [prefix 1.2 "!" ≔ factorial]
-  | PREFIX p=float_or_int s=STRINGLIT ASSIGN qid=qident
-      { let unop = (s, p, qid) in P_config_unop(unop) }
   // Add an infix operator: [infix right 6.3 "+" ≔ plus]
   | INFIX a=ASSOC? p=float_or_int s=STRINGLIT ASSIGN qid=qident
       {
         let binop = (s, Option.get Pratter.Neither a, p, qid) in
         P_config_binop(binop)
       }
+  // Add a prefix operator: [prefix 1.2 "!" ≔ factorial]
+  | PREFIX p=float_or_int s=STRINGLIT ASSIGN qid=qident
+      { let unop = (s, p, qid) in P_config_unop(unop) }
   | QUANTIFIER qid=qident { P_config_quant qid }
   | UNIF_RULE r=unif_rule { P_config_unif_rule(r) }
 
@@ -235,16 +249,6 @@ assert_not:
   | ASSERT_NOT { true }
 
 query:
-  | SET VERBOSE i=INT { make_pos $loc (P_query_verbose(i)) }
-  | SET FLAG s=STRINGLIT b=SWITCH { make_pos $loc (P_query_flag(s,b)) }
-  | SET DEBUG fl=DEBUG_FLAGS
-      { let (b, s) = fl in make_pos $loc (P_query_debug(b, s)) }
-  | COMPUTE_TYPE t=term
-    { make_pos $loc (P_query_infer(t, {strategy=NONE; steps=None}))}
-  | COMPUTE t=term
-    { make_pos $loc (P_query_normalize(t, {strategy=SNF; steps=None})) }
-  | SET PROVER s=STRINGLIT { make_pos $loc (P_query_prover(s)) }
-  | SET PROVER_TIMEOUT n=INT { make_pos $loc (P_query_prover_timeout(n)) }
   | k=assert_not ps=arg* TURNSTILE t=term COLON a=term
     {
       let t =
@@ -269,13 +273,23 @@ query:
       in
       make_pos $loc (P_query_assert(k, P_assert_conv(t, a)))
     }
+  | COMPUTE t=term
+    { make_pos $loc (P_query_normalize(t, {strategy=SNF; steps=None})) }
   | PRINT qid=qident? { make_pos $loc (P_query_print qid) }
   | PROOFTERM { make_pos $loc P_query_proofterm }
+  | SET DEBUG fl=DEBUG_FLAGS
+      { let (b, s) = fl in make_pos $loc (P_query_debug(b, s)) }
+  | SET FLAG s=STRINGLIT b=SWITCH { make_pos $loc (P_query_flag(s,b)) }
+  | SET PROVER s=STRINGLIT { make_pos $loc (P_query_prover(s)) }
+  | SET PROVER_TIMEOUT n=INT { make_pos $loc (P_query_prover_timeout(n)) }
+  | SET VERBOSE i=INT { make_pos $loc (P_query_verbose(i)) }
+  | TYPE_QUERY t=term
+    { make_pos $loc (P_query_infer(t, {strategy=NONE; steps=None}))}
 
 proof_end:
-  | END { make_pos $loc Syntax.P_proof_end }
-  | ADMIT { make_pos $loc Syntax.P_proof_admit }
   | ABORT { make_pos $loc Syntax.P_proof_abort }
+  | ADMIT { make_pos $loc Syntax.P_proof_admit }
+  | END { make_pos $loc Syntax.P_proof_end }
 
 proof: BEGIN ts=terminated(tactic, SEMICOLON)* pe=proof_end { ts, pe }
 
@@ -337,7 +351,7 @@ aterm:
   // The wildcard "_"
   | WILD { make_pos $loc P_Wild }
   // The constant [TYPE] (of type Kind)
-  | TYPE { make_pos $loc P_Type }
+  | TYPE_TERM { make_pos $loc P_Type }
   // Metavariable
   | m=ID_META e=env?
       {
@@ -380,11 +394,11 @@ binder:
       { make_pos $loc ([[x], Some a, false], t) }
 
 // A rewrite rule [lhs ↪ rhs]
-rule: l=term REWRITE r=term { make_pos $loc (l, r) }
+rule: l=term HOOK_ARROW r=term { make_pos $loc (l, r) }
 
 equation: l=term EQUIV r=term { (l, r) }
 
-unif_rule: l=equation REWRITE
+unif_rule: l=equation HOOK_ARROW
 L_SQ_BRACKET rs=separated_nonempty_list(SEMICOLON, equation) R_SQ_BRACKET
     {
       let equiv = Pos.none (P_Iden(Pos.none ([], "#equiv"), true)) in

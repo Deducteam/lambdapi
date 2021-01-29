@@ -6,37 +6,99 @@ open Sedlexing
 open Pos
 
 type token =
+  (* end of file *)
   | EOF
-  | L_PAREN | R_PAREN | L_SQ_BRACKET | R_SQ_BRACKET
-  | L_CU_BRACKET | R_CU_BRACKET
-  | ABORT | ADMIT | APPLY | ARROW | AS | ASSERT | ASSERT_NOT | ASSIGN
-  | ASSOC of Pratter.associativity
-  | BACKQUOTE | BUILTIN | BEGIN
-  | COLON | COMMA | COMPUTE | COMPUTE_TYPE | CONSTANT
-  | DEBUG | DEBUG_FLAGS of (bool * string)
-  (** Flags such as [+eiu] or [-eiu]. Tuple constructor (with parens) is
-      needed by Menhir. *)
-  | DOT
-  | END | EQUIV
-  | FAIL | FLAG | FLOAT of float | FOCUS
-  | ID of (string * bool)  (* Boolean is true if the identifier is escaped. *)
-  | ID_EXPL of string | ID_META of string | ID_PAT of string
-  | IN | INFERTYPE | INDUCTIVE | INFIX | INJECTIVE | INT of int | INTRO
-  | LAMBDA | LET
-  | OPAQUE | OPEN
-  | PATH of (string * bool) list | PI | PREFIX | PRINT | PRIVATE
-  | PROOFTERM | PROTECTED | PROVER | PROVER_TIMEOUT
-  | QID_EXPL of (string * bool) list | QUANTIFIER
-  | REFINE | REFL | REQUIRE | REWRITE | RULE
-  | SEMICOLON | SEQUENTIAL | SET | SIMPL | STRINGLIT of string
-  | SWITCH of bool
-  (** [on] or [off], for flags. *)
-  | SYMMETRY | SYMBOL
-  | TYPE | TURNSTILE
+
+  (* keywords in alphabetical order *)
+  | ABORT
+  | ADMIT
+  | APPLY
+  | AS
+  | ASSERT
+  | ASSERT_NOT
+  | ASSUME
+  | BEGIN
+  | BUILTIN
+  | COMPUTE
+  | CONSTANT
+  | DEBUG
+  | END
+  | FAIL
+  | FLAG
+  | FOCUS
+  | IN
+  | INDUCTIVE
+  | INFIX
+  | INJECTIVE
+  (*| LEFT replaced by ASSOC(Pratter.Left) *)
+  | LET
+  (*| OFF replaced by SWITCH(false) *)
+  (*| ON replaced by SWITCH(true) *)
+  | OPEN
+  | OPAQUE
+  | PREFIX
+  | PRINT
+  | PRIVATE
+  | PROOFTERM
+  | PROTECTED
+  | PROVER
+  | PROVER_TIMEOUT
+  | QUANTIFIER
+  | REFINE
+  | REFLEXIVITY
+  | REQUIRE
+  | REWRITE
+  (*| RIGHT replaced by ASSOC(Pratter.Right) *)
+  | RULE
+  | SEQUENTIAL
+  | SET
+  | SIMPL
+  | SYMBOL
+  | SYMMETRY
+  | TYPE_QUERY
+  | TYPE_TERM
   | UNIF_RULE
-  | VBAR
   | VERBOSE
-  | WHY3 | WILD | WITH
+  | WHY3
+  | WITH
+
+  (* other tokens *)
+  | ASSOC of Pratter.associativity
+  | DEBUG_FLAGS of (bool * string) (* Tuple constructor (with parens)
+                                      requireed by Menhir. *)
+  | INT of int
+  | FLOAT of float
+  | STRINGLIT of string
+  | SWITCH of bool
+
+  (* symbols *)
+  | ASSIGN
+  | ARROW
+  | BACKQUOTE
+  | COMMA
+  | COLON
+  | EQUIV
+  | HOOK_ARROW
+  | LAMBDA
+  | L_CU_BRACKET
+  | L_PAREN
+  | L_SQ_BRACKET
+  | PI
+  | R_CU_BRACKET
+  | R_PAREN
+  | R_SQ_BRACKET
+  | SEMICOLON
+  | TURNSTILE
+  | VBAR
+  | WILD
+
+  (* identifiers *)
+  | ID of (string * bool) (* Boolean is true if the identifier is escaped. *)
+  | ID_EXPL of string
+  | ID_META of string
+  | ID_PAT of string
+  | PATH of (string * bool) list
+  | QID_EXPL of (string * bool) list
 
 exception SyntaxError of strloc
 
@@ -126,17 +188,22 @@ and nom_comment : lexbuf -> unit = fun buf ->
   let is_keyword : string -> bool =
     let kws =
       List.sort String.compare
-        [ "TYPE"
+        [ "abort"
+        ; "admit"
         ; "apply"
         ; "as"
         ; "assert"
         ; "assertnot"
         ; "assume"
+        ; "begin"
         ; "builtin"
         ; "compute"
         ; "constant"
-        ; "definition"
+        ; "debug"
+        ; "end"
+        ; "fail"
         ; "flag"
+        ; "focus"
         ; "in"
         ; "inductive"
         ; "infix"
@@ -146,28 +213,28 @@ and nom_comment : lexbuf -> unit = fun buf ->
         ; "off"
         ; "on"
         ; "open"
+        ; "opaque"
         ; "prefix"
+        ; "print"
         ; "private"
-        ; "proof"
+        ; "proofterm"
         ; "protected"
         ; "prover"
         ; "prover_timeout"
-        ; "qed"
-        ; "refine"
+        ; "quantifier"
         ; "refine"
         ; "reflexivity"
         ; "require"
         ; "rewrite"
         ; "right"
         ; "rule"
-        ; "set"
         ; "sequential"
+        ; "set"
         ; "simpl"
         ; "symbol"
         ; "symmetry"
-        ; "theorem"
         ; "type"
-        ; "type"
+        ; "TYPE"
         ; "unif_rule"
         ; "verbose"
         ; "why3"
@@ -195,48 +262,32 @@ and nom_comment : lexbuf -> unit = fun buf ->
   let token buf =
     nom buf;
     match%sedlex buf with
+
+    (* end of file *)
+
     | eof -> EOF
-    | '(' -> L_PAREN
-    | ')' -> R_PAREN
-    | '[' -> L_SQ_BRACKET
-    | ']' -> R_SQ_BRACKET
-    | '{' -> L_CU_BRACKET
-    | '}' -> R_CU_BRACKET
-    | '_' -> WILD
-    | ':' -> COLON
-    | ',' -> COMMA
-    | '.' -> DOT
-    | ';' -> SEMICOLON
-    | '|' -> VBAR
-    | '`' -> BACKQUOTE
-    | '+', Plus alphabet ->
-        DEBUG_FLAGS(true, Utf8.sub_lexeme buf 1 (lexeme_length buf - 1))
-    | '-', Plus alphabet ->
-        DEBUG_FLAGS(false, Utf8.sub_lexeme buf 1 (lexeme_length buf - 1))
-    | 0x2254 (* ≔ *) -> ASSIGN
-    | 0x21aa (* ↪ *) -> REWRITE
-    | 0x2192 (* → *) -> ARROW
-    | 0x03bb (* λ *) -> LAMBDA
-    | 0x03a0 (* Π *) -> PI
-    | 0x2261 (* ≡ *) -> EQUIV
-    | 0x22a2 (* ⊢ *) -> TURNSTILE
+
+    (* keywords *)
+
     | "abort" -> ABORT
     | "admit" -> ADMIT
     | "apply" -> APPLY
     | "as" -> AS
     | "assert" -> ASSERT
     | "assertnot" -> ASSERT_NOT
-    | "assume" -> INTRO
+    | "assume" -> ASSUME
     | "begin" -> BEGIN
     | "builtin" -> BUILTIN
     | "compute" -> COMPUTE
     | "constant" -> CONSTANT
     | "debug" -> DEBUG
     | "end" -> END
+    | "fail" -> FAIL
     | "flag" -> FLAG
+    | "focus" -> FOCUS
+    | "in" -> IN
     | "inductive" -> INDUCTIVE
     | "infix" -> INFIX
-    | "in" -> IN
     | "injective" -> INJECTIVE
     | "left" -> ASSOC(Pratter.Left)
     | "let" -> LET
@@ -251,8 +302,7 @@ and nom_comment : lexbuf -> unit = fun buf ->
     | "prover_timeout" -> PROVER_TIMEOUT
     | "quantifier" -> QUANTIFIER
     | "refine" -> REFINE
-    | "refine" -> REFINE
-    | "reflexivity" -> REFL
+    | "reflexivity" -> REFLEXIVITY
     | "require" -> REQUIRE
     | "rewrite" -> REWRITE
     | "right" -> ASSOC(Pratter.Right)
@@ -262,13 +312,47 @@ and nom_comment : lexbuf -> unit = fun buf ->
     | "simpl" -> SIMPL
     | "symbol" -> SYMBOL
     | "symmetry" -> SYMMETRY
-    | "type" -> COMPUTE_TYPE
-    | "type" -> COMPUTE_TYPE
-    | "TYPE" -> TYPE
+    | "type" -> TYPE_QUERY
+    | "TYPE" -> TYPE_TERM
     | "unif_rule" -> UNIF_RULE
     | "verbose" -> VERBOSE
     | "why3" -> WHY3
     | "with" -> WITH
+
+    (* other tokens *)
+    | '+', Plus alphabet ->
+        DEBUG_FLAGS(true, Utf8.sub_lexeme buf 1 (lexeme_length buf - 1))
+    | '-', Plus alphabet ->
+        DEBUG_FLAGS(false, Utf8.sub_lexeme buf 1 (lexeme_length buf - 1))
+    | integer -> INT(int_of_string (Utf8.lexeme buf))
+    | float -> FLOAT(float_of_string (Utf8.lexeme buf))
+    | stringlit ->
+        (* Remove the quotes from [lexbuf] *)
+        STRINGLIT(Utf8.sub_lexeme buf 1 (lexeme_length buf - 2))
+
+    (* symbols *)
+
+    | 0x2254 (* ≔ *) -> ASSIGN
+    | 0x2192 (* → *) -> ARROW
+    | '`' -> BACKQUOTE
+    | ',' -> COMMA
+    | ':' -> COLON
+    | 0x2261 (* ≡ *) -> EQUIV
+    | 0x21aa (* ↪ *) -> HOOK_ARROW
+    | 0x03bb (* λ *) -> LAMBDA
+    | '{' -> L_CU_BRACKET
+    | '(' -> L_PAREN
+    | '[' -> L_SQ_BRACKET
+    | 0x03a0 (* Π *) -> PI
+    | '}' -> R_CU_BRACKET
+    | ')' -> R_PAREN
+    | ']' -> R_SQ_BRACKET
+    | ';' -> SEMICOLON
+    | 0x22a2 (* ⊢ *) -> TURNSTILE
+    | '|' -> VBAR
+    | '_' -> WILD
+
+    (* identifiers *)
     | id -> ID(Utf8.lexeme buf, false)
     | '@', id -> ID_EXPL(Utf8.sub_lexeme buf 1 (lexeme_length buf - 1))
     | '@', path ->
@@ -276,14 +360,11 @@ and nom_comment : lexbuf -> unit = fun buf ->
     | '?', id -> ID_META(Utf8.sub_lexeme buf 1 (lexeme_length buf - 1))
     | '$', id -> ID_PAT(Utf8.sub_lexeme buf 1 (lexeme_length buf - 1))
     | path -> PATH(split_qid (Utf8.lexeme buf))
-    | integer -> INT(int_of_string (Utf8.lexeme buf))
-    | float -> FLOAT(float_of_string (Utf8.lexeme buf))
-    | stringlit ->
-        (* Remove the quotes from [lexbuf] *)
-        STRINGLIT(Utf8.sub_lexeme buf 1 (lexeme_length buf - 2))
     | escid ->
         (* Remove the escape markers [{|] and [|}] from [lexbuf]. *)
         ID(Utf8.sub_lexeme buf 2 (lexeme_length buf - 4), true)
+
+    (* invalid token *)
     | _ ->
         let loc = lexing_positions buf in
         let loc = locate loc in
