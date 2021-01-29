@@ -12,20 +12,31 @@
     "assume"
     "fail"
     "focus"
-    "print"
-    "proofterm"
     "refine"
     "reflexivity"
     "rewrite"
     "simpl"
     "solve"
     "symmetry"
-    "why3"))
-(defconst lambdapi--queries '("set" "assert" "assertnot" "type" "compute")
-  "Commands that can appear in proofs.")
+    "why3")
+  "Proof tactics.")
+(defconst lambdapi--queries
+  '("assert"
+    "assertnot"
+    "compute"
+    "print"
+    "proofterm"
+    "set"
+    "type")
+  "Queries.")
 (defconst lambdapi--cmds
-  (append '("symbol" "rule" "and" "begin" "require" "inductive")
-          lambdapi--queries)
+  (append
+   '("inductive"
+     "open"
+     "require"
+     "rule"
+     "symbol")
+   lambdapi--queries)
   "Commands at top level.")
 
 (defun lambdapi--query-indent ()
@@ -72,18 +83,20 @@ Indent by `lambdapi-indent-basic' in proofs, and 0 otherwise."
               ("assume" sterm)
               ("fail")
               ("focus" ident)
-              ("print")
-              ("proofterm")
               ("refine" sterm)
               ("reflexivity")
               ("rewrite" "[" rw-patt "]")
               ("simpl")
+              ("solve")
+              ("symmetry")
               ("why3"))
       (query ("assert" args "⊢" sterm ":" sterm)
              ("assert" args "⊢" sterm "≡" sterm)
              ("assertnot" args "⊢" sterm ":" sterm)
              ("assertnot" args "⊢" sterm "≡" sterm)
              ("compute" sterm)
+             ("print")
+             ("proofterm")
              ("set" "debug" ident)
              ("set" "flag" ident "off")
              ("set" "flag" ident "on")
@@ -95,13 +108,13 @@ Indent by `lambdapi-indent-basic' in proofs, and 0 otherwise."
                   (query))
       (unif-rule-rhs
        (sterm "≡" sterm)
-       ("begin" unif-rule-rhs "end")
+       ("[" unif-rule-rhs "]")
        (unif-rule-rhs ";"))
       (symdec ("symbol" args ":" sterm))
       (indcons (ident ":" sterm)
                ("|" ident ":" sterm))
       (inddec ("inductive" ident ":" sterm "≔" indcons))
-      (rules (rules "with" sterm "↪" sterm ";"))
+      (rules (rules "with" sterm "↪" sterm))
       (command ("constant" symdec ";")
                ("injective" inddec ";")
                ("injective" symdec ";")
@@ -110,22 +123,22 @@ Indent by `lambdapi-indent-basic' in proofs, and 0 otherwise."
                ("opaque" symdec ";")
                ("private" inddec ";")
                ("private" symdec ";")
-               ("begin" prfcontent "abort")
-               ("begin" prfcontent "admit")
-               ("begin" prfcontent "end")
+               ("begin" prfcontent "abort" ";")
+               ("begin" prfcontent "admit" ";")
+               ("begin" prfcontent "end" ";")
                ("protected" inddec ";")
                ("protected" symdec ";")
                ("require" ident "as" ident ";")
                ("require" ident ";")
-               ("rule" rules)
-               ("set" "builtin" ident "≔" sterm)
+               ("rule" rules ";")
+               ("set" "builtin" ident "≔" sterm ";")
                ("set" "infix" "left" ident "≔" sterm ";")
                ("set" "infix" "right" ident "≔" sterm ";")
                ("set" "infix" ident "≔" sterm ";")
                ("set" "prefix" ident "≔" sterm ";")
-               ;; ("set" "quantifier" ident)
+               ("set" "quantifier" ident ";")
                (query ";")
-               ("set" "unif_rule" sterm "≡" sterm "↪" unif-rule-rhs)
+               ("set" "unif_rule" sterm "≡" sterm "↪" unif-rule-rhs ";")
                (symdec ";")))
     '((assoc ";") (assoc "≔"))
     '((assoc ";") (assoc "↪"))
@@ -149,21 +162,24 @@ The default lexer is used because the syntax is primarily made of sexps."
     (`(:after . ,(or "require" "open")) lambdapi-indent-basic)
 
     ;; tactics
-    (`(:before . "simpl") `(column . ,lambdapi-indent-basic))
-    (`(:before . "rewrite") `(column . ,lambdapi-indent-basic))
-    (`(:before . "assume") `(column . ,lambdapi-indent-basic))
     (`(:before . "apply") `(column . ,lambdapi-indent-basic))
-    (`(:before . "refine") `(column . ,lambdapi-indent-basic))
-    (`(:before . "why3") `(column . ,lambdapi-indent-basic))
-    (`(:before . "reflexivity") `(column . ,lambdapi-indent-basic))
-    (`(:before . "focus") `(column . ,lambdapi-indent-basic))
+    (`(:before . "assume") `(column . ,lambdapi-indent-basic))
     (`(:before . "print") `(column . ,lambdapi-indent-basic))
     (`(:before . "fail") `(column . ,lambdapi-indent-basic))
-
+    (`(:before . "focus") `(column . ,lambdapi-indent-basic))
+    (`(:before . "reflexivity") `(column . ,lambdapi-indent-basic))
+    (`(:before . "refine") `(column . ,lambdapi-indent-basic))
+    (`(:before . "rewrite") `(column . ,lambdapi-indent-basic))
+    (`(:before . "simpl") `(column . ,lambdapi-indent-basic))
+    (`(:before . "solve") `(column . ,lambdapi-indent-basic))
+    (`(:before . "symmetry") `(column . ,lambdapi-indent-basic))
+    (`(:before . "why3") `(column . ,lambdapi-indent-basic))
+    
     (`(:before . ,(or "admit" "abort" "end")) '(column . 0))
     (`(:after . ,(or "admit" "abort" "end")) '(column . 0))
 
-    (`(:before . ,(or "set" "compute" "type" "assert" "assertnot"))
+    (`(:before . ,(or "assert" "assertnot" "compute" "print" "proofterm"
+                      "set" "type"))
      (lambdapi--query-indent))
 
     (`(,_ . ,(or "," "↪" "→" "≡")) (smie-rule-separator kind))
@@ -176,8 +192,8 @@ The default lexer is used because the syntax is primarily made of sexps."
     (`(:after . ,(or "rule" "with")) (* 2 lambdapi-indent-basic))
     (`(:after . "in") (smie-rule-parent))
     (`(:after . ,(or "symbol" "inductive")) lambdapi-indent-basic)
-    (`(:after . ,(or "simpl" "rewrite" "assume" "apply" "refine"
-                     "why3" "reflexivity" "focus" "print" "fail"))
+    (`(:after . ,(or "apply" "assume" "fail" "focus" "refine" "reflexivity"
+                     "rewrite" "simpl" "solve" "symmetry" "why3"))
      lambdapi-indent-basic)
 
     ;; Toplevel
@@ -187,10 +203,9 @@ The default lexer is used because the syntax is primarily made of sexps."
     (`(:before . "constant") '(column . 0))
     (`(:before . "require") '(column . 0))
     (`(:before . "open") '(column . 0))
-    (`(:before . "induction") '(column . 0))
+    (`(:before . "inductive") '(column . 0))
     (`(:before . "symbol") '(column . 0))
     (`(:before . "begin") '(column . 0))
-
     (`(:before . ,(or "with" "rule")) '(column . 0))))
 
 (provide 'lambdapi-smie)
