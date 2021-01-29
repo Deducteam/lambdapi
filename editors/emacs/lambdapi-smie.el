@@ -164,11 +164,10 @@ The default lexer is used because the syntax is primarily made of sexps."
     ;; tactics
     (`(:before . "apply") `(column . ,lambdapi-indent-basic))
     (`(:before . "assume") `(column . ,lambdapi-indent-basic))
-    (`(:before . "print") `(column . ,lambdapi-indent-basic))
     (`(:before . "fail") `(column . ,lambdapi-indent-basic))
     (`(:before . "focus") `(column . ,lambdapi-indent-basic))
-    (`(:before . "reflexivity") `(column . ,lambdapi-indent-basic))
     (`(:before . "refine") `(column . ,lambdapi-indent-basic))
+    (`(:before . "reflexivity") `(column . ,lambdapi-indent-basic))
     (`(:before . "rewrite") `(column . ,lambdapi-indent-basic))
     (`(:before . "simpl") `(column . ,lambdapi-indent-basic))
     (`(:before . "solve") `(column . ,lambdapi-indent-basic))
