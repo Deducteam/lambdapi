@@ -29,13 +29,18 @@
       "name": "keyword.control.lp"
     },
     "comments": {
-			"patterns": [
-				{
-					"begin": "//",
-					"end": "$",
-					"name": "comment.line.double-slash.lp"
-				}
-			]
+      "patterns": [
+        {
+          "begin": "//",
+          "end": "$",
+          "name": "comment.line.double-slash.lp"
+        },
+        {
+          "begin": "/\\*",
+          "end": "\\*/",
+          "name": "comment.block.lp"
+        }
+      ]
     },
 
     "tactics": {
