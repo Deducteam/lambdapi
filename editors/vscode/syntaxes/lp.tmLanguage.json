@@ -25,7 +25,7 @@
   ],
   "repository": {
     "commands": {
-      "match": "\\b(abort|admit|apply|as|assert|assertnot|assume|begin|builtin|compute|constant|debug|end|flag|fail|focus|in|injective|let|open|print|private|proofterm|protected|refine|reflexivity|require|rewrite|rule|set|simpl|symmetry|symbol|type|TYPE|why3)\\b",
+      "match": "\\b(abort|admit|apply|as|assert|assertnot|assume|begin|builtin|compute|constant|debug|end|fail|flag|focus|in|inductive|infix|injective|left|let||off|on|open|opaque|prefix|print|private|proofterm|protected|prover|prover_timeout|quantifier|refine|reflexivity|require|rewrite|rule|sequential|set|simpl|symbol|symmetry|type|TYPE|unif_rule|why3|with)\\b",
       "name": "keyword.control.lp"
     },
     "comments": {
@@ -44,12 +44,12 @@
     },
 
     "tactics": {
-      "match": "\\b(apply|assume|print|proofterm|refine|reflexivity|rewrite|simpl|symmetry|why3)\\b",
+      "match": "\\b(apply|assume|fail|focus|refine|reflexivity|rewrite|simpl|solve|symmetry|why3)\\b",
       "name": "keyword.control.tactics.lp"
     },
 
     "signature-commands": {
-      "match": "(as|begin|builtin|debug|declared|end|flag|in|inductive|let|rule|symbol|unif_rule|with)\\s+([^\\s+]*)",
+      "match": "(inductive|symbol|rule|with)\\s+([^\\s+]*)",
       "captures": {
         "1": {"name": "storage.type.lp"},
         "2": {"name": "entity.name.function.theorem.lp"}
@@ -75,7 +75,7 @@
     },
 
     "keywords": {
-      "match": "\\b(constant|infix|injective|left|opaque|prefix|private|protected|quantifier|right|TYPE)\\b",
+      "match": "\\b(as|begin|builtin|constant|debug|end|flag|infix|injective|left|off|on|opaque|prover|prover_timeout|prefix|private|protected|quantifier|right|sequential|TYPE|unif_rule)\\b",
       "name": "storage.modifier.lp"
     }    
   }

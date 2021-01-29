@@ -43,7 +43,7 @@
 //%token LEFT // replaced by ASSOC(Pratter.Left)
 %token LET
 //%token OFF // replaced by SWITCH(false)
-//%token ON // SWITCH(true)
+//%token ON // replaced by SWITCH(true)
 %token OPEN
 %token OPAQUE
 %token PREFIX
@@ -63,6 +63,7 @@
 %token SEQUENTIAL
 %token SET
 %token SIMPL
+%token SOLVE
 %token SYMBOL
 %token SYMMETRY
 %token TYPE_QUERY
@@ -211,6 +212,7 @@ tactic:
       make_pos $loc (P_tac_rewrite(b,p,t))
     }
   | SIMPL { make_pos $loc P_tac_simpl }
+  | SOLVE { make_pos $loc P_tac_solve }
   | SYMMETRY { make_pos $loc P_tac_sym }
   | WHY3 s=STRINGLIT? { make_pos $loc (P_tac_why3 s) }
 

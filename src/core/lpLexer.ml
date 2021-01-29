@@ -53,6 +53,7 @@ type token =
   | SEQUENTIAL
   | SET
   | SIMPL
+  | SOLVE
   | SYMBOL
   | SYMMETRY
   | TYPE_QUERY
@@ -231,6 +232,7 @@ and nom_comment : lexbuf -> unit = fun buf ->
         ; "sequential"
         ; "set"
         ; "simpl"
+        ; "solve"
         ; "symbol"
         ; "symmetry"
         ; "type"
@@ -296,7 +298,9 @@ and nom_comment : lexbuf -> unit = fun buf ->
     | "opaque" -> OPAQUE
     | "open" -> OPEN
     | "prefix" -> PREFIX
+    | "print" -> PRINT
     | "private" -> PRIVATE
+    | "proofterm" -> PROOFTERM
     | "protected" -> PROTECTED
     | "prover" -> PROVER
     | "prover_timeout" -> PROVER_TIMEOUT
@@ -310,6 +314,7 @@ and nom_comment : lexbuf -> unit = fun buf ->
     | "sequential" -> SEQUENTIAL
     | "set" -> SET
     | "simpl" -> SIMPL
+    | "solve" -> SOLVE
     | "symbol" -> SYMBOL
     | "symmetry" -> SYMMETRY
     | "type" -> TYPE_QUERY
