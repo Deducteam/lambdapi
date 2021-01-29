@@ -4,9 +4,15 @@ Lambdapi, a proof assistant based on the λΠ-calculus modulo rewriting [![Gitte
 Lambdapi is a proof assistant based on the λΠ-calculus modulo
 rewriting. It comes with Emacs and VSCode extensions. More details
 are given in the [User Manual](https://lambdapi.readthedocs.io).
-Lambdapi files must end with `.lp`. Lambdapi can also read
+Lambdapi files must end with `.lp`. But Lambdapi can also read
 [Dedukti](https://deducteam.github.io/) files (extension `.dk`) and
 convert them to Lambdapi files.
+
+Issues can be reported on the following
+[issue tracker](https://github.com/Deducteam/lambdapi/issues).
+
+Questions can be asked on the following
+[forum](https://github.com/Deducteam/lambdapi/discussions).
 
 Operating systems
 -----------------
@@ -21,7 +27,7 @@ Installation via [Opam](http://opam.ocaml.org/)
 Lambdapi is under active development. A new version of the `lambdapi`
 Opam package will be released soon, when the development will have reached a
 more stable point. For now, we advise you to pin the development
-repository to get the latest development version.
+repository to get the latest development version:
 ```bash
 opam pin add lambdapi https://github.com/Deducteam/lambdapi.git
 opam install lambdapi # install emacs and vim support as well
@@ -36,17 +42,17 @@ You can get the sources using `git` as follows:
 git clone https://github.com/Deducteam/lambdapi.git
 ```
 
-Dependencies are described in `lambdapi.opam`. For tests, one also
-needs [alcotest](https://github.com/mirage/alcotest) and
-[alt-ergo](https://alt-ergo.ocamlpro.com/). For building the
-source code documentation, one needs
-[odoc](https://github.com/ocaml/odoc).
+Dependencies are described in `lambdapi.opam`. For running tests, one
+also needs [alcotest](https://github.com/mirage/alcotest) and
+[alt-ergo](https://alt-ergo.ocamlpro.com/). For building the source
+code documentation, one needs
+[odoc](https://github.com/ocaml/odoc). For building the User Manual,
+see `docs/README.md`.
 
-**Note on the use of Why3:** the command `why3 config --full-config`
-must be run to update the Why3 configuration when a new prover is
-installed (including on the first installation of Why3).
+**Note on Why3:** the command `why3 config --full-config`
+must be run to make Why3 know the available provers.
 
-Using Opam, a suitable OCaml environment can be setup as follows.
+Using Opam, a suitable OCaml environment can be setup as follows:
 ```bash
 opam switch 4.11.1
 opam install dune bindlib timed menhir pratter yojson cmdliner why3 alcotest alt-ergo odoc
@@ -78,8 +84,8 @@ make distclean # Same as clean, but also removes library checking files.
 make fullclean # Same as distclean, but also removes downloaded libraries.
 ```
 
-Including Lambdapi code in a Latex document
--------------------------------------------
+Include Lambdapi code in Latex documents
+----------------------------------------
 
 Lambdapi code can be included into Latex documents by using
 `tools/listings.tex`.
