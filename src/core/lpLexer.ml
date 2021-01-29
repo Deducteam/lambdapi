@@ -353,6 +353,7 @@ and nom_comment : lexbuf -> unit = fun buf ->
     | '_' -> WILD
 
     (* identifiers *)
+
     | id -> ID(Utf8.lexeme buf, false)
     | '@', id -> ID_EXPL(Utf8.sub_lexeme buf 1 (lexeme_length buf - 1))
     | '@', path ->
@@ -365,6 +366,7 @@ and nom_comment : lexbuf -> unit = fun buf ->
         ID(Utf8.sub_lexeme buf 2 (lexeme_length buf - 4), true)
 
     (* invalid token *)
+
     | _ ->
         let loc = lexing_positions buf in
         let loc = locate loc in
