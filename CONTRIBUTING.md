@@ -64,4 +64,4 @@ following files: `src/core/lpLexer.ml`, `src/core/lpParser.mly`,
 `src/core/pretty.ml`, `src/core/print.ml`,
 `editors/emacs/lambdapi-smie.el`,
 `editors/vscode/lp.configuration.json`,
-`editors/vscode/syntaxes/lp.tmLanguage.json`.
+`editors/vscode/syntaxes/lp.tmLanguage.json`, `tools/listings.tex`.

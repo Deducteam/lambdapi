@@ -75,6 +75,12 @@ make distclean # Same as clean, but also removes library checking files.
 make fullclean # Same as distclean, but also removes downloaded libraries.
 ```
 
+Including Lambdapi code in a Latex document
+-------------------------------------------
+
+Lambdapi code can be included into Latex documents by using
+`tools/listings.tex`.
+
 [gitter-badge]: https://badges.gitter.im/Deducteam/lambdapi.svg
 [gitter-link]: https://gitter.im/Deducteam/lambdapi
 [matrix-badge]: http://strk.kbt.io/tmp/matrix_badge.svg
