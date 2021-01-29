@@ -40,10 +40,7 @@
 %token INDUCTIVE
 %token INFIX
 %token INJECTIVE
-//%token LEFT // replaced by ASSOC(Pratter.Left)
 %token LET
-//%token OFF // replaced by SWITCH(false)
-//%token ON // replaced by SWITCH(true)
 %token OPEN
 %token OPAQUE
 %token PREFIX
@@ -58,7 +55,6 @@
 %token REFLEXIVITY
 %token REQUIRE
 %token REWRITE
-//%token RIGHT // replaced by ASSOC(Pratter.Right)
 %token RULE
 %token SEQUENTIAL
 %token SET
@@ -107,11 +103,10 @@
 // identifiers
 
 %token <string * bool> ID
-%token <string> ID_EXPL
 %token <string> ID_META
 %token <string> ID_PAT
 %token <(string * bool) list> PATH
-%token <(string * bool) list> QID_EXPL
+%token <(string * bool) list> PATH_EXPL
 
 // start symbols
 
@@ -149,11 +144,9 @@ qident:
   | i=ID { make_pos $loc ([], fst i) }
 
 term_ident:
-  | p=QID_EXPL
+  | p=PATH_EXPL
       { make_pos $loc (P_Iden(qid_of_path $loc p, true)) }
   | qid=qident { make_pos $loc (P_Iden(qid, false)) }
-  | id=ID_EXPL
-      { let id = make_pos $loc ([], id) in make_pos $loc (P_Iden(id, true)) }
 
 // Rewrite pattern identifier
 patt: p=ID_PAT { if p = "_" then None else Some(make_pos $loc p) }

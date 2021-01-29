@@ -30,10 +30,7 @@ type token =
   | INDUCTIVE
   | INFIX
   | INJECTIVE
-  (*| LEFT replaced by ASSOC(Pratter.Left) *)
   | LET
-  (*| OFF replaced by SWITCH(false) *)
-  (*| ON replaced by SWITCH(true) *)
   | OPEN
   | OPAQUE
   | PREFIX
@@ -48,7 +45,6 @@ type token =
   | REFLEXIVITY
   | REQUIRE
   | REWRITE
-  (*| RIGHT replaced by ASSOC(Pratter.Right) *)
   | RULE
   | SEQUENTIAL
   | SET
@@ -65,8 +61,8 @@ type token =
 
   (* other tokens *)
   | ASSOC of Pratter.associativity
-  | DEBUG_FLAGS of (bool * string) (* Tuple constructor (with parens)
-                                      requireed by Menhir. *)
+  | DEBUG_FLAGS of (bool * string)
+      (* Tuple constructor (with parens) required by Menhir. *)
   | INT of int
   | FLOAT of float
   | STRINGLIT of string
@@ -99,7 +95,7 @@ type token =
   | ID_META of string
   | ID_PAT of string
   | PATH of (string * bool) list
-  | QID_EXPL of (string * bool) list
+  | PATH_EXPL of (string * bool) list
 
 exception SyntaxError of strloc
 
@@ -261,6 +257,11 @@ and nom_comment : lexbuf -> unit = fun buf ->
   let split_qid : string -> (string * bool) list = fun s ->
     String.split_on_char '.' s |> List.map unquote
 
+  (** [tail buf] returns the utf8 string formed from [buf] dropping its first
+      codepoint. *)
+  let tail : lexbuf -> string = fun buf ->
+    Utf8.sub_lexeme buf 1 (lexeme_length buf - 1)
+
   let token buf =
     nom buf;
     match%sedlex buf with
@@ -325,10 +326,8 @@ and nom_comment : lexbuf -> unit = fun buf ->
     | "with" -> WITH
 
     (* other tokens *)
-    | '+', Plus alphabet ->
-        DEBUG_FLAGS(true, Utf8.sub_lexeme buf 1 (lexeme_length buf - 1))
-    | '-', Plus alphabet ->
-        DEBUG_FLAGS(false, Utf8.sub_lexeme buf 1 (lexeme_length buf - 1))
+    | '+', Plus alphabet -> DEBUG_FLAGS(true, tail buf)
+    | '-', Plus alphabet -> DEBUG_FLAGS(false, tail buf)
     | integer -> INT(int_of_string (Utf8.lexeme buf))
     | float -> FLOAT(float_of_string (Utf8.lexeme buf))
     | stringlit ->
@@ -360,11 +359,10 @@ and nom_comment : lexbuf -> unit = fun buf ->
     (* identifiers *)
 
     | id -> ID(Utf8.lexeme buf, false)
-    | '@', id -> ID_EXPL(Utf8.sub_lexeme buf 1 (lexeme_length buf - 1))
-    | '@', path ->
-        QID_EXPL(split_qid (Utf8.sub_lexeme buf 1 (lexeme_length buf - 1)))
-    | '?', id -> ID_META(Utf8.sub_lexeme buf 1 (lexeme_length buf - 1))
-    | '$', id -> ID_PAT(Utf8.sub_lexeme buf 1 (lexeme_length buf - 1))
+    | '@', id -> PATH_EXPL([tail buf, false])
+    | '@', path -> PATH_EXPL(split_qid (tail buf))
+    | '?', id -> ID_META(tail buf)
+    | '$', id -> ID_PAT(tail buf)
     | path -> PATH(split_qid (Utf8.lexeme buf))
     | escid ->
         (* Remove the escape markers [{|] and [|}] from [lexbuf]. *)
