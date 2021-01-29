@@ -14,15 +14,15 @@ Where do I start?
 
 The documentation is available at <https://lambdapi.readthedocs.io>.
 
-It can also, be generated from the sources and browsed locally using any web
+It can also be generated from the sources and browsed locally using any web
 browser.
 
 To generate the documentation, 
 [Sphinx](https://www.sphinx-doc.org/en/master/index.html) is required
-(it can be installed, using `pip`, with `pip install -U sphinx`).
-Change to directory `docs/` from the  root of the sources repository,
-and use `make html` to generate `html` files into `docs/_build/html`,
-that can be browsed with `xdg-open docs/_build/html/index.html`.
+(it can be installed using `pip` with `pip install -U sphinx`).
+Change to directory `docs/` from the root of the sources
+and use `make html` to generate `html` files into `docs/_build/html`.
+The entry point of the documentation is `docs/_build/html/index.html`.
 
 How do I contribute?
 --------------------
@@ -43,6 +43,7 @@ To write documentation, open a pull request. We have a few guidelines on writing
   3. `^^^^`
   4. `''''`
 * for lists, use stars `*`.
-* BNF grammars are auto generated using 
-  [Obelisk](https://github.com/Lelio-Brun/Obelisk), they should not be edited 
+
+**Note:** BNF grammars are auto generated using 
+  [Obelisk](https://github.com/Lelio-Brun/Obelisk). They should not be edited 
   directly.

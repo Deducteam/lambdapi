@@ -4,6 +4,8 @@ Contributing to Lambdapi
 Contributions to `lambdapi` are very welcome!
 Here are some guidelines for contributing to this project.
 
+For contributing on the User Manual, see `docs/README.md`.
+
 Branching and pull-request policy
 ---------------------------------
 
@@ -64,4 +66,5 @@ following files: `src/core/lpLexer.ml`, `src/core/lpParser.mly`,
 `src/core/pretty.ml`, `src/core/print.ml`,
 `editors/emacs/lambdapi-smie.el`,
 `editors/vscode/lp.configuration.json`,
-`editors/vscode/syntaxes/lp.tmLanguage.json`, `tools/listings.tex`.
+`editors/vscode/syntaxes/lp.tmLanguage.json`, `tools/listings.tex`, as
+well as the User Manual in the `docs/` repository.
