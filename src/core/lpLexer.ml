@@ -93,8 +93,8 @@ type token =
   | ID of (string * bool) (* Boolean is true if the identifier is escaped. *)
   | ID_META of string
   | ID_PAT of string
-  | PATH of (string * bool) list
-  | PATH_EXPL of (string * bool) list
+  | QID of (string * bool) list
+  | QID_EXPL of (string * bool) list
 
 exception SyntaxError of strloc
 
@@ -358,11 +358,11 @@ and nom_comment : lexbuf -> unit = fun buf ->
     (* identifiers *)
 
     | id -> ID(Utf8.lexeme buf, false)
-    | '@', id -> PATH_EXPL([tail buf, false])
-    | '@', path -> PATH_EXPL(split_qid (tail buf))
+    | '@', id -> QID_EXPL([tail buf, false])
+    | '@', path -> QID_EXPL(split_qid (tail buf))
     | '?', id -> ID_META(tail buf)
     | '$', id -> ID_PAT(tail buf)
-    | path -> PATH(split_qid (Utf8.lexeme buf))
+    | path -> QID(split_qid (Utf8.lexeme buf))
     | escid ->
         (* Remove the escape markers [{|] and [|}] from [lexbuf]. *)
         ID(Utf8.sub_lexeme buf 2 (lexeme_length buf - 4), true)

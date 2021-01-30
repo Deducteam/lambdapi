@@ -20,9 +20,12 @@ help:
 	@$(SPHINXBUILD) -M $@ "$(SOURCEDIR)" "$(BUILDDIR)" $(SPHINXOPTS) $(O)
 
 syntax.bnf:
+	echo "<qid> ::= [<id>'.']*<id>\n" > $@
+	echo "<switch> ::= 'on'\n           | 'off'\n" >> $@
+	echo "<assoc> ::= 'left'\n          | 'right'\n" >> $@
 	$(BNF_GEN) ../src/core/lpParser.mly | sed \
-	-e 's/SWITCH/("on" | "off")/g' \
-	-e 's/ASSOC/"left" | "right"/g' \
+	-e 's/SWITCH/<switch>/g' \
+	-e 's/ASSOC/<assoc>/g' \
 	-e 's/ABORT/"abort"/g' \
 	-e 's/ADMIT/"admit"/g' \
 	-e 's/APPLY/"apply"/g' \
@@ -97,9 +100,9 @@ syntax.bnf:
 	-e 's/ID/<id>/g' \
 	-e 's/<id>_META/"?"<id>/g' \
 	-e 's/<id>_PAT/"$$"<id>/g' \
-	-e 's/PATH_EXPL/"@"<path>/g' \
-	-e 's/PATH/[<id>"."]+<id>/g' \
+	-e 's/Q<id>/<qid>/g' \
+	-e 's/<qid>_EXPL/"@"<qid>/g' \
 	-e "s/\"/\'/g" \
 	-e 's/<stringlit>/"<string>"/g' \
 	-e 's/| EOF//g' \
-	> $@
+	>> $@
