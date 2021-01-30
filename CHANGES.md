@@ -12,8 +12,7 @@ Replace Earley by Menhir, Pratter and Sedlex
   authorised anymore, but `λ(x y z: nat), ...` is, as well as `λ x :
   N, t` with a single variable.
 
-- In unification rules, the right hand-side must now be enclosed in
-  `begin ... end`, so
+- In unification rules, the right hand-side must now be enclosed between square brackets, so
   ```
   set unif_rule $x + $y ≡ 0 ↪ $x ≡ 0; $y ≡ 0
   ```
