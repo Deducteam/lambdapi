@@ -18,7 +18,7 @@ Replace Earley by Menhir, Pratter and Sedlex
   ```
   becomes
   ```
-  set unif_rule $x + $y ≡ 0 ↪ begin $x ≡ 0; $y ≡ 0 end;
+  set unif_rule $x + $y ≡ 0 ↪ [ $x ≡ 0; $y ≡ 0 ];
   ```
 - `set declared "?"` has been removed.
 
