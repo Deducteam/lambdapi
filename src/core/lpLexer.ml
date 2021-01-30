@@ -31,8 +31,8 @@ type token =
   | INFIX
   | INJECTIVE
   | LET
-  | OPEN
   | OPAQUE
+  | OPEN
   | PREFIX
   | PRINT
   | PRIVATE
@@ -208,8 +208,8 @@ and nom_comment : lexbuf -> unit = fun buf ->
         ; "let"
         ; "off"
         ; "on"
-        ; "open"
         ; "opaque"
+        ; "open"
         ; "prefix"
         ; "print"
         ; "private"

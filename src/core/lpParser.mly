@@ -41,8 +41,8 @@
 %token INFIX
 %token INJECTIVE
 %token LET
-%token OPEN
 %token OPAQUE
+%token OPEN
 %token PREFIX
 %token PRINT
 %token PRIVATE
