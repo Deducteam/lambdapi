@@ -1,203 +1,133 @@
-reserved "_"
-reserved "abort"
-reserved "admit"
-reserved "apply"
-reserved "as"
-reserved "assert"
-reserved "assertnot"
-reserved "assume"
-reserved "begin"
-reserved "compute"
-reserved "constant"
-reserved "end"
-reserved "fail"
-reserved "focus"
-reserved "in"
-reserved "injective"
-reserved "let"
-reserved "opaque"
-reserved "open"
-reserved "print"
-reserved "private"
-reserved "proofterm"
-reserved "protected"
-reserved "refine"
-reserved "reflexivity"
-reserved "require"
-reserved "rewrite"
-reserved "rule"
-reserved "set"
-reserved "simpl"
-reserved "symmetry"
-reserved "symbol"
-reserved "type"
-reserved "TYPE"
-reserved "with"
-reserved "why3"
+<qid> ::= [<id>'.']*<id>
 
-// Identifiers declared with the command "set declared"
-<declared_id> ::= "ℕ" | "α" | ...
+<switch> ::= 'on'
+           | 'off'
 
-// Identifiers
-<ident> ::=
-  | RE("[a-zA-Z_][a-zA-Z0-9_]*")     // Regular identifier
-  | RE("{|\([^|]\|\(|[^}]\)\)*|*|}") // Escaped identifier
-  | <declared_id>                    // Declared identifier
+<assoc> ::= 'left'
+          | 'right'
 
-// Natural number literals
-<nat_lit> ::= RE("[0-9]+")
+<ident> ::= <id>
 
-// Float literals
-<float_lit> ::= RE("[0-9]+\([.][0-9]+\)?")
+<qident> ::= <qid>
+           | <id>
 
-// String literals
-<string_lit> ::= RE("\"[^\"\n]*\"")
+<term_ident> ::= '@'<qid>
+               | <qident>
 
-// Module paths
-<path> ::= {<ident> "."}* <ident>
+<patt> ::= '$'<id>
 
-// Qualified identifiers
-<qident> ::= {<ident> "."}* <ident>
+<argid> ::= <ident>
+          | '_'
 
-// Infix operators declared with the command "set infix"
-<infix_op> ::= "+" | "×" | ...
+<arg_list> ::= <argid>
+             | '(' <argid>+ ':' <term> ')'
+             | '{' <argid>+ [':' <term>] '}'
 
-// Terms
-<term> ::=
-  | "TYPE"
-  | "@"? <qident>
-  | "_"
-  | "?" - <ident> {"[" <term> {";" <term>}* "]"}?
-  | "(" <term> ")"
-  | "{" <term> "}"
-  | <term> <term>
-  | <type> "→" <type>
-  | "Π" <arg>+ "," <type>
-  | "λ" <arg>+ "," <term>
-  | "let" <ident> <arg>* {":" <term>}? "≔" <term> "in" <term>
-  | <nat_lit>
-  | <term> <infix_op> <term>
+<rw_patt> ::= <term>
+            | 'in' <term>
+            | 'in' <ident> 'in' <term>
+            | <term> 'in' <term> ['in' <term>]
+            | <term> 'as' <ident> 'in' <term>
 
-// Arguments (of abstraction, product, ...) maybe marked as implicit
-<arg> ::=
-  | <ident>
-  | "{" <ident>+ {":" <type>}? "}"
-  | "(" <ident>+ ":" <type> ")"
+<tactic> ::= <query>
+           | 'apply' <term>
+           | 'assume' <argid>+
+           | 'fail'
+           | 'focus' <int>
+           | 'refine' <term>
+           | 'reflexivity'
+           | 'rewrite' [<assoc>] ['[' <rw_patt> ']'] <term>
+           | 'simpl'
+           | 'solve'
+           | 'symmetry'
+           | 'why3' ["<string>"]
 
-// Types
-<type> ::= <term>
+<modifier> ::= 'constant'
+             | 'injective'
+             | 'opaque'
+             | 'private'
+             | 'protected'
+             | 'sequential'
 
-// Rewrite patterns for rewriting rule left hand-sides
-<patt> ::=
-  | "$" - {<ident> | "_"} {"[" <ident> {";" <ident>}* "]"}?
-  | "λ" <arg>+ "," <patt>
-  | <qident> {<patt>}*
+<float_or_int> ::= <float>
+                 | <int>
 
-// Rewriting rules
-<rule> ::= <qident> {<patt>}* "↪" <term>
+<config> ::= 'builtin' "<string>" '≔' <qident>
+           | 'infix' [<assoc>] <float_or_int> "<string>" '≔' <qident>
+           | 'prefix' <float_or_int> "<string>" '≔' <qident>
+           | 'quantifier' <qident>
+           | 'unif_rule' <unif_rule>
 
-// Assertion predicates
-<assertion> ::=
-  | <arg>* "⊢" <term> ":" <term>
-  | <arg>* "⊢" <term> "≡" <term>
+<assert_kw> ::= 'assert'
+              | 'assertnot'
 
-// Flag names
-<flag_name> ::=
-  | "eta_equality"
-  | "print_domains"
-  | "print_implicits"
-  | "print_meta_type"
-  | "print_contexts"
-  | "print_domains"
+<query> ::= <assert_kw> <arg_list>* '⊢' <term> ':' <term>
+          | <assert_kw> <arg_list>* '⊢' <term> '≡' <term>
+          | 'compute' <term>
+          | 'print' [<qident>]
+          | 'proofterm'
+          | 'set' 'debug' ('+' | '-')<string>
+          | 'set' 'flag' "<string>" <switch>
+          | 'set' 'prover' "<string>"
+          | 'set' 'prover_timeout' <int>
+          | 'set' 'verbose' <int>
+          | 'type' <term>
 
-// Flag values
-<flag_value> ::=
-  | "on"
-  | "off"
+<proof_end> ::= 'abort'
+              | 'admit'
+              | 'end'
 
-// Queries
-<query> ::=
-  | "print" <ident>?
-  | "proofterm"
-  | "type" <term>
-  | "compute" <term>
-  | "set" "verbose" RE("[1-9][0-9]*")
-  | "set" "debug" RE("[-+][a-zA-Z]+")
-  | "set" "flag" \"<flag_name>\" <flag_value>
-  | "set" "prover" <ident>
-  | "set" "prover_timeout" <nat_lit>
-  | "assert" <assertion>
-  | "assertnot" <assertion>
+<proof> ::= 'begin' (<tactic> ';')* <proof_end>
 
-// Patterns for the rewrite tactic
-<rw_patt> ::=
-  | <term>
-  | "in" <term>
-  | "in" <ident> "in" <term>
-  | <ident> "in" <term>
-  | <term> "in" <ident> "in" <term>
-  | <term> "as" <ident> "in" <term>
-  
-// Proof tactics
-<tactic> ::=
-  | <query>
-  | "refine" <term>
-  | "assume" <ident>+
-  | "apply" <term>
-  | "simpl"
-  | "rewrite" "-"? {"[" <rw_patt> "]"}? <term>
-  | "reflexivity"
-  | "symmetry"
-  | "focus" <nat_lit>
-  | "why3" <string_lit>?
-  | "fail"
+<inductive> ::= <ident> ':' <term> '≔' ['|'] [<ident> ':' <term>
+                ('|' <ident> ':' <term>)*]
 
-// Builtins
-<builtin> ::=
-  | "0"
-  | "+1"
-  | "T"
-  | "P"
-  | "eq"
-  | "refl"
-  | "eq_ind"
-  | "top"
-  | "bot"
-  | "not"
-  | "or"
-  | "and"
-  | "imp"
+<term_proof> ::= <term>
+               | <proof>
+               | <term> <proof>
 
-// Inductive types
-<inductive> ::= <ident> ":" <term> "≔" {"|" <ident> ":" <term>}*
+<command> ::= 'require' 'open' <qid>+ ';'
+            | 'require' <qid>+ ';'
+            | 'require' <qid> 'as' <ident> ';'
+            | 'open' <qid> ';'
+            | <modifier>* 'symbol' <ident> <arg_list>* ':' <term> [<proof>]
+              ';'
+            | <modifier>* 'symbol' <ident> <arg_list>* [':' <term>] '≔'
+              <term_proof> ';'
+            | <modifier>* 'inductive' <inductive> ('with' <inductive>)* ';'
+            | 'rule' <rule> ('with' <rule>)* ';'
+            | 'set' <config> ';'
+            | <query> ';'
+            
 
-// Proofs
-<proof> ::= "begin" <tactic>* {"end"|"admit"|"abort"}
+<env> ::= '[' [<term> (';' <term>)*] ']'
 
-// Unification rules
-<unif_rule> ::= <patt> "≡" <patt> "↪" <term> "≡" <term> {";" <term> "≡" <term>}*
+<aterm> ::= <term_ident>
+          | '_'
+          | 'TYPE'
+          | '?'<id> [<env>]
+          | <patt> [<env>]
+          | '(' <term> ')'
+          | '{' <term> '}'
+          | <int>
 
-// Modifiers
-<property> ::= "constant" | "injective"
-<exposition> ::= "protected" | "private"
-<opacity> ::= "opaque"
-<modifier> ::= <opacity> | <exposition> | <property>
+<sterm> ::= <aterm>+
 
-// Commands
-<command> ::=
-  | <query>
-  | "require" <path> "as" <ident>
-  | "require" "open"? <path>
-  | "open" <path>
-  | <modifier>* "symbol" <ident> <arg>* {":" <type>}? {"≔" <term>}? proof?
-  | <exposition>? "inductive" <inductive> {"with" <inductive>}*
-  | "rule" <rule> {"with" <rule>}*
-  | "set" "declared" <string_lit>
-  | "set" "prefix" <float_lit> <string_lit> "≔" <qident>
-  | "set" "infix" {"left" | "right"}? <float_lit> <string_lit> "≔" <qident>
-  | "set" "quantifier" <qident>
-  | "set" "builtin" \"<builtin>\" "≔" <qident>
-  | "set" "unif_rule" <unif_rule>
+<term> ::= <sterm>
+         | <term> → <term>
+         | '`' <term_ident> <binder>
+         | 'Π' <binder>
+         | 'λ' <binder>
+         | 'let' <ident> <arg_list>* [':' <term>] '≔' <term> 'in' <term>
 
-// Entry point: list of commands
-<main> ::= <command>*
+<binder> ::= <arg_list>+ ',' <term>
+           | <argid> ':' <term> ',' <term>
+
+<rule> ::= <term> '↪' <term>
+
+<equation> ::= <term> '≡' <term>
+
+<unif_rule> ::= <equation> '↪' '[' <equation> (';'
+                <equation>)* ']'
+
+

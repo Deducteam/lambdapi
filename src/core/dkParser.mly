@@ -5,8 +5,7 @@ open! Lplib
 open Timed
 open Pos
 open Syntax
-open Legacy_lexer
-open Parser
+open DkLexer
 
 (** {b NOTE} we maintain the invariant described in the [Parser] module: every
     error should have an attached position.  We do not open [Console] to avoid
@@ -87,8 +86,6 @@ let translate_old_rule : old_p_rule -> p_rule = fun r ->
       | P_Meta(_,_)       -> assert false
       | P_Patt(_,_)       -> assert false
       | P_NLit(_)         -> assert false
-      | P_UnaO(_,_)       -> assert false
-      | P_BinO(_,_,_)     -> assert false
       | P_Wrap(_)         -> assert false
       | P_Expl(_)         -> assert false
     end;
@@ -176,8 +173,6 @@ let translate_old_rule : old_p_rule -> p_rule = fun r ->
     | P_Patt(_,_)       -> fatal h.pos "Pattern in legacy rule."
     | P_LLet(_,_,_,_,_) -> fatal h.pos "Let expression in legacy rule."
     | P_NLit(_)         -> fatal h.pos "Nat literal in legacy rule."
-    | P_UnaO(_,_)       -> fatal h.pos "Unary operator in legacy rule."
-    | P_BinO(_,_,_)     -> fatal h.pos "Binary operator in legacy rule."
     | P_Wrap(_)         -> fatal h.pos "Wrapping constructor in legacy rule."
     | P_Expl(_)         -> fatal h.pos "Explicit argument in legacy rule."
   in
@@ -206,8 +201,7 @@ let build_config : Pos.pos -> string -> string option -> eval_config =
     | (i     , Some "WHNF") -> config (Some(i)) WHNF
     | (i     , None       ) -> config (Some(i)) NONE
     | (_     , _          ) -> raise Exit (* captured below *)
-  with _ -> parser_fatal loc "Invalid command configuration."
-
+  with _ -> Console.fatal (Some(loc)) "Invalid command configuration."
 %}
 
 %token EOF
@@ -236,14 +230,14 @@ let build_config : Pos.pos -> string -> string option -> eval_config =
 %token <string> ID
 %token <Syntax.p_module_path * string> QID
 
-%start line
-%type <Syntax.p_command> line
+%start command
+%type <Syntax.p_command> command
 
 %right ARROW FARROW
 
 %%
 
-line:
+command:
   | p_sym_mod=modifier* s=ID p_sym_arg=param* COLON a=term DOT
     {
       let p_sym_mod =
@@ -374,10 +368,7 @@ line:
       let q = make_pos $loc (P_query_assert(mf, P_assert_conv(t,u))) in
       make_pos $loc (P_query q)
     }
-  | r=REQUIRE    DOT {
-      do_require (locate $loc) r;
-      make_pos $loc (P_require(false,[r]))
-    }
+  | r=REQUIRE DOT { make_pos $loc (P_require(false,[r])) }
   | EOF {
       raise End_of_file
     }

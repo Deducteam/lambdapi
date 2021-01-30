@@ -10,11 +10,13 @@
  (public_name lambdapi.core)
  (synopsis "LambdaPi interactive theorem prover [core]")
  (modules :standard)
- (preprocess (per_module ((action (run pa_ocaml %{input-file})) parser)))
- (flags (:standard -w -27))
- (libraries unix stdlib-shims timed bindlib earley.core why3 lplib))
+ (preprocess (pps sedlex.ppx))
+ (libraries pratter sedlex sedlex.ppx unix stdlib-shims timed bindlib why3
+  lplib))
 
-(ocamllex legacy_lexer)
+(menhir (flags --explain --external-tokens LpLexer) (modules lpParser))
+
+(ocamllex dkLexer)
 (menhir
- (flags (--external-tokens Legacy_lexer))
- (modules menhir_parser))
+ (flags (--external-tokens DkLexer))
+ (modules dkParser))

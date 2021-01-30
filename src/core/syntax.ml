@@ -16,12 +16,6 @@ type p_module_path = (string * bool) list
 type qident_aux = p_module_path * string
 type qident = qident_aux loc
 
-(** Representation of the associativity of an infix operator. *)
-type assoc =
-  | Assoc_none
-  | Assoc_left
-  | Assoc_right
-
 (** The priority of an infix operator is a floating-point number. *)
 type priority = float
 
@@ -29,7 +23,7 @@ type priority = float
 type unop = string * priority * qident
 
 (** Representation of a binary operator. *)
-type binop = string * assoc * priority * qident
+type binop = string * Pratter.associativity * priority * qident
 
 (** Parser-level (located) term representation. *)
 type p_term = p_term_aux loc
@@ -56,10 +50,6 @@ and p_term_aux =
   (** Local let. *)
   | P_NLit of int
   (** Natural number literal. *)
-  | P_UnaO of unop * p_term
-  (** Unary (prefix) operator. *)
-  | P_BinO of p_term * binop * p_term
-  (** Binary operator. *)
   | P_Wrap of p_term
   (** Parentheses. *)
   | P_Expl of p_term
@@ -228,8 +218,6 @@ type p_config =
   (** Defines (or redefines) a unary operator (e.g., ["!"] or ["¬"]). *)
   | P_config_binop of binop
   (** Defines (or redefines) a binary operator (e.g., ["+"] or ["×"]). *)
-  | P_config_ident of string
-  (** Defines a new, valid identifier (e.g., ["σ"], ["€"] or ["ℕ"]). *)
   | P_config_quant of qident
   (** Defines a quantifier symbol (e.g., ["∀"], ["∃"]). *)
   | P_config_unif_rule of p_rule
@@ -282,7 +270,7 @@ type p_command_aux =
 type p_command = p_command_aux loc
 
 (** Top level AST returned by the parser. *)
-type ast = p_command list
+type ast = p_command Stream.t
 
 (** Equality functions on the syntactic expressions ignoring positions. *)
 
@@ -314,9 +302,6 @@ let rec eq_p_term : p_term eq = fun {elt=t1;_} {elt=t2;_} ->
   | P_LLet(i1,xs1,a1,t1,u1), P_LLet(i2,xs2,a2,t2,u2) ->
       eq_ident i1 i2 && List.equal eq_p_args xs1 xs2
       && Option.equal eq_p_term a1 a2 && eq_p_term t1 t2 && eq_p_term u1 u2
-  | P_UnaO(u1,t1), P_UnaO(u2,t2) -> eq_unop u1 u2 && eq_p_term t1 t2
-  | P_BinO(t1,b1,u1), P_BinO(t2,b2,u2) ->
-      eq_p_term t1 t2 && eq_binop b1 b2 && eq_p_term u1 u2
   | P_Wrap t1, P_Wrap t2
   | P_Expl t1, P_Expl t2 -> eq_p_term t1 t2
   | P_NLit n1, P_NLit n2 -> n1 = n2
@@ -451,7 +436,8 @@ begin
   apply a // here a is a function symbol
 end; *)
 
-let fold_idents : ('a -> qident -> 'a) -> 'a -> ast -> 'a = fun f ->
+let fold_idents : ('a -> qident -> 'a) -> 'a -> p_command list -> 'a =
+  fun f ->
 
   let add_idopt : StrSet.t -> ident option -> StrSet.t = fun vs idopt ->
     match idopt with
@@ -506,9 +492,6 @@ let fold_idents : ('a -> qident -> 'a) -> 'a -> ast -> 'a = fun f ->
     | P_LLet (id, [], Some u, v, w) ->
         fold_term_vars (StrSet.add id.elt vs)
           (fold_term_vars vs (fold_term_vars vs a u) v) w
-
-    | P_UnaO (_, _)
-    | P_BinO (_, _, _) -> a (*FIXME*)
   in
 
   let fold_term : 'a -> p_term -> 'a = fold_term_vars StrSet.empty in
@@ -551,7 +534,6 @@ let fold_idents : ('a -> qident -> 'a) -> 'a -> ast -> 'a = fun f ->
     | P_config_unop (_, _, qid)
     | P_config_binop (_, _, _, qid)
     | P_config_quant qid -> f a qid
-    | P_config_ident _ -> a
     | P_config_unif_rule r -> fold_rule a r
   in
 

@@ -5,6 +5,9 @@ type 'a t = 'a option
 let map : ('a -> 'b) -> 'a t -> 'b t =
  fun f o -> match o with None -> None | Some e -> Some (f e)
 
+let bind : ('a -> 'b t) -> 'a t -> 'b t =
+  fun f o -> match o with None -> None | Some e -> f e
+
 let map_default : ('a -> 'b) -> 'b -> 'a option -> 'b =
  fun f d o -> match o with None -> d | Some e -> f e
 
@@ -28,6 +31,21 @@ let pp : 'a pp -> 'a option pp =
 
 let empty x = match x with | None -> true | Some _ -> false
 let default x d = match x with | None -> d | Some x -> x
+
+(** [pure x] lifts [x] to an option. *)
+let pure : 'a -> 'a t = fun x -> Some(x)
+
+(** [apply] is the application for options. *)
+let apply : ('a -> 'b) t -> 'a t -> 'b t = fun f x ->
+  match f with
+  | None -> None
+  | Some(f) -> map f x
+
+module Infix = struct
+  let ( <*> ) = apply
+
+  let ( >>= ) o f = bind f o
+end
 
 let fold : ('a -> 'b -> 'a) -> 'a -> 'b option -> 'a = fun f a o ->
   match o with

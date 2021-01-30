@@ -207,7 +207,7 @@ let fold_cons_type
 let gen_rec_types :
       config -> Sig_state.t -> popt -> inductive -> ind_pred_map -> string
       -> term list =
-  fun c ss pos ind_list ind_pred_map var_prefix ->
+  fun c _ pos ind_list ind_pred_map var_prefix ->
 
   (* [case_of ind_sym cons_sym] creates the clause for the constructor
      [cons_sym] in the induction principle of [ind_sym]. *)

@@ -168,9 +168,7 @@ let get_textPosition params =
 let in_range ?loc (line, pos) =
   match loc with
   | None -> false
-  | Some loc ->
-      let { Pos.start_line ; start_col ; end_line ; end_col ; _ } =
-        Lazy.force loc in
+  | Some Pos.{start_line; start_col; end_line; end_col; _} ->
     start_line - 1 < line && line < end_line - 1 ||
     (start_line - 1 = line && start_col <= pos) ||
     (end_line - 1 = line && pos <= end_col)
@@ -206,8 +204,7 @@ let get_logs ~doc ~line ~pos =
     let pos_str =
       match posopt with
       | None -> "None"
-      | Some pos ->
-          let Pos.{start_line; start_col; _} = Lazy.force pos in
+      | Some Pos.{start_line; start_col; _} ->
           Printf.sprintf "(%d, %d)" start_line start_col
     in
     let log_str =
@@ -221,9 +218,7 @@ let get_logs ~doc ~line ~pos =
   let before_cursor (npos : Pos.popt) =
     match npos with
     | None -> Lsp_io.log_error "get_logs" "None pos"; true
-    | Some npos ->
-        let Pos.{start_line; _} = Lazy.force npos in
-        start_line-1 <= line
+    | Some Pos.{start_line; _} -> start_line-1 <= line
   in
   List.fold_left_while (fun acc x -> acc^(fst x))
                   (fun (_, p) -> before_cursor p) "" doc.Lp_doc.logs

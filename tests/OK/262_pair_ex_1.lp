@@ -1,9 +1,9 @@
-constant symbol A : TYPE
-symbol Pair : TYPE
+constant symbol A : TYPE;
+symbol Pair : TYPE;
 
-symbol pair : A → A → Pair
+symbol pair : A → A → Pair;
 
 // Use example: public [pair] reduces to private [_pair]
-protected symbol _pair : A → Pair
+protected symbol _pair : A → Pair;
 
-rule pair $X _ ↪ _pair $X
+rule pair $X _ ↪ _pair $X;

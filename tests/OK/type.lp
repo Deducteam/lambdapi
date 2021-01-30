@@ -1,2 +1,2 @@
-symbol N : TYPE
-type N
+symbol N : TYPE;
+type N;
