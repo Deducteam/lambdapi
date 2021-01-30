@@ -20,7 +20,7 @@ Replace Earley by Menhir, Pratter and Sedlex
   ```
   set unif_rule $x + $y ≡ 0 ↪ [ $x ≡ 0; $y ≡ 0 ];
   ```
-- `set declared "?"` has been removed.
+- `set declared` has been removed.
 
 - Any (depending on accepted codepoints) UTF8 identifier is by default
   valid.
