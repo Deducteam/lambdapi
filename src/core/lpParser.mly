@@ -118,7 +118,7 @@
 %type <Syntax.p_term> term
 %type <Syntax.p_term> aterm
 %type <Syntax.p_term> sterm
-%type <Syntax.p_args> argid_list
+%type <Syntax.p_args> arg_list
 %type <Syntax.ident * bool> ident
 %type <Syntax.ident option> patt
 %type <Syntax.p_rule> rule
@@ -157,7 +157,7 @@ argid:
   | WILD { None }
 
 // Arguments of abstractions, products &c.
-argid_list:
+arg_list:
   // Explicit argument without type annotation
   | x=argid { ([x], None, false) }
   // Explicit argument with type annotation
@@ -244,7 +244,7 @@ assert_kw:
   | ASSERT_NOT { true }
 
 query:
-  | k=assert_kw ps=argid_list* TURNSTILE t=term COLON a=term
+  | k=assert_kw ps=arg_list* TURNSTILE t=term COLON a=term
     {
       let t =
         if ps = [] then t else
@@ -256,7 +256,7 @@ query:
       in
       make_pos $loc (P_query_assert(k, P_assert_typing(t, a)))
     }
-  | k=assert_kw ps=argid_list* TURNSTILE t=term EQUIV a=term
+  | k=assert_kw ps=arg_list* TURNSTILE t=term EQUIV a=term
     {
       let t =
         if ps = [] then t else
@@ -311,7 +311,7 @@ command:
         make_pos $loc (P_require_as(p, alias))
       }
   | OPEN p=QID SEMICOLON { make_pos $loc (P_open([p])) }
-  | ms=modifier* SYMBOL s=ident al=argid_list* COLON a=term
+  | ms=modifier* SYMBOL s=ident al=arg_list* COLON a=term
     po=proof? SEMICOLON
       {
         let sym =
@@ -320,7 +320,7 @@ command:
         in
         make_pos $loc (P_symbol(sym))
       }
-  | ms=modifier* SYMBOL s=ident al=argid_list* ao=preceded(COLON, term)?
+  | ms=modifier* SYMBOL s=ident al=arg_list* ao=preceded(COLON, term)?
     ASSIGN tp=term_proof SEMICOLON
       {
         let sym =
@@ -379,12 +379,12 @@ term:
       }
   | PI b=binder { make_pos $loc (P_Prod(fst b.elt, snd b.elt)) }
   | LAMBDA b=binder { make_pos $loc (P_Abst(fst b.elt, snd b.elt)) }
-  | LET x=ident a=argid_list* b=preceded(COLON, term)? ASSIGN t=term IN u=term
+  | LET x=ident a=arg_list* b=preceded(COLON, term)? ASSIGN t=term IN u=term
       { make_pos $loc (P_LLet(fst x, a, b, t, u)) }
 
 /* REVIEW: allow pattern of the form \x y z: N, t */
 binder:
-  | xs=argid_list+ COMMA t=term
+  | xs=arg_list+ COMMA t=term
       { make_pos $loc (xs, t) }
   | x=argid COLON a=term COMMA t=term
       { make_pos $loc ([[x], Some a, false], t) }
