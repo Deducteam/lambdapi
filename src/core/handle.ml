@@ -53,23 +53,27 @@ let handle_open : popt -> sig_state -> Path.t -> sig_state =
   open_sign ss sign
 
 (** [handle_require b pos ss p] handles the command [require p] (or [require
-   open p] if b is true) with [ss] as the signature state. On success, an
-   updated signature state is returned. *)
-let handle_require : bool -> popt -> sig_state -> Path.t -> sig_state =
-    fun b pos ss p ->
+   open p] if b is true) with [ss] as the signature state and [compile] the
+   main compile function (passed as argument to avoid cyclic dependencies).
+   On success, an updated signature state is returned. *)
+let handle_require : (Path.t -> Sign.t) -> bool -> popt -> sig_state ->
+  Path.t -> sig_state = fun compile b pos ss p ->
   (* Check that the module has not already been required. *)
   if PathMap.mem p !(ss.signature.sign_deps) then
     fatal pos "Module [%a] is already required." Path.pp p;
+  (* Compile required path (adds it to [Sign.loaded] among other things) *)
+  ignore (compile p);
   (* Add the dependency (it was compiled already while parsing). *)
   ss.signature.sign_deps := PathMap.add p [] !(ss.signature.sign_deps);
   if b then handle_open pos ss p else ss
 
-(** [handle_require_as pos ss p id] handles the command [require p as id] with
-    [ss] as the signature state. On success, an updated signature state is
-    returned. *)
-let handle_require_as : popt -> sig_state -> Path.t -> ident -> sig_state =
-  fun pos ss p id ->
-  let ss = handle_require false pos ss p in
+(** [handle_require_as compile pos ss p id] handles the command
+    [require p as id] with [ss] as the signature state and [compile] the main
+    compilation function passed as argument to avoid cyclic dependencies. On
+    success, an updated signature state is returned. *)
+let handle_require_as : (Path.t -> Sign.t) -> popt -> sig_state -> Path.t ->
+  ident -> sig_state = fun compile pos ss p id ->
+  let ss = handle_require compile false pos ss p in
   let aliases = StrMap.add id.elt p ss.aliases in
   let path_map = PathMap.add p id.elt ss.path_map in
   {ss with aliases; path_map}
@@ -130,7 +134,7 @@ let handle_rule : sig_state -> p_rule -> sym = fun ss r ->
       sym.sym_name;
   let rule = Sr.check_rule pr in
   Sign.add_rule ss.signature sym rule;
-  out 3 "(rule) %a\n" pp_rule (sym, rule);
+  out 3 (red "(rule) add %a\n") pp_rule (sym, rule);
   sym
 
 (** [handle_rules ss rs] handles the rules [rs] in signature state [ss], and
@@ -164,7 +168,7 @@ let handle_inductive_symbol :
     (fatal_msg "The type of [%s] has unsolved metavariables.\n" x.elt;
      fatal x.pos "We have %s : %a." x.elt pp_term a);
   (* Actually add the symbol to the signature and the state. *)
-  out 3 "(symb) %s : %a\n" x.elt pp_term a;
+  out 3 (red "(symb) %s : %a\n") x.elt pp_term a;
   let sig_symbol = {expo=e;prop=p;mstrat=strat;ident=x;typ=a;impl;def=None} in
   add_symbol ss sig_symbol
 
@@ -182,34 +186,37 @@ type proof_data =
   ; pdata_expo     : Terms.expo (** Allowed exposition of symbols in the proof
                                    script. *) }
 
-(** [handle_cmd ss cmd] tries to handle the command [cmd] with [ss] as the
-    signature state. On success, an updated signature state is returned.  When
+(** [handle_cmd compile ss cmd] tries to handle the command [cmd] with [ss] as
+    the signature state and [compile] as the main compilation function
+    processing lambdapi modules (it is passed as argument to avoid cyclic
+    dependencies). On success, an updated signature state is returned.  When
     [cmd] leads to entering the proof mode,  a [proof_data] is also  returned.
     This structure contains the list of the tactics to be executed, as well as
     the initial state of the proof.  The checking of the proof is then handled
     separately. Note that [Fatal] is raised in case of an error. *)
-let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
-  fun ss cmd ->
+let handle_cmd : (Path.t -> Sign.t) -> sig_state -> p_command ->
+  sig_state * proof_data option * Queries.result =
+fun compile ss cmd ->
+  if !log_enabled then log_hndl (blu "%a") Pretty.command cmd;
   let scope_basic exp pt = Scope.scope_term exp ss Env.empty pt in
   match cmd.elt with
   | P_query(q) ->
-      Queries.handle_query ss None q; (ss, None)
+      let res = Queries.handle_query ss None q in (ss, None, res)
   | P_require(b,ps) ->
       let ps = List.map (List.map fst) ps in
-      (List.fold_left (handle_require b cmd.pos) ss ps, None)
+      (List.fold_left (handle_require compile b cmd.pos) ss ps, None, None)
   | P_require_as(p,id) ->
       let id = Pos.make id.pos (fst id.elt) in
-      (handle_require_as cmd.pos ss (List.map fst p) id, None)
+      (handle_require_as compile cmd.pos ss (List.map fst p) id, None, None)
   | P_open(ps) ->
       let ps = List.map (List.map fst) ps in
-      (List.fold_left (handle_open cmd.pos) ss ps, None)
+      (List.fold_left (handle_open cmd.pos) ss ps, None, None)
   | P_rules(rs) ->
       let handle_rule syms r = SymSet.add (handle_rule ss r) syms in
       let syms = List.fold_left handle_rule SymSet.empty rs in
       SymSet.iter Tree.update_dtree syms;
-      (ss, None)
-
-  | P_inductive(ms, p_ind_list)     ->
+      (ss, None, None)
+  | P_inductive(ms, p_ind_list) ->
       (* Check modifiers. *)
       let (prop, e, mstrat) = handle_modifiers ms in
       if prop <> Defin then
@@ -263,12 +270,8 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
         let rec_name = Inductive.rec_name ind_sym in
         if Sign.mem ss.signature rec_name then
           fatal cmd.pos "Symbol [%s] already exists." rec_name;
-        (* If [ind_sym] is a declared identifier, then [rec_sym] must be
-           declared too. *)
-        if StrSet.mem ind_sym.sym_name !(ss.signature.sign_idents) then
-          Sign.add_ident ss.signature rec_name;
         let (ss, rec_sym) =
-          out 3 "(symb) %s : %a\n" rec_name pp_term rec_typ;
+          out 3 (red "(symb) %s : %a\n") rec_name pp_term rec_typ;
           let sig_symbol =
             {expo = e;
              prop = Defin;
@@ -297,7 +300,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
           Sign.add_inductive ss.signature ind_sym cons_sym_list rec_sym)
         ind_list
         rec_sym_list;
-      (ss, None)
+      (ss, None, None)
 
   | P_symbol {p_sym_mod;p_sym_nam;p_sym_arg;p_sym_typ;p_sym_trm;p_sym_prf;
               p_sym_def} ->
@@ -361,13 +364,9 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
       let proof_goals, a = goals_of_typ pos ao t in
       (* Add the metas of [a] as goals. *)
       let proof_goals = add_goals_of_metas metas_a proof_goals in
-      (* Add the definition as focused goal so that we can refine on it. *)
-      let proof_term, proof_goals =
-        if p_sym_def then
-          let m =  Meta.fresh ~name:id a 0 in
-          Some m, Goal.of_meta m :: proof_goals
-        else None, proof_goals
-      in
+      (* Add the definition as goal so that we can refine on it. *)
+      let proof_term =
+        if p_sym_def then Some (Meta.fresh ~name:id a 0) else None in
       (* Get tactics and proof end. *)
       let ts, pe =
         match p_sym_prf with
@@ -401,7 +400,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
                 if finished ps then
                   wrn pe.pos "The proof is finished. Use 'end' instead.";
                 (* Add the symbol in the signature with a warning. *)
-                out 3 "(symb) %s (admit)\n" id;
+                out 3 (red "(symb) add %s : %a\n") id pp_term a;
                 wrn pe.pos "Proof admitted.";
                 let sig_symbol =
                   {expo;prop;mstrat;ident=p_sym_nam;typ=a;impl;def=t} in
@@ -412,7 +411,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
                   (out 1 "%a" Proof.pp_goals ps;
                    fatal pe.pos "The proof is not finished.");
                 (* Add the symbol in the signature. *)
-                out 3 "(symb) %s (end)\n" id;
+                out 3 (red "(symb) add %s : %a\n") id pp_term a;
                 let sig_symbol =
                   {expo;prop;mstrat;ident=p_sym_nam;typ=a;impl;def=t} in
                 fst (add_symbol ss sig_symbol)
@@ -421,18 +420,29 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
       let ps = {proof_name = p_sym_nam; proof_term; proof_goals} in
       (* Apply tac_solve. *)
       let ps = Tactics.tac_solve pos ps in
+      (* Add proof_term as focused goal. *)
+      let ps =
+        match proof_term with
+        | None -> ps
+        | Some m -> {ps with proof_goals = Goal.of_meta m :: ps.proof_goals}
+      in
       (* Apply tac_refine in case of a definition. *)
       let ps =
         match pt with
         | None -> ps
         | Some pt ->
-            let t = Scope.scope_term pdata_expo ss [] pt in
-            Tactics.tac_refine pt.pos ps t
+            match proof_term with
+            | None -> assert false
+            | Some _ ->
+                let t = Scope.scope_term pdata_expo ss [] pt in
+                Tactics.tac_refine pt.pos ps t
       in
+      if p_sym_prf = None && not (finished ps) then wrn pos
+        "Some metavariables could not be solved: a proof must be given";
       { pdata_stmt_pos = p_sym_nam.pos; pdata_p_state = ps; pdata_tactics = ts
       ; pdata_finalize = finalize ; pdata_end_pos = pe.pos; pdata_expo }
     in
-    (ss, Some(data))
+    (ss, Some(data), None)
 
   | P_set(cfg)                 ->
       let ss =
@@ -454,19 +464,16 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
             let sym = find_sym ~prt:true ~prv:true false ss qid in
             (* Make sure the operator has a fully qualified [qid]. *)
             let unop = (s, prio, with_path sym.sym_path qid) in
-            out 3 "(conf) %a %a\n" pp_symbol sym pp_hint (Prefix unop);
-            add_unop ss s (sym, unop)
+            out 3 "(conf) %a %a\n" pp_symbol sym notation (Prefix unop);
+            add_unop ss (Pos.make cmd.pos s) (sym, unop)
         | P_config_binop(binop)   ->
             let (s, assoc, prio, qid) = binop in
             (* Define the binary operator [sym]. *)
             let sym = find_sym ~prt:true ~prv:true false ss qid in
             (* Make sure the operator has a fully qualified [qid]. *)
             let binop = (s, assoc, prio, with_path sym.sym_path qid) in
-            out 3 "(conf) %a %a\n" pp_symbol sym pp_hint (Infix binop);
-            add_binop ss s (sym, binop);
-        | P_config_ident(id)      ->
-            Sign.add_ident ss.signature id;
-            out 3 "(conf) declared identifier \"%s\"\n" id; ss
+            out 3 "(conf) %a %a\n" pp_symbol sym notation (Infix binop);
+            add_binop ss (Pos.make cmd.pos s) (sym, binop);
         | P_config_quant(qid)     ->
             let sym = find_sym ~prt:true ~prv:true false ss qid in
             out 3 "(conf) %a quantifier\n" pp_symbol sym;
@@ -486,21 +493,23 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
             Tree.update_dtree Unif_rule.equiv;
             out 3 "(hint) [%a]\n" Print.pp_rule (Unif_rule.equiv, urule); ss
       in
-      (ss, None)
+      (ss, None, None)
+
 
 (** [too_long] indicates the duration after which a warning should be given to
     indicate commands that take too long to execute. *)
 let too_long = Stdlib.ref infinity
 
-(** [handle_cmd ss cmd] adds to the previous [handle_cmd] some
+(** [handle_cmd compile ss cmd] adds to the previous [handle_cmd] some
     exception handling. In particular, the position of [cmd] is used on errors
     that lack a specific position. All exceptions except [Timeout] and [Fatal]
     are captured, although they should not occur. *)
-let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
-  fun ss cmd ->
+let handle_cmd : (Path.t -> Sign.t) -> sig_state -> p_command ->
+  sig_state * proof_data option * Queries.result =
+ fun compile ss cmd ->
   Print.sig_state := ss;
   try
-    let (tm, ss) = time (handle_cmd ss) cmd in
+    let (tm, ss) = time (handle_cmd compile ss) cmd in
     if Stdlib.(tm >= !too_long) then
       wrn cmd.pos "It took %.2f seconds to handle the command." tm;
     ss

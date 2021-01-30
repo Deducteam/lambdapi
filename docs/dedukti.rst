@@ -4,7 +4,9 @@ Compatibility with Dedukti
 One of the aims of Lambdapi is to remain compatible with
 `Dedukti <https://deducteam.github.io/>`__. Currently, a second parser
 is included in Lambdapi in order to support the legacy syntax of
-Dedukti. It should be extended whenever the syntax of Dedukti is
+Dedukti. The grammar supported by that parser can be seen in
+:download:`syntax_dedukti.bnf`.
+It should be extended whenever the syntax of Dedukti is
 extended, but such changes should be discouraged.
 
 Note that files in the legacy (Dedukti) syntax are interoperable with
@@ -21,5 +23,4 @@ syntax to Lambdapi syntax using the ``--beautify`` command line flag
 
 Note that Lambdapi is able to type-check all the generated libraries
 that were aimed at Dedukti (with minor modifications). Translation
-scripts are provided in the ``libraries`` folder and performance
-comparisons are given in :doc:`perfs`.
+scripts are provided in the ``libraries`` folder.

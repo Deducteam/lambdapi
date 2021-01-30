@@ -23,8 +23,8 @@ Simplify unification goals as much as possible.
 ``assume``
 ----------
 
-The tactic ``assume h1 .. hn`` replaces the focused goal of type ``Πx1 .. xn,T``
-by a goal of type ``T`` with ``xi`` replaced by ``hi``.
+The tactic ``assume h1 .. hn`` replaces the focused goal of type
+``Π x1 .. xn,T`` by a goal of type ``T`` with ``xi`` replaced by ``hi``.
 
 ``simpl``
 ---------
@@ -49,7 +49,7 @@ goals.
 
 The tactic ``apply t`` replaces a goal of type ``T`` by possibly new
 goals: ``?0`` of type ``TO``, …, ``?n`` of type ``Tn`` if ``t`` is of
-type ``Πx1:T1,..,Πxn:Tn,?0`` and ``t ?1 .. ?n`` is of type ``T``.
+type ``Π x1:T1,..,Π xn:Tn,?0`` and ``t ?1 .. ?n`` is of type ``T``.
 
 ``why3``
 --------
@@ -96,8 +96,8 @@ declarations:
    set builtin "P"     ≔ ... // : Prop → TYPE
    set builtin "eq"    ≔ ... // : Π {a}, T a → T a → Prop
    set infix ... "="   ≔ eq  // optional
-   set builtin "refl"  ≔ ... // : Π {a} (x:T a), P (x=x)
-   set builtin "eqind" ≔ ... // : Π {a} x y, P (x=y) → Π p:T a→Prop, P (p y) → P (p x)
+   set builtin "refl"  ≔ ... // : Π {a} (x:T a), P (x = x)
+   set builtin "eqind" ≔ ... // : Π {a} x y, P (x = y) → Π p:T a→Prop, P (p y) → P (p x)
 
 ``reflexivity``
 ^^^^^^^^^^^^^^^

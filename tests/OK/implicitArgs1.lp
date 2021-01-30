@@ -1,31 +1,31 @@
-constant symbol U : TYPE
+constant symbol U : TYPE;
 
 // Mini nat
-constant symbol Nat  : U
-constant symbol N : TYPE
+constant symbol Nat  : U;
+constant symbol N : TYPE;
 
 // Mini interpretation function
-injective symbol T : U → TYPE
-rule T Nat        ↪ N
+injective symbol T : U → TYPE;
+rule T Nat        ↪ N;
 
-constant symbol zero : T Nat
-constant symbol s : N → N
+constant symbol zero : T Nat;
+constant symbol s : N → N;
 
 
 
 // Mini polymorphic lists
-constant symbol List : U → U
+constant symbol List : U → U;
 
-constant symbol nil : Π{Typ:U}, T(List Typ)
+constant symbol nil : Π{Typ:U}, T(List Typ);
 // A version in full, without implicit arguments
-constant symbol nilF : Π(Typ:U), T(List Typ)
+constant symbol nilF : Π(Typ:U), T(List Typ);
 
-constant symbol cons : Π{Typ:U}, T Typ → T (List Typ) → T (List Typ)
+constant symbol cons : Π{Typ:U}, T Typ → T (List Typ) → T (List Typ);
 // A version in full, without implicit arguments
-constant symbol consF : Π(Typ:U), T Typ → T (List Typ) → T (List Typ)
+constant symbol consF : Π(Typ:U), T Typ → T (List Typ) → T (List Typ);
 
 
-symbol l1F ≔ consF Nat zero (nilF Nat)
+symbol l1F ≔ consF Nat zero (nilF Nat);
 
 // We would like to do :
 // symbol l1 ≔ cons zero nil

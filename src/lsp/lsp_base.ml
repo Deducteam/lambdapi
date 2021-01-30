@@ -33,38 +33,37 @@ let mk_event m p   =
 let mk_range (p : Pos.pos) : J.t =
   let open Pos in
   let {start_line=line1; start_col=col1; end_line=line2; end_col=col2; _} =
-    Lazy.force p
+    p
   in
   `Assoc ["start", `Assoc ["line", `Int (line1 - 1); "character", `Int col1];
           "end",   `Assoc ["line", `Int (line2 - 1); "character", `Int col2]]
 
-let json_of_goal g =
-  let pr_hyp (s,(_,t,_)) =
-    let t = Format.asprintf "%a" Print.pp_term (Bindlib.unbox t) in
-    `Assoc ["hname", `String s; "htype", `String t]
-  in
-  let open Proof in
-  match g with
-  | Typ {goal_meta; goal_hyps; goal_type} ->
-    let j_env = List.map pr_hyp goal_hyps in
+let json_of_goal (hyps, concl) =
+  let json_of_hyp (s,t) = `Assoc ["hname", `String s; "htype", `String t] in
+  match concl with
+  | Pure.Typ (meta, typ) ->
     `Assoc [
-      "typeofgoal", `String "Typ "
-    ; "gid", `Int goal_meta.meta_key
-    ; "hyps", `List j_env
-    ; "type", `String (Format.asprintf "%a" Print.pp_term goal_type)]
-  | Unif (ctx,t1,t2) ->
-    let constr = Format.asprintf "%a" Print.pp_constr (ctx,t1,t2) in
+      "typeofgoal", `String "Typ"
+    ; "gid", `String meta
+    ; "hyps", `List (List.map json_of_hyp hyps)
+    ; "type", `String typ]
+  | Pure.Unif (t,u) ->
     `Assoc [
       "typeofgoal", `String "Unif"
-    ; "constr", `String constr]
+    ; "hyps", `List (List.map json_of_hyp hyps)
+    ; "constr", `String (t ^ " ≡ " ^ u)]
 
-let json_of_goals goals =
+let json_of_goals ?logs goals =
+  let logs = match logs with None -> "" | Some s -> s in
   match goals with
   | None ->
-    `Null
+    `Assoc [
+      "logs", `String logs
+    ]
   | Some goals ->
     `Assoc [
-      "goals", `List List.(map json_of_goal goals)
+      "goals", `List List.(map json_of_goal goals);
+      "logs" , `String logs
     ]
 
 let mk_diagnostic

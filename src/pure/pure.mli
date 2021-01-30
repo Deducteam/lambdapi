@@ -1,7 +1,6 @@
 (** Interface to LSP. *)
 
 open Lplib
-
 open Core
 open Files
 
@@ -10,8 +9,9 @@ module Command : sig
   type t
   val equal : t -> t -> bool
   val get_pos : t -> Pos.popt
-  val get_qidents : t -> Syntax.qident list
 end
+
+val rangemap : Command.t list -> Syntax.qident_aux RangeMap.t
 
 (** Abstract representation of a tactic (proof item). *)
 module Tactic : sig
@@ -34,12 +34,19 @@ exception Parse_error of Pos.pos * string
     and an updated state is returned. The function may raise [Parse_error]. *)
 val parse_text : state -> string -> string -> Command.t list * state
 
+(** A goal is given by a list of assumptions and a conclusion. Each assumption
+   has a name and a type. *)
+type conclusion =
+  | Typ of string * string (** Metavariable name and type. *)
+  | Unif of string * string (** LHS and RHS of the unification goal. *)
+type goal = (string * string) list * conclusion
+
 (** [current_goals s] returns the list of open goals for proof state [s]. *)
-val current_goals : proof_state -> Proof.Goal.t list
+val current_goals : proof_state -> goal list
 
 (** Result type of the [handle_command] function. *)
 type command_result =
-  | Cmd_OK    of state
+  | Cmd_OK    of state * Queries.result
   (** Command is done. *)
   | Cmd_Proof of proof_state * Tactic.t list * Pos.popt * Pos.popt
   (** Enter proof mode (positions are for statement and qed). *)
@@ -48,7 +55,7 @@ type command_result =
 
 (** Result type of the [handle_tactic] function. *)
 type tactic_result =
-  | Tac_OK    of proof_state
+  | Tac_OK    of proof_state * Queries.result
   | Tac_Error of Pos.popt option * string
 
 (** [initial_state fname] gives an initial state for working with the (source)
@@ -62,7 +69,8 @@ val initial_state : file_path -> state
     [Cmd_Error] constuctor). *)
 val handle_command : state -> Command.t -> command_result
 
-(** [handle_tactic st tac] evaluates the tactic [tac] in state [st]. *)
+(** [handle_tactic st tac] evaluated the tactic [tac] in state [st], returning
+    a new proof state (with [Tac_OK]) or an error (with [Tac_Error]). *)
 val handle_tactic : proof_state -> Tactic.t -> tactic_result
 
 (** [end_proof st] finalises the proof which state is [st], returning a result

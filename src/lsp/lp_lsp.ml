@@ -168,9 +168,7 @@ let get_textPosition params =
 let in_range ?loc (line, pos) =
   match loc with
   | None -> false
-  | Some loc ->
-      let { Pos.start_line ; start_col ; end_line ; end_col ; _ } =
-        Lazy.force loc in
+  | Some Pos.{start_line; start_col; end_line; end_col; _} ->
     start_line - 1 < line && line < end_line - 1 ||
     (start_line - 1 = line && start_col <= pos) ||
     (end_line - 1 = line && pos <= end_col)
@@ -198,11 +196,39 @@ let rec get_goals ~doc ~line ~pos =
               | Some _ -> get_goals ~doc ~line:(line-1) ~pos:0 end
     | Some (v,_) -> Some v
 
+let get_logs ~doc ~line ~pos =
+  (* DEBUG LOG START *)
+  LIO.log_error "get_logs"
+    (Printf.sprintf "%s:%d,%d" doc.Lp_doc.uri line pos);
+  let log_to_str (log, posopt) =
+    let pos_str =
+      match posopt with
+      | None -> "None"
+      | Some Pos.{start_line; start_col; _} ->
+          Printf.sprintf "(%d, %d)" start_line start_col
+    in
+    let log_str =
+      let len = String.length log in
+      Printf.sprintf "length: %d | %s" len (String.sub log 0 (min 30 len))in
+    Format.asprintf "element: %s -> %s\n " pos_str log_str
+  in
+  Lsp_io.log_error "get_logs"
+    (List.fold_left (^) "\n" (List.map log_to_str doc.Lp_doc.logs));
+  (* DEBUG LOG END *)
+  let before_cursor (npos : Pos.popt) =
+    match npos with
+    | None -> Lsp_io.log_error "get_logs" "None pos"; true
+    | Some Pos.{start_line; _} -> start_line-1 <= line
+  in
+  List.fold_left_while (fun acc x -> acc^(fst x))
+                  (fun (_, p) -> before_cursor p) "" doc.Lp_doc.logs
+
 let do_goals ofmt ~id params =
   let uri, line, pos = get_docTextPosition params in
   let doc = Hashtbl.find completed_table uri in
   let goals = get_goals ~doc ~line ~pos in
-  let result = LSP.json_of_goals goals in
+  let logs = get_logs ~doc ~line ~pos in
+  let result = LSP.json_of_goals goals ~logs in
   let msg = LSP.mk_reply ~id ~result in
   LIO.send_json ofmt msg
 
@@ -285,10 +311,10 @@ let hover_symInfo ofmt ~id params =
   in
 
   (* Some printing in the log *)
-  LIO.log_error "token map" (RangeMap.to_string snd doc.map);
+  (* LIO.log_error "token map" (RangeMap.to_string snd doc.map);
 
   LIO.log_error "hoverSymInfo" sym_target;
-  LIO.log_error "hoverSymInfo" (Range.interval_to_string interval);
+  LIO.log_error "hoverSymInfo" (Range.interval_to_string interval); *)
 
   (* The information about the tokens is stored *)
   let sym = Pure.get_symbols doc.final in
@@ -422,8 +448,8 @@ let main std log_file =
   LIO.debug_fmt := F.formatter_of_out_channel debug_oc;
 
   (* XXX: Capture better / per sentence. *)
-  let lp_oc = open_out "log-lp.txt" in
-  let lp_fmt = F.formatter_of_out_channel lp_oc in
+  (* let lp_oc = open_out "log-lp.txt" in *)
+  let lp_fmt = F.formatter_of_buffer Lp_doc.lp_logger in
   Console.out_fmt := lp_fmt;
   Console.err_fmt := lp_fmt;
   (* Console.verbose := 4; *)
@@ -432,7 +458,8 @@ let main std log_file =
     let com = LIO.read_request stdin in
     LIO.log_object "read" com;
     process_input oc com;
-    F.pp_print_flush lp_fmt (); flush lp_oc;
+    F.pp_print_flush lp_fmt ();
+    (* flush lp_oc ;*)
     loop ()
   in
   try loop ()
@@ -442,7 +469,7 @@ let main std log_file =
     LIO.log_error "[BT]" bt;
     F.pp_print_flush !LIO.debug_fmt ();
     flush_all ();
-    close_out debug_oc;
-    close_out lp_oc
+    (* close_out lp_oc; *)
+    close_out debug_oc
 
 let default_log_file : string = "/tmp/lambdapi_lsp_log.txt"

@@ -40,13 +40,12 @@ module Goal = struct
   let env : goal -> Env.t = fun g ->
     match g with
     | Unif (c,_,_) ->
-        let t, n = Ctxt.to_prod c Type in fst (Env.destruct_prod n t)
+        let t, n = Ctxt.to_prod c Type in fst (Env.of_prod c n t)
     | Typ gt -> gt.goal_hyps
 
   (** [of_meta m] creates a goal from the meta [m]. *)
   let of_meta : meta -> goal = fun m ->
-    let (goal_hyps, goal_type) =
-      Env.destruct_prod m.meta_arity !(m.meta_type) in
+    let (goal_hyps, goal_type) = Env.of_prod [] m.meta_arity !(m.meta_type) in
     let goal_type = Eval.simplify (Env.to_ctxt goal_hyps) goal_type in
     Typ {goal_meta = m; goal_hyps; goal_type}
 
@@ -71,23 +70,23 @@ module Goal = struct
   let pp : goal pp = fun oc g ->
     let out fmt = Format.fprintf oc fmt in
     match g with
-    | Typ gt -> out "%a : %a\n" pp_meta gt.goal_meta pp_term gt.goal_type
-    | Unif (_, t, u) -> out "%a ≡ %a\n" pp_term t pp_term u
+    | Typ gt -> out "%a: %a" pp_meta gt.goal_meta pp_term gt.goal_type
+    | Unif (_, t, u) -> out "%a ≡ %a" pp_term t pp_term u
 
   (** [pp_hyps oc g] prints on channel [oc] the hypotheses of the goal [g]. *)
   let pp_hyps : goal pp =
     let env_elt oc (s,(_,t,_)) =
-      Format.fprintf oc "%s: %a\n" s pp_term (Bindlib.unbox t)
+      Format.fprintf oc "%s: %a" s pp_term (Bindlib.unbox t)
     in
     let ctx_elt oc (x,a,t) =
       Format.fprintf oc "%a: %a" pp_var x pp_term a;
       match t with
-      | None -> Format.fprintf oc "\n"
-      | Some(t) -> Format.fprintf oc " ≔ %a\n" pp_term t
+      | None -> ()
+      | Some(t) -> Format.fprintf oc " ≔ %a" pp_term t
     in
     let hyps hyp oc l =
       if l <> [] then
-        (List.iter (hyp oc) (List.rev l);
+        (List.iter (Format.fprintf oc "%a\n" hyp) (List.rev l);
          Format.fprintf oc "-----------------------------------------------\
                             ---------------------------------\n")
     in
@@ -95,6 +94,7 @@ module Goal = struct
     match g with
     | Typ gt -> hyps env_elt oc gt.goal_hyps
     | Unif (c,_,_) -> hyps ctx_elt oc c
+
 end
 
 (** [add_goals_of_metas ms gs] extends [gs] with the metas of [ms] that are
@@ -127,7 +127,7 @@ let pp_goals : proof_state pp = fun oc ps ->
   | g::_ ->
       out "\n";
       Goal.pp_hyps oc g;
-      List.iteri (fun i g -> out "%d. %a" i Goal.pp g) ps.proof_goals
+      List.iteri (fun i g -> out "%d. %a\n" i Goal.pp g) ps.proof_goals
 
 (** [focus_env ps] returns the scoping environment of the focused goal or the
    empty environment if there is none. *)
@@ -148,14 +148,14 @@ let goals_of_typ : popt -> term option -> term option -> goal list * term =
     match typ, ter with
     | Some(typ), Some(ter) ->
         begin
-          match Infer.infer_noexn [] typ with
+          match Infer.infer_noexn [] [] typ with
           | None -> fatal pos "[%a] is not typable." pp_term typ
-          | Some(sort, to_solve1) ->
-              let to_solve2 =
+          | Some(sort, to_solve) ->
+              let to_solve =
                 match unfold sort with
                 | Type | Kind ->
                     begin
-                      match Infer.check_noexn [] ter typ with
+                      match Infer.check_noexn to_solve [] ter typ with
                       | None -> fatal pos "[%a] cannot have type [%a]"
                                   pp_term ter pp_term typ
                       | Some cs -> cs
@@ -163,35 +163,35 @@ let goals_of_typ : popt -> term option -> term option -> goal list * term =
                 | _ -> fatal pos "[%a] has type [%a] and not a sort."
                          pp_term typ pp_term sort
               in
-              typ, to_solve1 @ to_solve2
+              typ, to_solve
         end
     | None, Some(ter) ->
         begin
-          match Infer.infer_noexn [] ter with
+          match Infer.infer_noexn [] [] ter with
           | None -> fatal pos "[%a] is not typable." pp_term ter
-          | Some (typ, to_solve2) ->
-              let to_solve1 =
+          | Some (typ, to_solve) ->
+              let to_solve =
                 match unfold typ with
                 | Kind -> fatal pos "Kind definitions are not allowed."
                 | _ ->
-                    match Infer.infer_noexn [] typ with
+                    match Infer.infer_noexn to_solve [] typ with
                     | None ->
                         fatal pos "[%a] has type [%a] which is not typable"
                           pp_term ter pp_term typ
-                    | Some (sort, to_solve1) ->
+                    | Some (sort, to_solve) ->
                         match unfold sort with
-                        | Type | Kind -> to_solve1
+                        | Type | Kind -> to_solve
                         | _ ->
                             fatal pos
                               "[%a] has type [%a] which has type [%a] \
                                and not a sort."
                               pp_term ter pp_term typ pp_term sort
               in
-              typ, to_solve1 @ to_solve2
+              typ, to_solve
         end
     | Some(typ), None ->
         begin
-          match Infer.infer_noexn [] typ with
+          match Infer.infer_noexn [] [] typ with
           | None -> fatal pos "[%a] is not typable." pp_term typ
           | Some (sort, to_solve) ->
               match unfold sort with

@@ -8,7 +8,7 @@
 (require 'highlight)
 (require 'cl-lib)
 
-(defconst lp-goal-line-prefix "---------------------------------------------------")
+(defconst lp-goal-line-prefix "--------------------------------------------------------------------------------")
 
 (defun lp-focus-goal (goalno &optional proofbuf lineNo)
   "Focus on 'goalno'th goal (zero-indexed). proofbuf is the buffer
@@ -60,35 +60,31 @@ bold if goalNo is 0"
      goalstr)
     goalstr))
 
-(defun lp-format-string-hyps-typ-goal (goal)
+(defun lp-format-string-hyps-goal (goal)
   "Return the string associated to the hypotheses of a single typing goal"
   (let ((tog (plist-get goal :typeofgoal)))
-    (if (string= tog "Typ ")
 	(let ((hs (plist-get goal :hyps)))
 	  (mapcar (lambda (hyp)
 		    (let ((name (plist-get hyp :hname))
 			  (type (plist-get hyp :htype)))
 		      (format "%s: %s\n" name type)))
-		  (reverse hs))))))
-
+		  (reverse hs)))))
 
 (defun lp-format-string-goal (goal goalNo proofbuf proofline)
   "Return the string associated to a single goal. Adds text-properties to
 make it clickable"
   (let ((tog (plist-get goal :typeofgoal)))
-    (if (string= tog "Typ ")
+    (if (string= tog "Typ")
 	(let* ((id (plist-get goal :gid))
                (type (plist-get goal :type))
                (clk-text (lp-make-goal-clickable
-                          (format "%s  %d: %s"
-                                  tog id type)
+                          (format "%s: %s" id type)
                           goalNo proofbuf proofline)))
 	  (format "%s\n%s\n\n"
 		  lp-goal-line-prefix clk-text))
       (let* ((constr (plist-get goal :constr))
              (clk-text (lp-make-goal-clickable
-                        (format "%s    : %s"
-                                tog constr)
+                        (format "%s" constr)
                         goalNo proofbuf proofline)))
         (format "%s\n%s\n\n"
                 lp-goal-line-prefix clk-text)))))
@@ -102,7 +98,7 @@ make it clickable"
           (read-only-mode -1)
           (if (> (length goals) 0)
               (let* ((fstgoal (elt goals 0))
-                     (hypsstr (lp-format-string-hyps-typ-goal fstgoal))
+                     (hypsstr (lp-format-string-hyps-goal fstgoal))
                      ;; map each goal to formatted goal string
                      (goalsstr (cl-mapcar `(lambda (goal goalNo)
                                              (lp-format-string-goal
@@ -117,6 +113,34 @@ make it clickable"
             (erase-buffer))
           (read-only-mode 1))))
 
+(defun lp-display-logs (logs)
+  "Display logs in *lp-logs* buffer"
+  (let ((logbuf (get-buffer-create "*lp-logs*")))
+    (with-current-buffer logbuf
+      (read-only-mode +1)
+      (with-silent-modifications
+        (set (make-local-variable 'window-point-insertion-type) t)
+	(erase-buffer)
+	(insert logs)
+        ;; TODO: fix performance issue
+        ;; See: https://emacs.stackexchange.com/a/38608/30239
+        (let ((ansi-color-apply-face-function
+               (lambda (beg end face)
+                 (when face
+                   (put-text-property beg end 'face face)))))
+          (ansi-color-apply-on-region (point-min) (point-max)))
+        ;;; remove whitespace at end of buffer
+        (goto-char (point-max))
+        (while (member (char-before) '(?  ?\C-j ?\C-i))
+          (delete-backward-char 1))))
+    (let ((logwin (get-buffer-window logbuf)))
+      (if logwin
+          (with-selected-window logwin
+            (goto-char (point-max))
+            (beginning-of-line)
+            (recenter -1))))))
+
+
 (defun eglot--signal-proof/goals (position)
   "Send proof/goals to server, requesting the list of goals at POSITION."
   (let ((server (eglot-current-server))
@@ -125,9 +149,16 @@ make it clickable"
     (if server
         (let ((response (jsonrpc-request server :proof/goals params)))
           (if response
-              (display-goals (plist-get response :goals))
-            (let ((goalsbuf (get-buffer-create "*Goals*")))
+              (progn
+		(display-goals (plist-get response :goals))
+		(lp-display-logs (plist-get response :logs)))
+            (let ((goalsbuf (get-buffer-create "*Goals*"))
+                  (logsbuf (get-buffer-create "*lp-logs*")))
               (with-current-buffer goalsbuf
+                (read-only-mode -1)
+                (erase-buffer)
+                (read-only-mode 1))
+              (with-current-buffer logsbuf
                 (read-only-mode -1)
                 (erase-buffer)
                 (read-only-mode 1))))))))
@@ -177,25 +208,21 @@ make it clickable"
 (defun lp-jump-proof-forward ()
   "Move the proof cursor to the next proof"
   (interactive)
-  (setq interactive-goals t)
   (move-proof-line #'lp-get-next-proof-line))
 
 (defun lp-jump-proof-backward ()
   "Move the proof cursor to the previous proof"
   (interactive)
-  (setq interactive-goals t)
   (move-proof-line #'lp-get-prev-proof-line))
 
 (defun lp-proof-forward ()
   "Move the proof cursor forward."
   (interactive)
-  (setq interactive-goals t)
   (move-proof-line #'1+))
 
 (defun lp-proof-backward ()
   "Move the proof cursor backward."
   (interactive)
-  (setq interactive-goals t)
   (move-proof-line #'1-))
 
 (defun toggle-interactive-goals ()
@@ -213,7 +240,9 @@ make it clickable"
               (hlt-highlight-region 0 (1+ (line-end-position)))
               (lp-display-goals))
         (goto-line line)
-        (hlt-unhighlight-region 0 (point-max))))))
+        (hlt-unhighlight-region 0 (point-max)))))
+  (message (format "Interactive mode is %s"
+                   (if interactive-goals "ON" "OFF"))))
 
 (provide 'lambdapi-proofs)
 ;;; lambdapi-proofs.el ends here
