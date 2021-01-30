@@ -220,8 +220,8 @@ modifier:
 
 // Converts floats and integers to floats
 float_or_int:
-  | n=INT   { float_of_int n }
   | p=FLOAT { p }
+  | n=INT   { float_of_int n }
 
 // Configurations
 config:

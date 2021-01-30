@@ -1,0 +1,125 @@
+<ident> ::= <id>
+
+<qident> ::= [<id>'.']+<id>
+           | <id>
+
+<term_ident> ::= '@'<path>
+               | <qident>
+
+<patt> ::= '$'<id>
+
+<arg_ident> ::= <ident>
+              | '_'
+
+<arg> ::= <arg_ident>
+        | '(' <arg_ident>+ ':' <term> ')'
+        | '{' <arg_ident>+ [':' <term>] '}'
+
+<rw_patt> ::= <term>
+            | 'in' <term>
+            | 'in' <ident> 'in' <term>
+            | <term> 'in' <term> ['in' <term>]
+            | <term> 'as' <ident> 'in' <term>
+
+<tactic> ::= <query>
+           | 'apply' <term>
+           | 'assume' <arg_ident>+
+           | 'fail'
+           | 'focus' <int>
+           | 'refine' <term>
+           | 'reflexivity'
+           | 'rewrite' ['left' | 'right'] ['[' <rw_patt> ']'] <term>
+           | 'simpl'
+           | 'solve'
+           | 'symmetry'
+           | 'why3' ["<string>"]
+
+<modifier> ::= 'constant'
+             | 'injective'
+             | 'opaque'
+             | 'private'
+             | 'protected'
+             | 'sequential'
+
+<float_or_int> ::= <float>
+                 | <int>
+
+<config> ::= 'builtin' "<string>" '≔' <qident>
+           | 'infix' ['left' | 'right'] <float_or_int> "<string>" '≔' <qident>
+           | 'prefix' <float_or_int> "<string>" '≔' <qident>
+           | 'quantifier' <qident>
+           | 'unif_rule' <unif_rule>
+
+<assert_not> ::= 'assert'
+               | 'assertnot'
+
+<query> ::= <assert_not> <arg>* '⊢' <term> ':' <term>
+          | <assert_not> <arg>* '⊢' <term> '≡' <term>
+          | 'compute' <term>
+          | 'print' [<qident>]
+          | 'proofterm'
+          | 'set' 'debug' ('+' | '-')<string>
+          | 'set' 'flag' "<string>" ('on' | 'off')
+          | 'set' 'prover' "<string>"
+          | 'set' 'prover_timeout' <int>
+          | 'set' 'verbose' <int>
+          | 'type' <term>
+
+<proof_end> ::= 'abort'
+              | 'admit'
+              | 'end'
+
+<proof> ::= 'begin' (<tactic> ';')* <proof_end>
+
+<inductive> ::= <ident> ':' <term> '≔' ['|'] [<ident> ':' <term>
+                ('|' <ident> ':' <term>)*]
+
+<term_proof> ::= <term>
+               | <proof>
+               | <term> <proof>
+
+<command> ::= 'require' 'open' [<id>'.']+<id>+ ';'
+            | 'require' [<id>'.']+<id>+ ';'
+            | 'require' [<id>'.']+<id> 'as' <ident> ';'
+            | 'open' [<id>'.']+<id> ';'
+            | <modifier>* 'symbol' <ident> <arg>* ':' <term> [<proof>]
+              ';'
+            | <modifier>* 'symbol' <ident> <arg>* [':' <term>] '≔'
+              <term_proof> ';'
+            | <modifier>* 'inductive' <inductive> ('with' <inductive>)* ';'
+            | 'rule' <rule> ('with' <rule>)* ';'
+            | 'set' <config> ';'
+            | <query> ';'
+            
+
+<env> ::= '[' [<term> (';' <term>)*] ']'
+
+<aterm> ::= <term_ident>
+          | '_'
+          | 'TYPE'
+          | '?'<id> [<env>]
+          | <patt> [<env>]
+          | '(' <term> ')'
+          | '{' <term> '}'
+          | <int>
+
+<sterm> ::= <aterm>+
+
+<term> ::= <sterm>
+         | <term> → <term>
+         | '`' <term_ident> <binder>
+         | 'Π' <binder>
+         | 'λ' <binder>
+         | 'let' <ident> <arg>* [':' <term>] '≔' <term> 'in' <term>
+
+<binder> ::= <arg>+ ',' <term>
+           | <arg_ident> ':' <term> ',' <term>
+
+<rule> ::= <term> '↪' <term>
+
+<equation> ::= <term> '≡' <term>
+
+<unif_rule> ::= <equation> '↪' '[' <equation> (';'
+                <equation>)* ']'
+
+

@@ -91,7 +91,6 @@ type token =
 
   (* identifiers *)
   | ID of (string * bool) (* Boolean is true if the identifier is escaped. *)
-  | ID_EXPL of string
   | ID_META of string
   | ID_PAT of string
   | PATH of (string * bool) list
