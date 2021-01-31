@@ -84,8 +84,8 @@ let parse_qident : string ->
     try Ok(parse lexer)
     with LpLexer.SyntaxError(s) -> Error(s.pos)
        | LpParser.Error ->
-         let loc = Pos.locate (Sedlexing.lexing_positions lexbuf) in
-         Error(Some(loc))
+           let loc = Pos.locate (Sedlexing.lexing_positions lexbuf) in
+           Error(Some(loc))
   in
   (* We get individual identifiers. *)
   let ids = String.split_on_char '.' s in
@@ -119,10 +119,10 @@ module Dk : PARSER = struct
         with
         | End_of_file -> Option.iter close_in inchan; None
         | DkParser.Error ->
-          let loc =
-            Lexing.(lexbuf.lex_start_p, lexbuf.lex_curr_p) in
-          let loc = Pos.locate loc in
-          parser_fatal loc "Unexpected token [%s]." (Lexing.lexeme lexbuf)
+            let loc =
+              Lexing.(lexbuf.lex_start_p, lexbuf.lex_curr_p) in
+            let loc = Pos.locate loc in
+            parser_fatal loc "Unexpected token [%s]." (Lexing.lexeme lexbuf)
       in
       Stream.from generator
 

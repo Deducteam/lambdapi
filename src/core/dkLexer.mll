@@ -3,13 +3,15 @@ open Console
 open Lexing
 open Pos
 
-let filename = Stdlib.ref ""
+let filename = ref ""
 
 let to_module_path : string -> Syntax.p_module_path = fun mp ->
   List.map (fun s -> (s, false)) (String.split_on_char '.' mp)
 
 let make_pos : Lexing.position * Lexing.position -> 'a -> 'a loc =
-  fun lps elt -> {pos = Some(locate lps); elt}
+  fun lps elt ->
+    let fname = !filename in
+    make (Some (locate ~fname lps)) elt
 
 let locate_lexbuf : Lexing.lexbuf -> Pos.pos = fun lexbuf ->
   locate (lexbuf.lex_start_p, lexbuf.lex_curr_p)
