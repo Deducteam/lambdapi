@@ -11,10 +11,8 @@ open Base
 open Backbone
 open Console
 open Pos
-open Parsing
 open Syntax
 open Format
-open Print
 
 let ident : ident pp = fun ff {pos; elt} ->
   if LpLexer.is_keyword elt then
@@ -41,10 +39,10 @@ let qident : qident pp = fun ff {elt=(mp,id); pos} ->
 
 let modifier : p_modifier pp = fun ff {elt; _} ->
   match elt with
-  | P_expo(e) -> pp_expo ff e
-  | P_mstrat(s) -> pp_match_strat ff s
-  | P_prop(p) -> pp_prop ff p
-  | P_opaq -> pp_print_string ff "opaque "
+  | P_expo(e)   -> Tags.pp_expo ff e
+  | P_mstrat(s) -> Tags.pp_match_strat ff s
+  | P_prop(p)   -> Tags.pp_prop ff p
+  | P_opaq      -> Format.pp_print_string ff "opaque "
 
 let rec term : p_term pp = fun ff t ->
   let out fmt = fprintf ff fmt in
@@ -126,14 +124,29 @@ let inductive : string -> p_inductive pp =
 let equiv : (p_term * p_term) pp = fun ff (l, r) ->
   fprintf ff "%a ≡ %a" term l term r
 
+(** [p_unpack eqs] is [unpack eqs] on syntax-level equivalences [eqs]. *)
+let rec p_unpack : p_term -> (p_term * p_term) list = fun eqs ->
+  let id s = snd s.Pos.elt in
+  match Syntax.p_get_args eqs with
+  | ({elt=P_Iden(s, _); _}, [v; w]) ->
+      if id s = "#cons" then
+        match Syntax.p_get_args v with
+        | ({elt=P_Iden(e, _); _}, [t; u]) when id e = "#equiv" ->
+            (t, u) :: p_unpack w
+        | _                                                         ->
+            assert false (* Ill-formed term. *)
+      else if id s = "#equiv" then [(v, w)] else
+      assert false (* Ill-formed term. *)
+  | _                               -> assert false (* Ill-formed term. *)
+  
 let unif_rule : p_rule pp = fun ff {elt=(lhs,rhs);_} ->
   let lhs =
     match Syntax.p_get_args lhs with
     | (_, [t; u]) -> (t, u)
     | _           -> assert false
   in
-  let eqs = Unif_rule.p_unpack rhs in
-  fprintf ff "%a ↪ %a" equiv lhs (List.pp equiv "; ") eqs
+  let eqs = p_unpack rhs in
+  Format.fprintf ff "%a ↪ %a" equiv lhs (List.pp equiv ", ") eqs
 
 let proof_end : p_proof_end pp = fun ff {elt;_} ->
   match elt with
