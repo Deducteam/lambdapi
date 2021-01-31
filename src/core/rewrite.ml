@@ -3,6 +3,7 @@
 open! Lplib
 
 open Timed
+open Backbone
 open Pos
 open Terms
 open Basics

@@ -3,8 +3,10 @@
 open! Lplib
 open Lplib.Extra
 
+open Backbone
 open Console
 open Pos
+open Parsing
 open Syntax
 open Terms
 open Env
@@ -52,7 +54,7 @@ let get_root : p_term -> sig_state -> Env.t -> sym = fun t ss env ->
 (** Representation of the different scoping modes.  Note that the constructors
     hold specific information for the given mode. *)
 type mode =
-  | M_Term of meta StrMap.t Stdlib.ref * expo
+  | M_Term of meta StrMap.t Stdlib.ref * Tags.expo
   (** Standard scoping mode for terms, holding a map of metavariables that can
       be updated with new metavariables on scoping and the exposition of the
       scoped term. *)
@@ -448,7 +450,7 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
     state [ss] is used to handle module aliasing according to [find_qid]. If
     [?exp] is {!constructor:Public}, then the term mustn't contain any private
     subterms. *)
-let scope_term : expo -> sig_state -> env -> p_term -> term =
+let scope_term : Tags.expo -> sig_state -> env -> p_term -> term =
   fun expo ss env t ->
   let m = Stdlib.ref StrMap.empty in
   Bindlib.unbox (scope (M_Term(m, expo)) ss env t)

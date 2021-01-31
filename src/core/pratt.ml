@@ -4,6 +4,8 @@
     The interface for the Pratter library can be seen at
     @see <https://forge.tedomum.net/koizel/pratter> *)
 
+open Backbone
+open Parsing
 open Syntax
 
 module Pratt : sig

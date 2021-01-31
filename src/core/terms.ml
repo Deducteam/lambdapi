@@ -11,33 +11,6 @@ open Timed
 
 (** {3 Term (and symbol) representation} *)
 
-(** Symbol properties. *)
-type prop =
-  | Defin
-  (** The symbol is definable by rewriting rules. *)
-  | Const
-  (** The symbol cannot be defined. *)
-  | Injec
-  (** The symbol is definable but is assumed to be injective. *)
-
-(** Specify the visibility and usability of symbols outside their module. *)
-type expo =
-  | Public
-  (** Visible and usable everywhere. *)
-  | Protec
-  (** Visible everywhere but usable in LHS arguments only. *)
-  | Privat
-  (** Not visible and thus not usable. *)
-
-(** Pattern-matching strategy modifiers. *)
-type match_strat =
-  | Sequen
-  (** Rules are processed sequentially: a rule can be applied only if the
-      previous ones (in the order of declaration) cannot be. *)
-  | Eager
-  (** Any rule that filters a term can be applied (even if a rule defined
-      earlier filters the term as well). This is the default. *)
-
 (** Representation of a term (or types) in a general sense. Values of the type
     are also used, for example, in the representation of patterns or rewriting
     rules. Specific constructors are included for such applications,  and they
@@ -104,11 +77,11 @@ type term =
   (** Rewriting rules for the symbol. *)
   ; sym_tree  : dtree ref
   (** Decision tree used for pattern matching against rules of the symbol. *)
-  ; sym_prop  : prop
+  ; sym_prop  : Parsing.Syntax.Tags.prop
   (** Property of the symbol. *)
-  ; sym_expo  : expo
+  ; sym_expo  : Parsing.Syntax.Tags.expo
   (** The visibility of the symbol. *)
-  ; sym_mstrat: match_strat ref
+  ; sym_mstrat: Parsing.Syntax.Tags.match_strat ref
   (** The reduction strategy modifier. *) }
 
 (** {b NOTE} that {!field:sym_type} holds a (timed) reference for a  technical

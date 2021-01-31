@@ -10,9 +10,11 @@ open Lplib.Base
 open Lplib.Extra
 
 open Timed
-open Terms
+open Backbone
 open Console
+open Terms
 open Sig_state
+open Parsing
 
 (** Logging function for printing. *)
 let log_prnt = new_logger 'p' "prnt" "pretty-printing"
@@ -33,19 +35,19 @@ let print_meta_type : bool ref = Console.register_flag "print_meta_type" false
 (** Flag controlling the printing of the context in unification. *)
 let print_contexts : bool ref = Console.register_flag "print_contexts" false
 
-let pp_prop : prop pp = fun oc p ->
+let pp_prop : Syntax.Tags.prop pp = fun oc p ->
   match p with
   | Defin -> ()
   | Const -> Format.fprintf oc "constant "
   | Injec -> Format.fprintf oc "injective "
 
-let pp_expo : expo pp = fun oc e ->
+let pp_expo : Syntax.Tags.expo pp = fun oc e ->
   match e with
   | Public -> ()
   | Protec -> Format.fprintf oc "protected "
   | Privat -> Format.fprintf oc "private "
 
-let pp_match_strat : match_strat pp = fun oc s ->
+let pp_match_strat : Syntax.Tags.match_strat pp = fun oc s ->
   match s with
   | Sequen -> Format.fprintf oc "sequential "
   | Eager -> ()

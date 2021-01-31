@@ -3,6 +3,8 @@
 
 open Lplib.Extra
 
+open Backbone
+open Parsing
 open Core (* Lambdapi core *)
 
 let _ =

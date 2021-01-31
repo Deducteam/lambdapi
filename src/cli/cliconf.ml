@@ -5,6 +5,7 @@ open! Lplib
 open Cmdliner
 open Core
 open Files
+open Backbone
 open Console
 
 (** {3 Configuration type for common values} *)

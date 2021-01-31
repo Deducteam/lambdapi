@@ -1,7 +1,9 @@
 (** Queries (available in tactics and at the toplevel). *)
 
+open Backbone
 open Console
 open Pos
+open Parsing
 open Syntax
 open Terms
 open Print

@@ -7,7 +7,7 @@
     {!module:Parser.Dk}. *)
 
 open! Lplib
-open Pos
+open Backbone
 
 (** [parser_fatal loc fmt] is a wrapper for [Console.fatal] that enforces
     that the error has an attached source code position. *)
@@ -73,9 +73,9 @@ end
     escaped (with [{| |}]). We use [parse_ident] of menhir parser because
     exposing [parse_qident] caused an end of stream conflict. *)
 let parse_qident : string ->
-  (Syntax.p_module_path * string, int * popt) result =
+  (Syntax.p_module_path * string, int * Pos.popt) result =
   fun s ->
-  let parse_ident (s: string): (Syntax.ident * bool, popt) result =
+  let parse_ident (s: string): (Syntax.ident * bool, Pos.popt) result =
     let parse =
       MenhirLib.Convert.Simplified.traditional2revised LpParser.ident
     in
@@ -90,7 +90,7 @@ let parse_qident : string ->
   (* We get individual identifiers. *)
   let ids = String.split_on_char '.' s in
   (* Here we'd like a bind operation on result: if there is an error. *)
-  let exception Invalid_id of int * popt in
+  let exception Invalid_id of int * Pos.popt in
   let f (i: int) (e: string) =
     (* Parse string [e] and raise error to interrupt if [e] is not valid. *)
     let (e, b) =

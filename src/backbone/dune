@@ -1,0 +1,5 @@
+(library
+ (name backbone)
+ (public_name lambdapi.backbone)
+ (modules :standard)
+ (libraries timed lplib))

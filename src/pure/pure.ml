@@ -2,6 +2,8 @@ open! Lplib
 
 open Timed
 open Core
+open Backbone
+open Parsing
 open Console
 open Files
 
@@ -65,7 +67,8 @@ let parse_text : state -> string -> string -> Command.t list * state =
 
 type proof_finalizer = Sig_state.t -> Proof.proof_state -> Sig_state.t
 type proof_state =
-  Time.t * Sig_state.t * Proof.proof_state * proof_finalizer * Terms.expo
+  Time.t * Sig_state.t * Proof.proof_state * proof_finalizer *
+  Syntax.Tags.expo
 type conclusion =
   | Typ of string * string
   | Unif of string * string

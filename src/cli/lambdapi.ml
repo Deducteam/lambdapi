@@ -4,6 +4,8 @@ open! Lplib
 open Lplib.Extra
 
 open Cmdliner
+open Backbone
+open Parsing
 open Core
 open Files
 open Console

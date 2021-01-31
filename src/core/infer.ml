@@ -1,6 +1,7 @@
 (** Generating constraints for type inference and type checking. *)
 
 open Timed
+open Backbone
 open Console
 open Terms
 open Print

@@ -2,9 +2,11 @@
 
 open! Lplib
 
+open Backbone
 open Console
 open Terms
 open Pos
+open Parsing
 open Syntax
 open Proof
 open Print
@@ -66,7 +68,7 @@ let tac_refine : popt -> proof_state -> term -> proof_state =
    [ps] and returns the new proof state. This function fails gracefully in
    case of error. *)
 let handle_tactic :
-  Sig_state.t -> Terms.expo -> proof_state -> p_tactic ->
+  Sig_state.t -> Tags.expo -> proof_state -> p_tactic ->
     proof_state * Queries.result =
   fun ss e ps tac ->
   if !log_enabled then
@@ -125,7 +127,7 @@ let handle_tactic :
   | P_tac_fail -> fatal tac.pos "Call to tactic \"fail\""
 
 let handle_tactic :
-  Sig_state.t -> Terms.expo -> proof_state -> p_tactic ->
+  Sig_state.t -> Tags.expo -> proof_state -> p_tactic ->
     proof_state * Queries.result =
   fun ss exp ps tac ->
   try handle_tactic ss exp ps tac

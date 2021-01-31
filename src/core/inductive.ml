@@ -11,10 +11,12 @@
 
 open! Lplib
 open Timed
+open Backbone
 open Pos
 open Console
 open Terms
 open Print
+open Parsing
 open Syntax
 
 (** Logging function for generating of inductive principle. *)

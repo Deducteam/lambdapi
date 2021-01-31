@@ -4,6 +4,7 @@ open! Lplib
 open Lplib.Extra
 
 open Timed
+open Backbone
 open Console
 open Terms
 open Basics

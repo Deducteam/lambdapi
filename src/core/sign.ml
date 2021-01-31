@@ -3,12 +3,14 @@
 open! Lplib
 open Lplib.Extra
 
-open Timed
+open Backbone
 open Console
+open Pos
+open Timed
 open Files
 open Terms
-open Syntax
-open Pos
+open Parsing.Syntax
+open Tags
 
 (** Representation of an inductive type *)
 type inductive =
@@ -223,7 +225,7 @@ let unlink : t -> unit = fun sign ->
     [strat], type [a] and implicit arguments [impl] in the signature [sign].
     [name] should not already be used in [sign]. The created symbol is
     returned. *)
-let add_symbol : t -> expo -> prop -> match_strat -> strloc -> term ->
+let add_symbol : t -> expo -> Tags.prop -> match_strat -> strloc -> term ->
   bool list -> sym = fun sign sym_expo sym_prop sym_mstrat s a impl ->
   (* Check for metavariables in the symbol type. *)
   if Basics.has_metas true a then

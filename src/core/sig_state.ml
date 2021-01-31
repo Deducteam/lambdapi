@@ -11,10 +11,12 @@
 
 open Lplib.Extra
 
-open Timed
+open Backbone
 open Console
-open Files
 open Pos
+open Timed
+open Files
+open Parsing
 open Syntax
 open Terms
 open Sign
@@ -38,13 +40,13 @@ let create_sign : Path.t -> Sign.t = fun sign_path ->
 
 (** Symbol properties needed for the signature *)
 type sig_symbol =
-  { expo   : expo        (** exposition          *)
-  ; prop   : prop        (** property            *)
-  ; mstrat : match_strat (** strategy            *)
-  ; ident  : ident       (** name                *)
-  ; typ    : term        (** type                *)
-  ; impl   : bool list   (** implicit arguments  *)
-  ; def    : term option (** optional definition *) }
+  { expo   : Tags.expo        (** exposition          *)
+  ; prop   : Tags.prop        (** property            *)
+  ; mstrat : Tags.match_strat (** strategy            *)
+  ; ident  : ident            (** name                *)
+  ; typ    : term             (** type                *)
+  ; impl   : bool list        (** implicit arguments  *)
+  ; def    : term option      (** optional definition *) }
 
 (** [add_symbol ss sig_symbol={e,p,st,x,a,impl,def}] generates a new signature
    state from [ss] by creating a new symbol with expo [e], property [p],

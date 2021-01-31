@@ -3,6 +3,7 @@
     provided. *)
 open Lplib
 open Sedlexing
+open Backbone
 open Pos
 
 type token =

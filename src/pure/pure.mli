@@ -2,6 +2,8 @@
 
 open Lplib
 open Core
+open Backbone
+open Parsing
 open Files
 
 (** Abstract representation of a command (top-level item). *)

@@ -10,7 +10,8 @@
 (* Status: Very Experimental                                            *)
 (************************************************************************)
 
-open Core
+open Backbone
+open Parsing
 open! Lplib
 
 module LSP = Lsp_base

@@ -4,12 +4,15 @@ open! Lplib
 open Lplib.Extra
 
 open Timed
+open Backbone
 open Console
 open Terms
 open Sign
 open Pos
 open Files
+open Parsing
 open Syntax
+open Tags
 open Sig_state
 open Scope
 open Print
@@ -184,7 +187,7 @@ type proof_data =
   ; pdata_tactics  : p_tactic list (** Tactics. *)
   ; pdata_finalize : sig_state -> proof_state -> sig_state (** Finalizer. *)
   ; pdata_end_pos  : Pos.popt (** Position of the proof's terminator. *)
-  ; pdata_expo     : Terms.expo (** Allowed exposition of symbols in the proof
+  ; pdata_expo     : expo (** Allowed exposition of symbols in the proof
                                    script. *) }
 
 (** [handle_cmd compile ss cmd] tries to handle the command [cmd] with [ss] as

@@ -1,5 +1,6 @@
 open Cmdliner
 open Core
+open Backbone
 open Console
 open Files
 

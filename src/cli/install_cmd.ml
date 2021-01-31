@@ -1,6 +1,7 @@
 open Cmdliner
 open Core
 open Files
+open Backbone
 open Console
 
 let run_command : bool -> string -> unit = fun dry_run cmd ->

@@ -2,6 +2,7 @@
 
 open! Lplib
 open Timed
+open Backbone
 open Pos
 open Syntax
 open DkLexer
@@ -396,8 +397,8 @@ param:
     { ([Some (make_pos $loc(id) id)], Some(te), false) }
 
 modifier:
-  | KW_PRV { make_pos $loc (P_expo(Terms.Privat)) }
-  | KW_INJ { make_pos $loc (P_prop(Terms.Injec)) }
+  | KW_PRV { make_pos $loc (P_expo(Syntax.Tags.Privat)) }
+  | KW_INJ { make_pos $loc (P_prop(Syntax.Tags.Injec)) }
 
 context_item:
   | x=ID ao=option(COLON a=term { a }) { (make_pos $loc(x) x, ao) }
