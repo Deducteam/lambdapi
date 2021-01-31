@@ -138,7 +138,7 @@ let rec p_unpack : p_term -> (p_term * p_term) list = fun eqs ->
       else if id s = "#equiv" then [(v, w)] else
       assert false (* Ill-formed term. *)
   | _                               -> assert false (* Ill-formed term. *)
-  
+
 let unif_rule : p_rule pp = fun ff {elt=(lhs,rhs);_} ->
   let lhs =
     match Syntax.p_get_args lhs with

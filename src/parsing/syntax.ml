@@ -257,13 +257,13 @@ module Tags = struct
     | Defin -> ()
     | Const -> Format.fprintf oc "constant "
     | Injec -> Format.fprintf oc "injective "
-             
+
   let pp_expo : expo pp = fun oc e ->
     match e with
     | Public -> ()
     | Protec -> Format.fprintf oc "protected "
     | Privat -> Format.fprintf oc "private "
-              
+
   let pp_match_strat : match_strat pp = fun oc s ->
     match s with
     | Sequen -> Format.fprintf oc "sequential "
