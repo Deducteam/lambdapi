@@ -224,9 +224,9 @@ let fold_cons_type
    [inductive T:TYPE := c: T->T->T], we get [ind_T: Πp:T->Prop, (Πx0:T, π(p
    x0)-> Πx1:T, π(p x1)-> π(p (c x0 x1)) -> Πx:T, π(p x)]. *)
 let gen_rec_types :
-      config -> Sig_state.t -> popt -> inductive
+      config -> popt -> inductive
       -> tvar array -> Env.t -> ind_pred_map -> string -> term list =
-  fun c ss pos ind_list vs env ind_pred_map x_str ->
+  fun c pos ind_list vs env ind_pred_map x_str ->
   let n = Array.length vs in
 
   (* [case_of ind_sym cons_sym] creates the clause for the constructor

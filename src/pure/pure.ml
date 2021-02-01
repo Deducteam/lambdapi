@@ -12,11 +12,11 @@ module Command = struct
   let get_pos c = Pos.(c.pos)
 end
 
-let interval_of_pos : Pos.pos -> Range.t = fun p ->
+let interval_of_pos : Pos.pos -> Range.t =
+  fun {start_line; start_col; end_line; end_col; _} ->
   let open Range in
-  let data = Lazy.force p in
-  let start : point = make_point data.start_line data.start_col in
-  let finish : point = make_point data.end_line data.end_col in
+  let start : point = make_point start_line start_col in
+  let finish : point = make_point end_line end_col in
   make_interval start finish
 
 (** Document identifier range map. *)
@@ -47,8 +47,15 @@ let parse_text : state -> string -> string -> Command.t list * state =
   try
     Time.restore t;
     let ast =
-      if old_syntax then Legacy_parser.parse_string fname s
-      else Parser.parse_string fname s
+      let strm =
+        if old_syntax then Parser.Dk.parse_string fname s
+        else Parser.parse_string fname s
+      in
+      (* NOTE this processing could be avoided with a parser for a list of
+         commands. Such a parser is not trivially done. *)
+      let cmds = Stdlib.ref [] in
+      Stream.iter (fun c -> Stdlib.(cmds := c :: !cmds)) strm;
+      List.rev Stdlib.(!cmds)
     in
     (ast, (Time.save (), st))
   with
@@ -121,7 +128,7 @@ let handle_command : state -> Command.t -> command_result =
     fun (st,ss) cmd ->
   Time.restore st;
   try
-    let (ss, pst, qres) = Handle.handle_cmd ss cmd in
+    let (ss, pst, qres) = Handle.handle_cmd (Compile.compile false) ss cmd in
     let t = Time.save () in
     match pst with
     | None       -> Cmd_OK ((t, ss), qres)

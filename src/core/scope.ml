@@ -37,17 +37,17 @@ let find_qid : bool -> bool -> sig_state -> env -> qident -> tbox =
     _Symb (find_sym ~prt ~prv true st qid)
 
 (** [get_root t ss] returns the symbol at the root of term [t]. *)
-let get_root : p_term -> sig_state -> sym = fun t ss ->
+let get_root : p_term -> sig_state -> Env.t -> sym = fun t ss env ->
   let rec get_root t =
     match t.elt with
-    | P_Iden(qid,_)
-    | P_BinO(_,(_,_,_,qid),_)
-    | P_UnaO((_,_,qid),_)   -> find_sym ~prt:true ~prv:true true ss qid
+    | P_Iden(qid,_)         ->
+        find_sym ~prt:true ~prv:true true ss qid
     | P_Appl(t, _)          -> get_root t
-    | P_Wrap(t)             -> get_root t
+    | P_Wrap(t)             -> get_root (Pratt.parse ss env t)
     | _                     -> assert false
   in
-  get_root t
+  (* Pratt parse to order terms correctly. *)
+  get_root (Pratt.parse ss env t)
 
 (** Representation of the different scoping modes.  Note that the constructors
     hold specific information for the given mode. *)
@@ -105,17 +105,25 @@ let rec get_implicitness : p_term -> bool list = fun t ->
   | P_Wrap(t)    -> get_implicitness t
   | _            -> []
 
-(** [get_args t] decomposes the parser level term [t] into a spine [(h,args)],
-    when [h] is the term at the head of the application and [args] is the list
-    of all its arguments. Note that sugared applications (e.g., infix symbols)
-    are not expanded, so [h] may still be unsugared to an application. *)
-let get_args : p_term -> p_term * p_term list =
+(** [get_pratt_args ss env t] decomposes the parser level term [t] into a
+    spine [(h,args)], when [h] is the term at the head of the application and
+    [args] is the list of all its arguments. The function also reorders the
+    term taking infix and prefix operators into account using a Pratt
+    parser that signature state [ss] and environment [env] to determine which
+    terms are operators, and which aren't. *)
+(* NOTE this function is one of the few that use the Pratt parser, and the
+   term is converted from appl to list in [Pratt.parse], then rebuilt into
+   appl node (still by Pratt.parse), then again decomposed into a list by the
+   function. We may make [Pratt.parse] to return already a list of terms,
+   or have the application represented as a non empty list. *)
+let get_pratt_args : Sig_state.t -> Env.t -> p_term -> p_term * p_term list =
+  fun ss env t ->
   let rec get_args args t =
     match t.elt with
     | P_Appl(t,u) -> get_args (u::args) t
-    | P_Wrap(t)   -> get_args args t
+    | P_Wrap(t)   -> get_args args (Pratt.parse ss env t)
     | _           -> (t, args)
-  in get_args []
+  in get_args [] (Pratt.parse ss env t)
 
 (** [scope md ss env t] turns a parser-level term [t] into an actual term. The
     variables of the environment [env] may appear in [t], and the scoping mode
@@ -151,7 +159,7 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
   (* Toplevel scoping function, with handling of implicit arguments. *)
   let rec scope : env -> p_term -> tbox = fun env t ->
     (* Extract the spine. *)
-    let (p_head, args) = get_args t in
+    let (p_head, args) = get_pratt_args ss env t in
     (* Check that LHS pattern variables are applied to no argument. *)
     begin
       match (p_head.elt, md) with
@@ -429,20 +437,6 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
           if n <= 0 then acc else unsugar_nat_lit (_Appl sym_s acc) (n-1)
         in
         unsugar_nat_lit sym_z n
-    | (P_UnaO(u,t)    , _                   ) ->
-        let (s, impl) =
-          let (_op,_,qid) = u in
-          let s = find_sym ~prt:true ~prv:true true ss qid in
-          (_Symb s, s.sym_impl)
-        in
-        add_impl env t.pos s impl [t]
-    | (P_BinO(l,b,r)  , _                   ) ->
-        let (s, impl) =
-          let (_op,_,_,qid) = b in
-          let s = find_sym ~prt:true ~prv:true true ss qid in
-          (_Symb s, s.sym_impl)
-        in
-        add_impl env t.pos s impl [l; r]
     | (P_Wrap(t)      , _                   ) -> scope env t
     | (P_Expl(_)      , _                   ) ->
         fatal t.pos "Explicit argument not allowed here."
@@ -485,8 +479,6 @@ let patt_vars : p_term -> (string * int) list * string list =
           | Some(a) -> patt_vars pvs a
         end
     | P_NLit(_)          -> acc
-    | P_UnaO(_,t)        -> patt_vars acc t
-    | P_BinO(t,_,u)      -> patt_vars (patt_vars acc t) u
     | P_Wrap(t)          -> patt_vars acc t
     | P_Expl(t)          -> patt_vars acc t
   and add_patt ((pvs, nl) as acc) id ts =
@@ -552,7 +544,7 @@ let scope_rule : bool -> sig_state -> p_rule -> pre_rule loc = fun ur ss r ->
   (* Scope the LHS and get the reserved index for named pattern variables. *)
   let (pr_lhs, lhs_indices, lhs_arities, lhs_names, lhs_size) =
     let mode =
-      M_LHS{ m_lhs_prv     = is_private (get_root p_lhs ss)
+      M_LHS{ m_lhs_prv     = is_private (get_root p_lhs ss [])
            ; m_lhs_indices = Hashtbl.create 7
            ; m_lhs_arities = Hashtbl.create 7
            ; m_lhs_names   = Hashtbl.create 7

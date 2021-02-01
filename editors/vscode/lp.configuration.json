@@ -1,11 +1,11 @@
 {
     "comments": {
-        "blockComment": [ "(*", "*)" ]
+        "lineComment": "//",
+        "blockComment": [ "/*", "*/" ]
     },
     "brackets": [
         ["{", "}"],
         ["[", "]"],
-        ["(*", "*)"],
         ["(", ")"]
     ]
 }

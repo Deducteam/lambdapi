@@ -2,4 +2,4 @@
 //require tests.OK.symbol
 
 // Here is a workaround with an escaped identifier.
-require tests.OK.{|symbol|}
+require tests.OK.{|symbol|};
