@@ -42,19 +42,6 @@ let to_prod_box : env -> tbox -> tbox = fun env t ->
 let to_prod : env -> tbox -> term = fun env t ->
   Bindlib.unbox (to_prod_box env t)
 
-(** [to_abst env t] builds a sequence of abstractions or let bindings,
-    depending on the definition of the elements in the environment whose
-    domains are the variables of the environment [env] (from left to right),
-    and which body is the term [t]:
-    [to_abst [(xn,an,None);..;(x1,a1,None)] t = λx1:a1,..,λxn:an,t]. *)
-let to_abst : env -> tbox -> term = fun env t ->
-  let fn t (_,(x,a,u)) =
-    match u with
-    | Some(u) -> _LLet a u (Bindlib.bind_var x t)
-    | None    -> _Abst a (Bindlib.bind_var x t)
-  in
-  Bindlib.unbox (List.fold_left fn t env)
-
 (** [vars env] extracts the array of the {e not defined} Bindlib variables in
     [env]. Note that the order is reversed: [vars [(xn,an);..;(x1,a1)] =
     [|x1;..;xn|]]. *)

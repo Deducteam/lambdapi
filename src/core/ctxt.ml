@@ -25,10 +25,6 @@ let rec def_of : term Bindlib.var -> ctxt -> term option = fun x ctx ->
   | []         -> None
   | (y,_,d)::l -> if Bindlib.eq_vars x y then d else def_of x l
 
-(** [mem x ctx] tells whether variable [x] is mapped in the context [ctx]. *)
-let mem : tvar -> ctxt -> bool = fun x ->
-  List.exists (fun (y,_,_) -> Bindlib.eq_vars x y)
-
 (** [to_prod ctx t] builds a product by abstracting over the context [ctx], in
     the term [t]. It returns the number of products as well. *)
 let to_prod : ctxt -> term -> term * int = fun ctx t ->
@@ -50,14 +46,6 @@ let to_abst : ctxt -> term -> term * int = fun ctx t ->
   in
   let (t, c) = List.fold_left fn (lift t, 0) ctx in
   (Bindlib.unbox t, c)
-
-(** [sub ctx vs] returns the sub-context of [ctx] made of the variables of
-    [vs]. *)
-let sub : ctxt -> tvar array -> ctxt = fun ctx vs ->
-  let f ((x,_,_) as hyp) ctx =
-    if Array.exists (Bindlib.eq_vars x) vs then hyp::ctx else ctx
-  in
-  List.fold_right f ctx []
 
 (** [unfold ctx t] behaves like {!val:Terms.unfold t} unless term[t] is of the
     form [Vari(x)] with [x] defined in [ctx]. In this case, [t] is replaced by
