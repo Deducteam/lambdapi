@@ -18,7 +18,9 @@ your contribution, push it and, then, make a pull-request from the
 Github web interface. Pull-requests are then reviewed, commented and
 eventually merged.
 
-Important contributions should update the file CHANGES.md.
+- If the file structure is changed, `docs/structure.rst` should be changed as
+  well.
+- Important contributions should update the file `CHANGES.md`.
 
 General style and indentation
 -----------------------------
