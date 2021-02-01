@@ -162,54 +162,6 @@ arguments must be explicitly given.
 **Notations**: Some notation can be declared for some symbol. See the command
 ``set``.
 
-``inductive``
--------------
-The command ``inductive`` can be used to define an inductive type, its constructors and its associated induction principle if it can be generated. The name of the induction principle is the name of the type prefixed with ``ind_``. For generating the induction principle, we assume defined the following builtins:
-
-::
-   
-   ￼set builtin "Prop" ≔ ...; // : TYPE
-   ￼set builtin "P"    ≔ ...; // : Prop → TYPE
-
-For the moment, we only support (mutually defined) first-order dependent types.
-Polymorphic types can be encoded by defining a type Set and a function
-τ:Set → TYPE.
-
-Some cases of nested type are supported too, like the type Bush.
-Example:
-
-::
-   
-   ￼inductive Nat : TYPE ≔
-   ￼ | z    : Nat
-   ￼ | succ : Nat → Nat;
-   
-is equivalent to:
-￼
-::
-   
-   ￼injective symbol Nat  : TYPE;
-   ￼constant  symbol z    : Nat;
-   ￼constant  symbol succ : Nat → Nat;
-   ￼symbol ind_Nat p : π (p 0) → (Π x, π (p x) → π (p (succ x))) → Π x, π (p x);
-   ￼rule ind_Nat _  $pz    _       z     ↪ $pz
-   ￼with ind_Nat $p $pz $psucc (succ $n) ↪ $psucc $n (ind_Nat $p $pz $psucc $n);
-
-Note that to define mutually defined inductive types, you need the ``with`` keyword to link
-all inductive types together. For instance:
-
-::
-   
-   ￼inductive Expr : TYPE ≔
-      | Lit : Nat → Expr
-      | Add : Expr → Expr → Expr
-      | If  : BExpr → Expr → Expr → Expr
-    with BExpr : TYPE ≔
-      | BLit  : Bool → BExpr
-      | And   : BExpr → BExpr → BExpr
-      | Not   : BExpr → BExpr
-      | Equal : Expr → Expr → BExpr;
-
 ``rule``
 --------
 
@@ -296,7 +248,7 @@ Adding sets of rules allows to maintain confluence.
 
 Examples of patterns are available in ``tests/OK/patterns.lp``.
 
-``set declared|prefix|infix|quantifier|builtin|unif_rule``
+``set prefix|infix|quantifier|builtin|unif_rule``
 ----------------------------------------------------------
 
 The ``set`` command is used to control the behaviour of Lambdapi and
@@ -375,3 +327,62 @@ transformed into ``?x ≡ bool``.
 
 *WARNING* This feature is experimental and there is no sanity check
 performed on the rules.
+
+``inductive``
+-------------
+
+The commands ``symbol`` and ``rules`` above are enough to define
+inductive types, their constructors, their induction
+principles/recursors and their defining rules.
+
+We however provide a command ``inductive`` for automatically
+generating the induction principles and their rules from an inductive
+type definition, assuming that the following builtins are defined:
+
+::
+   
+   ￼set builtin "Prop" ≔ ...; // : TYPE, for the type of propositions
+   ￼set builtin "P"    ≔ ...; // : Prop → TYPE, interpretation of propositions as types
+
+Currently, it only supports parametrized mutually defined dependent
+first-order data types. As usual, polymorphic types can be encoded by
+defining a type ``Set`` and a function ``τ:Set → TYPE``.
+
+The name of the induction principle is ``ind_`` followed by the name
+of the type.
+
+Example:
+
+::
+   
+   ￼inductive ℕ : TYPE ≔
+   ￼ | zero: ℕ
+   ￼ | succ: ℕ → ℕ;
+   
+is equivalent to:
+￼
+::
+   
+   ￼injective symbol ℕ : TYPE;
+   ￼constant  symbol zero : ℕ;
+   ￼constant  symbol succ : ℕ → ℕ;
+   ￼symbol ind_ℕ p : π(p zero) → (Π x, π(p x) → π(p(succ x))) → Π x, π(p x);
+   ￼rule ind_ℕ _ $pz _ zero ↪ $pz
+   ￼with ind_ℕ $p $pz $ps (succ $n) ↪ $ps $n (ind_ℕ $p $pz $ps $n);
+
+
+For mutually defined inductive types, one needs to use the ``with``
+keyword to link all inductive types together:
+
+::
+   
+   (a:Set)
+   inductive T: TYPE ≔
+   | node: τ a → F a → T a
+   with F: TYPE ≔
+   | nilF: F a
+   | consF: T a → F a → F a;
+
+In case of a parametrized definition like the previous one, parameters
+are set as implicit in the types of constructors. So, one has to write
+``consF t l`` or ``@consF a t l``.
