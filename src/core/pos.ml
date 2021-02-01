@@ -96,10 +96,11 @@ let print_short : Format.formatter -> popt -> unit = fun ch p ->
 let map : ('a -> 'b) -> 'a loc -> 'b loc = fun f loc ->
   {loc with elt = f loc.elt}
 
-(** [locate loc] converts the pair of position [loc] of the Lexing library
-    into a {!type:pos}. *)
-let locate : Lexing.position * Lexing.position -> pos = fun (p1, p2) ->
-  let fname = Some(p1.pos_fname) in
+(** [locate ?fname loc] converts the pair of position [loc] and filename
+    [fname] of the Lexing library into a {!type:pos}. *)
+let locate : ?fname:string -> Lexing.position * Lexing.position -> pos =
+  fun ?fname (p1, p2) ->
+  let fname = if p1.pos_fname = "" then fname else Some(p1.pos_fname) in
   let start_line = p1.pos_lnum in
   let start_col = p1.pos_cnum - p1.pos_bol in
   let end_line = p2.pos_lnum in
