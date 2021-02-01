@@ -33,10 +33,10 @@ negative tests.
 
 ::
 
-   assert zero : Nat
-   assert add (succ zero) zero ≡ succ zero
-   assertnot zero ≡ succ zero
-   assertnot succ : Nat
+   assert zero : Nat;
+   assert add (succ zero) zero ≡ succ zero;
+   assertnot zero ≡ succ zero;
+   assertnot succ : Nat;
 
 ``set verbose|debug|flag|prover|prover_timeout``
 ------------------------------------------------
@@ -49,15 +49,15 @@ and 3. Higher is the verbose level, more details are printed.
 
 ::
 
-   set verbose 1
+   set verbose 1;
 
 **debug mode** The user can activate (with ``+``) or deactivate (with
 ``-``) the debug mode for some functionalities as follows:
 
 ::
 
-   set debug +ts
-   set debug -s
+   set debug +ts;
+   set debug -s;
 
 Each functionality is represented by a single character. For instance,
 ``i`` stands for type inference. To get the list of debuggable
@@ -67,18 +67,18 @@ functionalities, run the command ``lambdapi check --help``.
 
 ::
 
-   set flag "eta_equality" on // default is off
-   set flag "print_implicits" on // default is off
-   set flag "print_contexts" on // default is off
-   set flag "print_domains" on // default is off
-   set flag "print_meta_type" on // default is off
+   set flag "eta_equality" on; // default is off
+   set flag "print_implicits" on; // default is off
+   set flag "print_contexts" on; // default is off
+   set flag "print_domains" on; // default is off
+   set flag "print_meta_type" on; // default is off
 
 **prover config**: In order to use the ``why3`` tactic, a prover should
 be set using:
 
 ::
 
-   set prover "Eprover"
+   set prover "Eprover";
 
 *Alt-Ergo* is set by default if the user didn’t specify a prover.
 
@@ -86,6 +86,6 @@ The user can also specify the timeout (in seconds) of the prover:
 
 ::
 
-   set prover_timeout 60
+   set prover_timeout 60;
 
 The default time limit of a prover is set to 2 seconds.

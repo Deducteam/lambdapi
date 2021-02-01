@@ -3,48 +3,44 @@
 
 // Type of set codes
 
-constant symbol Set : TYPE
+constant symbol Set : TYPE;
 
 // Interpretation of set codes in TYPE
 
-set declared "τ"
-
-injective symbol τ : Set → TYPE
+injective symbol τ : Set → TYPE;
 
 // Type of natural numbers
 
-constant symbol nat : Set
+constant symbol nat : Set;
 
-symbol N ≔ τ nat
+symbol N ≔ τ nat;
 
-constant symbol zero : N
-constant symbol succ : N → N
+constant symbol zero : N;
+constant symbol succ : N → N;
 
 // Type of polymorphic lists
 
-constant symbol list : Set → Set
+constant symbol list : Set → Set;
 
-symbol L a ≔ τ (list a)
+symbol L a ≔ τ (list a);
 
-set declared "□"
+constant symbol □ {a} : L a;
+constant symbol cons {a} : τ a → L a → L a;
 
-constant symbol □ {a} : L a
-constant symbol cons {a} : τa → L a → L a
-
-set infix 4 "⸬" ≔ cons
+set infix 4 "⸬" ≔ cons;
 
 // Length of a list
 
-symbol length {a} : L a → N
+symbol length {a} : L a → N;
 
 rule length □ ↪ zero
-with length (_ ⸬ $l) ↪ succ (length $l)
+with length (_ ⸬ $l) ↪ succ (length $l);
 
 // Concatenation of two lists
 
-symbol concat {a} : L a → L a → L a
+symbol concat {a} : L a → L a → L a;
 
-set infix right 5 "⋅" ≔ concat
+set infix right 5 "⋅" ≔ concat;
 
 rule □ ⋅ $m ↪ $m
-with ($x ⸬ $l) ⋅ $m ↪ $x ⸬ ($l ⋅ $m)
+with ($x ⸬ $l) ⋅ $m ↪ $x ⸬ ($l ⋅ $m);

@@ -15,6 +15,16 @@ type inductive =
   { ind_cons  : sym list  (** List of constructors                 *)
   ; ind_prop  : sym       (** Induction principle on propositions. *) }
 
+(** Notation properties of symbols. They are linked to symbols to provide
+    syntax extensions to these symbols. These syntax extensions concern both
+    parsing and printing. *)
+type notation =
+  | Prefix of unop (** Prefix (or unary) operator, such as [!] in [! x]. *)
+  | Infix of binop (** Infix (or binary) operator, such as [+] in [a + b]. *)
+  | Zero (** The numeral zero, that is [0]. *)
+  | Succ (** Successor, for numerals such as [42]. *)
+  | Quant (** Quantifier, such as [fa] in [`fa x, t]. *)
+
 (** Representation of a signature. It roughly corresponds to a set of symbols,
     defined in a single module (or file). *)
 type t =
@@ -22,10 +32,8 @@ type t =
   ; sign_path     : Path.t
   ; sign_deps     : (string * rule) list PathMap.t ref
   ; sign_builtins : sym StrMap.t ref
-  ; sign_unops    : (sym * unop ) StrMap.t ref
-  ; sign_binops   : (sym * binop) StrMap.t ref
-  ; sign_idents   : StrSet.t ref
-  ; sign_quants   : SymSet.t ref
+  ; sign_notations: notation SymMap.t ref
+    (** Maps symbols to their syntax properties if they have some. *)
   ; sign_ind      : inductive SymMap.t ref }
 
 (* NOTE the [deps] field contains a hashtable binding the [module_path] of the
@@ -38,17 +46,12 @@ type t =
 let dummy : unit -> t = fun () ->
   { sign_symbols = ref StrMap.empty; sign_path = []
   ; sign_deps = ref PathMap.empty; sign_builtins = ref StrMap.empty
-  ; sign_unops = ref StrMap.empty; sign_binops = ref StrMap.empty
-  ; sign_idents = ref StrSet.empty; sign_quants = ref SymSet.empty
-  ; sign_ind = ref SymMap.empty }
+  ; sign_notations = ref SymMap.empty; sign_ind = ref SymMap.empty }
 
 (** [create sign_path] creates an empty signature with module path
     [sign_path]. *)
 let create : Path.t -> t = fun sign_path ->
-  { sign_path; sign_symbols = ref StrMap.empty; sign_deps = ref PathMap.empty
-  ; sign_builtins = ref StrMap.empty; sign_unops = ref StrMap.empty
-  ; sign_binops = ref StrMap.empty; sign_idents = ref StrSet.empty
-  ; sign_quants = ref SymSet.empty ; sign_ind = ref SymMap.empty }
+  let d = dummy () in { d with sign_path }
 
 (** [find sign name] finds the symbol named [name] in [sign] if it exists, and
     raises the [Not_found] exception otherwise. *)
@@ -149,11 +152,12 @@ let link : t -> unit = fun sign ->
   in
   PathMap.iter gn !(sign.sign_deps);
   sign.sign_builtins := StrMap.map link_symb !(sign.sign_builtins);
-  let hn (s,h) = (link_symb s, h) in
-  sign.sign_unops := StrMap.map hn !(sign.sign_unops);
-  sign.sign_binops := StrMap.map hn !(sign.sign_binops);
+  let lsy (sym, h) = link_symb sym, h in
+  sign.sign_notations :=
+    (* Keys of the mapping are linked *)
+    SymMap.to_seq !(sign.sign_notations) |>
+    Seq.map lsy |> SymMap.of_seq;
   StrMap.iter (fun _ (s, _) -> Tree.update_dtree s) !(sign.sign_symbols);
-  sign.sign_quants := SymSet.map link_symb !(sign.sign_quants);
   let link_inductive i =
     { ind_cons = List.map link_symb i.ind_cons
     ; ind_prop = link_symb i.ind_prop }
@@ -207,9 +211,7 @@ let unlink : t -> unit = fun sign ->
   let gn _ ls = List.iter (fun (_, r) -> unlink_rule r) ls in
   PathMap.iter gn !(sign.sign_deps);
   StrMap.iter (fun _ s -> unlink_sym s) !(sign.sign_builtins);
-  StrMap.iter (fun _ (s,_) -> unlink_sym s) !(sign.sign_unops);
-  StrMap.iter (fun _ (s,_) -> unlink_sym s) !(sign.sign_binops);
-  SymSet.iter unlink_sym !(sign.sign_quants);
+  SymMap.iter (fun s _ -> unlink_sym s) !(sign.sign_notations);
   let unlink_inductive i =
     List.iter unlink_sym i.ind_cons; unlink_sym i.ind_prop
   in
@@ -237,6 +239,14 @@ let add_symbol : t -> expo -> prop -> match_strat -> strloc -> term ->
     ; sym_mstrat = ref sym_mstrat }
   in
   sign.sign_symbols := StrMap.add s.elt (sym, s.pos) !(sign.sign_symbols); sym
+
+(** [strip_private sign] removes private symbols from signature [sign]. *)
+let strip_private : t -> unit = fun sign ->
+  let not_prv sym = not (Terms.is_private sym) in
+  sign.sign_symbols :=
+    StrMap.filter (fun _ s -> not_prv (fst s)) !(sign.sign_symbols);
+  sign.sign_notations :=
+    Terms.SymMap.filter (fun s _ -> not_prv s) !(sign.sign_notations)
 
 (** [write sign file] writes the signature [sign] to the file [fname]. *)
 let write : t -> string -> unit = fun sign fname ->
@@ -268,8 +278,7 @@ let read : string -> t = fun fname ->
     unsafe_reset sign.sign_symbols;
     unsafe_reset sign.sign_deps;
     unsafe_reset sign.sign_builtins;
-    unsafe_reset sign.sign_unops;
-    unsafe_reset sign.sign_binops;
+    unsafe_reset sign.sign_notations;
     let rec reset_term t =
       let reset_binder b = reset_term (snd (Bindlib.unbind b)) in
       match unfold t with
@@ -301,11 +310,10 @@ let read : string -> t = fun fname ->
       List.iter reset_rule !(s.sym_rules)
     in
     StrMap.iter (fun _ (s,_) -> reset_sym s) !(sign.sign_symbols);
-    StrMap.iter (fun _ (s,_) -> shallow_reset_sym s) !(sign.sign_binops);
     StrMap.iter (fun _ s -> shallow_reset_sym s) !(sign.sign_builtins);
+    SymMap.iter (fun s _ -> shallow_reset_sym s) !(sign.sign_notations);
     let fn (_,r) = reset_rule r in
     PathMap.iter (fun _ -> List.iter fn) !(sign.sign_deps);
-    SymSet.iter shallow_reset_sym !(sign.sign_quants);
     let shallow_reset_inductive i =
       shallow_reset_sym i.ind_prop;
       List.iter shallow_reset_sym i.ind_cons
@@ -335,25 +343,28 @@ let add_rule : t -> sym -> rule -> unit = fun sign sym r ->
 (** [add_builtin sign name sym] binds the builtin name [name] to [sym] (in the
     signature [sign]). The previous binding, if any, is discarded. *)
 let add_builtin : t -> string -> sym -> unit = fun sign s sym ->
-  sign.sign_builtins := StrMap.add s sym !(sign.sign_builtins)
+  sign.sign_builtins := StrMap.add s sym !(sign.sign_builtins);
+  match s with
+  | "0" -> sign.sign_notations := SymMap.add sym Zero !(sign.sign_notations)
+  | "+1" -> sign.sign_notations := SymMap.add sym Succ !(sign.sign_notations)
+  | _ -> ()
 
-(** [add_unop sign unop sym] binds the unary operator [op] to [sym] in [sign].
-    If [unop] was previously bound, the previous binding is discarded. *)
-let add_unop : t -> string -> (sym * unop) -> unit = fun sign s sym ->
-  sign.sign_unops := StrMap.add s sym !(sign.sign_unops)
+(** [add_unop sign sym unop] binds the unary operator [unop] to [sym] in
+    [sign]. If [unop] was previously bound, the previous binding is
+    discarded. *)
+let add_unop : t -> sym -> unop -> unit = fun sign sym unop ->
+  sign.sign_notations := SymMap.add sym (Prefix unop) !(sign.sign_notations)
 
-(** [add_binop sign op sym] binds the binary operator [op] to [sym] in [sign].
-    If [op] was previously bound, the previous binding is discarded. *)
-let add_binop : t -> string -> (sym * binop) -> unit = fun sign s sym ->
-  sign.sign_binops := StrMap.add s sym !(sign.sign_binops)
-
-(** [add_ident sign id] add the declared identifier [id] to [sign]. *)
-let add_ident : t -> string -> unit = fun sign id ->
-  sign.sign_idents := StrSet.add id !(sign.sign_idents)
+(** [add_binop sign sym binop] binds the binary operator [binop] to [sym] in
+    [sign]. If [op] was previously bound, the previous binding is
+    discarded. *)
+let add_binop : t -> sym -> binop -> unit =
+  fun sign sym binop ->
+  sign.sign_notations := SymMap.add sym (Infix binop) !(sign.sign_notations)
 
 (** [add_quant sign sym] add the quantifier [sym] to [sign]. *)
 let add_quant : t -> sym -> unit = fun sign sym ->
-  sign.sign_quants := SymSet.add sym !(sign.sign_quants)
+  sign.sign_notations := SymMap.add sym Quant !(sign.sign_notations)
 
 (** [add_inductive sign typ ind_cons ind_prop] add the inductive type which
     consists of a type [typ], constructors [ind_cons] and an induction

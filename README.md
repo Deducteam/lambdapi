@@ -1,70 +1,81 @@
 Lambdapi, a proof assistant based on the λΠ-calculus modulo rewriting [![Gitter][gitter-badge]][gitter-link] [![Matrix][matrix-badge]][matrix-link]
 =====================================================================
 
-Lambdapi is a proof assistant based on the λΠ-calculus modulo rewriting,
-mostly compatible with the proof checker Dedukti. More details are given
-in the [documentation](https://lambdapi.readthedocs.io).
+Lambdapi is a proof assistant based on the λΠ-calculus modulo
+rewriting. It comes with Emacs and VSCode extensions. More details
+are given in the [User Manual](https://lambdapi.readthedocs.io).
+Lambdapi files must end with `.lp`. But Lambdapi can also read
+[Dedukti](https://deducteam.github.io/) files (extension `.dk`) and
+convert them to Lambdapi files.
+
+Issues can be reported on the following
+[issue tracker](https://github.com/Deducteam/lambdapi/issues).
+
+Questions can be asked on the following
+[forum](https://github.com/Deducteam/lambdapi/discussions).
+
+Operating systems
+-----------------
+
+Lambdapi requires a Unix-like system. It should work on Linux as well as on
+MacOS. It might be possible to make it work on Windows too with Cygwin or
+"bash on Windows".
 
 Installation via [Opam](http://opam.ocaml.org/)
 ---------------------
 
-We will only publish a new version of `lambdapi` Opam package when the
-development has reached a more stable test. For now, we advise you to
-pin the development repository to get the latest bug fixes.
-
+Lambdapi is under active development. A new version of the `lambdapi`
+Opam package will be released soon, when the development will have reached a
+more stable point. For now, we advise you to pin the development
+repository to get the latest development version:
 ```bash
 opam pin add lambdapi https://github.com/Deducteam/lambdapi.git
+opam install lambdapi # install emacs and vim support as well
 ```
-Dependencies and compilation
+For installing the VSCode extension, you need to get the sources (see below).
+
+Compilation from the sources
 ----------------------------
 
-Lambdapi requires a Unix-like system. It should work on Linux as well as on
-MacOS. It might also be possible to make it work on Windows with Cygwin or
-with "bash on Windows".
+You can get the sources using `git` as follows:
+```bash
+git clone https://github.com/Deducteam/lambdapi.git
+```
 
-List of dependencies (for version numbers refer to `lambdapi.opam`):
-GNU make,
-[ocaml](https://ocaml.org/) >= 4.07.0,
-[dune](https://dune.build/),
-[bindlib](https://github.com/rlepigre/ocaml-bindlib),
-[earley](https://github.com/rlepigre/ocaml-earley),
-[timed](https://github.com/rlepigre/ocaml-timed),
-[menhir](http://gallium.inria.fr/~fpottier/menhir/),
-[yojson](https://github.com/ocaml-community/yojson),
-[cmdliner](https://erratique.ch/logiciel/cmdliner),
-[why3](http://why3.lri.fr/),
-[alcotest](https://github.com/mirage/alcotest) (for tests),
-[alt-ergo](https://alt-ergo.ocamlpro.com/) (for tests),
-[odoc](https://github.com/ocaml/odoc) (for documentation).
+Dependencies are described in `lambdapi.opam`. For running tests, one
+also needs [alcotest](https://github.com/mirage/alcotest) and
+[alt-ergo](https://alt-ergo.ocamlpro.com/). For building the source
+code documentation, one needs
+[odoc](https://github.com/ocaml/odoc). For building the User Manual,
+see `docs/README.md`.
 
-**Note on the use of Why3:** the command `why3 config --full-config`
-must be run to update the Why3 configuration when a new prover is
-installed (including on the first installation of Why3).
+**Note on Why3:** the command `why3 config --full-config`
+must be run to make Why3 know the available provers.
 
-Using Opam, a suitable OCaml environment can be setup as follows.
+Using Opam, a suitable OCaml environment can be setup as follows:
 ```bash
 opam switch 4.11.1
-opam install dune bindlib earley timed menhir yojson cmdliner why3 alcotest alt-ergo odoc
+opam install dune bindlib timed menhir pratter yojson cmdliner why3 alcotest alt-ergo odoc
 why3 config --full-config
 ```
 
 To compile Lambdapi, just run the command `make` in the source directory.
-This produces the `_build/install/default/bin/lambdapi` binary, which can
-be run on files with the `.dk` or `.lp` extension (use the `--help` option
-for more information).
+This produces the `_build/install/default/bin/lambdapi` binary.
+Use the `--help` option for more information. Other make targets are:
 
 ```bash
-make               # Build lambdapi.
-make doc           # Build the documentation.
-make install       # Install the program.
-make install_emacs # Install emacs mode, see note on UI.
-make install_vim   # Install vim support, see note UI.
+make                        # Build lambdapi
+make doc                    # Build the source code documentation
+make install                # Install lambdapi
+make install_emacs          # Install emacs mode
+make install_vim            # Install vim support
+make -C editors/vscode make # Install vscode extension
 ```
 
-**Note:** you can run `lambdapi` without installing with `dune exec -- lambdapi`.
+**Note:** you can run `lambdapi` without installing it with `dune exec -- lambdapi`.
 
-**Note on user interfaces:** more instructions on supported editors can be found
-in the [documentation](https://lambdapi.readthedocs.io/en/latest/ui/ui.html).
+**Note:** the starting file of the source code html documentation is
+`_build/default/_doc/_html/lambdapi/index.html`.
 
 The following commands can be used for cleaning up the repository:
 ```bash
@@ -72,6 +83,12 @@ make clean     # Removes files generated by OCaml.
 make distclean # Same as clean, but also removes library checking files.
 make fullclean # Same as distclean, but also removes downloaded libraries.
 ```
+
+Include Lambdapi code in Latex documents
+----------------------------------------
+
+Lambdapi code can be included into Latex documents by using
+`tools/listings.tex`.
 
 [gitter-badge]: https://badges.gitter.im/Deducteam/lambdapi.svg
 [gitter-link]: https://gitter.im/Deducteam/lambdapi

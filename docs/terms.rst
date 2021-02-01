@@ -15,11 +15,13 @@ An identifier can be:
 *  an ASCII sequence of characters in the regular language
    ``[a-zA-Z_][a-zA-Z0-9_]*``
 
+*  a sequence of UTF-8 codepoints that fall in the regular language
+   ``[[:letter:]_][[:letter:]0..9_]`` where the class ``[:letter:]``
+   is ``[a..zA..Z-\&^'*%#~[:math:]]`` where ``[:math:]`` contains most
+   mathematical symbols (including subscripts and superscripts).
+
 *  a non-negative integer if the builtins “0” and “+1” have been
    previously set (see the command ``set builtin`` in :doc:`commands`)
-
-*  a unicode character previously declared using the command
-   ``set declared``
 
 *  an arbitrary sequence of characters enclosed between ``{|`` and
    ``|}``
@@ -48,14 +50,14 @@ A user-defined term can be either:
 
 * a dependent product ``Π(x:A) y z,T``
 
-* a non-dependent product ``A → T`` (syntactic sugar for ``Πx:A,T`` with ``x``
+* a non-dependent product ``A → T`` (syntactic sugar for ``Π x:A,T`` with ``x``
   not occurring in ``T``)
 
 * a ``let f (x:A) y z: T ≔ t in`` construction (with ``let f x : A ≔ t in u``
-  being a syntactic sugar for ``let f : Πx:_ → A ≔ λx, t in u``)
+  being a syntactic sugar for ``let f : Π x : _ → A ≔ λ x, t in u``)
 
 * application is written by space-separated juxtaposition, except for
-  symbol identifiers declared as infix (e.g. ``x+y``)
+  symbol identifiers declared as infix (e.g. ``x + y``)
 
 * a meta-variable application ``?M[t;u;v]``. ``?M`` alone, without arguments
   between square brackets, is a shorthand for ``?M[x1;..;xn]`` where
