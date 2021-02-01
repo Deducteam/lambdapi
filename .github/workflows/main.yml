@@ -1,4 +1,8 @@
-on: [push, workflow_dispatch]
+on:
+  pull_request:
+    types: [opened, synchronize, edited, reopened]
+  push:
+  workflow_dispatch:
 jobs:
   build:
     strategy:
