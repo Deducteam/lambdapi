@@ -10,6 +10,5 @@
  (public_name lambdapi.core)
  (synopsis "LambdaPi interactive theorem prover [core]")
  (modules :standard)
- (preprocess (pps sedlex.ppx))
- (libraries pratter sedlex sedlex.ppx unix stdlib-shims timed bindlib why3
-  parsing backbone lplib))
+ (libraries pratter unix stdlib-shims timed bindlib why3 parsing backbone
+            lplib))
