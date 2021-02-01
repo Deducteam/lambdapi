@@ -366,7 +366,8 @@ is equivalent to:
    ￼injective symbol ℕ : TYPE;
    ￼constant  symbol zero : ℕ;
    ￼constant  symbol succ : ℕ → ℕ;
-   ￼symbol ind_ℕ p : π(p zero) → (Π x, π(p x) → π(p(succ x))) → Π x, π(p x);
+   ￼symbol ind_ℕ p :
+      π(p zero) → (Π x, π(p x) → π(p(succ x))) → Π x, π(p x);
    ￼rule ind_ℕ _ $pz _ zero ↪ $pz
    ￼with ind_ℕ $p $pz $ps (succ $n) ↪ $ps $n (ind_ℕ $p $pz $ps $n);
 
