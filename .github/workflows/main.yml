@@ -1,0 +1,34 @@
+on: [push, workflow_dispatch]
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        ocaml-version: [4.07.1, 4.08.1, 4.09.1, 4.10.2, 4.11.1]
+    runs-on: ubuntu-latest
+    steps:
+      - name: checking out lambdapi repo...
+        uses: actions/checkout@v2
+      - name: recovering cached opam files...
+        uses: actions/cache@v2
+        with:
+          path: ~/.opam
+          key: ${{ runner.os }}-ocaml-${{ matrix.ocaml-version }}
+      - name: setting up opam...
+        uses: avsm/setup-ocaml@v1
+        with:
+          ocaml-version: ${{ matrix.ocaml-version }}
+      - name: installing dependencies...
+        run: |
+          opam pin add alt-ergo 2.3.1
+          opam install alt-ergo
+          opam pin add -n -k path lambdapi .
+          opam install --deps-only -d -t lambdapi
+          opam update
+          opam upgrade
+      - name: running tests...
+        run: |
+          eval $(opam env)
+          why3 config --full-config
+          make real_tests
+          make sanity_check

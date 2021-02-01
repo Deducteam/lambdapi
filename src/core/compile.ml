@@ -1,7 +1,6 @@
 (** High-level compilation functions. *)
 
 open! Lplib
-open Lplib.Extra
 
 open Timed
 open Sign
@@ -17,14 +16,14 @@ let gen_obj = Stdlib.ref false
 let parse_file : string -> Syntax.ast = fun fname ->
   match Filename.check_suffix fname src_extension with
   | true  -> Parser.parse_file fname
-  | false -> Legacy_parser.parse_file fname
+  | false -> Parser.Dk.parse_file fname
 
 (** [compile force path] compiles the file corresponding to [path], when it is
     necessary (the corresponding object file does not exist,  must be updated,
     or [force] is [true]).  In that case,  the produced signature is stored in
     the corresponding object file. *)
 let rec compile : bool -> Path.t -> Sign.t = fun force path ->
-  let base = Files.module_to_file path in
+  let base = Files.module_to_file (List.map LpLexer.unquote path) in
   let src () =
     (* Searching for source is delayed because we may not need it
        in case of "ghost" signatures (such as for unification rules). *)
@@ -51,44 +50,45 @@ let rec compile : bool -> Path.t -> Sign.t = fun force path ->
     begin
       let forced = if force then " (forced)" else "" in
       let src = src () in
-      out 2 "Loading [%s]%s\n%!" src forced;
+      out 2 "Loading %s%s ...\n%!" src forced;
       loading := path :: !loading;
       let sign = Sig_state.create_sign path in
-      let sig_st = Sig_state.of_sign sign in
+      let sig_st = Stdlib.ref (Sig_state.of_sign sign) in
       (* [sign] is added to [loaded] before processing the commands so that it
          is possible to qualify the symbols of the current modules. *)
       loaded := PathMap.add path sign !loaded;
       let handle ss c =
         Terms.Meta.reset_key_counter ();
-        let (ss, p) = Handle.handle_cmd ss c in
+        (* We provide the compilation function to the handle commands, so that
+           "require" is able to compile files. *)
+        let (ss, p, _) = Handle.handle_cmd (compile false) ss c in
         match p with
         | None       -> ss
         | Some(data) ->
             let (st,ts) = (data.pdata_p_state, data.pdata_tactics) in
             let e = data.pdata_expo in
-            let st = List.fold_left (Tactics.handle_tactic ss e) st ts in
+            let st =
+              List.fold_left
+                (fun st tac -> fst (Tactics.handle_tactic ss e st tac))
+                st ts
+            in
             data.pdata_finalize ss st
       in
-      ignore (List.fold_left handle sig_st (parse_file src));
-      (* Removing private symbols from signature. *)
-      let not_prv _ sym = not (Terms.is_private sym) in
-      let not_prv_fst k s_ = not_prv k (fst s_) in
-      sign.sign_symbols := StrMap.filter not_prv_fst !(sign.sign_symbols);
-      sign.sign_builtins := StrMap.filter not_prv !(sign.sign_builtins);
-      sign.sign_unops := StrMap.filter not_prv_fst !(sign.sign_unops);
-      sign.sign_binops := StrMap.filter not_prv_fst !(sign.sign_binops);
+      let consume cmd = Stdlib.(sig_st := handle !sig_st cmd) in
+      Stream.iter consume (parse_file src);
+      Sign.strip_private sign;
       if Stdlib.(!gen_obj) then Sign.write sign obj;
       loading := List.tl !loading;
-      out 1 "Checked [%s]\n%!" src; sign
+      out 1 "Checked %s\n%!" src; sign
     end
   else
     begin
-      out 2 "Loading [%s]\n%!" (src ());
+      out 2 "Loading %s ...\n%!" (src ());
       let sign = Sign.read obj in
       PathMap.iter (fun mp _ -> ignore (compile false mp)) !(sign.sign_deps);
       loaded := PathMap.add path sign !loaded;
       Sign.link sign;
-      out 2 "Loaded  [%s]\n%!" obj; sign
+      out 2 "Loaded %s\n%!" obj; sign
     end
 
 (** [recompile] indicates whether we should recompile files who have an object
@@ -104,24 +104,6 @@ let compile_file : file_path -> Sign.t = fun fname ->
   let mp = Files.file_to_module fname in
   (* Run compilation. *)
   compile Stdlib.(!recompile) mp
-
-(* NOTE we need to give access to the compilation function to the parser. This
-   is the only way infix symbols can be parsed, since they may be added to the
-   scope by a “require” command. *)
-let _ =
-  let require mp =
-    (* Save the current console state. *)
-    State.push ();
-    (* Restore the console state to default for compiling. *)
-    Console.reset_default ();
-    (* Compile and go back to previous state. *)
-    try
-      ignore (compile false mp);
-      try State.pop () with _ -> assert false (* Unreachable. *)
-    with e -> State.pop (); raise e
-  in
-  Stdlib.(Parser.require := require)
-
 (** Pure wrappers around compilation functions. Functions provided perform the
     same computations as the ones defined earlier, but restores the state when
     they have finished. An optional library mapping or state can be passed as

@@ -1,8 +1,8 @@
 // Triggers heavy memory consumption with trees
-require open tests.OK.nat
+require open tests.OK.nat;
 
-symbol triangle : N → N
+symbol triangle : N → N;
 rule triangle (s $n) ↪ (s $n) + (triangle $n)
-with triangle z      ↪ z
+with triangle z      ↪ z;
 
-assert triangle 300 ≡ 45150
+assert ⊢ triangle 300 ≡ 45150;

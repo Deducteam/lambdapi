@@ -10,8 +10,24 @@ module Command = struct
   type t = Syntax.p_command
   let equal = Syntax.eq_p_command
   let get_pos c = Pos.(c.pos)
-  let get_qidents = Cmd_analysis.get_qidents
 end
+
+let interval_of_pos : Pos.pos -> Range.t =
+  fun {start_line; start_col; end_line; end_col; _} ->
+  let open Range in
+  let start : point = make_point start_line start_col in
+  let finish : point = make_point end_line end_col in
+  make_interval start finish
+
+(** Document identifier range map. *)
+let rangemap : Command.t list -> Syntax.qident_aux RangeMap.t =
+  let f map ({elt;pos} : Syntax.qident) =
+    (* Only add if the symbol has a position. *)
+    match pos with
+    | Some pos -> RangeMap.add (interval_of_pos pos) elt map
+    | None -> map
+  in
+  Syntax.fold_idents f RangeMap.empty
 
 (** Representation of a single tactic (abstract). *)
 module Tactic = struct
@@ -31,8 +47,15 @@ let parse_text : state -> string -> string -> Command.t list * state =
   try
     Time.restore t;
     let ast =
-      if old_syntax then Legacy_parser.parse_string fname s
-      else Parser.parse_string fname s
+      let strm =
+        if old_syntax then Parser.Dk.parse_string fname s
+        else Parser.parse_string fname s
+      in
+      (* NOTE this processing could be avoided with a parser for a list of
+         commands. Such a parser is not trivially done. *)
+      let cmds = Stdlib.ref [] in
+      Stream.iter (fun c -> Stdlib.(cmds := c :: !cmds)) strm;
+      List.rev Stdlib.(!cmds)
     in
     (ast, (Time.save (), st))
   with
@@ -40,20 +63,50 @@ let parse_text : state -> string -> string -> Command.t list * state =
   | Fatal(Some(None)     , _  ) -> assert false (* Should not produce. *)
   | Fatal(None           , _  ) -> assert false (* Should not produce. *)
 
-type proof_finalizer = Sig_state.t -> Proof.t -> Sig_state.t
+type proof_finalizer = Sig_state.t -> Proof.proof_state -> Sig_state.t
 type proof_state =
-  Time.t * Sig_state.t * Proof.t * proof_finalizer * Terms.expo
+  Time.t * Sig_state.t * Proof.proof_state * proof_finalizer * Terms.expo
+type conclusion =
+  | Typ of string * string
+  | Unif of string * string
+type goal = (string * string) list * conclusion
 
-let current_goals : proof_state -> Proof.Goal.t list = fun (_,_,p,_,_) ->
-  p.proof_goals
+let string_of_goal : Proof.goal -> goal =
+  let buf = Buffer.create 80 in
+  let fmt = Format.formatter_of_buffer buf in
+  let to_string f x =
+    f fmt x;
+    Format.pp_print_flush fmt ();
+    let res = Buffer.contents buf in
+    Buffer.clear buf;
+    res
+  in
+  let open Print in
+  let env_elt (s,(_,t,_)) = s, to_string pp_term (Bindlib.unbox t) in
+  let ctx_elt (x,a,_) = to_string pp_var x, to_string pp_term a in
+  fun g ->
+  match g with
+  | Proof.Typ gt ->
+      let meta = to_string pp_meta gt.goal_meta in
+      let typ = to_string pp_term gt.goal_type in
+      List.rev_map env_elt gt.goal_hyps, Typ (meta, typ)
+  | Proof.Unif (c,t,u) ->
+      let t = to_string pp_term t and u = to_string pp_term u in
+      List.rev_map ctx_elt c, Unif (t,u)
+
+let current_goals : proof_state -> goal list =
+  fun (time, st, ps, _, _) ->
+  Time.restore time;
+  Print.sig_state := st;
+  List.map string_of_goal ps.proof_goals
 
 type command_result =
-  | Cmd_OK    of state
+  | Cmd_OK    of state * Queries.result
   | Cmd_Proof of proof_state * Tactic.t list * Pos.popt * Pos.popt
   | Cmd_Error of Pos.popt option * string
 
 type tactic_result =
-  | Tac_OK    of proof_state
+  | Tac_OK    of proof_state * Queries.result
   | Tac_Error of Pos.popt option * string
 
 let t0 : Time.t Stdlib.ref = Stdlib.ref (Time.save ())
@@ -75,10 +128,10 @@ let handle_command : state -> Command.t -> command_result =
     fun (st,ss) cmd ->
   Time.restore st;
   try
-    let (ss, pst) = Handle.handle_cmd ss cmd in
+    let (ss, pst, qres) = Handle.handle_cmd (Compile.compile false) ss cmd in
     let t = Time.save () in
     match pst with
-    | None       -> Cmd_OK(t, ss)
+    | None       -> Cmd_OK ((t, ss), qres)
     | Some(data) ->
         let pst =
           (t, ss, data.pdata_p_state, data.pdata_finalize, data.pdata_expo) in
@@ -90,13 +143,14 @@ let handle_tactic : proof_state -> Tactic.t -> tactic_result =
   fun s t ->
   let (_, ss, p, finalize, e) = s in
   try
-    let p = Tactics.handle_tactic ss e p t in
-    Tac_OK(Time.save (), ss, p, finalize, e)
+    let p, qres = Tactics.handle_tactic ss e p t in
+    Tac_OK((Time.save (), ss, p, finalize, e), qres)
   with Fatal(p,m) -> Tac_Error(p,m)
 
 let end_proof : proof_state -> command_result = fun s ->
   let (_, ss, p, finalize, _) = s in
-  try Cmd_OK(Time.save (), finalize ss p) with Fatal(p,m) -> Cmd_Error(p,m)
+  try Cmd_OK((Time.save (), finalize ss p), None)
+  with Fatal(p,m) -> Cmd_Error(p,m)
 
 let get_symbols : state -> (Terms.sym * Pos.popt) Extra.StrMap.t = fun s ->
   (snd s).in_scope

@@ -1,33 +1,27 @@
-constant symbol Set : TYPE
+constant symbol Set : TYPE;
 
-set declared "τ"
+injective symbol τ : Set → TYPE;
 
-injective symbol τ : Set → TYPE
+constant symbol prop : Set;
 
-constant symbol prop : Set
+symbol Prop ≔ τ prop;
 
-symbol Prop ≔ τ prop
+constant symbol ⊤ : Prop;
 
-set declared "⊤"
+constant symbol ∀ {a} : (τ a → Prop) → Prop;
 
-constant symbol ⊤ : Prop
+set quantifier ∀;
 
-set declared "∀"
+constant symbol imp : Prop → Prop → Prop;
 
-constant symbol ∀ {a} : (τ a → Prop) → Prop
+set infix right 5 "⇒" ≔ imp;
 
-set quantifier ∀
+compute λ p q, ∀ (λ x, p x ⇒ q x); // should print λp,∀x,p x
 
-constant symbol imp : Prop → Prop → Prop
+compute λ p, `∀ x, p x; // should print λp,∀x,p x
 
-set infix right 5 "⇒" ≔ imp
+compute λ p q, (`∀ x, p x) ⇒ q; // should print λp q, (∀x,p x) ⇒ q
 
-compute λp q, ∀ (λx,p x ⇒ q x) // should print λp,∀x,p x
+set flag "print_implicits" on;
 
-compute λp, ∀x,p x // should print λp,∀x,p x
-
-compute λp q, (∀x,p x) ⇒ q // should print λp q, (∀x,p x) ⇒ q
-
-set flag "print_implicits" on
-
-compute λp, ∀ (λx,p x) // should print λp,∀x:τ?,p x
+compute λ p, ∀ (λ x, p x); // should print λp,∀x:τ?,p x

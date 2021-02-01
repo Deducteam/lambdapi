@@ -1,3 +1,3 @@
-require tests.OK.{|262_parsing|} as D
+require tests.OK.{|262_parsing|} as D;
 
-rule D.f $x ↪ $x
+rule D.f $x ↪ $x;

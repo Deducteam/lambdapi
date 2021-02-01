@@ -12,7 +12,6 @@ open Lplib.Extra
 open Timed
 open Terms
 open Console
-open Syntax
 open Sig_state
 
 (** Logging function for printing. *)
@@ -52,16 +51,15 @@ let pp_match_strat : match_strat pp = fun oc s ->
   | Eager -> ()
 
 (** [assoc oc a] prints associativity [a] to channel [oc]. *)
-let pp_assoc : assoc pp = fun oc assoc ->
+let pp_assoc : Pratter.associativity pp = fun oc assoc ->
   match assoc with
-  | Assoc_none -> ()
-  | Assoc_left -> Format.fprintf oc " left associative"
-  | Assoc_right -> Format.fprintf oc " right associative"
+  | Neither -> ()
+  | Left -> Format.fprintf oc " left associative"
+  | Right -> Format.fprintf oc " right associative"
 
-(** [hint oc a] prints hint [h] to channel [oc]. *)
-let pp_hint : pp_hint pp = fun oc pp_hint ->
-  match pp_hint with
-  | Unqual         -> ()
+(** [notation oc n] notation setter [n] to output [oc]. *)
+let notation : Sign.notation pp = fun oc notation ->
+  match notation with
   | Prefix(n,p,_)  -> Format.fprintf oc "prefix \"%s\" with priority %f" n p
   | Infix(n,a,p,_) ->
       Format.fprintf oc "infix \"%s\"%a with priority %f" n pp_assoc a p
@@ -75,14 +73,15 @@ let pp_qualified : sym pp = fun oc s ->
   | None -> Format.fprintf oc "%a.%s" Files.Path.pp s.sym_path s.sym_name
   | Some alias -> Format.fprintf oc "%s.%s" alias s.sym_name
 
-(** Get the printing hint of a symbol. *)
-let get_pp_hint : sym -> pp_hint = fun s ->
-  try SymMap.find s (!sig_state).pp_hints with Not_found -> Unqual
+(** [notatin_of sym] returns the notation properties symbol [sym] or
+    [None]. *)
+let notation_of : sym -> Sign.notation option = fun s ->
+  SymMap.find_opt s !sig_state.notations
 
 (** [pp_symbol oc s] prints the name of the symbol [s] to channel [oc]. *)
 let pp_symbol : sym pp = fun oc s ->
-  if SymMap.mem s (!sig_state).pp_hints
-     || Files.Path.compare s.sym_path (!sig_state).signature.sign_path = 0
+  if SymMap.mem s !sig_state.notations
+     || Files.Path.compare s.sym_path !sig_state.signature.sign_path = 0
   then Format.pp_print_string oc s.sym_name
   else pp_qualified oc s
 
@@ -147,12 +146,13 @@ and pp_term : term pp = fun oc t ->
           let eargs =
             if !print_implicits then args else Basics.expl_args s args
           in
-          match get_pp_hint s with
-          | Quant when are_quant_args s args ->
+          match notation_of s with
+          | Some Quant when are_quant_args s args ->
               if p <> `Func then out oc "(";
               pp_quantifier s args;
               if p <> `Func then out oc ")"
-          | Infix(op,_,_,_) when not !print_implicits || s.sym_impl <> [] ->
+          | Some (Infix(op,_,_,_))
+            when not !print_implicits || s.sym_impl <> [] ->
               begin
                 match eargs with
                 | l::r::[] ->
@@ -168,8 +168,8 @@ and pp_term : term pp = fun oc t ->
                     if p <> `Func then out oc ")"
                 | _ -> pp_appl h eargs
               end
-          | Zero -> out oc "0"
-          | Succ ->
+          | Some Zero -> out oc "0"
+          | Some Succ ->
               begin
                 try out oc "%i" (nat_of_term t)
                 with Not_a_nat -> pp_appl h args
@@ -186,7 +186,7 @@ and pp_term : term pp = fun oc t ->
           match unfold b with
           | Abst(a,b) ->
               let (x,p) = Bindlib.unbind b in
-              out oc "%a%a" pp_symbol s pp_var x;
+              out oc "`%a %a" pp_symbol s pp_var x;
               if !print_implicits then out oc ": %a" (pp `Func) a;
               out oc ", %a" (pp `Func) p
           | _ -> assert false
@@ -203,11 +203,13 @@ and pp_term : term pp = fun oc t ->
       | _          -> assert false
     in
     match unfold t with
-    (* Application is handled separately, unreachable. *)
     | Appl(_,_)   -> assert false
-    (* Forbidden cases. *)
-    | Wild        -> assert false
-    | TRef(_)     -> assert false
+    (* Application is handled separately, unreachable. *)
+    | Wild        -> out oc "_"
+    | TRef(r)     ->
+        (match !r with
+         | None -> out oc "<TRef>"
+         | Some t -> pp `Atom oc t)
     (* Atoms are printed inconditonally. *)
     | Vari(x)     -> pp_var oc x
     | Type        -> out oc "TYPE"
@@ -220,7 +222,7 @@ and pp_term : term pp = fun oc t ->
     | Abst(a,b)   ->
         if wrap then out oc "(";
         let (x,t) = Bindlib.unbind b in
-        out oc "λ%a" pp_bvar (b,x);
+        out oc "λ %a" pp_bvar (b,x);
         if !print_domains then out oc ": %a, %a" (pp `Func) a (pp `Func) t
         else pp_abstractions oc t;
         if wrap then out oc ")"
@@ -228,7 +230,7 @@ and pp_term : term pp = fun oc t ->
         if wrap then out oc "(";
         let (x,t) = Bindlib.unbind b in
         if Bindlib.binder_occur b then
-          out oc "Π%a: %a, %a" pp_var x (pp `Func) a (pp `Func) t
+          out oc "Π %a: %a, %a" pp_var x (pp `Func) a (pp `Func) t
         else out oc "%a → %a" (pp `Appl) a (pp `Func) t;
         if wrap then out oc ")"
     | LLet(a,t,b) ->
@@ -285,7 +287,7 @@ let pp_constr : constr pp = fun oc (ctx, t, u) ->
 (** [pp_constr oc p] prints the unification problem [p] to the
     output channel [oc]. *)
 let pp_problem : problem pp = fun oc p ->
-  Format.fprintf oc "{ to_solve = [%a]; unsolved = [%a]; recompute = %b }"
-    (List.pp pp_constr "; ") p.to_solve
-    (List.pp pp_constr "; ") p.unsolved
-    p.recompute
+  let constr oc c = Format.fprintf oc "\n; %a" pp_constr c in
+  Format.fprintf oc
+    "{ recompute = %b;\nto_solve = [%a];\nunsolved = [%a] }"
+    p.recompute (List.pp constr "") p.to_solve (List.pp constr "") p.unsolved

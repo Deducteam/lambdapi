@@ -2,7 +2,7 @@
 
 ;; Copyright (C) 2020 Deducteam
 
-;; Author: Rodolphe Lepigre, Gabriel Hondet, Ashish Barnawal
+;; Authors: Ashish Barnawal, Diego Riviero, Gabriel Hondet, Rodolphe Lepigre 
 ;; Maintainer: Deducteam <dedukti-dev@inria.fr>
 ;; Version: 1.0
 ;; SPDX-License-Identifier: CeCILL Free Software License Agreement v2.1
@@ -92,6 +92,11 @@
 (defvar lambdapi-current-line-number (line-number-at-pos))
 (defvar lambdapi-changed-line-hook nil)
 
+(defconst lambdapi--temp-buffer-name "lp-asdf2io3jnc"  ; any random name will work
+  "Buffer name for used by `lambdapi-refresh-window-layout'. Must
+not match any buffer used by user")
+
+
 (defun lambdapi-update-line-number ()
   (if interactive-goals
       (let ((new-line-number (line-number-at-pos)))
@@ -99,88 +104,63 @@
           (setq lambdapi-current-line-number new-line-number)
           (run-hooks 'changed-line-hook)))))
 
+(defun lambdapi--apply-window-layout (tree)
+  "Applies the window configuration given by the argument tree,
+it is either a list (split-side ratio child1-tree child2-tree)
+or a leaf which is a buffer or a string with buffer's name.
 
-(defgroup lambdapi nil
-  "LambdaPi is a proof assistant based on the λΠ-calculus modulo rewriting"
-  :group 'languages)
+It is meant to be called by `lambdapi-refresh-window-layout'
+which also replaces buffers with name `lambdapi--temp-buffer-name'
+with the current buffer.
 
-(defcustom lambdapi-goals-window-side 'bottom
-  "Side at which to show goals window"
-  :type '(choice (const :tag "right"  right)
-                 (const :tag "left"   left)
-                 (const :tag "top"    top)
-                 (const :tag "bottom" bottom))
-  :group 'lambdapi)
+Example:
 
-(defcustom lambdapi-goals-window-height-ratio 0.30
-  "Ratio of height taken by Goals window if split top or bottom"
-  :type '(float)
-  :group 'lambdapi)
+(lambdapi--apply-window-layout
+               '(h 0.6 \"proofs\" (v 0.3 \"goals\" \"logs\")))
 
-(defcustom lambdapi-goals-window-width-ratio 0.5
-  "Ratio of width taken by Goals window if split left or right"
-  :type '(float)
-  :group 'lambdapi)
+will produce
 
-(defcustom lambdapi-goals-window-min-width 40
-  "Minimum width of Goals window"
-  :type '(integer)
-  :group 'lambdapi)
-
-(defcustom lambdapi-goals-window-min-height 4
-  "Minimum height of Goals window"
-  :type '(integer)
-  :group 'lambdapi)
-
++------------+--------+
+|            | goals  |
+|   proofs   +--------+
+|            | logs   |
+|            |        |
++------------+--------+
+"
+  (if (not (listp tree))
+      (switch-to-buffer (eval tree) t t)
+    (let* ((way   (car tree))
+           (ratio  (eval (cadr tree)))
+           (child1 (caddr tree))
+           (child2 (cadddr tree))
+           curwin sibling)
+      (if (eq way 'h)
+          (progn
+            (split-window-horizontally
+             (truncate (* ratio (window-width))))
+            (setq curwin  (selected-window))
+            (setq sibling (next-window)))
+        (progn
+          (split-window-vertically
+           (truncate (* ratio (window-height))))
+          (setq curwin  (selected-window))
+          (setq sibling (next-window))))
+      (with-selected-window curwin
+        (lambdapi--apply-window-layout child1))
+      (with-selected-window sibling
+        (lambdapi--apply-window-layout child2)))))
 
 (defun lambdapi-refresh-window-layout ()
-  "Create *Goals* buffer if it is not present. Create a side window
-for the goals buffer using the lambdapi-goals-window-* variables."
+  "Resets the window layout to default."
   (interactive)
-  (let* ((goalsbuf (get-buffer-create "*Goals*"))
-	 (goalswindow (get-buffer-window goalsbuf))
-	 (gwin-height (truncate
-		       (* lambdapi-goals-window-height-ratio
-			  (frame-height))))
-	 (gwin-width (truncate
-		      (* lambdapi-goals-window-width-ratio
-			 (frame-width)))))
-    ;; Allocate window for *Goals* buffer
-    (if goalswindow
-	(delete-window goalswindow))
-    (setq goalswindow
-	  (display-buffer-in-side-window
-	   goalsbuf
-	   `((side . ,lambdapi-goals-window-side)
-	     (slot . nil)
-	     ,(pcase lambdapi-goals-window-side
-		((or 'right 'left)
-		 `(window-width . ,gwin-width))
-		((or 'top 'bottom)
-		 `(window-height . ,gwin-height))))))
-    ;; if goals window violated lambdapi-goals-window-min-*
-    ;; allocate a new window
-    (if (and goalswindow
-	     (< (window-width goalswindow)
-		lambdapi-goals-window-min-width))
-	(progn
-	  (delete-window goalswindow)
-	  (setq goalswindow
-		(display-buffer-in-side-window
-		 goalsbuf `((side . bottom)
-			    (slot . nil)
-			    (window-height . ,gwin-height))))))
-    (if (and goalswindow
-	     (< (window-height goalswindow)
-		lambdapi-goals-window-min-height))
-	(progn
-	  (delete-window goalswindow)
-	  (setq goalswindow
-		(display-buffer-in-side-window
-		 goalsbuf `((side . right)
-			    (slot . nil)
-			    (window-width . ,gwin-width))))))))
-
+  (let ((curbuf (current-buffer)))
+    (delete-other-windows)
+    (lambdapi--apply-window-layout lambdapi-window-layout)
+    (dolist (win (get-buffer-window-list lambdapi--temp-buffer-name))
+      (with-selected-window win
+        (switch-to-buffer curbuf t t)))
+    (kill-buffer lambdapi--temp-buffer-name)
+    (select-window (get-buffer-window curbuf))))
 
 (defvar lambdapi-mode-map nil "Keymap for `lambdapi-mode'")
 
@@ -194,6 +174,81 @@ for the goals buffer using the lambdapi-goals-window-* variables."
   (define-key lambdapi-mode-map (kbd "C-c C-f") #'lp-jump-proof-forward)
   (define-key lambdapi-mode-map (kbd "C-c C-b") #'lp-jump-proof-backward)
   (define-key lambdapi-mode-map (kbd "C-c C-r") #'lambdapi-refresh-window-layout))
+
+(defgroup lambdapi nil
+  "LambdaPi is a proof assistant based on the λΠ-calculus modulo rewriting"
+  :group 'languages)
+
+(defcustom lambdapi-window-X-ratio 0.5
+  "Ratio of height taken in horizontal split during window layout.
+(Not applicable to Layout 0)"
+  :type '(float)
+  :group 'lambdapi)
+
+(defcustom lambdapi-window-Y-ratio 0.8
+  "Ratio of width taken in vertical split during window layout
+(Not applicable to Layout 0)"
+  :type '(float)
+  :group 'lambdapi)
+
+(defcustom lambdapi-window-layout '(v 0.75
+                                      lambdapi--temp-buffer-name
+                                      (v 0.8 "*Goals*" "*lp-logs*"))
+  "Window layout of LambdaPi."
+  :group 'lambdapi
+  ;; :set might change window layout at an unexpected time
+  :set (lambda (option newval)
+         (setq lambdapi-window-layout newval)
+         (lambdapi-refresh-window-layout))
+  :type '(radio (sexp :tag "Layout 0"
+		      :format "%t\n"
+		      :value
+		      (v 0.75
+                         lambdapi--temp-buffer-name
+                         (v 0.8 "*Goals*" "*lp-logs*")))
+	        (sexp :tag "Layout 1"
+                      :format "%t\n"
+                      :value
+                      (v lambdapi-window-Y-ratio
+                         lambdapi--temp-buffer-name
+                         (h lambdapi-window-X-ratio
+			    "*Goals*" "*lp-logs*")))
+                (sexp :tag "Layout 2"
+                      :format "%t\n"
+                      :value
+                      (v lambdapi-window-Y-ratio
+                         (h lambdapi-window-X-ratio
+                            lambdapi--temp-buffer-name
+                            "*lp-logs*")
+                         "*Goals*"))
+                (sexp :tag "Layout 3"
+                      :format "%t\n"
+                      :value
+                      (h lambdapi-window-X-ratio
+                         lambdapi--temp-buffer-name
+                         (v lambdapi-window-Y-ratio
+                            "*lp-logs*"
+                            "*Goals*")))
+                (sexp :tag "Layout 4"
+                      :format "%t\n"
+                      :value
+                      (h lambdapi-window-X-ratio
+                         (v lambdapi-window-Y-ratio
+                            lambdapi--temp-buffer-name
+                            "*Goals*")
+                         "*lp-logs*"))
+                (sexp :tag "Goal bottom"
+                      :format "%t\n"
+                      :value
+                      (v lambdapi-window-Y-ratio
+                         lambdapi--temp-buffer-name
+                         "*Goals*"))
+                (sexp :tag "Goal right"
+                      :format "%t\n"
+                      :value
+                      (h lambdapi-window-X-ratio
+                         lambdapi--temp-buffer-name
+                         "*Goals*"))))
 
 
 ;; Main function creating the mode (lambdapi)

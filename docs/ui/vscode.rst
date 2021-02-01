@@ -147,4 +147,11 @@ Hover
 Hovering symbols provides their type. This feature is still
 experimental.
 
+Logs
+----
+
+Logs are displayed in a terminal which opens automatically
+when needed.
+
+
 .. _VSCode: https://code.visualstudio.com/
