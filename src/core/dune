@@ -10,5 +10,4 @@
  (public_name lambdapi.core)
  (synopsis "LambdaPi interactive theorem prover [core]")
  (modules :standard)
- (libraries pratter unix stdlib-shims timed bindlib why3 parsing backbone
-            lplib))
+ (libraries bindlib why3 parsing))
