@@ -10,9 +10,13 @@ all: bin
 bin:
 	@dune build
 
-.PHONY: doc
-doc:
+.PHONY: odoc
+odoc:
 	@dune build @doc
+
+.PHONY: manual
+manual:
+	$(MAKE) -C docs syntax.bnf html
 
 #### Unit tests and sanity check #############################################
 

@@ -13,7 +13,7 @@ first goal only, which is called the *focused* goal. One can change
 the focus goal by using the ``focus`` tactic. The proof is complete
 only when all generated goals have been solved.
 
-Reminder: the BNF grammar of tactics is in :download:`syntax.bnf`.
+Reminder: the BNF grammar of tactics is in `syntax.bnf <https://raw.githubusercontent.com/Deducteam/lambdapi/master/docs/syntax.bnf>`__.
 
 ``solve``
 ---------

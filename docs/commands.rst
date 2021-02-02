@@ -1,7 +1,7 @@
 Commands
 ========
 
-The BNF grammar of Lambdapi is in `syntax.bnf <syntax.bnf>`__.
+The BNF grammar of Lambdapi is in `syntax.bnf <https://raw.githubusercontent.com/Deducteam/lambdapi/master/docs/syntax.bnf>`__.
 
 In this section, we will illustrate the syntax of Lambdapi using
 examples. The first thing to note is that Lambdapi files are formed of a
@@ -387,3 +387,19 @@ keyword to link all inductive types together:
 In case of a parametrized definition like the previous one, parameters
 are set as implicit in the types of constructors. So, one has to write
 ``consF t l`` or ``@consF a t l``.
+
+For mutually defined inductive types, an induction principle is
+generated for each inductive type:
+
+::
+
+   assert ⊢ ind_F: Π a, Π p:T a → Prop, Π q:F a → Prop,
+     (Π x l, π(q l) → π(p (node x l))) →
+     π(q nilF) →
+     (Π t, π(p t) → Π l, π(q l) → π(q (consF t l))) →
+     Π l, π(q l);
+   assert ⊢ ind_T: Π a, Π p:T a → Prop, Π q:F a → Prop,
+     (Π x, Π l, π(q l) → π(p (node x l))) →
+     π(q nilF) →
+     (Π t, π(p t) → Π l, π(q l) → π(q (consF t l))) →
+     Π t, π(p t);

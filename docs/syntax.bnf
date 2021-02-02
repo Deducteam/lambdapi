@@ -1,4 +1,4 @@
-<qid> ::= [<id>'.']*<id>
+<qid> ::= [<id>'.']+<id>
 
 <switch> ::= 'on'
            | 'off'
@@ -94,7 +94,8 @@
               ';'
             | <modifier>* 'symbol' <ident> <arg_list>* [':' <term>] '≔'
               <term_proof> ';'
-            | <modifier>* 'inductive' <inductive> ('with' <inductive>)* ';'
+            | <modifier>* <arg_list>* 'inductive' <inductive> ('with'
+              <inductive>)* ';'
             | 'rule' <rule> ('with' <rule>)* ';'
             | 'set' <config> ';'
             | <query> ';'

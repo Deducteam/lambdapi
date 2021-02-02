@@ -1,10 +1,14 @@
 ### Unreleased
 
+#### Add parameters to inductive definitions (2021-02-02)
+
 #### Parser (2021-01-30)
 
 Replace Earley by Menhir, Pratter and Sedlex
 
 **Syntax modifications:**
+
+- Add multi-lines comments `/*` ... `*/`.
 
 - Commands and tactics must now be ended by a semi-colon `;`.
 
