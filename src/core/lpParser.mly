@@ -305,7 +305,7 @@ term_proof:
 command:
   | REQUIRE OPEN p=QID+ SEMICOLON { make_pos $loc (P_require(true,p)) }
   | REQUIRE p=QID+ SEMICOLON { make_pos $loc (P_require(false, p)) }
-  | REQUIRE p=QID AS a=ident SEMICOLON
+  | REQUIRE p=QID+ AS a=ident SEMICOLON
       {
         let alias = Pos.make (fst a).pos ((fst a).elt, snd a) in
         make_pos $loc (P_require_as(p, alias))
