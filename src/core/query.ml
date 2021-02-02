@@ -1,4 +1,4 @@
-(** Queries (available in tactics and at the toplevel). *)
+(** Query (available in tactics and at the toplevel). *)
 
 open Backbone
 open Console

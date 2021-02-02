@@ -69,7 +69,7 @@ let tac_refine : popt -> proof_state -> term -> proof_state =
    case of error. *)
 let handle_tactic :
   Sig_state.t -> Tags.expo -> proof_state -> p_tactic ->
-    proof_state * Queries.result =
+    proof_state * Query.result =
   fun ss e ps tac ->
   if !log_enabled then
     begin
@@ -79,7 +79,7 @@ let handle_tactic :
       log_tact "%a" Pretty.tactic tac
     end;
   match tac.elt with
-  | P_tac_query(q) -> ps, Queries.handle_query ss (Some ps) q
+  | P_tac_query(q) -> ps, Query.handle_query ss (Some ps) q
   | P_tac_solve -> tac_solve tac.pos ps, None
   | P_tac_focus(i) ->
       (try {ps with proof_goals = List.swap i ps.proof_goals}, None
@@ -128,7 +128,7 @@ let handle_tactic :
 
 let handle_tactic :
   Sig_state.t -> Tags.expo -> proof_state -> p_tactic ->
-    proof_state * Queries.result =
+    proof_state * Query.result =
   fun ss exp ps tac ->
   try handle_tactic ss exp ps tac
   with Fatal(_,_) as e -> out 1 "%a" Proof.pp_goals ps; raise e

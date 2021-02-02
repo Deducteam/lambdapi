@@ -61,7 +61,7 @@ Overview of directories and files
 
       *  ``compile.ml``: file parsing and compiling (.lpo files)
       *  ``handle.ml``: command handling
-      *  ``queries.ml``: handling of queries (commands that do not
+      *  ``query.ml``: handling of queries (commands that do not
          change the signature or the proof state)
       *  ``tactics.ml``: tactic handling
       *  ``rewrite.ml``: rewrite tactic (similar to Ssreflect)
@@ -71,7 +71,7 @@ Overview of directories and files
 
    *  terms, signatures, rewriting, unification and type-checking:
 
-      *  ``terms.ml``: internal representation of terms
+      *  ``term.ml``: internal representation of terms
       *  ``basics.ml``: basic operations on terms
       *  ``print.ml``: pretty printing of terms
       *  ``tree_types.ml``: types and basic functions for decision trees

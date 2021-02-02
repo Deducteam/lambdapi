@@ -199,13 +199,13 @@ type proof_data =
     the initial state of the proof.  The checking of the proof is then handled
     separately. Note that [Fatal] is raised in case of an error. *)
 let handle_cmd : (Path.t -> Sign.t) -> sig_state -> p_command ->
-                 sig_state * proof_data option * Queries.result =
-  fun compile ss ({elt;pos} as cmd) ->
+  sig_state * proof_data option * Query.result =
+fun compile ss ({elt; pos} as cmd) ->
   if !log_enabled then log_hndl (blu "%a") Pretty.command cmd;
   let scope_basic exp pt = Scope.scope_term exp ss Env.empty pt in
   match elt with
   | P_query(q) ->
-      let res = Queries.handle_query ss None q in (ss, None, res)
+      let res = Query.handle_query ss None q in (ss, None, res)
   | P_require(b,ps) ->
       let ps = List.map (List.map fst) ps in
       (List.fold_left (handle_require compile b pos) ss ps, None, None)
@@ -514,7 +514,7 @@ let too_long = Stdlib.ref infinity
     that lack a specific position. All exceptions except [Timeout] and [Fatal]
     are captured, although they should not occur. *)
 let handle_cmd : (Path.t -> Sign.t) -> sig_state -> p_command ->
-  sig_state * proof_data option * Queries.result =
+  sig_state * proof_data option * Query.result =
  fun compile ss ({pos;_} as cmd) ->
   Print.sig_state := ss;
   try
