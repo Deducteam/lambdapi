@@ -6,7 +6,7 @@ open Lplib.Extra
 open Timed
 open Backbone
 open Console
-open Terms
+open Term
 open Sign
 open Pos
 open Files

@@ -60,7 +60,7 @@ let rec compile : bool -> Path.t -> Sign.t = fun force path ->
          is possible to qualify the symbols of the current modules. *)
       loaded := PathMap.add path sign !loaded;
       let handle ss c =
-        Terms.Meta.reset_key_counter ();
+        Term.Meta.reset_key_counter ();
         (* We provide the compilation function to the handle commands, so that
            "require" is able to compile files. *)
         let (ss, p, _) = Handle.handle_cmd (compile false) ss c in
@@ -119,7 +119,7 @@ end = struct
   (* [pure_apply_cfg ?lm ?st f] is function [f] but pure (without side
      effects).  The side effects taken into account occur in
      {!val:Console.State.t}, {!val:Files.lib_mappings} and in the meta
-     variable counter {!module:Terms.Meta}. Arguments [?lm] allows to set the
+     variable counter {!module:Term.Meta}. Arguments [?lm] allows to set the
      library mappings and [?st] sets the state. *)
   let pure_apply_cfg : ?lm:string -> ?st:State.t -> ('a -> 'b) -> 'a -> 'b =
     fun ?lm ?st f x ->

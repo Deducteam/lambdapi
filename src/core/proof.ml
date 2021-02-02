@@ -4,7 +4,7 @@ open! Lplib
 open Lplib.Base
 
 open Timed
-open Terms
+open Term
 open Print
 open Backbone.Console
 open Backbone.Pos

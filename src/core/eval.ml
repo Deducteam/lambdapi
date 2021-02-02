@@ -6,7 +6,7 @@ open Lplib.Extra
 open Timed
 open Backbone
 open Console
-open Terms
+open Term
 open Basics
 open Print
 
@@ -167,9 +167,9 @@ and eq_modulo : ctxt -> term -> term -> bool = fun ctx a b ->
 
 (** {b NOTE} in the {!val:tree_walk} function, bound variables involve three
     elements:
-    1. a {!constructor:Terms.term.Abst} which introduces the bound variable in
+    1. a {!constructor:Term.term.Abst} which introduces the bound variable in
        the term;
-    2. a {!constructor:Terms.term.Vari} which is the bound variable previously
+    2. a {!constructor:Term.term.Vari} which is the bound variable previously
        introduced;
     3. a {!constructor:Tree_types.TC.t.Vari} which is a simplified
        representation of a variable for trees. *)
@@ -179,7 +179,7 @@ and eq_modulo : ctxt -> term -> term -> bool = fun ctx a b ->
     of the abstract machine  is returned in case of success.  Even if matching
     fails,  the stack [stk] may be imperatively updated since a reduction step
     taken in elements of the stack is preserved (this is done using
-    {!constructor:Terms.term.TRef}). *)
+    {!constructor:Term.term.TRef}). *)
 and tree_walk : dtree -> ctxt -> stack -> (term * stack) option =
   fun tree ctx stk ->
   let (lazy capacity, lazy tree) = tree in
@@ -187,7 +187,7 @@ and tree_walk : dtree -> ctxt -> stack -> (term * stack) option =
   let bound = Array.make capacity TE_None in
   (* [walk tree stk cursor vars_id id_vars] where [stk] is the stack of terms
      to match and [cursor] the cursor indicating where to write in the [vars]
-     array described in {!module:Terms} as the environment of the RHS during
+     array described in {!module:Term} as the environment of the RHS during
      matching. [vars_id] maps the free variables contained in the term to the
      indexes defined during tree build, and [id_vars] is the inverse mapping
      of [vars_id]. *)

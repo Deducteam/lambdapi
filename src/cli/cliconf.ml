@@ -2,8 +2,8 @@
 
 open! Lplib
 
-open Cmdliner
 open Core
+open Cmdliner
 open Files
 open Backbone
 open Console

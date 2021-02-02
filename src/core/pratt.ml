@@ -39,7 +39,7 @@ end = struct
               Some(Sig_state.find_sym ~prt:true ~prv:true true tbl id)
           in
           let f sym =
-            match Terms.SymMap.find_opt sym tbl.notations with
+            match Term.SymMap.find_opt sym tbl.notations with
             | Some(Infix(_, assoc, prio, _)) -> Some(Pratter.Bin assoc, prio)
             | Some(Prefix(_, prio, _)) -> Some(Pratter.Una, prio)
             | _ -> None

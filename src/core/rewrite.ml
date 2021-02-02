@@ -5,7 +5,7 @@ open! Lplib
 open Timed
 open Backbone
 open Pos
-open Terms
+open Term
 open Basics
 open Console
 open Print

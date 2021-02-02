@@ -155,5 +155,5 @@ let end_proof : proof_state -> command_result = fun s ->
   try Cmd_OK((Time.save (), finalize ss p), None)
   with Fatal(p,m) -> Cmd_Error(p,m)
 
-let get_symbols : state -> (Terms.sym * Pos.popt) Extra.StrMap.t = fun s ->
+let get_symbols : state -> (Term.sym * Pos.popt) Extra.StrMap.t = fun s ->
   (snd s).in_scope

@@ -5,7 +5,7 @@ open Console
 open Pos
 open Parsing
 open Syntax
-open Terms
+open Term
 open Print
 open Proof
 open! Lplib

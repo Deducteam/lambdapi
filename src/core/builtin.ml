@@ -5,7 +5,7 @@ open Lplib.Extra
 
 open Timed
 open Backbone
-open Terms
+open Term
 open Console
 open Pos
 open Sig_state

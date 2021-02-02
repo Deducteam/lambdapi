@@ -4,7 +4,7 @@ open! Lplib
 
 open Backbone
 open Console
-open Terms
+open Term
 open Pos
 open Parsing
 open Syntax

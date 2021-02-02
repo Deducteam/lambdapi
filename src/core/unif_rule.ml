@@ -7,7 +7,7 @@
 open Backbone
 open Timed
 open Files
-open Terms
+open Term
 
 (** Path of the module. *)
 let path = Path.ghost "unif_rule"

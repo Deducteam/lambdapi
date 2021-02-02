@@ -8,7 +8,7 @@ open Console
 open Pos
 open Parsing
 open Syntax
-open Terms
+open Term
 open Env
 open Sig_state
 open Rewrite
@@ -23,10 +23,10 @@ let log_scop = log_scop.logger
     first search for the name [snd qid.elt] in the environment, and if it is
     not mapped we also search in the opened modules. The exception [Fatal] is
     raised if an error occurs (e.g., when the name cannot be found). If [prt]
-    is true, {!constructor:Terms.expo.Protec} symbols from
+    is true, {!constructor:Term.expo.Protec} symbols from
     foreign modules are allowed (protected symbols from current modules are
     always allowed). If [prv] is true,
-    {!constructor:Terms.expo.Privat} symbols are allowed. *)
+    {!constructor:Term.expo.Privat} symbols are allowed. *)
 let find_qid : bool -> bool -> sig_state -> env -> qident -> tbox =
   fun prt prv st env qid ->
   let (mp, s) = qid.elt in
@@ -62,7 +62,7 @@ type mode =
   (** Scoping mode for patterns in the rewrite tactic. *)
   | M_LHS  of
       { m_lhs_prv              : bool
-      (** True if {!constructor:Terms.expo.Privat} symbols are allowed. *)
+      (** True if {!constructor:Term.expo.Privat} symbols are allowed. *)
       ; m_lhs_indices          : (string, int   ) Hashtbl.t
       (** Stores index reserved for a pattern variable of the given name. *)
       ; m_lhs_arities          : (int   , int   ) Hashtbl.t
@@ -76,7 +76,7 @@ type mode =
   (** Scoping mode for rewriting rule left-hand sides. *)
   | M_RHS  of
       { m_rhs_prv             : bool
-      (** True if {!constructor:Terms.expo.Privat} symbols are allowed. *)
+      (** True if {!constructor:Term.expo.Privat} symbols are allowed. *)
       ; m_rhs_data            : (string, tevar) Hashtbl.t
       (** Environment for variables that we know to be bound in the RHS. *) }
   (** Scoping mode for rewriting rule right-hand sides. *)

@@ -10,7 +10,7 @@ open Lplib.Base
 open Lplib.Extra
 
 open Timed
-open Terms
+open Term
 open Basics
 open Tree_types
 
@@ -37,7 +37,7 @@ open Tree_types
     a matching on symbol [u] or a variable or wildcard when [?]. Typically the
     portion [S─∘─Z] is made possible by a swap. *)
 
-(** Representation of a tree (see {!type:Terms.tree}). *)
+(** Representation of a tree (see {!type:Term.tree}). *)
 type tree = rhs Tree_types.tree
 
 (** {1 Conditions for decision trees}
@@ -76,7 +76,7 @@ module CP = struct
   type t =
     { variables : int IntMap.t
     (** An association [(e, v)] maps the slot of a pattern variable (the first
-        argument of a {!constructor:Terms.term.Patt}) to its slot in the array
+        argument of a {!constructor:Term.term.Patt}) to its slot in the array
         [vars] of the {!val:Eval.tree_walk} function. It is used to remember
         non linearity constraints. *)
     ; nl_conds : PSet.t
@@ -293,7 +293,7 @@ module CM = struct
     in
     let size = (* Get length of longest rule *)
       if rs = [] then 0 else
-      List.max ~cmp:Int.compare (List.map (fun r -> Terms.(r.arity)) rs)
+      List.max ~cmp:Int.compare (List.map (fun r -> Term.(r.arity)) rs)
     in
     let positions =
       if size = 0 then [] else
@@ -522,7 +522,7 @@ module CM = struct
       | _      , Prod(_)
       | _      , Abst(_) -> None
       | _      , _       -> assert false
-          (* Terms matched (in this case) should not appear in matrices. *)
+          (* Term matched (in this case) should not appear in matrices. *)
     in
     (pos, List.filter_map filtrans cls)
 

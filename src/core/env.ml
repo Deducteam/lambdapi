@@ -2,12 +2,12 @@
 
 open Lplib
 
-open Terms
+open Term
 
 (** Type of an environment, used in scoping to associate names to
     corresponding Bindlib variables and types. Note that it cannot be
     implemented by a map as the order is important. The structure is similar
-    to then one of {!type:Terms.ctxt}, a tuple [(x,a,t)] is a variable [x],
+    to then one of {!type:Term.ctxt}, a tuple [(x,a,t)] is a variable [x],
     its type [a] and possibly its definition [t] *)
 type env = (string * (tvar * tbox * tbox option)) list
 

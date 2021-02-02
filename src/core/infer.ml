@@ -3,7 +3,7 @@
 open Timed
 open Backbone
 open Console
-open Terms
+open Term
 open Print
 
 (** Logging function for typing. *)

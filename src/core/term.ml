@@ -51,7 +51,7 @@ type term =
     syntax. They are thus considered to be fresh, unused pattern variables. *)
 
 (** Representation of a rewriting rule RHS (or action) as given in the type of
-    rewriting rules (see {!field:Terms.rhs}) with the number of variables that
+    rewriting rules (see {!field:Term.rhs}) with the number of variables that
     are not in the LHS. In decision trees, a RHS is stored in every leaf since
     they correspond to matched rules. *)
  and rhs = (term_env, term) Bindlib.mbinder * int

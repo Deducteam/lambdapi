@@ -14,7 +14,7 @@ open Timed
 open Backbone
 open Pos
 open Console
-open Terms
+open Term
 open Print
 open Parsing
 open Syntax

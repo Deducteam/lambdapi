@@ -5,7 +5,7 @@ open Lplib.Extra
 
 open Backbone
 open Console
-open Terms
+open Term
 open Timed
 open Print
 
