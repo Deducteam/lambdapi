@@ -12,7 +12,7 @@ One-line comments are introduced by ‘//’:
 
 ::
 
-   // all this is ignored
+   // These words are ignored
 
 And multi-line comments are opened with ‘/*’ and closed with ‘*/’.
 
@@ -348,6 +348,8 @@ Currently, it only supports parametrized mutually defined dependent
 first-order data types. As usual, polymorphic types can be encoded by
 defining a type ``Set`` and a function ``τ:Set → TYPE``.
 
+An inductive type can have 0 or more constructors.
+
 The name of the induction principle is ``ind_`` followed by the name
 of the type.
 
@@ -356,8 +358,8 @@ Example:
 ::
    
    ￼inductive ℕ : TYPE ≔
-   ￼ | zero: ℕ
-   ￼ | succ: ℕ → ℕ;
+   ￼| zero: ℕ
+   ￼| succ: ℕ → ℕ;
    
 is equivalent to:
 ￼
@@ -373,7 +375,9 @@ is equivalent to:
 
 
 For mutually defined inductive types, one needs to use the ``with``
-keyword to link all inductive types together:
+keyword to link all inductive types together.
+
+Inductive definitions can also be parametrized as follows:
 
 ::
    
@@ -384,9 +388,8 @@ keyword to link all inductive types together:
    | nilF: F a
    | consF: T a → F a → F a;
 
-In case of a parametrized definition like the previous one, parameters
-are set as implicit in the types of constructors. So, one has to write
-``consF t l`` or ``@consF a t l``.
+Note that parameters are set as implicit in the types of
+constructors. So, one has to write ``consF t l`` or ``@consF a t l``.
 
 For mutually defined inductive types, an induction principle is
 generated for each inductive type:
