@@ -1,7 +1,7 @@
 Syntax of terms
 ===============
 
-The BNF grammar of Lambdapi is in :download:`syntax.bnf`.
+The BNF grammar of Lambdapi is in `syntax.bnf <https://raw.githubusercontent.com/Deducteam/lambdapi/master/docs/syntax.bnf>`__.
 
 Identifiers
 -----------

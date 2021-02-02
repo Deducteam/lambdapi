@@ -1,16 +1,17 @@
 (** Standard library extension (mostly). *)
 
-(** Short name for the type of a pretty-printing function. *)
+(** Type of pretty-printing functions. *)
 type 'a pp = Format.formatter -> 'a -> unit
 
-(** Short name for the type of an equality function. *)
+let pp_sep : string -> unit pp = fun s ff () -> Format.pp_print_string ff s
+
+(** Type of equality functions. *)
 type 'a eq = 'a -> 'a -> bool
 
-(** Short name for the type of a comparison function. *)
+(** Type of comparison functions. *)
 type 'a cmp = 'a -> 'a -> int
 
 module Int = struct
   type t = int
-
   let compare = ( - )
 end

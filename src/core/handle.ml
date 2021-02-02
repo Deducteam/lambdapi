@@ -127,6 +127,7 @@ let handle_modifiers : p_modifier list -> (prop * expo * match_strat) =
    set [syms] extended with the symbol [s] defined by [r]. However, it does
    not update the decision tree of [s]. *)
 let handle_rule : sig_state -> p_rule -> sym = fun ss r ->
+  if !log_enabled then log_hndl "%a" (Pretty.rule "rule") r;
   let pr = scope_rule false ss r in
   let sym = pr.elt.pr_sym in
   if !(sym.sym_def) <> None then
@@ -195,50 +196,52 @@ type proof_data =
     the initial state of the proof.  The checking of the proof is then handled
     separately. Note that [Fatal] is raised in case of an error. *)
 let handle_cmd : (Path.t -> Sign.t) -> sig_state -> p_command ->
-  sig_state * proof_data option * Queries.result =
-fun compile ss cmd ->
+                 sig_state * proof_data option * Queries.result =
+  fun compile ss ({elt;pos} as cmd) ->
   if !log_enabled then log_hndl (blu "%a") Pretty.command cmd;
   let scope_basic exp pt = Scope.scope_term exp ss Env.empty pt in
-  match cmd.elt with
+  match elt with
   | P_query(q) ->
       let res = Queries.handle_query ss None q in (ss, None, res)
   | P_require(b,ps) ->
       let ps = List.map (List.map fst) ps in
-      (List.fold_left (handle_require compile b cmd.pos) ss ps, None, None)
+      (List.fold_left (handle_require compile b pos) ss ps, None, None)
   | P_require_as(p,id) ->
       let id = Pos.make id.pos (fst id.elt) in
-      (handle_require_as compile cmd.pos ss (List.map fst p) id, None, None)
+      (handle_require_as compile pos ss (List.map fst p) id, None, None)
   | P_open(ps) ->
       let ps = List.map (List.map fst) ps in
-      (List.fold_left (handle_open cmd.pos) ss ps, None, None)
+      (List.fold_left (handle_open pos) ss ps, None, None)
   | P_rules(rs) ->
       let handle_rule syms r = SymSet.add (handle_rule ss r) syms in
       let syms = List.fold_left handle_rule SymSet.empty rs in
       SymSet.iter Tree.update_dtree syms;
       (ss, None, None)
-  | P_inductive(ms, p_ind_list) ->
+  | P_inductive(ms, params, p_ind_list) ->
       (* Check modifiers. *)
       let (prop, e, mstrat) = handle_modifiers ms in
       if prop <> Defin then
-        fatal cmd.pos "Property modifiers cannot be used on inductive types.";
+        fatal pos "Property modifiers cannot be used on inductive types.";
       if mstrat <> Eager then
-        fatal cmd.pos "Pattern matching strategy modifiers cannot be used on \
+        fatal pos "Pattern matching strategy modifiers cannot be used on \
                        inductive types.";
       (* Add inductive types in the signature. *)
-      let add_ind_sym (ss, ind_sym_list) p_ind =
-        let (id, pt, _) = p_ind.elt in
+      let add_ind_sym (ss, ind_sym_list) {elt=(id,pt,_); _} =
         let (ss, ind_sym) =
-          handle_inductive_symbol ss e Injec Eager id [] pt in
+          handle_inductive_symbol ss e Injec Eager id params pt in
         (ss, ind_sym::ind_sym_list)
       in
       let (ss, ind_sym_list_rev) =
         List.fold_left add_ind_sym (ss, []) p_ind_list in
+      (* Set parameters as implicit in the type of constructors. *)
+      let params =
+        List.map (fun (idopts,typopt,_) -> (idopts,typopt,true)) params in
       (* Add constructors in the signature. *)
-      let add_constructors (ss, cons_sym_list_list) p_ind =
-        let (_, _, p_cons_list) = p_ind.elt in
+      let add_constructors
+            (ss, cons_sym_list_list) {elt=(_,_,p_cons_list); _} =
         let add_cons_sym (ss, cons_sym_list) (id, pt) =
           let (ss, cons_sym) =
-            handle_inductive_symbol ss e Const Eager id [] pt in
+            handle_inductive_symbol ss e Const Eager id params pt in
           (ss, cons_sym::cons_sym_list)
         in
         let (ss, cons_sym_list_rev) =
@@ -252,31 +255,34 @@ fun compile ss cmd ->
         List.fold_left add_constructors (ss, []) p_ind_list
       in
       let ind_list =
-        List.fold_left2 (fun acc x y -> (x,y)::acc) []
+        List.fold_left2
+          (fun acc ind_sym cons_sym_list -> (ind_sym,cons_sym_list)::acc)
+          []
           ind_sym_list_rev cons_sym_list_list_rev
       in
       (* Compute data useful for generating the induction principles. *)
-      let c = Inductive.get_config ss cmd.pos in
-      let p_str, x_str = Inductive.gen_safe_prefixes ind_list in
-      let ind_pred_map =
-        Inductive.create_ind_pred_map cmd.pos c ind_list p_str x_str
+      let c = Inductive.get_config ss pos in
+      let a_str, p_str, x_str = Inductive.gen_safe_prefixes ind_list in
+      let n = List.length params in
+      let vs, env, ind_pred_map =
+        Inductive.create_ind_pred_map pos c n ind_list a_str p_str x_str
       in
       (* Compute the induction principles. *)
       let rec_typ_list_rev =
-        Inductive.gen_rec_types c ss cmd.pos ind_list ind_pred_map x_str
+        Inductive.gen_rec_types c pos ind_list vs env ind_pred_map x_str
       in
       (* Add the induction principles in the signature. *)
       let add_recursor (ss, rec_sym_list) ind_sym rec_typ =
         let rec_name = Inductive.rec_name ind_sym in
         if Sign.mem ss.signature rec_name then
-          fatal cmd.pos "Symbol [%s] already exists." rec_name;
+          fatal pos "Symbol [%s] already exists." rec_name;
         let (ss, rec_sym) =
           out 3 (red "(symb) %s : %a\n") rec_name pp_term rec_typ;
           let sig_symbol =
             {expo = e;
              prop = Defin;
              mstrat = Eager;
-             ident = Pos.make cmd.pos rec_name;
+             ident = Pos.make pos rec_name;
              typ = rec_typ;
              impl = [];
              def = None}
@@ -291,7 +297,7 @@ fun compile ss cmd ->
       in
       (* Add recursor rules in the signature. *)
       with_no_wrn
-        (Inductive.iter_rec_rules cmd.pos ind_list ind_pred_map)
+        (Inductive.iter_rec_rules pos ind_list vs ind_pred_map)
         (fun r -> ignore (handle_rule ss r));
       List.iter Tree.update_dtree rec_sym_list;
       (* Store the inductive structure in the signature *)
@@ -304,7 +310,7 @@ fun compile ss cmd ->
 
   | P_symbol {p_sym_mod;p_sym_nam;p_sym_arg;p_sym_typ;p_sym_trm;p_sym_prf;
               p_sym_def} ->
-    let pos = cmd.pos in
+    let pos = pos in
     (* Check that this is a syntactically valid symbol declaration. *)
     begin
       match (p_sym_typ, p_sym_def, p_sym_trm, p_sym_prf) with
@@ -454,9 +460,9 @@ fun compile ss cmd ->
         | P_config_builtin(s,qid) ->
             (* Set the builtin symbol [s]. *)
             if StrMap.mem s ss.builtins then
-              fatal cmd.pos "Builtin [%s] already exists." s;
+              fatal pos "Builtin [%s] already exists." s;
             let sym = find_sym ~prt:true ~prv:true false ss qid in
-            Builtin.check ss cmd.pos s sym;
+            Builtin.check ss pos s sym;
             out 3 "(conf) set builtin \"%s\" ≔ %a\n" s pp_symbol sym;
             add_builtin ss s sym
         | P_config_unop(unop)     ->
@@ -465,7 +471,7 @@ fun compile ss cmd ->
             (* Make sure the operator has a fully qualified [qid]. *)
             let unop = (s, prio, with_path sym.sym_path qid) in
             out 3 "(conf) %a %a\n" pp_symbol sym notation (Prefix unop);
-            add_unop ss (Pos.make cmd.pos s) (sym, unop)
+            add_unop ss (Pos.make pos s) (sym, unop)
         | P_config_binop(binop)   ->
             let (s, assoc, prio, qid) = binop in
             (* Define the binary operator [sym]. *)
@@ -473,7 +479,7 @@ fun compile ss cmd ->
             (* Make sure the operator has a fully qualified [qid]. *)
             let binop = (s, assoc, prio, with_path sym.sym_path qid) in
             out 3 "(conf) %a %a\n" pp_symbol sym notation (Infix binop);
-            add_binop ss (Pos.make cmd.pos s) (sym, binop);
+            add_binop ss (Pos.make pos s) (sym, binop);
         | P_config_quant(qid)     ->
             let sym = find_sym ~prt:true ~prv:true false ss qid in
             out 3 "(conf) %a quantifier\n" pp_symbol sym;
@@ -506,17 +512,17 @@ let too_long = Stdlib.ref infinity
     are captured, although they should not occur. *)
 let handle_cmd : (Path.t -> Sign.t) -> sig_state -> p_command ->
   sig_state * proof_data option * Queries.result =
- fun compile ss cmd ->
+ fun compile ss ({pos;_} as cmd) ->
   Print.sig_state := ss;
   try
     let (tm, ss) = time (handle_cmd compile ss) cmd in
     if Stdlib.(tm >= !too_long) then
-      wrn cmd.pos "It took %.2f seconds to handle the command." tm;
+      wrn pos "It took %.2f seconds to handle the command." tm;
     ss
   with
   | Timeout                as e -> raise e
   | Fatal(Some(Some(_)),_) as e -> raise e
-  | Fatal(None         ,m)      -> fatal cmd.pos "Error on command.\n%s" m
-  | Fatal(Some(None)   ,m)      -> fatal cmd.pos "Error on command.\n%s" m
+  | Fatal(None         ,m)      -> fatal pos "Error on command.\n%s" m
+  | Fatal(Some(None)   ,m)      -> fatal pos "Error on command.\n%s" m
   | e                           ->
-      fatal cmd.pos "Uncaught exception [%s]." (Printexc.to_string e)
+      fatal pos "Uncaught exception [%s]." (Printexc.to_string e)

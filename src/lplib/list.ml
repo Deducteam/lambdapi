@@ -8,22 +8,15 @@
 (* Status: Experimental                                                 *)
 (************************************************************************)
 
-(** Short name for the type of a pretty-printing function. *)
-type 'a pp = Format.formatter -> 'a -> unit
-
 module L = Stdlib.List
 include L
+
 open Base
 
 (** [pp pp_elt sep oc l] prints the list [l] on the channel [oc] using [sep] as
     separator, and [pp_elt] for printing the elements. *)
-let pp : 'a pp -> string -> 'a list pp =
- fun pp_elt sep oc l ->
-  match l with
-  | [] -> ()
-  | e :: es ->
-    let fn e = Format.fprintf oc "%s%a" sep pp_elt e in
-    pp_elt oc e; iter fn es
+let pp : 'a pp -> string -> 'a list pp = fun pp_elt sep ->
+  Format.pp_print_list ~pp_sep:(pp_sep sep) pp_elt
 
 (** [filter_map f l] applies [f] to the elements of [l] and keeps the [x] such
     that [Some(x)] in [List.map f l]. *)
@@ -234,4 +227,9 @@ let rec fold_left_while f cond acc l =
   | x :: _ when not (cond x) -> acc
   | x :: xs -> fold_left_while f cond (f acc x) xs
   | [] -> acc
-  
+
+(** [remove_first n xs] remove the min(n,length xs) elements of [xs]. *)
+let rec remove_first n xs =
+  match xs with
+  | _::xs when n>0 -> remove_first (n-1) xs
+  | _ -> xs

@@ -329,9 +329,9 @@ command:
         in
         make_pos $loc (P_symbol(sym))
       }
-  | ms=modifier* INDUCTIVE is=separated_nonempty_list(WITH, inductive)
-    SEMICOLON
-      { make_pos $loc (P_inductive(ms, is)) }
+  | ms=modifier* xs=arg_list* INDUCTIVE
+    is=separated_nonempty_list(WITH, inductive) SEMICOLON
+      { make_pos $loc (P_inductive(ms,xs,is)) }
   | RULE rs=separated_nonempty_list(WITH, rule) SEMICOLON
       { make_pos $loc (P_rules(rs)) }
   | SET c=config SEMICOLON { make_pos $loc (P_set(c)) }

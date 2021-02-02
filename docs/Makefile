@@ -19,8 +19,9 @@ help:
 %: Makefile
 	@$(SPHINXBUILD) -M $@ "$(SOURCEDIR)" "$(BUILDDIR)" $(SPHINXOPTS) $(O)
 
+.PHONY: syntax.bnf
 syntax.bnf:
-	echo "<qid> ::= [<id>'.']*<id>\n" > $@
+	echo "<qid> ::= [<id>'.']+<id>\n" > $@
 	echo "<switch> ::= 'on'\n           | 'off'\n" >> $@
 	echo "<assoc> ::= 'left'\n          | 'right'\n" >> $@
 	$(BNF_GEN) ../src/core/lpParser.mly | sed \
