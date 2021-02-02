@@ -2,8 +2,8 @@
 
 #### Source code segmentation (2021-02-02)
 
-`Core` library divided into libraries 
-- `Backbone` that contain miscellaneous utilities (`Pos` and `Console`)
+`Core` library divided into the following sub-libraries: 
+- `Backbone` that contains miscellaneous utilities (`Pos` and `Console`)
 - `Parsing` that contains everything related to parsing, from files to `p_term`s
   and `Syntax`
 - `Terms` renamed to `Term` and `Queries` to `Query`.

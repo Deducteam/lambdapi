@@ -27,9 +27,13 @@ Overview of directories and files
 
 *  ``libraries/``: libraries of Dedukti files (see GNUmakefile)
 
-* ``src/lplib/``: extensions of the Ocaml standard library for Lambdapi
+* ``src/lplib/``: extension of the Ocaml standard library
 
-  *  ``realpath.c``: C implementation for ``Filename.realpath``.
+  *  ``realpath.c``: C implementation for ``Filename.realpath``
+  *  ``range_intf.ml``: module type of abstract intervals
+  *  ``range.ml``: instance of ``range_intf`` with integer intervals
+  *  ``rangeMap_intf.ml``: module type of abstract maps on intervals
+  *  ``rangeMap.ml``: instance of ``rangeMap_intf`` using ``range``
 
 * ``src/backbone/``: miscellaneous modules and libraries
 
@@ -51,7 +55,7 @@ Overview of directories and files
    *  utilities:
 
       *  ``files.ml``: filenames and paths management
-      *  ``external.ml``: call to external tools
+      *  ``external.ml``: call of external tools
       *  ``hrs.ml``: export to the .hrs format of the confluence
          competition
       *  ``xtc.ml``: export to the .xtc format of the termination
@@ -84,7 +88,7 @@ Overview of directories and files
       *  ``infer.ml``: constraints-generating type inference and
          checking
       *  ``sign.ml``: signatures/theories (sets of symbols and rules)
-      * ``sig_state.ml``: signature as a state in which symbols can be type
+      *  ``sig_state.ml``: signature as a state in which symbols can be type
         checked
 
    *  scoping:
