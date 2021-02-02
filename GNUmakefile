@@ -14,8 +14,8 @@ bin:
 odoc:
 	@dune build @doc
 
-.PHONY: manual
-manual:
+.PHONY: doc
+doc:
 	$(MAKE) -C docs syntax.bnf html
 
 #### Unit tests and sanity check #############################################
