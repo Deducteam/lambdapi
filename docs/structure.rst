@@ -29,7 +29,7 @@ Overview of directories and files
 
 * ``src/lplib/``: extensions of the Ocaml standard library for Lambdapi
 
-  *  ``stubs.c``: C implementation for ``Extra.Filename.realpath``.
+  *  ``realpath.c``: C implementation for ``Filename.realpath``.
 
 * ``src/backbone/``: miscellaneous modules and libraries
 
