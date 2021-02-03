@@ -1,49 +1,54 @@
-<command> ::= <modifier>* ID <param>* COLON <term> DOT
-            | <modifier>* KW_DEF ID COLON <term> DOT
-            | <modifier>* KW_DEF ID COLON <term> DEFEQ <term> DOT
-            | <modifier>* KW_DEF ID DEFEQ <term> DOT
-            | <modifier>* KW_DEF ID <param>+ COLON <term> DEFEQ <term> DOT
-            | <modifier>* KW_DEF ID <param>+ DEFEQ <term> DOT
-            | <modifier>* KW_THM ID COLON <term> DEFEQ <term> DOT
-            | <modifier>* KW_THM ID <param>+ COLON <term> DEFEQ <term> DOT
-            | <rule>+ DOT
-            | EVAL <term> DOT
-            | EVAL <eval_config> <term> DOT
-            | INFER <term> DOT
-            | INFER <eval_config> <term> DOT
-            | ASSERT <aterm> COLON <term> DOT
-            | ASSERT <aterm> EQUAL <term> DOT
-            | REQUIRE DOT
-            | EOF
+<qid> ::= [<id>'.']+<id>
 
-<eval_config> ::= L_SQB ID R_SQB
-                | L_SQB ID COMMA ID R_SQB
+<assert> ::= '#ASSERT'
+           | '#ASSERTNOT'
 
-<param> ::= L_PAR ID COLON <term> R_PAR
+<command> ::= <modifier>* <id> <param>* ':' <term> '.'
+            | <modifier>* 'def' <id> ':' <term> '.'
+            | <modifier>* 'def' <id> ':' <term> ':=' <term> '.'
+            | <modifier>* 'def' <id> ':=' <term> '.'
+            | <modifier>* 'def' <id> <param>+ ':' <term> ':=' <term> '.'
+            | <modifier>* 'def' <id> <param>+ ':=' <term> '.'
+            | <modifier>* 'thm' <id> ':' <term> ':=' <term> '.'
+            | <modifier>* 'thm' <id> <param>+ ':' <term> ':=' <term> '.'
+            | <rule>+ '.'
+            | '#EVAL' <term> '.'
+            | '#EVAL' <eval_config> <term> '.'
+            | '#INFER' <term> '.'
+            | '#INFER' <eval_config> <term> '.'
+            | <assert> <aterm> ':' <term> '.'
+            | <assert> <aterm> '==' <term> '.'
+            | '#REQUIRE' <qid> '.'
+            
 
-<modifier> ::= KW_PRV
-             | KW_INJ
+<eval_config> ::= '[' <id> ']'
+                | '[' <id> ',' <id> ']'
 
-<context_item> ::= ID [COLON <term>]
+<param> ::= '(' <id> ':' <term> ')'
 
-<rule> ::= L_SQB [<context_item> (COMMA <context_item>)*] R_SQB <term> LARROW
-           <term>
+<modifier> ::= 'private'
+             | 'injective'
 
-<sterm> ::= QID
-          | ID
-          | WILD
-          | TYPE
-          | L_PAR <term> R_PAR
+<context_item> ::= <id> [':' <term>]
+
+<rule> ::= '[' [<context_item> (',' <context_item>)*] ']' <term>
+           '-->' <term>
+
+<sterm> ::= <qid>
+          | <id>
+          | '_'
+          | 'Type'
+          | '(' <term> ')'
 
 <aterm> ::= <sterm>+
 
-<type_annot> ::= COLON <aterm>
+<type_annot> ::= ':' <aterm>
 
 <term> ::= <aterm>
-         | ID COLON <aterm> ARROW <term>
-         | L_PAR ID COLON <aterm> R_PAR ARROW <term>
-         | <term> ARROW <term>
-         | WILD [<type_annot>] FARROW <term>
-         | ID [<type_annot>] FARROW <term>
+         | <id> ':' <aterm> '->' <term>
+         | '(' <id> ':' <aterm> ')' '->' <term>
+         | <term> '->' <term>
+         | '_' [<type_annot>] '=>' <term>
+         | <id> [<type_annot>] '=>' <term>
 
 
