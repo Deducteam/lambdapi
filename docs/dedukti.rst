@@ -7,10 +7,10 @@ Dedukti grammar currently supported by Lambdapi can be seen in
 `syntax_dedukti.bnf <https://raw.githubusercontent.com/Deducteam/lambdapi/master/docs/syntax_dedukti.bnf>`__.
 It should be extended whenever the syntax of Dedukti is extended.
 
-For instance, Lambdapi is able to type-check all the generated
-libraries that were aimed at Dedukti (with minor
-modifications). Translation scripts are provided in the ``libraries``
-folder.
+For instance, Lambdapi is able to type-check, with minor modifications
+(see the shell scripts in the ``libraries`` directory), all the
+Dedukti files generated from libraries of various theorem provers
+(Focalize, HOL-Light, Iprover, Matita, Verine and ZenonModulo).
 
 Files can be converted from the Dedukti syntax to the Lambdapi syntax
 using the ``--beautify`` command line flag (see the related section).
