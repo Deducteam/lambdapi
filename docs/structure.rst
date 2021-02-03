@@ -55,11 +55,6 @@ Overview of directories and files
    *  utilities:
 
       *  ``files.ml``: filenames and paths management
-      *  ``external.ml``: call of external tools
-      *  ``hrs.ml``: export to the .hrs format of the confluence
-         competition
-      *  ``xtc.ml``: export to the .xtc format of the termination
-         competition
       *  ``package.ml``: management of package files ``lambdapi.pkg``
 
    *  file, command and tactic handling:
@@ -81,7 +76,6 @@ Overview of directories and files
       *  ``print.ml``: pretty printing of terms
       *  ``tree_types.ml``: types and basic functions for decision trees
       *  ``tree.ml``: compilation of rewriting rules to decision trees
-      *  ``tree_graphviz.ml``: representation of trees as graphviz files
       *  ``eval.ml``: rewriting engine
       *  ``unif.ml``: unification algorithm
       *  ``unif_rule.ml``: definition of *ad-hoc* symbols for unification rules
@@ -100,6 +94,15 @@ Overview of directories and files
    *  property checking:
 
       *  ``sr.ml``: algorithm for checking subject reduction
+
+*  ``src/tool/``: tools using Lambdapi core
+
+   *  ``tree_graphviz.ml``: representation of trees as graphviz files
+   *  ``hrs.ml``: export to the .hrs format of the confluence
+      competition
+   *  ``xtc.ml``: export to the .xtc format of the termination
+      competition
+   *  ``external.ml``: call of external tools
 
 *  ``src/cli/``: command line interface
 
