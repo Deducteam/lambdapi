@@ -5,6 +5,7 @@ open Core
 open Common
 open Parsing
 open Files
+open Handle
 
 (** Abstract representation of a command (top-level item). *)
 module Command : sig

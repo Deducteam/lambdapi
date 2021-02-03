@@ -4,10 +4,11 @@ open! Lplib
 
 open Common
 open Console
-open Term
 open Pos
 open Parsing
 open Syntax
+open Core
+open Term
 open Proof
 open Print
 open Timed
@@ -64,10 +65,10 @@ let tac_refine : popt -> proof_state -> term -> proof_state =
           let proof_goals = List.rev_map (fun c -> Unif c) cs @ gs_typ in
           tac_solve pos {ps with proof_goals}
 
-(** [handle_tactic ss e ps tac] applies tactic [tac] in the proof state
+(** [handle ss e ps tac] applies tactic [tac] in the proof state
    [ps] and returns the new proof state. This function fails gracefully in
    case of error. *)
-let handle_tactic :
+let handle :
   Sig_state.t -> Tags.expo -> proof_state -> p_tactic ->
     proof_state * Query.result =
   fun ss e ps tac ->
@@ -79,7 +80,7 @@ let handle_tactic :
       log_tact "%a" Pretty.tactic tac
     end;
   match tac.elt with
-  | P_tac_query(q) -> ps, Query.handle_query ss (Some ps) q
+  | P_tac_query(q) -> ps, Query.handle ss (Some ps) q
   | P_tac_solve -> tac_solve tac.pos ps, None
   | P_tac_focus(i) ->
       (try {ps with proof_goals = List.swap i ps.proof_goals}, None
@@ -126,9 +127,9 @@ let handle_tactic :
             None)
   | P_tac_fail -> fatal tac.pos "Call to tactic \"fail\""
 
-let handle_tactic :
+let handle :
   Sig_state.t -> Tags.expo -> proof_state -> p_tactic ->
     proof_state * Query.result =
   fun ss exp ps tac ->
-  try handle_tactic ss exp ps tac
+  try handle ss exp ps tac
   with Fatal(_,_) as e -> out 1 "%a" Proof.pp_goals ps; raise e

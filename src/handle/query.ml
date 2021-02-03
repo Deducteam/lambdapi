@@ -5,6 +5,7 @@ open Console
 open Pos
 open Parsing
 open Syntax
+open Core
 open Term
 open Print
 open Proof
@@ -14,7 +15,7 @@ open! Lplib
 type result = string option
 
 (** [handle_query ss ps q] *)
-let handle_query : Sig_state.t -> proof_state option -> p_query -> result =
+let handle : Sig_state.t -> proof_state option -> p_query -> result =
   fun ss ps q ->
   match q.elt with
   | P_query_assert(must_fail, asrt) ->

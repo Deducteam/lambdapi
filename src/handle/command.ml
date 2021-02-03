@@ -206,7 +206,7 @@ fun compile ss ({elt; pos} as cmd) ->
   let scope_basic exp pt = Scope.scope_term exp ss Env.empty pt in
   match elt with
   | P_query(q) ->
-      let res = Query.handle_query ss None q in (ss, None, res)
+      let res = Query.handle ss None q in (ss, None, res)
   | P_require(b,ps) ->
       let ps = List.map (List.map fst) ps in
       (List.fold_left (handle_require compile b pos) ss ps, None, None)
