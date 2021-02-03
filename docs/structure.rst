@@ -68,7 +68,7 @@ Overview of directories and files
       *  ``handle.ml``: command handling
       *  ``query.ml``: handling of queries (commands that do not
          change the signature or the proof state)
-      *  ``tactics.ml``: tactic handling
+      *  ``tactic.ml``: tactic handling
       *  ``rewrite.ml``: rewrite tactic (similar to Ssreflect)
       *  ``why3_tactic.ml``: why3 tactic (uses
          `why3 <http://why3.lri.fr/>`__)

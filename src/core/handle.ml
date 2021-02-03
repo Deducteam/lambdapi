@@ -428,7 +428,7 @@ fun compile ss ({elt; pos} as cmd) ->
       (* Create proof state. *)
       let ps = {proof_name = p_sym_nam; proof_term; proof_goals} in
       (* Apply tac_solve. *)
-      let ps = Tactics.tac_solve pos ps in
+      let ps = Tactic.tac_solve pos ps in
       (* Add proof_term as focused goal. *)
       let ps =
         match proof_term with
@@ -444,7 +444,7 @@ fun compile ss ({elt; pos} as cmd) ->
             | None -> assert false
             | Some _ ->
                 let t = Scope.scope_term pdata_expo ss [] pt in
-                Tactics.tac_refine pt.pos ps t
+                Tactic.tac_refine pt.pos ps t
       in
       if p_sym_prf = None && not (finished ps) then wrn pos
         "Some metavariables could not be solved: a proof must be given";
