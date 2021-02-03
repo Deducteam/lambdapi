@@ -28,24 +28,31 @@ And multi-line comments are opened with ‘/*’ and closed with ‘*/’.
 Informs the type-checker that the current module
 depends on some other module, which must hence be compiled.
 
+A required module can optionally be aliased, in which case it
+can be referred to with the provided name.
+
 ::
 
-   require boolean;
+   require std.bool;
    require church.list as list;
 
-Note that a required module can optionally be aliased, in which case it
-can be referred to with the provided name.
+Note that ``require`` always take as argument a qualified
+identifier. See :doc:`module` for more details.
 
 ``open``
 --------
 
-Puts into scope the symbols defined in the given
-module. It can also be combined with the ``require`` command.
+Puts into scope the symbols of the previously required module given
+in argument. It can also be combined with the ``require`` command.
 
 ::
 
-   open booleans;
+   require std.bool;
+   open std.bool;
    require open church.sums;
+
+Note that ``open`` always take as argument a qualified
+identifier. See :doc:`module` for more details.
 
 ``symbol``
 ----------

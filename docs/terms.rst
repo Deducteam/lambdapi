@@ -12,19 +12,15 @@ in the file ``dir1/`` … ``/dirn/file.lp``. To be used, ``dir1.`` …
 
 An identifier can be:
 
-*  an ASCII sequence of characters in the regular language
-   ``[a-zA-Z_][a-zA-Z0-9_]*``
-
-*  a sequence of UTF-8 codepoints that fall in the regular language
+*  any sequence of UTF-8 codepoints that fall in the regular language
    ``[[:letter:]_][[:letter:]0..9_]`` where the class ``[:letter:]``
-   is ``[a..zA..Z-\&^'*%#~[:math:]]`` where ``[:math:]`` contains most
+   is ``[a..zA..Z-'&^\*%#~[:math:]]`` and the class ``[:math:]`` contains most
    mathematical symbols (including subscripts and superscripts).
 
 *  a non-negative integer if the builtins “0” and “+1” have been
    previously set (see the command ``set builtin`` in :doc:`commands`)
 
-*  an arbitrary sequence of characters enclosed between ``{|`` and
-   ``|}``
+*  an arbitrary sequence of characters enclosed between ``{|`` and ``|}``
 
 Convention:
   identifiers starting with a capital letter denote types and predicates (e.g.
