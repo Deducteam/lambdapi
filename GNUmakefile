@@ -16,7 +16,7 @@ odoc:
 
 .PHONY: doc
 doc:
-	$(MAKE) -C docs syntax.bnf html
+	$(MAKE) -C docs syntax.bnf syntax_dedukti.bnf html
 
 #### Unit tests and sanity check #############################################
 

@@ -17,20 +17,35 @@ let locate_lexbuf : Lexing.lexbuf -> Pos.pos = fun lexbuf ->
   locate (lexbuf.lex_start_p, lexbuf.lex_curr_p)
 
 type token =
-  (* Special characters and symbols. *)
-  | L_SQB | R_SQB | L_PAR | R_PAR | ARROW | LARROW | FARROW | DEFEQ | COMMA
-  | COLON | EQUAL | DOT | EOF
+  (* End of file. *)
+  | EOF
   (* Keywords. *)
-  | KW_DEF | KW_INJ | KW_THM | TYPE | KW_PRV | KW_SEQ
-  (* Identifiers and wildcard. *)
-  | WILD
-  | ID      of string
-  | QID     of (Syntax.p_module_path * string)
-  (* Commands. *)
-  | REQUIRE of Syntax.p_module_path
+  | ASSERT of bool
   | EVAL
+  | KW_DEF
+  | KW_INJ
+  | KW_PRV
+  | KW_THM
   | INFER
-  | ASSERT  of bool
+  | REQUIRE of Syntax.p_module_path
+  | TYPE
+  (* Symbols. *)
+  | ARROW
+  | COLON
+  | COMMA
+  | EQUAL
+  | DEF
+  | DOT
+  | FATARROW
+  | LEFTSQU
+  | LEFTPAR
+  | LONGARROW
+  | RIGHTSQU
+  | RIGHTPAR
+  | UNDERSCORE
+  (* Identifiers. *)
+  | ID of string
+  | QID of (Syntax.p_module_path * string)
 
 let unexpected_char : Lexing.lexbuf -> char -> token = fun lexbuf c ->
   fatal (Some(locate_lexbuf lexbuf)) "Unexpected characters [%c]." c
@@ -60,36 +75,39 @@ let ident  =
   ['a'-'z''A'-'Z''0'-'9''_''!''?']['a'-'z''A'-'Z''0'-'9''_''!''?''\'']*
 
 rule token = parse
+  | eof                             { EOF                                  }
   | space                           { token lexbuf                         }
   | '\n'                            { new_line lexbuf; token lexbuf        }
   | "(;"                            { start_comment lexbuf; comment lexbuf }
-  | '.'                             { DOT                                  }
-  | ','                             { COMMA                                }
-  | ':'                             { COLON                                }
-  | "=="                            { EQUAL                                }
-  | '['                             { L_SQB                                }
-  | ']'                             { R_SQB                                }
-  | '('                             { L_PAR                                }
-  | ')'                             { R_PAR                                }
-  | "-->"                           { LARROW                               }
-  | "->"                            { ARROW                                }
-  | "=>"                            { FARROW                               }
-  | ":="                            { DEFEQ                                }
-  | "_"                             { WILD                                 }
-  | "Type"                          { TYPE                                 }
-  | "def"                           { KW_DEF                               }
-  | "inj"                           { KW_INJ                               }
-  | "thm"                           { KW_THM                               }
-  | "prv"                           { KW_PRV                               }
-  | "#REQUIRE" space+ (mpath as mp) { REQUIRE(to_module_path mp)           }
-  | "#EVAL"                         { EVAL                                 }
-  | "#INFER"                        { INFER                                }
+  (* keywords *)
   | "#ASSERT"                       { ASSERT(false)                        }
   | "#ASSERTNOT"                    { ASSERT(true)                         }
+  | "#EVAL"                         { EVAL                                 }
+  | "def"                           { KW_DEF                               }
+  | "inj"                           { KW_INJ                               }
+  | "prv"                           { KW_PRV                               }
+  | "thm"                           { KW_THM                               }
+  | "#INFER"                        { INFER                                }
+  | "#REQUIRE" space+ (mpath as mp) { REQUIRE(to_module_path mp)           }
+  | "Type"                          { TYPE                                 }
+  (* symbols *)
+  | "->"                            { ARROW                                }
+  | ','                             { COMMA                                }
+  | ':'                             { COLON                                }
+  | ":="                            { DEF                                  }
+  | "=="                            { EQUAL                                }
+  | '.'                             { DOT                                  }
+  | "=>"                            { FATARROW                             }
+  | '['                             { LEFTSQU                              }
+  | '('                             { LEFTPAR                              }
+  | "-->"                           { LONGARROW                            }
+  | ']'                             { RIGHTSQU                             }
+  | ')'                             { RIGHTPAR                             }
+  | "_"                             { UNDERSCORE                           }
+  (* identifiers *)
   | (mpath as mp) "." (ident as id) { QID(to_module_path mp, id)           }
   | ident  as x                     { ID(x)                                }
   | _ as c                          { unexpected_char lexbuf c             }
-  | eof                             { EOF                                  }
 
 and comment = parse
   | "(;" { push_comment lexbuf; comment lexbuf                     }
