@@ -1,12 +1,14 @@
 ### Unreleased
 
-#### Source code segmentation (2021-02-02)
+#### Source code segmentation (2021-02-??)
 
 `Core` library divided into the following sub-libraries: 
 - `Common` that contains shared basic files (`Pos` and `Console`)
 - `Parsing` that contains everything related to parsing, from files to `p_term`s
   and `Syntax`
-- `Terms` renamed to `Term` and `Queries` to `Query`.
+- `Handle` that uses `Core` to type check commands and modules
+- `Tool` that provides miscellaneous tools that use `Core`
+- `Terms` renamed to `Term`, `Queries` to `Query`, `Tactics` to `Tactic`.
 
 #### Add parameters to inductive definitions (2021-02-02)
 

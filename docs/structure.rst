@@ -39,6 +39,9 @@ Overview of directories and files
 
   * ``pos.ml``: source file position management
   * ``console.ml``: output and debugging
+  * ``module.ml``: filenames and paths management
+  * ``package.ml``: management of package files ``lambdapi.pkg``
+
 
 * ``src/parsing/``: parsing dedukti and lambdapi files
 
@@ -51,11 +54,6 @@ Overview of directories and files
      convert old Dedukti files into Lambdapi files)
 
 *  ``src/core/``: source code of Lambdapi
-
-   *  utilities:
-
-      *  ``module.ml``: filenames and paths management
-      *  ``package.ml``: management of package files ``lambdapi.pkg``
 
    *  file, command and tactic handling:
 
