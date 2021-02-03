@@ -1,17 +1,25 @@
 ### Unreleased
 
-#### Source code segmentation (2021-02-??)
+#### File renamings and source code segmentation (2021-02-??)
 
-`Core` library divided into the following sub-libraries: 
-- `Common` that contains shared basic files (`Pos` and `Console`).
-- `Parsing` that contains everything related to parsing, from files to `p_term`s
-  and `Syntax`.
-- `Handle` that uses `Core` to type check commands and modules 
-  (contains `Query`, ex-`Handle`, `Tactic` and `Compile`).
-- `Tool` that provides miscellaneous tools that use `Core` (contains `Xtc`,
-  `Hrs`, `Tree_graphviz`, `Sr` and `External`).
-- `Terms` renamed to `Term`, `Basics` to `LibTerm`, `Queries` to `Query`, 
-  `Tactics` to `Tactic`.
+- Files renamings:
+  * `terms` -> `term`
+  * `basics` -> `libTerm`
+  * `tactics` -> `tactic`
+  * `queries` -> `query`
+  * `stubs` -> `realpath`
+  * `files` -> `module`
+  * `handle` -> `command`
+
+- `Core` library divided into the following sub-libraries: 
+  * `Common` that contains shared basic files
+    (`pos`, `console`, `module` and `package`)
+  * `Parsing` that contains everything related to parsing
+    (`syntax`, `pretty`, lexers and parser)
+  * `Handle` that uses `Core` to type check commands and modules 
+    (contains `query`, `tactic`, `command` and `compile`)
+  * `Tool` that provides miscellaneous tools that use `Core`
+    (`external`, `hrs`, `xtc`, `tree_graphviz`, `sr`)
 
 #### Add parameters to inductive definitions (2021-02-02)
 
