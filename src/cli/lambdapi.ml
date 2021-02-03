@@ -7,7 +7,7 @@ open Common
 open Parsing
 open Core
 open Cmdliner
-open Files
+open Module
 open Console
 open Version
 open Handle

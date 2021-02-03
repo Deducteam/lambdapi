@@ -8,7 +8,7 @@ open Console
 open Parsing
 open Core
 open Sign
-open Files
+open Module
 
 (** [gen_obj] indicates whether we should generate object files when compiling
     source files. The default behaviour is not te generate them. *)
@@ -26,7 +26,7 @@ let parse_file : string -> Syntax.ast = fun fname ->
     or [force] is [true]).  In that case,  the produced signature is stored in
     the corresponding object file. *)
 let rec compile : bool -> Path.t -> Sign.t = fun force path ->
-  let base = Files.module_to_file (List.map LpLexer.unquote path) in
+  let base = Module.module_to_file (List.map LpLexer.unquote path) in
   let src () =
     (* Searching for source is delayed because we may not need it
        in case of "ghost" signatures (such as for unification rules). *)
@@ -49,7 +49,7 @@ let rec compile : bool -> Path.t -> Sign.t = fun force path ->
   if PathMap.mem path !loaded then
     let sign = PathMap.find path !loaded in
     out 2 "Already loaded [%a]\n%!" Path.pp path; sign
-  else if force || Files.more_recent (src ()) obj then
+  else if force || Module.more_recent (src ()) obj then
     begin
       let forced = if force then " (forced)" else "" in
       let src = src () in
@@ -104,7 +104,7 @@ let recompile = Stdlib.ref false
 let compile_file : file_path -> Sign.t = fun fname ->
   Package.apply_config fname;
   (* Compute the module path (checking the extension). *)
-  let mp = Files.file_to_module fname in
+  let mp = Module.file_to_module fname in
   (* Run compilation. *)
   compile Stdlib.(!recompile) mp
 
@@ -119,7 +119,7 @@ end = struct
 
   (* [pure_apply_cfg ?lm ?st f] is function [f] but pure (without side
      effects).  The side effects taken into account occur in
-     {!val:Console.State.t}, {!val:Files.lib_mappings} and in the meta
+     {!val:Console.State.t}, {!val:Module.lib_mappings} and in the meta
      variable counter {!module:Term.Meta}. Arguments [?lm] allows to set the
      library mappings and [?st] sets the state. *)
   let pure_apply_cfg : ?lm:string -> ?st:State.t -> ('a -> 'b) -> 'a -> 'b =

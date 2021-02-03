@@ -5,7 +5,7 @@ open Core
 open Common
 open Parsing
 open Console
-open Files
+open Module
 open Handle
 
 (** Representation of a single command (abstract). *)
@@ -122,7 +122,7 @@ let initial_state : file_path -> state = fun fname ->
   Console.reset_default ();
   Time.restore Stdlib.(!t0);
   Package.apply_config fname;
-  let mp = Files.file_to_module fname in
+  let mp = Module.file_to_module fname in
   Sign.loading := [mp];
   let sign = Sig_state.create_sign mp in
   Sign.loaded  := PathMap.add mp sign !Sign.loaded;

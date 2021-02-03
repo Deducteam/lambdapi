@@ -10,7 +10,7 @@ open Core
 open Term
 open Sign
 open Pos
-open Files
+open Module
 open Parsing
 open Syntax
 open Tags

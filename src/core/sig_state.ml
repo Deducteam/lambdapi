@@ -15,7 +15,7 @@ open Common
 open Console
 open Pos
 open Timed
-open Files
+open Module
 open Parsing
 open Syntax
 open Term

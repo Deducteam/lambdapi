@@ -54,7 +54,7 @@ Overview of directories and files
 
    *  utilities:
 
-      *  ``files.ml``: filenames and paths management
+      *  ``module.ml``: filenames and paths management
       *  ``package.ml``: management of package files ``lambdapi.pkg``
 
    *  file, command and tactic handling:

@@ -4,7 +4,7 @@ open Lplib
 open Lplib.Extra
 
 open Common
-open Files
+open Module
 open Console
 
 (** A package configuration file is expected at the root of every package. The
@@ -95,4 +95,4 @@ let apply_config : file_path -> unit = fun fname ->
   | Some(cfg_file) ->
   let {package_name = _; root_path} = read cfg_file in
   let root = Filename.dirname cfg_file in
-  Files.new_lib_mapping (String.concat "." root_path ^ ":" ^ root)
+  Module.new_lib_mapping (String.concat "." root_path ^ ":" ^ root)

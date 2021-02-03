@@ -6,7 +6,7 @@
 
 open Common
 open Timed
-open Files
+open Module
 open Term
 
 (** Path of the module. *)
@@ -20,7 +20,7 @@ let path = Path.ghost "unif_rule"
 let sign : Sign.t =
   let dummy = Sign.dummy () in
   let s = {dummy with Sign.sign_path = path} in
-  Sign.loaded := Files.PathMap.add path s !(Sign.loaded);
+  Sign.loaded := Module.PathMap.add path s !(Sign.loaded);
   s
 
 (** Symbol representing an atomic unification problem. The term [equiv t

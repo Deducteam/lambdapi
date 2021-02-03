@@ -283,7 +283,7 @@ let do_definition ofmt ~id params =
       (* A JSON with the path towards the definition of the term
          and its position is returned
          /!\ : extension is fixed, only works for .lp files *)
-      mk_definfo Files.(module_to_file Term.(term.sym_path)
+      mk_definfo Module.(module_to_file Term.(term.sym_path)
       ^ src_extension) pos
   in
   let msg = LSP.mk_reply ~id ~result:sym_info in
@@ -423,7 +423,7 @@ let dispatch_message ofmt dict =
 
   (* NOOPs *)
   | "initialized"
-  | "workspace/didChangeWatchedFiles" ->
+  | "workspace/didChangeWatchedModule" ->
     ()
   | msg ->
     LIO.log_error "no_handler" msg

@@ -7,7 +7,7 @@ open Common
 open Console
 open Pos
 open Timed
-open Files
+open Module
 open Term
 open Parsing.Syntax
 open Tags

@@ -9,13 +9,13 @@ open Core (* Lambdapi core *)
 open Handle
 
 let _ =
-  Files.set_lib_root None;
+  Module.set_lib_root None;
   match Package.find_config "." with
   | None -> assert false
   | Some(f) -> Package.apply_config f
 
 let compile (fname: string): Sign.t =
-  Compile.compile false (Files.file_to_module fname)
+  Compile.compile false (Module.file_to_module fname)
 
 let bool_file = "OK/bool.lp"
 let bool_sign = compile bool_file

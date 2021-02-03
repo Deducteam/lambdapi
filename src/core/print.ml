@@ -53,8 +53,8 @@ let notation : Sign.notation pp = fun oc notation ->
 
 (** [qualified s] prints symbol [s] fully qualified to channel [oc]. *)
 let pp_qualified : sym pp = fun oc s ->
-  match Files.PathMap.find_opt s.sym_path (!sig_state).path_map with
-  | None -> Format.fprintf oc "%a.%s" Files.Path.pp s.sym_path s.sym_name
+  match Module.PathMap.find_opt s.sym_path (!sig_state).path_map with
+  | None -> Format.fprintf oc "%a.%s" Module.Path.pp s.sym_path s.sym_name
   | Some alias -> Format.fprintf oc "%s.%s" alias s.sym_name
 
 (** [notatin_of sym] returns the notation properties symbol [sym] or
@@ -65,7 +65,7 @@ let notation_of : sym -> Sign.notation option = fun s ->
 (** [pp_symbol oc s] prints the name of the symbol [s] to channel [oc]. *)
 let pp_symbol : sym pp = fun oc s ->
   if SymMap.mem s !sig_state.notations
-     || Files.Path.compare s.sym_path !sig_state.signature.sign_path = 0
+     || Module.Path.compare s.sym_path !sig_state.signature.sign_path = 0
   then Format.pp_print_string oc s.sym_name
   else pp_qualified oc s
 

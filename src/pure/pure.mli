@@ -4,7 +4,7 @@ open Lplib
 open Core
 open Common
 open Parsing
-open Files
+open Module
 open Handle
 
 (** Abstract representation of a command (top-level item). *)
