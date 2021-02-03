@@ -60,6 +60,7 @@ Overview of directories and files
          competition
       *  ``xtc.ml``: export to the .xtc format of the termination
          competition
+      *  ``package.ml``: management of package files ``lambdapi.pkg``
 
    *  file, command and tactic handling:
 
