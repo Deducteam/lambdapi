@@ -4,7 +4,7 @@
     The signature is not attached to any real lambdapi file and is henceforth
     qualified to be a "ghost" signature. *)
 
-open Backbone
+open Common
 open Timed
 open Files
 open Term

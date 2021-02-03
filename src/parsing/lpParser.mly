@@ -3,7 +3,7 @@
    Menhir which abstracts the Lexing buffer. *)
 %{
     open Lplib
-    open Backbone
+    open Common
     open Pos
     open Syntax
 

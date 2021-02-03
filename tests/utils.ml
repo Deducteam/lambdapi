@@ -3,7 +3,7 @@
 
 open Lplib.Extra
 
-open Backbone
+open Common
 open Parsing
 open Core (* Lambdapi core *)
 

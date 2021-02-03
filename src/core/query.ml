@@ -1,6 +1,6 @@
 (** Query (available in tactics and at the toplevel). *)
 
-open Backbone
+open Common
 open Console
 open Pos
 open Parsing

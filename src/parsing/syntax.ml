@@ -3,7 +3,7 @@
 open Lplib
 open Lplib.Base
 open Lplib.Extra
-open Backbone
+open Common
 open Pos
 
 (** Representation of a (located) identifier. *)

@@ -7,7 +7,7 @@
     {!module:Parser.Dk}. *)
 
 open! Lplib
-open Backbone
+open Common
 
 (** [parser_fatal loc fmt] is a wrapper for [Console.fatal] that enforces
     that the error has an attached source code position. *)

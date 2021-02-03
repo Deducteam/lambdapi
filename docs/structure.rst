@@ -35,7 +35,7 @@ Overview of directories and files
   *  ``rangeMap_intf.ml``: module type of abstract maps on intervals
   *  ``rangeMap.ml``: instance of ``rangeMap_intf`` using ``range``
 
-* ``src/backbone/``: miscellaneous modules and libraries
+* ``src/common/``: miscellaneous modules and libraries
 
   * ``pos.ml``: source file position management
   * ``console.ml``: output and debugging

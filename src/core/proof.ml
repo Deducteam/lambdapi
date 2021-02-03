@@ -6,8 +6,8 @@ open Lplib.Base
 open Timed
 open Term
 open Print
-open Backbone.Console
-open Backbone.Pos
+open Common.Console
+open Common.Pos
 
 (** Type of goals. *)
 type goal_typ =

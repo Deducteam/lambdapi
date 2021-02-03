@@ -10,7 +10,7 @@
 (* Status: Very Experimental                                            *)
 (************************************************************************)
 
-open Backbone
+open Common
 
 (* Whether to send extended lsp messages *)
 let std_protocol = ref true
