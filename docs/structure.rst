@@ -84,9 +84,6 @@ Overview of directories and files
       *  ``env.ml``: maps identifier -> variable (and type)
       *  ``scope.ml``: convert the abstract syntax into terms
 
-   *  property checking:
-
-      *  ``sr.ml``: algorithm for checking subject reduction
 
 *  ``src/handle``: use Lambdapi core to build signatures and type check terms
 
@@ -104,6 +101,7 @@ Overview of directories and files
    *  ``xtc.ml``: export to the .xtc format of the termination
       competition
    *  ``external.ml``: call of external tools
+   *  ``sr.ml``: algorithm for checking subject reduction
 
 *  ``src/cli/``: command line interface
 

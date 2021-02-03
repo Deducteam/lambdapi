@@ -5,6 +5,7 @@ open! Lplib
 open Timed
 open Common
 open Console
+open Core
 open Term
 open Print
 
