@@ -2,10 +2,9 @@
 
 open! Lplib
 
-open Core
 open Cmdliner
-open Module
 open Common
+open Module
 open Console
 
 (** {3 Configuration type for common values} *)

@@ -3,6 +3,8 @@
 open Lplib
 open Lplib.Base
 
+open Common
+
 (** {3 Atomic pattern constructor representation} *)
 
 (** Representation of an atomic pattern constructor. *)

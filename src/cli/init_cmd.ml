@@ -1,4 +1,3 @@
-open Core
 open Cmdliner
 open Common
 open Console

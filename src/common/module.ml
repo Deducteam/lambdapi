@@ -5,7 +5,7 @@ open Lplib.Base
 open Lplib.Extra
 
 open Timed
-open Common.Console
+open Console
 
 (** Logging function for evaluation. *)
 let log_file = new_logger 'f' "file" "file system"

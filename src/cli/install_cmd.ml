@@ -1,7 +1,6 @@
-open Core
 open Cmdliner
-open Module
 open Common
+open Module
 open Console
 
 let run_command : bool -> string -> unit = fun dry_run cmd ->

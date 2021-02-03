@@ -1,5 +1,4 @@
 (** Compile files in "OK" and "KO". *)
-open Core
 
 let compile = Handle.Compile.Pure.compile_file
 
@@ -13,7 +12,7 @@ let test_ko f () =
   Alcotest.(check bool) f r false
 
 let _ =
-  Module.set_lib_root None;
+  Common.Module.set_lib_root None;
   let open Alcotest in
   let files = Sys.readdir "OK" |> Array.map (fun f -> "OK/" ^ f)
 (* TODO put back OK/unif_hint.lp when it is fixed *)
