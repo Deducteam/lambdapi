@@ -43,14 +43,14 @@ let default_config =
     to be done prior to any other (non-trivial) task. *)
 let init : config -> unit = fun cfg ->
   (* Set all the flags and configs. *)
-  Compile.gen_obj := cfg.gen_obj;
+  Handle.Compile.gen_obj := cfg.gen_obj;
   Files.set_lib_root cfg.lib_root;
   List.iter (fun (m,d) -> Files.new_lib_mapping (m ^ ":" ^ d)) cfg.map_dir;
   Option.iter set_default_verbose cfg.verbose;
   no_wrn := cfg.no_warnings;
   set_default_debug cfg.debug;
   Console.color := not cfg.no_colors;
-  Handle.too_long := cfg.too_long;
+  Handle.Command.too_long := cfg.too_long;
   (* Log some configuration data. *)
   if Timed.(!log_enabled) then
     begin

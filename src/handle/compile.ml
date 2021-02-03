@@ -6,6 +6,7 @@ open Timed
 open Common
 open Console
 open Parsing
+open Core
 open Sign
 open Files
 
@@ -63,7 +64,7 @@ let rec compile : bool -> Path.t -> Sign.t = fun force path ->
         Term.Meta.reset_key_counter ();
         (* We provide the compilation function to the handle commands, so that
            "require" is able to compile files. *)
-        let (ss, p, _) = Handle.handle_cmd (compile false) ss c in
+        let (ss, p, _) = Command.handle (compile false) ss c in
         match p with
         | None       -> ss
         | Some(data) ->

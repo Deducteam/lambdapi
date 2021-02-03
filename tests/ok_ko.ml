@@ -1,7 +1,7 @@
 (** Compile files in "OK" and "KO". *)
 open Core
 
-let compile = Compile.Pure.compile_file
+let compile = Handle.Compile.Pure.compile_file
 
 let test_ok f () =
   (* Simply assert that there is no exception raised. *)

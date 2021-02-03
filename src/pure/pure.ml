@@ -130,8 +130,9 @@ let initial_state : file_path -> state = fun fname ->
 let handle_command : state -> Command.t -> command_result =
     fun (st,ss) cmd ->
   Time.restore st;
+  let open Handle in
   try
-    let (ss, pst, qres) = Handle.handle_cmd (Compile.compile false) ss cmd in
+    let (ss, pst, qres) = Command.handle (Compile.compile false) ss cmd in
     let t = Time.save () in
     match pst with
     | None       -> Cmd_OK ((t, ss), qres)

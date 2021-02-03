@@ -10,6 +10,7 @@ open Cmdliner
 open Files
 open Console
 open Version
+open Handle
 
 (* NOTE only standard [Stdlib] references here. *)
 

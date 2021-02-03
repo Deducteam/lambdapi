@@ -6,6 +6,7 @@ open Lplib.Extra
 open Timed
 open Common
 open Console
+open Core
 open Term
 open Sign
 open Pos
@@ -190,7 +191,7 @@ type proof_data =
   ; pdata_expo     : expo (** Allowed exposition of symbols in the proof
                                    script. *) }
 
-(** [handle_cmd compile ss cmd] tries to handle the command [cmd] with [ss] as
+(** [handle compile ss cmd] tries to handle the command [cmd] with [ss] as
     the signature state and [compile] as the main compilation function
     processing lambdapi modules (it is passed as argument to avoid cyclic
     dependencies). On success, an updated signature state is returned.  When
@@ -198,7 +199,7 @@ type proof_data =
     This structure contains the list of the tactics to be executed, as well as
     the initial state of the proof.  The checking of the proof is then handled
     separately. Note that [Fatal] is raised in case of an error. *)
-let handle_cmd : (Path.t -> Sign.t) -> sig_state -> p_command ->
+let handle : (Path.t -> Sign.t) -> sig_state -> p_command ->
   sig_state * proof_data option * Query.result =
 fun compile ss ({elt; pos} as cmd) ->
   if !log_enabled then log_hndl (blu "%a") Pretty.command cmd;
@@ -509,16 +510,16 @@ fun compile ss ({elt; pos} as cmd) ->
     indicate commands that take too long to execute. *)
 let too_long = Stdlib.ref infinity
 
-(** [handle_cmd compile ss cmd] adds to the previous [handle_cmd] some
+(** [command compile ss cmd] adds to the previous [command] some
     exception handling. In particular, the position of [cmd] is used on errors
     that lack a specific position. All exceptions except [Timeout] and [Fatal]
     are captured, although they should not occur. *)
-let handle_cmd : (Path.t -> Sign.t) -> sig_state -> p_command ->
+let handle : (Path.t -> Sign.t) -> sig_state -> p_command ->
   sig_state * proof_data option * Query.result =
  fun compile ss ({pos;_} as cmd) ->
   Print.sig_state := ss;
   try
-    let (tm, ss) = time (handle_cmd compile ss) cmd in
+    let (tm, ss) = time (handle compile ss) cmd in
     if Stdlib.(tm >= !too_long) then
       wrn pos "It took %.2f seconds to handle the command." tm;
     ss

@@ -6,6 +6,7 @@ open Lplib.Extra
 open Common
 open Parsing
 open Core (* Lambdapi core *)
+open Handle
 
 let _ =
   Files.set_lib_root None;

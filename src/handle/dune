@@ -1,0 +1,5 @@
+(library
+ (name handle)
+ (public_name lambdapi.handle)
+ (modules :standard)
+ (libraries lambdapi.common lambdapi.core))
