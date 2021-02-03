@@ -70,7 +70,7 @@ and p_patt = p_term
     the argument is marked as implicit (i.e., between curly braces). *)
 and p_args = ident option list * p_type option * bool
 
-(** [p_get_args t] is {!val:Basics.get_args} on syntax-level terms. *)
+(** [p_get_args t] is {!val:LibTerm.get_args} on syntax-level terms. *)
 let p_get_args : p_term -> p_term * p_term list = fun t ->
   let rec p_get_args acc t =
     match t.elt with

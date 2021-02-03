@@ -52,10 +52,10 @@ let cons : sym =
     [cons (equiv t u) (cons (equiv v w) ...)]
     into a list [[(t,u); (v,w); ...]]. *)
 let rec unpack : term -> (term * term) list = fun eqs ->
-  match Basics.get_args eqs with
+  match LibTerm.get_args eqs with
   | (Symb(s), [v; w]) ->
       if s == cons then
-        match Basics.get_args v with
+        match LibTerm.get_args v with
         | (Symb(e), [t; u]) when e == equiv -> (t, u) :: unpack w
         | _          (* Ill-formed term. *) -> assert false
       else if s == equiv then [(v, w)] else

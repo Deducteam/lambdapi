@@ -86,7 +86,7 @@ let rec unfold : ctxt -> term -> term = fun ctx t ->
       end
   | _                    -> t
 
-(** [get_args ctx t] decomposes term [t] as {!val:Basics.get_args} does, but
+(** [get_args ctx t] decomposes term [t] as {!val:LibTerm.get_args} does, but
     any variable encountered is replaced by its definition in [ctx] (if it
     exists). *)
 let get_args : ctxt -> term -> term * term list = fun ctx t ->
@@ -98,4 +98,4 @@ let get_args : ctxt -> term -> term * term list = fun ctx t ->
   get_args [] t
 
 (** {b NOTE} that both [unfold] and [get_args] redefine the functions in
-    {!module:Basics} and {!module:Term}. *)
+    {!module:LibTerm} and {!module:Term}. *)

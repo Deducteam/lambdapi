@@ -65,7 +65,7 @@ Overview of directories and files
    *  terms, signatures, rewriting, unification and type-checking:
 
       *  ``term.ml``: internal representation of terms
-      *  ``basics.ml``: basic operations on terms
+      *  ``libTerm.ml``: basic operations on terms
       *  ``print.ml``: pretty printing of terms
       *  ``tree_types.ml``: types and basic functions for decision trees
       *  ``tree.ml``: compilation of rewriting rules to decision trees

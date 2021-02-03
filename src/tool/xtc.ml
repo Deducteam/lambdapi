@@ -101,19 +101,19 @@ and print_type : int -> string -> term pp = fun i s oc t ->
 let print_rule : Format.formatter -> int -> sym -> rule -> unit =
   fun oc i s r ->
   (* Print the rewriting rule. *)
-  let lhs = Basics.add_args (Symb s) r.lhs in
+  let lhs = LibTerm.add_args (Symb s) r.lhs in
   Format.fprintf oc "<rule>@.<lhs>@.%a</lhs>@." (print_term i s.sym_name) lhs;
-  let rhs = Basics.term_of_rhs r in
+  let rhs = LibTerm.term_of_rhs r in
   Format.fprintf oc "<rhs>@.%a</rhs>@.</rule>@." (print_term i s.sym_name) rhs
 
 (** [print_tl_rule] is identical to [print_rule] but for type-level rule  *)
 let print_tl_rule : Format.formatter -> int -> sym -> rule -> unit =
   fun oc i s r ->
   (* Print the type level rewriting rule. *)
-  let lhs = Basics.add_args (Symb s) r.lhs in
+  let lhs = LibTerm.add_args (Symb s) r.lhs in
   Format.fprintf oc "<typeLevelRule>@.<TLlhs>@.%a</TLlhs>@."
     (print_type i s.sym_name) lhs;
-  let rhs = Basics.term_of_rhs r in
+  let rhs = LibTerm.term_of_rhs r in
   Format.fprintf oc "<TLrhs>@.%a</TLrhs>@.</typeLevelRule>@."
     (print_type i s.sym_name) rhs
 

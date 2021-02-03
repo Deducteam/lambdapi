@@ -62,7 +62,7 @@ module Goal = struct
     match g, g' with
     | Typ gt, Typ gt' -> (* Smaller (= older) metas are put first. *)
         Meta.compare gt.goal_meta gt'.goal_meta
-    | Unif c, Unif c' -> Basics.cmp_constr c c'
+    | Unif c, Unif c' -> LibTerm.cmp_constr c c'
     | Unif _, Typ _ -> 1
     | Typ _, Unif _ -> -1
 

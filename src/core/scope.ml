@@ -562,7 +562,7 @@ let scope_rule : bool -> sig_state -> p_rule -> pre_rule loc = fun ur ss r ->
   in
   (* Check the head symbol and build the actual LHS. *)
   let (sym, pr_lhs) =
-    let (h, args) = Basics.get_args pr_lhs in
+    let (h, args) = LibTerm.get_args pr_lhs in
     match h with
     | Symb(s) ->
         if is_constant s then

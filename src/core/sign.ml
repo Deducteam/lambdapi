@@ -228,7 +228,7 @@ let unlink : t -> unit = fun sign ->
 let add_symbol : t -> expo -> Tags.prop -> match_strat -> strloc -> term ->
   bool list -> sym = fun sign sym_expo sym_prop sym_mstrat s a impl ->
   (* Check for metavariables in the symbol type. *)
-  if Basics.has_metas true a then
+  if LibTerm.has_metas true a then
     fatal s.pos "The type of [%s] contains metavariables" s.elt;
   (* We minimize [impl] to enforce our invariant (see {!type:Term.sym}). *)
   let rec rem_false l = match l with false::l -> rem_false l | _ -> l in

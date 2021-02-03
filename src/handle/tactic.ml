@@ -47,7 +47,7 @@ let tac_refine : popt -> proof_state -> term -> proof_state =
   | Typ gt::gs ->
       if !log_enabled then
         log_tact "refine %a with %a" pp_meta gt.goal_meta pp_term t;
-      if Basics.occurs gt.goal_meta t then fatal pos "Circular refinement.";
+      if LibTerm.occurs gt.goal_meta t then fatal pos "Circular refinement.";
       (* Check that [t] is well-typed. *)
       let gs_typ, gs_unif = List.partition is_typ gs in
       let to_solve = List.map get_constr gs_unif in
@@ -61,7 +61,7 @@ let tac_refine : popt -> proof_state -> term -> proof_state =
             (Bindlib.unbox (Bindlib.bind_mvar (Env.vars gt.goal_hyps)
                               (lift t)));
           (* Convert the metas of [t] not in [gs] into new goals. *)
-          let gs_typ = add_goals_of_metas (Basics.get_metas true t) gs_typ in
+          let gs_typ = add_goals_of_metas (LibTerm.get_metas true t) gs_typ in
           let proof_goals = List.rev_map (fun c -> Unif c) cs @ gs_typ in
           tac_solve pos {ps with proof_goals}
 
@@ -99,7 +99,7 @@ let handle :
       let n =
         match Infer.infer_noexn [] (Env.to_ctxt env) t with
         | None -> fatal tac.pos "[%a] is not typable." pp_term t
-        | Some (a, _) -> Basics.count_products a
+        | Some (a, _) -> LibTerm.count_products a
       in
       (*FIXME: this does not take into account implicit arguments. *)
       let t = if n <= 0 then t

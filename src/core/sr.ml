@@ -17,7 +17,7 @@ let log_subj = log_subj.logger
     arity “i-1” and type “Π(x1:A1) ⋯ (x(i-1):A(i-1)), TYPE”. *)
 let build_meta_type : int -> term = fun k ->
   assert (k >= 0);
-  let xs = Basics.fresh_vars k in
+  let xs = LibTerm.fresh_vars k in
   let ts = Array.map _Vari xs in
   (* We create the types for the “Mi” metavariables. *)
   let ty_m = Array.make (k+1) _Type in
@@ -82,7 +82,7 @@ let symb_to_tenv
     : Scope.pre_rule Pos.loc -> sym list -> index_tbl -> term -> tbox =
   fun {elt={pr_vars=vars;pr_arities=arities;_};pos} syms htbl t ->
   let rec symb_to_tenv t =
-    let (h, ts) = Basics.get_args t in
+    let (h, ts) = LibTerm.get_args t in
     let ts = List.map symb_to_tenv ts in
     let (h, ts) =
       match h with
@@ -168,7 +168,7 @@ let check_rule : Scope.pre_rule Pos.loc -> rule = fun ({pos; elt} as pr) ->
     let lhs_rhs = Bindlib.box_pair lhs_vars pr_rhs in
     let b = Bindlib.(unbox (bind_mvar vars lhs_rhs)) in
     let meta_to_tenv m =
-      let xs = Basics.fresh_vars m.meta_arity in
+      let xs = LibTerm.fresh_vars m.meta_arity in
       let ts = Array.map _Vari xs in
       TE_Some(Bindlib.unbox (Bindlib.bind_mvar xs (_Meta m ts)))
     in
@@ -211,10 +211,10 @@ let check_rule : Scope.pre_rule Pos.loc -> rule = fun ({pos; elt} as pr) ->
       | Some(_) ->
           (* Instantiate recursively the meta-variables of the definition. *)
           let t = Meta(m, Array.make m.meta_arity Kind) in
-          Basics.iter_meta true instantiate t
+          LibTerm.iter_meta true instantiate t
       | None    ->
           (* Instantiate recursively the meta-variables of the type. *)
-          Basics.iter_meta true instantiate !(m.meta_type);
+          LibTerm.iter_meta true instantiate !(m.meta_type);
           (* Instantiation of [m]. *)
           let sym_name =
             match m.meta_name with
@@ -224,7 +224,7 @@ let check_rule : Scope.pre_rule Pos.loc -> rule = fun ({pos; elt} as pr) ->
           let s = Sign.create_sym Privat Defin sym_name !(m.meta_type) [] in
           Stdlib.(symbols := s :: !symbols);
           (* Build a definition for [m]. *)
-          let xs = Basics.fresh_vars m.meta_arity in
+          let xs = LibTerm.fresh_vars m.meta_arity in
           let s = _Symb s in
           let def = Array.fold_left (fun t x -> _Appl t (_Vari x)) s xs in
           m.meta_value := Some(Bindlib.unbox (Bindlib.bind_mvar xs def))

@@ -6,7 +6,7 @@ open Timed
 open Common
 open Pos
 open Term
-open Basics
+open LibTerm
 open Console
 open Print
 open Proof
@@ -174,11 +174,11 @@ let _ =
 let get_eq_data : popt -> eq_config -> term -> term * term * term =
   fun pos cfg t ->
   let t = Eval.whnf [] t in
-  match Basics.get_args t with
+  match LibTerm.get_args t with
   | (p, [u]) when is_symb cfg.symb_P p ->
       begin
         let u = Eval.whnf [] u in
-        match Basics.get_args u with
+        match LibTerm.get_args u with
         | (eq, [a;l;r]) when is_symb cfg.symb_eq eq -> (a, l, r)
         | _ ->
            fatal pos "Expected an equality type, found [%a]." pp_term t
@@ -347,7 +347,7 @@ let rewrite : Sig_state.t -> popt -> proof_state -> bool -> rw_patt option
 
   (* Extract the term from the goal type (get “t” from “P t”). *)
   let g_term =
-    match Basics.get_args g_type with
+    match LibTerm.get_args g_type with
     | (p, [t]) when is_symb cfg.symb_P p -> t
     | _                                        ->
         fatal pos "Goal type [%a] is not of the form “P t”." pp_term g_type

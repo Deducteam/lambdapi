@@ -169,7 +169,7 @@ let handle_inductive_symbol :
   (* We check that [a] is typable by a sort. *)
   Infer.check_sort Unif.solve_noexn x.pos [] a;
   (* We check that no metavariable remains. *)
-  if Basics.has_metas true a then
+  if LibTerm.has_metas true a then
     (fatal_msg "The type of [%s] has unsolved metavariables.\n" x.elt;
      fatal x.pos "We have %s : %a." x.elt pp_term a);
   (* Actually add the symbol to the signature and the state. *)
@@ -366,7 +366,7 @@ fun compile ss ({elt; pos} as cmd) ->
       let ao, metas_a =
         match ao with
         | Some a ->
-            let a = scope_basic expo a in Some a, Basics.get_metas true a
+            let a = scope_basic expo a in Some a, LibTerm.get_metas true a
         | None -> None, MetaSet.empty
       in
       (* Get the type of the symbol and the goals to solve for the declaration
@@ -394,11 +394,11 @@ fun compile ss ({elt; pos} as cmd) ->
             wrn pe.pos "Proof aborted."; ss
         | _ ->
             (* Check that no metavariable remains. *)
-            if Basics.has_metas true a then
+            if LibTerm.has_metas true a then
               (fatal_msg "The type of [%s] has unsolved metavariables.\n" id;
                fatal pe.pos "We have %s : %a." id pp_term a);
             (match t with
-             | Some(t) when Basics.has_metas true t ->
+             | Some(t) when LibTerm.has_metas true t ->
                  fatal_msg
                    "The definition of [%s] has unsolved metavariables.\n" id;
                  fatal pe.pos "We have %s : %a ≔ %a." id pp_term a pp_term t

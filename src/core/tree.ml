@@ -11,7 +11,7 @@ open Lplib.Extra
 
 open Timed
 open Term
-open Basics
+open LibTerm
 open Tree_types
 
 (** {1 Types for decision trees}
