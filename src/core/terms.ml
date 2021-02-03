@@ -90,26 +90,28 @@ type term =
     whether they may be given rewriting rules or a definition. Invariants must
     be enforced for "mode" consistency (see {!type:sym_prop}).  *)
  and sym =
-  { sym_name  : string
+  { sym_path  : Files.Path.t
+  (** Module in which it is defined. *)
+  ; sym_name  : string
   (** Name of the symbol. *)
   ; sym_type  : term ref
   (** Type of the symbol. *)
-  ; sym_path  : Files.Path.t
-  (** Module in which it is defined. *)
-  ; sym_def   : term option ref
-  (** Definition of the symbol. *)
   ; sym_impl  : bool list
   (** Implicitness of the first arguments ([true] meaning implicit). *)
+  ; sym_def   : term option ref
+  (** Definition of the symbol. *)
+  ; sym_opaq  : bool
+  (** If the symbol must not be unfolded in default goal simplifications. *)
   ; sym_rules : rule list ref
   (** Rewriting rules for the symbol. *)
   ; sym_tree  : dtree ref
   (** Decision tree used for pattern matching against rules of the symbol. *)
+  ; sym_mstrat: match_strat ref
+  (** The matching strategy modifier. *)
   ; sym_prop  : prop
   (** Property of the symbol. *)
   ; sym_expo  : expo
-  (** The visibility of the symbol. *)
-  ; sym_mstrat: match_strat ref
-  (** The reduction strategy modifier. *) }
+  (** The visibility of the symbol. *) }
 
 (** {b NOTE} that {!field:sym_type} holds a (timed) reference for a  technical
     reason related to the writing of signatures as binary files  (in  relation
@@ -253,6 +255,17 @@ type term =
   (** Arity of the metavariable (environment size). *)
   ; meta_value : (term, term) Bindlib.mbinder option ref
   (** Definition of the metavariable, if known. *) }
+
+(** [create_sym path expo prop opaq name typ impl] creates a new symbol with
+   path [path], exposition [expo], property [prop], opacity [opaq], matching
+   strategy [mstrat], name [name], type [typ], implicit arguments [impl], no
+   definition and no rules. *)
+let create_sym : Files.Path.t -> expo -> prop -> match_strat -> bool
+                 -> string -> term -> bool list -> sym =
+  fun sym_path sym_expo sym_prop mstrat sym_opaq sym_name typ sym_impl ->
+  {sym_path; sym_name; sym_type = ref typ; sym_impl; sym_def = ref None;
+   sym_opaq; sym_rules = ref []; sym_tree = ref Tree_types.empty_dtree;
+   sym_mstrat = ref mstrat; sym_prop; sym_expo }
 
 (** [is_injective s] tells whether the symbol is injective. *)
 let is_injective : sym -> bool = fun s -> s.sym_prop = Injec

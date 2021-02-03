@@ -37,7 +37,7 @@ let create_sign : Path.t -> Sign.t = fun sign_path ->
   { d with sign_path ; sign_deps = ref (PathMap.singleton Unif_rule.path []) }
 
 (** Symbol properties needed for the signature *)
-type sig_symbol =
+type sym_data =
   { expo   : expo        (** exposition          *)
   ; prop   : prop        (** property            *)
   ; mstrat : match_strat (** strategy            *)
@@ -46,19 +46,20 @@ type sig_symbol =
   ; impl   : bool list   (** implicit arguments  *)
   ; def    : term option (** optional definition *) }
 
-(** [add_symbol ss sig_symbol={e,p,st,x,a,impl,def}] generates a new signature
+(** [add_symbol ss sym_data={e,p,st,x,a,impl,def}] generates a new signature
    state from [ss] by creating a new symbol with expo [e], property [p],
    strategy [st], name [x], type [a], implicit arguments [impl] and optional
    definition [t]. This new symbol is returned too. *)
-let add_symbol : sig_state -> sig_symbol -> sig_state * sym =
-  fun ss {expo=e;prop=p;mstrat=st;ident=x;typ=a;impl;def=t} ->
-  let s = Sign.add_symbol ss.signature e p st x a impl in
+let add_symbol : sig_state -> expo -> prop -> match_strat -> bool -> ident
+                 -> term -> bool list -> term option -> sig_state * sym =
+  fun ss expo prop mstrat opaq id typ impl def ->
+  let s = Sign.add_symbol ss.signature expo prop mstrat opaq id typ impl in
   begin
-    match t with
+    match def with
     | Some t -> s.sym_def := Some (cleanup t)
     | None -> ()
   end;
-  let in_scope = StrMap.add x.elt (s, x.pos) ss.in_scope in
+  let in_scope = StrMap.add id.elt (s, id.pos) ss.in_scope in
   ({ss with in_scope}, s)
 
 (** [add_unop ss n x] generates a new signature state from [ss] by adding a

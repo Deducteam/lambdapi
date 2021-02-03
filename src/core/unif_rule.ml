@@ -25,13 +25,13 @@ let sign : Sign.t =
 
 (** Symbol representing an atomic unification problem. The term [equiv t
     u] represents [t ≡ u]. The left-hand side of a unification rule is
-    made of only one unification. *)
+    made of only one equation. *)
 let equiv : sym =
+  let sym =
+    Sign.add_symbol sign Public Defin Eager false (Pos.none "#equiv") Kind []
+  in
   let path = List.map (fun s -> (s, false)) path in
   let bo = ("≡", Pratter.Neither, 1.1, Pos.none (path, "#equiv")) in
-  let sym =
-    Sign.add_symbol sign Public Defin Eager (Pos.none "#equiv") Kind []
-  in
   Sign.add_binop sign sym bo;
   sym
 
@@ -43,7 +43,7 @@ let cons : sym =
   let path = List.map (fun s -> (s, false)) path in
   let bo = (";", Pratter.Right, 1.0, Pos.none (path, "#cons")) in
   let sym =
-    Sign.add_symbol sign Public Defin Eager (Pos.none "#cons") Kind []
+    Sign.add_symbol sign Public Defin Eager false (Pos.none "#cons") Kind []
   in
   Sign.add_binop sign sym bo;
   sym
