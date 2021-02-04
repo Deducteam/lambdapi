@@ -1,8 +1,11 @@
 `VSCode`_
 =========
 
-There is an extension for VSCode >= 1.37 derived from VSCoq. To install
-it do from the ``lambdapi`` repository:
+Lambdapi provides an extension for VSCode editing (>= 1.37) . The
+extension was developed from a bare-bones LSP template, as lambdapi
+implements the LSP standard more or less to the letter, but includes
+some extra features to handle proofs and goals. To install it from the
+``lambdapi`` repository do:
 
 .. code:: bash
 
@@ -18,6 +21,12 @@ This requires to have ``npm`` and ``node-typescript`` installed:
 
 *note*: as of today the vscode mode requires a full lambdapi install, it
 won’t unfortunately run from a developer tree.
+
+*note*: The install script will create a link from
+``~/.vscode/extensions/lp-vscode`` to the lambdapi tree, you can
+override link location [for example for ``vscodium``] by setting the
+``LP-VSCODE`` environment variable, i.e. ``make
+LP-VSCODE="~/.vscodium/extensions/lp-vscode"``.
 
 Overview
 --------
