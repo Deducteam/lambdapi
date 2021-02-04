@@ -2,4 +2,4 @@
  (name handle)
  (public_name lambdapi.handle)
  (modules :standard)
- (libraries core tool))))
+ (libraries core tool))
