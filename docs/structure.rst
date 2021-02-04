@@ -53,6 +53,7 @@ Overview of directories and files
   *  scoping:
 
       *  ``env.ml``: maps identifier -> variable and type
+      *  ``pratt.ml``: parsing of applications wrt symbol notations
       *  ``scope.ml``: convert the abstract syntax into terms
 
   *  terms, signatures, rewriting, unification and type-checking:
@@ -69,8 +70,9 @@ Overview of directories and files
       *  ``unif.ml``: unification algorithm
       *  ``sign.ml``: compiled module signature (symbols and rules in a module)
       *  ``sig_state.ml``: signature under construction
+      *  ``builtin.ml``: managing builtins
 
-   *  proof state and tactics:
+  *  proof state and tactics:
 
       *  ``proof.ml``: proof state
       *  ``rewrite.ml``: rewrite tactic (similar to Ssreflect)
@@ -81,6 +83,7 @@ Overview of directories and files
    *  ``query.ml``: handling of queries
       (commands that do not change the signature or the proof state)
    *  ``tactic.ml``: tactic handling
+   *  ``inductive.ml``: generation of induction principles
    *  ``command.ml``: command handling      
    *  ``compile.ml``: file parsing and compiling (.lpo files)
 
