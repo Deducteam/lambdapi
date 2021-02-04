@@ -14,6 +14,7 @@ open Timed
 open Common
 open Pos
 open Console
+open Core
 open Term
 open Print
 open Parsing

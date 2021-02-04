@@ -17,7 +17,7 @@
   * `Parsing` that contains everything related to parsing
     (`syntax`, `pretty`, lexers and parser)
   * `Handle` that uses `Core` to type check commands and modules 
-    (contains `query`, `tactic`, `command` and `compile`)
+    (contains `query`, `tactic`, `command`, `compile` and `inductive`)
   * `Tool` that provides miscellaneous tools that use `Core`
     (`external`, `hrs`, `xtc`, `tree_graphviz`, `sr`)
 
