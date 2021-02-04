@@ -4,6 +4,7 @@ open! Lplib
 open Lplib.Base
 
 open Timed
+open Core
 open Term
 open Print
 open Common.Console

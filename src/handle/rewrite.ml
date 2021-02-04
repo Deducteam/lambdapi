@@ -5,6 +5,7 @@ open! Lplib
 open Timed
 open Common
 open Pos
+open Core
 open Term
 open LibTerm
 open Console

@@ -72,12 +72,6 @@ Overview of directories and files
       *  ``sig_state.ml``: signature under construction
       *  ``builtin.ml``: managing builtins
 
-  *  proof state and tactics:
-
-      *  ``proof.ml``: proof state
-      *  ``rewrite.ml``: rewrite tactic (similar to Ssreflect)
-      *  ``why3_tactic.ml``: why3 tactic
-
 *  ``src/handle``: signature building
 
    *  ``query.ml``: handling of queries
@@ -86,6 +80,10 @@ Overview of directories and files
    *  ``inductive.ml``: generation of induction principles
    *  ``command.ml``: command handling      
    *  ``compile.ml``: file parsing and compiling (.lpo files)
+   *  ``proof.ml``: proof state
+   *  ``rewrite.ml``: rewrite tactic (similar to Ssreflect)
+   *  ``why3_tactic.ml``: why3 tactic
+
 
 *  ``src/tool/``: tools
 

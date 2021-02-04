@@ -3,10 +3,11 @@
 open! Lplib
 open Lplib.Extra
 
+open Timed
 open Common
 open Console
+open Core
 open Term
-open Timed
 open Print
 
 (** Logging function for external prover calling with Why3. *)
