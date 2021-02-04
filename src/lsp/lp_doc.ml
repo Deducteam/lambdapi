@@ -154,7 +154,7 @@ let check_text ~doc =
   let uri, version = doc.uri, doc.version in
   try
     let cmds =
-      let (cmds, root) = Pure.parse_text doc.root uri doc.text in
+      let (cmds, root) = Pure.parse_text doc.root ~fname:uri doc.text in
       (* One shot state update after parsing. *)
       doc.root <- root; doc.final <- root; cmds
     in
