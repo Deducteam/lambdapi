@@ -53,7 +53,7 @@ let rec compile : bool -> Path.t -> Sign.t = fun force path ->
     begin
       let forced = if force then " (forced)" else "" in
       let src = src () in
-      out 2 "Loading %s%s ...\n%!" src forced;
+      out 1 "Loading %s%s ...\n%!" src forced;
       loading := path :: !loading;
       let sign = Sig_state.create_sign path in
       let sig_st = Stdlib.ref (Sig_state.of_sign sign) in
