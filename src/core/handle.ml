@@ -198,7 +198,8 @@ type proof_data =
 let handle_cmd : (Path.t -> Sign.t) -> sig_state -> p_command ->
                  sig_state * proof_data option * Queries.result =
   fun compile ss ({elt;pos} as cmd) ->
-  if !log_enabled then log_hndl (blu "%a") Pretty.command cmd;
+  if !log_enabled then
+    log_hndl (blu "[%a] %a") Pos.print pos Pretty.command cmd;
   let scope_basic exp pt = Scope.scope_term exp ss Env.empty pt in
   match elt with
   | P_query(q) ->
@@ -310,7 +311,6 @@ let handle_cmd : (Path.t -> Sign.t) -> sig_state -> p_command ->
 
   | P_symbol {p_sym_mod;p_sym_nam;p_sym_arg;p_sym_typ;p_sym_trm;p_sym_prf;
               p_sym_def} ->
-    let pos = pos in
     (* Check that this is a syntactically valid symbol declaration. *)
     begin
       match (p_sym_typ, p_sym_def, p_sym_trm, p_sym_prf) with
