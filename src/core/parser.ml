@@ -35,12 +35,23 @@ module type PARSER = sig
 end
 
 module Lp : PARSER = struct
+
+  (* Needed to workaround serious bug in sedlex, see #549 *)
+  let lp_lexbuf_fixup fname lexbuf =
+    let pos = Lexing.
+                { pos_fname = fname
+                ; pos_lnum = 1
+                ; pos_bol = 0
+                ; pos_cnum = 0 } in
+    Sedlexing.set_position lexbuf pos
+
   let stream_of_lexbuf :
     ?inchan:in_channel -> string -> Sedlexing.lexbuf ->
     (* Input channel passed as parameter to be closed at the end of stream. *)
     Syntax.p_command Stream.t =
     fun ?inchan fname lexbuf ->
       Sedlexing.set_filename lexbuf fname;
+      lp_lexbuf_fixup fname lexbuf;
       let parse =
         MenhirLib.Convert.Simplified.traditional2revised LpParser.command
       in

@@ -136,20 +136,20 @@
 
 %%
 
-ident: i=ID { make_pos $loc (fst i), snd i}
+ident: i=ID { make_pos $sloc (fst i), snd i}
 
 // [path] with a post processing to yield a [qident]
 qident:
-  | p=QID { qid_of_path $loc p}
-  | i=ID { make_pos $loc ([], fst i) }
+  | p=QID { qid_of_path $sloc p}
+  | i=ID { make_pos $sloc ([], fst i) }
 
 term_ident:
   | p=QID_EXPL
-      { make_pos $loc (P_Iden(qid_of_path $loc p, true)) }
-  | qid=qident { make_pos $loc (P_Iden(qid, false)) }
+      { make_pos $sloc (P_Iden(qid_of_path $sloc p, true)) }
+  | qid=qident { make_pos $sloc (P_Iden(qid, false)) }
 
 // Rewrite pattern identifier
-patt: p=ID_PAT { if p = "_" then None else Some(make_pos $loc p) }
+patt: p=ID_PAT { if p = "_" then None else Some(make_pos $sloc p) }
 
 // Identifiers for arguments
 argid:
@@ -169,9 +169,9 @@ arg_list:
 
 // Patterns of the rewrite tactic
 rw_patt:
-  | t=term { make_pos $loc (P_rw_Term(t)) }
-  | IN t=term { make_pos $loc (P_rw_InTerm(t)) }
-  | IN x=ident IN t=term { make_pos $loc (P_rw_InIdInTerm(fst x, t)) }
+  | t=term { make_pos $sloc (P_rw_Term(t)) }
+  | IN t=term { make_pos $sloc (P_rw_InTerm(t)) }
+  | IN x=ident IN t=term { make_pos $sloc (P_rw_InIdInTerm(fst x, t)) }
   | u=term IN x=term t=preceded(IN, term)?
     {
       let ident_of_term {elt; _} =
@@ -180,21 +180,21 @@ rw_patt:
           | _ -> $syntaxerror
       in
       match t with
-      | Some(t) -> make_pos $loc (P_rw_TermInIdInTerm(u, ident_of_term x, t))
-      | None -> make_pos $loc (P_rw_IdInTerm(ident_of_term u, x))
+      | Some(t) -> make_pos $sloc (P_rw_TermInIdInTerm(u, ident_of_term x, t))
+      | None -> make_pos $sloc (P_rw_IdInTerm(ident_of_term u, x))
     }
   | u=term AS x=ident IN t=term
-      { make_pos $loc (P_rw_TermAsIdInTerm(u, fst x, t)) }
+      { make_pos $sloc (P_rw_TermAsIdInTerm(u, fst x, t)) }
 
 // Tactics available in proof mode.
 tactic:
-  | q=query { make_pos $loc (P_tac_query q) }
-  | APPLY t=term { make_pos $loc (P_tac_apply t) }
-  | ASSUME xs=argid+ { make_pos $loc (P_tac_intro xs) }
-  | FAIL { make_pos $loc P_tac_fail }
-  | FOCUS i=INT { make_pos $loc (P_tac_focus i) }
-  | REFINE t=term { make_pos $loc (P_tac_refine t) }
-  | REFLEXIVITY { make_pos $loc P_tac_refl }
+  | q=query { make_pos $sloc (P_tac_query q) }
+  | APPLY t=term { make_pos $sloc (P_tac_apply t) }
+  | ASSUME xs=argid+ { make_pos $sloc (P_tac_intro xs) }
+  | FAIL { make_pos $sloc P_tac_fail }
+  | FOCUS i=INT { make_pos $sloc (P_tac_focus i) }
+  | REFINE t=term { make_pos $sloc (P_tac_refine t) }
+  | REFLEXIVITY { make_pos $sloc P_tac_refl }
   | REWRITE l=ASSOC? p=delimited(L_SQ_BRACKET, rw_patt, R_SQ_BRACKET)? t=term
     {
       let b =
@@ -202,21 +202,21 @@ tactic:
         | Some(Pratter.Left) -> false
         | _ -> true
       in
-      make_pos $loc (P_tac_rewrite(b,p,t))
+      make_pos $sloc (P_tac_rewrite(b,p,t))
     }
-  | SIMPL { make_pos $loc P_tac_simpl }
-  | SOLVE { make_pos $loc P_tac_solve }
-  | SYMMETRY { make_pos $loc P_tac_sym }
-  | WHY3 s=STRINGLIT? { make_pos $loc (P_tac_why3 s) }
+  | SIMPL { make_pos $sloc P_tac_simpl }
+  | SOLVE { make_pos $sloc P_tac_solve }
+  | SYMMETRY { make_pos $sloc P_tac_sym }
+  | WHY3 s=STRINGLIT? { make_pos $sloc (P_tac_why3 s) }
 
 // Modifiers of declarations.
 modifier:
-  | CONSTANT { make_pos $loc (P_prop Terms.Const) }
-  | INJECTIVE { make_pos $loc (P_prop Terms.Injec) }
-  | OPAQUE { make_pos $loc P_opaq }
-  | PRIVATE { make_pos $loc (P_expo Terms.Privat) }
-  | PROTECTED { make_pos $loc (P_expo Terms.Protec) }
-  | SEQUENTIAL { make_pos $loc (P_mstrat Terms.Sequen) }
+  | CONSTANT { make_pos $sloc (P_prop Terms.Const) }
+  | INJECTIVE { make_pos $sloc (P_prop Terms.Injec) }
+  | OPAQUE { make_pos $sloc P_opaq }
+  | PRIVATE { make_pos $sloc (P_expo Terms.Privat) }
+  | PROTECTED { make_pos $sloc (P_expo Terms.Protec) }
+  | SEQUENTIAL { make_pos $sloc (P_mstrat Terms.Sequen) }
 
 // Converts floats and integers to floats
 float_or_int:
@@ -254,7 +254,7 @@ query:
         if ps = [] then a else
         make_pos ($startpos(ps), $endpos(a)) (P_Prod(ps, a))
       in
-      make_pos $loc (P_query_assert(k, P_assert_typing(t, a)))
+      make_pos $sloc (P_query_assert(k, P_assert_typing(t, a)))
     }
   | k=assert_kw ps=arg_list* TURNSTILE t=term EQUIV a=term
     {
@@ -266,25 +266,25 @@ query:
         if ps = [] then a else
         make_pos ($startpos(ps), $endpos(a)) (P_Abst(ps, a))
       in
-      make_pos $loc (P_query_assert(k, P_assert_conv(t, a)))
+      make_pos $sloc (P_query_assert(k, P_assert_conv(t, a)))
     }
   | COMPUTE t=term
-    { make_pos $loc (P_query_normalize(t, {strategy=SNF; steps=None})) }
-  | PRINT qid=qident? { make_pos $loc (P_query_print qid) }
-  | PROOFTERM { make_pos $loc P_query_proofterm }
+    { make_pos $sloc (P_query_normalize(t, {strategy=SNF; steps=None})) }
+  | PRINT qid=qident? { make_pos $sloc (P_query_print qid) }
+  | PROOFTERM { make_pos $sloc P_query_proofterm }
   | SET DEBUG fl=DEBUG_FLAGS
-      { let (b, s) = fl in make_pos $loc (P_query_debug(b, s)) }
-  | SET FLAG s=STRINGLIT b=SWITCH { make_pos $loc (P_query_flag(s,b)) }
-  | SET PROVER s=STRINGLIT { make_pos $loc (P_query_prover(s)) }
-  | SET PROVER_TIMEOUT n=INT { make_pos $loc (P_query_prover_timeout(n)) }
-  | SET VERBOSE i=INT { make_pos $loc (P_query_verbose(i)) }
+      { let (b, s) = fl in make_pos $sloc (P_query_debug(b, s)) }
+  | SET FLAG s=STRINGLIT b=SWITCH { make_pos $sloc (P_query_flag(s,b)) }
+  | SET PROVER s=STRINGLIT { make_pos $sloc (P_query_prover(s)) }
+  | SET PROVER_TIMEOUT n=INT { make_pos $sloc (P_query_prover_timeout(n)) }
+  | SET VERBOSE i=INT { make_pos $sloc (P_query_verbose(i)) }
   | TYPE_QUERY t=term
-    { make_pos $loc (P_query_infer(t, {strategy=NONE; steps=None}))}
+    { make_pos $sloc (P_query_infer(t, {strategy=NONE; steps=None}))}
 
 proof_end:
-  | ABORT { make_pos $loc Syntax.P_proof_abort }
-  | ADMIT { make_pos $loc Syntax.P_proof_admit }
-  | END { make_pos $loc Syntax.P_proof_end }
+  | ABORT { make_pos $sloc Syntax.P_proof_abort }
+  | ADMIT { make_pos $sloc Syntax.P_proof_admit }
+  | END { make_pos $sloc Syntax.P_proof_end }
 
 proof: BEGIN ts=terminated(tactic, SEMICOLON)* pe=proof_end { ts, pe }
 
@@ -293,7 +293,7 @@ inductive:
     c=separated_list(VBAR, separated_pair(ident, COLON, term))
       {
         let c = List.map (fun (id, t) -> (fst id, t)) c in
-        make_pos $loc (fst i, t, c)
+        make_pos $sloc (fst i, t, c)
       }
 
 term_proof:
@@ -303,14 +303,14 @@ term_proof:
 
 // Top level commands
 command:
-  | REQUIRE OPEN p=QID+ SEMICOLON { make_pos $loc (P_require(true,p)) }
-  | REQUIRE p=QID+ SEMICOLON { make_pos $loc (P_require(false, p)) }
+  | REQUIRE OPEN p=QID+ SEMICOLON { make_pos $sloc (P_require(true,p)) }
+  | REQUIRE p=QID+ SEMICOLON { make_pos $sloc (P_require(false, p)) }
   | REQUIRE p=QID AS a=ident SEMICOLON
       {
         let alias = Pos.make (fst a).pos ((fst a).elt, snd a) in
-        make_pos $loc (P_require_as(p, alias))
+        make_pos $sloc (P_require_as(p, alias))
       }
-  | OPEN p=QID SEMICOLON { make_pos $loc (P_open([p])) }
+  | OPEN p=QID SEMICOLON { make_pos $sloc (P_open([p])) }
   | ms=modifier* SYMBOL s=ident al=arg_list* COLON a=term
     po=proof? SEMICOLON
       {
@@ -318,7 +318,7 @@ command:
           {p_sym_mod=ms; p_sym_nam=fst s; p_sym_arg=al; p_sym_typ=Some(a);
            p_sym_trm=None; p_sym_def=false; p_sym_prf=po}
         in
-        make_pos $loc (P_symbol(sym))
+        make_pos $sloc (P_symbol(sym))
       }
   | ms=modifier* SYMBOL s=ident al=arg_list* ao=preceded(COLON, term)?
     ASSIGN tp=term_proof SEMICOLON
@@ -327,15 +327,15 @@ command:
           {p_sym_mod=ms; p_sym_nam=fst s; p_sym_arg=al; p_sym_typ=ao;
            p_sym_trm=fst tp; p_sym_prf=snd tp; p_sym_def=true}
         in
-        make_pos $loc (P_symbol(sym))
+        make_pos $sloc (P_symbol(sym))
       }
   | ms=modifier* xs=arg_list* INDUCTIVE
     is=separated_nonempty_list(WITH, inductive) SEMICOLON
-      { make_pos $loc (P_inductive(ms,xs,is)) }
+      { make_pos $sloc (P_inductive(ms,xs,is)) }
   | RULE rs=separated_nonempty_list(WITH, rule) SEMICOLON
-      { make_pos $loc (P_rules(rs)) }
-  | SET c=config SEMICOLON { make_pos $loc (P_set(c)) }
-  | q=query SEMICOLON { make_pos $loc (P_query(q)) }
+      { make_pos $sloc (P_rules(rs)) }
+  | SET c=config SEMICOLON { make_pos $sloc (P_set(c)) }
+  | q=query SEMICOLON { make_pos $sloc (P_query(q)) }
   | EOF { raise End_of_file }
 
 // Environment of a metavariable or rewrite pattern
@@ -345,52 +345,52 @@ env: L_SQ_BRACKET ts=separated_list(SEMICOLON, term) R_SQ_BRACKET { ts }
 aterm:
   | ti=term_ident { ti }
   // The wildcard "_"
-  | WILD { make_pos $loc P_Wild }
+  | WILD { make_pos $sloc P_Wild }
   // The constant [TYPE] (of type Kind)
-  | TYPE_TERM { make_pos $loc P_Type }
+  | TYPE_TERM { make_pos $sloc P_Type }
   // Metavariable
   | m=ID_META e=env?
       {
         let mid = make_pos $loc(m) m in
-        make_pos $loc (P_Meta(mid, Option.map Array.of_list e))
+        make_pos $sloc (P_Meta(mid, Option.map Array.of_list e))
       }
   // Pattern of rewrite rules
-  | p=patt e=env? { make_pos $loc (P_Patt(p, Option.map Array.of_list e)) }
+  | p=patt e=env? { make_pos $sloc (P_Patt(p, Option.map Array.of_list e)) }
   // Parentheses
-  | L_PAREN t=term R_PAREN { make_pos $loc (P_Wrap(t)) }
+  | L_PAREN t=term R_PAREN { make_pos $sloc (P_Wrap(t)) }
   // Explicitly given argument
-  | L_CU_BRACKET t=term R_CU_BRACKET { make_pos $loc (P_Expl(t)) }
+  | L_CU_BRACKET t=term R_CU_BRACKET { make_pos $sloc (P_Expl(t)) }
   // Natural number
-  | n=INT { make_pos $loc (P_NLit(n)) }
+  | n=INT { make_pos $sloc (P_NLit(n)) }
 
 // Symbolic terms (as with S-expressions)
 sterm:
-  | t=sterm u=aterm { make_pos $loc (P_Appl(t,u)) }
+  | t=sterm u=aterm { make_pos $sloc (P_Appl(t,u)) }
   | t=aterm { t }
 
 term:
   | t=sterm { t }
-  | t=term ARROW u=term { make_pos $loc (P_Impl(t, u)) }
+  | t=term ARROW u=term { make_pos $sloc (P_Impl(t, u)) }
   // Quantifier
   | BACKQUOTE q=term_ident b=binder
       {
         let bder = Pos.make b.pos (P_Abst(fst b.elt, snd b.elt)) in
-        make_pos $loc (P_Appl(q, bder))
+        make_pos $sloc (P_Appl(q, bder))
       }
-  | PI b=binder { make_pos $loc (P_Prod(fst b.elt, snd b.elt)) }
-  | LAMBDA b=binder { make_pos $loc (P_Abst(fst b.elt, snd b.elt)) }
+  | PI b=binder { make_pos $sloc (P_Prod(fst b.elt, snd b.elt)) }
+  | LAMBDA b=binder { make_pos $sloc (P_Abst(fst b.elt, snd b.elt)) }
   | LET x=ident a=arg_list* b=preceded(COLON, term)? ASSIGN t=term IN u=term
-      { make_pos $loc (P_LLet(fst x, a, b, t, u)) }
+      { make_pos $sloc (P_LLet(fst x, a, b, t, u)) }
 
 /* REVIEW: allow pattern of the form \x y z: N, t */
 binder:
   | xs=arg_list+ COMMA t=term
-      { make_pos $loc (xs, t) }
+      { make_pos $sloc (xs, t) }
   | x=argid COLON a=term COMMA t=term
-      { make_pos $loc ([[x], Some a, false], t) }
+      { make_pos $sloc ([[x], Some a, false], t) }
 
 // A rewrite rule [lhs ↪ rhs]
-rule: l=term HOOK_ARROW r=term { make_pos $loc (l, r) }
+rule: l=term HOOK_ARROW r=term { make_pos $sloc (l, r) }
 
 equation: l=term EQUIV r=term { (l, r) }
 
@@ -406,7 +406,7 @@ L_SQ_BRACKET rs=separated_nonempty_list(SEMICOLON, equation) R_SQ_BRACKET
       let (r, rs) = List.(hd rs, tl rs) in
       let cat eqlst eq = p_appl (p_appl cons eq) eqlst in
       let rhs = List.fold_left cat r rs in
-      make_pos $loc (lhs, rhs)
+      make_pos $sloc (lhs, rhs)
     }
 
 %%
