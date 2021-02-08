@@ -291,16 +291,17 @@ proof: BEGIN ts=terminated(tactic, SEMICOLON)* pe=proof_end { ts, pe }
 
 constructor:
   | i=ident xs=arg_list* COLON t=term
-    { let t =
-        if xs = [] then t else
-        make_pos ($startpos(xs), $endpos(t)) (P_Prod(xs,t))
+    { let t = if xs = [] then t else
+                make_pos ($startpos(xs), $endpos(t)) (P_Prod(xs,t))
       in (i,t) }
 
 inductive:
-  | i=ident COLON t=term ASSIGN VBAR? l=separated_list(VBAR, constructor)
-      {
-        let l = List.map (fun (i,t) -> (fst i,t)) l in
-        make_pos $sloc (fst i, t, l)
+  | i=ident xs=arg_list* COLON t=term ASSIGN
+    VBAR? l=separated_list(VBAR, constructor)
+    { let t = if xs = [] then t else
+                make_pos ($startpos(xs), $endpos(t)) (P_Prod(xs,t)) in
+      let l = List.map (fun (i,t) -> (fst i,t)) l in
+      make_pos $sloc (fst i, t, l)
       }
 
 term_proof:

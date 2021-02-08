@@ -499,7 +499,7 @@ assert pS pinl pinr g d xd
 
 //////////////////// Vectors of natural numbers
 
-inductive V : N → TYPE ≔
+inductive V (n:N) : TYPE ≔
  | nil_vec : V z
  | cons_vec n : N → V n → V (succ n);
 
