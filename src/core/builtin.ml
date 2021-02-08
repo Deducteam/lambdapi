@@ -4,7 +4,8 @@ open Lplib.Base
 open Lplib.Extra
 
 open Timed
-open Terms
+open Common
+open Term
 open Console
 open Pos
 open Sig_state

@@ -1,0 +1,5 @@
+(library
+ (name common)
+ (public_name lambdapi.common)
+ (modules :standard)
+ (libraries timed lplib))

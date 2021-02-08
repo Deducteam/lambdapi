@@ -8,7 +8,8 @@ open Lplib.Base
 open Lplib.Extra
 
 open Timed
-open Terms
+open Core
+open Term
 
 (** [print_sym oc s] outputs the fully qualified name of [s] to [oc]. The name
     is prefixed by ["c_"], and modules are separated with ["_"], not ["."]. *)
@@ -61,7 +62,7 @@ let print_rule : Format.formatter -> term -> term -> unit =
         Stdlib.(names := StrSet.add (Bindlib.name_of x) !names)
       | _           -> ()
     in
-    Basics.iter fn t;
+    LibTerm.iter fn t;
     Stdlib.(!names)
   in
   let names = add_var_names StrSet.empty lhs in
@@ -79,8 +80,8 @@ let print_rule : Format.formatter -> term -> term -> unit =
 (** [print_sym_rule oc s r] outputs the rule declaration corresponding [r] (on
    the symbol [s]), to the output channel [oc]. *)
 let print_sym_rule : Format.formatter -> sym -> rule -> unit = fun oc s r ->
-  let lhs = Basics.add_args (Symb s) r.lhs in
-  let rhs = Basics.term_of_rhs r in
+  let lhs = LibTerm.add_args (Symb s) r.lhs in
+  let rhs = LibTerm.term_of_rhs r in
   print_rule oc lhs rhs
 
 (** [to_HRS oc sign] outputs a TPDB representation of the rewriting system of

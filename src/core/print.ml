@@ -1,7 +1,7 @@
 (** Pretty-printing for the core AST.
 
     The functions of this module are used for printing terms and other objects
-    defined in the {!module:Terms} module.  This is mainly used for displaying
+    defined in the {!module:Term} module.  This is mainly used for displaying
     log messages, and feedback in case of success or error while type-checking
     terms or testing convertibility. *)
 
@@ -10,8 +10,9 @@ open Lplib.Base
 open Lplib.Extra
 
 open Timed
-open Terms
+open Common
 open Console
+open Term
 open Sig_state
 
 (** Logging function for printing. *)
@@ -33,23 +34,6 @@ let print_meta_type : bool ref = Console.register_flag "print_meta_type" false
 (** Flag controlling the printing of the context in unification. *)
 let print_contexts : bool ref = Console.register_flag "print_contexts" false
 
-let pp_prop : prop pp = fun oc p ->
-  match p with
-  | Defin -> ()
-  | Const -> Format.fprintf oc "constant "
-  | Injec -> Format.fprintf oc "injective "
-
-let pp_expo : expo pp = fun oc e ->
-  match e with
-  | Public -> ()
-  | Protec -> Format.fprintf oc "protected "
-  | Privat -> Format.fprintf oc "private "
-
-let pp_match_strat : match_strat pp = fun oc s ->
-  match s with
-  | Sequen -> Format.fprintf oc "sequential "
-  | Eager -> ()
-
 (** [assoc oc a] prints associativity [a] to channel [oc]. *)
 let pp_assoc : Pratter.associativity pp = fun oc assoc ->
   match assoc with
@@ -69,8 +53,8 @@ let notation : Sign.notation pp = fun oc notation ->
 
 (** [qualified s] prints symbol [s] fully qualified to channel [oc]. *)
 let pp_qualified : sym pp = fun oc s ->
-  match Files.PathMap.find_opt s.sym_path (!sig_state).path_map with
-  | None -> Format.fprintf oc "%a.%s" Files.Path.pp s.sym_path s.sym_name
+  match Module.PathMap.find_opt s.sym_path (!sig_state).path_map with
+  | None -> Format.fprintf oc "%a.%s" Module.Path.pp s.sym_path s.sym_name
   | Some alias -> Format.fprintf oc "%s.%s" alias s.sym_name
 
 (** [notatin_of sym] returns the notation properties symbol [sym] or
@@ -81,7 +65,7 @@ let notation_of : sym -> Sign.notation option = fun s ->
 (** [pp_symbol oc s] prints the name of the symbol [s] to channel [oc]. *)
 let pp_symbol : sym pp = fun oc s ->
   if SymMap.mem s !sig_state.notations
-     || Files.Path.compare s.sym_path !sig_state.signature.sign_path = 0
+     || Module.Path.compare s.sym_path !sig_state.signature.sign_path = 0
   then Format.pp_print_string oc s.sym_name
   else pp_qualified oc s
 
@@ -102,7 +86,7 @@ let nat_of_term : term -> int = fun t ->
   let zero = get_builtin "0" in
   let succ = get_builtin "+1" in
   let rec nat acc = fun t ->
-    match Basics.get_args t with
+    match LibTerm.get_args t with
     | (Symb s, [u]) when s == succ -> nat (acc+1) u
     | (Symb s,  []) when s == zero -> acc
     | _ -> raise Not_a_nat
@@ -130,7 +114,7 @@ and pp_term : term pp = fun oc t ->
      abstraction or product), [`Appl] (application) and [`Atom] (smallest
      priority). *)
   let rec pp (p : [`Func | `Appl | `Atom]) oc t =
-    let (h, args) = Basics.get_args t in
+    let (h, args) = LibTerm.get_args t in
     let pp_appl h args =
       match args with
       | []   -> pp_head (p <> `Func) oc h
@@ -144,7 +128,7 @@ and pp_term : term pp = fun oc t ->
     | Symb(s) ->
         begin
           let eargs =
-            if !print_implicits then args else Basics.expl_args s args
+            if !print_implicits then args else LibTerm.expl_args s args
           in
           match notation_of s with
           | Some Quant when are_quant_args s args ->
@@ -254,7 +238,7 @@ and pp_term : term pp = fun oc t ->
 (** [pp_rule oc (s,h,r)] prints the rule [r] of symbol [s] to the output
    channel [oc]. *)
 let pp_rule : (sym * rule) pp = fun oc (s,r) ->
-  let lhs = Basics.add_args (Symb s) r.lhs in
+  let lhs = LibTerm.add_args (Symb s) r.lhs in
   let (_, rhs) = Bindlib.unmbind r.rhs in
   Format.fprintf oc "%a ↪ %a" pp_term lhs pp_term rhs
 

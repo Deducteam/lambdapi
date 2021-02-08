@@ -4,6 +4,8 @@
     The interface for the Pratter library can be seen at
     @see <https://forge.tedomum.net/koizel/pratter> *)
 
+open Common
+open Parsing
 open Syntax
 
 module Pratt : sig
@@ -37,7 +39,7 @@ end = struct
               Some(Sig_state.find_sym ~prt:true ~prv:true true tbl id)
           in
           let f sym =
-            match Terms.SymMap.find_opt sym tbl.notations with
+            match Term.SymMap.find_opt sym tbl.notations with
             | Some(Infix(_, assoc, prio, _)) -> Some(Pratter.Bin assoc, prio)
             | Some(Prefix(_, prio, _)) -> Some(Pratter.Una, prio)
             | _ -> None

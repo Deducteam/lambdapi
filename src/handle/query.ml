@@ -1,9 +1,12 @@
-(** Queries (available in tactics and at the toplevel). *)
+(** Query (available in tactics and at the toplevel). *)
 
+open Common
 open Console
 open Pos
+open Parsing
 open Syntax
-open Terms
+open Core
+open Term
 open Print
 open Proof
 open! Lplib
@@ -12,7 +15,7 @@ open! Lplib
 type result = string option
 
 (** [handle_query ss ps q] *)
-let handle_query : Sig_state.t -> proof_state option -> p_query -> result =
+let handle : Sig_state.t -> proof_state option -> p_query -> result =
   fun ss ps q ->
   match q.elt with
   | P_query_assert(must_fail, asrt) ->
@@ -106,8 +109,8 @@ let handle_query : Sig_state.t -> proof_state option -> p_query -> result =
   | P_query_print(Some qid) ->
       let sym = Sig_state.find_sym ~prt:true ~prv:true false ss qid in
       let open Timed in
-      out 1 "(prnt) %a%a%asymbol %a: %a" pp_expo sym.sym_expo
-        pp_prop sym.sym_prop pp_match_strat !(sym.sym_mstrat)
+      out 1 "(prnt) %a%a%asymbol %a: %a" Tags.pp_expo sym.sym_expo
+        Tags.pp_prop sym.sym_prop Tags.pp_match_strat !(sym.sym_mstrat)
         pp_symbol sym pp_term !(sym.sym_type);
       Option.iter (fun h -> out 1 " [%a]" notation h) (notation_of sym);
       (match !(sym.sym_def) with

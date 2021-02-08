@@ -3,8 +3,8 @@
 open! Lplib
 
 open Cmdliner
-open Core
-open Files
+open Common
+open Module
 open Console
 
 (** {3 Configuration type for common values} *)
@@ -42,22 +42,22 @@ let default_config =
     to be done prior to any other (non-trivial) task. *)
 let init : config -> unit = fun cfg ->
   (* Set all the flags and configs. *)
-  Compile.gen_obj := cfg.gen_obj;
-  Files.set_lib_root cfg.lib_root;
-  List.iter (fun (m,d) -> Files.new_lib_mapping (m ^ ":" ^ d)) cfg.map_dir;
+  Handle.Compile.gen_obj := cfg.gen_obj;
+  Module.set_lib_root cfg.lib_root;
+  List.iter (fun (m,d) -> Module.new_lib_mapping (m ^ ":" ^ d)) cfg.map_dir;
   Option.iter set_default_verbose cfg.verbose;
   no_wrn := cfg.no_warnings;
   set_default_debug cfg.debug;
   Console.color := not cfg.no_colors;
-  Handle.too_long := cfg.too_long;
+  Handle.Command.too_long := cfg.too_long;
   (* Log some configuration data. *)
   if Timed.(!log_enabled) then
     begin
-      Files.log_file "running directory: [%s]" (Files.current_path ());
-      Files.log_file "library root path: [%s]"
+      Module.log_file "running directory: [%s]" (Module.current_path ());
+      Module.log_file "library root path: [%s]"
         (match !lib_root with None -> assert false | Some(p) -> p);
-      let fn = Files.log_file "mapping: [%a] → [%s]" Files.Path.pp in
-      Files.ModMap.iter fn (Files.current_mappings ())
+      let fn = Module.log_file "mapping: [%a] → [%s]" Module.Path.pp in
+      Module.ModMap.iter fn (Module.current_mappings ())
     end;
   (* Initialise the [Pure] interface (this must come last). *)
   Pure.set_initial_time ()

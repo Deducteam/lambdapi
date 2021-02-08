@@ -4,12 +4,16 @@ open! Lplib
 open Lplib.Extra
 
 open Timed
+open Common
 open Console
-open Terms
+open Core
+open Term
 open Sign
 open Pos
-open Files
+open Module
+open Parsing
 open Syntax
+open Tags
 open Sig_state
 open Scope
 open Print
@@ -133,7 +137,7 @@ let handle_rule : sig_state -> p_rule -> sym = fun ss r ->
   if !(sym.sym_def) <> None then
     fatal pr.pos "Rewriting rules cannot be given for defined symbol [%s]."
       sym.sym_name;
-  let rule = Sr.check_rule pr in
+  let rule = Tool.Sr.check_rule pr in
   Sign.add_rule ss.signature sym rule;
   out 3 (red "(rule) add %a\n") pp_rule (sym, rule);
   sym
@@ -165,7 +169,7 @@ let handle_inductive_symbol :
   (* We check that [a] is typable by a sort. *)
   Infer.check_sort Unif.solve_noexn pos [] typ;
   (* We check that no metavariable remains. *)
-  if Basics.has_metas true typ then
+  if LibTerm.has_metas true typ then
     (fatal_msg "The type of [%s] has unsolved metavariables.\n" name;
      fatal pos "We have %s : %a." name pp_term typ);
   (* Actually add the symbol to the signature and the state. *)
@@ -183,10 +187,10 @@ type proof_data =
   ; pdata_tactics  : p_tactic list (** Tactics. *)
   ; pdata_finalize : sig_state -> proof_state -> sig_state (** Finalizer. *)
   ; pdata_end_pos  : Pos.popt (** Position of the proof's terminator. *)
-  ; pdata_expo     : Terms.expo (** Allowed exposition of symbols in the proof
+  ; pdata_expo     : expo (** Allowed exposition of symbols in the proof
                                    script. *) }
 
-(** [handle_cmd compile ss cmd] tries to handle the command [cmd] with [ss] as
+(** [handle compile ss cmd] tries to handle the command [cmd] with [ss] as
     the signature state and [compile] as the main compilation function
     processing lambdapi modules (it is passed as argument to avoid cyclic
     dependencies). On success, an updated signature state is returned.  When
@@ -194,15 +198,15 @@ type proof_data =
     This structure contains the list of the tactics to be executed, as well as
     the initial state of the proof.  The checking of the proof is then handled
     separately. Note that [Fatal] is raised in case of an error. *)
-let handle_cmd : (Path.t -> Sign.t) -> sig_state -> p_command ->
-                 sig_state * proof_data option * Queries.result =
-  fun compile ss ({elt;pos} as cmd) ->
+let handle : (Path.t -> Sign.t) -> sig_state -> p_command ->
+  sig_state * proof_data option * Query.result =
+fun compile ss ({elt; pos} as cmd) ->
   if !log_enabled then
     log_hndl (blu "[%a] %a") Pos.print pos Pretty.command cmd;
   let scope_basic exp pt = Scope.scope_term exp ss Env.empty pt in
   match elt with
   | P_query(q) ->
-      let res = Queries.handle_query ss None q in (ss, None, res)
+      let res = Query.handle ss None q in (ss, None, res)
   | P_require(b,ps) ->
       let ps = List.map (List.map fst) ps in
       (List.fold_left (handle_require compile b pos) ss ps, None, None)
@@ -353,7 +357,7 @@ let handle_cmd : (Path.t -> Sign.t) -> sig_state -> p_command ->
       let ao, metas_a =
         match ao with
         | Some a ->
-            let a = scope_basic expo a in Some a, Basics.get_metas true a
+            let a = scope_basic expo a in Some a, LibTerm.get_metas true a
         | None -> None, MetaSet.empty
       in
       (* Get the type of the symbol and the goals to solve for the declaration
@@ -381,11 +385,11 @@ let handle_cmd : (Path.t -> Sign.t) -> sig_state -> p_command ->
             wrn pe.pos "Proof aborted."; ss
         | _ ->
             (* Check that no metavariable remains. *)
-            if Basics.has_metas true a then
+            if LibTerm.has_metas true a then
               (fatal_msg "The type of [%s] has unsolved metavariables.\n" id;
                fatal pe.pos "We have %s : %a." id pp_term a);
             (match t with
-             | Some(t) when Basics.has_metas true t ->
+             | Some(t) when LibTerm.has_metas true t ->
                  fatal_msg
                    "The definition of [%s] has unsolved metavariables.\n" id;
                  fatal pe.pos "We have %s : %a ≔ %a." id pp_term a pp_term t
@@ -412,7 +416,7 @@ let handle_cmd : (Path.t -> Sign.t) -> sig_state -> p_command ->
       (* Create proof state. *)
       let ps = {proof_name = p_sym_nam; proof_term; proof_goals} in
       (* Apply tac_solve. *)
-      let ps = Tactics.tac_solve pos ps in
+      let ps = Tactic.tac_solve pos ps in
       (* Add proof_term as focused goal. *)
       let ps =
         match proof_term with
@@ -428,7 +432,7 @@ let handle_cmd : (Path.t -> Sign.t) -> sig_state -> p_command ->
             | None -> assert false
             | Some _ ->
                 let t = Scope.scope_term pdata_expo ss [] pt in
-                Tactics.tac_refine pt.pos ps t
+                Tactic.tac_refine pt.pos ps t
       in
       if p_sym_prf = None && not (finished ps) then wrn pos
         "Some metavariables could not be solved: a proof must be given";
@@ -493,16 +497,16 @@ let handle_cmd : (Path.t -> Sign.t) -> sig_state -> p_command ->
     indicate commands that take too long to execute. *)
 let too_long = Stdlib.ref infinity
 
-(** [handle_cmd compile ss cmd] adds to the previous [handle_cmd] some
+(** [command compile ss cmd] adds to the previous [command] some
     exception handling. In particular, the position of [cmd] is used on errors
     that lack a specific position. All exceptions except [Timeout] and [Fatal]
     are captured, although they should not occur. *)
-let handle_cmd : (Path.t -> Sign.t) -> sig_state -> p_command ->
-  sig_state * proof_data option * Queries.result =
+let handle : (Path.t -> Sign.t) -> sig_state -> p_command ->
+  sig_state * proof_data option * Query.result =
  fun compile ss ({pos;_} as cmd) ->
   Print.sig_state := ss;
   try
-    let (tm, ss) = time (handle_cmd compile ss) cmd in
+    let (tm, ss) = time (handle compile ss) cmd in
     if Stdlib.(tm >= !too_long) then
       wrn pos "It took %.2f seconds to handle the command." tm;
     ss

@@ -1,6 +1,6 @@
 open Cmdliner
-open Core
-open Files
+open Common
+open Module
 open Console
 
 let run_command : bool -> string -> unit = fun dry_run cmd ->
@@ -37,7 +37,7 @@ let run_install : Cliconf.t -> bool -> string list -> unit =
           begin
             (* Source or object file, find out expected destination. *)
             Package.apply_config file;
-            Files.install_path file
+            Module.install_path file
           end
       in
       (* Create directories as needed for [dest]. *)

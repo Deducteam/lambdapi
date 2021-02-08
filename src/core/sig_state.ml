@@ -11,12 +11,14 @@
 
 open Lplib.Extra
 
-open Timed
+open Common
 open Console
-open Files
 open Pos
+open Timed
+open Module
+open Parsing
 open Syntax
-open Terms
+open Term
 open Sign
 
 (** State of the signature, including aliasing and accessible symbols. *)
@@ -38,20 +40,20 @@ let create_sign : Path.t -> Sign.t = fun sign_path ->
 
 (** Symbol properties needed for the signature *)
 type sym_data =
-  { expo   : expo        (** exposition          *)
-  ; prop   : prop        (** property            *)
-  ; mstrat : match_strat (** strategy            *)
-  ; ident  : ident       (** name                *)
-  ; typ    : term        (** type                *)
-  ; impl   : bool list   (** implicit arguments  *)
+  { expo   : Tags.expo (** exposition *)
+  ; prop   : Tags.prop (** property *)
+  ; mstrat : Tags.match_strat (** strategy *)
+  ; ident  : ident (** name *)
+  ; typ    : term (** type *)
+  ; impl   : bool list (** implicit arguments *)
   ; def    : term option (** optional definition *) }
 
 (** [add_symbol ss sym_data={e,p,st,x,a,impl,def}] generates a new signature
    state from [ss] by creating a new symbol with expo [e], property [p],
    strategy [st], name [x], type [a], implicit arguments [impl] and optional
    definition [t]. This new symbol is returned too. *)
-let add_symbol : sig_state -> expo -> prop -> match_strat -> bool -> ident
-                 -> term -> bool list -> term option -> sig_state * sym =
+let add_symbol : sig_state -> Tags.expo -> Tags.prop -> Tags.match_strat
+    -> bool -> ident -> term -> bool list -> term option -> sig_state * sym =
   fun ss expo prop mstrat opaq id typ impl def ->
   let s = Sign.add_symbol ss.signature expo prop mstrat opaq id typ impl in
   begin
@@ -158,9 +160,9 @@ let of_sign : Sign.t -> sig_state = fun signature ->
     The boolean [b] only indicates if the error message should mention
     variables, in the case where the module path is empty and the symbol is
     unbound. This is reported using the [Fatal] exception.
-    {!constructor:Terms.expo.Protec} symbols from other modules
+    {!constructor:Term.expo.Protec} symbols from other modules
     are allowed in left-hand side of rewrite rules (only) iff [~prt] is true.
-    {!constructor:Terms.expo.Privat} symbols are allowed iff [~prv]
+    {!constructor:Term.expo.Privat} symbols are allowed iff [~prv]
     is [true]. *)
 let find_sym : prt:bool -> prv:bool -> bool -> sig_state -> qident -> sym =
   fun ~prt ~prv b st qid ->

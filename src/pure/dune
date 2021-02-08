@@ -2,4 +2,4 @@
  (name pure)
  (public_name lambdapi.pure)
  (modules :standard)
- (libraries stdlib-shims core lplib))
+ (libraries handle core))

@@ -2,7 +2,10 @@
 
 open Lplib
 open Core
-open Files
+open Common
+open Parsing
+open Module
+open Handle
 
 (** Abstract representation of a command (top-level item). *)
 module Command : sig
@@ -49,7 +52,7 @@ val current_goals : proof_state -> goal list
 
 (** Result type of the [handle_command] function. *)
 type command_result =
-  | Cmd_OK    of state * Queries.result
+  | Cmd_OK    of state * Query.result
   (** Command is done. *)
   | Cmd_Proof of proof_state * Tactic.t list * Pos.popt * Pos.popt
   (** Enter proof mode (positions are for statement and qed). *)
@@ -58,7 +61,7 @@ type command_result =
 
 (** Result type of the [handle_tactic] function. *)
 type tactic_result =
-  | Tac_OK    of proof_state * Queries.result
+  | Tac_OK    of proof_state * Query.result
   | Tac_Error of Pos.popt option * string
 
 (** [initial_state fname] gives an initial state for working with the (source)
@@ -84,7 +87,7 @@ val end_proof : proof_state -> command_result
 
 (** [get_symbols st] returns all the symbols defined in the signature at state
     [st]. This can be used for displaying the type of symbols. *)
-val get_symbols : state -> (Terms.sym * Pos.popt) Extra.StrMap.t
+val get_symbols : state -> (Term.sym * Pos.popt) Extra.StrMap.t
 
 (** [set_initial_time ()] records the current imperative state as the rollback
     "time" for the [initial_state] function. This is only useful to initialise

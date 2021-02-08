@@ -7,8 +7,10 @@
 open Lplib.Base
 open Lplib.Extra
 
-open Timed
+open Common
 open Console
+open Timed
+open Core
 
 (** Logging function for external checkers. *)
 let log_xtrn = new_logger 'x' "xtrn" "external tools"

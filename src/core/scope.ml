@@ -3,13 +3,14 @@
 open! Lplib
 open Lplib.Extra
 
+open Common
 open Console
 open Pos
+open Parsing
 open Syntax
-open Terms
+open Term
 open Env
 open Sig_state
-open Rewrite
 
 (** Logging function for term scoping. *)
 let log_scop = new_logger 'o' "scop" "term scoping"
@@ -21,10 +22,10 @@ let log_scop = log_scop.logger
     first search for the name [snd qid.elt] in the environment, and if it is
     not mapped we also search in the opened modules. The exception [Fatal] is
     raised if an error occurs (e.g., when the name cannot be found). If [prt]
-    is true, {!constructor:Terms.expo.Protec} symbols from
+    is true, {!constructor:Term.expo.Protec} symbols from
     foreign modules are allowed (protected symbols from current modules are
     always allowed). If [prv] is true,
-    {!constructor:Terms.expo.Privat} symbols are allowed. *)
+    {!constructor:Term.expo.Privat} symbols are allowed. *)
 let find_qid : bool -> bool -> sig_state -> env -> qident -> tbox =
   fun prt prv st env qid ->
   let (mp, s) = qid.elt in
@@ -52,7 +53,7 @@ let get_root : p_term -> sig_state -> Env.t -> sym = fun t ss env ->
 (** Representation of the different scoping modes.  Note that the constructors
     hold specific information for the given mode. *)
 type mode =
-  | M_Term of meta StrMap.t Stdlib.ref * expo
+  | M_Term of meta StrMap.t Stdlib.ref * Tags.expo
   (** Standard scoping mode for terms, holding a map of metavariables that can
       be updated with new metavariables on scoping and the exposition of the
       scoped term. *)
@@ -60,7 +61,7 @@ type mode =
   (** Scoping mode for patterns in the rewrite tactic. *)
   | M_LHS  of
       { m_lhs_prv              : bool
-      (** True if {!constructor:Terms.expo.Privat} symbols are allowed. *)
+      (** True if {!constructor:Term.expo.Privat} symbols are allowed. *)
       ; m_lhs_indices          : (string, int   ) Hashtbl.t
       (** Stores index reserved for a pattern variable of the given name. *)
       ; m_lhs_arities          : (int   , int   ) Hashtbl.t
@@ -74,7 +75,7 @@ type mode =
   (** Scoping mode for rewriting rule left-hand sides. *)
   | M_RHS  of
       { m_rhs_prv             : bool
-      (** True if {!constructor:Terms.expo.Privat} symbols are allowed. *)
+      (** True if {!constructor:Term.expo.Privat} symbols are allowed. *)
       ; m_rhs_data            : (string, tevar) Hashtbl.t
       (** Environment for variables that we know to be bound in the RHS. *) }
   (** Scoping mode for rewriting rule right-hand sides. *)
@@ -448,7 +449,7 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
     state [ss] is used to handle module aliasing according to [find_qid]. If
     [?exp] is {!constructor:Public}, then the term mustn't contain any private
     subterms. *)
-let scope_term : expo -> sig_state -> env -> p_term -> term =
+let scope_term : Tags.expo -> sig_state -> env -> p_term -> term =
   fun expo ss env t ->
   let m = Stdlib.ref StrMap.empty in
   Bindlib.unbox (scope (M_Term(m, expo)) ss env t)
@@ -560,7 +561,7 @@ let scope_rule : bool -> sig_state -> p_rule -> pre_rule loc = fun ur ss r ->
   in
   (* Check the head symbol and build the actual LHS. *)
   let (sym, pr_lhs) =
-    let (h, args) = Basics.get_args pr_lhs in
+    let (h, args) = LibTerm.get_args pr_lhs in
     match h with
     | Symb(s) ->
         if is_constant s then

@@ -1,4 +1,4 @@
 (tests
  (names utils ok_ko)
  (deps (glob_files OK/*.lp) (glob_files KO/*.lp) lambdapi.pkg)
- (libraries lambdapi.core alcotest))
+ (libraries lambdapi.core lambdapi.handle lambdapi.tool alcotest))

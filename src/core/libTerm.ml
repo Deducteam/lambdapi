@@ -1,7 +1,7 @@
 (** Basic operations on terms. *)
 
 open Timed
-open Terms
+open Term
 
 (** [fresh_vars n] creates an array of [n] fresh variables. The names of these
     variables is ["_var_i"], where [i] is a number introduced by the [Bindlib]

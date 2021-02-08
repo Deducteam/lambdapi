@@ -3,6 +3,7 @@
     provided. *)
 open Lplib
 open Sedlexing
+open Common
 open Pos
 
 type token =

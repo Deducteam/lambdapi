@@ -4,9 +4,10 @@ open! Lplib
 open Lplib.Extra
 
 open Timed
+open Common
 open Console
-open Terms
-open Basics
+open Term
+open LibTerm
 open Env
 open Print
 
@@ -177,8 +178,8 @@ and solve_aux : ctxt -> term -> term -> problem -> constr list =
   let initial = (ctx,t1,t2)::p.to_solve in
   let t1 = Eval.whnf ctx t1 in
   let t2 = Eval.whnf ctx t2 in
-  let (h1, ts1) = Basics.get_args t1 in
-  let (h2, ts2) = Basics.get_args t2 in
+  let (h1, ts1) = LibTerm.get_args t1 in
+  let (h2, ts2) = LibTerm.get_args t2 in
   if !log_enabled then log_unif "solve %a" pp_constr (ctx, t1, t2);
 
   let add_to_unsolved () =
@@ -315,7 +316,7 @@ and solve_aux : ctxt -> term -> term -> problem -> constr list =
       match rule.lhs with
       | [l1] ->
           begin
-            match Basics.get_args l1 with
+            match LibTerm.get_args l1 with
             | Symb(s0), [_;_] ->
                 let n = Bindlib.mbinder_arity rule.rhs in
                 begin
@@ -353,7 +354,7 @@ and solve_aux : ctxt -> term -> term -> problem -> constr list =
   let rec inverse s v =
     if !log_enabled then
       log_unif "inverse [%a] [%a]" pp_symbol s pp_term v;
-    match Basics.get_args (Eval.whnf [] v) with
+    match LibTerm.get_args (Eval.whnf [] v) with
     | Symb(s'), [u] when s' == s -> u
     | Prod(a,b), _ -> find_inverse_prod a b (inverses_for_prod s)
     | _, _ -> raise Not_invertible

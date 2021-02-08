@@ -2,9 +2,10 @@
    Using Sedlex (and not Ocamllex) requires to use the "revised" API of
    Menhir which abstracts the Lexing buffer. *)
 %{
-    open Syntax
     open Lplib
+    open Common
     open Pos
+    open Syntax
 
     let make_pos : Lexing.position * Lexing.position -> 'a -> 'a loc =
       fun lps elt -> Pos.in_pos (locate lps) elt
@@ -211,12 +212,12 @@ tactic:
 
 // Modifiers of declarations.
 modifier:
-  | CONSTANT { make_pos $sloc (P_prop Terms.Const) }
-  | INJECTIVE { make_pos $sloc (P_prop Terms.Injec) }
+  | CONSTANT { make_pos $sloc (P_prop Tags.Const) }
+  | INJECTIVE { make_pos $sloc (P_prop Tags.Injec) }
   | OPAQUE { make_pos $sloc P_opaq }
-  | PRIVATE { make_pos $sloc (P_expo Terms.Privat) }
-  | PROTECTED { make_pos $sloc (P_expo Terms.Protec) }
-  | SEQUENTIAL { make_pos $sloc (P_mstrat Terms.Sequen) }
+  | PRIVATE { make_pos $sloc (P_expo Tags.Privat) }
+  | PROTECTED { make_pos $sloc (P_expo Tags.Protec) }
+  | SEQUENTIAL { make_pos $sloc (P_mstrat Tags.Sequen) }
 
 // Converts floats and integers to floats
 float_or_int:

@@ -3,16 +3,18 @@
 open Lplib
 open Lplib.Base
 
+open Common
+
 (** {3 Atomic pattern constructor representation} *)
 
 (** Representation of an atomic pattern constructor. *)
 module TC =
   struct
-    (** Atomic pattern constructor. Terms are identified by these constructors
+    (** Atomic pattern constructor. Term are identified by these constructors
         in the  trees. During  matching (in {!val:Eval.tree_walk}),  terms are
         transformed into these constructors to get the right sub-tree. *)
     type t =
-      | Symb of Files.Path.t * string * int
+      | Symb of Module.Path.t * string * int
       (** Symbol identified by a fully qualified name (module path and name)
           and its arity in the pattern. *)
       | Vari of int
@@ -24,7 +26,7 @@ module TC =
 
     (** {b NOTE} the effective arity carried by the representation of a symbol
         is specific to a given symbol instance. Indeed, a symbol (in the sense
-        of {!type:Terms.sym}) may lead to several constructors, with different
+        of {!type:Term.sym}) may lead to several constructors, with different
         effective arities. In the pattern “f g (g $x)” for example, symbol [g]
         is used with arity 0 (first occurence) and 1 (second occurence). *)
 
@@ -60,10 +62,10 @@ type tree_cond =
     in the array. *)
 
 (** Representation of a tree. The definition relies on parameters since module
-    {!module:Terms} depends on the current module, and that would thus produce
+    {!module:Term} depends on the current module, and that would thus produce
     a dependency cycle. However it should be understood that parameter [`rhs]
     will only be instantiated with
-    [(Terms.term_env, Terms.term) Bindlib.mbinder] (i.e., the representation
+    [(Term.term_env, Term.term) Bindlib.mbinder] (i.e., the representation
     of a RHS). *)
 type 'rhs tree =
   | Fail

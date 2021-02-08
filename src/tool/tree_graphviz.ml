@@ -11,7 +11,8 @@ open! Lplib
 open Lplib.Base
 
 open Timed
-open Terms
+open Core
+open Term
 open Tree_types
 
 (** Printing hint for conversion to graphviz. *)
