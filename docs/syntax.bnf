@@ -79,8 +79,10 @@
 
 <proof> ::= 'begin' (<tactic> ';')* <proof_end>
 
-<inductive> ::= <ident> ':' <term> '≔' ['|'] [<ident> ':' <term>
-                ('|' <ident> ':' <term>)*]
+<constructor> ::= <ident> <arg_list>* ':' <term>
+
+<inductive> ::= <ident> <arg_list>* ':' <term> '≔' ['|'] [<constructor>
+                ('|' <constructor>)*]
 
 <term_proof> ::= <term>
                | <proof>

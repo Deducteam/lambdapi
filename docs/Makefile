@@ -24,7 +24,7 @@ syntax.bnf:
 	echo "<qid> ::= [<id>'.']+<id>\n" > $@
 	echo "<switch> ::= 'on'\n           | 'off'\n" >> $@
 	echo "<assoc> ::= 'left'\n          | 'right'\n" >> $@
-	$(BNF_GEN) ../src/core/lpParser.mly | sed \
+	$(BNF_GEN) ../src/parsing/lpParser.mly | sed \
 	-e 's/SWITCH/<switch>/g' \
 	-e 's/ASSOC/<assoc>/g' \
 	-e 's/ABORT/"abort"/g' \
@@ -112,7 +112,7 @@ syntax.bnf:
 syntax_dedukti.bnf:
 	echo "<qid> ::= [<id>'.']+<id>\n" > $@
 	echo "<assert> ::= '#ASSERT'\n           | '#ASSERTNOT'\n" >> $@
-	$(BNF_GEN) ../src/core/dkParser.mly | sed \
+	$(BNF_GEN) ../src/parsing/dkParser.mly | sed \
 	-e 's/ASSERT/<assert>/g' \
 	-e 's/EVAL/"#EVAL"/g' \
 	-e 's/KW_DEF/"def"/g' \
