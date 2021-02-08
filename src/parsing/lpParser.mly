@@ -108,6 +108,7 @@
 %token <string> ID_PAT
 %token <(string * bool) list> QID
 %token <(string * bool) list> QID_EXPL
+//%token <(string * bool) list * bool> QID_QUANT
 
 // start symbols
 
@@ -145,8 +146,7 @@ qident:
   | i=ID { make_pos $sloc ([], fst i) }
 
 term_ident:
-  | p=QID_EXPL
-      { make_pos $sloc (P_Iden(qid_of_path $sloc p, true)) }
+  | p=QID_EXPL { make_pos $sloc (P_Iden(qid_of_path $sloc p, true)) }
   | qid=qident { make_pos $sloc (P_Iden(qid, false)) }
 
 // Rewrite pattern identifier
@@ -378,31 +378,32 @@ sterm:
 term:
   | t=sterm { t }
   | t=term ARROW u=term { make_pos $sloc (P_Impl(t, u)) }
-  // Quantifier
   | BACKQUOTE q=term_ident b=binder
-      {
-        let bder = Pos.make b.pos (P_Abst(fst b.elt, snd b.elt)) in
-        make_pos $sloc (P_Appl(q, bder))
-      }
-  | PI b=binder { make_pos $sloc (P_Prod(fst b.elt, snd b.elt)) }
-  | LAMBDA b=binder { make_pos $sloc (P_Abst(fst b.elt, snd b.elt)) }
+    {
+      let b = make_pos $loc(b) (P_Abst(fst b, snd b)) in
+      make_pos $sloc (P_Appl(q, b))
+    }
+//| i=QID_QUANT b=binder
+//  {
+//    let q = make_pos $loc(i) (P_Iden(qid_of_path $loc(i) (fst i), snd i)) in
+//    let b = make_pos $loc(b) (P_Abst(fst b, snd b)) in
+//    make_pos $sloc (P_Appl(q, b))
+//  }
+  | PI b=binder { make_pos $sloc (P_Prod(fst b, snd b)) }
+  | LAMBDA b=binder { make_pos $sloc (P_Abst(fst b, snd b)) }
   | LET x=ident a=arg_list* b=preceded(COLON, term)? ASSIGN t=term IN u=term
       { make_pos $sloc (P_LLet(fst x, a, b, t, u)) }
 
-/* REVIEW: allow pattern of the form \x y z: N, t */
 binder:
-  | xs=arg_list+ COMMA t=term
-      { make_pos $sloc (xs, t) }
-  | x=argid COLON a=term COMMA t=term
-      { make_pos $sloc ([[x], Some a, false], t) }
+  | xs=arg_list+ COMMA t=term { (xs, t) }
+  | x=argid COLON a=term COMMA t=term { ([[x], Some a, false], t) }
 
-// A rewrite rule [lhs ↪ rhs]
 rule: l=term HOOK_ARROW r=term { make_pos $sloc (l, r) }
 
 equation: l=term EQUIV r=term { (l, r) }
 
 unif_rule: l=equation HOOK_ARROW
-L_SQ_BRACKET rs=separated_nonempty_list(SEMICOLON, equation) R_SQ_BRACKET
+  L_SQ_BRACKET rs=separated_nonempty_list(SEMICOLON, equation) R_SQ_BRACKET
     {
       let equiv = Pos.none (P_Iden(Pos.none ([], "#equiv"), true)) in
       let p_appl t u = Pos.none (P_Appl(t, u)) in
