@@ -62,11 +62,7 @@ let read : file_path -> config_data = fun fname ->
   (* Building the configuration. *)
   let package_name = get "package_name" in
   let root_path = String.split_on_char '.' (get "root_path") in
-  try
-    Path.check_simple root_path;
-    {package_name; root_path}
-  with Fatal(_, msg) ->
-    fatal_no_pos "Ill-formed package file [%s].\n%s" fname msg
+  {package_name; root_path}
 
 (** [find_config fname] looks for a configuration file above [fname], which is
     typically a source file or an object file (it can also be a directory). If

@@ -27,24 +27,6 @@ module Path =
     let pp : mod_path pp = fun oc mp ->
       Format.pp_print_string oc (String.concat "." mp)
 
-    (** [check_simple mp] Checks that [mp] is a “simple” module path, that is,
-        that its members are of the form ["[a-zA-Z_][a-zA-Z0-9_]*"]. *)
-    let check_simple : t -> unit = fun mod_path ->
-      let fail fmt =
-        fatal_msg "The (simple) module path [%a] is ill-formed: " pp mod_path;
-        fatal_no_pos fmt
-      in
-      let valid_path_member s =
-        if String.length s = 0 then fail "empty module path member.";
-        for i = 0 to String.length s - 1 do
-          match String.get s i with
-          | 'a'..'z' | 'A'..'Z' | '_' -> ()
-          | '0'..'9' when i <> 0      -> ()
-          | _                         -> fail "invalid path member [%s]." s
-        done
-      in
-      List.iter valid_path_member mod_path
-
     (** [ghost s] creates a special module path for module of name [s]. Ghost
         modules cannot be handled by the user. *)
     let ghost : string -> t = fun s -> [""; s]
@@ -210,7 +192,6 @@ let new_lib_mapping : string -> unit = fun s ->
     | _         ->
     fatal_no_pos "Bad syntax for \"--map-dir\" option (expecting MOD:DIR)."
   in
-  Path.check_simple mod_path;
   let file_path =
     try Filename.realpath file_path
     with Invalid_argument(f) ->

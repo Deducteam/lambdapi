@@ -63,8 +63,6 @@ let write_ex_main : Path.t -> out_channel -> unit = fun root_path oc ->
 
 let run : Path.t -> unit = fun root_path ->
   let run _ =
-    (* Make sure that the module path is well-formed. *)
-    Path.check_simple root_path;
     (* Find out the package name, create the directory. *)
     let pkg_name =
       match List.rev root_path with
