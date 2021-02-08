@@ -289,12 +289,18 @@ proof_end:
 
 proof: BEGIN ts=terminated(tactic, SEMICOLON)* pe=proof_end { ts, pe }
 
+constructor:
+  | i=ident xs=arg_list* COLON t=term
+    { let t =
+        if xs = [] then t else
+        make_pos ($startpos(xs), $endpos(t)) (P_Prod(xs,t))
+      in (i,t) }
+
 inductive:
-  | i=ident COLON t=term ASSIGN VBAR?
-    c=separated_list(VBAR, separated_pair(ident, COLON, term))
+  | i=ident COLON t=term ASSIGN VBAR? l=separated_list(VBAR, constructor)
       {
-        let c = List.map (fun (id, t) -> (fst id, t)) c in
-        make_pos $sloc (fst i, t, c)
+        let l = List.map (fun (i,t) -> (fst i,t)) l in
+        make_pos $sloc (fst i, t, l)
       }
 
 term_proof:

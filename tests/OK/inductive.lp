@@ -500,8 +500,8 @@ assert pS pinl pinr g d xd
 //////////////////// Vectors of natural numbers
 
 inductive V : N → TYPE ≔
- | nil_vec   : V z
- | cons_vec  : Π n, N → V n → V (succ n);
+ | nil_vec : V z
+ | cons_vec n : N → V n → V (succ n);
 
 assert ⊢ V : N → TYPE;
 assert ⊢ nil_vec   : V z;
