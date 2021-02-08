@@ -3,12 +3,14 @@
 open! Lplib
 open Lplib.Extra
 
-open Timed
+open Common
 open Console
-open Files
-open Terms
-open Syntax
 open Pos
+open Timed
+open Module
+open Term
+open Parsing.Syntax
+open Tags
 
 (** Representation of an inductive type *)
 type inductive =
@@ -223,12 +225,12 @@ let unlink : t -> unit = fun sign ->
     [strat], type [a] and implicit arguments [impl] in the signature [sign].
     [name] should not already be used in [sign]. The created symbol is
     returned. *)
-let add_symbol : t -> expo -> prop -> match_strat -> strloc -> term ->
+let add_symbol : t -> expo -> Tags.prop -> match_strat -> strloc -> term ->
   bool list -> sym = fun sign sym_expo sym_prop sym_mstrat s a impl ->
   (* Check for metavariables in the symbol type. *)
-  if Basics.has_metas true a then
+  if LibTerm.has_metas true a then
     fatal s.pos "The type of [%s] contains metavariables" s.elt;
-  (* We minimize [impl] to enforce our invariant (see {!type:Terms.sym}). *)
+  (* We minimize [impl] to enforce our invariant (see {!type:Term.sym}). *)
   let rec rem_false l = match l with false::l -> rem_false l | _ -> l in
   let sym_impl = List.rev (rem_false (List.rev impl)) in
   (* Add the symbol. *)
@@ -242,11 +244,11 @@ let add_symbol : t -> expo -> prop -> match_strat -> strloc -> term ->
 
 (** [strip_private sign] removes private symbols from signature [sign]. *)
 let strip_private : t -> unit = fun sign ->
-  let not_prv sym = not (Terms.is_private sym) in
+  let not_prv sym = not (Term.is_private sym) in
   sign.sign_symbols :=
     StrMap.filter (fun _ s -> not_prv (fst s)) !(sign.sign_symbols);
   sign.sign_notations :=
-    Terms.SymMap.filter (fun s _ -> not_prv s) !(sign.sign_notations)
+    Term.SymMap.filter (fun s _ -> not_prv s) !(sign.sign_notations)
 
 (** [write sign file] writes the signature [sign] to the file [fname]. *)
 let write : t -> string -> unit = fun sign fname ->

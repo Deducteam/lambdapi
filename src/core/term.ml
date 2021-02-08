@@ -11,33 +11,6 @@ open Timed
 
 (** {3 Term (and symbol) representation} *)
 
-(** Symbol properties. *)
-type prop =
-  | Defin
-  (** The symbol is definable by rewriting rules. *)
-  | Const
-  (** The symbol cannot be defined. *)
-  | Injec
-  (** The symbol is definable but is assumed to be injective. *)
-
-(** Specify the visibility and usability of symbols outside their module. *)
-type expo =
-  | Public
-  (** Visible and usable everywhere. *)
-  | Protec
-  (** Visible everywhere but usable in LHS arguments only. *)
-  | Privat
-  (** Not visible and thus not usable. *)
-
-(** Pattern-matching strategy modifiers. *)
-type match_strat =
-  | Sequen
-  (** Rules are processed sequentially: a rule can be applied only if the
-      previous ones (in the order of declaration) cannot be. *)
-  | Eager
-  (** Any rule that filters a term can be applied (even if a rule defined
-      earlier filters the term as well). This is the default. *)
-
 (** Representation of a term (or types) in a general sense. Values of the type
     are also used, for example, in the representation of patterns or rewriting
     rules. Specific constructors are included for such applications,  and they
@@ -78,7 +51,7 @@ type term =
     syntax. They are thus considered to be fresh, unused pattern variables. *)
 
 (** Representation of a rewriting rule RHS (or action) as given in the type of
-    rewriting rules (see {!field:Terms.rhs}) with the number of variables that
+    rewriting rules (see {!field:Term.rhs}) with the number of variables that
     are not in the LHS. In decision trees, a RHS is stored in every leaf since
     they correspond to matched rules. *)
  and rhs = (term_env, term) Bindlib.mbinder * int
@@ -94,7 +67,7 @@ type term =
   (** Name of the symbol. *)
   ; sym_type  : term ref
   (** Type of the symbol. *)
-  ; sym_path  : Files.Path.t
+  ; sym_path  : Common.Module.Path.t
   (** Module in which it is defined. *)
   ; sym_def   : term option ref
   (** Definition of the symbol. *)
@@ -104,11 +77,11 @@ type term =
   (** Rewriting rules for the symbol. *)
   ; sym_tree  : dtree ref
   (** Decision tree used for pattern matching against rules of the symbol. *)
-  ; sym_prop  : prop
+  ; sym_prop  : Parsing.Syntax.Tags.prop
   (** Property of the symbol. *)
-  ; sym_expo  : expo
+  ; sym_expo  : Parsing.Syntax.Tags.expo
   (** The visibility of the symbol. *)
-  ; sym_mstrat: match_strat ref
+  ; sym_mstrat: Parsing.Syntax.Tags.match_strat ref
   (** The reduction strategy modifier. *) }
 
 (** {b NOTE} that {!field:sym_type} holds a (timed) reference for a  technical
@@ -536,6 +509,18 @@ end
 
 module SymSet = Set.Make(Sym)
 module SymMap = Map.Make(Sym)
+
+(** Rewrite patterns as in Coq/SSReflect. See "A Small Scale
+    Reflection Extension for the Coq system", by Georges Gonthier,
+    Assia Mahboubi and Enrico Tassi, INRIA Research Report 6455, 2016,
+    @see <http://hal.inria.fr/inria-00258384>, section 8, p. 48. *)
+type rw_patt =
+  | RW_Term           of term
+  | RW_InTerm         of term
+  | RW_InIdInTerm     of (term, term) Bindlib.binder
+  | RW_IdInTerm       of (term, term) Bindlib.binder
+  | RW_TermInIdInTerm of term * (term, term) Bindlib.binder
+  | RW_TermAsIdInTerm of term * (term, term) Bindlib.binder
 
 (** Representation of unification problems. *)
 type problem =

@@ -2,8 +2,11 @@ open! Lplib
 
 open Timed
 open Core
+open Common
+open Parsing
 open Console
-open Files
+open Module
+open Handle
 
 (* Should be lifted *)
 module Util = struct
@@ -76,7 +79,8 @@ let parse_text : state -> fname:string -> string -> Command.t list * state =
 
 type proof_finalizer = Sig_state.t -> Proof.proof_state -> Sig_state.t
 type proof_state =
-  Time.t * Sig_state.t * Proof.proof_state * proof_finalizer * Terms.expo
+  Time.t * Sig_state.t * Proof.proof_state * proof_finalizer *
+  Syntax.Tags.expo
 type conclusion =
   | Typ of string * string
   | Unif of string * string
@@ -112,12 +116,12 @@ let current_goals : proof_state -> goal list =
   List.map string_of_goal ps.proof_goals
 
 type command_result =
-  | Cmd_OK    of state * Queries.result
+  | Cmd_OK    of state * Query.result
   | Cmd_Proof of proof_state * Tactic.t list * Pos.popt * Pos.popt
   | Cmd_Error of Pos.popt option * string
 
 type tactic_result =
-  | Tac_OK    of proof_state * Queries.result
+  | Tac_OK    of proof_state * Query.result
   | Tac_Error of Pos.popt option * string
 
 let t0 : Time.t Stdlib.ref = Stdlib.ref (Time.save ())
@@ -129,7 +133,7 @@ let initial_state : file_path -> state = fun fname ->
   Console.reset_default ();
   Time.restore Stdlib.(!t0);
   Package.apply_config fname;
-  let mp = Files.file_to_module fname in
+  let mp = Module.file_to_module fname in
   Sign.loading := [mp];
   let sign = Sig_state.create_sign mp in
   Sign.loaded  := PathMap.add mp sign !Sign.loaded;
@@ -138,8 +142,9 @@ let initial_state : file_path -> state = fun fname ->
 let handle_command : state -> Command.t -> command_result =
     fun (st,ss) cmd ->
   Time.restore st;
+  let open Handle in
   try
-    let (ss, pst, qres) = Handle.handle_cmd (Compile.compile false) ss cmd in
+    let (ss, pst, qres) = Command.handle (Compile.compile false) ss cmd in
     let t = Time.save () in
     match pst with
     | None       -> Cmd_OK ((t, ss), qres)
@@ -154,7 +159,7 @@ let handle_tactic : proof_state -> Tactic.t -> tactic_result =
   fun s t ->
   let (_, ss, p, finalize, e) = s in
   try
-    let p, qres = Tactics.handle_tactic ss e p t in
+    let p, qres = Handle.Tactic.handle ss e p t in
     Tac_OK((Time.save (), ss, p, finalize, e), qres)
   with Fatal(p,m) -> Tac_Error(p,m)
 
@@ -163,5 +168,5 @@ let end_proof : proof_state -> command_result = fun s ->
   try Cmd_OK((Time.save (), finalize ss p), None)
   with Fatal(p,m) -> Cmd_Error(p,m)
 
-let get_symbols : state -> (Terms.sym * Pos.popt) Extra.StrMap.t = fun s ->
+let get_symbols : state -> (Term.sym * Pos.popt) Extra.StrMap.t = fun s ->
   (snd s).in_scope

@@ -12,6 +12,7 @@
 
 open! Lplib
 open Lplib.Extra
+open Common
 
 open Core
 
@@ -124,7 +125,7 @@ let mk_definfo file pos =
         ]
 
 let kind_of_type tm =
-  let open Terms in
+  let open Term in
   let open Timed in
   let is_undef =
     Option.empty !(tm.sym_def) && List.length !(tm.sym_rules) = 0 in
@@ -142,7 +143,7 @@ let do_symbols ofmt ~id params =
   let sym =
     Extra.StrMap.fold
       (fun _ (s,p) l ->
-        let open Terms in
+        let open Term in
         (* LIO.log_error "sym"
          ( s.sym_name ^ " | "
          ^ Format.asprintf "%a" pp_term !(s.sym_type)); *)
@@ -269,7 +270,7 @@ let do_definition ofmt ~id params =
     Extra.StrMap.bindings sym
     |> List.map (fun (key, (sym,pos)) ->
         Format.asprintf "{%s} / %s: @[%a@]"
-          key sym.Terms.sym_name Pos.print pos)
+          key sym.Term.sym_name Pos.print pos)
     |> String.concat "\n"
   in
   LIO.log_error "symbol map" map_pp;
@@ -282,7 +283,7 @@ let do_definition ofmt ~id params =
       (* A JSON with the path towards the definition of the term
          and its position is returned
          /!\ : extension is fixed, only works for .lp files *)
-      mk_definfo Files.(module_to_file Terms.(term.sym_path)
+      mk_definfo Module.(module_to_file Term.(term.sym_path)
       ^ src_extension) pos
   in
   let msg = LSP.mk_reply ~id ~result:sym_info in
@@ -340,7 +341,7 @@ let hover_symInfo ofmt ~id params =
     Extra.StrMap.bindings sym
     |> List.map (fun (key, (sym,pos)) ->
         Format.asprintf "{%s} / %s: @[%a@]"
-          key sym.Terms.sym_name Pos.print pos)
+          key sym.Term.sym_name Pos.print pos)
     |> String.concat "\n"
   in
   LIO.log_error "symbol map" map_pp;
@@ -348,7 +349,7 @@ let hover_symInfo ofmt ~id params =
   try
     let sym_found =
       let open Timed in
-      let open Terms in
+      let open Term in
       match StrMap.find_opt sym_target sym with
       | None
       | Some (_, None) ->
@@ -422,7 +423,7 @@ let dispatch_message ofmt dict =
 
   (* NOOPs *)
   | "initialized"
-  | "workspace/didChangeWatchedFiles" ->
+  | "workspace/didChangeWatchedModule" ->
     ()
   | msg ->
     LIO.log_error "no_handler" msg

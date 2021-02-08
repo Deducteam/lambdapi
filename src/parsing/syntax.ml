@@ -3,6 +3,7 @@
 open Lplib
 open Lplib.Base
 open Lplib.Extra
+open Common
 open Pos
 
 (** Representation of a (located) identifier. *)
@@ -69,7 +70,7 @@ and p_patt = p_term
     the argument is marked as implicit (i.e., between curly braces). *)
 and p_args = ident option list * p_type option * bool
 
-(** [p_get_args t] is {!val:Basics.get_args} on syntax-level terms. *)
+(** [p_get_args t] is {!val:LibTerm.get_args} on syntax-level terms. *)
 let p_get_args : p_term -> p_term * p_term list = fun t ->
   let rec p_get_args acc t =
     match t.elt with
@@ -223,11 +224,57 @@ type p_config =
   | P_config_unif_rule of p_rule
   (** Unification hint declarations. *)
 
+module Tags = struct
+  (** Pattern-matching strategy modifiers. *)
+  type match_strat =
+    | Sequen
+    (** Rules are processed sequentially: a rule can be applied only if the
+        previous ones (in the order of declaration) cannot be. *)
+    | Eager
+    (** Any rule that filters a term can be applied (even if a rule defined
+        earlier filters the term as well). This is the default. *)
+
+  (** Specify the visibility and usability of symbols outside their module. *)
+  type expo =
+    | Public
+    (** Visible and usable everywhere. *)
+    | Protec
+    (** Visible everywhere but usable in LHS arguments only. *)
+    | Privat
+    (** Not visible and thus not usable. *)
+
+  (** Symbol properties. *)
+  type prop =
+    | Defin
+    (** The symbol is definable by rewriting rules. *)
+    | Const
+    (** The symbol cannot be defined. *)
+    | Injec
+    (** The symbol is definable but is assumed to be injective. *)
+
+  let pp_prop : prop pp = fun oc p ->
+    match p with
+    | Defin -> ()
+    | Const -> Format.fprintf oc "constant "
+    | Injec -> Format.fprintf oc "injective "
+
+  let pp_expo : expo pp = fun oc e ->
+    match e with
+    | Public -> ()
+    | Protec -> Format.fprintf oc "protected "
+    | Privat -> Format.fprintf oc "private "
+
+  let pp_match_strat : match_strat pp = fun oc s ->
+    match s with
+    | Sequen -> Format.fprintf oc "sequential "
+    | Eager -> ()
+end
+
 (** Parser-level representation of modifiers. *)
 type p_modifier_aux =
-  | P_mstrat of Terms.match_strat (** pattern matching strategy *)
-  | P_expo of Terms.expo (** visibility of symbol outside its modules *)
-  | P_prop of Terms.prop (** symbol properties : constant, definable, ... *)
+  | P_mstrat of Tags.match_strat (** pattern matching strategy *)
+  | P_expo of Tags.expo (** visibility of symbol outside its modules *)
+  | P_prop of Tags.prop (** symbol properties : constant, definable, ... *)
   | P_opaq (** opacity *)
 
 type p_modifier = p_modifier_aux loc

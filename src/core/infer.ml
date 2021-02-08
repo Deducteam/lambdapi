@@ -1,8 +1,9 @@
 (** Generating constraints for type inference and type checking. *)
 
 open Timed
+open Common
 open Console
-open Terms
+open Term
 open Print
 
 (** Logging function for typing. *)
@@ -23,12 +24,12 @@ let constraints = Stdlib.ref []
 
 (** Function adding a constraint. *)
 let conv ctx a b =
-  if not (Lplib.List.mem_sorted Basics.cmp_constr (ctx,a,b)
+  if not (Lplib.List.mem_sorted LibTerm.cmp_constr (ctx,a,b)
             Stdlib.(!constraints)) && not (Eval.eq_modulo ctx a b) then
     begin
       if !log_enabled then log_infr (yel "add %a") pp_constr (ctx,a,b);
       Stdlib.(constraints :=
-                Lplib.List.insert Basics.cmp_constr (ctx,a,b) !constraints)
+                Lplib.List.insert LibTerm.cmp_constr (ctx,a,b) !constraints)
     end
 
 (** Exception that may be raised by type inference. *)
@@ -113,10 +114,10 @@ let rec infer : ctxt -> term -> term = fun ctx t ->
         match c with
         | Prod(a,b) -> (a,b)
         | _         ->
-            let a = Basics.make_meta ctx Type in
+            let a = LibTerm.make_meta ctx Type in
             (* Here, we force [b] to be of type [Type] as there is little
                (no?) chance that it can be a kind. FIXME? *)
-            let b = Basics.make_meta_codomain ctx a in
+            let b = LibTerm.make_meta_codomain ctx a in
             conv ctx c (Prod(a,b)); (a,b)
       in
       (* We then check the type of [u] against the domain type. *)

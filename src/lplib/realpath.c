@@ -11,7 +11,7 @@ CAMLprim value c_realpath(value v) {
 
   // Checking for error.
   if (output_path == NULL)
-    caml_invalid_argument("Extra.Filename.realpath\0");
+    caml_invalid_argument("Filename.realpath\0");
 
   // Preparing the result value.
   value res = caml_copy_string(output_path);

@@ -2,4 +2,4 @@
  (name lsp)
  (public_name lambdapi.lsp)
  (modules lsp_base lsp_io lp_doc lp_lsp)
- (libraries stdlib-shims yojson str lambdapi.pure lambdapi.lplib))
+ (libraries yojson lambdapi.pure))

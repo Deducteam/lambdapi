@@ -4,5 +4,5 @@
  (modules :standard)
  (foreign_stubs
   (language c)
-  (names stubs))
+  (names realpath))
  (libraries stdlib-shims str))

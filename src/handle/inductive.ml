@@ -11,10 +11,13 @@
 
 open! Lplib
 open Timed
+open Common
 open Pos
 open Console
-open Terms
+open Core
+open Term
 open Print
+open Parsing
 open Syntax
 
 (** Logging function for generating of inductive principle. *)
@@ -76,10 +79,10 @@ let ind_typ_with_codom :
       popt -> sym -> Env.t -> (tbox list -> tbox) -> string -> term -> tbox =
   fun pos ind_sym env codom s a ->
   let rec aux : tvar list -> term -> tbox = fun xs a ->
-    match Basics.get_args a with
+    match LibTerm.get_args a with
     | (Type, _) -> codom (List.rev_map _Vari xs)
     | (Prod(a,b), _) ->
-        let (x,b) = Basics.unbind_name b s in
+        let (x,b) = LibTerm.unbind_name b s in
         _Prod (lift a) (Bindlib.bind_var x (aux (x::xs) b))
     | _ -> fatal pos "The type of %a is not supported" pp_symbol ind_sym
   in
@@ -132,7 +135,7 @@ let create_ind_pred_map :
    [ind_pred_map] is defined above.
 
    [x_str] is a string used as prefix for generating variable names when
-   deconstructing a product with [Basics.unbind_name].
+   deconstructing a product with [LibTerm.unbind_name].
 
    [ind_sym] is an inductive type symbol of [ind_pred_map].
 
@@ -185,7 +188,7 @@ let fold_cons_type
 
     : 'c =
   let rec fold : 'var list -> 'a -> term -> 'c = fun xs acc t ->
-    match Basics.get_args t with
+    match LibTerm.get_args t with
     | (Symb(s), ts) ->
         if s == ind_sym then
           let d = List.assq ind_sym ind_pred_map in
@@ -193,10 +196,10 @@ let fold_cons_type
         else fatal pos "%a is not a constructor of %a"
                pp_symbol cons_sym pp_symbol ind_sym
     | (Prod(t,u), _) ->
-       let (x,u) = Basics.unbind_name u x_str in
+       let (x,u) = LibTerm.unbind_name u x_str in
        let x = inj_var (List.length xs) x in
        begin
-         match Basics.get_args t with
+         match LibTerm.get_args t with
          | (Symb(s), ts) ->
              begin
                match List.assq_opt s ind_pred_map with
