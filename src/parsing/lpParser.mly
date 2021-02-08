@@ -301,8 +301,7 @@ inductive:
     { let t = if xs = [] then t else
                 make_pos ($startpos(xs), $endpos(t)) (P_Prod(xs,t)) in
       let l = List.map (fun (i,t) -> (fst i,t)) l in
-      make_pos $sloc (fst i, t, l)
-      }
+      make_pos $sloc (fst i, t, l) }
 
 term_proof:
   | t=term { Some t, None }
