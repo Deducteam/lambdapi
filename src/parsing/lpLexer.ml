@@ -6,8 +6,6 @@ open Sedlexing
 open Common
 open Pos
 
-type ident = string * bool (* Boolean is true if the identifier is escaped. *)
-
 type token =
   (* end of file *)
   | EOF
@@ -93,12 +91,12 @@ type token =
   | WILD
 
   (* identifiers *)
-  | ID of string
-  | ID_META of string
-  | ID_PAT of string
+  | UID of string
+  | UID_META of string
+  | UID_PAT of string
   | QID of string list
-  | QID_EXPL of string list
-  (*| QID_QUANT of (string list * bool)*)
+  | ID_EXPL of string list
+  (*| ID_QUANT of (string list * bool)*)
 
 exception SyntaxError of strloc
 
@@ -111,9 +109,9 @@ module Lp_lexer : sig
   val is_keyword : string -> bool
   (** [is_keyword s] returns [true] if [s] is a keyword. *)
 
-  val unquote : string -> string
-  (** [unquote s] removes the quotation marks [{|] and [|}] from [s] if it has
-      some. Otherwise, the argument is returned. *)
+  val unescape : string -> string
+  (** [unescape s] removes the quotation marks [{|] and [|}] from [s] if it
+     has some. Otherwise, the argument is returned. *)
 
   val is_debug_flag : string -> bool
   (** [is_debug_flag s] is true if [s] is a debug flag. *)
@@ -241,14 +239,9 @@ end = struct
     | id -> true
     | _ -> false
 
-  let is_escaped : string -> bool = fun s ->
-    String.length s > 0 && s.[0] = '{'
-
   let unescape : string -> string = fun s ->
-    String.(sub s 2 (length s - 4))
-
-  let unquote : string -> string * bool = fun s ->
-    if is_escaped s then unescape s, true else s, false
+    let n = String.length s in
+    if n > 0 && s.[0] = '{' then String.sub s 2 (n - 4) else s
 
   (** [tail n buf] returns the utf8 string formed from [buf] dropping its [n]
      first codepoints. *)
@@ -319,6 +312,7 @@ end = struct
     | "with" -> WITH
 
     (* other tokens *)
+
     | '+', Plus lowercase -> DEBUG_FLAGS(true, tail 1 buf)
     | '-', Plus lowercase -> DEBUG_FLAGS(false, tail 1 buf)
     | integer -> INT(int_of_string (Utf8.lexeme buf))
@@ -351,31 +345,29 @@ end = struct
 
     (* identifiers *)
 
-    | '?', uid -> ID_META(tail 1 buf)
-    | '$', uid -> ID_PAT(tail 1 buf)
+    (* Using the default case to lex identifiers result in a *very* slow
+       lexing. This is why a regular expression which includes many characters
+       is preferred over using anything for identifiers. *)
 
-    | '@', uid -> QID_EXPL([tail 1 buf])
-    | '@', qid -> QID_EXPL(String.split_on_char '.' (tail 1 buf))
+    | '?', uid -> UID_META(tail 1 buf)
+    | '$', uid -> UID_PAT(tail 1 buf)
 
-    (*| '`', id -> QID_QUANT(String.split_on_char '.' (tail 1 buf), false)
-    | '`', '@', id -> QID_QUANT(String.split_on_char '.' (tail 2 buf), true)*)
+    | '@', uid -> ID_EXPL([tail 1 buf])
+    | '@', qid -> ID_EXPL(String.split_on_char '.' (tail 1 buf))
 
-    | uid -> ID(Utf8.lexeme buf)
+    (*| '`', id -> ID_QUANT(String.split_on_char '.' (tail 1 buf), false)
+    | '`', '@', id -> ID_QUANT(String.split_on_char '.' (tail 2 buf), true)*)
+
+    | uid -> UID(Utf8.lexeme buf)
     | qid -> QID(String.split_on_char '.' (Utf8.lexeme buf))
 
     (* invalid token *)
 
     | _ ->
-        let loc = lexing_positions buf in
-        let loc = locate loc in
+        let loc = locate (lexing_positions buf) in
         raise (SyntaxError(Pos.make (Some(loc)) (Utf8.lexeme buf)))
-
-  (* Using the default case to lex identifiers result in a *very* slow lexing.
-     This is why a regular expression which includes many characters is
-     preferred over using anything for identifiers. *)
 
   let lexer = with_tokenizer token
 
-  let unquote s = fst (unquote s)
 end
 include Lp_lexer

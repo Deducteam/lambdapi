@@ -238,7 +238,7 @@ let build_config : Pos.pos -> string -> string option -> eval_config =
 
 // identifiers
 
-%token <string> ID
+%token <string> UID
 %token <string list * string> QID
 
 // start symbol
@@ -251,7 +251,7 @@ let build_config : Pos.pos -> string -> string option -> eval_config =
 %%
 
 command:
-  | p_sym_mod=modifier* s=ID p_sym_arg=param* COLON a=term DOT
+  | p_sym_mod=modifier* s=UID p_sym_arg=param* COLON a=term DOT
     {
       let p_sym_mod =
         match List.find_opt is_prop p_sym_mod with
@@ -268,7 +268,7 @@ command:
         (P_symbol {p_sym_mod;p_sym_nam;p_sym_arg;p_sym_typ;p_sym_trm;p_sym_prf
                    ;p_sym_def})
     }
-  | p_sym_mod=modifier* KW_DEF s=ID COLON a=term DOT
+  | p_sym_mod=modifier* KW_DEF s=UID COLON a=term DOT
     {
       let p_sym_nam = make_pos $loc(s) s in
       let p_sym_arg = [] in
@@ -280,7 +280,7 @@ command:
         (P_symbol {p_sym_mod;p_sym_nam;p_sym_arg;p_sym_typ;p_sym_trm;p_sym_prf
                    ;p_sym_def})
     }
-  | p_sym_mod=modifier* KW_DEF s=ID COLON a=term DEF t=term DOT
+  | p_sym_mod=modifier* KW_DEF s=UID COLON a=term DEF t=term DOT
     {
       let p_sym_nam = make_pos $loc(s) s in
       let p_sym_arg = [] in
@@ -292,7 +292,7 @@ command:
         (P_symbol {p_sym_mod;p_sym_nam;p_sym_arg;p_sym_typ;p_sym_trm;p_sym_prf
                    ;p_sym_def})
     }
-  | p_sym_mod=modifier* KW_DEF s=ID DEF t=term DOT
+  | p_sym_mod=modifier* KW_DEF s=UID DEF t=term DOT
     {
       let p_sym_nam = make_pos $loc(s) s in
       let p_sym_arg = [] in
@@ -304,7 +304,7 @@ command:
         (P_symbol {p_sym_mod;p_sym_nam;p_sym_arg;p_sym_typ;p_sym_trm;p_sym_prf
                    ;p_sym_def})
     }
-  | p_sym_mod=modifier* KW_DEF s=ID p_sym_arg=param+ COLON a=term
+  | p_sym_mod=modifier* KW_DEF s=UID p_sym_arg=param+ COLON a=term
     DEF t=term DOT
     {
       let p_sym_nam = make_pos $loc(s) s in
@@ -316,7 +316,7 @@ command:
         (P_symbol {p_sym_mod;p_sym_nam;p_sym_arg;p_sym_typ;p_sym_trm;p_sym_prf
                    ;p_sym_def})
     }
-  | p_sym_mod=modifier* KW_DEF s=ID p_sym_arg=param+ DEF t=term DOT
+  | p_sym_mod=modifier* KW_DEF s=UID p_sym_arg=param+ DEF t=term DOT
     {
       let p_sym_nam = make_pos $loc(s) s in
       let p_sym_typ = None in
@@ -327,7 +327,7 @@ command:
         (P_symbol {p_sym_mod;p_sym_nam;p_sym_arg;p_sym_typ;p_sym_trm;p_sym_prf
                    ;p_sym_def})
     }
-  | p_sym_mod=modifier* KW_THM s=ID COLON a=term DEF t=term DOT
+  | p_sym_mod=modifier* KW_THM s=UID COLON a=term DEF t=term DOT
     {
       let p_sym_nam = make_pos $loc(s) s in
       let p_sym_arg = [] in
@@ -339,7 +339,7 @@ command:
         (P_symbol {p_sym_mod;p_sym_nam;p_sym_arg;p_sym_typ;p_sym_trm;p_sym_prf
                    ;p_sym_def})
     }
-  | p_sym_mod=modifier* KW_THM s=ID p_sym_arg=param+ COLON a=term
+  | p_sym_mod=modifier* KW_THM s=UID p_sym_arg=param+ COLON a=term
     DEF t=term DOT
     {
       let p_sym_nam = make_pos $loc(s) s in
@@ -387,13 +387,13 @@ command:
     }
 
 eval_config:
-  | LEFTSQU s=ID RIGHTSQU
+  | LEFTSQU s=UID RIGHTSQU
     { build_config (locate $sloc) s None }
-  | LEFTSQU s1=ID COMMA s2=ID RIGHTSQU
+  | LEFTSQU s1=UID COMMA s2=UID RIGHTSQU
     { build_config (locate $sloc) s1 (Some s2) }
 
 param:
-  | LEFTPAR id=ID COLON te=term RIGHTPAR
+  | LEFTPAR id=UID COLON te=term RIGHTPAR
     { ([Some (make_pos $loc(id) id)], Some(te), false) }
 
 modifier:
@@ -401,7 +401,7 @@ modifier:
   | KW_INJ { make_pos $sloc (P_prop(Syntax.Tags.Injec)) }
 
 context_item:
-  | x=ID ao=option(COLON a=term { a }) { (make_pos $loc(x) x, ao) }
+  | x=UID ao=option(COLON a=term { a }) { (make_pos $loc(x) x, ao) }
 
 rule:
   | LEFTSQU c=separated_list(COMMA, context_item) RIGHTSQU
@@ -410,7 +410,7 @@ rule:
 
 sterm:
   | qid=QID { make_pos $sloc (P_Iden(make_pos $sloc qid, false)) }
-  | id=ID   { make_pos $sloc (P_Iden(make_pos $sloc ([], id), false)) }
+  | id=UID   { make_pos $sloc (P_Iden(make_pos $sloc ([], id), false)) }
   | UNDERSCORE { make_pos $sloc P_Wild }
   | TYPE    { make_pos $sloc P_Type }
   | LEFTPAR t=term RIGHTPAR { t }
@@ -424,11 +424,11 @@ type_annot:
 
 term:
   | t=aterm { t }
-  | x=ID COLON a=aterm ARROW b=term {
+  | x=UID COLON a=aterm ARROW b=term {
       let x = make_pos $loc(x) x in
       make_pos $sloc (P_Prod([([Some x], Some(a), false)], b))
     }
-  | LEFTPAR x=ID COLON a=aterm RIGHTPAR ARROW b=term {
+  | LEFTPAR x=UID COLON a=aterm RIGHTPAR ARROW b=term {
       let x = make_pos $loc(x) x in
       make_pos $sloc (P_Prod([([Some x], Some(a), false)], b))
     }
@@ -438,7 +438,7 @@ term:
   | UNDERSCORE a=option(type_annot) FATARROW t=term {
       make_pos $sloc (P_Abst([([None], a, false)], t))
     }
-  | x=ID a=option(type_annot) FATARROW t=term {
+  | x=UID a=option(type_annot) FATARROW t=term {
       let x = make_pos $loc(x) x in
       make_pos $sloc (P_Abst([([Some x], a, false)], t))
     }

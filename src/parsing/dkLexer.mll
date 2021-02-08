@@ -42,7 +42,7 @@ type token =
   | RIGHTPAR
   | UNDERSCORE
   (* Identifiers. *)
-  | ID of string
+  | UID of string
   | QID of (string list * string)
 
 let unexpected_char : Lexing.lexbuf -> char -> token = fun lexbuf c ->
@@ -104,7 +104,7 @@ rule token = parse
   | "_"                             { UNDERSCORE                           }
   (* identifiers *)
   | (mpath as mp) "." (ident as id) { QID(String.split_on_char '.' mp, id) }
-  | ident  as x                     { ID(x)                                }
+  | ident  as x                     { UID(x)                               }
   | _ as c                          { unexpected_char lexbuf c             }
 
 and comment = parse
