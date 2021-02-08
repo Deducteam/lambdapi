@@ -64,8 +64,7 @@ let notation_of : sym -> Sign.notation option = fun s ->
 
 (** [pp_symbol oc s] prints the name of the symbol [s] to channel [oc]. *)
 let pp_symbol : sym pp = fun oc s ->
-  if SymMap.mem s !sig_state.notations
-     || Module.Path.compare s.sym_path !sig_state.signature.sign_path = 0
+  if StrMap.mem s.sym_name !sig_state.in_scope
   then Format.pp_print_string oc s.sym_name
   else pp_qualified oc s
 
