@@ -38,20 +38,10 @@ let create_sign : Path.t -> Sign.t = fun sign_path ->
   let d = Sign.dummy () in
   { d with sign_path ; sign_deps = ref (PathMap.singleton Unif_rule.path []) }
 
-(** Symbol properties needed for the signature *)
-type sym_data =
-  { expo   : Tags.expo (** exposition *)
-  ; prop   : Tags.prop (** property *)
-  ; mstrat : Tags.match_strat (** strategy *)
-  ; ident  : ident (** name *)
-  ; typ    : term (** type *)
-  ; impl   : bool list (** implicit arguments *)
-  ; def    : term option (** optional definition *) }
-
-(** [add_symbol ss sym_data={e,p,st,x,a,impl,def}] generates a new signature
-   state from [ss] by creating a new symbol with expo [e], property [p],
-   strategy [st], name [x], type [a], implicit arguments [impl] and optional
-   definition [t]. This new symbol is returned too. *)
+(** [add_symbol ss expo prop mstrat opaq id typ impl def] generates a new
+   signature state from [ss] by creating a new symbol with expo [e], property
+   [p], strategy [st], name [x], type [a], implicit arguments [impl] and
+   optional definition [t]. This new symbol is returned too. *)
 let add_symbol : sig_state -> Tags.expo -> Tags.prop -> Tags.match_strat
     -> bool -> ident -> term -> bool list -> term option -> sig_state * sym =
   fun ss expo prop mstrat opaq id typ impl def ->
