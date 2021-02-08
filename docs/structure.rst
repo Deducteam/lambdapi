@@ -12,41 +12,32 @@ Overview of directories and files
    *  ``vscode/``: code for VSCode
 
       *  ``.vscode/*.json``: config for launching and debugging the extension
-      *  ``src/*.ts``: source code of the extension
+      *  ``lp.configuration.json``: specific characters
+      *  ``media/styles.css``: styles
       *  ``package.json``: manifest of the plugin
          (activation events, scripts, dependencies, …)
+      *  ``snippets/unicode.json``: short-cuts for entering unicode characters
+      *  ``src/*.ts``: source code of the extension
+      *  ``syntaxes/lp.tmLanguage.json``: grammar of Lambdapi
       *  ``tsconfig.json``: TypeScript configuration (directories, …)
       *  ``vscode.proposed.d.ts``: VSCode API (Microsoft file)
-      *  ``lp.configuration.json``: specific characters
-      *  ``syntaxes/lp.tmLanguage.json``: grammar of Lambdapi
+         <https://raw.githubusercontent.com/microsoft/vscode/master/src/vs/vscode.proposed.d.ts>
 
 *  ``libraries/``: libraries of Dedukti files (see ``GNUmakefile``)
 
-* ``src/lplib/``: extension of the Ocaml standard library
+*  ``src/cli/``: command line interface
 
-  *  ``realpath.c``: C implementation of ``Filename.realpath``
-  *  ``range_intf.ml``: module type of abstract intervals
-  *  ``range.ml``: instance of ``range_intf`` with integer intervals
-  *  ``rangeMap_intf.ml``: module type of abstract maps on intervals
-  *  ``rangeMap.ml``: instance of ``rangeMap_intf`` using ``range``
+   *  ``cliconf.ml``: main program configuration
+   *  ``init_cmd.ml``: lambdapi init program
+   *  ``install_cmd.ml``: lambdapi install command
+   *  ``lambdapi.ml``: main program
 
 * ``src/common/``: miscellaneous modules and libraries
 
-  * ``pos.ml``: source file position management
   * ``console.ml``: output and debugging
   * ``module.ml``: filenames and paths management
   * ``package.ml``: management of package files ``lambdapi.pkg``
-
-* ``src/parsing/``: parsing Dedukti and Lambdapi files
-
-  *  ``syntax.ml``: abstract syntax
-  *  ``pretty.ml``: pretty print the abstract syntax
-     (used to convert Dedukti files into Lambdapi files)
-  *  ``parser.ml``: interfaces for parsers
-  *  ``lpLexer.ml``: lexer for Lambdapi syntax
-  *  ``lpParser.mly``: parser for Lambdapi syntax
-  *  ``dkLexer.mll``: lexer for Dedukti2 syntax
-  *  ``dkParser.mly``: parser for Dedukti2 syntax
+  * ``pos.ml``: source file position management
 
 *  ``src/core/``: core of Lambdapi
 
@@ -56,60 +47,86 @@ Overview of directories and files
       *  ``pratt.ml``: parsing of applications wrt symbol notations
       *  ``scope.ml``: convert the abstract syntax into terms
 
-  *  terms, signatures, rewriting, unification and type-checking:
+  *  terms:
+
+      *  ``term.ml``: internal representation of terms
+      *  ``libTerm.ml``: basic operations on terms
+      *  ``print.ml``: pretty printing of terms
+
+  * signatures:
+
+      *  ``builtin.ml``: managing builtins
+      *  ``sign.ml``: compiled module signature (symbols and rules in a module)
+      *  ``sig_state.ml``: signature under construction
+
+  * rewriting:
 
       *  ``tree_types.ml``: types and basic functions for decision trees
       *  ``tree.ml``: compilation of rewriting rules to decision trees
-      *  ``term.ml``: internal representation of terms
-      *  ``libTerm.ml``: basic operations on terms
-      *  ``ctxt.ml``: typing contexts (maps variable -> type)
-      *  ``print.ml``: pretty printing of terms
       *  ``eval.ml``: rewriting engine
+
+  * type inference/checking:
+
+      *  ``ctxt.ml``: typing contexts (maps variable -> type)
       *  ``infer.ml``: constraints generating type inference and checking
+
+  * unification:
+
       *  ``unif_rule.ml``: ghost signature for unification rules
       *  ``unif.ml``: unification algorithm
-      *  ``sign.ml``: compiled module signature (symbols and rules in a module)
-      *  ``sig_state.ml``: signature under construction
-      *  ``builtin.ml``: managing builtins
 
 *  ``src/handle``: signature building
 
-   *  ``query.ml``: handling of queries
+  *  ``command.ml``: command handling
+  *  ``compile.ml``: file parsing and compiling (.lpo files)
+  *  ``inductive.ml``: generation of induction principles
+  *  ``query.ml``: handling of queries
       (commands that do not change the signature or the proof state)
-   *  ``tactic.ml``: tactic handling
-   *  ``inductive.ml``: generation of induction principles
-   *  ``command.ml``: command handling      
-   *  ``compile.ml``: file parsing and compiling (.lpo files)
-   *  ``proof.ml``: proof state
-   *  ``rewrite.ml``: rewrite tactic (similar to Ssreflect)
-   *  ``why3_tactic.ml``: why3 tactic
 
+  * tactics:
 
-*  ``src/tool/``: tools
+      *  ``proof.ml``: proof state
+      *  ``rewrite.ml``: rewrite tactic (similar to Ssreflect)
+      *  ``tactic.ml``: tactic handling
+      *  ``why3_tactic.ml``: why3 tactic
 
-   *  ``tree_graphviz.ml``: representation of trees as graphviz files
-   *  ``external.ml``: call of external tools
-   *  ``hrs.ml``: export to the .hrs format of the confluence competition
-   *  ``xtc.ml``: export to the .xtc format of the termination competition
-   *  ``sr.ml``: algorithm for checking subject reduction
+* ``src/lplib/``: extension of the Ocaml standard library
 
-*  ``src/cli/``: command line interface
+  *  ``range_intf.ml``: module type of abstract intervals
+  *  ``rangeMap_intf.ml``: module type of abstract maps on intervals
+  *  ``rangeMap.ml``: instance of ``rangeMap_intf`` using ``range``
+  *  ``range.ml``: instance of ``range_intf`` with integer intervals
+  *  ``realpath.c``: C implementation of ``Filename.realpath``
 
-   *  ``cliconf.ml``: main program configuration
-   *  ``lambdapi.ml``: main program
-   *  ``init_cmd.ml``: lambdapi init program
-   *  ``install_cmd.ml``: lambdapi install command
+*  ``src/lsp/``: LSP server
+
+   *  ``lp_doc.ml``: document type
+   *  ``lp_lsp.ml``: LSP server
+   *  ``lsp_base.ml``: basic functions for building messages
+   *  ``lsp_io.ml``: basic functions for reading and sending messages
+
+* ``src/parsing/``: parsing Dedukti and Lambdapi files
+
+  *  ``dkLexer.mll``: lexer for Dedukti2 syntax
+  *  ``dkParser.mly``: parser for Dedukti2 syntax
+  *  ``lpLexer.ml``: lexer for Lambdapi syntax
+  *  ``lpParser.mly``: parser for Lambdapi syntax
+  *  ``parser.ml``: interfaces for parsers
+  *  ``pretty.ml``: pretty print the abstract syntax
+     (used to convert Dedukti files into Lambdapi files)
+  *  ``syntax.ml``: abstract syntax
 
 *  ``src/pure/``: pure interface (mainly used by the LSP server)
 
    *  ``pure.ml``: provide utilities to roll back the state
 
-*  ``src/lsp/``: LSP server
+*  ``src/tool/``: tools
 
-   *  ``lp_doc.ml``: document type
-   *  ``lsp_base.ml``: basic functions for building messages
-   *  ``lsp_io.ml``: basic functions for reading and sending messages
-   *  ``lp_lsp.ml``: LSP server
+   *  ``external.ml``: call of external tools
+   *  ``hrs.ml``: export to the .hrs format of the confluence competition
+   *  ``sr.ml``: algorithm for checking subject reduction
+   *  ``tree_graphviz.ml``: representation of trees as graphviz files
+   *  ``xtc.ml``: export to the .xtc format of the termination competition
 
 *  ``tests/``: unit tests
 
