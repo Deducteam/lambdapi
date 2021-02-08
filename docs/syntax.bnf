@@ -81,8 +81,8 @@
 
 <constructor> ::= <ident> <arg_list>* ':' <term>
 
-<inductive> ::= <ident> ':' <term> '≔' ['|'] [<constructor> ('|'
-                <constructor>)*]
+<inductive> ::= <ident> <arg_list>* ':' <term> '≔' ['|'] [<constructor>
+                ('|' <constructor>)*]
 
 <term_proof> ::= <term>
                | <proof>
