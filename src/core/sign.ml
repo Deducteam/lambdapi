@@ -38,7 +38,7 @@ type t =
     (** Maps symbols to their syntax properties if they have some. *)
   ; sign_ind      : inductive SymMap.t ref }
 
-(* NOTE the [deps] field contains a hashtable binding the [module_path] of the
+(* NOTE the [deps] field contains a hashtable binding the [mod_path] of the
    external modules on which the current signature depends to an association
    list. This association list then maps definable symbols of the external
    module to additional reduction rules defined in the current signature. *)
@@ -74,9 +74,9 @@ let loaded : t PathMap.t ref = ref PathMap.empty
    it contains can be qualified with the name of the module. This behavior was
    inherited from previous versions of Dedukti. *)
 
-(** [loading] contains the [module_path] of the signatures (or files) that are
+(** [loading] contains the [mod_path] of the signatures (or files) that are
     being processed. They are stored in a stack due to dependencies. Note that
-    the topmost element corresponds to the current module.  If a [module_path]
+    the topmost element corresponds to the current module.  If a [mod_path]
     appears twice in the stack, then there is a circular dependency. *)
 let loading : Path.t list ref = ref []
 

@@ -28,7 +28,7 @@ undefined    = ignored
 (** Configuration data read from a file. *)
 type config_data =
   { package_name : string
-  ; root_path    : Path.module_path }
+  ; root_path    : Path.t }
 
 (** [read fname] reads configuration data from the file [fname]. The exception
     [Fatal] is raised in case of error (non-existing file, bad format). *)

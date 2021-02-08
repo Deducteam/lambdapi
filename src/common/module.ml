@@ -15,16 +15,16 @@ let log_file = log_file.logger
 module Path =
   struct
     (** Representation of a module path (roughly, a file path). *)
-    type module_path = string list
+    type mod_path = string list
 
-    (** Short synonym of [module_path]. *)
-    type t = module_path
+    (** Short synonym of [mod_path]. *)
+    type t = mod_path
 
     (** [compare] is a standard comparing function for module paths. *)
     let compare : t -> t -> int = Stdlib.compare
 
     (** [pp oc mp] prints [mp] to channel [oc]. *)
-    let pp : module_path pp = fun oc mp ->
+    let pp : mod_path pp = fun oc mp ->
       Format.pp_print_string oc (String.concat "." mp)
 
     (** [check_simple mp] Checks that [mp] is a “simple” module path, that is,
@@ -195,7 +195,7 @@ let set_lib_root : string option -> unit = fun path ->
           end
       end;
       (* Register the library root as part of the module mapping.
-         Required by [module_to_file] and [module_path]. *)
+         Required by [module_to_file] and [mod_path]. *)
       Timed.(lib_mappings := ModMap.set_root pth !lib_mappings)
 
 (** [new_lib_mapping s] attempts to parse [s] as a library mapping of the form
@@ -204,22 +204,22 @@ let set_lib_root : string option -> unit = fun path ->
     new mapping is registered. In case of failure the program terminates and a
     graceful error message is displayed. *)
 let new_lib_mapping : string -> unit = fun s ->
-  let (module_path, file_path) =
+  let (mod_path, file_path) =
     match String.split_on_char ':' s with
     | [mp; dir] -> (String.split_on_char '.' mp, dir)
     | _         ->
     fatal_no_pos "Bad syntax for \"--map-dir\" option (expecting MOD:DIR)."
   in
-  Path.check_simple module_path;
+  Path.check_simple mod_path;
   let file_path =
     try Filename.realpath file_path
     with Invalid_argument(f) ->
       fatal_no_pos "new_lib_mapping: %s: No such file or directory" f
   in
   let new_mapping =
-    try ModMap.add module_path file_path !lib_mappings
+    try ModMap.add mod_path file_path !lib_mappings
     with ModMap.Already_mapped ->
-      fatal_no_pos "Module path [%a] is already mapped." Path.pp module_path
+      fatal_no_pos "Module path [%a] is already mapped." Path.pp mod_path
   in
   lib_mappings := new_mapping
 
