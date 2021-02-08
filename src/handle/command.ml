@@ -43,10 +43,10 @@ let _ =
   in
   register "+1" expected_succ_type
 
-(** [handle_open pos ss p] handles the command [open p] with [ss] as the
+(** [handle_open ss p] handles the command [open p] with [ss] as the
    signature state. On success, an updated signature state is returned. *)
-let handle_open : popt -> sig_state -> Path.t -> sig_state =
-    fun pos ss p ->
+let handle_open : sig_state -> Path.t loc -> sig_state =
+  fun ss {elt=p;pos} ->
   (* Obtain the signature corresponding to [m]. *)
   let sign =
     try PathMap.find p !(Sign.loaded) with Not_found ->
@@ -56,12 +56,13 @@ let handle_open : popt -> sig_state -> Path.t -> sig_state =
   (* Open the module. *)
   open_sign ss sign
 
-(** [handle_require b pos ss p] handles the command [require p] (or [require
+(** [handle_require b ss p] handles the command [require p] (or [require
    open p] if b is true) with [ss] as the signature state and [compile] the
    main compile function (passed as argument to avoid cyclic dependencies).
    On success, an updated signature state is returned. *)
-let handle_require : (Path.t -> Sign.t) -> bool -> popt -> sig_state ->
-  Path.t -> sig_state = fun compile b pos ss p ->
+let handle_require :
+      (Path.t -> Sign.t) -> bool -> sig_state -> Path.t loc -> sig_state =
+  fun compile b ss ({elt=p;pos} as mp) ->
   (* Check that the module has not already been required. *)
   if PathMap.mem p !(ss.signature.sign_deps) then
     fatal pos "Module [%a] is already required." Path.pp p;
@@ -69,17 +70,18 @@ let handle_require : (Path.t -> Sign.t) -> bool -> popt -> sig_state ->
   ignore (compile p);
   (* Add the dependency (it was compiled already while parsing). *)
   ss.signature.sign_deps := PathMap.add p [] !(ss.signature.sign_deps);
-  if b then handle_open pos ss p else ss
+  if b then handle_open ss mp else ss
 
-(** [handle_require_as compile pos ss p id] handles the command
+(** [handle_require_as compile ss p id] handles the command
     [require p as id] with [ss] as the signature state and [compile] the main
     compilation function passed as argument to avoid cyclic dependencies. On
     success, an updated signature state is returned. *)
-let handle_require_as : (Path.t -> Sign.t) -> popt -> sig_state -> Path.t ->
-  ident -> sig_state = fun compile pos ss p id ->
-  let ss = handle_require compile false pos ss p in
-  let aliases = StrMap.add id.elt p ss.aliases in
-  let path_map = PathMap.add p id.elt ss.path_map in
+let handle_require_as :
+    (Path.t -> Sign.t) -> sig_state -> Path.t loc -> p_ident -> sig_state =
+  fun compile ss ({elt=p;_} as mp) {elt=id;_} ->
+  let ss = handle_require compile false ss mp in
+  let aliases = StrMap.add id p ss.aliases in
+  let path_map = PathMap.add p id ss.path_map in
   {ss with aliases; path_map}
 
 (** [handle_modifiers ms] verifies that the modifiers in [ms] are compatible.
@@ -154,7 +156,7 @@ let handle_rules : sig_state -> p_rule list -> sig_state = fun ss rs ->
     [e p strat symbol x xs : a] with [ss] as the signature state.
     On success, an updated signature state and the new symbol are returned. *)
 let handle_inductive_symbol :
-  sig_state -> expo -> prop -> match_strat -> ident -> p_args list ->
+  sig_state -> expo -> prop -> match_strat -> p_ident -> p_args list ->
   p_type -> sig_state * sym = fun ss e p strat x xs a ->
   let scope_basic exp = Scope.scope_term exp ss Env.empty in
   (* We check that [x] is not already used. *)
@@ -209,14 +211,11 @@ fun compile ss ({elt; pos} as cmd) ->
   | P_query(q) ->
       let res = Query.handle ss None q in (ss, None, res)
   | P_require(b,ps) ->
-      let ps = List.map (List.map fst) ps in
-      (List.fold_left (handle_require compile b pos) ss ps, None, None)
+      (List.fold_left (handle_require compile b) ss ps, None, None)
   | P_require_as(p,id) ->
-      let id = Pos.make id.pos (fst id.elt) in
-      (handle_require_as compile pos ss (List.map fst p) id, None, None)
+      (handle_require_as compile ss p id, None, None)
   | P_open(ps) ->
-      let ps = List.map (List.map fst) ps in
-      (List.fold_left (handle_open pos) ss ps, None, None)
+      (List.fold_left handle_open ss ps, None, None)
   | P_rules(rs) ->
       let handle_rule syms r = SymSet.add (handle_rule ss r) syms in
       let syms = List.fold_left handle_rule SymSet.empty rs in
@@ -456,9 +455,8 @@ fun compile ss ({elt; pos} as cmd) ->
 
   | P_set(cfg)                 ->
       let ss =
-        let with_path : Path.t -> qident -> qident = fun path qid ->
-          let path = List.map (fun s -> (s, false)) path in
-          Pos.make qid.pos (path, snd qid.elt)
+        let with_path : Path.t -> p_qident -> p_qident =
+          fun mp {elt=(_,id);pos} -> Pos.make pos (mp,id)
         in
         match cfg with
         | P_config_builtin(s,qid) ->

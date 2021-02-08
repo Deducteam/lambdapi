@@ -79,44 +79,6 @@ module Lp : PARSER = struct
     stream_of_lexbuf fname (Sedlexing.Utf8.from_string s)
 end
 
-(** [parse_qident s] parses the identifier [s] and returns the parsed
-    identifier (with location) and a boolean being [true] if [s] is
-    escaped (with [{| |}]). We use [parse_ident] of menhir parser because
-    exposing [parse_qident] caused an end of stream conflict. *)
-let parse_qident : string ->
-  (Syntax.p_module_path * string, int * Pos.popt) result =
-  fun s ->
-  let parse_ident (s: string): (Syntax.ident * bool, Pos.popt) result =
-    let parse =
-      MenhirLib.Convert.Simplified.traditional2revised LpParser.ident
-    in
-    let lexbuf = Sedlexing.Utf8.from_string s in
-    let lexer = LpLexer.lexer lexbuf in
-    try Ok(parse lexer)
-    with LpLexer.SyntaxError(s) -> Error(s.pos)
-       | LpParser.Error ->
-           let loc = Pos.locate (Sedlexing.lexing_positions lexbuf) in
-           Error(Some(loc))
-  in
-  (* We get individual identifiers. *)
-  let ids = String.split_on_char '.' s in
-  (* Here we'd like a bind operation on result: if there is an error. *)
-  let exception Invalid_id of int * Pos.popt in
-  let f (i: int) (e: string) =
-    (* Parse string [e] and raise error to interrupt if [e] is not valid. *)
-    let (e, b) =
-      match parse_ident e with
-      | Ok(e, b) -> (e, b)
-      | Error(pos) -> raise (Invalid_id(i, pos))
-    in
-    (e.Pos.elt, b)
-  in
-  try
-    let ids = List.mapi f ids in
-    let (ids, last) = List.split_last ids in
-    Ok(ids, fst last)
-with Invalid_id(i, pos) -> Error(i, pos)
-
 (** Parsing legacy (Dedukti2) syntax. *)
 module Dk : PARSER = struct
   let stream_of_lexbuf :

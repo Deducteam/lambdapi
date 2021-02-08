@@ -6,9 +6,6 @@ open Pos
 
 let filename = ref ""
 
-let to_module_path : string -> Syntax.p_module_path = fun mp ->
-  List.map (fun s -> (s, false)) (String.split_on_char '.' mp)
-
 let make_pos : Lexing.position * Lexing.position -> 'a -> 'a loc =
   fun lps elt ->
     let fname = !filename in
@@ -28,7 +25,7 @@ type token =
   | KW_PRV
   | KW_THM
   | INFER
-  | REQUIRE of Syntax.p_module_path
+  | REQUIRE of Module.Path.t
   | TYPE
   (* Symbols. *)
   | ARROW
@@ -46,7 +43,7 @@ type token =
   | UNDERSCORE
   (* Identifiers. *)
   | ID of string
-  | QID of (Syntax.p_module_path * string)
+  | QID of (string list * string)
 
 let unexpected_char : Lexing.lexbuf -> char -> token = fun lexbuf c ->
   fatal (Some(locate_lexbuf lexbuf)) "Unexpected characters [%c]." c
@@ -89,7 +86,7 @@ rule token = parse
   | "prv"                           { KW_PRV                               }
   | "thm"                           { KW_THM                               }
   | "#INFER"                        { INFER                                }
-  | "#REQUIRE" space+ (mpath as mp) { REQUIRE(to_module_path mp)           }
+  | "#REQUIRE" space+ (mpath as mp) { REQUIRE(String.split_on_char '.' mp) }
   | "Type"                          { TYPE                                 }
   (* symbols *)
   | "->"                            { ARROW                                }
@@ -106,7 +103,7 @@ rule token = parse
   | ')'                             { RIGHTPAR                             }
   | "_"                             { UNDERSCORE                           }
   (* identifiers *)
-  | (mpath as mp) "." (ident as id) { QID(to_module_path mp, id)           }
+  | (mpath as mp) "." (ident as id) { QID(String.split_on_char '.' mp, id) }
   | ident  as x                     { ID(x)                                }
   | _ as c                          { unexpected_char lexbuf c             }
 

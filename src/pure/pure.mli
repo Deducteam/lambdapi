@@ -15,7 +15,7 @@ module Command : sig
   val print : t Base.pp [@@ocaml.toplevel_printer]
 end
 
-val rangemap : Command.t list -> Syntax.qident_aux RangeMap.t
+val rangemap : Command.t list -> Syntax.qident RangeMap.t
 
 (** Abstract representation of a tactic (proof item). *)
 module Tactic : sig

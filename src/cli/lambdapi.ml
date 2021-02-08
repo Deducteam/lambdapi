@@ -77,7 +77,7 @@ let lsp_server_cmd : Cliconf.t -> bool -> string -> unit =
   Console.handle_exceptions run
 
 (** Printing a decision tree. *)
-let decision_tree_cmd : Cliconf.t -> (Syntax.p_module_path * string) -> unit =
+let decision_tree_cmd : Cliconf.t -> Syntax.qident -> unit =
   fun cfg (mp, sym) ->
   let run _ =
     Timed.(verbose := 0); (* To avoid printing the "Checked ..." line *)
@@ -87,7 +87,7 @@ let decision_tree_cmd : Cliconf.t -> (Syntax.p_module_path * string) -> unit =
     Package.apply_config pth;
     Cliconf.init cfg;
     let sym =
-      let sign = Compile.compile false (List.map fst mp) in
+      let sign = Compile.compile false mp in
       let ss = Sig_state.of_sign sign in
       if String.contains sym '#' then
         (* If [sym] contains a hash, it’s a ghost symbol. *)
@@ -99,7 +99,7 @@ let decision_tree_cmd : Cliconf.t -> (Syntax.p_module_path * string) -> unit =
           Sig_state.find_sym ~prt:true ~prv:true false ss (Pos.none (mp, sym))
         with Not_found ->
           fatal_no_pos "Symbol \"%s\" not found in module \"%a\"."
-            sym Path.pp (List.map fst mp)
+            sym Path.pp mp
     in
     if Timed.(!(sym.sym_rules)) = [] then
       wrn None "Cannot print decision tree: \
@@ -146,20 +146,12 @@ let lsp_log_file : string Term.t =
 
 (** Specific to the ["decision-tree"] command. *)
 
-let qsym : (Syntax.p_module_path * string) Term.t =
-  let qsym_conv: (Syntax.p_module_path * string) Arg.conv =
-    let parse (s: string):
-      (Syntax.p_module_path * string, [>`Msg of string]) result =
-      match Parser.parse_qident s with
-      | Error(i, Some(pos)) ->
-        let msg =
-          Format.sprintf "[%d:%s] invalid identifier" i (Pos.to_string pos)
-        in
-        Error(`Msg(msg))
-      | Error(i, None) ->
-        let msg = Format.sprintf "[%d] invalid identifier" i in
-        Error(`Msg(msg))
-      | Ok(e) -> Ok(e)
+let qsym : (string list * string) Term.t =
+  let qsym_conv: (string list * string) Arg.conv =
+    let parse (s: string): (string list * string, [>`Msg of string]) result =
+      try Ok(List.split_last (String.split_on_char '.' s))
+      with Invalid_argument _ ->
+             Error(`Msg(Format.sprintf "[%s] invalid argument" s))
     in
     let print fmt qid = Pretty.qident fmt (Pos.none qid) in
     Arg.conv (parse, print)

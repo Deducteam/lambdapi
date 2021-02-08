@@ -43,7 +43,7 @@ type sig_symbol =
   { expo   : Tags.expo        (** exposition          *)
   ; prop   : Tags.prop        (** property            *)
   ; mstrat : Tags.match_strat (** strategy            *)
-  ; ident  : ident            (** name                *)
+  ; ident  : p_ident          (** name                *)
   ; typ    : term             (** type                *)
   ; impl   : bool list        (** implicit arguments  *)
   ; def    : term option      (** optional definition *) }
@@ -163,13 +163,11 @@ let of_sign : Sign.t -> sig_state = fun signature ->
     are allowed in left-hand side of rewrite rules (only) iff [~prt] is true.
     {!constructor:Term.expo.Privat} symbols are allowed iff [~prv]
     is [true]. *)
-let find_sym : prt:bool -> prv:bool -> bool -> sig_state -> qident -> sym =
-  fun ~prt ~prv b st qid ->
-  let {elt = (mp, s); pos} = qid in
-  let mp = List.map fst mp in
+let find_sym : prt:bool -> prv:bool -> bool -> sig_state -> p_qident -> sym =
+  fun ~prt ~prv b st {elt = (mp, s); pos} ->
   let s =
     match mp with
-    | []                               -> (* Symbol in scope. *)
+    | [] -> (* Symbol in scope. *)
         begin
           try fst (StrMap.find s st.in_scope) with Not_found ->
           let txt = if b then " or variable" else "" in
@@ -186,7 +184,7 @@ let find_sym : prt:bool -> prv:bool -> bool -> sig_state -> qident -> sym =
           try Sign.find sign s with Not_found ->
           fatal pos "Unbound symbol [%a.%s]." Path.pp mp s
         end
-    | _                                -> (* Fully-qualified symbol. *)
+    | _  -> (* Fully-qualified symbol. *)
         begin
           (* Check that the signature was required (or is the current one). *)
           if mp <> st.signature.sign_path then

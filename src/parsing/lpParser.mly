@@ -12,7 +12,7 @@
 
     let qid_of_path loc p =
       let (mp, id) = List.split_last p in
-      make_pos loc (mp, fst id)
+      make_pos loc (mp, id)
  %}
 
 // end of file
@@ -103,31 +103,33 @@
 
 // identifiers
 
-%token <string * bool> ID
+%token <string> ID
 %token <string> ID_META
 %token <string> ID_PAT
-%token <(string * bool) list> QID
-%token <(string * bool) list> QID_EXPL
+%token <string list> QID
+%token <string list> QID_EXPL
 //%token <(string * bool) list * bool> QID_QUANT
 
-// start symbols
+// start symbol
 
 %start <Syntax.p_command> command
-%start ident
 
 // types
+
+%type <Syntax.p_ident> uid
+%type <Common.Module.Path.t loc> mod_path
+%type <Syntax.p_qident> ident
+%type <Syntax.p_ident option> patt
+%type <Syntax.p_args> arg_list
 
 %type <Syntax.p_term> term
 %type <Syntax.p_term> aterm
 %type <Syntax.p_term> sterm
-%type <Syntax.p_args> arg_list
-%type <Syntax.ident * bool> ident
-%type <Syntax.ident option> patt
+
 %type <Syntax.p_rule> rule
 %type <Syntax.p_tactic> tactic
 %type <Syntax.p_modifier> modifier
 %type <Syntax.p_config> config
-%type <Syntax.qident> qident
 %type <Syntax.p_rw_patt> rw_patt
 %type <Syntax.p_tactic list * Syntax.p_proof_end> proof
 
@@ -138,23 +140,22 @@
 
 %%
 
-ident: i=ID { make_pos $sloc (fst i), snd i}
+uid: i=ID { make_pos $sloc i}
 
-// [path] with a post processing to yield a [qident]
-qident:
+ident:
   | p=QID { qid_of_path $sloc p}
-  | i=ID { make_pos $sloc ([], fst i) }
+  | i=ID { make_pos $sloc ([], i) }
 
 term_ident:
+  | i=ident { make_pos $sloc (P_Iden(i, false)) }
   | p=QID_EXPL { make_pos $sloc (P_Iden(qid_of_path $sloc p, true)) }
-  | qid=qident { make_pos $sloc (P_Iden(qid, false)) }
 
 // Rewrite pattern identifier
 patt: p=ID_PAT { if p = "_" then None else Some(make_pos $sloc p) }
 
 // Identifiers for arguments
 argid:
-  | i=ident { Some(fst i) }
+  | i=uid { Some i }
   | WILD { None }
 
 // Arguments of abstractions, products &c.
@@ -172,7 +173,7 @@ arg_list:
 rw_patt:
   | t=term { make_pos $sloc (P_rw_Term(t)) }
   | IN t=term { make_pos $sloc (P_rw_InTerm(t)) }
-  | IN x=ident IN t=term { make_pos $sloc (P_rw_InIdInTerm(fst x, t)) }
+  | IN x=uid IN t=term { make_pos $sloc (P_rw_InIdInTerm(x, t)) }
   | u=term IN x=term t=preceded(IN, term)?
     {
       let ident_of_term {elt; _} =
@@ -184,8 +185,8 @@ rw_patt:
       | Some(t) -> make_pos $sloc (P_rw_TermInIdInTerm(u, ident_of_term x, t))
       | None -> make_pos $sloc (P_rw_IdInTerm(ident_of_term u, x))
     }
-  | u=term AS x=ident IN t=term
-      { make_pos $sloc (P_rw_TermAsIdInTerm(u, fst x, t)) }
+  | u=term AS x=uid IN t=term
+      { make_pos $sloc (P_rw_TermAsIdInTerm(u,x,t)) }
 
 // Tactics available in proof mode.
 tactic:
@@ -227,17 +228,17 @@ float_or_int:
 // Configurations
 config:
   // Add a builtin: [builtin "0" ≔ zero]
-  | BUILTIN s=STRINGLIT ASSIGN qid=qident { P_config_builtin(s, qid) }
+  | BUILTIN s=STRINGLIT ASSIGN qid=ident { P_config_builtin(s, qid) }
   // Add an infix operator: [infix right 6.3 "+" ≔ plus]
-  | INFIX a=ASSOC? p=float_or_int s=STRINGLIT ASSIGN qid=qident
+  | INFIX a=ASSOC? p=float_or_int s=STRINGLIT ASSIGN qid=ident
       {
         let binop = (s, Option.get Pratter.Neither a, p, qid) in
         P_config_binop(binop)
       }
   // Add a prefix operator: [prefix 1.2 "!" ≔ factorial]
-  | PREFIX p=float_or_int s=STRINGLIT ASSIGN qid=qident
+  | PREFIX p=float_or_int s=STRINGLIT ASSIGN qid=ident
       { let unop = (s, p, qid) in P_config_unop(unop) }
-  | QUANTIFIER qid=qident { P_config_quant qid }
+  | QUANTIFIER qid=ident { P_config_quant qid }
   | UNIF_RULE r=unif_rule { P_config_unif_rule(r) }
 
 assert_kw:
@@ -271,7 +272,7 @@ query:
     }
   | COMPUTE t=term
     { make_pos $sloc (P_query_normalize(t, {strategy=SNF; steps=None})) }
-  | PRINT qid=qident? { make_pos $sloc (P_query_print qid) }
+  | PRINT qid=ident? { make_pos $sloc (P_query_print qid) }
   | PROOFTERM { make_pos $sloc P_query_proofterm }
   | SET DEBUG fl=DEBUG_FLAGS
       { let (b, s) = fl in make_pos $sloc (P_query_debug(b, s)) }
@@ -290,48 +291,49 @@ proof_end:
 proof: BEGIN ts=terminated(tactic, SEMICOLON)* pe=proof_end { ts, pe }
 
 constructor:
-  | i=ident xs=arg_list* COLON t=term
+  | i=uid xs=arg_list* COLON t=term
     { let t = if xs = [] then t else
                 make_pos ($startpos(xs), $endpos(t)) (P_Prod(xs,t))
       in (i,t) }
 
 inductive:
-  | i=ident xs=arg_list* COLON t=term ASSIGN
+  | i=uid xs=arg_list* COLON t=term ASSIGN
     VBAR? l=separated_list(VBAR, constructor)
     { let t = if xs = [] then t else
                 make_pos ($startpos(xs), $endpos(t)) (P_Prod(xs,t)) in
-      let l = List.map (fun (i,t) -> (fst i,t)) l in
-      make_pos $sloc (fst i, t, l) }
+      make_pos $sloc (i,t,l) }
 
 term_proof:
   | t=term { Some t, None }
   | p=proof { None, Some p }
   | t=term p=proof { Some t, Some p }
 
+mod_path: i=QID { make_pos $sloc i}
+
 // Top level commands
 command:
-  | REQUIRE OPEN p=QID+ SEMICOLON { make_pos $sloc (P_require(true,p)) }
-  | REQUIRE p=QID+ SEMICOLON { make_pos $sloc (P_require(false, p)) }
-  | REQUIRE p=QID AS a=ident SEMICOLON
-      {
-        let alias = Pos.make (fst a).pos ((fst a).elt, snd a) in
-        make_pos $sloc (P_require_as(p, alias))
-      }
-  | OPEN p=QID SEMICOLON { make_pos $sloc (P_open([p])) }
-  | ms=modifier* SYMBOL s=ident al=arg_list* COLON a=term
+  | REQUIRE OPEN l=list(mod_path) SEMICOLON
+    { make_pos $sloc (P_require(true,l)) }
+  | REQUIRE l=list(mod_path) SEMICOLON
+    { make_pos $sloc (P_require(false,l)) }
+  | REQUIRE i=mod_path AS a=uid SEMICOLON
+    { make_pos $sloc (P_require_as(i,a)) }
+  | OPEN l=list(mod_path) SEMICOLON
+    { make_pos $sloc (P_open l) }
+  | ms=modifier* SYMBOL s=uid al=arg_list* COLON a=term
     po=proof? SEMICOLON
       {
         let sym =
-          {p_sym_mod=ms; p_sym_nam=fst s; p_sym_arg=al; p_sym_typ=Some(a);
+          {p_sym_mod=ms; p_sym_nam=s; p_sym_arg=al; p_sym_typ=Some(a);
            p_sym_trm=None; p_sym_def=false; p_sym_prf=po}
         in
         make_pos $sloc (P_symbol(sym))
       }
-  | ms=modifier* SYMBOL s=ident al=arg_list* ao=preceded(COLON, term)?
+  | ms=modifier* SYMBOL s=uid al=arg_list* ao=preceded(COLON, term)?
     ASSIGN tp=term_proof SEMICOLON
       {
         let sym =
-          {p_sym_mod=ms; p_sym_nam=fst s; p_sym_arg=al; p_sym_typ=ao;
+          {p_sym_mod=ms; p_sym_nam=s; p_sym_arg=al; p_sym_typ=ao;
            p_sym_trm=fst tp; p_sym_prf=snd tp; p_sym_def=true}
         in
         make_pos $sloc (P_symbol(sym))
@@ -391,8 +393,8 @@ term:
 //  }
   | PI b=binder { make_pos $sloc (P_Prod(fst b, snd b)) }
   | LAMBDA b=binder { make_pos $sloc (P_Abst(fst b, snd b)) }
-  | LET x=ident a=arg_list* b=preceded(COLON, term)? ASSIGN t=term IN u=term
-      { make_pos $sloc (P_LLet(fst x, a, b, t, u)) }
+  | LET x=uid a=arg_list* b=preceded(COLON, term)? ASSIGN t=term IN u=term
+      { make_pos $sloc (P_LLet(x, a, b, t, u)) }
 
 binder:
   | xs=arg_list+ COMMA t=term { (xs, t) }

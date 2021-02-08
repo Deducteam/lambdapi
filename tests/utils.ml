@@ -4,8 +4,7 @@
 open Lplib.Extra
 
 open Common
-open Parsing
-open Core (* Lambdapi core *)
+open Core
 open Handle
 
 let _ =
@@ -38,16 +37,12 @@ let test_xtc () =
 
 (** Decision tree of regular symbol. *)
 let test_dtree () =
-  match Parser.parse_qident "tests.OK.bool.bool_or" with
-  | Ok(e) ->
-      let sym =
-        Sig_state.find_sym ~prt:true ~prv:true false bool_ss (Pos.none e)
-      in
-      let buf = Buffer.create 16 in
-      let fmt = Format.formatter_of_buffer buf in
-      Tool.Tree_graphviz.to_dot fmt sym;
-      Alcotest.(check bool) "bool" (Buffer.contents buf <> "") true
-  | _ -> assert false
+  let id = Pos.none (["tests";"OK";"bool"],"bool_or") in
+  let sym = Sig_state.find_sym ~prt:true ~prv:true false bool_ss id in
+  let buf = Buffer.create 16 in
+  let fmt = Format.formatter_of_buffer buf in
+  Tool.Tree_graphviz.to_dot fmt sym;
+  Alcotest.(check bool) "bool" (Buffer.contents buf <> "") true
 
 (** Decision tree of ghost symbols. *)
 let test_dtree_ghost () =

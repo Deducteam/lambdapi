@@ -14,28 +14,24 @@ open Pos
 open Syntax
 open Format
 
-let ident : ident pp = fun ff {pos; elt} ->
-  if LpLexer.is_keyword elt then
-    fatal pos "Identifier [%s] is a Lambdapi keyword." elt
-  else pp_print_string ff elt
+let ident : p_ident pp = fun ff {pos; elt=s} ->
+  if LpLexer.is_keyword s then
+    fatal pos "Identifier [%s] is a Lambdapi keyword." s
+  else pp_print_string ff s
 
-let arg_ident : ident option pp = fun ff idopt ->
+let arg_ident : p_ident option pp = fun ff idopt ->
   match idopt with
   | Some(id) -> ident ff id
   | None     -> pp_print_string ff "_"
 
-let path_elt : Pos.popt -> (string * bool) pp = fun pos ff (s,b) ->
-  if b then fprintf ff "{|%s|}" s
-  else if LpLexer.is_keyword s then
-    fatal pos "Module path member [%s] is a Lambdapi keyword." s
-  else pp_print_string ff s
+let mod_path : p_mod_path pp = fun ff {elt=mp;_} -> Module.Path.pp ff mp
 
-let path : Pos.popt -> p_module_path pp = fun pos ->
-  List.pp (path_elt pos) "."
-
-let qident : qident pp = fun ff {elt=(mp,id); pos} ->
-  let path_elt ff = fprintf ff "%a." (path_elt pos) in
-  fprintf ff "%a%a" (List.pp path_elt "") mp ident (Pos.make pos id)
+let qident : p_qident pp = fun ff {elt=(mp,s); pos} ->
+  if LpLexer.is_keyword s then
+    fatal pos "Identifier [%s] is a Lambdapi keyword." s
+  else match mp with
+       | [] -> pp_print_string ff s
+       | _::_ -> fprintf ff "%a.%s" Module.Path.pp mp s
 
 let modifier : p_modifier pp = fun ff {elt; _} ->
   match elt with
@@ -210,16 +206,14 @@ let tactic : p_tactic pp = fun ff t ->
   end;
   out ";"
 
-let command : p_command pp = fun ff {elt;pos} ->
+let command : p_command pp = fun ff {elt;_} ->
   let out fmt = fprintf ff fmt in
   begin match elt with
-  | P_require(b,ps) ->
+  | P_require(b,ms) ->
       let op = if b then " open" else "" in
-      out "require%s %a" op (List.pp (path pos) " ") ps
-  | P_require_as(p,{elt;pos}) ->
-      out "require %a as %a" (path pos) p (path_elt pos) elt
-  | P_open(ps) ->
-      List.iter (out "open %a" (path pos)) ps
+      out "require%s %a" op (List.pp mod_path " ") ms
+  | P_require_as(m,i) -> out "require %a as %a" mod_path m ident i
+  | P_open(ms) -> out "open %a" (List.pp mod_path " ") ms
   | P_symbol{p_sym_mod;p_sym_nam;p_sym_arg;p_sym_typ;p_sym_trm;p_sym_prf
              ;p_sym_def} ->
     begin

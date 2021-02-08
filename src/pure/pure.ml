@@ -33,8 +33,8 @@ let interval_of_pos : Pos.pos -> Range.t =
   make_interval start finish
 
 (** Document identifier range map. *)
-let rangemap : Command.t list -> Syntax.qident_aux RangeMap.t =
-  let f map ({elt;pos} : Syntax.qident) =
+let rangemap : Command.t list -> Syntax.qident RangeMap.t =
+  let f map ({elt;pos} : Syntax.p_qident) =
     (* Only add if the symbol has a position. *)
     match pos with
     | Some pos -> RangeMap.add (interval_of_pos pos) elt map

@@ -217,7 +217,7 @@ let build_config : Pos.pos -> string -> string option -> eval_config =
 %token KW_PRV
 %token KW_THM
 %token INFER
-%token <Syntax.p_module_path> REQUIRE
+%token <Common.Module.Path.t> REQUIRE
 %token TYPE
 
 // symbols
@@ -239,7 +239,7 @@ let build_config : Pos.pos -> string -> string option -> eval_config =
 // identifiers
 
 %token <string> ID
-%token <Syntax.p_module_path * string> QID
+%token <string list * string> QID
 
 // start symbol
 
@@ -381,7 +381,7 @@ command:
       let q = make_pos $sloc (P_query_assert(mf, P_assert_conv(t,u))) in
       make_pos $sloc (P_query q)
     }
-  | r=REQUIRE DOT { make_pos $sloc (P_require(false,[r])) }
+  | r=REQUIRE DOT { make_pos $sloc (P_require(false, [make_pos $loc(r) r])) }
   | EOF {
       raise End_of_file
     }

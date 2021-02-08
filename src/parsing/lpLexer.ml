@@ -93,12 +93,12 @@ type token =
   | WILD
 
   (* identifiers *)
-  | ID of ident
+  | ID of string
   | ID_META of string
   | ID_PAT of string
-  | QID of ident list
-  | QID_EXPL of ident list
-  (*| QID_QUANT of (ident list * bool)*)
+  | QID of string list
+  | QID_EXPL of string list
+  (*| QID_QUANT of (string list * bool)*)
 
 exception SyntaxError of strloc
 
@@ -250,12 +250,6 @@ end = struct
   let unquote : string -> string * bool = fun s ->
     if is_escaped s then unescape s, true else s, false
 
-  (** [split_qid b] splits buffer [b] on dots, parsing identifiers between
-      them. Each identifier is translated to a string, attached to a boolean
-      which indicates whether it was escaped. *)
-  let split_qid : string -> (string * bool) list = fun s ->
-    String.split_on_char '.' s |> List.map unquote
-
   (** [tail n buf] returns the utf8 string formed from [buf] dropping its [n]
      first codepoints. *)
   let tail : int -> lexbuf -> string = fun n buf ->
@@ -357,16 +351,17 @@ end = struct
 
     (* identifiers *)
 
-    | '?', uid -> ID_META(fst(unquote(tail 1 buf)))
-    | '$', uid -> ID_PAT(fst(unquote(tail 1 buf)))
+    | '?', uid -> ID_META(tail 1 buf)
+    | '$', uid -> ID_PAT(tail 1 buf)
 
-    | '@', id -> QID_EXPL(split_qid (tail 1 buf))
+    | '@', uid -> QID_EXPL([tail 1 buf])
+    | '@', qid -> QID_EXPL(String.split_on_char '.' (tail 1 buf))
 
-    (*| '`', id -> QID_QUANT(split_qid (tail 1 buf), false)
-    | '`', '@', id -> QID_QUANT(split_qid (tail 2 buf), true)*)
+    (*| '`', id -> QID_QUANT(String.split_on_char '.' (tail 1 buf), false)
+    | '`', '@', id -> QID_QUANT(String.split_on_char '.' (tail 2 buf), true)*)
 
-    | uid -> ID(unquote(Utf8.lexeme buf))
-    | qid -> QID(split_qid (Utf8.lexeme buf))
+    | uid -> ID(Utf8.lexeme buf)
+    | qid -> QID(String.split_on_char '.' (Utf8.lexeme buf))
 
     (* invalid token *)
 

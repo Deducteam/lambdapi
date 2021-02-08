@@ -26,7 +26,7 @@ let log_scop = log_scop.logger
     foreign modules are allowed (protected symbols from current modules are
     always allowed). If [prv] is true,
     {!constructor:Term.expo.Privat} symbols are allowed. *)
-let find_qid : bool -> bool -> sig_state -> env -> qident -> tbox =
+let find_qid : bool -> bool -> sig_state -> env -> p_qident -> tbox =
   fun prt prv st env qid ->
   let (mp, s) = qid.elt in
   (* Check for variables in the environment first. *)
