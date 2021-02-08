@@ -3,3 +3,52 @@
 <assert> ::= '#ASSERT'
            | '#ASSERTNOT'
 
+<command> ::= <modifier>* <id> <param>* ':' <term> '.'
+            | <modifier>* 'def' <id> ':' <term> '.'
+            | <modifier>* 'def' <id> ':' <term> ':=' <term> '.'
+            | <modifier>* 'def' <id> ':=' <term> '.'
+            | <modifier>* 'def' <id> <param>+ ':' <term> ':=' <term> '.'
+            | <modifier>* 'def' <id> <param>+ ':=' <term> '.'
+            | <modifier>* 'thm' <id> ':' <term> ':=' <term> '.'
+            | <modifier>* 'thm' <id> <param>+ ':' <term> ':=' <term> '.'
+            | <rule>+ '.'
+            | '#EVAL' <term> '.'
+            | '#EVAL' <eval_config> <term> '.'
+            | '#INFER' <term> '.'
+            | '#INFER' <eval_config> <term> '.'
+            | <assert> <aterm> ':' <term> '.'
+            | <assert> <aterm> '==' <term> '.'
+            | '#REQUIRE' <qid> '.'
+            
+
+<eval_config> ::= '[' <id> ']'
+                | '[' <id> ',' <id> ']'
+
+<param> ::= '(' <id> ':' <term> ')'
+
+<modifier> ::= 'private'
+             | 'injective'
+
+<context_item> ::= <id> [':' <term>]
+
+<rule> ::= '[' [<context_item> (',' <context_item>)*] ']' <term>
+           '-->' <term>
+
+<sterm> ::= <qid>
+          | <id>
+          | '_'
+          | 'Type'
+          | '(' <term> ')'
+
+<aterm> ::= <sterm>+
+
+<type_annot> ::= ':' <aterm>
+
+<term> ::= <aterm>
+         | <id> ':' <aterm> '->' <term>
+         | '(' <id> ':' <aterm> ')' '->' <term>
+         | <term> '->' <term>
+         | '_' [<type_annot>] '=>' <term>
+         | <id> [<type_annot>] '=>' <term>
+
+
