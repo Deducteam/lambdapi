@@ -129,7 +129,7 @@ let t0 : Time.t Stdlib.ref = Stdlib.ref (Time.save ())
 let set_initial_time : unit -> unit = fun _ ->
   Stdlib.(t0 := Time.save ())
 
-let initial_state : file_path -> state = fun fname ->
+let initial_state : string -> state = fun fname ->
   Console.reset_default ();
   Time.restore Stdlib.(!t0);
   Package.apply_config fname;

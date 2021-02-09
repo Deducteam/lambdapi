@@ -115,7 +115,7 @@
 %start <Syntax.p_qident> id
 
 %type <Syntax.p_ident> uid
-%type <Common.Module.Path.t loc> mod_path
+%type <Syntax.p_path> path
 %type <Syntax.p_ident option> patt
 %type <Syntax.p_args> arg_ids
 
@@ -305,17 +305,17 @@ term_proof:
   | p=proof { None, Some p }
   | t=term p=proof { Some t, Some p }
 
-mod_path: i=QID { make_pos $sloc i}
+path: i=QID { make_pos $sloc i}
 
 // Top level commands
 command:
-  | REQUIRE OPEN l=list(mod_path) SEMICOLON
+  | REQUIRE OPEN l=list(path) SEMICOLON
     { make_pos $sloc (P_require(true,l)) }
-  | REQUIRE l=list(mod_path) SEMICOLON
+  | REQUIRE l=list(path) SEMICOLON
     { make_pos $sloc (P_require(false,l)) }
-  | REQUIRE i=mod_path AS a=uid SEMICOLON
+  | REQUIRE i=path AS a=uid SEMICOLON
     { make_pos $sloc (P_require_as(i,a)) }
-  | OPEN l=list(mod_path) SEMICOLON
+  | OPEN l=list(path) SEMICOLON
     { make_pos $sloc (P_open l) }
   | ms=modifier* SYMBOL s=uid al=arg_ids* COLON a=term
     po=proof? SEMICOLON

@@ -49,7 +49,7 @@ let rec compile : bool -> Path.t -> Sign.t = fun force path ->
   if PathMap.mem path !loaded then
     let sign = PathMap.find path !loaded in
     out 2 "Already loaded [%a]\n%!" Path.pp path; sign
-  else if force || Module.more_recent (src ()) obj then
+  else if force || Extra.more_recent (src ()) obj then
     begin
       let forced = if force then " (forced)" else "" in
       let src = src () in
@@ -101,7 +101,7 @@ let recompile = Stdlib.ref false
 
 (** [compile_file fname] is the main compiling function. It is called from the
     main program exclusively. *)
-let compile_file : file_path -> Sign.t = fun fname ->
+let compile_file : string -> Sign.t = fun fname ->
   Package.apply_config fname;
   (* Compute the module path (checking the extension). *)
   let mp = Module.file_to_module fname in
@@ -114,7 +114,7 @@ let compile_file : file_path -> Sign.t = fun fname ->
     argument to change the settings. *)
 module Pure : sig
   val compile : ?lm:string -> ?st:State.t -> bool -> Path.t -> Sign.t
-  val compile_file : ?lm:string -> ?st:State.t -> file_path -> Sign.t
+  val compile_file : ?lm:string -> ?st:State.t -> string -> Sign.t
 end = struct
 
   (* [pure_apply_cfg ?lm ?st f] is function [f] but pure (without side

@@ -13,6 +13,7 @@ open Console
 open Pos
 open Syntax
 open Format
+open Module
 
 let ident : p_ident pp = fun ppf {pos; elt=s} ->
   if LpLexer.is_keyword s then
@@ -24,14 +25,14 @@ let arg_ident : p_ident option pp = fun ppf idopt ->
   | Some(id) -> ident ppf id
   | None     -> pp_print_string ppf "_"
 
-let mod_path : p_mod_path pp = fun ppf {elt=mp;_} -> Module.Path.pp ppf mp
+let path : p_path pp = fun ppf {elt=mp;_} -> Path.pp ppf mp
 
 let qident : p_qident pp = fun ppf {elt=(mp,s); pos} ->
   if LpLexer.is_keyword s then
     fatal pos "Identifier [%s] is a Lambdapi keyword." s
   else match mp with
        | [] -> pp_print_string ppf s
-       | _::_ -> fprintf ppf "%a.%s" Module.Path.pp mp s
+       | _::_ -> fprintf ppf "%a.%s" Path.pp mp s
 
 let modifier : p_modifier pp = fun ppf {elt; _} ->
   match elt with
@@ -211,9 +212,9 @@ let command : p_command pp = fun ppf {elt;_} ->
   begin match elt with
   | P_require(b,ms) ->
       let op = if b then " open" else "" in
-      out "require%s %a" op (List.pp mod_path " ") ms
-  | P_require_as(m,i) -> out "require %a as %a" mod_path m ident i
-  | P_open(ms) -> out "open %a" (List.pp mod_path " ") ms
+      out "require%s %a" op (List.pp path " ") ms
+  | P_require_as(m,i) -> out "require %a as %a" path m ident i
+  | P_open(ms) -> out "open %a" (List.pp path " ") ms
   | P_symbol{p_sym_mod;p_sym_nam;p_sym_arg;p_sym_typ;p_sym_trm;p_sym_prf
              ;p_sym_def} ->
     begin

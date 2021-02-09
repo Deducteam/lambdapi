@@ -32,7 +32,7 @@ type config_data =
 
 (** [read fname] reads configuration data from the file [fname]. The exception
     [Fatal] is raised in case of error (non-existing file, bad format). *)
-let read : file_path -> config_data = fun fname ->
+let read : string -> config_data = fun fname ->
   (* Obtaining file lines. *)
   let lines =
     let ic =
@@ -70,7 +70,7 @@ let read : file_path -> config_data = fun fname ->
     look in the parent directory and so on, up to the root or as long as no
     [Sys_error] is raised. Note that [fname] is first normalized with a call
     to [Filename.realpath]. *)
-let find_config : file_path -> file_path option = fun fname ->
+let find_config : string -> string option = fun fname ->
   let fname = Filename.normalize fname in
   let rec find dir =
     let file = Filename.concat dir pkg_file in
@@ -84,7 +84,7 @@ let find_config : file_path -> file_path option = fun fname ->
 
 (** [apply_config fname] attempts to find a configuration file that applies to
     the (source) file [fname], and applies the corresponding configuration. *)
-let apply_config : file_path -> unit = fun fname ->
+let apply_config : string -> unit = fun fname ->
   match find_config fname with
   | None           -> ()
   | Some(cfg_file) ->

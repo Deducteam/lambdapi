@@ -26,7 +26,7 @@ type token =
   | KW_PRV
   | KW_THM
   | INFER
-  | REQUIRE of Module.Path.t
+  | REQUIRE of Path.t
   | TYPE
   (* Symbols. *)
   | ARROW
@@ -44,7 +44,7 @@ type token =
   | UNDERSCORE
   (* Identifiers. *)
   | UID of string
-  | QID of (string list * string)
+  | QID of Syntax.qident
 
 let unexpected_char : Lexing.lexbuf -> char -> token = fun lexbuf c ->
   fatal (Some(locate_lexbuf lexbuf)) "Unexpected characters [%c]." c

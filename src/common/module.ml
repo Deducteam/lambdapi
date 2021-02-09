@@ -61,9 +61,6 @@ module Path =
 (** Functional maps with module paths as keys. *)
 module PathMap = Map.Make(Path)
 
-(** Synonym of [string] for file paths. *)
-type file_path = string
-
 (** Representation of the mapping from module paths to files. *)
 module ModMap :
   sig
@@ -79,12 +76,12 @@ module ModMap :
 
     (** [set_root path m] sets the library root of [m] to be [path].
         @raise Already_mapped if library root of [m] is already set. *)
-    val set_root : file_path -> t -> t
+    val set_root : string -> t -> t
 
     (** [add mp path m] extends the mapping [m] by associating the module path
         [mp] to the file path [path].
         @raise Already_mapped when [mp] is already mapped in [m]. *)
-    val add : Path.t -> file_path -> t -> t
+    val add : Path.t -> string -> t -> t
 
     (** Exception raised if an attempt is made to use the [get] function prior
         to the root being set (using [set_root]). *)
@@ -94,13 +91,13 @@ module ModMap :
         in [m] (with no particular extension).
         @raise Root_not_set when the root of [m] has not been set using
         [set_root].  *)
-    val get : Path.t -> t -> file_path
+    val get : Path.t -> t -> string
 
     (** [iter fn m] calls function [fn] on every binding stored in [m]. *)
-    val iter : (Path.t -> file_path -> unit) -> t -> unit
+    val iter : (Path.t -> string -> unit) -> t -> unit
   end =
   struct
-    type t = Node of file_path option * t StrMap.t
+    type t = Node of string option * t StrMap.t
 
     let empty = Node(None, StrMap.empty)
 
@@ -240,7 +237,7 @@ let current_mappings : unit -> ModMap.t = fun _ -> !lib_mappings
 (** [module_to_file mp] converts module path [mp] into the corresponding "file
     path" (with no attached extension). It is assumed that [lib_root] has been
     set, possibly with [set_lib_root]. *)
-let module_to_file : Path.t -> file_path = fun mp ->
+let module_to_file : Path.t -> string = fun mp ->
   let path =
     try ModMap.get mp !lib_mappings with ModMap.Root_not_set ->
       fatal_no_pos "Library root not set."
@@ -256,6 +253,10 @@ let obj_extension : string = ".lpo"
 (** [legacy_src_extension] is the extension for legacy source files. *)
 let legacy_src_extension : string = ".dk"
 
+(** [valids_extensions] is the list of valid file extensions. *)
+let valid_extensions : string list =
+  [src_extension; legacy_src_extension; obj_extension]
+
 (** [file_to_module path] computes the module path that corresponds to [path].
     The file described by [path] is expected to have a valid extension (either
     [src_extension] or the legacy extension [legacy_src_extension]). If [path]
@@ -263,9 +264,6 @@ let legacy_src_extension : string = ".dk"
 let file_to_module : string -> Path.t = fun fname ->
   (* Sanity check: source file extension. *)
   let ext = Filename.extension fname in
-  let valid_extensions =
-    [ src_extension ; legacy_src_extension ; obj_extension ]
-  in
   if not (List.mem ext valid_extensions) then
     begin
       fatal_msg "Invalid extension for [%s].\n" fname;
@@ -281,8 +279,8 @@ let file_to_module : string -> Path.t = fun fname ->
     if String.is_prefix path base then
       match !mapping with
       | None       -> mapping := Some(mp, path)
-      | Some(_, p) -> if String.length p < String.length path then
-                        mapping := Some(mp, p)
+      | Some(_, p) ->
+          if String.(length p < length path) then mapping := Some(mp, p)
   in
   ModMap.iter fn (current_mappings ());
   (* Fail if there is none. *)
@@ -305,20 +303,8 @@ let file_to_module : string -> Path.t = fun fname ->
   full_mp
 
 let install_path : string -> string = fun fname ->
-  let mod_path = file_to_module fname in
+  let path = file_to_module fname in
   let ext = Filename.extension fname in
   match Stdlib.(!lib_root) with
   | None -> assert false
-  | Some(pth) ->
-    List.fold_left Filename.concat pth mod_path ^ ext
-
-(** [mod_time fname] returns the modification time of file [fname] represented
-    as a [float]. [neg_infinity] is returned if the file does not exist. *)
-let mod_time : string -> float = fun fname ->
-  if Sys.file_exists fname then Unix.((stat fname).st_mtime) else neg_infinity
-
-(** [more_recent source target] checks whether the [target] (produced from the
-    [source] file) should be produced again. This is the case when [source] is
-    more recent than [target]. *)
-let more_recent : string -> string -> bool = fun source target ->
-  mod_time source > mod_time target
+  | Some(p) -> List.fold_left Filename.concat p path ^ ext

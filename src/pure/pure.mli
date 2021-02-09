@@ -4,7 +4,6 @@ open Lplib
 open Core
 open Common
 open Parsing
-open Module
 open Handle
 
 (** Abstract representation of a command (top-level item). *)
@@ -66,7 +65,7 @@ type tactic_result =
 
 (** [initial_state fname] gives an initial state for working with the (source)
     file [fname]. The resulting state can be used by [handle_command]. *)
-val initial_state : file_path -> state
+val initial_state : string -> state
 
 (** [handle_command st cmd] evaluates the command [cmd] in state [st],  giving
     one of three possible results: the command is fully handled (corresponding

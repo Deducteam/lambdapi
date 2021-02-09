@@ -79,3 +79,14 @@ let run_process : string -> string list option =
   match Unix.close_process_full (oc, ic, ec) with
   | Unix.WEXITED 0 -> Some res
   | _ -> None
+
+(** [file_time fname] returns the modification time of file [fname] represented
+    as a [float]. [neg_infinity] is returned if the file does not exist. *)
+let file_time : string -> float = fun fname ->
+  if Sys.file_exists fname then Unix.((stat fname).st_mtime) else neg_infinity
+
+(** [more_recent source target] checks whether the [target] (produced from the
+    [source] file) should be produced again. This is the case when [source] is
+    more recent than [target]. *)
+let more_recent : string -> string -> bool = fun source target ->
+  file_time source > file_time target

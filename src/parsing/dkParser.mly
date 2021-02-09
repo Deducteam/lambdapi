@@ -6,6 +6,7 @@ open Common
 open Pos
 open Syntax
 open DkLexer
+open Module
 
 (** {b NOTE} we maintain the invariant described in the [Parser] module: every
     error should have an attached position.  We do not open [Console] to avoid
@@ -217,7 +218,7 @@ let build_config : Pos.pos -> string -> string option -> eval_config =
 %token KW_PRV
 %token KW_THM
 %token INFER
-%token <Common.Module.Path.t> REQUIRE
+%token <Path.t> REQUIRE
 %token TYPE
 
 // symbols
