@@ -149,9 +149,10 @@ let lsp_log_file : string Term.t =
 let qsym : Syntax.qident Term.t =
   let qsym_conv: Syntax.qident Arg.conv =
     let parse (s: string): (Syntax.qident, [>`Msg of string]) result =
-      try Ok(Syntax.qident_of_string s)
-      with Invalid_argument _ ->
-             Error(`Msg(Format.sprintf "[%s] invalid argument" s))
+      match Parser.qident_of_string s with
+      | Error(p) ->
+          Error(`Msg(Format.asprintf "[%a] invalid argument" Pos.pp p))
+      | Ok(id) -> Ok(id)
     in
     let print fmt qid = Pretty.qident fmt (Pos.none qid) in
     Arg.conv (parse, print)

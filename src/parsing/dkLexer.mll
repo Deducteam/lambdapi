@@ -3,6 +3,7 @@ open Lexing
 open Common
 open Console
 open Pos
+open Module
 
 let filename = ref ""
 
@@ -86,7 +87,7 @@ rule token = parse
   | "prv"                           { KW_PRV                               }
   | "thm"                           { KW_THM                               }
   | "#INFER"                        { INFER                                }
-  | "#REQUIRE" space+ (mpath as mp) { REQUIRE(String.split_on_char '.' mp) }
+  | "#REQUIRE" space+ (mpath as mp) { REQUIRE(Path.of_string mp)           }
   | "Type"                          { TYPE                                 }
   (* symbols *)
   | "->"                            { ARROW                                }
@@ -103,7 +104,7 @@ rule token = parse
   | ')'                             { RIGHTPAR                             }
   | "_"                             { UNDERSCORE                           }
   (* identifiers *)
-  | (mpath as mp) "." (ident as id) { QID(String.split_on_char '.' mp, id) }
+  | (mpath as mp) "." (ident as id) { QID(Path.of_string mp, id)           }
   | ident  as x                     { UID(x)                               }
   | _ as c                          { unexpected_char lexbuf c             }
 

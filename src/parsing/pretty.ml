@@ -14,34 +14,34 @@ open Pos
 open Syntax
 open Format
 
-let ident : p_ident pp = fun ff {pos; elt=s} ->
+let ident : p_ident pp = fun ppf {pos; elt=s} ->
   if LpLexer.is_keyword s then
     fatal pos "Identifier [%s] is a Lambdapi keyword." s
-  else pp_print_string ff s
+  else pp_print_string ppf s
 
-let arg_ident : p_ident option pp = fun ff idopt ->
+let arg_ident : p_ident option pp = fun ppf idopt ->
   match idopt with
-  | Some(id) -> ident ff id
-  | None     -> pp_print_string ff "_"
+  | Some(id) -> ident ppf id
+  | None     -> pp_print_string ppf "_"
 
-let mod_path : p_mod_path pp = fun ff {elt=mp;_} -> Module.Path.pp ff mp
+let mod_path : p_mod_path pp = fun ppf {elt=mp;_} -> Module.Path.pp ppf mp
 
-let qident : p_qident pp = fun ff {elt=(mp,s); pos} ->
+let qident : p_qident pp = fun ppf {elt=(mp,s); pos} ->
   if LpLexer.is_keyword s then
     fatal pos "Identifier [%s] is a Lambdapi keyword." s
   else match mp with
-       | [] -> pp_print_string ff s
-       | _::_ -> fprintf ff "%a.%s" Module.Path.pp mp s
+       | [] -> pp_print_string ppf s
+       | _::_ -> fprintf ppf "%a.%s" Module.Path.pp mp s
 
-let modifier : p_modifier pp = fun ff {elt; _} ->
+let modifier : p_modifier pp = fun ppf {elt; _} ->
   match elt with
-  | P_expo(e)   -> Tags.pp_expo ff e
-  | P_mstrat(s) -> Tags.pp_match_strat ff s
-  | P_prop(p)   -> Tags.pp_prop ff p
-  | P_opaq      -> Format.pp_print_string ff "opaque "
+  | P_expo(e)   -> Tags.pp_expo ppf e
+  | P_mstrat(s) -> Tags.pp_match_strat ppf s
+  | P_prop(p)   -> Tags.pp_prop ppf p
+  | P_opaq      -> Format.pp_print_string ppf "opaque "
 
-let rec term : p_term pp = fun ff t ->
-  let out fmt = fprintf ff fmt in
+let rec term : p_term pp = fun ppf t ->
+  let out fmt = fprintf ppf fmt in
   let empty_context = ref true in
   let rec pp p _ t =
     let env _ ar =
@@ -77,9 +77,9 @@ let rec term : p_term pp = fun ff t ->
     | (P_Wrap(t)           , _    ) -> out "%a" (pp p) t
     | (P_Expl(t)           , _    ) -> out "{%a}" func t
     | (_                   , _    ) -> out "(%a)" func t
-  and atom ff t = pp `PAtom ff t
-  and appl ff t = pp `PAppl ff t
-  and func ff t = pp `PFunc ff t
+  and atom ppf t = pp `PAtom ppf t
+  and appl ppf t = pp `PAppl ppf t
+  and func ppf t = pp `PFunc ppf t
   in
   let rec toplevel _ t =
     match t.elt with
@@ -91,34 +91,34 @@ let rec term : p_term pp = fun ff t ->
           args_list xs annot a toplevel t toplevel u
     | _ -> out "%a" func t
   in
-  toplevel ff t
+  toplevel ppf t
 
-and annot : p_type option pp = fun ff a ->
+and annot : p_type option pp = fun ppf a ->
   match a with
-  | Some(a) -> fprintf ff " : %a" term a
+  | Some(a) -> fprintf ppf " : %a" term a
   | None    -> ()
 
-and args : p_args pp = fun ff (ids,ao,b) ->
+and args : p_args pp = fun ppf (ids,ao,b) ->
   let args = List.pp arg_ident " " in
   match (ao,b) with
-  | (None   , false) -> fprintf ff "%a" args ids
-  | (None   , true ) -> fprintf ff "{%a}" args ids
-  | (Some(a), false) -> fprintf ff "(%a : %a)" args ids term a
-  | (Some(a), true ) -> fprintf ff "{%a : %a}" args ids term a
+  | (None   , false) -> fprintf ppf "%a" args ids
+  | (None   , true ) -> fprintf ppf "{%a}" args ids
+  | (Some(a), false) -> fprintf ppf "(%a : %a)" args ids term a
+  | (Some(a), true ) -> fprintf ppf "{%a : %a}" args ids term a
 
-and args_list : p_args list pp = fun ff ->
-  List.iter (fprintf ff " %a" args)
+and args_list : p_args list pp = fun ppf ->
+  List.iter (fprintf ppf " %a" args)
 
-let rule : string -> p_rule pp = fun kw ff {elt=(l,r);_} ->
-  fprintf ff "%s %a ↪ %a" kw term l term r
+let rule : string -> p_rule pp = fun kw ppf {elt=(l,r);_} ->
+  fprintf ppf "%s %a ↪ %a" kw term l term r
 
 let inductive : string -> p_inductive pp =
-  let cons ff (id,a) = fprintf ff "\n| %a : %a" ident id term a in
-  fun kw ff {elt=(id,a,cs);_} ->
-  fprintf ff "%s %a : %a ≔%a" kw ident id term a (List.pp cons "") cs
+  let cons ppf (id,a) = fprintf ppf "\n| %a : %a" ident id term a in
+  fun kw ppf {elt=(id,a,cs);_} ->
+  fprintf ppf "%s %a : %a ≔%a" kw ident id term a (List.pp cons "") cs
 
-let equiv : (p_term * p_term) pp = fun ff (l, r) ->
-  fprintf ff "%a ≡ %a" term l term r
+let equiv : (p_term * p_term) pp = fun ppf (l, r) ->
+  fprintf ppf "%a ≡ %a" term l term r
 
 (** [p_unpack eqs] is [unpack eqs] on syntax-level equivalences [eqs]. *)
 let rec p_unpack : p_term -> (p_term * p_term) list = fun eqs ->
@@ -135,23 +135,23 @@ let rec p_unpack : p_term -> (p_term * p_term) list = fun eqs ->
       assert false (* Ill-formed term. *)
   | _                               -> assert false (* Ill-formed term. *)
 
-let unif_rule : p_rule pp = fun ff {elt=(lhs,rhs);_} ->
+let unif_rule : p_rule pp = fun ppf {elt=(lhs,rhs);_} ->
   let lhs =
     match Syntax.p_get_args lhs with
     | (_, [t; u]) -> (t, u)
     | _           -> assert false
   in
   let eqs = p_unpack rhs in
-  Format.fprintf ff "%a ↪ %a" equiv lhs (List.pp equiv ", ") eqs
+  Format.fprintf ppf "%a ↪ %a" equiv lhs (List.pp equiv ", ") eqs
 
-let proof_end : p_proof_end pp = fun ff {elt;_} ->
+let proof_end : p_proof_end pp = fun ppf {elt;_} ->
   match elt with
-  | P_proof_end   -> pp_print_string ff "end"
-  | P_proof_admit -> pp_print_string ff "admit"
-  | P_proof_abort -> pp_print_string ff "abort"
+  | P_proof_end   -> pp_print_string ppf "end"
+  | P_proof_admit -> pp_print_string ppf "admit"
+  | P_proof_abort -> pp_print_string ppf "abort"
 
-let rw_patt : p_rw_patt pp = fun ff p ->
-  let out fmt = fprintf ff fmt in
+let rw_patt : p_rw_patt pp = fun ppf p ->
+  let out fmt = fprintf ppf fmt in
   match p.elt with
   | P_rw_Term(t)               -> out "%a" term t
   | P_rw_InTerm(t)             -> out "in %a" term t
@@ -160,13 +160,13 @@ let rw_patt : p_rw_patt pp = fun ff p ->
   | P_rw_TermInIdInTerm(u,x,t) -> out "%a in %a in %a" term u ident x term t
   | P_rw_TermAsIdInTerm(u,x,t) -> out "%a as %a in %a" term u ident x term t
 
-let assertion : p_assertion pp = fun ff asrt ->
+let assertion : p_assertion pp = fun ppf asrt ->
   match asrt with
-  | P_assert_typing(t,a) -> fprintf ff "%a : %a" term t term a
-  | P_assert_conv(t,u)   -> fprintf ff "%a ≡ %a" term t term u
+  | P_assert_typing(t,a) -> fprintf ppf "%a : %a" term t term a
+  | P_assert_conv(t,u)   -> fprintf ppf "%a ≡ %a" term t term u
 
-let query : p_query pp = fun ff q ->
-  let out fmt = fprintf ff fmt in
+let query : p_query pp = fun ppf q ->
+  let out fmt = fprintf ppf fmt in
   match q.elt with
   | P_query_assert(true , asrt) -> out "assertnot %a" assertion asrt
   | P_query_assert(false, asrt) -> out "assert %a" assertion asrt
@@ -174,7 +174,7 @@ let query : p_query pp = fun ff q ->
   | P_query_debug(true ,s) -> out "set debug \"+%s\"" s
   | P_query_debug(false,s) -> out "set debug \"-%s\"" s
   | P_query_flag(s, b) ->
-      out "set flag \"%s\" %s" s (if b then "on" else "off")
+      out "set flag \"%s\" %s" s (if b then "on" else "oppf")
   | P_query_infer(t, _) -> out "type %a" term t
   | P_query_normalize(t, _) -> out "compute %a" term t
   | P_query_prover(s) -> out "set prover \"%s\"" s
@@ -183,31 +183,31 @@ let query : p_query pp = fun ff q ->
   | P_query_print(Some s) -> out "print %a" qident s
   | P_query_proofterm -> out "proofterm"
 
-let tactic : p_tactic pp = fun ff t ->
-  let out fmt = fprintf ff fmt in
+let tactic : p_tactic pp = fun ppf t ->
+  let out fmt = fprintf ppf fmt in
   begin match t.elt with
   | P_tac_refine(t) -> out "refine %a" term t
   | P_tac_intro(xs) -> out "intro %a" (List.pp arg_ident " ") xs
   | P_tac_apply(t) -> out "apply %a" term t
   | P_tac_simpl -> out "simpl"
   | P_tac_rewrite(b,p,t)     ->
-      let dir ff b = if not b then fprintf ff " -" in
-      let pat ff p = fprintf ff " [%a]" rw_patt p in
+      let dir ppf b = if not b then fprintf ppf " -" in
+      let pat ppf p = fprintf ppf " [%a]" rw_patt p in
       out "rewrite%a%a%a" dir b (Option.pp pat) p term t
   | P_tac_refl -> out "reflexivity"
   | P_tac_sym -> out "symmetry"
   | P_tac_focus(i) -> out "focus %i" i
   | P_tac_why3(p) ->
-      let prover ff s = fprintf ff " %s" s in
+      let prover ppf s = fprintf ppf " %s" s in
       out "why3%a" (Option.pp prover) p
-  | P_tac_query(q) -> query ff q
+  | P_tac_query(q) -> query ppf q
   | P_tac_fail -> out "fail"
   | P_tac_solve -> out "solve"
   end;
   out ";"
 
-let command : p_command pp = fun ff {elt;_} ->
-  let out fmt = fprintf ff fmt in
+let command : p_command pp = fun ppf {elt;_} ->
+  let out fmt = fprintf ppf fmt in
   begin match elt with
   | P_require(b,ms) ->
       let op = if b then " open" else "" in
@@ -226,7 +226,7 @@ let command : p_command pp = fun ff {elt;_} ->
       Option.iter (out " %a" term) p_sym_trm;
       match p_sym_prf with
       | Some(ts,pe) ->
-          let tac ff = fprintf ff "\n  %a" tactic in
+          let tac ppf = fprintf ppf "\n  %a" tactic in
           out "\nbegin%a\n%a" (List.pp tac "") ts proof_end pe
       | None -> ()
     end
@@ -258,12 +258,12 @@ let command : p_command pp = fun ff {elt;_} ->
   | P_set(P_config_quant(qid)) ->
       out "set quantifier %a" qident qid
   | P_query(q) ->
-     query ff q
+     query ppf q
   end;
   out ";"
 
-let ast : ast pp = fun ff ->
-  Stream.iter (fun c -> command ff c; Format.pp_print_newline ff ())
+let ast : ast pp = fun ppf ->
+  Stream.iter (fun c -> command ppf c; Format.pp_print_newline ppf ())
 
 (** [beautify cmds] pretty-prints the commands [cmds] to standard output. *)
 let beautify : ast -> unit = ast std_formatter

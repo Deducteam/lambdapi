@@ -61,7 +61,7 @@ let read : file_path -> config_data = fun fname ->
   in
   (* Building the configuration. *)
   let package_name = get "package_name" in
-  let root_path = String.split_on_char '.' (get "root_path") in
+  let root_path = Path.of_string (get "root_path") in
   {package_name; root_path}
 
 (** [find_config fname] looks for a configuration file above [fname], which is

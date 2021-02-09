@@ -5,19 +5,17 @@ open Lplib.Base
 open Lplib.Extra
 open Common
 open Pos
+open Module
 
 (** Representation of a (located) identifier. *)
 type p_ident = strloc
 
 (** Representation of a module name. *)
-type p_mod_path = Module.Path.t loc
+type p_mod_path = Path.t loc
 
 (** Representation of a possibly qualified (and located) identifier. *)
-type qident = Module.Path.t * string
+type qident = Path.t * string
 type p_qident = qident loc
-
-let qident_of_string : string -> qident = fun s ->
-  List.split_last (String.split_on_char '.' s)
 
 (** The priority of an infix operator is a floating-point number. *)
 type priority = float

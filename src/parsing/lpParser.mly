@@ -109,15 +109,13 @@
 %token <string list> ID_EXPL
 //%token <string list * bool> ID_QUANT
 
-// start symbol
+// types
 
 %start <Syntax.p_command> command
-
-// types
+%start <Syntax.p_qident> id
 
 %type <Syntax.p_ident> uid
 %type <Common.Module.Path.t loc> mod_path
-%type <Syntax.p_qident> id
 %type <Syntax.p_ident option> patt
 %type <Syntax.p_args> arg_ids
 

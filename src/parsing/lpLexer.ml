@@ -5,6 +5,7 @@ open Lplib
 open Sedlexing
 open Common
 open Pos
+open Module
 
 type token =
   (* end of file *)
@@ -240,8 +241,7 @@ end = struct
     | _ -> false
 
   let unescape : string -> string = fun s ->
-    let n = String.length s in
-    if n > 0 && s.[0] = '{' then String.sub s 2 (n - 4) else s
+    if Path.is_escaped s then String.(sub s 2 (length s - 4)) else s
 
   (** [tail n buf] returns the utf8 string formed from [buf] dropping its [n]
      first codepoints. *)
@@ -353,13 +353,13 @@ end = struct
     | '$', uid -> UID_PAT(tail 1 buf)
 
     | '@', uid -> ID_EXPL([tail 1 buf])
-    | '@', qid -> ID_EXPL(String.split_on_char '.' (tail 1 buf))
+    | '@', qid -> ID_EXPL(Path.of_string (tail 1 buf))
 
-    (*| '`', id -> ID_QUANT(String.split_on_char '.' (tail 1 buf), false)
-    | '`', '@', id -> ID_QUANT(String.split_on_char '.' (tail 2 buf), true)*)
+    (*| '`', id -> ID_QUANT(Path.of_string (tail 1 buf), false)
+    | '`', '@', id -> ID_QUANT(Path.of_string (tail 2 buf), true)*)
 
     | uid -> UID(Utf8.lexeme buf)
-    | qid -> QID(String.split_on_char '.' (Utf8.lexeme buf))
+    | qid -> QID(Path.of_string (Utf8.lexeme buf))
 
     (* invalid token *)
 

@@ -180,7 +180,7 @@ let get_node_at_pos doc line pos =
       let loc = Pure.Command.get_pos ast in
       let res = in_range ?loc (line,pos) in
       let ls = Format.asprintf "%B l:%d p:%d / %a "
-                 res line pos Pos.print loc in
+                 res line pos Pos.pp loc in
       LIO.log_error "get_node_at_pos" ("call: "^ls);
       res
     ) doc.Lp_doc.nodes
@@ -270,7 +270,7 @@ let do_definition ofmt ~id params =
     Extra.StrMap.bindings sym
     |> List.map (fun (key, (sym,pos)) ->
         Format.asprintf "{%s} / %s: @[%a@]"
-          key sym.Term.sym_name Pos.print pos)
+          key sym.Term.sym_name Pos.pp pos)
     |> String.concat "\n"
   in
   LIO.log_error "symbol map" map_pp;
@@ -341,7 +341,7 @@ let hover_symInfo ofmt ~id params =
     Extra.StrMap.bindings sym
     |> List.map (fun (key, (sym,pos)) ->
         Format.asprintf "{%s} / %s: @[%a@]"
-          key sym.Term.sym_name Pos.print pos)
+          key sym.Term.sym_name Pos.pp pos)
     |> String.concat "\n"
   in
   LIO.log_error "symbol map" map_pp;

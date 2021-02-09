@@ -11,25 +11,29 @@ open Console
 let log_file = new_logger 'f' "file" "file system"
 let log_file = log_file.logger
 
+(** [is_escaped s] tells if [s] starts with '{'. *)
+let is_escaped : string -> bool = fun s -> String.length s > 0 && s.[0] = '{'
+
 (** Representation of module paths and related operations. *)
 module Path =
   struct
     (** Representation of a module path (roughly, a file path). *)
-    type mod_path = string list
-
-    (** Short synonym of [mod_path]. *)
-    type t = mod_path
+    type t = string list
 
     (** [compare] is a standard comparing function for module paths. *)
     let compare : t -> t -> int = Stdlib.compare
 
     (** [pp oc mp] prints [mp] to channel [oc]. *)
-    let pp : mod_path pp = fun oc mp ->
+    let pp : t pp = fun oc mp ->
       Format.pp_print_string oc (String.concat "." mp)
 
     (** [ghost s] creates a special module path for module of name [s]. Ghost
         modules cannot be handled by the user. *)
     let ghost : string -> t = fun s -> [""; s]
+
+    (** [of_string s] converts a string [s] into a path. *)
+    let of_string : string -> t = fun s ->
+      if is_escaped s then [s] else String.split_on_char '.' s
   end
 
 (** Functional maps with module paths as keys. *)
