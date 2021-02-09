@@ -88,12 +88,12 @@
                | <proof>
                | <term> <proof>
 
-<path> ::= <qid>
+<modname> ::= <qid>
 
-<command> ::= 'require' 'open' <path>* ';'
-            | 'require' <path>* ';'
-            | 'require' <path> 'as' <uid> ';'
-            | 'open' <path>* ';'
+<command> ::= 'require' 'open' <modname>* ';'
+            | 'require' <modname>* ';'
+            | 'require' <modname> 'as' <uid> ';'
+            | 'open' <modname>* ';'
             | <modifier>* 'symbol' <uid> <arg_ids>* ':' <term> [<proof>]
               ';'
             | <modifier>* 'symbol' <uid> <arg_ids>* [':' <term>] '≔'
