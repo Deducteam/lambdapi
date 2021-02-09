@@ -11,28 +11,28 @@ open Console
 let log_file = new_logger 'f' "file" "file system"
 let log_file = log_file.logger
 
-(** Representation of module paths and related operations. *)
+(** Representation of module names and related operations. *)
 module Mod =
   struct
-    (** Representation of a module path (roughly, a file path). *)
+    (** Representation of a module name (roughly, a file path). *)
     type t = string list
 
-    (** [compare] is a standard comparing function for module paths. *)
+    (** [compare] is a standard comparing function for module names. *)
     let compare : t -> t -> int = Stdlib.compare
 
-    (** [pp oc mp] prints [mp] to channel [oc]. *)
-    let pp : t pp = fun oc mp ->
-      Format.pp_print_string oc (String.concat "." mp)
+    (** [pp ppf mp] prints [mp] on formatter [ppf]. *)
+    let pp : t pp = fun ppf mp ->
+      Format.pp_print_string ppf (String.concat "." mp)
 
-    (** [ghost s] creates a special module path for module of name [s]. Ghost
-        modules cannot be handled by the user. *)
+    (** [ghost s] creates a special module of name [s] that cannot be handled
+       by users. *)
     let ghost : string -> t = fun s -> [""; s]
 
     (** [of_string s] converts a string [s] lexed as qid into a path. *)
     let of_string : string -> t = Escape.split '.'
   end
 
-(** Functional maps with module paths as keys. *)
+(** Functional maps with module names as keys. *)
 module ModMap = Map.Make(Mod)
 
 (** Representation of the mapping from module paths to files. *)
@@ -165,7 +165,7 @@ let set_lib_root : string option -> unit = fun dir ->
   Option.iter set_lr dir;
   (* Verify that [dir] exists and is a directory *)
   match !lib_root with
-  | None -> assert false (* Path is set above. *)
+  | None -> assert false (* pth is set above. *)
   | Some(pth) ->
       begin
         try if not (Sys.is_directory pth) then
