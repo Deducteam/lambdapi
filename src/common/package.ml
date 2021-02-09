@@ -49,7 +49,7 @@ let read : string -> config_data = fun fname ->
     (* Empty lines and comments (lines starting with ['#']) are ignored. *)
     if String.length l = 0 || l.[0] = '#' then dict else
     (* Get key and value (separated by ['=']). *)
-    match Escape.split '=' l with
+    match String.split_on_char '=' l with
     | [k; v] -> (String.trim k, String.trim v) :: dict
     | _      -> fatal_no_pos "Ill-formed package file [%s]." fname
   in
