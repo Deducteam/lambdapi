@@ -26,7 +26,7 @@ let parse_file : string -> Syntax.ast = fun fname ->
     or [force] is [true]).  In that case,  the produced signature is stored in
     the corresponding object file. *)
 let rec compile : bool -> Path.t -> Sign.t = fun force path ->
-  let base = Module.module_to_file (List.map unescape path) in
+  let base = module_to_file (List.map Escape.unescape path) in
   let src () =
     (* Searching for source is delayed because we may not need it
        in case of "ghost" signatures (such as for unification rules). *)
@@ -104,7 +104,7 @@ let recompile = Stdlib.ref false
 let compile_file : string -> Sign.t = fun fname ->
   Package.apply_config fname;
   (* Compute the module path (checking the extension). *)
-  let mp = Module.file_to_module fname in
+  let mp = file_to_module fname in
   (* Run compilation. *)
   compile Stdlib.(!recompile) mp
 

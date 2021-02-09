@@ -8,17 +8,11 @@
 
 open! Lplib
 open Common
-open Module
 
 (** [parser_fatal loc fmt] is a wrapper for [Console.fatal] that enforces
     that the error has an attached source code position. *)
 let parser_fatal : Pos.pos -> ('a,'b) Console.koutfmt -> 'a = fun loc fmt ->
   Console.fatal (Some(loc)) fmt
-
-(** [add_prefix p s] adds the prefix [p] at the beginning of the
-    identifier [s]. *)
-let add_prefix : string -> string -> string = fun p s ->
-  if is_beg_escaped s then "{|" ^ p ^ unescape s ^ "|}" else p ^ s
 
 (** [qident_of_string s] converts the string [s] into a path. *)
 let qident_of_string : string -> (Syntax.qident, Pos.popt) result = fun s ->
@@ -31,41 +25,6 @@ let qident_of_string : string -> (Syntax.qident, Pos.popt) result = fun s ->
        | LpParser.Error ->
            let loc = Pos.locate (Sedlexing.lexing_positions lexbuf) in
            Error(Some(loc))
-
-(** [parse_qident s] parses the identifier [s] and returns the parsed
-    identifier (with location). *)
-(*let parse_qident : string -> (Syntax.qident, int * Pos.popt) result =
-  fun s ->
-  let parse_ident (s: string): Syntax.p_qident result =
-    let parse =
-      MenhirLib.Convert.Simplified.traditional2revised LpParser.ident
-    in
-    let lexbuf = Sedlexing.Utf8.from_string s in
-    let lexer = LpLexer.lexer lexbuf in
-    try Ok(parse lexer)
-    with LpLexer.SyntaxError(s) -> Error(s.pos)
-       | LpParser.Error ->
-           let loc = Pos.locate (Sedlexing.lexing_positions lexbuf) in
-           Error(Some(loc))
-  in
-  (* We get individual identifiers. *)
-  let ids = String.split_on_char '.' s in
-  (* Here we'd like a bind operation on result: if there is an error. *)
-  let exception Invalid_id of int * Pos.popt in
-  let f (i: int) (e: string) =
-    (* Parse string [e] and raise error to interrupt if [e] is not valid. *)
-    let (e, b) =
-      match parse_ident e with
-      | Ok(e, b) -> (e, b)
-      | Error(pos) -> raise (Invalid_id(i, pos))
-    in
-    (e.Pos.elt, b)
-  in
-  try
-    let ids = List.mapi f ids in
-    let (ids, last) = List.split_last ids in
-    Ok(ids, fst last)
-  with Invalid_id(i, pos) -> Error(i, pos)*)
 
 (** Module type of a parser. *)
 module type PARSER = sig

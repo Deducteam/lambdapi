@@ -6,22 +6,11 @@ open Lplib.Extra
 
 open Timed
 open Console
+open Escape
 
 (** Logging function for evaluation. *)
 let log_file = new_logger 'f' "file" "file system"
 let log_file = log_file.logger
-
-(** [is_beg_escaped s] tells if [s] starts with '{'. *)
-let is_beg_escaped : string -> bool = fun s ->
-  String.length s > 0 && s.[0] = '{'
-
-(** [is_end_escaped s] tells if [s] ends with '}'. *)
-let is_end_escaped : string -> bool = fun s ->
-  let n = String.length s in n > 0 && s.[n-1] = '}'
-
-(** [unescape s] removes "{|" and "|}" if [s] is an escaped identifier. *)
-let unescape : string -> string = fun s ->
-  if is_beg_escaped s then String.(sub s 2 (length s - 4)) else s
 
 (** Representation of module paths and related operations. *)
 module Path =
@@ -41,21 +30,7 @@ module Path =
     let ghost : string -> t = fun s -> [""; s]
 
     (** [of_string s] converts a string [s] lexed as qid into a path. *)
-    let of_string : string -> t = fun s ->
-      let rec fix_split mp m l =
-        match m, l with
-        | None, [] -> List.rev mp
-        | Some m, [] -> List.rev (m::mp)
-        | None, s::l ->
-            if is_beg_escaped s then fix_split mp (Some s) l
-            else fix_split (s::mp) None l
-        | Some m, s::l ->
-            if is_end_escaped s then fix_split ((m^"."^s)::mp) None l
-            else fix_split mp (Some(m^"."^s)) l
-      in fix_split [] None (String.split_on_char '.' s)
-
-    (* unit test *)
-    let _ = assert (of_string "{|a.b|}.c.{|d|}" = ["{|a.b|}";"c";"{|d|}"])
+    let of_string : string -> t = Escape.split '.'
   end
 
 (** Functional maps with module paths as keys. *)
@@ -148,12 +123,10 @@ module ModMap :
   end
 
 (** [lib_root] stores the result of the ["--lib-root"] flag when given. *)
-let lib_root : string option Stdlib.ref =
-  Stdlib.ref None
+let lib_root : string option Stdlib.ref = Stdlib.ref None
 
 (** [lib_mappings] stores the specified mappings of library paths. *)
-let lib_mappings : ModMap.t ref =
-  ref ModMap.empty
+let lib_mappings : ModMap.t ref = ref ModMap.empty
 
 (** [set_lib_root path] sets the library root. The following paths are
     set sequentially, such that the active one is the last valid path
@@ -204,15 +177,15 @@ let set_lib_root : string option -> unit = fun path ->
       Timed.(lib_mappings := ModMap.set_root pth !lib_mappings)
 
 (** [new_lib_mapping s] attempts to parse [s] as a library mapping of the form
-    ["<modpath>:<path>"]. Then, if module path ["<modpath>"] is not yet mapped
-    to a file path, and if ["<path>"] corresponds to a valid directory, then a
-    new mapping is registered. In case of failure the program terminates and a
-    graceful error message is displayed. *)
+   ["<mod_path>:<file_path>"]. Then, if module path ["<mod_path>"] is not yet
+   mapped to a file path, and if ["<file_path>"] corresponds to a valid
+   directory, then a new mapping is registered. In case of failure the program
+   terminates and a graceful error message is displayed. *)
 let new_lib_mapping : string -> unit = fun s ->
   let (mod_path, file_path) =
-    match String.split_on_char ':' s with
-    | [mp; dir] -> (String.split_on_char '.' mp, dir)
-    | _         ->
+    match split ':' s with
+    | mp::((_::_) as l) -> (Path.of_string mp, String.concat ":" l)
+    | _ ->
     fatal_no_pos "Bad syntax for \"--map-dir\" option (expecting MOD:DIR)."
   in
   let file_path =

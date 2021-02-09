@@ -276,7 +276,7 @@ let gen_rec_types :
 
 (** [rec_name ind_sym] returns the name of the induction principle associated
    to the inductive type symbol [ind_sym]. *)
-let rec_name ind_sym = Parser.add_prefix "ind_" ind_sym.sym_name
+let rec_name ind_sym = Escape.add_prefix "ind_" ind_sym.sym_name
 
 (** [iter_rec_rules pos ind_list vs rec_sym_list ind_pred_map] generates the
    recursor rules for the inductive type definition [ind_list] as position
