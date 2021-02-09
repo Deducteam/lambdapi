@@ -175,7 +175,7 @@ let set_lib_root : string option -> unit = fun dir ->
           (* We try to create [pth]. *)
           let target = Filename.quote pth in
           let cmd = String.concat " " ["mkdir"; "--parent"; target] in
-          match Sys.command cmd  with
+          match Sys.command cmd with
           | 0 -> ()
           | _ ->
               fatal_msg "Library root cannot be set:\n";
