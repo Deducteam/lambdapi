@@ -16,6 +16,9 @@ type p_mod_path = Module.Path.t loc
 type qident = Module.Path.t * string
 type p_qident = qident loc
 
+let qident_of_string : string -> qident = fun s ->
+  List.split_last (String.split_on_char '.' s)
+
 (** The priority of an infix operator is a floating-point number. *)
 type priority = float
 

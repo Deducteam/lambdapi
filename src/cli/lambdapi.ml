@@ -146,10 +146,10 @@ let lsp_log_file : string Term.t =
 
 (** Specific to the ["decision-tree"] command. *)
 
-let qsym : (string list * string) Term.t =
-  let qsym_conv: (string list * string) Arg.conv =
-    let parse (s: string): (string list * string, [>`Msg of string]) result =
-      try Ok(List.split_last (String.split_on_char '.' s))
+let qsym : Syntax.qident Term.t =
+  let qsym_conv: Syntax.qident Arg.conv =
+    let parse (s: string): (Syntax.qident, [>`Msg of string]) result =
+      try Ok(Syntax.qident_of_string s)
       with Invalid_argument _ ->
              Error(`Msg(Format.sprintf "[%s] invalid argument" s))
     in

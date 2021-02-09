@@ -107,7 +107,7 @@
 %token <string> UID_PAT
 %token <string list> QID
 %token <string list> ID_EXPL
-//%token <(string * bool) list * bool> ID_QUANT
+//%token <string list * bool> ID_QUANT
 
 // start symbol
 

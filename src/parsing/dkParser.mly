@@ -239,7 +239,7 @@ let build_config : Pos.pos -> string -> string option -> eval_config =
 // identifiers
 
 %token <string> UID
-%token <string list * string> QID
+%token <Syntax.qident> QID
 
 // start symbol
 
