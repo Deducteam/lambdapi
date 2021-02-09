@@ -18,8 +18,7 @@ let parser_fatal : Pos.pos -> ('a,'b) Console.koutfmt -> 'a = fun loc fmt ->
 (** [add_prefix p s] adds the prefix [p] at the beginning of the
     identifier [s]. *)
 let add_prefix : string -> string -> string = fun p s ->
-  if is_escaped s then "{|" ^ p ^ String.(sub s 2 (length s - 4)) ^ "|}"
-  else p ^ s
+  if is_beg_escaped s then "{|" ^ p ^ unescape s ^ "|}" else p ^ s
 
 (** [qident_of_string s] converts the string [s] into a path. *)
 let qident_of_string : string -> (Syntax.qident, Pos.popt) result = fun s ->
@@ -27,7 +26,7 @@ let qident_of_string : string -> (Syntax.qident, Pos.popt) result = fun s ->
     let lexer = LpLexer.lexer lexbuf in
     let parse =
       MenhirLib.Convert.Simplified.traditional2revised LpParser.id in
-    try let Pos.{elt;_} = parse lexer in Ok(elt)
+    try Ok(let Pos.{elt;_} = parse lexer in elt)
     with LpLexer.SyntaxError(s) -> Error(s.pos)
        | LpParser.Error ->
            let loc = Pos.locate (Sedlexing.lexing_positions lexbuf) in

@@ -110,10 +110,6 @@ module Lp_lexer : sig
   val is_keyword : string -> bool
   (** [is_keyword s] returns [true] if [s] is a keyword. *)
 
-  val unescape : string -> string
-  (** [unescape s] removes the quotation marks [{|] and [|}] from [s] if it
-     has some. Otherwise, the argument is returned. *)
-
   val is_debug_flag : string -> bool
   (** [is_debug_flag s] is true if [s] is a debug flag. *)
 
@@ -239,9 +235,6 @@ end = struct
     match%sedlex lexbuf with
     | id -> true
     | _ -> false
-
-  let unescape : string -> string = fun s ->
-    if Path.is_escaped s then String.(sub s 2 (length s - 4)) else s
 
   (** [tail n buf] returns the utf8 string formed from [buf] dropping its [n]
      first codepoints. *)

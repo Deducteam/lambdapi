@@ -11,8 +11,17 @@ open Console
 let log_file = new_logger 'f' "file" "file system"
 let log_file = log_file.logger
 
-(** [is_escaped s] tells if [s] starts with '{'. *)
-let is_escaped : string -> bool = fun s -> String.length s > 0 && s.[0] = '{'
+(** [is_beg_escaped s] tells if [s] starts with '{'. *)
+let is_beg_escaped : string -> bool = fun s ->
+  String.length s > 0 && s.[0] = '{'
+
+(** [is_end_escaped s] tells if [s] ends with '}'. *)
+let is_end_escaped : string -> bool = fun s ->
+  let n = String.length s in n > 0 && s.[n-1] = '}'
+
+(** [unescape s] removes "{|" and "|}" if [s] is an escaped identifier. *)
+let unescape : string -> string = fun s ->
+  if is_beg_escaped s then String.(sub s 2 (length s - 4)) else s
 
 (** Representation of module paths and related operations. *)
 module Path =
@@ -31,9 +40,22 @@ module Path =
         modules cannot be handled by the user. *)
     let ghost : string -> t = fun s -> [""; s]
 
-    (** [of_string s] converts a string [s] into a path. *)
+    (** [of_string s] converts a string [s] lexed as qid into a path. *)
     let of_string : string -> t = fun s ->
-      if is_escaped s then [s] else String.split_on_char '.' s
+      let rec fix_split mp m l =
+        match m, l with
+        | None, [] -> List.rev mp
+        | Some m, [] -> List.rev (m::mp)
+        | None, s::l ->
+            if is_beg_escaped s then fix_split mp (Some s) l
+            else fix_split (s::mp) None l
+        | Some m, s::l ->
+            if is_end_escaped s then fix_split ((m^"."^s)::mp) None l
+            else fix_split mp (Some(m^"."^s)) l
+      in fix_split [] None (String.split_on_char '.' s)
+
+    (* unit test *)
+    let _ = assert (of_string "{|a.b|}.c.{|d|}" = ["{|a.b|}";"c";"{|d|}"])
   end
 
 (** Functional maps with module paths as keys. *)

@@ -26,7 +26,7 @@ let parse_file : string -> Syntax.ast = fun fname ->
     or [force] is [true]).  In that case,  the produced signature is stored in
     the corresponding object file. *)
 let rec compile : bool -> Path.t -> Sign.t = fun force path ->
-  let base = Module.module_to_file (List.map LpLexer.unescape path) in
+  let base = Module.module_to_file (List.map unescape path) in
   let src () =
     (* Searching for source is delayed because we may not need it
        in case of "ghost" signatures (such as for unification rules). *)
