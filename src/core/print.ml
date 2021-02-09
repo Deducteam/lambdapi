@@ -218,6 +218,7 @@ and pp_term : term pp = fun oc t ->
         if wrap then out oc ")"
     | LLet(a,t,b) ->
         if wrap then out oc "(";
+        out oc "let ";
         let (x,u) = Bindlib.unbind b in
         pp_bvar oc (b,x);
         if !print_domains then out oc ": %a" (pp `Atom) a;
