@@ -6,7 +6,6 @@ open Lplib.Extra
 
 open Timed
 open Console
-open Escape
 
 (** Logging function for evaluation. *)
 let log_file = new_logger 'f' "file" "file system"
@@ -183,8 +182,8 @@ let set_lib_root : string option -> unit = fun path ->
    terminates and a graceful error message is displayed. *)
 let new_lib_mapping : string -> unit = fun s ->
   let (mod_path, file_path) =
-    match split ':' s with
-    | mp::((_::_) as l) -> (Path.of_string mp, String.concat ":" l)
+    match Escape.split ':' s with
+    | [mp; fn] -> (Path.of_string mp, fn)
     | _ ->
     fatal_no_pos "Bad syntax for \"--map-dir\" option (expecting MOD:DIR)."
   in
