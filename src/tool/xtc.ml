@@ -15,7 +15,7 @@ open Term
     are separated with ["."]. *)
 let print_sym : sym pp = fun oc s ->
   let print_path = List.pp Format.pp_print_string "." in
-  Format.fprintf oc "%a.%s" print_path s.sym_path s.sym_name
+  Format.fprintf oc "%a.%s" print_path s.sym_mod s.sym_name
 
 type symb_status = Object_level | Basic_type | Type_cstr
 

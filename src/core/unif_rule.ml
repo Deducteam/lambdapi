@@ -9,8 +9,8 @@ open Timed
 open Module
 open Term
 
-(** Path of the module. *)
-let path = Path.ghost "unif_rule"
+(** Ghost module. *)
+let ghost_mod = Mod.ghost "unif_rule"
 
 (** Ghost signature holding the symbols used in unification rules.
     - All signatures depend on it (dependency set in
@@ -19,15 +19,15 @@ let path = Path.ghost "unif_rule"
     - It is automatically loaded. *)
 let sign : Sign.t =
   let dummy = Sign.dummy () in
-  let s = {dummy with Sign.sign_path = path} in
-  Sign.loaded := Module.PathMap.add path s !(Sign.loaded);
+  let s = {dummy with Sign.sign_mod = ghost_mod} in
+  Sign.loaded := ModMap.add ghost_mod s !(Sign.loaded);
   s
 
 (** Symbol representing an atomic unification problem. The term [equiv t
     u] represents [t ≡ u]. The left-hand side of a unification rule is
     made of only one unification. *)
 let equiv : sym =
-  let bo = ("≡", Pratter.Neither, 1.1, Pos.none (path, "#equiv")) in
+  let bo = ("≡", Pratter.Neither, 1.1, Pos.none (ghost_mod, "#equiv")) in
   let sym =
     Sign.add_symbol sign Public Defin Eager (Pos.none "#equiv") Kind []
   in
@@ -39,7 +39,7 @@ let equiv : sym =
     [cons (equiv t u) (cons (equiv v w) ...)] pretty-printed
     [t ≡ u; v ≡ w; ...]. *)
 let cons : sym =
-  let bo = (";", Pratter.Right, 1.0, Pos.none (path, "#cons")) in
+  let bo = (";", Pratter.Right, 1.0, Pos.none (ghost_mod, "#cons")) in
   let sym =
     Sign.add_symbol sign Public Defin Eager (Pos.none "#cons") Kind []
   in

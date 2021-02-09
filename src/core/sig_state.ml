@@ -25,8 +25,8 @@ open Sign
 type sig_state =
   { signature : Sign.t                    (** Current signature.        *)
   ; in_scope  : (sym * Pos.popt) StrMap.t (** Symbols in scope.         *)
-  ; aliases   : Path.t StrMap.t           (** Established aliases.      *)
-  ; path_map  : string PathMap.t          (** Reverse map of [aliases]. *)
+  ; aliases   : Mod.t StrMap.t            (** Established aliases.      *)
+  ; mod_map  : string ModMap.t           (** Reverse map of [aliases]. *)
   ; builtins  : sym StrMap.t              (** Builtin symbols.          *)
   ; notations : notation SymMap.t         (** Printing hints.           *) }
 
@@ -34,9 +34,10 @@ type t = sig_state
 
 (** [create_sign path] creates a signature with path [path] with ghost modules
     as dependencies. *)
-let create_sign : Path.t -> Sign.t = fun sign_path ->
+let create_sign : Mod.t -> Sign.t = fun sign_mod ->
   let d = Sign.dummy () in
-  { d with sign_path ; sign_deps = ref (PathMap.singleton Unif_rule.path []) }
+  { d with sign_mod ;
+           sign_deps = ref (ModMap.singleton Unif_rule.ghost_mod []) }
 
 (** Symbol properties needed for the signature *)
 type sig_symbol =
@@ -144,9 +145,9 @@ let open_sign : sig_state -> Sign.t -> sig_state = fun ss sign ->
 
 (** Dummy [sig_state] made from the dummy signature. *)
 let dummy : sig_state =
-  { signature = Sign.dummy (); in_scope = StrMap.empty; aliases = StrMap.empty
-  ; path_map = PathMap.empty; builtins = StrMap.empty
-  ; notations = SymMap.empty }
+  { signature = Sign.dummy (); in_scope = StrMap.empty;
+    aliases = StrMap.empty; mod_map = ModMap.empty; builtins = StrMap.empty;
+    notations = SymMap.empty }
 
 (** [of_sign sign] creates a state from the signature [sign] with ghost
     signatures opened. *)
@@ -177,32 +178,32 @@ let find_sym : prt:bool -> prv:bool -> bool -> sig_state -> p_qident -> sym =
         begin
           (* The signature must be loaded (alias is mapped). *)
           let sign =
-            try PathMap.find (StrMap.find m st.aliases) Timed.(!Sign.loaded)
+            try ModMap.find (StrMap.find m st.aliases) Timed.(!Sign.loaded)
             with _ -> assert false (* Should not happen. *)
           in
           (* Look for the symbol. *)
           try Sign.find sign s with Not_found ->
-          fatal pos "Unbound symbol [%a.%s]." Path.pp mp s
+          fatal pos "Unbound symbol [%a.%s]." Mod.pp mp s
         end
     | _  -> (* Fully-qualified symbol. *)
         begin
           (* Check that the signature was required (or is the current one). *)
-          if mp <> st.signature.sign_path then
-            if not (PathMap.mem mp !(st.signature.sign_deps)) then
-              fatal pos "No module [%a] required." Path.pp mp;
+          if mp <> st.signature.sign_mod then
+            if not (ModMap.mem mp !(st.signature.sign_deps)) then
+              fatal pos "No module [%a] required." Mod.pp mp;
           (* The signature must have been loaded. *)
           let sign =
-            try PathMap.find mp Timed.(!Sign.loaded)
+            try ModMap.find mp Timed.(!Sign.loaded)
             with Not_found -> assert false (* Should not happen. *)
           in
           (* Look for the symbol. *)
           try Sign.find sign s with Not_found ->
-          fatal pos "Unbound symbol [%a.%s]." Path.pp mp s
+          fatal pos "Unbound symbol [%a.%s]." Mod.pp mp s
         end
   in
   match (prt, prv, s.sym_expo) with
   | (false, _    , Protec) ->
-      if s.sym_path = st.signature.sign_path then s else
+      if s.sym_mod = st.signature.sign_mod then s else
       (* Fail if symbol is not defined in the current module. *)
       fatal pos "Protected symbol not allowed here."
   | (_    , false, Privat) -> fatal pos "Private symbol not allowed here."

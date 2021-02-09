@@ -11,10 +11,10 @@ open Module
 type p_ident = strloc
 
 (** Representation of a module name. *)
-type p_path = Path.t loc
+type p_mod = Mod.t loc
 
 (** Representation of a possibly qualified (and located) identifier. *)
-type qident = Path.t * string
+type qident = Mod.t * string
 type p_qident = qident loc
 
 (** The priority of an infix operator is a floating-point number. *)
@@ -296,11 +296,11 @@ type p_symbol =
 
 (** Parser-level representation of a single command. *)
 type p_command_aux =
-  | P_require  of bool * p_path list
+  | P_require  of bool * p_mod list
   (** "require" statement (require open if the boolean is true). *)
-  | P_require_as of p_path * p_ident
+  | P_require_as of p_mod * p_ident
   (** "require as" statement require open if the boolean is true). *)
-  | P_open of p_path list
+  | P_open of p_mod list
   (** Open statement. *)
   | P_symbol of p_symbol
   (** Symbol declaration. *)
@@ -325,7 +325,7 @@ let eq_ident : p_ident eq = fun i1 i2 -> i1.elt = i2.elt
 
 let eq_p_qident : p_qident eq = fun q1 q2 -> q1.elt = q2.elt
 
-let eq_p_path : p_path eq = fun m1 m2 -> m1.elt = m2.elt
+let eq_p_mod : p_mod eq = fun m1 m2 -> m1.elt = m2.elt
 
 let eq_unop : unop eq = fun (n1,p1,id1) (n2,p2,id2) ->
   n1 = n2 && p1 = p2 && eq_p_qident id1 id2
@@ -453,10 +453,10 @@ let eq_p_symbol : p_symbol eq =
 let eq_p_command : p_command eq = fun {elt=c1;_} {elt=c2;_} ->
   match c1, c2 with
   | P_require(b1,l1), P_require(b2,l2) ->
-      b1 = b2 && List.equal eq_p_path l1 l2
-  | P_open l1, P_open l2 -> List.equal eq_p_path l1 l2
+      b1 = b2 && List.equal eq_p_mod l1 l2
+  | P_open l1, P_open l2 -> List.equal eq_p_mod l1 l2
   | P_require_as(m1,i1), P_require_as(m2,i2) ->
-      eq_p_path m1 m2 && eq_ident i1 i2
+      eq_p_mod m1 m2 && eq_ident i1 i2
   | P_symbol s1, P_symbol s2 -> eq_p_symbol s1 s2
   | P_rules(r1), P_rules(r2) ->  List.equal eq_p_rule r1 r2
   | P_inductive(m1,xs1,l1), P_inductive(m2,xs2,l2) ->

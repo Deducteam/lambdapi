@@ -314,7 +314,7 @@ and tree_walk : dtree -> ctxt -> stack -> (term * stack) option =
           in
           match t with
           | Symb(s)    ->
-              let cons = TC.Symb(s.sym_path, s.sym_name, List.length args) in
+              let cons = TC.Symb(s.sym_mod, s.sym_name, List.length args) in
               begin
                 try
                   (* Get the next sub-tree. *)

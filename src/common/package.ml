@@ -28,7 +28,7 @@ undefined    = ignored
 (** Configuration data read from a file. *)
 type config_data =
   { package_name : string
-  ; root_path    : Path.t }
+  ; root_path    : Mod.t }
 
 (** [read fname] reads configuration data from the file [fname]. The exception
     [Fatal] is raised in case of error (non-existing file, bad format). *)
@@ -61,7 +61,7 @@ let read : string -> config_data = fun fname ->
   in
   (* Building the configuration. *)
   let package_name = get "package_name" in
-  let root_path = Path.of_string (get "root_path") in
+  let root_path = Mod.of_string (get "root_path") in
   {package_name; root_path}
 
 (** [find_config fname] looks for a configuration file above [fname], which is

@@ -218,7 +218,7 @@ let build_config : Pos.pos -> string -> string option -> eval_config =
 %token KW_PRV
 %token KW_THM
 %token INFER
-%token <Path.t> REQUIRE
+%token <Mod.t> REQUIRE
 %token TYPE
 
 // symbols

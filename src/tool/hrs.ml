@@ -15,7 +15,7 @@ open Term
     is prefixed by ["c_"], and modules are separated with ["_"], not ["."]. *)
 let print_sym : sym pp = fun oc s ->
   let print_path = List.pp Format.pp_print_string "_" in
-  Format.fprintf oc "c_%a_%s" print_path s.sym_path s.sym_name
+  Format.fprintf oc "c_%a_%s" print_path s.sym_mod s.sym_name
 
 (** [print_patt oc p] outputs TPDB format corresponding to the pattern [p], to
     the channel [oc]. *)

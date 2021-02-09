@@ -10,7 +10,7 @@
     let make_pos : Lexing.position * Lexing.position -> 'a -> 'a loc =
       fun lps elt -> Pos.in_pos (locate lps) elt
 
-    let qid_of_path loc p =
+    let qid_of_mod loc p =
       let (mp, id) = List.split_last p in make_pos loc (mp, id)
  %}
 
@@ -115,7 +115,7 @@
 %start <Syntax.p_qident> id
 
 %type <Syntax.p_ident> uid
-%type <Syntax.p_path> path
+%type <Syntax.p_mod> modname
 %type <Syntax.p_ident option> patt
 %type <Syntax.p_args> arg_ids
 
@@ -140,12 +140,12 @@
 uid: i=UID { make_pos $sloc i}
 
 id:
-  | p=QID { qid_of_path $sloc p}
+  | p=QID { qid_of_mod $sloc p}
   | i=UID { make_pos $sloc ([], i) }
 
 term_id:
   | i=id { make_pos $sloc (P_Iden(i, false)) }
-  | p=ID_EXPL { make_pos $sloc (P_Iden(qid_of_path $sloc p, true)) }
+  | p=ID_EXPL { make_pos $sloc (P_Iden(qid_of_mod $sloc p, true)) }
 
 // Rewrite pattern identifier
 patt: p=UID_PAT { if p = "_" then None else Some(make_pos $sloc p) }
@@ -305,17 +305,17 @@ term_proof:
   | p=proof { None, Some p }
   | t=term p=proof { Some t, Some p }
 
-path: i=QID { make_pos $sloc i}
+modname: i=QID { make_pos $sloc i}
 
 // Top level commands
 command:
-  | REQUIRE OPEN l=list(path) SEMICOLON
+  | REQUIRE OPEN l=list(modname) SEMICOLON
     { make_pos $sloc (P_require(true,l)) }
-  | REQUIRE l=list(path) SEMICOLON
+  | REQUIRE l=list(modname) SEMICOLON
     { make_pos $sloc (P_require(false,l)) }
-  | REQUIRE i=path AS a=uid SEMICOLON
+  | REQUIRE i=modname AS a=uid SEMICOLON
     { make_pos $sloc (P_require_as(i,a)) }
-  | OPEN l=list(path) SEMICOLON
+  | OPEN l=list(modname) SEMICOLON
     { make_pos $sloc (P_open l) }
   | ms=modifier* SYMBOL s=uid al=arg_ids* COLON a=term
     po=proof? SEMICOLON
@@ -384,7 +384,7 @@ term:
     }
 //| i=ID_QUANT b=binder
 //  {
-//    let q = make_pos $loc(i) (P_Iden(qid_of_path $loc(i) (fst i), snd i)) in
+//    let q = make_pos $loc(i) (P_Iden(qid_of_mod $loc(i) (fst i), snd i)) in
 //    let b = make_pos $loc(b) (P_Abst(fst b, snd b)) in
 //    make_pos $sloc (P_Appl(q, b))
 //  }

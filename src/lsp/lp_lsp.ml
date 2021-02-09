@@ -149,7 +149,7 @@ let do_symbols ofmt ~id params =
          ^ Format.asprintf "%a" pp_term !(s.sym_type)); *)
         Option.map_default
           (fun p -> mk_syminfo file
-              (s.sym_name, s.sym_path, kind_of_type s, p) :: l) l p)
+              (s.sym_name, s.sym_mod, kind_of_type s, p) :: l) l p)
       sym [] in
   let msg = LSP.mk_reply ~id ~result:(`List sym) in
   LIO.send_json ofmt msg
@@ -283,7 +283,7 @@ let do_definition ofmt ~id params =
       (* A JSON with the path towards the definition of the term
          and its position is returned
          /!\ : extension is fixed, only works for .lp files *)
-      mk_definfo Module.(module_to_file Term.(term.sym_path)
+      mk_definfo Module.(file_of_mod Term.(term.sym_mod)
       ^ src_extension) pos
   in
   let msg = LSP.mk_reply ~id ~result:sym_info in

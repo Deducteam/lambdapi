@@ -67,7 +67,7 @@ type term =
   (** Name of the symbol. *)
   ; sym_type  : term ref
   (** Type of the symbol. *)
-  ; sym_path  : Common.Module.Path.t
+  ; sym_mod  : Common.Module.Mod.t
   (** Module in which it is defined. *)
   ; sym_def   : term option ref
   (** Definition of the symbol. *)
@@ -503,7 +503,7 @@ module Sym = struct
   let compare s1 s2 =
     if s1 == s2 then 0 else
     match Stdlib.compare s1.sym_name s2.sym_name with
-    | 0 -> Stdlib.compare s1.sym_path s2.sym_path
+    | 0 -> Stdlib.compare s1.sym_mod s2.sym_mod
     | n -> n
 end
 

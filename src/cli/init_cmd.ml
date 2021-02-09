@@ -54,14 +54,14 @@ let write_ex_nat : out_channel -> unit = fun oc ->
      with $m     + z      ↪ $m\n\
      with $m     + (s $n) ↪ s ($m + $n)\n%!"
 
-let write_ex_main : Path.t -> out_channel -> unit = fun root_path oc ->
+let write_ex_main : Mod.t -> out_channel -> unit = fun root_path oc ->
   Printf.fprintf oc
     "// Generated example file.\n\
      require open %s.nat // Note the full module qualification.\n\
      \n\
      assert 42 + 12 ≡ 54\n%!" (String.concat "." root_path)
 
-let run : Path.t -> unit = fun root_path ->
+let run : Mod.t -> unit = fun root_path ->
   let run _ =
     (* Find out the package name, create the directory. *)
     let pkg_name =
@@ -86,7 +86,7 @@ let run : Path.t -> unit = fun root_path ->
   in
   Console.handle_exceptions run
 
-let root_path : Path.t Term.t =
+let root_path : Mod.t Term.t =
   let doc =
     "Defines the root path of the package. It is the module path under which \
      the package will be registered and installed (if desired), and it will \

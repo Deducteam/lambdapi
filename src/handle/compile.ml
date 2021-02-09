@@ -21,12 +21,12 @@ let parse_file : string -> Syntax.ast = fun fname ->
   | true  -> Parser.parse_file fname
   | false -> Parser.Dk.parse_file fname
 
-(** [compile force path] compiles the file corresponding to [path], when it is
+(** [compile force mp] compiles the file corresponding to [mp], when it is
     necessary (the corresponding object file does not exist,  must be updated,
     or [force] is [true]).  In that case,  the produced signature is stored in
     the corresponding object file. *)
-let rec compile : bool -> Path.t -> Sign.t = fun force path ->
-  let base = module_to_file (List.map Escape.unescape path) in
+let rec compile : bool -> Mod.t -> Sign.t = fun force mp ->
+  let base = file_of_mod mp in
   let src () =
     (* Searching for source is delayed because we may not need it
        in case of "ghost" signatures (such as for unification rules). *)
@@ -39,27 +39,27 @@ let rec compile : bool -> Path.t -> Sign.t = fun force path ->
     | (false, true ) -> legacy
   in
   let obj = base ^ obj_extension in
-  if List.mem path !loading then
+  if List.mem mp !loading then
     begin
       fatal_msg "Circular dependencies detected in [%s].\n" (src ());
-      fatal_msg "Dependency stack for module [%a]:\n" Path.pp path;
-      List.iter (fatal_msg "  - [%a]\n" Path.pp) !loading;
+      fatal_msg "Dependency stack for module [%a]:\n" Mod.pp mp;
+      List.iter (fatal_msg "  - [%a]\n" Mod.pp) !loading;
       fatal_no_pos "Build aborted."
     end;
-  if PathMap.mem path !loaded then
-    let sign = PathMap.find path !loaded in
-    out 2 "Already loaded [%a]\n%!" Path.pp path; sign
+  if ModMap.mem mp !loaded then
+    let sign = ModMap.find mp !loaded in
+    out 2 "Already loaded [%a]\n%!" Mod.pp mp; sign
   else if force || Extra.more_recent (src ()) obj then
     begin
       let forced = if force then " (forced)" else "" in
       let src = src () in
       out 1 "Loading %s%s ...\n%!" src forced;
-      loading := path :: !loading;
-      let sign = Sig_state.create_sign path in
+      loading := mp :: !loading;
+      let sign = Sig_state.create_sign mp in
       let sig_st = Stdlib.ref (Sig_state.of_sign sign) in
       (* [sign] is added to [loaded] before processing the commands so that it
          is possible to qualify the symbols of the current modules. *)
-      loaded := PathMap.add path sign !loaded;
+      loaded := ModMap.add mp sign !loaded;
       let handle ss c =
         Term.Meta.reset_key_counter ();
         (* We provide the compilation function to the handle commands, so that
@@ -88,8 +88,8 @@ let rec compile : bool -> Path.t -> Sign.t = fun force path ->
     begin
       out 2 "Loading %s ...\n%!" (src ());
       let sign = Sign.read obj in
-      PathMap.iter (fun mp _ -> ignore (compile false mp)) !(sign.sign_deps);
-      loaded := PathMap.add path sign !loaded;
+      ModMap.iter (fun mp _ -> ignore (compile false mp)) !(sign.sign_deps);
+      loaded := ModMap.add mp sign !loaded;
       Sign.link sign;
       out 2 "Loaded %s\n%!" obj; sign
     end
@@ -104,7 +104,7 @@ let recompile = Stdlib.ref false
 let compile_file : string -> Sign.t = fun fname ->
   Package.apply_config fname;
   (* Compute the module path (checking the extension). *)
-  let mp = file_to_module fname in
+  let mp = mod_of_file fname in
   (* Run compilation. *)
   compile Stdlib.(!recompile) mp
 
@@ -113,7 +113,7 @@ let compile_file : string -> Sign.t = fun fname ->
     they have finished. An optional library mapping or state can be passed as
     argument to change the settings. *)
 module Pure : sig
-  val compile : ?lm:string -> ?st:State.t -> bool -> Path.t -> Sign.t
+  val compile : ?lm:string -> ?st:State.t -> bool -> Mod.t -> Sign.t
   val compile_file : ?lm:string -> ?st:State.t -> string -> Sign.t
 end = struct
 
@@ -137,9 +137,9 @@ end = struct
       restore (); res
     with e -> restore (); raise e
 
-  let compile ?lm ?st force path =
-    let f (force, path) = compile force path in
-    pure_apply_cfg ?lm ?st f (force, path)
+  let compile ?lm ?st force mp =
+    let f (force, mp) = compile force mp in
+    pure_apply_cfg ?lm ?st f (force, mp)
 
   let compile_file ?lm ?st = pure_apply_cfg ?lm ?st compile_file
 end

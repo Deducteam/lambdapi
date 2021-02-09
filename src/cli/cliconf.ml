@@ -1,7 +1,6 @@
 (** Configuration for the CLI and common flags. *)
 
 open! Lplib
-
 open Cmdliner
 open Common
 open Module
@@ -53,11 +52,11 @@ let init : config -> unit = fun cfg ->
   (* Log some configuration data. *)
   if Timed.(!log_enabled) then
     begin
-      Module.log_file "running directory: [%s]" (Module.current_path ());
+      Module.log_file "running directory: [%s]" (Filename.current_dir ());
       Module.log_file "library root path: [%s]"
         (match !lib_root with None -> assert false | Some(p) -> p);
-      let fn = Module.log_file "mapping: [%a] → [%s]" Module.Path.pp in
-      Module.ModMap.iter fn (Module.current_mappings ())
+      let f = Module.log_file "mapping: [%a] → [%s]" Mod.pp in
+      PathMap.iter f (Module.current_mappings ())
     end;
   (* Initialise the [Pure] interface (this must come last). *)
   Pure.set_initial_time ()
