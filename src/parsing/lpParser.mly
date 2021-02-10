@@ -115,7 +115,7 @@
 %start <Syntax.p_qident> id
 
 %type <Syntax.p_ident> uid
-%type <Syntax.p_mod> modname
+%type <Syntax.p_mod> mod_id
 %type <Syntax.p_ident option> patt
 %type <Syntax.p_args> arg_ids
 
@@ -305,17 +305,17 @@ term_proof:
   | p=proof { None, Some p }
   | t=term p=proof { Some t, Some p }
 
-modname: i=QID { make_pos $sloc i}
+mod_id: i=QID { make_pos $sloc i}
 
 // Top level commands
 command:
-  | REQUIRE OPEN l=list(modname) SEMICOLON
+  | REQUIRE OPEN l=list(mod_id) SEMICOLON
     { make_pos $sloc (P_require(true,l)) }
-  | REQUIRE l=list(modname) SEMICOLON
+  | REQUIRE l=list(mod_id) SEMICOLON
     { make_pos $sloc (P_require(false,l)) }
-  | REQUIRE i=modname AS a=uid SEMICOLON
+  | REQUIRE i=mod_id AS a=uid SEMICOLON
     { make_pos $sloc (P_require_as(i,a)) }
-  | OPEN l=list(modname) SEMICOLON
+  | OPEN l=list(mod_id) SEMICOLON
     { make_pos $sloc (P_open l) }
   | ms=modifier* SYMBOL s=uid al=arg_ids* COLON a=term
     po=proof? SEMICOLON
