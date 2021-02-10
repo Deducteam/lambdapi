@@ -7,7 +7,7 @@
     {!module:Parser.Dk}. *)
 
 open! Lplib
-open Extra
+open Base
 open Common
 
 (** [parser_fatal loc fmt] is a wrapper for [Console.fatal] that enforces

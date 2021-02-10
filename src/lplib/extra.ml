@@ -10,12 +10,6 @@ module StrMap = Map.Make (String)
 (** Functional sets of strings. *)
 module StrSet = Set.Make (String)
 
-(** Short name for a standard formatter. *)
-type 'a outfmt = ('a, Format.formatter, unit) format
-
-(** Short name for a standard formatter with continuation. *)
-type ('a,'b) koutfmt = ('a, Format.formatter, unit, unit, unit, 'b) format6
-
 (** [out_fmt] main output formatter. *)
 let out_fmt = Stdlib.ref Format.std_formatter
 

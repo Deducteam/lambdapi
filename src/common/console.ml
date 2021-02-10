@@ -1,6 +1,7 @@
 (** Output and debugging utilities. *)
 
 open Timed
+open Lplib.Base
 open Lplib.Extra
 open Debug
 
