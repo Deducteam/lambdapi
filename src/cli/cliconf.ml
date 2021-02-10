@@ -43,7 +43,7 @@ let init : config -> unit = fun cfg ->
   (* Set all the flags and configs. *)
   Handle.Compile.gen_obj := cfg.gen_obj;
   Module.set_lib_root cfg.lib_root;
-  List.iter (fun (m,d) -> Module.new_lib_mapping (m ^ ":" ^ d)) cfg.map_dir;
+  List.iter Module.add_mapping cfg.map_dir;
   Option.iter set_default_verbose cfg.verbose;
   Console.no_wrn := cfg.no_warnings;
   Debug.set_default_debug cfg.debug;

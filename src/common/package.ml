@@ -88,6 +88,6 @@ let apply_config : string -> unit = fun fname ->
   match find_config fname with
   | None           -> ()
   | Some(cfg_file) ->
-  let {package_name = _; root_path} = read cfg_file in
+  let {root_path; _} = read cfg_file in
   let root = Filename.dirname cfg_file in
-  Module.new_lib_mapping (String.concat "." root_path ^ ":" ^ root)
+  Module.add_mapping (String.concat "." root_path, root)

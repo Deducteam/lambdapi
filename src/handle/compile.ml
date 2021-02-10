@@ -113,8 +113,8 @@ let compile_file : string -> Sign.t = fun fname ->
     they have finished. An optional library mapping or state can be passed as
     argument to change the settings. *)
 module Pure : sig
-  val compile : ?lm:string -> ?st:State.t -> bool -> Mod.t -> Sign.t
-  val compile_file : ?lm:string -> ?st:State.t -> string -> Sign.t
+  val compile : ?lm:string*string -> ?st:State.t -> bool -> Mod.t -> Sign.t
+  val compile_file : ?lm:string*string -> ?st:State.t -> string -> Sign.t
 end = struct
 
   (* [pure_apply_cfg ?lm ?st f] is function [f] but pure (without side
@@ -122,11 +122,12 @@ end = struct
      {!val:Console.State.t}, {!val:Module.lib_mappings} and in the meta
      variable counter {!module:Term.Meta}. Arguments [?lm] allows to set the
      library mappings and [?st] sets the state. *)
-  let pure_apply_cfg : ?lm:string -> ?st:State.t -> ('a -> 'b) -> 'a -> 'b =
+  let pure_apply_cfg :
+        ?lm:string*string -> ?st:State.t -> ('a -> 'b) -> 'a -> 'b =
     fun ?lm ?st f x ->
     let libmap = !lib_mappings in
     State.push ();
-    Option.iter new_lib_mapping lm;
+    Option.iter Module.add_mapping lm;
     Option.iter State.apply st;
     let restore () =
       State.pop ();

@@ -190,27 +190,20 @@ let set_lib_root : string option -> unit = fun dir ->
          Required by [module_to_file]. *)
       Timed.(lib_mappings := PathMap.set_root pth !lib_mappings)
 
-(** [new_lib_mapping s] attempts to parse [s] as a library mapping of the form
-   ["<mod_path>:<file_path>"]. Then, if module path ["<mod_path>"] is not yet
-   mapped to a file path, and if ["<file_path>"] corresponds to a valid
-   directory, then a new mapping is registered. In case of failure the program
-   terminates and a graceful error message is displayed. *)
-let new_lib_mapping : string -> unit = fun s ->
-  let (mod_path, file_path) =
-    match Escape.split ':' s with
-    | [mp; fp] -> (Mod.of_string mp, Escape.unescape fp)
-    | _ ->
-    fatal_no_pos "Bad syntax for \"--map-dir\" option (expecting MOD:DIR)."
-  in
-  let file_path =
-    try Filename.realpath file_path
-    with Invalid_argument(f) ->
-      fatal_no_pos "%s: No such file or directory" f
+(** [add_mapping (mp, fp)] adds a new mapping from the module name [mp] to
+   the file name [fp] if [mp] is not already mapped and [fp] is a valid
+   directory. In case of failure the program terminates and a graceful error
+   message is displayed. *)
+let add_mapping : string * string -> unit = fun (mp, fp) ->
+  let md = Mod.of_string mp in
+  let fp =
+    try Filename.realpath fp
+    with Invalid_argument(f) -> fatal_no_pos "%s: No such file or directory" f
   in
   let new_mapping =
-    try PathMap.add mod_path file_path !lib_mappings
+    try PathMap.add md fp !lib_mappings
     with PathMap.Already_mapped ->
-      fatal_no_pos "Module path [%a] is already mapped." Mod.pp mod_path
+      fatal_no_pos "Module path [%a] is already mapped." Mod.pp md
   in
   lib_mappings := new_mapping
 
