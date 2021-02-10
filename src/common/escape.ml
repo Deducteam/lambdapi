@@ -1,5 +1,7 @@
 (** Escaped identifiers "{|...|}". *)
 
+(*open Debug*)
+
 (** [is_beg_escaped s] tells if [s] starts with '{'. *)
 let is_beg_escaped : string -> bool = fun s ->
   String.length s > 0 && s.[0] = '{'
@@ -32,16 +34,21 @@ let add_prefix : string -> string -> string = fun p s ->
 let split : char -> string -> string list = fun c s ->
   let sc = String.make 1 c in
   let rec fix_split mp m l =
+    (*Format.printf "fix_split %a\n%a\n%a\n\n"
+        (D.list D.string) mp (D.option D.string) m (D.list D.string) l;*)
     match m, l with
     | None, [] -> List.rev mp
     | Some m, [] -> List.rev (m::mp)
     | None, s::l ->
-        if is_beg_escaped s then fix_split mp (Some s) l
+        if is_beg_escaped s && not (is_end_escaped s)
+        then fix_split mp (Some s) l
         else fix_split (s::mp) None l
     | Some m, s::l ->
         if is_end_escaped s then fix_split ((m^sc^s)::mp) None l
         else fix_split mp (Some(m^sc^s)) l
   in fix_split [] None (String.split_on_char c s)
 
-(* unit test *)
+(* unit testing *)
 let _ = assert (split '.' "{|a.b|}.c.{|d|}" = ["{|a.b|}";"c";"{|d|}"])
+let _ = assert(split '.' "{|tests|}.OK.{|a b|}.c"
+               = ["{|tests|}";"OK";"{|a b|}";"c"])

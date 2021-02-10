@@ -6,6 +6,7 @@ open Lplib.Extra
 open Timed
 open Common
 open Console
+open Debug
 open Term
 open LibTerm
 open Print

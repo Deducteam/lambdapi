@@ -10,6 +10,7 @@ open Term
 open Print
 open Proof
 open! Lplib
+open Debug
 
 (** Result of query displayed on hover in the editor*)
 type result = string option
@@ -61,7 +62,7 @@ let handle : Sig_state.t -> proof_state option -> p_query -> result =
       None
   | P_query_debug(e,s) ->
       (* Just update the option, state not modified. *)
-      Console.set_debug e s;
+      set_debug e s;
       out 3 "(flag) debug → %s%s\n" (if e then "+" else "-") s;
       None
   | P_query_verbose(i) ->

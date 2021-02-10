@@ -8,6 +8,8 @@ open Console
 open Core
 open Term
 open Print
+open Debug
+open Extra
 
 (** Logging function for typing. *)
 let log_subj = new_logger 's' "subj" "subject-reduction"

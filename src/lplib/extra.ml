@@ -1,4 +1,4 @@
-(* Functional maps with [int] keys. *)
+(** Functional maps with [int] keys. *)
 module IntMap = Map.Make (Base.Int)
 
 (** Functional sets of integers. *)
@@ -7,8 +7,40 @@ module IntSet = Set.Make (Base.Int)
 (** Functional maps with [string] keys. *)
 module StrMap = Map.Make (String)
 
-(* Functional sets of strings. *)
+(** Functional sets of strings. *)
 module StrSet = Set.Make (String)
+
+(** Short name for a standard formatter. *)
+type 'a outfmt = ('a, Format.formatter, unit) format
+
+(** Short name for a standard formatter with continuation. *)
+type ('a,'b) koutfmt = ('a, Format.formatter, unit, unit, unit, 'b) format6
+
+(** [out_fmt] main output formatter. *)
+let out_fmt = Stdlib.ref Format.std_formatter
+
+(** [err_fmt] warning/error output formatter. *)
+let err_fmt = Stdlib.ref Format.err_formatter
+
+(** [color] tells whether colors can be used in the output. *)
+let color : bool Stdlib.ref = Stdlib.ref true
+
+(** Format transformers (colors). *)
+let colorize k fmt =
+  if Stdlib.(!color) then
+    "\027[" ^^ k ^^ "m" ^^ fmt ^^ "\027[0m%!"
+  else fmt
+
+let red fmt = colorize "31" fmt
+let gre fmt = colorize "32" fmt
+let yel fmt = colorize "33" fmt
+let blu fmt = colorize "34" fmt
+let mag fmt = colorize "35" fmt
+let cya fmt = colorize "36" fmt
+
+(** [r_or_g cond fmt] colors the format [fmt] in green if [cond] is [true] and
+    in red otherwise. *)
+let r_or_g cond = if cond then gre else red
 
 (** [get_safe_prefix p strings] returns a string starting with [p] and so that,
     there is no non-negative integer [k] such that [p ^ string_of_int k] belongs
@@ -90,3 +122,19 @@ let file_time : string -> float = fun fname ->
     more recent than [target]. *)
 let more_recent : string -> string -> bool = fun source target ->
   file_time source > file_time target
+
+(** [files d] returns all the files in [d] and its sub-directories
+   recursively, assuming that [d] is a directory. *)
+let files : string -> string list =
+  let rec files acc dirs =
+    match dirs with
+    | [] -> acc
+    | d::dirs ->
+        let f (fnames, dnames) s =
+          let s = Filename.concat d s in
+          if Sys.is_directory s then (fnames, s::dnames)
+          else (s::fnames, dnames)
+        in
+        let acc, dirs = Array.fold_left f (acc, dirs) (Sys.readdir d) in
+        files acc dirs
+  in fun d -> files [] [d]

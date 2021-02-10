@@ -11,6 +11,7 @@ open Syntax
 open Term
 open Env
 open Sig_state
+open Debug
 
 (** Logging function for term scoping. *)
 let log_scop = new_logger 'o' "scop" "term scoping"
@@ -28,6 +29,7 @@ let log_scop = log_scop.logger
     {!constructor:Term.expo.Privat} symbols are allowed. *)
 let find_qid : bool -> bool -> sig_state -> env -> p_qident -> tbox =
   fun prt prv st env qid ->
+  if Timed.(!log_enabled) then log_scop "find_qid %a" Pretty.qident qid;
   let (mp, s) = qid.elt in
   (* Check for variables in the environment first. *)
   try

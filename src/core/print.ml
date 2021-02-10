@@ -11,7 +11,7 @@ open Lplib.Extra
 
 open Timed
 open Common
-open Console
+open Debug
 open Term
 open Sig_state
 open Module

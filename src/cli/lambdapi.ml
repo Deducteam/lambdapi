@@ -166,7 +166,7 @@ let file : string Term.t =
   let doc =
     Printf.sprintf
       "Source file with the [%s] extension (or with the [%s] extension when \
-       using the legacy Dedukti syntax)." src_extension legacy_src_extension
+       using the Dedukti syntax)." src_extension legacy_src_extension
   in
   Arg.(required & pos 0 (some non_dir_file) None & info [] ~docv:"FILE" ~doc)
 

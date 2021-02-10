@@ -10,6 +10,7 @@ open Term
 open LibTerm
 open Env
 open Print
+open Debug
 
 (** Logging function for unification. *)
 let log_unif = new_logger 'u' "unif" "unification"

@@ -12,6 +12,7 @@ open Term
 open Proof
 open Print
 open Timed
+open Debug
 
 (** Logging function for tactics. *)
 let log_tact = new_logger 't' "tact" "tactics"

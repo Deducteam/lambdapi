@@ -6,8 +6,9 @@ open Lplib.Extra
 
 open Timed
 open Console
+open Debug
 
-(** Logging function for evaluation. *)
+(** Logging functions. *)
 let log_file = new_logger 'f' "file" "file system"
 let log_file = log_file.logger
 
@@ -18,7 +19,9 @@ module Mod =
     type t = string list
 
     (** [compare] is a standard comparing function for module names. *)
-    let compare : t -> t -> int = Stdlib.compare
+    let compare : t -> t -> int = fun m1 m2 ->
+      Stdlib.compare (List.map Escape.unescape m1)
+                     (List.map Escape.unescape m2)
 
     (** [pp ppf mp] prints [mp] on formatter [ppf]. *)
     let pp : t pp = fun ppf mp ->
@@ -77,13 +80,8 @@ module PathMap :
     type t = Node of string option * t StrMap.t
 
     let rec pp ppf (Node(po, map)) =
-      let out fmt = Format.fprintf ppf fmt in
-      out "Node(";
-      (match po with None -> out "None" | Some p -> out "Some%S" p);
-      out ",[";
-      let f k t = out "(%S,%a);" k pp t in
-      StrMap.iter f map;
-      out "])"
+      Format.fprintf ppf "Node(%a,%a)"
+        (D.option D.string) po (D.strmap pp) map
 
     let empty = Node(None, StrMap.empty)
 
@@ -114,6 +112,9 @@ module PathMap :
       let concat root ks =
         List.fold_left Filename.concat root (List.map Escape.unescape ks) in
       let rec get (root, old_ks) ks map =
+        if !log_enabled then
+          log_file "get %S\n[%a]\n[%a]\n%a" root
+            (D.list D.string) old_ks (D.list D.string) ks (D.strmap pp) map;
         match ks with
         | []      -> concat root old_ks
         | k :: ks ->
@@ -204,7 +205,7 @@ let new_lib_mapping : string -> unit = fun s ->
   let file_path =
     try Filename.realpath file_path
     with Invalid_argument(f) ->
-      fatal_no_pos "new_lib_mapping: %s: No such file or directory" f
+      fatal_no_pos "%s: No such file or directory" f
   in
   let new_mapping =
     try PathMap.add mod_path file_path !lib_mappings
@@ -220,16 +221,13 @@ let current_mappings : unit -> PathMap.t = fun _ -> !lib_mappings
     path" (with no attached extension). It is assumed that [lib_root] has been
     set, possibly with [set_lib_root]. *)
 let file_of_mod : Mod.t -> string = fun mp ->
-  let fp =
-    try
-      let res = PathMap.get mp !lib_mappings in
-      if !log_enabled then
-        log_file "file_of_mod %a %a -> %S"
-          Mod.pp mp PathMap.pp !lib_mappings res;
-      res
-    with PathMap.Root_not_set -> fatal_no_pos "Library root not set."
-  in
-  log_file "[%a] points to base name [%s]." Mod.pp mp fp; fp
+  try
+    let fp = PathMap.get mp !lib_mappings in
+    if !log_enabled then
+      log_file "file_of_mod %a\n%a\n= %S"
+        Mod.pp mp PathMap.pp !lib_mappings fp;
+    fp
+  with PathMap.Root_not_set -> fatal_no_pos "Library root not set."
 
 (** [src_extension] is the expected extension for source files. *)
 let src_extension : string = ".lp"
@@ -244,10 +242,8 @@ let legacy_src_extension : string = ".dk"
 let valid_extensions : string list =
   [src_extension; legacy_src_extension; obj_extension]
 
-(** [mod_of_file path] computes the module path that corresponds to [path].
-    The file described by [path] is expected to have a valid extension (either
-    [src_extension] or the legacy extension [legacy_src_extension]). If [path]
-    is invalid, the [Fatal] exception is raised. *)
+(** [mod_of_file fn] computes the module that corresponds to [fn]. If [fn]
+   doesn't have a valid extension, the [Fatal] exception is raised. *)
 let mod_of_file : string -> Mod.t = fun fname ->
   (* Sanity check: source file extension. *)
   let ext = Filename.extension fname in
@@ -286,7 +282,7 @@ let mod_of_file : string -> Mod.t = fun fname ->
     String.sub base (len_fp + 1) (len_base - len_fp - 1)
   in
   let full_mp = mp @ String.split_on_char '/' rest in
-  log_file "File [%s] is module [%a]." fname Mod.pp full_mp;
+  log_file "mod_of_file %S\n= %a" fname Mod.pp full_mp;
   full_mp
 
 let install_path : string -> string = fun fname ->

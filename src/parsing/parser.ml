@@ -7,11 +7,12 @@
     {!module:Parser.Dk}. *)
 
 open! Lplib
+open Extra
 open Common
 
 (** [parser_fatal loc fmt] is a wrapper for [Console.fatal] that enforces
     that the error has an attached source code position. *)
-let parser_fatal : Pos.pos -> ('a,'b) Console.koutfmt -> 'a = fun loc fmt ->
+let parser_fatal : Pos.pos -> ('a,'b) koutfmt -> 'a = fun loc fmt ->
   Console.fatal (Some(loc)) fmt
 
 (** [qident_of_string s] converts the string [s] into a path. *)

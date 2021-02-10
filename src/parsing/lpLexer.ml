@@ -139,8 +139,7 @@ end = struct
                    | math | other_math | subscript | superscript
                    | supplemental_punctuation ]
   let regid = [%sedlex.regexp? (letter | '_'), Star (letter | digit | '_')]
-  let escid =
-    [%sedlex.regexp? "{|", Star (Compl '|' | '|', Compl '}'), Star '|', "|}"]
+  let escid = [%sedlex.regexp? "{|", Star (Compl '|'), "|}"]
   let uid = [%sedlex.regexp? regid | escid]
   let qid = [%sedlex.regexp? uid, Plus ('.', uid)]
   let id = [%sedlex.regexp? uid | qid]

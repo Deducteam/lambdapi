@@ -5,6 +5,8 @@ open Cmdliner
 open Common
 open Module
 open Console
+open Extra
+open Debug
 
 (** {3 Configuration type for common values} *)
 
@@ -47,15 +49,15 @@ let init : config -> unit = fun cfg ->
   Option.iter set_default_verbose cfg.verbose;
   no_wrn := cfg.no_warnings;
   set_default_debug cfg.debug;
-  Console.color := not cfg.no_colors;
+  color := not cfg.no_colors;
   Handle.Command.too_long := cfg.too_long;
   (* Log some configuration data. *)
   if Timed.(!log_enabled) then
     begin
-      Module.log_file "running directory: [%s]" (Filename.current_dir ());
-      Module.log_file "library root path: [%s]"
+      Module.log_file "running directory: %s" (Filename.current_dir ());
+      Module.log_file "library root path: %s"
         (match !lib_root with None -> assert false | Some(p) -> p);
-      let f = Module.log_file "mapping: [%a] → [%s]" Mod.pp in
+      let f = Module.log_file "mapping: [%a] → %s" Mod.pp in
       PathMap.iter f (Module.current_mappings ())
     end;
   (* Initialise the [Pure] interface (this must come last). *)
@@ -123,7 +125,7 @@ let no_warnings : bool Term.t =
 let debug : string Term.t =
   let descs =
     let fn (k, d) = Printf.sprintf "$(b,\"%c\") (for %s)" k d in
-    String.concat ", " (List.map fn (Console.log_summary ()))
+    String.concat ", " (List.map fn (log_summary ()))
   in
   let doc =
     Printf.sprintf

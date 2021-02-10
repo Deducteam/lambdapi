@@ -18,6 +18,7 @@ open Sig_state
 open Scope
 open Print
 open Proof
+open Debug
 
 (** Logging function for command handling. *)
 let log_hndl = new_logger 'h' "hndl" "command handling"
@@ -205,7 +206,7 @@ let handle : (Mod.t -> Sign.t) -> sig_state -> p_command ->
     sig_state * proof_data option * Query.result =
   fun compile ss ({elt; pos} as cmd) ->
   if !log_enabled then
-    log_hndl (blu "[%a] %a") Pos.pp pos Pretty.command cmd;
+    log_hndl (blu "%a\n%a") Pos.pp pos Pretty.command cmd;
   let scope_basic exp pt = Scope.scope_term exp ss Env.empty pt in
   match elt with
   | P_query(q) ->

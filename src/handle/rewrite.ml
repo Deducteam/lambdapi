@@ -11,6 +11,7 @@ open LibTerm
 open Console
 open Print
 open Proof
+open Debug
 
 (** Logging function for the rewrite tactic. *)
 let log_rewr = new_logger 'r' "rewr" "the rewrite tactic"
