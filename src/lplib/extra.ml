@@ -27,9 +27,7 @@ let color : bool Stdlib.ref = Stdlib.ref true
 
 (** Format transformers (colors). *)
 let colorize k fmt =
-  if Stdlib.(!color) then
-    "\027[" ^^ k ^^ "m" ^^ fmt ^^ "\027[0m%!"
-  else fmt
+  if Stdlib.(!color) then "\027[" ^^ k ^^ "m" ^^ fmt ^^ "\027[0m%!" else fmt
 
 let red fmt = colorize "31" fmt
 let gre fmt = colorize "32" fmt
