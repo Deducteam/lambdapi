@@ -154,29 +154,27 @@ let handle_rules : sig_state -> p_rule list -> sig_state = fun ss rs ->
 (** [handle_inductive_symbol ss e p strat x xs a] handles the command
     [e p strat symbol x xs : a] with [ss] as the signature state.
     On success, an updated signature state and the new symbol are returned. *)
-let handle_inductive_symbol :
-  sig_state -> expo -> prop -> match_strat -> p_ident -> p_params list ->
-  p_type -> sig_state * sym = fun ss e p strat x xs a ->
-  let scope_basic exp = Scope.scope_term exp ss Env.empty in
-  (* We check that [x] is not already used. *)
-  if Sign.mem ss.signature x.elt then
-    fatal x.pos "Symbol [%s] already exists." x.elt;
-  (* Desugaring of arguments of [a]. *)
-  let a = if xs = [] then a else Pos.none (P_Prod(xs, a)) in
+let handle_inductive_symbol : sig_state -> expo -> prop -> match_strat
+    -> p_ident -> p_params list -> p_type -> sig_state * sym =
+  fun ss expo prop mstrat ({elt=name;pos} as id) xs typ ->
+  (* We check that [id] is not already used. *)
+  if Sign.mem ss.signature name then
+    fatal pos "Symbol [%s] already exists." name;
+  (* Desugaring of arguments of [typ]. *)
+  let typ = if xs = [] then typ else Pos.none (P_Prod(xs, typ)) in
   (* Obtaining the implicitness of arguments. *)
-  let impl = Scope.get_implicitness a in
+  let impl = Scope.get_implicitness typ in
   (* We scope the type of the declaration. *)
-  let a = scope_basic e a in
+  let typ = Scope.scope_term expo ss Env.empty typ in
   (* We check that [a] is typable by a sort. *)
-  Infer.check_sort Unif.solve_noexn x.pos [] a;
+  Infer.check_sort Unif.solve_noexn pos [] typ;
   (* We check that no metavariable remains. *)
-  if LibTerm.has_metas true a then
-    (fatal_msg "The type of [%s] has unsolved metavariables.\n" x.elt;
-     fatal x.pos "We have %s : %a." x.elt pp_term a);
+  if LibTerm.has_metas true typ then
+    (fatal_msg "The type of [%s] has unsolved metavariables.\n" name;
+     fatal pos "We have %s : %a." name pp_term typ);
   (* Actually add the symbol to the signature and the state. *)
-  Console.out 3 (red "(symb) %s : %a\n") x.elt pp_term a;
-  let sig_symbol = {expo=e;prop=p;mstrat=strat;ident=x;typ=a;impl;def=None} in
-  add_symbol ss sig_symbol
+  Console.out 3 (red "(symb) %s : %a\n") name pp_term typ;
+  add_symbol ss expo prop mstrat id typ impl None
 
 (** Representation of a yet unchecked proof. The structure is initialized when
     the proof mode is entered, and its finalizer is called when the proof mode
@@ -222,7 +220,7 @@ let handle : (Path.t -> Sign.t) -> sig_state -> p_command ->
       (ss, None, None)
   | P_inductive(ms, params, p_ind_list) ->
       (* Check modifiers. *)
-      let (prop, e, mstrat) = handle_modifiers ms in
+      let (prop, expo, mstrat) = handle_modifiers ms in
       if prop <> Defin then
         fatal pos "Property modifiers cannot be used on inductive types.";
       if mstrat <> Eager then
@@ -231,7 +229,7 @@ let handle : (Path.t -> Sign.t) -> sig_state -> p_command ->
       (* Add inductive types in the signature. *)
       let add_ind_sym (ss, ind_sym_list) {elt=(id,pt,_); _} =
         let (ss, ind_sym) =
-          handle_inductive_symbol ss e Injec Eager id params pt in
+          handle_inductive_symbol ss expo Injec Eager id params pt in
         (ss, ind_sym::ind_sym_list)
       in
       let (ss, ind_sym_list_rev) =
@@ -244,7 +242,7 @@ let handle : (Path.t -> Sign.t) -> sig_state -> p_command ->
             (ss, cons_sym_list_list) {elt=(_,_,p_cons_list); _} =
         let add_cons_sym (ss, cons_sym_list) (id, pt) =
           let (ss, cons_sym) =
-            handle_inductive_symbol ss e Const Eager id params pt in
+            handle_inductive_symbol ss expo Const Eager id params pt in
           (ss, cons_sym::cons_sym_list)
         in
         let (ss, cons_sym_list_rev) =
@@ -281,16 +279,8 @@ let handle : (Path.t -> Sign.t) -> sig_state -> p_command ->
           fatal pos "Symbol [%s] already exists." rec_name;
         let (ss, rec_sym) =
           Console.out 3 (red "(symb) %s : %a\n") rec_name pp_term rec_typ;
-          let sig_symbol =
-            {expo = e;
-             prop = Defin;
-             mstrat = Eager;
-             ident = Pos.make pos rec_name;
-             typ = rec_typ;
-             impl = [];
-             def = None}
-          in
-          Sig_state.add_symbol ss sig_symbol
+          let id = Pos.make pos rec_name in
+          Sig_state.add_symbol ss expo Defin Eager id rec_typ [] None
         in
         (ss, rec_sym::rec_sym_list)
       in
@@ -410,9 +400,7 @@ let handle : (Path.t -> Sign.t) -> sig_state -> p_command ->
                 (* Add the symbol in the signature with a warning. *)
                 Console.out 3 (red "(symb) add %s : %a\n") id pp_term a;
                 wrn pe.pos "Proof admitted.";
-                let sig_symbol =
-                  {expo;prop;mstrat;ident=p_sym_nam;typ=a;impl;def=t} in
-                fst (add_symbol ss sig_symbol)
+                fst (add_symbol ss expo prop mstrat p_sym_nam a impl t)
             | P_proof_end ->
                 (* Check that the proof is indeed finished. *)
                 if not (finished ps) then
@@ -420,9 +408,7 @@ let handle : (Path.t -> Sign.t) -> sig_state -> p_command ->
                    fatal pe.pos "The proof is not finished.");
                 (* Add the symbol in the signature. *)
                 Console.out 3 (red "(symb) add %s : %a\n") id pp_term a;
-                let sig_symbol =
-                  {expo;prop;mstrat;ident=p_sym_nam;typ=a;impl;def=t} in
-                fst (add_symbol ss sig_symbol)
+                fst (add_symbol ss expo prop mstrat p_sym_nam a impl t)
       in
       (* Create proof state. *)
       let ps = {proof_name = p_sym_nam; proof_term; proof_goals} in
