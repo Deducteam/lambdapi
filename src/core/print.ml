@@ -54,8 +54,8 @@ let notation : Sign.notation pp = fun oc notation ->
 
 (** [qualified s] prints symbol [s] fully qualified to channel [oc]. *)
 let pp_qualified : sym pp = fun oc s ->
-  match ModMap.find_opt s.sym_mod (!sig_state).mod_map with
-  | None -> Format.fprintf oc "%a.%s" Mod.pp s.sym_mod s.sym_name
+  match PathMap.find_opt s.sym_mod (!sig_state).mod_map with
+  | None -> Format.fprintf oc "%a.%s" Path.pp s.sym_mod s.sym_name
   | Some alias -> Format.fprintf oc "%s.%s" alias s.sym_name
 
 (** [notatin_of sym] returns the notation properties symbol [sym] or

@@ -55,8 +55,8 @@ let init : config -> unit = fun cfg ->
       Module.log_file "running directory: %s" (Filename.current_dir ());
       Module.log_file "library root path: %s"
         (match !lib_root with None -> assert false | Some(p) -> p);
-      let f = Module.log_file "mapping: [%a] → %s" Mod.pp in
-      PathMap.iter f (Module.current_mappings ())
+      let f = Module.log_file "mapping: [%a] → %s" Path.pp in
+      LibMap.iter f (Module.current_mappings ())
     end;
   (* Initialise the [Pure] interface (this must come last). *)
   Pure.set_initial_time ()

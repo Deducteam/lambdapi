@@ -67,7 +67,7 @@ type term =
   (** Name of the symbol. *)
   ; sym_type  : term ref
   (** Type of the symbol. *)
-  ; sym_mod  : Common.Module.Mod.t
+  ; sym_mod  : Common.Module.Path.t
   (** Module in which it is defined. *)
   ; sym_def   : term option ref
   (** Definition of the symbol. *)

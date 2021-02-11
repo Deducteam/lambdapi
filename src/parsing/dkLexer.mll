@@ -26,7 +26,7 @@ type token =
   | KW_PRV
   | KW_THM
   | INFER
-  | REQUIRE of Mod.t
+  | REQUIRE of Path.t
   | TYPE
   (* Symbols. *)
   | ARROW
@@ -87,7 +87,7 @@ rule token = parse
   | "prv"                           { KW_PRV                               }
   | "thm"                           { KW_THM                               }
   | "#INFER"                        { INFER                                }
-  | "#REQUIRE" space+ (mpath as mp) { REQUIRE(Mod.of_string mp)            }
+  | "#REQUIRE" space+ (mpath as mp) { REQUIRE(Path.of_string mp)           }
   | "Type"                          { TYPE                                 }
   (* symbols *)
   | "->"                            { ARROW                                }
@@ -104,7 +104,7 @@ rule token = parse
   | ')'                             { RIGHTPAR                             }
   | "_"                             { UNDERSCORE                           }
   (* identifiers *)
-  | (mpath as mp) "." (ident as id) { QID(Mod.of_string mp, id)            }
+  | (mpath as mp) "." (ident as id) { QID(Path.of_string mp, id)           }
   | ident  as x                     { UID(x)                               }
   | _ as c                          { unexpected_char lexbuf c             }
 

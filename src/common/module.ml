@@ -13,7 +13,7 @@ let log_file = new_logger 'f' "file" "file system"
 let log_file = log_file.logger
 
 (** Representation of module names and related operations. *)
-module Mod =
+module Path =
   struct
     (** Representation of a module name (roughly, a file path). *)
     type t = string list
@@ -36,10 +36,10 @@ module Mod =
   end
 
 (** Functional maps with module names as keys. *)
-module ModMap = Map.Make(Mod)
+module PathMap = Map.Make(Path)
 
 (** Representation of the mapping from module paths to files. *)
-module PathMap :
+module LibMap :
   sig
     (** Module path mapping. *)
     type t
@@ -58,7 +58,7 @@ module PathMap :
     (** [add mp fp map] extends the mapping [map] by associating the module
        path [mp] to the file path [fp].
        @raise Already_mapped when [mp] isalready mapped in [m]. *)
-    val add : Mod.t -> string -> t -> t
+    val add : Path.t -> string -> t -> t
 
     (** Exception raised if an attempt is made to use the [get] function prior
         to the root being set (using [set_root]). *)
@@ -68,10 +68,10 @@ module PathMap :
        [mp] in [map] (with no particular extension).
        @raise Root_not_set when the root of [map] has not been set using
        [set_root].  *)
-    val get : Mod.t -> t -> string
+    val get : Path.t -> t -> string
 
     (** [iter f map] calls function [f] on every binding stored in [map]. *)
-    val iter : (Mod.t -> string -> unit) -> t -> unit
+    val iter : (Path.t -> string -> unit) -> t -> unit
 
     (** [pp ppf t] prints [t] on formatter [ppf] (for debug). *)
     val pp : t pp
@@ -140,7 +140,7 @@ module PathMap :
 let lib_root : string option Stdlib.ref = Stdlib.ref None
 
 (** [lib_mappings] stores the specified mappings of library paths. *)
-let lib_mappings : PathMap.t ref = ref PathMap.empty
+let lib_mappings : LibMap.t ref = ref LibMap.empty
 
 (** [set_lib_root dir] sets the library root to directory [dir].
     The following directories are set sequentially, such that the active one
@@ -188,39 +188,39 @@ let set_lib_root : string option -> unit = fun dir ->
       end;
       (* Register the library root as part of the module mapping.
          Required by [module_to_file]. *)
-      Timed.(lib_mappings := PathMap.set_root pth !lib_mappings)
+      Timed.(lib_mappings := LibMap.set_root pth !lib_mappings)
 
 (** [add_mapping (mp, fp)] adds a new mapping from the module name [mp] to
    the file name [fp] if [mp] is not already mapped and [fp] is a valid
    directory. In case of failure the program terminates and a graceful error
    message is displayed. *)
 let add_mapping : string * string -> unit = fun (mp, fp) ->
-  let md = Mod.of_string mp in
+  let md = Path.of_string mp in
   let fp =
     try Filename.realpath fp
     with Invalid_argument(f) -> fatal_no_pos "%s: No such file or directory" f
   in
   let new_mapping =
-    try PathMap.add md fp !lib_mappings
-    with PathMap.Already_mapped ->
-      fatal_no_pos "Module path [%a] is already mapped." Mod.pp md
+    try LibMap.add md fp !lib_mappings
+    with LibMap.Already_mapped ->
+      fatal_no_pos "Module path [%a] is already mapped." Path.pp md
   in
   lib_mappings := new_mapping
 
 (** [current_mappings ()] gives the currently registered library mappings. *)
-let current_mappings : unit -> PathMap.t = fun _ -> !lib_mappings
+let current_mappings : unit -> LibMap.t = fun _ -> !lib_mappings
 
-(** [file_of_mod mp] converts module path [mp] into the corresponding "file
+(** [file_of_path mp] converts module path [mp] into the corresponding "file
     path" (with no attached extension). It is assumed that [lib_root] has been
     set, possibly with [set_lib_root]. *)
-let file_of_mod : Mod.t -> string = fun mp ->
+let file_of_path : Path.t -> string = fun mp ->
   try
-    let fp = PathMap.get mp !lib_mappings in
+    let fp = LibMap.get mp !lib_mappings in
     if !log_enabled then
-      log_file "file_of_mod %a\n%a\n= %S"
-        Mod.pp mp PathMap.pp !lib_mappings fp;
+      log_file "file_of_path %a\n%a\n= %S"
+        Path.pp mp LibMap.pp !lib_mappings fp;
     fp
-  with PathMap.Root_not_set -> fatal_no_pos "Library root not set."
+  with LibMap.Root_not_set -> fatal_no_pos "Library root not set."
 
 (** [src_extension] is the expected extension for source files. *)
 let src_extension : string = ".lp"
@@ -235,9 +235,9 @@ let legacy_src_extension : string = ".dk"
 let valid_extensions : string list =
   [src_extension; legacy_src_extension; obj_extension]
 
-(** [mod_of_file fn] computes the module that corresponds to [fn]. If [fn]
+(** [path_of_file fn] computes the module that corresponds to [fn]. If [fn]
    doesn't have a valid extension, the [Fatal] exception is raised. *)
-let mod_of_file : string -> Mod.t = fun fname ->
+let path_of_file : string -> Path.t = fun fname ->
   (* Sanity check: source file extension. *)
   let ext = Filename.extension fname in
   if not (List.mem ext valid_extensions) then
@@ -258,7 +258,7 @@ let mod_of_file : string -> Mod.t = fun fname ->
       | Some(_, p) ->
           if String.(length p < length fp) then mapping := Some(mp, p)
   in
-  PathMap.iter f (current_mappings ());
+  LibMap.iter f (current_mappings ());
   (* Fail if there is none. *)
   let (mp, fp) =
     match !mapping with
@@ -275,11 +275,11 @@ let mod_of_file : string -> Mod.t = fun fname ->
     String.sub base (len_fp + 1) (len_base - len_fp - 1)
   in
   let full_mp = mp @ String.split_on_char '/' rest in
-  log_file "mod_of_file %S\n= %a" fname Mod.pp full_mp;
+  log_file "path_of_file %S\n= %a" fname Path.pp full_mp;
   full_mp
 
 let install_path : string -> string = fun fname ->
-  let mp = mod_of_file fname in
+  let mp = path_of_file fname in
   let ext = Filename.extension fname in
   match Stdlib.(!lib_root) with
   | None -> assert false

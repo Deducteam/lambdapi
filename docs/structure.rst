@@ -34,7 +34,8 @@ Overview of directories and files
 
 * ``src/common/``: miscellaneous modules and libraries
 
-  * ``console.ml``: output and debugging
+  * ``debug.ml``: debugging tools
+  * ``console.ml``: flag management
   * ``escape.ml``: basic functions on escaped identifiers
   * ``module.ml``: filenames and paths management
   * ``package.ml``: management of package files ``lambdapi.pkg``

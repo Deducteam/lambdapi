@@ -46,7 +46,7 @@ let fatal_msg : 'a outfmt -> 'a =
   fun fmt -> Format.fprintf Format.str_formatter fmt
 
 (** [fatal popt fmt] raises the [Fatal(popt,msg)] exception, in which [msg] is
-    built from the format [fmt] (provided the necessary arguments. *)
+    built from the format [fmt] (provided the necessary arguments). *)
 let fatal : Pos.popt -> ('a,'b) koutfmt -> 'a = fun pos fmt ->
   let cont _ = raise (Fatal(Some(pos), Format.flush_str_formatter ())) in
   Format.kfprintf cont Format.str_formatter fmt

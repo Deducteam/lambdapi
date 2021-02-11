@@ -568,7 +568,7 @@ let scope_rule : bool -> sig_state -> p_rule -> pre_rule loc = fun ur ss r ->
     | Symb(s) ->
         if is_constant s then
           fatal p_lhs.pos "Constant LHS head symbol.";
-        if s.sym_expo = Protec && ss.signature.sign_mod <> s.sym_mod then
+        if s.sym_expo = Protec && ss.signature.sign_path <> s.sym_mod then
           fatal p_lhs.pos "Cannot define rules on foreign protected symbols.";
         (s, args)
     | _       ->

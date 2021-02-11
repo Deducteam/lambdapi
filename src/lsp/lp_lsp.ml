@@ -283,7 +283,7 @@ let do_definition ofmt ~id params =
       (* A JSON with the path towards the definition of the term
          and its position is returned
          /!\ : extension is fixed, only works for .lp files *)
-      mk_definfo Module.(file_of_mod Term.(term.sym_mod)
+      mk_definfo Module.(file_of_path Term.(term.sym_mod)
       ^ src_extension) pos
   in
   let msg = LSP.mk_reply ~id ~result:sym_info in

@@ -14,7 +14,7 @@ let _ =
   | Some(f) -> Package.apply_config f
 
 let compile (fname: string): Sign.t =
-  Compile.compile false (Module.mod_of_file fname)
+  Compile.compile false (Module.path_of_file fname)
 
 let bool_file = "OK/bool.lp"
 let bool_sign = compile bool_file

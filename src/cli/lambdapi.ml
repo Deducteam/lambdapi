@@ -98,7 +98,7 @@ let decision_tree_cmd : Cliconf.t -> Syntax.qident -> unit =
           Sig_state.find_sym ~prt:true ~prv:true false ss (Pos.none (mp, sym))
         with Not_found ->
           fatal_no_pos "Symbol \"%s\" not found in module \"%a\"."
-            sym Mod.pp mp
+            sym Path.pp mp
     in
     if Timed.(!(sym.sym_rules)) = [] then
       wrn None "Cannot print decision tree: \

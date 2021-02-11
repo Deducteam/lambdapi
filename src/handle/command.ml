@@ -50,9 +50,9 @@ let handle_open : sig_state -> p_mod -> sig_state =
   fun ss {elt=p;pos} ->
   (* Obtain the signature corresponding to [m]. *)
   let sign =
-    try ModMap.find p !(Sign.loaded) with Not_found ->
+    try PathMap.find p !(Sign.loaded) with Not_found ->
       (* The signature has not been required... *)
-      fatal pos "Module [%a] has not been required." Mod.pp p
+      fatal pos "Module [%a] has not been required." Path.pp p
   in
   (* Open the module. *)
   open_sign ss sign
@@ -62,15 +62,15 @@ let handle_open : sig_state -> p_mod -> sig_state =
    main compile function (passed as argument to avoid cyclic dependencies).
    On success, an updated signature state is returned. *)
 let handle_require :
-      (Mod.t -> Sign.t) -> bool -> sig_state -> p_mod -> sig_state =
+      (Path.t -> Sign.t) -> bool -> sig_state -> p_mod -> sig_state =
   fun compile b ss ({elt=p;pos} as mp) ->
   (* Check that the module has not already been required. *)
-  if ModMap.mem p !(ss.signature.sign_deps) then
-    fatal pos "Module [%a] is already required." Mod.pp p;
+  if PathMap.mem p !(ss.signature.sign_deps) then
+    fatal pos "Module [%a] is already required." Path.pp p;
   (* Compile required path (adds it to [Sign.loaded] among other things) *)
   ignore (compile p);
   (* Add the dependency (it was compiled already while parsing). *)
-  ss.signature.sign_deps := ModMap.add p [] !(ss.signature.sign_deps);
+  ss.signature.sign_deps := PathMap.add p [] !(ss.signature.sign_deps);
   if b then handle_open ss mp else ss
 
 (** [handle_require_as compile ss p id] handles the command
@@ -78,11 +78,11 @@ let handle_require :
     compilation function passed as argument to avoid cyclic dependencies. On
     success, an updated signature state is returned. *)
 let handle_require_as :
-    (Mod.t -> Sign.t) -> sig_state -> p_mod -> p_ident -> sig_state =
+    (Path.t -> Sign.t) -> sig_state -> p_mod -> p_ident -> sig_state =
   fun compile ss ({elt=p;_} as mp) {elt=id;_} ->
   let ss = handle_require compile false ss mp in
   let aliases = StrMap.add id p ss.aliases in
-  let mod_map = ModMap.add p id ss.mod_map in
+  let mod_map = PathMap.add p id ss.mod_map in
   {ss with aliases; mod_map}
 
 (** [handle_modifiers ms] verifies that the modifiers in [ms] are compatible.
@@ -202,7 +202,7 @@ type proof_data =
     This structure contains the list of the tactics to be executed, as well as
     the initial state of the proof.  The checking of the proof is then handled
     separately. Note that [Fatal] is raised in case of an error. *)
-let handle : (Mod.t -> Sign.t) -> sig_state -> p_command ->
+let handle : (Path.t -> Sign.t) -> sig_state -> p_command ->
     sig_state * proof_data option * Query.result =
   fun compile ss ({elt; pos} as cmd) ->
   if !log_enabled then
@@ -456,7 +456,7 @@ let handle : (Mod.t -> Sign.t) -> sig_state -> p_command ->
 
   | P_set(cfg)                 ->
       let ss =
-        let with_mod : Mod.t -> p_qident -> p_qident =
+        let with_mod : Path.t -> p_qident -> p_qident =
           fun mp {elt=(_,id);pos} -> Pos.make pos (mp,id)
         in
         match cfg with
@@ -513,7 +513,7 @@ let too_long = Stdlib.ref infinity
     exception handling. In particular, the position of [cmd] is used on errors
     that lack a specific position. All exceptions except [Timeout] and [Fatal]
     are captured, although they should not occur. *)
-let handle : (Mod.t -> Sign.t) -> sig_state -> p_command ->
+let handle : (Path.t -> Sign.t) -> sig_state -> p_command ->
    sig_state * proof_data option * Query.result =
  fun compile ss ({pos;_} as cmd) ->
   Print.sig_state := ss;

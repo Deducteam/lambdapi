@@ -11,10 +11,10 @@ open Module
 type p_ident = strloc
 
 (** Representation of a module name. *)
-type p_mod = Mod.t loc
+type p_mod = Path.t loc
 
 (** Representation of a possibly qualified (and located) identifier. *)
-type qident = Mod.t * string
+type qident = Path.t * string
 type p_qident = qident loc
 
 (** The priority of an infix operator is a floating-point number. *)

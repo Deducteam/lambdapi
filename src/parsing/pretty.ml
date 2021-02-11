@@ -24,14 +24,14 @@ let arg_ident : p_ident option pp = fun ppf idopt ->
   | Some(id) -> ident ppf id
   | None     -> pp_print_string ppf "_"
 
-let p_mod : p_mod pp = fun ppf {elt=mp;_} -> Mod.pp ppf mp
+let p_mod : p_mod pp = fun ppf {elt=mp;_} -> Path.pp ppf mp
 
 let qident : p_qident pp = fun ppf {elt=(mp,s); pos} ->
   if LpLexer.is_keyword s then
     fatal pos "Identifier [%s] is a Lambdapi keyword." s
   else match mp with
        | [] -> pp_print_string ppf s
-       | _::_ -> fprintf ppf "%a.%s" Mod.pp mp s
+       | _::_ -> fprintf ppf "%a.%s" Path.pp mp s
 
 let modifier : p_modifier pp = fun ppf {elt; _} ->
   match elt with

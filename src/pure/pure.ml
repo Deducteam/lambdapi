@@ -133,10 +133,10 @@ let initial_state : string -> state = fun fname ->
   Console.reset_default ();
   Time.restore Stdlib.(!t0);
   Package.apply_config fname;
-  let mp = Module.mod_of_file fname in
+  let mp = Module.path_of_file fname in
   Sign.loading := [mp];
   let sign = Sig_state.create_sign mp in
-  Sign.loaded  := ModMap.add mp sign !Sign.loaded;
+  Sign.loaded  := PathMap.add mp sign !Sign.loaded;
   (Time.save (), Sig_state.of_sign sign)
 
 let handle_command : state -> Command.t -> command_result =

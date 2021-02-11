@@ -25,8 +25,8 @@ let parse_file : string -> Syntax.ast = fun fname ->
     necessary (the corresponding object file does not exist,  must be updated,
     or [force] is [true]).  In that case,  the produced signature is stored in
     the corresponding object file. *)
-let rec compile : bool -> Mod.t -> Sign.t = fun force mp ->
-  let base = file_of_mod mp in
+let rec compile : bool -> Path.t -> Sign.t = fun force mp ->
+  let base = file_of_path mp in
   let src () =
     (* Searching for source is delayed because we may not need it
        in case of "ghost" signatures (such as for unification rules). *)
@@ -42,13 +42,13 @@ let rec compile : bool -> Mod.t -> Sign.t = fun force mp ->
   if List.mem mp !loading then
     begin
       fatal_msg "Circular dependencies detected in [%s].\n" (src ());
-      fatal_msg "Dependency stack for module [%a]:\n" Mod.pp mp;
-      List.iter (fatal_msg "  - [%a]\n" Mod.pp) !loading;
+      fatal_msg "Dependency stack for module [%a]:\n" Path.pp mp;
+      List.iter (fatal_msg "  - [%a]\n" Path.pp) !loading;
       fatal_no_pos "Build aborted."
     end;
-  if ModMap.mem mp !loaded then
-    let sign = ModMap.find mp !loaded in
-    out 2 "Already loaded [%a]\n%!" Mod.pp mp; sign
+  if PathMap.mem mp !loaded then
+    let sign = PathMap.find mp !loaded in
+    out 2 "Already loaded [%a]\n%!" Path.pp mp; sign
   else if force || Extra.more_recent (src ()) obj then
     begin
       let forced = if force then " (forced)" else "" in
@@ -59,7 +59,7 @@ let rec compile : bool -> Mod.t -> Sign.t = fun force mp ->
       let sig_st = Stdlib.ref (Sig_state.of_sign sign) in
       (* [sign] is added to [loaded] before processing the commands so that it
          is possible to qualify the symbols of the current modules. *)
-      loaded := ModMap.add mp sign !loaded;
+      loaded := PathMap.add mp sign !loaded;
       let handle ss c =
         Term.Meta.reset_key_counter ();
         (* We provide the compilation function to the handle commands, so that
@@ -88,8 +88,8 @@ let rec compile : bool -> Mod.t -> Sign.t = fun force mp ->
     begin
       out 2 "Loading %s ...\n%!" (src ());
       let sign = Sign.read obj in
-      ModMap.iter (fun mp _ -> ignore (compile false mp)) !(sign.sign_deps);
-      loaded := ModMap.add mp sign !loaded;
+      PathMap.iter (fun mp _ -> ignore (compile false mp)) !(sign.sign_deps);
+      loaded := PathMap.add mp sign !loaded;
       Sign.link sign;
       out 2 "Loaded %s\n%!" obj; sign
     end
@@ -104,7 +104,7 @@ let recompile = Stdlib.ref false
 let compile_file : string -> Sign.t = fun fname ->
   Package.apply_config fname;
   (* Compute the module path (checking the extension). *)
-  let mp = mod_of_file fname in
+  let mp = path_of_file fname in
   (* Run compilation. *)
   compile Stdlib.(!recompile) mp
 
@@ -113,7 +113,7 @@ let compile_file : string -> Sign.t = fun fname ->
     they have finished. An optional library mapping or state can be passed as
     argument to change the settings. *)
 module Pure : sig
-  val compile : ?lm:string*string -> ?st:State.t -> bool -> Mod.t -> Sign.t
+  val compile : ?lm:string*string -> ?st:State.t -> bool -> Path.t -> Sign.t
   val compile_file : ?lm:string*string -> ?st:State.t -> string -> Sign.t
 end = struct
 

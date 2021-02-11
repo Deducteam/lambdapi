@@ -10,7 +10,7 @@ open Module
 open Term
 
 (** Ghost module. *)
-let ghost_mod = Mod.ghost "unif_rule"
+let ghost_mod = Path.ghost "unif_rule"
 
 (** Ghost signature holding the symbols used in unification rules.
     - All signatures depend on it (dependency set in
@@ -19,8 +19,8 @@ let ghost_mod = Mod.ghost "unif_rule"
     - It is automatically loaded. *)
 let sign : Sign.t =
   let dummy = Sign.dummy () in
-  let s = {dummy with Sign.sign_mod = ghost_mod} in
-  Sign.loaded := ModMap.add ghost_mod s !(Sign.loaded);
+  let s = {dummy with Sign.sign_path = ghost_mod} in
+  Sign.loaded := PathMap.add ghost_mod s !(Sign.loaded);
   s
 
 (** Symbol representing an atomic unification problem. The term [equiv t
