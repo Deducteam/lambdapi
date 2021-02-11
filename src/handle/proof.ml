@@ -7,7 +7,7 @@ open Timed
 open Core
 open Term
 open Print
-open Common.Console
+open Common.Error
 open Common.Pos
 
 (** Type of goals. *)

@@ -8,7 +8,7 @@ open Pos
 open Core
 open Term
 open LibTerm
-open Console
+open Error
 open Print
 open Proof
 open Debug

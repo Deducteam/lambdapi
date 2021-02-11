@@ -8,7 +8,7 @@ open Lplib.Base
 open Lplib.Extra
 
 open Common
-open Console
+open Error
 open Timed
 open Core
 open Debug

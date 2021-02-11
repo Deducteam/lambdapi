@@ -1,6 +1,6 @@
 open Cmdliner
 open Common
-open Console
+open Error
 
 let with_file : string -> (out_channel -> unit) -> unit = fun file fn ->
   let oc = open_out file in fn oc; close_out oc
@@ -83,7 +83,7 @@ let run : Path.t -> unit = fun root_path ->
     with_file (Filename.concat pkg_name "nat.lp") write_ex_nat;
     with_file (Filename.concat pkg_name "main.lp") (write_ex_main root_path)
   in
-  Console.handle_exceptions run
+  Error.handle_exceptions run
 
 let root_path : Path.t Term.t =
   let doc =

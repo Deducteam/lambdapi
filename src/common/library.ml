@@ -4,7 +4,7 @@ open Lplib
 open Lplib.Base
 open Lplib.Extra
 open Timed
-open Console
+open Error
 open Debug
 
 let log_lib = new_logger 'l' "libr" "library files"

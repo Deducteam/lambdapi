@@ -13,7 +13,7 @@ open! Lplib
 open Timed
 open Common
 open Pos
-open Console
+open Error
 open Core
 open Term
 open Print

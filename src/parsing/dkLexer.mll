@@ -1,7 +1,7 @@
 {
 open Lexing
 open Common
-open Console
+open Error
 open Pos
 
 let filename = ref ""

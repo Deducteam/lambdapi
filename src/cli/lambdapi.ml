@@ -7,7 +7,7 @@ open Parsing
 open Core
 open Cmdliner
 open Library
-open Console
+open Error
 open Version
 open Handle
 
@@ -49,7 +49,7 @@ let check_cmd : Config.t -> int option -> bool -> string list -> unit =
     in
     List.iter handle files
   in
-  Console.handle_exceptions run
+  Error.handle_exceptions run
 
 (** Running the parsing mode. *)
 let parse_cmd : Config.t -> string list -> unit = fun cfg files ->
@@ -61,25 +61,26 @@ let parse_cmd : Config.t -> string list -> unit = fun cfg files ->
     let handle file = Time.restore time; ignore (Compile.parse_file file) in
     List.iter handle files
   in
-  Console.handle_exceptions run
+  Error.handle_exceptions run
 
 (** Running the pretty-printing mode. *)
 let beautify_cmd : Config.t -> string -> unit = fun cfg file ->
   let run _ =
     Config.init cfg; Pretty.beautify (Compile.parse_file file) in
-  Console.handle_exceptions run
+  Error.handle_exceptions run
 
 (** Running the LSP server. *)
 let lsp_server_cmd : Config.t -> bool -> string -> unit =
     fun cfg standard_lsp lsp_log_file ->
   let run _ = Config.init cfg; Lsp.Lp_lsp.main standard_lsp lsp_log_file in
-  Console.handle_exceptions run
+  Error.handle_exceptions run
 
 (** Printing a decision tree. *)
 let decision_tree_cmd : Config.t -> Syntax.qident -> unit =
   fun cfg (mp, sym) ->
   let run _ =
-    Timed.(verbose := 0); (* To avoid printing the "Checked ..." line *)
+    Timed.(Console.verbose := 0);
+      (* To avoid printing the "Checked ..." line *)
     (* By default, search for a package from the current working directory. *)
     let pth = Sys.getcwd () in
     let pth = Filename.concat pth "." in
@@ -103,10 +104,9 @@ let decision_tree_cmd : Config.t -> Syntax.qident -> unit =
     if Timed.(!(sym.sym_rules)) = [] then
       wrn None "Cannot print decision tree: \
                 symbol \"%s\" does not have any rule." sym.sym_name
-    else
-      out 0 "%a" Tool.Tree_graphviz.to_dot sym
+    else Console.out 0 "%a" Tool.Tree_graphviz.to_dot sym
   in
-  Console.handle_exceptions run
+  Error.handle_exceptions run
 
 (** {3 Command line argument parsing} *)
 
@@ -243,7 +243,7 @@ let help_cmd =
   Term.info "help" ~doc
 
 let version_cmd =
-  let run () = out 0 "Lambdapi version: %s\n%!" Version.version in
+  let run () = Console.out 0 "Lambdapi version: %s\n%!" Version.version in
   let doc = "Display the current version of Lambdapi." in
   Term.(const run $ const ()),
   Term.info "version" ~doc

@@ -1,10 +1,10 @@
 open Cmdliner
 open Common
 open Library
-open Console
+open Error
 
 let run_command : bool -> string -> unit = fun dry_run cmd ->
-  if dry_run then out 1 "%s\n" cmd else
+  if dry_run then Console.out 1 "%s\n" cmd else
   match Sys.command cmd with
   | 0                      -> ()
   | _                      -> fatal_no_pos "Command [%s] failed." cmd
@@ -56,7 +56,7 @@ let run_install : Config.t -> bool -> string list -> unit =
     in
     List.iter install files
   in
-  Console.handle_exceptions run
+  Error.handle_exceptions run
 
 let run_uninstall : Config.t -> bool -> string -> unit =
     fun cfg dry_run pkg_file ->
@@ -83,7 +83,7 @@ let run_uninstall : Config.t -> bool -> string -> unit =
     let cmd = "rm -r " ^ Filename.quote pkg_dir in
     run_command dry_run cmd
   in
-  Console.handle_exceptions run
+  Error.handle_exceptions run
 
 let dry_run : bool Term.t =
   let doc =

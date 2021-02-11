@@ -1,7 +1,7 @@
 (** Query (available in tactics and at the toplevel). *)
 
 open Common
-open Console
+open Error
 open Pos
 open Parsing
 open Syntax
@@ -27,7 +27,7 @@ let handle : Sig_state.t -> proof_state option -> p_query -> result =
       match asrt with
       | P_assert_typing(pt,pa) ->
           let t = scope pt and a = scope pa in
-          out 1 "(asrt) it is %b that %a\n" (not must_fail)
+          Console.out 1 "(asrt) it is %b that %a\n" (not must_fail)
             pp_typing (ctxt, t, a);
           (* Check that [a] is typable by a sort. *)
           Infer.check_sort Unif.solve_noexn q.pos ctxt a;
@@ -37,7 +37,7 @@ let handle : Sig_state.t -> proof_state option -> p_query -> result =
           in if result = must_fail then fatal q.pos "Assertion failed."
       | P_assert_conv(pt,pu) ->
           let t = scope pt and u = scope pu in
-          out 1 "(asrt) it is %b that %a\n" (not must_fail)
+          Console.out 1 "(asrt) it is %b that %a\n" (not must_fail)
             pp_constr (ctxt, t, u);
           (* Check that [t] is typable. *)
           let a = Infer.infer Unif.solve_noexn pt.pos ctxt t in
@@ -63,20 +63,22 @@ let handle : Sig_state.t -> proof_state option -> p_query -> result =
   | P_query_debug(e,s) ->
       (* Just update the option, state not modified. *)
       set_debug e s;
-      out 3 "(flag) debug → %s%s\n" (if e then "+" else "-") s;
+      Console.out 3 "(flag) debug → %s%s\n" (if e then "+" else "-") s;
       None
   | P_query_verbose(i) ->
       (* Just update the option, state not modified. *)
       if Timed.(!Console.verbose) = 0 then
-        (Timed.(Console.verbose := i); out 1 "(flag) verbose → %i\n" i)
+        (Timed.(Console.verbose := i);
+         Console.out 1 "(flag) verbose → %i\n" i)
       else
-        (out 1 "(flag) verbose → %i\n" i; Timed.(Console.verbose := i));
+        (Console.out 1 "(flag) verbose → %i\n" i;
+         Timed.(Console.verbose := i));
       None
   | P_query_flag(id,b) ->
       (* We set the value of the flag, if it exists. *)
       (try Console.set_flag id b
        with Not_found -> wrn q.pos "Unknown flag \"%s\"." id);
-      out 3 "(flag) %s → %b\n" id b;
+      Console.out 3 "(flag) %s → %b\n" id b;
       None
   | P_query_infer(pt, cfg) ->
       let env = Proof.focus_env ps in
@@ -85,7 +87,7 @@ let handle : Sig_state.t -> proof_state option -> p_query -> result =
       let t = scope pt in
       let a = Infer.infer Unif.solve_noexn pt.pos ctxt t in
       let res = Eval.eval cfg ctxt a in
-      out 1 "(infr) %a : %a\n" pp_term t pp_term res;
+      Console.out 1 "(infr) %a : %a\n" pp_term t pp_term res;
       Some (Format.asprintf "%a : %a" pp_term t pp_term res)
   | P_query_normalize(pt, cfg) ->
       let env = Proof.focus_env ps in
@@ -94,7 +96,7 @@ let handle : Sig_state.t -> proof_state option -> p_query -> result =
       let t = scope pt in
       (* Check that [t] is typable. *)
       ignore (Infer.infer Unif.solve_noexn pt.pos ctxt t);
-      out 1 "(comp) %a\n" pp_term (Eval.eval cfg ctxt t);
+      Console.out 1 "(comp) %a\n" pp_term (Eval.eval cfg ctxt t);
       Some (Format.asprintf "%a" pp_term (Eval.eval cfg ctxt t))
   | P_query_prover(s) ->
       Timed.(Why3_tactic.default_prover := s);
@@ -105,23 +107,24 @@ let handle : Sig_state.t -> proof_state option -> p_query -> result =
   | P_query_print(None) ->
       (match ps with
        | None -> fatal q.pos "Not in a proof."
-       | Some ps -> out 1 "%a" Proof.pp_goals ps;
+       | Some ps -> Console.out 1 "%a" Proof.pp_goals ps;
                     Some (Format.asprintf "%a" Proof.pp_goals ps))
   | P_query_print(Some qid) ->
       let sym = Sig_state.find_sym ~prt:true ~prv:true false ss qid in
       let open Timed in
-      out 1 "(prnt) %a%a%asymbol %a: %a" Tags.pp_expo sym.sym_expo
+      Console.out 1 "(prnt) %a%a%asymbol %a: %a" Tags.pp_expo sym.sym_expo
         Tags.pp_prop sym.sym_prop Tags.pp_match_strat !(sym.sym_mstrat)
         pp_symbol sym pp_term !(sym.sym_type);
-      Option.iter (fun h -> out 1 " [%a]" notation h) (notation_of sym);
+      Option.iter (fun h -> Console.out 1 " [%a]" notation h)
+        (notation_of sym);
       (match !(sym.sym_def) with
       | Some t ->
-          out 1 " ≔ %a\n" pp_term t;
+          Console.out 1 " ≔ %a\n" pp_term t;
           Some (Format.asprintf " ≔ %a" pp_term t)
       | None ->
-          out 1 "\n";
+          Console.out 1 "\n";
           let rule oc r = Format.fprintf oc "%a\n" pp_rule (sym, r) in
-          out 1 "%a" (List.pp rule "") !(sym.sym_rules);
+          Console.out 1 "%a" (List.pp rule "") !(sym.sym_rules);
           Some (Format.asprintf "%a" (List.pp rule "") !(sym.sym_rules)))
   | P_query_proofterm ->
       (match ps with
@@ -129,6 +132,6 @@ let handle : Sig_state.t -> proof_state option -> p_query -> result =
        | Some ps ->
            match ps.proof_term with
            | Some t ->
-              out 1 "%a\n" pp_term (Meta(t,[||]));
+              Console.out 1 "%a\n" pp_term (Meta(t,[||]));
               Some (Format.asprintf "%a" pp_term (Meta(t,[||])))
            | None -> fatal q.pos "Not in a definition")

@@ -4,7 +4,6 @@ open! Lplib
 open Cmdliner
 open Common
 open Library
-open Console
 
 (** {3 Configuration type for common values} *)
 
@@ -44,8 +43,8 @@ let init : config -> unit = fun cfg ->
   Handle.Compile.gen_obj := cfg.gen_obj;
   Library.set_lib_root cfg.lib_root;
   List.iter Library.add_mapping cfg.map_dir;
-  Option.iter set_default_verbose cfg.verbose;
-  Console.no_wrn := cfg.no_warnings;
+  Option.iter Console.set_default_verbose cfg.verbose;
+  Error.no_wrn := cfg.no_warnings;
   Debug.set_default_debug cfg.debug;
   Extra.color := not cfg.no_colors;
   Handle.Command.too_long := cfg.too_long;

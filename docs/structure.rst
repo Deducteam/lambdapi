@@ -36,6 +36,7 @@ Overview of directories and files
 
   * ``debug.ml``: debugging tools
   * ``console.ml``: flag management
+  * ``error.ml``: warning and error management
   * ``escape.ml``: basic functions on escaped identifiers
   * ``library.ml``: Lambdapi library management
   * ``package.ml``: management of package files ``lambdapi.pkg``

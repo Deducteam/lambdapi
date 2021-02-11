@@ -10,10 +10,10 @@ open! Lplib
 open Base
 open Common
 
-(** [parser_fatal loc fmt] is a wrapper for [Console.fatal] that enforces
+(** [parser_fatal loc fmt] is a wrapper for [Error.fatal] that enforces
     that the error has an attached source code position. *)
 let parser_fatal : Pos.pos -> ('a,'b) koutfmt -> 'a = fun loc fmt ->
-  Console.fatal (Some(loc)) fmt
+  Error.fatal (Some(loc)) fmt
 
 (** [qident_of_string s] converts the string [s] into a path. *)
 let qident_of_string : string -> (Syntax.qident, Pos.popt) result = fun s ->

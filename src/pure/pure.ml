@@ -4,7 +4,7 @@ open Timed
 open Core
 open Common
 open Parsing
-open Console
+open Error
 open Library
 open Handle
 

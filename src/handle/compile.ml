@@ -4,7 +4,7 @@ open! Lplib
 
 open Timed
 open Common
-open Console
+open Error
 open Parsing
 open Core
 open Sign
@@ -48,12 +48,12 @@ let rec compile : bool -> Path.t -> Sign.t = fun force mp ->
     end;
   if Path.Map.mem mp !loaded then
     let sign = Path.Map.find mp !loaded in
-    out 2 "Already loaded [%a]\n%!" Path.pp mp; sign
+    Console.out 2 "Already loaded [%a]\n%!" Path.pp mp; sign
   else if force || Extra.more_recent (src ()) obj then
     begin
       let forced = if force then " (forced)" else "" in
       let src = src () in
-      out 1 "Loading %s%s ...\n%!" src forced;
+      Console.out 1 "Loading %s%s ...\n%!" src forced;
       loading := mp :: !loading;
       let sign = Sig_state.create_sign mp in
       let sig_st = Stdlib.ref (Sig_state.of_sign sign) in
@@ -82,16 +82,16 @@ let rec compile : bool -> Path.t -> Sign.t = fun force mp ->
       Sign.strip_private sign;
       if Stdlib.(!gen_obj) then Sign.write sign obj;
       loading := List.tl !loading;
-      out 1 "Checked %s\n%!" src; sign
+      Console.out 1 "Checked %s\n%!" src; sign
     end
   else
     begin
-      out 2 "Loading %s ...\n%!" (src ());
+      Console.out 2 "Loading %s ...\n%!" (src ());
       let sign = Sign.read obj in
       Path.Map.iter (fun mp _ -> ignore (compile false mp)) !(sign.sign_deps);
       loaded := Path.Map.add mp sign !loaded;
       Sign.link sign;
-      out 2 "Loaded %s\n%!" obj; sign
+      Console.out 2 "Loaded %s\n%!" obj; sign
     end
 
 (** [recompile] indicates whether we should recompile files who have an object
@@ -108,6 +108,8 @@ let compile_file : string -> Sign.t = fun fname ->
   (* Run compilation. *)
   compile Stdlib.(!recompile) mp
 
+open Console
+
 (** Pure wrappers around compilation functions. Functions provided perform the
     same computations as the ones defined earlier, but restores the state when
     they have finished. An optional library mapping or state can be passed as
@@ -119,7 +121,7 @@ end = struct
 
   (* [pure_apply_cfg ?lm ?st f] is function [f] but pure (without side
      effects).  The side effects taken into account occur in
-     {!val:Console.State.t}, {!val:Library.lib_mappings} and in the meta
+     {!val:State.t}, {!val:Library.lib_mappings} and in the meta
      variable counter {!module:Term.Meta}. Arguments [?lm] allows to set the
      library mappings and [?st] sets the state. *)
   let pure_apply_cfg :

@@ -58,9 +58,9 @@ end = struct
     let module Parse = Pratter.Make(Pratt_terms) in
     try Parse.expression (st, env) strm with
     | Parse.OpConflict(t, u) ->
-        Console.fatal t.pos "Operator conflict between \"%a\" and \"%a\""
+        Error.fatal t.pos "Operator conflict between \"%a\" and \"%a\""
           Pretty.term t Pretty.term u
     | Parse.TooFewArguments ->
-        Console.fatal t.pos "Malformed application in \"%a\"" Pretty.term t
+        Error.fatal t.pos "Malformed application in \"%a\"" Pretty.term t
 end
 include Pratt

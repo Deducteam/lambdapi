@@ -2,7 +2,7 @@
 
 open Timed
 open Common
-open Console
+open Error
 open Term
 open Print
 open Debug

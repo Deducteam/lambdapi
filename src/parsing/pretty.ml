@@ -8,7 +8,7 @@
 open! Lplib
 open Base
 open Common
-open Console
+open Error
 open Pos
 open Syntax
 open Format

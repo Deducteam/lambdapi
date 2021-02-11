@@ -4,7 +4,7 @@ open! Lplib
 open Lplib.Extra
 open Timed
 open Common
-open Console
+open Error
 open Core
 open Term
 open Sign
@@ -140,7 +140,7 @@ let handle_rule : sig_state -> p_rule -> sym = fun ss r ->
       sym.sym_name;
   let rule = Tool.Sr.check_rule pr in
   Sign.add_rule ss.signature sym rule;
-  out 3 (red "(rule) add %a\n") pp_rule (sym, rule);
+  Console.out 3 (red "(rule) add %a\n") pp_rule (sym, rule);
   sym
 
 (** [handle_rules ss rs] handles the rules [rs] in signature state [ss], and
@@ -174,7 +174,7 @@ let handle_inductive_symbol :
     (fatal_msg "The type of [%s] has unsolved metavariables.\n" x.elt;
      fatal x.pos "We have %s : %a." x.elt pp_term a);
   (* Actually add the symbol to the signature and the state. *)
-  out 3 (red "(symb) %s : %a\n") x.elt pp_term a;
+  Console.out 3 (red "(symb) %s : %a\n") x.elt pp_term a;
   let sig_symbol = {expo=e;prop=p;mstrat=strat;ident=x;typ=a;impl;def=None} in
   add_symbol ss sig_symbol
 
@@ -280,7 +280,7 @@ let handle : (Path.t -> Sign.t) -> sig_state -> p_command ->
         if Sign.mem ss.signature rec_name then
           fatal pos "Symbol [%s] already exists." rec_name;
         let (ss, rec_sym) =
-          out 3 (red "(symb) %s : %a\n") rec_name pp_term rec_typ;
+          Console.out 3 (red "(symb) %s : %a\n") rec_name pp_term rec_typ;
           let sig_symbol =
             {expo = e;
              prop = Defin;
@@ -408,7 +408,7 @@ let handle : (Path.t -> Sign.t) -> sig_state -> p_command ->
                 if finished ps then
                   wrn pe.pos "The proof is finished. Use 'end' instead.";
                 (* Add the symbol in the signature with a warning. *)
-                out 3 (red "(symb) add %s : %a\n") id pp_term a;
+                Console.out 3 (red "(symb) add %s : %a\n") id pp_term a;
                 wrn pe.pos "Proof admitted.";
                 let sig_symbol =
                   {expo;prop;mstrat;ident=p_sym_nam;typ=a;impl;def=t} in
@@ -416,10 +416,10 @@ let handle : (Path.t -> Sign.t) -> sig_state -> p_command ->
             | P_proof_end ->
                 (* Check that the proof is indeed finished. *)
                 if not (finished ps) then
-                  (out 1 "%a" Proof.pp_goals ps;
+                  (Console.out 1 "%a" Proof.pp_goals ps;
                    fatal pe.pos "The proof is not finished.");
                 (* Add the symbol in the signature. *)
-                out 3 (red "(symb) add %s : %a\n") id pp_term a;
+                Console.out 3 (red "(symb) add %s : %a\n") id pp_term a;
                 let sig_symbol =
                   {expo;prop;mstrat;ident=p_sym_nam;typ=a;impl;def=t} in
                 fst (add_symbol ss sig_symbol)
@@ -447,8 +447,8 @@ let handle : (Path.t -> Sign.t) -> sig_state -> p_command ->
       in
       if p_sym_prf = None && not (finished ps) then wrn pos
         "Some metavariables could not be solved: a proof must be given";
-      { pdata_stmt_pos = p_sym_nam.pos; pdata_p_state = ps; pdata_tactics = ts
-      ; pdata_finalize = finalize ; pdata_end_pos = pe.pos; pdata_expo }
+      { pdata_stmt_pos=p_sym_nam.pos; pdata_p_state=ps; pdata_tactics=ts
+      ; pdata_finalize=finalize; pdata_end_pos=pe.pos; pdata_expo }
     in
     (ss, Some(data), None)
 
@@ -464,14 +464,15 @@ let handle : (Path.t -> Sign.t) -> sig_state -> p_command ->
               fatal pos "Builtin [%s] already exists." s;
             let sym = find_sym ~prt:true ~prv:true false ss qid in
             Builtin.check ss pos s sym;
-            out 3 "(conf) set builtin \"%s\" ≔ %a\n" s pp_symbol sym;
+            Console.out 3 "(conf) set builtin \"%s\" ≔ %a\n" s pp_symbol sym;
             add_builtin ss s sym
         | P_config_unop(unop)     ->
             let (s, prio, qid) = unop in
             let sym = find_sym ~prt:true ~prv:true false ss qid in
             (* Make sure the operator has a fully qualified [qid]. *)
             let unop = (s, prio, with_mod sym.sym_path qid) in
-            out 3 "(conf) %a %a\n" pp_symbol sym notation (Prefix unop);
+            Console.out 3 "(conf) %a %a\n"
+              pp_symbol sym notation (Prefix unop);
             add_unop ss (Pos.make pos s) (sym, unop)
         | P_config_binop(binop)   ->
             let (s, assoc, prio, qid) = binop in
@@ -479,11 +480,12 @@ let handle : (Path.t -> Sign.t) -> sig_state -> p_command ->
             let sym = find_sym ~prt:true ~prv:true false ss qid in
             (* Make sure the operator has a fully qualified [qid]. *)
             let binop = (s, assoc, prio, with_mod sym.sym_path qid) in
-            out 3 "(conf) %a %a\n" pp_symbol sym notation (Infix binop);
+            Console.out 3 "(conf) %a %a\n"
+              pp_symbol sym notation (Infix binop);
             add_binop ss (Pos.make pos s) (sym, binop);
         | P_config_quant(qid)     ->
             let sym = find_sym ~prt:true ~prv:true false ss qid in
-            out 3 "(conf) %a quantifier\n" pp_symbol sym;
+            Console.out 3 "(conf) %a quantifier\n" pp_symbol sym;
             add_quant ss sym
         | P_config_unif_rule(h)   ->
             (* Approximately same processing as rules without SR checking. *)
@@ -498,7 +500,8 @@ let handle : (Path.t -> Sign.t) -> sig_state -> p_command ->
             in
             Sign.add_rule ss.signature Unif_rule.equiv urule;
             Tree.update_dtree Unif_rule.equiv;
-            out 3 "(hint) [%a]\n" Print.pp_rule (Unif_rule.equiv, urule); ss
+            Console.out 3 "(hint) [%a]\n"
+              Print.pp_rule (Unif_rule.equiv, urule); ss
       in
       (ss, None, None)
 

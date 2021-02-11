@@ -4,7 +4,7 @@ open! Lplib
 open Lplib.Extra
 
 open Common
-open Console
+open Error
 open Pos
 open Parsing
 open Syntax

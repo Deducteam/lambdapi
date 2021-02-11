@@ -11,7 +11,7 @@
 
 open Lplib.Extra
 open Common
-open Console
+open Error
 open Pos
 open Timed
 open Parsing

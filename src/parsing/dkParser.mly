@@ -6,11 +6,7 @@ open Common
 open Pos
 open Syntax
 open DkLexer
-
-(** {b NOTE} we maintain the invariant described in the [Parser] module: every
-    error should have an attached position.  We do not open [Console] to avoid
-    calls to [Console.fatal] and [Console.fatal_no_pos].  In case of an error,
-    the [parser_fatal] function should be used instead. *)
+open Error
 
 (** [get_args t] decomposes the parser level term [t] into a spine [(h,args)],
     when [h] is the term at the head of the application and [args] is the list
@@ -40,17 +36,14 @@ let translate_old_rule : old_p_rule -> p_rule = fun r ->
   let (ctx, lhs, rhs) = r.elt in
   (* Check for (deprecated) annotations in the context. *)
   let get_var (x,ao) =
-    let open Console in
     let fn a = wrn a.pos "Ignored type annotation." in
-    (if !verbose > 1 then Option.iter fn ao); x
+    (if !Console.verbose > 1 then Option.iter fn ao); x
   in
   let ctx = List.map get_var ctx in
   let is_pat_var env x =
     not (List.mem x env) && List.exists (fun y -> y.elt = x) ctx
   in
   (* Find the maximum number of arguments a variable is applied to. *)
-  (* Using [fatal] is OK here as long as it is called with term positions. *)
-  let fatal = Console.fatal in
   let arity = Hashtbl.create 7 in
   let rec compute_arities env t =
     let (h, args) = get_args t in
@@ -201,7 +194,7 @@ let build_config : Pos.pos -> string -> string option -> eval_config =
     | (i     , Some "WHNF") -> config (Some(i)) WHNF
     | (i     , None       ) -> config (Some(i)) NONE
     | (_     , _          ) -> raise Exit (* captured below *)
-  with _ -> Console.fatal (Some(loc)) "Invalid command configuration."
+  with _ -> fatal (Some(loc)) "Invalid command configuration."
 %}
 
 // end of file
