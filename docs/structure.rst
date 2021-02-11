@@ -27,9 +27,9 @@ Overview of directories and files
 
 * ``src/cli/``: command line interface
 
-   * ``cliconf.ml``: main program configuration
-   * ``init_cmd.ml``: lambdapi init program
-   * ``install_cmd.ml``: lambdapi install command
+   * ``config.ml``: main program configuration
+   * ``init.ml``: lambdapi init command
+   * ``install.ml``: lambdapi install command
    * ``lambdapi.ml``: main program
 
 * ``src/common/``: miscellaneous modules and libraries

@@ -16,11 +16,11 @@ open Handle
 (** {3 Evaluation of commands. *)
 
 (** Running the main type-checking mode. *)
-let check_cmd : Cliconf.t -> int option -> bool -> string list -> unit =
+let check_cmd : Config.t -> int option -> bool -> string list -> unit =
     fun cfg timeout recompile files ->
   let run _ =
     let open Timed in
-    Cliconf.init cfg; Stdlib.(Compile.recompile := recompile);
+    Config.init cfg; Stdlib.(Compile.recompile := recompile);
     (* We save time to run each file in the same environment. *)
     let time = Time.save () in
     let handle file =
@@ -52,10 +52,10 @@ let check_cmd : Cliconf.t -> int option -> bool -> string list -> unit =
   Console.handle_exceptions run
 
 (** Running the parsing mode. *)
-let parse_cmd : Cliconf.t -> string list -> unit = fun cfg files ->
+let parse_cmd : Config.t -> string list -> unit = fun cfg files ->
   let run _ =
     let open Timed in
-    Cliconf.init cfg;
+    Config.init cfg;
     (* We save time to run each file in the same environment. *)
     let time = Time.save () in
     let handle file = Time.restore time; ignore (Compile.parse_file file) in
@@ -64,19 +64,19 @@ let parse_cmd : Cliconf.t -> string list -> unit = fun cfg files ->
   Console.handle_exceptions run
 
 (** Running the pretty-printing mode. *)
-let beautify_cmd : Cliconf.t -> string -> unit = fun cfg file ->
+let beautify_cmd : Config.t -> string -> unit = fun cfg file ->
   let run _ =
-    Cliconf.init cfg; Pretty.beautify (Compile.parse_file file) in
+    Config.init cfg; Pretty.beautify (Compile.parse_file file) in
   Console.handle_exceptions run
 
 (** Running the LSP server. *)
-let lsp_server_cmd : Cliconf.t -> bool -> string -> unit =
+let lsp_server_cmd : Config.t -> bool -> string -> unit =
     fun cfg standard_lsp lsp_log_file ->
-  let run _ = Cliconf.init cfg; Lsp.Lp_lsp.main standard_lsp lsp_log_file in
+  let run _ = Config.init cfg; Lsp.Lp_lsp.main standard_lsp lsp_log_file in
   Console.handle_exceptions run
 
 (** Printing a decision tree. *)
-let decision_tree_cmd : Cliconf.t -> Syntax.qident -> unit =
+let decision_tree_cmd : Config.t -> Syntax.qident -> unit =
   fun cfg (mp, sym) ->
   let run _ =
     Timed.(verbose := 0); (* To avoid printing the "Checked ..." line *)
@@ -84,7 +84,7 @@ let decision_tree_cmd : Cliconf.t -> Syntax.qident -> unit =
     let pth = Sys.getcwd () in
     let pth = Filename.concat pth "." in
     Package.apply_config pth;
-    Cliconf.init cfg;
+    Config.init cfg;
     let sym =
       let sign = Compile.compile false mp in
       let ss = Sig_state.of_sign sign in
@@ -211,7 +211,7 @@ let man_pkg_file =
 
 let check_cmd =
   let doc = "Type-checks the given files." in
-  Term.(const check_cmd $ Cliconf.full $ timeout $ recompile $ files),
+  Term.(const check_cmd $ Config.full $ timeout $ recompile $ files),
   Term.info "check" ~doc ~man:man_pkg_file
 
 let decision_tree_cmd =
@@ -219,22 +219,22 @@ let decision_tree_cmd =
     "Prints decision tree of a symbol to standard output using the \
      Dot language. Piping to `dot -Tpng | display' displays the tree."
   in
-  Term.(const decision_tree_cmd $ Cliconf.full $ qsym),
+  Term.(const decision_tree_cmd $ Config.full $ qsym),
   Term.info "decision-tree" ~doc ~man:man_pkg_file
 
 let parse_cmd =
   let doc = "Run the parser on the given files." in
-  Term.(const parse_cmd $ Cliconf.full $ files),
+  Term.(const parse_cmd $ Config.full $ files),
   Term.info "parse" ~doc ~man:man_pkg_file
 
 let beautify_cmd =
   let doc = "Run the parser and pretty-printer on the given files." in
-  Term.(const beautify_cmd $ Cliconf.full $ file),
+  Term.(const beautify_cmd $ Config.full $ file),
   Term.info "beautify" ~doc ~man:man_pkg_file
 
 let lsp_server_cmd =
   let doc = "Runs the LSP server." in
-  Term.(const lsp_server_cmd $ Cliconf.full $ standard_lsp $ lsp_log_file),
+  Term.(const lsp_server_cmd $ Config.full $ standard_lsp $ lsp_log_file),
   Term.info "lsp" ~doc ~man:man_pkg_file
 
 let help_cmd =
@@ -258,6 +258,6 @@ let _ =
   let cmds =
     [ check_cmd ; parse_cmd ; beautify_cmd ; lsp_server_cmd
     ; decision_tree_cmd ; help_cmd ; version_cmd
-    ; Init_cmd.cmd ; Install_cmd.install_cmd ; Install_cmd.uninstall_cmd ]
+    ; Init.cmd ; Install.install_cmd ; Install.uninstall_cmd ]
   in
   Term.(exit (eval_choice default_cmd cmds))
