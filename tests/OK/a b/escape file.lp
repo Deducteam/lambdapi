@@ -1,4 +1,5 @@
 // test escaped identifiers
+symbol A:TYPE;
 symbol {||}:TYPE;
 symbol {|}|}:TYPE;
 symbol {|||}:TYPE;
