@@ -75,16 +75,10 @@ let loaded : t Path.Map.t ref = ref Path.Map.empty
    in a stack due to dependencies. Note that the topmost element corresponds
    to the current module. If a module appears twice in the stack, then there
    is a circular dependency. *)
-let loading : Path.t list ref = ref []
+let loading : Path.Stack.t ref = ref Path.Stack.empty
 
 (** [current_sign ()] returns the current signature. *)
-let current_sign () =
-  let mp =
-    match !loading with
-    | mp :: _ -> mp
-    | []      -> assert false
-  in
-  Path.Map.find mp !loaded
+let current_sign () = Path.Map.find (Path.Stack.hd !loading) !loaded
 
 (** [create_sym expo prop name typ impl] creates a new symbol with the
    exposition [expo], property [prop], name [name] type [typ] and implicit

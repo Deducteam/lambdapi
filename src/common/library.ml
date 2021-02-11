@@ -101,9 +101,9 @@ module LibMap :
       | Some(root) -> get (root, ks) ks map
 
     let iter f map =
-      let rec iter mp (Node(po, map)) =
-        Option.iter (fun fp -> f mp fp) po;
-        StrMap.iter (fun k m -> iter (mp @ [k]) m) map
+      let rec iter ks (Node(po, map)) =
+        Option.iter (fun fp -> f ks fp) po;
+        StrMap.iter (fun k m -> iter (ks @ [k]) m) map
       in
       iter [] map
   end
