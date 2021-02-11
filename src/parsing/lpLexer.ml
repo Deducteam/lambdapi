@@ -96,7 +96,7 @@ type token =
   | UID_PAT of string
   | QID of Path.t
   | ID_EXPL of Path.t
-  (*| ID_QUANT of (Path.t * bool)*)
+  | ID_QUANT of (Path.t * bool)
 
 exception SyntaxError of strloc
 
@@ -347,8 +347,8 @@ end = struct
     | '@', uid -> ID_EXPL([tail 1 buf])
     | '@', qid -> ID_EXPL(Path.of_string (tail 1 buf))
 
-    (*| '`', id -> ID_QUANT(Path.of_string (tail 1 buf), false)
-    | '`', '@', id -> ID_QUANT(Path.of_string (tail 2 buf), true)*)
+    | '`', id -> ID_QUANT(Path.of_string (tail 1 buf), false)
+    | '`', '@', id -> ID_QUANT(Path.of_string (tail 2 buf), true)
 
     | uid -> UID(Utf8.lexeme buf)
     | qid -> QID(Path.of_string (Utf8.lexeme buf))

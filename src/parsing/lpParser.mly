@@ -107,7 +107,7 @@
 %token <string> UID_PAT
 %token <Path.t> QID
 %token <Path.t> ID_EXPL
-//%token <Path.t * bool> ID_QUANT
+%token <Path.t * bool> ID_QUANT
 
 // types
 
@@ -382,12 +382,12 @@ term:
       let b = make_pos $loc(b) (P_Abst(fst b, snd b)) in
       make_pos $sloc (P_Appl(q, b))
     }
-//| i=ID_QUANT b=binder
-//  {
-//    let q = make_pos $loc(i) (P_Iden(qid_of_path $loc(i) (fst i), snd i)) in
-//    let b = make_pos $loc(b) (P_Abst(fst b, snd b)) in
-//    make_pos $sloc (P_Appl(q, b))
-//  }
+  | i=ID_QUANT b=binder
+    {
+      let q = make_pos $loc(i) (P_Iden(qid_of_path $loc(i) (fst i), snd i)) in
+      let b = make_pos $loc(b) (P_Abst(fst b, snd b)) in
+      make_pos $sloc (P_Appl(q, b))
+    }
   | PI b=binder { make_pos $sloc (P_Prod(fst b, snd b)) }
   | LAMBDA b=binder { make_pos $sloc (P_Abst(fst b, snd b)) }
   | LET x=uid a=params* b=preceded(COLON, term)? ASSIGN t=term IN u=term
