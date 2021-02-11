@@ -5,6 +5,9 @@ open Lplib.Base
 open Lplib.Extra
 open Debug
 
+(** [out_fmt] main output formatter. *)
+let out_fmt = Stdlib.ref Format.std_formatter
+
 (** Current verbosity level. *)
 let verbose = ref 1
 

@@ -3,6 +3,9 @@
 open Lplib.Base
 open Lplib.Extra
 
+(** [err_fmt] warning/error output formatter. *)
+let err_fmt = Stdlib.ref Format.err_formatter
+
 (** [no_wrn] disables warnings when set to [true]. *)
 let no_wrn = Stdlib.ref false
 

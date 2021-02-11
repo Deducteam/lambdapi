@@ -68,7 +68,7 @@ let new_logger : char -> string -> string -> logger = fun key name desc ->
   (* Actual printing function. *)
   let logger fmt =
     let pp = Format.(if !enabled then fprintf else ifprintf) in
-    pp Stdlib.(!err_fmt) ((cya "[%s] ") ^^ fmt ^^ "\n%!") name
+    pp Stdlib.(!Error.err_fmt) ((cya "[%s] ") ^^ fmt ^^ "\n%!") name
   in
   {logger}
 

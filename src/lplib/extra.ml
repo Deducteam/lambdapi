@@ -10,12 +10,6 @@ module StrMap = Map.Make (String)
 (** Functional sets of strings. *)
 module StrSet = Set.Make (String)
 
-(** [out_fmt] main output formatter. *)
-let out_fmt = Stdlib.ref Format.std_formatter
-
-(** [err_fmt] warning/error output formatter. *)
-let err_fmt = Stdlib.ref Format.err_formatter
-
 (** [color] tells whether colors can be used in the output. *)
 let color : bool Stdlib.ref = Stdlib.ref true
 

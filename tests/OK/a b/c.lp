@@ -1,3 +1,4 @@
+// test escaped identifiers
 symbol {||}:TYPE;
 symbol {|}|}:TYPE;
 symbol {|||}:TYPE;

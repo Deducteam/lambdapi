@@ -55,6 +55,12 @@ let split : char -> string -> string list = fun c s ->
   in fix_split [] None (String.split_on_char c s)
 
 (* unit testing *)
-let _ = assert (split '.' "{|a.b|}.c.{|d|}" = ["{|a.b|}";"c";"{|d|}"])
-let _ = assert(split '.' "{|tests|}.OK.{|a b|}.c"
-               = ["{|tests|}";"OK";"{|a b|}";"c"])
+let _ =
+  assert
+    (is_escaped "{|}" = false
+     && is_escaped "{a|}" = false
+     && is_escaped "{|a}" = false
+     && is_escaped "{||}" = true
+     && is_escaped "{|a|}" = true
+     && split '.' "{|a.b|}.c.{|d|}" = ["{|a.b|}";"c";"{|d|}"]
+     && split '.' "{|tests|}.OK.{|a b|}.c" = ["{|tests|}";"OK";"{|a b|}";"c"])

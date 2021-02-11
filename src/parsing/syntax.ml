@@ -298,7 +298,7 @@ type p_command_aux =
   | P_require  of bool * p_mod list
   (** "require" statement (require open if the boolean is true). *)
   | P_require_as of p_mod * p_ident
-  (** "require as" statement require open if the boolean is true). *)
+  (** "require as" statement. *)
   | P_open of p_mod list
   (** Open statement. *)
   | P_symbol of p_symbol

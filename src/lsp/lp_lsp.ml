@@ -450,8 +450,8 @@ let main std log_file =
   (* XXX: Capture better / per sentence. *)
   (* let lp_oc = open_out "log-lp.txt" in *)
   let lp_fmt = F.formatter_of_buffer Lp_doc.lp_logger in
-  Extra.out_fmt := lp_fmt;
-  Extra.err_fmt := lp_fmt;
+  Console.out_fmt := lp_fmt;
+  Error.err_fmt := lp_fmt;
   (* Console.verbose := 4; *)
 
   let rec loop () =
