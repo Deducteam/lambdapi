@@ -227,21 +227,21 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
     | ((Some({elt=P_Wild;_})|None), _           ) -> _Meta_Type env
     | (Some(a)   , _           ) -> scope env a
   (* Scoping function for binders (abstractions or produtcs). [scope_binder
-     cons env args_list t] scopes [t] in the environment [env] extended with
-     the parameters of [args_list]. For each parameter, a tbox is built using
-     [cons] (either _Abst or _Prod). *)
+     cons env params_list t] scopes [t] in the environment [env] extended with
+     the parameters of [params_list]. For each parameter, a tbox is built
+     using [cons] (either _Abst or _Prod). *)
   and scope_binder : (tbox -> tbinder Bindlib.box -> tbox)
-                     -> Env.t -> p_args list -> p_term option -> tbox =
-    fun cons env args_list t ->
-    let rec scope_args_list env args_list =
-      match args_list with
+                     -> Env.t -> p_params list -> p_term option -> tbox =
+    fun cons env params_list t ->
+    let rec scope_params_list env params_list =
+      match params_list with
       | [] -> (match t with Some t -> scope env t | None -> _Meta_Type env)
-      | (idopts,typopt,_implicit)::args_list ->
-          scope_args env idopts (scope_domain env typopt) args_list
-    and scope_args env idopts a args_list =
+      | (idopts,typopt,_implicit)::params_list ->
+          scope_params env idopts (scope_domain env typopt) params_list
+    and scope_params env idopts a params_list =
       let rec aux env idopts =
         match idopts with
-        | [] -> scope_args_list env args_list
+        | [] -> scope_params_list env params_list
         | None::idopts ->
             let v = Bindlib.new_var mkfree "_" in
             let t = aux env idopts in
@@ -255,7 +255,7 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
             cons a (Bindlib.bind_var v t)
       in aux env idopts
     in
-    scope_args_list env args_list
+    scope_params_list env params_list
   (* Scoping function for head terms. *)
   and scope_head : env -> p_term -> tbox = fun env t ->
     match (t.elt, md) with

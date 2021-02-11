@@ -42,11 +42,11 @@ and p_term_aux =
   (** Application. *)
   | P_Impl of p_term * p_term
   (** Implication. *)
-  | P_Abst of p_args list * p_term
+  | P_Abst of p_params list * p_term
   (** Abstraction over several variables. *)
-  | P_Prod of p_args list * p_term
+  | P_Prod of p_params list * p_term
   (** Product over several variables. *)
-  | P_LLet of p_ident * p_args list * p_type option * p_term * p_term
+  | P_LLet of p_ident * p_params list * p_type option * p_term * p_term
   (** Local let. *)
   | P_NLit of int
   (** Natural number literal. *)
@@ -67,7 +67,7 @@ and p_patt = p_term
 
 (** Parser-level representation of a function argument. The boolean is true if
     the argument is marked as implicit (i.e., between curly braces). *)
-and p_args = p_ident option list * p_type option * bool
+and p_params = p_ident option list * p_type option * bool
 
 (** [p_get_args t] is {!val:LibTerm.get_args} on syntax-level terms. *)
 let p_get_args : p_term -> p_term * p_term list = fun t ->
@@ -287,7 +287,7 @@ let is_mstrat {elt; _} = match elt with P_mstrat(_) -> true | _ -> false
 type p_symbol =
   { p_sym_mod : p_modifier list (** modifiers *)
   ; p_sym_nam : p_ident (** symbol name *)
-  ; p_sym_arg : p_args list (** arguments before ":" *)
+  ; p_sym_arg : p_params list (** arguments before ":" *)
   ; p_sym_typ : p_type option (** symbol type *)
   ; p_sym_trm : p_term option (** symbol definition *)
   ; p_sym_prf : (p_tactic list * p_proof_end) option (** proof script *)
@@ -305,7 +305,7 @@ type p_command_aux =
   (** Symbol declaration. *)
   | P_rules of p_rule list
   (** Rewriting rule declarations. *)
-  | P_inductive of p_modifier list * p_args list * p_inductive list
+  | P_inductive of p_modifier list * p_params list * p_inductive list
   (** Definition of inductive types *)
   | P_set of p_config
   (** Set the configuration. *)
@@ -346,16 +346,16 @@ let rec eq_p_term : p_term eq = fun {elt=t1;_} {elt=t2;_} ->
   | P_Impl(t1,u1), P_Impl(t2,u2) -> eq_p_term t1 t2 && eq_p_term u1 u2
   | P_Abst(xs1,t1), P_Abst(xs2,t2)
   | P_Prod(xs1,t1), P_Prod(xs2,t2) ->
-      List.equal eq_p_args xs1 xs2 && eq_p_term t1 t2
+      List.equal eq_p_params xs1 xs2 && eq_p_term t1 t2
   | P_LLet(i1,xs1,a1,t1,u1), P_LLet(i2,xs2,a2,t2,u2) ->
-      eq_ident i1 i2 && List.equal eq_p_args xs1 xs2
+      eq_ident i1 i2 && List.equal eq_p_params xs1 xs2
       && Option.equal eq_p_term a1 a2 && eq_p_term t1 t2 && eq_p_term u1 u2
   | P_Wrap t1, P_Wrap t2
   | P_Expl t1, P_Expl t2 -> eq_p_term t1 t2
   | P_NLit n1, P_NLit n2 -> n1 = n2
   | _,_ -> false
 
-and eq_p_args : p_args eq = fun (i1,ao1,b1) (i2,ao2,b2) ->
+and eq_p_params : p_params eq = fun (i1,ao1,b1) (i2,ao2,b2) ->
   List.equal (Option.equal eq_ident) i1 i2
   && Option.equal eq_p_term ao1 ao2 && b1 = b2
 
@@ -441,7 +441,7 @@ let eq_p_symbol : p_symbol eq =
       p_sym_def=p_sym_def2} ->
   p_sym_mod1 = p_sym_mod2
   && eq_ident p_sym_nam1 p_sym_nam2
-  && List.equal eq_p_args p_sym_arg1 p_sym_arg2
+  && List.equal eq_p_params p_sym_arg1 p_sym_arg2
   && Option.equal eq_p_term p_sym_typ1 p_sym_typ2
   && Option.equal eq_p_term p_sym_trm1 p_sym_trm2
   && Option.equal eq_tac p_sym_prf1 p_sym_prf2
@@ -459,7 +459,7 @@ let eq_p_command : p_command eq = fun {elt=c1;_} {elt=c2;_} ->
   | P_symbol s1, P_symbol s2 -> eq_p_symbol s1 s2
   | P_rules(r1), P_rules(r2) ->  List.equal eq_p_rule r1 r2
   | P_inductive(m1,xs1,l1), P_inductive(m2,xs2,l2) ->
-      m1 = m2 && List.equal eq_p_args xs1 xs2
+      m1 = m2 && List.equal eq_p_params xs1 xs2
       && List.equal eq_p_inductive l1 l2
   | P_set(c1), P_set(c2) -> eq_p_config c1 c2
   | P_query(q1), P_query(q2) -> eq_p_query q1 q2
@@ -616,7 +616,7 @@ let fold_idents : ('a -> p_qident -> 'a) -> 'a -> p_command list -> 'a =
     fun a (ts, _) -> snd (List.fold_left fold_tactic (StrSet.empty, a) ts)
   in
 
-  let fold_args : StrSet.t * 'a -> p_args -> StrSet.t * 'a =
+  let fold_args : StrSet.t * 'a -> p_params -> StrSet.t * 'a =
     fun (vs,a) (idopts, tyopt, _) ->
     add_idopts vs idopts,
     match tyopt with

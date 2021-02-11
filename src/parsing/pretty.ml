@@ -18,7 +18,7 @@ let ident : p_ident pp = fun ppf {pos; elt=s} ->
     fatal pos "Identifier [%s] is a Lambdapi keyword." s
   else pp_print_string ppf s
 
-let arg_ident : p_ident option pp = fun ppf idopt ->
+let param_id : p_ident option pp = fun ppf idopt ->
   match idopt with
   | Some(id) -> ident ppf id
   | None     -> pp_print_string ppf "_"
@@ -60,17 +60,17 @@ let rec term : p_term pp = fun ppf t ->
     | (P_Appl(t,u)         , `PFunc) -> out "%a %a" appl t atom u
     | (P_Impl(a,b)         , `PFunc) -> out "%a → %a" appl a func b
     | (P_Abst(xs,t)        , `PFunc) ->
-        out "λ%a, " args_list xs;
+        out "λ%a, " params_list xs;
         let fn (ids,_,_) = List.for_all ((=) None) ids in
         let ec = !empty_context in
         empty_context := ec && List.for_all fn xs;
         out "%a" func t;
         empty_context := ec
     | (P_Prod(xs,b)        , `PFunc) ->
-        out "Π%a, %a" args_list xs func b
+        out "Π%a, %a" params_list xs func b
     | (P_LLet(x,xs,a,t,u)  , `PFunc) ->
         out "@[<hov 2>let %a%a%a ≔@ %a@] in %a"
-          ident x args_list xs annot a func t func u
+          ident x params_list xs annot a func t func u
     | (P_NLit(i)           , _    ) -> out "%i" i
     (* We print minimal parentheses, and ignore the [Wrap] constructor. *)
     | (P_Wrap(t)           , _    ) -> out "%a" (pp p) t
@@ -82,12 +82,12 @@ let rec term : p_term pp = fun ppf t ->
   in
   let rec toplevel _ t =
     match t.elt with
-    | P_Abst(xs,t) -> out "λ%a, %a" args_list xs toplevel t
-    | P_Prod(xs,b) -> out "Π%a, %a" args_list xs toplevel b
+    | P_Abst(xs,t) -> out "λ%a, %a" params_list xs toplevel t
+    | P_Prod(xs,b) -> out "Π%a, %a" params_list xs toplevel b
     | P_Impl(a,b) -> out "%a → %a" appl a toplevel b
     | P_LLet(x,xs,a,t,u) ->
         out "let %a%a%a ≔ %a in\n%a" ident x
-          args_list xs annot a toplevel t toplevel u
+          params_list xs annot a toplevel t toplevel u
     | _ -> out "%a" func t
   in
   toplevel ppf t
@@ -97,16 +97,16 @@ and annot : p_type option pp = fun ppf a ->
   | Some(a) -> fprintf ppf " : %a" term a
   | None    -> ()
 
-and args : p_args pp = fun ppf (ids,ao,b) ->
-  let args = List.pp arg_ident " " in
+and params : p_params pp = fun ppf (ids,ao,b) ->
+  let params = List.pp param_id " " in
   match (ao,b) with
-  | (None   , false) -> fprintf ppf "%a" args ids
-  | (None   , true ) -> fprintf ppf "{%a}" args ids
-  | (Some(a), false) -> fprintf ppf "(%a : %a)" args ids term a
-  | (Some(a), true ) -> fprintf ppf "{%a : %a}" args ids term a
+  | (None   , false) -> fprintf ppf "%a" params ids
+  | (None   , true ) -> fprintf ppf "{%a}" params ids
+  | (Some(a), false) -> fprintf ppf "(%a : %a)" params ids term a
+  | (Some(a), true ) -> fprintf ppf "{%a : %a}" params ids term a
 
-and args_list : p_args list pp = fun ppf ->
-  List.iter (fprintf ppf " %a" args)
+and params_list : p_params list pp = fun ppf ->
+  List.iter (fprintf ppf " %a" params)
 
 let rule : string -> p_rule pp = fun kw ppf {elt=(l,r);_} ->
   fprintf ppf "%s %a ↪ %a" kw term l term r
@@ -186,7 +186,7 @@ let tactic : p_tactic pp = fun ppf t ->
   let out fmt = fprintf ppf fmt in
   begin match t.elt with
   | P_tac_refine(t) -> out "refine %a" term t
-  | P_tac_intro(xs) -> out "intro %a" (List.pp arg_ident " ") xs
+  | P_tac_intro(xs) -> out "intro %a" (List.pp param_id " ") xs
   | P_tac_apply(t) -> out "apply %a" term t
   | P_tac_simpl -> out "simpl"
   | P_tac_rewrite(b,p,t)     ->
@@ -219,7 +219,7 @@ let command : p_command pp = fun ppf {elt;_} ->
       out "%asymbol %a%a"
         (List.pp modifier "") p_sym_mod
         ident p_sym_nam
-        args_list p_sym_arg;
+        params_list p_sym_arg;
       Option.iter (out " : %a" term) p_sym_typ;
       if p_sym_def then out " ≔";
       Option.iter (out " %a" term) p_sym_trm;
@@ -237,7 +237,7 @@ let command : p_command pp = fun ppf {elt;_} ->
   | P_inductive(ms, xs, i::il) ->
       out "begin %a%a\n%a%a\nend"
         (List.pp modifier "") ms
-        (List.pp args " ") xs
+        (List.pp params " ") xs
         (inductive "inductive") i
         (List.pp (inductive "\nwith") "") il
   | P_set(P_config_builtin(n,i)) ->

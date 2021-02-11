@@ -117,7 +117,7 @@
 %type <Syntax.p_ident> uid
 %type <Syntax.p_mod> path
 %type <Syntax.p_ident option> patt
-%type <Syntax.p_args> arg_ids
+%type <Syntax.p_params> params
 
 %type <Syntax.p_term> term
 %type <Syntax.p_term> aterm
@@ -151,19 +151,19 @@ term_id:
 patt: p=UID_PAT { if p = "_" then None else Some(make_pos $sloc p) }
 
 // Identifiers for arguments
-arg_id:
+param_id:
   | i=uid { Some i }
   | WILD { None }
 
 // Arguments of abstractions, products &c.
-arg_ids:
+params:
   // Explicit argument without type annotation
-  | x=arg_id { ([x], None, false) }
+  | x=param_id { ([x], None, false) }
   // Explicit argument with type annotation
-  | L_PAREN xs=arg_id+ COLON a=term R_PAREN
+  | L_PAREN xs=param_id+ COLON a=term R_PAREN
       { (xs, Some(a), false) }
   // Implicit argument (possibly with type annotation)
-  | L_CU_BRACKET xs=arg_id+ a=preceded(COLON, term)? R_CU_BRACKET
+  | L_CU_BRACKET xs=param_id+ a=preceded(COLON, term)? R_CU_BRACKET
       { (xs, a, true) }
 
 // Patterns of the rewrite tactic
@@ -189,7 +189,7 @@ rw_patt:
 tactic:
   | q=query { make_pos $sloc (P_tac_query q) }
   | APPLY t=term { make_pos $sloc (P_tac_apply t) }
-  | ASSUME xs=arg_id+ { make_pos $sloc (P_tac_intro xs) }
+  | ASSUME xs=param_id+ { make_pos $sloc (P_tac_intro xs) }
   | FAIL { make_pos $sloc P_tac_fail }
   | FOCUS i=INT { make_pos $sloc (P_tac_focus i) }
   | REFINE t=term { make_pos $sloc (P_tac_refine t) }
@@ -243,7 +243,7 @@ assert_kw:
   | ASSERT_NOT { true }
 
 query:
-  | k=assert_kw ps=arg_ids* TURNSTILE t=term COLON a=term
+  | k=assert_kw ps=params* TURNSTILE t=term COLON a=term
     {
       let t =
         if ps = [] then t else
@@ -255,7 +255,7 @@ query:
       in
       make_pos $sloc (P_query_assert(k, P_assert_typing(t, a)))
     }
-  | k=assert_kw ps=arg_ids* TURNSTILE t=term EQUIV a=term
+  | k=assert_kw ps=params* TURNSTILE t=term EQUIV a=term
     {
       let t =
         if ps = [] then t else
@@ -288,13 +288,13 @@ proof_end:
 proof: BEGIN ts=terminated(tactic, SEMICOLON)* pe=proof_end { ts, pe }
 
 constructor:
-  | i=uid xs=arg_ids* COLON t=term
+  | i=uid xs=params* COLON t=term
     { let t = if xs = [] then t else
                 make_pos ($startpos(xs), $endpos(t)) (P_Prod(xs,t))
       in (i,t) }
 
 inductive:
-  | i=uid xs=arg_ids* COLON t=term ASSIGN
+  | i=uid xs=params* COLON t=term ASSIGN
     VBAR? l=separated_list(VBAR, constructor)
     { let t = if xs = [] then t else
                 make_pos ($startpos(xs), $endpos(t)) (P_Prod(xs,t)) in
@@ -317,7 +317,7 @@ command:
     { make_pos $sloc (P_require_as(i,a)) }
   | OPEN l=list(path) SEMICOLON
     { make_pos $sloc (P_open l) }
-  | ms=modifier* SYMBOL s=uid al=arg_ids* COLON a=term
+  | ms=modifier* SYMBOL s=uid al=params* COLON a=term
     po=proof? SEMICOLON
       {
         let sym =
@@ -326,7 +326,7 @@ command:
         in
         make_pos $sloc (P_symbol(sym))
       }
-  | ms=modifier* SYMBOL s=uid al=arg_ids* ao=preceded(COLON, term)?
+  | ms=modifier* SYMBOL s=uid al=params* ao=preceded(COLON, term)?
     ASSIGN tp=term_proof SEMICOLON
       {
         let sym =
@@ -335,7 +335,7 @@ command:
         in
         make_pos $sloc (P_symbol(sym))
       }
-  | ms=modifier* xs=arg_ids* INDUCTIVE
+  | ms=modifier* xs=params* INDUCTIVE
     is=separated_nonempty_list(WITH, inductive) SEMICOLON
       { make_pos $sloc (P_inductive(ms,xs,is)) }
   | RULE rs=separated_nonempty_list(WITH, rule) SEMICOLON
@@ -390,12 +390,12 @@ term:
 //  }
   | PI b=binder { make_pos $sloc (P_Prod(fst b, snd b)) }
   | LAMBDA b=binder { make_pos $sloc (P_Abst(fst b, snd b)) }
-  | LET x=uid a=arg_ids* b=preceded(COLON, term)? ASSIGN t=term IN u=term
+  | LET x=uid a=params* b=preceded(COLON, term)? ASSIGN t=term IN u=term
       { make_pos $sloc (P_LLet(x, a, b, t, u)) }
 
 binder:
-  | xs=arg_ids+ COMMA t=term { (xs, t) }
-  | x=arg_id COLON a=term COMMA t=term { ([[x], Some a, false], t) }
+  | xs=params+ COMMA t=term { (xs, t) }
+  | x=param_id COLON a=term COMMA t=term { ([[x], Some a, false], t) }
 
 rule: l=term HOOK_ARROW r=term { make_pos $sloc (l, r) }
 

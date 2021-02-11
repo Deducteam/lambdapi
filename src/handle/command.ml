@@ -155,7 +155,7 @@ let handle_rules : sig_state -> p_rule list -> sig_state = fun ss rs ->
     [e p strat symbol x xs : a] with [ss] as the signature state.
     On success, an updated signature state and the new symbol are returned. *)
 let handle_inductive_symbol :
-  sig_state -> expo -> prop -> match_strat -> p_ident -> p_args list ->
+  sig_state -> expo -> prop -> match_strat -> p_ident -> p_params list ->
   p_type -> sig_state * sym = fun ss e p strat x xs a ->
   let scope_basic exp = Scope.scope_term exp ss Env.empty in
   (* We check that [x] is not already used. *)

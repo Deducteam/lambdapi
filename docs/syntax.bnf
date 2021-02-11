@@ -16,12 +16,12 @@
 
 <patt> ::= '$'<uid>
 
-<arg_id> ::= <uid>
-           | '_'
+<param_id> ::= <uid>
+             | '_'
 
-<arg_ids> ::= <arg_id>
-            | '(' <arg_id>+ ':' <term> ')'
-            | '{' <arg_id>+ [':' <term>] '}'
+<params> ::= <param_id>
+           | '(' <param_id>+ ':' <term> ')'
+           | '{' <param_id>+ [':' <term>] '}'
 
 <rw_patt> ::= <term>
             | 'in' <term>
@@ -31,7 +31,7 @@
 
 <tactic> ::= <query>
            | 'apply' <term>
-           | 'assume' <arg_id>+
+           | 'assume' <param_id>+
            | 'fail'
            | 'focus' <int>
            | 'refine' <term>
@@ -61,8 +61,8 @@
 <assert_kw> ::= 'assert'
               | 'assertnot'
 
-<query> ::= <assert_kw> <arg_ids>* '⊢' <term> ':' <term>
-          | <assert_kw> <arg_ids>* '⊢' <term> '≡' <term>
+<query> ::= <assert_kw> <params>* '⊢' <term> ':' <term>
+          | <assert_kw> <params>* '⊢' <term> '≡' <term>
           | 'compute' <term>
           | 'print' [<id>]
           | 'proofterm'
@@ -79,9 +79,9 @@
 
 <proof> ::= 'begin' (<tactic> ';')* <proof_end>
 
-<constructor> ::= <uid> <arg_ids>* ':' <term>
+<constructor> ::= <uid> <params>* ':' <term>
 
-<inductive> ::= <uid> <arg_ids>* ':' <term> '≔' ['|'] [<constructor>
+<inductive> ::= <uid> <params>* ':' <term> '≔' ['|'] [<constructor>
                 ('|' <constructor>)*]
 
 <term_proof> ::= <term>
@@ -94,12 +94,12 @@
             | 'require' <path>* ';'
             | 'require' <path> 'as' <uid> ';'
             | 'open' <path>* ';'
-            | <modifier>* 'symbol' <uid> <arg_ids>* ':' <term> [<proof>]
+            | <modifier>* 'symbol' <uid> <params>* ':' <term> [<proof>]
               ';'
-            | <modifier>* 'symbol' <uid> <arg_ids>* [':' <term>] '≔'
+            | <modifier>* 'symbol' <uid> <params>* [':' <term>] '≔'
               <term_proof> ';'
-            | <modifier>* <arg_ids>* 'inductive' <inductive> ('with'
-              <inductive>)* ';'
+            | <modifier>* <params>* 'inductive' <inductive> ('with' <inductive>)*
+              ';'
             | 'rule' <rule> ('with' <rule>)* ';'
             | 'set' <config> ';'
             | <query> ';'
@@ -123,10 +123,10 @@
          | '`' <term_id> <binder>
          | 'Π' <binder>
          | 'λ' <binder>
-         | 'let' <uid> <arg_ids>* [':' <term>] '≔' <term> 'in' <term>
+         | 'let' <uid> <params>* [':' <term>] '≔' <term> 'in' <term>
 
-<binder> ::= <arg_ids>+ ',' <term>
-           | <arg_id> ':' <term> ',' <term>
+<binder> ::= <params>+ ',' <term>
+           | <param_id> ':' <term> ',' <term>
 
 <rule> ::= <term> '↪' <term>
 
