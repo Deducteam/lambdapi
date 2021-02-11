@@ -3,7 +3,7 @@
 open! Lplib
 open Cmdliner
 open Common
-open Module
+open Library
 open Console
 
 (** {3 Configuration type for common values} *)
@@ -42,8 +42,8 @@ let default_config =
 let init : config -> unit = fun cfg ->
   (* Set all the flags and configs. *)
   Handle.Compile.gen_obj := cfg.gen_obj;
-  Module.set_lib_root cfg.lib_root;
-  List.iter Module.add_mapping cfg.map_dir;
+  Library.set_lib_root cfg.lib_root;
+  List.iter Library.add_mapping cfg.map_dir;
   Option.iter set_default_verbose cfg.verbose;
   Console.no_wrn := cfg.no_warnings;
   Debug.set_default_debug cfg.debug;
@@ -52,11 +52,11 @@ let init : config -> unit = fun cfg ->
   (* Log some configuration data. *)
   if Timed.(!Debug.log_enabled) then
     begin
-      Module.log_file "running directory: %s" (Filename.current_dir ());
-      Module.log_file "library root path: %s"
+      Library.log_file "running directory: %s" (Filename.current_dir ());
+      Library.log_file "library root path: %s"
         (match !lib_root with None -> assert false | Some(p) -> p);
-      let f = Module.log_file "mapping: [%a] → %s" Path.pp in
-      LibMap.iter f (Module.current_mappings ())
+      let f = Library.log_file "mapping: [%a] → %s" Path.pp in
+      Library.iter f
     end;
   (* Initialise the [Pure] interface (this must come last). *)
   Pure.set_initial_time ()

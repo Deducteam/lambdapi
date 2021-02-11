@@ -5,7 +5,6 @@ open Lplib.Base
 open Lplib.Extra
 open Common
 open Pos
-open Module
 
 (** Representation of a (located) identifier. *)
 type p_ident = strloc

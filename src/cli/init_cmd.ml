@@ -1,7 +1,6 @@
 open Cmdliner
 open Common
 open Console
-open Module
 
 let with_file : string -> (out_channel -> unit) -> unit = fun file fn ->
   let oc = open_out file in fn oc; close_out oc

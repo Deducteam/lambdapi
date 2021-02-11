@@ -2,7 +2,6 @@
 
 open! Lplib
 open Lplib.Extra
-
 open Timed
 open Common
 open Console
@@ -10,7 +9,6 @@ open Core
 open Term
 open Sign
 open Pos
-open Module
 open Parsing
 open Syntax
 open Tags
@@ -50,7 +48,7 @@ let handle_open : sig_state -> p_mod -> sig_state =
   fun ss {elt=p;pos} ->
   (* Obtain the signature corresponding to [m]. *)
   let sign =
-    try PathMap.find p !(Sign.loaded) with Not_found ->
+    try Path.Map.find p !(Sign.loaded) with Not_found ->
       (* The signature has not been required... *)
       fatal pos "Module [%a] has not been required." Path.pp p
   in
@@ -65,12 +63,12 @@ let handle_require :
       (Path.t -> Sign.t) -> bool -> sig_state -> p_mod -> sig_state =
   fun compile b ss ({elt=p;pos} as mp) ->
   (* Check that the module has not already been required. *)
-  if PathMap.mem p !(ss.signature.sign_deps) then
+  if Path.Map.mem p !(ss.signature.sign_deps) then
     fatal pos "Module [%a] is already required." Path.pp p;
   (* Compile required path (adds it to [Sign.loaded] among other things) *)
   ignore (compile p);
   (* Add the dependency (it was compiled already while parsing). *)
-  ss.signature.sign_deps := PathMap.add p [] !(ss.signature.sign_deps);
+  ss.signature.sign_deps := Path.Map.add p [] !(ss.signature.sign_deps);
   if b then handle_open ss mp else ss
 
 (** [handle_require_as compile ss p id] handles the command
@@ -82,7 +80,7 @@ let handle_require_as :
   fun compile ss ({elt=p;_} as mp) {elt=id;_} ->
   let ss = handle_require compile false ss mp in
   let aliases = StrMap.add id p ss.aliases in
-  let mod_map = PathMap.add p id ss.mod_map in
+  let mod_map = Path.Map.add p id ss.mod_map in
   {ss with aliases; mod_map}
 
 (** [handle_modifiers ms] verifies that the modifiers in [ms] are compatible.
@@ -472,7 +470,7 @@ let handle : (Path.t -> Sign.t) -> sig_state -> p_command ->
             let (s, prio, qid) = unop in
             let sym = find_sym ~prt:true ~prv:true false ss qid in
             (* Make sure the operator has a fully qualified [qid]. *)
-            let unop = (s, prio, with_mod sym.sym_mod qid) in
+            let unop = (s, prio, with_mod sym.sym_path qid) in
             out 3 "(conf) %a %a\n" pp_symbol sym notation (Prefix unop);
             add_unop ss (Pos.make pos s) (sym, unop)
         | P_config_binop(binop)   ->
@@ -480,7 +478,7 @@ let handle : (Path.t -> Sign.t) -> sig_state -> p_command ->
             (* Define the binary operator [sym]. *)
             let sym = find_sym ~prt:true ~prv:true false ss qid in
             (* Make sure the operator has a fully qualified [qid]. *)
-            let binop = (s, assoc, prio, with_mod sym.sym_mod qid) in
+            let binop = (s, assoc, prio, with_mod sym.sym_path qid) in
             out 3 "(conf) %a %a\n" pp_symbol sym notation (Infix binop);
             add_binop ss (Pos.make pos s) (sym, binop);
         | P_config_quant(qid)     ->

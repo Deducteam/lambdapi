@@ -421,8 +421,8 @@ module CM = struct
     let keep_treecons e =
       let h, _, arity = get_args_len e in
       match h with
-      | Symb({sym_name; sym_mod; _}) ->
-          Some(TC.Symb(sym_mod, sym_name, arity), e)
+      | Symb({sym_name; sym_path; _}) ->
+          Some(TC.Symb(sym_path, sym_name, arity), e)
       | Vari(x)                       ->
           Some(TC.Vari(VarMap.find x vars_id), e)
       | _                             -> None

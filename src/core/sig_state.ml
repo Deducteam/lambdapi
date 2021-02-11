@@ -10,12 +10,10 @@
    properly. *)
 
 open Lplib.Extra
-
 open Common
 open Console
 open Pos
 open Timed
-open Module
 open Parsing
 open Syntax
 open Term
@@ -26,7 +24,7 @@ type sig_state =
   { signature : Sign.t                    (** Current signature.        *)
   ; in_scope  : (sym * Pos.popt) StrMap.t (** Symbols in scope.         *)
   ; aliases   : Path.t StrMap.t            (** Established aliases.      *)
-  ; mod_map  : string PathMap.t           (** Reverse map of [aliases]. *)
+  ; mod_map  : string Path.Map.t           (** Reverse map of [aliases]. *)
   ; builtins  : sym StrMap.t              (** Builtin symbols.          *)
   ; notations : notation SymMap.t         (** Printing hints.           *) }
 
@@ -37,7 +35,7 @@ type t = sig_state
 let create_sign : Path.t -> Sign.t = fun sign_path ->
   let d = Sign.dummy () in
   { d with sign_path ;
-           sign_deps = ref (PathMap.singleton Unif_rule.ghost_mod []) }
+           sign_deps = ref (Path.Map.singleton Unif_rule.path []) }
 
 (** Symbol properties needed for the signature *)
 type sig_symbol =
@@ -146,7 +144,7 @@ let open_sign : sig_state -> Sign.t -> sig_state = fun ss sign ->
 (** Dummy [sig_state] made from the dummy signature. *)
 let dummy : sig_state =
   { signature = Sign.dummy (); in_scope = StrMap.empty;
-    aliases = StrMap.empty; mod_map = PathMap.empty; builtins = StrMap.empty;
+    aliases = StrMap.empty; mod_map = Path.Map.empty; builtins = StrMap.empty;
     notations = SymMap.empty }
 
 (** [of_sign sign] creates a state from the signature [sign] with ghost
@@ -178,7 +176,7 @@ let find_sym : prt:bool -> prv:bool -> bool -> sig_state -> p_qident -> sym =
         begin
           (* The signature must be loaded (alias is mapped). *)
           let sign =
-            try PathMap.find (StrMap.find m st.aliases) Timed.(!Sign.loaded)
+            try Path.Map.find (StrMap.find m st.aliases) Timed.(!Sign.loaded)
             with _ -> assert false (* Should not happen. *)
           in
           (* Look for the symbol. *)
@@ -189,11 +187,11 @@ let find_sym : prt:bool -> prv:bool -> bool -> sig_state -> p_qident -> sym =
         begin
           (* Check that the signature was required (or is the current one). *)
           if mp <> st.signature.sign_path then
-            if not (PathMap.mem mp !(st.signature.sign_deps)) then
+            if not (Path.Map.mem mp !(st.signature.sign_deps)) then
               fatal pos "No module [%a] required." Path.pp mp;
           (* The signature must have been loaded. *)
           let sign =
-            try PathMap.find mp Timed.(!Sign.loaded)
+            try Path.Map.find mp Timed.(!Sign.loaded)
             with Not_found -> assert false (* Should not happen. *)
           in
           (* Look for the symbol. *)
@@ -203,7 +201,7 @@ let find_sym : prt:bool -> prv:bool -> bool -> sig_state -> p_qident -> sym =
   in
   match (prt, prv, s.sym_expo) with
   | (false, _    , Protec) ->
-      if s.sym_mod = st.signature.sign_path then s else
+      if s.sym_path = st.signature.sign_path then s else
       (* Fail if symbol is not defined in the current module. *)
       fatal pos "Protected symbol not allowed here."
   | (_    , false, Privat) -> fatal pos "Private symbol not allowed here."

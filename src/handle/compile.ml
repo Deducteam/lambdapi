@@ -8,7 +8,7 @@ open Console
 open Parsing
 open Core
 open Sign
-open Module
+open Library
 
 (** [gen_obj] indicates whether we should generate object files when compiling
     source files. The default behaviour is not te generate them. *)
@@ -46,8 +46,8 @@ let rec compile : bool -> Path.t -> Sign.t = fun force mp ->
       List.iter (fatal_msg "  - [%a]\n" Path.pp) !loading;
       fatal_no_pos "Build aborted."
     end;
-  if PathMap.mem mp !loaded then
-    let sign = PathMap.find mp !loaded in
+  if Path.Map.mem mp !loaded then
+    let sign = Path.Map.find mp !loaded in
     out 2 "Already loaded [%a]\n%!" Path.pp mp; sign
   else if force || Extra.more_recent (src ()) obj then
     begin
@@ -59,7 +59,7 @@ let rec compile : bool -> Path.t -> Sign.t = fun force mp ->
       let sig_st = Stdlib.ref (Sig_state.of_sign sign) in
       (* [sign] is added to [loaded] before processing the commands so that it
          is possible to qualify the symbols of the current modules. *)
-      loaded := PathMap.add mp sign !loaded;
+      loaded := Path.Map.add mp sign !loaded;
       let handle ss c =
         Term.Meta.reset_key_counter ();
         (* We provide the compilation function to the handle commands, so that
@@ -88,8 +88,8 @@ let rec compile : bool -> Path.t -> Sign.t = fun force mp ->
     begin
       out 2 "Loading %s ...\n%!" (src ());
       let sign = Sign.read obj in
-      PathMap.iter (fun mp _ -> ignore (compile false mp)) !(sign.sign_deps);
-      loaded := PathMap.add mp sign !loaded;
+      Path.Map.iter (fun mp _ -> ignore (compile false mp)) !(sign.sign_deps);
+      loaded := Path.Map.add mp sign !loaded;
       Sign.link sign;
       out 2 "Loaded %s\n%!" obj; sign
     end
@@ -119,7 +119,7 @@ end = struct
 
   (* [pure_apply_cfg ?lm ?st f] is function [f] but pure (without side
      effects).  The side effects taken into account occur in
-     {!val:Console.State.t}, {!val:Module.lib_mappings} and in the meta
+     {!val:Console.State.t}, {!val:Library.lib_mappings} and in the meta
      variable counter {!module:Term.Meta}. Arguments [?lm] allows to set the
      library mappings and [?st] sets the state. *)
   let pure_apply_cfg :
@@ -127,7 +127,7 @@ end = struct
     fun ?lm ?st f x ->
     let libmap = !lib_mappings in
     State.push ();
-    Option.iter Module.add_mapping lm;
+    Option.iter Library.add_mapping lm;
     Option.iter State.apply st;
     let restore () =
       State.pop ();

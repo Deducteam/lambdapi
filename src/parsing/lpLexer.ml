@@ -5,7 +5,6 @@ open Lplib
 open Sedlexing
 open Common
 open Pos
-open Module
 
 type token =
   (* end of file *)

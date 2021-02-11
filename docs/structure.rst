@@ -37,8 +37,9 @@ Overview of directories and files
   * ``debug.ml``: debugging tools
   * ``console.ml``: flag management
   * ``escape.ml``: basic functions on escaped identifiers
-  * ``module.ml``: filenames and paths management
+  * ``library.ml``: Lambdapi library management
   * ``package.ml``: management of package files ``lambdapi.pkg``
+  * ``path.ml``: module paths in the Lambdapi library
   * ``pos.ml``: source file position management
 
 * ``src/core/``: core of Lambdapi

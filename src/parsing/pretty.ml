@@ -12,7 +12,6 @@ open Console
 open Pos
 open Syntax
 open Format
-open Module
 
 let ident : p_ident pp = fun ppf {pos; elt=s} ->
   if LpLexer.is_keyword s then

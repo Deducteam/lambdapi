@@ -1,9 +1,8 @@
-(** File utilities. *)
+(** Lambdapi library management. *)
 
 open Lplib
 open Lplib.Base
 open Lplib.Extra
-
 open Timed
 open Console
 open Debug
@@ -11,32 +10,6 @@ open Debug
 (** Logging functions. *)
 let log_file = new_logger 'f' "file" "file system"
 let log_file = log_file.logger
-
-(** Representation of module names and related operations. *)
-module Path =
-  struct
-    (** Representation of a module name (roughly, a file path). *)
-    type t = string list
-
-    (** [compare] is a standard comparing function for module names. *)
-    let compare : t -> t -> int = fun m1 m2 ->
-      Stdlib.compare (List.map Escape.unescape m1)
-                     (List.map Escape.unescape m2)
-
-    (** [pp ppf mp] prints [mp] on formatter [ppf]. *)
-    let pp : t pp = fun ppf mp ->
-      Format.pp_print_string ppf (String.concat "." mp)
-
-    (** [ghost s] creates a special module of name [s] that cannot be handled
-       by users. *)
-    let ghost : string -> t = fun s -> [""; s]
-
-    (** [of_string s] converts a string [s] lexed as qid into a path. *)
-    let of_string : string -> t = Escape.split '.'
-  end
-
-(** Functional maps with module names as keys. *)
-module PathMap = Map.Make(Path)
 
 (** Representation of the mapping from module paths to files. *)
 module LibMap :
@@ -142,6 +115,10 @@ let lib_root : string option Stdlib.ref = Stdlib.ref None
 (** [lib_mappings] stores the specified mappings of library paths. *)
 let lib_mappings : LibMap.t ref = ref LibMap.empty
 
+(** [iter f] iterates [f] on current mappings. *)
+let iter : (Path.t -> string -> unit) -> unit = fun f ->
+  LibMap.iter f !lib_mappings
+
 (** [set_lib_root dir] sets the library root to directory [dir].
     The following directories are set sequentially, such that the active one
     is the last valid one
@@ -207,9 +184,6 @@ let add_mapping : string * string -> unit = fun (mp, fp) ->
   in
   lib_mappings := new_mapping
 
-(** [current_mappings ()] gives the currently registered library mappings. *)
-let current_mappings : unit -> LibMap.t = fun _ -> !lib_mappings
-
 (** [file_of_path mp] converts module path [mp] into the corresponding "file
     path" (with no attached extension). It is assumed that [lib_root] has been
     set, possibly with [set_lib_root]. *)
@@ -258,7 +232,7 @@ let path_of_file : string -> Path.t = fun fname ->
       | Some(_, p) ->
           if String.(length p < length fp) then mapping := Some(mp, p)
   in
-  LibMap.iter f (current_mappings ());
+  LibMap.iter f !lib_mappings;
   (* Fail if there is none. *)
   let (mp, fp) =
     match !mapping with

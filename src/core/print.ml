@@ -8,13 +8,11 @@
 open! Lplib
 open Lplib.Base
 open Lplib.Extra
-
 open Timed
 open Common
 open Debug
 open Term
 open Sig_state
-open Module
 
 (** Logging function for printing. *)
 let log_prnt = new_logger 'p' "prnt" "pretty-printing"
@@ -54,8 +52,8 @@ let notation : Sign.notation pp = fun oc notation ->
 
 (** [qualified s] prints symbol [s] fully qualified to channel [oc]. *)
 let pp_qualified : sym pp = fun oc s ->
-  match PathMap.find_opt s.sym_mod (!sig_state).mod_map with
-  | None -> Format.fprintf oc "%a.%s" Path.pp s.sym_mod s.sym_name
+  match Path.Map.find_opt s.sym_path (!sig_state).mod_map with
+  | None -> Format.fprintf oc "%a.%s" Path.pp s.sym_path s.sym_name
   | Some alias -> Format.fprintf oc "%s.%s" alias s.sym_name
 
 (** [notatin_of sym] returns the notation properties symbol [sym] or

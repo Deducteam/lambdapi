@@ -8,13 +8,13 @@ open Core
 open Handle
 
 let _ =
-  Module.set_lib_root None;
+  Library.set_lib_root None;
   match Package.find_config "." with
   | None -> assert false
   | Some(f) -> Package.apply_config f
 
 let compile (fname: string): Sign.t =
-  Compile.compile false (Module.path_of_file fname)
+  Compile.compile false (Library.path_of_file fname)
 
 let bool_file = "OK/bool.lp"
 let bool_sign = compile bool_file

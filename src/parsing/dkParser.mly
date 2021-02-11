@@ -6,7 +6,6 @@ open Common
 open Pos
 open Syntax
 open DkLexer
-open Module
 
 (** {b NOTE} we maintain the invariant described in the [Parser] module: every
     error should have an attached position.  We do not open [Console] to avoid

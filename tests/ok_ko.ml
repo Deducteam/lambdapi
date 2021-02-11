@@ -12,7 +12,7 @@ let test_ko f () =
   Alcotest.(check bool) f r false
 
 let _ =
-  Common.Module.set_lib_root None;
+  Common.Library.set_lib_root None;
   let open Alcotest in
   let files = Lplib.Extra.files "OK" in
   (* TODO put back OK/unif_hint.lp when it is fixed *)

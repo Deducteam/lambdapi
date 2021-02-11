@@ -3,7 +3,6 @@ open Lexing
 open Common
 open Console
 open Pos
-open Module
 
 let filename = ref ""
 
