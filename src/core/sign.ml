@@ -86,15 +86,15 @@ let current_sign () =
   in
   Path.Map.find mp !loaded
 
-(** [create_sym e p name type blist] creates a new symbol
-    with the exposition [e], the property [p], the name [name]
-    the type [type] and no implicit arguments *)
+(** [create_sym expo prop name typ impl] creates a new symbol with the
+   exposition [expo], property [prop], name [name] type [typ] and implicit
+   arguments [impl]. *)
 let create_sym : expo -> prop -> string -> term -> bool list -> sym =
-  fun e p name typ blist ->
-  let mp = (current_sign()).sign_path in
-  { sym_name = name; sym_type = ref typ; sym_path = mp; sym_def = ref None;
-    sym_impl = blist; sym_rules = ref []; sym_prop = p; sym_expo = e;
-    sym_tree = ref Tree_types.empty_dtree; sym_mstrat = ref Eager }
+  fun sym_expo sym_prop sym_name typ sym_impl ->
+  let sym_path = (current_sign()).sign_path in
+  { sym_expo; sym_path; sym_name; sym_type = ref typ; sym_impl; sym_prop;
+    sym_def = ref None; sym_rules = ref []; sym_mstrat = ref Eager;
+    sym_tree = ref Tree_types.empty_dtree }
 
 (** [link sign] establishes physical links to the external symbols. *)
 let link : t -> unit = fun sign ->
