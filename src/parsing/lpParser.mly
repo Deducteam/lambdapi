@@ -10,7 +10,7 @@
     let make_pos : Lexing.position * Lexing.position -> 'a -> 'a loc =
       fun lps elt -> Pos.in_pos (locate lps) elt
 
-    let qid_of_mod loc p =
+    let qid_of_path loc p =
       let (mp, id) = List.split_last p in make_pos loc (mp, id)
  %}
 
@@ -105,9 +105,9 @@
 %token <string> UID
 %token <string> UID_META
 %token <string> UID_PAT
-%token <string list> QID
-%token <string list> ID_EXPL
-//%token <string list * bool> ID_QUANT
+%token <Path.t> QID
+%token <Path.t> ID_EXPL
+//%token <Path.t * bool> ID_QUANT
 
 // types
 
@@ -140,12 +140,12 @@
 uid: i=UID { make_pos $sloc i}
 
 id:
-  | p=QID { qid_of_mod $sloc p}
+  | p=QID { qid_of_path $sloc p}
   | i=UID { make_pos $sloc ([], i) }
 
 term_id:
   | i=id { make_pos $sloc (P_Iden(i, false)) }
-  | p=ID_EXPL { make_pos $sloc (P_Iden(qid_of_mod $sloc p, true)) }
+  | p=ID_EXPL { make_pos $sloc (P_Iden(qid_of_path $sloc p, true)) }
 
 // Rewrite pattern identifier
 patt: p=UID_PAT { if p = "_" then None else Some(make_pos $sloc p) }
@@ -384,7 +384,7 @@ term:
     }
 //| i=ID_QUANT b=binder
 //  {
-//    let q = make_pos $loc(i) (P_Iden(qid_of_mod $loc(i) (fst i), snd i)) in
+//    let q = make_pos $loc(i) (P_Iden(qid_of_path $loc(i) (fst i), snd i)) in
 //    let b = make_pos $loc(b) (P_Abst(fst b, snd b)) in
 //    make_pos $sloc (P_Appl(q, b))
 //  }

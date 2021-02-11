@@ -94,9 +94,9 @@ type token =
   | UID of string
   | UID_META of string
   | UID_PAT of string
-  | QID of string list
-  | ID_EXPL of string list
-  (*| ID_QUANT of (string list * bool)*)
+  | QID of Path.t
+  | ID_EXPL of Path.t
+  (*| ID_QUANT of (Path.t * bool)*)
 
 exception SyntaxError of strloc
 
