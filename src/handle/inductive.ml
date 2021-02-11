@@ -22,7 +22,7 @@ open Syntax
 open Debug
 
 (** Logging function for generating of inductive principle. *)
-let log_ind = new_logger 'g' "indu" "generating induction principle"
+let log_ind = new_logger 'g' "indu" "induction principles generation"
 let log_ind = log_ind.logger
 
 (** Type for inductive type definitions. *)
