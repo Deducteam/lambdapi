@@ -23,7 +23,7 @@ let param_id : p_ident option pp = fun ppf idopt ->
   | Some(id) -> ident ppf id
   | None     -> pp_print_string ppf "_"
 
-let p_mod : p_mod pp = fun ppf {elt=mp;_} -> Path.pp ppf mp
+let p_path : p_path pp = fun ppf {elt=mp;_} -> Path.pp ppf mp
 
 let qident : p_qident pp = fun ppf {elt=(mp,s); pos} ->
   if LpLexer.is_keyword s then
@@ -210,9 +210,9 @@ let command : p_command pp = fun ppf {elt;_} ->
   begin match elt with
   | P_require(b,ms) ->
       let op = if b then " open" else "" in
-      out "require%s %a" op (List.pp p_mod " ") ms
-  | P_require_as(m,i) -> out "require %a as %a" p_mod m ident i
-  | P_open(ms) -> out "open %a" (List.pp p_mod " ") ms
+      out "require%s %a" op (List.pp p_path " ") ms
+  | P_require_as(m,i) -> out "require %a as %a" p_path m ident i
+  | P_open(ms) -> out "open %a" (List.pp p_path " ") ms
   | P_symbol{p_sym_mod;p_sym_nam;p_sym_arg;p_sym_typ;p_sym_trm;p_sym_prf
              ;p_sym_def} ->
     begin

@@ -115,7 +115,7 @@
 %start <Syntax.p_qident> id
 
 %type <Syntax.p_ident> uid
-%type <Syntax.p_mod> path
+%type <Syntax.p_path> path
 %type <Syntax.p_ident option> patt
 %type <Syntax.p_params> params
 

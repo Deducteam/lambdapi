@@ -25,5 +25,5 @@ end
 
 include Path
 
-(** Functional maps with module names as keys. *)
+(** Functional maps with paths as keys. *)
 module Map = Map.Make(Path)

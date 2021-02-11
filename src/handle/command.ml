@@ -44,7 +44,7 @@ let _ =
 
 (** [handle_open ss p] handles the command [open p] with [ss] as the
    signature state. On success, an updated signature state is returned. *)
-let handle_open : sig_state -> p_mod -> sig_state =
+let handle_open : sig_state -> p_path -> sig_state =
   fun ss {elt=p;pos} ->
   (* Obtain the signature corresponding to [m]. *)
   let sign =
@@ -60,7 +60,7 @@ let handle_open : sig_state -> p_mod -> sig_state =
    main compile function (passed as argument to avoid cyclic dependencies).
    On success, an updated signature state is returned. *)
 let handle_require :
-      (Path.t -> Sign.t) -> bool -> sig_state -> p_mod -> sig_state =
+      (Path.t -> Sign.t) -> bool -> sig_state -> p_path -> sig_state =
   fun compile b ss ({elt=p;pos} as mp) ->
   (* Check that the module has not already been required. *)
   if Path.Map.mem p !(ss.signature.sign_deps) then
@@ -76,7 +76,7 @@ let handle_require :
     compilation function passed as argument to avoid cyclic dependencies. On
     success, an updated signature state is returned. *)
 let handle_require_as :
-    (Path.t -> Sign.t) -> sig_state -> p_mod -> p_ident -> sig_state =
+    (Path.t -> Sign.t) -> sig_state -> p_path -> p_ident -> sig_state =
   fun compile ss ({elt=p;_} as mp) {elt=id;_} ->
   let ss = handle_require compile false ss mp in
   let aliases = StrMap.add id p ss.aliases in
