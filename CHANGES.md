@@ -10,7 +10,7 @@
   * `install_cmd` -> `install`
   * `init_cmd` -> `init`
 
-- Improve handling of escaped identifiers in `escape.ml`
+- Improve handling of escaped identifiers in `escape.ml` and fix printing
 
 - Improve `tests/ok_ko.ml` to allow sub-directories in `tests/OK/` or `tests/KO/`
 
