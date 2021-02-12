@@ -1,4 +1,4 @@
-<qid> ::= [<id>'.']+<id>
+<qid> ::= [<uid>'.']+<uid>
 
 <switch> ::= 'on'
            | 'off'
@@ -6,32 +6,32 @@
 <assoc> ::= 'left'
           | 'right'
 
-<ident> ::= <id>
 
-<qident> ::= <qid>
-           | <id>
 
-<term_ident> ::= '@'<qid>
-               | <qident>
+<id> ::= <qid>
+       | <uid>
 
-<patt> ::= '$'<id>
+<term_id> ::= <id>
+            | '@'<id>
 
-<argid> ::= <ident>
-          | '_'
+<patt> ::= '$'<uid>
 
-<arg_list> ::= <argid>
-             | '(' <argid>+ ':' <term> ')'
-             | '{' <argid>+ [':' <term>] '}'
+<param_id> ::= <uid>
+             | '_'
+
+<params> ::= <param_id>
+           | '(' <param_id>+ ':' <term> ')'
+           | '{' <param_id>+ [':' <term>] '}'
 
 <rw_patt> ::= <term>
             | 'in' <term>
-            | 'in' <ident> 'in' <term>
+            | 'in' <uid> 'in' <term>
             | <term> 'in' <term> ['in' <term>]
-            | <term> 'as' <ident> 'in' <term>
+            | <term> 'as' <uid> 'in' <term>
 
 <tactic> ::= <query>
            | 'apply' <term>
-           | 'assume' <argid>+
+           | 'assume' <param_id>+
            | 'fail'
            | 'focus' <int>
            | 'refine' <term>
@@ -52,19 +52,19 @@
 <float_or_int> ::= <float>
                  | <int>
 
-<config> ::= 'builtin' "<string>" '≔' <qident>
-           | 'infix' [<assoc>] <float_or_int> "<string>" '≔' <qident>
-           | 'prefix' <float_or_int> "<string>" '≔' <qident>
-           | 'quantifier' <qident>
+<config> ::= 'builtin' "<string>" '≔' <id>
+           | 'infix' [<assoc>] <float_or_int> "<string>" '≔' <id>
+           | 'prefix' <float_or_int> "<string>" '≔' <id>
+           | 'quantifier' <id>
            | 'unif_rule' <unif_rule>
 
 <assert_kw> ::= 'assert'
               | 'assertnot'
 
-<query> ::= <assert_kw> <arg_list>* '⊢' <term> ':' <term>
-          | <assert_kw> <arg_list>* '⊢' <term> '≡' <term>
+<query> ::= <assert_kw> <params>* '⊢' <term> ':' <term>
+          | <assert_kw> <params>* '⊢' <term> '≡' <term>
           | 'compute' <term>
-          | 'print' [<qident>]
+          | 'print' [<id>]
           | 'proofterm'
           | 'set' 'debug' ('+' | '-')<string>
           | 'set' 'flag' "<string>" <switch>
@@ -79,25 +79,27 @@
 
 <proof> ::= 'begin' (<tactic> ';')* <proof_end>
 
-<constructor> ::= <ident> <arg_list>* ':' <term>
+<constructor> ::= <uid> <params>* ':' <term>
 
-<inductive> ::= <ident> <arg_list>* ':' <term> '≔' ['|'] [<constructor>
+<inductive> ::= <uid> <params>* ':' <term> '≔' ['|'] [<constructor>
                 ('|' <constructor>)*]
 
 <term_proof> ::= <term>
                | <proof>
                | <term> <proof>
 
-<command> ::= 'require' 'open' <qid>+ ';'
-            | 'require' <qid>+ ';'
-            | 'require' <qid> 'as' <ident> ';'
-            | 'open' <qid> ';'
-            | <modifier>* 'symbol' <ident> <arg_list>* ':' <term> [<proof>]
+<path> ::= <qid>
+
+<command> ::= 'require' 'open' <path>* ';'
+            | 'require' <path>* ';'
+            | 'require' <path> 'as' <uid> ';'
+            | 'open' <path>* ';'
+            | <modifier>* 'symbol' <uid> <params>* ':' <term> [<proof>]
               ';'
-            | <modifier>* 'symbol' <ident> <arg_list>* [':' <term>] '≔'
+            | <modifier>* 'symbol' <uid> <params>* [':' <term>] '≔'
               <term_proof> ';'
-            | <modifier>* <arg_list>* 'inductive' <inductive> ('with'
-              <inductive>)* ';'
+            | <modifier>* <params>* 'inductive' <inductive> ('with' <inductive>)*
+              ';'
             | 'rule' <rule> ('with' <rule>)* ';'
             | 'set' <config> ';'
             | <query> ';'
@@ -105,10 +107,10 @@
 
 <env> ::= '[' [<term> (';' <term>)*] ']'
 
-<aterm> ::= <term_ident>
+<aterm> ::= <term_id>
           | '_'
           | 'TYPE'
-          | '?'<id> [<env>]
+          | '?'<uid> [<env>]
           | <patt> [<env>]
           | '(' <term> ')'
           | '{' <term> '}'
@@ -118,13 +120,13 @@
 
 <term> ::= <sterm>
          | <term> → <term>
-         | '`' <term_ident> <binder>
+         | '`' <term_id> <binder>
          | 'Π' <binder>
          | 'λ' <binder>
-         | 'let' <ident> <arg_list>* [':' <term>] '≔' <term> 'in' <term>
+         | 'let' <uid> <params>* [':' <term>] '≔' <term> 'in' <term>
 
-<binder> ::= <arg_list>+ ',' <term>
-           | <argid> ':' <term> ',' <term>
+<binder> ::= <params>+ ',' <term>
+           | <param_id> ':' <term> ',' <term>
 
 <rule> ::= <term> '↪' <term>
 

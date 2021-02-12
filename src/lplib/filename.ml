@@ -12,3 +12,6 @@ let rec normalize fname =
     let dirnm = dirname fname in
     let basenm = basename fname in
     concat (normalize dirnm) basenm
+
+(** [current_dir ()] returns the canonical running path of the program. *)
+let current_dir : unit -> string = fun _ -> realpath "."

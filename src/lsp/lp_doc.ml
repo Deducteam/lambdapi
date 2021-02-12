@@ -40,7 +40,7 @@ type t = {
   mutable final : Pure.state; (* Only mutated after parsing. *)
   nodes : doc_node list;
   logs : (string * Pos.popt) list;
-  map : (Syntax.p_module_path * string) RangeMap.t;
+  map : Syntax.qident RangeMap.t;
 }
 
 let option_default o1 d =

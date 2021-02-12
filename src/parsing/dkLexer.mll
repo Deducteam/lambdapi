@@ -1,13 +1,10 @@
 {
 open Lexing
 open Common
-open Console
+open Error
 open Pos
 
 let filename = ref ""
-
-let to_module_path : string -> Syntax.p_module_path = fun mp ->
-  List.map (fun s -> (s, false)) (String.split_on_char '.' mp)
 
 let make_pos : Lexing.position * Lexing.position -> 'a -> 'a loc =
   fun lps elt ->
@@ -28,7 +25,7 @@ type token =
   | KW_PRV
   | KW_THM
   | INFER
-  | REQUIRE of Syntax.p_module_path
+  | REQUIRE of Path.t
   | TYPE
   (* Symbols. *)
   | ARROW
@@ -45,8 +42,8 @@ type token =
   | RIGHTPAR
   | UNDERSCORE
   (* Identifiers. *)
-  | ID of string
-  | QID of (Syntax.p_module_path * string)
+  | UID of string
+  | QID of Syntax.qident
 
 let unexpected_char : Lexing.lexbuf -> char -> token = fun lexbuf c ->
   fatal (Some(locate_lexbuf lexbuf)) "Unexpected characters [%c]." c
@@ -89,7 +86,7 @@ rule token = parse
   | "prv"                           { KW_PRV                               }
   | "thm"                           { KW_THM                               }
   | "#INFER"                        { INFER                                }
-  | "#REQUIRE" space+ (mpath as mp) { REQUIRE(to_module_path mp)           }
+  | "#REQUIRE" space+ (mpath as mp) { REQUIRE(Path.of_string mp)           }
   | "Type"                          { TYPE                                 }
   (* symbols *)
   | "->"                            { ARROW                                }
@@ -106,8 +103,8 @@ rule token = parse
   | ')'                             { RIGHTPAR                             }
   | "_"                             { UNDERSCORE                           }
   (* identifiers *)
-  | (mpath as mp) "." (ident as id) { QID(to_module_path mp, id)           }
-  | ident  as x                     { ID(x)                                }
+  | (mpath as mp) "." (ident as id) { QID(Path.of_string mp, id)           }
+  | ident  as x                     { UID(x)                               }
   | _ as c                          { unexpected_char lexbuf c             }
 
 and comment = parse
