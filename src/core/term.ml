@@ -271,8 +271,16 @@ let rec unfold : term -> term = fun t ->
 (** {b NOTE} that {!val:unfold} must (almost) always be called before matching
     over a value of type {!type:term}. *)
 
-(** [unset m] returns [true] if [m] is not instantiated. *)
-let unset : meta -> bool = fun m -> !(m.meta_value) = None
+(** [is_abst t] returns [true] iff [t] is of the form [Abst(_)]. *)
+let is_abst : term -> bool = fun t ->
+  match unfold t with Abst(_) -> true | _ -> false
+
+(** [is_prod t] returns [true] iff [t] is of the form [Prod(_)]. *)
+let is_prod : term -> bool = fun t ->
+  match unfold t with Prod(_) -> true | _ -> false
+
+(** [is_unset m] returns [true] if [m] is not instantiated. *)
+let is_unset : meta -> bool = fun m -> !(m.meta_value) = None
 
 (** Basic management of meta variables. *)
 module Meta : sig

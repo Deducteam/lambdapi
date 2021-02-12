@@ -39,11 +39,11 @@ let rec compile : bool -> Path.t -> Sign.t = fun force mp ->
     | (false, true ) -> legacy
   in
   let obj = base ^ obj_extension in
-  if Path.Stack.mem mp !loading then
+  if List.mem mp !loading then
     begin
       fatal_msg "Circular dependencies detected in [%s].\n" (src ());
       fatal_msg "Dependency stack for module [%a]:\n" Path.pp mp;
-      Path.Stack.iter (fatal_msg "  - [%a]\n" Path.pp) !loading;
+      List.iter (fatal_msg "  - [%a]\n" Path.pp) !loading;
       fatal_no_pos "Build aborted."
     end;
   if Path.Map.mem mp !loaded then
@@ -54,7 +54,7 @@ let rec compile : bool -> Path.t -> Sign.t = fun force mp ->
       let forced = if force then " (forced)" else "" in
       let src = src () in
       Console.out 1 "Loading %s%s ...\n%!" src forced;
-      loading := Path.Stack.add mp !loading;
+      loading := mp :: !loading;
       let sign = Sig_state.create_sign mp in
       let sig_st = Stdlib.ref (Sig_state.of_sign sign) in
       (* [sign] is added to [loaded] before processing the commands so that it
@@ -81,7 +81,7 @@ let rec compile : bool -> Path.t -> Sign.t = fun force mp ->
       Stream.iter consume (parse_file src);
       Sign.strip_private sign;
       if Stdlib.(!gen_obj) then Sign.write sign obj;
-      loading := Path.Stack.tl !loading;
+      loading := List.tl !loading;
       Console.out 1 "Checked %s\n%!" src; sign
     end
   else

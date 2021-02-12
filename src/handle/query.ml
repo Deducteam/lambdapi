@@ -114,8 +114,8 @@ let handle : Sig_state.t -> proof_state option -> p_query -> result =
       let open Timed in
       Console.out 1 "(prnt) %a%a%asymbol %a: %a" Tags.pp_expo sym.sym_expo
         Tags.pp_prop sym.sym_prop Tags.pp_match_strat !(sym.sym_mstrat)
-        pp_symbol sym pp_term !(sym.sym_type);
-      Option.iter (fun h -> Console.out 1 " [%a]" notation h)
+        pp_sym sym pp_term !(sym.sym_type);
+      Option.iter (fun h -> Console.out 1 " [%a]" pp_notation h)
         (notation_of sym);
       (match !(sym.sym_def) with
       | Some t ->

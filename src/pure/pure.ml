@@ -134,7 +134,7 @@ let initial_state : string -> state = fun fname ->
   Time.restore Stdlib.(!t0);
   Package.apply_config fname;
   let mp = Library.path_of_file fname in
-  Sign.loading := Path.Stack.add mp Path.Stack.empty;
+  Sign.loading := [mp];
   let sign = Sig_state.create_sign mp in
   Sign.loaded  := Path.Map.add mp sign !Sign.loaded;
   (Time.save (), Sig_state.of_sign sign)

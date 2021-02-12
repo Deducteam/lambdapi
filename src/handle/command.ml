@@ -450,7 +450,7 @@ let handle : (Path.t -> Sign.t) -> sig_state -> p_command ->
               fatal pos "Builtin [%s] already exists." s;
             let sym = find_sym ~prt:true ~prv:true false ss qid in
             Builtin.check ss pos s sym;
-            Console.out 3 "(conf) set builtin \"%s\" ≔ %a\n" s pp_symbol sym;
+            Console.out 3 "(conf) set builtin \"%s\" ≔ %a\n" s pp_sym sym;
             add_builtin ss s sym
         | P_config_unop(unop)     ->
             let (s, prio, qid) = unop in
@@ -458,7 +458,7 @@ let handle : (Path.t -> Sign.t) -> sig_state -> p_command ->
             (* Make sure the operator has a fully qualified [qid]. *)
             let unop = (s, prio, with_mod sym.sym_path qid) in
             Console.out 3 "(conf) %a %a\n"
-              pp_symbol sym notation (Prefix unop);
+              pp_sym sym pp_notation (Prefix unop);
             add_unop ss (Pos.make pos s) (sym, unop)
         | P_config_binop(binop)   ->
             let (s, assoc, prio, qid) = binop in
@@ -467,11 +467,11 @@ let handle : (Path.t -> Sign.t) -> sig_state -> p_command ->
             (* Make sure the operator has a fully qualified [qid]. *)
             let binop = (s, assoc, prio, with_mod sym.sym_path qid) in
             Console.out 3 "(conf) %a %a\n"
-              pp_symbol sym notation (Infix binop);
+              pp_sym sym pp_notation (Infix binop);
             add_binop ss (Pos.make pos s) (sym, binop);
         | P_config_quant(qid)     ->
             let sym = find_sym ~prt:true ~prv:true false ss qid in
-            Console.out 3 "(conf) %a quantifier\n" pp_symbol sym;
+            Console.out 3 "(conf) %a quantifier\n" pp_sym sym;
             add_quant ss sym
         | P_config_unif_rule(h)   ->
             (* Approximately same processing as rules without SR checking. *)

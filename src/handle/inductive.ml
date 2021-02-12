@@ -85,7 +85,7 @@ let ind_typ_with_codom :
     | (Prod(a,b), _) ->
         let (x,b) = LibTerm.unbind_name b s in
         _Prod (lift a) (Bindlib.bind_var x (aux (x::xs) b))
-    | _ -> fatal pos "The type of %a is not supported" pp_symbol ind_sym
+    | _ -> fatal pos "The type of %a is not supported" pp_sym ind_sym
   in
   aux (List.map (fun (_,(v,_,_)) -> v) env) a
 
@@ -195,7 +195,7 @@ let fold_cons_type
           let d = List.assq ind_sym ind_pred_map in
           codom xs acc d.ind_var ts
         else fatal pos "%a is not a constructor of %a"
-               pp_symbol cons_sym pp_symbol ind_sym
+               pp_sym cons_sym pp_sym ind_sym
     | (Prod(t,u), _) ->
        let (x,u) = LibTerm.unbind_name u x_str in
        let x = inj_var (List.length xs) x in
@@ -212,9 +212,9 @@ let fold_cons_type
                    let next = fold (x::xs) (acc_nonrec_dom acc x) u in
                    nonrec_dom t x next
              end
-         | _ -> fatal pos "The type of %a is not supported" pp_symbol cons_sym
+         | _ -> fatal pos "The type of %a is not supported" pp_sym cons_sym
        end
-    | _ -> fatal pos "The type of %a is not supported" pp_symbol cons_sym
+    | _ -> fatal pos "The type of %a is not supported" pp_sym cons_sym
   in
   let _, t = Env.of_prod_using [] vs !(cons_sym.sym_type) in
   fold (List.mapi inj_var (Array.to_list vs)) init t

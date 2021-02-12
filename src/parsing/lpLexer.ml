@@ -141,7 +141,7 @@ end = struct
                    | supplemental_punctuation ]
   let regid = [%sedlex.regexp? (letter | '_'), Star (letter | digit | '_')]
   let escid =
-    [%sedlex.regexp? "{|", Star (Compl '|' | '|', Compl '}'), Star '|', "|}"]
+    [%sedlex.regexp? "{|", Plus (Compl '|' | '|', Compl '}'), Star '|', "|}"]
   let uid = [%sedlex.regexp? regid | escid]
   let qid = [%sedlex.regexp? uid, Plus ('.', uid)]
   let id = [%sedlex.regexp? uid | qid]
@@ -349,14 +349,15 @@ end = struct
        lexing. This is why a regular expression which includes many characters
        is preferred over using anything for identifiers. *)
 
-    | '?', uid -> UID_META(tail 1 buf)
-    | '$', uid -> UID_PAT(tail 1 buf)
+    | '?', uid -> UID_META(Escape.unescape (tail 1 buf))
+    | '$', uid -> UID_PAT(Escape.unescape (tail 1 buf))
 
-    | '@', uid -> ID_EXPL([tail 1 buf])
-    | '@', qid -> ID_EXPL(Path.of_string (tail 1 buf))
+    | '@', uid -> ID_EXPL([Escape.unescape(tail 1 buf)])
+    | '@', qid ->
+        ID_EXPL(List.map Escape.unescape (Path.of_string (tail 1 buf)))
 
-    | uid -> UID(Utf8.lexeme buf)
-    | qid -> QID(Path.of_string (Utf8.lexeme buf))
+    | uid -> UID(Escape.unescape (Utf8.lexeme buf))
+    | qid -> QID(List.map Escape.unescape (Path.of_string (Utf8.lexeme buf)))
 
     (* invalid token *)
 

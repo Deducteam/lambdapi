@@ -74,15 +74,14 @@ module LibMap :
       | (Some(_), []     ) -> raise Already_mapped
       | (None   , []     ) -> Node(Some(fp), map)
       | (_      , k :: ks) ->
-          let k' = Escape.unescape k in
-          try Node(po, StrMap.add k' (add ks fp (StrMap.find k' map)) map)
-          with Not_found -> Node(po, StrMap.add k' (singleton ks fp) map)
+          try Node(po, StrMap.add k (add ks fp (StrMap.find k map)) map)
+          with Not_found -> Node(po, StrMap.add k (singleton ks fp) map)
 
     exception Root_not_set
 
     let get ks (Node(po, map)) =
       let concat root ks =
-        List.fold_left Filename.concat root (List.map Escape.unescape ks) in
+        List.fold_left Filename.concat root ks in
       let rec get (root, old_ks) ks map =
         if !log_enabled then
           log_lib "get %S\n[%a]\n[%a]\n%a" root
@@ -90,8 +89,7 @@ module LibMap :
         match ks with
         | []      -> concat root old_ks
         | k :: ks ->
-            let k' = Escape.unescape k in
-            match StrMap.find k' map with
+            match StrMap.find k map with
             | Node(Some(root), map) -> get (root, ks) ks map
             | Node(None      , map) -> get (root, old_ks) ks map
             | exception Not_found -> concat root old_ks

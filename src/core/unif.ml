@@ -342,7 +342,7 @@ and solve_aux : ctxt -> term -> term -> problem -> constr list =
       if !log_enabled then
         let f (s0,s1,s2,b) =
           log_unif (yel "inverses_for_prod %a: %a, %a, %a, %b")
-            pp_symbol s pp_symbol s0 pp_symbol s1 pp_symbol s2 b
+            pp_sym s pp_sym s0 pp_sym s1 pp_sym s2 b
         in List.iter f l
     end;
     l
@@ -354,7 +354,7 @@ and solve_aux : ctxt -> term -> term -> problem -> constr list =
 
   let rec inverse s v =
     if !log_enabled then
-      log_unif "inverse [%a] [%a]" pp_symbol s pp_term v;
+      log_unif "inverse [%a] [%a]" pp_sym s pp_term v;
     match LibTerm.get_args (Eval.whnf [] v) with
     | Symb(s'), [u] when s' == s -> u
     | Prod(a,b), _ -> find_inverse_prod a b (inverses_for_prod s)
