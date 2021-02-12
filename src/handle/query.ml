@@ -110,7 +110,7 @@ let handle : Sig_state.t -> proof_state option -> p_query -> result =
        | Some ps -> Console.out 1 "%a" Proof.pp_goals ps;
                     Some (Format.asprintf "%a" Proof.pp_goals ps))
   | P_query_print(Some qid) ->
-      let sym = Sig_state.find_sym ~prt:true ~prv:true false ss qid in
+      let sym = Sig_state.find_sym ~prt:true ~prv:true ss qid in
       let open Timed in
       Console.out 1 "(prnt) %a%a%asymbol %a: %a" Tags.pp_expo sym.sym_expo
         Tags.pp_prop sym.sym_prop Tags.pp_match_strat !(sym.sym_mstrat)

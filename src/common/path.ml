@@ -7,7 +7,9 @@ module Path =
     (** Representation of a module name (roughly, a file path). *)
     type t = string list
 
-    (** [pp ppf p] prints path [p] on the formatter [ppf]. *)
+    (** [pp ppf p] prints path [p] on the formatter [ppf]. Remark: to be used
+       in Common only as it does not escape identifiers that need to be
+       escaped. *)
     let pp : t pp = Lplib.List.pp Format.pp_print_string "."
 
     (** [compare] is a standard comparaison function for paths. *)

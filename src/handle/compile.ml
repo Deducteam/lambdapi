@@ -33,27 +33,29 @@ let rec compile : bool -> Path.t -> Sign.t = fun force mp ->
     let src = base ^ src_extension in
     let legacy = base ^ legacy_src_extension in
     match (Sys.file_exists src, Sys.file_exists legacy) with
-    | (false, false) -> fatal_no_pos "File [%s.{lp|dk}] not found." base
-    | (true , true ) -> fatal_no_pos "Both [%s] and [%s] exist." src legacy
+    | (false, false) ->
+        fatal_no_pos "File \"%s.lp\" (or .dk) not found." base
+    | (true , true ) ->
+        fatal_no_pos "Both \"%s\" and \"%s\" exist." src legacy
     | (true , false) -> src
     | (false, true ) -> legacy
   in
   let obj = base ^ obj_extension in
   if List.mem mp !loading then
     begin
-      fatal_msg "Circular dependencies detected in [%s].\n" (src ());
-      fatal_msg "Dependency stack for module [%a]:\n" Path.pp mp;
-      List.iter (fatal_msg "  - [%a]\n" Path.pp) !loading;
+      fatal_msg "Circular dependencies detected in \"%s\".\n" (src ());
+      fatal_msg "Dependency stack for module %a:\n" Print.pp_path mp;
+      List.iter (fatal_msg "- %a\n" Print.pp_path) !loading;
       fatal_no_pos "Build aborted."
     end;
   if Path.Map.mem mp !loaded then
     let sign = Path.Map.find mp !loaded in
-    Console.out 2 "Already loaded [%a]\n%!" Path.pp mp; sign
+    Console.out 2 "%a already loaded\n" Print.pp_path mp; sign
   else if force || Extra.more_recent (src ()) obj then
     begin
       let forced = if force then " (forced)" else "" in
       let src = src () in
-      Console.out 1 "Loading %s%s ...\n%!" src forced;
+      Console.out 1 "Loading \"%s\"%s ...\n%!" src forced;
       loading := mp :: !loading;
       let sign = Sig_state.create_sign mp in
       let sig_st = Stdlib.ref (Sig_state.of_sign sign) in
@@ -82,16 +84,16 @@ let rec compile : bool -> Path.t -> Sign.t = fun force mp ->
       Sign.strip_private sign;
       if Stdlib.(!gen_obj) then Sign.write sign obj;
       loading := List.tl !loading;
-      Console.out 1 "Checked %s\n%!" src; sign
+      Console.out 1 "Checked \"%s\"\n%!" src; sign
     end
   else
     begin
-      Console.out 2 "Loading %s ...\n%!" (src ());
+      Console.out 2 "Loading \"%s\" ...\n%!" (src ());
       let sign = Sign.read obj in
       Path.Map.iter (fun mp _ -> ignore (compile false mp)) !(sign.sign_deps);
       loaded := Path.Map.add mp sign !loaded;
       Sign.link sign;
-      Console.out 2 "Loaded %s\n%!" obj; sign
+      Console.out 2 "Loaded \"%s\"\n%!" obj; sign
     end
 
 (** [recompile] indicates whether we should recompile files who have an object

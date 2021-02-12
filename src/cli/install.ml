@@ -6,8 +6,8 @@ open Error
 let run_command : bool -> string -> unit = fun dry_run cmd ->
   if dry_run then Console.out 1 "%s\n" cmd else
   match Sys.command cmd with
-  | 0                      -> ()
-  | _                      -> fatal_no_pos "Command [%s] failed." cmd
+  | 0 -> ()
+  | _ -> fatal_no_pos "Command [%s] failed." cmd
   | exception Failure(msg) ->
       fatal_msg "Command [%s] failed." cmd;
       fatal_no_pos "Reported error: %s." msg
@@ -78,7 +78,8 @@ let run_uninstall : Config.t -> bool -> string -> unit =
     let installed_name = Package.((read pkg_file).package_name) in
     if pkg_name <> installed_name then
       fatal_no_pos "Unexpected package [%s] installed under the same \
-        root path intend for specified package [%s]." installed_name pkg_name;
+                    root path intended for specified package [%s]."
+        installed_name pkg_name;
     (* Do the actual uninstallation. *)
     let cmd = "rm -r " ^ Filename.quote pkg_dir in
     run_command dry_run cmd

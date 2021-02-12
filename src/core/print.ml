@@ -56,10 +56,7 @@ let pp_notation : Sign.notation pp = fun ppf notation ->
   | Succ           -> out ppf "builtin \"+1\""
   | Quant          -> out ppf "quantifier"
 
-(** [pp_uid s] prints the uid [s], in escaped form if [s] is not a regular
-   identifier. *)
-let pp_uid : string pp = fun ppf s ->
-  if Parsing.LpLexer.is_uid s then out ppf "%s" s else out ppf "{|%s|}" s
+let pp_uid = Parsing.LpLexer.pp_uid
 
 let pp_path : Path.t pp = List.pp pp_uid "."
 

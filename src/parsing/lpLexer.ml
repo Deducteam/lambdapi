@@ -105,6 +105,10 @@ module Lp_lexer : sig
   val is_uid : string -> bool
   (** [is_uid s] is [true] iff [s] is a regular identifier. *)
 
+  val pp_uid : string Base.pp
+  (** [pp_uid s] prints the uid [s], in escaped form if [s] is not a regular
+   identifier. *)
+
   val is_identifier : string -> bool
   (** [is_identifier s] is [true] iff [s] is a valid identifier. *)
 
@@ -236,6 +240,11 @@ end = struct
     match%sedlex lexbuf with
     | uid -> true
     | _ -> false
+
+  let pp_uid : string Base.pp = fun ppf s ->
+    if is_uid s
+    then Format.fprintf ppf "%s" s
+    else Format.fprintf ppf "{|%s|}" s
 
   let is_identifier : string -> bool = fun s ->
     let lexbuf = Sedlexing.Utf8.from_string s in

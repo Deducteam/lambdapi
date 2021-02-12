@@ -38,7 +38,7 @@ let test_xtc () =
 (** Decision tree of regular symbol. *)
 let test_dtree () =
   let id = Pos.none (["tests";"OK";"bool"],"bool_or") in
-  let sym = Sig_state.find_sym ~prt:true ~prv:true false bool_ss id in
+  let sym = Sig_state.find_sym ~prt:true ~prv:true bool_ss id in
   let buf = Buffer.create 16 in
   let fmt = Format.formatter_of_buffer buf in
   Tool.Tree_graphviz.to_dot fmt sym;

@@ -18,8 +18,7 @@ let out = fprintf
 let raw_ident : popt -> string pp = fun pos ppf s ->
   if LpLexer.is_keyword s then
     fatal pos "Identifier [%s] is a Lambdapi keyword." s
-  else if LpLexer.is_uid s then out ppf "%s" s
-  else out ppf "{|%s|}" s
+  else LpLexer.pp_uid ppf s
 
 let ident : p_ident pp = fun ppf {elt=s; pos} -> raw_ident pos ppf s
 

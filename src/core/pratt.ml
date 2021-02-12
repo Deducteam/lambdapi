@@ -36,7 +36,7 @@ end = struct
               if mp <> [] then raise Not_found;
               ignore (Env.find s env); None
             with Not_found -> (* ... or look into the signature *)
-              Some(Sig_state.find_sym ~prt:true ~prv:true true tbl id)
+              Some(Sig_state.find_sym ~prt:true ~prv:true tbl id)
           in
           let f sym =
             match Term.SymMap.find_opt sym tbl.notations with

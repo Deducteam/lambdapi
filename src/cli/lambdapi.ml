@@ -89,17 +89,14 @@ let decision_tree_cmd : Config.t -> Syntax.qident -> unit =
     let sym =
       let sign = Compile.compile false mp in
       let ss = Sig_state.of_sign sign in
-      if String.contains sym '#' then
-        (* If [sym] contains a hash, it’s a ghost symbol. *)
+      if mp = [] && String.contains sym '#' then
+        (* If [sym] starts with a hash, it’s a ghost symbol. *)
         try fst (StrMap.find sym Timed.(!(Unif_rule.sign.sign_symbols)))
-        with Not_found ->
-          fatal_no_pos "Symbol \"%s\" not found in ghost modules." sym
+        with Not_found -> fatal_no_pos "Unknown symbol %s." sym
       else
-        try
-          Sig_state.find_sym ~prt:true ~prv:true false ss (Pos.none (mp, sym))
+        try Sig_state.find_sym ~prt:true ~prv:true ss (Pos.none (mp, sym))
         with Not_found ->
-          fatal_no_pos "Symbol \"%s\" not found in module \"%a\"."
-            sym Path.pp mp
+          fatal_no_pos "Unknown symbol %a.%s." Path.pp mp sym
     in
     if Timed.(!(sym.sym_rules)) = [] then
       wrn None "Cannot print decision tree: \

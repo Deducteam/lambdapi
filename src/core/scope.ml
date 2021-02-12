@@ -37,17 +37,16 @@ let find_qid : bool -> bool -> sig_state -> env -> p_qident -> tbox =
     _Vari (Env.find s env)
   with Not_found ->
     (* Check for symbols. *)
-    _Symb (find_sym ~prt ~prv true st qid)
+    _Symb (find_sym ~prt ~prv st qid)
 
 (** [get_root t ss] returns the symbol at the root of term [t]. *)
 let get_root : p_term -> sig_state -> Env.t -> sym = fun t ss env ->
   let rec get_root t =
     match t.elt with
-    | P_Iden(qid,_)         ->
-        find_sym ~prt:true ~prv:true true ss qid
-    | P_Appl(t, _)          -> get_root t
-    | P_Wrap(t)             -> get_root (Pratt.parse ss env t)
-    | _                     -> assert false
+    | P_Iden(qid,_) -> find_sym ~prt:true ~prv:true ss qid
+    | P_Appl(t, _)  -> get_root t
+    | P_Wrap(t)     -> get_root (Pratt.parse ss env t)
+    | _             -> assert false
   in
   (* Pratt parse to order terms correctly. *)
   get_root (Pratt.parse ss env t)

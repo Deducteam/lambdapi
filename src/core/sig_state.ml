@@ -153,15 +153,16 @@ let of_sign : Sign.t -> sig_state = fun signature ->
     are allowed in left-hand side of rewrite rules (only) iff [~prt] is true.
     {!constructor:Term.expo.Privat} symbols are allowed iff [~prv]
     is [true]. *)
-let find_sym : prt:bool -> prv:bool -> bool -> sig_state -> p_qident -> sym =
-  fun ~prt ~prv b st {elt = (mp, s); pos} ->
+let find_sym : prt:bool -> prv:bool -> sig_state -> p_qident -> sym =
+  fun ~prt ~prv st {elt = (mp, s); pos} ->
+  let pp_uid = Parsing.LpLexer.pp_uid in
+  let pp_path = Lplib.List.pp pp_uid "." in
   let s =
     match mp with
     | [] -> (* Symbol in scope. *)
         begin
-          try fst (StrMap.find s st.in_scope) with Not_found ->
-          let txt = if b then " or variable" else "" in
-          fatal pos "Unbound symbol%s [%s]." txt s
+          try fst (StrMap.find s st.in_scope)
+          with Not_found -> fatal pos "Unknown object %a." pp_uid s
         end
     | [m] when StrMap.mem m st.aliases -> (* Aliased module path. *)
         begin
@@ -172,14 +173,14 @@ let find_sym : prt:bool -> prv:bool -> bool -> sig_state -> p_qident -> sym =
           in
           (* Look for the symbol. *)
           try Sign.find sign s with Not_found ->
-          fatal pos "Unbound symbol [%a.%s]." Path.pp mp s
+          fatal pos "Unknown symbol %a.%a." pp_path mp pp_uid s
         end
     | _  -> (* Fully-qualified symbol. *)
         begin
           (* Check that the signature was required (or is the current one). *)
           if mp <> st.signature.sign_path then
             if not (Path.Map.mem mp !(st.signature.sign_deps)) then
-              fatal pos "No module [%a] required." Path.pp mp;
+              fatal pos "No module [%a] required." pp_path mp;
           (* The signature must have been loaded. *)
           let sign =
             try Path.Map.find mp Timed.(!Sign.loaded)
@@ -187,7 +188,7 @@ let find_sym : prt:bool -> prv:bool -> bool -> sig_state -> p_qident -> sym =
           in
           (* Look for the symbol. *)
           try Sign.find sign s with Not_found ->
-          fatal pos "Unbound symbol [%a.%s]." Path.pp mp s
+          fatal pos "Unknown symbol %a.%a." pp_path mp pp_uid s
         end
   in
   match (prt, prv, s.sym_expo) with
