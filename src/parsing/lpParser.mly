@@ -107,7 +107,6 @@
 %token <string> UID_PAT
 %token <Path.t> QID
 %token <Path.t> ID_EXPL
-%token <Path.t * bool> ID_QUANT
 
 // types
 
@@ -379,12 +378,6 @@ term:
   | t=term ARROW u=term { make_pos $sloc (P_Impl(t, u)) }
   | BACKQUOTE q=term_id b=binder
     {
-      let b = make_pos $loc(b) (P_Abst(fst b, snd b)) in
-      make_pos $sloc (P_Appl(q, b))
-    }
-  | i=ID_QUANT b=binder
-    {
-      let q = make_pos $loc(i) (P_Iden(qid_of_path $loc(i) (fst i), snd i)) in
       let b = make_pos $loc(b) (P_Abst(fst b, snd b)) in
       make_pos $sloc (P_Appl(q, b))
     }

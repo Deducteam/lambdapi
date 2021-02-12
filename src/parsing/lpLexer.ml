@@ -96,21 +96,23 @@ type token =
   | UID_PAT of string
   | QID of Path.t
   | ID_EXPL of Path.t
-  | ID_QUANT of (Path.t * bool)
 
 exception SyntaxError of strloc
 
 (** Lexer for Lambdapi syntax. *)
 module Lp_lexer : sig
 
+  val is_uid : string -> bool
+  (** [is_uid s] is [true] iff [s] is a regular identifier. *)
+
   val is_identifier : string -> bool
-  (** [is_identifier s] is [true] if [s] is a valid identifier. *)
+  (** [is_identifier s] is [true] iff [s] is a valid identifier. *)
 
   val is_keyword : string -> bool
-  (** [is_keyword s] returns [true] if [s] is a keyword. *)
+  (** [is_keyword s] returns [true] iff [s] is a keyword. *)
 
   val is_debug_flag : string -> bool
-  (** [is_debug_flag s] is true if [s] is a debug flag. *)
+  (** [is_debug_flag s] is true iff [s] is a debug flag. *)
 
   val lexer : lexbuf -> unit -> token * Lexing.position * Lexing.position
   (** [lexer buf] is a lexing function on buffer [buf] that can be passed to
@@ -227,6 +229,12 @@ end = struct
     let lexbuf = Utf8.from_string s in
     match%sedlex lexbuf with
     | ('+' | '-'), Plus lowercase -> true
+    | _ -> false
+
+  let is_uid : string -> bool = fun s ->
+    let lexbuf = Sedlexing.Utf8.from_string s in
+    match%sedlex lexbuf with
+    | uid -> true
     | _ -> false
 
   let is_identifier : string -> bool = fun s ->
@@ -346,9 +354,6 @@ end = struct
 
     | '@', uid -> ID_EXPL([tail 1 buf])
     | '@', qid -> ID_EXPL(Path.of_string (tail 1 buf))
-
-    | '`', id -> ID_QUANT(Path.of_string (tail 1 buf), false)
-    | '`', '@', id -> ID_QUANT(Path.of_string (tail 2 buf), true)
 
     | uid -> UID(Utf8.lexeme buf)
     | qid -> QID(Path.of_string (Utf8.lexeme buf))
