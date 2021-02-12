@@ -12,8 +12,8 @@ in the file ``dir1/`` … ``/dirn/file.lp``. To be used, ``dir1.`` …
 
 An identifier can be:
 
-* a regular identifier, that is, an arbitrary sequence of UTF-8
-   codepoints that fall in the regular language
+* a regular identifier, that is, an arbitrary (non-empty) sequence of
+   UTF-8 codepoints that fall in the regular language
    ``[[:letter:]_][[:letter:]0..9_]`` where the class ``[:letter:]``
    is ``[a..zA..Z-'&^\*%#~[:math:]]`` and the class ``[:math:]``
    contains most mathematical symbols (including subscripts and
@@ -22,8 +22,8 @@ An identifier can be:
 *  a non-negative integer if the builtins “0” and “+1” have been
    previously set (see the command ``set builtin`` in :doc:`commands`);
 
-* an escaped identifier, that is, an arbitrary sequence of characters
-   enclosed between ``{|`` and ``|}``.
+* an escaped identifier, that is, an arbitrary (non-empty) sequence of
+   characters enclosed between ``{|`` and ``|}``.
 
 Remark: for any regular identifier ``i``, ``{|i|}`` is equivalent to ``i``.
 
