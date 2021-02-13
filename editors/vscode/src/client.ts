@@ -3,7 +3,7 @@
  * Licensed under the MIT License. See License.txt in the project root for license information.
  * ------------------------------------------------------------------------------------------ */
 
-import { workspace, ExtensionContext, Position, Uri, commands, window, WebviewPanel, ViewColumn, TextEditor, TextDocument, SnippetString, Range as rg, TextEditorDecorationType, Pseudoterminal, EventEmitter, TreeItemCollapsibleState, WebviewViewProvider, CancellationToken, WebviewView, WebviewViewResolveContext } from 'vscode';
+import { workspace, ExtensionContext, Position, Uri, commands, window, WebviewPanel, ViewColumn, TextEditor, TextDocument, SnippetString, Range, TextEditorDecorationType, Pseudoterminal, EventEmitter, TreeItemCollapsibleState, WebviewViewProvider, CancellationToken, WebviewView, WebviewViewResolveContext, TextDocumentChangeEvent } from 'vscode';
 
 // Insiders API, disabled
 // import { WebviewEditorInset } from 'vscode';
@@ -20,11 +20,15 @@ import {
     DocumentSymbolRequest,
 } from 'vscode-languageclient';
 
-import { time } from 'console';
+import { assert, time } from 'console';
 
 let client: LanguageClient;
 
 export function activate(context: ExtensionContext) {
+
+    workspace.onDidChangeTextDocument((e)=>{
+        lpDocChangeHandler(e, context);
+    })
 
     //___Declaration of workspace variables___
 
@@ -36,7 +40,7 @@ export function activate(context: ExtensionContext) {
     context.workspaceState.update('cursorMode', false);
 
     //The range of text to highlight
-    let range : rg = new rg(proofState, proofState.translate(1,0));
+    let range : Range = new Range(new Position(0, 0), proofState);
     context.workspaceState.update('range', range);
 
     //The highlight parameters
@@ -98,7 +102,7 @@ export function activate(context: ExtensionContext) {
                     return;
                 }
 
-                refresh(panel, e, proofState, context);
+                refreshGoals(panel, e, proofState, context);
             });
 
             window.onDidChangeTextEditorSelection(e => { 
@@ -149,9 +153,44 @@ export function activate(context: ExtensionContext) {
     restart();
 }
 
+function lpDocChangeHandler(event : TextDocumentChangeEvent, context: ExtensionContext) {
+    if(event.document != window.activeTextEditor?.document){
+        // should not happen
+        console.log("Changes not on the active TextEditor");
+        return;
+    }
+    let proofPos : Position | undefined = context.workspaceState.get('proofState');
+    if (!proofPos) proofPos = new Position(0, 0);
+
+    let firstChange : Position | undefined = undefined;
+    for(let i = 0; i < event.contentChanges.length; i++){
+        let change = event.contentChanges[i];
+        let changeStart : Position = change.range.start;
+        if(firstChange != undefined) 
+            firstChange = changeStart.isBefore(firstChange) ? changeStart : firstChange;
+        else 
+            firstChange = changeStart;
+    }
+
+    if(firstChange && firstChange.isBefore(proofPos)){
+        // region inside proved region is changed
+        // update the proofState
+        let newPos = stepCommand(event.document, firstChange, false);
+
+        const panel : WebviewPanel | undefined = context.workspaceState.get('panel');
+        if (!panel) {
+            console.log('lpDocChangeHandler : workspace variables are not properly defined');
+            return;
+        }
+        context.workspaceState.update('proofState', newPos);
+        refreshGoals(panel, window.activeTextEditor, newPos, context);
+        highlight(context, newPos, window.activeTextEditor);
+    }
+}
+
 function highlight(context : ExtensionContext, newProofState : Position, openEditor : TextEditor) {
 
-    const range : rg = updateHighlightRange(context, newProofState); //Highlight range is updated
+    const range : Range = new Range(new Position(0, 0), newProofState);
 
     //Highlighting text
     const proofDecoration : TextEditorDecorationType | undefined = context.workspaceState.get('proofDecoration');
@@ -168,12 +207,13 @@ function highlight(context : ExtensionContext, newProofState : Position, openEdi
         commands.executeCommand('revealLine', {lineNumber: newProofState.line, at: 'center'});
 }
 
-function lpRefresh(context : ExtensionContext, step : number, panel : WebviewPanel, openEditor : TextEditor) {
+function lpRefresh(context : ExtensionContext, proofPos : Position, panel : WebviewPanel, openEditor : TextEditor) {
 
-    const newProofState : Position = stepProofState(context, step); //Proof goes one step further/earlier
-    refresh(panel, openEditor, newProofState, context); //Goals panel is refreshed
+    context.workspaceState.update('proofState', proofPos);
 
-    highlight(context, newProofState, openEditor);
+    refreshGoals(panel, openEditor, proofPos, context); //Goals panel is refreshed
+
+    highlight(context, proofPos, openEditor);
 }
 
 function nextProofPosition(document: TextDocument, proofState : Position, direction : number) : Position {
@@ -218,7 +258,7 @@ function nextProof(context : ExtensionContext, direction : number) {
     
     context.workspaceState.update('proofState', nextProofPos); //proof state is set to the position of the next proof keyword
     
-    refresh(panel, openEditor, nextProofPos, context); //Goals panel is refreshed
+    refreshGoals(panel, openEditor, nextProofPos, context); //Goals panel is refreshed
 
     highlight(context, nextProofPos, openEditor);
 }
@@ -277,36 +317,38 @@ function toggleFollowMode(context : ExtensionContext) : boolean {
     return follow;
 }
 
-function decorate(openEditor : TextEditor, range : rg, decorationType : TextEditorDecorationType) {
+function decorate(openEditor : TextEditor, range : Range, decorationType : TextEditorDecorationType) {
     openEditor.setDecorations(decorationType, [range]);
 }
 
-function updateHighlightRange(context : ExtensionContext, proofState : Position) : rg {
-    
-    let range : rg = context.workspaceState.get('range') ?? new rg(new Position(0, 0), proofState);
-    let rangeEnd : Position = new Position(proofState.line + 1, 0);
+// returns the Position of next or previous command
+function stepCommand(document: TextDocument, currentPos: Position, forward: boolean){
+    let docBegin : Position = document.positionAt(0);
+    let docEnd : Position = new Position(document.lineCount, 0);
+    if (forward){
+        // discard the first character 
+        let textAfter : string = document.getText(new Range(currentPos, docEnd));
+        // console.log(`text after :\n"${textAfter.substring(0, 100)}"\n`);
 
-    range = new rg(range.start, rangeEnd);
-    context.workspaceState.update('range', range);
+        let res = textAfter.indexOf(';');
+        // console.log(`res = ${res}`)
 
-    return range;
-}
+        if (res == -1) return docEnd;
 
-function stepProofState(context : ExtensionContext, step : number) {
+        let nextCmdPos : Position = document.positionAt(document.offsetAt(currentPos) + res + 1);
+        return nextCmdPos;
+    } else {
+        let textBefore : string = document.getText(new Range(docBegin, currentPos));
+        // remove last character
+        textBefore = textBefore.substr(0, textBefore.length - 1);
 
-    let proofState : Position | undefined = context.workspaceState.get('proofState');
-
-    if(!proofState) {
-        console.log('stepProofState : proofState workspace variable is not properly defined');
-        proofState = new Position(1, 0);
-        context.workspaceState.update('proofState', proofState);
-        return proofState;
+        // console.log(`text before : ${textBefore.substring(textBefore.length-30, textBefore.length)}`);
+        let res =  textBefore.lastIndexOf(';');
+        // console.log(res);
+        if (res == -1) return docBegin;
+        let prevCmdPos : Position = document.positionAt(res + 1);
+        return prevCmdPos;
     }
-
-    proofState = proofState.translate(step, 0);
-    context.workspaceState.update('proofState', proofState);
-
-    return proofState;
 }
 
 function checkProofForward(context : ExtensionContext) {
@@ -323,13 +365,9 @@ function checkProofForward(context : ExtensionContext) {
         return;
     }
 
-    //If the proof highlight is at the end of the document it can't go further
-    const documentTotalLines : number = openEditor.document.lineCount ?? 0;
-    const step : number = proofState.line >= documentTotalLines ? 0 : 1;
-
-    //Case the end has not been reached
-    if(step)
-        lpRefresh(context, step, panel, openEditor);
+    let newPos = stepCommand(openEditor.document, proofState, true);
+    if(newPos)
+        lpRefresh(context, newPos, panel, openEditor);
 }
 
 function checkProofBackward(context : ExtensionContext) {
@@ -346,12 +384,11 @@ function checkProofBackward(context : ExtensionContext) {
         return;
     }
 
-    //If the proof highlight is at the beggining of the document it can't go any higher
-    const step : number = proofState.line <= 0 ? 0 : -1;
+    let newPos = stepCommand(openEditor.document, proofState, false);
 
-    //Case the proof state is not at the beggining of the document
-    if(step == -1)
-        lpRefresh(context, step, panel, openEditor);
+    //Case the end has not been reached
+    if(newPos)
+        lpRefresh(context, newPos, panel, openEditor);
 }
 
 function checkProofUntilCursor(context : ExtensionContext) {
@@ -381,12 +418,12 @@ function checkProofUntilCursor(context : ExtensionContext) {
     
     context.workspaceState.update('proofState', cursorPosition); //proof state is set to the cursor position
     
-    refresh(panel, openEditor, cursorPosition, context); //Goals panel is refreshed
+    refreshGoals(panel, openEditor, cursorPosition, context); //Goals panel is refreshed
 
     highlight(context, cursorPosition, openEditor);
 }
 
-function refresh(panel : WebviewPanel, editor : TextEditor | undefined, proofState : Position, context : ExtensionContext) {
+function refreshGoals(panel : WebviewPanel, editor : TextEditor | undefined, proofState : Position, context : ExtensionContext) {
 
     if(!editor)
         return;
@@ -461,28 +498,21 @@ function buildGoalsContent(goals : Goal[], styleUri : Uri) {
 
     // Use #FA8072 color too?
 
-    // NOTE: multiline strings will introduce character sequences
-    //       which WebviewPanel can't display
-    header =  `<!DOCTYPE html>
-￼       <html lang="en">
-￼       <head>
-￼               <meta charset="UTF-8">
-￼               <link rel="stylesheet" type="text/css" href="${styleUri}" >
-￼               <meta name="viewport" content="width=device-width, initial-scale=1.0">
-￼               <title> Goals</title>
-￼       </head>
-￼       <body>
-￼               <p class="goals_env"> `;
-    
-    footer =` </p>
-￼       </body>
-￼       </html>`;
-
-    // remove character sequences caused by multiline strings
-    header = header.replace(/[\u{0080}-\u{FFFF}]/gu,"");
-    footer = footer.replace(/[\u{0080}-\u{FFFF}]/gu,"");
-    
-    return header + codeEnvGoals + footer;
+    return `
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <link rel="stylesheet" type="text/css" href="${styleUri}" >
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Goals</title>
+    </head>
+    <body>
+        <p class="goals_env"> 
+        ${codeEnvGoals}
+        </p>
+    </body>
+    </html>`;
 }
 
 export interface TextDocumentIdent{
