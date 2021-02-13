@@ -1,22 +1,22 @@
 open Cmdliner
 open Common
-open Module
-open Console
+open Library
+open Error
 
 let run_command : bool -> string -> unit = fun dry_run cmd ->
-  if dry_run then out 1 "%s\n" cmd else
+  if dry_run then Console.out 1 "%s\n" cmd else
   match Sys.command cmd with
-  | 0                      -> ()
-  | _                      -> fatal_no_pos "Command [%s] failed." cmd
+  | 0 -> ()
+  | _ -> fatal_no_pos "Command [%s] failed." cmd
   | exception Failure(msg) ->
       fatal_msg "Command [%s] failed." cmd;
       fatal_no_pos "Reported error: %s." msg
 
-let run_install : Cliconf.t -> bool -> string list -> unit =
+let run_install : Config.t -> bool -> string list -> unit =
     fun cfg dry_run files ->
   let run _ =
     let open Timed in
-    Cliconf.init cfg;
+    Config.init cfg;
     let time = Time.save () in
     let install file =
       Time.restore time;
@@ -37,7 +37,7 @@ let run_install : Cliconf.t -> bool -> string list -> unit =
           begin
             (* Source or object file, find out expected destination. *)
             Package.apply_config file;
-            Module.install_path file
+            Library.install_path file
           end
       in
       (* Create directories as needed for [dest]. *)
@@ -56,12 +56,12 @@ let run_install : Cliconf.t -> bool -> string list -> unit =
     in
     List.iter install files
   in
-  Console.handle_exceptions run
+  Error.handle_exceptions run
 
-let run_uninstall : Cliconf.t -> bool -> string -> unit =
+let run_uninstall : Config.t -> bool -> string -> unit =
     fun cfg dry_run pkg_file ->
   let run _ =
-    Cliconf.init cfg;
+    Config.init cfg;
     (* Read the package configuration file for the package to uninstall. *)
     let (pkg_name, pkg_root_path) =
       let pkg_config = Package.read pkg_file in
@@ -78,12 +78,13 @@ let run_uninstall : Cliconf.t -> bool -> string -> unit =
     let installed_name = Package.((read pkg_file).package_name) in
     if pkg_name <> installed_name then
       fatal_no_pos "Unexpected package [%s] installed under the same \
-        root path intend for specified package [%s]." installed_name pkg_name;
+                    root path intended for specified package [%s]."
+        installed_name pkg_name;
     (* Do the actual uninstallation. *)
     let cmd = "rm -r " ^ Filename.quote pkg_dir in
     run_command dry_run cmd
   in
-  Console.handle_exceptions run
+  Error.handle_exceptions run
 
 let dry_run : bool Term.t =
   let doc =
@@ -112,10 +113,10 @@ let files : string list Term.t =
 
 let install_cmd =
   let doc = "Install the given files under the library root." in
-  Term.(const run_install $ Cliconf.minimal $ dry_run $ files),
+  Term.(const run_install $ Config.minimal $ dry_run $ files),
   Term.info "install" ~doc
 
 let uninstall_cmd =
   let doc = "Uninstall the files corresponding to the given package file." in
-  Term.(const run_uninstall $ Cliconf.minimal $ dry_run $ pkg_file),
+  Term.(const run_uninstall $ Config.minimal $ dry_run $ pkg_file),
   Term.info "uninstall" ~doc

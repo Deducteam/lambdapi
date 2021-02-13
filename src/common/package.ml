@@ -2,9 +2,7 @@
 
 open Lplib
 open Lplib.Extra
-
-open Module
-open Console
+open Error
 
 (** A package configuration file is expected at the root of every package. The
     file is used to figure out the module path under which the package must be
@@ -28,11 +26,11 @@ undefined    = ignored
 (** Configuration data read from a file. *)
 type config_data =
   { package_name : string
-  ; root_path    : Path.module_path }
+  ; root_path    : Path.t }
 
 (** [read fname] reads configuration data from the file [fname]. The exception
     [Fatal] is raised in case of error (non-existing file, bad format). *)
-let read : file_path -> config_data = fun fname ->
+let read : string -> config_data = fun fname ->
   (* Obtaining file lines. *)
   let lines =
     let ic =
@@ -61,12 +59,8 @@ let read : file_path -> config_data = fun fname ->
   in
   (* Building the configuration. *)
   let package_name = get "package_name" in
-  let root_path = String.split_on_char '.' (get "root_path") in
-  try
-    Path.check_simple root_path;
-    {package_name; root_path}
-  with Fatal(_, msg) ->
-    fatal_no_pos "Ill-formed package file [%s].\n%s" fname msg
+  let root_path = Path.of_string (get "root_path") in
+  {package_name; root_path}
 
 (** [find_config fname] looks for a configuration file above [fname], which is
     typically a source file or an object file (it can also be a directory). If
@@ -74,7 +68,7 @@ let read : file_path -> config_data = fun fname ->
     look in the parent directory and so on, up to the root or as long as no
     [Sys_error] is raised. Note that [fname] is first normalized with a call
     to [Filename.realpath]. *)
-let find_config : file_path -> file_path option = fun fname ->
+let find_config : string -> string option = fun fname ->
   let fname = Filename.normalize fname in
   let rec find dir =
     let file = Filename.concat dir pkg_file in
@@ -88,10 +82,10 @@ let find_config : file_path -> file_path option = fun fname ->
 
 (** [apply_config fname] attempts to find a configuration file that applies to
     the (source) file [fname], and applies the corresponding configuration. *)
-let apply_config : file_path -> unit = fun fname ->
+let apply_config : string -> unit = fun fname ->
   match find_config fname with
   | None           -> ()
   | Some(cfg_file) ->
-  let {package_name = _; root_path} = read cfg_file in
+  let {root_path; _} = read cfg_file in
   let root = Filename.dirname cfg_file in
-  Module.new_lib_mapping (String.concat "." root_path ^ ":" ^ root)
+  Library.add_mapping (String.concat "." root_path, root)

@@ -1,16 +1,16 @@
-<qid> ::= [<id>'.']+<id>
+<qid> ::= [<uid>'.']+<uid>
 
 <assert> ::= '#ASSERT'
            | '#ASSERTNOT'
 
-<command> ::= <modifier>* <id> <param>* ':' <term> '.'
-            | <modifier>* 'def' <id> ':' <term> '.'
-            | <modifier>* 'def' <id> ':' <term> ':=' <term> '.'
-            | <modifier>* 'def' <id> ':=' <term> '.'
-            | <modifier>* 'def' <id> <param>+ ':' <term> ':=' <term> '.'
-            | <modifier>* 'def' <id> <param>+ ':=' <term> '.'
-            | <modifier>* 'thm' <id> ':' <term> ':=' <term> '.'
-            | <modifier>* 'thm' <id> <param>+ ':' <term> ':=' <term> '.'
+<command> ::= <modifier>* <uid> <param>* ':' <term> '.'
+            | <modifier>* 'def' <uid> ':' <term> '.'
+            | <modifier>* 'def' <uid> ':' <term> ':=' <term> '.'
+            | <modifier>* 'def' <uid> ':=' <term> '.'
+            | <modifier>* 'def' <uid> <param>+ ':' <term> ':=' <term> '.'
+            | <modifier>* 'def' <uid> <param>+ ':=' <term> '.'
+            | <modifier>* 'thm' <uid> ':' <term> ':=' <term> '.'
+            | <modifier>* 'thm' <uid> <param>+ ':' <term> ':=' <term> '.'
             | <rule>+ '.'
             | '#EVAL' <term> '.'
             | '#EVAL' <eval_config> <term> '.'
@@ -21,21 +21,21 @@
             | '#REQUIRE' <qid> '.'
             
 
-<eval_config> ::= '[' <id> ']'
-                | '[' <id> ',' <id> ']'
+<eval_config> ::= '[' <uid> ']'
+                | '[' <uid> ',' <uid> ']'
 
-<param> ::= '(' <id> ':' <term> ')'
+<param> ::= '(' <uid> ':' <term> ')'
 
 <modifier> ::= 'private'
              | 'injective'
 
-<context_item> ::= <id> [':' <term>]
+<context_item> ::= <uid> [':' <term>]
 
 <rule> ::= '[' [<context_item> (',' <context_item>)*] ']' <term>
            '-->' <term>
 
 <sterm> ::= <qid>
-          | <id>
+          | <uid>
           | '_'
           | 'Type'
           | '(' <term> ')'
@@ -45,10 +45,10 @@
 <type_annot> ::= ':' <aterm>
 
 <term> ::= <aterm>
-         | <id> ':' <aterm> '->' <term>
-         | '(' <id> ':' <aterm> ')' '->' <term>
+         | <uid> ':' <aterm> '->' <term>
+         | '(' <uid> ':' <aterm> ')' '->' <term>
          | <term> '->' <term>
          | '_' [<type_annot>] '=>' <term>
-         | <id> [<type_annot>] '=>' <term>
+         | <uid> [<type_annot>] '=>' <term>
 
 

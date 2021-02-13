@@ -7,47 +7,46 @@ open Common
 open Pos
 
 (** Representation of a (located) identifier. *)
-type ident = strloc
+type p_ident = strloc
 
-(** Parsing representation of a module path. For every path member the boolean
-    indicates whether it was given using the escaped syntax. *)
-type p_module_path = (string * bool) list
+(** Representation of a module name. *)
+type p_path = Path.t loc
 
 (** Representation of a possibly qualified (and located) identifier. *)
-type qident_aux = p_module_path * string
-type qident = qident_aux loc
+type qident = Path.t * string
+type p_qident = qident loc
 
 (** The priority of an infix operator is a floating-point number. *)
 type priority = float
 
 (** Representation of a unary operator. *)
-type unop = string * priority * qident
+type unop = string * priority * p_qident
 
 (** Representation of a binary operator. *)
-type binop = string * Pratter.associativity * priority * qident
+type binop = string * Pratter.associativity * priority * p_qident
 
 (** Parser-level (located) term representation. *)
 type p_term = p_term_aux loc
 and p_term_aux =
   | P_Type
   (** TYPE constant. *)
-  | P_Iden of qident * bool
+  | P_Iden of p_qident * bool
   (** Identifier (the boolean indicates whether it is prefixed by "@"). *)
   | P_Wild
   (** Wildcard (place-holder for terms). *)
-  | P_Meta of strloc * p_term array option
+  | P_Meta of p_ident * p_term array option
   (** Meta-variable with the given environment. *)
-  | P_Patt of strloc option * p_term array option
+  | P_Patt of p_ident option * p_term array option
   (** Named or unnamed higher-order pattern (used for rules LHS / RHS). *)
   | P_Appl of p_term * p_term
   (** Application. *)
   | P_Impl of p_term * p_term
   (** Implication. *)
-  | P_Abst of p_args list * p_term
+  | P_Abst of p_params list * p_term
   (** Abstraction over several variables. *)
-  | P_Prod of p_args list * p_term
+  | P_Prod of p_params list * p_term
   (** Product over several variables. *)
-  | P_LLet of ident * p_args list * p_type option * p_term * p_term
+  | P_LLet of p_ident * p_params list * p_type option * p_term * p_term
   (** Local let. *)
   | P_NLit of int
   (** Natural number literal. *)
@@ -68,7 +67,7 @@ and p_patt = p_term
 
 (** Parser-level representation of a function argument. The boolean is true if
     the argument is marked as implicit (i.e., between curly braces). *)
-and p_args = ident option list * p_type option * bool
+and p_params = p_ident option list * p_type option * bool
 
 (** [p_get_args t] is {!val:LibTerm.get_args} on syntax-level terms. *)
 let p_get_args : p_term -> p_term * p_term list = fun t ->
@@ -83,7 +82,7 @@ type p_rule_aux = p_patt * p_term
 type p_rule = p_rule_aux loc
 
 (** Parser-level inductive type representation. *)
-type p_inductive_aux = ident * p_term * (ident * p_term) list
+type p_inductive_aux = p_ident * p_term * (p_ident * p_term) list
 type p_inductive = p_inductive_aux loc
 
 (** Module to create p_term's with no positions. *)
@@ -106,10 +105,10 @@ module P  = struct
   let rec appl_wild : p_term -> int -> p_term = fun t i ->
       if i <= 0 then t else appl_wild (appl t wild) (i-1)
 
-  let abst : ident option -> p_term -> p_term = fun idopt t ->
+  let abst : p_ident option -> p_term -> p_term = fun idopt t ->
     Pos.none (P_Abst([[idopt],None,false], t))
 
-  let abst_list : ident option list -> p_term -> p_term = fun idopts t ->
+  let abst_list : p_ident option list -> p_term -> p_term = fun idopts t ->
     List.fold_right abst idopts t
 
   let rule : p_patt -> p_term -> p_rule = fun l r -> Pos.none (l,r)
@@ -119,10 +118,10 @@ end
 type p_rw_patt_aux =
   | P_rw_Term           of p_term
   | P_rw_InTerm         of p_term
-  | P_rw_InIdInTerm     of ident * p_term
-  | P_rw_IdInTerm       of ident * p_term
-  | P_rw_TermInIdInTerm of p_term * ident * p_term
-  | P_rw_TermAsIdInTerm of p_term * ident * p_term
+  | P_rw_InIdInTerm     of p_ident * p_term
+  | P_rw_IdInTerm       of p_ident * p_term
+  | P_rw_TermInIdInTerm of p_term * p_ident * p_term
+  | P_rw_TermAsIdInTerm of p_term * p_ident * p_term
 type p_rw_patt = p_rw_patt_aux loc
 
 (** Parser-level representation of an assertion. *)
@@ -162,7 +161,7 @@ type p_query_aux =
   (** Set the prover to use inside a proof. *)
   | P_query_prover_timeout of int
   (** Set the timeout of the prover (in seconds). *)
-  | P_query_print of qident option
+  | P_query_print of p_qident option
   (** Print information about a symbol or the current goals. *)
   | P_query_proofterm
   (** Print the current proof term (possibly containing open goals). *)
@@ -173,7 +172,7 @@ type p_query = p_query_aux loc
 type p_tactic_aux =
   | P_tac_refine of p_term
   (** Refine the current goal using the given term. *)
-  | P_tac_intro of ident option list
+  | P_tac_intro of p_ident option list
   (** Eliminate quantifiers using the given names for hypotheses. *)
   | P_tac_apply of p_term
   (** Apply the given term to the current goal. *)
@@ -213,13 +212,13 @@ type p_proof_end = p_proof_end_aux loc
 
 (** Parser-level representation of a configuration command. *)
 type p_config =
-  | P_config_builtin of string * qident
+  | P_config_builtin of string * p_qident
   (** Sets the configuration for a builtin syntax (e.g., nat literals). *)
   | P_config_unop of unop
   (** Defines (or redefines) a unary operator (e.g., ["!"] or ["¬"]). *)
   | P_config_binop of binop
   (** Defines (or redefines) a binary operator (e.g., ["+"] or ["×"]). *)
-  | P_config_quant of qident
+  | P_config_quant of p_qident
   (** Defines a quantifier symbol (e.g., ["∀"], ["∃"]). *)
   | P_config_unif_rule of p_rule
   (** Unification hint declarations. *)
@@ -287,8 +286,8 @@ let is_mstrat {elt; _} = match elt with P_mstrat(_) -> true | _ -> false
 (** Parser-level representation of symbol declarations. *)
 type p_symbol =
   { p_sym_mod : p_modifier list (** modifiers *)
-  ; p_sym_nam : ident (** symbol name *)
-  ; p_sym_arg : p_args list (** arguments before ":" *)
+  ; p_sym_nam : p_ident (** symbol name *)
+  ; p_sym_arg : p_params list (** arguments before ":" *)
   ; p_sym_typ : p_type option (** symbol type *)
   ; p_sym_trm : p_term option (** symbol definition *)
   ; p_sym_prf : (p_tactic list * p_proof_end) option (** proof script *)
@@ -296,17 +295,17 @@ type p_symbol =
 
 (** Parser-level representation of a single command. *)
 type p_command_aux =
-  | P_require  of bool * p_module_path list
-  (** Require statement (require open if the boolean is true). *)
-  | P_require_as of p_module_path * (string * bool) loc
-  (** Require as statement. *)
-  | P_open of p_module_path list
+  | P_require  of bool * p_path list
+  (** "require" statement (require open if the boolean is true). *)
+  | P_require_as of p_path * p_ident
+  (** "require as" statement. *)
+  | P_open of p_path list
   (** Open statement. *)
   | P_symbol of p_symbol
   (** Symbol declaration. *)
   | P_rules of p_rule list
   (** Rewriting rule declarations. *)
-  | P_inductive of p_modifier list * p_args list * p_inductive list
+  | P_inductive of p_modifier list * p_params list * p_inductive list
   (** Definition of inductive types *)
   | P_set of p_config
   (** Set the configuration. *)
@@ -321,21 +320,23 @@ type ast = p_command Stream.t
 
 (** Equality functions on the syntactic expressions ignoring positions. *)
 
-let eq_ident : ident eq = fun i1 i2 -> i1.elt = i2.elt
+let eq_ident : p_ident eq = fun i1 i2 -> i1.elt = i2.elt
 
-let eq_qident : qident eq = fun q1 q2 -> q1.elt = q2.elt
+let eq_p_qident : p_qident eq = fun q1 q2 -> q1.elt = q2.elt
+
+let eq_p_path : p_path eq = fun m1 m2 -> m1.elt = m2.elt
 
 let eq_unop : unop eq = fun (n1,p1,id1) (n2,p2,id2) ->
-  n1 = n2 && p1 = p2 && eq_qident id1 id2
+  n1 = n2 && p1 = p2 && eq_p_qident id1 id2
 
 let eq_binop : binop eq = fun (n1,a1,p1,id1) (n2,a2,p2,id2) ->
-  n1 = n2 && a1 = a2 && p1 = p2 && eq_qident id1 id2
+  n1 = n2 && a1 = a2 && p1 = p2 && eq_p_qident id1 id2
 
 let rec eq_p_term : p_term eq = fun {elt=t1;_} {elt=t2;_} ->
   match t1, t2 with
   | P_Type, P_Type
   | P_Wild, P_Wild -> true
-  | P_Iden(q1,b1), P_Iden(q2,b2) -> eq_qident q1 q2 && b1 = b2
+  | P_Iden(q1,b1), P_Iden(q2,b2) -> eq_p_qident q1 q2 && b1 = b2
   | P_Meta(i1,ts1), P_Meta(i2,ts2) ->
       eq_ident i1 i2 && Option.equal (Array.equal eq_p_term) ts1 ts2
   | P_Patt(io1,ts1), P_Patt(io2,ts2) ->
@@ -345,16 +346,16 @@ let rec eq_p_term : p_term eq = fun {elt=t1;_} {elt=t2;_} ->
   | P_Impl(t1,u1), P_Impl(t2,u2) -> eq_p_term t1 t2 && eq_p_term u1 u2
   | P_Abst(xs1,t1), P_Abst(xs2,t2)
   | P_Prod(xs1,t1), P_Prod(xs2,t2) ->
-      List.equal eq_p_args xs1 xs2 && eq_p_term t1 t2
+      List.equal eq_p_params xs1 xs2 && eq_p_term t1 t2
   | P_LLet(i1,xs1,a1,t1,u1), P_LLet(i2,xs2,a2,t2,u2) ->
-      eq_ident i1 i2 && List.equal eq_p_args xs1 xs2
+      eq_ident i1 i2 && List.equal eq_p_params xs1 xs2
       && Option.equal eq_p_term a1 a2 && eq_p_term t1 t2 && eq_p_term u1 u2
   | P_Wrap t1, P_Wrap t2
   | P_Expl t1, P_Expl t2 -> eq_p_term t1 t2
   | P_NLit n1, P_NLit n2 -> n1 = n2
   | _,_ -> false
 
-and eq_p_args : p_args eq = fun (i1,ao1,b1) (i2,ao2,b2) ->
+and eq_p_params : p_params eq = fun (i1,ao1,b1) (i2,ao2,b2) ->
   List.equal (Option.equal eq_ident) i1 i2
   && Option.equal eq_p_term ao1 ao2 && b1 = b2
 
@@ -394,7 +395,7 @@ let eq_p_query : p_query eq = fun {elt=q1;_} {elt=q2;_} ->
       eq_p_term t1 t2 && c1 = c2
   | P_query_prover s1, P_query_prover s2 -> s1 = s2
   | P_query_prover_timeout t1, P_query_prover_timeout t2 -> t1 = t2
-  | P_query_print io1, P_query_print(io2) -> Option.equal eq_qident io1 io2
+  | P_query_print io1, P_query_print(io2) -> Option.equal eq_p_qident io1 io2
   | P_query_verbose n1, P_query_verbose n2 -> n1 = n2
   | P_query_debug (b1,s1), P_query_debug (b2,s2) -> b1 = b2 && s1 = s2
   | P_query_proofterm, P_query_proofterm -> true
@@ -421,10 +422,10 @@ let eq_p_tactic : p_tactic eq = fun {elt=t1;_} {elt=t2;_} ->
 let eq_p_config : p_config eq = fun c1 c2 ->
   match (c1, c2) with
   | P_config_builtin(s1,q1), P_config_builtin(s2,q2) ->
-      s1 = s2 && eq_qident q1 q2
+      s1 = s2 && eq_p_qident q1 q2
   | P_config_unop u1, P_config_unop u2 -> eq_unop u1 u2
   | P_config_binop b1, P_config_binop b2 -> eq_binop b1 b2
-  | P_config_quant q1, P_config_quant q2 -> eq_qident q1 q2
+  | P_config_quant q1, P_config_quant q2 -> eq_p_qident q1 q2
   | P_config_unif_rule r1, P_config_unif_rule r2 -> eq_p_rule r1 r2
   | _, _ -> false
 
@@ -440,7 +441,7 @@ let eq_p_symbol : p_symbol eq =
       p_sym_def=p_sym_def2} ->
   p_sym_mod1 = p_sym_mod2
   && eq_ident p_sym_nam1 p_sym_nam2
-  && List.equal eq_p_args p_sym_arg1 p_sym_arg2
+  && List.equal eq_p_params p_sym_arg1 p_sym_arg2
   && Option.equal eq_p_term p_sym_typ1 p_sym_typ2
   && Option.equal eq_p_term p_sym_trm1 p_sym_trm2
   && Option.equal eq_tac p_sym_prf1 p_sym_prf2
@@ -450,14 +451,15 @@ let eq_p_symbol : p_symbol eq =
     are compared up to source code positions. *)
 let eq_p_command : p_command eq = fun {elt=c1;_} {elt=c2;_} ->
   match c1, c2 with
-  | P_require(b1,ps1), P_require(b2,ps2) -> b1 = b2 && List.equal (=) ps1 ps2
-  | P_open ps1, P_open ps2 -> List.equal (=) ps1 ps2
-  | P_require_as(p1,{elt=(s1,b1);_}),
-    P_require_as(p2,{elt=(s2,b2);_}) -> p1 = p2 && s1 = s2 && b1 = b2
+  | P_require(b1,l1), P_require(b2,l2) ->
+      b1 = b2 && List.equal eq_p_path l1 l2
+  | P_open l1, P_open l2 -> List.equal eq_p_path l1 l2
+  | P_require_as(m1,i1), P_require_as(m2,i2) ->
+      eq_p_path m1 m2 && eq_ident i1 i2
   | P_symbol s1, P_symbol s2 -> eq_p_symbol s1 s2
   | P_rules(r1), P_rules(r2) ->  List.equal eq_p_rule r1 r2
   | P_inductive(m1,xs1,l1), P_inductive(m2,xs2,l2) ->
-      m1 = m2 && List.equal eq_p_args xs1 xs2
+      m1 = m2 && List.equal eq_p_params xs1 xs2
       && List.equal eq_p_inductive l1 l2
   | P_set(c1), P_set(c2) -> eq_p_config c1 c2
   | P_query(q1), P_query(q2) -> eq_p_query q1 q2
@@ -484,10 +486,10 @@ begin
   apply a // here a is a function symbol
 end; *)
 
-let fold_idents : ('a -> qident -> 'a) -> 'a -> p_command list -> 'a =
+let fold_idents : ('a -> p_qident -> 'a) -> 'a -> p_command list -> 'a =
   fun f ->
 
-  let add_idopt : StrSet.t -> ident option -> StrSet.t = fun vs idopt ->
+  let add_idopt : StrSet.t -> p_ident option -> StrSet.t = fun vs idopt ->
     match idopt with
     | None -> vs
     | Some id -> StrSet.add id.elt vs
@@ -614,7 +616,7 @@ let fold_idents : ('a -> qident -> 'a) -> 'a -> p_command list -> 'a =
     fun a (ts, _) -> snd (List.fold_left fold_tactic (StrSet.empty, a) ts)
   in
 
-  let fold_args : StrSet.t * 'a -> p_args -> StrSet.t * 'a =
+  let fold_args : StrSet.t * 'a -> p_params -> StrSet.t * 'a =
     fun (vs,a) (idopts, tyopt, _) ->
     add_idopts vs idopts,
     match tyopt with

@@ -5,4 +5,4 @@
  (foreign_stubs
   (language c)
   (names realpath))
- (libraries stdlib-shims str))
+ (libraries stdlib-shims str unix))

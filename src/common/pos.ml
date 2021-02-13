@@ -78,18 +78,18 @@ let to_string : ?print_fname:bool -> pos -> string =
   else
     Printf.sprintf "%s%d:%d-%d" fname start_line start_col end_col
 
-(** [print oc pos] prints the optional position [pos] to [oc]. *)
-let print : Format.formatter -> popt -> unit = fun ch p ->
+(** [pp ppf pos] prints the optional position [pos] on [ppf]. *)
+let pp : popt Lplib.Base.pp = fun ppf p ->
   match p with
-  | None    -> Format.pp_print_string ch "unknown location"
-  | Some(p) -> Format.pp_print_string ch (to_string p)
+  | None    -> Format.pp_print_string ppf "unknown location"
+  | Some(p) -> Format.pp_print_string ppf (to_string p)
 
-(** [print_short oc pos] prints the optional position [pos] to [oc] without
-    the filename. *)
-let print_short : Format.formatter -> popt -> unit = fun ch p ->
+(** [pp_short ppf pos] prints the optional position [pos] on [ppf]. *)
+let pp_short : popt Lplib.Base.pp = fun ppf p ->
   match p with
-  | None -> Format.pp_print_string ch "unknown location"
-  | Some(p) -> Format.pp_print_string ch (to_string ~print_fname:false p)
+  | None    -> Format.pp_print_string ppf "unknown location"
+  | Some(p) -> let print_fname=false in
+               Format.pp_print_string ppf (to_string ~print_fname p)
 
 (** [map f loc] applies function [f] on the value of [loc] and keeps the
     position unchanged. *)

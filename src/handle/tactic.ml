@@ -3,7 +3,7 @@
 open! Lplib
 
 open Common
-open Console
+open Error
 open Pos
 open Parsing
 open Syntax
@@ -12,6 +12,7 @@ open Term
 open Proof
 open Print
 open Timed
+open Debug
 
 (** Logging function for tactics. *)
 let log_tact = new_logger 't' "tact" "tactics"
@@ -132,4 +133,4 @@ let handle :
     proof_state * Query.result =
   fun ss exp ps tac ->
   try handle ss exp ps tac
-  with Fatal(_,_) as e -> out 1 "%a" Proof.pp_goals ps; raise e
+  with Fatal(_,_) as e -> Console.out 1 "%a" Proof.pp_goals ps; raise e
