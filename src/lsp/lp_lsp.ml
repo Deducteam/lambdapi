@@ -221,7 +221,7 @@ let get_logs ~doc ~line ~pos =
     | None -> Lsp_io.log_error "get_logs" "None pos"; true
     | Some Pos.{start_line; _} -> start_line-1 <= line
   in
-  List.fold_left_while (fun acc x -> acc^(fst x))
+  List.fold_left_while (fun _ x -> fst x)
                   (fun (_, p) -> before_cursor p) "" doc.Lp_doc.logs
 
 let do_goals ofmt ~id params =
