@@ -145,8 +145,8 @@ export function activate(context: ExtensionContext) {
             commands.registerCommand('extension.vscode-lp.center', () => goToProofState(context));
 
             //Go to next/previous proof
-            commands.registerCommand('extension.vscode-lp.nx', () => nextProof(context, 1));
-            commands.registerCommand('extension.vscode-lp.pv', () => nextProof(context, -1));
+            commands.registerCommand('extension.vscode-lp.nx', () => nextProof(context, true));
+            commands.registerCommand('extension.vscode-lp.pv', () => nextProof(context, false));
 
         });
 
@@ -252,27 +252,7 @@ function lpRefresh(context : ExtensionContext, proofPos : Position, panel : Webv
     highlight(context, proofPos, openEditor);
 }
 
-function nextProofPosition(document: TextDocument, proofState : Position, direction : number) : Position {
-
-    let current : number = proofState.line + direction; //Starting point
-
-    //The highlight can't go beyond the limits of the document
-    if( current <= 0 || current >= document.lineCount )
-        return proofState;
-
-    //Looking for the next line with "proof" in it (or the beggining/end of file)
-    let line : string = document.lineAt(current).text;
-
-    while(!line.includes("begin") && current + direction >= 1 && current + direction <= document.lineCount - 1) {
-        current += direction;
-        line = document.lineAt(current).text;
-    }
-
-    return new Position(current, 0);
-}
-
-
-function nextProof(context : ExtensionContext, direction : number) {
+function nextProof(context : ExtensionContext, direction : boolean) {
 
     //Checking workspace
     const openEditor : TextEditor | undefined = window.activeTextEditor;
@@ -290,7 +270,7 @@ function nextProof(context : ExtensionContext, direction : number) {
     }
 
     //The position of the next proof
-    let nextProofPos : Position = nextProofPosition(openEditor.document, proofState, direction);
+    let nextProofPos : Position = stepCommand(openEditor.document, proofState, direction, ['begin']);
     
     context.workspaceState.update('proofState', nextProofPos); //proof state is set to the position of the next proof keyword
     
@@ -361,9 +341,10 @@ function decorate(openEditor : TextEditor, range : Range | null, decorationType 
 }
 
 // returns the Position of next or previous command
-function stepCommand(document: TextDocument, currentPos: Position, forward: boolean){
+function stepCommand(document: TextDocument, currentPos: Position, forward: boolean, terminators? : string[]){
 
-    const terminators = [';', 'begin'];
+    if (terminators == undefined)
+        terminators = [';', 'begin'];
 
     let docBegin : Position = document.positionAt(0);
     let docEnd : Position = new Position(document.lineCount, 0);
@@ -606,9 +587,7 @@ function sendGoalsRequest(position: Position, panel : WebviewPanel, docUri : Uri
     const req = new RequestType<ParamsGoals, GoalResp, void, void>("proof/goals");
     client.sendRequest(req, cursor).then((goals) => {
         
-        if(goals.logs){
-            updateTerminalText(goals.logs);
-        }
+        updateTerminalText(goals.logs);
 
         if(goals.goals) {
             let goal_render = buildGoalsContent(goals.goals, styleUri);
