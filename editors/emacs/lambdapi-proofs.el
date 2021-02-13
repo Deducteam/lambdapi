@@ -23,14 +23,53 @@
     (((background light)) :background "indianred1"))
   "Face for regions with error")
 
+(defun lp--get-first-error-before (before)
+  "Returns the position of first error before BEFORE and nil if there are
+no errors."
+  (save-restriction
+    (widen)
+    (let* ((diags (flymake-diagnostics (point-min) before))
+           (error-diags
+            (cl-remove-if-not
+             (lambda (diag)
+               (eq 1
+                   (cadr (member :severity
+                                 (car
+                                  (flymake-diagnostic-data diag))))))
+             diags))
+           (lsp-positions
+            (mapcar
+             (lambda (diag)
+               (cadr (member :start
+                             (cadr (member
+                                    :range
+                                    (car (flymake-diagnostic-data diag)))))))
+             error-diags))
+           (points
+            (mapcar (lambda (lsp-pos)
+                      (eglot--lsp-position-to-point lsp-pos))
+                    lsp-positions))
+           (first-error (1+ (point-max))))
+      (mapcar (lambda (pos) (setq first-error (min first-error pos)))
+              points)
+      (if (> first-error (point-max)) nil first-error))))
+
 (defun lp-highlight-till (pos)
   "Highlight till pos"
   (save-restriction
     (widen)
     (hlt-unhighlight-region (point-min) (point-max) 'lambdapi-proof-face)
-    (hlt-highlight-region
-     (point-min) (min (1+ pos) (point-max))
-     'lambdapi-proof-face)))
+    (hlt-unhighlight-region (point-min) (point-max) 'lambdapi-proof-error-face)
+    (let ((first-error (lp--get-first-error-before pos)))
+      (if first-error
+          (progn
+            (hlt-highlight-region
+             (point-min) (min (1+ pos) first-error) 'lambdapi-proof-face)
+            (hlt-highlight-region
+             first-error (min (1+ pos) (point-max)) 'lambdapi-proof-error-face))
+        (hlt-highlight-region
+         (point-min) (min (1+ pos) (point-max))
+         'lambdapi-proof-face)))))
 
 (defun lp-focus-goal (goalno &optional proofbuf proofpos)
   "Focus on 'goalno'th goal (zero-indexed). proofbuf is the buffer
@@ -317,16 +356,6 @@ and pos if there is no next command"
       (if (and (not (lp--in-comment-p))
                (seq-find
                 (lambda (term)
-                  (message
-                   (format "term:%S substr: %S res : %S"
-                           term
-                           (buffer-substring-no-properties
-                            (max (point-min) (- (point) (length term)))
-                            (point))
-                           (equal (buffer-substring-no-properties
-                                   (max (point-min) (- (point) (length term)))
-                                   (point))
-                                  term)))
                   (equal (buffer-substring-no-properties
                           (max (point-min) (- (point) (length term)))
                           (point))

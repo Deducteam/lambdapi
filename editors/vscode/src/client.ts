@@ -3,7 +3,7 @@
  * Licensed under the MIT License. See License.txt in the project root for license information.
  * ------------------------------------------------------------------------------------------ */
 
-import { workspace, ExtensionContext, Position, Uri, commands, window, WebviewPanel, ViewColumn, TextEditor, TextDocument, SnippetString, Range, TextEditorDecorationType, Pseudoterminal, EventEmitter, TreeItemCollapsibleState, WebviewViewProvider, CancellationToken, WebviewView, WebviewViewResolveContext, TextDocumentChangeEvent } from 'vscode';
+import { workspace, ExtensionContext, Position, Uri, commands, window, WebviewPanel, ViewColumn, TextEditor, TextDocument, SnippetString, Range, TextEditorDecorationType, Pseudoterminal, EventEmitter, TreeItemCollapsibleState, WebviewViewProvider, CancellationToken, WebviewView, WebviewViewResolveContext, TextDocumentChangeEvent, Diagnostic, languages } from 'vscode';
 
 // Insiders API, disabled
 // import { WebviewEditorInset } from 'vscode';
@@ -52,7 +52,16 @@ export function activate(context: ExtensionContext) {
             backgroundColor: '#08883555' //highlight color for a dark theme
         }
       });
+    const errorDecoration = window.createTextEditorDecorationType({
+        light: {
+            backgroundColor: '#FF000055' //highlight color for a light theme
+        },
+        dark: {
+            backgroundColor: '#FF000055' //highlight color for a dark theme
+        }
+      });
     context.workspaceState.update('proofDecoration', proofDecoration);
+    context.workspaceState.update('errorDecoration', errorDecoration);
 
     //Following mode : whether the window follows proofState automatically or not
     context.workspaceState.update('follow', true);
@@ -139,10 +148,6 @@ export function activate(context: ExtensionContext) {
             commands.registerCommand('extension.vscode-lp.nx', () => nextProof(context, 1));
             commands.registerCommand('extension.vscode-lp.pv', () => nextProof(context, -1));
 
-
-            //Highlight first line
-            if(window.activeTextEditor)
-                decorate(window.activeTextEditor, range, proofDecoration);
         });
 
         context.subscriptions.push(client.start());
@@ -188,18 +193,49 @@ function lpDocChangeHandler(event : TextDocumentChangeEvent, context: ExtensionC
     }
 }
 
+function getFirstError(uri : Uri, before? : Position){
+    let diags : Diagnostic[] = languages.getDiagnostics(uri);
+    let firstError : Position | undefined = undefined;
+    let ind = 0;
+    for (let diag of diags){
+        if (diag.severity == 0) {//check if error
+            if(firstError && diag.range.start.isBefore(firstError)){
+                firstError = diag.range.start;
+            } else {
+                firstError = diag.range.start;
+            }
+        }
+    }
+    if(before){
+        if(firstError && firstError.isBefore(before)) return firstError;
+        else return undefined;
+    } else { 
+        return firstError;
+    }
+}
+
 function highlight(context : ExtensionContext, newProofState : Position, openEditor : TextEditor) {
 
-    const range : Range = new Range(new Position(0, 0), newProofState);
 
     //Highlighting text
     const proofDecoration : TextEditorDecorationType | undefined = context.workspaceState.get('proofDecoration');
+    const errorDecoration : TextEditorDecorationType | undefined = context.workspaceState.get('errorDecoration');
 
-    if(!proofDecoration)
+    const firstError = getFirstError(openEditor.document.uri, newProofState);
+    const zeroPos = new Position(0, 0);
+
+    if(!proofDecoration || !errorDecoration)
         console.log('Highlights/decorations are not properly defined');
-    else
-        decorate(openEditor, range, proofDecoration);
-    
+    else{
+        if(firstError){
+            decorate(openEditor, new Range(zeroPos, firstError), proofDecoration);
+            decorate(openEditor, new Range(firstError, newProofState), errorDecoration);
+        } else {
+            decorate(openEditor, null, errorDecoration);
+            decorate(openEditor, new Range(zeroPos, newProofState), proofDecoration);
+        }
+        
+    }
     //Scroll until last highlight (if follow mode is toggled)
     const follow: boolean | undefined = context.workspaceState.get('follow');
 
@@ -317,35 +353,50 @@ function toggleFollowMode(context : ExtensionContext) : boolean {
     return follow;
 }
 
-function decorate(openEditor : TextEditor, range : Range, decorationType : TextEditorDecorationType) {
-    openEditor.setDecorations(decorationType, [range]);
+function decorate(openEditor : TextEditor, range : Range | null, decorationType : TextEditorDecorationType) {
+    if(range)
+        openEditor.setDecorations(decorationType, [range]);
+    else
+        openEditor.setDecorations(decorationType, []);
 }
 
 // returns the Position of next or previous command
 function stepCommand(document: TextDocument, currentPos: Position, forward: boolean){
+
+    const terminators = [';', 'begin'];
+
     let docBegin : Position = document.positionAt(0);
     let docEnd : Position = new Position(document.lineCount, 0);
     if (forward){
-        // discard the first character 
         let textAfter : string = document.getText(new Range(currentPos, docEnd));
-        // console.log(`text after :\n"${textAfter.substring(0, 100)}"\n`);
+        
+        // get the positions of end of matched terminators
+        let positions = terminators.map((term) => {
+            let pos = textAfter.indexOf(term);
+            return pos < 0 ? -1 : pos + term.length;
+        }).filter(x => x > 0);
 
-        let res = textAfter.indexOf(';');
-        // console.log(`res = ${res}`)
-
-        if (res == -1) return docEnd;
-
-        let nextCmdPos : Position = document.positionAt(document.offsetAt(currentPos) + res + 1);
+        if (!positions || positions.length == 0) 
+            return docEnd;
+        
+        let res = Math.min(...positions);
+        let nextCmdPos : Position = document.positionAt(document.offsetAt(currentPos) + res);
         return nextCmdPos;
     } else {
         let textBefore : string = document.getText(new Range(docBegin, currentPos));
         // remove last character
         textBefore = textBefore.substr(0, textBefore.length - 1);
+        
+        // get the positions of end of matched terminators
+        let positions = terminators.map((term) => {
+            let pos = textBefore.lastIndexOf(term);
+            return pos < 0 ? -1 : pos + term.length - 1; // off by 1
+        }).filter(x => x > 0);
 
-        // console.log(`text before : ${textBefore.substring(textBefore.length-30, textBefore.length)}`);
-        let res =  textBefore.lastIndexOf(';');
-        // console.log(res);
-        if (res == -1) return docBegin;
+        if (!positions || positions.length == 0) 
+            return docBegin;
+
+        let res =  Math.max(...positions);
         let prevCmdPos : Position = document.positionAt(res + 1);
         return prevCmdPos;
     }
