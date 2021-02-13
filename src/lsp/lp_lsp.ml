@@ -170,9 +170,9 @@ let in_range ?loc (line, pos) =
   match loc with
   | None -> false
   | Some Pos.{start_line; start_col; end_line; end_col; _} ->
-    start_line - 1 < line && line < end_line - 1 ||
-    (start_line - 1 = line && start_col <= pos) ||
-    (end_line - 1 = line && pos <= end_col)
+    let line = line + 1 in
+    (compare (start_line, start_col) (line, pos)) *
+    (compare (end_line, end_col) (line, pos)) <= 0
 
 let get_node_at_pos doc line pos =
   let open Lp_doc in
