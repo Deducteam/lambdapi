@@ -101,14 +101,15 @@ bold if goalNo is 0"
          (lp-focus-goal ,goalNo ,proofbuf ,proofpos)))
     (add-text-properties
      0 (length goalstr)
-     `(face      ,(pcase goalNo
-                    (0 'bold)
-                    (_ 'default))
-                 mouse-face highlight
-                 help-echo ,(pcase goalNo
-                              (0 "current goal")
-                              (_ "click to focus"))
-                 keymap    ,goalkeymap)
+     `(face
+       ,(pcase goalNo
+          (0 'bold)
+          (_ 'default))
+       mouse-face highlight
+       help-echo ,(pcase goalNo
+                    (0 "current goal")
+                    (_ "click to focus"))
+       keymap    ,goalkeymap)
      goalstr)
     goalstr))
 
