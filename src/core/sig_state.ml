@@ -23,8 +23,8 @@ open Sign
 type sig_state =
   { signature : Sign.t                    (** Current signature.        *)
   ; in_scope  : (sym * Pos.popt) StrMap.t (** Symbols in scope.         *)
-  ; aliases   : Path.t StrMap.t           (** Established aliases.      *)
-  ; mod_map   : string Path.Map.t         (** Reverse map of [aliases]. *)
+  ; alias_path: Path.t StrMap.t           (** Map from aliases to paths.*)
+  ; path_alias: string Path.Map.t         (** Map from paths to aliases.*)
   ; builtins  : sym StrMap.t              (** Builtin symbols.          *)
   ; notations : notation SymMap.t         (** Printing hints.           *) }
 
@@ -39,7 +39,7 @@ let create_sign : Path.t -> Sign.t = fun sign_path ->
 (** [add_symbol ss expo prop mstrat opaq id typ impl def] generates a new
    signature state from [ss] by creating a new symbol with expo [e], property
    [p], strategy [st], name [x], type [a], implicit arguments [impl] and
-   optional definition [t]. This new symbol is returned too. *)
+   optional definition [def]. This new symbol is returned too. *)
 let add_symbol : sig_state -> Tags.expo -> Tags.prop -> Tags.match_strat
     -> bool -> strloc -> term -> bool list -> term option -> sig_state * sym =
   fun ss expo prop mstrat opaq id typ impl def ->
@@ -134,8 +134,8 @@ let open_sign : sig_state -> Sign.t -> sig_state = fun ss sign ->
 (** Dummy [sig_state] made from the dummy signature. *)
 let dummy : sig_state =
   { signature = Sign.dummy (); in_scope = StrMap.empty;
-    aliases = StrMap.empty; mod_map = Path.Map.empty; builtins = StrMap.empty;
-    notations = SymMap.empty }
+    alias_path = StrMap.empty; path_alias = Path.Map.empty;
+    builtins = StrMap.empty; notations = SymMap.empty }
 
 (** [of_sign sign] creates a state from the signature [sign] with ghost
     signatures opened. *)
@@ -163,11 +163,12 @@ let find_sym : prt:bool -> prv:bool -> sig_state -> p_qident -> sym =
           try fst (StrMap.find s st.in_scope)
           with Not_found -> fatal pos "Unknown object %a." pp_uid s
         end
-    | [m] when StrMap.mem m st.aliases -> (* Aliased module path. *)
+    | [m] when StrMap.mem m st.alias_path -> (* Aliased module path. *)
         begin
           (* The signature must be loaded (alias is mapped). *)
           let sign =
-            try Path.Map.find (StrMap.find m st.aliases) Timed.(!Sign.loaded)
+            try Path.Map.find (StrMap.find m st.alias_path)
+                  Timed.(!Sign.loaded)
             with _ -> assert false (* Should not happen. *)
           in
           (* Look for the symbol. *)

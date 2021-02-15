@@ -79,9 +79,9 @@ let handle_require_as :
     (Path.t -> Sign.t) -> sig_state -> p_path -> p_ident -> sig_state =
   fun compile ss ({elt=p;_} as mp) {elt=id;_} ->
   let ss = handle_require compile false ss mp in
-  let aliases = StrMap.add id p ss.aliases in
-  let mod_map = Path.Map.add p id ss.mod_map in
-  {ss with aliases; mod_map}
+  let alias_path = StrMap.add id p ss.alias_path in
+  let path_alias = Path.Map.add p id ss.path_alias in
+  {ss with alias_path; path_alias}
 
 (** [handle_modifiers ms] verifies that the modifiers in [ms] are compatible.
     If so, they are returned as a tuple. Otherwise, it fails. *)

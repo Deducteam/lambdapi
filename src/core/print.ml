@@ -63,7 +63,7 @@ let pp_path : Path.t pp = List.pp pp_uid "."
 let pp_sym : sym pp = fun ppf s ->
   if StrMap.mem s.sym_name !sig_state.in_scope then pp_uid ppf s.sym_name
   else
-    match Path.Map.find_opt s.sym_path (!sig_state).mod_map with
+    match Path.Map.find_opt s.sym_path (!sig_state).path_alias with
     | None -> out ppf "%a.%a" pp_path s.sym_path pp_uid s.sym_name
     | Some alias -> out ppf "%a.%a" pp_uid alias pp_uid s.sym_name
 

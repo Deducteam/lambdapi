@@ -222,7 +222,8 @@ let add_symbol :
       impl ->
   (* Check for metavariables in the symbol type. *)
   if LibTerm.has_metas true typ then
-    fatal pos "The type of [%s] contains metavariables" sym_name;
+    fatal pos "The type of %a contains metavariables"
+      Parsing.LpLexer.pp_uid sym_name;
   (* We minimize [impl] to enforce our invariant (see {!type:Terms.sym}). *)
   let rec rem_false l = match l with false::l -> rem_false l | _ -> l in
   let sym_impl = List.rev (rem_false (List.rev impl)) in
@@ -267,7 +268,8 @@ let read : string -> t = fun fname ->
       close_in ic; sign
     with Failure _ ->
       close_in ic;
-      fatal_no_pos "File [%s] is incompatible with current binary...\n" fname
+      fatal_no_pos "File \"%s\" is incompatible with current binary...\n"
+        fname
   in
   (* Timed references need reset after unmarshaling (see [Timed] doc). *)
   let reset_timed_refs sign =
