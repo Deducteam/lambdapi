@@ -6,11 +6,7 @@ open Common
 open Pos
 open Syntax
 open DkLexer
-
-(** {b NOTE} we maintain the invariant described in the [Parser] module: every
-    error should have an attached position.  We do not open [Console] to avoid
-    calls to [Console.fatal] and [Console.fatal_no_pos].  In case of an error,
-    the [parser_fatal] function should be used instead. *)
+open Error
 
 (** [get_args t] decomposes the parser level term [t] into a spine [(h,args)],
     when [h] is the term at the head of the application and [args] is the list
@@ -40,17 +36,14 @@ let translate_old_rule : old_p_rule -> p_rule = fun r ->
   let (ctx, lhs, rhs) = r.elt in
   (* Check for (deprecated) annotations in the context. *)
   let get_var (x,ao) =
-    let open Console in
     let fn a = wrn a.pos "Ignored type annotation." in
-    (if !verbose > 1 then Option.iter fn ao); x
+    (if !Console.verbose > 1 then Option.iter fn ao); x
   in
   let ctx = List.map get_var ctx in
   let is_pat_var env x =
     not (List.mem x env) && List.exists (fun y -> y.elt = x) ctx
   in
   (* Find the maximum number of arguments a variable is applied to. *)
-  (* Using [fatal] is OK here as long as it is called with term positions. *)
-  let fatal = Console.fatal in
   let arity = Hashtbl.create 7 in
   let rec compute_arities env t =
     let (h, args) = get_args t in
@@ -201,7 +194,7 @@ let build_config : Pos.pos -> string -> string option -> eval_config =
     | (i     , Some "WHNF") -> config (Some(i)) WHNF
     | (i     , None       ) -> config (Some(i)) NONE
     | (_     , _          ) -> raise Exit (* captured below *)
-  with _ -> Console.fatal (Some(loc)) "Invalid command configuration."
+  with _ -> fatal (Some(loc)) "Invalid command configuration."
 %}
 
 // end of file
@@ -217,7 +210,7 @@ let build_config : Pos.pos -> string -> string option -> eval_config =
 %token KW_PRV
 %token KW_THM
 %token INFER
-%token <Syntax.p_module_path> REQUIRE
+%token <Path.t> REQUIRE
 %token TYPE
 
 // symbols
@@ -238,8 +231,8 @@ let build_config : Pos.pos -> string -> string option -> eval_config =
 
 // identifiers
 
-%token <string> ID
-%token <Syntax.p_module_path * string> QID
+%token <string> UID
+%token <Syntax.qident> QID
 
 // start symbol
 
@@ -251,7 +244,7 @@ let build_config : Pos.pos -> string -> string option -> eval_config =
 %%
 
 command:
-  | p_sym_mod=modifier* s=ID p_sym_arg=param* COLON a=term DOT
+  | p_sym_mod=modifier* s=UID p_sym_arg=param* COLON a=term DOT
     {
       let p_sym_mod =
         match List.find_opt is_prop p_sym_mod with
@@ -268,7 +261,7 @@ command:
         (P_symbol {p_sym_mod;p_sym_nam;p_sym_arg;p_sym_typ;p_sym_trm;p_sym_prf
                    ;p_sym_def})
     }
-  | p_sym_mod=modifier* KW_DEF s=ID COLON a=term DOT
+  | p_sym_mod=modifier* KW_DEF s=UID COLON a=term DOT
     {
       let p_sym_nam = make_pos $loc(s) s in
       let p_sym_arg = [] in
@@ -280,7 +273,7 @@ command:
         (P_symbol {p_sym_mod;p_sym_nam;p_sym_arg;p_sym_typ;p_sym_trm;p_sym_prf
                    ;p_sym_def})
     }
-  | p_sym_mod=modifier* KW_DEF s=ID COLON a=term DEF t=term DOT
+  | p_sym_mod=modifier* KW_DEF s=UID COLON a=term DEF t=term DOT
     {
       let p_sym_nam = make_pos $loc(s) s in
       let p_sym_arg = [] in
@@ -292,7 +285,7 @@ command:
         (P_symbol {p_sym_mod;p_sym_nam;p_sym_arg;p_sym_typ;p_sym_trm;p_sym_prf
                    ;p_sym_def})
     }
-  | p_sym_mod=modifier* KW_DEF s=ID DEF t=term DOT
+  | p_sym_mod=modifier* KW_DEF s=UID DEF t=term DOT
     {
       let p_sym_nam = make_pos $loc(s) s in
       let p_sym_arg = [] in
@@ -304,7 +297,7 @@ command:
         (P_symbol {p_sym_mod;p_sym_nam;p_sym_arg;p_sym_typ;p_sym_trm;p_sym_prf
                    ;p_sym_def})
     }
-  | p_sym_mod=modifier* KW_DEF s=ID p_sym_arg=param+ COLON a=term
+  | p_sym_mod=modifier* KW_DEF s=UID p_sym_arg=param+ COLON a=term
     DEF t=term DOT
     {
       let p_sym_nam = make_pos $loc(s) s in
@@ -316,7 +309,7 @@ command:
         (P_symbol {p_sym_mod;p_sym_nam;p_sym_arg;p_sym_typ;p_sym_trm;p_sym_prf
                    ;p_sym_def})
     }
-  | p_sym_mod=modifier* KW_DEF s=ID p_sym_arg=param+ DEF t=term DOT
+  | p_sym_mod=modifier* KW_DEF s=UID p_sym_arg=param+ DEF t=term DOT
     {
       let p_sym_nam = make_pos $loc(s) s in
       let p_sym_typ = None in
@@ -327,7 +320,7 @@ command:
         (P_symbol {p_sym_mod;p_sym_nam;p_sym_arg;p_sym_typ;p_sym_trm;p_sym_prf
                    ;p_sym_def})
     }
-  | p_sym_mod=modifier* KW_THM s=ID COLON a=term DEF t=term DOT
+  | p_sym_mod=modifier* KW_THM s=UID COLON a=term DEF t=term DOT
     {
       let p_sym_nam = make_pos $loc(s) s in
       let p_sym_arg = [] in
@@ -339,7 +332,7 @@ command:
         (P_symbol {p_sym_mod;p_sym_nam;p_sym_arg;p_sym_typ;p_sym_trm;p_sym_prf
                    ;p_sym_def})
     }
-  | p_sym_mod=modifier* KW_THM s=ID p_sym_arg=param+ COLON a=term
+  | p_sym_mod=modifier* KW_THM s=UID p_sym_arg=param+ COLON a=term
     DEF t=term DOT
     {
       let p_sym_nam = make_pos $loc(s) s in
@@ -381,19 +374,19 @@ command:
       let q = make_pos $sloc (P_query_assert(mf, P_assert_conv(t,u))) in
       make_pos $sloc (P_query q)
     }
-  | r=REQUIRE DOT { make_pos $sloc (P_require(false,[r])) }
+  | r=REQUIRE DOT { make_pos $sloc (P_require(false, [make_pos $loc(r) r])) }
   | EOF {
       raise End_of_file
     }
 
 eval_config:
-  | LEFTSQU s=ID RIGHTSQU
+  | LEFTSQU s=UID RIGHTSQU
     { build_config (locate $sloc) s None }
-  | LEFTSQU s1=ID COMMA s2=ID RIGHTSQU
+  | LEFTSQU s1=UID COMMA s2=UID RIGHTSQU
     { build_config (locate $sloc) s1 (Some s2) }
 
 param:
-  | LEFTPAR id=ID COLON te=term RIGHTPAR
+  | LEFTPAR id=UID COLON te=term RIGHTPAR
     { ([Some (make_pos $loc(id) id)], Some(te), false) }
 
 modifier:
@@ -401,7 +394,7 @@ modifier:
   | KW_INJ { make_pos $sloc (P_prop(Syntax.Tags.Injec)) }
 
 context_item:
-  | x=ID ao=option(COLON a=term { a }) { (make_pos $loc(x) x, ao) }
+  | x=UID ao=option(COLON a=term { a }) { (make_pos $loc(x) x, ao) }
 
 rule:
   | LEFTSQU c=separated_list(COMMA, context_item) RIGHTSQU
@@ -410,7 +403,7 @@ rule:
 
 sterm:
   | qid=QID { make_pos $sloc (P_Iden(make_pos $sloc qid, false)) }
-  | id=ID   { make_pos $sloc (P_Iden(make_pos $sloc ([], id), false)) }
+  | id=UID   { make_pos $sloc (P_Iden(make_pos $sloc ([], id), false)) }
   | UNDERSCORE { make_pos $sloc P_Wild }
   | TYPE    { make_pos $sloc P_Type }
   | LEFTPAR t=term RIGHTPAR { t }
@@ -424,11 +417,11 @@ type_annot:
 
 term:
   | t=aterm { t }
-  | x=ID COLON a=aterm ARROW b=term {
+  | x=UID COLON a=aterm ARROW b=term {
       let x = make_pos $loc(x) x in
       make_pos $sloc (P_Prod([([Some x], Some(a), false)], b))
     }
-  | LEFTPAR x=ID COLON a=aterm RIGHTPAR ARROW b=term {
+  | LEFTPAR x=UID COLON a=aterm RIGHTPAR ARROW b=term {
       let x = make_pos $loc(x) x in
       make_pos $sloc (P_Prod([([Some x], Some(a), false)], b))
     }
@@ -438,7 +431,7 @@ term:
   | UNDERSCORE a=option(type_annot) FATARROW t=term {
       make_pos $sloc (P_Abst([([None], a, false)], t))
     }
-  | x=ID a=option(type_annot) FATARROW t=term {
+  | x=UID a=option(type_annot) FATARROW t=term {
       let x = make_pos $loc(x) x in
       make_pos $sloc (P_Abst([([Some x], a, false)], t))
     }

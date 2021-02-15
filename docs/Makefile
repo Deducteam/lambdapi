@@ -21,10 +21,10 @@ help:
 
 .PHONY: syntax.bnf
 syntax.bnf:
-	echo "<qid> ::= [<id>'.']+<id>\n" > $@
+	echo "<qid> ::= [<uid>'.']+<uid>\n" > $@
 	echo "<switch> ::= 'on'\n           | 'off'\n" >> $@
 	echo "<assoc> ::= 'left'\n          | 'right'\n" >> $@
-	$(BNF_GEN) ../src/core/lpParser.mly | sed \
+	$(BNF_GEN) ../src/parsing/lpParser.mly | sed \
 	-e 's/SWITCH/<switch>/g' \
 	-e 's/ASSOC/<assoc>/g' \
 	-e 's/ABORT/"abort"/g' \
@@ -98,11 +98,12 @@ syntax.bnf:
 	-e 's/TURNSTILE/"⊢"/g' \
 	-e 's/VBAR/"|"/g' \
 	-e 's/WILD/"_"/g' \
-	-e 's/ID/<id>/g' \
-	-e 's/<id>_META/"?"<id>/g' \
-	-e 's/<id>_PAT/"$$"<id>/g' \
-	-e 's/Q<id>/<qid>/g' \
-	-e 's/<qid>_EXPL/"@"<qid>/g' \
+	-e 's/<uid> ::= UID//g' \
+	-e 's/UID/<uid>/g' \
+	-e 's/<uid>_META/"?"<uid>/g' \
+	-e 's/<uid>_PAT/"$$"<uid>/g' \
+	-e 's/QID/<qid>/g' \
+	-e 's/ID_EXPL/"@"<id>/g' \
 	-e "s/\"/\'/g" \
 	-e 's/<stringlit>/"<string>"/g' \
 	-e 's/| EOF//g' \
@@ -110,9 +111,9 @@ syntax.bnf:
 
 .PHONY: syntax_dedukti.bnf
 syntax_dedukti.bnf:
-	echo "<qid> ::= [<id>'.']+<id>\n" > $@
+	echo "<qid> ::= [<uid>'.']+<uid>\n" > $@
 	echo "<assert> ::= '#ASSERT'\n           | '#ASSERTNOT'\n" >> $@
-	$(BNF_GEN) ../src/core/dkParser.mly | sed \
+	$(BNF_GEN) ../src/parsing/dkParser.mly | sed \
 	-e 's/ASSERT/<assert>/g' \
 	-e 's/EVAL/"#EVAL"/g' \
 	-e 's/KW_DEF/"def"/g' \
@@ -135,8 +136,8 @@ syntax_dedukti.bnf:
 	-e 's/RIGHTPAR/")"/g' \
 	-e 's/RIGHTSQU/"]"/g' \
 	-e 's/UNDERSCORE/"_"/g' \
-	-e 's/ID/<id>/g' \
-	-e 's/Q<id>/<qid>/g' \
+	-e 's/UID/<uid>/g' \
+	-e 's/QID/<qid>/g' \
 	-e "s/\"/\'/g" \
 	-e 's/| EOF//g' \
 	>> $@

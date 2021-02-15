@@ -6,10 +6,9 @@
 
 open Common
 open Timed
-open Module
 open Term
 
-(** Path of the module. *)
+(** Ghost module. *)
 let path = Path.ghost "unif_rule"
 
 (** Ghost signature holding the symbols used in unification rules.
@@ -20,7 +19,7 @@ let path = Path.ghost "unif_rule"
 let sign : Sign.t =
   let dummy = Sign.dummy () in
   let s = {dummy with Sign.sign_path = path} in
-  Sign.loaded := Module.PathMap.add path s !(Sign.loaded);
+  Sign.loaded := Path.Map.add path s !(Sign.loaded);
   s
 
 (** Symbol representing an atomic unification problem. The term [equiv t
@@ -30,9 +29,8 @@ let equiv : sym =
   let sym =
     Sign.add_symbol sign Public Defin Eager false (Pos.none "#equiv") Kind []
   in
-  let path = List.map (fun s -> (s, false)) path in
-  let bo = ("≡", Pratter.Neither, 1.1, Pos.none (path, "#equiv")) in
-  Sign.add_binop sign sym bo;
+  let binop = ("≡", Pratter.Neither, 1.1, Pos.none (path, "#equiv")) in
+  Sign.add_binop sign sym binop;
   sym
 
 (** Cons-like symbol for equivalences. The right-hand side of a unification
@@ -40,12 +38,11 @@ let equiv : sym =
     [cons (equiv t u) (cons (equiv v w) ...)] pretty-printed
     [t ≡ u; v ≡ w; ...]. *)
 let cons : sym =
-  let path = List.map (fun s -> (s, false)) path in
-  let bo = (";", Pratter.Right, 1.0, Pos.none (path, "#cons")) in
   let sym =
     Sign.add_symbol sign Public Defin Eager false (Pos.none "#cons") Kind []
   in
-  Sign.add_binop sign sym bo;
+  let binop = (";", Pratter.Right, 1.0, Pos.none (path, "#cons")) in
+  Sign.add_binop sign sym binop;
   sym
 
 (** [unpack eqs] transforms a term of the form

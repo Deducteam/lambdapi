@@ -56,16 +56,18 @@ type term =
     rewriting rules (see {!field:Term.rhs}) with the number of variables that
     are not in the LHS. In decision trees, a RHS is stored in every leaf since
     they correspond to matched rules. *)
- and rhs = (term_env, term) Bindlib.mbinder * int
+and rhs = (term_env, term) Bindlib.mbinder * int
 
 (** Representation of a decision tree (used for rewriting). *)
- and dtree = rhs Tree_types.dtree
+and dtree = rhs Tree_types.dtree
 
 (** Representation of a user-defined symbol. Symbols carry a "mode" indicating
     whether they may be given rewriting rules or a definition. Invariants must
     be enforced for "mode" consistency (see {!type:sym_prop}).  *)
- and sym =
-  { sym_path  : Common.Module.Path.t
+and sym =
+  { sym_expo  : Parsing.Syntax.Tags.expo
+  (** Visibility of the symbol. *)
+  ; sym_path  : Common.Path.t
   (** Module in which it is defined. *)
   ; sym_name  : string
   (** Name of the symbol. *)
@@ -73,20 +75,18 @@ type term =
   (** Type of the symbol. *)
   ; sym_impl  : bool list
   (** Implicitness of the first arguments ([true] meaning implicit). *)
+  ; sym_prop  : Parsing.Syntax.Tags.prop
+  (** Property of the symbol. *)
   ; sym_def   : term option ref
   (** Definition of the symbol. *)
   ; sym_opaq  : bool
   (** If the symbol must not be unfolded in default goal simplifications. *)
   ; sym_rules : rule list ref
   (** Rewriting rules for the symbol. *)
+  ; sym_mstrat: Parsing.Syntax.Tags.match_strat ref
+  (** Matching strategy. *)
   ; sym_tree  : dtree ref
-  (** Decision tree used for pattern matching against rules of the symbol. *)
-  ; sym_mstrat: Tags.match_strat ref
-  (** The matching strategy modifier. *)
-  ; sym_prop  : Tags.prop
-  (** Property of the symbol. *)
-  ; sym_expo  : Tags.expo
-  (** The visibility of the symbol. *) }
+  (** Decision tree used for matching against rules of the symbol. *) }
 
 (** {b NOTE} that {!field:sym_type} holds a (timed) reference for a  technical
     reason related to the writing of signatures as binary files  (in  relation
@@ -235,7 +235,7 @@ type term =
    path [path], exposition [expo], property [prop], opacity [opaq], matching
    strategy [mstrat], name [name], type [typ], implicit arguments [impl], no
    definition and no rules. *)
-let create_sym : Common.Module.Path.t -> Tags.expo -> Tags.prop
+let create_sym : Common.Path.t -> Tags.expo -> Tags.prop
     -> Tags.match_strat -> bool -> string -> term -> bool list -> sym =
   fun sym_path sym_expo sym_prop mstrat sym_opaq sym_name typ sym_impl ->
   {sym_path; sym_name; sym_type = ref typ; sym_impl; sym_def = ref None;
@@ -286,8 +286,16 @@ let rec unfold : term -> term = fun t ->
 (** {b NOTE} that {!val:unfold} must (almost) always be called before matching
     over a value of type {!type:term}. *)
 
-(** [unset m] returns [true] if [m] is not instantiated. *)
-let unset : meta -> bool = fun m -> !(m.meta_value) = None
+(** [is_abst t] returns [true] iff [t] is of the form [Abst(_)]. *)
+let is_abst : term -> bool = fun t ->
+  match unfold t with Abst(_) -> true | _ -> false
+
+(** [is_prod t] returns [true] iff [t] is of the form [Prod(_)]. *)
+let is_prod : term -> bool = fun t ->
+  match unfold t with Prod(_) -> true | _ -> false
+
+(** [is_unset m] returns [true] if [m] is not instantiated. *)
+let is_unset : meta -> bool = fun m -> !(m.meta_value) = None
 
 (** Basic management of meta variables. *)
 module Meta : sig
@@ -532,10 +540,10 @@ module SymMap = Map.Make(Sym)
 type rw_patt =
   | RW_Term           of term
   | RW_InTerm         of term
-  | RW_InIdInTerm     of (term, term) Bindlib.binder
-  | RW_IdInTerm       of (term, term) Bindlib.binder
-  | RW_TermInIdInTerm of term * (term, term) Bindlib.binder
-  | RW_TermAsIdInTerm of term * (term, term) Bindlib.binder
+  | RW_InIdInTerm     of tbinder
+  | RW_IdInTerm       of tbinder
+  | RW_TermInIdInTerm of term * tbinder
+  | RW_TermAsIdInTerm of term * tbinder
 
 (** Representation of unification problems. *)
 type problem =

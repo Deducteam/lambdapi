@@ -91,29 +91,32 @@ type token =
   | WILD
 
   (* identifiers *)
-  | ID of (string * bool) (* Boolean is true if the identifier is escaped. *)
-  | ID_META of string
-  | ID_PAT of string
-  | QID of (string * bool) list
-  | QID_EXPL of (string * bool) list
+  | UID of string
+  | UID_META of string
+  | UID_PAT of string
+  | QID of Path.t
+  | ID_EXPL of Path.t
 
 exception SyntaxError of strloc
 
 (** Lexer for Lambdapi syntax. *)
 module Lp_lexer : sig
 
+  val is_uid : string -> bool
+  (** [is_uid s] is [true] iff [s] is a regular identifier. *)
+
+  val pp_uid : string Base.pp
+  (** [pp_uid s] prints the uid [s], in escaped form if [s] is not a regular
+   identifier. *)
+
   val is_identifier : string -> bool
-  (** [is_identifier s] is [true] if [s] is a valid identifier. *)
+  (** [is_identifier s] is [true] iff [s] is a valid identifier. *)
 
   val is_keyword : string -> bool
-  (** [is_keyword s] returns [true] if [s] is a keyword. *)
-
-  val unquote : string -> string
-  (** [unquote s] removes the quotation marks [{|] and [|}] from [s] if it has
-      some. Otherwise, the argument is returned. *)
+  (** [is_keyword s] returns [true] iff [s] is a keyword. *)
 
   val is_debug_flag : string -> bool
-  (** [is_debug_flag s] is true if [s] is a debug flag. *)
+  (** [is_debug_flag s] is true iff [s] is a debug flag. *)
 
   val lexer : lexbuf -> unit -> token * Lexing.position * Lexing.position
   (** [lexer buf] is a lexing function on buffer [buf] that can be passed to
@@ -121,30 +124,31 @@ module Lp_lexer : sig
 end = struct
   let digit = [%sedlex.regexp? '0' .. '9']
   let integer = [%sedlex.regexp? Plus digit]
+  let float = [%sedlex.regexp? integer, '.', Opt (integer)]
+  let stringlit = [%sedlex.regexp? '"', Star (Compl ('"' | '\n')), '"']
+  let comment = [%sedlex.regexp? "//", Star (Compl ('\n' | '\r'))]
 
   (* We define the set of UTF8 codepoints that make up identifiers. The
      builtin categories are described on the home page of sedlex
      @see https://github.com/ocaml-community/sedlex *)
 
+  let alphabet = [%sedlex.regexp? 'a' .. 'z' | 'A' .. 'Z']
   let superscript =
     [%sedlex.regexp? 0x2070 | 0x00b9 | 0x00b2 | 0x00b3 | 0x2074 .. 0x207c]
   let subscript = [%sedlex.regexp? 0x208 .. 0x208c]
   let supplemental_punctuation = [%sedlex.regexp? 0x2e00 .. 0x2e52]
-  let alphabet = [%sedlex.regexp? 'a' .. 'z' | 'A' .. 'Z']
   let ascii_sub =
-    [%sedlex.regexp? '-' | '\'' | '&' | '^' | '\\' | '*'
-                   | '%' | '#' | '~']
+    [%sedlex.regexp? '-' | '\'' | '&' | '^' | '\\' | '*' | '%' | '#' | '~']
   let letter =
     [%sedlex.regexp? lowercase | uppercase | ascii_sub
                    | math | other_math | subscript | superscript
                    | supplemental_punctuation ]
-  let id = [%sedlex.regexp? (letter | '_'), Star (letter | digit | '_')]
+  let regid = [%sedlex.regexp? (letter | '_'), Star (letter | digit | '_')]
   let escid =
-    [%sedlex.regexp? "{|", Star (Compl '|' | '|', Compl '}'), Star '|', "|}"]
-  let path = [%sedlex.regexp? (id | escid), Plus ('.', (id | escid))]
-  let stringlit = [%sedlex.regexp? '"', Star (Compl ('"' | '\n')), '"']
-  let float = [%sedlex.regexp? integer, '.', Opt (integer)]
-  let comment = [%sedlex.regexp? "//", Star (Compl ('\n' | '\r'))]
+    [%sedlex.regexp? "{|", Plus (Compl '|' | '|', Compl '}'), Star '|', "|}"]
+  let uid = [%sedlex.regexp? regid | escid]
+  let qid = [%sedlex.regexp? uid, Plus ('.', uid)]
+  let id = [%sedlex.regexp? uid | qid]
 
   (** [nom buf] eats whitespaces and comments in buffer [buf]. *)
   let rec nom : lexbuf -> unit = fun buf ->
@@ -157,30 +161,12 @@ end = struct
     | "/*" -> nom_comment buf
     | comment -> nom buf
     | _ -> ()
-and nom_comment : lexbuf -> unit = fun buf ->
+  and nom_comment : lexbuf -> unit = fun buf ->
     match%sedlex buf with
     | eof -> raise (SyntaxError (Pos.none "Unterminated comment."))
     | "*/" -> nom buf
     | any -> nom_comment buf
     | _ -> assert false
-
-  (** [is_escaped s] is true if string [s] is escaped: i.e. enclosed in "{|
-      |}". *)
-  let is_escaped : string -> bool = fun s ->
-    let buf = Utf8.from_string s in
-    match%sedlex buf with
-    | escid -> true
-    | _ -> false
-
-  let unquote : string -> string * bool = fun s ->
-    if is_escaped s then String.(sub s 2 (length s - 4)), true else s, false
-
-  (** [is_identifier s] is true if [s] is an identifier. *)
-  let is_identifier : string -> bool = fun s ->
-    let lexbuf = Sedlexing.Utf8.from_string s in
-    match%sedlex lexbuf with
-    | id -> true
-    | _ -> false
 
   let is_keyword : string -> bool =
     let kws =
@@ -243,24 +229,33 @@ and nom_comment : lexbuf -> unit = fun buf ->
        [match%sedlex]. *)
       List.mem_sorted String.compare s kws
 
-  (** [is_debug_flag s] is true if [s] is a debug flag of the form [+...] or
-      [-...] where the dots are a sequence of letters. *)
   let is_debug_flag : string -> bool = fun s ->
     let lexbuf = Utf8.from_string s in
     match%sedlex lexbuf with
     | ('+' | '-'), Plus lowercase -> true
     | _ -> false
 
-  (** [split_qid b] splits buffer [b] on dots, parsing identifiers between
-      them. Each identifier is translated to a string, attached to a boolean
-      which indicates whether it was escaped. *)
-  let split_qid : string -> (string * bool) list = fun s ->
-    String.split_on_char '.' s |> List.map unquote
+  let is_uid : string -> bool = fun s ->
+    let lexbuf = Sedlexing.Utf8.from_string s in
+    match%sedlex lexbuf with
+    | uid -> true
+    | _ -> false
 
-  (** [tail buf] returns the utf8 string formed from [buf] dropping its first
-      codepoint. *)
-  let tail : lexbuf -> string = fun buf ->
-    Utf8.sub_lexeme buf 1 (lexeme_length buf - 1)
+  let pp_uid : string Base.pp = fun ppf s ->
+    if is_uid s
+    then Format.fprintf ppf "%s" s
+    else Format.fprintf ppf "{|%s|}" s
+
+  let is_identifier : string -> bool = fun s ->
+    let lexbuf = Sedlexing.Utf8.from_string s in
+    match%sedlex lexbuf with
+    | id -> true
+    | _ -> false
+
+  (** [tail n buf] returns the utf8 string formed from [buf] dropping its [n]
+     first codepoints. *)
+  let tail : int -> lexbuf -> string = fun n buf ->
+    Utf8.sub_lexeme buf n (lexeme_length buf - n)
 
   let token buf =
     nom buf;
@@ -326,8 +321,9 @@ and nom_comment : lexbuf -> unit = fun buf ->
     | "with" -> WITH
 
     (* other tokens *)
-    | '+', Plus alphabet -> DEBUG_FLAGS(true, tail buf)
-    | '-', Plus alphabet -> DEBUG_FLAGS(false, tail buf)
+
+    | '+', Plus lowercase -> DEBUG_FLAGS(true, tail 1 buf)
+    | '-', Plus lowercase -> DEBUG_FLAGS(false, tail 1 buf)
     | integer -> INT(int_of_string (Utf8.lexeme buf))
     | float -> FLOAT(float_of_string (Utf8.lexeme buf))
     | stringlit ->
@@ -358,29 +354,27 @@ and nom_comment : lexbuf -> unit = fun buf ->
 
     (* identifiers *)
 
-    | id -> ID(Utf8.lexeme buf, false)
-    | '@', id -> QID_EXPL([tail buf, false])
-    | '@', path -> QID_EXPL(split_qid (tail buf))
-    | '?', id -> ID_META(tail buf)
-    | '$', id -> ID_PAT(tail buf)
-    | path -> QID(split_qid (Utf8.lexeme buf))
-    | escid ->
-        (* Remove the escape markers [{|] and [|}] from [lexbuf]. *)
-        ID(Utf8.sub_lexeme buf 2 (lexeme_length buf - 4), true)
+    (* Using the default case to lex identifiers result in a *very* slow
+       lexing. This is why a regular expression which includes many characters
+       is preferred over using anything for identifiers. *)
+
+    | '?', uid -> UID_META(Escape.unescape (tail 1 buf))
+    | '$', uid -> UID_PAT(Escape.unescape (tail 1 buf))
+
+    | '@', uid -> ID_EXPL([Escape.unescape(tail 1 buf)])
+    | '@', qid ->
+        ID_EXPL(List.map Escape.unescape (Path.of_string (tail 1 buf)))
+
+    | uid -> UID(Escape.unescape (Utf8.lexeme buf))
+    | qid -> QID(List.map Escape.unescape (Path.of_string (Utf8.lexeme buf)))
 
     (* invalid token *)
 
     | _ ->
-        let loc = lexing_positions buf in
-        let loc = locate loc in
+        let loc = locate (lexing_positions buf) in
         raise (SyntaxError(Pos.make (Some(loc)) (Utf8.lexeme buf)))
-
-  (* Using the default case to lex identifiers result in a *very* slow lexing.
-     This is why a regular expression which includes many characters is
-     preferred over using anything for identifiers. *)
 
   let lexer = with_tokenizer token
 
-  let unquote s = fst (unquote s)
 end
 include Lp_lexer

@@ -2,10 +2,12 @@
 
 open Timed
 open Common
-open Console
+open Error
 open Term
 open Print
+open Debug
 open Lplib
+open Extra
 
 (** Logging function for typing. *)
 let log_infr = new_logger 'i' "infr" "type inference/checking"

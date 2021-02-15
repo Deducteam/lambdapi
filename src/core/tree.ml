@@ -665,14 +665,6 @@ let harvest : term array -> rhs -> CM.env_builder -> int VarMap.t -> int ->
 (** A shorthand. *)
 type match_strat = Parsing.Syntax.Tags.match_strat
 
-(** [is_abst t] returns [true] iff [t] is of the form [Abst(_)]. *)
-let is_abst : term -> bool = fun t ->
-  match t with Abst(_) -> true | _ -> false
-
-(** [is_prod t] returns [true] iff [t] is of the form [Prod(_)]. *)
-let is_prod : term -> bool = fun t ->
-  match t with Prod(_) -> true | _ -> false
-
 (** [compile mstrat m] translates the pattern matching problem encoded by the
     matrix [m] into a decision tree following strategy [mstrat]. *)
 let compile : match_strat -> CM.t -> tree = fun mstrat m ->
