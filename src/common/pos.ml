@@ -30,35 +30,36 @@ type 'a loc =
 type strloc = string loc
 
 (** [make pos elt] associates the position [pos] to [elt]. *)
-let make : popt -> 'a -> 'a loc =
-  fun pos elt -> { elt ; pos }
+let make : popt -> 'a -> 'a loc = fun pos elt -> { elt ; pos }
+
+(** [none elt] wraps [elt] in a ['a loc] structure without any specific source
+    code position. *)
+let none : 'a -> 'a loc = fun elt -> make None elt
 
 (** [in_pos pos elt] associates the position [pos] to [elt]. *)
-let in_pos : pos -> 'a -> 'a loc =
-  fun p elt -> { elt ; pos = Some p }
+let in_pos : pos -> 'a -> 'a loc = fun p elt -> make (Some p) elt
 
 (** [end_pos po] creates a position from the end of position [po]. *)
 let end_pos : popt -> popt = fun po ->
   match po with
   | None -> None
-  | Some p ->
-    Some { p with start_line = p.end_line; start_col = p.end_line }
+  | Some p -> Some {p with start_line = p.end_line; start_col = p.end_line}
 
-(** [none elt] wraps [elt] in a ['a loc] structure without any specific source
-    code position. *)
-let none : 'a -> 'a loc =
-  fun elt -> { elt ; pos = None }
-
-(** [cat p1 p2] is the concatenation of positon [p1] and [p2]. If [p1] and
-    [p2] have different filenames, the resulting filename is [None]. *)
+(** [cat p1 p2] returns a position starting from [p1] start and ending with
+   [p2] end. [p1] and [p2] must have the same filename. *)
 let cat : pos -> pos -> pos = fun p1 p2 ->
-  { fname =
-      if p1.fname <> p2.fname then invalid_arg "Pos.cat: filename mismatch"
-      else p1.fname
+  { fname = if p1.fname <> p2.fname then invalid_arg __LOC__ else p1.fname
   ; start_line = p1.start_line
   ; start_col = p1.start_col
   ; end_line = p2.end_line
   ; end_col = p2.end_col }
+
+let cat : popt -> popt -> popt = fun p1 p2 ->
+  match p1, p2 with
+  | Some p1, Some p2 -> Some (cat p1 p2)
+  | Some p, None
+  | None, Some p -> Some p
+  | None, None -> None
 
 (** [to_string ?print_fname pos] transforms [pos] into a readable string. If
     [print_fname] is [true] (the default), the filename contained in [pos] is

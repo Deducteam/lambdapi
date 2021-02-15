@@ -335,7 +335,8 @@ let handle : (Path.t -> Sign.t) -> sig_state -> p_command ->
         | Some pt ->
             let pt =
               if p_sym_arg = [] then pt
-              else Pos.make p_sym_nam.pos (P_Abst(p_sym_arg, pt))
+              else let pos = Pos.(cat (end_pos p_sym_nam.pos) pt.pos) in
+                   Pos.make pos (P_Abst(p_sym_arg, pt))
             in
             Some pt, Some (scope_basic expo pt)
         | None -> None, None
@@ -428,14 +429,9 @@ let handle : (Path.t -> Sign.t) -> sig_state -> p_command ->
       in
       (* Apply tac_refine in case of a definition. *)
       let ps =
-        match pt with
-        | None -> ps
-        | Some pt ->
-            match proof_term with
-            | None -> assert false
-            | Some _ ->
-                let t = Scope.scope_term pdata_expo ss [] pt in
-                Tactic.tac_refine pt.pos ps t
+        match pt, t with
+        | Some pt, Some t -> Tactic.tac_refine pt.pos ps t
+        | _, _ -> ps
       in
       if p_sym_prf = None && not (finished ps) then wrn pos
         "Some metavariables could not be solved: a proof must be given";

@@ -47,9 +47,7 @@ end = struct
           Option.bind f sym )
       | _ -> None
 
-    let make_appl t u =
-      let pos = Option.(Infix.(pure cat <*> t.pos <*> u.pos)) in
-      make pos (P_Appl(t, u))
+    let make_appl t u = make (Pos.cat t.pos u.pos) (P_Appl(t, u))
   end
 
   let parse : Sig_state.t -> Env.t -> p_term -> p_term = fun st env t ->
