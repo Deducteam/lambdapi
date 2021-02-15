@@ -39,7 +39,7 @@ let equiv : sym =
     [t ≡ u; v ≡ w; ...]. *)
 let cons : sym =
   let sym =
-    Sign.add_symbol sign Public Defin Eager false (Pos.none "#cons") Kind []
+    Sign.add_symbol sign Public Const Eager true (Pos.none "#cons") Kind []
   in
   let binop = (";", Pratter.Right, 1.0, Pos.none (path, "#cons")) in
   Sign.add_binop sign sym binop;
