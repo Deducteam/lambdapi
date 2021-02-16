@@ -23,8 +23,8 @@ open Sign
 type sig_state =
   { signature : Sign.t                    (** Current signature.        *)
   ; in_scope  : (sym * Pos.popt) StrMap.t (** Symbols in scope.         *)
-  ; aliases   : Path.t StrMap.t            (** Established aliases.      *)
-  ; mod_map  : string Path.Map.t           (** Reverse map of [aliases]. *)
+  ; alias_path   : Path.t StrMap.t        (** Alias to path map.        *)
+  ; path_alias  : string Path.Map.t       (** Path to alias map.        *)
   ; builtins  : sym StrMap.t              (** Builtin symbols.          *)
   ; notations : notation SymMap.t         (** Printing hints.           *) }
 
@@ -135,8 +135,8 @@ let open_sign : sig_state -> Sign.t -> sig_state = fun ss sign ->
 (** Dummy [sig_state] made from the dummy signature. *)
 let dummy : sig_state =
   { signature = Sign.dummy (); in_scope = StrMap.empty;
-    aliases = StrMap.empty; mod_map = Path.Map.empty; builtins = StrMap.empty;
-    notations = SymMap.empty }
+    alias_path = StrMap.empty; path_alias = Path.Map.empty;
+    builtins = StrMap.empty; notations = SymMap.empty }
 
 (** [of_sign sign] creates a state from the signature [sign] with ghost
     signatures opened. *)
@@ -164,11 +164,11 @@ let find_sym : prt:bool -> prv:bool -> sig_state -> p_qident -> sym =
           try fst (StrMap.find s st.in_scope)
           with Not_found -> fatal pos "Unknown object %a." pp_uid s
         end
-    | [m] when StrMap.mem m st.aliases -> (* Aliased module path. *)
+    | [m] when StrMap.mem m st.alias_path -> (* Aliased module path. *)
         begin
           (* The signature must be loaded (alias is mapped). *)
           let sign =
-            try Path.Map.find (StrMap.find m st.aliases) Timed.(!Sign.loaded)
+            try Path.Map.find (StrMap.find m st.alias_path) !loaded
             with _ -> assert false (* Should not happen. *)
           in
           (* Look for the symbol. *)
@@ -183,7 +183,7 @@ let find_sym : prt:bool -> prv:bool -> sig_state -> p_qident -> sym =
               fatal pos "No module [%a] required." pp_path mp;
           (* The signature must have been loaded. *)
           let sign =
-            try Path.Map.find mp Timed.(!Sign.loaded)
+            try Path.Map.find mp !loaded
             with Not_found -> assert false (* Should not happen. *)
           in
           (* Look for the symbol. *)
