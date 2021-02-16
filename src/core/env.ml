@@ -89,7 +89,7 @@ let of_prod : ctxt -> int -> term -> env * term = fun c n t ->
     match Eval.whnf c t with
     | Prod(a,b) ->
         let (x, b) = Bindlib.unbind b in
-        build_env (i+1) (add x (lift (Eval.simplify [] a)) None env) b
+        build_env (i+1) (add x (lift a) None env) b
     | _         -> invalid_arg __LOC__
   in
   build_env 0 [] t
