@@ -8,8 +8,6 @@
 (require 'highlight)
 (require 'cl-lib)
 
-(defconst lp-goal-line-prefix "--------------------------------------------------------------------------------")
-
 (defconst lambdapi-terminators '(";" "begin")
   "List of terminators for interactive mode")
 
@@ -32,18 +30,15 @@ no errors."
            (error-diags
             (cl-remove-if-not
              (lambda (diag)
-               (eq 1
-                   (cadr (member :severity
-                                 (car
-                                  (flymake-diagnostic-data diag))))))
+               (eq 1 (cadr (member :severity
+                                   (car (flymake-diagnostic-data diag))))))
              diags))
            (lsp-positions
             (mapcar
              (lambda (diag)
                (cadr (member :start
-                             (cadr (member
-                                    :range
-                                    (car (flymake-diagnostic-data diag)))))))
+                             (cadr (member :range
+                                           (car (flymake-diagnostic-data diag)))))))
              error-diags))
            (points
             (mapcar (lambda (lsp-pos)
@@ -123,7 +118,6 @@ bold if goalNo is 0"
                   (format "%s: %s\n" name type)))
               (reverse hs)))))
 
-;; TODO : replace proofline
 (defun lp-format-string-goal (goal goalNo proofbuf proofpos)
   "Return the string associated to a single goal. Adds text-properties to
 make it clickable"
@@ -134,14 +128,31 @@ make it clickable"
                (clk-text (lp-make-goal-clickable
                           (format "%s: %s" id type)
                           goalNo proofbuf proofpos)))
-          (format "%s\n%s\n\n"
-                  lp-goal-line-prefix clk-text))
+          (format "%s\n\n"
+                  clk-text))
       (let* ((constr (plist-get goal :constr))
              (clk-text (lp-make-goal-clickable
                         (format "%s" constr)
                         goalNo proofbuf proofpos)))
-        (format "%s\n%s\n\n"
-                lp-goal-line-prefix clk-text)))))
+        (format "%s\n\n"
+                clk-text)))))
+
+;; taken from cus-edit.el
+(defun lp--draw-horizontal-line ()
+  "Draw a horizontal line at point.
+This works for both graphical and text displays."
+  (let ((p (point)))
+    (insert "\n")
+    (put-text-property p (1+ p) 'face '(:underline t))
+    (overlay-put (make-overlay p (1+ p))
+                 'before-string
+                 (propertize "\n" 'face '(:underline t)
+                             'display
+                             (list 'space :align-to
+                                   `(+ (0 . right)
+                                       ,(min (window-hscroll)
+                                             (- (line-end-position)
+                                                (line-beginning-position)))))))))
 
 (defun lp-display-goals (goals)
   "Display GOALS returned by the LSP server in the dedicated Emacs buffer."
@@ -154,16 +165,21 @@ make it clickable"
           (let* ((fstgoal (elt goals 0))
                  (hypsstr (lp-format-string-hyps-goal fstgoal))
                  ;; map each goal to formatted goal string
-                 (goalsstr (cl-mapcar `(lambda (goal goalNo)
-                                         (lp-format-string-goal
-                                          goal goalNo ,proofbuf ,proofpos))
-                                      goals
-                                      (cl-loop for x below (length goals)
-                                               collect x))))
+                 (goalsstr (cl-mapcar
+                            `(lambda (goal goalNo)
+                               (lp-format-string-goal
+                                goal goalNo ,proofbuf ,proofpos))
+                            goals
+                            (cl-loop for x below (length goals)
+                                     collect x))))
+            (remove-overlays)
             (erase-buffer)
             (goto-char (point-max))
             (mapc 'insert hypsstr)
-            (mapc 'insert goalsstr))
+            (mapc (lambda (gstr)
+                    (lp--draw-horizontal-line)
+                    (insert gstr))
+                  goalsstr))
         (erase-buffer))
       (read-only-mode 1))))
 
