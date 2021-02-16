@@ -166,31 +166,36 @@ let get_textPosition params =
   let line, character = int_field "line" pos, int_field "character" pos in
   line, character
 
-let closest_before (line, pos) (objs: ('a * Pos.popt) list) =
-  let objs = List.filter (fun (_, objpos) ->
-    match objpos with
-    | None -> false
-    | Some objpos ->
-      let open Pos in
-      compare (objpos.start_line, objpos.start_col) (line, pos) <= 0)
-    objs
+(** [closest_before (line, pos) objs] returns the element in [objs] with
+largest position which is before [(line, pos)]*)
+let closest_before : int * int -> ('a * Pos.popt) list ->
+                     ('a * Pos.popt) option =
+  fun (line, pos) (objs: ('a * Pos.popt) list) ->
+  let objs =
+    List.filter (fun (_, objpos) ->
+        match objpos with
+        | None -> false
+        | Some objpos ->
+            let open Pos in
+            compare (objpos.start_line, objpos.start_col) (line, pos) <= 0)
+      objs
   in
   let closer (acc: ('a * Pos.popt) option) (obj : 'a * Pos.popt) =
     let open Pos in
     match (snd obj) with
     | None -> acc
     | Some objpos ->
-      match acc with
-      | None -> Some obj
-      | Some (_, accposopt) ->
-        match accposopt with
+        match acc with
         | None -> Some obj
-        | Some accpos ->
-          let comp =
-            compare (objpos.start_line, objpos.start_col)
-            (accpos.start_line, accpos.start_col)
-          in
-          if comp <= 0 then acc else Some obj
+        | Some (_, accposopt) ->
+            match accposopt with
+            | None -> Some obj
+            | Some accpos ->
+                let comp =
+                  compare (objpos.start_line, objpos.start_col)
+                    (accpos.start_line, accpos.start_col)
+                in
+                if comp <= 0 then acc else Some obj
   in
   List.fold_left closer None objs
 
