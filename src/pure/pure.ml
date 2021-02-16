@@ -4,8 +4,8 @@ open Timed
 open Core
 open Common
 open Parsing
-open Console
-open Module
+open Error
+open Library
 open Handle
 
 (* Should be lifted *)
@@ -33,8 +33,8 @@ let interval_of_pos : Pos.pos -> Range.t =
   make_interval start finish
 
 (** Document identifier range map. *)
-let rangemap : Command.t list -> Syntax.qident_aux RangeMap.t =
-  let f map ({elt;pos} : Syntax.qident) =
+let rangemap : Command.t list -> Syntax.qident RangeMap.t =
+  let f map ({elt;pos} : Syntax.p_qident) =
     (* Only add if the symbol has a position. *)
     match pos with
     | Some pos -> RangeMap.add (interval_of_pos pos) elt map
@@ -129,14 +129,14 @@ let t0 : Time.t Stdlib.ref = Stdlib.ref (Time.save ())
 let set_initial_time : unit -> unit = fun _ ->
   Stdlib.(t0 := Time.save ())
 
-let initial_state : file_path -> state = fun fname ->
+let initial_state : string -> state = fun fname ->
   Console.reset_default ();
   Time.restore Stdlib.(!t0);
   Package.apply_config fname;
-  let mp = Module.file_to_module fname in
+  let mp = Library.path_of_file fname in
   Sign.loading := [mp];
   let sign = Sig_state.create_sign mp in
-  Sign.loaded  := PathMap.add mp sign !Sign.loaded;
+  Sign.loaded  := Path.Map.add mp sign !Sign.loaded;
   (Time.save (), Sig_state.of_sign sign)
 
 let handle_command : state -> Command.t -> command_result =

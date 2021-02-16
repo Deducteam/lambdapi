@@ -13,15 +13,16 @@ open! Lplib
 open Timed
 open Common
 open Pos
-open Console
+open Error
 open Core
 open Term
 open Print
 open Parsing
 open Syntax
+open Debug
 
 (** Logging function for generating of inductive principle. *)
-let log_ind = new_logger 'g' "indu" "generating induction principle"
+let log_ind = new_logger 'g' "indu" "induction principles generation"
 let log_ind = log_ind.logger
 
 (** Type for inductive type definitions. *)
@@ -84,7 +85,7 @@ let ind_typ_with_codom :
     | (Prod(a,b), _) ->
         let (x,b) = LibTerm.unbind_name b s in
         _Prod (lift a) (Bindlib.bind_var x (aux (x::xs) b))
-    | _ -> fatal pos "The type of %a is not supported" pp_symbol ind_sym
+    | _ -> fatal pos "The type of %a is not supported" pp_sym ind_sym
   in
   aux (List.map (fun (_,(v,_,_)) -> v) env) a
 
@@ -194,7 +195,7 @@ let fold_cons_type
           let d = List.assq ind_sym ind_pred_map in
           codom xs acc d.ind_var ts
         else fatal pos "%a is not a constructor of %a"
-               pp_symbol cons_sym pp_symbol ind_sym
+               pp_sym cons_sym pp_sym ind_sym
     | (Prod(t,u), _) ->
        let (x,u) = LibTerm.unbind_name u x_str in
        let x = inj_var (List.length xs) x in
@@ -211,9 +212,9 @@ let fold_cons_type
                    let next = fold (x::xs) (acc_nonrec_dom acc x) u in
                    nonrec_dom t x next
              end
-         | _ -> fatal pos "The type of %a is not supported" pp_symbol cons_sym
+         | _ -> fatal pos "The type of %a is not supported" pp_sym cons_sym
        end
-    | _ -> fatal pos "The type of %a is not supported" pp_symbol cons_sym
+    | _ -> fatal pos "The type of %a is not supported" pp_sym cons_sym
   in
   let _, t = Env.of_prod_using [] vs !(cons_sym.sym_type) in
   fold (List.mapi inj_var (Array.to_list vs)) init t
@@ -276,7 +277,7 @@ let gen_rec_types :
 
 (** [rec_name ind_sym] returns the name of the induction principle associated
    to the inductive type symbol [ind_sym]. *)
-let rec_name ind_sym = Parser.add_prefix "ind_" ind_sym.sym_name
+let rec_name ind_sym = Escape.add_prefix "ind_" ind_sym.sym_name
 
 (** [iter_rec_rules pos ind_list vs rec_sym_list ind_pred_map] generates the
    recursor rules for the inductive type definition [ind_list] as position

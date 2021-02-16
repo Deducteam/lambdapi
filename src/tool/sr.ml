@@ -4,10 +4,12 @@ open! Lplib
 
 open Timed
 open Common
-open Console
+open Error
 open Core
 open Term
 open Print
+open Debug
+open Extra
 
 (** Logging function for typing. *)
 let log_subj = new_logger 's' "subj" "subject-reduction"

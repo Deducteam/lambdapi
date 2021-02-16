@@ -213,7 +213,7 @@ let get_node_at_pos doc line pos =
       let loc = Pure.Command.get_pos ast in
       let res = in_range ?loc (line,pos) in
       let ls = Format.asprintf "%B l:%d p:%d / %a "
-                 res line pos Pos.print loc in
+                 res line pos Pos.pp loc in
       LIO.log_error "get_node_at_pos" ("call: "^ls);
       res
     ) doc.Lp_doc.nodes
@@ -299,7 +299,7 @@ let do_definition ofmt ~id params =
     Extra.StrMap.bindings sym
     |> List.map (fun (key, (sym,pos)) ->
         Format.asprintf "{%s} / %s: @[%a@]"
-          key sym.Term.sym_name Pos.print pos)
+          key sym.Term.sym_name Pos.pp pos)
     |> String.concat "\n"
   in
   LIO.log_error "symbol map" map_pp;
@@ -308,12 +308,11 @@ let do_definition ofmt ~id params =
     match StrMap.find_opt sym_target sym with
     | None
     | Some (_, None) -> `Null
-    | Some (term, Some pos) ->
+    | Some (s, Some pos) ->
       (* A JSON with the path towards the definition of the term
          and its position is returned
          /!\ : extension is fixed, only works for .lp files *)
-      mk_definfo Module.(module_to_file Term.(term.sym_path)
-      ^ src_extension) pos
+      mk_definfo Library.(file_of_path s.Term.sym_path ^ src_extension) pos
   in
   let msg = LSP.mk_reply ~id ~result:sym_info in
   LIO.send_json ofmt msg
@@ -370,7 +369,7 @@ let hover_symInfo ofmt ~id params =
     Extra.StrMap.bindings sym
     |> List.map (fun (key, (sym,pos)) ->
         Format.asprintf "{%s} / %s: @[%a@]"
-          key sym.Term.sym_name Pos.print pos)
+          key sym.Term.sym_name Pos.pp pos)
     |> String.concat "\n"
   in
   LIO.log_error "symbol map" map_pp;
@@ -481,7 +480,7 @@ let main std log_file =
   (* let lp_oc = open_out "log-lp.txt" in *)
   let lp_fmt = F.formatter_of_buffer Lp_doc.lp_logger in
   Console.out_fmt := lp_fmt;
-  Console.err_fmt := lp_fmt;
+  Error.err_fmt := lp_fmt;
   (* Console.verbose := 4; *)
 
   let rec loop () =

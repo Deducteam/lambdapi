@@ -1,11 +1,9 @@
 (** Configuration for the CLI and common flags. *)
 
 open! Lplib
-
 open Cmdliner
 open Common
-open Module
-open Console
+open Library
 
 (** {3 Configuration type for common values} *)
 
@@ -43,21 +41,21 @@ let default_config =
 let init : config -> unit = fun cfg ->
   (* Set all the flags and configs. *)
   Handle.Compile.gen_obj := cfg.gen_obj;
-  Module.set_lib_root cfg.lib_root;
-  List.iter (fun (m,d) -> Module.new_lib_mapping (m ^ ":" ^ d)) cfg.map_dir;
-  Option.iter set_default_verbose cfg.verbose;
-  no_wrn := cfg.no_warnings;
-  set_default_debug cfg.debug;
-  Console.color := not cfg.no_colors;
+  Library.set_lib_root cfg.lib_root;
+  List.iter Library.add_mapping cfg.map_dir;
+  Option.iter Console.set_default_verbose cfg.verbose;
+  Error.no_wrn := cfg.no_warnings;
+  Debug.set_default_debug cfg.debug;
+  Extra.color := not cfg.no_colors;
   Handle.Command.too_long := cfg.too_long;
   (* Log some configuration data. *)
-  if Timed.(!log_enabled) then
+  if Timed.(!Debug.log_enabled) then
     begin
-      Module.log_file "running directory: [%s]" (Module.current_path ());
-      Module.log_file "library root path: [%s]"
+      Library.log_lib "running directory: %s" (Filename.current_dir ());
+      Library.log_lib "library root path: %s"
         (match !lib_root with None -> assert false | Some(p) -> p);
-      let fn = Module.log_file "mapping: [%a] → [%s]" Module.Path.pp in
-      Module.ModMap.iter fn (Module.current_mappings ())
+      let f = Library.log_lib "mapping: %a → %s" Core.Print.pp_path in
+      Library.iter f
     end;
   (* Initialise the [Pure] interface (this must come last). *)
   Pure.set_initial_time ()
@@ -124,7 +122,7 @@ let no_warnings : bool Term.t =
 let debug : string Term.t =
   let descs =
     let fn (k, d) = Printf.sprintf "$(b,\"%c\") (for %s)" k d in
-    String.concat ", " (List.map fn (Console.log_summary ()))
+    String.concat ", " (List.map fn (Debug.log_summary ()))
   in
   let doc =
     Printf.sprintf

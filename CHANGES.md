@@ -1,8 +1,22 @@
 ### Unreleased
 
-#### File renamings and source code segmentation (2021-02-??)
+#### File renamings and splitting and better handling of escaped identifier (2021-02-12)
 
-- Files renamings:
+- File renamings and splittings:
+  * `lpLexer` -> `escape`, `lpLexer`
+  * `console` -> `base`, `extra`, `debug`, `error`, `console`
+  * `module` -> `filename`, `path`, `library`
+  * `cliconf` -> `config`
+  * `install_cmd` -> `install`
+  * `init_cmd` -> `init`
+
+- Improve handling of escaped identifiers in `escape.ml` and fix printing
+
+- Improve `tests/ok_ko.ml` to allow sub-directories in `tests/OK/` or `tests/KO/`
+
+#### File renamings and source code segmentation (2021-02-08)
+
+- File renamings:
   * `terms` -> `term`
   * `basics` -> `libTerm`
   * `tactics` -> `tactic`

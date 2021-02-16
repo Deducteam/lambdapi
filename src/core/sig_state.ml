@@ -10,12 +10,10 @@
    properly. *)
 
 open Lplib.Extra
-
 open Common
-open Console
+open Error
 open Pos
 open Timed
-open Module
 open Parsing
 open Syntax
 open Term
@@ -25,8 +23,8 @@ open Sign
 type sig_state =
   { signature : Sign.t                    (** Current signature.        *)
   ; in_scope  : (sym * Pos.popt) StrMap.t (** Symbols in scope.         *)
-  ; aliases   : Path.t StrMap.t           (** Established aliases.      *)
-  ; path_map  : string PathMap.t          (** Reverse map of [aliases]. *)
+  ; alias_path   : Path.t StrMap.t        (** Alias to path map.        *)
+  ; path_alias  : string Path.Map.t       (** Path to alias map.        *)
   ; builtins  : sym StrMap.t              (** Builtin symbols.          *)
   ; notations : notation SymMap.t         (** Printing hints.           *) }
 
@@ -36,32 +34,24 @@ type t = sig_state
     as dependencies. *)
 let create_sign : Path.t -> Sign.t = fun sign_path ->
   let d = Sign.dummy () in
-  { d with sign_path ; sign_deps = ref (PathMap.singleton Unif_rule.path []) }
-
-(** Symbol properties needed for the signature *)
-type sig_symbol =
-  { expo   : Tags.expo        (** exposition          *)
-  ; prop   : Tags.prop        (** property            *)
-  ; mstrat : Tags.match_strat (** strategy            *)
-  ; ident  : ident            (** name                *)
-  ; typ    : term             (** type                *)
-  ; impl   : bool list        (** implicit arguments  *)
-  ; def    : term option      (** optional definition *) }
+  { d with sign_path ;
+           sign_deps = ref (Path.Map.singleton Unif_rule.path []) }
 
 (** [add_symbol ss sig_symbol={e,p,st,x,a,impl,def}] generates a new signature
    state from [ss] by creating a new symbol with expo [e], property [p],
    strategy [st], name [x], type [a], implicit arguments [impl] and optional
    definition [t]. This new symbol is returned too. *)
-let add_symbol : sig_state -> sig_symbol -> sig_state * sym =
-  fun ss {expo=e;prop=p;mstrat=st;ident=x;typ=a;impl;def=t} ->
-  let s = Sign.add_symbol ss.signature e p st x a impl in
+let add_symbol : sig_state -> Tags.expo -> Tags.prop -> Tags.match_strat
+    -> strloc -> term -> bool list -> term option -> sig_state * sym =
+  fun ss expo prop mstrat id typ impl def ->
+  let sym = Sign.add_symbol ss.signature expo prop mstrat id typ impl in
   begin
-    match t with
-    | Some t -> s.sym_def := Some (cleanup t)
+    match def with
+    | Some t -> sym.sym_def := Some (cleanup t)
     | None -> ()
   end;
-  let in_scope = StrMap.add x.elt (s, x.pos) ss.in_scope in
-  ({ss with in_scope}, s)
+  let in_scope = StrMap.add id.elt (sym, id.pos) ss.in_scope in
+  ({ss with in_scope}, sym)
 
 (** [add_unop ss n x] generates a new signature state from [ss] by adding a
     unary operator [x] with name [n]. This name is added to the scope. *)
@@ -144,9 +134,9 @@ let open_sign : sig_state -> Sign.t -> sig_state = fun ss sign ->
 
 (** Dummy [sig_state] made from the dummy signature. *)
 let dummy : sig_state =
-  { signature = Sign.dummy (); in_scope = StrMap.empty; aliases = StrMap.empty
-  ; path_map = PathMap.empty; builtins = StrMap.empty
-  ; notations = SymMap.empty }
+  { signature = Sign.dummy (); in_scope = StrMap.empty;
+    alias_path = StrMap.empty; path_alias = Path.Map.empty;
+    builtins = StrMap.empty; notations = SymMap.empty }
 
 (** [of_sign sign] creates a state from the signature [sign] with ghost
     signatures opened. *)
@@ -163,43 +153,42 @@ let of_sign : Sign.t -> sig_state = fun signature ->
     are allowed in left-hand side of rewrite rules (only) iff [~prt] is true.
     {!constructor:Term.expo.Privat} symbols are allowed iff [~prv]
     is [true]. *)
-let find_sym : prt:bool -> prv:bool -> bool -> sig_state -> qident -> sym =
-  fun ~prt ~prv b st qid ->
-  let {elt = (mp, s); pos} = qid in
-  let mp = List.map fst mp in
+let find_sym : prt:bool -> prv:bool -> sig_state -> p_qident -> sym =
+  fun ~prt ~prv st {elt = (mp, s); pos} ->
+  let pp_uid = Parsing.LpLexer.pp_uid in
+  let pp_path = Lplib.List.pp pp_uid "." in
   let s =
     match mp with
-    | []                               -> (* Symbol in scope. *)
+    | [] -> (* Symbol in scope. *)
         begin
-          try fst (StrMap.find s st.in_scope) with Not_found ->
-          let txt = if b then " or variable" else "" in
-          fatal pos "Unbound symbol%s [%s]." txt s
+          try fst (StrMap.find s st.in_scope)
+          with Not_found -> fatal pos "Unknown object %a." pp_uid s
         end
-    | [m] when StrMap.mem m st.aliases -> (* Aliased module path. *)
+    | [m] when StrMap.mem m st.alias_path -> (* Aliased module path. *)
         begin
           (* The signature must be loaded (alias is mapped). *)
           let sign =
-            try PathMap.find (StrMap.find m st.aliases) Timed.(!Sign.loaded)
+            try Path.Map.find (StrMap.find m st.alias_path) !loaded
             with _ -> assert false (* Should not happen. *)
           in
           (* Look for the symbol. *)
           try Sign.find sign s with Not_found ->
-          fatal pos "Unbound symbol [%a.%s]." Path.pp mp s
+          fatal pos "Unknown symbol %a.%a." pp_path mp pp_uid s
         end
-    | _                                -> (* Fully-qualified symbol. *)
+    | _  -> (* Fully-qualified symbol. *)
         begin
           (* Check that the signature was required (or is the current one). *)
           if mp <> st.signature.sign_path then
-            if not (PathMap.mem mp !(st.signature.sign_deps)) then
-              fatal pos "No module [%a] required." Path.pp mp;
+            if not (Path.Map.mem mp !(st.signature.sign_deps)) then
+              fatal pos "No module [%a] required." pp_path mp;
           (* The signature must have been loaded. *)
           let sign =
-            try PathMap.find mp Timed.(!Sign.loaded)
+            try Path.Map.find mp !loaded
             with Not_found -> assert false (* Should not happen. *)
           in
           (* Look for the symbol. *)
           try Sign.find sign s with Not_found ->
-          fatal pos "Unbound symbol [%a.%s]." Path.pp mp s
+          fatal pos "Unknown symbol %a.%a." pp_path mp pp_uid s
         end
   in
   match (prt, prv, s.sym_expo) with

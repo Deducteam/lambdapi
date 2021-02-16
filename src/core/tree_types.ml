@@ -2,7 +2,6 @@
 
 open Lplib
 open Lplib.Base
-
 open Common
 
 (** {3 Atomic pattern constructor representation} *)
@@ -14,7 +13,7 @@ module TC =
         in the  trees. During  matching (in {!val:Eval.tree_walk}),  terms are
         transformed into these constructors to get the right sub-tree. *)
     type t =
-      | Symb of Module.Path.t * string * int
+      | Symb of Path.t * string * int
       (** Symbol identified by a fully qualified name (module path and name)
           and its arity in the pattern. *)
       | Vari of int

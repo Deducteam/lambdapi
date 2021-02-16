@@ -8,9 +8,10 @@ open Pos
 open Core
 open Term
 open LibTerm
-open Console
+open Error
 open Print
 open Proof
+open Debug
 
 (** Logging function for the rewrite tactic. *)
 let log_rewr = new_logger 'r' "rewr" "the rewrite tactic"

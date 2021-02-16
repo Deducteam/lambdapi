@@ -2,15 +2,13 @@
 
 open! Lplib
 open Lplib.Extra
-
 open Timed
 open Common
-open Console
+open Error
 open Core
 open Term
 open Sign
 open Pos
-open Module
 open Parsing
 open Syntax
 open Tags
@@ -18,6 +16,7 @@ open Sig_state
 open Scope
 open Print
 open Proof
+open Debug
 
 (** Logging function for command handling. *)
 let log_hndl = new_logger 'h' "hndl" "command handling"
@@ -43,44 +42,46 @@ let _ =
   in
   register "+1" expected_succ_type
 
-(** [handle_open pos ss p] handles the command [open p] with [ss] as the
+(** [handle_open ss p] handles the command [open p] with [ss] as the
    signature state. On success, an updated signature state is returned. *)
-let handle_open : popt -> sig_state -> Path.t -> sig_state =
-    fun pos ss p ->
+let handle_open : sig_state -> p_path -> sig_state =
+  fun ss {elt=p;pos} ->
   (* Obtain the signature corresponding to [m]. *)
   let sign =
-    try PathMap.find p !(Sign.loaded) with Not_found ->
+    try Path.Map.find p !(Sign.loaded) with Not_found ->
       (* The signature has not been required... *)
-      fatal pos "Module [%a] has not been required." Path.pp p
+      fatal pos "Module %a has not been required." pp_path p
   in
   (* Open the module. *)
   open_sign ss sign
 
-(** [handle_require b pos ss p] handles the command [require p] (or [require
+(** [handle_require b ss p] handles the command [require p] (or [require
    open p] if b is true) with [ss] as the signature state and [compile] the
    main compile function (passed as argument to avoid cyclic dependencies).
    On success, an updated signature state is returned. *)
-let handle_require : (Path.t -> Sign.t) -> bool -> popt -> sig_state ->
-  Path.t -> sig_state = fun compile b pos ss p ->
+let handle_require :
+      (Path.t -> Sign.t) -> bool -> sig_state -> p_path -> sig_state =
+  fun compile b ss ({elt=p;pos} as mp) ->
   (* Check that the module has not already been required. *)
-  if PathMap.mem p !(ss.signature.sign_deps) then
-    fatal pos "Module [%a] is already required." Path.pp p;
+  if Path.Map.mem p !(ss.signature.sign_deps) then
+    fatal pos "Module %a is already required." pp_path p;
   (* Compile required path (adds it to [Sign.loaded] among other things) *)
   ignore (compile p);
   (* Add the dependency (it was compiled already while parsing). *)
-  ss.signature.sign_deps := PathMap.add p [] !(ss.signature.sign_deps);
-  if b then handle_open pos ss p else ss
+  ss.signature.sign_deps := Path.Map.add p [] !(ss.signature.sign_deps);
+  if b then handle_open ss mp else ss
 
-(** [handle_require_as compile pos ss p id] handles the command
+(** [handle_require_as compile ss p id] handles the command
     [require p as id] with [ss] as the signature state and [compile] the main
     compilation function passed as argument to avoid cyclic dependencies. On
     success, an updated signature state is returned. *)
-let handle_require_as : (Path.t -> Sign.t) -> popt -> sig_state -> Path.t ->
-  ident -> sig_state = fun compile pos ss p id ->
-  let ss = handle_require compile false pos ss p in
-  let aliases = StrMap.add id.elt p ss.aliases in
-  let path_map = PathMap.add p id.elt ss.path_map in
-  {ss with aliases; path_map}
+let handle_require_as :
+    (Path.t -> Sign.t) -> sig_state -> p_path -> p_ident -> sig_state =
+  fun compile ss ({elt=p;_} as mp) {elt=id;_} ->
+  let ss = handle_require compile false ss mp in
+  let alias_path = StrMap.add id p ss.alias_path in
+  let path_alias = Path.Map.add p id ss.path_alias in
+  {ss with alias_path; path_alias}
 
 (** [handle_modifiers ms] verifies that the modifiers in [ms] are compatible.
     If so, they are returned as a tuple. Otherwise, it fails. *)
@@ -88,7 +89,7 @@ let handle_modifiers : p_modifier list -> (prop * expo * match_strat) =
   fun ms ->
   let die (ms: p_modifier list) =
     let modifier oc (m: p_modifier) =
-      Format.fprintf oc "%a:\"%a\"" Pos.print_short m.pos Pretty.modifier m
+      Format.fprintf oc "%a:\"%a\"" Pos.pp_short m.pos Pretty.modifier m
     in
     fatal_no_pos "%a" (List.pp modifier "; ") ms
   in
@@ -135,11 +136,11 @@ let handle_rule : sig_state -> p_rule -> sym = fun ss r ->
   let pr = scope_rule false ss r in
   let sym = pr.elt.pr_sym in
   if !(sym.sym_def) <> None then
-    fatal pr.pos "Rewriting rules cannot be given for defined symbol [%s]."
-      sym.sym_name;
+    fatal pr.pos "No rewriting rule can be given on the defined symbol %a."
+      pp_sym sym;
   let rule = Tool.Sr.check_rule pr in
   Sign.add_rule ss.signature sym rule;
-  out 3 (red "(rule) add %a\n") pp_rule (sym, rule);
+  Console.out 3 (red "(rule) add %a\n") pp_rule (sym, rule);
   sym
 
 (** [handle_rules ss rs] handles the rules [rs] in signature state [ss], and
@@ -153,29 +154,27 @@ let handle_rules : sig_state -> p_rule list -> sig_state = fun ss rs ->
 (** [handle_inductive_symbol ss e p strat x xs a] handles the command
     [e p strat symbol x xs : a] with [ss] as the signature state.
     On success, an updated signature state and the new symbol are returned. *)
-let handle_inductive_symbol :
-  sig_state -> expo -> prop -> match_strat -> ident -> p_args list ->
-  p_type -> sig_state * sym = fun ss e p strat x xs a ->
-  let scope_basic exp = Scope.scope_term exp ss Env.empty in
-  (* We check that [x] is not already used. *)
-  if Sign.mem ss.signature x.elt then
-    fatal x.pos "Symbol [%s] already exists." x.elt;
-  (* Desugaring of arguments of [a]. *)
-  let a = if xs = [] then a else Pos.none (P_Prod(xs, a)) in
+let handle_inductive_symbol : sig_state -> expo -> prop -> match_strat
+    -> p_ident -> p_params list -> p_type -> sig_state * sym =
+  fun ss expo prop mstrat ({elt=name;pos} as id) xs typ ->
+  (* We check that [id] is not already used. *)
+  if Sign.mem ss.signature name then
+    fatal pos "Symbol %a already exists." pp_uid name;
+  (* Desugaring of arguments of [typ]. *)
+  let typ = if xs = [] then typ else Pos.none (P_Prod(xs, typ)) in
   (* Obtaining the implicitness of arguments. *)
-  let impl = Scope.get_implicitness a in
+  let impl = Scope.get_implicitness typ in
   (* We scope the type of the declaration. *)
-  let a = scope_basic e a in
+  let typ = Scope.scope_term expo ss Env.empty typ in
   (* We check that [a] is typable by a sort. *)
-  Infer.check_sort Unif.solve_noexn x.pos [] a;
+  Infer.check_sort Unif.solve_noexn pos [] typ;
   (* We check that no metavariable remains. *)
-  if LibTerm.has_metas true a then
-    (fatal_msg "The type of [%s] has unsolved metavariables.\n" x.elt;
-     fatal x.pos "We have %s : %a." x.elt pp_term a);
+  if LibTerm.has_metas true typ then
+    (fatal_msg "The type of %a has unsolved metavariables.\n" pp_uid name;
+     fatal pos "We have %a : %a." pp_uid name pp_term typ);
   (* Actually add the symbol to the signature and the state. *)
-  out 3 (red "(symb) %s : %a\n") x.elt pp_term a;
-  let sig_symbol = {expo=e;prop=p;mstrat=strat;ident=x;typ=a;impl;def=None} in
-  add_symbol ss sig_symbol
+  Console.out 3 (red "(symb) %a : %a\n") pp_uid name pp_term typ;
+  add_symbol ss expo prop mstrat id typ impl None
 
 (** Representation of a yet unchecked proof. The structure is initialized when
     the proof mode is entered, and its finalizer is called when the proof mode
@@ -200,23 +199,20 @@ type proof_data =
     the initial state of the proof.  The checking of the proof is then handled
     separately. Note that [Fatal] is raised in case of an error. *)
 let handle : (Path.t -> Sign.t) -> sig_state -> p_command ->
-  sig_state * proof_data option * Query.result =
-fun compile ss ({elt; pos} as cmd) ->
+    sig_state * proof_data option * Query.result =
+  fun compile ss ({elt; pos} as cmd) ->
   if !log_enabled then
-    log_hndl (blu "[%a] %a") Pos.print pos Pretty.command cmd;
+    log_hndl (blu "%a\n%a") Pos.pp pos Pretty.command cmd;
   let scope_basic exp pt = Scope.scope_term exp ss Env.empty pt in
   match elt with
   | P_query(q) ->
       let res = Query.handle ss None q in (ss, None, res)
   | P_require(b,ps) ->
-      let ps = List.map (List.map fst) ps in
-      (List.fold_left (handle_require compile b pos) ss ps, None, None)
+      (List.fold_left (handle_require compile b) ss ps, None, None)
   | P_require_as(p,id) ->
-      let id = Pos.make id.pos (fst id.elt) in
-      (handle_require_as compile pos ss (List.map fst p) id, None, None)
+      (handle_require_as compile ss p id, None, None)
   | P_open(ps) ->
-      let ps = List.map (List.map fst) ps in
-      (List.fold_left (handle_open pos) ss ps, None, None)
+      (List.fold_left handle_open ss ps, None, None)
   | P_rules(rs) ->
       let handle_rule syms r = SymSet.add (handle_rule ss r) syms in
       let syms = List.fold_left handle_rule SymSet.empty rs in
@@ -224,7 +220,7 @@ fun compile ss ({elt; pos} as cmd) ->
       (ss, None, None)
   | P_inductive(ms, params, p_ind_list) ->
       (* Check modifiers. *)
-      let (prop, e, mstrat) = handle_modifiers ms in
+      let (prop, expo, mstrat) = handle_modifiers ms in
       if prop <> Defin then
         fatal pos "Property modifiers cannot be used on inductive types.";
       if mstrat <> Eager then
@@ -233,7 +229,7 @@ fun compile ss ({elt; pos} as cmd) ->
       (* Add inductive types in the signature. *)
       let add_ind_sym (ss, ind_sym_list) {elt=(id,pt,_); _} =
         let (ss, ind_sym) =
-          handle_inductive_symbol ss e Injec Eager id params pt in
+          handle_inductive_symbol ss expo Injec Eager id params pt in
         (ss, ind_sym::ind_sym_list)
       in
       let (ss, ind_sym_list_rev) =
@@ -246,7 +242,7 @@ fun compile ss ({elt; pos} as cmd) ->
             (ss, cons_sym_list_list) {elt=(_,_,p_cons_list); _} =
         let add_cons_sym (ss, cons_sym_list) (id, pt) =
           let (ss, cons_sym) =
-            handle_inductive_symbol ss e Const Eager id params pt in
+            handle_inductive_symbol ss expo Const Eager id params pt in
           (ss, cons_sym::cons_sym_list)
         in
         let (ss, cons_sym_list_rev) =
@@ -280,19 +276,12 @@ fun compile ss ({elt; pos} as cmd) ->
       let add_recursor (ss, rec_sym_list) ind_sym rec_typ =
         let rec_name = Inductive.rec_name ind_sym in
         if Sign.mem ss.signature rec_name then
-          fatal pos "Symbol [%s] already exists." rec_name;
+          fatal pos "Symbol %a already exists." pp_uid rec_name;
         let (ss, rec_sym) =
-          out 3 (red "(symb) %s : %a\n") rec_name pp_term rec_typ;
-          let sig_symbol =
-            {expo = e;
-             prop = Defin;
-             mstrat = Eager;
-             ident = Pos.make pos rec_name;
-             typ = rec_typ;
-             impl = [];
-             def = None}
-          in
-          Sig_state.add_symbol ss sig_symbol
+          Console.out 3 (red "(symb) %a : %a\n")
+            pp_uid rec_name pp_term rec_typ;
+          let id = Pos.make pos rec_name in
+          Sig_state.add_symbol ss expo Defin Eager id rec_typ [] None
         in
         (ss, rec_sym::rec_sym_list)
       in
@@ -325,7 +314,7 @@ fun compile ss ({elt; pos} as cmd) ->
     (* We check that the identifier is not already used. *)
     let {elt=id; _} = p_sym_nam in
     if Sign.mem ss.signature id then
-      fatal p_sym_nam.pos "Symbol [%s] already exists." id;
+      fatal p_sym_nam.pos "Symbol %a already exists." pp_uid id;
     (* Verify modifiers. *)
     let (prop, expo, mstrat) = handle_modifiers p_sym_mod in
     let opaq = List.exists Syntax.is_opaq p_sym_mod in
@@ -346,7 +335,8 @@ fun compile ss ({elt; pos} as cmd) ->
         | Some pt ->
             let pt =
               if p_sym_arg = [] then pt
-              else Pos.make p_sym_nam.pos (P_Abst(p_sym_arg, pt))
+              else let pos = Pos.(cat (end_pos p_sym_nam.pos) pt.pos) in
+                   Pos.make pos (P_Abst(p_sym_arg, pt))
             in
             Some pt, Some (scope_basic expo pt)
         | None -> None, None
@@ -395,13 +385,16 @@ fun compile ss ({elt; pos} as cmd) ->
         | _ ->
             (* Check that no metavariable remains. *)
             if LibTerm.has_metas true a then
-              (fatal_msg "The type of [%s] has unsolved metavariables.\n" id;
-               fatal pe.pos "We have %s : %a." id pp_term a);
+              (fatal_msg "The type of %a has unsolved metavariables.\n"
+                 pp_uid id;
+               fatal pe.pos "We have %a : %a." pp_uid id pp_term a);
             (match t with
              | Some(t) when LibTerm.has_metas true t ->
                  fatal_msg
-                   "The definition of [%s] has unsolved metavariables.\n" id;
-                 fatal pe.pos "We have %s : %a ≔ %a." id pp_term a pp_term t
+                   "The definition of %a has unsolved metavariables.\n"
+                   pp_uid id;
+                 fatal pe.pos "We have %a : %a ≔ %a."
+                   pp_uid id pp_term a pp_term t
              | _ -> ());
             match pe.elt with
             | P_proof_abort -> assert false (* Handled above *)
@@ -410,21 +403,19 @@ fun compile ss ({elt; pos} as cmd) ->
                 if finished ps then
                   wrn pe.pos "The proof is finished. Use 'end' instead.";
                 (* Add the symbol in the signature with a warning. *)
-                out 3 (red "(symb) add %s : %a\n") id pp_term a;
+                Console.out 3 (red "(symb) add %a : %a\n")
+                  pp_uid id pp_term a;
                 wrn pe.pos "Proof admitted.";
-                let sig_symbol =
-                  {expo;prop;mstrat;ident=p_sym_nam;typ=a;impl;def=t} in
-                fst (add_symbol ss sig_symbol)
+                fst (add_symbol ss expo prop mstrat p_sym_nam a impl t)
             | P_proof_end ->
                 (* Check that the proof is indeed finished. *)
                 if not (finished ps) then
-                  (out 1 "%a" Proof.pp_goals ps;
+                  (Console.out 1 "%a" Proof.pp_goals ps;
                    fatal pe.pos "The proof is not finished.");
                 (* Add the symbol in the signature. *)
-                out 3 (red "(symb) add %s : %a\n") id pp_term a;
-                let sig_symbol =
-                  {expo;prop;mstrat;ident=p_sym_nam;typ=a;impl;def=t} in
-                fst (add_symbol ss sig_symbol)
+                Console.out 3 (red "(symb) add %a : %a\n")
+                  pp_uid id pp_term a;
+                fst (add_symbol ss expo prop mstrat p_sym_nam a impl t)
       in
       (* Create proof state. *)
       let ps = {proof_name = p_sym_nam; proof_term; proof_goals} in
@@ -438,55 +429,49 @@ fun compile ss ({elt; pos} as cmd) ->
       in
       (* Apply tac_refine in case of a definition. *)
       let ps =
-        match pt with
-        | None -> ps
-        | Some pt ->
-            match proof_term with
-            | None -> assert false
-            | Some _ ->
-                let t = Scope.scope_term pdata_expo ss [] pt in
-                Tactic.tac_refine pt.pos ps t
+        match pt, t with
+        | Some pt, Some t -> Tactic.tac_refine pt.pos ps t
+        | _, _ -> ps
       in
       if p_sym_prf = None && not (finished ps) then wrn pos
         "Some metavariables could not be solved: a proof must be given";
-      { pdata_stmt_pos = p_sym_nam.pos; pdata_p_state = ps; pdata_tactics = ts
-      ; pdata_finalize = finalize ; pdata_end_pos = pe.pos; pdata_expo }
+      { pdata_stmt_pos=p_sym_nam.pos; pdata_p_state=ps; pdata_tactics=ts
+      ; pdata_finalize=finalize; pdata_end_pos=pe.pos; pdata_expo }
     in
     (ss, Some(data), None)
 
   | P_set(cfg)                 ->
       let ss =
-        let with_path : Path.t -> qident -> qident = fun path qid ->
-          let path = List.map (fun s -> (s, false)) path in
-          Pos.make qid.pos (path, snd qid.elt)
+        let with_mod : Path.t -> p_qident -> p_qident =
+          fun mp {elt=(_,id);pos} -> Pos.make pos (mp,id)
         in
         match cfg with
         | P_config_builtin(s,qid) ->
             (* Set the builtin symbol [s]. *)
-            if StrMap.mem s ss.builtins then
-              fatal pos "Builtin [%s] already exists." s;
-            let sym = find_sym ~prt:true ~prv:true false ss qid in
+            let sym = find_sym ~prt:true ~prv:true ss qid in
             Builtin.check ss pos s sym;
-            out 3 "(conf) set builtin \"%s\" ≔ %a\n" s pp_symbol sym;
+            Console.out 3 "(conf) set builtin \"%s\" ≔ %a\n" s pp_sym sym;
             add_builtin ss s sym
         | P_config_unop(unop)     ->
             let (s, prio, qid) = unop in
-            let sym = find_sym ~prt:true ~prv:true false ss qid in
+            let sym = find_sym ~prt:true ~prv:true ss qid in
             (* Make sure the operator has a fully qualified [qid]. *)
-            let unop = (s, prio, with_path sym.sym_path qid) in
-            out 3 "(conf) %a %a\n" pp_symbol sym notation (Prefix unop);
+            let unop = (s, prio, with_mod sym.sym_path qid) in
+            Console.out 3 "(conf) %a %a\n"
+              pp_sym sym pp_notation (Prefix unop);
             add_unop ss (Pos.make pos s) (sym, unop)
         | P_config_binop(binop)   ->
             let (s, assoc, prio, qid) = binop in
             (* Define the binary operator [sym]. *)
-            let sym = find_sym ~prt:true ~prv:true false ss qid in
+            let sym = find_sym ~prt:true ~prv:true ss qid in
             (* Make sure the operator has a fully qualified [qid]. *)
-            let binop = (s, assoc, prio, with_path sym.sym_path qid) in
-            out 3 "(conf) %a %a\n" pp_symbol sym notation (Infix binop);
+            let binop = (s, assoc, prio, with_mod sym.sym_path qid) in
+            Console.out 3 "(conf) %a %a\n"
+              pp_sym sym pp_notation (Infix binop);
             add_binop ss (Pos.make pos s) (sym, binop);
         | P_config_quant(qid)     ->
-            let sym = find_sym ~prt:true ~prv:true false ss qid in
-            out 3 "(conf) %a quantifier\n" pp_symbol sym;
+            let sym = find_sym ~prt:true ~prv:true ss qid in
+            Console.out 3 "(conf) %a quantifier\n" pp_sym sym;
             add_quant ss sym
         | P_config_unif_rule(h)   ->
             (* Approximately same processing as rules without SR checking. *)
@@ -501,7 +486,8 @@ fun compile ss ({elt; pos} as cmd) ->
             in
             Sign.add_rule ss.signature Unif_rule.equiv urule;
             Tree.update_dtree Unif_rule.equiv;
-            out 3 "(hint) [%a]\n" Print.pp_rule (Unif_rule.equiv, urule); ss
+            Console.out 3 "(hint) [%a]\n" pp_rule (Unif_rule.equiv, urule);
+            ss
       in
       (ss, None, None)
 
@@ -515,7 +501,7 @@ let too_long = Stdlib.ref infinity
     that lack a specific position. All exceptions except [Timeout] and [Fatal]
     are captured, although they should not occur. *)
 let handle : (Path.t -> Sign.t) -> sig_state -> p_command ->
-  sig_state * proof_data option * Query.result =
+   sig_state * proof_data option * Query.result =
  fun compile ss ({pos;_} as cmd) ->
   Print.sig_state := ss;
   try
@@ -529,4 +515,4 @@ let handle : (Path.t -> Sign.t) -> sig_state -> p_command ->
   | Fatal(None         ,m)      -> fatal pos "Error on command.\n%s" m
   | Fatal(Some(None)   ,m)      -> fatal pos "Error on command.\n%s" m
   | e                           ->
-      fatal pos "Uncaught exception [%s]." (Printexc.to_string e)
+      fatal pos "Uncaught exception: %s." (Printexc.to_string e)

@@ -7,7 +7,7 @@ open Timed
 open Core
 open Term
 open Print
-open Common.Console
+open Common.Error
 open Common.Pos
 
 (** Type of goals. *)
@@ -77,7 +77,7 @@ module Goal = struct
   (** [pp_hyps oc g] prints on channel [oc] the hypotheses of the goal [g]. *)
   let pp_hyps : goal pp =
     let env_elt oc (s,(_,t,_)) =
-      Format.fprintf oc "%s: %a" s pp_term (Bindlib.unbox t)
+      Format.fprintf oc "%a: %a" pp_uid s pp_term (Bindlib.unbox t)
     in
     let ctx_elt oc (x,a,t) =
       Format.fprintf oc "%a: %a" pp_var x pp_term a;
