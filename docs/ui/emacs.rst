@@ -99,8 +99,9 @@ Usage
 Commenting regions
 ^^^^^^^^^^^^^^^^^^
 
-Lambdapi handles only single-line comments with ``//``. To comment a
-region in Emacs, select it and use ``M-;``.
+Lambdapi handles single-line and multi-line comments with ``//`` and 
+``/* ... */`` respectively. To comment a region in Emacs, select it and use
+``M-;``.
 
 Entering unicode
 ^^^^^^^^^^^^^^^^
