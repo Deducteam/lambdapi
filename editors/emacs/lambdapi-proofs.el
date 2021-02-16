@@ -353,22 +353,23 @@ and pos if there is no next command"
       (if npos (max (point-min) (1- npos)) pos))))
 
 (defun lp--post-self-insert-function ()
-  (if interactive-goals
-      (if (and (not (lp--in-comment-p))
-               (seq-find
-                (lambda (term)
-                  (equal (buffer-substring-no-properties
-                          (max (point-min) (- (point) (length term)))
-                          (point))
-                         term))
-                lambdapi-terminators))
-          (progn
-            (eglot--signal-textDocument/didChange)
-            (lp-prove-till (point))))))
+  (save-excursion
+    (if interactive-goals
+        (if (and (not (lp--in-comment-p))
+                 (seq-find
+                  (lambda (term)
+                    (equal (buffer-substring-no-properties
+                            (max (point-min) (- (point) (length term)))
+                            (point))
+                           term))
+                  lambdapi-terminators))
+            (progn
+              (eglot--signal-textDocument/didChange)
+              (lp-prove-till (point)))))))
 
 (defun lp--after-change-function (beg end len)
   (if (<= beg (plist-get proof-line-position :pos))
-      (progn
+      (save-excursion
         (eglot--signal-textDocument/didChange)
         (lp-prove-till
          (lp--prev-command-pos beg)))))
