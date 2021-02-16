@@ -28,6 +28,7 @@ type token =
   | FLAG
   | FOCUS
   | IN
+  | INDUCTION
   | INDUCTIVE
   | INFIX
   | INJECTIVE
@@ -188,6 +189,7 @@ end = struct
         ; "flag"
         ; "focus"
         ; "in"
+        ; "induction"
         ; "inductive"
         ; "infix"
         ; "injective"

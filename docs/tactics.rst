@@ -51,6 +51,12 @@ The tactic ``apply t`` replaces a goal of type ``T`` by possibly new
 goals: ``?0`` of type ``TO``, …, ``?n`` of type ``Tn`` if ``t`` is of
 type ``Π x1:T1,..,Π xn:Tn,?0`` and ``t ?1 .. ?n`` is of type ``T``.
 
+``induction``
+-------------
+
+If ``x`` is a variable of type an inductive type ``I``, then the
+tactic ``induction x`` is equivalent to ``apply ind_I``.
+
 ``why3``
 --------
 

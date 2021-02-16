@@ -37,6 +37,7 @@
 %token FLAG
 %token FOCUS
 %token IN
+%token INDUCTION
 %token INDUCTIVE
 %token INFIX
 %token INJECTIVE
@@ -191,6 +192,7 @@ tactic:
   | ASSUME xs=param_id+ { make_pos $sloc (P_tac_intro xs) }
   | FAIL { make_pos $sloc P_tac_fail }
   | FOCUS i=INT { make_pos $sloc (P_tac_focus i) }
+  | INDUCTION i=uid { make_pos $sloc (P_tac_induction i) }
   | REFINE t=term { make_pos $sloc (P_tac_refine t) }
   | REFLEXIVITY { make_pos $sloc P_tac_refl }
   | REWRITE l=ASSOC? p=delimited(L_SQ_BRACKET, rw_patt, R_SQ_BRACKET)? t=term

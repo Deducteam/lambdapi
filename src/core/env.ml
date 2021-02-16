@@ -1,7 +1,6 @@
 (** Scoping environment for variables. *)
 
 open Lplib
-
 open Term
 
 (** Type of an environment, used in scoping to associate names to
@@ -63,9 +62,9 @@ let vars : env -> tvar array = fun env ->
   Array.of_list (List.filter_rev_map f env)
 
 (** [to_tbox env] extracts the array of the {e not defined} variables in [env]
-    and injects them in the [tbox] type.  This is the same as [Array.map _Vari
-    (vars env)]. Note that the order is reversed: [vars [(xn,an);..;(x1,a1)] =
-    [|x1;..;xn|]]. *)
+   and injects them in the [tbox] type.  This is the same as [Array.map _Vari
+   (vars env)]. Note that the order is reversed: [to_tbox [(xn,an);..;(x1,a1)]
+   = [|x1;..;xn|]]. *)
 let to_tbox : env -> tbox array = fun env ->
   let f (_, (x, _, u)) = if u = None then Some(_Vari x) else None in
   Array.of_list (List.filter_rev_map f env)
@@ -109,3 +108,14 @@ let of_prod_using : ctxt -> tvar array -> term -> env * term = fun c xs t ->
     | _         -> invalid_arg __LOC__
   in
   build_env 0 [] t
+
+(** [fresh_meta env] creates a _Meta tbox from a fresh metavariable [m] of
+   type [tm], which itself is a metavariable [x] of type [Type]. *)
+let fresh_meta : env -> tbox = fun env ->
+  let vs = to_tbox env in
+  let arity = Array.length vs in
+  let tm =
+    let x = Meta.fresh_box (to_prod_box env _Type) arity in
+    to_prod_box env (_Meta_full x vs)
+  in
+  _Meta_full (Meta.fresh_box tm arity) vs

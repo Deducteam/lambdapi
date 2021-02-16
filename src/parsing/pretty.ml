@@ -215,6 +215,7 @@ let tactic : p_tactic pp = fun ppf t ->
   | P_tac_query(q) -> query ppf q
   | P_tac_fail -> out ppf "fail"
   | P_tac_solve -> out ppf "solve"
+  | P_tac_induction i -> out ppf "induction %a" ident i
   end;
   out ppf ";"
 

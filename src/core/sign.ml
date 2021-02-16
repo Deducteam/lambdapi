@@ -13,24 +13,24 @@ open Tags
 
 (** Representation of an inductive type *)
 type inductive =
-  { ind_cons  : sym list  (** List of constructors                 *)
-  ; ind_prop  : sym       (** Induction principle on propositions. *) }
+  { ind_cons : sym list (** Constructors.*)
+  ; ind_prop : sym      (** Induction principle. *) }
 
 (** Notation properties of symbols. They are linked to symbols to provide
     syntax extensions to these symbols. These syntax extensions concern both
     parsing and printing. *)
 type notation =
-  | Prefix of unop (** Prefix (or unary) operator, such as [!] in [! x]. *)
-  | Infix of binop (** Infix (or binary) operator, such as [+] in [a + b]. *)
-  | Zero (** The numeral zero, that is [0]. *)
-  | Succ (** Successor, for numerals such as [42]. *)
-  | Quant (** Quantifier, such as [fa] in [`fa x, t]. *)
+  | Prefix of unop (** Prefix operator such as [-] in [- x]. *)
+  | Infix of binop (** Infix operator such as [+] in [a + b]. *)
+  | Zero           (** The numeral zero. *)
+  | Succ           (** Successor function. *)
+  | Quant          (** Quantifier such as [∀] in [`∀ x, p]. *)
 
 (** Representation of a signature. It roughly corresponds to a set of symbols,
     defined in a single module (or file). *)
 type t =
   { sign_symbols  : (sym * Pos.popt) StrMap.t ref
-  ; sign_path      : Path.t
+  ; sign_path     : Path.t
   ; sign_deps     : (string * rule) list Path.Map.t ref
   ; sign_builtins : sym StrMap.t ref
   ; sign_notations: notation SymMap.t ref

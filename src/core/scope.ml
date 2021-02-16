@@ -280,24 +280,7 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
     | (P_Wild          , M_LHS(_)          ) ->
         fresh_patt md None (Env.to_tbox env)
     | (P_Wild          , M_Patt            ) -> _Wild
-    | (P_Wild          , _                 ) ->
-        (* We create a metavariable [m] of type [tm], which itself is also a
-           metavariable [x] of type [Type].  Note that this case applies both
-           to regular terms, and to the RHS of rewriting rules. *)
-        let vs = Env.to_tbox env in
-        let arity = Array.length vs in
-        let tm =
-          let x = Meta.fresh_box (Env.to_prod_box env _Type) arity in
-          Env.to_prod_box env (_Meta_full x vs)
-        in
-        let m = _Meta_full (Meta.fresh_box tm arity) vs in
-        (* Sanity check: only variables of [env] free in [m] if not in RHS. *)
-        begin
-          match md with
-          | M_RHS(_) -> m
-          | _        ->
-          assert (Bindlib.is_closed (Bindlib.bind_mvar (Env.vars env) m)); m
-        end
+    | (P_Wild          , _                 ) -> Env.fresh_meta env
     | (P_Meta(id,ts)   , M_Term(m,_)      ) ->
         let m2 =
           (* We first check if the metavariable is in the map. *)

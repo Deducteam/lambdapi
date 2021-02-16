@@ -34,6 +34,7 @@
            | 'assume' <param_id>+
            | 'fail'
            | 'focus' <int>
+           | 'in'DUCTION <uid>
            | 'refine' <term>
            | 'reflexivity'
            | 'rewrite' [<assoc>] ['[' <rw_patt> ']'] <term>

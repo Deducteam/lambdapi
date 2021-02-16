@@ -69,10 +69,9 @@ let tac_refine : popt -> proof_state -> term -> proof_state =
 (** [handle ss e ps tac] applies tactic [tac] in the proof state
    [ps] and returns the new proof state. This function fails gracefully in
    case of error. *)
-let handle :
-  Sig_state.t -> Tags.expo -> proof_state -> p_tactic ->
-    proof_state * Query.result =
-  fun ss e ps tac ->
+let handle : Sig_state.t -> Tags.expo -> proof_state -> p_tactic
+             -> proof_state * Query.result =
+  fun ss expo ps ({elt;pos} as tac) ->
   if !log_enabled then
     begin
       (match ps.proof_goals with
@@ -80,53 +79,86 @@ let handle :
        | [] -> ());
       log_tact "%a" Pretty.tactic tac
     end;
-  match tac.elt with
+  match elt with
   | P_tac_query(q) -> ps, Query.handle ss (Some ps) q
-  | P_tac_solve -> tac_solve tac.pos ps, None
+  | P_tac_solve -> tac_solve pos ps, None
   | P_tac_focus(i) ->
       (try {ps with proof_goals = List.swap i ps.proof_goals}, None
-      with Invalid_argument _ -> fatal tac.pos "Invalid goal index.")
+      with Invalid_argument _ -> fatal pos "Invalid goal index.")
   | P_tac_refine(pt) ->
       let env = Proof.focus_env (Some ps) in
-      tac_refine tac.pos ps (Scope.scope_term e ss env pt), None
+      tac_refine pos ps (Scope.scope_term expo ss env pt), None
   | P_tac_intro(idopts) ->
       let env = Proof.focus_env (Some ps) in
-      let t = Scope.scope_term e ss env (P.abst_list idopts P.wild) in
-      tac_refine tac.pos ps t, None
+      let t = Scope.scope_term expo ss env (P.abst_list idopts P.wild) in
+      tac_refine pos ps t, None
   | P_tac_apply(pt) ->
       let env = Proof.focus_env (Some ps) in
-      let t = Scope.scope_term e ss env pt in
+      let t = Scope.scope_term expo ss env pt in
       (* Compute the product arity of the type of [t]. *)
       let n =
         match Infer.infer_noexn [] (Env.to_ctxt env) t with
-        | None -> fatal tac.pos "[%a] is not typable." pp_term t
+        | None -> fatal pos "[%a] is not typable." pp_term t
         | Some (a, _) -> LibTerm.count_products a
       in
       (*FIXME: this does not take into account implicit arguments. *)
       let t = if n <= 0 then t
-              else Scope.scope_term e ss env (P.appl_wild pt n) in
-      tac_refine tac.pos ps t, None
+              else Scope.scope_term expo ss env (P.appl_wild pt n) in
+      tac_refine pos ps t, None
   | P_tac_simpl ->
       (match ps.proof_goals with
-       | [] -> fatal tac.pos "No remaining goals."
+       | [] -> fatal pos "No remaining goals."
        | g::gs -> {ps with proof_goals = Goal.simpl g :: gs}), None
   | P_tac_rewrite(b,po,pt) ->
       let env = Proof.focus_env (Some ps) in
       let po = Option.map (Scope.scope_rw_patt ss env) po in
-      let t = Scope.scope_term e ss env pt in
-      tac_refine tac.pos ps (Rewrite.rewrite ss tac.pos ps b po t), None
+      let t = Scope.scope_term expo ss env pt in
+      tac_refine pos ps (Rewrite.rewrite ss pos ps b po t), None
   | P_tac_refl ->
-      tac_refine tac.pos ps (Rewrite.reflexivity ss tac.pos ps), None
+      tac_refine pos ps (Rewrite.reflexivity ss pos ps), None
   | P_tac_sym ->
-      tac_refine tac.pos ps (Rewrite.symmetry ss tac.pos ps), None
+      tac_refine pos ps (Rewrite.symmetry ss pos ps), None
   | P_tac_why3(config) ->
       (match ps.proof_goals with
-       | [] -> fatal tac.pos "No remaining goals."
-       | Unif _::_ -> fatal tac.pos "Not a typing goal."
+       | [] -> fatal pos "No remaining goals."
+       | Unif _::_ -> fatal pos "Not a typing goal."
        | Typ gt::_ ->
-          (tac_refine tac.pos ps (Why3_tactic.handle ss tac.pos config gt)),
-            None)
-  | P_tac_fail -> fatal tac.pos "Call to tactic \"fail\""
+          (tac_refine pos ps (Why3_tactic.handle ss pos config gt)),
+          None)
+  | P_tac_induction _id ->
+      begin
+        (* Check that the current goal is a product. *)
+        match ps.proof_goals with
+        | [] -> fatal pos "No remaining goals."
+        | Unif _::_ -> fatal pos "Not a typing goal."
+        | Typ {goal_type;goal_hyps;_}::_ ->
+            let ctxt = Env.to_ctxt goal_hyps in
+            let inductive a =
+              let h, ts = LibTerm.get_args a in
+              match h with
+              | Symb s ->
+                  let sign = Path.Map.find s.sym_path Sign.(!loaded) in
+                  (try let ind = SymMap.find s !(sign.sign_ind) in
+                       if LibTerm.distinct_vars ctxt (Array.of_list ts)
+                          = None
+                       then
+                         fatal pos "%a is not applied to distinct variables."
+                           pp_sym s
+                       else Some ind
+                   with Not_found -> None)
+              | _ -> None
+            in
+            match unfold goal_type with
+            | Prod(a,_) ->
+                begin
+                  match inductive a with
+                  | Some _ind -> fatal pos "Not yet implemented."
+                  | None -> fatal pos "[%a] is not an inductive type."
+                              pp_term a
+                end
+            | _ -> fatal pos "The current goal is not a product."
+      end
+  | P_tac_fail -> fatal pos "Call to tactic \"fail\""
 
 let handle :
   Sig_state.t -> Tags.expo -> proof_state -> p_tactic ->
