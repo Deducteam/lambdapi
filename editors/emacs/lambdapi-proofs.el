@@ -267,12 +267,17 @@ make it clickable"
   (recenter))
 
 (defun lp-prove-till-cursor ()
-  "Proves till the last complete command before cursor"
+  "Proves till the command/tactic at cursor"
   (interactive)
   (save-excursion
-    (lp-prove-till
-     (lp--prev-command-pos
-      (min (point-max) (1+ (point)))))))
+    (let ((line-empty ; line empty or is a single line comment
+           (save-excursion
+             (beginning-of-line)
+             (looking-at-p "\\([[:space:]]*\\|//.*\\)$"))))
+      (lp-prove-till
+       (if line-empty
+           (lp--prev-command-pos (1+ (point)))
+         (lp--next-command-pos (1- (point))))))))
 
 (defun lp-prove-till (pos)
   "Evaluates till pos and moves the cursor to the end of evaluated region"
