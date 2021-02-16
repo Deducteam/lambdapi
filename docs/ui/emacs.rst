@@ -175,26 +175,11 @@ If for any reason the LSP server consumes too much power (e.g. if a
 non-terminating rewrite system is edited), it can be disabled with
 ``M-x eglot-shutdown``.
 
-Pseudo interactive proof mode
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-One can use `quickrun`_ to call lambdapi while editing a buffer. It can be
-configured for lambdapi with
-
-.. code:: emacs-lisp
-
-   (quickrun-add-command "lambdapi"
-     '((:command . "lambdapi check")
-       (:exec    . ("%c %s")))
-     :mode 'lambdapi-mode)
-   (add-hook 'lambdapi-mode-hook
-     (lambda () (define-key lambdapi-mode-map (kbd "C-c r") #'quickrun)))
-
-to run lambdapi on the edited buffer with ``C-c r``. It can be used to
-display goals while doing a proof. To display the result of ``compute``,
-``type``, and simlar commmand as well, write ``"%c --verbose 1 %s"``
-instead of ``"%c %s"``.
-
+Interactive proof mode
+^^^^^^^^^^^^^^^^^^^^^^^
+You can toggle the interactive proof mode either from the toolbar or
+using ``C-c C-i`` or ``C-c TAB``. This will evaluate the region till
+the cursor whenever you use the ``;`` terminator.
 
 Customize window layout
 '''''''''''''''''''''''
