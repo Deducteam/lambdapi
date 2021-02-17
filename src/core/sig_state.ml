@@ -34,17 +34,16 @@ type t = sig_state
     as dependencies. *)
 let create_sign : Path.t -> Sign.t = fun sign_path ->
   let d = Sign.dummy () in
-  { d with sign_path ;
-           sign_deps = ref (Path.Map.singleton Unif_rule.path []) }
+  {d with sign_path; sign_deps = ref (Path.Map.singleton Unif_rule.path [])}
 
-(** [add_symbol ss sig_symbol={e,p,st,x,a,impl,def}] generates a new signature
-   state from [ss] by creating a new symbol with expo [e], property [p],
-   strategy [st], name [x], type [a], implicit arguments [impl] and optional
-   definition [t]. This new symbol is returned too. *)
+(** [add_symbol ss expo prop mstrat opaq id typ impl def] generates a new
+   signature state from [ss] by creating a new symbol with expo [e], property
+   [p], strategy [st], name [x], type [a], implicit arguments [impl] and
+   optional definition [def]. This new symbol is returned too. *)
 let add_symbol : sig_state -> Tags.expo -> Tags.prop -> Tags.match_strat
-    -> strloc -> term -> bool list -> term option -> sig_state * sym =
-  fun ss expo prop mstrat id typ impl def ->
-  let sym = Sign.add_symbol ss.signature expo prop mstrat id typ impl in
+    -> bool -> strloc -> term -> bool list -> term option -> sig_state * sym =
+  fun ss expo prop mstrat opaq id typ impl def ->
+  let sym = Sign.add_symbol ss.signature expo prop mstrat opaq id typ impl in
   begin
     match def with
     | Some t -> sym.sym_def := Some (cleanup t)

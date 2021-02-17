@@ -224,7 +224,8 @@ let check_rule : Scope.pre_rule Pos.loc -> rule = fun ({pos; elt} as pr) ->
             | Some(n) -> n
             | None    -> string_of_int m.meta_key
           in
-          let s = Sign.create_sym Privat Defin sym_name !(m.meta_type) [] in
+          let s = Term.create_sym (Sign.current_sign()).sign_path
+                    Privat Defin Eager false sym_name !(m.meta_type) [] in
           Stdlib.(symbols := s :: !symbols);
           (* Build a definition for [m]. *)
           let xs = LibTerm.fresh_vars m.meta_arity in

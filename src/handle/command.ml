@@ -174,7 +174,7 @@ let handle_inductive_symbol : sig_state -> expo -> prop -> match_strat
      fatal pos "We have %a : %a." pp_uid name pp_term typ);
   (* Actually add the symbol to the signature and the state. *)
   Console.out 3 (red "(symb) %a : %a\n") pp_uid name pp_term typ;
-  add_symbol ss expo prop mstrat id typ impl None
+  Sig_state.add_symbol ss expo prop mstrat false id typ impl None
 
 (** Representation of a yet unchecked proof. The structure is initialized when
     the proof mode is entered, and its finalizer is called when the proof mode
@@ -282,7 +282,7 @@ let handle : (Path.t -> Sign.t) -> sig_state -> p_command ->
           Console.out 3 (red "(symb) %a : %a\n")
             pp_uid rec_name pp_term rec_typ;
           let id = Pos.make pos rec_name in
-          Sig_state.add_symbol ss expo Defin Eager id rec_typ [] None
+          Sig_state.add_symbol ss expo Defin Eager false id rec_typ [] None
         in
         (ss, rec_sym::rec_sym_list)
       in
@@ -409,7 +409,7 @@ let handle : (Path.t -> Sign.t) -> sig_state -> p_command ->
                 Console.out 3 (red "(symb) add %a : %a\n")
                   pp_uid id pp_term a;
                 wrn pe.pos "Proof admitted.";
-                fst (add_symbol ss expo prop mstrat p_sym_nam a impl t)
+                fst (add_symbol ss expo prop mstrat true p_sym_nam a impl t)
             | P_proof_end ->
                 (* Check that the proof is indeed finished. *)
                 if not (finished ps) then
@@ -418,7 +418,7 @@ let handle : (Path.t -> Sign.t) -> sig_state -> p_command ->
                 (* Add the symbol in the signature. *)
                 Console.out 3 (red "(symb) add %a : %a\n")
                   pp_uid id pp_term a;
-                fst (add_symbol ss expo prop mstrat p_sym_nam a impl t)
+                fst (add_symbol ss expo prop mstrat opaq p_sym_nam a impl t)
       in
       (* Create proof state. *)
       let ps = {proof_name = p_sym_nam; proof_term; proof_goals} in

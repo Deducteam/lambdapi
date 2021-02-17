@@ -83,15 +83,15 @@ let loading : Path.t list ref = ref []
 (** [current_sign ()] returns the current signature. *)
 let current_sign () = Path.Map.find (List.hd !loading) !loaded
 
-(** [create_sym expo prop name typ impl] creates a new symbol with the
-   exposition [expo], property [prop], name [name] type [typ] and implicit
-   arguments [impl]. *)
-let create_sym : expo -> prop -> string -> term -> bool list -> sym =
-  fun sym_expo sym_prop sym_name typ sym_impl ->
+(** [create_sym expo prop opaq name typ impl] creates a new symbol with the
+   exposition [expo], property [prop], name [name], type [typ], implicit
+   arguments [impl], opacity [opaq]. *)
+let create_sym : expo -> prop -> bool -> string -> term -> bool list -> sym =
+  fun sym_expo sym_prop sym_opaq sym_name typ sym_impl ->
   let sym_path = (current_sign()).sign_path in
   { sym_expo; sym_path; sym_name; sym_type = ref typ; sym_impl; sym_prop;
-    sym_def = ref None; sym_rules = ref []; sym_mstrat = ref Eager;
-    sym_tree = ref Tree_types.empty_dtree }
+    sym_def = ref None; sym_opaq; sym_rules = ref [];
+    sym_mstrat = ref Eager; sym_tree = ref Tree_types.empty_dtree }
 
 (** [link sign] establishes physical links to the external symbols. *)
 let link : t -> unit = fun sign ->
@@ -214,27 +214,32 @@ let unlink : t -> unit = fun sign ->
   let fn s i = unlink_sym s; unlink_ind_data i in
   SymMap.iter fn !(sign.sign_ind)
 
-(** [add_symbol sign expo prop mstrat name a impl] creates a fresh symbol with
-    name [name], exposition [expo], property [prop], matching strategy
-    [strat], type [a] and implicit arguments [impl] in the signature [sign].
-    [name] should not already be used in [sign]. The created symbol is
-    returned. *)
-let add_symbol : t -> expo -> Tags.prop -> match_strat -> strloc -> term ->
-  bool list -> sym = fun sign sym_expo sym_prop sym_mstrat s a impl ->
+(** [add_symbol sign expo prop mstrat opaq name typ impl] add in the signature
+   [sign] a symbol with name [name], exposition [expo], property [prop],
+   matching strategy [strat], opacity [opaq], type [typ], implicit arguments
+   [impl], no definition and no rules. [name] should not already be used in
+   [sign]. The created symbol is returned. *)
+let add_symbol :
+      t -> expo -> Tags.prop -> match_strat -> bool -> strloc -> term ->
+      bool list -> sym =
+  fun sign sym_expo sym_prop sym_mstrat sym_opaq {elt=sym_name;pos} typ
+      impl ->
   (* Check for metavariables in the symbol type. *)
-  if LibTerm.has_metas true a then
-    fatal s.pos "The type of [%s] contains metavariables" s.elt;
-  (* We minimize [impl] to enforce our invariant (see {!type:Term.sym}). *)
+  if LibTerm.has_metas true typ then
+    fatal pos "The type of %a contains metavariables"
+      Parsing.LpLexer.pp_uid sym_name;
+  (* We minimize [impl] to enforce our invariant (see {!type:Terms.sym}). *)
   let rec rem_false l = match l with false::l -> rem_false l | _ -> l in
   let sym_impl = List.rev (rem_false (List.rev impl)) in
   (* Add the symbol. *)
   let sym =
-    { sym_name = s.elt; sym_type = ref (cleanup a); sym_path = sign.sign_path
-    ; sym_def = ref None; sym_impl; sym_rules = ref []; sym_prop
-    ; sym_expo ; sym_tree = ref Tree_types.empty_dtree
-    ; sym_mstrat = ref sym_mstrat }
+    { sym_path = sign.sign_path; sym_name; sym_type = ref (cleanup typ);
+      sym_impl; sym_def = ref None; sym_opaq; sym_rules = ref [];
+      sym_tree = ref Tree_types.empty_dtree; sym_mstrat = ref sym_mstrat;
+      sym_prop; sym_expo }
   in
-  sign.sign_symbols := StrMap.add s.elt (sym, s.pos) !(sign.sign_symbols); sym
+  sign.sign_symbols := StrMap.add sym_name (sym, pos) !(sign.sign_symbols);
+  sym
 
 (** [strip_private sign] removes private symbols from signature [sign]. *)
 let strip_private : t -> unit = fun sign ->
@@ -267,7 +272,8 @@ let read : string -> t = fun fname ->
       close_in ic; sign
     with Failure _ ->
       close_in ic;
-      fatal_no_pos "File [%s] is incompatible with current binary...\n" fname
+      fatal_no_pos "File \"%s\" is incompatible with current binary...\n"
+        fname
   in
   (* Timed references need reset after unmarshaling (see [Timed] doc). *)
   let reset_timed_refs sign =

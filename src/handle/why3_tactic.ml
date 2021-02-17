@@ -197,8 +197,8 @@ let handle :
   let axiom_name = new_axiom_name () in
   (* Add the axiom to the current signature. *)
   let a =
-    Sign.add_symbol ss.signature Privat Const Eager
-      (Pos.none axiom_name) !(m.meta_type) []
+    Sign.add_symbol ss.signature Privat Const Eager true
+      (Pos.make pos axiom_name) !(m.meta_type) []
   in
   if !log_enabled then log_why3 "axiom %a created" Print.pp_uid axiom_name;
   (* Return the variable terms of each item in the context. *)
