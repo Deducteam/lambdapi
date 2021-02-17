@@ -44,6 +44,7 @@ syntax.bnf:
 	-e 's/FLAG/"flag"/g' \
 	-e 's/FOCUS/"focus"/g' \
 	-e 's/IN/"in"/g' \
+	-e 's/"in"DUCTION/"induction"/g' \
 	-e 's/"in"DUCTIVE/"inductive"/g' \
 	-e 's/"in"FIX/"infix"/g' \
 	-e 's/"in"JECTIVE/"injective"/g' \

@@ -12,6 +12,7 @@
     "assume"
     "fail"
     "focus"
+    "induction"
     "refine"
     "reflexivity"
     "rewrite"
@@ -83,6 +84,7 @@ Indent by `lambdapi-indent-basic' in proofs, and 0 otherwise."
               ("assume" sterm)
               ("fail")
               ("focus" ident)
+              ("induction")
               ("refine" sterm)
               ("reflexivity")
               ("rewrite" "[" rw-patt "]")
@@ -165,6 +167,7 @@ The default lexer is used because the syntax is primarily made of sexps."
     (`(:before . "assume") `(column . ,lambdapi-indent-basic))
     (`(:before . "fail") `(column . ,lambdapi-indent-basic))
     (`(:before . "focus") `(column . ,lambdapi-indent-basic))
+    (`(:before . "induction") `(column . ,lambdapi-indent-basic))
     (`(:before . "refine") `(column . ,lambdapi-indent-basic))
     (`(:before . "reflexivity") `(column . ,lambdapi-indent-basic))
     (`(:before . "rewrite") `(column . ,lambdapi-indent-basic))
@@ -190,8 +193,9 @@ The default lexer is used because the syntax is primarily made of sexps."
     (`(:after . ,(or "rule" "with")) (* 2 lambdapi-indent-basic))
     (`(:after . "in") (smie-rule-parent))
     (`(:after . ,(or "symbol" "inductive")) lambdapi-indent-basic)
-    (`(:after . ,(or "apply" "assume" "fail" "focus" "refine" "reflexivity"
-                     "rewrite" "simpl" "solve" "symmetry" "why3"))
+    (`(:after . ,(or "apply" "assume" "fail" "focus" "induction" "refine"
+                     "reflexivity" "rewrite" "simpl" "solve" "symmetry"
+                     "why3"))
      lambdapi-indent-basic)
 
     ;; Toplevel

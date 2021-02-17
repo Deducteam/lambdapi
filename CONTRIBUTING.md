@@ -64,11 +64,14 @@ Changing the syntax of Lambdapi
 -------------------------------
 
 When changing the syntax of Lambdapi, make sure to update the
-following files: `src/core/lpLexer.ml`, `src/core/lpParser.mly`,
-`src/core/pretty.ml`, `src/core/print.ml`,
-`editors/emacs/lambdapi-smie.el`,
-`editors/vscode/lp.configuration.json` (shortcuts),
-`editors/vscode/syntaxes/lp.tmLanguage.json` (syntax highlighting),
-`tools/listings.tex`, `docs/Makefile` (generation of
-`docs/syntax.bnf`), as well as the User Manual in the `docs/`
-repository.
+following files:
+- `src/core/lpLexer.ml`
+- `src/core/lpParser.mly`
+- `src/core/pretty.ml`
+- `src/core/print.ml`
+- `editors/emacs/lambdapi-smie.el`
+- `editors/vscode/lp.configuration.json` (comments configuration),
+- `editors/vscode/syntaxes/lp.tmLanguage.json` (syntax highlighting),
+- `tools/listings.tex`
+- `docs/Makefile` (generation of `docs/syntax.bnf`)
+- as well as the User Manual in the `docs/` repository.
