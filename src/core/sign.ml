@@ -11,31 +11,34 @@ open Term
 open Parsing.Syntax
 open Tags
 
-(** Representation of an inductive type *)
-type inductive =
-  { ind_cons  : sym list  (** List of constructors                 *)
-  ; ind_prop  : sym       (** Induction principle on propositions. *) }
+(** Data associated to inductive type symbols. *)
+type ind_data =
+  { ind_cons : sym list (** Constructors. *)
+  ; ind_prop : sym      (** Induction principle. *)
+  ; ind_nb_params : int (** Number of parameters. *)
+  ; ind_nb_types : int  (** Number of mutually defined types. *)
+  ; ind_nb_cons : int   (** Number of constructors. *) }
 
 (** Notation properties of symbols. They are linked to symbols to provide
     syntax extensions to these symbols. These syntax extensions concern both
     parsing and printing. *)
 type notation =
-  | Prefix of unop (** Prefix (or unary) operator, such as [!] in [! x]. *)
-  | Infix of binop (** Infix (or binary) operator, such as [+] in [a + b]. *)
-  | Zero (** The numeral zero, that is [0]. *)
-  | Succ (** Successor, for numerals such as [42]. *)
-  | Quant (** Quantifier, such as [fa] in [`fa x, t]. *)
+  | Prefix of unop (** Prefix operator such as [-] in [- x]. *)
+  | Infix of binop (** Infix operator such as [+] in [a + b]. *)
+  | Zero           (** The numeral zero. *)
+  | Succ           (** Successor function. *)
+  | Quant          (** Quantifier such as [∀] in [`∀ x, p]. *)
 
 (** Representation of a signature. It roughly corresponds to a set of symbols,
     defined in a single module (or file). *)
 type t =
   { sign_symbols  : (sym * Pos.popt) StrMap.t ref
-  ; sign_path      : Path.t
+  ; sign_path     : Path.t
   ; sign_deps     : (string * rule) list Path.Map.t ref
   ; sign_builtins : sym StrMap.t ref
   ; sign_notations: notation SymMap.t ref
     (** Maps symbols to their syntax properties if they have some. *)
-  ; sign_ind      : inductive SymMap.t ref }
+  ; sign_ind      : ind_data SymMap.t ref }
 
 (* NOTE the [deps] field contains a hashtable binding the external modules on
    which the current signature depends to an association list mapping symbols
@@ -150,11 +153,12 @@ let link : t -> unit = fun sign ->
     SymMap.to_seq !(sign.sign_notations) |>
     Seq.map lsy |> SymMap.of_seq;
   StrMap.iter (fun _ (s, _) -> Tree.update_dtree s) !(sign.sign_symbols);
-  let link_inductive i =
-    { ind_cons = List.map link_symb i.ind_cons
-    ; ind_prop = link_symb i.ind_prop }
+  let link_ind_data i =
+    { ind_cons = List.map link_symb i.ind_cons;
+      ind_prop = link_symb i.ind_prop; ind_nb_params = i.ind_nb_params;
+      ind_nb_types = i.ind_nb_types; ind_nb_cons = i.ind_nb_cons }
   in
-  let fn s i m = SymMap.add (link_symb s) (link_inductive i) m in
+  let fn s i m = SymMap.add (link_symb s) (link_ind_data i) m in
   sign.sign_ind := SymMap.fold fn !(sign.sign_ind) SymMap.empty
 
 (** [unlink sign] removes references to external symbols (and thus signatures)
@@ -204,10 +208,10 @@ let unlink : t -> unit = fun sign ->
   Path.Map.iter gn !(sign.sign_deps);
   StrMap.iter (fun _ s -> unlink_sym s) !(sign.sign_builtins);
   SymMap.iter (fun s _ -> unlink_sym s) !(sign.sign_notations);
-  let unlink_inductive i =
+  let unlink_ind_data i =
     List.iter unlink_sym i.ind_cons; unlink_sym i.ind_prop
   in
-  let fn s i = unlink_sym s; unlink_inductive i in
+  let fn s i = unlink_sym s; unlink_ind_data i in
   SymMap.iter fn !(sign.sign_ind)
 
 (** [add_symbol sign expo prop mstrat opaq name typ impl] add in the signature
@@ -312,11 +316,11 @@ let read : string -> t = fun fname ->
     SymMap.iter (fun s _ -> shallow_reset_sym s) !(sign.sign_notations);
     let fn (_,r) = reset_rule r in
     Path.Map.iter (fun _ -> List.iter fn) !(sign.sign_deps);
-    let shallow_reset_inductive i =
+    let shallow_reset_ind_data i =
       shallow_reset_sym i.ind_prop;
       List.iter shallow_reset_sym i.ind_cons
     in
-    let fn s i = shallow_reset_sym s; shallow_reset_inductive i in
+    let fn s i = shallow_reset_sym s; shallow_reset_ind_data i in
     SymMap.iter fn !(sign.sign_ind);
     sign
   in
@@ -364,13 +368,14 @@ let add_binop : t -> sym -> binop -> unit =
 let add_quant : t -> sym -> unit = fun sign sym ->
   sign.sign_notations := SymMap.add sym Quant !(sign.sign_notations)
 
-(** [add_inductive sign typ ind_cons ind_prop] add the inductive type which
-    consists of a type [typ], constructors [ind_cons] and an induction
-    principle [ind_prop] to [sign]. *)
-let add_inductive : t -> sym -> sym list -> sym -> unit =
-  fun sign typ ind_cons ind_prop ->
-  let ind = { ind_cons ; ind_prop } in
-  sign.sign_ind := SymMap.add typ ind !(sign.sign_ind)
+(** [add_inductive sign ind_sym ind_cons ind_prop ind_prop_args] add to [sign]
+   the inductive type [ind_sym] with constructors [ind_cons], induction
+   principle [ind_prop] with [ind_prop_args] arguments. *)
+let add_inductive : t -> sym -> sym list -> sym -> int -> int -> unit =
+  fun sign ind_sym ind_cons ind_prop ind_nb_params ind_nb_types ->
+  let ind_nb_cons = List.length ind_cons in
+  let ind = {ind_cons; ind_prop; ind_nb_params; ind_nb_types; ind_nb_cons} in
+  sign.sign_ind := SymMap.add ind_sym ind !(sign.sign_ind)
 
 (** [dependencies sign] returns an association list containing (the transitive
     closure of) the dependencies of the signature [sign].  Note that the order

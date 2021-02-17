@@ -47,7 +47,7 @@ module Goal = struct
   (** [of_meta m] creates a goal from the meta [m]. *)
   let of_meta : meta -> goal = fun m ->
     let (goal_hyps, goal_type) = Env.of_prod [] m.meta_arity !(m.meta_type) in
-    let goal_type = Eval.simplify (Env.to_ctxt goal_hyps) goal_type in
+    let goal_type = Eval.simplify goal_type in
     Typ {goal_meta = m; goal_hyps; goal_type}
 
   (** [simpl g] normalizes the goal [g]. *)

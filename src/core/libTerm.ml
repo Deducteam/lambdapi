@@ -181,9 +181,8 @@ let has_metas : bool -> term -> bool =
   let exception Found in fun b t ->
   try iter_meta b (fun _ -> raise Found) t; false with Found -> true
 
-(** [distinct_vars ctx ts]  checks  that terms of  [ts] are made of  variables
-    that are themselves or their definition in  [ctx] (if it exists) distinct.
-    If so, the variables are returned. *)
+(** [distinct_vars ctx ts] checks that the terms [ts] are distinct
+   variables. If so, the variables are returned. *)
 let distinct_vars : ctxt -> term array -> tvar array option = fun ctx ts ->
   let exception Not_unique_var in
   let open Stdlib in
@@ -192,8 +191,7 @@ let distinct_vars : ctxt -> term array -> tvar array option = fun ctx ts ->
     match Ctxt.unfold ctx t with
     | Vari(x) ->
         if VarSet.mem x !vars then raise Not_unique_var;
-        vars := VarSet.add x !vars;
-        x
+        vars := VarSet.add x !vars; x
     | _       -> raise Not_unique_var
   in
   try Some (Array.map to_var ts) with Not_unique_var -> None

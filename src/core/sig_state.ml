@@ -23,8 +23,8 @@ open Sign
 type sig_state =
   { signature : Sign.t                    (** Current signature.        *)
   ; in_scope  : (sym * Pos.popt) StrMap.t (** Symbols in scope.         *)
-  ; alias_path: Path.t StrMap.t           (** Map from aliases to paths.*)
-  ; path_alias: string Path.Map.t         (** Map from paths to aliases.*)
+  ; alias_path   : Path.t StrMap.t        (** Alias to path map.        *)
+  ; path_alias  : string Path.Map.t       (** Path to alias map.        *)
   ; builtins  : sym StrMap.t              (** Builtin symbols.          *)
   ; notations : notation SymMap.t         (** Printing hints.           *) }
 
@@ -72,14 +72,14 @@ let add_binop : sig_state -> strloc -> (sym * binop) -> sig_state =
 
 (** [add_builtin ss n s] generates a new signature state from [ss] by mapping
    the builtin [n] to [s]. *)
-let add_builtin : sig_state -> string -> sym -> sig_state = fun ss name sym ->
-  Sign.add_builtin ss.signature name sym;
-  let builtins = StrMap.add name sym ss.builtins in
-  let add_pp_hint hint = SymMap.add sym hint ss.notations in
+let add_builtin : sig_state -> string -> sym -> sig_state =
+  fun ss builtin sym ->
+  Sign.add_builtin ss.signature builtin sym;
+  let builtins = StrMap.add builtin sym ss.builtins in
   let notations =
-    match name with
-    | "0"  -> add_pp_hint Zero
-    | "+1" -> add_pp_hint Succ
+    match builtin with
+    | "0"  -> SymMap.add sym Zero ss.notations
+    | "+1" -> SymMap.add sym Succ ss.notations
     | _    -> ss.notations
   in
   {ss with builtins; notations}
@@ -90,22 +90,22 @@ let add_quant : sig_state -> sym -> sig_state = fun ss sym ->
   Sign.add_quant ss.signature sym;
   {ss with notations = SymMap.add sym Quant ss.notations}
 
-(** [update_notations_from_builtins old_bm new_bm notations] generates a new
-   pp_hint map from [notations] when adding [new_bm] to the builtin map
+(** [update_notations_from_builtins old_bm new_bm notmap] generates a new
+   notation map from [notmap] when adding [new_bm] to the builtin map
    [old_bm]. *)
-let update_notations_from_builtins
-    : sym StrMap.t -> sym StrMap.t -> notation SymMap.t -> notation SymMap.t =
-  fun old_bm new_bm notations ->
-  let add_hint name h notations =
+let update_notations_from_builtins :
+    sym StrMap.t -> sym StrMap.t -> notation SymMap.t -> notation SymMap.t =
+  fun old_bm new_bm notmap ->
+  let add builtin notation notmap =
     try
-      let s_new = StrMap.find name new_bm in
+      let s_new = StrMap.find builtin new_bm in
       try
-        let s_old = StrMap.find name old_bm in
-        SymMap.add s_new h (SymMap.remove s_old notations)
-      with Not_found -> SymMap.add s_new h notations
-    with Not_found -> notations
+        let s_old = StrMap.find builtin old_bm in
+        SymMap.add s_new notation (SymMap.remove s_old notmap)
+      with Not_found -> SymMap.add s_new notation notmap
+    with Not_found -> notmap
   in
-  add_hint "0" Zero (add_hint "+1" Succ notations)
+  add "0" Zero (add "+1" Succ notmap)
 
 (** [open_sign ss sign] extends the signature state [ss] with every symbol  of
     the signature [sign].  This has the effect of putting these symbols in the
@@ -116,13 +116,13 @@ let open_sign : sig_state -> Sign.t -> sig_state = fun ss sign ->
   let in_scope = StrMap.union f ss.in_scope !(sign.sign_symbols) in
   let builtins = StrMap.union f ss.builtins !(sign.sign_builtins) in
   (* Bring operators in scope *)
-  let open_synt s syn ssis =
-    match syn with
-    | Sign.Infix (k,_, _, _) -> StrMap.add k (s, None) ssis
-    | Sign.Prefix (k,_,_) -> StrMap.add k (s, None) ssis
-    | _ -> ssis
+  let open_notation s notation in_scope =
+    match notation with
+    | Sign.Infix (k,_, _, _) -> StrMap.add k (s, None) in_scope
+    | Sign.Prefix (k,_,_) -> StrMap.add k (s, None) in_scope
+    | _ -> in_scope
   in
-  let in_scope = SymMap.fold open_synt !(sign.sign_notations) in_scope in
+  let in_scope = SymMap.fold open_notation !(sign.sign_notations) in_scope in
   let notations =
     SymMap.fold SymMap.add !(sign.sign_notations) ss.notations
   in
@@ -167,8 +167,7 @@ let find_sym : prt:bool -> prv:bool -> sig_state -> p_qident -> sym =
         begin
           (* The signature must be loaded (alias is mapped). *)
           let sign =
-            try Path.Map.find (StrMap.find m st.alias_path)
-                  Timed.(!Sign.loaded)
+            try Path.Map.find (StrMap.find m st.alias_path) !loaded
             with _ -> assert false (* Should not happen. *)
           in
           (* Look for the symbol. *)
@@ -183,7 +182,7 @@ let find_sym : prt:bool -> prv:bool -> sig_state -> p_qident -> sym =
               fatal pos "No module [%a] required." pp_path mp;
           (* The signature must have been loaded. *)
           let sign =
-            try Path.Map.find mp Timed.(!Sign.loaded)
+            try Path.Map.find mp !loaded
             with Not_found -> assert false (* Should not happen. *)
           in
           (* Look for the symbol. *)

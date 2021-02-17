@@ -394,12 +394,12 @@ let whnf : ctxt -> term -> term = fun ctx t ->
   if Stdlib.(!steps = 0) then unfold t else u
 
 (** [simplify t] reduces simple redexes of [t]. *)
-let rec simplify : ctxt -> term -> term = fun ctx t ->
+let rec simplify : term -> term = fun t ->
   match get_args (whnf_beta t) with
   | Prod(a,b), _ ->
      let (x,b) = Bindlib.unbind b in
-     let b = Bindlib.bind_var x (lift (simplify ctx b)) in
-     Prod (simplify ctx a, Bindlib.unbox b)
+     let b = Bindlib.bind_var x (lift (simplify b)) in
+     Prod (simplify a, Bindlib.unbox b)
   | h, ts -> add_args h (List.map whnf_beta ts)
 
 (** [hnf t] computes a head-normal form of the term [t]. *)

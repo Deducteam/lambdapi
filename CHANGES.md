@@ -1,5 +1,17 @@
 ### Unreleased
 
+#### Add tactic induction (2021-02-17)
+
+- `env.ml`: add functions for generating fresh metavariable terms
+  (factorizes some code in `scope.ml` and `tactics.ml`)
+- add fields in type `Sign.inductive` renamed into `ind_data`
+- functions from `rewrite.ml` now take a `goal_typ` as argument
+- code factorization in `tactic.ml`
+
+- remove type aliases `p_type` and `p_patt`
+- rename `P_Impl` into `P_Arro`, and `P_tac_intro` into `P_tac_assume`
+- variable renamings in `sig_state`
+
 #### File renamings and splitting and better handling of escaped identifier (2021-02-12)
 
 - File renamings and splittings:
