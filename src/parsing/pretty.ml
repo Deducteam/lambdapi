@@ -76,14 +76,14 @@ let rec term : p_term pp = fun ppf t ->
     | (P_Appl(t,u)         , `Func) -> out ppf "%a %a" appl t atom u
     | (P_Arro(a,b)         , `Func) -> out ppf "%a → %a" appl a func b
     | (P_Abst(xs,t)        , `Func) ->
-        out ppf "λ %a, " params_list xs;
+        out ppf "λ%a, " params_list xs;
         let fn (ids,_,_) = List.for_all ((=) None) ids in
         let ec = !empty_context in
         empty_context := ec && List.for_all fn xs;
         func ppf t;
         empty_context := ec
     | (P_Prod(xs,b)        , `Func) ->
-        out ppf "Π %a, %a" params_list xs func b
+        out ppf "Π%a, %a" params_list xs func b
     | (P_LLet(x,xs,a,t,u)  , `Func) ->
         out ppf "let %a%a%a ≔ %a in %a"
           ident x params_list xs typ a func t func u
@@ -95,8 +95,8 @@ let rec term : p_term pp = fun ppf t ->
   in
   let rec toplevel ppf t =
     match t.elt with
-    | P_Abst(xs,t) -> out ppf "λ %a, %a" params_list xs toplevel t
-    | P_Prod(xs,b) -> out ppf "Π %a, %a" params_list xs toplevel b
+    | P_Abst(xs,t) -> out ppf "λ%a, %a" params_list xs toplevel t
+    | P_Prod(xs,b) -> out ppf "Π%a, %a" params_list xs toplevel b
     | P_Arro(a,b) -> out ppf "%a → %a" appl a toplevel b
     | P_LLet(x,xs,a,t,u) ->
         out ppf "let %a%a%a ≔ %a in %a"
