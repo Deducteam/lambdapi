@@ -107,7 +107,7 @@
 (progn
   (setq lambdapi-mode-map (make-sparse-keymap))
   (define-key lambdapi-mode-map (kbd "C-c C-c") #'lp-prove-till-cursor)
-  (define-key lambdapi-mode-map (kbd "C-c C-i") #'lp-toggle-electric-terminator)
+  (define-key lambdapi-mode-map (kbd "C-c C-e") #'lp-toggle-electric-terminator)
   (define-key lambdapi-mode-map (kbd "C-c C-p") #'lp-proof-backward)
   (define-key lambdapi-mode-map (kbd "C-c C-n") #'lp-proof-forward)
   (define-key lambdapi-mode-map (kbd "C-c C-f") #'lp-jump-proof-forward)
