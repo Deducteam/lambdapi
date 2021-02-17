@@ -160,7 +160,7 @@ Navigating goals
 On lambdapi-mode startup, a window showing the goals at the current line
 is open.
 
-You can toggle the interactive mode with ``C-c C-i``. If you were to do
+You can toggle the electric terminators with ``C-c C-e``. If you were to do
 so, you still can navigate the proofs with ``C-c C-p`` and ``C-c C-n``,
 jump between proofs with ``C-c C-b`` and ``C-c C-f``, and show the goals
 at the current line with ``C-c C-c``. As always with emacs, if you were
@@ -176,11 +176,11 @@ If for any reason the LSP server consumes too much power (e.g. if a
 non-terminating rewrite system is edited), it can be disabled with
 ``M-x eglot-shutdown``.
 
-Interactive proof mode
-^^^^^^^^^^^^^^^^^^^^^^^
-You can toggle the interactive proof mode either from the toolbar or
-using ``C-c C-i`` or ``C-c TAB``. This will evaluate the region till
-the cursor whenever you use the ``;`` terminator.
+Electric Terminator mode
+^^^^^^^^^^^^^^^^^^^^^^^^
+You can toggle electric terminators either from the toolbar or
+using ``C-c C-e``. This will evaluate the region till the
+cursor whenever you type the ``;`` terminator or ``begin``.
 
 Customize window layout
 '''''''''''''''''''''''

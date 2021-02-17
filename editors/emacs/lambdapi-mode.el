@@ -95,7 +95,7 @@
 (defvar lambdapi-changed-line-hook nil)
 
 (defun lambdapi-update-line-number ()
-  (if interactive-goals
+  (if electric-terminator
       (let ((new-line-number (line-number-at-pos)))
         (when (not (equal new-line-number lambdapi-current-line-number))
           (setq lambdapi-current-line-number new-line-number)
@@ -107,17 +107,17 @@
 (progn
   (setq lambdapi-mode-map (make-sparse-keymap))
   (define-key lambdapi-mode-map (kbd "C-c C-c") #'lp-prove-till-cursor)
-  (define-key lambdapi-mode-map (kbd "C-c C-i") #'toggle-interactive-goals)
+  (define-key lambdapi-mode-map (kbd "C-c C-i") #'lp-toggle-electric-terminator)
   (define-key lambdapi-mode-map (kbd "C-c C-p") #'lp-proof-backward)
   (define-key lambdapi-mode-map (kbd "C-c C-n") #'lp-proof-forward)
   (define-key lambdapi-mode-map (kbd "C-c C-f") #'lp-jump-proof-forward)
   (define-key lambdapi-mode-map (kbd "C-c C-b") #'lp-jump-proof-backward)
   (define-key lambdapi-mode-map (kbd "C-c C-r") #'lambdapi-refresh-window-layout)
   ;; define toolbar
-  (define-key lambdapi-mode-map [tool-bar toggle-interactive-goals]
-    '(menu-item "Interactive" toggle-interactive-goals
+  (define-key lambdapi-mode-map [tool-bar lp-toggle-electric-terminator]
+    '(menu-item "Electric Proof" lp-toggle-electric-terminator
                 :image (image :type xpm :file "disconnect.xpm")
-                :help "Toggle interactive mode"))
+                :help "Toggle electric terminator"))
   (define-key lambdapi-mode-map [tool-bar lp-prove-till-cursor]
     '(menu-item "Goto" lp-prove-till-cursor
                 :image (image :type xpm :file "jump-to.xpm")

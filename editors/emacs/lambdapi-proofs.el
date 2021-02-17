@@ -9,7 +9,7 @@
 (require 'cl-lib)
 
 (defconst lambdapi-terminators '(";" "begin")
-  "List of terminators for interactive mode")
+  "List of terminators for electric terminator mode")
 
 (defface lambdapi-proof-face
   '((((background dark)) :background "darkgreen")
@@ -233,7 +233,7 @@ This works for both graphical and text displays."
                 (read-only-mode 1))))))))
 
 (defvar-local proof-line-position (list :pos 0 :buffer nil))
-(defvar-local interactive-goals nil)
+(defvar-local electric-terminator nil)
 
 (defun lp-move-proof-line (move-fct)
   (let* ((pos (plist-get proof-line-position :pos))
@@ -303,25 +303,25 @@ This works for both graphical and text displays."
   (goto-char pos)
   (eglot--signal-proof/goals (eglot--pos-to-lsp-position)))
 
-(defun toggle-interactive-goals ()
-  "Toggle the goals display between two modes: interactive and step by step."
+(defun lp-toggle-electric-terminator ()
+  "Toggle the between two modes: electric terminator and step by step."
   (interactive)
-  (setq interactive-goals (not interactive-goals))
+  (setq electric-terminator (not electric-terminator))
   (save-excursion
-    (if interactive-goals
+    (if electric-terminator
         (let ((prev-cmd-pos (lp--prev-command-pos)))
           (lp-prove-till prev-cmd-pos))
       (hlt-unhighlight-region 0 (point-max))))
   ;; update the tool-bar icon
-  (define-key lambdapi-mode-map [tool-bar toggle-interactive-goals]
-    `(menu-item "Interactive" toggle-interactive-goals
+  (define-key lambdapi-mode-map [tool-bar lp-toggle-electric-terminator]
+    `(menu-item "Electric" lp-toggle-electric-terminator
                 :image
-                (image :type xpm :file ,(if interactive-goals
+                (image :type xpm :file ,(if electric-terminator
                                             "connect.xpm" "disconnect.xpm"))
-                :help "Toggle interactive mode"))
+                :help "Toggle electric terminator"))
   (force-mode-line-update)
-  (message (format "Interactive mode is %s"
-                   (if interactive-goals "ON" "OFF"))))
+  (message (format "Electric terminator is %s"
+                   (if electric-terminator "ON" "OFF"))))
 
 (defun lp--in-comment-p (&optional pos)
   "Returns t if character at pos is in a comment.
@@ -375,7 +375,7 @@ and pos if there is no next command"
 
 (defun lp--post-self-insert-function ()
   (save-excursion
-    (if interactive-goals
+    (if electric-terminator
         (if (and (not (lp--in-comment-p))
                  (seq-find
                   (lambda (term)
