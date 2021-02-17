@@ -48,7 +48,8 @@ let test_dtree () =
 let test_dtree_ghost () =
   let file = "OK/unif_hint.lp" in
   ignore (compile file);
-  let sym = fst (StrMap.find "#equiv" Timed.(!(Unif_rule.sign.sign_symbols))) in
+  let sym = fst (StrMap.find Unif_rule.equiv.sym_name
+                   Timed.(!(Unif_rule.sign.sign_symbols))) in
   let buf = Buffer.create 16 in
   let fmt = Format.formatter_of_buffer buf in
   Tool.Tree_graphviz.to_dot fmt sym;

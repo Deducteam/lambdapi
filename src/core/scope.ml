@@ -280,7 +280,7 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
         fresh_patt md None (Env.to_tbox env)
     | (P_Wild          , M_Patt            ) -> _Wild
     | (P_Wild          , _                 ) -> Env.fresh_meta_tbox env
-    | (P_Meta(id,ts)   , M_Term(m,_)      ) ->
+    | (P_Meta(id,ts)   , M_Term(m,_)       ) ->
         let m2 =
           (* We first check if the metavariable is in the map. *)
           try StrMap.find id.elt Stdlib.(!m) with Not_found ->

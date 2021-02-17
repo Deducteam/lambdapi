@@ -122,6 +122,17 @@ module Lp_lexer : sig
   val lexer : lexbuf -> unit -> token * Lexing.position * Lexing.position
   (** [lexer buf] is a lexing function on buffer [buf] that can be passed to
       a parser. *)
+
+  val equiv : string
+  (** [equiv] is the name of the symbol "≡" in unification rules. *)
+
+  val cons : string
+  (** [cons] is the name of the symbol ";" in unification rules. *)
+
+  val unif_rule_path : Path.t
+  (** [unif_rule_path] is the path for [equiv] and [cons].
+     It cannot be entered by a user. *)
+
 end = struct
   let digit = [%sedlex.regexp? '0' .. '9']
   let integer = [%sedlex.regexp? Plus digit]
@@ -145,8 +156,17 @@ end = struct
                    | math | other_math | subscript | superscript
                    | supplemental_punctuation ]
   let regid = [%sedlex.regexp? (letter | '_'), Star (letter | digit | '_')]
+
+  (* Once unescaped, escaped identifiers must not be empty, as the empty
+     string is used in the path of ghost signatures. *)
   let escid =
     [%sedlex.regexp? "{|", Plus (Compl '|' | '|', Compl '}'), Star '|', "|}"]
+  let non_user_id = ""
+  let ghost_path s = [non_user_id; s]
+  let unif_rule_path = ghost_path "unif_rule"
+  let equiv = "equiv"
+  let cons = "cons"
+
   let uid = [%sedlex.regexp? regid | escid]
   let qid = [%sedlex.regexp? uid, Plus ('.', uid)]
   let id = [%sedlex.regexp? uid | qid]
@@ -238,6 +258,7 @@ end = struct
     | _ -> false
 
   let is_uid : string -> bool = fun s ->
+    s = non_user_id ||
     let lexbuf = Sedlexing.Utf8.from_string s in
     match%sedlex lexbuf with
     | uid -> true
@@ -249,6 +270,7 @@ end = struct
     else Format.fprintf ppf "{|%s|}" s
 
   let is_identifier : string -> bool = fun s ->
+    s = non_user_id ||
     let lexbuf = Sedlexing.Utf8.from_string s in
     match%sedlex lexbuf with
     | id -> true

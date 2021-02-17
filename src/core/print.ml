@@ -97,8 +97,8 @@ let are_quant_args : sym -> term list -> bool = fun s args ->
 
 let rec pp_meta : meta pp = fun ppf m ->
   if !print_meta_type then
-    out ppf "(%a:%a)" pp_uid (Meta.name m) pp_term !(m.meta_type)
-  else pp_uid ppf (Meta.name m)
+    out ppf "(?%a:%a)" pp_uid (Meta.name m) pp_term !(m.meta_type)
+  else out ppf "?%a" pp_uid (Meta.name m)
 
 and pp_term : term pp = fun ppf t ->
   let rec atom ppf t = pp `Atom ppf t

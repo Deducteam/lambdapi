@@ -66,12 +66,18 @@ type p_inductive = p_inductive_aux loc
 
 (** Module to create p_term's with no positions. *)
 module P  = struct
-  let iden : string -> p_term = fun s ->
-    Pos.none (P_Iden(Pos.none ([], s), true))
+  (** [qiden p s] builds "@p.s" with no positions. *)
+  let qiden : Path.t -> string -> p_term = fun p s ->
+    Pos.none (P_Iden(Pos.none (p, s), true))
 
+  (** [iden s] builds "@s" with no positions. *)
+  let iden : string -> p_term = qiden []
+
+  (** [patt s ts] builds "$s[ts]" with no positions. *)
   let patt : string -> p_term array option -> p_term = fun s ts ->
     Pos.none (P_Patt (Some (Pos.none s), ts))
 
+  (** [patt0 s] builds "$s" with no positions. *)
   let patt0 : string -> p_term = fun s -> patt s None
 
   let appl : p_term -> p_term -> p_term = fun t1 t2 ->
