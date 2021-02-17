@@ -84,7 +84,7 @@ Indent by `lambdapi-indent-basic' in proofs, and 0 otherwise."
               ("assume" sterm)
               ("fail")
               ("focus" ident)
-              ("induction" ident)
+              ("induction")
               ("refine" sterm)
               ("reflexivity")
               ("rewrite" "[" rw-patt "]")
