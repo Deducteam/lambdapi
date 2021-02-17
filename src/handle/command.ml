@@ -418,7 +418,7 @@ let handle : (Path.t -> Sign.t) -> sig_state -> p_command ->
                 (* Add the symbol in the signature. *)
                 Console.out 3 (red "(symb) add %a : %a\n")
                   pp_uid id pp_term a;
-                fst (add_symbol ss expo prop mstrat true p_sym_nam a impl t)
+                fst (add_symbol ss expo prop mstrat opaq p_sym_nam a impl t)
       in
       (* Create proof state. *)
       let ps = {proof_name = p_sym_nam; proof_term; proof_goals} in

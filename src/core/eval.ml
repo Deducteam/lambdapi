@@ -110,8 +110,8 @@ and whnf_stk : ctxt -> term -> stack -> term * stack = fun ctx t stk ->
       begin
       (* First check for symbol definition. *)
       match !(s.sym_def) with
-      | Some(t) -> Stdlib.incr steps; whnf_stk ctx t stk
-      | None    ->
+      | Some(t) when not s.sym_opaq -> Stdlib.incr steps; whnf_stk ctx t stk
+      | _ ->
       (* Otherwise try rewriting using decision tree. *)
       match tree_walk !(s.sym_tree) ctx stk with
       (* If no rule is found, return the original term *)
