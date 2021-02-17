@@ -28,46 +28,25 @@ type binop = string * Pratter.associativity * priority * p_qident
 (** Parser-level (located) term representation. *)
 type p_term = p_term_aux loc
 and p_term_aux =
-  | P_Type
-  (** TYPE constant. *)
-  | P_Iden of p_qident * bool
-  (** Identifier (the boolean indicates whether it is prefixed by "@"). *)
-  | P_Wild
-  (** Wildcard (place-holder for terms). *)
-  | P_Meta of p_ident * p_term array option
-  (** Meta-variable with the given environment. *)
-  | P_Patt of p_ident option * p_term array option
-  (** Named or unnamed higher-order pattern (used for rules LHS / RHS). *)
-  | P_Appl of p_term * p_term
-  (** Application. *)
-  | P_Impl of p_term * p_term
-  (** Implication. *)
-  | P_Abst of p_params list * p_term
-  (** Abstraction over several variables. *)
-  | P_Prod of p_params list * p_term
-  (** Product over several variables. *)
-  | P_LLet of p_ident * p_params list * p_type option * p_term * p_term
-  (** Local let. *)
-  | P_NLit of int
-  (** Natural number literal. *)
-  | P_Wrap of p_term
-  (** Parentheses. *)
-  | P_Expl of p_term
-  (** Explicitly given argument. *)
-
-(** {b NOTE} the boolean parameter of {!constructor:P_Iden} tells whether  the
-    corresponding symbol is explicitly applied (value [true]) or not. The flag
-    hence indicates whether the symbol has been prefixed with ["@"]. *)
-
-(** Synonym of [p_term] for semantic hints. *)
-and p_type = p_term
-
-(** Synonym of [p_term] for semantic hints. *)
-and p_patt = p_term
+  | P_Type (** TYPE constant. *)
+  | P_Iden of p_qident * bool (** Identifier. The boolean indicates whether
+                                 the identifier is prefixed by "@". *)
+  | P_Wild (** Underscore. *)
+  | P_Meta of p_ident * p_term array option (** Meta-variable application. *)
+  | P_Patt of p_ident option * p_term array option (** Pattern. *)
+  | P_Appl of p_term * p_term (** Application. *)
+  | P_Arro of p_term * p_term (** Arrow. *)
+  | P_Abst of p_params list * p_term (** Abstraction. *)
+  | P_Prod of p_params list * p_term (** Product. *)
+  | P_LLet of p_ident * p_params list * p_term option * p_term * p_term
+    (** Let. *)
+  | P_NLit of int (** Natural number literal. *)
+  | P_Wrap of p_term (** Term between parentheses. *)
+  | P_Expl of p_term (** Term between curly brackets. *)
 
 (** Parser-level representation of a function argument. The boolean is true if
     the argument is marked as implicit (i.e., between curly braces). *)
-and p_params = p_ident option list * p_type option * bool
+and p_params = p_ident option list * p_term option * bool
 
 (** [p_get_args t] is {!val:LibTerm.get_args} on syntax-level terms. *)
 let p_get_args : p_term -> p_term * p_term list = fun t ->
@@ -78,7 +57,7 @@ let p_get_args : p_term -> p_term * p_term list = fun t ->
   in p_get_args [] t
 
 (** Parser-level rewriting rule representation. *)
-type p_rule_aux = p_patt * p_term
+type p_rule_aux = p_term * p_term
 type p_rule = p_rule_aux loc
 
 (** Parser-level inductive type representation. *)
@@ -111,7 +90,7 @@ module P  = struct
   let abst_list : p_ident option list -> p_term -> p_term = fun idopts t ->
     List.fold_right abst idopts t
 
-  let rule : p_patt -> p_term -> p_rule = fun l r -> Pos.none (l,r)
+  let rule : p_term -> p_term -> p_rule = fun l r -> Pos.none (l,r)
 end
 
 (** Rewrite pattern specification. *)
@@ -126,7 +105,7 @@ type p_rw_patt = p_rw_patt_aux loc
 
 (** Parser-level representation of an assertion. *)
 type p_assertion =
-  | P_assert_typing of p_term * p_type
+  | P_assert_typing of p_term * p_term
   (** The given term should have the given type. *)
   | P_assert_conv   of p_term * p_term
   (** The two given terms should be convertible. *)
@@ -170,34 +149,20 @@ type p_query = p_query_aux loc
 
 (** Parser-level representation of a proof tactic. *)
 type p_tactic_aux =
-  | P_tac_refine of p_term
-  (** Refine the current goal using the given term. *)
-  | P_tac_intro of p_ident option list
-  (** Eliminate quantifiers using the given names for hypotheses. *)
   | P_tac_apply of p_term
-  (** Apply the given term to the current goal. *)
-  | P_tac_simpl
-  (** Normalize in the focused goal. *)
-  | P_tac_rewrite of bool * p_rw_patt option * p_term
-  (** Apply rewriting using the given pattern and equational proof. The
-     boolean indicates whether the equation has to be applied from left to
-     right. *)
-  | P_tac_refl
-  (** Apply reflexivity of equality. *)
-  | P_tac_sym
-  (** Apply symmetry of equality. *)
-  | P_tac_focus of int
-  (** Focus on the given goal. *)
-  | P_tac_why3 of string option
-  (** Try to solve the current goal with why3. *)
-  | P_tac_solve
-  (** Apply default unification solving algorithm. *)
-  | P_tac_query of p_query
-  (** Query. *)
+  | P_tac_assume of p_ident option list
   | P_tac_fail
-  (** A tactic that always fails. *)
-  | P_tac_induction of p_ident
-  (** Induction. *)
+  | P_tac_focus of int
+  | P_tac_induction
+  | P_tac_query of p_query
+  | P_tac_refine of p_term
+  | P_tac_refl
+  | P_tac_rewrite of bool * p_rw_patt option * p_term
+  (* The boolean indicates if the equation is applied from left to right. *)
+  | P_tac_simpl
+  | P_tac_solve
+  | P_tac_sym
+  | P_tac_why3 of string option
 
 type p_tactic = p_tactic_aux loc
 
@@ -290,7 +255,7 @@ type p_symbol =
   { p_sym_mod : p_modifier list (** modifiers *)
   ; p_sym_nam : p_ident (** symbol name *)
   ; p_sym_arg : p_params list (** arguments before ":" *)
-  ; p_sym_typ : p_type option (** symbol type *)
+  ; p_sym_typ : p_term option (** symbol type *)
   ; p_sym_trm : p_term option (** symbol definition *)
   ; p_sym_prf : (p_tactic list * p_proof_end) option (** proof script *)
   ; p_sym_def : bool (** is the symbol defined ? *) }
@@ -345,7 +310,7 @@ let rec eq_p_term : p_term eq = fun {elt=t1;_} {elt=t2;_} ->
       Option.equal eq_p_ident io1 io2
       && Option.equal (Array.equal eq_p_term) ts1 ts2
   | P_Appl(t1,u1), P_Appl(t2,u2)
-  | P_Impl(t1,u1), P_Impl(t2,u2) -> eq_p_term t1 t2 && eq_p_term u1 u2
+  | P_Arro(t1,u1), P_Arro(t2,u2) -> eq_p_term t1 t2 && eq_p_term u1 u2
   | P_Abst(xs1,t1), P_Abst(xs2,t2)
   | P_Prod(xs1,t1), P_Prod(xs2,t2) ->
       List.equal eq_p_params xs1 xs2 && eq_p_term t1 t2
@@ -407,14 +372,14 @@ let eq_p_tactic : p_tactic eq = fun {elt=t1;_} {elt=t2;_} ->
   match t1, t2 with
   | P_tac_apply t1, P_tac_apply t2
   | P_tac_refine t1, P_tac_refine t2 -> eq_p_term t1 t2
-  | P_tac_intro xs1, P_tac_intro xs2 ->
+  | P_tac_assume xs1, P_tac_assume xs2 ->
       List.equal (Option.equal eq_p_ident) xs1 xs2
   | P_tac_rewrite(b1,p1,t1), P_tac_rewrite(b2,p2,t2) ->
       b1 = b2 && Option.equal eq_p_rw_patt p1 p2 && eq_p_term t1 t2
   | P_tac_query q1, P_tac_query q2 -> eq_p_query q1 q2
   | P_tac_why3 so1, P_tac_why3 so2 -> so1 = so2
   | P_tac_focus n1, P_tac_focus n2 -> n1 = n2
-  | P_tac_induction i1, P_tac_induction i2 -> eq_p_ident i1 i2
+  | P_tac_induction, P_tac_induction
   | P_tac_simpl, P_tac_simpl
   | P_tac_solve, P_tac_solve
   | P_tac_fail, P_tac_fail
@@ -480,10 +445,10 @@ symbol A:TYPE;
 symbol a:A;
 symbol p:((A->A)->A->A)->A :=
 begin
-  intro h
+  assume h
   apply h
   // proof of A->A
-  intro a
+  assume a
   apply a // here a is an assumption
   // proof of A
   apply a // here a is a function symbol
@@ -516,7 +481,7 @@ let fold_idents : ('a -> p_qident -> 'a) -> 'a -> p_command list -> 'a =
     | P_Patt (_, Some ts) -> Array.fold_left (fold_term_vars vs) a ts
 
     | P_Appl (t, u)
-    | P_Impl (t, u) -> fold_term_vars vs (fold_term_vars vs a t) u
+    | P_Arro (t, u) -> fold_term_vars vs (fold_term_vars vs a t) u
 
     | P_Abst ((idopts,Some t,_)::args_list, u)
     | P_Prod ((idopts,Some t,_)::args_list, u) ->
@@ -599,7 +564,7 @@ let fold_idents : ('a -> p_qident -> 'a) -> 'a -> p_command list -> 'a =
     | P_tac_rewrite (_, Some p, t) ->
         (vs, fold_term_vars vs (fold_rw_patt_vars vs a p) t)
     | P_tac_query q -> (vs, fold_query_vars vs a q)
-    | P_tac_intro idopts -> (add_idopts vs idopts, a)
+    | P_tac_assume idopts -> (add_idopts vs idopts, a)
     | P_tac_simpl
     | P_tac_refl
     | P_tac_sym
@@ -607,7 +572,7 @@ let fold_idents : ('a -> p_qident -> 'a) -> 'a -> p_command list -> 'a =
     | P_tac_why3 _
     | P_tac_solve
     | P_tac_fail
-    | P_tac_induction _ -> (vs, a)
+    | P_tac_induction -> (vs, a)
   in
 
   let fold_inductive_vars : StrSet.t -> 'a -> p_inductive -> 'a =

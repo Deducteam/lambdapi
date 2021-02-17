@@ -2,7 +2,6 @@
 
 open! Lplib
 open Lplib.Extra
-
 open Common
 open Error
 open Pos
@@ -103,7 +102,7 @@ let rec get_implicitness : p_term -> bool list = fun t ->
   | P_Prod([],t) -> get_implicitness t
   | P_Prod((ys,_,impl)::xs,t) ->
       List.map (fun _ -> impl) ys @ get_implicitness {t with elt=P_Prod(xs,t)}
-  | P_Impl(_,t)  -> false :: get_implicitness t
+  | P_Arro(_,t)  -> false :: get_implicitness t
   | P_Wrap(t)    -> get_implicitness t
   | _            -> []
 
@@ -280,7 +279,7 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
     | (P_Wild          , M_LHS(_)          ) ->
         fresh_patt md None (Env.to_tbox env)
     | (P_Wild          , M_Patt            ) -> _Wild
-    | (P_Wild          , _                 ) -> Env.fresh_meta env
+    | (P_Wild          , _                 ) -> Env.fresh_meta_tbox env
     | (P_Meta(id,ts)   , M_Term(m,_)      ) ->
         let m2 =
           (* We first check if the metavariable is in the map. *)
@@ -389,9 +388,9 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
         fatal t.pos "Pattern variables are only allowed in rewriting rules."
     | (P_Appl(_,_)     , _                  ) ->
         assert false (* Unreachable. *)
-    | (P_Impl(_,_)     , M_Patt             ) ->
+    | (P_Arro(_,_)     , M_Patt             ) ->
         fatal t.pos "Implications are not allowed in a pattern."
-    | (P_Impl(a,b)     , _                  ) ->
+    | (P_Arro(a,b)     , _                  ) ->
         _Impl (scope env a) (scope env b)
     | (P_Abst(_,_)     , M_Patt             ) ->
         fatal t.pos "Abstractions are not allowed in a pattern."
@@ -453,7 +452,7 @@ let patt_vars : p_term -> (string * int) list * string list =
     | P_Meta(_,Some ts)  -> Array.fold_left (patt_vars) acc ts
     | P_Patt(id,ts)      -> add_patt acc id ts
     | P_Appl(t,u)        -> patt_vars (patt_vars acc t) u
-    | P_Impl(a,b)        -> patt_vars (patt_vars acc a) b
+    | P_Arro(a,b)        -> patt_vars (patt_vars acc a) b
     | P_Abst(args,t)     -> patt_vars (patt_vars_args acc args) t
     | P_Prod(args,b)     -> patt_vars (patt_vars_args acc args) b
     | P_LLet(_,args,a,t,u) ->

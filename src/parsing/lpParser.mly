@@ -189,10 +189,10 @@ rw_patt:
 tactic:
   | q=query { make_pos $sloc (P_tac_query q) }
   | APPLY t=term { make_pos $sloc (P_tac_apply t) }
-  | ASSUME xs=param_id+ { make_pos $sloc (P_tac_intro xs) }
+  | ASSUME xs=param_id+ { make_pos $sloc (P_tac_assume xs) }
   | FAIL { make_pos $sloc P_tac_fail }
   | FOCUS i=INT { make_pos $sloc (P_tac_focus i) }
-  | INDUCTION i=uid { make_pos $sloc (P_tac_induction i) }
+  | INDUCTION { make_pos $sloc P_tac_induction }
   | REFINE t=term { make_pos $sloc (P_tac_refine t) }
   | REFLEXIVITY { make_pos $sloc P_tac_refl }
   | REWRITE l=ASSOC? p=delimited(L_SQ_BRACKET, rw_patt, R_SQ_BRACKET)? t=term
@@ -377,7 +377,7 @@ sterm:
 
 term:
   | t=sterm { t }
-  | t=term ARROW u=term { make_pos $sloc (P_Impl(t, u)) }
+  | t=term ARROW u=term { make_pos $sloc (P_Arro(t, u)) }
   | BACKQUOTE q=term_id b=binder
     {
       let b = make_pos $loc(b) (P_Abst(fst b, snd b)) in

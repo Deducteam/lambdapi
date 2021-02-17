@@ -286,6 +286,7 @@ end = struct
     | "flag" -> FLAG
     | "focus" -> FOCUS
     | "in" -> IN
+    | "induction" -> INDUCTION
     | "inductive" -> INDUCTIVE
     | "infix" -> INFIX
     | "injective" -> INJECTIVE

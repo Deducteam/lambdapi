@@ -74,7 +74,7 @@ let rec term : p_term pp = fun ppf t ->
     | (P_Patt(Some(x),ar)  , _    ) -> out ppf "$%a%a" ident x env ar
     | (P_Appl(t,u)         , `Appl)
     | (P_Appl(t,u)         , `Func) -> out ppf "%a %a" appl t atom u
-    | (P_Impl(a,b)         , `Func) -> out ppf "%a → %a" appl a func b
+    | (P_Arro(a,b)         , `Func) -> out ppf "%a → %a" appl a func b
     | (P_Abst(xs,t)        , `Func) ->
         out ppf "λ %a, " params_list xs;
         let fn (ids,_,_) = List.for_all ((=) None) ids in
@@ -97,7 +97,7 @@ let rec term : p_term pp = fun ppf t ->
     match t.elt with
     | P_Abst(xs,t) -> out ppf "λ %a, %a" params_list xs toplevel t
     | P_Prod(xs,b) -> out ppf "Π %a, %a" params_list xs toplevel b
-    | P_Impl(a,b) -> out ppf "%a → %a" appl a toplevel b
+    | P_Arro(a,b) -> out ppf "%a → %a" appl a toplevel b
     | P_LLet(x,xs,a,t,u) ->
         out ppf "let %a%a%a ≔ %a in %a"
           ident x params_list xs typ a toplevel t toplevel u
@@ -197,9 +197,9 @@ let query : p_query pp = fun ppf q ->
 let tactic : p_tactic pp = fun ppf t ->
   begin match t.elt with
   | P_tac_refine(t) -> out ppf "refine %a" term t
-  | P_tac_intro(xs) ->
+  | P_tac_assume(xs) ->
       let param_id ppf x = out ppf " %a" param_id x in
-      out ppf "intro%a" (List.pp param_id "") xs
+      out ppf "assume%a" (List.pp param_id "") xs
   | P_tac_apply(t) -> out ppf "apply %a" term t
   | P_tac_simpl -> out ppf "simpl"
   | P_tac_rewrite(b,p,t)     ->
@@ -215,7 +215,7 @@ let tactic : p_tactic pp = fun ppf t ->
   | P_tac_query(q) -> query ppf q
   | P_tac_fail -> out ppf "fail"
   | P_tac_solve -> out ppf "solve"
-  | P_tac_induction i -> out ppf "induction %a" ident i
+  | P_tac_induction -> out ppf "induction"
   end;
   out ppf ";"
 

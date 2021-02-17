@@ -13,8 +13,11 @@ open Tags
 
 (** Representation of an inductive type *)
 type inductive =
-  { ind_cons : sym list (** Constructors.*)
-  ; ind_prop : sym      (** Induction principle. *) }
+  { ind_cons : sym list (** Constructors. *)
+  ; ind_prop : sym      (** Induction principle. *)
+  ; ind_nb_params : int (** Number of parameters. *)
+  ; ind_nb_types : int  (** Number of mutually defined types. *)
+  ; ind_nb_cons : int   (** Number of constructors. *) }
 
 (** Notation properties of symbols. They are linked to symbols to provide
     syntax extensions to these symbols. These syntax extensions concern both
@@ -151,8 +154,9 @@ let link : t -> unit = fun sign ->
     Seq.map lsy |> SymMap.of_seq;
   StrMap.iter (fun _ (s, _) -> Tree.update_dtree s) !(sign.sign_symbols);
   let link_inductive i =
-    { ind_cons = List.map link_symb i.ind_cons
-    ; ind_prop = link_symb i.ind_prop }
+    { ind_cons = List.map link_symb i.ind_cons;
+      ind_prop = link_symb i.ind_prop; ind_nb_params = i.ind_nb_params;
+      ind_nb_types = i.ind_nb_types; ind_nb_cons = i.ind_nb_cons }
   in
   let fn s i m = SymMap.add (link_symb s) (link_inductive i) m in
   sign.sign_ind := SymMap.fold fn !(sign.sign_ind) SymMap.empty
@@ -358,13 +362,14 @@ let add_binop : t -> sym -> binop -> unit =
 let add_quant : t -> sym -> unit = fun sign sym ->
   sign.sign_notations := SymMap.add sym Quant !(sign.sign_notations)
 
-(** [add_inductive sign typ ind_cons ind_prop] add the inductive type which
-    consists of a type [typ], constructors [ind_cons] and an induction
-    principle [ind_prop] to [sign]. *)
-let add_inductive : t -> sym -> sym list -> sym -> unit =
-  fun sign typ ind_cons ind_prop ->
-  let ind = { ind_cons ; ind_prop } in
-  sign.sign_ind := SymMap.add typ ind !(sign.sign_ind)
+(** [add_inductive sign ind_sym ind_cons ind_prop ind_prop_args] add to [sign]
+   the inductive type [ind_sym] with constructors [ind_cons], induction
+   principle [ind_prop] with [ind_prop_args] arguments. *)
+let add_inductive : t -> sym -> sym list -> sym -> int -> int -> unit =
+  fun sign ind_sym ind_cons ind_prop ind_nb_params ind_nb_types ->
+  let ind_nb_cons = List.length ind_cons in
+  let ind = {ind_cons; ind_prop; ind_nb_params; ind_nb_types; ind_nb_cons} in
+  sign.sign_ind := SymMap.add ind_sym ind !(sign.sign_ind)
 
 (** [dependencies sign] returns an association list containing (the transitive
     closure of) the dependencies of the signature [sign].  Note that the order

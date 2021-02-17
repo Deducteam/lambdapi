@@ -74,7 +74,7 @@ let translate_old_rule : old_p_rule -> p_rule = fun r ->
                 compute_arities env t
             | _                      -> assert false
           end
-      | P_Impl(_,_)       -> fatal h.pos "Implication in legacy pattern."
+      | P_Arro(_,_)       -> fatal h.pos "Implication in legacy pattern."
       | P_LLet(_,_,_,_,_) -> fatal h.pos "Let expression in legacy rule."
       | P_Meta(_,_)       -> assert false
       | P_Patt(_,_)       -> assert false
@@ -148,7 +148,7 @@ let translate_old_rule : old_p_rule -> p_rule = fun r ->
         in
         let b = build (x.elt::env) b in
         Pos.make t.pos (P_Prod([([Some x],Some(a),false)], b))
-    | P_Impl(a,b)       -> Pos.make t.pos (P_Impl(build env a, build env b))
+    | P_Arro(a,b)       -> Pos.make t.pos (P_Arro(build env a, build env b))
     | P_Abst(xs,u)      ->
         let (x,a) =
           match xs with
@@ -426,7 +426,7 @@ term:
       make_pos $sloc (P_Prod([([Some x], Some(a), false)], b))
     }
   | a=term ARROW b=term {
-      make_pos $sloc (P_Impl(a, b))
+      make_pos $sloc (P_Arro(a, b))
     }
   | UNDERSCORE a=option(type_annot) FATARROW t=term {
       make_pos $sloc (P_Abst([([None], a, false)], t))
