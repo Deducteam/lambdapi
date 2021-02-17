@@ -61,9 +61,9 @@ let tac_refine : popt -> proof_state -> goal_typ -> goal list -> term
       let proof_goals = List.rev_map (fun c -> Unif c) cs @ gs_typ in
       tac_solve pos {ps with proof_goals}
 
-(** [induction t] returns the [inductive] structure of [s] if [t] is of the
+(** [ind_data t] returns the [ind_data] structure of [s] if [t] is of the
    form [s t1 .. tn] with [s] an inductive type. Fails otherwise. *)
-let inductive : popt -> Env.t -> term -> Sign.inductive = fun pos env a ->
+let ind_data : popt -> Env.t -> term -> Sign.ind_data = fun pos env a ->
   let h, ts = LibTerm.get_args a in
   match h with
   | Symb s ->
@@ -85,7 +85,7 @@ let tac_induction : popt -> proof_state -> goal_typ -> goal list
     -> proof_state = fun pos ps ({goal_type;goal_hyps;_} as gt) gs ->
   match unfold goal_type with
   | Prod(a,_) ->
-      let ind = inductive pos goal_hyps a in
+      let ind = ind_data pos goal_hyps a in
       let n = ind.ind_nb_params + ind.ind_nb_types + ind.ind_nb_cons in
       let t = Env.add_fresh_metas goal_hyps (Symb ind.ind_prop) n in
       tac_refine pos ps gt gs t

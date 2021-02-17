@@ -11,8 +11,8 @@ open Term
 open Parsing.Syntax
 open Tags
 
-(** Representation of an inductive type *)
-type inductive =
+(** Data associated to inductive type symbols. *)
+type ind_data =
   { ind_cons : sym list (** Constructors. *)
   ; ind_prop : sym      (** Induction principle. *)
   ; ind_nb_params : int (** Number of parameters. *)
@@ -38,7 +38,7 @@ type t =
   ; sign_builtins : sym StrMap.t ref
   ; sign_notations: notation SymMap.t ref
     (** Maps symbols to their syntax properties if they have some. *)
-  ; sign_ind      : inductive SymMap.t ref }
+  ; sign_ind      : ind_data SymMap.t ref }
 
 (* NOTE the [deps] field contains a hashtable binding the external modules on
    which the current signature depends to an association list mapping symbols
@@ -153,12 +153,12 @@ let link : t -> unit = fun sign ->
     SymMap.to_seq !(sign.sign_notations) |>
     Seq.map lsy |> SymMap.of_seq;
   StrMap.iter (fun _ (s, _) -> Tree.update_dtree s) !(sign.sign_symbols);
-  let link_inductive i =
+  let link_ind_data i =
     { ind_cons = List.map link_symb i.ind_cons;
       ind_prop = link_symb i.ind_prop; ind_nb_params = i.ind_nb_params;
       ind_nb_types = i.ind_nb_types; ind_nb_cons = i.ind_nb_cons }
   in
-  let fn s i m = SymMap.add (link_symb s) (link_inductive i) m in
+  let fn s i m = SymMap.add (link_symb s) (link_ind_data i) m in
   sign.sign_ind := SymMap.fold fn !(sign.sign_ind) SymMap.empty
 
 (** [unlink sign] removes references to external symbols (and thus signatures)
@@ -208,10 +208,10 @@ let unlink : t -> unit = fun sign ->
   Path.Map.iter gn !(sign.sign_deps);
   StrMap.iter (fun _ s -> unlink_sym s) !(sign.sign_builtins);
   SymMap.iter (fun s _ -> unlink_sym s) !(sign.sign_notations);
-  let unlink_inductive i =
+  let unlink_ind_data i =
     List.iter unlink_sym i.ind_cons; unlink_sym i.ind_prop
   in
-  let fn s i = unlink_sym s; unlink_inductive i in
+  let fn s i = unlink_sym s; unlink_ind_data i in
   SymMap.iter fn !(sign.sign_ind)
 
 (** [add_symbol sign expo prop mstrat name a impl] creates a fresh symbol with
@@ -310,11 +310,11 @@ let read : string -> t = fun fname ->
     SymMap.iter (fun s _ -> shallow_reset_sym s) !(sign.sign_notations);
     let fn (_,r) = reset_rule r in
     Path.Map.iter (fun _ -> List.iter fn) !(sign.sign_deps);
-    let shallow_reset_inductive i =
+    let shallow_reset_ind_data i =
       shallow_reset_sym i.ind_prop;
       List.iter shallow_reset_sym i.ind_cons
     in
-    let fn s i = shallow_reset_sym s; shallow_reset_inductive i in
+    let fn s i = shallow_reset_sym s; shallow_reset_ind_data i in
     SymMap.iter fn !(sign.sign_ind);
     sign
   in
