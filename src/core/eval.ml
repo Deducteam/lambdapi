@@ -110,8 +110,8 @@ and whnf_stk : ctxt -> term -> stack -> term * stack = fun ctx t stk ->
       begin
       (* First check for symbol definition. *)
       match !(s.sym_def) with
-      | Some(t) -> Stdlib.incr steps; whnf_stk ctx t stk
-      | None    ->
+      | Some(t) when not s.sym_opaq -> Stdlib.incr steps; whnf_stk ctx t stk
+      | _ ->
       (* Otherwise try rewriting using decision tree. *)
       match tree_walk !(s.sym_tree) ctx stk with
       (* If no rule is found, return the original term *)
@@ -394,12 +394,12 @@ let whnf : ctxt -> term -> term = fun ctx t ->
   if Stdlib.(!steps = 0) then unfold t else u
 
 (** [simplify t] reduces simple redexes of [t]. *)
-let rec simplify : ctxt -> term -> term = fun ctx t ->
-  match get_args (whnf ctx t) with
+let rec simplify : term -> term = fun t ->
+  match get_args (whnf_beta t) with
   | Prod(a,b), _ ->
      let (x,b) = Bindlib.unbind b in
-     let b = Bindlib.bind_var x (lift (simplify ctx b)) in
-     Prod (simplify ctx a, Bindlib.unbox b)
+     let b = Bindlib.bind_var x (lift (simplify b)) in
+     Prod (simplify a, Bindlib.unbox b)
   | h, ts -> add_args h (List.map whnf_beta ts)
 
 (** [hnf t] computes a head-normal form of the term [t]. *)

@@ -691,12 +691,11 @@ begin
   reflexivity;
 end;
 
-opaque symbol plus_n_0 n : π(n + 0 = n) ≔
+opaque symbol plus_n_0 (n:N) : π(n + 0 = n) ≔
 begin
-  assume n;
-  refine ind_N (λ z, z + 0 = z) _ _ _;
+  induction;
   // Case n = O
-  refine eq_refl 0;
+  reflexivity;
   // Case n = S n'
   assume n' Hn';
   simpl;
@@ -714,13 +713,14 @@ symbol app : List → List → List;
 rule  app      nil     $m ↪ $m
  with app (cons $x $l) $m ↪ cons $x (app $l $m);
 
-opaque symbol length_app l1 l2:
+opaque symbol length_app (l2 l1 : List):
   π(length l1 + length l2 = length (app l1 l2)) ≔
 begin
-  assume l1 l2;
-  apply ind_List
-        (λ z, length z + length l2 = length (app z l2)) _ _ l1;
+  assume l2;
+  induction;
   reflexivity;
   assume x l2 IHl1;
-  simpl; rewrite IHl1; reflexivity;
+  simpl;
+  rewrite IHl1;
+  reflexivity;
 end;

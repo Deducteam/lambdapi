@@ -297,20 +297,14 @@ let swap : eq_config -> term -> term -> term -> term -> term =
   let refl_a_l = add_args (Symb cfg.symb_refl) [a; l] in
   add_args (Symb cfg.symb_eqind) [a; r; l; t; pred; refl_a_l]
 
-(** [rewrite ps b po t] rewrites according to the equality proved by [t] in
-   the current goal of [ps].  The term [t] should have a type corresponding to
-   an equality. Every occurrence of the first instance of the left-hand side
-   is replaced by the right-hand side of the obtained proof (or the reverse if
-   b is false). It also handles the full set of SSReflect patterns. *)
-let rewrite : Sig_state.t -> popt -> proof_state -> bool -> rw_patt option
+(** [rewrite gt b po t] generates a term for the refine tactic representing
+   the application of the rewrite tactic to the goal type [gt]. Every
+   occurrence of the first instance of the left-hand side is replaced by the
+   right-hand side of the obtained proof (or the reverse if b is false). It
+   handles the full set of SSReflect patterns. *)
+let rewrite : Sig_state.t -> popt -> goal_typ -> bool -> rw_patt option
               -> term -> term =
-  fun ss pos ps l2r p t ->
-
-  (* Check that the focused goal is a typing goal. *)
-  match ps.proof_goals with
-  | [] -> fatal pos "No remaining goals."
-  | Unif _::_ -> fatal pos "Not a typing goal."
-  | Typ {goal_hyps = g_env; goal_type = g_type; _}::_ ->
+  fun ss pos {goal_hyps=g_env; goal_type=g_type; _} l2r p t ->
 
   (* Obtain the required symbols from the current signature. *)
   let cfg = get_eq_config ss pos in
@@ -667,49 +661,37 @@ let rewrite : Sig_state.t -> popt -> proof_state -> bool -> rw_patt option
   (* Return the proof-term. *)
   term
 
-(** [reflexivity ss pos ps] applies the reflexivity of equality on the focused
-   goal. If successful, the corresponding proof term is returned. *)
-let reflexivity : Sig_state.t -> popt -> proof_state -> term =
-  fun ss pos ps ->
-  (* Check that the focused goal is a typing goal. *)
-  match ps.proof_goals with
-  | [] -> fatal pos "No remaining goals."
-  | Unif _::_ -> fatal pos "Not a typing goal."
-  | Typ {goal_type = g_type; _}::_ ->
+(** [reflexivity ss pos gt] generates a term for the refine tactic
+   corresponding to the application of reflexivity to the goal type [gt]. *)
+let reflexivity : Sig_state.t -> popt -> goal_typ -> term =
+  fun ss pos {goal_type;_} ->
   (* Obtain the required symbols from the current signature. *)
   let cfg = get_eq_config ss pos in
-  (* Check that the type of [g] is of the form “P (eq a t t)”. *)
-  let (a, l, r)  = get_eq_data pos cfg g_type in
-  if not (Eval.eq_modulo [] l r) then fatal pos "Cannot apply reflexivity.";
+  (* Check that the type of [g] is of the form [P (eq a l r)]. *)
+  let (a, l, _)  = get_eq_data pos cfg goal_type in
   (* Build the witness. *)
   add_args (Symb cfg.symb_refl) [a; l]
 
-(** [symmetry ss pos ps] attempts to use symmetry of equality on the focused
-   goal, that is, transform a goal of the form `P (eq a l r)` into a goal of
-   the form `P (eq a r l)`. If successful, a new goal is generated, and the
-   corresponding proof term is returned. The proof of symmetry is built from
-   the axioms of equality. *)
-let symmetry : Sig_state.t -> popt -> proof_state -> term = fun ss pos ps ->
-  (* Check that the focused goal is a typing goal. *)
-  match ps.proof_goals with
-  | [] -> fatal pos "No remaining goals."
-  | Unif _::_ -> fatal pos "Not a typing goal."
-  | Typ {goal_hyps = g_env; goal_type = g_type; _}::_ ->
+(** [symmetry ss pos gt] generates a term for the refine tactic corresponding
+   to the application of symmetry to the goal type [gt], that is, it
+   transforms a goal of the form [P (eq a l r)] into [P (eq a r l)]. *)
+let symmetry : Sig_state.t -> popt -> goal_typ -> term =
+  fun ss pos {goal_hyps; goal_type; _} ->
   (* Obtain the required symbols from the current signature. *)
   let cfg = get_eq_config ss pos in
   (* Check that the type of [g] is of the form “P (eq a l r)”. *)
-  let (a, l, r) = get_eq_data pos cfg g_type in
+  let (a, l, r) = get_eq_data pos cfg goal_type in
   (* We create a new metavariable of type [P (eq a r l)]. *)
   let meta_type =
     Appl(Symb cfg.symb_P, (add_args (Symb cfg.symb_eq) [a; r; l])) in
-  let meta_term = make_meta (Env.to_ctxt g_env) meta_type in
+  let meta_term = make_meta (Env.to_ctxt goal_hyps) meta_type in
   (* NOTE The proofterm is “eqind a r l M (λx,eq a l x) (refl a l)”. *)
   let term = swap cfg a r l meta_term in
   (* Debugging data to the log. *)
   if !log_enabled then
     begin
       log_rewr "Symmetry with:";
-      log_rewr "  goal       = [%a]" pp_term g_type;
+      log_rewr "  goal       = [%a]" pp_term goal_type;
       log_rewr "  new goal   = [%a]" pp_term meta_type;
       log_rewr "  proof term = [%a]" pp_term term
     end;

@@ -155,7 +155,7 @@ let handle_rules : sig_state -> p_rule list -> sig_state = fun ss rs ->
     [e p strat symbol x xs : a] with [ss] as the signature state.
     On success, an updated signature state and the new symbol are returned. *)
 let handle_inductive_symbol : sig_state -> expo -> prop -> match_strat
-    -> p_ident -> p_params list -> p_type -> sig_state * sym =
+    -> p_ident -> p_params list -> p_term -> sig_state * sym =
   fun ss expo prop mstrat ({elt=name;pos} as id) xs typ ->
   (* We check that [id] is not already used. *)
   if Sign.mem ss.signature name then
@@ -174,7 +174,7 @@ let handle_inductive_symbol : sig_state -> expo -> prop -> match_strat
      fatal pos "We have %a : %a." pp_uid name pp_term typ);
   (* Actually add the symbol to the signature and the state. *)
   Console.out 3 (red "(symb) %a : %a\n") pp_uid name pp_term typ;
-  add_symbol ss expo prop mstrat id typ impl None
+  Sig_state.add_symbol ss expo prop mstrat false id typ impl None
 
 (** Representation of a yet unchecked proof. The structure is initialized when
     the proof mode is entered, and its finalizer is called when the proof mode
@@ -262,15 +262,16 @@ let handle : (Path.t -> Sign.t) -> sig_state -> p_command ->
           ind_sym_list_rev cons_sym_list_list_rev
       in
       (* Compute data useful for generating the induction principles. *)
-      let c = Inductive.get_config ss pos in
+      let cfg = Inductive.get_config ss pos in
       let a_str, p_str, x_str = Inductive.gen_safe_prefixes ind_list in
-      let n = List.length params in
+      let ind_nb_params = List.length params in
       let vs, env, ind_pred_map =
-        Inductive.create_ind_pred_map pos c n ind_list a_str p_str x_str
+        Inductive.create_ind_pred_map pos cfg ind_nb_params ind_list
+          a_str p_str x_str
       in
       (* Compute the induction principles. *)
       let rec_typ_list_rev =
-        Inductive.gen_rec_types c pos ind_list vs env ind_pred_map x_str
+        Inductive.gen_rec_types cfg pos ind_list vs env ind_pred_map x_str
       in
       (* Add the induction principles in the signature. *)
       let add_recursor (ss, rec_sym_list) ind_sym rec_typ =
@@ -281,7 +282,7 @@ let handle : (Path.t -> Sign.t) -> sig_state -> p_command ->
           Console.out 3 (red "(symb) %a : %a\n")
             pp_uid rec_name pp_term rec_typ;
           let id = Pos.make pos rec_name in
-          Sig_state.add_symbol ss expo Defin Eager id rec_typ [] None
+          Sig_state.add_symbol ss expo Defin Eager false id rec_typ [] None
         in
         (ss, rec_sym::rec_sym_list)
       in
@@ -295,9 +296,11 @@ let handle : (Path.t -> Sign.t) -> sig_state -> p_command ->
         (fun r -> ignore (handle_rule ss r));
       List.iter Tree.update_dtree rec_sym_list;
       (* Store the inductive structure in the signature *)
+      let ind_nb_types = List.length ind_list in
       List.iter2
         (fun (ind_sym, cons_sym_list) rec_sym ->
-          Sign.add_inductive ss.signature ind_sym cons_sym_list rec_sym)
+          Sign.add_inductive ss.signature ind_sym cons_sym_list rec_sym
+            ind_nb_params ind_nb_types)
         ind_list
         rec_sym_list;
       (ss, None, None)
@@ -406,7 +409,7 @@ let handle : (Path.t -> Sign.t) -> sig_state -> p_command ->
                 Console.out 3 (red "(symb) add %a : %a\n")
                   pp_uid id pp_term a;
                 wrn pe.pos "Proof admitted.";
-                fst (add_symbol ss expo prop mstrat p_sym_nam a impl t)
+                fst (add_symbol ss expo prop mstrat true p_sym_nam a impl t)
             | P_proof_end ->
                 (* Check that the proof is indeed finished. *)
                 if not (finished ps) then
@@ -415,7 +418,7 @@ let handle : (Path.t -> Sign.t) -> sig_state -> p_command ->
                 (* Add the symbol in the signature. *)
                 Console.out 3 (red "(symb) add %a : %a\n")
                   pp_uid id pp_term a;
-                fst (add_symbol ss expo prop mstrat p_sym_nam a impl t)
+                fst (add_symbol ss expo prop mstrat opaq p_sym_nam a impl t)
       in
       (* Create proof state. *)
       let ps = {proof_name = p_sym_nam; proof_term; proof_goals} in
@@ -430,7 +433,10 @@ let handle : (Path.t -> Sign.t) -> sig_state -> p_command ->
       (* Apply tac_refine in case of a definition. *)
       let ps =
         match pt, t with
-        | Some pt, Some t -> Tactic.tac_refine pt.pos ps t
+        | Some pt, Some t ->
+            (match ps.proof_goals with
+             | Typ gt :: gs -> Tactic.tac_refine pt.pos ps gt gs t
+             | _ -> assert false)
         | _, _ -> ps
       in
       if p_sym_prf = None && not (finished ps) then wrn pos

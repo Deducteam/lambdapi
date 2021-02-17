@@ -6,7 +6,8 @@ open Error
 open Term
 open Print
 open Debug
-open Lplib.Extra
+open Lplib
+open Extra
 
 (** Logging function for typing. *)
 let log_infr = new_logger 'i' "infr" "type inference/checking"
@@ -26,7 +27,7 @@ let constraints = Stdlib.ref []
 
 (** Function adding a constraint. *)
 let conv ctx a b =
-  if not (Lplib.List.mem_sorted LibTerm.cmp_constr (ctx,a,b)
+  if not (List.mem_sorted LibTerm.cmp_constr (ctx,a,b)
             Stdlib.(!constraints)) && not (Eval.eq_modulo ctx a b) then
     begin
       if !log_enabled then log_infr (yel "add %a") pp_constr (ctx,a,b);
@@ -146,7 +147,8 @@ let rec infer : ctxt -> term -> term = fun ctx t ->
   | Meta(m,ts)   ->
       (* The type of [Meta(m,ts)] is the same as the one obtained by applying
          to [ts] a new symbol having the same type as [m]. *)
-      let s = Sign.create_sym Privat Defin (Meta.name m) !(m.meta_type) [] in
+      let s = Term.create_sym (Sign.current_sign()).sign_path
+                Privat Const Eager true (Meta.name m) !(m.meta_type) [] in
       infer ctx (Array.fold_left (fun acc t -> Appl(acc,t)) (Symb s) ts)
 
 (** [check ctx t a] checks that the term [t] has type [a] in context
@@ -172,7 +174,7 @@ let infer_noexn : constr list -> ctxt -> term -> (term * constr list) option =
       (if !log_enabled then
         let cond oc c = Format.fprintf oc "\n  if %a" pp_constr c in
         log_infr (gre "infer %a : %a%a")
-          pp_term t pp_term a (Lplib.List.pp cond "") cs);
+          pp_term t pp_term a (List.pp cond "") cs);
       Some (a,cs)
     with NotTypable -> None
   in Stdlib.(constraints := []); res
@@ -191,7 +193,7 @@ let check_noexn : constr list -> ctxt -> term -> term -> constr list option =
       (if !log_enabled then
         let cond oc c = Format.fprintf oc "\n  if %a" pp_constr c in
         log_infr (gre "check %a\n: %a%a")
-          pp_term t pp_term a (Lplib.List.pp cond "") cs);
+          pp_term t pp_term a (List.pp cond "") cs);
       Some cs
     with NotTypable -> None
   in Stdlib.(constraints := []); res

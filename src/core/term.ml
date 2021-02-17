@@ -9,6 +9,8 @@
 
 open Timed
 
+module Tags = Parsing.Syntax.Tags
+
 (** {3 Term (and symbol) representation} *)
 
 (** Representation of a term (or types) in a general sense. Values of the type
@@ -77,6 +79,8 @@ and sym =
   (** Property of the symbol. *)
   ; sym_def   : term option ref
   (** Definition of the symbol. *)
+  ; sym_opaq  : bool
+  (** If the symbol must not be unfolded in default goal simplifications. *)
   ; sym_rules : rule list ref
   (** Rewriting rules for the symbol. *)
   ; sym_mstrat: Parsing.Syntax.Tags.match_strat ref
@@ -226,6 +230,17 @@ and sym =
   (** Arity of the metavariable (environment size). *)
   ; meta_value : (term, term) Bindlib.mbinder option ref
   (** Definition of the metavariable, if known. *) }
+
+(** [create_sym path expo prop opaq name typ impl] creates a new symbol with
+   path [path], exposition [expo], property [prop], opacity [opaq], matching
+   strategy [mstrat], name [name], type [typ], implicit arguments [impl], no
+   definition and no rules. *)
+let create_sym : Common.Path.t -> Tags.expo -> Tags.prop
+    -> Tags.match_strat -> bool -> string -> term -> bool list -> sym =
+  fun sym_path sym_expo sym_prop mstrat sym_opaq sym_name typ sym_impl ->
+  {sym_path; sym_name; sym_type = ref typ; sym_impl; sym_def = ref None;
+   sym_opaq; sym_rules = ref []; sym_tree = ref Tree_types.empty_dtree;
+   sym_mstrat = ref mstrat; sym_prop; sym_expo }
 
 (** [is_injective s] tells whether the symbol is injective. *)
 let is_injective : sym -> bool = fun s -> s.sym_prop = Injec
