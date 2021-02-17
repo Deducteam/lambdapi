@@ -248,7 +248,7 @@ This works for both graphical and text displays."
     (goto-char pos)
     (if (search-forward "begin" nil t)
         (1- (point))
-      pos)))
+      (point-max))))
 
 (defun lp-get-prev-proof-pos (pos)
   "returns position of previous proof"
