@@ -27,6 +27,7 @@ List of short-cuts
 * ``C-x RET C-\``: enter unicode characters in minibuffer using LaTeX
 * ``M-x customize-group lambdapi``: customize window layout
 * ``C-c C-r``: refresh window layout
+* Click on a symbol to discover its type in the bottom line
 
 As always with emacs, if you were to be dissatisfied with these
 keybindings, you can change them easily!
@@ -199,13 +200,6 @@ new command is typed by toggling the electric mode with ``C-c C-e``.
 Clicking on the ``i``-th goal of the ``*Goals*`` buffer puts the focus
 on it by inserting a ``focus i`` tactic in the proof script.
 
-CPU usage and deactivation
-''''''''''''''''''''''''''
-
-If for any reason the LSP server consumes too much power (e.g. if a
-non-terminating rewrite system is edited), it can be disabled with
-``M-x eglot-shutdown``.
-
 Electric Terminator mode
 ''''''''''''''''''''''''
 
@@ -219,6 +213,13 @@ Customize window layout
 The window layout can be customized in the LambdaPi customization group
 (Do ``M-x customize-group lambdapi``).
 The layout can be refreshed with ``C-c C-r``.
+
+CPU usage and deactivation
+''''''''''''''''''''''''''
+
+If for any reason the LSP server consumes too much power (e.g. if a
+non-terminating rewrite system is edited), it can be disabled with
+``M-x eglot-shutdown``.
 
 Other relevant packages
 -----------------------

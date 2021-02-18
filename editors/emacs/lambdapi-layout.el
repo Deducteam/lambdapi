@@ -74,7 +74,7 @@ will produce
 
 (defcustom lambdapi-window-layout '(v 0.75
                                       lambdapi--temp-buffer-name
-                                      (v 0.8 "*Goals*" "*lp-logs*"))
+                                      (v 0.75 "*Goals*" "*lp-logs*"))
   "Window layout of LambdaPi."
   :group 'lambdapi
   ;; :set might change window layout at an unexpected time
