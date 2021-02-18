@@ -122,10 +122,9 @@ module Pure : sig
 end = struct
 
   (* [pure_apply_cfg ?lm ?st f] is function [f] but pure (without side
-     effects).  The side effects taken into account occur in
-     {!val:State.t}, {!val:Library.lib_mappings} and in the meta
-     variable counter {!module:Term.Meta}. Arguments [?lm] allows to set the
-     library mappings and [?st] sets the state. *)
+     effects). The side effects taken into account occur in {!val:State.t} and
+     {!val:Library.lib_mappings}. Arguments [?lm] allows to set the library
+     mappings and [?st] sets the state. *)
   let pure_apply_cfg :
         ?lm:string*string -> ?st:State.t -> ('a -> 'b) -> 'a -> 'b =
     fun ?lm ?st f x ->

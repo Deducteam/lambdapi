@@ -8,7 +8,7 @@
 - Fix printing of metavariable identifiers
 - `key_counter` renamed into `meta_counter`
 - `Meta.name` does not return a `?`-prefixed string anymore
-- code factorization et reorganization in `query.ml`
+- code factorization and reorganization in `query.ml`
 
 #### Improve navigation in Emacs/VSCode (2021-02-18)
 
