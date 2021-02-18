@@ -19,16 +19,6 @@ type ind_data =
   ; ind_nb_types : int  (** Number of mutually defined types. *)
   ; ind_nb_cons : int   (** Number of constructors. *) }
 
-(** Notation properties of symbols. They are linked to symbols to provide
-    syntax extensions to these symbols. These syntax extensions concern both
-    parsing and printing. *)
-type notation =
-  | Prefix of unop (** Prefix operator such as [-] in [- x]. *)
-  | Infix of binop (** Infix operator such as [+] in [a + b]. *)
-  | Zero           (** The numeral zero. *)
-  | Succ           (** Successor function. *)
-  | Quant          (** Quantifier such as [∀] in [`∀ x, p]. *)
-
 (** Representation of a signature. It roughly corresponds to a set of symbols,
     defined in a single module (or file). *)
 type t =
@@ -351,22 +341,9 @@ let add_builtin : t -> string -> sym -> unit = fun sign s sym ->
   | "+1" -> sign.sign_notations := SymMap.add sym Succ !(sign.sign_notations)
   | _ -> ()
 
-(** [add_unop sign sym unop] binds the unary operator [unop] to [sym] in
-    [sign]. If [unop] was previously bound, the previous binding is
-    discarded. *)
-let add_unop : t -> sym -> unop -> unit = fun sign sym unop ->
-  sign.sign_notations := SymMap.add sym (Prefix unop) !(sign.sign_notations)
-
-(** [add_binop sign sym binop] binds the binary operator [binop] to [sym] in
-    [sign]. If [op] was previously bound, the previous binding is
-    discarded. *)
-let add_binop : t -> sym -> binop -> unit =
-  fun sign sym binop ->
-  sign.sign_notations := SymMap.add sym (Infix binop) !(sign.sign_notations)
-
-(** [add_quant sign sym] add the quantifier [sym] to [sign]. *)
-let add_quant : t -> sym -> unit = fun sign sym ->
-  sign.sign_notations := SymMap.add sym Quant !(sign.sign_notations)
+(** [add_notation sign s n] sets notation of [s] to [n] in [sign]. *)
+let add_notation : t -> sym -> notation -> unit = fun sign s n ->
+  sign.sign_notations := SymMap.add s n !(sign.sign_notations)
 
 (** [add_inductive sign ind_sym ind_cons ind_prop ind_prop_args] add to [sign]
    the inductive type [ind_sym] with constructors [ind_cons], induction

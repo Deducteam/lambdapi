@@ -21,12 +21,12 @@ open Sign
 
 (** State of the signature, including aliasing and accessible symbols. *)
 type sig_state =
-  { signature : Sign.t                    (** Current signature.        *)
-  ; in_scope  : (sym * Pos.popt) StrMap.t (** Symbols in scope.         *)
-  ; alias_path   : Path.t StrMap.t        (** Alias to path map.        *)
-  ; path_alias  : string Path.Map.t       (** Path to alias map.        *)
-  ; builtins  : sym StrMap.t              (** Builtin symbols.          *)
-  ; notations : notation SymMap.t         (** Printing hints.           *) }
+  { signature : Sign.t                    (** Current signature. *)
+  ; in_scope  : (sym * Pos.popt) StrMap.t (** Symbols in scope.  *)
+  ; alias_path: Path.t StrMap.t           (** Alias to path map. *)
+  ; path_alias: string Path.Map.t         (** Path to alias map. *)
+  ; builtins  : sym StrMap.t              (** Builtin symbols.   *)
+  ; notations : notation SymMap.t (** Notations of external symbols. *) }
 
 type t = sig_state
 
@@ -53,23 +53,11 @@ let add_symbol : sig_state -> Tags.expo -> Tags.prop -> Tags.match_strat
   let in_scope = StrMap.add id.elt (sym, id.pos) ss.in_scope in
   ({ss with in_scope}, sym)
 
-(** [add_unop ss n x] generates a new signature state from [ss] by adding a
-    unary operator [x] with name [n]. This name is added to the scope. *)
-let add_unop : sig_state -> strloc -> (sym * unop) -> sig_state =
-  fun ss name (sym, unop) ->
-  Sign.add_unop ss.signature sym unop;
-  let in_scope = StrMap.add name.elt (sym, name.pos) ss.in_scope in
-  let notations = SymMap.add sym (Prefix unop) ss.notations in
-  {ss with in_scope; notations}
-
-(** [add_binop ss n x] generates a new signature state from [ss] by adding a
-    binary operator [x] with name [n]. This name is added to scope. *)
-let add_binop : sig_state -> strloc -> (sym * binop) -> sig_state =
-  fun ss name (sym, binop) ->
-  Sign.add_binop ss.signature sym binop;
-  let in_scope = StrMap.add name.elt (sym, name.pos) ss.in_scope in
-  let notations = SymMap.add sym (Infix binop) ss.notations in
-  {ss with in_scope; notations}
+(** [add_notation ss s n] maps [s] notation to [n] in [ss]. *)
+let add_notation : sig_state -> sym -> notation -> sig_state = fun ss s n ->
+  if s.sym_path = ss.signature.sign_path then
+    Sign.add_notation ss.signature s n;
+  {ss with notations = SymMap.add s n ss.notations}
 
 (** [add_builtin ss n s] generates a new signature state from [ss] by mapping
    the builtin [n] to [s]. *)
@@ -85,51 +73,29 @@ let add_builtin : sig_state -> string -> sym -> sig_state =
   in
   {ss with builtins; notations}
 
-(** [add_quant ss sym] generates a new signature state from [ss] by declaring
-   [sym] as quantifier. *)
-let add_quant : sig_state -> sym -> sig_state = fun ss sym ->
-  Sign.add_quant ss.signature sym;
-  {ss with notations = SymMap.add sym Quant ss.notations}
-
-(** [update_notations_from_builtins old_bm new_bm notmap] generates a new
-   notation map from [notmap] when adding [new_bm] to the builtin map
-   [old_bm]. *)
-let update_notations_from_builtins :
-    sym StrMap.t -> sym StrMap.t -> notation SymMap.t -> notation SymMap.t =
-  fun old_bm new_bm notmap ->
-  let add builtin notation notmap =
-    try
-      let s_new = StrMap.find builtin new_bm in
-      try
-        let s_old = StrMap.find builtin old_bm in
-        SymMap.add s_new notation (SymMap.remove s_old notmap)
-      with Not_found -> SymMap.add s_new notation notmap
-    with Not_found -> notmap
+(** [add_notations_from_builtins notmap bm] add notations for symbols mapped
+   to the builtins "0" and "+1". *)
+let add_notations_from_builtins :
+      sym StrMap.t -> notation SymMap.t -> notation SymMap.t =
+  let f builtin sym notmap =
+    match builtin with
+    | "0" -> SymMap.add sym Zero notmap
+    | "+1" -> SymMap.add sym Succ notmap
+    | _ -> notmap
   in
-  add "0" Zero (add "+1" Succ notmap)
+  StrMap.fold f
 
-(** [open_sign ss sign] extends the signature state [ss] with every symbol  of
-    the signature [sign].  This has the effect of putting these symbols in the
-    scope when (possibly masking symbols with the same name).  Builtin symbols
-    are also handled in a similar way. *)
+(** [open_sign ss sign] extends the signature state [ss] with every symbol of
+   the signature [sign]. This has the effect of putting these symbols in the
+   scope when (possibly masking symbols with the same name). Builtins and
+   notations are also handled in a similar way. *)
 let open_sign : sig_state -> Sign.t -> sig_state = fun ss sign ->
   let f _key _v1 v2 = Some(v2) in (* hides previous symbols *)
   let in_scope = StrMap.union f ss.in_scope !(sign.sign_symbols) in
   let builtins = StrMap.union f ss.builtins !(sign.sign_builtins) in
-  (* Bring operators in scope *)
-  let open_notation s notation in_scope =
-    match notation with
-    | Sign.Infix (k,_, _, _) -> StrMap.add k (s, None) in_scope
-    | Sign.Prefix (k,_,_) -> StrMap.add k (s, None) in_scope
-    | _ -> in_scope
-  in
-  let in_scope = SymMap.fold open_notation !(sign.sign_notations) in_scope in
+  let notations = SymMap.union f ss.notations !(sign.sign_notations) in
   let notations =
-    SymMap.fold SymMap.add !(sign.sign_notations) ss.notations
-  in
-  let notations =
-    update_notations_from_builtins ss.builtins !(sign.sign_builtins) notations
-  in
+    add_notations_from_builtins !(sign.sign_builtins) notations in
   {ss with in_scope; builtins; notations}
 
 (** Dummy [sig_state] made from the dummy signature. *)

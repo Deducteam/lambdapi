@@ -2,7 +2,6 @@ symbol A : TYPE;
 symbol a: A;
 symbol f: A → A;
 
-
 symbol g: Π(x:A), A;
 
 symbol id : A → A ≔ λ(x: A), x;
@@ -17,8 +16,7 @@ comment */
 
 symbol B: TYPE;
 symbol b: B;
-symbol comb: B → B → A;
-set infix left 6 "mob" ≔ comb;
-type comb b b;
+symbol mob: B → B → A;
+set notation mob infix left 6;
 type b mob b;
 assert ⊢ b mob b: A;

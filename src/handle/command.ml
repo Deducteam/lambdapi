@@ -447,38 +447,17 @@ let handle : (Path.t -> Sign.t) -> sig_state -> p_command ->
 
   | P_set(cfg)                 ->
       let ss =
-        let with_mod : Path.t -> p_qident -> p_qident =
-          fun mp {elt=(_,id);pos} -> Pos.make pos (mp,id)
-        in
         match cfg with
         | P_config_builtin(s,qid) ->
-            (* Set the builtin symbol [s]. *)
             let sym = find_sym ~prt:true ~prv:true ss qid in
             Builtin.check ss pos s sym;
             Console.out 3 "(conf) set builtin \"%s\" ≔ %a\n" s pp_sym sym;
             add_builtin ss s sym
-        | P_config_unop(unop)     ->
-            let (s, prio, qid) = unop in
+        | P_config_notation(qid,n) ->
             let sym = find_sym ~prt:true ~prv:true ss qid in
-            (* Make sure the operator has a fully qualified [qid]. *)
-            let unop = (s, prio, with_mod sym.sym_path qid) in
-            Console.out 3 "(conf) %a %a\n"
-              pp_sym sym pp_notation (Prefix unop);
-            add_unop ss (Pos.make pos s) (sym, unop)
-        | P_config_binop(binop)   ->
-            let (s, assoc, prio, qid) = binop in
-            (* Define the binary operator [sym]. *)
-            let sym = find_sym ~prt:true ~prv:true ss qid in
-            (* Make sure the operator has a fully qualified [qid]. *)
-            let binop = (s, assoc, prio, with_mod sym.sym_path qid) in
-            Console.out 3 "(conf) %a %a\n"
-              pp_sym sym pp_notation (Infix binop);
-            add_binop ss (Pos.make pos s) (sym, binop);
-        | P_config_quant(qid)     ->
-            let sym = find_sym ~prt:true ~prv:true ss qid in
-            Console.out 3 "(conf) %a quantifier\n" pp_sym sym;
-            add_quant ss sym
-        | P_config_unif_rule(h)   ->
+            Console.out 3 "(conf) %a %a\n" pp_sym sym pp_notation n;
+            add_notation ss sym n
+        | P_config_unif_rule(h) ->
             (* Approximately same processing as rules without SR checking. *)
             let pur = (scope_rule true ss h).elt in
             let urule =
@@ -495,7 +474,6 @@ let handle : (Path.t -> Sign.t) -> sig_state -> p_command ->
             ss
       in
       (ss, None, None)
-
 
 (** [too_long] indicates the duration after which a warning should be given to
     indicate commands that take too long to execute. *)

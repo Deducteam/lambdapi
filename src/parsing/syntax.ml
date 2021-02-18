@@ -23,11 +23,13 @@ type p_qident = qident loc
 (** The priority of an infix operator is a floating-point number. *)
 type priority = float
 
-(** Representation of a unary operator. *)
-type unop = string * priority * p_qident
-
-(** Representation of a binary operator. *)
-type binop = string * Pratter.associativity * priority * p_qident
+(** Notations. *)
+type notation =
+  | Prefix of priority
+  | Infix of Pratter.associativity * priority
+  | Zero
+  | Succ
+  | Quant
 
 (** Parser-level (located) term representation. *)
 type p_term = p_term_aux loc
@@ -191,15 +193,11 @@ type p_proof_end = p_proof_end_aux loc
 (** Parser-level representation of a configuration command. *)
 type p_config =
   | P_config_builtin of string * p_qident
-  (** Sets the configuration for a builtin syntax (e.g., nat literals). *)
-  | P_config_unop of unop
-  (** Defines (or redefines) a unary operator (e.g., ["!"] or ["¬"]). *)
-  | P_config_binop of binop
-  (** Defines (or redefines) a binary operator (e.g., ["+"] or ["×"]). *)
-  | P_config_quant of p_qident
-  (** Defines a quantifier symbol (e.g., ["∀"], ["∃"]). *)
+  (** Sets a builtin. *)
+  | P_config_notation of p_qident * notation
+  (** Sets a symbol notation. *)
   | P_config_unif_rule of p_rule
-  (** Unification hint declarations. *)
+  (** Unification rule. *)
 
 module Tags = struct
   (** Pattern-matching strategy modifiers. *)
@@ -306,12 +304,6 @@ let eq_p_qident : p_qident eq = fun q1 q2 -> q1.elt = q2.elt
 
 let eq_p_path : p_path eq = fun m1 m2 -> m1.elt = m2.elt
 
-let eq_unop : unop eq = fun (n1,p1,id1) (n2,p2,id2) ->
-  n1 = n2 && p1 = p2 && eq_p_qident id1 id2
-
-let eq_binop : binop eq = fun (n1,a1,p1,id1) (n2,a2,p2,id2) ->
-  n1 = n2 && a1 = a2 && p1 = p2 && eq_p_qident id1 id2
-
 let rec eq_p_term : p_term eq = fun {elt=t1;_} {elt=t2;_} ->
   match t1, t2 with
   | P_Type, P_Type
@@ -404,9 +396,8 @@ let eq_p_config : p_config eq = fun c1 c2 ->
   match (c1, c2) with
   | P_config_builtin(s1,q1), P_config_builtin(s2,q2) ->
       s1 = s2 && eq_p_qident q1 q2
-  | P_config_unop u1, P_config_unop u2 -> eq_unop u1 u2
-  | P_config_binop b1, P_config_binop b2 -> eq_binop b1 b2
-  | P_config_quant q1, P_config_quant q2 -> eq_p_qident q1 q2
+  | P_config_notation(i1,n1), P_config_notation(i2,n2) ->
+      eq_p_qident i1 i2 && n1 = n2
   | P_config_unif_rule r1, P_config_unif_rule r2 -> eq_p_rule r1 r2
   | _, _ -> false
 
@@ -562,9 +553,7 @@ let fold_idents : ('a -> p_qident -> 'a) -> 'a -> p_command list -> 'a =
   let fold_config : 'a -> p_config -> 'a = fun a c ->
     match c with
     | P_config_builtin (_, qid)
-    | P_config_unop (_, _, qid)
-    | P_config_binop (_, _, _, qid)
-    | P_config_quant qid -> f a qid
+    | P_config_notation (qid, _) -> f a qid
     | P_config_unif_rule r -> fold_rule a r
   in
 

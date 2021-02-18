@@ -1,7 +1,7 @@
 // Precedence for prefix operators
 symbol o : TYPE;
-symbol not : o → o;
-set prefix 5 "~" ≔ not;
+symbol ~ : o → o;
+set notation ~ prefix 5;
 type λ p x, ~(p x);
 type λ p x, ~ p x;
 assert ⊢ λ p x,~(p x) ≡ λ p x,~ p x;

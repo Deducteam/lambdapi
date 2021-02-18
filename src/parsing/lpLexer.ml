@@ -33,6 +33,7 @@ type token =
   | INFIX
   | INJECTIVE
   | LET
+  | NOTATION
   | OPAQUE
   | OPEN
   | PREFIX
@@ -314,6 +315,7 @@ end = struct
     | "injective" -> INJECTIVE
     | "left" -> ASSOC(Pratter.Left)
     | "let" -> LET
+    | "notation" -> NOTATION
     | "off" -> SWITCH(false)
     | "on" -> SWITCH(true)
     | "opaque" -> OPAQUE

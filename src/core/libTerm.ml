@@ -72,16 +72,16 @@ let is_symb : sym -> term -> bool = fun s t ->
   | Symb(r) -> r == s
   | _       -> false
 
-(** Given a symbol [s], [expl_args s ts] returns the non-implicit arguments of
-   [s] among [ts]. *)
-let expl_args : sym -> term list -> term list = fun s ts ->
-  let rec expl bs ts =
+(** Given a symbol [s], [remove_impl_args s ts] returns the non-implicit
+   arguments of [s] among [ts]. *)
+let remove_impl_args : sym -> term list -> term list = fun s ts ->
+  let rec remove bs ts =
     match (bs, ts) with
-    | (true::bs , _::ts) -> expl bs ts
-    | (false::bs, t::ts) -> t :: expl bs ts
+    | (true::bs , _::ts) -> remove bs ts
+    | (false::bs, t::ts) -> t :: remove bs ts
     | (_        , _    ) -> ts
   in
-  expl s.sym_impl ts
+  remove s.sym_impl ts
 
 (** [iter f t] applies the function [f] to every node of the term [t] with
    bound variables replaced by [Kind]. Note: [f] is called on already unfolded

@@ -231,6 +231,13 @@ let assoc : Pratter.associativity pp = fun ppf a ->
            | Pratter.Left -> " left"
            | Pratter.Right -> " right")
 
+let notation : notation pp = fun ppf n ->
+  match n with
+  | Infix(a,p) -> out ppf "infix%a %f" assoc a p
+  | Prefix(p) -> out ppf "prefix %f" p
+  | Quant -> out ppf "quantifier"
+  | _ -> ()
+
 let command : p_command pp = fun ppf {elt;_} ->
   begin match elt with
   | P_require(b,ps) ->
@@ -264,14 +271,10 @@ let command : p_command pp = fun ppf {elt;_} ->
         (List.pp (inductive "\nwith") "") il
   | P_set(P_config_builtin(s,qid)) ->
       out ppf "set builtin \"%s\" ≔ %a" s qident qid
-  | P_set(P_config_unop(s,prio,qid)) ->
-      out ppf "set prefix %f \"%s\" ≔ %a" prio s qident qid
-  | P_set(P_config_binop(s,a,p,qid)) ->
-      out ppf "set infix%a %f \"%s\" ≔ %a" assoc a p s qident qid
+  | P_set(P_config_notation(qid,n)) ->
+      out ppf "set notation %a %a" qident qid notation n
   | P_set(P_config_unif_rule(ur)) ->
       out ppf "set unif_rule %a" unif_rule ur
-  | P_set(P_config_quant(qid)) ->
-      out ppf "set quantifier %a" qident qid
   | P_query(q) ->
      query ppf q
   end;

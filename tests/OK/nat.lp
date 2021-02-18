@@ -16,8 +16,8 @@ symbol forty_two ≔ 42;
 
 // Addition function.
 
-symbol add : N → N → N;
-set infix left 6 "+" ≔ add;
+symbol + : N → N → N;
+set notation + infix left 6;
 
 rule z      + $n     ↪ $n
 with (s $m) + $n     ↪ s ($m + $n)
@@ -26,8 +26,8 @@ with $m     + (s $n) ↪ s ($m + $n);
 
 // Multiplication function.
 
-symbol mul : N → N → N;
-set infix left 7 "×" ≔ mul;
+symbol × : N → N → N;
+set notation × infix left 7;
 
 rule z      × _      ↪ z
 with (s $m) × $n     ↪ $n + $m × $n
@@ -36,7 +36,7 @@ with $m     × (s $n) ↪ $m + $m × $n;
 
 // Doubling function.
 
-symbol double n ≔ mul n 2;
+symbol double n ≔ n × 2;
 
 // Equality function.
 
