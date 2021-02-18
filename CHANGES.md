@@ -1,5 +1,18 @@
 ### Unreleased
 
+#### Improve handling of ghost symbols and metavariable identifier (2021-02-18)
+
+#### Improve navigation in Emacs/VSCode (2021-02-18)
+
+- Electric mode for Emacs
+- Buttons for Proof Navigation in Emacs
+- Navigate by commands/tactics in Emacs and VScode
+- Evaluated region shrinks on edit in Emacs and VScode
+- Evaluated region changes colour after error in Emacs and VScode
+- LSP server sends logs only from last command/tactic
+- Few minor corrections in LSP server
+- Improve VSCode indentation
+
 #### Add tactic induction (2021-02-17)
 
 - `env.ml`: add functions for generating fresh metavariable terms

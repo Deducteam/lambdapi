@@ -1,7 +1,6 @@
 (** Toplevel commands. *)
 
 open! Lplib
-
 open Common
 open Error
 open Pos
@@ -110,6 +109,7 @@ let handle : Sig_state.t -> Tags.expo -> proof_state -> p_tactic
   match g with
   | Unif _ -> fatal pos "Not a typing goal."
   | Typ ({goal_hyps=env;_} as gt) ->
+  let scope = Scope.scope_term expo ss env (Proof.sys_metas ps) in
   match elt with
   | P_tac_fail
   | P_tac_focus _
@@ -117,28 +117,24 @@ let handle : Sig_state.t -> Tags.expo -> proof_state -> p_tactic
   | P_tac_simpl
   | P_tac_solve -> assert false (* done before *)
   | P_tac_apply(pt) ->
-      let t = Scope.scope_term expo ss env pt in
+      let t = scope pt in
       (* Compute the product arity of the type of [t]. *)
-      (*FIXME: this does not take into account implicit arguments. *)
+      (* FIXME: this does not take into account implicit arguments. *)
       let n =
         match Infer.infer_noexn [] (Env.to_ctxt env) t with
         | None -> fatal pos "[%a] is not typable." pp_term t
         | Some (a, _) -> LibTerm.count_products a
       in
-      let t = if n <= 0 then t
-              else Scope.scope_term expo ss env (P.appl_wild pt n) in
+      let t = if n <= 0 then t else scope (P.appl_wild pt n) in
       tac_refine pos ps gt gs t
   | P_tac_assume(idopts) ->
-      let t = Scope.scope_term expo ss env (P.abst_list idopts P.wild) in
-      tac_refine pos ps gt gs t
+      tac_refine pos ps gt gs (scope (P.abst_list idopts P.wild))
   | P_tac_induction -> tac_induction pos ps gt gs
-  | P_tac_refine t ->
-      tac_refine pos ps gt gs (Scope.scope_term expo ss env t)
+  | P_tac_refine t -> tac_refine pos ps gt gs (scope t)
   | P_tac_refl -> tac_refine pos ps gt gs (Rewrite.reflexivity ss pos gt)
   | P_tac_rewrite(l2r,pat,eq) ->
       let pat = Option.map (Scope.scope_rw_patt ss env) pat in
-      let eq = Scope.scope_term expo ss env eq in
-      tac_refine pos ps gt gs (Rewrite.rewrite ss pos gt l2r pat eq)
+      tac_refine pos ps gt gs (Rewrite.rewrite ss pos gt l2r pat (scope eq))
   | P_tac_sym -> tac_refine pos ps gt gs (Rewrite.symmetry ss pos gt)
   | P_tac_why3(config) ->
       tac_refine pos ps gt gs (Why3_tactic.handle ss pos config gt)

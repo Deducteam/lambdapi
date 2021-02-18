@@ -165,7 +165,7 @@ let handle_inductive_symbol : sig_state -> expo -> prop -> match_strat
   (* Obtaining the implicitness of arguments. *)
   let impl = Scope.get_implicitness typ in
   (* We scope the type of the declaration. *)
-  let typ = Scope.scope_term expo ss Env.empty typ in
+  let typ = Scope.scope_term expo ss Env.empty IntMap.empty typ in
   (* We check that [a] is typable by a sort. *)
   Infer.check_sort Unif.solve_noexn pos [] typ;
   (* We check that no metavariable remains. *)
@@ -203,7 +203,7 @@ let handle : (Path.t -> Sign.t) -> sig_state -> p_command ->
   fun compile ss ({elt; pos} as cmd) ->
   if !log_enabled then
     log_hndl (blu "%a\n%a") Pos.pp pos Pretty.command cmd;
-  let scope_basic exp pt = Scope.scope_term exp ss Env.empty pt in
+  let scope expo = Scope.scope_term expo ss Env.empty IntMap.empty in
   match elt with
   | P_query(q) ->
       let res = Query.handle ss None q in (ss, None, res)
@@ -341,7 +341,7 @@ let handle : (Path.t -> Sign.t) -> sig_state -> p_command ->
               else let pos = Pos.(cat (end_pos p_sym_nam.pos) pt.pos) in
                    Pos.make pos (P_Abst(p_sym_arg, pt))
             in
-            Some pt, Some (scope_basic expo pt)
+            Some pt, Some (scope expo pt)
         | None -> None, None
       in
       (* Argument impliciteness. *)
@@ -358,8 +358,7 @@ let handle : (Path.t -> Sign.t) -> sig_state -> p_command ->
       (* Scope the type and get its metavariables. *)
       let ao, metas_a =
         match ao with
-        | Some a ->
-            let a = scope_basic expo a in Some a, LibTerm.get_metas true a
+        | Some a -> let a = scope expo a in Some a, LibTerm.get_metas true a
         | None -> None, MetaSet.empty
       in
       (* Get the type of the symbol and the goals to solve for the declaration
