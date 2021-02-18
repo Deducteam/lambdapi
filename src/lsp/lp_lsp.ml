@@ -166,13 +166,46 @@ let get_textPosition params =
   let line, character = int_field "line" pos, int_field "character" pos in
   line, character
 
+(** [closest_before (line, pos) objs] returns the element in [objs] with
+largest position which is before [(line, pos)]*)
+let closest_before : int * int -> ('a * Pos.popt) list ->
+                     ('a * Pos.popt) option =
+  fun (line, pos) (objs: ('a * Pos.popt) list) ->
+  let objs =
+    List.filter (fun (_, objpos) ->
+        match objpos with
+        | None -> false
+        | Some objpos ->
+            let open Pos in
+            compare (objpos.start_line, objpos.start_col) (line, pos) <= 0)
+      objs
+  in
+  let closer (acc: ('a * Pos.popt) option) (obj : 'a * Pos.popt) =
+    let open Pos in
+    match (snd obj) with
+    | None -> acc
+    | Some objpos ->
+        match acc with
+        | None -> Some obj
+        | Some (_, accposopt) ->
+            match accposopt with
+            | None -> Some obj
+            | Some accpos ->
+                let comp =
+                  compare (objpos.start_line, objpos.start_col)
+                    (accpos.start_line, accpos.start_col)
+                in
+                if comp <= 0 then acc else Some obj
+  in
+  List.fold_left closer None objs
+
 let in_range ?loc (line, pos) =
   match loc with
   | None -> false
   | Some Pos.{start_line; start_col; end_line; end_col; _} ->
-    start_line - 1 < line && line < end_line - 1 ||
-    (start_line - 1 = line && start_col <= pos) ||
-    (end_line - 1 = line && pos <= end_col)
+    let line = line + 1 in
+    (compare (start_line, start_col) (line, pos)) *
+    (compare (end_line, end_col) (line, pos)) <= 0
 
 let get_node_at_pos doc line pos =
   let open Lp_doc in
@@ -190,14 +223,14 @@ let rec get_goals ~doc ~line ~pos =
   let goals = match node with
     | None -> None
     | Some n ->
-        List.find_opt (fun (_, loc) -> in_range ?loc (line,pos)) n.goals in
+        closest_before (line+1, pos) n.goals in
   match goals with
     | None -> begin match node with
               | None   -> None
               | Some _ -> get_goals ~doc ~line:(line-1) ~pos:0 end
     | Some (v,_) -> Some v
 
-let get_logs ~doc ~line ~pos =
+let get_logs ~doc ~line ~pos : string =
   (* DEBUG LOG START *)
   LIO.log_error "get_logs"
     (Printf.sprintf "%s:%d,%d" doc.Lp_doc.uri line pos);
@@ -216,13 +249,9 @@ let get_logs ~doc ~line ~pos =
   Lsp_io.log_error "get_logs"
     (List.fold_left (^) "\n" (List.map log_to_str doc.Lp_doc.logs));
   (* DEBUG LOG END *)
-  let before_cursor (npos : Pos.popt) =
-    match npos with
-    | None -> Lsp_io.log_error "get_logs" "None pos"; true
-    | Some Pos.{start_line; _} -> start_line-1 <= line
-  in
-  List.fold_left_while (fun acc x -> acc^(fst x))
-                  (fun (_, p) -> before_cursor p) "" doc.Lp_doc.logs
+  match closest_before (line+1, pos) doc.Lp_doc.logs with
+  | None -> ""
+  | Some (log, _) -> log
 
 let do_goals ofmt ~id params =
   let uri, line, pos = get_docTextPosition params in
