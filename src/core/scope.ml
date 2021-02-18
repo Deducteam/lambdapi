@@ -1,7 +1,7 @@
 (** Scoping. *)
 
 open! Lplib
-open Lplib.Extra
+open Extra
 open Common
 open Error
 open Pos
@@ -53,10 +53,10 @@ let get_root : p_term -> sig_state -> Env.t -> sym = fun t ss env ->
 (** Representation of the different scoping modes.  Note that the constructors
     hold specific information for the given mode. *)
 type mode =
-  | M_Term of meta StrMap.t Stdlib.ref * Tags.expo
-  (** Standard scoping mode for terms, holding a map of metavariables that can
-      be updated with new metavariables on scoping and the exposition of the
-      scoped term. *)
+  | M_Term of meta StrMap.t Stdlib.ref * meta IntMap.t * Tags.expo
+  (** Standard scoping mode for terms, holding a map for metavariables
+     introduced by the user, a map for system-generated metavariables (current
+     goals), and the exposition of the scoped term. *)
   | M_Patt
   (** Scoping mode for patterns in the rewrite tactic. *)
   | M_LHS  of
@@ -257,16 +257,12 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
   (* Scoping function for head terms. *)
   and scope_head : env -> p_term -> tbox = fun env t ->
     match (t.elt, md) with
-    | (P_Type          , M_LHS(_)          ) ->
-        fatal t.pos "TYPE is not allowed in a LHS."
-    | (P_Type          , _                 ) -> _Type
-    | (P_Iden(qid,_)   , M_LHS(d)          ) ->
-        find_qid true d.m_lhs_prv ss env qid
-    | (P_Iden(qid,_)   , M_Term(_,Privat ) ) -> find_qid false true ss env qid
-    | (P_Iden(qid,_)   , M_RHS(d)          ) ->
-        find_qid false d.m_rhs_prv ss env qid
-    | (P_Iden(qid,_)   , _                 ) ->
-        find_qid false false ss env qid
+    | (P_Type, M_LHS(_)) -> fatal t.pos "TYPE is not allowed in a LHS."
+    | (P_Type, _) -> _Type
+    | (P_Iden(qid,_), M_LHS(d)) -> find_qid true d.m_lhs_prv ss env qid
+    | (P_Iden(qid,_), M_Term(_,_,Privat)) -> find_qid false true ss env qid
+    | (P_Iden(qid,_), M_RHS(d)) -> find_qid false d.m_rhs_prv ss env qid
+    | (P_Iden(qid,_), _) -> find_qid false false ss env qid
     | (P_Wild, M_URHS(data)) ->
       let x =
         let name = Printf.sprintf "v%i" data.m_urhs_vars_nb in
@@ -276,33 +272,35 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
         x
       in
       _TEnv (Bindlib.box_var x) (Env.to_tbox env)
-    | (P_Wild          , M_LHS(_)          ) ->
-        fresh_patt md None (Env.to_tbox env)
-    | (P_Wild          , M_Patt            ) -> _Wild
-    | (P_Wild          , _                 ) -> Env.fresh_meta_tbox env
-    | (P_Meta(id,ts)   , M_Term(m,_)      ) ->
-        let m2 =
-          (* We first check if the metavariable is in the map. *)
-          try StrMap.find id.elt Stdlib.(!m) with Not_found ->
-          (* Otherwise we create a new metavariable [m1] of type [TYPE]
-             and a new metavariable [m2] of name [id] and type [m1], and
-             return [m2]. *)
-          let vs = Env.to_tbox env in
-          let m1 = Meta.fresh (Env.to_prod env _Type) (Array.length vs) in
-          let a = Env.to_prod env (_Meta m1 vs) in
-          let m2 = Meta.fresh ~name:id.elt a (Array.length vs) in
-          Stdlib.(m := StrMap.add id.elt m2 !m); m2
+    | (P_Wild, M_LHS(_)) -> fresh_patt md None (Env.to_tbox env)
+    | (P_Wild, M_Patt) -> _Wild
+    | (P_Wild, _) -> Env.fresh_meta_tbox env
+    | (P_Meta({elt;pos},ts), M_Term(user_metas,sys_metas,_)) ->
+        let m =
+          match elt with
+          | Name id ->
+              (try StrMap.find id Stdlib.(!user_metas)
+               with Not_found ->
+                 (* We create a new metavariable [m1] of type [TYPE] and a new
+                    metavariable [m] of name [id] and type [m1]. *)
+                 let vs = Env.to_tbox env in
+                 let m1 =
+                   Meta.fresh (Env.to_prod env _Type) (Array.length vs) in
+                 let a = Env.to_prod env (_Meta m1 vs) in
+                 let m = Meta.fresh ~name:id a (Array.length vs) in
+                 Stdlib.(user_metas := StrMap.add id m !user_metas); m)
+          | Numb i ->
+              (try IntMap.find i sys_metas
+               with Not_found -> fatal pos "Unknown metavariable ?%d." i)
         in
         let ts =
           match ts with
-          | None -> Env.to_tbox env (* [?M] is equivalent to [?M[env]] where
-                                       [env] is the current environment. *)
+          | None -> Env.to_tbox env (* [?M] is equivalent to [?M[env]]. *)
           | Some ts -> Array.map (scope env) ts
         in
-        _Meta m2 ts
-    | (P_Meta(_,_)     , _                ) ->
-        fatal t.pos "Metavariables are not allowed in rewriting rules."
-    | (P_Patt(id,ts)   , M_LHS(d)         ) ->
+        _Meta m ts
+    | (P_Meta(_,_), _) -> fatal t.pos "Metavariables are not allowed here."
+    | (P_Patt(id,ts), M_LHS(d)) ->
         (* Check that [ts] are variables. *)
         let scope_var t =
           match unfold (Bindlib.unbox (scope env t)) with
@@ -369,7 +367,7 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
           | Some ts -> Array.map (scope env) ts
         in
         _TEnv (Bindlib.box_var x) ts
-    | (P_Patt(id,ts)   , M_RHS(r)         ) ->
+    | (P_Patt(id,ts), M_RHS(r)) ->
         let x =
           match id with
           | None     -> fatal t.pos "Wildcard pattern not allowed in a RHS."
@@ -384,25 +382,21 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
           | Some ts -> Array.map (scope env) ts
         in
         _TEnv (Bindlib.box_var x) ts
-    | (P_Patt(_,_)     , _                  ) ->
+    | (P_Patt(_,_), _) ->
         fatal t.pos "Pattern variables are only allowed in rewriting rules."
-    | (P_Appl(_,_)     , _                  ) ->
-        assert false (* Unreachable. *)
-    | (P_Arro(_,_)     , M_Patt             ) ->
+    | (P_Appl(_,_), _) ->  assert false (* Unreachable. *)
+    | (P_Arro(_,_), M_Patt) ->
         fatal t.pos "Implications are not allowed in a pattern."
-    | (P_Arro(a,b)     , _                  ) ->
-        _Impl (scope env a) (scope env b)
-    | (P_Abst(_,_)     , M_Patt             ) ->
+    | (P_Arro(a,b), _) -> _Impl (scope env a) (scope env b)
+    | (P_Abst(_,_), M_Patt) ->
         fatal t.pos "Abstractions are not allowed in a pattern."
-    | (P_Abst(xs,t)    , _                  ) ->
-        scope_binder _Abst env xs (Some(t))
-    | (P_Prod(_,_)     , M_Patt             ) ->
+    | (P_Abst(xs,t), _) -> scope_binder _Abst env xs (Some(t))
+    | (P_Prod(_,_), M_Patt) ->
         fatal t.pos "Dependent products are not allowed in a pattern."
-    | (P_Prod(xs,b)    , _                  ) ->
-        scope_binder _Prod env xs (Some(b))
-    | (P_LLet(x,xs,a,t,u), M_Term(_)        )
-    | (P_LLet(x,xs,a,t,u), M_URHS(_)        )
-    | (P_LLet(x,xs,a,t,u), M_RHS(_)         ) ->
+    | (P_Prod(xs,b), _) -> scope_binder _Prod env xs (Some(b))
+    | (P_LLet(x,xs,a,t,u), M_Term(_))
+    | (P_LLet(x,xs,a,t,u), M_URHS(_))
+    | (P_LLet(x,xs,a,t,u), M_RHS(_)) ->
         let a = scope_binder _Prod env xs a in
         let t = scope_binder _Abst env xs (Some(t)) in
         let v = Bindlib.new_var mkfree x.elt in
@@ -410,20 +404,18 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
         if not (Bindlib.occur v u) then
           wrn x.pos "Useless let-binding ([%s] not bound)." x.elt;
         _LLet a t (Bindlib.bind_var v u)
-    | (P_LLet(_)       , M_LHS(_)           ) ->
+    | (P_LLet(_), M_LHS(_)) ->
         fatal t.pos "Let-bindings are not allowed in a LHS."
-    | (P_LLet(_)       , M_Patt             ) ->
+    | (P_LLet(_), M_Patt) ->
         fatal t.pos "Let-bindings are not allowed in a pattern."
-    | (P_NLit(n)       , _                  ) ->
+    | (P_NLit(n), _) ->
         let sym_z = _Symb (Builtin.get ss t.pos "0")
         and sym_s = _Symb (Builtin.get ss t.pos "+1") in
         let rec unsugar_nat_lit acc n =
-          if n <= 0 then acc else unsugar_nat_lit (_Appl sym_s acc) (n-1)
-        in
+          if n <= 0 then acc else unsugar_nat_lit (_Appl sym_s acc) (n-1) in
         unsugar_nat_lit sym_z n
-    | (P_Wrap(t)      , _                   ) -> scope env t
-    | (P_Expl(_)      , _                   ) ->
-        fatal t.pos "Explicit argument not allowed here."
+    | (P_Wrap(t), _) -> scope env t
+    | (P_Expl(_), _) -> fatal t.pos "Explicit argument not allowed here."
   in
   scope env t
 
@@ -432,10 +424,11 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
     state [ss] is used to handle module aliasing according to [find_qid]. If
     [?exp] is {!constructor:Public}, then the term mustn't contain any private
     subterms. *)
-let scope_term : Tags.expo -> sig_state -> env -> p_term -> term =
-  fun expo ss env t ->
+let scope_term :
+      Tags.expo -> sig_state -> env -> meta IntMap.t -> p_term -> term =
+  fun expo ss env sgm t ->
   let m = Stdlib.ref StrMap.empty in
-  Bindlib.unbox (scope (M_Term(m, expo)) ss env t)
+  Bindlib.unbox (scope (M_Term(m, sgm, expo)) ss env t)
 
 (** [patt_vars t] returns a couple [(pvs,nl)]. The first compoment [pvs] is an
     association list giving the arity of all the “pattern variables” appearing

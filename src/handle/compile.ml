@@ -63,19 +63,19 @@ let rec compile : bool -> Path.t -> Sign.t = fun force mp ->
          is possible to qualify the symbols of the current modules. *)
       loaded := Path.Map.add mp sign !loaded;
       let handle ss c =
-        Term.Meta.reset_key_counter ();
+        Term.Meta.reset_meta_counter ();
         (* We provide the compilation function to the handle commands, so that
            "require" is able to compile files. *)
         let (ss, p, _) = Command.handle (compile false) ss c in
         match p with
         | None       -> ss
         | Some(data) ->
-            let (st,ts) = (data.pdata_p_state, data.pdata_tactics) in
+            let (st,tacs) = (data.pdata_p_state, data.pdata_tactics) in
             let e = data.pdata_expo in
             let st =
               List.fold_left
                 (fun st tac -> fst (Tactic.handle ss e st tac))
-                st ts
+                st tacs
             in
             data.pdata_finalize ss st
       in
@@ -122,10 +122,9 @@ module Pure : sig
 end = struct
 
   (* [pure_apply_cfg ?lm ?st f] is function [f] but pure (without side
-     effects).  The side effects taken into account occur in
-     {!val:State.t}, {!val:Library.lib_mappings} and in the meta
-     variable counter {!module:Term.Meta}. Arguments [?lm] allows to set the
-     library mappings and [?st] sets the state. *)
+     effects). The side effects taken into account occur in {!val:State.t} and
+     {!val:Library.lib_mappings}. Arguments [?lm] allows to set the library
+     mappings and [?st] sets the state. *)
   let pure_apply_cfg :
         ?lm:string*string -> ?st:State.t -> ('a -> 'b) -> 'a -> 'b =
     fun ?lm ?st f x ->

@@ -1,8 +1,6 @@
 (** Testing miscellanous utilities provided by Lambdapi, such as decision tree
     printing, XTC file generation, HRS file generation. *)
 
-open Lplib.Extra
-
 open Common
 open Core
 open Handle
@@ -48,10 +46,9 @@ let test_dtree () =
 let test_dtree_ghost () =
   let file = "OK/unif_hint.lp" in
   ignore (compile file);
-  let sym = fst (StrMap.find "#equiv" Timed.(!(Unif_rule.sign.sign_symbols))) in
   let buf = Buffer.create 16 in
   let fmt = Format.formatter_of_buffer buf in
-  Tool.Tree_graphviz.to_dot fmt sym;
+  Tool.Tree_graphviz.to_dot fmt Unif_rule.equiv;
   Alcotest.(check bool) "bool" (Buffer.contents buf <> "") true
 
 let _ =

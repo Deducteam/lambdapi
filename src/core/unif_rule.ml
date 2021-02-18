@@ -7,9 +7,7 @@
 open Common
 open Timed
 open Term
-
-(** Ghost module. *)
-let path = Path.ghost "unif_rule"
+open Parsing.LpLexer
 
 (** Ghost signature holding the symbols used in unification rules.
     - All signatures depend on it (dependency set in
@@ -18,8 +16,8 @@ let path = Path.ghost "unif_rule"
     - It is automatically loaded. *)
 let sign : Sign.t =
   let dummy = Sign.dummy () in
-  let s = {dummy with Sign.sign_path = path} in
-  Sign.loaded := Path.Map.add path s !(Sign.loaded);
+  let s = {dummy with Sign.sign_path = unif_rule_path} in
+  Sign.loaded := Path.Map.add unif_rule_path s !(Sign.loaded);
   s
 
 (** Symbol representing an atomic unification problem. The term [equiv t
@@ -27,9 +25,9 @@ let sign : Sign.t =
     made of only one equation. *)
 let equiv : sym =
   let sym =
-    Sign.add_symbol sign Public Defin Eager false (Pos.none "#equiv") Kind []
-  in
-  let binop = ("≡", Pratter.Neither, 1.1, Pos.none (path, "#equiv")) in
+    Sign.add_symbol sign Public Defin Eager false (Pos.none equiv) Kind [] in
+  let qid = Pos.none (unif_rule_path, equiv) in
+  let binop = ("≡", Pratter.Neither, 1.1, qid) in
   Sign.add_binop sign sym binop;
   sym
 
@@ -39,9 +37,9 @@ let equiv : sym =
     [t ≡ u; v ≡ w; ...]. *)
 let cons : sym =
   let sym =
-    Sign.add_symbol sign Public Const Eager true (Pos.none "#cons") Kind []
-  in
-  let binop = (";", Pratter.Right, 1.0, Pos.none (path, "#cons")) in
+    Sign.add_symbol sign Public Const Eager true (Pos.none cons) Kind [] in
+  let qid = Pos.none (unif_rule_path, cons) in
+  let binop = (";", Pratter.Right, 1.0, qid) in
   Sign.add_binop sign sym binop;
   sym
 

@@ -147,8 +147,8 @@ let rec infer : ctxt -> term -> term = fun ctx t ->
   | Meta(m,ts)   ->
       (* The type of [Meta(m,ts)] is the same as the one obtained by applying
          to [ts] a new symbol having the same type as [m]. *)
-      let s = Term.create_sym (Sign.current_sign()).sign_path
-                Privat Const Eager true (Meta.name m) !(m.meta_type) [] in
+      let s = Term.create_sym (Sign.current_sign()).sign_path Privat Const
+                Eager true ("?" ^ Meta.name m) !(m.meta_type) [] in
       infer ctx (Array.fold_left (fun acc t -> Appl(acc,t)) (Symb s) ts)
 
 (** [check ctx t a] checks that the term [t] has type [a] in context

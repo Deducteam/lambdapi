@@ -22,6 +22,11 @@ let raw_ident : popt -> string pp = fun pos ppf s ->
 
 let ident : p_ident pp = fun ppf {elt=s; pos} -> raw_ident pos ppf s
 
+let meta_ident : p_meta_ident pp = fun ppf {elt; pos} ->
+  match elt with
+  | Name s -> raw_ident pos ppf s
+  | Numb i -> out ppf "%d" i
+
 let param_id : p_ident option pp = fun ppf idopt ->
   match idopt with
   | Some(id) -> out ppf "%a" ident id
@@ -69,9 +74,9 @@ let rec term : p_term pp = fun ppf t ->
     | (P_Type              , _    ) -> out ppf "TYPE"
     | (P_Iden(qid,_)       , _    ) -> out ppf "%a" qident qid
     | (P_Wild              , _    ) -> out ppf "_"
-    | (P_Meta(x,ar)        , _    ) -> out ppf "?%a%a" ident x env ar
-    | (P_Patt(None   ,ar)  , _    ) -> out ppf "$_%a" env ar
-    | (P_Patt(Some(x),ar)  , _    ) -> out ppf "$%a%a" ident x env ar
+    | (P_Meta(mid,ts)      , _    ) -> out ppf "?%a%a" meta_ident mid env ts
+    | (P_Patt(None   ,ts)  , _    ) -> out ppf "$_%a" env ts
+    | (P_Patt(Some(x),ts)  , _    ) -> out ppf "$%a%a" ident x env ts
     | (P_Appl(t,u)         , `Appl)
     | (P_Appl(t,u)         , `Func) -> out ppf "%a %a" appl t atom u
     | (P_Arro(a,b)         , `Func) -> out ppf "%a → %a" appl a func b
@@ -131,20 +136,20 @@ let inductive : string -> p_inductive pp =
 let equiv : (p_term * p_term) pp = fun ppf (l,r) ->
   out ppf "%a ≡ %a" term l term r
 
-(** [unpack eqs] transforms a p_term of the form
-    [#cons (#equiv t u) (#cons (#equiv v w) ...)]
-    into a list [[(t,u); (v,w); ...]]. See unif_rule.ml. *)
+(** [unpack eqs] transforms a p_term of the form [LpLexer.cons
+   (LpLexer.equiv t u) (LpLexer.cons (LpLexer.equiv v w) ...)]  into a
+   list [[(t,u); (v,w); ...]]. See unif_rule.ml. *)
 let rec unpack : p_term -> (p_term * p_term) list = fun eqs ->
-  let name {elt=(_,s);_} = s in
+  let is (p,s) id = p = LpLexer.unif_rule_path && s = id in
   match Syntax.p_get_args eqs with
-  | ({elt=P_Iden(s, _); _}, [v; w]) ->
-      if name s = "#cons" then
+  | ({elt=P_Iden({elt;_},_); _}, [v; w]) ->
+      if is elt LpLexer.cons then
         match Syntax.p_get_args v with
-        | ({elt=P_Iden(e, _); _}, [t; u]) when name e = "#equiv" ->
-            (t, u) :: unpack w
+        | ({elt=P_Iden({elt;_},_); _}, [t; u])
+             when is elt LpLexer.equiv -> (t, u) :: unpack w
         | _ -> assert false
-      else if name s = "#equiv" then [(v, w)] else
-      assert false
+      else if is elt LpLexer.equiv then [(v, w)]
+      else assert false
   | _ -> assert false
 
 let unif_rule : p_rule pp = fun ppf {elt=(l,r);_} ->

@@ -70,7 +70,7 @@ Indent by `lambdapi-indent-basic' in proofs, and 0 otherwise."
              (ident)
              ("?" ident "[" env "]")    ; ?M[x;y;z]
              ("$" ident "[" env "]")    ; $X[x;y;z]
-             ("`" args "," sterm)       ; binder syntax
+             ("`" ident args "," sterm) ; quantifier syntax
              (sterm "→" sterm)
              ("λ" args "," sterm)
              ("λ" ident ":" sterm "," sterm)

@@ -93,7 +93,7 @@ type token =
 
   (* identifiers *)
   | UID of string
-  | UID_META of string
+  | UID_META of Syntax.meta_ident
   | UID_PAT of string
   | QID of Path.t
   | ID_EXPL of Path.t
@@ -122,9 +122,20 @@ module Lp_lexer : sig
   val lexer : lexbuf -> unit -> token * Lexing.position * Lexing.position
   (** [lexer buf] is a lexing function on buffer [buf] that can be passed to
       a parser. *)
+
+  val equiv : string
+  (** [equiv] is the name of the symbol "≡" in unification rules. *)
+
+  val cons : string
+  (** [cons] is the name of the symbol ";" in unification rules. *)
+
+  val unif_rule_path : Path.t
+  (** [unif_rule_path] is the path for [equiv] and [cons].
+     It cannot be entered by a user. *)
+
 end = struct
   let digit = [%sedlex.regexp? '0' .. '9']
-  let integer = [%sedlex.regexp? Plus digit]
+  let integer = [%sedlex.regexp? '0' | ('1' .. '9', Star digit)]
   let float = [%sedlex.regexp? integer, '.', Opt (integer)]
   let stringlit = [%sedlex.regexp? '"', Star (Compl ('"' | '\n')), '"']
   let comment = [%sedlex.regexp? "//", Star (Compl ('\n' | '\r'))]
@@ -145,8 +156,17 @@ end = struct
                    | math | other_math | subscript | superscript
                    | supplemental_punctuation ]
   let regid = [%sedlex.regexp? (letter | '_'), Star (letter | digit | '_')]
+
+  (* Once unescaped, escaped identifiers must not be empty, as the empty
+     string is used in the path of ghost signatures. *)
   let escid =
     [%sedlex.regexp? "{|", Plus (Compl '|' | '|', Compl '}'), Star '|', "|}"]
+  let non_user_id = ""
+  let ghost_path s = [non_user_id; s]
+  let unif_rule_path = ghost_path "unif_rule"
+  let equiv = "equiv"
+  let cons = "cons"
+
   let uid = [%sedlex.regexp? regid | escid]
   let qid = [%sedlex.regexp? uid, Plus ('.', uid)]
   let id = [%sedlex.regexp? uid | qid]
@@ -238,6 +258,7 @@ end = struct
     | _ -> false
 
   let is_uid : string -> bool = fun s ->
+    s = non_user_id ||
     let lexbuf = Sedlexing.Utf8.from_string s in
     match%sedlex lexbuf with
     | uid -> true
@@ -249,15 +270,16 @@ end = struct
     else Format.fprintf ppf "{|%s|}" s
 
   let is_identifier : string -> bool = fun s ->
+    s = non_user_id ||
     let lexbuf = Sedlexing.Utf8.from_string s in
     match%sedlex lexbuf with
     | id -> true
     | _ -> false
 
-  (** [tail n buf] returns the utf8 string formed from [buf] dropping its [n]
+  (** [tail buf] returns the utf8 string formed from [buf] dropping its
      first codepoints. *)
-  let tail : int -> lexbuf -> string = fun n buf ->
-    Utf8.sub_lexeme buf n (lexeme_length buf - n)
+  let tail : lexbuf -> string = fun buf ->
+    Utf8.sub_lexeme buf 1 (lexeme_length buf - 1)
 
   let token buf =
     nom buf;
@@ -325,8 +347,8 @@ end = struct
 
     (* other tokens *)
 
-    | '+', Plus lowercase -> DEBUG_FLAGS(true, tail 1 buf)
-    | '-', Plus lowercase -> DEBUG_FLAGS(false, tail 1 buf)
+    | '+', Plus lowercase -> DEBUG_FLAGS(true, tail buf)
+    | '-', Plus lowercase -> DEBUG_FLAGS(false, tail buf)
     | integer -> INT(int_of_string (Utf8.lexeme buf))
     | float -> FLOAT(float_of_string (Utf8.lexeme buf))
     | stringlit ->
@@ -361,15 +383,16 @@ end = struct
        lexing. This is why a regular expression which includes many characters
        is preferred over using anything for identifiers. *)
 
-    | '?', uid -> UID_META(Escape.unescape (tail 1 buf))
-    | '$', uid -> UID_PAT(Escape.unescape (tail 1 buf))
+    | '?', uid -> UID_META(Syntax.Name(Escape.unescape(tail buf)))
+    | '?', integer ->
+        UID_META(Syntax.Numb(int_of_string(Escape.unescape(tail buf))))
+    | '$', uid -> UID_PAT(Escape.unescape(tail buf))
 
-    | '@', uid -> ID_EXPL([Escape.unescape(tail 1 buf)])
-    | '@', qid ->
-        ID_EXPL(List.map Escape.unescape (Path.of_string (tail 1 buf)))
+    | '@', uid -> ID_EXPL([Escape.unescape(tail buf)])
+    | '@', qid -> ID_EXPL(List.map Escape.unescape (Path.of_string(tail buf)))
 
-    | uid -> UID(Escape.unescape (Utf8.lexeme buf))
-    | qid -> QID(List.map Escape.unescape (Path.of_string (Utf8.lexeme buf)))
+    | uid -> UID(Escape.unescape(Utf8.lexeme buf))
+    | qid -> QID(List.map Escape.unescape (Path.of_string(Utf8.lexeme buf)))
 
     (* invalid token *)
 

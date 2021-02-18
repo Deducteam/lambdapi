@@ -9,6 +9,10 @@ open Pos
 (** Representation of a (located) identifier. *)
 type p_ident = strloc
 
+(** Identifier of a metavariable. *)
+type meta_ident = Name of string | Numb of int
+type p_meta_ident = meta_ident loc
+
 (** Representation of a module name. *)
 type p_path = Path.t loc
 
@@ -32,7 +36,8 @@ and p_term_aux =
   | P_Iden of p_qident * bool (** Identifier. The boolean indicates whether
                                  the identifier is prefixed by "@". *)
   | P_Wild (** Underscore. *)
-  | P_Meta of p_ident * p_term array option (** Meta-variable application. *)
+  | P_Meta of p_meta_ident * p_term array option
+    (** Meta-variable application. *)
   | P_Patt of p_ident option * p_term array option (** Pattern. *)
   | P_Appl of p_term * p_term (** Application. *)
   | P_Arro of p_term * p_term (** Arrow. *)
@@ -66,12 +71,18 @@ type p_inductive = p_inductive_aux loc
 
 (** Module to create p_term's with no positions. *)
 module P  = struct
-  let iden : string -> p_term = fun s ->
-    Pos.none (P_Iden(Pos.none ([], s), true))
+  (** [qiden p s] builds "@p.s" with no positions. *)
+  let qiden : Path.t -> string -> p_term = fun p s ->
+    Pos.none (P_Iden(Pos.none (p, s), true))
 
+  (** [iden s] builds "@s" with no positions. *)
+  let iden : string -> p_term = qiden []
+
+  (** [patt s ts] builds "$s[ts]" with no positions. *)
   let patt : string -> p_term array option -> p_term = fun s ts ->
     Pos.none (P_Patt (Some (Pos.none s), ts))
 
+  (** [patt0 s] builds "$s" with no positions. *)
   let patt0 : string -> p_term = fun s -> patt s None
 
   let appl : p_term -> p_term -> p_term = fun t1 t2 ->
@@ -289,6 +300,8 @@ type ast = p_command Stream.t
 
 let eq_p_ident : p_ident eq = fun i1 i2 -> i1.elt = i2.elt
 
+let eq_p_meta_ident : p_meta_ident eq = fun i1 i2 -> i1.elt = i2.elt
+
 let eq_p_qident : p_qident eq = fun q1 q2 -> q1.elt = q2.elt
 
 let eq_p_path : p_path eq = fun m1 m2 -> m1.elt = m2.elt
@@ -305,7 +318,7 @@ let rec eq_p_term : p_term eq = fun {elt=t1;_} {elt=t2;_} ->
   | P_Wild, P_Wild -> true
   | P_Iden(q1,b1), P_Iden(q2,b2) -> eq_p_qident q1 q2 && b1 = b2
   | P_Meta(i1,ts1), P_Meta(i2,ts2) ->
-      eq_p_ident i1 i2 && Option.equal (Array.equal eq_p_term) ts1 ts2
+      eq_p_meta_ident i1 i2 && Option.equal (Array.equal eq_p_term) ts1 ts2
   | P_Patt(io1,ts1), P_Patt(io2,ts2) ->
       Option.equal eq_p_ident io1 io2
       && Option.equal (Array.equal eq_p_term) ts1 ts2

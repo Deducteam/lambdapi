@@ -265,20 +265,20 @@ type constr = ctxt * term * term
     value is physically equal to [t] if no unfolding was performed. *)
 let rec unfold : term -> term = fun t ->
   match t with
-  | Meta(m, ar)          ->
+  | Meta(m, ts) ->
       begin
         match !(m.meta_value) with
         | None    -> t
-        | Some(b) -> unfold (Bindlib.msubst b ar)
+        | Some(b) -> unfold (Bindlib.msubst b ts)
       end
-  | TEnv(TE_Some(b), ar) -> unfold (Bindlib.msubst b ar)
-  | TRef(r)              ->
+  | TEnv(TE_Some(b), ts) -> unfold (Bindlib.msubst b ts)
+  | TRef(r) ->
       begin
         match !r with
         | None    -> t
         | Some(v) -> unfold v
       end
-  | _                    -> t
+  | _ -> t
 
 (** {b NOTE} [unfold] could be defined as [Ctxt.unfold []], but since [unfold]
     is critical regarding performance, it is kept as simple as possible. *)
@@ -326,28 +326,25 @@ module Meta : sig
   val name : t -> string
   (** [name m] returns a string representation of [m]. *)
 
-  val reset_key_counter : unit -> unit
+  val reset_meta_counter : unit -> unit
   (** [reset_counter ()] resets the counter used to produce meta keys. *)
 end = struct
   type t = meta
   let compare m1 m2 = m1.meta_key - m2.meta_key
-  let key_counter : int Stdlib.ref = Stdlib.ref (-1)
-  let reset_key_counter () = Stdlib.(key_counter := -1)
+  let meta_counter : int Stdlib.ref = Stdlib.ref (-1)
+  let reset_meta_counter () = Stdlib.(meta_counter := -1)
 
   let fresh : ?name:string -> term -> int -> t = fun ?name a n ->
-      { meta_key =  Stdlib.(incr key_counter; !key_counter) ; meta_name = name
-      ; meta_type = ref a ; meta_arity = n ; meta_value = ref None }
+      { meta_key = Stdlib.(incr meta_counter; !meta_counter); meta_name = name
+      ; meta_type = ref a; meta_arity = n; meta_value = ref None }
 
   let set : t -> (term, term) Bindlib.mbinder -> unit = fun m v ->
     m.meta_type := Kind; (* to save memory *) m.meta_value := Some(v)
 
   let name : t -> string = fun m ->
-    let name =
-      match m.meta_name with
-      | Some(n) -> n
-      | None    -> string_of_int m.meta_key
-    in
-    "?" ^ name
+    match m.meta_name with
+    | Some(n) -> n
+    | None    -> string_of_int m.meta_key
 
   let fresh_box : ?name:string -> term Bindlib.box -> int -> t Bindlib.box =
     fun ?name a n ->
