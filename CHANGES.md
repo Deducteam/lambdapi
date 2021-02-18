@@ -2,6 +2,14 @@
 
 #### Improve handling of ghost symbols and metavariable identifier (2021-02-18)
 
+- Ghost paths and unification rule symbols managed in LpLexer now
+  (no hard-coded strings anymore except for their definition)
+- Allow users to type system-generated metavariable identifiers (integers)
+- Fix printing of metavariable identifiers
+- `key_counter` renamed into `meta_counter`
+- `Meta.name` does not return a `?`-prefixed string anymore
+- code factorization et reorganization in `query.ml`
+
 #### Improve navigation in Emacs/VSCode (2021-02-18)
 
 - Electric mode for Emacs
