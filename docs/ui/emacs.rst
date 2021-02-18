@@ -7,13 +7,30 @@ Emacs
 Lambdapi source code can be edited with the `emacs`_ editor with the major
 mode ``lambdapi-mode``. It requires Emacs 26.1 or higher and provides:
 
-* Syntax highlighting for Lambdapi (``*.lp`` files) and Dedukti2 (``*.dk``
-  files)
+* Syntax highlighting for Lambdapi (``*.lp`` files) and Dedukti (``*.dk`` files)
 * Auto indentation for Lambdapi
 * Easier unicode input
 * Completion for Lambdapi
 * Typing of symbol at point (in minibuffer)
 * Type checking declarations
+
+List of short-cuts
+------------------
+
+* ``C-c C-c``: jump to cursor position
+* ``C-c C-n`` or button "Next": next tactic or command
+* ``C-c C-p`` or button "Prev": previous tactic or command
+* ``C-c C-f``: next proof
+* ``C-c C-b``: previous proof
+* ``C-c C-e``: toggle electric mode
+* ``M-;``    : (un)comment region
+* ``C-x RET C-\``: enter unicode characters in minibuffer using LaTeX
+* ``M-x customize-group lambdapi``: customize window layout
+* ``C-c C-r``: refresh window layout
+* Click on a symbol to discover its type in the bottom line
+
+As always with emacs, if you were to be dissatisfied with these
+keybindings, you can change them easily!
 
 Installation
 ------------
@@ -99,8 +116,9 @@ Usage
 Commenting regions
 ^^^^^^^^^^^^^^^^^^
 
-Lambdapi handles only single-line comments with ``//``. To comment a
-region in Emacs, select it and use ``M-;``.
+Lambdapi handles single-line and multi-line comments with ``//`` and 
+``/* ... */`` respectively. To comment a region in Emacs, select it and use
+``M-;``.
 
 Entering unicode
 ^^^^^^^^^^^^^^^^
@@ -156,45 +174,38 @@ LSP server
 Navigating goals
 ''''''''''''''''
 
-On lambdapi-mode startup, a window showing the goals at the current line
-is open.
+On lambdapi-mode startup, the window is split into three buffers:
 
-You can toggle the interactive mode with ``C-c C-i``. If you were to do
-so, you still can navigate the proofs with ``C-c C-p`` and ``C-c C-n``,
-jump between proofs with ``C-c C-b`` and ``C-c C-f``, and show the goals
-at the current line with ``C-c C-c``. As always with emacs, if you were
-to be dissatisfied with these keybindings, you can change them easily!
+* the top buffer contains the Lambdapi file,
+* the middle ``*Goals*`` buffer is where goals are displayed,
+* the bottom ``*lp-logs*`` buffer is where Lambdapi messages are displayed.
 
-Clicking on the ``i``-th goal of the ``*Goals*`` buffer puts the focus on it
-by inserting a ``focus i`` tactic in the proof script.
+It is possible to print the goals to solve at some point in the file by
+using the following sort-cuts or the navigation buttons "Prev" and "Next":
 
-CPU usage and deactivation
-''''''''''''''''''''''''''
+* ``C-c C-c``: jump to cursor position
+* ``C-c C-n`` or button "Next": next tactic or command
+* ``C-c C-p`` or button "Prev": previous tactic or command
+* ``C-c C-f``: next proof
+* ``C-c C-b``: previous proof
 
-If for any reason the LSP server consumes too much power (e.g. if a
-non-terminating rewrite system is edited), it can be disabled with
-``M-x eglot-shutdown``.
+The part of the file up to the current goal is displayed with a green
+background. In case of error, the background gets red. If an edition
+occurs in the green zone, the green zone is automatically shrinked and
+the goals buffer updated.
 
-Pseudo interactive proof mode
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+It is possible to make the green zone expand automatically each time a
+new command is typed by toggling the electric mode with ``C-c C-e``.
 
-One can use `quickrun`_ to call lambdapi while editing a buffer. It can be
-configured for lambdapi with
+Clicking on the ``i``-th goal of the ``*Goals*`` buffer puts the focus
+on it by inserting a ``focus i`` tactic in the proof script.
 
-.. code:: emacs-lisp
+Electric Terminator mode
+''''''''''''''''''''''''
 
-   (quickrun-add-command "lambdapi"
-     '((:command . "lambdapi check")
-       (:exec    . ("%c %s")))
-     :mode 'lambdapi-mode)
-   (add-hook 'lambdapi-mode-hook
-     (lambda () (define-key lambdapi-mode-map (kbd "C-c r") #'quickrun)))
-
-to run lambdapi on the edited buffer with ``C-c r``. It can be used to
-display goals while doing a proof. To display the result of ``compute``,
-``type``, and simlar commmand as well, write ``"%c --verbose 1 %s"``
-instead of ``"%c %s"``.
-
+You can toggle electric terminators either from the toolbar or
+using ``C-c C-e``. This will evaluate the region till the
+cursor whenever you type the ``;`` terminator or ``begin``.
 
 Customize window layout
 '''''''''''''''''''''''
@@ -203,7 +214,12 @@ The window layout can be customized in the LambdaPi customization group
 (Do ``M-x customize-group lambdapi``).
 The layout can be refreshed with ``C-c C-r``.
 
+CPU usage and deactivation
+''''''''''''''''''''''''''
 
+If for any reason the LSP server consumes too much power (e.g. if a
+non-terminating rewrite system is edited), it can be disabled with
+``M-x eglot-shutdown``.
 
 Other relevant packages
 -----------------------

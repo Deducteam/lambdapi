@@ -71,7 +71,7 @@
 
     "misc": {
       "match": "\\b(assert|assernot|compute|print|proofterm|set|type)\\b",
-      "name:": "keyword.control.query.lp"
+      "name": "keyword.control.query.lp"
     },
 
     "keywords": {
