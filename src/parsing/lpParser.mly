@@ -104,7 +104,7 @@
 // identifiers
 
 %token <string> UID
-%token <string> UID_META
+%token <Syntax.meta_ident> UID_META
 %token <string> UID_PAT
 %token <Path.t> QID
 %token <Path.t> ID_EXPL

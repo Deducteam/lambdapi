@@ -95,10 +95,15 @@ let are_quant_args : sym -> term list -> bool = fun s args ->
   | ([_;b], ([]|[true])) -> is_abst b
   | (_    , _          ) -> false
 
+let pp_meta_name : meta pp = fun ppf m ->
+  match m.meta_name with
+  | Some s -> pp_uid ppf s
+  | None -> out ppf "%d" m.meta_key
+
 let rec pp_meta : meta pp = fun ppf m ->
   if !print_meta_type then
-    out ppf "(?%a:%a)" pp_uid (Meta.name m) pp_term !(m.meta_type)
-  else out ppf "?%a" pp_uid (Meta.name m)
+    out ppf "(?%a:%a)" pp_meta_name m pp_term !(m.meta_type)
+  else out ppf "?%a" pp_meta_name m
 
 and pp_term : term pp = fun ppf t ->
   let rec atom ppf t = pp `Atom ppf t
