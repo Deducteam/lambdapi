@@ -25,8 +25,8 @@ type sig_state =
   ; in_scope  : (sym * Pos.popt) StrMap.t (** Symbols in scope.  *)
   ; alias_path: Path.t StrMap.t           (** Alias to path map. *)
   ; path_alias: string Path.Map.t         (** Path to alias map. *)
-  ; builtins  : sym StrMap.t              (** Builtin symbols.   *)
-  ; notations : notation SymMap.t (** Notations of external symbols. *) }
+  ; builtins  : sym StrMap.t              (** Builtins. *)
+  ; notations : notation SymMap.t         (** Notations. *) }
 
 type t = sig_state
 

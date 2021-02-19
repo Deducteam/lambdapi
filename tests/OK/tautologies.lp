@@ -1,11 +1,13 @@
 require open tests.OK.logic;
 require open tests.OK.bool;
 
-// [Π a, bool_and a a = a]
-opaque symbol and_idempotent : Π a, P (eq bool (bool_and a a) a)
+rule T bool ↪ B;
+set unif_rule T $x ≡ B ↪ [ $x ≡ bool ]; //FIXME should be infered automatically
+
+opaque symbol and_idempotent (a:B) : P (bool_and a a = a)
 ≔ begin
   assume a;
-  refine bool_ind (λ a, eq bool (bool_and a a) a) ?CT[a] ?CF[a] a;
+  refine bool_ind (λ a, bool_and a a = a) ?CT[a] ?CF[a] a;
   reflexivity;
   reflexivity;
 end;
@@ -14,7 +16,7 @@ end;
 
 rule bool_and $a $a ↪ $a;
 
-opaque symbol and_idempotent_rw : Π a, P (eq bool (bool_and a a) a)
+opaque symbol and_idempotent_rw a : P (bool_and a a = a)
 ≔ begin
   assume a;
   reflexivity;
