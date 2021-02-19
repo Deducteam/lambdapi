@@ -31,7 +31,7 @@
 %token APPLY
 %token AS
 %token ASSERT
-%token ASSERT_NOT
+%token ASSERTNOT
 %token ASSUME
 %token BEGIN
 %token BUILTIN
@@ -230,7 +230,7 @@ config:
 
 assert_kw:
   | ASSERT { false }
-  | ASSERT_NOT { true }
+  | ASSERTNOT { true }
 
 query:
   | k=assert_kw ps=params* TURNSTILE t=term COLON a=term

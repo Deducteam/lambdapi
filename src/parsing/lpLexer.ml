@@ -16,7 +16,7 @@ type token =
   | APPLY
   | AS
   | ASSERT
-  | ASSERT_NOT
+  | ASSERTNOT
   | ASSUME
   | BEGIN
   | BUILTIN
@@ -297,7 +297,7 @@ end = struct
     | "apply" -> APPLY
     | "as" -> AS
     | "assert" -> ASSERT
-    | "assertnot" -> ASSERT_NOT
+    | "assertnot" -> ASSERTNOT
     | "assume" -> ASSUME
     | "begin" -> BEGIN
     | "builtin" -> BUILTIN
