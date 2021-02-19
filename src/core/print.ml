@@ -137,8 +137,10 @@ and pp_term : term pp = fun ppf t ->
                 | l::r::args ->
                     if p <> `Func then out ppf "(";
                     (* Can be improved by looking at symbol priority. *)
-                    out ppf "(%a %a %a)" appl l pp_sym s appl r;
-                    List.iter (out ppf " %a" atom) args;
+                    if args = []
+                    then out ppf "%a %a %a" appl l pp_sym s appl r
+                    else out ppf "(%a %a %a)" appl l pp_sym s appl r;
+                    List.iter (out ppf " %a" appl) args;
                     if p <> `Func then out ppf ")"
                 | _ -> pp_appl h args
               end
