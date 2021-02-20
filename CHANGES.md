@@ -1,5 +1,13 @@
 ### Unreleased
 
+#### Fix notation declarations (2021-02-19)
+
+- `set infix ... "<string>" := <qid>` is replaced by `set notation <qid> infix ...`
+- `set prefix ... "<string>" := <qid>` is replaced by `set notation <qid> prefix ...`
+- `set quantifier <qid>` is replaced by `set notation <qid> quantifier`
+- the flag `print_meta_type` is renamed into `print_meta_types`
+- `LibTerm.expl_args` is renamed into `remove_impl_args`
+
 #### Improve handling of ghost symbols and metavariable identifier (2021-02-18)
 
 - Ghost paths and unification rule symbols managed in LpLexer now

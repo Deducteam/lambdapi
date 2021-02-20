@@ -14,6 +14,7 @@ open Debug
 open Term
 open Sig_state
 open Format
+open Parsing
 
 let out = fprintf
 
@@ -25,7 +26,7 @@ let log_prnt = log_prnt.logger
 let sig_state : sig_state ref = ref Sig_state.dummy
 
 (** [notation_of s] returns the notation of symbol [s] or [None]. *)
-let notation_of : sym -> Sign.notation option = fun s ->
+let notation_of : sym -> Syntax.notation option = fun s ->
   SymMap.find_opt s !sig_state.notations
 
 (** Flag for printing the domains of λ-abstractions. *)
@@ -36,7 +37,8 @@ let print_implicits : bool ref = Console.register_flag "print_implicits" false
 
 (** Flag for printing the type of uninstanciated metavariables. Remark: this
    does not generate parsable terms; use for debug only. *)
-let print_meta_type : bool ref = Console.register_flag "print_meta_type" false
+let print_meta_types : bool ref =
+  Console.register_flag "print_meta_types" false
 
 (** Flag for printing contexts in unification problems. *)
 let print_contexts : bool ref = Console.register_flag "print_contexts" false
@@ -47,20 +49,20 @@ let pp_assoc : Pratter.associativity pp = fun ppf assoc ->
   | Left -> out ppf " left associative"
   | Right -> out ppf " right associative"
 
-let pp_notation : Sign.notation pp = fun ppf notation ->
+let pp_notation : Syntax.notation pp = fun ppf notation ->
   match notation with
-  | Prefix(n,p,_)  -> out ppf "prefix \"%s\" with priority %f" n p
-  | Infix(n,a,p,_) ->
-      out ppf "infix \"%s\"%a with priority %f" n pp_assoc a p
-  | Zero           -> out ppf "builtin \"0\""
-  | Succ           -> out ppf "builtin \"+1\""
-  | Quant          -> out ppf "quantifier"
+  | Prefix(p) -> out ppf "prefix %f" p
+  | Infix(a,p) -> out ppf "infix%a %f" pp_assoc a p
+  | Zero -> out ppf "builtin \"0\""
+  | Succ -> out ppf "builtin \"+1\""
+  | Quant -> out ppf "quantifier"
 
-let pp_uid = Parsing.LpLexer.pp_uid
+let pp_uid = LpLexer.pp_uid
 
 let pp_path : Path.t pp = List.pp pp_uid "."
 
 let pp_sym : sym pp = fun ppf s ->
+  if !print_implicits && s.sym_impl <> [] then out ppf "@";
   if StrMap.mem s.sym_name !sig_state.in_scope then pp_uid ppf s.sym_name
   else
     match Path.Map.find_opt s.sym_path (!sig_state).path_alias with
@@ -88,12 +90,12 @@ let nat_of_term : term -> int = fun t ->
     | _ -> raise Not_a_nat
   in nat 0 t
 
-(** [are_quant_args s args] returns [true] iff the first element of
-    [args] which is non-implicit for [s] is an abstraction. *)
-let are_quant_args : sym -> term list -> bool = fun s args ->
-  match (args, s.sym_impl) with
-  | ([_;b], ([]|[true])) -> is_abst b
-  | (_    , _          ) -> false
+(** [are_quant_args args] returns [true] iff [args] has only one argument
+   that is an abstraction. *)
+let are_quant_args : term list -> bool = fun args ->
+  match args with
+  | [b] -> is_abst b
+  | _ -> false
 
 let pp_meta_name : meta pp = fun ppf m ->
   match m.meta_name with
@@ -101,7 +103,7 @@ let pp_meta_name : meta pp = fun ppf m ->
   | None -> out ppf "%d" m.meta_key
 
 let rec pp_meta : meta pp = fun ppf m ->
-  if !print_meta_type then
+  if !print_meta_types then
     out ppf "(?%a:%a)" pp_meta_name m pp_term !(m.meta_type)
   else out ppf "?%a" pp_meta_name m
 
@@ -109,7 +111,7 @@ and pp_term : term pp = fun ppf t ->
   let rec atom ppf t = pp `Atom ppf t
   and appl ppf t = pp `Appl ppf t
   and func ppf t = pp `Func ppf t
-  and pp (p : Parsing.Pretty.priority) ppf t =
+  and pp (p : Pretty.priority) ppf t =
     let (h, args) = LibTerm.get_args t in
     let pp_appl h args =
       match args with
@@ -121,53 +123,45 @@ and pp_term : term pp = fun ppf t ->
           if p = `Atom then out ppf ")"
     in
     match h with
-    | Symb(s) ->
+    | Symb(s) when not !print_implicits ->
         begin
-          let eargs =
-            if !print_implicits then args else LibTerm.expl_args s args
-          in
+          let args = LibTerm.remove_impl_args s args in
           match notation_of s with
-          | Some Quant when are_quant_args s args ->
+          | Some Quant when are_quant_args args ->
               if p <> `Func then out ppf "(";
               pp_quantifier s args;
               if p <> `Func then out ppf ")"
-          | Some (Infix(op,_,_,_))
-            when not !print_implicits || s.sym_impl <> [] ->
+          | Some (Infix _) ->
               begin
-                match eargs with
-                | l::r::[] ->
+                match args with
+                | l::r::args ->
                     if p <> `Func then out ppf "(";
                     (* Can be improved by looking at symbol priority. *)
-                    out ppf "%a %s %a" appl l op appl r;
+                    if args = []
+                    then out ppf "%a %a %a" appl l pp_sym s appl r
+                    else out ppf "(%a %a %a)" appl l pp_sym s appl r;
+                    List.iter (out ppf " %a" appl) args;
                     if p <> `Func then out ppf ")"
-                | l::r::eargs ->
-                    if p <> `Func then out ppf "(";
-                    (* Can be improved by looking at symbol priority. *)
-                    out ppf "(%a %s %a)" appl l op appl r;
-                    List.iter (out ppf " %a" atom) eargs;
-                    if p <> `Func then out ppf ")"
-                | _ -> pp_appl h eargs
+                | _ -> pp_appl h args
               end
           | Some Zero -> out ppf "0"
           | Some Succ ->
-              begin
-                try out ppf "%i" (nat_of_term t)
-                with Not_a_nat -> pp_appl h args
-              end
-          | _ -> pp_appl h eargs
+              (try out ppf "%i" (nat_of_term t)
+               with Not_a_nat -> pp_appl h args)
+          | _ -> pp_appl h args
         end
     | _ -> pp_appl h args
 
   and pp_quantifier s args =
     (* assume [are_quant_args s args = true] *)
     match args with
-    | [_;b] ->
+    | [b] ->
         begin
           match unfold b with
           | Abst(a,b) ->
               let (x,p) = Bindlib.unbind b in
               out ppf "`%a %a" pp_sym s pp_var x;
-              if !print_implicits then out ppf ": %a" func a;
+              if !print_domains then out ppf " : %a" func a;
               out ppf ", %a" func p
           | _ -> assert false
         end

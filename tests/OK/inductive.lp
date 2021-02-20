@@ -108,20 +108,20 @@ rule N ↪ τ nat;
 set builtin "0"  ≔ z;
 set builtin "+1" ≔ succ;
 
-symbol plus : N → N → N;
-set infix left 6 "+" ≔ plus;
+symbol + : N → N → N;
+set notation + infix left 6;
 rule       0 + $y ↪ $y
 with succ $x + $y ↪ succ ($x + $y);
 
-symbol mult : N → N → N;
-set infix left 7 "×" ≔ mult;
+symbol × : N → N → N;
+set notation × infix left 7;
 rule       0 × _  ↪ 0
 with succ $x × $y ↪ $y + $x × $y;
 
 assert x y z ⊢ x + y × z ≡ x + (y × z);
 
-symbol le : N → N → Prop;
-set infix left 3 "≤" ≔ le;
+symbol ≤ : N → N → Prop;
+set notation ≤ infix left 3;
 
 assert x y z ⊢ x + y ≤ z ≡ (x + y) ≤ z;
 
@@ -592,13 +592,13 @@ assert p pmty pbin punl y n romy romn
 
 inductive fibo : N → N → TYPE ≔
  | cgen' : Π (n r1 r2 : N),
-    fibo n r1 → fibo (succ n) r2 →  fibo (succ (succ n)) (plus r1 r2)
+    fibo n r1 → fibo (succ n) r2 →  fibo (succ (succ n)) (r1 + r2)
  | cbase1 : fibo z (succ z)
  | cbase2 : fibo (succ z) (succ z);
 
 assert ⊢ fibo : N → N → TYPE;
 assert ⊢ cgen' : Π (n r1 r2 : N),
-    fibo n r1 → fibo (succ n) r2 →  fibo (succ (succ n)) (plus r1 r2);
+    fibo n r1 → fibo (succ n) r2 →  fibo (succ (succ n)) (r1 + r2);
 assert ⊢ cbase1 : fibo z (succ z);
 assert ⊢ cbase2 : fibo (succ z) (succ z);
 
@@ -670,14 +670,14 @@ assert p pempty pcons a x t
 // Equality
 /////////////////////////////
 
-constant symbol eq {a} : τ a → τ a → Prop;
-set infix 1 "=" ≔ eq;
+constant symbol = {a} : τ a → τ a → Prop;
+set notation = infix 1;
 constant symbol eq_refl {a} (x : τ a) : π(x = x);
 constant symbol eq_ind {a} (x y : τ a) : π(x = y) → Π p, π(p y) → π(p x);
 
 // Set builtins for the rewrite tactic
 set builtin "T"     ≔ τ;
-set builtin "eq"    ≔ eq;
+set builtin "eq"    ≔ =;
 set builtin "refl"  ≔ eq_refl;
 set builtin "eqind" ≔ eq_ind;
 

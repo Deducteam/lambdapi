@@ -7,7 +7,7 @@
 open Common
 open Timed
 open Term
-open Parsing.LpLexer
+open Parsing
 
 (** Ghost signature holding the symbols used in unification rules.
     - All signatures depend on it (dependency set in
@@ -16,32 +16,22 @@ open Parsing.LpLexer
     - It is automatically loaded. *)
 let sign : Sign.t =
   let dummy = Sign.dummy () in
-  let s = {dummy with Sign.sign_path = unif_rule_path} in
-  Sign.loaded := Path.Map.add unif_rule_path s !(Sign.loaded);
-  s
+  let sign = {dummy with Sign.sign_path = LpLexer.unif_rule_path} in
+  Sign.loaded := Path.Map.add LpLexer.unif_rule_path sign !(Sign.loaded);
+  sign
 
-(** Symbol representing an atomic unification problem. The term [equiv t
-    u] represents [t ≡ u]. The left-hand side of a unification rule is
-    made of only one equation. *)
+(** Symbol of name LpLexer.equiv, with infix notation. *)
 let equiv : sym =
-  let sym =
-    Sign.add_symbol sign Public Defin Eager false (Pos.none equiv) Kind [] in
-  let qid = Pos.none (unif_rule_path, equiv) in
-  let binop = ("≡", Pratter.Neither, 1.1, qid) in
-  Sign.add_binop sign sym binop;
-  sym
+  let id = Pos.none LpLexer.equiv in
+  let s = Sign.add_symbol sign Public Defin Eager false id Kind [] in
+  Sign.add_notation sign s (Infix(Pratter.Neither, 1.1)); s
 
-(** Cons-like symbol for equivalences. The right-hand side of a unification
-    rule is made of a list of the form
-    [cons (equiv t u) (cons (equiv v w) ...)] pretty-printed
-    [t ≡ u; v ≡ w; ...]. *)
+(** Symbol of name LpLexer.cons, with infix right notation with priority <
+   LpLexer.equiv. *)
 let cons : sym =
-  let sym =
-    Sign.add_symbol sign Public Const Eager true (Pos.none cons) Kind [] in
-  let qid = Pos.none (unif_rule_path, cons) in
-  let binop = (";", Pratter.Right, 1.0, qid) in
-  Sign.add_binop sign sym binop;
-  sym
+  let id = Pos.none LpLexer.cons in
+  let s = Sign.add_symbol sign Public Const Eager true id Kind [] in
+  Sign.add_notation sign s (Infix(Pratter.Right, 1.0)); s
 
 (** [unpack eqs] transforms a term of the form
     [cons (equiv t u) (cons (equiv v w) ...)]

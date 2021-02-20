@@ -16,7 +16,7 @@ type token =
   | APPLY
   | AS
   | ASSERT
-  | ASSERT_NOT
+  | ASSERTNOT
   | ASSUME
   | BEGIN
   | BUILTIN
@@ -33,6 +33,7 @@ type token =
   | INFIX
   | INJECTIVE
   | LET
+  | NOTATION
   | OPAQUE
   | OPEN
   | PREFIX
@@ -296,7 +297,7 @@ end = struct
     | "apply" -> APPLY
     | "as" -> AS
     | "assert" -> ASSERT
-    | "assertnot" -> ASSERT_NOT
+    | "assertnot" -> ASSERTNOT
     | "assume" -> ASSUME
     | "begin" -> BEGIN
     | "builtin" -> BUILTIN
@@ -314,6 +315,7 @@ end = struct
     | "injective" -> INJECTIVE
     | "left" -> ASSOC(Pratter.Left)
     | "let" -> LET
+    | "notation" -> NOTATION
     | "off" -> SWITCH(false)
     | "on" -> SWITCH(true)
     | "opaque" -> OPAQUE

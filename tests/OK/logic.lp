@@ -47,10 +47,11 @@ rule nat_ind $p $u $v (s $n) ↪ $v $n (nat_ind $p $u $v $n);
 
 // Leibniz equality.
 
-constant symbol eq : Π a, T a → T a → Prop;
+constant symbol = {a} : T a → T a → Prop;
+set notation = infix 1;
 
-constant symbol refl  : Π a x, P (eq a x x);
-constant symbol eqind : Π a x y, P (eq a x y) → Π (p:T a → Prop), P (p y) → P (p x);
+constant symbol refl  : Π a (x:T a), P (x = x);
+constant symbol eqind : Π a x y, P (x = y) → Π p:T a → Prop, P (p y) → P (p x);
 
 // Definition of connectors
 constant symbol bot        : Prop;
@@ -102,7 +103,7 @@ end;
 
 set builtin "P"     ≔ P;
 set builtin "T"     ≔ T;
-set builtin "eq"    ≔ eq;
+set builtin "eq"    ≔ =;
 set builtin "eqind" ≔ eqind;
 set builtin "refl"  ≔ refl;
 

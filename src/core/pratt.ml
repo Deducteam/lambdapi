@@ -29,7 +29,7 @@ end = struct
     (* Get properties of term [t] if its an operator. *)
     let get (tbl, env) t =
       match t.elt with
-      | P_Iden(id, _) -> (
+      | P_Iden(id, _) ->
           let sym =
             let {elt=(mp, s); _} = id in
             try (* Look if [id] is in [env]... *)
@@ -40,11 +40,11 @@ end = struct
           in
           let f sym =
             match Term.SymMap.find_opt sym tbl.notations with
-            | Some(Infix(_, assoc, prio, _)) -> Some(Pratter.Bin assoc, prio)
-            | Some(Prefix(_, prio, _)) -> Some(Pratter.Una, prio)
+            | Some(Infix(assoc, prio)) -> Some(Pratter.Bin assoc, prio)
+            | Some(Prefix(prio)) -> Some(Pratter.Una, prio)
             | _ -> None
           in
-          Option.bind f sym )
+          Option.bind f sym
       | _ -> None
 
     let make_appl t u = make (Pos.cat t.pos u.pos) (P_Appl(t, u))
