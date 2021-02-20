@@ -255,48 +255,10 @@ Adding sets of rules allows to maintain confluence.
 
 Examples of patterns are available in ``tests/OK/patterns.lp``.
 
-``set prefix|infix|quantifier|builtin|unif_rule``
-----------------------------------------------------------
+``set builtin``
+---------------
 
-The ``set`` command is used to control the behaviour of Lambdapi and
-extension points in its syntax.
-
-**prefix symbols** The following code defines a prefix symbol for
-negation.
-
-::
-
-   set prefix 5 "¬" ≔ neg;
-
-**infix symbols** The following code defines infix symbols for addition
-and multiplication. Both are associative to the left, and they have
-priority levels ``6`` and ``7`` respectively.
-
-::
-
-   set infix left 6 "+" ≔ add;
-   set infix left 7 "×" ≔ mul;
-
-The modifier ``infix``, ``infix right`` and ``infix left`` can be used
-to specify whether the defined symbol is non-associative, associative to
-the right, or associative to the left. The priority levels are floating
-point numbers, hence a priority can (almost) always be inserted between
-two different levels.
-
-**quantifier symbols** Any symbol can be input as a quantifier (as done usually
-with symbols such as ``∀``, ``∃`` or ``λ``), provided that it
-is prefixed with a backquote `` \` ``. However, such terms will be printed as
-quantifiers only if they are declared so using the command ``set quantifier``:
-
-::
-
-   set quantifier ∀; // : Π {a}, (T a → Prop) → Prop
-   compute ∀ {a'} (λx:T a,p); // prints `∀x:T a,p
-   compute ∀ (λx:T a, p); // prints `∀x,p
-   type `∀ x, p; // quantifiers can be written as such
-   type `f x, p; // works as well if f is defined
-
-**builtins** The command ``set builtin`` allows to map a “builtin“
+The command ``set builtin`` allows to map a “builtin“
 string to a user-defined symbol identifier. Those mappings are
 necessary for other commands or tactics. For instance, to use decimal
 numbers, one needs to map the builtins “0“ and “+1“ to some symbol
@@ -304,16 +266,60 @@ identifiers for zero and the successor function (see hereafter); to
 use tactics on equality, one needs to define some specific builtins;
 etc.
 
+``set notation``
+----------------
+
+The ``set notation`` command is used to specify a notation for a symbol.
+
+**infix** The following code defines infix symbols for addition
+and multiplication. Both are associative to the left, and they have
+priority levels ``6`` and ``7`` respectively.
+
+::
+
+   set notation + infix left 6;
+   set notation × infix left 7;
+
+The modifier ``infix``, ``infix right`` and ``infix left`` can be used
+to specify whether the defined symbol is non-associative, associative to
+the right, or associative to the left. The priority levels are floating
+point numbers, hence a priority can (almost) always be inserted between
+two different levels.
+
+**prefix** The following code defines a prefix symbol for
+negation with some priority level.
+
+::
+
+   set notation ¬ prefix 5;
+
+**quantifier** Any symbol can be input as a quantifier (as done usually
+with symbols such as ``∀``, ``∃`` or ``λ``), provided that it
+is prefixed with a backquote `` \` ``. However, such terms will be printed as
+quantifiers only if they are declared so using the command ``set quantifier``:
+
+::
+
+   symbol ∀ {a} : (T a → Prop) → Prop;
+   set notation ∀ quantifier;
+   compute λ p, ∀ (λ x:T a, p); // prints `∀ x, p
+   type λ p, `∀ x, p; // quantifiers can be written as such
+   type λ p, `f x, p; // works as well if f is any symbol
+
 **notation for natural numbers** It is possible to use the standard
-decimal notation for natural numbers by specifying the symbols
-representing 0 and the successor function as follows:
+decimal notation for natural numbers by defining the builtins ``"0"``
+and ``"+1"`` as follows:
 
 ::
 
    set builtin "0"  ≔ zero; // : N
    set builtin "+1" ≔ succ; // : N → N
+   type 42;
 
-**unification rules** The unification engine can be guided using
+``set unif_rule``
+-----------------
+
+The unification engine can be guided using
 *unification rules*. Given a unification problem ``t ≡ u``, if the
 engine cannot find a solution, it will try to match the pattern
 ``t ≡ u`` against the defined rules (modulo commutativity of ≡)
@@ -325,9 +331,9 @@ Examples:
 
 ::
 
-   set unif_rule Bool ≡ T $t ↪ begin $t ≡ bool end;
-   set unif_rule $x + $y ≡ 0 ↪ begin $x ≡ 0; $y ≡ 0 end;
-   set unif_rule $a → $b ≡ T $c ↪ begin $a ≡ T $a'; $b ≡ T $b'; $c ≡ arrow $a' $b' end;
+   set unif_rule Bool ≡ T $t ↪ [ $t ≡ bool ];
+   set unif_rule $x + $y ≡ 0 ↪ [ $x ≡ 0; $y ≡ 0 ];
+   set unif_rule $a → $b ≡ T $c ↪ [ $a ≡ T $a'; $b ≡ T $b'; $c ≡ arrow $a' $b' ];
 
 Thanks to the first unification rule, a problem ``T ?x ≡ Bool`` is
 transformed into ``?x ≡ bool``.
