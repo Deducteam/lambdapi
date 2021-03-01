@@ -8,13 +8,13 @@ examples. The first thing to note is that Lambdapi files are formed of a
 list of commands. A command starts with a particular reserved keyword
 and ends with a semi-colon.
 
-One-line comments are introduced by ‘//’:
+One-line comments are introduced by ``//``:
 
 ::
 
    // These words are ignored
 
-And multi-line comments are opened with ‘/*’ and closed with ‘*/’.
+And multi-line comments are opened with ``/*`` and closed with ``*/``.
 
 ::
 
