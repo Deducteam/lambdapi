@@ -7,18 +7,21 @@ commands, simply run ``lambdapi --help`` or ``lambdapi help``. To get
 the documentation of a specific command run ``lambdapi COMMAND --help``.
 It will contain the list of flags that are supported for the command.
 
-The available commands are: - ``help``: display the main help message. -
-``version``: give the current version of Lambdapi. - ``check``: runs the
-main type-checking mode on input source files. - ``init``: creates a new
-Lambdapi package. For more information have a look at the `getting
-started <getting_started.rst>`__ section. - ``install``: installs the
-specified files according to package configuration. - ``uninstall``:
-uninstalls the specified package. - ``parse``: runs the parsing-only
-mode on input source files. - ``beautify``: runs the parser and
-pretty-printer on input source files. - ``lsp``: runs the Lambdapi LSP
-server. - ``decision-tree``: compiles the decision tree of a symbol to a
-Dot graph and prints it to the standard output. Refer to `this
-page <dtrees.rst>`__ for more information.
+The available commands are:
+
+* ``help``: display the main help message.
+* ``version``: give the current version of Lambdapi.
+* ``check``: runs the main type-checking mode on input source files.
+* ``init``: creates a new Lambdapi package. For more information have a look at
+  the :doc:`getting_started` section.
+* ``install``: installs the specified files according to package configuration.
+* ``uninstall``: uninstalls the specified package.
+* ``parse``: runs the parsing-only mode on input source files.
+* ``beautify``: runs the parser and pretty-printer on input source files.
+* ``lsp``: runs the Lambdapi LSP server.
+* ``decision-tree``: compiles the decision tree of a symbol to a Dot graph and
+  prints it to the standard output. Refer to :doc:`dtrees` for more
+  information.
 
 **Note:** the ``parse`` and ``beautify`` commands can trigger the
 compilation of dependencies if the required object files (``.lpo``
