@@ -77,7 +77,7 @@ assert p ptrue pfalse ⊢ ind_B p ptrue pfalse true ≡ ptrue;
 assert p ptrue pfalse ⊢ ind_B p ptrue pfalse false ≡ pfalse;
 
 constant symbol bool : Set;
-rule B ↪ τ bool;
+rule τ bool ↪ B;
 
 ////////////////// False (empty type)
 
@@ -103,7 +103,7 @@ assert p pz psucc ⊢ ind_N p pz psucc z ≡ pz;
 assert p pz psucc n ⊢ ind_N p pz psucc (succ n) ≡ psucc n (ind_N p pz psucc n);
 
 constant symbol nat : Set;
-rule N ↪ τ nat;
+rule τ nat ↪ N;
 
 set builtin "0"  ≔ z;
 set builtin "+1" ≔ succ;
@@ -386,7 +386,7 @@ assert p pnil pcons n l
 ⊢ ind_List p pnil pcons (cons n l) ≡ pcons n l (ind_List p pnil pcons l);
 
 constant symbol list : Set;
-rule List ↪ τ list;
+rule τ list ↪ List;
 
 ///////////////// Pairs of natural numbers
 
@@ -434,7 +434,7 @@ inductive L : TYPE ≔
 assert ⊢ L : Set → TYPE;
 assert ⊢ @nilL : Π a, L a;
 assert ⊢ @consL : Π a, τ a → L a → L a;
-assert ⊢ ind_L : Π a p,
+assert ⊢ ind_L : Π a (p:L a → Prop),
   π(p nilL) → (Π x l, π(p l) → π(p (consL x l))) → Π l, π(p l);
 
 assert a p pnil pcons ⊢ ind_L a p pnil pcons nilL ≡ pnil;
@@ -641,31 +641,6 @@ assert p pnil pcons a n x v
 ⊢ ind_Vec p pnil pcons _ _ (Vcons a n x v)
 ≡ pcons a n x v (ind_Vec p pnil pcons a n v);
 
-////////////////// Type Bush (nested inductive type)
-
-symbol bush : Set →  Set;
-
-inductive Bush : Π(_:Set), TYPE ≔
- | bush_nil : Π a, Bush a
- | bush_cons : Π a, τ a → Bush (bush a) → Bush a;
-
-rule Bush $a ↪ τ (bush $a);
-
-assert ⊢ Bush : Π(_:Set), TYPE;
-assert ⊢ bush_nil : Π a, Bush a;
-assert ⊢ bush_cons : Π a, τ a → Bush (bush a) → Bush a;
-
-assert ⊢ ind_Bush : Π p,
-  (Π a, π(p a (bush_nil a))) →
-  (Π a x l, π(p (bush a) l) → π(p a (bush_cons a x l))) →
-  Π a l, π(p a l);
-
-assert p pempty pcons a ⊢ ind_Bush p pempty pcons a (bush_nil a) ≡ pempty a;
-
-assert p pempty pcons a x t
-⊢ ind_Bush p pempty pcons a (bush_cons a x t)
-≡ pcons a x t (ind_Bush p pempty pcons (bush a) t);
-
 /////////////////////////////
 // Equality
 /////////////////////////////
@@ -685,7 +660,10 @@ set builtin "eqind" ≔ eq_ind;
 // Some proofs
 /////////////////////////////
 
-opaque symbol plus_0_n : Π n, π(0 + n = n) ≔
+set unif_rule τ $x ≡ N ↪ [ $x ≡ nat ];
+//FIXME: should be infered from injectivity of τ
+
+opaque symbol plus_0_n n : π(0 + n = n) ≔
 begin
   assume n;
   reflexivity;

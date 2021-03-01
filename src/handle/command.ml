@@ -229,7 +229,7 @@ let handle : (Path.t -> Sign.t) -> sig_state -> p_command ->
       (* Add inductive types in the signature. *)
       let add_ind_sym (ss, ind_sym_list) {elt=(id,pt,_); _} =
         let (ss, ind_sym) =
-          handle_inductive_symbol ss expo Injec Eager id params pt in
+          handle_inductive_symbol ss expo Const Eager id params pt in
         (ss, ind_sym::ind_sym_list)
       in
       let (ss, ind_sym_list_rev) =
