@@ -165,8 +165,8 @@ end = struct
   let non_user_id = ""
   let ghost_path s = [non_user_id; s]
   let unif_rule_path = ghost_path "unif_rule"
-  let equiv = "equiv"
-  let cons = "cons"
+  let equiv = "≡"
+  let cons = ";"
 
   let uid = [%sedlex.regexp? regid | escid]
   let qid = [%sedlex.regexp? uid, Plus ('.', uid)]

@@ -470,7 +470,7 @@ let handle : (Path.t -> Sign.t) -> sig_state -> p_command ->
             in
             Sign.add_rule ss.signature Unif_rule.equiv urule;
             Tree.update_dtree Unif_rule.equiv;
-            Console.out 3 "(hint) [%a]\n" pp_rule (Unif_rule.equiv, urule);
+            Console.out 3 "(hint) %a\n" pp_unif_rule (Unif_rule.equiv, urule);
             ss
       in
       (ss, None, None)
