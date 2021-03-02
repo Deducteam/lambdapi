@@ -28,12 +28,13 @@ let constraints = Stdlib.ref []
 (** Function adding a constraint. *)
 let conv ctx a b =
   if not (Eval.eq_modulo ctx a b) then
-    let c = (ctx,a,b) in
-    let cs =
-      Lplib.List.insert LibTerm.cmp_constr c Stdlib.(!constraints) in
-    if cs != Stdlib.(!constraints) then
-      (Stdlib.(constraints := cs);
-       if !log_enabled then log_infr (yel "add %a") pp_constr c)
+    begin
+      let c = (ctx,a,b) in
+      let cs = c::Stdlib.(!constraints) in
+      (*Lplib.List.insert_uniq LibTerm.cmp_constr c Stdlib.(!constraints) in*)
+      (*if cs != Stdlib.(!constraints) then*) Stdlib.(constraints := cs);
+      if !log_enabled then log_infr (yel "add %a") pp_constr c
+    end
 
 (** Exception that may be raised by type inference. *)
 exception NotTypable
