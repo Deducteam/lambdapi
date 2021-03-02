@@ -202,7 +202,7 @@ let handle : (Path.t -> Sign.t) -> sig_state -> p_command ->
     sig_state * proof_data option * Query.result =
   fun compile ss ({elt; pos} as cmd) ->
   if !log_enabled then
-    log_hndl (blu "%a\n%a") Pos.pp pos Pretty.command cmd;
+    log_hndl (blu "%f %a\n%a") (Sys.time()) Pos.pp pos Pretty.command cmd;
   let scope expo = Scope.scope_term expo ss Env.empty IntMap.empty in
   match elt with
   | P_query(q) ->
