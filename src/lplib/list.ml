@@ -205,7 +205,7 @@ let _ =
      && insert_uniq Stdlib.compare 7 l = [2;4;6;7]
      && insert_uniq Stdlib.compare 4 l == l)
 
-(** [split_last l] returns [(l',x)] if |l = append l' [x]], and
+(** [split_last l] returns [(l',x)] if [l = append l' [x]], and
 @raise Invalid_argument otherwise. *)
 let split_last : 'a list -> 'a list * 'a = fun l ->
   match rev l with
