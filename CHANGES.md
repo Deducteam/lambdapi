@@ -1,5 +1,15 @@
 ### Unreleased
 
+#### Various bug fixes (2021-03-02)
+
+- allow matching on abstraction/product type annotation (fix #573)
+- Infer: do not check constraint duplication and return them in the order they have been added (fix #579)
+- inductive type symbols are now declared as constants (fix #580)
+- fix parsing and printing of unification rules
+- Extra.files returns only the files that satisfy some user-defined condition
+- tests/ok_ko.ml: test only .dk and .lp files
+- Pretty: checking that identifiers are LP keywords in now optional (useful for debug)
+
 #### Fix notation declarations (2021-02-19)
 
 - `set infix ... "<string>" := <qid>` is replaced by `set notation <qid> infix ...`
