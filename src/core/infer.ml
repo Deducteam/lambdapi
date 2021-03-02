@@ -27,12 +27,11 @@ let constraints = Stdlib.ref []
 
 (** Function adding a constraint. *)
 let conv ctx a b =
-  if not (List.mem_sorted LibTerm.cmp_constr (ctx,a,b)
-            Stdlib.(!constraints)) && not (Eval.eq_modulo ctx a b) then
+  if not (Eval.eq_modulo ctx a b) then
     begin
-      if !log_enabled then log_infr (yel "add %a") pp_constr (ctx,a,b);
-      Stdlib.(constraints :=
-                Lplib.List.insert LibTerm.cmp_constr (ctx,a,b) !constraints)
+      let c = (ctx,a,b) in
+      Stdlib.(constraints := c::!constraints);
+      if !log_enabled then log_infr (yel "add %a") pp_constr c
     end
 
 (** Exception that may be raised by type inference. *)
@@ -175,7 +174,7 @@ let infer_noexn : constr list -> ctxt -> term -> (term * constr list) option =
         let cond oc c = Format.fprintf oc "\n  if %a" pp_constr c in
         log_infr (gre "infer %a : %a%a")
           pp_term t pp_term a (List.pp cond "") cs);
-      Some (a,cs)
+      Some (a, List.rev cs)
     with NotTypable -> None
   in Stdlib.(constraints := []); res
 
@@ -194,7 +193,7 @@ let check_noexn : constr list -> ctxt -> term -> term -> constr list option =
         let cond oc c = Format.fprintf oc "\n  if %a" pp_constr c in
         log_infr (gre "check %a\n: %a%a")
           pp_term t pp_term a (List.pp cond "") cs);
-      Some cs
+      Some (List.rev cs)
     with NotTypable -> None
   in Stdlib.(constraints := []); res
 

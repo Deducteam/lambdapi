@@ -196,11 +196,17 @@ let file_of_path : Path.t -> string = fun mp ->
 (** [src_extension] is the expected extension for source files. *)
 let src_extension : string = ".lp"
 
-(** [obj_extension] is the expected extension for binary (object) files. *)
-let obj_extension : string = ".lpo"
-
 (** [legacy_src_extension] is the extension for legacy source files. *)
 let legacy_src_extension : string = ".dk"
+
+(** [is_valid_src_extension s] returns [true] iff [s] ends with
+   [src_extension] or [legacy_src_extension]. *)
+let is_valid_src_extension : string -> bool = fun s ->
+  Filename.check_suffix s src_extension
+  || Filename.check_suffix s legacy_src_extension
+
+(** [obj_extension] is the expected extension for binary (object) files. *)
+let obj_extension : string = ".lpo"
 
 (** [valids_extensions] is the list of valid file extensions. *)
 let valid_extensions : string list =

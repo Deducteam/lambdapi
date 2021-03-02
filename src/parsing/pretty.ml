@@ -15,8 +15,11 @@ open Format
 
 let out = fprintf
 
+(** check whether identifiers are Lambdapi keywords. *)
+let check_keywords = ref false
+
 let raw_ident : popt -> string pp = fun pos ppf s ->
-  if LpLexer.is_keyword s then
+  if !check_keywords && LpLexer.is_keyword s then
     fatal pos "Identifier [%s] is a Lambdapi keyword." s
   else LpLexer.pp_uid ppf s
 

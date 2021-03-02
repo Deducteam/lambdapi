@@ -159,6 +159,7 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
   in
   (* Toplevel scoping function, with handling of implicit arguments. *)
   let rec scope : env -> p_term -> tbox = fun env t ->
+    if Timed.(!log_enabled) then log_scop "%a" Pretty.term t;
     (* Extract the spine. *)
     let (p_head, args) = get_pratt_args ss env t in
     (* Check that LHS pattern variables are applied to no argument. *)
@@ -219,8 +220,6 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
   (* Scoping function for the domain of functions or products. *)
   and scope_domain : env -> p_term option -> tbox = fun env a ->
     match (a, md) with
-    | (Some(a), M_LHS(_)    ) ->
-        fatal a.pos "Annotation not allowed in a LHS."
     | (None   , M_LHS(_)    ) -> fresh_patt md None (Env.to_tbox env)
     | ((Some({elt=P_Wild;_})|None), _           ) -> _Meta_Type env
     | (Some(a)   , _           ) -> scope env a

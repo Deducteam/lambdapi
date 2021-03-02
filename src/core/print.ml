@@ -63,7 +63,9 @@ let pp_path : Path.t pp = List.pp pp_uid "."
 
 let pp_sym : sym pp = fun ppf s ->
   if !print_implicits && s.sym_impl <> [] then out ppf "@";
-  if StrMap.mem s.sym_name !sig_state.in_scope then pp_uid ppf s.sym_name
+  if StrMap.mem s.sym_name !sig_state.in_scope then
+    if s == Unif_rule.cons then out ppf "%s" s.sym_name
+    else pp_uid ppf s.sym_name
   else
     match Path.Map.find_opt s.sym_path (!sig_state).path_alias with
     | None -> out ppf "%a.%a" pp_path s.sym_path pp_uid s.sym_name
@@ -230,6 +232,11 @@ let pp_rule : (sym * rule) pp = fun ppf (s,r) ->
   let lhs = LibTerm.add_args (Symb s) r.lhs in
   let (_, rhs) = Bindlib.unmbind r.rhs in
   out ppf "%a ↪ %a" pp_term lhs pp_term rhs
+
+let pp_unif_rule : (sym * rule) pp = fun ppf (s,r) ->
+  let lhs = LibTerm.add_args (Symb s) r.lhs in
+  let (_, rhs) = Bindlib.unmbind r.rhs in
+  out ppf "%a ↪ [ %a ]" pp_term lhs pp_term rhs
 
 (* ends with a space if [!print_contexts = true] *)
 let pp_ctxt : ctxt pp = fun ppf ctx ->

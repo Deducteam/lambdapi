@@ -202,7 +202,7 @@ let handle : (Path.t -> Sign.t) -> sig_state -> p_command ->
     sig_state * proof_data option * Query.result =
   fun compile ss ({elt; pos} as cmd) ->
   if !log_enabled then
-    log_hndl (blu "%a\n%a") Pos.pp pos Pretty.command cmd;
+    log_hndl (blu "%f %a\n%a") (Sys.time()) Pos.pp pos Pretty.command cmd;
   let scope expo = Scope.scope_term expo ss Env.empty IntMap.empty in
   match elt with
   | P_query(q) ->
@@ -229,7 +229,7 @@ let handle : (Path.t -> Sign.t) -> sig_state -> p_command ->
       (* Add inductive types in the signature. *)
       let add_ind_sym (ss, ind_sym_list) {elt=(id,pt,_); _} =
         let (ss, ind_sym) =
-          handle_inductive_symbol ss expo Injec Eager id params pt in
+          handle_inductive_symbol ss expo Const Eager id params pt in
         (ss, ind_sym::ind_sym_list)
       in
       let (ss, ind_sym_list_rev) =
@@ -470,7 +470,7 @@ let handle : (Path.t -> Sign.t) -> sig_state -> p_command ->
             in
             Sign.add_rule ss.signature Unif_rule.equiv urule;
             Tree.update_dtree Unif_rule.equiv;
-            Console.out 3 "(hint) [%a]\n" pp_rule (Unif_rule.equiv, urule);
+            Console.out 3 "(hint) %a\n" pp_unif_rule (Unif_rule.equiv, urule);
             ss
       in
       (ss, None, None)

@@ -1,22 +1,22 @@
-(** Escaped identifiers "{|...|}". *)
+(** Escaped identifiers ["{|...|}"]. *)
 
 (*open Debug*)
 
-(** [is_beg_escaped s] tells if [s] starts with "{|". *)
+(** [is_beg_escaped s] tells if [s] starts with ["{|"]. *)
 let is_beg_escaped : string -> bool = fun s ->
   let n = String.length s in n > 1 && s.[0] = '{' && s.[1] = '|'
 
-(** [is_end_escaped s] tells if [s] ends with "|}". *)
+(** [is_end_escaped s] tells if [s] ends with ["|}"]. *)
 let is_end_escaped : string -> bool = fun s ->
   let n = String.length s in n > 1 && s.[n-2] = '|' && s.[n-1] = '}'
 
-(** [is_escaped s] tells if [s] begins with "{|" and ends with "|}" without
-   overlapping. *)
+(** [is_escaped s] tells if [s] begins with ["{|"] and ends with ["|}"]
+   without overlapping. *)
 let is_escaped : string -> bool = fun s ->
   let n = String.length s in
   n > 3 && s.[0] = '{' && s.[1] = '|' && s.[n-2] = '|' && s.[n-1] = '}'
 
-(** [unescape s] removes "{|" and "|}" if [s] is an escaped identifier. *)
+(** [unescape s] removes ["{|"] and ["|}"] if [s] is an escaped identifier. *)
 let unescape : string -> string = fun s ->
   if is_escaped s then String.(sub s 2 (length s - 4)) else s
 

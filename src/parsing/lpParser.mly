@@ -343,17 +343,17 @@ rule: l=term HOOK_ARROW r=term { make_pos $sloc (l, r) }
 
 equation: l=term EQUIV r=term { (l, r) }
 
-unif_rule: l=equation HOOK_ARROW
-  L_SQ_BRACKET rs=separated_nonempty_list(SEMICOLON, equation) R_SQ_BRACKET
+unif_rule: e=equation HOOK_ARROW
+  L_SQ_BRACKET es=separated_nonempty_list(SEMICOLON, equation) R_SQ_BRACKET
     { (* FIXME: give sensible positions instead of Pos.none and P.appl. *)
       let equiv = P.qiden LpLexer.unif_rule_path LpLexer.equiv in
       let cons = P.qiden LpLexer.unif_rule_path LpLexer.cons in
-      let mk_equiv (l, r) = P.appl (P.appl equiv l) r in
-      let lhs = mk_equiv l in
-      let rs = List.map mk_equiv rs in
-      let (r, rs) = List.(hd rs, tl rs) in
-      let cat eqlst eq = P.appl (P.appl cons eq) eqlst in
-      let rhs = List.fold_left cat r rs in
+      let mk_equiv (t, u) = P.appl (P.appl equiv t) u in
+      let lhs = mk_equiv e in
+      let es = List.rev_map mk_equiv es in
+      let (en, es) = List.(hd es, tl es) in
+      let cat e es = P.appl (P.appl cons e) es in
+      let rhs = List.fold_right cat es en in
       make_pos $sloc (lhs, rhs) }
 
 %%
