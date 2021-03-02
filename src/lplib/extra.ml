@@ -109,9 +109,10 @@ let file_time : string -> float = fun fname ->
 let more_recent : string -> string -> bool = fun source target ->
   file_time source > file_time target
 
-(** [files d] returns all the files in [d] and its sub-directories
-   recursively, assuming that [d] is a directory. *)
-let files : string -> string list =
+(** [files f d] returns all the filenames in [d] and its sub-directories
+   recursively satisfying the function [f], assuming that [d] is a
+   directory. *)
+let files : (string -> bool) -> string -> string list = fun chk ->
   let rec files acc dirs =
     match dirs with
     | [] -> acc
@@ -119,7 +120,7 @@ let files : string -> string list =
         let f (fnames, dnames) s =
           let s = Filename.concat d s in
           if Sys.is_directory s then (fnames, s::dnames)
-          else (s::fnames, dnames)
+          else if chk s then (s::fnames, dnames) else (fnames, dnames)
         in
         let acc, dirs = Array.fold_left f (acc, dirs) (Sys.readdir d) in
         files acc dirs
