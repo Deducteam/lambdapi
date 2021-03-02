@@ -87,7 +87,6 @@ let equal : 'a eq -> 'a list eq =
 
 (** [max ?cmp l] finds the max of list [l] with compare function [?cmp]
     defaulting to [Stdlib.compare].
-
     @raise Invalid_argument if [l] is empty. *)
 let max : ?cmp:('a -> 'a -> int) -> 'a list -> 'a =
  fun ?(cmp = Stdlib.compare) li ->
@@ -98,7 +97,6 @@ let max : ?cmp:('a -> 'a -> int) -> 'a list -> 'a =
     L.fold_left max h t
 
 (** [assoc_eq e k l] is [List.assoc k l] with equality function [e].
-
     @raise Not_found if [k] is not a key of [l]. *)
 let assoc_eq : 'a eq -> 'a -> ('a * 'b) list -> 'b =
  fun eq k l ->
@@ -124,7 +122,6 @@ let rec remove_phys_dups : 'a list -> 'a list =
     [i]-th element of [l], [left_rev] is the reversed prefix of [l] up to its
     [i]-th element (excluded), and [right] is the remaining suffix of [l]
     (starting at its [i+1]-th element).
-
     @raise Invalid_argument when [i < 0].
     @raise Not_found when [i ≥ length v]. *)
 let destruct : 'a list -> int -> 'a list * 'a * 'a list =
@@ -207,16 +204,6 @@ let _ =
      && insert_uniq Stdlib.compare 3 l = [2;3;4;6]
      && insert_uniq Stdlib.compare 7 l = [2;4;6;7]
      && insert_uniq Stdlib.compare 4 l == l)
-
-(** Map and filter missing elements *)
-let rec pmap (f : 'a -> 'b option) (l : 'a list) : 'b list =
-  match l with
-  | [] -> []
-  | x :: xs -> ( match f x with None -> pmap f xs | Some x -> x :: pmap f xs )
-
-(** Concat the result of a map *)
-let concat_map (f : 'a -> 'b list) (l : 'a list) : 'b list =
-  L.concat (L.map f l)
 
 (** [split_last l] returns [(l',x)] if |l = append l' [x]], and
 @raise Invalid_argument otherwise. *)
