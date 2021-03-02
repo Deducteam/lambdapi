@@ -30,9 +30,7 @@ let conv ctx a b =
   if not (Eval.eq_modulo ctx a b) then
     begin
       let c = (ctx,a,b) in
-      let cs = c::Stdlib.(!constraints) in
-      (*Lplib.List.insert_uniq LibTerm.cmp_constr c Stdlib.(!constraints) in*)
-      (*if cs != Stdlib.(!constraints) then*) Stdlib.(constraints := cs);
+      Stdlib.(constraints := c::!constraints);
       if !log_enabled then log_infr (yel "add %a") pp_constr c
     end
 
@@ -176,7 +174,7 @@ let infer_noexn : constr list -> ctxt -> term -> (term * constr list) option =
         let cond oc c = Format.fprintf oc "\n  if %a" pp_constr c in
         log_infr (gre "infer %a : %a%a")
           pp_term t pp_term a (List.pp cond "") cs);
-      Some (a,cs)
+      Some (a, List.rev cs)
     with NotTypable -> None
   in Stdlib.(constraints := []); res
 
@@ -195,7 +193,7 @@ let check_noexn : constr list -> ctxt -> term -> term -> constr list option =
         let cond oc c = Format.fprintf oc "\n  if %a" pp_constr c in
         log_infr (gre "check %a\n: %a%a")
           pp_term t pp_term a (List.pp cond "") cs);
-      Some cs
+      Some (List.rev cs)
     with NotTypable -> None
   in Stdlib.(constraints := []); res
 
