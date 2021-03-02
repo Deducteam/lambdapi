@@ -147,8 +147,7 @@ let reconstruct : 'a list -> 'a list -> 'a list -> 'a list =
 
 (** [init n f] creates a list with [f 0] up to [f n] as its elements. Note that
     [Invalid_argument] is raised if [n] is negative. *)
-let init : int -> (int -> 'a) -> 'a list =
- fun n f ->
+let init : int -> (int -> 'a) -> 'a list = fun n f ->
   if n < 0 then invalid_arg "Extra.List.init"
   else
     let rec loop k = if k > n then [] else f k :: loop (k + 1) in
@@ -156,8 +155,7 @@ let init : int -> (int -> 'a) -> 'a list =
 
 (** [mem_sorted cmp x l] tells whether [x] is in [l] assuming that [l] is
    sorted wrt [cmp]. *)
-let mem_sorted : 'a cmp -> 'a -> 'a list -> bool =
- fun cmp x ->
+let mem_sorted : 'a cmp -> 'a -> 'a list -> bool = fun cmp x ->
   let rec mem_sorted l =
     match l with
     | [] -> false
@@ -166,16 +164,49 @@ let mem_sorted : 'a cmp -> 'a -> 'a list -> bool =
   in
   mem_sorted
 
-(** [insert cmp x l] inserts [x] in the list [l] assuming that [l] is sorted wrt
-    [cmp]. *)
-let insert : 'a cmp -> 'a -> 'a list -> 'a list =
- fun cmp x ->
+(** [insert cmp x l] inserts [x] in the list [l] assuming that [l] is sorted
+   in increasing order wrt [cmp]. *)
+let insert : 'a cmp -> 'a -> 'a list -> 'a list = fun cmp x ->
   let rec insert acc l =
     match l with
-    | y :: l when cmp x y > 0 -> insert (y :: acc) l
+    | y :: l' when cmp x y > 0 -> insert (y :: acc) l'
     | _ -> L.rev_append acc (x :: l)
   in
   insert []
+
+(* unit tests *)
+let _ =
+  assert
+    (insert Stdlib.compare 0 [1;2;3] = [0;1;2;3]
+     && insert Stdlib.compare 2 [1;2;3] = [1;2;2;3]
+     && insert Stdlib.compare 4 [1;2;3] = [1;2;3;4])
+
+(** [insert cmp x l] inserts [x] in the list [l] assuming that [l] is sorted
+   in increasing order wrt [cmp], but only if [x] does not occur in [l]. *)
+let insert_uniq : 'a cmp -> 'a -> 'a list -> 'a list = fun cmp x ->
+  let exception Found in
+  let rec insert acc l =
+    match l with
+    | [] -> L.rev_append acc [x]
+    | y :: l' ->
+        begin
+          let n = cmp x y in
+          match n with
+          | 0 -> raise Found
+          | _ when n > 0 -> insert (y :: acc) l'
+          | _ -> L.rev_append acc (x :: l)
+        end
+  in
+  fun l -> try insert [] l with Found -> l
+
+(* unit tests *)
+let _ =
+  assert
+    (let l = [2;4;6] in
+     insert_uniq Stdlib.compare 1 l = [1;2;4;6]
+     && insert_uniq Stdlib.compare 3 l = [2;3;4;6]
+     && insert_uniq Stdlib.compare 7 l = [2;4;6;7]
+     && insert_uniq Stdlib.compare 4 l == l)
 
 (** Map and filter missing elements *)
 let rec pmap (f : 'a -> 'b option) (l : 'a list) : 'b list =
@@ -187,6 +218,8 @@ let rec pmap (f : 'a -> 'b option) (l : 'a list) : 'b list =
 let concat_map (f : 'a -> 'b list) (l : 'a list) : 'b list =
   L.concat (L.map f l)
 
+(** [split_last l] returns [(l',x)] if |l = append l' [x]], and
+@raise Invalid_argument otherwise. *)
 let split_last : 'a list -> 'a list * 'a = fun l ->
   match rev l with
   | hd::tl -> (rev tl, hd)
