@@ -156,8 +156,9 @@ let instantiate : ctxt -> meta -> term array -> term -> constr list -> bool =
                 Meta.set m (Bindlib.unbox bu); true
             | true, true ->
                 if !log_enabled then
-                  (log_unif "cannot instantiate because of new constraints:";
-                   List.iter (log_unif "%a" pp_constr) cs);
+                  (let constr ppf = Format.fprintf ppf "\n; %a" pp_constr in
+                   log_unif "cannot instantiate because of new constraints:%a"
+                     (List.pp constr "") cs);
                 false
       end
   | _ ->
