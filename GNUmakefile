@@ -10,9 +10,13 @@ all: bin
 bin:
 	@dune build
 
+.PHONY: odoc
+odoc:
+	@dune build @doc
+
 .PHONY: doc
 doc:
-	@dune build @doc
+	$(MAKE) -C docs syntax.bnf syntax_dedukti.bnf html
 
 #### Unit tests and sanity check #############################################
 

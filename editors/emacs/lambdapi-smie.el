@@ -12,6 +12,7 @@
     "assume"
     "fail"
     "focus"
+    "induction"
     "refine"
     "reflexivity"
     "rewrite"
@@ -69,7 +70,7 @@ Indent by `lambdapi-indent-basic' in proofs, and 0 otherwise."
              (ident)
              ("?" ident "[" env "]")    ; ?M[x;y;z]
              ("$" ident "[" env "]")    ; $X[x;y;z]
-             ("`" args "," sterm)       ; binder syntax
+             ("`" ident args "," sterm) ; quantifier syntax
              (sterm "→" sterm)
              ("λ" args "," sterm)
              ("λ" ident ":" sterm "," sterm)
@@ -83,6 +84,7 @@ Indent by `lambdapi-indent-basic' in proofs, and 0 otherwise."
               ("assume" sterm)
               ("fail")
               ("focus" ident)
+              ("induction")
               ("refine" sterm)
               ("reflexivity")
               ("rewrite" "[" rw-patt "]")
@@ -111,32 +113,31 @@ Indent by `lambdapi-indent-basic' in proofs, and 0 otherwise."
        ("[" unif-rule-rhs "]")
        (unif-rule-rhs ";"))
       (symdec ("symbol" args ":" sterm))
-      (indcons (ident ":" sterm)
-               ("|" ident ":" sterm))
-      (inddec ("inductive" ident ":" sterm "≔" indcons))
+      (indcons (args ":" sterm) ("|" args ":" sterm))
+      (inddec (inddec "with" args ":" sterm "≔" indcons))
       (rules (rules "with" sterm "↪" sterm))
       (command ("constant" symdec ";")
-               ("injective" inddec ";")
+               ("injective" "inductive" inddec ";")
                ("injective" symdec ";")
                ("open" ident ";")
-               ("opaque" inddec ";")
+               ("opaque" "inductive" inddec ";")
                ("opaque" symdec ";")
-               ("private" inddec ";")
+               ("private" "inductive" inddec ";")
                ("private" symdec ";")
                ("begin" prfcontent "abort" ";")
                ("begin" prfcontent "admit" ";")
                ("begin" prfcontent "end" ";")
-               ("protected" inddec ";")
+               ("protected" "inductive" inddec ";")
                ("protected" symdec ";")
                ("require" ident "as" ident ";")
                ("require" ident ";")
                ("rule" rules ";")
                ("set" "builtin" ident "≔" sterm ";")
-               ("set" "infix" "left" ident "≔" sterm ";")
-               ("set" "infix" "right" ident "≔" sterm ";")
-               ("set" "infix" ident "≔" sterm ";")
-               ("set" "prefix" ident "≔" sterm ";")
-               ("set" "quantifier" ident ";")
+               ("set" "notation" ident "infix" "left" sterm ";")
+               ("set" "notation" ident "infix" "right" sterm ";")
+               ("set" "notation" ident "infix" sterm ";")
+               ("set" "notation" ident "prefix" sterm ";")
+               ("set" "notation" ident "quantifier" ";")
                (query ";")
                ("set" "unif_rule" sterm "≡" sterm "↪" unif-rule-rhs ";")
                (symdec ";")))
@@ -166,6 +167,7 @@ The default lexer is used because the syntax is primarily made of sexps."
     (`(:before . "assume") `(column . ,lambdapi-indent-basic))
     (`(:before . "fail") `(column . ,lambdapi-indent-basic))
     (`(:before . "focus") `(column . ,lambdapi-indent-basic))
+    (`(:before . "induction") `(column . ,lambdapi-indent-basic))
     (`(:before . "refine") `(column . ,lambdapi-indent-basic))
     (`(:before . "reflexivity") `(column . ,lambdapi-indent-basic))
     (`(:before . "rewrite") `(column . ,lambdapi-indent-basic))
@@ -191,8 +193,9 @@ The default lexer is used because the syntax is primarily made of sexps."
     (`(:after . ,(or "rule" "with")) (* 2 lambdapi-indent-basic))
     (`(:after . "in") (smie-rule-parent))
     (`(:after . ,(or "symbol" "inductive")) lambdapi-indent-basic)
-    (`(:after . ,(or "apply" "assume" "fail" "focus" "refine" "reflexivity"
-                     "rewrite" "simpl" "solve" "symmetry" "why3"))
+    (`(:after . ,(or "apply" "assume" "fail" "focus" "induction" "refine"
+                     "reflexivity" "rewrite" "simpl" "solve" "symmetry"
+                     "why3"))
      lambdapi-indent-basic)
 
     ;; Toplevel

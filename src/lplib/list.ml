@@ -8,22 +8,15 @@
 (* Status: Experimental                                                 *)
 (************************************************************************)
 
-(** Short name for the type of a pretty-printing function. *)
-type 'a pp = Format.formatter -> 'a -> unit
-
 module L = Stdlib.List
 include L
+
 open Base
 
 (** [pp pp_elt sep oc l] prints the list [l] on the channel [oc] using [sep] as
     separator, and [pp_elt] for printing the elements. *)
-let pp : 'a pp -> string -> 'a list pp =
- fun pp_elt sep oc l ->
-  match l with
-  | [] -> ()
-  | e :: es ->
-    let fn e = Format.fprintf oc "%s%a" sep pp_elt e in
-    pp_elt oc e; iter fn es
+let pp : 'a pp -> string -> 'a list pp = fun pp_elt sep ->
+  Format.pp_print_list ~pp_sep:(pp_sep sep) pp_elt
 
 (** [filter_map f l] applies [f] to the elements of [l] and keeps the [x] such
     that [Some(x)] in [List.map f l]. *)
@@ -94,7 +87,6 @@ let equal : 'a eq -> 'a list eq =
 
 (** [max ?cmp l] finds the max of list [l] with compare function [?cmp]
     defaulting to [Stdlib.compare].
-
     @raise Invalid_argument if [l] is empty. *)
 let max : ?cmp:('a -> 'a -> int) -> 'a list -> 'a =
  fun ?(cmp = Stdlib.compare) li ->
@@ -105,7 +97,6 @@ let max : ?cmp:('a -> 'a -> int) -> 'a list -> 'a =
     L.fold_left max h t
 
 (** [assoc_eq e k l] is [List.assoc k l] with equality function [e].
-
     @raise Not_found if [k] is not a key of [l]. *)
 let assoc_eq : 'a eq -> 'a -> ('a * 'b) list -> 'b =
  fun eq k l ->
@@ -131,7 +122,6 @@ let rec remove_phys_dups : 'a list -> 'a list =
     [i]-th element of [l], [left_rev] is the reversed prefix of [l] up to its
     [i]-th element (excluded), and [right] is the remaining suffix of [l]
     (starting at its [i+1]-th element).
-
     @raise Invalid_argument when [i < 0].
     @raise Not_found when [i ≥ length v]. *)
 let destruct : 'a list -> int -> 'a list * 'a * 'a list =
@@ -154,8 +144,7 @@ let reconstruct : 'a list -> 'a list -> 'a list -> 'a list =
 
 (** [init n f] creates a list with [f 0] up to [f n] as its elements. Note that
     [Invalid_argument] is raised if [n] is negative. *)
-let init : int -> (int -> 'a) -> 'a list =
- fun n f ->
+let init : int -> (int -> 'a) -> 'a list = fun n f ->
   if n < 0 then invalid_arg "Extra.List.init"
   else
     let rec loop k = if k > n then [] else f k :: loop (k + 1) in
@@ -163,8 +152,7 @@ let init : int -> (int -> 'a) -> 'a list =
 
 (** [mem_sorted cmp x l] tells whether [x] is in [l] assuming that [l] is
    sorted wrt [cmp]. *)
-let mem_sorted : 'a cmp -> 'a -> 'a list -> bool =
- fun cmp x ->
+let mem_sorted : 'a cmp -> 'a -> 'a list -> bool = fun cmp x ->
   let rec mem_sorted l =
     match l with
     | [] -> false
@@ -173,27 +161,52 @@ let mem_sorted : 'a cmp -> 'a -> 'a list -> bool =
   in
   mem_sorted
 
-(** [insert cmp x l] inserts [x] in the list [l] assuming that [l] is sorted wrt
-    [cmp]. *)
-let insert : 'a cmp -> 'a -> 'a list -> 'a list =
- fun cmp x ->
+(** [insert cmp x l] inserts [x] in the list [l] assuming that [l] is sorted
+   in increasing order wrt [cmp]. *)
+let insert : 'a cmp -> 'a -> 'a list -> 'a list = fun cmp x ->
   let rec insert acc l =
     match l with
-    | y :: l when cmp x y > 0 -> insert (y :: acc) l
+    | y :: l' when cmp x y > 0 -> insert (y :: acc) l'
     | _ -> L.rev_append acc (x :: l)
   in
   insert []
 
-(** Map and filter missing elements *)
-let rec pmap (f : 'a -> 'b option) (l : 'a list) : 'b list =
-  match l with
-  | [] -> []
-  | x :: xs -> ( match f x with None -> pmap f xs | Some x -> x :: pmap f xs )
+(* unit tests *)
+let _ =
+  assert
+    (insert Stdlib.compare 0 [1;2;3] = [0;1;2;3]
+     && insert Stdlib.compare 2 [1;2;3] = [1;2;2;3]
+     && insert Stdlib.compare 4 [1;2;3] = [1;2;3;4])
 
-(** Concat the result of a map *)
-let concat_map (f : 'a -> 'b list) (l : 'a list) : 'b list =
-  L.concat (L.map f l)
+(** [insert cmp x l] inserts [x] in the list [l] assuming that [l] is sorted
+   in increasing order wrt [cmp], but only if [x] does not occur in [l]. *)
+let insert_uniq : 'a cmp -> 'a -> 'a list -> 'a list = fun cmp x ->
+  let exception Found in
+  let rec insert acc l =
+    match l with
+    | [] -> L.rev_append acc [x]
+    | y :: l' ->
+        begin
+          let n = cmp x y in
+          match n with
+          | 0 -> raise Found
+          | _ when n > 0 -> insert (y :: acc) l'
+          | _ -> L.rev_append acc (x :: l)
+        end
+  in
+  fun l -> try insert [] l with Found -> l
 
+(* unit tests *)
+let _ =
+  assert
+    (let l = [2;4;6] in
+     insert_uniq Stdlib.compare 1 l = [1;2;4;6]
+     && insert_uniq Stdlib.compare 3 l = [2;3;4;6]
+     && insert_uniq Stdlib.compare 7 l = [2;4;6;7]
+     && insert_uniq Stdlib.compare 4 l == l)
+
+(** [split_last l] returns [(l',x)] if [l = append l' [x]], and
+@raise Invalid_argument otherwise. *)
 let split_last : 'a list -> 'a list * 'a = fun l ->
   match rev l with
   | hd::tl -> (rev tl, hd)
@@ -234,4 +247,9 @@ let rec fold_left_while f cond acc l =
   | x :: _ when not (cond x) -> acc
   | x :: xs -> fold_left_while f cond (f acc x) xs
   | [] -> acc
-  
+
+(** [remove_first n xs] remove the min(n,length xs) elements of [xs]. *)
+let rec remove_first n xs =
+  match xs with
+  | _::xs when n>0 -> remove_first (n-1) xs
+  | _ -> xs

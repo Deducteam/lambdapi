@@ -1,13 +1,12 @@
 constant symbol B : TYPE;
 
-symbol conj : B → B → B;
-symbol disj : B → B → B;
-symbol neg  : B → B;
+symbol ∧ : B → B → B;
+symbol ∨ : B → B → B;
+symbol ¬  : B → B;
 
-set infix right 5 "∨" ≔ disj;
-set infix right 6 "∧" ≔ conj;
-
-set prefix 7 "¬" ≔ neg;
+set notation ∨ infix right 5;
+set notation ∧ infix right 6;
+set notation ¬ prefix 7;
 
 assert ⊢ λ x y z t, x ∨ ¬ y ∧ z ∨ t ≡ λ x y z t, x ∨ (((¬ y) ∧ z) ∨ t);
 

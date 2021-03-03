@@ -3,53 +3,45 @@
 open! Lplib
 open Lplib.Extra
 
-open Timed
-open Console
-open Files
-open Terms
-open Syntax
+open Common
+open Error
 open Pos
+open Timed
+open Term
+open Parsing.Syntax
+open Tags
 
-(** Representation of an inductive type *)
-type inductive =
-  { ind_cons  : sym list  (** List of constructors                 *)
-  ; ind_prop  : sym       (** Induction principle on propositions. *) }
-
-(** Notation properties of symbols. They are linked to symbols to provide
-    syntax extensions to these symbols. These syntax extensions concern both
-    parsing and printing. *)
-type notation =
-  | Prefix of unop (** Prefix (or unary) operator, such as [!] in [! x]. *)
-  | Infix of binop (** Infix (or binary) operator, such as [+] in [a + b]. *)
-  | Zero (** The numeral zero, that is [0]. *)
-  | Succ (** Successor, for numerals such as [42]. *)
-  | Quant (** Quantifier, such as [fa] in [`fa x, t]. *)
+(** Data associated to inductive type symbols. *)
+type ind_data =
+  { ind_cons : sym list (** Constructors. *)
+  ; ind_prop : sym      (** Induction principle. *)
+  ; ind_nb_params : int (** Number of parameters. *)
+  ; ind_nb_types : int  (** Number of mutually defined types. *)
+  ; ind_nb_cons : int   (** Number of constructors. *) }
 
 (** Representation of a signature. It roughly corresponds to a set of symbols,
     defined in a single module (or file). *)
 type t =
   { sign_symbols  : (sym * Pos.popt) StrMap.t ref
   ; sign_path     : Path.t
-  ; sign_deps     : (string * rule) list PathMap.t ref
+  ; sign_deps     : (string * rule) list Path.Map.t ref
   ; sign_builtins : sym StrMap.t ref
   ; sign_notations: notation SymMap.t ref
     (** Maps symbols to their syntax properties if they have some. *)
-  ; sign_ind      : inductive SymMap.t ref }
+  ; sign_ind      : ind_data SymMap.t ref }
 
-(* NOTE the [deps] field contains a hashtable binding the [module_path] of the
-   external modules on which the current signature depends to an association
-   list. This association list then maps definable symbols of the external
-   module to additional reduction rules defined in the current signature. *)
+(* NOTE the [deps] field contains a hashtable binding the external modules on
+   which the current signature depends to an association list mapping symbols
+   to additional rules defined in the current signature. *)
 
 (** The empty signature. It's a thunk to force the creation of a new record on
     each call (and avoid unwanted sharing). *)
 let dummy : unit -> t = fun () ->
   { sign_symbols = ref StrMap.empty; sign_path = []
-  ; sign_deps = ref PathMap.empty; sign_builtins = ref StrMap.empty
+  ; sign_deps = ref Path.Map.empty; sign_builtins = ref StrMap.empty
   ; sign_notations = ref SymMap.empty; sign_ind = ref SymMap.empty }
 
-(** [create sign_path] creates an empty signature with module path
-    [sign_path]. *)
+(** [create mp] creates an empty signature in the module [mp]. *)
 let create : Path.t -> t = fun sign_path ->
   let d = dummy () in { d with sign_path }
 
@@ -66,37 +58,30 @@ let mem : t -> string -> bool =
     being compiled) modules. An important invariant is that all occurrences of
     a symbol are physically equal, even across signatures). This is ensured by
     making copies of terms when loading an object file. *)
-let loaded : t PathMap.t ref = ref PathMap.empty
+let loaded : t Path.Map.t ref = ref Path.Map.empty
 
 (* NOTE that the current module is stored in [loaded] so that the symbols that
    it contains can be qualified with the name of the module. This behavior was
    inherited from previous versions of Dedukti. *)
 
-(** [loading] contains the [module_path] of the signatures (or files) that are
-    being processed. They are stored in a stack due to dependencies. Note that
-    the topmost element corresponds to the current module.  If a [module_path]
-    appears twice in the stack, then there is a circular dependency. *)
+(** [loading] contains the modules that are being processed. They are stored
+   in a stack due to dependencies. Note that the topmost element corresponds
+   to the current module. If a module appears twice in the stack, then there
+   is a circular dependency. *)
 let loading : Path.t list ref = ref []
 
 (** [current_sign ()] returns the current signature. *)
-let current_sign () =
-  let mp =
-    match !loading with
-    | mp :: _ -> mp
-    | []      -> assert false
-  in
-  PathMap.find mp !loaded
+let current_sign () = Path.Map.find (List.hd !loading) !loaded
 
-(** [create_sym e p name type blist] creates a new symbol
-    with the exposition [e], the property [p], the name [name]
-    the type [type] and no implicit arguments *)
-let create_sym : expo -> prop -> string -> term -> bool list -> sym =
-  fun e p name typ blist ->
-  let path = (current_sign()).sign_path in
-  { sym_name = name ; sym_type = ref typ ; sym_path = path
-    ; sym_def = ref None ; sym_impl = blist; sym_rules = ref []
-    ; sym_prop = p ; sym_expo = e ; sym_tree = ref Tree_types.empty_dtree
-    ; sym_mstrat = ref Eager }
+(** [create_sym expo prop opaq name typ impl] creates a new symbol with the
+   exposition [expo], property [prop], name [name], type [typ], implicit
+   arguments [impl], opacity [opaq]. *)
+let create_sym : expo -> prop -> bool -> string -> term -> bool list -> sym =
+  fun sym_expo sym_prop sym_opaq sym_name typ sym_impl ->
+  let sym_path = (current_sign()).sign_path in
+  { sym_expo; sym_path; sym_name; sym_type = ref typ; sym_impl; sym_prop;
+    sym_def = ref None; sym_opaq; sym_rules = ref [];
+    sym_mstrat = ref Eager; sym_tree = ref Tree_types.empty_dtree }
 
 (** [link sign] establishes physical links to the external symbols. *)
 let link : t -> unit = fun sign ->
@@ -128,7 +113,7 @@ let link : t -> unit = fun sign ->
   and link_symb s =
     if s.sym_path = sign.sign_path then s else
     try
-      let sign = PathMap.find s.sym_path !loaded in
+      let sign = Path.Map.find s.sym_path !loaded in
       try find sign s.sym_name with Not_found -> assert false
     with Not_found -> assert false
   in
@@ -138,9 +123,9 @@ let link : t -> unit = fun sign ->
     s.sym_rules := List.map link_rule !(s.sym_rules)
   in
   StrMap.iter fn !(sign.sign_symbols);
-  let gn path ls =
+  let gn mp ls =
     let sign =
-      try PathMap.find path !loaded
+      try Path.Map.find mp !loaded
       with Not_found -> assert false
     in
     let h (n, r) =
@@ -150,7 +135,7 @@ let link : t -> unit = fun sign ->
     in
     List.iter h ls
   in
-  PathMap.iter gn !(sign.sign_deps);
+  Path.Map.iter gn !(sign.sign_deps);
   sign.sign_builtins := StrMap.map link_symb !(sign.sign_builtins);
   let lsy (sym, h) = link_symb sym, h in
   sign.sign_notations :=
@@ -158,11 +143,12 @@ let link : t -> unit = fun sign ->
     SymMap.to_seq !(sign.sign_notations) |>
     Seq.map lsy |> SymMap.of_seq;
   StrMap.iter (fun _ (s, _) -> Tree.update_dtree s) !(sign.sign_symbols);
-  let link_inductive i =
-    { ind_cons = List.map link_symb i.ind_cons
-    ; ind_prop = link_symb i.ind_prop }
+  let link_ind_data i =
+    { ind_cons = List.map link_symb i.ind_cons;
+      ind_prop = link_symb i.ind_prop; ind_nb_params = i.ind_nb_params;
+      ind_nb_types = i.ind_nb_types; ind_nb_cons = i.ind_nb_cons }
   in
-  let fn s i m = SymMap.add (link_symb s) (link_inductive i) m in
+  let fn s i m = SymMap.add (link_symb s) (link_ind_data i) m in
   sign.sign_ind := SymMap.fold fn !(sign.sign_ind) SymMap.empty
 
 (** [unlink sign] removes references to external symbols (and thus signatures)
@@ -209,44 +195,49 @@ let unlink : t -> unit = fun sign ->
   in
   StrMap.iter fn !(sign.sign_symbols);
   let gn _ ls = List.iter (fun (_, r) -> unlink_rule r) ls in
-  PathMap.iter gn !(sign.sign_deps);
+  Path.Map.iter gn !(sign.sign_deps);
   StrMap.iter (fun _ s -> unlink_sym s) !(sign.sign_builtins);
   SymMap.iter (fun s _ -> unlink_sym s) !(sign.sign_notations);
-  let unlink_inductive i =
+  let unlink_ind_data i =
     List.iter unlink_sym i.ind_cons; unlink_sym i.ind_prop
   in
-  let fn s i = unlink_sym s; unlink_inductive i in
+  let fn s i = unlink_sym s; unlink_ind_data i in
   SymMap.iter fn !(sign.sign_ind)
 
-(** [add_symbol sign expo prop mstrat name a impl] creates a fresh symbol with
-    name [name], exposition [expo], property [prop], matching strategy
-    [strat], type [a] and implicit arguments [impl] in the signature [sign].
-    [name] should not already be used in [sign]. The created symbol is
-    returned. *)
-let add_symbol : t -> expo -> prop -> match_strat -> strloc -> term ->
-  bool list -> sym = fun sign sym_expo sym_prop sym_mstrat s a impl ->
+(** [add_symbol sign expo prop mstrat opaq name typ impl] add in the signature
+   [sign] a symbol with name [name], exposition [expo], property [prop],
+   matching strategy [strat], opacity [opaq], type [typ], implicit arguments
+   [impl], no definition and no rules. [name] should not already be used in
+   [sign]. The created symbol is returned. *)
+let add_symbol :
+      t -> expo -> Tags.prop -> match_strat -> bool -> strloc -> term ->
+      bool list -> sym =
+  fun sign sym_expo sym_prop sym_mstrat sym_opaq {elt=sym_name;pos} typ
+      impl ->
   (* Check for metavariables in the symbol type. *)
-  if Basics.has_metas true a then
-    fatal s.pos "The type of [%s] contains metavariables" s.elt;
+  if LibTerm.has_metas true typ then
+    fatal pos "The type of %a contains metavariables"
+      Parsing.LpLexer.pp_uid sym_name;
   (* We minimize [impl] to enforce our invariant (see {!type:Terms.sym}). *)
   let rec rem_false l = match l with false::l -> rem_false l | _ -> l in
   let sym_impl = List.rev (rem_false (List.rev impl)) in
   (* Add the symbol. *)
   let sym =
-    { sym_name = s.elt; sym_type = ref (cleanup a); sym_path = sign.sign_path
-    ; sym_def = ref None; sym_impl; sym_rules = ref []; sym_prop
-    ; sym_expo ; sym_tree = ref Tree_types.empty_dtree
-    ; sym_mstrat = ref sym_mstrat }
+    { sym_path = sign.sign_path; sym_name; sym_type = ref (cleanup typ);
+      sym_impl; sym_def = ref None; sym_opaq; sym_rules = ref [];
+      sym_tree = ref Tree_types.empty_dtree; sym_mstrat = ref sym_mstrat;
+      sym_prop; sym_expo }
   in
-  sign.sign_symbols := StrMap.add s.elt (sym, s.pos) !(sign.sign_symbols); sym
+  sign.sign_symbols := StrMap.add sym_name (sym, pos) !(sign.sign_symbols);
+  sym
 
 (** [strip_private sign] removes private symbols from signature [sign]. *)
 let strip_private : t -> unit = fun sign ->
-  let not_prv sym = not (Terms.is_private sym) in
+  let not_prv sym = not (Term.is_private sym) in
   sign.sign_symbols :=
     StrMap.filter (fun _ s -> not_prv (fst s)) !(sign.sign_symbols);
   sign.sign_notations :=
-    Terms.SymMap.filter (fun s _ -> not_prv s) !(sign.sign_notations)
+    Term.SymMap.filter (fun s _ -> not_prv s) !(sign.sign_notations)
 
 (** [write sign file] writes the signature [sign] to the file [fname]. *)
 let write : t -> string -> unit = fun sign fname ->
@@ -271,7 +262,8 @@ let read : string -> t = fun fname ->
       close_in ic; sign
     with Failure _ ->
       close_in ic;
-      fatal_no_pos "File [%s] is incompatible with current binary...\n" fname
+      fatal_no_pos "File \"%s\" is incompatible with current binary...\n"
+        fname
   in
   (* Timed references need reset after unmarshaling (see [Timed] doc). *)
   let reset_timed_refs sign =
@@ -313,12 +305,12 @@ let read : string -> t = fun fname ->
     StrMap.iter (fun _ s -> shallow_reset_sym s) !(sign.sign_builtins);
     SymMap.iter (fun s _ -> shallow_reset_sym s) !(sign.sign_notations);
     let fn (_,r) = reset_rule r in
-    PathMap.iter (fun _ -> List.iter fn) !(sign.sign_deps);
-    let shallow_reset_inductive i =
+    Path.Map.iter (fun _ -> List.iter fn) !(sign.sign_deps);
+    let shallow_reset_ind_data i =
       shallow_reset_sym i.ind_prop;
       List.iter shallow_reset_sym i.ind_cons
     in
-    let fn s i = shallow_reset_sym s; shallow_reset_inductive i in
+    let fn s i = shallow_reset_sym s; shallow_reset_ind_data i in
     SymMap.iter fn !(sign.sign_ind);
     sign
   in
@@ -334,11 +326,11 @@ let add_rule : t -> sym -> rule -> unit = fun sign sym r ->
   sym.sym_rules := !(sym.sym_rules) @ [r];
   if sym.sym_path <> sign.sign_path then
     let m =
-      try PathMap.find sym.sym_path !(sign.sign_deps)
+      try Path.Map.find sym.sym_path !(sign.sign_deps)
       with Not_found -> assert false
     in
     let m = (sym.sym_name, r) :: m in
-    sign.sign_deps := PathMap.add sym.sym_path m !(sign.sign_deps)
+    sign.sign_deps := Path.Map.add sym.sym_path m !(sign.sign_deps)
 
 (** [add_builtin sign name sym] binds the builtin name [name] to [sym] (in the
     signature [sign]). The previous binding, if any, is discarded. *)
@@ -349,30 +341,18 @@ let add_builtin : t -> string -> sym -> unit = fun sign s sym ->
   | "+1" -> sign.sign_notations := SymMap.add sym Succ !(sign.sign_notations)
   | _ -> ()
 
-(** [add_unop sign sym unop] binds the unary operator [unop] to [sym] in
-    [sign]. If [unop] was previously bound, the previous binding is
-    discarded. *)
-let add_unop : t -> sym -> unop -> unit = fun sign sym unop ->
-  sign.sign_notations := SymMap.add sym (Prefix unop) !(sign.sign_notations)
+(** [add_notation sign s n] sets notation of [s] to [n] in [sign]. *)
+let add_notation : t -> sym -> notation -> unit = fun sign s n ->
+  sign.sign_notations := SymMap.add s n !(sign.sign_notations)
 
-(** [add_binop sign sym binop] binds the binary operator [binop] to [sym] in
-    [sign]. If [op] was previously bound, the previous binding is
-    discarded. *)
-let add_binop : t -> sym -> binop -> unit =
-  fun sign sym binop ->
-  sign.sign_notations := SymMap.add sym (Infix binop) !(sign.sign_notations)
-
-(** [add_quant sign sym] add the quantifier [sym] to [sign]. *)
-let add_quant : t -> sym -> unit = fun sign sym ->
-  sign.sign_notations := SymMap.add sym Quant !(sign.sign_notations)
-
-(** [add_inductive sign typ ind_cons ind_prop] add the inductive type which
-    consists of a type [typ], constructors [ind_cons] and an induction
-    principle [ind_prop] to [sign]. *)
-let add_inductive : t -> sym -> sym list -> sym -> unit =
-  fun sign typ ind_cons ind_prop ->
-  let ind = { ind_cons ; ind_prop } in
-  sign.sign_ind := SymMap.add typ ind !(sign.sign_ind)
+(** [add_inductive sign ind_sym ind_cons ind_prop ind_prop_args] add to [sign]
+   the inductive type [ind_sym] with constructors [ind_cons], induction
+   principle [ind_prop] with [ind_prop_args] arguments. *)
+let add_inductive : t -> sym -> sym list -> sym -> int -> int -> unit =
+  fun sign ind_sym ind_cons ind_prop ind_nb_params ind_nb_types ->
+  let ind_nb_cons = List.length ind_cons in
+  let ind = {ind_cons; ind_prop; ind_nb_params; ind_nb_types; ind_nb_cons} in
+  sign.sign_ind := SymMap.add ind_sym ind !(sign.sign_ind)
 
 (** [dependencies sign] returns an association list containing (the transitive
     closure of) the dependencies of the signature [sign].  Note that the order
@@ -380,8 +360,8 @@ let add_inductive : t -> sym -> sym list -> sym -> unit =
     that [sign] itself appears at the end of the list. *)
 let rec dependencies : t -> (Path.t * t) list = fun sign ->
   (* Recursively compute dependencies for the immediate dependencies. *)
-  let fn p _ l = dependencies (PathMap.find p !loaded) :: l in
-  let deps = PathMap.fold fn !(sign.sign_deps) [[(sign.sign_path, sign)]] in
+  let fn p _ l = dependencies (Path.Map.find p !loaded) :: l in
+  let deps = Path.Map.fold fn !(sign.sign_deps) [[(sign.sign_path, sign)]] in
   (* Minimize and put everything together. *)
   let rec minimize acc deps =
     let not_here (p,_) =

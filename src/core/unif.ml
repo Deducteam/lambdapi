@@ -4,11 +4,13 @@ open! Lplib
 open Lplib.Extra
 
 open Timed
-open Console
-open Terms
-open Basics
+open Common
+open Error
+open Term
+open LibTerm
 open Env
 open Print
+open Debug
 
 (** Logging function for unification. *)
 let log_unif = new_logger 'u' "unif" "unification"
@@ -154,7 +156,9 @@ let instantiate : ctxt -> meta -> term array -> term -> constr list -> bool =
                 Meta.set m (Bindlib.unbox bu); true
             | true, true ->
                 if !log_enabled then
-                  log_unif "cannot instantiate (new constraints)";
+                  (let constr ppf = Format.fprintf ppf "\n; %a" pp_constr in
+                   log_unif "cannot instantiate because of new constraints:%a"
+                     (List.pp constr "") cs);
                 false
       end
   | _ ->
@@ -177,8 +181,8 @@ and solve_aux : ctxt -> term -> term -> problem -> constr list =
   let initial = (ctx,t1,t2)::p.to_solve in
   let t1 = Eval.whnf ctx t1 in
   let t2 = Eval.whnf ctx t2 in
-  let (h1, ts1) = Basics.get_args t1 in
-  let (h2, ts2) = Basics.get_args t2 in
+  let (h1, ts1) = LibTerm.get_args t1 in
+  let (h2, ts2) = LibTerm.get_args t2 in
   if !log_enabled then log_unif "solve %a" pp_constr (ctx, t1, t2);
 
   let add_to_unsolved () =
@@ -228,7 +232,7 @@ and solve_aux : ctxt -> term -> term -> problem -> constr list =
         | Some vars -> vars
       in
       (* Build the environment (yk-1,ak-1{y0=v0,..,yk-2=vk-2});..;(y0,a0). *)
-      let env = Env.of_prod_using ctx vars !(m.meta_type) in
+      let env, _ = Env.of_prod_using ctx vars !(m.meta_type) in
       (* Build the term s(m0[vs],..,mn-1[vs]). *)
       let k = Array.length vars in
       let t =
@@ -315,7 +319,7 @@ and solve_aux : ctxt -> term -> term -> problem -> constr list =
       match rule.lhs with
       | [l1] ->
           begin
-            match Basics.get_args l1 with
+            match LibTerm.get_args l1 with
             | Symb(s0), [_;_] ->
                 let n = Bindlib.mbinder_arity rule.rhs in
                 begin
@@ -340,7 +344,7 @@ and solve_aux : ctxt -> term -> term -> problem -> constr list =
       if !log_enabled then
         let f (s0,s1,s2,b) =
           log_unif (yel "inverses_for_prod %a: %a, %a, %a, %b")
-            pp_symbol s pp_symbol s0 pp_symbol s1 pp_symbol s2 b
+            pp_sym s pp_sym s0 pp_sym s1 pp_sym s2 b
         in List.iter f l
     end;
     l
@@ -352,8 +356,8 @@ and solve_aux : ctxt -> term -> term -> problem -> constr list =
 
   let rec inverse s v =
     if !log_enabled then
-      log_unif "inverse [%a] [%a]" pp_symbol s pp_term v;
-    match Basics.get_args (Eval.whnf [] v) with
+      log_unif "inverse [%a] [%a]" pp_sym s pp_term v;
+    match LibTerm.get_args (Eval.whnf [] v) with
     | Symb(s'), [u] when s' == s -> u
     | Prod(a,b), _ -> find_inverse_prod a b (inverses_for_prod s)
     | _, _ -> raise Not_invertible

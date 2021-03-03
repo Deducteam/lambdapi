@@ -1,5 +1,6 @@
 (executable
  (name lambdapi)
  (public_name lambdapi)
+ (modes byte native)
  (modules :standard)
- (libraries cmdliner unix stdlib-shims lambdapi.core lambdapi.lsp))
+ (libraries cmdliner lambdapi.lsp lambdapi.tool lambdapi.handle))

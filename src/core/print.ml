@@ -1,18 +1,22 @@
 (** Pretty-printing for the core AST.
 
     The functions of this module are used for printing terms and other objects
-    defined in the {!module:Terms} module.  This is mainly used for displaying
+    defined in the {!module:Term} module.  This is mainly used for displaying
     log messages, and feedback in case of success or error while type-checking
     terms or testing convertibility. *)
 
 open! Lplib
 open Lplib.Base
 open Lplib.Extra
-
 open Timed
-open Terms
-open Console
+open Common
+open Debug
+open Term
 open Sig_state
+open Format
+open Parsing
+
+let out = fprintf
 
 (** Logging function for printing. *)
 let log_prnt = new_logger 'p' "prnt" "pretty-printing"
@@ -21,73 +25,53 @@ let log_prnt = log_prnt.logger
 (** Current signature state. *)
 let sig_state : sig_state ref = ref Sig_state.dummy
 
-(** Flag controling the printing of the domains of λ-abstractions. *)
-let print_domains : bool ref = Console.register_flag "print_domains" false
-
-(** Flag controling the printing of implicit arguments. *)
-let print_implicits : bool ref = Console.register_flag "print_implicits" false
-
-(** Flag controling the printing of implicit arguments. *)
-let print_meta_type : bool ref = Console.register_flag "print_meta_type" false
-
-(** Flag controlling the printing of the context in unification. *)
-let print_contexts : bool ref = Console.register_flag "print_contexts" false
-
-let pp_prop : prop pp = fun oc p ->
-  match p with
-  | Defin -> ()
-  | Const -> Format.fprintf oc "constant "
-  | Injec -> Format.fprintf oc "injective "
-
-let pp_expo : expo pp = fun oc e ->
-  match e with
-  | Public -> ()
-  | Protec -> Format.fprintf oc "protected "
-  | Privat -> Format.fprintf oc "private "
-
-let pp_match_strat : match_strat pp = fun oc s ->
-  match s with
-  | Sequen -> Format.fprintf oc "sequential "
-  | Eager -> ()
-
-(** [assoc oc a] prints associativity [a] to channel [oc]. *)
-let pp_assoc : Pratter.associativity pp = fun oc assoc ->
-  match assoc with
-  | Neither -> ()
-  | Left -> Format.fprintf oc " left associative"
-  | Right -> Format.fprintf oc " right associative"
-
-(** [notation oc n] notation setter [n] to output [oc]. *)
-let notation : Sign.notation pp = fun oc notation ->
-  match notation with
-  | Prefix(n,p,_)  -> Format.fprintf oc "prefix \"%s\" with priority %f" n p
-  | Infix(n,a,p,_) ->
-      Format.fprintf oc "infix \"%s\"%a with priority %f" n pp_assoc a p
-  | Zero           -> Format.fprintf oc "builtin \"0\""
-  | Succ           -> Format.fprintf oc "builtin \"+1\""
-  | Quant          -> Format.fprintf oc "quantifier"
-
-(** [qualified s] prints symbol [s] fully qualified to channel [oc]. *)
-let pp_qualified : sym pp = fun oc s ->
-  match Files.PathMap.find_opt s.sym_path (!sig_state).path_map with
-  | None -> Format.fprintf oc "%a.%s" Files.Path.pp s.sym_path s.sym_name
-  | Some alias -> Format.fprintf oc "%s.%s" alias s.sym_name
-
-(** [notatin_of sym] returns the notation properties symbol [sym] or
-    [None]. *)
-let notation_of : sym -> Sign.notation option = fun s ->
+(** [notation_of s] returns the notation of symbol [s] or [None]. *)
+let notation_of : sym -> Syntax.notation option = fun s ->
   SymMap.find_opt s !sig_state.notations
 
-(** [pp_symbol oc s] prints the name of the symbol [s] to channel [oc]. *)
-let pp_symbol : sym pp = fun oc s ->
-  if SymMap.mem s !sig_state.notations
-     || Files.Path.compare s.sym_path !sig_state.signature.sign_path = 0
-  then Format.pp_print_string oc s.sym_name
-  else pp_qualified oc s
+(** Flag for printing the domains of λ-abstractions. *)
+let print_domains : bool ref = Console.register_flag "print_domains" false
 
-(** [pp_var oc x] prints the Bindlib variable [x] to the channel [oc]. *)
-let pp_var : 'a Bindlib.var pp = fun oc x ->
-  Format.pp_print_string oc (Bindlib.name_of x)
+(** Flag for printing implicit arguments. *)
+let print_implicits : bool ref = Console.register_flag "print_implicits" false
+
+(** Flag for printing the type of uninstanciated metavariables. Remark: this
+   does not generate parsable terms; use for debug only. *)
+let print_meta_types : bool ref =
+  Console.register_flag "print_meta_types" false
+
+(** Flag for printing contexts in unification problems. *)
+let print_contexts : bool ref = Console.register_flag "print_contexts" false
+
+let pp_assoc : Pratter.associativity pp = fun ppf assoc ->
+  match assoc with
+  | Neither -> ()
+  | Left -> out ppf " left associative"
+  | Right -> out ppf " right associative"
+
+let pp_notation : Syntax.notation pp = fun ppf notation ->
+  match notation with
+  | Prefix(p) -> out ppf "prefix %f" p
+  | Infix(a,p) -> out ppf "infix%a %f" pp_assoc a p
+  | Zero -> out ppf "builtin \"0\""
+  | Succ -> out ppf "builtin \"+1\""
+  | Quant -> out ppf "quantifier"
+
+let pp_uid = LpLexer.pp_uid
+
+let pp_path : Path.t pp = List.pp pp_uid "."
+
+let pp_sym : sym pp = fun ppf s ->
+  if !print_implicits && s.sym_impl <> [] then out ppf "@";
+  if StrMap.mem s.sym_name !sig_state.in_scope then
+    if s == Unif_rule.cons then out ppf "%s" s.sym_name
+    else pp_uid ppf s.sym_name
+  else
+    match Path.Map.find_opt s.sym_path (!sig_state).path_alias with
+    | None -> out ppf "%a.%a" pp_path s.sym_path pp_uid s.sym_name
+    | Some alias -> out ppf "%a.%a" pp_uid alias pp_uid s.sym_name
+
+let pp_var : 'a Bindlib.var pp = fun ppf x -> pp_uid ppf (Bindlib.name_of x)
 
 (** Exception raised when trying to convert a term into a nat. *)
 exception Not_a_nat
@@ -102,192 +86,177 @@ let nat_of_term : term -> int = fun t ->
   let zero = get_builtin "0" in
   let succ = get_builtin "+1" in
   let rec nat acc = fun t ->
-    match Basics.get_args t with
+    match LibTerm.get_args t with
     | (Symb s, [u]) when s == succ -> nat (acc+1) u
     | (Symb s,  []) when s == zero -> acc
     | _ -> raise Not_a_nat
   in nat 0 t
 
-(** [are_quant_args s args] returns [true] iff the first element of
-    [args] which is non-implicit for [s] is an abstraction. *)
-let are_quant_args : sym -> term list -> bool = fun s args ->
-  let is_abst t = match unfold t with Abst(_) -> true | _ -> false in
-  match (args, s.sym_impl) with
-  | ([_;b], ([]|[true])) -> is_abst b
-  | (_    , _          ) -> false
+(** [are_quant_args args] returns [true] iff [args] has only one argument
+   that is an abstraction. *)
+let are_quant_args : term list -> bool = fun args ->
+  match args with
+  | [b] -> is_abst b
+  | _ -> false
 
-(** [pp_meta oc m] prints the uninstantiated meta-variable [m] to [oc]. *)
-let rec pp_meta : meta pp = fun oc m ->
-  if !print_meta_type then
-    Format.fprintf oc "(%s:%a)" (Meta.name m) pp_term !(m.meta_type)
-  else
-    Format.pp_print_string oc (Meta.name m)
+let pp_meta_name : meta pp = fun ppf m ->
+  match m.meta_name with
+  | Some s -> pp_uid ppf s
+  | None -> out ppf "%d" m.meta_key
 
-(** [pp_term oc t] prints the term [t] to the channel [oc]. *)
-and pp_term : term pp = fun oc t ->
-  let out = Format.fprintf in
-  (* The possible priority levels are [`Func] (top level, including
-     abstraction or product), [`Appl] (application) and [`Atom] (smallest
-     priority). *)
-  let rec pp (p : [`Func | `Appl | `Atom]) oc t =
-    let (h, args) = Basics.get_args t in
+let rec pp_meta : meta pp = fun ppf m ->
+  if !print_meta_types then
+    out ppf "(?%a:%a)" pp_meta_name m pp_term !(m.meta_type)
+  else out ppf "?%a" pp_meta_name m
+
+and pp_term : term pp = fun ppf t ->
+  let rec atom ppf t = pp `Atom ppf t
+  and appl ppf t = pp `Appl ppf t
+  and func ppf t = pp `Func ppf t
+  and pp (p : Pretty.priority) ppf t =
+    let (h, args) = LibTerm.get_args t in
     let pp_appl h args =
       match args with
-      | []   -> pp_head (p <> `Func) oc h
+      | []   -> pp_head (p <> `Func) ppf h
       | args ->
-          if p = `Atom then out oc "(";
-          pp_head true oc h;
-          List.iter (out oc " %a" (pp `Atom)) args;
-          if p = `Atom then out oc ")"
+          if p = `Atom then out ppf "(";
+          pp_head true ppf h;
+          List.iter (out ppf " %a" atom) args;
+          if p = `Atom then out ppf ")"
     in
     match h with
-    | Symb(s) ->
+    | Symb(s) when not !print_implicits ->
         begin
-          let eargs =
-            if !print_implicits then args else Basics.expl_args s args
-          in
+          let args = LibTerm.remove_impl_args s args in
           match notation_of s with
-          | Some Quant when are_quant_args s args ->
-              if p <> `Func then out oc "(";
+          | Some Quant when are_quant_args args ->
+              if p <> `Func then out ppf "(";
               pp_quantifier s args;
-              if p <> `Func then out oc ")"
-          | Some (Infix(op,_,_,_))
-            when not !print_implicits || s.sym_impl <> [] ->
+              if p <> `Func then out ppf ")"
+          | Some (Infix _) ->
               begin
-                match eargs with
-                | l::r::[] ->
-                    if p <> `Func then out oc "(";
+                match args with
+                | l::r::args ->
+                    if p <> `Func then out ppf "(";
                     (* Can be improved by looking at symbol priority. *)
-                    out oc "%a %s %a" (pp `Appl) l op (pp `Appl) r;
-                    if p <> `Func then out oc ")"
-                | l::r::eargs ->
-                    if p <> `Func then out oc "(";
-                    (* Can be improved by looking at symbol priority. *)
-                    out oc "(%a %s %a)" (pp `Appl) l op (pp `Appl) r;
-                    List.iter (out oc " %a" (pp `Atom)) eargs;
-                    if p <> `Func then out oc ")"
-                | _ -> pp_appl h eargs
+                    if args = []
+                    then out ppf "%a %a %a" appl l pp_sym s appl r
+                    else out ppf "(%a %a %a)" appl l pp_sym s appl r;
+                    List.iter (out ppf " %a" appl) args;
+                    if p <> `Func then out ppf ")"
+                | _ -> pp_appl h args
               end
-          | Some Zero -> out oc "0"
+          | Some Zero -> out ppf "0"
           | Some Succ ->
-              begin
-                try out oc "%i" (nat_of_term t)
-                with Not_a_nat -> pp_appl h args
-              end
-          | _   -> pp_appl h eargs
+              (try out ppf "%i" (nat_of_term t)
+               with Not_a_nat -> pp_appl h args)
+          | _ -> pp_appl h args
         end
-    | _       -> pp_appl h args
+    | _ -> pp_appl h args
 
   and pp_quantifier s args =
     (* assume [are_quant_args s args = true] *)
     match args with
-    | [_;b] ->
+    | [b] ->
         begin
           match unfold b with
           | Abst(a,b) ->
               let (x,p) = Bindlib.unbind b in
-              out oc "`%a %a" pp_symbol s pp_var x;
-              if !print_implicits then out oc ": %a" (pp `Func) a;
-              out oc ", %a" (pp `Func) p
+              out ppf "`%a %a" pp_sym s pp_var x;
+              if !print_domains then out ppf " : %a" func a;
+              out ppf ", %a" func p
           | _ -> assert false
         end
-      | _ -> assert false
+    | _ -> assert false
 
-  and pp_head wrap oc t =
-    let pp_env oc ar =
-      if ar <> [||] then out oc "[%a]" (Array.pp (pp `Appl) ",") ar
+  and pp_head wrap ppf t =
+    let pp_env ppf ar =
+      if ar <> [||] then out ppf "[%a]" (Array.pp appl ",") ar
     in
-    let pp_term_env oc te =
+    let pp_term_env ppf te =
       match te with
-      | TE_Vari(m) -> out oc "%s" (Bindlib.name_of m)
+      | TE_Vari(m) -> pp_var ppf m
       | _          -> assert false
     in
     match unfold t with
     | Appl(_,_)   -> assert false
     (* Application is handled separately, unreachable. *)
-    | Wild        -> out oc "_"
+    | Wild        -> out ppf "_"
     | TRef(r)     ->
         (match !r with
-         | None -> out oc "<TRef>"
-         | Some t -> pp `Atom oc t)
+         | None -> out ppf "<TRef>"
+         | Some t -> atom ppf t)
     (* Atoms are printed inconditonally. *)
-    | Vari(x)     -> pp_var oc x
-    | Type        -> out oc "TYPE"
-    | Kind        -> out oc "KIND"
-    | Symb(s)     -> pp_symbol oc s
-    | Meta(m,e)   -> out oc "%a%a" pp_meta m pp_env e
-    | Patt(_,n,e) -> out oc "$%s%a" n pp_env e
-    | TEnv(t,e)   -> out oc "$%a%a" pp_term_env t pp_env e
+    | Vari(x)     -> pp_var ppf x
+    | Type        -> out ppf "TYPE"
+    | Kind        -> out ppf "KIND"
+    | Symb(s)     -> pp_sym ppf s
+    | Meta(m,e)   -> out ppf "%a%a" pp_meta m pp_env e
+    | Patt(_,n,e) -> out ppf "$%a%a" pp_uid n pp_env e
+    | TEnv(t,e)   -> out ppf "$%a%a" pp_term_env t pp_env e
     (* Product and abstraction (only them can be wrapped). *)
     | Abst(a,b)   ->
-        if wrap then out oc "(";
+        if wrap then out ppf "(";
         let (x,t) = Bindlib.unbind b in
-        out oc "λ %a" pp_bvar (b,x);
-        if !print_domains then out oc ": %a, %a" (pp `Func) a (pp `Func) t
-        else pp_abstractions oc t;
-        if wrap then out oc ")"
+        out ppf "λ %a" pp_bvar (b,x);
+        if !print_domains then out ppf ": %a, %a" func a func t
+        else pp_abstractions ppf t;
+        if wrap then out ppf ")"
     | Prod(a,b)   ->
-        if wrap then out oc "(";
+        if wrap then out ppf "(";
         let (x,t) = Bindlib.unbind b in
         if Bindlib.binder_occur b then
-          out oc "Π %a: %a, %a" pp_var x (pp `Func) a (pp `Func) t
-        else out oc "%a → %a" (pp `Appl) a (pp `Func) t;
-        if wrap then out oc ")"
+          out ppf "Π %a: %a, %a" pp_var x func a func t
+        else out ppf "%a → %a" appl a func t;
+        if wrap then out ppf ")"
     | LLet(a,t,b) ->
-        if wrap then out oc "(";
+        if wrap then out ppf "(";
+        out ppf "let ";
         let (x,u) = Bindlib.unbind b in
-        pp_bvar oc (b,x);
-        if !print_domains then out oc ": %a" (pp `Atom) a;
-        out oc " ≔ %a in %a" (pp `Atom) t (pp `Atom) u;
-        if wrap then out oc ")"
-  and pp_bvar oc (b,x) =
-    if Bindlib.binder_occur b then out oc "%a" pp_var x else out oc "_"
-  and pp_abstractions oc t =
+        pp_bvar ppf (b,x);
+        if !print_domains then out ppf ": %a" atom a;
+        out ppf " ≔ %a in %a" atom t atom u;
+        if wrap then out ppf ")"
+  and pp_bvar ppf (b,x) =
+    if Bindlib.binder_occur b then out ppf "%a" pp_var x else out ppf "_"
+  and pp_abstractions ppf t =
     match unfold t with
     | Abst(_,b) ->
         let (x,t) = Bindlib.unbind b in
-        out oc " %a" pp_bvar (b,x); pp_abstractions oc t
-    | t -> out oc ", %a" (pp `Func) t
+        out ppf " %a%a" pp_bvar (b,x) pp_abstractions t
+    | t -> out ppf ", %a" func t
   in
-  pp `Func oc (cleanup t)
+  func ppf (cleanup t)
 
-(** [pp_rule oc (s,h,r)] prints the rule [r] of symbol [s] to the output
-   channel [oc]. *)
-let pp_rule : (sym * rule) pp = fun oc (s,r) ->
-  let lhs = Basics.add_args (Symb s) r.lhs in
+let pp_rule : (sym * rule) pp = fun ppf (s,r) ->
+  let lhs = LibTerm.add_args (Symb s) r.lhs in
   let (_, rhs) = Bindlib.unmbind r.rhs in
-  Format.fprintf oc "%a ↪ %a" pp_term lhs pp_term rhs
+  out ppf "%a ↪ %a" pp_term lhs pp_term rhs
 
-(** [pp_ctxt oc ctx] displays context [ctx] if {!val:print_contexts} is
-    true, with [ ⊢ ] after; and nothing otherwise. *)
-let pp_ctxt : ctxt pp = fun oc ctx ->
+let pp_unif_rule : (sym * rule) pp = fun ppf (s,r) ->
+  let lhs = LibTerm.add_args (Symb s) r.lhs in
+  let (_, rhs) = Bindlib.unmbind r.rhs in
+  out ppf "%a ↪ [ %a ]" pp_term lhs pp_term rhs
+
+(* ends with a space if [!print_contexts = true] *)
+let pp_ctxt : ctxt pp = fun ppf ctx ->
   if !print_contexts then
-    let pp_ctxt : ctxt pp = fun oc ctx ->
-      let pp_e oc (x,a,t) =
-        match t with
-        | None    -> Format.fprintf oc "%a: %a" pp_var x pp_term a
-        | Some(t) ->
-            Format.fprintf oc "%a: %a ≔ %a" pp_var x pp_term a pp_term t
-      in
-      if ctx = [] then Format.pp_print_string oc "∅"
-      else List.pp pp_e ", " oc (List.rev ctx)
-    in
-    Format.fprintf oc "%a ⊢ " pp_ctxt ctx
+    begin
+      let pp_def ppf t = out ppf " ≔ %a" pp_term t in
+      let pp_decl ppf (x,a,t) =
+        out ppf "%a : %a%a" pp_var x pp_term a (Option.pp pp_def) t in
+      List.pp pp_decl ", " ppf (List.rev ctx);
+      out ppf " ⊢ "
+    end
 
-(** [pp_typing oc (c,t,u)] prints the typing constraint [c] to the
-    output channel [oc]. *)
-let pp_typing : constr pp = fun oc (ctx, t, u) ->
-  Format.fprintf oc "%a%a : %a" pp_ctxt ctx pp_term t pp_term u
+let pp_typing : constr pp = fun ppf (ctx, t, u) ->
+  out ppf "%a%a : %a" pp_ctxt ctx pp_term t pp_term u
 
-(** [pp_constr oc c] prints the unification constraints [c] to the
-    output channel [oc]. *)
-let pp_constr : constr pp = fun oc (ctx, t, u) ->
-  Format.fprintf oc "%a%a ≡ %a" pp_ctxt ctx pp_term t pp_term u
+let pp_constr : constr pp = fun ppf (ctx, t, u) ->
+  out ppf "%a%a ≡ %a" pp_ctxt ctx pp_term t pp_term u
 
-(** [pp_constr oc p] prints the unification problem [p] to the
-    output channel [oc]. *)
-let pp_problem : problem pp = fun oc p ->
-  let constr oc c = Format.fprintf oc "\n; %a" pp_constr c in
-  Format.fprintf oc
-    "{ recompute = %b;\nto_solve = [%a];\nunsolved = [%a] }"
+(* for debug only *)
+let pp_problem : problem pp = fun ppf p ->
+  let constr ppf c = out ppf "\n; %a" pp_constr c in
+  out ppf "{ recompute = %b;\nto_solve = [%a];\nunsolved = [%a] }"
     p.recompute (List.pp constr "") p.to_solve (List.pp constr "") p.unsolved

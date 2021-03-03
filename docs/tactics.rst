@@ -13,18 +13,37 @@ first goal only, which is called the *focused* goal. One can change
 the focus goal by using the ``focus`` tactic. The proof is complete
 only when all generated goals have been solved.
 
-Reminder: the BNF grammar of tactics is in :download:`syntax.bnf`.
+Reminder: the BNF grammar of tactics is in `syntax.bnf <https://raw.githubusercontent.com/Deducteam/lambdapi/master/docs/syntax.bnf>`__.
 
-``solve``
+``apply``
 ---------
 
-Simplify unification goals as much as possible.
+If ``t`` is a term of type ``Π x₁:T₁, …, Π xₙ:Tₙ,U``, then ``apply t``
+refines the focused type goal with ``t _ … _`` (with n underscores).
 
 ``assume``
 ----------
 
-The tactic ``assume h1 .. hn`` replaces the focused goal of type
-``Π x1 .. xn,T`` by a goal of type ``T`` with ``xi`` replaced by ``hi``.
+If the focus type goal is of the form ``Π x₁ … xₙ,T``, then ``assume
+h₁ … hₙ`` replaces it by ``T`` with ``xᵢ`` replaced by ``hᵢ``.
+
+``induction``
+-------------
+
+If the focus type goal is of the form ``Π x:I …, …`` with ``I`` an
+inductive type, then ``induction`` refines it by applying the
+induction principle of ``I``.
+
+``refine``
+----------
+
+The tactic ``refine t`` tries to instantiate the focused goal by the
+term ``t``. ``t`` can contain references to other goals by using
+``?n`` where ``n`` is a goal name. ``t`` can contain underscores ``_``
+or new metavariable names ``?n`` as well. The type-checking and
+unification algorithms will then try to instantiate some of the
+metavariables. The new metavariables that cannot be solved are added
+as new goals.
 
 ``simpl``
 ---------
@@ -32,24 +51,10 @@ The tactic ``assume h1 .. hn`` replaces the focused goal of type
 Normalizes the focused goal with respect to β-reduction and the
 user-defined rewriting rules.
 
-``refine``
-----------
-
-The tactic ``refine t`` tries to instantiate the focused goal by the
-term ``t``. ``t`` can contain references to other goals by using ``?n``
-where ``n`` is a goal name. ``t`` can contain
-underscores ``_`` or new metavariable names ``?n`` which will be
-replaced by new metavariables. The unification and type-checking
-algorithms will then try to instantiate some of the generated
-metavariables. The metavariables that cannot be solved are added as new
-goals.
-
-``apply``
+``solve``
 ---------
 
-The tactic ``apply t`` replaces a goal of type ``T`` by possibly new
-goals: ``?0`` of type ``TO``, …, ``?n`` of type ``Tn`` if ``t`` is of
-type ``Π x1:T1,..,Π xn:Tn,?0`` and ``t ?1 .. ?n`` is of type ``T``.
+Simplify unification goals as much as possible.
 
 ``why3``
 --------
@@ -92,12 +97,12 @@ declarations:
 
 ::
 
-   set builtin "T"     ≔ ... // : U → TYPE
-   set builtin "P"     ≔ ... // : Prop → TYPE
-   set builtin "eq"    ≔ ... // : Π {a}, T a → T a → Prop
-   set infix ... "="   ≔ eq  // optional
-   set builtin "refl"  ≔ ... // : Π {a} (x:T a), P (x = x)
-   set builtin "eqind" ≔ ... // : Π {a} x y, P (x = y) → Π p:T a→Prop, P (p y) → P (p x)
+   set builtin "T"     ≔ … // : U → TYPE
+   set builtin "P"     ≔ … // : Prop → TYPE
+   set builtin "eq"    ≔ … // : Π {a}, T a → T a → Prop
+   set infix … "="   ≔ eq  // optional
+   set builtin "refl"  ≔ … // : Π {a} (x:T a), P (x = x)
+   set builtin "eqind" ≔ … // : Π {a} x y, P (x = y) → Π p:T a→Prop, P (p y) → P (p x)
 
 ``reflexivity``
 ^^^^^^^^^^^^^^^
@@ -113,7 +118,7 @@ Replaces a goal of the form ``P (t = u)`` by the goal ``P (u = t)``.
 ^^^^^^^^^^^
 
 The ``rewrite`` tactic takes as argument a term ``t`` of type
-``Πx1 .. xn,P(l=r)`` prefixed by an optional ``-`` (to indicate that the
+``Π x₁ … xₙ,P(l = r)`` prefixed by an optional ``left`` (to indicate that the
 equation should be used from right to left) and an optional rewrite
 pattern in square brackets, following the syntax and semantics of
 SSReflect rewrite patterns:
@@ -131,13 +136,13 @@ SSReflect rewrite patterns:
 See `A Small Scale Reflection Extension for the Coq
 system <http://hal.inria.fr/inria-00258384>`_, by Georges Gonthier,
 Assia Mahboubi and Enrico Tassi, INRIA Research Report 6455, 2016,
-section 8, p. 48, for more details.
+section 8, p. 48, for more details.
 
 In particular, if ``u`` is a subterm of the focused goal matching ``l``,
-that is, of the form ``l`` with ``x1`` replaced by ``u1``, …, ``xn``
-replaced by ``un``, then the tactic ``rewrite t`` replaces in the
-focused goal all occurrences of ``u`` by the term ``r`` with ``x1``
-replaced by ``u1``, …, ``xn`` replaced by ``un``.
+that is, of the form ``l`` with ``x₁`` replaced by ``u₁``, …, ``xₙ``
+replaced by ``uₙ``, then the tactic ``rewrite t`` replaces in the
+focused goal all occurrences of ``u`` by the term ``r`` with ``x₁``
+replaced by ``u₁``, …, ``xₙ`` replaced by ``uₙ``.
 
 Proof mode management
 ---------------------

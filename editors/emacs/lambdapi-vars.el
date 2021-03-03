@@ -60,7 +60,8 @@
 
 (defvar lambdapi-syntax-table
   (let ((table (make-syntax-table)))
-    (modify-syntax-entry ?\/ ". 12b" table)
+    (modify-syntax-entry ?\/ ". 124" table)
+    (modify-syntax-entry ?* ". 23b" table)
     (modify-syntax-entry ?Π "." table)
     (modify-syntax-entry ?λ "." table)
     (modify-syntax-entry ?→ "." table)
@@ -71,7 +72,7 @@
     (modify-syntax-entry ?: "." table)
     (modify-syntax-entry ?, "." table)
     ;; (modify-syntax-entry ?| "\\" table) ; | instead of {| |} for simplicity
-    (modify-syntax-entry ?\n "> b" table)
+    (modify-syntax-entry ?\n "> " table)
     (modify-syntax-entry ?. "w" table)
     (modify-syntax-entry ?_ "w" table)
     table)

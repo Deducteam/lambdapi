@@ -4,9 +4,11 @@ open! Lplib
 open Lplib.Extra
 
 open Timed
-open Console
-open Terms
-open Basics
+open Common
+open Error
+open Debug
+open Term
+open LibTerm
 open Print
 
 (** The head-structure of a term t is:
@@ -108,8 +110,8 @@ and whnf_stk : ctxt -> term -> stack -> term * stack = fun ctx t stk ->
       begin
       (* First check for symbol definition. *)
       match !(s.sym_def) with
-      | Some(t) -> Stdlib.incr steps; whnf_stk ctx t stk
-      | None    ->
+      | Some(t) when not s.sym_opaq -> Stdlib.incr steps; whnf_stk ctx t stk
+      | _ ->
       (* Otherwise try rewriting using decision tree. *)
       match tree_walk !(s.sym_tree) ctx stk with
       (* If no rule is found, return the original term *)
@@ -166,9 +168,9 @@ and eq_modulo : ctxt -> term -> term -> bool = fun ctx a b ->
 
 (** {b NOTE} in the {!val:tree_walk} function, bound variables involve three
     elements:
-    1. a {!constructor:Terms.term.Abst} which introduces the bound variable in
+    1. a {!constructor:Term.term.Abst} which introduces the bound variable in
        the term;
-    2. a {!constructor:Terms.term.Vari} which is the bound variable previously
+    2. a {!constructor:Term.term.Vari} which is the bound variable previously
        introduced;
     3. a {!constructor:Tree_types.TC.t.Vari} which is a simplified
        representation of a variable for trees. *)
@@ -178,7 +180,7 @@ and eq_modulo : ctxt -> term -> term -> bool = fun ctx a b ->
     of the abstract machine  is returned in case of success.  Even if matching
     fails,  the stack [stk] may be imperatively updated since a reduction step
     taken in elements of the stack is preserved (this is done using
-    {!constructor:Terms.term.TRef}). *)
+    {!constructor:Term.term.TRef}). *)
 and tree_walk : dtree -> ctxt -> stack -> (term * stack) option =
   fun tree ctx stk ->
   let (lazy capacity, lazy tree) = tree in
@@ -186,7 +188,7 @@ and tree_walk : dtree -> ctxt -> stack -> (term * stack) option =
   let bound = Array.make capacity TE_None in
   (* [walk tree stk cursor vars_id id_vars] where [stk] is the stack of terms
      to match and [cursor] the cursor indicating where to write in the [vars]
-     array described in {!module:Terms} as the environment of the RHS during
+     array described in {!module:Term} as the environment of the RHS during
      matching. [vars_id] maps the free variables contained in the term to the
      indexes defined during tree build, and [id_vars] is the inverse mapping
      of [vars_id]. *)
@@ -392,12 +394,12 @@ let whnf : ctxt -> term -> term = fun ctx t ->
   if Stdlib.(!steps = 0) then unfold t else u
 
 (** [simplify t] reduces simple redexes of [t]. *)
-let rec simplify : ctxt -> term -> term = fun ctx t ->
-  match get_args (whnf ctx t) with
+let rec simplify : term -> term = fun t ->
+  match get_args (whnf_beta t) with
   | Prod(a,b), _ ->
      let (x,b) = Bindlib.unbind b in
-     let b = Bindlib.bind_var x (lift (simplify ctx b)) in
-     Prod (simplify ctx a, Bindlib.unbox b)
+     let b = Bindlib.bind_var x (lift (simplify b)) in
+     Prod (simplify a, Bindlib.unbox b)
   | h, ts -> add_args h (List.map whnf_beta ts)
 
 (** [hnf t] computes a head-normal form of the term [t]. *)
@@ -410,7 +412,7 @@ let rec hnf : ctxt -> term -> term = fun ctx t ->
 
 (** [eval cfg ctx t] evaluates the term [t] in the context [ctx] according to
     configuration [cfg]. *)
-let eval : Syntax.eval_config -> ctxt -> term -> term = fun c ctx t ->
+let eval : Parsing.Syntax.eval_config -> ctxt -> term -> term = fun c ctx t ->
   match (c.strategy, c.steps) with
   | (_   , Some(0))
   | (NONE, _      ) -> t
@@ -432,4 +434,4 @@ let eq_constr : constr -> constr -> bool = fun (ctx1,t1,u1) (ctx2,t2,u2) ->
 (** Comparing function for two contraints. For the non equal case, we forward
     to the standard library compare function *)
 let compare_constr : constr -> constr -> int = fun c1 c2 ->
-  if eq_constr c1 c2 then 0 else Basics.cmp_constr c1 c2
+  if eq_constr c1 c2 then 0 else LibTerm.cmp_constr c1 c2

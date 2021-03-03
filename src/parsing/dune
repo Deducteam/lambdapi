@@ -1,0 +1,13 @@
+(library
+ (name parsing)
+ (public_name lambdapi.parsing)
+ (modules :standard)
+ (preprocess (pps sedlex.ppx))
+ (libraries menhirLib pratter sedlex sedlex.ppx common))
+
+(menhir (flags --explain --external-tokens LpLexer) (modules lpParser))
+
+(ocamllex dkLexer)
+(menhir
+ (flags (--external-tokens DkLexer))
+ (modules dkParser))

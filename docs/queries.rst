@@ -71,7 +71,7 @@ functionalities, run the command ``lambdapi check --help``.
    set flag "print_implicits" on; // default is off
    set flag "print_contexts" on; // default is off
    set flag "print_domains" on; // default is off
-   set flag "print_meta_type" on; // default is off
+   set flag "print_meta_types" on; // default is off
 
 **prover config**: In order to use the ``why3`` tactic, a prover should
 be set using:

@@ -10,8 +10,8 @@ open Lplib.Base
 open Lplib.Extra
 
 open Timed
-open Terms
-open Basics
+open Term
+open LibTerm
 open Tree_types
 
 (** {1 Types for decision trees}
@@ -37,7 +37,7 @@ open Tree_types
     a matching on symbol [u] or a variable or wildcard when [?]. Typically the
     portion [S─∘─Z] is made possible by a swap. *)
 
-(** Representation of a tree (see {!type:Terms.tree}). *)
+(** Representation of a tree (see {!type:Term.tree}). *)
 type tree = rhs Tree_types.tree
 
 (** {1 Conditions for decision trees}
@@ -76,7 +76,7 @@ module CP = struct
   type t =
     { variables : int IntMap.t
     (** An association [(e, v)] maps the slot of a pattern variable (the first
-        argument of a {!constructor:Terms.term.Patt}) to its slot in the array
+        argument of a {!constructor:Term.term.Patt}) to its slot in the array
         [vars] of the {!val:Eval.tree_walk} function. It is used to remember
         non linearity constraints. *)
     ; nl_conds : PSet.t
@@ -293,7 +293,7 @@ module CM = struct
     in
     let size = (* Get length of longest rule *)
       if rs = [] then 0 else
-      List.max ~cmp:Int.compare (List.map (fun r -> Terms.(r.arity)) rs)
+      List.max ~cmp:Int.compare (List.map (fun r -> Term.(r.arity)) rs)
     in
     let positions =
       if size = 0 then [] else
@@ -385,7 +385,7 @@ module CM = struct
 
   (** [yield m] returns the next operation to carry out on matrix [m], that
       is, either specialising, solving a constraint or rewriting to a rule. *)
-  let yield : match_strat -> t -> decision =
+  let yield : Parsing.Syntax.Tags.match_strat -> t -> decision =
     fun mstrat ({ clauses ; positions ; _ } as m) ->
     (* If a line is empty and priority is given to the topmost rule, we have
        to eliminate ¨empty¨ rules. *)
@@ -522,7 +522,7 @@ module CM = struct
       | _      , Prod(_)
       | _      , Abst(_) -> None
       | _      , _       -> assert false
-          (* Terms matched (in this case) should not appear in matrices. *)
+          (* Term matched (in this case) should not appear in matrices. *)
     in
     (pos, List.filter_map filtrans cls)
 
@@ -662,13 +662,8 @@ let harvest : term array -> rhs -> CM.env_builder -> int VarMap.t -> int ->
     to the RHS are in an environment builder (of type
     {!type:CM.env_builder}). *)
 
-(** [is_abst t] returns [true] iff [t] is of the form [Abst(_)]. *)
-let is_abst : term -> bool = fun t ->
-  match t with Abst(_) -> true | _ -> false
-
-(** [is_prod t] returns [true] iff [t] is of the form [Prod(_)]. *)
-let is_prod : term -> bool = fun t ->
-  match t with Prod(_) -> true | _ -> false
+(** A shorthand. *)
+type match_strat = Parsing.Syntax.Tags.match_strat
 
 (** [compile mstrat m] translates the pattern matching problem encoded by the
     matrix [m] into a decision tree following strategy [mstrat]. *)

@@ -1,20 +1,20 @@
 Commands
 ========
 
-The BNF grammar of Lambdapi is in `syntax.bnf <syntax.bnf>`__.
+The BNF grammar of Lambdapi is in `syntax.bnf <https://raw.githubusercontent.com/Deducteam/lambdapi/master/docs/syntax.bnf>`__.
 
 In this section, we will illustrate the syntax of Lambdapi using
 examples. The first thing to note is that Lambdapi files are formed of a
 list of commands. A command starts with a particular reserved keyword
 and ends with a semi-colon.
 
-One-line comments are introduced by ‘//’:
+One-line comments are introduced by ``//``:
 
 ::
 
-   // all this is ignored
+   // These words are ignored
 
-And multi-line comments are opened with ‘/*’ and closed with ‘*/’.
+And multi-line comments are opened with ``/*`` and closed with ``*/``.
 
 ::
 
@@ -28,24 +28,31 @@ And multi-line comments are opened with ‘/*’ and closed with ‘*/’.
 Informs the type-checker that the current module
 depends on some other module, which must hence be compiled.
 
+A required module can optionally be aliased, in which case it
+can be referred to with the provided name.
+
 ::
 
-   require boolean;
+   require std.bool;
    require church.list as list;
 
-Note that a required module can optionally be aliased, in which case it
-can be referred to with the provided name.
+Note that ``require`` always take as argument a qualified
+identifier. See :doc:`module` for more details.
 
 ``open``
 --------
 
-Puts into scope the symbols defined in the given
-module. It can also be combined with the ``require`` command.
+Puts into scope the symbols of the previously required module given
+in argument. It can also be combined with the ``require`` command.
 
 ::
 
-   open booleans;
+   require std.bool;
+   open std.bool;
    require open church.sums;
+
+Note that ``open`` always take as argument a qualified
+identifier. See :doc:`module` for more details.
 
 ``symbol``
 ----------
@@ -162,54 +169,6 @@ arguments must be explicitly given.
 **Notations**: Some notation can be declared for some symbol. See the command
 ``set``.
 
-``inductive``
--------------
-The command ``inductive`` can be used to define an inductive type, its constructors and its associated induction principle if it can be generated. The name of the induction principle is the name of the type prefixed with ``ind_``. For generating the induction principle, we assume defined the following builtins:
-
-::
-   
-   ￼set builtin "Prop" ≔ ...; // : TYPE
-   ￼set builtin "P"    ≔ ...; // : Prop → TYPE
-
-For the moment, we only support (mutually defined) first-order dependent types.
-Polymorphic types can be encoded by defining a type Set and a function
-τ:Set → TYPE.
-
-Some cases of nested type are supported too, like the type Bush.
-Example:
-
-::
-   
-   ￼inductive Nat : TYPE ≔
-   ￼ | z    : Nat
-   ￼ | succ : Nat → Nat;
-   
-is equivalent to:
-￼
-::
-   
-   ￼injective symbol Nat  : TYPE;
-   ￼constant  symbol z    : Nat;
-   ￼constant  symbol succ : Nat → Nat;
-   ￼symbol ind_Nat p : π (p 0) → (Π x, π (p x) → π (p (succ x))) → Π x, π (p x);
-   ￼rule ind_Nat _  $pz    _       z     ↪ $pz
-   ￼with ind_Nat $p $pz $psucc (succ $n) ↪ $psucc $n (ind_Nat $p $pz $psucc $n);
-
-Note that to define mutually defined inductive types, you need the ``with`` keyword to link
-all inductive types together. For instance:
-
-::
-   
-   ￼inductive Expr : TYPE ≔
-      | Lit : Nat → Expr
-      | Add : Expr → Expr → Expr
-      | If  : BExpr → Expr → Expr → Expr
-    with BExpr : TYPE ≔
-      | BLit  : Bool → BExpr
-      | And   : BExpr → BExpr → BExpr
-      | Not   : BExpr → BExpr
-      | Equal : Expr → Expr → BExpr;
-
 ``rule``
 --------
 
@@ -296,48 +255,10 @@ Adding sets of rules allows to maintain confluence.
 
 Examples of patterns are available in ``tests/OK/patterns.lp``.
 
-``set declared|prefix|infix|quantifier|builtin|unif_rule``
-----------------------------------------------------------
+``set builtin``
+---------------
 
-The ``set`` command is used to control the behaviour of Lambdapi and
-extension points in its syntax.
-
-**prefix symbols** The following code defines a prefix symbol for
-negation.
-
-::
-
-   set prefix 5 "¬" ≔ neg;
-
-**infix symbols** The following code defines infix symbols for addition
-and multiplication. Both are associative to the left, and they have
-priority levels ``6`` and ``7`` respectively.
-
-::
-
-   set infix left 6 "+" ≔ add;
-   set infix left 7 "×" ≔ mul;
-
-The modifier ``infix``, ``infix right`` and ``infix left`` can be used
-to specify whether the defined symbol is non-associative, associative to
-the right, or associative to the left. The priority levels are floating
-point numbers, hence a priority can (almost) always be inserted between
-two different levels.
-
-**quantifier symbols** Any symbol can be input as a quantifier (as done usually
-with symbols such as ``∀``, ``∃`` or ``λ``), provided that it
-is prefixed with a backquote `` \` ``. However, such terms will be printed as
-quantifiers only if they are declared so using the command ``set quantifier``:
-
-::
-
-   set quantifier ∀; // : Π {a}, (T a → Prop) → Prop
-   compute ∀ {a'} (λx:T a,p); // prints `∀x:T a,p
-   compute ∀ (λx:T a, p); // prints `∀x,p
-   type `∀ x, p; // quantifiers can be written as such
-   type `f x, p; // works as well if f is defined
-
-**builtins** The command ``set builtin`` allows to map a “builtin“
+The command ``set builtin`` allows to map a “builtin“
 string to a user-defined symbol identifier. Those mappings are
 necessary for other commands or tactics. For instance, to use decimal
 numbers, one needs to map the builtins “0“ and “+1“ to some symbol
@@ -345,16 +266,60 @@ identifiers for zero and the successor function (see hereafter); to
 use tactics on equality, one needs to define some specific builtins;
 etc.
 
+``set notation``
+----------------
+
+The ``set notation`` command is used to specify a notation for a symbol.
+
+**infix** The following code defines infix symbols for addition
+and multiplication. Both are associative to the left, and they have
+priority levels ``6`` and ``7`` respectively.
+
+::
+
+   set notation + infix left 6;
+   set notation × infix left 7;
+
+The modifier ``infix``, ``infix right`` and ``infix left`` can be used
+to specify whether the defined symbol is non-associative, associative to
+the right, or associative to the left. The priority levels are floating
+point numbers, hence a priority can (almost) always be inserted between
+two different levels.
+
+**prefix** The following code defines a prefix symbol for
+negation with some priority level.
+
+::
+
+   set notation ¬ prefix 5;
+
+**quantifier** Any symbol can be input as a quantifier (as done usually
+with symbols such as ``∀``, ``∃`` or ``λ``), provided that it
+is prefixed with a backquote `` \` ``. However, such terms will be printed as
+quantifiers only if they are declared so using the command ``set quantifier``:
+
+::
+
+   symbol ∀ {a} : (T a → Prop) → Prop;
+   set notation ∀ quantifier;
+   compute λ p, ∀ (λ x:T a, p); // prints `∀ x, p
+   type λ p, `∀ x, p; // quantifiers can be written as such
+   type λ p, `f x, p; // works as well if f is any symbol
+
 **notation for natural numbers** It is possible to use the standard
-decimal notation for natural numbers by specifying the symbols
-representing 0 and the successor function as follows:
+decimal notation for natural numbers by defining the builtins ``"0"``
+and ``"+1"`` as follows:
 
 ::
 
    set builtin "0"  ≔ zero; // : N
    set builtin "+1" ≔ succ; // : N → N
+   type 42;
 
-**unification rules** The unification engine can be guided using
+``set unif_rule``
+-----------------
+
+The unification engine can be guided using
 *unification rules*. Given a unification problem ``t ≡ u``, if the
 engine cannot find a solution, it will try to match the pattern
 ``t ≡ u`` against the defined rules (modulo commutativity of ≡)
@@ -366,12 +331,91 @@ Examples:
 
 ::
 
-   set unif_rule Bool ≡ T $t ↪ begin $t ≡ bool end;
-   set unif_rule $x + $y ≡ 0 ↪ begin $x ≡ 0; $y ≡ 0 end;
-   set unif_rule $a → $b ≡ T $c ↪ begin $a ≡ T $a'; $b ≡ T $b'; $c ≡ arrow $a' $b' end;
+   set unif_rule Bool ≡ T $t ↪ [ $t ≡ bool ];
+   set unif_rule $x + $y ≡ 0 ↪ [ $x ≡ 0; $y ≡ 0 ];
+   set unif_rule $a → $b ≡ T $c ↪ [ $a ≡ T $a'; $b ≡ T $b'; $c ≡ arrow $a' $b' ];
 
 Thanks to the first unification rule, a problem ``T ?x ≡ Bool`` is
 transformed into ``?x ≡ bool``.
 
 *WARNING* This feature is experimental and there is no sanity check
 performed on the rules.
+
+``inductive``
+-------------
+
+The commands ``symbol`` and ``rules`` above are enough to define
+inductive types, their constructors, their induction
+principles/recursors and their defining rules.
+
+We however provide a command ``inductive`` for automatically
+generating the induction principles and their rules from an inductive
+type definition, assuming that the following builtins are defined:
+
+::
+   
+   ￼set builtin "Prop" ≔ ...; // : TYPE, for the type of propositions
+   ￼set builtin "P"    ≔ ...; // : Prop → TYPE, interpretation of propositions as types
+
+Currently, it only supports parametrized mutually defined dependent
+first-order data types. As usual, polymorphic types can be encoded by
+defining a type ``Set`` and a function ``τ:Set → TYPE``.
+
+An inductive type can have 0 or more constructors.
+
+The name of the induction principle is ``ind_`` followed by the name
+of the type.
+
+Example:
+
+::
+   
+   ￼inductive ℕ : TYPE ≔
+   ￼| zero: ℕ
+   ￼| succ: ℕ → ℕ;
+   
+is equivalent to:
+￼
+::
+   
+   ￼constant symbol ℕ : TYPE;
+   ￼constant symbol zero : ℕ;
+   ￼constant symbol succ : ℕ → ℕ;
+   ￼symbol ind_ℕ p :
+      π(p zero) → (Π x, π(p x) → π(p(succ x))) → Π x, π(p x);
+   ￼rule ind_ℕ _ $pz _ zero ↪ $pz
+   ￼with ind_ℕ $p $pz $ps (succ $n) ↪ $ps $n (ind_ℕ $p $pz $ps $n);
+
+
+For mutually defined inductive types, one needs to use the ``with``
+keyword to link all inductive types together.
+
+Inductive definitions can also be parametrized as follows:
+
+::
+   
+   (a:Set)
+   inductive T: TYPE ≔
+   | node: τ a → F a → T a
+   with F: TYPE ≔
+   | nilF: F a
+   | consF: T a → F a → F a;
+
+Note that parameters are set as implicit in the types of
+constructors. So, one has to write ``consF t l`` or ``@consF a t l``.
+
+For mutually defined inductive types, an induction principle is
+generated for each inductive type:
+
+::
+
+   assert ⊢ ind_F: Π a, Π p:T a → Prop, Π q:F a → Prop,
+     (Π x l, π(q l) → π(p (node x l))) →
+     π(q nilF) →
+     (Π t, π(p t) → Π l, π(q l) → π(q (consF t l))) →
+     Π l, π(q l);
+   assert ⊢ ind_T: Π a, Π p:T a → Prop, Π q:F a → Prop,
+     (Π x, Π l, π(q l) → π(p (node x l))) →
+     π(q nilF) →
+     (Π t, π(p t) → Π l, π(q l) → π(q (consF t l))) →
+     Π t, π(p t);

@@ -2,13 +2,13 @@ symbol N : TYPE;
 symbol z : N;
 symbol s : N → N;
 
-symbol add : N → N → N;
-set infix left 5 "+" ≔ add;
+symbol + : N → N → N;
+set notation + infix left 5;
 assert ⊢ z + z + z ≡ (z + z) + z;
 assert ⊢ z + s z ≡ z + (s z);
 assertnot ⊢ z + z + z ≡ z + (z + z);
 
-symbol mul : N → N → N;
-set infix right 6 "×" ≔ mul;
+symbol × : N → N → N;
+set notation × infix right 6;
 assertnot ⊢ z × z × z ≡ (z × z) × z;
 assert ⊢ z × z × z ≡ z × (z × z);
