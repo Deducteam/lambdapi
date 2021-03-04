@@ -114,7 +114,7 @@ let sym_to_var : tvar StrMap.t -> term -> term = fun m ->
 let instantiation : ctxt -> meta -> term array -> term ->
   tmbinder Bindlib.box option = fun ctx m ts u ->
   if not (occurs m u) then
-    match nl_distinct_vars ctx ts with (* Theoretical justification ? *)
+    match nl_distinct_vars ctx ts with
     | None       -> None
     | Some(vs,m) ->
         let u = if StrMap.is_empty m then u else sym_to_var m u in
@@ -132,38 +132,35 @@ let instantiate : ctxt -> meta -> term array -> term -> constr list -> bool =
     log_unif "try instantiate %a" pp_constr (ctx,Meta(m,ts),u);
   match instantiation ctx m ts u with
   | Some(bu) when Bindlib.is_closed bu ->
-      begin
-        let typ_mts =
-          match Infer.type_app ctx !(m.meta_type) (Array.to_list ts) with
-          | Some a -> a
-          | None -> assert false
-        in
-        match Infer.check_noexn [] ctx u typ_mts with
-        | None -> false
-        | Some cs ->
-            let is_initial c = List.exists (Eval.eq_constr c) initial in
-            let cs = List.filter (fun c -> not (is_initial c)) cs in
-            match cs <> [], Stdlib.(!do_type_check) with
-            | false, _ ->
-                if !log_enabled then
-                  (log_unif "can instantiate (no new constraints)";
-                   log_unif (yel "%a ≔ %a") pp_meta m pp_term u);
-                Meta.set m (Bindlib.unbox bu); true
-            | true, false ->
-                if !log_enabled then
-                  (log_unif "can instantiate (new constraints ignored)";
-                   log_unif (yel "%a ≔ %a") pp_meta m pp_term u);
-                Meta.set m (Bindlib.unbox bu); true
-            | true, true ->
-                if !log_enabled then
-                  (let constr ppf = Format.fprintf ppf "\n; %a" pp_constr in
-                   log_unif "cannot instantiate because of new constraints:%a"
-                     (List.pp constr "") cs);
-                false
-      end
+      let do_instantiate() =
+        if !log_enabled then log_unif (yel "%a ≔ %a") pp_meta m pp_term u;
+        Meta.set m (Bindlib.unbox bu); true
+      in
+      if Stdlib.(!do_type_check) then
+        begin
+          let typ_mts =
+            match Infer.type_app ctx !(m.meta_type) (Array.to_list ts) with
+            | Some a -> a
+            | None -> assert false
+          in
+          match Infer.check_noexn [] ctx u typ_mts with
+          | None ->
+              if !log_enabled then log_unif "typing condition failed"; false
+          | Some cs ->
+              let is_eq c c' = LibTerm.cmp_constr c c' = 0 in
+              let is_initial c = List.exists (is_eq c) initial in
+              let cs = List.filter (fun c -> not (is_initial c)) cs in
+              if cs = [] then do_instantiate()
+              else
+                (if !log_enabled then
+                   (let constr ppf = Format.fprintf ppf "\n; %a" pp_constr in
+                    log_unif "typing generated new constraints:%a"
+                      (List.pp constr "") cs);
+                 false)
+        end
+      else do_instantiate()
   | _ ->
-      if !log_enabled then log_unif "cannot instantiate (variable condition)";
-      false
+      if !log_enabled then log_unif "variable condition failed"; false
 
 (** [solve p] tries to solve the unification problem [p] and
     returns the constraints that could not be solved. *)

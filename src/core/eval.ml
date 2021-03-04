@@ -421,17 +421,3 @@ let eval : Parsing.Syntax.eval_config -> ctxt -> term -> term = fun c ctx t ->
   | (HNF , None   ) -> hnf ctx t
   (* TODO implement the rest. *)
   | (_   , Some(_)) -> wrn None "Number of steps not supported."; t
-
-(** Equality function for two constraints *)
-let eq_constr : constr -> constr -> bool = fun (ctx1,t1,u1) (ctx2,t2,u2) ->
-  let t1,_ = Ctxt.to_abst ctx1 t1 in
-  let u1,_ = Ctxt.to_abst ctx1 u1 in
-  let t2,_ = Ctxt.to_abst ctx2 t2 in
-  let u2,_ = Ctxt.to_abst ctx2 u2 in
-  (eq_modulo [] t1 t2) && (eq_modulo [] u1 u2) ||
-  (eq_modulo [] t1 u2) && (eq_modulo [] t2 u1)
-
-(** Comparing function for two contraints. For the non equal case, we forward
-    to the standard library compare function *)
-let compare_constr : constr -> constr -> int = fun c1 c2 ->
-  if eq_constr c1 c2 then 0 else LibTerm.cmp_constr c1 c2
