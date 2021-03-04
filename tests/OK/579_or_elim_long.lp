@@ -26,7 +26,6 @@ symbol or_intro2 : Π (A B:Prop), prf B → prf (A ∨ B);
 symbol ¬       : Prop → Prop ≔  λ (P:Prop), P ↝  False;
 set notation ¬ prefix 20;
 
-set debug +i;
 symbol long_to_verify : Π a : Prop, Π b: Prop,
       (prf b →
       prf b →
