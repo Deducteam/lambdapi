@@ -69,9 +69,12 @@ following files:
 - `src/core/lpParser.mly`
 - `src/core/pretty.ml`
 - `src/core/print.ml`
+- `editors/vim/syntax/lambdapi.vim`
 - `editors/emacs/lambdapi-smie.el`
 - `editors/vscode/lp.configuration.json` (comments configuration),
 - `editors/vscode/syntaxes/lp.tmLanguage.json` (syntax highlighting),
 - `tools/listings.tex`
-- `docs/Makefile` (generation of `docs/syntax.bnf`)
-- as well as the User Manual in the `docs/` repository.
+- `docs/Makefile`
+- the User Manual files in the `docs/` repository
+
+and do `make doc` for generating BNF grammars.
