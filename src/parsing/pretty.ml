@@ -272,14 +272,10 @@ let command : p_command pp = fun ppf {elt;_} ->
         (List.pp params " ") xs
         (inductive "inductive") i
         (List.pp (inductive "\nwith") "") il
-  | P_set(P_config_builtin(s,qid)) ->
-      out ppf "set builtin \"%s\" ≔ %a" s qident qid
-  | P_set(P_config_notation(qid,n)) ->
-      out ppf "set notation %a %a" qident qid notation n
-  | P_set(P_config_unif_rule(ur)) ->
-      out ppf "set unif_rule %a" unif_rule ur
-  | P_query(q) ->
-     query ppf q
+  | P_builtin(s,qid) -> out ppf "builtin \"%s\" ≔ %a" s qident qid
+  | P_notation(qid,n) -> out ppf "notation %a %a" qident qid notation n
+  | P_unif_rule(ur) -> out ppf "unif_rule %a" unif_rule ur
+  | P_query(q) -> query ppf q
   end;
   out ppf ";"
 

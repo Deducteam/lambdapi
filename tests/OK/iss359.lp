@@ -1,5 +1,5 @@
 // Test that infix operators are considered as terms by commands
 symbol A: TYPE;
 symbol +: A → A → A;
-set notation + infix 5;
+notation + infix 5;
 type +;

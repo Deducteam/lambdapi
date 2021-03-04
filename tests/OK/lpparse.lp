@@ -17,6 +17,6 @@ comment */
 symbol B: TYPE;
 symbol b: B;
 symbol mob: B → B → A;
-set notation mob infix left 6;
+notation mob infix left 6;
 type b mob b;
 assert ⊢ b mob b: A;

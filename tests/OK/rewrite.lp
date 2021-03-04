@@ -26,14 +26,14 @@ symbol N ≔ T nat;
 constant symbol z : N;
 constant symbol s : N → N;
 
-set builtin "0"  ≔ z;
-set builtin "+1" ≔ s;
+builtin "0"  ≔ z;
+builtin "+1" ≔ s;
 
 // Addition on natural numbers.
 
 symbol + : N → N → N;
 
-set notation + infix left 3;
+notation + infix left 3;
 
 rule 0 + $x ↪ $x
 with s $x + $y ↪ s ($x + $y);
@@ -42,7 +42,7 @@ with s $x + $y ↪ s ($x + $y);
 
 symbol * : N → N → N;
 
-set notation * infix left 4;
+notation * infix left 4;
 
 rule 0 * _  ↪ 0
 with s $x * $y ↪ $y + $x * $y;
@@ -77,7 +77,7 @@ with beq (s _ ) 0      ↪ false;
 
 constant symbol = {a} : T a → T a → Prop;
 
-set notation = infix 0.1;
+notation = infix 0.1;
 
 constant symbol refl a (x:T a) : P (x = x);
 
@@ -86,11 +86,11 @@ constant symbol eqind a (x y:T a) : P (x = y) → Π p, P (p y) → P (p x);
 
 // Setting up builtins for rewrite.
 
-set builtin "P"     ≔ P;
-set builtin "T"     ≔ T;
-set builtin "eq"    ≔ =;
-set builtin "eqind" ≔ eqind;
-set builtin "refl"  ≔ refl;
+builtin "P"     ≔ P;
+builtin "T"     ≔ T;
+builtin "eq"    ≔ =;
+builtin "eqind" ≔ eqind;
+builtin "refl"  ≔ refl;
 
 // [Π n m, n + S m = S (n+m)]
 opaque symbol add_succ_r n m : P (n + s m = s (n + m))

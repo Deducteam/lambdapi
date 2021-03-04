@@ -27,7 +27,6 @@
     "compute"
     "print"
     "proofterm"
-    "set"
     "type")
   "Queries.")
 (defconst lambdapi--cmds
@@ -99,12 +98,12 @@ Indent by `lambdapi-indent-basic' in proofs, and 0 otherwise."
              ("compute" sterm)
              ("print")
              ("proofterm")
-             ("set" "debug" ident)
-             ("set" "flag" ident "off")
-             ("set" "flag" ident "on")
-             ("set" "prover" ident)
-             ("set" "prover_timeout" ident)
-             ("set" "verbose" ident)
+             ("debug" ident)
+             ("flag" ident "off")
+             ("flag" ident "on")
+             ("prover" ident)
+             ("prover_timeout" ident)
+             ("verbose" ident)
              ("type" sterm))
       (prfcontent (tactic)
                   (query))
@@ -132,14 +131,14 @@ Indent by `lambdapi-indent-basic' in proofs, and 0 otherwise."
                ("require" ident "as" ident ";")
                ("require" ident ";")
                ("rule" rules ";")
-               ("set" "builtin" ident "≔" sterm ";")
-               ("set" "notation" ident "infix" "left" sterm ";")
-               ("set" "notation" ident "infix" "right" sterm ";")
-               ("set" "notation" ident "infix" sterm ";")
-               ("set" "notation" ident "prefix" sterm ";")
-               ("set" "notation" ident "quantifier" ";")
+               ("builtin" ident "≔" sterm ";")
+               ("notation" ident "infix" "left" sterm ";")
+               ("notation" ident "infix" "right" sterm ";")
+               ("notation" ident "infix" sterm ";")
+               ("notation" ident "prefix" sterm ";")
+               ("notation" ident "quantifier" ";")
                (query ";")
-               ("set" "unif_rule" sterm "≡" sterm "↪" unif-rule-rhs ";")
+               ("unif_rule" sterm "≡" sterm "↪" unif-rule-rhs ";")
                (symdec ";")))
     '((assoc ";") (assoc "≔"))
     '((assoc ";") (assoc "↪"))
@@ -180,7 +179,7 @@ The default lexer is used because the syntax is primarily made of sexps."
     (`(:after . ,(or "admit" "abort" "end")) '(column . 0))
 
     (`(:before . ,(or "assert" "assertnot" "compute" "print" "proofterm"
-                      "set" "type"))
+                      "type"))
      (lambdapi--query-indent))
 
     (`(,_ . ,(or "," "↪" "→" "≡")) (smie-rule-separator kind))

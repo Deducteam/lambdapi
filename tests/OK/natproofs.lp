@@ -3,7 +3,7 @@ require open tests.OK.bool;
 require open tests.OK.nat;
 
 rule T nat ↪ N;
-set unif_rule T $x ≡ N ↪ [ $x ≡ nat ]; //FIXME should be infered automatically
+unif_rule T $x ≡ N ↪ [ $x ≡ nat ]; //FIXME should be infered automatically
 
 // Symmetry of the equality (first option, rewrite).
 opaque symbol eq_sym a (x y:T a) : P (x = y) → P (y = x)

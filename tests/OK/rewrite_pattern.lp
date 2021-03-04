@@ -12,8 +12,8 @@ constant symbol N : TYPE;
 constant symbol z : N;
 constant symbol s : N → N;
 
-set builtin "0"  ≔ z;
-set builtin "+1" ≔ s;
+builtin "0"  ≔ z;
+builtin "+1" ≔ s;
 
 // Addition on natural numbers.
 
@@ -82,11 +82,11 @@ constant symbol eqind : Π a x y, P (eq a x y) → Π (p:T a → Prop), P (p y) 
 
 // Setting up builtins for rewrite.
 
-set builtin "P"     ≔ P;
-set builtin "T"     ≔ T;
-set builtin "eq"    ≔ eq;
-set builtin "eqind" ≔ eqind;
-set builtin "refl"  ≔ refl;
+builtin "P"     ≔ P;
+builtin "T"     ≔ T;
+builtin "eq"    ≔ eq;
+builtin "eqind" ≔ eqind;
+builtin "refl"  ≔ refl;
 
 // Symmetry of the equality (first option, rewrite).
 opaque symbol eq_sym : Π a x y, P (eq a x y) → P (eq a y x)

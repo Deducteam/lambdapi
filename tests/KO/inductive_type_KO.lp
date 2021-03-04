@@ -1,12 +1,12 @@
 constant symbol Prop : TYPE;      // Type of propositions
 injective symbol π : Prop → TYPE; // Interpretation of propositions in TYPE
 
-set builtin "Prop"     ≔ Prop;
-set builtin "P"     ≔ π;
+builtin "Prop"     ≔ Prop;
+builtin "P"     ≔ π;
 
 symbol Nat : TYPE;
 
-set debug +g;
+debug +g;
 
 symbol ind_plane : TYPE;
 inductive plane : TYPE ≔

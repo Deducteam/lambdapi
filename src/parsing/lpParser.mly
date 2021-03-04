@@ -65,7 +65,6 @@
 %token REWRITE
 %token RULE
 %token SEQUENTIAL
-%token SET
 %token SIMPL
 %token SOLVE
 %token SYMBOL
@@ -134,7 +133,6 @@
 %type <Syntax.p_rule> rule
 %type <Syntax.p_tactic> tactic
 %type <Syntax.p_modifier> modifier
-%type <Syntax.p_config> config
 %type <Syntax.p_rw_patt> rw_patt
 %type <Syntax.p_tactic list * Syntax.p_proof_end> proof
 
@@ -223,11 +221,6 @@ notation:
   | PREFIX p=float_or_int { Prefix(p) }
   | QUANTIFIER { Quant }
 
-config:
-  | BUILTIN s=STRINGLIT ASSIGN i=id { P_config_builtin(s,i) }
-  | UNIF_RULE r=unif_rule { P_config_unif_rule(r) }
-  | NOTATION i=id n=notation { P_config_notation(i,n) }
-
 assert_kw:
   | ASSERT { false }
   | ASSERTNOT { true }
@@ -245,12 +238,12 @@ query:
     { make_pos $sloc (P_query_normalize(t, {strategy=SNF; steps=None})) }
   | PRINT i=id? { make_pos $sloc (P_query_print i) }
   | PROOFTERM { make_pos $sloc P_query_proofterm }
-  | SET DEBUG fl=DEBUG_FLAGS
+  | DEBUG fl=DEBUG_FLAGS
     { let (b, s) = fl in make_pos $sloc (P_query_debug(b, s)) }
-  | SET FLAG s=STRINGLIT b=SWITCH { make_pos $sloc (P_query_flag(s,b)) }
-  | SET PROVER s=STRINGLIT { make_pos $sloc (P_query_prover(s)) }
-  | SET PROVER_TIMEOUT i=INT { make_pos $sloc (P_query_prover_timeout(i)) }
-  | SET VERBOSE i=INT { make_pos $sloc (P_query_verbose(i)) }
+  | FLAG s=STRINGLIT b=SWITCH { make_pos $sloc (P_query_flag(s,b)) }
+  | PROVER s=STRINGLIT { make_pos $sloc (P_query_prover(s)) }
+  | PROVER_TIMEOUT i=INT { make_pos $sloc (P_query_prover_timeout(i)) }
+  | VERBOSE i=INT { make_pos $sloc (P_query_verbose(i)) }
   | TYPE_QUERY t=term
     { make_pos $sloc (P_query_infer(t, {strategy=NONE; steps=None}))}
 
@@ -302,7 +295,10 @@ command:
       { make_pos $sloc (P_inductive(ms,xs,is)) }
   | RULE rs=separated_nonempty_list(WITH, rule) SEMICOLON
       { make_pos $sloc (P_rules(rs)) }
-  | SET c=config SEMICOLON { make_pos $sloc (P_set(c)) }
+  | BUILTIN s=STRINGLIT ASSIGN i=id SEMICOLON
+    { make_pos $loc (P_builtin(s,i)) }
+  | UNIF_RULE r=unif_rule SEMICOLON { make_pos $loc (P_unif_rule(r)) }
+  | NOTATION i=id n=notation SEMICOLON { make_pos $loc (P_notation(i,n)) }
   | q=query SEMICOLON { make_pos $sloc (P_query(q)) }
   | EOF { raise End_of_file }
 

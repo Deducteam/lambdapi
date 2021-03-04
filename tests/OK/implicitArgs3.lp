@@ -12,7 +12,7 @@ constant symbol N : TYPE;
 constant symbol zero : N;
 constant symbol s : N → N;
 symbol + : N → N → N;
-set notation + infix left 6;
+notation + infix left 6;
 
 rule zero   + $n     ↪ $n;
 rule (s $m) + $n     ↪ s ($m + $n);

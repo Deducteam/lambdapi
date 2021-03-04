@@ -25,7 +25,7 @@
   ],
   "repository": {
     "commands": {
-      "match": "\\b(abort|admit|apply|as|assert|assertnot|assume|begin|builtin|compute|constant|debug|end|fail|flag|focus|in|induction|inductive|infix|injective|left|let|notation|off|on|open|opaque|prefix|print|private|proofterm|protected|prover|prover_timeout|quantifier|refine|reflexivity|require|rewrite|rule|sequential|set|simpl|symbol|symmetry|type|TYPE|unif_rule|why3|with)\\b",
+      "match": "\\b(abort|admit|apply|as|assert|assertnot|assume|begin|builtin|compute|constant|debug|end|fail|flag|focus|in|induction|inductive|infix|injective|left|let|notation|off|on|open|opaque|prefix|print|private|proofterm|protected|prover|prover_timeout|quantifier|refine|reflexivity|require|rewrite|rule|sequential|simpl|symbol|symmetry|type|TYPE|unif_rule|why3|with)\\b",
       "name": "keyword.control.lp"
     },
     "comments": {
@@ -70,7 +70,7 @@
     },
 
     "misc": {
-      "match": "\\b(assert|assernot|compute|print|proofterm|set|type)\\b",
+      "match": "\\b(assert|assernot|compute|print|proofterm|type)\\b",
       "name": "keyword.control.query.lp"
     },
 
