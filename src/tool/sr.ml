@@ -250,14 +250,16 @@ let check_rule : Scope.pre_rule Pos.loc -> rule = fun ({pos; elt} as pr) ->
   match Unif.(solve_noexn {empty_problem with to_solve}) with
   | None     -> fatal pos "The rewriting rule does not preserve typing."
   | Some(cs) ->
-  let is_constr c =
+  let is_lhs_constr c =
     (* Contexts ignored: [Infer.check] is called with an empty context and
        neither [Infer.check] nor [Unif.solve] generate contexts with defined
        variables. *)
-    let eq_comm (_,t1,u1) (_,t2,u2) = Eval.eq_constr ([],t1,u1) ([],t2,u2) in
-    List.exists (eq_comm c) lhs_constrs
+    let eq (_,t1,u1) (_,t2,u2) =
+      Eval.(eq_modulo [] t1 t2 && eq_modulo [] u1 u2)
+      || Eval.(eq_modulo [] t1 u2 && eq_modulo [] t2 u1) in
+    List.exists (eq c) lhs_constrs
   in
-  let cs = List.filter (fun c -> not (is_constr c)) cs in
+  let cs = List.filter (fun c -> not (is_lhs_constr c)) cs in
   if cs <> [] then
     begin
       List.iter (fatal_msg "Cannot solve %a\n" pp_constr) cs;
