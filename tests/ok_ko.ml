@@ -31,6 +31,6 @@ let test_suite = [ ("OK", "parsing") ; ("OK", "scoping") ; ("OK", "import") ;
                    ("KO", "examples") ]
 
 let _ =
-  Files.set_lib_root None;
+  Common.Library.set_lib_root None;
   let run_test (a,b) = (a ^"_"^ b, Array.to_list (test_one_folder a b)) in
   Alcotest.run "Std" ((List.map run_test) test_suite)

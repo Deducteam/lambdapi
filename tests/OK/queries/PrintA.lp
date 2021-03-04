@@ -1,8 +1,8 @@
 symbol A:TYPE;
 symbol a:A;
-symbol f:A → A → A;
-set infix 5 "+" ≔ f;
+symbol +:A → A → A;
+set notation + infix 5;
 //set verbose 3
 compute a + a;
-compute f a a; // should print a+a
-assert ⊢ a + a ≡ f a a;
+compute + a a; // should print a+a
+assert ⊢ a + a ≡ + a a;
