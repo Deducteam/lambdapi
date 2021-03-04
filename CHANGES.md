@@ -1,5 +1,7 @@
 ### Unreleased
 
+#### Remove `set` keyword (2021-03-04)
+
 #### Various bug fixes (2021-03-02)
 
 - allow matching on abstraction/product type annotations (fix #573)

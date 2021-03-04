@@ -9,15 +9,15 @@ constant symbol s : N → N;
 
 // Enabling built-in natural number literal, and example.
 
-set builtin "0"  ≔ z;
-set builtin "+1" ≔ s;
+builtin "0"  ≔ z;
+builtin "+1" ≔ s;
 
 symbol forty_two ≔ 42;
 
 // Addition function.
 
 symbol + : N → N → N;
-set notation + infix left 6;
+notation + infix left 6;
 
 rule z      + $n     ↪ $n
 with (s $m) + $n     ↪ s ($m + $n)
@@ -27,7 +27,7 @@ with $m     + (s $n) ↪ s ($m + $n);
 // Multiplication function.
 
 symbol × : N → N → N;
-set notation × infix left 7;
+notation × infix left 7;
 
 rule z      × _      ↪ z
 with (s $m) × $n     ↪ $n + $m × $n

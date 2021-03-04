@@ -50,7 +50,6 @@ type token =
   | REWRITE
   | RULE
   | SEQUENTIAL
-  | SET
   | SIMPL
   | SOLVE
   | SYMBOL
@@ -335,7 +334,6 @@ end = struct
     | "right" -> ASSOC(Pratter.Right)
     | "rule" -> RULE
     | "sequential" -> SEQUENTIAL
-    | "set" -> SET
     | "simpl" -> SIMPL
     | "solve" -> SOLVE
     | "symbol" -> SYMBOL

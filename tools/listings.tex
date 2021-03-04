@@ -18,7 +18,7 @@
   tabsize=2,
   basicstyle={\ttfamily\small\upshape},
   backgroundcolor=\color{lightgrey},
-  keywords={abort,admit,apply,as,assert,assertnot,assume,begin,builtin,compute,constant,debug,end,fail,flag,focus,in,induction,inductive,infix,injective,left,let,notation,off,on,opaque,open,prefix,print,private,proofterm,protected,prover,prover_timeout,quantifier,refine,reflexivity,require,rewrite,right,rule,sequential,set,simpl,solve,symbol,symmetry,type,TYPE,unif_rule,verbose,why3,with},
+  keywords={abort,admit,apply,as,assert,assertnot,assume,begin,builtin,compute,constant,debug,end,fail,flag,focus,in,induction,inductive,infix,injective,left,let,notation,off,on,opaque,open,prefix,print,private,proofterm,protected,prover,prover_timeout,quantifier,refine,reflexivity,require,rewrite,right,rule,sequential,simpl,solve,symbol,symmetry,type,TYPE,unif_rule,verbose,why3,with},
   sensitive=true,
   keywordstyle=\color{blue},
   morecomment=[l]{//},
@@ -53,7 +53,7 @@ symbol El:Set→TYPE;
 symbol 𝔹:TYPE;      symbol true:𝔹;    symbol false:𝔹;
 symbol ℕ:TYPE;      symbol 0:ℕ;       symbol s:ℕ→ℕ;
 
-symbol infix +:ℕ→ℕ→ℕ;
+symbol +:ℕ→ℕ→ℕ; notation + infix 5;
   rule     0 + q ↪ q
   with (s p) + q ↪ s (p + q);
 

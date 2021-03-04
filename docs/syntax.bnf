@@ -59,10 +59,6 @@
              | prefix <float_or_int>
              | quantifier
 
-<config> ::= builtin "<string>" ≔ <id>
-           | unif_rule <unif_rule>
-           | notation <id> <notation>
-
 <assert_kw> ::= assert
               | assertnot
 
@@ -71,11 +67,11 @@
           | compute <term>
           | print [<id>]
           | proofterm
-          | set debug (+ | -)<string>
-          | set flag "<string>" <switch>
-          | set prover "<string>"
-          | set prover_timeout <int>
-          | set verbose <int>
+          | debug (+ | -)<string>
+          | flag "<string>" <switch>
+          | prover "<string>"
+          | prover_timeout <int>
+          | verbose <int>
           | type <term>
 
 <proof_end> ::= abort
@@ -104,7 +100,9 @@
             | <modifier>* <params>* inductive <inductive> (with <inductive>)*
               ;
             | rule <rule> (with <rule>)* ;
-            | set <config> ;
+            | builtin "<string>" ≔ <id> ;
+            | unif_rule <unif_rule> ;
+            | notation <id> <notation> ;
             | <query> ;
             
 

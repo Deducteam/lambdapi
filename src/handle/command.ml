@@ -205,19 +205,41 @@ let handle : (Path.t -> Sign.t) -> sig_state -> p_command ->
     log_hndl (blu "%f %a\n%a") (Sys.time()) Pos.pp pos Pretty.command cmd;
   let scope expo = Scope.scope_term expo ss Env.empty IntMap.empty in
   match elt with
-  | P_query(q) ->
-      let res = Query.handle ss None q in (ss, None, res)
+  | P_query(q) -> (ss, None, Query.handle ss None q)
   | P_require(b,ps) ->
       (List.fold_left (handle_require compile b) ss ps, None, None)
-  | P_require_as(p,id) ->
-      (handle_require_as compile ss p id, None, None)
-  | P_open(ps) ->
-      (List.fold_left handle_open ss ps, None, None)
+  | P_require_as(p,id) -> (handle_require_as compile ss p id, None, None)
+  | P_open(ps) -> (List.fold_left handle_open ss ps, None, None)
   | P_rules(rs) ->
       let handle_rule syms r = SymSet.add (handle_rule ss r) syms in
       let syms = List.fold_left handle_rule SymSet.empty rs in
       SymSet.iter Tree.update_dtree syms;
       (ss, None, None)
+  | P_builtin(s,qid) ->
+      let sym = find_sym ~prt:true ~prv:true ss qid in
+      Builtin.check ss pos s sym;
+      Console.out 3 "(conf) set builtin \"%s\" ≔ %a\n" s pp_sym sym;
+      (add_builtin ss s sym, None, None)
+  | P_notation(qid,n) ->
+      let sym = find_sym ~prt:true ~prv:true ss qid in
+      Console.out 3 "(conf) %a %a\n" pp_sym sym pp_notation n;
+      (add_notation ss sym n, None, None)
+  | P_unif_rule(h) ->
+      (* Approximately same processing as rules without SR checking. *)
+      let pur = (scope_rule true ss h).elt in
+      let urule =
+        { lhs = pur.pr_lhs
+        ; rhs = Bindlib.(unbox (bind_mvar pur.pr_vars pur.pr_rhs))
+        ; arity = List.length pur.pr_lhs
+        ; arities = pur.pr_arities
+        ; vars = pur.pr_vars
+        ; xvars_nb = pur.pr_xvars_nb }
+      in
+      Sign.add_rule ss.signature Unif_rule.equiv urule;
+      Tree.update_dtree Unif_rule.equiv;
+      Console.out 3 "(hint) %a\n" pp_unif_rule (Unif_rule.equiv, urule);
+      (ss, None, None)
+
   | P_inductive(ms, params, p_ind_list) ->
       (* Check modifiers. *)
       let (prop, expo, mstrat) = handle_modifiers ms in
@@ -444,36 +466,6 @@ let handle : (Path.t -> Sign.t) -> sig_state -> p_command ->
       ; pdata_finalize=finalize; pdata_end_pos=pe.pos; pdata_expo }
     in
     (ss, Some(data), None)
-
-  | P_set(cfg)                 ->
-      let ss =
-        match cfg with
-        | P_config_builtin(s,qid) ->
-            let sym = find_sym ~prt:true ~prv:true ss qid in
-            Builtin.check ss pos s sym;
-            Console.out 3 "(conf) set builtin \"%s\" ≔ %a\n" s pp_sym sym;
-            add_builtin ss s sym
-        | P_config_notation(qid,n) ->
-            let sym = find_sym ~prt:true ~prv:true ss qid in
-            Console.out 3 "(conf) %a %a\n" pp_sym sym pp_notation n;
-            add_notation ss sym n
-        | P_config_unif_rule(h) ->
-            (* Approximately same processing as rules without SR checking. *)
-            let pur = (scope_rule true ss h).elt in
-            let urule =
-              { lhs = pur.pr_lhs
-              ; rhs = Bindlib.(unbox (bind_mvar pur.pr_vars pur.pr_rhs))
-              ; arity = List.length pur.pr_lhs
-              ; arities = pur.pr_arities
-              ; vars = pur.pr_vars
-              ; xvars_nb = pur.pr_xvars_nb }
-            in
-            Sign.add_rule ss.signature Unif_rule.equiv urule;
-            Tree.update_dtree Unif_rule.equiv;
-            Console.out 3 "(hint) %a\n" pp_unif_rule (Unif_rule.equiv, urule);
-            ss
-      in
-      (ss, None, None)
 
 (** [too_long] indicates the duration after which a warning should be given to
     indicate commands that take too long to execute. *)

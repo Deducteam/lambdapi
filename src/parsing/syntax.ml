@@ -190,15 +190,6 @@ type p_proof_end_aux =
 
 type p_proof_end = p_proof_end_aux loc
 
-(** Parser-level representation of a configuration command. *)
-type p_config =
-  | P_config_builtin of string * p_qident
-  (** Sets a builtin. *)
-  | P_config_notation of p_qident * notation
-  (** Sets a symbol notation. *)
-  | P_config_unif_rule of p_rule
-  (** Unification rule. *)
-
 module Tags = struct
   (** Pattern-matching strategy modifiers. *)
   type match_strat =
@@ -267,26 +258,21 @@ type p_symbol =
   ; p_sym_typ : p_term option (** symbol type *)
   ; p_sym_trm : p_term option (** symbol definition *)
   ; p_sym_prf : (p_tactic list * p_proof_end) option (** proof script *)
-  ; p_sym_def : bool (** is the symbol defined ? *) }
+  ; p_sym_def : bool (** is it a definition ? *) }
 
 (** Parser-level representation of a single command. *)
 type p_command_aux =
   | P_require  of bool * p_path list
-  (** "require" statement (require open if the boolean is true). *)
+    (* "require open" if the boolean is true *)
   | P_require_as of p_path * p_ident
-  (** "require as" statement. *)
   | P_open of p_path list
-  (** Open statement. *)
   | P_symbol of p_symbol
-  (** Symbol declaration. *)
   | P_rules of p_rule list
-  (** Rewriting rule declarations. *)
   | P_inductive of p_modifier list * p_params list * p_inductive list
-  (** Definition of inductive types *)
-  | P_set of p_config
-  (** Set the configuration. *)
+  | P_builtin of string * p_qident
+  | P_notation of p_qident * notation
+  | P_unif_rule of p_rule
   | P_query of p_query
-  (** Query. *)
 
 (** Parser-level representation of a single (located) command. *)
 type p_command = p_command_aux loc
@@ -392,15 +378,6 @@ let eq_p_tactic : p_tactic eq = fun {elt=t1;_} {elt=t2;_} ->
   | P_tac_sym, P_tac_sym -> true
   | _, _ -> false
 
-let eq_p_config : p_config eq = fun c1 c2 ->
-  match (c1, c2) with
-  | P_config_builtin(s1,q1), P_config_builtin(s2,q2) ->
-      s1 = s2 && eq_p_qident q1 q2
-  | P_config_notation(i1,n1), P_config_notation(i2,n2) ->
-      eq_p_qident i1 i2 && n1 = n2
-  | P_config_unif_rule r1, P_config_unif_rule r2 -> eq_p_rule r1 r2
-  | _, _ -> false
-
 let eq_p_symbol : p_symbol eq =
   let eq_tac (ts1,pe1) (ts2,pe2) =
     List.equal eq_p_tactic ts1 ts2 && pe1.elt = pe2.elt in
@@ -433,7 +410,9 @@ let eq_p_command : p_command eq = fun {elt=c1;_} {elt=c2;_} ->
   | P_inductive(m1,xs1,l1), P_inductive(m2,xs2,l2) ->
       m1 = m2 && List.equal eq_p_params xs1 xs2
       && List.equal eq_p_inductive l1 l2
-  | P_set(c1), P_set(c2) -> eq_p_config c1 c2
+  | P_builtin(s1,q1), P_builtin(s2,q2) -> s1 = s2 && eq_p_qident q1 q2
+  | P_notation(i1,n1), P_notation(i2,n2) -> eq_p_qident i1 i2 && n1 = n2
+  | P_unif_rule r1, P_unif_rule r2 -> eq_p_rule r1 r2
   | P_query(q1), P_query(q2) -> eq_p_query q1 q2
   | _, _ -> false
 
@@ -550,13 +529,6 @@ let fold_idents : ('a -> p_qident -> 'a) -> 'a -> p_command list -> 'a =
     | P_query_print (Some qid) -> f a qid
   in
 
-  let fold_config : 'a -> p_config -> 'a = fun a c ->
-    match c with
-    | P_config_builtin (_, qid)
-    | P_config_notation (qid, _) -> f a qid
-    | P_config_unif_rule r -> fold_rule a r
-  in
-
   let fold_tactic : StrSet.t * 'a -> p_tactic -> StrSet.t * 'a =
     fun (vs,a) t ->
     match t.elt with
@@ -601,7 +573,9 @@ let fold_idents : ('a -> p_qident -> 'a) -> 'a -> p_command list -> 'a =
     | P_require_as (_, _)
     | P_open _ -> a
     | P_query q -> fold_query_vars StrSet.empty a q
-    | P_set c -> fold_config a c
+    | P_builtin (_, qid)
+    | P_notation (qid, _) -> f a qid
+    | P_unif_rule r -> fold_rule a r
     | P_rules rs -> List.fold_left fold_rule a rs
     | P_inductive (_, xs, ind_list) ->
         let vs, a = List.fold_left fold_args (StrSet.empty, a) xs in

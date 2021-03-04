@@ -1,6 +1,6 @@
 symbol N : TYPE;
 symbol z : N;
 
-symbol add : N → N → N;
-set infix 5 "+" ≔ add;
+symbol + : N → N → N;
+notation + infix 5;
 assert ⊢ z + z + z : N;

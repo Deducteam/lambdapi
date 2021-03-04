@@ -66,7 +66,6 @@ syntax.bnf:
 	-e 's/REWRITE/rewrite/g' \
 	-e 's/RULE/rule/g' \
 	-e 's/SEQUENTIAL/sequential/g' \
-	-e 's/SET/set/g' \
 	-e 's/SIMPL/simpl/g' \
 	-e 's/SOLVE/solve/g' \
 	-e 's/SYMBOL/symbol/g' \
