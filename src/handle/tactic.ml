@@ -43,7 +43,7 @@ let tac_refine : popt -> proof_state -> goal_typ -> goal list -> term
                  -> proof_state = fun pos ps gt gs t ->
   if !log_enabled then
     log_tact "refine %a ≔ %a" pp_meta gt.goal_meta pp_term t;
-  if LibTerm.occurs gt.goal_meta t then fatal pos "Circular refinement.";
+  if LibTerm.Meta.occurs gt.goal_meta t then fatal pos "Circular refinement.";
   (* Check that [t] is well-typed. *)
   let gs_typ, gs_unif = List.partition is_typ gs in
   let to_solve = List.map get_constr gs_unif in
@@ -56,7 +56,7 @@ let tac_refine : popt -> proof_state -> goal_typ -> goal list -> term
       Meta.set gt.goal_meta
         (Bindlib.unbox (Bindlib.bind_mvar (Env.vars gt.goal_hyps) (lift t)));
       (* Convert the metas of [t] not in [gs] into new goals. *)
-      let gs_typ = add_goals_of_metas (LibTerm.get_metas true t) gs_typ in
+      let gs_typ = add_goals_of_metas (LibTerm.Meta.get true t) gs_typ in
       let proof_goals = List.rev_map (fun c -> Unif c) cs @ gs_typ in
       tac_solve pos {ps with proof_goals}
 

@@ -215,7 +215,7 @@ let add_symbol :
   fun sign sym_expo sym_prop sym_mstrat sym_opaq {elt=sym_name;pos} typ
       impl ->
   (* Check for metavariables in the symbol type. *)
-  if LibTerm.has_metas true typ then
+  if LibTerm.Meta.has true typ then
     fatal pos "The type of %a contains metavariables"
       Parsing.LpLexer.pp_uid sym_name;
   (* We minimize [impl] to enforce our invariant (see {!type:Terms.sym}). *)

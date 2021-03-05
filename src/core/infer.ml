@@ -116,10 +116,10 @@ let rec infer : ctxt -> term -> term = fun ctx t ->
         match c with
         | Prod(a,b) -> (a,b)
         | _         ->
-            let a = LibTerm.make_meta ctx Type in
+            let a = LibTerm.Meta.make ctx Type in
             (* Here, we force [b] to be of type [Type] as there is little
                (no?) chance that it can be a kind. FIXME? *)
-            let b = LibTerm.make_meta_codomain ctx a in
+            let b = LibTerm.Meta.make_codomain ctx a in
             conv ctx c (Prod(a,b)); (a,b)
       in
       (* We then check the type of [u] against the domain type. *)
