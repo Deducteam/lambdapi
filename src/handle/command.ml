@@ -407,31 +407,79 @@ let handle : (Path.t -> Sign.t) -> sig_state -> p_command ->
             (* Just ignore the command with a warning. *)
             wrn pe.pos "Proof aborted."; ss
         | _ ->
-            (* Check that no metavariable remains. *)
-            if LibTerm.Meta.has true a then
-              (fatal_msg "The type of %a has unsolved metavariables.\n"
-                 pp_uid id;
-               fatal pe.pos "We have %a : %a." pp_uid id pp_term a);
-            (match t with
-             | Some(t) when LibTerm.Meta.has true t ->
-                 fatal_msg
-                   "The definition of %a has unsolved metavariables.\n"
-                   pp_uid id;
-                 fatal pe.pos "We have %a : %a ≔ %a."
-                   pp_uid id pp_term a pp_term t
-             | _ -> ());
             match pe.elt with
             | P_proof_abort -> assert false (* Handled above *)
             | P_proof_admit ->
                 (* If the proof is finished, display a warning. *)
                 if finished ps then
                   wrn pe.pos "The proof is finished. Use 'end' instead.";
+                (* Get a list of metas, ordered by dependency. *)
+                let metas =
+                  let type_m = LibTerm.Meta.get true a in
+                  let metas =
+                    match t with
+                    | Some t -> MetaSet.union type_m (LibTerm.Meta.get true t)
+                    | None -> type_m
+                  in
+                  let dep m_a m_b =
+                    (* If [m_a] depends on [m_b], then it is greater than
+                       [m_b], else they are equal. *)
+                    if LibTerm.Meta.depends m_a m_b then 1 else 0
+                  in
+                  List.stable_sort dep (MetaSet.to_seq metas |> List.of_seq)
+                in
+                (* [add_axiom ss m] adds an axiom for meta [m] in signature
+                   state [ss]. *)
+                let add_axiom ss m =
+                  let name =
+                    "ax_" ^ Option.get (string_of_int m.meta_key) m.meta_name
+                  in
+                  (* Create a symbol with the same type as the metavariable *)
+                  let ss, sym =
+                    Console.out 3 (red "(symb) add axiom %a: %a\n")
+                      pp_uid name pp_term !(m.meta_type);
+                    add_symbol ss Public Const Eager true (Pos.none name)
+                      !(m.meta_type) [] None
+                  in
+                  (* Create the value which will be substituted for the
+                     metavariable. This value is [sym x0 ... xn] where [xi]
+                     are variables that will be substituted by the terms of
+                     the explicit substitution of the metavariable. *)
+                  let meta_value =
+                    let vars =
+                      let names =
+                        Array.init m.meta_arity
+                          (fun i -> name ^ "_v" ^ (string_of_int i))
+                      in
+                      Bindlib.new_mvar mkfree names
+                    in
+                    let v = Array.to_list vars |> List.map mkfree in
+                    let ax = LibTerm.add_args (Symb sym) v in
+                    Bindlib.(lift ax |> bind_mvar vars |> unbox)
+                  in
+                  Meta.set m meta_value; ss
+                in
+                (* Add an axiom per metavariable *)
+                let ss = List.fold_left add_axiom ss metas in
                 (* Add the symbol in the signature with a warning. *)
                 Console.out 3 (red "(symb) add %a : %a\n")
                   pp_uid id pp_term a;
                 wrn pe.pos "Proof admitted.";
                 fst (add_symbol ss expo prop mstrat true p_sym_nam a impl t)
             | P_proof_end ->
+                (* Check that no metavariable remains. *)
+                if LibTerm.Meta.has true a then
+                  (fatal_msg "The type of %a has unsolved metavariables.\n"
+                     pp_uid id;
+                   fatal pe.pos "We have %a : %a." pp_uid id pp_term a);
+                (match t with
+                 | Some(t) when LibTerm.Meta.has true t ->
+                     fatal_msg
+                       "The definition of %a has unsolved metavariables.\n"
+                       pp_uid id;
+                     fatal pe.pos "We have %a : %a ≔ %a."
+                       pp_uid id pp_term a pp_term t
+                 | _ -> ());
                 (* Check that the proof is indeed finished. *)
                 if not (finished ps) then
                   (Console.out 1 "%a" Proof.pp_goals ps;

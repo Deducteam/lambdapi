@@ -185,6 +185,10 @@ module Meta = struct
   let has : bool -> term -> bool =
     let exception Found in fun b t ->
     try iter b (fun _ -> raise Found) t; false with Found -> true
+
+  (** [depends m_a m_b] is true if metavariable [m_b] occurs in the type of
+      [m_a]. *)
+  let depends : t -> t -> bool = fun m_a m_b -> occurs m_b !(m_a.meta_type)
 end
 
 (** [distinct_vars ctx ts] checks that the terms [ts] are distinct
