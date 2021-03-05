@@ -20,7 +20,7 @@ let log_tact = log_tact.logger
 (** [tac_solve pos ps] tries to simplify the unification goals of the proof
    state [ps] and fails if constraints are unsolvable. *)
 let tac_solve : popt -> proof_state -> proof_state = fun pos ps ->
-  if !log_enabled then log_tact "solve";
+  if !log_enabled then log_tact "solve %a" pp_goals ps;
   try
     let gs_typ, gs_unif = List.partition is_typ ps.proof_goals in
     let to_solve = List.map get_constr gs_unif in
@@ -42,7 +42,7 @@ let tac_solve : popt -> proof_state -> proof_state = fun pos ps ->
 let tac_refine : popt -> proof_state -> goal_typ -> goal list -> term
                  -> proof_state = fun pos ps gt gs t ->
   if !log_enabled then
-    log_tact "refine %a with %a" pp_meta gt.goal_meta pp_term t;
+    log_tact "refine %a ≔ %a" pp_meta gt.goal_meta pp_term t;
   if LibTerm.Meta.occurs gt.goal_meta t then fatal pos "Circular refinement.";
   (* Check that [t] is well-typed. *)
   let gs_typ, gs_unif = List.partition is_typ gs in
@@ -153,10 +153,11 @@ let handle : Sig_state.t -> Tags.expo -> proof_state -> p_tactic
   match ps.proof_goals with
   | [] -> fatal pos "No remaining goals."
   | g::_ ->
-      if !log_enabled then log_tact "%a%a" Proof.Goal.pp g Pretty.tactic tac;
+      if !log_enabled then
+        log_tact "%a\n%a" Proof.Goal.pp g Pretty.tactic tac;
       handle ss expo ps tac, None
 
 let handle : Sig_state.t -> Tags.expo -> proof_state -> p_tactic
              -> proof_state * Query.result = fun ss expo ps tac ->
   try handle ss expo ps tac
-  with Fatal(_,_) as e -> Console.out 1 "%a" Proof.pp_goals ps; raise e
+  with Fatal(_,_) as e -> Console.out 1 "%a" pp_goals ps; raise e

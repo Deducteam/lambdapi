@@ -2,6 +2,7 @@
 
 open Timed
 open Term
+open Lplib.Base
 
 (** [fresh_vars n] creates an array of [n] fresh variables. The names of these
     variables is ["_var_i"], where [i] is a number introduced by the [Bindlib]
@@ -224,7 +225,7 @@ let term_of_rhs : rule -> term = fun r ->
 (** Total order on alpha-equivalence classes of terms not containing [Patt],
    [TEnv] or [TRef].
 @raise Invalid_argument otherwise. *)
-let cmp_term : term Lplib.Base.cmp =
+let cmp_term : term cmp =
   let pos = __MODULE__ ^ ".cmp_term: " ^ __LOC__ in
   (* Total precedence on term constructors (must be injective). *)
   let prec t =
@@ -280,7 +281,7 @@ let cmp_term : term Lplib.Base.cmp =
 
 (** Total order on contexts not containing [Patt], [TEnv] or [TRef].
 @raise Invalid_argument otherwise. *)
-let cmp_ctxt : ctxt Lplib.Base.cmp =
+let cmp_ctxt : ctxt cmp =
   let cmp_decl (x,t,a) (x',t',a') =
     let c = Bindlib.compare_vars x x' in
     if c <> 0 then c
@@ -290,7 +291,9 @@ let cmp_ctxt : ctxt Lplib.Base.cmp =
 
 (** Total order on constraints not containing [Patt], [TEnv] or [TRef].
 @raise Invalid_argument otherwise. *)
-let cmp_constr : constr Lplib.Base.cmp = fun (c,t,u) (c',t',u') ->
+let cmp_constr : constr cmp = fun (c,t,u) (c',t',u') ->
   let r = cmp_ctxt c c' in
   if r <> 0 then r
   else let r = cmp_term t t' in if r <> 0 then r else cmp_term u u'
+
+let eq_constr : constr eq = fun c c' -> cmp_constr c c' = 0
