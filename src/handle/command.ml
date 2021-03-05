@@ -169,7 +169,7 @@ let handle_inductive_symbol : sig_state -> expo -> prop -> match_strat
   (* We check that [a] is typable by a sort. *)
   Infer.check_sort Unif.solve_noexn pos [] typ;
   (* We check that no metavariable remains. *)
-  if LibTerm.has_metas true typ then
+  if LibTerm.Meta.has true typ then
     (fatal_msg "The type of %a has unsolved metavariables.\n" pp_uid name;
      fatal pos "We have %a : %a." pp_uid name pp_term typ);
   (* Actually add the symbol to the signature and the state. *)
@@ -380,7 +380,7 @@ let handle : (Path.t -> Sign.t) -> sig_state -> p_command ->
       (* Scope the type and get its metavariables. *)
       let ao, metas_a =
         match ao with
-        | Some a -> let a = scope expo a in Some a, LibTerm.get_metas true a
+        | Some a -> let a = scope expo a in Some a, LibTerm.Meta.get true a
         | None -> None, MetaSet.empty
       in
       (* Get the type of the symbol and the goals to solve for the declaration
@@ -408,12 +408,12 @@ let handle : (Path.t -> Sign.t) -> sig_state -> p_command ->
             wrn pe.pos "Proof aborted."; ss
         | _ ->
             (* Check that no metavariable remains. *)
-            if LibTerm.has_metas true a then
+            if LibTerm.Meta.has true a then
               (fatal_msg "The type of %a has unsolved metavariables.\n"
                  pp_uid id;
                fatal pe.pos "We have %a : %a." pp_uid id pp_term a);
             (match t with
-             | Some(t) when LibTerm.has_metas true t ->
+             | Some(t) when LibTerm.Meta.has true t ->
                  fatal_msg
                    "The definition of %a has unsolved metavariables.\n"
                    pp_uid id;

@@ -113,7 +113,7 @@ let sym_to_var : tvar StrMap.t -> term -> term = fun m ->
     check whether the instantiation is closed though. *)
 let instantiation : ctxt -> meta -> term array -> term ->
   tmbinder Bindlib.box option = fun ctx m ts u ->
-  if not (occurs m u) then
+  if not (Meta.occurs m u) then
     match nl_distinct_vars ctx ts with
     | None       -> None
     | Some(vs,m) ->
