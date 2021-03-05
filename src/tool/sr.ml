@@ -185,9 +185,11 @@ let check_rule : Scope.pre_rule Pos.loc -> rule = fun ({pos; elt} as pr) ->
       log_subj "transformed RHS: %a" pp_term rhs_typing
     end;
   (* Infer the typing constraints of the LHS. *)
+  (* let module Infer = (val Stdlib.(!Refiner.default)) in *)
+  let module Infer = Refiner.NoCoercion in
   match Infer.infer_noexn [] [] lhs_typing with
   | None -> fatal pos "The LHS is not typable."
-  | Some(ty_lhs, to_solve) ->
+  | Some(lhs_typing, ty_lhs, to_solve) ->
   (* Try to simplify constraints. *)
   let type_check = false in (* Don't check typing when instantiating metas. *)
   match Unif.(solve_noexn ~type_check {empty_problem with to_solve}) with
@@ -238,7 +240,7 @@ let check_rule : Scope.pre_rule Pos.loc -> rule = fun ({pos; elt} as pr) ->
   (* Compute the constraints for the RHS to have the same type as the LHS. *)
   match Infer.check_noexn [] [] rhs_typing ty_lhs with
   | None -> fatal pos "[%a] is not typable." pp_term rhs_typing
-  | Some to_solve ->
+  | Some (_, to_solve) ->
   if !log_enabled then
     begin
       log_subj "LHS is now: %a" pp_term lhs_typing;

@@ -124,6 +124,15 @@ let instantiation : ctxt -> meta -> term array -> term ->
 (** Checking type or not during meta instanciation. *)
 let do_type_check = Stdlib.ref true
 
+(** [type_app a ts] returns [Some(u)] where [u] is a type of [add_args x ts]
+   where [x] is any term of type [a] if [x] can be applied to at least
+   [List.length ts] arguments, and [None] otherwise. *)
+let rec type_app : ctxt -> term -> term list -> term option = fun ctx a ts ->
+  match Eval.whnf ctx a, ts with
+  | Prod(_,b), t::ts -> type_app ctx (Bindlib.subst b t) ts
+  | _, [] -> Some a
+  | _, _ -> None
+
 (** [instantiate ctx m ts u] check whether, in a problem [m[ts]=u], [m] can be
     instantiated and, if so, instantiate it. *)
 let instantiate : ctxt -> meta -> term array -> term -> constr list -> bool =
@@ -137,16 +146,17 @@ let instantiate : ctxt -> meta -> term array -> term -> constr list -> bool =
         Meta.set m (Bindlib.unbox bu); true
       in
       if Stdlib.(!do_type_check) then
+        let module Infer = (val Stdlib.(!Refiner.default)) in
         begin
           let typ_mts =
-            match Infer.type_app ctx !(m.meta_type) (Array.to_list ts) with
+            match type_app ctx !(m.meta_type) (Array.to_list ts) with
             | Some a -> a
             | None -> assert false
           in
           match Infer.check_noexn [] ctx u typ_mts with
           | None ->
               if !log_enabled then log_unif "typing condition failed"; false
-          | Some cs ->
+          | Some (_, cs) ->
               let is_eq c c' = LibTerm.cmp_constr c c' = 0 in
               let is_initial c = List.exists (is_eq c) initial in
               let cs = List.filter (fun c -> not (is_initial c)) cs in

@@ -152,36 +152,38 @@ let focus_env : proof_state option -> Env.t = fun ps ->
       | g::_ -> Goal.env g
 
 (** [goals_of_typ typ ter] returns a list of goals for [typ] to be typable by
-   by a sort and [ter] to have type [typ] in the empty context. [ter] and
-   [typ] must not be both equal to [None]. *)
-let goals_of_typ : popt -> term option -> term option -> goal list * term =
+    by a sort and [ter] to have type [typ] in the empty context, the refined
+    term [ter]. [ter] and [typ] must not be both equal to [None]. *)
+let goals_of_typ : popt -> term option -> term option ->
+  goal list * term * term option =
   fun pos typ ter ->
-  let (typ, to_solve) =
+  let module Infer = (val Stdlib.(!Refiner.default)) in
+  let (ter, typ, to_solve) =
     match typ, ter with
     | Some(typ), Some(ter) ->
         begin
           match Infer.infer_noexn [] [] typ with
           | None -> fatal pos "[%a] is not typable." pp_term typ
-          | Some(sort, to_solve) ->
-              let to_solve =
+          | Some(typ, sort, to_solve) ->
+              let ter, to_solve =
                 match unfold sort with
                 | Type | Kind ->
                     begin
                       match Infer.check_noexn to_solve [] ter typ with
                       | None -> fatal pos "[%a] cannot have type [%a]"
                                   pp_term ter pp_term typ
-                      | Some cs -> cs
+                      | Some (ter, cs) -> (ter, cs)
                     end
                 | _ -> fatal pos "[%a] has type [%a] and not a sort."
                          pp_term typ pp_term sort
               in
-              typ, to_solve
+              Some ter, typ, to_solve
         end
     | None, Some(ter) ->
         begin
           match Infer.infer_noexn [] [] ter with
           | None -> fatal pos "[%a] is not typable." pp_term ter
-          | Some (typ, to_solve) ->
+          | Some (ter, typ, to_solve) ->
               let to_solve =
                 match unfold typ with
                 | Kind -> fatal pos "Kind definitions are not allowed."
@@ -190,7 +192,7 @@ let goals_of_typ : popt -> term option -> term option -> goal list * term =
                     | None ->
                         fatal pos "[%a] has type [%a] which is not typable"
                           pp_term ter pp_term typ
-                    | Some (sort, to_solve) ->
+                    | Some (_, sort, to_solve) ->
                         match unfold sort with
                         | Type | Kind -> to_solve
                         | _ ->
@@ -199,18 +201,18 @@ let goals_of_typ : popt -> term option -> term option -> goal list * term =
                                and not a sort."
                               pp_term ter pp_term typ pp_term sort
               in
-              typ, to_solve
+              Some ter, typ, to_solve
         end
     | Some(typ), None ->
         begin
           match Infer.infer_noexn [] [] typ with
           | None -> fatal pos "[%a] is not typable." pp_term typ
-          | Some (sort, to_solve) ->
+          | Some (typ, sort, to_solve) ->
               match unfold sort with
-              | Type | Kind -> typ, to_solve
+              | Type | Kind -> None, typ, to_solve
               | _ -> fatal pos "[%a] has type [%a] and not a sort."
                        pp_term typ pp_term sort
         end
     | None, None -> assert false (* already rejected by parser *)
   in
-  (List.rev_map (fun c -> Unif c) to_solve, typ)
+  (List.rev_map (fun c -> Unif c) to_solve, typ, ter)

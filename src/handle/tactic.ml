@@ -39,8 +39,8 @@ let tac_solve : popt -> proof_state -> proof_state = fun pos ps ->
   with Unif.Unsolvable -> fatal pos "Unification goals are unsatisfiable."
 
 (** [tac_refine pos ps t] refines the focused typing goal with [t]. *)
-let tac_refine : popt -> proof_state -> goal_typ -> goal list -> term
-                 -> proof_state = fun pos ps gt gs t ->
+let tac_refine : popt -> proof_state -> goal_typ -> goal list -> term ->
+  proof_state = fun pos ps gt gs t ->
   if !log_enabled then
     log_tact "refine %a with %a" pp_meta gt.goal_meta pp_term t;
   if LibTerm.occurs gt.goal_meta t then fatal pos "Circular refinement.";
@@ -48,10 +48,11 @@ let tac_refine : popt -> proof_state -> goal_typ -> goal list -> term
   let gs_typ, gs_unif = List.partition is_typ gs in
   let to_solve = List.map get_constr gs_unif in
   let c = Env.to_ctxt gt.goal_hyps in
+  let module Infer = (val Stdlib.(!Refiner.default)) in
   match Infer.check_noexn to_solve c t gt.goal_type with
   | None -> fatal pos "[%a] cannot have type [%a]."
               pp_term t pp_term gt.goal_type
-  | Some cs ->
+  | Some (t, cs) ->
       (* Instantiation. Use Unif.instantiate instead ? *)
       Meta.set gt.goal_meta
         (Bindlib.unbox (Bindlib.bind_mvar (Env.vars gt.goal_hyps) (lift t)));
@@ -118,12 +119,13 @@ let handle : Sig_state.t -> Tags.expo -> proof_state -> p_tactic
   | P_tac_solve -> assert false (* done before *)
   | P_tac_apply(pt) ->
       let t = scope pt in
+      let module Infer = (val Stdlib.(!Refiner.default)) in
       (* Compute the product arity of the type of [t]. *)
       (* FIXME: this does not take into account implicit arguments. *)
-      let n =
+      let (t, n) =
         match Infer.infer_noexn [] (Env.to_ctxt env) t with
         | None -> fatal pos "[%a] is not typable." pp_term t
-        | Some (a, _) -> LibTerm.count_products a
+        | Some (t, a, _) -> t, LibTerm.count_products a
       in
       let t = if n <= 0 then t else scope (P.appl_wild pt n) in
       tac_refine pos ps gt gs t

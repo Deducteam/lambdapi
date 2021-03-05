@@ -166,8 +166,9 @@ let handle_inductive_symbol : sig_state -> expo -> prop -> match_strat
   let impl = Scope.get_implicitness typ in
   (* We scope the type of the declaration. *)
   let typ = Scope.scope_term expo ss Env.empty IntMap.empty typ in
+  let module Infer = (val Stdlib.(!Refiner.default)) in
   (* We check that [a] is typable by a sort. *)
-  Infer.check_sort Unif.solve_noexn pos [] typ;
+  let (typ, _) = Infer.check_sort Unif.solve_noexn ?pos [] typ in
   (* We check that no metavariable remains. *)
   if LibTerm.has_metas true typ then
     (fatal_msg "The type of %a has unsolved metavariables.\n" pp_uid name;
@@ -385,7 +386,7 @@ let handle : (Path.t -> Sign.t) -> sig_state -> p_command ->
       in
       (* Get the type of the symbol and the goals to solve for the declaration
          to be well-typed. *)
-      let proof_goals, a = goals_of_typ pos ao t in
+      let proof_goals, a, t = goals_of_typ pos ao t in
       (* Add the metas of [a] as goals. *)
       let proof_goals = add_goals_of_metas metas_a proof_goals in
       (* Add the definition as goal so that we can refine on it. *)
