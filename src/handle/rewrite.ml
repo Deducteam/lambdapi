@@ -638,7 +638,7 @@ let rewrite : Sig_state.t -> popt -> goal_typ -> bool -> rw_patt option
 
   (* Construct the new goal and its type. *)
   let goal_type = Appl(Symb cfg.symb_P, new_term) in
-  let goal_term = make_meta g_ctxt goal_type in
+  let goal_term = Meta.make g_ctxt goal_type in
 
   (* Build the final term produced by the tactic, and check its type. *)
   let eqind = Symb cfg.symb_eqind in
@@ -684,7 +684,7 @@ let symmetry : Sig_state.t -> popt -> goal_typ -> term =
   (* We create a new metavariable of type [P (eq a r l)]. *)
   let meta_type =
     Appl(Symb cfg.symb_P, (add_args (Symb cfg.symb_eq) [a; r; l])) in
-  let meta_term = make_meta (Env.to_ctxt goal_hyps) meta_type in
+  let meta_term = Meta.make (Env.to_ctxt goal_hyps) meta_type in
   (* NOTE The proofterm is “eqind a r l M (λx,eq a l x) (refl a l)”. *)
   let term = swap cfg a r l meta_term in
   (* Debugging data to the log. *)
