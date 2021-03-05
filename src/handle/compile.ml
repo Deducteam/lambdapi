@@ -36,7 +36,8 @@ let rec compile : bool -> Path.t -> Sign.t = fun force mp ->
     | (false, false) ->
         fatal_no_pos "File \"%s.lp\" (or .dk) not found." base
     | (true , true ) ->
-        fatal_no_pos "Both \"%s\" and \"%s\" exist." src legacy
+        wrn None "Both \"%s\" and \"%s\" exist. We take \"%s\"."
+          src legacy src; src
     | (true , false) -> src
     | (false, true ) -> legacy
   in
