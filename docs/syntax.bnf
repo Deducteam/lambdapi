@@ -1,134 +1,139 @@
-<qid> ::= [<id>'.']+<id>
+<qid> ::= [<uid>.]+<uid>
 
-<switch> ::= 'on'
-           | 'off'
+<switch> ::= on
+           | off
 
-<assoc> ::= 'left'
-          | 'right'
+<assoc> ::= left
+          | right
 
-<ident> ::= <id>
 
-<qident> ::= <qid>
-           | <id>
 
-<term_ident> ::= '@'<qid>
-               | <qident>
+<id> ::= <qid>
+       | <uid>
 
-<patt> ::= '$'<id>
+<path> ::= <qid>
 
-<argid> ::= <ident>
-          | '_'
+<term_id> ::= <id>
+            | @<id>
 
-<arg_list> ::= <argid>
-             | '(' <argid>+ ':' <term> ')'
-             | '{' <argid>+ [':' <term>] '}'
+<patt_id> ::= $<uid>
+
+<param_id> ::= <uid>
+             | _
+
+<params> ::= <param_id>
+           | ( <param_id>+ : <term> )
+           | { <param_id>+ [: <term>] }
 
 <rw_patt> ::= <term>
-            | 'in' <term>
-            | 'in' <ident> 'in' <term>
-            | <term> 'in' <term> ['in' <term>]
-            | <term> 'as' <ident> 'in' <term>
+            | in <term>
+            | in <uid> in <term>
+            | <term> in <term> [in <term>]
+            | <term> as <uid> in <term>
 
 <tactic> ::= <query>
-           | 'apply' <term>
-           | 'assume' <argid>+
-           | 'fail'
-           | 'focus' <int>
-           | 'refine' <term>
-           | 'reflexivity'
-           | 'rewrite' [<assoc>] ['[' <rw_patt> ']'] <term>
-           | 'simpl'
-           | 'solve'
-           | 'symmetry'
-           | 'why3' ["<string>"]
+           | apply <term>
+           | assume <param_id>+
+           | fail
+           | focus <int>
+           | induction
+           | refine <term>
+           | reflexivity
+           | rewrite [<assoc>] [[ <rw_patt> ]] <term>
+           | simpl
+           | solve
+           | symmetry
+           | why3 ["<string>"]
 
-<modifier> ::= 'constant'
-             | 'injective'
-             | 'opaque'
-             | 'private'
-             | 'protected'
-             | 'sequential'
+<modifier> ::= constant
+             | injective
+             | opaque
+             | private
+             | protected
+             | sequential
 
 <float_or_int> ::= <float>
                  | <int>
 
-<config> ::= 'builtin' "<string>" '≔' <qident>
-           | 'infix' [<assoc>] <float_or_int> "<string>" '≔' <qident>
-           | 'prefix' <float_or_int> "<string>" '≔' <qident>
-           | 'quantifier' <qident>
-           | 'unif_rule' <unif_rule>
+<notation> ::= infix [<assoc>] <float_or_int>
+             | prefix <float_or_int>
+             | quantifier
 
-<assert_kw> ::= 'assert'
-              | 'assertnot'
+<assert_kw> ::= assert
+              | assertnot
 
-<query> ::= <assert_kw> <arg_list>* '⊢' <term> ':' <term>
-          | <assert_kw> <arg_list>* '⊢' <term> '≡' <term>
-          | 'compute' <term>
-          | 'print' [<qident>]
-          | 'proofterm'
-          | 'set' 'debug' ('+' | '-')<string>
-          | 'set' 'flag' "<string>" <switch>
-          | 'set' 'prover' "<string>"
-          | 'set' 'prover_timeout' <int>
-          | 'set' 'verbose' <int>
-          | 'type' <term>
+<query> ::= <assert_kw> <params>* ⊢ <term> : <term>
+          | <assert_kw> <params>* ⊢ <term> ≡ <term>
+          | compute <term>
+          | print [<id>]
+          | proofterm
+          | debug (+ | -)<string>
+          | flag "<string>" <switch>
+          | prover "<string>"
+          | prover_timeout <int>
+          | verbose <int>
+          | type <term>
 
-<proof_end> ::= 'abort'
-              | 'admit'
-              | 'end'
+<proof_end> ::= abort
+              | admit
+              | end
 
-<proof> ::= 'begin' (<tactic> ';')* <proof_end>
+<proof> ::= begin (<tactic> ;)* <proof_end>
 
-<inductive> ::= <ident> ':' <term> '≔' ['|'] [<ident> ':' <term>
-                ('|' <ident> ':' <term>)*]
+<constructor> ::= <uid> <params>* : <term>
+
+<inductive> ::= <uid> <params>* : <term> ≔ [|] [<constructor>
+                (| <constructor>)*]
 
 <term_proof> ::= <term>
                | <proof>
                | <term> <proof>
 
-<command> ::= 'require' 'open' <qid>+ ';'
-            | 'require' <qid>+ ';'
-            | 'require' <qid> 'as' <ident> ';'
-            | 'open' <qid> ';'
-            | <modifier>* 'symbol' <ident> <arg_list>* ':' <term> [<proof>]
-              ';'
-            | <modifier>* 'symbol' <ident> <arg_list>* [':' <term>] '≔'
-              <term_proof> ';'
-            | <modifier>* <arg_list>* 'inductive' <inductive> ('with'
-              <inductive>)* ';'
-            | 'rule' <rule> ('with' <rule>)* ';'
-            | 'set' <config> ';'
-            | <query> ';'
+<command> ::= require open <path>* ;
+            | require <path>* ;
+            | require <path> as <uid> ;
+            | open <path>* ;
+            | <modifier>* symbol <uid> <params>* : <term> [<proof>]
+              ;
+            | <modifier>* symbol <uid> <params>* [: <term>] ≔
+              <term_proof> ;
+            | <modifier>* <params>* inductive <inductive> (with <inductive>)*
+              ;
+            | rule <rule> (with <rule>)* ;
+            | builtin "<string>" ≔ <id> ;
+            | unif_rule <unif_rule> ;
+            | notation <id> <notation> ;
+            | <query> ;
             
 
-<env> ::= '[' [<term> (';' <term>)*] ']'
+<env> ::= [ [<term> (; <term>)*] ]
 
-<aterm> ::= <term_ident>
-          | '_'
-          | 'TYPE'
-          | '?'<id> [<env>]
-          | <patt> [<env>]
-          | '(' <term> ')'
-          | '{' <term> '}'
+<aterm> ::= <term_id>
+          | _
+          | TYPE
+          | ?<uid> [<env>]
+          | <patt_id> [<env>]
+          | ( <term> )
+          | { <term> }
           | <int>
 
 <sterm> ::= <aterm>+
 
 <term> ::= <sterm>
          | <term> → <term>
-         | '`' <term_ident> <binder>
-         | 'Π' <binder>
-         | 'λ' <binder>
-         | 'let' <ident> <arg_list>* [':' <term>] '≔' <term> 'in' <term>
+         | ` <term_id> <binder>
+         | Π <binder>
+         | λ <binder>
+         | let <uid> <params>* [: <term>] ≔ <term> in <term>
 
-<binder> ::= <arg_list>+ ',' <term>
-           | <argid> ':' <term> ',' <term>
+<binder> ::= <params>+ , <term>
+           | <param_id> : <term> , <term>
 
-<rule> ::= <term> '↪' <term>
+<rule> ::= <term> ↪ <term>
 
-<equation> ::= <term> '≡' <term>
+<equation> ::= <term> ≡ <term>
 
-<unif_rule> ::= <equation> '↪' '[' <equation> (';'
-                <equation>)* ']'
+<unif_rule> ::= <equation> ↪ [ <equation> (;
+                <equation>)* ]
 
 

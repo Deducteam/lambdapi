@@ -19,7 +19,7 @@ rule f _ ↪ let x ≔ a in x;
 assert ⊢ f a ≡ a;
 
 // With type annotated arguments
-set flag "print_domains" on;
+flag "print_domains" on;
 compute let x : T ≔ a in x;
 // Type annotation on products
 type let f x : T ≔ a in f;

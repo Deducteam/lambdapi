@@ -3,6 +3,7 @@
 
 A minimal Vim mode is provided to edit Lambdapi files. It provides
 syntax highlighting and abbreviations to enter unicode characters.
+It does not provide support for the LSP server yet.
 
 Installation
 ------------

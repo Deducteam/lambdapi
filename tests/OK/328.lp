@@ -1,5 +1,5 @@
-//set flag "print_implicits" on
-//set verbose 3
+//flag "print_implicits" on
+//verbose 3
 
 // Type of set codes
 
@@ -25,9 +25,9 @@ constant symbol list : Set → Set;
 symbol L a ≔ τ (list a);
 
 constant symbol □ {a} : L a;
-constant symbol cons {a} : τ a → L a → L a;
+constant symbol ⸬ {a} : τ a → L a → L a;
 
-set infix 4 "⸬" ≔ cons;
+notation ⸬ infix right 4;
 
 // Length of a list
 
@@ -38,9 +38,9 @@ with length (_ ⸬ $l) ↪ succ (length $l);
 
 // Concatenation of two lists
 
-symbol concat {a} : L a → L a → L a;
+symbol ⋅ {a} : L a → L a → L a;
 
-set infix right 5 "⋅" ≔ concat;
+notation ⋅ infix right 5;
 
 rule □ ⋅ $m ↪ $m
 with ($x ⸬ $l) ⋅ $m ↪ $x ⸬ ($l ⋅ $m);

@@ -26,23 +26,23 @@ symbol N ≔ T nat;
 constant symbol z : N;
 constant symbol s : N → N;
 
-set builtin "0"  ≔ z;
-set builtin "+1" ≔ s;
+builtin "0"  ≔ z;
+builtin "+1" ≔ s;
 
 // Addition on natural numbers.
 
-symbol add : N → N → N;
+symbol + : N → N → N;
 
-set infix left 3 "+" ≔ add;
+notation + infix left 3;
 
 rule 0 + $x ↪ $x
 with s $x + $y ↪ s ($x + $y);
 
 // Multiplication on natural numbers.
 
-symbol mul : N → N → N;
+symbol * : N → N → N;
 
-set infix left 4 "*" ≔ mul;
+notation * infix left 4;
 
 rule 0 * _  ↪ 0
 with s $x * $y ↪ $y + $x * $y;
@@ -75,9 +75,9 @@ with beq (s _ ) 0      ↪ false;
 
 // Leibniz equality.
 
-constant symbol eq {a} : T a → T a → Prop;
+constant symbol = {a} : T a → T a → Prop;
 
-set infix 0.1 "=" ≔ eq;
+notation = infix 0.1;
 
 constant symbol refl a (x:T a) : P (x = x);
 
@@ -86,11 +86,11 @@ constant symbol eqind a (x y:T a) : P (x = y) → Π p, P (p y) → P (p x);
 
 // Setting up builtins for rewrite.
 
-set builtin "P"     ≔ P;
-set builtin "T"     ≔ T;
-set builtin "eq"    ≔ eq;
-set builtin "eqind" ≔ eqind;
-set builtin "refl"  ≔ refl;
+builtin "P"     ≔ P;
+builtin "T"     ≔ T;
+builtin "eq"    ≔ =;
+builtin "eqind" ≔ eqind;
+builtin "refl"  ≔ refl;
 
 // [Π n m, n + S m = S (n+m)]
 opaque symbol add_succ_r n m : P (n + s m = s (n + m))
@@ -111,7 +111,7 @@ opaque symbol test0 x y z : P ((x + s y) + z = (s (x + y)) + z)
 ≔ begin
   assume x y z;
   rewrite add_succ_r;
-  refine refl nat (add (s (add x y)) z);
+  refine refl nat ((s (x + y)) + z);
 end;
 
 opaque symbol test1 a (x y : T a) : P(x = y) → P(y = x)

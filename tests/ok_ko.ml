@@ -1,7 +1,6 @@
 (** Compile files in "OK" and "KO". *)
-open Core
 
-let compile = Compile.Pure.compile_file
+let compile = Handle.Compile.Pure.compile_file
 
 let test_ok f () =
   (* Simply assert that there is no exception raised. *)
@@ -13,16 +12,12 @@ let test_ko f () =
   Alcotest.(check bool) f r false
 
 let _ =
-  Files.set_lib_root None;
+  Common.Library.set_lib_root None;
   let open Alcotest in
-  let files = Sys.readdir "OK" |> Array.map (fun f -> "OK/" ^ f)
-(* TODO put back OK/unif_hint.lp when it is fixed *)
-  |> Array.to_list
-  |> List.filter (function f -> f <> "OK/unif_hint.lp")
-  |> Array.of_list in
-  let tests_ok = Array.map (fun f -> test_case f `Quick (test_ok f)) files in
-  let files = Sys.readdir "KO" |> Array.map (fun f -> "KO/" ^ f) in
-  let tests_ko = Array.map (fun f -> test_case f `Quick (test_ko f)) files in
-  run "Std"
-    [ ("OK", Array.to_list tests_ok)
-    ; ("KO", Array.to_list tests_ko) ]
+  let files = Lplib.Extra.files Common.Library.is_valid_src_extension "OK" in
+  (* TODO put back OK/unif_hint.lp when it is fixed *)
+  let files = List.filter (fun f -> f <> "OK/unif_hint.lp") files in
+  let tests_ok = List.map (fun f -> test_case f `Quick (test_ok f)) files in
+  let files = Lplib.Extra.files Common.Library.is_valid_src_extension "KO" in
+  let tests_ko = List.map (fun f -> test_case f `Quick (test_ko f)) files in
+  run "Std" [("OK", tests_ok); ("KO", tests_ko)]

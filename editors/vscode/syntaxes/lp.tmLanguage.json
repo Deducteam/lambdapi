@@ -25,7 +25,7 @@
   ],
   "repository": {
     "commands": {
-      "match": "\\b(abort|admit|apply|as|assert|assertnot|assume|begin|builtin|compute|constant|debug|end|fail|flag|focus|in|inductive|infix|injective|left|let||off|on|open|opaque|prefix|print|private|proofterm|protected|prover|prover_timeout|quantifier|refine|reflexivity|require|rewrite|rule|sequential|set|simpl|symbol|symmetry|type|TYPE|unif_rule|why3|with)\\b",
+      "match": "\\b(abort|admit|apply|as|assert|assertnot|assume|begin|builtin|compute|constant|debug|end|fail|flag|focus|in|induction|inductive|infix|injective|left|let|notation|off|on|open|opaque|prefix|print|private|proofterm|protected|prover|prover_timeout|quantifier|refine|reflexivity|require|rewrite|rule|sequential|simpl|symbol|symmetry|type|TYPE|unif_rule|why3|with)\\b",
       "name": "keyword.control.lp"
     },
     "comments": {
@@ -44,7 +44,7 @@
     },
 
     "tactics": {
-      "match": "\\b(apply|assume|fail|focus|refine|reflexivity|rewrite|simpl|solve|symmetry|why3)\\b",
+      "match": "\\b(apply|assume|fail|focus|induction|refine|reflexivity|rewrite|simpl|solve|symmetry|why3)\\b",
       "name": "keyword.control.tactics.lp"
     },
 
@@ -70,12 +70,12 @@
     },
 
     "misc": {
-      "match": "\\b(assert|assernot|compute|print|proofterm|set|type)\\b",
-      "name:": "keyword.control.query.lp"
+      "match": "\\b(assert|assernot|compute|print|proofterm|type)\\b",
+      "name": "keyword.control.query.lp"
     },
 
     "keywords": {
-      "match": "\\b(as|begin|builtin|constant|debug|end|flag|infix|injective|left|off|on|opaque|prover|prover_timeout|prefix|private|protected|quantifier|right|sequential|TYPE|unif_rule)\\b",
+      "match": "\\b(as|begin|builtin|constant|debug|end|flag|in|infix|injective|left|off|notation|on|opaque|prover|prover_timeout|prefix|private|protected|quantifier|right|sequential|TYPE|unif_rule)\\b",
       "name": "storage.modifier.lp"
     }    
   }

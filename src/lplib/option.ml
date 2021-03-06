@@ -24,28 +24,13 @@ let equal : 'a eq -> 'a option eq =
   | Some e1, Some e2 -> eq e1 e2
   | _, _ -> false
 
-(** [pp pp_elt oc o] prints on the channel [oc] the element [e] with [pp_elt] if
-    [o = Some e]. *)
+(** [pp pp_elt oc o] prints on the channel [oc] the element [e] with [pp_elt]
+   if [o = Some e]. *)
 let pp : 'a pp -> 'a option pp =
  fun pp_elt oc o -> match o with None -> () | Some e -> pp_elt oc e
 
 let empty x = match x with | None -> true | Some _ -> false
 let default x d = match x with | None -> d | Some x -> x
-
-(** [pure x] lifts [x] to an option. *)
-let pure : 'a -> 'a t = fun x -> Some(x)
-
-(** [apply] is the application for options. *)
-let apply : ('a -> 'b) t -> 'a t -> 'b t = fun f x ->
-  match f with
-  | None -> None
-  | Some(f) -> map f x
-
-module Infix = struct
-  let ( <*> ) = apply
-
-  let ( >>= ) o f = bind f o
-end
 
 let fold : ('a -> 'b -> 'a) -> 'a -> 'b option -> 'a = fun f a o ->
   match o with

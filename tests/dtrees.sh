@@ -15,11 +15,11 @@ ok() {
 LAMBDAPI="lambdapi decision-tree --verbose 0 \
 --map-dir=tests:tests"
 
-out="$(${LAMBDAPI} tests.OK.nat.add)"
+out="$(${LAMBDAPI} tests.OK.nat.+)"
 if [ -z "$out" ]; then
-    ko 'tests.OK.nat.add'
+    ko 'tests.OK.nat.+'
 else
-    ok 'tests.OK.nat.add'
+    ok 'tests.OK.nat.+'
 fi
 
 # Escaped characters (with no rule)

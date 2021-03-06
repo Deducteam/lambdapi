@@ -1,4 +1,4 @@
-(* Functional maps with [int] keys. *)
+(** Functional maps with [int] keys. *)
 module IntMap = Map.Make (Base.Int)
 
 (** Functional sets of integers. *)
@@ -7,8 +7,26 @@ module IntSet = Set.Make (Base.Int)
 (** Functional maps with [string] keys. *)
 module StrMap = Map.Make (String)
 
-(* Functional sets of strings. *)
+(** Functional sets of strings. *)
 module StrSet = Set.Make (String)
+
+(** [color] tells whether colors can be used in the output. *)
+let color : bool Stdlib.ref = Stdlib.ref true
+
+(** Format transformers (colors). *)
+let colorize k fmt =
+  if Stdlib.(!color) then "\027[" ^^ k ^^ "m" ^^ fmt ^^ "\027[0m%!" else fmt
+
+let red fmt = colorize "31" fmt
+let gre fmt = colorize "32" fmt
+let yel fmt = colorize "33" fmt
+let blu fmt = colorize "34" fmt
+let mag fmt = colorize "35" fmt
+let cya fmt = colorize "36" fmt
+
+(** [r_or_g cond fmt] colors the format [fmt] in green if [cond] is [true] and
+    in red otherwise. *)
+let r_or_g cond = if cond then gre else red
 
 (** [get_safe_prefix p strings] returns a string starting with [p] and so that,
     there is no non-negative integer [k] such that [p ^ string_of_int k] belongs
@@ -79,3 +97,31 @@ let run_process : string -> string list option =
   match Unix.close_process_full (oc, ic, ec) with
   | Unix.WEXITED 0 -> Some res
   | _ -> None
+
+(** [file_time fname] returns the modification time of file [fname] represented
+    as a [float]. [neg_infinity] is returned if the file does not exist. *)
+let file_time : string -> float = fun fname ->
+  if Sys.file_exists fname then Unix.((stat fname).st_mtime) else neg_infinity
+
+(** [more_recent source target] checks whether the [target] (produced from the
+    [source] file) should be produced again. This is the case when [source] is
+    more recent than [target]. *)
+let more_recent : string -> string -> bool = fun source target ->
+  file_time source > file_time target
+
+(** [files f d] returns all the filenames in [d] and its sub-directories
+   recursively satisfying the function [f], assuming that [d] is a
+   directory. *)
+let files : (string -> bool) -> string -> string list = fun chk ->
+  let rec files acc dirs =
+    match dirs with
+    | [] -> acc
+    | d::dirs ->
+        let f (fnames, dnames) s =
+          let s = Filename.concat d s in
+          if Sys.is_directory s then (fnames, s::dnames)
+          else if chk s then (s::fnames, dnames) else (fnames, dnames)
+        in
+        let acc, dirs = Array.fold_left f (acc, dirs) (Sys.readdir d) in
+        files acc dirs
+  in fun d -> files [] [d]

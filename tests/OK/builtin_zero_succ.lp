@@ -1,10 +1,10 @@
 symbol N:TYPE;
 symbol z:N;
 symbol s:N → N;
-set builtin "0" ≔ z;
-set builtin "+1" ≔ s;
-symbol add:N → N → N;
-set infix 5 "+" ≔ add;
+builtin "0" ≔ z;
+builtin "+1" ≔ s;
+symbol +:N → N → N;
+notation + infix 5;
 rule 0 + $y ↪ $y
 with s $x + $y ↪ s($x + $y);
 compute 5 + 5;

@@ -1,4 +1,4 @@
-set flag "print_domains" on;
+flag "print_domains" on;
 
 symbol R : TYPE;
 constant symbol zero : R;

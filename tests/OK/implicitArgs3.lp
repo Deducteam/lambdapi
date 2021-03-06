@@ -11,8 +11,8 @@ constant symbol Nat  : U;
 constant symbol N : TYPE;
 constant symbol zero : N;
 constant symbol s : N → N;
-symbol add : N → N → N;
-set infix left 6 "+" ≔ add;
+symbol + : N → N → N;
+notation + infix left 6;
 
 rule zero   + $n     ↪ $n;
 rule (s $m) + $n     ↪ s ($m + $n);
@@ -21,6 +21,7 @@ rule $m     + (s $n) ↪ s ($m + $n);
 
 // Mini interpretation function from code of types to real types
 injective symbol T : U → TYPE;
+
 rule T Nat     ↪ N;
 rule T Bool    ↪ B;
 

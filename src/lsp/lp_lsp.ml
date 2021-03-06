@@ -12,6 +12,7 @@
 
 open! Lplib
 open Lplib.Extra
+open Common
 
 open Core
 
@@ -124,7 +125,7 @@ let mk_definfo file pos =
         ]
 
 let kind_of_type tm =
-  let open Terms in
+  let open Term in
   let open Timed in
   let is_undef =
     Option.empty !(tm.sym_def) && List.length !(tm.sym_rules) = 0 in
@@ -142,7 +143,7 @@ let do_symbols ofmt ~id params =
   let sym =
     Extra.StrMap.fold
       (fun _ (s,p) l ->
-        let open Terms in
+        let open Term in
         (* LIO.log_error "sym"
          ( s.sym_name ^ " | "
          ^ Format.asprintf "%a" pp_term !(s.sym_type)); *)
@@ -165,13 +166,46 @@ let get_textPosition params =
   let line, character = int_field "line" pos, int_field "character" pos in
   line, character
 
+(** [closest_before (line, pos) objs] returns the element in [objs] with
+largest position which is before [(line, pos)]*)
+let closest_before : int * int -> ('a * Pos.popt) list ->
+                     ('a * Pos.popt) option =
+  fun (line, pos) (objs: ('a * Pos.popt) list) ->
+  let objs =
+    List.filter (fun (_, objpos) ->
+        match objpos with
+        | None -> false
+        | Some objpos ->
+            let open Pos in
+            compare (objpos.start_line, objpos.start_col) (line, pos) <= 0)
+      objs
+  in
+  let closer (acc: ('a * Pos.popt) option) (obj : 'a * Pos.popt) =
+    let open Pos in
+    match (snd obj) with
+    | None -> acc
+    | Some objpos ->
+        match acc with
+        | None -> Some obj
+        | Some (_, accposopt) ->
+            match accposopt with
+            | None -> Some obj
+            | Some accpos ->
+                let comp =
+                  compare (objpos.start_line, objpos.start_col)
+                    (accpos.start_line, accpos.start_col)
+                in
+                if comp <= 0 then acc else Some obj
+  in
+  List.fold_left closer None objs
+
 let in_range ?loc (line, pos) =
   match loc with
   | None -> false
   | Some Pos.{start_line; start_col; end_line; end_col; _} ->
-    start_line - 1 < line && line < end_line - 1 ||
-    (start_line - 1 = line && start_col <= pos) ||
-    (end_line - 1 = line && pos <= end_col)
+    let line = line + 1 in
+    (compare (start_line, start_col) (line, pos)) *
+    (compare (end_line, end_col) (line, pos)) <= 0
 
 let get_node_at_pos doc line pos =
   let open Lp_doc in
@@ -179,7 +213,7 @@ let get_node_at_pos doc line pos =
       let loc = Pure.Command.get_pos ast in
       let res = in_range ?loc (line,pos) in
       let ls = Format.asprintf "%B l:%d p:%d / %a "
-                 res line pos Pos.print loc in
+                 res line pos Pos.pp loc in
       LIO.log_error "get_node_at_pos" ("call: "^ls);
       res
     ) doc.Lp_doc.nodes
@@ -189,14 +223,14 @@ let rec get_goals ~doc ~line ~pos =
   let goals = match node with
     | None -> None
     | Some n ->
-        List.find_opt (fun (_, loc) -> in_range ?loc (line,pos)) n.goals in
+        closest_before (line+1, pos) n.goals in
   match goals with
     | None -> begin match node with
               | None   -> None
               | Some _ -> get_goals ~doc ~line:(line-1) ~pos:0 end
     | Some (v,_) -> Some v
 
-let get_logs ~doc ~line ~pos =
+let get_logs ~doc ~line ~pos : string =
   (* DEBUG LOG START *)
   LIO.log_error "get_logs"
     (Printf.sprintf "%s:%d,%d" doc.Lp_doc.uri line pos);
@@ -215,13 +249,9 @@ let get_logs ~doc ~line ~pos =
   Lsp_io.log_error "get_logs"
     (List.fold_left (^) "\n" (List.map log_to_str doc.Lp_doc.logs));
   (* DEBUG LOG END *)
-  let before_cursor (npos : Pos.popt) =
-    match npos with
-    | None -> Lsp_io.log_error "get_logs" "None pos"; true
-    | Some Pos.{start_line; _} -> start_line-1 <= line
-  in
-  List.fold_left_while (fun acc x -> acc^(fst x))
-                  (fun (_, p) -> before_cursor p) "" doc.Lp_doc.logs
+  match closest_before (line+1, pos) doc.Lp_doc.logs with
+  | None -> ""
+  | Some (log, _) -> log
 
 let do_goals ofmt ~id params =
   let uri, line, pos = get_docTextPosition params in
@@ -269,7 +299,7 @@ let do_definition ofmt ~id params =
     Extra.StrMap.bindings sym
     |> List.map (fun (key, (sym,pos)) ->
         Format.asprintf "{%s} / %s: @[%a@]"
-          key sym.Terms.sym_name Pos.print pos)
+          key sym.Term.sym_name Pos.pp pos)
     |> String.concat "\n"
   in
   LIO.log_error "symbol map" map_pp;
@@ -278,12 +308,11 @@ let do_definition ofmt ~id params =
     match StrMap.find_opt sym_target sym with
     | None
     | Some (_, None) -> `Null
-    | Some (term, Some pos) ->
+    | Some (s, Some pos) ->
       (* A JSON with the path towards the definition of the term
          and its position is returned
          /!\ : extension is fixed, only works for .lp files *)
-      mk_definfo Files.(module_to_file Terms.(term.sym_path)
-      ^ src_extension) pos
+      mk_definfo Library.(file_of_path s.Term.sym_path ^ src_extension) pos
   in
   let msg = LSP.mk_reply ~id ~result:sym_info in
   LIO.send_json ofmt msg
@@ -340,7 +369,7 @@ let hover_symInfo ofmt ~id params =
     Extra.StrMap.bindings sym
     |> List.map (fun (key, (sym,pos)) ->
         Format.asprintf "{%s} / %s: @[%a@]"
-          key sym.Terms.sym_name Pos.print pos)
+          key sym.Term.sym_name Pos.pp pos)
     |> String.concat "\n"
   in
   LIO.log_error "symbol map" map_pp;
@@ -348,7 +377,7 @@ let hover_symInfo ofmt ~id params =
   try
     let sym_found =
       let open Timed in
-      let open Terms in
+      let open Term in
       match StrMap.find_opt sym_target sym with
       | None
       | Some (_, None) ->
@@ -422,7 +451,7 @@ let dispatch_message ofmt dict =
 
   (* NOOPs *)
   | "initialized"
-  | "workspace/didChangeWatchedFiles" ->
+  | "workspace/didChangeWatchedModule" ->
     ()
   | msg ->
     LIO.log_error "no_handler" msg
@@ -451,7 +480,7 @@ let main std log_file =
   (* let lp_oc = open_out "log-lp.txt" in *)
   let lp_fmt = F.formatter_of_buffer Lp_doc.lp_logger in
   Console.out_fmt := lp_fmt;
-  Console.err_fmt := lp_fmt;
+  Error.err_fmt := lp_fmt;
   (* Console.verbose := 4; *)
 
   let rec loop () =

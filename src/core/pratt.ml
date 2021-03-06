@@ -4,6 +4,8 @@
     The interface for the Pratter library can be seen at
     @see <https://forge.tedomum.net/koizel/pratter> *)
 
+open Common
+open Parsing
 open Syntax
 
 module Pratt : sig
@@ -27,27 +29,25 @@ end = struct
     (* Get properties of term [t] if its an operator. *)
     let get (tbl, env) t =
       match t.elt with
-      | P_Iden(id, _) -> (
+      | P_Iden(id, _) ->
           let sym =
             let {elt=(mp, s); _} = id in
             try (* Look if [id] is in [env]... *)
               if mp <> [] then raise Not_found;
               ignore (Env.find s env); None
             with Not_found -> (* ... or look into the signature *)
-              Some(Sig_state.find_sym ~prt:true ~prv:true true tbl id)
+              Some(Sig_state.find_sym ~prt:true ~prv:true tbl id)
           in
           let f sym =
-            match Terms.SymMap.find_opt sym tbl.notations with
-            | Some(Infix(_, assoc, prio, _)) -> Some(Pratter.Bin assoc, prio)
-            | Some(Prefix(_, prio, _)) -> Some(Pratter.Una, prio)
+            match Term.SymMap.find_opt sym tbl.notations with
+            | Some(Infix(assoc, prio)) -> Some(Pratter.Bin assoc, prio)
+            | Some(Prefix(prio)) -> Some(Pratter.Una, prio)
             | _ -> None
           in
-          Option.bind f sym )
+          Option.bind f sym
       | _ -> None
 
-    let make_appl t u =
-      let pos = Option.(Infix.(pure cat <*> t.pos <*> u.pos)) in
-      make pos (P_Appl(t, u))
+    let make_appl t u = make (Pos.cat t.pos u.pos) (P_Appl(t, u))
   end
 
   let parse : Sig_state.t -> Env.t -> p_term -> p_term = fun st env t ->
@@ -56,9 +56,9 @@ end = struct
     let module Parse = Pratter.Make(Pratt_terms) in
     try Parse.expression (st, env) strm with
     | Parse.OpConflict(t, u) ->
-        Console.fatal t.pos "Operator conflict between \"%a\" and \"%a\""
+        Error.fatal t.pos "Operator conflict between \"%a\" and \"%a\""
           Pretty.term t Pretty.term u
     | Parse.TooFewArguments ->
-        Console.fatal t.pos "Malformed application in \"%a\"" Pretty.term t
+        Error.fatal t.pos "Malformed application in \"%a\"" Pretty.term t
 end
 include Pratt

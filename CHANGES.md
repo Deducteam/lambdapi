@@ -1,5 +1,94 @@
 ### Unreleased
 
+#### Remove `set` keyword (2021-03-04)
+
+#### Various bug fixes (2021-03-02)
+
+- allow matching on abstraction/product type annotations (fix #573)
+- Infer: do not check constraint duplication and return constraints in the order they have been added (fix #579)
+- inductive type symbols are now declared as constant (fix #580)
+- fix parsing and printing of unification rules
+- Extra.files returns only the files that satisfy some user-defined condition
+- tests/ok_ko.ml: test only .dk and .lp files
+- Pretty: checking that identifiers are LP keywords is now optional (useful for debug)
+
+#### Fix notation declarations (2021-02-19)
+
+- `set infix ... "<string>" := <qid>` is replaced by `set notation <qid> infix ...`
+- `set prefix ... "<string>" := <qid>` is replaced by `set notation <qid> prefix ...`
+- `set quantifier <qid>` is replaced by `set notation <qid> quantifier`
+- the flag `print_meta_type` is renamed into `print_meta_types`
+- `LibTerm.expl_args` is renamed into `remove_impl_args`
+
+#### Improve handling of ghost symbols and metavariable identifier (2021-02-18)
+
+- Ghost paths and unification rule symbols managed in LpLexer now
+  (no hard-coded strings anymore except for their definition)
+- Allow users to type system-generated metavariable identifiers (integers)
+- Fix printing of metavariable identifiers
+- `key_counter` renamed into `meta_counter`
+- `Meta.name` does not return a `?`-prefixed string anymore
+- code factorization and reorganization in `query.ml`
+
+#### Improve navigation in Emacs/VSCode (2021-02-18)
+
+- Electric mode for Emacs
+- Buttons for Proof Navigation in Emacs
+- Navigate by commands/tactics in Emacs and VScode
+- Evaluated region shrinks on edit in Emacs and VScode
+- Evaluated region changes colour after error in Emacs and VScode
+- LSP server sends logs only from last command/tactic
+- Few minor corrections in LSP server
+- Improve VSCode indentation
+
+#### Add tactic induction (2021-02-17)
+
+- `env.ml`: add functions for generating fresh metavariable terms
+  (factorizes some code in `scope.ml` and `tactics.ml`)
+- add fields in type `Sign.inductive` renamed into `ind_data`
+- functions from `rewrite.ml` now take a `goal_typ` as argument
+- code factorization in `tactic.ml`
+
+- remove type aliases `p_type` and `p_patt`
+- rename `P_Impl` into `P_Arro`, and `P_tac_intro` into `P_tac_assume`
+- variable renamings in `sig_state`
+
+#### File renamings and splitting and better handling of escaped identifier (2021-02-12)
+
+- File renamings and splittings:
+  * `lpLexer` -> `escape`, `lpLexer`
+  * `console` -> `base`, `extra`, `debug`, `error`, `console`
+  * `module` -> `filename`, `path`, `library`
+  * `cliconf` -> `config`
+  * `install_cmd` -> `install`
+  * `init_cmd` -> `init`
+
+- Improve handling of escaped identifiers in `escape.ml` and fix printing
+
+- Improve `tests/ok_ko.ml` to allow sub-directories in `tests/OK/` or `tests/KO/`
+
+#### File renamings and source code segmentation (2021-02-08)
+
+- File renamings:
+  * `terms` -> `term`
+  * `basics` -> `libTerm`
+  * `tactics` -> `tactic`
+  * `queries` -> `query`
+  * `stubs` -> `realpath`
+  * `files` -> `module`
+  * `handle` -> `command`
+
+- `Core` library divided into the following sub-libraries: 
+  * `Common` that contains shared basic files
+    (`pos`, `console`, `module` and `package`)
+  * `Parsing` that contains everything related to parsing
+    (`syntax`, `pretty`, lexers and parser)
+  * `Handle` that uses `Core` to type check commands and modules 
+    (contains `query`, `tactic`, `command`, `compile`, `inductive`, `rewrite`,
+    `proof` and `why3_tactic`)
+  * `Tool` that provides miscellaneous tools that use `Core`
+    (`external`, `hrs`, `xtc`, `tree_graphviz`, `sr`)
+
 #### Add parameters to inductive definitions (2021-02-02)
 
 #### Parser (2021-01-30)

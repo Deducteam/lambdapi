@@ -47,10 +47,11 @@ rule nat_ind $p $u $v (s $n) ↪ $v $n (nat_ind $p $u $v $n);
 
 // Leibniz equality.
 
-constant symbol eq : Π a, T a → T a → Prop;
+constant symbol = {a} : T a → T a → Prop;
+notation = infix 1;
 
-constant symbol refl  : Π a x, P (eq a x x);
-constant symbol eqind : Π a x y, P (eq a x y) → Π (p:T a → Prop), P (p y) → P (p x);
+constant symbol refl  : Π a (x:T a), P (x = x);
+constant symbol eqind : Π a x y, P (x = y) → Π p:T a → Prop, P (p y) → P (p x);
 
 // Definition of connectors
 constant symbol bot        : Prop;
@@ -100,15 +101,15 @@ opaque symbol not_elimp : Π (A : Prop), P (not (not A)) → P A
     apply pna;
 end;
 
-set builtin "P"     ≔ P;
-set builtin "T"     ≔ T;
-set builtin "eq"    ≔ eq;
-set builtin "eqind" ≔ eqind;
-set builtin "refl"  ≔ refl;
+builtin "P"     ≔ P;
+builtin "T"     ≔ T;
+builtin "eq"    ≔ =;
+builtin "eqind" ≔ eqind;
+builtin "refl"  ≔ refl;
 
-set builtin "bot"   ≔ bot;
-set builtin "top"   ≔ top;
-set builtin "imp"   ≔ imp;
-set builtin "and"   ≔ {|and|};
-set builtin "or"    ≔ or;
-set builtin "not"   ≔ not;
+builtin "bot"   ≔ bot;
+builtin "top"   ≔ top;
+builtin "imp"   ≔ imp;
+builtin "and"   ≔ {|and|};
+builtin "or"    ≔ or;
+builtin "not"   ≔ not;

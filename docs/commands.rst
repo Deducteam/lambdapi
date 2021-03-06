@@ -8,13 +8,13 @@ examples. The first thing to note is that Lambdapi files are formed of a
 list of commands. A command starts with a particular reserved keyword
 and ends with a semi-colon.
 
-One-line comments are introduced by ‘//’:
+One-line comments are introduced by ``//``:
 
 ::
 
    // These words are ignored
 
-And multi-line comments are opened with ‘/*’ and closed with ‘*/’.
+And multi-line comments are opened with ``/*`` and closed with ``*/``.
 
 ::
 
@@ -28,24 +28,31 @@ And multi-line comments are opened with ‘/*’ and closed with ‘*/’.
 Informs the type-checker that the current module
 depends on some other module, which must hence be compiled.
 
+A required module can optionally be aliased, in which case it
+can be referred to with the provided name.
+
 ::
 
-   require boolean;
+   require std.bool;
    require church.list as list;
 
-Note that a required module can optionally be aliased, in which case it
-can be referred to with the provided name.
+Note that ``require`` always take as argument a qualified
+identifier. See :doc:`module` for more details.
 
 ``open``
 --------
 
-Puts into scope the symbols defined in the given
-module. It can also be combined with the ``require`` command.
+Puts into scope the symbols of the previously required module given
+in argument. It can also be combined with the ``require`` command.
 
 ::
 
-   open booleans;
+   require std.bool;
+   open std.bool;
    require open church.sums;
+
+Note that ``open`` always take as argument a qualified
+identifier. See :doc:`module` for more details.
 
 ``symbol``
 ----------
@@ -159,8 +166,8 @@ arguments must be explicitly given.
    // unless `eq` is prefixed by `@`.
    // Hence, [eq t u], [eq {_} t u] and [@eq _ t u] are all valid and equivalent.
 
-**Notations**: Some notation can be declared for some symbol. See the command
-``set``.
+**Notations**: Some notation can be declared for a symbol. See the commands
+``notation`` and ``builtin``.
 
 ``rule``
 --------
@@ -248,27 +255,19 @@ Adding sets of rules allows to maintain confluence.
 
 Examples of patterns are available in ``tests/OK/patterns.lp``.
 
-``set prefix|infix|quantifier|builtin|unif_rule``
-----------------------------------------------------------
+``notation``
+----------------
 
-The ``set`` command is used to control the behaviour of Lambdapi and
-extension points in its syntax.
+The ``notation`` command is used to specify a notation for a symbol.
 
-**prefix symbols** The following code defines a prefix symbol for
-negation.
-
-::
-
-   set prefix 5 "¬" ≔ neg;
-
-**infix symbols** The following code defines infix symbols for addition
+**infix** The following code defines infix symbols for addition
 and multiplication. Both are associative to the left, and they have
 priority levels ``6`` and ``7`` respectively.
 
 ::
 
-   set infix left 6 "+" ≔ add;
-   set infix left 7 "×" ≔ mul;
+   notation + infix left 6;
+   notation × infix left 7;
 
 The modifier ``infix``, ``infix right`` and ``infix left`` can be used
 to specify whether the defined symbol is non-associative, associative to
@@ -276,20 +275,27 @@ the right, or associative to the left. The priority levels are floating
 point numbers, hence a priority can (almost) always be inserted between
 two different levels.
 
-**quantifier symbols** Any symbol can be input as a quantifier (as done usually
-with symbols such as ``∀``, ``∃`` or ``λ``), provided that it
-is prefixed with a backquote `` \` ``. However, such terms will be printed as
-quantifiers only if they are declared so using the command ``set quantifier``:
+**prefix** The following code defines a prefix symbol for
+negation with some priority level.
 
 ::
 
-   set quantifier ∀; // : Π {a}, (T a → Prop) → Prop
-   compute ∀ {a'} (λx:T a,p); // prints `∀x:T a,p
-   compute ∀ (λx:T a, p); // prints `∀x,p
-   type `∀ x, p; // quantifiers can be written as such
-   type `f x, p; // works as well if f is defined
+   notation ¬ prefix 5;
 
-**builtins** The command ``set builtin`` allows to map a “builtin“
+**quantifier** Allows to write ``\`f x, t`` instead of ``f (λ x, t)``:
+
+::
+
+   symbol ∀ {a} : (T a → Prop) → Prop;
+   notation ∀ quantifier;
+   compute λ p, ∀ (λ x:T a, p); // prints `∀ x, p
+   type λ p, `∀ x, p; // quantifiers can be written as such
+   type λ p, `f x, p; // works as well if f is any symbol
+
+``builtin``
+---------------
+
+The command ``builtin`` allows to map a “builtin“
 string to a user-defined symbol identifier. Those mappings are
 necessary for other commands or tactics. For instance, to use decimal
 numbers, one needs to map the builtins “0“ and “+1“ to some symbol
@@ -298,15 +304,19 @@ use tactics on equality, one needs to define some specific builtins;
 etc.
 
 **notation for natural numbers** It is possible to use the standard
-decimal notation for natural numbers by specifying the symbols
-representing 0 and the successor function as follows:
+decimal notation for natural numbers by defining the builtins ``"0"``
+and ``"+1"`` as follows:
 
 ::
 
-   set builtin "0"  ≔ zero; // : N
-   set builtin "+1" ≔ succ; // : N → N
+   builtin "0"  ≔ zero; // : N
+   builtin "+1" ≔ succ; // : N → N
+   type 42;
 
-**unification rules** The unification engine can be guided using
+``unif_rule``
+-----------------
+
+The unification engine can be guided using
 *unification rules*. Given a unification problem ``t ≡ u``, if the
 engine cannot find a solution, it will try to match the pattern
 ``t ≡ u`` against the defined rules (modulo commutativity of ≡)
@@ -318,9 +328,9 @@ Examples:
 
 ::
 
-   set unif_rule Bool ≡ T $t ↪ begin $t ≡ bool end;
-   set unif_rule $x + $y ≡ 0 ↪ begin $x ≡ 0; $y ≡ 0 end;
-   set unif_rule $a → $b ≡ T $c ↪ begin $a ≡ T $a'; $b ≡ T $b'; $c ≡ arrow $a' $b' end;
+   unif_rule Bool ≡ T $t ↪ [ $t ≡ bool ];
+   unif_rule $x + $y ≡ 0 ↪ [ $x ≡ 0; $y ≡ 0 ];
+   unif_rule $a → $b ≡ T $c ↪ [ $a ≡ T $a'; $b ≡ T $b'; $c ≡ arrow $a' $b' ];
 
 Thanks to the first unification rule, a problem ``T ?x ≡ Bool`` is
 transformed into ``?x ≡ bool``.
@@ -341,8 +351,8 @@ type definition, assuming that the following builtins are defined:
 
 ::
    
-   ￼set builtin "Prop" ≔ ...; // : TYPE, for the type of propositions
-   ￼set builtin "P"    ≔ ...; // : Prop → TYPE, interpretation of propositions as types
+   ￼builtin "Prop" ≔ ...; // : TYPE, for the type of propositions
+   ￼builtin "P"    ≔ ...; // : Prop → TYPE, interpretation of propositions as types
 
 Currently, it only supports parametrized mutually defined dependent
 first-order data types. As usual, polymorphic types can be encoded by
@@ -365,9 +375,9 @@ is equivalent to:
 ￼
 ::
    
-   ￼injective symbol ℕ : TYPE;
-   ￼constant  symbol zero : ℕ;
-   ￼constant  symbol succ : ℕ → ℕ;
+   ￼constant symbol ℕ : TYPE;
+   ￼constant symbol zero : ℕ;
+   ￼constant symbol succ : ℕ → ℕ;
    ￼symbol ind_ℕ p :
       π(p zero) → (Π x, π(p x) → π(p(succ x))) → Π x, π(p x);
    ￼rule ind_ℕ _ $pz _ zero ↪ $pz

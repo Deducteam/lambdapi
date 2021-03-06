@@ -5,10 +5,10 @@
 // Configuration
 
 constant symbol Prop : TYPE;      // Type of propositions
-set builtin "Prop" ≔ Prop;
+builtin "Prop" ≔ Prop;
 
 injective symbol π : Prop → TYPE; // Interpretation of propositions in TYPE
-set builtin "P" ≔ π;
+builtin "P" ≔ π;
 
 constant symbol Set : TYPE;       // Type of set codes
 injective symbol τ : Set → TYPE;  // Interpretation of set codes in TYPE
@@ -77,7 +77,7 @@ assert p ptrue pfalse ⊢ ind_B p ptrue pfalse true ≡ ptrue;
 assert p ptrue pfalse ⊢ ind_B p ptrue pfalse false ≡ pfalse;
 
 constant symbol bool : Set;
-rule B ↪ τ bool;
+rule τ bool ↪ B;
 
 ////////////////// False (empty type)
 
@@ -103,25 +103,25 @@ assert p pz psucc ⊢ ind_N p pz psucc z ≡ pz;
 assert p pz psucc n ⊢ ind_N p pz psucc (succ n) ≡ psucc n (ind_N p pz psucc n);
 
 constant symbol nat : Set;
-rule N ↪ τ nat;
+rule τ nat ↪ N;
 
-set builtin "0"  ≔ z;
-set builtin "+1" ≔ succ;
+builtin "0"  ≔ z;
+builtin "+1" ≔ succ;
 
-symbol plus : N → N → N;
-set infix left 6 "+" ≔ plus;
+symbol + : N → N → N;
+notation + infix left 6;
 rule       0 + $y ↪ $y
 with succ $x + $y ↪ succ ($x + $y);
 
-symbol mult : N → N → N;
-set infix left 7 "×" ≔ mult;
+symbol × : N → N → N;
+notation × infix left 7;
 rule       0 × _  ↪ 0
 with succ $x × $y ↪ $y + $x × $y;
 
 assert x y z ⊢ x + y × z ≡ x + (y × z);
 
-symbol le : N → N → Prop;
-set infix left 3 "≤" ≔ le;
+symbol ≤ : N → N → Prop;
+notation ≤ infix left 3;
 
 assert x y z ⊢ x + y ≤ z ≡ (x + y) ≤ z;
 
@@ -386,7 +386,7 @@ assert p pnil pcons n l
 ⊢ ind_List p pnil pcons (cons n l) ≡ pcons n l (ind_List p pnil pcons l);
 
 constant symbol list : Set;
-rule List ↪ τ list;
+rule τ list ↪ List;
 
 ///////////////// Pairs of natural numbers
 
@@ -434,7 +434,7 @@ inductive L : TYPE ≔
 assert ⊢ L : Set → TYPE;
 assert ⊢ @nilL : Π a, L a;
 assert ⊢ @consL : Π a, τ a → L a → L a;
-assert ⊢ ind_L : Π a p,
+assert ⊢ ind_L : Π a (p:L a → Prop),
   π(p nilL) → (Π x l, π(p l) → π(p (consL x l))) → Π l, π(p l);
 
 assert a p pnil pcons ⊢ ind_L a p pnil pcons nilL ≡ pnil;
@@ -499,9 +499,9 @@ assert pS pinl pinr g d xd
 
 //////////////////// Vectors of natural numbers
 
-inductive V : N → TYPE ≔
- | nil_vec   : V z
- | cons_vec  : Π n, N → V n → V (succ n);
+inductive V (n:N) : TYPE ≔
+ | nil_vec : V z
+ | cons_vec n : N → V n → V (succ n);
 
 assert ⊢ V : N → TYPE;
 assert ⊢ nil_vec   : V z;
@@ -592,13 +592,13 @@ assert p pmty pbin punl y n romy romn
 
 inductive fibo : N → N → TYPE ≔
  | cgen' : Π (n r1 r2 : N),
-    fibo n r1 → fibo (succ n) r2 →  fibo (succ (succ n)) (plus r1 r2)
+    fibo n r1 → fibo (succ n) r2 →  fibo (succ (succ n)) (r1 + r2)
  | cbase1 : fibo z (succ z)
  | cbase2 : fibo (succ z) (succ z);
 
 assert ⊢ fibo : N → N → TYPE;
 assert ⊢ cgen' : Π (n r1 r2 : N),
-    fibo n r1 → fibo (succ n) r2 →  fibo (succ (succ n)) (plus r1 r2);
+    fibo n r1 → fibo (succ n) r2 →  fibo (succ (succ n)) (r1 + r2);
 assert ⊢ cbase1 : fibo z (succ z);
 assert ⊢ cbase2 : fibo (succ z) (succ z);
 
@@ -641,62 +641,39 @@ assert p pnil pcons a n x v
 ⊢ ind_Vec p pnil pcons _ _ (Vcons a n x v)
 ≡ pcons a n x v (ind_Vec p pnil pcons a n v);
 
-////////////////// Type Bush (nested inductive type)
-
-symbol bush : Set →  Set;
-
-inductive Bush : Π(_:Set), TYPE ≔
- | bush_nil : Π a, Bush a
- | bush_cons : Π a, τ a → Bush (bush a) → Bush a;
-
-rule Bush $a ↪ τ (bush $a);
-
-assert ⊢ Bush : Π(_:Set), TYPE;
-assert ⊢ bush_nil : Π a, Bush a;
-assert ⊢ bush_cons : Π a, τ a → Bush (bush a) → Bush a;
-
-assert ⊢ ind_Bush : Π p,
-  (Π a, π(p a (bush_nil a))) →
-  (Π a x l, π(p (bush a) l) → π(p a (bush_cons a x l))) →
-  Π a l, π(p a l);
-
-assert p pempty pcons a ⊢ ind_Bush p pempty pcons a (bush_nil a) ≡ pempty a;
-
-assert p pempty pcons a x t
-⊢ ind_Bush p pempty pcons a (bush_cons a x t)
-≡ pcons a x t (ind_Bush p pempty pcons (bush a) t);
-
 /////////////////////////////
 // Equality
 /////////////////////////////
 
-constant symbol eq {a} : τ a → τ a → Prop;
-set infix 1 "=" ≔ eq;
+constant symbol = {a} : τ a → τ a → Prop;
+notation = infix 1;
 constant symbol eq_refl {a} (x : τ a) : π(x = x);
 constant symbol eq_ind {a} (x y : τ a) : π(x = y) → Π p, π(p y) → π(p x);
 
 // Set builtins for the rewrite tactic
-set builtin "T"     ≔ τ;
-set builtin "eq"    ≔ eq;
-set builtin "refl"  ≔ eq_refl;
-set builtin "eqind" ≔ eq_ind;
+builtin "T"     ≔ τ;
+builtin "eq"    ≔ =;
+builtin "refl"  ≔ eq_refl;
+builtin "eqind" ≔ eq_ind;
 
 /////////////////////////////
 // Some proofs
 /////////////////////////////
 
-opaque symbol plus_0_n : Π n, π(0 + n = n) ≔
+unif_rule τ $x ≡ N ↪ [ $x ≡ nat ];
+//FIXME: should be infered from injectivity of τ
+
+opaque symbol plus_0_n n : π(0 + n = n) ≔
 begin
   assume n;
   reflexivity;
 end;
 
-opaque symbol plus_n_0 n : π(n + 0 = n) ≔
+opaque symbol plus_n_0 (n:N) : π(n + 0 = n) ≔
 begin
-  assume n;
-  refine ind_N (λ z, z + 0 = z) _ _ _;
+  induction;
   // Case n = O
-  refine eq_refl 0;
+  reflexivity;
   // Case n = S n'
   assume n' Hn';
   simpl;
@@ -714,13 +691,14 @@ symbol app : List → List → List;
 rule  app      nil     $m ↪ $m
  with app (cons $x $l) $m ↪ cons $x (app $l $m);
 
-opaque symbol length_app l1 l2:
+opaque symbol length_app (l2 l1 : List):
   π(length l1 + length l2 = length (app l1 l2)) ≔
 begin
-  assume l1 l2;
-  apply ind_List
-        (λ z, length z + length l2 = length (app z l2)) _ _ l1;
+  assume l2;
+  induction;
   reflexivity;
   assume x l2 IHl1;
-  simpl; rewrite IHl1; reflexivity;
+  simpl;
+  rewrite IHl1;
+  reflexivity;
 end;

@@ -18,7 +18,9 @@ your contribution, push it and, then, make a pull-request from the
 Github web interface. Pull-requests are then reviewed, commented and
 eventually merged.
 
-Important contributions should update the file CHANGES.md.
+- If the file structure is changed, `docs/structure.rst` should be changed as
+  well.
+- Important contributions should update the file `CHANGES.md`.
 
 General style and indentation
 -----------------------------
@@ -62,11 +64,17 @@ Changing the syntax of Lambdapi
 -------------------------------
 
 When changing the syntax of Lambdapi, make sure to update the
-following files: `src/core/lpLexer.ml`, `src/core/lpParser.mly`,
-`src/core/pretty.ml`, `src/core/print.ml`,
-`editors/emacs/lambdapi-smie.el`,
-`editors/vscode/lp.configuration.json` (shortcuts),
-`editors/vscode/syntaxes/lp.tmLanguage.json` (syntax highlighting),
-`tools/listings.tex`, `docs/Makefile` (generation of
-`docs/syntax.bnf`), as well as the User Manual in the `docs/`
-repository.
+following files:
+- `src/core/lpLexer.ml`
+- `src/core/lpParser.mly`
+- `src/core/pretty.ml`
+- `src/core/print.ml`
+- `editors/vim/syntax/lambdapi.vim`
+- `editors/emacs/lambdapi-smie.el`
+- `editors/vscode/lp.configuration.json` (comments configuration),
+- `editors/vscode/syntaxes/lp.tmLanguage.json` (syntax highlighting),
+- `tools/listings.tex`
+- `docs/Makefile`
+- the User Manual files in the `docs/` repository
+
+and do `make doc` for generating BNF grammars.

@@ -1,8 +1,8 @@
 require open tests.OK.logic;
 require open tests.OK.nat;
 
-set prover "Alt-Ergo";
-set prover_timeout 2;
+prover "Alt-Ergo";
+prover_timeout 2;
 
 
 opaque symbol tautology : Π (a : Prop), P a → P a

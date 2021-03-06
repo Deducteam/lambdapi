@@ -10,18 +10,30 @@ constant symbol ⊤ : Prop;
 
 constant symbol ∀ {a} : (τ a → Prop) → Prop;
 
-set quantifier ∀;
+notation ∀ quantifier;
 
-constant symbol imp : Prop → Prop → Prop;
+constant symbol ⇒ : Prop → Prop → Prop;
 
-set infix right 5 "⇒" ≔ imp;
+notation ⇒ infix right 5;
 
-compute λ p q, ∀ (λ x, p x ⇒ q x); // should print λp,∀x,p x
+compute λ p q, ∀ (λ x, p x ⇒ q x);
+// should print λ p, `∀ x, (p x ⇒ q x)
 
-compute λ p, `∀ x, p x; // should print λp,∀x,p x
+compute λ p, `∀ x, p x;
+// should print λ p, `∀ x, p x
 
-compute λ p q, (`∀ x, p x) ⇒ q; // should print λp q, (∀x,p x) ⇒ q
+compute λ p q, (`∀ x, p x) ⇒ q;
+// should print λp q, (`∀ x, p x) ⇒ q
 
-set flag "print_implicits" on;
+flag "print_domains" on;
+compute λ p, `∀ x, p x;
+// should print λ p : τ ?8 → τ prop, `∀ x : τ ?8 → τ prop, p x
 
-compute λ p, ∀ (λ x, p x); // should print λp,∀x:τ?,p x
+flag "print_domains" off;
+flag "print_implicits" on;
+compute λ p, `∀ x, p x;
+// should print λ p, @∀ ?8 (λ x, p x)
+
+flag "print_domains" on;
+compute λ p, `∀ x, p x;
+// should print λ p : τ ?8 → τ prop, @∀ ?8 (λ x:τ ?8, p x)
