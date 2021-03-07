@@ -125,7 +125,7 @@ and pp_term : term pp = fun ppf t ->
           if p = `Atom then out ppf ")"
     in
     match h with
-    | Symb(s) when not !print_implicits ->
+    | Symb(s) when not !print_implicits || s.sym_impl = [] ->
         begin
           let args = LibTerm.remove_impl_args s args in
           match notation_of s with
