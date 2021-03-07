@@ -3,6 +3,7 @@
 open Timed
 open Term
 open Lplib.Base
+open Lplib.Extra
 
 (** [fresh_vars n] creates an array of [n] fresh variables. The names of these
     variables is ["_var_i"], where [i] is a number introduced by the [Bindlib]
@@ -202,6 +203,78 @@ let distinct_vars : ctxt -> term array -> tvar array option = fun ctx ts ->
     | _       -> raise Not_unique_var
   in
   try Some (Array.map to_var ts) with Not_unique_var -> None
+
+(** If [ts] is not made of variables or function symbols prefixed by ['$']
+   only, then [nl_distinct_vars ctx ts] returns [None]. Otherwise, it returns
+   a pair [(vs, map)] where [vs] is an array of variables made of the linear
+   variables of [ts] and fresh variables for the non-linear variables and the
+   symbols prefixed by ['$'], and [map] records by which variable each linear
+   symbol prefixed by ['$'] is replaced.
+
+   Variables defined in [ctx] are unfolded.
+
+   The symbols prefixed by ['$'] are introduced by [infer.ml] which converts
+   metavariables into fresh symbols, and those metavariables are introduced by
+   [sr.ml] which replaces pattern variables by metavariables. *)
+let nl_distinct_vars
+    : ctxt -> term array -> (tvar array * tvar StrMap.t) option =
+  fun ctx ts ->
+  let exception Not_a_var in
+  let open Stdlib in
+  let vars = ref VarSet.empty (* variables already seen (linear or not) *)
+  and nl_vars = ref VarSet.empty (* variables occurring more then once *)
+  and patt_vars = ref StrMap.empty in
+  (* map from pattern variables to actual Bindlib variables *)
+  let rec to_var t =
+    match Ctxt.unfold ctx t with
+    | Vari(v) ->
+        if VarSet.mem v !vars then nl_vars := VarSet.add v !nl_vars
+        else vars := VarSet.add v !vars;
+        v
+    | Symb(f) when f.sym_name <> "" && f.sym_name.[0] = '$' ->
+        (* Symbols replacing pattern variables are considered as variables. *)
+        let v =
+          try StrMap.find f.sym_name !patt_vars
+          with Not_found ->
+            let v = Bindlib.new_var mkfree f.sym_name in
+            patt_vars := StrMap.add f.sym_name v !patt_vars;
+            v
+        in to_var (Vari v)
+    | _ -> raise Not_a_var
+  in
+  let replace_nl_var v =
+    if VarSet.mem v !nl_vars
+    then Bindlib.new_var mkfree (Bindlib.name_of v)
+    else v
+  in
+  try
+    let vs = Array.map to_var ts in
+    let vs = Array.map replace_nl_var vs in
+    (* We remove non-linear variables from [!patt_vars] as well. *)
+    let fn n v m = if VarSet.mem v !nl_vars then m else StrMap.add n v m in
+    let map = StrMap.fold fn !patt_vars StrMap.empty in
+    Some (vs, map)
+  with Not_a_var -> None
+
+(** [sym_to_var m t] replaces in [t] every symbol [f] by a variable according
+   to the map [map]. *)
+let sym_to_var : tvar StrMap.t -> term -> term = fun map ->
+  let rec to_var t =
+    match unfold t with
+    | Symb f -> (try Vari (StrMap.find f.sym_name map) with Not_found -> t)
+    | Prod(a,b) -> Prod (to_var a, to_var_binder b)
+    | Abst(a,b) -> Abst (to_var a, to_var_binder b)
+    | LLet(a,t,u) -> LLet (to_var a, to_var t, to_var_binder u)
+    | Appl(a,b)  -> Appl(to_var a, to_var b)
+    | Meta(m,ts) -> Meta(m, Array.map to_var ts)
+    | Patt _ -> assert false
+    | TEnv _ -> assert false
+    | TRef _ -> assert false
+    | _ -> t
+  and to_var_binder b =
+    let (x,b) = Bindlib.unbind b in
+    Bindlib.unbox (Bindlib.bind_var x (lift (to_var b)))
+  in fun t -> if StrMap.is_empty map then t else to_var t
 
 (** [term_of_rhs r] converts the RHS (right hand side) of the rewriting rule
     [r] into a term. The bound higher-order variables of the original RHS are
