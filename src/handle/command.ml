@@ -190,6 +190,11 @@ type proof_data =
   ; pdata_expo     : expo (** Allowed exposition of symbols in the proof
                                    script. *) }
 
+(** Number of admitted axioms in the current signature. Used to name the
+    generated axioms. This reference is reset in {!module:Compile} for each
+    new compiled module. *)
+let admitted : int Stdlib.ref = Stdlib.ref (-1)
+
 (** [handle compile ss cmd] tries to handle the command [cmd] with [ss] as
     the signature state and [compile] as the main compilation function
     processing lambdapi modules (it is passed as argument to avoid cyclic
@@ -413,26 +418,15 @@ let handle : (Path.t -> Sign.t) -> sig_state -> p_command ->
                 (* If the proof is finished, display a warning. *)
                 if finished ps then
                   wrn pe.pos "The proof is finished. Use 'end' instead.";
-                (* Get a list of metas, ordered by dependency. *)
-                let metas =
-                  let type_m = LibTerm.Meta.get true a in
-                  let metas =
-                    match t with
-                    | Some t -> MetaSet.union type_m (LibTerm.Meta.get true t)
-                    | None -> type_m
-                  in
-                  let dep m_a m_b =
-                    (* If [m_a] depends on [m_b], then it is greater than
-                       [m_b], else they are equal. *)
-                    if LibTerm.Meta.depends m_a m_b then 1 else 0
-                  in
-                  List.stable_sort dep (MetaSet.to_seq metas |> List.of_seq)
-                in
                 (* [add_axiom ss m] adds an axiom for meta [m] in signature
                    state [ss]. *)
                 let add_axiom ss m =
                   let name =
-                    "ax_" ^ Option.get (string_of_int m.meta_key) m.meta_name
+                    let m_name =
+                      match m.meta_name with Some n -> "_" ^ n | _ -> ""
+                    in
+                    Printf.sprintf "_ax%i%s" Stdlib.(incr admitted; !admitted)
+                      m_name
                   in
                   (* Create a symbol with the same type as the metavariable *)
                   let ss, sym =
@@ -447,20 +441,47 @@ let handle : (Path.t -> Sign.t) -> sig_state -> p_command ->
                      the explicit substitution of the metavariable. *)
                   let meta_value =
                     let vars =
-                      let names =
-                        Array.init m.meta_arity
-                          (fun i -> name ^ "_v" ^ (string_of_int i))
+                      let mk_var i =
+                        Bindlib.new_var mkfree (Printf.sprintf "x%i" i)
                       in
-                      Bindlib.new_mvar mkfree names
+                      Array.init m.meta_arity mk_var
                     in
-                    let v = Array.to_list vars |> List.map mkfree in
-                    let ax = LibTerm.add_args (Symb sym) v in
-                    Bindlib.(lift ax |> bind_mvar vars |> unbox)
+                    let v = Array.to_list vars |> List.map _Vari in
+                    let ax = _Appl_symb sym v in
+                    Bindlib.(bind_mvar vars ax |> unbox)
                   in
                   Meta.set m meta_value; ss
                 in
+                (* [admit_meta ss m] adds as many axioms as needed to
+                   instantiate metavariable [m] by a fresh axiom added to the
+                   signature [ss]. Metavariable [m] is set to this new axiom
+                   in the process. If [m] is already set to a value, nothing
+                   is done. *)
+                let admit_meta ss m =
+                  let ss = Stdlib.ref ss in
+                  (* [admit ms m] adds recursively axioms to admit the
+                     metavariables on which [m] depends, and then admits
+                     [m]. *)
+                  let rec admit ms m =
+                    (* This assertion should be ensured by the typechecking
+                       algorithm. *)
+                    assert (not (MetaSet.mem m ms));
+                    LibTerm.Meta.iter true (admit (MetaSet.add m ms))
+                      !(m.meta_type);
+                    Stdlib.(ss := add_axiom !ss m)
+                  in
+                  admit MetaSet.empty m; Stdlib.(!ss)
+                in
+                (* [admit_goal ss g] admits typing goal [g] by adding axioms
+                   into signature state [ss]. *)
+                let admit_goal ss g =
+                  match g with Unif _ -> ss | Typ g ->
+                  match !(g.goal_meta.meta_value) with
+                  | Some _ -> ss
+                  | None -> admit_meta ss g.goal_meta
+                in
                 (* Add an axiom per metavariable *)
-                let ss = List.fold_left add_axiom ss metas in
+                let ss = List.fold_left admit_goal ss ps.proof_goals in
                 (* Add the symbol in the signature with a warning. *)
                 Console.out 3 (red "(symb) add %a : %a\n")
                   pp_uid id pp_term a;
