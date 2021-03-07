@@ -45,69 +45,6 @@ let try_unif_rules : ctxt -> term -> term -> constr list option =
     if !log_enabled then log_unif "found no unif_rule";
     None
 
-(** [nl_distinct_vars ctx ts] checks that [ts] is made of variables  [vs] only
-    and returns some copy of [vs] where variables occurring more than once are
-    replaced by fresh variables.  Variables defined in  [ctx] are unfolded. It
-    returns [None] otherwise. *)
-let nl_distinct_vars
-    : ctxt -> term array -> (tvar array * tvar StrMap.t) option =
-  fun ctx ts ->
-  let exception Not_a_var in
-  let open Stdlib in
-  let vars = ref VarSet.empty
-  and nl_vars = ref VarSet.empty
-  and patt_vars = ref StrMap.empty in
-  let rec to_var t =
-    match Ctxt.unfold ctx t with
-    | Vari(v) ->
-        if VarSet.mem v !vars then nl_vars := VarSet.add v !nl_vars
-        else vars := VarSet.add v !vars;
-        v
-    | Symb(f) when f.sym_name <> "" && f.sym_name.[0] = '$' ->
-        (* Symbols replacing pattern variables are considered as variables. *)
-        let v =
-          try StrMap.find f.sym_name !patt_vars
-          with Not_found ->
-            let v = Bindlib.new_var mkfree f.sym_name in
-            patt_vars := StrMap.add f.sym_name v !patt_vars;
-            v
-        in to_var (Vari v)
-    | _ -> raise Not_a_var
-  in
-  let replace_nl_var v =
-    if VarSet.mem v !nl_vars
-    then Bindlib.new_var mkfree (Bindlib.name_of v)
-    else v
-  in
-  try
-    let vs = Array.map to_var ts in
-    let vs = Array.map replace_nl_var vs in
-    (* We remove non-linear variables from [!patt_vars] as well. *)
-    let fn n v m = if VarSet.mem v !nl_vars then m else StrMap.add n v m in
-    let map = StrMap.fold fn !patt_vars StrMap.empty in
-    Some (vs, map)
-  with Not_a_var -> None
-
-(** [sym_to_var m t] replaces in [t] every symbol [f] by a variable according
-   to [m]. *)
-let sym_to_var : tvar StrMap.t -> term -> term = fun m ->
-  let rec to_var t =
-    match unfold t with
-    | Symb(f)     -> (try Vari (StrMap.find f.sym_name m) with Not_found -> t)
-    | Prod(a,b)   -> Prod (to_var a, to_var_binder b)
-    | Abst(a,b)   -> Abst (to_var a, to_var_binder b)
-    | LLet(a,t,u) -> LLet (to_var a, to_var t, to_var_binder u)
-    | Appl(a,b)   -> Appl(to_var a, to_var b)
-    | Meta(m,ts)  -> Meta(m, Array.map to_var ts)
-    | Patt(_)     -> assert false
-    | TEnv(_)     -> assert false
-    | TRef(_)     -> assert false
-    | _           -> t
-  and to_var_binder b =
-    let (x,b) = Bindlib.unbind b in
-    Bindlib.unbox (Bindlib.bind_var x (lift (to_var b)))
-  in to_var
-
 (** [instantiation ctx m ts u] checks whether, in a problem [m[ts]=u], [m] can
     be instantiated and returns the corresponding instantiation. It does not
     check whether the instantiation is closed though. *)
@@ -115,10 +52,9 @@ let instantiation : ctxt -> meta -> term array -> term ->
   tmbinder Bindlib.box option = fun ctx m ts u ->
   if not (Meta.occurs m u) then
     match nl_distinct_vars ctx ts with
-    | None       -> None
-    | Some(vs,m) ->
-        let u = if StrMap.is_empty m then u else sym_to_var m u in
-        Some (Bindlib.bind_mvar vs (lift u))
+    | None -> None
+    | Some(vs, map) ->
+        Some (Bindlib.bind_mvar vs (lift (Eval.simplify (sym_to_var map u))))
   else None
 
 (** Checking type or not during meta instanciation. *)
