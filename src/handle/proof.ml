@@ -151,66 +151,81 @@ let focus_env : proof_state option -> Env.t = fun ps ->
       | [] -> Env.empty
       | g::_ -> Goal.env g
 
-(** [goals_of_typ typ ter] returns a list of goals for [typ] to be typable by
-   by a sort and [ter] to have type [typ] in the empty context. [ter] and
-   [typ] must not be both equal to [None]. *)
-let goals_of_typ : popt -> term option -> term option -> goal list * term =
-  fun pos typ ter ->
+(** [goals_of_typ typ ter] returns the list of unification goals that must be
+    solved so that [typ] is typable by a sort and [ter] has type [typ]. *)
+let goals_of_typ : term loc option -> term loc option -> goal list * term =
+  fun typ ter ->
   let (typ, to_solve) =
     match typ, ter with
     | Some(typ), Some(ter) ->
         begin
-          match Infer.infer_noexn [] [] typ with
-          | None -> fatal pos "[%a] is not typable." pp_term typ
+          match Infer.infer_noexn [] [] typ.elt with
+          | None -> fatal typ.pos "[%a] is not typable." pp_term typ.elt
           | Some(sort, to_solve) ->
               let to_solve =
                 match unfold sort with
                 | Type | Kind ->
                     begin
-                      match Infer.check_noexn to_solve [] ter typ with
-                      | None -> fatal pos "[%a] cannot have type [%a]"
-                                  pp_term ter pp_term typ
+                      match Infer.check_noexn to_solve [] ter.elt typ.elt with
+                      | None ->
+                          let pos = Common.Pos.cat typ.pos ter.pos in
+                          fatal pos "[%a] cannot have type [%a]"
+                            pp_term ter.elt pp_term typ.elt
                       | Some cs -> cs
                     end
-                | _ -> fatal pos "[%a] has type [%a] and not a sort."
-                         pp_term typ pp_term sort
+                | _ -> fatal typ.pos "[%a] has type [%a] and not a sort."
+                         pp_term typ.elt pp_term sort
               in
-              typ, to_solve
+              typ.elt, to_solve
         end
     | None, Some(ter) ->
         begin
-          match Infer.infer_noexn [] [] ter with
-          | None -> fatal pos "[%a] is not typable." pp_term ter
+          match Infer.infer_noexn [] [] ter.elt with
+          | None -> fatal ter.pos "[%a] is not typable." pp_term ter.elt
           | Some (typ, to_solve) ->
               let to_solve =
                 match unfold typ with
-                | Kind -> fatal pos "Kind definitions are not allowed."
+                | Kind -> fatal ter.pos "Kind definitions are not allowed."
                 | _ ->
                     match Infer.infer_noexn to_solve [] typ with
                     | None ->
-                        fatal pos "[%a] has type [%a] which is not typable"
-                          pp_term ter pp_term typ
+                        fatal ter.pos
+                          "[%a] has type [%a] which is not typable"
+                          pp_term ter.elt pp_term typ
                     | Some (sort, to_solve) ->
                         match unfold sort with
                         | Type | Kind -> to_solve
                         | _ ->
-                            fatal pos
+                            fatal ter.pos
                               "[%a] has type [%a] which has type [%a] \
                                and not a sort."
-                              pp_term ter pp_term typ pp_term sort
+                              pp_term ter.elt pp_term typ pp_term sort
               in
               typ, to_solve
         end
     | Some(typ), None ->
         begin
-          match Infer.infer_noexn [] [] typ with
-          | None -> fatal pos "[%a] is not typable." pp_term typ
+          match Infer.infer_noexn [] [] typ.elt with
+          | None -> fatal typ.pos "[%a] is not typable." pp_term typ.elt
           | Some (sort, to_solve) ->
               match unfold sort with
-              | Type | Kind -> typ, to_solve
-              | _ -> fatal pos "[%a] has type [%a] and not a sort."
-                       pp_term typ pp_term sort
+              | Type | Kind -> typ.elt, to_solve
+              | _ -> fatal typ.pos "[%a] has type [%a] and not a sort."
+                       pp_term typ.elt pp_term sort
         end
     | None, None -> assert false (* already rejected by parser *)
   in
   (List.rev_map (fun c -> Unif c) to_solve, typ)
+
+(** [goals_of_typ typ ter] returns a list of goals for [typ] to be typable by
+    by a sort and [ter] to have type [typ] in the empty context. [ter] and
+    [typ] must not be both equal to [None]. *)
+let goals_of_typ : term loc option -> term loc option -> goal list * term =
+  fun ao topt ->
+  let metas_a =
+    match ao with
+    | Some(a) -> LibTerm.Meta.get true a.elt
+    | None -> MetaSet.empty
+  in
+  let proof_goals, a = goals_of_typ ao topt in
+  add_goals_of_metas metas_a proof_goals, a

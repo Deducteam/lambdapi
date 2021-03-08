@@ -359,6 +359,8 @@ let handle : (Path.t -> Sign.t) -> sig_state -> p_command ->
      | _, _, _, _ -> ());
     (* Build proof data. *)
     let data =
+      (* Scope keeping position, with [expo] parsed above. *)
+      let scope_p a = Pos.make a.pos (scope expo a) in
       (* Desugaring of arguments and scoping of [p_sym_trm]. *)
       let pt, t =
         match p_sym_trm with
@@ -368,7 +370,7 @@ let handle : (Path.t -> Sign.t) -> sig_state -> p_command ->
               else let pos = Pos.(cat (end_pos p_sym_nam.pos) pt.pos) in
                    Pos.make pos (P_Abst(p_sym_arg, pt))
             in
-            Some pt, Some (scope expo pt)
+            Some pt, Some (scope_p pt)
         | None -> None, None
       in
       (* Argument impliciteness. *)
@@ -382,17 +384,8 @@ let handle : (Path.t -> Sign.t) -> sig_state -> p_command ->
             in
             (Some(a), Scope.get_implicitness a)
       in
-      (* Scope the type and get its metavariables. *)
-      let ao, metas_a =
-        match ao with
-        | Some a -> let a = scope expo a in Some a, LibTerm.Meta.get true a
-        | None -> None, MetaSet.empty
-      in
-      (* Get the type of the symbol and the goals to solve for the declaration
-         to be well-typed. *)
-      let proof_goals, a = goals_of_typ pos ao t in
-      (* Add the metas of [a] as goals. *)
-      let proof_goals = add_goals_of_metas metas_a proof_goals in
+      let ao = Option.map scope_p ao in
+      let proof_goals, a = goals_of_typ ao t in
       (* Add the definition as goal so that we can refine on it. *)
       let proof_term =
         if p_sym_def then Some (Meta.fresh ~name:id a 0) else None in
@@ -486,6 +479,7 @@ let handle : (Path.t -> Sign.t) -> sig_state -> p_command ->
                 Console.out 3 (red "(symb) add %a : %a\n")
                   pp_uid id pp_term a;
                 wrn pe.pos "Proof admitted.";
+                let t = Option.map (fun t -> t.elt) t in
                 fst (add_symbol ss expo prop mstrat true p_sym_nam a impl t)
             | P_proof_end ->
                 (* Check that no metavariable remains. *)
@@ -494,12 +488,12 @@ let handle : (Path.t -> Sign.t) -> sig_state -> p_command ->
                      pp_uid id;
                    fatal pe.pos "We have %a : %a." pp_uid id pp_term a);
                 (match t with
-                 | Some(t) when LibTerm.Meta.has true t ->
+                 | Some(t) when LibTerm.Meta.has true t.elt ->
                      fatal_msg
                        "The definition of %a has unsolved metavariables.\n"
                        pp_uid id;
-                     fatal pe.pos "We have %a : %a ≔ %a."
-                       pp_uid id pp_term a pp_term t
+                     fatal t.pos "We have %a : %a ≔ %a."
+                       pp_uid id pp_term a pp_term t.elt
                  | _ -> ());
                 (* Check that the proof is indeed finished. *)
                 if not (finished ps) then
@@ -508,6 +502,7 @@ let handle : (Path.t -> Sign.t) -> sig_state -> p_command ->
                 (* Add the symbol in the signature. *)
                 Console.out 3 (red "(symb) add %a : %a\n")
                   pp_uid id pp_term a;
+                let t = Option.map (fun t -> t.elt) t in
                 fst (add_symbol ss expo prop mstrat opaq p_sym_nam a impl t)
       in
       (* Create proof state. *)
@@ -525,7 +520,7 @@ let handle : (Path.t -> Sign.t) -> sig_state -> p_command ->
         match pt, t with
         | Some pt, Some t ->
             (match ps.proof_goals with
-             | Typ gt :: gs -> Tactic.tac_refine pt.pos ps gt gs t
+             | Typ gt :: gs -> Tactic.tac_refine pt.pos ps gt gs t.elt
              | _ -> assert false)
         | _, _ -> ps
       in
