@@ -45,9 +45,15 @@ let try_unif_rules : ctxt -> term -> term -> constr list option =
     if !log_enabled then log_unif "found no unif_rule";
     None
 
-(** [instantiation ctx m ts u] checks whether, in a problem [m[ts]=u], [m] can
-    be instantiated and returns the corresponding instantiation. It does not
-    check whether the instantiation is closed though. *)
+(** [instantiable ctx m ts u] tells whether, in a problem [m[ts]=u], [m] can
+   be instantiated. It does not check whether the instantiation is closed
+   though. *)
+let instantiable : ctxt -> meta -> term array -> term -> bool =
+  fun ctx m ts u -> not (Meta.occurs m u) && nl_distinct_vars ctx ts <> None
+
+(** [instantiation ctx m ts u] tells whether, in a problem [m[ts]=u], [m] can
+   be instantiated and returns the corresponding instantiation, simplified. It
+   does not check whether the instantiation is closed though. *)
 let instantiation : ctxt -> meta -> term array -> term ->
   tmbinder Bindlib.box option = fun ctx m ts u ->
   if not (Meta.occurs m u) then
@@ -396,11 +402,9 @@ let rec solve : problem -> constr list = fun p ->
   | _, Meta(m,ts) when ts2 = [] && instantiate ctx m ts t1 initial ->
      solve {p with recompute = true}
 
-  | Meta(m,ts), Prod _
-       when ts1 = [] && instantiation ctx m ts h2 <> None ->
+  | Meta(m,ts), Prod _ when ts1 = [] && instantiable ctx m ts h2 ->
       solve (imitate_prod ctx m h1 h2 p)
-  | Prod _, Meta(m,ts)
-       when ts2 = [] && instantiation ctx m ts h1 <> None ->
+  | Prod _, Meta(m,ts) when ts2 = [] && instantiable ctx m ts h1 ->
       solve (imitate_prod ctx m h1 h2 p)
 
   | Meta(m,_), _ when imitate_lam_cond h1 ts1 ->
@@ -445,11 +449,9 @@ let rec solve : problem -> constr list = fun p ->
   | _, Meta(m,ts) when ts2 = [] && instantiate ctx m ts t1 initial ->
      solve {p with recompute = true}
 
-  | Meta(m,ts), Prod _
-       when ts1 = [] && instantiation ctx m ts h2 <> None ->
+  | Meta(m,ts), Prod _ when ts1 = [] && instantiable ctx m ts h2 ->
       solve (imitate_prod ctx m h1 h2 p)
-  | Prod _, Meta (m,ts)
-       when ts2 = [] && instantiation ctx m ts h1 <> None ->
+  | Prod _, Meta (m,ts) when ts2 = [] && instantiable ctx m ts h1 ->
       solve (imitate_prod ctx m h1 h2 p)
 
   | Meta(m,_), _ when imitate_lam_cond h1 ts1 ->
