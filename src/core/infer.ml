@@ -13,14 +13,29 @@ open Extra
 let log_infr = new_logger 'i' "infr" "type inference/checking"
 let log_infr = log_infr.logger
 
-(** [type_app a ts] returns [Some(u)] where [u] is a type of [add_args x ts]
-   where [x] is any term of type [a] if [x] can be applied to at least
-   [List.length ts] arguments, and [None] otherwise. *)
-let rec type_app : ctxt -> term -> term list -> term option = fun ctx a ts ->
-  match Eval.whnf ctx a, ts with
-  | Prod(_,b), t::ts -> type_app ctx (Bindlib.subst b t) ts
-  | _, [] -> Some a
-  | _, _ -> None
+(** Given a meta [m] of type [Πx1:a1,..,Πxn:an,b], [make_prod m] returns a
+   tuple [(c,vs,xs,p)] where [vs] are the Bindlib variables x1,..,xn, [xs] are
+   the term variables x1,..,xn, [c] is the context [x1:a1,..,xn:an], and [p]
+   is a product term of the form [Πy:m1[x1;..;xn],m2[x1;..;xn;y] with [m1] and
+   [m2] fresh metavariables. *)
+let make_prod : meta -> ctxt * tvar array * tbox array * tbox = fun m ->
+  if !log_enabled then log_infr "make_prod";
+  let n = m.meta_arity in
+  let env, s = Env.of_prod [] n !(m.meta_type) in
+  let vs = Env.vars env in
+  let xs = Array.map _Vari vs in
+  (* domain *)
+  let u1 = Env.to_prod env _Type in
+  let m1 = Meta.fresh u1 n in
+  let a = _Meta m1 xs in
+  (* codomain *)
+  let y = Bindlib.new_var mkfree "y" in
+  let env' = Env.add y (_Meta m1 xs) None env in
+  let u2 = Env.to_prod env' (lift s) in
+  let m2 = Meta.fresh u2 (n+1) in
+  let b = Bindlib.bind_var y (_Meta m2 (Array.append xs [|_Vari y|])) in
+  (* result *)
+  (Env.to_ctxt env, vs, xs, _Prod a b)
 
 (** Accumulated constraints. *)
 let constraints = Stdlib.ref []
@@ -110,21 +125,26 @@ let rec infer : ctxt -> term -> term = fun ctx t ->
      ------------------------------------
          ctx ⊢ Appl(t,u) ⇒ subst b u      *)
   | Appl(t,u)   ->
-      (* We first infer a product type for [t]. *)
-      let (a,b) =
-        let c = Eval.whnf ctx (infer ctx t) in
-        match c with
+      let rec get_prod f typ =
+        match unfold typ with
         | Prod(a,b) -> (a,b)
-        | _         ->
-            let a = LibTerm.Meta.make ctx Type in
-            (* Here, we force [b] to be of type [Type] as there is little
-               (no?) chance that it can be a kind. FIXME? *)
-            let b = LibTerm.Meta.make_codomain ctx a in
-            conv ctx c (Prod(a,b)); (a,b)
+        | Meta(m,_) -> (* Set [m] to a product. *)
+            let _cont, vs, _xs, p = make_prod m in
+            if !log_enabled then
+              log_infr "%a ≔ %a" pp_meta m pp_term (Bindlib.unbox p);
+            Meta.set m (Bindlib.unbox (Bindlib.bind_mvar vs p));
+            get_prod f typ
+        | _ -> f typ
       in
-      (* We then check the type of [u] against the domain type. *)
+      let get_prod_whnf = get_prod (fun _ -> raise NotTypable) in
+        (*let a = LibTerm.Meta.make ctx Type in
+        (* Here, we force [b] to be of type [Type] as there is little
+           (no?) chance that it can be a kind. FIXME? *)
+        let b = LibTerm.Meta.make_codomain ctx a in
+        conv ctx t (Prod(a,b)); (a,b)*)
+      let get_prod = get_prod (fun t -> get_prod_whnf (Eval.whnf ctx t)) in
+      let (a,b) = get_prod (infer ctx t) in
       check ctx u a;
-      (* We produce the returned type. *)
       Bindlib.subst b u
 
   (*  ctx ⊢ t ⇐ a       ctx, x : a := t ⊢ u ⇒ b
@@ -146,7 +166,7 @@ let rec infer : ctxt -> term -> term = fun ctx t ->
   | Meta(m,ts)   ->
       (* The type of [Meta(m,ts)] is the same as the one obtained by applying
          to [ts] a new symbol having the same type as [m]. *)
-      let s = Term.create_sym (Sign.current_sign()).sign_path Privat Const
+      let s = Term.create_sym (Sign.current_path()) Privat Const
                 Eager true ("?" ^ Meta.name m) !(m.meta_type) [] in
       infer ctx (Array.fold_left (fun acc t -> Appl(acc,t)) (Symb s) ts)
 
@@ -155,26 +175,26 @@ let rec infer : ctxt -> term -> term = fun ctx t ->
    [conv]. [ctx] must be well-formed and [a] well-sorted. This function never
    fails (but constraints may be unsatisfiable). *)
 and check : ctxt -> term -> term -> unit = fun ctx t a ->
-  if !log_enabled then
-    log_infr "check %a%a\n: %a" pp_ctxt ctx pp_term t pp_term a;
+  if !log_enabled then log_infr "check %a" pp_typing (ctx,t,a);
   conv ctx (infer ctx t) a
 
 (** [infer_noexn cs ctx t] returns [None] if the type of [t] in context [ctx]
    and constraints [cs] cannot be infered, or [Some(a,cs')] where [a] is some
    type of [t] in the context [ctx] if the constraints [cs'] are satisfiable
    (which may not be the case). [ctx] must well sorted. *)
-let infer_noexn : constr list -> ctxt -> term -> (term * constr list) option =
-  fun cs ctx t ->
+let infer_noexn :
+    ?lg:logger -> constr list -> ctxt -> term -> (term * constr list) option =
+  fun ?(lg=logger_hndl) cs ctx t ->
   Stdlib.(constraints := cs);
   let res =
     try
-      let a = infer ctx t in
-      let cs = Stdlib.(!constraints) in
+      if !log_enabled then lg.logger "infer %a%a" pp_ctxt ctx pp_term t;
+      let a = time_of lg (fun () -> infer ctx t) in
+      let cs = List.rev Stdlib.(!constraints) in
       (if !log_enabled then
-        let cond oc c = Format.fprintf oc "\n  if %a" pp_constr c in
-        log_infr (gre "infer %a : %a%a")
-          pp_term t pp_term a (List.pp cond "") cs);
-      Some (a, List.rev cs)
+        let cond oc c = Format.fprintf oc "\n  ; %a" pp_constr c in
+        lg.logger (gre "%a%a") pp_term a (List.pp cond "") cs);
+      Some (a, cs)
     with NotTypable -> None
   in Stdlib.(constraints := []); res
 
@@ -182,18 +202,19 @@ let infer_noexn : constr list -> ctxt -> term -> (term * constr list) option =
    context [ctx] and constraints [cs], and [Some(cs')] where [cs'] is a list
    of constraints under which [t] may have type [a] (but constraints may be
    unsatisfiable). The context [ctx] and the type [a] must be well sorted. *)
-let check_noexn : constr list -> ctxt -> term -> term -> constr list option =
-  fun cs ctx t a ->
+let check_noexn :
+    ?lg:logger -> constr list -> ctxt -> term -> term -> constr list option =
+  fun ?(lg=logger_hndl) cs ctx t a ->
   Stdlib.(constraints := cs);
   let res =
     try
-      check ctx t a;
-      let cs = Stdlib.(!constraints) in
+      if !log_enabled then lg.logger "check %a" pp_typing (ctx,t,a);
+      time_of lg (fun () -> check ctx t a);
+      let cs = List.rev Stdlib.(!constraints) in
       (if !log_enabled then
-        let cond oc c = Format.fprintf oc "\n  if %a" pp_constr c in
-        log_infr (gre "check %a\n: %a%a")
-          pp_term t pp_term a (List.pp cond "") cs);
-      Some (List.rev cs)
+        let cond oc c = Format.fprintf oc "\n  ; %a" pp_constr c in
+        lg.logger (gre "%a") (List.pp cond "") cs);
+      Some cs
     with NotTypable -> None
   in Stdlib.(constraints := []); res
 

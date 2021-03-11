@@ -72,8 +72,19 @@ let new_logger : char -> string -> string -> logger = fun key name desc ->
   in
   {logger}
 
-(** Printing functions. *)
+(** Logging function for command handling. *)
+let logger_hndl = new_logger 'h' "hndl" "command handling"
+let log_hndl = logger_hndl.logger
 
+(** [time_of f x] computes [f x] and the time for computing it. *)
+let time_of : logger -> (unit -> 'b) -> 'b = fun lg f ->
+  if !log_enabled then
+      let t0 = Sys.time() in
+      try let y = f () in lg.logger "%f" (Sys.time() -. t0); y
+      with e -> lg.logger "%f" (Sys.time() -. t0); raise e
+  else f ()
+
+(** Printing functions. *)
 module D = struct
 
   let string ppf s = Format.fprintf ppf "%S" s
