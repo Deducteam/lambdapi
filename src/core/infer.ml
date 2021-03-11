@@ -13,15 +13,6 @@ open Extra
 let log_infr = new_logger 'i' "infr" "type inference/checking"
 let log_infr = log_infr.logger
 
-(** [type_app a ts] returns [Some(u)] where [u] is a type of [add_args x ts]
-   where [x] is any term of type [a] if [x] can be applied to at least
-   [List.length ts] arguments, and [None] otherwise. *)
-let rec type_app : ctxt -> term -> term list -> term option = fun ctx a ts ->
-  match Eval.whnf ctx a, ts with
-  | Prod(_,b), t::ts -> type_app ctx (Bindlib.subst b t) ts
-  | _, [] -> Some a
-  | _, _ -> None
-
 (** Given a meta [m] of type [Πx1:a1,..,Πxn:an,b], [make_prod m] returns a
    tuple [(c,vs,xs,p)] where [vs] are the Bindlib variables x1,..,xn, [xs] are
    the term variables x1,..,xn, [c] is the context [x1:a1,..,xn:an], and [p]

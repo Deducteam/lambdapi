@@ -15,6 +15,15 @@ open Debug
 let logger_unif = new_logger 'u' "unif" "unification"
 let log_unif = logger_unif.logger
 
+(** [type_app a ts] returns [Some(u)] where [u] is a type of [add_args x ts]
+   where [x] is any term of type [a] if [x] can be applied to at least
+   [List.length ts] arguments, and [None] otherwise. *)
+let rec type_app : ctxt -> term -> term list -> term option = fun ctx a ts ->
+  match Eval.whnf ctx a, ts with
+  | Prod(_,b), t::ts -> type_app ctx (Bindlib.subst b t) ts
+  | _, [] -> Some a
+  | _, _ -> None
+
 (** Exception raised when a constraint is not solvable. *)
 exception Unsolvable
 
@@ -84,7 +93,7 @@ let instantiate : ctxt -> meta -> term array -> term -> constr list -> bool =
       if Stdlib.(!do_type_check) then
         begin
           let typ_mts =
-            match Infer.type_app ctx !(m.meta_type) (Array.to_list ts) with
+            match type_app ctx !(m.meta_type) (Array.to_list ts) with
             | Some a -> a
             | None -> assert false
           in
