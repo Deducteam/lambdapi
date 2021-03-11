@@ -61,12 +61,8 @@ let get_args_len : term -> term * term list * int = fun t ->
 (** [add_args t args] builds the application of the {!type:term} [t] to a list
     arguments [args]. When [args] is empty, the returned value is (physically)
     equal to [t]. *)
-let add_args : term -> term list -> term = fun t args ->
-  let rec add_args t args =
-    match args with
-    | []      -> t
-    | u::args -> add_args (Appl(t,u)) args
-  in add_args t args
+let add_args : term -> term list -> term =
+  List.fold_left (fun t u -> Appl(t,u))
 
 (** [is_symb s t] tests whether [t] is of the form [Symb(s)]. *)
 let is_symb : sym -> term -> bool = fun s t ->
@@ -243,9 +239,7 @@ let nl_distinct_vars
     | _ -> raise Not_a_var
   in
   let replace_nl_var v =
-    if VarSet.mem v !nl_vars
-    then Bindlib.new_var mkfree (Bindlib.name_of v)
-    else v
+    if VarSet.mem v !nl_vars then Bindlib.new_var mkfree "_" else v
   in
   try
     let vs = Array.map to_var ts in

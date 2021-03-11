@@ -7,8 +7,9 @@ open Timed
 open Core
 open Term
 open Print
-open Common.Error
-open Common.Pos
+open Common
+open Error
+open Pos
 
 (** Type of goals. *)
 type goal_typ =
@@ -46,6 +47,7 @@ module Goal = struct
 
   (** [of_meta m] creates a goal from the meta [m]. *)
   let of_meta : meta -> goal = fun m ->
+    Console.out 1 "%a %d %a\n%!" pp_meta m m.meta_arity pp_term !(m.meta_type);
     let (goal_hyps, goal_type) = Env.of_prod [] m.meta_arity !(m.meta_type) in
     let goal_type = Eval.simplify goal_type in
     Typ {goal_meta = m; goal_hyps; goal_type}
@@ -101,13 +103,24 @@ end
 (** [add_goals_of_metas ms gs] extends [gs] with the metas of [ms] that are
    not already in [gs]. *)
 let add_goals_of_metas : MetaSet.t -> goal list -> goal list = fun ms gs ->
-  let f = function Typ gt -> Some gt.goal_meta.meta_key | Unif _ -> None in
-  let metakeys_gs = List.filter_rev_map f gs in
-  let add_goal m goals =
-    if List.mem m.meta_key metakeys_gs then goals
-    else List.insert Goal.compare (Goal.of_meta m) goals
+  (* computes the metas of [gs]. *)
+  let metas =
+    let add_meta metas g =
+      match g with
+      | Typ gt -> MetaSet.add gt.goal_meta metas
+      | _ -> metas
+    in
+    List.fold_left add_meta MetaSet.empty gs
   in
-  MetaSet.fold add_goal ms [] @ gs
+  (* [add_meta_to_goals m gs] inserts the meta [m] into the list of goals
+     [gs], assuming that [gs] is sorted wrt [Goal.compare], if [m] is
+     uninstantiated and does not belong to the set of metas [metas]. Do
+     nothing otherwise. *)
+  let add_meta_to_goals m gs =
+    if !(m.meta_value) <> None || MetaSet.mem m metas then gs
+    else List.insert Goal.compare (Goal.of_meta m) gs
+  in
+  MetaSet.fold add_meta_to_goals ms [] @ gs
 
 (** Representation of the proof state of a theorem. *)
 type proof_state =

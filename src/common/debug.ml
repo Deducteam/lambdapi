@@ -72,8 +72,11 @@ let new_logger : char -> string -> string -> logger = fun key name desc ->
   in
   {logger}
 
-(** Printing functions. *)
+(** Logging function for command handling. *)
+let logger_hndl = new_logger 'h' "hndl" "command handling"
+let log_hndl = logger_hndl.logger
 
+(** Printing functions. *)
 module D = struct
 
   let string ppf s = Format.fprintf ppf "%S" s

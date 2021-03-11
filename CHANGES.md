@@ -95,7 +95,7 @@
 
 Replace Earley by Menhir, Pratter and Sedlex
 
-**Syntax modifications:**
+Syntax modifications:
 
 - Add multi-lines comments `/*` ... `*/`.
 
@@ -129,7 +129,7 @@ Replace Earley by Menhir, Pratter and Sedlex
 - The minus sign `-` in the rewrite tactic has been replaced by the
   keyword `left`.
 
-**Code modifications:**
+Code modifications:
 
 - Parsing and handling are interleaved (except in the LSP server): the
   parser returns a stream of parsed commands. Requesting an item of
