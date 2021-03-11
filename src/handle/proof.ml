@@ -47,7 +47,6 @@ module Goal = struct
 
   (** [of_meta m] creates a goal from the meta [m]. *)
   let of_meta : meta -> goal = fun m ->
-    Console.out 1 "%a %d %a\n%!" pp_meta m m.meta_arity pp_term !(m.meta_type);
     let (goal_hyps, goal_type) = Env.of_prod [] m.meta_arity !(m.meta_type) in
     let goal_type = Eval.simplify goal_type in
     Typ {goal_meta = m; goal_hyps; goal_type}

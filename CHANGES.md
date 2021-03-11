@@ -1,5 +1,16 @@
 ### Unreleased
 
+#### Improvements in type inference, unification and printing (2021-03-11)
+
+- improve type inference and unification
+- add flag `"print_meta_args"`
+- print metavariables unescaped, add parentheses in domains
+- replace `(current_sign()).sign_path` by `current_path()`
+- improve logging:
+  . debug +h now prints data on type inference/checking
+  . provide time of type inference/checking and constraint solving
+  . give more feedback when instantiation fails
+
 #### Remove `set` keyword (2021-03-04)
 
 #### Various bug fixes (2021-03-02)

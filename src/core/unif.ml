@@ -388,7 +388,7 @@ let rec solve : problem -> constr list = fun p ->
       if !log_enabled then log_unif "decompose";
       let (x,b1,b2) = Bindlib.unbind2 b1 b2 in
       let ctx' = (x,a1,None) :: ctx in
-      (* [ts1] and [ts2] must be empty because of typing. *)
+      (* [ts1] and [ts2] must be empty because of typing or normalization. *)
       solve {p with to_solve = (ctx,a1,a2)::(ctx',b1,b2)::to_solve}
 
   | Vari x1, Vari x2 when Bindlib.eq_vars x1 x2 ->
@@ -444,7 +444,7 @@ let rec solve : problem -> constr list = fun p ->
       if !log_enabled then log_unif "decompose";
       let (x,b1,b2) = Bindlib.unbind2 b1 b2 in
       let ctx' = (x,a1,None) :: ctx in
-      (* [ts1] and [ts2] must be empty because of typing. *)
+      (* [ts1] and [ts2] must be empty because of typing or normalization. *)
       solve {p with to_solve = (ctx,a1,a2)::(ctx',b1,b2)::to_solve}
 
   | Vari x1, Vari x2 when Bindlib.eq_vars x1 x2 ->

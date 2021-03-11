@@ -23,8 +23,10 @@ let rec type_app : ctxt -> term -> term list -> term option = fun ctx a ts ->
   | _, _ -> None
 
 (** Given a meta [m] of type [Πx1:a1,..,Πxn:an,b], [make_prod m] returns a
-   constraint [(c,m[x1;..;xn],a)] where [c=[x1:a1;..;xn:an]],
-   [a=Πy:m1[x1;..;xn],m2[x1;..;xn;y], and [m1] and [m2] are fresh metas. *)
+   tuple [(c,vs,xs,p)] where [vs] are the Bindlib variables x1,..,xn, [xs] are
+   the term variables x1,..,xn, [c] is the context [x1:a1,..,xn:an], and [p]
+   is a product term of the form [Πy:m1[x1;..;xn],m2[x1;..;xn;y] with [m1] and
+   [m2] fresh metavariables. *)
 let make_prod : meta -> ctxt * tvar array * tbox array * tbox = fun m ->
   if !log_enabled then log_infr "make_prod";
   let n = m.meta_arity in
