@@ -128,7 +128,7 @@ let rec infer : ctxt -> term -> term = fun ctx t ->
       let rec get_prod f typ =
         match unfold typ with
         | Prod(a,b) -> (a,b)
-        | Meta(m,_) -> (* Set |m] to a product. *)
+        | Meta(m,_) -> (* Set [m] to a product. *)
             let _cont, vs, _xs, p = make_prod m in
             if !log_enabled then
               log_infr "%a ≔ %a" pp_meta m pp_term (Bindlib.unbox p);
@@ -195,13 +195,11 @@ let infer_noexn :
   let res =
     try
       if !log_enabled then lg.logger "infer %a%a" pp_ctxt ctx pp_term t;
-      let t0 = Sys.time() in
-      let a = infer ctx t in
+      let a = time_of lg (fun () -> infer ctx t) in
       let cs = List.rev Stdlib.(!constraints) in
       (if !log_enabled then
         let cond oc c = Format.fprintf oc "\n  ; %a" pp_constr c in
-        lg.logger (gre "%f\n  %a%a")
-          (Sys.time() -. t0) pp_term a (List.pp cond "") cs);
+        lg.logger (gre "%a%a") pp_term a (List.pp cond "") cs);
       Some (a, cs)
     with NotTypable -> None
   in Stdlib.(constraints := []); res
@@ -217,12 +215,11 @@ let check_noexn :
   let res =
     try
       if !log_enabled then lg.logger "check %a" pp_typing (ctx,t,a);
-      let t0 = Sys.time() in
-      check ctx t a;
+      time_of lg (fun () -> check ctx t a);
       let cs = List.rev Stdlib.(!constraints) in
       (if !log_enabled then
         let cond oc c = Format.fprintf oc "\n  ; %a" pp_constr c in
-        lg.logger (gre "%f%a") (Sys.time() -. t0) (List.pp cond "") cs);
+        lg.logger (gre "%a") (List.pp cond "") cs);
       Some cs
     with NotTypable -> None
   in Stdlib.(constraints := []); res

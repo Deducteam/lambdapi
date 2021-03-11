@@ -81,13 +81,11 @@ let do_type_check = Stdlib.ref true
     instantiated and, if so, instantiate it. *)
 let instantiate : ctxt -> meta -> term array -> term -> constr list -> bool =
   fun ctx m ts u initial ->
-  if !log_enabled then
-    log_unif "try instantiate" (*"%a" pp_constr (ctx,Meta(m,ts),u*);
+  if !log_enabled then log_unif "try instantiate";
   match instantiation ctx m ts u with
   | Some(bu) when Bindlib.is_closed bu ->
       let do_instantiate() =
         if !log_enabled then log_unif "ok";
-        (* (yel "%a ≔ %a") pp_meta m pp_term u; *)
         Meta.set m (Bindlib.unbox bu); true
       in
       if Stdlib.(!do_type_check) then
@@ -120,7 +118,7 @@ let instantiate : ctxt -> meta -> term array -> term -> constr list -> bool =
           match i with
           | None ->
               if not (Meta.occurs m u) then log_unif "occur check failed"
-              else log_unif "not distinct variables: %a"
+              else log_unif "arguments are not distinct variables: %a"
                      (Array.pp pp_term " ") ts
           | Some _ -> log_unif "not closed"
         end;
@@ -510,15 +508,8 @@ let rec solve : problem -> constr list = fun p ->
 let solve : ?type_check:bool -> problem -> constr list =
   fun ?(type_check=true) p ->
   if !log_enabled then log_hndl "solve %a" pp_problem p;
-  let t0 = Sys.time() in
   Stdlib.(do_type_check := type_check);
-  try
-    let cs = solve p in
-    if !log_enabled then log_hndl "solved in %f s" (Sys.time() -. t0);
-    cs
-  with Unsolvable ->
-    if !log_enabled then log_hndl "solved in %f s" (Sys.time() -. t0);
-    raise Unsolvable
+  time_of logger_hndl (fun () -> solve p)
 
 (** [solve_noexn problem] attempts to solve [problem]. If there is
    no solution, the value [None] is returned. Otherwise [Some(cs)] is
