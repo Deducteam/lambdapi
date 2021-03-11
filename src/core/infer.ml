@@ -169,12 +169,6 @@ let rec infer : ctxt -> term -> term = fun ctx t ->
       let s = Term.create_sym (Sign.current_path()) Privat Const
                 Eager true ("?" ^ Meta.name m) !(m.meta_type) [] in
       infer ctx (Array.fold_left (fun acc t -> Appl(acc,t)) (Symb s) ts)
-      (*let rec infer_app typ ts =
-        match typ, ts with
-        | _, [] -> typ
-        | Prod(a,b), t::ts -> check ctx t a; infer_app (Bindlib.subst b t) ts
-        | _, _ -> assert false
-      in infer_app !(m.meta_type) (Array.to_list ts)*)
 
 (** [check ctx t a] checks that the term [t] has type [a] in context
    [ctx], possibly under some constraints recorded in [constraints] using

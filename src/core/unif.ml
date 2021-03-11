@@ -373,7 +373,7 @@ let rec solve : problem -> constr list = fun p ->
   | {to_solve = []; unsolved = []; _} -> []
   | {to_solve = []; unsolved = cs; recompute = true} ->
       if !log_enabled then log_unif "recompute";
-     solve {empty_problem with to_solve = cs}
+      solve {empty_problem with to_solve = cs}
   | {to_solve = []; unsolved = cs; _} -> cs
   | {to_solve = (((ctx,t1,t2)::to_solve) as initial); _} ->
 
