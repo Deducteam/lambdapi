@@ -63,6 +63,7 @@ let rec compile : bool -> Path.t -> Sign.t = fun force mp ->
       (* [sign] is added to [loaded] before processing the commands so that it
          is possible to qualify the symbols of the current modules. *)
       loaded := Path.Map.add mp sign !loaded;
+      Stdlib.(Command.admitted := -1);
       let handle ss c =
         Term.Meta.reset_meta_counter ();
         (* We provide the compilation function to the handle commands, so that

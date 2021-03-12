@@ -186,6 +186,66 @@ type proof_data =
   ; pdata_expo     : expo (** Allowed exposition of symbols in the proof
                                    script. *) }
 
+(** Number of admitted axioms in the current signature. Used to name the
+    generated axioms. This reference is reset in {!module:Compile} for each
+    new compiled module. *)
+let admitted : int Stdlib.ref = Stdlib.ref (-1)
+
+(** [add_axiom ss m] adds an axiom for meta [m] in signature state [ss]. *)
+let add_axiom : sig_state -> Meta.t -> sig_state = fun ss m ->
+  let name =
+    let m_name =
+      match m.meta_name with Some n -> "_" ^ n | _ -> ""
+    in
+    Printf.sprintf "_ax%i%s" Stdlib.(incr admitted; !admitted) m_name
+  in
+  (* Create a symbol with the same type as the metavariable *)
+  let ss, sym =
+    Console.out 3 (red "(symb) add axiom %a: %a\n") pp_uid name pp_term
+      !(m.meta_type);
+    add_symbol ss Public Const Eager true (Pos.none name) !(m.meta_type) []
+      None
+  in
+  (* Create the value which will be substituted for the metavariable. This
+     value is [sym x0 ... xn] where [xi] are variables that will be
+     substituted by the terms of the explicit substitution of the
+     metavariable. *)
+  let meta_value =
+    let vars =
+      let mk_var i = Bindlib.new_var mkfree (Printf.sprintf "x%i" i) in
+      Array.init m.meta_arity mk_var
+    in
+    let ax = _Appl_symb sym (Array.to_list vars |> List.map _Vari) in
+    Bindlib.(bind_mvar vars ax |> unbox)
+  in
+  Meta.set m meta_value; ss
+
+(** [admit_goal ss g] admits typing goal [g] by adding axioms into signature
+    state [ss]. *)
+let admit_goal : sig_state -> goal -> sig_state = fun  ss g ->
+  (* [admit_meta ss m] adds as many axioms as needed to instantiate
+     metavariable [m] by a fresh axiom added to the signature [ss].
+     Metavariable [m] is set to this new axiom in the process. If [m] is
+     already set to a value, nothing is done. *)
+  let admit_meta ss m =
+    let ss = Stdlib.ref ss in
+    (* [admit ms m] adds recursively axioms to admit the
+       metavariables on which [m] depends, and then admits
+       [m]. *)
+    let rec admit ms m =
+      (* This assertion should be ensured by the typechecking
+         algorithm. *)
+      assert (not (MetaSet.mem m ms));
+      LibTerm.Meta.iter true (admit (MetaSet.add m ms)) !(m.meta_type);
+      Stdlib.(ss := add_axiom !ss m)
+    in
+    admit MetaSet.empty m; Stdlib.(!ss)
+  in
+  match g with Unif _ -> ss | Typ g ->
+  match !(g.goal_meta.meta_value) with
+  | Some _ -> ss
+  | None -> admit_meta ss g.goal_meta
+
 (** [handle compile ss cmd] tries to handle the command [cmd] with [ss] as
     the signature state and [compile] as the main compilation function
     processing lambdapi modules (it is passed as argument to avoid cyclic
@@ -350,6 +410,8 @@ let handle : (Path.t -> Sign.t) -> sig_state -> p_command ->
      | _, _, _, _ -> ());
     (* Build proof data. *)
     let data =
+      (* Scope keeping position, with [expo] parsed above. *)
+      let scope_p a = Pos.make a.pos (scope expo a) in
       (* Desugaring of arguments and scoping of [p_sym_trm]. *)
       let pt, t =
         match p_sym_trm with
@@ -359,7 +421,7 @@ let handle : (Path.t -> Sign.t) -> sig_state -> p_command ->
               else let pos = Pos.(cat (end_pos p_sym_nam.pos) pt.pos) in
                    Pos.make pos (P_Abst(p_sym_arg, pt))
             in
-            Some pt, Some (scope expo pt)
+            Some pt, Some (scope_p pt)
         | None -> None, None
       in
       (* Argument impliciteness. *)
@@ -373,17 +435,8 @@ let handle : (Path.t -> Sign.t) -> sig_state -> p_command ->
             in
             (Some(a), Scope.get_implicitness a)
       in
-      (* Scope the type and get its metavariables. *)
-      let ao, metas_a =
-        match ao with
-        | Some a -> let a = scope expo a in Some a, LibTerm.Meta.get true a
-        | None -> None, MetaSet.empty
-      in
-      (* Get the type of the symbol and the goals to solve for the declaration
-         to be well-typed. *)
-      let proof_goals, a = goals_of_typ pos ao t in
-      (* Add the metas of [a] as goals. *)
-      let proof_goals = add_goals_of_metas metas_a proof_goals in
+      let ao = Option.map scope_p ao in
+      let proof_goals, a = goals_of_typ ao t in
       (* Add the definition as goal so that we can refine on it. *)
       let proof_term =
         if p_sym_def then Some (Meta.fresh ~name:id a 0) else None in
@@ -399,43 +452,28 @@ let handle : (Path.t -> Sign.t) -> sig_state -> p_command ->
       let finalize ss ps =
         Console.State.pop ();
         match pe.elt with
-        | P_proof_abort ->
-            (* Just ignore the command with a warning. *)
-            wrn pe.pos "Proof aborted."; ss
-        | _ ->
-            (* Check that no metavariable remains. *)
-            if LibTerm.Meta.has true a then
-              (fatal_msg "The type of %a has unsolved metavariables.\n"
-                 pp_uid id;
-               fatal pe.pos "We have %a : %a." pp_uid id pp_term a);
-            (match t with
-             | Some(t) when LibTerm.Meta.has true t ->
-                 fatal_msg
-                   "The definition of %a has unsolved metavariables.\n"
-                   pp_uid id;
-                 fatal pe.pos "We have %a : %a ≔ %a."
-                   pp_uid id pp_term a pp_term t
-             | _ -> ());
-            match pe.elt with
-            | P_proof_abort -> assert false (* Handled above *)
-            | P_proof_admit ->
-                (* If the proof is finished, display a warning. *)
-                if finished ps then
-                  wrn pe.pos "The proof is finished. Use 'end' instead.";
-                (* Add the symbol in the signature with a warning. *)
-                Console.out 3 (red "(symb) add %a : %a\n")
-                  pp_uid id pp_term a;
-                wrn pe.pos "Proof admitted.";
-                fst (add_symbol ss expo prop mstrat true p_sym_nam a impl t)
-            | P_proof_end ->
-                (* Check that the proof is indeed finished. *)
-                if not (finished ps) then
-                  (Console.out 1 "%a" Proof.pp_goals ps;
-                   fatal pe.pos "The proof is not finished.");
-                (* Add the symbol in the signature. *)
-                Console.out 3 (red "(symb) add %a : %a\n")
-                  pp_uid id pp_term a;
-                fst (add_symbol ss expo prop mstrat opaq p_sym_nam a impl t)
+        | P_proof_abort -> wrn pe.pos "Proof aborted."; ss
+        | P_proof_admit ->
+            (* If the proof is finished, display a warning. *)
+            if finished ps then
+              wrn pe.pos "The proof is finished. Use 'end' instead.";
+            let ss = List.fold_left admit_goal ss ps.proof_goals in
+            (* Add the symbol in the signature with a warning. *)
+            Console.out 3 (red "(symb) add %a : %a\n")
+              pp_uid id pp_term a;
+            wrn pe.pos "Proof admitted.";
+            let t = Option.map (fun t -> t.elt) t in
+            fst (add_symbol ss expo prop mstrat true p_sym_nam a impl t)
+        | P_proof_end ->
+            (* Check that the proof is indeed finished. *)
+            if not (finished ps) then
+              (Console.out 1 "%a" Proof.pp_goals ps;
+               fatal pe.pos "The proof is not finished.");
+            (* Add the symbol in the signature. *)
+            Console.out 3 (red "(symb) add %a : %a\n")
+              pp_uid id pp_term a;
+            let t = Option.map (fun t -> t.elt) t in
+            fst (add_symbol ss expo prop mstrat opaq p_sym_nam a impl t)
       in
       (* Create proof state. *)
       let ps = {proof_name = p_sym_nam; proof_term; proof_goals} in
@@ -452,7 +490,7 @@ let handle : (Path.t -> Sign.t) -> sig_state -> p_command ->
         match pt, t with
         | Some pt, Some t ->
             (match ps.proof_goals with
-             | Typ gt :: gs -> Tactic.tac_refine pt.pos ps gt gs t
+             | Typ gt :: gs -> Tactic.tac_refine pt.pos ps gt gs t.elt
              | _ -> assert false)
         | _, _ -> ps
       in
