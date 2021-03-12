@@ -218,8 +218,12 @@ let goals_of_typ : term loc option -> term loc option -> goal list * term =
   (List.rev_map (fun c -> Unif c) to_solve, typ)
 
 (** [goals_of_typ typ ter] returns a list of goals for [typ] to be typable by
-    by a sort and [ter] to have type [typ] in the empty context. [ter] and
-    [typ] must not be both equal to [None]. *)
+   by a sort and [ter] to have type [typ] in the empty context. [ter] and
+   [typ] must not be both equal to [None]. NOTE: [goals_of_typ typ ter]
+   contains typing goals to type [typ] by a sort and unification goals to type
+   both [typ] by a sort and [ter] by [typ]. However it does not contain typing
+   goals to type [ter] by [typ]. These goals are generated using the
+   {!constructor:Handle.Tactic.tac_refine} tactic called on [ter]. *)
 let goals_of_typ : term loc option -> term loc option -> goal list * term =
   fun typ ter ->
   let metas = match typ with
@@ -228,9 +232,3 @@ let goals_of_typ : term loc option -> term loc option -> goal list * term =
   in
   let proof_goals, typ = goals_of_typ typ ter in
   add_goals_of_metas metas proof_goals, typ
-
-(** NOTE: The goal list given by [goals_of_typ typ ter] contains typing goals
-    to type [typ] by a sort and unification to type both [typ] by a sort and
-    [ter] by [typ]. It does not contain typing goals to type [ter] by [typ].
-    These goals are generated using the
-    {!constructor:Handle.Tactic.tac_refine} tactic called on [ter]. *)
