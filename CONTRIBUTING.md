@@ -70,7 +70,8 @@ following files:
 - `src/core/pretty.ml`
 - `src/core/print.ml`
 - `editors/vim/syntax/lambdapi.vim`
-- `editors/emacs/lambdapi-smie.el`
+- `editors/emacs/lambdapi-vars.el` (syntax coloring)
+- `editors/emacs/lambdapi-smie.el` (grammar and indentation)
 - `editors/vscode/lp.configuration.json` (comments configuration),
 - `editors/vscode/syntaxes/lp.tmLanguage.json` (syntax highlighting),
 - `tools/listings.tex`

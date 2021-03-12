@@ -28,6 +28,7 @@
 
 %token ABORT
 %token ADMIT
+%token ADMITTED
 %token APPLY
 %token AS
 %token ASSERT
@@ -186,6 +187,7 @@ rw_patt:
 
 tactic:
   | q=query { make_pos $sloc (P_tac_query q) }
+  | ADMIT { make_pos $sloc P_tac_admit }
   | APPLY t=term { make_pos $sloc (P_tac_apply t) }
   | ASSUME xs=param_id+ { make_pos $sloc (P_tac_assume xs) }
   | FAIL { make_pos $sloc P_tac_fail }
@@ -249,7 +251,7 @@ query:
 
 proof_end:
   | ABORT { make_pos $sloc Syntax.P_proof_abort }
-  | ADMIT { make_pos $sloc Syntax.P_proof_admit }
+  | ADMITTED { make_pos $sloc Syntax.P_proof_admitted }
   | END { make_pos $sloc Syntax.P_proof_end }
 
 proof: BEGIN ts=terminated(tactic, SEMICOLON)* pe=proof_end { ts, pe }

@@ -1,5 +1,24 @@
 ### Unreleased
 
+#### Add tactic admit (2021-03-12)
+
+- rename command `admit` into `admitted`
+- `admitted`: admit the initial goal instead of the remaining goals (when the proof is an opaque definition)
+- move code on `admit` from `command.ml` to `tactic.ml`
+- add tactic `admit` (fix #380)
+  As a consequence, tactics can change the signature state now.
+
+#### Improvements in type inference, unification and printing (2021-03-11)
+
+- improve type inference and unification
+- add flag `"print_meta_args"`
+- print metavariables unescaped, add parentheses in domains
+- replace `(current_sign()).sign_path` by `current_path()`
+- improve logging:
+  . debug +h now prints data on type inference/checking
+  . provide time of type inference/checking and constraint solving
+  . give more feedback when instantiation fails
+
 #### Remove `set` keyword (2021-03-04)
 
 #### Various bug fixes (2021-03-02)
@@ -95,7 +114,7 @@
 
 Replace Earley by Menhir, Pratter and Sedlex
 
-**Syntax modifications:**
+Syntax modifications:
 
 - Add multi-lines comments `/*` ... `*/`.
 
@@ -129,7 +148,7 @@ Replace Earley by Menhir, Pratter and Sedlex
 - The minus sign `-` in the rewrite tactic has been replaced by the
   keyword `left`.
 
-**Code modifications:**
+Code modifications:
 
 - Parsing and handling are interleaved (except in the LSP server): the
   parser returns a stream of parsed commands. Requesting an item of

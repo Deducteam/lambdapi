@@ -2,6 +2,8 @@
 
 open Timed
 open Term
+open Lplib.Base
+open Lplib.Extra
 
 (** [fresh_vars n] creates an array of [n] fresh variables. The names of these
     variables is ["_var_i"], where [i] is a number introduced by the [Bindlib]
@@ -59,12 +61,8 @@ let get_args_len : term -> term * term list * int = fun t ->
 (** [add_args t args] builds the application of the {!type:term} [t] to a list
     arguments [args]. When [args] is empty, the returned value is (physically)
     equal to [t]. *)
-let add_args : term -> term list -> term = fun t args ->
-  let rec add_args t args =
-    match args with
-    | []      -> t
-    | u::args -> add_args (Appl(t,u)) args
-  in add_args t args
+let add_args : term -> term list -> term =
+  List.fold_left (fun t u -> Appl(t,u))
 
 (** [is_symb s t] tests whether [t] is of the form [Symb(s)]. *)
 let is_symb : sym -> term -> bool = fun s t ->
@@ -117,69 +115,75 @@ let unbind_name :
     let x = Bindlib.new_var mkfree s in
     (x, Bindlib.subst b (Vari x))
 
-(** {3 Metavariables} *)
+(** Functions to manipulate metavariables. This module includes
+    {!module:Term.Meta}. *)
+module Meta = struct
+  include Meta
 
-(** [make_meta ctx a] creates a fresh metavariable term of type [a] in the
-   context [ctx]. *)
-let make_meta : ctxt -> term -> term = fun ctx a ->
-  let prd, len = Ctxt.to_prod ctx a in
-  let m = Meta.fresh prd len in
-  let get_var (x,_,_) = Vari(x) in
-  Meta(m, Array.of_list (List.rev_map get_var ctx))
+  (** [make ctx a] creates a fresh metavariable term of type [a] in the
+      context [ctx]. *)
+  let make : ctxt -> term -> term = fun ctx a ->
+    let prd, len = Ctxt.to_prod ctx a in
+    let m = Meta.fresh prd len in
+    let get_var (x,_,_) = Vari(x) in
+    Meta(m, Array.of_list (List.rev_map get_var ctx))
 
-(** [make_meta_codomain ctx a] creates a fresh metavariable term [b] of type
-   [Type] in the context [ctx] extended with a fresh variable of type [a]. *)
-let make_meta_codomain : ctxt -> term -> tbinder = fun ctx a ->
-  let x = Bindlib.new_var mkfree "x" in
-  let b = make_meta ((x, a, None) :: ctx) Type in
-  Bindlib.unbox (Bindlib.bind_var x (lift b))
-(* Possible improvement: avoid lift by defining a function _make_meta
-   returning a tbox. *)
+  (** [make_codomain ctx a] creates a fresh metavariable term [b] of type
+      [Type] in the context [ctx] extended with a fresh variable of type
+      [a]. *)
+  let make_codomain : ctxt -> term -> tbinder = fun ctx a ->
+    let x = Bindlib.new_var mkfree "x" in
+    let b = make ((x, a, None) :: ctx) Type in
+    Bindlib.unbox (Bindlib.bind_var x (lift b))
+  (* Possible improvement: avoid lift by defining a function _Meta.make
+     returning a tbox. *)
 
-(** [iter_meta b f t] applies the function [f] to every metavariable of [t],
-   and to the type of every metavariable recursively if [b] is true. *)
-let iter_meta : bool -> (meta -> unit) -> term -> unit = fun b f ->
-  let rec iter t =
-    match unfold t with
-    | Patt(_,_,_)
-    | TEnv(_,_)
-    | Wild
-    | TRef(_)
-    | Vari(_)
-    | Type
-    | Kind
-    | Symb(_)     -> ()
-    | Prod(a,b)
-    | Abst(a,b)   -> iter a; iter (Bindlib.subst b Kind)
-    | Appl(t,u)   -> iter t; iter u
-    | Meta(v,ts)  -> f v; Array.iter iter ts; if b then iter !(v.meta_type)
-    | LLet(a,t,u) -> iter a; iter t; iter (Bindlib.subst u Kind)
-  in iter
+  (** [iter b f t] applies the function [f] to every metavariable of [t], and
+      to the type of every metavariable recursively if [b] is true. *)
+  let iter : bool -> (t -> unit) -> term -> unit = fun b f ->
+    let rec iter t =
+      match unfold t with
+      | Patt(_,_,_)
+      | TEnv(_,_)
+      | Wild
+      | TRef(_)
+      | Vari(_)
+      | Type
+      | Kind
+      | Symb(_)     -> ()
+      | Prod(a,b)
+      | Abst(a,b)   -> iter a; iter (Bindlib.subst b Kind)
+      | Appl(t,u)   -> iter t; iter u
+      | Meta(v,ts)  -> f v; Array.iter iter ts; if b then iter !(v.meta_type)
+      | LLet(a,t,u) -> iter a; iter t; iter (Bindlib.subst u Kind)
+    in iter
 
-(** [occurs m t] tests whether the metavariable [m] occurs in the term [t]. *)
-let occurs : meta -> term -> bool =
-  let exception Found in fun m t ->
-  let fn p = if m == p then raise Found in
-  try iter_meta false fn t; false with Found -> true
+  (** [occurs m t] tests whether the metavariable [m] occurs in the term
+      [t]. *)
+  let occurs : t -> term -> bool =
+    let exception Found in fun m t ->
+    let fn p = if m == p then raise Found in
+    try iter false fn t; false with Found -> true
 
-(** [add_metas b t ms] extends [ms] with all the metavariables of [t], and
-   those in the types of these metavariables recursively if [b]. *)
-let add_metas : bool -> term -> MetaSet.t -> MetaSet.t = fun b t ms ->
-  let open Stdlib in
-  let ms = ref ms in
-  iter_meta b (fun m -> ms := MetaSet.add m !ms) t;
-  !ms
+  (** [add b t ms] extends [ms] with all the metavariables of [t], and
+      those in the types of these metavariables recursively if [b]. *)
+  let add : bool -> term -> MetaSet.t -> MetaSet.t = fun b t ms ->
+    let open Stdlib in
+    let ms = ref ms in
+    iter b (fun m -> ms := MetaSet.add m !ms) t;
+    !ms
 
-(** [get_metas b t] returns the set of all the metavariables in [t], and in
-    the types of metavariables recursively if [b]. *)
-let get_metas : bool -> term -> MetaSet.t = fun b t ->
-  add_metas b t MetaSet.empty
+  (** [get b t] returns the set of all the metavariables in [t], and in
+      the types of metavariables recursively if [b]. *)
+  let get : bool -> term -> MetaSet.t = fun b t ->
+    add b t MetaSet.empty
 
-(** [has_metas b t] checks whether there are metavariables in [t], and in the
-    types of metavariables recursively if [b] is true. *)
-let has_metas : bool -> term -> bool =
-  let exception Found in fun b t ->
-  try iter_meta b (fun _ -> raise Found) t; false with Found -> true
+  (** [has b t] checks whether there are metavariables in [t], and in
+      the types of metavariables recursively if [b] is true. *)
+  let has : bool -> term -> bool =
+    let exception Found in fun b t ->
+    try iter b (fun _ -> raise Found) t; false with Found -> true
+end
 
 (** [distinct_vars ctx ts] checks that the terms [ts] are distinct
    variables. If so, the variables are returned. *)
@@ -195,6 +199,76 @@ let distinct_vars : ctxt -> term array -> tvar array option = fun ctx ts ->
     | _       -> raise Not_unique_var
   in
   try Some (Array.map to_var ts) with Not_unique_var -> None
+
+(** If [ts] is not made of variables or function symbols prefixed by ['$']
+   only, then [nl_distinct_vars ctx ts] returns [None]. Otherwise, it returns
+   a pair [(vs, map)] where [vs] is an array of variables made of the linear
+   variables of [ts] and fresh variables for the non-linear variables and the
+   symbols prefixed by ['$'], and [map] records by which variable each linear
+   symbol prefixed by ['$'] is replaced.
+
+   Variables defined in [ctx] are unfolded.
+
+   The symbols prefixed by ['$'] are introduced by [infer.ml] which converts
+   metavariables into fresh symbols, and those metavariables are introduced by
+   [sr.ml] which replaces pattern variables by metavariables. *)
+let nl_distinct_vars
+    : ctxt -> term array -> (tvar array * tvar StrMap.t) option =
+  fun ctx ts ->
+  let exception Not_a_var in
+  let open Stdlib in
+  let vars = ref VarSet.empty (* variables already seen (linear or not) *)
+  and nl_vars = ref VarSet.empty (* variables occurring more then once *)
+  and patt_vars = ref StrMap.empty in
+  (* map from pattern variables to actual Bindlib variables *)
+  let rec to_var t =
+    match Ctxt.unfold ctx t with
+    | Vari(v) ->
+        if VarSet.mem v !vars then nl_vars := VarSet.add v !nl_vars
+        else vars := VarSet.add v !vars;
+        v
+    | Symb(f) when f.sym_name <> "" && f.sym_name.[0] = '$' ->
+        (* Symbols replacing pattern variables are considered as variables. *)
+        let v =
+          try StrMap.find f.sym_name !patt_vars
+          with Not_found ->
+            let v = Bindlib.new_var mkfree f.sym_name in
+            patt_vars := StrMap.add f.sym_name v !patt_vars;
+            v
+        in to_var (Vari v)
+    | _ -> raise Not_a_var
+  in
+  let replace_nl_var v =
+    if VarSet.mem v !nl_vars then Bindlib.new_var mkfree "_" else v
+  in
+  try
+    let vs = Array.map to_var ts in
+    let vs = Array.map replace_nl_var vs in
+    (* We remove non-linear variables from [!patt_vars] as well. *)
+    let fn n v m = if VarSet.mem v !nl_vars then m else StrMap.add n v m in
+    let map = StrMap.fold fn !patt_vars StrMap.empty in
+    Some (vs, map)
+  with Not_a_var -> None
+
+(** [sym_to_var m t] replaces in [t] every symbol [f] by a variable according
+   to the map [map]. *)
+let sym_to_var : tvar StrMap.t -> term -> term = fun map ->
+  let rec to_var t =
+    match unfold t with
+    | Symb f -> (try Vari (StrMap.find f.sym_name map) with Not_found -> t)
+    | Prod(a,b) -> Prod (to_var a, to_var_binder b)
+    | Abst(a,b) -> Abst (to_var a, to_var_binder b)
+    | LLet(a,t,u) -> LLet (to_var a, to_var t, to_var_binder u)
+    | Appl(a,b)  -> Appl(to_var a, to_var b)
+    | Meta(m,ts) -> Meta(m, Array.map to_var ts)
+    | Patt _ -> assert false
+    | TEnv _ -> assert false
+    | TRef _ -> assert false
+    | _ -> t
+  and to_var_binder b =
+    let (x,b) = Bindlib.unbind b in
+    Bindlib.unbox (Bindlib.bind_var x (lift (to_var b)))
+  in fun t -> if StrMap.is_empty map then t else to_var t
 
 (** [term_of_rhs r] converts the RHS (right hand side) of the rewriting rule
     [r] into a term. The bound higher-order variables of the original RHS are
@@ -214,7 +288,7 @@ let term_of_rhs : rule -> term = fun r ->
 (** Total order on alpha-equivalence classes of terms not containing [Patt],
    [TEnv] or [TRef].
 @raise Invalid_argument otherwise. *)
-let cmp_term : term Lplib.Base.cmp =
+let cmp_term : term cmp =
   let pos = __MODULE__ ^ ".cmp_term: " ^ __LOC__ in
   (* Total precedence on term constructors (must be injective). *)
   let prec t =
@@ -270,7 +344,7 @@ let cmp_term : term Lplib.Base.cmp =
 
 (** Total order on contexts not containing [Patt], [TEnv] or [TRef].
 @raise Invalid_argument otherwise. *)
-let cmp_ctxt : ctxt Lplib.Base.cmp =
+let cmp_ctxt : ctxt cmp =
   let cmp_decl (x,t,a) (x',t',a') =
     let c = Bindlib.compare_vars x x' in
     if c <> 0 then c
@@ -280,7 +354,9 @@ let cmp_ctxt : ctxt Lplib.Base.cmp =
 
 (** Total order on constraints not containing [Patt], [TEnv] or [TRef].
 @raise Invalid_argument otherwise. *)
-let cmp_constr : constr Lplib.Base.cmp = fun (c,t,u) (c',t',u') ->
+let cmp_constr : constr cmp = fun (c,t,u) (c',t',u') ->
   let r = cmp_ctxt c c' in
   if r <> 0 then r
   else let r = cmp_term t t' in if r <> 0 then r else cmp_term u u'
+
+let eq_constr : constr eq = fun c c' -> cmp_constr c c' = 0

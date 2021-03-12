@@ -1,5 +1,5 @@
-Getting started using Lambdapi
-==============================
+Getting started
+===============
 
 This guide is intended for anyone wishing to give Lambdapi a try, but
 also for everyone that wants to get started with the development of a

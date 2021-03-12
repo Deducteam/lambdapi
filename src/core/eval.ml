@@ -220,8 +220,8 @@ and tree_walk : dtree -> ctxt -> stack -> (term * stack) option =
         List.iter fn env_builder;
         (* Complete the array with fresh meta-variables if needed. *)
         for i = env_len - xvars to env_len - 1 do
-          let mt = make_meta ctx Type in
-          let t = make_meta ctx mt in
+          let mt = Meta.make ctx Type in
+          let t = Meta.make ctx mt in
           let b = Bindlib.raw_mbinder [||] [||] 0 mkfree (fun _ -> t) in
           env.(i) <- TE_Some(b)
         done;

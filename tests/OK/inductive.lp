@@ -13,6 +13,10 @@ builtin "P" ≔ π;
 constant symbol Set : TYPE;       // Type of set codes
 injective symbol τ : Set → TYPE;  // Interpretation of set codes in TYPE
 
+/// test escaped type
+inductive {| |}:TYPE ≔ c : {| |};
+assert ⊢ {|ind_ |} : Π p:{| |} → Prop, π (p c) → Π x: {| |}, π (p x);
+
 ////////////////// Primary colors
 
 inductive RGB : TYPE ≔

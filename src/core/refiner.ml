@@ -3,8 +3,8 @@ open Lplib
 open Timed
 open Term
 
-let log = Debug.new_logger 'z' "refi" "Refiner"
-let log = log.logger
+let logger = Debug.new_logger 'z' "refi" "Refiner"
+let log = logger.logger
 
 (** Module that provide a lookup function to the refiner. *)
 module type LOOKUP = sig
@@ -50,7 +50,7 @@ module type S = sig
 
   val check_noexn : constr list -> ctxt -> term -> term ->
     (term * constr list) option
-  (** [check_noexn cs ctx t t_ty] ensures that term [t] has type [t_ty] in
+  (** [check_noexn ?lg cs ctx t t_ty] ensures that term [t] has type [t_ty] in
       context [ctx] and with equations [cs]. It returns term [t] refined and a
       list of new equations that must be solved. *)
 end
@@ -229,13 +229,13 @@ functor
               (Appl (t, u), Bindlib.subst b u)
           | Meta (_, _) ->
               let u, u_ty = infer ctx u in
-              let range = LibTerm.make_meta_codomain ctx u_ty in
+              let range = LibTerm.Meta.make_codomain ctx u_ty in
               unif ctx t_ty (Prod (u_ty, range));
               (Appl (t, u), Bindlib.subst range u)
           | t_ty ->
               (* XXX Slight variation regarding the rule from Matita *)
               let u, u_ty = infer ctx u in
-              let range = LibTerm.make_meta_codomain ctx u_ty in
+              let range = LibTerm.Meta.make_codomain ctx u_ty in
               let t = coerce ctx t t_ty (Prod (u_ty, range)) in
               (Appl (t, u), Bindlib.subst range u) )
 
@@ -250,18 +250,20 @@ functor
       Stdlib.(constraints := cs);
       let r =
         try
-          let r = f ctx args in
+          let r = Debug.time_of logger (fun () -> f ctx args) in
           let cs = Stdlib.(!constraints) in
           Some(r, List.rev cs)
         with NotTypable -> None
       in Stdlib.(constraints := []); r
 
-    let infer_noexn : constr list -> ctxt -> term ->
-      (term * term * constr list) option = fun cs ctx t ->
+    let infer_noexn cs ctx t =
+      if !Debug.log_enabled then
+        log "Top infer %a%a" Print.pp_ctxt ctx Print.pp_term t;
       Option.map (fun ((t,a), cs) -> (t, a, cs)) ((noexn infer) cs ctx t)
 
-    let check_noexn : constr list -> ctxt -> term -> term
-      -> (term * constr list) option = fun cs ctx t a ->
+    let check_noexn cs ctx t a =
+      if !Debug.log_enabled then log "Top check \"%a\"" Print.pp_typing
+          (ctx, t, a);
       let force ctx (t, a) = force ctx t a in
       (noexn force) cs ctx (t, a)
 

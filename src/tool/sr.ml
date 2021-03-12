@@ -216,17 +216,17 @@ let check_rule : Scope.pre_rule Pos.loc -> rule = fun ({pos; elt} as pr) ->
       | Some(_) ->
           (* Instantiate recursively the meta-variables of the definition. *)
           let t = Meta(m, Array.make m.meta_arity Kind) in
-          LibTerm.iter_meta true instantiate t
+          LibTerm.Meta.iter true instantiate t
       | None    ->
           (* Instantiate recursively the meta-variables of the type. *)
-          LibTerm.iter_meta true instantiate !(m.meta_type);
+          LibTerm.Meta.iter true instantiate !(m.meta_type);
           (* Instantiation of [m]. *)
           let sym_name =
             match m.meta_name with
             | Some(n) -> n
             | None    -> string_of_int m.meta_key
           in
-          let s = Term.create_sym (Sign.current_sign()).sign_path
+          let s = Term.create_sym (Sign.current_path())
                     Privat Defin Eager false sym_name !(m.meta_type) [] in
           Stdlib.(symbols := s :: !symbols);
           (* Build a definition for [m]. *)
