@@ -399,10 +399,10 @@ let handle : (Path.t -> Sign.t) -> sig_state -> p_command ->
               wrn pe.pos "The proof is finished. Use 'end' instead.";
             let ss =
               match ps.proof_term with
-              | Some m ->
-                  (* We admit the initial goal. *)
+              | Some m when opaq ->
+                  (* We admit the initial goal only. *)
                   Tactic.admit_meta ss m
-              | None ->
+              | _ ->
                   (* We admit all the remaining typing goals. *)
                   let admit_goal ss g =
                     match g with
