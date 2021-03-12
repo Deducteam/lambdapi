@@ -6,8 +6,8 @@ Implementation choices
 
 - Bindings in terms are implemented using the `Bindlib`_ library.
 
-- Parsing uses the `Earley`_ library.
+- Parsing uses the `Menhir`_ library.
 
 .. _Timed: https://github.com/rlepigre/ocaml-timed
 .. _Bindlib: https://rlepigre.github.io/ocaml-bindlib/
-.. _Earley: https://github.com/rlepigre/ocaml-earley/
+.. _Menhir: http://gallium.inria.fr/~fpottier/menhir/

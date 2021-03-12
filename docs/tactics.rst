@@ -36,16 +36,15 @@ the environment the symbol declaration or definition the proof is
 about.
 
 ``abort``
-^^^^^^^^^
+---------
 
 Exit the proof mode without changing the environment.
 
 ``admitted``
-^^^^^^^^^^^^
+------------
 
 Add axioms in the environment to solve the remaining goals and exit of
 the proof mode.
-
 
 ``apply``
 ---------
@@ -125,7 +124,7 @@ Why3 know about the available provers.
 Adds in the environment new symbols (axioms) proving the focused goal.
 
 ``fail``
-^^^^^^^^
+--------
 
 Always fails. It is useful when developing a proof to stop at some
 particular point.
@@ -148,17 +147,17 @@ declarations:
    set builtin "eqind" ≔ … // : Π {a} x y, P (x = y) → Π p:T a→Prop, P (p y) → P (p x)
 
 ``reflexivity``
-^^^^^^^^^^^^^^^
+---------------
 
 Solves a goal of the form ``P (t = u)`` when ``t ≡ u``.
 
 ``symmetry``
-^^^^^^^^^^^^
+------------
 
 Replaces a goal of the form ``P (t = u)`` by the goal ``P (u = t)``.
 
 ``rewrite``
-^^^^^^^^^^^
+-----------
 
 The ``rewrite`` tactic takes as argument a term ``t`` of type
 ``Π x₁ … xₙ,P(l = r)`` prefixed by an optional ``left`` (to indicate that the
