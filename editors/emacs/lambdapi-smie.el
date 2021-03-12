@@ -8,7 +8,8 @@
 
 ;; Lists of keywords
 (defconst lambdapi--tactics
-  '("apply"
+  '("admit"
+    "apply"
     "assume"
     "fail"
     "focus"
@@ -119,7 +120,7 @@ Indent by `lambdapi-indent-basic' in proofs, and 0 otherwise."
       (rules (rules "with" sterm "↪" sterm))
       (command
                ("begin" prfcontent "abort" ";")
-               ("begin" prfcontent "admit" ";")
+               ("begin" prfcontent "admitted" ";")
                ("begin" prfcontent "end" ";")
                ("builtin" ident "≔" sterm ";")
                ("debug" ident)
@@ -184,8 +185,8 @@ The default lexer is used because the syntax is primarily made of sexps."
     (`(:before . "symmetry") `(column . ,lambdapi-indent-basic))
     (`(:before . "why3") `(column . ,lambdapi-indent-basic))
     
-    (`(:before . ,(or "admit" "abort" "end")) '(column . 0))
-    (`(:after . ,(or "admit" "abort" "end")) '(column . 0))
+    (`(:before . ,(or "abort" "admitted" "end")) '(column . 0))
+    (`(:after . ,(or "abort" "admitted" "end")) '(column . 0))
 
     (`(:before . ,(or "assert" "assertnot" "compute" "print" "proofterm"
                       "type"))

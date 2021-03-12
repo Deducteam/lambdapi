@@ -4,7 +4,7 @@ Including Lambdapi code into a Latex document
 With the `minted <https://www.ctan.org/pkg/minted>`__ package
 -------------------------------------------------------------
 
-Requirement: `pygmentize <http://pygments.org/>`__ -V >= 2.2.0
+Requirement: `pygmentize <http://pygments.org/>`__ ``-V >= 2.2.0``
 
 You need to copy
 `tools/latex_minted/dedukti.py <../../tools/latex_minted/dedukti.py>`__

@@ -32,6 +32,7 @@
             | <term> as <uid> in <term>
 
 <tactic> ::= <query>
+           | admit
            | apply <term>
            | assume <param_id>+
            | fail
@@ -75,7 +76,7 @@
           | type <term>
 
 <proof_end> ::= abort
-              | admit
+              | admitted
               | end
 
 <proof> ::= begin (<tactic> ;)* <proof_end>

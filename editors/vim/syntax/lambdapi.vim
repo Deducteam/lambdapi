@@ -28,6 +28,7 @@ highlight link StringLiteral String
 " Keywords.
 syntax keyword KeywordOK contained abort
 syntax keyword KeywordOK contained admit
+syntax keyword KeywordOK contained admitted
 syntax keyword KeywordOK contained apply
 syntax keyword KeywordOK contained as
 syntax keyword KeywordOK contained assert
@@ -84,6 +85,7 @@ highlight link KeywordOK Keyword
 " Keyword in identifier.
 syntax keyword KeywordKO contained abort
 syntax keyword KeywordKO contained admit
+syntax keyword KeywordKO contained admitted
 syntax keyword KeywordKO contained apply
 syntax keyword KeywordKO contained as
 syntax keyword KeywordKO contained assert

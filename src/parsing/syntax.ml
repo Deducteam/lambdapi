@@ -162,6 +162,7 @@ type p_query = p_query_aux loc
 
 (** Parser-level representation of a proof tactic. *)
 type p_tactic_aux =
+  | P_tac_admit
   | P_tac_apply of p_term
   | P_tac_assume of p_ident option list
   | P_tac_fail
@@ -183,7 +184,7 @@ type p_tactic = p_tactic_aux loc
 type p_proof_end_aux =
   | P_proof_end
   (** The proof is done and fully checked. *)
-  | P_proof_admit
+  | P_proof_admitted
   (** Give up current state and admit the theorem. *)
   | P_proof_abort
   (** Abort the proof (theorem not admitted). *)
@@ -370,6 +371,7 @@ let eq_p_tactic : p_tactic eq = fun {elt=t1;_} {elt=t2;_} ->
   | P_tac_query q1, P_tac_query q2 -> eq_p_query q1 q2
   | P_tac_why3 so1, P_tac_why3 so2 -> so1 = so2
   | P_tac_focus n1, P_tac_focus n2 -> n1 = n2
+  | P_tac_admit, P_tac_admit
   | P_tac_induction, P_tac_induction
   | P_tac_simpl, P_tac_simpl
   | P_tac_solve, P_tac_solve
@@ -539,6 +541,7 @@ let fold_idents : ('a -> p_qident -> 'a) -> 'a -> p_command list -> 'a =
         (vs, fold_term_vars vs (fold_rw_patt_vars vs a p) t)
     | P_tac_query q -> (vs, fold_query_vars vs a q)
     | P_tac_assume idopts -> (add_idopts vs idopts, a)
+    | P_tac_admit
     | P_tac_simpl
     | P_tac_refl
     | P_tac_sym

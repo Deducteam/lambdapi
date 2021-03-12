@@ -34,6 +34,15 @@ opam install lambdapi # install emacs and vim support as well
 ```
 For installing the VSCode extension, you need to get the sources (see below).
 
+The installation gives you:
+
+* a main executable named ``lambdapi`` in your ``PATH``
+* an OCaml library called ``lambdapi.core`` (system internals)
+* an OCaml library called ``lambdapi.pure`` (pure interface)
+* an OCaml library called ``lambdapi.lsp`` (LSP server)
+* a ``lambdapi`` mode for ``Vim`` (optional)
+* a ``lambdapi`` mode for ``emacs`` (optional)
+
 Compilation from the sources
 ----------------------------
 

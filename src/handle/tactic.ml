@@ -12,10 +12,66 @@ open Proof
 open Print
 open Timed
 open Debug
+open Extra
 
 (** Logging function for tactics. *)
 let log_tact = new_logger 't' "tact" "tactics"
 let log_tact = log_tact.logger
+
+(** Number of admitted axioms in the current signature. Used to name the
+    generated axioms. This reference is reset in {!module:Compile} for each
+    new compiled module. *)
+let admitted : int Stdlib.ref = Stdlib.ref (-1)
+
+(** [add_axiom ss m] adds in signature state [ss] a new axiom symbol of type
+   [!(m.meta_type)] and instantiate [m] with it. It does not check whether the
+   type of [m] contains metavariables. *)
+let add_axiom : Sig_state.t -> Meta.t -> Sig_state.t = fun ss m ->
+  let name =
+    let m_name = match m.meta_name with Some n -> "_" ^ n | _ -> "" in
+    Printf.sprintf "_ax%i%s" Stdlib.(incr admitted; !admitted) m_name
+  in
+  (* Create a symbol with the same type as the metavariable *)
+  let ss, sym =
+    Console.out 3 (red "(symb) add axiom %a: %a\n")
+      pp_uid name pp_term !(m.meta_type);
+    Sig_state.add_symbol
+      ss Public Const Eager true (Pos.none name) !(m.meta_type) [] None
+  in
+  (* Create the value which will be substituted for the metavariable. This
+     value is [sym x0 ... xn] where [xi] are variables that will be
+     substituted by the terms of the explicit substitution of the
+     metavariable. *)
+  let meta_value =
+    let vars =
+      let mk_var i = Bindlib.new_var mkfree (Printf.sprintf "x%i" i) in
+      Array.init m.meta_arity mk_var
+    in
+    let ax = _Appl_symb sym (Array.to_list vars |> List.map _Vari) in
+    Bindlib.(bind_mvar vars ax |> unbox)
+  in
+  Meta.set m meta_value; ss
+
+(** [admit_meta ss m] adds as many axioms as needed in the signature state
+   [ss] to instantiate the metavariable [m] by a fresh axiom added to the
+   signature [ss]. *)
+let admit_meta : Sig_state.t -> meta -> Sig_state.t = fun ss m ->
+  let ss = Stdlib.ref ss in
+  (* [ms] records the metas that we are instantiating. *)
+  let rec admit ms m =
+    (* This assertion should be ensured by the typechecking algorithm. *)
+    assert (not (MetaSet.mem m ms));
+    LibTerm.Meta.iter true (admit (MetaSet.add m ms)) !(m.meta_type);
+    Stdlib.(ss := add_axiom !ss m)
+  in
+  admit MetaSet.empty m; Stdlib.(!ss)
+
+(** [tac_admit pos ps gt] admits typing goal [gt]. *)
+let tac_admit :
+      Sig_state.t -> proof_state -> goal_typ -> Sig_state.t * proof_state =
+  fun ss ps gt ->
+  let ss = admit_meta ss gt.goal_meta in
+  ss, remove_solved_goals ps
 
 (** [tac_solve pos ps] tries to simplify the unification goals of the proof
    state [ps] and fails if constraints are unsolvable. *)
@@ -111,6 +167,7 @@ let handle : Sig_state.t -> Tags.expo -> proof_state -> p_tactic
   | Typ ({goal_hyps=env;_} as gt) ->
   let scope = Scope.scope_term expo ss env (Proof.sys_metas ps) in
   match elt with
+  | P_tac_admit
   | P_tac_fail
   | P_tac_focus _
   | P_tac_query _
@@ -142,22 +199,25 @@ let handle : Sig_state.t -> Tags.expo -> proof_state -> p_tactic
 (** [handle ss expo ps tac] applies tactic [tac] in the proof state [ps] and
    returns the new proof state. *)
 let handle : Sig_state.t -> Tags.expo -> proof_state -> p_tactic
-             -> proof_state * Query.result =
+             -> Sig_state.t * proof_state * Query.result =
   fun ss expo ps ({elt;pos} as tac) ->
   match elt with
   | P_tac_fail -> fatal pos "Call to tactic \"fail\""
   | P_tac_query(q) ->
       if !log_enabled then log_tact "%a" Pretty.tactic tac;
-      ps, Query.handle ss (Some ps) q
+      ss, ps, Query.handle ss (Some ps) q
   | _ ->
   match ps.proof_goals with
   | [] -> fatal pos "No remaining goals."
+  | Typ gt::_ when elt = P_tac_admit ->
+      let ss, ps = tac_admit ss ps gt in ss, ps, None
   | g::_ ->
       if !log_enabled then
         log_tact "%a\n%a" Proof.Goal.pp g Pretty.tactic tac;
-      handle ss expo ps tac, None
+      ss, handle ss expo ps tac, None
 
 let handle : Sig_state.t -> Tags.expo -> proof_state -> p_tactic
-             -> proof_state * Query.result = fun ss expo ps tac ->
+             -> Sig_state.t * proof_state * Query.result =
+  fun ss expo ps tac ->
   try handle ss expo ps tac
   with Fatal(_,_) as e -> Console.out 1 "%a" pp_goals ps; raise e

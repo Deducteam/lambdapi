@@ -63,23 +63,21 @@ let rec compile : bool -> Path.t -> Sign.t = fun force mp ->
       (* [sign] is added to [loaded] before processing the commands so that it
          is possible to qualify the symbols of the current modules. *)
       loaded := Path.Map.add mp sign !loaded;
-      Stdlib.(Command.admitted := -1);
+      Stdlib.(Tactic.admitted := -1);
       let handle ss c =
         Term.Meta.reset_meta_counter ();
         (* We provide the compilation function to the handle commands, so that
            "require" is able to compile files. *)
         let (ss, p, _) = Command.handle (compile false) ss c in
         match p with
-        | None       -> ss
-        | Some(data) ->
-            let (st,tacs) = (data.pdata_p_state, data.pdata_tactics) in
-            let e = data.pdata_expo in
-            let st =
+        | None -> ss
+        | Some d ->
+            let ss, ps, _ =
               List.fold_left
-                (fun st tac -> fst (Tactic.handle ss e st tac))
-                st tacs
+                (fun (ss, ps, _) tac -> Tactic.handle ss d.pdata_expo ps tac)
+                (ss, d.pdata_p_state, None) d.pdata_tactics
             in
-            data.pdata_finalize ss st
+            d.pdata_finalize ss ps
       in
       let consume cmd = Stdlib.(sig_st := handle !sig_st cmd) in
       Stream.iter consume (parse_file src);

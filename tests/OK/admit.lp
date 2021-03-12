@@ -16,8 +16,10 @@ symbol prop1: Prop;
 symbol f: Prf prop1 → El ι;
 symbol π_f: Prf (f _)
 begin
+  focus 1;
+  admit;
   // Adds an axiom [ax_?]
-admit;
+admitted;
 
 // Two metas, one depending on the other
 symbol prop2: Prf prop1 → Prop;
@@ -25,4 +27,4 @@ symbol g (π: Prf prop1) (_: Prf (prop2 π)): Prop;
 symbol π_g: Prf (g _ ?named_meta)
 begin
   // Adds two axioms
-admit;
+admitted;
