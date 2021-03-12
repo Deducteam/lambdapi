@@ -8,13 +8,21 @@ open Common
 open Error
 open Term
 open LibTerm
-open Env
 open Print
 open Debug
 
 (** Logging function for unification. *)
-let log_unif = new_logger 'u' "unif" "unification"
-let log_unif = log_unif.logger
+let logger_unif = new_logger 'u' "unif" "unification"
+let log_unif = logger_unif.logger
+
+(** [type_app a ts] returns [Some(u)] where [u] is a type of [add_args x ts]
+   where [x] is any term of type [a] if [x] can be applied to at least
+   [List.length ts] arguments, and [None] otherwise. *)
+let rec type_app : ctxt -> term -> term list -> term option = fun ctx a ts ->
+  match Eval.whnf ctx a, ts with
+  | Prod(_,b), t::ts -> type_app ctx (Bindlib.subst b t) ts
+  | _, [] -> Some a
+  | _, _ -> None
 
 (** Exception raised when a constraint is not solvable. *)
 exception Unsolvable
@@ -45,79 +53,24 @@ let try_unif_rules : ctxt -> term -> term -> constr list option =
     if !log_enabled then log_unif "found no unif_rule";
     None
 
-(** [nl_distinct_vars ctx ts] checks that [ts] is made of variables  [vs] only
-    and returns some copy of [vs] where variables occurring more than once are
-    replaced by fresh variables.  Variables defined in  [ctx] are unfolded. It
-    returns [None] otherwise. *)
-let nl_distinct_vars
-    : ctxt -> term array -> (tvar array * tvar StrMap.t) option =
-  fun ctx ts ->
-  let exception Not_a_var in
-  let open Stdlib in
-  let vars = ref VarSet.empty
-  and nl_vars = ref VarSet.empty
-  and patt_vars = ref StrMap.empty in
-  let rec to_var t =
-    match Ctxt.unfold ctx t with
-    | Vari(v) ->
-        if VarSet.mem v !vars then nl_vars := VarSet.add v !nl_vars
-        else vars := VarSet.add v !vars;
-        v
-    | Symb(f) when f.sym_name <> "" && f.sym_name.[0] = '$' ->
-        (* Symbols replacing pattern variables are considered as variables. *)
-        let v =
-          try StrMap.find f.sym_name !patt_vars
-          with Not_found ->
-            let v = Bindlib.new_var mkfree f.sym_name in
-            patt_vars := StrMap.add f.sym_name v !patt_vars;
-            v
-        in to_var (Vari v)
-    | _ -> raise Not_a_var
-  in
-  let replace_nl_var v =
-    if VarSet.mem v !nl_vars
-    then Bindlib.new_var mkfree (Bindlib.name_of v)
-    else v
-  in
-  try
-    let vs = Array.map to_var ts in
-    let vs = Array.map replace_nl_var vs in
-    (* We remove non-linear variables from [!patt_vars] as well. *)
-    let fn n v m = if VarSet.mem v !nl_vars then m else StrMap.add n v m in
-    let map = StrMap.fold fn !patt_vars StrMap.empty in
-    Some (vs, map)
-  with Not_a_var -> None
+(** [instantiable ctx m ts u] tells whether, in a problem [m[ts]=u], [m] can
+   be instantiated. It does not check whether the instantiation is closed
+   though. *)
+let instantiable : ctxt -> meta -> term array -> term -> bool =
+  fun ctx m ts u -> not (Meta.occurs m u) && nl_distinct_vars ctx ts <> None
 
-(** [sym_to_var m t] replaces in [t] every symbol [f] by a variable according
-   to [m]. *)
-let sym_to_var : tvar StrMap.t -> term -> term = fun m ->
-  let rec to_var t =
-    match unfold t with
-    | Symb(f)     -> (try Vari (StrMap.find f.sym_name m) with Not_found -> t)
-    | Prod(a,b)   -> Prod (to_var a, to_var_binder b)
-    | Abst(a,b)   -> Abst (to_var a, to_var_binder b)
-    | LLet(a,t,u) -> LLet (to_var a, to_var t, to_var_binder u)
-    | Appl(a,b)   -> Appl(to_var a, to_var b)
-    | Meta(m,ts)  -> Meta(m, Array.map to_var ts)
-    | Patt(_)     -> assert false
-    | TEnv(_)     -> assert false
-    | TRef(_)     -> assert false
-    | _           -> t
-  and to_var_binder b =
-    let (x,b) = Bindlib.unbind b in
-    Bindlib.unbox (Bindlib.bind_var x (lift (to_var b)))
-  in to_var
-
-(** [instantiation ctx m ts u] checks whether, in a problem [m[ts]=u], [m] can
-    be instantiated and returns the corresponding instantiation. It does not
-    check whether the instantiation is closed though. *)
+(** [instantiation ctx m ts u] tells whether, in a problem [m[ts]=u], [m] can
+   be instantiated and returns the corresponding instantiation, simplified. It
+   does not check whether the instantiation is closed though. *)
 let instantiation : ctxt -> meta -> term array -> term ->
   tmbinder Bindlib.box option = fun ctx m ts u ->
   if not (Meta.occurs m u) then
     match nl_distinct_vars ctx ts with
-    | None       -> None
-    | Some(vs,m) ->
-        let u = if StrMap.is_empty m then u else sym_to_var m u in
+    | None -> None
+    | Some(vs, map) ->
+        let u = Eval.simplify (sym_to_var map u) in
+        if !log_enabled then log_unif "variables: %a; value: %a"
+                               (Array.pp pp_var " ") vs pp_term u;
         Some (Bindlib.bind_mvar vs (lift u))
   else None
 
@@ -128,22 +81,22 @@ let do_type_check = Stdlib.ref true
     instantiated and, if so, instantiate it. *)
 let instantiate : ctxt -> meta -> term array -> term -> constr list -> bool =
   fun ctx m ts u initial ->
-  if !log_enabled then
-    log_unif "try instantiate %a" pp_constr (ctx,Meta(m,ts),u);
+  if !log_enabled then log_unif "try instantiate";
   match instantiation ctx m ts u with
   | Some(bu) when Bindlib.is_closed bu ->
       let do_instantiate() =
-        if !log_enabled then log_unif (yel "%a ≔ %a") pp_meta m pp_term u;
+        if !log_enabled then log_unif "ok";
         Meta.set m (Bindlib.unbox bu); true
       in
       if Stdlib.(!do_type_check) then
         begin
           let typ_mts =
-            match Infer.type_app ctx !(m.meta_type) (Array.to_list ts) with
+            match type_app ctx !(m.meta_type) (Array.to_list ts) with
             | Some a -> a
             | None -> assert false
           in
-          match Infer.check_noexn [] ctx u typ_mts with
+          let lg = logger_unif in
+          match Infer.check_noexn ~lg [] ctx u typ_mts with
           | None ->
               if !log_enabled then log_unif "typing condition failed"; false
           | Some [] -> do_instantiate()
@@ -159,8 +112,17 @@ let instantiate : ctxt -> meta -> term array -> term -> constr list -> bool =
                  false)
         end
       else do_instantiate()
-  | _ ->
-      if !log_enabled then log_unif "variable condition failed"; false
+  | i ->
+      if !log_enabled then
+        begin
+          match i with
+          | None ->
+              if not (Meta.occurs m u) then log_unif "occur check failed"
+              else log_unif "arguments are not distinct variables: %a"
+                     (Array.pp pp_term " ") ts
+          | Some _ -> log_unif "not closed"
+        end;
+      false
 
 (** [error t1 t2]
 @raise Unsolvable. *)
@@ -174,9 +136,12 @@ let error : term -> term -> 'a = fun t1 t2 ->
    of [p]. *)
 let add_to_unsolved : ctxt -> term -> term -> problem -> problem =
   fun ctx t1 t2 p ->
-  if Eval.eq_modulo ctx t1 t2 then p else
-  match try_unif_rules ctx t1 t2 with
-  | None     -> {p with unsolved = (ctx,t1,t2) :: p.unsolved}
+  if Eval.eq_modulo ctx t1 t2 then
+    (if !log_enabled then log_unif "equivalent terms"; p)
+  else match try_unif_rules ctx t1 t2 with
+  | None ->
+      if !log_enabled then log_unif "move to unsolved";
+      {p with unsolved = (ctx,t1,t2) :: p.unsolved}
   | Some([]) -> assert false
   (* Unification rules generate non empty list of unification constraints *)
   | Some(cs) -> {p with to_solve = cs @ p.to_solve}
@@ -375,25 +340,9 @@ let add_inverse :
 let imitate_prod : ctxt -> meta -> term -> term -> problem -> problem =
   fun ctx m h1 h2 p ->
   if !log_enabled then log_unif "imitate_prod %a" pp_meta m;
-  let n = m.meta_arity in
-  let (env, s) = Env.of_prod ctx n !(m.meta_type) in
-  let xs = Array.map _Vari (vars env) in
-
-  let u1 = to_prod env _Type in
-  let m1 = Meta.fresh u1 n in
-
-  let y = Bindlib.new_var mkfree "y" in
-  let env' = add y (_Meta m1 xs) None env in
-  let u2 = to_prod env' (lift s) in
-  let m2 = Meta.fresh u2 (n+1) in
-
-  let mxs = Bindlib.unbox (_Meta m xs) in
-  let a = _Meta m1 xs in
-  let b = Bindlib.bind_var y (_Meta m2 (Array.append xs [|_Vari y|])) in
-  let prod = Bindlib.unbox (_Prod a b) in
-
-  let ctx' = Env.to_ctxt env in
-  {p with to_solve = (ctx',mxs,prod)::(ctx,h1,h2)::p.to_solve}
+  let cont, _vs, xs, t = Infer.make_prod m in
+  let cstr = (cont, Bindlib.unbox (_Meta m xs), Bindlib.unbox t) in
+  {p with to_solve = cstr::(ctx,h1,h2)::p.to_solve}
 
 (** [sym_sym_whnf ctx t1 s1 ts1 t2 s2 ts2 p] handles the case [s1(ts1) =
    s2(ts2); p] when [s1(ts1)] and [s2(ts2)] are in whnf. *)
@@ -420,17 +369,20 @@ let sym_sym_whnf :
 (** [solve p] tries to solve the unification problem [p] and
     returns the constraints that could not be solved. *)
 let rec solve : problem -> constr list = fun p ->
-  if !log_enabled then log_unif "%a" pp_problem p;
   match p with
   | {to_solve = []; unsolved = []; _} -> []
   | {to_solve = []; unsolved = cs; recompute = true} ->
-     solve {empty_problem with to_solve = cs}
+      if !log_enabled then log_unif "recompute";
+      solve {empty_problem with to_solve = cs}
   | {to_solve = []; unsolved = cs; _} -> cs
   | {to_solve = (((ctx,t1,t2)::to_solve) as initial); _} ->
 
   (* We remove the first constraint from [p] for not looping. *)
   let p = {p with to_solve} in
 
+  (* We take the beta-whnf. *)
+  let t1 = Eval.whnf_beta t1 and t2 = Eval.whnf_beta t2 in
+  if !log_enabled then log_unif "%a" pp_constr (ctx,t1,t2);
   let (h1, ts1) = LibTerm.get_args t1
   and (h2, ts2) = LibTerm.get_args t2 in
 
@@ -440,10 +392,11 @@ let rec solve : problem -> constr list = fun p ->
 
   | Prod(a1,b1), Prod(a2,b2)
   | Abst(a1,b1), Abst(a2,b2) ->
-     let (x,b1,b2) = Bindlib.unbind2 b1 b2 in
-     let ctx' = (x,a1,None) :: ctx in
-     (* [ts1] and [ts2] must be empty because of typing. *)
-     solve {p with to_solve = (ctx,a1,a2)::(ctx',b1,b2)::to_solve}
+      if !log_enabled then log_unif "decompose";
+      let (x,b1,b2) = Bindlib.unbind2 b1 b2 in
+      let ctx' = (x,a1,None) :: ctx in
+      (* [ts1] and [ts2] must be empty because of typing or normalization. *)
+      solve {p with to_solve = (ctx,a1,a2)::(ctx',b1,b2)::to_solve}
 
   | Vari x1, Vari x2 when Bindlib.eq_vars x1 x2 ->
       solve (decompose ctx t1 ts1 t2 ts2 p)
@@ -460,11 +413,9 @@ let rec solve : problem -> constr list = fun p ->
   | _, Meta(m,ts) when ts2 = [] && instantiate ctx m ts t1 initial ->
      solve {p with recompute = true}
 
-  | Meta(m,ts), Prod _
-       when ts1 = [] && instantiation ctx m ts h2 <> None ->
+  | Meta(m,ts), Prod _ when ts1 = [] && instantiable ctx m ts h2 ->
       solve (imitate_prod ctx m h1 h2 p)
-  | Prod _, Meta(m,ts)
-       when ts2 = [] && instantiation ctx m ts h1 <> None ->
+  | Prod _, Meta(m,ts) when ts2 = [] && instantiable ctx m ts h1 ->
       solve (imitate_prod ctx m h1 h2 p)
 
   | Meta(m,_), _ when imitate_lam_cond h1 ts1 ->
@@ -488,16 +439,20 @@ let rec solve : problem -> constr list = fun p ->
   and (h2, ts2) = LibTerm.get_args t2 in
   let initial = (ctx,t1,t2)::to_solve in
 
+  if !log_enabled then log_unif "normalize";
+  if !log_enabled then log_unif "%a" pp_constr (ctx,t1,t2);
+
   match h1, h2 with
   | Type, Type
   | Kind, Kind -> solve p
 
   | Prod(a1,b1), Prod(a2,b2)
   | Abst(a1,b1), Abst(a2,b2) ->
-     let (x,b1,b2) = Bindlib.unbind2 b1 b2 in
-     let ctx' = (x,a1,None) :: ctx in
-     (* [ts1] and [ts2] must be empty because of typing. *)
-     solve {p with to_solve = (ctx,a1,a2)::(ctx',b1,b2)::to_solve}
+      if !log_enabled then log_unif "decompose";
+      let (x,b1,b2) = Bindlib.unbind2 b1 b2 in
+      let ctx' = (x,a1,None) :: ctx in
+      (* [ts1] and [ts2] must be empty because of typing or normalization. *)
+      solve {p with to_solve = (ctx,a1,a2)::(ctx',b1,b2)::to_solve}
 
   | Vari x1, Vari x2 when Bindlib.eq_vars x1 x2 ->
       solve (decompose ctx t1 ts1 t2 ts2 p)
@@ -509,11 +464,9 @@ let rec solve : problem -> constr list = fun p ->
   | _, Meta(m,ts) when ts2 = [] && instantiate ctx m ts t1 initial ->
      solve {p with recompute = true}
 
-  | Meta(m,ts), Prod _
-       when ts1 = [] && instantiation ctx m ts h2 <> None ->
+  | Meta(m,ts), Prod _ when ts1 = [] && instantiable ctx m ts h2 ->
       solve (imitate_prod ctx m h1 h2 p)
-  | Prod _, Meta (m,ts)
-       when ts2 = [] && instantiation ctx m ts h1 <> None ->
+  | Prod _, Meta (m,ts) when ts2 = [] && instantiable ctx m ts h1 ->
       solve (imitate_prod ctx m h1 h2 p)
 
   | Meta(m,_), _ when imitate_lam_cond h1 ts1 ->
@@ -553,7 +506,10 @@ let rec solve : problem -> constr list = fun p ->
     returns the constraints that could not be solved.
     This is the entry point setting the flag type_check *)
 let solve : ?type_check:bool -> problem -> constr list =
-  fun ?(type_check=true) p -> Stdlib.(do_type_check := type_check); solve p
+  fun ?(type_check=true) p ->
+  if !log_enabled then log_hndl "solve %a" pp_problem p;
+  Stdlib.(do_type_check := type_check);
+  time_of logger_hndl (fun () -> solve p)
 
 (** [solve_noexn problem] attempts to solve [problem]. If there is
    no solution, the value [None] is returned. Otherwise [Some(cs)] is

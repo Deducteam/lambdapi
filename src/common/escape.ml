@@ -20,11 +20,6 @@ let is_escaped : string -> bool = fun s ->
 let unescape : string -> string = fun s ->
   if is_escaped s then String.(sub s 2 (length s - 4)) else s
 
-(** [add_prefix p s] adds the prefix [p] at the beginning of the
-    identifier [s]. *)
-let add_prefix : string -> string -> string = fun p s ->
-  if is_escaped s then "{|" ^ p ^ unescape s ^ "|}" else p ^ s
-
 (** [split c s] returns the list of all (possibly empty) substrings of
    [s] that are delimited by the [c] character, if [c] does not occur in an
    escaped identifier. [s] is assumed to be a well parenthesized (wrt
