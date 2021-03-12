@@ -15,6 +15,38 @@ only when all generated goals have been solved.
 
 Reminder: the BNF grammar of tactics is in `syntax.bnf <https://raw.githubusercontent.com/Deducteam/lambdapi/master/docs/syntax.bnf>`__.
 
+``begin``
+---------
+
+Start a proof.
+
+``focus``
+---------
+
+Put the focus on another goal. A goal is identified by its number in
+the list of goals displayed by the ``print`` command. In Emacs,
+clicking on the goal will add the required ``focus`` command in the
+source.
+
+``end``
+-------
+
+Exit the proof mode when all goals have been solved. It then adds in
+the environment the symbol declaration or definition the proof is
+about.
+
+``abort``
+^^^^^^^^^
+
+Exit the proof mode without changing the environment.
+
+``admitted``
+^^^^^^^^^^^^
+
+Add axioms in the environment to solve the remaining goals and exit of
+the proof mode.
+
+
 ``apply``
 ---------
 
@@ -92,6 +124,12 @@ Why3 know about the available provers.
 
 Adds in the environment new symbols (axioms) proving the focused goal.
 
+``fail``
+^^^^^^^^
+
+Always fails. It is useful when developing a proof to stop at some
+particular point.
+
 Tactics on equality
 -------------------
 
@@ -149,36 +187,3 @@ replaced by ``uₙ``, then the tactic ``rewrite t`` replaces in the
 focused goal all occurrences of ``u`` by the term ``r`` with ``x₁``
 replaced by ``u₁``, …, ``xₙ`` replaced by ``uₙ``.
 
-Proof mode management
----------------------
-
-``focus``
-^^^^^^^^^
-
-Allows the user to change the focus to another goal. A goal is
-identified by its number in the list of goals displayed by the
-``print`` command.
-
-``end``
-^^^^^^^
-
-Allows one to quit the proof mode when all goals have been solved. It
-then adds in the environment the symbol the proof is about.
-
-``abort``
-^^^^^^^^^
-
-Allows one to quit the proof mode without changing the environment.
-
-``admitted``
-^^^^^^^^^^^^
-
-Allows one to quit the proof mode even if all goals have not been
-solved. It then adds in the environment a new symbol (axiom) whose
-type is given by the ``symbol`` command.
-
-``fail``
-^^^^^^^^
-
-Always fails. It is useful when developing a proof to stop at some
-particular point.
