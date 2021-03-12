@@ -38,6 +38,7 @@
 (defconst lambdapi-warning
   '("abort"
     "admit"
+    "admitted"
     "fail")
   "To be displayed in red.")
 

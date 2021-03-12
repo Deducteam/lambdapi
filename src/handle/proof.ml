@@ -142,6 +142,14 @@ let pp_goals : proof_state pp = fun oc ps ->
       Goal.pp_hyps oc g;
       List.iteri (fun i g -> out "%d. %a\n" i Goal.pp g) ps.proof_goals
 
+(** [remove_solved_goals ps] removes from the proof state [ps] the typing
+   goals that are solved. *)
+let remove_solved_goals : proof_state -> proof_state = fun ps ->
+  let f = function
+    | Typ gt -> !(gt.goal_meta.meta_value) = None
+    | Unif _ -> true
+  in {ps with proof_goals = List.filter f ps.proof_goals}
+
 (** [sys_metas ps] returns the map of system-generated metavariables of the
    proof state [ps]. *)
 let sys_metas : proof_state -> meta IntMap.t = fun ps ->

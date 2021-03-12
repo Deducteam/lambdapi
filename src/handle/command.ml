@@ -186,66 +186,6 @@ type proof_data =
   ; pdata_expo     : expo (** Allowed exposition of symbols in the proof
                                    script. *) }
 
-(** Number of admitted axioms in the current signature. Used to name the
-    generated axioms. This reference is reset in {!module:Compile} for each
-    new compiled module. *)
-let admitted : int Stdlib.ref = Stdlib.ref (-1)
-
-(** [add_axiom ss m] adds an axiom for meta [m] in signature state [ss]. *)
-let add_axiom : sig_state -> Meta.t -> sig_state = fun ss m ->
-  let name =
-    let m_name =
-      match m.meta_name with Some n -> "_" ^ n | _ -> ""
-    in
-    Printf.sprintf "_ax%i%s" Stdlib.(incr admitted; !admitted) m_name
-  in
-  (* Create a symbol with the same type as the metavariable *)
-  let ss, sym =
-    Console.out 3 (red "(symb) add axiom %a: %a\n") pp_uid name pp_term
-      !(m.meta_type);
-    add_symbol ss Public Const Eager true (Pos.none name) !(m.meta_type) []
-      None
-  in
-  (* Create the value which will be substituted for the metavariable. This
-     value is [sym x0 ... xn] where [xi] are variables that will be
-     substituted by the terms of the explicit substitution of the
-     metavariable. *)
-  let meta_value =
-    let vars =
-      let mk_var i = Bindlib.new_var mkfree (Printf.sprintf "x%i" i) in
-      Array.init m.meta_arity mk_var
-    in
-    let ax = _Appl_symb sym (Array.to_list vars |> List.map _Vari) in
-    Bindlib.(bind_mvar vars ax |> unbox)
-  in
-  Meta.set m meta_value; ss
-
-(** [admit_goal ss g] admits typing goal [g] by adding axioms into signature
-    state [ss]. *)
-let admit_goal : sig_state -> goal -> sig_state = fun  ss g ->
-  (* [admit_meta ss m] adds as many axioms as needed to instantiate
-     metavariable [m] by a fresh axiom added to the signature [ss].
-     Metavariable [m] is set to this new axiom in the process. If [m] is
-     already set to a value, nothing is done. *)
-  let admit_meta ss m =
-    let ss = Stdlib.ref ss in
-    (* [admit ms m] adds recursively axioms to admit the
-       metavariables on which [m] depends, and then admits
-       [m]. *)
-    let rec admit ms m =
-      (* This assertion should be ensured by the typechecking
-         algorithm. *)
-      assert (not (MetaSet.mem m ms));
-      LibTerm.Meta.iter true (admit (MetaSet.add m ms)) !(m.meta_type);
-      Stdlib.(ss := add_axiom !ss m)
-    in
-    admit MetaSet.empty m; Stdlib.(!ss)
-  in
-  match g with Unif _ -> ss | Typ g ->
-  match !(g.goal_meta.meta_value) with
-  | Some _ -> ss
-  | None -> admit_meta ss g.goal_meta
-
 (** [handle compile ss cmd] tries to handle the command [cmd] with [ss] as
     the signature state and [compile] as the main compilation function
     processing lambdapi modules (it is passed as argument to avoid cyclic
@@ -453,11 +393,27 @@ let handle : (Path.t -> Sign.t) -> sig_state -> p_command ->
         Console.State.pop ();
         match pe.elt with
         | P_proof_abort -> wrn pe.pos "Proof aborted."; ss
-        | P_proof_admit ->
+        | P_proof_admitted ->
             (* If the proof is finished, display a warning. *)
             if finished ps then
               wrn pe.pos "The proof is finished. Use 'end' instead.";
-            let ss = List.fold_left admit_goal ss ps.proof_goals in
+            let ss =
+              match ps.proof_term with
+              | Some m ->
+                  (* We admit the initial goal. *)
+                  Tactic.admit_meta ss m
+              | None ->
+                  (* We admit all the remaining typing goals. *)
+                  let admit_goal ss g =
+                    match g with
+                    | Unif _ -> ss
+                    | Typ gt ->
+                        let m = gt.goal_meta in
+                        match !(m.meta_value) with
+                        | None -> Tactic.admit_meta ss m
+                        | Some _ -> ss
+                  in List.fold_left admit_goal ss ps.proof_goals
+            in
             (* Add the symbol in the signature with a warning. *)
             Console.out 3 (red "(symb) add %a : %a\n")
               pp_uid id pp_term a;

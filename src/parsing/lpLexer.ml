@@ -13,6 +13,7 @@ type token =
   (* keywords in alphabetical order *)
   | ABORT
   | ADMIT
+  | ADMITTED
   | APPLY
   | AS
   | ASSERT
@@ -194,6 +195,7 @@ end = struct
       List.sort String.compare
         [ "abort"
         ; "admit"
+        ; "admitted"
         ; "apply"
         ; "as"
         ; "assert"
@@ -293,6 +295,7 @@ end = struct
 
     | "abort" -> ABORT
     | "admit" -> ADMIT
+    | "admitted" -> ADMITTED
     | "apply" -> APPLY
     | "as" -> AS
     | "assert" -> ASSERT

@@ -1,5 +1,12 @@
 ### Unreleased
 
+#### Add tactic admit (2021-03-12)
+
+- rename command `admit` into `admitted`
+- `admitted`: admit the initial goal instead of the remaining goals
+  (when the proof is a definition)
+- add tactic `admit`
+
 #### Improvements in type inference, unification and printing (2021-03-11)
 
 - improve type inference and unification

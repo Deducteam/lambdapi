@@ -87,6 +87,11 @@ The user should define those symbols using builtins as follows :
 **Important note:** you must run ``why3 config --full-config`` to make
 Why3 know about the available provers.
 
+``admit``
+---------
+
+Adds in the environment new symbols (axioms) proving the focused goal.
+
 Tactics on equality
 -------------------
 
@@ -147,30 +152,30 @@ replaced by ``u₁``, …, ``xₙ`` replaced by ``uₙ``.
 Proof mode management
 ---------------------
 
-``end``
-^^^^^^^
-
-Allows one to quit the proof mode when all goals have been solved. It
-then adds in the environment the symbol the proof is about.
-
-``admit``
-^^^^^^^^^
-
-Allows one to quit the proof mode even if all goals have not been
-solved. It then adds in the environment a new symbol (axiom) whose
-type is given by the ``symbol`` command.
-
-``abort``
-^^^^^^^^^
-
-Allows one to quit the proof mode without changing the environment.
-
 ``focus``
 ^^^^^^^^^
 
 Allows the user to change the focus to another goal. A goal is
 identified by its number in the list of goals displayed by the
 ``print`` command.
+
+``end``
+^^^^^^^
+
+Allows one to quit the proof mode when all goals have been solved. It
+then adds in the environment the symbol the proof is about.
+
+``abort``
+^^^^^^^^^
+
+Allows one to quit the proof mode without changing the environment.
+
+``admitted``
+^^^^^^^^^^^^
+
+Allows one to quit the proof mode even if all goals have not been
+solved. It then adds in the environment a new symbol (axiom) whose
+type is given by the ``symbol`` command.
 
 ``fail``
 ^^^^^^^^
