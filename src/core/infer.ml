@@ -16,8 +16,8 @@ let log_infr = log_infr.logger
 (** Given a meta [m] of type [Πx1:a1,..,Πxn:an,b], [make_prod m] returns a
    tuple [(c,vs,xs,p)] where [vs] are the Bindlib variables x1,..,xn, [xs] are
    the term variables x1,..,xn, [c] is the context [x1:a1,..,xn:an], and [p]
-   is a product term of the form [Πy:m1[x1;..;xn],m2[x1;..;xn;y] with [m1] and
-   [m2] fresh metavariables. *)
+   is a product term of the form [Πy:m1[x1;..;xn],m2[x1;..;xn;y]] with [m1]
+   and [m2] fresh metavariables. *)
 let make_prod : meta -> ctxt * tvar array * tbox array * tbox = fun m ->
   if !log_enabled then log_infr "make_prod";
   let n = m.meta_arity in
@@ -191,9 +191,7 @@ let infer_noexn :
       if !log_enabled then lg.logger "infer %a%a" pp_ctxt ctx pp_term t;
       let a = time_of lg (fun () -> infer ctx t) in
       let cs = List.rev Stdlib.(!constraints) in
-      (if !log_enabled then
-        let cond oc c = Format.fprintf oc "\n  ; %a" pp_constr c in
-        lg.logger (gre "%a%a") pp_term a (List.pp cond "") cs);
+      if !log_enabled then lg.logger (gre "%a%a") pp_term a pp_constrs cs;
       Some (a, cs)
     with NotTypable -> None
   in Stdlib.(constraints := []); res
@@ -211,9 +209,7 @@ let check_noexn :
       if !log_enabled then lg.logger "check %a" pp_typing (ctx,t,a);
       time_of lg (fun () -> check ctx t a);
       let cs = List.rev Stdlib.(!constraints) in
-      (if !log_enabled then
-        let cond oc c = Format.fprintf oc "\n  ; %a" pp_constr c in
-        lg.logger (gre "%a") (List.pp cond "") cs);
+      if !log_enabled && cs <> [] then lg.logger (gre "%a") pp_constrs cs;
       Some cs
     with NotTypable -> None
   in Stdlib.(constraints := []); res
@@ -233,7 +229,7 @@ let infer : solver -> Pos.popt -> ctxt -> term -> term =
       | None -> fatal pos "[%a] is not typable." pp_term t
       | Some [] -> a
       | Some cs ->
-          List.iter (wrn pos "Cannot solve [%a].\n" pp_constr) cs;
+          List.iter (wrn pos "Cannot solve %a.\n" pp_constr) cs;
           fatal pos "[%a] is not typable." pp_term a
 
 (** [check pos ctx t a] checks that [t] has type [a] in context [ctx],
@@ -248,7 +244,7 @@ let check : solver -> Pos.popt -> ctxt -> term -> term -> unit =
       | None -> fatal pos "[%a] does not have type [%a]." pp_term t pp_term a
       | Some [] -> ()
       | Some cs ->
-          List.iter (wrn pos "Cannot solve [%a].\n" pp_constr) cs;
+          List.iter (wrn pos "Cannot solve %a.\n" pp_constr) cs;
           fatal pos "[%a] does not have type [%a]." pp_term t pp_term a
 
 (** [check_sort pos ctx t] checks that [t] has type [Type] or [Kind] in
@@ -262,7 +258,7 @@ let check_sort : solver -> Pos.popt -> ctxt -> term -> unit
       match solve_noexn {empty_problem with to_solve} with
       | None -> fatal pos "[%a] is not typable." pp_term t
       | Some ((_::_) as cs) ->
-          List.iter (wrn pos "Cannot solve [%a].\n" pp_constr) cs;
+          List.iter (wrn pos "Cannot solve %a.\n" pp_constr) cs;
           fatal pos "[%a] is not typable." pp_term a
       | Some [] ->
           match unfold a with

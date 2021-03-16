@@ -235,7 +235,7 @@ let goals_of_typ : term loc option -> term loc option -> goal list * term =
         end
     | None, None -> assert false (* already rejected by parser *)
   in
-  (List.rev_map (fun c -> Unif c) to_solve, typ)
+  (List.map (fun c -> Unif c) to_solve, typ)
 
 (** [goals_of_typ typ ter] returns a list of goals for [typ] to be typable by
    by a sort and [ter] to have type [typ] in the empty context. [ter] and

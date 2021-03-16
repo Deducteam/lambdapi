@@ -664,9 +664,6 @@ builtin "eqind" ≔ eq_ind;
 // Some proofs
 /////////////////////////////
 
-unif_rule τ $x ≡ N ↪ [ $x ≡ nat ];
-//FIXME: should be infered from injectivity of τ
-
 opaque symbol plus_0_n n : π(0 + n = n) ≔
 begin
   assume n;

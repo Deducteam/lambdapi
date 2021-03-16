@@ -13,10 +13,9 @@ constant symbol ι: Type;
 
 // A simple independant axiom
 symbol prop1: Prop;
-symbol f: Prf prop1 → El ι;
+symbol f: Prf prop1 → Prop;
 symbol π_f: Prf (f _)
 begin
-  focus 1;
   admit;
   // Adds an axiom [ax_?]
 admitted;
