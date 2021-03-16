@@ -80,8 +80,8 @@ let do_type_check = Stdlib.ref true
 let initial : constr list Stdlib.ref = Stdlib.ref []
 let is_initial c = List.exists (LibTerm.eq_constr c) Stdlib.(!initial)
 
-(** [instantiate ctx m ts u] check whether, in a problem [m[ts]=u], [m] can be
-    instantiated and, if so, instantiate it. *)
+(** [instantiate ctx m ts u] check whether, in a problem [m[ts] ≡ u], [m] can
+   be instantiated and, if so, instantiate it. *)
 let instantiate : ctxt -> meta -> term array -> term -> bool =
   fun ctx m ts u ->
   if !log_enabled then log_unif "try instantiate";
@@ -147,7 +147,7 @@ let add_constr : constr list -> constr -> constr list =
       | _ -> c::cs
 
 (** [add_to_unsolved t1 t2 p] checks whether [t1] is equivalent to [t2]. If
-   not, then it tries to apply unification rules on the problem [t1 = t2]. If
+   not, then it tries to apply unification rules on the problem [t1 ≡ t2]. If
    no unification rule applies then it adds [t1 = t2] in the unsolved problems
    of [p]. *)
 let add_to_unsolved : ctxt -> term -> term -> problem -> problem =
@@ -162,8 +162,8 @@ let add_to_unsolved : ctxt -> term -> term -> problem -> problem =
   (* Unification rules generate non empty list of unification constraints *)
   | Some(cs) -> {p with to_solve = List.fold_left add_constr p.to_solve cs}
 
-(** [decompose ctx ts1 ts2] tries to decompose a problem of the form [h ts1 =
-   h ts2] into the problems [t1 = u1; ..; tn = un], assuming that [ts1 =
+(** [decompose ctx ts1 ts2] tries to decompose a problem of the form [h ts1 ≡
+   h ts2] into the problems [t1 ≡ u1; ..; tn ≡ un], assuming that [ts1 =
    [t1;..;tn]] and [ts2 = [u1;..;un]]. *)
 let decompose : ctxt -> term list -> term list -> problem -> problem =
   fun ctx ts1 ts2 p ->
@@ -173,7 +173,7 @@ let decompose : ctxt -> term list -> term list -> problem -> problem =
        decomposition: f a b ≡ f a' b' => a ≡ a && b ≡ b' *)
     {p with to_solve = List.fold_right2 add_constr ts1 ts2 p.to_solve}
 
-(** For a problem [m[vs]=s(ts)] in context [ctx], where [vs] are distinct
+(** For a problem [m[vs] ≡ s(ts)] in context [ctx], where [vs] are distinct
    variables, [m] is a meta of type [Πy0:a0,..,Πyk-1:ak-1,b] with [k = length
    vs], [s] is an injective symbol of type [Πx0:b0,..,Πxn-1:bn-1,c] with [n =
    length ts], [imitate_inj ctx m vs us s ts] tries to instantiate [m] by
@@ -222,14 +222,14 @@ let imitate_lam_cond : term -> term list -> bool = fun h ts ->
       | Vari x -> not (Bindlib.occur x (lift h))
       | _ -> false
 
-(** For a problem of the form [Appl(m[ts],[Vari x;_])=_], where [m] is a
+(** For a problem of the form [Appl(m[ts],[Vari x;_]) ≡ _], where [m] is a
    metavariable of arity [n] and type [Πx1:a1,..,Πxn:an,t], and [x] does not
    occur in [m[ts]], instantiate [m] by [λx1:a1,..,λxn:an,λx:a,m1[x1,..,xn,x]]
    where [m1] is a new metavariable of arity [n+1] and:
 
   - either [t = Πx:a,b] and [m1] is of type [Πx1:a1,..,Πxn:an,Πx:a,b]
 
-  - or we add the problem [t = Πx:m2[x1,..,xn],m3[x1,..,xn,x]] where [m2] is a
+  - or we add the problem [t ≡ Πx:m2[x1,..,xn],m3[x1,..,xn,x]] where [m2] is a
    new metavariable of arity [n] and type [Πx1:a1,..,Πxn:an,TYPE] and [m3] is
    a new metavariable of arity [n+1] and type
    [Πx1:a1,..,Πxn:an,Πx:m2[x1,..,xn],TYPE], and do as in the previous case. *)
@@ -270,14 +270,15 @@ let imitate_lam : ctxt -> meta -> problem -> problem = fun ctx m p ->
    injective and [inverse s v] does not fail, and [None] otherwise. *)
 let inverse_opt : sym -> term list -> term -> (term * term) option =
   fun s ts v ->
+  if !log_enabled then log_unif "try inverse";
   try
     match ts with
     | [t] when is_injective s -> Some (t, Inverse.inverse s v)
     | _ -> raise Not_found
-  with Not_found -> None
+  with Not_found -> if !log_enabled then log_unif "failed"; None
 
-(** [add_inverse t1 s ts1 t2] tries to replace a problem of the form [t1 = t2]
-   with [t1 = s(ts1)] and [ts1=[u]] by [u = inverse s t2] when [s] is
+(** [add_inverse t1 s ts1 t2] tries to replace a problem of the form [t1 ≡ t2]
+   with [t1 = s(ts1)] and [ts1=[u]] by [u ≡ inverse s t2], when [s] is
    injective. *)
 let add_inverse :
       ctxt -> term -> sym -> term list -> term -> problem -> problem =
@@ -286,14 +287,13 @@ let add_inverse :
   | Some (t, u) -> {p with to_solve = (ctx,t,u)::p.to_solve}
   | _ -> add_to_unsolved ctx t1 t2 p
 
-(** For a problem of the form [m[ts] = Πx:_,_] with [ts] distinct bound
-   variables, [imitate_prod m ts] instantiates [m] by a fresh product. *)
+(** For a problem of the form [h1 ≡ h2] with [h1 = m[ts]], [h2 = Πx:_,_] (or
+   the opposite) and [ts] distinct bound variables, [imitate_prod m h1 h2 p]
+   instantiate [m] to a product and add the problem [h1 ≡ h2] to [p]. *)
 let imitate_prod : ctxt -> meta -> term -> term -> problem -> problem =
   fun ctx m h1 h2 p ->
   if !log_enabled then log_unif "imitate_prod %a" pp_meta m;
-  let cont, _vs, xs, t = Infer.make_prod m in
-  let cstr = (cont, Bindlib.unbox (_Meta m xs), Bindlib.unbox t) in
-  {p with to_solve = cstr::(ctx,h1,h2)::p.to_solve}
+  Infer.set_to_prod m; {p with to_solve = (ctx,h1,h2)::p.to_solve}
 
 (** [sym_sym_whnf ctx t1 s1 ts1 t2 s2 ts2 p] handles the case [s1(ts1) =
    s2(ts2); p] when [s1(ts1)] and [s2(ts2)] are in whnf. *)

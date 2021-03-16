@@ -13,13 +13,10 @@ open Extra
 let log_infr = new_logger 'i' "infr" "type inference/checking"
 let log_infr = log_infr.logger
 
-(** Given a meta [m] of type [Πx1:a1,..,Πxn:an,b], [make_prod m] returns a
-   tuple [(c,vs,xs,p)] where [vs] are the Bindlib variables x1,..,xn, [xs] are
-   the term variables x1,..,xn, [c] is the context [x1:a1,..,xn:an], and [p]
-   is a product term of the form [Πy:m1[x1;..;xn],m2[x1;..;xn;y]] with [m1]
-   and [m2] fresh metavariables. *)
-let make_prod : meta -> ctxt * tvar array * tbox array * tbox = fun m ->
-  if !log_enabled then log_infr "make_prod";
+(** Given a meta [m] of type [Πx1:a1,..,Πxn:an,b], [set_to_prod m] sets it to
+   product term of the form [Πy:m1[x1;..;xn],m2[x1;..;xn;y]] with [m1] and
+   [m2] fresh metavariables. *)
+let set_to_prod : meta -> unit = fun m ->
   let n = m.meta_arity in
   let env, s = Env.of_prod [] n !(m.meta_type) in
   let vs = Env.vars env in
@@ -35,7 +32,9 @@ let make_prod : meta -> ctxt * tvar array * tbox array * tbox = fun m ->
   let m2 = Meta.fresh u2 (n+1) in
   let b = Bindlib.bind_var y (_Meta m2 (Array.append xs [|_Vari y|])) in
   (* result *)
-  (Env.to_ctxt env, vs, xs, _Prod a b)
+  let p = _Prod a b in
+  if !log_enabled then log_infr "%a ≔ %a" pp_meta m pp_term (Bindlib.unbox p);
+  Meta.set m (Bindlib.unbox (Bindlib.bind_mvar vs p))
 
 (** Accumulated constraints. *)
 let constraints = Stdlib.ref []
@@ -128,12 +127,7 @@ let rec infer : ctxt -> term -> term = fun ctx t ->
       let rec get_prod f typ =
         match unfold typ with
         | Prod(a,b) -> (a,b)
-        | Meta(m,_) -> (* Set [m] to a product. *)
-            let _cont, vs, _xs, p = make_prod m in
-            if !log_enabled then
-              log_infr "%a ≔ %a" pp_meta m pp_term (Bindlib.unbox p);
-            Meta.set m (Bindlib.unbox (Bindlib.bind_mvar vs p));
-            get_prod f typ
+        | Meta(m,_) -> set_to_prod m; get_prod f typ
         | _ -> f typ
       in
       let get_prod_whnf = get_prod (fun _ -> raise NotTypable) in
