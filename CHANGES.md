@@ -1,5 +1,12 @@
 ### Unreleased
 
+#### Fix and improve inverse image computation (2021-03-16)
+
+- fix and improve the computation of the inverse image of a term wrt an injective function (no unification rule is needed in tests anymore)
+- fix management of initial constraints in unification (initial is now a global variable fixed when solve is called)
+- when applying a unification rule, add constraints on types too
+- add pp_constrs for printing lists of constraints
+
 #### Add tactic admit (2021-03-12)
 
 - rename command `admit` into `admitted`
