@@ -183,7 +183,7 @@ let infer_noexn : constr list -> ctxt -> term -> (term * constr list) option =
     try
       if !log_enabled then log_hndl (blu "infer %a%a") pp_ctxt ctx pp_term t;
       let a = time_of (fun () -> infer ctx t) in
-      let cs = List.rev Stdlib.(!constraints) in
+      let cs = Stdlib.(!constraints) in
       if !log_enabled then log_hndl (blu "%a%a") pp_term a pp_constrs cs;
       Some (a, cs)
     with NotTypable -> None
@@ -200,7 +200,7 @@ let check_noexn : constr list -> ctxt -> term -> term -> constr list option =
     try
       if !log_enabled then log_hndl (blu "check %a") pp_typing (ctx,t,a);
       time_of (fun () -> check ctx t a);
-      let cs = List.rev Stdlib.(!constraints) in
+      let cs = Stdlib.(!constraints) in
       if !log_enabled && cs <> [] then log_hndl (blu "%a") pp_constrs cs;
       Some cs
     with NotTypable -> None
@@ -217,6 +217,7 @@ let infer : solver -> Pos.popt -> ctxt -> term -> term =
   match infer_noexn [] ctx t with
   | None -> fatal pos "[%a] is not typable." pp_term t
   | Some(a, to_solve) ->
+      let to_solve = List.rev to_solve in
       match solve_noexn {empty_problem with to_solve} with
       | None -> fatal pos "[%a] is not typable." pp_term t
       | Some [] -> a
@@ -232,6 +233,7 @@ let check : solver -> Pos.popt -> ctxt -> term -> term -> unit =
   match check_noexn [] ctx t a with
   | None -> fatal pos "[%a] does not have type [%a]." pp_term t pp_term a
   | Some(to_solve) ->
+      let to_solve = List.rev to_solve in
       match solve_noexn {empty_problem with to_solve} with
       | None -> fatal pos "[%a] does not have type [%a]." pp_term t pp_term a
       | Some [] -> ()
@@ -247,6 +249,7 @@ let check_sort : solver -> Pos.popt -> ctxt -> term -> unit
   match infer_noexn [] ctx t with
   | None -> fatal pos "[%a] is not typable." pp_term t
   | Some(a, to_solve) ->
+      let to_solve = List.rev to_solve in
       match solve_noexn {empty_problem with to_solve} with
       | None -> fatal pos "[%a] is not typable." pp_term t
       | Some ((_::_) as cs) ->

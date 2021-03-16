@@ -188,6 +188,7 @@ let check_rule : Scope.pre_rule Pos.loc -> rule = fun ({pos; elt} as pr) ->
   match Infer.infer_noexn [] [] lhs_typing with
   | None -> fatal pos "The LHS is not typable."
   | Some(ty_lhs, to_solve) ->
+  let to_solve = List.rev to_solve in
   (* Try to simplify constraints. *)
   let type_check = false in (* Don't check typing when instantiating metas. *)
   match Unif.(solve_noexn ~type_check {empty_problem with to_solve}) with

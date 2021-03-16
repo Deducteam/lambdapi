@@ -2,7 +2,7 @@
 
 #### Fix and improve inverse image computation (2021-03-16)
 
-- fix and improve in `inverse.ml` the computation of the inverse image of a term wrt an injective function (no unification rule is needed anymore in common examples)
+- fix and improve in `inverse.ml` the computation of the inverse image of a term wrt an injective function (no unification rule is needed anymore in common examples, fix #342)
 - fix management of "initial" constraints in unification (initial is now a global variable updated whenever a new constraint is added)
 - when applying a unification rule, add constraints on types too (fix #466)
 - turn `Infer.make_prod` into `Infer.set_to_prod`
