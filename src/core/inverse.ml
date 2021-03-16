@@ -141,3 +141,6 @@ let rec inverse : sym -> term -> term = fun s v ->
       in
       LibTerm.add_args (Symb s0) [t1;t2]
   | _ -> raise Not_found
+
+let inverse : sym -> term -> term = fun s v ->
+  let t = inverse s v in assert (Eval.eq_modulo [] (Appl(Symb s,t)) v); t
