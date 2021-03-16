@@ -45,7 +45,7 @@ let conv ctx a b =
     begin
       let c = (ctx,a,b) in
       Stdlib.(constraints := c::!constraints);
-      if !log_enabled then log_infr (yel "add %a") pp_constr c
+      if !log_enabled then log_infr (mag "%a") pp_constr c
     end
 
 (** Exception that may be raised by type inference. *)
@@ -182,10 +182,10 @@ let infer_noexn :
   Stdlib.(constraints := cs);
   let res =
     try
-      if !log_enabled then lg.logger "infer %a%a" pp_ctxt ctx pp_term t;
+      if !log_enabled then lg.logger (blu "infer %a%a") pp_ctxt ctx pp_term t;
       let a = time_of lg (fun () -> infer ctx t) in
       let cs = List.rev Stdlib.(!constraints) in
-      if !log_enabled then lg.logger (gre "%a%a") pp_term a pp_constrs cs;
+      if !log_enabled then lg.logger (blu "%a%a") pp_term a pp_constrs cs;
       Some (a, cs)
     with NotTypable -> None
   in Stdlib.(constraints := []); res
@@ -200,10 +200,10 @@ let check_noexn :
   Stdlib.(constraints := cs);
   let res =
     try
-      if !log_enabled then lg.logger "check %a" pp_typing (ctx,t,a);
+      if !log_enabled then lg.logger (blu "check %a") pp_typing (ctx,t,a);
       time_of lg (fun () -> check ctx t a);
       let cs = List.rev Stdlib.(!constraints) in
-      if !log_enabled && cs <> [] then lg.logger (gre "%a") pp_constrs cs;
+      if !log_enabled && cs <> [] then lg.logger (blu "%a") pp_constrs cs;
       Some cs
     with NotTypable -> None
   in Stdlib.(constraints := []); res

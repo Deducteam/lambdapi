@@ -4,6 +4,7 @@
 
 - fix and improve the computation of the inverse image of a term wrt an injective function (no unification rule is needed in tests anymore)
 - fix management of initial constraints in unification (initial is now a global variable fixed when solve is called)
+- turn `Infer.make_prod` into `Infer.set_to_prod`
 - when applying a unification rule, add constraints on types too
 - add pp_constrs for printing lists of constraints
 

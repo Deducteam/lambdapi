@@ -5,6 +5,7 @@ open Timed
 open Common
 open Debug
 open Print
+open Lplib.Extra
 
 (** Logging function for unification. *)
 let logger_inv = new_logger 'v' "invr" "inverse"
@@ -26,7 +27,7 @@ let const_graph : sym -> (sym * sym) list = fun s ->
   if !log_enabled then log_inv "check rules of %a" pp_sym s;
   let add s0 s1 l =
     if !log_enabled then
-      log_inv "rule %a %a ↪ %a" pp_sym s pp_sym s0 pp_sym s1;
+      log_inv (yel "%a %a ↪ %a") pp_sym s pp_sym s0 pp_sym s1;
     (s0,s1)::l
   in
   let f l rule =
@@ -64,9 +65,9 @@ let prod_graph : sym -> (sym * sym * sym * bool) list = fun s ->
   if !log_enabled then log_inv "check rules of %a" pp_sym s;
   let add (s0,s1,s2,b) l =
     if !log_enabled then
-      if b then log_inv "rule %a (%a _ _) ↪ Π x:%a _, %a _[x]"
+      if b then log_inv (yel "%a (%a _ _) ↪ Π x:%a _, %a _[x]")
                   pp_sym s pp_sym s0 pp_sym s1 pp_sym s2
-      else log_inv "rule %a (%a _ _) ↪ %a _ → %a _"
+      else log_inv (yel "%a (%a _ _) ↪ %a _ → %a _")
              pp_sym s pp_sym s0 pp_sym s1 pp_sym s2;
     (s0,s1,s2,b)::l
   in
@@ -120,7 +121,7 @@ let inverse_prod : sym -> sym -> sym * sym * sym * bool = fun s s' ->
 (** [inverse s v] tries to compute a term [u] such that [s(u)] reduces to [v].
 @raise [Not_found] otherwise. *)
 let rec inverse : sym -> term -> term = fun s v ->
-  if !log_enabled then log_inv "try to compute %a⁻¹(%a)" pp_sym s pp_term v;
+  if !log_enabled then log_inv "compute %a⁻¹(%a)" pp_sym s pp_term v;
   match LibTerm.get_args v with
   | Symb s', [t] when s' == s -> t
   | Symb s', ts -> LibTerm.add_args (Symb (inverse_const s s')) ts
