@@ -472,7 +472,7 @@ let solve : ?type_check:bool -> problem -> constr list =
   fun ?(type_check=true) p ->
   if !log_enabled then log_hndl "solve %a" pp_problem p;
   Stdlib.(do_type_check := type_check; initial := p.to_solve);
-  time_of logger_hndl (fun () -> solve p)
+  time_of (fun () -> solve p)
 
 (** [solve_noexn problem] attempts to solve [problem]. If there is
    no solution, the value [None] is returned. Otherwise [Some(cs)] is

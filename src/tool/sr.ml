@@ -149,7 +149,7 @@ let check_rule : Scope.pre_rule Pos.loc -> rule = fun ({pos; elt} as pr) ->
          only used for printing. *)
       let rhs = Bindlib.(unbox (bind_mvar vars pr_rhs)) in
       let naive_rule = {lhs; rhs; arity; arities; vars; xvars_nb = 0} in
-      log_subj (mag "check %a") pp_rule (s, naive_rule);
+      log_subj (red "%a") pp_rule (s, naive_rule);
     end;
   (* Replace [Patt] nodes of LHS with corresponding elements of [vars]. *)
   let lhs_vars =
@@ -195,8 +195,7 @@ let check_rule : Scope.pre_rule Pos.loc -> rule = fun ({pos; elt} as pr) ->
   | Some lhs_constrs ->
   if !log_enabled then
     begin
-      log_subj (gre "LHS has type: %a") pp_term ty_lhs;
-      List.iter (log_subj (gre "  if %a") pp_constr) lhs_constrs;
+      log_subj "LHS has type: %a%a" pp_term ty_lhs pp_constrs lhs_constrs;
       log_subj "LHS is now: %a" pp_term lhs_typing;
       log_subj "RHS is now: %a" pp_term rhs_typing;
       log_subj "check that the RHS has the same type as the LHS"

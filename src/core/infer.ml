@@ -176,16 +176,15 @@ and check : ctxt -> term -> term -> unit = fun ctx t a ->
    and constraints [cs] cannot be infered, or [Some(a,cs')] where [a] is some
    type of [t] in the context [ctx] if the constraints [cs'] are satisfiable
    (which may not be the case). [ctx] must well sorted. *)
-let infer_noexn :
-    ?lg:logger -> constr list -> ctxt -> term -> (term * constr list) option =
-  fun ?(lg=logger_hndl) cs ctx t ->
+let infer_noexn : constr list -> ctxt -> term -> (term * constr list) option =
+  fun cs ctx t ->
   Stdlib.(constraints := cs);
   let res =
     try
-      if !log_enabled then lg.logger (blu "infer %a%a") pp_ctxt ctx pp_term t;
-      let a = time_of lg (fun () -> infer ctx t) in
+      if !log_enabled then log_hndl (blu "infer %a%a") pp_ctxt ctx pp_term t;
+      let a = time_of (fun () -> infer ctx t) in
       let cs = List.rev Stdlib.(!constraints) in
-      if !log_enabled then lg.logger (blu "%a%a") pp_term a pp_constrs cs;
+      if !log_enabled then log_hndl (blu "%a%a") pp_term a pp_constrs cs;
       Some (a, cs)
     with NotTypable -> None
   in Stdlib.(constraints := []); res
@@ -194,16 +193,15 @@ let infer_noexn :
    context [ctx] and constraints [cs], and [Some(cs')] where [cs'] is a list
    of constraints under which [t] may have type [a] (but constraints may be
    unsatisfiable). The context [ctx] and the type [a] must be well sorted. *)
-let check_noexn :
-    ?lg:logger -> constr list -> ctxt -> term -> term -> constr list option =
-  fun ?(lg=logger_hndl) cs ctx t a ->
+let check_noexn : constr list -> ctxt -> term -> term -> constr list option =
+  fun cs ctx t a ->
   Stdlib.(constraints := cs);
   let res =
     try
-      if !log_enabled then lg.logger (blu "check %a") pp_typing (ctx,t,a);
-      time_of lg (fun () -> check ctx t a);
+      if !log_enabled then log_hndl (blu "check %a") pp_typing (ctx,t,a);
+      time_of (fun () -> check ctx t a);
       let cs = List.rev Stdlib.(!constraints) in
-      if !log_enabled && cs <> [] then lg.logger (blu "%a") pp_constrs cs;
+      if !log_enabled && cs <> [] then log_hndl (blu "%a") pp_constrs cs;
       Some cs
     with NotTypable -> None
   in Stdlib.(constraints := []); res
