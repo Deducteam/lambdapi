@@ -67,8 +67,6 @@ let instantiation : ctxt -> meta -> term array -> term ->
     match nl_distinct_vars ctx ts with
     | None -> None
     | Some(vs, map) ->
-        (*if !log_enabled then
-          log_unif "variables: %a" (Array.pp pp_var " ") vs;*)
         let u = Eval.simplify (sym_to_var map u) in
         Some (Bindlib.bind_mvar vs (lift u))
   else None
