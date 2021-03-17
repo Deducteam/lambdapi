@@ -2,7 +2,6 @@ require open tests.OK.logic;
 require open tests.OK.bool;
 
 rule T bool ↪ B;
-unif_rule T $x ≡ B ↪ [ $x ≡ bool ]; //FIXME should be infered automatically
 
 opaque symbol and_idempotent (a:B) : P (bool_and a a = a)
 ≔ begin

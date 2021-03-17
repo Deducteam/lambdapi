@@ -15,8 +15,6 @@ let _ =
   Common.Library.set_lib_root None;
   let open Alcotest in
   let files = Lplib.Extra.files Common.Library.is_valid_src_extension "OK" in
-  (* TODO put back OK/unif_hint.lp when it is fixed *)
-  let files = List.filter (fun f -> f <> "OK/unif_hint.lp") files in
   let tests_ok = List.map (fun f -> test_case f `Quick (test_ok f)) files in
   let files = Lplib.Extra.files Common.Library.is_valid_src_extension "KO" in
   let tests_ko = List.map (fun f -> test_case f `Quick (test_ko f)) files in

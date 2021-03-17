@@ -261,13 +261,15 @@ let pp_ctxt : ctxt pp = fun ppf ctx ->
     end
 
 let pp_typing : constr pp = fun ppf (ctx, t, u) ->
-  out ppf "%a%a\n: %a" pp_ctxt ctx pp_term t pp_term u
+  out ppf "%a%a : %a" pp_ctxt ctx pp_term t pp_term u
 
 let pp_constr : constr pp = fun ppf (ctx, t, u) ->
-  out ppf "%a%a\n  ≡ %a" pp_ctxt ctx pp_term t pp_term u
+  out ppf "%a%a ≡ %a" pp_ctxt ctx pp_term t pp_term u
+
+let pp_constrs : constr list pp = fun ppf ->
+  List.iter (fprintf ppf "\n  ; %a" pp_constr)
 
 (* for debug only *)
 let pp_problem : problem pp = fun ppf p ->
-  let constr ppf c = out ppf "\n  ; %a" pp_constr c in
-  out ppf "{ recompute = %b; to_solve = [%a];\nunsolved = [%a] }"
-    p.recompute (List.pp constr "") p.to_solve (List.pp constr "") p.unsolved
+  out ppf "{ recompute = %b; to_solve = [%a];\n  unsolved = [%a] }"
+    p.recompute pp_constrs p.to_solve pp_constrs p.unsolved

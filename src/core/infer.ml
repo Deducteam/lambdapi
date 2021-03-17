@@ -13,13 +13,10 @@ open Extra
 let log_infr = new_logger 'i' "infr" "type inference/checking"
 let log_infr = log_infr.logger
 
-(** Given a meta [m] of type [Πx1:a1,..,Πxn:an,b], [make_prod m] returns a
-   tuple [(c,vs,xs,p)] where [vs] are the Bindlib variables x1,..,xn, [xs] are
-   the term variables x1,..,xn, [c] is the context [x1:a1,..,xn:an], and [p]
-   is a product term of the form [Πy:m1[x1;..;xn],m2[x1;..;xn;y] with [m1] and
+(** Given a meta [m] of type [Πx1:a1,..,Πxn:an,b], [set_to_prod m] sets it to
+   product term of the form [Πy:m1[x1;..;xn],m2[x1;..;xn;y]] with [m1] and
    [m2] fresh metavariables. *)
-let make_prod : meta -> ctxt * tvar array * tbox array * tbox = fun m ->
-  if !log_enabled then log_infr "make_prod";
+let set_to_prod : meta -> unit = fun m ->
   let n = m.meta_arity in
   let env, s = Env.of_prod [] n !(m.meta_type) in
   let vs = Env.vars env in
@@ -35,7 +32,9 @@ let make_prod : meta -> ctxt * tvar array * tbox array * tbox = fun m ->
   let m2 = Meta.fresh u2 (n+1) in
   let b = Bindlib.bind_var y (_Meta m2 (Array.append xs [|_Vari y|])) in
   (* result *)
-  (Env.to_ctxt env, vs, xs, _Prod a b)
+  let p = _Prod a b in
+  if !log_enabled then log_infr "%a ≔ %a" pp_meta m pp_term (Bindlib.unbox p);
+  Meta.set m (Bindlib.unbox (Bindlib.bind_mvar vs p))
 
 (** Accumulated constraints. *)
 let constraints = Stdlib.ref []
@@ -46,7 +45,7 @@ let conv ctx a b =
     begin
       let c = (ctx,a,b) in
       Stdlib.(constraints := c::!constraints);
-      if !log_enabled then log_infr (yel "add %a") pp_constr c
+      if !log_enabled then log_infr (mag "%a") pp_constr c
     end
 
 (** Exception that may be raised by type inference. *)
@@ -128,12 +127,7 @@ let rec infer : ctxt -> term -> term = fun ctx t ->
       let rec get_prod f typ =
         match unfold typ with
         | Prod(a,b) -> (a,b)
-        | Meta(m,_) -> (* Set [m] to a product. *)
-            let _cont, vs, _xs, p = make_prod m in
-            if !log_enabled then
-              log_infr "%a ≔ %a" pp_meta m pp_term (Bindlib.unbox p);
-            Meta.set m (Bindlib.unbox (Bindlib.bind_mvar vs p));
-            get_prod f typ
+        | Meta(m,_) -> set_to_prod m; get_prod f typ
         | _ -> f typ
       in
       let get_prod_whnf = get_prod (fun _ -> raise NotTypable) in
@@ -182,18 +176,15 @@ and check : ctxt -> term -> term -> unit = fun ctx t a ->
    and constraints [cs] cannot be infered, or [Some(a,cs')] where [a] is some
    type of [t] in the context [ctx] if the constraints [cs'] are satisfiable
    (which may not be the case). [ctx] must well sorted. *)
-let infer_noexn :
-    ?lg:logger -> constr list -> ctxt -> term -> (term * constr list) option =
-  fun ?(lg=logger_hndl) cs ctx t ->
+let infer_noexn : constr list -> ctxt -> term -> (term * constr list) option =
+  fun cs ctx t ->
   Stdlib.(constraints := cs);
   let res =
     try
-      if !log_enabled then lg.logger "infer %a%a" pp_ctxt ctx pp_term t;
-      let a = time_of lg (fun () -> infer ctx t) in
-      let cs = List.rev Stdlib.(!constraints) in
-      (if !log_enabled then
-        let cond oc c = Format.fprintf oc "\n  ; %a" pp_constr c in
-        lg.logger (gre "%a%a") pp_term a (List.pp cond "") cs);
+      if !log_enabled then log_hndl (blu "infer %a%a") pp_ctxt ctx pp_term t;
+      let a = time_of (fun () -> infer ctx t) in
+      let cs = Stdlib.(!constraints) in
+      if !log_enabled then log_hndl (blu "%a%a") pp_term a pp_constrs cs;
       Some (a, cs)
     with NotTypable -> None
   in Stdlib.(constraints := []); res
@@ -202,18 +193,15 @@ let infer_noexn :
    context [ctx] and constraints [cs], and [Some(cs')] where [cs'] is a list
    of constraints under which [t] may have type [a] (but constraints may be
    unsatisfiable). The context [ctx] and the type [a] must be well sorted. *)
-let check_noexn :
-    ?lg:logger -> constr list -> ctxt -> term -> term -> constr list option =
-  fun ?(lg=logger_hndl) cs ctx t a ->
+let check_noexn : constr list -> ctxt -> term -> term -> constr list option =
+  fun cs ctx t a ->
   Stdlib.(constraints := cs);
   let res =
     try
-      if !log_enabled then lg.logger "check %a" pp_typing (ctx,t,a);
-      time_of lg (fun () -> check ctx t a);
-      let cs = List.rev Stdlib.(!constraints) in
-      (if !log_enabled then
-        let cond oc c = Format.fprintf oc "\n  ; %a" pp_constr c in
-        lg.logger (gre "%a") (List.pp cond "") cs);
+      if !log_enabled then log_hndl (blu "check %a") pp_typing (ctx,t,a);
+      time_of (fun () -> check ctx t a);
+      let cs = Stdlib.(!constraints) in
+      if !log_enabled && cs <> [] then log_hndl (blu "%a") pp_constrs cs;
       Some cs
     with NotTypable -> None
   in Stdlib.(constraints := []); res
@@ -229,11 +217,12 @@ let infer : solver -> Pos.popt -> ctxt -> term -> term =
   match infer_noexn [] ctx t with
   | None -> fatal pos "[%a] is not typable." pp_term t
   | Some(a, to_solve) ->
+      let to_solve = List.rev to_solve in
       match solve_noexn {empty_problem with to_solve} with
       | None -> fatal pos "[%a] is not typable." pp_term t
       | Some [] -> a
       | Some cs ->
-          List.iter (wrn pos "Cannot solve [%a].\n" pp_constr) cs;
+          List.iter (wrn pos "Cannot solve %a.\n" pp_constr) cs;
           fatal pos "[%a] is not typable." pp_term a
 
 (** [check pos ctx t a] checks that [t] has type [a] in context [ctx],
@@ -244,11 +233,12 @@ let check : solver -> Pos.popt -> ctxt -> term -> term -> unit =
   match check_noexn [] ctx t a with
   | None -> fatal pos "[%a] does not have type [%a]." pp_term t pp_term a
   | Some(to_solve) ->
+      let to_solve = List.rev to_solve in
       match solve_noexn {empty_problem with to_solve} with
       | None -> fatal pos "[%a] does not have type [%a]." pp_term t pp_term a
       | Some [] -> ()
       | Some cs ->
-          List.iter (wrn pos "Cannot solve [%a].\n" pp_constr) cs;
+          List.iter (wrn pos "Cannot solve %a.\n" pp_constr) cs;
           fatal pos "[%a] does not have type [%a]." pp_term t pp_term a
 
 (** [check_sort pos ctx t] checks that [t] has type [Type] or [Kind] in
@@ -259,10 +249,11 @@ let check_sort : solver -> Pos.popt -> ctxt -> term -> unit
   match infer_noexn [] ctx t with
   | None -> fatal pos "[%a] is not typable." pp_term t
   | Some(a, to_solve) ->
+      let to_solve = List.rev to_solve in
       match solve_noexn {empty_problem with to_solve} with
       | None -> fatal pos "[%a] is not typable." pp_term t
       | Some ((_::_) as cs) ->
-          List.iter (wrn pos "Cannot solve [%a].\n" pp_constr) cs;
+          List.iter (wrn pos "Cannot solve %a.\n" pp_constr) cs;
           fatal pos "[%a] is not typable." pp_term a
       | Some [] ->
           match unfold a with
