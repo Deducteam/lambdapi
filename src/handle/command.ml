@@ -468,7 +468,7 @@ let too_long = Stdlib.ref infinity
     are captured, although they should not occur. *)
 let handle : (Path.t -> Sign.t) -> sig_state -> p_command ->
    sig_state * proof_data option * Query.result =
- fun compile ss ({pos;_} as cmd) ->
+  fun compile ss ({pos;_} as cmd) ->
   Print.sig_state := ss;
   try
     let (tm, ss) = time (handle compile ss) cmd in
