@@ -119,12 +119,12 @@ let current_goals : proof_state -> goal list =
   List.map string_of_goal ps.proof_goals
 
 type command_result =
-  | Cmd_OK    of state * Query.result
+  | Cmd_OK    of state * string option
   | Cmd_Proof of proof_state * Tactic.t list * Pos.popt * Pos.popt
   | Cmd_Error of Pos.popt option * string
 
 type tactic_result =
-  | Tac_OK    of proof_state * Query.result
+  | Tac_OK    of proof_state * string option
   | Tac_Error of Pos.popt option * string
 
 let t0 : Time.t Stdlib.ref = Stdlib.ref (Time.save ())
@@ -150,7 +150,8 @@ let handle_command : state -> Command.t -> command_result =
     let (ss, ps, qres) = Command.handle (Compile.compile false) ss cmd in
     let t = Time.save () in
     match ps with
-    | None -> Cmd_OK ((t, ss), qres)
+    | None ->
+        let qres = Option.map (fun f -> f ()) qres in Cmd_OK ((t, ss), qres)
     | Some(d) ->
         let ps = (t, ss, d.pdata_p_state, d.pdata_finalize, d.pdata_expo) in
         let ts = d.pdata_tactics in
@@ -161,6 +162,7 @@ let handle_tactic : proof_state -> Tactic.t -> tactic_result =
   fun (_, ss, ps, finalize, expo) tac ->
   try
     let ss, ps, qres = Handle.Tactic.handle ss expo ps tac in
+    let qres = Option.map (fun f -> f ()) qres in
     Tac_OK((Time.save (), ss, ps, finalize, expo), qres)
   with Fatal(p,m) -> Tac_Error(p,m)
 
