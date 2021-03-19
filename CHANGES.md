@@ -1,5 +1,9 @@
 ### Unreleased
 
+#### Add tactic `simpl <id>` for unfolding a specific symbol only (2021-03-19)
+
+and slightly improve `Ctxt.def_of`
+
 #### Fix and improve inverse image computation (2021-03-16)
 
 - fix and improve in `inverse.ml` the computation of the inverse image of a term wrt an injective function (no unification rule is needed anymore in common examples, fix #342)

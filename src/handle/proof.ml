@@ -51,7 +51,7 @@ module Goal = struct
     let goal_type = Eval.simplify goal_type in
     Typ {goal_meta = m; goal_hyps; goal_type}
 
-  (** [simpl f g] simplified the goal [g] with the function [f]. *)
+  (** [simpl f g] simplifies the goal [g] with the function [f]. *)
   let simpl : (term -> term) -> goal -> goal = fun f g ->
     match g with
     | Typ gt -> Typ {gt with goal_type = f gt.goal_type}
