@@ -41,7 +41,7 @@
            | refine <term>
            | reflexivity
            | rewrite [<assoc>] [[ <rw_patt> ]] <term>
-           | simpl
+           | simpl [<id>]
            | solve
            | symmetry
            | why3 ["<string>"]

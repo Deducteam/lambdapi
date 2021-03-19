@@ -252,7 +252,9 @@ let is_constant : sym -> bool = fun s -> s.sym_prop = Const
 let is_private : sym -> bool = fun s -> s.sym_expo = Privat
 
 (** Typing context associating a [Bindlib] variable to a type and possibly a
-    definition. *)
+   definition. The typing environment [x1:A1,..,xn:An] is represented by the
+   list [xn:An;..;x1:A1] in reverse order (last added variable comes
+   first). *)
 type ctxt = (term Bindlib.var * term * term option) list
 
 (** Type of unification constraints. *)
