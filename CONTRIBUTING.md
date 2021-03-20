@@ -79,3 +79,13 @@ following files:
 - the User Manual files in the `docs/` repository
 
 and do `make doc` for generating BNF grammars.
+
+Debugging
+---------
+
+Color codes:
+- blue: top-level type inference/checking
+- magenta: new constraint
+- green: constraint to solve
+- yellow: data from signature or context
+- red: instantiations and user commands

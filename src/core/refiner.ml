@@ -3,8 +3,8 @@ open Lplib
 open Timed
 open Term
 
-let logger = Debug.new_logger 'z' "refi" "Refiner"
-let log = logger.logger
+let log = Debug.new_logger 'z' "refi" "Refiner"
+let log = log.logger
 
 (** Module that provide a lookup function to the refiner. *)
 module type LOOKUP = sig
@@ -250,7 +250,7 @@ functor
       Stdlib.(constraints := cs);
       let r =
         try
-          let r = Debug.time_of logger (fun () -> f ctx args) in
+          let r = Debug.time_of (fun () -> f ctx args) in
           let cs = Stdlib.(!constraints) in
           Some(r, List.rev cs)
         with NotTypable -> None

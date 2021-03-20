@@ -8,7 +8,7 @@ rule T bool ↪ Bool;
 //   &x ≡ bool
 // --------------
 //  T &x ≡ Bool
-unif_rule (T $x) ≡ Bool ↪ [ $x ≡ bool ];
+//unif_rule (T $x) ≡ Bool ↪ [ $x ≡ bool ];
 
 symbol f : (Bool → Bool) → U;
 
@@ -21,7 +21,7 @@ rule T nat ↪ Nat;
 //   &x ≡ nat
 // -------------
 //  T &x ≡ Nat
-unif_rule T $x ≡ Nat ↪ [ $x ≡ nat ];
+//unif_rule T $x ≡ Nat ↪ [ $x ≡ nat ];
 
 symbol G: Bool → Nat → TYPE;
 type λ x: T _, λ y: T _, G x y;

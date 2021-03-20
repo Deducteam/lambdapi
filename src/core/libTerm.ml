@@ -183,6 +183,7 @@ module Meta = struct
   let has : bool -> term -> bool =
     let exception Found in fun b t ->
     try iter b (fun _ -> raise Found) t; false with Found -> true
+
 end
 
 (** [distinct_vars ctx ts] checks that the terms [ts] are distinct

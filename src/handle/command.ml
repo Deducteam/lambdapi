@@ -18,10 +18,6 @@ open Print
 open Proof
 open Debug
 
-(** Logging function for command handling. *)
-let logger_hndl = new_logger 'h' "hndl" "command handling"
-let log_hndl = logger_hndl.logger
-
 (* Register a check for the type of the builtin symbols "0" and "+1". *)
 let _ =
   let register = Builtin.register_expected_type (Unif.eq_noexn []) pp_term in
@@ -203,7 +199,8 @@ let handle : (Path.t -> Sign.t) -> sig_state -> p_command ->
     sig_state * proof_data option * Query.result =
   fun compile ss ({elt; pos} as cmd) ->
   if !log_enabled then
-    log_hndl (blu "%f %a\n%a") (Sys.time()) Pos.pp pos Pretty.command cmd;
+      (if !print_time then log_hndl "%f" (Sys.time());
+       log_hndl "%a" Pos.pp pos; log_hndl (red "%a") Pretty.command cmd);
   let scope expo = Scope.scope_term expo ss Env.empty IntMap.empty in
   match elt with
   | P_query(q) -> (ss, None, Query.handle ss None q)
@@ -470,7 +467,7 @@ let too_long = Stdlib.ref infinity
     are captured, although they should not occur. *)
 let handle : (Path.t -> Sign.t) -> sig_state -> p_command ->
    sig_state * proof_data option * Query.result =
- fun compile ss ({pos;_} as cmd) ->
+  fun compile ss ({pos;_} as cmd) ->
   Print.sig_state := ss;
   try
     let (tm, ss) = time (handle compile ss) cmd in

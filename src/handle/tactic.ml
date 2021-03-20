@@ -122,7 +122,7 @@ let tac_refine : popt -> proof_state -> goal_typ -> goal list -> term ->
 (** [ind_data t] returns the [ind_data] structure of [s] if [t] is of the
    form [s t1 .. tn] with [s] an inductive type. Fails otherwise. *)
 let ind_data : popt -> Env.t -> term -> Sign.ind_data = fun pos env a ->
-  let h, ts = LibTerm.get_args a in
+  let h, ts = LibTerm.get_args (Eval.whnf (Env.to_ctxt env) a) in
   match h with
   | Symb s ->
       let sign = Path.Map.find s.sym_path Sign.(!loaded) in

@@ -1,5 +1,20 @@
 ### Unreleased
 
+#### Fix and improve inverse image computation (2021-03-16)
+
+- fix and improve in `inverse.ml` the computation of the inverse image of a term wrt an injective function (no unification rule is needed anymore in common examples, fix #342)
+- fix management of "initial" constraints in unification (initial is now a global variable updated whenever a new constraint is added)
+- when applying a unification rule, add constraints on types too (fix #466)
+- turn `Infer.make_prod` into `Infer.set_to_prod`
+- add pp_constrs for printing lists of constraints
+- make time printing optional
+- improve visualization of debugging data using colors:
+  . blue: top-level type inference/checking
+  . magenta: new constraint
+  . green: constraint to solve
+  . yellow: data from signature or context
+  . red: instantiations (and handled commands)
+
 #### Add tactic admit (2021-03-12)
 
 - rename command `admit` into `admitted`

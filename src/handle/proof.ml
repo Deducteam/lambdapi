@@ -239,7 +239,7 @@ let goals_of_typ : term loc option -> term loc option ->
         end
     | None, None -> assert false (* already rejected by parser *)
   in
-  (List.rev_map (fun c -> Unif c) to_solve, typ, ter)
+  (List.map (fun c -> Unif c) to_solve, typ, ter)
 
 (** [goals_of_typ typ ter] returns a 3-uple [(gs, ty, te)] where [gs] is a
     list of goals for [typ] to be typable by a sort and [ter] to have type

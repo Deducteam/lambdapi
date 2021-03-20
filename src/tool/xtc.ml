@@ -173,7 +173,7 @@ let get_vars : sym -> rule -> (string * Term.term) list = fun s r ->
   match Infer.infer_noexn [] ctx lhs with
   | None -> assert false (*FIXME?*)
   | Some (_, _,cs) ->
-  let cs = List.map (fun (_,t,u) -> (t,u)) cs in
+  let cs = List.rev_map (fun (_,t,u) -> (t,u)) cs in
   let ctx = List.map (fun (x,a,_) -> (x,a)) ctx in
   List.map (fun (v,ty) -> Bindlib.name_of v, List.assoc ty cs(*FIXME?*)) ctx
 
