@@ -6,37 +6,47 @@ open Term
 let log = Debug.new_logger 'z' "refi" "Refiner"
 let log = log.logger
 
-(** Module that provide a lookup function to the refiner. *)
-module type LOOKUP = sig
-  val lookup : ctxt -> term -> term -> (tbinder * constr list) option
-  (** [lookup a b] returns a pair [Some(coerce,cs)] where [coerce] is a term
-      binder that binds terms of type [a] to terms of type [b], and [cs] is a
-      list of constraints for [subst coerce (Vari x)] to be of type [b] when
-      [x] is a fresh variable of type [a]. If there is no such coercion,
-      [None] is returned. *)
-end
-
 (** Type for unification constraints solvers. *)
 type solver = problem -> constr list option
+
+type coercer = ctxt -> term -> term -> term -> term
+
+(** Module that provide a lookup function to the refiner. *)
+module type LOOKUP = sig
+  val lookup : coercer -> ctxt -> term -> term -> (term * term * term) option
+  (** [lookup cc ctx a b] returns a 3-uple [Some(t_c, dom, arg)] where [t_c]
+      is a term of type [r] with [r ≈ b] (where [≈] is not specified), and
+      [t_c] is the coercion of a term of type [a] to [b]. The term [t_c] is of
+      the form [c ?1 … ?k … ?n] where [c] is a symbol of type [Πx1:T1, …,
+      Πxk:Tk, …, Πxn:Tn, r] and where the [k]th argument is a reference (a
+      {!constructor:Term.TRef} term) to [arg] which is cast from [Tk] with [Tk
+      ≈ a] to [r] (with [r ≈ b]). The function [cc ctx t a b] coerces term [t]
+      in context [ctx] from type [a] to [b]. It may be used to coerce
+      recursively if needed. *)
+
+  val solve : solver
+  (** [solve pb] is specified in {!module:Unif}, see
+      {!val:Unif.solve_noexn}. *)
+end
 
 module type S = sig
   exception NotTypable
   (** Raised when a term cannot be typed. *)
 
-  val infer : solver -> ?pos:Pos.pos -> ctxt -> term -> term * term
-  (** [infer solver ?pos ctx t] returns a tuple [(u, a)] where [a] is the type
-      of [t] inferred from context [ctx], [u] is [t] refined. [?pos] is used
-      in error messages to indicate the position of [t].
+  val infer : ?pos:Pos.pos -> ctxt -> term -> term * term
+  (** [infer ?pos ctx t] returns a tuple [(u, a)] where [a] is the type of [t]
+      inferred from context [ctx], [u] is [t] refined. [?pos] is used in error
+      messages to indicate the position of [t].
       @raise NotTypable when the type of [t] cannot be inferred. *)
 
-  val check : solver -> ?pos:Pos.pos -> ctxt -> term -> term -> term
-  (** [check solver ?pos ctx t a] checks that [t] is of type [a] solving
-      constraints with [solver] and returns [t] refined. The parameter [?pos]
-      is used in error messages to indicate the position of [t].
+  val check : ?pos:Pos.pos -> ctxt -> term -> term -> term
+  (** [check ?pos ctx t a] checks that [t] is of type [a] solving constraints
+      with [solver] and returns [t] refined. The parameter [?pos] is used in
+      error messages to indicate the position of [t].
       @raise NotTypable if [t] does not have type [a] or type of [t] cannot be
-      inferred. *)
+                        inferred. *)
 
-  val check_sort : solver -> ?pos:Pos.pos -> ctxt -> term -> term * term
+  val check_sort : ?pos:Pos.pos -> ctxt -> term -> term * term
   (** [type_enforce ctx t] verifies that [t] is a type and returns a tuple
       [(t',s)] where [t'] is [t] refined and [s] is the sort of [t]. *)
 
@@ -85,27 +95,29 @@ functor
         [b]. *)
     let rec coerce : ctxt -> term -> term -> term -> term =
      fun ctx t a b ->
-      if !Debug.log_enabled then
-        log "Coerce [%a: %a = %a]" Print.pp_term t Print.pp_term a Print.pp_term
-          b;
-      if Eval.eq_modulo ctx a b then t
-      else match L.lookup ctx a b with
-        | Some (c, eqs) ->
-            let add_eq (ctx, a, b) = unif ctx a b in
-            List.iter add_eq eqs;
-            let out = Bindlib.subst c t in
-            if !(Debug.log_enabled) then
-              log (Extra.gre "Coerced \"%a\" to \"%a\"") Print.pp_term t
-                Print.pp_term out;
-            out
-        | None ->
-            (if !Debug.log_enabled then log (Extra.red "Failed coercion"));
-            unif ctx a b; t
+     if !Debug.log_enabled then
+       log "Coerce [%a: %a = %a]" Print.pp_term t Print.pp_term a
+         Print.pp_term b;
+     if Eval.eq_modulo ctx a b then t else
+     let eqs = List.rev Stdlib.(!constraints) in
+     let pb = {empty_problem with to_solve = (ctx, a, b) :: eqs} in
+     match L.solve pb with
+     | Some [] -> t
+     | None | Some _ ->
+     match L.lookup coerce ctx a b with
+     | Some (t_c, t_c_ty, arg) ->
+         if !(Debug.log_enabled) then
+           log (Extra.gre "Coerced \"%a\" to \"%a\"") Print.pp_term t
+             Print.pp_term t_c;
+         unif ctx arg t; unif ctx b t_c_ty; t_c
+     | None ->
+         (if !Debug.log_enabled then log (Extra.red "Failed coercion"));
+         unif ctx a b; t
 
     (** [type_enforce ctx a] returns a tuple [(a',s)] where [a'] is refined
         term [a] and [s] is a sort (Type or Kind) such that [a'] is of type
         [s]. *)
-    and type_enforce : ctxt -> term -> term * term =
+    let rec type_enforce : ctxt -> term -> term * term =
      fun ctx a ->
       if !Debug.log_enabled then log "Type enforce [%a]" Print.pp_term a;
       let a, s = infer ctx a in
@@ -244,12 +256,12 @@ functor
       let force ctx (t, a) = force ctx t a in
       (noexn force) cs ctx (t, a)
 
-    let infer : solver -> ?pos:Pos.pos -> ctxt -> term -> term * term =
-      fun solve_noexn ?pos ctx t ->
+    let infer : ?pos:Pos.pos -> ctxt -> term -> term * term =
+      fun ?pos ctx t ->
       match infer_noexn [] ctx t with
       | None -> Error.fatal pos "[%a] is not typable." Print.pp_term t
       | Some(t, a, to_solve) ->
-          match solve_noexn {empty_problem with to_solve} with
+          match L.solve {empty_problem with to_solve} with
             | None -> Error.fatal pos "[%a] is not typable."
                         Print.pp_term t
             | Some [] -> (t, a)
@@ -259,13 +271,13 @@ functor
                   cs;
                 Error.fatal pos "[%a] is not typable." Print.pp_term a
 
-    let check : solver -> ?pos:Pos.pos -> ctxt -> term -> term -> term =
-      fun solve_noexn ?pos ctx t a ->
+    let check : ?pos:Pos.pos -> ctxt -> term -> term -> term =
+      fun ?pos ctx t a ->
       match check_noexn [] ctx t a with
       | None -> Error.fatal pos "[%a] does not have type [%a]."
                   Print.pp_term t Print.pp_term a
       | Some(t, to_solve) ->
-          match solve_noexn {empty_problem with to_solve} with
+          match L.solve {empty_problem with to_solve} with
             | None -> Error.fatal pos "[%a] does not have type [%a]."
                         Print.pp_term t Print.pp_term a
             | Some [] -> t
@@ -276,12 +288,12 @@ functor
                 Error.fatal pos "[%a] does not have type [%a]."
                   Print.pp_term t Print.pp_term a
 
-    let check_sort : solver -> ?pos:Pos.pos -> ctxt -> term -> term * term =
-      fun solve_noexn ?pos ctx t ->
+    let check_sort : ?pos:Pos.pos -> ctxt -> term -> term * term =
+      fun ?pos ctx t ->
       Stdlib.(constraints := []);
       let t, a = type_enforce ctx t in
       let to_solve = Stdlib.(!constraints) in
-      match solve_noexn {empty_problem with to_solve} with
+      match L.solve {empty_problem with to_solve} with
       | None -> Error.fatal pos "[%a] is not typable" Print.pp_term t
       | Some [] -> t, a
       | Some cs ->
@@ -293,7 +305,8 @@ functor
 (** {1 Preset refiners} *)
 
 (** A refiner without coercion generator. *)
-module NoCoercion = Make(struct let lookup _ _ _ = None end)
+module NoCoercion =
+  Make(struct let lookup _ _ _ _ = None let solve _ = None end)
 
 (** A reference to a refiner that can be used in other modules. *)
 let default : (module S) Stdlib.ref = Stdlib.ref (module NoCoercion: S)

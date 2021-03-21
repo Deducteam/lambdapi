@@ -510,3 +510,11 @@ let solve_noexn : ?type_check:bool -> problem -> constr list option =
 let eq_noexn : ?type_check:bool -> ctxt -> term -> term -> bool =
   fun ?(type_check=true) c t u ->
   solve_noexn ~type_check {empty_problem with to_solve=[c,t,u]} = Some []
+
+let _ =
+  let module L = struct
+    let lookup _ _ _ _ = None
+    let solve pb = solve_noexn pb
+  end in
+  let module UnifCoerce = Refiner.Make(L) in
+  Stdlib.(Refiner.default := (module UnifCoerce))

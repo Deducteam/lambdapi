@@ -184,9 +184,13 @@ let check_rule : Scope.pre_rule Pos.loc -> rule = fun ({pos; elt} as pr) ->
       log_subj "transformed LHS: %a" pp_term lhs_typing;
       log_subj "transformed RHS: %a" pp_term rhs_typing
     end;
+(* Do not type check when instantiating. *)
+  let module Infer = Refiner.Make(struct
+      let lookup _ _ _ _ = None
+      let solve = Unif.solve_noexn ~type_check:false
+    end)
+  in
   (* Infer the typing constraints of the LHS. *)
-  (* let module Infer = (val Stdlib.(!Refiner.default)) in *)
-  let module Infer = Refiner.NoCoercion in
   match Infer.infer_noexn [] [] lhs_typing with
   | None -> fatal pos "The LHS is not typable."
   | Some(lhs_typing, ty_lhs, to_solve) ->

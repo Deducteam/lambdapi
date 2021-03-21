@@ -164,7 +164,7 @@ let handle_inductive_symbol : sig_state -> expo -> prop -> match_strat
   let typ = Scope.scope_term expo ss Env.empty IntMap.empty typ in
   let module Infer = (val Stdlib.(!Refiner.default)) in
   (* We check that [a] is typable by a sort. *)
-  let (typ, _) = Infer.check_sort Unif.solve_noexn ?pos [] typ in
+  let (typ, _) = Infer.check_sort ?pos [] typ in
   (* We check that no metavariable remains. *)
   if LibTerm.Meta.has true typ then
     (fatal_msg "The type of %a has unsolved metavariables.\n" pp_uid name;

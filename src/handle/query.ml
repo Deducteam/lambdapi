@@ -98,9 +98,9 @@ let handle : Sig_state.t -> proof_state option -> p_query -> result =
       Console.out 1 "(asrt) it is %b that %a\n" (not must_fail)
         pp_typing (ctxt, t, a);
       (* Check that [a] is typable by a sort. *)
-      let (a, _) = Infer.check_sort Unif.solve_noexn ?pos ctxt a in
+      let (a, _) = Infer.check_sort ?pos ctxt a in
       let result =
-        try ignore (Infer.check Unif.solve_noexn ?pos ctxt t a); true
+        try ignore (Infer.check ?pos ctxt t a); true
         with Fatal _ -> false
       in
       if result = must_fail then fatal pos "Assertion failed.";
@@ -110,9 +110,9 @@ let handle : Sig_state.t -> proof_state option -> p_query -> result =
       Console.out 1 "(asrt) it is %b that %a\n" (not must_fail)
         pp_constr (ctxt, t, u);
       (* Check that [t] is typable. *)
-      let (t, a) = Infer.infer Unif.solve_noexn ?pos:pt.pos ctxt t in
+      let (t, a) = Infer.infer ?pos:pt.pos ctxt t in
       (* Check that [u] is typable. *)
-      let (u, b) = Infer.infer Unif.solve_noexn ?pos:pu.pos ctxt u in
+      let (u, b) = Infer.infer ?pos:pu.pos ctxt u in
       (* Check that [t] and [u] have the same type. *)
       let to_solve = [ctxt,a,b] in
       begin
@@ -133,12 +133,12 @@ let handle : Sig_state.t -> proof_state option -> p_query -> result =
       None
   | P_query_infer(pt, cfg) ->
       let t = scope pt in
-      let (t, a) = Infer.infer Unif.solve_noexn ?pos:pt.pos ctxt t in
+      let (t, a) = Infer.infer ?pos:pt.pos ctxt t in
       let res = Eval.eval cfg ctxt a in
       Console.out 1 "(infr) %a : %a\n" pp_term t pp_term res;
       Some (fun () -> Format.asprintf "%a : %a" pp_term t pp_term res)
   | P_query_normalize(pt, cfg) ->
       let t = scope pt in
-      let t, _ = Infer.infer Unif.solve_noexn ?pos:pt.pos ctxt t in
+      let t, _ = Infer.infer ?pos:pt.pos ctxt t in
       Console.out 1 "(comp) %a\n" pp_term (Eval.eval cfg ctxt t);
       Some (fun () -> Format.asprintf "%a" pp_term (Eval.eval cfg ctxt t))

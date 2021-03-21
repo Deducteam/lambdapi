@@ -312,7 +312,7 @@ let rewrite : Sig_state.t -> popt -> goal_typ -> bool -> rw_patt option
   (* Infer the type of [t] (the argument given to the tactic). *)
   let g_ctxt = Env.to_ctxt g_env in
   let module Infer = (val Stdlib.(!Refiner.default)) in
-  let _, t_type = Infer.infer Unif.solve_noexn ?pos g_ctxt t in
+  let _, t_type = Infer.infer ?pos g_ctxt t in
 
   (* Check that the type of [t] is of the form “P (eq a l r)”. *)
   let (t_type, vars) = break_prod t_type in
