@@ -79,8 +79,16 @@ as new goals.
 ``simpl``
 ---------
 
-Normalizes the focused goal with respect to β-reduction and the
-user-defined rewriting rules.
+With no argument, ``simpl`` normalizes the focused goal with respect
+to β-reduction and the user-defined rewriting rules.
+
+If ``f`` is a non-opaque symbol having a definition (introduced with
+``≔``), then ``simpl f`` replaces in the focused goal every occurrence
+of ``f`` by its definition.
+
+If ``f`` is a symbol identifier having rewriting rules, then ``simpl
+f`` applies these rules bottom-up on every occurrence of ``f`` in the
+focused goal.
 
 ``solve``
 ---------

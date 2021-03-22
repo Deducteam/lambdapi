@@ -1,5 +1,9 @@
 ### Unreleased
 
+#### Add tactic `simpl <id>` for unfolding a specific symbol only (2021-03-22)
+
+and slightly improve `Ctxt.def_of`
+
 #### Bug fixes (2021-03-22)
 
 - fix type inference in the case of an application (t u) where the type of t is not a product yet (uncomment code commented in #596)

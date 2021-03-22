@@ -201,7 +201,7 @@ tactic:
         | Some(Pratter.Left) -> false
         | _ -> true
       in make_pos $sloc (P_tac_rewrite(b,p,t)) }
-  | SIMPL { make_pos $sloc P_tac_simpl }
+  | SIMPL i=id? { make_pos $sloc (P_tac_simpl i) }
   | SOLVE { make_pos $sloc P_tac_solve }
   | SYMMETRY { make_pos $sloc P_tac_sym }
   | WHY3 s=STRINGLIT? { make_pos $sloc (P_tac_why3 s) }

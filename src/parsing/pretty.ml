@@ -209,7 +209,8 @@ let tactic : p_tactic pp = fun ppf t ->
       let param_id ppf x = out ppf " %a" param_id x in
       out ppf "assume%a" (List.pp param_id "") xs
   | P_tac_apply(t) -> out ppf "apply %a" term t
-  | P_tac_simpl -> out ppf "simpl"
+  | P_tac_simpl None -> out ppf "simpl"
+  | P_tac_simpl (Some qid) -> out ppf "simpl %a" qident qid
   | P_tac_rewrite(b,p,t)     ->
       let dir ppf b = if not b then out ppf " left" in
       let pat ppf p = out ppf " [%a]" rw_patt p in

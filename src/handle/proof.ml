@@ -51,13 +51,11 @@ module Goal = struct
     let goal_type = Eval.simplify goal_type in
     Typ {goal_meta = m; goal_hyps; goal_type}
 
-  (** [simpl g] normalizes the goal [g]. *)
-  let simpl : goal -> goal = fun g ->
+  (** [simpl f g] simplifies the goal [g] with the function [f]. *)
+  let simpl : (term -> term) -> goal -> goal = fun f g ->
     match g with
-    | Typ gt ->
-        let goal_type =  Eval.snf (Env.to_ctxt gt.goal_hyps) gt.goal_type in
-        Typ {gt with goal_type}
-    | Unif (c,t,u) -> Unif (c, Eval.snf c t, Eval.snf c u)
+    | Typ gt -> Typ {gt with goal_type = f gt.goal_type}
+    | Unif (c,t,u) -> Unif (c, f t, f u)
 
   (** Comparison function. Unification goals are greater than typing goals. *)
   let compare : goal cmp = fun g g' ->

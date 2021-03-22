@@ -42,10 +42,10 @@ let rec unpack : term -> (term * term) list = fun eqs ->
       if s == cons then
         match LibTerm.get_args v with
         | (Symb(e), [t; u]) when e == equiv -> (t, u) :: unpack w
-        | _          (* Ill-formed term. *) -> assert false
-      else if s == equiv then [(v, w)] else
-      assert false (* Ill-formed term. *)
-  | _                 -> assert false (* Ill-formed term. *)
+        | _ -> assert false
+      else if s == equiv then [(v, w)]
+      else assert false
+  | _ -> assert false
 
 (** [is_ghost s] is true iff [s] is a symbol of the ghost signature. *)
 let is_ghost : sym -> bool = fun s -> s == equiv || s == cons
