@@ -134,7 +134,7 @@ let rec infer : ctxt -> term -> term = fun ctx t ->
         | Meta(m,_) -> set_to_prod m; get_prod f typ
         | _ -> f typ
       in
-      let get_prod_whnf = (* assume that its argument is in whnf *)
+      let get_prod_whnf = (* assumes that its argument is in whnf *)
         get_prod (fun typ ->
             let a = LibTerm.Meta.make ctx Type in
             (* We force [b] to be of type [Type] as there is little (no?)
