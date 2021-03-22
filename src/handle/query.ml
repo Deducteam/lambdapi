@@ -94,11 +94,11 @@ let handle : Sig_state.t -> proof_state option -> p_query -> result =
   | P_query_print(_)
   | P_query_proofterm -> assert false (* already done *)
   | P_query_assert(must_fail, P_assert_typing(pt,pa)) ->
-      let t = scope pt and a = scope pa in
+      let t = scope pt in let a = scope pa in
       Console.out 1 "(asrt) it is %b that %a\n" (not must_fail)
         pp_typing (ctxt, t, a);
       (* Check that [a] is typable by a sort. *)
-      let (a, _) = Infer.check_sort ?pos ctxt a in
+      let (a, _) = Infer.check_sort ctxt {elt=a;pos=pa.pos} in
       let result =
         try ignore (Infer.check ?pos ctxt t a); true
         with Fatal _ -> false
@@ -106,13 +106,13 @@ let handle : Sig_state.t -> proof_state option -> p_query -> result =
       if result = must_fail then fatal pos "Assertion failed.";
       None
   | P_query_assert(must_fail, P_assert_conv(pt,pu)) ->
-      let t = scope pt and u = scope pu in
+      let t = scope pt in let u = scope pu in
       Console.out 1 "(asrt) it is %b that %a\n" (not must_fail)
         pp_constr (ctxt, t, u);
       (* Check that [t] is typable. *)
-      let (t, a) = Infer.infer ?pos:pt.pos ctxt t in
+      let (t, a) = Infer.infer ctxt {elt=t;pos=pt.pos} in
       (* Check that [u] is typable. *)
-      let (u, b) = Infer.infer ?pos:pu.pos ctxt u in
+      let (u, b) = Infer.infer ctxt {elt=u;pos=pu.pos} in
       (* Check that [t] and [u] have the same type. *)
       let to_solve = [ctxt,a,b] in
       begin
@@ -133,12 +133,12 @@ let handle : Sig_state.t -> proof_state option -> p_query -> result =
       None
   | P_query_infer(pt, cfg) ->
       let t = scope pt in
-      let (t, a) = Infer.infer ?pos:pt.pos ctxt t in
+      let (t, a) = Infer.infer ctxt {elt=t;pos=pt.pos} in
       let res = Eval.eval cfg ctxt a in
       Console.out 1 "(infr) %a : %a\n" pp_term t pp_term res;
       Some (fun () -> Format.asprintf "%a : %a" pp_term t pp_term res)
   | P_query_normalize(pt, cfg) ->
       let t = scope pt in
-      let t, _ = Infer.infer ?pos:pt.pos ctxt t in
+      let t, _ = Infer.infer ctxt {elt=t;pos=pt.pos} in
       Console.out 1 "(comp) %a\n" pp_term (Eval.eval cfg ctxt t);
       Some (fun () -> Format.asprintf "%a" pp_term (Eval.eval cfg ctxt t))

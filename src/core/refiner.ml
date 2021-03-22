@@ -1,4 +1,5 @@
 open Common
+open Pos
 open Lplib
 open Timed
 open Term
@@ -33,8 +34,8 @@ module type S = sig
   exception NotTypable
   (** Raised when a term cannot be typed. *)
 
-  val infer : ?pos:Pos.pos -> ctxt -> term -> term * term
-  (** [infer ?pos ctx t] returns a tuple [(u, a)] where [a] is the type of [t]
+  val infer : ctxt -> term loc -> term * term
+  (** [infer ctx t] returns a tuple [(u, a)] where [a] is the type of [t]
       inferred from context [ctx], [u] is [t] refined. [?pos] is used in error
       messages to indicate the position of [t].
       @raise NotTypable when the type of [t] cannot be inferred. *)
@@ -46,7 +47,7 @@ module type S = sig
       @raise NotTypable if [t] does not have type [a] or type of [t] cannot be
                         inferred. *)
 
-  val check_sort : ?pos:Pos.pos -> ctxt -> term -> term * term
+  val check_sort : ctxt -> term loc -> term * term
   (** [type_enforce ctx t] verifies that [t] is a type and returns a tuple
       [(t',s)] where [t'] is [t] refined and [s] is the sort of [t]. *)
 
@@ -256,8 +257,8 @@ functor
       let force ctx (t, a) = force ctx t a in
       (noexn force) cs ctx (t, a)
 
-    let infer : ?pos:Pos.pos -> ctxt -> term -> term * term =
-      fun ?pos ctx t ->
+    let infer : ctxt -> term loc -> term * term =
+      fun ctx {pos; elt=t} ->
       match infer_noexn [] ctx t with
       | None -> Error.fatal pos "[%a] is not typable." Print.pp_term t
       | Some(t, a, to_solve) ->
@@ -288,8 +289,8 @@ functor
                 Error.fatal pos "[%a] does not have type [%a]."
                   Print.pp_term t Print.pp_term a
 
-    let check_sort : ?pos:Pos.pos -> ctxt -> term -> term * term =
-      fun ?pos ctx t ->
+    let check_sort : ctxt -> term loc -> term * term =
+      fun ctx {elt=t; pos} ->
       Stdlib.(constraints := []);
       let t, a = type_enforce ctx t in
       let to_solve = Stdlib.(!constraints) in
