@@ -116,7 +116,7 @@ bold if goalNo is 0"
                 (let ((name (plist-get hyp :hname))
                       (type (plist-get hyp :htype)))
                   (format "%s: %s\n" name type)))
-              (reverse hs)))))
+              hs))))
 
 (defun lp-format-string-goal (goal goalNo proofbuf proofpos)
   "Return the string associated to a single goal. Adds text-properties to
