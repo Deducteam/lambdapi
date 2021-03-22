@@ -124,19 +124,25 @@ let rec infer : ctxt -> term -> term = fun ctx t ->
      ------------------------------------
          ctx ⊢ Appl(t,u) ⇒ subst b u      *)
   | Appl(t,u)   ->
+      (* [get_prod f typ] returns the domain and codomain of [t] if [t] is a
+         product. If [t] is a metavariable, then it instantiates it with a
+         product calls [get_prod f typ] again. Otherwise, it calls [f typ]. *)
       let rec get_prod f typ =
+        if !log_enabled then log_infr "get_prod %a" pp_term typ;
         match unfold typ with
         | Prod(a,b) -> (a,b)
         | Meta(m,_) -> set_to_prod m; get_prod f typ
         | _ -> f typ
       in
-      let get_prod_whnf = get_prod (fun _ -> raise NotTypable) in
-        (*let a = LibTerm.Meta.make ctx Type in
-        (* Here, we force [b] to be of type [Type] as there is little
-           (no?) chance that it can be a kind. FIXME? *)
-        let b = LibTerm.Meta.make_codomain ctx a in
-        conv ctx t (Prod(a,b)); (a,b)*)
-      let get_prod = get_prod (fun t -> get_prod_whnf (Eval.whnf ctx t)) in
+      let get_prod_whnf = (* assumes that its argument is in whnf *)
+        get_prod (fun typ ->
+            let a = LibTerm.Meta.make ctx Type in
+            (* We force [b] to be of type [Type] as there is little (no?)
+               chance that it can be a kind. *)
+            let b = LibTerm.Meta.make_codomain ctx a in
+            conv ctx typ (Prod(a,b)); (a,b)) in
+      let get_prod =
+        get_prod (fun typ -> get_prod_whnf (Eval.whnf ctx typ)) in
       let (a,b) = get_prod (infer ctx t) in
       check ctx u a;
       Bindlib.subst b u
