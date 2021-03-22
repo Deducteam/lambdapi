@@ -23,10 +23,16 @@ let default_prover : string ref = ref "Alt-Ergo"
     a proof. It can be changed with "set prover <int>". *)
 let timeout : int ref = ref 2
 
-(** [why3_config] is the Why3 configuration read the configuration file (it is
-    usually located at ["~/.why3.conf"]). For more information, visit the Why3
-    documentation at http://why3.lri.fr/api/Whyconf.html. *)
-let why3_config : Why3.Whyconf.config = Why3.Whyconf.read_config None
+(** [why3_config] is the Why3 configuration read from the configuration file
+   (["~/.why3.conf"] usually). For more information, visit the Why3
+   documentation at http://why3.lri.fr/api/Whyconf.html. *)
+let why3_config : Why3.Whyconf.config =
+  let cfg = Why3.Whyconf.read_config None in
+  let provers = Why3.Whyconf.get_provers cfg in
+  Console.out 2 "available provers for why3:\n";
+  let pp_prover p _ = Console.out 2 "%a\n" Why3.Whyconf.print_prover p in
+  Why3.Whyconf.Mprover.iter pp_prover provers;
+  cfg
 
 (** [why3_main] is the main section of the Why3 configuration. *)
 let why3_main : Why3.Whyconf.main = Why3.Whyconf.get_main why3_config
@@ -143,7 +149,7 @@ let encode : Sig_state.t -> Pos.popt -> Env.env -> term -> Why3.Task.task =
 (** [run_task tsk pos prover_name] Run the task [tsk] with the specified
     prover named [prover_name] and return the answer of the prover. *)
 let run_task : Why3.Task.task -> Pos.popt -> string -> bool =
-    fun tsk pos prover_name ->
+  fun tsk pos prover_name ->
   (* Filter the set of why3 provers. *)
   let filter = Why3.Whyconf.parse_filter_prover prover_name in
   let provers = Why3.Whyconf.filter_provers why3_config filter in
@@ -163,7 +169,7 @@ let run_task : Why3.Task.task -> Pos.popt -> string -> bool =
       fatal_msg "Why3 configuration read from \"%s\".\n"
         (Why3.Whyconf.get_conf_file why3_config);
       fatal_msg "Your prover might not be installed or detected, ";
-      fatal pos "remember to run [why3 config --detect]."
+      fatal pos "remember to run [why3 config detect]."
     end;
   (* Return the prover configuration and load the driver. *)
   let prover = snd (Why3.Whyconf.Mprover.max_binding provers) in
