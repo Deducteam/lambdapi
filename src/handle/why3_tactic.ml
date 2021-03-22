@@ -27,7 +27,7 @@ let timeout : int ref = ref 2
    (["~/.why3.conf"] usually). For more information, visit the Why3
    documentation at http://why3.lri.fr/api/Whyconf.html. *)
 let why3_config : Why3.Whyconf.config =
-  let cfg = Why3.Whyconf.read_config None in
+  let cfg = Why3.Whyconf.init_config None in
   let provers = Why3.Whyconf.get_provers cfg in
   Console.out 2 "available provers for why3:\n";
   let pp_prover p _ = Console.out 2 "%a\n" Why3.Whyconf.print_prover p in
