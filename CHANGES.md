@@ -1,5 +1,11 @@
 ### Unreleased
 
+#### Bug fixes (2021-03-22)
+
+- fix type inference in the case of an application (t u) where the type of t is not a product yet (uncomment code commented in #596)
+- fix the order in which emacs prints hypotheses
+- fix opam dependencies: add constraint why3 <= 1.3.3
+
 #### Fix and improve inverse image computation (2021-03-16)
 
 - fix and improve in `inverse.ml` the computation of the inverse image of a term wrt an injective function (no unification rule is needed anymore in common examples, fix #342)
