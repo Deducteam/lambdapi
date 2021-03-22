@@ -305,9 +305,9 @@ functor
 
 (** {1 Preset refiners} *)
 
-(** A refiner without coercion generator. *)
-module NoCoercion =
+(** A refiner without coercion generator nor unification. *)
+module Bare =
   Make(struct let lookup _ _ _ _ = None let solve _ = None end)
 
-(** A reference to a refiner that can be used in other modules. *)
-let default : (module S) Stdlib.ref = Stdlib.ref (module NoCoercion: S)
+(** A reference to a refiner that can modified by other modules . *)
+let default : (module S) Stdlib.ref = Stdlib.ref (module Bare: S)
