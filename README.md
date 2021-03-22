@@ -58,14 +58,14 @@ code documentation, one needs
 [odoc](https://github.com/ocaml/odoc). For building the User Manual,
 see `docs/README.md`.
 
-**Note on Why3:** the command `why3 config --full-config`
+**Note on Why3:** the command `why3 config detect`
 must be run to make Why3 know the available provers.
 
 Using Opam, a suitable OCaml environment can be setup as follows:
 ```bash
 opam switch 4.11.1
 opam install dune bindlib timed menhir pratter yojson cmdliner why3 alcotest alt-ergo odoc
-why3 config --full-config
+why3 config detect
 ```
 
 To compile Lambdapi, just run the command `make` in the source directory.

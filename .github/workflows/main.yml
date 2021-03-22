@@ -26,8 +26,6 @@ jobs:
         run: |
           opam pin add alt-ergo 2.3.1
           opam install alt-ergo
-          opam pin add why3 1.3.3
-          opam install why3
           opam pin add -n -k path lambdapi .
           opam install --deps-only -d -t lambdapi
           opam update
@@ -35,6 +33,6 @@ jobs:
       - name: running tests...
         run: |
           eval $(opam env)
-          why3 config --full-config
+          why3 config detect
           make real_tests
           make sanity_check

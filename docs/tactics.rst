@@ -123,7 +123,7 @@ The user should define those symbols using builtins as follows :
    set builtin "or"    ≔ or      // : Prop → Prop → Prop
    set builtin "not"   ≔ not     // : Prop → Prop
 
-**Important note:** you must run ``why3 config --full-config`` to make
+**Important note:** you must run ``why3 config detect`` to make
 Why3 know about the available provers.
 
 ``admit``

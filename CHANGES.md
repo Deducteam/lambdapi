@@ -1,5 +1,7 @@
 ### Unreleased
 
+#### Compatibility with Why3 1.4.0
+
 #### Add tactic `simpl <id>` for unfolding a specific symbol only (2021-03-22)
 
 and slightly improve `Ctxt.def_of`
