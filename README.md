@@ -1,12 +1,8 @@
 Lambdapi, a proof assistant based on the λΠ-calculus modulo rewriting [![Gitter][gitter-badge]][gitter-link] [![Matrix][matrix-badge]][matrix-link]
 =====================================================================
 
-Lambdapi is a proof assistant based on the λΠ-calculus modulo
-rewriting. It comes with Emacs and VSCode extensions. More details
-are given in the [User Manual](https://lambdapi.readthedocs.io).
-Lambdapi files must end with `.lp`. But Lambdapi can also read
-[Dedukti](https://deducteam.github.io/) files (extension `.dk`) and
-convert them to Lambdapi files.
+[User Manual](https://lambdapi.readthedocs.io)
+-------------
 
 Issues can be reported on the following
 [issue tracker](https://github.com/Deducteam/lambdapi/issues).
@@ -21,11 +17,12 @@ Lambdapi requires a Unix-like system. It should work on Linux as well as on
 MacOS. It might be possible to make it work on Windows too with Cygwin or
 "bash on Windows".
 
-Installation via [Opam](http://opam.ocaml.org/)
+Installation via Opam
 ---------------------
 
 Lambdapi is under active development. A new version of the `lambdapi`
-Opam package will be released soon, when the development will have reached a
+[Opam](http://opam.ocaml.org/) package will be released soon,
+when the development will have reached a
 more stable point. For now, we advise you to pin the development
 repository to get the latest development version:
 ```bash
