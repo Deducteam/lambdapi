@@ -8,11 +8,11 @@ all: bin
 
 .PHONY: bin
 bin:
-	@dune build
+	@dune build -p lambdapi
 
 .PHONY: odoc
 odoc:
-	@dune build @doc
+	@dune build -p lambdapi @doc
 
 .PHONY: doc
 doc:
@@ -30,15 +30,15 @@ KO_TESTFILES = $(sort $(wildcard tests/KO/*.dk tests/KO/*.lp))
 
 .PHONY: tests
 tests: bin
-	@dune test
+	@dune test -p lambdapi
 	@printf "## Decision tree tests ##\n"
-	@dune exec -- tests/dtrees.sh
+	@dune exec -p lambdapi -- tests/dtrees.sh
 
 .PHONY: real_tests
 real_tests: bin
-	@dune test
+	@dune test -p lambdapi
 	@printf "## Decision tree tests ##\n"
-	@dune exec -- tests/dtrees.sh
+	@dune exec -p lambdapi -- tests/dtrees.sh
 
 .PHONY: sanity_check
 sanity_check: tools/sanity_check.sh
