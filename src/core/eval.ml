@@ -154,7 +154,7 @@ and eq_modulo : ctxt -> term -> term -> bool = fun ctx a b ->
     | (_          , _          ) -> raise Exit
   in
   let res = try eq_modulo [(a,b)]; true with Exit -> false in
-  if !log_enabled then log_conv (r_or_g res "%a") pp_constr (ctx,a,b); res
+  if !log_enabled then log_conv (g_or_r res "%a") pp_constr (ctx,a,b); res
 
 (** {b NOTE} that in {!val:tree_walk} matching with trees involves two
     collections of terms.

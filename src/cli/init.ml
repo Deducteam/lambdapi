@@ -3,13 +3,15 @@ open Common
 open Error
 open Format
 
-let with_file : string -> (formatter -> unit) -> unit = fun file fn ->
-  let oc = open_out file in fn (formatter_of_out_channel oc); close_out oc
+let write_file : string -> (formatter -> unit) -> unit = fun fn pp ->
+  let oc = open_out fn in
+  let ppf = formatter_of_out_channel oc in
+  pp ppf; pp_print_flush ppf (); close_out oc
 
-let write_makefile : formatter -> unit = fun oc ->
-  fprintf oc
+let pp_makefile : formatter -> unit = fun ppf ->
+  fprintf ppf
     ".POSIX:\n\
-     SRC = nat.lp main.lp\n\
+     SRC = \n\
      OBJ = $(SRC:.lp=.lpo)\n\
      .SUFFIXES:\n\
      \n\
@@ -27,39 +29,7 @@ let write_makefile : formatter -> unit = fun oc ->
      .SUFFIXES: .lp .lpo\n\
      \n\
      .lp.lpo:\n\
-     \tlambdapi check --gen-obj $<\n%!" Package.pkg_file Package.pkg_file
-
-let write_ex_nat : formatter -> unit = fun oc ->
-  fprintf oc
-    "// Generated example file: unary natural numbers.\n\
-     constant symbol N : TYPE\n\
-     \n\
-     constant symbol z : N\n\
-     constant symbol s : N → N\n\
-     \n\
-     // Enabling built-in natural number literal, and example.\n\
-     \n\
-     set builtin \"0\"  ≔ z\n\
-     set builtin \"+1\" ≔ s\n\
-     \n\
-     definition forty_two ≔ 42\n\
-     \n\
-     // Addition function.\n\
-     \n\
-     symbol add : N → N → N\n\
-     set infix left 6 \"+\" ≔ add\n\
-     \n\
-     rule z      + $n     ↪ $n\n\
-     with (s $m) + $n     ↪ s ($m + $n)\n\
-     with $m     + z      ↪ $m\n\
-     with $m     + (s $n) ↪ s ($m + $n)\n%!"
-
-let write_ex_main : Path.t -> formatter -> unit = fun root_path oc ->
-  fprintf oc
-    "// Generated example file.\n\
-     require open %s.nat // Note the full module qualification.\n\
-     \n\
-     assert 42 + 12 ≡ 54\n%!" (String.concat "." root_path)
+     \tlambdapi check --gen-obj $<\n" Package.pkg_file Package.pkg_file
 
 let run : Path.t -> unit = fun root_path ->
   let run _ =
@@ -74,16 +44,13 @@ let run : Path.t -> unit = fun root_path ->
         pkg_name;
     Unix.mkdir pkg_name 0o700;
     (* Write the package configuration file. *)
-    let write_pkg_file oc =
-      fprintf oc "package_name = %s\n" pkg_name;
-      fprintf oc "root_path    = %a\n" Path.pp root_path
+    let pp_pkg_file ppf =
+      fprintf ppf "package_name = %s\nroot_path    = %a\n"
+        pkg_name Path.pp root_path
     in
-    let pkg_file = Filename.concat pkg_name Package.pkg_file in
-    with_file pkg_file write_pkg_file;
+    write_file (Filename.concat pkg_name Package.pkg_file) pp_pkg_file;
     (* Write the Makefile and example file. *)
-    with_file (Filename.concat pkg_name "Makefile") write_makefile;
-    with_file (Filename.concat pkg_name "nat.lp") write_ex_nat;
-    with_file (Filename.concat pkg_name "main.lp") (write_ex_main root_path)
+    write_file (Filename.concat pkg_name "Makefile") pp_makefile;
   in
   Error.handle_exceptions run
 
@@ -99,7 +66,6 @@ let root_path : Path.t Term.t =
   in
   let i = Arg.(info [] ~docv:"MOD_PATH" ~doc) in
   Arg.(non_empty & pos 0 (list ~sep:'.' string) [] & i)
-
 
 let cmd =
   let doc = "Create a new Lambdapi package to get started with a project." in

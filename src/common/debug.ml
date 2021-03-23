@@ -77,7 +77,7 @@ let logger_hndl = new_logger 'h' "hndl" "command handling"
 let log_hndl = logger_hndl.logger
 
 (** To print time data. *)
-let print_time = ref true
+let print_time = ref false
 
 (** [time_of f x] computes [f x] and the time for computing it. *)
 let time_of : (unit -> 'b) -> 'b = fun f ->
