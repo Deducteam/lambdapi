@@ -7,7 +7,7 @@
 
 (install
  (section share_root)
- (package lambdapi)
+ (package lambdapi-mode)
  (files
   (lambdapi-abbrev.el as emacs/site-lisp/lambdapi-abbrev.el)
   (lambdapi-capf.el as emacs/site-lisp/lambdapi-capf.el)
