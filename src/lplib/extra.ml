@@ -24,9 +24,9 @@ let blu fmt = colorize "34" fmt
 let mag fmt = colorize "35" fmt
 let cya fmt = colorize "36" fmt
 
-(** [r_or_g cond fmt] colors the format [fmt] in green if [cond] is [true] and
+(** [g_or_r cond fmt] colors the format [fmt] in green if [cond] is [true] and
     in red otherwise. *)
-let r_or_g cond = if cond then gre else red
+let g_or_r cond = if cond then gre else red
 
 (** [get_safe_prefix p strings] returns a string starting with [p] and so that,
     there is no non-negative integer [k] such that [p ^ string_of_int k] belongs
