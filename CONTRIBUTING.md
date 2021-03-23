@@ -70,7 +70,8 @@ following files:
 - `src/core/pretty.ml`
 - `src/core/print.ml`
 - `editors/vim/syntax/lambdapi.vim`
-- `editors/emacs/lambdapi-smie.el`
+- `editors/emacs/lambdapi-vars.el` (syntax coloring)
+- `editors/emacs/lambdapi-smie.el` (grammar and indentation)
 - `editors/vscode/lp.configuration.json` (comments configuration),
 - `editors/vscode/syntaxes/lp.tmLanguage.json` (syntax highlighting),
 - `tools/listings.tex`
@@ -78,3 +79,13 @@ following files:
 - the User Manual files in the `docs/` repository
 
 and do `make doc` for generating BNF grammars.
+
+Debugging
+---------
+
+Color codes:
+- blue: top-level type inference/checking
+- magenta: new constraint
+- green: constraint to solve
+- yellow: data from signature or context
+- red: instantiations and user commands

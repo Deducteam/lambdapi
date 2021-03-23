@@ -13,11 +13,7 @@ in the file ``dir1/`` … ``/dirn/file.lp``. To be used, ``dir1.`` …
 An identifier can be:
 
 * a regular identifier, that is, an arbitrary (non-empty) sequence of
-   UTF-8 codepoints that fall in the regular language
-   ``[[:letter:]_][[:letter:]0..9_]`` where the class ``[:letter:]``
-   is ``[a..zA..Z-'&^\*%#~[:math:]]`` and the class ``[:math:]``
-   contains most mathematical symbols (including subscripts and
-   superscripts);
+  UTF-8 codepoints that are not among ``\t\r\n :,;`(){}[]"``.
 
 *  a non-negative integer if the builtins “0” and “+1” have been
    previously set (see the command ``set builtin`` in :doc:`commands`);

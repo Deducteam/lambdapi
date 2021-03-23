@@ -78,12 +78,15 @@ let parse_text : state -> fname:string -> string -> Command.t list * state =
   | Fatal(None           , _  ) -> assert false (* Should not produce. *)
 
 type proof_finalizer = Sig_state.t -> Proof.proof_state -> Sig_state.t
+
 type proof_state =
-  Time.t * Sig_state.t * Proof.proof_state * proof_finalizer *
-  Syntax.Tags.expo
+  Time.t * Sig_state.t * Proof.proof_state * proof_finalizer
+  * Syntax.Tags.expo
+
 type conclusion =
   | Typ of string * string
   | Unif of string * string
+
 type goal = (string * string) list * conclusion
 
 let string_of_goal : Proof.goal -> goal =
@@ -116,12 +119,12 @@ let current_goals : proof_state -> goal list =
   List.map string_of_goal ps.proof_goals
 
 type command_result =
-  | Cmd_OK    of state * Query.result
+  | Cmd_OK    of state * string option
   | Cmd_Proof of proof_state * Tactic.t list * Pos.popt * Pos.popt
   | Cmd_Error of Pos.popt option * string
 
 type tactic_result =
-  | Tac_OK    of proof_state * Query.result
+  | Tac_OK    of proof_state * string option
   | Tac_Error of Pos.popt option * string
 
 let t0 : Time.t Stdlib.ref = Stdlib.ref (Time.save ())
@@ -140,33 +143,33 @@ let initial_state : string -> state = fun fname ->
   (Time.save (), Sig_state.of_sign sign)
 
 let handle_command : state -> Command.t -> command_result =
-    fun (st,ss) cmd ->
+  fun (st,ss) cmd ->
   Time.restore st;
   let open Handle in
   try
-    let (ss, pst, qres) = Command.handle (Compile.compile false) ss cmd in
+    let (ss, ps, qres) = Command.handle (Compile.compile false) ss cmd in
     let t = Time.save () in
-    match pst with
-    | None       -> Cmd_OK ((t, ss), qres)
-    | Some(data) ->
-        let pst =
-          (t, ss, data.pdata_p_state, data.pdata_finalize, data.pdata_expo) in
-        let ts = data.pdata_tactics in
-        Cmd_Proof(pst, ts, data.pdata_stmt_pos, data.pdata_end_pos)
+    match ps with
+    | None ->
+        let qres = Option.map (fun f -> f ()) qres in Cmd_OK ((t, ss), qres)
+    | Some(d) ->
+        let ps = (t, ss, d.pdata_p_state, d.pdata_finalize, d.pdata_expo) in
+        let ts = d.pdata_tactics in
+        Cmd_Proof(ps, ts, d.pdata_stmt_pos, d.pdata_end_pos)
   with Fatal(p,m) -> Cmd_Error(p,m)
 
 let handle_tactic : proof_state -> Tactic.t -> tactic_result =
-  fun s t ->
-  let (_, ss, p, finalize, e) = s in
+  fun (_, ss, ps, finalize, expo) tac ->
   try
-    let p, qres = Handle.Tactic.handle ss e p t in
-    Tac_OK((Time.save (), ss, p, finalize, e), qres)
+    let ss, ps, qres = Handle.Tactic.handle ss expo ps tac in
+    let qres = Option.map (fun f -> f ()) qres in
+    Tac_OK((Time.save (), ss, ps, finalize, expo), qres)
   with Fatal(p,m) -> Tac_Error(p,m)
 
-let end_proof : proof_state -> command_result = fun s ->
-  let (_, ss, p, finalize, _) = s in
-  try Cmd_OK((Time.save (), finalize ss p), None)
+let end_proof : proof_state -> command_result =
+  fun (_, ss, ps, finalize, _) ->
+  try Cmd_OK((Time.save (), finalize ss ps), None)
   with Fatal(p,m) -> Cmd_Error(p,m)
 
-let get_symbols : state -> (Term.sym * Pos.popt) Extra.StrMap.t = fun s ->
-  (snd s).in_scope
+let get_symbols : state -> (Term.sym * Pos.popt) Extra.StrMap.t =
+  fun (_, ss) -> ss.in_scope

@@ -29,6 +29,7 @@ syntax.bnf:
 	-e 's/ASSOC/<assoc>/g' \
 	-e 's/ABORT/abort/g' \
 	-e 's/ADMIT/admit/g' \
+	-e 's/admitTED/admitted/g' \
 	-e 's/APPLY/apply/g' \
 	-e 's/AS/as/g' \
 	-e 's/asSERT/assert/g' \

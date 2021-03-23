@@ -149,7 +149,7 @@ let check_rule : Scope.pre_rule Pos.loc -> rule = fun ({pos; elt} as pr) ->
          only used for printing. *)
       let rhs = Bindlib.(unbox (bind_mvar vars pr_rhs)) in
       let naive_rule = {lhs; rhs; arity; arities; vars; xvars_nb = 0} in
-      log_subj (mag "check %a") pp_rule (s, naive_rule);
+      log_subj (red "%a") pp_rule (s, naive_rule);
     end;
   (* Replace [Patt] nodes of LHS with corresponding elements of [vars]. *)
   let lhs_vars =
@@ -188,6 +188,7 @@ let check_rule : Scope.pre_rule Pos.loc -> rule = fun ({pos; elt} as pr) ->
   match Infer.infer_noexn [] [] lhs_typing with
   | None -> fatal pos "The LHS is not typable."
   | Some(ty_lhs, to_solve) ->
+  let to_solve = List.rev to_solve in
   (* Try to simplify constraints. *)
   let type_check = false in (* Don't check typing when instantiating metas. *)
   match Unif.(solve_noexn ~type_check {empty_problem with to_solve}) with
@@ -195,8 +196,7 @@ let check_rule : Scope.pre_rule Pos.loc -> rule = fun ({pos; elt} as pr) ->
   | Some lhs_constrs ->
   if !log_enabled then
     begin
-      log_subj (gre "LHS has type: %a") pp_term ty_lhs;
-      List.iter (log_subj (gre "  if %a") pp_constr) lhs_constrs;
+      log_subj "LHS has type: %a%a" pp_term ty_lhs pp_constrs lhs_constrs;
       log_subj "LHS is now: %a" pp_term lhs_typing;
       log_subj "RHS is now: %a" pp_term rhs_typing;
       log_subj "check that the RHS has the same type as the LHS"
@@ -224,7 +224,7 @@ let check_rule : Scope.pre_rule Pos.loc -> rule = fun ({pos; elt} as pr) ->
             | Some(n) -> n
             | None    -> string_of_int m.meta_key
           in
-          let s = Term.create_sym (Sign.current_sign()).sign_path
+          let s = Term.create_sym (Sign.current_path())
                     Privat Defin Eager false sym_name !(m.meta_type) [] in
           Stdlib.(symbols := s :: !symbols);
           (* Build a definition for [m]. *)

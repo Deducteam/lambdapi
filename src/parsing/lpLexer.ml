@@ -13,6 +13,7 @@ type token =
   (* keywords in alphabetical order *)
   | ABORT
   | ADMIT
+  | ADMITTED
   | APPLY
   | AS
   | ASSERT
@@ -131,7 +132,7 @@ module Lp_lexer : sig
 
   val unif_rule_path : Path.t
   (** [unif_rule_path] is the path for [equiv] and [cons].
-     It cannot be entered by a user. *)
+      It cannot be entered by a user. *)
 
 end = struct
   let digit = [%sedlex.regexp? '0' .. '9']
@@ -140,36 +141,23 @@ end = struct
   let stringlit = [%sedlex.regexp? '"', Star (Compl ('"' | '\n')), '"']
   let comment = [%sedlex.regexp? "//", Star (Compl ('\n' | '\r'))]
 
-  (* We define the set of UTF8 codepoints that make up identifiers. The
-     builtin categories are described on the home page of sedlex
-     @see https://github.com/ocaml-community/sedlex *)
-
-  let alphabet = [%sedlex.regexp? 'a' .. 'z' | 'A' .. 'Z']
-  let superscript =
-    [%sedlex.regexp? 0x2070 | 0x00b9 | 0x00b2 | 0x00b3 | 0x2074 .. 0x207c]
-  let subscript = [%sedlex.regexp? 0x208 .. 0x208c]
-  let supplemental_punctuation = [%sedlex.regexp? 0x2e00 .. 0x2e52]
-  let ascii_sub =
-    [%sedlex.regexp? '-' | '\'' | '&' | '^' | '\\' | '*' | '%' | '#' | '~']
-  let letter =
-    [%sedlex.regexp? lowercase | uppercase | ascii_sub
-                   | math | other_math | subscript | superscript
-                   | supplemental_punctuation ]
-  let regid = [%sedlex.regexp? (letter | '_'), Star (letter | digit | '_')]
+  (* Identifiers are defined by what may not appear in them. *)
+  let regid = [%sedlex.regexp? Chars " ,;\r\t\n(){}[]:.`\""]
+  let regid = [%sedlex.regexp? Plus (Compl regid)]
 
   (* Once unescaped, escaped identifiers must not be empty, as the empty
      string is used in the path of ghost signatures. *)
   let escid =
     [%sedlex.regexp? "{|", Plus (Compl '|' | '|', Compl '}'), Star '|', "|}"]
+  let uid = [%sedlex.regexp? regid | escid]
+  let qid = [%sedlex.regexp? uid, Plus ('.', uid)]
+  let id = [%sedlex.regexp? uid | qid]
+
   let non_user_id = ""
   let ghost_path s = [non_user_id; s]
   let unif_rule_path = ghost_path "unif_rule"
   let equiv = "≡"
   let cons = ";"
-
-  let uid = [%sedlex.regexp? regid | escid]
-  let qid = [%sedlex.regexp? uid, Plus ('.', uid)]
-  let id = [%sedlex.regexp? uid | qid]
 
   (** [nom buf] eats whitespaces and comments in buffer [buf]. *)
   let rec nom : lexbuf -> unit = fun buf ->
@@ -194,6 +182,7 @@ end = struct
       List.sort String.compare
         [ "abort"
         ; "admit"
+        ; "admitted"
         ; "apply"
         ; "as"
         ; "assert"
@@ -277,7 +266,7 @@ end = struct
     | _ -> false
 
   (** [tail buf] returns the utf8 string formed from [buf] dropping its
-     first codepoints. *)
+      first codepoints. *)
   let tail : lexbuf -> string = fun buf ->
     Utf8.sub_lexeme buf 1 (lexeme_length buf - 1)
 
@@ -293,6 +282,7 @@ end = struct
 
     | "abort" -> ABORT
     | "admit" -> ADMIT
+    | "admitted" -> ADMITTED
     | "apply" -> APPLY
     | "as" -> AS
     | "assert" -> ASSERT
@@ -379,20 +369,16 @@ end = struct
 
     (* identifiers *)
 
-    (* Using the default case to lex identifiers result in a *very* slow
-       lexing. This is why a regular expression which includes many characters
-       is preferred over using anything for identifiers. *)
-
-    | '?', uid -> UID_META(Syntax.Name(Escape.unescape(tail buf)))
     | '?', integer ->
         UID_META(Syntax.Numb(int_of_string(Escape.unescape(tail buf))))
-    | '$', uid -> UID_PAT(Escape.unescape(tail buf))
+    | '?', uid -> UID_META(Syntax.Name(Escape.unescape (tail buf)))
+    | '$', uid -> UID_PAT(Escape.unescape (tail buf))
 
     | '@', uid -> ID_EXPL([Escape.unescape(tail buf)])
     | '@', qid -> ID_EXPL(List.map Escape.unescape (Path.of_string(tail buf)))
 
-    | uid -> UID(Escape.unescape(Utf8.lexeme buf))
-    | qid -> QID(List.map Escape.unescape (Path.of_string(Utf8.lexeme buf)))
+    | uid -> UID(Escape.unescape (Utf8.lexeme buf))
+    | qid -> QID(List.map Escape.unescape (Path.of_string (Utf8.lexeme buf)))
 
     (* invalid token *)
 

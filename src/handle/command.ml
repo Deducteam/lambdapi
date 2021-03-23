@@ -18,10 +18,6 @@ open Print
 open Proof
 open Debug
 
-(** Logging function for command handling. *)
-let log_hndl = new_logger 'h' "hndl" "command handling"
-let log_hndl = log_hndl.logger
-
 (* Register a check for the type of the builtin symbols "0" and "+1". *)
 let _ =
   let register = Builtin.register_expected_type (Unif.eq_noexn []) pp_term in
@@ -202,7 +198,8 @@ let handle : (Path.t -> Sign.t) -> sig_state -> p_command ->
     sig_state * proof_data option * Query.result =
   fun compile ss ({elt; pos} as cmd) ->
   if !log_enabled then
-    log_hndl (blu "%f %a\n%a") (Sys.time()) Pos.pp pos Pretty.command cmd;
+      (if !print_time then log_hndl "%f" (Sys.time());
+       log_hndl "%a" Pos.pp pos; log_hndl (red "%a") Pretty.command cmd);
   let scope expo = Scope.scope_term expo ss Env.empty IntMap.empty in
   match elt with
   | P_query(q) -> (ss, None, Query.handle ss None q)
@@ -354,6 +351,8 @@ let handle : (Path.t -> Sign.t) -> sig_state -> p_command ->
      | _, _, _, _ -> ());
     (* Build proof data. *)
     let data =
+      (* Scope keeping position, with [expo] parsed above. *)
+      let scope_p a = Pos.make a.pos (scope expo a) in
       (* Desugaring of arguments and scoping of [p_sym_trm]. *)
       let pt, t =
         match p_sym_trm with
@@ -363,7 +362,7 @@ let handle : (Path.t -> Sign.t) -> sig_state -> p_command ->
               else let pos = Pos.(cat (end_pos p_sym_nam.pos) pt.pos) in
                    Pos.make pos (P_Abst(p_sym_arg, pt))
             in
-            Some pt, Some (scope expo pt)
+            Some pt, Some (scope_p pt)
         | None -> None, None
       in
       (* Argument impliciteness. *)
@@ -377,17 +376,8 @@ let handle : (Path.t -> Sign.t) -> sig_state -> p_command ->
             in
             (Some(a), Scope.get_implicitness a)
       in
-      (* Scope the type and get its metavariables. *)
-      let ao, metas_a =
-        match ao with
-        | Some a -> let a = scope expo a in Some a, LibTerm.Meta.get true a
-        | None -> None, MetaSet.empty
-      in
-      (* Get the type of the symbol and the goals to solve for the declaration
-         to be well-typed. *)
-      let proof_goals, a = goals_of_typ pos ao t in
-      (* Add the metas of [a] as goals. *)
-      let proof_goals = add_goals_of_metas metas_a proof_goals in
+      let ao = Option.map scope_p ao in
+      let proof_goals, a = goals_of_typ ao t in
       (* Add the definition as goal so that we can refine on it. *)
       let proof_term =
         if p_sym_def then Some (Meta.fresh ~name:id a 0) else None in
@@ -403,43 +393,44 @@ let handle : (Path.t -> Sign.t) -> sig_state -> p_command ->
       let finalize ss ps =
         Console.State.pop ();
         match pe.elt with
-        | P_proof_abort ->
-            (* Just ignore the command with a warning. *)
-            wrn pe.pos "Proof aborted."; ss
-        | _ ->
-            (* Check that no metavariable remains. *)
-            if LibTerm.Meta.has true a then
-              (fatal_msg "The type of %a has unsolved metavariables.\n"
-                 pp_uid id;
-               fatal pe.pos "We have %a : %a." pp_uid id pp_term a);
-            (match t with
-             | Some(t) when LibTerm.Meta.has true t ->
-                 fatal_msg
-                   "The definition of %a has unsolved metavariables.\n"
-                   pp_uid id;
-                 fatal pe.pos "We have %a : %a ≔ %a."
-                   pp_uid id pp_term a pp_term t
-             | _ -> ());
-            match pe.elt with
-            | P_proof_abort -> assert false (* Handled above *)
-            | P_proof_admit ->
-                (* If the proof is finished, display a warning. *)
-                if finished ps then
-                  wrn pe.pos "The proof is finished. Use 'end' instead.";
-                (* Add the symbol in the signature with a warning. *)
-                Console.out 3 (red "(symb) add %a : %a\n")
-                  pp_uid id pp_term a;
-                wrn pe.pos "Proof admitted.";
-                fst (add_symbol ss expo prop mstrat true p_sym_nam a impl t)
-            | P_proof_end ->
-                (* Check that the proof is indeed finished. *)
-                if not (finished ps) then
-                  (Console.out 1 "%a" Proof.pp_goals ps;
-                   fatal pe.pos "The proof is not finished.");
-                (* Add the symbol in the signature. *)
-                Console.out 3 (red "(symb) add %a : %a\n")
-                  pp_uid id pp_term a;
-                fst (add_symbol ss expo prop mstrat opaq p_sym_nam a impl t)
+        | P_proof_abort -> wrn pe.pos "Proof aborted."; ss
+        | P_proof_admitted ->
+            (* If the proof is finished, display a warning. *)
+            if finished ps then
+              wrn pe.pos "The proof is finished. Use 'end' instead.";
+            let ss =
+              match ps.proof_term with
+              | Some m when opaq ->
+                  (* We admit the initial goal only. *)
+                  Tactic.admit_meta ss m
+              | _ ->
+                  (* We admit all the remaining typing goals. *)
+                  let admit_goal ss g =
+                    match g with
+                    | Unif _ -> ss
+                    | Typ gt ->
+                        let m = gt.goal_meta in
+                        match !(m.meta_value) with
+                        | None -> Tactic.admit_meta ss m
+                        | Some _ -> ss
+                  in List.fold_left admit_goal ss ps.proof_goals
+            in
+            (* Add the symbol in the signature with a warning. *)
+            Console.out 3 (red "(symb) add %a : %a\n")
+              pp_uid id pp_term a;
+            wrn pe.pos "Proof admitted.";
+            let t = Option.map (fun t -> t.elt) t in
+            fst (add_symbol ss expo prop mstrat true p_sym_nam a impl t)
+        | P_proof_end ->
+            (* Check that the proof is indeed finished. *)
+            if not (finished ps) then
+              (Console.out 1 "%a" Proof.pp_goals ps;
+               fatal pe.pos "The proof is not finished.");
+            (* Add the symbol in the signature. *)
+            Console.out 3 (red "(symb) add %a : %a\n")
+              pp_uid id pp_term a;
+            let t = Option.map (fun t -> t.elt) t in
+            fst (add_symbol ss expo prop mstrat opaq p_sym_nam a impl t)
       in
       (* Create proof state. *)
       let ps = {proof_name = p_sym_nam; proof_term; proof_goals} in
@@ -456,7 +447,7 @@ let handle : (Path.t -> Sign.t) -> sig_state -> p_command ->
         match pt, t with
         | Some pt, Some t ->
             (match ps.proof_goals with
-             | Typ gt :: gs -> Tactic.tac_refine pt.pos ps gt gs t
+             | Typ gt :: gs -> Tactic.tac_refine pt.pos ps gt gs t.elt
              | _ -> assert false)
         | _, _ -> ps
       in
@@ -477,7 +468,7 @@ let too_long = Stdlib.ref infinity
     are captured, although they should not occur. *)
 let handle : (Path.t -> Sign.t) -> sig_state -> p_command ->
    sig_state * proof_data option * Query.result =
- fun compile ss ({pos;_} as cmd) ->
+  fun compile ss ({pos;_} as cmd) ->
   Print.sig_state := ss;
   try
     let (tm, ss) = time (handle compile ss) cmd in

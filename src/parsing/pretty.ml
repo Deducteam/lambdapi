@@ -166,7 +166,7 @@ let unif_rule : p_rule pp = fun ppf {elt=(l,r);_} ->
 let proof_end : p_proof_end pp = fun ppf pe ->
   out ppf (match pe.elt with
            | P_proof_end   -> "end"
-           | P_proof_admit -> "admit"
+           | P_proof_admitted -> "admitted"
            | P_proof_abort -> "abort")
 
 let rw_patt : p_rw_patt pp = fun ppf p ->
@@ -209,7 +209,8 @@ let tactic : p_tactic pp = fun ppf t ->
       let param_id ppf x = out ppf " %a" param_id x in
       out ppf "assume%a" (List.pp param_id "") xs
   | P_tac_apply(t) -> out ppf "apply %a" term t
-  | P_tac_simpl -> out ppf "simpl"
+  | P_tac_simpl None -> out ppf "simpl"
+  | P_tac_simpl (Some qid) -> out ppf "simpl %a" qident qid
   | P_tac_rewrite(b,p,t)     ->
       let dir ppf b = if not b then out ppf " left" in
       let pat ppf p = out ppf " [%a]" rw_patt p in
@@ -224,6 +225,7 @@ let tactic : p_tactic pp = fun ppf t ->
   | P_tac_fail -> out ppf "fail"
   | P_tac_solve -> out ppf "solve"
   | P_tac_induction -> out ppf "induction"
+  | P_tac_admit -> out ppf "admit"
   end;
   out ppf ";"
 

@@ -15,6 +15,37 @@ only when all generated goals have been solved.
 
 Reminder: the BNF grammar of tactics is in `syntax.bnf <https://raw.githubusercontent.com/Deducteam/lambdapi/master/docs/syntax.bnf>`__.
 
+``begin``
+---------
+
+Start a proof.
+
+``focus``
+---------
+
+Put the focus on another goal. A goal is identified by its number in
+the list of goals displayed by the ``print`` command. In Emacs,
+clicking on the goal will add the required ``focus`` command in the
+source.
+
+``end``
+-------
+
+Exit the proof mode when all goals have been solved. It then adds in
+the environment the symbol declaration or definition the proof is
+about.
+
+``abort``
+---------
+
+Exit the proof mode without changing the environment.
+
+``admitted``
+------------
+
+Add axioms in the environment to solve the remaining goals and exit of
+the proof mode.
+
 ``apply``
 ---------
 
@@ -48,8 +79,16 @@ as new goals.
 ``simpl``
 ---------
 
-Normalizes the focused goal with respect to β-reduction and the
-user-defined rewriting rules.
+With no argument, ``simpl`` normalizes the focused goal with respect
+to β-reduction and the user-defined rewriting rules.
+
+If ``f`` is a non-opaque symbol having a definition (introduced with
+``≔``), then ``simpl f`` replaces in the focused goal every occurrence
+of ``f`` by its definition.
+
+If ``f`` is a symbol identifier having rewriting rules, then ``simpl
+f`` applies these rules bottom-up on every occurrence of ``f`` in the
+focused goal.
 
 ``solve``
 ---------
@@ -87,6 +126,17 @@ The user should define those symbols using builtins as follows :
 **Important note:** you must run ``why3 config --full-config`` to make
 Why3 know about the available provers.
 
+``admit``
+---------
+
+Adds in the environment new symbols (axioms) proving the focused goal.
+
+``fail``
+--------
+
+Always fails. It is useful when developing a proof to stop at some
+particular point.
+
 Tactics on equality
 -------------------
 
@@ -105,17 +155,17 @@ declarations:
    set builtin "eqind" ≔ … // : Π {a} x y, P (x = y) → Π p:T a→Prop, P (p y) → P (p x)
 
 ``reflexivity``
-^^^^^^^^^^^^^^^
+---------------
 
 Solves a goal of the form ``P (t = u)`` when ``t ≡ u``.
 
 ``symmetry``
-^^^^^^^^^^^^
+------------
 
 Replaces a goal of the form ``P (t = u)`` by the goal ``P (u = t)``.
 
 ``rewrite``
-^^^^^^^^^^^
+-----------
 
 The ``rewrite`` tactic takes as argument a term ``t`` of type
 ``Π x₁ … xₙ,P(l = r)`` prefixed by an optional ``left`` (to indicate that the
@@ -144,36 +194,3 @@ replaced by ``uₙ``, then the tactic ``rewrite t`` replaces in the
 focused goal all occurrences of ``u`` by the term ``r`` with ``x₁``
 replaced by ``u₁``, …, ``xₙ`` replaced by ``uₙ``.
 
-Proof mode management
----------------------
-
-``end``
-^^^^^^^
-
-Allows one to quit the proof mode when all goals have been solved. It
-then adds in the environment the symbol the proof is about.
-
-``admit``
-^^^^^^^^^
-
-Allows one to quit the proof mode even if all goals have not been
-solved. It then adds in the environment a new symbol (axiom) whose
-type is given by the ``symbol`` command.
-
-``abort``
-^^^^^^^^^
-
-Allows one to quit the proof mode without changing the environment.
-
-``focus``
-^^^^^^^^^
-
-Allows the user to change the focus to another goal. A goal is
-identified by its number in the list of goals displayed by the
-``print`` command.
-
-``fail``
-^^^^^^^^
-
-Always fails. It is useful when developing a proof to stop at some
-particular point.

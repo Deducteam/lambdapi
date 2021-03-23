@@ -40,6 +40,11 @@ let print_implicits : bool ref = Console.register_flag "print_implicits" false
 let print_meta_types : bool ref =
   Console.register_flag "print_meta_types" false
 
+(** Flag for printing the arguments of metavariables. Remark: this does not
+   generate parsable terms; use for debug only. *)
+let print_meta_args : bool ref =
+  Console.register_flag "print_meta_args" true
+
 (** Flag for printing contexts in unification problems. *)
 let print_contexts : bool ref = Console.register_flag "print_contexts" false
 
@@ -63,13 +68,18 @@ let pp_path : Path.t pp = List.pp pp_uid "."
 
 let pp_sym : sym pp = fun ppf s ->
   if !print_implicits && s.sym_impl <> [] then out ppf "@";
-  if StrMap.mem s.sym_name !sig_state.in_scope then
-    if s == Unif_rule.cons then out ppf "%s" s.sym_name
-    else pp_uid ppf s.sym_name
+  let n = s.sym_name in
+  if StrMap.mem n !sig_state.in_scope then
+    (* For printing Unif_rule.cons unescaped. *)
+    if s == Unif_rule.cons then out ppf "%s" n else pp_uid ppf n
   else
     match Path.Map.find_opt s.sym_path (!sig_state).path_alias with
-    | None -> out ppf "%a.%a" pp_path s.sym_path pp_uid s.sym_name
-    | Some alias -> out ppf "%a.%a" pp_uid alias pp_uid s.sym_name
+    | None ->
+        (* Hack for printing symbols replacing metavariables in infer.ml
+           unqualified and unescaped. *)
+        if n <> "" && n.[0] = '?' then out ppf "%s" n
+        else out ppf "%a.%a" pp_path s.sym_path pp_uid n
+    | Some alias -> out ppf "%a.%a" pp_uid alias pp_uid n
 
 let pp_var : 'a Bindlib.var pp = fun ppf x -> pp_uid ppf (Bindlib.name_of x)
 
@@ -125,7 +135,7 @@ and pp_term : term pp = fun ppf t ->
           if p = `Atom then out ppf ")"
     in
     match h with
-    | Symb(s) when not !print_implicits ->
+    | Symb(s) when not !print_implicits || s.sym_impl = [] ->
         begin
           let args = LibTerm.remove_impl_args s args in
           match notation_of s with
@@ -171,7 +181,8 @@ and pp_term : term pp = fun ppf t ->
 
   and pp_head wrap ppf t =
     let pp_env ppf ar =
-      if ar <> [||] then out ppf "[%a]" (Array.pp appl ",") ar
+      if !print_meta_args && ar <> [||] then
+        out ppf "[%a]" (Array.pp appl ",") ar
     in
     let pp_term_env ppf te =
       match te with
@@ -206,7 +217,7 @@ and pp_term : term pp = fun ppf t ->
         if wrap then out ppf "(";
         let (x,t) = Bindlib.unbind b in
         if Bindlib.binder_occur b then
-          out ppf "Π %a: %a, %a" pp_var x func a func t
+          out ppf "Π %a: %a, %a" pp_var x appl a func t
         else out ppf "%a → %a" appl a func t;
         if wrap then out ppf ")"
     | LLet(a,t,b) ->
@@ -255,8 +266,10 @@ let pp_typing : constr pp = fun ppf (ctx, t, u) ->
 let pp_constr : constr pp = fun ppf (ctx, t, u) ->
   out ppf "%a%a ≡ %a" pp_ctxt ctx pp_term t pp_term u
 
+let pp_constrs : constr list pp = fun ppf ->
+  List.iter (fprintf ppf "\n  ; %a" pp_constr)
+
 (* for debug only *)
 let pp_problem : problem pp = fun ppf p ->
-  let constr ppf c = out ppf "\n; %a" pp_constr c in
-  out ppf "{ recompute = %b;\nto_solve = [%a];\nunsolved = [%a] }"
-    p.recompute (List.pp constr "") p.to_solve (List.pp constr "") p.unsolved
+  out ppf "{ recompute = %b; to_solve = [%a];\n  unsolved = [%a] }"
+    p.recompute pp_constrs p.to_solve pp_constrs p.unsolved

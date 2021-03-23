@@ -195,6 +195,7 @@ let build_config : Pos.pos -> string -> string option -> eval_config =
     | (i     , None       ) -> config (Some(i)) NONE
     | (_     , _          ) -> raise Exit (* captured below *)
   with _ -> fatal (Some(loc)) "Invalid command configuration."
+
 %}
 
 // end of file
@@ -249,8 +250,7 @@ command:
       let p_sym_mod =
         match List.find_opt is_prop p_sym_mod with
         | Some(_) -> p_sym_mod
-        | None -> (* we add the property "constant" *)
-           make_pos Lexing.(dummy_pos, dummy_pos) (P_prop(Const)) :: p_sym_mod
+        | None -> make_pos $loc(s) (P_prop Const) :: p_sym_mod
       in
       let p_sym_nam = make_pos $loc(s) s in
       let p_sym_typ = Some a in
@@ -322,6 +322,7 @@ command:
     }
   | p_sym_mod=modifier* KW_THM s=UID COLON a=term DEF t=term DOT
     {
+      let p_sym_mod = make_pos $loc(s) P_opaq :: p_sym_mod in
       let p_sym_nam = make_pos $loc(s) s in
       let p_sym_arg = [] in
       let p_sym_typ = Some a in
@@ -335,6 +336,7 @@ command:
   | p_sym_mod=modifier* KW_THM s=UID p_sym_arg=param+ COLON a=term
     DEF t=term DOT
     {
+      let p_sym_mod = make_pos $loc(s) P_opaq :: p_sym_mod in
       let p_sym_nam = make_pos $loc(s) s in
       let p_sym_typ = Some a in
       let p_sym_trm = Some t in
@@ -390,7 +392,7 @@ param:
     { ([Some (make_pos $loc(id) id)], Some(te), false) }
 
 modifier:
-  | KW_PRV { make_pos $sloc (P_expo(Syntax.Tags.Privat)) }
+  | KW_PRV { make_pos $sloc (P_expo(Syntax.Tags.Protec)) }
   | KW_INJ { make_pos $sloc (P_prop(Syntax.Tags.Injec)) }
 
 context_item:

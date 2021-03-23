@@ -8,7 +8,8 @@
 
 ;; Lists of keywords
 (defconst lambdapi--tactics
-  '("apply"
+  '("admit"
+    "apply"
     "assume"
     "fail"
     "focus"
@@ -31,11 +32,19 @@
   "Queries.")
 (defconst lambdapi--cmds
   (append
-   '("inductive"
+   '("builtin"
+     "debug"
+     "flag"
+     "inductive"
+     "notation"
      "open"
+     "prover"
+     "prover_timeout"
      "require"
      "rule"
-     "symbol")
+     "symbol"
+     "unif_rule"
+     "verbose")
    lambdapi--queries)
   "Commands at top level.")
 
@@ -98,12 +107,6 @@ Indent by `lambdapi-indent-basic' in proofs, and 0 otherwise."
              ("compute" sterm)
              ("print")
              ("proofterm")
-             ("debug" ident)
-             ("flag" ident "off")
-             ("flag" ident "on")
-             ("prover" ident)
-             ("prover_timeout" ident)
-             ("verbose" ident)
              ("type" sterm))
       (prfcontent (tactic)
                   (query))
@@ -115,28 +118,35 @@ Indent by `lambdapi-indent-basic' in proofs, and 0 otherwise."
       (indcons (args ":" sterm) ("|" args ":" sterm))
       (inddec (inddec "with" args ":" sterm "≔" indcons))
       (rules (rules "with" sterm "↪" sterm))
-      (command ("constant" symdec ";")
+      (command
+               ("begin" prfcontent "abort" ";")
+               ("begin" prfcontent "admitted" ";")
+               ("begin" prfcontent "end" ";")
+               ("builtin" ident "≔" sterm ";")
+               ("debug" ident)
+               ("constant" symdec ";")
+               ("flag" ident "off")
+               ("flag" ident "on")
                ("injective" "inductive" inddec ";")
                ("injective" symdec ";")
-               ("open" ident ";")
-               ("opaque" "inductive" inddec ";")
-               ("opaque" symdec ";")
-               ("private" "inductive" inddec ";")
-               ("private" symdec ";")
-               ("begin" prfcontent "abort" ";")
-               ("begin" prfcontent "admit" ";")
-               ("begin" prfcontent "end" ";")
-               ("protected" "inductive" inddec ";")
-               ("protected" symdec ";")
-               ("require" ident "as" ident ";")
-               ("require" ident ";")
-               ("rule" rules ";")
-               ("builtin" ident "≔" sterm ";")
                ("notation" ident "infix" "left" sterm ";")
                ("notation" ident "infix" "right" sterm ";")
                ("notation" ident "infix" sterm ";")
                ("notation" ident "prefix" sterm ";")
                ("notation" ident "quantifier" ";")
+               ("open" ident ";")
+               ("opaque" "inductive" inddec ";")
+               ("opaque" symdec ";")
+               ("private" "inductive" inddec ";")
+               ("private" symdec ";")
+               ("protected" "inductive" inddec ";")
+               ("protected" symdec ";")
+               ("prover" ident)
+               ("prover_timeout" ident)
+               ("require" ident "as" ident ";")
+               ("require" ident ";")
+               ("rule" rules ";")
+               ("verbose" ident)
                (query ";")
                ("unif_rule" sterm "≡" sterm "↪" unif-rule-rhs ";")
                (symdec ";")))
@@ -175,8 +185,8 @@ The default lexer is used because the syntax is primarily made of sexps."
     (`(:before . "symmetry") `(column . ,lambdapi-indent-basic))
     (`(:before . "why3") `(column . ,lambdapi-indent-basic))
     
-    (`(:before . ,(or "admit" "abort" "end")) '(column . 0))
-    (`(:after . ,(or "admit" "abort" "end")) '(column . 0))
+    (`(:before . ,(or "abort" "admitted" "end")) '(column . 0))
+    (`(:after . ,(or "abort" "admitted" "end")) '(column . 0))
 
     (`(:before . ,(or "assert" "assertnot" "compute" "print" "proofterm"
                       "type"))
@@ -198,16 +208,23 @@ The default lexer is used because the syntax is primarily made of sexps."
      lambdapi-indent-basic)
 
     ;; Toplevel
-    (`(:before . "protected") '(column . 0))
-    (`(:before . "private") '(column . 0))
-    (`(:before . "injective") '(column . 0))
-    (`(:before . "constant") '(column . 0))
-    (`(:before . "require") '(column . 0))
-    (`(:before . "open") '(column . 0))
-    (`(:before . "inductive") '(column . 0))
-    (`(:before . "symbol") '(column . 0))
     (`(:before . "begin") '(column . 0))
-    (`(:before . ,(or "with" "rule")) '(column . 0))))
+    (`(:before . "builtin") '(column . 0))
+    (`(:before . "constant") '(column . 0))
+    (`(:before . "debug") '(column . 0))
+    (`(:before . "flag") '(column . 0))
+    (`(:before . "inductive") '(column . 0))    
+    (`(:before . "injective") '(column . 0))
+    (`(:before . "notation") '(column . 0))
+    (`(:before . "open") '(column . 0))
+    (`(:before . "private") '(column . 0))
+    (`(:before . "protected") '(column . 0))
+    (`(:before . "rule") '(column . 0))
+    (`(:before . "require") '(column . 0))
+    (`(:before . "symbol") '(column . 0))
+    (`(:before . "unif_rule") '(column . 0))
+    (`(:before . "verbose") '(column . 0))
+    (`(:before . "with") '(column . 0))))
 
 (provide 'lambdapi-smie)
 ;;; lambdapi-smie.el ends here

@@ -32,6 +32,7 @@
             | <term> as <uid> in <term>
 
 <tactic> ::= <query>
+           | admit
            | apply <term>
            | assume <param_id>+
            | fail
@@ -40,7 +41,7 @@
            | refine <term>
            | reflexivity
            | rewrite [<assoc>] [[ <rw_patt> ]] <term>
-           | simpl
+           | simpl [<id>]
            | solve
            | symmetry
            | why3 ["<string>"]
@@ -75,7 +76,7 @@
           | type <term>
 
 <proof_end> ::= abort
-              | admit
+              | admitted
               | end
 
 <proof> ::= begin (<tactic> ;)* <proof_end>

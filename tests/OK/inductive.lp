@@ -13,6 +13,10 @@ builtin "P" ≔ π;
 constant symbol Set : TYPE;       // Type of set codes
 injective symbol τ : Set → TYPE;  // Interpretation of set codes in TYPE
 
+/// test escaped type
+inductive {| |}:TYPE ≔ c : {| |};
+assert ⊢ {|ind_ |} : Π p:{| |} → Prop, π (p c) → Π x: {| |}, π (p x);
+
 ////////////////// Primary colors
 
 inductive RGB : TYPE ≔
@@ -659,9 +663,6 @@ builtin "eqind" ≔ eq_ind;
 /////////////////////////////
 // Some proofs
 /////////////////////////////
-
-unif_rule τ $x ≡ N ↪ [ $x ≡ nat ];
-//FIXME: should be infered from injectivity of τ
 
 opaque symbol plus_0_n n : π(0 + n = n) ≔
 begin
