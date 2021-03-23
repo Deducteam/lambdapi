@@ -27,7 +27,7 @@ type t =
   ; sign_deps     : (string * rule) list Path.Map.t ref
   ; sign_builtins : sym StrMap.t ref
   ; sign_notations: notation SymMap.t ref
-    (** Maps symbols to their syntax properties if they have some. *)
+    (** Maps symbols to their notation if they have some. *)
   ; sign_ind      : ind_data SymMap.t ref }
 
 (* NOTE the [deps] field contains a hashtable binding the external modules on
