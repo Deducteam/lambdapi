@@ -1,6 +1,7 @@
 open Common
 open Pos
 open Lplib
+open Base
 open Timed
 open Term
 
@@ -10,20 +11,14 @@ let log = log.logger
 (** Type for unification constraints solvers. *)
 type solver = problem -> constr list option
 
-type coercer = ctxt -> term -> term -> term -> term
-
 (** Module that provide a lookup function to the refiner. *)
 module type LOOKUP = sig
-  val lookup : coercer -> ctxt -> term -> term -> (term * term * term) option
-  (** [lookup cc ctx a b] returns a 3-uple [Some(t_c, dom, arg)] where [t_c]
-      is a term of type [r] with [r ≈ b] (where [≈] is not specified), and
-      [t_c] is the coercion of a term of type [a] to [b]. The term [t_c] is of
-      the form [c ?1 … ?k … ?n] where [c] is a symbol of type [Πx1:T1, …,
-      Πxk:Tk, …, Πxn:Tn, r] and where the [k]th argument is a reference (a
-      {!constructor:Term.TRef} term) to [arg] which is cast from [Tk] with [Tk
-      ≈ a] to [r] (with [r ≈ b]). The function [cc ctx t a b] coerces term [t]
-      in context [ctx] from type [a] to [b]. It may be used to coerce
-      recursively if needed. *)
+  val lookup : (ctxt -> term eq) -> ctxt -> term -> term -> tbinder option
+  (** [lookup a b] returns a pair [Some(coerce,cs)] where [coerce] is a term
+      binder that binds terms of type [a] to terms of type [b], and [cs] is a
+      list of constraints for [subst coerce (Vari x)] to be of type [b] when
+      [x] is a fresh variable of type [a]. If there is no such coercion,
+      [None] is returned. *)
 
   val solve : solver
   (** [solve pb] is specified in {!module:Unif}, see
@@ -94,23 +89,27 @@ functor
 
     (** [coerce ctx t a b] refines term [t] of type [a] into term of type
         [b]. *)
-    let rec coerce : ctxt -> term -> term -> term -> term =
-     fun ctx t a b ->
+    let coerce : ctxt -> term -> term -> term -> term = fun ctx t a b ->
      if !Debug.log_enabled then
        log "Coerce [%a: %a = %a]" Print.pp_term t Print.pp_term a
          Print.pp_term b;
-     if Eval.eq_modulo ctx a b then t else
-     let eqs = List.rev Stdlib.(!constraints) in
-     let pb = {empty_problem with to_solve = (ctx, a, b) :: eqs} in
-     match L.solve pb with
-     | Some [] -> t
-     | None | Some _ ->
-     match L.lookup coerce ctx a b with
-     | Some (t_c, t_c_ty, arg) ->
+     let c_ok ctx a b =
+       Eval.eq_modulo ctx a b ||
+       let eqs = Stdlib.(!constraints) in
+       let t = Time.save () in
+       (* Look if [a] and [b] are unifiable. If it's the case, update
+          constraints, otherwise, go back in time to rewind instantiations. *)
+       match L.solve {empty_problem with to_solve = (ctx, a, b) :: eqs} with
+       | Some [] -> Stdlib.(constraints := []); true
+       | Some _ | None -> Time.restore t; false
+     in
+     match L.lookup c_ok ctx a b with
+     | Some c ->
+         let t_c = Bindlib.subst c t in
          if !(Debug.log_enabled) then
-           log (Extra.gre "Coerced \"%a\" to \"%a\"") Print.pp_term t
+           log (Extra.gre "Coerced [%a] to [%a]") Print.pp_term t
              Print.pp_term t_c;
-         unif ctx arg t; unif ctx b t_c_ty; t_c
+         t_c
      | None ->
          (if !Debug.log_enabled then log (Extra.red "Failed coercion"));
          unif ctx a b; t
