@@ -18,6 +18,10 @@ odoc:
 doc:
 	$(MAKE) -C docs syntax.bnf syntax_dedukti.bnf html
 
+.PHONY: vscode
+vscode:
+	$(MAKE) -C editors/vscode
+
 #### Unit tests and sanity check #############################################
 
 LAMBDAPI     = dune exec -- lambdapi check

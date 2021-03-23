@@ -8,8 +8,11 @@ Lambdapi User Manual
 
 Lambdapi is a proof assistant based on the λΠ-calculus modulo
 rewriting, mostly compatible with the type checker `Dedukti
-<https://github.com/Deducteam/dedukti>`__. For installation
-instructions, see `README
+<https://github.com/Deducteam/dedukti>`__. Lambdapi files must end
+with `.lp`. But Lambdapi can also read Dedukti files ending with `.dk`
+and convert them to Lambdapi files.
+
+For installation instructions, see `README
 <https://github.com/Deducteam/lambdapi/blob/master/README.md>`__.
 
 .. toctree::
