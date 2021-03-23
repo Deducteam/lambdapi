@@ -24,10 +24,10 @@ jobs:
           ocaml-version: ${{ matrix.ocaml-version }}
       - name: installing dependencies...
         run: |
-          opam pin add -n -k path lambdapi .
-          opam install --deps-only -d -t lambdapi
           opam update
           opam upgrade
+          opam pin add -n -k path lambdapi .
+          opam install --deps-only -d -t lambdapi
       - name: running tests...
         run: |
           eval $(opam env)
