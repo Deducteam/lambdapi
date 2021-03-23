@@ -11,7 +11,7 @@ let write_file : string -> (formatter -> unit) -> unit = fun fn pp ->
 let pp_makefile : formatter -> unit = fun ppf ->
   fprintf ppf
     ".POSIX:\n\
-     SRC = nat.lp main.lp\n\
+     SRC = \n\
      OBJ = $(SRC:.lp=.lpo)\n\
      .SUFFIXES:\n\
      \n\
