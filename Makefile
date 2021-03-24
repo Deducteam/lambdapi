@@ -86,6 +86,8 @@ zenon_modulo: bin
 .PHONY: clean
 clean:
 	@dune clean
+	@$(MAKE) -C editors/emacs clean
+	@$(MAKE) -C editors/vscode clean
 
 .PHONY: distclean
 distclean: clean
