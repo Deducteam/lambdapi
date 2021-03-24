@@ -161,7 +161,7 @@ let handle_inductive_symbol : sig_state -> expo -> prop -> match_strat
   (* Obtaining the implicitness of arguments. *)
   let impl = Scope.get_implicitness typ in
   (* We scope the type of the declaration. *)
-  let typ = Scope.scope_term expo ss Env.empty IntMap.empty typ in
+  let typ = Scope.scope_term expo ss Env.empty (lazy IntMap.empty) typ in
   (* We check that [a] is typable by a sort. *)
   Infer.check_sort Unif.solve_noexn pos [] typ;
   (* We check that no metavariable remains. *)
@@ -200,7 +200,7 @@ let handle : (Path.t -> Sign.t) -> sig_state -> p_command ->
   if !log_enabled then
       (if !print_time then log_hndl "%f" (Sys.time());
        log_hndl "%a" Pos.pp pos; log_hndl (red "%a") Pretty.command cmd);
-  let scope expo = Scope.scope_term expo ss Env.empty IntMap.empty in
+  let scope expo = Scope.scope_term expo ss Env.empty (lazy IntMap.empty) in
   match elt with
   | P_query(q) -> (ss, None, Query.handle ss None q)
   | P_require(b,ps) ->

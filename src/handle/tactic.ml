@@ -169,7 +169,7 @@ let handle : Sig_state.t -> Tags.expo -> proof_state -> p_tactic
   match g with
   | Unif _ -> fatal pos "Not a typing goal."
   | Typ ({goal_hyps=env;_} as gt) ->
-  let scope = Scope.scope_term expo ss env (Proof.sys_metas ps) in
+  let scope = Scope.scope_term expo ss env (lazy (Proof.sys_metas ps)) in
   match elt with
   | P_tac_admit
   | P_tac_fail

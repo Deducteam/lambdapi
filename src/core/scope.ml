@@ -53,7 +53,7 @@ let get_root : p_term -> sig_state -> Env.t -> sym = fun t ss env ->
 (** Representation of the different scoping modes.  Note that the constructors
     hold specific information for the given mode. *)
 type mode =
-  | M_Term of meta StrMap.t Stdlib.ref * meta IntMap.t * Tags.expo
+  | M_Term of meta StrMap.t Stdlib.ref * meta IntMap.t Lazy.t * Tags.expo
   (** Standard scoping mode for terms, holding a map for metavariables
      introduced by the user, a map for system-generated metavariables (current
      goals), and the exposition of the scoped term. *)
@@ -289,7 +289,7 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
                  let m = Meta.fresh ~name:id a (Array.length vs) in
                  Stdlib.(user_metas := StrMap.add id m !user_metas); m)
           | Numb i ->
-              (try IntMap.find i sys_metas
+              (try IntMap.find i (Lazy.force sys_metas)
                with Not_found -> fatal pos "Unknown metavariable ?%d." i)
         in
         let ts =
@@ -424,7 +424,7 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
     [?exp] is {!constructor:Public}, then the term mustn't contain any private
     subterms. *)
 let scope_term :
-      Tags.expo -> sig_state -> env -> meta IntMap.t -> p_term -> term =
+     Tags.expo -> sig_state -> env -> meta IntMap.t Lazy.t -> p_term -> term =
   fun expo ss env sgm t ->
   let m = Stdlib.ref StrMap.empty in
   Bindlib.unbox (scope (M_Term(m, sgm, expo)) ss env t)
