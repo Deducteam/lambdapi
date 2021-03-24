@@ -170,6 +170,11 @@ let handle : Sig_state.t -> Tags.expo -> proof_state -> p_tactic
   | Unif _ -> fatal pos "Not a typing goal."
   | Typ ({goal_hyps=env;_} as gt) ->
   let scope = Scope.scope_term expo ss env (lazy (Proof.sys_metas ps)) in
+  let check_idopt = function
+    | None -> ()
+    | Some id -> if List.mem_assoc id.elt env then
+                   fatal id.pos "Identifier already in use."
+  in
   match elt with
   | P_tac_admit
   | P_tac_fail
@@ -189,10 +194,12 @@ let handle : Sig_state.t -> Tags.expo -> proof_state -> p_tactic
       let t = if n <= 0 then t else scope (P.appl_wild pt n) in
       tac_refine pos ps gt gs t
   | P_tac_assume idopts ->
+      List.iter check_idopt idopts;
       tac_refine pos ps gt gs (scope (P.abst_list idopts P.wild))
   | P_tac_have(id, pt) ->
       (* From a goal [e ⊢ ?[e] : u], generates two new goals [e ⊢ ?1[e] : t]
          and [e,x:t ⊢ ?2[e,x] : u], and instantiate [?[e]] by [?2[e,?1[e]]. *)
+      check_idopt (Some id);
       let t = scope pt in
       let n = List.length env in
       let bt = lift t in
@@ -213,8 +220,8 @@ let handle : Sig_state.t -> Tags.expo -> proof_state -> p_tactic
       let pat = Option.map (Scope.scope_rw_patt ss env) pat in
       tac_refine pos ps gt gs (Rewrite.rewrite ss pos gt l2r pat (scope eq))
   | P_tac_sym -> tac_refine pos ps gt gs (Rewrite.symmetry ss pos gt)
-  | P_tac_why3(config) ->
-      tac_refine pos ps gt gs (Why3_tactic.handle ss pos config gt)
+  | P_tac_why3 cfg ->
+      tac_refine pos ps gt gs (Why3_tactic.handle ss pos cfg gt)
 
 (** [handle ss expo ps tac] applies tactic [tac] in the proof state [ps] and
    returns the new proof state. *)
