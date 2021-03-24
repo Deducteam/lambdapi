@@ -134,8 +134,8 @@ let ind_data : popt -> Env.t -> term -> Sign.ind_data = fun pos env a ->
       end
   | _ -> fatal pos "%a is not headed by an inductive type." pp_term a
 
-(** [tac_induction pos ps gt] tries to apply the induction tactic on the goal
-   type [gt]. *)
+(** [tac_induction pos ps gt] tries to apply the induction tactic on the
+   typing goal [gt]. *)
 let tac_induction : popt -> proof_state -> goal_typ -> goal list
     -> proof_state = fun pos ps ({goal_type;goal_hyps;_} as gt) gs ->
   match unfold goal_type with
@@ -177,7 +177,7 @@ let handle : Sig_state.t -> Tags.expo -> proof_state -> p_tactic
   | P_tac_query _
   | P_tac_simpl _
   | P_tac_solve -> assert false (* done before *)
-  | P_tac_apply(pt) ->
+  | P_tac_apply pt ->
       let t = scope pt in
       (* Compute the product arity of the type of [t]. *)
       (* FIXME: this does not take into account implicit arguments. *)
@@ -188,8 +188,24 @@ let handle : Sig_state.t -> Tags.expo -> proof_state -> p_tactic
       in
       let t = if n <= 0 then t else scope (P.appl_wild pt n) in
       tac_refine pos ps gt gs t
-  | P_tac_assume(idopts) ->
+  | P_tac_assume idopts ->
       tac_refine pos ps gt gs (scope (P.abst_list idopts P.wild))
+  | P_tac_have(id, pt) ->
+      (* From a goal [e ⊢ ?[e] : u], generates two new goals [e ⊢ ?1[e] : t]
+         and [e,x:t ⊢ ?2[e,x] : u], and instantiate [?[e]] by [?2[e,?1[e]]. *)
+      let t = scope pt in
+      let n = List.length env in
+      let bt = lift t in
+      let mt = Meta.fresh (Env.to_prod env bt) n in
+      let v = Bindlib.new_var mkfree id.elt in
+      let env' = Env.add v bt None env in
+      let m = Meta.fresh (Env.to_prod env' (lift gt.goal_type)) (n+1) in
+      let gs = Goal.of_meta mt :: Goal.of_meta m :: gs in
+      let vs = Env.vars env in
+      let ts = Array.map (fun v -> Vari v) vs in
+      let mts = Meta(mt,ts) in
+      let u = Meta(m, Array.append ts [|mts|]) in
+      tac_refine pos ps gt gs u
   | P_tac_induction -> tac_induction pos ps gt gs
   | P_tac_refine t -> tac_refine pos ps gt gs (scope t)
   | P_tac_refl -> tac_refine pos ps gt gs (Rewrite.reflexivity ss pos gt)

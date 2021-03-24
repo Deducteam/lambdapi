@@ -205,6 +205,7 @@ let query : p_query pp = fun ppf q ->
 let tactic : p_tactic pp = fun ppf t ->
   begin match t.elt with
   | P_tac_refine(t) -> out ppf "refine %a" term t
+  | P_tac_have(id,t) -> out ppf "have %a: %a" ident id term t
   | P_tac_assume(xs) ->
       let param_id ppf x = out ppf " %a" param_id x in
       out ppf "assume%a" (List.pp param_id "") xs

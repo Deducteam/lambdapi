@@ -114,8 +114,8 @@ let of_prod_using : ctxt -> tvar array -> term -> env * term = fun c xs t ->
              build_env (i+1) env (Bindlib.subst b (Vari(xs.(i)))))
   in build_env 0 [] t
 
-(** [fresh_meta_tbox env] creates a _Meta tbox from a fresh metavariable [m]
-   of type [tm], which itself is a metavariable [x] of type [Type]. *)
+(** [fresh_meta_tbox env] creates a _Meta tbox from a fresh metavariable whose
+   type is a fresh metavariable of type [to_prod env Type]. *)
 let fresh_meta_tbox : env -> tbox = fun env ->
   let vs = to_tbox env in
   let arity = Array.length vs in
@@ -125,8 +125,8 @@ let fresh_meta_tbox : env -> tbox = fun env ->
   in
   _Meta_full (Meta.fresh_box tm arity) vs
 
-(** [fresh_meta env] creates a Meta term from a fresh metavariable [m] of type
-   [tm], which itself is a metavariable [x] of type [Type]. *)
+(** [fresh_meta env] creates a Meta term from a fresh metavariable whose type
+   is a fresh metavariable of type [to_prod env Type]. *)
 let fresh_meta : env -> term = fun env -> Bindlib.unbox (fresh_meta_tbox env)
 
 (** [add_fresh_metas env t n] returns the application of [t] to [n] fresh meta

@@ -55,9 +55,16 @@ refines the focused type goal with ``t _ … _`` (with n underscores).
 ``assume``
 ----------
 
-If the focus type goal is of the form ``Π x₁ … xₙ,T``, then ``assume
-h₁ … hₙ`` replaces it by ``T`` with ``xᵢ`` replaced by ``hᵢ``.
+If the focused typing goal is of the form ``Π x₁ … xₙ,T``, then
+``assume h₁ … hₙ`` replaces it by ``T`` with ``xᵢ`` replaced by
+``hᵢ``.
 
+``have``
+--------
+
+``have x: t`` generates a new goal for ``t`` and then let the user prove
+the focused typing goal assuming ``x: t``.
+         
 ``induction``
 -------------
 
@@ -114,14 +121,14 @@ The user should define those symbols using builtins as follows :
 
 ::
 
-   set builtin "T"     ≔ T       // : U → TYPE
-   set builtin "P"     ≔ P       // : Prop → TYPE
-   set builtin "bot"   ≔ bot     // : Prop
-   set builtin "top"   ≔ top     // : Prop
-   set builtin "imp"   ≔ imp     // : Prop → Prop → Prop
-   set builtin "and"   ≔ {|and|} // : Prop → Prop → Prop
-   set builtin "or"    ≔ or      // : Prop → Prop → Prop
-   set builtin "not"   ≔ not     // : Prop → Prop
+   builtin "T"   ≔ … // : U → TYPE
+   builtin "P"   ≔ … // : Prop → TYPE
+   builtin "bot" ≔ … // : Prop
+   builtin "top" ≔ … // : Prop
+   builtin "imp" ≔ … // : Prop → Prop → Prop
+   builtin "and" ≔ … // : Prop → Prop → Prop
+   builtin "or"  ≔ … // : Prop → Prop → Prop
+   builtin "not" ≔ … // : Prop → Prop
 
 **Important note:** you must run ``why3 config detect`` to make
 Why3 know about the available provers.
@@ -147,12 +154,11 @@ declarations:
 
 ::
 
-   set builtin "T"     ≔ … // : U → TYPE
-   set builtin "P"     ≔ … // : Prop → TYPE
-   set builtin "eq"    ≔ … // : Π {a}, T a → T a → Prop
-   set infix … "="   ≔ eq  // optional
-   set builtin "refl"  ≔ … // : Π {a} (x:T a), P (x = x)
-   set builtin "eqind" ≔ … // : Π {a} x y, P (x = y) → Π p:T a→Prop, P (p y) → P (p x)
+   builtin "T"     ≔ … // : U → TYPE
+   builtin "P"     ≔ … // : Prop → TYPE
+   builtin "eq"    ≔ … // : Π {a}, T a → T a → Prop
+   builtin "refl"  ≔ … // : Π {a} (x:T a), P(x = x)
+   builtin "eqind" ≔ … // : Π {a} x y, P(x = y) → Π p:T a → Prop, P(p y) → P(p x)
 
 ``reflexivity``
 ---------------
