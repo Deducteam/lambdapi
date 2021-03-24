@@ -37,7 +37,7 @@
            | assume <param_id>+
            | fail
            | focus <int>
-           | have <term>
+           | have <uid> : <term>
            | induction
            | refine <term>
            | reflexivity
