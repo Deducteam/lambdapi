@@ -1,5 +1,7 @@
 ### Unreleased
 
+#### Add tactic `have` (2021-03-24)
+
 #### Compatibility with Why3 1.4.0
 
 #### Add tactic `simpl <id>` for unfolding a specific symbol only (2021-03-22)

@@ -167,6 +167,7 @@ type p_tactic_aux =
   | P_tac_assume of p_ident option list
   | P_tac_fail
   | P_tac_focus of int
+  | P_tac_have of p_ident * p_term
   | P_tac_induction
   | P_tac_query of p_query
   | P_tac_refine of p_term
@@ -364,6 +365,8 @@ let eq_p_tactic : p_tactic eq = fun {elt=t1;_} {elt=t2;_} ->
   match t1, t2 with
   | P_tac_apply t1, P_tac_apply t2
   | P_tac_refine t1, P_tac_refine t2 -> eq_p_term t1 t2
+  | P_tac_have(i1,t1), P_tac_have(i2,t2) ->
+      eq_p_ident i1 i2 && eq_p_term t1 t2
   | P_tac_assume xs1, P_tac_assume xs2 ->
       List.equal (Option.equal eq_p_ident) xs1 xs2
   | P_tac_rewrite(b1,p1,t1), P_tac_rewrite(b2,p2,t2) ->
@@ -541,7 +544,8 @@ let fold_idents : ('a -> p_qident -> 'a) -> 'a -> p_command list -> 'a =
         (vs, fold_term_vars vs (fold_rw_patt_vars vs a p) t)
     | P_tac_query q -> (vs, fold_query_vars vs a q)
     | P_tac_assume idopts -> (add_idopts vs idopts, a)
-    | P_tac_simpl (Some qid) -> vs, f a qid
+    | P_tac_have(id,t) -> (StrSet.add id.elt vs, fold_term_vars vs a t)
+    | P_tac_simpl (Some qid) -> (vs, f a qid)
     | P_tac_simpl None
     | P_tac_admit
     | P_tac_refl

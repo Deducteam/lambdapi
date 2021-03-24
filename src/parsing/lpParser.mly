@@ -43,6 +43,7 @@
 %token FAIL
 %token FLAG
 %token FOCUS
+%token HAVE
 %token IN
 %token INDUCTION
 %token INDUCTIVE
@@ -192,6 +193,7 @@ tactic:
   | ASSUME xs=param_id+ { make_pos $sloc (P_tac_assume xs) }
   | FAIL { make_pos $sloc P_tac_fail }
   | FOCUS i=INT { make_pos $sloc (P_tac_focus i) }
+  | HAVE i=uid COLON t=term { make_pos $sloc (P_tac_have(i,t)) }
   | INDUCTION { make_pos $sloc P_tac_induction }
   | REFINE t=term { make_pos $sloc (P_tac_refine t) }
   | REFLEXIVITY { make_pos $sloc P_tac_refl }

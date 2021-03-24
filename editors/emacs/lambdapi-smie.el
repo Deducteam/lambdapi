@@ -13,6 +13,7 @@
     "assume"
     "fail"
     "focus"
+    "have"
     "induction"
     "refine"
     "reflexivity"
@@ -92,6 +93,7 @@ Indent by `lambdapi-indent-basic' in proofs, and 0 otherwise."
               ("assume" sterm)
               ("fail")
               ("focus" ident)
+              ("have" sterm)
               ("induction")
               ("refine" sterm)
               ("reflexivity")
