@@ -1,5 +1,12 @@
 ### Unreleased
 
+#### Use Dune for opam integration (2021-03-25)
+
+- Content of `lambdapi.opam` is moved to `dune-project` and the former is
+  generated using `dune build @install`.
+- Vim files are installed in `opam` prefix using dune.
+- The emacs mode is declared as a sub-package.
+
 #### Add tactic `have` (2021-03-24)
 
 #### Compatibility with Why3 1.4.0
