@@ -1,0 +1,8 @@
+(install
+ (section share_root)
+ (package lambdapi)
+ (files
+  (ftdetect/lambdapi.vim as vim/ftdetect/lambdapi.vim)
+  (ftdetect/dedukti.vim as vim/ftdetect/dedukti.vim)
+  (syntax/lambdapi.vim as vim/syntax/lambdapi.vim)
+  (syntax/dedukti.vim as vim/syntax/dedukti.vim)))

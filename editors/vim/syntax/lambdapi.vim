@@ -163,15 +163,9 @@ syntax match Identifier
   \ contains=EscapedIdentifier,IdentifierOrAKeyword
 
 " Special symbols.
-syntax match Keyword "("
-syntax match Keyword ")"
-syntax match Keyword "{"
-syntax match Keyword "}"
 syntax match Keyword "@"
-syntax match Keyword "\["
-syntax match Keyword "\]"
 syntax match Keyword ":"
-syntax match Keyword "⇒"
+syntax match Keyword "↪"
 syntax match Keyword "→"
 syntax match Keyword "Π"
 syntax match Keyword "λ"
@@ -187,6 +181,7 @@ syntax match Constant "&\(\<\h\w*\>\|\({|\([^|]\|\(|[^}]\)\)*|*|}\)\)"
 syntax match PreProc  "?\(\<\h\w*\>\|\({|\([^|]\|\(|[^}]\)\)*|*|}\)\)"
 
 " Abbreviations.
+abbreviate --> ↪
 abbreviate -> →
 abbreviate => ⇒
 abbreviate !  Π
