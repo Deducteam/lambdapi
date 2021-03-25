@@ -698,7 +698,7 @@ begin
   assume l2;
   induction;
   reflexivity;
-  assume x l2 IHl1;
+  assume x l1 IHl1;
   simpl;
   rewrite IHl1;
   reflexivity;

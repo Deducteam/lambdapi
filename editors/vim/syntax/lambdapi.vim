@@ -43,6 +43,7 @@ syntax keyword KeywordOK contained end
 syntax keyword KeywordOK contained fail
 syntax keyword KeywordOK contained flag
 syntax keyword KeywordOK contained focus
+syntax keyword KeywordOK contained have
 syntax keyword KeywordOK contained in
 syntax keyword KeywordOK contained induction
 syntax keyword KeywordOK contained inductive
@@ -100,6 +101,7 @@ syntax keyword KeywordKO contained end
 syntax keyword KeywordKO contained fail
 syntax keyword KeywordKO contained flag
 syntax keyword KeywordKO contained focus
+syntax keyword KeywordKO contained have
 syntax keyword KeywordKO contained in
 syntax keyword KeywordKO contained induction
 syntax keyword KeywordKO contained inductive

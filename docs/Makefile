@@ -44,6 +44,7 @@ syntax.bnf:
 	-e 's/FAIL/fail/g' \
 	-e 's/FLAG/flag/g' \
 	-e 's/FOCUS/focus/g' \
+	-e 's/HAVE/have/g' \
 	-e 's/IN/in/g' \
 	-e 's/inDUCTION/induction/g' \
 	-e 's/inDUCTIVE/inductive/g' \

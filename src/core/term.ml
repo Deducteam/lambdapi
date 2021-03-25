@@ -308,8 +308,8 @@ module Meta : sig
   (** Comparison function for metavariables. *)
 
   val fresh : ?name:string -> term -> int -> t
-  (** [fresh ?name a n] creates a fresh metavariable with the optional name
-      [name], and of type [a] and arity [n]. *)
+  (** [fresh ?name a n] creates a fresh metavariable of type [a] and arity [n]
+     with the optional name [name]. *)
 
   val fresh_box : ?name:string -> term Bindlib.box -> int -> t Bindlib.box
   (** [fresh_box ?name a n] is the boxed counterpart of [fresh_meta]. It is

@@ -28,6 +28,7 @@ type token =
   | FAIL
   | FLAG
   | FOCUS
+  | HAVE
   | IN
   | INDUCTION
   | INDUCTIVE
@@ -197,6 +198,7 @@ end = struct
         ; "fail"
         ; "flag"
         ; "focus"
+        ; "have"
         ; "in"
         ; "induction"
         ; "inductive"
@@ -297,6 +299,7 @@ end = struct
     | "fail" -> FAIL
     | "flag" -> FLAG
     | "focus" -> FOCUS
+    | "have" -> HAVE
     | "in" -> IN
     | "induction" -> INDUCTION
     | "inductive" -> INDUCTIVE

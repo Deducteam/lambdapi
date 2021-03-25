@@ -9,6 +9,7 @@
 (defconst lambdapi-tactics
   '("apply"
     "assume"
+    "have"
     "refine"
     "reflexivity"
     "rewrite"
