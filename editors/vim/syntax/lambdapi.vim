@@ -44,6 +44,7 @@ syntax keyword KeywordOK contained fail
 syntax keyword KeywordOK contained flag
 syntax keyword KeywordOK contained focus
 syntax keyword KeywordOK contained have
+syntax keyword KeywordOK contained generalize
 syntax keyword KeywordOK contained in
 syntax keyword KeywordOK contained induction
 syntax keyword KeywordOK contained inductive
@@ -71,7 +72,7 @@ syntax keyword KeywordOK contained rewrite
 syntax keyword KeywordOK contained right
 syntax keyword KeywordOK contained rule
 syntax keyword KeywordOK contained sequential
-syntax keyword KeywordOK contained simpl
+syntax keyword KeywordOK contained simplify
 syntax keyword KeywordOK contained solve
 syntax keyword KeywordOK contained symbol
 syntax keyword KeywordOK contained symmetry
@@ -102,6 +103,7 @@ syntax keyword KeywordKO contained fail
 syntax keyword KeywordKO contained flag
 syntax keyword KeywordKO contained focus
 syntax keyword KeywordKO contained have
+syntax keyword KeywordKO contained generalize
 syntax keyword KeywordKO contained in
 syntax keyword KeywordKO contained induction
 syntax keyword KeywordKO contained inductive
@@ -129,7 +131,7 @@ syntax keyword KeywordKO contained rewrite
 syntax keyword KeywordKO contained right
 syntax keyword KeywordKO contained rule
 syntax keyword KeywordKO contained sequential
-syntax keyword KeywordKO contained simpl
+syntax keyword KeywordKO contained simplify
 syntax keyword KeywordKO contained solve
 syntax keyword KeywordKO contained symbol
 syntax keyword KeywordKO contained symmetry

@@ -196,22 +196,36 @@ let handle : Sig_state.t -> Tags.expo -> proof_state -> p_tactic
   | P_tac_assume idopts ->
       List.iter check_idopt idopts;
       tac_refine pos ps gt gs (scope (P.abst_list idopts P.wild))
+  | P_tac_generalize {elt=id; pos=idpos} ->
+      (* From a goal [e1,id:a,e2 ⊢ ?[e1,id,e2] : u], generate a new goal [e1 ⊢
+         ?m[e1] : Π id:a, Π e2, u], and refine [?[e]] with [?m[e1] id e2]. *)
+      begin
+        try
+          let e2, x, e1 = List.split (fun (s,_) -> s = id) env in
+          let u = lift gt.goal_type in
+          let p = Env.to_prod_box [x] (Env.to_prod_box e2 u) in
+          let m = Meta.fresh (Env.to_prod e1 p) (List.length e1) in
+          let me1 = Bindlib.unbox (_Meta m (Env.to_tbox e1)) in
+          let t =
+            List.fold_left (fun t (_,(v,_,_)) -> Appl(t, Vari v)) me1 (x::e2)
+          in
+          tac_refine pos ps gt gs t
+        with Not_found -> fatal idpos "Unknown hypothesis %a" pp_uid id;
+      end
   | P_tac_have(id, pt) ->
-      (* From a goal [e ⊢ ?[e] : u], generates two new goals [e ⊢ ?1[e] : t]
-         and [e,x:t ⊢ ?2[e,x] : u], and instantiate [?[e]] by [?2[e,?1[e]]. *)
+      (* From a goal [e ⊢ ?[e] : u], generate two new goals [e ⊢ ?1[e] : t]
+         and [e,x:t ⊢ ?2[e,x] : u], and refine [?[e]] with [?2[e,?1[e]]. *)
       check_idopt (Some id);
       let t = scope pt in
       let n = List.length env in
       let bt = lift t in
-      let mt = Meta.fresh (Env.to_prod env bt) n in
+      let m1 = Meta.fresh (Env.to_prod env bt) n in
       let v = Bindlib.new_var mkfree id.elt in
       let env' = Env.add v bt None env in
-      let m = Meta.fresh (Env.to_prod env' (lift gt.goal_type)) (n+1) in
-      let gs = Goal.of_meta mt :: Goal.of_meta m :: gs in
-      let vs = Env.vars env in
-      let ts = Array.map (fun v -> Vari v) vs in
-      let mts = Meta(mt,ts) in
-      let u = Meta(m, Array.append ts [|mts|]) in
+      let m2 = Meta.fresh (Env.to_prod env' (lift gt.goal_type)) (n+1) in
+      let gs = Goal.of_meta m1 :: Goal.of_meta m2 :: gs in
+      let ts = Env.to_tbox env in
+      let u = Bindlib.unbox (_Meta m2 (Array.append ts [|_Meta m1 ts|])) in
       tac_refine pos ps gt gs u
   | P_tac_induction -> tac_induction pos ps gt gs
   | P_tac_refine t -> tac_refine pos ps gt gs (scope t)

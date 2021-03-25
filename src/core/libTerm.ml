@@ -31,8 +31,8 @@ let to_tvar : term -> tvar = fun t ->
     “marshaled” (e.g., by the {!module:Sign} module), as this would break the
     freshness invariant of new variables. *)
 
-(** [count_products a] returns the number of consecutive products at the  head
-    of the term [a]. *)
+(** [count_products a] returns the number of consecutive products at the top
+   of the term [a]. *)
 let rec count_products : term -> int = fun t ->
   match unfold t with
   | Prod(_,b) -> 1 + count_products (Bindlib.subst b Kind)

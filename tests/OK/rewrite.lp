@@ -98,10 +98,10 @@ opaque symbol add_succ_r n m : P (n + s m = s (n + m))
   assume n m;
   refine nat_ind (λ n, n + s m = s (n + m)) _ _ n;
   // Case 0;
-  simpl;
+  simplify;
   reflexivity;
   // Case s;
-  simpl;
+  simplify;
   assume pn ih;
   rewrite ih;
   reflexivity;

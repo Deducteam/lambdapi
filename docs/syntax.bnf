@@ -37,12 +37,13 @@
            | assume <param_id>+
            | fail
            | focus <int>
+           | generalize <uid>
            | have <uid> : <term>
            | induction
            | refine <term>
            | reflexivity
            | rewrite [<assoc>] [[ <rw_patt> ]] <term>
-           | simpl [<id>]
+           | simplify [<id>]
            | solve
            | symmetry
            | why3 ["<string>"]

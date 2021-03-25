@@ -170,8 +170,7 @@ let get_eq_data : popt -> eq_config -> term -> term * term * term =
         let u = Eval.whnf [] u in
         match LibTerm.get_args u with
         | (eq, [a;l;r]) when is_symb cfg.symb_eq eq -> (a, l, r)
-        | _ ->
-           fatal pos "Expected an equality type, found [%a]." pp_term t
+        | _ -> fatal pos "Expected an equality type, found [%a]." pp_term t
       end
   | _ -> fatal pos "Expected an equality type, found [%a]." pp_term t
 
@@ -189,9 +188,9 @@ let rec add_refs : term -> term = fun t ->
   | Appl(t1,t2) -> Appl(add_refs t1, add_refs t2)
   | _           -> t
 
-(** [break_prod a] eliminates the products at the surface of [a],  and returns
-    the remaining term the variables that used to correspond to the eliminated
-    products. These variables may appear free in the returned term. *)
+(** [break_prod a] eliminates the products at the top of [a], and returns the
+   remaining term and the variables that used to correspond to the eliminated
+   products. These variables may appear free in the returned term. *)
 let break_prod : term -> term * tvar array = fun a ->
   let rec aux : term -> tvar list -> term * tvar array = fun a vs ->
     match Eval.whnf [] a with
@@ -227,9 +226,9 @@ let find_subst : term -> to_subst -> term array option = fun t (xs,p) ->
                   | None -> Time.restore time; find_sub_aux u
                   | sub  -> sub
                 end
-            | _         -> None
+            | _ -> None
         end
-    | sub  -> sub
+    | sub -> sub
   in find_sub_aux t
 
 (** [make_pat t p] is given a term [t], and a pattern [p] containing reference
@@ -250,7 +249,7 @@ let make_pat : term -> term -> bool = fun t p ->
               | false -> Time.restore time; make_pat_aux u
               | true  -> true
             end
-        | _         -> false
+        | _ -> false
       end
   in make_pat_aux t
 
@@ -297,13 +296,14 @@ let swap : eq_config -> term -> term -> term -> term -> term =
   let refl_a_l = add_args (Symb cfg.symb_refl) [a; l] in
   add_args (Symb cfg.symb_eqind) [a; r; l; t; pred; refl_a_l]
 
-(** [rewrite gt b po t] generates a term for the refine tactic representing
-   the application of the rewrite tactic to the goal type [gt]. Every
-   occurrence of the first instance of the left-hand side is replaced by the
-   right-hand side of the obtained proof (or the reverse if b is false). It
-   handles the full set of SSReflect patterns. *)
-let rewrite : Sig_state.t -> popt -> goal_typ -> bool -> rw_patt option
-              -> term -> term =
+(** [rewrite ss pos gt l2r p t] generates a term for the refine tactic
+   representing the application of the rewrite tactic to the goal type
+   [gt]. Every occurrence of the first instance of the left-hand side is
+   replaced by the right-hand side of the obtained proof (or the reverse if
+   l2r is false). [p] is an optional SSReflect pattern. [t] is the equational
+   lemma that is appied. It handles the full set of SSReflect patterns. *)
+let rewrite :
+  Sig_state.t -> popt -> goal_typ -> bool -> rw_patt option -> term -> term =
   fun ss pos {goal_hyps=g_env; goal_type=g_type; _} l2r p t ->
 
   (* Obtain the required symbols from the current signature. *)
@@ -333,15 +333,14 @@ let rewrite : Sig_state.t -> popt -> goal_typ -> bool -> rw_patt option
   let g_term =
     match LibTerm.get_args g_type with
     | (p, [t]) when is_symb cfg.symb_P p -> t
-    | _                                        ->
-        fatal pos "Goal type [%a] is not of the form “P t”." pp_term g_type
+    | _ -> fatal pos "Goal type [%a] is not of the form “P t”." pp_term g_type
   in
 
   (* Obtain the different components depending on the pattern. *)
   let (pred_bind, new_term, t, l, r) =
     match p with
     (* Simple rewrite, no pattern. *)
-    | None                         ->
+    | None ->
         (* Build a substitution from the first instance of [l] in the goal. *)
         let sigma =
           match find_subst g_term (vars, l) with
@@ -356,7 +355,7 @@ let rewrite : Sig_state.t -> popt -> goal_typ -> bool -> rw_patt option
         (pred_bind, Bindlib.subst pred_bind r, t, l, r)
 
     (* Basic patterns. *)
-    | Some(RW_Term(p)            ) ->
+    | Some(RW_Term(p)) ->
         (* Find a subterm [match_p] of the goal that matches [p]. *)
         let match_p =
           let p_refs = add_refs p in
@@ -379,7 +378,7 @@ let rewrite : Sig_state.t -> popt -> goal_typ -> bool -> rw_patt option
         (pred_bind, Bindlib.subst pred_bind r, t, l, r)
 
     (* Nested patterns. *)
-    | Some(RW_InTerm(p)          ) ->
+    | Some(RW_InTerm(p)) ->
         (* Find a subterm [match_p] of the goal that matches [p]. *)
         let match_p =
           let p_refs = add_refs p in
@@ -407,7 +406,7 @@ let rewrite : Sig_state.t -> popt -> goal_typ -> bool -> rw_patt option
         let pred_bind = Bindlib.unbox (Bindlib.bind_var x pred_box) in
         (pred_bind, new_term, t, l, r)
 
-    | Some(RW_IdInTerm(p)        ) ->
+    | Some(RW_IdInTerm(p)) ->
         (* The code here works as follows: *)
         (* 1 - Try to match [p] with some subterm of the goal. *)
         (* 2 - If we succeed we do two things, we first replace [id] with its
@@ -591,7 +590,7 @@ let rewrite : Sig_state.t -> popt -> goal_typ -> bool -> rw_patt option
         let pred_bind = Bindlib.(unbox (bind_var x pred_box)) in
         (pred_bind, new_term, t, l, r)
 
-    | Some(RW_InIdInTerm(p)      ) ->
+    | Some(RW_InIdInTerm(p)) ->
         (* This is very similar to the [RW_IdInTerm] case. Instead of matching
            [id_val] with [l],  we try to match a subterm of [id_val] with [l],
            and then we rewrite this subterm. As a consequence,  we just change

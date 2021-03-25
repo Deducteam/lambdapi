@@ -2,16 +2,23 @@ Proof tactics
 =============
 
 The ``symbol`` command allows the user to enter an interactive mode to
-solve typing goals (find a term of a given type) and unification goals
-(prove that two terms are equivalent). In a typing goal, the term to
-find is materialized by a metavariable. The following tactics help
-users to refine typing goals and transform unification goals step by
-step. A tactic application may generate new
-goals/metavariables. Except for the ``solve`` tactic which applies to
-all the unification goals at once, all the tactics applies to the
-first goal only, which is called the *focused* goal. One can change
-the focus goal by using the ``focus`` tactic. The proof is complete
-only when all generated goals have been solved.
+solve typing goals of the form ``x₁:A₁, …, xₙ:Aₙ ⊢ ?M : U`` (find a
+term of a given type materialized by a metavariable ``?M``) and
+unification goals of the form ``x₁:A₁, …, xₙ:Aₙ ⊢ U ≡ V`` (prove that
+two terms are equivalent).
+
+The following tactics help users to refine typing goals and transform
+unification goals step by step. A tactic application may generate new
+goals/metavariables.
+
+Except for the ``solve`` tactic which applies to all the unification
+goals at once, all the other tactics applies to the first goal only,
+which is called the *focused* goal, and this focused goal must be a
+typing goal.
+
+One can change the focus goal by using the ``focus`` tactic.
+
+The proof is complete only when all generated goals have been solved.
 
 Reminder: the BNF grammar of tactics is in `syntax.bnf <https://raw.githubusercontent.com/Deducteam/lambdapi/master/docs/syntax.bnf>`__.
 
@@ -50,7 +57,7 @@ the proof mode.
 ---------
 
 If ``t`` is a term of type ``Π x₁:T₁, …, Π xₙ:Tₙ,U``, then ``apply t``
-refines the focused type goal with ``t _ … _`` (with n underscores).
+refines the focused typing goal with ``t _ … _`` (with n underscores).
 
 ``assume``
 ----------
@@ -58,6 +65,13 @@ refines the focused type goal with ``t _ … _`` (with n underscores).
 If the focused typing goal is of the form ``Π x₁ … xₙ,T``, then
 ``assume h₁ … hₙ`` replaces it by ``T`` with ``xᵢ`` replaced by
 ``hᵢ``.
+
+``generalize``
+--------------
+
+If the focused goal is of the form ``x₁:A₁, …, xₙ:Aₙ, y₁:B₁, …, yₚ:Bₚ
+⊢ ?₁ : U``, then ``generalize y₁`` transforms it into the new goal
+``x₁:A₁, …, xₙ:Aₙ ⊢ ?₂ : Π y₁:B₁, …, Π yₚ:Bₚ, U``.
 
 ``have``
 --------
@@ -68,7 +82,7 @@ the focused typing goal assuming ``x: t``.
 ``induction``
 -------------
 
-If the focus type goal is of the form ``Π x:I …, …`` with ``I`` an
+If the focused goal is of the form ``Π x:I …, …`` with ``I`` an
 inductive type, then ``induction`` refines it by applying the
 induction principle of ``I``.
 
@@ -83,8 +97,8 @@ unification algorithms will then try to instantiate some of the
 metavariables. The new metavariables that cannot be solved are added
 as new goals.
 
-``simpl``
----------
+``simplify``
+------------
 
 With no argument, ``simpl`` normalizes the focused goal with respect
 to β-reduction and the user-defined rewriting rules.

@@ -189,44 +189,45 @@ let query : p_query pp = fun ppf q ->
   match q.elt with
   | P_query_assert(true, a) -> out ppf "assertnot %a" assertion a
   | P_query_assert(false,a) -> out ppf "assert %a" assertion a
-  | P_query_verbose(i) -> out ppf "set verbose %i" i
   | P_query_debug(true ,s) -> out ppf "set debug \"+%s\"" s
   | P_query_debug(false,s) -> out ppf "set debug \"-%s\"" s
   | P_query_flag(s, b) ->
       out ppf "set flag \"%s\" %s" s (if b then "on" else "off")
   | P_query_infer(t, _) -> out ppf "type %a" term t
   | P_query_normalize(t, _) -> out ppf "compute %a" term t
-  | P_query_prover(s) -> out ppf "set prover \"%s\"" s
-  | P_query_prover_timeout(n) -> out ppf "set prover_timeout %d" n
-  | P_query_print(None) -> out ppf "print"
+  | P_query_prover s -> out ppf "set prover \"%s\"" s
+  | P_query_prover_timeout n -> out ppf "set prover_timeout %d" n
+  | P_query_print None -> out ppf "print"
   | P_query_print(Some qid) -> out ppf "print %a" qident qid
   | P_query_proofterm -> out ppf "proofterm"
+  | P_query_verbose i -> out ppf "set verbose %i" i
 
 let tactic : p_tactic pp = fun ppf t ->
   begin match t.elt with
-  | P_tac_refine(t) -> out ppf "refine %a" term t
-  | P_tac_have(id,t) -> out ppf "have %a: %a" ident id term t
-  | P_tac_assume(xs) ->
+  | P_tac_admit -> out ppf "admit"
+  | P_tac_apply t -> out ppf "apply %a" term t
+  | P_tac_assume ids ->
       let param_id ppf x = out ppf " %a" param_id x in
-      out ppf "assume%a" (List.pp param_id "") xs
-  | P_tac_apply(t) -> out ppf "apply %a" term t
-  | P_tac_simpl None -> out ppf "simpl"
-  | P_tac_simpl (Some qid) -> out ppf "simpl %a" qident qid
+      out ppf "assume%a" (List.pp param_id "") ids
+  | P_tac_fail -> out ppf "fail"
+  | P_tac_focus i -> out ppf "focus %i" i
+  | P_tac_generalize id -> out ppf "generalize %a" ident id
+  | P_tac_have (id,t) -> out ppf "have %a: %a" ident id term t
+  | P_tac_induction -> out ppf "induction"
+  | P_tac_query q -> query ppf q
+  | P_tac_refine t -> out ppf "refine %a" term t
+  | P_tac_refl -> out ppf "reflexivity"
   | P_tac_rewrite(b,p,t)     ->
       let dir ppf b = if not b then out ppf " left" in
       let pat ppf p = out ppf " [%a]" rw_patt p in
       out ppf "rewrite%a%a %a" dir b (Option.pp pat) p term t
-  | P_tac_refl -> out ppf "reflexivity"
+  | P_tac_simpl None -> out ppf "simpl"
+  | P_tac_simpl (Some qid) -> out ppf "simpl %a" qident qid
+  | P_tac_solve -> out ppf "solve"
   | P_tac_sym -> out ppf "symmetry"
-  | P_tac_focus(i) -> out ppf "focus %i" i
-  | P_tac_why3(p) ->
+  | P_tac_why3 p ->
       let prover ppf s = out ppf " \"%s\"" s in
       out ppf "why3%a" (Option.pp prover) p
-  | P_tac_query(q) -> query ppf q
-  | P_tac_fail -> out ppf "fail"
-  | P_tac_solve -> out ppf "solve"
-  | P_tac_induction -> out ppf "induction"
-  | P_tac_admit -> out ppf "admit"
   end;
   out ppf ";"
 
@@ -240,19 +241,33 @@ let assoc : Pratter.associativity pp = fun ppf a ->
 let notation : notation pp = fun ppf n ->
   match n with
   | Infix(a,p) -> out ppf "infix%a %f" assoc a p
-  | Prefix(p) -> out ppf "prefix %f" p
+  | Prefix p -> out ppf "prefix %f" p
   | Quant -> out ppf "quantifier"
   | _ -> ()
 
 let command : p_command pp = fun ppf {elt;_} ->
   begin match elt with
+  | P_builtin(s,qid) -> out ppf "builtin \"%s\" ≔ %a" s qident qid
+  | P_inductive(_, _, []) -> assert false (* not possible *)
+  | P_inductive(ms, xs, i::il) ->
+      out ppf "%a%a%a%a\nend"
+        modifiers ms
+        (List.pp params " ") xs
+        (inductive "inductive") i
+        (List.pp (inductive "\nwith") "") il
+  | P_notation(qid,n) -> out ppf "notation %a %a" qident qid notation n
+  | P_open ps -> out ppf "open %a" (List.pp path " ") ps
+  | P_query q -> query ppf q
   | P_require(b,ps) ->
       let op = if b then " open" else "" in
       out ppf "require%s %a" op (List.pp path " ") ps
   | P_require_as(p,i) -> out ppf "require %a as %a" path p ident i
-  | P_open(ps) -> out ppf "open %a" (List.pp path " ") ps
-  | P_symbol{p_sym_mod;p_sym_nam;p_sym_arg;p_sym_typ;p_sym_trm;p_sym_prf
-             ;p_sym_def} ->
+  | P_rules [] -> assert false (* not possible *)
+  | P_rules (r::rs) ->
+      out ppf "%a" (rule "rule") r;
+      List.iter (out ppf "%a" (rule "\nwith")) rs
+  | P_symbol
+    {p_sym_mod;p_sym_nam;p_sym_arg;p_sym_typ;p_sym_trm;p_sym_prf;p_sym_def} ->
     begin
       out ppf "%asymbol %a%a%a" modifiers p_sym_mod ident p_sym_nam
         params_list p_sym_arg typ p_sym_typ;
@@ -264,21 +279,7 @@ let command : p_command pp = fun ppf {elt;_} ->
           let tactic ppf = out ppf "\n  %a" tactic in
           out ppf "\nbegin%a\n%a" (List.pp tactic "") ts proof_end pe
     end
-  | P_rules [] -> assert false (* not possible *)
-  | P_rules (r::rs) ->
-      out ppf "%a" (rule "rule") r;
-      List.iter (out ppf "%a" (rule "\nwith")) rs
-  | P_inductive(_, _, []) -> assert false (* not possible *)
-  | P_inductive(ms, xs, i::il) ->
-      out ppf "%a%a%a%a\nend"
-        modifiers ms
-        (List.pp params " ") xs
-        (inductive "inductive") i
-        (List.pp (inductive "\nwith") "") il
-  | P_builtin(s,qid) -> out ppf "builtin \"%s\" ≔ %a" s qident qid
-  | P_notation(qid,n) -> out ppf "notation %a %a" qident qid notation n
   | P_unif_rule(ur) -> out ppf "unif_rule %a" unif_rule ur
-  | P_query(q) -> query ppf q
   end;
   out ppf ";"
 

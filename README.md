@@ -2,13 +2,18 @@ Lambdapi, a proof assistant based on the λΠ-calculus modulo rewriting [![Gitte
 =====================================================================
 
 [User Manual](https://lambdapi.readthedocs.io)
--------------
+---n---------
 
 Issues can be reported on the following
 [issue tracker](https://github.com/Deducteam/lambdapi/issues).
 
 Questions can be asked on the following
 [forum](https://github.com/Deducteam/lambdapi/discussions).
+
+Examples of developments made with Lambdapi:
+- [library on natural numbers and polymorphic lists](https://github.com/fblanqui/lib)
+- [set theory](https://github.com/ttraversie/zf)
+- [`tests/OK` directory](https://github.com/Deducteam/lambdapi/tree/master/tests/OK) (used for testing and continuous integration)
 
 Operating systems
 -----------------

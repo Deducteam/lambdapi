@@ -30,12 +30,12 @@ let find : string -> env -> tvar = fun n env ->
     body is the term [t]. By calling [to_prod [(xn,an,None);⋯;(x1,a1,None)] t]
     you obtain a term of the form [Πx1:a1,..,Πxn:an,t]. *)
 let to_prod_box : env -> tbox -> tbox = fun env t ->
-  let fn t (_,(x,a,u)) =
+  let add_prod t (_,(x,a,u)) =
     match u with
     | Some(u) -> _LLet a u (Bindlib.bind_var x t)
     | None    -> _Prod a (Bindlib.bind_var x t)
   in
-  List.fold_left fn t env
+  List.fold_left add_prod t env
 
 (** [to_prod] is an “unboxed” version of [to_prod_box]. *)
 let to_prod : env -> tbox -> term = fun env t ->
@@ -47,12 +47,12 @@ let to_prod : env -> tbox -> term = fun env t ->
     and which body is the term [t]:
     [to_abst [(xn,an,None);..;(x1,a1,None)] t = λx1:a1,..,λxn:an,t]. *)
 let to_abst : env -> tbox -> term = fun env t ->
-  let fn t (_,(x,a,u)) =
+  let add_abst t (_,(x,a,u)) =
     match u with
     | Some(u) -> _LLet a u (Bindlib.bind_var x t)
     | None    -> _Abst a (Bindlib.bind_var x t)
   in
-  Bindlib.unbox (List.fold_left fn t env)
+  Bindlib.unbox (List.fold_left add_abst t env)
 
 (** [vars env] extracts the array of the {e not defined} Bindlib variables in
     [env]. Note that the order is reversed: [vars [(xn,an);..;(x1,a1)] =

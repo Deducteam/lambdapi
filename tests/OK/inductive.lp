@@ -677,7 +677,7 @@ begin
   reflexivity;
   // Case n = S n'
   assume n' Hn';
-  simpl;
+  simplify;
   rewrite Hn';
   reflexivity;
 end;
@@ -699,7 +699,7 @@ begin
   induction;
   reflexivity;
   assume x l1 IHl1;
-  simpl;
+  simplify;
   rewrite IHl1;
   reflexivity;
 end;
