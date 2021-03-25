@@ -44,6 +44,7 @@ syntax.bnf:
 	-e 's/FAIL/fail/g' \
 	-e 's/FLAG/flag/g' \
 	-e 's/FOCUS/focus/g' \
+	-e 's/GENERALIZE/generalize/g' \
 	-e 's/HAVE/have/g' \
 	-e 's/IN/in/g' \
 	-e 's/inDUCTION/induction/g' \
@@ -68,7 +69,7 @@ syntax.bnf:
 	-e 's/REWRITE/rewrite/g' \
 	-e 's/RULE/rule/g' \
 	-e 's/SEQUENTIAL/sequential/g' \
-	-e 's/SIMPL/simpl/g' \
+	-e 's/SIMPLIFY/simplify/g' \
 	-e 's/SOLVE/solve/g' \
 	-e 's/SYMBOL/symbol/g' \
 	-e 's/SYMMETRY/symmetry/g' \

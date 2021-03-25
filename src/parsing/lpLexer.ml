@@ -28,6 +28,7 @@ type token =
   | FAIL
   | FLAG
   | FOCUS
+  | GENERALIZE
   | HAVE
   | IN
   | INDUCTION
@@ -52,7 +53,7 @@ type token =
   | REWRITE
   | RULE
   | SEQUENTIAL
-  | SIMPL
+  | SIMPLIFY
   | SOLVE
   | SYMBOL
   | SYMMETRY
@@ -198,6 +199,7 @@ end = struct
         ; "fail"
         ; "flag"
         ; "focus"
+        ; "generalize"
         ; "have"
         ; "in"
         ; "induction"
@@ -226,7 +228,7 @@ end = struct
         ; "rule"
         ; "sequential"
         ; "set"
-        ; "simpl"
+        ; "simplify"
         ; "solve"
         ; "symbol"
         ; "symmetry"
@@ -299,6 +301,7 @@ end = struct
     | "fail" -> FAIL
     | "flag" -> FLAG
     | "focus" -> FOCUS
+    | "generalize" -> GENERALIZE
     | "have" -> HAVE
     | "in" -> IN
     | "induction" -> INDUCTION
@@ -327,7 +330,7 @@ end = struct
     | "right" -> ASSOC(Pratter.Right)
     | "rule" -> RULE
     | "sequential" -> SEQUENTIAL
-    | "simpl" -> SIMPL
+    | "simplify" -> SIMPLIFY
     | "solve" -> SOLVE
     | "symbol" -> SYMBOL
     | "symmetry" -> SYMMETRY

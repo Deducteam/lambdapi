@@ -45,15 +45,12 @@ let max_index : ?cmp:('a -> 'a -> int) -> 'a array -> int =
 let max : ?cmp:('a -> 'a -> int) -> 'a array -> 'a =
  fun ?(cmp = Stdlib.compare) arr -> A.get arr (max_index ~cmp arr)
 
-(** [split a] is [List.split (Array.to_list a)]. *)
-let split : ('a * 'b) array -> 'a list * 'b list =
- fun a ->
+(** [unzip a] is [List.unzip (Array.to_list a)]. *)
+let unzip : ('a * 'b) array -> 'a list * 'b list = fun a ->
   let aux (el, er) (accl, accr) = (el :: accl, er :: accr) in
   A.fold_right aux a ([], [])
 
 (** [drop n a] discards the first [n] elements of [a]. The empty array is
     returned if [n > length a]. *)
-let drop : int -> 'a array -> 'a array =
- fun n a ->
-  let l = length a in
-  if n >= l then [||] else A.sub a n (l - n)
+let drop : int -> 'a array -> 'a array = fun n a ->
+  let l = length a in if n >= l then [||] else A.sub a n (l - n)

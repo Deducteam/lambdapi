@@ -1,5 +1,7 @@
 ### Unreleased
 
+#### Add tactic `generalize`, and rename tactic `simpl` into `simplify` (2021-03-25)
+
 #### Use Dune for opam integration (2021-03-25)
 
 - Content of `lambdapi.opam` is moved to `dune-project` and the former is

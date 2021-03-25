@@ -10,6 +10,6 @@
     ],
     "indentationRules": {
         "increaseIndentPattern": "begin\\s*$",
-        "decreaseIndentPattern": "(?<!begin.*)(end|admit|abort)\\s*;(?!.*begin)"
+        "decreaseIndentPattern": "(?<!begin.*)(end|admitted|abort)\\s*;(?!.*begin)"
     }
 }
