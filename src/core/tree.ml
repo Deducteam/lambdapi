@@ -732,6 +732,6 @@ let compile : match_strat -> CM.t -> tree = fun mstrat m ->
 (** [update_dtree s] updates decision tree of symbol [s]. *)
 let update_dtree : sym -> unit = fun symb ->
   let rules = lazy (CM.of_rules !(symb.sym_rules)) in
-  let tree = lazy (compile !(symb.sym_mstrat) (Lazy.force rules)) in
+  let tree = lazy (compile symb.sym_mstrat (Lazy.force rules)) in
   let cap = lazy (Tree_types.tree_capacity (Lazy.force tree)) in
   symb.sym_tree := (cap, tree)

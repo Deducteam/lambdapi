@@ -65,7 +65,7 @@ and dtree = rhs Tree_types.dtree
     whether they may be given rewriting rules or a definition. Invariants must
     be enforced for "mode" consistency (see {!type:sym_prop}).  *)
 and sym =
-  { sym_expo  : Parsing.Syntax.Tags.expo
+  { sym_expo  : Tags.expo
   (** Visibility of the symbol. *)
   ; sym_path  : Common.Path.t
   (** Module in which it is defined. *)
@@ -75,7 +75,7 @@ and sym =
   (** Type of the symbol. *)
   ; sym_impl  : bool list
   (** Implicitness of the first arguments ([true] meaning implicit). *)
-  ; sym_prop  : Parsing.Syntax.Tags.prop
+  ; sym_prop  : Tags.prop
   (** Property of the symbol. *)
   ; sym_def   : term option ref
   (** Definition of the symbol. *)
@@ -83,7 +83,7 @@ and sym =
   (** If the symbol must not be unfolded in default goal simplifications. *)
   ; sym_rules : rule list ref
   (** Rewriting rules for the symbol. *)
-  ; sym_mstrat: Parsing.Syntax.Tags.match_strat ref
+  ; sym_mstrat: Tags.match_strat
   (** Matching strategy. *)
   ; sym_tree  : dtree ref
   (** Decision tree used for matching against rules of the symbol. *) }
@@ -237,10 +237,10 @@ and sym =
    definition and no rules. *)
 let create_sym : Common.Path.t -> Tags.expo -> Tags.prop
     -> Tags.match_strat -> bool -> string -> term -> bool list -> sym =
-  fun sym_path sym_expo sym_prop mstrat sym_opaq sym_name typ sym_impl ->
+  fun sym_path sym_expo sym_prop sym_mstrat sym_opaq sym_name typ sym_impl ->
   {sym_path; sym_name; sym_type = ref typ; sym_impl; sym_def = ref None;
    sym_opaq; sym_rules = ref []; sym_tree = ref Tree_types.empty_dtree;
-   sym_mstrat = ref mstrat; sym_prop; sym_expo }
+   sym_mstrat; sym_prop; sym_expo }
 
 (** [is_injective s] tells whether the symbol is injective. *)
 let is_injective : sym -> bool = fun s -> s.sym_prop = Injec
