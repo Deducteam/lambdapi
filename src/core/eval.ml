@@ -203,26 +203,26 @@ and tree_walk : dtree -> ctxt -> stack -> (term * stack) option =
         assert (List.length env_builder = env_len - xvars);
         let env = Array.make env_len TE_None in
         (* Retrieve terms needed in the action from the [vars] array. *)
-        let fn (pos, (slot, xs)) =
+        let f (pos, (slot, xs)) =
           match bound.(pos) with
           | TE_Vari(_) -> assert false
           | TE_Some(_) -> env.(slot) <- bound.(pos)
           | TE_None    ->
               if Array.length xs = 0 then
                 let t = unfold vars.(pos) in
-                let b = Bindlib.raw_mbinder [||] [||] 0 mkfree (fun _ -> t) in
-                env.(slot) <- TE_Some(b)
+                let b = Bindlib.raw_mbinder [||] [||] 0 of_tvar (fun _ -> t)
+                in env.(slot) <- TE_Some(b)
               else
                 let b = lift vars.(pos) in
                 let xs = Array.map (fun e -> IntMap.find e id_vars) xs in
                 env.(slot) <- TE_Some(Bindlib.unbox (Bindlib.bind_mvar xs b))
         in
-        List.iter fn env_builder;
+        List.iter f env_builder;
         (* Complete the array with fresh meta-variables if needed. *)
         for i = env_len - xvars to env_len - 1 do
           let mt = Meta.make ctx Type in
           let t = Meta.make ctx mt in
-          let b = Bindlib.raw_mbinder [||] [||] 0 mkfree (fun _ -> t) in
+          let b = Bindlib.raw_mbinder [||] [||] 0 of_tvar (fun _ -> t) in
           env.(i) <- TE_Some(b)
         done;
         Some (Bindlib.msubst act env, stk)

@@ -240,11 +240,11 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
         match idopts with
         | [] -> scope_params_list env params_list
         | None::idopts ->
-            let v = Bindlib.new_var mkfree "_" in
+            let v = new_tvar "_" in
             let t = aux env idopts in
             cons a (Bindlib.bind_var v t)
         | Some id::idopts ->
-            let v = Bindlib.new_var mkfree id.elt in
+            let v = new_tvar id.elt in
             let env = Env.add v a None env in
             let t = aux env idopts in
             if id.elt.[0] <> '_' && not (Bindlib.occur v t) then
@@ -265,7 +265,7 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
     | (P_Wild, M_URHS(data)) ->
       let x =
         let name = Printf.sprintf "v%i" data.m_urhs_vars_nb in
-        let x = Bindlib.new_var te_mkfree name in
+        let x = new_tevar name in
         data.m_urhs_vars_nb <- data.m_urhs_vars_nb + 1;
         data.m_urhs_xvars <- (name, x) :: data.m_urhs_xvars;
         x
@@ -355,7 +355,7 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
                   let name =
                     Printf.sprintf "v%i_%s" r.m_urhs_vars_nb id.elt
                   in
-                  let x = Bindlib.new_var te_mkfree name in
+                  let x = new_tevar name in
                   r.m_urhs_vars_nb <- r.m_urhs_vars_nb + 1          ;
                   r.m_urhs_xvars   <- (id.elt, x) :: r.m_urhs_xvars ;
                   x
@@ -398,7 +398,7 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
     | (P_LLet(x,xs,a,t,u), M_RHS(_)) ->
         let a = scope_binder _Prod env xs a in
         let t = scope_binder _Abst env xs (Some(t)) in
-        let v = Bindlib.new_var mkfree x.elt in
+        let v = new_tvar x.elt in
         let u = scope (Env.add v a (Some(t)) env) u in
         if not (Bindlib.occur v u) then
           wrn x.pos "Useless let-binding ([%s] not bound)." x.elt;
@@ -550,14 +550,9 @@ let scope_rule : bool -> sig_state -> p_rule -> pre_rule loc = fun ur ss r ->
   if pr_lhs = [] then wrn p_lhs.pos "LHS head symbol with no argument.";
   (* Create the pattern variables that can be bound in the RHS. *)
   let pr_vars =
-    let fn i =
-      let name =
-        try Printf.sprintf "v%i_%s" i (Hashtbl.find lhs_names i)
-        with Not_found -> Printf.sprintf "v%i" i
-      in
-      Bindlib.new_var te_mkfree name
-    in
-    Array.init lhs_size fn
+    Array.init lhs_size (fun i -> new_tevar
+      (try Printf.sprintf "v%i_%s" i (Hashtbl.find lhs_names i)
+       with Not_found -> Printf.sprintf "v%i" i))
   in
   let mode =
     let htbl_vars = Hashtbl.create (Hashtbl.length lhs_indices) in
@@ -618,20 +613,20 @@ let scope_rw_patt : sig_state ->  env -> p_rw_patt -> rw_patt =
   | P_rw_Term(t)               -> RW_Term(scope_pattern ss env t)
   | P_rw_InTerm(t)             -> RW_InTerm(scope_pattern ss env t)
   | P_rw_InIdInTerm(x,t)       ->
-      let v = Bindlib.new_var mkfree x.elt in
+      let v = new_tvar x.elt in
       let t = scope_pattern ss ((x.elt,(v, _Kind, None))::env) t in
       RW_InIdInTerm(Bindlib.unbox (Bindlib.bind_var v (lift t)))
   | P_rw_IdInTerm(x,t)         ->
-      let v = Bindlib.new_var mkfree x.elt in
+      let v = new_tvar x.elt in
       let t = scope_pattern ss ((x.elt,(v, _Kind, None))::env) t in
       RW_IdInTerm(Bindlib.unbox (Bindlib.bind_var v (lift t)))
   | P_rw_TermInIdInTerm(u,x,t) ->
       let u = scope_pattern ss env u in
-      let v = Bindlib.new_var mkfree x.elt in
+      let v = new_tvar x.elt in
       let t = scope_pattern ss ((x.elt,(v, _Kind, None))::env) t in
       RW_TermInIdInTerm(u, Bindlib.unbox (Bindlib.bind_var v (lift t)))
   | P_rw_TermAsIdInTerm(u,x,t) ->
       let u = scope_pattern ss env u in
-      let v = Bindlib.new_var mkfree x.elt in
+      let v = new_tvar x.elt in
       let t = scope_pattern ss ((x.elt,(v, _Kind, None))::env) t in
       RW_TermAsIdInTerm(u, Bindlib.unbox (Bindlib.bind_var v (lift t)))
