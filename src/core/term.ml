@@ -382,8 +382,12 @@ type tebox = term_env Bindlib.box
 (** [of_tvar x] injects the [Bindlib] variable [x] in a term. *)
 let of_tvar : tvar -> term = fun x -> Vari(x)
 
-(** [new_tvar s] creates a new [tvar] with name [s]. *)
+(** [new_tvar s] creates a new [tvar] of name [s]. *)
 let new_tvar : string -> tvar = Bindlib.new_var of_tvar
+
+(** [new_tvar_ind s i] creates a new [tvar] of name [s ^ string_of_int i]. *)
+let new_tvar_ind : string -> int -> tvar = fun s i ->
+  new_tvar (Printf.sprintf "%s%i" s i)
 
 (** [of_tevar x] injects the [Bindlib] variable [x] in a {!type:term_env}. *)
 let of_tevar : tevar -> term_env = fun x -> TE_Vari(x)

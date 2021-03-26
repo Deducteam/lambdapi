@@ -43,10 +43,7 @@ let add_axiom : Sig_state.t -> Meta.t -> Sig_state.t = fun ss m ->
      substituted by the terms of the explicit substitution of the
      metavariable. *)
   let meta_value =
-    let vars =
-      let mk_var i = new_tvar (Printf.sprintf "x%i" i) in
-      Array.init m.meta_arity mk_var
-    in
+    let vars = Array.init m.meta_arity (new_tvar_ind "x") in
     let ax = _Appl_symb sym (Array.to_list vars |> List.map _Vari) in
     Bindlib.(bind_mvar vars ax |> unbox)
   in

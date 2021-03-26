@@ -278,8 +278,7 @@ let sym_to_var : tvar StrMap.t -> term -> term = fun map ->
 let term_of_rhs : rule -> term = fun r ->
   let fn i x =
     let (name, arity) = (Bindlib.name_of x, r.arities.(i)) in
-    let mk_var i = new_tvar (Printf.sprintf "x%i" i) in
-    let vars = Array.init arity mk_var in
+    let vars = Array.init arity (new_tvar_ind "x") in
     let p = _Patt (Some(i)) name (Array.map Bindlib.box_var vars) in
     TE_Some(Bindlib.unbox (Bindlib.bind_mvar vars p))
   in
