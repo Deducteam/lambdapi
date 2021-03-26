@@ -20,7 +20,7 @@ let log_subj = log_subj.logger
     arity “i-1” and type “Π(x1:A1) ⋯ (x(i-1):A(i-1)), TYPE”. *)
 let build_meta_type : int -> term = fun k ->
   assert (k >= 0);
-  let xs = LibTerm.fresh_vars k in
+  let xs = Array.init k (new_tvar_ind "x") in
   let ts = Array.map _Vari xs in
   (* We create the types for the “Mi” metavariables. *)
   let ty_m = Array.make (k+1) _Type in
@@ -157,21 +157,21 @@ let check_rule : Scope.pre_rule Pos.loc -> rule = fun ({pos; elt} as pr) ->
     _Appl_symb s args
   in
   (* Create metavariables that will stand for the variables of [vars].
-     These metavariables are prefixed by "$" so that we recognize them. *)
+     These metavariables are prefixed by "$" so that we can recognize them. *)
   let var_names = Array.map (fun x -> "$" ^ Bindlib.name_of x) vars in
   let metas =
-    let fn i name =
+    let f i name =
       let arity = arities.(i) in
       Meta.fresh ~name (build_meta_type arity) arity
     in
-    Array.mapi fn var_names
+    Array.mapi f var_names
   in
   (* Substitute them in the LHS and in the RHS. *)
   let (lhs_typing, rhs_typing) =
     let lhs_rhs = Bindlib.box_pair lhs_vars pr_rhs in
     let b = Bindlib.(unbox (bind_mvar vars lhs_rhs)) in
     let meta_to_tenv m =
-      let xs = LibTerm.fresh_vars m.meta_arity in
+      let xs = Array.init m.meta_arity (new_tvar_ind "x") in
       let ts = Array.map _Vari xs in
       TE_Some(Bindlib.unbox (Bindlib.bind_mvar xs (_Meta m ts)))
     in
@@ -228,7 +228,7 @@ let check_rule : Scope.pre_rule Pos.loc -> rule = fun ({pos; elt} as pr) ->
                     Privat Defin Eager false sym_name !(m.meta_type) [] in
           Stdlib.(symbols := s :: !symbols);
           (* Build a definition for [m]. *)
-          let xs = LibTerm.fresh_vars m.meta_arity in
+          let xs = Array.init m.meta_arity (new_tvar_ind "x") in
           let s = _Symb s in
           let def = Array.fold_left (fun t x -> _Appl t (_Vari x)) s xs in
           m.meta_value := Some(Bindlib.unbox (Bindlib.bind_mvar xs def))

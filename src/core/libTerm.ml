@@ -5,12 +5,6 @@ open Term
 open Lplib.Base
 open Lplib.Extra
 
-(** [fresh_vars n] creates an array of [n] fresh variables. The names of these
-    variables is ["xi"], where [i] is a number introduced by the [Bindlib]
-    library to avoid name clashes (minimal renaming is done). *)
-let fresh_vars : int -> tvar array = fun n ->
-  Bindlib.new_mvar of_tvar (Array.make n "x")
-
 (** [to_tvar t] returns [x] if [t] is of the form [Vari x] and fails
     otherwise. *)
 let to_tvar : term -> tvar = fun t ->
