@@ -8,7 +8,7 @@ let test_ok f () =
 
 let test_ko f () =
   (* Succeed if compilation fails. *)
-  let r = try (ignore (compile f)); true with _ -> false in
+  let r = try ignore (compile f); true with _ -> false in
   Alcotest.(check bool) f r false
 
 let _ =
