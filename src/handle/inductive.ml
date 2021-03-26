@@ -99,9 +99,7 @@ let create_ind_pred_map :
       -> tvar array * Env.t * ind_pred_map =
   fun pos c arity ind_list a_str p_str x_str ->
   (* create parameters *)
-  let vs =
-    Array.init arity
-      (fun i -> new_tvar (a_str ^ string_of_int i)) in
+  let vs = Array.init arity (new_tvar_ind a_str) in
   let env =
     match ind_list with
     | [] -> assert false (* there must be at least one type definition *)
@@ -111,7 +109,7 @@ let create_ind_pred_map :
   (* create the ind_pred_map *)
   let create_sym_pred_data i (ind_sym,_) =
     (* predicate variable *)
-    let ind_var = new_tvar (p_str ^ string_of_int i) in
+    let ind_var = new_tvar_ind p_str i in
     (* predicate type *)
     let codom ts = _Impl (_Appl_symb ind_sym ts) (_Symb c.symb_Prop) in
     let a = snd (Env.of_prod_using [] vs !(ind_sym.sym_type)) in
