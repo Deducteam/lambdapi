@@ -200,7 +200,9 @@ let handle : (Path.t -> Sign.t) -> sig_state -> p_command ->
   if !log_enabled then
       (if !print_time then log_hndl "%f" (Sys.time());
        log_hndl "%a" Pos.pp pos; log_hndl (red "%a") Pretty.command cmd);
-  let scope expo = Scope.scope_term expo ss Env.empty (lazy IntMap.empty) in
+  let scope ?warn expo =
+    Scope.scope_term ?warn expo ss Env.empty (lazy IntMap.empty)
+  in
   match elt with
   | P_query(q) -> (ss, None, Query.handle ss None q)
   | P_require(b,ps) ->
@@ -351,16 +353,24 @@ let handle : (Path.t -> Sign.t) -> sig_state -> p_command ->
      | _, _, _, _ -> ());
     (* Build proof data. *)
     let data =
+      (* Whether to raise warning during scoping or not. When processing
+         definitions of the form [f x y : T := t], [x] and [y] may appear only
+         in [T] are only in [T]. In both cases, no warning should be printed
+         saynig that [x] shouldn't be named because it does not appear in [T]
+         (or [t]). *)
+      let warn = p_sym_arg = [] || p_sym_typ = None || p_sym_trm = None in
       (* Scope keeping position, with [expo] parsed above. *)
-      let scope_p a = Pos.make a.pos (scope expo a) in
+      let scope_p a =
+        Pos.make a.pos (scope ~warn expo a) in
       (* Desugaring of arguments and scoping of [p_sym_trm]. *)
       let pt, t =
         match p_sym_trm with
         | Some pt ->
             let pt =
               if p_sym_arg = [] then pt
-              else let pos = Pos.(cat (end_pos p_sym_nam.pos) pt.pos) in
-                   Pos.make pos (P_Abst(p_sym_arg, pt))
+              else
+                let pos = Pos.(cat (end_pos p_sym_nam.pos) pt.pos) in
+                Pos.make pos (P_Abst(p_sym_arg, pt))
             in
             Some pt, Some (scope_p pt)
         | None -> None, None
@@ -377,6 +387,22 @@ let handle : (Path.t -> Sign.t) -> sig_state -> p_command ->
             (Some(a), Scope.get_implicitness a)
       in
       let ao = Option.map scope_p ao in
+      (* If warnings were not output during scoping (see above), then we warn
+         here for unused variables by going through type and definition
+         simultaneously. *)
+      let rec binders_warn ty te =
+        match ty, te with
+        | Prod(_, by), Abst(_, be) ->
+            let x, ty, te = Bindlib.unbind2 by be in
+            if Bindlib.(binder_constant by && binder_constant be) then
+              wrn pos "Variable [%s] could be replaced by [_]."
+                (Bindlib.name_of x);
+            binders_warn ty te
+        | _ -> ()
+      in
+      ( match ao, t with
+        | Some(a), Some(t) when not warn -> binders_warn a.elt t.elt
+        | _ -> () );
       let proof_goals, a = goals_of_typ ao t in
       (* Add the definition as goal so that we can refine on it. *)
       let proof_term =

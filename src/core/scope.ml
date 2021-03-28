@@ -137,11 +137,15 @@ let get_pratt_args : Sig_state.t -> Env.t -> p_term -> p_term * p_term list =
     | _           -> (t, args)
   in get_args [] (Pratt.parse ss env t)
 
-(** [scope md ss env t] turns a parser-level term [t] into an actual term. The
-    variables of the environment [env] may appear in [t], and the scoping mode
-    [md] changes the behaviour related to certain constructors.  The signature
-    state [ss] is used to hande module aliasing according to [find_qid]. *)
-let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
+(** [scope ?warn md ss env t] turns a parser-level term [t] into an
+    actual term. The variables of the environment [env] may appear in [t].
+    The scoping mode [md] changes the behaviour related to certain
+    constructors. The signature state [ss] is used to hande module aliasing
+    according to [find_qid]. If [?warn] is [false], no warning is printed if
+    a bound variable is named but does not appear in the term in which it is
+    bound (defaults to [true]). *)
+let scope : ?warn:bool -> mode -> sig_state -> env -> p_term -> tbox =
+  fun ?(warn=true) md ss env t ->
   (* Unique pattern variable generation for wildcards in a LHS. *)
   let fresh_patt md name env =
     match md with
@@ -252,7 +256,7 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
             let v = new_tvar id.elt in
             let env = Env.add v a None env in
             let t = aux env idopts in
-            if id.elt.[0] <> '_' && not (Bindlib.occur v t) then
+            if id.elt.[0] <> '_' && not (Bindlib.occur v t) && warn then
               wrn id.pos "Variable [%s] could be replaced by [_]." id.elt;
             cons a (Bindlib.bind_var v t)
       in aux env idopts
@@ -423,16 +427,17 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
   in
   scope env t
 
-(** [scope ?exp ss env t] turns a parser-level term [t] into an actual term.
-    The variables of the environment [env] may appear in [t]. The signature
-    state [ss] is used to handle module aliasing according to [find_qid]. If
-    [?exp] is {!constructor:Public}, then the term mustn't contain any private
-    subterms. *)
-let scope_term :
-     Tags.expo -> sig_state -> env -> meta IntMap.t Lazy.t -> p_term -> term =
-  fun expo ss env sgm t ->
+(** [scope ?free_vars exp ss env t] turns a parser-level term [t] into an
+    actual term. The signature state [ss] is used to handle module aliasing
+    according to [find_qid]. If [?exp] is {!constructor:Public}, then the term
+    mustn't contain any private subterms. If [?warn] is [false], no warning is
+    printed if a bound variable is named but does not appear in the term in
+    which it is bound (defaults to [true]). *)
+let scope_term : ?warn:bool -> Tags.expo -> sig_state -> env ->
+  meta IntMap.t Lazy.t -> p_term -> term =
+  fun ?(warn=true) expo ss env sgm t ->
   let m = Stdlib.ref StrMap.empty in
-  Bindlib.unbox (scope (M_Term(m, sgm, expo)) ss env t)
+  Bindlib.unbox (scope ~warn (M_Term(m, sgm, expo)) ss env t)
 
 (** [patt_vars t] returns a couple [(pvs,nl)]. The first compoment [pvs] is an
     association list giving the arity of all the “pattern variables” appearing
