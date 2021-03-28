@@ -43,10 +43,7 @@ let add_axiom : Sig_state.t -> Meta.t -> Sig_state.t = fun ss m ->
      substituted by the terms of the explicit substitution of the
      metavariable. *)
   let meta_value =
-    let vars =
-      let mk_var i = Bindlib.new_var mkfree (Printf.sprintf "x%i" i) in
-      Array.init m.meta_arity mk_var
-    in
+    let vars = Array.init m.meta_arity (new_tvar_ind "x") in
     let ax = _Appl_symb sym (Array.to_list vars |> List.map _Vari) in
     Bindlib.(bind_mvar vars ax |> unbox)
   in
@@ -220,7 +217,7 @@ let handle : Sig_state.t -> Tags.expo -> proof_state -> p_tactic
       let n = List.length env in
       let bt = lift t in
       let m1 = Meta.fresh (Env.to_prod env bt) n in
-      let v = Bindlib.new_var mkfree id.elt in
+      let v = new_tvar id.elt in
       let env' = Env.add v bt None env in
       let m2 = Meta.fresh (Env.to_prod env' (lift gt.goal_type)) (n+1) in
       let gs = Goal.of_meta m1 :: Goal.of_meta m2 :: gs in

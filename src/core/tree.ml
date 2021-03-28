@@ -577,7 +577,7 @@ module CM = struct
       match get t with
       | Some(a,b) ->
           assert (pargs = []) ; (* Patterns in β-normal form *)
-          let b = Bindlib.subst b (mkfree v) in
+          let b = Bindlib.subst b (Vari v) in
           Some({r with c_lhs = insert r [|a; b|]})
       | None      -> assert false (* Term is ill formed *)
 
@@ -715,7 +715,7 @@ let compile : match_strat -> CM.t -> tree = fun mstrat m ->
       in
       let binder recon mat_transf =
         if List.for_all (fun x -> not (recon x)) column then None else
-        let var = Bindlib.new_var mkfree "var" in
+        let var = new_tvar "var" in
         let vars_id = VarMap.add var count vars_id in
         let (positions, clauses) = mat_transf swap var positions updated in
         let next =

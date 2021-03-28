@@ -1,5 +1,7 @@
 ### Unreleased
 
+#### Introduce `new_tvar = Bindlib.new_var mkfree` (2021-03-26)
+
 #### Add tactic `generalize`, and rename tactic `simpl` into `simplify` (2021-03-25)
 
 #### Use Dune for opam integration (2021-03-25)

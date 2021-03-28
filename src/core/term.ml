@@ -379,11 +379,21 @@ type tevar = term_env Bindlib.var
 (** A short name for the type of a boxed {!type:term_env}. *)
 type tebox = term_env Bindlib.box
 
-(** [mkfree x] injects the [Bindlib] variable [x] in a term. *)
-let mkfree : tvar -> term = fun x -> Vari(x)
+(** [of_tvar x] injects the [Bindlib] variable [x] in a term. *)
+let of_tvar : tvar -> term = fun x -> Vari(x)
 
-(** [te_mkfree x] injects the [Bindlib] variable [x] in a {!type:term_env}. *)
-let te_mkfree : tevar -> term_env = fun x -> TE_Vari(x)
+(** [new_tvar s] creates a new [tvar] of name [s]. *)
+let new_tvar : string -> tvar = Bindlib.new_var of_tvar
+
+(** [new_tvar_ind s i] creates a new [tvar] of name [s ^ string_of_int i]. *)
+let new_tvar_ind : string -> int -> tvar = fun s i ->
+  new_tvar (Printf.sprintf "%s%i" s i)
+
+(** [of_tevar x] injects the [Bindlib] variable [x] in a {!type:term_env}. *)
+let of_tevar : tevar -> term_env = fun x -> TE_Vari(x)
+
+(** [new_tevar s] creates a new [tevar] with name [s]. *)
+let new_tevar : string -> tevar = Bindlib.new_var of_tevar
 
 (** {3 Smart constructors and lifting (related to [Bindlib])} *)
 
@@ -422,8 +432,7 @@ let _Prod : tbox -> tbinder Bindlib.box -> tbox =
   Bindlib.box_apply2 (fun a b -> Prod(a,b))
 
 let _Impl : tbox -> tbox -> tbox =
-  let dummy = Bindlib.new_var mkfree "_" in
-  fun a b -> _Prod a (Bindlib.bind_var dummy b)
+  let v = new_tvar "_" in fun a b -> _Prod a (Bindlib.bind_var v b)
 
 (** [_Abst a t] lifts an abstraction node to the {!type:tbox}  type,  given  a
     boxed term [a] for the domain type, and a boxed binder [t]. *)

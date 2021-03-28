@@ -143,14 +143,14 @@ let get_vars : sym -> rule -> (string * Term.term) list = fun s r ->
          )
     | Appl (t1, t2)        -> Appl(subst_patt v t1, subst_patt v t2)
     | Patt (None, x, a)    ->
-       let v_i = Bindlib.new_var mkfree x in
+       let v_i = new_tvar x in
        var_list := v_i :: !var_list;
        Array.fold_left (fun acc t -> Appl(acc,t))
          (Vari(v_i)) a
     | Patt (Some(i), x, a) ->
        if v.(i) = None
        then
-         (let v_i = Bindlib.new_var mkfree x in
+         (let v_i = new_tvar x in
           var_list := v_i :: !var_list;
           v.(i) <- Some(v_i));
        let v_i =
