@@ -106,6 +106,17 @@ let rec get_implicitness : p_term -> bool list = fun t ->
   | P_Wrap(t)    -> get_implicitness t
   | _            -> []
 
+(** [_Meta_Type ~is_rhs env] create a new metavariable of type [TYPE] for a
+    missing domain in environment [env] in a RHS if [~is_rhs] is true. *)
+let _Meta_Type : is_rhs:bool -> env -> tbox = fun ~is_rhs env ->
+  let vs = Env.to_tbox env in
+  let a = Env.to_prod_box env _Type in
+  let m = _Meta_full (Meta.fresh_box a (Array.length vs)) vs in
+  (* Sanity check: only variables of [env] free in [m] if not in RHS. *)
+  if not is_rhs then
+    assert (Bindlib.is_closed (Bindlib.bind_mvar (Env.vars env) m));
+  m
+
 (** [get_pratt_args ss env t] decomposes the parser level term [t] into a
     spine [(h,args)], when [h] is the term at the head of the application and
     [args] is the list of all its arguments. The function also reorders the
@@ -157,6 +168,7 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
     end
     | _           -> invalid_arg "fresh_patt mode must be M_LHS"
   in
+  let is_rhs = match md with M_RHS _ -> true | _ -> false in
   (* Toplevel scoping function, with handling of implicit arguments. *)
   let rec scope : env -> p_term -> tbox = fun env t ->
     if Timed.(!log_enabled) then log_scop "%a" Pretty.term t;
@@ -207,22 +219,12 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
     | (false::_   , []     ) ->
         (* NOTE this could be improved with more general implicits. *)
         fatal loc "More arguments are required to instantiate implicits."
-  (* Create a new metavariable of type [TYPE] for a missing domain. *)
-  and _Meta_Type : env -> tbox = fun env ->
-    let vs = Env.to_tbox env in
-    let a = Env.to_prod_box env _Type in
-    let m = _Meta_full (Meta.fresh_box a (Array.length vs)) vs in
-    (* Sanity check: only variables of [env] free in [m] if not in RHS. *)
-    match md with
-    | M_RHS(_) -> m
-    | _        ->
-      assert (Bindlib.is_closed (Bindlib.bind_mvar (Env.vars env) m)); m
   (* Scoping function for the domain of functions or products. *)
   and scope_domain : env -> p_term option -> tbox = fun env a ->
     match (a, md) with
-    | (None   , M_LHS(_)    ) -> fresh_patt md None (Env.to_tbox env)
-    | ((Some({elt=P_Wild;_})|None), _           ) -> _Meta_Type env
-    | (Some(a)   , _           ) -> scope env a
+    | (None, M_LHS(_)) -> fresh_patt md None (Env.to_tbox env)
+    | ((Some({elt=P_Wild;_})|None), _) -> _Meta_Type ~is_rhs env
+    | (Some(a), _) -> scope env a
   (* Scoping function for binders (abstractions or produtcs). [scope_binder
      cons env params_list t] scopes [t] in the environment [env] extended with
      the parameters of [params_list]. For each parameter, a tbox is built
@@ -232,7 +234,10 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
     fun cons env params_list t ->
     let rec scope_params_list env params_list =
       match params_list with
-      | [] -> (match t with Some t -> scope env t | None -> _Meta_Type env)
+      | [] -> (
+          match t with
+          | Some t -> scope env t
+          | None -> _Meta_Type ~is_rhs env )
       | (idopts,typopt,_implicit)::params_list ->
           scope_params env idopts (scope_domain env typopt) params_list
     and scope_params env idopts a params_list =
