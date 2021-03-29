@@ -350,12 +350,19 @@ let handle : (Path.t -> Sign.t) -> sig_state -> p_command ->
      | _ -> ());
     (* Build proof data. *)
     let data =
-      (* Scoping function keeping track of the position. *)
-      let scope t =
-        Pos.make t.pos
-          (Scope.scope_term_with_params
-             expo ss Env.empty (lazy IntMap.empty) t)
+      (* Scoping function for the type and the definition. If there are
+         parameters and both a type and a definition, then we use
+         Scope.term_with_params so that no warning is issued if a parameter is
+         unused in the type or in the definition. The use of parameters must
+         be done afterwards. *)
+      let scope =
+        if p_sym_arg = [] || p_sym_typ = None || p_sym_trm = None then
+          Scope.scope_term expo ss Env.empty (lazy IntMap.empty)
+        else
+          Scope.scope_term_with_params expo ss Env.empty (lazy IntMap.empty)
       in
+      (* Scoping function keeping track of the position. *)
+      let scope t = Pos.make t.pos (scope t) in
       (* Desugaring of arguments and scoping of [p_sym_trm]. *)
       let pt, t =
         match p_sym_trm with
