@@ -55,6 +55,15 @@ and p_term_aux =
     the argument is marked as implicit (i.e., between curly braces). *)
 and p_params = p_ident option list * p_term option * bool
 
+(** Number of parameters in a list of parameters. *)
+let nb_params : p_params list -> int =
+  let rec nb_params acc params_list =
+    match params_list with
+    | [] -> acc
+    | (params,_,_)::params_list ->
+        nb_params (acc + List.length params) params_list
+  in nb_params 0
+
 (** [p_get_args t] is {!val:LibTerm.get_args} on syntax-level terms. *)
 let p_get_args : p_term -> p_term * p_term list = fun t ->
   let rec p_get_args acc t =

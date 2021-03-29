@@ -337,7 +337,7 @@ let handle : (Path.t -> Sign.t) -> sig_state -> p_command ->
     if Sign.mem ss.signature id then
       fatal p_sym_nam.pos "Symbol %a already exists." pp_uid id;
     (* Verify modifiers. *)
-    let (prop, expo, mstrat) = handle_modifiers p_sym_mod in
+    let prop, expo, mstrat = handle_modifiers p_sym_mod in
     let opaq = List.exists Syntax.is_opaq p_sym_mod in
     let pdata_expo = if p_sym_def && opaq then Privat else expo in
     (match p_sym_def, opaq, prop, mstrat with
@@ -347,10 +347,10 @@ let handle : (Path.t -> Sign.t) -> sig_state -> p_command ->
          fatal pos "Definitions cannot be constant."
      | true, _, _, Sequen ->
          fatal pos "Definitions cannot have matching strategies."
-     | _, _, _, _ -> ());
+     | _ -> ());
     (* Build proof data. *)
     let data =
-      (* Scope keeping position, with [expo] parsed above. *)
+      (* Scoping function keeping track of the position. *)
       let scope t =
         Pos.make t.pos
           (Scope.scope_term_with_params
@@ -387,15 +387,16 @@ let handle : (Path.t -> Sign.t) -> sig_state -> p_command ->
       if p_sym_arg <> [] then begin
         match ao, t with
         | Some(a), Some(t) ->
-            let rec binders_warn ty te =
+            let rec binders_warn k ty te =
+              if k <= 0 then () else
               match ty, te with
               | Prod(_, by), Abst(_, be) ->
                   let x, ty, te = Bindlib.unbind2 by be in
                   if Bindlib.(binder_constant by && binder_constant be) then
                     wrn pos "Variable [%a] could be replaced by [_]." pp_var x;
-                  binders_warn ty te
-              | _ -> ()
-            in binders_warn a.elt t.elt
+                  binders_warn (k-1) ty te
+              | _ -> assert false
+            in binders_warn (Syntax.nb_params p_sym_arg) a.elt t.elt
         | _ -> ()
       end;
       let proof_goals, a = goals_of_typ ao t in
