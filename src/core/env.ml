@@ -123,7 +123,7 @@ let fresh_meta_Type : t -> tbox = fun env ->
   _Meta_full (Meta.fresh_box tm arity) vs
 
 (** [fresh_meta_tbox env] creates a _Meta tbox from a fresh metavariable whose
-   type is a fresh metavariable of type [to_prod env Type]. *)
+   type is itself a fresh metavariable of type [fresh_meta_Type env]. *)
 let fresh_meta_tbox : env -> tbox = fun env ->
   let vs = to_tbox env in
   let arity = Array.length vs in
