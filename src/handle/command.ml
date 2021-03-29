@@ -159,7 +159,7 @@ let handle_inductive_symbol : sig_state -> expo -> prop -> match_strat
   (* Desugaring of arguments of [typ]. *)
   let typ = if xs = [] then typ else Pos.none (P_Prod(xs, typ)) in
   (* Obtaining the implicitness of arguments. *)
-  let impl = Syntax.get_implicitness typ in
+  let impl = Syntax.get_impl_term typ in
   (* We scope the type of the declaration. *)
   let typ = Scope.scope_term expo ss Env.empty (lazy IntMap.empty) typ in
   (* We check that [a] is typable by a sort. *)
@@ -348,12 +348,12 @@ let handle : (Path.t -> Sign.t) -> sig_state -> p_command ->
      | true, _, _, Sequen ->
          fatal pos "Definitions cannot have matching strategies."
      | _ -> ());
-    (* Build proof data. *)
-    let data =
-      (* Scoping function for the type and the definition. If there are
-         parameters and both a type and a definition, then we use
-         Scope.term_with_params so that no warning is issued if a parameter is
-         unused in the type or in the definition. The use of parameters must
+    (* Scoping the definition and the type. *)
+    let pt, t, a, impl =
+      (* If there are parameters and both a type and a definition, then we use
+         Scope.term_with_params instead of Scope.scope_term, so that no
+         warning is issued during scoping if a parameter is unused in the type
+         or in the definition. In this case, this verification must therefore
          be done afterwards. *)
       let scope =
         if p_sym_arg = [] || p_sym_typ = None || p_sym_trm = None then
@@ -363,7 +363,7 @@ let handle : (Path.t -> Sign.t) -> sig_state -> p_command ->
       in
       (* Scoping function keeping track of the position. *)
       let scope t = Pos.make t.pos (scope t) in
-      (* Desugaring of arguments and scoping of [p_sym_trm]. *)
+      (* Desugaring of parameters and scoping of [p_sym_trm]. *)
       let pt, t =
         match p_sym_trm with
         | Some pt ->
@@ -376,24 +376,24 @@ let handle : (Path.t -> Sign.t) -> sig_state -> p_command ->
             Some pt, Some (scope pt)
         | None -> None, None
       in
-      (* Argument impliciteness. *)
-      let ao, impl =
+      (* Desugaring of parameters and scoping of [p_sym_typ], and computation
+         of implicit arguments. *)
+      let a, impl =
         match p_sym_typ with
-        | None    -> (None, List.map (fun (_,_,impl) -> impl) p_sym_arg)
-        | Some(a) ->
+        | None   -> (None, Syntax.get_impl_params_list p_sym_arg)
+        | Some a ->
             let a =
               if p_sym_arg = [] then a
-              else Pos.make p_sym_nam.pos (P_Prod(p_sym_arg,a))
+              else
+                let pos = Pos.(cat (end_pos p_sym_nam.pos) a.pos) in
+                Pos.make pos (P_Prod(p_sym_arg, a))
             in
-            (Some(a), Syntax.get_implicitness a)
+            Some (scope a), Syntax.get_impl_term a
       in
-      let ao = Option.map scope ao in
-      (* If warnings were not output during scoping (see above), then we warn
-         here for unused variables by going through type and definition
-         simultaneously. *)
+      (* If there are parameters, output a warning if they are not used. *)
       if p_sym_arg <> [] then begin
-        match ao, t with
-        | Some(a), Some(t) ->
+        match a, t with
+        | Some a, Some t ->
             let rec binders_warn k ty te =
               if k <= 0 then () else
               match ty, te with
@@ -405,8 +405,12 @@ let handle : (Path.t -> Sign.t) -> sig_state -> p_command ->
               | _ -> assert false
             in binders_warn (Syntax.nb_params p_sym_arg) a.elt t.elt
         | _ -> ()
-      end;
-      let proof_goals, a = goals_of_typ ao t in
+        end;
+      pt, t, a, impl
+    in
+    (* Build proof data. *)
+    let data =
+      let proof_goals, a = goals_of_typ a t in
       (* Add the definition as goal so that we can refine on it. *)
       let proof_term =
         if p_sym_def then Some (Meta.fresh ~name:id a 0) else None in
@@ -463,7 +467,6 @@ let handle : (Path.t -> Sign.t) -> sig_state -> p_command ->
       in
       (* Create proof state. *)
       let ps = {proof_name = p_sym_nam; proof_term; proof_goals} in
-      (* Apply tac_solve. *)
       let ps = Tactic.tac_solve pos ps in
       (* Add proof_term as focused goal. *)
       let ps =
@@ -485,7 +488,7 @@ let handle : (Path.t -> Sign.t) -> sig_state -> p_command ->
       { pdata_stmt_pos=p_sym_nam.pos; pdata_p_state=ps; pdata_tactics=ts
       ; pdata_finalize=finalize; pdata_end_pos=pe.pos; pdata_expo }
     in
-    (ss, Some(data), None)
+    (ss, Some data, None)
 
 (** [too_long] indicates the duration after which a warning should be given to
     indicate commands that take too long to execute. *)
