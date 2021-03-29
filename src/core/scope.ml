@@ -434,14 +434,13 @@ let scope_term :
   let m = Stdlib.ref StrMap.empty in
   Bindlib.unbox (scope (M_Term(m, sgm, expo)) ss env t)
 
-(** [scope_params expo ss env sgm t] turns a parser-level desugarised
-    definition [t] into an actual term. Parameters [expo], [ss], [env] and
-    [sgm] have the same behaviour as in {!val:scope_term}. Unlike
-    {!val:scope_term}, this function does not print warnings when binders
-    are constant because parameters of definition may appear solely in the
-    type or in the definition. These checks have to be performed
-    afterwards. *)
-let scope_params :
+(** [scope_term_with_params expo ss env sgm t] turns a parser-level
+   desugarised definition [t] into an actual term. Parameters [expo], [ss],
+   [env] and [sgm] have the same behaviour as in {!val:scope_term}. Unlike
+   {!val:scope_term}, this function does not print warnings when binders are
+   constant because parameters of definition may appear solely in the type or
+   in the definition. These checks have to be performed afterwards. *)
+let scope_term_with_params :
      Tags.expo -> sig_state -> env -> meta IntMap.t Lazy.t -> p_term -> term =
   fun expo ss env sgm t ->
   let m = Stdlib.ref StrMap.empty in

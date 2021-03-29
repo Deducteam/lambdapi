@@ -353,7 +353,8 @@ let handle : (Path.t -> Sign.t) -> sig_state -> p_command ->
       (* Scope keeping position, with [expo] parsed above. *)
       let scope t =
         Pos.make t.pos
-          (Scope.scope_params expo ss Env.empty (lazy IntMap.empty) t)
+          (Scope.scope_term_with_params
+             expo ss Env.empty (lazy IntMap.empty) t)
       in
       (* Desugaring of arguments and scoping of [p_sym_trm]. *)
       let pt, t =
