@@ -245,7 +245,7 @@ and scope_binder : ?warn:bool -> mode -> sig_state ->
           let v = new_tvar id in
           let env = Env.add v a None env in
           let t = aux env idopts in
-          if id.[0] <> '_' && not (Bindlib.occur v t) then
+          if warn && id.[0] <> '_' && not (Bindlib.occur v t) then
             wrn pos "Variable [%s] could be replaced by [_]." id;
           cons a (Bindlib.bind_var v t)
     in aux env idopts
