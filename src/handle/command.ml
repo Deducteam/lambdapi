@@ -161,7 +161,10 @@ let handle_inductive_symbol : sig_state -> expo -> prop -> match_strat
   (* Obtaining the implicitness of arguments. *)
   let impl = Syntax.get_impl_term typ in
   (* We scope the type of the declaration. *)
-  let typ = Scope.scope_term expo ss Env.empty (lazy IntMap.empty) typ in
+  let typ =
+    (if xs = [] then Scope.scope_term else Scope.scope_term_with_params)
+      expo ss Env.empty (lazy IntMap.empty) typ
+  in
   (* We check that [a] is typable by a sort. *)
   Infer.check_sort Unif.solve_noexn pos [] typ;
   (* We check that no metavariable remains. *)
@@ -356,10 +359,10 @@ let handle : (Path.t -> Sign.t) -> sig_state -> p_command ->
          or in the definition. In this case, this verification must therefore
          be done afterwards. *)
       let scope =
-        if p_sym_arg = [] || p_sym_typ = None || p_sym_trm = None then
-          Scope.scope_term expo ss Env.empty (lazy IntMap.empty)
-        else
-          Scope.scope_term_with_params expo ss Env.empty (lazy IntMap.empty)
+        (if p_sym_arg = [] || p_sym_typ = None || p_sym_trm = None
+         then Scope.scope_term
+         else Scope.scope_term_with_params)
+          expo ss Env.empty (lazy IntMap.empty)
       in
       (* Scoping function keeping track of the position. *)
       let scope t = Pos.make t.pos (scope t) in

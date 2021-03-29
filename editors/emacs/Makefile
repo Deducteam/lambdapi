@@ -31,6 +31,7 @@ endif
 .PHONY: install
 install: $(SRC) lambdapi-site-file.elc
 	$(INSTALL) -m 644 -t $(INSTALL_DIR) $^
+	$(MAKE) clean
 
 .PHONY: dist
 dist:
