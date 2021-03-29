@@ -131,14 +131,14 @@ let get_pratt_args : Sig_state.t -> Env.t -> p_term -> p_term * p_term list =
 (** [fresh_patt name ts] creates a unique pattern variable applied to
    [ts]. [name] is used as suffix if distinct from [None]. *)
 let fresh_patt : lhs_data -> string option -> tbox array -> tbox =
-  fun data name ts ->
+  fun data nopt ts ->
   let fresh_index () =
     let i = data.m_lhs_size in
     data.m_lhs_size <- i + 1;
     let arity = Array.length ts in
     Hashtbl.add data.m_lhs_arities i arity; i
   in
-  match name with
+  match nopt with
   | Some name ->
       let i =
         try Hashtbl.find data.m_lhs_indices name with Not_found ->
@@ -146,10 +146,10 @@ let fresh_patt : lhs_data -> string option -> tbox array -> tbox =
           Hashtbl.add data.m_lhs_indices name i;
           Hashtbl.add data.m_lhs_names i name; i
       in
-      _Patt (Some(i)) (Printf.sprintf "v%i_%s" i name) ts
+      _Patt (Some i) (Printf.sprintf "v%i_%s" i name) ts
   | None ->
       let i = fresh_index () in
-      _Patt (Some(i)) (Printf.sprintf "v%i" i) ts
+      _Patt (Some i) (Printf.sprintf "v%i" i) ts
 
 (** [scope md ss env t] turns a parser-level term [t] into an actual term. The
    variables of the environment [env] may appear in [t], and the scoping mode
@@ -180,7 +180,10 @@ let rec scope : mode -> sig_state -> env -> p_term -> tbox =
   (* Scope and insert the (implicit) arguments. *)
   add_impl md ss env t.pos h impl args
 
-(** Build the application of [h] to [args], inserting implicit arguments. *)
+(** [add_impl md ss env loc h impl args] scopes [args] and returns the
+   application of [h] to the scoped arguments. [impl] is a boolean list
+   described the implicit arguments. Implicit arguments are added as
+   underscores before scoping. *)
 and add_impl md ss env loc h impl args =
   let appl_p_term t u = _Appl t (scope md ss env u) in
   let appl_meta t = _Appl t (scope_head md ss env (Pos.none P_Wild)) in
@@ -208,20 +211,21 @@ and add_impl md ss env loc h impl args =
       (* NOTE this could be improved with more general implicits. *)
       fatal loc "More arguments are required to instantiate implicits."
 
-(** Scoping function for the domain of functions or products. *)
+(** [scope_domain md ss env t] scopes [t] as the domain of an abstraction or
+   product. *)
 and scope_domain : mode -> sig_state -> env -> p_term option -> tbox =
   fun md ss env a ->
   match a, md with
   | None, M_LHS data -> fresh_patt data None (Env.to_tbox env)
-  | (Some({elt=P_Wild;_})|None), _ -> Env.fresh_meta_Type env
-  | Some(a), _ -> scope md ss env a
+  | (Some {elt=P_Wild;_}|None), _ -> Env.fresh_meta_Type env
+  | Some a, _ -> scope md ss env a
 
-(** [scope_binder ?warn mode ss cons env params_list t] scopes [t] in
-    environment [env], signature state [ss] in mode [mode] extended with the
-    parameters of [params_list]. For each parameter, a term box is built using
-    [cons] (either [_Abst] or [_Prod] in practice). If [?warn] is true (the
-    default), a warning is printed when the variable that is bound by the
-    binder does not appear in the body. *)
+(** [scope_binder ?warn mode ss cons env params_list t] scopes [t] in mode
+   [md], signature state [ss] and environment [env]. [params_list] is a list
+   of paramters to abstract on. For each parameter, a tbox is built using
+   [cons] (either [_Abst] or [_Prod]). If [?warn] is true (the default), a
+   warning is printed when the variable that is bound by the binder does not
+   appear in the body. *)
 and scope_binder : ?warn:bool -> mode -> sig_state ->
   (tbox -> tbinder Bindlib.box -> tbox) -> Env.t -> p_params list ->
   p_term option -> tbox =
@@ -255,7 +259,7 @@ and scope_binder : ?warn:bool -> mode -> sig_state ->
   in
   scope_params_list env params_list
 
-(** Scoping function for head terms. *)
+(** [scope_head md ss env t] scopes [t] as term head. *)
 and scope_head : mode -> sig_state -> env -> p_term -> tbox =
   fun md ss env t ->
   match (t.elt, md) with
@@ -443,15 +447,14 @@ let scope_params :
   let m = Stdlib.ref StrMap.empty in
   let md = M_Term(m, sgm, expo) in
   if Timed.(!log_enabled) then log_scop "%a" Pretty.term t;
-  (* Extract the spine. *)
   let p_head, _ = get_pratt_args ss env t in
-  let scope_b cons xs t =
+  let scope_b cons xs u =
     let warn = false in
-    Bindlib.unbox (scope_binder ~warn md ss cons env xs (Some t)) in
+    Bindlib.unbox (scope_binder ~warn md ss cons env xs (Some u)) in
   match p_head.elt with
-  | P_Abst(xs,t) -> scope_b _Abst xs t
-  | P_Prod(xs,t) -> scope_b _Prod xs t
-  | _ -> scope_term expo ss env sgm t
+  | P_Abst(xs,u) -> scope_b _Abst xs u
+  | P_Prod(xs,u) -> scope_b _Prod xs u
+  | _ -> Bindlib.unbox (scope md ss env t)
 
 (** [patt_vars t] returns a couple [(pvs,nl)]. The first compoment [pvs] is an
     association list giving the arity of all the “pattern variables” appearing
