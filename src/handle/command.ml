@@ -388,8 +388,7 @@ let handle : (Path.t -> Sign.t) -> sig_state -> p_command ->
         | Prod(_, by), Abst(_, be) ->
             let x, ty, te = Bindlib.unbind2 by be in
             if Bindlib.(binder_constant by && binder_constant be) then
-              wrn pos "Variable [%s] could be replaced by [_]."
-                (Bindlib.name_of x);
+              wrn pos "Variable [%a] could be replaced by [_]." pp_var x;
             binders_warn ty te
         | _ -> ()
       in
