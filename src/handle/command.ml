@@ -162,8 +162,8 @@ let handle_inductive_symbol : sig_state -> expo -> prop -> match_strat
   let impl = Syntax.get_impl_term typ in
   (* We scope the type of the declaration. *)
   let typ =
-    (if xs = [] then Scope.scope_term else Scope.scope_term_with_params)
-      expo ss Env.empty (lazy IntMap.empty) typ
+    (if xs = [] then scope_term else scope_term_with_params)
+      (expo = Privat) ss Env.empty (lazy IntMap.empty) typ
   in
   (* We check that [a] is typable by a sort. *)
   Infer.check_sort Unif.solve_noexn pos [] typ;
@@ -186,8 +186,7 @@ type proof_data =
   ; pdata_tactics  : p_tactic list (** Tactics. *)
   ; pdata_finalize : sig_state -> proof_state -> sig_state (** Finalizer. *)
   ; pdata_end_pos  : Pos.popt (** Position of the proof's terminator. *)
-  ; pdata_expo     : expo (** Allowed exposition of symbols in the proof
-                                   script. *) }
+  ; pdata_prv      : bool (** [true] iff private symbols are allowed. *) }
 
 (** [handle compile ss cmd] tries to handle the command [cmd] with [ss] as
     the signature state and [compile] as the main compilation function
@@ -342,7 +341,7 @@ let handle : (Path.t -> Sign.t) -> sig_state -> p_command ->
     (* Verify modifiers. *)
     let prop, expo, mstrat = handle_modifiers p_sym_mod in
     let opaq = List.exists Syntax.is_opaq p_sym_mod in
-    let pdata_expo = if p_sym_def && opaq then Privat else expo in
+    let pdata_prv = expo = Privat || (p_sym_def && opaq) in
     (match p_sym_def, opaq, prop, mstrat with
      | false, true, _, _ ->
          fatal pos "Symbol declarations cannot be opaque."
@@ -354,15 +353,15 @@ let handle : (Path.t -> Sign.t) -> sig_state -> p_command ->
     (* Scoping the definition and the type. *)
     let pt, t, a, impl =
       (* If there are parameters and both a type and a definition, then we use
-         Scope.term_with_params instead of Scope.scope_term, so that no
+         term_with_params instead of scope_term, so that no
          warning is issued during scoping if a parameter is unused in the type
          or in the definition. In this case, this verification must therefore
          be done afterwards. *)
       let scope =
         (if p_sym_arg = [] || p_sym_typ = None || p_sym_trm = None
-         then Scope.scope_term
-         else Scope.scope_term_with_params)
-          expo ss Env.empty (lazy IntMap.empty)
+         then scope_term
+         else scope_term_with_params)
+          (expo = Privat) ss Env.empty (lazy IntMap.empty)
       in
       (* Scoping function keeping track of the position. *)
       let scope t = Pos.make t.pos (scope t) in
@@ -489,7 +488,7 @@ let handle : (Path.t -> Sign.t) -> sig_state -> p_command ->
       if p_sym_prf = None && not (finished ps) then wrn pos
         "Some metavariables could not be solved: a proof must be given";
       { pdata_stmt_pos=p_sym_nam.pos; pdata_p_state=ps; pdata_tactics=ts
-      ; pdata_finalize=finalize; pdata_end_pos=pe.pos; pdata_expo }
+      ; pdata_finalize=finalize; pdata_end_pos=pe.pos; pdata_prv }
     in
     (ss, Some data, None)
 
