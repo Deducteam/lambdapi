@@ -238,12 +238,15 @@ and scope_binder : ?warn:bool -> mode -> sig_state ->
           let v = new_tvar "_" in
           let t = aux env idopts in
           cons a (Bindlib.bind_var v t)
-      | Some id::idopts ->
-          let v = new_tvar id.elt in
+      | Some {elt=id;pos}::idopts ->
+          if LpLexer.is_invalid_bindlib_id id then
+            fatal pos "Integer suffix with leading zeros are not allowed \
+                       in bound variable names.";
+          let v = new_tvar id in
           let env = Env.add v a None env in
           let t = aux env idopts in
-          if warn && id.elt.[0] <> '_' && not (Bindlib.occur v t) then
-            wrn id.pos "Variable [%s] could be replaced by [_]." id.elt;
+          if warn && id.[0] <> '_' && not (Bindlib.occur v t) then
+            wrn pos "Variable %a could be replaced by '_'." LpLexer.pp_uid id;
           cons a (Bindlib.bind_var v t)
     in aux env idopts
   in

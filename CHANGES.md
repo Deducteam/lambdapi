@@ -1,5 +1,7 @@
 ### Unreleased
 
+#### Forbid bound variable names ending with a positive integer with leading zeros since there are not compatible with Bindlib (2021-03-29)
+
 #### Fix #341: remove spurious warnings on bound variables (2021-03-29)
 
 * `scope.ml`:
