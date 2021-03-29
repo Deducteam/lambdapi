@@ -1,5 +1,23 @@
 ### Unreleased
 
+#### Remove spurious warnings on bound variables (fix #341)
+
+* `scope.ml`:
+  - the inner functions of scope are brought to the top-level
+  - `scope_term_with_params` is introduced: it is similar to `scope_term` but does not check that top-level bound variables are used
+  - `_Meta_Type` is moved to `env.ml` as `fresh_meta_type`
+
+* `command.ml`:
+  - use `scope_term_with_params` and check that parameters are indeed used
+  - `get_implicitness` moved to `syntax.ml` as `get_impl_term`
+  - fix implicit arguments computation in case of no type by introducing `Syntax.get_impl_params_list`
+
+* in various places: use `pp_var` instead of `Bindlib.name_of`
+
+* replace expo argument in scoping and handling by boolean telling if private symbols are allowed
+
+* allow private symbols in queries
+
 #### Introduce `new_tvar = Bindlib.new_var mkfree` (2021-03-26)
 
 #### Add tactic `generalize`, and rename tactic `simpl` into `simplify` (2021-03-25)
