@@ -52,6 +52,20 @@ let get_root : p_term -> sig_state -> Env.t -> sym = fun t ss env ->
 
 (** Representation of the different scoping modes.  Note that the constructors
     hold specific information for the given mode. *)
+type lhs_data =
+  { m_lhs_prv              : bool
+  (** True if {!constructor:Term.expo.Privat} symbols are allowed. *)
+  ; m_lhs_indices          : (string, int   ) Hashtbl.t
+  (** Stores index reserved for a pattern variable of the given name. *)
+  ; m_lhs_arities          : (int   , int   ) Hashtbl.t
+  (** Stores the arity of the pattern variable at the given index. *)
+  ; m_lhs_names            : (int   , string) Hashtbl.t
+  (** Stores the name of the pattern variable at given index (if any). *)
+  ; mutable m_lhs_size     : int
+  (** Stores the current known size of the environment of the RHS. *)
+  ; m_lhs_in_env           : string list
+  (** Pattern variables definitely needed in the RHS environment. *) }
+
 type mode =
   | M_Term of meta StrMap.t Stdlib.ref * meta IntMap.t Lazy.t * Tags.expo
   (** Standard scoping mode for terms, holding a map for metavariables
@@ -59,19 +73,7 @@ type mode =
      goals), and the exposition of the scoped term. *)
   | M_Patt
   (** Scoping mode for patterns in the rewrite tactic. *)
-  | M_LHS  of
-      { m_lhs_prv              : bool
-      (** True if {!constructor:Term.expo.Privat} symbols are allowed. *)
-      ; m_lhs_indices          : (string, int   ) Hashtbl.t
-      (** Stores index reserved for a pattern variable of the given name. *)
-      ; m_lhs_arities          : (int   , int   ) Hashtbl.t
-      (** Stores the arity of the pattern variable at the given index. *)
-      ; m_lhs_names            : (int   , string) Hashtbl.t
-      (** Stores the name of the pattern variable at given index (if any). *)
-      ; mutable m_lhs_size     : int
-      (** Stores the current known size of the environment of the RHS. *)
-      ; m_lhs_in_env           : string list
-      (** Pattern variables definitely needed in the RHS environment. *) }
+  | M_LHS  of lhs_data
   (** Scoping mode for rewriting rule left-hand sides. *)
   | M_RHS  of
       { m_rhs_prv             : bool
@@ -126,31 +128,28 @@ let get_pratt_args : Sig_state.t -> Env.t -> p_term -> p_term * p_term list =
     | _           -> (t, args)
   in get_args [] (Pratt.parse ss env t)
 
-(** Unique pattern variable generation for wildcards in a LHS. *)
-let fresh_patt md name env =
-  match md with
-  | M_LHS(data) ->
-      let fresh_index () =
-        let i = data.m_lhs_size in
-        data.m_lhs_size <- i + 1;
-        let arity = Array.length env in
-        Hashtbl.add data.m_lhs_arities i arity; i
+(** [fresh_patt name ts] creates a unique pattern variable applied to
+   [ts]. [name] is used as suffix if distinct from [None]. *)
+let fresh_patt : lhs_data -> string option -> tbox array -> tbox =
+  fun data name ts ->
+  let fresh_index () =
+    let i = data.m_lhs_size in
+    data.m_lhs_size <- i + 1;
+    let arity = Array.length ts in
+    Hashtbl.add data.m_lhs_arities i arity; i
+  in
+  match name with
+  | Some name ->
+      let i =
+        try Hashtbl.find data.m_lhs_indices name with Not_found ->
+          let i = fresh_index () in
+          Hashtbl.add data.m_lhs_indices name i;
+          Hashtbl.add data.m_lhs_names i name; i
       in
-      begin
-        match name with
-        | Some name ->
-            let i =
-              try Hashtbl.find data.m_lhs_indices name with Not_found ->
-                let i = fresh_index () in
-                Hashtbl.add data.m_lhs_indices name i;
-                Hashtbl.add data.m_lhs_names i name; i
-            in
-            _Patt (Some(i)) (Printf.sprintf "v%i_%s" i name) env
-        | None ->
-            let i = fresh_index () in
-            _Patt (Some(i)) (Printf.sprintf "v%i" i) env
-      end
-  | _ -> invalid_arg "fresh_patt mode must be M_LHS"
+      _Patt (Some(i)) (Printf.sprintf "v%i_%s" i name) ts
+  | None ->
+      let i = fresh_index () in
+      _Patt (Some(i)) (Printf.sprintf "v%i" i) ts
 
 (** [scope md ss env t] turns a parser-level term [t] into an actual term. The
    variables of the environment [env] may appear in [t], and the scoping mode
@@ -212,10 +211,10 @@ and add_impl md ss env loc h impl args =
 (** Scoping function for the domain of functions or products. *)
 and scope_domain : mode -> sig_state -> env -> p_term option -> tbox =
   fun md ss env a ->
-  match (a, md) with
-  | (None   , M_LHS(_)    ) -> fresh_patt md None (Env.to_tbox env)
-  | ((Some({elt=P_Wild;_})|None), _           ) -> Env.fresh_meta_Type env
-  | (Some(a)   , _           ) -> scope md ss env a
+  match a, md with
+  | None, M_LHS data -> fresh_patt data None (Env.to_tbox env)
+  | (Some({elt=P_Wild;_})|None), _ -> Env.fresh_meta_Type env
+  | Some(a), _ -> scope md ss env a
 
 (** [scope_binder ?warn mode ss cons env params_list t] scopes [t] in
     environment [env], signature state [ss] in mode [mode] extended with the
@@ -275,7 +274,7 @@ and scope_head : mode -> sig_state -> env -> p_term -> tbox =
       x
     in
     _TEnv (Bindlib.box_var x) (Env.to_tbox env)
-  | (P_Wild, M_LHS(_)) -> fresh_patt md None (Env.to_tbox env)
+  | (P_Wild, M_LHS data) -> fresh_patt data None (Env.to_tbox env)
   | (P_Wild, M_Patt) -> _Wild
   | (P_Wild, _) -> Env.fresh_meta_tbox env
   | (P_Meta({elt;pos},ts), M_Term(user_metas,sys_metas,_)) ->
@@ -344,7 +343,7 @@ and scope_head : mode -> sig_state -> env -> p_term -> tbox =
                          named." id.elt
         | _                                                  -> ()
       end;
-      fresh_patt md (Option.map (fun id -> id.elt) id) ts
+      fresh_patt d (Option.map (fun id -> id.elt) id) ts
   | (P_Patt(id,ts), M_URHS(r)) ->
       let x =
         match id with
