@@ -110,8 +110,8 @@ module Lp_lexer : sig
   (** [is_uid s] is [true] iff [s] is a regular identifier. *)
 
   val is_invalid_bindlib_id : string -> bool
-  (** [is_compatible_with_bindlib s] is [true] iff [s] does not have a suffix
-     of the form [00[0-9]*]. *)
+  (** [is_invalid_bindlib_id s] is [true] iff [s] ends with a positive integer
+     with leading zeros. *)
 
   val pp_uid : string Base.pp
   (** [pp_uid s] prints the uid [s], in escaped form if [s] is not a regular
