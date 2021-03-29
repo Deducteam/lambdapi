@@ -1,5 +1,7 @@
 ### Unreleased
 
+#### Forbid bound variable names ending with a positive integer with leading zeros since there are not compatible with Bindlib (2021-03-29)
+
 #### Introduce `new_tvar = Bindlib.new_var mkfree` (2021-03-26)
 
 #### Add tactic `generalize`, and rename tactic `simpl` into `simplify` (2021-03-25)
