@@ -1,6 +1,6 @@
 ### Unreleased
 
-#### Remove spurious warnings on bound variables (fix #341)
+#### Fix #341: remove spurious warnings on bound variables (2021-03-29)
 
 * `scope.ml`:
   - the inner functions of scope are brought to the top-level
