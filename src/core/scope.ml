@@ -106,17 +106,6 @@ let rec get_implicitness : p_term -> bool list = fun t ->
   | P_Wrap(t)    -> get_implicitness t
   | _            -> []
 
-(** [_Meta_Type ~is_rhs env] create a new metavariable of type [TYPE] for a
-    missing domain in environment [env] in a RHS if [~is_rhs] is true. *)
-let _Meta_Type : is_rhs:bool -> env -> tbox = fun ~is_rhs env ->
-  let vs = Env.to_tbox env in
-  let a = Env.to_prod_box env _Type in
-  let m = _Meta_full (Meta.fresh_box a (Array.length vs)) vs in
-  (* Sanity check: only variables of [env] free in [m] if not in RHS. *)
-  if not is_rhs then
-    assert (Bindlib.is_closed (Bindlib.bind_mvar (Env.vars env) m));
-  m
-
 (** [get_pratt_args ss env t] decomposes the parser level term [t] into a
     spine [(h,args)], when [h] is the term at the head of the application and
     [args] is the list of all its arguments. The function also reorders the
@@ -137,16 +126,7 @@ let get_pratt_args : Sig_state.t -> Env.t -> p_term -> p_term * p_term list =
     | _           -> (t, args)
   in get_args [] (Pratt.parse ss env t)
 
-(** [scope ?warn md ss env t] turns a parser-level term [t] into an
-    actual term. The variables of the environment [env] may appear in [t].
-    The scoping mode [md] changes the behaviour related to certain
-    constructors. The signature state [ss] is used to hande module aliasing
-    according to [find_qid]. If [?warn] is [false], no warning is printed if
-    a bound variable is named but does not appear in the term in which it is
-    bound (defaults to [true]). *)
-let scope : ?warn:bool -> mode -> sig_state -> env -> p_term -> tbox =
-  fun ?(warn=true) md ss env t ->
-  (* Unique pattern variable generation for wildcards in a LHS. *)
+(* Unique pattern variable generation for wildcards in a LHS. *)
   let fresh_patt md name env =
     match md with
     | M_LHS(data) ->
@@ -171,273 +151,311 @@ let scope : ?warn:bool -> mode -> sig_state -> env -> p_term -> tbox =
           _Patt (Some(i)) (Printf.sprintf "v%i" i) env
     end
     | _           -> invalid_arg "fresh_patt mode must be M_LHS"
-  in
-  let is_rhs = match md with M_RHS _ -> true | _ -> false in
-  (* Toplevel scoping function, with handling of implicit arguments. *)
-  let rec scope : env -> p_term -> tbox = fun env t ->
-    if Timed.(!log_enabled) then log_scop "%a" Pretty.term t;
-    (* Extract the spine. *)
-    let (p_head, args) = get_pratt_args ss env t in
-    (* Check that LHS pattern variables are applied to no argument. *)
-    begin
-      match (p_head.elt, md) with
-      | (P_Patt(_,_), M_LHS(_)) when args <> [] ->
-          fatal t.pos "Pattern variables cannot be applied."
-      | _                                       -> ()
-    end;
-    (* Scope the head and obtain the implicitness of arguments. *)
-    let h = scope_head env p_head in
-    let impl =
-      (* Check whether application is marked as explicit in head symbol. *)
-      let expl = match p_head.elt with P_Iden(_,b) -> b | _ -> false in
-      (* We avoid unboxing if [h] is not closed (and hence not a symbol). *)
-      if expl || not (Bindlib.is_closed h) then [] else
-      match Bindlib.unbox h with Symb(s) -> s.sym_impl | _ -> []
-    in
-    (* Scope and insert the (implicit) arguments. *)
-    add_impl env t.pos h impl args
-  (* Build the application of [h] to [args], inserting implicit arguments. *)
-  and add_impl env loc h impl args =
-    let appl_p_term t u = _Appl t (scope env u) in
-    let appl_meta t = _Appl t (scope_head env (Pos.none P_Wild)) in
-    match (impl, args) with
-    (* The remaining arguments are all explicit. *)
-    | ([]         , _      ) -> List.fold_left appl_p_term h args
-    (* Only implicit arguments remain. *)
-    | (true ::impl, []     ) -> add_impl env loc (appl_meta h) impl []
-    (* The first argument is implicit (could be [a] if made explicit). *)
-    | (true ::impl, a::args) ->
-        begin
-          match a.elt with
-          | P_Expl(a) -> add_impl env loc (appl_p_term h a) impl args
-          | _         -> add_impl env loc (appl_meta h) impl (a::args)
-        end
-    (* The first argument [a] is explicit. *)
-    | (false::impl, a::args) ->
-        begin
-          match a.elt with
-          | P_Expl(_) -> fatal a.pos "Unexpected explicit argument."
-          | _         -> add_impl env loc (appl_p_term h a) impl args
-        end
-    (* The application is too "partial" to insert all implicit arguments. *)
-    | (false::_   , []     ) ->
-        (* NOTE this could be improved with more general implicits. *)
-        fatal loc "More arguments are required to instantiate implicits."
-  (* Scoping function for the domain of functions or products. *)
-  and scope_domain : env -> p_term option -> tbox = fun env a ->
-    match (a, md) with
-    | (None, M_LHS(_)) -> fresh_patt md None (Env.to_tbox env)
-    | ((Some({elt=P_Wild;_})|None), _) -> _Meta_Type ~is_rhs env
-    | (Some(a), _) -> scope env a
-  (* Scoping function for binders (abstractions or produtcs). [scope_binder
-     cons env params_list t] scopes [t] in the environment [env] extended with
-     the parameters of [params_list]. For each parameter, a tbox is built
-     using [cons] (either _Abst or _Prod). *)
-  and scope_binder : (tbox -> tbinder Bindlib.box -> tbox)
-                     -> Env.t -> p_params list -> p_term option -> tbox =
-    fun cons env params_list t ->
-    let rec scope_params_list env params_list =
-      match params_list with
-      | [] -> (
-          match t with
-          | Some t -> scope env t
-          | None -> _Meta_Type ~is_rhs env )
-      | (idopts,typopt,_implicit)::params_list ->
-          scope_params env idopts (scope_domain env typopt) params_list
-    and scope_params env idopts a params_list =
-      let rec aux env idopts =
-        match idopts with
-        | [] -> scope_params_list env params_list
-        | None::idopts ->
-            let v = new_tvar "_" in
-            let t = aux env idopts in
-            cons a (Bindlib.bind_var v t)
-        | Some id::idopts ->
-            let v = new_tvar id.elt in
-            let env = Env.add v a None env in
-            let t = aux env idopts in
-            if id.elt.[0] <> '_' && not (Bindlib.occur v t) && warn then
-              wrn id.pos "Variable [%s] could be replaced by [_]." id.elt;
-            cons a (Bindlib.bind_var v t)
-      in aux env idopts
-    in
-    scope_params_list env params_list
-  (* Scoping function for head terms. *)
-  and scope_head : env -> p_term -> tbox = fun env t ->
-    match (t.elt, md) with
-    | (P_Type, M_LHS(_)) -> fatal t.pos "TYPE is not allowed in a LHS."
-    | (P_Type, _) -> _Type
-    | (P_Iden(qid,_), M_LHS(d)) -> find_qid true d.m_lhs_prv ss env qid
-    | (P_Iden(qid,_), M_Term(_,_,Privat)) -> find_qid false true ss env qid
-    | (P_Iden(qid,_), M_RHS(d)) -> find_qid false d.m_rhs_prv ss env qid
-    | (P_Iden(qid,_), _) -> find_qid false false ss env qid
-    | (P_Wild, M_URHS(data)) ->
-      let x =
-        let name = Printf.sprintf "v%i" data.m_urhs_vars_nb in
-        let x = new_tevar name in
-        data.m_urhs_vars_nb <- data.m_urhs_vars_nb + 1;
-        data.m_urhs_xvars <- (name, x) :: data.m_urhs_xvars;
-        x
-      in
-      _TEnv (Bindlib.box_var x) (Env.to_tbox env)
-    | (P_Wild, M_LHS(_)) -> fresh_patt md None (Env.to_tbox env)
-    | (P_Wild, M_Patt) -> _Wild
-    | (P_Wild, _) -> Env.fresh_meta_tbox env
-    | (P_Meta({elt;pos},ts), M_Term(user_metas,sys_metas,_)) ->
-        let m =
-          match elt with
-          | Name id ->
-              (try StrMap.find id Stdlib.(!user_metas)
-               with Not_found ->
-                 (* We create a new metavariable [m1] of type [TYPE] and a new
-                    metavariable [m] of name [id] and type [m1]. *)
-                 let vs = Env.to_tbox env in
-                 let m1 =
-                   Meta.fresh (Env.to_prod env _Type) (Array.length vs) in
-                 let a = Env.to_prod env (_Meta m1 vs) in
-                 let m = Meta.fresh ~name:id a (Array.length vs) in
-                 Stdlib.(user_metas := StrMap.add id m !user_metas); m)
-          | Numb i ->
-              (try IntMap.find i (Lazy.force sys_metas)
-               with Not_found -> fatal pos "Unknown metavariable ?%d." i)
-        in
-        let ts =
-          match ts with
-          | None -> Env.to_tbox env (* [?M] is equivalent to [?M[env]]. *)
-          | Some ts -> Array.map (scope env) ts
-        in
-        _Meta m ts
-    | (P_Meta(_,_), _) -> fatal t.pos "Metavariables are not allowed here."
-    | (P_Patt(id,ts), M_LHS(d)) ->
-        (* Check that [ts] are variables. *)
-        let scope_var t =
-          match unfold (Bindlib.unbox (scope env t)) with
-          | Vari(x) -> x
-          | _       -> fatal t.pos "Only bound variables are allowed in the \
-                                    environment of pattern variables."
-        in
-        let ts =
-          match ts with
-          | None ->
-              if env = [] then [||] (* $M stands for $M[] *)
-              else fatal t.pos "Missing square brackets under binder."
-          | Some ts ->
-              let vs = Array.map scope_var ts in
-              (* Check that [vs] are distinct variables. *)
-              for i = 0 to Array.length vs - 2 do
-                for j = i + 1 to Array.length vs - 1 do
-                  if Bindlib.eq_vars vs.(i) vs.(j) then
-                    let name = Bindlib.name_of vs.(j) in
-                    fatal ts.(j).pos
-                      "Variable %s appears more than once \
-                       in the environment of a pattern variable." name
-                done
-              done;
-              Array.map Bindlib.box_var vs
-        in
-        begin
-          match id with
-          | None when List.length env = Array.length ts ->
-              wrn t.pos
-                "Pattern [%a] could be replaced by [_]." Pretty.term t;
-          | Some(id) when not (List.mem id.elt d.m_lhs_in_env) ->
-              if List.length env = Array.length ts then
-                wrn t.pos "Pattern variable [%a] can be replaced by a \
-                           wildcard [_]." Pretty.term t
-              else
-                wrn t.pos "Pattern variable [$%s] does not need to be \
-                           named." id.elt
-          | _                                                  -> ()
-        end;
-        fresh_patt md (Option.map (fun id -> id.elt) id) ts
-    | (P_Patt(id,ts), M_URHS(r)) ->
-        let x =
-          match id with
-          | None     -> fatal t.pos "Wildcard pattern not allowed in a URHS."
-          | Some(id) ->
-              (* Search in variables declared in LHS. *)
-              try Hashtbl.find r.m_urhs_data id.elt
-              with Not_found ->
-                (* Search in variables already declared in RHS. *)
-                try List.assoc id.elt r.m_urhs_xvars
-                with Not_found ->
-                  let name =
-                    Printf.sprintf "v%i_%s" r.m_urhs_vars_nb id.elt
-                  in
-                  let x = new_tevar name in
-                  r.m_urhs_vars_nb <- r.m_urhs_vars_nb + 1          ;
-                  r.m_urhs_xvars   <- (id.elt, x) :: r.m_urhs_xvars ;
-                  x
-        in
-        let ts =
-          match ts with
-          | None -> [||] (* $M stands for $M[] *)
-          | Some ts -> Array.map (scope env) ts
-        in
-        _TEnv (Bindlib.box_var x) ts
-    | (P_Patt(id,ts), M_RHS(r)) ->
-        let x =
-          match id with
-          | None     -> fatal t.pos "Wildcard pattern not allowed in a RHS."
-          | Some(id) ->
-              (* Search in variables declared in LHS. *)
-              try Hashtbl.find r.m_rhs_data id.elt
-              with Not_found -> fatal t.pos "Variable must be in LHS."
-        in
-        let ts =
-          match ts with
-          | None -> [||] (* $M stands for $M[] *)
-          | Some ts -> Array.map (scope env) ts
-        in
-        _TEnv (Bindlib.box_var x) ts
-    | (P_Patt(_,_), _) ->
-        fatal t.pos "Pattern variables are only allowed in rewriting rules."
-    | (P_Appl(_,_), _) ->  assert false (* Unreachable. *)
-    | (P_Arro(_,_), M_Patt) ->
-        fatal t.pos "Implications are not allowed in a pattern."
-    | (P_Arro(a,b), _) -> _Impl (scope env a) (scope env b)
-    | (P_Abst(_,_), M_Patt) ->
-        fatal t.pos "Abstractions are not allowed in a pattern."
-    | (P_Abst(xs,t), _) -> scope_binder _Abst env xs (Some(t))
-    | (P_Prod(_,_), M_Patt) ->
-        fatal t.pos "Dependent products are not allowed in a pattern."
-    | (P_Prod(xs,b), _) -> scope_binder _Prod env xs (Some(b))
-    | (P_LLet(x,xs,a,t,u), M_Term(_))
-    | (P_LLet(x,xs,a,t,u), M_URHS(_))
-    | (P_LLet(x,xs,a,t,u), M_RHS(_)) ->
-        let a = scope_binder _Prod env xs a in
-        let t = scope_binder _Abst env xs (Some(t)) in
-        let v = new_tvar x.elt in
-        let u = scope (Env.add v a (Some(t)) env) u in
-        if not (Bindlib.occur v u) then
-          wrn x.pos "Useless let-binding ([%s] not bound)." x.elt;
-        _LLet a t (Bindlib.bind_var v u)
-    | (P_LLet(_), M_LHS(_)) ->
-        fatal t.pos "Let-bindings are not allowed in a LHS."
-    | (P_LLet(_), M_Patt) ->
-        fatal t.pos "Let-bindings are not allowed in a pattern."
-    | (P_NLit(n), _) ->
-        let sym_z = _Symb (Builtin.get ss t.pos "0")
-        and sym_s = _Symb (Builtin.get ss t.pos "+1") in
-        let rec unsugar_nat_lit acc n =
-          if n <= 0 then acc else unsugar_nat_lit (_Appl sym_s acc) (n-1) in
-        unsugar_nat_lit sym_z n
-    | (P_Wrap(t), _) -> scope env t
-    | (P_Expl(_), _) -> fatal t.pos "Explicit argument not allowed here."
-  in
-  scope env t
 
-(** [scope ?free_vars exp ss env t] turns a parser-level term [t] into an
-    actual term. The signature state [ss] is used to handle module aliasing
-    according to [find_qid]. If [?exp] is {!constructor:Public}, then the term
-    mustn't contain any private subterms. If [?warn] is [false], no warning is
-    printed if a bound variable is named but does not appear in the term in
-    which it is bound (defaults to [true]). *)
-let scope_term : ?warn:bool -> Tags.expo -> sig_state -> env ->
-  meta IntMap.t Lazy.t -> p_term -> term =
-  fun ?(warn=true) expo ss env sgm t ->
+(* Create a new metavariable of type [TYPE] for a missing domain. *)
+let _Meta_Type : env -> tbox = fun env ->
+  let vs = Env.to_tbox env in
+  let a = Env.to_prod_box env _Type in
+  _Meta_full (Meta.fresh_box a (Array.length vs)) vs
+
+(** [scope md ss env t] turns a parser-level term [t] into an actual term. The
+    variables of the environment [env] may appear in [t], and the scoping mode
+    [md] changes the behaviour related to certain constructors.  The signature
+    state [ss] is used to hande module aliasing according to [find_qid]. *)
+let rec scope : mode -> sig_state -> env -> p_term -> tbox =
+  fun md ss env t ->
+  if Timed.(!log_enabled) then log_scop "%a" Pretty.term t;
+  (* Extract the spine. *)
+  let (p_head, args) = get_pratt_args ss env t in
+  (* Check that LHS pattern variables are applied to no argument. *)
+  begin
+    match (p_head.elt, md) with
+    | (P_Patt(_,_), M_LHS(_)) when args <> [] ->
+      fatal t.pos "Pattern variables cannot be applied."
+    | _                                       -> ()
+  end;
+  (* Scope the head and obtain the implicitness of arguments. *)
+  let h = scope_head md ss env p_head in
+  let impl =
+    (* Check whether application is marked as explicit in head symbol. *)
+    let expl = match p_head.elt with P_Iden(_,b) -> b | _ -> false in
+    (* We avoid unboxing if [h] is not closed (and hence not a symbol). *)
+    if expl || not (Bindlib.is_closed h) then [] else
+      match Bindlib.unbox h with Symb(s) -> s.sym_impl | _ -> []
+  in
+  (* Scope and insert the (implicit) arguments. *)
+  add_impl md ss env t.pos h impl args
+(* Build the application of [h] to [args], inserting implicit arguments. *)
+and add_impl md ss env loc h impl args =
+  let appl_p_term t u = _Appl t (scope md ss env u) in
+  let appl_meta t = _Appl t (scope_head md ss env (Pos.none P_Wild)) in
+  match (impl, args) with
+  (* The remaining arguments are all explicit. *)
+  | ([]         , _      ) -> List.fold_left appl_p_term h args
+  (* Only implicit arguments remain. *)
+  | (true ::impl, []     ) -> add_impl md ss env loc (appl_meta h) impl []
+  (* The first argument is implicit (could be [a] if made explicit). *)
+  | (true ::impl, a::args) ->
+      begin
+        match a.elt with
+        | P_Expl(a) -> add_impl md ss env loc (appl_p_term h a) impl args
+        | _         -> add_impl md ss env loc (appl_meta h) impl (a::args)
+      end
+  (* The first argument [a] is explicit. *)
+  | (false::impl, a::args) ->
+      begin
+        match a.elt with
+        | P_Expl(_) -> fatal a.pos "Unexpected explicit argument."
+        | _         -> add_impl md ss env loc (appl_p_term h a) impl args
+      end
+  (* The application is too "partial" to insert all implicit arguments. *)
+  | (false::_   , []     ) ->
+      (* NOTE this could be improved with more general implicits. *)
+      fatal loc "More arguments are required to instantiate implicits."
+
+(* Scoping function for the domain of functions or products. *)
+and scope_domain : mode -> sig_state -> env -> p_term option -> tbox =
+  fun md ss env a ->
+  match (a, md) with
+  | (None   , M_LHS(_)    ) -> fresh_patt md None (Env.to_tbox env)
+  | ((Some({elt=P_Wild;_})|None), _           ) -> _Meta_Type env
+  | (Some(a)   , _           ) -> scope md ss env a
+
+(** [scope_binder ?warn mode ss cons env params_list t] scopes [t] in
+    environment [env], signature state [ss] in mode [mode] extended with the
+    parameters of [params_list]. For each parameter, a term box is built using
+    [cons] (either [_Abst] or [_Prod] in practice). If [?warn] is true (the
+    default), a warning is printed when the variable that is bound by the
+    binder does not appear in the body. *)
+and scope_binder : ?warn:bool -> mode -> sig_state ->
+  (tbox -> tbinder Bindlib.box -> tbox) -> Env.t -> p_params list ->
+  p_term option -> tbox =
+  fun ?(warn=true) md ss cons env params_list t ->
+  let rec scope_params_list env params_list =
+    match params_list with
+    | [] ->
+        begin
+          match t with
+          | Some t -> scope md ss env t
+          | None -> _Meta_Type env
+        end
+    | (idopts,typopt,_implicit)::params_list ->
+        scope_params env idopts (scope_domain md ss env typopt) params_list
+  and scope_params env idopts a params_list =
+    let rec aux env idopts =
+      match idopts with
+      | [] -> scope_params_list env params_list
+      | None::idopts ->
+          let v = new_tvar "_" in
+          let t = aux env idopts in
+          cons a (Bindlib.bind_var v t)
+      | Some id::idopts ->
+          let v = new_tvar id.elt in
+          let env = Env.add v a None env in
+          let t = aux env idopts in
+          if warn && id.elt.[0] <> '_' && not (Bindlib.occur v t) then
+            wrn id.pos "Variable [%s] could be replaced by [_]." id.elt;
+          cons a (Bindlib.bind_var v t)
+    in aux env idopts
+  in
+  scope_params_list env params_list
+(* Scoping function for head terms. *)
+and scope_head : mode -> sig_state -> env -> p_term -> tbox =
+  fun md ss env t ->
+  match (t.elt, md) with
+  | (P_Type, M_LHS(_)) -> fatal t.pos "TYPE is not allowed in a LHS."
+  | (P_Type, _) -> _Type
+  | (P_Iden(qid,_), M_LHS(d)) -> find_qid true d.m_lhs_prv ss env qid
+  | (P_Iden(qid,_), M_Term(_,_,Privat)) -> find_qid false true ss env qid
+  | (P_Iden(qid,_), M_RHS(d)) -> find_qid false d.m_rhs_prv ss env qid
+  | (P_Iden(qid,_), _) -> find_qid false false ss env qid
+  | (P_Wild, M_URHS(data)) ->
+    let x =
+      let name = Printf.sprintf "v%i" data.m_urhs_vars_nb in
+      let x = new_tevar name in
+      data.m_urhs_vars_nb <- data.m_urhs_vars_nb + 1;
+      data.m_urhs_xvars <- (name, x) :: data.m_urhs_xvars;
+      x
+    in
+    _TEnv (Bindlib.box_var x) (Env.to_tbox env)
+  | (P_Wild, M_LHS(_)) -> fresh_patt md None (Env.to_tbox env)
+  | (P_Wild, M_Patt) -> _Wild
+  | (P_Wild, _) -> Env.fresh_meta_tbox env
+  | (P_Meta({elt;pos},ts), M_Term(user_metas,sys_metas,_)) ->
+      let m =
+        match elt with
+        | Name id ->
+            (try StrMap.find id Stdlib.(!user_metas)
+             with Not_found ->
+               (* We create a new metavariable [m1] of type [TYPE] and a new
+                  metavariable [m] of name [id] and type [m1]. *)
+               let vs = Env.to_tbox env in
+               let m1 =
+                 Meta.fresh (Env.to_prod env _Type) (Array.length vs) in
+               let a = Env.to_prod env (_Meta m1 vs) in
+               let m = Meta.fresh ~name:id a (Array.length vs) in
+               Stdlib.(user_metas := StrMap.add id m !user_metas); m)
+        | Numb i ->
+            (try IntMap.find i (Lazy.force sys_metas)
+             with Not_found -> fatal pos "Unknown metavariable ?%d." i)
+      in
+      let ts =
+        match ts with
+        | None -> Env.to_tbox env (* [?M] is equivalent to [?M[env]]. *)
+        | Some ts -> Array.map (scope md ss env) ts
+      in
+      _Meta m ts
+  | (P_Meta(_,_), _) -> fatal t.pos "Metavariables are not allowed here."
+  | (P_Patt(id,ts), M_LHS(d)) ->
+      (* Check that [ts] are variables. *)
+      let scope_var t =
+        match unfold (Bindlib.unbox (scope md ss env t)) with
+        | Vari(x) -> x
+        | _       -> fatal t.pos "Only bound variables are allowed in the \
+                                  environment of pattern variables."
+      in
+      let ts =
+        match ts with
+        | None ->
+            if env = [] then [||] (* $M stands for $M[] *)
+            else fatal t.pos "Missing square brackets under binder."
+        | Some ts ->
+            let vs = Array.map scope_var ts in
+            (* Check that [vs] are distinct variables. *)
+            for i = 0 to Array.length vs - 2 do
+              for j = i + 1 to Array.length vs - 1 do
+                if Bindlib.eq_vars vs.(i) vs.(j) then
+                  let name = Bindlib.name_of vs.(j) in
+                  fatal ts.(j).pos
+                    "Variable %s appears more than once \
+                     in the environment of a pattern variable." name
+              done
+            done;
+            Array.map Bindlib.box_var vs
+      in
+      begin
+        match id with
+        | None when List.length env = Array.length ts ->
+            wrn t.pos
+              "Pattern [%a] could be replaced by [_]." Pretty.term t;
+        | Some(id) when not (List.mem id.elt d.m_lhs_in_env) ->
+            if List.length env = Array.length ts then
+              wrn t.pos "Pattern variable [%a] can be replaced by a \
+                         wildcard [_]." Pretty.term t
+            else
+              wrn t.pos "Pattern variable [$%s] does not need to be \
+                         named." id.elt
+        | _                                                  -> ()
+      end;
+      fresh_patt md (Option.map (fun id -> id.elt) id) ts
+  | (P_Patt(id,ts), M_URHS(r)) ->
+      let x =
+        match id with
+        | None     -> fatal t.pos "Wildcard pattern not allowed in a URHS."
+        | Some(id) ->
+            (* Search in variables declared in LHS. *)
+            try Hashtbl.find r.m_urhs_data id.elt
+            with Not_found ->
+              (* Search in variables already declared in RHS. *)
+              try List.assoc id.elt r.m_urhs_xvars
+              with Not_found ->
+                let name =
+                  Printf.sprintf "v%i_%s" r.m_urhs_vars_nb id.elt
+                in
+                let x = new_tevar name in
+                r.m_urhs_vars_nb <- r.m_urhs_vars_nb + 1          ;
+                r.m_urhs_xvars   <- (id.elt, x) :: r.m_urhs_xvars ;
+                x
+      in
+      let ts =
+        match ts with
+        | None -> [||] (* $M stands for $M[] *)
+        | Some ts -> Array.map (scope md ss env) ts
+      in
+      _TEnv (Bindlib.box_var x) ts
+  | (P_Patt(id,ts), M_RHS(r)) ->
+      let x =
+        match id with
+        | None     -> fatal t.pos "Wildcard pattern not allowed in a RHS."
+        | Some(id) ->
+            (* Search in variables declared in LHS. *)
+            try Hashtbl.find r.m_rhs_data id.elt
+            with Not_found -> fatal t.pos "Variable must be in LHS."
+      in
+      let ts =
+        match ts with
+        | None -> [||] (* $M stands for $M[] *)
+        | Some ts -> Array.map (scope md ss env) ts
+      in
+      _TEnv (Bindlib.box_var x) ts
+  | (P_Patt(_,_), _) ->
+      fatal t.pos "Pattern variables are only allowed in rewriting rules."
+  | (P_Appl(_,_), _) ->  assert false (* Unreachable. *)
+  | (P_Arro(_,_), M_Patt) ->
+      fatal t.pos "Implications are not allowed in a pattern."
+  | (P_Arro(a,b), _) -> _Impl (scope md ss env a) (scope md ss env b)
+  | (P_Abst(_,_), M_Patt) ->
+      fatal t.pos "Abstractions are not allowed in a pattern."
+  | (P_Abst(xs,t), _) -> scope_binder md ss _Abst env xs (Some(t))
+  | (P_Prod(_,_), M_Patt) ->
+      fatal t.pos "Dependent products are not allowed in a pattern."
+  | (P_Prod(xs,b), _) -> scope_binder md ss _Prod env xs (Some(b))
+  | (P_LLet(x,xs,a,t,u), M_Term(_))
+  | (P_LLet(x,xs,a,t,u), M_URHS(_))
+  | (P_LLet(x,xs,a,t,u), M_RHS(_)) ->
+      let a = scope_binder md ss _Prod env xs a in
+      let t = scope_binder md ss _Abst env xs (Some(t)) in
+      let v = new_tvar x.elt in
+      let u = scope md ss (Env.add v a (Some(t)) env) u in
+      if not (Bindlib.occur v u) then
+        wrn x.pos "Useless let-binding ([%s] not bound)." x.elt;
+      _LLet a t (Bindlib.bind_var v u)
+  | (P_LLet(_), M_LHS(_)) ->
+      fatal t.pos "Let-bindings are not allowed in a LHS."
+  | (P_LLet(_), M_Patt) ->
+      fatal t.pos "Let-bindings are not allowed in a pattern."
+  | (P_NLit(n), _) ->
+      let sym_z = _Symb (Builtin.get ss t.pos "0")
+      and sym_s = _Symb (Builtin.get ss t.pos "+1") in
+      let rec unsugar_nat_lit acc n =
+        if n <= 0 then acc else unsugar_nat_lit (_Appl sym_s acc) (n-1) in
+      unsugar_nat_lit sym_z n
+  | (P_Wrap(t), _) -> scope md ss env t
+  | (P_Expl(_), _) -> fatal t.pos "Explicit argument not allowed here."
+
+(** [scope expo ss env t] turns a parser-level term [t] into an actual term.
+    The variables of the environment [env] may appear in [t]. The signature
+    state [ss] is used to handle module aliasing according to [find_qid]. If
+    [expo] is {!constructor:Public}, then the term mustn't contain any private
+    subterms. *)
+let scope_term :
+     Tags.expo -> sig_state -> env -> meta IntMap.t Lazy.t -> p_term -> term =
+  fun expo ss env sgm t ->
   let m = Stdlib.ref StrMap.empty in
-  Bindlib.unbox (scope ~warn (M_Term(m, sgm, expo)) ss env t)
+  Bindlib.unbox (scope (M_Term(m, sgm, expo)) ss env t)
+
+(** [scope_params expo ss env sgm t] turns a parser-level desugarised
+    definition [t] into an actual term. Parameters [expo], [ss], [env] and
+    [sgm] have the same behaviour as in {!val:scope_term}. Unlike
+    {!val:scope_term}, this function does not print warnings when binders
+    are constant because parameters of definition may appear solely in the
+    type or in the definition. These checks have to be performed
+    afterwards. *)
+let scope_params :
+     Tags.expo -> sig_state -> env -> meta IntMap.t Lazy.t -> p_term -> term =
+  fun expo ss env sgm t ->
+  let m = Stdlib.ref StrMap.empty in
+  let md = M_Term(m, sgm, expo) in
+  if Timed.(!log_enabled) then log_scop "%a" Pretty.term t;
+  (* Extract the spine. *)
+  let p_head, _ = get_pratt_args ss env t in
+  let scope_b cons xs t =
+    let warn = false in
+    Bindlib.unbox (scope_binder ~warn md ss cons env xs (Some t)) in
+  match p_head.elt with
+  | P_Abst(xs,t) -> scope_b _Abst xs t
+  | P_Prod(xs,t) -> scope_b _Prod xs t
+  | _ -> scope_term expo ss env sgm t
 
 (** [patt_vars t] returns a couple [(pvs,nl)]. The first compoment [pvs] is an
     association list giving the arity of all the “pattern variables” appearing
