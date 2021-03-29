@@ -441,8 +441,8 @@ let rewrite :
           | Some(sigma) -> sigma
           | None        ->
               fatal pos
-                "The value of [%s], [%a], in [%a] does not match [%a]."
-                (Bindlib.name_of id) pp_term id_val pp_term p pp_term l
+                "The value of [%a], [%a], in [%a] does not match [%a]."
+                pp_var id pp_term id_val pp_term p pp_term l
         in
         (* Build t, l, using the substitution we found. Note that r  *)
         (* corresponds to the value we get by applying rewrite to *)
@@ -498,8 +498,8 @@ let rewrite :
            [id_val]. *)
         let s_refs = add_refs s in
         if not (make_pat id_val s_refs) then
-          fatal pos "The value of [%s], [%a], in [%a] does not match [%a]."
-            (Bindlib.name_of id) pp_term id_val pp_term p pp_term s;
+          fatal pos "The value of [%a], [%a], in [%a] does not match [%a]."
+            pp_var id pp_term id_val pp_term p pp_term s;
         (* Now we must match s, which no longer contains any TRef's
            with the LHS of the lemma,*)
         let s = s_refs in
@@ -612,8 +612,8 @@ let rewrite :
           | Some(sigma) -> sigma
           | None        ->
               fatal pos
-                "The value of [%s], [%a], in [%a] does not match [%a]."
-                (Bindlib.name_of id) pp_term id_val pp_term p pp_term l
+                "The value of [%a], [%a], in [%a] does not match [%a]."
+                pp_var id pp_term id_val pp_term p pp_term l
         in
         let (t,l,r) = Bindlib.msubst bound sigma in
 

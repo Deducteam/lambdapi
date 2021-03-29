@@ -316,10 +316,10 @@ and scope_head : mode -> sig_state -> env -> p_term -> tbox =
             for i = 0 to Array.length vs - 2 do
               for j = i + 1 to Array.length vs - 1 do
                 if Bindlib.eq_vars vs.(i) vs.(j) then
-                  let name = Bindlib.name_of vs.(j) in
                   fatal ts.(j).pos
-                    "Variable %s appears more than once \
-                     in the environment of a pattern variable." name
+                    "Variable %a appears more than once \
+                     in the environment of a pattern variable."
+                    Print.pp_var vs.(j)
               done
             done;
             Array.map Bindlib.box_var vs

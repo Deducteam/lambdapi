@@ -10,7 +10,8 @@ open Lplib.Extra
 open Timed
 open Core
 open Term
-
+open Print
+ 
 (** [print_sym oc s] outputs the fully qualified name of [s] to [oc]. The name
     is prefixed by ["c_"], and modules are separated with ["_"], not ["."]. *)
 let print_sym : sym pp = fun oc s ->
@@ -30,7 +31,7 @@ let print_term : bool -> term pp = fun lhs ->
     | Wild         -> assert false
     | Kind         -> assert false
     (* Printing of atoms. *)
-    | Vari(x)      -> out "%s" (Bindlib.name_of x)
+    | Vari(x)      -> out "%a" pp_var x
     | Type         -> out "TYPE"
     | Symb(s)      -> print_sym oc s
     | Patt(i,n,ts) ->
@@ -39,11 +40,11 @@ let print_term : bool -> term pp = fun lhs ->
     | Appl(t,u)    -> out "app(%a,%a)" pp t pp u
     | Abst(a,t)    ->
         let (x, t) = Bindlib.unbind t in
-        if lhs then out "lam(m_typ,\\%s.%a)" (Bindlib.name_of x) pp t
-        else out "lam(%a,\\%s.%a)" pp a (Bindlib.name_of x) pp t
+        if lhs then out "lam(m_typ,\\%a.%a)" pp_var x pp t
+        else out "lam(%a,\\%a.%a)" pp a pp_var x pp t
     | Prod(a,b)    ->
         let (x, b) = Bindlib.unbind b in
-        out "pi(%a,\\%s.%a)" pp a (Bindlib.name_of x) pp b
+        out "pi(%a,\\%a.%a)" pp a pp_var x pp b
     | LLet(_,t,u)  -> pp oc (Bindlib.subst u t)
   in pp
 
