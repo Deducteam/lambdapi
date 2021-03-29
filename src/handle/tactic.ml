@@ -143,10 +143,10 @@ let tac_induction : popt -> proof_state -> goal_typ -> goal list
       tac_refine pos ps gt gs t
   | _ -> fatal pos "[%a] is not a product." pp_term goal_type
 
-(** [handle ss expo ps tac] applies tactic [tac] in the proof state [ps] and
+(** [handle ss prv ps tac] applies tactic [tac] in the proof state [ps] and
    returns the new proof state. *)
-let handle : Sig_state.t -> Tags.expo -> proof_state -> p_tactic
-             -> proof_state = fun ss expo ps {elt;pos} ->
+let handle : Sig_state.t -> bool -> proof_state -> p_tactic -> proof_state =
+  fun ss prv ps {elt;pos} ->
   match ps.proof_goals with
   | [] -> assert false (* done before *)
   | g::gs ->
@@ -166,7 +166,7 @@ let handle : Sig_state.t -> Tags.expo -> proof_state -> p_tactic
   match g with
   | Unif _ -> fatal pos "Not a typing goal."
   | Typ ({goal_hyps=env;_} as gt) ->
-  let scope = Scope.scope_term expo ss env (lazy (Proof.sys_metas ps)) in
+  let scope = Scope.scope_term prv ss env (lazy (Proof.sys_metas ps)) in
   let check_idopt = function
     | None -> ()
     | Some id -> if List.mem_assoc id.elt env then
@@ -234,11 +234,11 @@ let handle : Sig_state.t -> Tags.expo -> proof_state -> p_tactic
   | P_tac_why3 cfg ->
       tac_refine pos ps gt gs (Why3_tactic.handle ss pos cfg gt)
 
-(** [handle ss expo ps tac] applies tactic [tac] in the proof state [ps] and
+(** [handle ss prv ps tac] applies tactic [tac] in the proof state [ps] and
    returns the new proof state. *)
-let handle : Sig_state.t -> Tags.expo -> proof_state -> p_tactic
+let handle : Sig_state.t -> bool -> proof_state -> p_tactic
              -> Sig_state.t * proof_state * Query.result =
-  fun ss expo ps ({elt;pos} as tac) ->
+  fun ss prv ps ({elt;pos} as tac) ->
   match elt with
   | P_tac_fail -> fatal pos "Call to tactic \"fail\""
   | P_tac_query(q) ->
@@ -252,10 +252,10 @@ let handle : Sig_state.t -> Tags.expo -> proof_state -> p_tactic
   | g::_ ->
       if !log_enabled then
         log_tact "%a\n%a" Proof.Goal.pp g Pretty.tactic tac;
-      ss, handle ss expo ps tac, None
+      ss, handle ss prv ps tac, None
 
-let handle : Sig_state.t -> Tags.expo -> proof_state -> p_tactic
+let handle : Sig_state.t -> bool -> proof_state -> p_tactic
              -> Sig_state.t * proof_state * Query.result =
-  fun ss expo ps tac ->
-  try handle ss expo ps tac
+  fun ss prv ps tac ->
+  try handle ss prv ps tac
   with Fatal(_,_) as e -> Console.out 1 "%a" pp_goals ps; raise e

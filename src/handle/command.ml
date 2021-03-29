@@ -159,9 +159,12 @@ let handle_inductive_symbol : sig_state -> expo -> prop -> match_strat
   (* Desugaring of arguments of [typ]. *)
   let typ = if xs = [] then typ else Pos.none (P_Prod(xs, typ)) in
   (* Obtaining the implicitness of arguments. *)
-  let impl = Scope.get_implicitness typ in
+  let impl = Syntax.get_impl_term typ in
   (* We scope the type of the declaration. *)
-  let typ = Scope.scope_term expo ss Env.empty (lazy IntMap.empty) typ in
+  let typ =
+    (if xs = [] then scope_term else scope_term_with_params)
+      (expo = Privat) ss Env.empty (lazy IntMap.empty) typ
+  in
   (* We check that [a] is typable by a sort. *)
   Infer.check_sort Unif.solve_noexn pos [] typ;
   (* We check that no metavariable remains. *)
@@ -183,8 +186,7 @@ type proof_data =
   ; pdata_tactics  : p_tactic list (** Tactics. *)
   ; pdata_finalize : sig_state -> proof_state -> sig_state (** Finalizer. *)
   ; pdata_end_pos  : Pos.popt (** Position of the proof's terminator. *)
-  ; pdata_expo     : expo (** Allowed exposition of symbols in the proof
-                                   script. *) }
+  ; pdata_prv      : bool (** [true] iff private symbols are allowed. *) }
 
 (** [handle compile ss cmd] tries to handle the command [cmd] with [ss] as
     the signature state and [compile] as the main compilation function
@@ -200,7 +202,6 @@ let handle : (Path.t -> Sign.t) -> sig_state -> p_command ->
   if !log_enabled then
       (if !print_time then log_hndl "%f" (Sys.time());
        log_hndl "%a" Pos.pp pos; log_hndl (red "%a") Pretty.command cmd);
-  let scope expo = Scope.scope_term expo ss Env.empty (lazy IntMap.empty) in
   match elt with
   | P_query(q) -> (ss, None, Query.handle ss None q)
   | P_require(b,ps) ->
@@ -338,9 +339,9 @@ let handle : (Path.t -> Sign.t) -> sig_state -> p_command ->
     if Sign.mem ss.signature id then
       fatal p_sym_nam.pos "Symbol %a already exists." pp_uid id;
     (* Verify modifiers. *)
-    let (prop, expo, mstrat) = handle_modifiers p_sym_mod in
+    let prop, expo, mstrat = handle_modifiers p_sym_mod in
     let opaq = List.exists Syntax.is_opaq p_sym_mod in
-    let pdata_expo = if p_sym_def && opaq then Privat else expo in
+    let pdata_prv = expo = Privat || (p_sym_def && opaq) in
     (match p_sym_def, opaq, prop, mstrat with
      | false, true, _, _ ->
          fatal pos "Symbol declarations cannot be opaque."
@@ -348,36 +349,70 @@ let handle : (Path.t -> Sign.t) -> sig_state -> p_command ->
          fatal pos "Definitions cannot be constant."
      | true, _, _, Sequen ->
          fatal pos "Definitions cannot have matching strategies."
-     | _, _, _, _ -> ());
-    (* Build proof data. *)
-    let data =
-      (* Scope keeping position, with [expo] parsed above. *)
-      let scope_p a = Pos.make a.pos (scope expo a) in
-      (* Desugaring of arguments and scoping of [p_sym_trm]. *)
+     | _ -> ());
+    (* Scoping the definition and the type. *)
+    let pt, t, a, impl =
+      (* If there are parameters and both a type and a definition, then we use
+         term_with_params instead of scope_term, so that no
+         warning is issued during scoping if a parameter is unused in the type
+         or in the definition. In this case, this verification must therefore
+         be done afterwards. *)
+      let scope =
+        (if p_sym_arg = [] || p_sym_typ = None || p_sym_trm = None
+         then scope_term
+         else scope_term_with_params)
+          (expo = Privat) ss Env.empty (lazy IntMap.empty)
+      in
+      (* Scoping function keeping track of the position. *)
+      let scope t = Pos.make t.pos (scope t) in
+      (* Desugaring of parameters and scoping of [p_sym_trm]. *)
       let pt, t =
         match p_sym_trm with
         | Some pt ->
             let pt =
               if p_sym_arg = [] then pt
-              else let pos = Pos.(cat (end_pos p_sym_nam.pos) pt.pos) in
-                   Pos.make pos (P_Abst(p_sym_arg, pt))
+              else
+                let pos = Pos.(cat (end_pos p_sym_nam.pos) pt.pos) in
+                Pos.make pos (P_Abst(p_sym_arg, pt))
             in
-            Some pt, Some (scope_p pt)
+            Some pt, Some (scope pt)
         | None -> None, None
       in
-      (* Argument impliciteness. *)
-      let ao, impl =
+      (* Desugaring of parameters and scoping of [p_sym_typ], and computation
+         of implicit arguments. *)
+      let a, impl =
         match p_sym_typ with
-        | None    -> (None, List.map (fun (_,_,impl) -> impl) p_sym_arg)
-        | Some(a) ->
+        | None   -> (None, Syntax.get_impl_params_list p_sym_arg)
+        | Some a ->
             let a =
               if p_sym_arg = [] then a
-              else Pos.make p_sym_nam.pos (P_Prod(p_sym_arg,a))
+              else
+                let pos = Pos.(cat (end_pos p_sym_nam.pos) a.pos) in
+                Pos.make pos (P_Prod(p_sym_arg, a))
             in
-            (Some(a), Scope.get_implicitness a)
+            Some (scope a), Syntax.get_impl_term a
       in
-      let ao = Option.map scope_p ao in
-      let proof_goals, a = goals_of_typ ao t in
+      (* If there are parameters, output a warning if they are not used. *)
+      if p_sym_arg <> [] then begin
+        match a, t with
+        | Some a, Some t ->
+            let rec binders_warn k ty te =
+              if k <= 0 then () else
+              match ty, te with
+              | Prod(_, by), Abst(_, be) ->
+                  let x, ty, te = Bindlib.unbind2 by be in
+                  if Bindlib.(binder_constant by && binder_constant be) then
+                    wrn pos "Variable [%a] could be replaced by [_]." pp_var x;
+                  binders_warn (k-1) ty te
+              | _ -> assert false
+            in binders_warn (Syntax.nb_params p_sym_arg) a.elt t.elt
+        | _ -> ()
+        end;
+      pt, t, a, impl
+    in
+    (* Build proof data. *)
+    let data =
+      let proof_goals, a = goals_of_typ a t in
       (* Add the definition as goal so that we can refine on it. *)
       let proof_term =
         if p_sym_def then Some (Meta.fresh ~name:id a 0) else None in
@@ -434,7 +469,6 @@ let handle : (Path.t -> Sign.t) -> sig_state -> p_command ->
       in
       (* Create proof state. *)
       let ps = {proof_name = p_sym_nam; proof_term; proof_goals} in
-      (* Apply tac_solve. *)
       let ps = Tactic.tac_solve pos ps in
       (* Add proof_term as focused goal. *)
       let ps =
@@ -454,9 +488,9 @@ let handle : (Path.t -> Sign.t) -> sig_state -> p_command ->
       if p_sym_prf = None && not (finished ps) then wrn pos
         "Some metavariables could not be solved: a proof must be given";
       { pdata_stmt_pos=p_sym_nam.pos; pdata_p_state=ps; pdata_tactics=ts
-      ; pdata_finalize=finalize; pdata_end_pos=pe.pos; pdata_expo }
+      ; pdata_finalize=finalize; pdata_end_pos=pe.pos; pdata_prv }
     in
-    (ss, Some(data), None)
+    (ss, Some data, None)
 
 (** [too_long] indicates the duration after which a warning should be given to
     indicate commands that take too long to execute. *)

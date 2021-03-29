@@ -55,6 +55,28 @@ and p_term_aux =
     the argument is marked as implicit (i.e., between curly braces). *)
 and p_params = p_ident option list * p_term option * bool
 
+(** [nb_params ps] returns the number of parameters in a list of parameters
+    [ps]. *)
+let nb_params : p_params list -> int =
+  List.fold_left (fun acc (ps,_,_) -> acc + List.length ps) 0
+
+(** [get_impl_params_list l] gives the implicitness of [l]. *)
+let rec get_impl_params_list : p_params list -> bool list = function
+  | [] -> []
+  | (params,_,impl)::params_list ->
+      List.map (fun _ -> impl) params @ get_impl_params_list params_list
+
+(** [get_impl_term t] gives the implicitness of [t]. *)
+let rec get_impl_term : p_term -> bool list = fun t -> get_impl_term_aux t.elt
+and get_impl_term_aux : p_term_aux -> bool list = fun t ->
+  match t with
+  | P_Prod([],t) -> get_impl_term t
+  | P_Prod((ys,_,impl)::xs,t) ->
+      List.map (fun _ -> impl) ys @ get_impl_term_aux (P_Prod(xs,t))
+  | P_Arro(_,t)  -> false :: get_impl_term t
+  | P_Wrap(t)    -> get_impl_term t
+  | _            -> []
+
 (** [p_get_args t] is {!val:LibTerm.get_args} on syntax-level terms. *)
 let p_get_args : p_term -> p_term * p_term list = fun t ->
   let rec p_get_args acc t =

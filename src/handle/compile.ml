@@ -74,7 +74,7 @@ let rec compile : bool -> Path.t -> Sign.t = fun force mp ->
         | Some d ->
             let ss, ps, _ =
               List.fold_left
-                (fun (ss, ps, _) tac -> Tactic.handle ss d.pdata_expo ps tac)
+                (fun (ss, ps, _) tac -> Tactic.handle ss d.pdata_prv ps tac)
                 (ss, d.pdata_p_state, None) d.pdata_tactics
             in
             d.pdata_finalize ss ps

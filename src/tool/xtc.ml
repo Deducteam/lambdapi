@@ -10,12 +10,12 @@ open Lplib.Extra
 open Timed
 open Core
 open Term
+open Print
 
 (** [print_sym oc s] outputs the fully qualified name of [s] to [oc]. Modules
     are separated with ["."]. *)
 let print_sym : sym pp = fun oc s ->
-  let print_path = List.pp Format.pp_print_string "." in
-  Format.fprintf oc "%a.%s" print_path s.sym_path s.sym_name
+  Format.fprintf oc "%a.%a" pp_path s.sym_path pp_uid s.sym_name
 
 type symb_status = Object_level | Basic_type | Type_cstr
 
@@ -47,7 +47,7 @@ let rec print_term : int -> string -> term pp = fun i s oc t ->
   | Type                    -> assert false
   | Prod(_,_)               -> assert false
   (* Printing of atoms. *)
-  | Vari(x)                 -> out "<var>v_%s</var>@." (Bindlib.name_of x)
+  | Vari(x)                 -> out "<var>v_%a</var>@." pp_var x
   | Symb(s)                 ->
      out "<funapp>@.<name>%a</name>@.</funapp>@." print_sym s
   | Patt(j,n,ts)            ->
@@ -58,8 +58,8 @@ let rec print_term : int -> string -> term pp = fun i s oc t ->
                                  (print_term i s) t (print_term i s) u
   | Abst(a,t)               ->
      let (x, t) = Bindlib.unbind t in
-     out "<lambda>@.<var>v_%s</var>@.<type>%a<type>@.%a</lambda>@."
-       (Bindlib.name_of x) (print_type i s) a (print_term i s) t
+     out "<lambda>@.<var>v_%a</var>@.<type>%a<type>@.%a</lambda>@."
+       pp_var x (print_type i s) a (print_term i s) t
   | LLet(_,t,u)             -> print_term i s oc (Bindlib.subst u t)
 
 and print_type : int -> string -> term pp = fun i s oc t ->
@@ -81,8 +81,8 @@ and print_type : int -> string -> term pp = fun i s oc t ->
                       (print_type i s) t (print_term i s) u
   | Abst(a,t)               ->
      let (x, t) = Bindlib.unbind t in
-     out "<lambda>@.<var>v_%s</var>@.<type>%a<type>@.%a</lambda>@."
-       (Bindlib.name_of x) (print_type i s) a (print_type i s) t
+     out "<lambda>@.<var>v_%a</var>@.<type>%a<type>@.%a</lambda>@."
+       pp_var x (print_type i s) a (print_type i s) t
   | Prod(a,b)               ->
      if Bindlib.binder_constant b
      then
@@ -91,7 +91,7 @@ and print_type : int -> string -> term pp = fun i s oc t ->
          (print_type i s) (snd (Bindlib.unbind b))
      else
        let (x, b) = Bindlib.unbind b in
-       out "<arrow>@.<var>v_%s</var>@." (Bindlib.name_of x);
+       out "<arrow>@.<var>v_%a</var>@." pp_var x;
        out "<type>@.%a</type>@.<type>@.%a</type>@.</arrow>"
          (print_type i s) a (print_type i s) b
   | LLet(_,t,u)             -> print_type i s oc (Bindlib.subst u t)
