@@ -97,17 +97,6 @@ type mode =
   (** Scoping mode for unification rule right-hand sides. During  scoping, we
       always have [m_urhs_vars_nb = m_lhs_size + length m_urhs_xvars]. *)
 
-(** [get_implicitness t] gives the specified implicitness of the parameters of
-    a symbol having the (parser-level) type [t]. *)
-let rec get_implicitness : p_term -> bool list = fun t ->
-  match t.elt with
-  | P_Prod([],t) -> get_implicitness t
-  | P_Prod((ys,_,impl)::xs,t) ->
-      List.map (fun _ -> impl) ys @ get_implicitness {t with elt=P_Prod(xs,t)}
-  | P_Arro(_,t)  -> false :: get_implicitness t
-  | P_Wrap(t)    -> get_implicitness t
-  | _            -> []
-
 (** [get_pratt_args ss env t] decomposes the parser level term [t] into a
     spine [(h,args)], when [h] is the term at the head of the application and
     [args] is the list of all its arguments. The function also reorders the

@@ -159,7 +159,7 @@ let handle_inductive_symbol : sig_state -> expo -> prop -> match_strat
   (* Desugaring of arguments of [typ]. *)
   let typ = if xs = [] then typ else Pos.none (P_Prod(xs, typ)) in
   (* Obtaining the implicitness of arguments. *)
-  let impl = Scope.get_implicitness typ in
+  let impl = Syntax.get_implicitness typ in
   (* We scope the type of the declaration. *)
   let typ = Scope.scope_term expo ss Env.empty (lazy IntMap.empty) typ in
   (* We check that [a] is typable by a sort. *)
@@ -378,7 +378,7 @@ let handle : (Path.t -> Sign.t) -> sig_state -> p_command ->
               if p_sym_arg = [] then a
               else Pos.make p_sym_nam.pos (P_Prod(p_sym_arg,a))
             in
-            (Some(a), Scope.get_implicitness a)
+            (Some(a), Syntax.get_implicitness a)
       in
       let ao = Option.map scope ao in
       (* If warnings were not output during scoping (see above), then we warn
