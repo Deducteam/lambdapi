@@ -383,18 +383,20 @@ let handle : (Path.t -> Sign.t) -> sig_state -> p_command ->
       (* If warnings were not output during scoping (see above), then we warn
          here for unused variables by going through type and definition
          simultaneously. *)
-      let rec binders_warn ty te =
-        match ty, te with
-        | Prod(_, by), Abst(_, be) ->
-            let x, ty, te = Bindlib.unbind2 by be in
-            if Bindlib.(binder_constant by && binder_constant be) then
-              wrn pos "Variable [%a] could be replaced by [_]." pp_var x;
-            binders_warn ty te
+      if p_sym_arg <> [] then begin
+        match ao, t with
+        | Some(a), Some(t) ->
+            let rec binders_warn ty te =
+              match ty, te with
+              | Prod(_, by), Abst(_, be) ->
+                  let x, ty, te = Bindlib.unbind2 by be in
+                  if Bindlib.(binder_constant by && binder_constant be) then
+                    wrn pos "Variable [%a] could be replaced by [_]." pp_var x;
+                  binders_warn ty te
+              | _ -> ()
+            in binders_warn a.elt t.elt
         | _ -> ()
-      in
-      ( match ao, t with
-        | Some(a), Some(t) -> binders_warn a.elt t.elt
-        | _ -> () );
+      end;
       let proof_goals, a = goals_of_typ ao t in
       (* Add the definition as goal so that we can refine on it. *)
       let proof_term =
