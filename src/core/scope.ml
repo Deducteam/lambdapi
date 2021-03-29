@@ -152,12 +152,6 @@ let get_pratt_args : Sig_state.t -> Env.t -> p_term -> p_term * p_term list =
     end
     | _           -> invalid_arg "fresh_patt mode must be M_LHS"
 
-(* Create a new metavariable of type [TYPE] for a missing domain. *)
-let _Meta_Type : env -> tbox = fun env ->
-  let vs = Env.to_tbox env in
-  let a = Env.to_prod_box env _Type in
-  _Meta_full (Meta.fresh_box a (Array.length vs)) vs
-
 (** [scope md ss env t] turns a parser-level term [t] into an actual term. The
     variables of the environment [env] may appear in [t], and the scoping mode
     [md] changes the behaviour related to certain constructors.  The signature
@@ -218,7 +212,7 @@ and scope_domain : mode -> sig_state -> env -> p_term option -> tbox =
   fun md ss env a ->
   match (a, md) with
   | (None   , M_LHS(_)    ) -> fresh_patt md None (Env.to_tbox env)
-  | ((Some({elt=P_Wild;_})|None), _           ) -> _Meta_Type env
+  | ((Some({elt=P_Wild;_})|None), _           ) -> Env.fresh_meta_Type env
   | (Some(a)   , _           ) -> scope md ss env a
 
 (** [scope_binder ?warn mode ss cons env params_list t] scopes [t] in
@@ -237,7 +231,7 @@ and scope_binder : ?warn:bool -> mode -> sig_state ->
         begin
           match t with
           | Some t -> scope md ss env t
-          | None -> _Meta_Type env
+          | None -> Env.fresh_meta_Type env
         end
     | (idopts,typopt,_implicit)::params_list ->
         scope_params env idopts (scope_domain md ss env typopt) params_list
