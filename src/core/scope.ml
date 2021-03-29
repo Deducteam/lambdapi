@@ -108,7 +108,7 @@ type mode =
    appl node (still by Pratt.parse), then again decomposed into a list by the
    function. We may make [Pratt.parse] to return already a list of terms,
    or have the application represented as a non empty list. *)
-let get_pratt_args : Sig_state.t -> Env.t -> p_term -> p_term * p_term list =
+let get_pratt_args : sig_state -> Env.t -> p_term -> p_term * p_term list =
   fun ss env t ->
   let rec get_args args t =
     match t.elt with
@@ -173,7 +173,7 @@ let rec scope : mode -> sig_state -> env -> p_term -> tbox =
    application of [h] to the scoped arguments. [impl] is a boolean list
    described the implicit arguments. Implicit arguments are added as
    underscores before scoping. *)
-and add_impl : mode -> Sig_state.t -> Env.t -> popt -> tbox -> bool list ->
+and add_impl : mode -> sig_state -> Env.t -> popt -> tbox -> bool list ->
   p_term list -> tbox =
   fun md ss env loc h impl args ->
   let appl_p_term t u = _Appl t (scope md ss env u) in
