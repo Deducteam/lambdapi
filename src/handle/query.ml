@@ -110,7 +110,7 @@ let handle : Sig_state.t -> proof_state option -> p_query -> result =
     | None -> Extra.IntMap.empty
     | Some ps -> Proof.sys_metas ps)
   in
-  let scope = Scope.scope_term false ss env sms in
+  let scope = Scope.scope_term true ss env sms in
   let ctxt = Env.to_ctxt env in
   match elt with
   | P_query_debug(_,_)
