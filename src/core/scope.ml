@@ -126,36 +126,37 @@ let get_pratt_args : Sig_state.t -> Env.t -> p_term -> p_term * p_term list =
     | _           -> (t, args)
   in get_args [] (Pratt.parse ss env t)
 
-(* Unique pattern variable generation for wildcards in a LHS. *)
-  let fresh_patt md name env =
-    match md with
-    | M_LHS(data) ->
-    let fresh_index () =
-      let i = data.m_lhs_size in
-      data.m_lhs_size <- i + 1;
-      let arity = Array.length env in
-      Hashtbl.add data.m_lhs_arities i arity; i
-    in
-    begin
-      match name with
-      | Some(name) ->
-          let i =
-            try Hashtbl.find data.m_lhs_indices name with Not_found ->
+(** Unique pattern variable generation for wildcards in a LHS. *)
+let fresh_patt md name env =
+  match md with
+  | M_LHS(data) ->
+      let fresh_index () =
+        let i = data.m_lhs_size in
+        data.m_lhs_size <- i + 1;
+        let arity = Array.length env in
+        Hashtbl.add data.m_lhs_arities i arity; i
+      in
+      begin
+        match name with
+        | Some name ->
+            let i =
+              try Hashtbl.find data.m_lhs_indices name with Not_found ->
+                let i = fresh_index () in
+                Hashtbl.add data.m_lhs_indices name i;
+                Hashtbl.add data.m_lhs_names i name; i
+            in
+            _Patt (Some(i)) (Printf.sprintf "v%i_%s" i name) env
+        | None ->
             let i = fresh_index () in
-            Hashtbl.add data.m_lhs_indices name i;
-            Hashtbl.add data.m_lhs_names i name; i
-          in
-          _Patt (Some(i)) (Printf.sprintf "v%i_%s" i name) env
-      | None       ->
-          let i = fresh_index () in
-          _Patt (Some(i)) (Printf.sprintf "v%i" i) env
-    end
-    | _           -> invalid_arg "fresh_patt mode must be M_LHS"
+            _Patt (Some(i)) (Printf.sprintf "v%i" i) env
+      end
+  | _ -> invalid_arg "fresh_patt mode must be M_LHS"
 
 (** [scope md ss env t] turns a parser-level term [t] into an actual term. The
-    variables of the environment [env] may appear in [t], and the scoping mode
-    [md] changes the behaviour related to certain constructors.  The signature
-    state [ss] is used to hande module aliasing according to [find_qid]. *)
+   variables of the environment [env] may appear in [t], and the scoping mode
+   [md] changes the behaviour related to certain constructors. The signature
+   state [ss] is used to convert identifiers into symbols according to
+   [find_qid]. *)
 let rec scope : mode -> sig_state -> env -> p_term -> tbox =
   fun md ss env t ->
   if Timed.(!log_enabled) then log_scop "%a" Pretty.term t;
@@ -179,7 +180,8 @@ let rec scope : mode -> sig_state -> env -> p_term -> tbox =
   in
   (* Scope and insert the (implicit) arguments. *)
   add_impl md ss env t.pos h impl args
-(* Build the application of [h] to [args], inserting implicit arguments. *)
+
+(** Build the application of [h] to [args], inserting implicit arguments. *)
 and add_impl md ss env loc h impl args =
   let appl_p_term t u = _Appl t (scope md ss env u) in
   let appl_meta t = _Appl t (scope_head md ss env (Pos.none P_Wild)) in
@@ -207,7 +209,7 @@ and add_impl md ss env loc h impl args =
       (* NOTE this could be improved with more general implicits. *)
       fatal loc "More arguments are required to instantiate implicits."
 
-(* Scoping function for the domain of functions or products. *)
+(** Scoping function for the domain of functions or products. *)
 and scope_domain : mode -> sig_state -> env -> p_term option -> tbox =
   fun md ss env a ->
   match (a, md) with
@@ -253,7 +255,8 @@ and scope_binder : ?warn:bool -> mode -> sig_state ->
     in aux env idopts
   in
   scope_params_list env params_list
-(* Scoping function for head terms. *)
+
+(** Scoping function for head terms. *)
 and scope_head : mode -> sig_state -> env -> p_term -> tbox =
   fun md ss env t ->
   match (t.elt, md) with
