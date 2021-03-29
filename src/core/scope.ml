@@ -423,12 +423,9 @@ let scope_term :
   let m = Stdlib.ref StrMap.empty in
   Bindlib.unbox (scope (M_Term(m, sgm, expo)) ss env t)
 
-(** [scope_term_with_params expo ss env sgm t] turns a parser-level
-   desugarised definition [t] into an actual term. Parameters [expo], [ss],
-   [env] and [sgm] have the same behaviour as in {!val:scope_term}. Unlike
-   {!val:scope_term}, this function does not print warnings when binders are
-   constant because parameters of definition may appear solely in the type or
-   in the definition. These checks have to be performed afterwards. *)
+(** [scope_term_with_params expo ss env sgm t] is similar to [scope_term expo
+   ss env sgm t] except that [t] must be a product or an abstraction. In this
+   case, no warnings are issued if the top binders are constant. *)
 let scope_term_with_params :
      Tags.expo -> sig_state -> env -> meta IntMap.t Lazy.t -> p_term -> term =
   fun expo ss env sgm t ->
@@ -442,7 +439,7 @@ let scope_term_with_params :
   match p_head.elt with
   | P_Abst(xs,u) -> scope_b _Abst xs u
   | P_Prod(xs,u) -> scope_b _Prod xs u
-  | _ -> Bindlib.unbox (scope md ss env t)
+  | _ -> assert false
 
 (** [patt_vars t] returns a couple [(pvs,nl)]. The first compoment [pvs] is an
     association list giving the arity of all the “pattern variables” appearing
