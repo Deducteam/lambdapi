@@ -173,7 +173,9 @@ let rec scope : mode -> sig_state -> env -> p_term -> tbox =
    application of [h] to the scoped arguments. [impl] is a boolean list
    described the implicit arguments. Implicit arguments are added as
    underscores before scoping. *)
-and add_impl md ss env loc h impl args =
+and add_impl : mode -> Sig_state.t -> Env.t -> popt -> tbox -> bool list ->
+  p_term list -> tbox =
+  fun md ss env loc h impl args ->
   let appl_p_term t u = _Appl t (scope md ss env u) in
   let appl_meta t = _Appl t (scope_head md ss env (Pos.none P_Wild)) in
   match (impl, args) with

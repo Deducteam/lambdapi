@@ -55,14 +55,10 @@ and p_term_aux =
     the argument is marked as implicit (i.e., between curly braces). *)
 and p_params = p_ident option list * p_term option * bool
 
-(** Number of parameters in a list of parameters. *)
+(** [nb_params ps] returns the number of parameters in a list of parameters
+    [ps]. *)
 let nb_params : p_params list -> int =
-  let rec nb_params acc params_list =
-    match params_list with
-    | [] -> acc
-    | (params,_,_)::params_list ->
-        nb_params (acc + List.length params) params_list
-  in nb_params 0
+  List.fold_left (fun acc (ps,_,_) -> acc + List.length ps) 0
 
 (** [get_impl_params_list l] gives the implicitness of [l]. *)
 let rec get_impl_params_list : p_params list -> bool list = function
