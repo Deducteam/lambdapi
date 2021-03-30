@@ -153,7 +153,7 @@ end = struct
   let regid = [%sedlex.regexp? Plus (Compl forbidden_letter)]
 
   (* Identifiers not compatible with Bindlib. *)
-  let invalid_bindlib_id = [%sedlex.regexp? Star any, Plus '0', nat]
+  let invalid_bindlib_id = [%sedlex.regexp? Star any, Plus '0', nat, eof]
 
   (* Once unescaped, escaped identifiers must not be empty, as the empty
      string is used in the path of ghost signatures. *)
