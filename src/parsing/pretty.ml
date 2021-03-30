@@ -21,8 +21,8 @@ let check_keywords = ref false
 
 let raw_ident : popt -> string pp = fun pos ppf s ->
   if !check_keywords && LpLexer.is_keyword s then
-    fatal pos "Identifier [%s] is a Lambdapi keyword." s
-  else LpLexer.pp_uid ppf s
+    fatal pos "%s is a Lambdapi keyword." s
+  else pp_print_string ppf s
 
 let ident : p_ident pp = fun ppf {elt=s; pos} -> raw_ident pos ppf s
 

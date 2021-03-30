@@ -14,7 +14,6 @@ open Common
 open Error
 open Pos
 open Timed
-open Parsing
 open Term
 open LibTerm
 open Sign

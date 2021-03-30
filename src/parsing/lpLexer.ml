@@ -103,34 +103,6 @@ type token =
 
 exception SyntaxError of strloc
 
-(** Lexer for Lambdapi syntax. *)
-module Lp_lexer : sig
-
-  val is_uid : string -> bool
-  (** [is_uid s] is [true] iff [s] is a regular identifier. *)
-
-  val is_invalid_bindlib_id : string -> bool
-  (** [is_invalid_bindlib_id s] is [true] iff [s] ends with a positive integer
-     with leading zeros. *)
-
-  val pp_uid : string Base.pp
-  (** [pp_uid s] prints the uid [s], in escaped form if [s] is not a regular
-   identifier. *)
-
-  val is_identifier : string -> bool
-  (** [is_identifier s] is [true] iff [s] is a valid identifier. *)
-
-  val is_keyword : string -> bool
-  (** [is_keyword s] returns [true] iff [s] is a keyword. *)
-
-  val is_debug_flag : string -> bool
-  (** [is_debug_flag s] is true iff [s] is a debug flag. *)
-
-  val lexer : lexbuf -> unit -> token * Lexing.position * Lexing.position
-  (** [lexer buf] is a lexing function on buffer [buf] that can be passed to
-      a parser. *)
-
-end = struct
   let digit = [%sedlex.regexp? '0' .. '9']
   let nonzero_nat = [%sedlex.regexp? '1' .. '9', Star digit]
   let nat = [%sedlex.regexp? '0' | nonzero_nat]
@@ -142,11 +114,33 @@ end = struct
   let forbidden_letter = [%sedlex.regexp? Chars " ,;\r\t\n(){}[]:.`\""]
   let regid = [%sedlex.regexp? Plus (Compl forbidden_letter)]
 
+  let is_regid : string -> bool = fun s ->
+    let lexbuf = Sedlexing.Utf8.from_string s in
+    match%sedlex lexbuf with
+    | regid, eof -> true
+    | _ -> false
+
+  let uid_of_string : string -> string = fun s ->
+    let s' = Escape.unescape s in if is_regid s' then s' else s
+
+  let path_of_string : string -> Path.t = fun s ->
+    List.map uid_of_string (Path.of_string s)
+
   (* Identifiers not compatible with Bindlib. *)
   let invalid_bindlib_id = [%sedlex.regexp? Star any, Plus '0', nat]
 
-  (* Once unescaped, escaped identifiers must not be empty, as the empty
-     string is used in the path of ghost signatures. *)
+  let is_invalid_bindlib_id : string -> bool = fun s ->
+    let lexbuf = Sedlexing.Utf8.from_string s in
+    match%sedlex lexbuf with
+    | invalid_bindlib_id, eof -> true
+    | _ -> false
+
+  (* unit tests *)
+  let _ =
+    assert (let f = is_invalid_bindlib_id in f "00" && f "01" && f "a01")
+
+  (* Escaped identifiers must not be empty, as the empty string is used in the
+     path of ghost signatures. *)
   let escid =
     [%sedlex.regexp? "{|", Plus (Compl '|' | '|', Compl '}'), Star '|', "|}"]
   let uid = [%sedlex.regexp? regid | escid]
@@ -236,39 +230,8 @@ end = struct
        [match%sedlex]. *)
       List.mem_sorted String.compare s kws
 
-  let is_debug_flag : string -> bool = fun s ->
-    let lexbuf = Utf8.from_string s in
-    match%sedlex lexbuf with
-    | ('+' | '-'), Plus lowercase -> true
-    | _ -> false
-
-  let is_uid : string -> bool = fun s ->
-    s = "" (* For ghost modules *) ||
-    let lexbuf = Sedlexing.Utf8.from_string s in
-    match%sedlex lexbuf with
-    | uid -> true
-    | _ -> false
-
-  let pp_uid : string Base.pp = fun ppf s ->
-    if is_uid s
-    then Format.fprintf ppf "%s" s
-    else Format.fprintf ppf "{|%s|}" s
-
-  let is_identifier : string -> bool = fun s ->
-    s = "" (* For ghost modules *) ||
-    let lexbuf = Sedlexing.Utf8.from_string s in
-    match%sedlex lexbuf with
-    | id -> true
-    | _ -> false
-
-  let is_invalid_bindlib_id : string -> bool = fun s ->
-    let lexbuf = Sedlexing.Utf8.from_string s in
-    match%sedlex lexbuf with
-    | invalid_bindlib_id -> true
-    | _ -> false
-
-  (** [tail buf] returns the utf8 string formed from [buf] dropping its
-      first codepoints. *)
+  (** [tail buf] returns the utf8 string obtained by dropping the first
+     codepoint in [buf]. *)
   let tail : lexbuf -> string = fun buf ->
     Utf8.sub_lexeme buf 1 (lexeme_length buf - 1)
 
@@ -373,16 +336,15 @@ end = struct
 
     (* identifiers *)
 
-    | '?', nat ->
-        UID_META(Syntax.Numb(int_of_string(Escape.unescape(tail buf))))
-    | '?', uid -> UID_META(Syntax.Name(Escape.unescape (tail buf)))
-    | '$', uid -> UID_PAT(Escape.unescape (tail buf))
+    | '?', nat -> UID_META(Syntax.Numb(int_of_string(tail buf)))
+    | '?', uid -> UID_META(Syntax.Name(uid_of_string(tail buf)))
+    | '$', uid -> UID_PAT(uid_of_string(tail buf))
 
-    | '@', uid -> ID_EXPL([Escape.unescape(tail buf)])
-    | '@', qid -> ID_EXPL(List.map Escape.unescape (Path.of_string(tail buf)))
+    | '@', uid -> ID_EXPL[uid_of_string(tail buf)]
+    | '@', qid -> ID_EXPL(path_of_string(tail buf))
 
-    | uid -> UID(Escape.unescape (Utf8.lexeme buf))
-    | qid -> QID(List.map Escape.unescape (Path.of_string (Utf8.lexeme buf)))
+    | uid -> UID(uid_of_string(Utf8.lexeme buf))
+    | qid -> QID(path_of_string(Utf8.lexeme buf))
 
     (* invalid token *)
 
@@ -391,6 +353,3 @@ end = struct
         raise (SyntaxError(Pos.make (Some(loc)) (Utf8.lexeme buf)))
 
   let lexer = with_tokenizer token
-
-end
-include Lp_lexer
