@@ -164,20 +164,20 @@ let set_lib_root : string option -> unit = fun dir ->
          Required by [module_to_file]. *)
       Timed.(lib_mappings := LibMap.set_root pth !lib_mappings)
 
-(** [add_mapping (mp, fp)] adds a new mapping from the module name [mp] to
-   the file name [fp] if [mp] is not already mapped and [fp] is a valid
+(** [add_mapping (mn, fn)] adds a new mapping from the module name [mn] to
+   the file name [fn] if [mn] is not already mapped and [fn] is a valid
    directory. In case of failure the program terminates and a graceful error
    message is displayed. *)
-let add_mapping : string * string -> unit = fun (mp, fp) ->
-  let md = Path.of_string mp in
-  let fp =
-    try Filename.realpath fp
-    with Invalid_argument(f) -> fatal_no_pos "%s: No such file or directory" f
+let add_mapping : string * string -> unit = fun (mn, fn) ->
+  let mp = Path.of_string mn in
+  let fn =
+    try Filename.realpath fn
+    with Invalid_argument f -> fatal_no_pos "%s: No such file or directory" f
   in
   let new_mapping =
-    try LibMap.add md fp !lib_mappings
+    try LibMap.add mp fn !lib_mappings
     with LibMap.Already_mapped ->
-      fatal_no_pos "Module path [%a] is already mapped." Path.pp md
+      fatal_no_pos "Module path [%a] is already mapped." Path.pp mp
   in
   lib_mappings := new_mapping
 
