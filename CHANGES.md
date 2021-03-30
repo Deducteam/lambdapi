@@ -1,6 +1,6 @@
 ### Unreleased
 
-#### Do not unescapde identifiers anymore (2021-03-30)
+#### Do not unescape identifiers anymore (2021-03-30)
 
 - escaped regular identifiers are automatically unescaped in lexing
 - unescaping is done in filenames only
