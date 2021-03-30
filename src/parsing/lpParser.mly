@@ -212,12 +212,12 @@ tactic:
   | WHY3 s=STRINGLIT? { make_pos $sloc (P_tac_why3 s) }
 
 modifier:
-  | CONSTANT { make_pos $sloc (P_prop Term.Tags.Const) }
-  | INJECTIVE { make_pos $sloc (P_prop Term.Tags.Injec) }
+  | CONSTANT { make_pos $sloc (P_prop Term.Const) }
+  | INJECTIVE { make_pos $sloc (P_prop Term.Injec) }
   | OPAQUE { make_pos $sloc P_opaq }
-  | PRIVATE { make_pos $sloc (P_expo Term.Tags.Privat) }
-  | PROTECTED { make_pos $sloc (P_expo Term.Tags.Protec) }
-  | SEQUENTIAL { make_pos $sloc (P_mstrat Term.Tags.Sequen) }
+  | PRIVATE { make_pos $sloc (P_expo Term.Privat) }
+  | PROTECTED { make_pos $sloc (P_expo Term.Protec) }
+  | SEQUENTIAL { make_pos $sloc (P_mstrat Term.Sequen) }
 
 float_or_int:
   | p=FLOAT { p }
@@ -349,8 +349,8 @@ equation: l=term EQUIV r=term { (l, r) }
 unif_rule: e=equation HOOK_ARROW
   L_SQ_BRACKET es=separated_nonempty_list(SEMICOLON, equation) R_SQ_BRACKET
     { (* FIXME: give sensible positions instead of Pos.none and P.appl. *)
-      let equiv = P.qiden Unif_rule.path Unif_rule.p_equiv in
-      let cons = P.qiden Unif_rule.path Unif_rule.p_cons in
+      let equiv = P.qiden Unif_rule.path Unif_rule.equiv.sym_name in
+      let cons = P.qiden Unif_rule.path Unif_rule.cons.sym_name in
       let mk_equiv (t, u) = P.appl (P.appl equiv t) u in
       let lhs = mk_equiv e in
       let es = List.rev_map mk_equiv es in

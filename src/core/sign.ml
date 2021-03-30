@@ -8,7 +8,6 @@ open Error
 open Pos
 open Timed
 open Term
-open Tags
 
 (** Data associated to inductive type symbols. *)
 type ind_data =
@@ -221,7 +220,7 @@ let unlink : t -> unit = fun sign ->
    [impl], no definition and no rules. [name] should not already be used in
    [sign]. The created symbol is returned. *)
 let add_symbol :
-      t -> expo -> Tags.prop -> match_strat -> bool -> strloc -> term ->
+      t -> expo -> prop -> match_strat -> bool -> strloc -> term ->
       bool list -> sym =
   fun sign sym_expo sym_prop sym_mstrat sym_opaq {elt=sym_name;pos} typ
       impl ->

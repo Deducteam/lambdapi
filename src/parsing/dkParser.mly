@@ -388,8 +388,8 @@ param:
     { ([Some (make_pos $loc(id) id)], Some(te), false) }
 
 modifier:
-  | KW_PRV { make_pos $sloc (P_expo(Term.Tags.Protec)) }
-  | KW_INJ { make_pos $sloc (P_prop(Term.Tags.Injec)) }
+  | KW_PRV { make_pos $sloc (P_expo(Term.Protec)) }
+  | KW_INJ { make_pos $sloc (P_prop(Term.Injec)) }
 
 context_item:
   | x=UID ao=option(COLON a=term { a }) { (make_pos $loc(x) x, ao) }

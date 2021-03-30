@@ -15,7 +15,6 @@ open Error
 open Pos
 open Timed
 open Term
-open LibTerm
 open Sign
 
 (** State of the signature, including aliasing and accessible symbols. *)
@@ -40,7 +39,7 @@ let create_sign : Path.t -> Sign.t = fun sign_path ->
    signature state from [ss] by creating a new symbol with expo [e], property
    [p], strategy [st], name [x], type [a], implicit arguments [impl] and
    optional definition [def]. This new symbol is returned too. *)
-let add_symbol : sig_state -> Tags.expo -> Tags.prop -> Tags.match_strat
+let add_symbol : sig_state -> expo -> prop -> match_strat
     -> bool -> strloc -> term -> bool list -> term option -> sig_state * sym =
   fun ss expo prop mstrat opaq id typ impl def ->
   let sym = Sign.add_symbol ss.signature expo prop mstrat opaq id typ impl in
