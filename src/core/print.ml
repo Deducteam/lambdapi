@@ -14,7 +14,6 @@ open Debug
 open Term
 open Sig_state
 open Format
-open Parsing
 
 let out = fprintf
 
