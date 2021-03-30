@@ -383,5 +383,5 @@ let rec dependencies : t -> (Path.t * t) list = fun sign ->
   in
   List.concat (minimize [] deps)
 
-(** [ghost_path s] creates a module path that can be entered by a user. *)
+(** [ghost_path s] creates a module path that cannot be entered by a user. *)
 let ghost_path : string -> Path.t = fun s -> [ ""; s ]
