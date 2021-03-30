@@ -114,7 +114,7 @@ let instantiate : ctxt -> meta -> term array -> term -> bool =
         Meta.set m (Bindlib.unbox bu); true
       in
       if Stdlib.(!do_type_check) then
-        let module Infer = (val Stdlib.(!Refiner.default)) in
+        let module Infer = (val Stdlib.(!Infer.default)) in
         begin
           let typ_mts =
             match type_app ctx !(m.meta_type) (Array.to_list ts) with
@@ -169,7 +169,7 @@ let add_constr_fold cs c = add_constr c cs
    [t] and [b] the type of [u] if they can be infered. *)
 let add_unif_rule_constr : constr list -> constr -> constr list =
   fun cs ((ctx,t,u) as c) ->
-  let module Infer = (val Stdlib.(!Refiner.default)) in
+  let module Infer = (val Stdlib.(!Infer.default)) in
   match Infer.infer_noexn [] ctx t with
   | None ->
       begin
@@ -512,11 +512,14 @@ let eq_noexn : ?type_check:bool -> ctxt -> term -> term -> bool =
   solve_noexn ~type_check {empty_problem with to_solve=[c,t,u]} = Some []
 
 (** A type inference algorithm with unification. *)
-module Infer =
-  Refiner.Make(struct
+module Infer_solve =
+  Infer.Make(struct
     let lookup _ _ _ _ = None
     let solve pb = solve_noexn pb
   end)
 
 (* Modify default refiner at load time. *)
-let _ = Stdlib.(Refiner.default := (module Infer))
+let _ = Stdlib.(Infer.default := (module Infer_solve))
+
+(** Other modules use [Unif.Infer] for inference with unification. *)
+module Infer = Infer_solve

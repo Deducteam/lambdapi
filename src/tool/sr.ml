@@ -185,7 +185,7 @@ let check_rule : Scope.pre_rule Pos.loc -> rule = fun ({pos; elt} as pr) ->
       log_subj "transformed RHS: %a" pp_term rhs_typing
     end;
 (* Do not type check when instantiating. *)
-  let module Infer = Refiner.Make(struct
+  let module Infer = Infer.Make(struct
       let lookup _ _ _ _ = None
       let solve = Unif.solve_noexn ~type_check:false
     end)

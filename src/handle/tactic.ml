@@ -101,7 +101,7 @@ let tac_refine : popt -> proof_state -> goal_typ -> goal list -> term ->
   let gs_typ, gs_unif = List.partition is_typ gs in
   let to_solve = List.map get_constr gs_unif in
   let c = Env.to_ctxt gt.goal_hyps in
-  let module Infer = (val Stdlib.(!Refiner.default)) in
+  let module Infer = (val Stdlib.(!Infer.default)) in
   if !Debug.log_enabled then
     log_tact "Check \"%a\"" Print.pp_typing (c,t,gt.goal_type);
   match Infer.check_noexn to_solve c t gt.goal_type with
@@ -184,7 +184,7 @@ let handle : Sig_state.t -> bool -> proof_state -> p_tactic -> proof_state =
   | P_tac_solve -> assert false (* done before *)
   | P_tac_apply pt ->
       let t = scope pt in
-      let module Infer = (val Stdlib.(!Refiner.default)) in
+      let module Infer = (val Stdlib.(!Infer.default)) in
       (* Compute the product arity of the type of [t]. *)
       (* FIXME: this does not take into account implicit arguments. *)
       let (t, n) =

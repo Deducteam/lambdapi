@@ -165,7 +165,7 @@ let handle_inductive_symbol : sig_state -> expo -> prop -> match_strat
     (if xs = [] then scope_term else scope_term_with_params)
       (expo = Privat) ss Env.empty (lazy IntMap.empty) typ
   in
-  let module Infer = (val Stdlib.(!Refiner.default)) in
+  let module Infer = (val Stdlib.(!Infer.default)) in
   (* We check that [a] is typable by a sort. *)
   let (typ, _) = Infer.check_sort [] {elt=typ;pos} in
   (* We check that no metavariable remains. *)

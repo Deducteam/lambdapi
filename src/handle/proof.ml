@@ -176,7 +176,7 @@ let focus_env : proof_state option -> Env.t = fun ps ->
 let goals_of_typ : term loc option -> term loc option ->
   goal list * term * term option =
   fun typ ter ->
-  let module Infer = (val Stdlib.(!Refiner.default)) in
+  let module Infer = (val Stdlib.(!Infer.default)) in
   let (ter, typ, to_solve) =
     match typ, ter with
     | Some(typ), Some(ter) ->

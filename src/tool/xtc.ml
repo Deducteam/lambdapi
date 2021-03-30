@@ -169,7 +169,7 @@ let get_vars : sym -> rule -> (string * Term.term) list = fun s r ->
     let fn l x = (x, (Meta(Meta.fresh Type 0,[||])), None) :: l in
     List.fold_left fn [] !var_list
   in
-  let module Infer = (val Stdlib.(!Refiner.default)) in
+  let module Infer = (val Stdlib.(!Infer.default)) in
   match Infer.infer_noexn [] ctx lhs with
   | None -> assert false (*FIXME?*)
   | Some (_, _,cs) ->

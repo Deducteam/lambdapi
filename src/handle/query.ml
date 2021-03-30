@@ -112,7 +112,7 @@ let handle : Sig_state.t -> proof_state option -> p_query -> result =
   in
   let scope = Scope.scope_term true ss env sms in
   let ctxt = Env.to_ctxt env in
-  let module Infer = (val Stdlib.(!Refiner.default)) in
+  let module Infer = (val Stdlib.(!Infer.default)) in
   match elt with
   | P_query_debug(_,_)
   | P_query_verbose(_)
