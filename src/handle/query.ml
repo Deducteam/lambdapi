@@ -161,7 +161,7 @@ let handle : Sig_state.t -> proof_state option -> p_query -> result =
       None
   | P_query_infer(pt, cfg) ->
       let t = scope pt in
-      let (t, a) = Infer.infer ctxt {elt=t;pos=pt.pos} in
+      let (_, a) = Infer.infer ctxt {elt=t;pos=pt.pos} in
       return pp_term (Eval.eval cfg ctxt a)
   | P_query_normalize(pt, cfg) ->
       let t = scope pt in
