@@ -1,13 +1,3 @@
-(************************************************************************)
-(* The λΠ-modulo Interactive Proof Assistant                            *)
-(************************************************************************)
-
-(************************************************************************)
-(* Copyright Inria -- Dual License LGPL 2.1 / GPL3+                     *)
-(************************************************************************)
-(* Status: Experimental                                                 *)
-(************************************************************************)
-
 module L = Stdlib.List
 include L
 
@@ -20,6 +10,20 @@ open Base
     separator, and [pp_elt] for printing the elements. *)
 let pp : 'a pp -> string -> 'a list pp = fun pp_elt sep ->
   Format.pp_print_list ~pp_sep:(pp_sep sep) pp_elt
+
+(** [compare cmp l1 l2] compares the lists [l1] and [l2] lexicographically
+   using [cmp] to compare elements. *)
+let compare : 'a cmp -> 'a list cmp = fun cmp ->
+  let rec compare l1 l2 =
+    match l1, l2 with
+    | [], [] -> 0
+    | [], _ -> -1
+    | _, [] -> 1
+    | x1::l1, x2::l2 ->
+        match cmp x1 x2 with
+        | 0 -> compare l1 l2
+        | n -> n
+  in compare
 
 (** [filter_map f l] applies [f] to the elements of [l] and keeps the [x] such
     that [Some(x)] in [List.map f l]. *)

@@ -410,9 +410,21 @@ let rec hnf : ctxt -> term -> term = fun ctx t ->
      Abst(a, Bindlib.unbox (Bindlib.bind_var x (lift (hnf ctx t))))
   | t         -> t
 
+(** Type representing the different evaluation strategies. *)
+type strategy =
+  | WHNF (** Reduce to weak head-normal form. *)
+  | HNF  (** Reduce to head-normal form. *)
+  | SNF  (** Reduce to strong normal form. *)
+  | NONE (** Do nothing. *)
+
+(** Configuration for evaluation. *)
+type config =
+  { strategy : strategy   (** Evaluation strategy.          *)
+  ; steps    : int option (** Max number of steps if given. *) }
+
 (** [eval cfg ctx t] evaluates the term [t] in the context [ctx] according to
     configuration [cfg]. *)
-let eval : Parsing.Syntax.eval_config -> ctxt -> term -> term = fun c ctx t ->
+let eval : config -> ctxt -> term -> term = fun c ctx t ->
   match (c.strategy, c.steps) with
   | (_   , Some(0))
   | (NONE, _      ) -> t

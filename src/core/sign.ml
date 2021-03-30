@@ -8,8 +8,6 @@ open Error
 open Pos
 open Timed
 open Term
-open Parsing.Syntax
-open Tags
 
 (** Data associated to inductive type symbols. *)
 type ind_data =
@@ -18,6 +16,17 @@ type ind_data =
   ; ind_nb_params : int (** Number of parameters. *)
   ; ind_nb_types : int  (** Number of mutually defined types. *)
   ; ind_nb_cons : int   (** Number of constructors. *) }
+
+(** The priority of an infix operator is a floating-point number. *)
+type priority = float
+
+(** Notations. *)
+type notation =
+  | Prefix of priority
+  | Infix of Pratter.associativity * priority
+  | Zero
+  | Succ
+  | Quant
 
 (** Representation of a signature. It roughly corresponds to a set of symbols,
     defined in a single module (or file). *)
@@ -211,14 +220,13 @@ let unlink : t -> unit = fun sign ->
    [impl], no definition and no rules. [name] should not already be used in
    [sign]. The created symbol is returned. *)
 let add_symbol :
-      t -> expo -> Tags.prop -> match_strat -> bool -> strloc -> term ->
+      t -> expo -> prop -> match_strat -> bool -> strloc -> term ->
       bool list -> sym =
   fun sign sym_expo sym_prop sym_mstrat sym_opaq {elt=sym_name;pos} typ
       impl ->
   (* Check for metavariables in the symbol type. *)
   if LibTerm.Meta.has true typ then
-    fatal pos "The type of %a contains metavariables"
-      Parsing.LpLexer.pp_uid sym_name;
+    fatal pos "The type of %s contains metavariables" sym_name;
   (* We minimize [impl] to enforce our invariant (see {!type:Terms.sym}). *)
   let rec rem_false l = match l with false::l -> rem_false l | _ -> l in
   let sym_impl = List.rev (rem_false (List.rev impl)) in
@@ -374,3 +382,6 @@ let rec dependencies : t -> (Path.t * t) list = fun sign ->
     | d::deps -> minimize ((List.filter not_here d) :: acc) deps
   in
   List.concat (minimize [] deps)
+
+(** [ghost_path s] creates a module path that cannot be entered by a user. *)
+let ghost_path : string -> Path.t = fun s -> [ ""; s ]

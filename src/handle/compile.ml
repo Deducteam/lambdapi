@@ -106,7 +106,7 @@ let recompile = Stdlib.ref false
 let compile_file : string -> Sign.t = fun fname ->
   Package.apply_config fname;
   (* Compute the module path (checking the extension). *)
-  let mp = path_of_file fname in
+  let mp = path_of_file LpLexer.escape fname in
   (* Run compilation. *)
   compile Stdlib.(!recompile) mp
 

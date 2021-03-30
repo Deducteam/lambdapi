@@ -6,6 +6,7 @@ open Timed
 open Common
 open Error
 open Core
+open Parsing
 open Term
 open Print
 open Debug
