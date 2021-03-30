@@ -1,6 +1,8 @@
-(** Escaped identifiers ["{|...|}"]. *)
+(** Management of escaped identifiers ["{|...|}"]. *)
 
-(*open Debug*)
+(** [escape s] returns an escaped identifier, assuming that [s] is not already
+   escaped. *)
+let escape : string -> string = fun s -> "{|" ^ s ^ "|}"
 
 (** [is_beg_escaped s] tells if [s] starts with ["{|"]. *)
 let is_beg_escaped : string -> bool = fun s ->
@@ -19,6 +21,18 @@ let is_escaped : string -> bool = fun s ->
 (** [unescape s] removes ["{|"] and ["|}"] if [s] is an escaped identifier. *)
 let unescape : string -> string = fun s ->
   if is_escaped s then String.(sub s 2 (length s - 4)) else s
+
+(** [p] is assumed to be a regular identifier. If [n] is a regular identifier
+   too, then [add_prefix p n] is just [p ^ n]. Otherwise, it is [escape (p ^
+   unescape n)]. *)
+let add_prefix : string -> string -> string = fun p n ->
+  if is_escaped n then escape (p ^ unescape n) else p ^ n
+
+(** [s] is assumed to be a regular identifier. If [n] is a regular identifier
+   too, then [add_suffix n s] is just [n ^ s]. Otherwise, it is [escape
+   (unescape n ^ s)]. *)
+let add_suffix : string -> string -> string = fun n s ->
+  if is_escaped n then escape (unescape n ^ s) else n ^ s
 
 (** [split c s] returns the list of all (possibly empty) substrings of
    [s] that are delimited by the [c] character, if [c] does not occur in an
