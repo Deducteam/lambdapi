@@ -55,8 +55,8 @@ let handle : Sig_state.t -> proof_state option -> p_query -> result =
         let out = Format.fprintf in
         let open Timed in
         (* print its type and properties *)
-        out ppf "%a%a%asymbol %a: %a\n" Print.pp_expo s.sym_expo
-          Print.pp_prop s.sym_prop Print.pp_match_strat s.sym_mstrat
+        out ppf "%a%a%asymbol %a: %a\n" pp_expo s.sym_expo
+          pp_prop s.sym_prop pp_match_strat s.sym_mstrat
           pp_sym s pp_prod (!(s.sym_type), s.sym_impl);
         (* print its definition *)
         begin
