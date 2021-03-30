@@ -169,7 +169,7 @@ let set_lib_root : string option -> unit = fun dir ->
    directory. In case of failure the program terminates and a graceful error
    message is displayed. *)
 let add_mapping : string * string -> unit = fun (mp, fp) ->
-  let md = Path.of_string mp in
+  let md = List.map Escape.unescape (Path.of_string mp) in
   let fp =
     try Filename.realpath fp
     with Invalid_argument(f) -> fatal_no_pos "%s: No such file or directory" f
@@ -185,6 +185,7 @@ let add_mapping : string * string -> unit = fun (mp, fp) ->
     path" (with no attached extension). It is assumed that [lib_root] has been
     set, possibly with [set_lib_root]. *)
 let file_of_path : Path.t -> string = fun mp ->
+  let mp = List.map Escape.unescape mp in
   try
     let fp = LibMap.get mp !lib_mappings in
     if !log_enabled then
@@ -212,9 +213,12 @@ let obj_extension : string = ".lpo"
 let valid_extensions : string list =
   [src_extension; legacy_src_extension; obj_extension]
 
-(** [path_of_file fn] computes the module that corresponds to [fn]. If [fn]
-   doesn't have a valid extension, the [Fatal] exception is raised. *)
-let path_of_file : string -> Path.t = fun fname ->
+(** [path_of_file escape fname] computes the module path that corresponds to
+   the filename [fname]. [escape] converts irregular path elements into
+   escaped identifiers if needed.
+@raise [Fatal] if [fn] doesn't have a valid extension. *)
+let path_of_file : (string -> string) -> string -> Path.t =
+  fun escape fname ->
   (* Sanity check: source file extension. *)
   let ext = Filename.extension fname in
   if not (List.mem ext valid_extensions) then
@@ -241,7 +245,7 @@ let path_of_file : string -> Path.t = fun fname ->
     match !mapping with
     | Some(mp, fp) -> (mp, fp)
     | None           ->
-        fatal_msg "[%s] cannot be mapped under the library root.\n" fname;
+        fatal_msg "%s cannot be mapped under the library root.\n" fname;
         fatal_msg "Consider adding a package file under your source tree, ";
         fatal_no_pos "or use the [--map-dir] option."
   in
@@ -251,12 +255,14 @@ let path_of_file : string -> Path.t = fun fname ->
     let len_base = String.length base in
     String.sub base (len_fp + 1) (len_base - len_fp - 1)
   in
-  let full_mp = mp @ String.split_on_char '/' rest in
+  let full_mp = mp @ List.map escape (String.split_on_char '/' rest) in
   log_lib "path_of_file %S\n= %a" fname Path.pp full_mp;
   full_mp
 
+(** [install_path fname] prefixes the filename [fname] by the path to the
+   library root. *)
 let install_path : string -> string = fun fname ->
-  let mp = path_of_file fname in
+  let mp = path_of_file (fun s -> s) fname in
   let ext = Filename.extension fname in
   match Stdlib.(!lib_root) with
   | None -> assert false

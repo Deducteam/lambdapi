@@ -147,6 +147,8 @@ exception SyntaxError of strloc
   let qid = [%sedlex.regexp? uid, Plus ('.', uid)]
   let id = [%sedlex.regexp? uid | qid]
 
+  let escape id = if is_regid id then id else Escape.escape id
+
   (** [nom buf] eats whitespaces and comments in buffer [buf]. *)
   let rec nom : lexbuf -> unit = fun buf ->
     match%sedlex buf with

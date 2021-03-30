@@ -13,10 +13,7 @@ module Path =
     let pp : t pp = Lplib.List.pp Format.pp_print_string "."
 
     (** [compare] is a standard comparison function on paths. *)
-    let compare : t cmp =
-      Lplib.List.compare
-        (fun s1 s2 ->
-          Stdlib.compare (Escape.unescape s1) (Escape.unescape s2))
+    let compare : t cmp = Stdlib.compare
 
     (** [of_string s] converts a string [s] lexed as qid into a path. *)
     let of_string : string -> t = Escape.split '.'
