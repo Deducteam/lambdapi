@@ -235,7 +235,7 @@ exception SyntaxError of strloc
   let tail : lexbuf -> string = fun buf ->
     Utf8.sub_lexeme buf 1 (lexeme_length buf - 1)
 
-  let token buf =
+  let lexer buf =
     nom buf;
     match%sedlex buf with
 
@@ -352,4 +352,4 @@ exception SyntaxError of strloc
         let loc = locate (lexing_positions buf) in
         raise (SyntaxError(Pos.make (Some(loc)) (Utf8.lexeme buf)))
 
-  let lexer = with_tokenizer token
+  let lexer = with_tokenizer lexer
