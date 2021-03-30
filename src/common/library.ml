@@ -169,7 +169,7 @@ let set_lib_root : string option -> unit = fun dir ->
    directory. In case of failure the program terminates and a graceful error
    message is displayed. *)
 let add_mapping : string * string -> unit = fun (mp, fp) ->
-  let md = List.map Escape.unescape (Path.of_string mp) in
+  let md = Path.of_string mp in
   let fp =
     try Filename.realpath fp
     with Invalid_argument(f) -> fatal_no_pos "%s: No such file or directory" f
