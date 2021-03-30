@@ -577,7 +577,7 @@ module CM = struct
       match get t with
       | Some(a,b) ->
           assert (pargs = []) ; (* Patterns in β-normal form *)
-          let b = Bindlib.subst b (mkfree v) in
+          let b = Bindlib.subst b (Vari v) in
           Some({r with c_lhs = insert r [|a; b|]})
       | None      -> assert false (* Term is ill formed *)
 
@@ -715,7 +715,7 @@ let compile : match_strat -> CM.t -> tree = fun mstrat m ->
       in
       let binder recon mat_transf =
         if List.for_all (fun x -> not (recon x)) column then None else
-        let var = Bindlib.new_var mkfree "var" in
+        let var = new_tvar "var" in
         let vars_id = VarMap.add var count vars_id in
         let (positions, clauses) = mat_transf swap var positions updated in
         let next =
@@ -732,6 +732,6 @@ let compile : match_strat -> CM.t -> tree = fun mstrat m ->
 (** [update_dtree s] updates decision tree of symbol [s]. *)
 let update_dtree : sym -> unit = fun symb ->
   let rules = lazy (CM.of_rules !(symb.sym_rules)) in
-  let tree = lazy (compile !(symb.sym_mstrat) (Lazy.force rules)) in
+  let tree = lazy (compile symb.sym_mstrat (Lazy.force rules)) in
   let cap = lazy (Tree_types.tree_capacity (Lazy.force tree)) in
   symb.sym_tree := (cap, tree)

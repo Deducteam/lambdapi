@@ -27,7 +27,7 @@ type t =
   ; sign_deps     : (string * rule) list Path.Map.t ref
   ; sign_builtins : sym StrMap.t ref
   ; sign_notations: notation SymMap.t ref
-    (** Maps symbols to their syntax properties if they have some. *)
+    (** Maps symbols to their notation if they have some. *)
   ; sign_ind      : ind_data SymMap.t ref }
 
 (* NOTE the [deps] field contains a hashtable binding the external modules on
@@ -82,7 +82,7 @@ let create_sym : expo -> prop -> bool -> string -> term -> bool list -> sym =
   let sym_path = current_path() in
   { sym_expo; sym_path; sym_name; sym_type = ref typ; sym_impl; sym_prop;
     sym_def = ref None; sym_opaq; sym_rules = ref [];
-    sym_mstrat = ref Eager; sym_tree = ref Tree_types.empty_dtree }
+    sym_mstrat = Eager; sym_tree = ref Tree_types.empty_dtree }
 
 (** [link sign] establishes physical links to the external symbols. *)
 let link : t -> unit = fun sign ->
@@ -226,7 +226,7 @@ let add_symbol :
   let sym =
     { sym_path = sign.sign_path; sym_name; sym_type = ref (cleanup typ);
       sym_impl; sym_def = ref None; sym_opaq; sym_rules = ref [];
-      sym_tree = ref Tree_types.empty_dtree; sym_mstrat = ref sym_mstrat;
+      sym_tree = ref Tree_types.empty_dtree; sym_mstrat;
       sym_prop; sym_expo }
   in
   sign.sign_symbols := StrMap.add sym_name (sym, pos) !(sign.sign_symbols);

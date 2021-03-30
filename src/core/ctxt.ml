@@ -4,26 +4,28 @@ open Term
 open Timed
 
 (** [unbind ctx a def b] returns a triple [(x,t,new_ctx)] such that [(x,t)] is
-    an unbinding of [b] (in the sense of [Bindlib.unbind]) and [new_ctx] is an
-    extension of context [ctx] with the assumption that [x] has type [a] (only
-    if [x] occurs in [t]). If [def] is of the form [Some(u)], the context also
-    registers the term [u] as the definition of variable [x]. *)
+   an unbinding of [b] (in the sense of [Bindlib.unbind]) and [new_ctx] is an
+   extension of the context [ctx] with the declaration that [x] has type [a]
+   (only if [x] occurs in [t]). If [def] is of the form [Some(u)], the context
+   also registers the term [u] as the definition of variable [x]. *)
 let unbind : ctxt -> term -> term option -> tbinder -> tvar * term * ctxt =
   fun ctx a def b ->
   let (x, t) = Bindlib.unbind b in
   (x, t, if Bindlib.binder_occur b then (x, a, def) :: ctx else ctx)
 
 (** [type_of x ctx] returns the type of [x] in the context [ctx] when it
-    appears, and raises [Not_found] otherwise. *)
+    appears in it, and
+@raise [Not_found] otherwise. *)
 let type_of : tvar -> ctxt -> term = fun x ctx ->
   let (_,a,_) = List.find (fun (y,_,_) -> Bindlib.eq_vars x y) ctx in a
 
 (** [def_of x ctx] returns the definition of [x] in the context [ctx] if it
     appears, and [None] otherwise *)
-let rec def_of : term Bindlib.var -> ctxt -> term option = fun x ctx ->
+let rec def_of : term Bindlib.var -> ctxt -> ctxt * term option =
+  fun x ctx ->
   match ctx with
-  | []         -> None
-  | (y,_,d)::l -> if Bindlib.eq_vars x y then d else def_of x l
+  | []         -> [], None
+  | (y,_,d)::l -> if Bindlib.eq_vars x y then l,d else def_of x l
 
 (** [mem x ctx] tells whether variable [x] is mapped in the context [ctx]. *)
 let mem : tvar -> ctxt -> bool = fun x ->
@@ -65,26 +67,26 @@ let sub : ctxt -> tvar array -> ctxt = fun ctx vs ->
     out on [t], we have [unfold ctx t == t]. *)
 let rec unfold : ctxt -> term -> term = fun ctx t ->
   match t with
-  | Meta(m, ar)          ->
+  | Meta(m, ts) ->
       begin
         match !(m.meta_value) with
         | None    -> t
-        | Some(b) -> unfold ctx (Bindlib.msubst b ar)
+        | Some(b) -> unfold ctx (Bindlib.msubst b ts)
       end
-  | TEnv(TE_Some(b), ar) -> unfold ctx (Bindlib.msubst b ar)
-  | TRef(r)              ->
+  | TEnv(TE_Some(b), ts) -> unfold ctx (Bindlib.msubst b ts)
+  | TRef(r) ->
       begin
         match !r with
         | None    -> t
         | Some(v) -> unfold ctx v
       end
-  | Vari(x)              ->
+  | Vari(x) ->
       begin
         match def_of x ctx with
-        | None    -> t
-        | Some(t) -> unfold ctx t
+        | _, None -> t
+        | ctx', Some t -> unfold ctx' t
       end
-  | _                    -> t
+  | _ -> t
 
 (** [get_args ctx t] decomposes term [t] as {!val:LibTerm.get_args} does, but
     any variable encountered is replaced by its definition in [ctx] (if it

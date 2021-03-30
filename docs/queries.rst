@@ -57,8 +57,8 @@ debug mode for some functionalities as follows:
 
 ::
 
-   set debug +ts;
-   set debug -s;
+   debug +ts;
+   debug -s;
 
 Each functionality is represented by a single character. For instance,
 ``i`` stands for type inference. To get the list of all debuggable
@@ -73,12 +73,12 @@ rewrite engine by reducing η-redexes.
 
 ::
 
-   set flag "eta_equality" on; // default is off
-   set flag "print_implicits" on; // default is off
-   set flag "print_contexts" on; // default is off
-   set flag "print_domains" on; // default is off
-   set flag "print_meta_types" on; // default is off
-   set flag "print_meta_args" off; // default is on
+   flag "eta_equality" on; // default is off
+   flag "print_implicits" on; // default is off
+   flag "print_contexts" on; // default is off
+   flag "print_domains" on; // default is off
+   flag "print_meta_types" on; // default is off
+   flag "print_meta_args" off; // default is on
 
 ``prover``
 ----------
@@ -88,7 +88,7 @@ Changes the prover used by the ``why3`` tactic. By default, it uses
 
 ::
 
-   set prover "Eprover";
+   prover "Eprover";
 
 ``prover_timeout``
 ------------------
@@ -98,4 +98,4 @@ beginning, the timeout is set to 2s.
 
 ::
 
-   set prover_timeout 60;
+   prover_timeout 60;

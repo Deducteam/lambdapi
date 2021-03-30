@@ -28,7 +28,7 @@ let set_to_prod : Meta.t -> unit = fun m ->
   let m1 = Meta.fresh u1 n in
   let a = _Meta m1 xs in
   (* codomain *)
-  let y = Bindlib.new_var mkfree "y" in
+  let y = new_tvar "y" in
   let env' = Env.add y (_Meta m1 xs) None env in
   let u2 = Env.to_prod env' (lift s) in
   let m2 = Meta.fresh u2 (n+1) in
@@ -294,7 +294,7 @@ let imitate_lam : ctxt -> meta -> problem -> problem = fun ctx m p ->
          let tm2 = Env.to_prod env _Type in
          let m2 = Meta.fresh tm2 n in
          let a = _Meta m2 (Env.to_tbox env) in
-         let x = Bindlib.new_var mkfree "x" in
+         let x = new_tvar "x" in
          let env' = Env.add x a None env in
          let tm3 = Env.to_prod env' _Type in
          let m3 = Meta.fresh tm3 (n+1) in

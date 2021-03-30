@@ -11,6 +11,9 @@
 module L = Stdlib.List
 include L
 
+let zip = combine
+let unzip = split
+
 open Base
 
 (** [pp pp_elt sep oc l] prints the list [l] on the channel [oc] using [sep] as
@@ -253,3 +256,13 @@ let rec remove_first n xs =
   match xs with
   | _::xs when n>0 -> remove_first (n-1) xs
   | _ -> xs
+
+(** [split f l] returns the tuple [(l1,x,l2)] such that [x] is the first
+   element of [l] satisying [f], [l1] is the sub-list of [l] preceding [x],
+   and [l2] is the sub-list of [l] following [x].
+@raise Not_found if there is no element of [l] satisying [f]. *)
+let split : ('a -> bool) -> 'a list -> 'a list * 'a * 'a list = fun f ->
+  let rec split acc = function
+    | [] -> raise Not_found
+    | x::m -> if f x then (L.rev acc, x, m) else split (x::acc) m
+  in split []

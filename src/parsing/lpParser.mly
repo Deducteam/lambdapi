@@ -43,6 +43,8 @@
 %token FAIL
 %token FLAG
 %token FOCUS
+%token GENERALIZE
+%token HAVE
 %token IN
 %token INDUCTION
 %token INDUCTIVE
@@ -66,7 +68,7 @@
 %token REWRITE
 %token RULE
 %token SEQUENTIAL
-%token SIMPL
+%token SIMPLIFY
 %token SOLVE
 %token SYMBOL
 %token SYMMETRY
@@ -192,6 +194,8 @@ tactic:
   | ASSUME xs=param_id+ { make_pos $sloc (P_tac_assume xs) }
   | FAIL { make_pos $sloc P_tac_fail }
   | FOCUS i=INT { make_pos $sloc (P_tac_focus i) }
+  | GENERALIZE i=uid { make_pos $sloc (P_tac_generalize i) }
+  | HAVE i=uid COLON t=term { make_pos $sloc (P_tac_have(i,t)) }
   | INDUCTION { make_pos $sloc P_tac_induction }
   | REFINE t=term { make_pos $sloc (P_tac_refine t) }
   | REFLEXIVITY { make_pos $sloc P_tac_refl }
@@ -201,7 +205,7 @@ tactic:
         | Some(Pratter.Left) -> false
         | _ -> true
       in make_pos $sloc (P_tac_rewrite(b,p,t)) }
-  | SIMPL { make_pos $sloc P_tac_simpl }
+  | SIMPLIFY i=id? { make_pos $sloc (P_tac_simpl i) }
   | SOLVE { make_pos $sloc P_tac_solve }
   | SYMMETRY { make_pos $sloc P_tac_sym }
   | WHY3 s=STRINGLIT? { make_pos $sloc (P_tac_why3 s) }

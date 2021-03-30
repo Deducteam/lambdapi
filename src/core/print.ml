@@ -239,6 +239,16 @@ and pp_term : term pp = fun ppf t ->
   in
   func ppf (cleanup t)
 
+let rec pp_prod : (term * bool list) pp = fun ppf (t, impl) ->
+  match unfold t, impl with
+  | Prod(a,b), true::impl ->
+      let x, b = Bindlib.unbind b in
+      out ppf "Π {%a: %a}, %a" pp_var x pp_term a pp_prod (b, impl)
+  | Prod(a,b), false::impl ->
+      let x, b = Bindlib.unbind b in
+      out ppf "Π %a: %a, %a" pp_var x pp_term a pp_prod (b, impl)
+  | _ -> pp_term ppf t
+
 let pp_rule : (sym * rule) pp = fun ppf (s,r) ->
   let lhs = LibTerm.add_args (Symb s) r.lhs in
   let (_, rhs) = Bindlib.unmbind r.rhs in

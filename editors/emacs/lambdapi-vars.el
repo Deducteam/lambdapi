@@ -9,10 +9,12 @@
 (defconst lambdapi-tactics
   '("apply"
     "assume"
+    "generalize"
+    "have"
     "refine"
     "reflexivity"
     "rewrite"
-    "simpl"
+    "simplify"
     "solve"
     "symmetry"
     "why3")

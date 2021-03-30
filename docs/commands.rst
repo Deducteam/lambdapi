@@ -59,7 +59,7 @@ identifier. See :doc:`module` for more details.
 
 Allows to declare or define a symbol as follows:
 
-``symbol`` *modifiers* *identifier* *parameters* [``:`` *type*] [``≔`` *term*] [``begin`` *proof* ``end``] ``;``
+*modifiers* ``symbol`` *identifier* *parameters* [``:`` *type*] [``≔`` *term*] [``begin`` *proof* ``end``] ``;``
 
 The identifier should not have already been used in the current module.
 It must be followed by a type or a definition (or both).

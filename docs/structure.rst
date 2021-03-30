@@ -78,6 +78,7 @@ Overview of directories and files
 
       * ``unif_rule.ml``: ghost signature for unification rules
       * ``unif.ml``: unification algorithm
+      * ``inverse.ml``: inverse of injective functions
 
 * ``src/handle``: signature building
 

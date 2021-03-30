@@ -8,15 +8,19 @@ all: bin
 
 .PHONY: bin
 bin:
-	@dune build
+	@dune build -p lambdapi
 
 .PHONY: odoc
 odoc:
-	@dune build @doc
+	@dune build -p lambdapi @doc
 
 .PHONY: doc
 doc:
 	$(MAKE) -C docs syntax.bnf syntax_dedukti.bnf html
+
+.PHONY: vscode
+vscode:
+	$(MAKE) -C editors/vscode
 
 #### Unit tests and sanity check #############################################
 
@@ -26,15 +30,15 @@ KO_TESTFILES = $(sort $(wildcard tests/KO/*.dk tests/KO/*.lp))
 
 .PHONY: tests
 tests: bin
-	@dune test
+	@dune test -p lambdapi
 	@printf "## Decision tree tests ##\n"
-	@dune exec -- tests/dtrees.sh
+	@dune exec -p lambdapi -- tests/dtrees.sh
 
 .PHONY: real_tests
 real_tests: bin
-	@dune test
+	@dune test -p lambdapi
 	@printf "## Decision tree tests ##\n"
-	@dune exec -- tests/dtrees.sh
+	@dune exec -p lambdapi -- tests/dtrees.sh
 
 .PHONY: sanity_check
 sanity_check: tools/sanity_check.sh
@@ -82,6 +86,8 @@ zenon_modulo: bin
 .PHONY: clean
 clean:
 	@dune clean
+	@$(MAKE) -C editors/emacs clean
+	@$(MAKE) -C editors/vscode clean
 
 .PHONY: distclean
 distclean: clean
@@ -110,7 +116,7 @@ fullclean: distclean
 
 .PHONY: install
 install: bin
-	@dune install
+	@dune build @install
 
 .PHONY: uninstall
 uninstall:

@@ -55,6 +55,28 @@ and p_term_aux =
     the argument is marked as implicit (i.e., between curly braces). *)
 and p_params = p_ident option list * p_term option * bool
 
+(** [nb_params ps] returns the number of parameters in a list of parameters
+    [ps]. *)
+let nb_params : p_params list -> int =
+  List.fold_left (fun acc (ps,_,_) -> acc + List.length ps) 0
+
+(** [get_impl_params_list l] gives the implicitness of [l]. *)
+let rec get_impl_params_list : p_params list -> bool list = function
+  | [] -> []
+  | (params,_,impl)::params_list ->
+      List.map (fun _ -> impl) params @ get_impl_params_list params_list
+
+(** [get_impl_term t] gives the implicitness of [t]. *)
+let rec get_impl_term : p_term -> bool list = fun t -> get_impl_term_aux t.elt
+and get_impl_term_aux : p_term_aux -> bool list = fun t ->
+  match t with
+  | P_Prod([],t) -> get_impl_term t
+  | P_Prod((ys,_,impl)::xs,t) ->
+      List.map (fun _ -> impl) ys @ get_impl_term_aux (P_Prod(xs,t))
+  | P_Arro(_,t)  -> false :: get_impl_term t
+  | P_Wrap(t)    -> get_impl_term t
+  | _            -> []
+
 (** [p_get_args t] is {!val:LibTerm.get_args} on syntax-level terms. *)
 let p_get_args : p_term -> p_term * p_term list = fun t ->
   let rec p_get_args acc t =
@@ -167,13 +189,15 @@ type p_tactic_aux =
   | P_tac_assume of p_ident option list
   | P_tac_fail
   | P_tac_focus of int
+  | P_tac_generalize of p_ident
+  | P_tac_have of p_ident * p_term
   | P_tac_induction
   | P_tac_query of p_query
   | P_tac_refine of p_term
   | P_tac_refl
   | P_tac_rewrite of bool * p_rw_patt option * p_term
   (* The boolean indicates if the equation is applied from left to right. *)
-  | P_tac_simpl
+  | P_tac_simpl of p_qident option
   | P_tac_solve
   | P_tac_sym
   | P_tac_why3 of string option
@@ -364,6 +388,8 @@ let eq_p_tactic : p_tactic eq = fun {elt=t1;_} {elt=t2;_} ->
   match t1, t2 with
   | P_tac_apply t1, P_tac_apply t2
   | P_tac_refine t1, P_tac_refine t2 -> eq_p_term t1 t2
+  | P_tac_have(i1,t1), P_tac_have(i2,t2) ->
+      eq_p_ident i1 i2 && eq_p_term t1 t2
   | P_tac_assume xs1, P_tac_assume xs2 ->
       List.equal (Option.equal eq_p_ident) xs1 xs2
   | P_tac_rewrite(b1,p1,t1), P_tac_rewrite(b2,p2,t2) ->
@@ -371,9 +397,10 @@ let eq_p_tactic : p_tactic eq = fun {elt=t1;_} {elt=t2;_} ->
   | P_tac_query q1, P_tac_query q2 -> eq_p_query q1 q2
   | P_tac_why3 so1, P_tac_why3 so2 -> so1 = so2
   | P_tac_focus n1, P_tac_focus n2 -> n1 = n2
+  | P_tac_simpl q1, P_tac_simpl q2 -> Option.equal eq_p_qident q1 q2
+  | P_tac_generalize i1, P_tac_generalize i2 -> eq_p_ident i1 i2
   | P_tac_admit, P_tac_admit
   | P_tac_induction, P_tac_induction
-  | P_tac_simpl, P_tac_simpl
   | P_tac_solve, P_tac_solve
   | P_tac_fail, P_tac_fail
   | P_tac_refl, P_tac_refl
@@ -541,14 +568,17 @@ let fold_idents : ('a -> p_qident -> 'a) -> 'a -> p_command list -> 'a =
         (vs, fold_term_vars vs (fold_rw_patt_vars vs a p) t)
     | P_tac_query q -> (vs, fold_query_vars vs a q)
     | P_tac_assume idopts -> (add_idopts vs idopts, a)
+    | P_tac_have(id,t) -> (StrSet.add id.elt vs, fold_term_vars vs a t)
+    | P_tac_simpl (Some qid) -> (vs, f a qid)
+    | P_tac_simpl None
     | P_tac_admit
-    | P_tac_simpl
     | P_tac_refl
     | P_tac_sym
     | P_tac_focus _
     | P_tac_why3 _
     | P_tac_solve
     | P_tac_fail
+    | P_tac_generalize _
     | P_tac_induction -> (vs, a)
   in
 

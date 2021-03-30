@@ -28,6 +28,8 @@ type token =
   | FAIL
   | FLAG
   | FOCUS
+  | GENERALIZE
+  | HAVE
   | IN
   | INDUCTION
   | INDUCTIVE
@@ -51,7 +53,7 @@ type token =
   | REWRITE
   | RULE
   | SEQUENTIAL
-  | SIMPL
+  | SIMPLIFY
   | SOLVE
   | SYMBOL
   | SYMMETRY
@@ -107,6 +109,10 @@ module Lp_lexer : sig
   val is_uid : string -> bool
   (** [is_uid s] is [true] iff [s] is a regular identifier. *)
 
+  val is_invalid_bindlib_id : string -> bool
+  (** [is_invalid_bindlib_id s] is [true] iff [s] ends with a positive integer
+     with leading zeros. *)
+
   val pp_uid : string Base.pp
   (** [pp_uid s] prints the uid [s], in escaped form if [s] is not a regular
    identifier. *)
@@ -136,14 +142,18 @@ module Lp_lexer : sig
 
 end = struct
   let digit = [%sedlex.regexp? '0' .. '9']
-  let integer = [%sedlex.regexp? '0' | ('1' .. '9', Star digit)]
-  let float = [%sedlex.regexp? integer, '.', Opt (integer)]
+  let nonzero_nat = [%sedlex.regexp? '1' .. '9', Star digit]
+  let nat = [%sedlex.regexp? '0' | nonzero_nat]
+  let float = [%sedlex.regexp? nat, '.', Opt (nat)]
   let stringlit = [%sedlex.regexp? '"', Star (Compl ('"' | '\n')), '"']
   let comment = [%sedlex.regexp? "//", Star (Compl ('\n' | '\r'))]
 
-  (* Identifiers are defined by what may not appear in them. *)
-  let regid = [%sedlex.regexp? Chars " ,;\r\t\n(){}[]:.`\""]
-  let regid = [%sedlex.regexp? Plus (Compl regid)]
+  (* Identifiers are defined by what cannot appear in them. *)
+  let forbidden_letter = [%sedlex.regexp? Chars " ,;\r\t\n(){}[]:.`\""]
+  let regid = [%sedlex.regexp? Plus (Compl forbidden_letter)]
+
+  (* Identifiers not compatible with Bindlib. *)
+  let invalid_bindlib_id = [%sedlex.regexp? Star any, Plus '0', nat]
 
   (* Once unescaped, escaped identifiers must not be empty, as the empty
      string is used in the path of ghost signatures. *)
@@ -197,6 +207,8 @@ end = struct
         ; "fail"
         ; "flag"
         ; "focus"
+        ; "generalize"
+        ; "have"
         ; "in"
         ; "induction"
         ; "inductive"
@@ -224,7 +236,7 @@ end = struct
         ; "rule"
         ; "sequential"
         ; "set"
-        ; "simpl"
+        ; "simplify"
         ; "solve"
         ; "symbol"
         ; "symmetry"
@@ -265,6 +277,12 @@ end = struct
     | id -> true
     | _ -> false
 
+  let is_invalid_bindlib_id : string -> bool = fun s ->
+    let lexbuf = Sedlexing.Utf8.from_string s in
+    match%sedlex lexbuf with
+    | invalid_bindlib_id -> true
+    | _ -> false
+
   (** [tail buf] returns the utf8 string formed from [buf] dropping its
       first codepoints. *)
   let tail : lexbuf -> string = fun buf ->
@@ -297,6 +315,8 @@ end = struct
     | "fail" -> FAIL
     | "flag" -> FLAG
     | "focus" -> FOCUS
+    | "generalize" -> GENERALIZE
+    | "have" -> HAVE
     | "in" -> IN
     | "induction" -> INDUCTION
     | "inductive" -> INDUCTIVE
@@ -324,7 +344,7 @@ end = struct
     | "right" -> ASSOC(Pratter.Right)
     | "rule" -> RULE
     | "sequential" -> SEQUENTIAL
-    | "simpl" -> SIMPL
+    | "simplify" -> SIMPLIFY
     | "solve" -> SOLVE
     | "symbol" -> SYMBOL
     | "symmetry" -> SYMMETRY
@@ -339,7 +359,7 @@ end = struct
 
     | '+', Plus lowercase -> DEBUG_FLAGS(true, tail buf)
     | '-', Plus lowercase -> DEBUG_FLAGS(false, tail buf)
-    | integer -> INT(int_of_string (Utf8.lexeme buf))
+    | nat -> INT(int_of_string (Utf8.lexeme buf))
     | float -> FLOAT(float_of_string (Utf8.lexeme buf))
     | stringlit ->
         (* Remove the quotes from [lexbuf] *)
@@ -369,7 +389,7 @@ end = struct
 
     (* identifiers *)
 
-    | '?', integer ->
+    | '?', nat ->
         UID_META(Syntax.Numb(int_of_string(Escape.unescape(tail buf))))
     | '?', uid -> UID_META(Syntax.Name(Escape.unescape (tail buf)))
     | '$', uid -> UID_PAT(Escape.unescape (tail buf))
