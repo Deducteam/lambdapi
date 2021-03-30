@@ -66,19 +66,19 @@ let pp_uid = Format.pp_print_string
 
 let pp_path : Path.t pp = List.pp pp_uid "."
 
-let pp_prop : Tags.prop pp = fun oc p ->
+let pp_prop : prop pp = fun oc p ->
   match p with
   | Defin -> ()
   | Const -> Format.fprintf oc "constant "
   | Injec -> Format.fprintf oc "injective "
 
-let pp_expo : Tags.expo pp = fun oc e ->
+let pp_expo : expo pp = fun oc e ->
   match e with
   | Public -> ()
   | Protec -> Format.fprintf oc "protected "
   | Privat -> Format.fprintf oc "private "
 
-let pp_match_strat : Tags.match_strat pp = fun oc s ->
+let pp_match_strat : match_strat pp = fun oc s ->
   match s with
   | Sequen -> Format.fprintf oc "sequential "
   | Eager -> ()

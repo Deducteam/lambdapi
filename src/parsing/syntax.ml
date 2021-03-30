@@ -18,7 +18,7 @@ type p_meta_ident = meta_ident loc
 type p_path = Path.t loc
 
 (** Representation of a possibly qualified (and located) identifier. *)
-type qident = LibTerm.qident
+type qident = Term.qident
 type p_qident = qident loc
 
 (** Parser-level (located) term representation. *)
@@ -195,10 +195,9 @@ type p_proof_end = p_proof_end_aux loc
 
 (** Parser-level representation of modifiers. *)
 type p_modifier_aux =
-  | P_mstrat of Term.Tags.match_strat (** pattern matching strategy *)
-  | P_expo of Term.Tags.expo (** visibility of symbol outside its modules *)
-  | P_prop of Term.Tags.prop
-  (** symbol properties: constant, definable, ... *)
+  | P_mstrat of Term.match_strat (** pattern matching strategy *)
+  | P_expo of Term.expo (** visibility of symbol outside its modules *)
+  | P_prop of Term.prop (** symbol properties: constant, definable, ... *)
   | P_opaq (** opacity *)
 
 type p_modifier = p_modifier_aux loc

@@ -144,15 +144,15 @@ let equiv : (p_term * p_term) pp = fun ppf (l,r) ->
    (LpLexer.equiv t u) (LpLexer.cons (LpLexer.equiv v w) ...)]  into a
    list [[(t,u); (v,w); ...]]. See unif_rule.ml. *)
 let rec unpack : p_term -> (p_term * p_term) list = fun eqs ->
-  let is (p,s) id = p = Unif_rule.path && s = id in
+  let is (p,s) id = p = Unif_rule.path && s = id.Term.sym_name in
   match Syntax.p_get_args eqs with
   | ({elt=P_Iden({elt;_},_); _}, [v; w]) ->
-      if is elt Unif_rule.p_cons then
+      if is elt Unif_rule.cons then
         match Syntax.p_get_args v with
         | ({elt=P_Iden({elt;_},_); _}, [t; u])
-             when is elt Unif_rule.p_equiv -> (t, u) :: unpack w
+             when is elt Unif_rule.equiv -> (t, u) :: unpack w
         | _ -> assert false
-      else if is elt Unif_rule.p_equiv then [(v, w)]
+      else if is elt Unif_rule.equiv then [(v, w)]
       else assert false
   | _ -> assert false
 

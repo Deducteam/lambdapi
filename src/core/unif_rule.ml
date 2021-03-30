@@ -22,22 +22,16 @@ let sign : Sign.t =
   Sign.loaded := Path.Map.add path sign !(Sign.loaded);
   sign
 
-(** Parser representation of equiv symbol. *)
-let p_equiv = "≡"
-
 (** Symbol of name LpLexer.equiv, with infix notation. *)
 let equiv : sym =
-  let id = Pos.none p_equiv in
+  let id = Pos.none "≡" in
   let s = Sign.add_symbol sign Public Defin Eager false id Kind [] in
   Sign.add_notation sign s (Infix(Pratter.Neither, 1.1)); s
-
-(** Parser representation of cons symbol. *)
-let p_cons = ";"
 
 (** Symbol of name LpLexer.cons, with infix right notation with priority <
    LpLexer.equiv. *)
 let cons : sym =
-  let id = Pos.none p_cons in
+  let id = Pos.none ";" in
   let s = Sign.add_symbol sign Public Const Eager true id Kind [] in
   Sign.add_notation sign s (Infix(Pratter.Right, 1.0)); s
 
