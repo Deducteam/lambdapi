@@ -418,13 +418,13 @@ type strategy =
   | NONE (** Do nothing. *)
 
 (** Configuration for evaluation. *)
-type eval_config =
+type config =
   { strategy : strategy   (** Evaluation strategy.          *)
   ; steps    : int option (** Max number of steps if given. *) }
 
 (** [eval cfg ctx t] evaluates the term [t] in the context [ctx] according to
     configuration [cfg]. *)
-let eval : eval_config -> ctxt -> term -> term = fun c ctx t ->
+let eval : config -> ctxt -> term -> term = fun c ctx t ->
   match (c.strategy, c.steps) with
   | (_   , Some(0))
   | (NONE, _      ) -> t

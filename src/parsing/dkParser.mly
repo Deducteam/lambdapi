@@ -175,11 +175,11 @@ let translate_old_rule : old_p_rule -> p_rule = fun r ->
   let rhs = build [] rhs in
   Pos.make r.pos (lhs, rhs)
 
-let build_config : Pos.pos -> string -> string option -> Eval.eval_config =
+let build_config : Pos.pos -> string -> string option -> Eval.config =
     fun loc s1 s2o ->
   try
-    let config esteps strategy =
-      Eval.{strategy; steps=Option.map int_of_string esteps}
+    let config st strategy =
+      Eval.{strategy; steps=Option.map int_of_string st}
     in
     match (s1, s2o) with
     | ("SNF" , io         ) -> config io        SNF
