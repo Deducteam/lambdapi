@@ -134,7 +134,7 @@ let fresh_patt : lhs_data -> string option -> tbox array -> tbox =
           Hashtbl.add data.m_lhs_indices name i;
           Hashtbl.add data.m_lhs_names i name; i
       in
-      _Patt (Some i) (Printf.sprintf "v%i_%s" i name) ts
+      _Patt (Some i) (Escape.add_suffix (Printf.sprintf "v%i_" i) name) ts
   | None ->
       let i = fresh_index () in
       _Patt (Some i) (Printf.sprintf "v%i" i) ts
@@ -331,33 +331,31 @@ and scope_head : mode -> sig_state -> env -> p_term -> tbox =
         | None when List.length env = Array.length ts ->
             wrn t.pos
               "Pattern [%a] could be replaced by [_]." Pretty.term t;
-        | Some(id) when not (List.mem id.elt d.m_lhs_in_env) ->
+        | Some {elt=id;pos} when not (List.mem id d.m_lhs_in_env) ->
             if List.length env = Array.length ts then
-              wrn t.pos "Pattern variable [%a] can be replaced by a \
-                         wildcard [_]." Pretty.term t
+              wrn t.pos "Pattern variable %s can be replaced by a '_'." id
             else
-              wrn t.pos "Pattern variable [$%s] does not need to be \
-                         named." id.elt
-        | _                                                  -> ()
+              wrn t.pos "Pattern variable %s doesn't need to be named." id
+        | _ -> ()
       end;
       fresh_patt d (Option.map (fun id -> id.elt) id) ts
   | (P_Patt(id,ts), M_URHS(r)) ->
       let x =
         match id with
         | None     -> fatal t.pos "Wildcard pattern not allowed in a URHS."
-        | Some(id) ->
+        | Some {elt=id;_} ->
             (* Search in variables declared in LHS. *)
-            try Hashtbl.find r.m_urhs_data id.elt
+            try Hashtbl.find r.m_urhs_data id
             with Not_found ->
               (* Search in variables already declared in RHS. *)
-              try List.assoc id.elt r.m_urhs_xvars
+              try List.assoc id r.m_urhs_xvars
               with Not_found ->
-                let name =
-                  Printf.sprintf "v%i_%s" r.m_urhs_vars_nb id.elt
+                let name = Escape.add_suffix
+                             (Printf.sprintf "v%i_" r.m_urhs_vars_nb) id
                 in
                 let x = new_tevar name in
-                r.m_urhs_vars_nb <- r.m_urhs_vars_nb + 1          ;
-                r.m_urhs_xvars   <- (id.elt, x) :: r.m_urhs_xvars ;
+                r.m_urhs_vars_nb <- r.m_urhs_vars_nb + 1;
+                r.m_urhs_xvars   <- (id, x) :: r.m_urhs_xvars;
                 x
       in
       let ts =
@@ -401,7 +399,7 @@ and scope_head : mode -> sig_state -> env -> p_term -> tbox =
       let v = new_tvar x.elt in
       let u = scope md ss (Env.add v a (Some(t)) env) u in
       if not (Bindlib.occur v u) then
-        wrn x.pos "Useless let-binding ([%s] not bound)." x.elt;
+        wrn x.pos "Useless let-binding (%s is not bound)." x.elt;
       _LLet a t (Bindlib.bind_var v u)
   | (P_LLet(_), M_LHS(_)) ->
       fatal t.pos "Let-bindings are not allowed in a LHS."
@@ -481,13 +479,13 @@ let patt_vars : p_term -> (string * int) list * string list =
     in
     match id with
     | None     -> acc
-    | Some(id) ->
+    | Some {elt=id;pos} ->
         begin
           try
-            if List.assoc id.elt pvs <> arity then
-              fatal id.pos "Arity mismatch for pattern variable [%s]." id.elt;
-            if List.mem id.elt nl then acc else (pvs, id.elt :: nl)
-          with Not_found -> ((id.elt, arity) :: pvs, nl)
+            if List.assoc id pvs <> arity then
+              fatal pos "Arity mismatch for pattern variable %s." id;
+            if List.mem id nl then acc else (pvs, id::nl)
+          with Not_found -> ((id, arity)::pvs, nl)
         end
   and patt_vars_args acc args =
     match args with
@@ -529,7 +527,7 @@ let scope_rule : bool -> sig_state -> p_rule -> pre_rule loc = fun ur ss r ->
   let check_arity (m,i) =
     try
       let j = List.assoc m pvs_lhs in
-      if i <> j then fatal p_lhs.pos "Arity mismatch for [%s]." m
+      if i <> j then fatal p_lhs.pos "Arity mismatch for %s." m
     with Not_found -> ()
   in
   List.iter check_arity pvs_rhs;
@@ -566,9 +564,11 @@ let scope_rule : bool -> sig_state -> p_rule -> pre_rule loc = fun ur ss r ->
   if pr_lhs = [] then wrn p_lhs.pos "LHS head symbol with no argument.";
   (* Create the pattern variables that can be bound in the RHS. *)
   let pr_vars =
-    Array.init lhs_size (fun i -> new_tevar
-      (try Printf.sprintf "v%i_%s" i (Hashtbl.find lhs_names i)
-       with Not_found -> Printf.sprintf "v%i" i))
+    Array.init lhs_size (fun i ->
+        new_tevar
+          (try Escape.add_suffix (Printf.sprintf "v%i_" i)
+                 (Hashtbl.find lhs_names i)
+           with Not_found -> Printf.sprintf "v%i" i))
   in
   let mode =
     let htbl_vars = Hashtbl.create (Hashtbl.length lhs_indices) in

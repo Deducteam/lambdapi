@@ -415,7 +415,7 @@ let new_tvar : string -> tvar = Bindlib.new_var of_tvar
 
 (** [new_tvar_ind s i] creates a new [tvar] of name [s ^ string_of_int i]. *)
 let new_tvar_ind : string -> int -> tvar = fun s i ->
-  new_tvar (Printf.sprintf "%s%i" s i)
+  new_tvar (Common.Escape.add_prefix s (string_of_int i))
 
 (** [of_tevar x] injects the [Bindlib] variable [x] in a {!type:term_env}. *)
 let of_tevar : tevar -> term_env = fun x -> TE_Vari(x)
