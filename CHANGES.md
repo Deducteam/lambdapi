@@ -1,5 +1,12 @@
 ### Unreleased
 
+#### Do not unescapde identifiers anymore (2021-03-30)
+
+- escaped regular identifiers are automatically unescaped in lexing
+- unescaping is done in filenames only
+- `Escape.add_prefix` and `Escape.add_suffix` allow to correctly extend potentially escaped identifiers
+- move `scope.ml` from `Core` to `Parsing`
+
 #### Forbid bound variable names ending with a positive integer with leading zeros since there are not compatible with Bindlib (2021-03-29)
 
 #### Fix #341: remove spurious warnings on bound variables (2021-03-29)
