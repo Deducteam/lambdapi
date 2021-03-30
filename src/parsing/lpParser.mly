@@ -6,6 +6,7 @@
   open Common
   open Pos
   open Syntax
+  open Core
 
   let make_pos : Lexing.position * Lexing.position -> 'a -> 'a loc =
     fun lps elt -> Pos.in_pos (locate lps) elt
@@ -132,7 +133,7 @@
 %type <Syntax.p_term> aterm
 %type <Syntax.p_term> sterm
 
-%type <Syntax.notation> notation
+%type <Sign.notation> notation
 %type <Syntax.p_rule> rule
 %type <Syntax.p_tactic> tactic
 %type <Syntax.p_modifier> modifier
@@ -211,12 +212,12 @@ tactic:
   | WHY3 s=STRINGLIT? { make_pos $sloc (P_tac_why3 s) }
 
 modifier:
-  | CONSTANT { make_pos $sloc (P_prop Tags.Const) }
-  | INJECTIVE { make_pos $sloc (P_prop Tags.Injec) }
+  | CONSTANT { make_pos $sloc (P_prop Term.Tags.Const) }
+  | INJECTIVE { make_pos $sloc (P_prop Term.Tags.Injec) }
   | OPAQUE { make_pos $sloc P_opaq }
-  | PRIVATE { make_pos $sloc (P_expo Tags.Privat) }
-  | PROTECTED { make_pos $sloc (P_expo Tags.Protec) }
-  | SEQUENTIAL { make_pos $sloc (P_mstrat Tags.Sequen) }
+  | PRIVATE { make_pos $sloc (P_expo Term.Tags.Privat) }
+  | PROTECTED { make_pos $sloc (P_expo Term.Tags.Protec) }
+  | SEQUENTIAL { make_pos $sloc (P_mstrat Term.Tags.Sequen) }
 
 float_or_int:
   | p=FLOAT { p }
@@ -348,8 +349,8 @@ equation: l=term EQUIV r=term { (l, r) }
 unif_rule: e=equation HOOK_ARROW
   L_SQ_BRACKET es=separated_nonempty_list(SEMICOLON, equation) R_SQ_BRACKET
     { (* FIXME: give sensible positions instead of Pos.none and P.appl. *)
-      let equiv = P.qiden LpLexer.unif_rule_path LpLexer.equiv in
-      let cons = P.qiden LpLexer.unif_rule_path LpLexer.cons in
+      let equiv = P.qiden Unif_rule.path Unif_rule.p_equiv in
+      let cons = P.qiden Unif_rule.path Unif_rule.p_cons in
       let mk_equiv (t, u) = P.appl (P.appl equiv t) u in
       let lhs = mk_equiv e in
       let es = List.rev_map mk_equiv es in

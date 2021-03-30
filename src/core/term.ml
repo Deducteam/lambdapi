@@ -9,9 +9,37 @@
 
 open Timed
 
-module Tags = Parsing.Syntax.Tags
-
 (** {3 Term (and symbol) representation} *)
+
+(** Symbol modifiers and attributes. *)
+module Tags = struct
+  (** Pattern-matching strategy modifiers. *)
+  type match_strat =
+    | Sequen
+    (** Rules are processed sequentially: a rule can be applied only if the
+        previous ones (in the order of declaration) cannot be. *)
+    | Eager
+    (** Any rule that filters a term can be applied (even if a rule defined
+        earlier filters the term as well). This is the default. *)
+
+  (** Specify the visibility and usability of symbols outside their module. *)
+  type expo =
+    | Public
+    (** Visible and usable everywhere. *)
+    | Protec
+    (** Visible everywhere but usable in LHS arguments only. *)
+    | Privat
+    (** Not visible and thus not usable. *)
+
+  (** Symbol properties. *)
+  type prop =
+    | Defin
+    (** The symbol is definable by rewriting rules. *)
+    | Const
+    (** The symbol cannot be defined. *)
+    | Injec
+    (** The symbol is definable but is assumed to be injective. *)
+end
 
 (** Representation of a term (or types) in a general sense. Values of the type
     are also used, for example, in the representation of patterns or rewriting

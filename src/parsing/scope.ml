@@ -5,8 +5,8 @@ open Extra
 open Common
 open Error
 open Pos
-open Parsing
 open Syntax
+open Core
 open Term
 open Env
 open Sig_state

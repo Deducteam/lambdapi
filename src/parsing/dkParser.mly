@@ -7,6 +7,7 @@ open Pos
 open Syntax
 open DkLexer
 open Error
+open Core
 
 (** [get_args t] decomposes the parser level term [t] into a spine [(h,args)],
     when [h] is the term at the head of the application and [args] is the list
@@ -174,16 +175,11 @@ let translate_old_rule : old_p_rule -> p_rule = fun r ->
   let rhs = build [] rhs in
   Pos.make r.pos (lhs, rhs)
 
-let build_config : Pos.pos -> string -> string option -> eval_config =
+let build_config : Pos.pos -> string -> string option -> Eval.eval_config =
     fun loc s1 s2o ->
   try
-    let config steps strategy =
-      let steps =
-        match steps with
-        | None     -> None
-        | Some(nb) -> Some(int_of_string nb)
-      in
-      {strategy; steps}
+    let config esteps strategy =
+      Eval.{strategy; steps=Option.map int_of_string esteps}
     in
     match (s1, s2o) with
     | ("SNF" , io         ) -> config io        SNF
@@ -350,7 +346,7 @@ command:
       make_pos $sloc (P_rules(List.map translate_old_rule rs))
     }
   | EVAL t=term DOT {
-      let c = {strategy = SNF; steps = None} in
+      let c = Eval.{strategy = SNF; steps = None} in
       let q = make_pos $sloc (P_query_normalize(t,c)) in
       make_pos $sloc (P_query q)
     }
@@ -360,7 +356,7 @@ command:
       make_pos $sloc (P_query q)
     }
   | INFER t=term DOT {
-      let c = {strategy = NONE; steps = None} in
+      let c = Eval.{strategy = NONE; steps = None} in
       let q = make_pos $sloc (P_query_infer(t, c)) in
       make_pos $sloc (P_query q)
     }
@@ -392,8 +388,8 @@ param:
     { ([Some (make_pos $loc(id) id)], Some(te), false) }
 
 modifier:
-  | KW_PRV { make_pos $sloc (P_expo(Syntax.Tags.Protec)) }
-  | KW_INJ { make_pos $sloc (P_prop(Syntax.Tags.Injec)) }
+  | KW_PRV { make_pos $sloc (P_expo(Term.Tags.Protec)) }
+  | KW_INJ { make_pos $sloc (P_prop(Term.Tags.Injec)) }
 
 context_item:
   | x=UID ao=option(COLON a=term { a }) { (make_pos $loc(x) x, ao) }

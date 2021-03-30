@@ -15,8 +15,8 @@ open Error
 open Pos
 open Timed
 open Parsing
-open Syntax
 open Term
+open LibTerm
 open Sign
 
 (** State of the signature, including aliasing and accessible symbols. *)
@@ -35,7 +35,7 @@ type t = sig_state
 let create_sign : Path.t -> Sign.t = fun sign_path ->
   let d = Sign.dummy () in
   {d with sign_path;
-          sign_deps = ref (Path.Map.singleton LpLexer.unif_rule_path [])}
+          sign_deps = ref (Path.Map.singleton Unif_rule.path [])}
 
 (** [add_symbol ss expo prop mstrat opaq id typ impl def] generates a new
    signature state from [ss] by creating a new symbol with expo [e], property
@@ -119,16 +119,14 @@ let of_sign : Sign.t -> sig_state = fun signature ->
     are allowed in left-hand side of rewrite rules (only) iff [~prt] is true.
     {!constructor:Term.expo.Privat} symbols are allowed iff [~prv]
     is [true]. *)
-let find_sym : prt:bool -> prv:bool -> sig_state -> p_qident -> sym =
+let find_sym : prt:bool -> prv:bool -> sig_state -> qident loc -> sym =
   fun ~prt ~prv st {elt = (mp, s); pos} ->
-  let pp_uid = Parsing.LpLexer.pp_uid in
-  let pp_path = Lplib.List.pp pp_uid "." in
   let s =
     match mp with
     | [] -> (* Symbol in scope. *)
         begin
           try fst (StrMap.find s st.in_scope)
-          with Not_found -> fatal pos "Unknown object %a." pp_uid s
+          with Not_found -> fatal pos "Unknown object %s." s
         end
     | [m] when StrMap.mem m st.alias_path -> (* Aliased module path. *)
         begin
@@ -139,14 +137,14 @@ let find_sym : prt:bool -> prv:bool -> sig_state -> p_qident -> sym =
           in
           (* Look for the symbol. *)
           try Sign.find sign s with Not_found ->
-          fatal pos "Unknown symbol %a.%a." pp_path mp pp_uid s
+          fatal pos "Unknown symbol %a.%s." Path.pp mp s
         end
     | _  -> (* Fully-qualified symbol. *)
         begin
           (* Check that the signature was required (or is the current one). *)
           if mp <> st.signature.sign_path then
             if not (Path.Map.mem mp !(st.signature.sign_deps)) then
-              fatal pos "No module [%a] required." pp_path mp;
+              fatal pos "No module [%a] required." Path.pp mp;
           (* The signature must have been loaded. *)
           let sign =
             try Path.Map.find mp !loaded
@@ -154,7 +152,7 @@ let find_sym : prt:bool -> prv:bool -> sig_state -> p_qident -> sym =
           in
           (* Look for the symbol. *)
           try Sign.find sign s with Not_found ->
-          fatal pos "Unknown symbol %a.%a." pp_path mp pp_uid s
+          fatal pos "Unknown symbol %a.%s." Path.pp mp s
         end
   in
   match (prt, prv, s.sym_expo) with

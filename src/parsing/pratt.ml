@@ -5,7 +5,7 @@
     @see <https://forge.tedomum.net/koizel/pratter> *)
 
 open Common
-open Parsing
+open Core
 open Syntax
 
 module Pratt : sig

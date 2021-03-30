@@ -5,6 +5,9 @@ open Term
 open Lplib.Base
 open Lplib.Extra
 
+(** Representation of a possibly qualified identifier. *)
+type qident = Common.Path.t * string
+
 (** [to_tvar t] returns [x] if [t] is of the form [Vari x] and fails
     otherwise. *)
 let to_tvar : term -> tvar = fun t ->
