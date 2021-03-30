@@ -333,9 +333,8 @@ and scope_head : mode -> sig_state -> env -> p_term -> tbox =
               "Pattern [%a] could be replaced by [_]." Pretty.term t;
         | Some {elt=id;pos} when not (List.mem id d.m_lhs_in_env) ->
             if List.length env = Array.length ts then
-              wrn t.pos "Pattern variable %s can be replaced by a '_'." id
-            else
-              wrn t.pos "Pattern variable %s doesn't need to be named." id
+              wrn pos "Pattern variable %s can be replaced by a '_'." id
+            else wrn pos "Pattern variable %s doesn't need to be named." id
         | _ -> ()
       end;
       fresh_patt d (Option.map (fun id -> id.elt) id) ts
