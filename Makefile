@@ -41,7 +41,7 @@ real_tests: bin
 	@dune exec -p lambdapi -- tests/dtrees.sh
 
 .PHONY: sanity_check
-sanity_check: tools/sanity_check.sh
+sanity_check: misc/sanity_check.sh
 	@./$<
 
 #### Library tests ###########################################################
