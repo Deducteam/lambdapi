@@ -116,7 +116,7 @@ fullclean: distclean
 
 .PHONY: install
 install: bin
-	@dune build @install
+	@dune install
 
 .PHONY: uninstall
 uninstall:

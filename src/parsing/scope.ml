@@ -240,8 +240,9 @@ and scope_binder : ?warn:bool -> mode -> sig_state ->
           cons a (Bindlib.bind_var v t)
       | Some {elt=id;pos}::idopts ->
           if LpLexer.is_invalid_bindlib_id id then
-            fatal pos "Integer suffix with leading zeros are not allowed \
-                       in bound variable names.";
+            fatal pos "Escaped identifiers or regular identifiers with an \
+                       integer suffix with leading zeros are not allowed \
+                       for bound variable names.";
           let v = new_tvar id in
           let env = Env.add v a None env in
           let t = aux env idopts in
@@ -560,7 +561,6 @@ let scope_rule : bool -> sig_state -> p_rule -> pre_rule loc = fun ur ss r ->
     | _       ->
         fatal p_lhs.pos "No head symbol in LHS."
   in
-  if pr_lhs = [] then wrn p_lhs.pos "LHS head symbol with no argument.";
   (* Create the pattern variables that can be bound in the RHS. *)
   let pr_vars =
     Array.init lhs_size (fun i ->
