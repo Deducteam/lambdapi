@@ -5,7 +5,7 @@ open Base
 open Timed
 open Term
 
-let log = Debug.new_logger 'z' "refi" "Infer"
+let log = Debug.new_logger 'i' "infr" "Infer"
 let log = log.logger
 
 (** Type for unification constraints solvers. *)
@@ -106,13 +106,11 @@ functor
      match L.lookup c_ok ctx a b with
      | Some c ->
          let t_c = Bindlib.subst c t in
-         if !(Debug.log_enabled) then
+         if !(Debug.log_enabled) && not (Eval.eq_modulo ctx t t_c) then
            log (Extra.gre "Coerced [%a] to [%a]") Print.pp_term t
              Print.pp_term t_c;
          t_c
-     | None ->
-         (if !Debug.log_enabled then log (Extra.red "Failed coercion"));
-         unif ctx a b; t
+     | None -> unif ctx a b; t
 
     (** [type_enforce ctx a] returns a tuple [(a',s)] where [a'] is refined
         term [a] and [s] is a sort (Type or Kind) such that [a'] is of type
