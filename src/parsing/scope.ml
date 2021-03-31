@@ -561,7 +561,6 @@ let scope_rule : bool -> sig_state -> p_rule -> pre_rule loc = fun ur ss r ->
     | _       ->
         fatal p_lhs.pos "No head symbol in LHS."
   in
-  if pr_lhs = [] then wrn p_lhs.pos "LHS head symbol with no argument.";
   (* Create the pattern variables that can be bound in the RHS. *)
   let pr_vars =
     Array.init lhs_size (fun i ->
