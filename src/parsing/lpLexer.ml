@@ -166,7 +166,7 @@ let uid_of_string : string -> string = fun s ->
 let path_of_string : string -> Path.t = fun s ->
   List.map uid_of_string (Path.of_string s)
 
-(** Identifiers not compatible with Bindlib, Because Bindlib converts any
+(** Identifiers not compatible with Bindlib. Because Bindlib converts any
    suffix consisting of a sequence of digits into an integer, and increment
    it, we cannot use as bound variable names escaped identifiers or regular
    identifiers ending with a non-negative integer with leading zeros. *)
