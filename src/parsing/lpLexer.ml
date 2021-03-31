@@ -110,7 +110,27 @@ let float = [%sedlex.regexp? nat, '.', Opt (nat)]
 let stringlit = [%sedlex.regexp? '"', Star (Compl ('"' | '\n')), '"']
 let comment = [%sedlex.regexp? "//", Star (Compl ('\n' | '\r'))]
 
-(** Regular identifiers are defined by what cannot appear in them. *)
+(** Identifiers.
+
+   There are two kinds of identifiers: regular identifiers and escaped
+   identifiers of the form "{|...|}".
+
+   Modulo those surrounding brackets, escaped identifiers allow to use as
+   identifiers keywords or filenames that are not regular identifiers.
+
+   An escaped identifier denoting a filename or directory is unescaped before
+   accessing to it. Hence, the module "{|a b|}" refers to the file "a b".
+
+   Identifiers need to be normalized so that an escaped identifier, once
+   unescaped, is not regular. To this end, every identifier of the form
+   "{|s|}" with s regular, is understood as "s" (function uid_of_string
+   below).
+
+   Finally, identifiers must not be empty, so that we can use the empty string
+   for the path of ghost signatures. *)
+
+(** Unqualified regular identifiers are any non-empty sequence of characters
+   not among: *)
 let forbidden_letter = [%sedlex.regexp? Chars " ,;\r\t\n(){}[]:.`\""]
 let regid = [%sedlex.regexp? Plus (Compl forbidden_letter)]
 
@@ -120,19 +140,37 @@ let is_regid : string -> bool = fun s ->
   | regid, eof -> true
   | _ -> false
 
-(** [escape s] returns ["{|s|}"] if [s] is not regular, and [s] otherwise. *)
+(** Unqualified escaped identifiers are any non-empty sequence of characters
+   (except "|}") between "{|" and "|}". *)
+let escid =
+  [%sedlex.regexp? "{|", Plus (Compl '|' | '|', Compl '}'), Star '|', "|}"]
+
+(** Unqualified identifiers, regular or escaped. *)
+let uid = [%sedlex.regexp? regid | escid]
+
+(** Qualified identifiers. *)
+let qid = [%sedlex.regexp? uid, Plus ('.', uid)]
+
+(** Identifiers, qualified or not. *)
+let id = [%sedlex.regexp? uid | qid]
+
+(** [escape s] converts a string [s] into an escaped identifier if it is not
+   regular. We do not check whether [s] contains "|}". FIXME? *)
 let escape s = if is_regid s then s else "{|" ^ s ^ "|}"
 
-(** [uid_of_string s] returns [t] if [s] is of the form ["{|t|}"] with [t] a
-   regular identifier, and [s] otherwise. *)
+(** [uid_of_string s] replaces escaped regular identifiers by their unescape
+   form. *)
 let uid_of_string : string -> string = fun s ->
   let s' = Escape.unescape s in if is_regid s' then s' else s
 
 let path_of_string : string -> Path.t = fun s ->
   List.map uid_of_string (Path.of_string s)
 
-(** Identifiers not compatible with Bindlib. *)
-let invalid_bindlib_id = [%sedlex.regexp? Star any, Plus '0', nat]
+(** Identifiers not compatible with Bindlib. Because Bindlib converts any
+   suffix consisting of a sequence of digits into an integer, and increment
+   it, we cannot use as bound variable names escaped identifiers or regular
+   identifiers ending with a non-negative integer with leading zeros. *)
+let invalid_bindlib_id = [%sedlex.regexp? escid | (Star any, Plus '0', nat)]
 
 let is_invalid_bindlib_id : string -> bool = fun s ->
   let lexbuf = Sedlexing.Utf8.from_string s in
@@ -140,17 +178,10 @@ let is_invalid_bindlib_id : string -> bool = fun s ->
   | invalid_bindlib_id, eof -> true
   | _ -> false
 
-(* unit tests *)
+(* unit test *)
 let _ =
-  assert (let f = is_invalid_bindlib_id in f "00" && f "01" && f "a01")
-
-(* Identifiers must not be empty, so that we can use the empty string for the
-   path of ghost signatures. *)
-let escid =
-  [%sedlex.regexp? "{|", Plus (Compl '|' | '|', Compl '}'), Star '|', "|}"]
-let uid = [%sedlex.regexp? regid | escid]
-let qid = [%sedlex.regexp? uid, Plus ('.', uid)]
-let id = [%sedlex.regexp? uid | qid]
+  assert (let f = is_invalid_bindlib_id in
+          f "00" && f "01" && f "a01" && f "{|:|}")
 
 (** [nom buf] eats whitespaces and comments in buffer [buf]. *)
 let rec nom : lexbuf -> unit = fun buf ->
