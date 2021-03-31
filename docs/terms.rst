@@ -23,8 +23,9 @@ An identifier can be:
 
 Remark: for any regular identifier ``i``, ``{|i|}`` is equivalent to ``i``.
 
-Remark: a bound variable name cannot end by a positive integer with
-leading zeros, even if it is escaped.
+Remark: escaped identifiers and regular identifiers ending with a
+non-negative integer with leading zeros cannot be used for bound
+variable names.
 
 Convention:
   identifiers starting with a capital letter denote types and predicates (e.g.
