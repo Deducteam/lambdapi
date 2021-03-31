@@ -11,7 +11,6 @@ open Sign
 open Pos
 open Parsing
 open Syntax
-open Tags
 open Sig_state
 open Scope
 open Print

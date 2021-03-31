@@ -2,4 +2,4 @@
  (name tool)
  (public_name lambdapi.tool)
  (modules :standard)
- (libraries lambdapi.core))
+ (libraries lambdapi.parsing lambdapi.core))

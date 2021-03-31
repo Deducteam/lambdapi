@@ -12,6 +12,7 @@ open Error
 open Pos
 open Syntax
 open Format
+open Core
 
 let out = fprintf
 
@@ -20,8 +21,8 @@ let check_keywords = ref false
 
 let raw_ident : popt -> string pp = fun pos ppf s ->
   if !check_keywords && LpLexer.is_keyword s then
-    fatal pos "Identifier [%s] is a Lambdapi keyword." s
-  else LpLexer.pp_uid ppf s
+    fatal pos "%s is a Lambdapi keyword." s
+  else Print.pp_uid ppf s
 
 let ident : p_ident pp = fun ppf {elt=s; pos} -> raw_ident pos ppf s
 
@@ -49,9 +50,9 @@ let qident : p_qident pp = fun ppf {elt=(mp,s); pos} ->
 (* ends with a space *)
 let modifier : p_modifier pp = fun ppf {elt; _} ->
   match elt with
-  | P_expo(e)   -> Tags.pp_expo ppf e
-  | P_mstrat(s) -> Tags.pp_match_strat ppf s
-  | P_prop(p)   -> Tags.pp_prop ppf p
+  | P_expo(e)   -> Print.pp_expo ppf e
+  | P_mstrat(s) -> Print.pp_match_strat ppf s
+  | P_prop(p)   -> Print.pp_prop ppf p
   | P_opaq      -> out ppf "opaque "
 
 (* ends with a space if the list is not empty *)
@@ -143,15 +144,15 @@ let equiv : (p_term * p_term) pp = fun ppf (l,r) ->
    (LpLexer.equiv t u) (LpLexer.cons (LpLexer.equiv v w) ...)]  into a
    list [[(t,u); (v,w); ...]]. See unif_rule.ml. *)
 let rec unpack : p_term -> (p_term * p_term) list = fun eqs ->
-  let is (p,s) id = p = LpLexer.unif_rule_path && s = id in
+  let is (p,s) id = p = Unif_rule.path && s = id.Term.sym_name in
   match Syntax.p_get_args eqs with
   | ({elt=P_Iden({elt;_},_); _}, [v; w]) ->
-      if is elt LpLexer.cons then
+      if is elt Unif_rule.cons then
         match Syntax.p_get_args v with
         | ({elt=P_Iden({elt;_},_); _}, [t; u])
-             when is elt LpLexer.equiv -> (t, u) :: unpack w
+             when is elt Unif_rule.equiv -> (t, u) :: unpack w
         | _ -> assert false
-      else if is elt LpLexer.equiv then [(v, w)]
+      else if is elt Unif_rule.equiv then [(v, w)]
       else assert false
   | _ -> assert false
 
@@ -238,7 +239,7 @@ let assoc : Pratter.associativity pp = fun ppf a ->
            | Pratter.Left -> " left"
            | Pratter.Right -> " right")
 
-let notation : notation pp = fun ppf n ->
+let notation : Sign.notation pp = fun ppf n ->
   match n with
   | Infix(a,p) -> out ppf "infix%a %f" assoc a p
   | Prefix p -> out ppf "prefix %f" p

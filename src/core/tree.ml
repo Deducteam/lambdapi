@@ -385,7 +385,7 @@ module CM = struct
 
   (** [yield m] returns the next operation to carry out on matrix [m], that
       is, either specialising, solving a constraint or rewriting to a rule. *)
-  let yield : Parsing.Syntax.Tags.match_strat -> t -> decision =
+  let yield : match_strat -> t -> decision =
     fun mstrat ({ clauses ; positions ; _ } as m) ->
     (* If a line is empty and priority is given to the topmost rule, we have
        to eliminate ¨empty¨ rules. *)
@@ -661,9 +661,6 @@ let harvest : term array -> rhs -> CM.env_builder -> int VarMap.t -> int ->
     {!field:CM.store}.  The instructions to copy adequately terms from [vars]
     to the RHS are in an environment builder (of type
     {!type:CM.env_builder}). *)
-
-(** A shorthand. *)
-type match_strat = Parsing.Syntax.Tags.match_strat
 
 (** [compile mstrat m] translates the pattern matching problem encoded by the
     matrix [m] into a decision tree following strategy [mstrat]. *)

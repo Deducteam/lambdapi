@@ -5,6 +5,7 @@ open Lplib.Base
 open Lplib.Extra
 open Common
 open Pos
+open Core
 
 (** Representation of a (located) identifier. *)
 type p_ident = strloc
@@ -17,19 +18,8 @@ type p_meta_ident = meta_ident loc
 type p_path = Path.t loc
 
 (** Representation of a possibly qualified (and located) identifier. *)
-type qident = Path.t * string
+type qident = Term.qident
 type p_qident = qident loc
-
-(** The priority of an infix operator is a floating-point number. *)
-type priority = float
-
-(** Notations. *)
-type notation =
-  | Prefix of priority
-  | Infix of Pratter.associativity * priority
-  | Zero
-  | Succ
-  | Quant
 
 (** Parser-level (located) term representation. *)
 type p_term = p_term_aux loc
@@ -145,18 +135,6 @@ type p_assertion =
   | P_assert_conv   of p_term * p_term
   (** The two given terms should be convertible. *)
 
-(** Type representing the different evaluation strategies. *)
-type strategy =
-  | WHNF (** Reduce to weak head-normal form. *)
-  | HNF  (** Reduce to head-normal form. *)
-  | SNF  (** Reduce to strong normal form. *)
-  | NONE (** Do nothing. *)
-
-(** Configuration for evaluation. *)
-type eval_config =
-  { strategy : strategy   (** Evaluation strategy.          *)
-  ; steps    : int option (** Max number of steps if given. *) }
-
 (** Parser-level representation of a query command. *)
 type p_query_aux =
   | P_query_verbose of int
@@ -167,9 +145,9 @@ type p_query_aux =
   (** Sets the boolean flag registered under the given name (if any). *)
   | P_query_assert of bool * p_assertion
   (** Assertion (must fail if boolean is [true]). *)
-  | P_query_infer of p_term * eval_config
+  | P_query_infer of p_term * Eval.config
   (** Type inference command. *)
-  | P_query_normalize of p_term * eval_config
+  | P_query_normalize of p_term * Eval.config
   (** Normalisation command. *)
   | P_query_prover of string
   (** Set the prover to use inside a proof. *)
@@ -215,57 +193,11 @@ type p_proof_end_aux =
 
 type p_proof_end = p_proof_end_aux loc
 
-module Tags = struct
-  (** Pattern-matching strategy modifiers. *)
-  type match_strat =
-    | Sequen
-    (** Rules are processed sequentially: a rule can be applied only if the
-        previous ones (in the order of declaration) cannot be. *)
-    | Eager
-    (** Any rule that filters a term can be applied (even if a rule defined
-        earlier filters the term as well). This is the default. *)
-
-  (** Specify the visibility and usability of symbols outside their module. *)
-  type expo =
-    | Public
-    (** Visible and usable everywhere. *)
-    | Protec
-    (** Visible everywhere but usable in LHS arguments only. *)
-    | Privat
-    (** Not visible and thus not usable. *)
-
-  (** Symbol properties. *)
-  type prop =
-    | Defin
-    (** The symbol is definable by rewriting rules. *)
-    | Const
-    (** The symbol cannot be defined. *)
-    | Injec
-    (** The symbol is definable but is assumed to be injective. *)
-
-  let pp_prop : prop pp = fun oc p ->
-    match p with
-    | Defin -> ()
-    | Const -> Format.fprintf oc "constant "
-    | Injec -> Format.fprintf oc "injective "
-
-  let pp_expo : expo pp = fun oc e ->
-    match e with
-    | Public -> ()
-    | Protec -> Format.fprintf oc "protected "
-    | Privat -> Format.fprintf oc "private "
-
-  let pp_match_strat : match_strat pp = fun oc s ->
-    match s with
-    | Sequen -> Format.fprintf oc "sequential "
-    | Eager -> ()
-end
-
 (** Parser-level representation of modifiers. *)
 type p_modifier_aux =
-  | P_mstrat of Tags.match_strat (** pattern matching strategy *)
-  | P_expo of Tags.expo (** visibility of symbol outside its modules *)
-  | P_prop of Tags.prop (** symbol properties : constant, definable, ... *)
+  | P_mstrat of Term.match_strat (** pattern matching strategy *)
+  | P_expo of Term.expo (** visibility of symbol outside its modules *)
+  | P_prop of Term.prop (** symbol properties: constant, definable, ... *)
   | P_opaq (** opacity *)
 
 type p_modifier = p_modifier_aux loc
@@ -295,7 +227,7 @@ type p_command_aux =
   | P_rules of p_rule list
   | P_inductive of p_modifier list * p_params list * p_inductive list
   | P_builtin of string * p_qident
-  | P_notation of p_qident * notation
+  | P_notation of p_qident * Sign.notation
   | P_unif_rule of p_rule
   | P_query of p_query
 
