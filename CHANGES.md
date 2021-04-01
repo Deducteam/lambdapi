@@ -1,5 +1,10 @@
 ### Unreleased
 
+#### Renamings (2021-04-01)
+
+- `./tools/` -> `./misc`
+- `./src/core/tree_types.ml` -> `./src/core/tree_type.ml`
+
 #### Do not unescape identifiers anymore, and move `scope.ml` from `Core` to `Parsing` (2021-03-30)
 
 - escaped regular identifiers are automatically unescaped in lexing
