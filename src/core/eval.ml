@@ -172,7 +172,7 @@ and eq_modulo : ctxt -> term -> term -> bool = fun ctx a b ->
        the term;
     2. a {!constructor:Term.term.Vari} which is the bound variable previously
        introduced;
-    3. a {!constructor:Tree_types.TC.t.Vari} which is a simplified
+    3. a {!constructor:Tree_type.TC.t.Vari} which is a simplified
        representation of a variable for trees. *)
 
 (** [tree_walk tr ctx stk] tries to apply a rewrite rule by matching the stack
@@ -193,7 +193,7 @@ and tree_walk : dtree -> ctxt -> stack -> (term * stack) option =
      indexes defined during tree build, and [id_vars] is the inverse mapping
      of [vars_id]. *)
   let rec walk tree stk cursor vars_id id_vars =
-    let open Tree_types in
+    let open Tree_type in
     match tree with
     | Fail                                                -> None
     | Leaf(env_builder, (act, xvars))                     ->

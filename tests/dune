@@ -7,4 +7,5 @@
   (glob_files KO/*.lp)
   (glob_files KO/*.dk)
   lambdapi.pkg)
- (libraries lambdapi.core lambdapi.handle lambdapi.tool alcotest))
+ (libraries lambdapi.core lambdapi.parsing lambdapi.handle lambdapi.tool
+            alcotest))

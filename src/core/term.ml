@@ -87,7 +87,7 @@ type term =
 and rhs = (term_env, term) Bindlib.mbinder * int
 
 (** Representation of a decision tree (used for rewriting). *)
-and dtree = rhs Tree_types.dtree
+and dtree = rhs Tree_type.dtree
 
 (** Representation of a user-defined symbol. Symbols carry a "mode" indicating
     whether they may be given rewriting rules or a definition. Invariants must
@@ -267,7 +267,7 @@ let create_sym : Common.Path.t -> expo -> prop -> match_strat -> bool ->
   string -> term -> bool list -> sym =
   fun sym_path sym_expo sym_prop sym_mstrat sym_opaq sym_name typ sym_impl ->
   {sym_path; sym_name; sym_type = ref typ; sym_impl; sym_def = ref None;
-   sym_opaq; sym_rules = ref []; sym_tree = ref Tree_types.empty_dtree;
+   sym_opaq; sym_rules = ref []; sym_tree = ref Tree_type.empty_dtree;
    sym_mstrat; sym_prop; sym_expo }
 
 (** [is_injective s] tells whether the symbol is injective. *)

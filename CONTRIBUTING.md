@@ -43,6 +43,9 @@ compatible implementation of the AWK programming language interpreter.
 Naming convention
 -----------------
 
+No plural forms in filenames, type names or module names (e.g. file
+term.ml and not terms.ml, type term and not terms, etc.).
+
 For OCaml identifiers, we use the snake_case naming convention.
 
 In Lambdapi files, objects should start with a lowercase letter while
