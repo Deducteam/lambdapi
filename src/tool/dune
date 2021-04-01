@@ -1,5 +1,5 @@
 (library
- (name tools)
- (public_name lambdapi.tools)
+ (name tool)
+ (public_name lambdapi.tool)
  (modules :standard)
  (libraries lambdapi.parsing lambdapi.core))

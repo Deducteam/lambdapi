@@ -133,7 +133,7 @@ let handle_rule : sig_state -> p_rule -> sym = fun ss r ->
   if !(sym.sym_def) <> None then
     fatal pr.pos "No rewriting rule can be given on the defined symbol %a."
       pp_sym sym;
-  let rule = Tools.Sr.check_rule pr in
+  let rule = Tool.Sr.check_rule pr in
   Sign.add_rule ss.signature sym rule;
   Console.out 3 (red "(rule) add %a\n") pp_rule (sym, rule);
   sym

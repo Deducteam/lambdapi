@@ -22,7 +22,7 @@ let bool_ss = Sig_state.of_sign bool_sign
 let test_hrs () =
   let buf = Buffer.create 16 in
   let fmt = Format.formatter_of_buffer buf in
-  Tools.Hrs.to_HRS fmt bool_sign;
+  Tool.Hrs.to_HRS fmt bool_sign;
   (* TODO: make more precise test (equality between results for instance). *)
   Alcotest.(check bool) "bool as HRS not empty" (Buffer.contents buf <> "") true
 
@@ -30,7 +30,7 @@ let test_hrs () =
 let test_xtc () =
   let buf = Buffer.create 16 in
   let fmt = Format.formatter_of_buffer buf in
-  Tools.Xtc.to_XTC fmt bool_sign;
+  Tool.Xtc.to_XTC fmt bool_sign;
   Alcotest.(check bool) "bool as XTC not empty" (Buffer.contents buf <> "") true
 
 (** Decision tree of regular symbol. *)
@@ -39,7 +39,7 @@ let test_dtree () =
   let sym = Sig_state.find_sym ~prt:true ~prv:true bool_ss id in
   let buf = Buffer.create 16 in
   let fmt = Format.formatter_of_buffer buf in
-  Tools.Tree_graphviz.to_dot fmt sym;
+  Tool.Tree_graphviz.to_dot fmt sym;
   Alcotest.(check bool) "bool" (Buffer.contents buf <> "") true
 
 (** Decision tree of ghost symbols. *)
@@ -48,7 +48,7 @@ let test_dtree_ghost () =
   ignore (compile file);
   let buf = Buffer.create 16 in
   let fmt = Format.formatter_of_buffer buf in
-  Tools.Tree_graphviz.to_dot fmt Unif_rule.equiv;
+  Tool.Tree_graphviz.to_dot fmt Unif_rule.equiv;
   Alcotest.(check bool) "bool" (Buffer.contents buf <> "") true
 
 let _ =

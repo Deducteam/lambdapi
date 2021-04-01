@@ -45,14 +45,13 @@ Overview of directories and files
 
 * ``src/core/``: core of Lambdapi
 
-  * ``env.ml``: maps identifier -> variable and type
-
   * terms:
 
     * ``term.ml``: internal representation of terms
     * ``libTerm.ml``: basic operations on terms
     * ``print.ml``: pretty printing of terms
-
+    * ``env.ml``: maps identifier -> variable and type
+    
   * signatures:
 
     * ``builtin.ml``: managing builtins
@@ -126,7 +125,7 @@ Overview of directories and files
 
   * ``pure.ml``: provide utilities to roll back the state
 
-* ``src/tools/``: tools
+* ``src/tool/``: tools
 
   * ``external.ml``: call of external tools
   * ``hrs.ml``: export to the .hrs format of the confluence competition

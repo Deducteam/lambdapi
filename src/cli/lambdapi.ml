@@ -37,15 +37,15 @@ let check_cmd : Config.t -> int option -> bool -> string list -> unit =
       in
       let run_checker prop fn chk kw =
         let run cmd =
-          match Tools.External.run prop fn cmd sign with
+          match Tool.External.run prop fn cmd sign with
           | Some(true ) -> ()
           | Some(false) -> fatal_no_pos "The rewrite system is not %s." kw
           | None        -> fatal_no_pos "The rewrite system may not be %s." kw
         in
         Option.iter run chk
       in
-      run_checker "confluence"  Tools.Hrs.to_HRS cfg.confluence  "confluent";
-      run_checker "termination" Tools.Xtc.to_XTC cfg.termination "terminating"
+      run_checker "confluence"  Tool.Hrs.to_HRS cfg.confluence  "confluent";
+      run_checker "termination" Tool.Xtc.to_XTC cfg.termination "terminating"
     in
     List.iter handle files
   in
@@ -104,7 +104,7 @@ let decision_tree_cmd : Config.t -> Syntax.qident -> unit =
     if Timed.(!(sym.sym_rules)) = [] then
       wrn None "Cannot print decision tree: \
                 symbol \"%s\" does not have any rule." sym.sym_name
-    else Console.out 0 "%a" Tools.Tree_graphviz.to_dot sym
+    else Console.out 0 "%a" Tool.Tree_graphviz.to_dot sym
   in
   Error.handle_exceptions run
 
