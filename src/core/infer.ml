@@ -135,10 +135,35 @@ functor
         [t'] is the refinement of [t]. *)
     and force : ctxt -> term -> term -> term =
      fun ctx te ty ->
-      if !Debug.log_enabled then
-        log "Force [%a] of [%a]" Print.pp_term te Print.pp_term ty;
-      let t, a = infer ctx te in
-      coerce ctx t a ty
+      let default () =
+        if !Debug.log_enabled then
+          log "Force [%a] of [%a]" Print.pp_term te Print.pp_term ty;
+        let t, a = infer ctx te in
+        coerce ctx t a ty
+      in
+      match unfold te with
+      | Abst (dom, t) -> (
+          match Eval.whnf ctx ty with
+          | Prod (e1, e2) ->
+            if !Debug.log_enabled then
+              log "Force-λ [%a] of [%a]" Print.pp_term te Print.pp_term ty;
+              let dom, _ = type_enforce ctx dom in
+              unif ctx dom e1;
+              let x, t, e2 = Bindlib.unbind2 t e2 in
+              let ctx = (x, dom, None) :: ctx in
+              let t = force ctx t e2 in
+              Abst (dom, Bindlib.(lift t |> bind_var x |> unbox))
+          | _ -> default () )
+      | LLet (t_ty, t, u) ->
+          let t_ty, _ = type_enforce ctx t_ty in
+          let t = force ctx t t_ty in
+          let x, u, ctx = Ctxt.unbind ctx t_ty (Some t) u in
+          let ty = Bindlib.(lift ty |> bind_var x |> unbox) in
+          let ty = Bindlib.subst ty t in
+          let u = force ctx u ty in
+          let u = Bindlib.(lift u |> bind_var x |> unbox) in
+          LLet (t_ty, t, u)
+      | _ -> default ()
 
     and infer : ctxt -> term -> term * term =
      fun ctx t ->
