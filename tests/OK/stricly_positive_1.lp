@@ -15,7 +15,8 @@ assert ⊢ z:𝕆;
 assert ⊢ s:𝕆 → 𝕆;
 assert ⊢ l:(ℕ → ℕ → 𝕆) → 𝕆;
 
-print ind_𝕆;
+assert ⊢ ind_𝕆: Π p, π (p z) → (Π x, π (p x) → π (p (s x)))
+  → (Π x, (Π y z, π (p (x y z))) → π (p (l x))) → Π x, π (p x);
 
 assert p a b c ⊢ ind_𝕆 p a b c z ≡ a;
 assert p a b c x ⊢ ind_𝕆 p a b c (s x) ≡ b x (ind_𝕆 p a b c x);

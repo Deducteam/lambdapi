@@ -415,3 +415,16 @@ generated for each inductive type:
      π(q nilF) →
      (Π t, π(p t) → Π l, π(q l) → π(q (consF t l))) →
      Π t, π(p t);
+
+Finaly, here is an example of strictly-positive inductive type:
+
+::
+
+   inductive 𝕆:TYPE ≔ z:𝕆 | s:𝕆 → 𝕆 | l:(ℕ → 𝕆) → 𝕆;
+
+   assert ⊢ ind_𝕆: Π p, π (p z) → (Π x, π (p x) → π (p (s x)))
+     → (Π x, (Π y, π (p (x y))) → π (p (l x))) → Π x, π (p x);
+
+   assert p a b c ⊢ ind_𝕆 p a b c z ≡ a;
+   assert p a b c x ⊢ ind_𝕆 p a b c (s x) ≡ b x (ind_𝕆 p a b c x);
+   assert p a b c x y ⊢ ind_𝕆 p a b c (l x) ≡ c x (λ y, ind_𝕆 p a b c (x y));
