@@ -113,17 +113,17 @@ let comment = [%sedlex.regexp? "//", Star (Compl ('\n' | '\r'))]
 (** Identifiers.
 
    There are two kinds of identifiers: regular identifiers and escaped
-   identifiers of the form "{|...|}".
+   identifiers of the form ["{|...|}"].
 
    Modulo those surrounding brackets, escaped identifiers allow to use as
    identifiers keywords or filenames that are not regular identifiers.
 
    An escaped identifier denoting a filename or directory is unescaped before
-   accessing to it. Hence, the module "{|a b|}" refers to the file "a b".
+   accessing to it. Hence, the module ["{|a b|}"] refers to the file ["a b"].
 
    Identifiers need to be normalized so that an escaped identifier, once
    unescaped, is not regular. To this end, every identifier of the form
-   "{|s|}" with s regular, is understood as "s" (function uid_of_string
+   ["{|s|}"] with s regular, is understood as ["s"] (function uid_of_string
    below).
 
    Finally, identifiers must not be empty, so that we can use the empty string
@@ -155,7 +155,7 @@ let qid = [%sedlex.regexp? uid, Plus ('.', uid)]
 let id = [%sedlex.regexp? uid | qid]
 
 (** [escape s] converts a string [s] into an escaped identifier if it is not
-   regular. We do not check whether [s] contains "|}". FIXME? *)
+   regular. We do not check whether [s] contains ["|}"]. FIXME? *)
 let escape s = if is_regid s then s else "{|" ^ s ^ "|}"
 
 (** [uid_of_string s] replaces escaped regular identifiers by their unescape

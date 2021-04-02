@@ -172,7 +172,8 @@ let handle_inductive_symbol : sig_state -> expo -> prop -> match_strat
      fatal pos "We have %a : %a." pp_uid name pp_term typ);
   (* Actually add the symbol to the signature and the state. *)
   Console.out 3 (red "(symb) %a : %a\n") pp_uid name pp_term typ;
-  Sig_state.add_symbol ss expo prop mstrat false id typ impl None
+  let r = Sig_state.add_symbol ss expo prop mstrat false id typ impl None in
+  Print.sig_state := fst r; r
 
 (** Representation of a yet unchecked proof. The structure is initialized when
     the proof mode is entered, and its finalizer is called when the proof mode
@@ -301,7 +302,9 @@ let handle : (Path.t -> Sign.t) -> sig_state -> p_command ->
           Console.out 3 (red "(symb) %a : %a\n")
             pp_uid rec_name pp_term rec_typ;
           let id = Pos.make pos rec_name in
-          Sig_state.add_symbol ss expo Defin Eager false id rec_typ [] None
+          let r =
+            Sig_state.add_symbol ss expo Defin Eager false id rec_typ [] None
+          in Print.sig_state := fst r; r
         in
         (ss, rec_sym::rec_sym_list)
       in

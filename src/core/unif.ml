@@ -255,7 +255,7 @@ let imitate_lam_cond : term -> term list -> bool = fun h ts ->
 let imitate_lam : ctxt -> meta -> problem -> problem = fun ctx m p ->
     if !log_enabled then log_unif "imitate_lam %a" pp_meta m;
     let n = m.meta_arity in
-    let (env, t) = Env.of_prod ctx n !(m.meta_type) in
+    let (env, t) = Env.of_prod_nth ctx n !(m.meta_type) in
     let x,a,env',b,p =
       match Eval.whnf ctx t with
       | Prod(a,b) ->
