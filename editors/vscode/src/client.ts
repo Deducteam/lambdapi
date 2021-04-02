@@ -50,7 +50,8 @@ export function activate(context: ExtensionContext) {
         },
         dark: {
             backgroundColor: '#08883555' //highlight color for a dark theme
-        }
+        },
+        rangeBehavior: 1 // ClosedClosed
       });
     const errorDecoration = window.createTextEditorDecorationType({
         light: {
@@ -58,7 +59,8 @@ export function activate(context: ExtensionContext) {
         },
         dark: {
             backgroundColor: '#FF000055' //highlight color for a dark theme
-        }
+        },
+        rangeBehavior: 1 // ClosedClosed
       });
     context.workspaceState.update('proofDecoration', proofDecoration);
     context.workspaceState.update('errorDecoration', errorDecoration);
