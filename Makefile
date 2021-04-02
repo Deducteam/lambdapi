@@ -116,11 +116,12 @@ fullclean: distclean
 
 .PHONY: install
 install: bin
-	@dune install
+	@dune build -p lambdapi @install
+	@dune install lambdapi
 
 .PHONY: uninstall
 uninstall:
-	@dune uninstall
+	@dune uninstall -p lambdapi
 
 # Install for the vim mode (in the user's directory).
 .PHONY: install_vim
@@ -143,7 +144,8 @@ ifeq ($(EMACS),)
 	@printf "\e[36mNo 'emacs' binary available in path and EMACS variable \
 is not set, \nEmacs mode won't be installed.\e[39m\n"
 else
-	@$(MAKE) -C editors/emacs/ install
+	@dune build -p lambdapi-mode @install
+	@dune install lambdapi-mode
 	@printf "\e[36mEmacs mode installed.\e[39m\n"
 endif
 
