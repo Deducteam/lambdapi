@@ -354,14 +354,14 @@ type definition, assuming that the following builtins are defined:
    ￼builtin "Prop" ≔ ...; // : TYPE, for the type of propositions
    ￼builtin "P"    ≔ ...; // : Prop → TYPE, interpretation of propositions as types
 
-Currently, it only supports parametrized mutually defined dependent
-first-order data types. As usual, polymorphic types can be encoded by
-defining a type ``Set`` and a function ``τ:Set → TYPE``.
-
 An inductive type can have 0 or more constructors.
 
 The name of the induction principle is ``ind_`` followed by the name
 of the type.
+
+The command currently supports parametrized mutually defined dependent
+strictly-positive data types only. As usual, polymorphic types can be
+encoded by defining a type ``Set`` and a function ``τ:Set → TYPE``.
 
 Example:
 
@@ -382,7 +382,6 @@ is equivalent to:
       π(p zero) → (Π x, π(p x) → π(p(succ x))) → Π x, π(p x);
    ￼rule ind_ℕ _ $pz _ zero ↪ $pz
    ￼with ind_ℕ $p $pz $ps (succ $n) ↪ $ps $n (ind_ℕ $p $pz $ps $n);
-
 
 For mutually defined inductive types, one needs to use the ``with``
 keyword to link all inductive types together.

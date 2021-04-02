@@ -1,5 +1,7 @@
 ### Unreleased
 
+#### Extend command `inductive` to strictly-positive inductive types (2021-04-02)
+
 #### Renamings (2021-04-01)
 
 - `./tools/` -> `./misc`
