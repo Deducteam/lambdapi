@@ -372,14 +372,13 @@ Example:
    ￼| succ: ℕ → ℕ;
    
 is equivalent to:
-￼
+
 ::
    
    ￼constant symbol ℕ : TYPE;
    ￼constant symbol zero : ℕ;
    ￼constant symbol succ : ℕ → ℕ;
-   ￼symbol ind_ℕ p :
-      π(p zero) → (Π x, π(p x) → π(p(succ x))) → Π x, π(p x);
+   ￼symbol ind_ℕ p : π(p zero) → (Π x, π(p x) → π(p(succ x))) → Π x, π(p x);
    ￼rule ind_ℕ _ $pz _ zero ↪ $pz
    ￼with ind_ℕ $p $pz $ps (succ $n) ↪ $ps $n (ind_ℕ $p $pz $ps $n);
 
@@ -390,8 +389,7 @@ Inductive definitions can also be parametrized as follows:
 
 ::
    
-   (a:Set)
-   inductive T: TYPE ≔
+   (a:Set) inductive T: TYPE ≔
    | node: τ a → F a → T a
    with F: TYPE ≔
    | nilF: F a
