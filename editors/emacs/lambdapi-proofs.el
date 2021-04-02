@@ -286,14 +286,26 @@ This works for both graphical and text displays."
   "Proves till the command/tactic at cursor"
   (interactive)
   (save-excursion
-    (let ((line-empty ; line empty or is a single line comment
-           (save-excursion
-             (beginning-of-line)
-             (looking-at-p "\\([[:space:]]*\\|//.*\\)$"))))
-      (lp-prove-till
-       (if line-empty
-           (lp--prev-command-pos (1+ (point)))
-         (lp--next-command-pos (1- (point))))))))
+    (if (string-match "[\n\t ]" (string (char-before (point))))
+        (re-search-forward "[^\n\t ]"))
+    (if (save-excursion
+          (skip-syntax-forward ".")
+          (lp--in-comment-p))
+        (progn
+          (skip-syntax-forward ".")
+          (let ((comment-type (nth 7 (syntax-ppss))))
+            (goto-char (nth 8 (syntax-ppss)))
+            (forward-comment 1)
+            (skip-syntax-backward "> ")
+            (lp-prove-till (1- (point)))))
+      (let ((line-empty ; line empty or is a single line comment
+             (save-excursion
+               (beginning-of-line)
+               (looking-at-p "\\([[:space:]]*\\|//.*\\)$"))))
+        (lp-prove-till
+         (if line-empty
+             (lp--prev-command-pos (1+ (point)))
+           (lp--next-command-pos (1- (point)))))))))
 
 (defun lp-prove-till (pos)
   "Evaluates till pos and moves the cursor to the end of evaluated region"
@@ -359,7 +371,6 @@ and 0 if there is no previous command"
   "Returns the position of the next command's terminator
 and pos if there is no next command"
   (setq npos (1+ (or pos (point))))
-  
   (save-excursion
     (let ((term-regex
            (mapconcat
