@@ -234,7 +234,7 @@ let get_logs ~doc ~line ~pos : string =
   (* DEBUG LOG START *)
   LIO.log_error "get_logs"
     (Printf.sprintf "%s:%d,%d" doc.Lp_doc.uri line pos);
-  let log_to_str (log, posopt) =
+  let log_to_str ((sev, log), posopt) =
     let pos_str =
       match posopt with
       | None -> "None"
@@ -244,14 +244,25 @@ let get_logs ~doc ~line ~pos : string =
     let log_str =
       let len = String.length log in
       Printf.sprintf "length: %d | %s" len (String.sub log 0 (min 30 len))in
-    Format.asprintf "element: %s -> %s\n " pos_str log_str
+    Format.asprintf "element(severity:%d): %s -> %s\n " sev pos_str log_str
   in
   Lsp_io.log_error "get_logs"
     (List.fold_left (^) "\n" (List.map log_to_str doc.Lp_doc.logs));
   (* DEBUG LOG END *)
-  match closest_before (line+1, pos) doc.Lp_doc.logs with
-  | None -> ""
-  | Some (log, _) -> log
+  let line = line+1 in
+  let err_logs = List.filter (fun ((s, _), _) -> s = 1) doc.Lp_doc.logs in
+  let closest_msg =
+    match closest_before (line, pos) doc.Lp_doc.logs with
+    | None -> ""
+    | Some ((sev, msg), _) -> if sev = 1 then "" else msg
+  in
+  let error_msg = List.fold_left_while (fun acc ((_,msg),_) -> acc^"\n"^msg)
+    (fun (_, loc) -> match loc with None -> true
+    | Some p -> let open Pos in
+      compare (p.start_line, p.start_col) (line, pos) <= 0)
+    "" err_logs in
+  (Format.asprintf (Extra.red "%s\n") error_msg) ^ closest_msg
+
 
 let do_goals ofmt ~id params =
   let uri, line, pos = get_docTextPosition params in
