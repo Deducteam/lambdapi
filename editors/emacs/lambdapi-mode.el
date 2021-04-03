@@ -175,6 +175,10 @@
   ;; define keybindings
   (use-local-map lambdapi-mode-map)
 
+  ;; ensure diagnostics don't hide hover results
+  (add-to-list 'eglot-stay-out-of 'eldoc-documentation-strategy)
+  (setq-local eldoc-documentation-strategy #'eldoc-documentation-compose)
+
   ;; LSP
   (add-to-list
    'eglot-server-programs
