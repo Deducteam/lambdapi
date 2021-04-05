@@ -62,10 +62,8 @@ let process_pstep (pstate,diags,logs) tac =
   match hndl_tac_res with
   | Tac_OK (pstate, qres) ->
     let goals = Some (current_goals pstate) in
-    let diags = match qres with
-    | None -> diags
-    | Some qres -> (tac_loc, 4, qres, goals) :: diags in
-    pstate, diags, logs
+    let qres = match qres with None -> "OK" | Some x -> x in
+    pstate, (tac_loc, 4, qres, goals) :: diags, logs
   | Tac_Error(loc,msg) ->
     let loc = option_default loc tac_loc in
     pstate, (loc, 1, msg, None) :: diags, ((1, msg), loc) :: logs
@@ -94,14 +92,10 @@ let process_cmd _file (nodes,st,dg,logs) ast =
   let logs = ((3, buf_get_and_clear lp_logger), cmd_loc) :: logs in
   match hndl_cmd_res with
   | Cmd_OK (st, qres) ->
+    let qres = match qres with None -> "OK" | Some x -> x in
     let nodes = { ast; exec = true; goals = [] } :: nodes in
-    let dg = match qres with
-    | None -> dg
-    | Some msg ->
-      let ok_diag = cmd_loc, 4, msg, None in
-      ok_diag :: dg in
-    nodes, st, dg, logs
-
+    let ok_diag = cmd_loc, 4, qres, None in
+    nodes, st, ok_diag :: dg, logs
   | Cmd_Proof (pst, tlist, thm_loc, qed_loc) ->
     let start_goals = current_goals pst in
     let pst, dg_proof, logs = process_proof pst tlist logs in
