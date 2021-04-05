@@ -2,8 +2,8 @@ constant symbol Type : TYPE;
 injective symbol eta : Type → TYPE;
 
 // function type
-constant symbol Ar : Type → Type → Type;
-set infix right 6 ">" ≔ Ar;
+constant symbol > : Type → Type → Type;
+notation > infix right 6;
 rule eta ($a > $b) ↪ eta $a → eta $b;
 
 symbol fst : Π (A B : Type), eta (A > B > A) ≔

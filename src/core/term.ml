@@ -9,9 +9,37 @@
 
 open Timed
 
-module Tags = Parsing.Syntax.Tags
-
 (** {3 Term (and symbol) representation} *)
+
+(** Representation of a possibly qualified identifier. *)
+type qident = Common.Path.t * string
+
+(** Pattern-matching strategy modifiers. *)
+type match_strat =
+  | Sequen
+  (** Rules are processed sequentially: a rule can be applied only if the
+      previous ones (in the order of declaration) cannot be. *)
+  | Eager
+  (** Any rule that filters a term can be applied (even if a rule defined
+      earlier filters the term as well). This is the default. *)
+
+(** Specify the visibility and usability of symbols outside their module. *)
+type expo =
+  | Public
+  (** Visible and usable everywhere. *)
+  | Protec
+  (** Visible everywhere but usable in LHS arguments only. *)
+  | Privat
+  (** Not visible and thus not usable. *)
+
+(** Symbol properties. *)
+type prop =
+  | Defin
+  (** The symbol is definable by rewriting rules. *)
+  | Const
+  (** The symbol cannot be defined. *)
+  | Injec
+  (** The symbol is definable but is assumed to be injective. *)
 
 (** Representation of a term (or types) in a general sense. Values of the type
     are also used, for example, in the representation of patterns or rewriting
@@ -59,13 +87,13 @@ type term =
 and rhs = (term_env, term) Bindlib.mbinder * int
 
 (** Representation of a decision tree (used for rewriting). *)
-and dtree = rhs Tree_types.dtree
+and dtree = rhs Tree_type.dtree
 
 (** Representation of a user-defined symbol. Symbols carry a "mode" indicating
     whether they may be given rewriting rules or a definition. Invariants must
     be enforced for "mode" consistency (see {!type:sym_prop}).  *)
 and sym =
-  { sym_expo  : Parsing.Syntax.Tags.expo
+  { sym_expo  : expo
   (** Visibility of the symbol. *)
   ; sym_path  : Common.Path.t
   (** Module in which it is defined. *)
@@ -75,7 +103,7 @@ and sym =
   (** Type of the symbol. *)
   ; sym_impl  : bool list
   (** Implicitness of the first arguments ([true] meaning implicit). *)
-  ; sym_prop  : Parsing.Syntax.Tags.prop
+  ; sym_prop  : prop
   (** Property of the symbol. *)
   ; sym_def   : term option ref
   (** Definition of the symbol. *)
@@ -83,7 +111,7 @@ and sym =
   (** If the symbol must not be unfolded in default goal simplifications. *)
   ; sym_rules : rule list ref
   (** Rewriting rules for the symbol. *)
-  ; sym_mstrat: Parsing.Syntax.Tags.match_strat ref
+  ; sym_mstrat: match_strat
   (** Matching strategy. *)
   ; sym_tree  : dtree ref
   (** Decision tree used for matching against rules of the symbol. *) }
@@ -235,12 +263,12 @@ and sym =
    path [path], exposition [expo], property [prop], opacity [opaq], matching
    strategy [mstrat], name [name], type [typ], implicit arguments [impl], no
    definition and no rules. *)
-let create_sym : Common.Path.t -> Tags.expo -> Tags.prop
-    -> Tags.match_strat -> bool -> string -> term -> bool list -> sym =
-  fun sym_path sym_expo sym_prop mstrat sym_opaq sym_name typ sym_impl ->
+let create_sym : Common.Path.t -> expo -> prop -> match_strat -> bool ->
+  string -> term -> bool list -> sym =
+  fun sym_path sym_expo sym_prop sym_mstrat sym_opaq sym_name typ sym_impl ->
   {sym_path; sym_name; sym_type = ref typ; sym_impl; sym_def = ref None;
-   sym_opaq; sym_rules = ref []; sym_tree = ref Tree_types.empty_dtree;
-   sym_mstrat = ref mstrat; sym_prop; sym_expo }
+   sym_opaq; sym_rules = ref []; sym_tree = ref Tree_type.empty_dtree;
+   sym_mstrat; sym_prop; sym_expo }
 
 (** [is_injective s] tells whether the symbol is injective. *)
 let is_injective : sym -> bool = fun s -> s.sym_prop = Injec
@@ -252,7 +280,9 @@ let is_constant : sym -> bool = fun s -> s.sym_prop = Const
 let is_private : sym -> bool = fun s -> s.sym_expo = Privat
 
 (** Typing context associating a [Bindlib] variable to a type and possibly a
-    definition. *)
+   definition. The typing environment [x1:A1,..,xn:An] is represented by the
+   list [xn:An;..;x1:A1] in reverse order (last added variable comes
+   first). *)
 type ctxt = (term Bindlib.var * term * term option) list
 
 (** Type of unification constraints. *)
@@ -306,8 +336,8 @@ module Meta : sig
   (** Comparison function for metavariables. *)
 
   val fresh : ?name:string -> term -> int -> t
-  (** [fresh ?name a n] creates a fresh metavariable with the optional name
-      [name], and of type [a] and arity [n]. *)
+  (** [fresh ?name a n] creates a fresh metavariable of type [a] and arity [n]
+     with the optional name [name]. *)
 
   val fresh_box : ?name:string -> term Bindlib.box -> int -> t Bindlib.box
   (** [fresh_box ?name a n] is the boxed counterpart of [fresh_meta]. It is
@@ -377,11 +407,21 @@ type tevar = term_env Bindlib.var
 (** A short name for the type of a boxed {!type:term_env}. *)
 type tebox = term_env Bindlib.box
 
-(** [mkfree x] injects the [Bindlib] variable [x] in a term. *)
-let mkfree : tvar -> term = fun x -> Vari(x)
+(** [of_tvar x] injects the [Bindlib] variable [x] in a term. *)
+let of_tvar : tvar -> term = fun x -> Vari(x)
 
-(** [te_mkfree x] injects the [Bindlib] variable [x] in a {!type:term_env}. *)
-let te_mkfree : tevar -> term_env = fun x -> TE_Vari(x)
+(** [new_tvar s] creates a new [tvar] of name [s]. *)
+let new_tvar : string -> tvar = Bindlib.new_var of_tvar
+
+(** [new_tvar_ind s i] creates a new [tvar] of name [s ^ string_of_int i]. *)
+let new_tvar_ind : string -> int -> tvar = fun s i ->
+  new_tvar (Common.Escape.add_prefix s (string_of_int i))
+
+(** [of_tevar x] injects the [Bindlib] variable [x] in a {!type:term_env}. *)
+let of_tevar : tevar -> term_env = fun x -> TE_Vari(x)
+
+(** [new_tevar s] creates a new [tevar] with name [s]. *)
+let new_tevar : string -> tevar = Bindlib.new_var of_tevar
 
 (** {3 Smart constructors and lifting (related to [Bindlib])} *)
 
@@ -420,8 +460,7 @@ let _Prod : tbox -> tbinder Bindlib.box -> tbox =
   Bindlib.box_apply2 (fun a b -> Prod(a,b))
 
 let _Impl : tbox -> tbox -> tbox =
-  let dummy = Bindlib.new_var mkfree "_" in
-  fun a b -> _Prod a (Bindlib.bind_var dummy b)
+  let v = new_tvar "_" in fun a b -> _Prod a (Bindlib.bind_var v b)
 
 (** [_Abst a t] lifts an abstraction node to the {!type:tbox}  type,  given  a
     boxed term [a] for the domain type, and a boxed binder [t]. *)

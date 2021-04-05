@@ -6,6 +6,7 @@ open Timed
 open Common
 open Error
 open Core
+open Parsing
 open Term
 open Print
 open Debug
@@ -20,7 +21,7 @@ let log_subj = log_subj.logger
     arity “i-1” and type “Π(x1:A1) ⋯ (x(i-1):A(i-1)), TYPE”. *)
 let build_meta_type : int -> term = fun k ->
   assert (k >= 0);
-  let xs = LibTerm.fresh_vars k in
+  let xs = Array.init k (new_tvar_ind "x") in
   let ts = Array.map _Vari xs in
   (* We create the types for the “Mi” metavariables. *)
   let ty_m = Array.make (k+1) _Type in
@@ -149,7 +150,7 @@ let check_rule : Scope.pre_rule Pos.loc -> rule = fun ({pos; elt} as pr) ->
          only used for printing. *)
       let rhs = Bindlib.(unbox (bind_mvar vars pr_rhs)) in
       let naive_rule = {lhs; rhs; arity; arities; vars; xvars_nb = 0} in
-      log_subj (mag "check %a") pp_rule (s, naive_rule);
+      log_subj (red "%a") pp_rule (s, naive_rule);
     end;
   (* Replace [Patt] nodes of LHS with corresponding elements of [vars]. *)
   let lhs_vars =
@@ -157,21 +158,21 @@ let check_rule : Scope.pre_rule Pos.loc -> rule = fun ({pos; elt} as pr) ->
     _Appl_symb s args
   in
   (* Create metavariables that will stand for the variables of [vars].
-     These metavariables are prefixed by "$" so that we recognize them. *)
+     These metavariables are prefixed by "$" so that we can recognize them. *)
   let var_names = Array.map (fun x -> "$" ^ Bindlib.name_of x) vars in
   let metas =
-    let fn i name =
+    let f i name =
       let arity = arities.(i) in
       Meta.fresh ~name (build_meta_type arity) arity
     in
-    Array.mapi fn var_names
+    Array.mapi f var_names
   in
   (* Substitute them in the LHS and in the RHS. *)
   let (lhs_typing, rhs_typing) =
     let lhs_rhs = Bindlib.box_pair lhs_vars pr_rhs in
     let b = Bindlib.(unbox (bind_mvar vars lhs_rhs)) in
     let meta_to_tenv m =
-      let xs = LibTerm.fresh_vars m.meta_arity in
+      let xs = Array.init m.meta_arity (new_tvar_ind "x") in
       let ts = Array.map _Vari xs in
       TE_Some(Bindlib.unbox (Bindlib.bind_mvar xs (_Meta m ts)))
     in
@@ -188,6 +189,7 @@ let check_rule : Scope.pre_rule Pos.loc -> rule = fun ({pos; elt} as pr) ->
   match Infer.infer_noexn [] [] lhs_typing with
   | None -> fatal pos "The LHS is not typable."
   | Some(ty_lhs, to_solve) ->
+  let to_solve = List.rev to_solve in
   (* Try to simplify constraints. *)
   let type_check = false in (* Don't check typing when instantiating metas. *)
   match Unif.(solve_noexn ~type_check {empty_problem with to_solve}) with
@@ -195,8 +197,7 @@ let check_rule : Scope.pre_rule Pos.loc -> rule = fun ({pos; elt} as pr) ->
   | Some lhs_constrs ->
   if !log_enabled then
     begin
-      log_subj (gre "LHS has type: %a") pp_term ty_lhs;
-      List.iter (log_subj (gre "  if %a") pp_constr) lhs_constrs;
+      log_subj "LHS has type: %a%a" pp_term ty_lhs pp_constrs lhs_constrs;
       log_subj "LHS is now: %a" pp_term lhs_typing;
       log_subj "RHS is now: %a" pp_term rhs_typing;
       log_subj "check that the RHS has the same type as the LHS"
@@ -214,21 +215,21 @@ let check_rule : Scope.pre_rule Pos.loc -> rule = fun ({pos; elt} as pr) ->
       | Some(_) ->
           (* Instantiate recursively the meta-variables of the definition. *)
           let t = Meta(m, Array.make m.meta_arity Kind) in
-          LibTerm.iter_meta true instantiate t
+          LibTerm.Meta.iter true instantiate t
       | None    ->
           (* Instantiate recursively the meta-variables of the type. *)
-          LibTerm.iter_meta true instantiate !(m.meta_type);
+          LibTerm.Meta.iter true instantiate !(m.meta_type);
           (* Instantiation of [m]. *)
           let sym_name =
             match m.meta_name with
             | Some(n) -> n
             | None    -> string_of_int m.meta_key
           in
-          let s = Term.create_sym (Sign.current_sign()).sign_path
+          let s = Term.create_sym (Sign.current_path())
                     Privat Defin Eager false sym_name !(m.meta_type) [] in
           Stdlib.(symbols := s :: !symbols);
           (* Build a definition for [m]. *)
-          let xs = LibTerm.fresh_vars m.meta_arity in
+          let xs = Array.init m.meta_arity (new_tvar_ind "x") in
           let s = _Symb s in
           let def = Array.fold_left (fun t x -> _Appl t (_Vari x)) s xs in
           m.meta_value := Some(Bindlib.unbox (Bindlib.bind_mvar xs def))
@@ -250,14 +251,16 @@ let check_rule : Scope.pre_rule Pos.loc -> rule = fun ({pos; elt} as pr) ->
   match Unif.(solve_noexn {empty_problem with to_solve}) with
   | None     -> fatal pos "The rewriting rule does not preserve typing."
   | Some(cs) ->
-  let is_constr c =
+  let is_lhs_constr c =
     (* Contexts ignored: [Infer.check] is called with an empty context and
        neither [Infer.check] nor [Unif.solve] generate contexts with defined
        variables. *)
-    let eq_comm (_,t1,u1) (_,t2,u2) = Eval.eq_constr ([],t1,u1) ([],t2,u2) in
-    List.exists (eq_comm c) lhs_constrs
+    let eq (_,t1,u1) (_,t2,u2) =
+      Eval.(eq_modulo [] t1 t2 && eq_modulo [] u1 u2)
+      || Eval.(eq_modulo [] t1 u2 && eq_modulo [] t2 u1) in
+    List.exists (eq c) lhs_constrs
   in
-  let cs = List.filter (fun c -> not (is_constr c)) cs in
+  let cs = List.filter (fun c -> not (is_lhs_constr c)) cs in
   if cs <> [] then
     begin
       List.iter (fatal_msg "Cannot solve %a\n" pp_constr) cs;

@@ -30,12 +30,12 @@ let find : string -> env -> tvar = fun n env ->
     body is the term [t]. By calling [to_prod [(xn,an,None);⋯;(x1,a1,None)] t]
     you obtain a term of the form [Πx1:a1,..,Πxn:an,t]. *)
 let to_prod_box : env -> tbox -> tbox = fun env t ->
-  let fn t (_,(x,a,u)) =
+  let add_prod t (_,(x,a,u)) =
     match u with
     | Some(u) -> _LLet a u (Bindlib.bind_var x t)
     | None    -> _Prod a (Bindlib.bind_var x t)
   in
-  List.fold_left fn t env
+  List.fold_left add_prod t env
 
 (** [to_prod] is an “unboxed” version of [to_prod_box]. *)
 let to_prod : env -> tbox -> term = fun env t ->
@@ -47,12 +47,12 @@ let to_prod : env -> tbox -> term = fun env t ->
     and which body is the term [t]:
     [to_abst [(xn,an,None);..;(x1,a1,None)] t = λx1:a1,..,λxn:an,t]. *)
 let to_abst : env -> tbox -> term = fun env t ->
-  let fn t (_,(x,a,u)) =
+  let add_abst t (_,(x,a,u)) =
     match u with
     | Some(u) -> _LLet a u (Bindlib.bind_var x t)
     | None    -> _Abst a (Bindlib.bind_var x t)
   in
-  Bindlib.unbox (List.fold_left fn t env)
+  Bindlib.unbox (List.fold_left add_abst t env)
 
 (** [vars env] extracts the array of the {e not defined} Bindlib variables in
     [env]. Note that the order is reversed: [vars [(xn,an);..;(x1,a1)] =
@@ -60,6 +60,10 @@ let to_abst : env -> tbox -> term = fun env t ->
 let vars : env -> tvar array = fun env ->
   let f (_, (x, _, u)) = if u = None then Some(x) else None in
   Array.of_list (List.filter_rev_map f env)
+
+(** [appl t env] applies [t] to the variables of [env]. *)
+let appl : tbox -> env -> tbox = fun t env ->
+  List.fold_right (fun (_,(x,_,_)) t -> _Appl t (_Vari x)) env t
 
 (** [to_tbox env] extracts the array of the {e not defined} variables in [env]
    and injects them in the [tbox] type.  This is the same as [Array.map _Vari
@@ -84,7 +88,23 @@ let match_prod : ctxt -> term -> (term -> tbinder -> 'a) -> 'a = fun c t f ->
       | Prod(a,b) -> f a b
       | _ -> invalid_arg __LOC__
 
-(** [of_prod c n t] returns a tuple [(env,b)] where [b] is constructed
+(** [of_prod c s t] returns a tuple [(env,b)] where [b] is constructed from
+   the term [t] by unbinding as much dependent products as possible in the
+   head of [t]. The free variables created by this process, prefixed by [s],
+   are given (with their types) in the environment [env] (in reverse
+   order). For instance, if [t] is of the form [Πx1:a1, ⋯, Πxn:an, b], then
+   the function returns [b] and the environment [(xn,an); ⋯;(x1,a1)]. *)
+let of_prod : ctxt -> string -> term -> env * term = fun c s t ->
+  let i = Stdlib.ref (-1) in
+  let rec build_env env t =
+    try match_prod c t (fun a b ->
+            let name = Stdlib.(incr i; s ^ string_of_int !i) in
+            let (x, b) = LibTerm.unbind_name name b in
+            build_env (add x (lift a) None env) b)
+    with Invalid_argument _ -> env, t
+  in build_env [] t
+
+(** [of_prod_nth c n t] returns a tuple [(env,b)] where [b] is constructed
    from the term [t] by unbinding [n] dependent products. The free variables
    created by this process are given (with their types) in the environment
    [env] (in reverse order). For instance, if [t] is of the form [Πx1:a1, ⋯,
@@ -92,7 +112,7 @@ let match_prod : ctxt -> term -> (term -> tbinder -> 'a) -> 'a = fun c t f ->
    ⋯;(x1,a1)]. [n] must be non-negative.
 @raise [Invalid_argument] if [t] does not evaluate to a series of (at least)
    [n] products. *)
-let of_prod : ctxt -> int -> term -> env * term = fun c n t ->
+let of_prod_nth : ctxt -> int -> term -> env * term = fun c n t ->
   let rec build_env i env t =
     if i >= n then (env, t)
     else match_prod c t (fun a b ->
@@ -114,8 +134,16 @@ let of_prod_using : ctxt -> tvar array -> term -> env * term = fun c xs t ->
              build_env (i+1) env (Bindlib.subst b (Vari(xs.(i)))))
   in build_env 0 [] t
 
-(** [fresh_meta_tbox env] creates a _Meta tbox from a fresh metavariable [m]
-   of type [tm], which itself is a metavariable [x] of type [Type]. *)
+(** [fresh_meta_Type env] creates a fresh metavariable of type [Type] in
+    environment [env]. *)
+let fresh_meta_Type : t -> tbox = fun env ->
+  let vs = to_tbox env in
+  let arity = Array.length vs in
+  let tm = to_prod_box env _Type in
+  _Meta_full (Meta.fresh_box tm arity) vs
+
+(** [fresh_meta_tbox env] creates a _Meta tbox from a fresh metavariable whose
+   type is itself a fresh metavariable of type [fresh_meta_Type env]. *)
 let fresh_meta_tbox : env -> tbox = fun env ->
   let vs = to_tbox env in
   let arity = Array.length vs in
@@ -125,8 +153,8 @@ let fresh_meta_tbox : env -> tbox = fun env ->
   in
   _Meta_full (Meta.fresh_box tm arity) vs
 
-(** [fresh_meta env] creates a Meta term from a fresh metavariable [m] of type
-   [tm], which itself is a metavariable [x] of type [Type]. *)
+(** [fresh_meta env] creates a Meta term from a fresh metavariable whose type
+   is a fresh metavariable of type [to_prod env Type]. *)
 let fresh_meta : env -> term = fun env -> Bindlib.unbox (fresh_meta_tbox env)
 
 (** [add_fresh_metas env t n] returns the application of [t] to [n] fresh meta

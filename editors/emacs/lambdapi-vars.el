@@ -9,12 +9,12 @@
 (defconst lambdapi-tactics
   '("apply"
     "assume"
-    "print"
-    "proofterm"
+    "generalize"
+    "have"
     "refine"
     "reflexivity"
     "rewrite"
-    "simpl"
+    "simplify"
     "solve"
     "symmetry"
     "why3")
@@ -22,35 +22,57 @@
 
 (defconst lambdapi-sig-commands
   '("as"
-    "in"
-    "let"
-    "declared"
-    "builtin"
-    "open"
     "begin"
+    "builtin"   
     "end"
+    "in"
+    "inductive"
+    "let"
+    "notation"
+    "open"
     "require"
     "rule"
     "symbol"
-    "inductive"
+    "unif_rule"
     "with")
   "Commands that enrich the signature.")
 
 (defconst lambdapi-warning
-  '("abort" "admit" "fail")
+  '("abort"
+    "admit"
+    "admitted"
+    "fail")
   "To be displayed in red.")
 
 (defconst lambdapi-misc-commands
-  '("type"
-    "assert"
+  '("assert"
     "assertnot"
     "compute"
-    "set")
+    "debug"
+    "flag"
+    "off"
+    "on"
+    "print"
+    "proofterm"
+    "prover"
+    "prover_timeout"
+    "type"
+    "verbose")
   "Commands producing side-effects.")
 
 (defconst lambdapi-misc-keywords
-  '("TYPE" "left" "right" "infix" "prefix" "quantifier"
-    "protected" "private" "injective" "constant" "opaque"))
+  '("constant"
+    "left"
+    "right"
+    "infix"
+    "injective"
+    "opaque"
+    "prefix"
+    "private"
+    "protected"
+    "quantifier"
+    "sequential"
+    "TYPE"))
 
 (defcustom lambdapi-indent-basic 2
   "Basic indentation for lambdapi-mode."

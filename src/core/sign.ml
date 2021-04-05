@@ -8,8 +8,6 @@ open Error
 open Pos
 open Timed
 open Term
-open Parsing.Syntax
-open Tags
 
 (** Data associated to inductive type symbols. *)
 type ind_data =
@@ -19,6 +17,17 @@ type ind_data =
   ; ind_nb_types : int  (** Number of mutually defined types. *)
   ; ind_nb_cons : int   (** Number of constructors. *) }
 
+(** The priority of an infix operator is a floating-point number. *)
+type priority = float
+
+(** Notations. *)
+type notation =
+  | Prefix of priority
+  | Infix of Pratter.associativity * priority
+  | Zero
+  | Succ
+  | Quant
+
 (** Representation of a signature. It roughly corresponds to a set of symbols,
     defined in a single module (or file). *)
 type t =
@@ -27,7 +36,7 @@ type t =
   ; sign_deps     : (string * rule) list Path.Map.t ref
   ; sign_builtins : sym StrMap.t ref
   ; sign_notations: notation SymMap.t ref
-    (** Maps symbols to their syntax properties if they have some. *)
+    (** Maps symbols to their notation if they have some. *)
   ; sign_ind      : ind_data SymMap.t ref }
 
 (* NOTE the [deps] field contains a hashtable binding the external modules on
@@ -70,18 +79,19 @@ let loaded : t Path.Map.t ref = ref Path.Map.empty
    is a circular dependency. *)
 let loading : Path.t list ref = ref []
 
-(** [current_sign ()] returns the current signature. *)
-let current_sign () = Path.Map.find (List.hd !loading) !loaded
+(** [current_path ()] returns the current signature path. *)
+let current_path : unit -> Path.t =
+  fun () -> (Path.Map.find (List.hd !loading) !loaded).sign_path
 
 (** [create_sym expo prop opaq name typ impl] creates a new symbol with the
    exposition [expo], property [prop], name [name], type [typ], implicit
    arguments [impl], opacity [opaq]. *)
 let create_sym : expo -> prop -> bool -> string -> term -> bool list -> sym =
   fun sym_expo sym_prop sym_opaq sym_name typ sym_impl ->
-  let sym_path = (current_sign()).sign_path in
+  let sym_path = current_path() in
   { sym_expo; sym_path; sym_name; sym_type = ref typ; sym_impl; sym_prop;
     sym_def = ref None; sym_opaq; sym_rules = ref [];
-    sym_mstrat = ref Eager; sym_tree = ref Tree_types.empty_dtree }
+    sym_mstrat = Eager; sym_tree = ref Tree_type.empty_dtree }
 
 (** [link sign] establishes physical links to the external symbols. *)
 let link : t -> unit = fun sign ->
@@ -158,7 +168,7 @@ let link : t -> unit = fun sign ->
     signature is invalidated in the process. *)
 let unlink : t -> unit = fun sign ->
   let unlink_sym s =
-    s.sym_tree := Tree_types.empty_dtree ;
+    s.sym_tree := Tree_type.empty_dtree ;
     if s.sym_path <> sign.sign_path then
       (s.sym_type := Kind; s.sym_rules := [])
   in
@@ -210,14 +220,13 @@ let unlink : t -> unit = fun sign ->
    [impl], no definition and no rules. [name] should not already be used in
    [sign]. The created symbol is returned. *)
 let add_symbol :
-      t -> expo -> Tags.prop -> match_strat -> bool -> strloc -> term ->
+      t -> expo -> prop -> match_strat -> bool -> strloc -> term ->
       bool list -> sym =
   fun sign sym_expo sym_prop sym_mstrat sym_opaq {elt=sym_name;pos} typ
       impl ->
   (* Check for metavariables in the symbol type. *)
-  if LibTerm.has_metas true typ then
-    fatal pos "The type of %a contains metavariables"
-      Parsing.LpLexer.pp_uid sym_name;
+  if LibTerm.Meta.has true typ then
+    fatal pos "The type of %s contains metavariables" sym_name;
   (* We minimize [impl] to enforce our invariant (see {!type:Terms.sym}). *)
   let rec rem_false l = match l with false::l -> rem_false l | _ -> l in
   let sym_impl = List.rev (rem_false (List.rev impl)) in
@@ -225,7 +234,7 @@ let add_symbol :
   let sym =
     { sym_path = sign.sign_path; sym_name; sym_type = ref (cleanup typ);
       sym_impl; sym_def = ref None; sym_opaq; sym_rules = ref [];
-      sym_tree = ref Tree_types.empty_dtree; sym_mstrat = ref sym_mstrat;
+      sym_tree = ref Tree_type.empty_dtree; sym_mstrat;
       sym_prop; sym_expo }
   in
   sign.sign_symbols := StrMap.add sym_name (sym, pos) !(sign.sign_symbols);
@@ -373,3 +382,6 @@ let rec dependencies : t -> (Path.t * t) list = fun sign ->
     | d::deps -> minimize ((List.filter not_here d) :: acc) deps
   in
   List.concat (minimize [] deps)
+
+(** [ghost_path s] creates a module path that cannot be entered by a user. *)
+let ghost_path : string -> Path.t = fun s -> [ ""; s ]

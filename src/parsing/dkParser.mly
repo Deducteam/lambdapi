@@ -7,6 +7,7 @@ open Pos
 open Syntax
 open DkLexer
 open Error
+open Core
 
 (** [get_args t] decomposes the parser level term [t] into a spine [(h,args)],
     when [h] is the term at the head of the application and [args] is the list
@@ -174,16 +175,11 @@ let translate_old_rule : old_p_rule -> p_rule = fun r ->
   let rhs = build [] rhs in
   Pos.make r.pos (lhs, rhs)
 
-let build_config : Pos.pos -> string -> string option -> eval_config =
+let build_config : Pos.pos -> string -> string option -> Eval.config =
     fun loc s1 s2o ->
   try
-    let config steps strategy =
-      let steps =
-        match steps with
-        | None     -> None
-        | Some(nb) -> Some(int_of_string nb)
-      in
-      {strategy; steps}
+    let config st strategy =
+      Eval.{strategy; steps=Option.map int_of_string st}
     in
     match (s1, s2o) with
     | ("SNF" , io         ) -> config io        SNF
@@ -195,6 +191,7 @@ let build_config : Pos.pos -> string -> string option -> eval_config =
     | (i     , None       ) -> config (Some(i)) NONE
     | (_     , _          ) -> raise Exit (* captured below *)
   with _ -> fatal (Some(loc)) "Invalid command configuration."
+
 %}
 
 // end of file
@@ -249,8 +246,7 @@ command:
       let p_sym_mod =
         match List.find_opt is_prop p_sym_mod with
         | Some(_) -> p_sym_mod
-        | None -> (* we add the property "constant" *)
-           make_pos Lexing.(dummy_pos, dummy_pos) (P_prop(Const)) :: p_sym_mod
+        | None -> make_pos $loc(s) (P_prop Const) :: p_sym_mod
       in
       let p_sym_nam = make_pos $loc(s) s in
       let p_sym_typ = Some a in
@@ -322,6 +318,7 @@ command:
     }
   | p_sym_mod=modifier* KW_THM s=UID COLON a=term DEF t=term DOT
     {
+      let p_sym_mod = make_pos $loc(s) P_opaq :: p_sym_mod in
       let p_sym_nam = make_pos $loc(s) s in
       let p_sym_arg = [] in
       let p_sym_typ = Some a in
@@ -335,6 +332,7 @@ command:
   | p_sym_mod=modifier* KW_THM s=UID p_sym_arg=param+ COLON a=term
     DEF t=term DOT
     {
+      let p_sym_mod = make_pos $loc(s) P_opaq :: p_sym_mod in
       let p_sym_nam = make_pos $loc(s) s in
       let p_sym_typ = Some a in
       let p_sym_trm = Some t in
@@ -348,7 +346,7 @@ command:
       make_pos $sloc (P_rules(List.map translate_old_rule rs))
     }
   | EVAL t=term DOT {
-      let c = {strategy = SNF; steps = None} in
+      let c = Eval.{strategy = SNF; steps = None} in
       let q = make_pos $sloc (P_query_normalize(t,c)) in
       make_pos $sloc (P_query q)
     }
@@ -358,7 +356,7 @@ command:
       make_pos $sloc (P_query q)
     }
   | INFER t=term DOT {
-      let c = {strategy = NONE; steps = None} in
+      let c = Eval.{strategy = NONE; steps = None} in
       let q = make_pos $sloc (P_query_infer(t, c)) in
       make_pos $sloc (P_query q)
     }
@@ -390,8 +388,8 @@ param:
     { ([Some (make_pos $loc(id) id)], Some(te), false) }
 
 modifier:
-  | KW_PRV { make_pos $sloc (P_expo(Syntax.Tags.Privat)) }
-  | KW_INJ { make_pos $sloc (P_prop(Syntax.Tags.Injec)) }
+  | KW_PRV { make_pos $sloc (P_expo(Term.Protec)) }
+  | KW_INJ { make_pos $sloc (P_prop(Term.Injec)) }
 
 context_item:
   | x=UID ao=option(COLON a=term { a }) { (make_pos $loc(x) x, ao) }

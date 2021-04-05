@@ -1,5 +1,111 @@
 ### Unreleased
 
+#### Improvements in some tactics (2021-04-05)
+
+- fix `have`
+- improve the behavior of `apply`
+- `assume` not needed before `reflexivity` anymore
+- `assume` checks that identifiers are distinct
+- `solve`: simplify goals afterwards
+- `libTerm`: permute arguments of `unbind_name`, and add `add_args_map` and `unbind2_name` 
+- `syntax`: add `check_notin` and `check_distinct`
+- split `misc/listings.tex` into `misc/lambdapi.tex` and `misc/example.tex`
+
+#### Extend command `inductive` to strictly-positive inductive types (2021-04-02)
+
+#### Renamings (2021-04-01)
+
+- `./tools/` -> `./misc`
+- `./src/core/tree_types.ml` -> `./src/core/tree_type.ml`
+
+#### Do not unescape identifiers anymore, and move `scope.ml` from `Core` to `Parsing` (2021-03-30)
+
+- escaped regular identifiers are automatically unescaped in lexing
+- unescaping is done in filenames only
+- `Escape.add_prefix` and `Escape.add_suffix` allow to correctly extend potentially escaped identifiers
+- move `scope.ml` from `Core` to `Parsing`
+
+#### Forbid bound variable names ending with a positive integer with leading zeros since there are not compatible with Bindlib (2021-03-29)
+
+#### Fix #341: remove spurious warnings on bound variables (2021-03-29)
+
+* `scope.ml`:
+  - the inner functions of scope are brought to the top-level
+  - `scope_term_with_params` is introduced: it is similar to `scope_term` but does not check that top-level bound variables are used
+  - `_Meta_Type` is moved to `env.ml` as `fresh_meta_type`
+
+* `command.ml`:
+  - use `scope_term_with_params` and check that parameters are indeed used
+  - `get_implicitness` moved to `syntax.ml` as `get_impl_term`
+  - fix implicit arguments computation in case of no type by introducing `Syntax.get_impl_params_list`
+
+* in various places: use `pp_var` instead of `Bindlib.name_of`
+
+* replace expo argument in scoping and handling by boolean telling if private symbols are allowed
+
+* allow private symbols in queries
+
+#### Introduce `new_tvar = Bindlib.new_var mkfree` (2021-03-26)
+
+#### Add tactic `generalize`, and rename tactic `simpl` into `simplify` (2021-03-25)
+
+#### Use Dune for opam integration (2021-03-25)
+
+- Content of `lambdapi.opam` is moved to `dune-project` and the former is
+  generated using `dune build @install`.
+- Vim files are installed in `opam` prefix using dune.
+- The emacs mode is declared as a sub-package.
+
+#### Add tactic `have` (2021-03-24)
+
+#### Compatibility with Why3 1.4.0
+
+#### Add tactic `simpl <id>` for unfolding a specific symbol only (2021-03-22)
+
+and slightly improve `Ctxt.def_of`
+
+#### Bug fixes (2021-03-22)
+
+- fix type inference in the case of an application (t u) where the type of t is not a product yet (uncomment code commented in #596)
+- fix the order in which emacs prints hypotheses
+- fix opam dependencies: add constraint why3 <= 1.3.3
+
+#### Fix and improve inverse image computation (2021-03-16)
+
+- fix and improve in `inverse.ml` the computation of the inverse image of a term wrt an injective function (no unification rule is needed anymore in common examples, fix #342)
+- fix management of "initial" constraints in unification (initial is now a global variable updated whenever a new constraint is added)
+- when applying a unification rule, add constraints on types too (fix #466)
+- turn `Infer.make_prod` into `Infer.set_to_prod`
+- add pp_constrs for printing lists of constraints
+- make time printing optional
+- improve visualization of debugging data using colors:
+  . blue: top-level type inference/checking
+  . magenta: new constraint
+  . green: constraint to solve
+  . yellow: data from signature or context
+  . red: instantiations (and handled commands)
+
+#### Add tactic admit (2021-03-12)
+
+- rename command `admit` into `admitted`
+- `admitted`: admit the initial goal instead of the remaining goals (when the proof is an opaque definition)
+- move code on `admit` from `command.ml` to `tactic.ml`
+- add tactic `admit` (fix #380)
+  As a consequence, tactics can change the signature state now.
+
+#### Improvements in type inference, unification and printing (2021-03-11)
+
+- improve type inference and unification
+- add flag `"print_meta_args"`
+- print metavariables unescaped, add parentheses in domains
+- replace `(current_sign()).sign_path` by `current_path()`
+- improve logging:
+  . debug +h now prints data on type inference/checking
+  . provide time of type inference/checking and constraint solving
+  . give more feedback when instantiation fails
+
+#### Remove `set` keyword (2021-03-04)
+
 #### Various bug fixes (2021-03-02)
 
 - allow matching on abstraction/product type annotations (fix #573)
@@ -93,7 +199,7 @@
 
 Replace Earley by Menhir, Pratter and Sedlex
 
-**Syntax modifications:**
+Syntax modifications:
 
 - Add multi-lines comments `/*` ... `*/`.
 
@@ -127,7 +233,7 @@ Replace Earley by Menhir, Pratter and Sedlex
 - The minus sign `-` in the rewrite tactic has been replaced by the
   keyword `left`.
 
-**Code modifications:**
+Code modifications:
 
 - Parsing and handling are interleaved (except in the LSP server): the
   parser returns a stream of parsed commands. Requesting an item of

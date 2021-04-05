@@ -32,15 +32,18 @@
             | <term> as <uid> in <term>
 
 <tactic> ::= <query>
+           | admit
            | apply <term>
            | assume <param_id>+
            | fail
            | focus <int>
+           | generalize <uid>
+           | have <uid> : <term>
            | induction
            | refine <term>
            | reflexivity
            | rewrite [<assoc>] [[ <rw_patt> ]] <term>
-           | simpl
+           | simplify [<id>]
            | solve
            | symmetry
            | why3 ["<string>"]
@@ -59,10 +62,6 @@
              | prefix <float_or_int>
              | quantifier
 
-<config> ::= builtin "<string>" ≔ <id>
-           | unif_rule <unif_rule>
-           | notation <id> <notation>
-
 <assert_kw> ::= assert
               | assertnot
 
@@ -71,15 +70,15 @@
           | compute <term>
           | print [<id>]
           | proofterm
-          | set debug (+ | -)<string>
-          | set flag "<string>" <switch>
-          | set prover "<string>"
-          | set prover_timeout <int>
-          | set verbose <int>
+          | debug (+ | -)<string>
+          | flag "<string>" <switch>
+          | prover "<string>"
+          | prover_timeout <int>
+          | verbose <int>
           | type <term>
 
 <proof_end> ::= abort
-              | admit
+              | admitted
               | end
 
 <proof> ::= begin (<tactic> ;)* <proof_end>
@@ -104,7 +103,9 @@
             | <modifier>* <params>* inductive <inductive> (with <inductive>)*
               ;
             | rule <rule> (with <rule>)* ;
-            | set <config> ;
+            | builtin "<string>" ≔ <id> ;
+            | unif_rule <unif_rule> ;
+            | notation <id> <notation> ;
             | <query> ;
             
 

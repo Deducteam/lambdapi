@@ -2,7 +2,7 @@
  (targets version.ml)
  (action
   (with-stdout-to version.ml
-    (run ocaml unix.cma %{dep:../../tools/gen_version.ml})))
+    (run ocaml unix.cma %{dep:../../misc/gen_version.ml})))
  (mode fallback))
 
 (library
@@ -10,4 +10,4 @@
  (public_name lambdapi.core)
  (synopsis "LambdaPi interactive theorem prover [core]")
  (modules :standard)
- (libraries bindlib why3 parsing))
+ (libraries common lplib pratter bindlib why3))

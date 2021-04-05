@@ -7,7 +7,9 @@
 open Common
 open Timed
 open Term
-open Parsing
+
+(** Path of signature containing unificaton rules symbols. *)
+let path = Sign.ghost_path "unif_rule"
 
 (** Ghost signature holding the symbols used in unification rules.
     - All signatures depend on it (dependency set in
@@ -16,20 +18,20 @@ open Parsing
     - It is automatically loaded. *)
 let sign : Sign.t =
   let dummy = Sign.dummy () in
-  let sign = {dummy with Sign.sign_path = LpLexer.unif_rule_path} in
-  Sign.loaded := Path.Map.add LpLexer.unif_rule_path sign !(Sign.loaded);
+  let sign = {dummy with Sign.sign_path = path} in
+  Sign.loaded := Path.Map.add path sign !(Sign.loaded);
   sign
 
 (** Symbol of name LpLexer.equiv, with infix notation. *)
 let equiv : sym =
-  let id = Pos.none LpLexer.equiv in
+  let id = Pos.none "≡" in
   let s = Sign.add_symbol sign Public Defin Eager false id Kind [] in
   Sign.add_notation sign s (Infix(Pratter.Neither, 1.1)); s
 
 (** Symbol of name LpLexer.cons, with infix right notation with priority <
    LpLexer.equiv. *)
 let cons : sym =
-  let id = Pos.none LpLexer.cons in
+  let id = Pos.none ";" in
   let s = Sign.add_symbol sign Public Const Eager true id Kind [] in
   Sign.add_notation sign s (Infix(Pratter.Right, 1.0)); s
 
@@ -42,10 +44,10 @@ let rec unpack : term -> (term * term) list = fun eqs ->
       if s == cons then
         match LibTerm.get_args v with
         | (Symb(e), [t; u]) when e == equiv -> (t, u) :: unpack w
-        | _          (* Ill-formed term. *) -> assert false
-      else if s == equiv then [(v, w)] else
-      assert false (* Ill-formed term. *)
-  | _                 -> assert false (* Ill-formed term. *)
+        | _ -> assert false
+      else if s == equiv then [(v, w)]
+      else assert false
+  | _ -> assert false
 
 (** [is_ghost s] is true iff [s] is a symbol of the ghost signature. *)
 let is_ghost : sym -> bool = fun s -> s == equiv || s == cons

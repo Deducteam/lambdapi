@@ -12,7 +12,7 @@ open Lplib.Extra
 open Timed
 open Term
 open LibTerm
-open Tree_types
+open Tree_type
 
 (** {1 Types for decision trees}
 
@@ -38,16 +38,16 @@ open Tree_types
     portion [S─∘─Z] is made possible by a swap. *)
 
 (** Representation of a tree (see {!type:Term.tree}). *)
-type tree = rhs Tree_types.tree
+type tree = rhs Tree_type.tree
 
 (** {1 Conditions for decision trees}
 
     The decision trees used for pattern matching include binary nodes carrying
-    conditions (see constructor {!constructor:Tree_types.tree.Cond}) that must
+    conditions (see constructor {!constructor:Tree_type.tree.Cond}) that must
     be tested during evaluation to select which of the two subsequent branches
     to follow. There are two forms of conditions:
-    - convertibility conditions ({!constructor:Tree_types.tree_cond.CondNL}),
-    - free variable conditions ({!constructor:Tree_types.tree_cond.CondFV}).
+    - convertibility conditions ({!constructor:Tree_type.tree_cond.CondNL}),
+    - free variable conditions ({!constructor:Tree_type.tree_cond.CondFV}).
 
     Convertibility conditions are used whenever we try to apply a rule that is
     not left-linear, for example [f $x $x (s $y) ↪ r]. In this case we need to
@@ -274,7 +274,7 @@ module CM = struct
         variable condition: only variables of [vs] are in the matched term. *)
 
   (** [is_treecons t] tells whether term [t] corresponds to a constructor (see
-      {!type:Tree_types.TC.t}) that is a candidate for a specialization. *)
+      {!type:Tree_type.TC.t}) that is a candidate for a specialization. *)
   let is_treecons : term -> bool = fun t ->
     match fst (get_args t) with
     | Patt(_) -> false
@@ -385,7 +385,7 @@ module CM = struct
 
   (** [yield m] returns the next operation to carry out on matrix [m], that
       is, either specialising, solving a constraint or rewriting to a rule. *)
-  let yield : Parsing.Syntax.Tags.match_strat -> t -> decision =
+  let yield : match_strat -> t -> decision =
     fun mstrat ({ clauses ; positions ; _ } as m) ->
     (* If a line is empty and priority is given to the topmost rule, we have
        to eliminate ¨empty¨ rules. *)
@@ -577,7 +577,7 @@ module CM = struct
       match get t with
       | Some(a,b) ->
           assert (pargs = []) ; (* Patterns in β-normal form *)
-          let b = Bindlib.subst b (mkfree v) in
+          let b = Bindlib.subst b (Vari v) in
           Some({r with c_lhs = insert r [|a; b|]})
       | None      -> assert false (* Term is ill formed *)
 
@@ -662,9 +662,6 @@ let harvest : term array -> rhs -> CM.env_builder -> int VarMap.t -> int ->
     to the RHS are in an environment builder (of type
     {!type:CM.env_builder}). *)
 
-(** A shorthand. *)
-type match_strat = Parsing.Syntax.Tags.match_strat
-
 (** [compile mstrat m] translates the pattern matching problem encoded by the
     matrix [m] into a decision tree following strategy [mstrat]. *)
 let compile : match_strat -> CM.t -> tree = fun mstrat m ->
@@ -715,7 +712,7 @@ let compile : match_strat -> CM.t -> tree = fun mstrat m ->
       in
       let binder recon mat_transf =
         if List.for_all (fun x -> not (recon x)) column then None else
-        let var = Bindlib.new_var mkfree "var" in
+        let var = new_tvar "var" in
         let vars_id = VarMap.add var count vars_id in
         let (positions, clauses) = mat_transf swap var positions updated in
         let next =
@@ -732,6 +729,6 @@ let compile : match_strat -> CM.t -> tree = fun mstrat m ->
 (** [update_dtree s] updates decision tree of symbol [s]. *)
 let update_dtree : sym -> unit = fun symb ->
   let rules = lazy (CM.of_rules !(symb.sym_rules)) in
-  let tree = lazy (compile !(symb.sym_mstrat) (Lazy.force rules)) in
-  let cap = lazy (Tree_types.tree_capacity (Lazy.force tree)) in
+  let tree = lazy (compile symb.sym_mstrat (Lazy.force rules)) in
+  let cap = lazy (Tree_type.tree_capacity (Lazy.force tree)) in
   symb.sym_tree := (cap, tree)

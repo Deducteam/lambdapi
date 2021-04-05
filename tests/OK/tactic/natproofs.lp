@@ -3,7 +3,6 @@ require open tests.OK.bool;
 require open tests.OK.nat;
 
 rule T nat ↪ N;
-set unif_rule T $x ≡ N ↪ [ $x ≡ nat ]; //FIXME should be infered automatically
 
 // Symmetry of the equality (first option, rewrite).
 opaque symbol eq_sym a (x y:T a) : P (x = y) → P (y = x)
@@ -25,7 +24,7 @@ opaque symbol eq_sym_other_2 a (x y:T a) : P (x = y) → P (y = x)
 ≔ begin
   assume a x y h;
   refine eqind a x y h (λ z, y = z) _;
-  simpl;
+  simplify;
   refine refl a y;
 end;
 
@@ -42,11 +41,11 @@ opaque symbol add0r n : P (n + 0 = n)
   // FIXME try to infer the predicate
   refine nat_ind (λ n, n + 0 = n) ?CZ ?CS;
   // Case Z
-  simpl;
+  simplify;
   reflexivity;
   // Case S
   assume n h;
-  simpl;
+  simplify;
   refine s_eq (n + 0) n h;
 end;
 
@@ -56,13 +55,13 @@ opaque symbol add_succ_r n m : P (n + (s m) = s (n + m))
   assume n m;
   refine nat_ind (λ n, n + (s m) = s (n + m)) ?case_0 ?case_s n;
   // Case Z
-  simpl;
+  simplify;
   refine refl nat (s m);
   // Case S
-  simpl;
+  simplify;
   assume pn ih;
   rewrite ih;
-  simpl;
+  simplify;
   refine refl nat (s (s (pn + m)));
 end;
 
@@ -73,10 +72,10 @@ opaque symbol addcomm n m : P (n + m = m + n)
   // FIXME try to infer nat
   refine nat_ind (λ n, n + m = m + n) ?case_0 ?case_s n;
   // Case Z
-  simpl;
+  simplify;
   refine eq_sym _ (m + z) m (add0r m); // TODO add a symmetry tactic
   // Case S
-  simpl;
+  simplify;
   assume k ih;
   rewrite ih;
   reflexivity;
@@ -86,7 +85,7 @@ end;
 opaque symbol add_same_times_two x : P (x + x = 2 × x)
 ≔ begin
   assume x;
-  simpl;
+  simplify;
   refine refl nat (x + x);
 end;
 

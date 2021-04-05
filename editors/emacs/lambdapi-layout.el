@@ -72,9 +72,9 @@ will produce
   :type '(float)
   :group 'lambdapi)
 
-(defcustom lambdapi-window-layout '(v 0.75
+(defcustom lambdapi-window-layout '(v 0.35
                                       lambdapi--temp-buffer-name
-                                      (v 0.75 "*Goals*" "*lp-logs*"))
+                                      (v 0.35 "*Goals*" "*lp-logs*"))
   "Window layout of LambdaPi."
   :group 'lambdapi
   ;; :set might change window layout at an unexpected time

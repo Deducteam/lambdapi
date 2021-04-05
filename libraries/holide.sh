@@ -40,8 +40,9 @@ if [[ ! -d ${DIR} ]]; then
   sed -i "s/^#NAME [a-zA-Z0-9_]\+.//g" "${DIR}/hol.dk"
   for FILE in `find ${DIR} -type f -name "*.dk"`; do
     if [ ${FILE} != "${DIR}/hol.dk" ]; then
-      sed -i "s/^#NAME [a-zA-Z0-9_]\+./#REQUIRE hol./g" ${FILE}
-      sed -i 's/^[{]\([a-zA-Z0-9_-]*\)[}]/def \1/g' ${FILE}
+      sed -i -e "s/^#NAME [a-zA-Z0-9_]\+./#REQUIRE hol./g" \
+          -e 's/^[{]\([a-zA-Z0-9_-]*\)[}]/def \1/g' \
+          -e 's/^def thm_/thm thm_/g' ${FILE}
     fi
   done
   echo "OK"

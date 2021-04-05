@@ -12,8 +12,8 @@ constant symbol N : TYPE;
 constant symbol z : N;
 constant symbol s : N → N;
 
-set builtin "0"  ≔ z;
-set builtin "+1" ≔ s;
+builtin "0"  ≔ z;
+builtin "+1" ≔ s;
 
 // Addition on natural numbers.
 
@@ -82,11 +82,11 @@ constant symbol eqind : Π a x y, P (eq a x y) → Π (p:T a → Prop), P (p y) 
 
 // Setting up builtins for rewrite.
 
-set builtin "P"     ≔ P;
-set builtin "T"     ≔ T;
-set builtin "eq"    ≔ eq;
-set builtin "eqind" ≔ eqind;
-set builtin "refl"  ≔ refl;
+builtin "P"     ≔ P;
+builtin "T"     ≔ T;
+builtin "eq"    ≔ eq;
+builtin "eqind" ≔ eqind;
+builtin "refl"  ≔ refl;
 
 // Symmetry of the equality (first option, rewrite).
 opaque symbol eq_sym : Π a x y, P (eq a x y) → P (eq a y x)
@@ -108,7 +108,7 @@ opaque symbol eq_sym_other_2 : Π a x y, P (eq a x y) → P (eq a y x)
 ≔ begin
   assume a x y h;
   refine eqind a x y h (λ z, eq a y z) _;
-  simpl;
+  simplify;
   refine refl a y;
 end;
 
@@ -126,11 +126,11 @@ opaque symbol add0r : Π n, P (eq nat (add n z) n)
   // FIXME try to infer the predicate;
   refine nat_ind (λ n, eq nat (add n z) n) ?CZ ?CS;
   // Case Z;
-  simpl;
+  simplify;
   refine refl nat z;
   // Case S;
   assume n h;
-  simpl;
+  simplify;
   refine s_eq (add n z) n h;
 end;
 
@@ -140,13 +140,13 @@ opaque symbol add_succ_r : Π n m, P (eq nat (add n (s m)) (s (add n m)))
   assume n m;
   refine nat_ind (λ n, eq nat (add n (s m)) (s (add n m))) ?CZ[n;m] ?CS[n;m] n;
   // Case Z;
-  simpl;
+  simplify;
   refine refl nat (s m);
   // Case S;
-  simpl;
+  simplify;
   assume pn ih;
   rewrite ih;
-  simpl;
+  simplify;
   refine refl nat (s (s (add pn m)));
 end;
 
@@ -156,11 +156,11 @@ opaque symbol addcomm : Π n m, P (eq nat (add n m) (add m n))
   assume n m;
   refine nat_ind (λ (n:N), eq nat (add n m) (add m n)) ?CZ[n;m] ?CS[n;m] n;
   // Case Z;
-  simpl;
+  simplify;
   symmetry;
   refine (add0r m);
   // Case S;
-  simpl;
+  simplify;
   assume k ih;
   rewrite ih;
   rewrite add_succ_r m k;
@@ -171,7 +171,7 @@ end;
 opaque symbol add_same_times_two : Π x, P (eq nat (add x x) (mul 2 x))
 ≔ begin
   assume x;
-  simpl;
+  simplify;
   rewrite add0r;
   refine refl nat (add x x);
 end;

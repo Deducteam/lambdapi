@@ -5,13 +5,17 @@
 // Configuration
 
 constant symbol Prop : TYPE;      // Type of propositions
-set builtin "Prop" ≔ Prop;
+builtin "Prop" ≔ Prop;
 
 injective symbol π : Prop → TYPE; // Interpretation of propositions in TYPE
-set builtin "P" ≔ π;
+builtin "P" ≔ π;
 
 constant symbol Set : TYPE;       // Type of set codes
 injective symbol τ : Set → TYPE;  // Interpretation of set codes in TYPE
+
+/// test escaped type
+inductive {| |}:TYPE ≔ c : {| |};
+assert ⊢ {|ind_ |} : Π p:{| |} → Prop, π (p c) → Π x: {| |}, π (p x);
 
 ////////////////// Primary colors
 
@@ -105,23 +109,23 @@ assert p pz psucc n ⊢ ind_N p pz psucc (succ n) ≡ psucc n (ind_N p pz psucc 
 constant symbol nat : Set;
 rule τ nat ↪ N;
 
-set builtin "0"  ≔ z;
-set builtin "+1" ≔ succ;
+builtin "0"  ≔ z;
+builtin "+1" ≔ succ;
 
 symbol + : N → N → N;
-set notation + infix left 6;
+notation + infix left 6;
 rule       0 + $y ↪ $y
 with succ $x + $y ↪ succ ($x + $y);
 
 symbol × : N → N → N;
-set notation × infix left 7;
+notation × infix left 7;
 rule       0 × _  ↪ 0
 with succ $x × $y ↪ $y + $x × $y;
 
 assert x y z ⊢ x + y × z ≡ x + (y × z);
 
 symbol ≤ : N → N → Prop;
-set notation ≤ infix left 3;
+notation ≤ infix left 3;
 
 assert x y z ⊢ x + y ≤ z ≡ (x + y) ≤ z;
 
@@ -646,22 +650,19 @@ assert p pnil pcons a n x v
 /////////////////////////////
 
 constant symbol = {a} : τ a → τ a → Prop;
-set notation = infix 1;
+notation = infix 1;
 constant symbol eq_refl {a} (x : τ a) : π(x = x);
 constant symbol eq_ind {a} (x y : τ a) : π(x = y) → Π p, π(p y) → π(p x);
 
 // Set builtins for the rewrite tactic
-set builtin "T"     ≔ τ;
-set builtin "eq"    ≔ =;
-set builtin "refl"  ≔ eq_refl;
-set builtin "eqind" ≔ eq_ind;
+builtin "T"     ≔ τ;
+builtin "eq"    ≔ =;
+builtin "refl"  ≔ eq_refl;
+builtin "eqind" ≔ eq_ind;
 
 /////////////////////////////
 // Some proofs
 /////////////////////////////
-
-set unif_rule τ $x ≡ N ↪ [ $x ≡ nat ];
-//FIXME: should be infered from injectivity of τ
 
 opaque symbol plus_0_n n : π(0 + n = n) ≔
 begin
@@ -676,7 +677,7 @@ begin
   reflexivity;
   // Case n = S n'
   assume n' Hn';
-  simpl;
+  simplify;
   rewrite Hn';
   reflexivity;
 end;
@@ -697,8 +698,8 @@ begin
   assume l2;
   induction;
   reflexivity;
-  assume x l2 IHl1;
-  simpl;
+  assume x l1 IHl1;
+  simplify;
   rewrite IHl1;
   reflexivity;
 end;

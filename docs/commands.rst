@@ -59,7 +59,7 @@ identifier. See :doc:`module` for more details.
 
 Allows to declare or define a symbol as follows:
 
-``symbol`` *modifiers* *identifier* *parameters* [``:`` *type*] [``≔`` *term*] [``begin`` *proof* ``end``] ``;``
+*modifiers* ``symbol`` *identifier* *parameters* [``:`` *type*] [``≔`` *term*] [``begin`` *proof* ``end``] ``;``
 
 The identifier should not have already been used in the current module.
 It must be followed by a type or a definition (or both).
@@ -166,8 +166,8 @@ arguments must be explicitly given.
    // unless `eq` is prefixed by `@`.
    // Hence, [eq t u], [eq {_} t u] and [@eq _ t u] are all valid and equivalent.
 
-**Notations**: Some notation can be declared for some symbol. See the command
-``set``.
+**Notations**: Some notation can be declared for a symbol. See the commands
+``notation`` and ``builtin``.
 
 ``rule``
 --------
@@ -255,21 +255,10 @@ Adding sets of rules allows to maintain confluence.
 
 Examples of patterns are available in ``tests/OK/patterns.lp``.
 
-``set builtin``
----------------
-
-The command ``set builtin`` allows to map a “builtin“
-string to a user-defined symbol identifier. Those mappings are
-necessary for other commands or tactics. For instance, to use decimal
-numbers, one needs to map the builtins “0“ and “+1“ to some symbol
-identifiers for zero and the successor function (see hereafter); to
-use tactics on equality, one needs to define some specific builtins;
-etc.
-
-``set notation``
+``notation``
 ----------------
 
-The ``set notation`` command is used to specify a notation for a symbol.
+The ``notation`` command is used to specify a notation for a symbol.
 
 **infix** The following code defines infix symbols for addition
 and multiplication. Both are associative to the left, and they have
@@ -277,8 +266,8 @@ priority levels ``6`` and ``7`` respectively.
 
 ::
 
-   set notation + infix left 6;
-   set notation × infix left 7;
+   notation + infix left 6;
+   notation × infix left 7;
 
 The modifier ``infix``, ``infix right`` and ``infix left`` can be used
 to specify whether the defined symbol is non-associative, associative to
@@ -291,20 +280,28 @@ negation with some priority level.
 
 ::
 
-   set notation ¬ prefix 5;
+   notation ¬ prefix 5;
 
-**quantifier** Any symbol can be input as a quantifier (as done usually
-with symbols such as ``∀``, ``∃`` or ``λ``), provided that it
-is prefixed with a backquote `` \` ``. However, such terms will be printed as
-quantifiers only if they are declared so using the command ``set quantifier``:
+**quantifier** Allows to write ``\`f x, t`` instead of ``f (λ x, t)``:
 
 ::
 
    symbol ∀ {a} : (T a → Prop) → Prop;
-   set notation ∀ quantifier;
+   notation ∀ quantifier;
    compute λ p, ∀ (λ x:T a, p); // prints `∀ x, p
    type λ p, `∀ x, p; // quantifiers can be written as such
    type λ p, `f x, p; // works as well if f is any symbol
+
+``builtin``
+---------------
+
+The command ``builtin`` allows to map a “builtin“
+string to a user-defined symbol identifier. Those mappings are
+necessary for other commands or tactics. For instance, to use decimal
+numbers, one needs to map the builtins “0“ and “+1“ to some symbol
+identifiers for zero and the successor function (see hereafter); to
+use tactics on equality, one needs to define some specific builtins;
+etc.
 
 **notation for natural numbers** It is possible to use the standard
 decimal notation for natural numbers by defining the builtins ``"0"``
@@ -312,11 +309,11 @@ and ``"+1"`` as follows:
 
 ::
 
-   set builtin "0"  ≔ zero; // : N
-   set builtin "+1" ≔ succ; // : N → N
+   builtin "0"  ≔ zero; // : N
+   builtin "+1" ≔ succ; // : N → N
    type 42;
 
-``set unif_rule``
+``unif_rule``
 -----------------
 
 The unification engine can be guided using
@@ -331,9 +328,9 @@ Examples:
 
 ::
 
-   set unif_rule Bool ≡ T $t ↪ [ $t ≡ bool ];
-   set unif_rule $x + $y ≡ 0 ↪ [ $x ≡ 0; $y ≡ 0 ];
-   set unif_rule $a → $b ≡ T $c ↪ [ $a ≡ T $a'; $b ≡ T $b'; $c ≡ arrow $a' $b' ];
+   unif_rule Bool ≡ T $t ↪ [ $t ≡ bool ];
+   unif_rule $x + $y ≡ 0 ↪ [ $x ≡ 0; $y ≡ 0 ];
+   unif_rule $a → $b ≡ T $c ↪ [ $a ≡ T $a'; $b ≡ T $b'; $c ≡ arrow $a' $b' ];
 
 Thanks to the first unification rule, a problem ``T ?x ≡ Bool`` is
 transformed into ``?x ≡ bool``.
@@ -354,17 +351,17 @@ type definition, assuming that the following builtins are defined:
 
 ::
    
-   ￼set builtin "Prop" ≔ ...; // : TYPE, for the type of propositions
-   ￼set builtin "P"    ≔ ...; // : Prop → TYPE, interpretation of propositions as types
-
-Currently, it only supports parametrized mutually defined dependent
-first-order data types. As usual, polymorphic types can be encoded by
-defining a type ``Set`` and a function ``τ:Set → TYPE``.
+   ￼builtin "Prop" ≔ ...; // : TYPE, for the type of propositions
+   ￼builtin "P"    ≔ ...; // : Prop → TYPE, interpretation of propositions as types
 
 An inductive type can have 0 or more constructors.
 
 The name of the induction principle is ``ind_`` followed by the name
 of the type.
+
+The command currently supports parametrized mutually defined dependent
+strictly-positive data types only. As usual, polymorphic types can be
+encoded by defining a type ``Set`` and a function ``τ:Set → TYPE``.
 
 Example:
 
@@ -375,17 +372,15 @@ Example:
    ￼| succ: ℕ → ℕ;
    
 is equivalent to:
-￼
+
 ::
    
    ￼constant symbol ℕ : TYPE;
    ￼constant symbol zero : ℕ;
    ￼constant symbol succ : ℕ → ℕ;
-   ￼symbol ind_ℕ p :
-      π(p zero) → (Π x, π(p x) → π(p(succ x))) → Π x, π(p x);
+   ￼symbol ind_ℕ p : π(p zero) → (Π x, π(p x) → π(p(succ x))) → Π x, π(p x);
    ￼rule ind_ℕ _ $pz _ zero ↪ $pz
    ￼with ind_ℕ $p $pz $ps (succ $n) ↪ $ps $n (ind_ℕ $p $pz $ps $n);
-
 
 For mutually defined inductive types, one needs to use the ``with``
 keyword to link all inductive types together.
@@ -394,8 +389,7 @@ Inductive definitions can also be parametrized as follows:
 
 ::
    
-   (a:Set)
-   inductive T: TYPE ≔
+   (a:Set) inductive T: TYPE ≔
    | node: τ a → F a → T a
    with F: TYPE ≔
    | nilF: F a
@@ -419,3 +413,16 @@ generated for each inductive type:
      π(q nilF) →
      (Π t, π(p t) → Π l, π(q l) → π(q (consF t l))) →
      Π t, π(p t);
+
+Finaly, here is an example of strictly-positive inductive type:
+
+::
+
+   inductive 𝕆:TYPE ≔ z:𝕆 | s:𝕆 → 𝕆 | l:(ℕ → 𝕆) → 𝕆;
+
+   assert ⊢ ind_𝕆: Π p, π (p z) → (Π x, π (p x) → π (p (s x)))
+     → (Π x, (Π y, π (p (x y))) → π (p (l x))) → Π x, π (p x);
+
+   assert p a b c ⊢ ind_𝕆 p a b c z ≡ a;
+   assert p a b c x ⊢ ind_𝕆 p a b c (s x) ≡ b x (ind_𝕆 p a b c x);
+   assert p a b c x y ⊢ ind_𝕆 p a b c (l x) ≡ c x (λ y, ind_𝕆 p a b c (x y));

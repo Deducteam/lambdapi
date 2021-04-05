@@ -13,14 +13,28 @@ open Extra
 let log_infr = new_logger 'i' "infr" "type inference/checking"
 let log_infr = log_infr.logger
 
-(** [type_app a ts] returns [Some(u)] where [u] is a type of [add_args x ts]
-   where [x] is any term of type [a] if [x] can be applied to at least
-   [List.length ts] arguments, and [None] otherwise. *)
-let rec type_app : ctxt -> term -> term list -> term option = fun ctx a ts ->
-  match Eval.whnf ctx a, ts with
-  | Prod(_,b), t::ts -> type_app ctx (Bindlib.subst b t) ts
-  | _, [] -> Some a
-  | _, _ -> None
+(** Given a meta [m] of type [Πx1:a1,..,Πxn:an,b], [set_to_prod m] sets it to
+   product term of the form [Πy:m1[x1;..;xn],m2[x1;..;xn;y]] with [m1] and
+   [m2] fresh metavariables. *)
+let set_to_prod : meta -> unit = fun m ->
+  let n = m.meta_arity in
+  let env, s = Env.of_prod_nth [] n !(m.meta_type) in
+  let vs = Env.vars env in
+  let xs = Array.map _Vari vs in
+  (* domain *)
+  let u1 = Env.to_prod env _Type in
+  let m1 = Meta.fresh u1 n in
+  let a = _Meta m1 xs in
+  (* codomain *)
+  let y = new_tvar "y" in
+  let env' = Env.add y (_Meta m1 xs) None env in
+  let u2 = Env.to_prod env' (lift s) in
+  let m2 = Meta.fresh u2 (n+1) in
+  let b = Bindlib.bind_var y (_Meta m2 (Array.append xs [|_Vari y|])) in
+  (* result *)
+  let p = _Prod a b in
+  if !log_enabled then log_infr "%a ≔ %a" pp_meta m pp_term (Bindlib.unbox p);
+  Meta.set m (Bindlib.unbox (Bindlib.bind_mvar vs p))
 
 (** Accumulated constraints. *)
 let constraints = Stdlib.ref []
@@ -31,7 +45,7 @@ let conv ctx a b =
     begin
       let c = (ctx,a,b) in
       Stdlib.(constraints := c::!constraints);
-      if !log_enabled then log_infr (yel "add %a") pp_constr c
+      if !log_enabled then log_infr (mag "%a") pp_constr c
     end
 
 (** Exception that may be raised by type inference. *)
@@ -110,21 +124,27 @@ let rec infer : ctxt -> term -> term = fun ctx t ->
      ------------------------------------
          ctx ⊢ Appl(t,u) ⇒ subst b u      *)
   | Appl(t,u)   ->
-      (* We first infer a product type for [t]. *)
-      let (a,b) =
-        let c = Eval.whnf ctx (infer ctx t) in
-        match c with
+      (* [get_prod f typ] returns the domain and codomain of [t] if [t] is a
+         product. If [t] is a metavariable, then it instantiates it with a
+         product calls [get_prod f typ] again. Otherwise, it calls [f typ]. *)
+      let rec get_prod f typ =
+        if !log_enabled then log_infr "get_prod %a" pp_term typ;
+        match unfold typ with
         | Prod(a,b) -> (a,b)
-        | _         ->
-            let a = LibTerm.make_meta ctx Type in
-            (* Here, we force [b] to be of type [Type] as there is little
-               (no?) chance that it can be a kind. FIXME? *)
-            let b = LibTerm.make_meta_codomain ctx a in
-            conv ctx c (Prod(a,b)); (a,b)
+        | Meta(m,_) -> set_to_prod m; get_prod f typ
+        | _ -> f typ
       in
-      (* We then check the type of [u] against the domain type. *)
+      let get_prod_whnf = (* assumes that its argument is in whnf *)
+        get_prod (fun typ ->
+            let a = LibTerm.Meta.make ctx Type in
+            (* We force [b] to be of type [Type] as there is little (no?)
+               chance that it can be a kind. *)
+            let b = LibTerm.Meta.make_codomain ctx a in
+            conv ctx typ (Prod(a,b)); (a,b)) in
+      let get_prod =
+        get_prod (fun typ -> get_prod_whnf (Eval.whnf ctx typ)) in
+      let (a,b) = get_prod (infer ctx t) in
       check ctx u a;
-      (* We produce the returned type. *)
       Bindlib.subst b u
 
   (*  ctx ⊢ t ⇐ a       ctx, x : a := t ⊢ u ⇒ b
@@ -146,7 +166,7 @@ let rec infer : ctxt -> term -> term = fun ctx t ->
   | Meta(m,ts)   ->
       (* The type of [Meta(m,ts)] is the same as the one obtained by applying
          to [ts] a new symbol having the same type as [m]. *)
-      let s = Term.create_sym (Sign.current_sign()).sign_path Privat Const
+      let s = Term.create_sym (Sign.current_path()) Privat Const
                 Eager true ("?" ^ Meta.name m) !(m.meta_type) [] in
       infer ctx (Array.fold_left (fun acc t -> Appl(acc,t)) (Symb s) ts)
 
@@ -155,8 +175,7 @@ let rec infer : ctxt -> term -> term = fun ctx t ->
    [conv]. [ctx] must be well-formed and [a] well-sorted. This function never
    fails (but constraints may be unsatisfiable). *)
 and check : ctxt -> term -> term -> unit = fun ctx t a ->
-  if !log_enabled then
-    log_infr "check %a%a\n: %a" pp_ctxt ctx pp_term t pp_term a;
+  if !log_enabled then log_infr "check %a" pp_typing (ctx,t,a);
   conv ctx (infer ctx t) a
 
 (** [infer_noexn cs ctx t] returns [None] if the type of [t] in context [ctx]
@@ -168,13 +187,11 @@ let infer_noexn : constr list -> ctxt -> term -> (term * constr list) option =
   Stdlib.(constraints := cs);
   let res =
     try
-      let a = infer ctx t in
+      if !log_enabled then log_hndl (blu "infer %a%a") pp_ctxt ctx pp_term t;
+      let a = time_of (fun () -> infer ctx t) in
       let cs = Stdlib.(!constraints) in
-      (if !log_enabled then
-        let cond oc c = Format.fprintf oc "\n  if %a" pp_constr c in
-        log_infr (gre "infer %a : %a%a")
-          pp_term t pp_term a (List.pp cond "") cs);
-      Some (a, List.rev cs)
+      if !log_enabled then log_hndl (blu "%a%a") pp_term a pp_constrs cs;
+      Some (a, cs)
     with NotTypable -> None
   in Stdlib.(constraints := []); res
 
@@ -187,13 +204,11 @@ let check_noexn : constr list -> ctxt -> term -> term -> constr list option =
   Stdlib.(constraints := cs);
   let res =
     try
-      check ctx t a;
+      if !log_enabled then log_hndl (blu "check %a") pp_typing (ctx,t,a);
+      time_of (fun () -> check ctx t a);
       let cs = Stdlib.(!constraints) in
-      (if !log_enabled then
-        let cond oc c = Format.fprintf oc "\n  if %a" pp_constr c in
-        log_infr (gre "check %a\n: %a%a")
-          pp_term t pp_term a (List.pp cond "") cs);
-      Some (List.rev cs)
+      if !log_enabled && cs <> [] then log_hndl (blu "%a") pp_constrs cs;
+      Some cs
     with NotTypable -> None
   in Stdlib.(constraints := []); res
 
@@ -208,11 +223,12 @@ let infer : solver -> Pos.popt -> ctxt -> term -> term =
   match infer_noexn [] ctx t with
   | None -> fatal pos "[%a] is not typable." pp_term t
   | Some(a, to_solve) ->
+      let to_solve = List.rev to_solve in
       match solve_noexn {empty_problem with to_solve} with
       | None -> fatal pos "[%a] is not typable." pp_term t
       | Some [] -> a
       | Some cs ->
-          List.iter (wrn pos "Cannot solve [%a].\n" pp_constr) cs;
+          List.iter (wrn pos "Cannot solve %a.\n" pp_constr) cs;
           fatal pos "[%a] is not typable." pp_term a
 
 (** [check pos ctx t a] checks that [t] has type [a] in context [ctx],
@@ -223,11 +239,12 @@ let check : solver -> Pos.popt -> ctxt -> term -> term -> unit =
   match check_noexn [] ctx t a with
   | None -> fatal pos "[%a] does not have type [%a]." pp_term t pp_term a
   | Some(to_solve) ->
+      let to_solve = List.rev to_solve in
       match solve_noexn {empty_problem with to_solve} with
       | None -> fatal pos "[%a] does not have type [%a]." pp_term t pp_term a
       | Some [] -> ()
       | Some cs ->
-          List.iter (wrn pos "Cannot solve [%a].\n" pp_constr) cs;
+          List.iter (wrn pos "Cannot solve %a.\n" pp_constr) cs;
           fatal pos "[%a] does not have type [%a]." pp_term t pp_term a
 
 (** [check_sort pos ctx t] checks that [t] has type [Type] or [Kind] in
@@ -238,10 +255,11 @@ let check_sort : solver -> Pos.popt -> ctxt -> term -> unit
   match infer_noexn [] ctx t with
   | None -> fatal pos "[%a] is not typable." pp_term t
   | Some(a, to_solve) ->
+      let to_solve = List.rev to_solve in
       match solve_noexn {empty_problem with to_solve} with
       | None -> fatal pos "[%a] is not typable." pp_term t
       | Some ((_::_) as cs) ->
-          List.iter (wrn pos "Cannot solve [%a].\n" pp_constr) cs;
+          List.iter (wrn pos "Cannot solve %a.\n" pp_constr) cs;
           fatal pos "[%a] is not typable." pp_term a
       | Some [] ->
           match unfold a with

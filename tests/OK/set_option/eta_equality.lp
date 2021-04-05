@@ -1,4 +1,4 @@
-set flag "eta_equality" on;
+flag "eta_equality" on;
 
 constant symbol Type : TYPE;
 constant symbol f : Type → Type;

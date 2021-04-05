@@ -6,6 +6,7 @@
   open Common
   open Pos
   open Syntax
+  open Core
 
   let make_pos : Lexing.position * Lexing.position -> 'a -> 'a loc =
     fun lps elt -> Pos.in_pos (locate lps) elt
@@ -28,6 +29,7 @@
 
 %token ABORT
 %token ADMIT
+%token ADMITTED
 %token APPLY
 %token AS
 %token ASSERT
@@ -42,6 +44,8 @@
 %token FAIL
 %token FLAG
 %token FOCUS
+%token GENERALIZE
+%token HAVE
 %token IN
 %token INDUCTION
 %token INDUCTIVE
@@ -65,8 +69,7 @@
 %token REWRITE
 %token RULE
 %token SEQUENTIAL
-%token SET
-%token SIMPL
+%token SIMPLIFY
 %token SOLVE
 %token SYMBOL
 %token SYMMETRY
@@ -130,11 +133,10 @@
 %type <Syntax.p_term> aterm
 %type <Syntax.p_term> sterm
 
-%type <Syntax.notation> notation
+%type <Sign.notation> notation
 %type <Syntax.p_rule> rule
 %type <Syntax.p_tactic> tactic
 %type <Syntax.p_modifier> modifier
-%type <Syntax.p_config> config
 %type <Syntax.p_rw_patt> rw_patt
 %type <Syntax.p_tactic list * Syntax.p_proof_end> proof
 
@@ -188,10 +190,13 @@ rw_patt:
 
 tactic:
   | q=query { make_pos $sloc (P_tac_query q) }
+  | ADMIT { make_pos $sloc P_tac_admit }
   | APPLY t=term { make_pos $sloc (P_tac_apply t) }
   | ASSUME xs=param_id+ { make_pos $sloc (P_tac_assume xs) }
   | FAIL { make_pos $sloc P_tac_fail }
   | FOCUS i=INT { make_pos $sloc (P_tac_focus i) }
+  | GENERALIZE i=uid { make_pos $sloc (P_tac_generalize i) }
+  | HAVE i=uid COLON t=term { make_pos $sloc (P_tac_have(i,t)) }
   | INDUCTION { make_pos $sloc P_tac_induction }
   | REFINE t=term { make_pos $sloc (P_tac_refine t) }
   | REFLEXIVITY { make_pos $sloc P_tac_refl }
@@ -201,18 +206,18 @@ tactic:
         | Some(Pratter.Left) -> false
         | _ -> true
       in make_pos $sloc (P_tac_rewrite(b,p,t)) }
-  | SIMPL { make_pos $sloc P_tac_simpl }
+  | SIMPLIFY i=id? { make_pos $sloc (P_tac_simpl i) }
   | SOLVE { make_pos $sloc P_tac_solve }
   | SYMMETRY { make_pos $sloc P_tac_sym }
   | WHY3 s=STRINGLIT? { make_pos $sloc (P_tac_why3 s) }
 
 modifier:
-  | CONSTANT { make_pos $sloc (P_prop Tags.Const) }
-  | INJECTIVE { make_pos $sloc (P_prop Tags.Injec) }
+  | CONSTANT { make_pos $sloc (P_prop Term.Const) }
+  | INJECTIVE { make_pos $sloc (P_prop Term.Injec) }
   | OPAQUE { make_pos $sloc P_opaq }
-  | PRIVATE { make_pos $sloc (P_expo Tags.Privat) }
-  | PROTECTED { make_pos $sloc (P_expo Tags.Protec) }
-  | SEQUENTIAL { make_pos $sloc (P_mstrat Tags.Sequen) }
+  | PRIVATE { make_pos $sloc (P_expo Term.Privat) }
+  | PROTECTED { make_pos $sloc (P_expo Term.Protec) }
+  | SEQUENTIAL { make_pos $sloc (P_mstrat Term.Sequen) }
 
 float_or_int:
   | p=FLOAT { p }
@@ -222,11 +227,6 @@ notation:
   | INFIX a=ASSOC? p=float_or_int { Infix(Option.get Pratter.Neither a, p) }
   | PREFIX p=float_or_int { Prefix(p) }
   | QUANTIFIER { Quant }
-
-config:
-  | BUILTIN s=STRINGLIT ASSIGN i=id { P_config_builtin(s,i) }
-  | UNIF_RULE r=unif_rule { P_config_unif_rule(r) }
-  | NOTATION i=id n=notation { P_config_notation(i,n) }
 
 assert_kw:
   | ASSERT { false }
@@ -245,18 +245,18 @@ query:
     { make_pos $sloc (P_query_normalize(t, {strategy=SNF; steps=None})) }
   | PRINT i=id? { make_pos $sloc (P_query_print i) }
   | PROOFTERM { make_pos $sloc P_query_proofterm }
-  | SET DEBUG fl=DEBUG_FLAGS
+  | DEBUG fl=DEBUG_FLAGS
     { let (b, s) = fl in make_pos $sloc (P_query_debug(b, s)) }
-  | SET FLAG s=STRINGLIT b=SWITCH { make_pos $sloc (P_query_flag(s,b)) }
-  | SET PROVER s=STRINGLIT { make_pos $sloc (P_query_prover(s)) }
-  | SET PROVER_TIMEOUT i=INT { make_pos $sloc (P_query_prover_timeout(i)) }
-  | SET VERBOSE i=INT { make_pos $sloc (P_query_verbose(i)) }
+  | FLAG s=STRINGLIT b=SWITCH { make_pos $sloc (P_query_flag(s,b)) }
+  | PROVER s=STRINGLIT { make_pos $sloc (P_query_prover(s)) }
+  | PROVER_TIMEOUT i=INT { make_pos $sloc (P_query_prover_timeout(i)) }
+  | VERBOSE i=INT { make_pos $sloc (P_query_verbose(i)) }
   | TYPE_QUERY t=term
     { make_pos $sloc (P_query_infer(t, {strategy=NONE; steps=None}))}
 
 proof_end:
   | ABORT { make_pos $sloc Syntax.P_proof_abort }
-  | ADMIT { make_pos $sloc Syntax.P_proof_admit }
+  | ADMITTED { make_pos $sloc Syntax.P_proof_admitted }
   | END { make_pos $sloc Syntax.P_proof_end }
 
 proof: BEGIN ts=terminated(tactic, SEMICOLON)* pe=proof_end { ts, pe }
@@ -302,7 +302,10 @@ command:
       { make_pos $sloc (P_inductive(ms,xs,is)) }
   | RULE rs=separated_nonempty_list(WITH, rule) SEMICOLON
       { make_pos $sloc (P_rules(rs)) }
-  | SET c=config SEMICOLON { make_pos $sloc (P_set(c)) }
+  | BUILTIN s=STRINGLIT ASSIGN i=id SEMICOLON
+    { make_pos $loc (P_builtin(s,i)) }
+  | UNIF_RULE r=unif_rule SEMICOLON { make_pos $loc (P_unif_rule(r)) }
+  | NOTATION i=id n=notation SEMICOLON { make_pos $loc (P_notation(i,n)) }
   | q=query SEMICOLON { make_pos $sloc (P_query(q)) }
   | EOF { raise End_of_file }
 
@@ -346,8 +349,8 @@ equation: l=term EQUIV r=term { (l, r) }
 unif_rule: e=equation HOOK_ARROW
   L_SQ_BRACKET es=separated_nonempty_list(SEMICOLON, equation) R_SQ_BRACKET
     { (* FIXME: give sensible positions instead of Pos.none and P.appl. *)
-      let equiv = P.qiden LpLexer.unif_rule_path LpLexer.equiv in
-      let cons = P.qiden LpLexer.unif_rule_path LpLexer.cons in
+      let equiv = P.qiden Unif_rule.path Unif_rule.equiv.sym_name in
+      let cons = P.qiden Unif_rule.path Unif_rule.cons.sym_name in
       let mk_equiv (t, u) = P.appl (P.appl equiv t) u in
       let lhs = mk_equiv e in
       let es = List.rev_map mk_equiv es in

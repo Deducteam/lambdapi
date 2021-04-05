@@ -11,10 +11,16 @@ open Print
 open Proof
 open Debug
 open! Lplib
-open Extra
+open Base
 
 (** Result of query displayed on hover in the editor. *)
-type result = string option
+type result = (unit -> string) option
+
+(** [return pp x] prints [x] using [pp] on [Stdlib.(!out_fmt)] at verbose
+   level 1 and returns a function for printing [x] on a string using [pp]. *)
+let return : 'a pp -> 'a -> result = fun pp x ->
+  Console.out 1 (Extra.red "%a\n") pp x;
+  Some (fun () -> Format.asprintf "%a" pp x)
 
 (** [handle_query ss ps q] *)
 let handle : Sig_state.t -> proof_state option -> p_query -> result =
@@ -37,51 +43,75 @@ let handle : Sig_state.t -> proof_state option -> p_query -> result =
        with Not_found -> fatal pos "Unknown flag \"%s\"." id);
       Console.out 3 "(flag) %s → %b\n" id b;
       None
-  | P_query_prover(s) ->
-      Timed.(Why3_tactic.default_prover := s);
-      None
-  | P_query_prover_timeout(n) ->
-      Timed.(Why3_tactic.timeout := n);
-      None
+  | P_query_prover(s) -> Timed.(Why3_tactic.default_prover := s); None
+  | P_query_prover_timeout(n) -> Timed.(Why3_tactic.timeout := n); None
   | P_query_print(None) ->
-      (match ps with
-       | None -> fatal pos "Not in a proof."
-       | Some ps -> Console.out 1 "%a" Proof.pp_goals ps;
-                    Some (Format.asprintf "%a" Proof.pp_goals ps))
+      begin
+        match ps with
+        | None -> fatal pos "Not in a proof."
+        | Some ps -> return Proof.pp_goals ps
+      end
   | P_query_print(Some qid) ->
-      let sym = Sig_state.find_sym ~prt:true ~prv:true ss qid in
-      let open Timed in
-      Console.out 1 "(prnt) %a%a%asymbol %a: %a" Tags.pp_expo sym.sym_expo
-        Tags.pp_prop sym.sym_prop Tags.pp_match_strat !(sym.sym_mstrat)
-        pp_sym sym pp_term !(sym.sym_type);
-      Option.iter (fun h -> Console.out 1 " [%a]" pp_notation h)
-        (notation_of sym);
-      (match !(sym.sym_def) with
-      | Some t ->
-          Console.out 1 " ≔ %a\n" pp_term t;
-          Some (Format.asprintf " ≔ %a" pp_term t)
-      | None ->
-          Console.out 1 "\n";
-          let rule oc r = Format.fprintf oc "%a\n" pp_rule (sym, r) in
-          Console.out 1 "%a" (List.pp rule "") !(sym.sym_rules);
-          Some (Format.asprintf "%a" (List.pp rule "") !(sym.sym_rules)))
+      let pp_sym_info ppf s =
+        let out = Format.fprintf in
+        let open Timed in
+        (* print its type and properties *)
+        out ppf "%a%a%asymbol %a: %a\n" pp_expo s.sym_expo
+          pp_prop s.sym_prop pp_match_strat s.sym_mstrat
+          pp_sym s pp_prod (!(s.sym_type), s.sym_impl);
+        (* print its definition *)
+        begin
+          match !(s.sym_def) with
+          | Some t -> out ppf "\n≔ %a\n" pp_term t
+          | None -> ()
+        end;
+        (* print its notation *)
+        let pp_notation : Sign.notation option pp = fun ppf n ->
+          match n with
+          | None -> ()
+          | Some n -> out ppf "notation %a %a" pp_sym s pp_notation n
+        in
+        pp_notation ppf (notation_of s);
+        (* print its rules *)
+        begin
+          match !(s.sym_rules) with
+          | [] -> ()
+          | rs -> let pp_rule ppf r = out ppf "  %a\n" pp_rule (s,r) in
+                  out ppf "rules:\n%a" (List.pp pp_rule "") rs
+        end;
+        (* print its constructors (if it is an inductive type) *)
+        begin
+          let open Sign in
+          (* get the signature of [s] *)
+          let sign =
+            try Path.Map.find s.sym_path Timed.(!loaded)
+            with Not_found -> assert false
+          in
+          let pp_decl : sym pp = fun ppf s ->
+            out ppf "  %a: %a\n" pp_sym s pp_term !(s.sym_type) in
+          let pp_ind : ind_data pp = fun ppf ind ->
+            out ppf "constructors:\n%ainduction principle:\n%a"
+              (List.pp pp_decl "") ind.ind_cons pp_decl ind.ind_prop in
+          try out ppf "%a" pp_ind (SymMap.find s Timed.(!(sign.sign_ind)))
+          with Not_found -> ()
+        end;
+      in
+      return pp_sym_info (Sig_state.find_sym ~prt:true ~prv:true ss qid)
   | P_query_proofterm ->
       (match ps with
        | None -> fatal pos "Not in a proof"
        | Some ps ->
            match ps.proof_term with
-           | Some t ->
-              Console.out 1 "%a\n" pp_term (Meta(t,[||]));
-              Some (Format.asprintf "%a" pp_term (Meta(t,[||])))
+           | Some m -> return pp_term (Meta(m,[||]))
            | None -> fatal pos "Not in a definition")
   | _ ->
   let env = Proof.focus_env ps in
-  let sms =
-    match ps with
-    | None -> IntMap.empty
-    | Some ps -> Proof.sys_metas ps
+  let sms = lazy
+    (match ps with
+    | None -> Extra.IntMap.empty
+    | Some ps -> Proof.sys_metas ps)
   in
-  let scope = Scope.scope_term Public ss env sms in
+  let scope = Scope.scope_term true ss env sms in
   let ctxt = Env.to_ctxt env in
   match elt with
   | P_query_debug(_,_)
@@ -132,11 +162,8 @@ let handle : Sig_state.t -> proof_state option -> p_query -> result =
   | P_query_infer(pt, cfg) ->
       let t = scope pt in
       let a = Infer.infer Unif.solve_noexn pt.pos ctxt t in
-      let res = Eval.eval cfg ctxt a in
-      Console.out 1 "(infr) %a : %a\n" pp_term t pp_term res;
-      Some (Format.asprintf "%a : %a" pp_term t pp_term res)
+      return pp_term (Eval.eval cfg ctxt a)
   | P_query_normalize(pt, cfg) ->
       let t = scope pt in
       ignore (Infer.infer Unif.solve_noexn pt.pos ctxt t);
-      Console.out 1 "(comp) %a\n" pp_term (Eval.eval cfg ctxt t);
-      Some (Format.asprintf "%a" pp_term (Eval.eval cfg ctxt t))
+      return pp_term (Eval.eval cfg ctxt t)

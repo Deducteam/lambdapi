@@ -8,20 +8,16 @@ let test_ok f () =
 
 let test_ko f () =
   (* Succeed if compilation fails. *)
-  let r = try (ignore (compile f)); true with _ -> false in
+  let r = try ignore (compile f); true with _ -> false in
   Alcotest.(check bool) f r false
 
 let test_one_folder : string -> string -> 'a array = fun main_folder specific_folder ->
   let current_folder = main_folder ^ "/" ^ specific_folder in
   let files =
-    Sys.readdir current_folder |> Array.map (fun f -> current_folder ^ "/" ^ f)
-    |> Array.to_list
-    (* TODO put back OK/unif_hint.lp when it is fixed *)
-    |> List.filter (function f -> f <> "OK/set_option/unif_hint.lp")
-    |> Array.of_list
+    Lplib.Extra.files Common.Library.is_valid_src_extension current_folder
   in
   let test_fct = if main_folder = "OK" then test_ok else test_ko in
-  Array.map (fun f -> Alcotest.test_case f `Quick (test_fct f)) files
+  List.map (fun f -> Alcotest.test_case f `Quick (test_fct f)) files
 
 let test_suite = [ ("OK", "parsing") ; ("OK", "scoping") ; ("OK", "import") ;
                    ("OK", "set_option") ; ("OK", "queries") ; ("OK", "symbol") ;

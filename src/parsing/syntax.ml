@@ -5,9 +5,27 @@ open Lplib.Base
 open Lplib.Extra
 open Common
 open Pos
+open Core
 
 (** Representation of a (located) identifier. *)
 type p_ident = strloc
+
+(** [notin id idopts] checks that [id] does not occur in [idopts]. *)
+let check_notin : string -> p_ident option list -> unit = fun id ->
+  let rec notin = function
+    | [] -> ()
+    | None :: idopts -> notin idopts
+    | Some {elt=id';pos} :: idopts ->
+        if id' = id then Error.fatal pos "%s already used." id
+        else notin idopts
+  in notin
+
+(** [are_distinct idopts] checks that the elements of [idopts] of the form
+   [Some _] are pairwise distinct. *)
+let rec check_distinct : p_ident option list -> unit = function
+  | [] -> ()
+  | None :: idopts -> check_distinct idopts
+  | Some {elt=id;_} :: idopts -> check_notin id idopts; check_distinct idopts
 
 (** Identifier of a metavariable. *)
 type meta_ident = Name of string | Numb of int
@@ -17,19 +35,8 @@ type p_meta_ident = meta_ident loc
 type p_path = Path.t loc
 
 (** Representation of a possibly qualified (and located) identifier. *)
-type qident = Path.t * string
+type qident = Term.qident
 type p_qident = qident loc
-
-(** The priority of an infix operator is a floating-point number. *)
-type priority = float
-
-(** Notations. *)
-type notation =
-  | Prefix of priority
-  | Infix of Pratter.associativity * priority
-  | Zero
-  | Succ
-  | Quant
 
 (** Parser-level (located) term representation. *)
 type p_term = p_term_aux loc
@@ -55,6 +62,28 @@ and p_term_aux =
     the argument is marked as implicit (i.e., between curly braces). *)
 and p_params = p_ident option list * p_term option * bool
 
+(** [nb_params ps] returns the number of parameters in a list of parameters
+    [ps]. *)
+let nb_params : p_params list -> int =
+  List.fold_left (fun acc (ps,_,_) -> acc + List.length ps) 0
+
+(** [get_impl_params_list l] gives the implicitness of [l]. *)
+let rec get_impl_params_list : p_params list -> bool list = function
+  | [] -> []
+  | (params,_,impl)::params_list ->
+      List.map (fun _ -> impl) params @ get_impl_params_list params_list
+
+(** [get_impl_term t] gives the implicitness of [t]. *)
+let rec get_impl_term : p_term -> bool list = fun t -> get_impl_term_aux t.elt
+and get_impl_term_aux : p_term_aux -> bool list = fun t ->
+  match t with
+  | P_Prod([],t) -> get_impl_term t
+  | P_Prod((ys,_,impl)::xs,t) ->
+      List.map (fun _ -> impl) ys @ get_impl_term_aux (P_Prod(xs,t))
+  | P_Arro(_,t)  -> false :: get_impl_term t
+  | P_Wrap(t)    -> get_impl_term t
+  | _            -> []
+
 (** [p_get_args t] is {!val:LibTerm.get_args} on syntax-level terms. *)
 let p_get_args : p_term -> p_term * p_term list = fun t ->
   let rec p_get_args acc t =
@@ -73,33 +102,42 @@ type p_inductive = p_inductive_aux loc
 
 (** Module to create p_term's with no positions. *)
 module P  = struct
-  (** [qiden p s] builds "@p.s" with no positions. *)
+
+  (** [qiden p s] builds a [P_Iden] "@p.s". *)
   let qiden : Path.t -> string -> p_term = fun p s ->
     Pos.none (P_Iden(Pos.none (p, s), true))
 
-  (** [iden s] builds "@s" with no positions. *)
+  (** [iden s] builds a [P_Iden] "@s". *)
   let iden : string -> p_term = qiden []
 
-  (** [patt s ts] builds "$s[ts]" with no positions. *)
+  (** [var v] builds a [P_Iden] from [Bindlib.name_of v]. *)
+  let var : Term.tvar -> p_term = fun v -> iden (Bindlib.name_of v)
+
+  (** [patt s ts] builds a [P_Patt] "$s[ts]". *)
   let patt : string -> p_term array option -> p_term = fun s ts ->
     Pos.none (P_Patt (Some (Pos.none s), ts))
 
-  (** [patt0 s] builds "$s" with no positions. *)
+  (** [patt0 s] builds a [P_Patt] "$s". *)
   let patt0 : string -> p_term = fun s -> patt s None
 
-  let appl : p_term -> p_term -> p_term = fun t1 t2 ->
-    Pos.none (P_Appl(t1, t2))
+  (** [appl t u] builds [P_Appl(t, u)]. *)
+  let appl : p_term -> p_term -> p_term = fun t u -> Pos.none (P_Appl(t, u))
 
+  (** [appl_list t ts] iterates [appl]. *)
   let appl_list : p_term -> p_term list -> p_term = List.fold_left appl
 
+  (** [wild] builds a [P_Wild]. *)
   let wild = Pos.none P_Wild
 
+  (** [appl_wild t n] applies [t] to [n] underscores. *)
   let rec appl_wild : p_term -> int -> p_term = fun t i ->
       if i <= 0 then t else appl_wild (appl t wild) (i-1)
 
+  (** [abst idopt t] builds a [P_Abst] over [t]. *)
   let abst : p_ident option -> p_term -> p_term = fun idopt t ->
     Pos.none (P_Abst([[idopt],None,false], t))
 
+  (** [abst_list] iterates [abst]. *)
   let abst_list : p_ident option list -> p_term -> p_term = fun idopts t ->
     List.fold_right abst idopts t
 
@@ -123,18 +161,6 @@ type p_assertion =
   | P_assert_conv   of p_term * p_term
   (** The two given terms should be convertible. *)
 
-(** Type representing the different evaluation strategies. *)
-type strategy =
-  | WHNF (** Reduce to weak head-normal form. *)
-  | HNF  (** Reduce to head-normal form. *)
-  | SNF  (** Reduce to strong normal form. *)
-  | NONE (** Do nothing. *)
-
-(** Configuration for evaluation. *)
-type eval_config =
-  { strategy : strategy   (** Evaluation strategy.          *)
-  ; steps    : int option (** Max number of steps if given. *) }
-
 (** Parser-level representation of a query command. *)
 type p_query_aux =
   | P_query_verbose of int
@@ -145,9 +171,9 @@ type p_query_aux =
   (** Sets the boolean flag registered under the given name (if any). *)
   | P_query_assert of bool * p_assertion
   (** Assertion (must fail if boolean is [true]). *)
-  | P_query_infer of p_term * eval_config
+  | P_query_infer of p_term * Eval.config
   (** Type inference command. *)
-  | P_query_normalize of p_term * eval_config
+  | P_query_normalize of p_term * Eval.config
   (** Normalisation command. *)
   | P_query_prover of string
   (** Set the prover to use inside a proof. *)
@@ -162,17 +188,20 @@ type p_query = p_query_aux loc
 
 (** Parser-level representation of a proof tactic. *)
 type p_tactic_aux =
+  | P_tac_admit
   | P_tac_apply of p_term
   | P_tac_assume of p_ident option list
   | P_tac_fail
   | P_tac_focus of int
+  | P_tac_generalize of p_ident
+  | P_tac_have of p_ident * p_term
   | P_tac_induction
   | P_tac_query of p_query
   | P_tac_refine of p_term
   | P_tac_refl
   | P_tac_rewrite of bool * p_rw_patt option * p_term
   (* The boolean indicates if the equation is applied from left to right. *)
-  | P_tac_simpl
+  | P_tac_simpl of p_qident option
   | P_tac_solve
   | P_tac_sym
   | P_tac_why3 of string option
@@ -183,73 +212,18 @@ type p_tactic = p_tactic_aux loc
 type p_proof_end_aux =
   | P_proof_end
   (** The proof is done and fully checked. *)
-  | P_proof_admit
+  | P_proof_admitted
   (** Give up current state and admit the theorem. *)
   | P_proof_abort
   (** Abort the proof (theorem not admitted). *)
 
 type p_proof_end = p_proof_end_aux loc
 
-(** Parser-level representation of a configuration command. *)
-type p_config =
-  | P_config_builtin of string * p_qident
-  (** Sets a builtin. *)
-  | P_config_notation of p_qident * notation
-  (** Sets a symbol notation. *)
-  | P_config_unif_rule of p_rule
-  (** Unification rule. *)
-
-module Tags = struct
-  (** Pattern-matching strategy modifiers. *)
-  type match_strat =
-    | Sequen
-    (** Rules are processed sequentially: a rule can be applied only if the
-        previous ones (in the order of declaration) cannot be. *)
-    | Eager
-    (** Any rule that filters a term can be applied (even if a rule defined
-        earlier filters the term as well). This is the default. *)
-
-  (** Specify the visibility and usability of symbols outside their module. *)
-  type expo =
-    | Public
-    (** Visible and usable everywhere. *)
-    | Protec
-    (** Visible everywhere but usable in LHS arguments only. *)
-    | Privat
-    (** Not visible and thus not usable. *)
-
-  (** Symbol properties. *)
-  type prop =
-    | Defin
-    (** The symbol is definable by rewriting rules. *)
-    | Const
-    (** The symbol cannot be defined. *)
-    | Injec
-    (** The symbol is definable but is assumed to be injective. *)
-
-  let pp_prop : prop pp = fun oc p ->
-    match p with
-    | Defin -> ()
-    | Const -> Format.fprintf oc "constant "
-    | Injec -> Format.fprintf oc "injective "
-
-  let pp_expo : expo pp = fun oc e ->
-    match e with
-    | Public -> ()
-    | Protec -> Format.fprintf oc "protected "
-    | Privat -> Format.fprintf oc "private "
-
-  let pp_match_strat : match_strat pp = fun oc s ->
-    match s with
-    | Sequen -> Format.fprintf oc "sequential "
-    | Eager -> ()
-end
-
 (** Parser-level representation of modifiers. *)
 type p_modifier_aux =
-  | P_mstrat of Tags.match_strat (** pattern matching strategy *)
-  | P_expo of Tags.expo (** visibility of symbol outside its modules *)
-  | P_prop of Tags.prop (** symbol properties : constant, definable, ... *)
+  | P_mstrat of Term.match_strat (** pattern matching strategy *)
+  | P_expo of Term.expo (** visibility of symbol outside its modules *)
+  | P_prop of Term.prop (** symbol properties: constant, definable, ... *)
   | P_opaq (** opacity *)
 
 type p_modifier = p_modifier_aux loc
@@ -267,26 +241,21 @@ type p_symbol =
   ; p_sym_typ : p_term option (** symbol type *)
   ; p_sym_trm : p_term option (** symbol definition *)
   ; p_sym_prf : (p_tactic list * p_proof_end) option (** proof script *)
-  ; p_sym_def : bool (** is the symbol defined ? *) }
+  ; p_sym_def : bool (** is it a definition ? *) }
 
 (** Parser-level representation of a single command. *)
 type p_command_aux =
   | P_require  of bool * p_path list
-  (** "require" statement (require open if the boolean is true). *)
+    (* "require open" if the boolean is true *)
   | P_require_as of p_path * p_ident
-  (** "require as" statement. *)
   | P_open of p_path list
-  (** Open statement. *)
   | P_symbol of p_symbol
-  (** Symbol declaration. *)
   | P_rules of p_rule list
-  (** Rewriting rule declarations. *)
   | P_inductive of p_modifier list * p_params list * p_inductive list
-  (** Definition of inductive types *)
-  | P_set of p_config
-  (** Set the configuration. *)
+  | P_builtin of string * p_qident
+  | P_notation of p_qident * Sign.notation
+  | P_unif_rule of p_rule
   | P_query of p_query
-  (** Query. *)
 
 (** Parser-level representation of a single (located) command. *)
 type p_command = p_command_aux loc
@@ -377,6 +346,8 @@ let eq_p_tactic : p_tactic eq = fun {elt=t1;_} {elt=t2;_} ->
   match t1, t2 with
   | P_tac_apply t1, P_tac_apply t2
   | P_tac_refine t1, P_tac_refine t2 -> eq_p_term t1 t2
+  | P_tac_have(i1,t1), P_tac_have(i2,t2) ->
+      eq_p_ident i1 i2 && eq_p_term t1 t2
   | P_tac_assume xs1, P_tac_assume xs2 ->
       List.equal (Option.equal eq_p_ident) xs1 xs2
   | P_tac_rewrite(b1,p1,t1), P_tac_rewrite(b2,p2,t2) ->
@@ -384,21 +355,14 @@ let eq_p_tactic : p_tactic eq = fun {elt=t1;_} {elt=t2;_} ->
   | P_tac_query q1, P_tac_query q2 -> eq_p_query q1 q2
   | P_tac_why3 so1, P_tac_why3 so2 -> so1 = so2
   | P_tac_focus n1, P_tac_focus n2 -> n1 = n2
+  | P_tac_simpl q1, P_tac_simpl q2 -> Option.equal eq_p_qident q1 q2
+  | P_tac_generalize i1, P_tac_generalize i2 -> eq_p_ident i1 i2
+  | P_tac_admit, P_tac_admit
   | P_tac_induction, P_tac_induction
-  | P_tac_simpl, P_tac_simpl
   | P_tac_solve, P_tac_solve
   | P_tac_fail, P_tac_fail
   | P_tac_refl, P_tac_refl
   | P_tac_sym, P_tac_sym -> true
-  | _, _ -> false
-
-let eq_p_config : p_config eq = fun c1 c2 ->
-  match (c1, c2) with
-  | P_config_builtin(s1,q1), P_config_builtin(s2,q2) ->
-      s1 = s2 && eq_p_qident q1 q2
-  | P_config_notation(i1,n1), P_config_notation(i2,n2) ->
-      eq_p_qident i1 i2 && n1 = n2
-  | P_config_unif_rule r1, P_config_unif_rule r2 -> eq_p_rule r1 r2
   | _, _ -> false
 
 let eq_p_symbol : p_symbol eq =
@@ -433,7 +397,9 @@ let eq_p_command : p_command eq = fun {elt=c1;_} {elt=c2;_} ->
   | P_inductive(m1,xs1,l1), P_inductive(m2,xs2,l2) ->
       m1 = m2 && List.equal eq_p_params xs1 xs2
       && List.equal eq_p_inductive l1 l2
-  | P_set(c1), P_set(c2) -> eq_p_config c1 c2
+  | P_builtin(s1,q1), P_builtin(s2,q2) -> s1 = s2 && eq_p_qident q1 q2
+  | P_notation(i1,n1), P_notation(i2,n2) -> eq_p_qident i1 i2 && n1 = n2
+  | P_unif_rule r1, P_unif_rule r2 -> eq_p_rule r1 r2
   | P_query(q1), P_query(q2) -> eq_p_query q1 q2
   | _, _ -> false
 
@@ -550,13 +516,6 @@ let fold_idents : ('a -> p_qident -> 'a) -> 'a -> p_command list -> 'a =
     | P_query_print (Some qid) -> f a qid
   in
 
-  let fold_config : 'a -> p_config -> 'a = fun a c ->
-    match c with
-    | P_config_builtin (_, qid)
-    | P_config_notation (qid, _) -> f a qid
-    | P_config_unif_rule r -> fold_rule a r
-  in
-
   let fold_tactic : StrSet.t * 'a -> p_tactic -> StrSet.t * 'a =
     fun (vs,a) t ->
     match t.elt with
@@ -567,13 +526,17 @@ let fold_idents : ('a -> p_qident -> 'a) -> 'a -> p_command list -> 'a =
         (vs, fold_term_vars vs (fold_rw_patt_vars vs a p) t)
     | P_tac_query q -> (vs, fold_query_vars vs a q)
     | P_tac_assume idopts -> (add_idopts vs idopts, a)
-    | P_tac_simpl
+    | P_tac_have(id,t) -> (StrSet.add id.elt vs, fold_term_vars vs a t)
+    | P_tac_simpl (Some qid) -> (vs, f a qid)
+    | P_tac_simpl None
+    | P_tac_admit
     | P_tac_refl
     | P_tac_sym
     | P_tac_focus _
     | P_tac_why3 _
     | P_tac_solve
     | P_tac_fail
+    | P_tac_generalize _
     | P_tac_induction -> (vs, a)
   in
 
@@ -601,7 +564,9 @@ let fold_idents : ('a -> p_qident -> 'a) -> 'a -> p_command list -> 'a =
     | P_require_as (_, _)
     | P_open _ -> a
     | P_query q -> fold_query_vars StrSet.empty a q
-    | P_set c -> fold_config a c
+    | P_builtin (_, qid)
+    | P_notation (qid, _) -> f a qid
+    | P_unif_rule r -> fold_rule a r
     | P_rules rs -> List.fold_left fold_rule a rs
     | P_inductive (_, xs, ind_list) ->
         let vs, a = List.fold_left fold_args (StrSet.empty, a) xs in
