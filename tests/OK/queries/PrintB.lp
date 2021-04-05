@@ -9,7 +9,7 @@ compute a + a; // should print a+a
 compute tests.OK.queries.PrintA.+ a a; // should print a+a
 assert ⊢ tests.OK.queries.PrintA.+ a a ≡ a + a;
 compute × b b; // should print f b b
-set notation × infix 5;
+notation × infix 5;
 compute a + a; // should print a+a
 compute tests.OK.queries.PrintA.+ a a; // should print a+a
 assert ⊢ tests.OK.queries.PrintA.+ a a ≡ a + a;
@@ -17,7 +17,7 @@ compute × b b; // should print b*b
 assert ⊢ × b b ≡ b × b;
 compute b × b; // should print b*b
 symbol +:B → B → B;
-set notation + infix 5;
+notation + infix 5;
 compute b + b; // should print b+b
 compute + b b; // should print b+b
 assert ⊢ + b b ≡ b + b;
