@@ -21,31 +21,15 @@ let parse_file : string -> Syntax.ast = fun fname ->
   | true  -> Parser.parse_file fname
   | false -> Parser.Dk.parse_file fname
 
-(** [command mod ss cmd] compiles command [cmd] in signature state [ss]. [mod]
-    is a function that compiles modules, it is required to compile [require]
-    commands. *)
-let command : (Path.t -> Sign.t) -> Sig_state.t -> Syntax.p_command ->
-  Sig_state.t =
-  fun compile_mod ss cmd ->
-  Term.Meta.reset_meta_counter ();
-  (* We provide the compilation function to the handle commands, so that
-     "require" is able to compile files. *)
-  let (ss, p, _) = Command.handle compile_mod ss cmd in
-  match p with
-  | None -> ss
-  | Some d ->
-      let ss, ps, _ =
-        List.fold_left
-          (fun (ss, ps, _) tac -> Tactic.handle ss d.pdata_prv ps tac)
-          (ss, d.pdata_p_state, None) d.pdata_tactics
-      in
-      d.pdata_finalize ss ps
-
-(** [compile force mp] compiles the file corresponding to [mp], when it is
-    necessary (the corresponding object file does not exist,  must be updated,
-    or [force] is [true]).  In that case,  the produced signature is stored in
-    the corresponding object file. *)
-let rec compile : bool -> Path.t -> Sign.t = fun force mp ->
+(** [with_handle ~handle ~force mp] compiles the file corresponding to module
+    path [mp] using function [~handle] to process commands. Module [mp] is
+    process when it is necessary, i.e. the corresponding object file does not
+    exist, or it must be updated, or [~force] is [true]). In that case, the
+    produced signature is stored in the corresponding object file. *)
+let rec with_handle :
+  handle:(Command.compiler -> Sig_state.t -> Syntax.p_command -> Sig_state.t)
+  -> force:bool -> Path.t -> Sign.t =
+  fun ~handle ~force mp ->
   let base = file_of_path mp in
   let src () =
     (* Searching for source is delayed because we may not need it
@@ -85,7 +69,8 @@ let rec compile : bool -> Path.t -> Sign.t = fun force mp ->
       loaded := Path.Map.add mp sign !loaded;
       Stdlib.(Tactic.admitted := -1);
       let consume cmd =
-        Stdlib.(sig_st := command (compile false) !sig_st cmd)
+        let force = false in
+        Stdlib.(sig_st := handle (with_handle ~handle ~force) !sig_st cmd)
       in
       Stream.iter consume (parse_file src);
       Sign.strip_private sign;
@@ -97,11 +82,17 @@ let rec compile : bool -> Path.t -> Sign.t = fun force mp ->
     begin
       Console.out 2 "Loading \"%s\" ...\n%!" (src ());
       let sign = Sign.read obj in
-      Path.Map.iter (fun mp _ -> ignore (compile false mp)) !(sign.sign_deps);
+      let compile mp _ = ignore (with_handle ~handle ~force:false mp) in
+      Path.Map.iter compile !(sign.sign_deps);
       loaded := Path.Map.add mp sign !loaded;
       Sign.link sign;
       Console.out 2 "Loaded \"%s\"\n%!" obj; sign
     end
+
+(** [compile force mp] compiles module path [mp] using
+    {!val:Command.with_proofs}, forcing compilation of up-to-date files if
+    [force] is true. *)
+let compile force = with_handle ~handle:Command.with_proofs ~force
 
 (** [recompile] indicates whether we should recompile files who have an object
     file that is already up to date. Note that this flag only applies to files
