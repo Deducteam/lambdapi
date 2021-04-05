@@ -111,6 +111,7 @@ let tac_refine : popt -> proof_state -> goal_typ -> goal list -> term
       (* Convert the metas of [t] not in [gs] into new goals. *)
       let gs_typ = add_goals_of_metas (LibTerm.Meta.get true t) gs_typ in
       let proof_goals = List.rev_map (fun c -> Unif c) cs @ gs_typ in
+      (* Simplify unification goals. *)
       tac_solve pos {ps with proof_goals}
 
 (** [ind_data t] returns the [ind_data] structure of [s] if [t] is of the
@@ -233,17 +234,18 @@ let handle : Sig_state.t -> bool -> proof_state -> p_tactic -> proof_state =
       let c = Env.to_ctxt gt.goal_hyps in
       begin
         match Infer.check_noexn to_solve c t Type with
-        | None -> fatal pos "%a is not typable." pp_term t
+        | None -> fatal pos "[%a] is not typable." pp_term t
         | Some cs ->
         (* Convert the metas of [t] not in [gs] into new goals. *)
         let gs_typ = add_goals_of_metas (LibTerm.Meta.get true t) gs_typ in
         let proof_goals = List.rev_map (fun c -> Unif c) cs @ gs_typ in
+        (* Simplify unification goals. *)
         let ps = tac_solve pos {ps with proof_goals} in
         (* Create a new goal of type [t]. *)
         let n = List.length env in
         let bt = lift t in
         let m1 = Meta.fresh (Env.to_prod env bt) n in
-        (* Refine the focus goal. *)
+        (* Refine the focused goal. *)
         let v = new_tvar id.elt in
         let env' = Env.add v bt None env in
         let m2 = Meta.fresh (Env.to_prod env' (lift gt.goal_type)) (n+1) in
