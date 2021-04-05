@@ -1,5 +1,14 @@
 ### Unreleased
 
+#### Improvements in some tactics
+
+- `libTerm`: permute arguments of `unbind_name`, and add `add_args_map` and `unbind2_name`, 
+- `syntax`: add `check_notin` and `check_distinct`
+- `Tactic.tac_assume`: check that identifiers are distinct
+- `Tactic.tac_solve`: simplify goals afterwards
+- fix `Tactic.tac_have`
+- split `misc/listings.tex` into `misc/lambdapi.tex` and `misc/example.tex`
+
 #### Extend command `inductive` to strictly-positive inductive types (2021-04-02)
 
 #### Renamings (2021-04-01)

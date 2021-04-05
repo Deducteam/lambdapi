@@ -400,7 +400,7 @@ let rec simplify : term -> term = fun t ->
      let (x,b) = Bindlib.unbind b in
      let b = Bindlib.bind_var x (lift (simplify b)) in
      Prod (simplify a, Bindlib.unbox b)
-  | h, ts -> add_args h (List.map whnf_beta ts)
+  | h, ts -> add_args_map h whnf_beta ts
 
 (** [hnf t] computes a head-normal form of the term [t]. *)
 let rec hnf : ctxt -> term -> term = fun ctx t ->
@@ -427,7 +427,7 @@ type config =
 let eval : config -> ctxt -> term -> term = fun c ctx t ->
   match (c.strategy, c.steps) with
   | (_   , Some(0))
-  | (NONE, _      ) -> t
+  | (NONE, _      ) -> simplify t
   | (WHNF, None   ) -> whnf ctx t
   | (SNF , None   ) -> snf ctx t
   | (HNF , None   ) -> hnf ctx t

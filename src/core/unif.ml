@@ -259,7 +259,7 @@ let imitate_lam : ctxt -> meta -> problem -> problem = fun ctx m p ->
     let x,a,env',b,p =
       match Eval.whnf ctx t with
       | Prod(a,b) ->
-         let x,b = Bindlib.unbind b in
+         let x,b = LibTerm.unbind_name "x" b in
          let a = lift a in
          let env' = Env.add x a None env in
          x,a,env',lift b,p

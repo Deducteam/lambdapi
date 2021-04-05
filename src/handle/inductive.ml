@@ -83,7 +83,7 @@ let ind_typ_with_codom :
     match LibTerm.get_args a with
     | (Type, _) -> codom (List.rev_map _Vari xs)
     | (Prod(a,b), _) ->
-        let (x,b) = LibTerm.unbind_name b s in
+        let (x,b) = LibTerm.unbind_name s b in
         _Prod (lift a) (Bindlib.bind_var x (aux (x::xs) b))
     | _ -> fatal pos "The type of %a is not supported" pp_sym ind_sym
   in
@@ -195,7 +195,7 @@ let fold_cons_type
         else fatal pos "%a is not a constructor of %a"
                pp_sym cons_sym pp_sym ind_sym
     | (Prod(t,u), _) ->
-       let x, u = LibTerm.unbind_name u x_str in
+       let x, u = LibTerm.unbind_name x_str u in
        let x = inj_var (List.length xs) x in
        begin
          let env, b = Env.of_prod [] "y" t in

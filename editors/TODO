@@ -1,5 +1,7 @@
 Emacs:
 
+- add shortcut C-c C-r for eglot-reconnect
+
 - When doing C-c C-c on a comment, expand the green until this comment (and not until the following command).
 
 - Do not change the green zone and the goals when editing or adding a comment in the green zone.
