@@ -1,12 +1,14 @@
 ### Unreleased
 
-#### Improvements in some tactics
+#### Improvements in some tactics (2021-04-05)
 
-- `libTerm`: permute arguments of `unbind_name`, and add `add_args_map` and `unbind2_name`, 
+- fix `have`
+- improve the behavior of `apply`
+- `assume` not needed before `reflexivity` anymore
+- `assume` checks that identifiers are distinct
+- `solve`: simplify goals afterwards
+- `libTerm`: permute arguments of `unbind_name`, and add `add_args_map` and `unbind2_name` 
 - `syntax`: add `check_notin` and `check_distinct`
-- `Tactic.tac_assume`: check that identifiers are distinct
-- `Tactic.tac_solve`: simplify goals afterwards
-- fix `Tactic.tac_have`
 - split `misc/listings.tex` into `misc/lambdapi.tex` and `misc/example.tex`
 
 #### Extend command `inductive` to strictly-positive inductive types (2021-04-02)
