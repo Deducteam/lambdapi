@@ -20,7 +20,7 @@ let log_unif = logger_unif.logger
     [m2] fresh metavariables. *)
 let set_to_prod : Meta.t -> unit = fun m ->
   let n = m.meta_arity in
-  let env, s = Env.of_prod [] n !(m.meta_type) in
+  let env, s = Env.of_prod_nth [] n !(m.meta_type) in
   let vs = Env.vars env in
   let xs = Array.map _Vari vs in
   (* domain *)
@@ -280,11 +280,11 @@ let imitate_lam_cond : term -> term list -> bool = fun h ts ->
 let imitate_lam : ctxt -> meta -> problem -> problem = fun ctx m p ->
     if !log_enabled then log_unif "imitate_lam %a" pp_meta m;
     let n = m.meta_arity in
-    let (env, t) = Env.of_prod ctx n !(m.meta_type) in
+    let (env, t) = Env.of_prod_nth ctx n !(m.meta_type) in
     let x,a,env',b,p =
       match Eval.whnf ctx t with
       | Prod(a,b) ->
-         let x,b = Bindlib.unbind b in
+         let x,b = LibTerm.unbind_name "x" b in
          let a = lift a in
          let env' = Env.add x a None env in
          x,a,env',lift b,p

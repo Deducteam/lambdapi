@@ -3,34 +3,34 @@ Overview of directories and files
 
 * ``docs/``: documentation in `ReStructured Text`_ format
 
-   * ``docs/README.md``: introduction to the user manual and guidelines
+  * ``docs/README.md``: introduction to the user manual and guidelines
 
 * ``editors/``: editor plugins for handling Lambdapi files
 
-   * ``emacs/``: code for Emacs
-   * ``vim/``: code for Vim
-   * ``vscode/``: code for VSCode
+  * ``emacs/``: code for Emacs
+  * ``vim/``: code for Vim
+  * ``vscode/``: code for VSCode
 
-      * ``.vscode/*.json``: config for launching and debugging the extension
-      * ``lp.configuration.json``: specific characters
-      * ``media/styles.css``: styles
-      * ``package.json``: manifest of the plugin
-         (activation events, scripts, dependencies, …)
-      * ``snippets/unicode.json``: short-cuts for entering unicode characters
-      * ``src/*.ts``: source code of the extension
-      * ``syntaxes/lp.tmLanguage.json``: grammar of Lambdapi
-      * ``tsconfig.json``: TypeScript configuration (directories, …)
-      * ``vscode.proposed.d.ts``: VSCode API (Microsoft file)
-         <https://raw.githubusercontent.com/microsoft/vscode/master/src/vs/vscode.proposed.d.ts>
+    * ``.vscode/*.json``: config for launching and debugging the extension
+    * ``lp.configuration.json``: specific characters
+    * ``media/styles.css``: styles
+    * ``package.json``: manifest of the plugin
+      (activation events, scripts, dependencies, …)
+    * ``snippets/unicode.json``: short-cuts for entering unicode characters
+    * ``src/*.ts``: source code of the extension
+    * ``syntaxes/lp.tmLanguage.json``: grammar of Lambdapi
+    * ``tsconfig.json``: TypeScript configuration (directories, …)
+    * ``vscode.proposed.d.ts``: VSCode API (Microsoft file)
+      <https://raw.githubusercontent.com/microsoft/vscode/master/src/vs/vscode.proposed.d.ts>
 
-* ``libraries/``: libraries of Dedukti files (see ``GNUmakefile``)
+* ``libraries/``: libraries of Dedukti files (see ``Makefile``)
 
 * ``src/cli/``: command line interface
 
-   * ``config.ml``: main program configuration
-   * ``init.ml``: lambdapi init command
-   * ``install.ml``: lambdapi install command
-   * ``lambdapi.ml``: main program
+  * ``config.ml``: main program configuration
+  * ``init.ml``: lambdapi init command
+  * ``install.ml``: lambdapi install command
+  * ``lambdapi.ml``: main program
 
 * ``src/common/``: miscellaneous modules and libraries
 
@@ -45,40 +45,35 @@ Overview of directories and files
 
 * ``src/core/``: core of Lambdapi
 
-  * scoping:
-
-      * ``env.ml``: maps identifier -> variable and type
-      * ``pratt.ml``: parsing of applications wrt symbol notations
-      * ``scope.ml``: convert the abstract syntax into terms
-
   * terms:
 
-      * ``term.ml``: internal representation of terms
-      * ``libTerm.ml``: basic operations on terms
-      * ``print.ml``: pretty printing of terms
-
+    * ``term.ml``: internal representation of terms
+    * ``libTerm.ml``: basic operations on terms
+    * ``print.ml``: pretty printing of terms
+    * ``env.ml``: maps identifier -> variable and type
+    
   * signatures:
 
-      * ``builtin.ml``: managing builtins
-      * ``sign.ml``: compiled module signature (symbols and rules in a module)
-      * ``sig_state.ml``: signature under construction
+    * ``builtin.ml``: managing builtins
+    * ``sign.ml``: compiled module signature (symbols and rules in a module)
+    * ``sig_state.ml``: signature under construction
 
   * rewriting:
 
-      * ``tree_types.ml``: types and basic functions for decision trees
-      * ``tree.ml``: compilation of rewriting rules to decision trees
-      * ``eval.ml``: rewriting engine
+    * ``tree_types.ml``: types and basic functions for decision trees
+    * ``tree.ml``: compilation of rewriting rules to decision trees
+    * ``eval.ml``: rewriting engine
 
   * type inference/checking:
 
-      * ``ctxt.ml``: typing contexts (maps variable -> type)
-      * ``infer.ml``: constraints generating type inference and checking
+    * ``ctxt.ml``: typing contexts (maps variable -> type)
+    * ``infer.ml``: constraints generating type inference and checking
 
   * unification:
 
-      * ``unif_rule.ml``: ghost signature for unification rules
-      * ``unif.ml``: unification algorithm
-      * ``inverse.ml``: inverse of injective functions
+    * ``unif_rule.ml``: ghost signature for unification rules
+    * ``unif.ml``: unification algorithm
+    * ``inverse.ml``: inverse of injective functions
 
 * ``src/handle``: signature building
 
@@ -90,10 +85,10 @@ Overview of directories and files
 
   * tactics:
 
-      * ``proof.ml``: proof state
-      * ``rewrite.ml``: rewrite tactic (similar to Ssreflect)
-      * ``tactic.ml``: tactic handling
-      * ``why3_tactic.ml``: why3 tactic
+    * ``proof.ml``: proof state
+    * ``rewrite.ml``: rewrite tactic (similar to Ssreflect)
+    * ``tactic.ml``: tactic handling
+    * ``why3_tactic.ml``: why3 tactic
 
 * ``src/lplib/``: extension of the Ocaml standard library
 
@@ -105,12 +100,17 @@ Overview of directories and files
 
 * ``src/lsp/``: LSP server
 
-   * ``lp_doc.ml``: document type
-   * ``lp_lsp.ml``: LSP server
-   * ``lsp_base.ml``: basic functions for building messages
-   * ``lsp_io.ml``: basic functions for reading and sending messages
+  * ``lp_doc.ml``: document type
+  * ``lp_lsp.ml``: LSP server
+  * ``lsp_base.ml``: basic functions for building messages
+  * ``lsp_io.ml``: basic functions for reading and sending messages
 
 * ``src/parsing/``: parsing Dedukti and Lambdapi files
+
+  * scoping:
+
+    * ``pratt.ml``: parsing of applications wrt symbol notations
+    * ``scope.ml``: convert the abstract syntax into terms
 
   * ``dkLexer.mll``: lexer for Dedukti2 syntax
   * ``dkParser.mly``: parser for Dedukti2 syntax
@@ -123,34 +123,34 @@ Overview of directories and files
 
 * ``src/pure/``: pure interface (mainly used by the LSP server)
 
-   * ``pure.ml``: provide utilities to roll back the state
+  * ``pure.ml``: provide utilities to roll back the state
 
 * ``src/tool/``: tools
 
-   * ``external.ml``: call of external tools
-   * ``hrs.ml``: export to the .hrs format of the confluence competition
-   * ``sr.ml``: algorithm for checking subject reduction
-   * ``tree_graphviz.ml``: representation of trees as graphviz files
-   * ``xtc.ml``: export to the .xtc format of the termination competition
+  * ``external.ml``: call of external tools
+  * ``hrs.ml``: export to the .hrs format of the confluence competition
+  * ``sr.ml``: algorithm for checking subject reduction
+  * ``tree_graphviz.ml``: representation of trees as graphviz files
+  * ``xtc.ml``: export to the .xtc format of the termination competition
 
 * ``tests/``: unit tests
 
-   * ``OK/``: tests that should succeed
-   * ``KO/``: tests that should fail
+  * ``OK/``: tests that should succeed
+  * ``KO/``: tests that should fail
 
-* ``tools/``:
+* ``misc/``:
 
-   * ``gen_version.ml``: script used by dune to generate
-      ``_build/default/src/core/version.ml`` used in ``lambdapi.ml``
-   * ``sanity_check.sh``: script checking some style guidelines below
-      (called by ``make sanity_check``)
-   * ``generate_tests.ml``: creates test files in ``tests/OK`` that can
-      be parametrised
-   * ``listings.tex``: setup of the LaTeX package
-      `listings <https://www.ctan.org/pkg/listings>`__ for including
-      Lambdapi code into a LaTeX document
-   * ``deps.ml``: gives the ``#REQUIRE`` commands that should be added
-      at the beginning of a Dedukti file
+  * ``gen_version.ml``: script used by dune to generate
+     ``_build/default/src/core/version.ml`` used in ``lambdapi.ml``
+  * ``sanity_check.sh``: script checking some style guidelines below
+     (called by ``make sanity_check``)
+  * ``generate_tests.ml``: creates test files in ``tests/OK`` that can
+     be parametrised
+  * ``listings.tex``: setup of the LaTeX package
+     `listings <https://www.ctan.org/pkg/listings>`__ for including
+     Lambdapi code into a LaTeX document
+  * ``deps.ml``: gives the ``#REQUIRE`` commands that should be added
+     at the beginning of a Dedukti file
 
 .. _Sphinx: https://www.sphinx-doc.org/en/master/
 .. _Restructured Text: https://www.sphinx-doc.org/en/master/usage/restructuredtext/basics.html

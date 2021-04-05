@@ -13,7 +13,7 @@ open Lplib.Base
 open Timed
 open Core
 open Term
-open Tree_types
+open Tree_type
 
 (** Printing hint for conversion to graphviz. *)
 type dot_term =

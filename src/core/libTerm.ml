@@ -25,13 +25,6 @@ let to_tvar : term -> tvar = fun t ->
     “marshaled” (e.g., by the {!module:Sign} module), as this would break the
     freshness invariant of new variables. *)
 
-(** [count_products a] returns the number of consecutive products at the top
-   of the term [a]. *)
-let rec count_products : term -> int = fun t ->
-  match unfold t with
-  | Prod(_,b) -> 1 + count_products (Bindlib.subst b Kind)
-  | _         -> 0
-
 (** [get_args t] decomposes the {!type:term} [t] into a pair [(h,args)], where
     [h] is the head term of [t] and [args] is the list of arguments applied to
     [h] in [t]. The returned [h] cannot be an [Appl] node. *)
@@ -57,6 +50,11 @@ let get_args_len : term -> term * term list * int = fun t ->
     equal to [t]. *)
 let add_args : term -> term list -> term =
   List.fold_left (fun t u -> Appl(t,u))
+
+(** [add_args_map f t ts] is equivalent to [add_args t (List.map f ts)] but
+   more efficient. *)
+let add_args_map : term -> (term -> term) -> term list -> term = fun t f ts ->
+  List.fold_left (fun t u -> Appl(t, f u)) t ts
 
 (** [is_symb s t] tests whether [t] is of the form [Symb(s)]. *)
 let is_symb : sym -> term -> bool = fun s t ->
@@ -101,13 +99,19 @@ let iter : (term -> unit) -> term -> unit = fun action ->
 (** [unbind_name b s] is like [Bindlib.unbind b] but returns a valid variable
     name when [b] binds no variable. The string [s] is the prefix of the
     variable's name.*)
-let unbind_name :
-      (term, term) Bindlib.binder -> string -> tvar * term = fun b s ->
-  if Bindlib.binder_occur b then
-    Bindlib.unbind b
-  else
-    let x = new_tvar s in
-    (x, Bindlib.subst b (Vari x))
+let unbind_name : string -> tbinder -> tvar * term = fun s b ->
+  if Bindlib.binder_occur b then Bindlib.unbind b
+  else let x = new_tvar s in (x, Bindlib.subst b (Vari x))
+
+(** [unbind2_name b1 b2 s] is like [Bindlib.unbind2 b1 b2] but returns a valid
+   variable name when [b1] or [b2] binds no variable. The string [s] is the
+   prefix of the variable's name.*)
+let unbind2_name : string -> tbinder -> tbinder -> tvar * term * term =
+  fun s b1 b2 ->
+  if Bindlib.binder_occur b1 || Bindlib.binder_occur b2 then
+    Bindlib.unbind2 b1 b2
+  else let x = new_tvar s in
+       (x, Bindlib.subst b1 (Vari x), Bindlib.subst b2 (Vari x))
 
 (** Functions to manipulate metavariables. This module includes
     {!module:Term.Meta}. *)

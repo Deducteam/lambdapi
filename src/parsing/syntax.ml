@@ -10,6 +10,23 @@ open Core
 (** Representation of a (located) identifier. *)
 type p_ident = strloc
 
+(** [notin id idopts] checks that [id] does not occur in [idopts]. *)
+let check_notin : string -> p_ident option list -> unit = fun id ->
+  let rec notin = function
+    | [] -> ()
+    | None :: idopts -> notin idopts
+    | Some {elt=id';pos} :: idopts ->
+        if id' = id then Error.fatal pos "%s already used." id
+        else notin idopts
+  in notin
+
+(** [are_distinct idopts] checks that the elements of [idopts] of the form
+   [Some _] are pairwise distinct. *)
+let rec check_distinct : p_ident option list -> unit = function
+  | [] -> ()
+  | None :: idopts -> check_distinct idopts
+  | Some {elt=id;_} :: idopts -> check_notin id idopts; check_distinct idopts
+
 (** Identifier of a metavariable. *)
 type meta_ident = Name of string | Numb of int
 type p_meta_ident = meta_ident loc
@@ -85,33 +102,42 @@ type p_inductive = p_inductive_aux loc
 
 (** Module to create p_term's with no positions. *)
 module P  = struct
-  (** [qiden p s] builds "@p.s" with no positions. *)
+
+  (** [qiden p s] builds a [P_Iden] "@p.s". *)
   let qiden : Path.t -> string -> p_term = fun p s ->
     Pos.none (P_Iden(Pos.none (p, s), true))
 
-  (** [iden s] builds "@s" with no positions. *)
+  (** [iden s] builds a [P_Iden] "@s". *)
   let iden : string -> p_term = qiden []
 
-  (** [patt s ts] builds "$s[ts]" with no positions. *)
+  (** [var v] builds a [P_Iden] from [Bindlib.name_of v]. *)
+  let var : Term.tvar -> p_term = fun v -> iden (Bindlib.name_of v)
+
+  (** [patt s ts] builds a [P_Patt] "$s[ts]". *)
   let patt : string -> p_term array option -> p_term = fun s ts ->
     Pos.none (P_Patt (Some (Pos.none s), ts))
 
-  (** [patt0 s] builds "$s" with no positions. *)
+  (** [patt0 s] builds a [P_Patt] "$s". *)
   let patt0 : string -> p_term = fun s -> patt s None
 
-  let appl : p_term -> p_term -> p_term = fun t1 t2 ->
-    Pos.none (P_Appl(t1, t2))
+  (** [appl t u] builds [P_Appl(t, u)]. *)
+  let appl : p_term -> p_term -> p_term = fun t u -> Pos.none (P_Appl(t, u))
 
+  (** [appl_list t ts] iterates [appl]. *)
   let appl_list : p_term -> p_term list -> p_term = List.fold_left appl
 
+  (** [wild] builds a [P_Wild]. *)
   let wild = Pos.none P_Wild
 
+  (** [appl_wild t n] applies [t] to [n] underscores. *)
   let rec appl_wild : p_term -> int -> p_term = fun t i ->
       if i <= 0 then t else appl_wild (appl t wild) (i-1)
 
+  (** [abst idopt t] builds a [P_Abst] over [t]. *)
   let abst : p_ident option -> p_term -> p_term = fun idopt t ->
     Pos.none (P_Abst([[idopt],None,false], t))
 
+  (** [abst_list] iterates [abst]. *)
   let abst_list : p_ident option list -> p_term -> p_term = fun idopts t ->
     List.fold_right abst idopts t
 

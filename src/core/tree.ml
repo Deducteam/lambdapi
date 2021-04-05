@@ -12,7 +12,7 @@ open Lplib.Extra
 open Timed
 open Term
 open LibTerm
-open Tree_types
+open Tree_type
 
 (** {1 Types for decision trees}
 
@@ -38,16 +38,16 @@ open Tree_types
     portion [S─∘─Z] is made possible by a swap. *)
 
 (** Representation of a tree (see {!type:Term.tree}). *)
-type tree = rhs Tree_types.tree
+type tree = rhs Tree_type.tree
 
 (** {1 Conditions for decision trees}
 
     The decision trees used for pattern matching include binary nodes carrying
-    conditions (see constructor {!constructor:Tree_types.tree.Cond}) that must
+    conditions (see constructor {!constructor:Tree_type.tree.Cond}) that must
     be tested during evaluation to select which of the two subsequent branches
     to follow. There are two forms of conditions:
-    - convertibility conditions ({!constructor:Tree_types.tree_cond.CondNL}),
-    - free variable conditions ({!constructor:Tree_types.tree_cond.CondFV}).
+    - convertibility conditions ({!constructor:Tree_type.tree_cond.CondNL}),
+    - free variable conditions ({!constructor:Tree_type.tree_cond.CondFV}).
 
     Convertibility conditions are used whenever we try to apply a rule that is
     not left-linear, for example [f $x $x (s $y) ↪ r]. In this case we need to
@@ -274,7 +274,7 @@ module CM = struct
         variable condition: only variables of [vs] are in the matched term. *)
 
   (** [is_treecons t] tells whether term [t] corresponds to a constructor (see
-      {!type:Tree_types.TC.t}) that is a candidate for a specialization. *)
+      {!type:Tree_type.TC.t}) that is a candidate for a specialization. *)
   let is_treecons : term -> bool = fun t ->
     match fst (get_args t) with
     | Patt(_) -> false
@@ -730,5 +730,5 @@ let compile : match_strat -> CM.t -> tree = fun mstrat m ->
 let update_dtree : sym -> unit = fun symb ->
   let rules = lazy (CM.of_rules !(symb.sym_rules)) in
   let tree = lazy (compile symb.sym_mstrat (Lazy.force rules)) in
-  let cap = lazy (Tree_types.tree_capacity (Lazy.force tree)) in
+  let cap = lazy (Tree_type.tree_capacity (Lazy.force tree)) in
   symb.sym_tree := (cap, tree)
