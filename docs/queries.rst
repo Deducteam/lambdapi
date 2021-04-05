@@ -23,8 +23,8 @@ Returns the type of a term.
 
 Computes the normal form of a term.
 
-``assert`` and ``assertnot``
-----------------------------
+``assert``, ``assertnot``
+-------------------------
 
 The ``assert`` and ``assertnot`` are convenient for checking that the
 validity, or the invalidity, of typing judgments or equivalences.

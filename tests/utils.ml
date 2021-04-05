@@ -12,7 +12,7 @@ let _ =
   | Some(f) -> Package.apply_config f
 
 let compile (fname: string): Sign.t =
-  Compile.compile false (Library.path_of_file fname)
+  Compile.compile false (Library.path_of_file Parsing.LpLexer.escape fname)
 
 let bool_file = "OK/bool.lp"
 let bool_sign = compile bool_file
@@ -53,9 +53,9 @@ let test_dtree_ghost () =
 
 let _ =
   let open Alcotest in
-  run "Utils" [ ("hrs", [test_case "bool" `Quick test_hrs])
-              ; ("xtc", [test_case "bool" `Quick test_xtc])
-              ; ("dtree", [ test_case "bool" `Quick test_dtree
-(* TODO put back test_dtree_ghost when OK/unif_hint.lp is fixed           *)
-(*                           ; test_case "ghost" `Quick test_dtree_ghost  *)
-                          ]) ]
+  run "Utils"
+    [ "hrs", [test_case "bool" `Quick test_hrs]
+    ; "xtc", [test_case "bool" `Quick test_xtc]
+    ; "dtree", [test_case "bool" `Quick test_dtree]
+    ; "dtree_ghost", [test_case "bool" `Quick test_dtree_ghost]
+    ]

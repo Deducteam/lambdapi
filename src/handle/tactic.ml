@@ -28,8 +28,11 @@ let admitted : int Stdlib.ref = Stdlib.ref (-1)
    type of [m] contains metavariables. *)
 let add_axiom : Sig_state.t -> Meta.t -> Sig_state.t = fun ss m ->
   let name =
-    let m_name = match m.meta_name with Some n -> "_" ^ n | _ -> "" in
-    Printf.sprintf "_ax%i%s" Stdlib.(incr admitted; !admitted) m_name
+    let i = Stdlib.(incr admitted; !admitted) in
+    let p = Printf.sprintf "_ax%i" i in
+    match m.meta_name with
+    | Some n -> Escape.add_suffix (p ^ "_") n
+    | _ -> p
   in
   (* Create a symbol with the same type as the metavariable *)
   let ss, sym =
@@ -43,10 +46,7 @@ let add_axiom : Sig_state.t -> Meta.t -> Sig_state.t = fun ss m ->
      substituted by the terms of the explicit substitution of the
      metavariable. *)
   let meta_value =
-    let vars =
-      let mk_var i = Bindlib.new_var mkfree (Printf.sprintf "x%i" i) in
-      Array.init m.meta_arity mk_var
-    in
+    let vars = Array.init m.meta_arity (new_tvar_ind "x") in
     let ax = _Appl_symb sym (Array.to_list vars |> List.map _Vari) in
     Bindlib.(bind_mvar vars ax |> unbox)
   in
@@ -82,25 +82,22 @@ let tac_solve : popt -> proof_state -> proof_state = fun pos ps ->
     let to_solve = List.map get_constr gs_unif in
     let new_cs = Unif.solve {empty_problem with to_solve} in
     let new_gs_unif = List.map (fun c -> Unif c) new_cs in
-    (* remove in [gs_typ] the goals that have been instantiated. *)
-    let goal_has_no_meta_value = function
-      | Unif _ -> true
-      | Typ gt ->
-          match !(gt.goal_meta.meta_value) with
-          | Some _ -> false
-          | None -> true
+    (* remove in [gs_typ] the goals that have been instantiated, and simplify
+       the others. *)
+    let not_instantiated = function
+      | Typ gt when !(gt.goal_meta.meta_value) <> None -> None
+      | gt -> Some (Goal.simpl Eval.simplify gt)
     in
-    let gs_typ = List.filter goal_has_no_meta_value gs_typ in
+    let gs_typ = List.filter_map not_instantiated gs_typ in
     {ps with proof_goals = new_gs_unif @ gs_typ}
   with Unif.Unsolvable -> fatal pos "Unification goals are unsatisfiable."
 
 (** [tac_refine pos ps t] refines the focused typing goal with [t]. *)
 let tac_refine : popt -> proof_state -> goal_typ -> goal list -> term
                  -> proof_state = fun pos ps gt gs t ->
-  if !log_enabled then
-    log_tact "refine %a ≔ %a" pp_meta gt.goal_meta pp_term t;
+  if !log_enabled then log_tact "refine %a" pp_term t;
   if LibTerm.Meta.occurs gt.goal_meta t then fatal pos "Circular refinement.";
-  (* Check that [t] is well-typed. *)
+  (* Check that [t] has the required type. *)
   let gs_typ, gs_unif = List.partition is_typ gs in
   let to_solve = List.map get_constr gs_unif in
   let c = Env.to_ctxt gt.goal_hyps in
@@ -114,6 +111,7 @@ let tac_refine : popt -> proof_state -> goal_typ -> goal list -> term
       (* Convert the metas of [t] not in [gs] into new goals. *)
       let gs_typ = add_goals_of_metas (LibTerm.Meta.get true t) gs_typ in
       let proof_goals = List.rev_map (fun c -> Unif c) cs @ gs_typ in
+      (* Simplify unification goals. *)
       tac_solve pos {ps with proof_goals}
 
 (** [ind_data t] returns the [ind_data] structure of [s] if [t] is of the
@@ -138,7 +136,7 @@ let ind_data : popt -> Env.t -> term -> Sign.ind_data = fun pos env a ->
    typing goal [gt]. *)
 let tac_induction : popt -> proof_state -> goal_typ -> goal list
     -> proof_state = fun pos ps ({goal_type;goal_hyps;_} as gt) gs ->
-  match unfold goal_type with
+  match Eval.whnf (Env.to_ctxt goal_hyps) goal_type with
   | Prod(a,_) ->
       let ind = ind_data pos goal_hyps a in
       let n = ind.ind_nb_params + ind.ind_nb_types + ind.ind_nb_cons in
@@ -146,10 +144,19 @@ let tac_induction : popt -> proof_state -> goal_typ -> goal list
       tac_refine pos ps gt gs t
   | _ -> fatal pos "[%a] is not a product." pp_term goal_type
 
-(** [handle ss expo ps tac] applies tactic [tac] in the proof state [ps] and
+(** [count_products a] returns the number of consecutive products at the top
+   of the term [a]. *)
+let count_products : ctxt -> term -> int = fun c ->
+  let rec count acc t =
+    match Eval.whnf c t with
+    | Prod(_,b) -> count (acc + 1) (Bindlib.subst b Kind)
+    | _ -> acc
+  in count 0
+
+(** [handle ss prv ps tac] applies tactic [tac] in the proof state [ps] and
    returns the new proof state. *)
-let handle : Sig_state.t -> Tags.expo -> proof_state -> p_tactic
-             -> proof_state = fun ss expo ps {elt;pos} ->
+let handle : Sig_state.t -> bool -> proof_state -> p_tactic -> proof_state =
+  fun ss prv ps {elt;pos} ->
   match ps.proof_goals with
   | [] -> assert false (* done before *)
   | g::gs ->
@@ -169,7 +176,7 @@ let handle : Sig_state.t -> Tags.expo -> proof_state -> p_tactic
   match g with
   | Unif _ -> fatal pos "Not a typing goal."
   | Typ ({goal_hyps=env;_} as gt) ->
-  let scope = Scope.scope_term expo ss env (lazy (Proof.sys_metas ps)) in
+  let scope = Scope.scope_term prv ss env (lazy (Proof.sys_metas ps)) in
   let check_idopt = function
     | None -> ()
     | Some id -> if List.mem_assoc id.elt env then
@@ -187,14 +194,18 @@ let handle : Sig_state.t -> Tags.expo -> proof_state -> p_tactic
       (* Compute the product arity of the type of [t]. *)
       (* FIXME: this does not take into account implicit arguments. *)
       let n =
-        match Infer.infer_noexn [] (Env.to_ctxt env) t with
+        let c = Env.to_ctxt env in
+        match Infer.infer_noexn [] c t with
         | None -> fatal pos "[%a] is not typable." pp_term t
-        | Some (a, _) -> LibTerm.count_products a
+        | Some (a, _) -> count_products c a
       in
       let t = if n <= 0 then t else scope (P.appl_wild pt n) in
       tac_refine pos ps gt gs t
   | P_tac_assume idopts ->
+      (* Check that the given identifiers are not already used. *)
       List.iter check_idopt idopts;
+      (* Check that the given identifiers are pairwise distinct. *)
+      Syntax.check_distinct idopts;
       tac_refine pos ps gt gs (scope (P.abst_list idopts P.wild))
   | P_tac_generalize {elt=id; pos=idpos} ->
       (* From a goal [e1,id:a,e2 ⊢ ?[e1,id,e2] : u], generate a new goal [e1 ⊢
@@ -217,19 +228,51 @@ let handle : Sig_state.t -> Tags.expo -> proof_state -> p_tactic
          and [e,x:t ⊢ ?2[e,x] : u], and refine [?[e]] with [?2[e,?1[e]]. *)
       check_idopt (Some id);
       let t = scope pt in
-      let n = List.length env in
-      let bt = lift t in
-      let m1 = Meta.fresh (Env.to_prod env bt) n in
-      let v = Bindlib.new_var mkfree id.elt in
-      let env' = Env.add v bt None env in
-      let m2 = Meta.fresh (Env.to_prod env' (lift gt.goal_type)) (n+1) in
-      let gs = Goal.of_meta m1 :: Goal.of_meta m2 :: gs in
-      let ts = Env.to_tbox env in
-      let u = Bindlib.unbox (_Meta m2 (Array.append ts [|_Meta m1 ts|])) in
-      tac_refine pos ps gt gs u
+      (* Generate the constraints for [t] to be of type [Type]. *)
+      let gs_typ, gs_unif = List.partition is_typ gs in
+      let to_solve = List.map get_constr gs_unif in
+      let c = Env.to_ctxt gt.goal_hyps in
+      begin
+        match Infer.check_noexn to_solve c t Type with
+        | None -> fatal pos "[%a] is not typable." pp_term t
+        | Some cs ->
+        (* Convert the metas of [t] not in [gs] into new goals. *)
+        let gs_typ = add_goals_of_metas (LibTerm.Meta.get true t) gs_typ in
+        let proof_goals = List.rev_map (fun c -> Unif c) cs @ gs_typ in
+        (* Simplify unification goals. *)
+        let ps = tac_solve pos {ps with proof_goals} in
+        (* Create a new goal of type [t]. *)
+        let n = List.length env in
+        let bt = lift t in
+        let m1 = Meta.fresh (Env.to_prod env bt) n in
+        (* Refine the focused goal. *)
+        let v = new_tvar id.elt in
+        let env' = Env.add v bt None env in
+        let m2 = Meta.fresh (Env.to_prod env' (lift gt.goal_type)) (n+1) in
+        let gs = Goal.of_meta m1 :: Goal.of_meta m2 :: gs in
+        let ts = Env.to_tbox env in
+        let u = Bindlib.unbox (_Meta m2 (Array.append ts [|_Meta m1 ts|])) in
+        tac_refine pos ps gt gs u
+      end
   | P_tac_induction -> tac_induction pos ps gt gs
   | P_tac_refine t -> tac_refine pos ps gt gs (scope t)
-  | P_tac_refl -> tac_refine pos ps gt gs (Rewrite.reflexivity ss pos gt)
+  | P_tac_refl ->
+      let n = count_products (Env.to_ctxt env) gt.goal_type in
+      if n > 0 then
+        (* We first do [n] times the [assume] tactic. *)
+        let idopt = Some (Pos.none "y") in
+        let rec mk_idopts acc k =
+          if k <= 0 then acc else mk_idopts (idopt::acc) (k-1) in
+        let pt = P.abst_list (mk_idopts [] n) P.wild in
+        let ps = tac_refine pos ps gt gs (scope pt) in
+        begin
+          match ps.proof_goals with
+          | Typ ({goal_hyps=env;_} as gt)::gs ->
+              (* We apply reflexivity. *)
+              tac_refine pos ps gt gs (Rewrite.reflexivity ss pos gt)
+          | _ -> assert false
+        end
+      else tac_refine pos ps gt gs (Rewrite.reflexivity ss pos gt)
   | P_tac_rewrite(l2r,pat,eq) ->
       let pat = Option.map (Scope.scope_rw_patt ss env) pat in
       tac_refine pos ps gt gs (Rewrite.rewrite ss pos gt l2r pat (scope eq))
@@ -237,11 +280,11 @@ let handle : Sig_state.t -> Tags.expo -> proof_state -> p_tactic
   | P_tac_why3 cfg ->
       tac_refine pos ps gt gs (Why3_tactic.handle ss pos cfg gt)
 
-(** [handle ss expo ps tac] applies tactic [tac] in the proof state [ps] and
+(** [handle ss prv ps tac] applies tactic [tac] in the proof state [ps] and
    returns the new proof state. *)
-let handle : Sig_state.t -> Tags.expo -> proof_state -> p_tactic
+let handle : Sig_state.t -> bool -> proof_state -> p_tactic
              -> Sig_state.t * proof_state * Query.result =
-  fun ss expo ps ({elt;pos} as tac) ->
+  fun ss prv ps ({elt;pos} as tac) ->
   match elt with
   | P_tac_fail -> fatal pos "Call to tactic \"fail\""
   | P_tac_query(q) ->
@@ -255,10 +298,10 @@ let handle : Sig_state.t -> Tags.expo -> proof_state -> p_tactic
   | g::_ ->
       if !log_enabled then
         log_tact "%a\n%a" Proof.Goal.pp g Pretty.tactic tac;
-      ss, handle ss expo ps tac, None
+      ss, handle ss prv ps tac, None
 
-let handle : Sig_state.t -> Tags.expo -> proof_state -> p_tactic
+let handle : Sig_state.t -> bool -> proof_state -> p_tactic
              -> Sig_state.t * proof_state * Query.result =
-  fun ss expo ps tac ->
-  try handle ss expo ps tac
+  fun ss prv ps tac ->
+  try handle ss prv ps tac
   with Fatal(_,_) as e -> Console.out 1 "%a" pp_goals ps; raise e

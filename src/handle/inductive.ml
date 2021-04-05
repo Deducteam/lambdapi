@@ -83,7 +83,7 @@ let ind_typ_with_codom :
     match LibTerm.get_args a with
     | (Type, _) -> codom (List.rev_map _Vari xs)
     | (Prod(a,b), _) ->
-        let (x,b) = LibTerm.unbind_name b s in
+        let (x,b) = LibTerm.unbind_name s b in
         _Prod (lift a) (Bindlib.bind_var x (aux (x::xs) b))
     | _ -> fatal pos "The type of %a is not supported" pp_sym ind_sym
   in
@@ -99,9 +99,7 @@ let create_ind_pred_map :
       -> tvar array * Env.t * ind_pred_map =
   fun pos c arity ind_list a_str p_str x_str ->
   (* create parameters *)
-  let vs =
-    Array.init arity
-      (fun i -> Bindlib.new_var mkfree (a_str ^ string_of_int i)) in
+  let vs = Array.init arity (new_tvar_ind a_str) in
   let env =
     match ind_list with
     | [] -> assert false (* there must be at least one type definition *)
@@ -111,14 +109,14 @@ let create_ind_pred_map :
   (* create the ind_pred_map *)
   let create_sym_pred_data i (ind_sym,_) =
     (* predicate variable *)
-    let ind_var = Bindlib.new_var mkfree (p_str ^ string_of_int i) in
+    let ind_var = new_tvar_ind p_str i in
     (* predicate type *)
     let codom ts = _Impl (_Appl_symb ind_sym ts) (_Symb c.symb_Prop) in
     let a = snd (Env.of_prod_using [] vs !(ind_sym.sym_type)) in
     let ind_type = ind_typ_with_codom pos ind_sym env codom x_str a in
     (* predicate conclusion *)
     let codom ts =
-      let x = Bindlib.new_var mkfree x_str in
+      let x = new_tvar x_str in
       let t = Bindlib.bind_var x
                 (prf_of c ind_var (List.remove_first arity ts) (_Vari x)) in
       _Prod (_Appl_symb ind_sym ts) t
@@ -153,16 +151,16 @@ let create_ind_pred_map :
 
    During the traversal, there are several possible cases:
 
-   1) If the type argument is a product of the form [Πx:s ts, b], then the
-   result is [rec_dom (s ts) x' aux next] where [x' = inj_var (length xs) x],
-   [aux = aux x' s ts p], [p] is the variable to which [s] is mapped in
-   [ind_pred_map], and [next = fold (x'::xs) acc' b] is the result of the
-   traversal of [b] with the list of variables extended with [x] and the
-   accumulator [acc' = acc_rec_dom acc x' aux].
+   1) If the argument is a product of the form [Π x:t, u] with [t] of the form
+   [Π y₁:a₁, …, Π yₙ:aₙ, s ts] and [s] mapped to [p] in [ind_pred_map], then
+   the result is [rec_dom t x' v next] where [x' = inj_var (length xs) x], [v
+   = aux env s p ts x'], [env = y₁:a₁; …; yₙ:aₙ] and [next = fold (x'::xs)
+   acc' u] is the result of the traversal of [u] with the list of variables
+   extended with [x] and the accumulator [acc' = acc_rec_dom acc x' v].
 
-   2) If the type argument is a product [Πx:a, b] not of the previous form,
-   then the result is [nonrec_dom a x' next] where [next = fold (x'::xs) acc'
-   b] and [acc' = acc_nonrec_dom acc x'].
+   2) If the type argument is a product [Πx:t, u] not of the previous form,
+   then the result is [nonrec_dom t x' next] where [next = fold (x'::xs) acc'
+   u] and [acc' = acc_nonrec_dom acc x'].
 
    3) If the type argument is of the form [ind_sym ts], then the result is
    [codom ts xs acc].
@@ -178,7 +176,7 @@ let fold_cons_type
       (inj_var : int -> tvar -> 'var)
       (init : 'a)
 
-      (aux : sym -> tvar -> term list -> 'var -> 'aux)
+      (aux : Env.t -> sym -> tvar -> term list -> 'var -> 'aux)
       (acc_rec_dom : 'a -> 'var -> 'aux -> 'a)
       (rec_dom : term -> 'var -> 'aux -> 'c -> 'c)
 
@@ -197,17 +195,18 @@ let fold_cons_type
         else fatal pos "%a is not a constructor of %a"
                pp_sym cons_sym pp_sym ind_sym
     | (Prod(t,u), _) ->
-       let (x,u) = LibTerm.unbind_name u x_str in
+       let x, u = LibTerm.unbind_name x_str u in
        let x = inj_var (List.length xs) x in
        begin
-         match LibTerm.get_args t with
+         let env, b = Env.of_prod [] "y" t in
+         match LibTerm.get_args b with
          | (Symb(s), ts) ->
              begin
                match List.assq_opt s ind_pred_map with
                | Some d ->
-                   let aux = aux s d.ind_var ts x in
-                   let next = fold (x::xs) (acc_rec_dom acc x aux) u in
-                   rec_dom t x aux next
+                   let v = aux env s d.ind_var ts x in
+                   let next = fold (x::xs) (acc_rec_dom acc x v) u in
+                   rec_dom t x v next
                | None ->
                    let next = fold (x::xs) (acc_nonrec_dom acc x) u in
                    nonrec_dom t x next
@@ -221,12 +220,12 @@ let fold_cons_type
 
 (** [gen_rec_type ss pos n ind_list ind_pred_map x_str] generates the
    induction principles for each type in the inductive definition [ind_list]
-   defined at the position [pos] whose number of parameters is [n].
-   [x_str] is a string used for prefixing variable names that are
-   generated. Remark: in the generated induction principles, each recursive
-   argument is followed by its induction hypothesis. For instance, with
-   [inductive T:TYPE := c: T->T->T], we get [ind_T: Πp:T->Prop, (Πx0:T, π(p
-   x0)-> Πx1:T, π(p x1)-> π(p (c x0 x1)) -> Πx:T, π(p x)]. *)
+   defined at the position [pos] whose number of parameters is [n]. [x_str] is
+   a string used for prefixing variable names that are generated. Remark: in
+   the generated induction principles, each recursive argument is followed by
+   its induction hypothesis. For instance, with [inductive T:TYPE := c:
+   T->T->T], we get [ind_T: Π p:T -> Prop, (Π x₀:T, π(p x₀)-> Π x₁:T, π(p
+   x₁)-> π(p (c x₀ x₁)) -> Π x:T, π(p x)]. *)
 let gen_rec_types :
       config -> popt -> inductive
       -> tvar array -> Env.t -> ind_pred_map -> string -> term list =
@@ -237,15 +236,18 @@ let gen_rec_types :
      [cons_sym] in the induction principle of [ind_sym]. *)
   let case_of : sym -> sym -> tbox = fun ind_sym cons_sym ->
     (* 'var = tvar, 'a = unit, 'aux = unit, 'c = tbox *)
-      (* the accumulator is not used *)
+    (* the accumulator is not used *)
     let inj_var _ x = x in
     let init = () in
     (* aux computes the induction hypothesis *)
-    let aux _ p ts x =
-      prf_of c p (List.map lift (List.remove_first n ts)) (_Vari x) in
+    let aux env _ p ts x =
+      let v = Env.appl (_Vari x) env in
+      let v = prf_of c p (List.map lift (List.remove_first n ts)) v in
+      Env.to_prod_box env v
+    in
     let acc_rec_dom _ _ _ = () in
-    let rec_dom t x aux next =
-      _Prod (lift t) (Bindlib.bind_var x (_Impl aux next))
+    let rec_dom t x v next =
+      _Prod (lift t) (Bindlib.bind_var x (_Impl v next))
     in
     let acc_nonrec_dom _ _ = () in
     let nonrec_dom t x next = _Prod (lift t) (Bindlib.bind_var x next) in
@@ -277,7 +279,7 @@ let gen_rec_types :
 
 (** [rec_name ind_sym] returns the name of the induction principle associated
    to the inductive type symbol [ind_sym]. *)
-let rec_name ind_sym = "ind_" ^ ind_sym.sym_name
+let rec_name ind_sym = Escape.add_prefix "ind_" ind_sym.sym_name
 
 (** [iter_rec_rules pos ind_list vs rec_sym_list ind_pred_map] generates the
    recursor rules for the inductive type definition [ind_list] as position
@@ -285,7 +287,7 @@ let rec_name ind_sym = "ind_" ^ ind_sym.sym_name
    [ind_pred_map].
 
    For instance, [inductive T : Π(i1:A1),..,Π(im:Am), TYPE := c1:T1 | .. |
-   cn:Tn] generates a rule for each constructor. If [Ti = Πx1:B1,..,Πxk:Bk,T]
+   cn:Tn] generates a rule for each constructor. If [Ti = Π x1:B1,..,Π xk:Bk,T]
    then the rule for ci is [ind_T p pc1 .. pcn _ .. _ (ci x1 .. xk) --> pci x1
    t1? ... xk tk?]  with m underscores, [tj? = ind_T p pc1 .. pcn _ .. _ xj]
    if [Bj = T v1 ... vm], and nothing otherwise. *)
@@ -331,7 +333,13 @@ let iter_rec_rules :
     let inj_var n _ = P.patt0 ("x" ^ string_of_int n) in
     let init = P.patt0 (case_arg_name cons_sym) in
     (* aux computes the recursive call *)
-    let aux s _ ts x = app_rec s ts x in
+    let aux env s _ ts x =
+      let env_appl t env =
+        List.fold_right (fun (_,(x,_,_)) t -> P.appl t (P.var x)) env t in
+      let add_abst t (_,(x,_,_)) =
+        P.abst (Some (Pos.none (Bindlib.name_of x))) t in
+      List.fold_left add_abst (app_rec s ts (env_appl x env)) env
+    in
     let acc_rec_dom acc x aux = P.appl (P.appl acc x) aux in
     let rec_dom _ _ _ next = next in
     let acc_nonrec_dom a x = P.appl a x in

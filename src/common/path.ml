@@ -12,7 +12,7 @@ module Path =
        escaped. *)
     let pp : t pp = Lplib.List.pp Format.pp_print_string "."
 
-    (** [compare] is a standard comparaison function for paths. *)
+    (** [compare] is a standard comparison function on paths. *)
     let compare : t cmp = Stdlib.compare
 
     (** [of_string s] converts a string [s] lexed as qid into a path. *)

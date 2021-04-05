@@ -80,8 +80,7 @@ let parse_text : state -> fname:string -> string -> Command.t list * state =
 type proof_finalizer = Sig_state.t -> Proof.proof_state -> Sig_state.t
 
 type proof_state =
-  Time.t * Sig_state.t * Proof.proof_state * proof_finalizer
-  * Syntax.Tags.expo
+  Time.t * Sig_state.t * Proof.proof_state * proof_finalizer * bool
 
 type conclusion =
   | Typ of string * string
@@ -136,7 +135,7 @@ let initial_state : string -> state = fun fname ->
   Console.reset_default ();
   Time.restore Stdlib.(!t0);
   Package.apply_config fname;
-  let mp = Library.path_of_file fname in
+  let mp = Library.path_of_file LpLexer.escape fname in
   Sign.loading := [mp];
   let sign = Sig_state.create_sign mp in
   Sign.loaded  := Path.Map.add mp sign !Sign.loaded;
@@ -153,17 +152,17 @@ let handle_command : state -> Command.t -> command_result =
     | None ->
         let qres = Option.map (fun f -> f ()) qres in Cmd_OK ((t, ss), qres)
     | Some(d) ->
-        let ps = (t, ss, d.pdata_p_state, d.pdata_finalize, d.pdata_expo) in
+        let ps = (t, ss, d.pdata_p_state, d.pdata_finalize, d.pdata_prv) in
         let ts = d.pdata_tactics in
         Cmd_Proof(ps, ts, d.pdata_stmt_pos, d.pdata_end_pos)
   with Fatal(p,m) -> Cmd_Error(p,m)
 
 let handle_tactic : proof_state -> Tactic.t -> tactic_result =
-  fun (_, ss, ps, finalize, expo) tac ->
+  fun (_, ss, ps, finalize, prv) tac ->
   try
-    let ss, ps, qres = Handle.Tactic.handle ss expo ps tac in
+    let ss, ps, qres = Handle.Tactic.handle ss prv ps tac in
     let qres = Option.map (fun f -> f ()) qres in
-    Tac_OK((Time.save (), ss, ps, finalize, expo), qres)
+    Tac_OK((Time.save (), ss, ps, finalize, prv), qres)
   with Fatal(p,m) -> Tac_Error(p,m)
 
 let end_proof : proof_state -> command_result =

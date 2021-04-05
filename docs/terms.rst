@@ -16,12 +16,16 @@ An identifier can be:
   UTF-8 codepoints that are not among ``\t\r\n :,;`(){}[]"``.
 
 *  a non-negative integer if the builtins “0” and “+1” have been
-   previously set (see the command ``set builtin`` in :doc:`commands`);
+   previously set (see the command ``builtin`` in :doc:`commands`);
 
 * an escaped identifier, that is, an arbitrary (non-empty) sequence of
    characters enclosed between ``{|`` and ``|}``.
 
 Remark: for any regular identifier ``i``, ``{|i|}`` is equivalent to ``i``.
+
+Remark: escaped identifiers and regular identifiers ending with a
+non-negative integer with leading zeros cannot be used for bound
+variable names.
 
 Convention:
   identifiers starting with a capital letter denote types and predicates (e.g.

@@ -354,14 +354,14 @@ type definition, assuming that the following builtins are defined:
    ￼builtin "Prop" ≔ ...; // : TYPE, for the type of propositions
    ￼builtin "P"    ≔ ...; // : Prop → TYPE, interpretation of propositions as types
 
-Currently, it only supports parametrized mutually defined dependent
-first-order data types. As usual, polymorphic types can be encoded by
-defining a type ``Set`` and a function ``τ:Set → TYPE``.
-
 An inductive type can have 0 or more constructors.
 
 The name of the induction principle is ``ind_`` followed by the name
 of the type.
+
+The command currently supports parametrized mutually defined dependent
+strictly-positive data types only. As usual, polymorphic types can be
+encoded by defining a type ``Set`` and a function ``τ:Set → TYPE``.
 
 Example:
 
@@ -372,17 +372,15 @@ Example:
    ￼| succ: ℕ → ℕ;
    
 is equivalent to:
-￼
+
 ::
    
    ￼constant symbol ℕ : TYPE;
    ￼constant symbol zero : ℕ;
    ￼constant symbol succ : ℕ → ℕ;
-   ￼symbol ind_ℕ p :
-      π(p zero) → (Π x, π(p x) → π(p(succ x))) → Π x, π(p x);
+   ￼symbol ind_ℕ p : π(p zero) → (Π x, π(p x) → π(p(succ x))) → Π x, π(p x);
    ￼rule ind_ℕ _ $pz _ zero ↪ $pz
    ￼with ind_ℕ $p $pz $ps (succ $n) ↪ $ps $n (ind_ℕ $p $pz $ps $n);
-
 
 For mutually defined inductive types, one needs to use the ``with``
 keyword to link all inductive types together.
@@ -391,8 +389,7 @@ Inductive definitions can also be parametrized as follows:
 
 ::
    
-   (a:Set)
-   inductive T: TYPE ≔
+   (a:Set) inductive T: TYPE ≔
    | node: τ a → F a → T a
    with F: TYPE ≔
    | nilF: F a
@@ -416,3 +413,16 @@ generated for each inductive type:
      π(q nilF) →
      (Π t, π(p t) → Π l, π(q l) → π(q (consF t l))) →
      Π t, π(p t);
+
+Finaly, here is an example of strictly-positive inductive type:
+
+::
+
+   inductive 𝕆:TYPE ≔ z:𝕆 | s:𝕆 → 𝕆 | l:(ℕ → 𝕆) → 𝕆;
+
+   assert ⊢ ind_𝕆: Π p, π (p z) → (Π x, π (p x) → π (p (s x)))
+     → (Π x, (Π y, π (p (x y))) → π (p (l x))) → Π x, π (p x);
+
+   assert p a b c ⊢ ind_𝕆 p a b c z ≡ a;
+   assert p a b c x ⊢ ind_𝕆 p a b c (s x) ≡ b x (ind_𝕆 p a b c x);
+   assert p a b c x y ⊢ ind_𝕆 p a b c (l x) ≡ c x (λ y, ind_𝕆 p a b c (x y));
