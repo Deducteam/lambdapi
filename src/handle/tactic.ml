@@ -256,7 +256,23 @@ let handle : Sig_state.t -> bool -> proof_state -> p_tactic -> proof_state =
       end
   | P_tac_induction -> tac_induction pos ps gt gs
   | P_tac_refine t -> tac_refine pos ps gt gs (scope t)
-  | P_tac_refl -> tac_refine pos ps gt gs (Rewrite.reflexivity ss pos gt)
+  | P_tac_refl ->
+      let n = count_products (Env.to_ctxt env) gt.goal_type in
+      if n > 0 then
+        (* We first do [n] times the [assume] tactic. *)
+        let idopt = Some (Pos.none "y") in
+        let rec mk_idopts acc k =
+          if k <= 0 then acc else mk_idopts (idopt::acc) (k-1) in
+        let pt = P.abst_list (mk_idopts [] n) P.wild in
+        let ps = tac_refine pos ps gt gs (scope pt) in
+        begin
+          match ps.proof_goals with
+          | Typ ({goal_hyps=env;_} as gt)::gs ->
+              (* We apply reflexivity. *)
+              tac_refine pos ps gt gs (Rewrite.reflexivity ss pos gt)
+          | _ -> assert false
+        end
+      else tac_refine pos ps gt gs (Rewrite.reflexivity ss pos gt)
   | P_tac_rewrite(l2r,pat,eq) ->
       let pat = Option.map (Scope.scope_rw_patt ss env) pat in
       tac_refine pos ps gt gs (Rewrite.rewrite ss pos gt l2r pat (scope eq))
