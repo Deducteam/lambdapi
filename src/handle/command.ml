@@ -17,6 +17,9 @@ open Print
 open Proof
 open Debug
 
+(** Type alias for a function that compiles a Lambdapi module. *)
+type compiler = Path.t -> Sign.t
+
 (* Register a check for the type of the builtin symbols "0" and "+1". *)
 let _ =
   let register = Builtin.register_expected_type (Unif.eq_noexn []) pp_term in
@@ -54,8 +57,7 @@ let handle_open : sig_state -> p_path -> sig_state =
    open p] if b is true) with [ss] as the signature state and [compile] the
    main compile function (passed as argument to avoid cyclic dependencies).
    On success, an updated signature state is returned. *)
-let handle_require :
-      (Path.t -> Sign.t) -> bool -> sig_state -> p_path -> sig_state =
+let handle_require : compiler -> bool -> sig_state -> p_path -> sig_state =
   fun compile b ss ({elt=p;pos} as mp) ->
   (* Check that the module has not already been required. *)
   if Path.Map.mem p !(ss.signature.sign_deps) then
@@ -70,8 +72,8 @@ let handle_require :
     [require p as id] with [ss] as the signature state and [compile] the main
     compilation function passed as argument to avoid cyclic dependencies. On
     success, an updated signature state is returned. *)
-let handle_require_as :
-    (Path.t -> Sign.t) -> sig_state -> p_path -> p_ident -> sig_state =
+let handle_require_as : compiler -> sig_state -> p_path -> p_ident ->
+  sig_state =
   fun compile ss ({elt=p;_} as mp) {elt=id;_} ->
   let ss = handle_require compile false ss mp in
   let alias_path = StrMap.add id p ss.alias_path in
@@ -188,16 +190,16 @@ type proof_data =
   ; pdata_end_pos  : Pos.popt (** Position of the proof's terminator. *)
   ; pdata_prv      : bool (** [true] iff private symbols are allowed. *) }
 
-(** [handle compile ss cmd] tries to handle the command [cmd] with [ss] as
-    the signature state and [compile] as the main compilation function
+(** [get_proof_data compile ss cmd] tries to handle the command [cmd] with
+    [ss] as the signature state and [compile] as the main compilation function
     processing lambdapi modules (it is passed as argument to avoid cyclic
     dependencies). On success, an updated signature state is returned.  When
     [cmd] leads to entering the proof mode,  a [proof_data] is also  returned.
     This structure contains the list of the tactics to be executed, as well as
     the initial state of the proof.  The checking of the proof is then handled
     separately. Note that [Fatal] is raised in case of an error. *)
-let handle : (Path.t -> Sign.t) -> sig_state -> p_command ->
-    sig_state * proof_data option * Query.result =
+let get_proof_data : compiler -> sig_state -> p_command ->
+  sig_state * proof_data option * Query.result =
   fun compile ss ({elt; pos} as cmd) ->
   if !log_enabled then
       (if !print_time then log_hndl "%f" (Sys.time());
@@ -491,16 +493,16 @@ let handle : (Path.t -> Sign.t) -> sig_state -> p_command ->
     indicate commands that take too long to execute. *)
 let too_long = Stdlib.ref infinity
 
-(** [command compile ss cmd] adds to the previous [command] some
+(** [get_proof_data compile ss cmd] adds to the previous [command] some
     exception handling. In particular, the position of [cmd] is used on errors
     that lack a specific position. All exceptions except [Timeout] and [Fatal]
     are captured, although they should not occur. *)
-let handle : (Path.t -> Sign.t) -> sig_state -> p_command ->
-   sig_state * proof_data option * Query.result =
+let get_proof_data : compiler -> sig_state -> p_command ->
+  sig_state * proof_data option * Query.result =
   fun compile ss ({pos;_} as cmd) ->
   Print.sig_state := ss;
   try
-    let (tm, ss) = time (handle compile ss) cmd in
+    let (tm, ss) = time (get_proof_data compile ss) cmd in
     if Stdlib.(tm >= !too_long) then
       wrn pos "It took %.2f seconds to handle the command." tm;
     ss
@@ -511,3 +513,23 @@ let handle : (Path.t -> Sign.t) -> sig_state -> p_command ->
   | Fatal(Some(None)   ,m)      -> fatal pos "Error on command.\n%s" m
   | e                           ->
       fatal pos "Uncaught exception: %s." (Printexc.to_string e)
+
+(** [handle compile_mod ss cmd] retrieves proof data from [cmd] (with
+    {!val:get_proof_data}) and handles proofs using functions from
+    {!module:Tactic} The function [compile_mod] is used to compile required
+    modules recursively. *)
+let handle : compiler -> Sig_state.t -> Syntax.p_command -> Sig_state.t =
+  fun compile_mod ss cmd ->
+  Term.Meta.reset_meta_counter ();
+  (* We provide the compilation function to the handle commands, so that
+     "require" is able to compile files. *)
+  let (ss, p, _) = get_proof_data compile_mod ss cmd in
+  match p with
+  | None -> ss
+  | Some d ->
+      let ss, ps, _ =
+        List.fold_left
+          (fun (ss, ps, _) tac -> Tactic.handle ss d.pdata_prv ps tac)
+          (ss, d.pdata_p_state, None) d.pdata_tactics
+      in
+      d.pdata_finalize ss ps
