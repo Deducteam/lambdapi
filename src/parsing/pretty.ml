@@ -76,7 +76,8 @@ let rec term : p_term pp = fun ppf t ->
     in
     match (t.elt, priority) with
     | (P_Type              , _    ) -> out ppf "TYPE"
-    | (P_Iden(qid,_)       , _    ) -> out ppf "%a" qident qid
+    | (P_Iden(qid,false)   , _    ) -> out ppf "%a" qident qid
+    | (P_Iden(qid,true )   , _    ) -> out ppf "@%a" qident qid
     | (P_Wild              , _    ) -> out ppf "_"
     | (P_Meta(mid,ts)      , _    ) -> out ppf "?%a%a" meta_ident mid env ts
     | (P_Patt(None   ,ts)  , _    ) -> out ppf "$_%a" env ts

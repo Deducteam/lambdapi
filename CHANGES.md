@@ -1,5 +1,16 @@
 ### Unreleased
 
+#### Improvements in some tactics (2021-04-05)
+
+- fix `have`
+- improve the behavior of `apply`
+- `assume` not needed before `reflexivity` anymore
+- `assume` checks that identifiers are distinct
+- `solve`: simplify goals afterwards
+- `libTerm`: permute arguments of `unbind_name`, and add `add_args_map` and `unbind2_name` 
+- `syntax`: add `check_notin` and `check_distinct`
+- split `misc/listings.tex` into `misc/lambdapi.tex` and `misc/example.tex`
+
 #### Extend command `inductive` to strictly-positive inductive types (2021-04-02)
 
 #### Renamings (2021-04-01)

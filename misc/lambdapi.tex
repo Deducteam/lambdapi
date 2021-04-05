@@ -1,0 +1,44 @@
+%\usepackage{listings}
+%\usepackage[utf8]{inputenc}
+%\usepackage{amssymb}
+%\usepackage{mathtools}
+%\usepackage{xcolor}
+\definecolor{green}{RGB}{0,130,0}
+\definecolor{lightgrey}{RGB}{240,240,240}
+
+\lstdefinelanguage{Lambdapi}
+{
+  inputencoding=utf8,
+  extendedchars=true,
+  numbers=none,
+  numberstyle={},
+  tabsize=2,
+  basicstyle={\ttfamily\small\upshape},
+  backgroundcolor=\color{lightgrey},
+  keywords={abort,admit,admitted,apply,as,assert,assertnot,assume,begin,builtin,compute,constant,debug,end,fail,flag,focus,generalize,have,in,induction,inductive,infix,injective,left,let,notation,off,on,opaque,open,prefix,print,private,proofterm,protected,prover,prover_timeout,quantifier,refine,reflexivity,require,rewrite,right,rule,sequential,simplify,solve,symbol,symmetry,type,TYPE,unif_rule,verbose,why3,with},
+  sensitive=true,
+  keywordstyle=\color{blue},
+  morecomment=[l]{//},
+  commentstyle={\itshape\color{red}},
+  string=[b]{"},
+  stringstyle=\color{orange},
+  showstringspaces=false,
+  literate=
+  {↪}{$\hookrightarrow$}1
+  {→}{$\rightarrow$}1
+  {Π}{$\Pi$}1
+  {≔}{$\coloneqq$}1
+  {𝔹}{$\mathbb{B}$}1
+  {𝕃}{$\mathbb{L}$}1
+  {ℕ}{$\mathbb{N}$}1
+  {α}{$\alpha$}1
+  {π}{$\pi$}1
+  {τ}{$\tau$}1
+  {ω}{$\omega$}1
+  {∧}{$\wedge$}1
+  {≤}{$\le$}1
+  {≠}{$\neq$}1
+  {∉}{$\notin$}1
+  {×}{$\times$}1
+}
+\lstset{language={Lambdapi}}

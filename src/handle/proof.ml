@@ -49,7 +49,6 @@ module Goal = struct
   let of_meta : meta -> goal = fun m ->
     let goal_hyps, goal_type =
       Env.of_prod_nth [] m.meta_arity !(m.meta_type) in
-    let goal_type = Eval.simplify goal_type in
     Typ {goal_meta = m; goal_hyps; goal_type}
 
   (** [simpl f g] simplifies the goal [g] with the function [f]. *)
