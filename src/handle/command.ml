@@ -37,6 +37,16 @@ let _ =
   in
   register "+1" expected_succ_type
 
+(** [rule_of_pre_rule r] converts a pre-rewrite rule into a rewrite rule. *)
+let rule_of_pre_rule : Scope.pre_rule -> Term.rule =
+  fun {pr_lhs; pr_vars; pr_rhs; pr_arities; pr_xvars_nb; _} ->
+  { lhs = pr_lhs
+  ; rhs = Bindlib.(unbox (bind_mvar pr_vars pr_rhs))
+  ; arity = List.length pr_lhs
+  ; arities = pr_arities
+  ; vars = pr_vars
+  ; xvars_nb = pr_xvars_nb }
+
 (** [handle_open ss p] handles the command [open p] with [ss] as the
    signature state. On success, an updated signature state is returned. *)
 let handle_open : sig_state -> p_path -> sig_state =
@@ -225,14 +235,7 @@ let handle : (Path.t -> Sign.t) -> sig_state -> p_command ->
   | P_unif_rule(h) ->
       (* Approximately same processing as rules without SR checking. *)
       let pur = (scope_rule true ss h).elt in
-      let urule =
-        { lhs = pur.pr_lhs
-        ; rhs = Bindlib.(unbox (bind_mvar pur.pr_vars pur.pr_rhs))
-        ; arity = List.length pur.pr_lhs
-        ; arities = pur.pr_arities
-        ; vars = pur.pr_vars
-        ; xvars_nb = pur.pr_xvars_nb }
-      in
+      let urule = rule_of_pre_rule pur in
       Sign.add_rule ss.signature Unif_rule.equiv urule;
       Tree.update_dtree Unif_rule.equiv;
       Console.out 3 "(hint) %a\n" pp_unif_rule (Unif_rule.equiv, urule);
