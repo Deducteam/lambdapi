@@ -21,6 +21,26 @@ let parse_file : string -> Syntax.ast = fun fname ->
   | true  -> Parser.parse_file fname
   | false -> Parser.Dk.parse_file fname
 
+(** [command mod ss cmd] compiles command [cmd] in signature state [ss]. [mod]
+    is a function that compiles modules, it is required to compile [require]
+    commands. *)
+let command : (Path.t -> Sign.t) -> Sig_state.t -> Syntax.p_command ->
+  Sig_state.t =
+  fun compile_mod ss cmd ->
+  Term.Meta.reset_meta_counter ();
+  (* We provide the compilation function to the handle commands, so that
+     "require" is able to compile files. *)
+  let (ss, p, _) = Command.handle compile_mod ss cmd in
+  match p with
+  | None -> ss
+  | Some d ->
+      let ss, ps, _ =
+        List.fold_left
+          (fun (ss, ps, _) tac -> Tactic.handle ss d.pdata_prv ps tac)
+          (ss, d.pdata_p_state, None) d.pdata_tactics
+      in
+      d.pdata_finalize ss ps
+
 (** [compile force mp] compiles the file corresponding to [mp], when it is
     necessary (the corresponding object file does not exist,  must be updated,
     or [force] is [true]).  In that case,  the produced signature is stored in
@@ -64,22 +84,9 @@ let rec compile : bool -> Path.t -> Sign.t = fun force mp ->
          is possible to qualify the symbols of the current modules. *)
       loaded := Path.Map.add mp sign !loaded;
       Stdlib.(Tactic.admitted := -1);
-      let handle ss c =
-        Term.Meta.reset_meta_counter ();
-        (* We provide the compilation function to the handle commands, so that
-           "require" is able to compile files. *)
-        let (ss, p, _) = Command.handle (compile false) ss c in
-        match p with
-        | None -> ss
-        | Some d ->
-            let ss, ps, _ =
-              List.fold_left
-                (fun (ss, ps, _) tac -> Tactic.handle ss d.pdata_prv ps tac)
-                (ss, d.pdata_p_state, None) d.pdata_tactics
-            in
-            d.pdata_finalize ss ps
+      let consume cmd =
+        Stdlib.(sig_st := command (compile false) !sig_st cmd)
       in
-      let consume cmd = Stdlib.(sig_st := handle !sig_st cmd) in
       Stream.iter consume (parse_file src);
       Sign.strip_private sign;
       if Stdlib.(!gen_obj) then Sign.write sign obj;

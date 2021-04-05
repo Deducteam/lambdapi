@@ -225,14 +225,7 @@ let handle : (Path.t -> Sign.t) -> sig_state -> p_command ->
   | P_unif_rule(h) ->
       (* Approximately same processing as rules without SR checking. *)
       let pur = (scope_rule true ss h).elt in
-      let urule =
-        { lhs = pur.pr_lhs
-        ; rhs = Bindlib.(unbox (bind_mvar pur.pr_vars pur.pr_rhs))
-        ; arity = List.length pur.pr_lhs
-        ; arities = pur.pr_arities
-        ; vars = pur.pr_vars
-        ; xvars_nb = pur.pr_xvars_nb }
-      in
+      let urule = Scope.rule_of_pre_rule pur in
       Sign.add_rule ss.signature Unif_rule.equiv urule;
       Tree.update_dtree Unif_rule.equiv;
       Console.out 3 "(hint) %a\n" pp_unif_rule (Unif_rule.equiv, urule);
