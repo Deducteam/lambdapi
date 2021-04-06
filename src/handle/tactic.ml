@@ -265,10 +265,10 @@ let handle : Sig_state.t -> bool -> proof_state -> p_tactic -> proof_state =
           if k <= 0 then acc else mk_idopts (idopt::acc) (k-1) in
         let pt = P.abst_list (mk_idopts [] n) P.wild in
         let ps = tac_refine pos ps gt gs (scope pt) in
+        (* We then apply reflexivity. *)
         begin
           match ps.proof_goals with
-          | Typ ({goal_hyps=env;_} as gt)::gs ->
-              (* We apply reflexivity. *)
+          | Typ gt::gs ->
               tac_refine pos ps gt gs (Rewrite.reflexivity ss pos gt)
           | _ -> assert false
         end
