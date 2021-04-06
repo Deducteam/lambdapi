@@ -181,11 +181,12 @@ functor
       | Symb s -> (t, !(s.sym_type))
       (* All metavariables inserted are typed. *)
       | (Meta (m, ts)) as t ->
-          let rec ref_esubst i dom =
+          let rec ref_esubst i range =
             (* Refine terms of the explicit substitution. *)
-            if i >= Array.length ts then dom else
-            match unfold dom with
+            if i >= Array.length ts then range else
+            match unfold range with
             | Prod(ai, b) ->
+                let ai, _ = type_enforce ctx ai in
                 ts.(i) <- force ctx ts.(i) ai;
                 let b = Bindlib.subst b ts.(i) in
                 ref_esubst (i + 1) b
@@ -210,6 +211,7 @@ functor
           let u = Bindlib.(u |> lift |> bind_var x |> unbox) in
           (LLet (t_ty, t, u), u_ty)
       | Abst (dom, b) ->
+          (* Domain must by of type Type, we don’t use [type_enforce] *)
           let dom = force ctx dom Type in
           let x, b, ctx = Ctxt.unbind ctx dom None b in
           let b, range = infer ctx b in
@@ -217,6 +219,7 @@ functor
           let range = Bindlib.(lift range |> bind_var x |> unbox) in
           (Abst (dom, b), Prod (dom, range))
       | Prod (dom, b) ->
+          (* Domain must by of type Type, we don’t use [type_enforce] *)
           let dom = force ctx dom Type in
           let x, b, ctx = Ctxt.unbind ctx dom None b in
           let b, b_s = type_enforce ctx b in
