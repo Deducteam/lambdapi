@@ -514,6 +514,16 @@ type pre_rule =
   ; pr_xvars_nb : int
   (** Number of variables that appear in the RHS but not in the LHS. *) }
 
+(** [rule_of_pre_rule r] converts a pre-rewrite rule into a rewrite rule. *)
+let rule_of_pre_rule : pre_rule -> rule =
+  fun {pr_lhs; pr_vars; pr_rhs; pr_arities; pr_xvars_nb; _} ->
+  { lhs = pr_lhs
+  ; rhs = Bindlib.(unbox (bind_mvar pr_vars pr_rhs))
+  ; arity = List.length pr_lhs
+  ; arities = pr_arities
+  ; vars = pr_vars
+  ; xvars_nb = pr_xvars_nb }
+
 (** [scope_rule ur ss r] turns a parser-level rewriting rule [r], or a
     unification rule if [ur] is true, into a pre-rewriting rule. *)
 let scope_rule : bool -> sig_state -> p_rule -> pre_rule loc = fun ur ss r ->
