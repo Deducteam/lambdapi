@@ -43,7 +43,7 @@ let get_config : Sig_state.t -> Pos.popt -> config = fun ss pos ->
 (** [prf_of p c ts t] returns the term [c.symb_prf (p t1 ... tn t)] where ts =
    [ts1;...;tsn]. *)
 let prf_of : config -> tvar -> tbox list -> tbox -> tbox = fun c p ts t ->
-  _Appl_symb c.symb_prf [_Appl (_Appl_list (_Vari p) ts) t]
+  _Appl_Symb c.symb_prf [_Appl (_Appl_list (_Vari p) ts) t]
 
 (** compute safe prefixes for predicate and constructor argument variables. *)
 let gen_safe_prefixes : inductive -> string * string * string =
@@ -80,7 +80,7 @@ let ind_typ_with_codom :
       popt -> sym -> Env.t -> (tbox list -> tbox) -> string -> term -> tbox =
   fun pos ind_sym env codom s a ->
   let rec aux : tvar list -> term -> tbox = fun xs a ->
-    match LibTerm.get_args a with
+    match get_args a with
     | (Type, _) -> codom (List.rev_map _Vari xs)
     | (Prod(a,b), _) ->
         let (x,b) = LibTerm.unbind_name s b in
@@ -111,7 +111,7 @@ let create_ind_pred_map :
     (* predicate variable *)
     let ind_var = new_tvar_ind p_str i in
     (* predicate type *)
-    let codom ts = _Impl (_Appl_symb ind_sym ts) (_Symb c.symb_Prop) in
+    let codom ts = _Impl (_Appl_Symb ind_sym ts) (_Symb c.symb_Prop) in
     let a = snd (Env.of_prod_using [] vs !(ind_sym.sym_type)) in
     let ind_type = ind_typ_with_codom pos ind_sym env codom x_str a in
     (* predicate conclusion *)
@@ -119,7 +119,7 @@ let create_ind_pred_map :
       let x = new_tvar x_str in
       let t = Bindlib.bind_var x
                 (prf_of c ind_var (List.remove_first arity ts) (_Vari x)) in
-      _Prod (_Appl_symb ind_sym ts) t
+      _Prod (_Appl_Symb ind_sym ts) t
     in
     let ind_conclu = ind_typ_with_codom pos ind_sym env codom x_str a in
     (ind_sym, {ind_var; ind_type; ind_conclu})
@@ -187,7 +187,7 @@ let fold_cons_type
 
     : 'c =
   let rec fold : 'var list -> 'a -> term -> 'c = fun xs acc t ->
-    match LibTerm.get_args t with
+    match get_args t with
     | (Symb(s), ts) ->
         if s == ind_sym then
           let d = List.assq ind_sym ind_pred_map in
@@ -199,7 +199,7 @@ let fold_cons_type
        let x = inj_var (List.length xs) x in
        begin
          let env, b = Env.of_prod [] "y" t in
-         match LibTerm.get_args b with
+         match get_args b with
          | (Symb(s), ts) ->
              begin
                match List.assq_opt s ind_pred_map with
@@ -253,7 +253,7 @@ let gen_rec_types :
     let nonrec_dom t x next = _Prod (lift t) (Bindlib.bind_var x next) in
     let codom xs _ p ts =
       prf_of c p (List.map lift (List.remove_first n ts))
-        (_Appl_symb cons_sym (List.rev_map _Vari xs))
+        (_Appl_Symb cons_sym (List.rev_map _Vari xs))
     in
     fold_cons_type pos ind_pred_map x_str ind_sym vs cons_sym inj_var
       init aux acc_rec_dom rec_dom acc_nonrec_dom nonrec_dom codom

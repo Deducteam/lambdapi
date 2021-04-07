@@ -34,12 +34,12 @@ let const_graph : sym -> (sym * sym) list = fun s ->
     match rule.lhs with
     | [l1] ->
         begin
-          match LibTerm.get_args l1 with
+          match get_args l1 with
           | Symb s0, _ ->
               let n = Bindlib.mbinder_arity rule.rhs in
               let r = Bindlib.msubst rule.rhs (Array.make n TE_None) in
               begin
-                match LibTerm.get_args r with
+                match get_args r with
                 | Symb s1, _ -> add s0 s1 l
                 | _ -> l
               end
@@ -74,29 +74,28 @@ let prod_graph : sym -> (sym * sym * sym * bool) list = fun s ->
   let f l rule =
     match rule.lhs with
     | [l1] ->
+    begin
+      match get_args l1 with
+      | Symb s0, [_;_] ->
+        let n = Bindlib.mbinder_arity rule.rhs in
+        let r = Bindlib.msubst rule.rhs (Array.make n TE_None) in
         begin
-          match LibTerm.get_args l1 with
-          | Symb s0, [_;_] ->
-              let n = Bindlib.mbinder_arity rule.rhs in
-              let r = Bindlib.msubst rule.rhs (Array.make n TE_None) in
-              begin
-                match r with
-                | Prod(a,b) ->
-                    begin
-                      match LibTerm.get_args a with
-                      | Symb s1, [_] ->
-                          begin
-                            match LibTerm.get_args (Bindlib.subst b Kind) with
-                            | Symb(s2), [_] ->
-                                add (s0,s1,s2,Bindlib.binder_occur b) l
-                            | _ -> l
-                          end
-                      | _ -> l
-                    end
-                | _ -> l
-              end
+        match r with
+        | Prod(a,b) ->
+          begin
+          match get_args a with
+          | Symb s1, [_] ->
+            begin
+            match get_args (Bindlib.subst b mk_Kind) with
+            | Symb(s2), [_] -> add (s0,s1,s2,Bindlib.binder_occur b) l
+            | _ -> l
+            end
           | _ -> l
+          end
+        | _ -> l
         end
+      | _ -> l
+    end
     | _ -> l
   in
   List.fold_left f [] !(s.sym_rules)
@@ -122,12 +121,12 @@ let inverse_prod : sym -> sym -> sym * sym * sym * bool = fun s s' ->
 @raise [Not_found] otherwise. *)
 let rec inverse : sym -> term -> term = fun s v ->
   if !log_enabled then log_inv "compute %a⁻¹(%a)" pp_sym s pp_term v;
-  match LibTerm.get_args v with
+  match get_args v with
   | Symb s', [t] when s' == s -> t
-  | Symb s', ts -> LibTerm.add_args (Symb (inverse_const s s')) ts
+  | Symb s', ts -> add_args (mk_Symb (inverse_const s s')) ts
   | Prod(a,b), _ ->
       let s0,s1,s2,occ =
-        match LibTerm.get_args a with
+        match get_args a with
         | Symb s', _ -> inverse_prod s s'
         | _ -> raise Not_found
       in
@@ -139,8 +138,10 @@ let rec inverse : sym -> term -> term = fun s v ->
           Bindlib.unbox (_Abst (lift a) (Bindlib.bind_var x (lift b)))
         else b
       in
-      LibTerm.add_args (Symb s0) [t1;t2]
+      add_args (mk_Symb s0) [t1;t2]
   | _ -> raise Not_found
 
 let inverse : sym -> term -> term = fun s v ->
-  let t = inverse s v in assert (Eval.eq_modulo [] (Appl(Symb s,t)) v); t
+  let t = inverse s v in
+  assert (Eval.eq_modulo [] (mk_Appl(mk_Symb s,t)) v);
+  t

@@ -134,6 +134,8 @@ Indent by `lambdapi-indent-basic' in proofs, and 0 otherwise."
                ("flag" ident "on")
                ("injective" "inductive" inddec ";")
                ("injective" symdec ";")
+               ("associative" symdec ";")
+               ("commutative" symdec ";")
                ("notation" ident "infix" "left" sterm ";")
                ("notation" ident "infix" "right" sterm ";")
                ("notation" ident "infix" sterm ";")
@@ -215,8 +217,10 @@ The default lexer is used because the syntax is primarily made of sexps."
      lambdapi-indent-basic)
 
     ;; Toplevel
+    (`(:before . "associative") '(column . 0))
     (`(:before . "begin") '(column . 0))
     (`(:before . "builtin") '(column . 0))
+    (`(:before . "commutative") '(column . 0))
     (`(:before . "constant") '(column . 0))
     (`(:before . "debug") '(column . 0))
     (`(:before . "flag") '(column . 0))

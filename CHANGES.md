@@ -1,5 +1,9 @@
 ### Unreleased
 
+#### Add commutative and associative-commutative symbols (2021-04-07)
+
+- by privatizing the type `term` and adding `term.mli`
+
 #### Improvements in some tactics (2021-04-05)
 
 - fix `have`

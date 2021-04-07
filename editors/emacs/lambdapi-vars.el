@@ -61,7 +61,9 @@
   "Commands producing side-effects.")
 
 (defconst lambdapi-misc-keywords
-  '("constant"
+  '("associative"
+    "commutative"
+    "constant"
     "left"
     "right"
     "infix"
@@ -93,7 +95,6 @@
     (modify-syntax-entry ?? "." table)
     (modify-syntax-entry ?: "." table)
     (modify-syntax-entry ?, "." table)
-    ;; (modify-syntax-entry ?| "\\" table) ; | instead of {| |} for simplicity
     (modify-syntax-entry ?\n "> " table)
     (modify-syntax-entry ?. "w" table)
     (modify-syntax-entry ?_ "w" table)
