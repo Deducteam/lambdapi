@@ -1,5 +1,16 @@
 ### Unreleased
 
+#### API modification (2021-04-07)
+
+Several functions are exposed,
+
+- `Parsing.Scope.rule_of_pre_rule`: converts a pre rewriting rule into a 
+  rewriting rule,
+- `Handle.Command.handle`: now processes proof data,
+- `Handle.Command.get_proof_data`: is the old handle,
+- `Handle.Compile.compile_with`: allows to provide a command handler to compile
+  modules
+
 #### Add commutative and associative-commutative symbols (2021-04-07)
 
 - Add `term.mli` and turn the `term` type into a *private* type so that

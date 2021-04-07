@@ -146,7 +146,9 @@ let handle_command : state -> Command.t -> command_result =
   Time.restore st;
   let open Handle in
   try
-    let (ss, ps, qres) = Command.handle (Compile.compile false) ss cmd in
+    let (ss, ps, qres) =
+      Command.get_proof_data (Compile.compile false) ss cmd
+    in
     let t = Time.save () in
     match ps with
     | None ->
