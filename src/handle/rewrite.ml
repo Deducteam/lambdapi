@@ -85,7 +85,7 @@ let _ =
   let check_t_or_p _ss pos sym =
     let valid =
       match Eval.whnf [] !(sym.sym_type) with
-      | Prod(_, b) -> Eval.eq_modulo [] (snd (Bindlib.unbind b)) Type
+      | Prod(_, b) -> Eval.eq_modulo [] (snd (Bindlib.unbind b)) mk_Type
       | _          -> false
     in
     if not valid then
@@ -164,11 +164,11 @@ let _ =
 let get_eq_data : popt -> eq_config -> term -> term * term * term =
   fun pos cfg t ->
   let t = Eval.whnf [] t in
-  match LibTerm.get_args t with
+  match get_args t with
   | (p, [u]) when is_symb cfg.symb_P p ->
       begin
         let u = Eval.whnf [] u in
-        match LibTerm.get_args u with
+        match get_args u with
         | (eq, [a;l;r]) when is_symb cfg.symb_eq eq -> (a, l, r)
         | _ -> fatal pos "Expected an equality type, found [%a]." pp_term t
       end
@@ -184,8 +184,8 @@ type to_subst = tvar array * term
     substitutions in-place. *)
 let rec add_refs : term -> term = fun t ->
   match unfold t with
-  | Wild        -> TRef(ref None)
-  | Appl(t1,t2) -> Appl(add_refs t1, add_refs t2)
+  | Wild        -> mk_TRef(ref None)
+  | Appl(t1,t2) -> mk_Appl(add_refs t1, add_refs t2)
   | _           -> t
 
 (** [break_prod a] eliminates the products at the top of [a], and returns the
@@ -204,7 +204,7 @@ let break_prod : term -> term * tvar array = fun a ->
     of [xs] by the corresponding elements of [ts] in [p] yields a term that is
     equal to [t] (in terms of [eq]). *)
 let match_pattern : to_subst -> term -> term array option = fun (xs,p) t ->
-  let ts = Array.map (fun _ -> TRef(ref None)) xs in
+  let ts = Array.map (fun _ -> mk_TRef(ref None)) xs in
   let p = Bindlib.msubst (Bindlib.unbox (Bindlib.bind_mvar xs (lift p))) ts in
   if eq [] p t then Some(Array.map unfold ts) else None
 
@@ -288,13 +288,13 @@ let swap : eq_config -> term -> term -> term -> term -> term =
   (* We build the predicate “λx:T a, eq a l x”. *)
   let pred =
     let x = new_tvar "x" in
-    let pred = add_args (Symb cfg.symb_eq) [a; l; Vari(x)] in
+    let pred = add_args (mk_Symb cfg.symb_eq) [a; l; mk_Vari x] in
     let pred = Bindlib.unbox (Bindlib.bind_var x (lift pred)) in
-    Abst(Appl(Symb cfg.symb_T, a), pred)
+    mk_Abst(mk_Appl(mk_Symb cfg.symb_T, a), pred)
   in
   (* We build the proof term. *)
-  let refl_a_l = add_args (Symb cfg.symb_refl) [a; l] in
-  add_args (Symb cfg.symb_eqind) [a; r; l; t; pred; refl_a_l]
+  let refl_a_l = add_args (mk_Symb cfg.symb_refl) [a; l] in
+  add_args (mk_Symb cfg.symb_eqind) [a; r; l; t; pred; refl_a_l]
 
 (** [rewrite ss pos gt l2r p t] generates a term for the refine tactic
    representing the application of the rewrite tactic to the goal type
@@ -321,7 +321,7 @@ let rewrite :
   let (t, l, r) = if l2r then (t, l, r) else (swap cfg a l r t, r, l) in
 
   (* Apply [t] to the variables of [vars] to get a witness of the equality. *)
-  let t_args = Array.fold_left (fun t x -> Appl(t, Vari(x))) t vars in
+  let t_args = Array.fold_left (fun t x -> mk_Appl(t, mk_Vari x)) t vars in
 
   (* Bind the variables in this new witness. *)
   let bound =
@@ -331,7 +331,7 @@ let rewrite :
 
   (* Extract the term from the goal type (get “t” from “P t”). *)
   let g_term =
-    match LibTerm.get_args g_type with
+    match get_args g_type with
     | (p, [t]) when is_symb cfg.symb_P p -> t
     | _ -> fatal pos "Goal type [%a] is not of the form “P t”." pp_term g_type
   in
@@ -633,14 +633,14 @@ let rewrite :
   in
 
   (* Construct the predicate (context). *)
-  let pred = Abst(Appl(Symb cfg.symb_T, a), pred_bind) in
+  let pred = mk_Abst(mk_Appl(mk_Symb cfg.symb_T, a), pred_bind) in
 
   (* Construct the new goal and its type. *)
-  let goal_type = Appl(Symb cfg.symb_P, new_term) in
+  let goal_type = mk_Appl(mk_Symb cfg.symb_P, new_term) in
   let goal_term = Meta.make g_ctxt goal_type in
 
   (* Build the final term produced by the tactic, and check its type. *)
-  let eqind = Symb cfg.symb_eqind in
+  let eqind = mk_Symb cfg.symb_eqind in
   let term = add_args eqind [a; l; r; t; pred; goal_term] in
 
   (* Debugging data to the log. *)
@@ -669,7 +669,7 @@ let reflexivity : Sig_state.t -> popt -> goal_typ -> term =
   (* Check that the type of [g] is of the form [P (eq a l r)]. *)
   let (a, l, _)  = get_eq_data pos cfg goal_type in
   (* Build the witness. *)
-  add_args (Symb cfg.symb_refl) [a; l]
+  add_args (mk_Symb cfg.symb_refl) [a; l]
 
 (** [symmetry ss pos gt] generates a term for the refine tactic corresponding
    to the application of symmetry to the goal type [gt], that is, it
@@ -682,7 +682,7 @@ let symmetry : Sig_state.t -> popt -> goal_typ -> term =
   let (a, l, r) = get_eq_data pos cfg goal_type in
   (* We create a new metavariable of type [P (eq a r l)]. *)
   let meta_type =
-    Appl(Symb cfg.symb_P, (add_args (Symb cfg.symb_eq) [a; r; l])) in
+    mk_Appl(mk_Symb cfg.symb_P, add_args (mk_Symb cfg.symb_eq) [a; r; l]) in
   let meta_term = Meta.make (Env.to_ctxt goal_hyps) meta_type in
   (* NOTE The proofterm is “eqind a r l M (λx,eq a l x) (refl a l)”. *)
   let term = swap cfg a r l meta_term in

@@ -550,16 +550,14 @@ let scope_rule : bool -> sig_state -> p_rule -> pre_rule loc = fun ur ss r ->
   in
   (* Check the head symbol and build the actual LHS. *)
   let (sym, pr_lhs) =
-    let (h, args) = LibTerm.get_args pr_lhs in
+    let (h, args) = get_args pr_lhs in
     match h with
     | Symb(s) ->
-        if is_constant s then
-          fatal p_lhs.pos "Constant LHS head symbol.";
+        if is_constant s then fatal p_lhs.pos "Constant LHS head symbol.";
         if s.sym_expo = Protec && ss.signature.sign_path <> s.sym_path then
           fatal p_lhs.pos "Cannot define rules on foreign protected symbols.";
         (s, args)
-    | _       ->
-        fatal p_lhs.pos "No head symbol in LHS."
+    | _ -> fatal p_lhs.pos "No head symbol in LHS."
   in
   (* Create the pattern variables that can be bound in the RHS. *)
   let pr_vars =

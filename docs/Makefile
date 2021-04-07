@@ -34,9 +34,11 @@ syntax.bnf:
 	-e 's/AS/as/g' \
 	-e 's/asSERT/assert/g' \
 	-e 's/assertNOT/assertnot/g' \
+	-e 's/<assoc>IATIVE/associative/g' \
 	-e 's/asSUME/assume/g' \
 	-e 's/BEGIN/begin/g' \
 	-e 's/BUILTIN/builtin/g' \
+	-e 's/COMMUTATIVE/commutative/g' \
 	-e 's/COMPUTE/compute/g' \
 	-e 's/CONSTANT/constant/g' \
 	-e 's/DEBUG/debug/g' \

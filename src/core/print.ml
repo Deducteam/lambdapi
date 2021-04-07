@@ -65,22 +65,27 @@ let pp_uid = Format.pp_print_string
 
 let pp_path : Path.t pp = List.pp pp_uid "."
 
-let pp_prop : prop pp = fun oc p ->
+let pp_prop : prop pp = fun ppf p ->
   match p with
+  | AC true -> out ppf "left associative commutative "
+  | AC false -> out ppf "associative commutative "
+  | Assoc true -> out ppf "left associative "
+  | Assoc false -> out ppf "associative "
+  | Const -> out ppf "constant "
+  | Commu -> out ppf "commutative "
   | Defin -> ()
-  | Const -> Format.fprintf oc "constant "
-  | Injec -> Format.fprintf oc "injective "
+  | Injec -> out ppf "injective "
 
-let pp_expo : expo pp = fun oc e ->
+let pp_expo : expo pp = fun ppf e ->
   match e with
+  | Privat -> out ppf "private "
+  | Protec -> out ppf "protected "
   | Public -> ()
-  | Protec -> Format.fprintf oc "protected "
-  | Privat -> Format.fprintf oc "private "
 
-let pp_match_strat : match_strat pp = fun oc s ->
+let pp_match_strat : match_strat pp = fun ppf s ->
   match s with
-  | Sequen -> Format.fprintf oc "sequential "
   | Eager -> ()
+  | Sequen -> out ppf "sequential "
 
 let pp_sym : sym pp = fun ppf s ->
   if !print_implicits && s.sym_impl <> [] then out ppf "@";
@@ -112,7 +117,7 @@ let nat_of_term : term -> int = fun t ->
   let zero = get_builtin "0" in
   let succ = get_builtin "+1" in
   let rec nat acc = fun t ->
-    match LibTerm.get_args t with
+    match get_args t with
     | (Symb s, [u]) when s == succ -> nat (acc+1) u
     | (Symb s,  []) when s == zero -> acc
     | _ -> raise Not_a_nat
@@ -140,7 +145,7 @@ and pp_term : term pp = fun ppf t ->
   and appl ppf t = pp `Appl ppf t
   and func ppf t = pp `Func ppf t
   and pp p ppf t =
-    let (h, args) = LibTerm.get_args t in
+    let (h, args) = get_args t in
     let pp_appl h args =
       match args with
       | []   -> pp_head (p <> `Func) ppf h
@@ -266,12 +271,12 @@ let rec pp_prod : (term * bool list) pp = fun ppf (t, impl) ->
   | _ -> pp_term ppf t
 
 let pp_rule : (sym * rule) pp = fun ppf (s,r) ->
-  let lhs = LibTerm.add_args (Symb s) r.lhs in
+  let lhs = add_args (mk_Symb s) r.lhs in
   let (_, rhs) = Bindlib.unmbind r.rhs in
   out ppf "%a ↪ %a" pp_term lhs pp_term rhs
 
 let pp_unif_rule : (sym * rule) pp = fun ppf (s,r) ->
-  let lhs = LibTerm.add_args (Symb s) r.lhs in
+  let lhs = add_args (mk_Symb s) r.lhs in
   let (_, rhs) = Bindlib.unmbind r.rhs in
   out ppf "%a ↪ [ %a ]" pp_term lhs pp_term rhs
 

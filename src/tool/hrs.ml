@@ -11,7 +11,7 @@ open Timed
 open Core
 open Term
 open Print
- 
+
 (** [print_sym oc s] outputs the fully qualified name of [s] to [oc]. The name
     is prefixed by ["c_"], and modules are separated with ["_"], not ["."]. *)
 let print_sym : sym pp = fun oc s ->
@@ -36,7 +36,8 @@ let print_term : bool -> term pp = fun lhs ->
     | Symb(s)      -> print_sym oc s
     | Patt(i,n,ts) ->
         if ts = [||] then out "$%s" n else
-        pp oc (Array.fold_left (fun t u -> Appl(t,u)) (Patt(i,n,[||])) ts)
+          pp oc (Array.fold_left (fun t u -> mk_Appl(t,u))
+                   (mk_Patt(i,n,[||])) ts)
     | Appl(t,u)    -> out "app(%a,%a)" pp t pp u
     | Abst(a,t)    ->
         let (x, t) = Bindlib.unbind t in
@@ -81,7 +82,7 @@ let print_rule : Format.formatter -> term -> term -> unit =
 (** [print_sym_rule oc s r] outputs the rule declaration corresponding [r] (on
    the symbol [s]), to the output channel [oc]. *)
 let print_sym_rule : Format.formatter -> sym -> rule -> unit = fun oc s r ->
-  let lhs = LibTerm.add_args (Symb s) r.lhs in
+  let lhs = add_args (mk_Symb s) r.lhs in
   let rhs = LibTerm.term_of_rhs r in
   print_rule oc lhs rhs
 
@@ -130,7 +131,7 @@ let to_HRS : Format.formatter -> Sign.t -> unit = fun oc sign ->
   Format.fprintf oc "\n(COMMENT rewriting rules)\n";
   let print_rules s =
     match !(s.sym_def) with
-    | Some(d) -> print_rule oc (Symb s) d
+    | Some(d) -> print_rule oc (mk_Symb s) d
     | None    -> List.iter (print_sym_rule oc s) !(s.sym_rules)
   in
   iter_symbols print_rules

@@ -42,7 +42,7 @@ module Goal = struct
   let env : goal -> Env.t = fun g ->
     match g with
     | Unif (c,_,_) ->
-        let t, n = Ctxt.to_prod c Type in fst (Env.of_prod_nth c n t)
+        let t, n = Ctxt.to_prod c mk_Type in fst (Env.of_prod_nth c n t)
     | Typ gt -> gt.goal_hyps
 
   (** [of_meta m] creates a goal from the meta [m]. *)
@@ -62,7 +62,7 @@ module Goal = struct
     match g, g' with
     | Typ gt, Typ gt' -> (* Smaller (= older) metas are put first. *)
         Meta.compare gt.goal_meta gt'.goal_meta
-    | Unif c, Unif c' -> LibTerm.cmp_constr c c'
+    | Unif c, Unif c' -> cmp_constr c c'
     | Unif _, Typ _ -> 1
     | Typ _, Unif _ -> -1
 
