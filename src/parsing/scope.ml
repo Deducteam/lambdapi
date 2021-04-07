@@ -620,26 +620,26 @@ let scope_pattern : sig_state -> env -> p_term -> term = fun ss env t ->
 (** [scope_rw_patt ss env t] turns a parser-level rewrite tactic specification
     [s] into an actual rewrite specification (possibly containing variables of
     [env] and using [ss] for aliasing). *)
-let scope_rw_patt : sig_state ->  env -> p_rw_patt -> rw_patt =
+let scope_rw_patt : sig_state -> env -> p_rw_patt -> (term, tbinder) rw_patt =
   fun ss env s ->
   match s.elt with
-  | P_rw_Term(t)               -> RW_Term(scope_pattern ss env t)
-  | P_rw_InTerm(t)             -> RW_InTerm(scope_pattern ss env t)
-  | P_rw_InIdInTerm(x,t)       ->
+  | Rw_Term(t) -> Rw_Term(scope_pattern ss env t)
+  | Rw_InTerm(t) -> Rw_InTerm(scope_pattern ss env t)
+  | Rw_InIdInTerm(x,t) ->
       let v = new_tvar x.elt in
       let t = scope_pattern ss ((x.elt,(v, _Kind, None))::env) t in
-      RW_InIdInTerm(Bindlib.unbox (Bindlib.bind_var v (lift t)))
-  | P_rw_IdInTerm(x,t)         ->
+      Rw_InIdInTerm(Bindlib.unbox (Bindlib.bind_var v (lift t)))
+  | Rw_IdInTerm(x,t) ->
       let v = new_tvar x.elt in
       let t = scope_pattern ss ((x.elt,(v, _Kind, None))::env) t in
-      RW_IdInTerm(Bindlib.unbox (Bindlib.bind_var v (lift t)))
-  | P_rw_TermInIdInTerm(u,x,t) ->
+      Rw_IdInTerm(Bindlib.unbox (Bindlib.bind_var v (lift t)))
+  | Rw_TermInIdInTerm(u,(x,t)) ->
       let u = scope_pattern ss env u in
       let v = new_tvar x.elt in
       let t = scope_pattern ss ((x.elt,(v, _Kind, None))::env) t in
-      RW_TermInIdInTerm(u, Bindlib.unbox (Bindlib.bind_var v (lift t)))
-  | P_rw_TermAsIdInTerm(u,x,t) ->
+      Rw_TermInIdInTerm(u, Bindlib.unbox (Bindlib.bind_var v (lift t)))
+  | Rw_TermAsIdInTerm(u,(x,t)) ->
       let u = scope_pattern ss env u in
       let v = new_tvar x.elt in
       let t = scope_pattern ss ((x.elt,(v, _Kind, None))::env) t in
-      RW_TermAsIdInTerm(u, Bindlib.unbox (Bindlib.bind_var v (lift t)))
+      Rw_TermAsIdInTerm(u, Bindlib.unbox (Bindlib.bind_var v (lift t)))

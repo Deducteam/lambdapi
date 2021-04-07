@@ -173,13 +173,13 @@ let proof_end : p_proof_end pp = fun ppf pe ->
 
 let rw_patt : p_rw_patt pp = fun ppf p ->
   match p.elt with
-  | P_rw_Term(t)               -> term ppf t
-  | P_rw_InTerm(t)             -> out ppf "in %a" term t
-  | P_rw_InIdInTerm(x,t)       -> out ppf "in %a in %a" ident x term t
-  | P_rw_IdInTerm(x,t)         -> out ppf "%a in %a" ident x term t
-  | P_rw_TermInIdInTerm(u,x,t) ->
+  | Rw_Term(t)               -> term ppf t
+  | Rw_InTerm(t)             -> out ppf "in %a" term t
+  | Rw_InIdInTerm(x,t)       -> out ppf "in %a in %a" ident x term t
+  | Rw_IdInTerm(x,t)         -> out ppf "%a in %a" ident x term t
+  | Rw_TermInIdInTerm(u,(x,t)) ->
       out ppf "%a in %a in %a" term u ident x term t
-  | P_rw_TermAsIdInTerm(u,x,t) ->
+  | Rw_TermAsIdInTerm(u,(x,t)) ->
       out ppf "%a as %a in %a" term u ident x term t
 
 let assertion : p_assertion pp = fun ppf a ->

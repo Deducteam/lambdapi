@@ -285,18 +285,6 @@ type ctxt = (tvar * term * term option) list
 (** Type of unification constraints. *)
 type constr = ctxt * term * term
 
-(** Rewrite patterns as in Coq/SSReflect. See "A Small Scale
-    Reflection Extension for the Coq system", by Georges Gonthier,
-    Assia Mahboubi and Enrico Tassi, INRIA Research Report 6455, 2016,
-    @see <http://hal.inria.fr/inria-00258384>, section 8, p. 48. *)
-type rw_patt =
-  | RW_Term           of term
-  | RW_InTerm         of term
-  | RW_InIdInTerm     of tbinder
-  | RW_IdInTerm       of tbinder
-  | RW_TermInIdInTerm of term * tbinder
-  | RW_TermAsIdInTerm of term * tbinder
-
 (** Representation of unification problems. *)
 type problem =
   { to_solve  : constr list
