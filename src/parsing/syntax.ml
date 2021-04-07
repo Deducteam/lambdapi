@@ -148,23 +148,6 @@ end
     Reflection Extension for the Coq system", by Georges Gonthier,
     Assia Mahboubi and Enrico Tassi, INRIA Research Report 6455, 2016,
     @see <http://hal.inria.fr/inria-00258384>, section 8, p. 48. *)
-(*type rw_patt =
-  | RW_Term           of term
-  | RW_InTerm         of term
-  | RW_InIdInTerm     of tbinder
-  | RW_IdInTerm       of tbinder
-  | RW_TermInIdInTerm of term * tbinder
-  | RW_TermAsIdInTerm of term * tbinder*)
-
-(** Rewrite pattern specification. *)
-(*type p_rw_patt_aux =
-  | P_rw_Term           of p_term
-  | P_rw_InTerm         of p_term
-  | P_rw_InIdInTerm     of p_ident * p_term
-  | P_rw_IdInTerm       of p_ident * p_term
-  | P_rw_TermInIdInTerm of p_term * p_ident * p_term
-  | P_rw_TermAsIdInTerm of p_term * p_ident * p_term*)
-
 type ('term, 'binder) rw_patt =
   | Rw_Term           of 'term
   | Rw_InTerm         of 'term
