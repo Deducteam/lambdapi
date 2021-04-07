@@ -2,7 +2,20 @@
 
 #### Add commutative and associative-commutative symbols (2021-04-07)
 
-- by privatizing the type `term` and adding `term.mli`
+- Add `term.mli` and turn the `term` type into a *private* type so that
+  term constructors are not exported anymore (they are available for
+  pattern-matching though). For constructing terms, one now needs to
+  use the provided construction functions `mk_Vari` for `Vari`,
+  `mk_Appl` for `Appl`, etc.
+
+- Move some functions `LibTerm` to `Term`, in particular `get_args`,
+  `add_args` and `cmp_term`.
+
+- Rename the field `sym_tree` into `sym_dtree`.
+
+- Redefine the type `rhs` as `(term_env, term) Bindlib.mbinder`
+  instead of `(term_env, term) Bindlib.mbinder * int` so that the old
+  `rhs` needs to be replaced by `rhs * int` in a few places.
 
 #### Improvements in some tactics (2021-04-05)
 
