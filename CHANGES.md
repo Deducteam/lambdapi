@@ -1,5 +1,10 @@
 ### Unreleased
 
+#### Factorize type `rw_patt` (2021-04-07)
+
+The types `Term.rw_patt` and `Syntax.p_rw_patt_aux` are merged into a
+single polymorphic type `Syntax.rw_patt`.
+
 #### API modification (2021-04-07)
 
 Several functions are exposed,
