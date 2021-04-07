@@ -45,7 +45,7 @@ let steps : int Stdlib.ref = Stdlib.ref 0
 (** [appl_to_tref t] transforms {!constructor:Appl} into references. *)
 let appl_to_tref : term -> term = fun t ->
   match t with
-  | Appl(_,_) as t -> TRef(ref (Some t))
+  | Appl(_,_) as t -> mk_TRef(ref (Some t))
   | t              -> t
 
 (** Abstract machine stack. *)
@@ -113,7 +113,7 @@ and whnf_stk : ctxt -> term -> stack -> term * stack = fun ctx t stk ->
       | Some(t) when not s.sym_opaq -> Stdlib.incr steps; whnf_stk ctx t stk
       | _ ->
       (* Otherwise try rewriting using decision tree. *)
-      match tree_walk !(s.sym_tree) ctx stk with
+      match tree_walk !(s.sym_dtree) ctx stk with
       (* If no rule is found, return the original term *)
       | None        -> st
       | Some(t,stk) -> Stdlib.incr steps; whnf_stk ctx t stk
@@ -147,7 +147,7 @@ and eq_modulo : ctxt -> term -> term -> bool = fun ctx a b ->
     | (Abst(_ ,b ), t          )
     | (t          , Abst(_ ,b )) when !eta_equality ->
         let (x,b) = Bindlib.unbind b in
-        eq_modulo ((b, Appl(t, Vari(x)))::l)
+        eq_modulo ((b, mk_Appl(t, mk_Vari(x)))::l)
     | (Appl(t1,u1), Appl(t2,u2)) -> eq_modulo ((u1,u2)::(t1,t2)::l)
     | (Meta(m1,a1), Meta(m2,a2)) when m1 == m2 ->
         eq_modulo (if a1 == a2 then l else List.add_array2 a1 a2 l)
@@ -184,7 +184,7 @@ and eq_modulo : ctxt -> term -> term -> bool = fun ctx a b ->
 and tree_walk : dtree -> ctxt -> stack -> (term * stack) option =
   fun tree ctx stk ->
   let (lazy capacity, lazy tree) = tree in
-  let vars = Array.make capacity Kind in (* dummy terms *)
+  let vars = Array.make capacity mk_Kind in (* dummy terms *)
   let bound = Array.make capacity TE_None in
   (* [walk tree stk cursor vars_id id_vars] where [stk] is the stack of terms
      to match and [cursor] the cursor indicating where to write in the [vars]
@@ -220,7 +220,7 @@ and tree_walk : dtree -> ctxt -> stack -> (term * stack) option =
         List.iter f env_builder;
         (* Complete the array with fresh meta-variables if needed. *)
         for i = env_len - xvars to env_len - 1 do
-          let mt = Meta.make ctx Type in
+          let mt = Meta.make ctx mk_Type in
           let t = Meta.make ctx mt in
           let b = Bindlib.raw_mbinder [||] [||] 0 of_tvar (fun _ -> t) in
           env.(i) <- TE_Some(b)
@@ -374,14 +374,14 @@ and snf : ctxt -> term -> term = fun ctx t ->
       let (x,b) = Bindlib.unbind b in
       let b = snf ctx b in
       let b = Bindlib.unbox (Bindlib.bind_var x (lift b)) in
-      Prod(snf ctx a, b)
+      mk_Prod(snf ctx a, b)
   | Abst(a,b)   ->
       let (x,b) = Bindlib.unbind b in
       let b = snf ctx b in
       let b = Bindlib.unbox (Bindlib.bind_var x (lift b)) in
-      Abst(snf ctx a, b)
-  | Appl(t,u)   -> Appl(snf ctx t, snf ctx u)
-  | Meta(m,ts)  -> Meta(m, Array.map (snf ctx) ts)
+      mk_Abst(snf ctx a, b)
+  | Appl(t,u)   -> mk_Appl(snf ctx t, snf ctx u)
+  | Meta(m,ts)  -> mk_Meta(m, Array.map (snf ctx) ts)
   | Patt(_,_,_) -> assert false
   | TEnv(_,_)   -> assert false
   | Wild        -> assert false
@@ -399,7 +399,7 @@ let rec simplify : term -> term = fun t ->
   | Prod(a,b), _ ->
      let (x,b) = Bindlib.unbind b in
      let b = Bindlib.bind_var x (lift (simplify b)) in
-     Prod (simplify a, Bindlib.unbox b)
+     mk_Prod (simplify a, Bindlib.unbox b)
   | h, ts -> add_args_map h whnf_beta ts
 
 (** [hnf t] computes a head-normal form of the term [t]. *)
@@ -407,7 +407,7 @@ let rec hnf : ctxt -> term -> term = fun ctx t ->
   match whnf ctx t with
   | Abst(a,t) ->
      let x,t = Bindlib.unbind t in
-     Abst(a, Bindlib.unbox (Bindlib.bind_var x (lift (hnf ctx t))))
+     mk_Abst(a, Bindlib.unbox (Bindlib.bind_var x (lift (hnf ctx t))))
   | t         -> t
 
 (** Type representing the different evaluation strategies. *)
@@ -440,20 +440,20 @@ let unfold_sym : sym -> term -> term =
   let unfold_sym : sym -> (term list -> term) -> term -> term =
     fun s unfold_sym_app ->
     let rec unfold_sym t =
-      let h, args = LibTerm.get_args t in
+      let h, args = get_args t in
       let args = List.map unfold_sym args in
       match h with
       | Symb s' when s' == s -> unfold_sym_app args
       | _ ->
           let h =
             match h with
-            | Abst(a,b) -> Abst(unfold_sym a, unfold_sym_binder b)
-            | Prod(a,b) -> Prod(unfold_sym a, unfold_sym_binder b)
-            | Meta(m,ts) -> Meta(m, Array.map unfold_sym ts)
+            | Abst(a,b) -> mk_Abst(unfold_sym a, unfold_sym_binder b)
+            | Prod(a,b) -> mk_Prod(unfold_sym a, unfold_sym_binder b)
+            | Meta(m,ts) -> mk_Meta(m, Array.map unfold_sym ts)
             | LLet(a,t,u) ->
-                LLet(unfold_sym a, unfold_sym t, unfold_sym_binder u)
+                mk_LLet(unfold_sym a, unfold_sym t, unfold_sym_binder u)
             | _ -> h
-          in LibTerm.add_args h args
+          in add_args h args
     and unfold_sym_binder b =
       let x, b = Bindlib.unbind b in
       Bindlib.unbox (Bindlib.bind_var x (lift (unfold_sym b)))
@@ -462,14 +462,14 @@ let unfold_sym : sym -> term -> term =
   fun s ->
   if s.sym_opaq then fun t -> t else
   match !(s.sym_def) with
-  | Some d -> unfold_sym s (LibTerm.add_args d)
+  | Some d -> unfold_sym s (add_args d)
   | None ->
   match !(s.sym_rules) with
   | [] -> fun t -> t
   | _ ->
-      let dt = !(s.sym_tree) in
+      let dt = !(s.sym_dtree) in
       let unfold_sym_app args =
         match tree_walk dt [] args with
-        | Some(r,ts) -> LibTerm.add_args r ts
-        | None -> LibTerm.add_args (Symb s) args
+        | Some(r,ts) -> add_args r ts
+        | None -> add_args (mk_Symb s) args
       in unfold_sym s unfold_sym_app

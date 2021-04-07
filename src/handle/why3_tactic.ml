@@ -78,7 +78,7 @@ let new_axiom_name : unit -> string =
 let translate_term : config -> cnst_table -> term ->
                        (cnst_table * Why3.Term.term) option = fun cfg tbl t ->
   let rec translate_prop tbl t =
-    match LibTerm.get_args t with
+    match get_args t with
     | (Symb(s), [t1; t2]) when s == cfg.symb_and ->
         let (tbl, t1) = translate_prop tbl t1 in
         let (tbl, t2) = translate_prop tbl t2 in
@@ -108,7 +108,7 @@ let translate_term : config -> cnst_table -> term ->
           let sym = Why3.Term.create_psymbol (Why3.Ident.id_fresh "P") [] in
           ((t, sym)::tbl, Why3.Term.ps_app sym [])
   in
-  match LibTerm.get_args t with
+  match get_args t with
   | (Symb(s), [t]) when s == cfg.symb_P -> Some (translate_prop tbl t)
   | _                                   -> None
 
@@ -208,6 +208,6 @@ let handle :
   in
   if !log_enabled then log_why3 "axiom %a created" Print.pp_uid axiom_name;
   (* Return the variable terms of each item in the context. *)
-  let terms = List.rev_map (fun (_, (x, _, _)) -> Vari x) hyps in
+  let terms = List.rev_map (fun (_, (x, _, _)) -> mk_Vari x) hyps in
   (* Apply the instance of the axiom with context. *)
-  LibTerm.add_args (Symb a) terms
+  add_args (mk_Symb a) terms

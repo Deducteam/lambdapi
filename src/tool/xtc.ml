@@ -53,7 +53,7 @@ let rec print_term : int -> string -> term pp = fun i s oc t ->
   | Patt(j,n,ts)            ->
      if ts = [||] then out "<var>%s_%i_%s</var>@." s i n else
        print_term i s oc
-         (Array.fold_left (fun t u -> Appl(t,u)) (Patt(j,n,[||])) ts)
+         (Array.fold_left (fun t u -> mk_Appl(t,u)) (mk_Patt(j,n,[||])) ts)
   | Appl(t,u)               -> out "<application>@.%a%a</application>@."
                                  (print_term i s) t (print_term i s) u
   | Abst(a,t)               ->
@@ -101,7 +101,7 @@ and print_type : int -> string -> term pp = fun i s oc t ->
 let print_rule : Format.formatter -> int -> sym -> rule -> unit =
   fun oc i s r ->
   (* Print the rewriting rule. *)
-  let lhs = LibTerm.add_args (Symb s) r.lhs in
+  let lhs = add_args (mk_Symb s) r.lhs in
   Format.fprintf oc "<rule>@.<lhs>@.%a</lhs>@." (print_term i s.sym_name) lhs;
   let rhs = LibTerm.term_of_rhs r in
   Format.fprintf oc "<rhs>@.%a</rhs>@.</rule>@." (print_term i s.sym_name) rhs
@@ -110,7 +110,7 @@ let print_rule : Format.formatter -> int -> sym -> rule -> unit =
 let print_tl_rule : Format.formatter -> int -> sym -> rule -> unit =
   fun oc i s r ->
   (* Print the type level rewriting rule. *)
-  let lhs = LibTerm.add_args (Symb s) r.lhs in
+  let lhs = add_args (mk_Symb s) r.lhs in
   Format.fprintf oc "<typeLevelRule>@.<TLlhs>@.%a</TLlhs>@."
     (print_type i s.sym_name) lhs;
   let rhs = LibTerm.term_of_rhs r in
@@ -137,16 +137,15 @@ let get_vars : sym -> rule -> (string * Term.term) list = fun s r ->
     | Symb (_)            -> t
     | Abst (t1, b)        ->
        let (x,t2) = Bindlib.unbind b in
-       Abst(
+       mk_Abst(
            subst_patt v t1,
            Bindlib.unbox (Bindlib.bind_var x (lift (subst_patt v t2)))
          )
-    | Appl (t1, t2)        -> Appl(subst_patt v t1, subst_patt v t2)
+    | Appl (t1, t2)        -> mk_Appl(subst_patt v t1, subst_patt v t2)
     | Patt (None, x, a)    ->
        let v_i = new_tvar x in
        var_list := v_i :: !var_list;
-       Array.fold_left (fun acc t -> Appl(acc,t))
-         (Vari(v_i)) a
+       Array.fold_left (fun acc t -> mk_Appl(acc,t)) (mk_Vari v_i) a
     | Patt (Some(i), x, a) ->
        if v.(i) = None
        then
@@ -158,15 +157,15 @@ let get_vars : sym -> rule -> (string * Term.term) list = fun s r ->
          |Some(vi) -> vi
          |None -> assert false
        in
-       Array.fold_left (fun acc t -> Appl(acc,t)) (Vari(v_i)) a
+       Array.fold_left (fun acc t -> mk_Appl(acc,t)) (mk_Vari v_i) a
   in
   let lhs =
     List.fold_left
-      (fun t h -> Appl(t,subst_patt rule_ctx (unfold h)))
-      (Symb s) r.lhs
+      (fun t h -> mk_Appl(t, subst_patt rule_ctx (unfold h)))
+      (mk_Symb s) r.lhs
   in
   let ctx =
-    let fn l x = (x, (Meta(Meta.fresh Type 0,[||])), None) :: l in
+    let fn l x = (x, (mk_Meta(Meta.fresh mk_Type 0,[||])), None) :: l in
     List.fold_left fn [] !var_list
   in
   match Infer.infer_noexn [] ctx lhs with
