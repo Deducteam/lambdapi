@@ -102,32 +102,37 @@ Examples:
 **Modifiers:**
 
 Modifiers are keywords that precede a symbol declaration to provide
-the system with additional information on its properties or behavior.
+the system with additional information on its properties and behavior.
 
-- Modifiers for the unification engine:
+- Property modifiers (used by the unification engine or the conversion):
 
-  - ``constant``: no rule can be added to the symbol
-  - ``injective``: the symbol can be considered as injective, that is, if ``f t1 .. tn`` ≡ ``f u1 .. un``, then ``t1``\ ≡\ ``u1``, …, ``tn``\ ≡\ ``un``. For the moment, the verification is left to the user.
+  - ``constant``: No rule or definition can be given to the symbol
+  - ``injective``: The symbol can be considered as injective, that is, if ``f t1 .. tn`` ≡ ``f u1 .. un``, then ``t1``\ ≡\ ``u1``, …, ``tn``\ ≡\ ``un``. For the moment, the verification is left to the user.
+  - ``commutative``: Adds in the conversion the equation ``f t u ≡ f u t``.
+  - ``associative``: Adds in the conversion the equation ``f (f t u) v ≡ f t (f u v)`` (in conjonction with ``commutative`` only)
 
--  Exposition markers define how a symbol can be used outside the module
-   where it is defined.
+    
+- Exposition modifiers define how a symbol can be used outside the
+   module where it is defined. By default, the symbol can be used
+   without restriction.
 
-   -  by default, the symbol can be used without restriction
-   -  ``private``: the symbol cannot be used
-   -  ``protected``: the symbol can only be used in left-hand side of
+  -  ``private``: The symbol cannot be used.
+  -  ``protected``: The symbol can only be used in left-hand side of
       rewrite rules.
 
-   Exposition markers obey the following rules: inside a module,
+  Exposition modifiers obey the following rules: inside a module,
 
-   -  private symbols cannot appear in the type of public symbols;
-   -  private symbols cannot appear in the right-hand side of a
-      rewriting rule defining a public symbol
-   -  externally defined protected symbols cannot appear at the head of
-      a left-hand side
-   -  externally defined protected symbols cannot appear in the right
-      hand side of a rewriting rule
+  -  Private symbols cannot appear in the type of public symbols.
+  -  Private symbols cannot appear in the right-hand side of a
+     rewriting rule defining a public symbol.
+  -  Externally defined protected symbols cannot appear at the head of
+     a left-hand side.
+  -  Externally defined protected symbols cannot appear in the right
+     hand side of a rewriting rule.
 
--  ``sequential``: modifies the pattern matching algorithm. By default,
+-  Matching strategy modifiers:
+
+  - ``sequential``: modifies the pattern matching algorithm. By default,
    the order of rule declarations is not taken into account. This
    modifier tells Lambdapi to apply rules defining a sequential symbol
    in the order they have been declared (note that the order of the
