@@ -104,7 +104,7 @@ Examples:
 Modifiers are keywords that precede a symbol declaration to provide
 the system with additional information on its properties and behavior.
 
-- Property modifiers (used by the unification engine or the conversion):
+- **Property modifiers** (used by the unification engine or the conversion):
 
   - ``constant``: No rule or definition can be given to the symbol
   - ``injective``: The symbol can be considered as injective, that is, if ``f t1 .. tn`` ≡ ``f u1 .. un``, then ``t1``\ ≡\ ``u1``, …, ``tn``\ ≡\ ``un``. For the moment, the verification is left to the user.
@@ -112,9 +112,9 @@ the system with additional information on its properties and behavior.
   - ``associative``: Adds in the conversion the equation ``f (f t u) v ≡ f t (f u v)`` (in conjonction with ``commutative`` only)
 
     
-- Exposition modifiers define how a symbol can be used outside the
-   module where it is defined. By default, the symbol can be used
-   without restriction.
+- **Exposition modifiers** define how a symbol can be used outside the
+  module where it is defined. By default, the symbol can be used
+  without restriction.
 
   - ``private``: The symbol cannot be used.
   - ``protected``: The symbol can only be used in left-hand side of
@@ -130,7 +130,7 @@ the system with additional information on its properties and behavior.
   - Externally defined protected symbols cannot appear in the right
     hand side of a rewriting rule.
 
--  Matching strategy modifiers:
+- **Matching strategy modifiers:**
 
   - ``sequential``: modifies the pattern matching algorithm. By default,
     the order of rule declarations is not taken into account. This
