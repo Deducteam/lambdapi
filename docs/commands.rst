@@ -116,29 +116,29 @@ the system with additional information on its properties and behavior.
    module where it is defined. By default, the symbol can be used
    without restriction.
 
-  -  ``private``: The symbol cannot be used.
-  -  ``protected``: The symbol can only be used in left-hand side of
-      rewrite rules.
+  - ``private``: The symbol cannot be used.
+  - ``protected``: The symbol can only be used in left-hand side of
+    rewrite rules.
 
   Exposition modifiers obey the following rules: inside a module,
 
-  -  Private symbols cannot appear in the type of public symbols.
-  -  Private symbols cannot appear in the right-hand side of a
-     rewriting rule defining a public symbol.
-  -  Externally defined protected symbols cannot appear at the head of
-     a left-hand side.
-  -  Externally defined protected symbols cannot appear in the right
-     hand side of a rewriting rule.
+  - Private symbols cannot appear in the type of public symbols.
+  - Private symbols cannot appear in the right-hand side of a
+    rewriting rule defining a public symbol.
+  - Externally defined protected symbols cannot appear at the head of
+    a left-hand side.
+  - Externally defined protected symbols cannot appear in the right
+    hand side of a rewriting rule.
 
 -  Matching strategy modifiers:
 
   - ``sequential``: modifies the pattern matching algorithm. By default,
-   the order of rule declarations is not taken into account. This
-   modifier tells Lambdapi to apply rules defining a sequential symbol
-   in the order they have been declared (note that the order of the
-   rules may depend on the order of the ``require`` commands). An
-   example can be seen in ``tests/OK/rule_order.lp``.
-   *WARNING:* using this modifier can break important properties.
+    the order of rule declarations is not taken into account. This
+    modifier tells Lambdapi to apply rules defining a sequential symbol
+    in the order they have been declared (note that the order of the
+    rules may depend on the order of the ``require`` commands). An
+    example can be seen in ``tests/OK/rule_order.lp``.
+    *WARNING:* using this modifier can break important properties.
 
 Examples:
 
