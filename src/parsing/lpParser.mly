@@ -174,9 +174,9 @@ params:
     { (xs, a, true) }
 
 rw_patt:
-  | t=term { make_pos $sloc (P_rw_Term(t)) }
-  | IN t=term { make_pos $sloc (P_rw_InTerm(t)) }
-  | IN x=uid IN t=term { make_pos $sloc (P_rw_InIdInTerm(x, t)) }
+  | t=term { make_pos $sloc (Rw_Term(t)) }
+  | IN t=term { make_pos $sloc (Rw_InTerm(t)) }
+  | IN x=uid IN t=term { make_pos $sloc (Rw_InIdInTerm(x, t)) }
   | u=term IN x=term t=preceded(IN, term)?
     { let ident_of_term {elt; _} =
         match elt with
@@ -184,11 +184,10 @@ rw_patt:
         | _ -> $syntaxerror
       in
       match t with
-      | Some(t) -> make_pos $sloc (P_rw_TermInIdInTerm(u, ident_of_term x, t))
-      | None -> make_pos $sloc (P_rw_IdInTerm(ident_of_term u, x))
+      | Some(t) -> make_pos $sloc (Rw_TermInIdInTerm(u, (ident_of_term x, t)))
+      | None -> make_pos $sloc (Rw_IdInTerm(ident_of_term u, x))
     }
-  | u=term AS x=uid IN t=term
-      { make_pos $sloc (P_rw_TermAsIdInTerm(u,x,t)) }
+  | u=term AS x=uid IN t=term { make_pos $sloc (Rw_TermAsIdInTerm(u,(x,t))) }
 
 tactic:
   | q=query { make_pos $sloc (P_tac_query q) }

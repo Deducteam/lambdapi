@@ -302,8 +302,8 @@ let swap : eq_config -> term -> term -> term -> term -> term =
    replaced by the right-hand side of the obtained proof (or the reverse if
    l2r is false). [p] is an optional SSReflect pattern. [t] is the equational
    lemma that is appied. It handles the full set of SSReflect patterns. *)
-let rewrite :
-  Sig_state.t -> popt -> goal_typ -> bool -> rw_patt option -> term -> term =
+let rewrite : Sig_state.t -> popt -> goal_typ -> bool ->
+              (term, tbinder) Parsing.Syntax.rw_patt option -> term -> term =
   fun ss pos {goal_hyps=g_env; goal_type=g_type; _} l2r p t ->
 
   (* Obtain the required symbols from the current signature. *)
@@ -355,7 +355,7 @@ let rewrite :
         (pred_bind, Bindlib.subst pred_bind r, t, l, r)
 
     (* Basic patterns. *)
-    | Some(RW_Term(p)) ->
+    | Some(Rw_Term(p)) ->
         (* Find a subterm [match_p] of the goal that matches [p]. *)
         let match_p =
           let p_refs = add_refs p in
@@ -378,7 +378,7 @@ let rewrite :
         (pred_bind, Bindlib.subst pred_bind r, t, l, r)
 
     (* Nested patterns. *)
-    | Some(RW_InTerm(p)) ->
+    | Some(Rw_InTerm(p)) ->
         (* Find a subterm [match_p] of the goal that matches [p]. *)
         let match_p =
           let p_refs = add_refs p in
@@ -406,7 +406,7 @@ let rewrite :
         let pred_bind = Bindlib.unbox (Bindlib.bind_var x pred_box) in
         (pred_bind, new_term, t, l, r)
 
-    | Some(RW_IdInTerm(p)) ->
+    | Some(Rw_IdInTerm(p)) ->
         (* The code here works as follows: *)
         (* 1 - Try to match [p] with some subterm of the goal. *)
         (* 2 - If we succeed we do two things, we first replace [id] with its
@@ -469,7 +469,7 @@ let rewrite :
         (pred_bind, new_term, t, l, r)
 
     (* Combinational patterns. *)
-    | Some(RW_TermInIdInTerm(s,p)) ->
+    | Some(Rw_TermInIdInTerm(s,p)) ->
         (* This pattern combines the previous.  First, we identify the subterm
            of [g_term] that matches with [p] where [p] contains an identifier.
            Once we have the value that the identifier in [p] has been  matched
@@ -544,7 +544,7 @@ let rewrite :
         let pred_bind = Bindlib.bind_var x (lift pred) in
         (Bindlib.unbox pred_bind, new_term, t, l, r)
 
-    | Some(RW_TermAsIdInTerm(s,p)) ->
+    | Some(Rw_TermAsIdInTerm(s,p)) ->
         (* This pattern is essentially a let clause.  We first match the value
            of [pat] with some subterm of the goal, and then rewrite in each of
            the occurences of [id]. *)
@@ -590,8 +590,8 @@ let rewrite :
         let pred_bind = Bindlib.(unbox (bind_var x pred_box)) in
         (pred_bind, new_term, t, l, r)
 
-    | Some(RW_InIdInTerm(p)) ->
-        (* This is very similar to the [RW_IdInTerm] case. Instead of matching
+    | Some(Rw_InIdInTerm(p)) ->
+        (* This is very similar to the [Rw_IdInTerm] case. Instead of matching
            [id_val] with [l],  we try to match a subterm of [id_val] with [l],
            and then we rewrite this subterm. As a consequence,  we just change
            the way we construct a [pat_r]. *)
