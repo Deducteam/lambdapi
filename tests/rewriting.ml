@@ -11,15 +11,6 @@ let parse_term s =
   | Syntax.P_query {elt=Syntax.P_query_normalize (t, _); _} -> t
   | _ -> assert false
 
-let rule_of_pre_rule : Scope.pre_rule -> Term.rule =
-  fun {pr_lhs; pr_vars; pr_rhs; pr_arities; pr_xvars_nb; _} ->
-  { lhs = pr_lhs
-  ; rhs = Bindlib.(unbox (bind_mvar pr_vars pr_rhs))
-  ; arity = List.length pr_lhs
-  ; arities = pr_arities
-  ; vars = pr_vars
-  ; xvars_nb = pr_xvars_nb }
-
 let add_sym ss id =
   Sig_state.add_symbol ss Public Defin Eager true (Pos.none id) Term.mk_Kind []
     None
@@ -37,7 +28,7 @@ let sig_state, a = add_sym sig_state "A"
 let parse_rule s =
   let r = Parser.Lp.parse_string "rewrite_test rule" s |> Stream.next in
   let r = match r.elt with Syntax.P_rules [r] -> r | _ -> assert false in
-  (Scope.scope_rule false sig_state r).elt |> rule_of_pre_rule
+  (Scope.scope_rule false sig_state r).elt |> Scope.rule_of_pre_rule
 
 let arrow_matching () =
   (* Matching on a product. *)
