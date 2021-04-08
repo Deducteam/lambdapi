@@ -39,7 +39,7 @@ let parse_rule s =
   let r = match r.elt with Syntax.P_rules [r] -> r | _ -> assert false in
   (Scope.scope_rule false sig_state r).elt |> rule_of_pre_rule
 
-let prod_matching () =
+let arrow_matching () =
   (* Matching on a product. *)
   let rule = parse_rule "rule C (A → A) ↪ Ok;" in
   Sign.add_rule sig_state.signature c rule;
@@ -54,9 +54,26 @@ let prod_matching () =
     true
 
 (* Revert modifications performed on the signature. *)
+let arrow_matching = Timed.pure_apply arrow_matching
+
+let prod_matching () =
+  let rule = parse_rule "rule C (Π _: _, A) ↪ Ok;" in
+  (* FIXME: remove printing *)
+  Format.printf "Rule [%a]" Print.pp_rule (c, rule);
+  Sign.add_rule sig_state.signature c rule;
+  Tree.update_dtree c;
+  let lhs = parse_term "C (A → A)" in
+  let lhs =
+    Scope.scope_term true sig_state [] (lazy Lplib.Extra.IntMap.empty) lhs
+  in
+  Alcotest.(check bool)
+    "ok"
+    (match Eval.snf [] lhs with Symb s -> s == ok | _ -> false)
+    true
+
 let prod_matching = Timed.pure_apply prod_matching
 
-let prod_default () =
+let arrow_default () =
   (* Assert that a product can be considered as a default case. *)
   let rule = parse_rule "rule C _ ↪ Ok;" in
   Sign.add_rule sig_state.signature  c rule;
@@ -71,11 +88,12 @@ let prod_default () =
     true
 
 (* Revert modifications performed on the signature. *)
-let prod_default = Timed.pure_apply prod_default
+let arrow_default = Timed.pure_apply arrow_default
 
 let _ =
   let open Alcotest in
   run "rewrite engine" [
-    ("matching", [ test_case "product" `Quick prod_matching
-                 ; test_case "default" `Quick prod_default ] )
+    ("matching", [ test_case "arrow" `Quick arrow_matching
+                 ; test_case "prod" `Quick prod_matching
+                 ; test_case "default" `Quick arrow_default ] )
   ]
