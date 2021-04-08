@@ -60,6 +60,11 @@ type tree_cond =
     reduced contains free variables, those can appear in a subterm even if not
     in the array. *)
 
+let pp_tree_cond : tree_cond pp = fun ppf tc ->
+  match tc with
+  | CondNL(i, j) -> Format.fprintf ppf "Nl(%d, %d)" i j
+  | CondFV(i, _) -> Format.fprintf ppf "Fv(%d)" i
+
 (** Representation of a tree. The definition relies on parameters since module
     {!module:Term} depends on the current module, and that would thus produce
     a dependency cycle. However it should be understood that parameter [`rhs]

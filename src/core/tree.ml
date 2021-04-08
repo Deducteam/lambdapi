@@ -9,10 +9,15 @@ open! Lplib
 open Lplib.Base
 open Lplib.Extra
 
+open Common
+
 open Timed
 open Term
 open LibTerm
 open Tree_type
+
+let log = Debug.new_logger 'd' "tree" "Compilation of decision trees"
+let log = log.logger
 
 (** {1 Types for decision trees}
 
@@ -93,33 +98,6 @@ module CP = struct
     { variables = IntMap.empty
     ; nl_conds = PSet.empty
     ; fv_conds = IntMap.empty }
-
-  (** [pp oc pool] prints condition pool [pool] to channel [oc]. *)
-  let pp : t pp = fun oc pool ->
-    let pp_fv oc fv_conds =
-      let pp_sep oc () = Format.pp_print_string oc ";" in
-      let pp_tvs = Format.pp_print_list ~pp_sep Format.pp_print_int in
-      let ppit oc (a, b) =
-        Format.fprintf oc "@[(%a@@%d)@]" pp_tvs (Array.to_list b) a
-      in
-      let pp_sep oc () = Format.pp_print_string oc "::" in
-      Format.fprintf oc "@[<v>@[%a@]@]"
-        (Format.pp_print_list ~pp_sep ppit) (IntMap.bindings fv_conds)
-    in
-    let pp_partials oc partials =
-      let pp_sep oc _ = Format.pp_print_string oc ";" in
-      let pp_part oc (i, j) = Format.fprintf oc "@[(%d↦%d)@]" i j in
-      Format.fprintf oc "@[<h>%a@]" (Format.pp_print_list ~pp_sep pp_part)
-        (IntMap.bindings partials)
-    in
-    let pp_available oc available =
-      let pp_av oc (i, j) = Format.fprintf oc "@[%d≡%d@]" i j in
-      let pp_sep = Format.pp_print_cut in
-      Format.fprintf oc "@[<hov>%a@]" (Format.pp_print_list ~pp_sep pp_av)
-        (PSet.elements available)
-    in
-    Format.fprintf oc "@[<hov>%a/@,%a/@,%a@]" pp_fv pool.fv_conds
-      pp_partials pool.variables pp_available pool.nl_conds
 
   (** [is_empty pool] tells whether the pool of constraints is empty. *)
   let is_empty : t -> bool = fun pool ->
@@ -217,6 +195,13 @@ module CM = struct
   type arg =
     { arg_path : int list (** Reversed path to the subterm. *)
     ; arg_rank : int      (** Number of abstractions along the path. *) }
+
+  (** [pp_arg_path ppf pth] prints path [pth] as a dotted list of integers to
+      formatter [ppf]. *)
+  let pp_arg_path : int list pp = fun ppf pth ->
+    Format.(pp_print_list
+              ~pp_sep:(fun ppf () -> pp_print_string ppf ".")
+              pp_print_int ppf (List.rev pth))
 
   (** {b NOTE} the {!field:arg_path} describes a path to the represented term.
       The idea is that each index of the list tells under which argument to go
@@ -461,7 +446,12 @@ module CM = struct
         in
         let cond_pool =
           match i with
-          | Some(i) -> CP.register_nl slot i cond_pool
+          | Some(i) ->
+              if !Debug.log_enabled then
+                log "Registering non linearity constraint on position [%a] \
+                     on %d"
+                  pp_arg_path a.arg_path i;
+              CP.register_nl slot i cond_pool
           | None    -> cond_pool
         in
         let env_builder =
@@ -678,10 +668,12 @@ let compile : match_strat -> CM.t -> tree = fun mstrat m ->
       if c_lhs = [||] then Leaf(env_builder, c_rhs) else
       harvest c_lhs c_rhs env_builder vars_id slot
   | Condition(cond)                        ->
+      if !Debug.log_enabled then log "Condition [%a]" pp_tree_cond cond;
       let ok   = compile_cv {cm with clauses = CM.cond_ok   cond clauses} in
       let fail = compile_cv {cm with clauses = CM.cond_fail cond clauses} in
       Cond({ok; cond; fail})
   | Check_stack                            ->
+      if !Debug.log_enabled then log "Check stack";
       let left =
         let positions, clauses = CM.empty_stack clauses in
         compile_cv {cm with clauses; positions}
@@ -689,6 +681,7 @@ let compile : match_strat -> CM.t -> tree = fun mstrat m ->
       let right = compile_cv {cm with clauses=CM.not_empty_stack clauses} in
       Eos(left, right)
   | Specialise(swap)                       ->
+      if !Debug.log_enabled then log "Specialising on column %d" swap;
       let store = CM.store cm swap in
       let updated =
         List.map (CM.update_aux swap slot positions vars_id) clauses
