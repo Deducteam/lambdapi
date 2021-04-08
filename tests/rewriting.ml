@@ -21,7 +21,8 @@ let rule_of_pre_rule : Scope.pre_rule -> Term.rule =
   ; xvars_nb = pr_xvars_nb }
 
 let add_sym ss id =
-  Sig_state.add_symbol ss Public Defin Eager true (Pos.none id) Kind [] None
+  Sig_state.add_symbol ss Public Defin Eager true (Pos.none id) Term.mk_Kind []
+    None
 
 (* Define a signature state and some symbols. *)
 
