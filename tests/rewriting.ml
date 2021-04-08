@@ -11,6 +11,9 @@ let parse_term s =
   | Syntax.P_query {elt=Syntax.P_query_normalize (t, _); _} -> t
   | _ -> assert false
 
+let scope_term ss t =
+  Scope.scope_term true ss [] (lazy Lplib.Extra.IntMap.empty) t
+
 let add_sym ss id =
   Sig_state.add_symbol ss Public Defin Eager true (Pos.none id) Term.mk_Kind []
     None
@@ -35,10 +38,7 @@ let arrow_matching () =
   let rule = parse_rule "rule C (A → A) ↪ Ok;" in
   Sign.add_rule sig_state.signature c rule;
   Tree.update_dtree c;
-  let lhs = parse_term "C (A → A)" in
-  let lhs =
-    Scope.scope_term true sig_state [] (lazy Lplib.Extra.IntMap.empty) lhs
-  in
+  let lhs = parse_term "C (A → A)" |> scope_term sig_state in
   Alcotest.(check bool)
     "ok"
     (match Eval.snf [] lhs with Symb s -> s == ok | _ -> false)
@@ -49,14 +49,9 @@ let arrow_matching = Timed.pure_apply arrow_matching
 
 let prod_matching () =
   let rule = parse_rule "rule C (Π _: _, A) ↪ Ok;" in
-  (* FIXME: remove printing *)
-  Format.printf "Rule [%a]" Print.pp_rule (c, rule);
   Sign.add_rule sig_state.signature c rule;
   Tree.update_dtree c;
-  let lhs = parse_term "C (A → A)" in
-  let lhs =
-    Scope.scope_term true sig_state [] (lazy Lplib.Extra.IntMap.empty) lhs
-  in
+  let lhs = parse_term "C (A → A)" |> scope_term sig_state in
   Alcotest.(check bool)
     "ok"
     (match Eval.snf [] lhs with Symb s -> s == ok | _ -> false)
@@ -69,10 +64,7 @@ let arrow_default () =
   let rule = parse_rule "rule C _ ↪ Ok;" in
   Sign.add_rule sig_state.signature  c rule;
   Tree.update_dtree c;
-  let lhs = parse_term "C (A → A)" in
-  let lhs =
-    Scope.scope_term true sig_state [] (lazy Lplib.Extra.IntMap.empty) lhs
-  in
+  let lhs = parse_term "C (A → A)" |> scope_term sig_state in
   Alcotest.(check bool)
     "Ok"
     (match Eval.snf [] lhs with Symb s -> s == ok | _ -> false)
