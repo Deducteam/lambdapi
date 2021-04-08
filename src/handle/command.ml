@@ -17,6 +17,9 @@ open Print
 open Proof
 open Debug
 
+(** Type alias for a function that compiles a Lambdapi module. *)
+type compiler = Path.t -> Sign.t
+
 (* Register a check for the type of the builtin symbols "0" and "+1". *)
 let _ =
   let register = Builtin.register_expected_type (Unif.eq_noexn []) pp_term in
@@ -25,13 +28,13 @@ let _ =
       match !((StrMap.find "+1" ss.builtins).sym_type) with
       | Prod(a,_) -> a
       | _ -> assert false
-    with Not_found -> Meta (Meta.fresh Type 0, [||])
+    with Not_found -> mk_Meta (Meta.fresh mk_Type 0, [||])
   in
   register "0" expected_zero_type;
   let expected_succ_type ss _pos =
     let typ_0 =
       try lift !((StrMap.find "0" ss.builtins).sym_type)
-      with Not_found -> _Meta (Meta.fresh Type 0) [||]
+      with Not_found -> _Meta (Meta.fresh mk_Type 0) [||]
     in
     Bindlib.unbox (_Impl typ_0 typ_0)
   in
@@ -54,8 +57,7 @@ let handle_open : sig_state -> p_path -> sig_state =
    open p] if b is true) with [ss] as the signature state and [compile] the
    main compile function (passed as argument to avoid cyclic dependencies).
    On success, an updated signature state is returned. *)
-let handle_require :
-      (Path.t -> Sign.t) -> bool -> sig_state -> p_path -> sig_state =
+let handle_require : compiler -> bool -> sig_state -> p_path -> sig_state =
   fun compile b ss ({elt=p;pos} as mp) ->
   (* Check that the module has not already been required. *)
   if Path.Map.mem p !(ss.signature.sign_deps) then
@@ -70,8 +72,8 @@ let handle_require :
     [require p as id] with [ss] as the signature state and [compile] the main
     compilation function passed as argument to avoid cyclic dependencies. On
     success, an updated signature state is returned. *)
-let handle_require_as :
-    (Path.t -> Sign.t) -> sig_state -> p_path -> p_ident -> sig_state =
+let handle_require_as : compiler -> sig_state -> p_path -> p_ident ->
+  sig_state =
   fun compile ss ({elt=p;_} as mp) {elt=id;_} ->
   let ss = handle_require compile false ss mp in
   let alias_path = StrMap.add id p ss.alias_path in
@@ -80,48 +82,46 @@ let handle_require_as :
 
 (** [handle_modifiers ms] verifies that the modifiers in [ms] are compatible.
     If so, they are returned as a tuple. Otherwise, it fails. *)
-let handle_modifiers : p_modifier list -> (prop * expo * match_strat) =
+let handle_modifiers : p_modifier list -> prop * expo * match_strat =
   fun ms ->
-  let die (ms: p_modifier list) =
-    let modifier oc (m: p_modifier) =
-      Format.fprintf oc "%a:\"%a\"" Pos.pp_short m.pos Pretty.modifier m
-    in
-    fatal_no_pos "%a" (List.pp modifier "; ") ms
+  let rec get_modifiers ((props, expos, strats) as acc) = function
+    | [] -> acc
+    | {elt=P_prop _;_} as p::ms -> get_modifiers (p::props, expos, strats) ms
+    | {elt=P_expo _;_} as e::ms -> get_modifiers (props, e::expos, strats) ms
+    | {elt=P_mstrat _;_} as s::ms ->
+        get_modifiers (props, expos, s::strats) ms
+    | {elt=P_opaq;_}::ms -> get_modifiers acc ms
   in
-  let prop = List.filter is_prop ms in
+  let props, expos, strats = get_modifiers ([],[],[]) ms in
   let prop =
-    match prop with
-    | _::_::_ ->
-        fatal_msg "Only one property modifier can be used, \
-                   %d have been found: " (List.length prop);
-        die prop
-    | [{elt=P_prop(p); _}] -> p
+    match props with
+    | [{elt=P_prop (Assoc b);_};{elt=P_prop Commu;_}]
+    | [{elt=P_prop Commu;_};{elt=P_prop (Assoc b);_}] -> AC b
+    | _::{pos;_}::_ -> fatal pos "Incompatible or duplicated properties."
+    | [{elt=P_prop (Assoc _);pos}] ->
+        fatal pos "Associativity alone is not allowed as \
+                   you can use a rewriting rule instead."
+    | [{elt=P_prop p;_}] -> p
     | [] -> Defin
     | _ -> assert false
   in
-  let expo = List.filter is_expo ms in
   let expo =
-    match expo with
-    | _::_::_ ->
-        fatal_msg "Only one exposition marker can be used, \
-                   %d have been found: " (List.length expo);
-        die expo
-    | [{elt=P_expo(e); _}] -> e
+    match expos with
+    | _::{pos;_}::_ ->
+        fatal pos "Incompatible or duplicated exposition markers."
+    | [{elt=P_expo e;_}] -> e
     | [] -> Public
     | _ -> assert false
   in
-  let mstrat = List.filter is_mstrat ms in
-  let mstrat =
-    match mstrat with
-    | _::_::_ ->
-        fatal_msg "Only one strategy modifier can be used, \
-                   %d have been found: " (List.length mstrat);
-        die mstrat
-    | [{elt=P_mstrat(s); _ }] -> s
+  let strat =
+    match strats with
+    | _::{pos;_}::_ ->
+        fatal pos "Incompatible or duplicated matching strategies."
+    | [{elt=P_mstrat s;_}] -> s
     | [] -> Eager
     | _ -> assert false
   in
-  (prop, expo, mstrat)
+  (prop, expo, strat)
 
 (** [handle_rule ss syms r] checks rule [r], adds it in [ss] and returns the
    set [syms] extended with the symbol [s] defined by [r]. However, it does
@@ -172,7 +172,7 @@ let handle_inductive_symbol : sig_state -> expo -> prop -> match_strat
      fatal pos "We have %a : %a." pp_uid name pp_term typ);
   (* Actually add the symbol to the signature and the state. *)
   Console.out 3 (red "(symb) %a : %a\n") pp_uid name pp_term typ;
-  let r = Sig_state.add_symbol ss expo prop mstrat false id typ impl None in
+  let r = add_symbol ss expo prop mstrat false id typ impl None in
   Print.sig_state := fst r; r
 
 (** Representation of a yet unchecked proof. The structure is initialized when
@@ -188,16 +188,16 @@ type proof_data =
   ; pdata_end_pos  : Pos.popt (** Position of the proof's terminator. *)
   ; pdata_prv      : bool (** [true] iff private symbols are allowed. *) }
 
-(** [handle compile ss cmd] tries to handle the command [cmd] with [ss] as
-    the signature state and [compile] as the main compilation function
+(** [get_proof_data compile ss cmd] tries to handle the command [cmd] with
+    [ss] as the signature state and [compile] as the main compilation function
     processing lambdapi modules (it is passed as argument to avoid cyclic
     dependencies). On success, an updated signature state is returned.  When
     [cmd] leads to entering the proof mode,  a [proof_data] is also  returned.
     This structure contains the list of the tactics to be executed, as well as
     the initial state of the proof.  The checking of the proof is then handled
     separately. Note that [Fatal] is raised in case of an error. *)
-let handle : (Path.t -> Sign.t) -> sig_state -> p_command ->
-    sig_state * proof_data option * Query.result =
+let get_proof_data : compiler -> sig_state -> p_command ->
+  sig_state * proof_data option * Query.result =
   fun compile ss ({elt; pos} as cmd) ->
   if !log_enabled then
       (if !print_time then log_hndl "%f" (Sys.time());
@@ -225,14 +225,7 @@ let handle : (Path.t -> Sign.t) -> sig_state -> p_command ->
   | P_unif_rule(h) ->
       (* Approximately same processing as rules without SR checking. *)
       let pur = (scope_rule true ss h).elt in
-      let urule =
-        { lhs = pur.pr_lhs
-        ; rhs = Bindlib.(unbox (bind_mvar pur.pr_vars pur.pr_rhs))
-        ; arity = List.length pur.pr_lhs
-        ; arities = pur.pr_arities
-        ; vars = pur.pr_vars
-        ; xvars_nb = pur.pr_xvars_nb }
-      in
+      let urule = Scope.rule_of_pre_rule pur in
       Sign.add_rule ss.signature Unif_rule.equiv urule;
       Tree.update_dtree Unif_rule.equiv;
       Console.out 3 "(hint) %a\n" pp_unif_rule (Unif_rule.equiv, urule);
@@ -302,8 +295,7 @@ let handle : (Path.t -> Sign.t) -> sig_state -> p_command ->
           Console.out 3 (red "(symb) %a : %a\n")
             pp_uid rec_name pp_term rec_typ;
           let id = Pos.make pos rec_name in
-          let r =
-            Sig_state.add_symbol ss expo Defin Eager false id rec_typ [] None
+          let r = add_symbol ss expo Defin Eager false id rec_typ [] None
           in Print.sig_state := fst r; r
         in
         (ss, rec_sym::rec_sym_list)
@@ -331,9 +323,9 @@ let handle : (Path.t -> Sign.t) -> sig_state -> p_command ->
               p_sym_def} ->
     (* Check that this is a syntactically valid symbol declaration. *)
     begin
-      match (p_sym_typ, p_sym_def, p_sym_trm, p_sym_prf) with
-      | (None, true, None, Some _) -> fatal pos "missing type"
-      | (   _, true, None, None  ) -> fatal pos "missing definition"
+      match p_sym_typ, p_sym_def, p_sym_trm, p_sym_prf with
+      | None, true, None, Some _ -> fatal pos "missing type"
+      |    _, true, None, None   -> fatal pos "missing definition"
       | _ -> ()
     end;
     (* We check that the identifier is not already used. *)
@@ -345,10 +337,8 @@ let handle : (Path.t -> Sign.t) -> sig_state -> p_command ->
     let opaq = List.exists Syntax.is_opaq p_sym_mod in
     let pdata_prv = expo = Privat || (p_sym_def && opaq) in
     (match p_sym_def, opaq, prop, mstrat with
-     | false, true, _, _ ->
-         fatal pos "Symbol declarations cannot be opaque."
-     | true, _, Const, _ ->
-         fatal pos "Definitions cannot be constant."
+     | false, true, _, _ -> fatal pos "Symbol declarations cannot be opaque."
+     | true, _, Const, _ -> fatal pos "Definitions cannot be constant."
      | true, _, _, Sequen ->
          fatal pos "Definitions cannot have matching strategies."
      | _ -> ());
@@ -464,8 +454,7 @@ let handle : (Path.t -> Sign.t) -> sig_state -> p_command ->
               (Console.out 1 "%a" Proof.pp_goals ps;
                fatal pe.pos "The proof is not finished.");
             (* Add the symbol in the signature. *)
-            Console.out 3 (red "(symb) add %a : %a\n")
-              pp_uid id pp_term a;
+            Console.out 3 (red "(symb) add %a : %a\n") pp_uid id pp_term a;
             let t = Option.map (fun t -> t.elt) t in
             fst (add_symbol ss expo prop mstrat opaq p_sym_nam a impl t)
       in
@@ -498,16 +487,16 @@ let handle : (Path.t -> Sign.t) -> sig_state -> p_command ->
     indicate commands that take too long to execute. *)
 let too_long = Stdlib.ref infinity
 
-(** [command compile ss cmd] adds to the previous [command] some
+(** [get_proof_data compile ss cmd] adds to the previous [command] some
     exception handling. In particular, the position of [cmd] is used on errors
     that lack a specific position. All exceptions except [Timeout] and [Fatal]
     are captured, although they should not occur. *)
-let handle : (Path.t -> Sign.t) -> sig_state -> p_command ->
-   sig_state * proof_data option * Query.result =
+let get_proof_data : compiler -> sig_state -> p_command ->
+  sig_state * proof_data option * Query.result =
   fun compile ss ({pos;_} as cmd) ->
   Print.sig_state := ss;
   try
-    let (tm, ss) = time (handle compile ss) cmd in
+    let (tm, ss) = time (get_proof_data compile ss) cmd in
     if Stdlib.(tm >= !too_long) then
       wrn pos "It took %.2f seconds to handle the command." tm;
     ss
@@ -518,3 +507,23 @@ let handle : (Path.t -> Sign.t) -> sig_state -> p_command ->
   | Fatal(Some(None)   ,m)      -> fatal pos "Error on command.\n%s" m
   | e                           ->
       fatal pos "Uncaught exception: %s." (Printexc.to_string e)
+
+(** [handle compile_mod ss cmd] retrieves proof data from [cmd] (with
+    {!val:get_proof_data}) and handles proofs using functions from
+    {!module:Tactic} The function [compile_mod] is used to compile required
+    modules recursively. *)
+let handle : compiler -> Sig_state.t -> Syntax.p_command -> Sig_state.t =
+  fun compile_mod ss cmd ->
+  Term.Meta.reset_meta_counter ();
+  (* We provide the compilation function to the handle commands, so that
+     "require" is able to compile files. *)
+  let (ss, p, _) = get_proof_data compile_mod ss cmd in
+  match p with
+  | None -> ss
+  | Some d ->
+      let ss, ps, _ =
+        List.fold_left
+          (fun (ss, ps, _) tac -> Tactic.handle ss d.pdata_prv ps tac)
+          (ss, d.pdata_p_state, None) d.pdata_tactics
+      in
+      d.pdata_finalize ss ps

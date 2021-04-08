@@ -68,7 +68,7 @@ let rec infer : ctxt -> term -> term = fun ctx t ->
 
   (* -------------------
       ctx ⊢ Type ⇒ Kind  *)
-  | Type        -> Kind
+  | Type        -> mk_Kind
 
   (* ---------------------------------
       ctx ⊢ Vari(x) ⇒ Ctxt.find x ctx  *)
@@ -89,7 +89,7 @@ let rec infer : ctxt -> term -> term = fun ctx t ->
                 ctx ⊢ Prod(a,b) ⇒ s            *)
   | Prod(a,b)   ->
       (* We ensure that [a] is of type [Type]. *)
-      check ctx a Type;
+      check ctx a mk_Type;
       (* We infer the type of the body, first extending the context. *)
       let (_,b,ctx') = Ctxt.unbind ctx a None b in
       let s = infer ctx' b in
@@ -98,7 +98,7 @@ let rec infer : ctxt -> term -> term = fun ctx t ->
         let s = unfold s in
         match s with
         | Type | Kind -> s
-        | _           -> conv ctx' s Type; Type
+        | _ -> conv ctx' s mk_Type; mk_Type
       (* Here, we force [s] to be equivalent to [Type] as there is little
          chance (no?) that it can be a kind. FIXME? *)
       end
@@ -108,7 +108,7 @@ let rec infer : ctxt -> term -> term = fun ctx t ->
              ctx ⊢ Abst(a,t) ⇒ Prod(a,b)          *)
   | Abst(a,t)   ->
       (* We ensure that [a] is of type [Type]. *)
-      check ctx a Type;
+      check ctx a mk_Type;
       (* We infer the type of the body, first extending the context. *)
       let (x,t,ctx') = Ctxt.unbind ctx a None t in
       let b = infer ctx' t in
@@ -117,7 +117,7 @@ let rec infer : ctxt -> term -> term = fun ctx t ->
         | Kind ->
             wrn None "Abstraction on [%a] is not allowed." Print.pp_term t;
             raise NotTypable
-        | _ -> Prod(a, Bindlib.unbox (Bindlib.bind_var x (lift b)))
+        | _ -> mk_Prod(a, Bindlib.unbox (Bindlib.bind_var x (lift b)))
       end
 
   (*  ctx ⊢ t ⇒ Prod(a,b)    ctx ⊢ u ⇐ a
@@ -136,11 +136,11 @@ let rec infer : ctxt -> term -> term = fun ctx t ->
       in
       let get_prod_whnf = (* assumes that its argument is in whnf *)
         get_prod (fun typ ->
-            let a = LibTerm.Meta.make ctx Type in
+            let a = LibTerm.Meta.make ctx mk_Type in
             (* We force [b] to be of type [Type] as there is little (no?)
                chance that it can be a kind. *)
             let b = LibTerm.Meta.make_codomain ctx a in
-            conv ctx typ (Prod(a,b)); (a,b)) in
+            conv ctx typ (mk_Prod(a,b)); (a,b)) in
       let get_prod =
         get_prod (fun typ -> get_prod_whnf (Eval.whnf ctx typ)) in
       let (a,b) = get_prod (infer ctx t) in
@@ -151,7 +151,7 @@ let rec infer : ctxt -> term -> term = fun ctx t ->
      -------------------------------------------
         ctx ⊢ let x : a ≔ t in u ⇒ subst b t     *)
   | LLet(a,t,u) ->
-      check ctx a Type;
+      check ctx a mk_Type;
       check ctx t a;
       (* Unbind [u] and enrich context with [x: a ≔ t] *)
       let (x,u,ctx') = Ctxt.unbind ctx a (Some(t)) u in
@@ -168,7 +168,7 @@ let rec infer : ctxt -> term -> term = fun ctx t ->
          to [ts] a new symbol having the same type as [m]. *)
       let s = Term.create_sym (Sign.current_path()) Privat Const
                 Eager true ("?" ^ Meta.name m) !(m.meta_type) [] in
-      infer ctx (Array.fold_left (fun acc t -> Appl(acc,t)) (Symb s) ts)
+      infer ctx (Array.fold_left (fun acc t -> mk_Appl(acc,t)) (mk_Symb s) ts)
 
 (** [check ctx t a] checks that the term [t] has type [a] in context
    [ctx], possibly under some constraints recorded in [constraints] using

@@ -514,6 +514,16 @@ type pre_rule =
   ; pr_xvars_nb : int
   (** Number of variables that appear in the RHS but not in the LHS. *) }
 
+(** [rule_of_pre_rule r] converts a pre-rewrite rule into a rewrite rule. *)
+let rule_of_pre_rule : pre_rule -> rule =
+  fun {pr_lhs; pr_vars; pr_rhs; pr_arities; pr_xvars_nb; _} ->
+  { lhs = pr_lhs
+  ; rhs = Bindlib.(unbox (bind_mvar pr_vars pr_rhs))
+  ; arity = List.length pr_lhs
+  ; arities = pr_arities
+  ; vars = pr_vars
+  ; xvars_nb = pr_xvars_nb }
+
 (** [scope_rule ur ss r] turns a parser-level rewriting rule [r], or a
     unification rule if [ur] is true, into a pre-rewriting rule. *)
 let scope_rule : bool -> sig_state -> p_rule -> pre_rule loc = fun ur ss r ->
@@ -550,16 +560,14 @@ let scope_rule : bool -> sig_state -> p_rule -> pre_rule loc = fun ur ss r ->
   in
   (* Check the head symbol and build the actual LHS. *)
   let (sym, pr_lhs) =
-    let (h, args) = LibTerm.get_args pr_lhs in
+    let (h, args) = get_args pr_lhs in
     match h with
     | Symb(s) ->
-        if is_constant s then
-          fatal p_lhs.pos "Constant LHS head symbol.";
+        if is_constant s then fatal p_lhs.pos "Constant LHS head symbol.";
         if s.sym_expo = Protec && ss.signature.sign_path <> s.sym_path then
           fatal p_lhs.pos "Cannot define rules on foreign protected symbols.";
         (s, args)
-    | _       ->
-        fatal p_lhs.pos "No head symbol in LHS."
+    | _ -> fatal p_lhs.pos "No head symbol in LHS."
   in
   (* Create the pattern variables that can be bound in the RHS. *)
   let pr_vars =
@@ -622,26 +630,26 @@ let scope_pattern : sig_state -> env -> p_term -> term = fun ss env t ->
 (** [scope_rw_patt ss env t] turns a parser-level rewrite tactic specification
     [s] into an actual rewrite specification (possibly containing variables of
     [env] and using [ss] for aliasing). *)
-let scope_rw_patt : sig_state ->  env -> p_rw_patt -> rw_patt =
+let scope_rw_patt : sig_state -> env -> p_rw_patt -> (term, tbinder) rw_patt =
   fun ss env s ->
   match s.elt with
-  | P_rw_Term(t)               -> RW_Term(scope_pattern ss env t)
-  | P_rw_InTerm(t)             -> RW_InTerm(scope_pattern ss env t)
-  | P_rw_InIdInTerm(x,t)       ->
+  | Rw_Term(t) -> Rw_Term(scope_pattern ss env t)
+  | Rw_InTerm(t) -> Rw_InTerm(scope_pattern ss env t)
+  | Rw_InIdInTerm(x,t) ->
       let v = new_tvar x.elt in
       let t = scope_pattern ss ((x.elt,(v, _Kind, None))::env) t in
-      RW_InIdInTerm(Bindlib.unbox (Bindlib.bind_var v (lift t)))
-  | P_rw_IdInTerm(x,t)         ->
+      Rw_InIdInTerm(Bindlib.unbox (Bindlib.bind_var v (lift t)))
+  | Rw_IdInTerm(x,t) ->
       let v = new_tvar x.elt in
       let t = scope_pattern ss ((x.elt,(v, _Kind, None))::env) t in
-      RW_IdInTerm(Bindlib.unbox (Bindlib.bind_var v (lift t)))
-  | P_rw_TermInIdInTerm(u,x,t) ->
+      Rw_IdInTerm(Bindlib.unbox (Bindlib.bind_var v (lift t)))
+  | Rw_TermInIdInTerm(u,(x,t)) ->
       let u = scope_pattern ss env u in
       let v = new_tvar x.elt in
       let t = scope_pattern ss ((x.elt,(v, _Kind, None))::env) t in
-      RW_TermInIdInTerm(u, Bindlib.unbox (Bindlib.bind_var v (lift t)))
-  | P_rw_TermAsIdInTerm(u,x,t) ->
+      Rw_TermInIdInTerm(u, Bindlib.unbox (Bindlib.bind_var v (lift t)))
+  | Rw_TermAsIdInTerm(u,(x,t)) ->
       let u = scope_pattern ss env u in
       let v = new_tvar x.elt in
       let t = scope_pattern ss ((x.elt,(v, _Kind, None))::env) t in
-      RW_TermAsIdInTerm(u, Bindlib.unbox (Bindlib.bind_var v (lift t)))
+      Rw_TermAsIdInTerm(u, Bindlib.unbox (Bindlib.bind_var v (lift t)))

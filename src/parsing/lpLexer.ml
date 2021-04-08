@@ -18,9 +18,11 @@ type token =
   | AS
   | ASSERT
   | ASSERTNOT
+  | ASSOCIATIVE
   | ASSUME
   | BEGIN
   | BUILTIN
+  | COMMUTATIVE
   | COMPUTE
   | CONSTANT
   | DEBUG
@@ -212,9 +214,11 @@ let is_keyword : string -> bool =
       ; "as"
       ; "assert"
       ; "assertnot"
+      ; "associative"
       ; "assume"
       ; "begin"
       ; "builtin"
+      ; "commutative"
       ; "compute"
       ; "constant"
       ; "debug"
@@ -287,9 +291,11 @@ let lexer buf =
   | "as" -> AS
   | "assert" -> ASSERT
   | "assertnot" -> ASSERTNOT
+  | "associative" -> ASSOCIATIVE
   | "assume" -> ASSUME
   | "begin" -> BEGIN
   | "builtin" -> BUILTIN
+  | "commutative" -> COMMUTATIVE
   | "compute" -> COMPUTE
   | "constant" -> CONSTANT
   | "debug" -> DEBUG

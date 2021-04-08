@@ -131,7 +131,7 @@ let of_prod_using : ctxt -> tvar array -> term -> env * term = fun c xs t ->
     if i >= n then env, t
     else match_prod c t (fun a b ->
              let env = add xs.(i) (lift a) None env in
-             build_env (i+1) env (Bindlib.subst b (Vari(xs.(i)))))
+             build_env (i+1) env (Bindlib.subst b (mk_Vari(xs.(i)))))
   in build_env 0 [] t
 
 (** [fresh_meta_Type env] creates a fresh metavariable of type [Type] in
@@ -160,5 +160,6 @@ let fresh_meta : env -> term = fun env -> Bindlib.unbox (fresh_meta_tbox env)
 (** [add_fresh_metas env t n] returns the application of [t] to [n] fresh meta
    terms. *)
 let add_fresh_metas : env -> term -> int -> term = fun env ->
-  let rec add t n = if n <= 0 then t else add (Appl(t, fresh_meta env)) (n-1)
+  let rec add t n =
+    if n <= 0 then t else add (mk_Appl(t, fresh_meta env)) (n-1)
   in add

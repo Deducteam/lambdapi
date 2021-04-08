@@ -144,15 +144,19 @@ module P  = struct
   let rule : p_term -> p_term -> p_rule = fun l r -> Pos.none (l,r)
 end
 
-(** Rewrite pattern specification. *)
-type p_rw_patt_aux =
-  | P_rw_Term           of p_term
-  | P_rw_InTerm         of p_term
-  | P_rw_InIdInTerm     of p_ident * p_term
-  | P_rw_IdInTerm       of p_ident * p_term
-  | P_rw_TermInIdInTerm of p_term * p_ident * p_term
-  | P_rw_TermAsIdInTerm of p_term * p_ident * p_term
-type p_rw_patt = p_rw_patt_aux loc
+(** Rewrite patterns as in Coq/SSReflect. See "A Small Scale
+    Reflection Extension for the Coq system", by Georges Gonthier,
+    Assia Mahboubi and Enrico Tassi, INRIA Research Report 6455, 2016,
+    @see <http://hal.inria.fr/inria-00258384>, section 8, p. 48. *)
+type ('term, 'binder) rw_patt =
+  | Rw_Term           of 'term
+  | Rw_InTerm         of 'term
+  | Rw_InIdInTerm     of 'binder
+  | Rw_IdInTerm       of 'binder
+  | Rw_TermInIdInTerm of 'term * 'binder
+  | Rw_TermAsIdInTerm of 'term * 'binder
+
+type p_rw_patt = (p_term, p_ident * p_term) rw_patt loc
 
 (** Parser-level representation of an assertion. *)
 type p_assertion =
@@ -310,13 +314,13 @@ let eq_p_inductive : p_inductive eq =
 
 let eq_p_rw_patt : p_rw_patt eq = fun {elt=r1;_} {elt=r2;_} ->
   match r1, r2 with
-  | P_rw_Term t1, P_rw_Term t2
-  | P_rw_InTerm t1, P_rw_InTerm t2 -> eq_p_term t1 t2
-  | P_rw_InIdInTerm(i1,t1), P_rw_InIdInTerm(i2,t2)
-  | P_rw_IdInTerm(i1,t1), P_rw_IdInTerm(i2,t2) ->
+  | Rw_Term t1, Rw_Term t2
+  | Rw_InTerm t1, Rw_InTerm t2 -> eq_p_term t1 t2
+  | Rw_InIdInTerm(i1,t1), Rw_InIdInTerm(i2,t2)
+  | Rw_IdInTerm(i1,t1), Rw_IdInTerm(i2,t2) ->
       eq_p_ident i1 i2 && eq_p_term t1 t2
-  | P_rw_TermInIdInTerm(t1,i1,u1), P_rw_TermInIdInTerm(t2,i2,u2)
-  | P_rw_TermAsIdInTerm(t1,i1,u1), P_rw_TermAsIdInTerm(t2,i2,u2) ->
+  | Rw_TermInIdInTerm(t1,(i1,u1)), Rw_TermInIdInTerm(t2,(i2,u2))
+  | Rw_TermAsIdInTerm(t1,(i1,u1)), Rw_TermAsIdInTerm(t2,(i2,u2)) ->
       eq_p_term t1 t2 && eq_p_ident i1 i2 && eq_p_term u1 u2
   | _, _ -> false
 
@@ -490,12 +494,12 @@ let fold_idents : ('a -> p_qident -> 'a) -> 'a -> p_command list -> 'a =
 
   let fold_rw_patt_vars : StrSet.t -> 'a -> p_rw_patt -> 'a = fun vs a p ->
     match p.elt with
-    | P_rw_Term t
-    | P_rw_InTerm t -> fold_term_vars vs a t
-    | P_rw_InIdInTerm (id, t)
-    | P_rw_IdInTerm (id, t) -> fold_term_vars (StrSet.add id.elt vs) a t
-    | P_rw_TermInIdInTerm (t, id, u)
-    | P_rw_TermAsIdInTerm (t, id, u) ->
+    | Rw_Term t
+    | Rw_InTerm t -> fold_term_vars vs a t
+    | Rw_InIdInTerm (id, t)
+    | Rw_IdInTerm (id, t) -> fold_term_vars (StrSet.add id.elt vs) a t
+    | Rw_TermInIdInTerm (t, (id, u))
+    | Rw_TermAsIdInTerm (t, (id, u)) ->
         fold_term_vars (StrSet.add id.elt vs) (fold_term_vars vs a t) u
   in
 

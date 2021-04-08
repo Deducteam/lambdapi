@@ -86,7 +86,7 @@ let symb_to_tenv
     : Scope.pre_rule Pos.loc -> sym list -> index_tbl -> term -> tbox =
   fun {elt={pr_vars=vars;pr_arities=arities;_};pos} syms htbl t ->
   let rec symb_to_tenv t =
-    let (h, ts) = LibTerm.get_args t in
+    let (h, ts) = get_args t in
     let ts = List.map symb_to_tenv ts in
     let (h, ts) =
       match h with
@@ -155,7 +155,7 @@ let check_rule : Scope.pre_rule Pos.loc -> rule = fun ({pos; elt} as pr) ->
   (* Replace [Patt] nodes of LHS with corresponding elements of [vars]. *)
   let lhs_vars =
     let args = List.map (patt_to_tenv vars) lhs in
-    _Appl_symb s args
+    _Appl_Symb s args
   in
   (* Create metavariables that will stand for the variables of [vars].
      These metavariables are prefixed by "$" so that we can recognize them. *)
@@ -214,7 +214,7 @@ let check_rule : Scope.pre_rule Pos.loc -> rule = fun ({pos; elt} as pr) ->
       match !(m.meta_value) with
       | Some(_) ->
           (* Instantiate recursively the meta-variables of the definition. *)
-          let t = Meta(m, Array.make m.meta_arity Kind) in
+          let t = mk_Meta(m, Array.make m.meta_arity mk_Kind) in
           LibTerm.Meta.iter true instantiate t
       | None    ->
           (* Instantiate recursively the meta-variables of the type. *)
