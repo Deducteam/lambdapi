@@ -1,6 +1,6 @@
 (** Parser-level abstract syntax. *)
 
-open Lplib
+open! Lplib
 open Lplib.Base
 open Lplib.Extra
 open Common
@@ -283,26 +283,26 @@ let rec eq_p_term : p_term eq = fun {elt=t1;_} {elt=t2;_} ->
   | P_Wild, P_Wild -> true
   | P_Iden(q1,b1), P_Iden(q2,b2) -> eq_p_qident q1 q2 && b1 = b2
   | P_Meta(i1,ts1), P_Meta(i2,ts2) ->
-      eq_p_meta_ident i1 i2 && Option.equal (Array.equal eq_p_term) ts1 ts2
+      eq_p_meta_ident i1 i2 && Option.eq (Array.eq eq_p_term) ts1 ts2
   | P_Patt(io1,ts1), P_Patt(io2,ts2) ->
-      Option.equal eq_p_ident io1 io2
-      && Option.equal (Array.equal eq_p_term) ts1 ts2
+      Option.eq eq_p_ident io1 io2
+      && Option.eq (Array.eq eq_p_term) ts1 ts2
   | P_Appl(t1,u1), P_Appl(t2,u2)
   | P_Arro(t1,u1), P_Arro(t2,u2) -> eq_p_term t1 t2 && eq_p_term u1 u2
   | P_Abst(xs1,t1), P_Abst(xs2,t2)
   | P_Prod(xs1,t1), P_Prod(xs2,t2) ->
-      List.equal eq_p_params xs1 xs2 && eq_p_term t1 t2
+      List.eq eq_p_params xs1 xs2 && eq_p_term t1 t2
   | P_LLet(i1,xs1,a1,t1,u1), P_LLet(i2,xs2,a2,t2,u2) ->
-      eq_p_ident i1 i2 && List.equal eq_p_params xs1 xs2
-      && Option.equal eq_p_term a1 a2 && eq_p_term t1 t2 && eq_p_term u1 u2
+      eq_p_ident i1 i2 && List.eq eq_p_params xs1 xs2
+      && Option.eq eq_p_term a1 a2 && eq_p_term t1 t2 && eq_p_term u1 u2
   | P_Wrap t1, P_Wrap t2
   | P_Expl t1, P_Expl t2 -> eq_p_term t1 t2
   | P_NLit n1, P_NLit n2 -> n1 = n2
   | _,_ -> false
 
 and eq_p_params : p_params eq = fun (i1,ao1,b1) (i2,ao2,b2) ->
-  List.equal (Option.equal eq_p_ident) i1 i2
-  && Option.equal eq_p_term ao1 ao2 && b1 = b2
+  List.eq (Option.eq eq_p_ident) i1 i2
+  && Option.eq eq_p_term ao1 ao2 && b1 = b2
 
 let eq_p_rule : p_rule eq = fun {elt=(l1,r1);_} {elt=(l2,r2);_} ->
   eq_p_term l1 l2 && eq_p_term r1 r2
@@ -310,7 +310,7 @@ let eq_p_rule : p_rule eq = fun {elt=(l1,r1);_} {elt=(l2,r2);_} ->
 let eq_p_inductive : p_inductive eq =
   let eq_cons (i1,t1) (i2,t2) = eq_p_ident i1 i2 && eq_p_term t1 t2 in
   fun {elt=(i1,t1,l1);_} {elt=(i2,t2,l2);_} ->
-  List.equal eq_cons ((i1,t1)::l1) ((i2,t2)::l2)
+  List.eq eq_cons ((i1,t1)::l1) ((i2,t2)::l2)
 
 let eq_p_rw_patt : p_rw_patt eq = fun {elt=r1;_} {elt=r2;_} ->
   match r1, r2 with
@@ -340,7 +340,7 @@ let eq_p_query : p_query eq = fun {elt=q1;_} {elt=q2;_} ->
       eq_p_term t1 t2 && c1 = c2
   | P_query_prover s1, P_query_prover s2 -> s1 = s2
   | P_query_prover_timeout t1, P_query_prover_timeout t2 -> t1 = t2
-  | P_query_print io1, P_query_print(io2) -> Option.equal eq_p_qident io1 io2
+  | P_query_print io1, P_query_print(io2) -> Option.eq eq_p_qident io1 io2
   | P_query_verbose n1, P_query_verbose n2 -> n1 = n2
   | P_query_debug (b1,s1), P_query_debug (b2,s2) -> b1 = b2 && s1 = s2
   | P_query_proofterm, P_query_proofterm -> true
@@ -353,13 +353,13 @@ let eq_p_tactic : p_tactic eq = fun {elt=t1;_} {elt=t2;_} ->
   | P_tac_have(i1,t1), P_tac_have(i2,t2) ->
       eq_p_ident i1 i2 && eq_p_term t1 t2
   | P_tac_assume xs1, P_tac_assume xs2 ->
-      List.equal (Option.equal eq_p_ident) xs1 xs2
+      List.eq (Option.eq eq_p_ident) xs1 xs2
   | P_tac_rewrite(b1,p1,t1), P_tac_rewrite(b2,p2,t2) ->
-      b1 = b2 && Option.equal eq_p_rw_patt p1 p2 && eq_p_term t1 t2
+      b1 = b2 && Option.eq eq_p_rw_patt p1 p2 && eq_p_term t1 t2
   | P_tac_query q1, P_tac_query q2 -> eq_p_query q1 q2
   | P_tac_why3 so1, P_tac_why3 so2 -> so1 = so2
   | P_tac_focus n1, P_tac_focus n2 -> n1 = n2
-  | P_tac_simpl q1, P_tac_simpl q2 -> Option.equal eq_p_qident q1 q2
+  | P_tac_simpl q1, P_tac_simpl q2 -> Option.eq eq_p_qident q1 q2
   | P_tac_generalize i1, P_tac_generalize i2 -> eq_p_ident i1 i2
   | P_tac_admit, P_tac_admit
   | P_tac_induction, P_tac_induction
@@ -371,7 +371,7 @@ let eq_p_tactic : p_tactic eq = fun {elt=t1;_} {elt=t2;_} ->
 
 let eq_p_symbol : p_symbol eq =
   let eq_tac (ts1,pe1) (ts2,pe2) =
-    List.equal eq_p_tactic ts1 ts2 && pe1.elt = pe2.elt in
+    List.eq eq_p_tactic ts1 ts2 && pe1.elt = pe2.elt in
   fun
     { p_sym_mod=p_sym_mod1; p_sym_nam=p_sym_nam1; p_sym_arg=p_sym_arg1;
       p_sym_typ=p_sym_typ1; p_sym_trm=p_sym_trm1; p_sym_prf=p_sym_prf1;
@@ -381,10 +381,10 @@ let eq_p_symbol : p_symbol eq =
       p_sym_def=p_sym_def2} ->
   p_sym_mod1 = p_sym_mod2
   && eq_p_ident p_sym_nam1 p_sym_nam2
-  && List.equal eq_p_params p_sym_arg1 p_sym_arg2
-  && Option.equal eq_p_term p_sym_typ1 p_sym_typ2
-  && Option.equal eq_p_term p_sym_trm1 p_sym_trm2
-  && Option.equal eq_tac p_sym_prf1 p_sym_prf2
+  && List.eq eq_p_params p_sym_arg1 p_sym_arg2
+  && Option.eq eq_p_term p_sym_typ1 p_sym_typ2
+  && Option.eq eq_p_term p_sym_trm1 p_sym_trm2
+  && Option.eq eq_tac p_sym_prf1 p_sym_prf2
   && p_sym_def1 = p_sym_def2
 
 (** [eq_command c1 c2] tells whether [c1] and [c2] are the same commands. They
@@ -392,15 +392,15 @@ let eq_p_symbol : p_symbol eq =
 let eq_p_command : p_command eq = fun {elt=c1;_} {elt=c2;_} ->
   match c1, c2 with
   | P_require(b1,l1), P_require(b2,l2) ->
-      b1 = b2 && List.equal eq_p_path l1 l2
-  | P_open l1, P_open l2 -> List.equal eq_p_path l1 l2
+      b1 = b2 && List.eq eq_p_path l1 l2
+  | P_open l1, P_open l2 -> List.eq eq_p_path l1 l2
   | P_require_as(m1,i1), P_require_as(m2,i2) ->
       eq_p_path m1 m2 && eq_p_ident i1 i2
   | P_symbol s1, P_symbol s2 -> eq_p_symbol s1 s2
-  | P_rules(r1), P_rules(r2) ->  List.equal eq_p_rule r1 r2
+  | P_rules(r1), P_rules(r2) ->  List.eq eq_p_rule r1 r2
   | P_inductive(m1,xs1,l1), P_inductive(m2,xs2,l2) ->
-      m1 = m2 && List.equal eq_p_params xs1 xs2
-      && List.equal eq_p_inductive l1 l2
+      m1 = m2 && List.eq eq_p_params xs1 xs2
+      && List.eq eq_p_inductive l1 l2
   | P_builtin(s1,q1), P_builtin(s2,q2) -> s1 = s2 && eq_p_qident q1 q2
   | P_notation(i1,n1), P_notation(i2,n2) -> eq_p_qident i1 i2 && n1 = n2
   | P_unif_rule r1, P_unif_rule r2 -> eq_p_rule r1 r2

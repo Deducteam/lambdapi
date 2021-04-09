@@ -17,3 +17,9 @@ notation @ infix 10;
 assert x y ⊢ x @ y ≡ y @ x;
 assert x y z ⊢ (x @ y) @ z ≡ x @ (y @ z);
 assert x y z ⊢ (x @ y) @ z ≡ (z @ x) @ y;
+
+constant symbol z : A;
+constant symbol s : A → A;
+
+rule z + $y ↪ $y
+with (s $x) + $y ↪ s ($x + $y);

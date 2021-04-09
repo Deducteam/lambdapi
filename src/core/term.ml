@@ -10,6 +10,7 @@
 open Timed
 open Lplib.Base
 open Common.Debug
+open! Lplib
 
 let log_term = new_logger 'm' "term" "term building"
 let log_term = log_term.logger
@@ -456,14 +457,11 @@ let is_unset : meta -> bool = fun m -> !(m.meta_value) = None
 let is_symb : sym -> term -> bool = fun s t ->
   match unfold t with Symb(r) -> r == s | _ -> false
 
-(** Total order on alpha-equivalence classes of terms not containing [Patt],
-   [TEnv] or [TRef].
-@raise Invalid_argument otherwise. *)
-let cmp_term : term cmp =
-  let pos = __MODULE__ ^ ".cmp_term: " ^ __LOC__ in
+(** Total order on terms. *)
+let cmp : term cmp =
   (* Total precedence on term constructors (must be injective). *)
-  let prec t =
-    match unfold t with
+  let prec t = Obj.tag (Obj.repr (unfold t))
+    (*match unfold t with
     | Vari _ -> 0
     | Type -> 1
     | Kind -> 2
@@ -476,7 +474,12 @@ let cmp_term : term cmp =
     | TEnv _ -> 9
     | Wild -> 10
     | TRef _ -> 11
-    | LLet _ -> 12
+    | LLet _ -> 12*)
+  in
+  let prec_tenv t = Obj.tag (Obj.repr t) (*function
+    | TE_Vari _ -> 0
+    | TE_Some _ -> 1
+    | TE_None -> 2*)
   in
   let rec cmp t t' =
     match unfold t, unfold t' with
@@ -484,53 +487,38 @@ let cmp_term : term cmp =
     | Type, Type
     | Kind, Kind
     | Wild, Wild -> 0
-    | Symb f, Symb f' -> Sym.compare f f'
+    | Symb s, Symb s' -> Sym.compare s s'
     | Prod(t,u), Prod(t',u')
-    | Abst(t,u), Abst(t',u') ->
-        let c = cmp t t' in if c <> 0 then c else cmp_binder u u'
-    | Appl(t,u), Appl(t',u') ->
-        let c = cmp t t' in if c <> 0 then c else cmp u u'
+    | Abst(t,u), Abst(t',u') -> lex cmp cmp_binder (t,u) (t',u')
+    | Appl(t,u), Appl(t',u') -> lex cmp cmp (t,u) (t',u')
     | Meta(m,ts), Meta(m',ts') ->
-        let c = Meta.compare m m' in
-        if c <> 0 then c
-        else Lplib.List.cmp_list cmp (Array.to_list ts) (Array.to_list ts')
-    | Patt _, _ | _, Patt _
-    | TEnv _, _ | _, TEnv _ -> invalid_arg pos
-    | TRef r, TRef r' ->
-        if r == r' then 0 else
-          begin
-            match !r, !r' with
-            | None, None -> invalid_arg pos
-            | Some t, Some t' -> cmp t t'
-            | None, Some _ -> -1
-            | Some _, None -> 1
-          end
+        lex Meta.compare (Array.cmp cmp) (m,ts) (m',ts')
+    | Patt(i,s,ts), Patt(i',s',ts') ->
+        lex3 Stdlib.compare Stdlib.compare (Array.cmp cmp)
+          (i,s,ts) (i',s',ts')
+    | TEnv(e,ts), TEnv(e',ts') ->
+        lex cmp_tenv (Array.cmp cmp) (e,ts) (e',ts')
+    | TRef r, TRef r' -> Stdlib.compare r r'
     | LLet(a,t,u), LLet(a',t',u') ->
-        let c = cmp a a' in
-        if c <> 0 then c
-        else let c = cmp t t' in if c <> 0 then c else cmp_binder u u'
+        lex3 cmp cmp cmp_binder (a,t,u) (a',t',u')
     | t, t' -> Stdlib.compare (prec t) (prec t')
-  and cmp_binder u u' = let (_,u,u') = Bindlib.unbind2 u u' in cmp u u'
+  and cmp_binder t t' = let (_,t,t') = Bindlib.unbind2 t t' in cmp t t'
+  and cmp_mbinder t t' = let (_,t,t') = Bindlib.unmbind2 t t' in cmp t t'
+  and cmp_tenv e e' =
+    match e, e' with
+    | TE_Vari v, TE_Vari v' -> Bindlib.compare_vars v v'
+    | TE_None, TE_None -> 0
+    | TE_Some t, TE_Some t' -> cmp_mbinder t t'
+    | _ -> Stdlib.compare (prec_tenv e) (prec_tenv e')
   in cmp
 
-(** Total order on contexts not containing [Patt], [TEnv] or [TRef].
-@raise Invalid_argument otherwise. *)
+(** Total order on contexts. *)
 let cmp_ctxt : ctxt cmp =
-  let cmp_decl (x,t,a) (x',t',a') =
-    let c = Bindlib.compare_vars x x' in
-    if c <> 0 then c
-    else let c = cmp_term t t' in
-         if c <> 0 then c else Lplib.Option.cmp_option cmp_term a a'
-  in Lplib.List.cmp_list cmp_decl
+  List.cmp (lex3 Bindlib.compare_vars cmp (Option.cmp cmp))
 
-(** Total order on constraints not containing [Patt], [TEnv] or [TRef].
-@raise Invalid_argument otherwise. *)
-let cmp_constr : constr cmp = fun (c,t,u) (c',t',u') ->
-  let r = cmp_ctxt c c' in
-  if r <> 0 then r
-  else let r = cmp_term t t' in if r <> 0 then r else cmp_term u u'
-
-let eq_constr : constr eq = fun c c' -> cmp_constr c c' = 0
+(** Total order and equality on constraints. *)
+let cmp_constr : constr cmp = lex3 cmp_ctxt cmp cmp
+let eq_constr : constr eq = eq_of_cmp cmp_constr
 
 (** [get_args t] decomposes the {!type:term} [t] into a pair [(h,args)], where
     [h] is the head term of [t] and [args] is the list of arguments applied to
@@ -628,10 +616,10 @@ let _ =
   let t3 = Vari (new_tvar "x3") in
   let left = mk_bin s (mk_bin s t1 t2) t3 in
   let right = mk_bin s t1 (mk_bin s t2 t3) in
-  let eq t1 t2 = cmp_term t1 t2 = 0 in
+  let eq t1 t2 = cmp t1 t2 = 0 in
   assert (eq (mk_left_comb s t1 [t2; t3]) left);
   assert (eq (mk_right_comb s [t1; t2] t3) right);
-  let eq l1 l2 = Lplib.List.compare cmp_term l1 l2 = 0 in
+  let eq l1 l2 = List.cmp cmp l1 l2 = 0 in
   assert (eq (left_aliens s left) [t1; t2; t3]);
   assert (eq (right_aliens s right) [t3; t2; t1])
 
@@ -643,17 +631,17 @@ let mk_Appl : term * term -> term = fun (t, u) ->
   | Symb s, [t1] ->
       begin
         match s.sym_prop with
-        | Commu when cmp_term t1 u > 0 -> mk_bin s u t1
+        | Commu when cmp t1 u > 0 -> mk_bin s u t1
         | AC true -> (* left associative symbol *)
             let ts = left_aliens s t1 and us = left_aliens s u in
             begin
-              match List.sort cmp_term (ts @ us) with
+              match List.sort cmp (ts @ us) with
               | v::vs -> mk_left_comb s v vs
               | _ -> assert false
             end
         | AC false -> (* right associative symbol *)
             let ts = right_aliens s t1 and us = right_aliens s u in
-            let vs, v = Lplib.List.split_last (List.sort cmp_term (ts @ us))
+            let vs, v = List.split_last (List.sort cmp (ts @ us))
             in mk_right_comb s vs v
         | _ -> Appl (t, u)
       end
