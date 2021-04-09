@@ -114,7 +114,7 @@ the system with additional information on its properties and behavior.
     For handling commutative and associative-commutative symbols,
     terms are systemically put in some canonical form (left
     unspecified) following a technique described `here
-    <http://dx.doi.org/10.1007/978-3-540-71316-6_8>__`.
+    <http://dx.doi.org/10.1007/978-3-540-71316-6_8>`__.
 
 - **Exposition modifiers** define how a symbol can be used outside the
   module where it is defined. By default, the symbol can be used
