@@ -616,10 +616,10 @@ let _ =
   let t3 = Vari (new_tvar "x3") in
   let left = mk_bin s (mk_bin s t1 t2) t3 in
   let right = mk_bin s t1 (mk_bin s t2 t3) in
-  let eq t1 t2 = cmp t1 t2 = 0 in
+  let eq = eq_of_cmp cmp in
   assert (eq (mk_left_comb s t1 [t2; t3]) left);
   assert (eq (mk_right_comb s [t1; t2] t3) right);
-  let eq l1 l2 = List.cmp cmp l1 l2 = 0 in
+  let eq = eq_of_cmp (List.cmp cmp) in
   assert (eq (left_aliens s left) [t1; t2; t3]);
   assert (eq (right_aliens s right) [t3; t2; t1])
 
