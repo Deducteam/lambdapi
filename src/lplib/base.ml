@@ -9,8 +9,12 @@ let pp_sep : string -> unit pp = fun s ff () -> Format.pp_print_string ff s
 type 'a cmp = 'a -> 'a -> int
 
 (** Comparison function through a map. *)
-let cmp_map : ('a -> 'b) -> 'b cmp -> 'a cmp = fun f cmpb a1 a2 ->
+let cmp_map : 'b cmp -> ('a -> 'b) -> 'a cmp = fun cmpb f a1 a2 ->
   cmpb (f a1) (f a2)
+
+(** Tag comparison function. *)
+let cmp_tag : 'a cmp = fun t t' ->
+  cmp_map Stdlib.compare (fun t -> Obj.tag (Obj.repr t)) t t'
 
 (** Lexicographic comparison. *)
 let lex : 'a cmp -> 'b cmp -> ('a * 'b) cmp = fun cmpa cmpb (a1,b1) (a2,b2) ->

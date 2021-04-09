@@ -35,7 +35,7 @@ let cmp : 'a cmp -> 'a array cmp = fun cmp_elt ->
   in
   fun a1 a2 ->
   if a1 == a2 then 0
-  else lex (cmp_map A.length Stdlib.compare) cmp (a1,a1) (a2,a2)
+  else lex (cmp_map Stdlib.compare A.length) cmp (a1,a1) (a2,a2)
 
 (** [eq eq_elt a1 a2] tests the equality of [a1] and [a2], comparing their
     elements with [eq_elt]. *)

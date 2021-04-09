@@ -460,8 +460,7 @@ let is_symb : sym -> term -> bool = fun s t ->
 (** Total order on terms. *)
 let cmp : term cmp =
   (* Total precedence on term constructors (must be injective). *)
-  let prec t = Obj.tag (Obj.repr (unfold t))
-    (*match unfold t with
+  (*let prec = function
     | Vari _ -> 0
     | Type -> 1
     | Kind -> 2
@@ -474,13 +473,13 @@ let cmp : term cmp =
     | TEnv _ -> 9
     | Wild -> 10
     | TRef _ -> 11
-    | LLet _ -> 12*)
+    | LLet _ -> 12
   in
-  let prec_tenv t = Obj.tag (Obj.repr t) (*function
+  let prec_tenv = function
     | TE_Vari _ -> 0
     | TE_Some _ -> 1
-    | TE_None -> 2*)
-  in
+    | TE_None -> 2
+  in*)
   let rec cmp t t' =
     match unfold t, unfold t' with
     | Vari x, Vari x' -> Bindlib.compare_vars x x'
@@ -501,7 +500,7 @@ let cmp : term cmp =
     | TRef r, TRef r' -> Stdlib.compare r r'
     | LLet(a,t,u), LLet(a',t',u') ->
         lex3 cmp cmp cmp_binder (a,t,u) (a',t',u')
-    | t, t' -> Stdlib.compare (prec t) (prec t')
+    | t, t' -> cmp_tag (*cmp_map Stdlib.compare prec*) t t'
   and cmp_binder t t' = let (_,t,t') = Bindlib.unbind2 t t' in cmp t t'
   and cmp_mbinder t t' = let (_,t,t') = Bindlib.unmbind2 t t' in cmp t t'
   and cmp_tenv e e' =
@@ -509,7 +508,7 @@ let cmp : term cmp =
     | TE_Vari v, TE_Vari v' -> Bindlib.compare_vars v v'
     | TE_None, TE_None -> 0
     | TE_Some t, TE_Some t' -> cmp_mbinder t t'
-    | _ -> Stdlib.compare (prec_tenv e) (prec_tenv e')
+    | _ -> cmp_tag (*cmp_map Stdlib.compare prec_tenv*) e e'
   in cmp
 
 (** Total order on contexts. *)
