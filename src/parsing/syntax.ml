@@ -5,9 +5,27 @@ open Lplib.Base
 open Lplib.Extra
 open Common
 open Pos
+open Core
 
 (** Representation of a (located) identifier. *)
 type p_ident = strloc
+
+(** [notin id idopts] checks that [id] does not occur in [idopts]. *)
+let check_notin : string -> p_ident option list -> unit = fun id ->
+  let rec notin = function
+    | [] -> ()
+    | None :: idopts -> notin idopts
+    | Some {elt=id';pos} :: idopts ->
+        if id' = id then Error.fatal pos "%s already used." id
+        else notin idopts
+  in notin
+
+(** [are_distinct idopts] checks that the elements of [idopts] of the form
+   [Some _] are pairwise distinct. *)
+let rec check_distinct : p_ident option list -> unit = function
+  | [] -> ()
+  | None :: idopts -> check_distinct idopts
+  | Some {elt=id;_} :: idopts -> check_notin id idopts; check_distinct idopts
 
 (** Identifier of a metavariable. *)
 type meta_ident = Name of string | Numb of int
@@ -17,19 +35,8 @@ type p_meta_ident = meta_ident loc
 type p_path = Path.t loc
 
 (** Representation of a possibly qualified (and located) identifier. *)
-type qident = Path.t * string
+type qident = Term.qident
 type p_qident = qident loc
-
-(** The priority of an infix operator is a floating-point number. *)
-type priority = float
-
-(** Notations. *)
-type notation =
-  | Prefix of priority
-  | Infix of Pratter.associativity * priority
-  | Zero
-  | Succ
-  | Quant
 
 (** Parser-level (located) term representation. *)
 type p_term = p_term_aux loc
@@ -55,6 +62,28 @@ and p_term_aux =
     the argument is marked as implicit (i.e., between curly braces). *)
 and p_params = p_ident option list * p_term option * bool
 
+(** [nb_params ps] returns the number of parameters in a list of parameters
+    [ps]. *)
+let nb_params : p_params list -> int =
+  List.fold_left (fun acc (ps,_,_) -> acc + List.length ps) 0
+
+(** [get_impl_params_list l] gives the implicitness of [l]. *)
+let rec get_impl_params_list : p_params list -> bool list = function
+  | [] -> []
+  | (params,_,impl)::params_list ->
+      List.map (fun _ -> impl) params @ get_impl_params_list params_list
+
+(** [get_impl_term t] gives the implicitness of [t]. *)
+let rec get_impl_term : p_term -> bool list = fun t -> get_impl_term_aux t.elt
+and get_impl_term_aux : p_term_aux -> bool list = fun t ->
+  match t with
+  | P_Prod([],t) -> get_impl_term t
+  | P_Prod((ys,_,impl)::xs,t) ->
+      List.map (fun _ -> impl) ys @ get_impl_term_aux (P_Prod(xs,t))
+  | P_Arro(_,t)  -> false :: get_impl_term t
+  | P_Wrap(t)    -> get_impl_term t
+  | _            -> []
+
 (** [p_get_args t] is {!val:LibTerm.get_args} on syntax-level terms. *)
 let p_get_args : p_term -> p_term * p_term list = fun t ->
   let rec p_get_args acc t =
@@ -73,33 +102,42 @@ type p_inductive = p_inductive_aux loc
 
 (** Module to create p_term's with no positions. *)
 module P  = struct
-  (** [qiden p s] builds "@p.s" with no positions. *)
+
+  (** [qiden p s] builds a [P_Iden] "@p.s". *)
   let qiden : Path.t -> string -> p_term = fun p s ->
     Pos.none (P_Iden(Pos.none (p, s), true))
 
-  (** [iden s] builds "@s" with no positions. *)
+  (** [iden s] builds a [P_Iden] "@s". *)
   let iden : string -> p_term = qiden []
 
-  (** [patt s ts] builds "$s[ts]" with no positions. *)
+  (** [var v] builds a [P_Iden] from [Bindlib.name_of v]. *)
+  let var : Term.tvar -> p_term = fun v -> iden (Bindlib.name_of v)
+
+  (** [patt s ts] builds a [P_Patt] "$s[ts]". *)
   let patt : string -> p_term array option -> p_term = fun s ts ->
     Pos.none (P_Patt (Some (Pos.none s), ts))
 
-  (** [patt0 s] builds "$s" with no positions. *)
+  (** [patt0 s] builds a [P_Patt] "$s". *)
   let patt0 : string -> p_term = fun s -> patt s None
 
-  let appl : p_term -> p_term -> p_term = fun t1 t2 ->
-    Pos.none (P_Appl(t1, t2))
+  (** [appl t u] builds [P_Appl(t, u)]. *)
+  let appl : p_term -> p_term -> p_term = fun t u -> Pos.none (P_Appl(t, u))
 
+  (** [appl_list t ts] iterates [appl]. *)
   let appl_list : p_term -> p_term list -> p_term = List.fold_left appl
 
+  (** [wild] builds a [P_Wild]. *)
   let wild = Pos.none P_Wild
 
+  (** [appl_wild t n] applies [t] to [n] underscores. *)
   let rec appl_wild : p_term -> int -> p_term = fun t i ->
       if i <= 0 then t else appl_wild (appl t wild) (i-1)
 
+  (** [abst idopt t] builds a [P_Abst] over [t]. *)
   let abst : p_ident option -> p_term -> p_term = fun idopt t ->
     Pos.none (P_Abst([[idopt],None,false], t))
 
+  (** [abst_list] iterates [abst]. *)
   let abst_list : p_ident option list -> p_term -> p_term = fun idopts t ->
     List.fold_right abst idopts t
 
@@ -123,18 +161,6 @@ type p_assertion =
   | P_assert_conv   of p_term * p_term
   (** The two given terms should be convertible. *)
 
-(** Type representing the different evaluation strategies. *)
-type strategy =
-  | WHNF (** Reduce to weak head-normal form. *)
-  | HNF  (** Reduce to head-normal form. *)
-  | SNF  (** Reduce to strong normal form. *)
-  | NONE (** Do nothing. *)
-
-(** Configuration for evaluation. *)
-type eval_config =
-  { strategy : strategy   (** Evaluation strategy.          *)
-  ; steps    : int option (** Max number of steps if given. *) }
-
 (** Parser-level representation of a query command. *)
 type p_query_aux =
   | P_query_verbose of int
@@ -145,9 +171,9 @@ type p_query_aux =
   (** Sets the boolean flag registered under the given name (if any). *)
   | P_query_assert of bool * p_assertion
   (** Assertion (must fail if boolean is [true]). *)
-  | P_query_infer of p_term * eval_config
+  | P_query_infer of p_term * Eval.config
   (** Type inference command. *)
-  | P_query_normalize of p_term * eval_config
+  | P_query_normalize of p_term * Eval.config
   (** Normalisation command. *)
   | P_query_prover of string
   (** Set the prover to use inside a proof. *)
@@ -193,57 +219,11 @@ type p_proof_end_aux =
 
 type p_proof_end = p_proof_end_aux loc
 
-module Tags = struct
-  (** Pattern-matching strategy modifiers. *)
-  type match_strat =
-    | Sequen
-    (** Rules are processed sequentially: a rule can be applied only if the
-        previous ones (in the order of declaration) cannot be. *)
-    | Eager
-    (** Any rule that filters a term can be applied (even if a rule defined
-        earlier filters the term as well). This is the default. *)
-
-  (** Specify the visibility and usability of symbols outside their module. *)
-  type expo =
-    | Public
-    (** Visible and usable everywhere. *)
-    | Protec
-    (** Visible everywhere but usable in LHS arguments only. *)
-    | Privat
-    (** Not visible and thus not usable. *)
-
-  (** Symbol properties. *)
-  type prop =
-    | Defin
-    (** The symbol is definable by rewriting rules. *)
-    | Const
-    (** The symbol cannot be defined. *)
-    | Injec
-    (** The symbol is definable but is assumed to be injective. *)
-
-  let pp_prop : prop pp = fun oc p ->
-    match p with
-    | Defin -> ()
-    | Const -> Format.fprintf oc "constant "
-    | Injec -> Format.fprintf oc "injective "
-
-  let pp_expo : expo pp = fun oc e ->
-    match e with
-    | Public -> ()
-    | Protec -> Format.fprintf oc "protected "
-    | Privat -> Format.fprintf oc "private "
-
-  let pp_match_strat : match_strat pp = fun oc s ->
-    match s with
-    | Sequen -> Format.fprintf oc "sequential "
-    | Eager -> ()
-end
-
 (** Parser-level representation of modifiers. *)
 type p_modifier_aux =
-  | P_mstrat of Tags.match_strat (** pattern matching strategy *)
-  | P_expo of Tags.expo (** visibility of symbol outside its modules *)
-  | P_prop of Tags.prop (** symbol properties : constant, definable, ... *)
+  | P_mstrat of Term.match_strat (** pattern matching strategy *)
+  | P_expo of Term.expo (** visibility of symbol outside its modules *)
+  | P_prop of Term.prop (** symbol properties: constant, definable, ... *)
   | P_opaq (** opacity *)
 
 type p_modifier = p_modifier_aux loc
@@ -273,7 +253,7 @@ type p_command_aux =
   | P_rules of p_rule list
   | P_inductive of p_modifier list * p_params list * p_inductive list
   | P_builtin of string * p_qident
-  | P_notation of p_qident * notation
+  | P_notation of p_qident * Sign.notation
   | P_unif_rule of p_rule
   | P_query of p_query
 

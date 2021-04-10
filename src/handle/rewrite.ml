@@ -109,7 +109,7 @@ let _ =
     let symb_P = Builtin.get pos map "P" in
     let term_U = lift (get_domain_of_type symb_T) in
     let term_Prop = lift (get_domain_of_type symb_P) in
-    let a = Bindlib.new_var mkfree "a" in
+    let a = new_tvar "a" in
     let term_T_a = _Appl (_Symb symb_T) (_Vari a) in
     let impls = _Impl term_T_a (_Impl term_T_a term_Prop) in
     Bindlib.unbox (_Prod term_U (Bindlib.bind_var a impls))
@@ -121,8 +121,8 @@ let _ =
     let symb_P = Builtin.get pos map "P" in
     let symb_eq = Builtin.get pos map "eq" in
     let term_U = lift (get_domain_of_type symb_T) in
-    let a = Bindlib.new_var mkfree "a" in
-    let x = Bindlib.new_var mkfree "x" in
+    let a = new_tvar "a" in
+    let x = new_tvar "x" in
     let appl_eq = _Appl (_Symb symb_eq) (_Vari a) in
     let appl_eq = _Appl (_Appl appl_eq (_Vari x)) (_Vari x) in
     let appl = _Appl (_Symb symb_P) appl_eq in
@@ -141,10 +141,10 @@ let _ =
     let term_eq = _Symb symb_eq in
     let term_U = lift (get_domain_of_type symb_T) in
     let term_Prop = lift (get_domain_of_type symb_P) in
-    let a = Bindlib.new_var mkfree "a" in
-    let x = Bindlib.new_var mkfree "x" in
-    let y = Bindlib.new_var mkfree "y" in
-    let p = Bindlib.new_var mkfree "p" in
+    let a = new_tvar "a" in
+    let x = new_tvar "x" in
+    let y = new_tvar "y" in
+    let p = new_tvar "p" in
     let term_T_a = _Appl term_T (_Vari a) in
     let term_P_p_x = _Appl term_P (_Appl (_Vari p) (_Vari x)) in
     let term_P_p_y = _Appl term_P (_Appl (_Vari p) (_Vari y)) in
@@ -257,7 +257,7 @@ let make_pat : term -> term -> bool = fun t p ->
     We require [t] not to contain products, abstractions, metavariables or any
     other awkward term constructor. *)
 let bind_match : term -> term -> tbinder =  fun p t ->
-  let x = Bindlib.new_var mkfree "X" in
+  let x = new_tvar "X" in
   let rec lift_subst : term -> tbox = fun t ->
     if eq [] p t then _Vari x else
     match unfold t with
@@ -287,7 +287,7 @@ let swap : eq_config -> term -> term -> term -> term -> term =
   fun cfg a r l t ->
   (* We build the predicate “λx:T a, eq a l x”. *)
   let pred =
-    let x = Bindlib.new_var mkfree "x" in
+    let x = new_tvar "x" in
     let pred = add_args (Symb cfg.symb_eq) [a; l; Vari(x)] in
     let pred = Bindlib.unbox (Bindlib.bind_var x (lift pred)) in
     Abst(Appl(Symb cfg.symb_T, a), pred)
@@ -441,8 +441,8 @@ let rewrite :
           | Some(sigma) -> sigma
           | None        ->
               fatal pos
-                "The value of [%s], [%a], in [%a] does not match [%a]."
-                (Bindlib.name_of id) pp_term id_val pp_term p pp_term l
+                "The value of [%a], [%a], in [%a] does not match [%a]."
+                pp_var id pp_term id_val pp_term p pp_term l
         in
         (* Build t, l, using the substitution we found. Note that r  *)
         (* corresponds to the value we get by applying rewrite to *)
@@ -498,8 +498,8 @@ let rewrite :
            [id_val]. *)
         let s_refs = add_refs s in
         if not (make_pat id_val s_refs) then
-          fatal pos "The value of [%s], [%a], in [%a] does not match [%a]."
-            (Bindlib.name_of id) pp_term id_val pp_term p pp_term s;
+          fatal pos "The value of [%a], [%a], in [%a] does not match [%a]."
+            pp_var id pp_term id_val pp_term p pp_term s;
         (* Now we must match s, which no longer contains any TRef's
            with the LHS of the lemma,*)
         let s = s_refs in
@@ -612,8 +612,8 @@ let rewrite :
           | Some(sigma) -> sigma
           | None        ->
               fatal pos
-                "The value of [%s], [%a], in [%a] does not match [%a]."
-                (Bindlib.name_of id) pp_term id_val pp_term p pp_term l
+                "The value of [%a], [%a], in [%a] does not match [%a]."
+                pp_var id pp_term id_val pp_term p pp_term l
         in
         let (t,l,r) = Bindlib.msubst bound sigma in
 

@@ -14,7 +14,6 @@ open Debug
 open Term
 open Sig_state
 open Format
-open Parsing
 
 let out = fprintf
 
@@ -26,7 +25,7 @@ let log_prnt = log_prnt.logger
 let sig_state : sig_state ref = ref Sig_state.dummy
 
 (** [notation_of s] returns the notation of symbol [s] or [None]. *)
-let notation_of : sym -> Syntax.notation option = fun s ->
+let notation_of : sym -> Sign.notation option = fun s ->
   SymMap.find_opt s !sig_state.notations
 
 (** Flag for printing the domains of λ-abstractions. *)
@@ -54,7 +53,7 @@ let pp_assoc : Pratter.associativity pp = fun ppf assoc ->
   | Left -> out ppf " left associative"
   | Right -> out ppf " right associative"
 
-let pp_notation : Syntax.notation pp = fun ppf notation ->
+let pp_notation : Sign.notation pp = fun ppf notation ->
   match notation with
   | Prefix(p) -> out ppf "prefix %f" p
   | Infix(a,p) -> out ppf "infix%a %f" pp_assoc a p
@@ -62,9 +61,26 @@ let pp_notation : Syntax.notation pp = fun ppf notation ->
   | Succ -> out ppf "builtin \"+1\""
   | Quant -> out ppf "quantifier"
 
-let pp_uid = LpLexer.pp_uid
+let pp_uid = Format.pp_print_string
 
 let pp_path : Path.t pp = List.pp pp_uid "."
+
+let pp_prop : prop pp = fun oc p ->
+  match p with
+  | Defin -> ()
+  | Const -> Format.fprintf oc "constant "
+  | Injec -> Format.fprintf oc "injective "
+
+let pp_expo : expo pp = fun oc e ->
+  match e with
+  | Public -> ()
+  | Protec -> Format.fprintf oc "protected "
+  | Privat -> Format.fprintf oc "private "
+
+let pp_match_strat : match_strat pp = fun oc s ->
+  match s with
+  | Sequen -> Format.fprintf oc "sequential "
+  | Eager -> ()
 
 let pp_sym : sym pp = fun ppf s ->
   if !print_implicits && s.sym_impl <> [] then out ppf "@";
@@ -123,7 +139,7 @@ and pp_term : term pp = fun ppf t ->
   let rec atom ppf t = pp `Atom ppf t
   and appl ppf t = pp `Appl ppf t
   and func ppf t = pp `Func ppf t
-  and pp (p : Pretty.priority) ppf t =
+  and pp p ppf t =
     let (h, args) = LibTerm.get_args t in
     let pp_appl h args =
       match args with

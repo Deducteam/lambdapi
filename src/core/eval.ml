@@ -172,7 +172,7 @@ and eq_modulo : ctxt -> term -> term -> bool = fun ctx a b ->
        the term;
     2. a {!constructor:Term.term.Vari} which is the bound variable previously
        introduced;
-    3. a {!constructor:Tree_types.TC.t.Vari} which is a simplified
+    3. a {!constructor:Tree_type.TC.t.Vari} which is a simplified
        representation of a variable for trees. *)
 
 (** [tree_walk tr ctx stk] tries to apply a rewrite rule by matching the stack
@@ -193,7 +193,7 @@ and tree_walk : dtree -> ctxt -> stack -> (term * stack) option =
      indexes defined during tree build, and [id_vars] is the inverse mapping
      of [vars_id]. *)
   let rec walk tree stk cursor vars_id id_vars =
-    let open Tree_types in
+    let open Tree_type in
     match tree with
     | Fail                                                -> None
     | Leaf(env_builder, (act, xvars))                     ->
@@ -203,26 +203,26 @@ and tree_walk : dtree -> ctxt -> stack -> (term * stack) option =
         assert (List.length env_builder = env_len - xvars);
         let env = Array.make env_len TE_None in
         (* Retrieve terms needed in the action from the [vars] array. *)
-        let fn (pos, (slot, xs)) =
+        let f (pos, (slot, xs)) =
           match bound.(pos) with
           | TE_Vari(_) -> assert false
           | TE_Some(_) -> env.(slot) <- bound.(pos)
           | TE_None    ->
               if Array.length xs = 0 then
                 let t = unfold vars.(pos) in
-                let b = Bindlib.raw_mbinder [||] [||] 0 mkfree (fun _ -> t) in
-                env.(slot) <- TE_Some(b)
+                let b = Bindlib.raw_mbinder [||] [||] 0 of_tvar (fun _ -> t)
+                in env.(slot) <- TE_Some(b)
               else
                 let b = lift vars.(pos) in
                 let xs = Array.map (fun e -> IntMap.find e id_vars) xs in
                 env.(slot) <- TE_Some(Bindlib.unbox (Bindlib.bind_mvar xs b))
         in
-        List.iter fn env_builder;
+        List.iter f env_builder;
         (* Complete the array with fresh meta-variables if needed. *)
         for i = env_len - xvars to env_len - 1 do
           let mt = Meta.make ctx Type in
           let t = Meta.make ctx mt in
-          let b = Bindlib.raw_mbinder [||] [||] 0 mkfree (fun _ -> t) in
+          let b = Bindlib.raw_mbinder [||] [||] 0 of_tvar (fun _ -> t) in
           env.(i) <- TE_Some(b)
         done;
         Some (Bindlib.msubst act env, stk)
@@ -400,7 +400,7 @@ let rec simplify : term -> term = fun t ->
      let (x,b) = Bindlib.unbind b in
      let b = Bindlib.bind_var x (lift (simplify b)) in
      Prod (simplify a, Bindlib.unbox b)
-  | h, ts -> add_args h (List.map whnf_beta ts)
+  | h, ts -> add_args_map h whnf_beta ts
 
 (** [hnf t] computes a head-normal form of the term [t]. *)
 let rec hnf : ctxt -> term -> term = fun ctx t ->
@@ -410,12 +410,24 @@ let rec hnf : ctxt -> term -> term = fun ctx t ->
      Abst(a, Bindlib.unbox (Bindlib.bind_var x (lift (hnf ctx t))))
   | t         -> t
 
+(** Type representing the different evaluation strategies. *)
+type strategy =
+  | WHNF (** Reduce to weak head-normal form. *)
+  | HNF  (** Reduce to head-normal form. *)
+  | SNF  (** Reduce to strong normal form. *)
+  | NONE (** Do nothing. *)
+
+(** Configuration for evaluation. *)
+type config =
+  { strategy : strategy   (** Evaluation strategy.          *)
+  ; steps    : int option (** Max number of steps if given. *) }
+
 (** [eval cfg ctx t] evaluates the term [t] in the context [ctx] according to
     configuration [cfg]. *)
-let eval : Parsing.Syntax.eval_config -> ctxt -> term -> term = fun c ctx t ->
+let eval : config -> ctxt -> term -> term = fun c ctx t ->
   match (c.strategy, c.steps) with
   | (_   , Some(0))
-  | (NONE, _      ) -> t
+  | (NONE, _      ) -> simplify t
   | (WHNF, None   ) -> whnf ctx t
   | (SNF , None   ) -> snf ctx t
   | (HNF , None   ) -> hnf ctx t

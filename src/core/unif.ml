@@ -255,11 +255,11 @@ let imitate_lam_cond : term -> term list -> bool = fun h ts ->
 let imitate_lam : ctxt -> meta -> problem -> problem = fun ctx m p ->
     if !log_enabled then log_unif "imitate_lam %a" pp_meta m;
     let n = m.meta_arity in
-    let (env, t) = Env.of_prod ctx n !(m.meta_type) in
+    let (env, t) = Env.of_prod_nth ctx n !(m.meta_type) in
     let x,a,env',b,p =
       match Eval.whnf ctx t with
       | Prod(a,b) ->
-         let x,b = Bindlib.unbind b in
+         let x,b = LibTerm.unbind_name "x" b in
          let a = lift a in
          let env' = Env.add x a None env in
          x,a,env',lift b,p
@@ -269,7 +269,7 @@ let imitate_lam : ctxt -> meta -> problem -> problem = fun ctx m p ->
          let tm2 = Env.to_prod env _Type in
          let m2 = Meta.fresh tm2 n in
          let a = _Meta m2 (Env.to_tbox env) in
-         let x = Bindlib.new_var mkfree "x" in
+         let x = new_tvar "x" in
          let env' = Env.add x a None env in
          let tm3 = Env.to_prod env' _Type in
          let m3 = Meta.fresh tm3 (n+1) in

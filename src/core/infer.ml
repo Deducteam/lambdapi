@@ -18,7 +18,7 @@ let log_infr = log_infr.logger
    [m2] fresh metavariables. *)
 let set_to_prod : meta -> unit = fun m ->
   let n = m.meta_arity in
-  let env, s = Env.of_prod [] n !(m.meta_type) in
+  let env, s = Env.of_prod_nth [] n !(m.meta_type) in
   let vs = Env.vars env in
   let xs = Array.map _Vari vs in
   (* domain *)
@@ -26,7 +26,7 @@ let set_to_prod : meta -> unit = fun m ->
   let m1 = Meta.fresh u1 n in
   let a = _Meta m1 xs in
   (* codomain *)
-  let y = Bindlib.new_var mkfree "y" in
+  let y = new_tvar "y" in
   let env' = Env.add y (_Meta m1 xs) None env in
   let u2 = Env.to_prod env' (lift s) in
   let m2 = Meta.fresh u2 (n+1) in

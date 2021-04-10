@@ -177,7 +177,7 @@ declarations:
 ``reflexivity``
 ---------------
 
-Solves a goal of the form ``P (t = u)`` when ``t ≡ u``.
+Solves a goal of the form ``Π x₁, …, Π xₙ, P (t = u)`` when ``t ≡ u``.
 
 ``symmetry``
 ------------

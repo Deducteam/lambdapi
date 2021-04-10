@@ -1,5 +1,52 @@
 ### Unreleased
 
+#### Improvements in some tactics (2021-04-05)
+
+- fix `have`
+- improve the behavior of `apply`
+- `assume` not needed before `reflexivity` anymore
+- `assume` checks that identifiers are distinct
+- `solve`: simplify goals afterwards
+- `libTerm`: permute arguments of `unbind_name`, and add `add_args_map` and `unbind2_name` 
+- `syntax`: add `check_notin` and `check_distinct`
+- split `misc/listings.tex` into `misc/lambdapi.tex` and `misc/example.tex`
+
+#### Extend command `inductive` to strictly-positive inductive types (2021-04-02)
+
+#### Renamings (2021-04-01)
+
+- `./tools/` -> `./misc`
+- `./src/core/tree_types.ml` -> `./src/core/tree_type.ml`
+
+#### Do not unescape identifiers anymore, and move `scope.ml` from `Core` to `Parsing` (2021-03-30)
+
+- escaped regular identifiers are automatically unescaped in lexing
+- unescaping is done in filenames only
+- `Escape.add_prefix` and `Escape.add_suffix` allow to correctly extend potentially escaped identifiers
+- move `scope.ml` from `Core` to `Parsing`
+
+#### Forbid bound variable names ending with a positive integer with leading zeros since there are not compatible with Bindlib (2021-03-29)
+
+#### Fix #341: remove spurious warnings on bound variables (2021-03-29)
+
+* `scope.ml`:
+  - the inner functions of scope are brought to the top-level
+  - `scope_term_with_params` is introduced: it is similar to `scope_term` but does not check that top-level bound variables are used
+  - `_Meta_Type` is moved to `env.ml` as `fresh_meta_type`
+
+* `command.ml`:
+  - use `scope_term_with_params` and check that parameters are indeed used
+  - `get_implicitness` moved to `syntax.ml` as `get_impl_term`
+  - fix implicit arguments computation in case of no type by introducing `Syntax.get_impl_params_list`
+
+* in various places: use `pp_var` instead of `Bindlib.name_of`
+
+* replace expo argument in scoping and handling by boolean telling if private symbols are allowed
+
+* allow private symbols in queries
+
+#### Introduce `new_tvar = Bindlib.new_var mkfree` (2021-03-26)
+
 #### Add tactic `generalize`, and rename tactic `simpl` into `simplify` (2021-03-25)
 
 #### Use Dune for opam integration (2021-03-25)

@@ -4,8 +4,10 @@
 (using menhir 1.0)
 
 (generate_opam_files true)
+
 (source (github Deducteam/lambdapi))
-(license CeCILL2.1)
+(license CECILL-2.1)
+(authors "Deducteam")
 (maintainers "dedukti-dev@inria.fr")
 (package
  (name lambdapi)
@@ -18,6 +20,7 @@ Language Server Protocol helper for IDEs to check lambdapi files.")
  (depends
   (ocaml (>= 4.07.0))
   (menhir (>= 20200624))
+  (sedlex (>= 2.2))
   (alcotest :with-test)
   (bindlib (>= 5.0.1))
   (timed (>= 1.0))

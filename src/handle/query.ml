@@ -19,7 +19,8 @@ type result = (unit -> string) option
 (** [return pp x] prints [x] using [pp] on [Stdlib.(!out_fmt)] at verbose
    level 1 and returns a function for printing [x] on a string using [pp]. *)
 let return : 'a pp -> 'a -> result = fun pp x ->
-  Console.out 1 "%a" pp x; Some (fun () -> Format.asprintf "%a" pp x)
+  Console.out 1 (Extra.red "%a\n") pp x;
+  Some (fun () -> Format.asprintf "%a" pp x)
 
 (** [handle_query ss ps q] *)
 let handle : Sig_state.t -> proof_state option -> p_query -> result =
@@ -55,8 +56,8 @@ let handle : Sig_state.t -> proof_state option -> p_query -> result =
         let out = Format.fprintf in
         let open Timed in
         (* print its type and properties *)
-        out ppf "%a%a%asymbol %a: %a\n" Tags.pp_expo s.sym_expo
-          Tags.pp_prop s.sym_prop Tags.pp_match_strat s.sym_mstrat
+        out ppf "%a%a%asymbol %a: %a\n" pp_expo s.sym_expo
+          pp_prop s.sym_prop pp_match_strat s.sym_mstrat
           pp_sym s pp_prod (!(s.sym_type), s.sym_impl);
         (* print its definition *)
         begin
@@ -65,7 +66,7 @@ let handle : Sig_state.t -> proof_state option -> p_query -> result =
           | None -> ()
         end;
         (* print its notation *)
-        let pp_notation : notation option pp = fun ppf n ->
+        let pp_notation : Sign.notation option pp = fun ppf n ->
           match n with
           | None -> ()
           | Some n -> out ppf "notation %a %a" pp_sym s pp_notation n
@@ -110,7 +111,7 @@ let handle : Sig_state.t -> proof_state option -> p_query -> result =
     | None -> Extra.IntMap.empty
     | Some ps -> Proof.sys_metas ps)
   in
-  let scope = Scope.scope_term Public ss env sms in
+  let scope = Scope.scope_term true ss env sms in
   let ctxt = Env.to_ctxt env in
   match elt with
   | P_query_debug(_,_)
