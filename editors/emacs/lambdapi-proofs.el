@@ -180,7 +180,9 @@ This works for both graphical and text displays."
                     (lp--draw-horizontal-line)
                     (insert gstr))
                   goalsstr))
-        (erase-buffer))
+	(remove-overlays)
+        (erase-buffer)
+	(insert "No goals"))
       (read-only-mode 1))))
 
 (defun lp-display-logs (logs)
