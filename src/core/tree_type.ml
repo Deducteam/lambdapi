@@ -65,6 +65,15 @@ let pp_tree_cond : tree_cond pp = fun ppf tc ->
   | CondNL(i, j) -> Format.fprintf ppf "Nl(%d, %d)" i j
   | CondFV(i, _) -> Format.fprintf ppf "Fv(%d)" i
 
+(** Substitution of variables in a RHS. During the filtering process, some
+    subterms of the filtered term may be stored in an array. Let [v] be that
+    array. When a leaf is reached, variables of the LHS that are bound in the
+    RHS must be substitued. An element [(p, (v, xs))] of the substitution
+    substitutes variable [v] of the RHS by term [p] of array [v]. In the case
+    of higher order patterns, [p] may need to be itself subsituted  with {e
+    bound} variables [xs] collected when traversing binders. *)
+type rhs_substit = (int * (int * int array)) list
+
 (** Representation of a tree. The definition relies on parameters since module
     {!module:Term} depends on the current module, and that would thus produce
     a dependency cycle. However it should be understood that parameter [`rhs]
@@ -74,17 +83,12 @@ let pp_tree_cond : tree_cond pp = fun ppf tc ->
 type 'rhs tree =
   | Fail
   (** Empty decision tree, used when there are no rewriting rules. *)
-  | Leaf of (int * (int * int array)) list * 'rhs
+  | Leaf of rhs_substit * 'rhs
   (** The value [Leaf(m, rhs)] stores the RHS [rhs] of the rewriting rule that
       can be applied upon reaching the  leaf. The association list [m] is used
       to construct the environment of the RHS. Note that we do not need to use
       a map here  since we only need  to insert at the head,  and iterate over
-      the elements of the structure. Triplet  [(p, (v, xs))] of [m] means that
-      when a rule  matches, the term to  be used as the [v]th  variable of the
-      RHS  is found  in position  [p] in  the array  containing all  the terms
-      gathered during  matching. The pattern  may have an environment  made of
-      variables [xs]. The  integer [x] indicates the number  of meta variables
-      to generate to replace the extra variables of the RHS. *)
+      the elements of the structure. *)
   | Cond of
       { ok   : 'rhs tree
       (** Branch to follow if the condition is verified. *)

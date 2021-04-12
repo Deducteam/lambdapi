@@ -213,20 +213,14 @@ module CM = struct
       [0] index is used when going under abstractions. In that case, the field
       {!field:arg_rank} is incremented. *)
 
-  (** Data used to effectively apply a rule (i.e., substitute terms matching a
-      variable of the LHS into the RHS). An element [(sv, (se, xs))] indicates
-      that slot [sv] of the [vars] array should be bound at index [se], in the
-      environment using free variables [xs]. *)
-  type env_builder = (int * (int * int array)) list
-
   (** A clause matrix row (schematically {i c_lhs ↪ c_rhs if cond_pool}). *)
   type clause =
     { c_lhs       : term array
     (** Left hand side of a rule. *)
     ; c_rhs       : rhs * int
     (** Right hand side of a rule. *)
-    ; env_builder : env_builder
-    (** Data required to apply the rule. *)
+    ; env_builder : rhs_substit
+    (** Data needed for the substitution of RHS variables. *)
     ; xvars_nb    : int
     (** Number of extra variables in the rule RHS. *)
     ; cond_pool   : CP.t
@@ -613,7 +607,7 @@ end
     with RHS [rhs]  and the environment builder  [env_builder] completed. [vi]
     contains the indexes of variables. *)
 let harvest :
-    term array -> rhs * int -> CM.env_builder -> int VarMap.t -> int -> tree =
+    term array -> rhs * int -> rhs_substit -> int VarMap.t -> int -> tree =
   fun lhs rhs env_builder vi slot ->
   let default_node store child =
     Node { swap = 0 ; store ; children = TCMap.empty
@@ -645,14 +639,13 @@ let harvest :
     switch node contains in its mapping a tree constructor [s], then terms
     having (as head structure) symbol [s] will be accepted.
 
-    The second bullet is managed by the environment builder of type
-    {!type:CM.env_builder}.  If a LHS contains a named pattern variable, then
-    it is used in the RHS.  To do that, the term is saved into an array of
-    terms [vars].  When the leaf is reached, the terms from that array are
-    copied into the RHS.  The instructions to save terms are in the field
-    {!field:CM.store}.  The instructions to copy adequately terms from [vars]
-    to the RHS are in an environment builder (of type
-    {!type:CM.env_builder}). *)
+    The second bullet is managed by the substitution of type
+    {!type:rhs_substit}. If a LHS contains a named pattern variable, then it
+    is used in the RHS. Sub-terms that are filtered by named variables that
+    are bound in the RHS are saved into an array during evaluation. When a
+    leaf is reached, the substitution is applied on the RHS, copying terms
+    from that array to the RHS. Subterms are saved into the array when field
+    {!field:CM.store} of nodes is true. *)
 
 (** [compile mstrat m] translates the pattern matching problem encoded by the
     matrix [m] into a decision tree following strategy [mstrat]. *)
