@@ -349,10 +349,8 @@ val unfold : term -> term
 (** {b NOTE} that {!val:unfold} must (almost) always be called before matching
     over a value of type {!type:term}. *)
 
-(** Total orders terms, contexts and constraints not containing [Patt],
-   [TEnv] or [TRef].
-@raise Invalid_argument otherwise. *)
-val cmp_term : term cmp
+(** Total orders terms, contexts and constraints. *)
+val cmp : term cmp
 val cmp_ctxt : ctxt cmp
 val cmp_constr : constr cmp
 val eq_constr : constr eq

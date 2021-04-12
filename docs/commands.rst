@@ -110,7 +110,12 @@ the system with additional information on its properties and behavior.
   - ``injective``: The symbol can be considered as injective, that is, if ``f t1 .. tn`` ≡ ``f u1 .. un``, then ``t1``\ ≡\ ``u1``, …, ``tn``\ ≡\ ``un``. For the moment, the verification is left to the user.
   - ``commutative``: Adds in the conversion the equation ``f t u ≡ f u t``.
   - ``associative``: Adds in the conversion the equation ``f (f t u) v ≡ f t (f u v)`` (in conjonction with ``commutative`` only)
-    
+
+    For handling commutative and associative-commutative symbols,
+    terms are systemically put in some canonical form (left
+    unspecified) following a technique described `here
+    <http://dx.doi.org/10.1007/978-3-540-71316-6_8>`__.
+
 - **Exposition modifiers** define how a symbol can be used outside the
   module where it is defined. By default, the symbol can be used
   without restriction.
