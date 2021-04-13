@@ -75,9 +75,9 @@ type mode =
   | M_LHS  of lhs_data
   (** Scoping mode for rewriting rule left-hand sides. *)
   | M_RHS  of
-      { m_rhs_prv             : bool
+      { m_rhs_prv  : bool
       (** True if private symbols are allowed. *)
-      ; m_rhs_data            : (string, tevar) Hashtbl.t
+      ; m_rhs_data : (string, tevar) Hashtbl.t
       (** Environment for variables that we know to be bound in the RHS. *) }
   (** Scoping mode for rewriting rule right-hand sides. *)
   | M_URHS of
@@ -154,7 +154,7 @@ let rec scope : mode -> sig_state -> env -> p_term -> tbox =
     match (p_head.elt, md) with
     | (P_Patt(_,_), M_LHS(_)) when args <> [] ->
       fatal t.pos "Pattern variables cannot be applied."
-    | _                                       -> ()
+    | _ -> ()
   end;
   (* Scope the head and obtain the implicitness of arguments. *)
   let h = scope_head md ss env p_head in
@@ -175,8 +175,9 @@ let rec scope : mode -> sig_state -> env -> p_term -> tbox =
 and add_impl : mode -> sig_state -> Env.t -> popt -> tbox -> bool list ->
   p_term list -> tbox =
   fun md ss env loc h impl args ->
-  let appl_p_term t u = _Appl t (scope md ss env u) in
-  let appl_meta t = _Appl t (scope_head md ss env (Pos.none P_Wild)) in
+  let modulo = match md with M_LHS _ -> false | _ -> true in
+  let appl_p_term t u = _Appl ~modulo t (scope md ss env u) in
+  let appl_meta t = _Appl ~modulo t (scope_head md ss env P.wild) in
   match (impl, args) with
   (* The remaining arguments are all explicit. *)
   | ([]         , _      ) -> List.fold_left appl_p_term h args
