@@ -199,9 +199,10 @@ module CM = struct
   (** [pp_arg_path ppf pth] prints path [pth] as a dotted list of integers to
       formatter [ppf]. *)
   let pp_arg_path : int list pp = fun ppf pth ->
-    Format.(pp_print_list
-              ~pp_sep:(fun ppf () -> pp_print_string ppf ".")
-              pp_print_int ppf (List.rev pth))
+    Format.(
+      fprintf ppf "{%a}"
+        (pp_print_list ~pp_sep:(Base.pp_sep ".") pp_print_int)
+        (List.rev pth))
 
   (** {b NOTE} the {!field:arg_path} describes a path to the represented term.
       The idea is that each index of the list tells under which argument to go
@@ -219,8 +220,8 @@ module CM = struct
     (** Left hand side of a rule. *)
     ; c_rhs       : rhs * int
     (** Right hand side of a rule. *)
-    ; env_builder : rhs_substit
-    (** Data needed for the substitution of RHS variables. *)
+    ; c_subst     : rhs_substit
+    (** Substitution of RHS variables. *)
     ; xvars_nb    : int
     (** Number of extra variables in the rule RHS. *)
     ; cond_pool   : CP.t
@@ -268,8 +269,8 @@ module CM = struct
   let of_rules : rule list -> t = fun rs ->
     let r2r {lhs; rhs; xvars_nb; _} =
       let c_lhs = Array.of_list lhs in
-      { c_lhs; c_rhs = (rhs, xvars_nb); cond_pool = CP.empty
-      ; env_builder = []; xvars_nb }
+      { c_lhs; c_rhs = (rhs, xvars_nb); cond_pool = CP.empty; c_subst = []
+      ; xvars_nb }
     in
     let size = (* Get length of longest rule *)
       if rs = [] then 0 else
@@ -302,34 +303,34 @@ module CM = struct
     let nc, ns = loop (0, 0) ts in
     float_of_int nc /. (float_of_int ns)
 
-  (** [pick_best_among m c] returns the index of the best column of matrix [m]
-      among columns [c]. Here, we mean "best" in the sense of {!val:score}. *)
-  let pick_best_among : t -> int array -> int = fun mat columns->
-    let scores = Array.map (fun ci -> score (get_col ci mat)) columns in
-    Array.max_index ~cmp:(Stdlib.compare) scores
-
-  (** [can_switch_on r k] tells whether we can switch on column [k] of list of
-      clauses [r]. *)
-  let can_switch_on : clause list -> int -> bool = fun  clauses k ->
-    List.for_all (fun r -> Array.length r.c_lhs >= k + 1) clauses &&
-    List.exists (fun r -> is_treecons r.c_lhs.(k)) clauses
-
-  (** [discard_cons_free r] returns the indexes of columns that contain terms
-      with symbols on top among clauses [r].  These terms allow to
-      {!val:specialize} on the column. *)
+  (** [discard_cons_free r] returns the indexes of columns on which a
+      specialisation can be performed. They are the columns with at least one
+      symbol as head term. *)
   let discard_cons_free : clause list -> int array = fun clauses ->
     let ncols =
       let arities = List.map (fun cl -> Array.length cl.c_lhs) clauses in
       List.max ~cmp:Int.compare arities
     in
-    let switchable = List.init ncols (can_switch_on clauses) in
+    let switchable =
+      (* [can_switch_on k] is true if a switch can be performed on col [k]. *)
+      let can_switch_on k =
+        List.for_all (fun r -> Array.length r.c_lhs >= k + 1) clauses &&
+        List.exists (fun r -> is_treecons r.c_lhs.(k)) clauses
+      in
+      List.init ncols can_switch_on in
     let switchable2ind i e = if e then Some(i) else None in
     Array.of_list (List.filteri_map switchable2ind switchable)
 
   (** [choose m] returns the index of column to switch on. *)
   let choose : t -> int option = fun m ->
     let kept = discard_cons_free m.clauses in
-    if kept = [||] then None else Some(kept.(pick_best_among m kept))
+    if kept = [||] then None else
+      (* Select the "best" (with higher [score]) column. *)
+      let best =
+        let scores = Array.map (fun ci -> score (get_col ci m)) kept in
+        Array.max_index ~cmp:Stdlib.compare scores
+      in
+      Some(kept.(best))
 
   (** [is_exhausted p c] tells whether clause [r] whose terms are at positions
       in [p] can be applied or not. *)
@@ -434,17 +435,17 @@ module CM = struct
     let env = vs |> VarSet.to_seq |> Seq.map mk_Vari |> Array.of_seq in
     mk_Patt (None, "", env)
 
-  (** [update_aux col slot clause] updates the fields the condition pool and
-      the environment builder of clause [clause] assuming column [col] is
-      inspected and the next environment slot is [slot]. *)
+  (** [update_aux col mem clause] the condition pool and the substitution of
+      clause [clause] assuming that column [col] is inspected and [mem]
+      subterms have to be memorised. *)
   let update_aux : int -> int -> arg list -> int VarMap.t -> clause ->
-    clause = fun ci slot pos vi r ->
+    clause = fun ci mem pos vi r ->
     match fst (get_args r.c_lhs.(ci)) with
     | Patt(i, _, e) ->
         let (_, a, _) = List.destruct pos ci in
         let cond_pool =
           if (Array.length e) <> a.arg_rank then
-            CP.register_fv slot (Array.map (index_var vi) e) r.cond_pool
+            CP.register_fv mem (Array.map (index_var vi) e) r.cond_pool
           else r.cond_pool
         in
         let cond_pool =
@@ -454,26 +455,28 @@ module CM = struct
                 log "Registering non linearity constraint on position [%a] \
                      on %d"
                   pp_arg_path a.arg_path i;
-              CP.register_nl slot i cond_pool
+              CP.register_nl mem i cond_pool
           | None    -> cond_pool
         in
-        let env_builder =
+        let c_subst =
+          (* REVIEW: patterns may have slots in the RHS although they are not
+             bound. *)
           (* If the pattern has a slot, either it is used in the RHS, in which
              case a  tuple [(j,vs)] consisting of  the index [j] to  which the
              matched term is bound in the  binder of the RHS and the variables
              making up the  environment of the term (if any)  as indexes among
              the  variables  collected.  Or  the  variable  is  subject  to  a
-             non-linearity  constraint. In  this  case we  do  not enrich  the
-             environment builder. *)
+             non-linearity  constraint. In  this case, it is added to the
+             substitution only if the substitution does not already contain
+             a variable bound to slot [i]. *)
           let se i (_,(j,_)) = i = j in
           match i with
-          | Some(i) when not (List.exists (se i) r.env_builder) ->
-              (slot, (i, Array.map (index_var vi) e)) :: r.env_builder
-          | _                                                   ->
-              r.env_builder
+          | Some(i) when not (List.exists (se i) r.c_subst) ->
+              (mem, (i, Array.map (index_var vi) e)) :: r.c_subst
+          | _ -> r.c_subst
         in
-        {r with env_builder; cond_pool}
-    | _             -> r
+        {r with c_subst; cond_pool}
+    | _ -> r
 
   (** [specialize free_vars pat col pos cls] filters and transforms LHS of
       clauses [cls] whose column [col] contain a pattern that can filter
@@ -619,29 +622,30 @@ module CM = struct
     List.filter (fun r -> r.c_lhs <> [||])
 end
 
-(** [harvest  lhs rhs  env_builder vi  slot] exhausts  linearly the  LHS [lhs]
+(** [harvest lhs rhs subst vi slot] exhausts linearly the LHS [lhs]
     composed only  of pattern variables with  no constraints, to yield  a leaf
-    with RHS [rhs]  and the environment builder  [env_builder] completed. [vi]
-    contains the indexes of variables. *)
+    with RHS [rhs]  and the substitution [subst] (which is completed). Mapping
+    [vi] contains variables that may appear free in patterns. [slot] is the
+    number of subterms that must be memorised. *)
 let harvest :
     term array -> rhs * int -> rhs_substit -> int VarMap.t -> int -> tree =
-  fun lhs rhs env_builder vi slot ->
+  fun lhs rhs subst vi slot ->
   let default_node store child =
     Node { swap = 0 ; store ; children = TCMap.empty
          ; abstraction = None ; product = None ; default = Some(child) }
   in
-  let rec loop lhs env_builder slot =
+  let rec loop lhs subst slot =
     match lhs with
-    | []                    -> Leaf(env_builder, rhs)
+    | []                    -> Leaf(subst, rhs)
     | Patt(Some(i),_,e)::ts ->
-        let env_builder =
-          (slot, (i, Array.map (CM.index_var vi) e)) :: env_builder
+        let subst =
+          (slot, (i, Array.map (CM.index_var vi) e)) :: subst
         in
-        default_node true (loop ts env_builder (slot + 1))
-    | Patt(None,_,_)::ts    -> default_node false (loop ts env_builder slot)
+        default_node true (loop ts subst (slot + 1))
+    | Patt(None,_,_)::ts    -> default_node false (loop ts subst slot)
     | _                     -> assert false
   in
-  loop (Array.to_list lhs) env_builder slot
+  loop (Array.to_list lhs) subst slot
 
 (** {b NOTE} {!val:compile} produces a decision tree from a set of rewriting
     rules (in practice, they all belong to a same symbol). This tree is
@@ -677,9 +681,9 @@ let compile : match_strat -> CM.t -> tree = fun mstrat m ->
   if CM.is_empty cm then Fail else
   let compile_cv = compile vars_id in
   match CM.yield mstrat cm with
-  | Yield({c_rhs; env_builder; c_lhs; _})  ->
-      if c_lhs = [||] then Leaf(env_builder, c_rhs) else
-      harvest c_lhs c_rhs env_builder vars_id slot
+  | Yield({c_rhs; c_subst; c_lhs; _})  ->
+      if c_lhs = [||] then Leaf(c_subst, c_rhs) else
+      harvest c_lhs c_rhs c_subst vars_id slot
   | Condition(cond)                        ->
       if !Debug.log_enabled then log "Condition [%a]" pp_tree_cond cond;
       let ok   = compile_cv {cm with clauses = CM.cond_ok   cond clauses} in
