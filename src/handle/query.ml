@@ -102,7 +102,7 @@ let handle : Sig_state.t -> proof_state option -> p_query -> result =
        | None -> fatal pos "Not in a proof"
        | Some ps ->
            match ps.proof_term with
-           | Some m -> return pp_term (Meta(m,[||]))
+           | Some m -> return pp_term (mk_Meta(m,[||]))
            | None -> fatal pos "Not in a definition")
   | _ ->
   let env = Proof.focus_env ps in

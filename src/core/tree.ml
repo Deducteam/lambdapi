@@ -38,7 +38,7 @@ open Tree_type
     portion [S─∘─Z] is made possible by a swap. *)
 
 (** Representation of a tree (see {!type:Term.tree}). *)
-type tree = rhs Tree_type.tree
+type tree = (rhs * int) Tree_type.tree
 
 (** {1 Conditions for decision trees}
 
@@ -238,7 +238,7 @@ module CM = struct
   type clause =
     { c_lhs       : term array
     (** Left hand side of a rule. *)
-    ; c_rhs       : rhs
+    ; c_rhs       : rhs * int
     (** Right hand side of a rule. *)
     ; env_builder : env_builder
     (** Data required to apply the rule. *)
@@ -515,7 +515,7 @@ module CM = struct
           else None
       | _      , Patt(_) ->
           let arity = List.length pargs in
-          let e = Array.make arity (Patt(None, "", [||])) in
+          let e = Array.make arity (mk_Patt(None, "", [||])) in
           Some({ r with c_lhs = insert e })
       | Symb(_), Vari(_)
       | Vari(_), Symb(_)
@@ -570,14 +570,15 @@ module CM = struct
     let transf (r:clause) =
       let ph, pargs = get_args r.c_lhs.(col) in
       match ph with
-      | Patt(_)  -> Some{r with c_lhs = insert r [|Patt(None, "", [||]); ph|]}
+      | Patt(_)  ->
+          Some{r with c_lhs = insert r [|mk_Patt(None, "", [||]); ph|]}
       | Symb(_)
       | Vari(_)  -> None
       | t        ->
       match get t with
       | Some(a,b) ->
           assert (pargs = []) ; (* Patterns in β-normal form *)
-          let b = Bindlib.subst b (Vari v) in
+          let b = Bindlib.subst b (mk_Vari v) in
           Some({r with c_lhs = insert r [|a; b|]})
       | None      -> assert false (* Term is ill formed *)
 
@@ -621,8 +622,9 @@ end
     composed only  of pattern variables with  no constraints, to yield  a leaf
     with RHS [rhs]  and the environment builder  [env_builder] completed. [vi]
     contains the indexes of variables. *)
-let harvest : term array -> rhs -> CM.env_builder -> int VarMap.t -> int ->
-  tree = fun lhs rhs env_builder vi slot ->
+let harvest :
+    term array -> rhs * int -> CM.env_builder -> int VarMap.t -> int -> tree =
+  fun lhs rhs env_builder vi slot ->
   let default_node store child =
     Node { swap = 0 ; store ; children = TCMap.empty
          ; abstraction = None ; product = None ; default = Some(child) }
@@ -731,4 +733,4 @@ let update_dtree : sym -> unit = fun symb ->
   let rules = lazy (CM.of_rules !(symb.sym_rules)) in
   let tree = lazy (compile symb.sym_mstrat (Lazy.force rules)) in
   let cap = lazy (Tree_type.tree_capacity (Lazy.force tree)) in
-  symb.sym_tree := (cap, tree)
+  symb.sym_dtree := (cap, tree)

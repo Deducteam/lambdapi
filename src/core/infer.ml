@@ -123,9 +123,9 @@ functor
       let a, s = infer ctx a in
       let sort =
         match unfold s with
-        | Kind -> Kind
-        | Type -> Type
-        | _ -> Type
+        | Kind -> mk_Kind
+        | Type -> mk_Type
+        | _ -> mk_Type
         (* FIXME The algorithm should be able to backtrack on the choice of
            this sort, first trying [Type], and if it does not succeed, trying
            [Kind]. *)
@@ -154,7 +154,7 @@ functor
               let x, t, e2 = Bindlib.unbind2 t e2 in
               let ctx = (x, dom, None) :: ctx in
               let t = force ctx t e2 in
-              Abst (dom, Bindlib.(lift t |> bind_var x |> unbox))
+              mk_Abst (dom, Bindlib.(lift t |> bind_var x |> unbox))
           | _ -> default () )
       | LLet (t_ty, t, u) ->
           let t_ty, _ = type_enforce ctx t_ty in
@@ -164,7 +164,7 @@ functor
           let ty = Bindlib.subst ty t in
           let u = force ctx u ty in
           let u = Bindlib.(lift u |> bind_var x |> unbox) in
-          LLet (t_ty, t, u)
+          mk_LLet (t_ty, t, u)
       | _ -> default ()
 
     and infer : ctxt -> term -> term * term =
@@ -176,7 +176,7 @@ functor
       | Kind -> assert false
       | Wild -> assert false
       | TRef _ -> assert false
-      | Type -> (Type, Kind)
+      | Type -> (mk_Type, mk_Kind)
       | Vari x ->
           let a = try Ctxt.type_of x ctx with Not_found -> assert false in
           (t, a)
@@ -210,24 +210,24 @@ functor
           let u_ty = Bindlib.(u_ty |> lift |> bind_var x |> unbox) in
           let u_ty = Bindlib.subst u_ty t in
           let u = Bindlib.(u |> lift |> bind_var x |> unbox) in
-          (LLet (t_ty, t, u), u_ty)
+          (mk_LLet (t_ty, t, u), u_ty)
       | Abst (dom, b) ->
           (* Domain must by of type Type, we don’t use [type_enforce] *)
-          let dom = force ctx dom Type in
+          let dom = force ctx dom mk_Type in
           let x, b, ctx = Ctxt.unbind ctx dom None b in
           let b, range = infer ctx b in
           let b = Bindlib.(lift b |> bind_var x |> unbox) in
           let range = Bindlib.(lift range |> bind_var x |> unbox) in
-          (Abst (dom, b), Prod (dom, range))
+          (mk_Abst (dom, b), mk_Prod (dom, range))
       | Prod (dom, b) ->
           (* Domain must by of type Type, we don’t use [type_enforce] *)
-          let dom = force ctx dom Type in
+          let dom = force ctx dom mk_Type in
           let x, b, ctx = Ctxt.unbind ctx dom None b in
           let b, b_s = type_enforce ctx b in
           let s =
             match unfold b_s with
-            | Type -> Type
-            | Kind -> Kind
+            | Type -> mk_Type
+            | Kind -> mk_Kind
             | b_s ->
                 Error.wrn None
                   "Type error, sort mismatch: there is no rule of the form \
@@ -236,24 +236,24 @@ functor
 
           in
           let b = Bindlib.(lift b |> bind_var x |> unbox) in
-          (Prod (dom, b), s)
+          (mk_Prod (dom, b), s)
       | Appl (t, u) -> (
           let t, t_ty = infer ctx t in
           match Eval.whnf ctx t_ty with
           | Prod (dom, b) ->
               let u = force ctx u dom in
-              (Appl (t, u), Bindlib.subst b u)
+              (mk_Appl (t, u), Bindlib.subst b u)
           | Meta (_, _) ->
               let u, u_ty = infer ctx u in
               let range = LibTerm.Meta.make_codomain ctx u_ty in
-              unif ctx t_ty (Prod (u_ty, range));
-              (Appl (t, u), Bindlib.subst range u)
+              unif ctx t_ty (mk_Prod (u_ty, range));
+              (mk_Appl (t, u), Bindlib.subst range u)
           | t_ty ->
               (* XXX Slight variation regarding the rule from Matita *)
               let u, u_ty = infer ctx u in
               let range = LibTerm.Meta.make_codomain ctx u_ty in
-              let t = coerce ctx t t_ty (Prod (u_ty, range)) in
-              (Appl (t, u), Bindlib.subst range u) )
+              let t = coerce ctx t t_ty (mk_Prod (u_ty, range)) in
+              (mk_Appl (t, u), Bindlib.subst range u) )
 
     (** [noexn f cs ctx args] initialises {!val:constraints} to [cs],
         calls [f ctx args] and returns [Some(r,cs)] where [r] is the value of

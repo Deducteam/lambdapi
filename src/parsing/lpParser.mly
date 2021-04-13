@@ -34,9 +34,11 @@
 %token AS
 %token ASSERT
 %token ASSERTNOT
+%token ASSOCIATIVE
 %token ASSUME
 %token BEGIN
 %token BUILTIN
+%token COMMUTATIVE
 %token COMPUTE
 %token CONSTANT
 %token DEBUG
@@ -172,9 +174,9 @@ params:
     { (xs, a, true) }
 
 rw_patt:
-  | t=term { make_pos $sloc (P_rw_Term(t)) }
-  | IN t=term { make_pos $sloc (P_rw_InTerm(t)) }
-  | IN x=uid IN t=term { make_pos $sloc (P_rw_InIdInTerm(x, t)) }
+  | t=term { make_pos $sloc (Rw_Term(t)) }
+  | IN t=term { make_pos $sloc (Rw_InTerm(t)) }
+  | IN x=uid IN t=term { make_pos $sloc (Rw_InIdInTerm(x, t)) }
   | u=term IN x=term t=preceded(IN, term)?
     { let ident_of_term {elt; _} =
         match elt with
@@ -182,11 +184,10 @@ rw_patt:
         | _ -> $syntaxerror
       in
       match t with
-      | Some(t) -> make_pos $sloc (P_rw_TermInIdInTerm(u, ident_of_term x, t))
-      | None -> make_pos $sloc (P_rw_IdInTerm(ident_of_term u, x))
+      | Some(t) -> make_pos $sloc (Rw_TermInIdInTerm(u, (ident_of_term x, t)))
+      | None -> make_pos $sloc (Rw_IdInTerm(ident_of_term u, x))
     }
-  | u=term AS x=uid IN t=term
-      { make_pos $sloc (P_rw_TermAsIdInTerm(u,x,t)) }
+  | u=term AS x=uid IN t=term { make_pos $sloc (Rw_TermAsIdInTerm(u,(x,t))) }
 
 tactic:
   | q=query { make_pos $sloc (P_tac_query q) }
@@ -200,18 +201,19 @@ tactic:
   | INDUCTION { make_pos $sloc P_tac_induction }
   | REFINE t=term { make_pos $sloc (P_tac_refine t) }
   | REFLEXIVITY { make_pos $sloc P_tac_refl }
-  | REWRITE l=ASSOC? p=delimited(L_SQ_BRACKET, rw_patt, R_SQ_BRACKET)? t=term
-    { let b =
-        match l with
-        | Some(Pratter.Left) -> false
-        | _ -> true
-      in make_pos $sloc (P_tac_rewrite(b,p,t)) }
+  | REWRITE d=ASSOC? p=delimited(L_SQ_BRACKET, rw_patt, R_SQ_BRACKET)? t=term
+    { let b = match d with Some Pratter.Left -> false | _ -> true in
+      make_pos $sloc (P_tac_rewrite(b,p,t)) }
   | SIMPLIFY i=id? { make_pos $sloc (P_tac_simpl i) }
   | SOLVE { make_pos $sloc P_tac_solve }
   | SYMMETRY { make_pos $sloc P_tac_sym }
   | WHY3 s=STRINGLIT? { make_pos $sloc (P_tac_why3 s) }
 
 modifier:
+  | d=ASSOC? ASSOCIATIVE
+    { let b = match d with Some Pratter.Left -> true | _ -> false in
+      make_pos $sloc (P_prop (Term.Assoc b)) }
+  | COMMUTATIVE { make_pos $sloc (P_prop Term.Commu) }
   | CONSTANT { make_pos $sloc (P_prop Term.Const) }
   | INJECTIVE { make_pos $sloc (P_prop Term.Injec) }
   | OPAQUE { make_pos $sloc P_opaq }

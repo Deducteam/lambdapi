@@ -33,9 +33,11 @@ syntax keyword KeywordOK contained apply
 syntax keyword KeywordOK contained as
 syntax keyword KeywordOK contained assert
 syntax keyword KeywordOK contained assertnot
+syntax keyword KeywordOK contained associative
 syntax keyword KeywordOK contained assume
 syntax keyword KeywordOK contained begin
 syntax keyword KeywordOK contained builtin
+syntax keyword KeywordOK contained commutative
 syntax keyword KeywordOK contained compute
 syntax keyword KeywordOK contained constant
 syntax keyword KeywordOK contained debug
@@ -92,9 +94,11 @@ syntax keyword KeywordKO contained apply
 syntax keyword KeywordKO contained as
 syntax keyword KeywordKO contained assert
 syntax keyword KeywordKO contained assertnot
+syntax keyword KeywordKO contained associative
 syntax keyword KeywordKO contained assume
 syntax keyword KeywordKO contained begin
 syntax keyword KeywordKO contained builtin
+syntax keyword KeywordKO contained commutative
 syntax keyword KeywordKO contained compute
 syntax keyword KeywordKO contained constant
 syntax keyword KeywordKO contained debug

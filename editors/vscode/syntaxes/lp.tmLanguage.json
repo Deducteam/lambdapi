@@ -25,7 +25,7 @@
   ],
   "repository": {
     "commands": {
-      "match": "\\b(abort|admit|admitted|apply|as|assert|assertnot|assume|begin|builtin|compute|constant|debug|end|fail|flag|focus|generalize|have|in|induction|inductive|infix|injective|left|let|notation|off|on|open|opaque|prefix|print|private|proofterm|protected|prover|prover_timeout|quantifier|refine|reflexivity|require|rewrite|rule|sequential|simplify|symbol|symmetry|type|TYPE|unif_rule|why3|with)\\b",
+      "match": "\\b(abort|admit|admitted|apply|as|assert|assertnot|associative|assume|begin|builtin|commutative|compute|constant|debug|end|fail|flag|focus|generalize|have|in|induction|inductive|infix|injective|left|let|notation|off|on|open|opaque|prefix|print|private|proofterm|protected|prover|prover_timeout|quantifier|refine|reflexivity|require|rewrite|rule|sequential|simplify|symbol|symmetry|type|TYPE|unif_rule|why3|with)\\b",
       "name": "keyword.control.lp"
     },
     "comments": {
@@ -75,7 +75,7 @@
     },
 
     "keywords": {
-      "match": "\\b(as|begin|builtin|constant|debug|end|flag|in|infix|injective|left|off|notation|on|opaque|prover|prover_timeout|prefix|private|protected|quantifier|right|sequential|TYPE|unif_rule)\\b",
+      "match": "\\b(as|associative|begin|builtin|commutative|constant|debug|end|flag|in|infix|injective|left|off|notation|on|opaque|prover|prover_timeout|prefix|private|protected|quantifier|right|sequential|TYPE|unif_rule)\\b",
       "name": "storage.modifier.lp"
     }    
   }

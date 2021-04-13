@@ -91,7 +91,7 @@ let create_sym : expo -> prop -> bool -> string -> term -> bool list -> sym =
   let sym_path = current_path() in
   { sym_expo; sym_path; sym_name; sym_type = ref typ; sym_impl; sym_prop;
     sym_def = ref None; sym_opaq; sym_rules = ref [];
-    sym_mstrat = Eager; sym_tree = ref Tree_type.empty_dtree }
+    sym_mstrat = Eager; sym_dtree = ref Tree_type.empty_dtree }
 
 (** [link sign] establishes physical links to the external symbols. *)
 let link : t -> unit = fun sign ->
@@ -104,14 +104,14 @@ let link : t -> unit = fun sign ->
     | Vari(_)     -> t
     | Type        -> t
     | Kind        -> t
-    | Symb(s)     -> Symb(link_symb s)
-    | Prod(a,b)   -> Prod(link_term a, link_binder b)
-    | Abst(a,t)   -> Abst(link_term a, link_binder t)
-    | LLet(a,t,u) -> LLet(link_term a, link_term t, link_binder u)
-    | Appl(t,u)   -> Appl(link_term t, link_term u)
+    | Symb(s)     -> mk_Symb(link_symb s)
+    | Prod(a,b)   -> mk_Prod(link_term a, link_binder b)
+    | Abst(a,t)   -> mk_Abst(link_term a, link_binder t)
+    | LLet(a,t,u) -> mk_LLet(link_term a, link_term t, link_binder u)
+    | Appl(t,u)   -> mk_Appl(link_term t, link_term u)
     | Meta(_,_)   -> assert false
-    | Patt(i,n,m) -> Patt(i, n, Array.map link_term m)
-    | TEnv(t,m)   -> TEnv(t, Array.map link_term m)
+    | Patt(i,n,m) -> mk_Patt(i, n, Array.map link_term m)
+    | TEnv(t,m)   -> mk_TEnv(t, Array.map link_term m)
     | Wild        -> t
     | TRef(_)     -> t
   and link_rule r =
@@ -168,9 +168,9 @@ let link : t -> unit = fun sign ->
     signature is invalidated in the process. *)
 let unlink : t -> unit = fun sign ->
   let unlink_sym s =
-    s.sym_tree := Tree_type.empty_dtree ;
+    s.sym_dtree := Tree_type.empty_dtree ;
     if s.sym_path <> sign.sign_path then
-      (s.sym_type := Kind; s.sym_rules := [])
+      (s.sym_type := mk_Kind; s.sym_rules := [])
   in
   let rec unlink_term t =
     let unlink_binder b = unlink_term (snd (Bindlib.unbind b)) in
@@ -234,7 +234,7 @@ let add_symbol :
   let sym =
     { sym_path = sign.sign_path; sym_name; sym_type = ref (cleanup typ);
       sym_impl; sym_def = ref None; sym_opaq; sym_rules = ref [];
-      sym_tree = ref Tree_type.empty_dtree; sym_mstrat;
+      sym_dtree = ref Tree_type.empty_dtree; sym_mstrat;
       sym_prop; sym_expo }
   in
   sign.sign_symbols := StrMap.add sym_name (sym, pos) !(sign.sign_symbols);

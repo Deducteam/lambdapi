@@ -47,7 +47,7 @@ let add_axiom : Sig_state.t -> Meta.t -> Sig_state.t = fun ss m ->
      metavariable. *)
   let meta_value =
     let vars = Array.init m.meta_arity (new_tvar_ind "x") in
-    let ax = _Appl_symb sym (Array.to_list vars |> List.map _Vari) in
+    let ax = _Appl_Symb sym (Array.to_list vars |> List.map _Vari) in
     Bindlib.(bind_mvar vars ax |> unbox)
   in
   Meta.set m meta_value; ss
@@ -120,7 +120,7 @@ let tac_refine : popt -> proof_state -> goal_typ -> goal list -> term
 (** [ind_data t] returns the [ind_data] structure of [s] if [t] is of the
    form [s t1 .. tn] with [s] an inductive type. Fails otherwise. *)
 let ind_data : popt -> Env.t -> term -> Sign.ind_data = fun pos env a ->
-  let h, ts = LibTerm.get_args (Eval.whnf (Env.to_ctxt env) a) in
+  let h, ts = get_args (Eval.whnf (Env.to_ctxt env) a) in
   match h with
   | Symb s ->
       let sign = Path.Map.find s.sym_path Sign.(!loaded) in
@@ -143,7 +143,7 @@ let tac_induction : popt -> proof_state -> goal_typ -> goal list
   | Prod(a,_) ->
       let ind = ind_data pos goal_hyps a in
       let n = ind.ind_nb_params + ind.ind_nb_types + ind.ind_nb_cons in
-      let t = Env.add_fresh_metas goal_hyps (Symb ind.ind_prop) n in
+      let t = Env.add_fresh_metas goal_hyps (mk_Symb ind.ind_prop) n in
       tac_refine pos ps gt gs t
   | _ -> fatal pos "[%a] is not a product." pp_term goal_type
 
@@ -152,7 +152,7 @@ let tac_induction : popt -> proof_state -> goal_typ -> goal list
 let count_products : ctxt -> term -> int = fun c ->
   let rec count acc t =
     match Eval.whnf c t with
-    | Prod(_,b) -> count (acc + 1) (Bindlib.subst b Kind)
+    | Prod(_,b) -> count (acc + 1) (Bindlib.subst b mk_Kind)
     | _ -> acc
   in count 0
 
@@ -222,7 +222,8 @@ let handle : Sig_state.t -> bool -> proof_state -> p_tactic -> proof_state =
           let m = Meta.fresh (Env.to_prod e1 p) (List.length e1) in
           let me1 = Bindlib.unbox (_Meta m (Env.to_tbox e1)) in
           let t =
-            List.fold_left (fun t (_,(v,_,_)) -> Appl(t, Vari v)) me1 (x::e2)
+            List.fold_left (fun t (_,(v,_,_)) -> mk_Appl(t, mk_Vari v))
+              me1 (x::e2)
           in
           tac_refine pos ps gt gs t
         with Not_found -> fatal idpos "Unknown hypothesis %a" pp_uid id;
@@ -237,7 +238,7 @@ let handle : Sig_state.t -> bool -> proof_state -> p_tactic -> proof_state =
       let to_solve = List.map get_constr gs_unif in
       let c = Env.to_ctxt gt.goal_hyps in
       begin
-        match Infer.check_noexn to_solve c t Type with
+        match Infer.check_noexn to_solve c t mk_Type with
         | None -> fatal pos "[%a] is not typable." pp_term t
         | Some (t, cs) ->
         (* Convert the metas of [t] not in [gs] into new goals. *)
@@ -269,10 +270,10 @@ let handle : Sig_state.t -> bool -> proof_state -> p_tactic -> proof_state =
           if k <= 0 then acc else mk_idopts (idopt::acc) (k-1) in
         let pt = P.abst_list (mk_idopts [] n) P.wild in
         let ps = tac_refine pos ps gt gs (scope pt) in
+        (* We then apply reflexivity. *)
         begin
           match ps.proof_goals with
-          | Typ (_ as gt)::gs ->
-              (* We apply reflexivity. *)
+          | Typ gt::gs ->
               tac_refine pos ps gt gs (Rewrite.reflexivity ss pos gt)
           | _ -> assert false
         end
