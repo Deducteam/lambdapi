@@ -191,6 +191,18 @@ end
     is attached. When reducing a term,  if a line filters the term  (i.e., the
     term matches the pattern) then term is rewritten to the RHS. *)
 module CM = struct
+  (** [pp_head ppf t] prints head of term [t]. *)
+  let pp_head : term pp = fun ppf t ->
+    let open Format in
+    pp_print_string ppf
+      ( match get_args t with
+        | Symb s, _ -> s.sym_name
+        | Patt _, _ -> "$"
+        | Vari _, _ -> "x"
+        | Abst _, _ -> "λ"
+        | Prod _, _ -> "Π"
+        | _ -> assert false (* Terms that souldn't appear in lhs *) )
+
   (** Representation of a subterm in argument position in a pattern. *)
   type arg =
     { arg_path : int list (** Reversed path to the subterm. *)
@@ -227,6 +239,13 @@ module CM = struct
     ; cond_pool   : CP.t
     (** Condition pool with convertibility and free variable constraints. *) }
 
+  (** [pp_clause ppf c] pretty prints clause [c] to formatter [ppf]. *)
+  let pp_clause : clause pp = fun ppf {c_lhs; _} ->
+    let open Format in
+    fprintf ppf "| @[<h>%a@] |"
+      (pp_print_list ~pp_sep:(Base.pp_sep " | ") pp_head)
+      (Array.to_list c_lhs)
+
   (** Type of clause matrices. *)
   type t =
     { clauses   : clause list
@@ -236,6 +255,12 @@ module CM = struct
     ; positions : arg list
     (** Positions of the elements of the matrix in the initial term.
         We must have [length positions = max {length cl | cl ∈ clauses}]. *) }
+
+  (** [pp ppf cm] pretty prints clause matrix [cm] to formatter [ppf]. *)
+  let pp : t pp = fun ppf {clauses; _} ->
+    let open Format in
+    fprintf ppf "[@[<v>%a@]]" (pp_print_list ~pp_sep:pp_print_space pp_clause)
+      clauses
 
   (** Available operations on clause matrices. Every operation corresponds to
       decision made during evaluation. This type is not used outside of the
@@ -556,7 +581,7 @@ module CM = struct
       clause [cls]. The domain [a] of the binder and [b[v/x]] are put back
       into the stack (in that order), with [a] with argument position 0 and
       [b[v/x]] as argument 1. *)
-  let binder : (term -> (term * tbinder) option) -> VarSet.t -> int ->
+  let binder : (term -> (term * tbinder)) -> VarSet.t -> int ->
     tvar -> arg list -> clause list -> arg list * clause list =
     fun get free_vars col v pos cls ->
     let (l, {arg_path; arg_rank}, r) = List.destruct pos col in
@@ -577,12 +602,10 @@ module CM = struct
       | Symb(_)
       | Vari(_)  -> None
       | t        ->
-      match get t with
-      | Some(a,b) ->
+          let (a, b) = get t in
           assert (pargs = []) ; (* Patterns in β-normal form *)
           let b = Bindlib.subst b (mk_Vari v) in
           Some({r with c_lhs = insert r [|a; b|]})
-      | None      -> assert false (* Term is ill formed *)
 
     in
     (pos, List.filter_map transf cls)
@@ -595,13 +618,13 @@ module CM = struct
       patterns. *)
   let abstract : VarSet.t -> int -> tvar -> arg list -> clause list ->
     arg list * clause list =
-    binder (function Abst(a,b) -> Some(a, b) | _ -> None)
+    binder (function Abst(a,b) -> a, b | _ -> assert false)
 
   (** [product free_vars col v pos cls] is like [abstract free_vars col v pos
       cls] for products. *)
   let product : VarSet.t -> int -> tvar -> arg list -> clause list ->
     arg list * clause list =
-    binder (function Prod(a, b) -> Some(a, b) | _ -> None)
+    binder (function Prod(a, b) -> a, b | _ -> assert false)
 
   (** [cond_ok cond cls] updates the clause list [cls] assuming that condition
       [cond] is satisfied. *)
@@ -680,9 +703,9 @@ let compile : match_strat -> CM.t -> tree = fun mstrat m ->
   fun vars_id ({clauses; positions; slot} as cm) ->
   if CM.is_empty cm then Fail else
   let compile_cv = compile vars_id in
+  if !Debug.log_enabled then log "Compile@\n%a" CM.pp cm;
   match CM.yield mstrat cm with
-  | Yield({c_rhs; c_subst; c_lhs; _})  ->
-      if c_lhs = [||] then Leaf(c_subst, c_rhs) else
+  | Yield({c_rhs; c_subst; c_lhs; _}) ->
       harvest c_lhs c_rhs c_subst vars_id slot
   | Condition(cond)                        ->
       if !Debug.log_enabled then log "Condition [%a]" pp_tree_cond cond;
