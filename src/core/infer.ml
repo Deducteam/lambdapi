@@ -5,6 +5,8 @@ open Base
 open Timed
 open Term
 
+(* FIXME: types of meta environments have to be checked *)
+
 let log = Debug.new_logger 'i' "infr" "Infer"
 let log = log.logger
 
@@ -186,7 +188,6 @@ functor
             if i >= Array.length ts then range else
             match unfold range with
             | Prod(ai, b) ->
-                let ai, _ = type_enforce ctx ai in
                 ts.(i) <- force ctx ts.(i) ai;
                 let b = Bindlib.subst b ts.(i) in
                 ref_esubst (i + 1) b
