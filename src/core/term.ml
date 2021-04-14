@@ -417,6 +417,10 @@ let is_constant : sym -> bool = fun s -> s.sym_prop = Const
 (** [is_private s] tells whether the symbol [s] is private. *)
 let is_private : sym -> bool = fun s -> s.sym_expo = Privat
 
+(** [is_modulo s] tells whether the symbol [s] is modulo some equations. *)
+let is_modulo : sym -> bool = fun s ->
+  match s.sym_prop with Assoc _ | Commu | AC _ -> true | _ -> false
+
 (** [unfold t] repeatedly unfolds the definition of the surface constructor of
     [t], until a significant {!type:term} constructor is found.  The term that
     is returned cannot be an instantiated metavariable or term environment nor

@@ -302,6 +302,9 @@ val is_constant : sym -> bool
 (** [is_private s] tells whether the symbol [s] is private. *)
 val is_private : sym -> bool
 
+(** [is_modulo s] tells whether the symbol [s] is modulo some equations. *)
+val is_modulo : sym -> bool
+
 (** Basic management of meta variables. *)
 module Meta : sig
   type t = meta
