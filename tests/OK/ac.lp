@@ -44,5 +44,5 @@ rule Max $i (Union (Plus $j (Max $k $l)) $tl) ↪ Max (plus_N $i (plus_N $j $k))
 
 rule Max $i (Union $tl (Plus $j (Max $k $l))) ↪ Max (plus_N $i (plus_N $j $k)) (Union (mapPlus $j $l) $tl);
 
-assert a b c d ⊢  Max c (Union (Plus c (Max c b)) d)
+assert a b c d ⊢ Max c (Union (Plus c (Max c b)) d)
 ≡ Max (plus_N c (plus_N c c)) (Union (mapPlus c b) d);

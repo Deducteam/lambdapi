@@ -158,7 +158,7 @@ let rec scope : mode -> sig_state -> env -> p_term -> tbox =
   end;
   (* Scope the head and obtain the implicitness of arguments. *)
   let h = scope_head md ss env p_head in
-  (* Find out whether there [h] has implicit arguments and equations. *)
+  (* Find out whether [h] has implicit arguments. *)
   let impl =
     match p_head.elt with
     | P_Iden(_,expl) ->
