@@ -622,11 +622,9 @@ let _ =
   assert (eq (left_aliens s left) [t1; t2; t3]);
   assert (eq (right_aliens s right) [t3; t2; t1])
 
-(** [mk_Appl ~modulo t u] puts the application of [t] to [u] in canonical form
-   wrt C or AC symbols if the optional argument [modulo] is true (default). *)
-let mk_Appl : ?modulo:bool -> term * term -> term =
-  fun ?(modulo=true) (t, u) ->
-  if modulo then
+(** [mk_Appl t u] puts the application of [t] to [u] in canonical form wrt C
+   or AC symbols. *)
+let mk_Appl : term * term -> term = fun (t, u) ->
   (*if !log_enabled then log_term "mk_Appl(%a, %a)" pp_term t pp_term u;
   let r =*)
   match get_args t with
@@ -650,7 +648,6 @@ let mk_Appl : ?modulo:bool -> term * term -> term =
   | _ -> Appl (t, u)
   (*in if !log_enabled then
     log_term "mk_Appl(%a, %a) = %a" pp_term t pp_term u pp_term r; r*)
-  else Appl (t, u)
 
 (** [add_args t args] builds the application of the {!type:term} [t] to a list
     arguments [args]. When [args] is empty, the returned value is (physically)
@@ -684,10 +681,8 @@ let _Symb : sym -> tbox = fun s -> Bindlib.box (Symb s)
    whether the application must be put in normal form wrt C and AC symbols
    (default is true). *)
 let _Appl : ?modulo:bool -> tbox -> tbox -> tbox = fun ?(modulo=true) ->
-  Bindlib.box_apply2 (fun t u -> mk_Appl ~modulo (t,u))
-
-(** Exported construction function for application. *)
-let mk_Appl : term * term -> term = fun (t, u) -> mk_Appl (t, u)
+  if modulo then Bindlib.box_apply2 (fun t u -> mk_Appl (t,u))
+  else Bindlib.box_apply2 (fun t u -> Appl (t,u))
 
 (** [_Appl_list a [b1;...;bn]] returns (... ((a b1) b2) ...) bn. *)
 let _Appl_list : tbox -> tbox list -> tbox = List.fold_left _Appl
