@@ -123,10 +123,10 @@ let link : t -> unit = fun sign ->
     {r with lhs ; rhs}
   and link_symb s =
     if s.sym_path = sign.sign_path then s else
-      try
-        let sign = Path.Map.find s.sym_path !loaded in
-        try find sign s.sym_name with Not_found -> assert false
-      with Not_found -> assert false
+    try
+      let sign = Path.Map.find s.sym_path !loaded in
+      try find sign s.sym_name with Not_found -> assert false
+    with Not_found -> assert false
   in
   let fn _ (s,_) =
     s.sym_type  := link_term mk_Appl !(s.sym_type);
