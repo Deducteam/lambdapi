@@ -394,6 +394,10 @@ val mk_Wild : term
 val mk_TRef : term option ref -> term
 val mk_LLet : term * term * tbinder -> term
 
+(** mk_Appl_not_canonical t u] builds the non-canonical (wrt. C and AC
+   symbols) application of [t] to [u]. WARNING: to use only in Sign.link. *)
+val mk_Appl_not_canonical : term * term -> term
+
 (** [add_args t args] builds the application of the {!type:term} [t] to a list
     arguments [args]. When [args] is empty, the returned value is (physically)
     equal to [t]. *)

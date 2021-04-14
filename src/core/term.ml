@@ -653,6 +653,10 @@ let mk_Appl : term * term -> term = fun (t, u) ->
   (*in if !log_enabled then
     log_term "mk_Appl(%a, %a) = %a" pp_term t pp_term u pp_term r; r*)
 
+(** mk_Appl_not_canonical t u] builds the non-canonical (wrt. C and AC
+   symbols) application of [t] to [u]. WARNING: to use only in Sign.link. *)
+let mk_Appl_not_canonical : term * term -> term = fun (t, u) -> Appl(t, u)
+
 (** [add_args t args] builds the application of the {!type:term} [t] to a list
     arguments [args]. When [args] is empty, the returned value is (physically)
     equal to [t]. *)
