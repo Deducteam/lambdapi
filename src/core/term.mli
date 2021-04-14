@@ -302,6 +302,9 @@ val is_constant : sym -> bool
 (** [is_private s] tells whether the symbol [s] is private. *)
 val is_private : sym -> bool
 
+(** [is_modulo s] tells whether the symbol [s] is modulo some equations. *)
+val is_modulo : sym -> bool
+
 (** Basic management of meta variables. *)
 module Meta : sig
   type t = meta
@@ -417,8 +420,14 @@ val _Kind : tbox
 val _Symb : sym -> tbox
 
 (** [_Appl t u] lifts an application node to the {!type:tbox} type given boxed
-    terms [t] and [u]. *)
+   terms [t] and [u]. *)
 val _Appl : tbox -> tbox -> tbox
+
+(** [_Appl_not_canonical t u] lifts an application node to the {!type:tbox}
+   type given boxed terms [t] and [u], without putting it in canonical form
+   wrt. C and AC symbols. WARNING: to use in scoping of rewrite rule LHS only
+   as it breaks some invariants. *)
+val _Appl_not_canonical : tbox -> tbox -> tbox
 
 (** [_Appl_list a [b1;...;bn]] returns (... ((a b1) b2) ...) bn. *)
 val _Appl_list : tbox -> tbox list -> tbox

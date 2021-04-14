@@ -465,7 +465,7 @@ let rec solve : problem -> constr list = fun p ->
 
 (** [solve p] tries to solve the unification problem [p] and
     returns the constraints that could not be solved.
-    This is the entry point setting the flag type_check *)
+    This is the entry point setting the flag [type_check]. *)
 let solve : ?type_check:bool -> problem -> constr list =
   fun ?(type_check=true) p ->
   if !log_enabled then log_hndl "solve %a" pp_problem p;
