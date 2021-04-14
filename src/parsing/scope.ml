@@ -158,12 +158,17 @@ let rec scope : mode -> sig_state -> env -> p_term -> tbox =
   end;
   (* Scope the head and obtain the implicitness of arguments. *)
   let h = scope_head md ss env p_head in
+  (* Find out whether there [h] has implicit arguments and equations. *)
   let impl =
-    (* Check whether application is marked as explicit in head symbol. *)
-    let expl = match p_head.elt with P_Iden(_,b) -> b | _ -> false in
-    (* We avoid unboxing if [h] is not closed (and hence not a symbol). *)
-    if expl || not (Bindlib.is_closed h) then [] else
-      match Bindlib.unbox h with Symb(s) -> s.sym_impl | _ -> []
+    match p_head.elt with
+    | P_Iden(_,expl) ->
+        (* We avoid unboxing if [h] is not closed (and hence not a symbol). *)
+        if Bindlib.is_closed h then
+          match Bindlib.unbox h with
+          | Symb s -> if expl then [] else s.sym_impl
+          | _ -> []
+        else []
+    | _ -> []
   in
   (* Scope and insert the (implicit) arguments. *)
   add_impl md ss env t.pos h impl args
