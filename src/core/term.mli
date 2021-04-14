@@ -419,11 +419,15 @@ val _Kind : tbox
     symbols are closed object they do not require lifting. *)
 val _Symb : sym -> tbox
 
-(** [_Appl ~modulo t u] lifts an application node to the {!type:tbox} type
-   given boxed terms [t] and [u]. The optional argument [modulo] indicates if
-   the application must be put in normal form wrt. C and AC symbols (default
-   is true). *)
-val _Appl : ?modulo:bool -> tbox -> tbox -> tbox
+(** [_Appl t u] lifts an application node to the {!type:tbox} type given boxed
+   terms [t] and [u]. *)
+val _Appl : tbox -> tbox -> tbox
+
+(** [_Appl_not_canonical t u] lifts an application node to the {!type:tbox}
+   type given boxed terms [t] and [u], without putting it in canonical form
+   wrt. C and AC symbols. WARNING: to use in scoping of rewrite rule LHS only
+   as it breaks some invariants. *)
+val _Appl_not_canonical : tbox -> tbox -> tbox
 
 (** [_Appl_list a [b1;...;bn]] returns (... ((a b1) b2) ...) bn. *)
 val _Appl_list : tbox -> tbox list -> tbox

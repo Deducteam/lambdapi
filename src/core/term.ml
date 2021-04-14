@@ -680,13 +680,17 @@ let _Kind : tbox = Bindlib.box Kind
     symbols are closed object they do not require lifting. *)
 let _Symb : sym -> tbox = fun s -> Bindlib.box (Symb s)
 
-(** [_Appl ~modulo t u] lifts an application node to the {!type:tbox} type
-   given boxed terms [t] and [u]. The optional argument [modulo] indicates
-   whether the application must be put in normal form wrt C and AC symbols
-   (default is true). *)
-let _Appl : ?modulo:bool -> tbox -> tbox -> tbox = fun ?(modulo=true) ->
-  if modulo then Bindlib.box_apply2 (fun t u -> mk_Appl (t,u))
-  else Bindlib.box_apply2 (fun t u -> Appl (t,u))
+(** [_Appl t u] lifts an application node to the {!type:tbox} type given boxed
+   terms [t] and [u]. *)
+let _Appl : tbox -> tbox -> tbox =
+  Bindlib.box_apply2 (fun t u -> mk_Appl (t,u))
+
+(** [_Appl_not_canonical t u] lifts an application node to the {!type:tbox}
+   type given boxed terms [t] and [u], without putting it in canonical form
+   wrt. C and AC symbols. WARNING: to use in scoping of rewrite rule LHS only
+   as it breaks some invariants. *)
+let _Appl_not_canonical : tbox -> tbox -> tbox =
+  Bindlib.box_apply2 (fun t u -> Appl (t,u))
 
 (** [_Appl_list a [b1;...;bn]] returns (... ((a b1) b2) ...) bn. *)
 let _Appl_list : tbox -> tbox list -> tbox = List.fold_left _Appl
