@@ -513,10 +513,7 @@ let eq_noexn : ?type_check:bool -> ctxt -> term -> term -> bool =
 
 (** A type inference algorithm with unification. *)
 module Infer_solve =
-  Infer.Make(struct
-    let lookup _ _ _ _ = None
-    let solve pb = solve_noexn pb
-  end)
+  Infer.Make(struct let coercions = [] let solve pb = solve_noexn pb end)
 
 (* Modify default refiner at load time. *)
 let _ = Stdlib.(Infer.default := (module Infer_solve))

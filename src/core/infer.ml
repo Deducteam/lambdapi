@@ -1,7 +1,6 @@
 open Common
 open Pos
 open Lplib
-open Base
 open Timed
 open Term
 
@@ -13,15 +12,18 @@ let log = log.logger
 (** Type for unification constraints solvers. *)
 type solver = problem -> constr list option
 
+type coercion =
+  { name : string
+  ; precoercions : int list
+  (** Arguments that must be searched among available coercions. *)
+  ; defn : term (** Definition of the coercion. *)
+  ; defn_ty : term (** Type of the definition. Must be a product type. *)
+  ; source : int (** Argument of the definition that is coerced. *)
+  ; arity : int (** Arity of the target type. *) }
+
 (** Module that provide a lookup function to the refiner. *)
 module type LOOKUP = sig
-  val lookup : (ctxt -> term eq) -> ctxt -> term -> term -> tbinder option
-  (** [lookup a b] returns a pair [Some(coerce,cs)] where [coerce] is a term
-      binder that binds terms of type [a] to terms of type [b], and [cs] is a
-      list of constraints for [subst coerce (Vari x)] to be of type [b] when
-      [x] is a fresh variable of type [a]. If there is no such coercion,
-      [None] is returned. *)
-
+  val coercions : coercion list
   val solve : solver
   (** [solve pb] is specified in {!module:Unif}, see
       {!val:Unif.solve_noexn}. *)
@@ -89,30 +91,105 @@ functor
          Stdlib.(constraints := (ctx, a, b) :: !constraints)
        end
 
-    (** [coerce ctx t a b] refines term [t] of type [a] into term of type
-        [b]. *)
-    let coerce : ctxt -> term -> term -> term -> term = fun ctx t a b ->
-     if !Debug.log_enabled then
-       log "Coerce [%a: %a = %a]" Print.pp_term t Print.pp_term a
-         Print.pp_term b;
-     let c_ok ctx a b =
-       Eval.eq_modulo ctx a b ||
-       let eqs = Stdlib.(!constraints) in
-       let t = Time.save () in
-       (* Look if [a] and [b] are unifiable. If it's the case, update
-          constraints, otherwise, go back in time to rewind instantiations. *)
-       match L.solve {empty_problem with to_solve = (ctx, a, b) :: eqs} with
-       | Some [] -> Stdlib.(constraints := []); true
-       | Some _ | None -> Time.restore t; false
-     in
-     match L.lookup c_ok ctx a b with
-     | Some c ->
-         let t_c = Bindlib.subst c t in
-         if !(Debug.log_enabled) && not (Eval.eq_modulo ctx t t_c) then
-           log (Extra.gre "Coerced [%a] to [%a]") Print.pp_term t
-             Print.pp_term t_c;
-         t_c
-     | None -> unif ctx a b; t
+    (** {1 Handling coercions} *)
+
+    (** [approx ctx a b] is used to tell whether a coercion defined on [b] can
+        be used on [a]. The operation may instantiate meta-variables. *)
+    let approx : ctxt -> term -> term -> bool = fun ctx a b ->
+      Eval.eq_modulo ctx a b ||
+      let tau = Time.save () in
+      match L.solve {empty_problem with to_solve = [ctx, a, b]} with
+      | Some [] -> true
+      | _ -> Time.restore tau; false
+
+    let unbind_meta : ctxt -> term -> int -> term list * term =
+      fun ctx ty k ->
+      let rec unbind_meta ctx ty k =
+        if k <= 0 then [], ty else
+        match unfold ty with
+        | Prod(a, b) ->
+            let m = LibTerm.Meta.make ctx a in
+            let b = Bindlib.subst b m in
+            let ms, r = unbind_meta ctx b (k - 1) in
+            m :: ms, r
+        | _ -> [], ty
+      in
+      let ms, ty = unbind_meta ctx ty k in
+      List.rev ms, ty
+
+    let rec coerce : ctxt -> term -> term -> term -> term =
+      fun ctx t a b ->
+      if Eval.eq_modulo ctx a b then t else
+      let rec try_coercions cs =
+        match cs with
+        | [] -> raise Not_found
+        | {defn_ty; source; precoercions; defn; arity; _ }::cs ->
+            let meta_dom, range = unbind_meta ctx defn_ty source in
+            let l = LibTerm.prod_arity defn_ty in
+            let meta_range, range =
+              unbind_meta ctx range (l - source - arity)
+            in
+            let kth =
+              try List.(hd (rev meta_dom)) with Failure _ -> assert false
+            in
+            let source =
+              match kth with Meta (m, _) -> !(m.meta_type) | _ -> assert false
+            in
+            try
+              apply ctx meta_dom a b precoercions source range;
+              unif ctx t kth;
+              unif ctx b range;
+              add_args defn (meta_dom @ meta_range)
+            with Failure _ -> try_coercions cs
+      in
+      let eqs = Stdlib.(!constraints) in
+      let tau = Time.save () in
+      match L.solve {empty_problem with to_solve = (ctx, a, b) :: eqs} with
+      | Some [] -> Stdlib.(constraints := []); t
+      | _ -> Time.restore tau;
+          (* REVIEW:  [constraints] ends up empty *)
+          Stdlib.(constraints := eqs);
+          if !Debug.log_enabled then
+            log "Coerce [%a : %a ≡ %a]" Print.pp_term t
+              Print.pp_term a Print.pp_term b;
+          try try_coercions L.coercions
+          with Not_found ->
+            (* FIXME: when is this case encountered? Only when checking SR? *)
+            (* Hope that the constraint will be solved later. *)
+            unif ctx a b;
+            Error.wrn None
+              "No coercion found for problem @[<h>%a@ :@, %a@ ≡@ %a@]"
+              Print.pp_term t Print.pp_term a Print.pp_term b;
+            t
+
+    (** [apply ctx ms a b reqs src tgt] performs the coercion from [src] to
+        [tgt] with requirements [reqs] on the coercion problem [a ≡ b] with
+        metavariables [ms] possibly appearing in [a] and [b]. The context
+        [ctx] is required to instantiate variables.
+        @raise Failure when the coercion cannot be applied. *)
+    and apply : ctxt -> term list -> term -> term -> int list -> term ->
+      term -> unit =
+      fun ctx ms a b reqs src tgt ->
+      if approx ctx a src && approx ctx b tgt then
+        let instantiate_reqs i =
+          let m = List.nth ms i in
+          let meta = match m with Meta (m, _) -> m | _ -> assert false in
+          match !(meta.meta_type) with
+          | Prod(v,w) ->
+              let x, w = Bindlib.unbind w in
+              let v = coerce ctx (mk_Vari x) v w in
+              (* Instantiate the pre-requisite [m] by the function that
+                 coerces its argument. *)
+              unif ctx m
+                (mk_Abst (v, Bindlib.(bind_var x (lift v) |> unbox)))
+          | _ ->
+              Error.fatal_no_pos "Ill-formed coercion: %d-th argument \
+                                  is not a function" i
+        in
+        List.iter instantiate_reqs reqs;
+    else failwith "coercion application"
+
+    (** {1 Other rules} *)
 
     (** [type_enforce ctx a] returns a tuple [(a',s)] where [a'] is refined
         term [a] and [s] is a sort (Type or Kind) such that [a'] is of type
@@ -333,7 +410,7 @@ functor
 
 (** A refiner without coercion generator nor unification. *)
 module Bare =
-  Make(struct let lookup _ _ _ _ = None let solve _ = None end)
+  Make(struct let coercions = [] let solve _ = None end)
 
 (** A reference to a refiner that can modified by other modules . *)
 let default : (module S) Stdlib.ref = Stdlib.ref (module Bare: S)

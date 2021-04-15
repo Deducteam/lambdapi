@@ -187,7 +187,7 @@ let check_rule : Scope.pre_rule Pos.loc -> rule = fun ({pos; elt} as pr) ->
     end;
 (* Do not type check when instantiating. *)
   let module Infer = Infer.Make(struct
-      let lookup _ _ _ _ = None
+      let coercions = []
       let solve = Unif.solve_noexn ~type_check:false
     end)
   in
