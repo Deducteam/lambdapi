@@ -121,32 +121,37 @@ functor
         | [] -> raise Not_found
         | {defn_ty; source; requirements; defn; arity; name }::cs ->
             if !Debug.log_enabled then log "Trying coercion %s" name;
-            let meta_dom, range =
-              LibTerm.unbind_meta ctx defn_ty (source - 1)
-            in
-            let kth, domain, range =
-              match unfold range with
-              | Prod(a, b) ->
-                  let m = LibTerm.Meta.make ctx a in
-                  let b = Bindlib.subst b m in
-                  (m, a, b)
-              | _ -> assert false
-            in
             let l = LibTerm.prod_arity defn_ty in
-            let meta_range, range =
-              LibTerm.unbind_meta ctx range (l - source - arity)
+            let metas, domain, range =
+              let meta_dom, range =
+                LibTerm.unbind_meta ctx defn_ty (source - 1)
+              in
+              let src_meta, domain, range =
+                match unfold range with
+                | Prod(a, b) ->
+                    let m = LibTerm.Meta.make ctx a in
+                    let b = Bindlib.subst b m in
+                    (m, a, b)
+                | _ -> assert false
+              in
+              let meta_range, range =
+                LibTerm.unbind_meta ctx range (l - source - arity)
+              in
+              let metas =
+                let open Array in
+                concat [of_list meta_dom; [|src_meta|]; of_list meta_range]
+              in
+              metas, domain, range
             in
-            let metas = meta_dom @ [kth] @ meta_range in
             try
               if approx ctx a domain && approx ctx b range then
                 let creqs =
                   let delta = Ctxt.of_prod ~len:(l - arity) defn_ty in
-                  let metas = Array.of_list metas in
                   apply ctx delta metas requirements in
                 let u = Bindlib.msubst defn creqs in
-                unif ctx t kth;
+                unif ctx t metas.(source - 1);
                 unif ctx b range;
-                add_args u metas
+                add_args u (Array.to_list metas)
               else failwith "not approx"
             with Failure _ -> try_coercions cs
       in
