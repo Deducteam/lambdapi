@@ -12,11 +12,16 @@ let log = log.logger
 (** Type for unification constraints solvers. *)
 type solver = problem -> constr list option
 
+(** A prerequisite [n, m, V, W] specifies that term [m] must be coerced from
+    [V] to [W]. The requirements' name [n] is used for debugging. Term [m]
+    must be of the form [TE_Some(u)]. *)
+type prereq = strloc * term_env * tmbinder * tmbinder
+
 type coercion =
   { name : string
-  ; precoercions : int list
+  ; requirements : prereq array
   (** Arguments that must be searched among available coercions. *)
-  ; defn : term (** Definition of the coercion. *)
+  ; defn : (term_env, term) Bindlib.mbinder (** Definition of the coercion. *)
   ; defn_ty : term (** Type of the definition. Must be a product type. *)
   ; source : int (** Argument of the definition that is coerced. *)
   ; arity : int (** Arity of the target type. *) }
@@ -93,6 +98,11 @@ functor
 
     (** {1 Handling coercions} *)
 
+    (** {b NOTE} coercions require to check if some terms can be unified.
+        Hence the unification is called in the middle of typechecking, and if
+        unification fails, we must take care to restore meta-variables as they
+        were before unification. *)
+
     (** [approx ctx a b] is used to tell whether a coercion defined on [b] can
         be used on [a]. The operation may instantiate meta-variables. *)
     let approx : ctxt -> term -> term -> bool = fun ctx a b ->
@@ -102,44 +112,42 @@ functor
       | Some [] -> true
       | _ -> Time.restore tau; false
 
-    let unbind_meta : ctxt -> term -> int -> term list * term =
-      fun ctx ty k ->
-      let rec unbind_meta ctx ty k =
-        if k <= 0 then [], ty else
-        match unfold ty with
-        | Prod(a, b) ->
-            let m = LibTerm.Meta.make ctx a in
-            let b = Bindlib.subst b m in
-            let ms, r = unbind_meta ctx b (k - 1) in
-            m :: ms, r
-        | _ -> [], ty
-      in
-      let ms, ty = unbind_meta ctx ty k in
-      List.rev ms, ty
-
+    (** [coerce ctx t a b] coerces term [t] of type [a] to type [b]. *)
     let rec coerce : ctxt -> term -> term -> term -> term =
       fun ctx t a b ->
       if Eval.eq_modulo ctx a b then t else
       let rec try_coercions cs =
         match cs with
         | [] -> raise Not_found
-        | {defn_ty; source; precoercions; defn; arity; _ }::cs ->
-            let meta_dom, range = unbind_meta ctx defn_ty source in
+        | {defn_ty; source; requirements; defn; arity; name }::cs ->
+            if !Debug.log_enabled then log "Trying coercion %s" name;
+            let meta_dom, range =
+              LibTerm.unbind_meta ctx defn_ty (source - 1)
+            in
+            let kth, domain, range =
+              match unfold range with
+              | Prod(a, b) ->
+                  let m = LibTerm.Meta.make ctx a in
+                  let b = Bindlib.subst b m in
+                  (m, a, b)
+              | _ -> assert false
+            in
             let l = LibTerm.prod_arity defn_ty in
             let meta_range, range =
-              unbind_meta ctx range (l - source - arity)
+              LibTerm.unbind_meta ctx range (l - source - arity)
             in
-            let kth =
-              try List.(hd (rev meta_dom)) with Failure _ -> assert false
-            in
-            let source =
-              match kth with Meta (m, _) -> !(m.meta_type) | _ -> assert false
-            in
+            let metas = meta_dom @ [kth] @ meta_range in
             try
-              apply ctx meta_dom a b precoercions source range;
-              unif ctx t kth;
-              unif ctx b range;
-              add_args defn (meta_dom @ meta_range)
+              if approx ctx a domain && approx ctx b range then
+                let creqs =
+                  let delta = Ctxt.of_prod ~len:(l - arity) defn_ty in
+                  let metas = Array.of_list metas in
+                  apply ctx delta metas requirements in
+                let u = Bindlib.msubst defn creqs in
+                unif ctx t kth;
+                unif ctx b range;
+                add_args u metas
+              else failwith "not approx"
             with Failure _ -> try_coercions cs
       in
       let eqs = Stdlib.(!constraints) in
@@ -162,32 +170,43 @@ functor
               Print.pp_term t Print.pp_term a Print.pp_term b;
             t
 
-    (** [apply ctx ms a b reqs src tgt] performs the coercion from [src] to
-        [tgt] with requirements [reqs] on the coercion problem [a ≡ b] with
-        metavariables [ms] possibly appearing in [a] and [b]. The context
-        [ctx] is required to instantiate variables.
-        @raise Failure when the coercion cannot be applied. *)
-    and apply : ctxt -> term list -> term -> term -> int list -> term ->
-      term -> unit =
-      fun ctx ms a b reqs src tgt ->
-      if approx ctx a src && approx ctx b tgt then
-        let instantiate_reqs i =
-          let m = List.nth ms i in
-          let meta = match m with Meta (m, _) -> m | _ -> assert false in
-          match !(meta.meta_type) with
-          | Prod(v,w) ->
-              let x, w = Bindlib.unbind w in
-              let v = coerce ctx (mk_Vari x) v w in
-              (* Instantiate the pre-requisite [m] by the function that
-                 coerces its argument. *)
-              unif ctx m
-                (mk_Abst (v, Bindlib.(bind_var x (lift v) |> unbox)))
-          | _ ->
-              Error.fatal_no_pos "Ill-formed coercion: %d-th argument \
-                                  is not a function" i
-        in
-        List.iter instantiate_reqs reqs;
-    else failwith "coercion application"
+    (** [apply ctx def_ctx ms reqs] performs the coercions specified in
+        requirements [reqs] in context [ctx]. Context [def_ctx] is the context
+        given by the main coercion: all variables of [def_ctx] have been
+        substituted by meta-variables in [ms]. *)
+    and apply : ctxt -> ctxt -> term array -> prereq array -> term_env array =
+      fun ctx def_ctxt ms ->
+      let instantiate_reqs (s, m, v, w: prereq) =
+        match m with
+        | TE_Some m ->
+            if !Debug.log_enabled then
+              log "Processing requirement \"%s\"" s.elt  ;
+            let def_ctxt_v =
+              List.map (fun (x,_,_) -> x) def_ctxt |> Array.of_list
+            in
+            (* [v] and [w] are substituted by [ms] which ought to be
+               instantiated enough so the pre-coercion problems become
+               tractable. *)
+            let v = Bindlib.msubst v ms in
+            let w = Bindlib.msubst w ms in
+            let r =
+              let vs = Array.map mk_Vari def_ctxt_v in
+              Bindlib.(coerce (def_ctxt @ ctx) (msubst m vs) v w)
+            in
+            TE_Some(Bindlib.bind_mvar def_ctxt_v (lift r) |> Bindlib.unbox)
+        | _ -> assert false (* Scoping prevents this case to happen. *)
+
+      in
+      Array.map instantiate_reqs
+
+    (* Wraps the previous function between log messages. *)
+    let coerce ctx t a b =
+      if !Debug.log_enabled then
+        Print.(log "Cast [%a : %a ≡ %a]" pp_term t pp_term a pp_term b);
+      let r = coerce ctx t a b in
+      if !Debug.log_enabled then
+        Print.(log "Cast [%a] to [%a]" pp_term t pp_term r);
+      r
 
     (** {1 Other rules} *)
 

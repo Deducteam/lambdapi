@@ -1,7 +1,9 @@
 open Common
+open Pos
 open Parsing
 open Core
 open Handle
+open Term
 
 let parse_term s =
   (* A hack to parse a term: wrap term [s] into [compute s;]. *)
@@ -11,8 +13,18 @@ let parse_term s =
   | Syntax.P_query {elt=Syntax.P_query_normalize (t, _); _} -> t
   | _ -> assert false
 
-let scope_term ss t =
-  Scope.scope_term true ss [] (lazy Lplib.Extra.IntMap.empty) t
+let scope_term ?(env=[]) ss =
+  Scope.scope_term true ss env (lazy Lplib.Extra.IntMap.empty)
+
+let scope_coercion ss = Scope.scope_coercion ss []
+
+(** [complete_reqs rs] transforms an incomplete [reqs] array into a dummy
+    requirement array. This function should only be used on empty arrays, and
+    for (caml) typing purposes. *)
+let complete_reqs : (strloc * Env.t * term_env) array -> Infer.prereq array
+  = Array.map (fun (a, _, c) ->
+      let dummy = Bindlib.(unbox (bind_mvar [||] _Kind)) in
+      (a, c, dummy, dummy))
 
 (** [compile_ast s ast] compiles abstract syntax tree [ast] using module path
     [s] and returns the signature state.*)
@@ -41,9 +53,10 @@ let simple_coercion = {|
 let simple () =
   let sig_st = compile_ast "simple" simple_coercion in
   let coercion =
-    let defn = parse_term "c" |> scope_term sig_st in
+    let defn, requirements = parse_term "c" |> scope_coercion sig_st in
+    let requirements = complete_reqs requirements in
     let defn_ty = parse_term "A → B" |> scope_term sig_st in
-    Infer.{ name = "a2b"; precoercions = []; source = 1; arity = 0;
+    Infer.{ name = "a2b"; requirements; source = 1; arity = 0;
             defn; defn_ty }
   in
   let module Infer: Infer.S =
@@ -71,9 +84,10 @@ let el_coercion = {|
 let element () =
   let sig_st = compile_ast "element" el_coercion in
   let coercion =
-    let defn = parse_term "El" |> scope_term sig_st in
+    let defn, requirements = parse_term "El" |> scope_coercion sig_st in
+    let requirements = complete_reqs requirements in
     let defn_ty = parse_term "Set → TYPE;" |> scope_term sig_st in
-    Infer.{ name = "set2ty"; precoercions = []; source = 1; arity = 0;
+    Infer.{ name = "set2ty"; requirements; source = 1; arity = 0;
             defn; defn_ty }
   in
   let module Infer: Infer.S =
@@ -94,9 +108,11 @@ let element = Timed.pure_apply element
 let lists_vecs = {|
 constant symbol Set : TYPE;
 injective symbol El : Set → TYPE;
+
 constant symbol nat : Set;
 constant symbol z : El nat;
 constant symbol s : El nat → El nat;
+
 constant symbol list : Set → Set;
 constant symbol nil (t: Set) : El (list t);
 constant symbol cons {t: Set} : El t → El (list t) → El (list t);
@@ -116,9 +132,14 @@ constant symbol f_v {t: Set} {n: El nat}: El (vec n t) → El nat;
 let dependent () =
   let sig_st = compile_ast "lists_vecs" lists_vecs in
   let coercion =
-    let defn = parse_term "lv" |> scope_term sig_st in
-    let defn_ty = parse_term "Π l: El (list nat), El (vec (length l) nat)" |> scope_term sig_st in
-    Infer.{ name = "list2vec"; precoercions = []; source = 1; arity = 0; defn; defn_ty }
+    let defn, requirements = parse_term "lv" |> scope_coercion sig_st in
+    let requirements = complete_reqs requirements in
+    let defn_ty =
+      parse_term "Π l: El (list nat), El (vec (length l) nat)"
+      |> scope_term sig_st
+    in
+    Infer.{name = "list2vec"; requirements; source = 1; arity = 0; defn;
+           defn_ty}
   in
   let module Infer: Infer.S =
     Infer.Make(struct
@@ -126,7 +147,6 @@ let dependent () =
       let solve pb = Unif.solve_noexn pb
     end)
   in
-  Timed.(Print.print_implicits :=  true);
   let f_v_list = parse_term "f_v (cons z (nil nat))" |> scope_term sig_st in
   let f_v_vec = parse_term "f_v (lv (cons z (nil nat)))" |> scope_term sig_st in
   let f_v_vec, _ = Infer.infer [] (Pos.none f_v_vec) in
@@ -138,9 +158,78 @@ let dependent () =
 
 let dependent = Timed.pure_apply dependent
 
+let tup = {|
+  constant symbol Set: TYPE;
+  injective symbol El : Set → TYPE;
+  constant symbol σ: Set → Set → Set;
+  constant symbol cons (a: Set) (b: Set): El a → El b → El (σ a b);
+  constant symbol car (a b: Set): El (σ a b) → El a;
+  constant symbol cdr (a b: Set): El (σ a b) → El b;
+  constant symbol int : Set;
+  constant symbol nat : Set;
+  constant symbol z : El nat;
+  constant symbol nat2int : El nat → El int;
+|} |> Parser.parse_string "tup"
+
+let with_req () =
+  let sig_st = compile_ast "tup" tup in
+  let coercions =
+    let defn, requirements = parse_term "nat2int" |> scope_coercion sig_st in
+    let requirements = complete_reqs requirements in
+    let defn_ty = parse_term "El nat → El int" |> scope_term sig_st in
+    [Infer.{name = "n2i"; requirements; source = 1; arity = 0; defn; defn_ty}]
+  in
+  let mk_sub reqs name src tgt : Infer.prereq =
+    let (name, env, coer) =
+      List.find (fun (n, _, _) -> n.elt = name) (Array.to_list reqs)
+    in
+    let ty_src = parse_term src |> scope_term ~env sig_st in
+    let ty_src = Bindlib.bind_mvar (Env.vars env) (lift ty_src) in
+    let ty_tgt = parse_term tgt |> scope_term ~env sig_st in
+    let ty_tgt = Bindlib.bind_mvar (Env.vars env) (lift ty_tgt) in
+    name, coer, Bindlib.unbox ty_src, Bindlib.unbox ty_tgt
+  in
+  let coercions =
+    let defn, requirements =
+      parse_term
+        "λ a0 b0 a1 b1 t, cons a1 b1 ($c[car a0 b0 t]) ($d[cdr a0 b0 t])"
+      |> scope_coercion sig_st
+    in
+    let c_req = mk_sub requirements "c" "El a0" "El a1" in
+    let d_req = mk_sub requirements "d" "El b0" "El b1" in
+    let defn_ty =
+      parse_term
+        "Π (a0: Set) (b0: Set) (a1: Set) (b1: Set) (t: El (σ a0 b0)), El (σ a1 b1)"
+      |> scope_term sig_st
+    in
+    Infer.{name = "tup"; requirements = [|c_req; d_req|]; source = 5; arity = 0;
+           defn; defn_ty} :: coercions
+  in
+  let module Infer =
+    Infer.Make(struct
+      let coercions = coercions
+      let solve pb = Unif.solve_noexn pb
+    end)
+  in
+  let car_int_of_nat =
+    parse_term "car int int (cons nat nat z z)" |> scope_term sig_st
+  in
+  let car_int_of_nat_c =
+    parse_term
+      "car int int (cons int int (nat2int (car nat nat (cons nat nat z z))) \
+       (nat2int (cdr nat nat (cons nat nat z z))))"
+    |> scope_term sig_st
+  in
+  let car_int_of_nat', _ = Infer.infer [] (Pos.none car_int_of_nat) in
+  Alcotest.(check bool)
+    (Format.asprintf "@[<hov 2>Expected@ %a got@ %a@]"
+       Print.pp_term car_int_of_nat_c Print.pp_term car_int_of_nat')
+    (Eval.eq_modulo [] car_int_of_nat' car_int_of_nat_c) true
+
 let _ =
   let open Alcotest in
   run "coercion insertion" [
     ("coercions", [ test_case "simple" `Quick simple
                   ; test_case "value to type" `Quick element
-                  ; test_case "dependent" `Quick dependent ] ) ]
+                  ; test_case "dependent" `Quick dependent
+                  ; test_case "requirements" `Quick with_req ] ) ]

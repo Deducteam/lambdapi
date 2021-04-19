@@ -217,6 +217,20 @@ let nl_distinct_vars
     Some (vs, map)
   with Not_a_var -> None
 
+(** [unbind_meta ctx prod len] unbinds each binding of the form [Π x: t, a]
+    by [unbind_meta ({?ₖ/x}a)] where [?ₖ] is a fresh meta-variable of type
+    [t] in context [ctx]. At most [len] products are unbound. *)
+let rec unbind_meta : ctxt -> term -> int -> term list * term =
+  fun ctx ty k ->
+  if k <= 0 then [], ty else
+  match unfold ty with
+  | Prod(a, b) ->
+      let m = Meta.make ctx a in
+      let b = Bindlib.subst b m in
+      let ms, r = unbind_meta ctx b (k - 1) in
+      m :: ms, r
+  | _ -> [], ty
+
 (** [sym_to_var m t] replaces in [t] every symbol [f] by a variable according
    to the map [map]. *)
 let sym_to_var : tvar StrMap.t -> term -> term = fun map ->

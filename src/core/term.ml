@@ -323,6 +323,9 @@ let of_tevar : tevar -> term_env = fun x -> TE_Vari(x)
 (** [new_tevar s] creates a new [tevar] with name [s]. *)
 let new_tevar : string -> tevar = Bindlib.new_var of_tevar
 
+let new_temvar : string array -> term_env Bindlib.mvar =
+  Bindlib.new_mvar of_tevar
+
 (** Sets and maps of symbols. *)
 module Sym = struct
   type t = sym

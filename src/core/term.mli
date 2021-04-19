@@ -280,6 +280,9 @@ val of_tevar : tevar -> term_env
 (** [new_tevar s] creates a new [tevar] with name [s]. *)
 val new_tevar : string -> tevar
 
+(** [new_temvar s] creates a new array of variables with names [s]. *)
+val new_temvar : string array -> term_env Bindlib.mvar
+
 (** Sets and maps of symbols. *)
 module Sym : Map.OrderedType with type t = sym
 

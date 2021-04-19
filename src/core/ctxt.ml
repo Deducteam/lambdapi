@@ -13,6 +13,22 @@ let unbind : ctxt -> term -> term option -> tbinder -> tvar * term * ctxt =
   let (x, t) = Bindlib.unbind b in
   (x, t, if Bindlib.binder_occur b then (x, a, def) :: ctx else ctx)
 
+(** [of_prod ?len t] unbinds the first [?len] products of product [t] to form
+    a context. If [?len] is not specified, all products are unbound. *)
+let rec of_prod : ?len:int -> term -> ctxt =
+  fun ?len t ->
+  let f len =
+      match unfold t with
+        | Prod(a, b) ->
+            let (x, b) = Bindlib.unbind b in
+            (x, a, None) :: of_prod ?len b
+        | _ -> []
+  in
+  match len with
+  | Some k when k <= 0 -> []
+  | Some k -> f (Some(k - 1))
+  | None -> f None
+
 (** [type_of x ctx] returns the type of [x] in the context [ctx] when it
     appears in it, and
 @raise [Not_found] otherwise. *)
