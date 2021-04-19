@@ -40,16 +40,6 @@ let _ =
   in
   register "+1" expected_succ_type
 
-(** [rule_of_pre_rule r] converts a pre-rewrite rule into a rewrite rule. *)
-let rule_of_pre_rule : Scope.pre_rule -> Term.rule =
-  fun {pr_lhs; pr_vars; pr_rhs; pr_arities; pr_xvars_nb; _} ->
-  { lhs = pr_lhs
-  ; rhs = Bindlib.(unbox (bind_mvar pr_vars pr_rhs))
-  ; arity = List.length pr_lhs
-  ; arities = pr_arities
-  ; vars = pr_vars
-  ; xvars_nb = pr_xvars_nb }
-
 (** [handle_open ss p] handles the command [open p] with [ss] as the
    signature state. On success, an updated signature state is returned. *)
 let handle_open : sig_state -> p_path -> sig_state =
