@@ -68,6 +68,13 @@ module type S = sig
   (** [check_noexn ?lg cs ctx t t_ty] ensures that term [t] has type [t_ty] in
       context [ctx] and with equations [cs]. It returns term [t] refined and a
       list of new equations that must be solved. *)
+
+  val check_sort_noexn : constr list -> ctxt -> term ->
+    (term * term * constr list) option
+    (** [check_sort_noexn cs ctx t] returns a 3-uple [(t',s,cs')] where [t']
+        is [t] refined, [s] is the inferred sort of [t'], [TYPE] or [KIND],
+        and [cs'] is a list of equations that must be solved. If [t] is not
+        typable, [None] is returned. *)
 end
 
 module Make : functor (_ : LOOKUP) -> S =
@@ -232,7 +239,7 @@ functor
            [Kind]. *)
       in
       let a = coerce ctx a s sort in
-      (a, s)
+      (a, sort)
 
     (** [force ctx t a] returns a term [t'] such that [t'] has type [a], and
         [t'] is the refinement of [t]. *)
@@ -384,6 +391,12 @@ functor
       let force ctx (t, a) = force ctx t a in
       (noexn force) cs ctx (t, a)
 
+    let check_sort_noexn cs ctx t : (term * term * constr list) option =
+      if !Debug.log_enabled then
+        log "Top check sort %a%a" Print.pp_ctxt ctx Print.pp_term t;
+      let flatten ((t, a), cs) = (t, a, cs) in
+      Option.map flatten (noexn type_enforce cs ctx t)
+
     let infer : ctxt -> term loc -> term * term =
       fun ctx {pos; elt=t} ->
       match infer_noexn [] ctx t with
@@ -435,6 +448,10 @@ functor
 (** A refiner without coercion generator nor unification. *)
 module Bare =
   Make(struct let coercions = [] let solve _ = None end)
+
+(** A collection of coercions. *)
+let coercions : coercion list Stdlib.ref = Stdlib.ref []
+(* REVIEW: coercions may be placed in the signature state *)
 
 (** A reference to a refiner that can modified by other modules . *)
 let default : (module S) Stdlib.ref = Stdlib.ref (module Bare: S)

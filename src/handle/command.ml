@@ -232,6 +232,49 @@ let get_proof_data : compiler -> sig_state -> p_command ->
       Console.out 3 "(hint) %a\n" pp_unif_rule (Unif_rule.equiv, urule);
       (ss, None, None)
 
+  | P_coercion{elt=name, defn, defn_ty, source, requisites; _} ->
+      let scope_term ?(env=[]) ss =
+        scope_term true ss env (lazy Lplib.Extra.IntMap.empty)
+      in
+      let defn, reqs = scope_coercion ss [] defn in
+      let defn_ty =
+        let module Refiner = (val Stdlib.(!Infer.default)) in
+        let ty = scope_term ss defn_ty in
+        Refiner.check_sort [] (Pos.make defn_ty.pos ty) |> fst
+      in
+      let process_req (id, ty) : Infer.prereq =
+        match ty.elt with
+          | P_Arro(a, b) ->
+              let (name, env, coer) =
+                List.find (fun (n, _, _) -> n.elt = id.elt)
+                  (Array.to_list reqs)
+              in
+              let ty_src =
+                scope_term ~env ss a |> lift |>
+                Bindlib.bind_mvar (Env.vars env) |> Bindlib.unbox in
+              let ty_tgt =
+                scope_term ~env ss b |> lift |>
+                Bindlib.bind_mvar (Env.vars env) |> Bindlib.unbox
+              in
+              name, coer, ty_src, ty_tgt
+          | _ ->
+              Error.fatal ty.pos "Ill-formed requisite type:@ \
+                                  @[%a@ is not an arrow type@]"
+                Pretty.term ty
+      in
+      let requirements = List.map process_req requisites |> Array.of_list in
+      let cion =
+        Infer.{ name = name.elt; source; arity = 0; defn; defn_ty
+              ; requirements }
+      in
+      let module Lookup = struct
+        let coercions = cion :: Stdlib.(!Infer.coercions)
+        let solve pb = Unif.solve_noexn pb
+      end
+      in
+      Stdlib.((Infer.default) := (module (Infer.Make(Lookup)): Infer.S));
+      Stdlib.(Infer.(coercions := cion :: !coercions));
+      (ss, None, None)
   | P_inductive(ms, params, p_ind_list) ->
       (* Check modifiers. *)
       let (prop, expo, mstrat) = handle_modifiers ms in

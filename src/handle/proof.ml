@@ -181,7 +181,7 @@ let goals_of_typ : term loc option -> term loc option ->
     match typ, ter with
     | Some(typ), Some(ter) ->
         begin
-          match Infer.infer_noexn [] [] typ.elt with
+          match Infer.check_sort_noexn [] [] typ.elt with
           | None -> fatal typ.pos "[%a] is not typable." pp_term typ.elt
           | Some(ty, sort, to_solve) ->
               let to_solve, te =
@@ -195,8 +195,7 @@ let goals_of_typ : term loc option -> term loc option ->
                             pp_term ter.elt pp_term ty
                       | Some (te, cs) -> (cs, te)
                     end
-                | _ -> fatal typ.pos "[%a] has type [%a] and not a sort."
-                         pp_term ty pp_term sort
+                | _ -> assert false (* [check_sort] must return a sort *)
               in
               Some te, ty, to_solve
         end
@@ -209,7 +208,7 @@ let goals_of_typ : term loc option -> term loc option ->
                 match unfold ty with
                 | Kind -> fatal ter.pos "Kind definitions are not allowed."
                 | _ ->
-                    match Infer.infer_noexn to_solve [] ty with
+                    match Infer.check_sort_noexn to_solve [] ty with
                     | None ->
                         fatal ter.pos
                           "[%a] has type [%a] which is not typable"
@@ -217,23 +216,20 @@ let goals_of_typ : term loc option -> term loc option ->
                     | Some (_, sort, to_solve) ->
                         match unfold sort with
                         | Type | Kind -> to_solve
-                        | _ ->
-                            fatal ter.pos
-                              "[%a] has type [%a] which has type [%a] \
-                               and not a sort."
-                              pp_term te pp_term ty pp_term sort
+                        | _ -> assert false
+                        (* [check_sort_noexn] returns a sort or fails *)
               in
               Some te, ty, to_solve
         end
     | Some(typ), None ->
         begin
-          match Infer.infer_noexn [] [] typ.elt with
+          match Infer.check_sort_noexn [] [] typ.elt with
           | None -> fatal typ.pos "[%a] is not typable." pp_term typ.elt
           | Some (ty, sort, to_solve) ->
               match unfold sort with
               | Type | Kind -> None, ty, to_solve
-              | _ -> fatal typ.pos "[%a] has type [%a] and not a sort."
-                       pp_term ty pp_term sort
+              | _ -> assert false
+               (* [check_sort_noexn] returns a sort or fails *)
         end
     | None, None -> assert false (* already rejected by parser *)
   in
