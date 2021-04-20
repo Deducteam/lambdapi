@@ -1,5 +1,5 @@
 (tests
- (names utils ok_ko coercions)
+ (names utils ok_ko)
  (deps
   (glob_files OK/*.lp)
   (glob_files OK/*.dk)
