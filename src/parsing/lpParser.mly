@@ -366,15 +366,18 @@ unif_rule: e=equation HOOK_ARROW
       make_pos $sloc (lhs, rhs) }
 
 coercion:
-  | s=STRINGLIT t=term COLON a=term ON i=INT
+  | s=STRINGLIT p_coer_def=term COLON p_coer_typ=term ON p_coer_src=INT
       {
-        let name = make_pos $loc(s) s in
-        make_pos $loc (name, t, a, i, [])
+        let p_coer_id = make_pos $loc(s) s in
+        make_pos $loc
+          { p_coer_id; p_coer_def; p_coer_typ; p_coer_src
+          ; p_coer_ari = 0; p_coer_req = [] }
       }
-  | s=STRINGLIT t=term COLON a=term ON i=INT WITH
-r=separated_nonempty_list(WITH, separated_pair(uid, COLON, term))
+  | s=STRINGLIT p_coer_def=term COLON p_coer_typ=term ON p_coer_src=INT WITH
+p_coer_req=separated_nonempty_list(WITH, separated_pair(uid, COLON, term))
       {
-        let name = make_pos $loc(s) s in
-        make_pos $loc (name, t, a, i, r)
+        let p_coer_id = make_pos $loc(s) s in
+        make_pos $loc {p_coer_id; p_coer_def; p_coer_typ; p_coer_src;
+                       p_coer_req; p_coer_ari=0}
       }
 %%

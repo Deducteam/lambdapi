@@ -232,15 +232,15 @@ let get_proof_data : compiler -> sig_state -> p_command ->
       Console.out 3 "(hint) %a\n" pp_unif_rule (Unif_rule.equiv, urule);
       (ss, None, None)
 
-  | P_coercion{elt=name, defn, defn_ty, source, requisites; _} ->
+  | P_coercion{elt; _} ->
       let scope_term ?(env=[]) ss =
         scope_term true ss env (lazy Lplib.Extra.IntMap.empty)
       in
-      let defn, reqs = scope_coercion ss [] defn in
+      let defn, reqs = scope_coercion ss [] elt.p_coer_def in
       let defn_ty =
         let module Refiner = (val Stdlib.(!Infer.default)) in
-        let ty = scope_term ss defn_ty in
-        Refiner.check_sort [] (Pos.make defn_ty.pos ty) |> fst
+        let ty = scope_term ss elt.p_coer_typ in
+        Refiner.check_sort [] (Pos.make elt.p_coer_typ.pos ty) |> fst
       in
       let process_req (id, ty) : Infer.prereq =
         match ty.elt with
@@ -262,10 +262,10 @@ let get_proof_data : compiler -> sig_state -> p_command ->
                                   @[%a@ is not an arrow type@]"
                 Pretty.term ty
       in
-      let requirements = List.map process_req requisites |> Array.of_list in
+      let requirements = List.map process_req elt.p_coer_req |> Array.of_list in
       let cion =
-        Infer.{ name = name.elt; source; arity = 0; defn; defn_ty
-              ; requirements }
+        Infer.{ name = elt.p_coer_id.elt; source = elt.p_coer_src
+              ; arity = elt.p_coer_ari; defn; defn_ty ; requirements }
       in
       let module Lookup = struct
         let coercions = cion :: Stdlib.(!Infer.coercions)
