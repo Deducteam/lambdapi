@@ -48,7 +48,9 @@
            | symmetry
            | why3 ["<string>"]
 
-<modifier> ::= constant
+<modifier> ::= [<assoc>] associative
+             | commutative
+             | constant
              | injective
              | opaque
              | private

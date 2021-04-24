@@ -29,8 +29,8 @@ let string_field name dict = U.to_string List.(assoc name dict)
 let oint_field  name dict =
   Option.map_default U.to_int 0 List.(assoc_opt name dict)
 let odict_field name dict =
-  Option.default U.(to_option to_assoc
-                      (Option.default List.(assoc_opt name dict) `Null)) []
+  Option.get [] U.(to_option to_assoc
+                      (Option.get `Null List.(assoc_opt name dict)))
 
 module LIO = Lsp_io
 module LSP = Lsp_base
@@ -128,7 +128,7 @@ let kind_of_type tm =
   let open Term in
   let open Timed in
   let is_undef =
-    Option.empty !(tm.sym_def) && List.length !(tm.sym_rules) = 0 in
+    Option.is_None !(tm.sym_def) && List.length !(tm.sym_rules) = 0 in
   match !(tm.sym_type) with
   | Vari _ ->
     13                         (* Variable *)

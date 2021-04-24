@@ -102,38 +102,47 @@ Examples:
 **Modifiers:**
 
 Modifiers are keywords that precede a symbol declaration to provide
-the system with additional information on its properties or behavior.
+the system with additional information on its properties and behavior.
 
-- Modifiers for the unification engine:
+- **Property modifiers** (used by the unification engine or the conversion):
 
-  - ``constant``: no rule can be added to the symbol
-  - ``injective``: the symbol can be considered as injective, that is, if ``f t1 .. tn`` ≡ ``f u1 .. un``, then ``t1``\ ≡\ ``u1``, …, ``tn``\ ≡\ ``un``. For the moment, the verification is left to the user.
+  - ``constant``: No rule or definition can be given to the symbol
+  - ``injective``: The symbol can be considered as injective, that is, if ``f t1 .. tn`` ≡ ``f u1 .. un``, then ``t1``\ ≡\ ``u1``, …, ``tn``\ ≡\ ``un``. For the moment, the verification is left to the user.
+  - ``commutative``: Adds in the conversion the equation ``f t u ≡ f u t``.
+  - ``associative``: Adds in the conversion the equation ``f (f t u) v ≡ f t (f u v)`` (in conjonction with ``commutative`` only)
 
--  Exposition markers define how a symbol can be used outside the module
-   where it is defined.
+    For handling commutative and associative-commutative symbols,
+    terms are systemically put in some canonical form (left
+    unspecified) following a technique described `here
+    <http://dx.doi.org/10.1007/978-3-540-71316-6_8>`__.
 
-   -  by default, the symbol can be used without restriction
-   -  ``private``: the symbol cannot be used
-   -  ``protected``: the symbol can only be used in left-hand side of
-      rewrite rules.
+- **Exposition modifiers** define how a symbol can be used outside the
+  module where it is defined. By default, the symbol can be used
+  without restriction.
 
-   Exposition markers obey the following rules: inside a module,
+  - ``private``: The symbol cannot be used.
+  - ``protected``: The symbol can only be used in left-hand side of
+    rewrite rules.
 
-   -  private symbols cannot appear in the type of public symbols;
-   -  private symbols cannot appear in the right-hand side of a
-      rewriting rule defining a public symbol
-   -  externally defined protected symbols cannot appear at the head of
-      a left-hand side
-   -  externally defined protected symbols cannot appear in the right
-      hand side of a rewriting rule
+  Exposition modifiers obey the following rules: inside a module,
 
--  ``sequential``: modifies the pattern matching algorithm. By default,
-   the order of rule declarations is not taken into account. This
-   modifier tells Lambdapi to apply rules defining a sequential symbol
-   in the order they have been declared (note that the order of the
-   rules may depend on the order of the ``require`` commands). An
-   example can be seen in ``tests/OK/rule_order.lp``.
-   *WARNING:* using this modifier can break important properties.
+  - Private symbols cannot appear in the type of public symbols.
+  - Private symbols cannot appear in the right-hand side of a
+    rewriting rule defining a public symbol.
+  - Externally defined protected symbols cannot appear at the head of
+    a left-hand side.
+  - Externally defined protected symbols cannot appear in the right
+    hand side of a rewriting rule.
+
+- **Matching strategy modifiers:**
+
+  - ``sequential``: modifies the pattern matching algorithm. By default,
+    the order of rule declarations is not taken into account. This
+    modifier tells Lambdapi to apply rules defining a sequential symbol
+    in the order they have been declared (note that the order of the
+    rules may depend on the order of the ``require`` commands). An
+    example can be seen in ``tests/OK/rule_order.lp``.
+    *WARNING:* using this modifier can break important properties.
 
 Examples:
 

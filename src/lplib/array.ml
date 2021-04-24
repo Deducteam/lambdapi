@@ -21,10 +21,26 @@ let pp : 'a pp -> string -> 'a array pp =
     Format.fprintf oc "%s%a" sep pp_elt (A.get a i)
   done
 
-(** [equal eq a1 a2] tests the equality of [a1] and [a2], comparing their
-    elements with [eq]. *)
-let equal : 'a eq -> 'a array eq =
- fun eq a1 a2 -> A.length a1 = A.length a2 && for_all2 eq a1 a2
+(** Comparison function on arrays. *)
+let cmp : 'a cmp -> 'a array cmp = fun cmp_elt ->
+  let cmp a1 a2 (* of the same length *) =
+    let exception Distinct of int in
+    let rec cmp i =
+      if i >= 0 then
+        match cmp_elt (A.get a1 i) (A.get a2 i) with
+        | 0 -> cmp (i - 1)
+        | n -> raise (Distinct n)
+    in
+    try cmp (A.length a1 - 1); 0 with Distinct n -> n
+  in
+  fun a1 a2 ->
+  if a1 == a2 then 0
+  else lex (cmp_map Stdlib.compare A.length) cmp (a1,a1) (a2,a2)
+
+(** [eq eq_elt a1 a2] tests the equality of [a1] and [a2], comparing their
+    elements with [eq_elt]. *)
+let eq : 'a eq -> 'a array eq = fun eq_elt a1 a2 ->
+  a1 == a2 || (A.length a1 = A.length a2 && for_all2 eq_elt a1 a2)
 
 (** [max_index ?cmp a] returns the index of the first maximum of array [a]
     according to comparison [?cmp]. If [cmp] is not given, defaults to

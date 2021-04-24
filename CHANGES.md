@@ -1,5 +1,38 @@
 ### Unreleased
 
+#### Factorize type `rw_patt` (2021-04-07)
+
+The types `Term.rw_patt` and `Syntax.p_rw_patt_aux` are merged into a
+single polymorphic type `Syntax.rw_patt`.
+
+#### API modification (2021-04-07)
+
+Several functions are exposed,
+
+- `Parsing.Scope.rule_of_pre_rule`: converts a pre rewriting rule into a 
+  rewriting rule,
+- `Handle.Command.handle`: now processes proof data,
+- `Handle.Command.get_proof_data`: is the old handle,
+- `Handle.Compile.compile_with`: allows to provide a command handler to compile
+  modules
+
+#### Add commutative and associative-commutative symbols (2021-04-07)
+
+- Add `term.mli` and turn the `term` type into a *private* type so that
+  term constructors are not exported anymore (they are available for
+  pattern-matching though). For constructing terms, one now needs to
+  use the provided construction functions `mk_Vari` for `Vari`,
+  `mk_Appl` for `Appl`, etc.
+
+- Move some functions `LibTerm` to `Term`, in particular `get_args`,
+  `add_args` and `cmp_term`.
+
+- Rename the field `sym_tree` into `sym_dtree`.
+
+- Redefine the type `rhs` as `(term_env, term) Bindlib.mbinder`
+  instead of `(term_env, term) Bindlib.mbinder * int` so that the old
+  `rhs` needs to be replaced by `rhs * int` in a few places.
+
 #### Improvements in some tactics (2021-04-05)
 
 - fix `have`

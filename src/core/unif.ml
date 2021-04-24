@@ -36,11 +36,11 @@ let try_unif_rules : ctxt -> term -> term -> constr list option =
   let open Unif_rule in
   try
     let rhs =
-      match Eval.tree_walk !(equiv.sym_tree) ctx [s;t] with
+      match Eval.tree_walk !(equiv.sym_dtree) ctx [s;t] with
       | Some(r,[]) -> r
       | Some(_)    -> assert false (* Everything should be matched *)
       | None       ->
-      match Eval.tree_walk !(equiv.sym_tree) ctx [t;s] with
+      match Eval.tree_walk !(equiv.sym_dtree) ctx [t;s] with
       | Some(r,[]) -> r
       | Some(_)    -> assert false (* Everything should be matched *)
       | None       -> raise No_match
@@ -78,7 +78,7 @@ let do_type_check = Stdlib.ref true
 let initial : constr list Stdlib.ref = Stdlib.ref []
 
 (** [is_initial c] checks whether [c] occurs in [!initial]. *)
-let is_initial c = List.exists (LibTerm.eq_constr c) Stdlib.(!initial)
+let is_initial c = List.exists (eq_constr c) Stdlib.(!initial)
 
 (** [instantiate ctx m ts u] check whether, in a problem [m[ts] ≡ u], [m] can
    be instantiated and, if so, instantiate it. *)
@@ -203,8 +203,8 @@ let imitate_inj :
       ctxt -> meta -> term array -> term list -> sym -> term list -> bool =
   fun ctx m vs us s ts ->
   if !log_enabled then
-    log_unif "imitate_inj %a ≡ %a" pp_term (add_args (Meta(m,vs)) us)
-                                   pp_term (add_args (Symb s) ts);
+    log_unif "imitate_inj %a ≡ %a" pp_term (add_args (mk_Meta(m,vs)) us)
+                                   pp_term (add_args (mk_Symb s) ts);
   let exception Cannot_imitate in
   try
     if not (us = [] && is_injective s) then raise Cannot_imitate;
@@ -219,11 +219,11 @@ let imitate_inj :
     let k = Array.length vars in
     let t =
       let rec build i acc t =
-        if i <= 0 then add_args (Symb s) (List.rev acc) else
+        if i <= 0 then add_args (mk_Symb s) (List.rev acc) else
         match unfold t with
         | Prod(a,b) ->
             let m = Meta.fresh (Env.to_prod env (lift a)) k in
-            let u = Meta (m,vs) in
+            let u = mk_Meta (m,vs) in
             build (i-1) (u::acc) (Bindlib.subst b u)
         | _ -> raise Cannot_imitate
       in build (List.length ts) [] !(s.sym_type)
@@ -351,8 +351,8 @@ let rec solve : problem -> constr list = fun p ->
   (* We take the beta-whnf. *)
   let t1 = Eval.whnf_beta t1 and t2 = Eval.whnf_beta t2 in
   if !log_enabled then log_unif (gre "%a") pp_constr (ctx,t1,t2);
-  let (h1, ts1) = LibTerm.get_args t1
-  and (h2, ts2) = LibTerm.get_args t2 in
+  let (h1, ts1) = get_args t1
+  and (h2, ts2) = get_args t2 in
 
   match h1, h2 with
   | Type, Type
@@ -402,8 +402,8 @@ let rec solve : problem -> constr list = fun p ->
 
   (* We reduce [t1] and [t2] and try again. *)
   let t1 = Eval.whnf ctx t1 and t2 = Eval.whnf ctx t2 in
-  let (h1, ts1) = LibTerm.get_args t1
-  and (h2, ts2) = LibTerm.get_args t2 in
+  let (h1, ts1) = get_args t1
+  and (h2, ts2) = get_args t2 in
 
   if !log_enabled then log_unif "normalize";
   if !log_enabled then log_unif (gre "%a") pp_constr (ctx,t1,t2);
@@ -465,7 +465,7 @@ let rec solve : problem -> constr list = fun p ->
 
 (** [solve p] tries to solve the unification problem [p] and
     returns the constraints that could not be solved.
-    This is the entry point setting the flag type_check *)
+    This is the entry point setting the flag [type_check]. *)
 let solve : ?type_check:bool -> problem -> constr list =
   fun ?(type_check=true) p ->
   if !log_enabled then log_hndl "solve %a" pp_problem p;

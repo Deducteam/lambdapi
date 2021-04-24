@@ -2,7 +2,6 @@
 
 open Timed
 open Term
-open Lplib.Base
 open Lplib.Extra
 
 (** [to_tvar t] returns [x] if [t] is of the form [Vari x] and fails
@@ -24,43 +23,6 @@ let to_tvar : term -> tvar = fun t ->
     often be generated. A second reason is that free variables should never be
     “marshaled” (e.g., by the {!module:Sign} module), as this would break the
     freshness invariant of new variables. *)
-
-(** [get_args t] decomposes the {!type:term} [t] into a pair [(h,args)], where
-    [h] is the head term of [t] and [args] is the list of arguments applied to
-    [h] in [t]. The returned [h] cannot be an [Appl] node. *)
-let get_args : term -> term * term list = fun t ->
-  let rec get_args acc t =
-    match unfold t with
-    | Appl(t,u) -> get_args (u::acc) t
-    | t         -> (t, acc)
-  in get_args [] t
-
-(** [get_args_len t] is similar to [get_args t] but it also returns the length
-    of the list of arguments. *)
-let get_args_len : term -> term * term list * int = fun t ->
-  let rec get_args_len acc len t =
-    match unfold t with
-    | Appl(t, u) -> get_args_len (u::acc) (len + 1) t
-    | t          -> (t, acc, len)
-  in
-  get_args_len [] 0 t
-
-(** [add_args t args] builds the application of the {!type:term} [t] to a list
-    arguments [args]. When [args] is empty, the returned value is (physically)
-    equal to [t]. *)
-let add_args : term -> term list -> term =
-  List.fold_left (fun t u -> Appl(t,u))
-
-(** [add_args_map f t ts] is equivalent to [add_args t (List.map f ts)] but
-   more efficient. *)
-let add_args_map : term -> (term -> term) -> term list -> term = fun t f ts ->
-  List.fold_left (fun t u -> Appl(t, f u)) t ts
-
-(** [is_symb s t] tests whether [t] is of the form [Symb(s)]. *)
-let is_symb : sym -> term -> bool = fun s t ->
-  match unfold t with
-  | Symb(r) -> r == s
-  | _       -> false
 
 (** Given a symbol [s], [remove_impl_args s ts] returns the non-implicit
    arguments of [s] among [ts]. *)
@@ -91,9 +53,9 @@ let iter : (term -> unit) -> term -> unit = fun action ->
     | TEnv(_,ts)
     | Meta(_,ts)  -> Array.iter iter ts
     | Prod(a,b)
-    | Abst(a,b)   -> iter a; iter (Bindlib.subst b Kind)
+    | Abst(a,b)   -> iter a; iter (Bindlib.subst b mk_Kind)
     | Appl(t,u)   -> iter t; iter u
-    | LLet(a,t,u) -> iter a; iter t; iter (Bindlib.subst u Kind)
+    | LLet(a,t,u) -> iter a; iter t; iter (Bindlib.subst u mk_Kind)
   in iter
 
 (** [unbind_name b s] is like [Bindlib.unbind b] but returns a valid variable
@@ -101,7 +63,7 @@ let iter : (term -> unit) -> term -> unit = fun action ->
     variable's name.*)
 let unbind_name : string -> tbinder -> tvar * term = fun s b ->
   if Bindlib.binder_occur b then Bindlib.unbind b
-  else let x = new_tvar s in (x, Bindlib.subst b (Vari x))
+  else let x = new_tvar s in (x, Bindlib.subst b (mk_Vari x))
 
 (** [unbind2_name b1 b2 s] is like [Bindlib.unbind2 b1 b2] but returns a valid
    variable name when [b1] or [b2] binds no variable. The string [s] is the
@@ -111,7 +73,7 @@ let unbind2_name : string -> tbinder -> tbinder -> tvar * term * term =
   if Bindlib.binder_occur b1 || Bindlib.binder_occur b2 then
     Bindlib.unbind2 b1 b2
   else let x = new_tvar s in
-       (x, Bindlib.subst b1 (Vari x), Bindlib.subst b2 (Vari x))
+       (x, Bindlib.subst b1 (mk_Vari x), Bindlib.subst b2 (mk_Vari x))
 
 (** Functions to manipulate metavariables. This module includes
     {!module:Term.Meta}. *)
@@ -123,15 +85,15 @@ module Meta = struct
   let make : ctxt -> term -> term = fun ctx a ->
     let prd, len = Ctxt.to_prod ctx a in
     let m = Meta.fresh prd len in
-    let get_var (x,_,_) = Vari(x) in
-    Meta(m, Array.of_list (List.rev_map get_var ctx))
+    let get_var (x,_,_) = mk_Vari(x) in
+    mk_Meta(m, Array.of_list (List.rev_map get_var ctx))
 
   (** [make_codomain ctx a] creates a fresh metavariable term [b] of type
       [Type] in the context [ctx] extended with a fresh variable of type
       [a]. *)
   let make_codomain : ctxt -> term -> tbinder = fun ctx a ->
     let x = new_tvar "x" in
-    let b = make ((x, a, None) :: ctx) Type in
+    let b = make ((x, a, None) :: ctx) mk_Type in
     Bindlib.unbox (Bindlib.bind_var x (lift b))
   (* Possible improvement: avoid lift by defining a function _Meta.make
      returning a tbox. *)
@@ -150,10 +112,10 @@ module Meta = struct
       | Kind
       | Symb(_)     -> ()
       | Prod(a,b)
-      | Abst(a,b)   -> iter a; iter (Bindlib.subst b Kind)
+      | Abst(a,b)   -> iter a; iter (Bindlib.subst b mk_Kind)
       | Appl(t,u)   -> iter t; iter u
       | Meta(v,ts)  -> f v; Array.iter iter ts; if b then iter !(v.meta_type)
-      | LLet(a,t,u) -> iter a; iter t; iter (Bindlib.subst u Kind)
+      | LLet(a,t,u) -> iter a; iter t; iter (Bindlib.subst u mk_Kind)
     in iter
 
   (** [occurs m t] tests whether the metavariable [m] occurs in the term
@@ -233,7 +195,7 @@ let nl_distinct_vars
             let v = new_tvar f.sym_name in
             patt_vars := StrMap.add f.sym_name v !patt_vars;
             v
-        in to_var (Vari v)
+        in to_var (mk_Vari v)
     | _ -> raise Not_a_var
   in
   let replace_nl_var v =
@@ -253,12 +215,12 @@ let nl_distinct_vars
 let sym_to_var : tvar StrMap.t -> term -> term = fun map ->
   let rec to_var t =
     match unfold t with
-    | Symb f -> (try Vari (StrMap.find f.sym_name map) with Not_found -> t)
-    | Prod(a,b) -> Prod (to_var a, to_var_binder b)
-    | Abst(a,b) -> Abst (to_var a, to_var_binder b)
-    | LLet(a,t,u) -> LLet (to_var a, to_var t, to_var_binder u)
-    | Appl(a,b)  -> Appl(to_var a, to_var b)
-    | Meta(m,ts) -> Meta(m, Array.map to_var ts)
+    | Symb f -> (try mk_Vari (StrMap.find f.sym_name map) with Not_found -> t)
+    | Prod(a,b) -> mk_Prod (to_var a, to_var_binder b)
+    | Abst(a,b) -> mk_Abst (to_var a, to_var_binder b)
+    | LLet(a,t,u) -> mk_LLet (to_var a, to_var t, to_var_binder u)
+    | Appl(a,b)  -> mk_Appl(to_var a, to_var b)
+    | Meta(m,ts) -> mk_Meta(m, Array.map to_var ts)
     | Patt _ -> assert false
     | TEnv _ -> assert false
     | TRef _ -> assert false
@@ -281,79 +243,3 @@ let term_of_rhs : rule -> term = fun r ->
     TE_Some(Bindlib.unbox (Bindlib.bind_mvar vars p))
   in
   Bindlib.msubst r.rhs (Array.mapi fn r.vars)
-
-(** Total order on alpha-equivalence classes of terms not containing [Patt],
-   [TEnv] or [TRef].
-@raise Invalid_argument otherwise. *)
-let cmp_term : term cmp =
-  let pos = __MODULE__ ^ ".cmp_term: " ^ __LOC__ in
-  (* Total precedence on term constructors (must be injective). *)
-  let prec t =
-    match unfold t with
-    | Vari _ -> 0
-    | Type -> 1
-    | Kind -> 2
-    | Symb _ -> 3
-    | Prod _ -> 4
-    | Abst _ -> 5
-    | Appl _ -> 6
-    | Meta _ -> 7
-    | Patt _ -> 8
-    | TEnv _ -> 9
-    | Wild -> 10
-    | TRef _ -> 11
-    | LLet _ -> 12
-  in
-  let rec cmp t t' =
-    match unfold t, unfold t' with
-    | Vari x, Vari x' -> Bindlib.compare_vars x x'
-    | Type, Type
-    | Kind, Kind
-    | Wild, Wild -> 0
-    | Symb f, Symb f' -> Sym.compare f f'
-    | Prod(t,u), Prod(t',u')
-    | Abst(t,u), Abst(t',u') ->
-        let c = cmp t t' in if c <> 0 then c else cmp_binder u u'
-    | Appl(t,u), Appl(t',u') ->
-        let c = cmp t t' in if c <> 0 then c else cmp u u'
-    | Meta(m,ts), Meta(m',ts') ->
-        let c = Meta.compare m m' in
-        if c <> 0 then c
-        else Lplib.List.cmp_list cmp (Array.to_list ts) (Array.to_list ts')
-    | Patt _, _ | _, Patt _
-    | TEnv _, _ | _, TEnv _ -> invalid_arg pos
-    | TRef r, TRef r' ->
-        if r == r' then 0 else
-          begin
-            match !r, !r' with
-            | None, None -> invalid_arg pos
-            | Some t, Some t' -> cmp t t'
-            | None, Some _ -> -1
-            | Some _, None -> 1
-          end
-    | LLet(a,t,u), LLet(a',t',u') ->
-        let c = cmp a a' in
-        if c <> 0 then c
-        else let c = cmp t t' in if c <> 0 then c else cmp_binder u u'
-    | t, t' -> Stdlib.compare (prec t) (prec t')
-  and cmp_binder u u' = let (_,u,u') = Bindlib.unbind2 u u' in cmp u u'
-  in cmp
-
-(** Total order on contexts not containing [Patt], [TEnv] or [TRef].
-@raise Invalid_argument otherwise. *)
-let cmp_ctxt : ctxt cmp =
-  let cmp_decl (x,t,a) (x',t',a') =
-    let c = Bindlib.compare_vars x x' in
-    if c <> 0 then c
-    else let c = cmp_term t t' in
-         if c <> 0 then c else Lplib.Option.cmp_option cmp_term a a'
-  in Lplib.List.cmp_list cmp_decl
-
-(** Total order on constraints not containing [Patt], [TEnv] or [TRef].
-@raise Invalid_argument otherwise. *)
-let cmp_constr : constr cmp = fun (c,t,u) (c',t',u') ->
-  let r = cmp_ctxt c c' in
-  if r <> 0 then r
-  else let r = cmp_term t t' in if r <> 0 then r else cmp_term u u'
-
-let eq_constr : constr eq = fun c c' -> cmp_constr c c' = 0

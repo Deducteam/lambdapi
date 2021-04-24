@@ -106,4 +106,4 @@ let to_dot : Format.formatter -> sym -> unit = fun oc s ->
     end;
     out "@.}@\n@?"
   in
-  output_tree oc (Lazy.force (snd !(s.sym_tree)))
+  output_tree oc (Lazy.force (snd !(s.sym_dtree)))

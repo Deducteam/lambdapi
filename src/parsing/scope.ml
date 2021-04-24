@@ -75,9 +75,9 @@ type mode =
   | M_LHS  of lhs_data
   (** Scoping mode for rewriting rule left-hand sides. *)
   | M_RHS  of
-      { m_rhs_prv             : bool
+      { m_rhs_prv  : bool
       (** True if private symbols are allowed. *)
-      ; m_rhs_data            : (string, tevar) Hashtbl.t
+      ; m_rhs_data : (string, tevar) Hashtbl.t
       (** Environment for variables that we know to be bound in the RHS. *) }
   (** Scoping mode for rewriting rule right-hand sides. *)
   | M_URHS of
@@ -154,16 +154,21 @@ let rec scope : mode -> sig_state -> env -> p_term -> tbox =
     match (p_head.elt, md) with
     | (P_Patt(_,_), M_LHS(_)) when args <> [] ->
       fatal t.pos "Pattern variables cannot be applied."
-    | _                                       -> ()
+    | _ -> ()
   end;
   (* Scope the head and obtain the implicitness of arguments. *)
   let h = scope_head md ss env p_head in
+  (* Find out whether [h] has implicit arguments. *)
   let impl =
-    (* Check whether application is marked as explicit in head symbol. *)
-    let expl = match p_head.elt with P_Iden(_,b) -> b | _ -> false in
-    (* We avoid unboxing if [h] is not closed (and hence not a symbol). *)
-    if expl || not (Bindlib.is_closed h) then [] else
-      match Bindlib.unbox h with Symb(s) -> s.sym_impl | _ -> []
+    match p_head.elt with
+    | P_Iden(_,expl) ->
+        (* We avoid unboxing if [h] is not closed (and hence not a symbol). *)
+        if Bindlib.is_closed h then
+          match Bindlib.unbox h with
+          | Symb s -> if expl then [] else s.sym_impl
+          | _ -> []
+        else []
+    | _ -> []
   in
   (* Scope and insert the (implicit) arguments. *)
   add_impl md ss env t.pos h impl args
@@ -172,11 +177,12 @@ let rec scope : mode -> sig_state -> env -> p_term -> tbox =
    application of [h] to the scoped arguments. [impl] is a boolean list
    described the implicit arguments. Implicit arguments are added as
    underscores before scoping. *)
-and add_impl : mode -> sig_state -> Env.t -> popt -> tbox -> bool list ->
-  p_term list -> tbox =
+and add_impl : mode -> sig_state ->
+               Env.t -> popt -> tbox -> bool list -> p_term list -> tbox =
   fun md ss env loc h impl args ->
-  let appl_p_term t u = _Appl t (scope md ss env u) in
-  let appl_meta t = _Appl t (scope_head md ss env (Pos.none P_Wild)) in
+  let appl = match md with M_LHS _ -> _Appl_not_canonical | _ -> _Appl in
+  let appl_p_term t u = appl t (scope md ss env u) in
+  let appl_meta t = appl t (scope_head md ss env P.wild) in
   match (impl, args) with
   (* The remaining arguments are all explicit. *)
   | ([]         , _      ) -> List.fold_left appl_p_term h args
@@ -514,6 +520,16 @@ type pre_rule =
   ; pr_xvars_nb : int
   (** Number of variables that appear in the RHS but not in the LHS. *) }
 
+(** [rule_of_pre_rule r] converts a pre-rewrite rule into a rewrite rule. *)
+let rule_of_pre_rule : pre_rule -> rule =
+  fun {pr_lhs; pr_vars; pr_rhs; pr_arities; pr_xvars_nb; _} ->
+  { lhs = pr_lhs
+  ; rhs = Bindlib.(unbox (bind_mvar pr_vars pr_rhs))
+  ; arity = List.length pr_lhs
+  ; arities = pr_arities
+  ; vars = pr_vars
+  ; xvars_nb = pr_xvars_nb }
+
 (** [scope_rule ur ss r] turns a parser-level rewriting rule [r], or a
     unification rule if [ur] is true, into a pre-rewriting rule. *)
 let scope_rule : bool -> sig_state -> p_rule -> pre_rule loc = fun ur ss r ->
@@ -550,16 +566,14 @@ let scope_rule : bool -> sig_state -> p_rule -> pre_rule loc = fun ur ss r ->
   in
   (* Check the head symbol and build the actual LHS. *)
   let (sym, pr_lhs) =
-    let (h, args) = LibTerm.get_args pr_lhs in
+    let (h, args) = get_args pr_lhs in
     match h with
     | Symb(s) ->
-        if is_constant s then
-          fatal p_lhs.pos "Constant LHS head symbol.";
+        if is_constant s then fatal p_lhs.pos "Constant LHS head symbol.";
         if s.sym_expo = Protec && ss.signature.sign_path <> s.sym_path then
           fatal p_lhs.pos "Cannot define rules on foreign protected symbols.";
         (s, args)
-    | _       ->
-        fatal p_lhs.pos "No head symbol in LHS."
+    | _ -> fatal p_lhs.pos "No head symbol in LHS."
   in
   (* Create the pattern variables that can be bound in the RHS. *)
   let pr_vars =
@@ -622,26 +636,26 @@ let scope_pattern : sig_state -> env -> p_term -> term = fun ss env t ->
 (** [scope_rw_patt ss env t] turns a parser-level rewrite tactic specification
     [s] into an actual rewrite specification (possibly containing variables of
     [env] and using [ss] for aliasing). *)
-let scope_rw_patt : sig_state ->  env -> p_rw_patt -> rw_patt =
+let scope_rw_patt : sig_state -> env -> p_rw_patt -> (term, tbinder) rw_patt =
   fun ss env s ->
   match s.elt with
-  | P_rw_Term(t)               -> RW_Term(scope_pattern ss env t)
-  | P_rw_InTerm(t)             -> RW_InTerm(scope_pattern ss env t)
-  | P_rw_InIdInTerm(x,t)       ->
+  | Rw_Term(t) -> Rw_Term(scope_pattern ss env t)
+  | Rw_InTerm(t) -> Rw_InTerm(scope_pattern ss env t)
+  | Rw_InIdInTerm(x,t) ->
       let v = new_tvar x.elt in
       let t = scope_pattern ss ((x.elt,(v, _Kind, None))::env) t in
-      RW_InIdInTerm(Bindlib.unbox (Bindlib.bind_var v (lift t)))
-  | P_rw_IdInTerm(x,t)         ->
+      Rw_InIdInTerm(Bindlib.unbox (Bindlib.bind_var v (lift t)))
+  | Rw_IdInTerm(x,t) ->
       let v = new_tvar x.elt in
       let t = scope_pattern ss ((x.elt,(v, _Kind, None))::env) t in
-      RW_IdInTerm(Bindlib.unbox (Bindlib.bind_var v (lift t)))
-  | P_rw_TermInIdInTerm(u,x,t) ->
+      Rw_IdInTerm(Bindlib.unbox (Bindlib.bind_var v (lift t)))
+  | Rw_TermInIdInTerm(u,(x,t)) ->
       let u = scope_pattern ss env u in
       let v = new_tvar x.elt in
       let t = scope_pattern ss ((x.elt,(v, _Kind, None))::env) t in
-      RW_TermInIdInTerm(u, Bindlib.unbox (Bindlib.bind_var v (lift t)))
-  | P_rw_TermAsIdInTerm(u,x,t) ->
+      Rw_TermInIdInTerm(u, Bindlib.unbox (Bindlib.bind_var v (lift t)))
+  | Rw_TermAsIdInTerm(u,(x,t)) ->
       let u = scope_pattern ss env u in
       let v = new_tvar x.elt in
       let t = scope_pattern ss ((x.elt,(v, _Kind, None))::env) t in
-      RW_TermAsIdInTerm(u, Bindlib.unbox (Bindlib.bind_var v (lift t)))
+      Rw_TermAsIdInTerm(u, Bindlib.unbox (Bindlib.bind_var v (lift t)))
