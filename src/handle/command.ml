@@ -233,48 +233,11 @@ let get_proof_data : compiler -> sig_state -> p_command ->
       (ss, None, None)
 
   | P_coercion{elt; _} ->
-      let scope_term ?(env=[]) ss =
-        scope_term true ss env (lazy Lplib.Extra.IntMap.empty)
+      let ss =
+        Coercion.handle ss elt.p_coer_id elt.p_coer_def elt.p_coer_typ
+          elt.p_coer_src elt.p_coer_ari elt.p_coer_req
       in
-      let defn, reqs = scope_coercion ss [] elt.p_coer_def in
-      let defn_ty =
-        let module Refiner = (val Stdlib.(!Infer.default)) in
-        let ty = scope_term ss elt.p_coer_typ in
-        Refiner.check_sort [] (Pos.make elt.p_coer_typ.pos ty) |> fst
-      in
-      let process_req (id, ty) : Infer.prereq =
-        match ty.elt with
-          | P_Arro(a, b) ->
-              let (name, env, coer) =
-                List.find (fun (n, _, _) -> n.elt = id.elt)
-                  (Array.to_list reqs)
-              in
-              let ty_src =
-                scope_term ~env ss a |> lift |>
-                Bindlib.bind_mvar (Env.vars env) |> Bindlib.unbox in
-              let ty_tgt =
-                scope_term ~env ss b |> lift |>
-                Bindlib.bind_mvar (Env.vars env) |> Bindlib.unbox
-              in
-              name, coer, ty_src, ty_tgt
-          | _ ->
-              Error.fatal ty.pos "Ill-formed requisite type:@ \
-                                  @[%a@ is not an arrow type@]"
-                Pretty.term ty
-      in
-      let requirements = List.map process_req elt.p_coer_req |> Array.of_list in
-      let cion =
-        Infer.{ name = elt.p_coer_id.elt; source = elt.p_coer_src
-              ; arity = elt.p_coer_ari; defn; defn_ty ; requirements }
-      in
-      let module Lookup = struct
-        let coercions = cion :: Stdlib.(!Infer.coercions)
-        let solve pb = Unif.solve_noexn pb
-      end
-      in
-      Stdlib.((Infer.default) := (module (Infer.Make(Lookup)): Infer.S));
-      Stdlib.(Infer.(coercions := cion :: !coercions));
-      (ss, None, None)
+      ss, None, None
   | P_inductive(ms, params, p_ind_list) ->
       (* Check modifiers. *)
       let (prop, expo, mstrat) = handle_modifiers ms in

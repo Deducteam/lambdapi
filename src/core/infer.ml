@@ -216,8 +216,10 @@ functor
       if !Debug.log_enabled then
         Print.(log "Cast [%a : %a ≡ %a]" pp_term t pp_term a pp_term b);
       let r = coerce ctx t a b in
-      if !Debug.log_enabled then
-        Print.(log "Cast [%a] to [%a]" pp_term t pp_term r);
+      if !Debug.log_enabled then (
+        let eq (ctx, a, b) = Eval.eq_modulo ctx a b in
+        if not (pure_test eq (ctx, t, r)) then
+          Print.(log "Cast [%a] to [%a]" pp_term t pp_term r) );
       r
 
     (** {1 Other rules} *)
@@ -275,9 +277,8 @@ functor
           mk_LLet (t_ty, t, u)
       | _ -> default ()
 
-    and infer : ctxt -> term -> term * term =
+    and infer_aux : ctxt -> term -> term * term =
      fun ctx t ->
-      if !Debug.log_enabled then log "Infer [%a]" Print.pp_term t;
       match unfold t with
       | Patt _ -> assert false
       | TEnv _ -> assert false
@@ -349,6 +350,7 @@ functor
           let t, t_ty = infer ctx t in
           match Eval.whnf ctx t_ty with
           | Prod (dom, b) ->
+              if !Debug.log_enabled then log "Appl-prod arg [%a]" Print.pp_term u;
               let u = force ctx u dom in
               (mk_Appl (t, u), Bindlib.subst b u)
           | Meta (_, _) ->
@@ -357,11 +359,20 @@ functor
               unif ctx t_ty (mk_Prod (u_ty, range));
               (mk_Appl (t, u), Bindlib.subst range u)
           | t_ty ->
-              (* XXX Slight variation regarding the rule from Matita *)
-              let u, u_ty = infer ctx u in
-              let range = LibTerm.Meta.make_codomain ctx u_ty in
-              let t = coerce ctx t t_ty (mk_Prod (u_ty, range)) in
+              let domain = LibTerm.Meta.make ctx mk_Type in
+              let range = LibTerm.Meta.make_codomain ctx domain in
+              let t = coerce ctx t t_ty (mk_Prod (domain, range)) in
+              if !Debug.log_enabled then log "Appl-default arg [%a]" Print.pp_term u;
+              let u = force ctx u domain in
               (mk_Appl (t, u), Bindlib.subst range u) )
+
+    and infer : ctxt -> term -> term * term = fun ctx t ->
+      if !Debug.log_enabled then log "Infer [%a]" Print.pp_term t;
+      let t, t_ty = infer_aux ctx t in
+      if !Debug.log_enabled then
+        log "Inferred [%a: %a]" Print.pp_term t Print.pp_term t_ty;
+      (t, t_ty)
+
 
     (** [noexn f cs ctx args] initialises {!val:constraints} to [cs],
         calls [f ctx args] and returns [Some(r,cs)] where [r] is the value of
