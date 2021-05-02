@@ -161,6 +161,7 @@ export function activate(context: ExtensionContext) {
 }
 
 function lpDocChangeHandler(event : TextDocumentChangeEvent, context: ExtensionContext) {
+
     if(event.document != window.activeTextEditor?.document){
         // should not happen
         console.log("Changes not on the active TextEditor");
@@ -192,7 +193,31 @@ function lpDocChangeHandler(event : TextDocumentChangeEvent, context: ExtensionC
         context.workspaceState.update('proofState', newPos);
         refreshGoals(panel, window.activeTextEditor, newPos, context);
         highlight(context, newPos, window.activeTextEditor);
-    }
+    } /* else {
+        const terminators = [';', 'begin'];
+        if(event.contentChanges.length == 1){
+            let change = event.contentChanges[0];
+            for(let term of terminators){
+                let searchText = event.document.getText(new Range(
+                    event.document.positionAt(change.rangeOffset - (term.length - 1)),
+                    event.document.positionAt(change.rangeOffset))) + change.text;
+                const found = searchText.search(term);
+                console.log(`searchText: ${searchText} regex:${term}\nfound:${found}`)
+                if(found >= 0){
+                    const panel : WebviewPanel | undefined = context.workspaceState.get('panel');
+                    if (!panel) {
+                        console.log('lpDocChangeHandler : workspace variables are not properly defined');
+                        return;
+                    }
+                    const offset = found + change.rangeOffset + 1;
+                    const newPos = event.document.positionAt(offset);
+                    context.workspaceState.update('proofState', newPos);
+                    refreshGoals(panel, window.activeTextEditor, newPos, context);
+                    highlight(context, newPos, window.activeTextEditor);
+                }
+            }
+        }
+    }*/
 }
 
 function getFirstError(uri : Uri, before? : Position){
@@ -201,8 +226,8 @@ function getFirstError(uri : Uri, before? : Position){
     let ind = 0;
     for (let diag of diags){
         if (diag.severity == 0) {//check if error
-            if(firstError && diag.range.start.isBefore(firstError)){
-                firstError = diag.range.start;
+            if(firstError){
+                firstError = diag.range.start.isBefore(firstError) ? diag.range.start : firstError;
             } else {
                 firstError = diag.range.start;
             }
@@ -495,6 +520,8 @@ function getGoalsEnvContent(goals : Goal[]){
 let ptyWriteCnt = 0;
 
 function updateTerminalText(logstr: string){
+    logstr = logstr.replace(/^[\n \t\r]*(\u001b\[[0-9]+m)[\n \t\r]*/g, "$1")
+                   .replace(/[\n \t\r]*(\u001b\[[0-9]+m)[\n \t\r]*$/g, "$1");
     const termName = "Lambdapi Debug";
     const clearTextSeq = '\x1b[2J\x1b[3J\x1b[;H';
 

@@ -158,7 +158,7 @@ let dummy_loc =
 let check_text ~doc =
   let uri, version = doc.uri, doc.version in
   let add_pos_info pos msg =
-    Option.map_default (fun p -> (Pos.to_string p)^" "^msg) msg pos in
+    Option.map_default (fun p -> "["^(Pos.to_string p)^"] "^msg) msg pos in
   try
     let cmds =
       let (cmds, root) = Pure.parse_text doc.root ~fname:uri doc.text in
