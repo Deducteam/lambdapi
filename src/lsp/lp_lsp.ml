@@ -230,6 +230,21 @@ let rec get_goals ~doc ~line ~pos =
               | Some _ -> get_goals ~doc ~line:(line-1) ~pos:0 end
     | Some (v,_) -> Some v
 
+(** [get_first_error doc] returns the first error inferred from doc.logs *)
+let get_first_error doc =
+  List.fold_left (fun acc b ->
+    let ((sev, _), bpos) = b in
+    if sev != 1 then acc else
+      match acc with
+      | None -> Some b
+      | Some ((_, _), apos) ->
+        let open Pos in
+        match apos with None -> Some b | Some apos ->
+        match bpos with None -> acc | Some bpos ->
+        if compare (apos.start_line, apos.start_col)
+                   (bpos.start_line, bpos.start_col) <= 0 then
+          acc else Some b) None doc.Lp_doc.logs
+
 let get_logs ~doc ~line ~pos : string =
   (* DEBUG LOG START *)
   LIO.log_error "get_logs"
@@ -250,23 +265,26 @@ let get_logs ~doc ~line ~pos : string =
     (List.fold_left (^) "\n" (List.map log_to_str doc.Lp_doc.logs));
   (* DEBUG LOG END *)
   let line = line+1 in
-  let err_logs = List.filter (fun ((s, _), _) -> s = 1) doc.Lp_doc.logs in
-  let closest_msg =
+  let first_error = get_first_error doc in
+  match first_error with
+  | Some ((_, msg), Some loc)
+      when compare (loc.start_line, loc.start_col) (line, pos) <= 0 ->
+    Format.asprintf ("\n[%s]\n" ^^ (Extra.red "%s")) (Pos.to_string loc) msg
+  | _ ->
     match closest_before (line, pos) doc.Lp_doc.logs with
     | None -> ""
     | Some ((sev, msg), _) -> if sev = 1 then "" else msg
-  in
-  let error_msg = List.fold_left_while (fun acc ((_,msg),_) -> acc^"\n"^msg)
-    (fun (_, loc) -> match loc with None -> true
-    | Some p -> let open Pos in
-      compare (p.start_line, p.start_col) (line, pos) <= 0)
-    "" err_logs in
-  (Format.asprintf (Extra.red "%s\n") error_msg) ^ closest_msg
 
 
 let do_goals ofmt ~id params =
   let uri, line, pos = get_docTextPosition params in
   let doc = Hashtbl.find completed_table uri in
+  let line, pos = match get_first_error doc with
+    | Some ((_, _), Some loc) ->
+      let eline, epos = loc.start_line, loc.start_col in
+      if compare (eline, epos) (line, pos) <= 0 then
+        eline, epos else line, pos
+    | _ -> line, pos in
   let goals = get_goals ~doc ~line ~pos in
   let logs = get_logs ~doc ~line ~pos in
   let result = LSP.json_of_goals goals ~logs in
