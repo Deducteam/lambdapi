@@ -55,6 +55,8 @@ let buf_get_and_clear buf =
   Buffer.clear buf; res
 
 let process_pstep (pstate,diags,logs) tac =
+  (* Skip processing if last log message was an error *)
+  match logs with ((1, _), _) :: _ -> (pstate,diags,logs) | _ ->
   let open Pure in
   let tac_loc = Tactic.get_pos tac in
   let hndl_tac_res = handle_tactic pstate tac in
@@ -82,6 +84,8 @@ let get_goals dg_proof =
   in get_goals_aux [] dg_proof
 (* XXX: Imperative problem *)
 let process_cmd _file (nodes,st,dg,logs) ast =
+  (* Skip processing if last log message was an error *)
+  match logs with ((1, _), _) :: _ -> (nodes,st,dg,logs) | _ ->
   let open Pure in
   (* let open Timed in *)
   (* XXX: Capture output *)
@@ -153,6 +157,8 @@ let dummy_loc =
 
 let check_text ~doc =
   let uri, version = doc.uri, doc.version in
+  let add_pos_info pos msg =
+    Option.map_default (fun p -> (Pos.to_string p)^" "^msg) msg pos in
   try
     let cmds =
       let (cmds, root) = Pure.parse_text doc.root ~fname:uri doc.text in
@@ -165,7 +171,9 @@ let check_text ~doc =
 
     let nodes, final, diag, logs =
       List.fold_left (process_cmd uri) ([],doc.root,[],[]) cmds in
-    let logs = List.rev logs in
+    let logs = List.rev_map (fun ((sev, msg), loc) ->
+      let msg = if sev != 1 then msg else add_pos_info loc msg in
+      ((sev, msg), loc)) logs in
     let doc = { doc with nodes; final; map; logs } in
     doc,
     LSP.mk_diagnostics ~uri ~version @@
@@ -176,5 +184,5 @@ let check_text ~doc =
       ) [] diag
   with
   | Pure.Parse_error(loc, msg) ->
-    let logs = [((1, msg), Some loc)] in
+    let logs = [((1, add_pos_info (Some loc) msg), Some loc)] in
     {doc with logs}, mk_error ~doc loc msg
