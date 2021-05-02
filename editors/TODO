@@ -1,7 +1,5 @@
 Emacs:
 
-- add shortcut C-c C-r for eglot-reconnect
-
 - Do not change the green zone and the goals when editing or adding a comment in the green zone.
 
 - Instead of printing the type on the bottom line of emacs, would it be possible to print it in a hover like it is done when there is an error?
@@ -9,6 +7,7 @@ Emacs:
 
 VSCode:
 
+- Add an electric mode in VSCode too.
+
 - Do not change the green zone and the goals when editing or adding a comment in the green zone.
 
-- Add an electric mode in VSCode too.
