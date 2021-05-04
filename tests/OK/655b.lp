@@ -26,3 +26,6 @@ symbol f : (A → A → A) → A;
 
 assert ⊢ f (+) : A;
 assert ⊢ f @+ : A;
+
+assert ⊢ f (*) : A;
+assert ⊢ f (@* _) : A;
