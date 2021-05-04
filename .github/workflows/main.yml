@@ -30,6 +30,7 @@ jobs:
           opam install --deps-only -d -t lambdapi
       - name: running tests...
         run: |
+          opam install alt-ergo
           eval $(opam env)
           why3 config detect
           make real_tests
