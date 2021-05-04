@@ -122,14 +122,17 @@
           | { <term> }
           | <int>
 
-<sterm> ::= <aterm>+
+<saterm> ::= <aterm>+
 
-<term> ::= <sterm>
-         | <term> → <term>
-         | ` <term_id> <binder>
-         | Π <binder>
-         | λ <binder>
-         | let <uid> <params>* [: <term>] ≔ <term> in <term>
+<bterm> ::= ` <term_id> <binder>
+          | Π <binder>
+          | λ <binder>
+          | let <uid> <params>* [: <term>] ≔ <term> in <term>
+
+<term> ::= <bterm>
+         | <saterm>
+         | <saterm> <bterm>
+         | <saterm> → <term>
 
 <binder> ::= <params>+ , <term>
            | <param_id> : <term> , <term>
