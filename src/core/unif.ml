@@ -172,8 +172,6 @@ let add_to_unsolved : ctxt -> term -> term -> problem -> problem =
   | None ->
       if !log_enabled then log_unif "move to unsolved";
       {p with unsolved = (ctx,t1,t2) :: p.unsolved}
-  | Some([]) -> assert false
-  (* Unification rules generate non empty list of unification constraints *)
   | Some(cs) ->
       {p with to_solve = List.fold_left add_unif_rule_constr p.to_solve cs}
 
@@ -289,7 +287,7 @@ let imitate_lam : ctxt -> meta -> problem -> problem = fun ctx m p ->
    injective and [inverse s v] does not fail, and [None] otherwise. *)
 let inverse_opt : sym -> term list -> term -> (term * term) option =
   fun s ts v ->
-  if !log_enabled then log_unif "try inverse";
+  if !log_enabled then log_unif "try inverse %a" pp_sym s;
   try
     match ts with
     | [t] when is_injective s -> Some (t, Inverse.inverse s v)
@@ -304,7 +302,17 @@ let add_inverse :
   fun ctx t1 s ts1 t2 p ->
   match inverse_opt s ts1 t2 with
   | Some (t, u) -> add_constr (ctx,t,u) p
-  | _ -> add_to_unsolved ctx t1 t2 p
+  | _ ->
+      match try_unif_rules ctx t1 t2 with
+      | None ->
+          begin match unfold t2 with
+          | Prod _ when is_constant s -> error t1 t2
+          | _ ->
+              if !log_enabled then log_unif "move to unsolved";
+              {p with unsolved = (ctx,t1,t2) :: p.unsolved}
+          end
+      | Some cs ->
+        {p with to_solve = List.fold_left add_unif_rule_constr p.to_solve cs}
 
 (** For a problem of the form [h1 ≡ h2] with [h1 = m[ts]], [h2 = Πx:_,_] (or
    the opposite) and [ts] distinct bound variables, [imitate_prod m h1 h2 p]
