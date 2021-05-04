@@ -16,7 +16,7 @@ open Debug
 let log_scop = new_logger 'o' "scop" "term scoping"
 let log_scop = log_scop.logger
 
-(** [find_qid prt prv st env qid] returns a boxed term corresponding to a
+(** [find_qid prt prv ss env qid] returns a boxed term corresponding to a
    variable of the environment [env] (or to a symbol) which name corresponds
    to [qid]. In the case where the module path [fst qid.elt] is empty, we
    first search for the name [snd qid.elt] in the environment, and if it is
@@ -26,7 +26,7 @@ let log_scop = log_scop.logger
    symbols from current modules are always allowed). If [prv] is true, private
    symbols are allowed. *)
 let find_qid : bool -> bool -> sig_state -> env -> p_qident -> tbox =
-  fun prt prv st env qid ->
+  fun prt prv ss env qid ->
   if Timed.(!log_enabled) then log_scop "find_qid %a" Pretty.qident qid;
   let (mp, s) = qid.elt in
   (* Check for variables in the environment first. *)
@@ -35,10 +35,10 @@ let find_qid : bool -> bool -> sig_state -> env -> p_qident -> tbox =
     _Vari (Env.find s env)
   with Not_found ->
     (* Check for symbols. *)
-    _Symb (find_sym ~prt ~prv st qid)
+    _Symb (find_sym ~prt ~prv ss qid)
 
-(** [get_root t ss] returns the symbol at the root of term [t]. *)
-let get_root : p_term -> sig_state -> Env.t -> sym = fun t ss env ->
+(** [get_root ss env t] returns the symbol at the root of the term [t]. *)
+let get_root : sig_state -> Env.t -> p_term -> sym = fun ss env t ->
   let rec get_root t =
     match t.elt with
     | P_Iden(qid,_) -> find_sym ~prt:true ~prv:true ss qid
@@ -96,26 +96,6 @@ type mode =
   (** Scoping mode for unification rule right-hand sides. During  scoping, we
       always have [m_urhs_vars_nb = m_lhs_size + length m_urhs_xvars]. *)
 
-(** [get_pratt_args ss env t] decomposes the parser level term [t] into a
-    spine [(h,args)], when [h] is the term at the head of the application and
-    [args] is the list of all its arguments. The function also reorders the
-    term taking infix and prefix operators into account using a Pratt
-    parser that signature state [ss] and environment [env] to determine which
-    terms are operators, and which aren't. *)
-(* NOTE this function is one of the few that use the Pratt parser, and the
-   term is converted from appl to list in [Pratt.parse], then rebuilt into
-   appl node (still by Pratt.parse), then again decomposed into a list by the
-   function. We may make [Pratt.parse] to return already a list of terms,
-   or have the application represented as a non empty list. *)
-let get_pratt_args : sig_state -> Env.t -> p_term -> p_term * p_term list =
-  fun ss env t ->
-  let rec get_args args t =
-    match t.elt with
-    | P_Appl(t,u) -> get_args (u::args) t
-    | P_Wrap(t)   -> get_args args (Pratt.parse ss env t)
-    | _           -> (t, args)
-  in get_args [] (Pratt.parse ss env t)
-
 (** [fresh_patt name ts] creates a unique pattern variable applied to
    [ts]. [name] is used as suffix if distinct from [None]. *)
 let fresh_patt : lhs_data -> string option -> tbox array -> tbox =
@@ -147,12 +127,20 @@ let fresh_patt : lhs_data -> string option -> tbox array -> tbox =
 let rec scope : mode -> sig_state -> env -> p_term -> tbox =
   fun md ss env t ->
   if Timed.(!log_enabled) then log_scop "%a" Pretty.term t;
+  match t.elt with
+  | P_Wrap t -> scope md ss env t
+  | _ ->
   (* Extract the spine. *)
-  let (p_head, args) = get_pratt_args ss env t in
+  let p_head, args =
+    match Syntax.p_get_args t with
+    | {elt=P_Iden(_,true);_} as h, ts -> h, ts
+    | h, [] -> h, []
+    | _ -> Syntax.p_get_args (Pratt.parse ss env t)
+   in
   (* Check that LHS pattern variables are applied to no argument. *)
   begin
-    match (p_head.elt, md) with
-    | (P_Patt(_,_), M_LHS(_)) when args <> [] ->
+    match p_head.elt, md with
+    | P_Patt _, M_LHS _ when args <> [] ->
       fatal t.pos "Pattern variables cannot be applied."
     | _ -> ()
   end;
@@ -440,11 +428,9 @@ let scope_term_with_params :
   let m = Stdlib.ref StrMap.empty in
   let md = M_Term(m, sgm, prv) in
   if Timed.(!log_enabled) then log_scop "%a" Pretty.term t;
-  let p_head, _ = get_pratt_args ss env t in
   let scope_b cons xs u =
-    let warn = false in
-    Bindlib.unbox (scope_binder ~warn md ss cons env xs (Some u)) in
-  match p_head.elt with
+    Bindlib.unbox (scope_binder ~warn:false md ss cons env xs (Some u)) in
+  match t.elt with
   | P_Abst(xs,u) -> scope_b _Abst xs u
   | P_Prod(xs,u) -> scope_b _Prod xs u
   | _ -> assert false
@@ -550,7 +536,7 @@ let scope_rule : bool -> sig_state -> p_rule -> pre_rule loc = fun ur ss r ->
   (* Scope the LHS and get the reserved index for named pattern variables. *)
   let (pr_lhs, lhs_indices, lhs_arities, lhs_names, lhs_size) =
     let mode =
-      M_LHS{ m_lhs_prv     = is_private (get_root p_lhs ss [])
+      M_LHS{ m_lhs_prv     = is_private (get_root ss [] p_lhs)
            ; m_lhs_indices = Hashtbl.create 7
            ; m_lhs_arities = Hashtbl.create 7
            ; m_lhs_names   = Hashtbl.create 7

@@ -86,11 +86,11 @@ and get_impl_term_aux : p_term_aux -> bool list = fun t ->
 
 (** [p_get_args t] is {!val:LibTerm.get_args} on syntax-level terms. *)
 let p_get_args : p_term -> p_term * p_term list = fun t ->
-  let rec p_get_args acc t =
+  let rec p_get_args t acc =
     match t.elt with
-    | P_Appl(t, u) -> p_get_args (u::acc) t
-    | _            -> (t, acc)
-  in p_get_args [] t
+    | P_Appl(t, u) -> p_get_args t (u::acc)
+    | _            -> t, acc
+  in p_get_args t []
 
 (** Parser-level rewriting rule representation. *)
 type p_rule_aux = p_term * p_term
