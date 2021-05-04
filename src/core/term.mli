@@ -138,24 +138,25 @@ and sym =
     an environment [env] that should only contain distinct variables (terms of
     the form [Vari(x)]).  They correspond to the set of all the variables that
     may appear free in a matched term. The optional integer [i] corresponds to
-    the reserved index (if any) for the matched term in the environment of the
-    RHS during matching. When [i] is [None], then the variable is not bound in
-    the RHS. If it is [Some(_)], then the variables is bound in the RHS, or it
-    appears non-linearly in the LHS.
+    the reserved index for the matched term in the environment of the RHS
+    during matching.
 
     For instance, with the rule [f $X $Y $Y $Z ↪ $X]:
      - [$X] is represented by [Patt(Some 0, "X", [||])] since it occurs in the
        RHS of the rule (and it is actually the only one),
      - [$Y] is represented by [Patt(Some 1, "Y", [||])] as it occurs more than
        once in the LHS (the rule is non-linear in this variable),
-     - [$Z] is represented by [Patt(None, "Z", [||])] since it is only appears
-       once in the LHS, and it is not used in the RHS. Note that wildcards (in
-       the concrete syntax) are represented in the same way, and with a unique
+     - [$Z] is represented by [Patt(Some 2, "Z", [||])] even though it is not
+       bound in the RHS and it appears linearly. Note that wildcards (in the
+       concrete syntax) are represented in the same way, and with a unique
        name (in the rule) that is generated automatically.
 
     Then, the term [f t u v w] matches the LHS with a substitution represented
-    by an array of terms (or rather “term environments”) [a] of length 2 if we
-    have [a.(0) = t], [a.(1) = u] and [a.(1) = v]. *)
+    by an array of terms (or rather “term environments”) [a] of length 3 if we
+    have [a.(0) = t], [a.(1) = u], [a.(1) = v] and [a.(2) = w].
+
+    {b TODO} memorising [w] in the substitution is sub-optimal. In practice,
+    the term matched by [$Z] should be ignored. *)
 
 (** {b NOTE} that the second parameter of the {!constructor:Patt}  constructor
     holds an array of terms. This is essential for variables binding: using an
