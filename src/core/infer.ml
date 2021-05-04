@@ -229,7 +229,7 @@ let infer : solver -> Pos.popt -> ctxt -> term -> term =
       | Some [] -> a
       | Some cs ->
           List.iter (wrn pos "Cannot solve %a.\n" pp_constr) cs;
-          fatal pos "[%a] is not typable." pp_term a
+          fatal pos "[%a] is not typable." pp_term t
 
 (** [check pos ctx t a] checks that [t] has type [a] in context [ctx],
 using the constraint solver [solve].
