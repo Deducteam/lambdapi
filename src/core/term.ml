@@ -527,11 +527,11 @@ let eq_constr : constr eq = eq_of_cmp cmp_constr
     [h] is the head term of [t] and [args] is the list of arguments applied to
     [h] in [t]. The returned [h] cannot be an [Appl] node. *)
 let get_args : term -> term * term list = fun t ->
-  let rec get_args acc t =
+  let rec get_args t acc =
     match unfold t with
-    | Appl(t,u) -> get_args (u::acc) t
-    | t         -> (t, acc)
-  in get_args [] t
+    | Appl(t,u) -> get_args t (u::acc)
+    | t         -> t, acc
+  in get_args t []
 
 (** [get_args_len t] is similar to [get_args t] but it also returns the length
     of the list of arguments. *)
