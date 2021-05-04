@@ -294,10 +294,10 @@ let inverse_opt : sym -> term list -> term -> (term * term) option =
     | _ -> raise Not_found
   with Not_found -> if !log_enabled then log_unif "failed"; None
 
-(** [add_inverse t1 s ts1 t2] tries to replace a problem of the form [t1 ≡ t2]
+(** [inverse t1 s ts1 t2] tries to replace a problem of the form [t1 ≡ t2]
    with [t1 = s(ts1)] and [ts1=[u]] by [u ≡ inverse s t2], when [s] is
    injective. *)
-let add_inverse :
+let inverse :
       ctxt -> term -> sym -> term list -> term -> problem -> problem =
   fun ctx t1 s ts1 t2 p ->
   match inverse_opt s ts1 t2 with
@@ -340,7 +340,7 @@ let sym_sym_whnf :
     | _, _ ->
         match inverse_opt s1 ts1 t2 with
         | Some (t, u) -> add_constr (ctx,t,u) p
-        | None -> add_inverse ctx t2 s2 ts2 t1 p
+        | None -> inverse ctx t2 s2 ts2 t1 p
 
 (** [solve p] tries to solve the unification problem [p] and
     returns the constraints that could not be solved. *)
@@ -466,8 +466,8 @@ let rec solve : problem -> constr list = fun p ->
   | Meta _, _
   | _, Meta _ -> solve (add_to_unsolved ctx t1 t2 p)
 
-  | Symb s, _ -> solve (add_inverse ctx t1 s ts1 t2 p)
-  | _, Symb s -> solve (add_inverse ctx t2 s ts2 t1 p)
+  | Symb s, _ -> solve (inverse ctx t1 s ts1 t2 p)
+  | _, Symb s -> solve (inverse ctx t2 s ts2 t1 p)
 
   | _ -> solve (add_to_unsolved ctx t1 t2 p)
 
