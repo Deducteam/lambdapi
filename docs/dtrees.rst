@@ -36,16 +36,22 @@ Decision trees are interpreted during evaluation of terms to get the
 correct rule to apply. A node is thus an instruction for the evaluation
 algorithm. There are labeled nodes, labeled edges and leaves.
 
-* Circle represent *regular* nodes. The next node is reached by performing an
-  atomic match between a term of the stack and the labels of the edges between
-  the node and its children. Let ``t`` be the term taken from the stack and
-  matched against the labels. The labels of the edges can be
+* Circle represent *regular* nodes. Let ``n`` be the label of the node, the next
+  node is reached by performing an atomic match between the ``n``\ th term of
+  the stack and the labels of the edges between the node and its children. Let
+  ``t`` be the term taken from the stack and matched against the labels. The
+  labels of the edges can be
 
   * ``s_n``, the atomic match succeeds if ``t`` is the symbol ``s`` applied to
     ``n`` arguments, the ``n`` arguments are put back in the stack;
 
-  * ``λvarn``, the atomic match succeeds if ``t`` is an abstraction, the body is
-    substituted with (fresh) variable ``varn`` and put back in the stack;
+  * ``λvn``, the atomic match succeeds if ``t`` is an abstraction. the body is
+    substituted with (fresh) variable ``vn``. Both the domain of the abstraction
+    and the substituted body are put back into the stack;
+
+  * ``Πvn``, the atomic match succeeds if ``t`` is a product. The body is
+    substituted with a (fresh) variable ``vn``. Both the domain of the product
+    and the substituted body are put back into the stack
 
   * ``*``, the atomic match succeeds whatever ``t`` is.
 
@@ -60,7 +66,7 @@ algorithm. There are labeled nodes, labeled edges and leaves.
 
   * ``n ≡ m`` which succeeds if the ``n``\ th and ``m``\ th saved terms are
     convertible,
-  * ``xs ⊊ FV(n)`` which succeeds if the free variables of the ``n``\ th saved
+  * ``xs ⊆ FV(n)`` which succeeds if the free variables of the ``n``\ th saved
     term is a superset of the free variables ``xs``.
 
 * Triangles represent *stack check* nodes. The next node is the left child if
