@@ -238,6 +238,9 @@ type tbox = term Bindlib.box
 
 type tebox = term_env Bindlib.box
 
+(** Basic printing function (for debug). *)
+val pp_term : term pp
+
 (** Typing context associating a [Bindlib] variable to a type and possibly a
    definition. The typing environment [x1:A1,..,xn:An] is represented by the
    list [xn:An;..;x1:A1] in reverse order (last added variable comes

@@ -1,0 +1,11 @@
+symbol Prop:TYPE;
+symbol A:TYPE;
+symbol ∀:(A → Prop) → Prop;
+notation ∀ quantifier;
+symbol p:A → Prop;
+type `∀ x,p x;
+symbol a:A;
+symbol ⇒:Prop → Prop → Prop;
+notation ⇒ infix left 5;
+type p a ⇒ (`∀ x, p x);
+type p a ⇒ `∀ x, p x;
