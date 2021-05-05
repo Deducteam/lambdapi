@@ -389,6 +389,10 @@ let is_constant : sym -> bool = fun s -> s.sym_prop = Const
 (** [is_private s] tells whether the symbol [s] is private. *)
 let is_private : sym -> bool = fun s -> s.sym_expo = Privat
 
+(** [is_modulo s] tells whether the symbol [s] is modulo some equations. *)
+let is_modulo : sym -> bool = fun s ->
+  match s.sym_prop with Assoc _ | Commu | AC _ -> true | _ -> false
+
 (** [unfold t] repeatedly unfolds the definition of the surface constructor of
     [t], until a significant {!type:term} constructor is found.  The term that
     is returned cannot be an instantiated metavariable or term environment nor
@@ -495,11 +499,11 @@ let eq_constr : constr eq = eq_of_cmp cmp_constr
     [h] is the head term of [t] and [args] is the list of arguments applied to
     [h] in [t]. The returned [h] cannot be an [Appl] node. *)
 let get_args : term -> term * term list = fun t ->
-  let rec get_args acc t =
+  let rec get_args t acc =
     match unfold t with
-    | Appl(t,u) -> get_args (u::acc) t
-    | t         -> (t, acc)
-  in get_args [] t
+    | Appl(t,u) -> get_args t (u::acc)
+    | t         -> t, acc
+  in get_args t []
 
 (** [get_args_len t] is similar to [get_args t] but it also returns the length
     of the list of arguments. *)
@@ -594,7 +598,8 @@ let _ =
   assert (eq (left_aliens s left) [t1; t2; t3]);
   assert (eq (right_aliens s right) [t3; t2; t1])
 
-(** [mk_Appl t u] puts the application of [t] to [u] in canonical form. *)
+(** [mk_Appl t u] puts the application of [t] to [u] in canonical form wrt C
+   or AC symbols. *)
 let mk_Appl : term * term -> term = fun (t, u) ->
   (*if !log_enabled then log_term "mk_Appl(%a, %a)" pp_term t pp_term u;
   let r =*)
@@ -619,6 +624,10 @@ let mk_Appl : term * term -> term = fun (t, u) ->
   | _ -> Appl (t, u)
   (*in if !log_enabled then
     log_term "mk_Appl(%a, %a) = %a" pp_term t pp_term u pp_term r; r*)
+
+(** mk_Appl_not_canonical t u] builds the non-canonical (wrt. C and AC
+   symbols) application of [t] to [u]. WARNING: to use only in Sign.link. *)
+let mk_Appl_not_canonical : term * term -> term = fun (t, u) -> Appl(t, u)
 
 (** [add_args t args] builds the application of the {!type:term} [t] to a list
     arguments [args]. When [args] is empty, the returned value is (physically)
@@ -648,9 +657,16 @@ let _Kind : tbox = Bindlib.box Kind
 let _Symb : sym -> tbox = fun s -> Bindlib.box (Symb s)
 
 (** [_Appl t u] lifts an application node to the {!type:tbox} type given boxed
-    terms [t] and [u]. *)
+   terms [t] and [u]. *)
 let _Appl : tbox -> tbox -> tbox =
-  Bindlib.box_apply2 (fun t u -> mk_Appl(t,u))
+  Bindlib.box_apply2 (fun t u -> mk_Appl (t,u))
+
+(** [_Appl_not_canonical t u] lifts an application node to the {!type:tbox}
+   type given boxed terms [t] and [u], without putting it in canonical form
+   wrt. C and AC symbols. WARNING: to use in scoping of rewrite rule LHS only
+   as it breaks some invariants. *)
+let _Appl_not_canonical : tbox -> tbox -> tbox =
+  Bindlib.box_apply2 (fun t u -> Appl (t,u))
 
 (** [_Appl_list a [b1;...;bn]] returns (... ((a b1) b2) ...) bn. *)
 let _Appl_list : tbox -> tbox list -> tbox = List.fold_left _Appl

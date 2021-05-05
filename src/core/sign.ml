@@ -95,29 +95,30 @@ let create_sym : expo -> prop -> bool -> string -> term -> bool list -> sym =
 
 (** [link sign] establishes physical links to the external symbols. *)
 let link : t -> unit = fun sign ->
-  let rec link_term t =
+  let rec link_term mk_Appl t =
     let link_binder b =
       let (x,t) = Bindlib.unbind b in
-      Bindlib.unbox (Bindlib.bind_var x (lift (link_term t)))
+      Bindlib.unbox (Bindlib.bind_var x (lift (link_term mk_Appl t)))
     in
     match unfold t with
     | Vari(_)     -> t
     | Type        -> t
     | Kind        -> t
     | Symb(s)     -> mk_Symb(link_symb s)
-    | Prod(a,b)   -> mk_Prod(link_term a, link_binder b)
-    | Abst(a,t)   -> mk_Abst(link_term a, link_binder t)
-    | LLet(a,t,u) -> mk_LLet(link_term a, link_term t, link_binder u)
-    | Appl(t,u)   -> mk_Appl(link_term t, link_term u)
+    | Prod(a,b)   -> mk_Prod(link_term mk_Appl a, link_binder b)
+    | Abst(a,t)   -> mk_Abst(link_term mk_Appl a, link_binder t)
+    | LLet(a,t,u) ->
+        mk_LLet(link_term mk_Appl a, link_term mk_Appl t, link_binder u)
+    | Appl(t,u)   -> mk_Appl(link_term mk_Appl t, link_term mk_Appl u)
     | Meta(_,_)   -> assert false
-    | Patt(i,n,m) -> mk_Patt(i, n, Array.map link_term m)
-    | TEnv(t,m)   -> mk_TEnv(t, Array.map link_term m)
-    | Wild        -> t
-    | TRef(_)     -> t
+    | Patt(i,n,m) -> mk_Patt(i, n, Array.map (link_term mk_Appl) m)
+    | TEnv(t,m)   -> mk_TEnv(t, Array.map (link_term mk_Appl) m)
+    | Wild        -> assert false
+    | TRef(_)     -> assert false
   and link_rule r =
-    let lhs = List.map link_term r.lhs in
+    let lhs = List.map (link_term mk_Appl_not_canonical) r.lhs in
     let (xs, rhs) = Bindlib.unmbind r.rhs in
-    let rhs = lift (link_term rhs) in
+    let rhs = lift (link_term mk_Appl rhs) in
     let rhs = Bindlib.unbox (Bindlib.bind_mvar xs rhs) in
     {r with lhs ; rhs}
   and link_symb s =
@@ -128,8 +129,8 @@ let link : t -> unit = fun sign ->
     with Not_found -> assert false
   in
   let fn _ (s,_) =
-    s.sym_type  := link_term !(s.sym_type);
-    s.sym_def   := Option.map link_term !(s.sym_def);
+    s.sym_type  := link_term mk_Appl !(s.sym_type);
+    s.sym_def   := Option.map (link_term mk_Appl) !(s.sym_def);
     s.sym_rules := List.map link_rule !(s.sym_rules)
   in
   StrMap.iter fn !(sign.sign_symbols);

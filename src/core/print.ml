@@ -175,7 +175,7 @@ and pp_term : term pp = fun ppf t ->
                     else out ppf "(%a %a %a)" appl l pp_sym s appl r;
                     List.iter (out ppf " %a" appl) args;
                     if p <> `Func then out ppf ")"
-                | _ -> pp_appl h args
+                | _ -> out ppf "@"; pp_appl h args
               end
           | Some Zero -> out ppf "0"
           | Some Succ ->
@@ -259,6 +259,8 @@ and pp_term : term pp = fun ppf t ->
     | t -> out ppf ", %a" func t
   in
   func ppf (cleanup t)
+
+(*let pp_term ppf t = out ppf "<%a printed %a>" Term.pp_term t pp_term t*)
 
 let rec pp_prod : (term * bool list) pp = fun ppf (t, impl) ->
   match unfold t, impl with
