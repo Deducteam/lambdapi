@@ -46,7 +46,7 @@ end = struct
           Option.bind f sym
       | _ -> None
 
-    let make_appl t u = make (Pos.cat t.pos u.pos) (P_Appl(t, u))
+    let make_appl t u = Pos.make (Pos.cat t.pos u.pos) (P_Appl(t, u))
   end
 
   (* NOTE the term is converted from appl nodes to list in [Pratt.parse],
