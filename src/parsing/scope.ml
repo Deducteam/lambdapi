@@ -152,7 +152,7 @@ let rec scope : mode -> sig_state -> env -> p_term -> tbox =
         (* We avoid unboxing if [h] is not closed (and hence not a symbol). *)
         if Bindlib.is_closed h then
           match Bindlib.unbox h with
-          | Symb s -> if expl then [] else (Format.eprintf "[impl] %a, %a@." Pretty.term p_head Fmt.(Dump.list bool) s.sym_impl; s.sym_impl)
+          | Symb s -> if expl then [] else s.sym_impl
           | _ -> []
         else []
     | _ -> []
