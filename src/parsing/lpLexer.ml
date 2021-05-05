@@ -108,7 +108,7 @@ exception SyntaxError of strloc
 let digit = [%sedlex.regexp? '0' .. '9']
 let nonzero_nat = [%sedlex.regexp? '1' .. '9', Star digit]
 let nat = [%sedlex.regexp? '0' | nonzero_nat]
-let float = [%sedlex.regexp? nat, '.', Opt (nat)]
+let float = [%sedlex.regexp? nat, '.', Plus digit]
 let stringlit = [%sedlex.regexp? '"', Star (Compl ('"' | '\n')), '"']
 let comment = [%sedlex.regexp? "//", Star (Compl ('\n' | '\r'))]
 

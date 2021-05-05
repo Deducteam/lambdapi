@@ -29,9 +29,8 @@ end = struct
     (* Get properties of term [t] if its an operator. *)
     let get (tbl, env) t =
       match t.elt with
-      | P_Iden(id, _) ->
+      | P_Iden({elt=(mp, s); _} as id, false) ->
           let sym =
-            let {elt=(mp, s); _} = id in
             try (* Look if [id] is in [env]... *)
               if mp <> [] then raise Not_found;
               ignore (Env.find s env); None
@@ -50,6 +49,10 @@ end = struct
     let make_appl t u = make (Pos.cat t.pos u.pos) (P_Appl(t, u))
   end
 
+  (* NOTE the term is converted from appl nodes to list in [Pratt.parse],
+   rebuilt into appl nodes by [Pratt.parse], and then decomposed again into a
+   list by [get_args]. We could make [Pratt.parse] return a list of terms
+   instead. *)
   let parse : Sig_state.t -> Env.t -> p_term -> p_term = fun st env t ->
     let (h,args) = Syntax.p_get_args t in
     let strm = Stream.of_list (h::args) in
