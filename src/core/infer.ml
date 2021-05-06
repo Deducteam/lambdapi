@@ -229,7 +229,7 @@ let infer : solver -> Pos.popt -> ctxt -> term -> term =
       | Some [] -> a
       | Some cs ->
           List.iter (wrn pos "Cannot solve %a.\n" pp_constr) cs;
-          fatal pos "Failed to infer the type of [%a]." pp_term t
+          fatal pos "Failed to infer the type of %a." pp_term t
 
 (** [check pos ctx t a] checks that [t] has type [a] in context [ctx],
 using the constraint solver [solve].
@@ -260,7 +260,7 @@ let check_sort : solver -> Pos.popt -> ctxt -> term -> unit
       | None -> fatal pos "[%a] is not typable." pp_term t
       | Some ((_::_) as cs) ->
           List.iter (wrn pos "Cannot solve %a.\n" pp_constr) cs;
-          fatal pos "Failed to infer the type of [%a]." pp_term a
+          fatal pos "Failed to infer the type of %a." pp_term a
       | Some [] ->
           match unfold a with
           | Type | Kind -> ()
