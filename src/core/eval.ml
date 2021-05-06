@@ -59,17 +59,15 @@ let rec whnf : ?rewrite:bool -> ctxt -> term -> term =
   let s = Stdlib.(!steps) in
   let u, stk = whnf_stk ~rewrite ctx t [] in
   let r = if Stdlib.(!steps) <> s then add_args u stk else unfold t in
-  if !log_enabled then log_eval "whnf %a" pp_constr (ctx,t,r); r
+  (*if !log_enabled then log_eval "whnf %a" pp_constr (ctx,t,r);*) r
 
 (** [whnf_stk c t stk] computes the weak head normal form of [t] applied to
     stack [stk] in context [c]. *)
 and whnf_stk : ?rewrite:bool -> ctxt -> term -> stack -> term * stack =
   fun ?(rewrite=true) ctx t stk ->
-  let st = (unfold t, stk) in
   if !log_enabled then
-    log_eval "whnf_stk %a%a %a"
-      pp_ctxt ctx pp_term (fst st) (D.list pp_term) (snd st);
-  match st with
+    log_eval "whnf_stk %a%a %a" pp_ctxt ctx pp_term t (D.list pp_term) stk;
+  match unfold t, stk with
   | Appl(f,u), stk ->
       (* Push argument to the stack. *)
       whnf_stk ctx f (appl_to_tref u::stk)
@@ -77,38 +75,40 @@ and whnf_stk : ?rewrite:bool -> ctxt -> term -> stack -> term * stack =
       (* Beta reduction. *)
       Stdlib.incr steps;
       whnf_stk ctx (Bindlib.subst f u) stk
-  | LLet(a,t,u), stk ->
+  | LLet(_,t,u), stk ->
       (* Treat as beta-redex. *)
-      whnf_stk ctx (mk_Appl(mk_Abst(a,u),t)) stk
-  | Symb s, stk when rewrite ->
+      (*whnf_stk ctx (mk_Appl(mk_Abst(a,u),t)) stk*)
+      Stdlib.incr steps;
+      whnf_stk ctx (Bindlib.subst u (appl_to_tref t)) stk
+  | (Symb s, stk) as x when rewrite ->
       (* Try to rewrite. *)
       begin
       (* First check for symbol definition. *)
       match !(s.sym_def) with
-      | Some(t) when not s.sym_opaq -> Stdlib.incr steps; whnf_stk ctx t stk
+      | Some t when not s.sym_opaq -> Stdlib.incr steps; whnf_stk ctx t stk
       | _ ->
       (* Otherwise try rewriting using decision tree. *)
       match tree_walk !(s.sym_dtree) ctx stk with
       (* If no rule is found, return the original term *)
-      | None        -> st
+      | None        -> x
       | Some(t,stk) -> Stdlib.incr steps; whnf_stk ctx t stk
       end
   (* In head normal form. *)
-  | _ -> st
+  | x -> x
 
 (** [eq_modulo ctx a b] tests the equality of [a] and [b] modulo rewriting and
     the unfolding of variables from the context [ctx] (δ-reduction). *)
 and eq_modulo : ctxt -> term -> term -> bool = fun ctx a b ->
-  (*if !log_enabled then log_conv "%a" pp_constr (ctx,a,b);*)
+  if !log_enabled then log_conv "%a" pp_constr (ctx,a,b);
   let rec eq_modulo l =
     match l with
     | []       -> ()
     | (a,b)::l ->
-    if !log_enabled then log_conv "%a" pp_constr (ctx,a,b);
+    (*if !log_enabled then log_conv "%a" pp_constr (ctx,a,b);*)
     let a = unfold a and b = unfold b in
     if a == b then eq_modulo l else
     let a = whnf ctx a and b = whnf ctx b in
-    if !log_enabled then log_conv "%a" pp_constr (ctx,a,b);
+    (*if !log_enabled then log_conv "%a" pp_constr (ctx,a,b);*)
     match a, b with
     | (Patt(_,_,_), _          )
     | (_          , Patt(_,_,_))
