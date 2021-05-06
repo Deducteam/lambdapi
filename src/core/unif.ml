@@ -356,14 +356,25 @@ let rec solve : problem -> constr list = fun p ->
   (* We remove the first constraint from [p] for not looping. *)
   let p = {p with to_solve} in
 
-  (* We take the beta-whnf. *)
-  let t1 = Eval.whnf ~rewrite:false ctx t1
-  and t2 = Eval.whnf ~rewrite:false ctx t2 in
   if !log_enabled then log_unif (gre "%a") pp_constr (ctx,t1,t2);
-  let (h1, ts1) = get_args t1
-  and (h2, ts2) = get_args t2 in
+  let h1, ts1 = get_args t1 and h2, ts2 = get_args t2 in
 
   match h1, h2 with
+  | Abst(_,b), _ when ts1 <> [] ->
+      begin match ts1 with
+      | [] -> assert false
+      | u::us ->
+          let t1' = add_args (Bindlib.subst b u) us in
+          solve (add_constr (ctx, t1', t2) p)
+      end
+  | _, Abst(_,b) when ts2 <> [] ->
+      begin match ts2 with
+      | [] -> assert false
+      | u::us ->
+          let t2' = add_args (Bindlib.subst b u) us in
+          solve (add_constr (ctx, t1, t2') p)
+      end
+
   | LLet(a,t,u), _ ->
       let _, u, ctx' = Ctxt.unbind ctx a (Some t) u in
       solve (add_constr (ctx', add_args u ts1, t2) p)
@@ -418,8 +429,7 @@ let rec solve : problem -> constr list = fun p ->
 
   (* We reduce [t1] and [t2] and try again. *)
   let t1 = Eval.whnf ctx t1 and t2 = Eval.whnf ctx t2 in
-  let (h1, ts1) = get_args t1
-  and (h2, ts2) = get_args t2 in
+  let h1, ts1 = get_args t1 and h2, ts2 = get_args t2 in
 
   if !log_enabled then log_unif "normalize";
   if !log_enabled then log_unif (gre "%a") pp_constr (ctx,t1,t2);
