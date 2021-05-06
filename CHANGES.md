@@ -1,5 +1,13 @@
 ### Unreleased
 
+#### Bugfixes in rewriting engine (2021-05-06)
+
+- Add tests on product matching
+- Fixed scoping of product in LHS
+- Wildcard created during tree compilation are the most general ones, any free 
+  variable may appear.
+- Updated documentation of decision trees
+
 #### Factorize type `rw_patt` (2021-04-07)
 
 The types `Term.rw_patt` and `Syntax.p_rw_patt_aux` are merged into a
