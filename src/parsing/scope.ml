@@ -195,7 +195,8 @@ and add_impl : mode -> sig_state ->
 and scope_domain : mode -> sig_state -> env -> p_term option -> tbox =
   fun md ss env a ->
   match a, md with
-  | None, M_LHS data -> fresh_patt data None (Env.to_tbox env)
+  | (Some {elt=P_Wild;_}|None), M_LHS data ->
+      fresh_patt data None (Env.to_tbox env)
   | (Some {elt=P_Wild;_}|None), _ -> Env.fresh_meta_Type env
   | Some a, _ -> scope md ss env a
 
