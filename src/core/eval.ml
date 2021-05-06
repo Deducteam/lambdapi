@@ -370,9 +370,8 @@ and snf : ctxt -> term -> term = fun ctx t ->
 let whnf : ?rewrite:bool -> ctxt -> term -> term =
   fun ?(rewrite=true) ctx t ->
   if !log_enabled then log_eval "whnf %a%a ?" pp_ctxt ctx pp_term t;
-  let ctx, t = Ctxt.to_let ctx t in
   Stdlib.(steps := 0);
-  let u = whnf ~rewrite ctx t in
+  let u = whnf ~rewrite ctx (Ctxt.to_let ctx t) in
   let r = if Stdlib.(!steps = 0) then unfold t else u in
   if !log_enabled then log_eval "whnf %a" pp_constr (ctx,t,r); r
 

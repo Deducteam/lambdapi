@@ -53,16 +53,13 @@ let to_abst : ctxt -> term -> term * int = fun ctx t ->
   let (t, c) = List.fold_left fn (lift t, 0) ctx in
   (Bindlib.unbox t, c)
 
-(** [to_let ctx t] moves the defined variables of [ctx] into let's on top of
-   [t]. *)
-let to_let : ctxt -> term -> ctxt * term = fun ctx t ->
-  let fn (ctx, t) elt =
-    match elt with
-    | (_,_,None) -> (elt::ctx, t)
-    | (x,a,Some u) -> (ctx, _LLet (lift a) (lift u) (Bindlib.bind_var x t))
+(** [to_let ctx t] adds the defined variables of [ctx] on top of [t]. *)
+let to_let : ctxt -> term -> term = fun ctx t ->
+  let f t = function
+    | _, _, None -> t
+    | x, a, Some u -> _LLet (lift a) (lift u) (Bindlib.bind_var x t)
   in
-  let ctx, t = List.fold_left fn ([], lift t) ctx in
-  List.rev ctx, Bindlib.unbox t
+  Bindlib.unbox (List.fold_left f (lift t) ctx)
 
 (** [sub ctx vs] returns the sub-context of [ctx] made of the variables of
     [vs]. *)
