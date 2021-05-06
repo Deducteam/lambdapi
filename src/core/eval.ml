@@ -51,62 +51,37 @@ let appl_to_tref : term -> term = fun t ->
 (** Abstract machine stack. *)
 type stack = term list
 
-(** [whnf_beta t] computes a weak head beta normal form of the term [t]. *)
-let rec whnf_beta : term -> term = fun t ->
-  if !log_enabled then log_eval "evaluating %a" pp_term t;
+(** [whnf c t] computes a weak head normal form of the term [t] in context
+    [c]. *)
+let rec whnf : ?rewrite:bool -> ctxt -> term -> term =
+  fun ?(rewrite=true) ctx t ->
+  (*if !log_enabled then log_eval "whnf %a" pp_term t;*)
   let s = Stdlib.(!steps) in
-  let (u, stk) = whnf_beta_stk t [] in
-  if Stdlib.(!steps) <> s then add_args u stk else unfold t
+  let u, stk = whnf_stk ~rewrite ctx t [] in
+  let r = if Stdlib.(!steps) <> s then add_args u stk else unfold t in
+  if !log_enabled then log_eval "whnf %a" pp_constr (ctx,t,r); r
 
-(** [whnf_beta_stk t stk] computes the weak head beta normal form of [t]
-    applied to the argument list (or stack) [stk]. Note that the normalisation
-    is done in the sense of [whnf]. *)
-and whnf_beta_stk : term -> stack -> term * stack = fun t stk ->
+(** [whnf_stk c t stk] computes the weak head normal form of [t] applied to
+    stack [stk] in context [c]. *)
+and whnf_stk : ?rewrite:bool -> ctxt -> term -> stack -> term * stack =
+  fun ?(rewrite=true) ctx t stk ->
   let st = (unfold t, stk) in
+  if !log_enabled then
+    log_eval "whnf_stk %a%a %a"
+      pp_ctxt ctx pp_term (fst st) (D.list pp_term) (snd st);
   match st with
-  (* Push argument to the stack. *)
-  | (Appl(f,u), stk    ) ->
-      whnf_beta_stk f (u :: stk)
-  (* Beta reduction. *)
-  | (Abst(_,f), u::stk ) ->
-      Stdlib.incr steps;
-      whnf_beta_stk (Bindlib.subst f u) stk
-  (* In head beta normal form. *)
-  | (_        , _      ) -> st
-
-(** [whnf_beta t] computes a weak head beta normal form of [t]. *)
-let whnf_beta : term -> term = fun t ->
-  Stdlib.(steps := 0);
-  let u = whnf_beta t in
-  if Stdlib.(!steps = 0) then unfold t else u
-
-(** [whnf ctx t] computes a weak head normal form of the term [t] in context
-    [ctx]. *)
-let rec whnf : ctxt -> term -> term = fun ctx t ->
-  if !log_enabled then log_eval "evaluating [%a]" pp_term t;
-  let s = Stdlib.(!steps) in
-  let (u, stk) = whnf_stk ctx t [] in
-  if Stdlib.(!steps) <> s then add_args u stk else Ctxt.unfold ctx t
-
-(** [whnf_stk ctx t stk] computes the weak head normal form of [t] applied to
-    stack [stk] in context [ctx]. Note that the normalisation is done in the
-    sense of [whnf]. *)
-and whnf_stk : ctxt -> term -> stack -> term * stack = fun ctx t stk ->
-  let st = (Ctxt.unfold ctx t, stk) in
-  match st with
-  (* Push argument to the stack. *)
-  | (Appl(f,u), stk   ) ->
+  | Appl(f,u), stk ->
+      (* Push argument to the stack. *)
       whnf_stk ctx f (appl_to_tref u::stk)
-  (* Beta reduction. *)
-  | (Abst(_,f), u::stk) ->
+  | Abst(_,f), u::stk ->
+      (* Beta reduction. *)
       Stdlib.incr steps;
       whnf_stk ctx (Bindlib.subst f u) stk
-  (* Let unfolding *)
-  | (LLet(_,t,u), stk ) ->
-      Stdlib.incr steps;
-      whnf_stk ctx (Bindlib.subst u t) stk
-  (* Try to rewrite. *)
-  | (Symb(s), stk     ) ->
+  | LLet(a,t,u), stk ->
+      (* Treat as beta-redex. *)
+      whnf_stk ctx (mk_Appl(mk_Abst(a,u),t)) stk
+  | Symb s, stk when rewrite ->
+      (* Try to rewrite. *)
       begin
       (* First check for symbol definition. *)
       match !(s.sym_def) with
@@ -119,19 +94,22 @@ and whnf_stk : ctxt -> term -> stack -> term * stack = fun ctx t stk ->
       | Some(t,stk) -> Stdlib.incr steps; whnf_stk ctx t stk
       end
   (* In head normal form. *)
-  | (_         , _    ) -> st
+  | _ -> st
 
 (** [eq_modulo ctx a b] tests the equality of [a] and [b] modulo rewriting and
     the unfolding of variables from the context [ctx] (δ-reduction). *)
 and eq_modulo : ctxt -> term -> term -> bool = fun ctx a b ->
-  if !log_enabled then log_conv "%a" pp_constr (ctx,a,b);
+  (*if !log_enabled then log_conv "%a" pp_constr (ctx,a,b);*)
   let rec eq_modulo l =
     match l with
     | []       -> ()
     | (a,b)::l ->
+    if !log_enabled then log_conv "%a" pp_constr (ctx,a,b);
     let a = unfold a and b = unfold b in
     if a == b then eq_modulo l else
-    match (whnf ctx a, whnf ctx b) with
+    let a = whnf ctx a and b = whnf ctx b in
+    if !log_enabled then log_conv "%a" pp_constr (ctx,a,b);
+    match a, b with
     | (Patt(_,_,_), _          )
     | (_          , Patt(_,_,_))
     | (TEnv(_,_)  , _          )
@@ -388,19 +366,23 @@ and snf : ctxt -> term -> term = fun ctx t ->
   | TRef(_)     -> assert false
 
 (** [whnf t] computes a weak head-normal form of [t]. *)
-let whnf : ctxt -> term -> term = fun ctx t ->
+let whnf : ?rewrite:bool -> ctxt -> term -> term =
+  fun ?(rewrite=true) ctx t ->
+  if !log_enabled then log_eval "whnf %a%a ?" pp_ctxt ctx pp_term t;
+  let ctx, t = Ctxt.to_let ctx t in
   Stdlib.(steps := 0);
-  let u = whnf ctx t in
-  if Stdlib.(!steps = 0) then unfold t else u
+  let u = whnf ~rewrite ctx t in
+  let r = if Stdlib.(!steps = 0) then unfold t else u in
+  if !log_enabled then log_eval "whnf %a" pp_constr (ctx,t,r); r
 
 (** [simplify t] reduces simple redexes of [t]. *)
 let rec simplify : term -> term = fun t ->
-  match get_args (whnf_beta t) with
+  match get_args (whnf ~rewrite:false [] t) with
   | Prod(a,b), _ ->
      let (x,b) = Bindlib.unbind b in
      let b = Bindlib.bind_var x (lift (simplify b)) in
      mk_Prod (simplify a, Bindlib.unbox b)
-  | h, ts -> add_args_map h whnf_beta ts
+  | h, ts -> add_args_map h (whnf ~rewrite:false []) ts
 
 (** [hnf t] computes a head-normal form of the term [t]. *)
 let rec hnf : ctxt -> term -> term = fun ctx t ->
@@ -408,7 +390,7 @@ let rec hnf : ctxt -> term -> term = fun ctx t ->
   | Abst(a,t) ->
      let x,t = Bindlib.unbind t in
      mk_Abst(a, Bindlib.unbox (Bindlib.bind_var x (lift (hnf ctx t))))
-  | t         -> t
+  | t -> t
 
 (** Type representing the different evaluation strategies. *)
 type strategy =

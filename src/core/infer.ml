@@ -158,7 +158,7 @@ let rec infer : ctxt -> term -> term = fun ctx t ->
       let b = infer ctx' u in
       (* Build back the term *)
       let b = Bindlib.unbox (Bindlib.bind_var x (lift b)) in
-      Bindlib.subst b t
+      mk_LLet(a,t,b)
 
   (*  ctx ⊢ term_of_meta m e ⇒ a
      ----------------------------
@@ -229,7 +229,7 @@ let infer : solver -> Pos.popt -> ctxt -> term -> term =
       | Some [] -> a
       | Some cs ->
           List.iter (wrn pos "Cannot solve %a.\n" pp_constr) cs;
-          fatal pos "[%a] is not typable." pp_term t
+          fatal pos "Failed to infer the type of [%a]." pp_term t
 
 (** [check pos ctx t a] checks that [t] has type [a] in context [ctx],
 using the constraint solver [solve].
@@ -245,7 +245,7 @@ let check : solver -> Pos.popt -> ctxt -> term -> term -> unit =
       | Some [] -> ()
       | Some cs ->
           List.iter (wrn pos "Cannot solve %a.\n" pp_constr) cs;
-          fatal pos "[%a] does not have type [%a]." pp_term t pp_term a
+          fatal pos "Failed to check %a." pp_typing (ctx,t,a)
 
 (** [check_sort pos ctx t] checks that [t] has type [Type] or [Kind] in
    context [ctx], using the constraint solver [solve].
@@ -260,7 +260,7 @@ let check_sort : solver -> Pos.popt -> ctxt -> term -> unit
       | None -> fatal pos "[%a] is not typable." pp_term t
       | Some ((_::_) as cs) ->
           List.iter (wrn pos "Cannot solve %a.\n" pp_constr) cs;
-          fatal pos "[%a] is not typable." pp_term a
+          fatal pos "Failed to infer the type of [%a]." pp_term a
       | Some [] ->
           match unfold a with
           | Type | Kind -> ()

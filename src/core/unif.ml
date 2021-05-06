@@ -357,12 +357,20 @@ let rec solve : problem -> constr list = fun p ->
   let p = {p with to_solve} in
 
   (* We take the beta-whnf. *)
-  let t1 = Eval.whnf_beta t1 and t2 = Eval.whnf_beta t2 in
+  let t1 = Eval.whnf ~rewrite:false ctx t1
+  and t2 = Eval.whnf ~rewrite:false ctx t2 in
   if !log_enabled then log_unif (gre "%a") pp_constr (ctx,t1,t2);
   let (h1, ts1) = get_args t1
   and (h2, ts2) = get_args t2 in
 
   match h1, h2 with
+  | LLet(a,t,u), _ ->
+      let _, u, ctx' = Ctxt.unbind ctx a (Some t) u in
+      solve (add_constr (ctx', add_args u ts1, t2) p)
+  | _, LLet(a,t,u) ->
+      let _, u, ctx' = Ctxt.unbind ctx a (Some t) u in
+      solve (add_constr (ctx', t1, add_args u ts2) p)
+
   | Type, Type
   | Kind, Kind -> solve p
 
