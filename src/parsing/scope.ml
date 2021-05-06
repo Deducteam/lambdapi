@@ -131,12 +131,7 @@ let rec scope : mode -> sig_state -> env -> p_term -> tbox =
   | P_Wrap t -> scope md ss env t
   | _ ->
   (* Extract the spine. *)
-  let p_head, args =
-    match Syntax.p_get_args t with
-    | {elt=P_Iden(_,true);_} as h, ts -> h, ts
-    | h, [] -> h, []
-    | _ -> Syntax.p_get_args (Pratt.parse ss env t)
-   in
+  let p_head, args = Syntax.p_get_args (Pratt.parse ss env t) in
   (* Check that LHS pattern variables are applied to no argument. *)
   begin
     match p_head.elt, md with
