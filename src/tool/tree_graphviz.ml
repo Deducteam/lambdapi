@@ -50,7 +50,7 @@ let to_dot : Format.formatter -> sym -> unit = fun oc s ->
       in
       match cstr with
       | CondNL(i, j) -> out "%d ≡ %d" i j
-      | CondFV(i,vs) -> out "%a ⊊ FV(%d)" pp_ar vs i
+      | CondFV(i,vs) -> out "%a ⊆ FV(%d)" pp_ar vs i
     in
     let out fmt = Format.fprintf oc fmt in
     let node_count = ref 0 in
@@ -66,7 +66,7 @@ let to_dot : Format.formatter -> sym -> unit = fun oc s ->
       | Node({swap; children; store; abstraction=abs; default; product}) ->
           let tag = !node_count in
           (* Create node *)
-          out "@ %d [label=\"@%d\"%s];" tag swap
+          out "@ %d [label=\"%d\"%s];" tag swap
             (if store then " shape=\"box\"" else "");
           (* Create edge *)
           out "@ %d -- %d [label=<%a>];" father_l tag pp_dotterm swon;
@@ -95,7 +95,7 @@ let to_dot : Format.formatter -> sym -> unit = fun oc s ->
       match tree with
       (* First step must be done to avoid drawing a top node. *)
       | Node{swap; store; children; default; abstraction; product} ->
-          out "@ 0 [label=\"@%d\"%s];" swap
+          out "@ 0 [label=\"%d\"%s];" swap
             (if store then " shape=\"box\"" else "");
           TCMap.iter (fun sw c -> write_tree 0 (DotCons(sw)) c) children;
           Option.iter (fun (x,t) -> write_tree 0 (DotAbst(x)) t) abstraction;
