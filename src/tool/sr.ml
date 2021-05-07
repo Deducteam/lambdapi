@@ -10,7 +10,6 @@ open Parsing
 open Term
 open Print
 open Debug
-open Extra
 
 (** Logging function for typing. *)
 let log_subj = new_logger 's' "subj" "subject-reduction"
@@ -143,15 +142,15 @@ let check_rule : Scope.pre_rule Pos.loc -> rule = fun ({pos; elt} as pr) ->
         (Array.pp Print.pp_var ",") xvars
     end;
   let arity = List.length lhs in
-  if !log_enabled then
+  (*if !log_enabled then
     begin
       (* The unboxing here could be harmful since it leads to [pr_rhs] being
          unboxed twice. However things should be fine here since the result is
          only used for printing. *)
       let rhs = Bindlib.(unbox (bind_mvar vars pr_rhs)) in
       let naive_rule = {lhs; rhs; arity; arities; vars; xvars_nb = 0} in
-      log_subj (red "%a") pp_rule (s, naive_rule);
-    end;
+      log_subj (Extra.red "%a") pp_rule (s, naive_rule);
+    end;*)
   (* Replace [Patt] nodes of LHS with corresponding elements of [vars]. *)
   let lhs_vars =
     let args = List.map (patt_to_tenv vars) lhs in
@@ -167,10 +166,15 @@ let check_rule : Scope.pre_rule Pos.loc -> rule = fun ({pos; elt} as pr) ->
     in
     Array.mapi f var_names
   in
+  if !log_enabled then log_subj "a";
   (* Substitute them in the LHS and in the RHS. *)
   let (lhs_typing, rhs_typing) =
     let lhs_rhs = Bindlib.box_pair lhs_vars pr_rhs in
-    let b = Bindlib.(unbox (bind_mvar vars lhs_rhs)) in
+    if !log_enabled then log_subj "b";
+    let b = Bindlib.bind_mvar vars lhs_rhs in
+    if !log_enabled then log_subj "c";
+    let b = Bindlib.unbox b in
+    if !log_enabled then log_subj "d";
     let meta_to_tenv m =
       let xs = Array.init m.meta_arity (new_tvar_ind "x") in
       let ts = Array.map _Vari xs in
