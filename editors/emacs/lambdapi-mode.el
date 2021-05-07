@@ -2,7 +2,7 @@
 
 ;; Copyright (C) 2020 Deducteam
 
-;; Authors: Ashish Barnawal, Diego Riviero, Gabriel Hondet, Rodolphe Lepigre 
+;; Authors: Ashish Barnawal, Diego Riviero, Gabriel Hondet, Rodolphe Lepigre
 ;; Maintainer: Deducteam <dedukti-dev@inria.fr>
 ;; Version: 1.0
 ;; SPDX-License-Identifier: CeCILL Free Software License Agreement v2.1
@@ -103,6 +103,13 @@
 
 (defvar lambdapi-mode-map nil "Keymap for `lambdapi-mode'")
 
+(defun lambdapi-eglot-reconnect ()
+  (interactive)
+  (let ((current-server (eglot-current-server)))
+    (call-interactively
+     (if (and current-server (jsonrpc-running-p current-server))
+         #'eglot-reconnect #'eglot))))
+
 ;; define keybindings
 (progn
   (setq lambdapi-mode-map (make-sparse-keymap))
@@ -112,7 +119,7 @@
   (define-key lambdapi-mode-map (kbd "C-c C-n") #'lp-proof-forward)
   (define-key lambdapi-mode-map (kbd "C-c C-f") #'lp-jump-proof-forward)
   (define-key lambdapi-mode-map (kbd "C-c C-b") #'lp-jump-proof-backward)
-  (define-key lambdapi-mode-map (kbd "C-c C-r") #'eglot-reconnect)
+  (define-key lambdapi-mode-map (kbd "C-c C-r") #'lambdapi-eglot-reconnect)
   (define-key lambdapi-mode-map (kbd "C-c C-k") #'eglot-shutdown)
   (define-key lambdapi-mode-map (kbd "C-c C-c") #'lp-prove-till-cursor)
   ;; define toolbar
@@ -196,7 +203,7 @@
   (add-hook 'lambdapi-changed-line-hook #'lp-display-goals)
   (add-hook 'post-self-insert-hook 'lp--post-self-insert-function 100 t)
   (add-hook 'after-change-functions 'lp--after-change-function 100 t)
-  
+
   (lambdapi-refresh-window-layout))
 
 ;; Register mode the the ".lp" extension
