@@ -375,21 +375,9 @@ and snf : ctxt -> term -> term = fun ctx t ->
 let whnf : ?rewrite:bool -> ctxt -> term -> term =
   fun ?(rewrite=true) ctx t ->
   Stdlib.(steps := 0);
-  (*let t = Ctxt.to_abst ctx t in
-  let f (x, _, v) = match v with None -> mk_Vari x | Some v -> v in
-  let t = add_args t (List.rev_map f ctx) in*)
-  (*let f t (x,_,v) =
-    match v with
-    | None -> t
-    | Some v -> let b = Bindlib.unbox (Bindlib.bind_var x (lift t)) in
-                Bindlib.subst b v
-  in
-  let t = List.fold_left f t ctx in*)
   let u = whnf ~rewrite ctx t in
   let r = if Stdlib.(!steps = 0) then unfold t else u in
-  if !log_enabled
-      (*&& List.exists (function _, _, Some _ -> true | _ -> false) ctx*)
-  then log_eval (mag "whnf %a") pp_constr (ctx,t,r); r
+  if !log_enabled then log_eval (mag "whnf %a") pp_constr (ctx,t,r); r
 
 (** [simplify t] reduces simple redexes of [t]. *)
 let rec simplify : term -> term = fun t ->

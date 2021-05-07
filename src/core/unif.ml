@@ -61,13 +61,14 @@ let instantiable : ctxt -> meta -> term array -> term -> bool =
 (** [instantiation ctx m ts u] tells whether, in a problem [m[ts]=u], [m] can
    be instantiated and returns the corresponding instantiation, simplified. It
    does not check whether the instantiation is closed though. *)
-let instantiation : ctxt -> meta -> term array -> term ->
-  tmbinder Bindlib.box option = fun ctx m ts u ->
+let instantiation :
+      ctxt -> meta -> term array -> term -> tmbinder Bindlib.box option =
+  fun ctx m ts u ->
   if not (Meta.occurs m u) then
     match nl_distinct_vars ctx ts with
     | None -> None
     | Some(vs, map) ->
-        let u = Eval.simplify (sym_to_var map u) in
+        let u = Eval.simplify (Ctxt.to_let ctx (sym_to_var map u)) in
         Some (Bindlib.bind_mvar vs (lift u))
   else None
 
@@ -86,10 +87,10 @@ let instantiate : ctxt -> meta -> term array -> term -> bool =
   fun ctx m ts u ->
   if !log_enabled then log_unif "try instantiate";
   match instantiation ctx m ts u with
-  | Some(bu) when Bindlib.is_closed bu ->
+  | Some b when Bindlib.is_closed b ->
       let do_instantiate() =
         if !log_enabled then log_unif (red "%a ≔ %a") pp_meta m pp_term u;
-        Meta.set m (Bindlib.unbox bu); true
+        Meta.set m (Bindlib.unbox b); true
       in
       if Stdlib.(!do_type_check) then
         begin
