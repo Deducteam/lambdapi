@@ -55,10 +55,10 @@ let patt_to_tenv : term_env Bindlib.var array -> term -> tbox = fun vars ->
     match unfold t with
     | Vari(x)     -> _Vari x
     | Symb(s)     -> _Symb s
-    | Abst(a,b)   -> let (x, t) = Bindlib.unbind b in
-                     _Abst (trans a) (Bindlib.bind_var x (trans t))
+    | Abst(a,b)   -> let (x, b) = Bindlib.unbind b in
+                     _Abst (trans a) (Bindlib.bind_var x (trans b))
     | Appl(t,u)   -> _Appl (trans t) (trans u)
-    | Patt(i,_,a) -> _TEnv (Bindlib.box_var (get_te i)) (Array.map trans a)
+    | Patt(i,_,a) -> _TEnv (_TE_Vari (get_te i)) (Array.map trans a)
     | Type        -> assert false (* Cannot appear in LHS. *)
     | Kind        -> assert false (* Cannot appear in LHS. *)
     | Prod(_,_)   -> assert false (* Cannot appear in LHS. *)
@@ -98,7 +98,7 @@ let symb_to_tenv
             fatal pos "Introduced symbol [%s] cannot be removed." f.sym_name
           in
           let (ts1, ts2) = List.cut ts arities.(i) in
-          (_TEnv (Bindlib.box_var vars.(i)) (Array.of_list ts1), ts2)
+          (_TEnv (_TE_Vari vars.(i)) (Array.of_list ts1), ts2)
       | Symb(s)     -> (_Symb s, ts)
       | Vari(x)     -> (_Vari x, ts)
       | Type        -> (_Type  , ts)
