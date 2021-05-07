@@ -261,7 +261,7 @@ and scope_head : mode -> sig_state -> env -> p_term -> tbox =
       data.m_urhs_xvars <- (name, x) :: data.m_urhs_xvars;
       x
     in
-    _TEnv (Bindlib.box_var x) (Env.to_tbox env)
+    _TEnv (_TE_Vari x) (Env.to_tbox env)
   | (P_Wild, M_LHS data) -> fresh_patt data None (Env.to_tbox env)
   | (P_Wild, M_Patt) -> _Wild
   | (P_Wild, _) -> Env.fresh_meta_tbox env
@@ -315,7 +315,7 @@ and scope_head : mode -> sig_state -> env -> p_term -> tbox =
                     Print.pp_var vs.(j)
               done
             done;
-            Array.map Bindlib.box_var vs
+            Array.map _Vari vs
       in
       begin
         match id with
@@ -353,7 +353,7 @@ and scope_head : mode -> sig_state -> env -> p_term -> tbox =
         | None -> [||] (* $M stands for $M[] *)
         | Some ts -> Array.map (scope md ss env) ts
       in
-      _TEnv (Bindlib.box_var x) ts
+      _TEnv (_TE_Vari x) ts
   | (P_Patt(id,ts), M_RHS(r)) ->
       let x =
         match id with
@@ -368,7 +368,7 @@ and scope_head : mode -> sig_state -> env -> p_term -> tbox =
         | None -> [||] (* $M stands for $M[] *)
         | Some ts -> Array.map (scope md ss env) ts
       in
-      _TEnv (Bindlib.box_var x) ts
+      _TEnv (_TE_Vari x) ts
   | (P_Patt(_,_), _) ->
       fatal t.pos "Pattern variables are only allowed in rewriting rules."
   | (P_Appl(_,_), _) ->  assert false (* Unreachable. *)
