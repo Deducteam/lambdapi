@@ -189,8 +189,8 @@ This works for both graphical and text displays."
   "Display logs in *lp-logs* buffer"
   (let ((logbuf (get-buffer-create "*lp-logs*")))
     (setq logs (replace-regexp-in-string
-		"^[ \t\n\r]*\\(\\(\u001b\\[[0-9]+m\\)*\\)[ \t\n\r]*" "\\1"
-		logs))
+                "^[ \t\n\r]*\\(\\(\u001b\\[[0-9]+m\\)*\\)[ \t\n\r]*" "\\1"
+                logs))
     (with-current-buffer logbuf
       (read-only-mode +1)
       (with-silent-modifications
@@ -291,26 +291,32 @@ This works for both graphical and text displays."
   "Proves till the command/tactic at cursor"
   (interactive)
   (save-excursion
-    (if (string-match "[\n\t ]" (string (char-before (point))))
-        (re-search-forward "[^\n\t ]"))
-    (if (save-excursion
-          (skip-syntax-forward ".")
-          (lp--in-comment-p))
+    (if (and (not (lp--in-comment-p))
+             (save-excursion (beginning-of-line)
+                             (looking-at-p "^[[:space:]]*$")))
         (progn
-          (skip-syntax-forward ".")
-          (let ((comment-type (nth 7 (syntax-ppss))))
-            (goto-char (nth 8 (syntax-ppss)))
-            (forward-comment 1)
-            (skip-syntax-backward "> ")
-            (lp-prove-till (1- (point)))))
-      (let ((line-empty ; line empty or is a single line comment
-             (save-excursion
-               (beginning-of-line)
-               (looking-at-p "\\([[:space:]]*\\|//.*\\)$"))))
-        (lp-prove-till
-         (if line-empty
-             (lp--prev-command-pos (1+ (point)))
-           (lp--next-command-pos (1- (point)))))))))
+          (end-of-line)
+          (lp-prove-till (point)))
+      (if (string-match "[\n\t ]" (string (char-before (point))))
+          (re-search-forward "[^\n\t ]"))
+      (if (save-excursion
+            (skip-syntax-forward ".")
+            (lp--in-comment-p))
+          (progn
+            (skip-syntax-forward ".")
+            (let ((comment-type (nth 7 (syntax-ppss))))
+              (goto-char (nth 8 (syntax-ppss)))
+              (forward-comment 1)
+              (skip-syntax-backward "> ")
+              (lp-prove-till (1- (point)))))
+        (let ((line-empty ; line empty or is a single line comment
+               (save-excursion
+                 (beginning-of-line)
+                 (looking-at-p "\\([[:space:]]*\\|//.*\\)$"))))
+          (lp-prove-till
+           (if line-empty
+               (lp--prev-command-pos (1+ (point)))
+             (lp--next-command-pos (1- (point))))))))))
 
 (defun lp-prove-till (pos)
   "Evaluates till pos and moves the cursor to the end of evaluated region"

@@ -121,7 +121,6 @@
   (define-key lambdapi-mode-map (kbd "C-c C-b") #'lp-jump-proof-backward)
   (define-key lambdapi-mode-map (kbd "C-c C-r") #'lambdapi-eglot-reconnect)
   (define-key lambdapi-mode-map (kbd "C-c C-k") #'eglot-shutdown)
-  (define-key lambdapi-mode-map (kbd "C-c C-c") #'lp-prove-till-cursor)
   ;; define toolbar
   (define-key lambdapi-mode-map [tool-bar lp-toggle-electric-terminator]
     '(menu-item "Electric Proof" lp-toggle-electric-terminator
