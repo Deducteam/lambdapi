@@ -65,8 +65,8 @@ let rec whnf : ?rewrite:bool -> ctxt -> term -> term =
     stack [stk] in context [c]. *)
 and whnf_stk : ?rewrite:bool -> ctxt -> term -> stack -> term * stack =
   fun ?(rewrite=true) ctx t stk ->
-  if !log_enabled then
-    log_eval "whnf_stk %a%a %a" pp_ctxt ctx pp_term t (D.list pp_term) stk;
+  (*if !log_enabled then
+    log_eval "whnf_stk %a%a %a" pp_ctxt ctx pp_term t (D.list pp_term) stk;*)
   match unfold t, stk with
   | Appl(f,u), stk ->
       (* Push argument to the stack. *)
@@ -80,7 +80,7 @@ and whnf_stk : ?rewrite:bool -> ctxt -> term -> stack -> term * stack =
       (*whnf_stk ctx (mk_Appl(mk_Abst(a,u),t)) stk*)
       Stdlib.incr steps;
       whnf_stk ctx (Bindlib.subst u (appl_to_tref t)) stk
-  | (Symb s, stk) as x when rewrite ->
+  | (Symb s, stk) as r when rewrite ->
       (* Try to rewrite. *)
       begin
       (* First check for symbol definition. *)
@@ -90,11 +90,16 @@ and whnf_stk : ?rewrite:bool -> ctxt -> term -> stack -> term * stack =
       (* Otherwise try rewriting using decision tree. *)
       match tree_walk !(s.sym_dtree) ctx stk with
       (* If no rule is found, return the original term *)
-      | None        -> x
+      | None        -> r
       | Some(t,stk) -> Stdlib.incr steps; whnf_stk ctx t stk
       end
+  | (Vari x, stk) as r ->
+      begin match Ctxt.def_of x ctx with
+      | _, Some v -> Stdlib.incr steps; whnf_stk ctx v stk
+      | _ -> r
+      end
   (* In head normal form. *)
-  | x -> x
+  | r -> r
 
 (** [eq_modulo ctx a b] tests the equality of [a] and [b] modulo rewriting and
     the unfolding of variables from the context [ctx] (δ-reduction). *)
@@ -369,11 +374,22 @@ and snf : ctxt -> term -> term = fun ctx t ->
 (** [whnf t] computes a weak head-normal form of [t]. *)
 let whnf : ?rewrite:bool -> ctxt -> term -> term =
   fun ?(rewrite=true) ctx t ->
-  if !log_enabled then log_eval "whnf %a%a ?" pp_ctxt ctx pp_term t;
   Stdlib.(steps := 0);
-  let u = whnf ~rewrite ctx (Ctxt.to_let ctx t) in
+  (*let t = Ctxt.to_abst ctx t in
+  let f (x, _, v) = match v with None -> mk_Vari x | Some v -> v in
+  let t = add_args t (List.rev_map f ctx) in*)
+  (*let f t (x,_,v) =
+    match v with
+    | None -> t
+    | Some v -> let b = Bindlib.unbox (Bindlib.bind_var x (lift t)) in
+                Bindlib.subst b v
+  in
+  let t = List.fold_left f t ctx in*)
+  let u = whnf ~rewrite ctx t in
   let r = if Stdlib.(!steps = 0) then unfold t else u in
-  if !log_enabled then log_eval "whnf %a" pp_constr (ctx,t,r); r
+  if !log_enabled
+      (*&& List.exists (function _, _, Some _ -> true | _ -> false) ctx*)
+  then log_eval (mag "whnf %a") pp_constr (ctx,t,r); r
 
 (** [simplify t] reduces simple redexes of [t]. *)
 let rec simplify : term -> term = fun t ->

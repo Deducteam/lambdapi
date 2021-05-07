@@ -34,32 +34,27 @@ let mem : tvar -> ctxt -> bool = fun x ->
 (** [to_prod ctx t] builds a product by abstracting over the context [ctx], in
     the term [t]. It returns the number of products as well. *)
 let to_prod : ctxt -> term -> term * int = fun ctx t ->
-  let fn (t,c) elt =
-    match elt with
-    | (x,a,None   ) -> (_Prod (lift a) (Bindlib.bind_var x t), c + 1)
-    | (x,a,Some(u)) -> (_LLet (lift a) (lift u) (Bindlib.bind_var x t), c)
+  let f (t,c) (x,a,v) =
+    match v with
+    | None -> (_Prod (lift a) (Bindlib.bind_var x t), c + 1)
+    | Some v -> (_LLet (lift a) (lift v) (Bindlib.bind_var x t), c)
   in
-  let (t, c) = List.fold_left fn (lift t, 0) ctx in
+  let t, c = List.fold_left f (lift t, 0) ctx in
   (Bindlib.unbox t, c)
 
 (** [to_abst ctx t] builds a sequence of abstractions over the context [ctx],
-    in the term [t]. It returns the number of products as well. *)
-let to_abst : ctxt -> term -> term * int = fun ctx t ->
-  let fn (t,c) elt =
-    match elt with
-    | (x,a,None   ) -> (_Abst (lift a) (Bindlib.bind_var x t), c + 1)
-    | (x,a,Some(u)) -> (_LLet (lift a) (lift u) (Bindlib.bind_var x t), c)
-  in
-  let (t, c) = List.fold_left fn (lift t, 0) ctx in
-  (Bindlib.unbox t, c)
+    in the term [t]. *)
+let to_abst : ctxt -> term -> term = fun ctx t ->
+  let f t (x, a, _) = _Abst (lift a) (Bindlib.bind_var x t) in
+  Bindlib.unbox (List.fold_left f (lift t) ctx)
 
 (** [to_let ctx t] adds the defined variables of [ctx] on top of [t]. *)
-let to_let : ctxt -> term -> term = fun ctx t ->
+(*let to_let : ctxt -> term -> term = fun ctx t ->
   let f t = function
     | _, _, None -> t
     | x, a, Some u -> _LLet (lift a) (lift u) (Bindlib.bind_var x t)
   in
-  Bindlib.unbox (List.fold_left f (lift t) ctx)
+  Bindlib.unbox (List.fold_left f (lift t) ctx)*)
 
 (** [sub ctx vs] returns the sub-context of [ctx] made of the variables of
     [vs]. *)
