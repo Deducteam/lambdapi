@@ -160,8 +160,9 @@ and eq_modulo : ctxt -> term -> term -> bool = fun ctx a b ->
     collections of terms.
     1. The argument stack [stk] of type {!type:stack} which contains the terms
        that are matched against the decision tree.
-    2. An array [vars] of variables that are used for non-linearity checks and
-       free variable checks, or that are used in the RHS.
+    2. An array [vars] containing subterms of the argument stack [stk] that
+       are filtered by a pattern variable. These terms may be used for
+       non-linearity or free-variable checks, or may be bound in the RHS.
 
     The [bound] array is similar to the [vars] array except that it is used to
     save terms with free variables. *)
@@ -195,12 +196,12 @@ and tree_walk : dtree -> ctxt -> stack -> (term * stack) option =
   let rec walk tree stk cursor vars_id id_vars =
     let open Tree_type in
     match tree with
-    | Fail                                                -> None
-    | Leaf(env_builder, (act, xvars))                     ->
+    | Fail -> None
+    | Leaf(rhs_subst, (act, xvars)) -> (* Apply the RHS substitution *)
         (* Allocate an environment where to place terms coming from the
            pattern variables for the action. *)
         let env_len = Bindlib.mbinder_arity act in
-        assert (List.length env_builder = env_len - xvars);
+        assert (List.length rhs_subst = env_len - xvars);
         let env = Array.make env_len TE_None in
         (* Retrieve terms needed in the action from the [vars] array. *)
         let f (pos, (slot, xs)) =
@@ -217,7 +218,7 @@ and tree_walk : dtree -> ctxt -> stack -> (term * stack) option =
                 let xs = Array.map (fun e -> IntMap.find e id_vars) xs in
                 env.(slot) <- TE_Some(Bindlib.unbox (Bindlib.bind_mvar xs b))
         in
-        List.iter f env_builder;
+        List.iter f rhs_subst;
         (* Complete the array with fresh meta-variables if needed. *)
         for i = env_len - xvars to env_len - 1 do
           let mt = Meta.make ctx mk_Type in
@@ -276,7 +277,7 @@ and tree_walk : dtree -> ctxt -> stack -> (term * stack) option =
             let stk = List.reconstruct left [] right in
             walk t stk cursor vars_id id_vars
           in
-          Option.map_default fn None default
+          Option.bind fn default
         else
           let s = Stdlib.(!steps) in
           let (t, args) = whnf_stk ctx examined [] in
@@ -301,7 +302,7 @@ and tree_walk : dtree -> ctxt -> stack -> (term * stack) option =
               let stk = List.reconstruct left [] right in
               walk d stk cursor vars_id id_vars
             in
-            Option.map_default fn None default
+            Option.bind fn default
           in
           (* [walk_binder a  b  id tr]  matches  on  binder  [b]  of type  [a]
              introducing variable  [id] and branching  on tree [tr].  The type
