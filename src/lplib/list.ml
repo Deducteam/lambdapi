@@ -11,61 +11,61 @@ open Base
 let pp : 'a pp -> string -> 'a list pp = fun pp_elt sep ->
   Format.pp_print_list ~pp_sep:(pp_sep sep) pp_elt
 
-(** [compare cmp l1 l2] compares the lists [l1] and [l2] lexicographically
-   using [cmp] to compare elements. *)
-let compare : 'a cmp -> 'a list cmp = fun cmp ->
-  let rec compare l1 l2 =
-    match l1, l2 with
+(** Total order on lists. *)
+let cmp : 'a cmp -> 'a list cmp = fun cmp_elt ->
+  let rec cmp l l' =
+    match l, l' with
     | [], [] -> 0
-    | [], _ -> -1
-    | _, [] -> 1
-    | x1::l1, x2::l2 ->
-        match cmp x1 x2 with
-        | 0 -> compare l1 l2
-        | n -> n
-  in compare
+    | [], _::_ -> -1
+    | _::_, [] -> 1
+    | x::l, x'::l' -> lex cmp_elt cmp (x,l) (x',l')
+  in cmp
+
+(** [eq eq_elt l1 l2] tests the equality of [l1] and [l2], comparing their
+    elements with [eq_elt]. *)
+let eq : 'a eq -> 'a list eq = fun eq_elt l1 l2 ->
+  try L.for_all2 eq_elt l1 l2 with Invalid_argument _ -> false
 
 (** [filter_map f l] applies [f] to the elements of [l] and keeps the [x] such
     that [Some(x)] in [List.map f l]. *)
-let rec filter_map : ('a -> 'b option) -> 'a list -> 'b list =
- fun f l ->
+let rec filter_map : ('a -> 'b option) -> 'a list -> 'b list = fun f l ->
   match l with
   | [] -> []
-  | h :: t -> (
-    match f h with Some x -> x :: filter_map f t | None -> filter_map f t )
+  | h :: t ->
+      match f h with
+      | Some x -> x :: filter_map f t
+      | None -> filter_map f t
 
 (** [filter_rev_map f l] is equivalent to [filter_map f (List.rev l)], but it
     only traverses the list once and is tail-recursive. *)
-let filter_rev_map : ('a -> 'b option) -> 'a list -> 'b list =
- fun f ->
-  let rec frm acc l =
-    match l with
+let filter_rev_map : ('a -> 'b option) -> 'a list -> 'b list = fun f ->
+  let rec frm acc = function
     | [] -> acc
-    | hd :: tl -> (
-      match f hd with Some x -> frm (x :: acc) tl | None -> frm acc tl )
-  in
-  frm []
+    | hd :: tl ->
+        match f hd with
+        | Some x -> frm (x :: acc) tl
+        | None -> frm acc tl
+  in frm []
 
 (** [filteri_map f l] applies [f] element wise on [l] and keeps [x] such that
     for [e] in [l], [f e = Some(x)]. *)
-let filteri_map : (int -> 'a -> 'b option) -> 'a list -> 'b list =
- fun f l ->
+let filteri_map : (int -> 'a -> 'b option) -> 'a list -> 'b list = fun f l ->
   let rec loop k = function
     | [] -> []
     | h :: t -> (
       match f k h with
       | Some x -> x :: loop (succ k) t
       | None -> loop (succ k) t )
-  in
-  loop 0 l
+  in loop 0 l
 
 (** [cut l k] returns a pair of lists [(l1, l2)] such that [l1] has length
     [max (List.length l) k] and [l1 @ l2] is equal to [l]. *)
-let cut : 'a list -> int -> 'a list * 'a list =
- fun l k ->
+let cut : 'a list -> int -> 'a list * 'a list = fun l k ->
   let rec cut acc l k =
     if k <= 0 then (L.rev acc, l)
-    else match l with [] -> (L.rev acc, l) | x :: l -> cut (x :: acc) l (k - 1)
+    else match l with
+         | [] -> (L.rev acc, l)
+         | x :: l -> cut (x :: acc) l (k - 1)
   in
   if k <= 0 then ([], l) else cut [] l k
 
@@ -80,17 +80,11 @@ let add_array2 : 'a array -> 'b array -> ('a * 'b) list -> ('a * 'b) list =
 
 (** [same_length l1 l2] returns [true] whenever [l1] and [l2] are lists of the
     same length. The function stops as soon as possible. *)
-let rec same_length : 'a list -> 'b list -> bool =
- fun l1 l2 ->
-  match (l1, l2) with
+let rec same_length : 'a list -> 'b list -> bool = fun l1 l2 ->
+  match l1, l2 with
   | [], [] -> true
   | _ :: l1, _ :: l2 -> same_length l1 l2
-  | _, _ -> false
-
-(** [equal eq l1 l2] tests the equality of [l1] and [l2], comparing their
-    elements with [eq]. *)
-let equal : 'a eq -> 'a list eq =
- fun eq l1 l2 -> try L.for_all2 eq l1 l2 with Invalid_argument _ -> false
+  | _ -> false
 
 (** [max ?cmp l] finds the max of list [l] with compare function [?cmp]
     defaulting to [Stdlib.compare].
@@ -105,25 +99,19 @@ let max : ?cmp:('a -> 'a -> int) -> 'a list -> 'a =
 
 (** [assoc_eq e k l] is [List.assoc k l] with equality function [e].
     @raise Not_found if [k] is not a key of [l]. *)
-let assoc_eq : 'a eq -> 'a -> ('a * 'b) list -> 'b =
- fun eq k l ->
-  let rec loop l =
-    match l with
+let assoc_eq : 'a eq -> 'a -> ('a * 'b) list -> 'b = fun eq k ->
+  let rec loop = function
     | [] -> raise Not_found
     | (x, e) :: _ when eq x k -> e
     | _ :: t -> loop t
-  in
-  loop l
+  in loop
 
 (** [remove_phys_dups l] uniqify list [l] keeping only the last element, using
     physical equality. *)
-let rec remove_phys_dups : 'a list -> 'a list =
- fun l ->
-  match l with
+let rec remove_phys_dups : 'a list -> 'a list = function
   | [] -> []
   | x :: xs ->
-    let xs = remove_phys_dups xs in
-    if L.memq x xs then xs else x :: xs
+    let xs = remove_phys_dups xs in if L.memq x xs then xs else x :: xs
 
 (** [destruct l i] returns a triple [(left_rev, e, right)] where [e] is the
     [i]-th element of [l], [left_rev] is the reversed prefix of [l] up to its
@@ -132,30 +120,29 @@ let rec remove_phys_dups : 'a list -> 'a list =
     @raise Invalid_argument when [i < 0].
     @raise Not_found when [i ≥ length v]. *)
 let destruct : 'a list -> int -> 'a list * 'a * 'a list =
- fun e i ->
-  if i < 0 then invalid_arg "Extra.List.deconstruct";
   let rec destruct l i r =
-    match (r, i) with
+    match r, i with
     | [], _ -> raise Not_found
     | v :: r, 0 -> (l, v, r)
     | v :: r, i -> destruct (v :: l) (i - 1) r
   in
+  fun e i ->
+  if i < 0 then invalid_arg "Extra.List.deconstruct";
   destruct [] i e
 
 (** [reconstruct left_rev l right] concatenates (reversed) [left_rev], [l] and
     [right]. This function will typically be used in combination with
     {!val:deconstruct} to insert a sublist [l] in the place of the element at
     the specified position in the specified list. *)
-let reconstruct : 'a list -> 'a list -> 'a list -> 'a list =
- fun l m r -> L.rev_append l (m @ r)
+let reconstruct : 'a list -> 'a list -> 'a list -> 'a list = fun l m r ->
+  L.rev_append l (m @ r)
 
 (** [init n f] creates a list with [f 0] up to [f n] as its elements. Note that
     [Invalid_argument] is raised if [n] is negative. *)
 let init : int -> (int -> 'a) -> 'a list = fun n f ->
-  if n < 0 then invalid_arg "Extra.List.init"
-  else
-    let rec loop k = if k > n then [] else f k :: loop (k + 1) in
-    loop 0
+  if n < 0 then invalid_arg "Extra.List.init";
+  let rec loop k = if k > n then [] else f k :: loop (k + 1) in
+  loop 0
 
 (** [mem_sorted cmp x l] tells whether [x] is in [l] assuming that [l] is
    sorted wrt [cmp]. *)
@@ -165,18 +152,15 @@ let mem_sorted : 'a cmp -> 'a -> 'a list -> bool = fun cmp x ->
     | [] -> false
     | y :: l ->
       match cmp x y with 0 -> true | n when n > 0 -> mem_sorted l | _ -> false
-  in
-  mem_sorted
+  in mem_sorted
 
 (** [insert cmp x l] inserts [x] in the list [l] assuming that [l] is sorted
    in increasing order wrt [cmp]. *)
 let insert : 'a cmp -> 'a -> 'a list -> 'a list = fun cmp x ->
-  let rec insert acc l =
-    match l with
+  let rec insert acc = function
     | y :: l' when cmp x y > 0 -> insert (y :: acc) l'
-    | _ -> L.rev_append acc (x :: l)
-  in
-  insert []
+    | l -> L.rev_append acc (x :: l)
+  in insert []
 
 (* unit tests *)
 let _ =
@@ -227,16 +211,6 @@ let rev_mapi f =
     | x::l -> aux (f i x :: acc) (i+1) l
   in aux [] 0
 
-(** Total order on lists. *)
-let cmp_list : 'a cmp -> 'a list cmp = fun cmp ->
-  let rec cmp_list l l' =
-    match l, l' with
-    | [], [] -> 0
-    | [], _::_ -> -1
-    | _::_, [] -> 1
-    | x::l, x'::l' -> let c = cmp x x' in if c <> 0 then c else cmp_list l l'
-  in cmp_list
-
 (** [swap i xs] put the i-th element (counted from 0) of [xs] at the head.
 @raise Invalid_argument if the i-th element does not exist. *)
 let swap : int -> 'a list -> 'a list = fun i xs ->
@@ -256,10 +230,9 @@ let rec fold_left_while f cond acc l =
   | [] -> acc
 
 (** [remove_first n xs] remove the min(n,length xs) elements of [xs]. *)
-let rec remove_first n xs =
-  match xs with
-  | _::xs when n>0 -> remove_first (n-1) xs
-  | _ -> xs
+let rec remove_first n = function
+  | _ :: xs when n > 0 -> remove_first (n - 1) xs
+  | xs -> xs
 
 (** [split f l] returns the tuple [(l1,x,l2)] such that [x] is the first
    element of [l] satisying [f], [l1] is the sub-list of [l] preceding [x],

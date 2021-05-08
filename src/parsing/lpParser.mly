@@ -128,26 +128,7 @@
 %start <Syntax.p_command> command
 %start <Syntax.p_qident> id
 
-%type <Syntax.p_ident> uid
-%type <Syntax.p_path> path
-%type <Syntax.p_ident option> patt_id
-%type <Syntax.p_params> params
-
-%type <Syntax.p_term> term
-%type <Syntax.p_term> aterm
-%type <Syntax.p_term> sterm
-
 %type <Sign.notation> notation
-%type <Syntax.p_rule> rule
-%type <Syntax.p_tactic> tactic
-%type <Syntax.p_modifier> modifier
-%type <Syntax.p_rw_patt> rw_patt
-%type <Syntax.p_tactic list * Syntax.p_proof_end> proof
-
-// Precedences listed from low to high
-
-%nonassoc COMMA IN
-%right ARROW
 
 %%
 
@@ -329,13 +310,11 @@ aterm:
   | L_CU_BRACKET t=term R_CU_BRACKET { make_pos $sloc (P_Expl(t)) }
   | n=INT { make_pos $sloc (P_NLit(n)) }
 
-sterm:
-  | t=sterm u=aterm { make_pos $sloc (P_Appl(t,u)) }
+saterm:
+  | t=saterm u=aterm { make_pos $sloc (P_Appl(t,u)) }
   | t=aterm { t }
 
-term:
-  | t=sterm { t }
-  | t=term ARROW u=term { make_pos $sloc (P_Arro(t, u)) }
+bterm:
   | BACKQUOTE q=term_id b=binder
     { let b = make_pos $loc(b) (P_Abst(fst b, snd b)) in
       make_pos $sloc (P_Appl(q, b)) }
@@ -343,6 +322,12 @@ term:
   | LAMBDA b=binder { make_pos $sloc (P_Abst(fst b, snd b)) }
   | LET x=uid a=params* b=preceded(COLON, term)? ASSIGN t=term IN u=term
       { make_pos $sloc (P_LLet(x, a, b, t, u)) }
+
+term:
+  | t=bterm { t }
+  | t=saterm { t }
+  | t=saterm u=bterm { make_pos $sloc (P_Appl(t,u)) }
+  | t=saterm ARROW u=term { make_pos $sloc (P_Arro(t, u)) }
 
 binder:
   | ps=params+ COMMA t=term { (ps, t) }

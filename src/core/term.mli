@@ -241,6 +241,9 @@ type tbox = term Bindlib.box
 
 type tebox = term_env Bindlib.box
 
+(** Basic printing function (for debug). *)
+val pp_term : term pp
+
 (** Typing context associating a [Bindlib] variable to a type and possibly a
    definition. The typing environment [x1:A1,..,xn:An] is represented by the
    list [xn:An;..;x1:A1] in reverse order (last added variable comes
@@ -308,6 +311,9 @@ val is_constant : sym -> bool
 (** [is_private s] tells whether the symbol [s] is private. *)
 val is_private : sym -> bool
 
+(** [is_modulo s] tells whether the symbol [s] is modulo some equations. *)
+val is_modulo : sym -> bool
+
 (** Basic management of meta variables. *)
 module Meta : sig
   type t = meta
@@ -355,10 +361,8 @@ val unfold : term -> term
 (** {b NOTE} that {!val:unfold} must (almost) always be called before matching
     over a value of type {!type:term}. *)
 
-(** Total orders terms, contexts and constraints not containing [Patt],
-   [TEnv] or [TRef].
-@raise Invalid_argument otherwise. *)
-val cmp_term : term cmp
+(** Total orders terms, contexts and constraints. *)
+val cmp : term cmp
 val cmp_ctxt : ctxt cmp
 val cmp_constr : constr cmp
 val eq_constr : constr eq
@@ -400,6 +404,10 @@ val mk_Plac : bool -> term
 val mk_TRef : term option ref -> term
 val mk_LLet : term * term * tbinder -> term
 
+(** mk_Appl_not_canonical t u] builds the non-canonical (wrt. C and AC
+   symbols) application of [t] to [u]. WARNING: to use only in Sign.link. *)
+val mk_Appl_not_canonical : term * term -> term
+
 (** [add_args t args] builds the application of the {!type:term} [t] to a list
     arguments [args]. When [args] is empty, the returned value is (physically)
     equal to [t]. *)
@@ -426,8 +434,14 @@ val _Kind : tbox
 val _Symb : sym -> tbox
 
 (** [_Appl t u] lifts an application node to the {!type:tbox} type given boxed
-    terms [t] and [u]. *)
+   terms [t] and [u]. *)
 val _Appl : tbox -> tbox -> tbox
+
+(** [_Appl_not_canonical t u] lifts an application node to the {!type:tbox}
+   type given boxed terms [t] and [u], without putting it in canonical form
+   wrt. C and AC symbols. WARNING: to use in scoping of rewrite rule LHS only
+   as it breaks some invariants. *)
+val _Appl_not_canonical : tbox -> tbox -> tbox
 
 (** [_Appl_list a [b1;...;bn]] returns (... ((a b1) b2) ...) bn. *)
 val _Appl_list : tbox -> tbox list -> tbox

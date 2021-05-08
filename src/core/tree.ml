@@ -157,7 +157,7 @@ module CP = struct
     match cond with
     | CondNL(i,j) -> PSet.mem (i,j) pool.nl_conds
     | CondFV(i,x) ->
-        try Array.equal (=) x (IntMap.find i pool.fv_conds)
+        try Array.eq (=) x (IntMap.find i pool.fv_conds)
         with Not_found -> false
 
   (** [remove cond pool] removes condition [cond] from the pool [pool]. *)
@@ -167,7 +167,7 @@ module CP = struct
     | CondFV(i,xs) ->
         try
           let ys = IntMap.find i pool.fv_conds in
-          if not (Array.equal (=) xs ys) then pool
+          if not (Array.eq (=) xs ys) then pool
           else {pool with fv_conds = IntMap.remove i pool.fv_conds}
         with Not_found -> pool
 

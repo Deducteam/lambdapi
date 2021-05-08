@@ -197,8 +197,6 @@ let add_to_unsolved : ctxt -> term -> term -> problem -> problem =
   | None ->
       if !log_enabled then log_unif "move to unsolved";
       {p with unsolved = (ctx,t1,t2) :: p.unsolved}
-  | Some([]) -> assert false
-  (* Unification rules generate non empty list of unification constraints *)
   | Some(cs) ->
       {p with to_solve = List.fold_left add_unif_rule_constr p.to_solve cs}
 
@@ -314,22 +312,32 @@ let imitate_lam : ctxt -> meta -> problem -> problem = fun ctx m p ->
    injective and [inverse s v] does not fail, and [None] otherwise. *)
 let inverse_opt : sym -> term list -> term -> (term * term) option =
   fun s ts v ->
-  if !log_enabled then log_unif "try inverse";
+  if !log_enabled then log_unif "try inverse %a" pp_sym s;
   try
     match ts with
     | [t] when is_injective s -> Some (t, Inverse.inverse s v)
     | _ -> raise Not_found
   with Not_found -> if !log_enabled then log_unif "failed"; None
 
-(** [add_inverse t1 s ts1 t2] tries to replace a problem of the form [t1 ≡ t2]
+(** [inverse t1 s ts1 t2] tries to replace a problem of the form [t1 ≡ t2]
    with [t1 = s(ts1)] and [ts1=[u]] by [u ≡ inverse s t2], when [s] is
    injective. *)
-let add_inverse :
+let inverse :
       ctxt -> term -> sym -> term list -> term -> problem -> problem =
   fun ctx t1 s ts1 t2 p ->
   match inverse_opt s ts1 t2 with
   | Some (t, u) -> add_constr (ctx,t,u) p
-  | _ -> add_to_unsolved ctx t1 t2 p
+  | _ ->
+      match try_unif_rules ctx t1 t2 with
+      | None ->
+          begin match unfold t2 with
+          | Prod _ when is_constant s -> error t1 t2
+          | _ ->
+              if !log_enabled then log_unif "move to unsolved";
+              {p with unsolved = (ctx,t1,t2) :: p.unsolved}
+          end
+      | Some cs ->
+        {p with to_solve = List.fold_left add_unif_rule_constr p.to_solve cs}
 
 (** For a problem of the form [h1 ≡ h2] with [h1 = m[ts]], [h2 = Πx:_,_] (or
    the opposite) and [ts] distinct bound variables, [imitate_prod m h1 h2 p]
@@ -357,7 +365,7 @@ let sym_sym_whnf :
     | _, _ ->
         match inverse_opt s1 ts1 t2 with
         | Some (t, u) -> add_constr (ctx,t,u) p
-        | None -> add_inverse ctx t2 s2 ts2 t1 p
+        | None -> inverse ctx t2 s2 ts2 t1 p
 
 (** [solve p] tries to solve the unification problem [p] and
     returns the constraints that could not be solved. *)
@@ -483,14 +491,14 @@ let rec solve : problem -> constr list = fun p ->
   | Meta _, _
   | _, Meta _ -> solve (add_to_unsolved ctx t1 t2 p)
 
-  | Symb s, _ -> solve (add_inverse ctx t1 s ts1 t2 p)
-  | _, Symb s -> solve (add_inverse ctx t2 s ts2 t1 p)
+  | Symb s, _ -> solve (inverse ctx t1 s ts1 t2 p)
+  | _, Symb s -> solve (inverse ctx t2 s ts2 t1 p)
 
   | _ -> solve (add_to_unsolved ctx t1 t2 p)
 
 (** [solve p] tries to solve the unification problem [p] and
     returns the constraints that could not be solved.
-    This is the entry point setting the flag type_check *)
+    This is the entry point setting the flag [type_check]. *)
 let solve : ?type_check:bool -> problem -> constr list =
   fun ?(type_check=true) p ->
   if !log_enabled then log_hndl "solve %a" pp_problem p;
