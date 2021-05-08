@@ -1,5 +1,11 @@
 ### Unreleased
 
+#### Interface Improvements (2021-05-08)
+- Error messages are shown in logs buffer
+- Improvements in behaviour of Emacs interface
+- New shortcuts `C-c C-k` and `C-c C-r` for killing and reconnecting to the
+  LSP server
+
 #### Bugfixes in rewriting engine (2021-05-06)
 
 - Add tests on product matching
