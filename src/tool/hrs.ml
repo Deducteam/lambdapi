@@ -29,6 +29,7 @@ let print_term : bool -> term pp = fun lhs ->
     | TRef(_)      -> assert false
     | TEnv(_,_)    -> assert false
     | Wild         -> assert false
+    | Plac _       -> assert false
     | Kind         -> assert false
     (* Printing of atoms. *)
     | Vari(x)      -> out "%a" pp_var x

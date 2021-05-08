@@ -221,7 +221,7 @@ and scope_domain : mode -> sig_state -> env -> p_term option -> tbox =
   fun md ss env a ->
   match a, md with
   | None, M_LHS data -> fresh_patt data None (Env.to_tbox env)
-  | (Some {elt=P_Wild;_}|None), _ -> Env.fresh_meta_Type env
+  | (Some {elt=P_Wild;_}|None), _ -> _Plac true
   | Some a, _ -> scope md ss env a
 
 (** [scope_binder ?warn mode ss cons env params_list t] scopes [t] in mode
@@ -240,7 +240,7 @@ and scope_binder : ?warn:bool -> mode -> sig_state ->
         begin
           match t with
           | Some t -> scope md ss env t
-          | None -> Env.fresh_meta_Type env
+          | None -> _Plac true
         end
     | (idopts,typopt,_implicit)::params_list ->
         scope_params env idopts (scope_domain md ss env typopt) params_list
@@ -288,20 +288,15 @@ and scope_head : mode -> sig_state -> env -> p_term -> tbox =
     _TEnv (Bindlib.box_var x) (Env.to_tbox env)
   | (P_Wild, M_LHS data) -> fresh_patt data None (Env.to_tbox env)
   | (P_Wild, M_Patt) -> _Wild
-  | (P_Wild, _) -> Env.fresh_meta_tbox env
+  | (P_Wild, _) -> _Plac false
   | (P_Meta({elt;pos},ts), M_Term(user_metas,sys_metas,_)) ->
       let m =
         match elt with
         | Name id ->
             (try StrMap.find id Stdlib.(!user_metas)
              with Not_found ->
-               (* We create a new metavariable [m1] of type [TYPE] and a new
-                  metavariable [m] of name [id] and type [m1]. *)
-               let vs = Env.to_tbox env in
-               let m1 =
-                 Meta.fresh (Env.to_prod env _Type) (Array.length vs) in
-               let a = Env.to_prod env (_Meta m1 vs) in
-               let m = Meta.fresh ~name:id a (Array.length vs) in
+               let ari = Array.length (Env.to_tbox env) in
+               let m = Meta.fresh ~name:id mk_Wild ari in
                Stdlib.(user_metas := StrMap.add id m !user_metas); m)
         | Numb i ->
             (try IntMap.find i (Lazy.force sys_metas)

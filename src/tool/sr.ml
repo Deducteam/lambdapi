@@ -65,6 +65,7 @@ let patt_to_tenv : term_env Bindlib.var array -> term -> tbox = fun vars ->
     | Prod(_,_)   -> assert false (* Cannot appear in LHS. *)
     | LLet(_,_,_) -> assert false (* Cannot appear in LHS. *)
     | Meta(_,_)   -> assert false (* Cannot appear in LHS. *)
+    | Plac _      -> assert false (* Cannot appear in LHS. *)
     | TEnv(_,_)   -> assert false (* Cannot appear in LHS. *)
     | Wild        -> assert false (* Cannot appear in LHS. *)
     | TRef(_)     -> assert false (* Cannot appear in LHS. *)
@@ -118,6 +119,8 @@ let symb_to_tenv
           (_LLet (symb_to_tenv a) (symb_to_tenv t) b, ts)
       | Meta(_,_)   ->
           fatal pos "A metavariable could not be instantiated in the RHS."
+      | Plac _ ->
+          fatal pos "A placeholder could not be instantiated in the RHS."
       | TEnv(_,_)   -> assert false (* TEnv have been replaced in [t]. *)
       | Appl(_,_)   -> assert false (* Cannot appear in RHS. *)
       | Patt(_,_,_) -> assert false (* Cannot appear in RHS. *)
@@ -245,7 +248,8 @@ let check_rule : Scope.pre_rule Pos.loc -> rule = fun ({pos; elt} as pr) ->
   (* Compute the constraints for the RHS to have the same type as the LHS. *)
   match Infer.check_noexn [] [] rhs_typing ty_lhs with
   | None -> fatal pos "[%a] is not typable." pp_term rhs_typing
-  | Some (_, to_solve) ->
+  | Some (rhs_typing, to_solve) ->
+  (* Type checking removes placeholders from [rhs_typing] *)
   if !log_enabled then
     begin
       log_subj "LHS is now: %a" pp_term lhs_typing;

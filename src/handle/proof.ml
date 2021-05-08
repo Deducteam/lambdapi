@@ -247,9 +247,7 @@ let goals_of_typ : term loc option -> term loc option ->
 let goals_of_typ : term loc option -> term loc option ->
   goal list * term * term option =
   fun typ ter ->
-  let metas = match typ with
-    | Some ty -> LibTerm.Meta.get true ty.elt
-    | None -> MetaSet.empty
-  in
   let proof_goals, typ, ter = goals_of_typ typ ter in
+  (* Fetch metas *after* type checking since it can create meta variables. *)
+  let metas = LibTerm.Meta.get true typ in
   add_goals_of_metas metas proof_goals, typ, ter

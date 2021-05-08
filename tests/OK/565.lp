@@ -33,6 +33,7 @@ symbol id : Π A,
 ≔  λ A na s, s na;
 
 
+debug +i;
 symbol or_elim_long_to_verify :
    Π (A B: Prop),
    prf ¬ A →

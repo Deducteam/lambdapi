@@ -50,6 +50,7 @@ let iter : (term -> unit) -> term -> unit = fun action ->
     action t;
     match t with
     | Wild
+    | Plac _
     | TRef(_)
     | Vari(_)
     | Type
@@ -91,8 +92,8 @@ module Meta = struct
   let make : ctxt -> term -> term = fun ctx a ->
     let prd, len = Ctxt.to_prod ctx a in
     let m = Meta.fresh prd len in
-    let get_var (x,_,_) = mk_Vari(x) in
-    mk_Meta(m, Array.of_list (List.rev_map get_var ctx))
+    let get_var (x,_,d) = if d = None then Some (mk_Vari x) else None in
+    mk_Meta(m, Array.of_list (List.(filter_map get_var ctx |> rev)))
 
   (** [make_codomain ctx a] creates a fresh metavariable term [b] of type
       [Type] in the context [ctx] extended with a fresh variable of type
@@ -112,6 +113,7 @@ module Meta = struct
       | Patt(_,_,_)
       | TEnv(_,_)
       | Wild
+      | Plac _
       | TRef(_)
       | Vari(_)
       | Type

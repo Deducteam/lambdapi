@@ -142,8 +142,12 @@ let tac_induction : popt -> proof_state -> goal_typ -> goal list
   match Eval.whnf (Env.to_ctxt goal_hyps) goal_type with
   | Prod(a,_) ->
       let ind = ind_data pos goal_hyps a in
-      let n = ind.ind_nb_params + ind.ind_nb_types + ind.ind_nb_cons in
-      let t = Env.add_fresh_metas goal_hyps (mk_Symb ind.ind_prop) n in
+      let _n = ind.ind_nb_params + ind.ind_nb_types + ind.ind_nb_cons in
+      let t =
+        (* TODO: apply [mk_Symb ind.ind_prop] to [n] fresh meta variables *)
+        (* Env.add_fresh_metas goal_hyps (mk_Symb ind.ind_prop) n *)
+        assert false
+      in
       tac_refine pos ps gt gs t
   | _ -> fatal pos "[%a] is not a product." pp_term goal_type
 

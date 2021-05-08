@@ -270,6 +270,7 @@ let bind_match : term -> term -> tbinder =  fun p t ->
     | Prod(_)     -> fatal None "Cannot rewrite under products."
     | Abst(_)     -> fatal None "Cannot rewrite under abstractions."
     | Meta(_)     -> fatal None "Cannot rewrite metavariables."
+    | Plac _      -> fatal_no_pos "Cannot rewrite placeholders."
     | LLet(_)     -> fatal None "Cannot rewrite in let."
     (* Forbidden cases. *)
     | Patt(_,_,_) -> assert false

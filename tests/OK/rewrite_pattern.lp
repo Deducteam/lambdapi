@@ -124,7 +124,7 @@ opaque symbol add0r : Π n, P (eq nat (add n z) n)
 ≔ begin
   // FIXME try to infer nat.;
   // FIXME try to infer the predicate;
-  refine nat_ind (λ n, eq nat (add n z) n) ?CZ ?CS;
+  refine nat_ind (λ n, eq nat (add n z) n) _ _;
   // Case Z;
   simplify;
   refine refl nat z;
@@ -138,7 +138,7 @@ end;
 opaque symbol add_succ_r : Π n m, P (eq nat (add n (s m)) (s (add n m)))
 ≔ begin
   assume n m;
-  refine nat_ind (λ n, eq nat (add n (s m)) (s (add n m))) ?CZ[n;m] ?CS[n;m] n;
+  refine nat_ind (λ n, eq nat (add n (s m)) (s (add n m))) _ _ n;
   // Case Z;
   simplify;
   refine refl nat (s m);
@@ -154,7 +154,7 @@ end;
 opaque symbol addcomm : Π n m, P (eq nat (add n m) (add m n))
 ≔ begin
   assume n m;
-  refine nat_ind (λ (n:N), eq nat (add n m) (add m n)) ?CZ[n;m] ?CS[n;m] n;
+  refine nat_ind (λ (n:N), eq nat (add n m) (add m n)) _ _ n;
   // Case Z;
   simplify;
   symmetry;

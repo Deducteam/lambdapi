@@ -254,12 +254,16 @@ functor
         coerce ctx t a ty
       in
       match unfold te with
+      | Plac true ->
+          unif ctx ty mk_Type;
+          LibTerm.Meta.make ctx mk_Type
+      | Plac false -> LibTerm.Meta.make ctx ty
       | Abst (dom, t) -> (
           match Eval.whnf ctx ty with
           | Prod (e1, e2) ->
             if !Debug.log_enabled then
               log "Force-λ [%a] of [%a]" Print.pp_term te Print.pp_term ty;
-              let dom, _ = type_enforce ctx dom in
+              let dom = force ctx dom mk_Type in
               unif ctx dom e1;
               let x, t, e2 = Bindlib.unbind2 t e2 in
               let ctx = (x, dom, None) :: ctx in
@@ -290,20 +294,27 @@ functor
           let a = try Ctxt.type_of x ctx with Not_found -> assert false in
           (t, a)
       | Symb s -> (t, !(s.sym_type))
+      | Plac true ->
+          let m = LibTerm.Meta.make ctx mk_Type in
+          (m, mk_Type)
+      | Plac false ->
+          let mt = LibTerm.Meta.make ctx mk_Type in
+          let m = LibTerm.Meta.make ctx mt in
+          (mt, m)
       (* All metavariables inserted are typed. *)
       | (Meta (m, ts)) as t ->
           let rec ref_esubst i range =
             (* Refine terms of the explicit substitution. *)
             if i >= Array.length ts then range else
-            match unfold range with
-            | Prod(ai, b) ->
-                ts.(i) <- force ctx ts.(i) ai;
-                let b = Bindlib.subst b ts.(i) in
-                ref_esubst (i + 1) b
-            | _ ->
-                (* Meta type must be a product of arity greater or equal to
-                   the environment *)
-                assert false
+              match unfold range with
+              | Prod(ai, b) ->
+                  ts.(i) <- force ctx ts.(i) ai;
+                  let b = Bindlib.subst b ts.(i) in
+                  ref_esubst (i + 1) b
+              | _ ->
+                  (* Meta type must be a product of arity greater or equal
+                     to the environment *)
+                  assert false
           in
           let range = ref_esubst 0 !(m.meta_type) in
           (t, range)

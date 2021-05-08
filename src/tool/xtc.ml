@@ -42,6 +42,7 @@ let rec print_term : int -> string -> term pp = fun i s oc t ->
   | TRef(_)                 -> assert false
   | TEnv(_,_)               -> assert false
   | Wild                    -> assert false
+  | Plac _                  -> assert false
   | Kind                    -> assert false
   (* [TYPE] and products are necessarily at type level *)
   | Type                    -> assert false
@@ -70,6 +71,7 @@ and print_type : int -> string -> term pp = fun i s oc t ->
   | TRef(_)                 -> assert false
   | TEnv(_,_)               -> assert false
   | Wild                    -> assert false
+  | Plac _                  -> assert false
   | Kind                    -> assert false
   (* Variables are necessarily at object level *)
   | Vari(_)                 -> assert false
@@ -131,6 +133,7 @@ let get_vars : sym -> rule -> (string * Term.term) list = fun s r ->
     | Meta (_, _)
     | TRef _
     | Wild
+    | Plac _
     | Prod (_, _)
     | LLet(_) (* No let in LHS *)
     | Vari _              -> assert false

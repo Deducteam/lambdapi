@@ -113,6 +113,7 @@ let link : t -> unit = fun sign ->
     | Patt(i,n,m) -> mk_Patt(i, n, Array.map link_term m)
     | TEnv(t,m)   -> mk_TEnv(t, Array.map link_term m)
     | Wild        -> t
+    | Plac _      -> t
     | TRef(_)     -> t
   and link_rule r =
     let lhs = List.map link_term r.lhs in
@@ -192,6 +193,7 @@ let unlink : t -> unit = fun sign ->
     | Patt(_,_,_)  -> () (* The environment only contains variables. *)
     | TEnv(t,m)    -> unlink_term_env t; Array.iter unlink_term m
     | Wild         -> ()
+    | Plac _       -> assert false (* No placeholders in signatures. *)
     | TRef(_)      -> ()
   and unlink_rule r =
     List.iter unlink_term r.lhs;
@@ -295,6 +297,7 @@ let read : string -> t = fun fname ->
       | Patt(_,_,m) -> Array.iter reset_term m
       | TEnv(_,m)   -> Array.iter reset_term m
       | Wild        -> ()
+      | Plac _      -> assert false (* No placeholders in signature *)
       | TRef(r)     -> unsafe_reset r; Option.iter reset_term !r
     and reset_rule r =
       List.iter reset_term r.lhs;

@@ -214,6 +214,7 @@ and pp_term : term pp = fun ppf t ->
     | Appl(_,_)   -> assert false
     (* Application is handled separately, unreachable. *)
     | Wild        -> out ppf "_"
+    | Plac _      -> out ppf "_"
     | TRef(r)     ->
         (match !r with
          | None -> out ppf "<TRef>"

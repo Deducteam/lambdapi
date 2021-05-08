@@ -97,6 +97,8 @@ let pp_short : popt Lplib.Base.pp = fun ppf p ->
 let map : ('a -> 'b) -> 'a loc -> 'b loc = fun f loc ->
   {loc with elt = f loc.elt}
 
+let iter : ('a ->  unit) -> 'a loc -> unit = fun f {elt;_} -> f elt
+
 (** [locate ?fname loc] converts the pair of position [loc] and filename
     [fname] of the Lexing library into a {!type:pos}. *)
 let locate : ?fname:string -> Lexing.position * Lexing.position -> pos =
