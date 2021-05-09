@@ -15,19 +15,22 @@ let unbind : ctxt -> term -> term option -> tbinder -> tvar * term * ctxt =
 
 (** [of_prod ?len t] unbinds the first [?len] products of product [t] to form
     a context. If [?len] is not specified, all products are unbound. *)
-let rec of_prod : ?len:int -> term -> ctxt =
-  fun ?len t ->
-  let f len =
-      match unfold t with
-        | Prod(a, b) ->
-            let (x, b) = Bindlib.unbind b in
-            (x, a, None) :: of_prod ?len b
-        | _ -> []
+let of_prod : ?len:int -> term -> ctxt =
+  fun ?len ->
+  let rec of_prod ?len ctx t =
+    match len with
+    | Some k when k <= 0 -> ctx
+    | _ ->
+        let len = Option.map pred len in
+        begin
+          match unfold t with
+          | Prod(a, b) ->
+              let (x, b) = Bindlib.unbind b in
+              of_prod ?len ((x, a, None) :: ctx) b
+          | _ -> ctx
+        end
   in
-  match len with
-  | Some k when k <= 0 -> []
-  | Some k -> f (Some(k - 1))
-  | None -> f None
+  of_prod ?len []
 
 (** [type_of x ctx] returns the type of [x] in the context [ctx] when it
     appears in it, and

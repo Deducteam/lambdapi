@@ -194,7 +194,7 @@ functor
             if !Debug.log_enabled then
               log "Processing requirement \"%s\"" s.elt  ;
             let def_ctxt_v =
-              List.map (fun (x,_,_) -> x) def_ctxt |> Array.of_list
+              List.rev_map (fun (x,_,_) -> x) def_ctxt |> Array.of_list
             in
             (* [v] and [w] are substituted by [ms] which ought to be
                instantiated enough so the pre-coercion problems become
