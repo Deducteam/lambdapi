@@ -12,23 +12,9 @@ let log = log.logger
 (** Type for unification constraints solvers. *)
 type solver = problem -> constr list option
 
-(** A prerequisite [n, m, V, W] specifies that term [m] must be coerced from
-    [V] to [W]. The requirements' name [n] is used for debugging. Term [m]
-    must be of the form [TE_Some(u)]. *)
-type prereq = strloc * term_env * tmbinder * tmbinder
-
-type coercion =
-  { name : string
-  ; requirements : prereq array
-  (** Arguments that must be searched among available coercions. *)
-  ; defn : (term_env, term) Bindlib.mbinder (** Definition of the coercion. *)
-  ; defn_ty : term (** Type of the definition. Must be a product type. *)
-  ; source : int (** Argument of the definition that is coerced. *)
-  ; arity : int (** Arity of the target type. *) }
-
 (** Module that provide a lookup function to the refiner. *)
 module type LOOKUP = sig
-  val coercions : coercion list
+  val coercions : Sign.coercion list
   val solve : solver
   (** [solve pb] is specified in {!module:Unif}, see
       {!val:Unif.solve_noexn}. *)
@@ -126,7 +112,7 @@ functor
       let rec try_coercions cs =
         match cs with
         | [] -> raise Not_found
-        | {defn_ty; source; requirements; defn; arity; name }::cs ->
+        | Sign.{defn_ty; source; requirements; defn; arity; name }::cs ->
             if !Debug.log_enabled then log "Trying coercion %s" name;
             let l = LibTerm.prod_arity defn_ty in
             let metas, domain, range =
@@ -186,9 +172,10 @@ functor
         requirements [reqs] in context [ctx]. Context [def_ctx] is the context
         given by the main coercion: all variables of [def_ctx] have been
         substituted by meta-variables in [ms]. *)
-    and apply : ctxt -> ctxt -> term array -> prereq array -> term_env array =
+    and apply : ctxt -> ctxt -> term array -> Sign.prereq array ->
+      term_env array =
       fun ctx def_ctxt ms ->
-      let instantiate_reqs (s, m, v, w: prereq) =
+      let instantiate_reqs (s, m, v, w: Sign.prereq) =
         match m with
         | TE_Some m ->
             if !Debug.log_enabled then
@@ -470,10 +457,6 @@ functor
 (** A refiner without coercion generator nor unification. *)
 module Bare =
   Make(struct let coercions = [] let solve _ = None end)
-
-(** A collection of coercions. *)
-let coercions : coercion list Stdlib.ref = Stdlib.ref []
-(* REVIEW: coercions may be placed in the signature state *)
 
 (** A reference to a refiner that can modified by other modules . *)
 let default : (module S) Stdlib.ref = Stdlib.ref (module Bare: S)

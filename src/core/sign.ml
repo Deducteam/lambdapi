@@ -20,6 +20,21 @@ type ind_data =
 (** The priority of an infix operator is a floating-point number. *)
 type priority = float
 
+(** A prerequisite [n, m, V, W] specifies that term [m] must be coerced from
+    [V] to [W]. The requirements' name [n] is used for debugging. Term [m]
+    must be of the form [TE_Some(u)]. *)
+type prereq = strloc * term_env * tmbinder * tmbinder
+
+(** Coercions for the type checker/refiner. *)
+type coercion =
+  { name : string
+  ; requirements : prereq array
+  (** Arguments that must be searched among available coercions. *)
+  ; defn : (term_env, term) Bindlib.mbinder (** Definition of the coercion. *)
+  ; defn_ty : term (** Type of the definition. Must be a product type. *)
+  ; source : int (** Argument of the definition that is coerced. *)
+  ; arity : int (** Arity of the target type. *) }
+
 (** Notations. *)
 type notation =
   | Prefix of priority
@@ -37,7 +52,9 @@ type t =
   ; sign_builtins : sym StrMap.t ref
   ; sign_notations: notation SymMap.t ref
     (** Maps symbols to their notation if they have some. *)
-  ; sign_ind      : ind_data SymMap.t ref }
+  ; sign_ind      : ind_data SymMap.t ref
+  ; sign_coercions: coercion list ref
+  (** Coercions defined in the module. *) }
 
 (* NOTE the [deps] field contains a hashtable binding the external modules on
    which the current signature depends to an association list mapping symbols
@@ -48,7 +65,8 @@ type t =
 let dummy : unit -> t = fun () ->
   { sign_symbols = ref StrMap.empty; sign_path = []
   ; sign_deps = ref Path.Map.empty; sign_builtins = ref StrMap.empty
-  ; sign_notations = ref SymMap.empty; sign_ind = ref SymMap.empty }
+  ; sign_notations = ref SymMap.empty; sign_ind = ref SymMap.empty
+  ; sign_coercions = ref [] }
 
 (** [create mp] creates an empty signature in the module [mp]. *)
 let create : Path.t -> t = fun sign_path ->
@@ -116,11 +134,15 @@ let link : t -> unit = fun sign ->
     | TEnv(t,m)   -> mk_TEnv(t, Array.map (link_term mk_Appl) m)
     | Wild        -> assert false
     | TRef(_)     -> assert false
+  and link_mbinder : 'a. ('a, term) Bindlib.mbinder ->
+    ('a , term) Bindlib.mbinder =
+    fun  b ->
+      let xs, b = Bindlib.unmbind b in
+      let b = lift (link_term mk_Appl b) in
+      Bindlib.(unbox (bind_mvar xs b))
   and link_rule r =
     let lhs = List.map (link_term mk_Appl_not_canonical) r.lhs in
-    let (xs, rhs) = Bindlib.unmbind r.rhs in
-    let rhs = lift (link_term mk_Appl rhs) in
-    let rhs = Bindlib.unbox (Bindlib.bind_mvar xs rhs) in
+    let rhs = link_mbinder r.rhs in
     {r with lhs ; rhs}
   and link_symb s =
     if s.sym_path = sign.sign_path then s else
@@ -161,7 +183,27 @@ let link : t -> unit = fun sign ->
       ind_nb_types = i.ind_nb_types; ind_nb_cons = i.ind_nb_cons }
   in
   let fn s i m = SymMap.add (link_symb s) (link_ind_data i) m in
-  sign.sign_ind := SymMap.fold fn !(sign.sign_ind) SymMap.empty
+  sign.sign_ind := SymMap.fold fn !(sign.sign_ind) SymMap.empty;
+  (* Linking coercions *)
+  let link_req (n, m, src, tgt) =
+    let src = link_mbinder src in
+    let tgt = link_mbinder tgt in
+    (* let m =
+     *   match m with
+     *   | TE_Some m -> TE_Some (link_mbinder m)
+     *   | _ -> assert false (\* coercions should contain TE_Some *\)
+     * in *)
+    (n, m, src, tgt)
+  in
+  let link_coercion ({ defn; defn_ty; requirements; _ } as c) =
+    let xs, defn = Bindlib.unmbind defn in
+    let defn = lift (link_term mk_Appl defn) in
+    let defn = Bindlib.(bind_mvar xs defn |> unbox) in
+    let defn_ty = link_term mk_Appl defn_ty in
+    let requirements = Array.map link_req requirements in
+    {c with defn; defn_ty; requirements}
+  in
+  sign.sign_coercions := List.map link_coercion !(sign.sign_coercions)
 
 (** [unlink sign] removes references to external symbols (and thus signatures)
     in the signature [sign]. This function is used to minimize the size of our
@@ -196,10 +238,11 @@ let unlink : t -> unit = fun sign ->
     | Wild         -> ()
     | Plac _       -> assert false (* No placeholders in signatures. *)
     | TRef(_)      -> ()
+  and unlink_mbinder : 'a. ('a, term) Bindlib.mbinder -> unit = fun b ->
+    unlink_term (snd (Bindlib.unmbind b))
   and unlink_rule r =
     List.iter unlink_term r.lhs;
-    let (_, rhs) = Bindlib.unmbind r.rhs in
-    unlink_term rhs
+    unlink_mbinder r.rhs
   in
   let fn _ (s,_) =
     unlink_term !(s.sym_type);
@@ -215,7 +258,20 @@ let unlink : t -> unit = fun sign ->
     List.iter unlink_sym i.ind_cons; unlink_sym i.ind_prop
   in
   let fn s i = unlink_sym s; unlink_ind_data i in
-  SymMap.iter fn !(sign.sign_ind)
+  SymMap.iter fn !(sign.sign_ind);
+  (* Unlinking coercions *)
+  let unlink_req (_, m, src, tgt: prereq) =
+    unlink_mbinder src;
+    unlink_mbinder tgt;
+    match m with TE_Some m -> unlink_mbinder m | _ -> assert false
+  in
+  let unlink_coercion {defn; defn_ty; requirements; _} =
+    unlink_mbinder defn;
+    unlink_term defn_ty;
+    Array.iter unlink_req requirements
+  in
+  List.iter unlink_coercion !(sign.sign_coercions)
+
 
 (** [add_symbol sign expo prop mstrat opaq name typ impl] add in the signature
    [sign] a symbol with name [name], exposition [expo], property [prop],
@@ -366,6 +422,12 @@ let add_inductive : t -> sym -> sym list -> sym -> int -> int -> unit =
   let ind_nb_cons = List.length ind_cons in
   let ind = {ind_cons; ind_prop; ind_nb_params; ind_nb_types; ind_nb_cons} in
   sign.sign_ind := SymMap.add ind_sym ind !(sign.sign_ind)
+
+(** [add_coercion sign ...] adds to signature [sign] the coercion made of
+    TODO *)
+let add_coercion : t -> coercion -> unit =
+  fun sign c ->
+  sign.sign_coercions := !(sign.sign_coercions) @ [c]
 
 (** [dependencies sign] returns an association list containing (the transitive
     closure of) the dependencies of the signature [sign].  Note that the order

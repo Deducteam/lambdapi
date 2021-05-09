@@ -7,7 +7,7 @@ open Term
 
 (** [check cion] runs sanity checks on coercion [cion]. In particular that the
     definition has the mentioned type. *)
-let check : Infer.coercion -> unit =
+let check : Sign.coercion -> unit =
   fun _ ->
   (* Substitute sub-coercions by fresh variables of the appropriate type. *)
   (* Infer check *)
@@ -29,7 +29,7 @@ let handle : Sig_state.t -> p_ident -> p_term -> p_term -> int -> int ->
     let ty = scope_term ss defn_ty in
     Refiner.check_sort [] (Pos.make defn_ty.pos ty) |> fst
   in
-  let process_req (id, ty) : Infer.prereq =
+  let process_req (id, ty) : Sign.prereq =
     match ty.elt with
       | P_Arro(a, b) ->
           let (name, env, coer) =
@@ -51,13 +51,13 @@ let handle : Sig_state.t -> p_ident -> p_term -> p_term -> int -> int ->
   in
   let requirements = List.map process_req requirements |> Array.of_list in
   let cion =
-    Infer.{ name = name.elt; source; arity; defn; defn_ty ; requirements }
+    Sign.{ name = name.elt; source; arity; defn; defn_ty ; requirements }
   in
+  let ss = Sig_state.add_coercion ss cion in
   let module Lookup = struct
-    let coercions = cion :: Stdlib.(!Infer.coercions)
+    let coercions = ss.coercions
     let solve pb = Unif.solve_noexn pb
   end
   in
   Stdlib.((Infer.default) := (module (Infer.Make(Lookup)): Infer.S));
-  Stdlib.(Infer.(coercions := cion :: !coercions));
   ss
