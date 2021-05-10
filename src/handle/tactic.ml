@@ -103,8 +103,6 @@ let tac_refine : (module Infer.S) -> popt -> proof_state -> goal_typ ->
   let gs_typ, gs_unif = List.partition is_typ gs in
   let to_solve = List.map get_constr gs_unif in
   let c = Env.to_ctxt gt.goal_hyps in
-  if !Debug.log_enabled then
-    log_tact "Check \"%a\"" Print.pp_typing (c,t,gt.goal_type);
   match Infer.check_noexn to_solve c t gt.goal_type with
   | None -> fatal pos "[%a] cannot have type [%a]."
               pp_term t pp_term gt.goal_type

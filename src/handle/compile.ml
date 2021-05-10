@@ -132,7 +132,7 @@ end = struct
     Option.iter State.apply st;
     let restore () =
       State.pop ();
-      lib_mappings := libmap;
+      lib_mappings := libmap
     in
     try
       let res = f x in

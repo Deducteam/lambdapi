@@ -195,7 +195,7 @@ let add_unif_rule_constr : constr list -> constr -> constr list =
           let cs = List.fold_left add_constr_fold (add_constr c cs) cstu in
           if Eval.eq_modulo ctx a b then cs else add_constr (ctx,a,b) cs
 
-(** [add_to_unsolved tc t1 t2 p] checks whether [t1] is equivalent to [t2]. If
+(** [add_to_unsolved t1 t2 p] checks whether [t1] is equivalent to [t2]. If
    not, then it tries to apply unification rules on the problem [t1 ≡ t2]. If
    no unification rule applies then it adds [t1 = t2] in the unsolved problems
    of [p]. *)
@@ -529,7 +529,7 @@ let eq_noexn : ?type_check:bool -> ctxt -> term -> term -> bool =
   fun ?(type_check=true) c t u ->
   solve_noexn ~type_check {empty_problem with to_solve=[c,t,u]} = Some []
 
-(** [typechecker cions] creates a typechecker with {val:solve_noexn} as
+(** [typechecker cions] creates a typechecker with {!val:solve_noexn} as
     unification function from coercions [cions] and sets it as the typechecker
     used by the unification algorithm. This function should always be used to
     obtain a typechecker. *)
