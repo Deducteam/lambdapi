@@ -129,7 +129,7 @@ let link : t -> unit = fun sign ->
         mk_LLet(link_term mk_Appl a, link_term mk_Appl t, link_binder u)
     | Appl(t,u)   -> mk_Appl(link_term mk_Appl t, link_term mk_Appl u)
     | Meta(_,_)   -> assert false
-    | Plac _      -> assert false
+    | Plac _      -> t (* Happens in coercions *)
     | Patt(i,n,m) -> mk_Patt(i, n, Array.map (link_term mk_Appl) m)
     | TEnv(t,m)   -> mk_TEnv(t, Array.map (link_term mk_Appl) m)
     | Wild        -> assert false
@@ -188,11 +188,11 @@ let link : t -> unit = fun sign ->
   let link_req (n, m, src, tgt) =
     let src = link_mbinder src in
     let tgt = link_mbinder tgt in
-    (* let m =
-     *   match m with
-     *   | TE_Some m -> TE_Some (link_mbinder m)
-     *   | _ -> assert false (\* coercions should contain TE_Some *\)
-     * in *)
+    let m =
+      match m with
+      | TE_Some m -> TE_Some (link_mbinder m)
+      | _ -> assert false (* coercions should contain TE_Some *)
+    in
     (n, m, src, tgt)
   in
   let link_coercion ({ defn; defn_ty; requirements; _ } as c) =
@@ -236,7 +236,7 @@ let unlink : t -> unit = fun sign ->
     | Patt(_,_,_)  -> () (* The environment only contains variables. *)
     | TEnv(t,m)    -> unlink_term_env t; Array.iter unlink_term m
     | Wild         -> ()
-    | Plac _       -> assert false (* No placeholders in signatures. *)
+    | Plac _       -> () (* may happen in coercions *)
     | TRef(_)      -> ()
   and unlink_mbinder : 'a. ('a, term) Bindlib.mbinder -> unit = fun b ->
     unlink_term (snd (Bindlib.unmbind b))

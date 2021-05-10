@@ -10,7 +10,7 @@ constant symbol nat : Set;
 constant symbol z : El nat;
 constant symbol nat2int : El nat → El int;
 
-// FIXME: test fails if we invert coercions
+// FIXME: test fails if we swap coercions
 
 // Coerces tuples provided that we can coerce its elements
 coercion "tup" λ a0 b0 a1 b1 t, cons a1 b1 $c[car a0 b0 t] $d[cdr a0 b0 t]
@@ -21,11 +21,7 @@ with d : El b0 → El b1;
 
 coercion "nat2int" nat2int : El nat → El int on 1;
 
-debug +iu;
-compute car int int (cons nat nat z z);
-/*
 assert ⊢ car int int (cons nat nat z z)
        ≡ car int int (cons int int
                            (nat2int (car nat nat (cons nat nat z z)))
                            (nat2int (cdr nat nat (cons nat nat z z))));
-			   */

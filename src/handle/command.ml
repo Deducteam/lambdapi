@@ -164,7 +164,7 @@ let handle_inductive_symbol : sig_state -> expo -> prop -> match_strat
     (if xs = [] then scope_term else scope_term_with_params)
       (expo = Privat) ss Env.empty (lazy IntMap.empty) typ
   in
-  let module Infer = (val Stdlib.(!Infer.default)) in
+  let module Infer = (val Unif.typechecker ss.coercions) in
   (* We check that [a] is typable by a sort. *)
   let (typ, _) = Infer.check_sort [] {elt=typ;pos} in
   (* We check that no metavariable remains. *)
@@ -411,7 +411,8 @@ let get_proof_data : compiler -> sig_state -> p_command ->
     in
     (* Build proof data. *)
     let data =
-      let proof_goals, a, t = goals_of_typ a t in
+      let tc = Unif.typechecker ss.coercions in
+      let proof_goals, a, t = goals_of_typ tc a t in
       (* Add the definition as goal so that we can refine on it. *)
       let proof_term =
         if p_sym_def then Some (Meta.fresh ~name:id a 0) else None in
@@ -477,7 +478,7 @@ let get_proof_data : compiler -> sig_state -> p_command ->
         match pt, t with
         | Some pt, Some t ->
             (match ps.proof_goals with
-             | Typ gt :: gs -> Tactic.tac_refine pt.pos ps gt gs t
+             | Typ gt :: gs -> Tactic.tac_refine tc pt.pos ps gt gs t
              | _ -> assert false)
         | _, _ -> ps
       in

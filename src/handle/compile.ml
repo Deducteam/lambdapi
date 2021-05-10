@@ -128,13 +128,11 @@ end = struct
     fun ?lm ?st f x ->
     let libmap = !lib_mappings in
     State.push ();
-    let module InferB = (val Stdlib.(!Infer.default)) in
     Option.iter Library.add_mapping lm;
     Option.iter State.apply st;
     let restore () =
       State.pop ();
       lib_mappings := libmap;
-      Stdlib.(Infer.default := (module InferB))
     in
     try
       let res = f x in

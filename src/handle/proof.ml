@@ -169,14 +169,14 @@ let focus_env : proof_state option -> Env.t = fun ps ->
       | [] -> Env.empty
       | g::_ -> Goal.env g
 
-(** [goals_of_typ typ ter] returns a triplet [(cs, ty, te)] where [cs] is the
-    list of unification goals that must be solved so that [typ] is typable by
-    a sort and [ter] has type [typ] and [ty] (respectively [te]) is the
-    refinement of [typ] (resp. [ter]). *)
-let goals_of_typ : term loc option -> term loc option ->
+(** [goals_of_typ tc typ ter] returns a triplet [(cs, ty, te)] where [cs] is
+    the list of unification goals that must be solved so that [typ] is typable
+    by a sort and [ter] has type [typ] and [ty] (respectively [te]) is the
+    refinement of [typ] (resp. [ter]). Module [tc] is the type checker
+    used. *)
+let goals_of_typ : (module Infer.S) -> term loc option -> term loc option ->
   goal list * term * term option =
-  fun typ ter ->
-  let module Infer = (val Stdlib.(!Infer.default)) in
+  fun (module Infer) typ ter ->
   let (ter, typ, to_solve) =
     match typ, ter with
     | Some(typ), Some(ter) ->
@@ -235,19 +235,21 @@ let goals_of_typ : term loc option -> term loc option ->
   in
   (List.map (fun c -> Unif c) to_solve, typ, ter)
 
-(** [goals_of_typ typ ter] returns a 3-uple [(gs, ty, te)] where [gs] is a
+(** [goals_of_typ tc typ ter] returns a 3-uple [(gs, ty, te)] where [gs] is a
     list of goals for [typ] to be typable by a sort and [ter] to have type
     [typ] in the empty context. [ter] and [typ] must not be both equal to
-    [None] and are refined into [te] and [ty] respectively. NOTE:
-    [goals_of_typ typ ter] contains typing goals to type [typ] by a sort and
-    unification goals to type both [typ] by a sort and [ter] by [typ]. However
-    it does not contain typing goals to type [ter] by [typ]. These goals are
-    generated using the {!constructor:Handle.Tactic.tac_refine} tactic called
-    on [ter]. *)
-let goals_of_typ : term loc option -> term loc option ->
+    [None] and are refined into [te] and [ty] respectively. [tc] is the
+    typechecker/refiner. *)
+let goals_of_typ : (module Infer.S) -> term loc option -> term loc option ->
   goal list * term * term option =
-  fun typ ter ->
-  let proof_goals, typ, ter = goals_of_typ typ ter in
+  fun tc typ ter ->
+  let proof_goals, typ, ter = goals_of_typ tc typ ter in
   (* Fetch metas *after* type checking since it can create meta variables. *)
   let metas = LibTerm.Meta.get true typ in
   add_goals_of_metas metas proof_goals, typ, ter
+
+(** NOTE: [goals_of_typ tc typ ter] contains typing goals to type [typ] by a
+    sort and unification goals to type both [typ] by a sort and [ter] by
+    [typ].  However it does not contain typing goals to type [ter] by [typ].
+    These goals are generated using the
+    {!constructor:Handle.Tactic.tac_refine} tactic called on [ter]. *)

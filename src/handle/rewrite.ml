@@ -312,7 +312,7 @@ let rewrite : Sig_state.t -> popt -> goal_typ -> bool ->
 
   (* Infer the type of [t] (the argument given to the tactic). *)
   let g_ctxt = Env.to_ctxt g_env in
-  let module Infer = (val Stdlib.(!Infer.default)) in
+  let module Infer = (val Unif.typechecker ss.coercions) in
   let _, t_type = Infer.infer g_ctxt {elt=t;pos} in
 
   (* Check that the type of [t] is of the form “P (eq a l r)”. *)

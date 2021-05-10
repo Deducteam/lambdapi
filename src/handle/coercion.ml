@@ -7,11 +7,12 @@ open Term
 
 (** [check cion] runs sanity checks on coercion [cion]. In particular that the
     definition has the mentioned type. *)
-let check : Sign.coercion -> unit =
-  fun _ ->
+let check : (module Infer.S) -> Sign.coercion -> unit =
+  fun (module Infer) {defn_ty; _} ->
+  ignore (Infer.check_sort [] (Pos.none defn_ty))
+  (* TODO: *)
   (* Substitute sub-coercions by fresh variables of the appropriate type. *)
   (* Infer check *)
-  assert false
 
 (** [handle ss name defn defn_ty source arity requirements] parses and scopes
     the coercion defined by term [defn] of type [defn_ty] coercing on its
@@ -24,11 +25,7 @@ let handle : Sig_state.t -> p_ident -> p_term -> p_term -> int -> int ->
     Scope.scope_term true ss env (lazy Lplib.Extra.IntMap.empty)
   in
   let defn, reqs = Scope.scope_coercion ss [] defn in
-  let defn_ty =
-    let module Refiner = (val Stdlib.(!Infer.default)) in
-    let ty = scope_term ss defn_ty in
-    Refiner.check_sort [] (Pos.make defn_ty.pos ty) |> fst
-  in
+  let defn_ty = scope_term ss defn_ty in
   let process_req (id, ty) : Sign.prereq =
     match ty.elt with
       | P_Arro(a, b) ->
@@ -53,11 +50,5 @@ let handle : Sig_state.t -> p_ident -> p_term -> p_term -> int -> int ->
   let cion =
     Sign.{ name = name.elt; source; arity; defn; defn_ty ; requirements }
   in
-  let ss = Sig_state.add_coercion ss cion in
-  let module Lookup = struct
-    let coercions = ss.coercions
-    let solve pb = Unif.solve_noexn pb
-  end
-  in
-  Stdlib.((Infer.default) := (module (Infer.Make(Lookup)): Infer.S));
-  ss
+  check (Unif.typechecker ss.coercions) cion;
+  Sig_state.add_coercion ss cion

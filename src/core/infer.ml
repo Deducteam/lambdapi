@@ -16,8 +16,8 @@ type solver = problem -> constr list option
 module type LOOKUP = sig
   val coercions : Sign.coercion list
   val solve : solver
-  (** [solve pb] is specified in {!module:Unif}, see
-      {!val:Unif.solve_noexn}. *)
+  (** [solve] is a solver as specified in {!module:Unif} (see
+      {!val:Unif.solve_noexn}). *)
 end
 
 module type S = sig
@@ -62,6 +62,9 @@ module type S = sig
         and [cs'] is a list of equations that must be solved. If [t] is not
         typable, [None] is returned. *)
 end
+
+(** {b NOTE} The function {!val:Unif.typechecker} should always be used to
+    obtain a typechecker, rather than {module:Make}. *)
 
 module Make : functor (_ : LOOKUP) -> S =
 functor
@@ -452,11 +455,6 @@ functor
           Error.fatal pos "[%a] is not typable." Print.pp_term a
   end
 
-(** {1 Preset refiners} *)
-
 (** A refiner without coercion generator nor unification. *)
 module Bare =
   Make(struct let coercions = [] let solve _ = None end)
-
-(** A reference to a refiner that can modified by other modules . *)
-let default : (module S) Stdlib.ref = Stdlib.ref (module Bare: S)

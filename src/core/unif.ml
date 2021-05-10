@@ -15,6 +15,16 @@ open Debug
 let logger_unif = new_logger 'u' "unif" "unification"
 let log_unif = logger_unif.logger
 
+(** The typechecker used by the unification algorithm. *)
+let typechecker : (module Infer.S) Stdlib.ref =
+  Stdlib.ref (module Infer.Bare: Infer.S)
+
+(** {b NOTE} the typecheker is a reference because unification and
+    typechecking are recursively defined: not using a reference would force
+    the solver to be of type [(module Infer.S -> solver)] which would
+    require the functor {!module:Infer.Make} to be recursive, which produce
+    an {e unsafe} module (see ocaml manual section 8.2). *)
+
 (** Given a meta [m] of type [Πx1:a1,..,Πxn:an,b], [set_to_prod m] sets it to
     product term of the form [Πy:m1[x1;..;xn],m2[x1;..;xn;y]] with [m1] and
     [m2] fresh metavariables. *)
@@ -102,8 +112,8 @@ let initial : constr list Stdlib.ref = Stdlib.ref []
 (** [is_initial c] checks whether [c] occurs in [!initial]. *)
 let is_initial c = List.exists (eq_constr c) Stdlib.(!initial)
 
-(** [instantiate ctx m ts u] check whether, in a problem [m[ts] ≡ u], [m] can
-   be instantiated and, if so, instantiate it. *)
+(** [instantiate ctx m ts u] check whether, in a problem [m[ts] ≡ u], [m]
+    can be instantiated and, if so, instantiate it. *)
 let instantiate : ctxt -> meta -> term array -> term -> bool =
   fun ctx m ts u ->
   if !log_enabled then log_unif "try instantiate";
@@ -114,7 +124,6 @@ let instantiate : ctxt -> meta -> term array -> term -> bool =
         Meta.set m (Bindlib.unbox bu); true
       in
       if Stdlib.(!do_type_check) then
-        let module Infer = (val Stdlib.(!Infer.default)) in
         begin
           let typ_mts =
             match type_app ctx !(m.meta_type) (Array.to_list ts) with
@@ -123,6 +132,7 @@ let instantiate : ctxt -> meta -> term array -> term -> bool =
           in
           if !Debug.log_enabled then
             log_unif "Check \"%a\"" Print.pp_typing (ctx,u,typ_mts);
+          let module Infer = (val Stdlib.(!typechecker)) in
           match Infer.check_noexn [] ctx u typ_mts with
           | None ->
               if !log_enabled then log_unif "typing condition failed"; false
@@ -165,11 +175,11 @@ let add_constr : constr -> constr list -> constr list = fun c cs ->
 let add_constr_fold cs c = add_constr c cs
 
 (** [add_unif_rule_constr cs (ctx,t,u)] adds to [cs] the constraint
-   [(ctx,t,u)] as well as the constraint [(ctx,a,b)] where [a] is the type of
-   [t] and [b] the type of [u] if they can be infered. *)
+    [(ctx,t,u)] as well as the constraint [(ctx,a,b)] where [a] is the type of
+    [t] and [b] the type of [u] if they can be infered. *)
 let add_unif_rule_constr : constr list -> constr -> constr list =
   fun cs ((ctx,t,u) as c) ->
-  let module Infer = (val Stdlib.(!Infer.default)) in
+  let module Infer = (val Stdlib.(!typechecker)) in
   match Infer.infer_noexn [] ctx t with
   | None ->
       begin
@@ -185,7 +195,7 @@ let add_unif_rule_constr : constr list -> constr -> constr list =
           let cs = List.fold_left add_constr_fold (add_constr c cs) cstu in
           if Eval.eq_modulo ctx a b then cs else add_constr (ctx,a,b) cs
 
-(** [add_to_unsolved t1 t2 p] checks whether [t1] is equivalent to [t2]. If
+(** [add_to_unsolved tc t1 t2 p] checks whether [t1] is equivalent to [t2]. If
    not, then it tries to apply unification rules on the problem [t1 ≡ t2]. If
    no unification rule applies then it adds [t1 = t2] in the unsolved problems
    of [p]. *)
@@ -519,12 +529,20 @@ let eq_noexn : ?type_check:bool -> ctxt -> term -> term -> bool =
   fun ?(type_check=true) c t u ->
   solve_noexn ~type_check {empty_problem with to_solve=[c,t,u]} = Some []
 
-(** A type inference algorithm with unification. *)
-module Infer_solve =
-  Infer.Make(struct let coercions = [] let solve pb = solve_noexn pb end)
+(** [typechecker cions] creates a typechecker with {val:solve_noexn} as
+    unification function from coercions [cions] and sets it as the typechecker
+    used by the unification algorithm. This function should always be used to
+    obtain a typechecker. *)
+let typechecker : Sign.coercion list -> (module Infer.S) =
+  fun cions ->
+  let module Env = struct
+    let coercions = cions
+    let solve pb = solve_noexn  pb
+  end
+  in
+  let module Infer = Infer.Make(Env) in
+  Stdlib.(typechecker := (module Infer));
+  (module Infer)
 
-(* Modify default refiner at load time. *)
-let _ = Stdlib.(Infer.default := (module Infer_solve))
-
-(** Other modules use [Unif.Infer] for inference with unification. *)
-module Infer = Infer_solve
+(** A type checker with unification (but without coercions). *)
+module Infer : Infer.S = (val typechecker [])
