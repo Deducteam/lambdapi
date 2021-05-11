@@ -139,15 +139,20 @@ let ind_data : popt -> Env.t -> term -> Sign.ind_data = fun pos env a ->
 let tac_induction : (module Infer.S) -> popt -> proof_state -> goal_typ ->
   goal list -> proof_state =
   fun tc pos ps ({goal_type;goal_hyps;_} as gt) gs ->
-  match Eval.whnf (Env.to_ctxt goal_hyps) goal_type with
+  let ctx = Env.to_ctxt goal_hyps in
+  match Eval.whnf ctx goal_type with
   | Prod(a,_) ->
       let ind = ind_data pos goal_hyps a in
-      let _n = ind.ind_nb_params + ind.ind_nb_types + ind.ind_nb_cons in
-      let t =
-        (* TODO: apply [mk_Symb ind.ind_prop] to [n] fresh meta variables *)
-        (* Env.add_fresh_metas goal_hyps (mk_Symb ind.ind_prop) n *)
-        assert false
+      let n = ind.ind_nb_params + ind.ind_nb_types + ind.ind_nb_cons in
+      let metas =
+        let fresh_meta _ =
+          let mt = LibTerm.Meta.make ctx mk_Type in
+          LibTerm.Meta.make ctx mt
+        in
+        (* Reverse to have goals properly sorted. *)
+        List.(rev (init (n - 1) fresh_meta))
       in
+      let t = add_args (mk_Symb ind.ind_prop) metas in
       tac_refine tc pos ps gt gs t
   | _ -> fatal pos "[%a] is not a product." pp_term goal_type
 
