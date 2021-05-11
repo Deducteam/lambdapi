@@ -279,25 +279,7 @@ and scope_head : mode -> sig_state -> env -> p_term -> tbox =
   | (P_Wild, M_LHS data) -> fresh_patt data None (Env.to_tbox env)
   | (P_Wild, M_Patt) -> _Wild
   | (P_Wild, _) -> _Plac false
-  | (P_Meta({elt;pos},ts), M_Term(user_metas,sys_metas,_)) ->
-      let m =
-        match elt with
-        | Name id ->
-            (try StrMap.find id Stdlib.(!user_metas)
-             with Not_found ->
-               let ari = Array.length (Env.to_tbox env) in
-               let m = Meta.fresh ~name:id mk_Wild ari in
-               Stdlib.(user_metas := StrMap.add id m !user_metas); m)
-        | Numb i ->
-            (try IntMap.find i (Lazy.force sys_metas)
-             with Not_found -> fatal pos "Unknown metavariable ?%d." i)
-      in
-      let ts =
-        match ts with
-        | None -> Env.to_tbox env (* [?M] is equivalent to [?M[env]]. *)
-        | Some ts -> Array.map (scope md ss env) ts
-      in
-      _Meta m ts
+  | (P_Meta _, M_Term _) -> _Plac false
   | (P_Meta(_,_), _) -> fatal t.pos "Metavariables are not allowed here."
   | (P_Patt(id,ts), M_Coer reqs) ->
       begin
@@ -456,6 +438,7 @@ let scope_term :
   fun prv ss env sgm t ->
   let m = Stdlib.ref StrMap.empty in
   Bindlib.unbox (scope (M_Term(m, sgm, prv)) ss env t)
+(* REVIEW: remove [sgm] *)
 
 (** [scope_term_with_params expo ss env sgm t] is similar to [scope_term expo
    ss env sgm t] except that [t] must be a product or an abstraction. In this
