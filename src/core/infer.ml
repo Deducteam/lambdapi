@@ -290,7 +290,7 @@ functor
       | Plac false ->
           let mt = LibTerm.Meta.make ctx mk_Type in
           let m = LibTerm.Meta.make ctx mt in
-          (mt, m)
+          (m, mt)
       (* All metavariables inserted are typed. *)
       | (Meta (m, ts)) as t ->
           let rec ref_esubst i range =
