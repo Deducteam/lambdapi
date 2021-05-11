@@ -8,11 +8,11 @@ all: bin
 
 .PHONY: bin
 bin:
-	@dune build -p lambdapi
+	@dune build --only-packages lambdapi @install
 
 .PHONY: odoc
 odoc:
-	@dune build -p lambdapi @doc
+	@dune build --only-packages lambdapi @doc
 
 .PHONY: doc
 doc:
@@ -24,21 +24,20 @@ vscode:
 
 #### Unit tests and sanity check #############################################
 
-LAMBDAPI     = dune exec -- lambdapi check
 OK_TESTFILES = $(sort $(wildcard tests/OK/*.dk tests/OK/*.lp))
 KO_TESTFILES = $(sort $(wildcard tests/KO/*.dk tests/KO/*.lp))
 
 .PHONY: tests
 tests: bin
-	@dune test -p lambdapi
+	@dune runtest --only-packages lambdapi
 	@printf "## Decision tree tests ##\n"
-	@dune exec -p lambdapi -- tests/dtrees.sh
+	@dune exec --only-packages lambdapi -- tests/dtrees.sh
 
 .PHONY: real_tests
 real_tests: bin
-	@dune test -p lambdapi
+	@dune runtest --only-packages lambdapi
 	@printf "## Decision tree tests ##\n"
-	@dune exec -p lambdapi -- tests/dtrees.sh
+	@dune exec --only-packages lambdapi -- tests/dtrees.sh
 
 .PHONY: sanity_check
 sanity_check: misc/sanity_check.sh
@@ -116,12 +115,11 @@ fullclean: distclean
 
 .PHONY: install
 install: bin
-	@dune build -p lambdapi @install
 	@dune install lambdapi
 
 .PHONY: uninstall
 uninstall:
-	@dune uninstall -p lambdapi
+	@dune uninstall lambdapi
 
 # Install for the vim mode (in the user's directory).
 .PHONY: install_vim
@@ -144,7 +142,7 @@ ifeq ($(EMACS),)
 	@printf "\e[36mNo 'emacs' binary available in path and EMACS variable \
 is not set, \nEmacs mode won't be installed.\e[39m\n"
 else
-	@dune build -p lambdapi-mode @install
+	@dune build --only-packages lambdapi-mode @install
 	@dune install lambdapi-mode
 	@printf "\e[36mEmacs mode installed.\e[39m\n"
 endif
