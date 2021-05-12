@@ -1,6 +1,7 @@
 (** Typing context. *)
 
 open Term
+open Lplib
 open Timed
 
 (** [unbind ctx a def b] returns a triple [(x,t,new_ctx)] such that [(x,t)] is
