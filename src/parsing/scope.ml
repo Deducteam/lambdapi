@@ -211,7 +211,7 @@ and scope_domain : mode -> sig_state -> env -> p_term option -> tbox =
   match a, md with
   | (Some {elt=P_Wild;_}|None), M_LHS data ->
       fresh_patt data None (Env.to_tbox env)
-  | (Some {elt=P_Wild;_}|None), _ -> _Plac true
+  | (Some {elt=P_Wild;_}|None), _ -> _Plac true None
   | Some a, _ -> scope md ss env a
 
 (** [scope_binder ?warn mode ss cons env params_list t] scopes [t] in mode
@@ -230,7 +230,7 @@ and scope_binder : ?warn:bool -> mode -> sig_state ->
         begin
           match t with
           | Some t -> scope md ss env t
-          | None -> _Plac true
+          | None -> _Plac true None
         end
     | (idopts,typopt,_implicit)::params_list ->
         scope_params env idopts (scope_domain md ss env typopt) params_list
@@ -278,8 +278,10 @@ and scope_head : mode -> sig_state -> env -> p_term -> tbox =
     _TEnv (Bindlib.box_var x) (Env.to_tbox env)
   | (P_Wild, M_LHS data) -> fresh_patt data None (Env.to_tbox env)
   | (P_Wild, M_Patt) -> _Wild
-  | (P_Wild, _) -> _Plac false
-  | (P_Meta _, M_Term _) -> _Plac false
+  | (P_Wild, _) -> _Plac false None
+  | (P_Meta (mid, _), M_Term _) ->
+      let id = match mid.elt with Name s -> s | Numb n -> string_of_int n in
+      _Plac false (Some id)
   | (P_Meta(_,_), _) -> fatal t.pos "Metavariables are not allowed here."
   | (P_Patt(id,ts), M_Coer reqs) ->
       begin

@@ -214,8 +214,9 @@ and pp_term : term pp = fun ppf t ->
     | Appl(_,_)   -> assert false
     (* Application is handled separately, unreachable. *)
     | Wild        -> out ppf "_"
-    | Plac true   -> out ppf "?*"
-    | Plac false  -> out ppf "?"
+    | Plac (b, Some(n)) ->
+        out ppf ("?" ^^ (if b then "*" else "") ^^ "%a") pp_uid n
+    | Plac (b, None) -> out ppf ("?" ^^ (if b then "*" else ""))
     | TRef(r)     ->
         (match !r with
          | None -> out ppf "<TRef>"

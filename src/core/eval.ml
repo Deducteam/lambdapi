@@ -384,7 +384,7 @@ and snf : ctxt -> term -> term = fun ctx t ->
       mk_Abst(snf ctx a, b)
   | Appl(t,u)   -> mk_Appl(snf ctx t, snf ctx u)
   | Meta(m,ts)  -> mk_Meta(m, Array.map (snf ctx) ts)
-  | Plac i      -> mk_Plac i
+  | Plac (i,n)  -> mk_Plac i n
   | Patt(_,_,_) -> assert false
   | TEnv(_,_)   -> assert false
   | Wild        -> assert false

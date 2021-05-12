@@ -62,7 +62,7 @@ type term =
   | TEnv of term_env * term array
   (** Term environment (only used in rewriting rules RHS). *)
   | Wild
-  | Plac of bool
+  | Plac of bool * string option
   | TRef of term option ref (** Reference cell (used in surface matching). *)
   | LLet of term * term * tbinder
   (** [LLet(a, t, u)] is [let x : a ≔ t in u] (with [x] bound in [u]). *)
@@ -533,7 +533,7 @@ let mk_Meta (m,ts) = Meta (m,ts)
 let mk_Patt (i,s,ts) = Patt (i,s,ts)
 let mk_TEnv (te,ts) = TEnv (te,ts)
 let mk_Wild = Wild
-let mk_Plac b = Plac b
+let mk_Plac (b: bool) (n: string option) = Plac (b, n)
 let mk_TRef x = TRef x
 let mk_LLet (a,t,u) = LLet (a,t,u)
 
@@ -722,7 +722,8 @@ let _TEnv : tebox -> tbox array -> tbox = fun te ts ->
 (** [_Wild] injects the constructor [Wild] into the {!type:tbox} type. *)
 let _Wild : tbox = Bindlib.box Wild
 
-let _Plac : bool -> tbox = fun b -> Bindlib.box (Plac b)
+let _Plac : bool -> string option -> tbox = fun b n ->
+  Bindlib.box (mk_Plac b n)
 
 (** [_TRef r] injects the constructor [TRef(r)] into the {!type:tbox} type. It
     should be the case that [!r] is [None]. *)
@@ -758,7 +759,7 @@ let lift : (tbox -> tbox -> tbox) -> term -> tbox = fun mk_appl ->
   | Patt(i,n,m) -> _Patt i n (Array.map lift m)
   | TEnv(te,m)  -> _TEnv (lift_term_env te) (Array.map lift m)
   | Wild        -> _Wild
-  | Plac i      -> _Plac i
+  | Plac (b, n) -> _Plac b n
   | TRef r      -> _TRef r
   | LLet(a,t,u) -> _LLet (lift a) (lift t) (lift_binder u)
   (* We do not use [Bindlib.box_binder] here because it is possible for a free

@@ -244,10 +244,10 @@ functor
         coerce ctx t a ty
       in
       match unfold te with
-      | Plac true ->
+      | Plac (true, name) ->
           unif ctx ty mk_Type;
-          LibTerm.Meta.make ctx mk_Type
-      | Plac false -> LibTerm.Meta.make ctx ty
+          LibTerm.Meta.make ?name ctx mk_Type
+      | Plac (false, name) -> LibTerm.Meta.make ?name ctx ty
       | Abst (dom, t) -> (
           match Eval.whnf ctx ty with
           | Prod (e1, e2) ->
@@ -284,12 +284,12 @@ functor
           let a = try Ctxt.type_of x ctx with Not_found -> assert false in
           (t, a)
       | Symb s -> (t, !(s.sym_type))
-      | Plac true ->
-          let m = LibTerm.Meta.make ctx mk_Type in
+      | Plac (true, name) ->
+          let m = LibTerm.Meta.make ?name ctx mk_Type in
           (m, mk_Type)
-      | Plac false ->
+      | Plac (false, name) ->
           let mt = LibTerm.Meta.make ctx mk_Type in
-          let m = LibTerm.Meta.make ctx mt in
+          let m = LibTerm.Meta.make ?name ctx mt in
           (m, mt)
       (* All metavariables inserted are typed. *)
       | (Meta (m, ts)) as t ->

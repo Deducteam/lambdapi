@@ -87,11 +87,11 @@ let unbind2_name : string -> tbinder -> tbinder -> tvar * term * term =
 module Meta = struct
   include Meta
 
-  (** [make ctx a] creates a fresh metavariable term of type [a] in the
-      context [ctx]. *)
-  let make : ctxt -> term -> term = fun ctx a ->
+  (** [make ?name ctx a] creates a fresh metavariable term of type [a] with
+      name [?name] if provided in the context [ctx]. *)
+  let make : ?name:string -> ctxt -> term -> term = fun ?name ctx a ->
     let prd, len = Ctxt.to_prod ctx a in
-    let m = Meta.fresh prd len in
+    let m = Meta.fresh ?name prd len in
     let get_var (x,_,d) = if d = None then Some (mk_Vari x) else None in
     mk_Meta(m, Array.of_list (List.(filter_map get_var ctx |> rev)))
 
