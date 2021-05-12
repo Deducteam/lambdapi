@@ -2,7 +2,8 @@
 
 open Timed
 open Term
-open Lplib.Extra
+open Lplib
+open Extra
 
 (** [prod_arity ty] returns the arity of term [ty]. *)
 let rec prod_arity : term -> int = fun ty ->
