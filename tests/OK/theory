@@ -1,0 +1,24 @@
+
+logic.lp
+
+Lib?
+bool.lp
+nat.lp
+
+Produit dépendant:
+append.lp
+append_legacy.dk
+tail.lp
+vectDependant.dk
+dotpat.dk ?
+
+??:
+Les fichiers qui commencent par un nombre.
+iss215.lp
+iss225.lp
+bug0.dk
+bug2.dk
+bug.dk
+raphael.dk
+sujective.dk
+symbol.lp

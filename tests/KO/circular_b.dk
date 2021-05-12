@@ -1,5 +1,0 @@
-#REQUIRE tests.KO.circular_c.
-
-TB : Type.
-
-c : tests.KO.circular_c.TC.

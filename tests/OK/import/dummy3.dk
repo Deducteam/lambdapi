@@ -1,0 +1,6 @@
+#REQUIRE tests.OK.import.dummy1.
+#REQUIRE tests.OK.import.dummy2.
+
+def one := tests.OK.import.dummy1.s tests.OK.import.dummy1.z.
+
+#ASSERT one == tests.OK.import.dummy1.plus one tests.OK.import.dummy1.z.

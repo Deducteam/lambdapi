@@ -44,7 +44,7 @@ let test_dtree () =
 
 (** Decision tree of ghost symbols. *)
 let test_dtree_ghost () =
-  let file = "OK/unif_hint.lp" in
+  let file = "OK/set_option/unif_hint.lp" in
   ignore (compile file);
   let buf = Buffer.create 16 in
   let fmt = Format.formatter_of_buffer buf in

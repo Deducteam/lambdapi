@@ -1,5 +1,0 @@
-#REQUIRE tests.KO.circular_a.
-
-TC : Type.
-
-a : tests.KO.circular_a.TA.
