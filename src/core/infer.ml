@@ -103,15 +103,16 @@ functor
         be used on [a]. The operation may instantiate meta-variables. *)
     let approx : ctxt -> term -> term -> bool = fun ctx a b ->
       Eval.eq_modulo ctx a b ||
-      let tau = Time.save () in
       match L.solve {empty_problem with to_solve = [ctx, a, b]} with
       | Some [] -> true
-      | _ -> Time.restore tau; false
+      | _ -> false
 
     (** [coerce ctx t a b] coerces term [t] of type [a] to type [b]. *)
     let rec coerce : ctxt -> term -> term -> term -> term =
       fun ctx t a b ->
       if Eval.eq_modulo ctx a b then t else
+      let tau = Time.save () in
+      let eqs = Stdlib.(!constraints) in
       let rec try_coercions cs =
         match cs with
         | [] -> raise Not_found
@@ -140,35 +141,36 @@ functor
               metas, domain, range
             in
             try
+              let tau = Time.save () in
               if approx ctx a domain && approx ctx b range then
                 let creqs =
                   let delta = Ctxt.of_prod ~len:(l - arity) defn_ty in
-                  apply ctx delta metas requirements in
+                  apply ctx delta metas requirements
+                in
                 let u = Bindlib.msubst defn creqs in
                 unif ctx t metas.(source - 1);
                 unif ctx b range;
                 add_args u (Array.to_list metas)
-              else failwith "not approx"
+              else (Time.restore tau; failwith "not approx")
             with Failure _ -> try_coercions cs
       in
-      let eqs = Stdlib.(!constraints) in
-      let tau = Time.save () in
       match L.solve {empty_problem with to_solve = (ctx, a, b) :: eqs} with
       | Some [] -> Stdlib.(constraints := []); t
-      | _ -> Time.restore tau;
-          (* REVIEW:  [constraints] ends up empty *)
-          Stdlib.(constraints := eqs);
+      | _ ->
+          (* REVIEW:  [constraints] ends up empty after solve *)
+          Stdlib.(constraints := eqs); Time.restore tau;
           if !Debug.log_enabled then
             log "Coerce [%a : %a ≡ %a]" Print.pp_term t
               Print.pp_term a Print.pp_term b;
           try try_coercions L.coercions
           with Not_found ->
+            Time.restore tau; Stdlib.(constraints := eqs);
             (* FIXME: when is this case encountered? Only when checking SR? *)
             (* Hope that the constraint will be solved later. *)
             unif ctx a b;
-            Error.wrn None
-              "No coercion found for problem @[<h>%a@ :@, %a@ ≡@ %a@]"
-              Print.pp_term t Print.pp_term a Print.pp_term b;
+            if !Debug.log_enabled then
+              log "No coercion found for problem @[<h>%a@ :@, %a@ ≡@ %a@]"
+                Print.pp_term t Print.pp_term a Print.pp_term b;
             t
 
     (** [apply ctx def_ctx ms reqs] performs the coercions specified in
