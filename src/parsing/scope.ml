@@ -130,9 +130,9 @@ let fresh_patt : lhs_data -> string option -> tbox array -> tbox =
       let i = fresh_index () in
       _Patt (Some i) (Printf.sprintf "v%i" i) ts
 
-(** [fresh_meta_Type md env] calls [Env.fresh_meta_Type] and updates the set
+(** [fresh_meta_type md env] calls [Env.fresh_meta_type] and updates the set
    of new metavariables in [md]. *)
-let fresh_meta_Type : mode -> env -> tbox = fun md env ->
+let fresh_meta_type : mode -> env -> tbox = fun md env ->
   match md with
   | M_Term d -> Env.fresh_meta_type d.m_term_new_metas env
   | M_RHS d -> Env.fresh_meta_type d.m_rhs_new_metas env
@@ -224,7 +224,7 @@ and scope_domain : mode -> sig_state -> env -> p_term option -> tbox =
   match a, md with
   | (Some {elt=P_Wild;_}|None), M_LHS data ->
       fresh_patt data None (Env.to_tbox env)
-  | (Some {elt=P_Wild;_}|None), _ -> fresh_meta_Type md env
+  | (Some {elt=P_Wild;_}|None), _ -> fresh_meta_type md env
   | Some a, _ -> scope md ss env a
 
 (** [scope_binder ?warn mode ss cons env params_list t] scopes [t] in mode
@@ -243,7 +243,7 @@ and scope_binder : ?warn:bool -> mode -> sig_state ->
         begin
           match t with
           | Some t -> scope md ss env t
-          | None -> fresh_meta_Type md env
+          | None -> fresh_meta_type md env
         end
     | (idopts,typopt,_implicit)::params_list ->
         scope_params env idopts (scope_domain md ss env typopt) params_list

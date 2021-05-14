@@ -32,7 +32,6 @@ with bool_and _     false ↪ false;
 
 // More connectives.
 
-//debug +huit;
 symbol bool_impl a b ≔
   bool_or b (bool_neg a);
 

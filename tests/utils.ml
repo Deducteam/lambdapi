@@ -57,5 +57,5 @@ let _ =
     [ "hrs", [test_case "bool" `Quick test_hrs]
     ; "xtc", [test_case "bool" `Quick test_xtc]
     ; "dtree", [test_case "bool" `Quick test_dtree]
-                 (*; "dtree_ghost", [test_case "bool" `Quick test_dtree_ghost]*)
+    ; "dtree_ghost", [test_case "bool" `Quick test_dtree_ghost]
     ]

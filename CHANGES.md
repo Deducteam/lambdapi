@@ -1,5 +1,15 @@
 ### Unreleased
 
+#### Record metavariable creation and instantiation during scoping, type inference and unification (2021-05-17)
+
+- the record type problem gets a new field metas, and all its fields are mutable
+- many functions now take as argument a problem
+- the functions infer_noexn, check_noexn and check_sort are moved to Query
+  (they do not need to take a solver as argument anymore)
+- in Unif, add_constr was defined twice. this is now fixed
+- the modules Meta in Term and LibTerm are moved to the new file libMeta
+- various mli files are created
+
 #### Bugfixes in rewriting engine (2021-05-06)
 
 - Add tests on product matching
