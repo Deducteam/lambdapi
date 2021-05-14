@@ -77,11 +77,15 @@ let logger_hndl = new_logger 'h' "hndl" "command handling"
 let log_hndl = logger_hndl.logger
 
 (** To print time data. *)
-let print_time = ref false
+let do_print_time = ref true
+
+(** Print current time. *)
+let print_time : string -> unit = fun s ->
+  if !do_print_time && !log_enabled then log_hndl "@%f %s" (Sys.time()) s
 
 (** [time_of f x] computes [f x] and the time for computing it. *)
 let time_of : (unit -> 'b) -> 'b = fun f ->
-  if !print_time && !log_enabled then
+  if !do_print_time && !log_enabled then
       let t0 = Sys.time() in
       try let y = f () in log_hndl "%f" (Sys.time() -. t0); y
       with e -> log_hndl "%f" (Sys.time() -. t0); raise e

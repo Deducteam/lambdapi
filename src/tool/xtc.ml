@@ -6,7 +6,6 @@
 open! Lplib
 open Lplib.Base
 open Lplib.Extra
-
 open Timed
 open Core
 open Term
@@ -165,13 +164,15 @@ let get_vars : sym -> rule -> (string * Term.term) list = fun s r ->
       (mk_Symb s) r.lhs
   in
   let ctx =
-    let fn l x = (x, (mk_Meta(Meta.fresh mk_Type 0,[||])), None) :: l in
-    List.fold_left fn [] !var_list
+    let p = new_problem() in
+    let f l x = (x, (mk_Meta(LibMeta.fresh p mk_Type 0,[||])), None) :: l in
+    List.fold_left f [] !var_list
   in
-  match Infer.infer_noexn [] ctx lhs with
+  let p = new_problem() in
+  match Infer.infer_noexn p ctx lhs with
   | None -> assert false (*FIXME?*)
-  | Some (_,cs) ->
-  let cs = List.rev_map (fun (_,t,u) -> (t,u)) cs in
+  | Some _ ->
+  let cs = List.rev_map (fun (_,t,u) -> (t,u)) p.to_solve in
   let ctx = List.map (fun (x,a,_) -> (x,a)) ctx in
   List.map (fun (v,ty) -> Bindlib.name_of v, List.assoc ty cs(*FIXME?*)) ctx
 

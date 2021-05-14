@@ -1,7 +1,6 @@
 (** Type-checking and inference. *)
 
 open! Lplib
-
 open Timed
 open Common
 open Error
@@ -16,10 +15,11 @@ open Extra
 let log_subj = new_logger 's' "subj" "subject-reduction"
 let log_subj = log_subj.logger
 
-(** [build_meta_type k] builds the type “Πx1:A1,⋯,xk:Ak,A(k+1)” where the
-    type “Ai = Mi[x1,⋯,x(i-1)]” is defined as the metavariable “Mi” which has
-    arity “i-1” and type “Π(x1:A1) ⋯ (x(i-1):A(i-1)), TYPE”. *)
-let build_meta_type : int -> term = fun k ->
+(** [build_meta_type k] builds the type “Πx1:A1,⋯,xk:Ak,A(k+1)” where the type
+   “Ai = Mi[x1,⋯,x(i-1)]” is defined as the metavariable “Mi” which has arity
+   “i-1” and type “Π(x1:A1) ⋯ (x(i-1):A(i-1)), TYPE”, and adds the
+   metavraibles in [p]. *)
+let build_meta_type : problem -> int -> term = fun p k ->
   assert (k >= 0);
   let xs = Array.init k (new_tvar_ind "x") in
   let ts = Array.map _Vari xs in
@@ -31,11 +31,11 @@ let build_meta_type : int -> term = fun k ->
     done
   done;
   (* We create the “Ai” terms and the “Mi” metavariables. *)
-  let fn i =
-    let m = Meta.fresh (Bindlib.unbox ty_m.(i)) i in
+  let f i =
+    let m = LibMeta.fresh p (Bindlib.unbox ty_m.(i)) i in
     _Meta m (Array.sub ts 0 i)
   in
-  let a = Array.init (k+1) fn in
+  let a = Array.init (k+1) f in
   (* We finally construct our type. *)
   let res = ref a.(k) in
   for i = k - 1 downto 0 do
@@ -132,16 +132,14 @@ let symb_to_tenv
    signature state [ss] and then construct the corresponding rule. Note that
    [Fatal] is raised in case of error. *)
 let check_rule : Scope.pre_rule Pos.loc -> rule = fun ({pos; elt} as pr) ->
-  let Scope.{pr_sym = s ; pr_lhs = lhs ; pr_vars = vars
-            ; pr_rhs ; pr_arities = arities ; pr_xvars_nb ; _} = elt
+  let Scope.{pr_sym = s; pr_lhs = lhs; pr_vars = vars
+            ; pr_rhs; pr_arities = arities; pr_xvars_nb; _} = elt
   in
   (* Check that the variables of the RHS are in the LHS. *)
   if pr_xvars_nb <> 0 then
-    begin
-      let xvars = Array.drop (Array.length vars - pr_xvars_nb) vars in
-      fatal pos "Unknown pattern variables [%a]"
-        (Array.pp Print.pp_var ",") xvars
-    end;
+    (let xvars = Array.drop (Array.length vars - pr_xvars_nb) vars in
+     fatal pos "Unknown pattern variables: %a"
+       (Array.pp Print.pp_var ",") xvars);
   let arity = List.length lhs in
   if !log_enabled then
     begin
@@ -153,22 +151,19 @@ let check_rule : Scope.pre_rule Pos.loc -> rule = fun ({pos; elt} as pr) ->
       log_subj (red "%a") pp_rule (s, naive_rule);
     end;
   (* Replace [Patt] nodes of LHS with corresponding elements of [vars]. *)
-  let lhs_vars =
-    let args = List.map (patt_to_tenv vars) lhs in
-    _Appl_Symb s args
-  in
+  let lhs_vars = _Appl_Symb s (List.map (patt_to_tenv vars) lhs) in
   (* Create metavariables that will stand for the variables of [vars].
      These metavariables are prefixed by "$" so that we can recognize them. *)
   let var_names = Array.map (fun x -> "$" ^ Bindlib.name_of x) vars in
+  let p = new_problem() in
   let metas =
     let f i name =
       let arity = arities.(i) in
-      Meta.fresh ~name (build_meta_type arity) arity
-    in
-    Array.mapi f var_names
+      LibMeta.fresh p ~name (build_meta_type p arity) arity
+    in Array.mapi f var_names
   in
   (* Substitute them in the LHS and in the RHS. *)
-  let (lhs_typing, rhs_typing) =
+  let lhs_with_metas, rhs_with_metas =
     let lhs_rhs = Bindlib.box_pair lhs_vars pr_rhs in
     let b = Bindlib.(unbox (bind_mvar vars lhs_rhs)) in
     let meta_to_tenv m =
@@ -180,28 +175,21 @@ let check_rule : Scope.pre_rule Pos.loc -> rule = fun ({pos; elt} as pr) ->
     Bindlib.msubst b te_envs
   in
   if !log_enabled then
-    begin
-      log_subj "replace pattern variables by metavariables";
-      log_subj "transformed LHS: %a" pp_term lhs_typing;
-      log_subj "transformed RHS: %a" pp_term rhs_typing
-    end;
+    log_subj "replace pattern variables by metavariables\n%a ↪ %a"
+      pp_term lhs_with_metas pp_term rhs_with_metas;
   (* Infer the typing constraints of the LHS. *)
-  match Infer.infer_noexn [] [] lhs_typing with
+  match Infer.infer_noexn p [] lhs_with_metas with
   | None -> fatal pos "The LHS is not typable."
-  | Some(ty_lhs, to_solve) ->
-  let to_solve = List.rev to_solve in
-  (* Try to simplify constraints. *)
-  let type_check = false in (* Don't check typing when instantiating metas. *)
-  match Unif.(solve_noexn ~type_check {empty_problem with to_solve}) with
-  | None -> fatal pos "The LHS is not typable."
-  | Some lhs_constrs ->
+  | Some ty_lhs ->
+  (* Try to simplify constraints. Don't check typing when instantiating
+     a metavariable. *)
+  if not (Unif.solve_noexn ~type_check:false p) then
+    fatal pos "The LHS is not typable.";
+  let lhs_constrs = p.unsolved in
   if !log_enabled then
-    begin
-      log_subj "LHS has type: %a%a" pp_term ty_lhs pp_constrs lhs_constrs;
-      log_subj "LHS is now: %a" pp_term lhs_typing;
-      log_subj "RHS is now: %a" pp_term rhs_typing;
-      log_subj "check that the RHS has the same type as the LHS"
-    end;
+    log_subj "LHS: %a%a\n%a ↪ %a"
+      pp_term ty_lhs pp_constrs lhs_constrs
+      pp_term lhs_with_metas pp_term rhs_with_metas;
   (* We build a map allowing to find a variable index from its name. *)
   let htbl : index_tbl = Hashtbl.create (Array.length vars) in
   Array.iteri (fun i name -> Hashtbl.add htbl name i) var_names;
@@ -212,21 +200,16 @@ let check_rule : Scope.pre_rule Pos.loc -> rule = fun ({pos; elt} as pr) ->
     let symbols = Stdlib.ref [] in
     let rec instantiate m =
       match !(m.meta_value) with
-      | Some(_) ->
+      | Some _ ->
           (* Instantiate recursively the meta-variables of the definition. *)
           let t = mk_Meta(m, Array.make m.meta_arity mk_Kind) in
-          LibTerm.Meta.iter true instantiate t
-      | None    ->
+          LibMeta.iter true instantiate t
+      | None ->
           (* Instantiate recursively the meta-variables of the type. *)
-          LibTerm.Meta.iter true instantiate !(m.meta_type);
+          LibMeta.iter true instantiate !(m.meta_type);
           (* Instantiation of [m]. *)
-          let sym_name =
-            match m.meta_name with
-            | Some(n) -> n
-            | None    -> string_of_int m.meta_key
-          in
-          let s = Term.create_sym (Sign.current_path())
-                    Privat Defin Eager false sym_name !(m.meta_type) [] in
+          let s = Term.create_sym (Sign.current_path()) Privat Defin Eager
+                    false (LibMeta.name m) !(m.meta_type) [] in
           Stdlib.(symbols := s :: !symbols);
           (* Build a definition for [m]. *)
           let xs = Array.init m.meta_arity (new_tvar_ind "x") in
@@ -236,21 +219,18 @@ let check_rule : Scope.pre_rule Pos.loc -> rule = fun ({pos; elt} as pr) ->
     in
     Array.iter instantiate metas; Stdlib.(!symbols)
   in
-  (* Compute the constraints for the RHS to have the same type as the LHS. *)
-  match Infer.check_noexn [] [] rhs_typing ty_lhs with
-  | None -> fatal pos "[%a] is not typable." pp_term rhs_typing
-  | Some to_solve ->
   if !log_enabled then
-    begin
-      log_subj "LHS is now: %a" pp_term lhs_typing;
-      log_subj "RHS is now: %a" pp_term rhs_typing
-    end;
-  (* TODO we should complete the constraints into a set of rewriting rule on
+    log_subj "replace LHS metavariables by function symbols\n%a ↪ %a"
+      pp_term lhs_with_metas pp_term rhs_with_metas;
+  (* FIXME we should complete the constraints into a set of rewriting rule on
      the function symbols of [symbols]. *)
+  (* Compute the constraints for the RHS to have the same type as the LHS. *)
+  let p = new_problem() in
+  if not (Infer.check_noexn p [] rhs_with_metas ty_lhs) then
+    fatal pos "The RHS does not have the same type as the LHS.";
   (* Solving the typing constraints of the RHS. *)
-  match Unif.(solve_noexn {empty_problem with to_solve}) with
-  | None     -> fatal pos "The rewriting rule does not preserve typing."
-  | Some(cs) ->
+  if not (Unif.solve_noexn p) then
+    fatal pos "The rewriting rule does not preserve typing.";
   let is_lhs_constr c =
     (* Contexts ignored: [Infer.check] is called with an empty context and
        neither [Infer.check] nor [Unif.solve] generate contexts with defined
@@ -260,15 +240,15 @@ let check_rule : Scope.pre_rule Pos.loc -> rule = fun ({pos; elt} as pr) ->
       || Eval.(eq_modulo [] t1 u2 && eq_modulo [] t2 u1) in
     List.exists (eq c) lhs_constrs
   in
-  let cs = List.filter (fun c -> not (is_lhs_constr c)) cs in
+  let cs = List.filter (fun c -> not (is_lhs_constr c)) p.unsolved in
   if cs <> [] then
     begin
       List.iter (fatal_msg "Cannot solve %a\n" pp_constr) cs;
       fatal pos "Unable to prove type preservation for a rewriting rule."
     end;
   (* Replace metavariable symbols by term_env variables, and bind them. *)
-  let rhs = symb_to_tenv pr symbols htbl rhs_typing in
-  (* TODO optimisation for evaluation: environment minimisation. *)
+  let rhs = symb_to_tenv pr symbols htbl rhs_with_metas in
+  (* FIXME optimisation for evaluation: environment minimisation. *)
   (* Construct the rule. *)
   let rhs = Bindlib.unbox (Bindlib.bind_mvar vars rhs) in
   { lhs ; rhs ; arity ; arities ; vars; xvars_nb = 0 }

@@ -2,13 +2,11 @@
 
 open! Lplib
 open Lplib.Extra
-
 open Timed
 open Common
 open Error
 open Debug
 open Term
-open LibTerm
 open Print
 
 (** The head-structure of a term t is:
@@ -221,8 +219,9 @@ and tree_walk : dtree -> ctxt -> stack -> (term * stack) option =
         List.iter f rhs_subst;
         (* Complete the array with fresh meta-variables if needed. *)
         for i = env_len - xvars to env_len - 1 do
-          let mt = Meta.make ctx mk_Type in
-          let t = Meta.make ctx mt in
+          let p = new_problem() in (*FIXME*)
+          let mt = LibMeta.make p ctx mk_Type in
+          let t = LibMeta.make p ctx mt in
           let b = Bindlib.raw_mbinder [||] [||] 0 of_tvar (fun _ -> t) in
           env.(i) <- TE_Some(b)
         done;
