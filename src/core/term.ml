@@ -288,6 +288,9 @@ let of_tvar : tvar -> term = fun x -> Vari(x)
 (** [new_tvar s] creates a new [tvar] of name [s]. *)
 let new_tvar : string -> tvar = Bindlib.new_var of_tvar
 
+let new_tmvar : string array -> term Bindlib.mvar =
+  Bindlib.new_mvar of_tvar
+
 (** [new_tvar_ind s i] creates a new [tvar] of name [s ^ string_of_int i]. *)
 let new_tvar_ind : string -> int -> tvar = fun s i ->
   new_tvar (Common.Escape.add_prefix s (string_of_int i))
@@ -297,9 +300,6 @@ let of_tevar : tevar -> term_env = fun x -> TE_Vari(x)
 
 (** [new_tevar s] creates a new [tevar] with name [s]. *)
 let new_tevar : string -> tevar = Bindlib.new_var of_tevar
-
-let new_temvar : string array -> term_env Bindlib.mvar =
-  Bindlib.new_mvar of_tevar
 
 (** Sets and maps of symbols. *)
 module Sym = struct

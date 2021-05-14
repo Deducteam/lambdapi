@@ -279,6 +279,9 @@ val of_tvar : tvar -> term
 (** [new_tvar s] creates a new [tvar] of name [s]. *)
 val new_tvar : string -> tvar
 
+(** [new_tmvar s] creates a new array of variables names [s]. *)
+val new_tmvar : string array -> tvar array
+
 (** [new_tvar_ind s i] creates a new [tvar] of name [s ^ string_of_int i]. *)
 val new_tvar_ind : string -> int -> tvar
 
@@ -287,9 +290,6 @@ val of_tevar : tevar -> term_env
 
 (** [new_tevar s] creates a new [tevar] with name [s]. *)
 val new_tevar : string -> tevar
-
-(** [new_temvar s] creates a new array of variables with names [s]. *)
-val new_temvar : string array -> term_env Bindlib.mvar
 
 (** Sets and maps of symbols. *)
 module Sym : Map.OrderedType with type t = sym

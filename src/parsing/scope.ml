@@ -101,12 +101,13 @@ type mode =
       ; mutable m_coer_names : string list
       (** Name of already registered required coercions. Used to check their
           uniqueness. *)
-      ; m_coer_reqs : (tevar, strloc * int * Env.t * tmbinder) Hashtbl.t
+      ; m_coer_reqs : (tvar, strloc * int * Env.t * tmbinder) Hashtbl.t
         (** Specifications of sub-coercions. If variable [v] is associated
-            to tuple [(n,k,env,b)], then the definition will have variable [v]
+            to tuple [(n,k,ctx,b)], then the definition will have variable [v]
             free, which stands for the to-be-found coercion of term [b] in
-            environment [env]. The coercion is identified by name [n], and has
-            a unique number [k]. Name [n] must be unique. *)
+            local context [ctx]. The coercion has a friendly user-given name
+            [n] and is uniquely identified by number [k]. Name [n] must be
+            unique, [k] is unique by construction. *)
       }
   (** Scoping mode for coercion definitions. *)
 
@@ -300,17 +301,16 @@ and scope_head : mode -> sig_state -> env -> p_term -> tbox =
                     else reqs.m_coer_names <- s.elt :: reqs.m_coer_names; s
                 | _ -> Error.fatal t.pos "Requirements must have a name."
               in
-              let x = new_tevar id.elt in
-              (* Add a mapping from the variable to the term the requisite is
-                 applied to *)
+              let x = new_tvar id.elt in
+              (* Add a mapping from the variable to the term the prerequisite
+                 is applied to *)
               let r =
                 let b = Bindlib.(bind_mvar (Env.vars env) c |> unbox) in
                 (id, reqs.m_coer_card, env, b)
               in
               Hashtbl.add reqs.m_coer_reqs x r;
               reqs.m_coer_card <- reqs.m_coer_card + 1;
-              (* Add in the definition the variable with its environment. *)
-              _TEnv (_TE_Vari x) (Env.to_tbox env)
+              _Vari x
           | _ ->
               Error.fatal t.pos
                 "Requirements' environment must be of length one."
@@ -669,12 +669,14 @@ let scope_rw_patt : sig_state -> env -> p_rw_patt -> (term, tbinder) rw_patt =
       let t = scope_pattern ss ((x.elt,(v, _Kind, None))::env) t in
       Rw_TermAsIdInTerm(u, Bindlib.unbox (Bindlib.bind_var v (lift t)))
 
-(** [scope_coercion ss env md t] scopes term [t] into environment [env] and
-    signature state [ss]. It returns a couple [(d,b)] where [d] binds each
-    required coercion to the definition of the coercion, and [b] is an array
-    whose elements [(e,u)] is the subterm coerced [u] in environment [e]. *)
+(** [scope_coercion ss env md t] scopes term [t] as a coercion definition into
+    environment [env] and signature state [ss]. It returns a couple [(defn,b)]
+    where [defn] binds each pre-requisite in the definition of the coercion.
+    The array [b] contains pre-requisites as couples [(e,u)] where [u] is the
+    subterm coerced by the pre-requisite in environment [e]. The environment
+    [e] is needed to scope the type of the prerequisites. *)
 let scope_coercion : sig_state -> env -> p_term ->
-  (term_env, term) Bindlib.mbinder * (strloc * Env.t * term_env) array =
+  tmbinder * (strloc * Env.t * tmbinder) array =
   fun ss env pt ->
   let md =
     let m_coer_reqs = Hashtbl.create 7 in
@@ -687,16 +689,19 @@ let scope_coercion : sig_state -> env -> p_term ->
     | M_Coer {m_coer_card; m_coer_reqs; _} -> m_coer_card,  m_coer_reqs
     | _ -> assert false
   in
+  (* Variables standing for pre-requisites. *)
   let vars =
     let names = Array.init count (Printf.sprintf "dummy%d") in
-    new_temvar names
+    new_tmvar names
   in
-  let env_te =
-    Array.make count (Pos.none "", Env.empty, TE_None)
+  (* (Local) contexts and definitions of prerequisites. *)
+  let ctx_defs =
+    let dummy_mbinder = Bindlib.(unbox (bind_mvar [||] _Kind)) in
+    Array.make count (Pos.none "", Env.empty, dummy_mbinder)
   in
-  let f v (n, i, env, bd) =
+  let fill v (n, i, env, bd) =
     vars.(i) <- v;
-    env_te.(i) <- n, env, TE_Some bd
+    ctx_defs.(i) <- n, env, bd
   in
-  Hashtbl.iter f defs;
-  (Bindlib.(unbox (bind_mvar vars t)), env_te)
+  Hashtbl.iter fill defs;
+  (Bindlib.(unbox (bind_mvar vars t)), ctx_defs)

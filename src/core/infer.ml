@@ -116,7 +116,7 @@ functor
       let rec try_coercions cs =
         match cs with
         | [] -> raise Not_found
-        | Sign.{defn_ty; source; requirements; defn; arity; name }::cs ->
+        | Sign.{defn_ty; source; prerequisites; defn; arity; name }::cs ->
             if !Debug.log_enabled then log "Trying coercion %s" name;
             let l = LibTerm.prod_arity defn_ty in
             let metas, domain, range =
@@ -143,14 +143,22 @@ functor
             try
               let tau = Time.save () in
               if approx ctx a domain && approx ctx b range then
-                let creqs =
-                  let delta = Ctxt.of_prod ~len:(l - arity) defn_ty in
-                  apply ctx delta metas requirements
+                (* REVIEW: we may short-circuit prerequisites processing when
+                   there is none. *)
+                (* Replace pre-requisites by variables to be able to reduce
+                   the term. *)
+                let preqs_vars, defn = Bindlib.unmbind defn in
+                let defn =
+                  Eval.whnf_beta (add_args defn (Array.to_list metas))
                 in
-                let u = Bindlib.msubst defn creqs in
                 unif ctx t metas.(source - 1);
                 unif ctx b range;
-                add_args u (Array.to_list metas)
+                let preqs = apply ctx metas prerequisites in
+                (* Inject the solved pre-requisites. *)
+                let defn =
+                  Bindlib.(bind_mvar preqs_vars (lift defn) |> unbox)
+                in
+                Bindlib.msubst defn preqs
               else (Time.restore tau; failwith "not approx")
             with Failure _ -> try_coercions cs
       in
@@ -177,29 +185,18 @@ functor
         requirements [reqs] in context [ctx]. Context [def_ctx] is the context
         given by the main coercion: all variables of [def_ctx] have been
         substituted by meta-variables in [ms]. *)
-    and apply : ctxt -> ctxt -> term array -> Sign.prereq array ->
-      term_env array =
-      fun ctx def_ctxt ms ->
+    and apply : ctxt -> term array -> Sign.prereq array -> term array =
+      fun ctx ms ->
       let instantiate_reqs (s, m, v, w: Sign.prereq) =
-        match m with
-        | TE_Some m ->
-            if !Debug.log_enabled then
-              log "Processing requirement \"%s\"" s.elt  ;
-            let def_ctxt_v =
-              List.rev_map (fun (x,_,_) -> x) def_ctxt |> Array.of_list
-            in
-            (* [v] and [w] are substituted by [ms] which ought to be
-               instantiated enough so the pre-coercion problems become
-               tractable. *)
-            let v = Bindlib.msubst v ms in
-            let w = Bindlib.msubst w ms in
-            let r =
-              let vs = Array.map mk_Vari def_ctxt_v in
-              Bindlib.(coerce (def_ctxt @ ctx) (msubst m vs) v w)
-            in
-            TE_Some(Bindlib.bind_mvar def_ctxt_v (lift r) |> Bindlib.unbox)
-        | _ -> assert false (* Scoping prevents this case to happen. *)
-
+        if !Debug.log_enabled then
+          log "Processing requirement \"%s\"" s.elt  ;
+        (* [v] and [w] are substituted by [ms] which ought to be
+           instantiated enough so the pre-coercion problems become
+           tractable. *)
+        let v = Bindlib.msubst v ms in
+        let w = Bindlib.msubst w ms in
+        let m = Bindlib.msubst m ms in
+        coerce ctx m v w
       in
       Array.map instantiate_reqs
 
@@ -211,7 +208,7 @@ functor
       if !Debug.log_enabled then (
         let eq (ctx, a, b) = Eval.eq_modulo ctx a b in
         if not (pure_test eq (ctx, t, r)) then
-          Print.(log "Cast [%a] to [%a]" pp_term t pp_term r) );
+          Print.(log "Coercion inserted: [%a] to [%a]" pp_term t pp_term r) );
       r
 
     (** {1 Other rules} *)

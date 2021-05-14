@@ -33,6 +33,8 @@ let handle : Sig_state.t -> p_ident -> p_term -> p_term -> int -> int ->
             List.find (fun (n, _, _) -> n.elt = id.elt)
               (Array.to_list reqs)
           in
+          (* We use the context (or environment) [env] of the definition to
+             scope the types.  *)
           let ty_src =
             scope_term ~env ss a |> lift |>
             Bindlib.bind_mvar (Env.vars env) |> Bindlib.unbox in
@@ -40,15 +42,13 @@ let handle : Sig_state.t -> p_ident -> p_term -> p_term -> int -> int ->
             scope_term ~env ss b |> lift |>
             Bindlib.bind_mvar (Env.vars env) |> Bindlib.unbox
           in
-          name, coer, ty_src, ty_tgt
+          Sign.prereq name coer ty_src ty_tgt
       | _ ->
           Error.fatal ty.pos "Ill-formed requisite type:@ \
                               @[%a@ is not an arrow type@]"
             Pretty.term ty
   in
-  let requirements = List.map process_req requirements |> Array.of_list in
-  let cion =
-    Sign.{ name = name.elt; source; arity; defn; defn_ty ; requirements }
-  in
+  let prerequisites = List.map process_req requirements |> Array.of_list in
+  let cion = Sign.coercion name.elt prerequisites defn defn_ty source arity in
   check (Unif.typechecker ss.coercions) cion;
   Sig_state.add_coercion ss cion

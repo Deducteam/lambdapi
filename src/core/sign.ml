@@ -20,20 +20,38 @@ type ind_data =
 (** The priority of an infix operator is a floating-point number. *)
 type priority = float
 
-(** A prerequisite [n, m, V, W] specifies that term [m] must be coerced from
-    [V] to [W]. The requirements' name [n] is used for debugging. Term [m]
-    must be of the form [TE_Some(u)]. *)
-type prereq = strloc * term_env * tmbinder * tmbinder
+(** A prerequisite [(id, m, src, tgt)] specifies that term [m] must be coerced
+    from source type [src] to target type [tgt]. The requirements' name [id]
+    is used for debugging. Terms [m], [src] and [tgt] bind variables of the
+    context in which the prerequisite is defined. *)
+type prereq = strloc * tmbinder * tmbinder * tmbinder
 
-(** Coercions for the type checker/refiner. *)
+(** A constructor for pre requisites. *)
+let prereq : strloc -> tmbinder -> tmbinder -> tmbinder -> prereq =
+  fun id m src tgt ->
+  let ar = Array.map Bindlib.mbinder_arity [|m; src; tgt|] in
+  if not (ar.(0) = ar.(1) && ar.(1) = ar.(2)) then invalid_arg "prereq" else
+  (id, m, src, tgt)
+
+(** Coercions for the type checker/refiner. The arity of the definition must
+    be equal to the length of prerequisites. *)
 type coercion =
   { name : string
-  ; requirements : prereq array
+  ; prerequisites : prereq array
   (** Arguments that must be searched among available coercions. *)
-  ; defn : (term_env, term) Bindlib.mbinder (** Definition of the coercion. *)
+  ; defn : tmbinder (** Definition of the coercion. *)
   ; defn_ty : term (** Type of the definition. Must be a product type. *)
   ; source : int (** Argument of the definition that is coerced. *)
   ; arity : int (** Arity of the target type. *) }
+
+(** A constructor for coercions. *)
+let coercion : string -> prereq array -> tmbinder -> term -> int -> int ->
+  coercion =
+  fun name prerequisites defn defn_ty source arity ->
+  if Array.length prerequisites <> Bindlib.mbinder_arity defn then
+    invalid_arg "coercion: bad arity for coercion definition"
+  else
+    { name; prerequisites; defn; defn_ty; source; arity }
 
 (** Notations. *)
 type notation =
@@ -185,23 +203,19 @@ let link : t -> unit = fun sign ->
   let fn s i m = SymMap.add (link_symb s) (link_ind_data i) m in
   sign.sign_ind := SymMap.fold fn !(sign.sign_ind) SymMap.empty;
   (* Linking coercions *)
-  let link_req (n, m, src, tgt) =
+  let link_prereq (n, m, src, tgt) =
     let src = link_mbinder src in
     let tgt = link_mbinder tgt in
-    let m =
-      match m with
-      | TE_Some m -> TE_Some (link_mbinder m)
-      | _ -> assert false (* coercions should contain TE_Some *)
-    in
+    let m = link_mbinder m in
     (n, m, src, tgt)
   in
-  let link_coercion ({ defn; defn_ty; requirements; _ } as c) =
+  let link_coercion ({ defn; defn_ty; prerequisites; _ } as c) =
     let xs, defn = Bindlib.unmbind defn in
     let defn = lift (link_term mk_Appl defn) in
     let defn = Bindlib.(bind_mvar xs defn |> unbox) in
     let defn_ty = link_term mk_Appl defn_ty in
-    let requirements = Array.map link_req requirements in
-    {c with defn; defn_ty; requirements}
+    let prerequisites = Array.map link_prereq prerequisites in
+    {c with defn; defn_ty; prerequisites}
   in
   sign.sign_coercions := List.map link_coercion !(sign.sign_coercions)
 
@@ -260,15 +274,15 @@ let unlink : t -> unit = fun sign ->
   let fn s i = unlink_sym s; unlink_ind_data i in
   SymMap.iter fn !(sign.sign_ind);
   (* Unlinking coercions *)
-  let unlink_req (_, m, src, tgt: prereq) =
+  let unlink_prereq (_, m, src, tgt: prereq) =
     unlink_mbinder src;
     unlink_mbinder tgt;
-    match m with TE_Some m -> unlink_mbinder m | _ -> assert false
+    unlink_mbinder m
   in
-  let unlink_coercion {defn; defn_ty; requirements; _} =
+  let unlink_coercion {defn; defn_ty; prerequisites; _} =
     unlink_mbinder defn;
     unlink_term defn_ty;
-    Array.iter unlink_req requirements
+    Array.iter unlink_prereq prerequisites
   in
   List.iter unlink_coercion !(sign.sign_coercions)
 
