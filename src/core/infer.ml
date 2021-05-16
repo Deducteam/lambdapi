@@ -112,7 +112,6 @@ functor
       fun ctx t a b ->
       if Eval.eq_modulo ctx a b then t else
       let tau = Time.save () in
-      let eqs = Stdlib.(!constraints) in
       let rec try_coercions cs =
         match cs with
         | [] -> raise Not_found
@@ -162,17 +161,17 @@ functor
               else (Time.restore tau; failwith "not approx")
             with Failure _ -> try_coercions cs
       in
+      let eqs = Stdlib.(!constraints) in
       match L.solve {empty_problem with to_solve = (ctx, a, b) :: eqs} with
-      | Some [] -> Stdlib.(constraints := []); t
+      | Some [] -> Stdlib.(constraints := []) (* Backup resolution *); t
       | _ ->
-          (* REVIEW:  [constraints] ends up empty after solve *)
-          Stdlib.(constraints := eqs); Time.restore tau;
+          Time.restore tau;
           if !Debug.log_enabled then
             log "Coerce [%a : %a ≡ %a]" Print.pp_term t
               Print.pp_term a Print.pp_term b;
           try try_coercions L.coercions
           with Not_found ->
-            Time.restore tau; Stdlib.(constraints := eqs);
+            Time.restore tau;
             (* FIXME: when is this case encountered? Only when checking SR? *)
             (* Hope that the constraint will be solved later. *)
             unif ctx a b;
@@ -382,6 +381,10 @@ functor
     let noexn : (ctxt -> 'a -> 'b) -> constr list -> ctxt -> 'a ->
       ('b * constr list) option =
       fun f cs ctx args ->
+      (* Backing up constraints is required because type checking may be
+         called recursively by the unification engine. Not backing up leads to
+         loss of constraints. *)
+      let eqs = Stdlib.(!constraints) in
       Stdlib.(constraints := cs);
       let r =
         try
@@ -389,18 +392,18 @@ functor
           let cs = Stdlib.(!constraints) in
           Some(r, List.rev cs)
         with NotTypable -> None
-      in Stdlib.(constraints := []); r
+      in Stdlib.(constraints := eqs); r
 
     let infer_noexn cs ctx t =
       if !Debug.log_enabled then
         log "Top infer %a%a" Print.pp_ctxt ctx Print.pp_term t;
-      Option.map (fun ((t,a), cs) -> (t, a, cs)) ((noexn infer) cs ctx t)
+      Option.map (fun ((t,a), cs) -> (t, a, cs)) (noexn infer cs ctx t)
 
     let check_noexn cs ctx t a =
       if !Debug.log_enabled then log "Top check \"%a\"" Print.pp_typing
           (ctx, t, a);
       let force ctx (t, a) = force ctx t a in
-      (noexn force) cs ctx (t, a)
+      noexn force cs ctx (t, a)
 
     let check_sort_noexn cs ctx t : (term * term * constr list) option =
       if !Debug.log_enabled then
@@ -442,12 +445,13 @@ functor
 
     let check_sort : ctxt -> term loc -> term * term =
       fun ctx {elt=t; pos} ->
+      let eqs = Stdlib.(!constraints) in
       Stdlib.(constraints := []);
       let t, a = type_enforce ctx t in
       let to_solve = Stdlib.(!constraints) in
       match L.solve {empty_problem with to_solve} with
       | None -> Error.fatal pos "[%a] is not typable" Print.pp_term t
-      | Some [] -> t, a
+      | Some [] -> Stdlib.(constraints := eqs); (t, a)
       | Some cs ->
           List.iter (Error.wrn None "Cannot solve [%a].\n" Print.pp_constr)
             cs;
