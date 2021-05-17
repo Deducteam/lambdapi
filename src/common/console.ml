@@ -20,8 +20,7 @@ let set_default_verbose : int -> unit = fun i ->
 
 (** [out lvl fmt] prints an output message using the format [fmt], but only if
     [lvl] is strictly greater than the current verbosity level.  Note that the
-    output channel is automatically flushed,  and  the message is displayed in
-    magenta (and not default terminal color) if logging modes are enabled. *)
+    output channel is automatically flushed if logging modes are enabled. *)
 let out : int -> 'a outfmt -> 'a = fun lvl fmt ->
   if lvl > !verbose then Format.ifprintf Stdlib.(!out_fmt) fmt
   else Format.fprintf Stdlib.(!out_fmt)
