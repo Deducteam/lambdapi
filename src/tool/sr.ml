@@ -247,7 +247,7 @@ let check_rule : Scope.pre_rule Pos.loc -> rule = fun ({pos; elt} as pr) ->
     end;
   (* Replace metavariable symbols by term_env variables, and bind them. *)
   let rhs = symb_to_tenv pr symbols htbl rhs_with_metas in
-  (* FIXME optimisation for evaluation: environment minimisation. *)
+  (* TODO environment minimisation ? *)
   (* Construct the rule. *)
   let rhs = Bindlib.unbox (Bindlib.bind_mvar vars rhs) in
   { lhs ; rhs ; arity ; arities ; vars; xvars_nb = 0 }

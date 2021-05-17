@@ -170,11 +170,11 @@ let get_vars : sym -> rule -> (string * Term.term) list = fun s r ->
   in
   let p = new_problem() in
   match Infer.infer_noexn p ctx lhs with
-  | None -> assert false (*FIXME?*)
+  | None -> assert false
   | Some _ ->
   let cs = List.rev_map (fun (_,t,u) -> (t,u)) p.to_solve in
   let ctx = List.map (fun (x,a,_) -> (x,a)) ctx in
-  List.map (fun (v,ty) -> Bindlib.name_of v, List.assoc ty cs(*FIXME?*)) ctx
+  List.map (fun (v,ty) -> Bindlib.name_of v, List.assoc ty cs) ctx
 
 (** [to_XTC oc sign] outputs a XTC representation of the rewriting system of
     the signature [sign] to the output channel [oc]. *)

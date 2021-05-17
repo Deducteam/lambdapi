@@ -76,10 +76,10 @@ let tac_admit :
 (** [tac_solve pos ps] tries to simplify the unification goals of the proof
    state [ps] and fails if constraints are unsolvable. *)
 let tac_solve : popt -> proof_state -> proof_state = fun pos ps ->
-  if !log_enabled then log_tact (red "solve %a") pp_goals ps;
+  if !log_enabled then log_tact (red "tac_solve %a") pp_goals ps;
   let gs_typ, gs_unif = List.partition is_typ ps.proof_goals in
   let p = new_problem() in
-  p.to_solve <- List.map get_constr gs_unif;
+  p.to_solve <- List.rev_append p.to_solve (List.rev_map get_constr gs_unif);
   if not (Unif.solve_noexn p) then
     fatal pos "Unification goals are unsatisfiable.";
   (* remove in [gs_typ] the goals that have been instantiated, and simplify
@@ -97,7 +97,7 @@ let tac_refine :
       popt -> proof_state -> goal_typ -> goal list -> problem -> term
       -> proof_state =
   fun pos ps gt gs p t ->
-  if !log_enabled then log_tact (red "refine %a") pp_term t;
+  if !log_enabled then log_tact (red "tac_refine %a") pp_term t;
   if LibMeta.occurs gt.goal_meta t then fatal pos "Circular refinement.";
   (* Check that [t] has the required type. *)
   let c = Env.to_ctxt gt.goal_hyps in
@@ -174,10 +174,9 @@ let handle : Sig_state.t -> bool -> proof_state -> p_tactic -> proof_state =
   | Typ ({goal_hyps=env;_} as gt) ->
   let scope p t = Scope.scope_term prv ss env p
                     (Proof.meta_of_key ps) (Proof.meta_of_name ps) t in
-  let check_idopt = function
-    | None -> ()
-    | Some id -> if List.mem_assoc id.elt env then
-                   fatal id.pos "Identifier already in use."
+  let check id =
+    if List.mem_assoc id.elt env then
+      fatal id.pos "Identifier already in use."
   in
   match elt with
   | P_tac_admit
@@ -203,7 +202,7 @@ let handle : Sig_state.t -> bool -> proof_state -> p_tactic -> proof_state =
       tac_refine pos ps gt gs p t
   | P_tac_assume idopts ->
       (* Check that the given identifiers are not already used. *)
-      List.iter check_idopt idopts;
+      List.iter (Option.iter check) idopts;
       (* Check that the given identifiers are pairwise distinct. *)
       Syntax.check_distinct idopts;
       let p = new_problem() in
@@ -229,16 +228,13 @@ let handle : Sig_state.t -> bool -> proof_state -> p_tactic -> proof_state =
   | P_tac_have(id, t) ->
       (* From a goal [e ⊢ ?[e] : u], generate two new goals [e ⊢ ?1[e] : t]
          and [e,x:t ⊢ ?2[e,x] : u], and refine [?[e]] with [?2[e,?1[e]]. *)
-      check_idopt (Some id);
+      check id;
       let p = new_problem() in
       let t = scope p t in
       (* Generate the constraints for [t] to be of type [Type]. *)
-      (*let gs_typ, gs_unif = List.partition is_typ gs in
-      let to_solve = List.map get_constr gs_unif in*)
       let c = Env.to_ctxt gt.goal_hyps in
-      (*FIXME use gs_unif to type check t *)
       if not (Infer.check_noexn p c t mk_Type) then
-        fatal pos "%a is not typable." pp_term t;
+        fatal pos "%a is not of type Type." pp_term t;
       (* Create a new goal of type [t]. *)
       let n = List.length env in
       let bt = lift t in

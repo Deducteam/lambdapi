@@ -456,14 +456,14 @@ let get_proof_data : compiler -> sig_state -> p_command ->
       let pdata_p_state =
         let proof_goals = Proof.add_goals_of_problem p [] in
         if p_sym_def then
-          (* Add a new focused goal and refine on if a definition is given. *)
+          (* Add a new focused goal and refine on it. *)
           let m = LibMeta.fresh p ~name:id a 0 in
           let g = Goal.of_meta m in
-          let gt = match g with Typ gt -> gt | _ -> assert false in
           let ps = {proof_name = p_sym_nam; proof_term = Some m;
                     proof_goals = g :: proof_goals} in
           match pt, t with
           | Some pt, Some t ->
+              let gt = match g with Typ gt -> gt | _ -> assert false in
               Tactic.tac_refine pt.pos ps gt proof_goals p t.elt
           | _, _ -> Tactic.tac_solve pos ps
         else
