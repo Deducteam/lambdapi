@@ -19,10 +19,6 @@ val check : popt -> problem -> ctxt -> term -> term -> unit
 @raise Fatal. [c] must be well sorted. *)
 val check_sort : popt -> problem -> ctxt -> term -> unit
 
-(** [goals_of_typ p typ ter] adds to [p] the constraints for [typ] to be of
-   type a sort and [ter] to be of type [typ], and returns a type for [ter]. *)
-val goals_of_typ : problem -> term loc option -> term loc option -> term
-
 (** Result of query displayed on hover in the editor. *)
 type result = (unit -> string) option
 

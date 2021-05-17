@@ -65,56 +65,6 @@ let check_sort : Pos.popt -> problem -> ctxt -> term -> unit =
         end
       else fatal pos "[%a] is not typable." pp_term t
 
-(** [goals_of_typ p typ ter] adds to [p] the constraints for [typ] to be of
-   type a sort and [ter] to be of type [typ], and returns a type for [ter]. *)
-let goals_of_typ : problem -> term loc option -> term loc option -> term =
-  fun p typ ter ->
-  match typ, ter with
-  | Some typ, Some ter ->
-      begin match Infer.infer_noexn p [] typ.elt with
-      | None -> fatal typ.pos "[%a] is not typable." pp_term typ.elt
-      | Some sort ->
-          match unfold sort with
-          | Type | Kind ->
-              if Infer.check_noexn p [] ter.elt typ.elt then typ.elt
-              else
-                let pos = Common.Pos.cat typ.pos ter.pos in
-                fatal pos "[%a] cannot have type [%a]"
-                  pp_term ter.elt pp_term typ.elt
-          | _ -> fatal typ.pos "[%a] has type [%a] and not a sort."
-                   pp_term typ.elt pp_term sort
-      end
-  | None, Some ter ->
-      begin match Infer.infer_noexn p [] ter.elt with
-      | None -> fatal ter.pos "[%a] is not typable." pp_term ter.elt
-      | Some typ ->
-          match unfold typ with
-          | Kind -> fatal ter.pos "Kind definitions are not allowed."
-          | _ ->
-              match Infer.infer_noexn p [] typ with
-              | None ->
-                  fatal ter.pos "[%a] has type [%a] which is not typable"
-                    pp_term ter.elt pp_term typ
-              | Some sort ->
-                  match unfold sort with
-                  | Type | Kind -> typ
-                  | _ ->
-                      fatal ter.pos
-                        "[%a] has type [%a] which has type [%a] \
-                         and not a sort."
-                        pp_term ter.elt pp_term typ pp_term sort
-      end
-  | Some typ, None ->
-      begin match Infer.infer_noexn p [] typ.elt with
-      | None -> fatal typ.pos "[%a] is not typable." pp_term typ.elt
-      | Some sort ->
-          match unfold sort with
-          | Type | Kind -> typ.elt
-          | _ -> fatal typ.pos "[%a] has type [%a] and not a sort."
-                   pp_term typ.elt pp_term sort
-      end
-  | None, None -> assert false (* already rejected by parser *)
-
 (** Result of query displayed on hover in the editor. *)
 type result = (unit -> string) option
 

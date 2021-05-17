@@ -396,10 +396,11 @@ let get_proof_data : compiler -> sig_state -> p_command ->
       end;
     (* Build proof data. *)
     let pdata =
-      (*FIXME remove call to Query.goals_of_typ; create a new meta for the
-         type if there is none; and just check that the type is well sorted if
-         there is one *)
-      let a = Query.goals_of_typ p a t in
+      let a =
+        match a with
+        | Some {elt=t;pos} -> Query.check_sort pos p [] t; t
+        | None -> mk_Meta(LibMeta.fresh p mk_Type 0,[||])
+      in
       (* Get tactics and proof end. *)
       let pdata_tactics, pe =
         match p_sym_prf with
