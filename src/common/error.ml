@@ -17,8 +17,8 @@ let wrn : Pos.popt -> 'a outfmt -> 'a = fun pos fmt ->
   let open Stdlib in
   let fprintf = if !no_wrn then Format.ifprintf else Format.fprintf in
   match pos with
-  | None    -> fprintf !err_fmt (yel fmt ^^ "\n")
-  | Some(_) -> fprintf !err_fmt (yel ("[%a] " ^^ fmt) ^^ "\n") Pos.pp pos
+  | None    -> fprintf !err_fmt (yel fmt ^^ "@.")
+  | Some(_) -> fprintf !err_fmt (yel ("[%a] " ^^ fmt) ^^ "@.") Pos.pp pos
 
 (** [with_no_wrn f x] disables warnings before executing [f x] and then
     restores the initial state of warnings. The result of [f x] is returned.
