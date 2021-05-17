@@ -15,9 +15,9 @@ open Debug
 let logger_unif = new_logger 'u' "unif" "unification"
 let log_unif = logger_unif.logger
 
-(** [type_app a ts] returns [Some(u)] where [u] is a type of [add_args x ts]
-   where [x] is any term of type [a] if [x] can be applied to at least
-   [List.length ts] arguments, and [None] otherwise. *)
+(** [type_app c a ts] returns [Some u] where [u] is a type of [add_args x ts]
+   in context [c] where [x] is any term of type [a] if [x] can be applied to
+   at least [List.length ts] arguments, and [None] otherwise. *)
 let rec type_app : ctxt -> term -> term list -> term option = fun ctx a ts ->
   match Eval.whnf ctx a, ts with
   | Prod(_,b), t::ts -> type_app ctx (Bindlib.subst b t) ts
@@ -29,9 +29,9 @@ let add_constr : problem -> constr -> unit = fun p c ->
   if !log_enabled then log_unif (mag "%a") pp_constr c;
   p.to_solve <- c::p.to_solve
 
-(** [add_unif_rule_constr cs (ctx,t,u)] adds to [cs] the constraint
-   [(ctx,t,u)] as well as the constraint [(ctx,a,b)] where [a] is the type of
-   [t] and [b] the type of [u] if they can be infered. *)
+(** [add_unif_rule_constr p (ctx,t,u)] adds to [p] the constraint [(ctx,t,u)]
+   as well as the constraint [(ctx,a,b)] where [a] is the type of [t] and [b]
+   the type of [u] if they can be infered. *)
 let add_unif_rule_constr : problem -> constr -> unit = fun p (ctx,t,u) ->
   match Infer.infer_noexn p ctx t with
   | None -> ignore (Infer.infer_noexn p ctx u)
@@ -40,8 +40,8 @@ let add_unif_rule_constr : problem -> constr -> unit = fun p (ctx,t,u) ->
       | Some b when not (Eval.eq_modulo ctx a b) -> add_constr p (ctx,a,b)
       | _ -> ()
 
-(** [try_unif_rules ctx s t] tries to solve unification problem [ctx ⊢ s ≡ t]
-   using declared unification rules. *)
+(** [try_unif_rules p ctx s t] tries to simplify the unification problem [ctx
+   ⊢ s ≡ t] with the user-defined unification rules. *)
 let try_unif_rules : problem -> ctxt -> term -> term -> bool =
   fun p ctx s t ->
   if !log_enabled then log_unif "check unif_rules";
@@ -145,10 +145,10 @@ let instantiate : problem -> ctxt -> meta -> term array -> term -> bool =
         end;
       false
 
-(** [add_to_unsolved t1 t2 p] checks whether [t1] is equivalent to [t2]. If
-   not, then it tries to apply unification rules on the problem [t1 ≡ t2]. If
-   no unification rule applies then it adds [t1 = t2] in the unsolved problems
-   of [p]. *)
+(** [add_to_unsolved p c t1 t2] checks whether [t1] is equivalent to [t2] in
+   context [c]. If not, then it tries to apply unification rules. If no
+   unification rule applies then it adds [(c,t1,t2)] to the unsolved
+   constraints of [p]. *)
 let add_to_unsolved : problem -> ctxt -> term -> term -> unit =
   fun p ctx t1 t2 ->
   if Eval.eq_modulo ctx t1 t2 then
@@ -157,7 +157,7 @@ let add_to_unsolved : problem -> ctxt -> term -> term -> unit =
     (if !log_enabled then log_unif "move to unsolved";
      p.unsolved <- (ctx,t1,t2) :: p.unsolved)
 
-(** [decompose ctx ts1 ts2] tries to decompose a problem of the form [h ts1 ≡
+(** [decompose p c ts1 ts2] tries to decompose a problem of the form [h ts1 ≡
    h ts2] into the problems [t1 ≡ u1; ..; tn ≡ un], assuming that [ts1 =
    [t1;..;tn]] and [ts2 = [u1;..;un]]. *)
 let decompose : problem -> ctxt -> term list -> term list -> unit =
@@ -167,16 +167,16 @@ let decompose : problem -> ctxt -> term list -> term list -> unit =
 
 (** For a problem of the form [h1 ≡ h2] with [h1 = m[ts]], [h2 = Πx:_,_] (or
    the opposite) and [ts] distinct bound variables, [imitate_prod m h1 h2 p]
-   instantiate [m] to a product and add the constraint [h1 ≡ h2] to [p]. *)
+   instantiates [m] to a product and adds the constraint [h1 ≡ h2] to [p]. *)
 let imitate_prod : problem -> ctxt -> meta -> term -> term -> unit =
   fun p ctx m h1 h2 ->
   if !log_enabled then log_unif "imitate_prod %a" pp_meta m;
   Infer.set_to_prod p m; add_constr p (ctx,h1,h2)
 
-(** For a problem [m[vs] ≡ s(ts)] in context [ctx], where [vs] are distinct
+(** For a problem [m[vs] ≡ s(ts)] in context [c], where [vs] are distinct
    variables, [m] is a meta of type [Πy0:a0,..,Πyk-1:ak-1,b] with [k = length
    vs], [s] is an injective symbol of type [Πx0:b0,..,Πxn-1:bn-1,c] with [n =
-   length ts], [imitate_inj ctx m vs us s ts] tries to instantiate [m] by
+   length ts], [imitate_inj p c m vs us s ts] tries to instantiate [m] by
    [s(m0[vs],..,mn-1[vs])] where [mi] is a fresh meta of type
    [Πv0:a0,..,Πvk-1:ak-1{y0=v0,..,yk-2=vk-2}, bi{x0=m0[vs],..,xi-1=mi-1[vs]}].
    It returns [true] if it can and [false] otherwise. *)
@@ -210,6 +210,7 @@ let imitate_inj :
         | _ -> raise Cannot_imitate
       in build (List.length ts) [] !(s.sym_type)
     in
+    if !log_enabled then log_unif (red "%a ≔ %a") pp_meta m pp_term t;
     LibMeta.set p m (Bindlib.unbox (Bindlib.bind_mvar vars (lift t))); true
   with Cannot_imitate -> false
 
@@ -266,6 +267,8 @@ let imitate_lam : problem -> ctxt -> meta -> unit = fun p ctx m ->
     let u1 = _Meta m1 (Env.to_tbox env') in
     let xu1 = _Abst a (Bindlib.bind_var x u1) in
     let v = Bindlib.bind_mvar (Env.vars env) xu1 in
+    if !log_enabled then
+      log_unif (red "%a ≔ %a") pp_meta m pp_term (Bindlib.unbox xu1);
     LibMeta.set p m (Bindlib.unbox v)
 
 (** [inverse_opt s ts v] returns [Some(t, inverse s v)] if [ts=[t]], [s] is
@@ -288,7 +291,7 @@ let error : term -> term -> 'a = fun t1 t2 ->
   fatal_msg "\n[%a]\nand\n[%a]\nare not convertible.\n" pp_term t1 pp_term t2;
   raise Unsolvable
 
-(** [inverse t1 s ts1 t2] tries to replace a problem of the form [t1 ≡ t2]
+(** [inverse p c t1 s ts1 t2] tries to replace a problem of the form [t1 ≡ t2]
    with [t1 = s(ts1)] and [ts1=[u]] by [u ≡ inverse s t2], when [s] is
    injective. *)
 let inverse : problem -> ctxt -> term -> sym -> term list -> term -> unit =
@@ -303,7 +306,7 @@ let inverse : problem -> ctxt -> term -> sym -> term list -> term -> unit =
             if !log_enabled then log_unif "move to unsolved";
             p.unsolved <- (ctx,t1,t2) :: p.unsolved
 
-(** [sym_sym_whnf ctx t1 s1 ts1 t2 s2 ts2 p] handles the case [s1(ts1) =
+(** [sym_sym_whnf p c t1 s1 ts1 t2 s2 ts2 p] handles the case [s1(ts1) =
    s2(ts2); p] when [s1(ts1)] and [s2(ts2)] are in whnf. *)
 let sym_sym_whnf :
       problem -> ctxt -> term -> sym -> term list -> term -> sym -> term list
@@ -323,8 +326,10 @@ let sym_sym_whnf :
         | Some (t, u) -> add_constr p (ctx,t,u)
         | None -> inverse p ctx t2 s2 ts2 t1
 
-(** [solve p] tries to solve the unification problem [p] and
-    returns the constraints that could not be solved. *)
+(** [solve_noexn p] tries to simplify the constraints of [p].
+@raise [Unsolvable] if it finds a constraint that cannot be satisfied.
+Otherwise, [p.to_solve] is empty but [p.unsolved] may still contain
+constraints that could not be simplified. *)
 let solve : problem -> unit = fun p ->
   while p.to_solve <> [] || (p.recompute && p.unsolved <> []) do
   match p.to_solve with
@@ -464,11 +469,12 @@ let solve : problem -> unit = fun p ->
   | _ -> add_to_unsolved p ctx t1 t2
   done
 
-(** [solve_noexn ~type_check problem] attempts to solve [problem]. If there is
-   no solution, the value [None] is returned. Otherwise [Some cs] is returned,
-   where the list [cs] is a list of unsolved convertibility
-   constraints. Metavariable instantiations are type-checked only if the
-   optional argument [~type_check] is [true] (default). *)
+(** [solve_noexn ~type_check p] tries to simplify the constraints of [p]. It
+   returns [false] if it finds a constraint that cannot be
+   satisfied. Otherwise, [p.to_solve] is empty but [p.unsolved] may still
+   contain constraints that could not be simplified. Metavariable
+   instantiations are type-checked only if the optional argument [~type_check]
+   is [true] (default). *)
 let solve_noexn : ?type_check:bool -> problem -> bool =
   fun ?(type_check=true) p ->
   if !log_enabled then log_hndl "solve %a" pp_problem p;

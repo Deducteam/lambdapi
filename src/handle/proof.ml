@@ -95,8 +95,8 @@ module Goal = struct
 
 end
 
-(** [add_goals_of_problem p gs] adds the metas and constraints of [p] to
-   [gs]. *)
+(** [add_goals_of_problem p gs] extends the list of goals [gs] with the
+   metavariables and constraints of [p]. *)
 let add_goals_of_problem : problem -> goal list -> goal list = fun p gs ->
   let gs = MetaSet.fold (fun m gs -> Goal.of_meta m :: gs) p.metas gs in
   let f gs c = Unif c :: gs in
@@ -133,7 +133,7 @@ let remove_solved_goals : proof_state -> proof_state = fun ps ->
   in {ps with proof_goals = List.filter f ps.proof_goals}
 
 (** [meta_of_key ps i] returns [Some m] where [m] is a meta of [ps] whose key
-   is [i] or [None]. *)
+   is [i], or else it returns [None]. *)
 let meta_of_key : proof_state -> int -> meta option = fun ps key ->
   let f = function
     | Typ {goal_meta=m;_} when m.meta_key = key -> Some m
@@ -142,7 +142,7 @@ let meta_of_key : proof_state -> int -> meta option = fun ps key ->
   List.find_map f ps.proof_goals
 
 (** [meta_of_name ps n] returns [Some m] where [m] is a meta of [ps] whose
-   name is [n] or [None]. *)
+   name is [n], or else it returns [None]. *)
 let meta_of_name : proof_state -> string -> meta option = fun ps n ->
   let f = function
     | Typ {goal_meta=m;_} when m.meta_name = Some n -> Some m

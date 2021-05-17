@@ -15,10 +15,10 @@ open Extra
 let log_subj = new_logger 's' "subj" "subject-reduction"
 let log_subj = log_subj.logger
 
-(** [build_meta_type k] builds the type “Πx1:A1,⋯,xk:Ak,A(k+1)” where the type
-   “Ai = Mi[x1,⋯,x(i-1)]” is defined as the metavariable “Mi” which has arity
-   “i-1” and type “Π(x1:A1) ⋯ (x(i-1):A(i-1)), TYPE”, and adds the
-   metavraibles in [p]. *)
+(** [build_meta_type p k] builds the type “Πx1:A1,⋯,xk:Ak,A(k+1)” where the
+   type “Ai = Mi[x1,⋯,x(i-1)]” is defined as the metavariable “Mi” which has
+   arity “i-1” and type “Π(x1:A1) ⋯ (x(i-1):A(i-1)), TYPE”, and adds the
+   metavariables in [p]. *)
 let build_meta_type : problem -> int -> term = fun p k ->
   assert (k >= 0);
   let xs = Array.init k (new_tvar_ind "x") in
@@ -132,9 +132,8 @@ let symb_to_tenv
    signature state [ss] and then construct the corresponding rule. Note that
    [Fatal] is raised in case of error. *)
 let check_rule : Scope.pre_rule Pos.loc -> rule = fun ({pos; elt} as pr) ->
-  let Scope.{pr_sym = s; pr_lhs = lhs; pr_vars = vars
-            ; pr_rhs; pr_arities = arities; pr_xvars_nb; _} = elt
-  in
+  let Scope.{pr_sym = s; pr_lhs = lhs; pr_vars = vars; pr_rhs;
+             pr_arities = arities; pr_xvars_nb; _} = elt in
   (* Check that the variables of the RHS are in the LHS. *)
   if pr_xvars_nb <> 0 then
     (let xvars = Array.drop (Array.length vars - pr_xvars_nb) vars in
@@ -222,7 +221,7 @@ let check_rule : Scope.pre_rule Pos.loc -> rule = fun ({pos; elt} as pr) ->
   if !log_enabled then
     log_subj "replace LHS metavariables by function symbols\n%a ↪ %a"
       pp_term lhs_with_metas pp_term rhs_with_metas;
-  (* FIXME we should complete the constraints into a set of rewriting rule on
+  (* TODO complete the constraints into a set of rewriting rule on
      the function symbols of [symbols]. *)
   (* Compute the constraints for the RHS to have the same type as the LHS. *)
   let p = new_problem() in

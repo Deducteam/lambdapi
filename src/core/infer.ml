@@ -51,12 +51,12 @@ exception NotTypable
 
 (*FIXME: make infer tail-recursive. *)
 (** [infer p ctx t] tries to infer a type for the term [t] in context [ctx],
-   possibly under some constraints recorded in [constraints] using [conv]. The
-   set of metavariables of [p] are updated if some metavariables are
-   instantiated or created. The returned type is well-sorted if the recorded
-   constraints are satisfied. [ctx] must be well sorted.
+   possibly adding new unification constraints in [p]. The set of
+   metavariables of [p] are updated if some metavariables are instantiated or
+   created. The returned type is well-sorted if the recorded constraints are
+   satisfied. [ctx] must be well sorted.
 @raise NotTypable when the term is not typable (when encountering an
-abstraction over a kind). *)
+   abstraction over a kind). *)
 let rec infer : problem -> ctxt -> term -> term = fun p ctx t ->
   if !log_enabled then log_infr "infer %a%a" pp_ctxt ctx pp_term t;
   match unfold t with
@@ -171,19 +171,20 @@ let rec infer : problem -> ctxt -> term -> term = fun p ctx t ->
       infer p ctx
         (Array.fold_left (fun acc t -> mk_Appl(acc,t)) (mk_Symb s) ts)
 
-(** [check ctx t a] checks that the term [t] has type [a] in context
-   [ctx], possibly under some constraints recorded in [constraints] using
-   [conv]. [ctx] must be well-formed and [a] well-sorted. This function never
-   fails (but constraints may be unsatisfiable). *)
+(** [check ctx t a] checks that the term [t] has type [a] in context [ctx],
+   possibly adding new unification constraints in [p]. [ctx] must be
+   well-formed and [a] well-sorted.
+@raise NotTypable when the term is not typable (when encountering an
+   abstraction over a kind). *)
 and check : problem -> ctxt -> term -> term -> unit = fun p ctx t a ->
   if !log_enabled then log_infr "check %a" pp_typing (ctx,t,a);
   conv p ctx (infer p ctx t) a
 
 (** [infer_noexn p ctx t] returns [None] if the type of [t] in context [ctx]
    cannot be infered, or [Some a] where [a] is some type of [t] in the context
-   [ctx] if the constraints [p.to_solve] are satisfiable (which may not be the
-   case). The metavariables of [p] are updated when a metavariable is
-   instantiated or created. [ctx] must be well sorted. *)
+   [ctx], possibly adding new constraints in [p]. The metavariables of [p] are
+   updated when a metavariable is instantiated or created. [ctx] must be well
+   sorted. *)
 let infer_noexn : problem -> ctxt -> term -> term option = fun p ctx t ->
   try
     if !log_enabled then
@@ -196,10 +197,9 @@ let infer_noexn : problem -> ctxt -> term -> term option = fun p ctx t ->
   with NotTypable -> None
 
 (** [check_noexn p ctx t a] tells whether the term [t] has type [a] in the
-   context [ctx] if the returned constraints [p.to_solve] are satisfiable. The
-   metavariables of [p] are updated when a metavariable is instantiated or
-   created. New constraints may be added as well. The context [ctx] and the
-   type [a] must be well sorted. *)
+   context [ctx], possibly adding new constraints in |p]. The metavariables of
+   [p] are updated when a metavariable is instantiated or created. The context
+   [ctx] and the type [a] must be well sorted. *)
 let check_noexn : problem -> ctxt -> term -> term -> bool = fun p ctx t a ->
   try
     if !log_enabled then log_hndl (blu "check_noexn %a") pp_typing (ctx,t,a);

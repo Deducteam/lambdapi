@@ -8,8 +8,8 @@ open Syntax
 open Common
 open Pos
 
-(*FIXME: remove mok and mon by using p? *)
-(** [scope expo ss env mok mon p t] turns into a term a pterm [t] in the
+(*FIXME? remove mok and mon by using p? *)
+(** [scope expo ss env p mok mon t] turns into a term a pterm [t] in the
    signature state [ss], the environment [env] (for bound variables). [mok k]
    says if there already exists a meta with key [k]. [mon n] says if there
    already exissts a meta with name [n]. Generated metas are added to [p]. If
@@ -20,9 +20,9 @@ val scope_term :
       -> problem -> (int -> meta option) -> (string -> meta option)
       -> p_term -> term
 
-(** [scope_term_with_params expo ss env mok mon p t] is similar to
-   [scope_term expo ss env mok mon p t] except that [t] must be a product or
-   an abstraction. In this case, no warnings are issued if the top binders are
+(** [scope_term_with_params expo ss env p mok mon t] is similar to [scope_term
+   expo ss env p mok mon t] except that [t] must be a product or an
+   abstraction. In this case, no warnings are issued if the top binders are
    constant. *)
 val scope_term_with_params :
       bool -> sig_state -> env

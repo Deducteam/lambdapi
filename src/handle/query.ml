@@ -13,10 +13,9 @@ open Debug
 open! Lplib
 open Base
 
-(** [infer solve pos p ctx t] returns a type for [t] in context [ctx] if there
-   is one. [p], which initially contains the metavariables of [t], is updated
-   when metavariables are instantiated or created.
-@raise Fatal otherwise. [ctx] must well sorted. *)
+(** [infer pos p c t] returns a type for the term [t] in context [c] and under
+   the constraints of [p] if there is one, or
+@raise Fatal. [c] must well sorted. Note that [p] gets modified. *)
 let infer : Pos.popt -> problem -> ctxt -> term -> term = fun pos p ctx t ->
   match Infer.infer_noexn p ctx t with
   | None -> fatal pos "%a is not typable." pp_term t
@@ -30,9 +29,9 @@ let infer : Pos.popt -> problem -> ctxt -> term -> term = fun pos p ctx t ->
         end
       else fatal pos "%a is not typable." pp_term t
 
-(** [check pos ctx t a] checks that [t] with metavariables in [p] has type [a]
-   in context [ctx].
-@raise Fatal otherwise. [ctx] must well sorted. *)
+(** [check pos p c t a] checks that the term [t] has type [a] in context [c]
+and under the constraints of [p], or
+@raise Fatal. [c] must well sorted. Note that [p] gets modified. *)
 let check : Pos.popt -> problem -> ctxt -> term -> term -> unit =
   fun pos p ctx t a ->
   if Infer.check_noexn p ctx t a then
@@ -44,9 +43,9 @@ let check : Pos.popt -> problem -> ctxt -> term -> term -> unit =
       end
     else fatal pos "[%a] does not have type [%a]." pp_term t pp_term a
 
-(** [check_sort pos p ctx t] checks that the term [t] with metavariables in
-   [p] has type [Type] or [Kind] in context [ctx].
-@raise Fatal otherwise. [ctx] must well sorted. *)
+(** [check_sort pos p c t] checks that the term [t] has type [Type] or [Kind]
+   in context [c] and under the constraints of [p], or
+@raise Fatal. [c] must be well sorted. *)
 let check_sort : Pos.popt -> problem -> ctxt -> term -> unit =
   fun pos p ctx t ->
   match Infer.infer_noexn p ctx t with
@@ -66,8 +65,8 @@ let check_sort : Pos.popt -> problem -> ctxt -> term -> unit =
         end
       else fatal pos "[%a] is not typable." pp_term t
 
-(** [goals_of_typ typ ter] returns the list of unification goals that must be
-    solved so that [typ] is typable by a sort and [ter] has type [typ]. *)
+(** [goals_of_typ p typ ter] adds to [p] the constraints for [typ] to be of
+   type a sort and [ter] to be of type [typ], and returns a type for [ter]. *)
 let goals_of_typ : problem -> term loc option -> term loc option -> term =
   fun p typ ter ->
   match typ, ter with

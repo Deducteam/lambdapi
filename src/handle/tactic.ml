@@ -24,8 +24,8 @@ let log_tact = log_tact.logger
 let admitted : int Stdlib.ref = Stdlib.ref (-1)
 
 (** [add_axiom ss m] adds in signature state [ss] a new axiom symbol of type
-   [!(m.meta_type)] and instantiate [m] with it. It does not check whether the
-   type of [m] contains metavariables. *)
+   [!(m.meta_type)] and instantiate [m] with it. WARNING: It does not check
+   whether the type of [m] contains metavariables. *)
 let add_axiom : Sig_state.t -> meta -> Sig_state.t = fun ss m ->
   let name =
     let i = Stdlib.(incr admitted; !admitted) in
