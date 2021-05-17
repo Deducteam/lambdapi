@@ -244,16 +244,16 @@ let rec fold_left_while f cond acc l =
   | x :: xs -> fold_left_while f cond (f acc x) xs
   | [] -> acc
 
-(** [remove f l] removes from [l] the first element satisfying [f]. *)
-let remove : ('a -> bool) -> 'a list -> 'a list = fun f ->
+(** [remove_first f l] removes from [l] the first element satisfying [f]. *)
+let remove_first : ('a -> bool) -> 'a list -> 'a list = fun f ->
   let rec rem acc = function
     | [] -> rev acc
     | x::l -> if f x then rev_append acc l else rem (x::acc) l
   in rem []
 
-(** [remove_first n xs] remove the min(n,length xs) elements of [xs]. *)
-let rec remove_first n = function
-  | _ :: xs when n > 0 -> remove_first (n - 1) xs
+(** [remove_heads n xs] remove the min(n,length xs) elements of [xs]. *)
+let rec remove_heads n = function
+  | _ :: xs when n > 0 -> remove_heads (n - 1) xs
   | xs -> xs
 
 (** [split f l] returns the tuple [(l1,x,l2)] such that [x] is the first

@@ -118,7 +118,7 @@ let create_ind_pred_map :
     let codom ts =
       let x = new_tvar x_str in
       let t = Bindlib.bind_var x
-                (prf_of c ind_var (List.remove_first arity ts) (_Vari x)) in
+                (prf_of c ind_var (List.remove_heads arity ts) (_Vari x)) in
       _Prod (_Appl_Symb ind_sym ts) t
     in
     let ind_conclu = ind_typ_with_codom pos ind_sym env codom x_str a in
@@ -242,7 +242,7 @@ let gen_rec_types :
     (* aux computes the induction hypothesis *)
     let aux env _ p ts x =
       let v = Env.appl (_Vari x) env in
-      let v = prf_of c p (List.map lift (List.remove_first n ts)) v in
+      let v = prf_of c p (List.map lift (List.remove_heads n ts)) v in
       Env.to_prod_box env v
     in
     let acc_rec_dom _ _ _ = () in
@@ -252,7 +252,7 @@ let gen_rec_types :
     let acc_nonrec_dom _ _ = () in
     let nonrec_dom t x next = _Prod (lift t) (Bindlib.bind_var x next) in
     let codom xs _ p ts =
-      prf_of c p (List.map lift (List.remove_first n ts))
+      prf_of c p (List.map lift (List.remove_heads n ts))
         (_Appl_Symb cons_sym (List.rev_map _Vari xs))
     in
     fold_cons_type pos ind_pred_map x_str ind_sym vs cons_sym inj_var
