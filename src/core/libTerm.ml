@@ -66,6 +66,46 @@ let iter : (term -> unit) -> term -> unit = fun action ->
     | LLet(a,t,u) -> iter a; iter t; iter (Bindlib.subst u mk_Kind)
   in iter
 
+(** [iter_leaves t] applies functions to the leaves of term term [t]. Each
+    terminal [t] of the {!type:Term.term} data type is processed by the
+    function whose argument is [?do_t]. For instance, to apply function [f] on
+    symbols, one may call [iter_leaves ~do_symb:f]. If no function is
+    provided, nothing is done. Argument [~recurse_meta_type] specifies whether
+    the iteration should continue on meta types. *)
+let iter_leaves : recurse_meta_type:bool
+  -> ?do_wild:(unit -> unit)
+  -> ?do_patt:(int option -> string -> unit)
+  -> ?do_symb:(sym -> unit)
+  -> ?do_vari:(tvar -> unit)
+  -> ?do_kind:(unit -> unit)
+  -> ?do_type:(unit -> unit)
+  -> ?do_meta:(meta -> unit)
+  -> ?do_plac:(bool -> string option -> unit)
+  -> term -> unit =
+  fun
+    ~recurse_meta_type
+    ?(do_wild=ignore) ?(do_patt=fun _ _ -> ())
+    ?(do_symb=ignore) ?(do_vari=ignore) ?(do_kind=ignore)
+    ?(do_type=ignore) ?(do_meta=ignore) ?(do_plac=fun _ _ -> ()) ->
+    let rec iter t =
+      match unfold t with
+      | TEnv _ | TRef _ -> assert false
+      | Wild -> do_wild ()
+      | Patt (i,n,ts) -> do_patt i n; Array.iter iter ts
+      | Type -> do_type ()
+      | Kind -> do_kind ()
+      | Vari x -> do_vari x
+      | Plac (b,n) -> do_plac b n
+      | Symb s -> do_symb s
+      | Appl(t, u) -> iter t; iter u
+      | Abst(a, b)
+      | Prod(a, b) -> iter a; iter (Bindlib.subst b mk_Kind)
+      | LLet(a, t, u) -> iter a; iter t; iter (Bindlib.subst u mk_Kind)
+      | Meta(m,ts) -> do_meta m; Array.iter iter ts;
+          if recurse_meta_type then iter !(m.meta_type)
+    in
+    iter
+
 (** [unbind_name b s] is like [Bindlib.unbind b] but returns a valid variable
     name when [b] binds no variable. The string [s] is the prefix of the
     variable's name.*)
@@ -108,24 +148,8 @@ module Meta = struct
 
   (** [iter b f t] applies the function [f] to every metavariable of [t], and
       to the type of every metavariable recursively if [b] is true. *)
-  let iter : bool -> (t -> unit) -> term -> unit = fun b f ->
-    let rec iter t =
-      match unfold t with
-      | Patt(_,_,_)
-      | TEnv(_,_)
-      | Wild
-      | Plac _
-      | TRef(_)
-      | Vari(_)
-      | Type
-      | Kind
-      | Symb(_)     -> ()
-      | Prod(a,b)
-      | Abst(a,b)   -> iter a; iter (Bindlib.subst b mk_Kind)
-      | Appl(t,u)   -> iter t; iter u
-      | Meta(v,ts)  -> f v; Array.iter iter ts; if b then iter !(v.meta_type)
-      | LLet(a,t,u) -> iter a; iter t; iter (Bindlib.subst u mk_Kind)
-    in iter
+  let iter : bool -> (t -> unit) -> term -> unit = fun b f t ->
+    iter_leaves ~recurse_meta_type:b ~do_meta:f t
 
   (** [occurs m t] tests whether the metavariable [m] occurs in the term
       [t]. *)

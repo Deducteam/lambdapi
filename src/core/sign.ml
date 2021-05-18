@@ -129,7 +129,8 @@ let create_sym : expo -> prop -> bool -> string -> term -> bool list -> sym =
     sym_def = ref None; sym_opaq; sym_rules = ref [];
     sym_mstrat = Eager; sym_dtree = ref Tree_type.empty_dtree }
 
-(** [link sign] establishes physical links to the external symbols. *)
+(** [link sign] establishes physical links to the external
+    symbols. *)
 let link : t -> unit = fun sign ->
   let rec link_term mk_Appl t =
     let link_binder b =
@@ -147,7 +148,7 @@ let link : t -> unit = fun sign ->
         mk_LLet(link_term mk_Appl a, link_term mk_Appl t, link_binder u)
     | Appl(t,u)   -> mk_Appl(link_term mk_Appl t, link_term mk_Appl u)
     | Meta(_,_)   -> assert false
-    | Plac _      -> t (* Happens in coercions *)
+    | Plac _      -> t (* may happen with coercions *)
     | Patt(i,n,m) -> mk_Patt(i, n, Array.map (link_term mk_Appl) m)
     | TEnv(t,m)   -> mk_TEnv(t, Array.map (link_term mk_Appl) m)
     | Wild        -> assert false
@@ -300,6 +301,15 @@ let add_symbol :
   (* Check for metavariables in the symbol type. *)
   if LibTerm.Meta.has true typ then
     fatal pos "The type of %s contains metavariables" sym_name;
+  let placeholders t =
+    let exception Found in
+    try
+      LibTerm.iter_leaves ~recurse_meta_type:true
+        ~do_plac:(fun _ _ -> raise Found) t; false
+    with Found -> true
+  in
+  if placeholders typ then
+    fatal pos "The type of %s contains placeholders" sym_name;
   (* We minimize [impl] to enforce our invariant (see {!type:Terms.sym}). *)
   let rec rem_false l = match l with false::l -> rem_false l | _ -> l in
   let sym_impl = List.rev (rem_false (List.rev impl)) in
