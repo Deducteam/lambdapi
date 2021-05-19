@@ -125,6 +125,13 @@ let fresh_patt : lhs_data -> string option -> tbox array -> tbox =
    state [ss] is used to convert identifiers into symbols according to
    [find_qid]. *)
 let rec scope : mode -> sig_state -> env -> p_term -> tbox =
+  fun md ss env t -> scope_parsed md ss env (Pratt.parse ss env t)
+(** [scope_parsed md ss env t] turns a parser-level, Pratt-parsed term [t]
+   into an actual term. The variables of the environment [env] may appear
+   in [t], and the scoping mode [md] changes the behaviour related
+   to certain constructors. The signature state [ss] is used to convert
+   identifiers into symbols according to [find_qid]. *)
+and scope_parsed : mode -> sig_state -> env -> p_term -> tbox =
   fun md ss env t ->
   if Timed.(!log_enabled) then log_scop "%a" Pretty.term t;
   (* Extract the spine. *)
@@ -162,7 +169,7 @@ and add_impl : mode -> sig_state ->
                Env.t -> popt -> tbox -> bool list -> p_term list -> tbox =
   fun md ss env loc h impl args ->
   let appl = match md with M_LHS _ -> _Appl_not_canonical | _ -> _Appl in
-  let appl_p_term t u = appl t (scope md ss env u) in
+  let appl_p_term t u = appl t (scope_parsed md ss env u) in
   let appl_meta t = appl t (scope_head md ss env P.wild) in
   match (impl, args) with
   (* The remaining arguments are all explicit. *)
@@ -196,7 +203,7 @@ and scope_domain : mode -> sig_state -> env -> p_term option -> tbox =
   | (Some {elt=P_Wild;_}|None), M_LHS data ->
       fresh_patt data None (Env.to_tbox env)
   | (Some {elt=P_Wild;_}|None), _ -> Env.fresh_meta_Type env
-  | Some a, _ -> scope md ss env (Pratt.parse ss env a)
+  | Some a, _ -> scope md ss env a
 
 (** [scope_binder ?warn mode ss cons env params_list t] scopes [t] in mode
    [md], signature state [ss] and environment [env]. [params_list] is a list
@@ -213,7 +220,7 @@ and scope_binder : ?warn:bool -> mode -> sig_state ->
     | [] ->
         begin
           match t with
-          | Some t -> scope md ss env (Pratt.parse ss env t)
+          | Some t -> scope md ss env t
           | None -> Env.fresh_meta_Type env
         end
     | (idopts,typopt,_implicit)::params_list ->
@@ -284,14 +291,14 @@ and scope_head : mode -> sig_state -> env -> p_term -> tbox =
       let ts =
         match ts with
         | None -> Env.to_tbox env (* [?M] is equivalent to [?M[env]]. *)
-        | Some ts -> Array.map (fun e -> scope md ss env (Pratt.parse ss env e)) ts
+        | Some ts -> Array.map (scope md ss env) ts
       in
       _Meta m ts
   | (P_Meta(_,_), _) -> fatal t.pos "Metavariables are not allowed here."
   | (P_Patt(id,ts), M_LHS(d)) ->
       (* Check that [ts] are variables. *)
       let scope_var t =
-        match unfold (Bindlib.unbox (scope md ss env (Pratt.parse ss env t))) with
+        match unfold (Bindlib.unbox (scope md ss env t)) with
         | Vari(x) -> x
         | _       -> fatal t.pos "Only bound variables are allowed in the \
                                   environment of pattern variables."
@@ -349,7 +356,7 @@ and scope_head : mode -> sig_state -> env -> p_term -> tbox =
       let ts =
         match ts with
         | None -> [||] (* $M stands for $M[] *)
-        | Some ts -> Array.map (fun e -> scope md ss env (Pratt.parse ss env e)) ts
+        | Some ts -> Array.map (scope md ss env) ts
       in
       _TEnv (Bindlib.box_var x) ts
   | (P_Patt(id,ts), M_RHS(r)) ->
@@ -364,7 +371,7 @@ and scope_head : mode -> sig_state -> env -> p_term -> tbox =
       let ts =
         match ts with
         | None -> [||] (* $M stands for $M[] *)
-        | Some ts -> Array.map (fun e -> scope md ss env (Pratt.parse ss env e)) ts
+        | Some ts -> Array.map (scope md ss env) ts
       in
       _TEnv (Bindlib.box_var x) ts
   | (P_Patt(_,_), _) ->
@@ -372,7 +379,7 @@ and scope_head : mode -> sig_state -> env -> p_term -> tbox =
   | (P_Appl(_,_), _) ->  assert false (* Unreachable. *)
   | (P_Arro(_,_), M_Patt) ->
       fatal t.pos "Implications are not allowed in a pattern."
-  | (P_Arro(a,b), _) -> _Impl (scope md ss env (Pratt.parse ss env a)) (scope md ss env (Pratt.parse ss env b))
+  | (P_Arro(a,b), _) -> _Impl (scope md ss env a) (scope md ss env b)
   | (P_Abst(_,_), M_Patt) ->
       fatal t.pos "Abstractions are not allowed in a pattern."
   | (P_Abst(xs,t), _) -> scope_binder md ss _Abst env xs (Some(t))
@@ -385,8 +392,7 @@ and scope_head : mode -> sig_state -> env -> p_term -> tbox =
       let a = scope_binder md ss _Prod env xs a in
       let t = scope_binder md ss _Abst env xs (Some(t)) in
       let v = new_tvar x.elt in
-      let env = Env.add v a (Some(t)) env in
-      let u = scope md ss env (Pratt.parse ss env u) in
+      let u = scope md ss (Env.add v a (Some(t)) env) u in
       if not (Bindlib.occur v u) then
         wrn x.pos "Useless let-binding (%s is not bound)." x.elt;
       _LLet a t (Bindlib.bind_var v u)
@@ -402,7 +408,7 @@ and scope_head : mode -> sig_state -> env -> p_term -> tbox =
       unsugar_nat_lit sym_z n
   (* Evade the addition of implicit arguments inside the wrap *)
   | (P_Wrap ({ elt = P_Iden _; _ } as id), _) -> scope_head md ss env id
-  | (P_Wrap t, _) -> scope md ss env (Pratt.parse ss env t)
+  | (P_Wrap t, _) -> scope md ss env t
   | (P_Expl(_), _) -> fatal t.pos "Explicit argument not allowed here."
 
 (** [scope expo ss env sgm t] turns into a term a pterm [t] in the signature
@@ -414,7 +420,7 @@ let scope_term :
       bool -> sig_state -> env -> meta IntMap.t Lazy.t -> p_term -> term =
   fun prv ss env sgm t ->
   let m = Stdlib.ref StrMap.empty in
-  Bindlib.unbox (scope (M_Term (m, sgm, prv)) ss env (Pratt.parse ss env t))
+  Bindlib.unbox (scope (M_Term (m, sgm, prv)) ss env t)
 
 (** [scope_term_with_params expo ss env sgm t] is similar to [scope_term expo
    ss env sgm t] except that [t] must be a product or an abstraction. In this
@@ -540,7 +546,7 @@ let scope_rule : bool -> sig_state -> p_rule -> pre_rule loc = fun ur ss r ->
            ; m_lhs_size    = 0
            ; m_lhs_in_env  = nl @ List.map fst pvs_rhs }
     in
-    let pr_lhs = scope mode ss Env.empty (Pratt.parse ss Env.empty p_lhs) in
+    let pr_lhs = scope mode ss Env.empty p_lhs in
     match mode with
     | M_LHS{ m_lhs_indices; m_lhs_names; m_lhs_size; m_lhs_arities; _} ->
         (Bindlib.unbox pr_lhs, m_lhs_indices, m_lhs_arities, m_lhs_names,
@@ -576,7 +582,7 @@ let scope_rule : bool -> sig_state -> p_rule -> pre_rule loc = fun ur ss r ->
     else
       M_RHS{ m_rhs_prv = is_private sym; m_rhs_data = htbl_vars }
   in
-  let pr_rhs = scope mode ss Env.empty (Pratt.parse ss Env.empty p_rhs) in
+  let pr_rhs = scope mode ss Env.empty p_rhs in
   let prerule =
     (* We put everything together to build the pre-rule. *)
     let pr_arities =
@@ -614,7 +620,7 @@ let scope_rule : bool -> sig_state -> p_rule -> pre_rule loc = fun ur ss r ->
 (** [scope_pattern ss env t] turns a parser-level term [t] into an actual term
     that will correspond to selection pattern (rewrite tactic). *)
 let scope_pattern : sig_state -> env -> p_term -> term = fun ss env t ->
-  Bindlib.unbox (scope M_Patt ss env (Pratt.parse ss env t))
+  Bindlib.unbox (scope M_Patt ss env t)
 
 (** [scope_rw_patt ss env t] turns a parser-level rewrite tactic specification
     [s] into an actual rewrite specification (possibly containing variables of

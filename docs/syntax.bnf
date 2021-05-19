@@ -14,6 +14,7 @@
 <path> ::= <qid>
 
 <term_id> ::= <id>
+            | (<id>)
             | @<id>
 
 <patt_id> ::= $<uid>
@@ -109,7 +110,7 @@
             | unif_rule <unif_rule> ;
             | notation <id> <notation> ;
             | <query> ;
-            
+
 
 <env> ::= [ [<term> (; <term>)*] ]
 

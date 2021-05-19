@@ -301,6 +301,11 @@ negation with some priority level.
    type λ p, `∀ x, p; // quantifiers can be written as such
    type λ p, `f x, p; // works as well if f is any symbol
 
+When declared as notations, identifiers then must be used at correct places
+and as such cannot make valid terms on thier own anymore.
+To reaccess the value of the identifier without the notation properties,
+wrap it in parentheses.
+
 ``builtin``
 ---------------
 
@@ -359,7 +364,7 @@ generating the induction principles and their rules from an inductive
 type definition, assuming that the following builtins are defined:
 
 ::
-   
+
    ￼builtin "Prop" ≔ ...; // : TYPE, for the type of propositions
    ￼builtin "P"    ≔ ...; // : Prop → TYPE, interpretation of propositions as types
 
@@ -375,15 +380,15 @@ encoded by defining a type ``Set`` and a function ``τ:Set → TYPE``.
 Example:
 
 ::
-   
+
    ￼inductive ℕ : TYPE ≔
    ￼| zero: ℕ
    ￼| succ: ℕ → ℕ;
-   
+
 is equivalent to:
 
 ::
-   
+
    ￼constant symbol ℕ : TYPE;
    ￼constant symbol zero : ℕ;
    ￼constant symbol succ : ℕ → ℕ;
@@ -397,7 +402,7 @@ keyword to link all inductive types together.
 Inductive definitions can also be parametrized as follows:
 
 ::
-   
+
    (a:Set) inductive T: TYPE ≔
    | node: τ a → F a → T a
    with F: TYPE ≔
