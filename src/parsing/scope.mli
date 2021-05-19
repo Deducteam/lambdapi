@@ -8,7 +8,6 @@ open Syntax
 open Common
 open Pos
 
-(*FIXME? remove mok and mon by using p? *)
 (** [scope expo ss env p mok mon t] turns into a term a pterm [t] in the
    signature state [ss], the environment [env] (for bound variables). [mok k]
    says if there already exists a meta with key [k]. [mon n] says if there
