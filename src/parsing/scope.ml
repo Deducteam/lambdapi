@@ -127,10 +127,7 @@ let fresh_patt : lhs_data -> string option -> tbox array -> tbox =
 let rec scope : mode -> sig_state -> env -> p_term -> tbox =
   fun md ss env t -> scope_parsed md ss env (Pratt.parse ss env t)
 (** [scope_parsed md ss env t] turns a parser-level, Pratt-parsed term [t]
-   into an actual term. The variables of the environment [env] may appear
-   in [t], and the scoping mode [md] changes the behaviour related
-   to certain constructors. The signature state [ss] is used to convert
-   identifiers into symbols according to [find_qid]. *)
+   into an actual term. *)
 and scope_parsed : mode -> sig_state -> env -> p_term -> tbox =
   fun md ss env t ->
   if Timed.(!log_enabled) then log_scop "%a" Pretty.term t;

@@ -269,6 +269,12 @@ Examples of patterns are available in ``tests/OK/patterns.lp``.
 
 The ``notation`` command is used to specify a notation for a symbol.
 
+When declared as notations, identifiers then must be used at correct places
+and as such cannot make valid terms on their own anymore.
+To reaccess the value of the identifier without the notation properties,
+wrap it in parentheses.
+
+
 **infix** The following code defines infix symbols for addition
 and multiplication. Both are associative to the left, and they have
 priority levels ``6`` and ``7`` respectively.
@@ -301,10 +307,6 @@ negation with some priority level.
    type λ p, `∀ x, p; // quantifiers can be written as such
    type λ p, `f x, p; // works as well if f is any symbol
 
-When declared as notations, identifiers then must be used at correct places
-and as such cannot make valid terms on thier own anymore.
-To reaccess the value of the identifier without the notation properties,
-wrap it in parentheses.
 
 ``builtin``
 ---------------

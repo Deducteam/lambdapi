@@ -57,9 +57,7 @@ end = struct
     let h, args = Syntax.p_get_args t in
     let strm = Stream.of_list (h :: args) in
     let module Parse = Pratter.Make(Pratt_terms) in
-    try
-      Parse.expression (st, env) strm
-    with
+    try Parse.expression (st, env) strm with
     | Parse.OpConflict (t, u) ->
         Error.fatal t.pos "Operator conflict between \"%a\" and \"%a\""
           Pretty.term t Pretty.term u
