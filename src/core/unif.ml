@@ -366,7 +366,7 @@ let solve : problem -> unit = fun p ->
        when s1 != s2 && s1.sym_prop = Const && s2.sym_prop = Const ->
       error t1 t2
 
-  (*FIXME: try to factorize calls to
+  (*TODO try to factorize calls to
      instantiate/instantiable/nl_distinct_vars. *)
   | Meta(m,ts), _ when ts1 = [] && instantiate p c m ts t2 -> ()
   | _, Meta(m,ts) when ts2 = [] && instantiate p c m ts t1 -> ()
@@ -419,7 +419,7 @@ let solve : problem -> unit = fun p ->
 
   | Symb s1, Symb s2 -> sym_sym_whnf p c t1 s1 ts1 t2 s2 ts2
 
-  (*FIXME: try to factorize calls to
+  (*TODO try to factorize calls to
      instantiate/instantiable/nl_distinct_vars. *)
   | Meta(m,ts), _ when ts1 = [] && instantiate p c m ts t2 -> ()
   | _, Meta(m,ts) when ts2 = [] && instantiate p c m ts t1 -> ()

@@ -49,7 +49,7 @@ let conv : problem -> ctxt -> term -> term -> unit = fun p ctx a b ->
 (** Exception that may be raised by type inference. *)
 exception NotTypable
 
-(*FIXME: make infer tail-recursive. *)
+(*TODO make infer tail-recursive. *)
 (** [infer p ctx t] tries to infer a type for the term [t] in context [ctx],
    possibly adding new unification constraints in [p]. The set of
    metavariables of [p] are updated if some metavariables are instantiated or
@@ -100,7 +100,7 @@ let rec infer : problem -> ctxt -> term -> term = fun p ctx t ->
         | Type | Kind -> s
         | _ -> conv p ctx' s mk_Type; mk_Type
       (* Here, we force [s] to be equivalent to [Type] as there is little
-         chance (no?) that it can be a kind. FIXME? *)
+         (no?) chance that it can be a kind. *)
       end
 
   (*  ctx ⊢ a ⇐ Type    ctx, x : a ⊢ t<x> ⇒ b<x>

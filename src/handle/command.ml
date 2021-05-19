@@ -469,7 +469,7 @@ let get_proof_data : compiler -> sig_state -> p_command ->
           match pt, t with
           | Some pt, Some t ->
               let gt = match g with Typ gt -> gt | _ -> assert false in
-              (*FIXME? there is no need for tac_refine to type-check [t] again
+              (*TODO there is no need for tac_refine to type-check [t] again
                  if [a] is the type infered from [t]. *)
               Tactic.tac_refine pt.pos ps gt proof_goals p t.elt
           | _, _ -> Tactic.tac_solve pos ps
