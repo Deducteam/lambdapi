@@ -81,7 +81,7 @@ let to_ctxt : env -> ctxt =
 (** [match_prod c t f] returns [f a b] if [t] matches [Prod(a,b)] possibly
    after reduction. *)
 let match_prod : ctxt -> term -> (term -> tbinder -> 'a) -> 'a = fun c t f ->
-  match unfold t with
+  match Ctxt.unfold c t with
   | Prod(a,b) -> f a b
   | _ ->
       match Eval.whnf c t with
@@ -133,33 +133,3 @@ let of_prod_using : ctxt -> tvar array -> term -> env * term = fun c xs t ->
              let env = add xs.(i) (lift a) None env in
              build_env (i+1) env (Bindlib.subst b (mk_Vari(xs.(i)))))
   in build_env 0 [] t
-
-(** [fresh_meta_Type env] creates a fresh metavariable of type [Type] in
-    environment [env]. *)
-let fresh_meta_Type : t -> tbox = fun env ->
-  let vs = to_tbox env in
-  let arity = Array.length vs in
-  let tm = to_prod_box env _Type in
-  _Meta_full (Meta.fresh_box tm arity) vs
-
-(** [fresh_meta_tbox env] creates a _Meta tbox from a fresh metavariable whose
-   type is itself a fresh metavariable of type [fresh_meta_Type env]. *)
-let fresh_meta_tbox : env -> tbox = fun env ->
-  let vs = to_tbox env in
-  let arity = Array.length vs in
-  let tm =
-    let x = Meta.fresh_box (to_prod_box env _Type) arity in
-    to_prod_box env (_Meta_full x vs)
-  in
-  _Meta_full (Meta.fresh_box tm arity) vs
-
-(** [fresh_meta env] creates a Meta term from a fresh metavariable whose type
-   is a fresh metavariable of type [to_prod env Type]. *)
-let fresh_meta : env -> term = fun env -> Bindlib.unbox (fresh_meta_tbox env)
-
-(** [add_fresh_metas env t n] returns the application of [t] to [n] fresh meta
-   terms. *)
-let add_fresh_metas : env -> term -> int -> term = fun env ->
-  let rec add t n =
-    if n <= 0 then t else add (mk_Appl(t, fresh_meta env)) (n-1)
-  in add

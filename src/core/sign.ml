@@ -20,6 +20,39 @@ type ind_data =
 (** The priority of an infix operator is a floating-point number. *)
 type priority = float
 
+(** A prerequisite [(id, m, src, tgt)] specifies that term [m] must be coerced
+    from source type [src] to target type [tgt]. The requirements' name [id]
+    is used for debugging. Terms [m], [src] and [tgt] bind variables of the
+    context in which the prerequisite is defined. *)
+type prereq = strloc * tmbinder * tmbinder * tmbinder
+
+(** A constructor for pre requisites. *)
+let prereq : strloc -> tmbinder -> tmbinder -> tmbinder -> prereq =
+  fun id m src tgt ->
+  let ar = Array.map Bindlib.mbinder_arity [|m; src; tgt|] in
+  if not (ar.(0) = ar.(1) && ar.(1) = ar.(2)) then invalid_arg "prereq" else
+  (id, m, src, tgt)
+
+(** Coercions for the type checker/refiner. The arity of the definition must
+    be equal to the length of prerequisites. *)
+type coercion =
+  { name : string
+  ; prerequisites : prereq array
+  (** Arguments that must be searched among available coercions. *)
+  ; defn : tmbinder (** Definition of the coercion. *)
+  ; defn_ty : term (** Type of the definition. Must be a product type. *)
+  ; source : int (** Argument of the definition that is coerced. *)
+  ; arity : int (** Arity of the target type. *) }
+
+(** A constructor for coercions. *)
+let coercion : string -> prereq array -> tmbinder -> term -> int -> int ->
+  coercion =
+  fun name prerequisites defn defn_ty source arity ->
+  if Array.length prerequisites <> Bindlib.mbinder_arity defn then
+    invalid_arg "coercion: bad arity for coercion definition"
+  else
+    { name; prerequisites; defn; defn_ty; source; arity }
+
 (** Notations. *)
 type notation =
   | Prefix of priority
@@ -37,7 +70,9 @@ type t =
   ; sign_builtins : sym StrMap.t ref
   ; sign_notations: notation SymMap.t ref
     (** Maps symbols to their notation if they have some. *)
-  ; sign_ind      : ind_data SymMap.t ref }
+  ; sign_ind      : ind_data SymMap.t ref
+  ; sign_coercions: coercion list ref
+  (** Coercions defined in the module. *) }
 
 (* NOTE the [deps] field contains a hashtable binding the external modules on
    which the current signature depends to an association list mapping symbols
@@ -48,7 +83,8 @@ type t =
 let dummy : unit -> t = fun () ->
   { sign_symbols = ref StrMap.empty; sign_path = []
   ; sign_deps = ref Path.Map.empty; sign_builtins = ref StrMap.empty
-  ; sign_notations = ref SymMap.empty; sign_ind = ref SymMap.empty }
+  ; sign_notations = ref SymMap.empty; sign_ind = ref SymMap.empty
+  ; sign_coercions = ref [] }
 
 (** [create mp] creates an empty signature in the module [mp]. *)
 let create : Path.t -> t = fun sign_path ->
@@ -93,7 +129,8 @@ let create_sym : expo -> prop -> bool -> string -> term -> bool list -> sym =
     sym_def = ref None; sym_opaq; sym_rules = ref [];
     sym_mstrat = Eager; sym_dtree = ref Tree_type.empty_dtree }
 
-(** [link sign] establishes physical links to the external symbols. *)
+(** [link sign] establishes physical links to the external
+    symbols. *)
 let link : t -> unit = fun sign ->
   let rec link_term mk_Appl t =
     let link_binder b =
@@ -111,15 +148,20 @@ let link : t -> unit = fun sign ->
         mk_LLet(link_term mk_Appl a, link_term mk_Appl t, link_binder u)
     | Appl(t,u)   -> mk_Appl(link_term mk_Appl t, link_term mk_Appl u)
     | Meta(_,_)   -> assert false
+    | Plac _      -> t (* may happen with coercions *)
     | Patt(i,n,m) -> mk_Patt(i, n, Array.map (link_term mk_Appl) m)
     | TEnv(t,m)   -> mk_TEnv(t, Array.map (link_term mk_Appl) m)
     | Wild        -> assert false
     | TRef(_)     -> assert false
+  and link_mbinder : 'a. ('a, term) Bindlib.mbinder ->
+    ('a , term) Bindlib.mbinder =
+    fun  b ->
+      let xs, b = Bindlib.unmbind b in
+      let b = lift (link_term mk_Appl b) in
+      Bindlib.(unbox (bind_mvar xs b))
   and link_rule r =
     let lhs = List.map (link_term mk_Appl_not_canonical) r.lhs in
-    let (xs, rhs) = Bindlib.unmbind r.rhs in
-    let rhs = lift (link_term mk_Appl rhs) in
-    let rhs = Bindlib.unbox (Bindlib.bind_mvar xs rhs) in
+    let rhs = link_mbinder r.rhs in
     {r with lhs ; rhs}
   and link_symb s =
     if s.sym_path = sign.sign_path then s else
@@ -160,7 +202,23 @@ let link : t -> unit = fun sign ->
       ind_nb_types = i.ind_nb_types; ind_nb_cons = i.ind_nb_cons }
   in
   let fn s i m = SymMap.add (link_symb s) (link_ind_data i) m in
-  sign.sign_ind := SymMap.fold fn !(sign.sign_ind) SymMap.empty
+  sign.sign_ind := SymMap.fold fn !(sign.sign_ind) SymMap.empty;
+  (* Linking coercions *)
+  let link_prereq (n, m, src, tgt) =
+    let src = link_mbinder src in
+    let tgt = link_mbinder tgt in
+    let m = link_mbinder m in
+    (n, m, src, tgt)
+  in
+  let link_coercion ({ defn; defn_ty; prerequisites; _ } as c) =
+    let xs, defn = Bindlib.unmbind defn in
+    let defn = lift (link_term mk_Appl defn) in
+    let defn = Bindlib.(bind_mvar xs defn |> unbox) in
+    let defn_ty = link_term mk_Appl defn_ty in
+    let prerequisites = Array.map link_prereq prerequisites in
+    {c with defn; defn_ty; prerequisites}
+  in
+  sign.sign_coercions := List.map link_coercion !(sign.sign_coercions)
 
 (** [unlink sign] removes references to external symbols (and thus signatures)
     in the signature [sign]. This function is used to minimize the size of our
@@ -193,11 +251,13 @@ let unlink : t -> unit = fun sign ->
     | Patt(_,_,_)  -> () (* The environment only contains variables. *)
     | TEnv(t,m)    -> unlink_term_env t; Array.iter unlink_term m
     | Wild         -> ()
+    | Plac _       -> () (* may happen in coercions *)
     | TRef(_)      -> ()
+  and unlink_mbinder : 'a. ('a, term) Bindlib.mbinder -> unit = fun b ->
+    unlink_term (snd (Bindlib.unmbind b))
   and unlink_rule r =
     List.iter unlink_term r.lhs;
-    let (_, rhs) = Bindlib.unmbind r.rhs in
-    unlink_term rhs
+    unlink_mbinder r.rhs
   in
   let fn _ (s,_) =
     unlink_term !(s.sym_type);
@@ -213,7 +273,20 @@ let unlink : t -> unit = fun sign ->
     List.iter unlink_sym i.ind_cons; unlink_sym i.ind_prop
   in
   let fn s i = unlink_sym s; unlink_ind_data i in
-  SymMap.iter fn !(sign.sign_ind)
+  SymMap.iter fn !(sign.sign_ind);
+  (* Unlinking coercions *)
+  let unlink_prereq (_, m, src, tgt: prereq) =
+    unlink_mbinder src;
+    unlink_mbinder tgt;
+    unlink_mbinder m
+  in
+  let unlink_coercion {defn; defn_ty; prerequisites; _} =
+    unlink_mbinder defn;
+    unlink_term defn_ty;
+    Array.iter unlink_prereq prerequisites
+  in
+  List.iter unlink_coercion !(sign.sign_coercions)
+
 
 (** [add_symbol sign expo prop mstrat opaq name typ impl] add in the signature
    [sign] a symbol with name [name], exposition [expo], property [prop],
@@ -228,6 +301,15 @@ let add_symbol :
   (* Check for metavariables in the symbol type. *)
   if LibTerm.Meta.has true typ then
     fatal pos "The type of %s contains metavariables" sym_name;
+  let placeholders t =
+    let exception Found in
+    try
+      LibTerm.iter_leaves ~recurse_meta_type:true
+        ~do_plac:(fun _ _ -> raise Found) t; false
+    with Found -> true
+  in
+  if placeholders typ then
+    fatal pos "The type of %s contains placeholders" sym_name;
   (* We minimize [impl] to enforce our invariant (see {!type:Terms.sym}). *)
   let rec rem_false l = match l with false::l -> rem_false l | _ -> l in
   let sym_impl = List.rev (rem_false (List.rev impl)) in
@@ -296,6 +378,7 @@ let read : string -> t = fun fname ->
       | Patt(_,_,m) -> Array.iter reset_term m
       | TEnv(_,m)   -> Array.iter reset_term m
       | Wild        -> ()
+      | Plac _      -> assert false (* No placeholders in signature *)
       | TRef(r)     -> unsafe_reset r; Option.iter reset_term !r
     and reset_rule r =
       List.iter reset_term r.lhs;
@@ -363,6 +446,12 @@ let add_inductive : t -> sym -> sym list -> sym -> int -> int -> unit =
   let ind_nb_cons = List.length ind_cons in
   let ind = {ind_cons; ind_prop; ind_nb_params; ind_nb_types; ind_nb_cons} in
   sign.sign_ind := SymMap.add ind_sym ind !(sign.sign_ind)
+
+(** [add_coercion sign ...] adds to signature [sign] the coercion made of
+    TODO *)
+let add_coercion : t -> coercion -> unit =
+  fun sign c ->
+  sign.sign_coercions := !(sign.sign_coercions) @ [c]
 
 (** [dependencies sign] returns an association list containing (the transitive
     closure of) the dependencies of the signature [sign].  Note that the order

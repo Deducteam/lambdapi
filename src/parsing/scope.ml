@@ -95,6 +95,21 @@ type mode =
       ; m_urhs_data : (string, tevar) Hashtbl.t }
   (** Scoping mode for unification rule right-hand sides. During  scoping, we
       always have [m_urhs_vars_nb = m_lhs_size + length m_urhs_xvars]. *)
+  | M_Coer of
+      { mutable m_coer_card : int
+        (** Number of sub-coercions in the definition. *)
+      ; mutable m_coer_names : string list
+      (** Name of already registered required coercions. Used to check their
+          uniqueness. *)
+      ; m_coer_reqs : (tvar, strloc * int * Env.t * tmbinder) Hashtbl.t
+        (** Specifications of sub-coercions. If variable [v] is associated
+            to tuple [(n,k,ctx,b)], then the definition will have variable [v]
+            free, which stands for the to-be-found coercion of term [b] in
+            local context [ctx]. The coercion has a friendly user-given name
+            [n] and is uniquely identified by number [k]. Name [n] must be
+            unique, [k] is unique by construction. *)
+      }
+  (** Scoping mode for coercion definitions. *)
 
 (** [fresh_patt name ts] creates a unique pattern variable applied to
    [ts]. [name] is used as suffix if distinct from [None]. *)
@@ -197,7 +212,7 @@ and scope_domain : mode -> sig_state -> env -> p_term option -> tbox =
   match a, md with
   | (Some {elt=P_Wild;_}|None), M_LHS data ->
       fresh_patt data None (Env.to_tbox env)
-  | (Some {elt=P_Wild;_}|None), _ -> Env.fresh_meta_Type env
+  | (Some {elt=P_Wild;_}|None), _ -> _Plac true None
   | Some a, _ -> scope md ss env a
 
 (** [scope_binder ?warn mode ss cons env params_list t] scopes [t] in mode
@@ -216,7 +231,7 @@ and scope_binder : ?warn:bool -> mode -> sig_state ->
         begin
           match t with
           | Some t -> scope md ss env t
-          | None -> Env.fresh_meta_Type env
+          | None -> _Plac true None
         end
     | (idopts,typopt,_implicit)::params_list ->
         scope_params env idopts (scope_domain md ss env typopt) params_list
@@ -264,32 +279,42 @@ and scope_head : mode -> sig_state -> env -> p_term -> tbox =
     _TEnv (Bindlib.box_var x) (Env.to_tbox env)
   | (P_Wild, M_LHS data) -> fresh_patt data None (Env.to_tbox env)
   | (P_Wild, M_Patt) -> _Wild
-  | (P_Wild, _) -> Env.fresh_meta_tbox env
-  | (P_Meta({elt;pos},ts), M_Term(user_metas,sys_metas,_)) ->
-      let m =
-        match elt with
-        | Name id ->
-            (try StrMap.find id Stdlib.(!user_metas)
-             with Not_found ->
-               (* We create a new metavariable [m1] of type [TYPE] and a new
-                  metavariable [m] of name [id] and type [m1]. *)
-               let vs = Env.to_tbox env in
-               let m1 =
-                 Meta.fresh (Env.to_prod env _Type) (Array.length vs) in
-               let a = Env.to_prod env (_Meta m1 vs) in
-               let m = Meta.fresh ~name:id a (Array.length vs) in
-               Stdlib.(user_metas := StrMap.add id m !user_metas); m)
-        | Numb i ->
-            (try IntMap.find i (Lazy.force sys_metas)
-             with Not_found -> fatal pos "Unknown metavariable ?%d." i)
-      in
-      let ts =
-        match ts with
-        | None -> Env.to_tbox env (* [?M] is equivalent to [?M[env]]. *)
-        | Some ts -> Array.map (scope md ss env) ts
-      in
-      _Meta m ts
+  | (P_Wild, _) -> _Plac false None
+  | (P_Meta (mid, _), M_Term _) ->
+      let id = match mid.elt with Name s -> s | Numb n -> string_of_int n in
+      _Plac false (Some id)
   | (P_Meta(_,_), _) -> fatal t.pos "Metavariables are not allowed here."
+  | (P_Patt(id,ts), M_Coer reqs) ->
+      begin
+        match ts with
+          | Some [|c|] ->
+              let c = scope md ss env c in
+              (* Create a term env variable for the body of the definition *)
+              let id =
+                match id with
+                | Some s ->
+                    if List.mem s.elt reqs.m_coer_names then
+                      Error.fatal t.pos
+                        "Requirements must appear at most once in a \
+                         definition:@ \
+                         %s appears more than once." s.elt
+                    else reqs.m_coer_names <- s.elt :: reqs.m_coer_names; s
+                | _ -> Error.fatal t.pos "Requirements must have a name."
+              in
+              let x = new_tvar id.elt in
+              (* Add a mapping from the variable to the term the prerequisite
+                 is applied to *)
+              let r =
+                let b = Bindlib.(bind_mvar (Env.vars env) c |> unbox) in
+                (id, reqs.m_coer_card, env, b)
+              in
+              Hashtbl.add reqs.m_coer_reqs x r;
+              reqs.m_coer_card <- reqs.m_coer_card + 1;
+              _Vari x
+          | _ ->
+              Error.fatal t.pos
+                "Requirements' environment must be of length one."
+      end
   | (P_Patt(id,ts), M_LHS(d)) ->
       (* Check that [ts] are variables. *)
       let scope_var t =
@@ -381,6 +406,7 @@ and scope_head : mode -> sig_state -> env -> p_term -> tbox =
   | (P_Prod(_,_), M_Patt) ->
       fatal t.pos "Dependent products are not allowed in a pattern."
   | (P_Prod(xs,b), _) -> scope_binder md ss _Prod env xs (Some(b))
+  | (P_LLet(x,xs,a,t,u), M_Coer(_))
   | (P_LLet(x,xs,a,t,u), M_Term(_))
   | (P_LLet(x,xs,a,t,u), M_URHS(_))
   | (P_LLet(x,xs,a,t,u), M_RHS(_)) ->
@@ -414,6 +440,7 @@ let scope_term :
   fun prv ss env sgm t ->
   let m = Stdlib.ref StrMap.empty in
   Bindlib.unbox (scope (M_Term(m, sgm, prv)) ss env t)
+(* REVIEW: remove [sgm] *)
 
 (** [scope_term_with_params expo ss env sgm t] is similar to [scope_term expo
    ss env sgm t] except that [t] must be a product or an abstraction. In this
@@ -641,3 +668,40 @@ let scope_rw_patt : sig_state -> env -> p_rw_patt -> (term, tbinder) rw_patt =
       let v = new_tvar x.elt in
       let t = scope_pattern ss ((x.elt,(v, _Kind, None))::env) t in
       Rw_TermAsIdInTerm(u, Bindlib.unbox (Bindlib.bind_var v (lift t)))
+
+(** [scope_coercion ss env md t] scopes term [t] as a coercion definition into
+    environment [env] and signature state [ss]. It returns a couple [(defn,b)]
+    where [defn] binds each pre-requisite in the definition of the coercion.
+    The array [b] contains pre-requisites as couples [(e,u)] where [u] is the
+    subterm coerced by the pre-requisite in environment [e]. The environment
+    [e] is needed to scope the type of the prerequisites. *)
+let scope_coercion : sig_state -> env -> p_term ->
+  tmbinder * (strloc * Env.t * tmbinder) array =
+  fun ss env pt ->
+  let md =
+    let m_coer_reqs = Hashtbl.create 7 in
+    let m_coer_card = 0 in
+    M_Coer { m_coer_card; m_coer_reqs; m_coer_names = [] }
+  in
+  let t = scope md ss env pt in
+  let count, defs =
+    match md with
+    | M_Coer {m_coer_card; m_coer_reqs; _} -> m_coer_card,  m_coer_reqs
+    | _ -> assert false
+  in
+  (* Variables standing for pre-requisites. *)
+  let vars =
+    let names = Array.init count (Printf.sprintf "dummy%d") in
+    new_tmvar names
+  in
+  (* (Local) contexts and definitions of prerequisites. *)
+  let ctx_defs =
+    let dummy_mbinder = Bindlib.(unbox (bind_mvar [||] _Kind)) in
+    Array.make count (Pos.none "", Env.empty, dummy_mbinder)
+  in
+  let fill v (n, i, env, bd) =
+    vars.(i) <- v;
+    ctx_defs.(i) <- n, env, bd
+  in
+  Hashtbl.iter fill defs;
+  (Bindlib.(unbox (bind_mvar vars t)), ctx_defs)

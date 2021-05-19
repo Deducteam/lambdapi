@@ -169,84 +169,87 @@ let focus_env : proof_state option -> Env.t = fun ps ->
       | [] -> Env.empty
       | g::_ -> Goal.env g
 
-(** [goals_of_typ typ ter] returns the list of unification goals that must be
-    solved so that [typ] is typable by a sort and [ter] has type [typ]. *)
-let goals_of_typ : term loc option -> term loc option -> goal list * term =
-  fun typ ter ->
-  let (typ, to_solve) =
+(** [goals_of_typ tc typ ter] returns a triplet [(cs, ty, te)] where [cs] is
+    the list of unification goals that must be solved so that [typ] is typable
+    by a sort and [ter] has type [typ] and [ty] (respectively [te]) is the
+    refinement of [typ] (resp. [ter]). Module [tc] is the type checker
+    used. *)
+let goals_of_typ : (module Infer.S) -> term loc option -> term loc option ->
+  goal list * term * term option =
+  fun (module Infer) typ ter ->
+  let (ter, typ, to_solve) =
     match typ, ter with
     | Some(typ), Some(ter) ->
         begin
-          match Infer.infer_noexn [] [] typ.elt with
+          match Infer.check_sort_noexn [] [] typ.elt with
           | None -> fatal typ.pos "[%a] is not typable." pp_term typ.elt
-          | Some(sort, to_solve) ->
-              let to_solve =
+          | Some(ty, sort, to_solve) ->
+              let to_solve, te =
                 match unfold sort with
                 | Type | Kind ->
                     begin
-                      match Infer.check_noexn to_solve [] ter.elt typ.elt with
+                      match Infer.check_noexn to_solve [] ter.elt ty with
                       | None ->
                           let pos = Common.Pos.cat typ.pos ter.pos in
                           fatal pos "[%a] cannot have type [%a]"
-                            pp_term ter.elt pp_term typ.elt
-                      | Some cs -> cs
+                            pp_term ter.elt pp_term ty
+                      | Some (te, cs) -> (cs, te)
                     end
-                | _ -> fatal typ.pos "[%a] has type [%a] and not a sort."
-                         pp_term typ.elt pp_term sort
+                | _ -> assert false (* [check_sort] must return a sort *)
               in
-              typ.elt, to_solve
+              Some te, ty, to_solve
         end
     | None, Some(ter) ->
         begin
           match Infer.infer_noexn [] [] ter.elt with
           | None -> fatal ter.pos "[%a] is not typable." pp_term ter.elt
-          | Some (typ, to_solve) ->
+          | Some (te, ty, to_solve) ->
               let to_solve =
-                match unfold typ with
+                match unfold ty with
                 | Kind -> fatal ter.pos "Kind definitions are not allowed."
                 | _ ->
-                    match Infer.infer_noexn to_solve [] typ with
+                    match Infer.check_sort_noexn to_solve [] ty with
                     | None ->
                         fatal ter.pos
                           "[%a] has type [%a] which is not typable"
-                          pp_term ter.elt pp_term typ
-                    | Some (sort, to_solve) ->
+                          pp_term te pp_term ty
+                    | Some (_, sort, to_solve) ->
                         match unfold sort with
                         | Type | Kind -> to_solve
-                        | _ ->
-                            fatal ter.pos
-                              "[%a] has type [%a] which has type [%a] \
-                               and not a sort."
-                              pp_term ter.elt pp_term typ pp_term sort
+                        | _ -> assert false
+                        (* [check_sort_noexn] returns a sort or fails *)
               in
-              typ, to_solve
+              Some te, ty, to_solve
         end
     | Some(typ), None ->
         begin
-          match Infer.infer_noexn [] [] typ.elt with
+          match Infer.check_sort_noexn [] [] typ.elt with
           | None -> fatal typ.pos "[%a] is not typable." pp_term typ.elt
-          | Some (sort, to_solve) ->
+          | Some (ty, sort, to_solve) ->
               match unfold sort with
-              | Type | Kind -> typ.elt, to_solve
-              | _ -> fatal typ.pos "[%a] has type [%a] and not a sort."
-                       pp_term typ.elt pp_term sort
+              | Type | Kind -> None, ty, to_solve
+              | _ -> assert false
+               (* [check_sort_noexn] returns a sort or fails *)
         end
     | None, None -> assert false (* already rejected by parser *)
   in
-  (List.map (fun c -> Unif c) to_solve, typ)
+  (List.map (fun c -> Unif c) to_solve, typ, ter)
 
-(** [goals_of_typ typ ter] returns a list of goals for [typ] to be typable by
-   by a sort and [ter] to have type [typ] in the empty context. [ter] and
-   [typ] must not be both equal to [None]. NOTE: [goals_of_typ typ ter]
-   contains typing goals to type [typ] by a sort and unification goals to type
-   both [typ] by a sort and [ter] by [typ]. However it does not contain typing
-   goals to type [ter] by [typ]. These goals are generated using the
-   {!constructor:Handle.Tactic.tac_refine} tactic called on [ter]. *)
-let goals_of_typ : term loc option -> term loc option -> goal list * term =
-  fun typ ter ->
-  let metas = match typ with
-    | Some ty -> LibTerm.Meta.get true ty.elt
-    | None -> MetaSet.empty
-  in
-  let proof_goals, typ = goals_of_typ typ ter in
-  add_goals_of_metas metas proof_goals, typ
+(** [goals_of_typ tc typ ter] returns a 3-uple [(gs, ty, te)] where [gs] is a
+    list of goals for [typ] to be typable by a sort and [ter] to have type
+    [typ] in the empty context. [ter] and [typ] must not be both equal to
+    [None] and are refined into [te] and [ty] respectively. [tc] is the
+    typechecker/refiner. *)
+let goals_of_typ : (module Infer.S) -> term loc option -> term loc option ->
+  goal list * term * term option =
+  fun tc typ ter ->
+  let proof_goals, typ, ter = goals_of_typ tc typ ter in
+  (* Fetch metas *after* type checking since it can create meta variables. *)
+  let metas = LibTerm.Meta.get true typ in
+  add_goals_of_metas metas proof_goals, typ, ter
+
+(** NOTE: [goals_of_typ tc typ ter] contains typing goals to type [typ] by a
+    sort and unification goals to type both [typ] by a sort and [ter] by
+    [typ].  However it does not contain typing goals to type [ter] by [typ].
+    These goals are generated using the
+    {!constructor:Handle.Tactic.tac_refine} tactic called on [ter]. *)

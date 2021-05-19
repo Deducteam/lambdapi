@@ -22,6 +22,7 @@ type token =
   | ASSUME
   | BEGIN
   | BUILTIN
+  | COERCION
   | COMMUTATIVE
   | COMPUTE
   | CONSTANT
@@ -39,6 +40,8 @@ type token =
   | INJECTIVE
   | LET
   | NOTATION
+  | OFF
+  | ON
   | OPAQUE
   | OPEN
   | PREFIX
@@ -73,7 +76,6 @@ type token =
   | INT of int
   | FLOAT of float
   | STRINGLIT of string
-  | SWITCH of bool
 
   (* symbols *)
   | ASSIGN
@@ -218,6 +220,7 @@ let is_keyword : string -> bool =
       ; "assume"
       ; "begin"
       ; "builtin"
+      ; "coercion"
       ; "commutative"
       ; "compute"
       ; "constant"
@@ -295,6 +298,7 @@ let lexer buf =
   | "assume" -> ASSUME
   | "begin" -> BEGIN
   | "builtin" -> BUILTIN
+  | "coercion" -> COERCION
   | "commutative" -> COMMUTATIVE
   | "compute" -> COMPUTE
   | "constant" -> CONSTANT
@@ -313,8 +317,8 @@ let lexer buf =
   | "left" -> ASSOC(Pratter.Left)
   | "let" -> LET
   | "notation" -> NOTATION
-  | "off" -> SWITCH(false)
-  | "on" -> SWITCH(true)
+  | "off" -> OFF
+  | "on" -> ON
   | "opaque" -> OPAQUE
   | "open" -> OPEN
   | "prefix" -> PREFIX

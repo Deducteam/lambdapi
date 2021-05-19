@@ -282,6 +282,7 @@ let command : p_command pp = fun ppf {elt;_} ->
           out ppf "\nbegin%a\n%a" (List.pp tactic "") ts proof_end pe
     end
   | P_unif_rule(ur) -> out ppf "unif_rule %a" unif_rule ur
+  | P_coercion _ -> assert false
   end;
   out ppf ";"
 

@@ -16,7 +16,6 @@ symbol prop1: Prop;
 symbol f: Prf prop1 → Prop;
 symbol π_f: Prf (f _)
 begin
-  admit;
   // Adds an axiom [ax_?]
 admitted;
 

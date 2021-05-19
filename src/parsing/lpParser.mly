@@ -38,6 +38,7 @@
 %token ASSUME
 %token BEGIN
 %token BUILTIN
+%token COERCION
 %token COMMUTATIVE
 %token COMPUTE
 %token CONSTANT
@@ -55,6 +56,8 @@
 %token INJECTIVE
 %token LET
 %token NOTATION
+%token OFF
+%token ON
 %token OPAQUE
 %token OPEN
 %token PREFIX
@@ -89,7 +92,6 @@
 %token <int> INT
 %token <float> FLOAT
 %token <string> STRINGLIT
-%token <bool> SWITCH
 
 // symbols
 
@@ -230,7 +232,8 @@ query:
   | PROOFTERM { make_pos $sloc P_query_proofterm }
   | DEBUG fl=DEBUG_FLAGS
     { let (b, s) = fl in make_pos $sloc (P_query_debug(b, s)) }
-  | FLAG s=STRINGLIT b=SWITCH { make_pos $sloc (P_query_flag(s,b)) }
+  | FLAG s=STRINGLIT ON { make_pos $sloc (P_query_flag(s,true)) }
+  | FLAG s=STRINGLIT OFF { make_pos $sloc (P_query_flag(s,false)) }
   | PROVER s=STRINGLIT { make_pos $sloc (P_query_prover(s)) }
   | PROVER_TIMEOUT i=INT { make_pos $sloc (P_query_prover_timeout(i)) }
   | VERBOSE i=INT { make_pos $sloc (P_query_verbose(i)) }
@@ -288,6 +291,7 @@ command:
   | BUILTIN s=STRINGLIT ASSIGN i=id SEMICOLON
     { make_pos $loc (P_builtin(s,i)) }
   | UNIF_RULE r=unif_rule SEMICOLON { make_pos $loc (P_unif_rule(r)) }
+  | COERCION c=coercion SEMICOLON { make_pos $loc (P_coercion c) }
   | NOTATION i=id n=notation SEMICOLON { make_pos $loc (P_notation(i,n)) }
   | q=query SEMICOLON { make_pos $sloc (P_query(q)) }
   | EOF { raise End_of_file }
@@ -346,4 +350,19 @@ unif_rule: e=equation HOOK_ARROW
       let rhs = List.fold_right cat es en in
       make_pos $sloc (lhs, rhs) }
 
+coercion:
+  | s=STRINGLIT p_coer_def=term COLON p_coer_typ=term ON p_coer_src=INT
+      {
+        let p_coer_id = make_pos $loc(s) s in
+        make_pos $loc
+          { p_coer_id; p_coer_def; p_coer_typ; p_coer_src
+          ; p_coer_ari = 0; p_coer_req = [] }
+      }
+  | s=STRINGLIT p_coer_def=term COLON p_coer_typ=term ON p_coer_src=INT WITH
+p_coer_req=separated_nonempty_list(WITH, separated_pair(uid, COLON, term))
+      {
+        let p_coer_id = make_pos $loc(s) s in
+        make_pos $loc {p_coer_id; p_coer_def; p_coer_typ; p_coer_src;
+                       p_coer_req; p_coer_ari=0}
+      }
 %%

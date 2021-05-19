@@ -164,8 +164,9 @@ let handle_inductive_symbol : sig_state -> expo -> prop -> match_strat
     (if xs = [] then scope_term else scope_term_with_params)
       (expo = Privat) ss Env.empty (lazy IntMap.empty) typ
   in
+  let module Infer = (val Unif.typechecker ss.coercions) in
   (* We check that [a] is typable by a sort. *)
-  Infer.check_sort Unif.solve_noexn pos [] typ;
+  let (typ, _) = Infer.check_sort [] {elt=typ;pos} in
   (* We check that no metavariable remains. *)
   if LibTerm.Meta.has true typ then
     (fatal_msg "The type of %a has unsolved metavariables.\n" pp_uid name;
@@ -231,6 +232,12 @@ let get_proof_data : compiler -> sig_state -> p_command ->
       Console.out 3 "(hint) %a\n" pp_unif_rule (Unif_rule.equiv, urule);
       (ss, None, None)
 
+  | P_coercion{elt; _} ->
+      let ss =
+        Coercion.handle ss elt.p_coer_id elt.p_coer_def elt.p_coer_typ
+          elt.p_coer_src elt.p_coer_ari elt.p_coer_req
+      in
+      ss, None, None
   | P_inductive(ms, params, p_ind_list) ->
       (* Check modifiers. *)
       let (prop, expo, mstrat) = handle_modifiers ms in
@@ -404,7 +411,8 @@ let get_proof_data : compiler -> sig_state -> p_command ->
     in
     (* Build proof data. *)
     let data =
-      let proof_goals, a = goals_of_typ a t in
+      let tc = Unif.typechecker ss.coercions in
+      let proof_goals, a, t = goals_of_typ tc a t in
       (* Add the definition as goal so that we can refine on it. *)
       let proof_term =
         if p_sym_def then Some (Meta.fresh ~name:id a 0) else None in
@@ -446,7 +454,6 @@ let get_proof_data : compiler -> sig_state -> p_command ->
             Console.out 3 (red "(symb) add %a : %a" ^^ "\n")
               pp_uid id pp_term a;
             wrn pe.pos "Proof admitted.";
-            let t = Option.map (fun t -> t.elt) t in
             fst (add_symbol ss expo prop mstrat true p_sym_nam a impl t)
         | P_proof_end ->
             (* Check that the proof is indeed finished. *)
@@ -454,8 +461,8 @@ let get_proof_data : compiler -> sig_state -> p_command ->
               (Console.out 1 "%a" Proof.pp_goals ps;
                fatal pe.pos "The proof is not finished.");
             (* Add the symbol in the signature. *)
-            Console.out 3 (red "(symb) add %a : %a" ^^ "\n") pp_uid id pp_term a;
-            let t = Option.map (fun t -> t.elt) t in
+            Console.out 3 (red "(symb) add %a : %a" ^^ "\n")
+            pp_uid id pp_term a;
             fst (add_symbol ss expo prop mstrat opaq p_sym_nam a impl t)
       in
       (* Create proof state. *)
@@ -472,7 +479,7 @@ let get_proof_data : compiler -> sig_state -> p_command ->
         match pt, t with
         | Some pt, Some t ->
             (match ps.proof_goals with
-             | Typ gt :: gs -> Tactic.tac_refine pt.pos ps gt gs t.elt
+             | Typ gt :: gs -> Tactic.tac_refine tc pt.pos ps gt gs t
              | _ -> assert false)
         | _, _ -> ps
       in

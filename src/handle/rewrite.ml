@@ -270,6 +270,7 @@ let bind_match : term -> term -> tbinder =  fun p t ->
     | Prod(_)     -> fatal None "Cannot rewrite under products."
     | Abst(_)     -> fatal None "Cannot rewrite under abstractions."
     | Meta(_)     -> fatal None "Cannot rewrite metavariables."
+    | Plac _      -> fatal_no_pos "Cannot rewrite placeholders."
     | LLet(_)     -> fatal None "Cannot rewrite in let."
     (* Forbidden cases. *)
     | Patt(_,_,_) -> assert false
@@ -311,7 +312,8 @@ let rewrite : Sig_state.t -> popt -> goal_typ -> bool ->
 
   (* Infer the type of [t] (the argument given to the tactic). *)
   let g_ctxt = Env.to_ctxt g_env in
-  let t_type = Infer.infer Unif.solve_noexn pos g_ctxt t in
+  let module Infer = (val Unif.typechecker ss.coercions) in
+  let _, t_type = Infer.infer g_ctxt {elt=t;pos} in
 
   (* Check that the type of [t] is of the form “P (eq a l r)”. *)
   let (t_type, vars) = break_prod t_type in

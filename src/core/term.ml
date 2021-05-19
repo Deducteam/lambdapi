@@ -61,7 +61,8 @@ type term =
   (** Pattern variable application (only used in rewriting rules LHS). *)
   | TEnv of term_env * term array
   (** Term environment (only used in rewriting rules RHS). *)
-  | Wild (** Wildcard (only used for surface matching, never in a LHS). *)
+  | Wild
+  | Plac of bool * string option
   | TRef of term option ref (** Reference cell (used in surface matching). *)
   | LLet of term * term * tbinder
   (** [LLet(a, t, u)] is [let x : a ≔ t in u] (with [x] bound in [u]). *)
@@ -232,11 +233,12 @@ let rec pp_term : term pp = let out = Format.fprintf in fun ppf t ->
   | Meta(m,ts) -> out ppf "?%a[%a]" pp_meta m pp_terms ts
   | Patt _ -> out ppf "<Patt>"
   | TEnv _ -> out ppf "<TEnv>"
-  | Wild -> out ppf "_"
+  | Wild   -> out ppf "_"
   | TRef _ -> out ppf "<TRef>"
   | LLet(a,t,u) ->
       let x, u = Bindlib.unbind u in
       out ppf "let %a : %a ≔ %a in %a" pp_var x pp_term a pp_term t pp_term u
+  | Plac _ -> out ppf "_"
 and pp_var : tvar pp = fun ppf v ->
   Format.fprintf ppf "%s" (Bindlib.name_of v)
 and pp_binder : (term * tbinder) pp = fun ppf (a,b) ->
@@ -285,6 +287,9 @@ let of_tvar : tvar -> term = fun x -> Vari(x)
 
 (** [new_tvar s] creates a new [tvar] of name [s]. *)
 let new_tvar : string -> tvar = Bindlib.new_var of_tvar
+
+let new_tmvar : string array -> term Bindlib.mvar =
+  Bindlib.new_mvar of_tvar
 
 (** [new_tvar_ind s i] creates a new [tvar] of name [s ^ string_of_int i]. *)
 let new_tvar_ind : string -> int -> tvar = fun s i ->
@@ -447,9 +452,10 @@ let cmp : term cmp =
     | Meta _ -> 7
     | Patt _ -> 8
     | TEnv _ -> 9
-    | Wild -> 10
+    | Wild   -> 10
     | TRef _ -> 11
     | LLet _ -> 12
+    | Plac _ -> 13
   in
   let prec_tenv = function
     | TE_Vari _ -> 0
@@ -474,6 +480,7 @@ let cmp : term cmp =
     | TEnv(e,ts), TEnv(e',ts') ->
         lex cmp_tenv (Array.cmp cmp) (e,ts) (e',ts')
     | TRef r, TRef r' -> Stdlib.compare r r'
+    | Plac _, Plac _ -> 0
     | LLet(a,t,u), LLet(a',t',u') ->
         lex3 cmp cmp cmp_binder (a,t,u) (a',t',u')
     | t, t' -> cmp_tag (*cmp_map Stdlib.compare prec*) t t'
@@ -526,6 +533,7 @@ let mk_Meta (m,ts) = Meta (m,ts)
 let mk_Patt (i,s,ts) = Patt (i,s,ts)
 let mk_TEnv (te,ts) = TEnv (te,ts)
 let mk_Wild = Wild
+let mk_Plac (b: bool) (n: string option) = Plac (b, n)
 let mk_TRef x = TRef x
 let mk_LLet (a,t,u) = LLet (a,t,u)
 
@@ -714,6 +722,9 @@ let _TEnv : tebox -> tbox array -> tbox = fun te ts ->
 (** [_Wild] injects the constructor [Wild] into the {!type:tbox} type. *)
 let _Wild : tbox = Bindlib.box Wild
 
+let _Plac : bool -> string option -> tbox = fun b n ->
+  Bindlib.box (mk_Plac b n)
+
 (** [_TRef r] injects the constructor [TRef(r)] into the {!type:tbox} type. It
     should be the case that [!r] is [None]. *)
 let _TRef : term option ref -> tbox = fun r ->
@@ -748,6 +759,7 @@ let lift : (tbox -> tbox -> tbox) -> term -> tbox = fun mk_appl ->
   | Patt(i,n,m) -> _Patt i n (Array.map lift m)
   | TEnv(te,m)  -> _TEnv (lift_term_env te) (Array.map lift m)
   | Wild        -> _Wild
+  | Plac (b, n) -> _Plac b n
   | TRef r      -> _TRef r
   | LLet(a,t,u) -> _LLet (lift a) (lift t) (lift_binder u)
   (* We do not use [Bindlib.box_binder] here because it is possible for a free

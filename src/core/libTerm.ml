@@ -2,7 +2,14 @@
 
 open Timed
 open Term
-open Lplib.Extra
+open Lplib
+open Extra
+
+(** [prod_arity ty] returns the arity of term [ty]. *)
+let rec prod_arity : term -> int = fun ty ->
+  match unfold ty with
+  | Prod(_, b) -> 1 + (prod_arity (snd (Bindlib.unbind b)))
+  | _ -> 0
 
 (** [to_tvar t] returns [x] if [t] is of the form [Vari x] and fails
     otherwise. *)
@@ -44,6 +51,7 @@ let iter : (term -> unit) -> term -> unit = fun action ->
     action t;
     match t with
     | Wild
+    | Plac _
     | TRef(_)
     | Vari(_)
     | Type
@@ -57,6 +65,46 @@ let iter : (term -> unit) -> term -> unit = fun action ->
     | Appl(t,u)   -> iter t; iter u
     | LLet(a,t,u) -> iter a; iter t; iter (Bindlib.subst u mk_Kind)
   in iter
+
+(** [iter_leaves t] applies functions to the leaves of term term [t]. Each
+    terminal [t] of the {!type:Term.term} data type is processed by the
+    function whose argument is [?do_t]. For instance, to apply function [f] on
+    symbols, one may call [iter_leaves ~do_symb:f]. If no function is
+    provided, nothing is done. Argument [~recurse_meta_type] specifies whether
+    the iteration should continue on meta types. *)
+let iter_leaves : recurse_meta_type:bool
+  -> ?do_wild:(unit -> unit)
+  -> ?do_patt:(int option -> string -> unit)
+  -> ?do_symb:(sym -> unit)
+  -> ?do_vari:(tvar -> unit)
+  -> ?do_kind:(unit -> unit)
+  -> ?do_type:(unit -> unit)
+  -> ?do_meta:(meta -> unit)
+  -> ?do_plac:(bool -> string option -> unit)
+  -> term -> unit =
+  fun
+    ~recurse_meta_type
+    ?(do_wild=ignore) ?(do_patt=fun _ _ -> ())
+    ?(do_symb=ignore) ?(do_vari=ignore) ?(do_kind=ignore)
+    ?(do_type=ignore) ?(do_meta=ignore) ?(do_plac=fun _ _ -> ()) ->
+    let rec iter t =
+      match unfold t with
+      | TEnv _ | TRef _ -> assert false
+      | Wild -> do_wild ()
+      | Patt (i,n,ts) -> do_patt i n; Array.iter iter ts
+      | Type -> do_type ()
+      | Kind -> do_kind ()
+      | Vari x -> do_vari x
+      | Plac (b,n) -> do_plac b n
+      | Symb s -> do_symb s
+      | Appl(t, u) -> iter t; iter u
+      | Abst(a, b)
+      | Prod(a, b) -> iter a; iter (Bindlib.subst b mk_Kind)
+      | LLet(a, t, u) -> iter a; iter t; iter (Bindlib.subst u mk_Kind)
+      | Meta(m,ts) -> do_meta m; Array.iter iter ts;
+          if recurse_meta_type then iter !(m.meta_type)
+    in
+    iter
 
 (** [unbind_name b s] is like [Bindlib.unbind b] but returns a valid variable
     name when [b] binds no variable. The string [s] is the prefix of the
@@ -80,13 +128,13 @@ let unbind2_name : string -> tbinder -> tbinder -> tvar * term * term =
 module Meta = struct
   include Meta
 
-  (** [make ctx a] creates a fresh metavariable term of type [a] in the
-      context [ctx]. *)
-  let make : ctxt -> term -> term = fun ctx a ->
+  (** [make ?name ctx a] creates a fresh metavariable term of type [a] with
+      name [?name] if provided in the context [ctx]. *)
+  let make : ?name:string -> ctxt -> term -> term = fun ?name ctx a ->
     let prd, len = Ctxt.to_prod ctx a in
-    let m = Meta.fresh prd len in
-    let get_var (x,_,_) = mk_Vari(x) in
-    mk_Meta(m, Array.of_list (List.rev_map get_var ctx))
+    let m = Meta.fresh ?name prd len in
+    let get_var (x,_,d) = if d = None then Some (mk_Vari x) else None in
+    mk_Meta(m, Array.of_list (List.(filter_map get_var ctx |> rev)))
 
   (** [make_codomain ctx a] creates a fresh metavariable term [b] of type
       [Type] in the context [ctx] extended with a fresh variable of type
@@ -100,23 +148,8 @@ module Meta = struct
 
   (** [iter b f t] applies the function [f] to every metavariable of [t], and
       to the type of every metavariable recursively if [b] is true. *)
-  let iter : bool -> (t -> unit) -> term -> unit = fun b f ->
-    let rec iter t =
-      match unfold t with
-      | Patt(_,_,_)
-      | TEnv(_,_)
-      | Wild
-      | TRef(_)
-      | Vari(_)
-      | Type
-      | Kind
-      | Symb(_)     -> ()
-      | Prod(a,b)
-      | Abst(a,b)   -> iter a; iter (Bindlib.subst b mk_Kind)
-      | Appl(t,u)   -> iter t; iter u
-      | Meta(v,ts)  -> f v; Array.iter iter ts; if b then iter !(v.meta_type)
-      | LLet(a,t,u) -> iter a; iter t; iter (Bindlib.subst u mk_Kind)
-    in iter
+  let iter : bool -> (t -> unit) -> term -> unit = fun b f t ->
+    iter_leaves ~recurse_meta_type:b ~do_meta:f t
 
   (** [occurs m t] tests whether the metavariable [m] occurs in the term
       [t]. *)
@@ -143,6 +176,7 @@ module Meta = struct
   let has : bool -> term -> bool =
     let exception Found in fun b t ->
     try iter b (fun _ -> raise Found) t; false with Found -> true
+
 end
 
 (** [distinct_vars ctx ts] checks that the terms [ts] are distinct
@@ -209,6 +243,20 @@ let nl_distinct_vars
     let map = StrMap.fold fn !patt_vars StrMap.empty in
     Some (vs, map)
   with Not_a_var -> None
+
+(** [unbind_meta ctx prod len] unbinds each binding of the form [Π x: t, a]
+    by [unbind_meta ({?ₖ/x}a)] where [?ₖ] is a fresh meta-variable of type
+    [t] in context [ctx]. At most [len] products are unbound. *)
+let rec unbind_meta : ctxt -> term -> int -> term list * term =
+  fun ctx ty k ->
+  if k <= 0 then [], ty else
+  match unfold ty with
+  | Prod(a, b) ->
+      let m = Meta.make ctx a in
+      let b = Bindlib.subst b m in
+      let ms, r = unbind_meta ctx b (k - 1) in
+      m :: ms, r
+  | _ -> [], ty
 
 (** [sym_to_var m t] replaces in [t] every symbol [f] by a variable according
    to the map [map]. *)

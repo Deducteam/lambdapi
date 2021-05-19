@@ -96,6 +96,21 @@ let p_get_args : p_term -> p_term * p_term list = fun t ->
 type p_rule_aux = p_term * p_term
 type p_rule = p_rule_aux loc
 
+(** A coercion [(id, def, dty, k, a, r)] is named [id], defined by term [def]
+    of type [dty], coerces on its [k]th argument to provide a term whose type
+    is of arity [a]. [r] is a list of required coercions. *)
+type p_coercion_aux =
+  { p_coer_id : p_ident (** A name for the coercion. *)
+  ; p_coer_def : p_term (** Definition of the coercion. *)
+  ; p_coer_typ : p_term (** Type of the coercion. *)
+  ; p_coer_src : int
+  (** Indicate which argument applied to [p_coer_def] is coerced. First
+      argument is numbered 1. *)
+  ; p_coer_ari : int (** Arity of the type to which the term is coerced. *)
+  ; p_coer_req : (p_ident * p_term ) list
+  (** A list of required coercions that must be found to apply this one. *) }
+type p_coercion = p_coercion_aux loc
+
 (** Parser-level inductive type representation. *)
 type p_inductive_aux = p_ident * p_term * (p_ident * p_term) list
 type p_inductive = p_inductive_aux loc
@@ -259,6 +274,7 @@ type p_command_aux =
   | P_builtin of string * p_qident
   | P_notation of p_qident * Sign.notation
   | P_unif_rule of p_rule
+  | P_coercion of p_coercion
   | P_query of p_query
 
 (** Parser-level representation of a single (located) command. *)
@@ -572,6 +588,7 @@ let fold_idents : ('a -> p_qident -> 'a) -> 'a -> p_command list -> 'a =
     | P_notation (qid, _) -> f a qid
     | P_unif_rule r -> fold_rule a r
     | P_rules rs -> List.fold_left fold_rule a rs
+    | P_coercion _ -> assert false
     | P_inductive (_, xs, ind_list) ->
         let vs, a = List.fold_left fold_args (StrSet.empty, a) xs in
         List.fold_left (fold_inductive_vars vs) a ind_list

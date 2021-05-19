@@ -15,14 +15,37 @@ open Debug
 let logger_unif = new_logger 'u' "unif" "unification"
 let log_unif = logger_unif.logger
 
-(** [type_app a ts] returns [Some(u)] where [u] is a type of [add_args x ts]
-   where [x] is any term of type [a] if [x] can be applied to at least
-   [List.length ts] arguments, and [None] otherwise. *)
-let rec type_app : ctxt -> term -> term list -> term option = fun ctx a ts ->
-  match Eval.whnf ctx a, ts with
-  | Prod(_,b), t::ts -> type_app ctx (Bindlib.subst b t) ts
-  | _, [] -> Some a
-  | _, _ -> None
+(** The typechecker used by the unification algorithm. *)
+let typechecker : (module Infer.S) Stdlib.ref =
+  Stdlib.ref (module Infer.Bare: Infer.S)
+
+(** {b NOTE} the typecheker is a reference because unification and
+    typechecking are recursively defined: not using a reference would force
+    the solver to be of type [(module Infer.S -> solver)] which would
+    require the functor {!module:Infer.Make} to be recursive, which produce
+    an {e unsafe} module (see ocaml manual section 8.2). *)
+
+(** Given a meta [m] of type [Πx1:a1,..,Πxn:an,b], [set_to_prod m] sets it to
+    product term of the form [Πy:m1[x1;..;xn],m2[x1;..;xn;y]] with [m1] and
+    [m2] fresh metavariables. *)
+let set_to_prod : Meta.t -> unit = fun m ->
+  let n = m.meta_arity in
+  let env, s = Env.of_prod_nth [] n !(m.meta_type) in
+  let vs = Env.vars env in
+  let xs = Array.map _Vari vs in
+  (* domain *)
+  let u1 = Env.to_prod env _Type in
+  let m1 = Meta.fresh u1 n in
+  let a = _Meta m1 xs in
+  (* codomain *)
+  let y = new_tvar "y" in
+  let env' = Env.add y (_Meta m1 xs) None env in
+  let u2 = Env.to_prod env' (lift s) in
+  let m2 = Meta.fresh u2 (n+1) in
+  let b = Bindlib.bind_var y (_Meta m2 (Array.append xs [|_Vari y|])) in
+  (* result *)
+  let p = _Prod a b in
+  Meta.set m (Bindlib.unbox (Bindlib.bind_mvar vs p))
 
 (** Exception raised when a constraint is not solvable. *)
 exception Unsolvable
@@ -74,14 +97,23 @@ let instantiation : ctxt -> meta -> term array -> term ->
 (** Checking type or not during meta instanciation. *)
 let do_type_check = Stdlib.ref true
 
+(** [type_app a ts] returns [Some(u)] where [u] is a type of [add_args x ts]
+   where [x] is any term of type [a] if [x] can be applied to at least
+   [List.length ts] arguments, and [None] otherwise. *)
+let rec type_app : ctxt -> term -> term list -> term option = fun ctx a ts ->
+  match Eval.whnf ctx a, ts with
+  | Prod(_,b), t::ts -> type_app ctx (Bindlib.subst b t) ts
+  | _, [] -> Some a
+  | _, _ -> None
+
 (** Initial set of constraints. *)
 let initial : constr list Stdlib.ref = Stdlib.ref []
 
 (** [is_initial c] checks whether [c] occurs in [!initial]. *)
 let is_initial c = List.exists (eq_constr c) Stdlib.(!initial)
 
-(** [instantiate ctx m ts u] check whether, in a problem [m[ts] ≡ u], [m] can
-   be instantiated and, if so, instantiate it. *)
+(** [instantiate ctx m ts u] check whether, in a problem [m[ts] ≡ u], [m]
+    can be instantiated and, if so, instantiate it. *)
 let instantiate : ctxt -> meta -> term array -> term -> bool =
   fun ctx m ts u ->
   if !log_enabled then log_unif "try instantiate";
@@ -98,12 +130,14 @@ let instantiate : ctxt -> meta -> term array -> term -> bool =
             | Some a -> a
             | None -> assert false
           in
-          if !log_enabled then log_unif "check typing";
+          if !Debug.log_enabled then
+            log_unif "Check \"%a\"" Print.pp_typing (ctx,u,typ_mts);
+          let module Infer = (val Stdlib.(!typechecker)) in
           match Infer.check_noexn [] ctx u typ_mts with
           | None ->
               if !log_enabled then log_unif "typing condition failed"; false
-          | Some [] -> do_instantiate()
-          | Some cs ->
+          | Some (_, []) -> do_instantiate()
+          | Some (_, cs) ->
               let cs = List.filter (fun c -> not (is_initial c)) cs in
               if cs = [] then do_instantiate()
               else
@@ -141,22 +175,23 @@ let add_constr : constr -> constr list -> constr list = fun c cs ->
 let add_constr_fold cs c = add_constr c cs
 
 (** [add_unif_rule_constr cs (ctx,t,u)] adds to [cs] the constraint
-   [(ctx,t,u)] as well as the constraint [(ctx,a,b)] where [a] is the type of
-   [t] and [b] the type of [u] if they can be infered. *)
+    [(ctx,t,u)] as well as the constraint [(ctx,a,b)] where [a] is the type of
+    [t] and [b] the type of [u] if they can be infered. *)
 let add_unif_rule_constr : constr list -> constr -> constr list =
   fun cs ((ctx,t,u) as c) ->
+  let module Infer = (val Stdlib.(!typechecker)) in
   match Infer.infer_noexn [] ctx t with
   | None ->
       begin
         match Infer.infer_noexn [] ctx u with
         | None -> add_constr c cs
-        | Some (_,csu) ->
+        | Some (_,_,csu) ->
             List.fold_left add_constr_fold (add_constr c cs) csu
       end
-  | Some (a,cst) ->
+  | Some (_,a,cst) ->
       match Infer.infer_noexn cst ctx u with
       | None -> List.fold_left add_constr_fold (add_constr c cs) cst
-      | Some (b,cstu) ->
+      | Some (_,b,cstu) ->
           let cs = List.fold_left add_constr_fold (add_constr c cs) cstu in
           if Eval.eq_modulo ctx a b then cs else add_constr (ctx,a,b) cs
 
@@ -320,7 +355,7 @@ let inverse :
 let imitate_prod : ctxt -> meta -> term -> term -> problem -> problem =
   fun ctx m h1 h2 p ->
   if !log_enabled then log_unif "imitate_prod %a" pp_meta m;
-  Infer.set_to_prod m; add_constr (ctx,h1,h2) p
+  set_to_prod m; add_constr (ctx,h1,h2) p
 
 (** [sym_sym_whnf ctx t1 s1 ts1 t2 s2 ts2 p] handles the case [s1(ts1) =
    s2(ts2); p] when [s1(ts1)] and [s2(ts2)] are in whnf. *)
@@ -358,7 +393,7 @@ let rec solve : problem -> constr list = fun p ->
 
   (* We take the beta-whnf. *)
   let t1 = Eval.whnf_beta t1 and t2 = Eval.whnf_beta t2 in
-  if !log_enabled then log_unif (gre "%a") pp_constr (ctx,t1,t2);
+  if !log_enabled then log_unif "Solving [%a]" pp_constr (ctx,t1,t2);
   let (h1, ts1) = get_args t1
   and (h2, ts2) = get_args t2 in
 
@@ -493,3 +528,21 @@ let solve_noexn : ?type_check:bool -> problem -> constr list option =
 let eq_noexn : ?type_check:bool -> ctxt -> term -> term -> bool =
   fun ?(type_check=true) c t u ->
   solve_noexn ~type_check {empty_problem with to_solve=[c,t,u]} = Some []
+
+(** [typechecker cions] creates a typechecker with {!val:solve_noexn} as
+    unification function from coercions [cions] and sets it as the typechecker
+    used by the unification algorithm. This function should always be used to
+    obtain a typechecker. *)
+let typechecker : Sign.coercion list -> (module Infer.S) =
+  fun cions ->
+  let module Env = struct
+    let coercions = cions
+    let solve pb = solve_noexn  pb
+  end
+  in
+  let module Infer = Infer.Make(Env) in
+  Stdlib.(typechecker := (module Infer));
+  (module Infer)
+
+(** A type checker with unification (but without coercions). *)
+module Infer : Infer.S = (val typechecker [])

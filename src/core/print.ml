@@ -214,6 +214,9 @@ and pp_term : term pp = fun ppf t ->
     | Appl(_,_)   -> assert false
     (* Application is handled separately, unreachable. *)
     | Wild        -> out ppf "_"
+    | Plac (b, Some(n)) ->
+        out ppf ("?" ^^ (if b then "*" else "") ^^ "%a") pp_uid n
+    | Plac (b, None) -> out ppf ("?" ^^ (if b then "*" else ""))
     | TRef(r)     ->
         (match !r with
          | None -> out ppf "<TRef>"
@@ -294,7 +297,7 @@ let pp_ctxt : ctxt pp = fun ppf ctx ->
     end
 
 let pp_typing : constr pp = fun ppf (ctx, t, u) ->
-  out ppf "%a%a : %a" pp_ctxt ctx pp_term t pp_term u
+  out ppf "@[%a%a@,: %a@]" pp_ctxt ctx pp_term t pp_term u
 
 let pp_constr : constr pp = fun ppf (ctx, t, u) ->
   out ppf "%a%a ≡ %a" pp_ctxt ctx pp_term t pp_term u

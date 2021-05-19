@@ -1,17 +1,44 @@
 (** Typing context. *)
 
 open Term
+open Lplib
 open Timed
 
 (** [unbind ctx a def b] returns a triple [(x,t,new_ctx)] such that [(x,t)] is
-   an unbinding of [b] (in the sense of [Bindlib.unbind]) and [new_ctx] is an
-   extension of the context [ctx] with the declaration that [x] has type [a]
-   (only if [x] occurs in [t]). If [def] is of the form [Some(u)], the context
-   also registers the term [u] as the definition of variable [x]. *)
+    an unbinding of [b] (in the sense of [Bindlib.unbind]) and [new_ctx] is an
+    extension of the context [ctx] with the declaration that [x] has type [a].
+    If [def] is of the form [Some(u)], the context also registers the term [u]
+    as the definition of variable [x]. *)
 let unbind : ctxt -> term -> term option -> tbinder -> tvar * term * ctxt =
   fun ctx a def b ->
   let (x, t) = Bindlib.unbind b in
-  (x, t, if Bindlib.binder_occur b then (x, a, def) :: ctx else ctx)
+  (x, t, (x, a, def) :: ctx)
+
+(** {b NOTE} a call to [unbind ctx te def b] always extends context [ctx],
+    even if binder [b] is constant. This is because during typechecking,
+    the context must contain all variables traversed to build appropriate
+    meta-variables. Otherwise, the term [λ a: ?*, λ b: ?*, b] will be
+    transformed to [λ _: ?1, λ b: ?2, b] whereas it should be [λ a: ?1, λ b:
+    ?2[a], b] *)
+
+(** [of_prod ?len t] unbinds the first [?len] products of product [t] to form
+    a context. If [?len] is not specified, all products are unbound. *)
+let of_prod : ?len:int -> term -> ctxt =
+  fun ?len ->
+  let rec of_prod ?len ctx t =
+    match len with
+    | Some k when k <= 0 -> ctx
+    | _ ->
+        let len = Option.map pred len in
+        begin
+          match unfold t with
+          | Prod(a, b) ->
+              let (x, b) = Bindlib.unbind b in
+              of_prod ?len ((x, a, None) :: ctx) b
+          | _ -> ctx
+        end
+  in
+  of_prod ?len []
 
 (** [type_of x ctx] returns the type of [x] in the context [ctx] when it
     appears in it, and

@@ -42,6 +42,7 @@ let rec print_term : int -> string -> term pp = fun i s oc t ->
   | TRef(_)                 -> assert false
   | TEnv(_,_)               -> assert false
   | Wild                    -> assert false
+  | Plac _                  -> assert false
   | Kind                    -> assert false
   (* [TYPE] and products are necessarily at type level *)
   | Type                    -> assert false
@@ -70,6 +71,7 @@ and print_type : int -> string -> term pp = fun i s oc t ->
   | TRef(_)                 -> assert false
   | TEnv(_,_)               -> assert false
   | Wild                    -> assert false
+  | Plac _                  -> assert false
   | Kind                    -> assert false
   (* Variables are necessarily at object level *)
   | Vari(_)                 -> assert false
@@ -131,6 +133,7 @@ let get_vars : sym -> rule -> (string * Term.term) list = fun s r ->
     | Meta (_, _)
     | TRef _
     | Wild
+    | Plac _
     | Prod (_, _)
     | LLet(_) (* No let in LHS *)
     | Vari _              -> assert false
@@ -168,12 +171,17 @@ let get_vars : sym -> rule -> (string * Term.term) list = fun s r ->
     let fn l x = (x, (mk_Meta(Meta.fresh mk_Type 0,[||])), None) :: l in
     List.fold_left fn [] !var_list
   in
+  let module Infer = (val Unif.typechecker [(* FIXME coercions?*)]) in
   match Infer.infer_noexn [] ctx lhs with
   | None -> assert false (*FIXME?*)
-  | Some (_,cs) ->
+  | Some (_, _,cs) ->
   let cs = List.rev_map (fun (_,t,u) -> (t,u)) cs in
   let ctx = List.map (fun (x,a,_) -> (x,a)) ctx in
-  List.map (fun (v,ty) -> Bindlib.name_of v, List.assoc ty cs(*FIXME?*)) ctx
+  let f (v, ty) =
+    let ty = try List.assoc ty cs (*FIXME?*) with Not_found -> ty in
+    (Bindlib.name_of v, ty)
+  in
+  List.map f ctx
 
 (** [to_XTC oc sign] outputs a XTC representation of the rewriting system of
     the signature [sign] to the output channel [oc]. *)

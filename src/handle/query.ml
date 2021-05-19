@@ -113,6 +113,7 @@ let handle : Sig_state.t -> proof_state option -> p_query -> result =
   in
   let scope = Scope.scope_term true ss env sms in
   let ctxt = Env.to_ctxt env in
+  let module Infer = (val Unif.typechecker ss.coercions) in
   match elt with
   | P_query_debug(_,_)
   | P_query_verbose(_)
@@ -122,25 +123,25 @@ let handle : Sig_state.t -> proof_state option -> p_query -> result =
   | P_query_print(_)
   | P_query_proofterm -> assert false (* already done *)
   | P_query_assert(must_fail, P_assert_typing(pt,pa)) ->
-      let t = scope pt and a = scope pa in
+      let t = scope pt in let a = scope pa in
       Console.out 1 "(asrt) it is %b that %a\n" (not must_fail)
         pp_typing (ctxt, t, a);
       (* Check that [a] is typable by a sort. *)
-      Infer.check_sort Unif.solve_noexn pos ctxt a;
+      let (a, _) = Infer.check_sort ctxt {elt=a;pos=pa.pos} in
       let result =
-        try Infer.check Unif.solve_noexn pos ctxt t a; true
+        try ignore (Infer.check ?pos ctxt t a); true
         with Fatal _ -> false
       in
       if result = must_fail then fatal pos "Assertion failed.";
       None
   | P_query_assert(must_fail, P_assert_conv(pt,pu)) ->
-      let t = scope pt and u = scope pu in
+      let t = scope pt in let u = scope pu in
       Console.out 1 "(asrt) it is %b that %a\n" (not must_fail)
         pp_constr (ctxt, t, u);
       (* Check that [t] is typable. *)
-      let a = Infer.infer Unif.solve_noexn pt.pos ctxt t in
+      let (t, a) = Infer.infer ctxt {elt=t;pos=pt.pos} in
       (* Check that [u] is typable. *)
-      let b = Infer.infer Unif.solve_noexn pu.pos ctxt u in
+      let (u, b) = Infer.infer ctxt {elt=u;pos=pu.pos} in
       (* Check that [t] and [u] have the same type. *)
       let to_solve = [ctxt,a,b] in
       begin
@@ -161,9 +162,9 @@ let handle : Sig_state.t -> proof_state option -> p_query -> result =
       None
   | P_query_infer(pt, cfg) ->
       let t = scope pt in
-      let a = Infer.infer Unif.solve_noexn pt.pos ctxt t in
+      let (_, a) = Infer.infer ctxt {elt=t;pos=pt.pos} in
       return pp_term (Eval.eval cfg ctxt a)
   | P_query_normalize(pt, cfg) ->
       let t = scope pt in
-      ignore (Infer.infer Unif.solve_noexn pt.pos ctxt t);
+      let t, _ = Infer.infer ctxt {elt=t;pos=pt.pos} in
       return pp_term (Eval.eval cfg ctxt t)

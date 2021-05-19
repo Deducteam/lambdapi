@@ -1,268 +1,463 @@
-(** Generating constraints for type inference and type checking. *)
-
-open Timed
 open Common
-open Error
-open Term
-open Print
-open Debug
+open Pos
 open Lplib
-open Extra
+open Timed
+open Term
 
-(** Logging function for typing. *)
-let log_infr = new_logger 'i' "infr" "type inference/checking"
-let log_infr = log_infr.logger
+(* FIXME: types of meta environments have to be checked *)
 
-(** Given a meta [m] of type [Πx1:a1,..,Πxn:an,b], [set_to_prod m] sets it to
-   product term of the form [Πy:m1[x1;..;xn],m2[x1;..;xn;y]] with [m1] and
-   [m2] fresh metavariables. *)
-let set_to_prod : meta -> unit = fun m ->
-  let n = m.meta_arity in
-  let env, s = Env.of_prod_nth [] n !(m.meta_type) in
-  let vs = Env.vars env in
-  let xs = Array.map _Vari vs in
-  (* domain *)
-  let u1 = Env.to_prod env _Type in
-  let m1 = Meta.fresh u1 n in
-  let a = _Meta m1 xs in
-  (* codomain *)
-  let y = new_tvar "y" in
-  let env' = Env.add y (_Meta m1 xs) None env in
-  let u2 = Env.to_prod env' (lift s) in
-  let m2 = Meta.fresh u2 (n+1) in
-  let b = Bindlib.bind_var y (_Meta m2 (Array.append xs [|_Vari y|])) in
-  (* result *)
-  let p = _Prod a b in
-  if !log_enabled then log_infr "%a ≔ %a" pp_meta m pp_term (Bindlib.unbox p);
-  Meta.set m (Bindlib.unbox (Bindlib.bind_mvar vs p))
-
-(** Accumulated constraints. *)
-let constraints = Stdlib.ref []
-
-(** Function adding a constraint. *)
-let conv ctx a b =
-  if not (Eval.eq_modulo ctx a b) then
-    begin
-      let c = (ctx,a,b) in
-      Stdlib.(constraints := c::!constraints);
-      if !log_enabled then log_infr (mag "%a") pp_constr c
-    end
-
-(** Exception that may be raised by type inference. *)
-exception NotTypable
-
-(** [infer ctx t] tries to infer a type for the term [t] in context [ctx],
-   possibly under some constraints recorded in [constraints] using [conv]. The
-   returned type is well-sorted if the recorded constraints are
-   satisfied. [ctx] must be well sorted.
-@raise NotTypable when the term is not typable (when encountering an
-   abstraction over a kind). *)
-let rec infer : ctxt -> term -> term = fun ctx t ->
-  if !log_enabled then log_infr "infer %a%a" pp_ctxt ctx pp_term t;
-  match unfold t with
-  | Patt(_,_,_) -> assert false (* Forbidden case. *)
-  | TEnv(_,_)   -> assert false (* Forbidden case. *)
-  | Kind        -> assert false (* Forbidden case. *)
-  | Wild        -> assert false (* Forbidden case. *)
-  | TRef(_)     -> assert false (* Forbidden case. *)
-
-  (* -------------------
-      ctx ⊢ Type ⇒ Kind  *)
-  | Type        -> mk_Kind
-
-  (* ---------------------------------
-      ctx ⊢ Vari(x) ⇒ Ctxt.find x ctx  *)
-  | Vari(x)     ->
-      let a = try Ctxt.type_of x ctx with Not_found -> assert false in
-      if !log_enabled then log_infr (yel "%a : %a") pp_term t pp_term a;
-      a
-
-  (* -------------------------------
-      ctx ⊢ Symb(s) ⇒ !(s.sym_type)  *)
-  | Symb(s)     ->
-      let a = !(s.sym_type) in
-      if !log_enabled then log_infr (yel "%a : %a") pp_term t pp_term a;
-      a
-
-  (*  ctx ⊢ a ⇐ Type    ctx, x : a ⊢ b<x> ⇒ s
-     -----------------------------------------
-                ctx ⊢ Prod(a,b) ⇒ s            *)
-  | Prod(a,b)   ->
-      (* We ensure that [a] is of type [Type]. *)
-      check ctx a mk_Type;
-      (* We infer the type of the body, first extending the context. *)
-      let (_,b,ctx') = Ctxt.unbind ctx a None b in
-      let s = infer ctx' b in
-      (* We check that [s] is a sort. *)
-      begin
-        let s = unfold s in
-        match s with
-        | Type | Kind -> s
-        | _ -> conv ctx' s mk_Type; mk_Type
-      (* Here, we force [s] to be equivalent to [Type] as there is little
-         chance (no?) that it can be a kind. FIXME? *)
-      end
-
-  (*  ctx ⊢ a ⇐ Type    ctx, x : a ⊢ t<x> ⇒ b<x>
-     --------------------------------------------
-             ctx ⊢ Abst(a,t) ⇒ Prod(a,b)          *)
-  | Abst(a,t)   ->
-      (* We ensure that [a] is of type [Type]. *)
-      check ctx a mk_Type;
-      (* We infer the type of the body, first extending the context. *)
-      let (x,t,ctx') = Ctxt.unbind ctx a None t in
-      let b = infer ctx' t in
-      begin
-        match unfold b with
-        | Kind ->
-            wrn None "Abstraction on [%a] is not allowed." Print.pp_term t;
-            raise NotTypable
-        | _ -> mk_Prod(a, Bindlib.unbox (Bindlib.bind_var x (lift b)))
-      end
-
-  (*  ctx ⊢ t ⇒ Prod(a,b)    ctx ⊢ u ⇐ a
-     ------------------------------------
-         ctx ⊢ Appl(t,u) ⇒ subst b u      *)
-  | Appl(t,u)   ->
-      (* [get_prod f typ] returns the domain and codomain of [t] if [t] is a
-         product. If [t] is a metavariable, then it instantiates it with a
-         product calls [get_prod f typ] again. Otherwise, it calls [f typ]. *)
-      let rec get_prod f typ =
-        if !log_enabled then log_infr "get_prod %a" pp_term typ;
-        match unfold typ with
-        | Prod(a,b) -> (a,b)
-        | Meta(m,_) -> set_to_prod m; get_prod f typ
-        | _ -> f typ
-      in
-      let get_prod_whnf = (* assumes that its argument is in whnf *)
-        get_prod (fun typ ->
-            let a = LibTerm.Meta.make ctx mk_Type in
-            (* We force [b] to be of type [Type] as there is little (no?)
-               chance that it can be a kind. *)
-            let b = LibTerm.Meta.make_codomain ctx a in
-            conv ctx typ (mk_Prod(a,b)); (a,b)) in
-      let get_prod =
-        get_prod (fun typ -> get_prod_whnf (Eval.whnf ctx typ)) in
-      let (a,b) = get_prod (infer ctx t) in
-      check ctx u a;
-      Bindlib.subst b u
-
-  (*  ctx ⊢ t ⇐ a       ctx, x : a := t ⊢ u ⇒ b
-     -------------------------------------------
-        ctx ⊢ let x : a ≔ t in u ⇒ subst b t     *)
-  | LLet(a,t,u) ->
-      check ctx a mk_Type;
-      check ctx t a;
-      (* Unbind [u] and enrich context with [x: a ≔ t] *)
-      let (x,u,ctx') = Ctxt.unbind ctx a (Some(t)) u in
-      let b = infer ctx' u in
-      (* Build back the term *)
-      let b = Bindlib.unbox (Bindlib.bind_var x (lift b)) in
-      Bindlib.subst b t
-
-  (*  ctx ⊢ term_of_meta m e ⇒ a
-     ----------------------------
-         ctx ⊢ Meta(m,e) ⇒ a      *)
-  | Meta(m,ts)   ->
-      (* The type of [Meta(m,ts)] is the same as the one obtained by applying
-         to [ts] a new symbol having the same type as [m]. *)
-      let s = Term.create_sym (Sign.current_path()) Privat Const
-                Eager true ("?" ^ Meta.name m) !(m.meta_type) [] in
-      infer ctx (Array.fold_left (fun acc t -> mk_Appl(acc,t)) (mk_Symb s) ts)
-
-(** [check ctx t a] checks that the term [t] has type [a] in context
-   [ctx], possibly under some constraints recorded in [constraints] using
-   [conv]. [ctx] must be well-formed and [a] well-sorted. This function never
-   fails (but constraints may be unsatisfiable). *)
-and check : ctxt -> term -> term -> unit = fun ctx t a ->
-  if !log_enabled then log_infr "check %a" pp_typing (ctx,t,a);
-  conv ctx (infer ctx t) a
-
-(** [infer_noexn cs ctx t] returns [None] if the type of [t] in context [ctx]
-   and constraints [cs] cannot be infered, or [Some(a,cs')] where [a] is some
-   type of [t] in the context [ctx] if the constraints [cs'] are satisfiable
-   (which may not be the case). [ctx] must well sorted. *)
-let infer_noexn : constr list -> ctxt -> term -> (term * constr list) option =
-  fun cs ctx t ->
-  Stdlib.(constraints := cs);
-  let res =
-    try
-      if !log_enabled then log_hndl (blu "infer %a%a") pp_ctxt ctx pp_term t;
-      let a = time_of (fun () -> infer ctx t) in
-      let cs = Stdlib.(!constraints) in
-      if !log_enabled then log_hndl (blu "%a%a") pp_term a pp_constrs cs;
-      Some (a, cs)
-    with NotTypable -> None
-  in Stdlib.(constraints := []); res
-
-(** [check_noexn cs ctx t a] returns [None] if [t] does not have type [a] in
-   context [ctx] and constraints [cs], and [Some(cs')] where [cs'] is a list
-   of constraints under which [t] may have type [a] (but constraints may be
-   unsatisfiable). The context [ctx] and the type [a] must be well sorted. *)
-let check_noexn : constr list -> ctxt -> term -> term -> constr list option =
-  fun cs ctx t a ->
-  Stdlib.(constraints := cs);
-  let res =
-    try
-      if !log_enabled then log_hndl (blu "check %a") pp_typing (ctx,t,a);
-      time_of (fun () -> check ctx t a);
-      let cs = Stdlib.(!constraints) in
-      if !log_enabled && cs <> [] then log_hndl (blu "%a") pp_constrs cs;
-      Some cs
-    with NotTypable -> None
-  in Stdlib.(constraints := []); res
+let log = Debug.new_logger 'i' "infr" "Infer"
+let log = log.logger
 
 (** Type for unification constraints solvers. *)
 type solver = problem -> constr list option
 
-(** [infer solve pos ctx t] returns a type for [t] in context [ctx] if there
-   is one, using the constraint solver [solve].
-@raise Fatal otherwise. [ctx] must well sorted. *)
-let infer : solver -> Pos.popt -> ctxt -> term -> term =
-  fun solve_noexn pos ctx t ->
-  match infer_noexn [] ctx t with
-  | None -> fatal pos "[%a] is not typable." pp_term t
-  | Some(a, to_solve) ->
-      let to_solve = List.rev to_solve in
-      match solve_noexn {empty_problem with to_solve} with
-      | None -> fatal pos "[%a] is not typable." pp_term t
-      | Some [] -> a
-      | Some cs ->
-          List.iter (wrn pos "Cannot solve %a.\n" pp_constr) cs;
-          fatal pos "[%a] is not typable." pp_term t
+(** Module that provide a lookup function to the refiner. *)
+module type LOOKUP = sig
+  val coercions : Sign.coercion list
+  val solve : solver
+  (** [solve] is a solver as specified in {!module:Unif} (see
+      {!val:Unif.solve_noexn}). *)
+end
 
-(** [check pos ctx t a] checks that [t] has type [a] in context [ctx],
-using the constraint solver [solve].
-@raise Fatal otherwise. [ctx] must well sorted. *)
-let check : solver -> Pos.popt -> ctxt -> term -> term -> unit =
-  fun solve_noexn pos ctx t a ->
-  match check_noexn [] ctx t a with
-  | None -> fatal pos "[%a] does not have type [%a]." pp_term t pp_term a
-  | Some(to_solve) ->
-      let to_solve = List.rev to_solve in
-      match solve_noexn {empty_problem with to_solve} with
-      | None -> fatal pos "[%a] does not have type [%a]." pp_term t pp_term a
-      | Some [] -> ()
-      | Some cs ->
-          List.iter (wrn pos "Cannot solve %a.\n" pp_constr) cs;
-          fatal pos "[%a] does not have type [%a]." pp_term t pp_term a
+module type S = sig
+  exception NotTypable
+  (** Raised when a term cannot be typed. *)
 
-(** [check_sort pos ctx t] checks that [t] has type [Type] or [Kind] in
-   context [ctx], using the constraint solver [solve].
-@raise Fatal otherwise. [ctx] must well sorted. *)
-let check_sort : solver -> Pos.popt -> ctxt -> term -> unit
-  = fun solve_noexn pos ctx t ->
-  match infer_noexn [] ctx t with
-  | None -> fatal pos "[%a] is not typable." pp_term t
-  | Some(a, to_solve) ->
-      let to_solve = List.rev to_solve in
-      match solve_noexn {empty_problem with to_solve} with
-      | None -> fatal pos "[%a] is not typable." pp_term t
-      | Some ((_::_) as cs) ->
-          List.iter (wrn pos "Cannot solve %a.\n" pp_constr) cs;
-          fatal pos "[%a] is not typable." pp_term a
-      | Some [] ->
-          match unfold a with
-          | Type | Kind -> ()
-          | _ -> fatal pos "[%a] has type [%a] and not a sort."
-                   pp_term t pp_term a
+  val infer : ctxt -> term loc -> term * term
+  (** [infer ctx t] returns a tuple [(u, a)] where [a] is the type of [t]
+      inferred from context [ctx], [u] is [t] refined. [?pos] is used in error
+      messages to indicate the position of [t].
+      @raise NotTypable when the type of [t] cannot be inferred. *)
+
+  val check : ?pos:Pos.pos -> ctxt -> term -> term -> term
+  (** [check ?pos ctx t a] checks that [t] is of type [a] solving constraints
+      with [solver] and returns [t] refined. The parameter [?pos] is used in
+      error messages to indicate the position of [t].
+      @raise NotTypable if [t] does not have type [a] or type of [t] cannot be
+                        inferred. *)
+
+  val check_sort : ctxt -> term loc -> term * term
+  (** [type_enforce ctx t] verifies that [t] is a type and returns a tuple
+      [(t',s)] where [t'] is [t] refined and [s] is the sort of [t]. *)
+
+  val infer_noexn : constr list -> ctxt -> term ->
+    (term * term * constr list) option
+  (** [infer_noexn cs ctx t] returns a triplet [(t', t_ty, cs')] where [t_ty]
+      is the inferred type of [t] with equations [cs] and in context [ctx],
+      [t'] is [t] refined and [cs] is a new list of constraints that must be
+      solved so that [t'] has type [t_ty]. If [t] is not typable, [None] is
+      returned. *)
+
+  val check_noexn : constr list -> ctxt -> term -> term ->
+    (term * constr list) option
+  (** [check_noexn ?lg cs ctx t t_ty] ensures that term [t] has type [t_ty] in
+      context [ctx] and with equations [cs]. It returns term [t] refined and a
+      list of new equations that must be solved. *)
+
+  val check_sort_noexn : constr list -> ctxt -> term ->
+    (term * term * constr list) option
+    (** [check_sort_noexn cs ctx t] returns a 3-uple [(t',s,cs')] where [t']
+        is [t] refined, [s] is the inferred sort of [t'], [TYPE] or [KIND],
+        and [cs'] is a list of equations that must be solved. If [t] is not
+        typable, [None] is returned. *)
+end
+
+(** {b NOTE} The function {!val:Unif.typechecker} should always be used to
+    obtain a typechecker, rather than {module:Make}. *)
+
+module Make : functor (_ : LOOKUP) -> S =
+functor
+  (L : LOOKUP)
+  ->
+  struct
+    let constraints = Stdlib.ref []
+
+    exception NotTypable
+
+    (** [unif ctx a b] solves the unification problem [ctx ⊢ a ≡ b]. Current
+        implementation collects constraints in {!val:constraints} then solves
+        them at the end of type checking. *)
+    let unif : ctxt -> term -> term -> unit =
+     fun ctx a b ->
+     if not (Eval.eq_modulo ctx a b) then
+     (* NOTE: eq_modulo is used because the unification algorithm counts on
+        the fact that no constraint is added in some cases (see test
+        "245b.lp"). We may however want to reduce the number of calls to
+        [eq_modulo]. *)
+       begin
+         if !Debug.log_enabled then
+           log (Extra.yel "add constraint %a") Print.pp_constr
+             (ctx, a, b);
+         Stdlib.(constraints := (ctx, a, b) :: !constraints)
+       end
+
+    (** {1 Handling coercions} *)
+
+    (** {b NOTE} coercions require to check if some terms can be unified.
+        Hence the unification is called in the middle of typechecking, and if
+        unification fails, we must take care to restore meta-variables as they
+        were before unification. *)
+
+    (** [approx ctx a b] is used to tell whether a coercion defined on [b] can
+        be used on [a]. The operation may instantiate meta-variables. *)
+    let approx : ctxt -> term -> term -> bool = fun ctx a b ->
+      Eval.eq_modulo ctx a b ||
+      match L.solve {empty_problem with to_solve = [ctx, a, b]} with
+      | Some [] -> true
+      | _ -> false
+
+    (** [coerce ctx t a b] coerces term [t] of type [a] to type [b]. *)
+    let rec coerce : ctxt -> term -> term -> term -> term =
+      fun ctx t a b ->
+      if Eval.eq_modulo ctx a b then t else
+      let tau = Time.save () in
+      let rec try_coercions cs =
+        match cs with
+        | [] -> raise Not_found
+        | Sign.{defn_ty; source; prerequisites; defn; arity; name }::cs ->
+            if !Debug.log_enabled then log "Trying coercion %s" name;
+            let l = LibTerm.prod_arity defn_ty in
+            let metas, domain, range =
+              let meta_dom, range =
+                LibTerm.unbind_meta ctx defn_ty (source - 1)
+              in
+              let src_meta, domain, range =
+                match unfold range with
+                | Prod(a, b) ->
+                    let m = LibTerm.Meta.make ctx a in
+                    let b = Bindlib.subst b m in
+                    (m, a, b)
+                | _ -> assert false
+              in
+              let meta_range, range =
+                LibTerm.unbind_meta ctx range (l - source - arity)
+              in
+              let metas =
+                let open Array in
+                concat [of_list meta_dom; [|src_meta|]; of_list meta_range]
+              in
+              metas, domain, range
+            in
+            try
+              let tau = Time.save () in
+              if approx ctx a domain && approx ctx b range then
+                (* REVIEW: we may short-circuit prerequisites processing when
+                   there is none. *)
+                (* Replace pre-requisites by variables to be able to reduce
+                   the term. *)
+                let preqs_vars, defn = Bindlib.unmbind defn in
+                let defn =
+                  Eval.whnf_beta (add_args defn (Array.to_list metas))
+                in
+                unif ctx t metas.(source - 1);
+                unif ctx b range;
+                let preqs = apply ctx metas prerequisites in
+                (* Inject the solved pre-requisites. *)
+                let defn =
+                  Bindlib.(bind_mvar preqs_vars (lift defn) |> unbox)
+                in
+                Bindlib.msubst defn preqs
+              else (Time.restore tau; failwith "not approx")
+            with Failure _ -> try_coercions cs
+      in
+      let eqs = Stdlib.(!constraints) in
+      match L.solve {empty_problem with to_solve = (ctx, a, b) :: eqs} with
+      | Some [] -> Stdlib.(constraints := []) (* Backup resolution *); t
+      | _ ->
+          Time.restore tau;
+          if !Debug.log_enabled then
+            log "Coerce [%a : %a ≡ %a]" Print.pp_term t
+              Print.pp_term a Print.pp_term b;
+          try try_coercions L.coercions
+          with Not_found ->
+            Time.restore tau;
+            (* FIXME: when is this case encountered? Only when checking SR? *)
+            (* Hope that the constraint will be solved later. *)
+            unif ctx a b;
+            if !Debug.log_enabled then
+              log "No coercion found for problem @[<h>%a@ :@, %a@ ≡@ %a@]"
+                Print.pp_term t Print.pp_term a Print.pp_term b;
+            t
+
+    (** [apply ctx def_ctx ms reqs] performs the coercions specified in
+        requirements [reqs] in context [ctx]. Context [def_ctx] is the context
+        given by the main coercion: all variables of [def_ctx] have been
+        substituted by meta-variables in [ms]. *)
+    and apply : ctxt -> term array -> Sign.prereq array -> term array =
+      fun ctx ms ->
+      let instantiate_reqs (s, m, v, w: Sign.prereq) =
+        if !Debug.log_enabled then
+          log "Processing requirement \"%s\"" s.elt  ;
+        (* [v] and [w] are substituted by [ms] which ought to be
+           instantiated enough so the pre-coercion problems become
+           tractable. *)
+        let v = Bindlib.msubst v ms in
+        let w = Bindlib.msubst w ms in
+        let m = Bindlib.msubst m ms in
+        coerce ctx m v w
+      in
+      Array.map instantiate_reqs
+
+    (* Wraps the previous function between log messages. *)
+    let coerce ctx t a b =
+      if !Debug.log_enabled then
+        Print.(log "Cast [%a : %a ≡ %a]" pp_term t pp_term a pp_term b);
+      let r = coerce ctx t a b in
+      if !Debug.log_enabled then (
+        let eq (ctx, a, b) = Eval.eq_modulo ctx a b in
+        if not (pure_test eq (ctx, t, r)) then
+          Print.(log "Coercion inserted: [%a] to [%a]" pp_term t pp_term r) );
+      r
+
+    (** {1 Other rules} *)
+
+    (** [type_enforce ctx a] returns a tuple [(a',s)] where [a'] is refined
+        term [a] and [s] is a sort (Type or Kind) such that [a'] is of type
+        [s]. *)
+    let rec type_enforce : ctxt -> term -> term * term =
+     fun ctx a ->
+      if !Debug.log_enabled then log "Type enforce [%a]" Print.pp_term a;
+      let a, s = infer ctx a in
+      let sort =
+        match unfold s with
+        | Kind -> mk_Kind
+        | Type -> mk_Type
+        | _ -> mk_Type
+        (* FIXME The algorithm should be able to backtrack on the choice of
+           this sort, first trying [Type], and if it does not succeed, trying
+           [Kind]. *)
+      in
+      let a = coerce ctx a s sort in
+      (a, sort)
+
+    (** [force ctx t a] returns a term [t'] such that [t'] has type [a], and
+        [t'] is the refinement of [t]. *)
+    and force : ctxt -> term -> term -> term =
+     fun ctx te ty ->
+      let default () =
+        if !Debug.log_enabled then
+          log "Force [%a] of [%a]" Print.pp_term te Print.pp_term ty;
+        let t, a = infer ctx te in
+        coerce ctx t a ty
+      in
+      match unfold te with
+      | Plac (true, name) ->
+          unif ctx ty mk_Type;
+          LibTerm.Meta.make ?name ctx mk_Type
+      | Plac (false, name) -> LibTerm.Meta.make ?name ctx ty
+      | Abst (dom, t) -> (
+          match Eval.whnf ctx ty with
+          | Prod (e1, e2) ->
+            if !Debug.log_enabled then
+              log "Force-λ [%a] of [%a]" Print.pp_term te Print.pp_term ty;
+              let dom = force ctx dom mk_Type in
+              unif ctx dom e1;
+              let x, t, e2 = Bindlib.unbind2 t e2 in
+              let ctx = (x, dom, None) :: ctx in
+              let t = force ctx t e2 in
+              mk_Abst (dom, Bindlib.(lift t |> bind_var x |> unbox))
+          | _ -> default () )
+      | LLet (t_ty, t, u) ->
+          let t_ty, _ = type_enforce ctx t_ty in
+          let t = force ctx t t_ty in
+          let x, u, ctx = Ctxt.unbind ctx t_ty (Some t) u in
+          let ty = Bindlib.(lift ty |> bind_var x |> unbox) in
+          let ty = Bindlib.subst ty t in
+          let u = force ctx u ty in
+          let u = Bindlib.(lift u |> bind_var x |> unbox) in
+          mk_LLet (t_ty, t, u)
+      | _ -> default ()
+
+    and infer_aux : ctxt -> term -> term * term =
+     fun ctx t ->
+      match unfold t with
+      | Patt _ -> assert false
+      | TEnv _ -> assert false
+      | Kind -> assert false
+      | Wild -> assert false
+      | TRef _ -> assert false
+      | Type -> (mk_Type, mk_Kind)
+      | Vari x ->
+          let a = try Ctxt.type_of x ctx with Not_found -> assert false in
+          (t, a)
+      | Symb s -> (t, !(s.sym_type))
+      | Plac (true, name) ->
+          let m = LibTerm.Meta.make ?name ctx mk_Type in
+          (m, mk_Type)
+      | Plac (false, name) ->
+          let mt = LibTerm.Meta.make ctx mk_Type in
+          let m = LibTerm.Meta.make ?name ctx mt in
+          (m, mt)
+      (* All metavariables inserted are typed. *)
+      | (Meta (m, ts)) as t ->
+          let rec ref_esubst i range =
+            (* Refine terms of the explicit substitution. *)
+            if i >= Array.length ts then range else
+              match unfold range with
+              | Prod(ai, b) ->
+                  ts.(i) <- force ctx ts.(i) ai;
+                  let b = Bindlib.subst b ts.(i) in
+                  ref_esubst (i + 1) b
+              | _ ->
+                  (* Meta type must be a product of arity greater or equal
+                     to the environment *)
+                  assert false
+          in
+          let range = ref_esubst 0 !(m.meta_type) in
+          (t, range)
+      | LLet (t_ty, t, u) ->
+          (* Check that [a] is a type, and refine it. *)
+          let t_ty, _ = type_enforce ctx t_ty in
+          (* Check that [t] is of type [a'], and refine it *)
+          let t = force ctx t t_ty in
+          (* Unbind [u] and get new context with [x: t_ty ≔ t] *)
+          let x, u, ctx = Ctxt.unbind ctx t_ty (Some t) u in
+          (* Infer type of [u'] and refine it. *)
+          let u, u_ty = infer ctx u in
+          let u_ty = Bindlib.(u_ty |> lift |> bind_var x |> unbox) in
+          let u_ty = Bindlib.subst u_ty t in
+          let u = Bindlib.(u |> lift |> bind_var x |> unbox) in
+          (mk_LLet (t_ty, t, u), u_ty)
+      | Abst (dom, b) ->
+          (* Domain must by of type Type, we don’t use [type_enforce] *)
+          let dom = force ctx dom mk_Type in
+          let x, b, ctx = Ctxt.unbind ctx dom None b in
+          let b, range = infer ctx b in
+          let b = Bindlib.(lift b |> bind_var x |> unbox) in
+          let range = Bindlib.(lift range |> bind_var x |> unbox) in
+          (mk_Abst (dom, b), mk_Prod (dom, range))
+      | Prod (dom, b) ->
+          (* Domain must by of type Type, we don’t use [type_enforce] *)
+          let dom = force ctx dom mk_Type in
+          let x, b, ctx = Ctxt.unbind ctx dom None b in
+          let b, b_s = type_enforce ctx b in
+          let s =
+            match unfold b_s with
+            | Type -> mk_Type
+            | Kind -> mk_Kind
+            | b_s ->
+                Error.wrn None
+                  "Type error, sort mismatch: there is no rule of the form \
+                   (TYPE, %a, _) in λΠ/R" Print.pp_term b_s;
+                raise NotTypable
+
+          in
+          let b = Bindlib.(lift b |> bind_var x |> unbox) in
+          (mk_Prod (dom, b), s)
+      | Appl (t, u) -> (
+          let t, t_ty = infer ctx t in
+          match Eval.whnf ctx t_ty with
+          | Prod (dom, b) ->
+              if !Debug.log_enabled then log "Appl-prod arg [%a]" Print.pp_term u;
+              let u = force ctx u dom in
+              (mk_Appl (t, u), Bindlib.subst b u)
+          | Meta (_, _) ->
+              let u, u_ty = infer ctx u in
+              let range = LibTerm.Meta.make_codomain ctx u_ty in
+              unif ctx t_ty (mk_Prod (u_ty, range));
+              (mk_Appl (t, u), Bindlib.subst range u)
+          | t_ty ->
+              let domain = LibTerm.Meta.make ctx mk_Type in
+              let range = LibTerm.Meta.make_codomain ctx domain in
+              let t = coerce ctx t t_ty (mk_Prod (domain, range)) in
+              if !Debug.log_enabled then log "Appl-default arg [%a]" Print.pp_term u;
+              let u = force ctx u domain in
+              (mk_Appl (t, u), Bindlib.subst range u) )
+
+    and infer : ctxt -> term -> term * term = fun ctx t ->
+      if !Debug.log_enabled then log "Infer [%a]" Print.pp_term t;
+      let t, t_ty = infer_aux ctx t in
+      if !Debug.log_enabled then
+        log "Inferred [%a: %a]" Print.pp_term t Print.pp_term t_ty;
+      (t, t_ty)
+
+
+    (** [noexn f cs ctx args] initialises {!val:constraints} to [cs],
+        calls [f ctx args] and returns [Some(r,cs)] where [r] is the value of
+        the call to [f] and [cs] is the list of constraints gathered by
+        [f]. Function [f] may raise [NotTypable], in which case [None] is
+        returned. {!val:constraints} is reset before leaving the function. *)
+    let noexn : (ctxt -> 'a -> 'b) -> constr list -> ctxt -> 'a ->
+      ('b * constr list) option =
+      fun f cs ctx args ->
+      (* Backing up constraints is required because type checking may be
+         called recursively by the unification engine. Not backing up leads to
+         loss of constraints. *)
+      let eqs = Stdlib.(!constraints) in
+      Stdlib.(constraints := cs);
+      let r =
+        try
+          let r = Debug.time_of (fun () -> f ctx args) in
+          let cs = Stdlib.(!constraints) in
+          Some(r, List.rev cs)
+        with NotTypable -> None
+      in Stdlib.(constraints := eqs); r
+
+    let infer_noexn cs ctx t =
+      if !Debug.log_enabled then
+        log "Top infer %a%a" Print.pp_ctxt ctx Print.pp_term t;
+      Option.map (fun ((t,a), cs) -> (t, a, cs)) (noexn infer cs ctx t)
+
+    let check_noexn cs ctx t a =
+      if !Debug.log_enabled then log "Top check \"%a\"" Print.pp_typing
+          (ctx, t, a);
+      let force ctx (t, a) = force ctx t a in
+      noexn force cs ctx (t, a)
+
+    let check_sort_noexn cs ctx t : (term * term * constr list) option =
+      if !Debug.log_enabled then
+        log "Top check sort %a%a" Print.pp_ctxt ctx Print.pp_term t;
+      let flatten ((t, a), cs) = (t, a, cs) in
+      Option.map flatten (noexn type_enforce cs ctx t)
+
+    let infer : ctxt -> term loc -> term * term =
+      fun ctx {pos; elt=t} ->
+      match infer_noexn [] ctx t with
+      | None -> Error.fatal pos "[%a] is not typable." Print.pp_term t
+      | Some(t, a, to_solve) ->
+          match L.solve {empty_problem with to_solve} with
+            | None -> Error.fatal pos "[%a] is not typable."
+                        Print.pp_term t
+            | Some [] -> (t, a)
+            | Some cs ->
+                List.iter
+                  (Error.wrn pos "Cannot solve [%a].@\n" Print.pp_constr)
+                  cs;
+                Error.fatal pos "[%a] is not typable." Print.pp_term a
+
+    let check : ?pos:Pos.pos -> ctxt -> term -> term -> term =
+      fun ?pos ctx t a ->
+      match check_noexn [] ctx t a with
+      | None -> Error.fatal pos "[%a] does not have type [%a]."
+                  Print.pp_term t Print.pp_term a
+      | Some(t, to_solve) ->
+          match L.solve {empty_problem with to_solve} with
+            | None -> Error.fatal pos "[%a] does not have type [%a]."
+                        Print.pp_term t Print.pp_term a
+            | Some [] -> t
+            | Some cs ->
+                List.iter
+                  (Error.wrn pos "Cannot solve [%a].\n" Print.pp_constr)
+                  cs;
+                Error.fatal pos "[%a] does not have type [%a]."
+                  Print.pp_term t Print.pp_term a
+
+    let check_sort : ctxt -> term loc -> term * term =
+      fun ctx {elt=t; pos} ->
+      let eqs = Stdlib.(!constraints) in
+      Stdlib.(constraints := []);
+      let t, a = type_enforce ctx t in
+      let to_solve = Stdlib.(!constraints) in
+      match L.solve {empty_problem with to_solve} with
+      | None -> Error.fatal pos "[%a] is not typable" Print.pp_term t
+      | Some [] -> Stdlib.(constraints := eqs); (t, a)
+      | Some cs ->
+          List.iter (Error.wrn None "Cannot solve [%a].\n" Print.pp_constr)
+            cs;
+          Error.fatal pos "[%a] is not typable." Print.pp_term a
+  end
+
+(** A refiner without coercion generator nor unification. *)
+module Bare =
+  Make(struct let coercions = [] let solve _ = None end)

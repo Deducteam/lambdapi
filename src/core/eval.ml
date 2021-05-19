@@ -352,6 +352,7 @@ and tree_walk : dtree -> ctxt -> stack -> (term * stack) option =
               end
           | Kind
           | Type
+          | Plac _
           | Meta(_, _) -> default ()
           | TRef(_)    -> assert false (* Should be reduced by [whnf_stk]. *)
           | Appl(_)    -> assert false (* Should be reduced by [whnf_stk]. *)
@@ -383,6 +384,7 @@ and snf : ctxt -> term -> term = fun ctx t ->
       mk_Abst(snf ctx a, b)
   | Appl(t,u)   -> mk_Appl(snf ctx t, snf ctx u)
   | Meta(m,ts)  -> mk_Meta(m, Array.map (snf ctx) ts)
+  | Plac (i,n)  -> mk_Plac i n
   | Patt(_,_,_) -> assert false
   | TEnv(_,_)   -> assert false
   | Wild        -> assert false

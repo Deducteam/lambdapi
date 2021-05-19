@@ -24,7 +24,8 @@ type sig_state =
   ; alias_path: Path.t StrMap.t           (** Alias to path map. *)
   ; path_alias: string Path.Map.t         (** Path to alias map. *)
   ; builtins  : sym StrMap.t              (** Builtins. *)
-  ; notations : notation SymMap.t         (** Notations. *) }
+  ; notations : notation SymMap.t         (** Notations. *)
+  ; coercions : coercion list             (** Coercions. *) }
 
 type t = sig_state
 
@@ -50,6 +51,13 @@ let add_symbol : sig_state -> expo -> prop -> match_strat
   end;
   let in_scope = StrMap.add id.elt (sym, id.pos) ss.in_scope in
   ({ss with in_scope}, sym)
+
+(** [add_coercion ss c] returns a new signature state made from signature
+    state [ss] with new coercion [c]. *)
+let add_coercion : sig_state -> Sign.coercion -> sig_state =
+  fun ss c ->
+  Sign.add_coercion ss.signature c;
+  {ss with coercions = ss.coercions @ [c]}
 
 (** [add_notation ss s n] maps [s] notation to [n] in [ss]. *)
 let add_notation : sig_state -> sym -> notation -> sig_state = fun ss s n ->
@@ -94,13 +102,14 @@ let open_sign : sig_state -> Sign.t -> sig_state = fun ss sign ->
   let notations = SymMap.union f ss.notations !(sign.sign_notations) in
   let notations =
     add_notations_from_builtins !(sign.sign_builtins) notations in
-  {ss with in_scope; builtins; notations}
+  let coercions = ss.coercions @ !(sign.sign_coercions) in
+  {ss with in_scope; builtins; notations; coercions}
 
 (** Dummy [sig_state] made from the dummy signature. *)
 let dummy : sig_state =
   { signature = Sign.dummy (); in_scope = StrMap.empty;
     alias_path = StrMap.empty; path_alias = Path.Map.empty;
-    builtins = StrMap.empty; notations = SymMap.empty }
+    builtins = StrMap.empty; notations = SymMap.empty; coercions = [] }
 
 (** [of_sign sign] creates a state from the signature [sign] with ghost
     signatures opened. *)
