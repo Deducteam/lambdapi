@@ -18,7 +18,7 @@ let log_infr = log_infr.logger
    and [m2] fresh metavariables, and adds these metavariables to [p]. *)
 let set_to_prod : problem -> meta -> unit = fun p m ->
   let n = m.meta_arity in
-  let env, s = Env.of_prod_nth [] n !(m.meta_type) in
+  let env, s = Env.of_prod_nth __LOC__ [] n !(m.meta_type) in
   let vs = Env.vars env in
   let xs = Array.map _Vari vs in
   (* domain *)

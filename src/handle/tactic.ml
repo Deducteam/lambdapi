@@ -79,7 +79,12 @@ let tac_solve : popt -> proof_state -> proof_state = fun pos ps ->
   if !log_enabled then log_tact (red "tac_solve %a") pp_goals ps;
   let gs_typ, gs_unif = List.partition is_typ ps.proof_goals in
   let p = new_problem() in
-  p.to_solve <- List.rev_append p.to_solve (List.rev_map get_constr gs_unif);
+  let f ms = function
+    | Unif _ -> ms
+    | Typ gt -> MetaSet.add gt.goal_meta ms
+  in
+  p.metas <- List.fold_left f MetaSet.empty gs_typ;
+  p.to_solve <- List.rev_map get_constr gs_unif;
   if not (Unif.solve_noexn p) then
     fatal pos "Unification goals are unsatisfiable.";
   (* remove in [gs_typ] the goals that have been instantiated, and simplify
@@ -89,7 +94,7 @@ let tac_solve : popt -> proof_state -> proof_state = fun pos ps ->
     | gt -> Some (Goal.simpl Eval.simplify gt)
   in
   let gs_typ = List.filter_map not_instantiated gs_typ in
-  {ps with proof_goals = Proof.add_goals_of_problem p gs_typ}
+  {ps with proof_goals = List.map (fun c -> Unif c) p.unsolved @ gs_typ}
 
 (** [tac_refine pos ps gt gs p t] refines the typing goal [gt] with [t]. [p]
    is the set of metavariables created by the scoping of [t]. *)
@@ -97,16 +102,19 @@ let tac_refine :
       popt -> proof_state -> goal_typ -> goal list -> problem -> term
       -> proof_state =
   fun pos ps gt gs p t ->
-  if !log_enabled then log_tact (red "tac_refine %a") pp_term t;
+  if !log_enabled then
+    log_tact (red "tac_refine %a%a%a") pp_term t pp_goals ps pp_problem p;
   if LibMeta.occurs gt.goal_meta t then fatal pos "Circular refinement.";
   (* Check that [t] has the required type. *)
   let c = Env.to_ctxt gt.goal_hyps in
   if not (Infer.check_noexn p c t gt.goal_type) then
-    fatal pos "[%a] cannot have type [%a]." pp_term t pp_term gt.goal_type;
-  (* Instantiation. FIXME? Use Unif.instantiate instead ? *)
+    fatal pos "%a\ndoes not have type\n %a." pp_term t pp_term gt.goal_type;
+  if !log_enabled then
+    log_tact (red "%a ≔ %a") pp_meta gt.goal_meta pp_term t;
   LibMeta.set p gt.goal_meta
     (Bindlib.unbox (Bindlib.bind_mvar (Env.vars gt.goal_hyps) (lift t)));
   (* Convert the metas and constraints of [p] not in [gs] into new goals. *)
+  if !log_enabled then log_tact "%a" pp_problem p;
   tac_solve pos {ps with proof_goals = Proof.add_goals_of_problem p gs}
 
 (** [ind_data t] returns the [ind_data] structure of [s] if [t] is of the
@@ -251,23 +259,25 @@ let handle : Sig_state.t -> bool -> proof_state -> p_tactic -> proof_state =
   | P_tac_refine t ->
       let p = new_problem() in tac_refine pos ps gt gs p (scope p t)
   | P_tac_refl ->
-      let p = new_problem() in
       let n = count_products (Env.to_ctxt env) gt.goal_type in
       if n > 0 then
-        (* We first do [n] times the [assume] tactic. *)
-        let idopt = Some (Pos.none "y") in
-        let rec mk_idopts acc k =
-          if k <= 0 then acc else mk_idopts (idopt::acc) (k-1) in
-        let t = P.abst_list (mk_idopts [] n) P.wild in
-        let ps = tac_refine pos ps gt gs p (scope p t) in
-        (* We then apply reflexivity. *)
         begin
+          (* We first do [n] times the [assume] tactic. *)
+          let idopt = Some (Pos.none "y") in
+          let rec mk_idopts acc k =
+            if k <= 0 then acc else mk_idopts (idopt::acc) (k-1) in
+          let t = P.abst_list (mk_idopts [] n) P.wild in
+          let p = new_problem() in
+          let ps = tac_refine pos ps gt gs p (scope p t) in
+          (* We then apply reflexivity. *)
           match ps.proof_goals with
           | Typ gt::gs ->
+              let p = new_problem() in
               tac_refine pos ps gt gs p (Rewrite.reflexivity ss pos gt)
           | _ -> assert false
         end
-      else tac_refine pos ps gt gs p (Rewrite.reflexivity ss pos gt)
+      else let p = new_problem() in
+           tac_refine pos ps gt gs p (Rewrite.reflexivity ss pos gt)
   | P_tac_rewrite(l2r,pat,eq) ->
       let pat = Option.map (Scope.scope_rw_patt ss env) pat in
       let p = new_problem() in

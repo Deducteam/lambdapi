@@ -158,6 +158,8 @@ let check_rule : Scope.pre_rule Pos.loc -> rule = fun ({pos; elt} as pr) ->
   let metas =
     let f i name =
       let arity = arities.(i) in
+      (*FIXME: build_meta_type should take a sort as argument as some pattern
+         variables are types and thus of sort KIND! *)
       LibMeta.fresh p ~name (build_meta_type p arity) arity
     in Array.mapi f var_names
   in

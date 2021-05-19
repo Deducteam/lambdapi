@@ -16,10 +16,8 @@ type goal_typ =
   ; goal_type : term  (* Precomputed type. *) }
 
 type goal =
-  | Typ of goal_typ
-  (** Typing goal. *)
-  | Unif of constr
-  (** Unification goal. *)
+  | Typ of goal_typ (** Typing goal. *)
+  | Unif of constr (** Unification goal. *)
 
 let is_typ : goal -> bool = function Typ _ -> true  | Unif _ -> false
 let is_unif : goal -> bool = function Typ _ -> false | Unif _ -> true
@@ -40,13 +38,16 @@ module Goal = struct
   let env : goal -> Env.t = fun g ->
     match g with
     | Unif (c,_,_) ->
-        let t, n = Ctxt.to_prod c mk_Type in fst (Env.of_prod_nth c n t)
+        let t, n = Ctxt.to_prod c mk_Type in
+        fst (Env.of_prod_nth __LOC__ c n t)
     | Typ gt -> gt.goal_hyps
 
   (** [of_meta m] creates a goal from the meta [m]. *)
   let of_meta : meta -> goal = fun m ->
     let goal_hyps, goal_type =
-      Env.of_prod_nth [] m.meta_arity !(m.meta_type) in
+      (*let s = Format.asprintf "%s, of_meta %a(%d):%a" __LOC__
+                pp_meta m m.meta_arity pp_term !(m.meta_type) in*)
+      Env.of_prod_nth __LOC__ [] m.meta_arity !(m.meta_type) in
     Typ {goal_meta = m; goal_hyps; goal_type}
 
   (** [simpl f g] simplifies the goal [g] with the function [f]. *)
@@ -54,15 +55,6 @@ module Goal = struct
     match g with
     | Typ gt -> Typ {gt with goal_type = f gt.goal_type}
     | Unif (c,t,u) -> Unif (c, f t, f u)
-
-  (** Comparison function. Unification goals are greater than typing goals. *)
-  let compare : goal cmp = fun g g' ->
-    match g, g' with
-    | Typ gt, Typ gt' -> (* Smaller (= older) metas are put first. *)
-        Meta.compare gt.goal_meta gt'.goal_meta
-    | Unif c, Unif c' -> cmp_constr c c'
-    | Unif _, Typ _ -> 1
-    | Typ _, Unif _ -> -1
 
   (** [pp oc g] prints on channel [oc] the goal [g] without its hypotheses. *)
   let pp : goal pp = fun oc g ->

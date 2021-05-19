@@ -26,7 +26,7 @@ let rec type_app : ctxt -> term -> term list -> term option = fun ctx a ts ->
 
 (** [add_constr p c] adds the constraint [c] into [p.to_solve]. *)
 let add_constr : problem -> constr -> unit = fun p c ->
-  if !log_enabled then log_unif (mag "%a") pp_constr c;
+  if !log_enabled then log_unif (mag "add %a") pp_constr c;
   p.to_solve <- c::p.to_solve
 
 (** [add_unif_rule_constr p (ctx,t,u)] adds to [p] the constraint [(ctx,t,u)]
@@ -91,12 +91,6 @@ let instantiation :
 (** Checking type or not during meta instanciation. *)
 let do_type_check = Stdlib.ref true
 
-(** Initial set of constraints. *)
-let initial : constr list Stdlib.ref = Stdlib.ref []
-
-(** [is_initial c] checks whether [c] occurs in [!initial]. *)
-let is_initial c = List.exists (eq_constr c) Stdlib.(!initial)
-
 (** [instantiate p ctx m ts u] checks whether, with a constraint [m[ts] ≡ u],
    [m] can be instantiated and, if so, instantiates it and updates the
    metavariables of [p]. *)
@@ -111,26 +105,14 @@ let instantiate : problem -> ctxt -> meta -> term array -> term -> bool =
       in
       if Stdlib.(!do_type_check) then
         begin
+          if !log_enabled then log_unif "check typing";
           let typ_mts =
             match type_app ctx !(m.meta_type) (Array.to_list ts) with
             | Some a -> a
             | None -> assert false
           in
-          if !log_enabled then log_unif "check typing";
-          let q = new_problem() in
-          if Infer.check_noexn q ctx u typ_mts then
-            if q.unsolved = [] then do_instantiate()
-            else
-              let cs = List.filter (fun c -> not (is_initial c)) q.unsolved in
-              if cs = [] then do_instantiate()
-              else
-                (if !log_enabled then
-                   log_unif
-                     "failed because typing generated new constraints:%a"
-                     pp_constrs cs;
-                 false)
-          else
-            (if !log_enabled then log_unif "typing condition failed"; false)
+          if Infer.check_noexn p ctx u typ_mts then do_instantiate()
+          else (if !log_enabled then log_unif "typing failed"; false)
         end
       else do_instantiate()
   | i ->
@@ -196,7 +178,7 @@ let imitate_inj :
       | Some vars -> vars
     in
     (* Build the environment (yk-1,ak-1{y0=v0,..,yk-2=vk-2});..;(y0,a0). *)
-    let env, _ = Env.of_prod_using ctx vars !(m.meta_type) in
+    let env, _ = Env.of_prod_using __LOC__ ctx vars !(m.meta_type) in
     (* Build the term s(m0[vs],..,mn-1[vs]). *)
     let k = Array.length vars in
     let t =
@@ -212,7 +194,7 @@ let imitate_inj :
     in
     if !log_enabled then log_unif (red "%a ≔ %a") pp_meta m pp_term t;
     LibMeta.set p m (Bindlib.unbox (Bindlib.bind_mvar vars (lift t))); true
-  with Cannot_imitate -> false
+  with Cannot_imitate | Invalid_argument _ -> false
 
 (** [imitate_lam_cond h ts] tells whether [ts] is headed by a variable not
    occurring in [h]. *)
@@ -238,17 +220,24 @@ let imitate_lam_cond : term -> term list -> bool = fun h ts ->
 let imitate_lam : problem -> ctxt -> meta -> unit = fun p ctx m ->
     if !log_enabled then log_unif "imitate_lam %a" pp_meta m;
     let n = m.meta_arity in
-    let (env, t) = Env.of_prod_nth ctx n !(m.meta_type) in
-    let x,a,env',b =
+    let env, t = Env.of_prod_nth __LOC__ ctx n !(m.meta_type) in
+    let of_prod a b =
+      let x,b = LibTerm.unbind_name "x" b in
+      let a = lift a in
+      let env' = Env.add x a None env in
+      x, a, env', lift b
+    in
+    let x, a, env', b =
       match Eval.whnf ctx t with
-      | Prod(a,b) ->
-         let x,b = LibTerm.unbind_name "x" b in
-         let a = lift a in
-         let env' = Env.add x a None env in
-         x,a,env',lift b
+      | Prod(a,b) -> of_prod a b
+      | Meta(n,ts) as t when nl_distinct_vars ctx ts <> None ->
+          begin
+            Infer.set_to_prod p n;
+            match unfold t with
+            | Prod(a,b) -> of_prod a b
+            | _ -> assert false
+          end
       | _ ->
-         (* After type inference, a similar constraint should have already
-            been generated but has not been processed yet. *)
          let tm2 = Env.to_prod env _Type in
          let m2 = LibMeta.fresh p tm2 n in
          let a = _Meta m2 (Env.to_tbox env) in
@@ -257,10 +246,9 @@ let imitate_lam : problem -> ctxt -> meta -> unit = fun p ctx m ->
          let tm3 = Env.to_prod env' _Type in
          let m3 = LibMeta.fresh p tm3 (n+1) in
          let b = _Meta m3 (Env.to_tbox env') in
-         (* Could be optimized by extending [Env.to_tbox env]. *)
          let u = Bindlib.unbox (_Prod a (Bindlib.bind_var x b)) in
-         add_constr p (Env.to_ctxt env,u,t);
-         x,a,env',b
+         add_constr p (Env.to_ctxt env, u, t);
+         x, a, env', b
     in
     let tm1 = Env.to_prod env' b in
     let m1 = LibMeta.fresh p tm1 (n+1) in
@@ -347,7 +335,7 @@ let solve : problem -> unit = fun p ->
 
   (* We take the beta-whnf. *)
   let t1 = Eval.whnf_beta t1 and t2 = Eval.whnf_beta t2 in
-  if !log_enabled then log_unif (gre "%a") pp_constr (ctx,t1,t2);
+  if !log_enabled then log_unif (gre "solve %a") pp_constr (ctx,t1,t2);
   let (h1, ts1) = get_args t1
   and (h2, ts2) = get_args t2 in
 
@@ -359,10 +347,10 @@ let solve : problem -> unit = fun p ->
   | Abst(a1,b1), Abst(a2,b2) ->
       (* [ts1] and [ts2] must be empty because of typing or normalization. *)
       if !log_enabled then log_unif "decompose";
-      add_constr p (ctx,a1,a2);
       let (x,b1,b2) = Bindlib.unbind2 b1 b2 in
       let ctx' = (x,a1,None)::ctx in
-      add_constr p (ctx',b1,b2)
+      add_constr p (ctx',b1,b2);
+      add_constr p (ctx,a1,a2)
 
   | Vari x1, Vari x2 when Bindlib.eq_vars x1 x2 ->
       if List.same_length ts1 ts2 then decompose p ctx ts1 ts2
@@ -406,7 +394,7 @@ let solve : problem -> unit = fun p ->
   and (h2, ts2) = get_args t2 in
 
   if !log_enabled then log_unif "normalize";
-  if !log_enabled then log_unif (gre "%a") pp_constr (ctx,t1,t2);
+  if !log_enabled then log_unif (gre "solve %a") pp_constr (ctx,t1,t2);
 
   match h1, h2 with
   | Type, Type
@@ -478,5 +466,5 @@ let solve : problem -> unit = fun p ->
 let solve_noexn : ?type_check:bool -> problem -> bool =
   fun ?(type_check=true) p ->
   if !log_enabled then log_hndl "solve %a" pp_problem p;
-  Stdlib.(do_type_check := type_check; initial := p.to_solve);
+  Stdlib.(do_type_check := type_check);
   try time_of (fun () -> solve p; true) with Unsolvable -> false

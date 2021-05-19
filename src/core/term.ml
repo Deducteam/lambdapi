@@ -438,14 +438,6 @@ let cmp : term cmp =
     | _ -> cmp_tag (*cmp_map Stdlib.compare prec_tenv*) e e'
   in cmp
 
-(** Total order on contexts. *)
-let cmp_ctxt : ctxt cmp =
-  List.cmp (lex3 Bindlib.compare_vars cmp (Option.cmp cmp))
-
-(** Total order and equality on constraints. *)
-let cmp_constr : constr cmp = lex3 cmp_ctxt cmp cmp
-let eq_constr : constr eq = eq_of_cmp cmp_constr
-
 (** [get_args t] decomposes the {!type:term} [t] into a pair [(h,args)], where
     [h] is the head term of [t] and [args] is the list of arguments applied to
     [h] in [t]. The returned [h] cannot be an [Appl] node. *)

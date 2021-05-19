@@ -78,15 +78,17 @@ let to_ctxt : env -> ctxt =
   List.map
     (fun (_,(v,a,t)) -> (v, Bindlib.unbox a, Option.map Bindlib.unbox t))
 
-(** [match_prod c t f] returns [f a b] if [t] matches [Prod(a,b)] possibly
-   after reduction. *)
-let match_prod : ctxt -> term -> (term -> tbinder -> 'a) -> 'a = fun c t f ->
+(** [match_prod s c t f] returns [f a b] if [t] matches [Prod(a,b)] possibly
+   after reduction.
+@raise [Invalid_argument s] if [t] is not a product. *)
+let match_prod : string -> ctxt -> term -> (term -> tbinder -> 'a) -> 'a =
+  fun s c t f ->
   match unfold t with
   | Prod(a,b) -> f a b
   | _ ->
       match Eval.whnf c t with
       | Prod(a,b) -> f a b
-      | _ -> invalid_arg __LOC__
+      | _ -> invalid_arg s
 
 (** [of_prod c s t] returns a tuple [(env,b)] where [b] is constructed from
    the term [t] by unbinding as much dependent products as possible in the
@@ -97,39 +99,40 @@ let match_prod : ctxt -> term -> (term -> tbinder -> 'a) -> 'a = fun c t f ->
 let of_prod : ctxt -> string -> term -> env * term = fun c s t ->
   let i = Stdlib.ref (-1) in
   let rec build_env env t =
-    try match_prod c t (fun a b ->
+    try match_prod "" c t (fun a b ->
             let name = Stdlib.(incr i; s ^ string_of_int !i) in
-            let (x, b) = LibTerm.unbind_name name b in
+            let x, b = LibTerm.unbind_name name b in
             build_env (add x (lift a) None env) b)
     with Invalid_argument _ -> env, t
   in build_env [] t
 
-(** [of_prod_nth c n t] returns a tuple [(env,b)] where [b] is constructed
+(** [of_prod_nth s c n t] returns a tuple [(env,b)] where [b] is constructed
    from the term [t] by unbinding [n] dependent products. The free variables
    created by this process are given (with their types) in the environment
    [env] (in reverse order). For instance, if [t] is of the form [Πx1:a1, ⋯,
    Πxn:an, b] then the function returns [b] and the environment [(xn,an);
    ⋯;(x1,a1)]. [n] must be non-negative.
-@raise [Invalid_argument] if [t] does not evaluate to a series of (at least)
+@raise [Invalid_argument s] if [t] does not evaluate to a series of (at least)
    [n] products. *)
-let of_prod_nth : ctxt -> int -> term -> env * term = fun c n t ->
+let of_prod_nth : string -> ctxt -> int -> term -> env * term = fun s c n t ->
   let rec build_env i env t =
-    if i >= n then (env, t)
-    else match_prod c t (fun a b ->
-             let (x, b) = Bindlib.unbind b in
+    if i >= n then env, t
+    else match_prod s c t (fun a b ->
+             let x, b = Bindlib.unbind b in
              build_env (i+1) (add x (lift a) None env) b)
   in build_env 0 [] t
 
-(** [of_prod_using c xs t] is similar to [of_prod c n t] where [n =
+(** [of_prod_using s c xs t] is similar to [of_prod s c n t] where [n =
    Array.length xs] except that it replaces unbound variables by those of
    [xs].
-@raise [Invalid_argument] if [t] does not evaluate to a series of (at least)
+@raise [Invalid_argument s] if [t] does not evaluate to a series of (at least)
    [n] products. *)
-let of_prod_using : ctxt -> tvar array -> term -> env * term = fun c xs t ->
+let of_prod_using : string -> ctxt -> tvar array -> term -> env * term =
+  fun s c xs t ->
   let n = Array.length xs in
   let rec build_env i env t =
     if i >= n then env, t
-    else match_prod c t (fun a b ->
+    else match_prod s c t (fun a b ->
              let env = add xs.(i) (lift a) None env in
              build_env (i+1) env (Bindlib.subst b (mk_Vari(xs.(i)))))
   in build_env 0 [] t

@@ -396,10 +396,15 @@ let get_proof_data : compiler -> sig_state -> p_command ->
       end;
     (* Build proof data. *)
     let pdata =
+      (* Type of the symbol. *)
       let a =
         match a with
-        | Some {elt=t;pos} -> Query.check_sort pos p [] t; t
-        | None -> mk_Meta(LibMeta.fresh p mk_Type 0,[||])
+        | Some {elt=t;pos} -> (* Check that the given type is well sorted. *)
+            Query.check_sort pos p [] t; t
+        | None -> (* If no type is given, infer it from the definition. *)
+            match t with
+            | None -> assert false
+            | Some {elt=t;pos} -> Query.infer pos p [] t
       in
       (* Get tactics and proof end. *)
       let pdata_tactics, pe =
@@ -464,6 +469,8 @@ let get_proof_data : compiler -> sig_state -> p_command ->
           match pt, t with
           | Some pt, Some t ->
               let gt = match g with Typ gt -> gt | _ -> assert false in
+              (*FIXME? there is no need for tac_refine to type-check [t] again
+                 if [a] is the type infered from [t]. *)
               Tactic.tac_refine pt.pos ps gt proof_goals p t.elt
           | _, _ -> Tactic.tac_solve pos ps
         else
