@@ -67,34 +67,45 @@ let make_codomain : problem -> ctxt -> term -> tbinder = fun p ctx a ->
 (* Possible improvement: avoid lift by defining a function _Meta.make
    returning a tbox. *)
 
-(** [iter b f t] applies the function [f] to every metavariable of [t], and to
-   the type of every metavariable recursively if [b] is true. *)
-let iter : bool -> (meta -> unit) -> term -> unit = fun b f ->
+(** [iter b f c t] applies the function [f] to every metavariable of [t] and,
+   if [x] is a variable of [t] mapped to [v] in the context [c], then to every
+   metavariable of [v], and to the type of every metavariable recursively if
+   [b] is true. *)
+let iter : bool -> (meta -> unit) -> ctxt -> term -> unit = fun b f c ->
+  (* Convert the context into a map. *)
+  let vm =
+    let f vm (x,_,v) =
+      match v with
+      | Some v -> VarMap.add x v vm
+      | None -> vm
+    in
+    Stdlib.ref (List.fold_left f VarMap.empty c)
+  in
+  (*FIXME: make iter tail recursive. *)
   let rec iter t =
     match unfold t with
-    | Patt(_,_,_)
-    | TEnv(_,_)
+    | Patt _
+    | TEnv _
     | Wild
-    | TRef(_)
-    | Vari(_)
+    | TRef _
     | Type
     | Kind
-    | Symb(_)     -> ()
+    | Symb _ -> ()
+    | Vari x ->
+        begin match VarMap.find_opt x Stdlib.(!vm) with
+        | Some v -> Stdlib.(vm := VarMap.remove x !vm); iter v
+        | None -> ()
+        end
     | Prod(a,b)
-    | Abst(a,b)   -> iter a; iter (Bindlib.subst b mk_Kind)
-    | Appl(t,u)   -> iter t; iter u
-    | Meta(v,ts)  -> f v; Array.iter iter ts; if b then iter !(v.meta_type)
+    | Abst(a,b) -> iter a; iter (Bindlib.subst b mk_Kind)
+    | Appl(t,u) -> iter t; iter u
+    | Meta(m,ts) -> f m; Array.iter iter ts; if b then iter !(m.meta_type)
     | LLet(a,t,u) -> iter a; iter t; iter (Bindlib.subst u mk_Kind)
   in iter
 
-(** [occurs m t] tests whether the metavariable [m] occurs in the term [t]. *)
-let occurs : meta -> term -> bool =
-  let exception Found in fun m t ->
+(** [occurs m c t] tests whether the metavariable [m] occurs in the term [t]
+   when variables defined in the context [c] are unfolded. *)
+let occurs : meta -> ctxt -> term -> bool =
+  let exception Found in fun m c t ->
   let f p = if m == p then raise Found in
-  try iter false f t; false with Found -> true
-
-(** [has b t] checks whether there are metavariables in [t], and in the types
-   of metavariables recursively if [b] is true. *)
-let has : bool -> term -> bool =
-  let exception Found in fun b t ->
-  try iter b (fun _ -> raise Found) t; false with Found -> true
+  try iter false f c t; false with Found -> true

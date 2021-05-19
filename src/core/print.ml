@@ -304,7 +304,7 @@ let pp_constrs : constr list pp = fun ppf ->
 
 (* for debug only *)
 let pp_metaset : MetaSet.t pp = fun ppf ->
-  MetaSet.iter (out ppf "%a;" pp_meta)
+  MetaSet.iter (out ppf "%a," pp_meta)
 
 let pp_problem : problem pp = fun ppf p ->
   out ppf

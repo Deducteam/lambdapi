@@ -61,7 +61,7 @@ let admit_meta : Sig_state.t -> meta -> Sig_state.t = fun ss m ->
   let rec admit ms m =
     (* This assertion should be ensured by the typechecking algorithm. *)
     assert (not (MetaSet.mem m ms));
-    LibMeta.iter true (admit (MetaSet.add m ms)) !(m.meta_type);
+    LibMeta.iter true (admit (MetaSet.add m ms)) [] !(m.meta_type);
     Stdlib.(ss := add_axiom !ss m)
   in
   admit MetaSet.empty m; Stdlib.(!ss)
@@ -104,9 +104,9 @@ let tac_refine :
   fun pos ps gt gs p t ->
   if !log_enabled then
     log_tact (red "tac_refine %a%a%a") pp_term t pp_goals ps pp_problem p;
-  if LibMeta.occurs gt.goal_meta t then fatal pos "Circular refinement.";
-  (* Check that [t] has the required type. *)
   let c = Env.to_ctxt gt.goal_hyps in
+  if LibMeta.occurs gt.goal_meta c t then fatal pos "Circular refinement.";
+  (* Check that [t] has the required type. *)
   if not (Infer.check_noexn p c t gt.goal_type) then
     fatal pos "%a\ndoes not have type\n %a." pp_term t pp_term gt.goal_type;
   if !log_enabled then

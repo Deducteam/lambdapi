@@ -204,10 +204,10 @@ let check_rule : Scope.pre_rule Pos.loc -> rule = fun ({pos; elt} as pr) ->
       | Some _ ->
           (* Instantiate recursively the meta-variables of the definition. *)
           let t = mk_Meta(m, Array.make m.meta_arity mk_Kind) in
-          LibMeta.iter true instantiate t
+          LibMeta.iter true instantiate [] t
       | None ->
           (* Instantiate recursively the meta-variables of the type. *)
-          LibMeta.iter true instantiate !(m.meta_type);
+          LibMeta.iter true instantiate [] !(m.meta_type);
           (* Instantiation of [m]. *)
           let s = Term.create_sym (Sign.current_path()) Privat Defin Eager
                     false (LibMeta.name m) !(m.meta_type) [] in

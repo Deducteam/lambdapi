@@ -18,9 +18,9 @@ let log_unif = logger_unif.logger
 (** [type_app c a ts] returns [Some u] where [u] is a type of [add_args x ts]
    in context [c] where [x] is any term of type [a] if [x] can be applied to
    at least [List.length ts] arguments, and [None] otherwise. *)
-let rec type_app : ctxt -> term -> term list -> term option = fun ctx a ts ->
-  match Eval.whnf ctx a, ts with
-  | Prod(_,b), t::ts -> type_app ctx (Bindlib.subst b t) ts
+let rec type_app : ctxt -> term -> term list -> term option = fun c a ts ->
+  match Eval.whnf c a, ts with
+  | Prod(_,b), t::ts -> type_app c (Bindlib.subst b t) ts
   | _, [] -> Some a
   | _, _ -> None
 
@@ -29,36 +29,36 @@ let add_constr : problem -> constr -> unit = fun p c ->
   if !log_enabled then log_unif (mag "add %a") pp_constr c;
   p.to_solve <- c::p.to_solve
 
-(** [add_unif_rule_constr p (ctx,t,u)] adds to [p] the constraint [(ctx,t,u)]
-   as well as the constraint [(ctx,a,b)] where [a] is the type of [t] and [b]
+(** [add_unif_rule_constr p (c,t,u)] adds to [p] the constraint [(c,t,u)]
+   as well as the constraint [(c,a,b)] where [a] is the type of [t] and [b]
    the type of [u] if they can be infered. *)
-let add_unif_rule_constr : problem -> constr -> unit = fun p (ctx,t,u) ->
-  match Infer.infer_noexn p ctx t with
-  | None -> ignore (Infer.infer_noexn p ctx u)
+let add_unif_rule_constr : problem -> constr -> unit = fun p (c,t,u) ->
+  match Infer.infer_noexn p c t with
+  | None -> ignore (Infer.infer_noexn p c u)
   | Some a ->
-      match Infer.infer_noexn p ctx u with
-      | Some b when not (Eval.eq_modulo ctx a b) -> add_constr p (ctx,a,b)
+      match Infer.infer_noexn p c u with
+      | Some b when not (Eval.eq_modulo c a b) -> add_constr p (c,a,b)
       | _ -> ()
 
-(** [try_unif_rules p ctx s t] tries to simplify the unification problem [ctx
+(** [try_unif_rules p c s t] tries to simplify the unification problem [c
    ⊢ s ≡ t] with the user-defined unification rules. *)
 let try_unif_rules : problem -> ctxt -> term -> term -> bool =
-  fun p ctx s t ->
+  fun p c s t ->
   if !log_enabled then log_unif "check unif_rules";
   let exception No_match in
   let open Unif_rule in
   try
     let rhs =
-      match Eval.tree_walk p !(equiv.sym_dtree) ctx [s;t] with
+      match Eval.tree_walk p !(equiv.sym_dtree) c [s;t] with
       | Some(r,[]) -> r
       | Some(_)    -> assert false (* Everything should be matched *)
       | None       ->
-      match Eval.tree_walk p !(equiv.sym_dtree) ctx [t;s] with
+      match Eval.tree_walk p !(equiv.sym_dtree) c [t;s] with
       | Some(r,[]) -> r
       | Some(_)    -> assert false (* Everything should be matched *)
       | None       -> raise No_match
     in
-    let cs = List.map (fun (t,u) -> (ctx,t,u)) (unpack rhs) in
+    let cs = List.map (fun (t,u) -> (c,t,u)) (unpack rhs) in
     if !log_enabled then log_unif "rewrites to:%a" pp_constrs cs;
     List.iter (add_unif_rule_constr p) cs;
     true
@@ -66,38 +66,35 @@ let try_unif_rules : problem -> ctxt -> term -> term -> bool =
     if !log_enabled then log_unif "found no unif_rule";
     false
 
-(** [instantiable ctx m ts u] tells whether, in a problem [m[ts]=u], [m] can
+(** [instantiable c m ts u] tells whether, in a problem [m[ts]=u], [m] can
    be instantiated. It does not check whether the instantiation is closed
    though. *)
 let instantiable : ctxt -> meta -> term array -> term -> bool =
-  fun ctx m ts u ->
-  nl_distinct_vars ctx ts <> None && not (LibMeta.occurs m u)
-(*FIXME: LibMeta.occurs should depend on the context and check the definitions
-   of variables used in u. *)
+  fun c m ts u -> nl_distinct_vars c ts <> None && not (LibMeta.occurs m c u)
 
-(** [instantiation ctx m ts u] tells whether, in a problem [m[ts]=u], [m] can
+(** [instantiation c m ts u] tells whether, in a problem [m[ts]=u], [m] can
    be instantiated and returns the corresponding instantiation, simplified. It
    does not check whether the instantiation is closed though. *)
 let instantiation :
       ctxt -> meta -> term array -> term -> tmbinder Bindlib.box option =
-  fun ctx m ts u ->
-  match nl_distinct_vars ctx ts with
+  fun c m ts u ->
+  match nl_distinct_vars c ts with
     | None -> None
     | Some(vs, map) ->
-        if LibMeta.occurs m u then None else
+        if LibMeta.occurs m c u then None else
         let u = Eval.simplify (sym_to_var map u) in
         Some (Bindlib.bind_mvar vs (lift u))
 
 (** Checking type or not during meta instanciation. *)
 let do_type_check = Stdlib.ref true
 
-(** [instantiate p ctx m ts u] checks whether, with a constraint [m[ts] ≡ u],
+(** [instantiate p c m ts u] checks whether, with a constraint [m[ts] ≡ u],
    [m] can be instantiated and, if so, instantiates it and updates the
    metavariables of [p]. *)
 let instantiate : problem -> ctxt -> meta -> term array -> term -> bool =
-  fun p ctx m ts u ->
+  fun p c m ts u ->
   if !log_enabled then log_unif "try instantiate";
-  match instantiation ctx m ts u with
+  match instantiation c m ts u with
   | Some b when Bindlib.is_closed b ->
       let do_instantiate() =
         if !log_enabled then log_unif (red "%a ≔ %a") pp_meta m pp_term u;
@@ -107,11 +104,11 @@ let instantiate : problem -> ctxt -> meta -> term array -> term -> bool =
         begin
           if !log_enabled then log_unif "check typing";
           let typ_mts =
-            match type_app ctx !(m.meta_type) (Array.to_list ts) with
+            match type_app c !(m.meta_type) (Array.to_list ts) with
             | Some a -> a
             | None -> assert false
           in
-          if Infer.check_noexn p ctx u typ_mts then do_instantiate()
+          if Infer.check_noexn p c u typ_mts then do_instantiate()
           else (if !log_enabled then log_unif "typing failed"; false)
         end
       else do_instantiate()
@@ -120,7 +117,7 @@ let instantiate : problem -> ctxt -> meta -> term array -> term -> bool =
         begin
           match i with
           | None ->
-              if not (LibMeta.occurs m u) then log_unif "occur check failed"
+              if not (LibMeta.occurs m c u) then log_unif "occur check failed"
               else log_unif "arguments are not distinct variables: %a"
                      (Array.pp pp_term " ") ts
           | Some _ -> log_unif "not closed"
@@ -132,28 +129,28 @@ let instantiate : problem -> ctxt -> meta -> term array -> term -> bool =
    unification rule applies then it adds [(c,t1,t2)] to the unsolved
    constraints of [p]. *)
 let add_to_unsolved : problem -> ctxt -> term -> term -> unit =
-  fun p ctx t1 t2 ->
-  if Eval.eq_modulo ctx t1 t2 then
+  fun p c t1 t2 ->
+  if Eval.eq_modulo c t1 t2 then
     (if !log_enabled then log_unif "equivalent terms")
-  else if not (try_unif_rules p ctx t1 t2) then
+  else if not (try_unif_rules p c t1 t2) then
     (if !log_enabled then log_unif "move to unsolved";
-     p.unsolved <- (ctx,t1,t2) :: p.unsolved)
+     p.unsolved <- (c,t1,t2) :: p.unsolved)
 
 (** [decompose p c ts1 ts2] tries to decompose a problem of the form [h ts1 ≡
    h ts2] into the problems [t1 ≡ u1; ..; tn ≡ un], assuming that [ts1 =
    [t1;..;tn]] and [ts2 = [u1;..;un]]. *)
 let decompose : problem -> ctxt -> term list -> term list -> unit =
-  fun p ctx ts1 ts2 ->
+  fun p c ts1 ts2 ->
     if !log_enabled && ts1 <> [] then log_unif "decompose";
-    List.iter2 (fun a b -> add_constr p (ctx,a,b)) ts1 ts2
+    List.iter2 (fun a b -> add_constr p (c,a,b)) ts1 ts2
 
 (** For a problem of the form [h1 ≡ h2] with [h1 = m[ts]], [h2 = Πx:_,_] (or
    the opposite) and [ts] distinct bound variables, [imitate_prod m h1 h2 p]
    instantiates [m] to a product and adds the constraint [h1 ≡ h2] to [p]. *)
 let imitate_prod : problem -> ctxt -> meta -> term -> term -> unit =
-  fun p ctx m h1 h2 ->
+  fun p c m h1 h2 ->
   if !log_enabled then log_unif "imitate_prod %a" pp_meta m;
-  Infer.set_to_prod p m; add_constr p (ctx,h1,h2)
+  Infer.set_to_prod p m; add_constr p (c,h1,h2)
 
 (** For a problem [m[vs] ≡ s(ts)] in context [c], where [vs] are distinct
    variables, [m] is a meta of type [Πy0:a0,..,Πyk-1:ak-1,b] with [k = length
@@ -165,7 +162,7 @@ let imitate_prod : problem -> ctxt -> meta -> term -> term -> unit =
 let imitate_inj :
       problem -> ctxt -> meta -> term array -> term list -> sym -> term list
       -> bool =
-  fun p ctx m vs us s ts ->
+  fun p c m vs us s ts ->
   if !log_enabled then
     log_unif "imitate_inj %a ≡ %a" pp_term (add_args (mk_Meta(m,vs)) us)
                                    pp_term (add_args (mk_Symb s) ts);
@@ -173,12 +170,12 @@ let imitate_inj :
   try
     if not (us = [] && is_injective s) then raise Cannot_imitate;
     let vars =
-      match distinct_vars ctx vs with
+      match distinct_vars c vs with
       | None -> raise Cannot_imitate
       | Some vars -> vars
     in
     (* Build the environment (yk-1,ak-1{y0=v0,..,yk-2=vk-2});..;(y0,a0). *)
-    let env, _ = Env.of_prod_using __LOC__ ctx vars !(m.meta_type) in
+    let env, _ = Env.of_prod_using __LOC__ c vars !(m.meta_type) in
     (* Build the term s(m0[vs],..,mn-1[vs]). *)
     let k = Array.length vars in
     let t =
@@ -217,10 +214,10 @@ let imitate_lam_cond : term -> term list -> bool = fun h ts ->
    new metavariable of arity [n] and type [Πx1:a1,..,Πxn:an,TYPE] and [m3] is
    a new metavariable of arity [n+1] and type
    [Πx1:a1,..,Πxn:an,Πx:m2[x1,..,xn],TYPE], and do as in the previous case. *)
-let imitate_lam : problem -> ctxt -> meta -> unit = fun p ctx m ->
+let imitate_lam : problem -> ctxt -> meta -> unit = fun p c m ->
     if !log_enabled then log_unif "imitate_lam %a" pp_meta m;
     let n = m.meta_arity in
-    let env, t = Env.of_prod_nth __LOC__ ctx n !(m.meta_type) in
+    let env, t = Env.of_prod_nth __LOC__ c n !(m.meta_type) in
     let of_prod a b =
       let x,b = LibTerm.unbind_name "x" b in
       let a = lift a in
@@ -228,9 +225,9 @@ let imitate_lam : problem -> ctxt -> meta -> unit = fun p ctx m ->
       x, a, env', lift b
     in
     let x, a, env', b =
-      match Eval.whnf ctx t with
+      match Eval.whnf c t with
       | Prod(a,b) -> of_prod a b
-      | Meta(n,ts) as t when nl_distinct_vars ctx ts <> None ->
+      | Meta(n,ts) as t when nl_distinct_vars c ts <> None ->
           begin
             Infer.set_to_prod p n;
             match unfold t with
@@ -283,36 +280,36 @@ let error : term -> term -> 'a = fun t1 t2 ->
    with [t1 = s(ts1)] and [ts1=[u]] by [u ≡ inverse s t2], when [s] is
    injective. *)
 let inverse : problem -> ctxt -> term -> sym -> term list -> term -> unit =
-  fun p ctx t1 s ts1 t2 ->
+  fun p c t1 s ts1 t2 ->
   match inverse_opt s ts1 t2 with
-  | Some (t, u) -> add_constr p (ctx,t,u)
+  | Some (t, u) -> add_constr p (c,t,u)
   | _ ->
-      if not (try_unif_rules p ctx t1 t2) then
+      if not (try_unif_rules p c t1 t2) then
         match unfold t2 with
         | Prod _ when is_constant s -> error t1 t2
         | _ ->
             if !log_enabled then log_unif "move to unsolved";
-            p.unsolved <- (ctx,t1,t2) :: p.unsolved
+            p.unsolved <- (c,t1,t2) :: p.unsolved
 
 (** [sym_sym_whnf p c t1 s1 ts1 t2 s2 ts2 p] handles the case [s1(ts1) =
    s2(ts2); p] when [s1(ts1)] and [s2(ts2)] are in whnf. *)
 let sym_sym_whnf :
       problem -> ctxt -> term -> sym -> term list -> term -> sym -> term list
       -> unit =
-  fun p ctx t1 s1 ts1 t2 s2 ts2 ->
+  fun p c t1 s1 ts1 t2 s2 ts2 ->
   if s1 == s2 then
     match s1.sym_prop with
     | (Const|Injec) ->
-        if List.same_length ts1 ts2 then decompose p ctx ts1 ts2
+        if List.same_length ts1 ts2 then decompose p c ts1 ts2
         else error t1 t2
-    | _ -> add_to_unsolved p ctx t1 t2
+    | _ -> add_to_unsolved p c t1 t2
   else
     match s1.sym_prop, s2.sym_prop with
     | Const, Const -> error t1 t2
     | _, _ ->
         match inverse_opt s1 ts1 t2 with
-        | Some (t, u) -> add_constr p (ctx,t,u)
-        | None -> inverse p ctx t2 s2 ts2 t1
+        | Some (t, u) -> add_constr p (c,t,u)
+        | None -> inverse p c t2 s2 ts2 t1
 
 (** [solve_noexn p] tries to simplify the constraints of [p].
 @raise [Unsolvable] if it finds a constraint that cannot be satisfied.
@@ -326,7 +323,7 @@ let solve : problem -> unit = fun p ->
       p.to_solve <- p.unsolved;
       p.unsolved <- [];
       p.recompute <- false
-  | (ctx,t1,t2)::to_solve ->
+  | (c,t1,t2)::to_solve ->
   (*if !log_enabled then
     log_unif "%d constraints" (1 + List.length to_solve);*)
 
@@ -335,7 +332,7 @@ let solve : problem -> unit = fun p ->
 
   (* We take the beta-whnf. *)
   let t1 = Eval.whnf_beta t1 and t2 = Eval.whnf_beta t2 in
-  if !log_enabled then log_unif (gre "solve %a") pp_constr (ctx,t1,t2);
+  if !log_enabled then log_unif (gre "solve %a") pp_constr (c,t1,t2);
   let (h1, ts1) = get_args t1
   and (h2, ts2) = get_args t2 in
 
@@ -348,12 +345,12 @@ let solve : problem -> unit = fun p ->
       (* [ts1] and [ts2] must be empty because of typing or normalization. *)
       if !log_enabled then log_unif "decompose";
       let (x,b1,b2) = Bindlib.unbind2 b1 b2 in
-      let ctx' = (x,a1,None)::ctx in
-      add_constr p (ctx',b1,b2);
-      add_constr p (ctx,a1,a2)
+      let c' = (x,a1,None)::c in
+      add_constr p (c',b1,b2);
+      add_constr p (c,a1,a2)
 
   | Vari x1, Vari x2 when Bindlib.eq_vars x1 x2 ->
-      if List.same_length ts1 ts2 then decompose p ctx ts1 ts2
+      if List.same_length ts1 ts2 then decompose p c ts1 ts2
       else error t1 t2
 
   | Type, (Kind|Prod _|Symb _|Vari _|Abst _)
@@ -364,37 +361,37 @@ let solve : problem -> unit = fun p ->
 
   | Symb s1, Symb s2
        when s1 == s2 && s1.sym_prop <> Defin && List.same_length ts1 ts2 ->
-      decompose p ctx ts1 ts2
+      decompose p c ts1 ts2
   | Symb s1, Symb s2
        when s1 != s2 && s1.sym_prop = Const && s2.sym_prop = Const ->
       error t1 t2
 
   (*FIXME: try to factorize calls to
      instantiate/instantiable/nl_distinct_vars. *)
-  | Meta(m,ts), _ when ts1 = [] && instantiate p ctx m ts t2 -> ()
-  | _, Meta(m,ts) when ts2 = [] && instantiate p ctx m ts t1 -> ()
+  | Meta(m,ts), _ when ts1 = [] && instantiate p c m ts t2 -> ()
+  | _, Meta(m,ts) when ts2 = [] && instantiate p c m ts t1 -> ()
 
-  | Meta(m,ts), Prod _ when ts1 = [] && instantiable ctx m ts h2 ->
-      imitate_prod p ctx m h1 h2
-  | Prod _, Meta(m,ts) when ts2 = [] && instantiable ctx m ts h1 ->
-      imitate_prod p ctx m h1 h2
+  | Meta(m,ts), Prod _ when ts1 = [] && instantiable c m ts h2 ->
+      imitate_prod p c m h1 h2
+  | Prod _, Meta(m,ts) when ts2 = [] && instantiable c m ts h1 ->
+      imitate_prod p c m h1 h2
 
   | Meta(m,ts), _ when imitate_lam_cond h1 ts1
-                      && nl_distinct_vars ctx ts <> None ->
-      imitate_lam p ctx m; add_constr p (ctx,t1,t2)
+                      && nl_distinct_vars c ts <> None ->
+      imitate_lam p c m; add_constr p (c,t1,t2)
   | _, Meta(m,ts) when imitate_lam_cond h2 ts2
-                      && nl_distinct_vars ctx ts <> None ->
-      imitate_lam p ctx m; add_constr p (ctx,t1,t2)
+                      && nl_distinct_vars c ts <> None ->
+      imitate_lam p c m; add_constr p (c,t1,t2)
 
   | _ ->
 
   (* We reduce [t1] and [t2] and try again. *)
-  let t1 = Eval.whnf ctx t1 and t2 = Eval.whnf ctx t2 in
+  let t1 = Eval.whnf c t1 and t2 = Eval.whnf c t2 in
   let (h1, ts1) = get_args t1
   and (h2, ts2) = get_args t2 in
 
   if !log_enabled then log_unif "normalize";
-  if !log_enabled then log_unif (gre "solve %a") pp_constr (ctx,t1,t2);
+  if !log_enabled then log_unif (gre "solve %a") pp_constr (c,t1,t2);
 
   match h1, h2 with
   | Type, Type
@@ -404,13 +401,13 @@ let solve : problem -> unit = fun p ->
   | Abst(a1,b1), Abst(a2,b2) ->
       (* [ts1] and [ts2] must be empty because of typing or normalization. *)
       if !log_enabled then log_unif "decompose";
-      add_constr p (ctx,a1,a2);
+      add_constr p (c,a1,a2);
       let (x,b1,b2) = Bindlib.unbind2 b1 b2 in
-      let ctx' = (x,a1,None)::ctx in
-      add_constr p (ctx',b1,b2)
+      let c' = (x,a1,None)::c in
+      add_constr p (c',b1,b2)
 
   | Vari x1, Vari x2 when Bindlib.eq_vars x1 x2 ->
-      if List.same_length ts1 ts2 then decompose p ctx ts1 ts2
+      if List.same_length ts1 ts2 then decompose p c ts1 ts2
       else error t1 t2
 
   | Type, (Kind|Prod _|Symb _|Vari _|Abst _)
@@ -420,41 +417,41 @@ let solve : problem -> unit = fun p ->
   | Abst _, (Type|Kind|Prod _)
     -> error t1 t2
 
-  | Symb s1, Symb s2 -> sym_sym_whnf p ctx t1 s1 ts1 t2 s2 ts2
+  | Symb s1, Symb s2 -> sym_sym_whnf p c t1 s1 ts1 t2 s2 ts2
 
   (*FIXME: try to factorize calls to
      instantiate/instantiable/nl_distinct_vars. *)
-  | Meta(m,ts), _ when ts1 = [] && instantiate p ctx m ts t2 -> ()
-  | _, Meta(m,ts) when ts2 = [] && instantiate p ctx m ts t1 -> ()
+  | Meta(m,ts), _ when ts1 = [] && instantiate p c m ts t2 -> ()
+  | _, Meta(m,ts) when ts2 = [] && instantiate p c m ts t1 -> ()
 
-  | Meta(m,ts), Prod _ when ts1 = [] && instantiable ctx m ts h2 ->
-      imitate_prod p ctx m h1 h2
-  | Prod _, Meta(m,ts) when ts2 = [] && instantiable ctx m ts h1 ->
-      imitate_prod p ctx m h1 h2
+  | Meta(m,ts), Prod _ when ts1 = [] && instantiable c m ts h2 ->
+      imitate_prod p c m h1 h2
+  | Prod _, Meta(m,ts) when ts2 = [] && instantiable c m ts h1 ->
+      imitate_prod p c m h1 h2
 
   | Meta(m,ts), _ when imitate_lam_cond h1 ts1
-                      && nl_distinct_vars ctx ts <> None ->
-      imitate_lam p ctx m; add_constr p (ctx,t1,t2)
+                      && nl_distinct_vars c ts <> None ->
+      imitate_lam p c m; add_constr p (c,t1,t2)
   | _, Meta(m,ts) when imitate_lam_cond h2 ts2
-                      && nl_distinct_vars ctx ts <> None ->
-      imitate_lam p ctx m; add_constr p (ctx,t1,t2)
+                      && nl_distinct_vars c ts <> None ->
+      imitate_lam p c m; add_constr p (c,t1,t2)
 
   | Meta(m,ts), Symb s ->
-      if imitate_inj p ctx m ts ts1 s ts2
-      then add_constr p (ctx,t1,t2)
-      else add_to_unsolved p ctx t1 t2
+      if imitate_inj p c m ts ts1 s ts2
+      then add_constr p (c,t1,t2)
+      else add_to_unsolved p c t1 t2
   | Symb s, Meta(m,ts) ->
-      if imitate_inj p ctx m ts ts2 s ts1
-      then add_constr p (ctx,t1,t2)
-      else add_to_unsolved p ctx t1 t2
+      if imitate_inj p c m ts ts2 s ts1
+      then add_constr p (c,t1,t2)
+      else add_to_unsolved p c t1 t2
 
   | Meta _, _
-  | _, Meta _ -> add_to_unsolved p ctx t1 t2
+  | _, Meta _ -> add_to_unsolved p c t1 t2
 
-  | Symb s, _ -> inverse p ctx t1 s ts1 t2
-  | _, Symb s -> inverse p ctx t2 s ts2 t1
+  | Symb s, _ -> inverse p c t1 s ts1 t2
+  | _, Symb s -> inverse p c t2 s ts2 t1
 
-  | _ -> add_to_unsolved p ctx t1 t2
+  | _ -> add_to_unsolved p c t1 t2
   done
 
 (** [solve_noexn ~type_check p] tries to simplify the constraints of [p]. It
