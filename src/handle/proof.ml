@@ -38,8 +38,7 @@ module Goal = struct
   let env : goal -> Env.t = fun g ->
     match g with
     | Unif (c,_,_) ->
-        let t, n = Ctxt.to_prod c mk_Type in
-        fst (Env.of_prod_nth __LOC__ c n t)
+        let t, n = Ctxt.to_prod c mk_Type in fst (Env.of_prod_nth c n t)
     | Typ gt -> gt.goal_hyps
 
   (** [of_meta m] creates a goal from the meta [m]. *)
@@ -47,7 +46,7 @@ module Goal = struct
     let goal_hyps, goal_type =
       (*let s = Format.asprintf "%s, of_meta %a(%d):%a" __LOC__
                 pp_meta m m.meta_arity pp_term !(m.meta_type) in*)
-      Env.of_prod_nth __LOC__ [] m.meta_arity !(m.meta_type) in
+      Env.of_prod_nth [] m.meta_arity !(m.meta_type) in
     Typ {goal_meta = m; goal_hyps; goal_type}
 
   (** [simpl f g] simplifies the goal [g] with the function [f]. *)

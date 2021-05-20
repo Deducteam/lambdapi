@@ -104,7 +104,7 @@ let create_ind_pred_map :
     match ind_list with
     | [] -> assert false (* there must be at least one type definition *)
     | (ind_sym, _) :: _ ->
-        fst (Env.of_prod_using __LOC__ [] vs !(ind_sym.sym_type))
+        fst (Env.of_prod_using [] vs !(ind_sym.sym_type))
   in
   (* create the ind_pred_map *)
   let create_sym_pred_data i (ind_sym,_) =
@@ -112,7 +112,7 @@ let create_ind_pred_map :
     let ind_var = new_tvar_ind p_str i in
     (* predicate type *)
     let codom ts = _Impl (_Appl_Symb ind_sym ts) (_Symb c.symb_Prop) in
-    let a = snd (Env.of_prod_using __LOC__ [] vs !(ind_sym.sym_type)) in
+    let a = snd (Env.of_prod_using [] vs !(ind_sym.sym_type)) in
     let ind_type = ind_typ_with_codom pos ind_sym env codom x_str a in
     (* predicate conclusion *)
     let codom ts =
@@ -215,7 +215,7 @@ let fold_cons_type
        end
     | _ -> fatal pos "The type of %a is not supported" pp_sym cons_sym
   in
-  let _, t = Env.of_prod_using __LOC__ [] vs !(cons_sym.sym_type) in
+  let _, t = Env.of_prod_using [] vs !(cons_sym.sym_type) in
   fold (List.mapi inj_var (Array.to_list vs)) init t
 
 (** [gen_rec_type ss pos n ind_list ind_pred_map x_str] generates the

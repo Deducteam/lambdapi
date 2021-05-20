@@ -175,7 +175,7 @@ let imitate_inj :
       | Some vars -> vars
     in
     (* Build the environment (yk-1,ak-1{y0=v0,..,yk-2=vk-2});..;(y0,a0). *)
-    let env, _ = Env.of_prod_using __LOC__ c vars !(m.meta_type) in
+    let env, _ = Env.of_prod_using c vars !(m.meta_type) in
     (* Build the term s(m0[vs],..,mn-1[vs]). *)
     let k = Array.length vars in
     let t =
@@ -217,7 +217,7 @@ let imitate_lam_cond : term -> term list -> bool = fun h ts ->
 let imitate_lam : problem -> ctxt -> meta -> unit = fun p c m ->
     if !log_enabled then log_unif "imitate_lam %a" pp_meta m;
     let n = m.meta_arity in
-    let env, t = Env.of_prod_nth __LOC__ c n !(m.meta_type) in
+    let env, t = Env.of_prod_nth c n !(m.meta_type) in
     let of_prod a b =
       let x,b = LibTerm.unbind_name "x" b in
       let a = lift a in
