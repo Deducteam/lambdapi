@@ -290,6 +290,10 @@ the right, or associative to the left. The priority levels are floating
 point numbers, hence a priority can (almost) always be inserted between
 two different levels.
 
+As explained above, at this point, ``+`` is not a valid term anymore, as it was declared infix.
+The system now expects ``+`` to only appear in expressions of the form ``x + y``
+To get around this, you can use ``(+)`` instead.
+
 **prefix** The following code defines a prefix symbol for
 negation with some priority level.
 
