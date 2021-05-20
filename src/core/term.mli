@@ -251,18 +251,6 @@ type ctxt = (tvar * term * term option) list
 (** Type of unification constraints. *)
 type constr = ctxt * term * term
 
-(** Representation of unification problems. *)
-type problem =
-  { to_solve  : constr list
-  (** List of unification problems to solve. *)
-  ; unsolved  : constr list
-  (** List of unification problems that could not be solved. *)
-  ; recompute : bool
-  (** Indicates whether unsolved problems should be rechecked. *) }
-
-(** Empty problem. *)
-val empty_problem : problem
-
 (** Sets and maps of term variables. *)
 module Var : Map.OrderedType with type t = tvar
 
@@ -286,7 +274,6 @@ val new_tevar : string -> tevar
 
 (** Sets and maps of symbols. *)
 module Sym : Map.OrderedType with type t = sym
-
 module SymSet : Set.S with type elt = sym
 module SymMap : Map.S with type key = sym
 
@@ -309,42 +296,24 @@ val is_private : sym -> bool
 (** [is_modulo s] tells whether the symbol [s] is modulo some equations. *)
 val is_modulo : sym -> bool
 
-(** Basic management of meta variables. *)
-module Meta : sig
-  type t = meta
-  (** Type of metavariables. *)
-
-  val compare : t -> t -> int
-  (** Comparison function for metavariables. *)
-
-  val fresh : ?name:string -> term -> int -> t
-  (** [fresh ?name a n] creates a fresh metavariable of type [a] and arity [n]
-     with the optional name [name]. *)
-
-  val fresh_box : ?name:string -> tbox -> int -> t Bindlib.box
-  (** [fresh_box ?name a n] is the boxed counterpart of [fresh_meta]. It is
-      only useful in the rare cases where the type of a metavariable contains
-      a free term variable environement. This should only happens when scoping
-      the rewriting rules, use this function with care.  The metavariable is
-      created immediately with a dummy type, and the type becomes valid at
-      unboxing. The boxed metavariable should be unboxed at most once,
-      otherwise its type may be rendered invalid in some contexts. *)
-
-  val set : t -> tmbinder -> unit
-  (** [set m v] sets the value of the metavariable [m] to [v]. Note that no
-      specific check is performed, so this function may lead to cyclic
-      terms. *)
-
-  val name : t -> string
-  (** [name m] returns a string representation of [m]. *)
-
-  val reset_meta_counter : unit -> unit
-  (** [reset_counter ()] resets the counter used to produce meta keys. *)
-end
-
 (** Sets and maps of metavariables. *)
+module Meta : Map.OrderedType with type t = meta
 module MetaSet : Set.S with type elt = Meta.t
 module MetaMap : Map.S with type key = Meta.t
+
+(** Representation of unification problems. *)
+type problem =
+  { mutable to_solve  : constr list
+  (** List of unification problems to solve. *)
+  ; mutable unsolved  : constr list
+  (** List of unification problems that could not be solved. *)
+  ; mutable recompute : bool
+  (** Indicates whether unsolved problems should be rechecked. *)
+  ; mutable metas : MetaSet.t
+  (** Set of unsolved metas. *) }
+
+(** Create a new empty problem. *)
+val new_problem : unit -> problem
 
 (** [unfold t] repeatedly unfolds the definition of the surface constructor of
     [t], until a significant {!type:term} constructor is found.  The term that
@@ -356,11 +325,8 @@ val unfold : term -> term
 (** {b NOTE} that {!val:unfold} must (almost) always be called before matching
     over a value of type {!type:term}. *)
 
-(** Total orders terms, contexts and constraints. *)
+(** Total orders terms. *)
 val cmp : term cmp
-val cmp_ctxt : ctxt cmp
-val cmp_constr : constr cmp
-val eq_constr : constr eq
 
 (** [is_abst t] returns [true] iff [t] is of the form [Abst(_)]. *)
 val is_abst : term -> bool

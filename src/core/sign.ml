@@ -215,19 +215,16 @@ let unlink : t -> unit = fun sign ->
   let fn s i = unlink_sym s; unlink_ind_data i in
   SymMap.iter fn !(sign.sign_ind)
 
-(** [add_symbol sign expo prop mstrat opaq name typ impl] add in the signature
-   [sign] a symbol with name [name], exposition [expo], property [prop],
-   matching strategy [strat], opacity [opaq], type [typ], implicit arguments
-   [impl], no definition and no rules. [name] should not already be used in
-   [sign]. The created symbol is returned. *)
+(** [add_symbol sign expo prop mstrat opaq name typ impl] adds in the
+   signature [sign] a symbol with name [name], exposition [expo], property
+   [prop], matching strategy [strat], opacity [opaq], type [typ], implicit
+   arguments [impl], no definition and no rules. [name] should not already be
+   used in [sign]. The created symbol is returned. *)
 let add_symbol :
       t -> expo -> prop -> match_strat -> bool -> strloc -> term ->
       bool list -> sym =
   fun sign sym_expo sym_prop sym_mstrat sym_opaq {elt=sym_name;pos} typ
       impl ->
-  (* Check for metavariables in the symbol type. *)
-  if LibTerm.Meta.has true typ then
-    fatal pos "The type of %s contains metavariables" sym_name;
   (* We minimize [impl] to enforce our invariant (see {!type:Terms.sym}). *)
   let rec rem_false l = match l with false::l -> rem_false l | _ -> l in
   let sym_impl = List.rev (rem_false (List.rev impl)) in

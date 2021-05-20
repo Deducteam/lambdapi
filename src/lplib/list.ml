@@ -26,26 +26,41 @@ let cmp : 'a cmp -> 'a list cmp = fun cmp_elt ->
 let eq : 'a eq -> 'a list eq = fun eq_elt l1 l2 ->
   try L.for_all2 eq_elt l1 l2 with Invalid_argument _ -> false
 
-(** [filter_map f l] applies [f] to the elements of [l] and keeps the [x] such
-    that [Some(x)] in [List.map f l]. *)
-let rec filter_map : ('a -> 'b option) -> 'a list -> 'b list = fun f l ->
-  match l with
-  | [] -> []
-  | h :: t ->
-      match f h with
-      | Some x -> x :: filter_map f t
-      | None -> filter_map f t
+(** [find_map f l] applies [f] to the elements of [l] in order, and returns
+   the first result of the form [Some v], or [None] if none exist.
+   @since 4.10.0 *)
+let rec find_map f = function
+  | [] -> None
+  | x :: l ->
+     begin match f x with
+       | Some _ as result -> result
+       | None -> find_map f l
+     end
+
+(** [filter_map f l] applies [f] to every element of [l], filters
+    out the [None] elements and returns the list of the arguments of
+    the [Some] elements.
+    @since 4.08.0 *)
+let filter_map : ('a -> 'b option) -> 'a list -> 'b list = fun f ->
+  let rec aux accu = function
+    | [] -> rev accu
+    | x :: l ->
+        match f x with
+        | None -> aux accu l
+        | Some v -> aux (v :: accu) l
+  in
+  aux []
 
 (** [filter_rev_map f l] is equivalent to [filter_map f (List.rev l)], but it
     only traverses the list once and is tail-recursive. *)
 let filter_rev_map : ('a -> 'b option) -> 'a list -> 'b list = fun f ->
-  let rec frm acc = function
+  let rec aux acc = function
     | [] -> acc
     | hd :: tl ->
         match f hd with
-        | Some x -> frm (x :: acc) tl
-        | None -> frm acc tl
-  in frm []
+        | Some x -> aux (x :: acc) tl
+        | None -> aux acc tl
+  in aux []
 
 (** [filteri_map f l] applies [f] element wise on [l] and keeps [x] such that
     for [e] in [l], [f e = Some(x)]. *)
@@ -229,9 +244,16 @@ let rec fold_left_while f cond acc l =
   | x :: xs -> fold_left_while f cond (f acc x) xs
   | [] -> acc
 
-(** [remove_first n xs] remove the min(n,length xs) elements of [xs]. *)
-let rec remove_first n = function
-  | _ :: xs when n > 0 -> remove_first (n - 1) xs
+(** [remove_first f l] removes from [l] the first element satisfying [f]. *)
+let remove_first : ('a -> bool) -> 'a list -> 'a list = fun f ->
+  let rec rem acc = function
+    | [] -> rev acc
+    | x::l -> if f x then rev_append acc l else rem (x::acc) l
+  in rem []
+
+(** [remove_heads n xs] remove the min(n,length xs) elements of [xs]. *)
+let rec remove_heads n = function
+  | _ :: xs when n > 0 -> remove_heads (n - 1) xs
   | xs -> xs
 
 (** [split f l] returns the tuple [(l1,x,l2)] such that [x] is the first
