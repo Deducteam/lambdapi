@@ -18,13 +18,14 @@ List of short-cuts
 ------------------
 
 * ``C-c C-c``: jump to cursor position
-* ``C-c C-n`` or button "Next": next tactic or command
-* ``C-c C-p`` or button "Prev": previous tactic or command
+* ``C-c C-n``: next tactic or command
+* ``C-c C-p``: previous tactic or command
 * ``C-c C-f``: next proof
 * ``C-c C-b``: previous proof
 * ``C-c C-e``: toggle electric mode
 * ``M-;``    : (un)comment region
 * ``C-x RET C-\``: enter unicode characters in minibuffer using LaTeX
+* ``M-.``    : goto definition
 * ``M-x customize-group lambdapi``: customize window layout
 * ``C-c C-r``: refresh window layout
 * ``C-c C-k``: shutdown LSP server
