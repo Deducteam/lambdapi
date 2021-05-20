@@ -123,27 +123,27 @@
   (define-key lambdapi-mode-map (kbd "C-c C-k") #'eglot-shutdown)
   ;; define toolbar
   (define-key lambdapi-mode-map [tool-bar lp-toggle-electric-terminator]
-    '(menu-item "Electric Proof" lp-toggle-electric-terminator
+    '(menu-item "" lp-toggle-electric-terminator
                 :image (image :type xpm :file "disconnect.xpm")
                 :help "Toggle electric terminator"))
   (define-key lambdapi-mode-map [tool-bar lp-prove-till-cursor]
-    '(menu-item "Goto" lp-prove-till-cursor
+    '(menu-item "" lp-prove-till-cursor
                 :image (image :type xpm :file "jump-to.xpm")
                 :help "Prove till cursor"))
   (define-key lambdapi-mode-map [tool-bar lp-proof-jump-forward]
-    '(menu-item "Next Proof" lp-jump-proof-forward
+    '(menu-item "" lp-jump-proof-forward
                 :image (image :type xpm :file "next-node.xpm")
                 :help "Next Proof"))
   (define-key lambdapi-mode-map [tool-bar lp-proof-jump-backward]
-    '(menu-item "Prev Proof" lp-jump-proof-backward
+    '(menu-item "" lp-jump-proof-backward
                 :image (image :type xpm :file "prev-node.xpm")
                 :help "Previous Proof"))
   (define-key lambdapi-mode-map [tool-bar lp-proof-forward]
-    '(menu-item "Next" lp-proof-forward
+    '(menu-item "" lp-proof-forward
                 :image (image :type xpm :file "right-arrow.xpm")
                 :help "Go Forward"))
   (define-key lambdapi-mode-map [tool-bar lp-proof-backward]
-    '(menu-item "Prev" lp-proof-backward
+    '(menu-item "" lp-proof-backward
                 :image (image :type xpm :file "left-arrow.xpm")
                 :help "Go backward")))
 
