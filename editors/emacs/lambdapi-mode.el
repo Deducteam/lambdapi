@@ -2,7 +2,7 @@
 
 ;; Copyright (C) 2020 Deducteam
 
-;; Authors: Ashish Barnawal, Diego Riviero, Gabriel Hondet, Rodolphe Lepigre 
+;; Authors: Ashish Barnawal, Diego Riviero, Gabriel Hondet, Rodolphe Lepigre
 ;; Maintainer: Deducteam <dedukti-dev@inria.fr>
 ;; Version: 1.0
 ;; SPDX-License-Identifier: CeCILL Free Software License Agreement v2.1
@@ -103,6 +103,13 @@
 
 (defvar lambdapi-mode-map nil "Keymap for `lambdapi-mode'")
 
+(defun lambdapi-eglot-reconnect ()
+  (interactive)
+  (let ((current-server (eglot-current-server)))
+    (call-interactively
+     (if (and current-server (jsonrpc-running-p current-server))
+         #'eglot-reconnect #'eglot))))
+
 ;; define keybindings
 (progn
   (setq lambdapi-mode-map (make-sparse-keymap))
@@ -112,30 +119,31 @@
   (define-key lambdapi-mode-map (kbd "C-c C-n") #'lp-proof-forward)
   (define-key lambdapi-mode-map (kbd "C-c C-f") #'lp-jump-proof-forward)
   (define-key lambdapi-mode-map (kbd "C-c C-b") #'lp-jump-proof-backward)
-  (define-key lambdapi-mode-map (kbd "C-c C-r") #'lambdapi-refresh-window-layout)
+  (define-key lambdapi-mode-map (kbd "C-c C-r") #'lambdapi-eglot-reconnect)
+  (define-key lambdapi-mode-map (kbd "C-c C-k") #'eglot-shutdown)
   ;; define toolbar
   (define-key lambdapi-mode-map [tool-bar lp-toggle-electric-terminator]
-    '(menu-item "Electric Proof" lp-toggle-electric-terminator
+    '(menu-item "" lp-toggle-electric-terminator
                 :image (image :type xpm :file "disconnect.xpm")
                 :help "Toggle electric terminator"))
   (define-key lambdapi-mode-map [tool-bar lp-prove-till-cursor]
-    '(menu-item "Goto" lp-prove-till-cursor
+    '(menu-item "" lp-prove-till-cursor
                 :image (image :type xpm :file "jump-to.xpm")
                 :help "Prove till cursor"))
   (define-key lambdapi-mode-map [tool-bar lp-proof-jump-forward]
-    '(menu-item "Next Proof" lp-jump-proof-forward
+    '(menu-item "" lp-jump-proof-forward
                 :image (image :type xpm :file "next-node.xpm")
                 :help "Next Proof"))
   (define-key lambdapi-mode-map [tool-bar lp-proof-jump-backward]
-    '(menu-item "Prev Proof" lp-jump-proof-backward
+    '(menu-item "" lp-jump-proof-backward
                 :image (image :type xpm :file "prev-node.xpm")
                 :help "Previous Proof"))
   (define-key lambdapi-mode-map [tool-bar lp-proof-forward]
-    '(menu-item "Next" lp-proof-forward
+    '(menu-item "" lp-proof-forward
                 :image (image :type xpm :file "right-arrow.xpm")
                 :help "Go Forward"))
   (define-key lambdapi-mode-map [tool-bar lp-proof-backward]
-    '(menu-item "Prev" lp-proof-backward
+    '(menu-item "" lp-proof-backward
                 :image (image :type xpm :file "left-arrow.xpm")
                 :help "Go backward")))
 
@@ -175,6 +183,10 @@
   ;; define keybindings
   (use-local-map lambdapi-mode-map)
 
+  ;; ensure diagnostics don't hide hover results
+  (add-to-list 'eglot-stay-out-of 'eldoc-documentation-strategy)
+  (setq-local eldoc-documentation-strategy #'eldoc-documentation-compose)
+
   ;; LSP
   (add-to-list
    'eglot-server-programs
@@ -190,7 +202,7 @@
   (add-hook 'lambdapi-changed-line-hook #'lp-display-goals)
   (add-hook 'post-self-insert-hook 'lp--post-self-insert-function 100 t)
   (add-hook 'after-change-functions 'lp--after-change-function 100 t)
-  
+
   (lambdapi-refresh-window-layout))
 
 ;; Register mode the the ".lp" extension

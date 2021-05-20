@@ -1,5 +1,11 @@
 ### Unreleased
 
+#### Interface Improvements (2021-05-08)
+- Error messages are shown in logs buffer
+- Improvements in behaviour of Emacs interface
+- New shortcuts `C-c C-k` and `C-c C-r` for killing and reconnecting to the
+  LSP server
+
 #### Record metavariable creation and instantiation during scoping, type inference and unification (2021-05-20)
 
 - the record type problem gets a new field metas, and all its fields are now mutable

@@ -50,7 +50,8 @@ export function activate(context: ExtensionContext) {
         },
         dark: {
             backgroundColor: '#08883555' //highlight color for a dark theme
-        }
+        },
+        rangeBehavior: 1 // ClosedClosed
       });
     const errorDecoration = window.createTextEditorDecorationType({
         light: {
@@ -58,7 +59,8 @@ export function activate(context: ExtensionContext) {
         },
         dark: {
             backgroundColor: '#FF000055' //highlight color for a dark theme
-        }
+        },
+        rangeBehavior: 1 // ClosedClosed
       });
     context.workspaceState.update('proofDecoration', proofDecoration);
     context.workspaceState.update('errorDecoration', errorDecoration);
@@ -159,6 +161,7 @@ export function activate(context: ExtensionContext) {
 }
 
 function lpDocChangeHandler(event : TextDocumentChangeEvent, context: ExtensionContext) {
+
     if(event.document != window.activeTextEditor?.document){
         // should not happen
         console.log("Changes not on the active TextEditor");
@@ -199,8 +202,8 @@ function getFirstError(uri : Uri, before? : Position){
     let ind = 0;
     for (let diag of diags){
         if (diag.severity == 0) {//check if error
-            if(firstError && diag.range.start.isBefore(firstError)){
-                firstError = diag.range.start;
+            if(firstError){
+                firstError = diag.range.start.isBefore(firstError) ? diag.range.start : firstError;
             } else {
                 firstError = diag.range.start;
             }
@@ -493,6 +496,8 @@ function getGoalsEnvContent(goals : Goal[]){
 let ptyWriteCnt = 0;
 
 function updateTerminalText(logstr: string){
+    logstr = logstr.replace(/^[\n \t\r]*(\u001b\[[0-9]+m)[\n \t\r]*/g, "$1")
+                   .replace(/[\n \t\r]*(\u001b\[[0-9]+m)[\n \t\r]*$/g, "$1");
     const termName = "Lambdapi Debug";
     const clearTextSeq = '\x1b[2J\x1b[3J\x1b[;H';
 
