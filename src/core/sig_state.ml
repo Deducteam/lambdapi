@@ -42,14 +42,16 @@ let create_sign : Path.t -> Sign.t = fun sign_path ->
 let add_symbol : sig_state -> expo -> prop -> match_strat
     -> bool -> strloc -> term -> bool list -> term option -> sig_state * sym =
   fun ss expo prop mstrat opaq id typ impl def ->
-  let sym = Sign.add_symbol ss.signature expo prop mstrat opaq id typ impl in
+  let sym =
+    Sign.add_symbol ss.signature expo prop mstrat opaq id
+      (cleanup typ) impl in
   begin
     match def with
     | Some t -> sym.sym_def := Some (cleanup t)
     | None -> ()
   end;
   let in_scope = StrMap.add id.elt (sym, id.pos) ss.in_scope in
-  ({ss with in_scope}, sym)
+  {ss with in_scope}, sym
 
 (** [add_notation ss s n] maps [s] notation to [n] in [ss]. *)
 let add_notation : sig_state -> sym -> notation -> sig_state = fun ss s n ->

@@ -255,6 +255,7 @@ let default_cmd =
   Term.info "lambdapi" ~version ~doc ~sdocs
 
 let _ =
+  Printexc.record_backtrace true;
   let cmds =
     [ check_cmd ; parse_cmd ; beautify_cmd ; lsp_server_cmd
     ; decision_tree_cmd ; help_cmd ; version_cmd

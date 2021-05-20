@@ -79,7 +79,8 @@ let to_ctxt : env -> ctxt =
     (fun (_,(v,a,t)) -> (v, Bindlib.unbox a, Option.map Bindlib.unbox t))
 
 (** [match_prod c t f] returns [f a b] if [t] matches [Prod(a,b)] possibly
-   after reduction. *)
+   after reduction.
+@raise [Invalid_argument] if [t] is not a product. *)
 let match_prod : ctxt -> term -> (term -> tbinder -> 'a) -> 'a = fun c t f ->
   match unfold t with
   | Prod(a,b) -> f a b
@@ -99,7 +100,7 @@ let of_prod : ctxt -> string -> term -> env * term = fun c s t ->
   let rec build_env env t =
     try match_prod c t (fun a b ->
             let name = Stdlib.(incr i; s ^ string_of_int !i) in
-            let (x, b) = LibTerm.unbind_name name b in
+            let x, b = LibTerm.unbind_name name b in
             build_env (add x (lift a) None env) b)
     with Invalid_argument _ -> env, t
   in build_env [] t
@@ -114,13 +115,13 @@ let of_prod : ctxt -> string -> term -> env * term = fun c s t ->
    [n] products. *)
 let of_prod_nth : ctxt -> int -> term -> env * term = fun c n t ->
   let rec build_env i env t =
-    if i >= n then (env, t)
+    if i >= n then env, t
     else match_prod c t (fun a b ->
-             let (x, b) = Bindlib.unbind b in
+             let x, b = Bindlib.unbind b in
              build_env (i+1) (add x (lift a) None env) b)
   in build_env 0 [] t
 
-(** [of_prod_using c xs t] is similar to [of_prod c n t] where [n =
+(** [of_prod_using c xs t] is similar to [of_prod s c n t] where [n =
    Array.length xs] except that it replaces unbound variables by those of
    [xs].
 @raise [Invalid_argument] if [t] does not evaluate to a series of (at least)
@@ -134,32 +135,34 @@ let of_prod_using : ctxt -> tvar array -> term -> env * term = fun c xs t ->
              build_env (i+1) env (Bindlib.subst b (mk_Vari(xs.(i)))))
   in build_env 0 [] t
 
-(** [fresh_meta_Type env] creates a fresh metavariable of type [Type] in
-    environment [env]. *)
-let fresh_meta_Type : t -> tbox = fun env ->
+(** [fresh_meta_type p env] creates a fresh metavariable of type [Type] in
+    environment [env], and adds it to the metas of [p]. *)
+let fresh_meta_type : problem -> t -> tbox = fun p env ->
   let vs = to_tbox env in
   let arity = Array.length vs in
   let tm = to_prod_box env _Type in
-  _Meta_full (Meta.fresh_box tm arity) vs
+  _Meta_full (LibMeta.fresh_box p tm arity) vs
 
-(** [fresh_meta_tbox env] creates a _Meta tbox from a fresh metavariable whose
-   type is itself a fresh metavariable of type [fresh_meta_Type env]. *)
-let fresh_meta_tbox : env -> tbox = fun env ->
+(** [fresh_meta_tbox p env] creates a _Meta tbox from a fresh metavariable
+   whose type is itself a fresh metavariable of type [fresh_meta_type env],
+   and add them to the metas of [p]. *)
+let fresh_meta_tbox : problem -> t -> tbox = fun p env ->
   let vs = to_tbox env in
   let arity = Array.length vs in
-  let tm =
-    let x = Meta.fresh_box (to_prod_box env _Type) arity in
-    to_prod_box env (_Meta_full x vs)
-  in
-  _Meta_full (Meta.fresh_box tm arity) vs
+  let bm1 = LibMeta.fresh_box p (to_prod_box env _Type) arity in
+  let tm = to_prod_box env (_Meta_full bm1 vs) in
+  _Meta_full (LibMeta.fresh_box p tm arity) vs
 
-(** [fresh_meta env] creates a Meta term from a fresh metavariable whose type
-   is a fresh metavariable of type [to_prod env Type]. *)
-let fresh_meta : env -> term = fun env -> Bindlib.unbox (fresh_meta_tbox env)
+(** [fresh_meta_term p env] creates a Meta term from a fresh metavariable
+   whose type is a fresh metavariable of type [to_prod env Type], and adds it
+   to the metas of [p]. *)
+let fresh_meta_term : problem -> env -> term = fun p env ->
+  Bindlib.unbox (fresh_meta_tbox p env)
 
-(** [add_fresh_metas env t n] returns the application of [t] to [n] fresh meta
-   terms. *)
-let add_fresh_metas : env -> term -> int -> term = fun env ->
+(** [app_fresh_metas p t n env] returns the application of [t] to [n] fresh
+   meta terms, and adds them to [p]. *)
+let app_fresh_meta_terms : problem -> term -> int -> env -> term =
+  fun p t n env ->
   let rec add t n =
-    if n <= 0 then t else add (mk_Appl(t, fresh_meta env)) (n-1)
-  in add
+    if n <= 0 then t else add (mk_Appl(t, fresh_meta_term p env)) (n-1)
+  in add t n
