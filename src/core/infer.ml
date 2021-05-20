@@ -181,10 +181,10 @@ and check : problem -> ctxt -> term -> term -> unit = fun p ctx t a ->
   conv p ctx (infer p ctx t) a
 
 (** [infer_noexn p ctx t] returns [None] if the type of [t] in context [ctx]
-   cannot be infered, or [Some a] where [a] is some type of [t] in the context
-   [ctx], possibly adding new constraints in [p]. The metavariables of [p] are
-   updated when a metavariable is instantiated or created. [ctx] must be well
-   sorted. *)
+   cannot be inferred, or [Some a] where [a] is some type of [t] in the
+   context [ctx], possibly adding new constraints in [p]. The metavariables of
+   [p] are updated when a metavariable is instantiated or created. [ctx] must
+   be well sorted. *)
 let infer_noexn : problem -> ctxt -> term -> term option = fun p ctx t ->
   try
     if !log_enabled then

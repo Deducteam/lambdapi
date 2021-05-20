@@ -92,7 +92,7 @@ let pp_sym : sym pp = fun ppf s ->
   let n = s.sym_name in
   if StrMap.mem n !sig_state.in_scope then
     (* For printing Unif_rule.cons unescaped. *)
-    (if s == Unif_rule.cons then out ppf "%s" n else pp_uid ppf n)
+    if s == Unif_rule.cons then out ppf "%s" n else pp_uid ppf n
   else
     match Path.Map.find_opt s.sym_path (!sig_state).path_alias with
     | None ->

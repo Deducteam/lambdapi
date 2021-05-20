@@ -37,7 +37,9 @@ val snf : ctxt -> term -> term
    context [c]. *)
 val whnf : ctxt -> term -> term
 
-(** [simplify t] reduces simple redexes of [t]. *)
+(** [simplify t] computes a beta whnf of [t] belonging to the set S such that:
+- terms of S are in beta whnf normal format
+- if [t] is a product, then both its domain and codomain are in S. *)
 val simplify : term -> term
 
 (** [hnf t] computes a head-normal form of the term [t] wrt beta-reduction,

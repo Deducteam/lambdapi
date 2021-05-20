@@ -6,10 +6,10 @@ open Term
 val set_to_prod : problem -> meta -> unit
 
 (** [infer_noexn p ctx t] returns [None] if the type of [t] in context [ctx]
-   cannot be infered, or [Some a] where [a] is some type of [t] in the context
-   [ctx], possibly adding new constraints in [p]. The metavariables of [p] are
-   updated when a metavariable is instantiated or created. [ctx] must be well
-   sorted. *)
+   cannot be inferred, or [Some a] where [a] is some type of [t] in the
+   context [ctx], possibly adding new constraints in [p]. The metavariables of
+   [p] are updated when a metavariable is instantiated or created. [ctx] must
+   be well sorted. *)
 val infer_noexn : problem -> ctxt -> term -> term option
 
 (** [check_noexn p ctx t a] tells whether the term [t] has type [a] in the

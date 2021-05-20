@@ -398,7 +398,9 @@ let whnf : ctxt -> term -> term = fun ctx t ->
   let u = whnf ctx t in
   if Stdlib.(!steps = 0) then unfold t else u
 
-(** [simplify t] reduces simple redexes of [t]. *)
+(** [simplify t] computes a beta whnf of [t] belonging to the set S such that:
+- terms of S are in beta whnf normal format
+- if [t] is a product, then both its domain and codomain are in S. *)
 let rec simplify : term -> term = fun t ->
   match get_args (whnf_beta t) with
   | Prod(a,b), _ ->
