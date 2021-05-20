@@ -1,6 +1,6 @@
 ### Unreleased
 
-#### Record metavariable creation and instantiation during scoping, type inference and unification (2021-05-19)
+#### Record metavariable creation and instantiation during scoping, type inference and unification (2021-05-20)
 
 - the record type problem gets a new field metas, and all its fields are now mutable
 - many functions now take as argument a problem
