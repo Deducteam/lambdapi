@@ -2,13 +2,11 @@
 
 open! Lplib
 open Base
-open Extra
 open Timed
 open Core
 open Term
 open Print
 open Common
-open Error
 open Pos
 
 (** Type of goals. *)
@@ -18,10 +16,8 @@ type goal_typ =
   ; goal_type : term  (* Precomputed type. *) }
 
 type goal =
-  | Typ of goal_typ
-  (** Typing goal. *)
-  | Unif of constr
-  (** Unification goal. *)
+  | Typ of goal_typ (** Typing goal. *)
+  | Unif of constr (** Unification goal. *)
 
 let is_typ : goal -> bool = function Typ _ -> true  | Unif _ -> false
 let is_unif : goal -> bool = function Typ _ -> false | Unif _ -> true
@@ -48,6 +44,8 @@ module Goal = struct
   (** [of_meta m] creates a goal from the meta [m]. *)
   let of_meta : meta -> goal = fun m ->
     let goal_hyps, goal_type =
+      (*let s = Format.asprintf "%s, of_meta %a(%d):%a" __LOC__
+                pp_meta m m.meta_arity pp_term !(m.meta_type) in*)
       Env.of_prod_nth [] m.meta_arity !(m.meta_type) in
     Typ {goal_meta = m; goal_hyps; goal_type}
 
@@ -56,15 +54,6 @@ module Goal = struct
     match g with
     | Typ gt -> Typ {gt with goal_type = f gt.goal_type}
     | Unif (c,t,u) -> Unif (c, f t, f u)
-
-  (** Comparison function. Unification goals are greater than typing goals. *)
-  let compare : goal cmp = fun g g' ->
-    match g, g' with
-    | Typ gt, Typ gt' -> (* Smaller (= older) metas are put first. *)
-        Meta.compare gt.goal_meta gt'.goal_meta
-    | Unif c, Unif c' -> cmp_constr c c'
-    | Unif _, Typ _ -> 1
-    | Typ _, Unif _ -> -1
 
   (** [pp oc g] prints on channel [oc] the goal [g] without its hypotheses. *)
   let pp : goal pp = fun oc g ->
@@ -97,27 +86,13 @@ module Goal = struct
 
 end
 
-(** [add_goals_of_metas ms gs] extends [gs] with the metas of [ms] that are
-   not already in [gs]. *)
-let add_goals_of_metas : MetaSet.t -> goal list -> goal list = fun ms gs ->
-  (* computes the metas of [gs]. *)
-  let metas =
-    let add_meta metas g =
-      match g with
-      | Typ gt -> MetaSet.add gt.goal_meta metas
-      | _ -> metas
-    in
-    List.fold_left add_meta MetaSet.empty gs
-  in
-  (* [add_meta_to_goals m gs] inserts the meta [m] into the list of goals
-     [gs], assuming that [gs] is sorted wrt [Goal.compare], if [m] is
-     uninstantiated and does not belong to the set of metas [metas]. Do
-     nothing otherwise. *)
-  let add_meta_to_goals m gs =
-    if !(m.meta_value) <> None || MetaSet.mem m metas then gs
-    else List.insert Goal.compare (Goal.of_meta m) gs
-  in
-  MetaSet.fold add_meta_to_goals ms [] @ gs
+(** [add_goals_of_problem p gs] extends the list of goals [gs] with the
+   metavariables and constraints of [p]. *)
+let add_goals_of_problem : problem -> goal list -> goal list = fun p gs ->
+  let gs = MetaSet.fold (fun m gs -> Goal.of_meta m :: gs) p.metas gs in
+  let f gs c = Unif c :: gs in
+  let gs = List.fold_left f gs p.to_solve in
+  List.fold_left f gs p.unsolved
 
 (** Representation of the proof state of a theorem. *)
 type proof_state =
@@ -148,16 +123,23 @@ let remove_solved_goals : proof_state -> proof_state = fun ps ->
     | Unif _ -> true
   in {ps with proof_goals = List.filter f ps.proof_goals}
 
-(** [sys_metas ps] returns the map of system-generated metavariables of the
-   proof state [ps]. *)
-let sys_metas : proof_state -> meta IntMap.t = fun ps ->
-  let f sgm goal =
-    match goal with
-    | Typ {goal_meta=m;_} when m.meta_name = None ->
-        IntMap.add m.meta_key m sgm
-    | _ -> sgm
+(** [meta_of_key ps i] returns [Some m] where [m] is a meta of [ps] whose key
+   is [i], or else it returns [None]. *)
+let meta_of_key : proof_state -> int -> meta option = fun ps key ->
+  let f = function
+    | Typ {goal_meta=m;_} when m.meta_key = key -> Some m
+    | _ -> None
   in
-  List.fold_left f IntMap.empty ps.proof_goals
+  List.find_map f ps.proof_goals
+
+(** [meta_of_name ps n] returns [Some m] where [m] is a meta of [ps] whose
+   name is [n], or else it returns [None]. *)
+let meta_of_name : proof_state -> string -> meta option = fun ps n ->
+  let f = function
+    | Typ {goal_meta=m;_} when m.meta_name = Some n -> Some m
+    | _ -> None
+  in
+  List.find_map f ps.proof_goals
 
 (** [focus_env ps] returns the scoping environment of the focused goal or the
    empty environment if there is none. *)
@@ -168,85 +150,3 @@ let focus_env : proof_state option -> Env.t = fun ps ->
       match ps.proof_goals with
       | [] -> Env.empty
       | g::_ -> Goal.env g
-
-(** [goals_of_typ typ ter] returns the list of unification goals that must be
-    solved so that [typ] is typable by a sort and [ter] has type [typ]. *)
-let goals_of_typ : term loc option -> term loc option -> goal list * term =
-  fun typ ter ->
-  let (typ, to_solve) =
-    match typ, ter with
-    | Some(typ), Some(ter) ->
-        begin
-          match Infer.infer_noexn [] [] typ.elt with
-          | None -> fatal typ.pos "[%a] is not typable." pp_term typ.elt
-          | Some(sort, to_solve) ->
-              let to_solve =
-                match unfold sort with
-                | Type | Kind ->
-                    begin
-                      match Infer.check_noexn to_solve [] ter.elt typ.elt with
-                      | None ->
-                          let pos = Common.Pos.cat typ.pos ter.pos in
-                          fatal pos "[%a] cannot have type [%a]"
-                            pp_term ter.elt pp_term typ.elt
-                      | Some cs -> cs
-                    end
-                | _ -> fatal typ.pos "[%a] has type [%a] and not a sort."
-                         pp_term typ.elt pp_term sort
-              in
-              typ.elt, to_solve
-        end
-    | None, Some(ter) ->
-        begin
-          match Infer.infer_noexn [] [] ter.elt with
-          | None -> fatal ter.pos "[%a] is not typable." pp_term ter.elt
-          | Some (typ, to_solve) ->
-              let to_solve =
-                match unfold typ with
-                | Kind -> fatal ter.pos "Kind definitions are not allowed."
-                | _ ->
-                    match Infer.infer_noexn to_solve [] typ with
-                    | None ->
-                        fatal ter.pos
-                          "[%a] has type [%a] which is not typable"
-                          pp_term ter.elt pp_term typ
-                    | Some (sort, to_solve) ->
-                        match unfold sort with
-                        | Type | Kind -> to_solve
-                        | _ ->
-                            fatal ter.pos
-                              "[%a] has type [%a] which has type [%a] \
-                               and not a sort."
-                              pp_term ter.elt pp_term typ pp_term sort
-              in
-              typ, to_solve
-        end
-    | Some(typ), None ->
-        begin
-          match Infer.infer_noexn [] [] typ.elt with
-          | None -> fatal typ.pos "[%a] is not typable." pp_term typ.elt
-          | Some (sort, to_solve) ->
-              match unfold sort with
-              | Type | Kind -> typ.elt, to_solve
-              | _ -> fatal typ.pos "[%a] has type [%a] and not a sort."
-                       pp_term typ.elt pp_term sort
-        end
-    | None, None -> assert false (* already rejected by parser *)
-  in
-  (List.map (fun c -> Unif c) to_solve, typ)
-
-(** [goals_of_typ typ ter] returns a list of goals for [typ] to be typable by
-   by a sort and [ter] to have type [typ] in the empty context. [ter] and
-   [typ] must not be both equal to [None]. NOTE: [goals_of_typ typ ter]
-   contains typing goals to type [typ] by a sort and unification goals to type
-   both [typ] by a sort and [ter] by [typ]. However it does not contain typing
-   goals to type [ter] by [typ]. These goals are generated using the
-   {!constructor:Handle.Tactic.tac_refine} tactic called on [ter]. *)
-let goals_of_typ : term loc option -> term loc option -> goal list * term =
-  fun typ ter ->
-  let metas = match typ with
-    | Some ty -> LibTerm.Meta.get true ty.elt
-    | None -> MetaSet.empty
-  in
-  let proof_goals, typ = goals_of_typ typ ter in
-  add_goals_of_metas metas proof_goals, typ

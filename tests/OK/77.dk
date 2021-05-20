@@ -13,23 +13,23 @@ def m : Nat -> Nat -> Nat.
 Sort : Type.
 
 prop : Sort.
-type : Nat -> Sort.
+typ : Nat -> Sort.
 
 (; Universe successors ;)
 def succ : Sort -> Sort.
-[]  succ prop --> type z.
-[i] succ (type i) --> type (s i).
+[]  succ prop --> typ z.
+[i] succ (typ i) --> typ (s i).
 
 (; Universe product rules ;)
-def rule : Sort -> Sort -> Sort.
-[s1] rule s1 prop --> prop.
-[s2] rule prop s2 --> s2.
-[i, j] rule (type i) (type j) --> type (m i j).
+def rul : Sort -> Sort -> Sort.
+[s1] rul s1 prop --> prop.
+[s2] rul prop s2 --> s2.
+[i, j] rul (typ i) (typ j) --> typ (m i j).
 
 def max : Sort -> Sort -> Sort.
 [s1]  max s1 prop --> s1.
 [s2]  max prop s2 --> s2.
-[i,j] max (type i) (type j) --> type (m i j).
+[i,j] max (typ i) (typ j) --> typ (m i j).
 
 (; Types and terms ;)
 
@@ -38,7 +38,7 @@ def Term : s : Sort -> a : Univ s -> Type.
 
 univ : s : Sort -> Univ (succ s).
 def lift : s1 : Sort -> s2 : Sort -> a : Univ s1 -> Univ (max s1 s2).
-def prod : s1 : Sort -> s2 : Sort -> a : Univ s1 -> b : (Term s1 a -> Univ s2) -> Univ (rule s1 s2).
+def prod : s1 : Sort -> s2 : Sort -> a : Univ s1 -> b : (Term s1 a -> Univ s2) -> Univ (rul s1 s2).
 
 [s]         Term _ (univ s) --> Univ s.
 [s1,s2,a]   Term _ (lift s1 s2 a) --> Term s1 a.
@@ -47,13 +47,13 @@ def prod : s1 : Sort -> s2 : Sort -> a : Univ s1 -> b : (Term s1 a -> Univ s2) -
 [s] max s s --> s.
 [s,a] lift s s a --> a.
 
-def Type0 := type z.
+def Type0 := typ z.
 
-def Type1 := type (s z).
+def Type1 := typ (s z).
 
-def Type2 := type (s (s z)).
+def Type2 := typ (s (s z)).
 
-def Type3 := type (s (s (s z))).
+def Type3 := typ (s (s (s z))).
 
 eq :
   Term Type3
