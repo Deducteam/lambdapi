@@ -245,7 +245,7 @@ let check_rule : Scope.pre_rule Pos.loc -> rule = fun ({pos; elt} as pr) ->
   if cs <> [] then
     begin
       List.iter (fatal_msg "Cannot solve %a\n" pp_constr) cs;
-      fatal pos "Unable to prove type preservation for a rewriting rule."
+      fatal pos "Unable to prove type preservation."
     end;
   (* Replace metavariable symbols by term_env variables, and bind them. *)
   let rhs = symb_to_tenv pr symbols htbl rhs_with_metas in

@@ -273,7 +273,7 @@ exception Unsolvable
 (** [error t1 t2]
 @raise Unsolvable. *)
 let error : term -> term -> 'a = fun t1 t2 ->
-  fatal_msg "\n[%a]\nand\n[%a]\nare not convertible.\n" pp_term t1 pp_term t2;
+  fatal_msg "\n[%a]\nand\n[%a]\nare not unifiable.\n" pp_term t1 pp_term t2;
   raise Unsolvable
 
 (** [inverse p c t1 s ts1 t2] tries to replace a problem of the form [t1 ≡ t2]
@@ -330,7 +330,7 @@ let solve : problem -> unit = fun p ->
   (* We remove the first constraint from [p] for not looping. *)
   p.to_solve <- to_solve;
 
-  if !log_enabled then log_unif (gre "%a") pp_constr (c,t1,t2);
+  if !log_enabled then log_unif (gre "solve %a") pp_constr (c,t1,t2);
   let h1, ts1 = get_args t1 and h2, ts2 = get_args t2 in
 
   match h1, h2 with
@@ -399,22 +399,11 @@ let solve : problem -> unit = fun p ->
                       && nl_distinct_vars c ts <> None ->
       imitate_lam p c m; add_constr p (c,t1,t2)
 
-  | Vari x, _ ->
-      begin match snd (Ctxt.def_of x c) with
-      | Some v -> add_constr p (c, add_args v ts1, t2)
-      | None -> error t1 t2
-      end
-  | _, Vari x ->
-      begin match snd (Ctxt.def_of x c) with
-      | Some v -> add_constr p (c, t1, add_args v ts2)
-      | None -> error t1 t2
-      end
-
   | _ ->
 
   (* We reduce [t1] and [t2] and try again. *)
   let t1 = Eval.whnf c t1 and t2 = Eval.whnf c t2 in
-  let (h1, ts1) = get_args t1 and (h2, ts2) = get_args t2 in
+  let h1, ts1 = get_args t1 and h2, ts2 = get_args t2 in
 
   if !log_enabled then log_unif "normalize";
   if !log_enabled then log_unif (gre "solve %a") pp_constr (c,t1,t2);
