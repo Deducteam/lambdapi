@@ -10,5 +10,4 @@ constant symbol cons:A → Π n, V n → V(s n);
 
 symbol tail:Π n, V(s n) → V n;
 
-//debug +sui
 rule tail _ (cons _ _ $v) ↪ $v;

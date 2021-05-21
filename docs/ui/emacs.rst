@@ -18,15 +18,18 @@ List of short-cuts
 ------------------
 
 * ``C-c C-c``: jump to cursor position
-* ``C-c C-n`` or button "Next": next tactic or command
-* ``C-c C-p`` or button "Prev": previous tactic or command
+* ``C-c C-n``: next tactic or command
+* ``C-c C-p``: previous tactic or command
 * ``C-c C-f``: next proof
 * ``C-c C-b``: previous proof
 * ``C-c C-e``: toggle electric mode
 * ``M-;``    : (un)comment region
 * ``C-x RET C-\``: enter unicode characters in minibuffer using LaTeX
+* ``M-.``    : goto definition
 * ``M-x customize-group lambdapi``: customize window layout
 * ``C-c C-r``: refresh window layout
+* ``C-c C-k``: shutdown LSP server
+* ``C-c C-r``: reconnect LSP server
 * Click on a symbol to discover its type in the bottom line
 
 As always with emacs, if you were to be dissatisfied with these
@@ -181,7 +184,7 @@ On lambdapi-mode startup, the window is split into three buffers:
 * the bottom ``*lp-logs*`` buffer is where Lambdapi messages are displayed.
 
 It is possible to print the goals to solve at some point in the file by
-using the following sort-cuts or the navigation buttons "Prev" and "Next":
+using the following short-cuts or the navigation buttons "Prev" and "Next":
 
 * ``C-c C-c``: jump to cursor position
 * ``C-c C-n`` or button "Next": next tactic or command
