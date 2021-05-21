@@ -1,13 +1,11 @@
 (** Implementation of the rewrite tactic. *)
 
 open! Lplib
-
 open Timed
 open Common
 open Pos
 open Core
 open Term
-open LibTerm
 open Error
 open Print
 open Proof
@@ -297,23 +295,23 @@ let swap : eq_config -> term -> term -> term -> term -> term =
   let refl_a_l = add_args (mk_Symb cfg.symb_refl) [a; l] in
   add_args (mk_Symb cfg.symb_eqind) [a; r; l; t; pred; refl_a_l]
 
-(** [rewrite ss pos gt l2r p t] generates a term for the refine tactic
+(** [rewrite ss p pos gt l2r pat t] generates a term for the refine tactic
    representing the application of the rewrite tactic to the goal type
    [gt]. Every occurrence of the first instance of the left-hand side is
    replaced by the right-hand side of the obtained proof (or the reverse if
-   l2r is false). [p] is an optional SSReflect pattern. [t] is the equational
-   lemma that is appied. It handles the full set of SSReflect patterns. *)
-let rewrite : Sig_state.t -> popt -> goal_typ -> bool ->
+   l2r is false). [pat] is an optional SSReflect pattern. [t] is the
+   equational lemma that is appied. It handles the full set of SSReflect
+   patterns. *)
+let rewrite : Sig_state.t -> problem -> popt -> goal_typ -> bool ->
               (term, tbinder) Parsing.Syntax.rw_patt option -> term -> term =
-  fun ss pos {goal_hyps=g_env; goal_type=g_type; _} l2r p t ->
+  fun ss p pos {goal_hyps=g_env; goal_type=g_type; _} l2r pat t ->
 
   (* Obtain the required symbols from the current signature. *)
   let cfg = get_eq_config ss pos in
 
   (* Infer the type of [t] (the argument given to the tactic). *)
   let g_ctxt = Env.to_ctxt g_env in
-  let module Infer = (val Unif.typechecker ss.coercions) in
-  let _, t_type = Infer.infer g_ctxt {elt=t;pos} in
+  let t_type = Query.infer pos p g_ctxt t in
 
   (* Check that the type of [t] is of the form “P (eq a l r)”. *)
   let (t_type, vars) = break_prod t_type in
@@ -334,13 +332,13 @@ let rewrite : Sig_state.t -> popt -> goal_typ -> bool ->
   (* Extract the term from the goal type (get “t” from “P t”). *)
   let g_term =
     match get_args g_type with
-    | (p, [t]) when is_symb cfg.symb_P p -> t
+    | t, [u] when is_symb cfg.symb_P t -> u
     | _ -> fatal pos "Goal type [%a] is not of the form “P t”." pp_term g_type
   in
 
   (* Obtain the different components depending on the pattern. *)
   let (pred_bind, new_term, t, l, r) =
-    match p with
+    match pat with
     (* Simple rewrite, no pattern. *)
     | None ->
         (* Build a substitution from the first instance of [l] in the goal. *)
@@ -592,22 +590,22 @@ let rewrite : Sig_state.t -> popt -> goal_typ -> bool ->
         let pred_bind = Bindlib.(unbox (bind_var x pred_box)) in
         (pred_bind, new_term, t, l, r)
 
-    | Some(Rw_InIdInTerm(p)) ->
+    | Some(Rw_InIdInTerm(q)) ->
         (* This is very similar to the [Rw_IdInTerm] case. Instead of matching
            [id_val] with [l],  we try to match a subterm of [id_val] with [l],
            and then we rewrite this subterm. As a consequence,  we just change
            the way we construct a [pat_r]. *)
-        let (id,p) = Bindlib.unbind p in
-        let p_refs = add_refs p in
+        let (id,q) = Bindlib.unbind q in
+        let q_refs = add_refs q in
         let id_val =
-          match find_subst g_term ([|id|],p_refs) with
+          match find_subst g_term ([|id|],q_refs) with
           | Some(id_val) -> id_val
           | None         ->
               fatal pos "The pattern [%a] does not match [%a]."
-                pp_term p pp_term g_term
+                pp_term q pp_term g_term
         in
         let id_val = id_val.(0) in
-        let pat = Bindlib.unbox (Bindlib.bind_var id (lift p_refs)) in
+        let pat = Bindlib.unbox (Bindlib.bind_var id (lift q_refs)) in
         let pat_l = Bindlib.subst pat id_val in
         let sigma =
           match find_subst id_val (vars,l) with
@@ -615,7 +613,7 @@ let rewrite : Sig_state.t -> popt -> goal_typ -> bool ->
           | None        ->
               fatal pos
                 "The value of [%a], [%a], in [%a] does not match [%a]."
-                pp_var id pp_term id_val pp_term p pp_term l
+                pp_var id pp_term id_val pp_term q pp_term l
         in
         let (t,l,r) = Bindlib.msubst bound sigma in
 
@@ -639,7 +637,7 @@ let rewrite : Sig_state.t -> popt -> goal_typ -> bool ->
 
   (* Construct the new goal and its type. *)
   let goal_type = mk_Appl(mk_Symb cfg.symb_P, new_term) in
-  let goal_term = Meta.make g_ctxt goal_type in
+  let goal_term = LibMeta.make p g_ctxt goal_type in
 
   (* Build the final term produced by the tactic, and check its type. *)
   let eqind = mk_Symb cfg.symb_eqind in
@@ -673,11 +671,11 @@ let reflexivity : Sig_state.t -> popt -> goal_typ -> term =
   (* Build the witness. *)
   add_args (mk_Symb cfg.symb_refl) [a; l]
 
-(** [symmetry ss pos gt] generates a term for the refine tactic corresponding
-   to the application of symmetry to the goal type [gt], that is, it
-   transforms a goal of the form [P (eq a l r)] into [P (eq a r l)]. *)
-let symmetry : Sig_state.t -> popt -> goal_typ -> term =
-  fun ss pos {goal_hyps; goal_type; _} ->
+(** [symmetry ss p pos gt] generates a term for the refine tactic
+   corresponding to the application of symmetry to the goal type [gt], that
+   is, it transforms a goal of the form [P (eq a l r)] into [P (eq a r l)]. *)
+let symmetry : Sig_state.t -> problem -> popt -> goal_typ -> term =
+  fun ss p pos {goal_hyps; goal_type; _} ->
   (* Obtain the required symbols from the current signature. *)
   let cfg = get_eq_config ss pos in
   (* Check that the type of [g] is of the form “P (eq a l r)”. *)
@@ -685,7 +683,7 @@ let symmetry : Sig_state.t -> popt -> goal_typ -> term =
   (* We create a new metavariable of type [P (eq a r l)]. *)
   let meta_type =
     mk_Appl(mk_Symb cfg.symb_P, add_args (mk_Symb cfg.symb_eq) [a; r; l]) in
-  let meta_term = Meta.make (Env.to_ctxt goal_hyps) meta_type in
+  let meta_term = LibMeta.make p (Env.to_ctxt goal_hyps) meta_type in
   (* NOTE The proofterm is “eqind a r l M (λx,eq a l x) (refl a l)”. *)
   let term = swap cfg a r l meta_term in
   (* Debugging data to the log. *)

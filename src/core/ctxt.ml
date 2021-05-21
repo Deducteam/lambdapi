@@ -48,11 +48,10 @@ let type_of : tvar -> ctxt -> term = fun x ctx ->
 
 (** [def_of x ctx] returns the definition of [x] in the context [ctx] if it
     appears, and [None] otherwise *)
-let rec def_of : term Bindlib.var -> ctxt -> ctxt * term option =
-  fun x ctx ->
-  match ctx with
+let rec def_of : tvar -> ctxt -> ctxt * term option = fun x c ->
+  match c with
   | []         -> [], None
-  | (y,_,d)::l -> if Bindlib.eq_vars x y then l,d else def_of x l
+  | (y,_,d)::c -> if Bindlib.eq_vars x y then c,d else def_of x c
 
 (** [mem x ctx] tells whether variable [x] is mapped in the context [ctx]. *)
 let mem : tvar -> ctxt -> bool = fun x ->

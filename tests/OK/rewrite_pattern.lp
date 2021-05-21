@@ -33,7 +33,7 @@ rule mul (s $x) $y ↪ add $y (mul $x $y);
 
 constant symbol U : TYPE;
 
-symbol T : U → TYPE;
+injective symbol T : U → TYPE;
 
 constant symbol bool : U;
 constant symbol nat  : U;
@@ -120,11 +120,9 @@ opaque symbol s_eq : Π x y, P (eq nat x y) → P (eq nat (s x) (s y))
 end;
 
 // [z] is right neutral for add.
-opaque symbol add0r : Π n, P (eq nat (add n z) n)
+opaque symbol add0r n : P (eq nat (add n z) n)
 ≔ begin
-  // FIXME try to infer nat.;
-  // FIXME try to infer the predicate;
-  refine nat_ind (λ n, eq nat (add n z) n) ?CZ ?CS;
+  refine nat_ind (λ n, eq _ (add n z) n) ?CZ ?CS;
   // Case Z;
   simplify;
   refine refl nat z;

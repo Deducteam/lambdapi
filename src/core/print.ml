@@ -98,7 +98,7 @@ let pp_sym : sym pp = fun ppf s ->
     | None ->
         (* Hack for printing symbols replacing metavariables in infer.ml
            unqualified and unescaped. *)
-        if n <> "" && n.[0] = '?' then out ppf "%s" n
+        if n <> "" && let c = n.[0] in c = '$' || c = '?' then out ppf "%s" n
         else out ppf "%a.%a" pp_path s.sym_path pp_uid n
     | Some alias -> out ppf "%a.%a" pp_uid alias pp_uid n
 
@@ -303,9 +303,13 @@ let pp_constr : constr pp = fun ppf (ctx, t, u) ->
   out ppf "%a%a ≡ %a" pp_ctxt ctx pp_term t pp_term u
 
 let pp_constrs : constr list pp = fun ppf ->
-  List.iter (fprintf ppf "\n  ; %a" pp_constr)
+  List.iter (out ppf "\n  ; %a" pp_constr)
 
 (* for debug only *)
+let pp_metaset : MetaSet.t pp = fun ppf ->
+  MetaSet.iter (out ppf "%a," pp_meta)
+
 let pp_problem : problem pp = fun ppf p ->
-  out ppf "{ recompute = %b; to_solve = [%a];\n  unsolved = [%a] }"
-    p.recompute pp_constrs p.to_solve pp_constrs p.unsolved
+  out ppf
+    "{recompute=%b; metas={%a}; to_solve=[%a];\n  unsolved=[%a]}"
+    p.recompute pp_metaset p.metas pp_constrs p.to_solve pp_constrs p.unsolved

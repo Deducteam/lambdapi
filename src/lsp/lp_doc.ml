@@ -39,7 +39,8 @@ type t = {
   mutable root  : Pure.state; (* Only mutated after parsing. *)
   mutable final : Pure.state; (* Only mutated after parsing. *)
   nodes : doc_node list;
-  logs : (string * Pos.popt) list;
+  (* severity is same as LSP specifications*)
+  logs : ((int * string) * Pos.popt) list; (*((severity, message), location)*)
   map : Syntax.qident RangeMap.t;
 }
 
@@ -57,7 +58,7 @@ let process_pstep (pstate,diags,logs) tac =
   let open Pure in
   let tac_loc = Tactic.get_pos tac in
   let hndl_tac_res = handle_tactic pstate tac in
-  let logs = (buf_get_and_clear lp_logger, tac_loc) :: logs in
+  let logs = ((3, buf_get_and_clear lp_logger), tac_loc) :: logs in
   match hndl_tac_res with
   | Tac_OK (pstate, qres) ->
     let goals = Some (current_goals pstate) in
@@ -65,7 +66,7 @@ let process_pstep (pstate,diags,logs) tac =
     pstate, (tac_loc, 4, qres, goals) :: diags, logs
   | Tac_Error(loc,msg) ->
     let loc = option_default loc tac_loc in
-    pstate, (loc, 1, msg, None) :: diags, logs
+    pstate, (loc, 1, msg, None) :: diags, ((1, msg), loc) :: logs
 
 let process_proof pstate tacs logs =
   List.fold_left process_pstep (pstate,[],logs) tacs
@@ -88,29 +89,28 @@ let process_cmd _file (nodes,st,dg,logs) ast =
    * Console.err_fmt := lp_fmt; *)
   let cmd_loc = Command.get_pos ast in
   let hndl_cmd_res = handle_command st ast in
-  let logs = (buf_get_and_clear lp_logger, cmd_loc) :: logs in
+  let logs = ((3, buf_get_and_clear lp_logger), cmd_loc) :: logs in
   match hndl_cmd_res with
   | Cmd_OK (st, qres) ->
     let qres = match qres with None -> "OK" | Some x -> x in
     let nodes = { ast; exec = true; goals = [] } :: nodes in
     let ok_diag = cmd_loc, 4, qres, None in
     nodes, st, ok_diag :: dg, logs
-
   | Cmd_Proof (pst, tlist, thm_loc, qed_loc) ->
     let start_goals = current_goals pst in
     let pst, dg_proof, logs = process_proof pst tlist logs in
     let dg_proof = (thm_loc, 4, "OK", Some start_goals) :: dg_proof in
     let goals = get_goals dg_proof in
     let nodes = { ast; exec = true; goals } :: nodes in
-    let st, dg_proof =
+    let st, dg_proof, logs =
       match end_proof pst with
       | Cmd_OK (st, qres)   ->
         let qres = match qres with None -> "OK" | Some x -> x in
         let pg = qed_loc, 4, qres, None in
-        st, pg :: dg_proof
+        st, pg :: dg_proof, logs
       | Cmd_Error(_loc,msg) ->
         let pg = qed_loc, 1, msg, None in
-        st, pg :: dg_proof
+        st, pg :: dg_proof, ((1, msg), qed_loc) :: logs
       | Cmd_Proof _ ->
         Lsp_io.log_error "process_cmd" "closing proof is nested";
         assert false
@@ -120,7 +120,7 @@ let process_cmd _file (nodes,st,dg,logs) ast =
   | Cmd_Error(loc, msg) ->
     let nodes = { ast; exec = false; goals = [] } :: nodes in
     let loc = option_default loc Command.(get_pos ast) in
-    nodes, st, (loc, 1, msg, None) :: dg, logs
+    nodes, st, (loc, 1, msg, None) :: dg, ((1, msg), loc) :: logs
 
 let new_doc ~uri ~version ~text =
   let root =
@@ -176,4 +176,5 @@ let check_text ~doc =
       ) [] diag
   with
   | Pure.Parse_error(loc, msg) ->
-    doc, mk_error ~doc loc msg
+    let logs = [((1, msg), Some loc)] in
+    {doc with logs}, mk_error ~doc loc msg

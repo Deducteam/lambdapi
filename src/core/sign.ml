@@ -288,19 +288,16 @@ let unlink : t -> unit = fun sign ->
   List.iter unlink_coercion !(sign.sign_coercions)
 
 
-(** [add_symbol sign expo prop mstrat opaq name typ impl] add in the signature
-   [sign] a symbol with name [name], exposition [expo], property [prop],
-   matching strategy [strat], opacity [opaq], type [typ], implicit arguments
-   [impl], no definition and no rules. [name] should not already be used in
-   [sign]. The created symbol is returned. *)
+(** [add_symbol sign expo prop mstrat opaq name typ impl] adds in the
+   signature [sign] a symbol with name [name], exposition [expo], property
+   [prop], matching strategy [strat], opacity [opaq], type [typ], implicit
+   arguments [impl], no definition and no rules. [name] should not already be
+   used in [sign]. The created symbol is returned. *)
 let add_symbol :
       t -> expo -> prop -> match_strat -> bool -> strloc -> term ->
       bool list -> sym =
   fun sign sym_expo sym_prop sym_mstrat sym_opaq {elt=sym_name;pos} typ
       impl ->
-  (* Check for metavariables in the symbol type. *)
-  if LibTerm.Meta.has true typ then
-    fatal pos "The type of %s contains metavariables" sym_name;
   let placeholders t =
     let exception Found in
     try

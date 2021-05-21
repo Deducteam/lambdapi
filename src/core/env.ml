@@ -79,7 +79,8 @@ let to_ctxt : env -> ctxt =
     (fun (_,(v,a,t)) -> (v, Bindlib.unbox a, Option.map Bindlib.unbox t))
 
 (** [match_prod c t f] returns [f a b] if [t] matches [Prod(a,b)] possibly
-   after reduction. *)
+   after reduction.
+@raise [Invalid_argument] if [t] is not a product. *)
 let match_prod : ctxt -> term -> (term -> tbinder -> 'a) -> 'a = fun c t f ->
   match Ctxt.unfold c t with
   | Prod(a,b) -> f a b
@@ -99,7 +100,7 @@ let of_prod : ctxt -> string -> term -> env * term = fun c s t ->
   let rec build_env env t =
     try match_prod c t (fun a b ->
             let name = Stdlib.(incr i; s ^ string_of_int !i) in
-            let (x, b) = LibTerm.unbind_name name b in
+            let x, b = LibTerm.unbind_name name b in
             build_env (add x (lift a) None env) b)
     with Invalid_argument _ -> env, t
   in build_env [] t
@@ -114,13 +115,13 @@ let of_prod : ctxt -> string -> term -> env * term = fun c s t ->
    [n] products. *)
 let of_prod_nth : ctxt -> int -> term -> env * term = fun c n t ->
   let rec build_env i env t =
-    if i >= n then (env, t)
+    if i >= n then env, t
     else match_prod c t (fun a b ->
-             let (x, b) = Bindlib.unbind b in
+             let x, b = Bindlib.unbind b in
              build_env (i+1) (add x (lift a) None env) b)
   in build_env 0 [] t
 
-(** [of_prod_using c xs t] is similar to [of_prod c n t] where [n =
+(** [of_prod_using c xs t] is similar to [of_prod s c n t] where [n =
    Array.length xs] except that it replaces unbound variables by those of
    [xs].
 @raise [Invalid_argument] if [t] does not evaluate to a series of (at least)

@@ -260,19 +260,6 @@ type ctxt = (tvar * term * term option) list
 (** Type of unification constraints. *)
 type constr = ctxt * term * term
 
-(** Representation of unification problems. *)
-type problem =
-  { to_solve  : constr list
-  (** List of unification problems to solve. *)
-  ; unsolved  : constr list
-  (** List of unification problems that could not be solved. *)
-  ; recompute : bool
-  (** Indicates whether unsolved problems should be rechecked. *) }
-
-(** Empty problem. *)
-let empty_problem : problem =
-  {to_solve  = []; unsolved = []; recompute = false}
-
 (** Sets and maps of term variables. *)
 module Var = struct
   type t = tvar
@@ -314,65 +301,29 @@ end
 module SymSet = Set.Make(Sym)
 module SymMap = Map.Make(Sym)
 
-(** Basic management of meta variables. *)
-module Meta : sig
+(** Sets and maps of metavariables. *)
+module Meta = struct
   type t = meta
-  (** Type of metavariables. *)
-
-  val compare : t -> t -> int
-  (** Comparison function for metavariables. *)
-
-  val fresh : ?name:string -> term -> int -> t
-  (** [fresh ?name a n] creates a fresh metavariable of type [a] and arity [n]
-     with the optional name [name]. *)
-
-  val fresh_box : ?name:string -> tbox -> int -> t Bindlib.box
-  (** [fresh_box ?name a n] is the boxed counterpart of [fresh_meta]. It is
-      only useful in the rare cases where the type of a metavariable contains
-      a free term variable environement. This should only happens when scoping
-      the rewriting rules, use this function with care.  The metavariable is
-      created immediately with a dummy type, and the type becomes valid at
-      unboxing. The boxed metavariable should be unboxed at most once,
-      otherwise its type may be rendered invalid in some contexts. *)
-
-  val set : t -> tmbinder -> unit
-  (** [set m v] sets the value of the metavariable [m] to [v]. Note that no
-      specific check is performed, so this function may lead to cyclic
-      terms. *)
-
-  val name : t -> string
-  (** [name m] returns a string representation of [m]. *)
-
-  val reset_meta_counter : unit -> unit
-  (** [reset_counter ()] resets the counter used to produce meta keys. *)
-end = struct
-  type t = meta
-  let compare m1 m2 = m1.meta_key - m2.meta_key
-  let meta_counter : int Stdlib.ref = Stdlib.ref (-1)
-  let reset_meta_counter () = Stdlib.(meta_counter := -1)
-
-  let fresh : ?name:string -> term -> int -> t = fun ?name a n ->
-      { meta_key = Stdlib.(incr meta_counter; !meta_counter); meta_name = name
-      ; meta_type = ref a; meta_arity = n; meta_value = ref None }
-
-  let set : t -> tmbinder -> unit = fun m v ->
-    m.meta_type := Kind; (* to save memory *) m.meta_value := Some(v)
-
-  let name : t -> string = fun m ->
-    match m.meta_name with
-    | Some(n) -> n
-    | None    -> string_of_int m.meta_key
-
-  let fresh_box : ?name:string -> tbox -> int -> t Bindlib.box =
-    fun ?name a n ->
-    let m = fresh ?name Kind n in
-    Bindlib.box_apply (fun a -> m.meta_type := a; m) a
-
+  let compare m1 m2 = m2.meta_key - m1.meta_key
 end
 
-(** Sets and maps of metavariables. *)
 module MetaSet = Set.Make(Meta)
 module MetaMap = Map.Make(Meta)
+
+(** Representation of unification problems. *)
+type problem =
+  { mutable to_solve  : constr list
+  (** List of unification problems to solve. *)
+  ; mutable unsolved  : constr list
+  (** List of unification problems that could not be solved. *)
+  ; mutable recompute : bool
+  (** Indicates whether unsolved problems should be rechecked. *)
+  ; mutable metas : MetaSet.t
+  (** Set of unsolved metas. *) }
+
+(** Create a new empty problem. *)
+let new_problem : unit -> problem = fun () ->
+  {to_solve  = []; unsolved = []; recompute = false; metas = MetaSet.empty}
 
 (** [create_sym path expo prop opaq name typ impl] creates a new symbol with
    path [path], exposition [expo], property [prop], opacity [opaq], matching
@@ -493,14 +444,6 @@ let cmp : term cmp =
     | TE_Some t, TE_Some t' -> cmp_mbinder t t'
     | _ -> cmp_tag (*cmp_map Stdlib.compare prec_tenv*) e e'
   in cmp
-
-(** Total order on contexts. *)
-let cmp_ctxt : ctxt cmp =
-  List.cmp (lex3 Bindlib.compare_vars cmp (Option.cmp cmp))
-
-(** Total order and equality on constraints. *)
-let cmp_constr : constr cmp = lex3 cmp_ctxt cmp cmp
-let eq_constr : constr eq = eq_of_cmp cmp_constr
 
 (** [get_args t] decomposes the {!type:term} [t] into a pair [(h,args)], where
     [h] is the head term of [t] and [args] is the list of arguments applied to

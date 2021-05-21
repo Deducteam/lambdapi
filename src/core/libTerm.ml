@@ -1,6 +1,5 @@
 (** Basic operations on terms. *)
 
-open Timed
 open Term
 open Lplib
 open Extra
@@ -122,62 +121,6 @@ let unbind2_name : string -> tbinder -> tbinder -> tvar * term * term =
     Bindlib.unbind2 b1 b2
   else let x = new_tvar s in
        (x, Bindlib.subst b1 (mk_Vari x), Bindlib.subst b2 (mk_Vari x))
-
-(** Functions to manipulate metavariables. This module includes
-    {!module:Term.Meta}. *)
-module Meta = struct
-  include Meta
-
-  (** [make ?name ctx a] creates a fresh metavariable term of type [a] with
-      name [?name] if provided in the context [ctx]. *)
-  let make : ?name:string -> ctxt -> term -> term = fun ?name ctx a ->
-    let prd, len = Ctxt.to_prod ctx a in
-    let m = Meta.fresh ?name prd len in
-    let get_var (x,_,d) = if d = None then Some (mk_Vari x) else None in
-    mk_Meta(m, Array.of_list (List.(filter_map get_var ctx |> rev)))
-
-  (** [make_codomain ctx a] creates a fresh metavariable term [b] of type
-      [Type] in the context [ctx] extended with a fresh variable of type
-      [a]. *)
-  let make_codomain : ctxt -> term -> tbinder = fun ctx a ->
-    let x = new_tvar "x" in
-    let b = make ((x, a, None) :: ctx) mk_Type in
-    Bindlib.unbox (Bindlib.bind_var x (lift b))
-  (* Possible improvement: avoid lift by defining a function _Meta.make
-     returning a tbox. *)
-
-  (** [iter b f t] applies the function [f] to every metavariable of [t], and
-      to the type of every metavariable recursively if [b] is true. *)
-  let iter : bool -> (t -> unit) -> term -> unit = fun b f t ->
-    iter_leaves ~recurse_meta_type:b ~do_meta:f t
-
-  (** [occurs m t] tests whether the metavariable [m] occurs in the term
-      [t]. *)
-  let occurs : t -> term -> bool =
-    let exception Found in fun m t ->
-    let fn p = if m == p then raise Found in
-    try iter false fn t; false with Found -> true
-
-  (** [add b t ms] extends [ms] with all the metavariables of [t], and
-      those in the types of these metavariables recursively if [b]. *)
-  let add : bool -> term -> MetaSet.t -> MetaSet.t = fun b t ms ->
-    let open Stdlib in
-    let ms = ref ms in
-    iter b (fun m -> ms := MetaSet.add m !ms) t;
-    !ms
-
-  (** [get b t] returns the set of all the metavariables in [t], and in
-      the types of metavariables recursively if [b]. *)
-  let get : bool -> term -> MetaSet.t = fun b t ->
-    add b t MetaSet.empty
-
-  (** [has b t] checks whether there are metavariables in [t], and in
-      the types of metavariables recursively if [b] is true. *)
-  let has : bool -> term -> bool =
-    let exception Found in fun b t ->
-    try iter b (fun _ -> raise Found) t; false with Found -> true
-
-end
 
 (** [distinct_vars ctx ts] checks that the terms [ts] are distinct
    variables. If so, the variables are returned. *)
