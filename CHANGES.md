@@ -1,6 +1,11 @@
 ### Unreleased
 
-#### Interface Improvements (2021-05-08)
+#### Better handling of let's (2021-05-21)
+
+- improve printing as well
+
+#### Interface Improvements (2021-05-20)
+
 - Error messages are shown in logs buffer
 - Improvements in behaviour of Emacs interface
 - New shortcuts `C-c C-k` and `C-c C-r` for killing and reconnecting to the
