@@ -460,7 +460,18 @@ let get_args_len : term -> term * term list * int = fun t ->
   in
   get_args_len [] 0 t
 
-(** Construction functions of the private type [term]. *)
+(** Construction functions of the private type [term]. They ensure some
+   invariants:
+
+- In a commutative function symbol application, the first argument is smaller
+   than the second one wrt [cmp].
+
+- In an associative and commutative function symbol application, the
+   application is built as a left or right comb depending on the associativity
+   of the symbol, and arguments are ordered in increasing order wrt [cmp].
+
+- In [LLet(_,_,b)], [Bindlib.binder_constant b = false] (useless let's are
+   erased). *)
 let mk_Vari x = Vari x
 let mk_Type = Type
 let mk_Kind = Kind

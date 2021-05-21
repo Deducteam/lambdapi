@@ -86,7 +86,7 @@ let rec infer : problem -> ctxt -> term -> term = fun p c t ->
                 c ⊢ Prod(a,b) ⇒ s            *)
   | Prod(a,b) ->
       check p c a mk_Type;
-      let (_,b,c') = Ctxt.unbind c a None b in
+      let _,b,c' = Ctxt.unbind c a None b in
       let s = infer p c' b in
       begin match unfold s with
       | (Type | Kind) as s -> s
@@ -100,7 +100,7 @@ let rec infer : problem -> ctxt -> term -> term = fun p c t ->
              c ⊢ Abst(a,t) ⇒ Prod(a,b)          *)
   | Abst(a,t) ->
       check p c a mk_Type;
-      let (x,t,c') = Ctxt.unbind c a None t in
+      let x,t,c' = Ctxt.unbind c a None t in
       let b = infer p c' t in
       begin match unfold b with
       | Kind ->

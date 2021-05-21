@@ -316,10 +316,10 @@ type problem =
 val new_problem : unit -> problem
 
 (** [unfold t] repeatedly unfolds the definition of the surface constructor of
-    [t], until a significant {!type:term} constructor is found.  The term that
-    is returned cannot be an instantiated metavariable or term environment nor
-    a reference cell ({!constructor:TRef} constructor). Note that the returned
-    value is physically equal to [t] if no unfolding was performed. *)
+   [t], until a significant {!type:term} constructor is found. The term that
+   is returned cannot be an instantiated metavariable, term environment or
+   reference cell. The returned value is physically equal to [t] if no
+   unfolding was performed. *)
 val unfold : term -> term
 
 (** {b NOTE} that {!val:unfold} must (almost) always be called before matching
@@ -349,7 +349,18 @@ val get_args : term -> term * term list
     of the list of arguments. *)
 val get_args_len : term -> term * term list * int
 
-(** Construction functions of the private type [term]. *)
+(** Construction functions of the private type [term]. They ensure some
+   invariants:
+
+- In a commutative function symbol application, the first argument is smaller
+   than the second one wrt [cmp].
+
+- In an associative and commutative function symbol application, the
+   application is built as a left or right comb depending on the associativity
+   of the symbol, and arguments are ordered in increasing order wrt [cmp].
+
+- In [LLet(_,_,b)], [Bindlib.binder_constant b = false] (useless let's are
+   erased). *)
 val mk_Vari : tvar -> term
 val mk_Type : term
 val mk_Kind : term

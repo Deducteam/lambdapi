@@ -139,7 +139,7 @@ let check_rule : Scope.pre_rule Pos.loc -> rule = fun ({pos; elt} as pr) ->
      fatal pos "Unknown pattern variables: %a"
        (Array.pp Print.pp_var ",") xvars);
   let arity = List.length lhs in
-  (*if !log_enabled then
+  if !log_enabled then
     begin
       (* The unboxing here could be harmful since it leads to [pr_rhs] being
          unboxed twice. However things should be fine here since the result is
@@ -147,7 +147,7 @@ let check_rule : Scope.pre_rule Pos.loc -> rule = fun ({pos; elt} as pr) ->
       let rhs = Bindlib.(unbox (bind_mvar vars pr_rhs)) in
       let naive_rule = {lhs; rhs; arity; arities; vars; xvars_nb = 0} in
       log_subj (Extra.red "%a") pp_rule (s, naive_rule);
-    end;*)
+    end;
   (* Replace [Patt] nodes of LHS with corresponding elements of [vars]. *)
   let lhs_vars = _Appl_Symb s (List.map (patt_to_tenv vars) lhs) in
   (* Create metavariables that will stand for the variables of [vars].
@@ -162,15 +162,11 @@ let check_rule : Scope.pre_rule Pos.loc -> rule = fun ({pos; elt} as pr) ->
       LibMeta.fresh p ~name (build_meta_type p arity) arity
     in Array.mapi f var_names
   in
-  if !log_enabled then log_subj "a";
   (* Substitute them in the LHS and in the RHS. *)
   let lhs_with_metas, rhs_with_metas =
     let lhs_rhs = Bindlib.box_pair lhs_vars pr_rhs in
-    if !log_enabled then log_subj "b";
     let b = Bindlib.bind_mvar vars lhs_rhs in
-    if !log_enabled then log_subj "c";
     let b = Bindlib.unbox b in
-    if !log_enabled then log_subj "d";
     let meta_to_tenv m =
       let xs = Array.init m.meta_arity (new_tvar_ind "x") in
       let ts = Array.map _Vari xs in
