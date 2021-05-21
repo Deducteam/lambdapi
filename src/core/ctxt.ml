@@ -34,12 +34,13 @@ let mem : tvar -> ctxt -> bool = fun x ->
     the term [t]. It returns the number of products as well. *)
 let to_prod : ctxt -> term -> term * int = fun ctx t ->
   let f (t,c) (x,a,v) =
+    let b = Bindlib.bind_var x t in
     match v with
-    | None -> (_Prod (lift a) (Bindlib.bind_var x t), c + 1)
-    | Some v -> (_LLet (lift a) (lift v) (Bindlib.bind_var x t), c)
+    | None -> _Prod (lift a) b, c + 1
+    | Some v -> _LLet (lift a) (lift v) b, c
   in
   let t, c = List.fold_left f (lift t, 0) ctx in
-  (Bindlib.unbox t, c)
+  Bindlib.unbox t, c
 
 (** [to_abst ctx t] builds a sequence of abstractions over the context [ctx],
     in the term [t]. *)

@@ -364,6 +364,8 @@ let rec unfold : term -> term = fun t ->
         | None    -> t
         | Some(v) -> unfold v
       end
+  | LLet(_,_,u) when Bindlib.binder_constant u ->
+      unfold (Bindlib.subst u Kind)
   | _ -> t
 
 (** {b NOTE} that {!val:unfold} must (almost) always be called before matching
@@ -470,7 +472,8 @@ let mk_Patt (i,s,ts) = Patt (i,s,ts)
 let mk_TEnv (te,ts) = TEnv (te,ts)
 let mk_Wild = Wild
 let mk_TRef x = TRef x
-let mk_LLet (a,t,u) = LLet (a,t,u)
+let mk_LLet (a,t,u) =
+  if Bindlib.binder_constant u then Bindlib.subst u Kind else LLet (a,t,u)
 
 (* We make the equality of terms modulo commutative and
    associative-commutative symbols syntactic by always ordering arguments in

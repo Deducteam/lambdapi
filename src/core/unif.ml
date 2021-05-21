@@ -82,7 +82,7 @@ let instantiation :
     | None -> None
     | Some(vs, map) ->
         if LibMeta.occurs m c u then None
-        else let u = Eval.simplify (sym_to_var map u) in
+        else let u = Eval.simplify (Ctxt.to_let c (sym_to_var map u)) in
              Some (Bindlib.bind_mvar vs (lift u))
 
 (** Checking type or not during meta instanciation. *)
@@ -348,11 +348,11 @@ let solve : problem -> unit = fun p ->
 
   (* Let unfolding. *)
   | LLet(a,t,u), _ ->
-      let _, u, _ = Ctxt.unbind c a (Some t) u in
-      add_constr p (c, add_args u ts1, t2)
+      let _, u, c' = Ctxt.unbind c a (Some t) u in
+      add_constr p (c', add_args u ts1, t2)
   | _, LLet(a,t,u) ->
-      let _, u, _ = Ctxt.unbind c a (Some t) u in
-      add_constr p (c, t1, add_args u ts2)
+      let _, u, c' = Ctxt.unbind c a (Some t) u in
+      add_constr p (c', t1, add_args u ts2)
 
   | Type, Type
   | Kind, Kind -> ()
@@ -370,10 +370,9 @@ let solve : problem -> unit = fun p ->
       if List.same_length ts1 ts2 then decompose p c ts1 ts2
       else error t1 t2
 
-  | Type, (Kind|Prod _|Symb _|Vari _|Abst _)
-  | Kind, (Type|Prod _|Symb _|Vari _|Abst _)
-  | Prod _, (Type|Kind|Vari _)
-  | Vari _, (Type|Kind|Vari _|Prod _)
+  | Type, (Kind|Prod _|Symb _|Abst _)
+  | Kind, (Type|Prod _|Symb _|Abst _)
+  | Prod _, (Type|Kind)
     -> error t1 t2
 
   | Symb s1, Symb s2
@@ -399,6 +398,17 @@ let solve : problem -> unit = fun p ->
   | _, Meta(m,ts) when imitate_lam_cond h2 ts2
                       && nl_distinct_vars c ts <> None ->
       imitate_lam p c m; add_constr p (c,t1,t2)
+
+  | Vari x, _ ->
+      begin match snd (Ctxt.def_of x c) with
+      | Some v -> add_constr p (c, add_args v ts1, t2)
+      | None -> error t1 t2
+      end
+  | _, Vari x ->
+      begin match snd (Ctxt.def_of x c) with
+      | Some v -> add_constr p (c, t1, add_args v ts2)
+      | None -> error t1 t2
+      end
 
   | _ ->
 

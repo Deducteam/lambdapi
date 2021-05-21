@@ -139,7 +139,7 @@ let rec infer : problem -> ctxt -> term -> term = fun p c t ->
 
   (* c ⊢ t ⇐ a   c, x:a ≔ t ⊢ u ⇒ b   c, x:a ≔ t ⊢ b : s in {Type,Kind}
      ------------------------------------------------------------------
-        c ⊢ let x : a ≔ t in u ⇒ let x : a ≔ t in b
+        c ⊢ let x:a ≔ t in u ⇒ let x:a ≔ t in b
 
      See Pure type systems with definitions, P. Severi and E. Poll,
      LFCS 1994, http://doi.org/10.1007/3-540-58140-5_30. *)
@@ -148,15 +148,21 @@ let rec infer : problem -> ctxt -> term -> term = fun p c t ->
       check p c t a;
       let x,u,c' = Ctxt.unbind c a (Some t) u in
       let b = infer p c' u in
-      let s = infer p c' b in
-      begin match unfold s with
-      | Type | Kind -> ()
-      | _ -> conv p c' s mk_Type
-      (* Here, we force [s] to be equivalent to [Type] as there is little
-         (no?) chance that it can be a kind. *)
-      end;
-      let b = Bindlib.unbox (Bindlib.bind_var x (lift b)) in
-      mk_LLet(a,t,b)
+      begin match unfold b with
+      | Kind ->
+          wrn None "Abstraction on [%a] is not allowed." Print.pp_term u;
+          raise NotTypable
+      | _ ->
+          let s = infer p c' b in
+          begin match unfold s with
+          | Type | Kind -> ()
+          | _ -> conv p c' s mk_Type
+          (* Here, we force [s] to be equivalent to [Type] as there is little
+             (no?) chance that it can be a kind. *)
+          end;
+          let b = Bindlib.unbox (Bindlib.bind_var x (lift b)) in
+          mk_LLet(a,t,b)
+      end
 
   (*  c ⊢ term_of_meta m ts ⇒ a
      ----------------------------
