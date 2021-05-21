@@ -83,9 +83,9 @@ and whnf_stk : ?rewrite:bool -> ctxt -> term -> stack -> term * stack =
       | Some(t,stk) -> Stdlib.incr steps; whnf_stk c t stk
       end
   | (Vari x, stk) as r ->
-      begin match Ctxt.def_of x c with
-      | _, Some v -> Stdlib.incr steps; whnf_stk c v stk
-      | _ -> r
+      begin match snd (Ctxt.def_of x c) with
+      | Some v -> Stdlib.incr steps; whnf_stk c v stk
+      | None -> r
       end
   | r -> r
 
