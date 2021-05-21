@@ -40,10 +40,8 @@ let set_to_prod : problem -> meta -> unit = fun p m ->
    [b] are not convertible. *)
 let conv : problem -> ctxt -> term -> term -> unit = fun p c a b ->
   if not (Eval.eq_modulo c a b) then
-    begin
-      let cstr = (c,a,b) in p.to_solve <- cstr::p.to_solve;
-      if !log_enabled then log_infr (mag "%a") pp_constr cstr
-    end
+    (p.to_solve <- (c,a,b)::p.to_solve;
+     if !log_enabled then log_infr (mag "%a") pp_constr (c,a,b))
 
 (** Exception that may be raised by type inference. *)
 exception NotTypable
@@ -70,53 +68,45 @@ let rec infer : problem -> ctxt -> term -> term = fun p c t ->
   | Type -> mk_Kind
 
   (* ---------------------------------
-      c ⊢ Vari(x) ⇒ Ctxt.find x c  *)
+      c ⊢ Vari x ⇒ Ctxt.type_of x c  *)
   | Vari x ->
       let a = try Ctxt.type_of x c with Not_found -> assert false in
       if !log_enabled then log_infr (yel "%a : %a") pp_term t pp_term a;
       a
 
   (* -------------------------------
-      c ⊢ Symb(s) ⇒ !(s.sym_type)  *)
+      c ⊢ Symb s ⇒ !(s.sym_type)  *)
   | Symb s ->
       let a = !(s.sym_type) in
       if !log_enabled then log_infr (yel "%a : %a") pp_term t pp_term a;
       a
 
-  (*  c ⊢ a ⇐ Type    c, x : a ⊢ b<x> ⇒ s
+  (*  c ⊢ a ⇐ Type    c, x:a ⊢ b ⇒ s in {Type,Kind}
      -----------------------------------------
                 c ⊢ Prod(a,b) ⇒ s            *)
   | Prod(a,b) ->
-      (* We ensure that [a] is of type [Type]. *)
       check p c a mk_Type;
-      (* We infer the type of the body, first extending the context. *)
       let (_,b,c') = Ctxt.unbind c a None b in
       let s = infer p c' b in
-      (* We check that [s] is a sort. *)
-      begin
-        let s = unfold s in
-        match s with
-        | Type | Kind -> s
-        | _ -> conv p c' s mk_Type; mk_Type
+      begin match unfold s with
+      | (Type | Kind) as s -> s
+      | _ -> conv p c' s mk_Type; mk_Type
       (* Here, we force [s] to be equivalent to [Type] as there is little
          (no?) chance that it can be a kind. *)
       end
 
-  (*  c ⊢ a ⇐ Type    c, x : a ⊢ t<x> ⇒ b<x>
+  (*  c ⊢ a ⇐ Type    c, x:a ⊢ t ⇒ b   b ≠ Kind
      --------------------------------------------
              c ⊢ Abst(a,t) ⇒ Prod(a,b)          *)
   | Abst(a,t) ->
-      (* We ensure that [a] is of type [Type]. *)
       check p c a mk_Type;
-      (* We infer the type of the body, first extending the context. *)
       let (x,t,c') = Ctxt.unbind c a None t in
       let b = infer p c' t in
-      begin
-        match unfold b with
-        | Kind ->
-            wrn None "Abstraction on [%a] is not allowed." Print.pp_term t;
-            raise NotTypable
-        | _ -> mk_Prod(a, Bindlib.unbox (Bindlib.bind_var x (lift b)))
+      begin match unfold b with
+      | Kind ->
+          wrn None "Abstraction on [%a] is not allowed." Print.pp_term t;
+          raise NotTypable
+      | _ -> mk_Prod(a, Bindlib.unbox (Bindlib.bind_var x (lift b)))
       end
 
   (*  c ⊢ t ⇒ Prod(a,b)    c ⊢ u ⇐ a
@@ -125,7 +115,8 @@ let rec infer : problem -> ctxt -> term -> term = fun p c t ->
   | Appl(t,u) ->
       (* [get_prod f typ] returns the domain and codomain of [t] if [t] is a
          product. If [t] is a metavariable, then it instantiates it with a
-         product calls [get_prod f typ] again. Otherwise, it calls [f typ]. *)
+         product and calls [get_prod f typ] again. Otherwise, it calls [f
+         typ]. *)
       let rec get_prod f typ =
         if !log_enabled then log_infr "get_prod %a" pp_term typ;
         match unfold typ with
@@ -142,26 +133,34 @@ let rec infer : problem -> ctxt -> term -> term = fun p c t ->
             conv p c typ (mk_Prod(a,b)); (a,b)) in
       let get_prod =
         get_prod (fun typ -> get_prod_whnf (Eval.whnf c typ)) in
-      let (a,b) = get_prod (infer p c t) in
+      let a, b = get_prod (infer p c t) in
       check p c u a;
       Bindlib.subst b u
 
-  (*  c ⊢ t ⇐ a       c, x : a := t ⊢ u ⇒ b
-     -------------------------------------------
-        c ⊢ let x : a ≔ t in u ⇒ subst b t     *)
+  (* c ⊢ t ⇐ a   c, x:a ≔ t ⊢ u ⇒ b   c, x:a ≔ t ⊢ b : s in {Type,Kind}
+     ------------------------------------------------------------------
+        c ⊢ let x : a ≔ t in u ⇒ let x : a ≔ t in b
+
+     See Pure type systems with definitions, P. Severi and E. Poll,
+     LFCS 1994, http://doi.org/10.1007/3-540-58140-5_30. *)
   | LLet(a,t,u) ->
-      check p c a mk_Type;
+      check p c a mk_Type; (*FIXME: allow mk_Kind too. *)
       check p c t a;
-      (* Unbind [u] and enrich context with [x: a ≔ t] *)
-      let (x,u,c') = Ctxt.unbind c a (Some(t)) u in
+      let x,u,c' = Ctxt.unbind c a (Some t) u in
       let b = infer p c' u in
-      (* Build back the term *)
+      let s = infer p c' b in
+      begin match unfold s with
+      | Type | Kind -> ()
+      | _ -> conv p c' s mk_Type
+      (* Here, we force [s] to be equivalent to [Type] as there is little
+         (no?) chance that it can be a kind. *)
+      end;
       let b = Bindlib.unbox (Bindlib.bind_var x (lift b)) in
       mk_LLet(a,t,b)
 
-  (*  c ⊢ term_of_meta m e ⇒ a
+  (*  c ⊢ term_of_meta m ts ⇒ a
      ----------------------------
-         c ⊢ Meta(m,e) ⇒ a      *)
+         c ⊢ Meta(m,ts) ⇒ a      *)
   | Meta(m,ts) ->
       (* The type of [Meta(m,ts)] is the same as the one obtained by applying
          to [ts] a new symbol having the same type as [m]. *)
