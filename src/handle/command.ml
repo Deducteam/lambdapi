@@ -407,8 +407,11 @@ let get_proof_data : compiler -> sig_state -> p_command ->
       (* Type of the symbol. *)
       let (t, a) =
         match a with
-        | Some a -> (* Check that the given type is well sorted. *)
-            (Option.map (fun t -> t.elt) t, fst (Query.check_sort p tc [] a))
+        | Some a ->
+            (* Refine term [t] if provided *)
+            let t = Option.map (fun t -> fst (Query.infer p tc [] t)) t in
+            (* and check that the given type is well sorted. *)
+            (t, fst (Query.check_sort p tc [] a))
         | None -> (* If no type is given, infer it from the definition. *)
             match t with
             | None -> assert false
