@@ -89,6 +89,9 @@ functor
       if Eval.eq_modulo ctx a b then t else
       let tau = Time.save () in
       let rec try_coercions cs =
+        (* Seek coercion in a clean problem: revert failed unifications and
+           failed coercions applications. *)
+        Time.restore tau;
         match cs with
         | [] -> raise Not_found
         | Sign.{defn_ty; source; prerequisites; defn; arity; name }::cs ->
@@ -115,8 +118,6 @@ functor
               in
               metas, domain, range
             in
-            try
-              let tau = Time.save () in
               if approx ctx a domain && approx ctx b range then
                 (* REVIEW: we may short-circuit prerequisites processing when
                    there is none. *)
@@ -134,21 +135,16 @@ functor
                   Bindlib.(bind_mvar preqs_vars (lift defn) |> unbox)
                 in
                 Bindlib.msubst defn preqs
-              else (Time.restore tau; failwith "not approx")
-            with Failure _ -> try_coercions cs
+              else try_coercions cs
       in
       pb := {!pb with to_solve = (ctx, a, b) :: !pb.to_solve};
-      (* We rely on the fact that left argument of [&&] is evaluated before
-         the right one *)
       if solve pb then t else
         begin
-          Time.restore tau;
           if !Debug.log_enabled then
             log "Coerce [%a : %a ≡ %a]" Print.pp_term t
               Print.pp_term a Print.pp_term b;
           try try_coercions L.coercions
           with Not_found ->
-            Time.restore tau;
             (* FIXME: when is this case encountered? Only when checking SR? *)
             (* Hope that the constraint will be solved later. *)
             unif pb ctx a b;
