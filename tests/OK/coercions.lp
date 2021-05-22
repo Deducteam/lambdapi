@@ -16,5 +16,7 @@ coercion "decode" El : Set → TYPE on 1;
 assert ⊢ nat → Set ≡ El nat → Set;
 
 // Apply coercion in symbol definition
-constant symbol succ : nat → nat;
+debug +i;
+flag "print_meta_types" on;
+//constant symbol succ : nat → nat;
 constant symbol z : nat;

@@ -9,7 +9,10 @@ open Term
     definition has the mentioned type. *)
 let check : (module Infer.S) -> Sign.coercion -> unit =
   fun (module Infer) {defn_ty; _} ->
-  ignore (Infer.check_sort [] (Pos.none defn_ty))
+  let p = new_problem () in
+  match Infer.check_sort_noexn p [] defn_ty with
+  | None -> Error.fatal_no_pos "Invalid coercion"
+  | Some _ -> ()
   (* TODO: *)
   (* Substitute sub-coercions by fresh variables of the appropriate type. *)
   (* Infer check *)
@@ -21,8 +24,9 @@ let check : (module Infer.S) -> Sign.coercion -> unit =
 let handle : Sig_state.t -> p_ident -> p_term -> p_term -> int -> int ->
   (p_ident * p_term) list -> Sig_state.t =
   fun ss name defn defn_ty source arity requirements ->
+  let pb = new_problem () in
   let scope_term ?(env=[]) ss =
-    Scope.scope_term true ss env (lazy Lplib.Extra.IntMap.empty)
+    Scope.scope_term true ss env pb (fun _ -> None) (fun _ -> None)
   in
   let defn, reqs = Scope.scope_coercion ss [] defn in
   let defn_ty = scope_term ss defn_ty in

@@ -24,8 +24,8 @@ type compiler = Path.t -> Sign.t
 let _ =
   (* [eq_noexn t u] tries to unify the terms [t] and [u]. *)
   let eq_noexn : term -> term -> bool = fun t u ->
-    let p = new_problem() in p.to_solve <- [[],t,u];
-    Unif.solve_noexn p && p.unsolved = [] && p.metas = MetaSet.empty
+    let p = new_problem() in p := {!p with to_solve = [[], t, u]};
+    Unif.solve_noexn p && !p.unsolved = [] && !p.metas = MetaSet.empty
   in
   let register = Builtin.register_expected_type eq_noexn pp_term in
   let expected_zero_type ss _pos =
@@ -162,10 +162,11 @@ let handle_inductive_symbol : sig_state -> expo -> prop -> match_strat
     (if xs = [] then scope_term else scope_term_with_params)
       (expo = Privat) ss Env.empty p (fun _ -> None) (fun _ -> None) typ
   in
+  let tc = Unif.typechecker ss.coercions in
   (* We check that [typ] is typable by a sort. *)
-  let typ = Query.check_sort pos p [] typ in
+  let (typ, _) = Query.check_sort p tc [] (Pos.none typ) in
   (* We check that no metavariable remains. *)
-  if p.metas <> MetaSet.empty then
+  if !p.metas <> MetaSet.empty then
     (fatal_msg "The type of %a has unsolved metavariables.\n" pp_uid name;
      fatal pos "We have %a : %a." pp_uid name pp_term typ);
   (* Actually add the symbol to the signature and the state. *)
@@ -402,16 +403,17 @@ let get_proof_data : compiler -> sig_state -> p_command ->
       end;
     (* Build proof data. *)
     let pdata =
+      let tc = Unif.typechecker ss.coercions in
       (* Type of the symbol. *)
       let (t, a) =
         match a with
         | Some a -> (* Check that the given type is well sorted. *)
-            (t, Query.check_sort p [] a)
+            (Option.map (fun t -> t.elt) t, fst (Query.check_sort p tc [] a))
         | None -> (* If no type is given, infer it from the definition. *)
             match t with
             | None -> assert false
             | Some t -> 
-                let (t, a) = Query.infer p [] t in
+                let (t, a) = Query.infer p tc [] t in
                 (Some t, a)
       in
       (* Get tactics and proof end. *)
@@ -477,7 +479,7 @@ let get_proof_data : compiler -> sig_state -> p_command ->
               let gt = match g with Typ gt -> gt | _ -> assert false in
               (*TODO there is no need for tac_refine to type-check [t] again
                  if [a] is the type infered from [t]. *)
-              Tactic.tac_refine tc pt.pos ps gt proof_goals p t.elt
+              Tactic.tac_refine tc pt.pos ps gt proof_goals p t
           | _, _ -> Tactic.tac_solve pos ps
         else
           let ps = {proof_name = p_sym_nam; proof_term = None; proof_goals} in

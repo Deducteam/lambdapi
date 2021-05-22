@@ -12,19 +12,21 @@ open Proof
 open Debug
 open! Lplib
 open Base
+open Timed
 
 (** [infer pos p c t] returns a type for the term [t] in context [c] and under
    the constraints of [p] if there is one, or
 @raise Fatal. [c] must well sorted. Note that [p] gets modified. *)
-let infer : Pos.popt -> problem -> ctxt -> term -> term = fun pos p ctx t ->
+let infer : problem -> (module Infer.S) -> ctxt -> term loc -> term * term =
+  fun p (module Infer) ctx {elt=t;pos} ->
   match Infer.infer_noexn p ctx t with
   | None -> fatal pos "%a is not typable." pp_term t
-  | Some a ->
+  | Some (t, a) ->
       if time_of (fun () -> Unif.solve_noexn p) then
         begin
-          if p.unsolved = [] then a
+          if !p.unsolved = [] then (t, a)
           else
-            (List.iter (wrn pos "Cannot solve %a.\n" pp_constr) p.unsolved;
+            (List.iter (wrn pos "Cannot solve %a.\n" pp_constr) !p.unsolved;
              fatal pos "Failed to infer the type of %a." pp_term t)
         end
       else fatal pos "%a is not typable." pp_term t
@@ -32,13 +34,16 @@ let infer : Pos.popt -> problem -> ctxt -> term -> term = fun pos p ctx t ->
 (** [check pos p c t a] checks that the term [t] has type [a] in context [c]
 and under the constraints of [p], or
 @raise Fatal. [c] must well sorted. Note that [p] gets modified. *)
-let check : Pos.popt -> problem -> ctxt -> term -> term -> unit =
-  fun pos p ctx t a ->
-  if Infer.check_noexn p ctx t a then
+let check : Pos.popt -> problem -> (module Infer.S) -> ctxt -> term -> term ->
+  term =
+  fun pos p (module Infer) ctx t a ->
+  match Infer.check_noexn p ctx t a with
+  | None -> fatal pos "[%a] does not have type [%a]." pp_term t pp_term a
+  | Some t ->
     if time_of (fun () -> Unif.solve_noexn p) then
       begin
-        if p.unsolved <> [] then
-          (List.iter (wrn pos "Cannot solve %a.\n" pp_constr) p.unsolved;
+        if !p.unsolved = [] then t else
+          (List.iter (wrn pos "Cannot solve %a.\n" pp_constr) !p.unsolved;
            fatal pos "[%a] does not have type [%a]." pp_term t pp_term a)
       end
     else fatal pos "[%a] does not have type [%a]." pp_term t pp_term a
@@ -46,20 +51,21 @@ let check : Pos.popt -> problem -> ctxt -> term -> term -> unit =
 (** [check_sort pos p c t] checks that the term [t] has type [Type] or [Kind]
    in context [c] and under the constraints of [p], or
 @raise Fatal. [c] must be well sorted. *)
-let check_sort : Pos.popt -> problem -> ctxt -> term -> unit =
-  fun pos p ctx t ->
-  match Infer.infer_noexn p ctx t with
+let check_sort : problem -> (module Infer.S) -> ctxt -> term loc ->
+  term * term =
+  fun p (module Infer) ctx {elt=t;pos} ->
+  match Infer.check_sort_noexn p ctx t with
   | None -> fatal pos "[%a] is not typable." pp_term t
-  | Some a ->
+  | Some (t,a) ->
       if time_of (fun () -> Unif.solve_noexn p) then
         begin
-          if p.unsolved = [] then
+          if !p.unsolved = [] then
             match unfold a with
-            | Type | Kind -> ()
+            | Type | Kind -> (t, a)
             | _ -> fatal pos "[%a] has type [%a] and not a sort."
                      pp_term t pp_term a
           else
-            (List.iter (wrn pos "Cannot solve %a.\n" pp_constr) p.unsolved;
+            (List.iter (wrn pos "Cannot solve %a.\n" pp_constr) !p.unsolved;
              fatal pos "Failed to check that [%a] is typable by a sort."
                pp_term a)
         end
@@ -169,7 +175,8 @@ let handle : Sig_state.t -> proof_state option -> p_query -> result =
   let p = new_problem() in
   let scope = Scope.scope_term true ss env p meta_of_key meta_of_name in
   let ctxt = Env.to_ctxt env in
-  let module Infer = (val Unif.typechecker ss.coercions) in
+  let tc = Unif.typechecker ss.coercions in
+  let module Infer = (val tc) in
   match elt with
   | P_query_debug(_,_)
   | P_query_verbose(_)
@@ -183,29 +190,29 @@ let handle : Sig_state.t -> proof_state option -> p_query -> result =
       Console.out 1 "(asrt) it is %b that %a\n" (not must_fail)
         pp_typing (ctxt, t, a);
       (* Check that [a] is typable by a sort. *)
-      let a = check_sort p ctxt {elt=a;pos=pa.pos} in
+      let (a, _) = check_sort p tc ctxt {elt=a;pos=pa.pos} in
       let result =
-        try ignore (check pos p ctxt t a); true
+        try ignore (check pos p tc ctxt t a); true
         with Fatal _ -> false
       in
       if result = must_fail then fatal pos "Assertion failed.";
       None
   | P_query_assert(must_fail, P_assert_conv(pt,pu)) ->
       let t = scope pt in let u = scope pu in
+      (* Check that [t] is typable. *)
+      let (t, a) = infer p tc ctxt {elt=t;pos=pt.pos} in
+      (* Check that [u] is typable. *)
+      let (u, b) = infer p tc ctxt {elt=u;pos=pu.pos} in
       Console.out 1 "(asrt) it is %b that %a\n" (not must_fail)
         pp_constr (ctxt, t, u);
-      (* Check that [t] is typable. *)
-      let (t, a) = infer p ctxt {elt=t;pos=pt.pos} t in
-      (* Check that [u] is typable. *)
-      let (u, b) = infer pu.pos p ctxt {elt=u;pos=pu.pos} in
       (* Check that [t] and [u] have the same type. *)
-      p.to_solve <- (ctxt,a,b)::p.to_solve;
+      p := {!p with to_solve = (ctxt, a, b)::!p.to_solve};
       if Unif.solve_noexn p then
-        if p.unsolved = [] then
+        if !p.unsolved = [] then
           (if Eval.eq_modulo ctxt t u = must_fail then
              fatal pos "Assertion failed.")
         else
-          (List.iter (wrn pos "Cannot solve [%a].\n" pp_constr) p.unsolved;
+          (List.iter (wrn pos "Cannot solve [%a].\n" pp_constr) !p.unsolved;
            fatal pos "[%a] has type [%a]\n[%a] has type [%a]\n\
                       Those two types are not unifiable."
              pp_term t pp_term a pp_term u pp_term b)
@@ -214,9 +221,8 @@ let handle : Sig_state.t -> proof_state option -> p_query -> result =
              pp_term t pp_term a pp_term u pp_term b;
       None
   | P_query_infer(pt, cfg) ->
-      let (_, a) = infer p ctxt {elt=scope pt;pos=pt.pos} in
+      let (_, a) = infer p tc ctxt {elt=scope pt;pos=pt.pos} in
       return pp_term (Eval.eval cfg ctxt a)
   | P_query_normalize(pt, cfg) ->
-      let t = scope pt in
-      let (t, _) = infer p ctxt {elt=scope pt;pos=pt.pos} in
+      let (t, _) = infer p tc ctxt {elt=scope pt;pos=pt.pos} in
       return pp_term (Eval.eval cfg ctxt t)

@@ -83,8 +83,9 @@ let tac_solve : popt -> proof_state -> proof_state = fun pos ps ->
     | Unif _ -> ms
     | Typ gt -> MetaSet.add gt.goal_meta ms
   in
-  p.metas <- List.fold_left f MetaSet.empty gs_typ;
-  p.to_solve <- List.rev_map get_constr gs_unif;
+  p := { !p with
+         metas = List.fold_left f MetaSet.empty gs_typ
+       ; to_solve = List.rev_map get_constr gs_unif };
   if not (Unif.solve_noexn p) then
     fatal pos "Unification goals are unsatisfiable.";
   (* remove in [gs_typ] the goals that have been instantiated, and simplify
@@ -94,7 +95,7 @@ let tac_solve : popt -> proof_state -> proof_state = fun pos ps ->
     | gt -> Some (Goal.simpl Eval.simplify gt)
   in
   let gs_typ = List.filter_map not_instantiated gs_typ in
-  {ps with proof_goals = List.map (fun c -> Unif c) p.unsolved @ gs_typ}
+  {ps with proof_goals = List.map (fun c -> Unif c) !p.unsolved @ gs_typ}
 
 (** [tac_refine pos ps gt gs p t] refines the typing goal [gt] with [t]. [p]
     is the set of metavariables created by the scoping of [t]. *)
@@ -145,16 +146,17 @@ let tac_induction : (module Infer.S) -> popt -> proof_state -> goal_typ ->
   | Prod(a,_) ->
       let ind = ind_data pos goal_hyps a in
       let n = ind.ind_nb_params + ind.ind_nb_types + ind.ind_nb_cons in
+      let p = new_problem () in
       let metas =
         let fresh_meta _ =
-          let mt = LibTerm.Meta.make ctx mk_Type in
-          LibTerm.Meta.make ctx mt
+          let mt = LibMeta.make p ctx mk_Type in
+          LibMeta.make p ctx mt
         in
         (* Reverse to have goals properly sorted. *)
         List.(rev (init (n - 1) fresh_meta))
       in
       let t = add_args (mk_Symb ind.ind_prop) metas in
-      tac_refine tc pos ps gt gs t
+      tac_refine tc pos ps gt gs p t
   | _ -> fatal pos "[%a] is not a product." pp_term goal_type
 
 (** [count_products a] returns the number of consecutive products at the top
@@ -235,14 +237,13 @@ let handle : Sig_state.t -> bool -> proof_state -> p_tactic -> proof_state =
           let e2, x, e1 = List.split (fun (s,_) -> s = id) env in
           let u = lift gt.goal_type in
           let q = Env.to_prod_box [x] (Env.to_prod_box e2 u) in
-          (* let m = LibMeta.fresh p (Env.to_prod e1 q) (List.length e1) in *)
-          let m = assert false in
+          let m = LibMeta.fresh p (Env.to_prod e1 q) (List.length e1) in
           let me1 = Bindlib.unbox (_Meta m (Env.to_tbox e1)) in
           let t =
             List.fold_left (fun t (_,(v,_,_)) -> mk_Appl(t, mk_Vari v))
               me1 (x::e2)
           in
-          tac_refine tc pos ps gt gs t
+          tac_refine tc pos ps gt gs p t
         with Not_found -> fatal idpos "Unknown hypothesis %a" pp_uid id;
       end
   | P_tac_have(id, t) ->
@@ -270,9 +271,9 @@ let handle : Sig_state.t -> bool -> proof_state -> p_tactic -> proof_state =
         let u = Bindlib.unbox (_Meta m2 (Array.append ts [|_Meta m1 ts|])) in
         tac_refine tc pos ps gt gs p u
       end
-  | P_tac_induction -> tac_induction pos ps gt gs
+  | P_tac_induction -> tac_induction tc pos ps gt gs
   | P_tac_refine t ->
-      let p = new_problem() in tac_refine pos ps gt gs p (scope p t)
+      let p = new_problem() in tac_refine tc pos ps gt gs p (scope p t)
   | P_tac_refl ->
       let n = count_products (Env.to_ctxt env) gt.goal_type in
       if n > 0 then

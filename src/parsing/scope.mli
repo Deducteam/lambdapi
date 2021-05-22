@@ -57,3 +57,12 @@ val scope_rule : bool -> sig_state -> p_rule -> pre_rule loc
     [s] into an actual rewrite specification (possibly containing variables of
     [env] and using [ss] for aliasing). *)
 val scope_rw_patt : sig_state -> env -> p_rw_patt -> (term, tbinder) rw_patt
+
+val scope_coercion : sig_state -> env -> p_term ->
+  tmbinder * (strloc * env * tmbinder) array
+(** [scope_coercion ss env md t] scopes term [t] as a coercion definition into
+    environment [env] and signature state [ss]. It returns a couple [(defn,b)]
+    where [defn] binds each pre-requisite in the definition of the coercion.
+    The array [b] contains pre-requisites as couples [(e,u)] where [u] is the
+    subterm coerced by the pre-requisite in environment [e]. The environment
+    [e] is needed to scope the type of the prerequisites. *)

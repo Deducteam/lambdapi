@@ -182,15 +182,15 @@ let check_rule : Scope.pre_rule Pos.loc -> rule = fun ({pos; elt} as pr) ->
     log_subj "replace pattern variables by metavariables\n%a ↪ %a"
       pp_term lhs_with_metas pp_term rhs_with_metas;
   (* Infer the typing constraints of the LHS. *)
-  let module Infer = (val Unif.typechecker []) in
+  let module Infer = (val Unif.typechecker ~type_check:false []) in
   match Infer.infer_noexn p [] lhs_with_metas with
   | None -> fatal pos "The LHS is not typable."
-  | Some(lhs_typing, ty_lhs) ->
+  | Some(lhs_with_metas, ty_lhs) ->
   (* Try to simplify constraints. Don't check typing when instantiating
      a metavariable. *)
   if not (Unif.solve_noexn ~type_check:false p) then
     fatal pos "The LHS is not typable.";
-  let lhs_constrs = p.unsolved in
+  let lhs_constrs = !p.unsolved in
   if !log_enabled then
     log_subj "LHS: %a%a\n%a ↪ %a"
       pp_term ty_lhs pp_constrs lhs_constrs
@@ -230,9 +230,11 @@ let check_rule : Scope.pre_rule Pos.loc -> rule = fun ({pos; elt} as pr) ->
   (* TODO complete the constraints into a set of rewriting rule on
      the function symbols of [symbols]. *)
   (* Compute the constraints for the RHS to have the same type as the LHS. *)
+  let module Infer = (val Unif.typechecker []) in
   let p = new_problem() in
-  if not (Infer.check_noexn p [] rhs_with_metas ty_lhs) then
-    fatal pos "The RHS does not have the same type as the LHS.";
+  match Infer.check_noexn p [] rhs_with_metas ty_lhs with
+  | None -> fatal pos "The RHS does not have the same type as the LHS.";
+  | Some rhs_with_metas ->
   (* Solving the typing constraints of the RHS. *)
   if not (Unif.solve_noexn p) then
     fatal pos "The rewriting rule does not preserve typing.";
@@ -245,7 +247,7 @@ let check_rule : Scope.pre_rule Pos.loc -> rule = fun ({pos; elt} as pr) ->
       || Eval.(eq_modulo [] t1 u2 && eq_modulo [] t2 u1) in
     List.exists (eq c) lhs_constrs
   in
-  let cs = List.filter (fun c -> not (is_lhs_constr c)) p.unsolved in
+  let cs = List.filter (fun c -> not (is_lhs_constr c)) !p.unsolved in
   if cs <> [] then
     begin
       List.iter (fatal_msg "Cannot solve %a\n" pp_constr) cs;

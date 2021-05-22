@@ -309,15 +309,17 @@ module MetaSet : Set.S with type elt = Meta.t
 module MetaMap : Map.S with type key = Meta.t
 
 (** Representation of unification problems. *)
-type problem =
-  { mutable to_solve  : constr list
+type problem_aux =
+  { to_solve  : constr list
   (** List of unification problems to solve. *)
-  ; mutable unsolved  : constr list
+  ; unsolved  : constr list
   (** List of unification problems that could not be solved. *)
-  ; mutable recompute : bool
+  ; recompute : bool
   (** Indicates whether unsolved problems should be rechecked. *)
-  ; mutable metas : MetaSet.t
+  ; metas : MetaSet.t
   (** Set of unsolved metas. *) }
+
+type problem = problem_aux ref
 
 (** Create a new empty problem. *)
 val new_problem : unit -> problem

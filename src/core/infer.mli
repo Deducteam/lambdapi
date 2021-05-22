@@ -1,19 +1,34 @@
 open Term
 
-(** Given a meta [m] of type [Πx1:a1,..,Πxn:an,b], [set_to_prod p m] sets [m]
-   to a product term of the form [Πy:m1[x1;..;xn],m2[x1;..;xn;y]] with fresh
-   metavariables [m1] and [m2], and updates the metas of the problem [p]. *)
-val set_to_prod : problem -> meta -> unit
+(** Module that provide a lookup function to the refiner. *)
+module type LOOKUP = sig
+  val coercions : Sign.coercion list
+  val solve : problem -> bool
+  (** [solve] is a solver as specified in {!module:Unif} (see
+      {!val:Unif.solve_noexn}). *)
+end
 
-(** [infer_noexn p ctx t] returns [None] if the type of [t] in context [ctx]
-   cannot be inferred, or [Some a] where [a] is some type of [t] in the
-   context [ctx], possibly adding new constraints in [p]. The metavariables of
-   [p] are updated when a metavariable is instantiated or created. [ctx] must
-   be well sorted. *)
-val infer_noexn : problem -> ctxt -> term -> term option
+module type S = sig
+  exception NotTypable
+  (** Raised when a term cannot be typed. *)
 
-(** [check_noexn p ctx t a] tells whether the term [t] has type [a] in the
-   context [ctx], possibly adding new constraints in |p]. The metavariables of
-   [p] are updated when a metavariable is instantiated or created. The context
-   [ctx] and the type [a] must be well sorted. *)
-val check_noexn : problem -> ctxt -> term -> term -> bool
+  val infer_noexn : problem -> ctxt -> term -> (term * term) option
+  (** [infer_noexn pb ctx t] returns a couple [(t', t_ty)] where [t_ty]
+      is the inferred type of [t] in problem [pb] and in context [ctx];
+      [t'] is [t] refined. If [t] is not typable, [None] is returned. The
+      problem is updated in place. *)
+
+  val check_noexn : problem -> ctxt -> term -> term -> term option
+  (** [check_noexn pb ctx t t_ty] ensures that term [t] has type [t_ty] in
+      context [ctx] and problem [pb]. It returns term [t] refined and updates
+      problem [pb]. *)
+
+  val check_sort_noexn : problem -> ctxt -> term -> (term * term) option
+    (** [check_sort_noexn cs ctx t] returns a 2-uple [(t',s)] where [t']
+        is [t] refined, [s] is the inferred sort of [t'], [TYPE] or [KIND].
+        If [t] is not typable, [None] is returned. *)
+end
+
+module Make : functor (_: LOOKUP) -> S
+
+module Bare : S

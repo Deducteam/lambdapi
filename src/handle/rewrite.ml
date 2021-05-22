@@ -311,7 +311,8 @@ let rewrite : Sig_state.t -> problem -> popt -> goal_typ -> bool ->
 
   (* Infer the type of [t] (the argument given to the tactic). *)
   let g_ctxt = Env.to_ctxt g_env in
-  let t_type = Query.infer pos p g_ctxt t in
+  let tc = Unif.typechecker ss.coercions in
+  let (t, t_type) = Query.infer p tc g_ctxt (Pos.make pos t) in
 
   (* Check that the type of [t] is of the form “P (eq a l r)”. *)
   let (t_type, vars) = break_prod t_type in

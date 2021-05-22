@@ -143,22 +143,6 @@ let fresh_patt : lhs_data -> string option -> tbox array -> tbox =
       let i = fresh_index () in
       _Patt (Some i) (Printf.sprintf "v%i" i) ts
 
-(** [fresh_meta_type md env] calls [Env.fresh_meta_type] and updates the set
-   of new metavariables in [md]. *)
-let fresh_meta_type : mode -> env -> tbox = fun md env ->
-  match md with
-  | M_Term d -> Env.fresh_meta_type d.m_term_new_metas env
-  | M_RHS d -> Env.fresh_meta_type d.m_rhs_new_metas env
-  | _ -> assert false
-
-(** [fresh_meta_tbox md env] calls [Env.fresh_meta_tbox] and updates the set
-   of new metavariables in [md]. *)
-let fresh_meta_tbox : mode -> env -> tbox = fun md env ->
-  match md with
-  | M_Term d -> Env.fresh_meta_tbox d.m_term_new_metas env
-  | M_RHS d -> Env.fresh_meta_tbox d.m_rhs_new_metas env
-  | _ -> assert false
-
 (** [scope md ss env t] turns a parser-level term [t] into an actual term. The
    variables of the environment [env] may appear in [t], and the scoping mode
    [md] changes the behaviour related to certain constructors. The signature
@@ -712,12 +696,6 @@ let scope_rw_patt : sig_state -> env -> p_rw_patt -> (term, tbinder) rw_patt =
       let t = scope_pattern ss ((x.elt,(v, _Kind, None))::env) t in
       Rw_TermAsIdInTerm(u, Bindlib.unbox (Bindlib.bind_var v (lift t)))
 
-(** [scope_coercion ss env md t] scopes term [t] as a coercion definition into
-    environment [env] and signature state [ss]. It returns a couple [(defn,b)]
-    where [defn] binds each pre-requisite in the definition of the coercion.
-    The array [b] contains pre-requisites as couples [(e,u)] where [u] is the
-    subterm coerced by the pre-requisite in environment [e]. The environment
-    [e] is needed to scope the type of the prerequisites. *)
 let scope_coercion : sig_state -> env -> p_term ->
   tmbinder * (strloc * Env.t * tmbinder) array =
   fun ss env pt ->

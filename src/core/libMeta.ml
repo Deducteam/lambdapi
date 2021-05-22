@@ -15,7 +15,7 @@ let fresh : problem -> ?name:string -> term -> int -> meta =
   let m = {meta_key = Stdlib.(incr meta_counter; !meta_counter);
            meta_name = name; meta_type = ref a; meta_arity = n;
            meta_value = ref None } in
-  p.metas <- MetaSet.add m p.metas; m
+  p := {!p with metas = MetaSet.add m !p.metas}; m
 
 (** [fresh_box p ?name a n] is the boxed counterpart of [fresh_meta]. It is
    only useful in the rare cases where the type of a metavariable contains a
@@ -34,7 +34,7 @@ let fresh_box: problem -> ?name:string -> tbox -> int -> meta Bindlib.box =
    care. *)
 let set : problem -> meta -> tmbinder -> unit = fun p m v ->
   m.meta_type := mk_Kind; (* to save memory *) m.meta_value := Some v;
-  p.metas <- MetaSet.remove m p.metas
+  p := {!p with metas = MetaSet.remove m !p.metas}
 
 (** [name m] returns a string representation of [m]. *)
 let name : meta -> string = fun m ->
@@ -47,7 +47,7 @@ let name : meta -> string = fun m ->
 let of_name : string -> problem -> meta option = fun n p ->
   let exception Found of meta in
   let f m = if m.meta_name = Some n then raise (Found m) in
-  try MetaSet.iter f p.metas; None with Found m -> Some m
+  try MetaSet.iter f !p.metas; None with Found m -> Some m
 
 (** [make p ctx a] creates a fresh metavariable term of type [a] in the
    context [ctx], and adds it to [p]. *)
@@ -55,8 +55,8 @@ let make : problem -> ?name:string -> ctxt -> term -> term =
   fun p ?name ctx a ->
   let a, k = Ctxt.to_prod ctx a in
   let m = fresh ?name p a k in
-  let get_var (x,_,_) = mk_Vari x in
-  mk_Meta(m, Array.of_list (List.rev_map get_var ctx))
+  let get_var (x,_,d) = if d = None then Some (mk_Vari x) else None in
+  mk_Meta(m, Array.of_list (List.(filter_map get_var ctx |> rev)))
 
 (** [make_codomain p ctx a] creates a fresh metavariable term of type [Type]
    in the context [ctx] extended with a fresh variable of type [a], and
@@ -91,6 +91,7 @@ let iter : bool -> (meta -> unit) -> ctxt -> term -> unit = fun b f c ->
     | TRef _
     | Type
     | Kind
+    | Plac _
     | Symb _ -> ()
     | Vari x ->
         begin match VarMap.find_opt x Stdlib.(!vm) with
@@ -110,3 +111,17 @@ let occurs : meta -> ctxt -> term -> bool =
   let exception Found in fun m c t ->
   let f p = if m == p then raise Found in
   try iter false f c t; false with Found -> true
+
+(** [unbind p ctx prod len] unbinds each binding of the form [Π x: t, a]
+    by [unbind_meta ({?ₖ/x}a)] where [?ₖ] is a fresh meta-variable of type
+    [t] in context [ctx]. At most [len] products are unbound. *)
+let rec unbind : problem -> ctxt -> term -> int -> term list * term =
+  fun p ctx ty k ->
+  if k <= 0 then [], ty else
+  match unfold ty with
+  | Prod(a, b) ->
+      let m = make p ctx a in
+      let b = Bindlib.subst b m in
+      let ms, r = unbind p ctx b (k - 1) in
+      m :: ms, r
+  | _ -> [], ty
