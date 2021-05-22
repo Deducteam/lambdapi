@@ -113,6 +113,7 @@ functor
       if Eval.eq_modulo ctx a b then t else
       let tau = Time.save () in
       let rec try_coercions cs =
+        Time.restore tau;
         match cs with
         | [] -> raise Not_found
         | Sign.{defn_ty; source; prerequisites; defn; arity; name }::cs ->
@@ -139,39 +140,34 @@ functor
               in
               metas, domain, range
             in
-            try
-              let tau = Time.save () in
-              if approx ctx a domain && approx ctx b range then
-                (* REVIEW: we may short-circuit prerequisites processing when
-                   there is none. *)
-                (* Replace pre-requisites by variables to be able to reduce
-                   the term. *)
-                let preqs_vars, defn = Bindlib.unmbind defn in
-                let defn =
-                  Eval.whnf_beta (add_args defn (Array.to_list metas))
-                in
-                unif ctx t metas.(source - 1);
-                unif ctx b range;
-                let preqs = apply ctx metas prerequisites in
-                (* Inject the solved pre-requisites. *)
-                let defn =
-                  Bindlib.(bind_mvar preqs_vars (lift defn) |> unbox)
-                in
-                Bindlib.msubst defn preqs
-              else (Time.restore tau; failwith "not approx")
-            with Failure _ -> try_coercions cs
+            if approx ctx a domain && approx ctx b range then
+              (* REVIEW: we may short-circuit prerequisites processing when
+                 there is none. *)
+              (* Replace pre-requisites by variables to be able to reduce
+                 the term. *)
+              let preqs_vars, defn = Bindlib.unmbind defn in
+              let defn =
+                Eval.whnf_beta (add_args defn (Array.to_list metas))
+              in
+              unif ctx t metas.(source - 1);
+              unif ctx b range;
+              let preqs = apply ctx metas prerequisites in
+              (* Inject the solved pre-requisites. *)
+              let defn =
+                Bindlib.(bind_mvar preqs_vars (lift defn) |> unbox)
+              in
+              Bindlib.msubst defn preqs
+            else try_coercions cs
       in
       let eqs = Stdlib.(!constraints) in
       match L.solve {empty_problem with to_solve = (ctx, a, b) :: eqs} with
       | Some [] -> Stdlib.(constraints := []) (* Backup resolution *); t
       | _ ->
-          Time.restore tau;
           if !Debug.log_enabled then
             log "Coerce [%a : %a ≡ %a]" Print.pp_term t
               Print.pp_term a Print.pp_term b;
           try try_coercions L.coercions
           with Not_found ->
-            Time.restore tau;
             (* FIXME: when is this case encountered? Only when checking SR? *)
             (* Hope that the constraint will be solved later. *)
             unif ctx a b;
