@@ -1,6 +1,6 @@
 ### Unreleased
 
-#### Better handling of let's (2021-05-21)
+#### Better handling of let's (2021-05-26)
 
 - mk_LLet removes useless let's
 - rename Eval.config into strat
