@@ -15,7 +15,7 @@ let fresh : problem -> ?name:string -> term -> int -> meta =
   let m = {meta_key = Stdlib.(incr meta_counter; !meta_counter);
            meta_name = name; meta_type = ref a; meta_arity = n;
            meta_value = ref None } in
-  p.metas <- MetaSet.add m p.metas; m
+  p := {!p with metas = MetaSet.add m !p.metas}; m
 
 (** [fresh_box p ?name a n] is the boxed counterpart of [fresh_meta]. It is
    only useful in the rare cases where the type of a metavariable contains a
@@ -34,7 +34,7 @@ let fresh_box: problem -> ?name:string -> tbox -> int -> meta Bindlib.box =
    care. *)
 let set : problem -> meta -> tmbinder -> unit = fun p m v ->
   m.meta_type := mk_Kind; (* to save memory *) m.meta_value := Some v;
-  p.metas <- MetaSet.remove m p.metas
+  p := {!p with metas = MetaSet.remove m !p.metas}
 
 (** [name m] returns a string representation of [m]. *)
 let name : meta -> string = fun m ->
@@ -47,7 +47,7 @@ let name : meta -> string = fun m ->
 let of_name : string -> problem -> meta option = fun n p ->
   let exception Found of meta in
   let f m = if m.meta_name = Some n then raise (Found m) in
-  try MetaSet.iter f p.metas; None with Found m -> Some m
+  try MetaSet.iter f !p.metas; None with Found m -> Some m
 
 (** [make p ctx a] creates a fresh metavariable term of type [a] in the
    context [ctx], and adds it to [p]. *)
