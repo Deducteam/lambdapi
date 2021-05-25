@@ -54,13 +54,15 @@ end = struct
    list by [get_args]. We could make [Pratt.parse] return a list of terms
    instead. *)
   let parse : Sig_state.t -> Env.t -> p_term -> p_term = fun st env t ->
-    let (h,args) = Syntax.p_get_args t in
-    let strm = Stream.of_list (h::args) in
+    let h, args = Syntax.p_get_args t in
+    let strm = Stream.of_list (h :: args) in
     let module Parse = Pratter.Make(Pratt_terms) in
     try Parse.expression (st, env) strm with
-    | Parse.OpConflict(t, u) ->
+    | Parse.OpConflict (t, u) ->
         Error.fatal t.pos "Operator conflict between \"%a\" and \"%a\""
           Pretty.term t Pretty.term u
+    | Parse.UnexpectedBin t ->
+        Error.fatal t.pos "Unexpected binary operator \"%a\"" Pretty.term t
     | Parse.TooFewArguments ->
         Error.fatal t.pos "Malformed application in \"%a\"" Pretty.term t
 end

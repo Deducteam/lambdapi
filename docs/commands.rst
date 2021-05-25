@@ -269,6 +269,12 @@ Examples of patterns are available in ``tests/OK/patterns.lp``.
 
 The ``notation`` command is used to specify a notation for a symbol.
 
+When declared as notations, identifiers then must be used at correct places
+and as such cannot make valid terms on their own anymore.
+To reaccess the value of the identifier without the notation properties,
+wrap it in parentheses.
+
+
 **infix** The following code defines infix symbols for addition
 and multiplication. Both are associative to the left, and they have
 priority levels ``6`` and ``7`` respectively.
@@ -283,6 +289,10 @@ to specify whether the defined symbol is non-associative, associative to
 the right, or associative to the left. The priority levels are floating
 point numbers, hence a priority can (almost) always be inserted between
 two different levels.
+
+As explained above, at this point, ``+`` is not a valid term anymore, as it was declared infix.
+The system now expects ``+`` to only appear in expressions of the form ``x + y``
+To get around this, you can use ``(+)`` instead.
 
 **prefix** The following code defines a prefix symbol for
 negation with some priority level.
@@ -300,6 +310,7 @@ negation with some priority level.
    compute λ p, ∀ (λ x:T a, p); // prints `∀ x, p
    type λ p, `∀ x, p; // quantifiers can be written as such
    type λ p, `f x, p; // works as well if f is any symbol
+
 
 ``builtin``
 ---------------
@@ -359,7 +370,7 @@ generating the induction principles and their rules from an inductive
 type definition, assuming that the following builtins are defined:
 
 ::
-   
+
    ￼builtin "Prop" ≔ ...; // : TYPE, for the type of propositions
    ￼builtin "P"    ≔ ...; // : Prop → TYPE, interpretation of propositions as types
 
@@ -375,15 +386,15 @@ encoded by defining a type ``Set`` and a function ``τ:Set → TYPE``.
 Example:
 
 ::
-   
+
    ￼inductive ℕ : TYPE ≔
    ￼| zero: ℕ
    ￼| succ: ℕ → ℕ;
-   
+
 is equivalent to:
 
 ::
-   
+
    ￼constant symbol ℕ : TYPE;
    ￼constant symbol zero : ℕ;
    ￼constant symbol succ : ℕ → ℕ;
@@ -397,7 +408,7 @@ keyword to link all inductive types together.
 Inductive definitions can also be parametrized as follows:
 
 ::
-   
+
    (a:Set) inductive T: TYPE ≔
    | node: τ a → F a → T a
    with F: TYPE ≔

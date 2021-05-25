@@ -23,6 +23,9 @@ An identifier can be:
 
 Remark: for any regular identifier ``i``, ``{|i|}`` is equivalent to ``i``.
 
+* an escaped notation identifier, that is, an identifier previously declared as notation,
+  wrapped in parentheses (this allows access to the notationless value of the identifier)
+
 Remark: escaped identifiers and regular identifiers ending with a
 non-negative integer with leading zeros cannot be used for bound
 variable names.
