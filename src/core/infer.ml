@@ -43,7 +43,7 @@ let conv : problem -> ctxt -> term -> term -> unit = fun p ctx a b ->
     begin
       let c = (ctx,a,b) in
       p.to_solve <- c::p.to_solve;
-      if !log_enabled then log_infr (mag "%a") pp_constr c
+      if !log_enabled then log_infr (mag "add constraint %a") pp_constr c
     end
 
 (** Exception that may be raised by type inference. *)
