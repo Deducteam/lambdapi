@@ -27,7 +27,7 @@ let rec type_app : ctxt -> term -> term list -> term option = fun c a ts ->
 (** [add_constr p c] adds the constraint [c] into [p.to_solve]. *)
 let add_constr : problem -> constr -> unit = fun p c ->
   if !log_enabled then log_unif (mag "add %a") pp_constr c;
-  p.to_solve <- c::p.to_solve
+  p := {!p with to_solve = c::!p.to_solve}
 
 (** [add_unif_rule_constr p (c,t,u)] adds to [p] the constraint [(c,t,u)]
    as well as the constraint [(c,a,b)] where [a] is the type of [t] and [b]
@@ -98,7 +98,8 @@ let instantiate : problem -> ctxt -> meta -> term array -> term -> bool =
   | Some b when Bindlib.is_closed b ->
       let do_instantiate() =
         if !log_enabled then log_unif (red "%a ≔ %a") pp_meta m pp_term u;
-        LibMeta.set p m (Bindlib.unbox b); p.recompute <- true; true
+        LibMeta.set p m (Bindlib.unbox b);
+        p := {!p with recompute = true}; true
       in
       if Stdlib.(!do_type_check) then
         begin
@@ -134,7 +135,7 @@ let add_to_unsolved : problem -> ctxt -> term -> term -> unit =
     (if !log_enabled then log_unif "equivalent terms")
   else if not (try_unif_rules p c t1 t2) then
     (if !log_enabled then log_unif "move to unsolved";
-     p.unsolved <- (c,t1,t2) :: p.unsolved)
+     p := {!p with unsolved = (c,t1,t2)::!p.unsolved})
 
 (** [decompose p c ts1 ts2] tries to decompose a problem of the form [h ts1 ≡
    h ts2] into the problems [t1 ≡ u1; ..; tn ≡ un], assuming that [ts1 =
@@ -289,7 +290,7 @@ let inverse : problem -> ctxt -> term -> sym -> term list -> term -> unit =
         | Prod _ when is_constant s -> error t1 t2
         | _ ->
             if !log_enabled then log_unif "move to unsolved";
-            p.unsolved <- (c,t1,t2) :: p.unsolved
+            p := {!p with unsolved = (c, t1, t2)::!p.unsolved}
 
 (** [sym_sym_whnf p c t1 s1 ts1 t2 s2 ts2 p] handles the case [s1(ts1) =
    s2(ts2); p] when [s1(ts1)] and [s2(ts2)] are in whnf. *)
@@ -316,19 +317,17 @@ let sym_sym_whnf :
 Otherwise, [p.to_solve] is empty but [p.unsolved] may still contain
 constraints that could not be simplified. *)
 let solve : problem -> unit = fun p ->
-  while p.to_solve <> [] || (p.recompute && p.unsolved <> []) do
-  match p.to_solve with
+  while !p.to_solve <> [] || (!p.recompute && !p.unsolved <> []) do
+  match !p.to_solve with
   | [] ->
       if !log_enabled then log_unif "recompute";
-      p.to_solve <- p.unsolved;
-      p.unsolved <- [];
-      p.recompute <- false
+      p := {!p with to_solve = !p.unsolved; unsolved = []; recompute = false}
   | (c,t1,t2)::to_solve ->
   (*if !log_enabled then
     log_unif "%d constraints" (1 + List.length to_solve);*)
 
   (* We remove the first constraint from [p] for not looping. *)
-  p.to_solve <- to_solve;
+  p := {!p with to_solve};
 
   (* We take the beta-whnf. *)
   let t1 = Eval.whnf_beta t1 and t2 = Eval.whnf_beta t2 in

@@ -42,7 +42,7 @@ let conv : problem -> ctxt -> term -> term -> unit = fun p ctx a b ->
   if not (Eval.eq_modulo ctx a b) then
     begin
       let c = (ctx,a,b) in
-      p.to_solve <- c::p.to_solve;
+      p := {!p with to_solve = c::!p.to_solve};
       if !log_enabled then log_infr (mag "%a") pp_constr c
     end
 
@@ -192,7 +192,7 @@ let infer_noexn : problem -> ctxt -> term -> term option = fun p ctx t ->
     let a = time_of (fun () -> infer p ctx t) in
     if !log_enabled then
       log_hndl (blu "result of infer_noexn:\n%a%a")
-        pp_term a pp_constrs p.to_solve;
+        pp_term a pp_constrs !p.to_solve;
     Some a
   with NotTypable -> None
 
@@ -204,7 +204,7 @@ let check_noexn : problem -> ctxt -> term -> term -> bool = fun p ctx t a ->
   try
     if !log_enabled then log_hndl (blu "check_noexn %a") pp_typing (ctx,t,a);
     time_of (fun () -> check p ctx t a);
-    if !log_enabled && p.to_solve <> [] then
-      log_hndl (blu "result of check_noexn:%a") pp_constrs p.to_solve;
+    if !log_enabled && !p.to_solve <> [] then
+      log_hndl (blu "result of check_noexn:%a") pp_constrs !p.to_solve;
     true
   with NotTypable -> false

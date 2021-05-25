@@ -83,8 +83,8 @@ let tac_solve : popt -> proof_state -> proof_state = fun pos ps ->
     | Unif _ -> ms
     | Typ gt -> MetaSet.add gt.goal_meta ms
   in
-  p.metas <- List.fold_left f MetaSet.empty gs_typ;
-  p.to_solve <- List.rev_map get_constr gs_unif;
+  p := {!p with metas = List.fold_left f MetaSet.empty gs_typ
+              ; to_solve = List.rev_map get_constr gs_unif};
   if not (Unif.solve_noexn p) then
     fatal pos "Unification goals are unsatisfiable.";
   (* remove in [gs_typ] the goals that have been instantiated, and simplify
@@ -94,7 +94,7 @@ let tac_solve : popt -> proof_state -> proof_state = fun pos ps ->
     | gt -> Some (Goal.simpl Eval.simplify gt)
   in
   let gs_typ = List.filter_map not_instantiated gs_typ in
-  {ps with proof_goals = List.map (fun c -> Unif c) p.unsolved @ gs_typ}
+  {ps with proof_goals = List.map (fun c -> Unif c) !p.unsolved @ gs_typ}
 
 (** [tac_refine pos ps gt gs p t] refines the typing goal [gt] with [t]. [p]
    is the set of metavariables created by the scoping of [t]. *)

@@ -89,10 +89,10 @@ end
 (** [add_goals_of_problem p gs] extends the list of goals [gs] with the
    metavariables and constraints of [p]. *)
 let add_goals_of_problem : problem -> goal list -> goal list = fun p gs ->
-  let gs = MetaSet.fold (fun m gs -> Goal.of_meta m :: gs) p.metas gs in
+  let gs = MetaSet.fold (fun m gs -> Goal.of_meta m :: gs) !p.metas gs in
   let f gs c = Unif c :: gs in
-  let gs = List.fold_left f gs p.to_solve in
-  List.fold_left f gs p.unsolved
+  let gs = List.fold_left f gs !p.to_solve in
+  List.fold_left f gs !p.unsolved
 
 (** Representation of the proof state of a theorem. *)
 type proof_state =
