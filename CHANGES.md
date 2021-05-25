@@ -2,11 +2,15 @@
 
 #### Better handling of let's (2021-05-21)
 
+- mk_LLet removes useless let's
+- rename Eval.config into strat
 - factorize whnf_beta and whnf
 - fix handling of variable unfoldings in whnf_stk
+- optimize context lookup by using a map
+- gather problem, context, map and rewrite into a record data type
+- abstract whnf in hnf, snf and eq_modulo
 - fix typing of let's
-- mk_LLet removes useless let's
-- improve printing as well
+- improve printing
 
 #### Interface Improvements (2021-05-20)
 
