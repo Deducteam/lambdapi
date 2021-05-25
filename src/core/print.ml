@@ -313,4 +313,5 @@ let pp_metaset : MetaSet.t pp = fun ppf ->
 let pp_problem : problem pp = fun ppf p ->
   out ppf
     "{recompute=%b; metas={%a}; to_solve=[%a];\n  unsolved=[%a]}"
-    p.recompute pp_metaset p.metas pp_constrs p.to_solve pp_constrs p.unsolved
+    !p.recompute pp_metaset !p.metas pp_constrs !p.to_solve pp_constrs
+    !p.unsolved

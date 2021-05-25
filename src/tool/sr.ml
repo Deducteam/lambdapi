@@ -186,7 +186,7 @@ let check_rule : Scope.pre_rule Pos.loc -> rule = fun ({pos; elt} as pr) ->
      a metavariable. *)
   if not (Unif.solve_noexn ~type_check:false p) then
     fatal pos "The LHS is not typable.";
-  let lhs_constrs = p.unsolved in
+  let lhs_constrs = !p.unsolved in
   if !log_enabled then
     log_subj "LHS: %a%a\n%a ↪ %a"
       pp_term ty_lhs pp_constrs lhs_constrs
@@ -241,7 +241,7 @@ let check_rule : Scope.pre_rule Pos.loc -> rule = fun ({pos; elt} as pr) ->
       || Eval.(eq_modulo [] t1 u2 && eq_modulo [] t2 u1) in
     List.exists (eq c) lhs_constrs
   in
-  let cs = List.filter (fun c -> not (is_lhs_constr c)) p.unsolved in
+  let cs = List.filter (fun c -> not (is_lhs_constr c)) !p.unsolved in
   if cs <> [] then
     begin
       List.iter (fatal_msg "Cannot solve %a\n" pp_constr) cs;

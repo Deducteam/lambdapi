@@ -24,8 +24,8 @@ type compiler = Path.t -> Sign.t
 let _ =
   (* [eq_noexn t u] tries to unify the terms [t] and [u]. *)
   let eq_noexn : term -> term -> bool = fun t u ->
-    let p = new_problem() in p.to_solve <- [[],t,u];
-    Unif.solve_noexn p && p.unsolved = [] && p.metas = MetaSet.empty
+    let p = new_problem() in p := {!p with to_solve = [[], t, u]};
+    Unif.solve_noexn p && !p.unsolved = [] && !p.metas = MetaSet.empty
   in
   let register = Builtin.register_expected_type eq_noexn pp_term in
   let expected_zero_type ss _pos =
@@ -165,7 +165,7 @@ let handle_inductive_symbol : sig_state -> expo -> prop -> match_strat
   (* We check that [typ] is typable by a sort. *)
   Query.check_sort pos p [] typ;
   (* We check that no metavariable remains. *)
-  if p.metas <> MetaSet.empty then
+  if !p.metas <> MetaSet.empty then
     (fatal_msg "The type of %a has unsolved metavariables.\n" pp_uid name;
      fatal pos "We have %a : %a." pp_uid name pp_term typ);
   (* Actually add the symbol to the signature and the state. *)

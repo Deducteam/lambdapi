@@ -306,19 +306,21 @@ module MetaSet = Set.Make(Meta)
 module MetaMap = Map.Make(Meta)
 
 (** Representation of unification problems. *)
-type problem =
-  { mutable to_solve  : constr list
+type problem_aux =
+  { to_solve  : constr list
   (** List of unification problems to solve. *)
-  ; mutable unsolved  : constr list
+  ; unsolved  : constr list
   (** List of unification problems that could not be solved. *)
-  ; mutable recompute : bool
+  ; recompute : bool
   (** Indicates whether unsolved problems should be rechecked. *)
-  ; mutable metas : MetaSet.t
+  ; metas : MetaSet.t
   (** Set of unsolved metas. *) }
+
+type problem = problem_aux ref
 
 (** Create a new empty problem. *)
 let new_problem : unit -> problem = fun () ->
-  {to_solve  = []; unsolved = []; recompute = false; metas = MetaSet.empty}
+ ref {to_solve  = []; unsolved = []; recompute = false; metas = MetaSet.empty}
 
 (** [create_sym path expo prop opaq name typ impl] creates a new symbol with
    path [path], exposition [expo], property [prop], opacity [opaq], matching

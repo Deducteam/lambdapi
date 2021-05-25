@@ -12,6 +12,7 @@ open Proof
 open Debug
 open! Lplib
 open Base
+open Timed
 
 (** [infer pos p c t] returns a type for the term [t] in context [c] and under
    the constraints of [p] if there is one, or
@@ -22,9 +23,9 @@ let infer : Pos.popt -> problem -> ctxt -> term -> term = fun pos p ctx t ->
   | Some a ->
       if time_of (fun () -> Unif.solve_noexn p) then
         begin
-          if p.unsolved = [] then a
+          if !p.unsolved = [] then a
           else
-            (List.iter (wrn pos "Cannot solve %a.\n" pp_constr) p.unsolved;
+            (List.iter (wrn pos "Cannot solve %a.\n" pp_constr) !p.unsolved;
              fatal pos "Failed to infer the type of %a." pp_term t)
         end
       else fatal pos "%a is not typable." pp_term t
@@ -37,8 +38,8 @@ let check : Pos.popt -> problem -> ctxt -> term -> term -> unit =
   if Infer.check_noexn p ctx t a then
     if time_of (fun () -> Unif.solve_noexn p) then
       begin
-        if p.unsolved <> [] then
-          (List.iter (wrn pos "Cannot solve %a.\n" pp_constr) p.unsolved;
+        if !p.unsolved <> [] then
+          (List.iter (wrn pos "Cannot solve %a.\n" pp_constr) !p.unsolved;
            fatal pos "[%a] does not have type [%a]." pp_term t pp_term a)
       end
     else fatal pos "[%a] does not have type [%a]." pp_term t pp_term a
@@ -53,13 +54,13 @@ let check_sort : Pos.popt -> problem -> ctxt -> term -> unit =
   | Some a ->
       if time_of (fun () -> Unif.solve_noexn p) then
         begin
-          if p.unsolved = [] then
+          if !p.unsolved = [] then
             match unfold a with
             | Type | Kind -> ()
             | _ -> fatal pos "[%a] has type [%a] and not a sort."
                      pp_term t pp_term a
           else
-            (List.iter (wrn pos "Cannot solve %a.\n" pp_constr) p.unsolved;
+            (List.iter (wrn pos "Cannot solve %a.\n" pp_constr) !p.unsolved;
              fatal pos "Failed to check that [%a] is typable by a sort."
                pp_term a)
         end
@@ -198,13 +199,13 @@ let handle : Sig_state.t -> proof_state option -> p_query -> result =
       (* Check that [u] is typable. *)
       let b = infer pu.pos p ctxt u in
       (* Check that [t] and [u] have the same type. *)
-      p.to_solve <- (ctxt,a,b)::p.to_solve;
+      p := {!p with to_solve = (ctxt,a,b)::!p.to_solve};
       if Unif.solve_noexn p then
-        if p.unsolved = [] then
+        if !p.unsolved = [] then
           (if Eval.eq_modulo ctxt t u = must_fail then
              fatal pos "Assertion failed.")
         else
-          (List.iter (wrn pos "Cannot solve [%a].\n" pp_constr) p.unsolved;
+          (List.iter (wrn pos "Cannot solve [%a].\n" pp_constr) !p.unsolved;
            fatal pos "[%a] has type [%a]\n[%a] has type [%a]\n\
                       Those two types are not unifiable."
              pp_term t pp_term a pp_term u pp_term b)

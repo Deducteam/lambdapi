@@ -40,8 +40,9 @@ let set_to_prod : problem -> meta -> unit = fun p m ->
    [b] are not convertible. *)
 let conv : problem -> ctxt -> term -> term -> unit = fun p c a b ->
   if not (Eval.eq_modulo c a b) then
-    (let cstr = (c,a,b) in p.to_solve <- cstr::p.to_solve;
-     if !log_enabled then log_infr (mag "add constraint %a") pp_constr cstr)
+    (let cstr = (c,a,b) in
+     p := {!p with to_solve = cstr::!p.to_solve};
+     if !log_enabled then log_infr (mag "add %a") pp_constr cstr)
 
 (** Exception that may be raised by type inference. *)
 exception NotTypable
@@ -196,7 +197,7 @@ let infer_noexn : problem -> ctxt -> term -> term option = fun p c t ->
     let a = time_of (fun () -> infer p c t) in
     if !log_enabled then
       log_hndl (blu "result of infer_noexn:\n%a%a")
-        pp_term a pp_constrs p.to_solve;
+        pp_term a pp_constrs !p.to_solve;
     Some a
   with NotTypable -> None
 
@@ -208,7 +209,7 @@ let check_noexn : problem -> ctxt -> term -> term -> bool = fun p c t a ->
   try
     if !log_enabled then log_hndl (blu "check_noexn %a") pp_typing (c,t,a);
     time_of (fun () -> check p c t a);
-    if !log_enabled && p.to_solve <> [] then
-      log_hndl (blu "result of check_noexn:%a") pp_constrs p.to_solve;
+    if !log_enabled && !p.to_solve <> [] then
+      log_hndl (blu "result of check_noexn:%a") pp_constrs !p.to_solve;
     true
   with NotTypable -> false
