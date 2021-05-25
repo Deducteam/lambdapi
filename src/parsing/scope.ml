@@ -150,13 +150,14 @@ let fresh_meta_tbox : mode -> env -> tbox = fun md env ->
    state [ss] is used to convert identifiers into symbols according to
    [find_qid]. *)
 let rec scope : mode -> sig_state -> env -> p_term -> tbox =
+  fun md ss env t -> scope_parsed md ss env (Pratt.parse ss env t)
+(** [scope_parsed md ss env t] turns a parser-level, Pratt-parsed term [t]
+   into an actual term. *)
+and scope_parsed : mode -> sig_state -> env -> p_term -> tbox =
   fun md ss env t ->
   if Timed.(!log_enabled) then log_scop "%a" Pretty.term t;
-  match t.elt with
-  | P_Wrap t -> scope md ss env t
-  | _ ->
   (* Extract the spine. *)
-  let p_head, args = Syntax.p_get_args (Pratt.parse ss env t) in
+  let p_head, args = Syntax.p_get_args t in
   (* Check that LHS pattern variables are applied to no argument. *)
   begin
     match p_head.elt, md with
@@ -169,11 +170,12 @@ let rec scope : mode -> sig_state -> env -> p_term -> tbox =
   (* Find out whether [h] has implicit arguments. *)
   let impl =
     match p_head.elt with
-    | P_Iden(_,expl) ->
+    | P_Iden (_, false)
+    | P_Wrap ({ elt = P_Iden (_, false); _ }) ->
         (* We avoid unboxing if [h] is not closed (and hence not a symbol). *)
         if Bindlib.is_closed h then
           match Bindlib.unbox h with
-          | Symb s -> if expl then [] else s.sym_impl
+          | Symb s -> s.sym_impl
           | _ -> []
         else []
     | _ -> []
@@ -189,7 +191,7 @@ and add_impl : mode -> sig_state ->
                Env.t -> popt -> tbox -> bool list -> p_term list -> tbox =
   fun md ss env loc h impl args ->
   let appl = match md with M_LHS _ -> _Appl_not_canonical | _ -> _Appl in
-  let appl_p_term t u = appl t (scope md ss env u) in
+  let appl_p_term t u = appl t (scope_parsed md ss env u) in
   let appl_meta t = appl t (scope_head md ss env P.wild) in
   match (impl, args) with
   (* The remaining arguments are all explicit. *)
@@ -200,15 +202,15 @@ and add_impl : mode -> sig_state ->
   | (true ::impl, a::args) ->
       begin
         match a.elt with
-        | P_Expl(a) -> add_impl md ss env loc (appl_p_term h a) impl args
-        | _         -> add_impl md ss env loc (appl_meta h) impl (a::args)
+        | P_Expl b -> add_impl md ss env loc (appl_p_term h { a with elt = P_Wrap b }) impl args
+        | _        -> add_impl md ss env loc (appl_meta h) impl (a::args)
       end
   (* The first argument [a] is explicit. *)
   | (false::impl, a::args) ->
       begin
         match a.elt with
-        | P_Expl(_) -> fatal a.pos "Unexpected explicit argument."
-        | _         -> add_impl md ss env loc (appl_p_term h a) impl args
+        | P_Expl _ -> fatal a.pos "Unexpected explicit argument."
+        | _        -> add_impl md ss env loc (appl_p_term h a) impl args
       end
   (* The application is too "partial" to insert all implicit arguments. *)
   | (false::_   , []     ) ->
@@ -444,7 +446,9 @@ and scope_head : mode -> sig_state -> env -> p_term -> tbox =
         if n <= 0 then acc else unsugar_nat_lit (_Appl sym_s acc) (n-1) in
       unsugar_nat_lit sym_z n
 
-  | (P_Wrap(t), _) -> scope md ss env t
+  (* Evade the addition of implicit arguments inside the wrap *)
+  | (P_Wrap ({ elt = P_Iden _; _ } as id), _) -> scope_head md ss env id
+  | (P_Wrap t, _) -> scope md ss env t
 
   | (P_Expl(_), _) -> fatal t.pos "Explicit argument not allowed here."
 
