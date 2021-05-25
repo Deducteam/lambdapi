@@ -50,11 +50,11 @@ let try_unif_rules : problem -> ctxt -> term -> term -> bool =
   let open Unif_rule in
   try
     let rhs =
-      match Eval.tree_walk p !(equiv.sym_dtree) c [s;t] with
+      match Eval.tree_walk p c !(equiv.sym_dtree) [s;t] with
       | Some(r,[]) -> r
       | Some(_)    -> assert false (* Everything should be matched *)
       | None       ->
-      match Eval.tree_walk p !(equiv.sym_dtree) c [t;s] with
+      match Eval.tree_walk p c !(equiv.sym_dtree) [t;s] with
       | Some(r,[]) -> r
       | Some(_)    -> assert false (* Everything should be matched *)
       | None       -> raise No_match

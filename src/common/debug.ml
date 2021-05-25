@@ -105,11 +105,11 @@ module D = struct
     let out fmt = Format.fprintf ppf fmt in
     out "["; let f x = out "%a;" elt x in List.iter f l; out "]"
 
-  let strmap elt ppf map =
+  let map iter key sep1 elt sep2 ppf m =
     let out fmt = Format.fprintf ppf fmt in
-    out "[";
-    let f k t = out "(%a,%a);" string k elt t in
-    StrMap.iter f map;
-    out "]"
+    let f k t = out "%a%s%a%s" key k sep1 elt t sep2 in
+    out "["; iter f m; out "]"
+
+  let strmap elt = map StrMap.iter string "," elt ";"
 
 end

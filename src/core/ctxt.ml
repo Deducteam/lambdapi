@@ -102,5 +102,8 @@ let get_args : ctxt -> term -> term * term list = fun ctx t ->
   in
   get_args [] t
 
-(** {b NOTE} that both [unfold] and [get_args] redefine the functions in
-    {!module:LibTerm} and {!module:Term}. *)
+(** [to_map] builds a map from a context. *)
+let to_map : ctxt -> term VarMap.t =
+  let add_def m (x,_,v) =
+    match v with Some v -> VarMap.add x v m | None -> m
+  in List.fold_left add_def VarMap.empty
