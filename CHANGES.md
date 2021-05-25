@@ -2,6 +2,10 @@
 
 #### Better handling of let's (2021-05-21)
 
+- factorize whnf_beta and whnf
+- fix handling of variable unfoldings in whnf_stk
+- fix typing of let's
+- mk_LLet removes useless let's
 - improve printing as well
 
 #### Interface Improvements (2021-05-20)
