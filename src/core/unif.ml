@@ -33,6 +33,7 @@ let add_constr : problem -> constr -> unit = fun p c ->
    as well as the constraint [(c,a,b)] where [a] is the type of [t] and [b]
    the type of [u] if they can be infered. *)
 let add_unif_rule_constr : problem -> constr -> unit = fun p (c,t,u) ->
+  add_constr p (c,t,u);
   match Infer.infer_noexn p c t with
   | None -> ignore (Infer.infer_noexn p c u)
   | Some a ->

@@ -143,5 +143,5 @@ let rec inverse : sym -> term -> term = fun s v ->
 
 let inverse : sym -> term -> term = fun s v ->
   let t = inverse s v in
-  assert (Eval.eq_modulo [] (mk_Appl(mk_Symb s,t)) v);
-  t
+  if Eval.eq_modulo [] (mk_Appl(mk_Symb s,t)) v then t
+  else raise Not_found

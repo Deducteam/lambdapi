@@ -90,7 +90,7 @@ and whnf_stk : ?rewrite:bool -> ctxt -> term -> stack -> term * stack =
   | r -> r
 
 (** [eq_modulo c a b] tests the equality of [a] and [b] modulo rewriting and
-    unfolding of variables from the context [c]. *)
+    unfolding of the variables defined in the context [c]. *)
 and eq_modulo : ctxt -> term -> term -> bool = fun c a b ->
   if !log_enabled then log_conv "%a" pp_constr (c,a,b);
   let rec eq_modulo l =
@@ -124,8 +124,8 @@ and eq_modulo : ctxt -> term -> term -> bool = fun c a b ->
         eq_modulo (if a1 == a2 then l else List.add_array2 a1 a2 l)
     | (_          , _          ) -> raise Exit
   in
-  let res = try eq_modulo [(a,b)]; true with Exit -> false in
-  if !log_enabled then log_conv (g_or_r res "%a") pp_constr (c,a,b); res
+  try eq_modulo [(a,b)]; true
+  with Exit -> if !log_enabled then log_conv "failed"; false
 
 (** {b NOTE} that in {!val:tree_walk} matching with trees involves two
     collections of terms.

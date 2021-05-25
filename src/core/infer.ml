@@ -40,8 +40,8 @@ let set_to_prod : problem -> meta -> unit = fun p m ->
    [b] are not convertible. *)
 let conv : problem -> ctxt -> term -> term -> unit = fun p c a b ->
   if not (Eval.eq_modulo c a b) then
-    (p.to_solve <- (c,a,b)::p.to_solve;
-     if !log_enabled then log_infr (mag "%a") pp_constr (c,a,b))
+    (let cstr = (c,a,b) in p.to_solve <- cstr::p.to_solve;
+     if !log_enabled then log_infr (mag "add constraint %a") pp_constr cstr)
 
 (** Exception that may be raised by type inference. *)
 exception NotTypable
