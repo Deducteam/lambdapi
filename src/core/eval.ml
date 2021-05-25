@@ -40,7 +40,7 @@ let eta_equality : bool ref = Console.register_flag "eta_equality" false
 (** Counter used to preserve physical equality in {!val:whnf}. *)
 let steps : int Stdlib.ref = Stdlib.ref 0
 
-(** [hnf t] computes a hnf of [t] using [whnf]. *)
+(** [hnf whnf t] computes a hnf of [t] using [whnf]. *)
 let hnf : (term -> term) -> (term -> term) = fun whnf ->
   let rec hnf t =
     match whnf t with
@@ -81,11 +81,11 @@ let eq_modulo : (term -> term) -> (term -> term -> bool) = fun whnf ->
     match l with
     | []       -> ()
     | (a,b)::l ->
-    (*if !log_enabled then log_conv "%a" pp_constr (c,a,b);*)
+    (*if !log_enabled then log_conv "%a ≟ %a" pp_term a pp_term b;*)
     let a = unfold a and b = unfold b in
     if a == b then eq_modulo l else
     let a = whnf a and b = whnf b in
-    (*if !log_enabled then log_conv "%a" pp_constr (c,a,b);*)
+    (*if !log_enabled then log_conv "%a ≟ %a" pp_term a pp_term b;*)
     match a, b with
     | Patt _, _ | _, Patt _
     | TEnv _, _| _, TEnv _ -> assert false
@@ -112,10 +112,10 @@ let eq_modulo : (term -> term) -> (term -> term -> bool) = fun whnf ->
 
 (** [Configuration of the reduction engine. *)
 type config =
-  {context : ctxt; (** Context of the reduction used for generating metas. *)
-   defmap : term VarMap.t; (** Variable definitions. *)
-   rewrite : bool; (** Use user-defined rewrite rules. *)
-   problem : problem (** Generated metavariables. *) }
+  { context : ctxt (** Context of the reduction used for generating metas. *)
+  ; defmap : term VarMap.t (** Variable definitions. *)
+  ; rewrite : bool (** Use user-defined rewrite rules. *)
+  ; problem : problem (** Generated metavariables. *) }
 
 (*let pp_defmap = D.map VarMap.iter pp_var " ≔ " pp_term "; "*)
 
@@ -137,13 +137,15 @@ let rec whnf : config -> term -> term = fun c t ->
   let s = Stdlib.(!steps) in
   let u, stk = whnf_stk c t [] in
   let r = if Stdlib.(!steps) <> s then add_args u stk else unfold t in
-  (*if !log_enabled then log_eval "whnf %a" pp_constr (c,t,r);*) r
+  (*if !log_enabled then log_eval "whnf %a%a ≡ %a"
+    pp_ctxt c.context pp_term t pp_term r;*) r
 
 (** [whnf_stk ~rewrite c t stk] computes a whnf of [add_args t stk] wrt
    configuration [c]. *)
 and whnf_stk : config -> term -> stack -> term * stack = fun c t stk ->
   (*if !log_enabled then
-    log_eval "whnf_stk %a%a %a" pp_ctxt m pp_term t (D.list pp_term) stk;*)
+    log_eval "whnf_stk %a %a"
+      pp_ctxt c.context pp_term t (D.list pp_term) stk;*)
   match unfold t, stk with
   | Appl(f,u), stk -> whnf_stk c f (appl_to_tref u::stk)
   | Abst(_,f), u::stk ->

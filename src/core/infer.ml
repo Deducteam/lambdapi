@@ -145,7 +145,7 @@ let rec infer : problem -> ctxt -> term -> term = fun p c t ->
      See Pure type systems with definitions, P. Severi and E. Poll,
      LFCS 1994, http://doi.org/10.1007/3-540-58140-5_30. *)
   | LLet(a,t,u) ->
-      check p c a mk_Type; (*FIXME: allow mk_Kind too. *)
+      check p c a mk_Type;
       check p c t a;
       let x,u,c' = Ctxt.unbind c a (Some t) u in
       let b = infer p c' u in
