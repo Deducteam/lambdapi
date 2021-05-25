@@ -2,4 +2,4 @@
 symbol A: TYPE;
 symbol +: A → A → A;
 notation + infix 5;
-type +;
+type (+);
