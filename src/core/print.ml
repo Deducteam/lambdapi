@@ -140,6 +140,9 @@ let rec pp_meta : meta pp = fun ppf m ->
     out ppf "(?%a:%a)" pp_meta_name m pp_term !(m.meta_type)
   else out ppf "?%a" pp_meta_name m
 
+and pp_type : term pp = fun ppf a ->
+  if !print_domains then out ppf ": %a" pp_term a
+
 and pp_term : term pp = fun ppf t ->
   let rec atom ppf t = pp `Atom ppf t
   and appl ppf t = pp `Appl ppf t
@@ -156,10 +159,12 @@ and pp_term : term pp = fun ppf t ->
           if p = `Atom then out ppf ")"
     in
     match h with
-    | Symb(s) when not !print_implicits || s.sym_impl = [] ->
-        begin
+    | Symb(s) ->
+        if !print_implicits && s.sym_impl <> [] then
+          (out ppf "@"; pp_appl h args)
+        else
           let args = LibTerm.remove_impl_args s args in
-          match notation_of s with
+          begin match notation_of s with
           | Some Quant when are_quant_args args ->
               if p <> `Func then out ppf "(";
               pp_quantifier s args;
@@ -175,14 +180,14 @@ and pp_term : term pp = fun ppf t ->
                     else out ppf "(%a %a %a)" appl l pp_sym s appl r;
                     List.iter (out ppf " %a" appl) args;
                     if p <> `Func then out ppf ")"
-                | _ -> out ppf "@"; pp_appl h args
+                | _ -> out ppf "("; pp_appl h args; out ppf ")"
               end
           | Some Zero -> out ppf "0"
           | Some Succ ->
               (try out ppf "%i" (nat_of_term t)
                with Not_a_nat -> pp_appl h args)
           | _ -> pp_appl h args
-        end
+          end
     | _ -> pp_appl h args
 
   and pp_quantifier s args =
@@ -193,9 +198,7 @@ and pp_term : term pp = fun ppf t ->
           match unfold b with
           | Abst(a,b) ->
               let (x,p) = Bindlib.unbind b in
-              out ppf "`%a %a" pp_sym s pp_var x;
-              if !print_domains then out ppf " : %a" func a;
-              out ppf ", %a" func p
+              out ppf "`%a %a%a, %a" pp_sym s pp_var x pp_type a func p
           | _ -> assert false
         end
     | _ -> assert false
@@ -250,7 +253,7 @@ and pp_term : term pp = fun ppf t ->
         let (x,u) = Bindlib.unbind b in
         pp_bvar ppf (b,x);
         if !print_domains then out ppf ": %a" atom a;
-        out ppf " ≔ %a in %a" atom t atom u;
+        out ppf " ≔ %a in %a" func t func u;
         if wrap then out ppf ")"
   and pp_bvar ppf (b,x) =
     if Bindlib.binder_occur b then out ppf "%a" pp_var x else out ppf "_"
@@ -291,16 +294,17 @@ let pp_ctxt : ctxt pp = fun ppf ctx ->
     begin
       let pp_def ppf t = out ppf " ≔ %a" pp_term t in
       let pp_decl ppf (x,a,t) =
-        out ppf "%a : %a%a" pp_var x pp_term a (Option.pp pp_def) t in
-      List.pp pp_decl ", " ppf (List.rev ctx);
-      out ppf " ⊢ "
+        out ppf "%a%a%a" pp_var x pp_type a (Option.pp pp_def) t in
+      List.pp pp_decl "\n, " ppf (List.rev ctx);
+      if ctx <> [] then out ppf " ";
+      out ppf "\n⊢ "
     end
 
 let pp_typing : constr pp = fun ppf (ctx, t, u) ->
   out ppf "@[%a%a@,: %a@]" pp_ctxt ctx pp_term t pp_term u
 
 let pp_constr : constr pp = fun ppf (ctx, t, u) ->
-  out ppf "%a%a ≡ %a" pp_ctxt ctx pp_term t pp_term u
+  out ppf "%a%a\n≡ %a" pp_ctxt ctx pp_term t pp_term u
 
 let pp_constrs : constr list pp = fun ppf ->
   List.iter (out ppf "\n  ; %a" pp_constr)

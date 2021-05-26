@@ -31,9 +31,10 @@ let find : string -> env -> tvar = fun n env ->
     you obtain a term of the form [Πx1:a1,..,Πxn:an,t]. *)
 let to_prod_box : env -> tbox -> tbox = fun env t ->
   let add_prod t (_,(x,a,u)) =
+    let b = Bindlib.bind_var x t in
     match u with
-    | Some(u) -> _LLet a u (Bindlib.bind_var x t)
-    | None    -> _Prod a (Bindlib.bind_var x t)
+    | Some u -> _LLet a u b
+    | None -> _Prod a b
   in
   List.fold_left add_prod t env
 
@@ -48,9 +49,10 @@ let to_prod : env -> tbox -> term = fun env t ->
     [to_abst [(xn,an,None);..;(x1,a1,None)] t = λx1:a1,..,λxn:an,t]. *)
 let to_abst : env -> tbox -> term = fun env t ->
   let add_abst t (_,(x,a,u)) =
+    let b = Bindlib.bind_var x t in
     match u with
-    | Some(u) -> _LLet a u (Bindlib.bind_var x t)
-    | None    -> _Abst a (Bindlib.bind_var x t)
+    | Some u -> _LLet a u b
+    | None -> _Abst a b
   in
   Bindlib.unbox (List.fold_left add_abst t env)
 

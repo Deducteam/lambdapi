@@ -125,7 +125,8 @@ functor
                    the term. *)
                 let preqs_vars, defn = Bindlib.unmbind defn in
                 let defn =
-                  Eval.whnf_beta (add_args defn (Array.to_list metas))
+                  Eval.whnf
+                    ~rewrite:false ctx (add_args defn (Array.to_list metas))
                 in
                 unif pb ctx t metas.(source - 1);
                 unif pb ctx b range;

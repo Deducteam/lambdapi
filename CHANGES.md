@@ -1,6 +1,19 @@
 ### Unreleased
 
-#### Interface Improvements (2021-05-08)
+#### Better handling of let's (2021-05-26)
+
+- mk_LLet removes useless let's
+- rename Eval.config into strat
+- factorize whnf_beta and whnf
+- fix handling of variable unfoldings in whnf_stk
+- optimize context lookup by using a map
+- gather problem, context, map and rewrite into a record data type
+- abstract whnf in hnf, snf and eq_modulo
+- fix typing of let's
+- improve printing
+
+#### Interface Improvements (2021-05-20)
+
 - Error messages are shown in logs buffer
 - Improvements in behaviour of Emacs interface
 - New shortcuts `C-c C-k` and `C-c C-r` for killing and reconnecting to the

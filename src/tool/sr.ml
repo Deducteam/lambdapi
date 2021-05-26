@@ -9,7 +9,6 @@ open Parsing
 open Term
 open Print
 open Debug
-open Extra
 
 (** Logging function for typing. *)
 let log_subj = new_logger 's' "subj" "subject-reduction"
@@ -56,10 +55,10 @@ let patt_to_tenv : term_env Bindlib.var array -> term -> tbox = fun vars ->
     match unfold t with
     | Vari(x)     -> _Vari x
     | Symb(s)     -> _Symb s
-    | Abst(a,b)   -> let (x, t) = Bindlib.unbind b in
-                     _Abst (trans a) (Bindlib.bind_var x (trans t))
+    | Abst(a,b)   -> let (x, b) = Bindlib.unbind b in
+                     _Abst (trans a) (Bindlib.bind_var x (trans b))
     | Appl(t,u)   -> _Appl (trans t) (trans u)
-    | Patt(i,_,a) -> _TEnv (Bindlib.box_var (get_te i)) (Array.map trans a)
+    | Patt(i,_,a) -> _TEnv (_TE_Vari (get_te i)) (Array.map trans a)
     | Type        -> assert false (* Cannot appear in LHS. *)
     | Kind        -> assert false (* Cannot appear in LHS. *)
     | Prod(_,_)   -> assert false (* Cannot appear in LHS. *)
@@ -100,7 +99,7 @@ let symb_to_tenv
             fatal pos "Introduced symbol [%s] cannot be removed." f.sym_name
           in
           let (ts1, ts2) = List.cut ts arities.(i) in
-          (_TEnv (Bindlib.box_var vars.(i)) (Array.of_list ts1), ts2)
+          (_TEnv (_TE_Vari vars.(i)) (Array.of_list ts1), ts2)
       | Symb(s)     -> (_Symb s, ts)
       | Vari(x)     -> (_Vari x, ts)
       | Type        -> (_Type  , ts)
@@ -150,7 +149,7 @@ let check_rule : Scope.pre_rule Pos.loc -> rule = fun ({pos; elt} as pr) ->
          only used for printing. *)
       let rhs = Bindlib.(unbox (bind_mvar vars pr_rhs)) in
       let naive_rule = {lhs; rhs; arity; arities; vars; xvars_nb = 0} in
-      log_subj (red "%a") pp_rule (s, naive_rule);
+      log_subj (Extra.red "%a") pp_rule (s, naive_rule);
     end;
   (* Replace [Patt] nodes of LHS with corresponding elements of [vars]. *)
   let lhs_vars = _Appl_Symb s (List.map (patt_to_tenv vars) lhs) in
@@ -169,7 +168,8 @@ let check_rule : Scope.pre_rule Pos.loc -> rule = fun ({pos; elt} as pr) ->
   (* Substitute them in the LHS and in the RHS. *)
   let lhs_with_metas, rhs_with_metas =
     let lhs_rhs = Bindlib.box_pair lhs_vars pr_rhs in
-    let b = Bindlib.(unbox (bind_mvar vars lhs_rhs)) in
+    let b = Bindlib.bind_mvar vars lhs_rhs in
+    let b = Bindlib.unbox b in
     let meta_to_tenv m =
       let xs = Array.init m.meta_arity (new_tvar_ind "x") in
       let ts = Array.map _Vari xs in
@@ -251,7 +251,7 @@ let check_rule : Scope.pre_rule Pos.loc -> rule = fun ({pos; elt} as pr) ->
   if cs <> [] then
     begin
       List.iter (fatal_msg "Cannot solve %a\n" pp_constr) cs;
-      fatal pos "Unable to prove type preservation for a rewriting rule."
+      fatal pos "Unable to prove type preservation."
     end;
   (* Replace metavariable symbols by term_env variables, and bind them. *)
   let rhs = symb_to_tenv pr symbols htbl rhs_with_metas in

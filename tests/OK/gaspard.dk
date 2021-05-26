@@ -4,5 +4,6 @@ e : U -> Type.
 c : x : U -> e x.
 
 def aux : (x : U -> e x) -> U.
-[] aux (x => c _) --> foo.
 
+(; The LHS is not typable. ;)
+[] aux (x => c _) --> foo.

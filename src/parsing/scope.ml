@@ -192,27 +192,27 @@ and add_impl : mode -> sig_state ->
   let appl = match md with M_LHS _ -> _Appl_not_canonical | _ -> _Appl in
   let appl_p_term t u = appl t (scope_parsed md ss env u) in
   let appl_meta t = appl t (scope_head md ss env P.wild) in
-  match (impl, args) with
+  match impl, args with
   (* The remaining arguments are all explicit. *)
-  | ([]         , _      ) -> List.fold_left appl_p_term h args
+  | [], _ -> List.fold_left appl_p_term h args
   (* Only implicit arguments remain. *)
-  | (true ::impl, []     ) -> add_impl md ss env loc (appl_meta h) impl []
+  | true::impl, [] -> add_impl md ss env loc (appl_meta h) impl []
   (* The first argument is implicit (could be [a] if made explicit). *)
-  | (true ::impl, a::args) ->
-      begin
-        match a.elt with
-        | P_Expl b -> add_impl md ss env loc (appl_p_term h { a with elt = P_Wrap b }) impl args
-        | _        -> add_impl md ss env loc (appl_meta h) impl (a::args)
+  | true::impl, a::args ->
+      begin match a.elt with
+      | P_Expl b ->
+          add_impl md ss env loc
+            (appl_p_term h {a with elt = P_Wrap b}) impl args
+      | _ -> add_impl md ss env loc (appl_meta h) impl (a::args)
       end
   (* The first argument [a] is explicit. *)
-  | (false::impl, a::args) ->
-      begin
-        match a.elt with
-        | P_Expl _ -> fatal a.pos "Unexpected explicit argument."
-        | _        -> add_impl md ss env loc (appl_p_term h a) impl args
+  | false::impl, a::args ->
+      begin match a.elt with
+      | P_Expl _ -> fatal a.pos "Unexpected explicit argument."
+      | _ -> add_impl md ss env loc (appl_p_term h a) impl args
       end
   (* The application is too "partial" to insert all implicit arguments. *)
-  | (false::_   , []     ) ->
+  | false::_, [] ->
       (* NOTE this could be improved with more general implicits. *)
       fatal loc "More arguments are required to instantiate implicits."
 
@@ -290,7 +290,7 @@ and scope_head : mode -> sig_state -> env -> p_term -> tbox =
       data.m_urhs_xvars <- (name, x) :: data.m_urhs_xvars;
       x
     in
-    _TEnv (Bindlib.box_var x) (Env.to_tbox env)
+    _TEnv (_TE_Vari x) (Env.to_tbox env)
   | (P_Wild, M_LHS data) -> fresh_patt data None (Env.to_tbox env)
   | (P_Wild, M_Patt) -> _Wild
   | (P_Wild, _) -> _Plac false None
@@ -354,7 +354,7 @@ and scope_head : mode -> sig_state -> env -> p_term -> tbox =
                     Print.pp_var vs.(j)
               done
             done;
-            Array.map Bindlib.box_var vs
+            Array.map _Vari vs
       in
       begin
         match id with
@@ -392,7 +392,7 @@ and scope_head : mode -> sig_state -> env -> p_term -> tbox =
         | None -> [||] (* $M stands for $M[] *)
         | Some ts -> Array.map (scope md ss env) ts
       in
-      _TEnv (Bindlib.box_var x) ts
+      _TEnv (_TE_Vari x) ts
   | (P_Patt(id,ts), M_RHS(r)) ->
       let x =
         match id with
@@ -407,7 +407,7 @@ and scope_head : mode -> sig_state -> env -> p_term -> tbox =
         | None -> [||] (* $M stands for $M[] *)
         | Some ts -> Array.map (scope md ss env) ts
       in
-      _TEnv (Bindlib.box_var x) ts
+      _TEnv (_TE_Vari x) ts
   | (P_Patt(_,_), _) ->
       fatal t.pos "Pattern variables are only allowed in rewriting rules."
 
