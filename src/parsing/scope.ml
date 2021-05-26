@@ -202,7 +202,9 @@ and add_impl : mode -> sig_state ->
   | (true ::impl, a::args) ->
       begin
         match a.elt with
-        | P_Expl b -> add_impl md ss env loc (appl_p_term h { a with elt = P_Wrap b }) impl args
+        | P_Expl b ->
+            add_impl md ss env loc
+              (appl_p_term h {a with elt = P_Wrap b}) impl args
         | _        -> add_impl md ss env loc (appl_meta h) impl (a::args)
       end
   (* The first argument [a] is explicit. *)
