@@ -254,14 +254,28 @@ let make_pat : term -> term -> bool = fun t p ->
 (** [bind_pattern p t] replaces in the term [t] every occurence of the pattern
    [p] by a fresh variable, and returns the binder on this variable. *)
 let bind_pattern : term -> term -> tbinder =  fun p t ->
-  let x = new_tvar "x" in
+  let z = new_tvar "z" in
   let rec replace : term -> tbox = fun t ->
-    if eq [] p t then _Vari x else
+    if eq [] p t then _Vari z else
     match unfold t with
     | Appl(t,u) -> _Appl (replace t) (replace u)
+    | Prod(a,b) ->
+        let x,b = Bindlib.unbind b in
+        _Prod (replace a) (Bindlib.bind_var x (replace b))
+    | Abst(a,b) ->
+        let x,b = Bindlib.unbind b in
+        _Abst (replace a) (Bindlib.bind_var x (replace b))
+    | LLet(typ, def, body) ->
+        let x, body = Bindlib.unbind body in
+        _LLet (replace typ) (replace def) (Bindlib.bind_var x (replace body))
+    | Meta(m,ts) -> _Meta m (Array.map replace ts)
+    | TEnv _ -> assert false
+    | Wild -> assert false
+    | TRef _ -> assert false
+    | Patt _ -> assert false
     | _ -> lift t
   in
-  Bindlib.(unbox (bind_var x (replace t)))
+  Bindlib.(unbox (bind_var z (replace t)))
 
 (** [swap cfg a r l t] returns a term of type [P (eq a l r)] from a term [t]
    of type [P (eq a r l)]. *)

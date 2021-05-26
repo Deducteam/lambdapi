@@ -121,7 +121,7 @@ end;
 
 rule ($x + $y) + $z ↪ $x + ($y + $z);
 
-// test 1: rewrite left
+// test rewrite left
 
 opaque symbol test1 a b c : π (a + (b + c) = c + (a + b))
 ≔ begin
@@ -131,11 +131,19 @@ opaque symbol test1 a b c : π (a + (b + c) = c + (a + b))
   reflexivity;
 end;
 
-// test 2
+// test rewriting under abstractions
 
 symbol f : ℕ → (ℕ → ℕ) → ℕ;
 
 symbol test2 a b : π (f (a + b) (λ _, 0) = f (b + a) (λ _, 0))
+≔ begin
+  assume a b;
+  rewrite add_com;
+  reflexivity;
+end;
+
+symbol test3 a b :
+  π (f (a + b) (λ x, (a + b) + x) = f (b + a) (λ x, (b + a) + x))
 ≔ begin
   assume a b;
   rewrite add_com;
