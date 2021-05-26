@@ -83,9 +83,8 @@ let tac_solve : popt -> proof_state -> proof_state = fun pos ps ->
     | Unif _ -> ms
     | Typ gt -> MetaSet.add gt.goal_meta ms
   in
-  p := { !p with
-         metas = List.fold_left f MetaSet.empty gs_typ
-       ; to_solve = List.rev_map get_constr gs_unif };
+  p := {!p with metas = List.fold_left f MetaSet.empty gs_typ
+              ; to_solve = List.rev_map get_constr gs_unif};
   if not (Unif.solve_noexn p) then
     fatal pos "Unification goals are unsatisfiable.";
   (* remove in [gs_typ] the goals that have been instantiated, and simplify

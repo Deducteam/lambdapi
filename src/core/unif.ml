@@ -59,13 +59,14 @@ let set_to_prod : problem -> meta -> unit = fun p m ->
 (** [add_constr p c] adds the constraint [c] into [p.to_solve]. *)
 let add_constr : problem -> constr -> unit = fun p c ->
   if !log_enabled then log_unif (mag "add %a") pp_constr c;
-  p := {!p with to_solve = c :: !p.to_solve}
+  p := {!p with to_solve = c::!p.to_solve}
 
 (** [add_unif_rule_constr p (c,t,u)] adds to [p] the constraint [(c,t,u)]
    as well as the constraint [(c,a,b)] where [a] is the type of [t] and [b]
    the type of [u] if they can be infered. *)
 let add_unif_rule_constr : problem -> constr -> unit = fun p (c,t,u) ->
   let module Infer = (val Stdlib.(!typechecker)) in
+  add_constr p (c,t,u);
   match Infer.infer_noexn p c t with
   | None -> ignore (Infer.infer_noexn p c u)
   | Some (_, a) ->
@@ -325,7 +326,7 @@ let inverse : problem -> ctxt -> term -> sym -> term list -> term -> unit =
         | Prod _ when is_constant s -> error t1 t2
         | _ ->
             if !log_enabled then log_unif "move to unsolved";
-            p := {!p with unsolved = (c, t1, t2) :: !p.unsolved}
+            p := {!p with unsolved = (c, t1, t2)::!p.unsolved}
 
 (** [sym_sym_whnf p c t1 s1 ts1 t2 s2 ts2 p] handles the case [s1(ts1) =
    s2(ts2); p] when [s1(ts1)] and [s2(ts2)] are in whnf. *)

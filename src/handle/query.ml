@@ -206,7 +206,7 @@ let handle : Sig_state.t -> proof_state option -> p_query -> result =
       Console.out 1 "(asrt) it is %b that %a\n" (not must_fail)
         pp_constr (ctxt, t, u);
       (* Check that [t] and [u] have the same type. *)
-      p := {!p with to_solve = (ctxt, a, b)::!p.to_solve};
+      p := {!p with to_solve = (ctxt,a,b)::!p.to_solve};
       if Unif.solve_noexn p then
         if !p.unsolved = [] then
           (if Eval.eq_modulo ctxt t u = must_fail then

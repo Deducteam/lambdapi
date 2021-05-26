@@ -325,10 +325,7 @@ type problem = problem_aux ref
 
 (** Create a new empty problem. *)
 let new_problem : unit -> problem = fun () ->
-  let empty =
-    {to_solve  = []; unsolved = []; recompute = false; metas = MetaSet.empty}
-  in
-  ref empty
+ ref {to_solve  = []; unsolved = []; recompute = false; metas = MetaSet.empty}
 
 (** [create_sym path expo prop opaq name typ impl] creates a new symbol with
    path [path], exposition [expo], property [prop], opacity [opaq], matching

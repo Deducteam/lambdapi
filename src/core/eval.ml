@@ -125,7 +125,7 @@ and whnf_stk : ctxt -> term -> stack -> term * stack = fun ctx t stk ->
 (** [eq_modulo ctx a b] tests the equality of [a] and [b] modulo rewriting and
     the unfolding of variables from the context [ctx] (δ-reduction). *)
 and eq_modulo : ctxt -> term -> term -> bool = fun ctx a b ->
-  if !log_enabled then log_conv "%a" pp_constr (ctx,a,b);
+  if !log_enabled then log_conv "check %a" pp_constr (ctx,a,b);
   let rec eq_modulo l =
     match l with
     | []       -> ()
@@ -155,7 +155,7 @@ and eq_modulo : ctxt -> term -> term -> bool = fun ctx a b ->
     | (_          , _          ) -> raise Exit
   in
   let res = try eq_modulo [(a,b)]; true with Exit -> false in
-  if !log_enabled then log_conv (g_or_r res "%a") pp_constr (ctx,a,b); res
+  if !log_enabled && not res then log_conv "failed"; res
 
 (** {b NOTE} that in {!val:tree_walk} matching with trees involves two
     collections of terms.
