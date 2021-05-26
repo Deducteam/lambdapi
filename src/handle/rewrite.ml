@@ -316,15 +316,15 @@ let rewrite : Sig_state.t -> problem -> popt -> goal_typ -> bool ->
   let (t_type, vars) = break_prod t_type in
   let (a, l, r)  = get_eq_data pos cfg t_type in
 
+  (* Apply [t] to the variables of [vars] to get a witness of the equality. *)
+  let t = Array.fold_left (fun t x -> mk_Appl(t, mk_Vari x)) t vars in
+
   (* Reverse the members of the equation if l2r is false. *)
   let (t, l, r) = if l2r then (t, l, r) else (swap cfg a l r t, r, l) in
 
-  (* Apply [t] to the variables of [vars] to get a witness of the equality. *)
-  let t_args = Array.fold_left (fun t x -> mk_Appl(t, mk_Vari x)) t vars in
-
   (* Bind the variables in this new witness. *)
   let bound =
-    let triple = Bindlib.box_triple (lift t_args) (lift l) (lift r) in
+    let triple = Bindlib.box_triple (lift t) (lift l) (lift r) in
     Bindlib.unbox (Bindlib.bind_mvar vars triple)
   in
 
