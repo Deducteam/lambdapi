@@ -251,33 +251,17 @@ let make_pat : term -> term -> bool = fun t p ->
       end
   in make_pat_aux t
 
-(** [bind_match p t] binds every occurence of the pattern [p] in the term [t].
-    We require [t] not to contain products, abstractions, metavariables or any
-    other awkward term constructor. *)
-let bind_match : term -> term -> tbinder =  fun p t ->
-  let x = new_tvar "X" in
-  let rec lift_subst : term -> tbox = fun t ->
+(** [bind_pattern p t] replaces in the term [t] every occurence of the pattern
+   [p] by a fresh variable, and returns the binder on this variable. *)
+let bind_pattern : term -> term -> tbinder =  fun p t ->
+  let x = new_tvar "x" in
+  let rec replace : term -> tbox = fun t ->
     if eq [] p t then _Vari x else
     match unfold t with
-    | Vari(y)     -> _Vari y
-    | Type        -> _Type
-    | Kind        -> _Kind
-    | Symb(s)     -> _Symb s
-    | Appl(t,u)   -> _Appl (lift_subst t) (lift_subst u)
-    (* For now, we fail on products, abstractions, metavariables and let. *)
-    | Prod(_)     -> fatal None "Cannot rewrite under products."
-    | Abst(_)     -> fatal None "Cannot rewrite under abstractions."
-    | Meta(_)     -> fatal None "Cannot rewrite metavariables."
-    | LLet(_)     -> fatal None "Cannot rewrite in let."
-    (* Forbidden cases. *)
-    | Patt(_,_,_) -> assert false
-    | TEnv(_,_)   -> assert false
-    | Wild        -> assert false
-    | TRef(_)     -> assert false
+    | Appl(t,u) -> _Appl (replace t) (replace u)
+    | _ -> lift t
   in
-  Bindlib.(unbox (bind_var x (lift_subst t)))
-
-(* NOTE in [bind_match] we lift while matching for efficiency. *)
+  Bindlib.(unbox (bind_var x (replace t)))
 
 (** [swap cfg a r l t] returns a term of type [P (eq a l r)] from a term [t]
    of type [P (eq a r l)]. *)
@@ -312,7 +296,8 @@ let rewrite : Sig_state.t -> problem -> popt -> goal_typ -> bool ->
   let g_ctxt = Env.to_ctxt g_env in
   let t_type = Query.infer pos p g_ctxt t in
 
-  (* Check that the type of [t] is of the form “P (eq a l r)”. *)
+  (* Check that the type of [t] is of the form [Π x1:a1, ..., Π xn:an, P (eq a
+     l r)]. *)
   let (t_type, vars) = break_prod t_type in
   let (a, l, r)  = get_eq_data pos cfg t_type in
 
@@ -332,7 +317,7 @@ let rewrite : Sig_state.t -> problem -> popt -> goal_typ -> bool ->
   let g_term =
     match get_args g_type with
     | t, [u] when is_symb cfg.symb_P t -> u
-    | _ -> fatal pos "Goal type [%a] is not of the form “P t”." pp_term g_type
+    | _ -> fatal pos "Goal not of the form (%a _)." pp_sym cfg.symb_P
   in
 
   (* Obtain the different components depending on the pattern. *)
@@ -350,7 +335,7 @@ let rewrite : Sig_state.t -> problem -> popt -> goal_typ -> bool ->
         in
         (* Build the required data from that substitution. *)
         let (t, l, r) = Bindlib.msubst bound sigma in
-        let pred_bind = bind_match l g_term in
+        let pred_bind = bind_pattern l g_term in
         (pred_bind, Bindlib.subst pred_bind r, t, l, r)
 
     (* Basic patterns. *)
@@ -373,7 +358,7 @@ let rewrite : Sig_state.t -> problem -> popt -> goal_typ -> bool ->
         in
         (* Build the data from the substitution. *)
         let (t, l, r) = Bindlib.msubst bound sigma in
-        let pred_bind = bind_match l g_term in
+        let pred_bind = bind_pattern l g_term in
         (pred_bind, Bindlib.subst pred_bind r, t, l, r)
 
     (* Nested patterns. *)
@@ -396,9 +381,9 @@ let rewrite : Sig_state.t -> problem -> popt -> goal_typ -> bool ->
         in
         (* Build the data from the substitution. *)
         let (t, l, r) = Bindlib.msubst bound sigma in
-        let p_x = bind_match l match_p in
+        let p_x = bind_pattern l match_p in
         let p_r = Bindlib.subst p_x r in
-        let pred_bind = bind_match match_p g_term in
+        let pred_bind = bind_pattern match_p g_term in
         let new_term = Bindlib.subst pred_bind p_r in
         let (x, p_x) = Bindlib.unbind p_x in
         let pred_box = lift (Bindlib.subst pred_bind p_x) in
@@ -455,7 +440,7 @@ let rewrite : Sig_state.t -> problem -> popt -> goal_typ -> bool ->
         (* Build the predicate, identifying all occurrences of pat_l *)
         (* substituting them, first with pat_r, for the new goal and *)
         (* then with l_x for the lambda term. *)
-        let pred_bind_l = bind_match pat_l g_term in
+        let pred_bind_l = bind_pattern pat_l g_term in
 
         (* This will be the new goal. *)
         let new_term = Bindlib.subst pred_bind_l pat_r in
@@ -513,7 +498,7 @@ let rewrite : Sig_state.t -> problem -> popt -> goal_typ -> bool ->
 
         (* First we work in [id_val], that is, we substitute all
            the occurrences of [l] in [id_val] with [r]. *)
-        let id_bind = bind_match l id_val in
+        let id_bind = bind_pattern l id_val in
 
         (* [new_id] is the value of [id_val] with [l] replaced
            by [r] and [id_x] is the value of [id_val] with the
@@ -527,7 +512,7 @@ let rewrite : Sig_state.t -> problem -> popt -> goal_typ -> bool ->
 
         (* To get the new goal we replace all occurrences of
           [pat_l] in [g_term] with [pat_r]. *)
-        let pred_bind_l = bind_match pat_l g_term in
+        let pred_bind_l = bind_pattern pat_l g_term in
 
         (* [new_term] is the type of the new goal meta. *)
         let new_term = Bindlib.subst pred_bind_l pat_r in
@@ -580,9 +565,9 @@ let rewrite : Sig_state.t -> problem -> popt -> goal_typ -> bool ->
         let (t,l,r) = Bindlib.msubst bound sigma in
 
         (* Now to do some term building. *)
-        let p_x = bind_match l p in
+        let p_x = bind_pattern l p in
         let p_r = Bindlib.subst p_x r in
-        let pred_bind = bind_match p g_term in
+        let pred_bind = bind_pattern p g_term in
         let new_term = Bindlib.subst pred_bind p_r in
         let (x, p_x) = Bindlib.unbind p_x in
         let pred_box = lift (Bindlib.subst pred_bind p_x) in
@@ -617,13 +602,13 @@ let rewrite : Sig_state.t -> problem -> popt -> goal_typ -> bool ->
         let (t,l,r) = Bindlib.msubst bound sigma in
 
         (* Rewrite in id. *)
-        let id_bind = bind_match l id_val in
+        let id_bind = bind_pattern l id_val in
         let id_val = Bindlib.subst id_bind r in
         let (x, id_x) = Bindlib.unbind id_bind in
 
         (* The new RHS of the pattern is obtained by rewriting in [id_val]. *)
         let r_val = Bindlib.subst pat id_val in
-        let pred_bind_l = bind_match pat_l g_term in
+        let pred_bind_l = bind_pattern pat_l g_term in
         let new_term = Bindlib.subst pred_bind_l r_val in
         let l_x = Bindlib.subst pat id_x in
         let pred_box = lift (Bindlib.subst pred_bind_l l_x) in

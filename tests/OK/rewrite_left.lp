@@ -121,12 +121,23 @@ end;
 
 rule ($x + $y) + $z ↪ $x + ($y + $z);
 
-// test
+// test 1: rewrite left
 
-opaque symbol test a b c : π (a + (b + c) = c + (a + b))
+opaque symbol test1 a b c : π (a + (b + c) = c + (a + b))
 ≔ begin
   assume a b c;
   rewrite left add_assoc;
+  rewrite add_com;
+  reflexivity;
+end;
+
+// test 2
+
+symbol f : ℕ → (ℕ → ℕ) → ℕ;
+
+symbol test2 a b : π (f (a + b) (λ _, 0) = f (b + a) (λ _, 0))
+≔ begin
+  assume a b;
   rewrite add_com;
   reflexivity;
 end;
