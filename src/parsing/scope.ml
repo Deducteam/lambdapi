@@ -193,29 +193,27 @@ and add_impl : mode -> sig_state ->
   let appl = match md with M_LHS _ -> _Appl_not_canonical | _ -> _Appl in
   let appl_p_term t u = appl t (scope_parsed md ss env u) in
   let appl_meta t = appl t (scope_head md ss env P.wild) in
-  match (impl, args) with
+  match impl, args with
   (* The remaining arguments are all explicit. *)
-  | ([]         , _      ) -> List.fold_left appl_p_term h args
+  | [], _ -> List.fold_left appl_p_term h args
   (* Only implicit arguments remain. *)
-  | (true ::impl, []     ) -> add_impl md ss env loc (appl_meta h) impl []
+  | true::impl, [] -> add_impl md ss env loc (appl_meta h) impl []
   (* The first argument is implicit (could be [a] if made explicit). *)
-  | (true ::impl, a::args) ->
-      begin
-        match a.elt with
-        | P_Expl b ->
-            add_impl md ss env loc
-              (appl_p_term h {a with elt = P_Wrap b}) impl args
-        | _ -> add_impl md ss env loc (appl_meta h) impl (a::args)
+  | true::impl, a::args ->
+      begin match a.elt with
+      | P_Expl b ->
+          add_impl md ss env loc
+            (appl_p_term h {a with elt = P_Wrap b}) impl args
+      | _ -> add_impl md ss env loc (appl_meta h) impl (a::args)
       end
   (* The first argument [a] is explicit. *)
-  | (false::impl, a::args) ->
-      begin
-        match a.elt with
-        | P_Expl _ -> fatal a.pos "Unexpected explicit argument."
-        | _        -> add_impl md ss env loc (appl_p_term h a) impl args
+  | false::impl, a::args ->
+      begin match a.elt with
+      | P_Expl _ -> fatal a.pos "Unexpected explicit argument."
+      | _ -> add_impl md ss env loc (appl_p_term h a) impl args
       end
   (* The application is too "partial" to insert all implicit arguments. *)
-  | (false::_   , []     ) ->
+  | false::_, [] ->
       (* NOTE this could be improved with more general implicits. *)
       fatal loc "More arguments are required to instantiate implicits."
 
