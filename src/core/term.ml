@@ -366,6 +366,8 @@ let rec unfold : term -> term = fun t ->
         | None    -> t
         | Some(v) -> unfold v
       end
+  | LLet(_,_,u) when Bindlib.binder_constant u ->
+      unfold (Bindlib.subst u Kind)
   | _ -> t
 
 (** {b NOTE} that {!val:unfold} must (almost) always be called before matching
@@ -460,7 +462,18 @@ let get_args_len : term -> term * term list * int = fun t ->
   in
   get_args_len [] 0 t
 
-(** Construction functions of the private type [term]. *)
+(** Construction functions of the private type [term]. They ensure some
+   invariants:
+
+- In a commutative function symbol application, the first argument is smaller
+   than the second one wrt [cmp].
+
+- In an associative and commutative function symbol application, the
+   application is built as a left or right comb depending on the associativity
+   of the symbol, and arguments are ordered in increasing order wrt [cmp].
+
+- In [LLet(_,_,b)], [Bindlib.binder_constant b = false] (useless let's are
+   erased). *)
 let mk_Vari x = Vari x
 let mk_Type = Type
 let mk_Kind = Kind
@@ -472,7 +485,8 @@ let mk_Patt (i,s,ts) = Patt (i,s,ts)
 let mk_TEnv (te,ts) = TEnv (te,ts)
 let mk_Wild = Wild
 let mk_TRef x = TRef x
-let mk_LLet (a,t,u) = LLet (a,t,u)
+let mk_LLet (a,t,u) =
+  if Bindlib.binder_constant u then Bindlib.subst u Kind else LLet (a,t,u)
 
 (* We make the equality of terms modulo commutative and
    associative-commutative symbols syntactic by always ordering arguments in

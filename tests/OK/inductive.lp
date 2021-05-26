@@ -589,8 +589,8 @@ assert p pmty pbin punl y n prf_le romy
 
 assert p pmty pbin punl y n romy romn
 ⊢ ind_rom p pmty pbin punl _ (bin y n romy romn)
-≡ pbin y n romy (ind_rom p pmty pbin punl y romy)
-  romn (ind_rom p pmty pbin punl n romn);
+≡ pbin y n romy (ind_rom p pmty pbin punl _ romy)
+  romn (ind_rom p pmty pbin punl _ romn);
 
 ///////////////// Fibonacci suite
 

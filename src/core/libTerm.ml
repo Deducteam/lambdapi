@@ -168,7 +168,7 @@ let term_of_rhs : rule -> term = fun r ->
   let fn i x =
     let (name, arity) = (Bindlib.name_of x, r.arities.(i)) in
     let vars = Array.init arity (new_tvar_ind "x") in
-    let p = _Patt (Some(i)) name (Array.map Bindlib.box_var vars) in
+    let p = _Patt (Some i) name (Array.map _Vari vars) in
     TE_Some(Bindlib.unbox (Bindlib.bind_mvar vars p))
   in
   Bindlib.msubst r.rhs (Array.mapi fn r.vars)

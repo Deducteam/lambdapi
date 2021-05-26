@@ -15,7 +15,7 @@ open Debug
 let log_rewr = new_logger 'r' "rewr" "the rewrite tactic"
 let log_rewr = log_rewr.logger
 
-(** [eq ctx t u] tests the equality of [t] and [u] (up to α-equivalence).
+(** [eq t u] tests the equality of [t] and [u] (up to α-equivalence).
     It fails if [t] or [u] contain terms of the form [Patt(i,s,e)] or
     [TEnv(te,env)].  In the process, subterms of the form [TRef(r)] in [t] and
     [u] may be set with the corresponding value to enforce equality, and
@@ -24,7 +24,7 @@ let log_rewr = log_rewr.logger
     matching feature is used, one should make sure that [TRef] constructors do
     not appear both in [t] and in [u] at the same time. Indeed, the references
     are set naively, without occurrence checking. *)
-let eq : ctxt -> term -> term -> bool = fun ctx a b -> a == b ||
+let eq : term -> term -> bool = fun a b -> a == b ||
   let exception Not_equal in
   let rec eq l =
     match l with
@@ -32,7 +32,7 @@ let eq : ctxt -> term -> term -> bool = fun ctx a b -> a == b ||
     | (a,b)::l ->
     begin
     if !log_enabled then log_rewr "eq [%a] [%a]" pp_term a pp_term b;
-    match (Ctxt.unfold ctx a, Ctxt.unfold ctx b) with
+    match (unfold a, unfold b) with
     | (a          , b          ) when a == b -> eq l
     | (Vari(x1)   , Vari(x2)   ) when Bindlib.eq_vars x1 x2 -> eq l
     | (Type       , Type       )
@@ -204,7 +204,7 @@ let break_prod : term -> term * tvar array = fun a ->
 let match_pattern : to_subst -> term -> term array option = fun (xs,p) t ->
   let ts = Array.map (fun _ -> mk_TRef(ref None)) xs in
   let p = Bindlib.msubst (Bindlib.unbox (Bindlib.bind_mvar xs (lift p))) ts in
-  if eq [] p t then Some(Array.map unfold ts) else None
+  if eq p t then Some(Array.map unfold ts) else None
 
 (** [find_subst t (xs,p)] is given a term [t] and a pattern [p] (with “pattern
     variables” of [xs]),  and it finds the first instance of (a term matching)
@@ -237,7 +237,7 @@ let find_subst : term -> to_subst -> term array option = fun t (xs,p) ->
 let make_pat : term -> term -> bool = fun t p ->
   let time = Time.save () in
   let rec make_pat_aux : term -> bool = fun t ->
-    if eq [] t p then true else
+    if eq t p then true else
       begin
         Time.restore time;
         match unfold t with
@@ -256,7 +256,7 @@ let make_pat : term -> term -> bool = fun t p ->
 let bind_pattern : term -> term -> tbinder =  fun p t ->
   let z = new_tvar "z" in
   let rec replace : term -> tbox = fun t ->
-    if eq [] p t then _Vari z else
+    if eq p t then _Vari z else
     match unfold t with
     | Appl(t,u) -> _Appl (replace t) (replace u)
     | Prod(a,b) ->

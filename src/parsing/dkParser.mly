@@ -175,11 +175,11 @@ let translate_old_rule : old_p_rule -> p_rule = fun r ->
   let rhs = build [] rhs in
   Pos.make r.pos (lhs, rhs)
 
-let build_config : Pos.pos -> string -> string option -> Eval.config =
+let build_strat : Pos.pos -> string -> string option -> Eval.strat =
     fun loc s1 s2o ->
   try
-    let config st strategy =
-      Eval.{strategy; steps=Option.map int_of_string st}
+    let config steps strategy =
+      Eval.{strategy; steps=Option.map int_of_string steps}
     in
     match (s1, s2o) with
     | ("SNF" , io         ) -> config io        SNF
@@ -190,7 +190,7 @@ let build_config : Pos.pos -> string -> string option -> Eval.config =
     | (i     , Some "WHNF") -> config (Some(i)) WHNF
     | (i     , None       ) -> config (Some(i)) NONE
     | (_     , _          ) -> raise Exit (* captured below *)
-  with _ -> fatal (Some(loc)) "Invalid command configuration."
+  with _ -> fatal (Some(loc)) "Invalid strategy."
 
 %}
 
@@ -379,9 +379,9 @@ command:
 
 eval_config:
   | LEFTSQU s=UID RIGHTSQU
-    { build_config (locate $sloc) s None }
+    { build_strat (locate $sloc) s None }
   | LEFTSQU s1=UID COMMA s2=UID RIGHTSQU
-    { build_config (locate $sloc) s1 (Some s2) }
+    { build_strat (locate $sloc) s1 (Some s2) }
 
 param:
   | LEFTPAR id=UID COLON te=term RIGHTPAR
