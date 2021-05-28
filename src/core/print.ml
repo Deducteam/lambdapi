@@ -135,6 +135,10 @@ let pp_meta_name : meta pp = fun ppf m ->
   | Some s -> pp_uid ppf s
   | None -> out ppf "%d" m.meta_key
 
+(** The possible priority levels are [`Func] (top level, including abstraction
+   and product), [`Appl] (application) and [`Atom] (smallest priority). *)
+type priority = [`Func | `Appl | `Atom]
+
 let rec pp_meta : meta pp = fun ppf m ->
   if !print_meta_types then
     out ppf "(?%a:%a)" pp_meta_name m pp_term !(m.meta_type)
@@ -180,7 +184,13 @@ and pp_term : term pp = fun ppf t ->
                     else out ppf "(%a %a %a)" appl l pp_sym s appl r;
                     List.iter (out ppf " %a" appl) args;
                     if p <> `Func then out ppf ")"
-                | _ -> out ppf "("; pp_appl h args; out ppf ")"
+                | [] ->
+                  out ppf "("; pp_head true ppf h; out ppf ")"
+                | _ ->
+                  if p = `Atom then out ppf "(";
+                  out ppf "("; pp_head true ppf h; out ppf ")";
+                  List.iter (out ppf " %a" atom) args;
+                  if p = `Atom then out ppf ")"
               end
           | Some Zero -> out ppf "0"
           | Some Succ ->
@@ -206,7 +216,7 @@ and pp_term : term pp = fun ppf t ->
   and pp_head wrap ppf t =
     let pp_env ppf ar =
       if !print_meta_args && ar <> [||] then
-        out ppf "[%a]" (Array.pp appl ",") ar
+        out ppf "[%a]" (Array.pp func ";") ar
     in
     let pp_term_env ppf te =
       match te with

@@ -33,7 +33,8 @@ let set_to_prod : problem -> meta -> unit = fun p m ->
   let b = Bindlib.bind_var y (_Meta m2 (Array.append xs [|_Vari y|])) in
   (* result *)
   let r = _Prod a b in
-  if !log_enabled then log_infr "%a ≔ %a" pp_meta m pp_term (Bindlib.unbox r);
+  if !log_enabled then
+    log_infr (red "%a ≔ %a") pp_meta m pp_term (Bindlib.unbox r);
   LibMeta.set p m (Bindlib.unbox (Bindlib.bind_mvar vs r))
 
 (** [conv p c a b] adds the the constraint [(c,a,b)] in [p], if [a] and
