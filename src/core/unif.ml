@@ -119,9 +119,9 @@ let instantiate : problem -> ctxt -> meta -> term array -> term -> bool =
         begin
           match i with
           | None ->
-              if not (LibMeta.occurs m c u) then log_unif "occur check failed"
+              if LibMeta.occurs m c u then log_unif "occur check failed"
               else log_unif "arguments are not distinct variables: %a"
-                     (Array.pp pp_term " ") ts
+                     (Array.pp pp_term "; ") ts
           | Some _ -> log_unif "not closed"
         end;
       false
@@ -330,6 +330,61 @@ let solve : problem -> unit = fun p ->
   (* We remove the first constraint from [p] for not looping. *)
   p := {!p with to_solve};
 
+  (* We first try without normalizing wrt user-defined rules. *)
+  let t1 = Eval.whnf ~rewrite:false c t1
+  and t2 = Eval.whnf ~rewrite:false c t2 in
+  if !log_enabled then log_unif (gre "solve %a") pp_constr (c,t1,t2);
+  let h1, ts1 = get_args t1 and h2, ts2 = get_args t2 in
+
+  match h1, h2 with
+  | Type, Type
+  | Kind, Kind -> ()
+
+  | Prod(a1,b1), Prod(a2,b2)
+  | Abst(a1,b1), Abst(a2,b2) ->
+      (* [ts1] and [ts2] must be empty because of typing or normalization. *)
+      if !log_enabled then log_unif "decompose";
+      add_constr p (c,a1,a2);
+      let (x,b1,b2) = Bindlib.unbind2 b1 b2 in
+      let c' = (x,a1,None)::c in
+      add_constr p (c',b1,b2);
+
+  | Vari x1, Vari x2 when Bindlib.eq_vars x1 x2 ->
+      if List.same_length ts1 ts2 then decompose p c ts1 ts2
+      else error t1 t2
+
+  | Type, (Kind|Prod _|Symb _|Vari _|Abst _)
+  | Kind, (Type|Prod _|Symb _|Vari _|Abst _)
+  | Prod _, (Type|Kind|Vari _)
+  | Vari _, (Type|Kind|Vari _|Prod _)
+    -> error t1 t2
+
+  | Symb s1, Symb s2
+       when s1 == s2 && s1.sym_prop <> Defin && List.same_length ts1 ts2 ->
+      decompose p c ts1 ts2
+  | Symb s1, Symb s2
+       when s1 != s2 && s1.sym_prop = Const && s2.sym_prop = Const ->
+      error t1 t2
+
+  (*TODO try to factorize calls to
+     instantiate/instantiable/nl_distinct_vars. *)
+  | Meta(m,ts), _ when ts1 = [] && instantiate p c m ts t2 -> ()
+  | _, Meta(m,ts) when ts2 = [] && instantiate p c m ts t1 -> ()
+
+  | Meta(m,ts), Prod _ when ts1 = [] && instantiable c m ts h2 ->
+      imitate_prod p c m h1 h2
+  | Prod _, Meta(m,ts) when ts2 = [] && instantiable c m ts h1 ->
+      imitate_prod p c m h1 h2
+
+  | Meta(m,ts), _ when imitate_lam_cond h1 ts1
+                      && nl_distinct_vars c ts <> None ->
+      imitate_lam p c m; add_constr p (c,t1,t2)
+  | _, Meta(m,ts) when imitate_lam_cond h2 ts2
+                      && nl_distinct_vars c ts <> None ->
+      imitate_lam p c m; add_constr p (c,t1,t2)
+
+  | _ ->
+  (* We normalize wrt user-defined rules and try again. *)
   if !log_enabled then log_unif "whnf";
   let t1 = Eval.whnf c t1 and t2 = Eval.whnf c t2 in
   if !log_enabled then log_unif (gre "solve %a") pp_constr (c,t1,t2);
