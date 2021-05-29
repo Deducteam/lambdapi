@@ -14,6 +14,30 @@ open Debug
 let log_unif = Logger.make 'u' "unif" "unification"
 let log_unif = log_unif.pp
 
+(** Given a meta [m] of type [Πx1:a1,..,Πxn:an,b], [set_to_prod p m] sets [m]
+   to a product term of the form [Πy:m1[x1;..;xn],m2[x1;..;xn;y]] with [m1]
+   and [m2] fresh metavariables, and adds these metavariables to [p]. *)
+let set_to_prod : problem -> meta -> unit = fun p m ->
+  let n = m.meta_arity in
+  let env, s = Env.of_prod_nth [] n !(m.meta_type) in
+  let vs = Env.vars env in
+  let xs = Array.map _Vari vs in
+  (* domain *)
+  let u1 = Env.to_prod env _Type in
+  let m1 = LibMeta.fresh p u1 n in
+  let a = _Meta m1 xs in
+  (* codomain *)
+  let y = new_tvar "y" in
+  let env' = Env.add y (_Meta m1 xs) None env in
+  let u2 = Env.to_prod env' (lift s) in
+  let m2 = LibMeta.fresh p u2 (n+1) in
+  let b = Bindlib.bind_var y (_Meta m2 (Array.append xs [|_Vari y|])) in
+  (* result *)
+  let r = _Prod a b in
+  if Logger.log_enabled () then
+    log_unif (red "%a ≔ %a") pp_meta m pp_term (Bindlib.unbox r);
+  LibMeta.set p m (Bindlib.unbox (Bindlib.bind_mvar vs r))
+
 (** [type_app c a ts] returns [Some u] where [u] is a type of [add_args x ts]
    in context [c] where [x] is any term of type [a] if [x] can be applied to
    at least [List.length ts] arguments, and [None] otherwise. *)
@@ -153,7 +177,7 @@ let decompose : problem -> ctxt -> term list -> term list -> unit =
 let imitate_prod : problem -> ctxt -> meta -> term -> term -> unit =
   fun p c m h1 h2 ->
   if Logger.log_enabled () then log_unif "imitate_prod %a" pp_meta m;
-  Infer.set_to_prod p m; add_constr p (c,h1,h2)
+  set_to_prod p m; add_constr p (c,h1,h2)
 
 (** For a problem [m[vs] ≡ s(ts)] in context [c], where [vs] are distinct
    variables, [m] is a meta of type [Πy0:a0,..,Πyk-1:ak-1,b] with [k = length
@@ -235,7 +259,7 @@ let imitate_lam : problem -> ctxt -> meta -> unit = fun p c m ->
       | Prod(a,b) -> of_prod a b
       | Meta(n,ts) as t when nl_distinct_vars c ts <> None ->
           begin
-            Infer.set_to_prod p n;
+            set_to_prod p n;
             match unfold t with
             | Prod(a,b) -> of_prod a b
             | _ -> assert false
