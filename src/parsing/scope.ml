@@ -66,12 +66,9 @@ type lhs_data =
 
 type mode =
   | M_Term of
-      { mutable m_term_new_metas : problem
-      (** Metavariables generated during scoping. *)
-      ; m_term_meta_of_name : string -> meta option
-      (** Returns the meta with the given name. *)
-      ; m_term_meta_of_key : int -> meta option
-      (** Returns the meta with the give key. *)
+      { mutable m_term_placeholders : meta_ident list
+      (** Named placeholders. Used to ensure they do not appear non
+          linearly. *)
       ; m_term_prv : bool
       (** Indicate if private symbols are allowed. *) }
   (** Standard scoping mode for terms, holding a map for metavariables
@@ -128,27 +125,11 @@ let fresh_patt : lhs_data -> string option -> tbox array -> tbox =
       let i = fresh_index () in
       _Patt (Some i) (Printf.sprintf "v%i" i) ts
 
-(** [fresh_meta_type md env] calls [Env.fresh_meta_type] and updates the set
-   of new metavariables in [md]. *)
-let fresh_meta_type : mode -> env -> tbox = fun md env ->
-  match md with
-  | M_Term d -> Env.fresh_meta_type d.m_term_new_metas env
-  | M_RHS d -> Env.fresh_meta_type d.m_rhs_new_metas env
-  | _ -> assert false
-
-(** [fresh_meta_tbox md env] calls [Env.fresh_meta_tbox] and updates the set
-   of new metavariables in [md]. *)
-let fresh_meta_tbox : mode -> env -> tbox = fun md env ->
-  match md with
-  | M_Term d -> Env.fresh_meta_tbox d.m_term_new_metas env
-  | M_RHS d -> Env.fresh_meta_tbox d.m_rhs_new_metas env
-  | _ -> assert false
-
 (** [scope md ss env t] turns a parser-level term [t] into an actual term. The
-   variables of the environment [env] may appear in [t], and the scoping mode
-   [md] changes the behaviour related to certain constructors. The signature
-   state [ss] is used to convert identifiers into symbols according to
-   [find_qid]. *)
+    variables of the environment [env] may appear in [t], and the scoping mode
+    [md] changes the behaviour related to certain constructors. The signature
+    state [ss] is used to convert identifiers into symbols according to
+    [find_qid]. *)
 let rec scope : mode -> sig_state -> env -> p_term -> tbox =
   fun md ss env t -> scope_parsed md ss env (Pratt.parse ss env t)
 
@@ -232,7 +213,7 @@ and scope_domain : mode -> sig_state -> env -> p_term option -> tbox =
   match a, md with
   | (Some {elt=P_Wild;_}|None), M_LHS data ->
       fresh_patt data None (Env.to_tbox env)
-  | (Some {elt=P_Wild;_}|None), _ -> fresh_meta_type md env
+  | (Some {elt=P_Wild;_}|None), _ -> _Plac true None
   | Some a, _ -> scope md ss env a
 
 (** [scope_binder ?warn mode ss cons env params_list t] scopes [t] in mode
@@ -251,7 +232,7 @@ and scope_binder : ?warn:bool -> mode -> sig_state ->
         begin
           match t with
           | Some t -> scope md ss env t
-          | None -> fresh_meta_type md env
+          | None -> _Plac true None
         end
     | (idopts,typopt,_implicit)::params_list ->
         scope_params env idopts (scope_domain md ss env typopt) params_list
@@ -302,40 +283,16 @@ and scope_head : mode -> sig_state -> env -> p_term -> tbox =
     _TEnv (_TE_Vari x) (Env.to_tbox env)
   | (P_Wild, M_LHS data) -> fresh_patt data None (Env.to_tbox env)
   | (P_Wild, M_Patt) -> _Wild
-  | (P_Wild, (M_RHS _|M_Term _)) -> fresh_meta_tbox md env
+  | (P_Wild, (M_RHS _|M_Term _)) -> _Plac false None
 
-  | (P_Meta({elt;pos},ts), M_Term d) ->
-      let m =
-        match elt with
-        | Name id ->
-            begin
-              match d.m_term_meta_of_name id with
-              | Some m -> m
-              | None ->
-              match LibMeta.of_name id d.m_term_new_metas with
-              | Some m -> m
-              | None ->
-               (* We create a new metavariable [m1] of type [TYPE] and a new
-                  metavariable [m] of name [id] and type [m1]. *)
-                  let vs = Env.to_tbox env in
-                  let arity = Array.length vs in
-                  let m1 =
-                    LibMeta.fresh d.m_term_new_metas
-                      (Env.to_prod env _Type) arity in
-                  let a = Env.to_prod env (_Meta m1 vs) in
-                  LibMeta.fresh d.m_term_new_metas ~name:id a arity
-             end
-        | Numb i ->
-            match d.m_term_meta_of_key i with
-            | Some m -> m
-            | None -> fatal pos "Unknown metavariable ?%d." i
-      in
-      let ts =
-        match ts with
-        | None -> Env.to_tbox env (* [?M] is equivalent to [?M[env]]. *)
-        | Some ts -> Array.map (scope md ss env) ts
-      in
-      _Meta m ts
+  | (P_Meta({elt=mid;pos},_), M_Term ({m_term_placeholders;_} as d)) ->
+      if List.mem mid m_term_placeholders then
+        fatal pos "Placeholders cannot appear more than once in a term: \
+                   @,[?%a] is already used."
+          Pretty.meta_ident {elt=mid;pos};
+      d.m_term_placeholders <- mid :: m_term_placeholders;
+      let id = match mid with Name s -> s | Numb n -> string_of_int n in
+      _Plac false (Some id)
   | (P_Meta(_,_), _) -> fatal t.pos "Metavariables are not allowed here."
 
   | (P_Patt(id,ts), M_LHS(d)) ->
@@ -461,35 +418,15 @@ and scope_head : mode -> sig_state -> env -> p_term -> tbox =
 
   | (P_Expl(_), _) -> fatal t.pos "Explicit argument not allowed here."
 
-(** [scope expo ss env p mok mon t] turns into a term a pterm [t] in the
-   signature state [ss], the environment [env] (for bound variables). [mok k]
-   says if there already exists a meta with key [k]. [mon n] says if there
-   already exissts a meta with name [n]. Generated metas are added to [p]. If
-   [expo] is {!constructor:Public}, then the term must not contain any private
-   subterms. *)
-let scope_term :
-      bool -> sig_state -> env
-      -> problem -> (int -> meta option) -> (string -> meta option)
-      -> p_term -> term =
-  fun m_term_prv ss env
-      m_term_new_metas m_term_meta_of_key m_term_meta_of_name t ->
-  let md = M_Term {m_term_new_metas; m_term_meta_of_key;
-                   m_term_meta_of_name; m_term_prv} in
+let scope_term : bool -> sig_state -> env -> p_term -> term =
+  fun m_term_prv ss env t ->
+  let md = M_Term {m_term_placeholders = []; m_term_prv} in
   Bindlib.unbox (scope md ss env t)
 
-(** [scope_term_with_params expo ss env p mok mon t] is similar to [scope_term
-   expo ss env p mok mon t] except that [t] must be a product or an
-   abstraction. In this case, no warnings are issued if the top binders are
-   constant. *)
-let scope_term_with_params :
-      bool -> sig_state -> env
-      -> problem -> (int -> meta option) -> (string -> meta option)
-      -> p_term -> term =
-  fun m_term_prv ss env
-      m_term_new_metas m_term_meta_of_key m_term_meta_of_name t ->
+let scope_term_with_params : bool -> sig_state -> env -> p_term -> term =
+  fun m_term_prv ss env t ->
   if Timed.(!log_enabled) then log_scop "%a" Pretty.term t;
-  let md = M_Term {m_term_new_metas; m_term_meta_of_key;
-                   m_term_meta_of_name; m_term_prv} in
+  let md = M_Term {m_term_placeholders = []; m_term_prv} in
   let scope_b cons xs u =
     Bindlib.unbox (scope_binder ~warn:false md ss cons env xs (Some u))
   in

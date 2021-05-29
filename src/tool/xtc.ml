@@ -37,6 +37,7 @@ let rec print_term : int -> string -> term pp = fun i s ppf t ->
   match unfold t with
   (* Forbidden cases. *)
   | Meta(_,_)               -> assert false
+  | Plac _                  -> assert false
   | TRef(_)                 -> assert false
   | TEnv(_,_)               -> assert false
   | Wild                    -> assert false
@@ -64,6 +65,7 @@ and print_type : int -> string -> term pp = fun i s ppf t ->
   match unfold t with
   (* Forbidden cases. *)
   | Meta(_,_)               -> assert false
+  | Plac _                  -> assert false
   | TRef(_)                 -> assert false
   | TEnv(_,_)               -> assert false
   | Wild                    -> assert false
@@ -126,6 +128,7 @@ let get_vars : sym -> rule -> (string * Term.term) list = fun s r ->
     | Kind
     | TEnv (_, _)
     | Meta (_, _)
+    | Plac _
     | TRef _
     | Wild
     | Prod (_, _)

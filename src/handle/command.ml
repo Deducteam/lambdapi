@@ -157,7 +157,7 @@ let handle_inductive_symbol : sig_state -> expo -> prop -> match_strat
   let p = new_problem() in
   let typ =
     (if xs = [] then scope_term else scope_term_with_params)
-      (expo = Privat) ss Env.empty p (fun _ -> None) (fun _ -> None) typ
+      (expo = Privat) ss Env.empty typ
   in
   (* We check that [typ] is typable by a sort. *)
   let (typ,  _) = Query.check_sort pos p [] typ in
@@ -347,7 +347,7 @@ let get_proof_data : compiler -> sig_state -> p_command ->
       (if p_sym_arg = [] || p_sym_typ = None || p_sym_trm = None
        then scope_term
        else scope_term_with_params)
-        (expo = Privat) ss Env.empty p (fun _ -> None) (fun _ -> None)
+        (expo = Privat) ss Env.empty
     in
     (* Scoping function keeping track of the position. *)
     let scope t = Pos.make t.pos (scope t) in
@@ -402,6 +402,14 @@ let get_proof_data : compiler -> sig_state -> p_command ->
         match a with
         | Some {elt=a;pos} -> (* Check that the given type is well sorted. *)
             let (a, _) = Query.check_sort pos p [] a in
+            let t =
+              match t with
+              | None -> None
+              | Some {elt=t;pos} ->
+                  (* Refine definition (remove placeholders &c.) *)
+                  let t = Infer.check_noexn p [] t a in
+                  Option.map (Pos.make pos) t
+            in
             (t, a)
         | None -> (* If no type is given, infer it from the definition. *)
             match t with
