@@ -1,5 +1,6 @@
 (** Functions to manipulate metavariables. *)
 
+open Lplib
 open Term
 open Timed
 
@@ -49,13 +50,14 @@ let of_name : string -> problem -> meta option = fun n p ->
   let f m = if m.meta_name = Some n then raise (Found m) in
   try MetaSet.iter f !p.metas; None with Found m -> Some m
 
-(** [make p ctx a] creates a fresh metavariable term of type [a] in the
-   context [ctx], and adds it to [p]. *)
-let make : problem -> ctxt -> term -> term = fun p ctx a ->
+(** [make p ?name ctx a] creates a fresh metavariable term named [?name] (if
+    provided) of type [a] in the context [ctx], and adds it to [p]. *)
+let make : problem -> ?name:string -> ctxt -> term -> term =
+  fun p ?name ctx a ->
   let a, k = Ctxt.to_prod ctx a in
-  let m = fresh p a k in
-  let get_var (x,_,_) = mk_Vari x in
-  mk_Meta(m, Array.of_list (List.rev_map get_var ctx))
+  let m = fresh ?name p a k in
+  let get_var (x,_,d) = if d = None then Some (mk_Vari x) else None in
+  mk_Meta(m, Array.of_list (List.filter_rev_map get_var ctx))
 
 (** [make_codomain p ctx a] creates a fresh metavariable term of type [Type]
    in the context [ctx] extended with a fresh variable of type [a], and
@@ -90,6 +92,7 @@ let iter : bool -> (meta -> unit) -> ctxt -> term -> unit = fun b f c ->
     | TRef _
     | Type
     | Kind
+    | Plac _
     | Symb _ -> ()
     | Vari x ->
         begin match VarMap.find_opt x Stdlib.(!vm) with

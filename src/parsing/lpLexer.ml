@@ -118,7 +118,7 @@ type token =
   (* identifiers *)
   | UID of string
   | UID_EXPL of string
-  | UID_META of Syntax.meta_ident
+  | UID_META of int
   | UID_PATT of string
   | QID of Path.t (* in reverse order *)
   | QID_EXPL of Path.t (* in reverse order *)
@@ -284,9 +284,7 @@ let rec token lb =
   | escid -> UID(remove_useless_escape(Utf8.lexeme lb))
   | '@', regid -> UID_EXPL(remove_first lb)
   | '@', escid -> UID_EXPL(remove_useless_escape(remove_first lb))
-  | '?', nat -> UID_META(Numb(int_of_string(remove_first lb)))
-  | '?', regid -> UID_META(Name(remove_first lb))
-  | '?', escid -> UID_META(Name(remove_useless_escape(remove_first lb)))
+  | '?', nat -> UID_META(int_of_string(remove_first lb))
   | '$', regid -> UID_PATT(remove_first lb)
   | '$', escid -> UID_PATT(remove_useless_escape(remove_first lb))
 

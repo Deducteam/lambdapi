@@ -23,7 +23,7 @@ admitted;
 // Two metas, one depending on the other
 symbol prop2: Prf prop1 → Prop;
 symbol g (π: Prf prop1) (_: Prf (prop2 π)): Prop;
-symbol π_g: Prf (g _ ?named_meta)
+symbol π_g: Prf (g _ _)
 begin
   // Adds two axioms
 admitted;

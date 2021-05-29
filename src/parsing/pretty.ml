@@ -84,9 +84,7 @@ let raw_ident : string pp = fun ppf s ->
 let ident : p_ident pp = fun ppf {elt;_} -> raw_ident ppf elt
 
 let meta_ident : p_meta_ident pp = fun ppf {elt;_} ->
-  match elt with
-  | Name s -> raw_ident ppf s
-  | Numb i -> out ppf "%d" i
+  out ppf "%d" elt
 
 let param_id : p_ident option pp = fun ppf idopt ->
   match idopt with
@@ -136,7 +134,8 @@ let rec term : p_term pp = fun ppf t ->
     | (P_Iden(qid,false)   , _    ) -> out ppf "%a" qident qid
     | (P_Iden(qid,true )   , _    ) -> out ppf "@@%a" qident qid
     | (P_Wild              , _    ) -> out ppf "_"
-    | (P_Meta(mid,ts)      , _    ) -> out ppf "?%a%a" meta_ident mid env ts
+    | (P_Meta(mid,ts)      , _    ) ->
+        out ppf "?%a%a" meta_ident mid env (Some ts)
     | (P_Patt(idopt,ts)    , _    ) -> out ppf "$%a%a" param_id idopt env ts
     | (P_Appl(t,u)         , `Appl)
     | (P_Appl(t,u)         , `Func) -> out ppf "@[%a@ %a@]" appl t atom u

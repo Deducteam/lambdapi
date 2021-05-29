@@ -62,7 +62,8 @@ type term =
   (** Pattern variable application (only used in rewriting rules LHS). *)
   | TEnv of term_env * term array
   (** Term environment (only used in rewriting rules RHS). *)
-  | Wild (** Wildcard (only used for surface matching, never in a LHS). *)
+  | Wild
+  | Plac of bool
   | TRef of term option ref (** Reference cell (used in surface matching). *)
   | LLet of term * term * tbinder
   (** [LLet(a, t, u)] is [let x : a ≔ t in u] (with [x] bound in [u]). *)
@@ -245,8 +246,8 @@ let rec pp_term : term pp = fun ppf t ->
   | Abst(a,b) -> out ppf "(λ %a)" pp_binder (a,b)
   | Appl(a,b) -> out ppf "(%a %a)" pp_term a pp_term b
   | Meta(m,ts) -> out ppf "?%a%a" pp_meta m pp_terms ts
-  | Patt(i,s,ts) ->
-    out ppf "$%a_%s%a" (D.option D.int) i s pp_terms ts
+  | Patt(i,s,ts) -> out ppf "$%a_%s%a" (D.option D.int) i s pp_terms ts
+  | Plac(_) -> out ppf "_" 
   | TEnv(te,ts) -> out ppf "<%a>%a" pp_tenv te pp_terms ts
   | Wild -> out ppf "_"
   | TRef r -> out ppf "&%a" (Option.pp pp_term) !r
@@ -413,27 +414,6 @@ let is_symb : sym -> term -> bool = fun s t ->
 
 (** Total order on terms. *)
 let cmp : term cmp =
-  (* Total precedence on term constructors (must be injective). *)
-  (*let prec = function
-    | Vari _ -> 0
-    | Type -> 1
-    | Kind -> 2
-    | Symb _ -> 3
-    | Prod _ -> 4
-    | Abst _ -> 5
-    | Appl _ -> 6
-    | Meta _ -> 7
-    | Patt _ -> 8
-    | TEnv _ -> 9
-    | Wild -> 10
-    | TRef _ -> 11
-    | LLet _ -> 12
-  in
-  let prec_tenv = function
-    | TE_Vari _ -> 0
-    | TE_Some _ -> 1
-    | TE_None -> 2
-  in*)
   let rec cmp t t' =
     match unfold t, unfold t' with
     | Vari x, Vari x' -> Bindlib.compare_vars x x'
@@ -506,6 +486,7 @@ let mk_Abst (a,b) = Abst (a,b)
 let mk_Meta (m,ts) = Meta (m,ts)
 let mk_Patt (i,s,ts) = Patt (i,s,ts)
 let mk_Wild = Wild
+let mk_Plac b = Plac b
 let mk_TRef x = TRef x
 
 let mk_LLet (a,t,u) =
@@ -704,6 +685,9 @@ let _TEnv : tebox -> tbox array -> tbox = fun te ts ->
 (** [_Wild] injects the constructor [Wild] into the {!type:tbox} type. *)
 let _Wild : tbox = Bindlib.box Wild
 
+let _Plac : bool -> tbox = fun b ->
+  Bindlib.box (mk_Plac b)
+
 (** [_TRef r] injects the constructor [TRef(r)] into the {!type:tbox} type. It
     should be the case that [!r] is [None]. *)
 let _TRef : term option ref -> tbox = fun r ->
@@ -738,6 +722,7 @@ let lift : (tbox -> tbox -> tbox) -> term -> tbox = fun mk_appl ->
   | Patt(i,n,m) -> _Patt i n (Array.map lift m)
   | TEnv(te,m)  -> _TEnv (lift_term_env te) (Array.map lift m)
   | Wild        -> _Wild
+  | Plac b      -> _Plac b
   | TRef r      -> _TRef r
   | LLet(a,t,u) -> _LLet (lift a) (lift t) (lift_binder u)
   (* We do not use [Bindlib.box_binder] here because it is possible for a free

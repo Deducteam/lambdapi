@@ -62,6 +62,7 @@ let patt_to_tenv : term_env Bindlib.var array -> term -> tbox = fun vars ->
     | Kind        -> assert false (* Cannot appear in LHS. *)
     | Prod(_,_)   -> assert false (* Cannot appear in LHS. *)
     | LLet(_,_,_) -> assert false (* Cannot appear in LHS. *)
+    | Plac _      -> assert false (* Cannot appear in LHS. *)
     | Meta(_,_)   -> assert false (* Cannot appear in LHS. *)
     | TEnv(_,_)   -> assert false (* Cannot appear in LHS. *)
     | Wild        -> assert false (* Cannot appear in LHS. *)
@@ -116,6 +117,8 @@ let symb_to_tenv
           (_LLet (symb_to_tenv a) (symb_to_tenv t) b, ts)
       | Meta(_,_)   ->
           fatal pos "A metavariable could not be instantiated in the RHS."
+      | Plac _      ->
+          fatal pos "A placeholder hasn't been instantiated in the RHS."
       | TEnv(_,_)   -> assert false (* TEnv have been replaced in [t]. *)
       | Appl(_,_)   -> assert false (* Cannot appear in RHS. *)
       | Patt(_,_,_) -> assert false (* Cannot appear in RHS. *)
