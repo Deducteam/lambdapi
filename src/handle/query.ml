@@ -153,18 +153,9 @@ let handle : Sig_state.t -> proof_state option -> p_query -> result =
            | None -> fatal pos "Not in a definition")
   | _ ->
   let env = Proof.focus_env ps in
-  let meta_of_key =
-    match ps with
-    | None -> fun _ -> None
-    | Some ps -> Proof.meta_of_key ps in
-  let meta_of_name =
-    match ps with
-    | None -> fun _ -> None
-    | Some ps -> Proof.meta_of_name ps in
-  let p = new_problem() in
-  let scope ?(typ=false) =
-    Scope.scope_term ~typ true ss env p meta_of_key meta_of_name in
+  let scope ?(typ=false) = Scope.scope_term ~typ true ss env in
   let ctxt = Env.to_ctxt env in
+  let p = new_problem() in
   match elt with
   | P_query_debug(_,_)
   | P_query_verbose(_)

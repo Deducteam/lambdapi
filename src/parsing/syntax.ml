@@ -44,8 +44,7 @@ and p_term_aux =
   | P_Iden of p_qident * bool (** Identifier. The boolean indicates whether
                                  the identifier is prefixed by "@". *)
   | P_Wild (** Underscore. *)
-  | P_Meta of p_meta_ident * p_term array option
-    (** Meta-variable application. *)
+  | P_Meta of p_meta_ident (** Meta-variable or named unknown term. *)
   | P_Patt of p_ident option * p_term array option (** Pattern. *)
   | P_Appl of p_term * p_term (** Application. *)
   | P_Arro of p_term * p_term (** Arrow. *)
@@ -291,8 +290,7 @@ let rec eq_p_term : p_term eq = fun {elt=t1;_} {elt=t2;_} ->
   | P_Type, P_Type
   | P_Wild, P_Wild -> true
   | P_Iden(q1,b1), P_Iden(q2,b2) -> eq_p_qident q1 q2 && b1 = b2
-  | P_Meta(i1,ts1), P_Meta(i2,ts2) ->
-      eq_p_meta_ident i1 i2 && Option.eq (Array.eq eq_p_term) ts1 ts2
+  | P_Meta(i1), P_Meta(i2) -> eq_p_meta_ident i1 i2
   | P_Patt(io1,ts1), P_Patt(io2,ts2) ->
       Option.eq eq_p_ident io1 io2
       && Option.eq (Array.eq eq_p_term) ts1 ts2
@@ -474,11 +472,10 @@ let fold_idents : ('a -> p_qident -> 'a) -> 'a -> p_command list -> 'a =
 
     | P_Type
     | P_Wild
-    | P_Meta (_, None)
+    | P_Meta _
     | P_Patt (_, None)
     | P_NLit _ -> a
 
-    | P_Meta (_, Some ts)
     | P_Patt (_, Some ts) -> Array.fold_left (fold_term_vars vs) a ts
 
     | P_Appl (t, u)

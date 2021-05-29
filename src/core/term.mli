@@ -57,7 +57,11 @@ type term = private
   (** Pattern variable application (only used in rewriting rules LHS). *)
   | TEnv of term_env * term array
   (** Term environment (only used in rewriting rules RHS). *)
-  | Wild (** Wildcard (only used for surface matching, never in a LHS). *)
+  | Wild (** Wildcard (only used for surface matching, never in LHS). *)
+  | Plac of bool * string option
+  (** [Plac (b,n)] is a placeholder for not given terms or user given meta
+      variables. Boolean [b] is true if the placeholder stands for a type, and
+      [n] is an optional name for the generated metavariable. *)
   | TRef of term option ref (** Reference cell (used in surface matching). *)
   | LLet of term * term * tbinder
   (** [LLet(a, t, u)] is [let x : a ≔ t in u] (with [x] bound in [u]). *)
@@ -381,6 +385,7 @@ val mk_Meta : meta * term array -> term
 val mk_Patt : int option * string * term array -> term
 val mk_TEnv : term_env * term array -> term
 val mk_Wild : term
+val mk_Plac : bool -> string option -> term
 val mk_TRef : term option ref -> term
 val mk_LLet : term * term * tbinder -> term
 
@@ -460,6 +465,9 @@ val _TEnv : tebox -> tbox array -> tbox
 
 (** [_Wild] injects the constructor [Wild] into the {!type:tbox} type. *)
 val _Wild : tbox
+
+(** [_Plac] injects the constructor [Plac] into the {!type:tbox} type. *)
+val _Plac : bool -> string option -> tbox
 
 (** [_TRef r] injects the constructor [TRef(r)] into the {!type:tbox} type. It
     should be the case that [!r] is [None]. *)

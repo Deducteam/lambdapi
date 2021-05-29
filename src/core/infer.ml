@@ -61,8 +61,14 @@ and force : problem -> ctxt -> term -> term -> term =
  fun pb c te ty ->
  if Logger.log_enabled () then
    log "Force [%a] of [%a]" Print.pp_term te Print.pp_term ty;
- let (t, a) = infer pb c te in
- coerce pb c t a ty
+ match unfold te with
+ | Plac (true, name) ->
+     unif pb c ty mk_Type;
+     LibMeta.make pb ?name c mk_Type
+ | Plac (false, name) -> LibMeta.make pb ?name c ty
+ | _ ->
+     let (t, a) = infer pb c te in
+     coerce pb c t a ty
 
 and infer_aux : problem -> ctxt -> term -> term * term =
  fun pb c t ->
@@ -77,6 +83,13 @@ and infer_aux : problem -> ctxt -> term -> term * term =
       let a = try Ctxt.type_of x c with Not_found -> assert false in
       (t, a)
   | Symb s -> (t, !(s.sym_type))
+  | Plac (true, name) ->
+      let m = LibMeta.make pb ?name c mk_Type in
+      (m, mk_Type)
+  | Plac (false, name) ->
+      let mt = LibMeta.make pb c mk_Type in
+      let m = LibMeta.make pb ?name c mt in
+      (m, mt)
   (* All metavariables inserted are typed. *)
   | (Meta (m, ts)) as t ->
       let rec ref_esubst i range =
@@ -100,7 +113,8 @@ and infer_aux : problem -> ctxt -> term -> term * term =
       (* Check that [t] is of type [t_ty], and refine it *)
       let t = force pb c t t_ty in
       (* Unbind [u] and get new context with [x: t_ty ≔ t] *)
-      let x, u, c = Ctxt.unbind c t_ty (Some t) u in
+      let (x, u) = Bindlib.unbind u in
+      let c = (x, t_ty, Some t) :: c in
       (* Infer type of [u'] and refine it. *)
       let u, u_ty = infer pb c u in
       ( match unfold u_ty with
@@ -116,7 +130,8 @@ and infer_aux : problem -> ctxt -> term -> term * term =
   | Abst (dom, b) ->
       (* Domain must by of type Type (and not Kind) *)
       let dom = force pb c dom mk_Type in
-      let x, b, c = Ctxt.unbind c dom None b in
+      let (x, b) = Bindlib.unbind b in
+      let c = (x, dom, None) :: c in
       let b, range = infer pb c b in
       let b = Bindlib.(lift b |> bind_var x |> unbox) in
       let range = Bindlib.(lift range |> bind_var x |> unbox) in
@@ -124,7 +139,8 @@ and infer_aux : problem -> ctxt -> term -> term * term =
   | Prod (dom, b) ->
       (* Domain must by of type Type (and not Kind) *)
       let dom = force pb c dom mk_Type in
-      let x, b, c = Ctxt.unbind c dom None b in
+      let (x, b) = Bindlib.unbind b in
+      let c = (x, dom, None) :: c in
       let b, b_s = type_enforce pb c b in
       let b = Bindlib.(lift b |> bind_var x |> unbox) in
       (mk_Prod (dom, b), b_s)
@@ -155,6 +171,12 @@ and infer : problem -> ctxt -> term -> term * term = fun pb c t ->
     log "Inferred [%a: %a]" Print.pp_term t Print.pp_term t_ty;
   (t, t_ty)
 
+(** {b NOTE} when unbinding a binder [b] (e.g. when inferring the type of an
+    abstraction [λ x, e]) in context [c], [c] is always extended, even if
+    binder [b] is constant. This is because during typechecking, the context
+    must contain all variables traversed to build appropriate meta-variables.
+    Otherwise, the term [λ a: ?*, λ b: ?*, b] will be transformed to [λ _: ?1,
+    λ b: ?2, b] whereas it should be [λ a: ?1, λ b: ?2[a], b] *)
 
 (** [noexn f cs c args] initialises {!val:constraints} to [cs],
     calls [f c args] and returns [Some(r,cs)] where [r] is the value of

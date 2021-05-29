@@ -136,7 +136,7 @@ let rec term : p_term pp = fun ppf t ->
     | (P_Iden(qid,false)   , _    ) -> out ppf "%a" qident qid
     | (P_Iden(qid,true )   , _    ) -> out ppf "@@%a" qident qid
     | (P_Wild              , _    ) -> out ppf "_"
-    | (P_Meta(mid,ts)      , _    ) -> out ppf "?%a%a" meta_ident mid env ts
+    | (P_Meta(mid)         , _    ) -> out ppf "?%a" meta_ident mid
     | (P_Patt(idopt,ts)    , _    ) -> out ppf "$%a%a" param_id idopt env ts
     | (P_Appl(t,u)         , `Appl)
     | (P_Appl(t,u)         , `Func) -> out ppf "@[%a@ %a@]" appl t atom u

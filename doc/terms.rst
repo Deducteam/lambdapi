@@ -64,9 +64,7 @@ A user-defined term can be either:
 * an application written by space-separated juxtaposition, except for
   symbol identifiers declared as infix (e.g. ``x + y``)
 
-* a meta-variable application ``?M.[t;u;v]``. ``?M`` alone, without arguments
-  between square brackets, is a shorthand for ``?M.[x1;..;xn]`` where
-  ``x1;..;xn`` are all the variables of the context.
+* an named unknown term or meta-variable ``?M``.
 
 * a pattern-variable application ``$P.[x;y]`` (in rules only). ``$P``
   alone, without arguments between square brackets, is a shorthand for

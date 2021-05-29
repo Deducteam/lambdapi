@@ -231,6 +231,8 @@ and pp_term : term pp = fun ppf t ->
     | Kind        -> out ppf "KIND"
     | Symb(s)     -> pp_sym ppf s
     | Meta(m,e)   -> out ppf "%a%a" pp_meta m pp_env e
+    | Plac(_,None) -> out ppf "_"
+    | Plac (_, Some s) -> out ppf "?%s" s
     | Patt(_,n,e) -> out ppf "$%a%a" pp_uid n pp_env e
     | TEnv(t,e)   -> out ppf "$%a%a" pp_term_env t pp_env e
     (* Product and abstraction (only them can be wrapped). *)
