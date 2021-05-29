@@ -181,7 +181,7 @@ let check_rule : Scope.pre_rule Pos.loc -> rule = fun ({pos; elt} as pr) ->
   (* Infer the typing constraints of the LHS. *)
   match Infer.infer_noexn p [] lhs_with_metas with
   | None -> fatal pos "The LHS is not typable."
-  | Some ty_lhs ->
+  | Some (lhs_with_metas, ty_lhs) ->
   (* Try to simplify constraints. Don't check typing when instantiating
      a metavariable. *)
   if not (Unif.solve_noexn ~type_check:false p) then
@@ -227,8 +227,9 @@ let check_rule : Scope.pre_rule Pos.loc -> rule = fun ({pos; elt} as pr) ->
      the function symbols of [symbols]. *)
   (* Compute the constraints for the RHS to have the same type as the LHS. *)
   let p = new_problem() in
-  if not (Infer.check_noexn p [] rhs_with_metas ty_lhs) then
-    fatal pos "The RHS does not have the same type as the LHS.";
+  match Infer.check_noexn p [] rhs_with_metas ty_lhs with
+  | None -> fatal pos "The RHS does not have the same type as the LHS."
+  | Some rhs_with_metas ->
   (* Solving the typing constraints of the RHS. *)
   if not (Unif.solve_noexn p) then
     fatal pos "The rewriting rule does not preserve typing.";
