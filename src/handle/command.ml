@@ -166,7 +166,7 @@ let handle_inductive_symbol : sig_state -> expo -> prop -> match_strat
       (expo = Privat) ss Env.empty p (fun _ -> None) (fun _ -> None) typ
   in
   (* We check that [typ] is typable by a sort. *)
-  Query.check_sort pos p [] typ;
+  let (typ,  _) = Query.check_sort pos p [] typ in
   (* We check that no metavariable remains. *)
   if !p.metas <> MetaSet.empty then begin
     fatal_msg "The type of %a has unsolved metavariables.@." pp_uid name;
@@ -409,14 +409,17 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
     (* Build proof data. *)
     let pdata =
       (* Type of the symbol. *)
-      let a =
+      let (t, a) =
         match a with
-        | Some {elt=t;pos} -> (* Check that the given type is well sorted. *)
-            Query.check_sort pos p [] t; t
+        | Some {elt=a;pos} -> (* Check that the given type is well sorted. *)
+            let (a, _) = Query.check_sort pos p [] a in
+            (t, a)
         | None -> (* If no type is given, infer it from the definition. *)
             match t with
             | None -> assert false
-            | Some {elt=t;pos} -> Query.infer pos p [] t
+            | Some {elt=t;pos} ->
+                let (t, a) = Query.infer pos p [] t in
+                (Some (Pos.make pos t), a)
       in
       (* Get tactics and proof end. *)
       let pdata_proof, pe =

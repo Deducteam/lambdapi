@@ -183,7 +183,3 @@ let check_sort_noexn pb c t : (term * term) option =
   if Logger.log_enabled () then
     log "Top check sort %a%a" Print.pp_ctxt c Print.pp_term t;
   noexn type_enforce pb c t
-
-let infer_noexn pb c t = Option.map snd (infer_noexn pb c t)
-let check_noexn pb c t a = check_noexn pb c t a <> None
-let check_sort_noexn pb c t = check_sort_noexn pb c t <> None

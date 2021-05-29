@@ -56,13 +56,12 @@ let add_constr : problem -> constr -> unit = fun p c ->
    as well as the constraint [(c,a,b)] where [a] is the type of [t] and [b]
    the type of [u] if they can be infered. *)
 let add_unif_rule_constr : problem -> constr -> unit = fun p (c,t,u) ->
-  add_constr p (c,t,u);
   match Infer.infer_noexn p c t with
-  | None -> ignore (Infer.infer_noexn p c u)
-  | Some a ->
+  | None -> add_constr p (c, t, u)
+  | Some (t, a) ->
       match Infer.infer_noexn p c u with
-      | Some b when not (Eval.pure_eq_modulo c a b) -> add_constr p (c,a,b)
-      | _ -> ()
+      | None -> add_constr p (c, t, u)
+      | Some (u, b) -> add_constr p (c, t, u); add_constr p (c,a,b)
 
 (** [try_unif_rules p c s t] tries to simplify the unification problem [c
    ⊢ s ≡ t] with the user-defined unification rules. *)
@@ -134,7 +133,7 @@ let instantiate : problem -> ctxt -> meta -> term array -> term -> bool =
             | Some a -> a
             | None -> assert false
           in
-          if Infer.check_noexn p c u typ_mts then do_instantiate()
+          if Infer.check_noexn p c u typ_mts <> None then do_instantiate()
           else (if Logger.log_enabled () then log_unif "typing failed"; false)
         end
       else do_instantiate()

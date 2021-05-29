@@ -6,20 +6,24 @@ open Parsing.Syntax
 open Common.Pos
 open Proof
 
-(** [infer pos p c t] returns a type for the term [t] in context [c] and under
-   the constraints of [p] if there is one, or
-@raise Fatal. [c] must well sorted. Note that [p] gets modified. *)
-val infer : popt -> problem -> ctxt -> term -> term
+(** [infer pos p c t] returns a couple [(t',a)] where [a] is the type of [t]
+    in context [c] and under constraints of problem [p]; and [t'] is the
+    refinement of [t]. Note that [p] gets modified. Context [c] must well
+    sorted.
+    @raise Fatal if [t] cannot be typed. *)
+val infer : popt -> problem -> ctxt -> term -> term * term
 
 (** [check pos p c t a] checks that the term [t] has type [a] in context [c]
-and under the constraints of [p], or
-@raise Fatal. [c] must well sorted. Note that [p] gets modified. *)
-val check : popt -> problem -> ctxt -> term -> term -> unit
+    and under the constraints of [p], and returns [t] refined. Context [c]
+    must be well-sorted. Note that [p] is modified.
+    @raise Fatal if [t] is not of type [a]. *)
+val check : popt -> problem -> ctxt -> term -> term -> term
 
 (** [check_sort pos p c t] checks that the term [t] has type [Type] or [Kind]
-   in context [c] and under the constraints of [p], or
-@raise Fatal. [c] must be well sorted. *)
-val check_sort : popt -> problem -> ctxt -> term -> unit
+    in context [c] and under the constraints of [p]. Context [c] must be well
+    sorted.
+    @raise Fatal if [t] cannot be typed by a sort (Type or Kind). *)
+val check_sort : popt -> problem -> ctxt -> term -> term * term
 
 (** Result of query displayed on hover in the editor. *)
 type result = (unit -> string) option
