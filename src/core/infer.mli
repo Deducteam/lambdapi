@@ -7,12 +7,12 @@ open Term
    context [ctx], possibly adding new constraints in [p]. The metavariables of
    [p] are updated when a metavariable is instantiated or created. [ctx] must
    be well sorted. *)
-val infer_noexn : problem -> ctxt -> term -> term option
+val infer_noexn : problem -> ctxt -> term -> (term * term) option
 
 (** [check_noexn p ctx t a] tells whether the term [t] has type [a] in the
    context [ctx], possibly adding new constraints in [p]. The metavariables of
    [p] are updated when a metavariable is instantiated or created. The context
    [ctx] and the type [a] must be well sorted. *)
-val check_noexn : problem -> ctxt -> term -> term -> bool
+val check_noexn : problem -> ctxt -> term -> term -> term option
 
-val check_sort_noexn : problem -> ctxt -> term -> bool
+val check_sort_noexn : problem -> ctxt -> term -> (term * term) option

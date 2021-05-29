@@ -13,57 +13,49 @@ open! Lplib
 open Base
 open Timed
 
-(** [infer pos p c t] returns a type for the term [t] in context [c] and under
-   the constraints of [p] if there is one, or
-@raise Fatal. [c] must well sorted. Note that [p] gets modified. *)
-let infer : Pos.popt -> problem -> ctxt -> term -> term = fun pos p ctx t ->
+let infer : Pos.popt -> problem -> ctxt -> term -> term * term =
+  fun pos p ctx t ->
   match Infer.infer_noexn p ctx t with
   | None -> fatal pos "%a is not typable." pp_term t
-  | Some a ->
+  | Some (t, a) ->
       if Unif.solve_noexn p then
         begin
-          if !p.unsolved = [] then a
+          if !p.unsolved = [] then (t, a)
           else
             (List.iter (wrn pos "Cannot solve %a." pp_constr) !p.unsolved;
              fatal pos "Failed to infer the type of %a." pp_term t)
         end
       else fatal pos "%a is not typable." pp_term t
 
-(** [check pos p c t a] checks that the term [t] has type [a] in context [c]
-and under the constraints of [p], or
-@raise Fatal. [c] must well sorted. Note that [p] gets modified. *)
-let check : Pos.popt -> problem -> ctxt -> term -> term -> unit =
+let check : Pos.popt -> problem -> ctxt -> term -> term -> term =
   fun pos p ctx t a ->
-  if Infer.check_noexn p ctx t a then
+  let die () =
+    fatal pos "[%a] does not have type [%a]." pp_term t pp_term a
+  in
+  match Infer.check_noexn p ctx t a with
+  | Some t ->
     if Unif.solve_noexn p then
       begin
-        if !p.unsolved <> [] then
+        if !p.unsolved = [] then t else
           (List.iter (wrn pos "Cannot solve %a." pp_constr) !p.unsolved;
-           fatal pos "[%a] does not have type [%a]." pp_term t pp_term a)
+           die ())
       end
-    else fatal pos "[%a] does not have type [%a]." pp_term t pp_term a
+    else die ()
+  | None -> die ()
 
-(** [check_sort pos p c t] checks that the term [t] has type [Type] or [Kind]
-   in context [c] and under the constraints of [p], or
-@raise Fatal. [c] must be well sorted. *)
-let check_sort : Pos.popt -> problem -> ctxt -> term -> unit =
+let check_sort : Pos.popt -> problem -> ctxt -> term -> term * term =
   fun pos p ctx t ->
-  match Infer.infer_noexn p ctx t with
-  | None -> fatal pos "[%a] is not typable." pp_term t
-  | Some a ->
+  match Infer.check_sort_noexn p ctx t with
+  | None -> fatal pos "[%a] is not typable by a sort." pp_term t
+  | Some (t,s) ->
       if Unif.solve_noexn p then
         begin
-          if !p.unsolved = [] then
-            match unfold a with
-            | Type | Kind -> ()
-            | _ -> fatal pos "[%a] has type [%a] and not a sort."
-                     pp_term t pp_term a
-          else
+          if !p.unsolved = [] then (t, s) else
             (List.iter (wrn pos "Cannot solve %a." pp_constr) !p.unsolved;
              fatal pos "Failed to check that [%a] is typable by a sort."
-               pp_term a)
+               pp_term s)
         end
-      else fatal pos "[%a] is not typable." pp_term t
+      else fatal pos "[%a] is not typable by a sort." pp_term t
 
 (** Result of query displayed on hover in the editor. *)
 type result = (unit -> string) option
@@ -186,9 +178,9 @@ let handle : Sig_state.t -> proof_state option -> p_query -> result =
       Console.out 2 "assertion: it is %b that %a" (not must_fail)
         pp_typing (ctxt, t, a);
       (* Check that [a] is typable by a sort. *)
-      check_sort pos p ctxt a;
+      let (a, _) = check_sort pos p ctxt a in
       let result =
-        try check pos p ctxt t a; true
+        try ignore (check pos p ctxt t a); true
         with Fatal _ -> false
       in
       if result = must_fail then fatal pos "Assertion failed.";
@@ -198,9 +190,9 @@ let handle : Sig_state.t -> proof_state option -> p_query -> result =
       Console.out 2 "assertion: it is %b that %a" (not must_fail)
         pp_constr (ctxt, t, u);
       (* Check that [t] is typable. *)
-      let a = infer pt.pos p ctxt t in
+      let (t, a) = infer pt.pos p ctxt t in
       (* Check that [u] is typable. *)
-      let b = infer pu.pos p ctxt u in
+      let (u, b) = infer pu.pos p ctxt u in
       (* Check that [t] and [u] have the same type. *)
       p := {!p with to_solve = (ctxt,a,b)::!p.to_solve};
       if Unif.solve_noexn p then
@@ -218,8 +210,9 @@ let handle : Sig_state.t -> proof_state option -> p_query -> result =
             pp_term t pp_term a pp_term u pp_term b;
       None
   | P_query_infer(pt, cfg) ->
-      return pp_term (Eval.eval cfg ctxt (infer pt.pos p ctxt (scope pt)))
+      let t = scope pt in
+      return pp_term (Eval.eval cfg ctxt (snd (infer pt.pos p ctxt t)))
   | P_query_normalize(pt, cfg) ->
       let t = scope pt in
-      ignore (infer pt.pos p ctxt t);
+      let t, _ = infer pt.pos p ctxt t in
       return pp_term (Eval.eval cfg ctxt t)

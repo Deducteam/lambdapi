@@ -114,8 +114,10 @@ let tac_refine :
   let c = Env.to_ctxt gt.goal_hyps in
   if LibMeta.occurs gt.goal_meta c t then fatal pos "Circular refinement.";
   (* Check that [t] has the required type. *)
-  if not (Infer.check_noexn p c t gt.goal_type) then
-    fatal pos "%a@ does not have type@ %a." pp_term t pp_term gt.goal_type;
+  match Infer.check_noexn p c t gt.goal_type with
+  | None ->
+      fatal pos "%a@ does not have type@ %a."  pp_term t  pp_term gt.goal_type
+  | Some t ->
   if Logger.log_enabled () then
     log_tact (Color.red "%a ≔ %a") pp_meta gt.goal_meta pp_term t;
   LibMeta.set p gt.goal_meta
@@ -216,7 +218,7 @@ let handle :
         let c = Env.to_ctxt env in
         match Infer.infer_noexn p c t with
         | None -> fatal pos "[%a] is not typable." pp_term t
-        | Some a -> count_products c a
+        | Some (_, a) -> count_products c a
       in
       let p, t = if n <= 0 then p, t
                  else let p = new_problem() in
@@ -255,19 +257,24 @@ let handle :
       let t = scope p t in
       (* Generate the constraints for [t] to be of type [Type]. *)
       let c = Env.to_ctxt gt.goal_hyps in
-      if not (Infer.check_noexn p c t mk_Type) then
-        fatal pos "%a is not of type Type." pp_term t;
-      (* Create a new goal of type [t]. *)
-      let n = List.length env in
-      let bt = lift t in
-      let m1 = LibMeta.fresh p (Env.to_prod env bt) n in
-      (* Refine the focused goal. *)
-      let v = new_tvar id.elt in
-      let env' = Env.add v bt None env in
-      let m2 = LibMeta.fresh p (Env.to_prod env' (lift gt.goal_type)) (n+1) in
-      let ts = Env.to_tbox env in
-      let u = Bindlib.unbox (_Meta m2 (Array.append ts [|_Meta m1 ts|])) in
-      tac_refine pos ps gt gs p u
+      begin
+        match Infer.check_noexn p c t mk_Type with
+        | None -> fatal pos "%a is not of type Type." pp_term t
+        | Some t ->
+        (* Create a new goal of type [t]. *)
+        let n = List.length env in
+        let bt = lift t in
+        let m1 = LibMeta.fresh p (Env.to_prod env bt) n in
+        (* Refine the focused goal. *)
+        let v = new_tvar id.elt in
+        let env' = Env.add v bt None env in
+        let m2 =
+          LibMeta.fresh p (Env.to_prod env' (lift gt.goal_type)) (n+1)
+        in
+        let ts = Env.to_tbox env in
+        let u = Bindlib.unbox (_Meta m2 (Array.append ts [|_Meta m1 ts|])) in
+        tac_refine pos ps gt gs p u
+      end
   | P_tac_induction -> tac_induction pos ps gt gs
   | P_tac_refine t ->
       let p = new_problem() in tac_refine pos ps gt gs p (scope p t)
