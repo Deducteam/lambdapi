@@ -94,6 +94,8 @@ let time_of : (unit -> 'b) -> 'b = fun f ->
 (** Printing functions. *)
 module D = struct
 
+  let level ppf l = for _i = 1 to l do out ppf " " done; out ppf "%d. " l
+
   let int ppf i = out ppf "%d" i
 
   let string ppf s = out ppf "%S" s

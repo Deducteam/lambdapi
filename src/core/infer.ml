@@ -8,14 +8,10 @@ open Print
 open Debug
 open Lplib
 open Extra
-open Base
 
 (** Logging function for typing. *)
 let log_infr = new_logger 'i' "infr" "type inference/checking"
 let log_infr = log_infr.logger
-
-(* The int parameter l is used for improving log messages. *)
-let pp_level ppf l = for _i = 1 to l do out ppf " " done; out ppf "%d. " l
 
 (** Given a meta [m] of type [Πx1:a1,..,Πxn:an,b], [set_to_prod l p m] sets
    [m] to a product term of the form [Πy:m1[x1;..;xn],m2[x1;..;xn;y]] with
@@ -38,7 +34,7 @@ let set_to_prod : int -> problem -> meta -> unit = fun l p m ->
   (* result *)
   let r = _Prod a b in
   if !log_enabled then
-    log_infr (red "%a%a ≔ %a") pp_level l pp_meta m pp_term (Bindlib.unbox r);
+    log_infr (red "%a%a ≔ %a") D.level l pp_meta m pp_term (Bindlib.unbox r);
   LibMeta.set p m (Bindlib.unbox (Bindlib.bind_mvar vs r))
 
 (** [conv l p c a b] adds the the constraint [(c,a,b)] in [p], if [a] and
@@ -47,7 +43,7 @@ let conv : int -> problem -> ctxt -> term -> term -> unit = fun l p c a b ->
   if not (Eval.eq_modulo c a b) then
     (let cstr = (c,a,b) in
      p := {!p with to_solve = cstr::!p.to_solve};
-     if !log_enabled then log_infr (mag "%aadd %a") pp_level l pp_constr cstr)
+     if !log_enabled then log_infr (mag "%aadd %a") D.level l pp_constr cstr)
 
 (** Exception that may be raised by type inference. *)
 exception NotTypable
@@ -61,8 +57,8 @@ exception NotTypable
    abstraction over a kind). *)
 let rec infer : int -> problem -> ctxt -> term -> term = fun l p c t ->
   let return v =
-    if !log_enabled then log_infr "%a%a" pp_level l pp_term v; v in
-  if !log_enabled then log_infr "%ainfer %a%a" pp_level l pp_ctxt c pp_term t;
+    if !log_enabled then log_infr "%a%a" D.level l pp_term v; v in
+  if !log_enabled then log_infr "%ainfer %a%a" D.level l pp_ctxt c pp_term t;
   match unfold t with
   | Patt(_,_,_) -> assert false (* Forbidden case. *)
   | TEnv(_,_)   -> assert false (* Forbidden case. *)
@@ -173,7 +169,7 @@ let rec infer : int -> problem -> ctxt -> term -> term = fun l p c t ->
       let s = Term.create_sym (Sign.current_path()) Privat Const
           Eager true ("?" ^ LibMeta.name m) !(m.meta_type) [] in
       if !log_enabled then
-        log_infr "%areplace meta by fresh symbol" pp_level l;
+        log_infr "%areplace meta by fresh symbol" D.level l;
       infer l p c
         (Array.fold_left (fun acc t -> mk_Appl(acc,t)) (mk_Symb s) ts)
 
@@ -183,9 +179,9 @@ let rec infer : int -> problem -> ctxt -> term -> term = fun l p c t ->
 @raise NotTypable when the term is not typable (when encountering an
    abstraction over a kind). *)
 and check : int -> problem -> ctxt -> term -> term -> unit = fun l p c t a ->
-  if !log_enabled then log_infr "%acheck %a" pp_level l pp_typing (c,t,a);
+  if !log_enabled then log_infr "%acheck %a" D.level l pp_typing (c,t,a);
   conv l p c (infer (l+1) p c t) a;
-  if !log_enabled then log_infr "%acheck %a" pp_level l pp_typing (c,t,a)
+  if !log_enabled then log_infr "%acheck %a" D.level l pp_typing (c,t,a)
 
 (** [infer_noexn p c t] returns [None] if the type of [t] in context [c]
    cannot be inferred, or [Some a] where [a] is some type of [t] in the

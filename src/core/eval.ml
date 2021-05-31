@@ -134,18 +134,19 @@ let appl_to_tref : term -> term = fun t ->
 
 (** [whnf c t] computes a whnf of the term [t] wrt configuration [c]. *)
 let rec whnf : config -> term -> term = fun c t ->
-  (*if !log_enabled then log_eval "whnf %a" pp_term t;*)
+  if !log_enabled then log_eval "whnf %a" pp_term t;
   let s = Stdlib.(!steps) in
   let u, stk = whnf_stk c t [] in
   let r = if Stdlib.(!steps) <> s then add_args u stk else unfold t in
-  (*if !log_enabled then log_eval "whnf %a%a ≡ %a"
-    pp_ctxt c.context pp_term t pp_term r;*) r
+  if !log_enabled then
+    log_eval "whnf %a%a = %a" pp_ctxt c.context pp_term t pp_term r;
+  r
 
-(** [whnf_stk ~rewrite c t stk] computes a whnf of [add_args t stk] wrt
+(** [whnf_stk l c t stk] computes a whnf of [add_args t stk] wrt
    configuration [c]. *)
 and whnf_stk : config -> term -> stack -> term * stack = fun c t stk ->
   (*if !log_enabled then
-    log_eval "whnf_stk %a %a"
+    log_eval "whnf_stk %a%a%a"
       pp_ctxt c.context pp_term t (D.list pp_term) stk;*)
   match unfold t, stk with
   | Appl(f,u), stk -> whnf_stk c f (appl_to_tref u::stk)
@@ -405,7 +406,9 @@ let whnf : ?rewrite:bool -> ctxt -> term -> term = fun ?(rewrite=true) c t ->
   Stdlib.(steps := 0);
   let u = whnf (cfg_of_ctx c rewrite) t in
   let r = if Stdlib.(!steps = 0) then unfold t else u in
-  if !log_enabled then log_eval "whnf %a" pp_constr (c,t,r); r
+  (*if !log_enabled then
+    log_eval "whnf %a%a = %a" pp_ctxt c.context pp_term t pp_term r;*)
+  r
 
 (** [simplify t] computes a beta whnf of [t] belonging to the set S such that:
 - terms of S are in beta whnf normal format
