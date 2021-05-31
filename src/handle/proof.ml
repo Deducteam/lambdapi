@@ -64,7 +64,7 @@ module Goal = struct
   (** [pp_hyps ppf g] prints on [ppf] the hypotheses of the goal [g]. *)
   let pp_hyps : goal pp =
     let env_elt ppf (s,(_,t,_)) =
-      out "%a: %a" pp_uid s pp_term (Bindlib.unbox t)
+      out ppf "%a: %a" pp_uid s pp_term (Bindlib.unbox t)
     in
     let ctx_elt ppf (x,a,t) =
       out ppf "%a: %a" pp_var x pp_term a;
