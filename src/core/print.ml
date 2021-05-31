@@ -311,7 +311,7 @@ let pp_typing : constr pp = fun ppf (ctx, t, u) ->
   out ppf "%a%a : %a" pp_ctxt ctx pp_term t pp_term u
 
 let pp_constr : constr pp = fun ppf (ctx, t, u) ->
-  out ppf "%a%a\n≡ %a" pp_ctxt ctx pp_term t pp_term u
+  out ppf "%a%a ≡ %a" pp_ctxt ctx pp_term t pp_term u
 
 let pp_constrs : constr list pp = fun ppf ->
   List.iter (out ppf "\n  ; %a" pp_constr)

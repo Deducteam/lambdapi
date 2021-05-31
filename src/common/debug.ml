@@ -30,7 +30,7 @@ let log_summary : unit -> (char * string) list = fun () ->
   let compare (c1, _) (c2, _) = Char.compare c1 c2 in
   List.sort compare (List.map fn Stdlib.(!loggers))
 
-(** [set_log value key] enables or disables the loggers corresponding to every
+(** [set_debug value key] enables or disables the loggers corresponding to every
     character of [str] according to [value]. *)
 let set_debug : bool -> string -> unit = fun value str ->
   let fn {logger_key; logger_enabled; _} =
@@ -68,7 +68,7 @@ let new_logger : char -> string -> string -> logger = fun key name desc ->
   (* Actual printing function. *)
   let logger fmt =
     let pp = Format.(if !enabled then fprintf else ifprintf) in
-    pp Stdlib.(!Error.err_fmt) ((cya "[%s] ") ^^ fmt ^^ "\n%!") name
+    pp Stdlib.(!Error.err_fmt) (fmt ^^ "\n%!")
   in
   {logger}
 
@@ -77,7 +77,7 @@ let logger_hndl = new_logger 'h' "hndl" "command handling"
 let log_hndl = logger_hndl.logger
 
 (** To print time data. *)
-let do_print_time = ref true
+let do_print_time = ref false
 
 (** Print current time. *)
 let print_time : string -> unit = fun s ->
