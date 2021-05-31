@@ -217,7 +217,7 @@ type tbox = term Bindlib.box
 type tebox = term_env Bindlib.box
 
 (** Printing functions for debug. *)
-let rec pp_term : term pp = let out = Format.fprintf in fun ppf t ->
+let rec pp_term : term pp = fun ppf t ->
   match t with
   | Vari v -> pp_var ppf v
   | Type -> out ppf "TYPE"
@@ -229,25 +229,33 @@ let rec pp_term : term pp = let out = Format.fprintf in fun ppf t ->
       else out ppf "(Π %a)" pp_binder (a,b)
   | Abst(a,b) -> out ppf "(λ %a)" pp_binder (a,b)
   | Appl(a,b) -> out ppf "(%a %a)" pp_term a pp_term b
-  | Meta(m,ts) -> out ppf "?%a[%a]" pp_meta m pp_terms ts
-  | Patt _ -> out ppf "<Patt>"
-  | TEnv _ -> out ppf "<TEnv>"
+  | Meta(m,ts) -> out ppf "?%a%a" pp_meta m pp_terms ts
+  | Patt(i,s,ts) ->
+    out ppf "$%a_%s%a" (D.option D.int) i s pp_terms ts
+  | TEnv(te,ts) -> out ppf "<%a>%a" pp_tenv te pp_terms ts
   | Wild -> out ppf "_"
-  | TRef _ -> out ppf "<TRef>"
+  | TRef r -> out ppf "&%a" (Option.pp pp_term) !r
   | LLet(a,t,u) ->
       let x, u = Bindlib.unbind u in
-      out ppf "let %a : %a ≔ %a in %a" pp_var x pp_term a pp_term t pp_term u
-and pp_var : tvar pp = fun ppf v ->
-  Format.fprintf ppf "%s" (Bindlib.name_of v)
+      out ppf "let %a: %a ≔ %a in %a" pp_var x pp_term a pp_term t pp_term u
+and pp_terms : term array pp = fun ppf ts ->
+  (*if Array.length ts > 0 then*) D.array pp_term ppf ts
+and pp_var : tvar pp = fun ppf v -> out ppf "%s" (Bindlib.name_of v)
 and pp_binder : (term * tbinder) pp = fun ppf (a,b) ->
   let x, b = Bindlib.unbind b in
-  Format.fprintf ppf "%a : %a, %a" pp_var x pp_term a pp_term b
-and pp_terms : term array pp = fun ppf ts -> Array.iter (pp_term ppf) ts
-and pp_meta : meta pp = let out = Format.fprintf in fun ppf m ->
+  out ppf "%a: %a, %a" pp_var x pp_term a pp_term b
+and pp_meta : meta pp = fun ppf m ->
   match m.meta_name with
   | None -> out ppf "%d" m.meta_key
   | Some s -> out ppf "%s" s
-and pp_sym : sym pp = fun ppf s -> Format.fprintf ppf "%s" s.sym_name
+and pp_sym : sym pp = fun ppf s -> out ppf "%s" s.sym_name
+and pp_tenv : term_env pp = fun ppf te ->
+  match te with
+  | TE_Vari v -> out ppf "%s" (Bindlib.name_of v)
+  | TE_Some mb ->
+    let vs, b = Bindlib.unmbind mb in
+    out ppf "%a,%a" (D.array pp_var) vs pp_term b
+  | TE_None -> ()
 
 (** Typing context associating a [Bindlib] variable to a type and possibly a
    definition. The typing environment [x1:A1,..,xn:An] is represented by the

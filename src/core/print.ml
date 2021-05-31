@@ -13,9 +13,6 @@ open Common
 open Debug
 open Term
 open Sig_state
-open Format
-
-let out = fprintf
 
 (** Logging function for printing. *)
 let log_prnt = new_logger 'p' "prnt" "pretty-printing"
@@ -274,6 +271,7 @@ and pp_term : term pp = fun ppf t ->
   func ppf (cleanup t)
 
 (*let pp_term ppf t = out ppf "<%a printed %a>" Term.pp_term t pp_term t*)
+let pp_term = Term.pp_term
 
 let rec pp_prod : (term * bool list) pp = fun ppf (t, impl) ->
   match unfold t, impl with

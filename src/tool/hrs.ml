@@ -6,23 +6,21 @@
 open! Lplib
 open Lplib.Base
 open Lplib.Extra
-
 open Timed
 open Core
 open Term
 open Print
 
-(** [print_sym oc s] outputs the fully qualified name of [s] to [oc]. The name
+(** [print_sym ppf s] outputs the fully qualified name of [s] to [ppf]. The name
     is prefixed by ["c_"], and modules are separated with ["_"], not ["."]. *)
-let print_sym : sym pp = fun oc s ->
+let print_sym : sym pp = fun ppf s ->
   let print_path = List.pp Format.pp_print_string "_" in
-  Format.fprintf oc "c_%a_%s" print_path s.sym_path s.sym_name
+  out ppf "c_%a_%s" print_path s.sym_path s.sym_name
 
-(** [print_patt oc p] outputs TPDB format corresponding to the pattern [p], to
-    the channel [oc]. *)
+(** [print_patt ppf p] outputs TPDB format corresponding to the pattern [p], to
+    [ppf]. *)
 let print_term : bool -> term pp = fun lhs ->
-  let rec pp oc t =
-    let out fmt = Format.fprintf oc fmt in
+  let rec pp ppf t =
     match unfold t with
     (* Forbidden cases. *)
     | Meta(_,_)    -> assert false
@@ -31,28 +29,28 @@ let print_term : bool -> term pp = fun lhs ->
     | Wild         -> assert false
     | Kind         -> assert false
     (* Printing of atoms. *)
-    | Vari(x)      -> out "%a" pp_var x
-    | Type         -> out "TYPE"
-    | Symb(s)      -> print_sym oc s
+    | Vari(x)      -> out ppf "%a" pp_var x
+    | Type         -> out ppf "TYPE"
+    | Symb(s)      -> print_sym ppf s
     | Patt(i,n,ts) ->
-        if ts = [||] then out "$%s" n else
-          pp oc (Array.fold_left (fun t u -> mk_Appl(t,u))
+        if ts = [||] then out ppf "$%s" n else
+          pp ppf (Array.fold_left (fun t u -> mk_Appl(t,u))
                    (mk_Patt(i,n,[||])) ts)
-    | Appl(t,u)    -> out "app(%a,%a)" pp t pp u
+    | Appl(t,u)    -> out ppf "app(%a,%a)" pp t pp u
     | Abst(a,t)    ->
         let (x, t) = Bindlib.unbind t in
-        if lhs then out "lam(m_typ,\\%a.%a)" pp_var x pp t
-        else out "lam(%a,\\%a.%a)" pp a pp_var x pp t
+        if lhs then out ppf "lam(m_typ,\\%a.%a)" pp_var x pp t
+        else out ppf "lam(%a,\\%a.%a)" pp a pp_var x pp t
     | Prod(a,b)    ->
         let (x, b) = Bindlib.unbind b in
-        out "pi(%a,\\%a.%a)" pp a pp_var x pp b
-    | LLet(_,t,u)  -> pp oc (Bindlib.subst u t)
+        out ppf "pi(%a,\\%a.%a)" pp a pp_var x pp b
+    | LLet(_,t,u)  -> pp ppf (Bindlib.subst u t)
   in pp
 
-(** [print_rule oc lhs rhs] outputs the rule declaration [lhs]->[rhs]
-    to the output channel [oc] *)
+(** [print_rule ppf lhs rhs] outputs the rule declaration [lhs]->[rhs]
+    to [ppf] *)
 let print_rule : Format.formatter -> term -> term -> unit =
-  fun oc lhs rhs ->
+  fun ppf lhs rhs ->
   (* gets pattern and binded variable names *)
   let add_var_names : StrSet.t -> term -> StrSet.t = fun ns t ->
     let names = Stdlib.ref ns in
@@ -71,24 +69,24 @@ let print_rule : Format.formatter -> term -> term -> unit =
   let names = add_var_names names rhs in
   if not (StrSet.is_empty names) then
     begin
-      let print_name oc x = Format.fprintf oc "  %s : term\n" x in
-      let pp_strset oc = StrSet.iter (print_name oc) in
-      Format.fprintf oc "(VAR\n%a)\n" pp_strset names
+      let print_name ppf x = out ppf "  %s : term\n" x in
+      let pp_strset ppf = StrSet.iter (print_name ppf) in
+      out ppf "(VAR\n%a)\n" pp_strset names
     end;
   (* Print the rewriting rule. *)
-  Format.fprintf oc "(RULES %a" (print_term true) lhs;
-  Format.fprintf oc "\n    -> %a)\n" (print_term false) rhs
+  out ppf "(RULES %a" (print_term true) lhs;
+  out ppf "\n    -> %a)\n" (print_term false) rhs
 
-(** [print_sym_rule oc s r] outputs the rule declaration corresponding [r] (on
-   the symbol [s]), to the output channel [oc]. *)
-let print_sym_rule : Format.formatter -> sym -> rule -> unit = fun oc s r ->
+(** [print_sym_rule ppf s r] outputs the rule declaration corresponding [r] (on
+   the symbol [s]), to [ppf]. *)
+let print_sym_rule : Format.formatter -> sym -> rule -> unit = fun ppf s r ->
   let lhs = add_args (mk_Symb s) r.lhs in
   let rhs = LibTerm.term_of_rhs r in
-  print_rule oc lhs rhs
+  print_rule ppf lhs rhs
 
-(** [to_HRS oc sign] outputs a TPDB representation of the rewriting system of
-    the signature [sign] to the output channel [oc]. *)
-let to_HRS : Format.formatter -> Sign.t -> unit = fun oc sign ->
+(** [to_HRS ppf sign] outputs a TPDB representation of the rewriting system of
+    the signature [sign] to [ppf]. *)
+let to_HRS : Format.formatter -> Sign.t -> unit = fun ppf sign ->
   (* Get all the dependencies (every needed symbols and rewriting rules). *)
   let deps = Sign.dependencies sign in
   (* Function to iterate over every symbols. *)
@@ -122,16 +120,16 @@ let to_HRS : Format.formatter -> Sign.t -> unit = fun oc sign ->
     ; "(COMMENT TYPE keyword)"
     ; "(FUN TYPE : term)" ]
   in
-  List.iter (Format.fprintf oc "%s\n") prelude;
+  List.iter (out ppf "%s\n") prelude;
   (* Print the symbol declarations. *)
-  Format.fprintf oc "\n(COMMENT symbols)\n";
-  let print_symbol s = Format.fprintf oc "(FUN %a : term)\n" print_sym s in
+  out ppf "\n(COMMENT symbols)\n";
+  let print_symbol s = out ppf "(FUN %a : term)\n" print_sym s in
   iter_symbols print_symbol;
   (* Print the rewriting rules. *)
-  Format.fprintf oc "\n(COMMENT rewriting rules)\n";
+  out ppf "\n(COMMENT rewriting rules)\n";
   let print_rules s =
     match !(s.sym_def) with
-    | Some(d) -> print_rule oc (mk_Symb s) d
-    | None    -> List.iter (print_sym_rule oc s) !(s.sym_rules)
+    | Some(d) -> print_rule ppf (mk_Symb s) d
+    | None    -> List.iter (print_sym_rule ppf s) !(s.sym_rules)
   in
   iter_symbols print_rules

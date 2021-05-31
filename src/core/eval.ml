@@ -155,8 +155,9 @@ and whnf_stk : config -> term -> stack -> term * stack = fun c t stk ->
       Stdlib.incr steps; whnf_stk c (Bindlib.subst u (appl_to_tref t)) stk
   | (Symb s, stk) as r when c.rewrite ->
       begin match !(s.sym_def) with
-      | Some t when not s.sym_opaq -> Stdlib.incr steps; whnf_stk c t stk
-      | _ ->
+      | Some t ->
+          if s.sym_opaq then r else (Stdlib.incr steps; whnf_stk c t stk)
+      | None ->
       match tree_walk c !(s.sym_dtree) stk with
       | None -> r
       | Some(t,stk) -> Stdlib.incr steps; whnf_stk c t stk
@@ -383,7 +384,7 @@ let snf : ctxt -> term -> term = fun c t ->
   Stdlib.(steps := 0);
   let u = snf (whnf (cfg_of_ctx c true)) t in
   let r = if Stdlib.(!steps = 0) then unfold t else u in
-  if !log_enabled then log_eval (mag "snf %a") pp_constr (c,t,r); r
+  if !log_enabled then log_eval "snf %a" pp_constr (c,t,r); r
 
 (** [hnf c t] computes a hnf of [t], unfolding the variables defined in the
    context [c], and using user-defined rewrite rules. *)
@@ -391,7 +392,7 @@ let hnf : ctxt -> term -> term = fun c t ->
   Stdlib.(steps := 0);
   let u = hnf (whnf (cfg_of_ctx c true)) t in
   let r = if Stdlib.(!steps = 0) then unfold t else u in
-  if !log_enabled then log_eval (mag "hnf %a") pp_constr (c,t,r); r
+  if !log_enabled then log_eval "hnf %a" pp_constr (c,t,r); r
 
 (** [eq_modulo c a b] tests the convertibility of [a] and [b] in context
    [c]. *)
@@ -404,7 +405,7 @@ let whnf : ?rewrite:bool -> ctxt -> term -> term = fun ?(rewrite=true) c t ->
   Stdlib.(steps := 0);
   let u = whnf (cfg_of_ctx c rewrite) t in
   let r = if Stdlib.(!steps = 0) then unfold t else u in
-  if !log_enabled then log_eval (mag "whnf %a") pp_constr (c,t,r); r
+  if !log_enabled then log_eval "whnf %a" pp_constr (c,t,r); r
 
 (** [simplify t] computes a beta whnf of [t] belonging to the set S such that:
 - terms of S are in beta whnf normal format

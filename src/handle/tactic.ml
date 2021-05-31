@@ -298,7 +298,7 @@ let handle : Sig_state.t -> bool -> proof_state -> p_tactic
   match elt with
   | P_tac_fail -> fatal pos "Call to tactic \"fail\""
   | P_tac_query(q) ->
-      if !log_enabled then log_tact "%a" Pretty.tactic tac;
+      if !log_enabled then log_tact "\n%a" Pretty.tactic tac;
       ss, ps, Query.handle ss (Some ps) q
   | _ ->
   match ps.proof_goals with

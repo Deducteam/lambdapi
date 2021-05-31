@@ -55,34 +55,33 @@ module Goal = struct
     | Typ gt -> Typ {gt with goal_type = f gt.goal_type}
     | Unif (c,t,u) -> Unif (c, f t, f u)
 
-  (** [pp oc g] prints on channel [oc] the goal [g] without its hypotheses. *)
-  let pp : goal pp = fun oc g ->
-    let out fmt = Format.fprintf oc fmt in
+  (** [pp ppf g] prints on [ppf] the goal [g] without its hypotheses. *)
+  let pp : goal pp = fun ppf g ->
     match g with
-    | Typ gt -> out "%a: %a" pp_meta gt.goal_meta pp_term gt.goal_type
-    | Unif (_, t, u) -> out "%a ≡ %a" pp_term t pp_term u
+    | Typ gt -> out ppf "%a: %a" pp_meta gt.goal_meta pp_term gt.goal_type
+    | Unif (_, t, u) -> out ppf "%a ≡ %a" pp_term t pp_term u
 
-  (** [pp_hyps oc g] prints on channel [oc] the hypotheses of the goal [g]. *)
+  (** [pp_hyps ppf g] prints on [ppf] the hypotheses of the goal [g]. *)
   let pp_hyps : goal pp =
-    let env_elt oc (s,(_,t,_)) =
-      Format.fprintf oc "%a: %a" pp_uid s pp_term (Bindlib.unbox t)
+    let env_elt ppf (s,(_,t,_)) =
+      out "%a: %a" pp_uid s pp_term (Bindlib.unbox t)
     in
-    let ctx_elt oc (x,a,t) =
-      Format.fprintf oc "%a: %a" pp_var x pp_term a;
+    let ctx_elt ppf (x,a,t) =
+      out ppf "%a: %a" pp_var x pp_term a;
       match t with
       | None -> ()
-      | Some(t) -> Format.fprintf oc " ≔ %a" pp_term t
+      | Some t -> out ppf " ≔ %a" pp_term t
     in
-    let hyps hyp oc l =
+    let hyps hyp ppf l =
       if l <> [] then
-        (List.iter (Format.fprintf oc "%a\n" hyp) (List.rev l);
-         Format.fprintf oc "-----------------------------------------------\
+        (List.iter (out ppf "%a\n" hyp) (List.rev l);
+         out ppf "-----------------------------------------------\
                             ---------------------------------\n")
     in
-    fun oc g ->
+    fun ppf g ->
     match g with
-    | Typ gt -> hyps env_elt oc gt.goal_hyps
-    | Unif (c,_,_) -> hyps ctx_elt oc c
+    | Typ gt -> hyps env_elt ppf gt.goal_hyps
+    | Unif (c,_,_) -> hyps ctx_elt ppf c
 
 end
 
@@ -105,15 +104,14 @@ type proof_state =
 (** [finished ps] tells whether there are unsolved goals in [ps]. *)
 let finished : proof_state -> bool = fun ps -> ps.proof_goals = []
 
-(** [pp_goals oc gl] prints the goal list [gl] to channel [oc]. *)
-let pp_goals : proof_state pp = fun oc ps ->
-  let out fmt = Format.fprintf oc fmt in
+(** [pp_goals ppf gl] prints the goal list [gl] to channel [ppf]. *)
+let pp_goals : proof_state pp = fun ppf ps ->
   match ps.proof_goals with
-  | [] -> out "No goals.\n"
+  | [] -> out ppf "No goals.\n"
   | g::_ ->
-      out "\n";
-      Goal.pp_hyps oc g;
-      List.iteri (fun i g -> out "%d. %a\n" i Goal.pp g) ps.proof_goals
+      out ppf "\n";
+      Goal.pp_hyps ppf g;
+      List.iteri (fun i g -> out ppf "%d. %a\n" i Goal.pp g) ps.proof_goals
 
 (** [remove_solved_goals ps] removes from the proof state [ps] the typing
    goals that are solved. *)
