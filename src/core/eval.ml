@@ -142,7 +142,7 @@ let rec whnf : config -> term -> term = fun c t ->
     log_eval "whnf %a%a = %a" pp_ctxt c.context pp_term t pp_term r;*)
   r
 
-(** [whnf_stk l c t stk] computes a whnf of [add_args t stk] wrt
+(** [whnf_stk c t stk] computes a whnf of [add_args t stk] wrt
    configuration [c]. *)
 and whnf_stk : config -> term -> stack -> term * stack = fun c t stk ->
   (*if !log_enabled then

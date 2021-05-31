@@ -271,7 +271,7 @@ and pp_term : term pp = fun ppf t ->
   func ppf (cleanup t)
 
 (*let pp_term ppf t = out ppf "<%a printed %a>" Term.pp_term t pp_term t*)
-let pp_term = Term.pp_term
+(*let pp_term = Term.pp_term*)
 
 let rec pp_prod : (term * bool list) pp = fun ppf (t, impl) ->
   match unfold t, impl with
