@@ -490,11 +490,16 @@ let mk_Prod (a,b) = Prod (a,b)
 let mk_Abst (a,b) = Abst (a,b)
 let mk_Meta (m,ts) = Meta (m,ts)
 let mk_Patt (i,s,ts) = Patt (i,s,ts)
-let mk_TEnv (te,ts) = TEnv (te,ts)
 let mk_Wild = Wild
 let mk_TRef x = TRef x
+
 let mk_LLet (a,t,u) =
   if Bindlib.binder_constant u then Bindlib.subst u Kind else LLet (a,t,u)
+
+let mk_TEnv (te,ts) =
+  match te with
+  | TE_Some mb -> Bindlib.msubst mb ts
+  | _ -> TEnv (te,ts)
 
 (* We make the equality of terms modulo commutative and
    associative-commutative symbols syntactic by always ordering arguments in
@@ -676,7 +681,7 @@ let _Patt : int option -> string -> tbox array -> tbox = fun i n ts ->
 
 (** [_TEnv te ts] lifts a term environment to the {!type:tbox} type. *)
 let _TEnv : tebox -> tbox array -> tbox = fun te ts ->
-  Bindlib.box_apply2 (fun te ts -> TEnv(te,ts)) te (Bindlib.box_array ts)
+  Bindlib.box_apply2 (fun te ts -> mk_TEnv(te,ts)) te (Bindlib.box_array ts)
 
 (** [_Wild] injects the constructor [Wild] into the {!type:tbox} type. *)
 let _Wild : tbox = Bindlib.box Wild
@@ -688,7 +693,7 @@ let _TRef : term option ref -> tbox = fun r ->
 
 (** [_LLet t a u] lifts let binding [let x := t : a in u<x>]. *)
 let _LLet : tbox -> tbox -> tbinder Bindlib.box -> tbox =
-  Bindlib.box_apply3 (fun a t u -> LLet(a, t, u))
+  Bindlib.box_apply3 (fun a t u -> mk_LLet(a, t, u))
 
 (** [_TE_Vari x] injects a term environment variable [x] into the {!type:tbox}
     type so that it may be available for binding. *)

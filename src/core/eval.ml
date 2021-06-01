@@ -76,38 +76,63 @@ let snf : (term -> term) -> (term -> term) = fun whnf ->
 
 (** [eq_modulo whnf a b] tests the convertibility of [a] and [b] using
    [whnf]. *)
-let eq_modulo : (term -> term) -> (term -> term -> bool) = fun whnf ->
-  let rec eq_modulo l =
+let eq_modulo : (term -> term) -> (ctxt -> term -> term -> bool) =
+  fun whnf c ->
+  let rec eq l =
     match l with
-    | []       -> ()
+    | [] -> ()
     | (a,b)::l ->
-    (*if !log_enabled then log_conv "%a ≟ %a" pp_term a pp_term b;*)
-    let a = unfold a and b = unfold b in
-    if a == b then eq_modulo l else
+    (*if !log_enabled then log_conv "%a ≡ %a" pp_term a pp_term b;*)
+    let a = Ctxt.unfold c a and b = Ctxt.unfold c b in
+    if a == b then eq l else
+    match a, b with
+    | LLet(_,t,u), _ -> eq ((Bindlib.subst u t, b)::l)
+    | _, LLet(_,t,u) -> eq ((a, Bindlib.subst u t)::l)
+    | Patt _, _ | _, Patt _
+    | TEnv _, _| _, TEnv _ -> assert false
+    | Kind, Kind
+    | Type, Type -> eq l
+    | Vari x, Vari y -> if Bindlib.eq_vars x y then eq l else raise Exit
+    | Symb f, Symb g when f == g -> eq l
+    | Prod(a1,b1), Prod(a2,b2)
+    | Abst(a1,b1), Abst(a2,b2) ->
+      let _,b1,b2 = Bindlib.unbind2 b1 b2 in eq ((a1,a2)::(b1,b2)::l)
+    | Abst _, (Type|Kind|Prod _)
+    | (Type|Kind|Prod _), Abst _ -> raise Exit
+    | (Abst(_ ,b), t | t, Abst(_ ,b)) when !eta_equality ->
+      let x,b = Bindlib.unbind b in eq ((b, mk_Appl(t, mk_Vari x))::l)
+    | Meta(m1,a1), Meta(m2,a2) when m1 == m2 ->
+      eq (if a1 == a2 then l else List.add_array2 a1 a2 l)
+    (* cases of failure *)
+    | Kind, _ | _, Kind
+    | Type, _ | _, Type
+      -> raise Exit
+    | ((Symb f, (Vari _|Meta _|Prod _|Abst _))
+      | ((Vari _|Meta _|Prod _|Abst _), Symb f)) when is_constant f ->
+      raise Exit
+    | _ ->
     let a = whnf a and b = whnf b in
-    (*if !log_enabled then log_conv "%a ≟ %a" pp_term a pp_term b;*)
+    (*if !log_enabled then log_conv "%a ≡ %a" pp_term a pp_term b;*)
     match a, b with
     | Patt _, _ | _, Patt _
     | TEnv _, _| _, TEnv _ -> assert false
     | Kind, Kind
-    | Type, Type -> eq_modulo l
-    | Vari x, Vari y when Bindlib.eq_vars x y -> eq_modulo l
-    | Symb f, Symb g when f == g -> eq_modulo l
+    | Type, Type -> eq l
+    | Vari x, Vari y when Bindlib.eq_vars x y -> eq l
+    | Symb f, Symb g when f == g -> eq l
     | Prod(a1,b1), Prod(a2,b2)
     | Abst(a1,b1), Abst(a2,b2) ->
-        let _,b1,b2 = Bindlib.unbind2 b1 b2 in
-        eq_modulo ((a1,a2)::(b1,b2)::l)
+      let _,b1,b2 = Bindlib.unbind2 b1 b2 in eq ((a1,a2)::(b1,b2)::l)
     | (Abst(_ ,b), t | t, Abst(_ ,b)) when !eta_equality ->
-        let x,b = Bindlib.unbind b in
-        eq_modulo ((b, mk_Appl(t, mk_Vari x))::l)
-    | Appl(t1,u1), Appl(t2,u2) -> eq_modulo ((u1,u2)::(t1,t2)::l)
+      let x,b = Bindlib.unbind b in eq ((b, mk_Appl(t, mk_Vari x))::l)
     | Meta(m1,a1), Meta(m2,a2) when m1 == m2 ->
-        eq_modulo (if a1 == a2 then l else List.add_array2 a1 a2 l)
+      eq (if a1 == a2 then l else List.add_array2 a1 a2 l)
+    | Appl(t1,u1), Appl(t2,u2) -> eq ((u1,u2)::(t1,t2)::l)
     | _ -> raise Exit
   in
   fun a b ->
-  if !log_enabled then log_conv "%a ≟ %a" pp_term a pp_term b;
-  try eq_modulo [(a,b)]; true
+  if !log_enabled then log_conv "%a ≡ %a" pp_term a pp_term b;
+  try eq [(a,b)]; true
   with Exit -> if !log_enabled then log_conv "failed"; false
 
 (** [Configuration of the reduction engine. *)
@@ -247,7 +272,8 @@ and tree_walk : config -> dtree -> stack -> (term * stack) option =
         let next =
           match cond with
           | CondNL(i, j) ->
-              if eq_modulo (whnf c) vars.(i) vars.(j) then ok else fail
+            if eq_modulo (whnf c) c.context vars.(i) vars.(j)
+            then ok else fail
           | CondFV(i,xs) ->
               let allowed =
                 (* Variables that are allowed in the term. *)
@@ -398,7 +424,7 @@ let hnf : ctxt -> term -> term = fun c t ->
 (** [eq_modulo c a b] tests the convertibility of [a] and [b] in context
    [c]. *)
 let eq_modulo : ctxt -> term -> term -> bool = fun c ->
-  eq_modulo (whnf (cfg_of_ctx c true))
+  let cfg = cfg_of_ctx c true in eq_modulo (whnf cfg) c
 
 (** [whnf c t] computes a whnf of [t], unfolding the variables defined in the
    context [c], and using user-defined rewrite rules if [~rewrite]. *)
