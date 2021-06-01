@@ -1,5 +1,14 @@
 ### Unreleased
 
+#### Improve logs (2021-06-01)
+
+- add Base.out = Format.fprintf
+- uniformize printing code using Base.out
+- rename oc arguments into ppf
+- complete Term.pp_term
+- improve some functions in Debug.D
+- improve logging messages in Infer by adding a level argument
+
 #### Better handling of let's (2021-05-26)
 
 - mk_LLet removes useless let's
