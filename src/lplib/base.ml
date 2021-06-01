@@ -3,6 +3,8 @@
 (** Type of pretty-printing functions. *)
 type 'a pp = Format.formatter -> 'a -> unit
 
+let out = Format.fprintf
+
 let pp_sep : string -> unit pp = fun s ff () -> Format.pp_print_string ff s
 
 (** Type of comparison functions. *)

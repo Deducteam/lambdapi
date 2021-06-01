@@ -2,7 +2,6 @@
 
 open! Lplib
 open Lplib.Extra
-
 open Timed
 open Common
 open Error
@@ -459,6 +458,5 @@ let solve : problem -> unit = fun p ->
    is [true] (default). *)
 let solve_noexn : ?type_check:bool -> problem -> bool =
   fun ?(type_check=true) p ->
-  if !log_enabled then log_hndl "solve %a" pp_problem p;
   Stdlib.(do_type_check := type_check);
   try time_of (fun () -> solve p; true) with Unsolvable -> false

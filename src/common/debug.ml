@@ -30,7 +30,7 @@ let log_summary : unit -> (char * string) list = fun () ->
   let compare (c1, _) (c2, _) = Char.compare c1 c2 in
   List.sort compare (List.map fn Stdlib.(!loggers))
 
-(** [set_log value key] enables or disables the loggers corresponding to every
+(** [set_debug value key] enables or disables the loggers corresponding to every
     character of [str] according to [value]. *)
 let set_debug : bool -> string -> unit = fun value str ->
   let fn {logger_key; logger_enabled; _} =
@@ -68,7 +68,7 @@ let new_logger : char -> string -> string -> logger = fun key name desc ->
   (* Actual printing function. *)
   let logger fmt =
     let pp = Format.(if !enabled then fprintf else ifprintf) in
-    pp Stdlib.(!Error.err_fmt) ((cya "[%s] ") ^^ fmt ^^ "\n%!") name
+    pp Stdlib.(!Error.err_fmt) (fmt ^^ "\n%!")
   in
   {logger}
 
@@ -94,21 +94,37 @@ let time_of : (unit -> 'b) -> 'b = fun f ->
 (** Printing functions. *)
 module D = struct
 
-  let string ppf s = Format.fprintf ppf "%S" s
+  let depth ppf l = for _i = 1 to l do out ppf " " done; out ppf "%d. " l
+
+  let int ppf i = out ppf "%d" i
+
+  let string ppf s = out ppf "%S" s
 
   let option elt ppf o =
     match o with
-    | None -> Format.fprintf ppf "None"
-    | Some x -> Format.fprintf ppf "Some(%a)" elt x
+    | None -> out ppf "None"
+    | Some x -> out ppf "Some(%a)" elt x
 
-  let list elt ppf l =
-    let out fmt = Format.fprintf ppf fmt in
-    out "["; let f x = out "%a;" elt x in List.iter f l; out "]"
+  let list elt ppf = function
+    | [] -> out ppf "[]"
+    | x::l ->
+      out ppf "[%a" elt x;
+      let f x = out ppf ";%a" elt x in
+      List.iter f l;
+      out ppf "]"
+
+  let array elt ppf a =
+    let n = Array.length a in
+    if n = 0 then out ppf "[]"
+    else begin
+      out ppf "[%a" elt a.(0);
+      for i = 1 to n-1 do out ppf ";%a" elt a.(i) done;
+      out ppf "]"
+    end
 
   let map iter key sep1 elt sep2 ppf m =
-    let out fmt = Format.fprintf ppf fmt in
-    let f k t = out "%a%s%a%s" key k sep1 elt t sep2 in
-    out "["; iter f m; out "]"
+    let f k t = out ppf "%a%s%a%s" key k sep1 elt t sep2 in
+    out ppf "["; iter f m; out ppf "]"
 
   let strmap elt = map StrMap.iter string "," elt ";"
 

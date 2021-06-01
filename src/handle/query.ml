@@ -106,7 +106,6 @@ let handle : Sig_state.t -> proof_state option -> p_query -> result =
       end
   | P_query_print(Some qid) ->
       let pp_sym_info ppf s =
-        let out = Format.fprintf in
         let open Timed in
         (* print its type and properties *)
         out ppf "%a%a%asymbol %a: %a\n" pp_expo s.sym_expo

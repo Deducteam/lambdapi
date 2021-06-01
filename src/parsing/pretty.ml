@@ -14,8 +14,6 @@ open Syntax
 open Format
 open Core
 
-let out = fprintf
-
 (** check whether identifiers are Lambdapi keywords. *)
 let check_keywords = ref false
 

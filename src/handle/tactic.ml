@@ -76,7 +76,7 @@ let tac_admit :
 (** [tac_solve pos ps] tries to simplify the unification goals of the proof
    state [ps] and fails if constraints are unsolvable. *)
 let tac_solve : popt -> proof_state -> proof_state = fun pos ps ->
-  if !log_enabled then log_tact (red "tac_solve %a") pp_goals ps;
+  if !log_enabled then log_tact (red "\ntac_solve %a") pp_goals ps;
   let gs_typ, gs_unif = List.partition is_typ ps.proof_goals in
   let p = new_problem() in
   let f ms = function
@@ -103,7 +103,7 @@ let tac_refine :
       -> proof_state =
   fun pos ps gt gs p t ->
   if !log_enabled then
-    log_tact (red "tac_refine %a%a%a") pp_term t pp_goals ps pp_problem p;
+    log_tact (red "\ntac_refine %a%a%a") pp_term t pp_goals ps pp_problem p;
   let c = Env.to_ctxt gt.goal_hyps in
   if LibMeta.occurs gt.goal_meta c t then fatal pos "Circular refinement.";
   (* Check that [t] has the required type. *)
@@ -298,7 +298,7 @@ let handle : Sig_state.t -> bool -> proof_state -> p_tactic
   match elt with
   | P_tac_fail -> fatal pos "Call to tactic \"fail\""
   | P_tac_query(q) ->
-      if !log_enabled then log_tact "%a" Pretty.tactic tac;
+      if !log_enabled then log_tact "\n%a" Pretty.tactic tac;
       ss, ps, Query.handle ss (Some ps) q
   | _ ->
   match ps.proof_goals with
