@@ -77,7 +77,7 @@ let logger_hndl = new_logger 'h' "hndl" "command handling"
 let log_hndl = logger_hndl.logger
 
 (** To print time data. *)
-let do_print_time = ref false
+let do_print_time = ref true
 
 (** Print current time. *)
 let print_time : string -> unit = fun s ->
@@ -94,7 +94,7 @@ let time_of : (unit -> 'b) -> 'b = fun f ->
 (** Printing functions. *)
 module D = struct
 
-  let level ppf l = for _i = 1 to l do out ppf " " done; out ppf "%d. " l
+  let depth ppf l = for _i = 1 to l do out ppf " " done; out ppf "%d. " l
 
   let int ppf i = out ppf "%d" i
 
