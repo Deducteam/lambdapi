@@ -156,21 +156,39 @@ let _ =
   in
   register_builtin "eqind" expected_eqind_type
 
-(** [get_eq_data pos cfg a] extra data from an equality type [a]. It
-   consists of a triple containing the type in which equality is used and the
-   equated terms (LHS and RHS). *)
-let get_eq_data : popt -> eq_config -> term -> term * term * term =
-  fun pos cfg t ->
-  let t = Eval.whnf [] t in
-  match get_args t with
-  | (p, [u]) when is_symb cfg.symb_P p ->
+(** [get_eq_data pos cfg a] returns [((a,l,r),v)] if [a ≡ Π v1:A1, .., Π
+   vn:An, P (eq a l r)] and fails otherwise. *)
+let get_eq_data :
+  eq_config -> popt -> term -> (term * term * term) * tvar array = fun cfg ->
+  let exception Not_eq of term in
+  let get_eq_args u =
+    match get_args u with
+    | eq, [a;l;r] when is_symb cfg.symb_eq eq -> a, l, r
+    | _ -> raise (Not_eq u)
+  in
+  let exception Not_P of term in
+  let return vs r = r, Array.of_list (List.rev vs) in
+  let rec get_eq vs t notin_whnf =
+    match get_args t with
+    | Prod(_,t), _ -> let v,t = Bindlib.unbind t in get_eq (v::vs) t true
+    | p, [u] when is_symb cfg.symb_P p ->
       begin
-        let u = Eval.whnf [] u in
-        match get_args u with
-        | (eq, [a;l;r]) when is_symb cfg.symb_eq eq -> (a, l, r)
-        | _ -> fatal pos "Expected an equality type, found [%a]." pp_term t
+        try return vs (get_eq_args u)
+        with Not_eq _ ->
+          (try return vs (get_eq_args (Eval.whnf [] u))
+           with Not_eq _ when notin_whnf -> get_eq vs (Eval.whnf [] t) false)
       end
-  | _ -> fatal pos "Expected an equality type, found [%a]." pp_term t
+    | _ ->
+      if notin_whnf then get_eq vs (Eval.whnf [] t) false
+      else raise (Not_P t)
+  in
+  fun pos t ->
+    if !log_enabled then log_rewr "get_eq_data %a" Term.pp_term t;
+    try get_eq [] t true with
+    | Not_P u ->
+      fatal pos "Expected %a _ but found %a." pp_sym cfg.symb_P pp_term u
+    | Not_eq u ->
+      fatal pos "Expected %a _ _ but found %a." pp_sym cfg.symb_eq pp_term u
 
 (** Type of a term with the free variables that need to be substituted (during
     some unification process).  It is usually used to store the LHS of a proof
@@ -310,10 +328,8 @@ let rewrite : Sig_state.t -> problem -> popt -> goal_typ -> bool ->
   let g_ctxt = Env.to_ctxt g_env in
   let t_type = Query.infer pos p g_ctxt t in
 
-  (* Check that the type of [t] is of the form [Π x1:a1, ..., Π xn:an, P (eq a
-     l r)]. *)
-  let (t_type, vars) = break_prod t_type in
-  let (a, l, r)  = get_eq_data pos cfg t_type in
+  (* Check that [t_type ≡ Π x1:a1, ..., Π xn:an, P (eq a l r)]. *)
+  let (a, l, r), vars  = get_eq_data cfg pos t_type in
 
   (* Apply [t] to the variables of [vars] to get a witness of the equality. *)
   let t = Array.fold_left (fun t x -> mk_Appl(t, mk_Vari x)) t vars in
@@ -647,7 +663,6 @@ let rewrite : Sig_state.t -> problem -> popt -> goal_typ -> bool ->
       log_rewr "Rewriting with:";
       log_rewr "  goal           = [%a]" pp_term g_type;
       log_rewr "  equality proof = [%a]" pp_term t;
-      log_rewr "  equality type  = [%a]" pp_term t_type;
       log_rewr "  equality LHS   = [%a]" pp_term l;
       log_rewr "  equality RHS   = [%a]" pp_term r;
       log_rewr "  pred           = [%a]" pp_term pred;
@@ -665,7 +680,7 @@ let reflexivity : Sig_state.t -> popt -> goal_typ -> term =
   (* Obtain the required symbols from the current signature. *)
   let cfg = get_eq_config ss pos in
   (* Check that the type of [g] is of the form [P (eq a l r)]. *)
-  let (a, l, _)  = get_eq_data pos cfg goal_type in
+  let (a, l, _), _  = get_eq_data cfg pos goal_type in
   (* Build the witness. *)
   add_args (mk_Symb cfg.symb_refl) [a; l]
 
@@ -677,7 +692,7 @@ let symmetry : Sig_state.t -> problem -> popt -> goal_typ -> term =
   (* Obtain the required symbols from the current signature. *)
   let cfg = get_eq_config ss pos in
   (* Check that the type of [g] is of the form “P (eq a l r)”. *)
-  let (a, l, r) = get_eq_data pos cfg goal_type in
+  let (a, l, r), _ = get_eq_data cfg pos goal_type in
   (* We create a new metavariable of type [P (eq a r l)]. *)
   let meta_type =
     mk_Appl(mk_Symb cfg.symb_P, add_args (mk_Symb cfg.symb_eq) [a; r; l]) in
