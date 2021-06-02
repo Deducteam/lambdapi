@@ -41,10 +41,10 @@ let set_to_prod : int -> problem -> meta -> unit = fun d p m ->
 (** [conv d p c a b] adds the the constraint [(c,a,b)] in [p], if [a] and
    [b] are not convertible. [d] is the call depth used for debug. *)
 let conv : int -> problem -> ctxt -> term -> term -> unit = fun d p c a b ->
-  if not (Eval.eq_modulo c a b) then
+  if not (Eval.pure_eq_modulo c a b) then
     (let cstr = (c,a,b) in
-     p := {!p with to_solve = cstr::!p.to_solve};
-     if !log_enabled then log_infr (mag "%aadd %a") D.depth d pp_constr cstr)
+     if !log_enabled then log_infr (mag "%aadd %a") D.depth d pp_constr cstr;
+     p := {!p with to_solve = cstr::!p.to_solve})
 
 (** Exception that may be raised by type inference. *)
 exception NotTypable

@@ -74,42 +74,6 @@ let snf : (term -> term) -> (term -> term) = fun whnf ->
     | TRef(_)     -> assert false
   in snf
 
-(** [eq_modulo whnf a b] tests the convertibility of [a] and [b] using
-   [whnf]. *)
-let eq_modulo : (term -> term) -> (term -> term -> bool) = fun whnf ->
-  let rec eq_modulo l =
-    match l with
-    | []       -> ()
-    | (a,b)::l ->
-    (*if !log_enabled then log_conv "%a ≟ %a" pp_term a pp_term b;*)
-    let a = unfold a and b = unfold b in
-    if a == b then eq_modulo l else
-    let a = whnf a and b = whnf b in
-    (*if !log_enabled then log_conv "%a ≟ %a" pp_term a pp_term b;*)
-    match a, b with
-    | Patt _, _ | _, Patt _
-    | TEnv _, _| _, TEnv _ -> assert false
-    | Kind, Kind
-    | Type, Type -> eq_modulo l
-    | Vari x, Vari y when Bindlib.eq_vars x y -> eq_modulo l
-    | Symb f, Symb g when f == g -> eq_modulo l
-    | Prod(a1,b1), Prod(a2,b2)
-    | Abst(a1,b1), Abst(a2,b2) ->
-        let _,b1,b2 = Bindlib.unbind2 b1 b2 in
-        eq_modulo ((a1,a2)::(b1,b2)::l)
-    | (Abst(_ ,b), t | t, Abst(_ ,b)) when !eta_equality ->
-        let x,b = Bindlib.unbind b in
-        eq_modulo ((b, mk_Appl(t, mk_Vari x))::l)
-    | Appl(t1,u1), Appl(t2,u2) -> eq_modulo ((u1,u2)::(t1,t2)::l)
-    | Meta(m1,a1), Meta(m2,a2) when m1 == m2 ->
-        eq_modulo (if a1 == a2 then l else List.add_array2 a1 a2 l)
-    | _ -> raise Exit
-  in
-  fun a b ->
-  if !log_enabled then log_conv "%a ≟ %a" pp_term a pp_term b;
-  try eq_modulo [(a,b)]; true
-  with Exit -> if !log_enabled then log_conv "failed"; false
-
 (** [Configuration of the reduction engine. *)
 type config =
   { context : ctxt (** Context of the reduction used for generating metas. *)
@@ -121,6 +85,81 @@ type config =
 
 let cfg_of_ctx : ctxt -> bool -> config = fun context rewrite ->
   {context; defmap = Ctxt.to_map context; rewrite; problem = new_problem()}
+
+let unfold_cfg : config -> term -> term = fun c a ->
+  let a = unfold a in
+  match a with
+  | Vari x ->
+    begin match VarMap.find_opt x c.defmap with
+      | None -> a
+      | Some v -> unfold v
+    end
+  | _ -> a
+
+(** [eq_modulo whnf a b] tests the convertibility of [a] and [b] using
+    [whnf]. *)
+let eq_modulo : (config -> term -> term) -> (config -> term -> term -> bool) =
+  fun whnf ->
+  let rec eq : config -> (term * term) list -> unit = fun c l ->
+    match l with
+    | [] -> ()
+    | (a,b)::l ->
+    (*if !log_enabled then log_conv "%a ≡ %a" pp_term a pp_term b;*)
+    let a = unfold_cfg c a and b = unfold_cfg c b in
+    if a == b then eq c l else
+    match a, b with
+    | LLet(_,t,u), _ ->
+      let x,u = Bindlib.unbind u in
+      eq {c with defmap = VarMap.add x t c.defmap} ((u,b)::l)
+    | _, LLet(_,t,u) ->
+      let x,u = Bindlib.unbind u in
+      eq {c with defmap = VarMap.add x t c.defmap} ((a,u)::l)
+    | Patt _, _ | _, Patt _
+    | TEnv _, _| _, TEnv _ -> assert false
+    | Kind, Kind
+    | Type, Type -> eq c l
+    | Vari x, Vari y -> if Bindlib.eq_vars x y then eq c l else raise Exit
+    | Symb f, Symb g when f == g -> eq c l
+    | Prod(a1,b1), Prod(a2,b2)
+    | Abst(a1,b1), Abst(a2,b2) ->
+      let _,b1,b2 = Bindlib.unbind2 b1 b2 in eq c ((a1,a2)::(b1,b2)::l)
+    | Abst _, (Type|Kind|Prod _)
+    | (Type|Kind|Prod _), Abst _ -> raise Exit
+    | (Abst(_ ,b), t | t, Abst(_ ,b)) when !eta_equality ->
+      let x,b = Bindlib.unbind b in eq c ((b, mk_Appl(t, mk_Vari x))::l)
+    | Meta(m1,a1), Meta(m2,a2) when m1 == m2 ->
+      eq c (if a1 == a2 then l else List.add_array2 a1 a2 l)
+    (* cases of failure *)
+    | Kind, _ | _, Kind
+    | Type, _ | _, Type
+      -> raise Exit
+    | ((Symb f, (Vari _|Meta _|Prod _|Abst _))
+      | ((Vari _|Meta _|Prod _|Abst _), Symb f)) when is_constant f ->
+      raise Exit
+    | _ ->
+    let a = whnf c a and b = whnf c b in
+    (*if !log_enabled then log_conv "%a ≡ %a" pp_term a pp_term b;*)
+    match a, b with
+    | Patt _, _ | _, Patt _
+    | TEnv _, _| _, TEnv _ -> assert false
+    | Kind, Kind
+    | Type, Type -> eq c l
+    | Vari x, Vari y when Bindlib.eq_vars x y -> eq c l
+    | Symb f, Symb g when f == g -> eq c l
+    | Prod(a1,b1), Prod(a2,b2)
+    | Abst(a1,b1), Abst(a2,b2) ->
+      let _,b1,b2 = Bindlib.unbind2 b1 b2 in eq c ((a1,a2)::(b1,b2)::l)
+    | (Abst(_ ,b), t | t, Abst(_ ,b)) when !eta_equality ->
+      let x,b = Bindlib.unbind b in eq c ((b, mk_Appl(t, mk_Vari x))::l)
+    | Meta(m1,a1), Meta(m2,a2) when m1 == m2 ->
+      eq c (if a1 == a2 then l else List.add_array2 a1 a2 l)
+    | Appl(t1,u1), Appl(t2,u2) -> eq c ((u1,u2)::(t1,t2)::l)
+    | _ -> raise Exit
+  in
+  fun c a b ->
+  if !log_enabled then log_conv "%a ≡ %a" pp_term a pp_term b;
+  try eq c [(a,b)]; true
+  with Exit -> if !log_enabled then log_conv "failed"; false
 
 (** Abstract machine stack. *)
 type stack = term list
@@ -148,26 +187,27 @@ and whnf_stk : config -> term -> stack -> term * stack = fun c t stk ->
   (*if !log_enabled then
     log_eval "whnf_stk %a%a%a"
       pp_ctxt c.context pp_term t (D.list pp_term) stk;*)
-  match unfold t, stk with
+  let t = unfold t in
+  match t, stk with
   | Appl(f,u), stk -> whnf_stk c f (appl_to_tref u::stk)
   | Abst(_,f), u::stk ->
-      Stdlib.incr steps; whnf_stk c (Bindlib.subst f u) stk
+    Stdlib.incr steps; whnf_stk c (Bindlib.subst f u) stk
   | LLet(_,t,u), stk ->
-      Stdlib.incr steps; whnf_stk c (Bindlib.subst u (appl_to_tref t)) stk
+    Stdlib.incr steps; whnf_stk c (Bindlib.subst u t) stk
   | (Symb s, stk) as r when c.rewrite ->
-      begin match !(s.sym_def) with
-      | Some t ->
-          if s.sym_opaq then r else (Stdlib.incr steps; whnf_stk c t stk)
-      | None ->
+    begin match !(s.sym_def) with
+    | Some t ->
+      if s.sym_opaq then r else (Stdlib.incr steps; whnf_stk c t stk)
+    | None ->
       match tree_walk c !(s.sym_dtree) stk with
       | None -> r
       | Some(t,stk) -> Stdlib.incr steps; whnf_stk c t stk
-      end
+    end
   | (Vari x, stk) as r ->
-      begin match VarMap.find_opt x c.defmap with
-      | Some v -> Stdlib.incr steps; whnf_stk c v stk
-      | None -> r
-      end
+    begin match VarMap.find_opt x c.defmap with
+    | Some v -> Stdlib.incr steps; whnf_stk c v stk
+    | None -> r
+    end
   | r -> r
 
 (** {b NOTE} that in {!val:tree_walk} matching with trees involves two
@@ -247,7 +287,7 @@ and tree_walk : config -> dtree -> stack -> (term * stack) option =
         let next =
           match cond with
           | CondNL(i, j) ->
-              if eq_modulo (whnf c) vars.(i) vars.(j) then ok else fail
+            if eq_modulo whnf c vars.(i) vars.(j) then ok else fail
           | CondFV(i,xs) ->
               let allowed =
                 (* Variables that are allowed in the term. *)
@@ -396,9 +436,14 @@ let hnf : ctxt -> term -> term = fun c t ->
   if !log_enabled then log_eval "hnf %a" pp_constr (c,t,r); r
 
 (** [eq_modulo c a b] tests the convertibility of [a] and [b] in context
-   [c]. *)
+   [c]. WARNING: may have side effects in TRef's introduced by whnf. *)
 let eq_modulo : ctxt -> term -> term -> bool = fun c ->
-  eq_modulo (whnf (cfg_of_ctx c true))
+  eq_modulo whnf (cfg_of_ctx c true)
+
+(** [pure_eq_modulo c a b] tests the convertibility of [a] and [b] in context
+   [c] with no side effects. *)
+let pure_eq_modulo : ctxt -> term -> term -> bool = fun c a b ->
+  Timed.pure_test (fun (c,a,b) -> eq_modulo c a b) (c,a,b)
 
 (** [whnf c t] computes a whnf of [t], unfolding the variables defined in the
    context [c], and using user-defined rewrite rules if [~rewrite]. *)

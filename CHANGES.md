@@ -1,5 +1,12 @@
 ### Unreleased
 
+#### Improve evaluation and convertibility test (2021-06-02)
+
+- fix `_LLet` by calling mk_LLet
+- substitute arguments in TEnv's at construction time (mk_TEnv)
+- improve eq_modulo to avoid calling whnf when possible
+- use `Eval.pure_eq_modulo` in Infer and Unif (fix #693)
+
 #### Improve logs (2021-06-01)
 
 - add Base.out = Format.fprintf

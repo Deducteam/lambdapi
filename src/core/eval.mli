@@ -37,9 +37,13 @@ val tree_walk : problem -> ctxt -> dtree -> stack -> (term * stack) option
    [c]. User-defined rewrite rules are used only if [~rewrite = true]. *)
 val whnf : ?rewrite:bool -> ctxt -> term -> term
 
-(** [eq_modulo ctx a b] tests the equivalence of [a] and [b] modulo rewriting
-   and the unfolding of variables of the context [ctx] (δ-reduction). *)
+(** [eq_modulo c a b] tests the convertibility of [a] and [b] in context
+   [c]. WARNING: may have side effects in TRef's introduced by whnf. *)
 val eq_modulo : ctxt -> term -> term -> bool
+
+(** [pure_eq_modulo c a b] tests the convertibility of [a] and [b] in context
+   [c] with no side effects. *)
+val pure_eq_modulo : ctxt -> term -> term -> bool
 
 (** [snf c t] computes the strong normal form of the term [t] in the context
    [c]. It unfolds variables defined in the context [c]. *)
