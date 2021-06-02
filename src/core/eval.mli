@@ -38,11 +38,11 @@ val tree_walk : problem -> ctxt -> dtree -> stack -> (term * stack) option
 val whnf : ?rewrite:bool -> ctxt -> term -> term
 
 (** [eq_modulo c a b] tests the convertibility of [a] and [b] in context
-   [c]. *)
+   [c]. WARNING: may have side effects in TRef's introduced by whnf. *)
 val eq_modulo : ctxt -> term -> term -> bool
 
-(** [eq_modulo c a b] tests the convertibility of [a] and [b] in context
-   [c]. WARNING: may have side effects in TRef's introduced by whnf. *)
+(** [pure_eq_modulo c a b] tests the convertibility of [a] and [b] in context
+   [c] with no side effects. *)
 val pure_eq_modulo : ctxt -> term -> term -> bool
 
 (** [snf c t] computes the strong normal form of the term [t] in the context

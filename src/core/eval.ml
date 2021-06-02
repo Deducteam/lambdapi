@@ -440,7 +440,7 @@ let hnf : ctxt -> term -> term = fun c t ->
 let eq_modulo : ctxt -> term -> term -> bool = fun c ->
   eq_modulo whnf (cfg_of_ctx c true)
 
-(** [eq_modulo c a b] tests the convertibility of [a] and [b] in context
+(** [pure_eq_modulo c a b] tests the convertibility of [a] and [b] in context
    [c] with no side effects. *)
 let pure_eq_modulo : ctxt -> term -> term -> bool = fun c a b ->
   Timed.pure_test (fun (c,a,b) -> eq_modulo c a b) (c,a,b)
