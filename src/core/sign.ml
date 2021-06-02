@@ -225,14 +225,10 @@ let add_symbol :
       bool list -> sym =
   fun sign sym_expo sym_prop sym_mstrat sym_opaq {elt=sym_name;pos} typ
       impl ->
-  (* We minimize [impl] to enforce our invariant (see {!type:Terms.sym}). *)
-  let rec rem_false l = match l with false::l -> rem_false l | _ -> l in
-  let sym_impl = List.rev (rem_false (List.rev impl)) in
-  (* Add the symbol. *)
   let sym =
     { sym_path = sign.sign_path; sym_name; sym_type = ref (cleanup typ);
-      sym_impl; sym_def = ref None; sym_opaq; sym_rules = ref [];
-      sym_dtree = ref Tree_type.empty_dtree; sym_mstrat;
+      sym_impl = minimize_impl impl; sym_def = ref None; sym_opaq;
+      sym_rules = ref []; sym_dtree = ref Tree_type.empty_dtree; sym_mstrat;
       sym_prop; sym_expo }
   in
   sign.sign_symbols := StrMap.add sym_name (sym, pos) !(sign.sign_symbols);

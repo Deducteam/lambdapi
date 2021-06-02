@@ -168,7 +168,7 @@ and scope_parsed : mode -> sig_state -> env -> p_term -> tbox =
   (* Scope the head and obtain the implicitness of arguments. *)
   let h = scope_head md ss env p_head in
   (* Find out whether [h] has implicit arguments. *)
-  let impl =
+  let rec get_impl p_head =
     match p_head.elt with
     | P_Iden (_, false)
     | P_Wrap ({ elt = P_Iden (_, false); _ }) ->
@@ -178,8 +178,12 @@ and scope_parsed : mode -> sig_state -> env -> p_term -> tbox =
           | Symb s -> s.sym_impl
           | _ -> []
         else []
+    | P_Abst(params_list, t) ->
+      let impl_of_params (idopts, _, b) = List.map (fun _ -> b) idopts in
+      minimize_impl (List.concat_map impl_of_params params_list @ get_impl t)
     | _ -> []
   in
+  let impl = get_impl p_head in
   (* Scope and insert the (implicit) arguments. *)
   add_impl md ss env t.pos h impl args
 

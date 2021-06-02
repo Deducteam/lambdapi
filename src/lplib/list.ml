@@ -51,6 +51,17 @@ let filter_map : ('a -> 'b option) -> 'a list -> 'b list = fun f ->
   in
   aux []
 
+(** [concat_map f l] gives the same result as
+    {!concat}[ (]{!map}[ f l)]. Tail-recursive.
+    @since 4.10.0 *)
+let concat_map f l =
+  let rec aux f acc = function
+    | [] -> rev acc
+    | x :: l ->
+       let xs = f x in
+       aux f (rev_append xs acc) l
+  in aux f [] l
+
 (** [filter_rev_map f l] is equivalent to [filter_map f (List.rev l)], but it
     only traverses the list once and is tail-recursive. *)
 let filter_rev_map : ('a -> 'b option) -> 'a list -> 'b list = fun f ->
