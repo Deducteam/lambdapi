@@ -41,6 +41,10 @@ val whnf : ?rewrite:bool -> ctxt -> term -> term
    [c]. *)
 val eq_modulo : ctxt -> term -> term -> bool
 
+(** [eq_modulo c a b] tests the convertibility of [a] and [b] in context
+   [c]. WARNING: may have side effects in TRef's introduced by whnf. *)
+val pure_eq_modulo : ctxt -> term -> term -> bool
+
 (** [snf c t] computes the strong normal form of the term [t] in the context
    [c]. It unfolds variables defined in the context [c]. *)
 val snf : ctxt -> term -> term

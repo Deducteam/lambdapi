@@ -193,9 +193,7 @@ and whnf_stk : config -> term -> stack -> term * stack = fun c t stk ->
   | Abst(_,f), u::stk ->
     Stdlib.incr steps; whnf_stk c (Bindlib.subst f u) stk
   | LLet(_,t,u), stk ->
-    let x,u = Bindlib.unbind u in
-    let c = {c with defmap = VarMap.add x (appl_to_tref t) c.defmap} in
-    whnf_stk c u stk
+    Stdlib.incr steps; whnf_stk c (Bindlib.subst u t) stk
   | (Symb s, stk) as r when c.rewrite ->
     begin match !(s.sym_def) with
     | Some t ->
@@ -438,9 +436,14 @@ let hnf : ctxt -> term -> term = fun c t ->
   if !log_enabled then log_eval "hnf %a" pp_constr (c,t,r); r
 
 (** [eq_modulo c a b] tests the convertibility of [a] and [b] in context
-   [c]. *)
+   [c]. WARNING: may have side effects in TRef's introduced by whnf. *)
 let eq_modulo : ctxt -> term -> term -> bool = fun c ->
   eq_modulo whnf (cfg_of_ctx c true)
+
+(** [eq_modulo c a b] tests the convertibility of [a] and [b] in context
+   [c] with no side effects. *)
+let pure_eq_modulo : ctxt -> term -> term -> bool = fun c a b ->
+  Timed.pure_test (fun (c,a,b) -> eq_modulo c a b) (c,a,b)
 
 (** [whnf c t] computes a whnf of [t], unfolding the variables defined in the
    context [c], and using user-defined rewrite rules if [~rewrite]. *)

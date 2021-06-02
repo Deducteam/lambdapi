@@ -37,7 +37,7 @@ let add_unif_rule_constr : problem -> constr -> unit = fun p (c,t,u) ->
   | None -> ignore (Infer.infer_noexn p c u)
   | Some a ->
       match Infer.infer_noexn p c u with
-      | Some b when not (Eval.eq_modulo c a b) -> add_constr p (c,a,b)
+      | Some b when not (Eval.pure_eq_modulo c a b) -> add_constr p (c,a,b)
       | _ -> ()
 
 (** [try_unif_rules p c s t] tries to simplify the unification problem [c
@@ -131,7 +131,7 @@ let instantiate : problem -> ctxt -> meta -> term array -> term -> bool =
    constraints of [p]. *)
 let add_to_unsolved : problem -> ctxt -> term -> term -> unit =
   fun p c t1 t2 ->
-  if Eval.eq_modulo c t1 t2 then
+  if Eval.pure_eq_modulo c t1 t2 then
     (if !log_enabled then log_unif "equivalent terms")
   else if not (try_unif_rules p c t1 t2) then
     (if !log_enabled then log_unif "move to unsolved";
