@@ -86,11 +86,11 @@ type config =
 let cfg_of_ctx : ctxt -> bool -> config = fun context rewrite ->
   {context; defmap = Ctxt.to_map context; rewrite; problem = new_problem()}
 
-let unfold_cfg cfg a =
+let unfold_cfg : config -> term -> term = fun c a ->
   let a = unfold a in
   match a with
   | Vari x ->
-    begin match VarMap.find_opt x cfg.defmap with
+    begin match VarMap.find_opt x c.defmap with
       | None -> a
       | Some v -> unfold v
     end
@@ -99,32 +99,36 @@ let unfold_cfg cfg a =
 (** [eq_modulo whnf a b] tests the convertibility of [a] and [b] using
     [whnf]. *)
 let eq_modulo : (config -> term -> term) -> (config -> term -> term -> bool) =
-  fun whnf c ->
-  let rec eq l =
+  fun whnf ->
+  let rec eq : config -> (term * term) list -> unit = fun c l ->
     match l with
     | [] -> ()
     | (a,b)::l ->
     (*if !log_enabled then log_conv "%a ≡ %a" pp_term a pp_term b;*)
     let a = unfold_cfg c a and b = unfold_cfg c b in
-    if a == b then eq l else
+    if a == b then eq c l else
     match a, b with
-    | LLet(_,t,u), _ -> eq ((Bindlib.subst u t, b)::l)
-    | _, LLet(_,t,u) -> eq ((a, Bindlib.subst u t)::l)
+    | LLet(_,t,u), _ ->
+      let x,u = Bindlib.unbind u in
+      eq {c with defmap = VarMap.add x t c.defmap} ((u,b)::l)
+    | _, LLet(_,t,u) ->
+      let x,u = Bindlib.unbind u in
+      eq {c with defmap = VarMap.add x t c.defmap} ((a,u)::l)
     | Patt _, _ | _, Patt _
     | TEnv _, _| _, TEnv _ -> assert false
     | Kind, Kind
-    | Type, Type -> eq l
-    | Vari x, Vari y -> if Bindlib.eq_vars x y then eq l else raise Exit
-    | Symb f, Symb g when f == g -> eq l
+    | Type, Type -> eq c l
+    | Vari x, Vari y -> if Bindlib.eq_vars x y then eq c l else raise Exit
+    | Symb f, Symb g when f == g -> eq c l
     | Prod(a1,b1), Prod(a2,b2)
     | Abst(a1,b1), Abst(a2,b2) ->
-      let _,b1,b2 = Bindlib.unbind2 b1 b2 in eq ((a1,a2)::(b1,b2)::l)
+      let _,b1,b2 = Bindlib.unbind2 b1 b2 in eq c ((a1,a2)::(b1,b2)::l)
     | Abst _, (Type|Kind|Prod _)
     | (Type|Kind|Prod _), Abst _ -> raise Exit
     | (Abst(_ ,b), t | t, Abst(_ ,b)) when !eta_equality ->
-      let x,b = Bindlib.unbind b in eq ((b, mk_Appl(t, mk_Vari x))::l)
+      let x,b = Bindlib.unbind b in eq c ((b, mk_Appl(t, mk_Vari x))::l)
     | Meta(m1,a1), Meta(m2,a2) when m1 == m2 ->
-      eq (if a1 == a2 then l else List.add_array2 a1 a2 l)
+      eq c (if a1 == a2 then l else List.add_array2 a1 a2 l)
     (* cases of failure *)
     | Kind, _ | _, Kind
     | Type, _ | _, Type
@@ -139,22 +143,22 @@ let eq_modulo : (config -> term -> term) -> (config -> term -> term -> bool) =
     | Patt _, _ | _, Patt _
     | TEnv _, _| _, TEnv _ -> assert false
     | Kind, Kind
-    | Type, Type -> eq l
-    | Vari x, Vari y when Bindlib.eq_vars x y -> eq l
-    | Symb f, Symb g when f == g -> eq l
+    | Type, Type -> eq c l
+    | Vari x, Vari y when Bindlib.eq_vars x y -> eq c l
+    | Symb f, Symb g when f == g -> eq c l
     | Prod(a1,b1), Prod(a2,b2)
     | Abst(a1,b1), Abst(a2,b2) ->
-      let _,b1,b2 = Bindlib.unbind2 b1 b2 in eq ((a1,a2)::(b1,b2)::l)
+      let _,b1,b2 = Bindlib.unbind2 b1 b2 in eq c ((a1,a2)::(b1,b2)::l)
     | (Abst(_ ,b), t | t, Abst(_ ,b)) when !eta_equality ->
-      let x,b = Bindlib.unbind b in eq ((b, mk_Appl(t, mk_Vari x))::l)
+      let x,b = Bindlib.unbind b in eq c ((b, mk_Appl(t, mk_Vari x))::l)
     | Meta(m1,a1), Meta(m2,a2) when m1 == m2 ->
-      eq (if a1 == a2 then l else List.add_array2 a1 a2 l)
-    | Appl(t1,u1), Appl(t2,u2) -> eq ((u1,u2)::(t1,t2)::l)
+      eq c (if a1 == a2 then l else List.add_array2 a1 a2 l)
+    | Appl(t1,u1), Appl(t2,u2) -> eq c ((u1,u2)::(t1,t2)::l)
     | _ -> raise Exit
   in
-  fun a b ->
+  fun c a b ->
   if !log_enabled then log_conv "%a ≡ %a" pp_term a pp_term b;
-  try eq [(a,b)]; true
+  try eq c [(a,b)]; true
   with Exit -> if !log_enabled then log_conv "failed"; false
 
 (** Abstract machine stack. *)
@@ -183,26 +187,29 @@ and whnf_stk : config -> term -> stack -> term * stack = fun c t stk ->
   (*if !log_enabled then
     log_eval "whnf_stk %a%a%a"
       pp_ctxt c.context pp_term t (D.list pp_term) stk;*)
-  match unfold t, stk with
+  let t = unfold t in
+  match t, stk with
   | Appl(f,u), stk -> whnf_stk c f (appl_to_tref u::stk)
   | Abst(_,f), u::stk ->
-      Stdlib.incr steps; whnf_stk c (Bindlib.subst f u) stk
+    Stdlib.incr steps; whnf_stk c (Bindlib.subst f u) stk
   | LLet(_,t,u), stk ->
-      Stdlib.incr steps; whnf_stk c (Bindlib.subst u (appl_to_tref t)) stk
+    let x,u = Bindlib.unbind u in
+    let c = {c with defmap = VarMap.add x (appl_to_tref t) c.defmap} in
+    whnf_stk c u stk
   | (Symb s, stk) as r when c.rewrite ->
-      begin match !(s.sym_def) with
-      | Some t ->
-          if s.sym_opaq then r else (Stdlib.incr steps; whnf_stk c t stk)
-      | None ->
+    begin match !(s.sym_def) with
+    | Some t ->
+      if s.sym_opaq then r else (Stdlib.incr steps; whnf_stk c t stk)
+    | None ->
       match tree_walk c !(s.sym_dtree) stk with
       | None -> r
       | Some(t,stk) -> Stdlib.incr steps; whnf_stk c t stk
-      end
+    end
   | (Vari x, stk) as r ->
-      begin match VarMap.find_opt x c.defmap with
-      | Some v -> Stdlib.incr steps; whnf_stk c v stk
-      | None -> r
-      end
+    begin match VarMap.find_opt x c.defmap with
+    | Some v -> Stdlib.incr steps; whnf_stk c v stk
+    | None -> r
+    end
   | r -> r
 
 (** {b NOTE} that in {!val:tree_walk} matching with trees involves two

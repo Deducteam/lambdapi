@@ -367,15 +367,12 @@ let rec unfold : term -> term = fun t ->
         | None    -> t
         | Some(b) -> unfold (Bindlib.msubst b ts)
       end
-  | TEnv(TE_Some(b), ts) -> unfold (Bindlib.msubst b ts)
   | TRef(r) ->
       begin
         match !r with
         | None    -> t
         | Some(v) -> unfold v
       end
-  | LLet(_,_,u) when Bindlib.binder_constant u ->
-      unfold (Bindlib.subst u Kind)
   | _ -> t
 
 (** {b NOTE} that {!val:unfold} must (almost) always be called before matching
