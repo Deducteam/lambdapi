@@ -74,16 +74,38 @@ let snf : (term -> term) -> (term -> term) = fun whnf ->
     | TRef(_)     -> assert false
   in snf
 
+(** [Configuration of the reduction engine. *)
+type config =
+  { context : ctxt (** Context of the reduction used for generating metas. *)
+  ; defmap : term VarMap.t (** Variable definitions. *)
+  ; rewrite : bool (** Use user-defined rewrite rules. *)
+  ; problem : problem (** Generated metavariables. *) }
+
+(*let pp_defmap = D.map VarMap.iter pp_var " ≔ " pp_term "; "*)
+
+let cfg_of_ctx : ctxt -> bool -> config = fun context rewrite ->
+  {context; defmap = Ctxt.to_map context; rewrite; problem = new_problem()}
+
+let unfold_cfg cfg a =
+  let a = unfold a in
+  match a with
+  | Vari x ->
+    begin match VarMap.find_opt x cfg.defmap with
+      | None -> a
+      | Some v -> unfold v
+    end
+  | _ -> a
+
 (** [eq_modulo whnf a b] tests the convertibility of [a] and [b] using
-   [whnf]. *)
-let eq_modulo : (term -> term) -> (ctxt -> term -> term -> bool) =
+    [whnf]. *)
+let eq_modulo : (config -> term -> term) -> (config -> term -> term -> bool) =
   fun whnf c ->
   let rec eq l =
     match l with
     | [] -> ()
     | (a,b)::l ->
     (*if !log_enabled then log_conv "%a ≡ %a" pp_term a pp_term b;*)
-    let a = Ctxt.unfold c a and b = Ctxt.unfold c b in
+    let a = unfold_cfg c a and b = unfold_cfg c b in
     if a == b then eq l else
     match a, b with
     | LLet(_,t,u), _ -> eq ((Bindlib.subst u t, b)::l)
@@ -111,7 +133,7 @@ let eq_modulo : (term -> term) -> (ctxt -> term -> term -> bool) =
       | ((Vari _|Meta _|Prod _|Abst _), Symb f)) when is_constant f ->
       raise Exit
     | _ ->
-    let a = whnf a and b = whnf b in
+    let a = whnf c a and b = whnf c b in
     (*if !log_enabled then log_conv "%a ≡ %a" pp_term a pp_term b;*)
     match a, b with
     | Patt _, _ | _, Patt _
@@ -134,18 +156,6 @@ let eq_modulo : (term -> term) -> (ctxt -> term -> term -> bool) =
   if !log_enabled then log_conv "%a ≡ %a" pp_term a pp_term b;
   try eq [(a,b)]; true
   with Exit -> if !log_enabled then log_conv "failed"; false
-
-(** [Configuration of the reduction engine. *)
-type config =
-  { context : ctxt (** Context of the reduction used for generating metas. *)
-  ; defmap : term VarMap.t (** Variable definitions. *)
-  ; rewrite : bool (** Use user-defined rewrite rules. *)
-  ; problem : problem (** Generated metavariables. *) }
-
-(*let pp_defmap = D.map VarMap.iter pp_var " ≔ " pp_term "; "*)
-
-let cfg_of_ctx : ctxt -> bool -> config = fun context rewrite ->
-  {context; defmap = Ctxt.to_map context; rewrite; problem = new_problem()}
 
 (** Abstract machine stack. *)
 type stack = term list
@@ -272,8 +282,7 @@ and tree_walk : config -> dtree -> stack -> (term * stack) option =
         let next =
           match cond with
           | CondNL(i, j) ->
-            if eq_modulo (whnf c) c.context vars.(i) vars.(j)
-            then ok else fail
+            if eq_modulo whnf c vars.(i) vars.(j) then ok else fail
           | CondFV(i,xs) ->
               let allowed =
                 (* Variables that are allowed in the term. *)
@@ -424,7 +433,7 @@ let hnf : ctxt -> term -> term = fun c t ->
 (** [eq_modulo c a b] tests the convertibility of [a] and [b] in context
    [c]. *)
 let eq_modulo : ctxt -> term -> term -> bool = fun c ->
-  let cfg = cfg_of_ctx c true in eq_modulo (whnf cfg) c
+  eq_modulo whnf (cfg_of_ctx c true)
 
 (** [whnf c t] computes a whnf of [t], unfolding the variables defined in the
    context [c], and using user-defined rewrite rules if [~rewrite]. *)
