@@ -184,9 +184,7 @@ let handle : Sig_state.t -> bool -> proof_state -> p_tactic -> proof_state =
                     (Proof.meta_of_key ps) (Proof.meta_of_name ps) t in
   (* Function for checking that an identifier is not already in use. *)
   let check id =
-    if List.mem_assoc id.elt env then
-      fatal id.pos "Identifier already in use."
-  in
+    if Env.mem id.elt env then fatal id.pos "Identifier already in use." in
   (* Function to apply [n] times the assume tactic. *)
   let assume n =
     if n <= 0 then ps
