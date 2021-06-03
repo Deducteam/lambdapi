@@ -25,6 +25,9 @@ let add : tvar -> tbox -> tbox option -> env -> env = fun v a t env ->
 let find : string -> env -> tvar = fun n env ->
   let (x,_,_) = List.assoc n env in x
 
+(** [mem n env] returns [true] iff [n] is mapped to a variable in [env]. *)
+let mem : string -> env -> bool = List.mem_assoc
+
 (** [to_prod env t] builds a sequence of products / let-bindings whose domains
     are the variables of the environment [env] (from left to right), and whose
     body is the term [t]. By calling [to_prod [(xn,an,None);⋯;(x1,a1,None)] t]
