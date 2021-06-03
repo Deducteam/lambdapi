@@ -204,16 +204,6 @@ let rec add_refs : term -> term = fun t ->
   | Appl(t1,t2) -> mk_Appl(add_refs t1, add_refs t2)
   | _           -> t
 
-(** [break_prod a] eliminates the products at the top of [a], and returns the
-   remaining term and the variables that used to correspond to the eliminated
-   products. These variables may appear free in the returned term. *)
-let break_prod : term -> term * tvar array = fun a ->
-  let rec aux : term -> tvar list -> term * tvar array = fun a vs ->
-    match Eval.whnf [] a with
-    | Prod(_,b) -> let (v,b) = Bindlib.unbind b in aux b (v::vs)
-    | a         -> (a, Array.of_list (List.rev vs))
-  in aux a []
-
 (** [match_pattern (xs,p) t] attempts to match the pattern [p] (containing the
     “pattern variables” of [xs]) with the term [t]. If successful,  it returns
     [Some(ts)] where [ts] is an array of terms such that substituting elements
@@ -670,42 +660,5 @@ let rewrite : Sig_state.t -> problem -> popt -> goal_typ -> bool ->
       log_rewr "  produced term  = [%a]" pp_term term;
     end;
 
-  (* Return the proof-term. *)
-  term
-
-(** [reflexivity ss pos gt] generates a term for the refine tactic
-   corresponding to the application of reflexivity to the goal type [gt]. *)
-let reflexivity : Sig_state.t -> popt -> goal_typ -> term =
-  fun ss pos {goal_type;_} ->
-  (* Obtain the required symbols from the current signature. *)
-  let cfg = get_eq_config ss pos in
-  (* Check that the type of [g] is of the form [P (eq a l r)]. *)
-  let (a, l, _), _  = get_eq_data cfg pos goal_type in
-  (* Build the witness. *)
-  add_args (mk_Symb cfg.symb_refl) [a; l]
-
-(** [symmetry ss p pos gt] generates a term for the refine tactic
-   corresponding to the application of symmetry to the goal type [gt], that
-   is, it transforms a goal of the form [P (eq a l r)] into [P (eq a r l)]. *)
-let symmetry : Sig_state.t -> problem -> popt -> goal_typ -> term =
-  fun ss p pos {goal_hyps; goal_type; _} ->
-  (* Obtain the required symbols from the current signature. *)
-  let cfg = get_eq_config ss pos in
-  (* Check that the type of [g] is of the form “P (eq a l r)”. *)
-  let (a, l, r), _ = get_eq_data cfg pos goal_type in
-  (* We create a new metavariable of type [P (eq a r l)]. *)
-  let meta_type =
-    mk_Appl(mk_Symb cfg.symb_P, add_args (mk_Symb cfg.symb_eq) [a; r; l]) in
-  let meta_term = LibMeta.make p (Env.to_ctxt goal_hyps) meta_type in
-  (* NOTE The proofterm is “eqind a r l M (λx,eq a l x) (refl a l)”. *)
-  let term = swap cfg a r l meta_term in
-  (* Debugging data to the log. *)
-  if !log_enabled then
-    begin
-      log_rewr "Symmetry with:";
-      log_rewr "  goal       = [%a]" pp_term goal_type;
-      log_rewr "  new goal   = [%a]" pp_term meta_type;
-      log_rewr "  proof term = [%a]" pp_term term
-    end;
   (* Return the proof-term. *)
   term

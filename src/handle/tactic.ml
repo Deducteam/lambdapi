@@ -148,8 +148,8 @@ let tac_induction : popt -> proof_state -> goal_typ -> goal list
       tac_refine pos ps gt gs p t
   | _ -> fatal pos "[%a] is not a product." pp_term goal_type
 
-(** [count_products a] returns the number of consecutive products at the top
-   of the term [a]. *)
+(** [count_products a] returns the number of consecutive products at
+   the top of the term [a]. *)
 let count_products : ctxt -> term -> int = fun c ->
   let rec count acc t =
     match Eval.whnf c t with
@@ -182,9 +182,21 @@ let handle : Sig_state.t -> bool -> proof_state -> p_tactic -> proof_state =
   | Typ ({goal_hyps=env;_} as gt) ->
   let scope p t = Scope.scope_term prv ss env p
                     (Proof.meta_of_key ps) (Proof.meta_of_name ps) t in
+  (* Function for checking that an identifier is not already in use. *)
   let check id =
     if List.mem_assoc id.elt env then
       fatal id.pos "Identifier already in use."
+  in
+  (* Function to apply [n] times the assume tactic. *)
+  let assume n =
+    if n <= 0 then ps
+    else
+      let idopt = Some (Pos.none "y") in
+      let rec mk_idopts acc k =
+        if k <= 0 then acc else mk_idopts (idopt::acc) (k-1) in
+      let t = P.abst_list (mk_idopts [] n) P.wild in
+      let p = new_problem() in
+      tac_refine pos ps gt gs p (scope p t)
   in
   match elt with
   | P_tac_admit
@@ -259,33 +271,52 @@ let handle : Sig_state.t -> bool -> proof_state -> p_tactic -> proof_state =
   | P_tac_refine t ->
       let p = new_problem() in tac_refine pos ps gt gs p (scope p t)
   | P_tac_refl ->
-      let n = count_products (Env.to_ctxt env) gt.goal_type in
-      if n > 0 then
-        begin
-          (* We first do [n] times the [assume] tactic. *)
-          let idopt = Some (Pos.none "y") in
-          let rec mk_idopts acc k =
-            if k <= 0 then acc else mk_idopts (idopt::acc) (k-1) in
-          let t = P.abst_list (mk_idopts [] n) P.wild in
-          let p = new_problem() in
-          let ps = tac_refine pos ps gt gs p (scope p t) in
-          (* We then apply reflexivity. *)
-          match ps.proof_goals with
-          | Typ gt::gs ->
-              let p = new_problem() in
-              tac_refine pos ps gt gs p (Rewrite.reflexivity ss pos gt)
-          | _ -> assert false
-        end
-      else let p = new_problem() in
-           tac_refine pos ps gt gs p (Rewrite.reflexivity ss pos gt)
+      let cfg = Rewrite.get_eq_config ss pos in
+      let (a,l,_), vs = Rewrite.get_eq_data cfg pos gt.goal_type in
+      let n = Array.length vs in
+      (* We first do [n] times the [assume] tactic. *)
+      let ps = assume n in
+      (* We then apply reflexivity. *)
+      begin match ps.proof_goals with
+      | Typ gt::gs ->
+        let a,l =
+          if n = 0 then a,l
+          else let (a,l,_),_ = Rewrite.get_eq_data cfg pos gt.goal_type in a,l
+        in
+        let prf = add_args (mk_Symb cfg.symb_refl) [a; l] in
+        let p = new_problem() in tac_refine pos ps gt gs p prf
+      | _ -> assert false
+      end
   | P_tac_rewrite(l2r,pat,eq) ->
       let pat = Option.map (Scope.scope_rw_patt ss env) pat in
       let p = new_problem() in
       tac_refine pos ps gt gs p
         (Rewrite.rewrite ss p pos gt l2r pat (scope p eq))
   | P_tac_sym ->
-      let p = new_problem() in
-      tac_refine pos ps gt gs p (Rewrite.symmetry ss p pos gt)
+      let cfg = Rewrite.get_eq_config ss pos in
+      let (a,l,r), vs = Rewrite.get_eq_data cfg pos gt.goal_type in
+      let n = Array.length vs in
+      (* We first do [n] times the [assume] tactic. *)
+      let ps = assume n in
+      (* We then apply symmetry. *)
+      begin match ps.proof_goals with
+      | Typ gt::gs ->
+        let a,l,r =
+          if n = 0 then a,l,r
+          else fst (Rewrite.get_eq_data cfg pos gt.goal_type)
+        in
+        let p = new_problem() in
+        let prf =
+          let mt =
+            mk_Appl(mk_Symb cfg.symb_P,
+                    add_args (mk_Symb cfg.symb_eq) [a; r; l]) in
+          let meta_term = LibMeta.make p (Env.to_ctxt gt.goal_hyps) mt in
+          (* NOTE The proofterm is “eqind a r l M (λx,eq a l x) (refl a l)”. *)
+          Rewrite.swap cfg a r l meta_term
+        in
+        tac_refine pos ps gt gs p prf
+      | _ -> assert false
+      end
   | P_tac_why3 cfg ->
       let p = new_problem() in
       tac_refine pos ps gt gs p (Why3_tactic.handle ss pos cfg gt)
