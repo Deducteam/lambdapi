@@ -451,7 +451,7 @@ and scope_head : mode -> sig_state -> env -> p_term -> tbox =
       unsugar_nat_lit sym_z n
 
   (* Evade the addition of implicit arguments inside the wrap *)
-  | (P_Wrap ({ elt = P_Iden _; _ } as id), _) -> scope_head md ss env id
+  | (P_Wrap ({ elt = (P_Iden _ | P_Abst _); _ } as id), _) -> scope_head md ss env id
   | (P_Wrap t, _) -> scope md ss env t
 
   | (P_Expl(_), _) -> fatal t.pos "Explicit argument not allowed here."
