@@ -182,9 +182,21 @@ let handle : Sig_state.t -> bool -> proof_state -> p_tactic -> proof_state =
   | Typ ({goal_hyps=env;_} as gt) ->
   let scope p t = Scope.scope_term prv ss env p
                     (Proof.meta_of_key ps) (Proof.meta_of_name ps) t in
+  (* Function for checking that an identifier is not already in use. *)
   let check id =
     if List.mem_assoc id.elt env then
       fatal id.pos "Identifier already in use."
+  in
+  (* Function to apply [n] times the assume tactic. *)
+  let assume n =
+    if n <= 0 then ps
+    else
+      let idopt = Some (Pos.none "y") in
+      let rec mk_idopts acc k =
+        if k <= 0 then acc else mk_idopts (idopt::acc) (k-1) in
+      let t = P.abst_list (mk_idopts [] n) P.wild in
+      let p = new_problem() in
+      tac_refine pos ps gt gs p (scope p t)
   in
   match elt with
   | P_tac_admit
@@ -263,16 +275,7 @@ let handle : Sig_state.t -> bool -> proof_state -> p_tactic -> proof_state =
       let (a,l,_), vs = Rewrite.get_eq_data cfg pos gt.goal_type in
       let n = Array.length vs in
       (* We first do [n] times the [assume] tactic. *)
-      let ps =
-        if n = 0 then ps
-        else
-          let idopt = Some (Pos.none "y") in
-          let rec mk_idopts acc k =
-            if k <= 0 then acc else mk_idopts (idopt::acc) (k-1) in
-          let t = P.abst_list (mk_idopts [] n) P.wild in
-          let p = new_problem() in
-          tac_refine pos ps gt gs p (scope p t)
-      in
+      let ps = assume n in
       (* We then apply reflexivity. *)
       begin match ps.proof_goals with
       | Typ gt::gs ->
@@ -294,15 +297,7 @@ let handle : Sig_state.t -> bool -> proof_state -> p_tactic -> proof_state =
       let (a,l,r), vs = Rewrite.get_eq_data cfg pos gt.goal_type in
       let n = Array.length vs in
       (* We first do [n] times the [assume] tactic. *)
-      let ps =
-        if n = 0 then ps
-        else
-          let idopt = Some (Pos.none "y") in
-          let rec mk_idopts acc k =
-            if k <= 0 then acc else mk_idopts (idopt::acc) (k-1) in
-          let t = P.abst_list (mk_idopts [] n) P.wild in
-          let p = new_problem() in tac_refine pos ps gt gs p (scope p t)
-      in
+      let ps = assume n in
       (* We then apply symmetry. *)
       begin match ps.proof_goals with
       | Typ gt::gs ->
