@@ -155,8 +155,7 @@ opaque symbol addcomm : Π n m, P (eq nat (add n m) (add m n))
   refine nat_ind (λ (n:N), eq nat (add n m) (add m n)) ?CZ[n;m] ?CS[n;m] n;
   // Case Z;
   simplify;
-  symmetry;
-  refine (add0r m);
+  generalize m; symmetry; refine add0r y;
   // Case S;
   simplify;
   assume k ih;
