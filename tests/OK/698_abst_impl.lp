@@ -7,3 +7,5 @@ constant symbol z:τ nat;
 symbol f a:τ a → τ a;
 
 type (λ {a}, λ x, f a x) z;
+
+type (λ {a}, λ x, f a x) {nat} z;
