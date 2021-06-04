@@ -369,7 +369,12 @@ let get_proof_data : compiler -> sig_state -> p_command ->
        of implicit arguments. *)
     let a, impl =
       match p_sym_typ with
-      | None   -> (None, Syntax.get_impl_params_list p_sym_arg)
+      | None ->
+        let impl =
+          match pt with
+          | None -> assert false
+          | Some pt -> Syntax.get_impl_term pt
+        in None, impl
       | Some a ->
           let a =
             if p_sym_arg = [] then a
