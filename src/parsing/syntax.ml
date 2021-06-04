@@ -68,10 +68,8 @@ let nb_params : p_params list -> int =
   List.fold_left (fun acc (ps,_,_) -> acc + List.length ps) 0
 
 (** [get_impl_params_list l] gives the implicitness of [l]. *)
-let rec get_impl_params_list : p_params list -> bool list = function
-  | [] -> []
-  | (params,_,impl)::params_list ->
-      List.map (fun _ -> impl) params @ get_impl_params_list params_list
+let get_impl_params_list : p_params list -> bool list =
+  List.concat_map (fun (idopts, _, b) -> List.map (fun _ -> b) idopts)
 
 (** [get_impl_term t] gives the implicitness of [t]. *)
 let rec get_impl_term : p_term -> bool list = fun t -> get_impl_term_aux t.elt

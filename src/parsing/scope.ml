@@ -180,14 +180,13 @@ and scope_parsed : mode -> sig_state -> env -> p_term -> tbox =
           | _ -> []
         else []
     | P_Abst (params_list, t) ->
-      let impl_of_params (idopts, _, b) = List.map (fun _ -> b) idopts in
-      minimize_impl (List.concat_map impl_of_params params_list @ get_impl t)
+      Syntax.get_impl_params_list params_list @ get_impl t
     | _ -> []
   in
   let impl =
     match p_head.elt, args with
     | P_Abst _, [] -> []
-    | _ -> get_impl p_head
+    | _ -> minimize_impl (get_impl p_head)
   in
   (* Scope and insert the (implicit) arguments. *)
   add_impl md ss env t.pos h impl args
