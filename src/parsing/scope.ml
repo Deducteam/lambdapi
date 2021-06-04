@@ -151,6 +151,7 @@ let fresh_meta_tbox : mode -> env -> tbox = fun md env ->
    [find_qid]. *)
 let rec scope : mode -> sig_state -> env -> p_term -> tbox =
   fun md ss env t -> scope_parsed md ss env (Pratt.parse ss env t)
+
 (** [scope_parsed md ss env t] turns a parser-level, Pratt-parsed term [t]
    into an actual term. *)
 and scope_parsed : mode -> sig_state -> env -> p_term -> tbox =
@@ -183,7 +184,11 @@ and scope_parsed : mode -> sig_state -> env -> p_term -> tbox =
       minimize_impl (List.concat_map impl_of_params params_list @ get_impl t)
     | _ -> []
   in
-  let impl = get_impl p_head in
+  let impl =
+    match p_head.elt, args with
+    | P_Abst _, [] -> []
+    | _ -> get_impl p_head
+  in
   (* Scope and insert the (implicit) arguments. *)
   add_impl md ss env t.pos h impl args
 
