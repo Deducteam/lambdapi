@@ -170,15 +170,15 @@ and scope_parsed : mode -> sig_state -> env -> p_term -> tbox =
   (* Find out whether [h] has implicit arguments. *)
   let rec get_impl p_head =
     match p_head.elt with
-    | P_Iden (_, false)
-    | P_Wrap ({ elt = P_Iden (_, false); _ }) ->
+    | P_Wrap e -> get_impl e
+    | P_Iden (_, false) ->
         (* We avoid unboxing if [h] is not closed (and hence not a symbol). *)
         if Bindlib.is_closed h then
           match Bindlib.unbox h with
           | Symb s -> s.sym_impl
           | _ -> []
         else []
-    | P_Abst(params_list, t) ->
+    | P_Abst (params_list, t) ->
       let impl_of_params (idopts, _, b) = List.map (fun _ -> b) idopts in
       minimize_impl (List.concat_map impl_of_params params_list @ get_impl t)
     | _ -> []
@@ -451,7 +451,7 @@ and scope_head : mode -> sig_state -> env -> p_term -> tbox =
       unsugar_nat_lit sym_z n
 
   (* Evade the addition of implicit arguments inside the wrap *)
-  | (P_Wrap ({ elt = P_Iden _; _ } as id), _) -> scope_head md ss env id
+  | (P_Wrap ({ elt = (P_Iden _ | P_Abst _); _ } as id), _) -> scope_head md ss env id
   | (P_Wrap t, _) -> scope md ss env t
 
   | (P_Expl(_), _) -> fatal t.pos "Explicit argument not allowed here."
