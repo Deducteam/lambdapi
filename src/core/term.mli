@@ -239,6 +239,9 @@ type tbox = term Bindlib.box
 
 type tebox = term_env Bindlib.box
 
+(** Minimize [impl] to enforce our invariant (see {!type:Terms.sym}). *)
+val minimize_impl : bool list -> bool list
+
 (** Basic printing function (for debug). *)
 val pp_term : term pp
 

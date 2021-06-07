@@ -96,6 +96,8 @@ module D = struct
 
   let depth ppf l = for _i = 1 to l do out ppf " " done; out ppf "%d. " l
 
+  let bool ppf b = out ppf "%B" b
+
   let int ppf i = out ppf "%d" i
 
   let string ppf s = out ppf "%S" s
@@ -104,6 +106,8 @@ module D = struct
     match o with
     | None -> out ppf "None"
     | Some x -> out ppf "Some(%a)" elt x
+
+  let pair elt1 elt2 ppf (x1,x2) = out ppf "%a,%a" elt1 x1 elt2 x2
 
   let list elt ppf = function
     | [] -> out ppf "[]"

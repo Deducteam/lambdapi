@@ -216,6 +216,11 @@ type tbox = term Bindlib.box
 
 type tebox = term_env Bindlib.box
 
+(** Minimize [impl] to enforce our invariant (see {!type:Terms.sym}). *)
+let minimize_impl : bool list -> bool list =
+  let rec rem_false l = match l with false::l -> rem_false l | _ -> l in
+  fun l -> List.rev (rem_false (List.rev l))
+
 (** Printing functions for debug. *)
 let rec pp_term : term pp = fun ppf t ->
   match t with
