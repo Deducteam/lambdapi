@@ -22,10 +22,11 @@ let parse_file : string -> Syntax.ast = fun fname ->
   | false -> Parser.Dk.parse_file fname
 
 (** [compile_with ~handle ~force mp] compiles the file corresponding to module
-    path [mp] using function [~handle] to process commands. Module [mp] is
-    process when it is necessary, i.e. the corresponding object file does not
-    exist, or it must be updated, or [~force] is [true]). In that case, the
-    produced signature is stored in the corresponding object file. *)
+   path [mp] using function [~handle] to process commands. Module [mp] is
+   processed when it is necessary, i.e. the corresponding object file does not
+   exist, or it must be updated, or [~force] is [true]. In that case, the
+   produced signature is stored in the corresponding object file if the option
+   [--gen_obj] or [-c] is set. *)
 let rec compile_with :
   handle:(Command.compiler -> Sig_state.t -> Syntax.p_command -> Sig_state.t)
   -> force:bool -> Command.compiler =
@@ -53,10 +54,11 @@ let rec compile_with :
       List.iter (fatal_msg "- %a\n" Print.pp_path) !loading;
       fatal_no_pos "Build aborted."
     end;
-  if Path.Map.mem mp !loaded then
-    let sign = Path.Map.find mp !loaded in
+  match Path.Map.find_opt mp !loaded with
+  | Some sign ->
     Console.out 2 "%a already loaded\n" Print.pp_path mp; sign
-  else if force || Extra.more_recent (src ()) obj then
+  | None ->
+    if force || Extra.more_recent (src ()) obj then
     begin
       let forced = if force then " (forced)" else "" in
       let src = src () in
@@ -66,19 +68,21 @@ let rec compile_with :
       let sig_st = Stdlib.ref (Sig_state.of_sign sign) in
       (* [sign] is added to [loaded] before processing the commands so that it
          is possible to qualify the symbols of the current modules. *)
-      loaded := Path.Map.add mp sign !loaded;
+      let map = Path.Map.add mp sign !loaded in
+      loaded := map;
       Stdlib.(Tactic.admitted := -1);
       let consume cmd =
-        let force = false in
-        Stdlib.(sig_st := handle (compile_with ~handle ~force) !sig_st cmd)
+        Stdlib.(sig_st :=
+                  handle (compile_with ~handle ~force:false) !sig_st cmd)
       in
       Stream.iter consume (parse_file src);
       Sign.strip_private sign;
       if Stdlib.(!gen_obj) then Sign.write sign obj;
       loading := List.tl !loading;
+      loaded := map;
       Console.out 1 "Checked \"%s\"\n%!" src; sign
     end
-  else
+    else
     begin
       Console.out 2 "Loading \"%s\" ...\n%!" (src ());
       let sign = Sign.read obj in

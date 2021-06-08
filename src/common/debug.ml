@@ -94,22 +94,27 @@ let time_of : (unit -> 'b) -> 'b = fun f ->
 (** Printing functions. *)
 module D = struct
 
-  let depth ppf l = for _i = 1 to l do out ppf " " done; out ppf "%d. " l
+  let ignore : 'a pp = fun _ _ -> ()
 
-  let bool ppf b = out ppf "%B" b
+  let depth : int pp = fun ppf l ->
+    for _i = 1 to l do out ppf " " done; out ppf "%d. " l
 
-  let int ppf i = out ppf "%d" i
+  let bool : bool pp = fun ppf b -> out ppf "%B" b
 
-  let string ppf s = out ppf "%S" s
+  let int : int pp = fun ppf i -> out ppf "%d" i
 
-  let option elt ppf o =
+  let string : string pp = fun ppf s -> out ppf "%S" s
+
+  let option : 'a pp -> 'a option pp = fun elt ppf o ->
     match o with
     | None -> out ppf "None"
     | Some x -> out ppf "Some(%a)" elt x
 
-  let pair elt1 elt2 ppf (x1,x2) = out ppf "%a,%a" elt1 x1 elt2 x2
+  let pair : 'a pp -> 'b pp -> ('a * 'b) pp = fun elt1 elt2 ppf (x1,x2) ->
+    out ppf "%a,%a" elt1 x1 elt2 x2
 
-  let list elt ppf = function
+  let list : 'a pp -> 'a list pp = fun elt ppf l ->
+    match l with
     | [] -> out ppf "[]"
     | x::l ->
       out ppf "[%a" elt x;
@@ -117,7 +122,7 @@ module D = struct
       List.iter f l;
       out ppf "]"
 
-  let array elt ppf a =
+  let array : 'a pp -> 'a array pp = fun elt ppf a ->
     let n = Array.length a in
     if n = 0 then out ppf "[]"
     else begin
@@ -126,10 +131,13 @@ module D = struct
       out ppf "]"
     end
 
-  let map iter key sep1 elt sep2 ppf m =
+  let map : (('key -> 'elt -> unit) -> 'map -> unit)
+    -> 'key pp -> string -> 'elt pp -> string -> 'map pp =
+    fun iter key sep1 elt sep2 ppf m ->
     let f k t = out ppf "%a%s%a%s" key k sep1 elt t sep2 in
     out ppf "["; iter f m; out ppf "]"
 
-  let strmap elt = map StrMap.iter string "," elt ";"
+  let strmap : 'a pp -> 'a StrMap.t pp = fun elt ->
+    map StrMap.iter string "," elt ";"
 
 end

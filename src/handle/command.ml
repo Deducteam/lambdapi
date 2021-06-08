@@ -51,6 +51,8 @@ let handle_open : sig_state -> p_path -> sig_state =
   fun ss {elt=p;pos} ->
   (* Obtain the signature corresponding to [m]. *)
   let sign =
+    if !log_enabled then log_hndl "loaded %a"
+      (D.map Path.Map.iter Path.pp "" D.ignore "; ") !(Sign.loaded);
     try Path.Map.find p !(Sign.loaded) with Not_found ->
       (* The signature has not been required... *)
       fatal pos "Module %a has not been required." pp_path p

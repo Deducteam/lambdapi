@@ -34,9 +34,10 @@ type t =
   { sign_symbols  : (sym * Pos.popt) StrMap.t ref
   ; sign_path     : Path.t
   ; sign_deps     : (string * rule) list Path.Map.t ref
+  (** Maps a path to a list of pairs (symbol name, rule). *)
   ; sign_builtins : sym StrMap.t ref
   ; sign_notations: notation SymMap.t ref
-    (** Maps symbols to their notation if they have some. *)
+  (** Maps symbols to their notation if they have some. *)
   ; sign_ind      : ind_data SymMap.t ref }
 
 (* NOTE the [deps] field contains a hashtable binding the external modules on
