@@ -22,9 +22,8 @@ open Syntax
 open Debug
 
 (** Logging function for generating of inductive principle. *)
-let log_ind = new_logger 'g' "indu" "induction principles generation"
-let log_ind = log_ind.logger
-
+let log_ind = Logger.make 'g' "indu" "induction principles generation"
+let log_ind = log_ind.pp
 (** Type for inductive type definitions. *)
 type inductive = (sym * sym list) list
 

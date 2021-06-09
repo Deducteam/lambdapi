@@ -12,9 +12,8 @@ open Proof
 open Debug
 
 (** Logging function for the rewrite tactic. *)
-let log_rewr = new_logger 'r' "rewr" "the rewrite tactic"
-let log_rewr = log_rewr.logger
-
+let log_rewr = Logger.make 'r' "rewr" "the rewrite tactic"
+let log_rewr = log_rewr.pp
 (** [eq t u] tests the equality of [t] and [u] (up to α-equivalence).
     It fails if [t] or [u] contain terms of the form [Patt(i,s,e)] or
     [TEnv(te,env)].  In the process, subterms of the form [TRef(r)] in [t] and
@@ -31,7 +30,7 @@ let eq : term -> term -> bool = fun a b -> a == b ||
     | []       -> ()
     | (a,b)::l ->
     begin
-    if !log_enabled then log_rewr "eq [%a] [%a]" pp_term a pp_term b;
+    if Logger.log_enabled () then log_rewr "eq [%a] [%a]" pp_term a pp_term b;
     match (unfold a, unfold b) with
     | (a          , b          ) when a == b -> eq l
     | (Vari(x1)   , Vari(x2)   ) when Bindlib.eq_vars x1 x2 -> eq l
@@ -162,7 +161,7 @@ let get_eq_data :
   eq_config -> popt -> term -> (term * term * term) * tvar array = fun cfg ->
   let exception Not_eq of term in
   let get_eq_args u =
-    if !log_enabled then log_rewr "get_eq_args %a" pp_term u;
+    if Logger.log_enabled () then log_rewr "get_eq_args %a" pp_term u;
     match get_args u with
     | eq, [a;l;r] when is_symb cfg.symb_eq eq -> a, l, r
     | _ -> raise (Not_eq u)
@@ -170,7 +169,7 @@ let get_eq_data :
   let exception Not_P of term in
   let return vs r = r, Array.of_list (List.rev vs) in
   let rec get_eq vs t notin_whnf =
-    if !log_enabled then log_rewr "get_eq %a" pp_term t;
+    if Logger.log_enabled () then log_rewr "get_eq %a" pp_term t;
     match get_args t with
     | Prod(_,t), _ -> let v,t = Bindlib.unbind t in get_eq (v::vs) t true
     | p, [u] when is_symb cfg.symb_P p ->
@@ -186,7 +185,7 @@ let get_eq_data :
       else raise (Not_P t)
   in
   fun pos t ->
-    if !log_enabled then log_rewr "get_eq_data %a" pp_term t;
+    if Logger.log_enabled () then log_rewr "get_eq_data %a" pp_term t;
     try get_eq [] t true with
     | Not_P u ->
       fatal pos "Expected %a _ but found %a." pp_sym cfg.symb_P pp_term u
@@ -651,7 +650,7 @@ let rewrite : Sig_state.t -> problem -> popt -> goal_typ -> bool ->
   let term = add_args eqind [a; l; r; t; pred; goal_term] in
 
   (* Debugging data to the log. *)
-  if !log_enabled then
+  if Logger.log_enabled () then
     begin
       log_rewr "Rewriting with:";
       log_rewr "  goal           = [%a]" pp_term g_type;

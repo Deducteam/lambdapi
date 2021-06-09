@@ -12,9 +12,8 @@ open Print
 open Debug
 
 (** Logging function for external prover calling with Why3. *)
-let log_why3 = new_logger 'w' "why3" "why3 provers"
-let log_why3 = log_why3.logger
-
+let log_why3 = Logger.make 'w' "why3" "why3 provers"
+let log_why3 = log_why3.pp
 (** [default_prover] contains the name of the current prover. Note that it can
     be changed by using the "set prover <string>" command. *)
 let default_prover : string ref = ref "Alt-Ergo"
@@ -193,7 +192,7 @@ let handle :
   fun ss pos prover_name {goal_meta = m; goal_hyps = hyps; goal_type = trm} ->
   (* Get the name of the prover. *)
   let prover_name = Option.get !default_prover prover_name in
-  if !log_enabled then log_why3 "running with prover \"%s\"" prover_name;
+  if Logger.log_enabled () then log_why3 "running with prover \"%s\"" prover_name;
   (* Encode the goal in Why3. *)
   let tsk = encode ss pos hyps trm in
   (* Run the task with the prover named [prover_name]. *)
@@ -206,7 +205,7 @@ let handle :
     Sign.add_symbol ss.signature Privat Const Eager true
       (Pos.make pos axiom_name) !(m.meta_type) []
   in
-  if !log_enabled then log_why3 "axiom %a created" Print.pp_uid axiom_name;
+  if Logger.log_enabled () then log_why3 "axiom %a created" Print.pp_uid axiom_name;
   (* Return the variable terms of each item in the context. *)
   let terms = List.rev_map (fun (_, (x, _, _)) -> mk_Vari x) hyps in
   (* Apply the instance of the axiom with context. *)

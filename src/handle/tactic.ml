@@ -15,9 +15,8 @@ open Debug
 open Extra
 
 (** Logging function for tactics. *)
-let log_tact = new_logger 't' "tact" "tactics"
-let log_tact = log_tact.logger
-
+let log_tact = Logger.make 't' "tact" "tactics"
+let log_tact = log_tact.pp
 (** Number of admitted axioms in the current signature. Used to name the
     generated axioms. This reference is reset in {!module:Compile} for each
     new compiled module. *)
@@ -76,7 +75,7 @@ let tac_admit :
 (** [tac_solve pos ps] tries to simplify the unification goals of the proof
    state [ps] and fails if constraints are unsolvable. *)
 let tac_solve : popt -> proof_state -> proof_state = fun pos ps ->
-  if !log_enabled then log_tact (red "\ntac_solve %a") pp_goals ps;
+  if Logger.log_enabled () then log_tact (red "\ntac_solve %a") pp_goals ps;
   let gs_typ, gs_unif = List.partition is_typ ps.proof_goals in
   let p = new_problem() in
   let f ms = function
@@ -102,19 +101,19 @@ let tac_refine :
       popt -> proof_state -> goal_typ -> goal list -> problem -> term
       -> proof_state =
   fun pos ps gt gs p t ->
-  if !log_enabled then
+  if Logger.log_enabled () then
     log_tact (red "\ntac_refine %a%a%a") pp_term t pp_goals ps pp_problem p;
   let c = Env.to_ctxt gt.goal_hyps in
   if LibMeta.occurs gt.goal_meta c t then fatal pos "Circular refinement.";
   (* Check that [t] has the required type. *)
   if not (Infer.check_noexn p c t gt.goal_type) then
     fatal pos "%a\ndoes not have type\n %a." pp_term t pp_term gt.goal_type;
-  if !log_enabled then
+  if Logger.log_enabled () then
     log_tact (red "%a ≔ %a") pp_meta gt.goal_meta pp_term t;
   LibMeta.set p gt.goal_meta
     (Bindlib.unbox (Bindlib.bind_mvar (Env.vars gt.goal_hyps) (lift t)));
   (* Convert the metas and constraints of [p] not in [gs] into new goals. *)
-  if !log_enabled then log_tact "%a" pp_problem p;
+  if Logger.log_enabled () then log_tact "%a" pp_problem p;
   tac_solve pos {ps with proof_goals = Proof.add_goals_of_problem p gs}
 
 (** [ind_data t] returns the [ind_data] structure of [s] if [t] is of the
@@ -327,7 +326,7 @@ let handle : Sig_state.t -> bool -> proof_state -> p_tactic
   match elt with
   | P_tac_fail -> fatal pos "Call to tactic \"fail\""
   | P_tac_query(q) ->
-      if !log_enabled then log_tact "\n%a" Pretty.tactic tac;
+      if Logger.log_enabled () then log_tact "\n%a" Pretty.tactic tac;
       ss, ps, Query.handle ss (Some ps) q
   | _ ->
   match ps.proof_goals with
@@ -335,7 +334,7 @@ let handle : Sig_state.t -> bool -> proof_state -> p_tactic
   | Typ gt::_ when elt = P_tac_admit ->
       let ss, ps = tac_admit ss ps gt in ss, ps, None
   | g::_ ->
-      if !log_enabled then
+      if Logger.log_enabled () then
         log_tact "%a\n%a" Proof.Goal.pp g Pretty.tactic tac;
       ss, handle ss prv ps tac, None
 

@@ -7,8 +7,8 @@ open Timed
 open Error
 open Debug
 
-let log_lib = new_logger 'l' "libr" "library files"
-let log_lib = log_lib.logger
+let log_lib = Logger.make 'l' "libr" "library files"
+let log_lib = log_lib.pp
 
 (** Representation of the mapping from module paths to files. *)
 module LibMap :
@@ -83,7 +83,7 @@ module LibMap :
       let concat root ks =
         List.fold_left Filename.concat root ks in
       let rec get (root, old_ks) ks map =
-        if !log_enabled then
+        if Logger.log_enabled () then
           log_lib "get %S\n[%a]\n[%a]\n%a" root
             (D.list D.string) old_ks (D.list D.string) ks (D.strmap pp) map;
         match ks with
@@ -188,7 +188,7 @@ let file_of_path : Path.t -> string = fun mp ->
   let mp = List.map Escape.unescape mp in
   try
     let fp = LibMap.get mp !lib_mappings in
-    if !log_enabled then
+    if Logger.log_enabled () then
       log_lib "file_of_path %a\n%a\n= %S"
         Path.pp mp LibMap.pp !lib_mappings fp;
     fp

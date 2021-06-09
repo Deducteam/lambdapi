@@ -11,9 +11,8 @@ open Print
 open Debug
 
 (** Logging function for typing. *)
-let log_subj = new_logger 's' "subj" "subject-reduction"
-let log_subj = log_subj.logger
-
+let log_subj = Logger.make 's' "subj" "subject-reduction"
+let log_subj = log_subj.pp
 (** [build_meta_type p k] builds the type “Πx1:A1,⋯,xk:Ak,A(k+1)” where the
    type “Ai = Mi[x1,⋯,x(i-1)]” is defined as the metavariable “Mi” which has
    arity “i-1” and type “Π(x1:A1) ⋯ (x(i-1):A(i-1)), TYPE”, and adds the
@@ -139,7 +138,7 @@ let check_rule : Scope.pre_rule Pos.loc -> rule = fun ({pos; elt} as pr) ->
      fatal pos "Unknown pattern variables: %a"
        (Array.pp Print.pp_var ",") xvars);
   let arity = List.length lhs in
-  if !log_enabled then
+  if Logger.log_enabled () then
     begin
       (* The unboxing here could be harmful since it leads to [pr_rhs] being
          unboxed twice. However things should be fine here since the result is
@@ -175,7 +174,7 @@ let check_rule : Scope.pre_rule Pos.loc -> rule = fun ({pos; elt} as pr) ->
     let te_envs = Array.map meta_to_tenv metas in
     Bindlib.msubst b te_envs
   in
-  if !log_enabled then
+  if Logger.log_enabled () then
     log_subj "replace pattern variables by metavariables\n%a ↪ %a"
       pp_term lhs_with_metas pp_term rhs_with_metas;
   (* Infer the typing constraints of the LHS. *)
@@ -187,7 +186,7 @@ let check_rule : Scope.pre_rule Pos.loc -> rule = fun ({pos; elt} as pr) ->
   if not (Unif.solve_noexn ~type_check:false p) then
     fatal pos "The LHS is not typable.";
   let lhs_constrs = !p.unsolved in
-  if !log_enabled then
+  if Logger.log_enabled () then
     log_subj "LHS: %a%a\n%a ↪ %a"
       pp_term ty_lhs pp_constrs lhs_constrs
       pp_term lhs_with_metas pp_term rhs_with_metas;
@@ -220,7 +219,7 @@ let check_rule : Scope.pre_rule Pos.loc -> rule = fun ({pos; elt} as pr) ->
     in
     Array.iter instantiate metas; Stdlib.(!symbols)
   in
-  if !log_enabled then
+  if Logger.log_enabled () then
     log_subj "replace LHS metavariables by function symbols\n%a ↪ %a"
       pp_term lhs_with_metas pp_term rhs_with_metas;
   (* TODO complete the constraints into a set of rewriting rule on

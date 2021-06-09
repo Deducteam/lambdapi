@@ -12,8 +12,8 @@ open Sig_state
 open Debug
 
 (** Logging function for term scoping. *)
-let log_scop = new_logger 'o' "scop" "term scoping"
-let log_scop = log_scop.logger
+let log_scop = Logger.make 'o' "scop" "term scoping"
+let log_scop = log_scop.pp
 
 (** [find_qid prt prv ss env qid] returns a boxed term corresponding to a
    variable of the environment [env] (or to a symbol) which name corresponds
@@ -26,7 +26,7 @@ let log_scop = log_scop.logger
    symbols are allowed. *)
 let find_qid : bool -> bool -> sig_state -> env -> p_qident -> tbox =
   fun prt prv ss env qid ->
-  if Timed.(!log_enabled) then log_scop "find_qid %a" Pretty.qident qid;
+  if Logger.log_enabled () then log_scop "find_qid %a" Pretty.qident qid;
   let (mp, s) = qid.elt in
   (* Check for variables in the environment first. *)
   try
@@ -156,7 +156,7 @@ let rec scope : mode -> sig_state -> env -> p_term -> tbox =
    into an actual term. *)
 and scope_parsed : mode -> sig_state -> env -> p_term -> tbox =
   fun md ss env t ->
-  if Timed.(!log_enabled) then log_scop "%a" Pretty.term t;
+  if Logger.log_enabled () then log_scop "%a" Pretty.term t;
   (* Extract the spine. *)
   let p_head, args = Syntax.p_get_args t in
   (* Check that LHS pattern variables are applied to no argument. *)
@@ -487,7 +487,7 @@ let scope_term_with_params :
       -> p_term -> term =
   fun m_term_prv ss env
       m_term_new_metas m_term_meta_of_key m_term_meta_of_name t ->
-  if Timed.(!log_enabled) then log_scop "%a" Pretty.term t;
+  if Logger.log_enabled () then log_scop "%a" Pretty.term t;
   let md = M_Term {m_term_new_metas; m_term_meta_of_key;
                    m_term_meta_of_name; m_term_prv} in
   let scope_b cons xs u =

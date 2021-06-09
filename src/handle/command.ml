@@ -129,7 +129,7 @@ let handle_modifiers : p_modifier list -> prop * expo * match_strat =
    set [syms] extended with the symbol [s] defined by [r]. However, it does
    not update the decision tree of [s]. *)
 let handle_rule : sig_state -> p_rule -> sym = fun ss r ->
-  if !log_enabled then log_hndl "%a" (Pretty.rule "handle_rule") r;
+  if Logger.log_enabled () then log_hndl "%a" (Pretty.rule "handle_rule") r;
   let pr = scope_rule false ss r in
   let sym = pr.elt.pr_sym in
   if !(sym.sym_def) <> None then
@@ -194,7 +194,7 @@ type proof_data =
 let get_proof_data : compiler -> sig_state -> p_command ->
   sig_state * proof_data option * Query.result =
   fun compile ss ({elt; pos} as cmd) ->
-  if !log_enabled then log_hndl (red "\n%a\n%a") Pos.pp pos Pretty.command cmd;
+  if Logger.log_enabled () then log_hndl (red "\n%a\n%a") Pos.pp pos Pretty.command cmd;
   match elt with
   | P_query(q) -> (ss, None, Query.handle ss None q)
   | P_require(b,ps) ->

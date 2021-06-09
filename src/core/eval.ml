@@ -27,13 +27,12 @@ A term t is in strong normal form (snf) if it cannot be reduced further.
 *)
 
 (** Logging function for evaluation. *)
-let log_eval = new_logger 'e' "eval" "evaluation"
-let log_eval = log_eval.logger
+let log_eval = Logger.make 'e' "eval" "evaluation"
+let log_eval = log_eval.pp
 
 (** Logging function for equality modulo rewriting. *)
-let log_conv = new_logger 'c' "conv" "conversion"
-let log_conv = log_conv.logger
-
+let log_conv = Logger.make 'c' "conv" "conversion"
+let log_conv = log_conv.pp
 (** Convert modulo eta. *)
 let eta_equality : bool ref = Console.register_flag "eta_equality" false
 
@@ -53,9 +52,9 @@ let hnf : (term -> term) -> (term -> term) = fun whnf ->
 (** [snf whnf t] computes a snf of [t] using [whnf]. *)
 let snf : (term -> term) -> (term -> term) = fun whnf ->
   let rec snf t =
-    if !log_enabled then log_eval "snf %a" pp_term t;
+    if Logger.log_enabled () then log_eval "snf %a" pp_term t;
     let h = whnf t in
-    if !log_enabled then log_eval "whnf %a = %a" pp_term t pp_term h;
+    if Logger.log_enabled () then log_eval "whnf %a = %a" pp_term t pp_term h;
     match h with
     | Vari _
     | Type
@@ -76,7 +75,7 @@ let snf : (term -> term) -> (term -> term) = fun whnf ->
     | TRef(_)     -> assert false
   in snf
 
-(** [Configuration of the reduction engine. *)
+(** Configuration of the reduction engine. *)
 type config =
   { context : ctxt (** Context of the reduction used for generating metas. *)
   ; defmap : term VarMap.t (** Variable definitions. *)
@@ -106,7 +105,7 @@ let eq_modulo : (config -> term -> term) -> (config -> term -> term -> bool) =
     match l with
     | [] -> ()
     | (a,b)::l ->
-    (*if !log_enabled then log_conv "%a ≡ %a" pp_term a pp_term b;*)
+    (*if Logger.log_enabled () then log_conv "%a ≡ %a" pp_term a pp_term b;*)
     let a = unfold_cfg c a and b = unfold_cfg c b in
     if a == b then eq c l else
     match a, b with
@@ -140,7 +139,7 @@ let eq_modulo : (config -> term -> term) -> (config -> term -> term -> bool) =
       raise Exit
     | _ ->
     let a = whnf c a and b = whnf c b in
-    (*if !log_enabled then log_conv "%a ≡ %a" pp_term a pp_term b;*)
+    (*if Logger.log_enabled () then log_conv "%a ≡ %a" pp_term a pp_term b;*)
     match a, b with
     | Patt _, _ | _, Patt _
     | TEnv _, _| _, TEnv _ -> assert false
@@ -159,9 +158,9 @@ let eq_modulo : (config -> term -> term) -> (config -> term -> term -> bool) =
     | _ -> raise Exit
   in
   fun c a b ->
-  if !log_enabled then log_conv "%a ≡ %a" pp_term a pp_term b;
+  if Logger.log_enabled () then log_conv "%a ≡ %a" pp_term a pp_term b;
   try eq c [(a,b)]; true
-  with Exit -> if !log_enabled then log_conv "failed"; false
+  with Exit -> if Logger.log_enabled () then log_conv "failed"; false
 
 (** Abstract machine stack. *)
 type stack = term list
@@ -175,18 +174,18 @@ let appl_to_tref : term -> term = fun t ->
 
 (** [whnf c t] computes a whnf of the term [t] wrt configuration [c]. *)
 let rec whnf : config -> term -> term = fun c t ->
-  (*if !log_enabled then log_eval "whnf %a" pp_term t;*)
+  (*if Logger.log_enabled () then log_eval "whnf %a" pp_term t;*)
   let s = Stdlib.(!steps) in
   let u, stk = whnf_stk c t [] in
   let r = if Stdlib.(!steps) <> s then add_args u stk else unfold t in
-  (*if !log_enabled then
+  (*if Logger.log_enabled () then
     log_eval "whnf %a%a = %a" pp_ctxt c.context pp_term t pp_term r;*)
   r
 
 (** [whnf_stk c t stk] computes a whnf of [add_args t stk] wrt
    configuration [c]. *)
 and whnf_stk : config -> term -> stack -> term * stack = fun c t stk ->
-  (*if !log_enabled then
+  (*if Logger.log_enabled () then
     log_eval "whnf_stk %a%a %a"
       pp_ctxt c.context pp_term t (D.list pp_term) stk;*)
   let t = unfold t in
@@ -204,7 +203,7 @@ and whnf_stk : config -> term -> stack -> term * stack = fun c t stk ->
       match tree_walk c !(s.sym_dtree) stk with
       | None -> r
       | Some(t',stk') ->
-        if !log_enabled then
+        if Logger.log_enabled () then
           log_eval "tree_walk %a%a %a = %a %a" pp_ctxt c.context
             pp_term t (D.list pp_term) stk pp_term t' (D.list pp_term) stk';
         Stdlib.incr steps; whnf_stk c t' stk'
@@ -431,7 +430,7 @@ let snf : ctxt -> term -> term = fun c t ->
   Stdlib.(steps := 0);
   let u = snf (whnf (cfg_of_ctx c true)) t in
   let r = if Stdlib.(!steps = 0) then unfold t else u in
-  (*if !log_enabled then
+  (*if Logger.log_enabled () then
     log_eval "snf %a%a\n= %a" pp_ctxt c pp_term t pp_term r;*) r
 
 (** [hnf c t] computes a hnf of [t], unfolding the variables defined in the
@@ -440,7 +439,7 @@ let hnf : ctxt -> term -> term = fun c t ->
   Stdlib.(steps := 0);
   let u = hnf (whnf (cfg_of_ctx c true)) t in
   let r = if Stdlib.(!steps = 0) then unfold t else u in
-  (*if !log_enabled then
+  (*if Logger.log_enabled () then
     log_eval "hnf %a%a\n= %a" pp_ctxt c pp_term t pp_term r;*) r
 
 (** [eq_modulo c a b] tests the convertibility of [a] and [b] in context
@@ -459,7 +458,7 @@ let whnf : ?rewrite:bool -> ctxt -> term -> term = fun ?(rewrite=true) c t ->
   Stdlib.(steps := 0);
   let u = whnf (cfg_of_ctx c rewrite) t in
   let r = if Stdlib.(!steps = 0) then unfold t else u in
-  (*if !log_enabled then
+  (*if Logger.log_enabled () then
     log_eval "whnf %a%a\n= %a" pp_ctxt c pp_term t pp_term r;*) r
 
 (** [simplify t] computes a beta whnf of [t] belonging to the set S such that:

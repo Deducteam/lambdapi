@@ -2,99 +2,153 @@ open Lplib.Base
 open Lplib.Extra
 open Timed
 
-(** Type of a logging function. *)
-type logger = { logger : 'a. 'a outfmt -> 'a }
+module Logger : sig
+  (** [log_enabled] is the cached result of whether there exists
+    an enabled logging function. Its main use is to guard logging operations
+    to avoid performing unnecessary computations.*)
+  val log_enabled : unit -> bool
 
-(** Type of logging function data. *)
-type logger_data =
-  { logger_key     : char     (** Character used to unable the logger.      *)
-  ; logger_name    : string   (** 4 character name used as prefix in logs.  *)
-  ; logger_desc    : string   (** Description of the log displayed in help. *)
-  ; logger_enabled : bool ref (** Is the log enabled? *) }
+  (** Type of a logging function.
+      It needs to be boxed for higher-rank polymorphism reasons *)
+  type logger_pp = { pp: 'a. 'a outfmt -> 'a }
 
-(** [log_enabled] is (automatically) set to true by {!val:set_debug} or
-    functions of {!module:State} when some logging functions may print
-    messages. Its main use is to guard logging operations to avoid performing
-    unnecessary computations. *)
-let log_enabled : bool ref = ref false
+  (** [make key name desc] registers a new logger and returns its pp. *)
+  val make : char -> string -> string -> logger_pp
 
-(** [loggers] constains the registered logging functions. *)
-let loggers : logger_data list Stdlib.ref = Stdlib.ref []
+  (** [set_debug value key] enables or disables the loggers corresponding to every
+      character of [str] according to [value]. *)
+  val set_debug : bool -> string -> unit
 
-(** [default_loggers] give the loggers enabled by default. *)
-let default_loggers : string Stdlib.ref = Stdlib.ref ""
+  (** [set_default_debug str] declares the debug flags of [str] to be enabled by
+      default. *)
+  val set_default_debug : string -> unit
 
-(** [log_summary ()] gives the keys and descriptions for logging options. *)
-let log_summary : unit -> (char * string) list = fun () ->
-  let fn data = (data.logger_key, data.logger_desc) in
-  let compare (c1, _) (c2, _) = Char.compare c1 c2 in
-  List.sort compare (List.map fn Stdlib.(!loggers))
+  (** [get_activated_loggers ()] fetches the list of activated loggers,
+      listed in a string *)
+  val get_activated_loggers : unit -> string
 
-(** [set_debug value key] enables or disables the loggers corresponding to every
-    character of [str] according to [value]. *)
-let set_debug : bool -> string -> unit = fun value str ->
-  let fn {logger_key; logger_enabled; _} =
-    if String.contains str logger_key then logger_enabled := value
-  in
-  List.iter fn Stdlib.(!loggers);
-  let is_enabled data = !(data.logger_enabled) in
-  log_enabled := List.exists is_enabled Stdlib.(!loggers)
+  (** [reset_loggers ()] resets the debug flags to those by default. *)
+  val reset_loggers : ?default:string -> unit -> unit
 
-(** [set_default_debug str] declares the debug flags of [str] to be enabled by
-    default. *)
-let set_default_debug : string -> unit = fun str ->
-  Stdlib.(default_loggers := str); set_debug true str
+  (** [log_summary ()] gives the keys and descriptions for logging options. *)
+  val log_summary : unit -> (char * string) list
+end = struct
 
-(** [new_logger key name desc] returns (and registers) a new logger. *)
-let new_logger : char -> string -> string -> logger = fun key name desc ->
-  (* Sanity checks. *)
-  if String.length name <> 4 then
-    invalid_arg "Console.new_logger: name must be 4 characters long";
-  let check data =
-    if key = data.logger_key then
-      invalid_arg "Console.new_logger: already used key";
-    if name = data.logger_name then
-      invalid_arg "Console.new_logger: already used name"
-  in
-  List.iter check Stdlib.(!loggers);
-  (* Logger registration. *)
-  let enabled = ref false in
-  let data =
-    { logger_key = key ; logger_name = name
-    ; logger_desc = desc ; logger_enabled = enabled }
-  in
-  let cmp_loggers l1 l2 = Char.compare l1.logger_key l2.logger_key in
-  Stdlib.(loggers := List.sort cmp_loggers (data :: !loggers));
-  (* Actual printing function. *)
-  let logger fmt =
-    let pp = Format.(if !enabled then fprintf else ifprintf) in
-    pp Stdlib.(!Error.err_fmt) (fmt ^^ "\n%!")
-  in
-  {logger}
+  (** Type of a logging function.
+      It needs to be boxed for higher-rank polymorphism reasons *)
+  type logger_pp = { pp: 'a. 'a outfmt -> 'a }
 
-(** Logging function for command handling. *)
-let logger_hndl = new_logger 'h' "hndl" "command handling"
-let log_hndl = logger_hndl.logger
+  (** Type of logging function data. *)
+  type logger =
+    { logger_key     : char       (** Character used to unable the logger.      *)
+    ; logger_name    : string     (** 4 character name used as prefix in logs.  *)
+    ; logger_desc    : string     (** Description of the log displayed in help. *)
+    ; logger_enabled : bool ref   (** Is the log enabled? *)
+    ; logger_pp      : logger_pp  (** Type of a logging function. *)
+    }
 
-(** To print time data. *)
-let do_print_time = ref false
+  module List = List
 
-(** Print current time. *)
-let print_time : string -> unit = fun s ->
-  if !do_print_time && !log_enabled then log_hndl "@%f %s" (Sys.time()) s
 
-(** [time_of f x] computes [f x] and the time for computing it. *)
-let time_of : (unit -> 'b) -> 'b = fun f ->
-  if !do_print_time && !log_enabled then
-      let t0 = Sys.time() in
-      try let y = f () in log_hndl "%f" (Sys.time() -. t0); y
-      with e -> log_hndl "%f" (Sys.time() -. t0); raise e
-  else f ()
+  (** [loggers] contains the registered logging functions. *)
+  let loggers : logger list Stdlib.ref = Stdlib.ref []
+
+
+  (** [log_enabled] is the cached result of whether there exists
+      an enabled logging function. Its main use is to guard logging operations
+      to avoid performing unnecessary computations.*)
+  let _log_enabled = ref false
+  let log_enabled () = !_log_enabled
+  let update_log_enabled () =
+    _log_enabled := List.exists (fun logger -> !(logger.logger_enabled)) Stdlib.(!loggers)
+
+
+  (** [make key name desc] registers a new logger and returns its pp. *)
+  let make logger_key logger_name logger_desc =
+      (* Sanity checks. *)
+      if String.length logger_name <> 4 then
+        invalid_arg "Debug.Logger.make: name must be 4 characters long";
+      let check data =
+        if logger_key  = data.logger_key then
+          invalid_arg "Debug.Logger.make: key is already used";
+        if logger_name = data.logger_name then
+          invalid_arg "Debug.Logger.make: name is already used"
+      in
+      List.iter check Stdlib.(!loggers);
+
+      let logger_enabled = ref false in
+      (* Actual printing function. *)
+      let pp fmt =
+        let out = Format.(if !logger_enabled then fprintf else ifprintf) in
+        out Stdlib.(!Error.err_fmt) (cya "[%s] @[" ^^ fmt ^^ "@]@.") logger_name
+      in
+
+      (* Logger registration. *)
+      let logger =
+        { logger_key ; logger_name
+        ; logger_desc ; logger_enabled ; logger_pp = { pp } }
+      in
+      Stdlib.(loggers := logger :: !loggers);
+
+      logger.logger_pp
+
+
+  (** [set_debug value key] enables or disables the loggers corresponding to every
+      character of [str] according to [value]. *)
+  let set_debug value str =
+    let fn { logger_key; logger_enabled; _ } =
+      if String.contains str logger_key then logger_enabled := value
+    in
+    List.iter fn Stdlib.(!loggers);
+    update_log_enabled ()
+
+  (** [default_loggers] lists the loggers enabled by default, in a string. *)
+  let default_loggers = Stdlib.ref ""
+
+  (** [set_default_debug str] declares the debug flags of [str] to be enabled by
+      default. *)
+  let set_default_debug str =
+    Stdlib.(default_loggers := str);
+    set_debug true str
+
+  (** [get_activated_loggers ()] fetches the list of activated loggers,
+      listed in a string *)
+  let get_activated_loggers () =
+    Stdlib.(!loggers)
+    |> List.filter_map
+      (fun logger ->
+        if !(logger.logger_enabled) then
+          Some (String.make 1 logger.logger_key)
+        else
+          None)
+    |> String.concat ""
+
+
+  (** [reset_loggers ~default ()] resets the debug flags to those in default.
+      Without the optional argument, use [!default_loggers] *)
+  let reset_loggers ?(default=Stdlib.(! default_loggers)) () =
+    let default_value = String.contains default in
+
+    let fn { logger_key; logger_enabled; _ } =
+      logger_enabled := default_value logger_key
+    in
+    List.iter fn Stdlib.(!loggers);
+    update_log_enabled ()
+
+
+  (** [log_summary ()] gives the keys and descriptions for logging options. *)
+  let log_summary () =
+    List.map (fun data -> (data.logger_key, data.logger_desc)) Stdlib.(!loggers)
+end
 
 (** Printing functions. *)
 module D = struct
 
   let ignore : 'a pp = fun _ _ -> ()
+
+  let log_and_return logger el = logger el; el
+
+  let log_and_raise logger exc = logger exc; raise exc
 
   let depth : int pp = fun ppf l ->
     for _i = 1 to l do out ppf " " done; out ppf "%d. " l
@@ -141,3 +195,27 @@ module D = struct
     map StrMap.iter string ", " elt "; "
 
 end
+
+(** Logging function for command handling. *)
+(* The two successive let-bindings are necessary for type variable generalisation purposes *)
+let log_hndl = Logger.make 'h' "hndl" "command handling"
+let log_hndl = log_hndl.pp
+
+(** To print time data. *)
+let do_print_time = ref false
+
+(** Print current time. *)
+let print_time : string -> unit = fun s ->
+  if !do_print_time && Logger.log_enabled () then log_hndl "@%f %s" (Sys.time()) s
+
+(** [time_of f x] computes [f x] and the time for computing it. *)
+let time_of : (unit -> 'b) -> 'b = fun f ->
+  if !do_print_time && Logger.log_enabled () then begin
+    let t0 = Sys.time () in
+    try
+      f ()
+      |> D.log_and_return (fun _ -> log_hndl "%f" (Sys.time () -. t0))
+    with e ->
+      e
+      |> D.log_and_raise  (fun _ -> log_hndl "%f" (Sys.time () -. t0))
+  end else f ()

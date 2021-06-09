@@ -80,7 +80,7 @@ let handle : Sig_state.t -> proof_state option -> p_query -> result =
   fun ss ps {elt;pos} ->
   match elt with
   | P_query_debug(e,s) ->
-      set_debug e s;
+      Logger.set_debug e s;
       Console.out 3 "(flag) debug → %s%s\n" (if e then "+" else "-") s;
       None
   | P_query_verbose(i) ->
