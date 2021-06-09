@@ -13,6 +13,7 @@ open Debug
 (** Logging function for typing. *)
 let log_subj = Logger.make 's' "subj" "subject-reduction"
 let log_subj = log_subj.pp
+
 (** [build_meta_type p k] builds the type “Πx1:A1,⋯,xk:Ak,A(k+1)” where the
    type “Ai = Mi[x1,⋯,x(i-1)]” is defined as the metavariable “Mi” which has
    arity “i-1” and type “Π(x1:A1) ⋯ (x(i-1):A(i-1)), TYPE”, and adds the

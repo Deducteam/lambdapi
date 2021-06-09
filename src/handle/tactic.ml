@@ -17,6 +17,7 @@ open Extra
 (** Logging function for tactics. *)
 let log_tact = Logger.make 't' "tact" "tactics"
 let log_tact = log_tact.pp
+
 (** Number of admitted axioms in the current signature. Used to name the
     generated axioms. This reference is reset in {!module:Compile} for each
     new compiled module. *)

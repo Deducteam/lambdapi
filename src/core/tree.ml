@@ -18,6 +18,7 @@ open Tree_type
 
 let log = Debug.Logger.make 'd' "tree" "Compilation of decision trees"
 let log = log.pp
+
 (** {1 Types for decision trees}
 
     The types involved in the definition of decision trees are given in module

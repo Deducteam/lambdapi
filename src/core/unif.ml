@@ -13,6 +13,7 @@ open Debug
 (** Logging function for unification. *)
 let log_unif = Logger.make 'u' "unif" "unification"
 let log_unif = log_unif.pp
+
 (** [type_app c a ts] returns [Some u] where [u] is a type of [add_args x ts]
    in context [c] where [x] is any term of type [a] if [x] can be applied to
    at least [List.length ts] arguments, and [None] otherwise. *)

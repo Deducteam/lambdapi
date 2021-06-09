@@ -12,6 +12,7 @@ open Extra
 (** Logging function for typing. *)
 let log_infr = Logger.make 'i' "infr" "type inference/checking"
 let log_infr = log_infr.pp
+
 (** Given a meta [m] of type [Πx1:a1,..,Πxn:an,b], [set_to_prod d p m] sets
    [m] to a product term of the form [Πy:m1[x1;..;xn],m2[x1;..;xn;y]] with
    [m1] and [m2] fresh metavariables, and adds these metavariables to [p].

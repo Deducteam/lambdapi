@@ -14,6 +14,7 @@ open Debug
 (** Logging function for external prover calling with Why3. *)
 let log_why3 = Logger.make 'w' "why3" "why3 provers"
 let log_why3 = log_why3.pp
+
 (** [default_prover] contains the name of the current prover. Note that it can
     be changed by using the "set prover <string>" command. *)
 let default_prover : string ref = ref "Alt-Ergo"

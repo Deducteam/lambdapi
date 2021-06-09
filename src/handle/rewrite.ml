@@ -14,6 +14,7 @@ open Debug
 (** Logging function for the rewrite tactic. *)
 let log_rewr = Logger.make 'r' "rewr" "the rewrite tactic"
 let log_rewr = log_rewr.pp
+
 (** [eq t u] tests the equality of [t] and [u] (up to α-equivalence).
     It fails if [t] or [u] contain terms of the form [Patt(i,s,e)] or
     [TEnv(te,env)].  In the process, subterms of the form [TRef(r)] in [t] and

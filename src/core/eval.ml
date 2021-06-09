@@ -33,6 +33,7 @@ let log_eval = log_eval.pp
 (** Logging function for equality modulo rewriting. *)
 let log_conv = Logger.make 'c' "conv" "conversion"
 let log_conv = log_conv.pp
+
 (** Convert modulo eta. *)
 let eta_equality : bool ref = Console.register_flag "eta_equality" false
 

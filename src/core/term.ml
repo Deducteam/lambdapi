@@ -14,6 +14,7 @@ open! Lplib
 
 let log_term = Logger.make 'm' "term" "term building"
 let log_term = log_term.pp
+
 (** {3 Term (and symbol) representation} *)
 
 (** Representation of a possibly qualified identifier. *)
