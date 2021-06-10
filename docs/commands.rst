@@ -267,7 +267,7 @@ Examples of patterns are available in ``tests/OK/patterns.lp``.
 ``notation``
 ----------------
 
-The ``notation`` command is used to specify a notation for a symbol.
+The ``notation`` command allows to change the behaviour of the parser.
 
 When declared as notations, identifiers then must be used at correct places
 and as such cannot make valid terms on their own anymore.
@@ -286,13 +286,13 @@ priority levels ``6`` and ``7`` respectively.
 
 The modifier ``infix``, ``infix right`` and ``infix left`` can be used
 to specify whether the defined symbol is non-associative, associative to
-the right, or associative to the left. The priority levels are floating
-point numbers, hence a priority can (almost) always be inserted between
-two different levels.
+the right, or associative to the left.
+Priority levels are non-negative floating point numbers, hence a
+priority can (almost) always be inserted between two different levels.
 
-As explained above, at this point, ``+`` is not a valid term anymore, as it was declared infix.
-The system now expects ``+`` to only appear in expressions of the form ``x + y``
-To get around this, you can use ``(+)`` instead.
+As explained above, at this point, ``+`` is not a valid term anymore, as it was
+declared infix.  The system now expects ``+`` to only appear in expressions of
+the form ``x + y`` To get around this, you can use ``(+)`` instead.
 
 **prefix** The following code defines a prefix symbol for
 negation with some priority level.
@@ -300,6 +300,19 @@ negation with some priority level.
 ::
 
    notation ¬ prefix 5;
+
+*Remarks:*
+
+* Prefix and infix operators share the same levels of priority, hence depending
+  on the binding power, ``-x + z`` may be parsed ``(-x) + z`` or ``-(x + z)``.
+
+* Non-operator application (such as ``f x`` where ``f`` and ``x`` are not
+  operators) has a higher binding power than operator application:
+  let ``-`` be a prefix operator, then ``- f x`` is always parsed ``- (f x)``,
+  no matter what the binding power of ``-`` is.
+
+* Parsing of operators is performed with the `pratter`_ library.
+
 
 **quantifier** Allows to write ``\`f x, t`` instead of ``f (λ x, t)``:
 
@@ -446,3 +459,5 @@ Finaly, here is an example of strictly-positive inductive type:
    assert p a b c ⊢ ind_𝕆 p a b c z ≡ a;
    assert p a b c x ⊢ ind_𝕆 p a b c (s x) ≡ b x (ind_𝕆 p a b c x);
    assert p a b c x y ⊢ ind_𝕆 p a b c (l x) ≡ c x (λ y, ind_𝕆 p a b c (x y));
+
+.. _pratter: https://forge.tedomum.net/koizel/pratter.git
