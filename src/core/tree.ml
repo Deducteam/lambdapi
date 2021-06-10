@@ -703,7 +703,7 @@ let compile : match_strat -> CM.t -> tree = fun mstrat m ->
   fun vars_id ({clauses; positions; slot} as cm) ->
   if CM.is_empty cm then Fail else
   let compile_cv = compile vars_id in
-  if Debug.Logger.log_enabled () then log "Compile@\n%a" CM.pp cm;
+  if Debug.Logger.log_enabled () then log "Compile@ %a" CM.pp cm;
   match CM.yield mstrat cm with
   | Yield({c_rhs; c_subst; c_lhs; _}) ->
       harvest c_lhs c_rhs c_subst vars_id slot

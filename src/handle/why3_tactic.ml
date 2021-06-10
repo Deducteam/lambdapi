@@ -29,8 +29,8 @@ let timeout : int ref = ref 2
 let why3_config : Why3.Whyconf.config =
   let cfg = Why3.Whyconf.init_config None in
   let provers = Why3.Whyconf.get_provers cfg in
-  Console.out 2 "available provers for why3:\n";
-  let pp_prover p _ = Console.out 2 "%a\n" Why3.Whyconf.print_prover p in
+  Console.out 2 "available provers for why3:@.";
+  let pp_prover p _ = Console.out 2 "%a@." Why3.Whyconf.print_prover p in
   Why3.Whyconf.Mprover.iter pp_prover provers;
   cfg
 
@@ -156,17 +156,17 @@ let run_task : Why3.Task.task -> Pos.popt -> string -> bool =
   (* Fail if we did not find a matching prover. *)
   if Why3.Whyconf.Mprover.is_empty provers then
     begin
-      fatal_msg "prover \"%s\" not found.\n" prover_name;
+      fatal_msg "prover \"%s\" not found.@." prover_name;
       let provers = Why3.Whyconf.get_provers why3_config in
       let _ =
         if Why3.Whyconf.Mprover.is_empty provers then
-          fatal_msg "There are no available Why3 provers.\n"
+          fatal_msg "There are no available Why3 provers.@."
         else
-          let fn p _ = fatal_msg " - %a\n" Why3.Whyconf.print_prover p in
-          fatal_msg "The available Why3 provers are:\n";
+          let fn p _ = fatal_msg " - %a@." Why3.Whyconf.print_prover p in
+          fatal_msg "The available Why3 provers are:@.";
           Why3.Whyconf.Mprover.iter fn provers
       in
-      fatal_msg "Why3 configuration read from \"%s\".\n"
+      fatal_msg "Why3 configuration read from \"%s\".@."
         (Why3.Whyconf.get_conf_file why3_config);
       fatal_msg "Your prover might not be installed or detected, ";
       fatal pos "remember to run [why3 config detect]."

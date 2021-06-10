@@ -262,7 +262,7 @@ let read : string -> t = fun fname ->
       close_in ic; sign
     with Failure _ ->
       close_in ic;
-      fatal_no_pos "File \"%s\" is incompatible with current binary...\n"
+      fatal_no_pos "File \"%s\" is incompatible with current binary...@."
         fname
   in
   (* Timed references need reset after unmarshaling (see [Timed] doc). *)

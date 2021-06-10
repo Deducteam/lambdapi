@@ -194,8 +194,12 @@ let infer_noexn : problem -> ctxt -> term -> term option = fun p c t ->
       log_hndl (blu "infer_noexn %a%a") pp_ctxt c pp_term t;
     let a = time_of (fun () -> infer 0 p c t) in
     if Logger.log_enabled () then
-      log_hndl (blu "result of infer_noexn: %a%a")
-        pp_term a pp_constrs !p.to_solve;
+      log_hndl (blu "@[<v2>@[result of infer_noexn:@ %a@]%a@]")
+        pp_term a
+        (fun fmt constraints -> if constraints <> [] then
+          Format.fprintf fmt ";@ @[constraints:@ %a@]"
+            pp_constrs constraints)
+        !p.to_solve;
     Some a
   with NotTypable -> None
 

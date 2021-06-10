@@ -274,7 +274,7 @@ exception Unsolvable
 (** [error t1 t2]
 @raise Unsolvable. *)
 let error : term -> term -> 'a = fun t1 t2 ->
-  fatal_msg "\n[%a]\nand\n[%a]\nare not unifiable.\n" pp_term t1 pp_term t2;
+  fatal_msg "@[<hov>%a and %a are not unifiable.@]@." (D.bracket pp_term) t1 (D.bracket pp_term) t2;
   raise Unsolvable
 
 (** [inverse p c t1 s ts1 t2] tries to replace a problem of the form [t1 ≡ t2]

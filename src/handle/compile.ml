@@ -49,20 +49,20 @@ let rec compile_with :
   let obj = base ^ obj_extension in
   if List.mem mp !loading then
     begin
-      fatal_msg "Circular dependencies detected in \"%s\".\n" (src ());
-      fatal_msg "Dependency stack for module %a:\n" Print.pp_path mp;
-      List.iter (fatal_msg "- %a\n" Print.pp_path) !loading;
+      fatal_msg "Circular dependencies detected in \"%s\".@." (src ());
+      fatal_msg "Dependency stack for module %a:@." Print.pp_path mp;
+      List.iter (fatal_msg "- %a@." Print.pp_path) !loading;
       fatal_no_pos "Build aborted."
     end;
   match Path.Map.find_opt mp !loaded with
   | Some sign ->
-    Console.out 2 "%a already loaded\n" Print.pp_path mp; sign
+    Console.out 2 "%a already loaded@." Print.pp_path mp; sign
   | None ->
     if force || Extra.more_recent (src ()) obj then
     begin
       let forced = if force then " (forced)" else "" in
       let src = src () in
-      Console.out 1 "Loading \"%s\"%s ...\n%!" src forced;
+      Console.out 1 "Loading \"%s\"%s ...@." src forced;
       loading := mp :: !loading;
       let sign = Sig_state.create_sign mp in
       let sig_st = Stdlib.ref (Sig_state.of_sign sign) in
@@ -78,17 +78,17 @@ let rec compile_with :
       Sign.strip_private sign;
       if Stdlib.(!gen_obj) then Sign.write sign obj;
       loading := List.tl !loading;
-      Console.out 1 "Checked \"%s\"\n%!" src; sign
+      Console.out 1 "Checked \"%s\"@." src; sign
     end
     else
     begin
-      Console.out 2 "Loading \"%s\" ...\n%!" (src ());
+      Console.out 2 "Loading \"%s\" ...@." (src ());
       let sign = Sign.read obj in
       let compile mp _ = ignore (compile_with ~handle ~force:false mp) in
       Path.Map.iter compile !(sign.sign_deps);
       loaded := Path.Map.add mp sign !loaded;
       Sign.link sign;
-      Console.out 2 "Loaded \"%s\"\n%!" obj; sign
+      Console.out 2 "Loaded \"%s\"@." obj; sign
     end
 
 (** [compile force mp] compiles module path [mp] using

@@ -36,7 +36,7 @@ let add_axiom : Sig_state.t -> meta -> Sig_state.t = fun ss m ->
   in
   (* Create a symbol with the same type as the metavariable *)
   let ss, sym =
-    Console.out 3 (red "(symb) add axiom %a: %a" ^^ "\n")
+    Console.out 3 (red "(symb) add axiom %a: %a@.")
       pp_uid name pp_term !(m.meta_type);
     Sig_state.add_symbol
       ss Public Const Eager true (Pos.none name) !(m.meta_type) [] None
@@ -76,7 +76,7 @@ let tac_admit :
 (** [tac_solve pos ps] tries to simplify the unification goals of the proof
    state [ps] and fails if constraints are unsolvable. *)
 let tac_solve : popt -> proof_state -> proof_state = fun pos ps ->
-  if Logger.log_enabled () then log_tact (red "\ntac_solve %a") pp_goals ps;
+  if Logger.log_enabled () then log_tact (red "@[<v>tac_solve@ %a@]") pp_goals ps;
   let gs_typ, gs_unif = List.partition is_typ ps.proof_goals in
   let p = new_problem() in
   let f ms = function
@@ -103,12 +103,14 @@ let tac_refine :
       -> proof_state =
   fun pos ps gt gs p t ->
   if Logger.log_enabled () then
-    log_tact (red "\ntac_refine %a%a%a") pp_term t pp_goals ps pp_problem p;
+    log_tact (red "@[<v>@[tac_refine@ %a@]@,%a@]%a") pp_term t pp_goals ps pp_problem p;
   let c = Env.to_ctxt gt.goal_hyps in
   if LibMeta.occurs gt.goal_meta c t then fatal pos "Circular refinement.";
   (* Check that [t] has the required type. *)
   if not (Infer.check_noexn p c t gt.goal_type) then
-    fatal pos "%a\ndoes not have type\n %a." pp_term t pp_term gt.goal_type;
+    fatal pos "%a@ does not have type@ %a."
+      pp_term t
+      pp_term gt.goal_type;
   if Logger.log_enabled () then
     log_tact (red "%a ≔ %a") pp_meta gt.goal_meta pp_term t;
   LibMeta.set p gt.goal_meta
@@ -327,7 +329,7 @@ let handle : Sig_state.t -> bool -> proof_state -> p_tactic
   match elt with
   | P_tac_fail -> fatal pos "Call to tactic \"fail\""
   | P_tac_query(q) ->
-      if Logger.log_enabled () then log_tact "\n%a" Pretty.tactic tac;
+      if Logger.log_enabled () then log_tact "%a@." Pretty.tactic tac;
       ss, ps, Query.handle ss (Some ps) q
   | _ ->
   match ps.proof_goals with
@@ -336,11 +338,11 @@ let handle : Sig_state.t -> bool -> proof_state -> p_tactic
       let ss, ps = tac_admit ss ps gt in ss, ps, None
   | g::_ ->
       if Logger.log_enabled () then
-        log_tact "%a\n%a" Proof.Goal.pp g Pretty.tactic tac;
+        log_tact "%a@ %a" Proof.Goal.pp g Pretty.tactic tac;
       ss, handle ss prv ps tac, None
 
 let handle : Sig_state.t -> bool -> proof_state -> p_tactic
              -> Sig_state.t * proof_state * Query.result =
   fun ss prv ps tac ->
   try handle ss prv ps tac
-  with Fatal(_,_) as e -> Console.out 1 "%a" pp_goals ps; raise e
+  with Fatal _ as e -> Console.out 1 "%a@." pp_goals ps; raise e

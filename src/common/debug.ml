@@ -79,8 +79,9 @@ end = struct
       let logger_enabled = ref false in
       (* Actual printing function. *)
       let pp fmt =
+        update_with_color Stdlib.(!Error.err_fmt);
         let out = Format.(if !logger_enabled then fprintf else ifprintf) in
-        out Stdlib.(!Error.err_fmt) (cya "[%s] @[" ^^ fmt ^^ "@]@.") logger_name
+        out Stdlib.(!Error.err_fmt) (cya "[%s]" ^^ " @[" ^^ fmt ^^ "@]@.") logger_name
       in
 
       (* Logger registration. *)
@@ -193,6 +194,20 @@ module D = struct
 
   let strmap : 'a pp -> 'a StrMap.t pp = fun elt ->
     map StrMap.iter string ", " elt "; "
+
+  let iter ?sep:(pp_sep = Format.pp_print_cut) iter pp_elt ppf v =
+    let is_first = ref true in
+    let pp_elt v =
+      if !is_first then (is_first := false) else pp_sep ppf ();
+      pp_elt ppf v
+    in
+    iter pp_elt v
+
+  (* To be used in a hov (and not default) box *)
+  let surround beg fin inside =
+    fun fmt v -> Format.fprintf fmt "%s@;<0 2>@[<hv>%a@]@,%s" beg inside v fin
+
+  let bracket inside = surround "[" "]" inside
 
 end
 

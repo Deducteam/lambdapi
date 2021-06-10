@@ -176,7 +176,7 @@ let check_rule : Scope.pre_rule Pos.loc -> rule = fun ({pos; elt} as pr) ->
     Bindlib.msubst b te_envs
   in
   if Logger.log_enabled () then
-    log_subj "replace pattern variables by metavariables\n%a ↪ %a"
+    log_subj "replace pattern variables by metavariables:@ %a ↪ %a"
       pp_term lhs_with_metas pp_term rhs_with_metas;
   (* Infer the typing constraints of the LHS. *)
   match Infer.infer_noexn p [] lhs_with_metas with
@@ -188,7 +188,7 @@ let check_rule : Scope.pre_rule Pos.loc -> rule = fun ({pos; elt} as pr) ->
     fatal pos "The LHS is not typable.";
   let lhs_constrs = !p.unsolved in
   if Logger.log_enabled () then
-    log_subj "LHS: %a%a\n%a ↪ %a"
+    log_subj "LHS: %a%a@ %a ↪ %a"
       pp_term ty_lhs pp_constrs lhs_constrs
       pp_term lhs_with_metas pp_term rhs_with_metas;
   (* We build a map allowing to find a variable index from its name. *)
@@ -221,7 +221,7 @@ let check_rule : Scope.pre_rule Pos.loc -> rule = fun ({pos; elt} as pr) ->
     Array.iter instantiate metas; Stdlib.(!symbols)
   in
   if Logger.log_enabled () then
-    log_subj "replace LHS metavariables by function symbols\n%a ↪ %a"
+    log_subj "replace LHS metavariables by function symbols:@ %a ↪ %a"
       pp_term lhs_with_metas pp_term rhs_with_metas;
   (* TODO complete the constraints into a set of rewriting rule on
      the function symbols of [symbols]. *)
@@ -244,7 +244,7 @@ let check_rule : Scope.pre_rule Pos.loc -> rule = fun ({pos; elt} as pr) ->
   let cs = List.filter (fun c -> not (is_lhs_constr c)) !p.unsolved in
   if cs <> [] then
     begin
-      List.iter (fatal_msg "Cannot solve %a\n" pp_constr) cs;
+      List.iter (fatal_msg "Cannot solve %a@." pp_constr) cs;
       fatal pos "Unable to prove type preservation."
     end;
   (* Replace metavariable symbols by term_env variables, and bind them. *)
