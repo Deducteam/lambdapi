@@ -17,4 +17,4 @@ let _ =
   line "(** Version informations. *)";
   line "";
   line "(** [version] gives a version description. *)";
-  line "let version : string = \"%s\"" version
+  line "let version : string = %S" version

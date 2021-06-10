@@ -154,10 +154,10 @@ let set_lib_root : string option -> unit = fun dir ->
           | 0 -> ()
           | _ ->
               fatal_msg "Library root cannot be set:@.";
-              fatal_no_pos "Command \"%s\" had a non-zero exit." cmd
+              fatal_no_pos "Command %S had a non-zero exit." cmd
           | exception Failure msg ->
               fatal_msg "Library root cannot be set:@.";
-              fatal_msg "Command \"%s\" failed:@." cmd;
+              fatal_msg "Command %S failed:@." cmd;
               fatal_no_pos "%s" msg
       end;
       (* Register the library root as part of the module mapping.

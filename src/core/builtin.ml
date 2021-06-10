@@ -15,7 +15,7 @@ open Sig_state
    are in scope. If the symbol cannot be found then [Fatal] is raised. *)
 let get : sig_state -> popt -> string -> sym = fun ss pos name ->
   try StrMap.find name ss.builtins with Not_found ->
-    fatal pos "Builtin symbol \"%s\" undefined." name
+    fatal pos "Builtin symbol %S undefined." name
 
 (** Hash-table used to record checking functions for builtins. *)
 let htbl : (string, sig_state -> popt -> sym -> unit) Hashtbl.t =

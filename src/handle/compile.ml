@@ -41,7 +41,7 @@ let rec compile_with :
     | (false, false) ->
         fatal_no_pos "File \"%s.lp\" (or .dk) not found." base
     | (true , true ) ->
-        wrn None "Both \"%s\" and \"%s\" exist. We take \"%s\"."
+        wrn None "Both %S and %S exist. We take %S."
           src legacy src; src
     | (true , false) -> src
     | (false, true ) -> legacy
@@ -49,7 +49,7 @@ let rec compile_with :
   let obj = base ^ obj_extension in
   if List.mem mp !loading then
     begin
-      fatal_msg "Circular dependencies detected in \"%s\".@." (src ());
+      fatal_msg "Circular dependencies detected in %S.@." (src ());
       fatal_msg "Dependency stack for module %a:@." Print.pp_path mp;
       List.iter (fatal_msg "- %a@." Print.pp_path) !loading;
       fatal_no_pos "Build aborted."
@@ -62,7 +62,7 @@ let rec compile_with :
     begin
       let forced = if force then " (forced)" else "" in
       let src = src () in
-      Console.out 1 "Loading \"%s\"%s ...@." src forced;
+      Console.out 1 "Loading %S%s ...@." src forced;
       loading := mp :: !loading;
       let sign = Sig_state.create_sign mp in
       let sig_st = Stdlib.ref (Sig_state.of_sign sign) in
@@ -78,17 +78,17 @@ let rec compile_with :
       Sign.strip_private sign;
       if Stdlib.(!gen_obj) then Sign.write sign obj;
       loading := List.tl !loading;
-      Console.out 1 "Checked \"%s\"@." src; sign
+      Console.out 1 "Checked %S@." src; sign
     end
     else
     begin
-      Console.out 2 "Loading \"%s\" ...@." (src ());
+      Console.out 2 "Loading %S ...@." (src ());
       let sign = Sign.read obj in
       let compile mp _ = ignore (compile_with ~handle ~force:false mp) in
       Path.Map.iter compile !(sign.sign_deps);
       loaded := Path.Map.add mp sign !loaded;
       Sign.link sign;
-      Console.out 2 "Loaded \"%s\"@." obj; sign
+      Console.out 2 "Loaded %S@." obj; sign
     end
 
 (** [compile force mp] compiles module path [mp] using

@@ -93,7 +93,7 @@ let handle : Sig_state.t -> proof_state option -> p_query -> result =
       None
   | P_query_flag(id,b) ->
       (try Console.set_flag id b
-       with Not_found -> fatal pos "Unknown flag \"%s\"." id);
+       with Not_found -> fatal pos "Unknown flag %S." id);
       Console.out 3 "(flag) %s → %b@." id b;
       None
   | P_query_prover(s) -> Timed.(Why3_tactic.default_prover := s); None
