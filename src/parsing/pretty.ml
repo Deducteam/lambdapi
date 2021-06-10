@@ -268,7 +268,8 @@ let command : p_command pp = fun ppf {elt;_} ->
         (rule "rule") r
         (List.pp (rule "with") "@,") rs
   | P_symbol
-    { p_sym_mod; p_sym_nam; p_sym_arg; p_sym_typ; p_sym_trm; p_sym_prf; p_sym_def } ->
+    { p_sym_mod; p_sym_nam; p_sym_arg; p_sym_typ;
+      p_sym_trm; p_sym_prf; p_sym_def } ->
     begin
       out ppf "@[<v>@[%asymbol %a%a%a%a%a@]@,%a@]"
         modifiers p_sym_mod

@@ -26,7 +26,10 @@ let log_scop = log_scop.pp
    symbols are allowed. *)
 let find_qid : int -> bool -> bool -> sig_state -> env -> p_qident -> tbox =
   fun d prt prv ss env qid ->
-  if Logger.log_enabled () then log_scop "%afind_qid %a" D.depth d Pretty.qident qid;
+  if Logger.log_enabled () then
+    log_scop "%afind_qid %a"
+      D.depth d
+      Pretty.qident qid;
   let (mp, s) = qid.elt in
   (* Check for variables in the environment first. *)
   try
@@ -188,8 +191,13 @@ and scope_parsed : int -> mode -> sig_state -> env -> p_term -> tbox =
     | _ -> minimize_impl (get_impl p_head)
   in
   (* Scope and insert the (implicit) arguments. *)
-  D.log_and_return (fun e -> log_scop "%agot %a" D.depth d Print.pp_term @@ Bindlib.unbox e) @@
-    add_impl d md ss env t.pos h impl args
+  add_impl d md ss env t.pos h impl args
+  |> D.log_and_return (
+    fun e ->
+      log_scop "%agot %a"
+        D.depth d
+        Print.pp_term (Bindlib.unbox e)
+  )
 
 (** [add_impl md ss env loc h impl args] scopes [args] and returns the
    application of [h] to the scoped arguments. [impl] is a boolean list
@@ -253,17 +261,18 @@ and scope_binder : ?warn:bool -> int -> mode -> sig_state ->
           | Some t -> scope (d+1) md ss env t
           | None -> fresh_meta_type md env
         end
-    | (idopts,typopt,_implicit)::params_list ->
-        scope_params env idopts (scope_domain (d+1) md ss env typopt) params_list
+    | (idopts, typopt, _implicit) :: params_list ->
+        let domain = scope_domain (d+1) md ss env typopt in
+        scope_params env idopts domain params_list
   and scope_params env idopts a params_list =
     let rec aux env idopts =
       match idopts with
       | [] -> scope_params_list env params_list
-      | None::idopts ->
+      | None :: idopts ->
           let v = new_tvar "_" in
           let t = aux env idopts in
           cons a (Bindlib.bind_var v t)
-      | Some {elt=id;pos}::idopts ->
+      | Some { elt=id; pos } :: idopts ->
           if LpLexer.is_invalid_bindlib_id id then
             fatal pos "Escaped identifiers or regular identifiers with an \
                        integer suffix with leading zeros are not allowed \
@@ -282,14 +291,17 @@ and scope_binder : ?warn:bool -> int -> mode -> sig_state ->
 and scope_head : int -> mode -> sig_state -> env -> p_term -> tbox =
   fun depth md ss env t ->
   match (t.elt, md) with
-  | (P_Type, M_LHS(_)) -> fatal t.pos "TYPE is not allowed in a LHS."
-  | (P_Type, _) -> _Type
+  | P_Type, M_LHS _ -> fatal t.pos "TYPE is not allowed in a LHS."
+  | P_Type, _ -> _Type
 
-  | (P_Iden(qid,_), M_LHS(d)) -> find_qid (depth+1) true d.m_lhs_prv ss env qid
-  | (P_Iden(qid,_), M_Term{m_term_prv=true;_}) ->
+  | P_Iden (qid, _), M_LHS d ->
+      find_qid (depth+1) true d.m_lhs_prv ss env qid
+  | P_Iden (qid, _), M_Term { m_term_prv=true; _ } ->
       find_qid (depth+1) false true ss env qid
-  | (P_Iden(qid,_), M_RHS(d)) -> find_qid (depth+1) false d.m_rhs_prv ss env qid
-  | (P_Iden(qid,_), _) -> find_qid (depth+1) false false ss env qid
+  | P_Iden (qid, _), M_RHS d ->
+      find_qid (depth+1) false d.m_rhs_prv ss env qid
+  | P_Iden (qid, _), _ ->
+      find_qid (depth+1) false false ss env qid
 
   | (P_Wild, M_URHS(data)) ->
     let x =
@@ -424,7 +436,8 @@ and scope_head : int -> mode -> sig_state -> env -> p_term -> tbox =
 
   | (P_Arro(_,_), M_Patt) ->
       fatal t.pos "Implications are not allowed in a pattern."
-  | (P_Arro(a,b), _) -> _Impl (scope (depth+1) md ss env a) (scope (depth+1) md ss env b)
+  | (P_Arro(a,b), _) ->
+      _Impl (scope (depth+1) md ss env a) (scope (depth+1) md ss env b)
 
   | (P_Abst(_,_), M_Patt) ->
       fatal t.pos "Abstractions are not allowed in a pattern."

@@ -41,10 +41,14 @@ let set_to_prod : int -> problem -> meta -> unit = fun d p m ->
 (** [conv d p c a b] adds the the constraint [(c,a,b)] in [p], if [a] and
    [b] are not convertible. [d] is the call depth used for debug. *)
 let conv : int -> problem -> ctxt -> term -> term -> unit = fun d p c a b ->
-  if not (Eval.pure_eq_modulo c a b) then
-    (let cstr = (c,a,b) in
-     if Logger.log_enabled () then log_infr (mag "%aadd %a") D.depth d pp_constr cstr;
-     p := {!p with to_solve = cstr::!p.to_solve})
+  if not (Eval.pure_eq_modulo c a b) then begin
+    let cstr = (c,a,b) in
+    if Logger.log_enabled () then
+      log_infr (mag "%aadd %a")
+        D.depth d
+        pp_constr cstr;
+    p := {!p with to_solve = cstr::!p.to_solve}
+  end
 
 (** Exception that may be raised by type inference. *)
 exception NotTypable
@@ -58,8 +62,18 @@ exception NotTypable
    abstraction over a kind). *)
 let rec infer : int -> problem -> ctxt -> term -> term = fun d p c t ->
   let return v =
-    if Logger.log_enabled () then log_infr "%agot %a" D.depth d pp_term v; v in
-  if Logger.log_enabled () then log_infr "%ainfer %a%a" D.depth d pp_ctxt c pp_term t;
+    if Logger.log_enabled () then
+      log_infr "%agot %a"
+        D.depth d
+        pp_term v;
+    v
+  in
+  if Logger.log_enabled () then
+    log_infr "%ainfer %a%a"
+      D.depth d
+      pp_ctxt c
+      pp_term t;
+
   match unfold t with
   | Patt(_,_,_) -> assert false (* Forbidden case. *)
   | TEnv(_,_)   -> assert false (* Forbidden case. *)
@@ -180,7 +194,10 @@ let rec infer : int -> problem -> ctxt -> term -> term = fun d p c t ->
 @raise NotTypable when the term is not typable (when encountering an
    abstraction over a kind). *)
 and check : int -> problem -> ctxt -> term -> term -> unit = fun d p c t a ->
-  if Logger.log_enabled () then log_infr "%acheck %a" D.depth d pp_typing (c,t,a);
+  if Logger.log_enabled () then
+    log_infr "%acheck %a"
+      D.depth d
+      pp_typing (c, t, a);
   conv d p c (infer (d+1) p c t) a
 
 (** [infer_noexn p c t] returns [None] if the type of [t] in context [c]
@@ -209,10 +226,13 @@ let infer_noexn : problem -> ctxt -> term -> term option = fun p c t ->
    [c] and the type [a] must be well sorted. *)
 let check_noexn : problem -> ctxt -> term -> term -> bool = fun p c t a ->
   try
-    if Logger.log_enabled () then log_hndl (blu "check_noexn %a") pp_typing (c,t,a);
+    if Logger.log_enabled () then
+      log_hndl (blu "check_noexn %a")
+        pp_typing (c, t, a);
     time_of (fun () -> check 0 p c t a);
     if Logger.log_enabled () && !p.to_solve <> [] then
-      log_hndl (blu "result of check_noexn:%a") pp_constrs !p.to_solve;
+      log_hndl (blu "result of check_noexn:%a")
+        pp_constrs !p.to_solve;
     true
   with NotTypable -> false
 
