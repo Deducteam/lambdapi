@@ -118,7 +118,7 @@ module D = struct
     | [] -> out ppf "[]"
     | x::l ->
       out ppf "[%a" elt x;
-      let f x = out ppf ";%a" elt x in
+      let f x = out ppf "; %a" elt x in
       List.iter f l;
       out ppf "]"
 
@@ -127,7 +127,7 @@ module D = struct
     if n = 0 then out ppf "[]"
     else begin
       out ppf "[%a" elt a.(0);
-      for i = 1 to n-1 do out ppf ";%a" elt a.(i) done;
+      for i = 1 to n-1 do out ppf "; %a" elt a.(i) done;
       out ppf "]"
     end
 
@@ -138,6 +138,6 @@ module D = struct
     out ppf "["; iter f m; out ppf "]"
 
   let strmap : 'a pp -> 'a StrMap.t pp = fun elt ->
-    map StrMap.iter string "," elt ";"
+    map StrMap.iter string ", " elt "; "
 
 end
