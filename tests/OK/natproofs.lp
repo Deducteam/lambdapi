@@ -2,8 +2,6 @@ require open tests.OK.logic;
 require open tests.OK.bool;
 require open tests.OK.nat;
 
-rule T nat ↪ N;
-
 // Symmetry of the equality (first option, rewrite).
 opaque symbol eq_sym a (x y:T a) : P (x = y) → P (y = x)
 ≔ begin

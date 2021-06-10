@@ -430,7 +430,7 @@ let cmp : term cmp =
     | Symb s, Symb s' -> Sym.compare s s'
     | Prod(t,u), Prod(t',u')
     | Abst(t,u), Abst(t',u') -> lex cmp cmp_binder (t,u) (t',u')
-    | Appl(t,u), Appl(t',u') -> lex cmp cmp (t,u) (t',u')
+    | Appl(t,u), Appl(t',u') -> lex cmp cmp (u,t) (u',t')
     | Meta(m,ts), Meta(m',ts') ->
         lex Meta.compare (Array.cmp cmp) (m,ts) (m',ts')
     | Patt(i,s,ts), Patt(i',s',ts') ->
