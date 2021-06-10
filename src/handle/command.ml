@@ -20,7 +20,7 @@ open Debug
 (** Type alias for a function that compiles a Lambdapi module. *)
 type compiler = Path.t -> Sign.t
 
-(* Register a check for the type of the builtin symbols "0" and "+1". *)
+(** Register a check for the type of the builtin symbols "0" and "+1". *)
 let _ =
   (* [eq_noexn t u] tries to unify the terms [t] and [u]. *)
   let eq_noexn : term -> term -> bool = fun t u ->
@@ -49,7 +49,10 @@ let _ =
    signature state. On success, an updated signature state is returned. *)
 let handle_open : sig_state -> p_path -> sig_state =
   fun ss {elt=p;pos} ->
-  (* Obtain the signature corresponding to [m]. *)
+  (* Check that [p] has been required. *)
+  if not (Path.Map.mem p !(ss.signature.sign_deps)) then
+    fatal pos "Module %a needs to be required first." pp_path p;
+  (* Obtain the signature corresponding to [p]. *)
   let sign =
     try Path.Map.find p !(Sign.loaded) with Not_found ->
       (* The signature has not been required... *)

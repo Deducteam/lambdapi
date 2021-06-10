@@ -68,8 +68,7 @@ let rec compile_with :
       let sig_st = Stdlib.ref (Sig_state.of_sign sign) in
       (* [sign] is added to [loaded] before processing the commands so that it
          is possible to qualify the symbols of the current modules. *)
-      let map = Path.Map.add mp sign !loaded in
-      loaded := map;
+      loaded := Path.Map.add mp sign !loaded;
       Stdlib.(Tactic.admitted := -1);
       let consume cmd =
         Stdlib.(sig_st :=
@@ -79,7 +78,6 @@ let rec compile_with :
       Sign.strip_private sign;
       if Stdlib.(!gen_obj) then Sign.write sign obj;
       loading := List.tl !loading;
-      loaded := map;
       Console.out 1 "Checked \"%s\"\n%!" src; sign
     end
     else

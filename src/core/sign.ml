@@ -124,9 +124,7 @@ let link : t -> unit = fun sign ->
     {r with lhs ; rhs}
   and link_symb s =
     if s.sym_path = sign.sign_path then s else
-    try
-      let sign = Path.Map.find s.sym_path !loaded in
-      try find sign s.sym_name with Not_found -> assert false
+    try find (Path.Map.find s.sym_path !loaded) s.sym_name
     with Not_found -> assert false
   in
   let fn _ (s,_) =
@@ -149,11 +147,9 @@ let link : t -> unit = fun sign ->
   in
   Path.Map.iter gn !(sign.sign_deps);
   sign.sign_builtins := StrMap.map link_symb !(sign.sign_builtins);
-  let lsy (sym, h) = link_symb sym, h in
   sign.sign_notations :=
-    (* Keys of the mapping are linked *)
-    SymMap.to_seq !(sign.sign_notations) |>
-    Seq.map lsy |> SymMap.of_seq;
+    SymMap.fold (fun s n m -> SymMap.add (link_symb s) n m)
+      !(sign.sign_notations) SymMap.empty;
   StrMap.iter (fun _ (s, _) -> Tree.update_dtree s) !(sign.sign_symbols);
   let link_ind_data i =
     { ind_cons = List.map link_symb i.ind_cons;
