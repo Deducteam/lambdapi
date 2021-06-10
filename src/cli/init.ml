@@ -28,7 +28,7 @@ clean:
 
 .SUFFIXES: .lp .lpo
 
-%%.lpo: %%.lp
+.lp.lpo:
 	lambdapi check --gen-obj $<@." Package.pkg_file Package.pkg_file
 
 let run : Path.t -> unit = fun root_path ->
