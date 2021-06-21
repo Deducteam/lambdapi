@@ -162,6 +162,7 @@ let get_eq_data :
   eq_config -> popt -> term -> (term * term * term) * tvar array = fun cfg ->
   let exception Not_eq of term in
   let get_eq_args u =
+    if !log_enabled then log_rewr "get_eq_args %a" pp_term u;
     match get_args u with
     | eq, [a;l;r] when is_symb cfg.symb_eq eq -> a, l, r
     | _ -> raise (Not_eq u)
@@ -169,10 +170,12 @@ let get_eq_data :
   let exception Not_P of term in
   let return vs r = r, Array.of_list (List.rev vs) in
   let rec get_eq vs t notin_whnf =
+    if !log_enabled then log_rewr "get_eq %a" pp_term t;
     match get_args t with
     | Prod(_,t), _ -> let v,t = Bindlib.unbind t in get_eq (v::vs) t true
     | p, [u] when is_symb cfg.symb_P p ->
       begin
+        let u = Eval.whnf ~rewrite:false [] u in
         try return vs (get_eq_args u)
         with Not_eq _ ->
           (try return vs (get_eq_args (Eval.whnf [] u))
@@ -183,7 +186,7 @@ let get_eq_data :
       else raise (Not_P t)
   in
   fun pos t ->
-    if !log_enabled then log_rewr "get_eq_data %a" Term.pp_term t;
+    if !log_enabled then log_rewr "get_eq_data %a" pp_term t;
     try get_eq [] t true with
     | Not_P u ->
       fatal pos "Expected %a _ but found %a." pp_sym cfg.symb_P pp_term u
