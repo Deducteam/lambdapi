@@ -53,7 +53,9 @@ let hnf : (term -> term) -> (term -> term) = fun whnf ->
 (** [snf whnf t] computes a snf of [t] using [whnf]. *)
 let snf : (term -> term) -> (term -> term) = fun whnf ->
   let rec snf t =
+    if !log_enabled then log_eval "snf %a" pp_term t;
     let h = whnf t in
+    if !log_enabled then log_eval "whnf %a = %a" pp_term t pp_term h;
     match h with
     | Vari _
     | Type

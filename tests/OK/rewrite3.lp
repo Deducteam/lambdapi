@@ -46,7 +46,7 @@ builtin "eq"    ≔ =;
 builtin "refl"  ≔ =_refl;
 builtin "eqind" ≔ =_ind;
 
-symbol rewrite_test T (x y : π T) (f : π T → Type) : π (x = y ⇒ f x ⇒ f y)
+symbol rewrite_test1 T (x y : π T) (f : π T → Type) : π (x = y ⇒ f x ⇒ f y)
 ≔ begin
   assume T x y f eqxy;
   have e : π (x = y);
@@ -66,7 +66,15 @@ symbol not : 𝔹 → 𝔹;
 rule not false ↪ true
 with not true ↪ false;
 
-symbol reflexivity_test : π (not (not true) = true) ≔
+symbol reflexivity_test2 : π (not (not true) = true) ≔
 begin
   reflexivity;
+end;
+
+symbol rewrite_test3 T (x : π T) (f g : π T → π T) (p : π T → Type):
+  π ((`∀ₜₜ y, f y = g y) ⇒ p (f x) ⇒ p (g x))
+≔ begin
+  assume T x f g p e;
+  rewrite e;
+  refine (λ u, u);
 end;
