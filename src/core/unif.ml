@@ -5,7 +5,6 @@ open Lplib.Extra
 
 open Timed
 open Common
-open Error
 open Term
 open LibTerm
 open Print
@@ -161,9 +160,11 @@ let instantiate : ctxt -> meta -> term array -> term -> bool =
       false
 
 (** [error t1 t2]
-@raise Unsolvable. *)
+    @raise Unsolvable. *)
 let error : term -> term -> 'a = fun t1 t2 ->
-  fatal_msg "\n[%a]\nand\n[%a]\nare not convertible.\n" pp_term t1 pp_term t2;
+  if !log_enabled then
+    log_unif "[@[%a@]]@ and@ [@[%a@]]@ are not convertible."
+      pp_term t1 pp_term t2;
   raise Unsolvable
 
 (** [add_constr c cs] adds [c] to [!initial] and returns [c::cs]. *)

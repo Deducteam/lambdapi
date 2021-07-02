@@ -1,6 +1,7 @@
 open Common
 open Pos
 open Lplib
+open Extra
 open Timed
 open Term
 
@@ -87,8 +88,7 @@ functor
         [eq_modulo]. *)
        begin
          if !Debug.log_enabled then
-           log (Extra.yel "add constraint %a") Print.pp_constr
-             (ctx, a, b);
+           log (yel "add constraint %a") Print.pp_constr (ctx, a, b);
          Stdlib.(constraints := (ctx, a, b) :: !constraints)
        end
 
@@ -164,8 +164,8 @@ functor
       | Some [] -> Stdlib.(constraints := []) (* Backup resolution *); t
       | _ ->
           if !Debug.log_enabled then
-            log "Coerce [%a : %a ≡ %a]" Print.pp_term t
-              Print.pp_term a Print.pp_term b;
+            log (yel "Coerce [%a : %a ≡ %a]") Print.pp_term t Print.pp_term a
+              Print.pp_term b;
           try try_coercions L.coercions
           with Not_found ->
             (* FIXME: when is this case encountered? Only when checking SR? *)
@@ -203,7 +203,8 @@ functor
       if !Debug.log_enabled then (
         let eq (ctx, a, b) = Eval.eq_modulo ctx a b in
         if not (pure_test eq (ctx, t, r)) then
-          Print.(log "Coercion inserted: [%a] to [%a]" pp_term t pp_term r) );
+          Print.(log (gre "Coercion inserted: [%a] to [%a]") pp_term t
+                   pp_term r) );
       r
 
     (** {1 Other rules} *)
@@ -392,18 +393,18 @@ functor
 
     let infer_noexn cs ctx t =
       if !Debug.log_enabled then
-        log "Top infer %a%a" Print.pp_ctxt ctx Print.pp_term t;
+        log (blu "Top infer %a%a") Print.pp_ctxt ctx Print.pp_term t;
       Option.map (fun ((t,a), cs) -> (t, a, cs)) (noexn infer cs ctx t)
 
     let check_noexn cs ctx t a =
-      if !Debug.log_enabled then log "Top check \"%a\"" Print.pp_typing
+      if !Debug.log_enabled then log (blu "Top check \"%a\"") Print.pp_typing
           (ctx, t, a);
       let force ctx (t, a) = force ctx t a in
       noexn force cs ctx (t, a)
 
     let check_sort_noexn cs ctx t : (term * term * constr list) option =
       if !Debug.log_enabled then
-        log "Top check sort %a%a" Print.pp_ctxt ctx Print.pp_term t;
+        log (blu "Top check sort %a%a") Print.pp_ctxt ctx Print.pp_term t;
       let flatten ((t, a), cs) = (t, a, cs) in
       Option.map flatten (noexn type_enforce cs ctx t)
 
