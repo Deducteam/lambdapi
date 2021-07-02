@@ -161,8 +161,7 @@ and pp_term : term pp = fun ppf t ->
     in
     match h with
     | Symb(s) ->
-        if !print_implicits && s.sym_impl <> [] then
-          (out ppf "@"; pp_appl h args)
+        if !print_implicits && s.sym_impl <> [] then pp_appl h args
         else
           let args = LibTerm.remove_impl_args s args in
           begin match notation_of s with
