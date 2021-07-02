@@ -427,42 +427,48 @@ let get_proof_data : compiler -> sig_state -> p_command ->
       (* Build finalizer. *)
       let finalize ss ps =
         Console.State.pop ();
+        let out () =
+          match t with
+          | None -> Console.out 3 (red "(symb) add %a : %a" ^^ "\n")
+                      pp_uid id pp_term a
+          | Some t -> Console.out 3 (red "(symb) add %a : %a ≔ %a" ^^ "\n")
+                        pp_uid id pp_term a pp_term t
+        in
         match pe.elt with
         | P_proof_abort -> wrn pe.pos "Proof aborted."; ss
         | P_proof_admitted ->
-            (* If the proof is finished, display a warning. *)
-            if finished ps then
-              wrn pe.pos "The proof is finished. Use 'end' instead.";
             let ss =
-              match ps.proof_term with
-              | Some m when opaq ->
-                  (* We admit the initial goal only. *)
-                  Tactic.admit_meta ss m
-              | _ ->
-                  (* We admit all the remaining typing goals. *)
-                  let admit_goal ss g =
-                    match g with
-                    | Unif _ -> ss
-                    | Typ gt ->
-                        let m = gt.goal_meta in
-                        match !(m.meta_value) with
-                        | None -> Tactic.admit_meta ss m
-                        | Some _ -> ss
-                  in List.fold_left admit_goal ss ps.proof_goals
+              (* If the proof is finished, display a warning. *)
+              if finished ps then
+                ( wrn pe.pos "The proof is finished. Use 'end' instead."; ss )
+              else
+                match ps.proof_term with
+                | Some m when opaq ->
+                    (* We admit the initial goal only. *)
+                    Tactic.admit_meta ss m
+                | _ ->
+                    (* We admit all the remaining typing goals. *)
+                    let admit_goal ss g =
+                      match g with
+                      | Unif _ -> ss
+                      | Typ gt ->
+                          let m = gt.goal_meta in
+                          match !(m.meta_value) with
+                          | None -> Tactic.admit_meta ss m
+                          | Some _ -> ss
+                    in List.fold_left admit_goal ss ps.proof_goals
             in
             (* Add the symbol in the signature with a warning. *)
-            Console.out 3 (red "(symb) add %a : %a" ^^ "\n")
-              pp_uid id pp_term a;
             wrn pe.pos "Proof admitted.";
-            fst (add_symbol ss expo prop mstrat true p_sym_nam a impl t)
+            out ();
+            fst (add_symbol ss expo prop mstrat opaq p_sym_nam a impl t)
         | P_proof_end ->
             (* Check that the proof is indeed finished. *)
             if not (finished ps) then
               (Console.out 1 "%a" Proof.pp_goals ps;
                fatal pe.pos "The proof is not finished.");
             (* Add the symbol in the signature. *)
-            Console.out 3 (red "(symb) add %a : %a" ^^ "\n")
-            pp_uid id pp_term a;
+            out ();
             fst (add_symbol ss expo prop mstrat opaq p_sym_nam a impl t)
       in
       (* Create proof state. *)
