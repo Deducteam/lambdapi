@@ -358,6 +358,10 @@ let solve : problem -> unit = fun p ->
   | Vari _, (Type|Kind|Vari _|Prod _)
     -> error t1 t2
 
+  | ((Vari _|Abst _|Prod _), Symb s
+    | Symb s, (Type|Kind|Vari _|Abst _|Prod _)) when s.sym_prop = Const ->
+    error t1 t2
+
   | Symb s1, Symb s2
        when s1 == s2 && s1.sym_prop <> Defin && List.same_length ts1 ts2 ->
       decompose p c ts1 ts2
@@ -412,6 +416,10 @@ let solve : problem -> unit = fun p ->
   | Vari _, (Type|Kind|Vari _|Prod _)
   | Abst _, (Type|Kind|Prod _)
     -> error t1 t2
+
+  | ((Vari _|Abst _|Prod _), Symb s
+    | Symb s, (Type|Kind|Vari _|Abst _|Prod _)) when s.sym_prop = Const ->
+    error t1 t2
 
   | Symb s1, Symb s2 -> sym_sym_whnf p c t1 s1 ts1 t2 s2 ts2
 
