@@ -204,11 +204,13 @@ and whnf_stk : config -> term -> stack -> term * stack = fun c t stk ->
     | None ->
       match tree_walk c !(s.sym_dtree) stk with
       | None -> r
-      | Some(t',stk') ->
+      | Some (t', stk') ->
         Stdlib.incr steps;
         let h, ts =
           match get_args t' with
-          | (Symb s as h), ts when is_modulo s -> add_args h (ts @ stk'), []
+          | Symb s as h, ts when is_modulo s ->
+            (* AC-canonical form of [add_args t' stk']. *)
+            add_args h (ts @ stk'), []
           | _ -> t', stk'
         in
         if !log_enabled then
