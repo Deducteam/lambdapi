@@ -7,6 +7,7 @@ open Common
 open Pos
 open Core
 
+
 (** Representation of a (located) identifier. *)
 type p_ident = strloc
 
@@ -211,6 +212,18 @@ type p_tactic_aux =
   | P_tac_why3 of string option
 
 type p_tactic = p_tactic_aux loc
+
+type p_tactic_tree = Tactic of p_tactic option * p_tactic_tree list;;
+
+(**tree_to_list tactic_tree returns the list of tactics
+  described by the tree*)
+let rec tree_to_list : p_tactic_tree -> p_tactic list = function
+  | Tactic (otac, l) -> match otac with
+                        | None -> forest_to_list l
+                        | Some tac -> tac::(forest_to_list l)
+and forest_to_list : p_tactic_tree list -> p_tactic list = function
+  | [] -> []
+  | tree::f -> (tree_to_list tree) @ (forest_to_list f);;
 
 (** Parser-level representation of a proof terminator. *)
 type p_proof_end_aux =
