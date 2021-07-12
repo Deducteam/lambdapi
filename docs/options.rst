@@ -154,6 +154,12 @@ Specific flags for the “install” and “uninstall” commands
 --dry-run  prints the system commands that should be called instead of running
    them.
 
+Specific flags for the “decision-tree” command
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+--ghost  print the decision tree of a ghost symbol. Ghost symbols are symbols
+   used internally that cannot be used in the concrete syntax.
+
 .. _HRS: http://project-coco.uibk.ac.at/problems/hrs.php
 .. _CSI^ho: http://cl-informatik.uibk.ac.at/software/csi/ho/
 .. _XTC: http://cl2-informatik.uibk.ac.at/mercurial.cgi/TPDB/raw-file/tip/xml/xtc.xsd

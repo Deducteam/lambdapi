@@ -2,21 +2,16 @@ Decision trees
 ==============
 
 The pattern matching algorithm uses decision trees. These decision trees
-are attached to symbols and can be inspected, mainly for debugging
-purposes. To print the decision of a symbol ``s`` of a module ``M``, the
-following command may be used if module ``M`` is in a package (the
-``lambdapi.pkg`` file) placed *above* the current working directory
+are attached to symbols and can be inspected for debugging purposes.
+To print the decision of a symbol ``s`` of a module whose *module path* is
+``M`` (see :doc:`Module path </module>`), its decision tree may be printed with
 
 ::
 
    lambdapi decision-tree M.s
 
-To print the decision tree of a symbol whose package is below the
-current working directory, the option ``--map-dir`` may be used,
-
-::
-
-   lambdapi decision-tree --map-dir=M:dirM M.s
+The package configuration file of module ``M`` must be above the current working
+directory (closer to the root of the file system), or in the same directory.
 
 The decision trees are printed to the standard output in the `dot`_ language. A
 dot file ``tree.gv`` can be converted to a png image using
@@ -26,8 +21,8 @@ dot file ``tree.gv`` can be converted to a png image using
 
    lambdapi decision-tree M.s | dot -Tpng | display
 
-displays the decision tree of symbol ``M.s``. For other output formats,
-see `graphviz documentation`_.
+displays the decision tree of symbol ``M.s`` (``display`` is part of
+`imagemagick`_). For other output formats, see `graphviz documentation`_.
 
 Description of the generated graphs
 -----------------------------------
@@ -73,12 +68,13 @@ algorithm. There are labeled nodes, labeled edges and leaves.
   the stack of arguments is empty, the right child otherwise. These nodes can
   only appear in trees built for sequential symbols.
 
-**Note for developers:** ghost symbols can be printed as well, for
-instance
+**Note for developers:** the decision tree of ghost symbols can be printed as
+well using the ``--ghost`` flag. For instance,
 
 ::
 
-   lambdapi decision-tree M.#equiv
+   lambdapi decision-tree --ghost M.≡
 
 .. _dot: https://www.graphviz.org/doc/info/lang.html
+.. _imagemagick: https://imagemagick.org
 .. _graphviz documentation: https://graphviz.gitlab.io/_pages/doc/info/output.html
