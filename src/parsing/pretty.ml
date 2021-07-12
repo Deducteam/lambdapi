@@ -245,6 +245,23 @@ let notation : Sign.notation pp = fun ppf n ->
   | Quant -> out ppf "quantifier"
   | _ -> ()
 
+let rec print_tree : p_tactic_tree pp = fun ppf t ->
+  let tactic ppf = out ppf "%a" tactic in
+  match t with
+  Tactic (otac, l) -> 
+    match otac with
+    | None -> out ppf "{"; 
+              let n = List.length l in print_forest l ppf n;
+    | Some tac -> tactic ppf tac; print_forest l ppf (-1);
+and print_forest : p_tactic_tree list -> formatter -> int -> unit = fun tl ppf n -> 
+  match tl, n with
+  | [], _ -> ()
+  | tree::f, n -> print_tree ppf tree; 
+    match n with
+    | -1 -> print_forest f ppf (-1);
+    | 1  -> print_forest f ppf (-1); out ppf "}";
+    | n  -> print_forest f ppf (n-1);;
+
 let command : p_command pp = fun ppf {elt;_} ->
   begin match elt with
   | P_builtin(s,qid) -> out ppf "builtin \"%s\" ≔ %a" s qident qid
@@ -276,8 +293,9 @@ let command : p_command pp = fun ppf {elt;_} ->
       match p_sym_prf with
       | None -> ()
       | Some(ts,pe) ->
-          let tactic ppf = out ppf "\n  %a" tactic in
-          out ppf "\nbegin%a\n%a" (List.pp tactic "") ts proof_end pe
+          out ppf "\nbegin";
+          print_tree ppf ts;
+          out ppf "\n%a" proof_end pe;
     end
   | P_unif_rule(ur) -> out ppf "unif_rule %a" unif_rule ur
   end;

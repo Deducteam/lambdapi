@@ -19,14 +19,6 @@
 
   let make_prod startpos ps t endpos =
     if ps = [] then t else make_pos (startpos,endpos) (P_Prod(ps,t))
-
-  let rec tree_to_list : p_tactic_tree -> p_tactic list = function
-    | Tactic (otac, l) -> match otac with
-                          | None -> forest_to_list l
-                          | Some tac -> tac::(forest_to_list l)
-  and forest_to_list : p_tactic_tree list -> p_tactic list = function
-    | [] -> []
-    | tree::f -> (tree_to_list tree) @ (forest_to_list f);;
 %}
 
 // end of file
@@ -250,6 +242,7 @@ proof_end:
   | ADMITTED { make_pos $sloc Syntax.P_proof_admitted }
   | END { make_pos $sloc Syntax.P_proof_end }
 
+(********* PR
 bracket_tactic :
   L_CU_BRACKET tree_list=tree* R_CU_BRACKET { Tactic(None, tree_list) }
 
@@ -257,6 +250,22 @@ tree :
   tac=tactic tree_list=bracket_tactic* SEMICOLON {Tactic(Some tac,tree_list)}
 
 proof: BEGIN tree_list=tree* pe=proof_end { Tactic (None, tree_list), pe}
+*)
+
+
+(************ ANSWER OF PR
+proof: BEGIN l=subproof* pe=proof_end { l, pe }
+subproof: L_CU_BRACKET l=terminated(proof_step, SEMICOLON)* R_CU_BRACKET { l }
+proof_step: t=tactic l=subproof* { Tactic(t, l) }
+*)
+
+proof: BEGIN l=subproof* pe=proof_end {Tactic(None, l), pe}
+
+subproof: 
+  L_CU_BRACKET l=terminated(proof_step, SEMICOLON)* R_CU_BRACKET 
+    { Tactic(None, l) }
+
+proof_step: t=tactic l=subproof* { Tactic(Some t, l) }
 
 constructor:
   | i=uid ps=params* COLON t=term
@@ -287,19 +296,19 @@ command:
     { let sym =
         {p_sym_mod=ms; p_sym_nam=s; p_sym_arg=al; p_sym_typ=Some(a);
          p_sym_trm=None; p_sym_def=false;
-         p_sym_prf= match po with
+         p_sym_prf= po(*match po with
           | None -> None
-          | Some p -> Some (tree_to_list (fst p), snd p)}
+          | Some p -> Some (tree_to_list (fst p), snd p)*)}
       in make_pos $sloc (P_symbol(sym)) }
   | ms=modifier* SYMBOL s=uid al=params* ao=preceded(COLON, term)?
     ASSIGN tp=term_proof SEMICOLON
     { let sym =
         {p_sym_mod=ms; p_sym_nam=s; p_sym_arg=al; p_sym_typ=ao;
          p_sym_trm=fst tp; p_sym_def=true;
-         p_sym_prf= let po = snd tp in
+         p_sym_prf= snd tp(*let po = snd tp in
           match po with
             | None -> None
-            | Some p -> Some (tree_to_list (fst p), snd p)}
+            | Some p -> Some (tree_to_list (fst p), snd p)*)}
       in make_pos $sloc (P_symbol(sym)) }
   | ms=modifier* xs=params* INDUCTIVE
     is=separated_nonempty_list(WITH, inductive) SEMICOLON
