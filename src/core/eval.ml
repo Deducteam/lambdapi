@@ -197,26 +197,33 @@ and whnf_stk : config -> term -> stack -> term * stack = fun c t stk ->
     Stdlib.incr steps; whnf_stk c (Bindlib.subst f u) stk
   | LLet(_,t,u), stk ->
     Stdlib.incr steps; whnf_stk c (Bindlib.subst u t) stk
-  | (Symb s, stk) as r when c.rewrite ->
+  | (Symb s as h, stk) as r when c.rewrite ->
     begin match !(s.sym_def) with
     | Some t ->
       if s.sym_opaq then r else (Stdlib.incr steps; whnf_stk c t stk)
     | None ->
+      (* If [s] is modulo C or AC, we put its arguments in whnf and reorder
+         them to have a term in AC-canonical form. *)
+      let stk =
+        if is_modulo s then
+          let n = Stdlib.(!steps) in
+          (* We put the arguments in whnf. *)
+          let stk' = List.map (whnf c) stk in
+          if Stdlib.(!steps) = n then (* No argument has been reduced. *)
+            stk
+          else (* At least one argument has been reduced. *)
+            (* We put the term in AC-canonical form. *)
+            snd (get_args (add_args h stk'))
+        else stk
+      in
       match tree_walk c !(s.sym_dtree) stk with
-      | None -> r
+      | None -> h, stk
       | Some (t', stk') ->
         Stdlib.incr steps;
-        let h, ts =
-          match get_args t' with
-          | Symb s as h, ts when is_modulo s ->
-            (* AC-canonical form of [add_args t' stk']. *)
-            add_args h (ts @ stk'), []
-          | _ -> t', stk'
-        in
         if !log_enabled then
           log_eval "tree_walk %a%a %a = %a %a" pp_ctxt c.context
-            pp_term t (D.list pp_term) stk pp_term h (D.list pp_term) ts;
-        whnf_stk c h ts
+            pp_term t (D.list pp_term) stk pp_term t' (D.list pp_term) stk';
+        whnf_stk c t' stk'
     end
   | (Vari x, stk) as r ->
     begin match VarMap.find_opt x c.defmap with

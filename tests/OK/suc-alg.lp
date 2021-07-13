@@ -45,5 +45,6 @@ with s $p ($x ⊕ $y) ↪ s $p $x ⊕ s $p $y;
 rule s $p $x ⊕ s $q $x ↪ s ($p ⊕ₙ $q) $x
 with s $p $x ⊕ (s $q $x ⊕ $y) ↪ s ($p ⊕ₙ $q) $x ⊕ $y;
 
-// test
+// tests
 assert x y ⊢ ((S (S (V x))) ∪ (S (V y))) ∪ Z ≡ s 1 y ⊕ (s 2 x ⊕ s 2 z);
+assert a ⊢ s 1 (a ⊕ z) ⊕ s 2 (a ⊕ z) ≡ s 2 a ⊕ s 2 z;
