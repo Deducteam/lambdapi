@@ -422,9 +422,10 @@ let get_proof_data : compiler -> sig_state -> p_command ->
         | P_proof_abort -> wrn pe.pos "Proof aborted."; ss
         | P_proof_admitted ->
             (* If the proof is finished, display a warning. *)
-            if finished ps then
-              wrn pe.pos "The proof is finished. Use 'end' instead.";
             let ss =
+            if finished ps then
+              ( wrn pe.pos "The proof is finished. Use 'end' instead."; ss )
+            else
               match ps.proof_term with
               | Some m when opaq ->
                   (* We admit the initial goal only. *)
@@ -446,7 +447,7 @@ let get_proof_data : compiler -> sig_state -> p_command ->
               pp_uid id pp_term a;
             wrn pe.pos "Proof admitted.";
             let t = Option.map (fun t -> t.elt) t in
-            fst (add_symbol ss expo prop mstrat true p_sym_nam a impl t)
+            fst (add_symbol ss expo prop mstrat opaq p_sym_nam a impl t)
         | P_proof_end ->
             (* Check that the proof is indeed finished. *)
             if not (finished ps) then
