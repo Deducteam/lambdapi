@@ -411,7 +411,7 @@ let get_proof_data : compiler -> sig_state -> p_command ->
       let pdata_tactics, pe =
         match p_sym_prf with
         | None -> [], Pos.make (Pos.end_pos pos) P_proof_end
-        | Some (ts, pe) -> tree_to_list ts, pe
+        | Some (ts, pe) -> tac_list_of_pproof ts, pe
       in
       (* Initialize proof state. *)
       Console.State.push ();

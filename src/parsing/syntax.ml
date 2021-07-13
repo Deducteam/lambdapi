@@ -7,7 +7,6 @@ open Common
 open Pos
 open Core
 
-
 (** Representation of a (located) identifier. *)
 type p_ident = strloc
 
@@ -213,31 +212,19 @@ type p_tactic_aux =
 
 type p_tactic = p_tactic_aux loc
 
+type p_proof_step = Tactic of p_tactic * p_subproof list
+and p_subproof = p_proof_step list;;
 
-type p_tactic_tree = Tactic of p_tactic option * p_tactic_tree list;;
+type p_proof = p_subproof list;;
 
-(*type p_tactic_tree = Tactic of p_tactic * p_tactic_tree list;;*)
+(**[tac_list_of_pproof p] converts the p_proof [p] into a list of tactics*)
+let rec tac_list_of_pproof : p_proof -> p_tactic list = function
+| [] -> []
+| sp::spl ->
+  match sp with
+    | [] -> tac_list_of_pproof spl
+    | Tactic(t, splbis)::psl -> t::tac_list_of_pproof (splbis@[psl]@spl);;
 
-(**tree_to_list tactic_tree returns the list of tactics
-  described by the tree*)
-
-
-let rec tree_to_list : p_tactic_tree -> p_tactic list = function
-  | Tactic (otac, l) -> match otac with
-                        | None -> forest_to_list l
-                        | Some tac -> tac::(forest_to_list l)
-and forest_to_list : p_tactic_tree list -> p_tactic list = function
-  | [] -> []
-  | tree::f -> (tree_to_list tree) @ (forest_to_list f);;
-
-(*
-let rec tree_to_list : p_tactic_tree -> p_tactic list = function
-  | Tactic (tac, l) -> tac::(forest_to_list l)
-and forest_to_list : p_tactic_tree list -> p_tactic list = function
-  | [] -> []
-  | tree::f -> (tree_to_list tree) @ (forest_to_list f);;
-*)
-(** Parser-level representation of a proof terminator. *)
 type p_proof_end_aux =
   | P_proof_end
   (** The proof is done and fully checked. *)
@@ -269,7 +256,7 @@ type p_symbol =
   ; p_sym_arg : p_params list (** arguments before ":" *)
   ; p_sym_typ : p_term option (** symbol type *)
   ; p_sym_trm : p_term option (** symbol definition *)
-  ; p_sym_prf : (p_tactic_tree * p_proof_end) option (** proof script *)
+  ; p_sym_prf : (p_proof * p_proof_end) option (** proof script *)
   ; p_sym_def : bool (** is it a definition ? *) }
 
 (** Parser-level representation of a single command. *)
@@ -394,14 +381,10 @@ let eq_p_tactic : p_tactic eq = fun {elt=t1;_} {elt=t2;_} ->
   | P_tac_sym, P_tac_sym -> true
   | _, _ -> false
 
-let rec tree_eq : p_tactic_tree -> p_tactic_tree -> bool = fun t1 t2 ->
-  match t1, t2 with
-  Tactic(tac1, l1), Tactic(tac2, l2) ->
-    Option.eq eq_p_tactic tac1 tac2 && List.eq tree_eq l1 l2;;
-
 let eq_p_symbol : p_symbol eq =
   let eq_tac (ts1,pe1) (ts2,pe2) =
-    tree_eq ts1 ts2 && pe1.elt = pe2.elt in
+    List.eq eq_p_tactic (tac_list_of_pproof ts1) (tac_list_of_pproof ts2)
+     && pe1.elt = pe2.elt in
   fun
     { p_sym_mod=p_sym_mod1; p_sym_nam=p_sym_nam1; p_sym_arg=p_sym_arg1;
       p_sym_typ=p_sym_typ1; p_sym_trm=p_sym_trm1; p_sym_prf=p_sym_prf1;
@@ -592,9 +575,13 @@ let fold_idents : ('a -> p_qident -> 'a) -> 'a -> p_command list -> 'a =
     | Some t -> fold_term_vars vs a t
   in
 
-  let trad : (p_tactic_tree * p_proof_end) option -> (p_tactic list * p_proof_end) option = function
+  (**[tac_list_option_of_pproof_option p_sym_prf] is a temporary function
+  used to convert [p_sym_prf] in an (p_tactic list * p_proof_end) type*)
+  let tac_list_option_of_pproof_option
+    : (p_proof * p_proof_end) option -> (p_tactic list * p_proof_end) option
+    = function
     | None -> None
-    | Some (p, pe) -> Some (tree_to_list p, pe) 
+    | Some (p, pe) -> Some (tac_list_of_pproof p, pe)
   in
 
   let fold_command : 'a -> p_command -> 'a = fun a {elt;pos} ->
@@ -617,7 +604,7 @@ let fold_idents : ('a -> p_qident -> 'a) -> 'a -> p_command list -> 'a =
           (fold_term a
              (Pos.make pos
                 (P_LLet (p_sym_nam, p_sym_arg, p_sym_typ, t, d))))
-        (trad p_sym_prf)
+        (tac_list_option_of_pproof_option p_sym_prf)
   in
 
   List.fold_left fold_command

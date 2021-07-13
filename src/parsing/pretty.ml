@@ -228,8 +228,7 @@ let tactic : p_tactic pp = fun ppf t ->
   | P_tac_why3 p ->
       let prover ppf s = out ppf " \"%s\"" s in
       out ppf "why3%a" (Option.pp prover) p
-  end;
-  out ppf ";"
+  end;;
 
 (* starts with a space if distinct from [Pratter.Neither] *)
 let assoc : Pratter.associativity pp = fun ppf a ->
@@ -245,22 +244,34 @@ let notation : Sign.notation pp = fun ppf n ->
   | Quant -> out ppf "quantifier"
   | _ -> ()
 
-let rec print_tree : p_tactic_tree pp = fun ppf t ->
+(**[proof p ppf n] pretty prints the proof [p] using the formatter
+[ppf] at and identation level of [n] (initially 0)*)
+let rec proof : p_proof -> formatter -> int -> unit =
+  fun p ppf n ->
+  match p, n with
+    | [], _ -> ()
+    | sp::spl, n ->
+      let ident = String.repeat "  " n in
+      out ppf "\n";
+      out ppf "%s" ident;
+      out ppf "{\n";
+      subproof sp ppf (n+1);
+      out ppf "%s" ident;
+      out ppf "}";
+      proof spl ppf n;
+and subproof : p_subproof -> formatter -> int -> unit =
+fun sp ppf n ->
   let tactic ppf = out ppf "%a" tactic in
-  match t with
-  Tactic (otac, l) -> 
-    match otac with
-    | None -> out ppf "{"; 
-              let n = List.length l in print_forest l ppf n;
-    | Some tac -> tactic ppf tac; print_forest l ppf (-1);
-and print_forest : p_tactic_tree list -> formatter -> int -> unit = fun tl ppf n -> 
-  match tl, n with
-  | [], _ -> ()
-  | tree::f, n -> print_tree ppf tree; 
-    match n with
-    | -1 -> print_forest f ppf (-1);
-    | 1  -> print_forest f ppf (-1); out ppf "}";
-    | n  -> print_forest f ppf (n-1);;
+  match sp, n with
+    | [], _ -> ()
+    | Tactic(t, splbis)::psl, n ->
+      let ident = String.repeat "  " n in
+      out ppf "%s" ident;
+      tactic ppf t;
+      proof splbis ppf n;
+      out ppf "; ";
+      out ppf "\n";
+      subproof psl ppf n;;
 
 let command : p_command pp = fun ppf {elt;_} ->
   begin match elt with
@@ -294,7 +305,7 @@ let command : p_command pp = fun ppf {elt;_} ->
       | None -> ()
       | Some(ts,pe) ->
           out ppf "\nbegin";
-          print_tree ppf ts;
+          proof ts ppf 0;
           out ppf "\n%a" proof_end pe;
     end
   | P_unif_rule(ur) -> out ppf "unif_rule %a" unif_rule ur
