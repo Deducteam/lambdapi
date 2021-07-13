@@ -88,6 +88,7 @@ let rec compile_with :
       Path.Map.iter compile !(sign.sign_deps);
       loaded := Path.Map.add mp sign !loaded;
       Sign.link sign;
+      Sign.link Unif_rule.sign;
       Console.out 2 "Loaded \"%s\"\n%!" obj; sign
     end
 
