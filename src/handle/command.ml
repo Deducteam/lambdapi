@@ -162,7 +162,7 @@ let handle_inductive_symbol : sig_state -> expo -> prop -> match_strat
   (* We scope the type of the declaration. *)
   let typ =
     (if xs = [] then scope_term else scope_term_with_params)
-      (expo = Privat) ss Env.empty (lazy IntMap.empty) typ
+      (expo = Privat) ss Env.empty typ
   in
   let module Infer = (val Unif.typechecker ss.coercions) in
   (* We check that [a] is typable by a sort. *)
@@ -360,7 +360,7 @@ let get_proof_data : compiler -> sig_state -> p_command ->
         (if p_sym_arg = [] || p_sym_typ = None || p_sym_trm = None
          then scope_term
          else scope_term_with_params)
-          (expo = Privat) ss Env.empty (lazy IntMap.empty)
+          (expo = Privat) ss Env.empty
       in
       (* Scoping function keeping track of the position. *)
       let scope t = Pos.make t.pos (scope t) in

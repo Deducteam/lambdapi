@@ -106,12 +106,7 @@ let handle : Sig_state.t -> proof_state option -> p_query -> result =
            | None -> fatal pos "Not in a definition")
   | _ ->
   let env = Proof.focus_env ps in
-  let sms = lazy
-    (match ps with
-    | None -> Extra.IntMap.empty
-    | Some ps -> Proof.sys_metas ps)
-  in
-  let scope = Scope.scope_term true ss env sms in
+  let scope = Scope.scope_term true ss env in
   let ctxt = Env.to_ctxt env in
   let module Infer = (val Unif.typechecker ss.coercions) in
   match elt with

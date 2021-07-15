@@ -11,8 +11,7 @@ let parse_term s =
   | Syntax.P_query {elt=Syntax.P_query_normalize (t, _); _} -> t
   | _ -> assert false
 
-let scope_term ss t =
-  Scope.scope_term true ss [] (lazy Lplib.Extra.IntMap.empty) t
+let scope_term ss = Scope.scope_term true ss []
 
 let add_sym ss id =
   Sig_state.add_symbol ss Public Defin Eager true (Pos.none id) Term.mk_Kind []

@@ -21,9 +21,7 @@ let check : (module Infer.S) -> Sign.coercion -> unit =
 let handle : Sig_state.t -> p_ident -> p_term -> p_term -> int -> int ->
   (p_ident * p_term) list -> Sig_state.t =
   fun ss name defn defn_ty source arity requirements ->
-  let scope_term ?(env=[]) ss =
-    Scope.scope_term true ss env (lazy Lplib.Extra.IntMap.empty)
-  in
+  let scope_term ?(env=[]) ss = Scope.scope_term true ss env in
   let defn, reqs = Scope.scope_coercion ss [] defn in
   let defn_ty = scope_term ss defn_ty in
   let process_req (id, ty) : Sign.prereq =

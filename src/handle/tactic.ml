@@ -188,7 +188,7 @@ let handle : Sig_state.t -> bool -> proof_state -> p_tactic -> proof_state =
   match g with
   | Unif _ -> fatal pos "Not a typing goal."
   | Typ ({goal_hyps=env;_} as gt) ->
-  let scope = Scope.scope_term prv ss env (lazy (Proof.sys_metas ps)) in
+  let scope = Scope.scope_term prv ss env in
   let check_idopt = function
     | None -> ()
     | Some id -> if List.mem_assoc id.elt env then
