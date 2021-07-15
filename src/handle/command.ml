@@ -445,7 +445,21 @@ let get_proof_data : compiler -> sig_state -> p_command ->
       in
       (* Create proof state. *)
       let ps = {proof_name = p_sym_nam; proof_term; proof_goals} in
-      let ps = Tactic.tac_solve pos ps in
+      let rec solve_iterate ps =
+        let ps = Tactic.tac_solve pos ps in
+        (* Fetch back goals that are introduced in unification constraints. *)
+        (* Goals may appear in unification problems since typechecking can
+           create goals (because of coercions). *)
+        let metas = LibTerm.Meta.get true a in
+        let get_typ = function Typ m -> Some m.goal_meta | _ -> None in
+        let current =
+          ps.proof_goals |> List.filter_map get_typ |> MetaSet.of_list
+        in
+        if MetaSet.subset metas current then ps else
+          let proof_goals = Proof.add_goals_of_metas metas ps.proof_goals in
+          solve_iterate { ps with proof_goals }
+      in
+      let ps = solve_iterate ps in
       (* Add proof_term as focused goal. *)
       let ps =
         match proof_term with
