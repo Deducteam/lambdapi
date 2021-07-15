@@ -215,16 +215,14 @@ and scope_domain : mode -> sig_state -> env -> p_term option -> tbox =
   | (Some {elt=P_Wild;_}|None), _ -> _Plac true None
   | Some a, _ -> scope md ss env a
 
-(** [scope_binder ?warn mode ss cons env params_list t] scopes [t] in mode
-   [md], signature state [ss] and environment [env]. [params_list] is a list
-   of paramters to abstract on. For each parameter, a tbox is built using
-   [cons] (either [_Abst] or [_Prod]). If [?warn] is true (the default), a
-   warning is printed when the variable that is bound by the binder does not
-   appear in the body. *)
-and scope_binder : ?warn:bool -> mode -> sig_state ->
+(** [scope_binder mode ss cons env params_list t] scopes [t] in mode
+    [md], signature state [ss] and environment [env]. [params_list] is a list
+    of paramters to abstract on. For each parameter, a tbox is built using
+    [cons] (either [_Abst] or [_Prod]). *)
+and scope_binder : mode -> sig_state ->
   (tbox -> tbinder Bindlib.box -> tbox) -> Env.t -> p_params list ->
   p_term option -> tbox =
-  fun ?(warn=true) md ss cons env params_list t ->
+  fun md ss cons env params_list t ->
   let rec scope_params_list env params_list =
     match params_list with
     | [] ->
@@ -251,8 +249,6 @@ and scope_binder : ?warn:bool -> mode -> sig_state ->
           let v = new_tvar id in
           let env = Env.add v a None env in
           let t = aux env idopts in
-          if warn && id.[0] <> '_' && not (Bindlib.occur v t) then
-            wrn pos "Variable %s could be replaced by '_'." id;
           cons a (Bindlib.bind_var v t)
     in aux env idopts
   in
@@ -433,27 +429,13 @@ and scope_head : mode -> sig_state -> env -> p_term -> tbox =
   | (P_Expl(_), _) -> fatal t.pos "Explicit argument not allowed here."
 
 (** [scope expo ss env sgm t] turns into a term a pterm [t] in the signature
-   state [ss], the environment [env] (for bound variables), and the
-   system-generated metavariables map [sgm]. If [expo] is
-   {!constructor:Public}, then the term must not contain any private
-   subterms. *)
+    state [ss], the environment [env] (for bound variables), and the
+    system-generated metavariables map [sgm]. If [expo] is
+    {!constructor:Public}, then the term must not contain any private
+    subterms. *)
 let scope_term : bool -> sig_state -> env -> p_term -> term =
   fun prv ss env t ->
   Bindlib.unbox (scope (M_Term prv) ss env t)
-
-(** [scope_term_with_params expo ss env sgm t] is similar to [scope_term expo
-   ss env sgm t] except that [t] must be a product or an abstraction. In this
-   case, no warnings are issued if the top binders are constant. *)
-let scope_term_with_params : bool -> sig_state -> env -> p_term -> term =
-  fun prv ss env t ->
-  let md = M_Term prv in
-  if Timed.(!log_enabled) then log_scop "%a" Pretty.term t;
-  let scope_b cons xs u =
-    Bindlib.unbox (scope_binder ~warn:false md ss cons env xs (Some u)) in
-  match t.elt with
-  | P_Abst(xs,u) -> scope_b _Abst xs u
-  | P_Prod(xs,u) -> scope_b _Prod xs u
-  | _ -> assert false
 
 (** [patt_vars t] returns a couple [(pvs,nl)]. The first compoment [pvs] is an
     association list giving the arity of all the “pattern variables” appearing

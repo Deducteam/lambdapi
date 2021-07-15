@@ -160,9 +160,7 @@ let handle_inductive_symbol : sig_state -> expo -> prop -> match_strat
   (* Obtaining the implicitness of arguments. *)
   let impl = Syntax.get_impl_term typ in
   (* We scope the type of the declaration. *)
-  let typ =
-    (if xs = [] then scope_term else scope_term_with_params)
-      (expo = Privat) ss Env.empty typ
+  let typ = scope_term (expo = Privat) ss Env.empty typ
   in
   let module Infer = (val Unif.typechecker ss.coercions) in
   (* We check that [a] is typable by a sort. *)
@@ -351,17 +349,7 @@ let get_proof_data : compiler -> sig_state -> p_command ->
      | _ -> ());
     (* Scoping the definition and the type. *)
     let pt, t, a, impl =
-      (* If there are parameters and both a type and a definition, then we use
-         term_with_params instead of scope_term, so that no
-         warning is issued during scoping if a parameter is unused in the type
-         or in the definition. In this case, this verification must therefore
-         be done afterwards. *)
-      let scope =
-        (if p_sym_arg = [] || p_sym_typ = None || p_sym_trm = None
-         then scope_term
-         else scope_term_with_params)
-          (expo = Privat) ss Env.empty
-      in
+      let scope = scope_term (expo = Privat) ss Env.empty in
       (* Scoping function keeping track of the position. *)
       let scope t = Pos.make t.pos (scope t) in
       (* Desugaring of parameters and scoping of [p_sym_trm]. *)
@@ -391,22 +379,6 @@ let get_proof_data : compiler -> sig_state -> p_command ->
             in
             Some (scope a), Syntax.get_impl_term a
       in
-      (* If there are parameters, output a warning if they are not used. *)
-      if p_sym_arg <> [] then begin
-        match a, t with
-        | Some a, Some t ->
-            let rec binders_warn k ty te =
-              if k <= 0 then () else
-              match ty, te with
-              | Prod(_, by), Abst(_, be) ->
-                  let x, ty, te = Bindlib.unbind2 by be in
-                  if Bindlib.(binder_constant by && binder_constant be) then
-                    wrn pos "Variable [%a] could be replaced by [_]." pp_var x;
-                  binders_warn (k-1) ty te
-              | _ -> assert false
-            in binders_warn (Syntax.nb_params p_sym_arg) a.elt t.elt
-        | _ -> ()
-        end;
       pt, t, a, impl
     in
     (* Build proof data. *)
