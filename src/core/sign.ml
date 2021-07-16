@@ -138,6 +138,10 @@ let link : t -> unit = fun sign ->
     let g n rs =
       let s = find sign n in
       s.sym_rules := !(s.sym_rules) @ List.map link_rule rs
+      (* /!\ The update of s.sym_dtree is not done here but later as a side
+         effect of link (dtree update of sign_symbols below) since
+         dependencies are recompiled or loaded and, in case a dependency is
+         loaded, it is linked too. *)
     in
     StrMap.iter g sm
   in
