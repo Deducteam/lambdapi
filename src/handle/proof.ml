@@ -2,7 +2,6 @@
 
 open! Lplib
 open Base
-open Extra
 open Timed
 open Core
 open Term
@@ -147,17 +146,6 @@ let remove_solved_goals : proof_state -> proof_state = fun ps ->
     | Typ gt -> !(gt.goal_meta.meta_value) = None
     | Unif _ -> true
   in {ps with proof_goals = List.filter f ps.proof_goals}
-
-(** [sys_metas ps] returns the map of system-generated metavariables of the
-   proof state [ps]. *)
-let sys_metas : proof_state -> meta IntMap.t = fun ps ->
-  let f sgm goal =
-    match goal with
-    | Typ {goal_meta=m;_} when m.meta_name = None ->
-        IntMap.add m.meta_key m sgm
-    | _ -> sgm
-  in
-  List.fold_left f IntMap.empty ps.proof_goals
 
 (** [focus_env ps] returns the scoping environment of the focused goal or the
    empty environment if there is none. *)
