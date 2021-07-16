@@ -32,17 +32,23 @@ let unif : problem -> ctxt -> term -> term -> unit =
 (** {1 Handling coercions} *)
 
 (* Simply unify types, no coercions yet. *)
-let coerce pb c t a b = unif pb c a b; t
+let coerce pb c t a b = unif pb c a b; (t, false)
 
 (** {1 Other rules} *)
+
+(** NOTE: functions {!val:type_enforce}, {!val:force} and {!val:infer}
+    return a boolean which is true iff the typechecked term has been
+    modified. It allows to bypass reconstruction of some Bindlib terms (which
+    call [lift |> bind_var x |> unbox]). It reduces the type checking time of
+    Holide by 21%. *)
 
 (** [type_enforce pb c a] returns a tuple [(a',s)] where [a'] is refined
     term [a] and [s] is a sort (Type or Kind) such that [a'] is of type
     [s]. *)
-let rec type_enforce : problem -> ctxt -> term -> term * term =
+let rec type_enforce : problem -> ctxt -> term -> term * term * bool =
  fun pb c a ->
   if Logger.log_enabled () then log "Type enforce [%a]" Print.pp_term a;
-  let a, s = infer pb c a in
+  let a, s, cui = infer pb c a in
   let sort =
     match unfold s with
     | Kind -> mk_Kind
@@ -52,25 +58,26 @@ let rec type_enforce : problem -> ctxt -> term -> term * term =
        this sort, first trying [Type], and if it does not succeed, trying
        [Kind]. *)
   in
-  let a = coerce pb c a s sort in
-  (a, sort)
+  let a, cu = coerce pb c a s sort in
+  (a, sort, cui || cu)
 
 (** [force pb c t a] returns a term [t'] such that [t'] has type [a],
     and [t'] is the refinement of [t]. *)
-and force : problem -> ctxt -> term -> term -> term =
+and force : problem -> ctxt -> term -> term -> term * bool =
  fun pb c te ty ->
  if Logger.log_enabled () then
    log "Force [%a] of [%a]" Print.pp_term te Print.pp_term ty;
  match unfold te with
  | Plac true ->
      unif pb c ty mk_Type;
-     LibMeta.make pb c mk_Type
- | Plac false -> LibMeta.make pb c ty
+     (LibMeta.make pb c mk_Type, true)
+ | Plac false -> (LibMeta.make pb c ty, true)
  | _ ->
-     let (t, a) = infer pb c te in
-     coerce pb c t a ty
+     let (t, a, cui) = infer pb c te in
+     let t, cu = coerce pb c t a ty in
+     (t, cu || cui)
 
-and infer_aux : problem -> ctxt -> term -> term * term =
+and infer_aux : problem -> ctxt -> term -> term * term * bool =
  fun pb c t ->
   match unfold t with
   | Patt _ -> assert false
@@ -78,26 +85,29 @@ and infer_aux : problem -> ctxt -> term -> term * term =
   | Kind -> assert false
   | Wild -> assert false
   | TRef _ -> assert false
-  | Type -> (mk_Type, mk_Kind)
+  | Type -> (mk_Type, mk_Kind, false)
   | Vari x ->
       let a = try Ctxt.type_of x c with Not_found -> assert false in
-      (t, a)
-  | Symb s -> (t, !(s.sym_type))
+      (t, a, false)
+  | Symb s -> (t, !(s.sym_type), false)
   | Plac true ->
       let m = LibMeta.make pb c mk_Type in
-      (m, mk_Type)
+      (m, mk_Type, true)
   | Plac false ->
       let mt = LibMeta.make pb c mk_Type in
       let m = LibMeta.make pb c mt in
-      (m, mt)
+      (m, mt, true)
   (* All metavariables inserted are typed. *)
   | (Meta (m, ts)) as t ->
+      let cu = Stdlib.ref false in
       let rec ref_esubst i range =
         (* Refine terms of the explicit substitution. *)
         if i >= Array.length ts then range else
           match unfold range with
           | Prod(ai, b) ->
-              ts.(i) <- force pb c ts.(i) ai;
+              let (tsi, cuf) = force pb c ts.(i) ai in
+              ts.(i) <- tsi;
+              Stdlib.(cu := !cu || cuf);
               let b = Bindlib.subst b ts.(i) in
               ref_esubst (i + 1) b
           | _ ->
@@ -106,17 +116,17 @@ and infer_aux : problem -> ctxt -> term -> term * term =
               assert false
       in
       let range = ref_esubst 0 !(m.meta_type) in
-      (t, range)
-  | LLet (t_ty, t, u) ->
+      (t, range, Stdlib.(!cu))
+  | LLet (t_ty, t, u) as top ->
       (* Check that [a] is a type, and refine it. *)
-      let t_ty, _ = type_enforce pb c t_ty in
+      let t_ty, _, cu_t_ty = type_enforce pb c t_ty in
       (* Check that [t] is of type [t_ty], and refine it *)
-      let t = force pb c t t_ty in
+      let t, cu_t = force pb c t t_ty in
       (* Unbind [u] and get new context with [x: t_ty ≔ t] *)
       let (x, u) = Bindlib.unbind u in
       let c = (x, t_ty, Some t) :: c in
       (* Infer type of [u'] and refine it. *)
-      let u, u_ty = infer pb c u in
+      let u, u_ty, cu_u = infer pb c u in
       ( match unfold u_ty with
         | Kind ->
             Error.fatal_msg "Let bindings cannot have a body of type Kind.";
@@ -125,51 +135,75 @@ and infer_aux : problem -> ctxt -> term -> term * term =
             raise NotTypable
         | _ -> () );
       let u_ty = Bindlib.(u_ty |> lift |> bind_var x |> unbox) in
-      let u = Bindlib.(u |> lift |> bind_var x |> unbox) in
-      (mk_LLet (t_ty, t, u), mk_LLet(t_ty, t, u_ty))
-  | Abst (dom, b) ->
+      let top_ty = mk_LLet (t_ty, t, u_ty) in
+      let cu = cu_t_ty || cu_t || cu_u in
+      let top =
+        if cu then
+          let u = Bindlib.(u |> lift |> bind_var x |> unbox) in
+          mk_LLet(t_ty, t, u)
+        else top
+      in
+      (top, top_ty, cu)
+  | Abst (dom, b) as top ->
       (* Domain must by of type Type (and not Kind) *)
-      let dom = force pb c dom mk_Type in
+      let dom, cu_dom = force pb c dom mk_Type in
       let (x, b) = Bindlib.unbind b in
       let c = (x, dom, None) :: c in
-      let b, range = infer pb c b in
-      let b = Bindlib.(lift b |> bind_var x |> unbox) in
+      let b, range, cu_b = infer pb c b in
       let range = Bindlib.(lift range |> bind_var x |> unbox) in
-      (mk_Abst (dom, b), mk_Prod (dom, range))
-  | Prod (dom, b) ->
+      let top_ty = mk_Prod (dom, range) in
+      let cu = cu_b || cu_dom in
+      let top =
+        if cu then
+          let b = Bindlib.(lift b |> bind_var x |> unbox) in
+          mk_Abst (dom, b)
+        else top
+      in
+      (top, top_ty, cu)
+  | Prod (dom, b) as top ->
       (* Domain must by of type Type (and not Kind) *)
-      let dom = force pb c dom mk_Type in
+      let dom, cu_dom = force pb c dom mk_Type in
       let (x, b) = Bindlib.unbind b in
       let c = (x, dom, None) :: c in
-      let b, b_s = type_enforce pb c b in
-      let b = Bindlib.(lift b |> bind_var x |> unbox) in
-      (mk_Prod (dom, b), b_s)
-  | Appl (t, u) -> (
-      let t, t_ty = infer pb c t in
+      let b, b_s, cu_b = type_enforce pb c b in
+      let cu = cu_b || cu_dom in
+      let top =
+        if cu then
+          let b = Bindlib.(lift b |> bind_var x |> unbox) in
+          mk_Prod (dom, b)
+        else top
+      in
+      (top, b_s, cu)
+  | Appl (t, u) as top -> (
+      let t, t_ty, cu_t = infer pb c t in
+      let return m t u range =
+        let ty = Bindlib.subst range u and cu = cu_t || m in
+        if cu then (mk_Appl (t, u), ty, cu) else (top, ty, cu)
+      in
       match Eval.whnf c t_ty with
-      | Prod (dom, b) ->
+      | Prod (dom, range) ->
           if Logger.log_enabled () then log "Appl-prod arg [%a]" Print.pp_term u;
-          let u = force pb c u dom in
-          (mk_Appl (t, u), Bindlib.subst b u)
+          let u, cu_u = force pb c u dom in
+          return cu_u t u range
       | Meta (_, _) ->
-          let u, u_ty = infer pb c u in
+          let u, u_ty, cu_u = infer pb c u in
           let range = LibMeta.make_codomain pb c u_ty in
           unif pb c t_ty (mk_Prod (u_ty, range));
-          (mk_Appl (t, u), Bindlib.subst range u)
+          return cu_u t u range
       | t_ty ->
           let domain = LibMeta.make pb c mk_Type in
           let range = LibMeta.make_codomain pb c domain in
-          let t = coerce pb c t t_ty (mk_Prod (domain, range)) in
+          let t, cu_t' = coerce pb c t t_ty (mk_Prod (domain, range)) in
           if Logger.log_enabled () then log "Appl-default arg [%a]" Print.pp_term u;
-          let u = force pb c u domain in
-          (mk_Appl (t, u), Bindlib.subst range u) )
+          let u, cu_u = force pb c u domain in
+          return (cu_t' || cu_u) t u range )
 
-and infer : problem -> ctxt -> term -> term * term = fun pb c t ->
+and infer : problem -> ctxt -> term -> term * term * bool = fun pb c t ->
   if Logger.log_enabled () then log "Infer [%a]" Print.pp_term t;
-  let t, t_ty = infer_aux pb c t in
+  let t, t_ty, cu = infer_aux pb c t in
   if Logger.log_enabled () then
-    log "Inferred [%a: %a]" Print.pp_term t Print.pp_term t_ty;
-  (t, t_ty)
+    log "Inferred [%a:@ %a]" Print.pp_term t Print.pp_term t_ty;
+  (t, t_ty, cu)
 
 (** {b NOTE} when unbinding a binder [b] (e.g. when inferring the type of an
     abstraction [λ x, e]) in context [c], [c] is always extended, even if
@@ -190,18 +224,20 @@ let noexn : (problem -> ctxt -> 'a -> 'b) -> problem -> ctxt -> 'a ->
     Some (f pb c args)
   with NotTypable -> None
 
-let infer_noexn pb c t =
+let infer_noexn pb c t : (term * term) option =
   if Logger.log_enabled () then
     log "Top infer %a%a" Print.pp_ctxt c Print.pp_term t;
+  let infer pb c t = let (t,t_ty,_) = infer pb c t in (t, t_ty) in
   noexn infer pb c t
 
-let check_noexn pb c t a =
+let check_noexn pb c t a : term option =
   if Logger.log_enabled () then log "Top check \"%a\"" Print.pp_typing
       (c, t, a);
-  let force pb c (t, a) = force pb c t a in
+  let force pb c (t, a) = fst (force pb c t a) in
   noexn force pb c (t, a)
 
 let check_sort_noexn pb c t : (term * term) option =
   if Logger.log_enabled () then
     log "Top check sort %a%a" Print.pp_ctxt c Print.pp_term t;
+  let type_enforce pb c t = let (t, s, _) = type_enforce pb c t in (t, s) in
   noexn type_enforce pb c t
