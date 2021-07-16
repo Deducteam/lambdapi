@@ -43,6 +43,7 @@ let iter : (term -> unit) -> term -> unit = fun action ->
     action t;
     match t with
     | Wild
+    | Plac _
     | TRef(_)
     | Vari(_)
     | Type

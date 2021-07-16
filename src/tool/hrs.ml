@@ -24,6 +24,7 @@ let print_term : bool -> term pp = fun lhs ->
     match unfold t with
     (* Forbidden cases. *)
     | Meta(_,_)    -> assert false
+    | Plac _       -> assert false
     | TRef(_)      -> assert false
     | TEnv(_,_)    -> assert false
     | Wild         -> assert false

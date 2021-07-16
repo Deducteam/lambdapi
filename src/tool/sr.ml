@@ -63,6 +63,7 @@ let patt_to_tenv : term_env Bindlib.var array -> term -> tbox = fun vars ->
     | Kind        -> assert false (* Cannot appear in LHS. *)
     | Prod(_,_)   -> assert false (* Cannot appear in LHS. *)
     | LLet(_,_,_) -> assert false (* Cannot appear in LHS. *)
+    | Plac _      -> assert false (* Cannot appear in LHS. *)
     | Meta(_,_)   -> assert false (* Cannot appear in LHS. *)
     | TEnv(_,_)   -> assert false (* Cannot appear in LHS. *)
     | Wild        -> assert false (* Cannot appear in LHS. *)
@@ -117,6 +118,8 @@ let symb_to_tenv
           (_LLet (symb_to_tenv a) (symb_to_tenv t) b, ts)
       | Meta(_,_)   ->
           fatal pos "A metavariable could not be instantiated in the RHS."
+      | Plac _      ->
+          fatal pos "A placeholder hasn't been instantiated in the RHS."
       | TEnv(_,_)   -> assert false (* TEnv have been replaced in [t]. *)
       | Appl(_,_)   -> assert false (* Cannot appear in RHS. *)
       | Patt(_,_,_) -> assert false (* Cannot appear in RHS. *)
@@ -181,7 +184,7 @@ let check_rule : Scope.pre_rule Pos.loc -> rule = fun ({pos; elt} as pr) ->
   (* Infer the typing constraints of the LHS. *)
   match Infer.infer_noexn p [] lhs_with_metas with
   | None -> fatal pos "The LHS is not typable."
-  | Some ty_lhs ->
+  | Some (lhs_with_metas, ty_lhs) ->
   (* Try to simplify constraints. Don't check typing when instantiating
      a metavariable. *)
   if not (Unif.solve_noexn ~type_check:false p) then
@@ -227,8 +230,9 @@ let check_rule : Scope.pre_rule Pos.loc -> rule = fun ({pos; elt} as pr) ->
      the function symbols of [symbols]. *)
   (* Compute the constraints for the RHS to have the same type as the LHS. *)
   let p = new_problem() in
-  if not (Infer.check_noexn p [] rhs_with_metas ty_lhs) then
-    fatal pos "The RHS does not have the same type as the LHS.";
+  match Infer.check_noexn p [] rhs_with_metas ty_lhs with
+  | None -> fatal pos "The RHS does not have the same type as the LHS."
+  | Some rhs_with_metas ->
   (* Solving the typing constraints of the RHS. *)
   if not (Unif.solve_noexn p) then
     fatal pos "The rewriting rule does not preserve typing.";

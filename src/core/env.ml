@@ -139,35 +139,3 @@ let of_prod_using : ctxt -> tvar array -> term -> env * term = fun c xs t ->
              let env = add xs.(i) (lift a) None env in
              build_env (i+1) env (Bindlib.subst b (mk_Vari(xs.(i)))))
   in build_env 0 [] t
-
-(** [fresh_meta_type p env] creates a fresh metavariable of type [Type] in
-    environment [env], and adds it to the metas of [p]. *)
-let fresh_meta_type : problem -> t -> tbox = fun p env ->
-  let vs = to_tbox env in
-  let arity = Array.length vs in
-  let tm = to_prod_box env _Type in
-  _Meta_full (LibMeta.fresh_box p tm arity) vs
-
-(** [fresh_meta_tbox p env] creates a _Meta tbox from a fresh metavariable
-   whose type is itself a fresh metavariable of type [fresh_meta_type env],
-   and add them to the metas of [p]. *)
-let fresh_meta_tbox : problem -> t -> tbox = fun p env ->
-  let vs = to_tbox env in
-  let arity = Array.length vs in
-  let bm1 = LibMeta.fresh_box p (to_prod_box env _Type) arity in
-  let tm = to_prod_box env (_Meta_full bm1 vs) in
-  _Meta_full (LibMeta.fresh_box p tm arity) vs
-
-(** [fresh_meta_term p env] creates a Meta term from a fresh metavariable
-   whose type is a fresh metavariable of type [to_prod env Type], and adds it
-   to the metas of [p]. *)
-let fresh_meta_term : problem -> env -> term = fun p env ->
-  Bindlib.unbox (fresh_meta_tbox p env)
-
-(** [app_fresh_metas p t n env] returns the application of [t] to [n] fresh
-   meta terms, and adds them to [p]. *)
-let app_fresh_meta_terms : problem -> term -> int -> env -> term =
-  fun p t n env ->
-  let rec add t n =
-    if n <= 0 then t else add (mk_Appl(t, fresh_meta_term p env)) (n-1)
-  in add t n
