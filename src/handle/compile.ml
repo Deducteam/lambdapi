@@ -88,6 +88,11 @@ let rec compile_with :
       Path.Map.iter compile !(sign.sign_deps);
       loaded := Path.Map.add mp sign !loaded;
       Sign.link sign;
+      (* Since Unif_rule.sign is always assumed to be already loaded, we need
+         to explicitly update the decision tree of Unif_rule.equiv since it is
+         not done in linking which normally follows loading. *)
+      if Path.Map.mem Unif_rule.path !(sign.sign_deps) then
+        Tree.update_dtree Unif_rule.equiv;
       Console.out 2 "Loaded \"%s\"\n%!" obj; sign
     end
 
