@@ -33,7 +33,7 @@ type t = sig_state
 let create_sign : Path.t -> Sign.t = fun sign_path ->
   let d = Sign.dummy () in
   {d with sign_path;
-          sign_deps = ref (Path.Map.singleton Unif_rule.path [])}
+          sign_deps = ref (Path.Map.singleton Unif_rule.path StrMap.empty)}
 
 (** [add_symbol ss expo prop mstrat opaq id typ impl def] generates a new
    signature state from [ss] by creating a new symbol with expo [e], property

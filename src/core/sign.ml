@@ -33,7 +33,7 @@ type notation =
 type t =
   { sign_symbols  : (sym * Pos.popt) StrMap.t ref
   ; sign_path     : Path.t
-  ; sign_deps     : (string * rule) list Path.Map.t ref
+  ; sign_deps     : rule list StrMap.t Path.Map.t ref
   (** Maps a path to a list of pairs (symbol name, rule). *)
   ; sign_builtins : sym StrMap.t ref
   ; sign_notations: notation SymMap.t ref
@@ -133,14 +133,14 @@ let link : t -> unit = fun sign ->
     s.sym_rules := List.map link_rule !(s.sym_rules)
   in
   StrMap.iter f !(sign.sign_symbols);
-  let f mp l =
+  let f mp sm =
     let sign = Path.Map.find mp !loaded in
-    let h (n, r) =
+    let g n rs =
       let s = find sign n in
-      s.sym_rules := !(s.sym_rules) @ [link_rule r];
+      s.sym_rules := !(s.sym_rules) @ List.map link_rule rs;
       Tree.update_dtree s
     in
-    List.iter h l
+    StrMap.iter g sm
   in
   Path.Map.iter f !(sign.sign_deps);
   sign.sign_builtins := StrMap.map link_symb !(sign.sign_builtins);
@@ -199,7 +199,7 @@ let unlink : t -> unit = fun sign ->
     List.iter unlink_rule !(s.sym_rules)
   in
   StrMap.iter f !(sign.sign_symbols);
-  let f _ ls = List.iter (fun (_, r) -> unlink_rule r) ls in
+  let f _ sm = StrMap.iter (fun _ rs -> List.iter unlink_rule rs) sm in
   Path.Map.iter f !(sign.sign_deps);
   StrMap.iter (fun _ s -> unlink_sym s) !(sign.sign_builtins);
   SymMap.iter (fun s _ -> unlink_sym s) !(sign.sign_notations);
@@ -301,8 +301,8 @@ let read : string -> t = fun fname ->
     StrMap.iter (fun _ (s,_) -> reset_sym s) !(sign.sign_symbols);
     StrMap.iter (fun _ s -> shallow_reset_sym s) !(sign.sign_builtins);
     SymMap.iter (fun s _ -> shallow_reset_sym s) !(sign.sign_notations);
-    let f (_,r) = reset_rule r in
-    Path.Map.iter (fun _ -> List.iter f) !(sign.sign_deps);
+    let f _ sm = StrMap.iter (fun _ rs -> List.iter reset_rule rs) sm in
+    Path.Map.iter f !(sign.sign_deps);
     let shallow_reset_ind_data i =
       shallow_reset_sym i.ind_prop;
       List.iter shallow_reset_sym i.ind_cons
@@ -322,12 +322,10 @@ let read : string -> t = fun fname ->
 let add_rule : t -> sym -> rule -> unit = fun sign sym r ->
   sym.sym_rules := !(sym.sym_rules) @ [r];
   if sym.sym_path <> sign.sign_path then
-    let m =
-      try Path.Map.find sym.sym_path !(sign.sign_deps)
-      with Not_found -> assert false
-    in
-    let m = (sym.sym_name, r) :: m in
-    sign.sign_deps := Path.Map.add sym.sym_path m !(sign.sign_deps)
+    let sm = Path.Map.find sym.sym_path !(sign.sign_deps) in
+    let f = function None -> Some [r] | Some rs -> Some (rs @ [r]) in
+    let sm = StrMap.update sym.sym_name f sm in
+    sign.sign_deps := Path.Map.add sym.sym_path sm !(sign.sign_deps)
 
 (** [add_builtin sign name sym] binds the builtin name [name] to [sym] (in the
     signature [sign]). The previous binding, if any, is discarded. *)
