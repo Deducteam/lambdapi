@@ -88,6 +88,8 @@ let rec compile_with :
       Path.Map.iter compile !(sign.sign_deps);
       loaded := Path.Map.add mp sign !loaded;
       Sign.link sign;
+      if Path.Map.mem Unif_rule.path !(sign.sign_deps) then
+        Tree.update_dtree Unif_rule.equiv;
       Console.out 2 "Loaded \"%s\"\n%!" obj; sign
     end
 

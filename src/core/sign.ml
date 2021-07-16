@@ -137,8 +137,7 @@ let link : t -> unit = fun sign ->
     let sign = Path.Map.find mp !loaded in
     let g n rs =
       let s = find sign n in
-      s.sym_rules := !(s.sym_rules) @ List.map link_rule rs;
-      Tree.update_dtree s
+      s.sym_rules := !(s.sym_rules) @ List.map link_rule rs
     in
     StrMap.iter g sm
   in
