@@ -127,25 +127,22 @@ let link : t -> unit = fun sign ->
     try find (Path.Map.find s.sym_path !loaded) s.sym_name
     with Not_found -> assert false
   in
-  let fn _ (s,_) =
+  let f _ (s,_) =
     s.sym_type  := link_term mk_Appl !(s.sym_type);
     s.sym_def   := Option.map (link_term mk_Appl) !(s.sym_def);
     s.sym_rules := List.map link_rule !(s.sym_rules)
   in
-  StrMap.iter fn !(sign.sign_symbols);
-  let gn mp ls =
-    let sign =
-      try Path.Map.find mp !loaded
-      with Not_found -> assert false
-    in
+  StrMap.iter f !(sign.sign_symbols);
+  let f mp l =
+    let sign = Path.Map.find mp !loaded in
     let h (n, r) =
-      let r = link_rule r in
       let s = find sign n in
-      s.sym_rules := !(s.sym_rules) @ [r]
+      s.sym_rules := !(s.sym_rules) @ [link_rule r];
+      Tree.update_dtree s
     in
-    List.iter h ls
+    List.iter h l
   in
-  Path.Map.iter gn !(sign.sign_deps);
+  Path.Map.iter f !(sign.sign_deps);
   sign.sign_builtins := StrMap.map link_symb !(sign.sign_builtins);
   sign.sign_notations :=
     SymMap.fold (fun s n m -> SymMap.add (link_symb s) n m)
@@ -156,8 +153,8 @@ let link : t -> unit = fun sign ->
       ind_prop = link_symb i.ind_prop; ind_nb_params = i.ind_nb_params;
       ind_nb_types = i.ind_nb_types; ind_nb_cons = i.ind_nb_cons }
   in
-  let fn s i m = SymMap.add (link_symb s) (link_ind_data i) m in
-  sign.sign_ind := SymMap.fold fn !(sign.sign_ind) SymMap.empty
+  let f s i m = SymMap.add (link_symb s) (link_ind_data i) m in
+  sign.sign_ind := SymMap.fold f !(sign.sign_ind) SymMap.empty
 
 (** [unlink sign] removes references to external symbols (and thus signatures)
     in the signature [sign]. This function is used to minimize the size of our
