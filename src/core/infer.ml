@@ -134,6 +134,11 @@ functor
               let meta_range, range =
                 LibTerm.unbind_meta ctx range (l - source - arity)
               in
+              let f = function
+                | Meta (m, _) -> m.meta_type := LibTerm.metafy ctx !(m.meta_type)
+                | _ -> ()
+              in
+              List.iter f meta_range;
               let metas =
                 let open Array in
                 concat [of_list meta_dom; [|src_meta|]; of_list meta_range]

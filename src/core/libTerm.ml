@@ -179,6 +179,38 @@ module Meta = struct
 
 end
 
+(** [metafy ctx t] transforms all placeholders of [t] into metavariables in
+    context [ctx]. Use with care, this should be performed by the type
+    checker. In particular, context [ctx] must be refined. *)
+let rec metafy : ctxt -> term -> term = fun ctx t ->
+  let bder cons a b =
+    let (x, b) = Bindlib.unbind b in
+    let a = metafy ctx a in
+    let ctx = (x, a, None) :: ctx in
+    let b = Bindlib.(metafy ctx b |> lift |> bind_var x |> unbox) in
+    cons (a, b)
+  in
+  match unfold t with
+  | Wild | TEnv _ | Patt _ -> assert false
+  | Kind | Type | Vari _ | Symb _ as t -> t
+  | LLet (a, t, u) ->
+      let a = metafy ctx a in
+      let t = metafy ctx t in
+      let (x, u) = Bindlib.unbind u in
+      let ctx = (x, a, Some t) :: ctx in
+      let u = Bindlib.(metafy ctx u |> lift |> bind_var x |> unbox) in
+      mk_LLet (a, t, u)
+  | TRef(t) -> mk_TRef(ref (Option.map (metafy ctx) !t))
+  | Plac (true, name) -> Meta.make ?name ctx mk_Type
+  | Plac (false, name) ->
+      let mt = Meta.make ctx mk_Type in
+      Meta.make ?name ctx mt
+  | Appl(t, u) -> mk_Appl (metafy ctx t, metafy ctx u)
+  | Abst(a,b) -> bder mk_Abst a b
+  | Prod(a, b) -> bder mk_Prod a b
+  | Meta (_, ts) as t->
+      Array.iteri (fun i tsi -> ts.(i) <- metafy ctx tsi) ts; t
+
 (** [distinct_vars ctx ts] checks that the terms [ts] are distinct
    variables. If so, the variables are returned. *)
 let distinct_vars : ctxt -> term array -> tvar array option = fun ctx ts ->
