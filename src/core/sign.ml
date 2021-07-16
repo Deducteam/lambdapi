@@ -193,21 +193,21 @@ let unlink : t -> unit = fun sign ->
     let (_, rhs) = Bindlib.unmbind r.rhs in
     unlink_term rhs
   in
-  let fn _ (s,_) =
+  let f _ (s,_) =
     unlink_term !(s.sym_type);
     Option.iter unlink_term !(s.sym_def);
     List.iter unlink_rule !(s.sym_rules)
   in
-  StrMap.iter fn !(sign.sign_symbols);
-  let gn _ ls = List.iter (fun (_, r) -> unlink_rule r) ls in
-  Path.Map.iter gn !(sign.sign_deps);
+  StrMap.iter f !(sign.sign_symbols);
+  let f _ ls = List.iter (fun (_, r) -> unlink_rule r) ls in
+  Path.Map.iter f !(sign.sign_deps);
   StrMap.iter (fun _ s -> unlink_sym s) !(sign.sign_builtins);
   SymMap.iter (fun s _ -> unlink_sym s) !(sign.sign_notations);
   let unlink_ind_data i =
     List.iter unlink_sym i.ind_cons; unlink_sym i.ind_prop
   in
-  let fn s i = unlink_sym s; unlink_ind_data i in
-  SymMap.iter fn !(sign.sign_ind)
+  let f s i = unlink_sym s; unlink_ind_data i in
+  SymMap.iter f !(sign.sign_ind)
 
 (** [add_symbol sign expo prop mstrat opaq name typ impl] adds in the
    signature [sign] a symbol with name [name], exposition [expo], property
@@ -301,14 +301,14 @@ let read : string -> t = fun fname ->
     StrMap.iter (fun _ (s,_) -> reset_sym s) !(sign.sign_symbols);
     StrMap.iter (fun _ s -> shallow_reset_sym s) !(sign.sign_builtins);
     SymMap.iter (fun s _ -> shallow_reset_sym s) !(sign.sign_notations);
-    let fn (_,r) = reset_rule r in
-    Path.Map.iter (fun _ -> List.iter fn) !(sign.sign_deps);
+    let f (_,r) = reset_rule r in
+    Path.Map.iter (fun _ -> List.iter f) !(sign.sign_deps);
     let shallow_reset_ind_data i =
       shallow_reset_sym i.ind_prop;
       List.iter shallow_reset_sym i.ind_cons
     in
-    let fn s i = shallow_reset_sym s; shallow_reset_ind_data i in
-    SymMap.iter fn !(sign.sign_ind);
+    let f s i = shallow_reset_sym s; shallow_reset_ind_data i in
+    SymMap.iter f !(sign.sign_ind);
     sign
   in
   reset_timed_refs sign
@@ -357,8 +357,8 @@ let add_inductive : t -> sym -> sym list -> sym -> int -> int -> unit =
     that [sign] itself appears at the end of the list. *)
 let rec dependencies : t -> (Path.t * t) list = fun sign ->
   (* Recursively compute dependencies for the immediate dependencies. *)
-  let fn p _ l = dependencies (Path.Map.find p !loaded) :: l in
-  let deps = Path.Map.fold fn !(sign.sign_deps) [[(sign.sign_path, sign)]] in
+  let f p _ l = dependencies (Path.Map.find p !loaded) :: l in
+  let deps = Path.Map.fold f !(sign.sign_deps) [[(sign.sign_path, sign)]] in
   (* Minimize and put everything together. *)
   let rec minimize acc deps =
     let not_here (p,_) =
