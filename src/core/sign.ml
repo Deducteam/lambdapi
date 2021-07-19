@@ -33,7 +33,7 @@ type notation =
 type t =
   { sign_symbols  : (sym * Pos.popt) StrMap.t ref
   ; sign_path     : Path.t
-  ; sign_deps     : (string * rule) list Path.Map.t ref
+  ; sign_deps     : rule list StrMap.t Path.Map.t ref
   (** Maps a path to a list of pairs (symbol name, rule). *)
   ; sign_builtins : sym StrMap.t ref
   ; sign_notations: notation SymMap.t ref
@@ -127,25 +127,25 @@ let link : t -> unit = fun sign ->
     try find (Path.Map.find s.sym_path !loaded) s.sym_name
     with Not_found -> assert false
   in
-  let fn _ (s,_) =
+  let f _ (s,_) =
     s.sym_type  := link_term mk_Appl !(s.sym_type);
     s.sym_def   := Option.map (link_term mk_Appl) !(s.sym_def);
     s.sym_rules := List.map link_rule !(s.sym_rules)
   in
-  StrMap.iter fn !(sign.sign_symbols);
-  let gn mp ls =
-    let sign =
-      try Path.Map.find mp !loaded
-      with Not_found -> assert false
-    in
-    let h (n, r) =
-      let r = link_rule r in
+  StrMap.iter f !(sign.sign_symbols);
+  let f mp sm =
+    let sign = Path.Map.find mp !loaded in
+    let g n rs =
       let s = find sign n in
-      s.sym_rules := !(s.sym_rules) @ [r]
+      s.sym_rules := !(s.sym_rules) @ List.map link_rule rs
+      (* /!\ The update of s.sym_dtree is not done here but later as a side
+         effect of link (dtree update of sign_symbols below) since
+         dependencies are recompiled or loaded and, in case a dependency is
+         loaded, it is linked too. *)
     in
-    List.iter h ls
+    StrMap.iter g sm
   in
-  Path.Map.iter gn !(sign.sign_deps);
+  Path.Map.iter f !(sign.sign_deps);
   sign.sign_builtins := StrMap.map link_symb !(sign.sign_builtins);
   sign.sign_notations :=
     SymMap.fold (fun s n m -> SymMap.add (link_symb s) n m)
@@ -156,8 +156,8 @@ let link : t -> unit = fun sign ->
       ind_prop = link_symb i.ind_prop; ind_nb_params = i.ind_nb_params;
       ind_nb_types = i.ind_nb_types; ind_nb_cons = i.ind_nb_cons }
   in
-  let fn s i m = SymMap.add (link_symb s) (link_ind_data i) m in
-  sign.sign_ind := SymMap.fold fn !(sign.sign_ind) SymMap.empty
+  let f s i m = SymMap.add (link_symb s) (link_ind_data i) m in
+  sign.sign_ind := SymMap.fold f !(sign.sign_ind) SymMap.empty
 
 (** [unlink sign] removes references to external symbols (and thus signatures)
     in the signature [sign]. This function is used to minimize the size of our
@@ -196,21 +196,21 @@ let unlink : t -> unit = fun sign ->
     let (_, rhs) = Bindlib.unmbind r.rhs in
     unlink_term rhs
   in
-  let fn _ (s,_) =
+  let f _ (s,_) =
     unlink_term !(s.sym_type);
     Option.iter unlink_term !(s.sym_def);
     List.iter unlink_rule !(s.sym_rules)
   in
-  StrMap.iter fn !(sign.sign_symbols);
-  let gn _ ls = List.iter (fun (_, r) -> unlink_rule r) ls in
-  Path.Map.iter gn !(sign.sign_deps);
+  StrMap.iter f !(sign.sign_symbols);
+  let f _ sm = StrMap.iter (fun _ rs -> List.iter unlink_rule rs) sm in
+  Path.Map.iter f !(sign.sign_deps);
   StrMap.iter (fun _ s -> unlink_sym s) !(sign.sign_builtins);
   SymMap.iter (fun s _ -> unlink_sym s) !(sign.sign_notations);
   let unlink_ind_data i =
     List.iter unlink_sym i.ind_cons; unlink_sym i.ind_prop
   in
-  let fn s i = unlink_sym s; unlink_ind_data i in
-  SymMap.iter fn !(sign.sign_ind)
+  let f s i = unlink_sym s; unlink_ind_data i in
+  SymMap.iter f !(sign.sign_ind)
 
 (** [add_symbol sign expo prop mstrat opaq name typ impl] adds in the
    signature [sign] a symbol with name [name], exposition [expo], property
@@ -304,14 +304,14 @@ let read : string -> t = fun fname ->
     StrMap.iter (fun _ (s,_) -> reset_sym s) !(sign.sign_symbols);
     StrMap.iter (fun _ s -> shallow_reset_sym s) !(sign.sign_builtins);
     SymMap.iter (fun s _ -> shallow_reset_sym s) !(sign.sign_notations);
-    let fn (_,r) = reset_rule r in
-    Path.Map.iter (fun _ -> List.iter fn) !(sign.sign_deps);
+    let f _ sm = StrMap.iter (fun _ rs -> List.iter reset_rule rs) sm in
+    Path.Map.iter f !(sign.sign_deps);
     let shallow_reset_ind_data i =
       shallow_reset_sym i.ind_prop;
       List.iter shallow_reset_sym i.ind_cons
     in
-    let fn s i = shallow_reset_sym s; shallow_reset_ind_data i in
-    SymMap.iter fn !(sign.sign_ind);
+    let f s i = shallow_reset_sym s; shallow_reset_ind_data i in
+    SymMap.iter f !(sign.sign_ind);
     sign
   in
   reset_timed_refs sign
@@ -325,12 +325,10 @@ let read : string -> t = fun fname ->
 let add_rule : t -> sym -> rule -> unit = fun sign sym r ->
   sym.sym_rules := !(sym.sym_rules) @ [r];
   if sym.sym_path <> sign.sign_path then
-    let m =
-      try Path.Map.find sym.sym_path !(sign.sign_deps)
-      with Not_found -> assert false
-    in
-    let m = (sym.sym_name, r) :: m in
-    sign.sign_deps := Path.Map.add sym.sym_path m !(sign.sign_deps)
+    let sm = Path.Map.find sym.sym_path !(sign.sign_deps) in
+    let f = function None -> Some [r] | Some rs -> Some (rs @ [r]) in
+    let sm = StrMap.update sym.sym_name f sm in
+    sign.sign_deps := Path.Map.add sym.sym_path sm !(sign.sign_deps)
 
 (** [add_builtin sign name sym] binds the builtin name [name] to [sym] (in the
     signature [sign]). The previous binding, if any, is discarded. *)
@@ -360,8 +358,8 @@ let add_inductive : t -> sym -> sym list -> sym -> int -> int -> unit =
     that [sign] itself appears at the end of the list. *)
 let rec dependencies : t -> (Path.t * t) list = fun sign ->
   (* Recursively compute dependencies for the immediate dependencies. *)
-  let fn p _ l = dependencies (Path.Map.find p !loaded) :: l in
-  let deps = Path.Map.fold fn !(sign.sign_deps) [[(sign.sign_path, sign)]] in
+  let f p _ l = dependencies (Path.Map.find p !loaded) :: l in
+  let deps = Path.Map.fold f !(sign.sign_deps) [[(sign.sign_path, sign)]] in
   (* Minimize and put everything together. *)
   let rec minimize acc deps =
     let not_here (p,_) =

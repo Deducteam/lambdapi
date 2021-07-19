@@ -287,11 +287,12 @@ module SymMap : Map.S with type key = sym
 val create_sym : Common.Path.t -> expo -> prop -> match_strat -> bool ->
   string -> term -> bool list -> sym
 
-(** [is_injective s] tells whether the symbol is injective. *)
-val is_injective : sym -> bool
-
 (** [is_constant s] tells whether the symbol is a constant. *)
 val is_constant : sym -> bool
+
+(** [is_injective s] tells whether [s] is injective, which is in partiular the
+   case if [s] is constant. *)
+val is_injective : sym -> bool
 
 (** [is_private s] tells whether the symbol [s] is private. *)
 val is_private : sym -> bool

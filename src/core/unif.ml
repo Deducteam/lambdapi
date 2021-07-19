@@ -147,8 +147,9 @@ let decompose : problem -> ctxt -> term list -> term list -> unit =
     List.iter2 (fun a b -> add_constr p (c,a,b)) ts1 ts2
 
 (** For a problem of the form [h1 ≡ h2] with [h1 = m[ts]], [h2 = Πx:_,_] (or
-   the opposite) and [ts] distinct bound variables, [imitate_prod m h1 h2 p]
-   instantiates [m] to a product and adds the constraint [h1 ≡ h2] to [p]. *)
+   the opposite) and [ts] distinct bound variables, [imitate_prod p c m h1 h2
+   p] instantiates [m] to a product and adds the constraint [h1 ≡ h2] to
+   [p]. *)
 let imitate_prod : problem -> ctxt -> meta -> term -> term -> unit =
   fun p c m h1 h2 ->
   if Logger.log_enabled () then log_unif "imitate_prod %a" pp_meta m;
@@ -170,7 +171,9 @@ let imitate_inj :
                                    pp_term (add_args (mk_Symb s) ts);
   let exception Cannot_imitate in
   try
-    if not (us = [] && is_injective s) then raise Cannot_imitate;
+    if us <> [] || not (is_injective s)
+      || LibMeta.occurs m c (add_args (mk_Symb s) ts) then
+      raise Cannot_imitate;
     let vars =
       match distinct_vars c vs with
       | None -> raise Cannot_imitate
@@ -302,18 +305,15 @@ let sym_sym_whnf :
       -> unit =
   fun p c t1 s1 ts1 t2 s2 ts2 ->
   if s1 == s2 then
-    match s1.sym_prop with
-    | (Const|Injec) ->
-        if List.same_length ts1 ts2 then decompose p c ts1 ts2
-        else error t1 t2
-    | _ -> add_to_unsolved p c t1 t2
+    if is_injective s1 then
+      if List.same_length ts1 ts2 then decompose p c ts1 ts2
+      else error t1 t2
+    else add_to_unsolved p c t1 t2
   else
-    match s1.sym_prop, s2.sym_prop with
-    | Const, Const -> error t1 t2
-    | _, _ ->
-        match inverse_opt s1 ts1 t2 with
-        | Some (t, u) -> add_constr p (c,t,u)
-        | None -> inverse p c t2 s2 ts2 t1
+    if is_constant s1 && is_constant s2 then error t1 t2
+    else match inverse_opt s1 ts1 t2 with
+      | Some (t, u) -> add_constr p (c,t,u)
+      | None -> inverse p c t2 s2 ts2 t1
 
 (** [solve_noexn p] tries to simplify the constraints of [p].
 @raise [Unsolvable] if it finds a constraint that cannot be satisfied.
@@ -366,11 +366,10 @@ let solve : problem -> unit = fun p ->
     error t1 t2
 
   | Symb s1, Symb s2
-       when s1 == s2 && s1.sym_prop <> Defin && List.same_length ts1 ts2 ->
+       when s1 == s2 && is_injective s1 && List.same_length ts1 ts2 ->
       decompose p c ts1 ts2
   | Symb s1, Symb s2
-       when s1 != s2 && s1.sym_prop = Const && s2.sym_prop = Const ->
-      error t1 t2
+       when s1 != s2 && is_constant s1 && is_constant s2 -> error t1 t2
 
   (*TODO try to factorize calls to
      instantiate/instantiable/nl_distinct_vars. *)
