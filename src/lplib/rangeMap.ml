@@ -32,7 +32,8 @@ module Make (Range : Range_intf.S) = struct
   let to_string elt_to_string (map : 'a t) =
     let f key elt str =
       let _, e = elt in
-      Range.interval_to_string key ^ "Token : " ^ elt_to_string e ^ "\n\n" ^ str
+      Range.interval_to_string key
+      ^ "Token : " ^ elt_to_string e ^ "\n\n" ^ str
     in
     RangeMap.fold f map ""
 end

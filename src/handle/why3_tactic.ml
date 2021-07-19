@@ -206,7 +206,8 @@ let handle :
     Sign.add_symbol ss.signature Privat Const Eager true
       (Pos.make pos axiom_name) !(m.meta_type) []
   in
-  if Logger.log_enabled () then log_why3 "axiom %a created" Print.pp_uid axiom_name;
+  if Logger.log_enabled () then
+    log_why3 "axiom %a created" Print.pp_uid axiom_name;
   (* Return the variable terms of each item in the context. *)
   let terms = List.rev_map (fun (_, (x, _, _)) -> mk_Vari x) hyps in
   (* Apply the instance of the axiom with context. *)

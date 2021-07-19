@@ -34,7 +34,7 @@ let run : string -> Sign.t pp -> string -> Sign.t -> bool option =
   (* Feed it the printed signature. *)
   pp (Format.formatter_of_out_channel oc) sign;
   flush oc; close_out oc;
-  if Logger.log_enabled () then log_xtrn "Wrote the data and closed the pipe.";
+  if Logger.log_enabled() then log_xtrn "Wrote the data and closed the pipe.";
   (* Read the answer (and possible error messages). *)
   let out = input_lines ic in
   if Logger.log_enabled () && out <> [] then

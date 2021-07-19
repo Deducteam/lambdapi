@@ -287,10 +287,10 @@ let rec_name ind_sym = Escape.add_prefix "ind_" ind_sym.sym_name
    [ind_pred_map].
 
    For instance, [inductive T : Π(i1:A1),..,Π(im:Am), TYPE := c1:T1 | .. |
-   cn:Tn] generates a rule for each constructor. If [Ti = Π x1:B1,..,Π xk:Bk,T]
-   then the rule for ci is [ind_T p pc1 .. pcn _ .. _ (ci x1 .. xk) --> pci x1
-   t1? ... xk tk?]  with m underscores, [tj? = ind_T p pc1 .. pcn _ .. _ xj]
-   if [Bj = T v1 ... vm], and nothing otherwise. *)
+   cn:Tn] generates a rule for each constructor. If [Ti = Π x1:B1,..,Π
+   xk:Bk,T] then the rule for ci is [ind_T p pc1 .. pcn _ .. _ (ci x1 .. xk)
+   --> pci x1 t1? ... xk tk?]  with m underscores, [tj? = ind_T p pc1 .. pcn _
+   .. _ xj] if [Bj = T v1 ... vm], and nothing otherwise. *)
 let iter_rec_rules :
       popt -> inductive -> tvar array -> ind_pred_map
       -> (p_rule -> unit) -> unit =

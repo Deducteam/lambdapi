@@ -76,7 +76,8 @@ let tac_admit :
 (** [tac_solve pos ps] tries to simplify the unification goals of the proof
    state [ps] and fails if constraints are unsolvable. *)
 let tac_solve : popt -> proof_state -> proof_state = fun pos ps ->
-  if Logger.log_enabled () then log_tact (red "@[<v>tac_solve@ %a@]") pp_goals ps;
+  if Logger.log_enabled () then
+    log_tact (red "@[<v>tac_solve@ %a@]") pp_goals ps;
   let gs_typ, gs_unif = List.partition is_typ ps.proof_goals in
   let p = new_problem() in
   let f ms = function
@@ -103,7 +104,8 @@ let tac_refine :
       -> proof_state =
   fun pos ps gt gs p t ->
   if Logger.log_enabled () then
-    log_tact (red "@[<v>@[tac_refine@ %a@]@,%a@]%a") pp_term t pp_goals ps pp_problem p;
+    log_tact (red "@[<v>@[tac_refine@ %a@]@,%a@]%a")
+      pp_term t pp_goals ps pp_problem p;
   let c = Env.to_ctxt gt.goal_hyps in
   if LibMeta.occurs gt.goal_meta c t then fatal pos "Circular refinement.";
   (* Check that [t] has the required type. *)
@@ -311,7 +313,7 @@ let handle : Sig_state.t -> bool -> proof_state -> p_tactic -> proof_state =
             mk_Appl(mk_Symb cfg.symb_P,
                     add_args (mk_Symb cfg.symb_eq) [a; r; l]) in
           let meta_term = LibMeta.make p (Env.to_ctxt gt.goal_hyps) mt in
-          (* NOTE The proofterm is “eqind a r l M (λx,eq a l x) (refl a l)”. *)
+          (* The proofterm is [eqind a r l M (λx,eq a l x) (refl a l)]. *)
           Rewrite.swap cfg a r l meta_term
         in
         tac_refine pos ps gt gs p prf

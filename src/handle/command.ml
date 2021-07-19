@@ -195,7 +195,8 @@ type proof_data =
 let get_proof_data : compiler -> sig_state -> p_command ->
   sig_state * proof_data option * Query.result =
   fun compile ss ({elt; pos} as cmd) ->
-  if Logger.log_enabled () then log_hndl (red "@[%a@ %a@]") Pos.pp pos Pretty.command cmd;
+  if Logger.log_enabled () then
+    log_hndl (red "@[%a@ %a@]") Pos.pp pos Pretty.command cmd;
   match elt with
   | P_query(q) -> (ss, None, Query.handle ss None q)
   | P_require(b,ps) ->
@@ -390,7 +391,8 @@ let get_proof_data : compiler -> sig_state -> p_command ->
               | Prod(_, by), Abst(_, be) ->
                   let x, ty, te = Bindlib.unbind2 by be in
                   if Bindlib.(binder_constant by && binder_constant be) then
-                    wrn pos "Variable [%a] could be replaced by [_]." pp_var x;
+                    wrn pos "Variable [%a] could be replaced by [_]."
+                      pp_var x;
                   binders_warn (k-1) ty te
               | _ -> assert false
           in binders_warn (Syntax.nb_params p_sym_arg) a.elt t.elt

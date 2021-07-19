@@ -111,9 +111,9 @@ let pp_goals : proof_state pp = fun ppf ps ->
   match ps.proof_goals with
   | [] -> out ppf "No goals."
   | g::_ ->
-      out ppf "@[<v>%a%a@]"
-        Goal.pp_hyps g
-        (fun ppf -> List.iteri (fun i g -> out ppf "%d. %a@," i Goal.pp g)) ps.proof_goals
+      out ppf "@[<v>%a%a@]" Goal.pp_hyps g
+        (fun ppf -> List.iteri (fun i g -> out ppf "%d. %a@," i Goal.pp g))
+        ps.proof_goals
 
 (** [remove_solved_goals ps] removes from the proof state [ps] the typing
    goals that are solved. *)

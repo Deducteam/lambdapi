@@ -91,9 +91,9 @@ let cya fmt = colorize Cya fmt
     in red otherwise. *)
 let g_or_r cond = if cond then gre else red
 
-(** [get_safe_prefix p strings] returns a string starting with [p] and so that,
-    there is no non-negative integer [k] such that [p ^ string_of_int k] belongs
-    to [strings]. *)
+(** [get_safe_prefix p strings] returns a string starting with [p] and so
+   that, there is no non-negative integer [k] such that [p ^ string_of_int k]
+   belongs to [strings]. *)
 let get_safe_prefix : string -> StrSet.t -> string =
  fun head set ->
   let head_len = String.length head in
@@ -156,8 +156,9 @@ let run_process : string -> string list option =
   | Unix.WEXITED 0 -> Some res
   | _ -> None
 
-(** [file_time fname] returns the modification time of file [fname] represented
-    as a [float]. [neg_infinity] is returned if the file does not exist. *)
+(** [file_time fname] returns the modification time of file [fname]
+   represented as a [float]. [neg_infinity] is returned if the file does not
+   exist. *)
 let file_time : string -> float = fun fname ->
   if Sys.file_exists fname then Unix.((stat fname).st_mtime) else neg_infinity
 

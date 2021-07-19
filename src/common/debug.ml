@@ -15,12 +15,12 @@ module Logger : sig
   (** [make key name desc] registers a new logger and returns its pp. *)
   val make : char -> string -> string -> logger_pp
 
-  (** [set_debug value key] enables or disables the loggers corresponding to every
-      character of [str] according to [value]. *)
+  (** [set_debug value key] enables or disables the loggers corresponding to
+     every character of [str] according to [value]. *)
   val set_debug : bool -> string -> unit
 
-  (** [set_default_debug str] declares the debug flags of [str] to be enabled by
-      default. *)
+  (** [set_default_debug str] declares the debug flags of [str] to be enabled
+     by default. *)
   val set_default_debug : string -> unit
 
   (** [get_activated_loggers ()] fetches the list of activated loggers,
@@ -40,11 +40,11 @@ end = struct
 
   (** Type of logging function data. *)
   type logger =
-    { logger_key     : char       (** Character used to unable the logger.      *)
-    ; logger_name    : string     (** 4 character name used as prefix in logs.  *)
-    ; logger_desc    : string     (** Description of the log displayed in help. *)
-    ; logger_enabled : bool ref   (** Is the log enabled? *)
-    ; logger_pp      : logger_pp  (** Type of a logging function. *)
+    { logger_key : char (** Character used to unable the logger. *)
+    ; logger_name : string (** Four-characters name used as prefix in logs. *)
+    ; logger_desc : string (** Description of the log displayed in help. *)
+    ; logger_enabled : bool ref (** Is the log enabled? *)
+    ; logger_pp : logger_pp (** Type of a logging function. *)
     }
 
   module List = List
@@ -60,7 +60,8 @@ end = struct
   let _log_enabled = ref false
   let log_enabled () = !_log_enabled
   let update_log_enabled () =
-    _log_enabled := List.exists (fun logger -> !(logger.logger_enabled)) Stdlib.(!loggers)
+    _log_enabled :=
+      List.exists (fun logger -> !(logger.logger_enabled)) Stdlib.(!loggers)
 
 
   (** [make key name desc] registers a new logger and returns its pp. *)
@@ -81,7 +82,8 @@ end = struct
       let pp fmt =
         update_with_color Stdlib.(!Error.err_fmt);
         let out = Format.(if !logger_enabled then fprintf else ifprintf) in
-        out Stdlib.(!Error.err_fmt) (cya "[%s]" ^^ " @[" ^^ fmt ^^ "@]@.") logger_name
+        out Stdlib.(!Error.err_fmt) (cya "[%s]" ^^ " @[" ^^ fmt ^^ "@]@.")
+          logger_name
       in
 
       (* Logger registration. *)
@@ -94,8 +96,8 @@ end = struct
       logger.logger_pp
 
 
-  (** [set_debug value key] enables or disables the loggers corresponding to every
-      character of [str] according to [value]. *)
+  (** [set_debug value key] enables or disables the loggers corresponding to
+     every character of [str] according to [value]. *)
   let set_debug value str =
     let fn { logger_key; logger_enabled; _ } =
       if String.contains str logger_key then logger_enabled := value
@@ -106,8 +108,8 @@ end = struct
   (** [default_loggers] lists the loggers enabled by default, in a string. *)
   let default_loggers = Stdlib.ref ""
 
-  (** [set_default_debug str] declares the debug flags of [str] to be enabled by
-      default. *)
+  (** [set_default_debug str] declares the debug flags of [str] to be enabled
+     by default. *)
   let set_default_debug str =
     Stdlib.(default_loggers := str);
     set_debug true str
@@ -139,7 +141,7 @@ end = struct
 
   (** [log_summary ()] gives the keys and descriptions for logging options. *)
   let log_summary () =
-    List.map (fun data -> (data.logger_key, data.logger_desc)) Stdlib.(!loggers)
+    List.map (fun d -> (d.logger_key, d.logger_desc)) Stdlib.(!loggers)
 end
 
 (** Printing functions. *)
@@ -212,7 +214,9 @@ module D = struct
 end
 
 (** Logging function for command handling. *)
-(* The two successive let-bindings are necessary for type variable generalisation purposes *)
+
+(* The two successive let-bindings are necessary for type variable
+   generalisation purposes *)
 let log_hndl = Logger.make 'h' "hndl" "command handling"
 let log_hndl = log_hndl.pp
 
@@ -221,7 +225,8 @@ let do_print_time = ref false
 
 (** Print current time. *)
 let print_time : string -> unit = fun s ->
-  if !do_print_time && Logger.log_enabled () then log_hndl "@%f %s" (Sys.time()) s
+  if !do_print_time && Logger.log_enabled () then
+    log_hndl "@%f %s" (Sys.time()) s
 
 (** [time_of f x] computes [f x] and the time for computing it. *)
 let time_of : (unit -> 'b) -> 'b = fun f ->
