@@ -146,8 +146,9 @@ let decompose : problem -> ctxt -> term list -> term list -> unit =
     List.iter2 (fun a b -> add_constr p (c,a,b)) ts1 ts2
 
 (** For a problem of the form [h1 ≡ h2] with [h1 = m[ts]], [h2 = Πx:_,_] (or
-   the opposite) and [ts] distinct bound variables, [imitate_prod m h1 h2 p]
-   instantiates [m] to a product and adds the constraint [h1 ≡ h2] to [p]. *)
+   the opposite) and [ts] distinct bound variables, [imitate_prod p c m h1 h2
+   p] instantiates [m] to a product and adds the constraint [h1 ≡ h2] to
+   [p]. *)
 let imitate_prod : problem -> ctxt -> meta -> term -> term -> unit =
   fun p c m h1 h2 ->
   if !log_enabled then log_unif "imitate_prod %a" pp_meta m;
@@ -169,7 +170,10 @@ let imitate_inj :
                                    pp_term (add_args (mk_Symb s) ts);
   let exception Cannot_imitate in
   try
-    if not (us = [] && is_injective s) then raise Cannot_imitate;
+    if us <> []
+      || (match s.sym_prop with Const|Injec -> false | _ -> true)
+      || LibMeta.occurs m c (add_args (mk_Symb s) ts) then
+      raise Cannot_imitate;
     let vars =
       match distinct_vars c vs with
       | None -> raise Cannot_imitate
