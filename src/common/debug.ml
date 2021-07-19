@@ -232,10 +232,7 @@ let print_time : string -> unit = fun s ->
 let time_of : (unit -> 'b) -> 'b = fun f ->
   if !do_print_time && Logger.log_enabled () then begin
     let t0 = Sys.time () in
-    try
-      f ()
-      |> D.log_and_return (fun _ -> log_hndl "%f" (Sys.time () -. t0))
+    try f () |> D.log_and_return (fun _ -> log_hndl "%f" (Sys.time () -. t0))
     with e ->
-      e
-      |> D.log_and_raise  (fun _ -> log_hndl "%f" (Sys.time () -. t0))
+      e |> D.log_and_raise  (fun _ -> log_hndl "%f" (Sys.time () -. t0))
   end else f ()
