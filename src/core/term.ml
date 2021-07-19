@@ -599,10 +599,7 @@ let mk_Appl : term * term -> term = fun (t, u) ->
   | _ -> Appl (t, u)
   (* in
   if Logger.log_enabled () then
-    log_term "mk_Appl(%a, %a) = %a"
-      pp_term t
-      pp_term u
-      pp_term r;
+    log_term "mk_Appl(%a, %a) = %a" pp_term t pp_term u pp_term r;
   r *)
 
 (** mk_Appl_not_canonical t u] builds the non-canonical (wrt. C and AC

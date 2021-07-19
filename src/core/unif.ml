@@ -98,9 +98,7 @@ let instantiate : problem -> ctxt -> meta -> term array -> term -> bool =
   | Some b when Bindlib.is_closed b ->
       let do_instantiate() =
         if Logger.log_enabled () then
-          log_unif (red "%a ≔ %a")
-            pp_meta m
-            pp_term u;
+          log_unif (red "%a ≔ %a") pp_meta m pp_term u;
         LibMeta.set p m (Bindlib.unbox b);
         p := {!p with recompute = true}; true
       in

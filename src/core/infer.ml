@@ -60,11 +60,7 @@ exception NotTypable
    abstraction over a kind). *)
 let rec infer : int -> problem -> ctxt -> term -> term = fun d p c t ->
   let return v =
-    if Logger.log_enabled () then
-      log_infr "%agot %a"
-        D.depth d
-        pp_term v;
-    v
+    if Logger.log_enabled () then log_infr "%agot %a" D.depth d pp_term v; v
   in
   if Logger.log_enabled () then
     log_infr "%ainfer %a%a" D.depth d pp_ctxt c pp_term t;
@@ -190,9 +186,7 @@ let rec infer : int -> problem -> ctxt -> term -> term = fun d p c t ->
    abstraction over a kind). *)
 and check : int -> problem -> ctxt -> term -> term -> unit = fun d p c t a ->
   if Logger.log_enabled () then
-    log_infr "%acheck %a"
-      D.depth d
-      pp_typing (c, t, a);
+    log_infr "%acheck %a" D.depth d pp_typing (c, t, a);
   conv d p c (infer (d+1) p c t) a
 
 (** [infer_noexn p c t] returns [None] if the type of [t] in context [c]
@@ -206,8 +200,7 @@ let infer_noexn : problem -> ctxt -> term -> term option = fun p c t ->
       log_hndl (blu "infer_noexn %a%a") pp_ctxt c pp_term t;
     let a = time_of (fun () -> infer 0 p c t) in
     if Logger.log_enabled () then
-      log_hndl (blu "@[<v2>@[result of infer_noexn:@ %a@]%a@]")
-        pp_term a
+      log_hndl (blu "@[<v2>@[result of infer_noexn:@ %a@]%a@]") pp_term a
         (fun fmt constraints -> if constraints <> [] then
           Format.fprintf fmt ";@ @[constraints:@ %a@]" pp_constrs constraints)
         !p.to_solve;
