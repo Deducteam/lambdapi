@@ -228,8 +228,7 @@ let tactic : p_tactic pp = fun ppf t ->
   | P_tac_why3 p ->
       let prover ppf s = out ppf " \"%s\"" s in
       out ppf "why3%a" (Option.pp prover) p
-  end;
-  out ppf ";"
+  end;;
 
 (* starts with a space if distinct from [Pratter.Neither] *)
 let assoc : Pratter.associativity pp = fun ppf a ->
@@ -244,6 +243,35 @@ let notation : Sign.notation pp = fun ppf n ->
   | Prefix p -> out ppf "prefix %f" p
   | Quant -> out ppf "quantifier"
   | _ -> ()
+
+(**[proof p ppf n] pretty prints the proof [p] using the formatter
+[ppf] at and identation level of [n] (initially 0)*)
+let rec proof : p_proof -> formatter -> int -> unit =
+  fun p ppf n ->
+  match p, n with
+    | [], _ -> ()
+    | sp::spl, n ->
+      let ident = String.repeat "  " n in
+      out ppf "\n";
+      out ppf "%s" ident;
+      out ppf "{\n";
+      subproof sp ppf (n+1);
+      out ppf "%s" ident;
+      out ppf "}";
+      proof spl ppf n;
+and subproof : p_subproof -> formatter -> int -> unit =
+fun sp ppf n ->
+  let tactic ppf = out ppf "%a" tactic in
+  match sp, n with
+    | [], _ -> ()
+    | Tactic(t, splbis)::psl, n ->
+      let ident = String.repeat "  " n in
+      out ppf "%s" ident;
+      tactic ppf t;
+      proof splbis ppf n;
+      out ppf "; ";
+      out ppf "\n";
+      subproof psl ppf n;;
 
 let command : p_command pp = fun ppf {elt;_} ->
   begin match elt with
@@ -276,8 +304,9 @@ let command : p_command pp = fun ppf {elt;_} ->
       match p_sym_prf with
       | None -> ()
       | Some(ts,pe) ->
-          let tactic ppf = out ppf "\n  %a" tactic in
-          out ppf "\nbegin%a\n%a" (List.pp tactic "") ts proof_end pe
+          out ppf "\nbegin";
+          proof ts ppf 0;
+          out ppf "\n%a" proof_end pe;
     end
   | P_unif_rule(ur) -> out ppf "unif_rule %a" unif_rule ur
   end;

@@ -242,7 +242,17 @@ proof_end:
   | ADMITTED { make_pos $sloc Syntax.P_proof_admitted }
   | END { make_pos $sloc Syntax.P_proof_end }
 
-proof: BEGIN ts=terminated(tactic, SEMICOLON)* pe=proof_end { ts, pe }
+proof:
+  (*in case there are more than one goal to prove in the beginning*)
+  | BEGIN l=subproof+ pe=proof_end { l, pe }
+  (*in case there is just one goal to prove in the beginning*)
+  | BEGIN l=subproofbis pe=proof_end { [l], pe }
+
+subproof: L_CU_BRACKET l=terminated(proof_step, SEMICOLON)* R_CU_BRACKET { l }
+
+subproofbis: l=terminated(proof_step, SEMICOLON)* { l }
+
+proof_step: t=tactic l=subproof* { Tactic(t, l) }
 
 constructor:
   | i=uid ps=params* COLON t=term
@@ -272,13 +282,15 @@ command:
     po=proof? SEMICOLON
     { let sym =
         {p_sym_mod=ms; p_sym_nam=s; p_sym_arg=al; p_sym_typ=Some(a);
-         p_sym_trm=None; p_sym_def=false; p_sym_prf=po}
+         p_sym_trm=None; p_sym_def=false;
+         p_sym_prf= po}
       in make_pos $sloc (P_symbol(sym)) }
   | ms=modifier* SYMBOL s=uid al=params* ao=preceded(COLON, term)?
     ASSIGN tp=term_proof SEMICOLON
     { let sym =
         {p_sym_mod=ms; p_sym_nam=s; p_sym_arg=al; p_sym_typ=ao;
-         p_sym_trm=fst tp; p_sym_prf=snd tp; p_sym_def=true}
+         p_sym_trm=fst tp; p_sym_def=true;
+         p_sym_prf= snd tp}
       in make_pos $sloc (P_symbol(sym)) }
   | ms=modifier* xs=params* INDUCTIVE
     is=separated_nonempty_list(WITH, inductive) SEMICOLON
