@@ -219,11 +219,10 @@ and whnf_stk : config -> term -> stack -> term * stack = fun c t stk ->
       match tree_walk c !(s.sym_dtree) stk with
       | None -> h, stk
       | Some (t', stk') ->
-        Stdlib.incr steps;
         if !log_enabled then
           log_eval "tree_walk %a%a %a = %a %a" pp_ctxt c.context
             pp_term t (D.list pp_term) stk pp_term t' (D.list pp_term) stk';
-        whnf_stk c t' stk'
+        Stdlib.incr steps; whnf_stk c t' stk'
     end
   | (Vari x, stk) as r ->
     begin match VarMap.find_opt x c.defmap with
