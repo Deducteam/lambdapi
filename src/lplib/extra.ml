@@ -14,8 +14,7 @@ module StrSet = Set.Make (String)
 let color : bool Stdlib.ref = Stdlib.ref true
 
 (** Format transformers (colors). *)
-type color =
-  Red | Gre | Yel | Blu | Mag | Cya
+type color = Red | Gre | Yel | Blu | Mag | Cya
 
 type Format.stag += Color of color
 
@@ -47,8 +46,7 @@ let color_of_string = function
 let rec mark_open_stag old = function
   | Color c -> "\027[" ^ color_code c ^ "m"
   | Format.String_tag s -> begin
-    try
-      mark_open_stag old (Color (color_of_string s))
+    try mark_open_stag old (Color (color_of_string s))
     with Stdlib.Invalid_argument _ -> old @@ Format.String_tag s
   end
   | stag -> old stag
@@ -56,8 +54,7 @@ let rec mark_open_stag old = function
 let rec mark_close_stag old = function
   | Color _ -> "\027[0m"
   | Format.String_tag s -> begin
-    try
-      mark_close_stag old (Color (color_of_string s))
+    try mark_close_stag old (Color (color_of_string s))
     with Stdlib.Invalid_argument _ -> old @@ Format.String_tag s
   end
   | stag -> old stag
@@ -74,7 +71,8 @@ let update_with_color fmt =
   end
 
 let colorize k format =
-  Scanf.format_from_string ("@{<" ^ string_of_color k ^ ">" ^ string_of_format format ^ "@}")
+  Scanf.format_from_string
+    ("@{<" ^ string_of_color k ^ ">" ^ string_of_format format ^ "@}")
   format
 
 let pp_color p_col printer fmt =
@@ -142,14 +140,9 @@ let with_timeout : int -> ('a -> 'b) -> 'a -> 'b =
 (** [input_lines ic] reads the input channel [ic] line by line and returns its
     contents. The trailing newlines are removed in lines. The input channel is
     not closed by the function. *)
-let input_lines : in_channel -> string list =
- fun ic ->
+let input_lines : in_channel -> string list = fun ic ->
   let lines = ref [] in
-  try
-    while true do
-      lines := input_line ic :: !lines
-    done;
-    assert false (* Unreachable. *)
+  try while true do lines := input_line ic :: !lines done; assert false
   with End_of_file -> List.rev !lines
 
 (** [run_process cmd] runs the command [cmd] and returns the list of the lines

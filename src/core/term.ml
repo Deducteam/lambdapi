@@ -576,8 +576,7 @@ let _ =
    or AC symbols. *)
 let mk_Appl : term * term -> term = fun (t, u) ->
   (* if Logger.log_enabled () then
-    log_term "mk_Appl(%a, %a)"
-      pp_term t pp_term u;
+    log_term "mk_Appl(%a, %a)" pp_term t pp_term u;
   let r = *)
   match get_args t with
   | Symb s, [t1] ->

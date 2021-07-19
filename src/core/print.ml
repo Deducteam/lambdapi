@@ -299,7 +299,6 @@ let pp_ctxt : ctxt pp = fun ppf ctx ->
       let pp_def ppf t = out ppf " ≔ %a" pp_term t in
       let pp_decl ppf (x,a,t) =
         out ppf "%a%a%a" pp_var x pp_type a (Option.pp pp_def) t in
-
       out ppf "%a%s⊢ "
         (List.pp pp_decl ",@ ") (List.rev ctx)
         (if ctx <> [] then "@ " else "")
@@ -311,8 +310,7 @@ let pp_typing : constr pp = fun ppf (ctx, t, u) ->
 let pp_constr : constr pp = fun ppf (ctx, t, u) ->
   out ppf "%a%a@ ≡ %a" pp_ctxt ctx pp_term t pp_term u
 
-let pp_constrs : constr list pp =
-  List.pp pp_constr ";@ "
+let pp_constrs : constr list pp = List.pp pp_constr ";@ "
 
 (* for debug only *)
 let pp_metaset : MetaSet.t pp =

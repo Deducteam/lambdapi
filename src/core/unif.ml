@@ -194,9 +194,7 @@ let imitate_inj :
       in build (List.length ts) [] !(s.sym_type)
     in
     if Logger.log_enabled () then
-      log_unif (red "%a ≔ %a")
-        pp_meta m
-        pp_term t;
+      log_unif (red "%a ≔ %a") pp_meta m pp_term t;
     LibMeta.set p m (Bindlib.unbox (Bindlib.bind_mvar vars (lift t))); true
   with Cannot_imitate | Invalid_argument _ -> false
 
@@ -281,8 +279,7 @@ exception Unsolvable
 @raise Unsolvable. *)
 let error : term -> term -> 'a = fun t1 t2 ->
   fatal_msg "@[<hov>%a and %a are not unifiable.@]@."
-    (D.bracket pp_term) t1
-    (D.bracket pp_term) t2;
+    (D.bracket pp_term) t1 (D.bracket pp_term) t2;
   raise Unsolvable
 
 (** [inverse p c t1 s ts1 t2] tries to replace a problem of the form [t1 ≡ t2]

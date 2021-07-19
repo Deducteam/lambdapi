@@ -110,28 +110,19 @@ let handle : Sig_state.t -> proof_state option -> p_query -> result =
         (* print its name and modifiers *)
         let pp_trunk ppf s =
           out ppf "%a%a%asymbol %a"
-            pp_expo s.sym_expo
-            pp_prop s.sym_prop
-            pp_match_strat s.sym_mstrat
-            pp_sym s
+            pp_expo s.sym_expo pp_prop s.sym_prop
+            pp_match_strat s.sym_mstrat pp_sym s
         in
         (* print its type *)
         let pp_type ppf s =
-          out ppf ": %a"
-            pp_prod (!(s.sym_type), s.sym_impl)
-        in
+          out ppf ": %a" pp_prod (!(s.sym_type), s.sym_impl) in
         (* print its definition *)
         let pp_def ppf s =
-          match !(s.sym_def) with
-          | Some t -> out ppf "≔ %a" pp_term t
-          | None -> ()
-        in
+          Option.iter (out ppf "≔ %a" pp_term) !(s.sym_def) in
         (* print its notation *)
         let pp_notation : Sign.notation option pp = fun ppf n ->
-          match n with
-          | None -> ()
-          | Some n -> out ppf "notation %a %a@." pp_sym s pp_notation n
-        in
+          Option.iter
+            (out ppf "notation %a %a@." pp_sym s pp_notation) n in
         (* print its rules *)
         let pp_rules ppf s =
           match !(s.sym_rules) with
@@ -148,27 +139,18 @@ let handle : Sig_state.t -> proof_state option -> p_query -> result =
             with Not_found -> assert false
           in
           let pp_decl : sym pp = fun ppf s ->
-            out ppf "%a: %a"
-              pp_sym s
-              pp_term !(s.sym_type)
-          in
+            out ppf "%a: %a" pp_sym s pp_term !(s.sym_type) in
           let pp_ind : ind_data pp = fun ppf ind ->
-            out ppf "@[<v2>constructors:@,%a@]@.@[<v2>induction principle:@,%a@]"
-              (List.pp pp_decl "") ind.ind_cons
-              pp_decl ind.ind_prop
+            out ppf
+              "@[<v2>constructors:@,%a@]@.@[<v2>induction principle:@,%a@]"
+              (List.pp pp_decl "") ind.ind_cons pp_decl ind.ind_prop
           in
-          try
-            pp_ind ppf
-              (SymMap.find s Timed.(!(sign.sign_ind)))
+          try pp_ind ppf (SymMap.find s Timed.(!(sign.sign_ind)))
           with Not_found -> ()
         in
         out ppf "@[<hov>%a@,%a@ %a@]@.%a%a%a@]"
-          pp_trunk s
-          pp_type s
-          pp_def s
-          pp_notation (notation_of s)
-          pp_rules s
-          pp_constructors s
+          pp_trunk s pp_type s pp_def s pp_notation (notation_of s)
+          pp_rules s pp_constructors s
       in
       return pp_sym_info (Sig_state.find_sym ~prt:true ~prv:true ss qid)
   | P_query_proofterm ->

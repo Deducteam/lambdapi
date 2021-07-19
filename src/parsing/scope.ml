@@ -27,9 +27,7 @@ let log_scop = log_scop.pp
 let find_qid : int -> bool -> bool -> sig_state -> env -> p_qident -> tbox =
   fun d prt prv ss env qid ->
   if Logger.log_enabled () then
-    log_scop "%afind_qid %a"
-      D.depth d
-      Pretty.qident qid;
+    log_scop "%afind_qid %a" D.depth d Pretty.qident qid;
   let (mp, s) = qid.elt in
   (* Check for variables in the environment first. *)
   try
@@ -192,12 +190,8 @@ and scope_parsed : int -> mode -> sig_state -> env -> p_term -> tbox =
   in
   (* Scope and insert the (implicit) arguments. *)
   add_impl d md ss env t.pos h impl args
-  |> D.log_and_return (
-    fun e ->
-      log_scop "%agot %a"
-        D.depth d
-        Print.pp_term (Bindlib.unbox e)
-  )
+  |> D.log_and_return
+    (fun e -> log_scop "%agot %a" D.depth d Print.pp_term (Bindlib.unbox e))
 
 (** [add_impl md ss env loc h impl args] scopes [args] and returns the
    application of [h] to the scoped arguments. [impl] is a boolean list

@@ -44,9 +44,7 @@ let conv : int -> problem -> ctxt -> term -> term -> unit = fun d p c a b ->
   if not (Eval.pure_eq_modulo c a b) then begin
     let cstr = (c,a,b) in
     if Logger.log_enabled () then
-      log_infr (mag "%aadd %a")
-        D.depth d
-        pp_constr cstr;
+      log_infr (mag "%aadd %a") D.depth d pp_constr cstr;
     p := {!p with to_solve = cstr::!p.to_solve}
   end
 
@@ -69,10 +67,7 @@ let rec infer : int -> problem -> ctxt -> term -> term = fun d p c t ->
     v
   in
   if Logger.log_enabled () then
-    log_infr "%ainfer %a%a"
-      D.depth d
-      pp_ctxt c
-      pp_term t;
+    log_infr "%ainfer %a%a" D.depth d pp_ctxt c pp_term t;
 
   match unfold t with
   | Patt(_,_,_) -> assert false (* Forbidden case. *)
@@ -214,8 +209,7 @@ let infer_noexn : problem -> ctxt -> term -> term option = fun p c t ->
       log_hndl (blu "@[<v2>@[result of infer_noexn:@ %a@]%a@]")
         pp_term a
         (fun fmt constraints -> if constraints <> [] then
-          Format.fprintf fmt ";@ @[constraints:@ %a@]"
-            pp_constrs constraints)
+          Format.fprintf fmt ";@ @[constraints:@ %a@]" pp_constrs constraints)
         !p.to_solve;
     Some a
   with NotTypable -> None
@@ -227,12 +221,10 @@ let infer_noexn : problem -> ctxt -> term -> term option = fun p c t ->
 let check_noexn : problem -> ctxt -> term -> term -> bool = fun p c t a ->
   try
     if Logger.log_enabled () then
-      log_hndl (blu "check_noexn %a")
-        pp_typing (c, t, a);
+      log_hndl (blu "check_noexn %a") pp_typing (c, t, a);
     time_of (fun () -> check 0 p c t a);
     if Logger.log_enabled () && !p.to_solve <> [] then
-      log_hndl (blu "result of check_noexn:%a")
-        pp_constrs !p.to_solve;
+      log_hndl (blu "result of check_noexn:%a") pp_constrs !p.to_solve;
     true
   with NotTypable -> false
 

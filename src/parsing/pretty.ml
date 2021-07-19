@@ -264,9 +264,7 @@ let command : p_command pp = fun ppf {elt;_} ->
   | P_require_as(p,i) -> out ppf "require %a as %a" path p ident i
   | P_rules [] -> assert false (* not possible *)
   | P_rules (r :: rs) ->
-      out ppf "@[<v>%a@,%a@]"
-        (rule "rule") r
-        (List.pp (rule "with") "@,") rs
+      out ppf "@[<v>%a@,%a@]" (rule "rule") r (List.pp (rule "with") "@,") rs
   | P_symbol
     { p_sym_mod; p_sym_nam; p_sym_arg; p_sym_typ;
       p_sym_trm; p_sym_prf; p_sym_def } ->
