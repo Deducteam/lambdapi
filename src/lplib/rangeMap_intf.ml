@@ -12,7 +12,7 @@
 
 module type S = sig
   (** Maps a position of the cursor (point) to the corresponding token of type
-      'a in a given text editor with a .lp file open. *)
+     'a in a given text editor with a .lp file open. *)
   type 'a t
 
   module Range : Range_intf.S
@@ -20,9 +20,9 @@ module type S = sig
   (** The empty range map.*)
   val empty : 'a t
 
-  (** [find pt map] returns the only (token, range) couple in map such that [pt]
-      is a point within the mapped interval range. Requires [map] to be
-      well-defined (see add). *)
+  (** [find pt map] returns the only (token, range) couple in map such that
+     [pt] is a point within the mapped interval range. Requires [map] to be
+     well-defined (see add). *)
   val find : Range.point -> 'a t -> (Range.t * 'a) option
 
   (** [add range token map] adds a mapping (key : [range], value : [token]) to

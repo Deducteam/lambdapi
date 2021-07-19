@@ -12,8 +12,8 @@ open Lplib.Base
 open Common.Debug
 open! Lplib
 
-let log_term = new_logger 'm' "term" "term building"
-let log_term = log_term.logger
+let log_term = Logger.make 'm' "term" "term building"
+let log_term = log_term.pp
 
 (** {3 Term (and symbol) representation} *)
 
@@ -555,7 +555,7 @@ let right_aliens : sym -> term -> term list = fun s ->
           | _ -> aliens (u :: acc) us
         else aliens (u :: acc) us
   in fun t -> let r = aliens [] [t] in
-  if !log_enabled then
+  if Logger.log_enabled () then
     log_term "right_aliens %a %a = %a" pp_sym s pp_term t (D.list pp_term) r;
   r
 
@@ -577,8 +577,9 @@ let _ =
 (** [mk_Appl t u] puts the application of [t] to [u] in canonical form wrt C
    or AC symbols. *)
 let mk_Appl : term * term -> term = fun (t, u) ->
-  (*if !log_enabled then log_term "mk_Appl(%a, %a)" pp_term t pp_term u;
-  let r =*)
+  (* if Logger.log_enabled () then
+    log_term "mk_Appl(%a, %a)" pp_term t pp_term u;
+  let r = *)
   match get_args t with
   | Symb s, [t1] ->
       begin
@@ -598,8 +599,10 @@ let mk_Appl : term * term -> term = fun (t, u) ->
         | _ -> Appl (t, u)
       end
   | _ -> Appl (t, u)
-  (*in if !log_enabled then
-    log_term "mk_Appl(%a, %a) = %a" pp_term t pp_term u pp_term r; r*)
+  (* in
+  if Logger.log_enabled () then
+    log_term "mk_Appl(%a, %a) = %a" pp_term t pp_term u pp_term r;
+  r *)
 
 (** mk_Appl_not_canonical t u] builds the non-canonical (wrt. C and AC
    symbols) application of [t] to [u]. WARNING: to use only in Sign.link. *)

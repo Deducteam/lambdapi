@@ -74,9 +74,11 @@ module Goal = struct
     in
     let hyps hyp ppf l =
       if l <> [] then
-        (List.iter (out ppf "%a\n" hyp) (List.rev l);
-         out ppf "-----------------------------------------------\
-                            ---------------------------------\n")
+        out ppf "@[<v>%a@,\
+        -----------------------------------------------\
+        ---------------------------------@,@]"
+        (List.pp (fun ppf -> out ppf "%a@," hyp) "") (List.rev l);
+
     in
     fun ppf g ->
     match g with
@@ -107,11 +109,11 @@ let finished : proof_state -> bool = fun ps -> ps.proof_goals = []
 (** [pp_goals ppf gl] prints the goal list [gl] to channel [ppf]. *)
 let pp_goals : proof_state pp = fun ppf ps ->
   match ps.proof_goals with
-  | [] -> out ppf "No goals.\n"
+  | [] -> out ppf "No goals."
   | g::_ ->
-      out ppf "\n";
-      Goal.pp_hyps ppf g;
-      List.iteri (fun i g -> out ppf "%d. %a\n" i Goal.pp g) ps.proof_goals
+      out ppf "@[<v>%a%a@]" Goal.pp_hyps g
+        (fun ppf -> List.iteri (fun i g -> out ppf "%d. %a@," i Goal.pp g))
+        ps.proof_goals
 
 (** [remove_solved_goals ps] removes from the proof state [ps] the typing
    goals that are solved. *)

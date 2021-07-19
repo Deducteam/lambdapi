@@ -11,10 +11,10 @@
 (************************************************************************)
 
 (** Module for points and intervals. Used to determine if a cursor is in the
-    range of a specific token, which is an interval of points (cursor
-    positions). The presence of t and compare make [RangeType] an [OrderedType]
-    (in the sense of [Map]). For now, the useful modules out of this library are
-    [Range] and [RangeMap]. *)
+   range of a specific token, which is an interval of points (cursor
+   positions). The presence of t and compare make [RangeType] an [OrderedType]
+   (in the sense of [Map]). For now, the useful modules out of this library
+   are [Range] and [RangeMap]. *)
 module type S = sig
   type point
   type t

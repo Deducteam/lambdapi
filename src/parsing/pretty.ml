@@ -132,9 +132,9 @@ let rule : string -> p_rule pp = fun kw ppf {elt=(l,r);_} ->
   out ppf "%s %a ↪ %a" kw term l term r
 
 let inductive : string -> p_inductive pp =
-  let cons ppf (id,a) = out ppf "\n| %a : %a" ident id term a in
+  let cons ppf (id,a) = out ppf "| %a : %a" ident id term a in
   fun kw ppf {elt=(id,a,cs);_} ->
-  out ppf "%s %a : %a ≔%a" kw ident id term a (List.pp cons "") cs
+  out ppf "@[<v>%s %a : %a ≔@,%a@]" kw ident id term a (List.pp cons "@,") cs
 
 let equiv : (p_term * p_term) pp = fun ppf (l,r) ->
   out ppf "%a ≡ %a" term l term r
@@ -192,10 +192,10 @@ let query : p_query pp = fun ppf q ->
   | P_query_debug(true ,s) -> out ppf "set debug \"+%s\"" s
   | P_query_debug(false,s) -> out ppf "set debug \"-%s\"" s
   | P_query_flag(s, b) ->
-      out ppf "set flag \"%s\" %s" s (if b then "on" else "off")
+      out ppf "set flag %S %s" s (if b then "on" else "off")
   | P_query_infer(t, _) -> out ppf "type %a" term t
   | P_query_normalize(t, _) -> out ppf "compute %a" term t
-  | P_query_prover s -> out ppf "set prover \"%s\"" s
+  | P_query_prover s -> out ppf "set prover %S" s
   | P_query_prover_timeout n -> out ppf "set prover_timeout %d" n
   | P_query_print None -> out ppf "print"
   | P_query_print(Some qid) -> out ppf "print %a" qident qid
@@ -226,7 +226,7 @@ let tactic : p_tactic pp = fun ppf t ->
   | P_tac_solve -> out ppf "solve"
   | P_tac_sym -> out ppf "symmetry"
   | P_tac_why3 p ->
-      let prover ppf s = out ppf " \"%s\"" s in
+      let prover ppf s = out ppf " %S" s in
       out ppf "why3%a" (Option.pp prover) p
   end;
   out ppf ";"
@@ -247,14 +247,14 @@ let notation : Sign.notation pp = fun ppf n ->
 
 let command : p_command pp = fun ppf {elt;_} ->
   begin match elt with
-  | P_builtin(s,qid) -> out ppf "builtin \"%s\" ≔ %a" s qident qid
+  | P_builtin(s,qid) -> out ppf "builtin %S ≔ %a" s qident qid
   | P_inductive(_, _, []) -> assert false (* not possible *)
   | P_inductive(ms, xs, i::il) ->
-      out ppf "%a%a%a%a\nend"
+      out ppf "@[<v>@[%a%a@]%a@,%a@,end"
         modifiers ms
         (List.pp params " ") xs
         (inductive "inductive") i
-        (List.pp (inductive "\nwith") "") il
+        (List.pp (inductive "with") "@,") il
   | P_notation(qid,n) -> out ppf "notation %a %a" qident qid notation n
   | P_open ps -> out ppf "open %a" (List.pp path " ") ps
   | P_query q -> query ppf q
@@ -263,23 +263,24 @@ let command : p_command pp = fun ppf {elt;_} ->
       out ppf "require%s %a" op (List.pp path " ") ps
   | P_require_as(p,i) -> out ppf "require %a as %a" path p ident i
   | P_rules [] -> assert false (* not possible *)
-  | P_rules (r::rs) ->
-      out ppf "%a" (rule "rule") r;
-      List.iter (out ppf "%a" (rule "\nwith")) rs
+  | P_rules (r :: rs) ->
+      out ppf "@[<v>%a@,%a@]" (rule "rule") r (List.pp (rule "with") "@,") rs
   | P_symbol
-    {p_sym_mod;p_sym_nam;p_sym_arg;p_sym_typ;p_sym_trm;p_sym_prf;p_sym_def} ->
+    { p_sym_mod; p_sym_nam; p_sym_arg; p_sym_typ;
+      p_sym_trm; p_sym_prf; p_sym_def } ->
     begin
-      out ppf "%asymbol %a%a%a" modifiers p_sym_mod ident p_sym_nam
-        params_list p_sym_arg typ p_sym_typ;
-      if p_sym_def then out ppf " ≔";
-      Option.iter (out ppf " %a" term) p_sym_trm;
-      match p_sym_prf with
-      | None -> ()
-      | Some(ts,pe) ->
-          let tactic ppf = out ppf "\n  %a" tactic in
-          out ppf "\nbegin%a\n%a" (List.pp tactic "") ts proof_end pe
+      out ppf "@[<v>@[%asymbol %a%a%a%a%a@]@,%a@]"
+        modifiers p_sym_mod
+        ident p_sym_nam
+        params_list p_sym_arg
+        typ p_sym_typ
+        (fun ppf s -> if p_sym_def then out ppf s) "@ ≔"
+        (Option.pp (fun ppf -> out ppf " %a" term)) p_sym_trm
+        (Option.pp (fun ppf (ts, pe) -> out ppf "@[<v2>begin@,%a@]@,%a"
+          (List.pp tactic "@,") ts
+          proof_end pe)) p_sym_prf
     end
-  | P_unif_rule(ur) -> out ppf "unif_rule %a" unif_rule ur
+  | P_unif_rule ur -> out ppf "unif_rule %a" unif_rule ur
   end;
   out ppf ";"
 

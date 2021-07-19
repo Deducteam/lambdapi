@@ -11,14 +11,15 @@ open Core
 open Term
 open Print
 
-(** [print_sym ppf s] outputs the fully qualified name of [s] to [ppf]. The name
-    is prefixed by ["c_"], and modules are separated with ["_"], not ["."]. *)
+(** [print_sym ppf s] outputs the fully qualified name of [s] to [ppf]. The
+   name is prefixed by ["c_"], and modules are separated with ["_"], not
+   ["."]. *)
 let print_sym : sym pp = fun ppf s ->
   let print_path = List.pp Format.pp_print_string "_" in
   out ppf "c_%a_%s" print_path s.sym_path s.sym_name
 
-(** [print_patt ppf p] outputs TPDB format corresponding to the pattern [p], to
-    [ppf]. *)
+(** [print_patt ppf p] outputs TPDB format corresponding to the pattern [p],
+   to [ppf]. *)
 let print_term : bool -> term pp = fun lhs ->
   let rec pp ppf t =
     match unfold t with
@@ -77,8 +78,8 @@ let print_rule : Format.formatter -> term -> term -> unit =
   out ppf "(RULES %a" (print_term true) lhs;
   out ppf "\n    -> %a)\n" (print_term false) rhs
 
-(** [print_sym_rule ppf s r] outputs the rule declaration corresponding [r] (on
-   the symbol [s]), to [ppf]. *)
+(** [print_sym_rule ppf s r] outputs the rule declaration corresponding [r]
+   (on the symbol [s]), to [ppf]. *)
 let print_sym_rule : Format.formatter -> sym -> rule -> unit = fun ppf s r ->
   let lhs = add_args (mk_Symb s) r.lhs in
   let rhs = LibTerm.term_of_rhs r in

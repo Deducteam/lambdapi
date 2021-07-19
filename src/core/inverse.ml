@@ -8,8 +8,8 @@ open Print
 open Lplib.Extra
 
 (** Logging function for unification. *)
-let logger_inv = new_logger 'v' "invr" "inverse"
-let log_inv = logger_inv.logger
+let log_inv = Logger.make 'v' "invr" "inverse"
+let log_inv = log_inv.pp
 
 (** [cache f s] is equivalent to [f s] but [f s] is computed only once unless
    the rules of [s] are changed. *)
@@ -24,9 +24,9 @@ let cache : (sym -> 'a) -> (sym -> 'a) = fun f ->
 (** [const_graph s] returns the list of pairs [(s0,s1)] such that [s]
    has a rule of the form [s (s0 ...) ↪ s1 ...]. *)
 let const_graph : sym -> (sym * sym) list = fun s ->
-  if !log_enabled then log_inv "check rules of %a" pp_sym s;
+  if Logger.log_enabled () then log_inv "check rules of %a" pp_sym s;
   let add s0 s1 l =
-    if !log_enabled then
+    if Logger.log_enabled () then
       log_inv (yel "%a %a ↪ %a") pp_sym s pp_sym s0 pp_sym s1;
     (s0,s1)::l
   in
@@ -62,9 +62,9 @@ let inverse_const : sym -> sym -> sym = fun s s' ->
    a rule of the form [s (s0 _ _) ↪ Π x:s1 _, s2 r] with [b=true] iff [x]
    occurs in [r]. *)
 let prod_graph : sym -> (sym * sym * sym * bool) list = fun s ->
-  if !log_enabled then log_inv "check rules of %a" pp_sym s;
+  if Logger.log_enabled () then log_inv "check rules of %a" pp_sym s;
   let add (s0,s1,s2,b) l =
-    if !log_enabled then
+    if Logger.log_enabled () then
       if b then log_inv (yel "%a (%a _ _) ↪ Π x:%a _, %a _[x]")
                   pp_sym s pp_sym s0 pp_sym s1 pp_sym s2
       else log_inv (yel "%a (%a _ _) ↪ %a _ → %a _")
@@ -120,7 +120,7 @@ let inverse_prod : sym -> sym -> sym * sym * sym * bool = fun s s' ->
 (** [inverse s v] tries to compute a term [u] such that [s(u)] reduces to [v].
 @raise [Not_found] otherwise. *)
 let rec inverse : sym -> term -> term = fun s v ->
-  if !log_enabled then log_inv "compute %a⁻¹(%a)" pp_sym s pp_term v;
+  if Logger.log_enabled () then log_inv "compute %a⁻¹(%a)" pp_sym s pp_term v;
   match get_args v with
   | Symb s', [t] when s' == s -> t
   | Symb s', ts -> add_args (mk_Symb (inverse_const s s')) ts

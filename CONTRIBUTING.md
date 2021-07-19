@@ -33,7 +33,7 @@ In the interest of code source uniformity, we ask that:
    (except for `@see` commands for `ocamldoc`).
 
 You should at the very least run `make sanity_check` before committing
-anything. The script `tools/git_hook_helper.sh` helps setting up a
+anything. The script `misc/git_hook_helper.sh` helps setting up a
 git hook to run `make sanity_check` automatically *before* each
 commit. It is encouraged to set up such a hook. The script may be
 called with the `-b` option to include compilation in the hook.

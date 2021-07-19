@@ -10,7 +10,8 @@
 (* Status: Experimental                                                 *)
 (************************************************************************)
 
-(* We follow the denomination of LSP, except for end_ being reserved in OCaml *)
+(* We follow LSP denominations except for end_ being reserved in OCaml. *)
+
 type point = { line : int; character : int }
 type t = { start : point; end_ : point }
 
@@ -29,8 +30,8 @@ let interval_end i = i.end_
 type cmp = Before | In | After
 
 let in_range pos { start; end_ } =
-  (*Comparison operators work as lexicographic comparison on points (meaning l
-    is compared, then c is compared). *)
+  (* Comparison operators work as lexicographic comparison on points (meaning
+     l is compared, then c is compared). *)
   if pos < start then Before else if pos > end_ then After else In
 
 let compare { start = s1; end_ = f1 } { start = s2; end_ = f2 } =
@@ -40,8 +41,8 @@ let compare { start = s1; end_ = f1 } { start = s2; end_ = f2 } =
   else failwith "Intervals overlap, no inclusion between the two"
 
 let point_to_string pt =
-  "Line : " ^ string_of_int pt.line ^ "; Column : " ^ string_of_int pt.character
-  ^ "\n"
+  "Line : " ^ string_of_int pt.line
+  ^ "; Column : " ^ string_of_int pt.character ^ "\n"
 
 let interval_to_string { start; end_ } =
   "From :\n" ^ point_to_string start ^ "To :\n" ^ point_to_string end_
