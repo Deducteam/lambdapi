@@ -59,15 +59,28 @@ let make : problem -> ?name:string -> ctxt -> term -> term =
   let get_var (x,_,d) = if d = None then Some (mk_Vari x) else None in
   mk_Meta(m, Array.of_list (List.filter_rev_map get_var ctx))
 
+let bmake : problem -> ?name:string -> bctxt -> tbox -> tbox =
+  fun p ?name bctx a ->
+  let (a, k) = Ctxt.to_prod_box bctx a in
+  let m = fresh_box ?name p a k in
+  let get_var (x, _) = _Vari x in
+  _Meta_full m (Array.of_list (List.rev_map get_var bctx))
+
 (** [make_codomain p ctx a] creates a fresh metavariable term of type [Type]
-   in the context [ctx] extended with a fresh variable of type [a], and
-   updates [p] with generated metavariables. *)
+    in the context [ctx] extended with a fresh variable of type [a], and
+    updates [p] with generated metavariables. *)
 let make_codomain : problem -> ctxt -> term -> tbinder = fun p ctx a ->
   let x = new_tvar "x" in
   let b = make p ((x, a, None) :: ctx) mk_Type in
   Bindlib.unbox (Bindlib.bind_var x (lift b))
-(* Possible improvement: avoid lift by defining a function _Meta.make
-   returning a tbox. *)
+
+(** [bmake_codomain p bctx a] is [make_codomain p bctx a] but on boxed
+    terms. *)
+let bmake_codomain : problem -> bctxt -> tbox -> tbinder Bindlib.box =
+  fun p bctx a ->
+  let x = new_tvar "x" in
+  let b = bmake p ((x, a) :: bctx) _Type in
+  Bindlib.bind_var x b
 
 (** [iter b f c t] applies the function [f] to every metavariable of [t] and,
    if [x] is a variable of [t] mapped to [v] in the context [c], then to every
