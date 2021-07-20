@@ -9,15 +9,24 @@ open Timed
 let log = Logger.make 'i' "infr" "type inference/checking"
 let log = log.pp
 
+(* Optimised context *)
+type octxt = ctxt * bctxt
+let boxed = snd
+let classic = fst
+let extend (cctx, bctx) v ?def ty =
+  ((v, ty, def) :: cctx, if def <> None then bctx else (v, lift ty) :: bctx)
+
+let unbox = Bindlib.unbox
+
 (** Exception that may be raised by type inference. *)
 exception NotTypable
 
 (** [unif pb c a b] solves the unification problem [c ⊢ a ≡ b]. Current
     implementation collects constraints in {!val:constraints} then solves
     them at the end of type checking. *)
-let unif : problem -> ctxt -> term -> term -> unit =
+let unif : problem -> octxt -> term -> term -> unit =
  fun pb c a b ->
- if not (Eval.pure_eq_modulo c a b) then
+ if not (Eval.pure_eq_modulo (classic c) a b) then
  (* NOTE: eq_modulo is used because the unification algorithm counts on
     the fact that no constraint is added in some cases (see test
     "245b.lp"). We may however want to reduce the number of calls to
@@ -25,8 +34,8 @@ let unif : problem -> ctxt -> term -> term -> unit =
    begin
      if Logger.log_enabled () then
        log (Color.yel "add constraint %a") Print.pp_constr
-         (c, a, b);
-     pb := {!pb with to_solve = (c, a, b) :: !pb.to_solve}
+         (classic c, a, b);
+     pb := {!pb with to_solve = (classic c, a, b) :: !pb.to_solve}
    end
 
 (** {1 Handling coercions} *)
@@ -45,7 +54,7 @@ let coerce pb c t a b = unif pb c a b; (t, false)
 (** [type_enforce pb c a] returns a tuple [(a',s)] where [a'] is refined
     term [a] and [s] is a sort (Type or Kind) such that [a'] is of type
     [s]. *)
-let rec type_enforce : problem -> ctxt -> term -> term * term * bool =
+let rec type_enforce : problem -> octxt -> term -> term * term * bool =
  fun pb c a ->
   if Logger.log_enabled () then log "Type enforce [%a]" Print.pp_term a;
   let a, s, cui = infer pb c a in
@@ -63,21 +72,22 @@ let rec type_enforce : problem -> ctxt -> term -> term * term * bool =
 
 (** [force pb c t a] returns a term [t'] such that [t'] has type [a],
     and [t'] is the refinement of [t]. *)
-and force : problem -> ctxt -> term -> term -> term * bool =
+and force : problem -> octxt -> term -> term -> term * bool =
  fun pb c te ty ->
  if Logger.log_enabled () then
    log "Force [%a] of [%a]" Print.pp_term te Print.pp_term ty;
  match unfold te with
  | Plac true ->
      unif pb c ty mk_Type;
-     (LibMeta.make pb c mk_Type, true)
- | Plac false -> (LibMeta.make pb c ty, true)
+     (unbox (LibMeta.bmake pb (boxed c) _Type), true)
+ | Plac false ->
+     (unbox (LibMeta.bmake pb (boxed c) (lift ty)), true)
  | _ ->
      let (t, a, cui) = infer pb c te in
      let t, cu = coerce pb c t a ty in
      (t, cu || cui)
 
-and infer_aux : problem -> ctxt -> term -> term * term * bool =
+and infer_aux : problem -> octxt -> term -> term * term * bool =
  fun pb c t ->
   match unfold t with
   | Patt _ -> assert false
@@ -87,16 +97,16 @@ and infer_aux : problem -> ctxt -> term -> term * term * bool =
   | TRef _ -> assert false
   | Type -> (mk_Type, mk_Kind, false)
   | Vari x ->
-      let a = try Ctxt.type_of x c with Not_found -> assert false in
+      let a = try Ctxt.type_of x (classic c) with Not_found -> assert false in
       (t, a, false)
   | Symb s -> (t, !(s.sym_type), false)
   | Plac true ->
-      let m = LibMeta.make pb c mk_Type in
-      (m, mk_Type, true)
+      let m = LibMeta.bmake pb (boxed c) _Type in
+      (unbox m, mk_Type, true)
   | Plac false ->
-      let mt = LibMeta.make pb c mk_Type in
-      let m = LibMeta.make pb c mt in
-      (m, mt, true)
+      let mt = LibMeta.bmake pb (boxed c) _Type in
+      let m = LibMeta.bmake pb (boxed c) mt in
+      (unbox m, unbox mt, true)
   (* All metavariables inserted are typed. *)
   | (Meta (m, ts)) as t ->
       let cu = Stdlib.ref false in
@@ -124,7 +134,7 @@ and infer_aux : problem -> ctxt -> term -> term * term * bool =
       let t, cu_t = force pb c t t_ty in
       (* Unbind [u] and get new context with [x: t_ty ≔ t] *)
       let (x, u) = Bindlib.unbind u in
-      let c = (x, t_ty, Some t) :: c in
+      let c = extend c x ~def:t t_ty in
       (* Infer type of [u'] and refine it. *)
       let u, u_ty, cu_u = infer pb c u in
       ( match unfold u_ty with
@@ -148,7 +158,7 @@ and infer_aux : problem -> ctxt -> term -> term * term * bool =
       (* Domain must by of type Type (and not Kind) *)
       let dom, cu_dom = force pb c dom mk_Type in
       let (x, b) = Bindlib.unbind b in
-      let c = (x, dom, None) :: c in
+      let c = extend c x dom in
       let b, range, cu_b = infer pb c b in
       let range = Bindlib.(lift range |> bind_var x |> unbox) in
       let top_ty = mk_Prod (dom, range) in
@@ -164,7 +174,7 @@ and infer_aux : problem -> ctxt -> term -> term * term * bool =
       (* Domain must by of type Type (and not Kind) *)
       let dom, cu_dom = force pb c dom mk_Type in
       let (x, b) = Bindlib.unbind b in
-      let c = (x, dom, None) :: c in
+      let c = extend c x dom in
       let b, b_s, cu_b = type_enforce pb c b in
       let cu = cu_b || cu_dom in
       let top =
@@ -180,25 +190,30 @@ and infer_aux : problem -> ctxt -> term -> term * term * bool =
         let ty = Bindlib.subst range u and cu = cu_t || m in
         if cu then (mk_Appl (t, u), ty, cu) else (top, ty, cu)
       in
-      match Eval.whnf c t_ty with
+      match Eval.whnf (classic c) t_ty with
       | Prod (dom, range) ->
           if Logger.log_enabled () then log "Appl-prod arg [%a]" Print.pp_term u;
           let u, cu_u = force pb c u dom in
           return cu_u t u range
       | Meta (_, _) ->
           let u, u_ty, cu_u = infer pb c u in
-          let range = LibMeta.make_codomain pb c u_ty in
+          let range =
+            unbox (LibMeta.bmake_codomain pb (boxed c) (lift u_ty))
+          in
           unif pb c t_ty (mk_Prod (u_ty, range));
           return cu_u t u range
       | t_ty ->
-          let domain = LibMeta.make pb c mk_Type in
-          let range = LibMeta.make_codomain pb c domain in
+          let domain = LibMeta.bmake pb (boxed c) _Type in
+          let range = LibMeta.bmake_codomain pb (boxed c) domain in
+          let domain = unbox domain
+          and range = unbox range in
           let t, cu_t' = coerce pb c t t_ty (mk_Prod (domain, range)) in
           if Logger.log_enabled () then log "Appl-default arg [%a]" Print.pp_term u;
           let u, cu_u = force pb c u domain in
           return (cu_t' || cu_u) t u range )
 
-and infer : problem -> ctxt -> term -> term * term * bool = fun pb c t ->
+
+and infer : problem -> octxt -> term -> term * term * bool = fun pb c t ->
   if Logger.log_enabled () then log "Infer [%a]" Print.pp_term t;
   let t, t_ty, cu = infer_aux pb c t in
   if Logger.log_enabled () then
@@ -217,11 +232,11 @@ and infer : problem -> ctxt -> term -> term * term * bool = fun pb c t ->
     the call to [f] and [cs] is the list of constraints gathered by
     [f]. Function [f] may raise [NotTypable], in which case [None] is
     returned. *)
-let noexn : (problem -> ctxt -> 'a -> 'b) -> problem -> ctxt -> 'a ->
+let noexn : (problem -> octxt -> 'a -> 'b) -> problem -> ctxt -> 'a ->
   'b option =
   fun f pb c args ->
   try
-    Some (f pb c args)
+    Some (f pb (c, Ctxt.box_context c) args)
   with NotTypable -> None
 
 let infer_noexn pb c t : (term * term) option =

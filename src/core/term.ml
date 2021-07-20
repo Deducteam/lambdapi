@@ -274,10 +274,16 @@ and pp_tenv : term_env pp = fun ppf te ->
   | TE_None -> ()
 
 (** Typing context associating a [Bindlib] variable to a type and possibly a
-   definition. The typing environment [x1:A1,..,xn:An] is represented by the
-   list [xn:An;..;x1:A1] in reverse order (last added variable comes
-   first). *)
+    definition. The typing environment [x1:A1,..,xn:An] is represented by the
+    list [xn:An;..;x1:A1] in reverse order (last added variable comes
+    first). *)
 type ctxt = (tvar * term * term option) list
+
+(** Typing context with lifted terms. Used to optimise type checking and avoid
+    lifting terms several times. Definitions are not included because these
+    contexts are used to create meta variables types, which do not use [let]
+    definitions. *)
+type bctxt = (tvar * tbox) list
 
 (** Type of unification constraints. *)
 type constr = ctxt * term * term
