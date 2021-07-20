@@ -511,6 +511,20 @@ let get_proof_data : compiler -> sig_state -> p_command ->
   | e                           ->
       fatal pos "Uncaught exception: %s." (Printexc.to_string e)
 
+let custom_fold f accu = function
+  | [] -> accu
+  | sp::spl ->
+    match sp with
+      | [] -> p_proof_fold_left f accu spl
+      | Tactic(t, splbis)::psl ->
+        (*
+        let _, ps, _ = accu in 
+        let _, psn, _ = f accu t in*)
+        if false (*List.length psn.proof_goals - List.length ps.proof_goals <>
+           List.length splbis*) then fatal t.pos "je passe ici"
+        else
+        p_proof_fold_left f (f accu t) (splbis@psl::spl)
+
 (** [handle compile_mod ss cmd] retrieves proof data from [cmd] (with
     {!val:get_proof_data}) and handles proofs using functions from
     {!module:Tactic} The function [compile_mod] is used to compile required
@@ -525,8 +539,8 @@ let handle : compiler -> Sig_state.t -> Syntax.p_command -> Sig_state.t =
   | None -> ss
   | Some d ->
       let ss, ps, _ =
-        Syntax.p_proof_fold_left
-          (fun (ss, ps, _) tac -> Tactic.handle ss d.pdata_prv ps tac)
-          (ss, d.pdata_p_state, None) d.pdata_tactics
+      custom_fold
+        (fun (ss, ps, _) tac -> Tactic.handle ss d.pdata_prv ps tac)
+        (ss, d.pdata_p_state, None) d.pdata_tactics
       in
       d.pdata_finalize ss ps
