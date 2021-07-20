@@ -217,13 +217,15 @@ and p_subproof = p_proof_step list;;
 
 type p_proof = p_subproof list;;
 
-(**[tac_list_of_pproof p] converts the p_proof [p] into a list of tactics*)
-let rec tac_list_of_pproof : p_proof -> p_tactic list = function
+(**[p_tactic_list_of_p_proof] converts the p_proof [p]
+   into a list of tactics*)
+let rec  p_tactic_list_of_p_proof : p_proof -> p_tactic list = function
 | [] -> []
 | sp::spl ->
   match sp with
-    | [] -> tac_list_of_pproof spl
-    | Tactic(t, splbis)::psl -> t::tac_list_of_pproof (splbis@[psl]@spl);;
+    | [] ->  p_tactic_list_of_p_proof spl
+    | Tactic(t, splbis)::psl
+      -> t:: p_tactic_list_of_p_proof (splbis@psl::spl);;
 
 type p_proof_end_aux =
   | P_proof_end
@@ -257,6 +259,7 @@ type p_symbol =
   ; p_sym_typ : p_term option (** symbol type *)
   ; p_sym_trm : p_term option (** symbol definition *)
   ; p_sym_prf : (p_proof * p_proof_end) option (** proof script *)
+  (*; p_sym_prf : (p_tactic list * p_proof_end) option (** proof script *)*)
   ; p_sym_def : bool (** is it a definition ? *) }
 
 (** Parser-level representation of a single command. *)
@@ -381,10 +384,37 @@ let eq_p_tactic : p_tactic eq = fun {elt=t1;_} {elt=t2;_} ->
   | P_tac_sym, P_tac_sym -> true
   | _, _ -> false
 
+(** [p_proof_fold_left f accu p] behaves as List.fold_left [f] [accu] l
+    where l denotes the list of the tactics used in the proof [p]*)
+let rec p_proof_fold_left :
+('a -> p_tactic -> 'a) -> 'a -> p_proof -> 'a = fun f accu p ->
+match p with
+| [] -> accu
+| sp::spl ->
+  match sp with
+    | [] -> p_proof_fold_left f accu spl
+    | Tactic(t, splbis)::psl ->
+      p_proof_fold_left f (f accu t) (splbis@psl::spl);;
+
+(** [eq_p_proof p1 p2] tells whether [p1] and [p2] are the same proofs. *)
+let rec eq_p_proof : p_proof -> p_proof -> bool = fun p1 p2 ->
+  match p1, p2 with
+  | [], [] -> true
+  | [], _  -> false
+  | _, []  -> false
+  | sp1::spl1, sp2::spl2 ->
+    match sp1, sp2 with
+    | [], [] -> eq_p_proof spl1 spl2
+    | [], _  -> false
+    | _, []  -> false
+    | Tactic(t1, splbis1)::psl1, Tactic(t2, splbis2)::psl2 ->
+      eq_p_tactic t1 t2
+      && eq_p_proof (splbis1@psl1::spl1) (splbis2@psl2::spl2)
+
 let eq_p_symbol : p_symbol eq =
   let eq_tac (ts1,pe1) (ts2,pe2) =
-    List.eq eq_p_tactic (tac_list_of_pproof ts1) (tac_list_of_pproof ts2)
-     && pe1.elt = pe2.elt in
+    eq_p_proof ts1 ts2 && pe1.elt = pe2.elt in
+    (*List.eq eq_p_tactic ts1 ts2 && pe1.elt = pe2.elt in*)
   fun
     { p_sym_mod=p_sym_mod1; p_sym_nam=p_sym_nam1; p_sym_arg=p_sym_arg1;
       p_sym_typ=p_sym_typ1; p_sym_trm=p_sym_trm1; p_sym_prf=p_sym_prf1;
@@ -563,8 +593,8 @@ let fold_idents : ('a -> p_qident -> 'a) -> 'a -> p_command list -> 'a =
     List.fold_left fold_cons a ((id,t)::cons_list)
   in
 
-  let fold_proof : 'a -> (p_tactic list * p_proof_end) -> 'a =
-    fun a (ts, _) -> snd (List.fold_left fold_tactic (StrSet.empty, a) ts)
+  let fold_proof : 'a -> (p_proof * p_proof_end) -> 'a =
+    fun a (ts, _) -> snd (p_proof_fold_left fold_tactic (StrSet.empty, a) ts)
   in
 
   let fold_args : StrSet.t * 'a -> p_params -> StrSet.t * 'a =
@@ -575,15 +605,16 @@ let fold_idents : ('a -> p_qident -> 'a) -> 'a -> p_command list -> 'a =
     | Some t -> fold_term_vars vs a t
   in
 
+  (*
   (**[tac_list_option_of_pproof_option p_sym_prf] is a temporary function
   used to convert [p_sym_prf] in an (p_tactic list * p_proof_end) type*)
   let tac_list_option_of_pproof_option
     : (p_proof * p_proof_end) option -> (p_tactic list * p_proof_end) option
     = function
     | None -> None
-    | Some (p, pe) -> Some (tac_list_of_pproof p, pe)
+    | Some (p, pe) -> Some (p_tactic_list_of_p_proof p, pe)
   in
-
+  *)
   let fold_command : 'a -> p_command -> 'a = fun a {elt;pos} ->
     match elt with
     | P_require (_, _)
@@ -604,7 +635,7 @@ let fold_idents : ('a -> p_qident -> 'a) -> 'a -> p_command list -> 'a =
           (fold_term a
              (Pos.make pos
                 (P_LLet (p_sym_nam, p_sym_arg, p_sym_typ, t, d))))
-        (tac_list_option_of_pproof_option p_sym_prf)
+        p_sym_prf
   in
 
   List.fold_left fold_command

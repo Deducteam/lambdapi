@@ -50,6 +50,13 @@ module Tactic = struct
   let print = Util.pp_located Pretty.tactic
 end
 
+(** Representation of a single proof (abstract). *)
+module Rproof = struct
+  type t = Syntax.p_proof
+  let equal = Syntax.eq_p_proof
+  let fold_left = Syntax.p_proof_fold_left
+end
+
 type state = Time.t * Sig_state.t
 
 (** Exception raised by [parse_text] on error. *)
@@ -119,7 +126,7 @@ let current_goals : proof_state -> goal list =
 
 type command_result =
   | Cmd_OK    of state * string option
-  | Cmd_Proof of proof_state * Tactic.t list * Pos.popt * Pos.popt
+  | Cmd_Proof of proof_state * Rproof.t * Pos.popt * Pos.popt
   | Cmd_Error of Pos.popt option * string
 
 type tactic_result =

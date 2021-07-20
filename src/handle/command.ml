@@ -178,7 +178,7 @@ let handle_inductive_symbol : sig_state -> expo -> prop -> match_strat
 type proof_data =
   { pdata_stmt_pos : Pos.popt (** Position of the declared symbol. *)
   ; pdata_p_state  : proof_state (** Proof state. *)
-  ; pdata_tactics  : p_tactic list (** Tactics. *)
+  ; pdata_tactics  : p_proof (** Tactics. *)
   ; pdata_finalize : sig_state -> proof_state -> sig_state (** Finalizer. *)
   ; pdata_end_pos  : Pos.popt (** Position of the proof's terminator. *)
   ; pdata_prv      : bool (** [true] iff private symbols are allowed. *) }
@@ -411,7 +411,7 @@ let get_proof_data : compiler -> sig_state -> p_command ->
       let pdata_tactics, pe =
         match p_sym_prf with
         | None -> [], Pos.make (Pos.end_pos pos) P_proof_end
-        | Some (ts, pe) -> tac_list_of_pproof ts, pe
+        | Some (ts, pe) -> ts, pe
       in
       (* Initialize proof state. *)
       Console.State.push ();
@@ -524,7 +524,7 @@ let handle : compiler -> Sig_state.t -> Syntax.p_command -> Sig_state.t =
   | None -> ss
   | Some d ->
       let ss, ps, _ =
-        List.fold_left
+        Syntax.p_proof_fold_left
           (fun (ss, ps, _) tac -> Tactic.handle ss d.pdata_prv ps tac)
           (ss, d.pdata_p_state, None) d.pdata_tactics
       in

@@ -23,6 +23,13 @@ module Tactic : sig
   val print : t Base.pp [@@ocaml.toplevel_printer]
 end
 
+(** Abstract representation of a proof. *)
+module Rproof : sig
+  type t
+  val equal : t -> t -> bool
+  val fold_left : ('a -> Tactic.t -> 'a) -> 'a -> t -> 'a
+end
+
 (** Representation of the state when at the toplevel. *)
 type state
 
@@ -52,7 +59,7 @@ val current_goals : proof_state -> goal list
 type command_result =
   | Cmd_OK    of state * string option
   (** Command is done. *)
-  | Cmd_Proof of proof_state * Tactic.t list * Pos.popt * Pos.popt
+  | Cmd_Proof of proof_state * Rproof.t * Pos.popt * Pos.popt
   (** Enter proof mode (positions are for statement and qed). *)
   | Cmd_Error of Pos.popt option * string
   (** Error report. *)

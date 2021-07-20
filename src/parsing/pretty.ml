@@ -244,8 +244,8 @@ let notation : Sign.notation pp = fun ppf n ->
   | Quant -> out ppf "quantifier"
   | _ -> ()
 
-(**[proof p ppf n] pretty prints the proof [p] using the formatter
-[ppf] at and identation level of [n] (initially 0)*)
+(**[proof p ppf n] pretty prints the proof [p] using the formatter [ppf].
+   [n] is the identation level (initially 0).*)
 let rec proof : p_proof -> formatter -> int -> unit =
   fun p ppf n ->
   match p, n with

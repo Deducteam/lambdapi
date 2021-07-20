@@ -130,6 +130,13 @@
 
 %%
 
+//Custom constructions
+nonempty_sep_except_maybe_last(arg, sep):
+  | a=arg { [a] }
+  | a=arg sep { [a] }
+  | a=arg sep l=nonempty_sep_except_maybe_last(arg, sep) { a :: l }
+//
+
 uid: i=UID { make_pos $sloc i}
 
 id:
@@ -244,15 +251,16 @@ proof_end:
 
 proof:
   (*in case there are more than one goal to prove in the beginning*)
-  | BEGIN l=subproof+ pe=proof_end { l, pe }
+  | BEGIN l=proof_block+ pe=proof_end { l, pe }
   (*in case there is just one goal to prove in the beginning*)
-  | BEGIN l=subproofbis pe=proof_end { [l], pe }
+  | BEGIN l=nonempty_sep_except_maybe_last(proof_step, SEMICOLON) pe=proof_end
+    { [l], pe }
 
-subproof: L_CU_BRACKET l=terminated(proof_step, SEMICOLON)* R_CU_BRACKET { l }
+proof_block:
+  L_CU_BRACKET l=nonempty_sep_except_maybe_last(proof_step, SEMICOLON)
+  R_CU_BRACKET { l }
 
-subproofbis: l=terminated(proof_step, SEMICOLON)* { l }
-
-proof_step: t=tactic l=subproof* { Tactic(t, l) }
+proof_step: t=tactic l=proof_block* { Tactic(t, l) }
 
 constructor:
   | i=uid ps=params* COLON t=term
@@ -282,15 +290,13 @@ command:
     po=proof? SEMICOLON
     { let sym =
         {p_sym_mod=ms; p_sym_nam=s; p_sym_arg=al; p_sym_typ=Some(a);
-         p_sym_trm=None; p_sym_def=false;
-         p_sym_prf= po}
+         p_sym_trm=None; p_sym_def=false; p_sym_prf= po}
       in make_pos $sloc (P_symbol(sym)) }
   | ms=modifier* SYMBOL s=uid al=params* ao=preceded(COLON, term)?
     ASSIGN tp=term_proof SEMICOLON
     { let sym =
         {p_sym_mod=ms; p_sym_nam=s; p_sym_arg=al; p_sym_typ=ao;
-         p_sym_trm=fst tp; p_sym_def=true;
-         p_sym_prf= snd tp}
+         p_sym_trm=fst tp; p_sym_prf= snd tp; p_sym_def=true}
       in make_pos $sloc (P_symbol(sym)) }
   | ms=modifier* xs=params* INDUCTIVE
     is=separated_nonempty_list(WITH, inductive) SEMICOLON
@@ -322,6 +328,26 @@ saterm:
   | t=saterm u=aterm { make_pos $sloc (P_Appl(t,u)) }
   | t=aterm { t }
 
+(*
+hterm:
+  | ti=term_id { ti }
+  | WILD { make_pos $sloc P_Wild }
+  | TYPE_TERM { make_pos $sloc P_Type }
+  | m=UID_META e=env?
+      { let mid = make_pos $loc(m) m in
+        make_pos $sloc (P_Meta(mid, Option.map Array.of_list e)) }
+  | p=patt_id e=env? { make_pos $sloc (P_Patt(p,Option.map Array.of_list e)) }
+  | L_PAREN t=term R_PAREN { make_pos $sloc (P_Wrap(t)) }
+  | n=INT { make_pos $sloc (P_NLit(n)) }
+
+aterm:
+  | t=hterm { t }
+  | VBAR t=term VBAR { make_pos $sloc (P_Expl(t)) }
+
+saterm:
+  | t=saterm u=aterm { make_pos $sloc (P_Appl(t,u)) }
+  | t=hterm { t }
+*)
 bterm:
   | BACKQUOTE q=term_id b=binder
     { let b = make_pos $loc(b) (P_Abst(fst b, snd b)) in

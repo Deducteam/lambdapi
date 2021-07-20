@@ -20,7 +20,7 @@ type compiler = Common.Path.t -> Sign.t
 type proof_data =
   { pdata_stmt_pos : popt (** Position of the declared symbol. *)
   ; pdata_p_state  : proof_state (** Proof state. *)
-  ; pdata_tactics  : p_tactic list (** Tactics. *)
+  ; pdata_tactics  : p_proof (** Tactics. *)
   ; pdata_finalize : sig_state -> proof_state -> sig_state (** Finalizer. *)
   ; pdata_end_pos  : popt (** Position of the proof's terminator. *)
   ; pdata_prv      : bool (** [true] iff private symbols are allowed. *) }
