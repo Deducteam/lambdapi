@@ -10,6 +10,9 @@ open Term
 let log = Debug.new_logger 'i' "infr" "Infer"
 let log = log.logger
 
+let log_cion = Debug.new_logger 'n' "cion" "Coercions"
+let log_cion = log_cion.logger
+
 (** Type for unification constraints solvers. *)
 type solver = problem -> constr list option
 
@@ -121,12 +124,13 @@ functor
       let rec try_coercions cs =
         Time.restore tau;
         if !Debug.log_enabled then
-          log (yel "Coerce [%a : %a ≡ %a]") Print.pp_term t Print.pp_term a
+          log_cion "Coerce [%a : %a ≡ %a]" Print.pp_term t Print.pp_term a
             Print.pp_term b;
         match cs with
         | [] -> raise Not_found
         | Sign.{defn_ty; source; prerequisites; defn; arity; name }::cs ->
-            if !Debug.log_enabled then log "Trying coercion %s" name;
+            if !Debug.log_enabled then
+              log_cion (yel "Trying coercion %s") name;
             let l = LibTerm.prod_arity defn_ty in
             let metas, domain, range =
               let meta_dom, range =
@@ -154,11 +158,16 @@ functor
               in
               metas, domain, range
             in
-            if approx ctx a domain && approx ctx b range then
+            if !Debug.log_enabled then
+              log_cion "Approx [@[%a ~@ %a@]] and@ [@[%a ~@ %a@]]"
+                Print.pp_term a Print.pp_term domain
+                Print.pp_term b Print.pp_term range;
+            if approx ctx a domain && approx ctx b range then (
               (* REVIEW: we may short-circuit prerequisites processing when
                  there is none. *)
               (* Replace pre-requisites by variables to be able to reduce
                  the term. *)
+              if !Debug.log_enabled then log_cion (gre "Approx succeeded");
               let preqs_vars, defn = Bindlib.unmbind defn in
               let defn =
                 Eval.whnf_beta (add_args defn (Array.to_list metas))
@@ -170,8 +179,8 @@ functor
               let defn =
                 Bindlib.(bind_mvar preqs_vars (lift defn) |> unbox)
               in
-              Bindlib.msubst defn preqs
-            else try_coercions cs
+              Bindlib.msubst defn preqs )
+            else (log_cion (red "Approx failed"); try_coercions cs)
       in
       let eqs = !constraints in
       match L.solve {empty_problem with to_solve = (ctx, a, b) :: eqs} with
@@ -183,7 +192,8 @@ functor
             (* Hope that the constraint will be solved later. *)
             unif ctx a b;
             if !Debug.log_enabled then
-              log "No coercion found for problem @[<h>%a@ :@, %a@ ≡@ %a@]"
+              log_cion
+                "No coercion found for problem @[<h>%a@ :@, %a@ ≡@ %a@]"
                 Print.pp_term t Print.pp_term a Print.pp_term b;
             t
 
