@@ -72,7 +72,7 @@ functor
   (L : LOOKUP)
   ->
   struct
-    let constraints = Stdlib.ref []
+    let constraints = ref []
 
     exception NotTypable
 
@@ -89,7 +89,7 @@ functor
        begin
          if !Debug.log_enabled then
            log (yel "add constraint %a") Print.pp_constr (ctx, a, b);
-         Stdlib.(constraints := (ctx, a, b) :: !constraints)
+         constraints := (ctx, a, b) :: !constraints
        end
 
     (** {1 Handling coercions} *)
@@ -114,6 +114,9 @@ functor
       let tau = Time.save () in
       let rec try_coercions cs =
         Time.restore tau;
+        if !Debug.log_enabled then
+          log (yel "Coerce [%a : %a ≡ %a]") Print.pp_term t Print.pp_term a
+            Print.pp_term b;
         match cs with
         | [] -> raise Not_found
         | Sign.{defn_ty; source; prerequisites; defn; arity; name }::cs ->
@@ -164,13 +167,10 @@ functor
               Bindlib.msubst defn preqs
             else try_coercions cs
       in
-      let eqs = Stdlib.(!constraints) in
+      let eqs = !constraints in
       match L.solve {empty_problem with to_solve = (ctx, a, b) :: eqs} with
-      | Some [] -> Stdlib.(constraints := []) (* Backup resolution *); t
+      | Some [] -> constraints := [] (* Backup resolution *); t
       | _ ->
-          if !Debug.log_enabled then
-            log (yel "Coerce [%a : %a ≡ %a]") Print.pp_term t Print.pp_term a
-              Print.pp_term b;
           try try_coercions L.coercions
           with Not_found ->
             (* FIXME: when is this case encountered? Only when checking SR? *)
@@ -386,15 +386,15 @@ functor
       (* Backing up constraints is required because type checking may be
          called recursively by the unification engine. Not backing up leads to
          loss of constraints. *)
-      let eqs = Stdlib.(!constraints) in
-      Stdlib.(constraints := cs);
+      let eqs = !constraints in
+      constraints := cs;
       let r =
         try
           let r = Debug.time_of (fun () -> f ctx args) in
-          let cs = Stdlib.(!constraints) in
+          let cs = !constraints in
           Some(r, List.rev cs)
         with NotTypable -> None
-      in Stdlib.(constraints := eqs); r
+      in constraints := eqs; r
 
     let infer_noexn cs ctx t =
       if !Debug.log_enabled then
@@ -447,13 +447,13 @@ functor
 
     let check_sort : ctxt -> term loc -> term * term =
       fun ctx {elt=t; pos} ->
-      let eqs = Stdlib.(!constraints) in
-      Stdlib.(constraints := []);
+      let eqs = !constraints in
+      constraints := [];
       let t, a = type_enforce ctx t in
-      let to_solve = Stdlib.(!constraints) in
+      let to_solve = !constraints in
       match L.solve {empty_problem with to_solve} with
       | None -> Error.fatal pos "[%a] is not typable" Print.pp_term t
-      | Some [] -> Stdlib.(constraints := eqs); (t, a)
+      | Some [] -> constraints := eqs; (t, a)
       | Some cs ->
           List.iter (Error.wrn None "Cannot solve [%a].\n" Print.pp_constr)
             cs;
