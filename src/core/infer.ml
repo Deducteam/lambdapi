@@ -86,11 +86,10 @@ functor
         the fact that no constraint is added in some cases (see test
         "245b.lp"). We may however want to reduce the number of calls to
         [eq_modulo]. *)
-       begin
-         if !Debug.log_enabled then
-           log (yel "add constraint %a") Print.pp_constr (ctx, a, b);
-         constraints := (ctx, a, b) :: !constraints
-       end
+       let cstr = (ctx, a, b) in
+       if !Debug.log_enabled then
+         log (yel "add constraint %a") Print.pp_constr cstr;
+       constraints := cstr :: !constraints
 
     (** {1 Handling coercions} *)
 
@@ -103,9 +102,16 @@ functor
         be used on [a]. The operation may instantiate meta-variables. *)
     let approx : ctxt -> term -> term -> bool = fun ctx a b ->
       Eval.eq_modulo ctx a b ||
-      match L.solve {empty_problem with to_solve = [ctx, a, b]} with
-      | Some [] -> true
-      | _ -> false
+      let tau = Time.save () in
+      (* First try to solve with all constraints *)
+      match L.solve {empty_problem with to_solve = (ctx,a,b) :: !constraints} with
+      | Some [] -> constraints := []; true
+      | _ ->
+          Time.restore tau;
+          (* If it fails, try to solve only the new equation *)
+          match L.solve {empty_problem with to_solve = [ctx, a, b]} with
+          | Some [] -> true
+          | _ -> false
 
     (** [coerce ctx t a b] coerces term [t] of type [a] to type [b]. *)
     let rec coerce : ctxt -> term -> term -> term -> term =
