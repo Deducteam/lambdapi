@@ -393,7 +393,7 @@ let rec solve : problem -> constr list = fun p ->
   let p = {p with to_solve} in
 
   (* We take the beta-whnf. *)
-  let t1 = Eval.whnf_beta t1 and t2 = Eval.whnf_beta t2 in
+  let t1 = Eval.whnf_beta ~ctx t1 and t2 = Eval.whnf_beta ~ctx t2 in
   if !log_enabled then log_unif "Solving [%a]" pp_constr (ctx,t1,t2);
   let (h1, ts1) = get_args t1
   and (h2, ts2) = get_args t2 in

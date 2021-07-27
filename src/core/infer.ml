@@ -317,6 +317,7 @@ functor
                   ts.(i) <- force ctx ts.(i) ai;
                   let b = Bindlib.subst b ts.(i) in
                   ref_esubst (i + 1) b
+              | LLet(_,t,u) -> ref_esubst i (Bindlib.subst u t)
               | _ ->
                   (* Meta type must be a product of arity greater or equal
                      to the environment *)
@@ -334,9 +335,8 @@ functor
           (* Infer type of [u'] and refine it. *)
           let u, u_ty = infer ctx u in
           let u_ty = Bindlib.(u_ty |> lift |> bind_var x |> unbox) in
-          let u_ty = Bindlib.subst u_ty t in
           let u = Bindlib.(u |> lift |> bind_var x |> unbox) in
-          (mk_LLet (t_ty, t, u), u_ty)
+          (mk_LLet (t_ty, t, u), mk_LLet (t_ty, t, u_ty))
       | Abst (dom, b) ->
           (* Domain must by of type Type, we don’t use [type_enforce] *)
           let dom = force ctx dom mk_Type in

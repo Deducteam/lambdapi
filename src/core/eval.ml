@@ -52,33 +52,37 @@ let appl_to_tref : term -> term = fun t ->
 type stack = term list
 
 (** [whnf_beta t] computes a weak head beta normal form of the term [t]. *)
-let rec whnf_beta : term -> term = fun t ->
+let rec whnf_beta : ctxt -> term -> term = fun ctx t ->
   if !log_enabled then log_eval "evaluating %a" pp_term t;
   let s = Stdlib.(!steps) in
-  let (u, stk) = whnf_beta_stk t [] in
+  let (u, stk) = whnf_beta_stk ctx t [] in
   if Stdlib.(!steps) <> s then add_args u stk else unfold t
 
 (** [whnf_beta_stk t stk] computes the weak head beta normal form of [t]
     applied to the argument list (or stack) [stk]. Note that the normalisation
     is done in the sense of [whnf]. *)
-and whnf_beta_stk : term -> stack -> term * stack = fun t stk ->
-  let st = (unfold t, stk) in
+and whnf_beta_stk : ctxt -> term -> stack -> term * stack =
+  fun ctx t stk ->
+  let st = (Ctxt.unfold ctx t, stk) in
   match st with
   (* Push argument to the stack. *)
   | (Appl(f,u), stk    ) ->
-      whnf_beta_stk f (u :: stk)
+      whnf_beta_stk ctx f (u :: stk)
   (* Beta reduction. *)
   | (Abst(_,f), u::stk ) ->
       Stdlib.incr steps;
-      whnf_beta_stk (Bindlib.subst f u) stk
+      whnf_beta_stk ctx (Bindlib.subst f u) stk
+  | (LLet(_,t,u), stk  ) ->
+      Stdlib.incr steps;
+      whnf_beta_stk ctx (Bindlib.subst u t) stk
   (* In head beta normal form. *)
   | (_        , _      ) -> st
 
 (** [whnf_beta t] computes a weak head beta normal form of [t]. *)
-let whnf_beta : term -> term = fun t ->
+let whnf_beta : ?ctx:ctxt -> term -> term = fun ?(ctx=[]) t ->
   Stdlib.(steps := 0);
-  let u = whnf_beta t in
-  if Stdlib.(!steps = 0) then unfold t else u
+  let u = whnf_beta ctx t in
+  if Stdlib.(!steps = 0) then Ctxt.unfold ctx t else u
 
 (** [whnf ctx t] computes a weak head normal form of the term [t] in context
     [ctx]. *)
