@@ -75,6 +75,7 @@ let get_impl_params_list : p_params list -> bool list =
 let rec get_impl_term : p_term -> bool list = fun t -> get_impl_term_aux t.elt
 and get_impl_term_aux : p_term_aux -> bool list = fun t ->
   match t with
+  | P_LLet(_,_,_,_,t) -> get_impl_term t
   | P_Prod([],t) | P_Abst([],t) -> get_impl_term t
   | P_Prod((ys,_,b)::xs,t) ->
       List.map (fun _ -> b) ys @ get_impl_term_aux (P_Prod(xs,t))
