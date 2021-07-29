@@ -511,19 +511,63 @@ let get_proof_data : compiler -> sig_state -> p_command ->
   | e                           ->
       fatal pos "Uncaught exception: %s." (Printexc.to_string e)
 
-let custom_fold f accu = function
+let string_of_p_tactic = function
+  | P_tac_admit -> "admit"
+  | P_tac_apply _ -> "apply"
+  | P_tac_assume _ -> "assume"
+  | P_tac_fail -> "fail"
+  | P_tac_focus _ ->  "focus"
+  | P_tac_generalize _ -> "generalize"
+  | P_tac_have _ -> "have"
+  | P_tac_induction -> "induction"
+  | P_tac_query _ -> "query"
+  | P_tac_refine _ -> "refine"
+  | P_tac_refl -> "reflexivity"
+  | P_tac_rewrite _ -> "rewrite"
+  | P_tac_simpl _ -> "simpl"
+  | P_tac_solve -> "solve"
+  | P_tac_sym -> "symmetry"
+  | P_tac_why3 _ -> "why3"
+
+(**[handle_proof f accu p] works exactly as [proof_fold_left f accu p]
+   except it outputs fatal errors if an incorrect number of goals is 
+   given by the user*)
+let rec handle_proof f accu = function
   | [] -> accu
   | sp::spl ->
     match sp with
-      | [] -> p_proof_fold_left f accu spl
+      | [] -> handle_proof f accu spl
       | Tactic(t, splbis)::psl ->
-        (*
         let _, ps, _ = accu in 
-        let _, psn, _ = f accu t in*)
-        if false (*List.length psn.proof_goals - List.length ps.proof_goals <>
-           List.length splbis*) then fatal t.pos "je passe ici"
-        else
-        p_proof_fold_left f (f accu t) (splbis@psl::spl)
+        let _, psn, _ = f accu t in
+        let og = List.length ps.proof_goals in
+        let ng = List.length psn.proof_goals in
+        let gg = List.length splbis in
+        (*The tactic have behaves differently*)
+        if is_have t && ng - og <> gg then
+            begin
+              fatal t.pos
+              "The tactic `%s` has generated %s goals but %s were given"
+              (string_of_p_tactic t.elt)
+              (string_of_int (ng - og))
+              (string_of_int gg)
+            end
+        else if
+           (*The right amount of goals need to be created*)
+           ng - og + 1 <> gg
+           (*Tactic mustn't be "have"*)
+           && not (is_have t) 
+           (*Goals must be created*)
+           && ng - og > 0
+          then
+            begin
+              fatal t.pos 
+              "The tactic `%s` has generated %s goals but %s were given"
+              (string_of_p_tactic t.elt)
+              (string_of_int (ng - og + 1))
+              (string_of_int gg)
+            end
+        else handle_proof f (f accu t) (splbis@psl::spl)
 
 (** [handle compile_mod ss cmd] retrieves proof data from [cmd] (with
     {!val:get_proof_data}) and handles proofs using functions from
@@ -539,7 +583,7 @@ let handle : compiler -> Sig_state.t -> Syntax.p_command -> Sig_state.t =
   | None -> ss
   | Some d ->
       let ss, ps, _ =
-      custom_fold
+      handle_proof
         (fun (ss, ps, _) tac -> Tactic.handle ss d.pdata_prv ps tac)
         (ss, d.pdata_p_state, None) d.pdata_tactics
       in

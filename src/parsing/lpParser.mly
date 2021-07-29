@@ -104,10 +104,12 @@
 %token L_CU_BRACKET
 %token L_PAREN
 %token L_SQ_BRACKET
+%token LT
 %token PI
 %token R_CU_BRACKET
 %token R_PAREN
 %token R_SQ_BRACKET
+%token RT
 %token SEMICOLON
 %token TURNSTILE
 %token VBAR
@@ -130,12 +132,15 @@
 
 %%
 
-//Custom constructions
-nonempty_sep_except_maybe_last(arg, sep):
+separated_nonempty_list_additional_last_sep(arg, sep):
   | a=arg { [a] }
-  | a=arg sep { [a] }
-  | a=arg sep l=nonempty_sep_except_maybe_last(arg, sep) { a :: l }
-//
+  | a=arg; sep { [a] }
+  | a=arg; sep; l=separated_nonempty_list_additional_last_sep(arg, sep)
+    { a :: l }
+
+separated_list_additional_last_sep(arg, sep):
+  l=loption(separated_nonempty_list_additional_last_sep(arg, sep))
+    { l }
 
 uid: i=UID { make_pos $sloc i}
 
@@ -252,13 +257,15 @@ proof_end:
 proof:
   (*in case there are more than one goal to prove in the beginning*)
   | BEGIN l=proof_block+ pe=proof_end { l, pe }
-  (*in case there is just one goal to prove in the beginning*)
-  | BEGIN l=nonempty_sep_except_maybe_last(proof_step, SEMICOLON) pe=proof_end
-    { [l], pe }
+  (*in case there is just one goal (or none) to prove in the beginning*)
+  | BEGIN
+      l=separated_list_additional_last_sep(proof_step, SEMICOLON)
+    pe=proof_end
+      { [l], pe }
 
 proof_block:
-  L_CU_BRACKET l=nonempty_sep_except_maybe_last(proof_step, SEMICOLON)
-  R_CU_BRACKET { l }
+  LT l=separated_list_additional_last_sep(proof_step, SEMICOLON)
+  RT { l }
 
 proof_step: t=tactic l=proof_block* { Tactic(t, l) }
 
@@ -328,26 +335,6 @@ saterm:
   | t=saterm u=aterm { make_pos $sloc (P_Appl(t,u)) }
   | t=aterm { t }
 
-(*
-hterm:
-  | ti=term_id { ti }
-  | WILD { make_pos $sloc P_Wild }
-  | TYPE_TERM { make_pos $sloc P_Type }
-  | m=UID_META e=env?
-      { let mid = make_pos $loc(m) m in
-        make_pos $sloc (P_Meta(mid, Option.map Array.of_list e)) }
-  | p=patt_id e=env? { make_pos $sloc (P_Patt(p,Option.map Array.of_list e)) }
-  | L_PAREN t=term R_PAREN { make_pos $sloc (P_Wrap(t)) }
-  | n=INT { make_pos $sloc (P_NLit(n)) }
-
-aterm:
-  | t=hterm { t }
-  | VBAR t=term VBAR { make_pos $sloc (P_Expl(t)) }
-
-saterm:
-  | t=saterm u=aterm { make_pos $sloc (P_Appl(t,u)) }
-  | t=hterm { t }
-*)
 bterm:
   | BACKQUOTE q=term_id b=binder
     { let b = make_pos $loc(b) (P_Abst(fst b, snd b)) in

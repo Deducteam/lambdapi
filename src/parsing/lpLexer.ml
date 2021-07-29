@@ -87,10 +87,12 @@ type token =
   | L_CU_BRACKET
   | L_PAREN
   | L_SQ_BRACKET
+  | LT
   | PI
   | R_CU_BRACKET
   | R_PAREN
   | R_SQ_BRACKET
+  | RT
   | SEMICOLON
   | TURNSTILE
   | VBAR
@@ -366,10 +368,12 @@ let lexer buf =
   | '{' -> L_CU_BRACKET
   | '(' -> L_PAREN
   | '[' -> L_SQ_BRACKET
+  | '<' -> LT
   | 0x03a0 (* Π *) -> PI
   | '}' -> R_CU_BRACKET
   | ')' -> R_PAREN
   | ']' -> R_SQ_BRACKET
+  | '>' -> RT
   | ';' -> SEMICOLON
   | 0x22a2 (* ⊢ *) -> TURNSTILE
   | '|' -> VBAR

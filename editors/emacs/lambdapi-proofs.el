@@ -8,7 +8,7 @@
 (require 'highlight)
 (require 'cl-lib)
 
-(defconst lambdapi-terminators '(";" "begin")
+(defconst lambdapi-terminators '(";" "begin" "<")
   "List of terminators for electric terminator mode")
 
 (defface lambdapi-proof-face

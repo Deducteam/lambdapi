@@ -384,6 +384,13 @@ let eq_p_tactic : p_tactic eq = fun {elt=t1;_} {elt=t2;_} ->
   | P_tac_sym, P_tac_sym -> true
   | _, _ -> false
 
+(** [is_have t] returns true if and only if the tactic [t]
+    is have*)
+let is_have : p_tactic -> bool = fun {elt=t1;_} ->
+  match t1 with
+  | P_tac_have(_, _) -> true
+  | _ -> false
+
 (** [p_proof_fold_left f accu p] behaves as List.fold_left [f] [accu] l
     where l denotes the list of the tactics used in the proof [p]*)
 let rec p_proof_fold_left :

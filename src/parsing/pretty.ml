@@ -244,34 +244,31 @@ let notation : Sign.notation pp = fun ppf n ->
   | Quant -> out ppf "quantifier"
   | _ -> ()
 
-(**[proof p ppf n] pretty prints the proof [p] using the formatter [ppf].
-   [n] is the identation level (initially 0).*)
-let rec proof : p_proof -> formatter -> int -> unit =
-  fun p ppf n ->
-  match p, n with
-    | [], _ -> ()
-    | sp::spl, n ->
-      let ident = String.repeat "  " n in
-      out ppf "\n";
-      out ppf "%s" ident;
-      out ppf "{\n";
-      subproof sp ppf (n+1);
-      out ppf "%s" ident;
-      out ppf "}";
-      proof spl ppf n;
-and subproof : p_subproof -> formatter -> int -> unit =
-fun sp ppf n ->
-  let tactic ppf = out ppf "%a" tactic in
-  match sp, n with
-    | [], _ -> ()
-    | Tactic(t, splbis)::psl, n ->
-      let ident = String.repeat "  " n in
-      out ppf "%s" ident;
-      tactic ppf t;
-      proof splbis ppf n;
-      out ppf "; ";
-      out ppf "\n";
-      subproof psl ppf n;;
+(** [proof ppf p] pretty prints proof [p] using formatter [ppf] *)
+let rec proof : (p_proof * p_proof_end) pp =
+  fun ppf (p, pe) ->
+    out ppf "begin@[<hv2>@ %a@ @]%a"
+      (fun ppf -> function
+        (* No braces for a single toplevel block *)
+      | [block] -> proof_steps ppf block
+      | blocks -> proof_blocks ppf blocks) p
+      proof_end pe
+and proof_blocks : p_subproof list pp  =
+  fun ppf blocks ->
+    out ppf "@[<hv>%a@]"
+      (pp_print_list ~pp_sep:pp_print_space proof_block) blocks
+and proof_block : p_subproof pp =
+  fun ppf block ->
+    out ppf "<@[<hv2>@ %a@ @]>"
+      proof_steps block
+and proof_steps : p_proof_step list pp =
+  fun ppf steps ->
+    pp_print_list ~pp_sep:pp_print_space proof_step ppf steps
+and proof_step : p_proof_step pp =
+  fun ppf (Tactic (t, blocks)) ->
+    out ppf "@[<hv2>%a@,%a;@]"
+      tactic t
+      proof_blocks blocks
 
 let command : p_command pp = fun ppf {elt;_} ->
   begin match elt with
@@ -304,9 +301,8 @@ let command : p_command pp = fun ppf {elt;_} ->
       match p_sym_prf with
       | None -> ()
       | Some(ts,pe) ->
-          out ppf "\nbegin";
-          proof ts ppf 0;
-          out ppf "\n%a" proof_end pe;
+          out ppf "@ %a"
+          proof (ts, pe);
     end
   | P_unif_rule(ur) -> out ppf "unif_rule %a" unif_rule ur
   end;
