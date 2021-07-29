@@ -166,19 +166,20 @@ let eq_modulo : (config -> term -> term) -> (config -> term -> term -> bool) =
 (** Abstract machine stack. *)
 type stack = term list
 
-(** [appl_to_tref t] transforms {!constructor:Appl} into
+(** [to_tref t] transforms {!constructor:Appl} into
    {!constructor:TRef}. *)
-let appl_to_tref : term -> term = fun t ->
+let to_tref : term -> term = fun t ->
   match t with
   | Appl _ -> mk_TRef(ref (Some t))
+  | Symb s when s.sym_prop <> Const -> mk_TRef(ref (Some t))
   | t -> t
 
 (** [whnf c t] computes a whnf of the term [t] wrt configuration [c]. *)
 let rec whnf : config -> term -> term = fun c t ->
   (*if !log_enabled then log_eval "whnf %a" pp_term t;*)
-  let s = Stdlib.(!steps) in
+  let n = Stdlib.(!steps) in
   let u, stk = whnf_stk c t [] in
-  let r = if Stdlib.(!steps) <> s then add_args u stk else unfold t in
+  let r = if Stdlib.(!steps) <> n then add_args u stk else unfold t in
   (*if !log_enabled then
     log_eval "whnf %a%a = %a" pp_ctxt c.context pp_term t pp_term r;*)
   r
@@ -191,19 +192,33 @@ and whnf_stk : config -> term -> stack -> term * stack = fun c t stk ->
       pp_ctxt c.context pp_term t (D.list pp_term) stk;*)
   let t = unfold t in
   match t, stk with
-  | Appl(f,u), stk -> whnf_stk c f (appl_to_tref u::stk)
+  | Appl(f,u), stk -> whnf_stk c f (to_tref u::stk)
   | Abst(_,f), u::stk ->
     Stdlib.incr steps; whnf_stk c (Bindlib.subst f u) stk
   | LLet(_,t,u), stk ->
     Stdlib.incr steps; whnf_stk c (Bindlib.subst u t) stk
-  | (Symb s, stk) as r when c.rewrite ->
+  | (Symb s as h, stk) as r when c.rewrite ->
     begin match !(s.sym_def) with
     | Some t ->
       if s.sym_opaq then r else (Stdlib.incr steps; whnf_stk c t stk)
     | None ->
+      (* If [s] is modulo C or AC, we put its arguments in whnf and reorder
+         them to have a term in AC-canonical form. *)
+      let stk =
+        if is_modulo s then
+          let n = Stdlib.(!steps) in
+          (* We put the arguments in whnf. *)
+          let stk' = List.map (whnf c) stk in
+          if Stdlib.(!steps) = n then (* No argument has been reduced. *)
+            stk
+          else (* At least one argument has been reduced. *)
+            (* We put the term in AC-canonical form. *)
+            snd (get_args (add_args h stk'))
+        else stk
+      in
       match tree_walk c !(s.sym_dtree) stk with
-      | None -> r
-      | Some(t',stk') ->
+      | None -> h, stk
+      | Some (t', stk') ->
         if !log_enabled then
           log_eval "tree_walk %a%a %a = %a %a" pp_ctxt c.context
             pp_term t (D.list pp_term) stk pp_term t' (D.list pp_term) stk';
@@ -344,7 +359,7 @@ and tree_walk : config -> dtree -> stack -> (term * stack) option =
         else
           let s = Stdlib.(!steps) in
           let (t, args) = whnf_stk c examined [] in
-          let args = if store then List.map appl_to_tref args else args in
+          let args = if store then List.map to_tref args else args in
           (* If some reduction has been performed by [whnf_stk] ([steps <>
              0]), update the value of [examined] which may be stored into
              [vars]. *)

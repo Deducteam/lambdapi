@@ -346,11 +346,13 @@ let create_sym : Common.Path.t -> expo -> prop -> match_strat -> bool ->
    sym_opaq; sym_rules = ref []; sym_dtree = ref Tree_type.empty_dtree;
    sym_mstrat; sym_prop; sym_expo }
 
-(** [is_injective s] tells whether the symbol is injective. *)
-let is_injective : sym -> bool = fun s -> s.sym_prop = Injec
-
-(** [is_constant s] tells whether the symbol is a constant. *)
+(** [is_constant s] tells whether [s] is a constant. *)
 let is_constant : sym -> bool = fun s -> s.sym_prop = Const
+
+(** [is_injective s] tells whether [s] is injective, which is in partiular the
+   case if [s] is constant. *)
+let is_injective : sym -> bool = fun s ->
+  match s.sym_prop with Const | Injec -> true | _ -> false
 
 (** [is_private s] tells whether the symbol [s] is private. *)
 let is_private : sym -> bool = fun s -> s.sym_expo = Privat
