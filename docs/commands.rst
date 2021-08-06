@@ -112,9 +112,22 @@ the system with additional information on its properties and behavior.
   - ``associative``: Adds in the conversion the equation ``f (f t u) v ≡ f t (f u v)`` (in conjonction with ``commutative`` only)
 
     For handling commutative and associative-commutative symbols,
-    terms are systemically put in some canonical form (left
-    unspecified) following a technique described `here
+    terms are systemically put in some canonical form following a
+    technique described `here
     <http://dx.doi.org/10.1007/978-3-540-71316-6_8>`__.
+
+    If a symbol ``f`` is ``commutative`` and not ``associative`` then,
+    for every canonical term of the form ``f t u``, we have ``t ≤ u``,
+    where ``≤`` is a total ordering on terms left unspecified.
+
+    If a symbol ``f`` is ``associative left`` then there is no
+    caninical term of the form ``f t (f u v)`` and thus every
+    canonical term headed by ``f`` is of the form ``f … (f (f t₁ t₂)
+    t₃) …  tₙ``. If a symbol ``f`` is ``associative`` or ``associative
+    right`` then there is no canonical term of the form ``f (f t u)
+    v`` and thus every canonical term headed by ``f`` is of the form
+    ``f t₁ (f t₂ (f t₃ … tₙ) … )``. Moreover, in both cases, if ``f``
+    is also ``commutative`` then we have ``t₁ ≤ t₂ ≤ … ≤ tₙ``.
 
 - **Exposition modifiers** define how a symbol can be used outside the
   module where it is defined. By default, the symbol can be used

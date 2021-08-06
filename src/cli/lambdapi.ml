@@ -79,8 +79,8 @@ let lsp_server_cmd : Config.t -> bool -> string -> unit =
   Error.handle_exceptions run
 
 (** Printing a decision tree. *)
-let decision_tree_cmd : Config.t -> Syntax.qident -> unit =
-  fun cfg (mp, sym) ->
+let decision_tree_cmd : Config.t -> Syntax.qident -> bool -> unit =
+  fun cfg (mp, sym) ghost ->
   let run _ =
     Timed.(Console.verbose := 0);
       (* To avoid printing the "Checked ..." line *)
@@ -92,10 +92,10 @@ let decision_tree_cmd : Config.t -> Syntax.qident -> unit =
     let sym =
       let sign = Compile.compile false mp in
       let ss = Sig_state.of_sign sign in
-      if mp = [] && String.contains sym '#' then
-        (* If [sym] starts with a hash, it’s a ghost symbol. *)
+      if ghost then
+        (* Search through ghost symbols. *)
         try fst (StrMap.find sym Timed.(!(Unif_rule.sign.sign_symbols)))
-        with Not_found -> fatal_no_pos "Unknown symbol %s." sym
+        with Not_found -> fatal_no_pos "Unknown ghost symbol %s." sym
       else
         try Sig_state.find_sym ~prt:true ~prv:true ss (Pos.none (mp, sym))
         with Not_found ->
@@ -160,6 +160,10 @@ let qsym : Syntax.qident Term.t =
   let i = Arg.(info [] ~docv:"MOD_PATH.SYM" ~doc) in
   Arg.(value & pos 0 qsym_conv ([], "") & i)
 
+let ghost : bool Term.t =
+  let doc = "Print the decision tree of a ghost symbol." in
+  Arg.(value & flag & info [ "ghost" ] ~doc)
+
 (** Remaining arguments: source files. *)
 
 let file : string Term.t =
@@ -219,7 +223,7 @@ let decision_tree_cmd =
     "Prints decision tree of a symbol to standard output using the \
      Dot language. Piping to `dot -Tpng | display' displays the tree."
   in
-  Term.(const decision_tree_cmd $ Config.full $ qsym),
+  Term.(const decision_tree_cmd $ Config.full $ qsym $ ghost),
   Term.info "decision-tree" ~doc ~man:man_pkg_file
 
 let parse_cmd =
