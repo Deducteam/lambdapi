@@ -543,8 +543,14 @@ let rec handle_proof f accu = function
         let og = List.length ps.proof_goals in
         let ng = List.length psn.proof_goals in
         let gg = List.length splbis in
+        if ng - og == 0 && gg != 0 then
+          begin
+            fatal t.pos
+            "The tactic `%s` didn't generate subgoals but some were given"
+            (string_of_p_tactic t.elt)
+          end
         (*The tactic have behaves differently*)
-        if is_have t && ng - og <> gg then
+        else if is_have t && ng - og <> gg then
             begin
               fatal t.pos
               "The tactic `%s` has generated %s goals but %s were given"
