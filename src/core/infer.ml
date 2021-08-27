@@ -170,7 +170,9 @@ functor
               if !Debug.log_enabled then log_cion (gre "Approx succeeded");
               let preqs_vars, defn = Bindlib.unmbind defn in
               let defn =
-                Eval.whnf_beta (add_args defn (Array.to_list metas))
+                let d = add_args defn (Array.to_list metas) in
+                if prerequisites = [||] then d else Eval.whnf_beta d
+                (* It remains correct if we always reduce *)
               in
               unif ctx t metas.(source - 1);
               unif ctx b range;
@@ -196,6 +198,14 @@ functor
                 "No coercion found for problem @[<h>%a@ :@, %a@ ≡@ %a@]"
                 Print.pp_term t Print.pp_term a Print.pp_term b;
             t
+
+    (* The call to [whnf_beta] is needed to erase the bound variables
+       introduced by the coercion definition. Because pre-requisites are
+       instantiated with the input terms rather than the variables of the
+       coercion definition (because the coercion of the pre requisite won't be
+       found on variables), the resulting term may contain a mix of bound
+       variables and terms for which these bound variables will be substituted
+       to (which are applied to the definition of the pre requisite). *)
 
     (** [apply ctx def_ctx ms reqs] performs the coercions specified in
         requirements [reqs] in context [ctx]. Context [def_ctx] is the context
