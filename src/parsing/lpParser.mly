@@ -358,7 +358,7 @@ coercion:
         let p_coer_typ = make_prod $startpos(ps) ps ty $endpos(ty) in
         make_pos $loc
           { p_coer_id; p_coer_def; p_coer_typ; p_coer_src
-          ; p_coer_req = []; p_coer_ari = 0 }
+          ; p_coer_req = []; p_coer_ari = List.length ps }
       }
   | s=STRINGLIT ps=params* TURNSTILE def=term COLON ty=term ON p_coer_src=INT
     WITH p_coer_req=separated_nonempty_list(WITH, separated_pair(uid, COLON, term))
@@ -367,6 +367,6 @@ coercion:
         let p_coer_def = make_abst $startpos(ps) ps def $endpos(def) in
         let p_coer_typ = make_prod $startpos(ps) ps ty $endpos(ty) in
         make_pos $loc {p_coer_id; p_coer_def; p_coer_typ;
-                       p_coer_src; p_coer_req; p_coer_ari = 0}
+                       p_coer_src; p_coer_req; p_coer_ari = List.length ps}
       }
 %%

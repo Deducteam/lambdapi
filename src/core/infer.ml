@@ -131,7 +131,6 @@ functor
         | Sign.{defn_ty; source; prerequisites; defn; arity; name }::cs ->
             if !Debug.log_enabled then
               log_cion (yel "Trying coercion %s") name;
-            let l = LibTerm.prod_arity defn_ty in
             let metas, domain, range =
               let meta_dom, range =
                 LibTerm.unbind_meta ctx defn_ty (source - 1)
@@ -145,7 +144,7 @@ functor
                 | _ -> assert false
               in
               let meta_range, range =
-                LibTerm.unbind_meta ctx range (l - source - arity)
+                LibTerm.unbind_meta ctx range (arity - source)
               in
               let f = function
                 | Meta (m, _) -> m.meta_type := LibTerm.metafy ctx !(m.meta_type)

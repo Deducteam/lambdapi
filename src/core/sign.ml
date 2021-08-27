@@ -42,7 +42,9 @@ type coercion =
   ; defn : tmbinder (** Definition of the coercion. *)
   ; defn_ty : term (** Type of the definition. Must be a product type. *)
   ; source : int (** Argument of the definition that is coerced. *)
-  ; arity : int (** Arity of the target type. *) }
+  ; arity : int
+  (** Number of argument that the coercion requires. It is not the arity of
+      the target type of the coercion*) }
 
 (** A constructor for coercions. *)
 let coercion : string -> prereq array -> tmbinder -> term -> int -> int ->
