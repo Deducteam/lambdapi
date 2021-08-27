@@ -351,18 +351,22 @@ unif_rule: e=equation HOOK_ARROW
       make_pos $sloc (lhs, rhs) }
 
 coercion:
-  | s=STRINGLIT p_coer_def=term COLON p_coer_typ=term ON p_coer_src=INT
+  | s=STRINGLIT ps=params* TURNSTILE def=term COLON ty=term ON p_coer_src=INT
       {
         let p_coer_id = make_pos $loc(s) s in
+        let p_coer_def = make_abst $startpos(ps) ps def $endpos(def) in
+        let p_coer_typ = make_prod $startpos(ps) ps ty $endpos(ty) in
         make_pos $loc
           { p_coer_id; p_coer_def; p_coer_typ; p_coer_src
-          ; p_coer_ari = 0; p_coer_req = [] }
+          ; p_coer_req = []; p_coer_ari = 0 }
       }
-  | s=STRINGLIT p_coer_def=term COLON p_coer_typ=term ON p_coer_src=INT WITH
-p_coer_req=separated_nonempty_list(WITH, separated_pair(uid, COLON, term))
+  | s=STRINGLIT ps=params* TURNSTILE def=term COLON ty=term ON p_coer_src=INT
+    WITH p_coer_req=separated_nonempty_list(WITH, separated_pair(uid, COLON, term))
       {
         let p_coer_id = make_pos $loc(s) s in
-        make_pos $loc {p_coer_id; p_coer_def; p_coer_typ; p_coer_src;
-                       p_coer_req; p_coer_ari=0}
+        let p_coer_def = make_abst $startpos(ps) ps def $endpos(def) in
+        let p_coer_typ = make_prod $startpos(ps) ps ty $endpos(ty) in
+        make_pos $loc {p_coer_id; p_coer_def; p_coer_typ;
+                       p_coer_src; p_coer_req; p_coer_ari = 0}
       }
 %%

@@ -5,14 +5,14 @@ constant symbol B : TYPE;
 constant symbol a2b : A → B;
 constant symbol f : B → B;
 
-coercion "a2b" a2b : A → B on 1;
+coercion "a2b" (a: A) ⊢ a2b a : B on 1;
 assert ⊢ f a ≡ f (a2b a);
 
 // The coercion on codes, allow to not write the decoding function El
 constant symbol Set : TYPE;
 injective symbol El : Set → TYPE;
 constant symbol nat : Set;
-coercion "decode" El : Set → TYPE on 1;
+coercion "decode" (x: Set) ⊢ El x : TYPE on 1;
 assert ⊢ nat → Set ≡ El nat → Set;
 
 // Apply coercion in symbol definition
