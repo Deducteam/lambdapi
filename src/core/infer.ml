@@ -167,20 +167,13 @@ functor
               (* Replace pre-requisites by variables to be able to reduce
                  the term. *)
               if !Debug.log_enabled then log_cion (gre "Approx succeeded");
-              let preqs_vars, defn = Bindlib.unmbind defn in
-              let defn =
-                let d = add_args defn (Array.to_list metas) in
-                if prerequisites = [||] then d else Eval.whnf_beta d
-                (* It remains correct if we always reduce *)
-              in
               unif ctx t metas.(source - 1);
               unif ctx b range;
               let preqs = apply ctx metas prerequisites in
               (* Inject the solved pre-requisites. *)
-              let defn =
-                Bindlib.(bind_mvar preqs_vars (lift defn) |> unbox)
-              in
-              Bindlib.msubst defn preqs )
+              let defn = Bindlib.msubst defn preqs in
+              (* Substitute the coercion context *)
+              Eval.whnf_beta (add_args defn (Array.to_list metas)) )
             else (log_cion (red "Approx failed"); try_coercions cs)
       in
       let eqs = !constraints in
@@ -204,7 +197,11 @@ functor
        coercion definition (because the coercion of the pre requisite won't be
        found on variables), the resulting term may contain a mix of bound
        variables and terms for which these bound variables will be substituted
-       to (which are applied to the definition of the pre requisite). *)
+       to (which are applied to the definition of the pre requisite).
+       REVIEW: the coercion definition may be replaced by a two-stage binder
+       that binds the variables of the context to a binder that binds the pre
+       requisites to the definition. It would allow to replace [Eval.whnf_beta
+       (add_args ...)] by [Bindlib.msubst ...]. *)
 
     (** [apply ctx def_ctx ms reqs] performs the coercions specified in
         requirements [reqs] in context [ctx]. Context [def_ctx] is the context
