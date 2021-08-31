@@ -106,15 +106,23 @@ functor
     let approx : ctxt -> term -> term -> bool = fun ctx a b ->
       Eval.eq_modulo ctx a b ||
       let tau = Time.save () in
+      if !Debug.log_enabled then
+        log_cion "Approx [@[%a ~@ %a@]]" Print.pp_term a Print.pp_term b;
       (* First try to solve with all constraints *)
       match L.solve {empty_problem with to_solve = (ctx,a,b) :: !constraints} with
-      | Some [] -> constraints := []; true
+      | Some [] ->
+          if !Debug.log_enabled then log_cion (gre "Approx succeeded");
+          constraints := []; true
       | _ ->
           Time.restore tau;
           (* If it fails, try to solve only the new equation *)
           match L.solve {empty_problem with to_solve = [ctx, a, b]} with
-          | Some [] -> true
-          | _ -> false
+          | Some [] ->
+              if !Debug.log_enabled then log_cion (gre "Approx succeeded");
+              true
+          | _ ->
+              if !Debug.log_enabled then log_cion (red "Approx failed");
+              false
 
     (** [coerce ctx t a b] coerces term [t] of type [a] to type [b]. *)
     let rec coerce : ctxt -> term -> term -> term -> term =
@@ -157,24 +165,23 @@ functor
               in
               metas, domain, range
             in
-            if !Debug.log_enabled then
-              log_cion "Approx [@[%a ~@ %a@]] and@ [@[%a ~@ %a@]]"
-                Print.pp_term a Print.pp_term domain
-                Print.pp_term b Print.pp_term range;
             if approx ctx a domain && approx ctx b range then (
-              (* REVIEW: we may short-circuit prerequisites processing when
-                 there is none. *)
-              (* Replace pre-requisites by variables to be able to reduce
-                 the term. *)
-              if !Debug.log_enabled then log_cion (gre "Approx succeeded");
               unif ctx t metas.(source - 1);
               unif ctx b range;
-              let preqs = apply ctx metas prerequisites in
+              (* Solve the pre requisites *)
+              let f (s, m, v, w: Sign.prereq) =
+                if !Debug.log_enabled then log "Requirement \"%s\"" s.elt;
+                let (m, v, w) =
+                  Bindlib.(msubst m metas, msubst v metas, msubst w metas)
+                in
+                coerce ctx m v w
+              in
+              let preqs = Array.map f prerequisites in
               (* Inject the solved pre-requisites. *)
               let defn = Bindlib.msubst defn preqs in
               (* Substitute the coercion context *)
               Eval.whnf_beta (add_args defn (Array.to_list metas)) )
-            else (log_cion (red "Approx failed"); try_coercions cs)
+            else try_coercions cs
       in
       let eqs = !constraints in
       match L.solve {empty_problem with to_solve = (ctx, a, b) :: eqs} with
@@ -202,25 +209,6 @@ functor
        that binds the variables of the context to a binder that binds the pre
        requisites to the definition. It would allow to replace [Eval.whnf_beta
        (add_args ...)] by [Bindlib.msubst ...]. *)
-
-    (** [apply ctx def_ctx ms reqs] performs the coercions specified in
-        requirements [reqs] in context [ctx]. Context [def_ctx] is the context
-        given by the main coercion: all variables of [def_ctx] have been
-        substituted by meta-variables in [ms]. *)
-    and apply : ctxt -> term array -> Sign.prereq array -> term array =
-      fun ctx ms ->
-      let instantiate_reqs (s, m, v, w: Sign.prereq) =
-        if !Debug.log_enabled then
-          log "Processing requirement \"%s\"" s.elt  ;
-        (* [v] and [w] are substituted by [ms] which ought to be
-           instantiated enough so the pre-coercion problems become
-           tractable. *)
-        let v = Bindlib.msubst v ms in
-        let w = Bindlib.msubst w ms in
-        let m = Bindlib.msubst m ms in
-        coerce ctx m v w
-      in
-      Array.map instantiate_reqs
 
     (* Wraps the previous function between log messages. *)
     let coerce ctx t a b =
