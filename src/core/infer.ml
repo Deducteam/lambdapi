@@ -124,10 +124,16 @@ functor
               if !Debug.log_enabled then log_cion (red "Approx failed");
               false
 
-    (** [coerce ctx t a b] coerces term [t] of type [a] to type [b]. *)
-    let rec coerce : ctxt -> term -> term -> term -> term =
+    (** [cast c t a b] casts term [t] from type [a] to type [b]. *)
+    let rec cast : ctxt -> term -> term -> term -> term =
+      fun c t a b ->
+      if Eval.eq_modulo c a b || approx c a b then t else
+      coerce c t a b
+
+    (** [coerce ctx t a b] coerces term [t] of type [a] to type [b] when [a]
+        and [b] cannot be unified. *)
+    and coerce : ctxt -> term -> term -> term -> term =
       fun ctx t a b ->
-      if Eval.eq_modulo ctx a b then t else
       let tau = Time.save () in
       let rec try_coercions cs =
         Time.restore tau;
@@ -174,7 +180,7 @@ functor
                 let (m, v, w) =
                   Bindlib.(msubst m metas, msubst v metas, msubst w metas)
                 in
-                coerce ctx m v w
+                cast ctx m v w
               in
               let preqs = Array.map f prerequisites in
               (* Inject the solved pre-requisites. *)
@@ -183,20 +189,14 @@ functor
               Eval.whnf_beta (add_args defn (Array.to_list metas)) )
             else try_coercions cs
       in
-      let eqs = !constraints in
-      match L.solve {empty_problem with to_solve = (ctx, a, b) :: eqs} with
-      | Some [] -> constraints := [] (* Backup resolution *); t
-      | _ ->
-          try try_coercions L.coercions
-          with Not_found ->
-            (* FIXME: when is this case encountered? Only when checking SR? *)
-            (* Hope that the constraint will be solved later. *)
-            unif ctx a b;
-            if !Debug.log_enabled then
-              log_cion
-                "No coercion found for problem @[<h>%a@ :@, %a@ ≡@ %a@]"
-                Print.pp_term t Print.pp_term a Print.pp_term b;
-            t
+      try try_coercions L.coercions
+      with Not_found ->
+        (* Leave a unification constraint to be solved later. *)
+        unif ctx a b;
+        if !Debug.log_enabled then log_cion
+            "No coercion found for problem @[<h>%a@ :@, %a@ ≡@ %a@]"
+            Print.pp_term t Print.pp_term a Print.pp_term b;
+        t
 
     (* The call to [whnf_beta] is needed to erase the bound variables
        introduced by the coercion definition. Because pre-requisites are
@@ -211,10 +211,10 @@ functor
        (add_args ...)] by [Bindlib.msubst ...]. *)
 
     (* Wraps the previous function between log messages. *)
-    let coerce ctx t a b =
+    let cast ctx t a b =
       if !Debug.log_enabled then
         Print.(log "Cast [%a : %a ≡ %a]" pp_term t pp_term a pp_term b);
-      let r = coerce ctx t a b in
+      let r = cast ctx t a b in
       if !Debug.log_enabled then (
         let eq (ctx, a, b) = Eval.eq_modulo ctx a b in
         if not (pure_test eq (ctx, t, r)) then
@@ -240,7 +240,7 @@ functor
            this sort, first trying [Type], and if it does not succeed, trying
            [Kind]. *)
       in
-      let a = coerce ctx a s sort in
+      let a = cast ctx a s sort in
       (a, sort)
 
     (** [force ctx t a] returns a term [t'] such that [t'] has type [a], and
@@ -251,7 +251,7 @@ functor
         if !Debug.log_enabled then
           log "Force [%a] of [%a]" Print.pp_term te Print.pp_term ty;
         let t, a = infer ctx te in
-        coerce ctx t a ty
+        cast ctx t a ty
       in
       match unfold te with
       | Plac (true, name) ->
@@ -372,7 +372,7 @@ functor
           | t_ty ->
               let domain = LibTerm.Meta.make ctx mk_Type in
               let range = LibTerm.Meta.make_codomain ctx domain in
-              let t = coerce ctx t t_ty (mk_Prod (domain, range)) in
+              let t = cast ctx t t_ty (mk_Prod (domain, range)) in
               if !Debug.log_enabled then log "Appl-default arg [%a]" Print.pp_term u;
               let u = force ctx u domain in
               (mk_Appl (t, u), Bindlib.subst range u) )
