@@ -226,7 +226,7 @@ let do_print_time = ref false
 (** Print current time. *)
 let print_time : string -> unit = fun s ->
   if !do_print_time && Logger.log_enabled () then
-    log_hndl "@%f %s" (Sys.time()) s
+    log_hndl "@@%f %s" (Sys.time()) s
 
 (** [time_of f x] computes [f x] and the time for computing it. *)
 let time_of : (unit -> 'b) -> 'b = fun f ->

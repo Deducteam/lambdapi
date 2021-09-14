@@ -8,8 +8,8 @@ open Base
 
 (** [pp pp_elt sep oc l] prints the list [l] on the channel [oc] using [sep]
    as separator, and [pp_elt] for printing the elements. *)
-let pp : 'a pp -> string -> 'a list pp = fun pp_elt sep ->
-  Format.pp_print_list ~pp_sep:(pp_sep sep) pp_elt
+let pp : 'a pp -> unit outfmt -> 'a list pp = fun pp_elt sep ->
+  Format.pp_print_list ~pp_sep:(pp_unit sep) pp_elt
 
 (** Total order on lists. *)
 let cmp : 'a cmp -> 'a list cmp = fun cmp_elt ->
