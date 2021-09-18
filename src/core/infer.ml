@@ -161,6 +161,7 @@ functor
                 LibTerm.unbind_meta ctx range (arity - source)
               in
               let f = function
+                (* Remove placeholders *)
                 | Meta (m, _) -> m.meta_type := LibTerm.metafy ctx !(m.meta_type)
                 | _ -> ()
               in
@@ -173,7 +174,6 @@ functor
             in
             if approx ctx a domain && approx ctx b range then (
               unif ctx t metas.(source - 1);
-              unif ctx b range;
               (* Solve the pre requisites *)
               let f (s, m, v, w: Sign.prereq) =
                 if !Debug.log_enabled then log "Requirement \"%s\"" s.elt;
@@ -182,9 +182,9 @@ functor
                 in
                 cast ctx m v w
               in
-              let preqs = Array.map f prerequisites in
+              let preq_subst = Array.map f prerequisites in
               (* Inject the solved pre-requisites. *)
-              let defn = Bindlib.msubst defn preqs in
+              let defn = Bindlib.msubst defn preq_subst in
               (* Substitute the coercion context *)
               Eval.whnf_beta (add_args defn (Array.to_list metas)) )
             else try_coercions cs
