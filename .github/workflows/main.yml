@@ -8,7 +8,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        ocaml-version: [4.07.1, 4.08.1, 4.09.1, 4.10.2, 4.11.1, 4.12.0]
+        ocaml-version: [4.07.1, 4.08.1, 4.09.1, 4.10.2, 4.11.1, 4.12.1, 4.13.0]
     runs-on: ubuntu-latest
     steps:
       - name: checking out lambdapi repo...
