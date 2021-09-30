@@ -4,6 +4,7 @@ open Parsing
 open Syntax
 open Core
 open Term
+open Lplib
 
 (** [check cion] runs sanity checks on coercion [cion]. In particular that the
     definition has the mentioned type. *)
@@ -49,4 +50,5 @@ let handle : Sig_state.t -> p_ident -> p_term -> p_term -> int -> int ->
   let prerequisites = List.map process_req requirements |> Array.of_list in
   let cion = Sign.coercion name.elt prerequisites defn defn_ty source arity in
   check (Unif.typechecker ss.coercions) cion;
+  Console.out 3 (Extra.red "(coercion) %a@\n") Print.pp_term defn_ty;
   Sig_state.add_coercion ss cion
