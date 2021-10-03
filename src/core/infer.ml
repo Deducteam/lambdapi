@@ -110,25 +110,22 @@ functor
         log_cion "Approx [@[%a ~@ %a@]]" Print.pp_term a Print.pp_term b;
       (* First try to solve with all constraints *)
       match L.solve {empty_problem with to_solve = (ctx,a,b) :: !constraints} with
-      | Some [] ->
-          if !Debug.log_enabled then log_cion (gre "Approx succeeded");
-          constraints := []; true
+      | Some [] -> constraints := []; true
       | _ ->
           Time.restore tau;
           (* If it fails, try to solve only the new equation *)
           match L.solve {empty_problem with to_solve = [ctx, a, b]} with
-          | Some [] ->
-              if !Debug.log_enabled then log_cion (gre "Approx succeeded");
-              true
-          | _ ->
-              if !Debug.log_enabled then log_cion (red "Approx failed");
-              false
+          | Some [] -> true
+          | _ -> false
 
     (** [cast c t a b] casts term [t] from type [a] to type [b]. *)
     let rec cast : ctxt -> term -> term -> term -> term =
       fun c t a b ->
-      if Eval.eq_modulo c a b || approx c a b then t else
-      coerce c t a b
+      if Eval.eq_modulo c a b || approx c a b then t else (
+        if !Debug.log_enabled then
+          log_cion "Cast [%a : %a ≡ %a]" Print.pp_term t Print.pp_term a
+            Print.pp_term b;
+        coerce c t a b )
 
     (** [coerce ctx t a b] coerces term [t] of type [a] to type [b] when [a]
         and [b] cannot be unified. *)
@@ -137,9 +134,6 @@ functor
       let tau = Time.save () in
       let rec try_coercions cs =
         Time.restore tau;
-        if !Debug.log_enabled then
-          log_cion "Coerce [%a : %a ≡ %a]" Print.pp_term t Print.pp_term a
-            Print.pp_term b;
         match cs with
         | [] -> raise Not_found
         | Sign.{defn_ty; source; prerequisites; defn; arity; name }::cs ->
@@ -176,7 +170,7 @@ functor
               unif ctx t metas.(source - 1);
               (* Solve the pre requisites *)
               let f (s, m, v, w: Sign.prereq) =
-                if !Debug.log_enabled then log "Requirement \"%s\"" s.elt;
+                if !Debug.log_enabled then log_cion "Requirement \"%s\"" s.elt;
                 let (m, v, w) =
                   Bindlib.(msubst m metas, msubst v metas, msubst w metas)
                 in
@@ -218,7 +212,7 @@ functor
       if !Debug.log_enabled then (
         let eq (ctx, a, b) = Eval.eq_modulo ctx a b in
         if not (pure_test eq (ctx, t, r)) then
-          Print.(log (gre "Coercion inserted: [%a] to [%a]") pp_term t
+          Print.(log_cion (gre "Coercion inserted: [%a] to [%a]") pp_term t
                    pp_term r) );
       r
 
