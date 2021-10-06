@@ -22,5 +22,5 @@ module Path =
 
 include Path
 
-(** Functional maps with paths as keys. *)
+module Set = Set.Make(Path)
 module Map = Map.Make(Path)
