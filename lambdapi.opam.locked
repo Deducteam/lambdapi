@@ -1,0 +1,88 @@
+opam-version: "2.0"
+name: "lambdapi"
+version: "1.0"
+synopsis: "Proof assistant based on the λΠ-calculus modulo rewriting"
+description: """\
+Proof assistant based on the λΠ-calculus modulo rewriting,
+mostly compatible with Dedukti.
+
+This package contains both the `lambdapi` proof assistant and the `lp-lsp`
+Language Server Protocol helper for IDEs to check lambdapi files."""
+maintainer: "dedukti-dev@inria.fr"
+authors: "Deducteam"
+license: "CECILL-2.1"
+homepage: "https://github.com/Deducteam/lambdapi"
+bug-reports: "https://github.com/Deducteam/lambdapi/issues"
+depends: [
+  "alcotest" {= "1.4.0" & with-test}
+  "astring" {= "0.8.5" & with-test}
+  "base" {= "v0.14.1"}
+  "base-bigarray" {= "base"}
+  "base-bytes" {= "base"}
+  "base-threads" {= "base"}
+  "base-unix" {= "base"}
+  "bindlib" {= "5.0.1"}
+  "biniou" {= "1.2.1"}
+  "camlzip" {= "1.10"}
+  "cmdliner" {= "1.0.4"}
+  "conf-gmp" {= "3"}
+  "conf-libX11" {= "1"}
+  "conf-pkg-config" {= "2"}
+  "conf-zlib" {= "1"}
+  "cppo" {= "1.6.7"}
+  "csexp" {= "1.5.1"}
+  "dune" {= "2.9.1"}
+  "dune-configurator" {= "2.9.1"}
+  "easy-format" {= "1.3.2"}
+  "fmt" {= "0.8.9" & with-test}
+  "gen" {= "0.5.3"}
+  "graphics" {= "5.1.2"}
+  "menhir" {= "20210419"}
+  "menhirLib" {= "20210419"}
+  "menhirSdk" {= "20210419"}
+  "num" {= "1.4"}
+  "ocaml" {= "4.11.1"}
+  "ocaml-base-compiler" {= "4.11.1"}
+  "ocaml-compiler-libs" {= "v0.12.4"}
+  "ocaml-config" {= "1"}
+  "ocaml-migrate-parsetree" {= "1.8.0"}
+  "ocamlbuild" {= "0.14.0"}
+  "ocamlfind" {= "1.9.1"}
+  "ocamlgraph" {= "2.0.0"}
+  "parsexp" {= "v0.14.1"}
+  "ppx_derivers" {= "1.2.1"}
+  "ppx_sexp_conv" {= "v0.14.1"}
+  "ppx_tools_versioned" {= "5.4.0"}
+  "ppxlib" {= "0.15.0"}
+  "pratter" {= "1.2"}
+  "re" {= "1.9.0"}
+  "result" {= "1.5"}
+  "sedlex" {= "2.2"}
+  "seq" {= "base"}
+  "sexplib" {= "v0.14.0"}
+  "sexplib0" {= "v0.14.0"}
+  "stdlib-shims" {= "0.3.0"}
+  "timed" {= "1.0"}
+  "topkg" {= "1.0.3" & with-test}
+  "uchar" {= "0.0.2"}
+  "uuidm" {= "0.9.7" & with-test}
+  "uutf" {= "1.0.2" & with-test}
+  "why3" {= "1.4.0"}
+  "yojson" {= "1.7.0"}
+  "zarith" {= "1.12"}
+]
+build: [
+  ["dune" "subst"] {pinned}
+  [
+    "dune"
+    "build"
+    "-p"
+    name
+    "-j"
+    jobs
+    "@install"
+    "@runtest" {with-test}
+    "@doc" {with-doc}
+  ]
+]
+dev-repo: "git+https://github.com/Deducteam/lambdapi.git"
