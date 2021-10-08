@@ -1,5 +1,8 @@
+;;; lambdapi-layout.el --- Setup the layout for Lambdapi mode -*- lexical-binding: t; -*-
 ;; SPDX-License-Identifier: CECILL-2.1
-(defconst lambdapi--temp-buffer-name "lp-asdf2io3jnc"  ; any random name will work
+;;; Commentary:
+;;; Code:
+(defconst lambdapi--temp-buffer-name "lp-asdf2io3jnc" ; any random name will work
   "Buffer name for used by `lambdapi-refresh-window-layout'. Must
 not match any buffer used by user")
 
@@ -134,3 +137,4 @@ will produce
 
 
 (provide 'lambdapi-layout)
+;;; lambdapi-layout.el ends here
