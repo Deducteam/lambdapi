@@ -1,3 +1,4 @@
+;; SPDX-License-Identifier: CECILL-2.1
 (defconst lambdapi--temp-buffer-name "lp-asdf2io3jnc"  ; any random name will work
   "Buffer name for used by `lambdapi-refresh-window-layout'. Must
 not match any buffer used by user")

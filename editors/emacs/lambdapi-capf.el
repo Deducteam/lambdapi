@@ -1,5 +1,5 @@
 ;;; lambdapi-capf.el --- Completion for lambdapi -*- lexical-binding: t; -*-
-;; SPDX-License-Identifier: CeCILL Free Software License Agreement v2.1
+;; SPDX-License-Identifier: CECILL-2.1
 ;;; Commentary:
 ;;
 ;; If (add-to-list 'eglot-stay-out-of 'company) is not called, Eglot
