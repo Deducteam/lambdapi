@@ -17,6 +17,13 @@ open Timed
 open Term
 open Sign
 
+(** [create_sign path] creates a signature with path [path] with ghost modules
+    as dependencies. *)
+let create_sign : Path.t -> Sign.t = fun sign_path ->
+  let d = Sign.dummy () in
+  {d with sign_path;
+          sign_deps = ref (Path.Map.singleton Unif_rule.path StrMap.empty)}
+
 (** State of the signature, including aliasing and accessible symbols. *)
 type sig_state =
   { signature : Sign.t                    (** Current signature. *)
@@ -24,16 +31,17 @@ type sig_state =
   ; alias_path: Path.t StrMap.t           (** Alias to path map. *)
   ; path_alias: string Path.Map.t         (** Path to alias map. *)
   ; builtins  : sym StrMap.t              (** Builtins. *)
-  ; notations : notation SymMap.t         (** Notations. *) }
+  ; notations : notation SymMap.t         (** Notations. *)
+  ; open_paths : Path.Set.t               (** Open modules. *) }
 
 type t = sig_state
 
-(** [create_sign path] creates a signature with path [path] with ghost modules
-    as dependencies. *)
-let create_sign : Path.t -> Sign.t = fun sign_path ->
-  let d = Sign.dummy () in
-  {d with sign_path;
-          sign_deps = ref (Path.Map.singleton Unif_rule.path StrMap.empty)}
+(** Dummy [sig_state]. *)
+let dummy : sig_state =
+  { signature = Sign.dummy (); in_scope = StrMap.empty;
+    alias_path = StrMap.empty; path_alias = Path.Map.empty;
+    builtins = StrMap.empty; notations = SymMap.empty;
+    open_paths = Path.Set.empty }
 
 (** [add_symbol ss expo prop mstrat opaq id typ impl def] generates a new
    signature state from [ss] by creating a new symbol with expo [e], property
@@ -96,18 +104,14 @@ let open_sign : sig_state -> Sign.t -> sig_state = fun ss sign ->
   let notations = SymMap.union f ss.notations !(sign.sign_notations) in
   let notations =
     add_notations_from_builtins !(sign.sign_builtins) notations in
-  {ss with in_scope; builtins; notations}
-
-(** Dummy [sig_state] made from the dummy signature. *)
-let dummy : sig_state =
-  { signature = Sign.dummy (); in_scope = StrMap.empty;
-    alias_path = StrMap.empty; path_alias = Path.Map.empty;
-    builtins = StrMap.empty; notations = SymMap.empty }
+  let open_paths = Path.Set.add sign.sign_path ss.open_paths in
+  {ss with in_scope; builtins; notations; open_paths}
 
 (** [of_sign sign] creates a state from the signature [sign] with ghost
     signatures opened. *)
 let of_sign : Sign.t -> sig_state = fun signature ->
-  open_sign {dummy with signature} Unif_rule.sign
+  let open_paths = Path.Set.singleton signature.sign_path in
+  open_sign {dummy with signature; open_paths} Unif_rule.sign
 
 (** [find_sym ~prt ~prv b st qid] returns the symbol
     corresponding to the qualified identifier [qid]. If [fst qid.elt] is

@@ -1,5 +1,5 @@
 ;;; lambdapi-vars.el --- Variables for lambadpi-mode -*- lexical-binding: t; -*-
-;; SPDX-License-Identifier: CeCILL Free Software License Agreement v2.1
+;; SPDX-License-Identifier: CECILL-2.1
 ;;; Commentary:
 ;;
 ;; The lists defined are mainly used for syntax colouring and completion.
