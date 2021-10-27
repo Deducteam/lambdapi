@@ -265,9 +265,9 @@ and scope_binder : ?warn:bool -> mode -> sig_state ->
           cons a (Bindlib.bind_var v t)
       | Some {elt=id;pos}::idopts ->
           if LpLexer.is_invalid_bindlib_id id then
-            fatal pos "Escaped identifiers or regular identifiers with an \
-                       integer suffix with leading zeros are not allowed \
-                       for bound variable names.";
+            fatal pos "Escaped identifiers or regular identifiers \
+                       having an integer suffix with leading zeros \
+                       are not allowed for bound variable names.";
           let v = new_tvar id in
           let env = Env.add v a None env in
           let t = aux env idopts in
