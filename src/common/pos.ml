@@ -107,3 +107,8 @@ let locate : ?fname:string -> Lexing.position * Lexing.position -> pos =
   let end_line = p2.pos_lnum in
   let end_col = p2.pos_cnum - p2.pos_bol in
  {fname; start_line; start_col; end_line; end_col}
+
+(** [make_pos lps elt] creates a located element from the lexing positions
+   [lps] and the element [elt]. *)
+let make_pos : Lexing.position * Lexing.position -> 'a -> 'a loc =
+  fun lps elt -> in_pos (locate lps) elt
