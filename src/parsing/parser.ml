@@ -90,7 +90,8 @@ module Dk : PARSER = struct
     (* Input channel passed as parameter to be closed at the end of stream. *)
     Syntax.p_command Stream.t =
     fun ?inchan fname lexbuf ->
-      Lexing.set_filename lexbuf fname;
+      lexbuf.lex_curr_p <- {lexbuf.lex_curr_p with pos_fname = fname};
+        (*In OCaml >= 4.11: Lexing.set_filename lexbuf fname;*)
       DkLexer.filename := fname;
       let generator _ =
         try Some(DkParser.command DkLexer.token lexbuf)
