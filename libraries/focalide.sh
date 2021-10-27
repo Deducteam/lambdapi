@@ -43,7 +43,7 @@ if [[ ! -d ${DIR} ]]; then
     sed -i "/^#NAME [a-zA-Z_]\+./d" ${FILE}
     sed -i "s/^#SNF/#EVAL/g" ${FILE}
     MODNAME=`basename "${FILE}" ".dk"`
-    ocaml ../tools/deps.ml ${FILE} ${MODNAME} > ${FILE}.aux
+    ocaml ../misc/deps.ml ${FILE} ${MODNAME} > ${FILE}.aux
     cat ${FILE} >> ${FILE}.aux
     mv ${FILE}.aux ${FILE}
 
