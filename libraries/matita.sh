@@ -38,7 +38,7 @@ if [[ ! -d ${DIR} ]]; then
   # Applying the changes (add "#REQUIRE" and create "matita.dk").
   echo -n "  - applying changes... "
   for FILE in `find ${DIR} -type f -name "*.dk"`; do
-    sed -i -e "/^#NAME [a-zA-Z_]\+./d" -e 's/x01/x1/g' -e 's/p01/p1/g' ${FILE}
+    sed -i "/^#NAME [a-zA-Z_]\+./d" ${FILE}
     MODNAME=`basename "${FILE}" ".dk"`
     ocaml ../misc/deps.ml ${FILE} ${MODNAME} > ${FILE}.aux
     cat ${FILE} >> ${FILE}.aux
