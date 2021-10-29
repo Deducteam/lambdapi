@@ -265,25 +265,20 @@ let get_logs ~doc ~line ~pos : string =
     (List.fold_left (^) "\n" (List.map log_to_str doc.Lp_doc.logs));
   (* DEBUG LOG END *)
   let line = line+1 in
-  let first_error = get_first_error doc in
-  match first_error with
-  | Some ((_, msg), Some loc)
-      when compare (loc.start_line, loc.start_col) (line, pos) <= 0 ->
-    let info_logs = List.filter_map (
-      fun ((sev,msg),loc) ->
-        match (sev, loc) with
-        | (1, _) -> None
-        | (_, Some loc)
-          when compare Pos.(loc.start_line, loc.start_col) (line, pos) <= 0
-          -> Some msg
-        | _ -> None) doc.Lp_doc.logs in
-    let info_msgs = String.concat "\n" info_logs in
-    info_msgs^
-    (Format.asprintf ("\n[%s]\n" ^^ (Extra.red "%s")) (Pos.to_string loc) msg)
-  | _ ->
-    match closest_before (line, pos) doc.Lp_doc.logs with
-    | None -> ""
-    | Some ((sev, msg), _) -> if sev = 1 then "" else msg
+  let end_limit = match get_first_error doc with
+  | Some ((_,_), Some errpos) ->
+    let errpos = (errpos.start_line, errpos.start_col) in
+    if compare errpos (line, pos) <= 0 then errpos else (line, pos)
+  | _ -> (line,pos)
+  in
+  let logs = List.filter_map (
+    fun ((_,msg),loc) -> match loc with
+    | Some Pos.{start_line; start_col; _} when
+      compare (start_line,start_col) end_limit <= 0 -> Some msg
+    | _ -> None
+  ) doc.Lp_doc.logs
+  in
+  String.concat "\n" logs
 
 
 let do_goals ofmt ~id params =
