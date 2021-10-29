@@ -188,9 +188,6 @@ This works for both graphical and text displays."
 (defun lp-display-logs (logs)
   "Display LOGS in *lp-logs* buffer."
   (let ((logbuf (get-buffer-create "*lp-logs*")))
-    (setq logs (replace-regexp-in-string
-                "^[ \t\n\r]*\\(\\(\u001b\\[[0-9]+m\\)*\\)[ \t\n\r]*" "\\1"
-                logs))
     (with-current-buffer logbuf
       (read-only-mode +1)
       (with-silent-modifications
