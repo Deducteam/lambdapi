@@ -40,7 +40,7 @@ if [[ ! -d ${DIR} ]]; then
   for FILE in `find ${DIR} -type f -name "*.dk"`; do
     sed -i "/^#NAME [a-zA-Z_]\+./d" ${FILE}
     MODNAME=`basename "${FILE}" ".dk"`
-    ocaml ../tools/deps.ml ${FILE} ${MODNAME} > ${FILE}.aux
+    ocaml ../misc/deps.ml ${FILE} ${MODNAME} > ${FILE}.aux
     cat ${FILE} >> ${FILE}.aux
     mv ${FILE}.aux ${FILE}
 

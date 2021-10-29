@@ -56,7 +56,7 @@ echo "preparing logic files... "
 for FILE in `ls ${DIR}/logic/*.dk`; do
   MODNAME="$(basename $FILE .dk)"
   OUTFILE="${DIR}/workdir/${MODNAME}.dk"
-  ocaml ../tools/deps.ml $FILE $MODNAME > $OUTFILE
+  ocaml ../misc/deps.ml $FILE $MODNAME > $OUTFILE
   cat $FILE | grep -v "^#NAME" >> $OUTFILE
 done
 

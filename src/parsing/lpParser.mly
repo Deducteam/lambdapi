@@ -8,9 +8,6 @@
   open Syntax
   open Core
 
-  let make_pos : Lexing.position * Lexing.position -> 'a -> 'a loc =
-    fun lps elt -> Pos.in_pos (locate lps) elt
-
   let qid_of_path loc p =
     let (mp, id) = List.split_last p in make_pos loc (mp, id)
 
