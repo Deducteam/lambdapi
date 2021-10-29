@@ -278,7 +278,7 @@ let get_logs ~doc ~line ~pos : string =
     | _ -> None
   ) doc.Lp_doc.logs
   in
-  String.concat "\n" logs
+  String.concat "" logs
 
 
 let do_goals ofmt ~id params =
