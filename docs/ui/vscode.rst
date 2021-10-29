@@ -9,9 +9,7 @@ some extra features to handle proofs and goals. To install it from the
 
 .. code:: bash
 
-   cd editors/vscode/
-   make clean
-   make
+   make vscode
 
 This requires to have ``npm`` and ``node-typescript`` installed:
 
