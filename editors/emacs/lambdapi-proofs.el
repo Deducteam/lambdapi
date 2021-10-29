@@ -1,5 +1,5 @@
 ;;; lambdapi-proofs.el --- Proof interactivity for lambadpi-mode -*- lexical-binding: t; -*-
-;; SPDX-License-Identifier: CeCILL Free Software License Agreement v2.1
+;; SPDX-License-Identifier: CECILL-2.1
 ;;; Commentary:
 ;;
 ;;
@@ -9,7 +9,7 @@
 (require 'cl-lib)
 
 (defconst lambdapi-terminators '(";" "begin")
-  "List of terminators for electric terminator mode")
+  "List of terminators for electric terminator mode.")
 
 (defface lambdapi-proof-face
   '((((background dark)) :background "darkgreen")
@@ -22,7 +22,7 @@
   "Face for regions with error")
 
 (defun lp--get-first-error-before (before)
-  "Returns the position of first error before BEFORE and nil if there are
+  "Return the position of first error before BEFORE and nil if there are
 no errors."
   (save-restriction
     (widen)
@@ -50,7 +50,7 @@ no errors."
       (if (> first-error (point-max)) nil first-error))))
 
 (defun lp-highlight-till (pos)
-  "Highlight till pos"
+  "Highlight till POS."
   (save-restriction
     (widen)
     (hlt-unhighlight-region (point-min) (point-max) 'lambdapi-proof-face)
@@ -67,7 +67,7 @@ no errors."
          'lambdapi-proof-face)))))
 
 (defun lp-focus-goal (goalno &optional proofbuf proofpos)
-  "Focus on 'goalno'th goal (zero-indexed). proofbuf is the buffer
+  "Focus on GOALNOth goal (zero-indexed). PROOFBUF is the buffer
 containing the corresponding proof for *Goals* buffer"
   (interactive "nEnter Goal Number: ")
   (if (null proofbuf)
@@ -86,9 +86,9 @@ containing the corresponding proof for *Goals* buffer"
           (lp-move-proof-line `(lambda (_) ,(1- (point))))))))
 
 (defun lp-make-goal-clickable (goalstr goalNo proofbuf proofpos)
-  "Returns goalstr with text properties added making the string call
-lp-focus-goal with goalNo and proofbuf on click. Also makes the string
-bold if goalNo is 0"
+  "Return GOALSTR with text properties added making the string call
+lp-focus-goal with GOALNO and PROOFBUF on click. Also makes the string
+bold if GOALNO is 0"
   (let ((goalkeymap (make-sparse-keymap)))
     (define-key goalkeymap [mouse-1]
       `(lambda ()
@@ -109,7 +109,7 @@ bold if goalNo is 0"
     goalstr))
 
 (defun lp-format-string-hyps-goal (goal)
-  "Return the string associated to the hypotheses of a single typing goal"
+  "Return the string associated to the hypotheses of single typing goal GOAL."
   (let ((tog (plist-get goal :typeofgoal)))
     (let ((hs (plist-get goal :hyps)))
       (mapcar (lambda (hyp)
@@ -119,8 +119,8 @@ bold if goalNo is 0"
               hs))))
 
 (defun lp-format-string-goal (goal goalNo proofbuf proofpos)
-  "Return the string associated to a single goal. Adds text-properties to
-make it clickable"
+  "Return the string associated to a GOAL.
+Add text-properties to make it clickable."
   (let ((tog (plist-get goal :typeofgoal)))
     (if (string= tog "Typ")
         (let* ((id (plist-get goal :gid))
@@ -186,7 +186,7 @@ This works for both graphical and text displays."
       (read-only-mode 1))))
 
 (defun lp-display-logs (logs)
-  "Display logs in *lp-logs* buffer"
+  "Display LOGS in *lp-logs* buffer."
   (let ((logbuf (get-buffer-create "*lp-logs*")))
     (with-current-buffer logbuf
       (read-only-mode +1)
@@ -316,7 +316,7 @@ This works for both graphical and text displays."
              (lp--next-command-pos (1- (point))))))))))
 
 (defun lp-prove-till (pos)
-  "Evaluates till pos and moves the cursor to the end of evaluated region"
+  "Evaluate till POS and move the cursor to the end of evaluated region."
   (lp-highlight-till pos)
   (setq proof-line-position
         (list :pos pos :buffer (current-buffer)))
@@ -344,14 +344,14 @@ This works for both graphical and text displays."
                    (if electric-terminator "ON" "OFF"))))
 
 (defun lp--in-comment-p (&optional pos)
-  "Returns t if character at pos is in a comment.
+  "Return t if character at POS is in a comment.
 If pos is nil use (point)"
   (unless pos (setq pos (point)))
   (nth 4 (syntax-ppss)))
 
 (defun lp--prev-command-pos (&optional pos)
-  "Returns the position of the previous command's terminator
-and 0 if there is no previous command"
+  "Return the position of the previous command's terminator
+and 0 if there is no previous command."
   (unless pos (setq pos (point)))
   (save-excursion
     (let ((term-regex
@@ -376,8 +376,8 @@ and 0 if there is no previous command"
         0))))
 
 (defun lp--next-command-pos (&optional pos)
-  "Returns the position of the next command's terminator
-and pos if there is no next command"
+  "Return the position of the next command's terminator
+and POS if there is no next command"
   (setq npos (1+ (or pos (point))))
   (save-excursion
     (let ((term-regex

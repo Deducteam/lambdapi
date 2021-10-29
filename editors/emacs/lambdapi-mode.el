@@ -5,7 +5,7 @@
 ;; Authors: Ashish Barnawal, Diego Riviero, Gabriel Hondet, Rodolphe Lepigre
 ;; Maintainer: Deducteam <dedukti-dev@inria.fr>
 ;; Version: 1.0
-;; SPDX-License-Identifier: CeCILL Free Software License Agreement v2.1
+;; SPDX-License-Identifier: CECILL-2.1
 ;; Homepage: https://github.com/Deducteam/lambdapi
 ;; Keywords: languages
 ;; Compatibility: GNU Emacs 26.1

@@ -86,17 +86,15 @@ let pp_match_strat : match_strat pp = fun ppf s ->
 
 let pp_sym : sym pp = fun ppf s ->
   if !print_implicits && s.sym_impl <> [] then out ppf "@";
-  let n = s.sym_name in
-  if StrMap.mem n !sig_state.in_scope then
-    (* For printing Unif_rule.cons unescaped. *)
-    if s == Unif_rule.cons then out ppf "%s" n else pp_uid ppf n
+  let ss = !sig_state and n = s.sym_name and p = s.sym_path in
+  if Path.Set.mem p ss.open_paths then pp_uid ppf n
   else
-    match Path.Map.find_opt s.sym_path (!sig_state).path_alias with
+    match Path.Map.find_opt p ss.path_alias with
     | None ->
         (* Hack for printing symbols replacing metavariables in infer.ml
-           unqualified and unescaped. *)
-        if n <> "" && let c = n.[0] in c = '$' || c = '?' then out ppf "%s" n
-        else out ppf "%a.%a" pp_path s.sym_path pp_uid n
+           unqualified. *)
+        if n <> "" && let c = n.[0] in c = '$' || c = '?' then pp_uid ppf n
+        else out ppf "%a.%a" pp_path p pp_uid n
     | Some alias -> out ppf "%a.%a" pp_uid alias pp_uid n
 
 let pp_var : 'a Bindlib.var pp = fun ppf x -> pp_uid ppf (Bindlib.name_of x)

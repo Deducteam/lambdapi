@@ -44,16 +44,13 @@ type t =
    which the current signature depends to an association list mapping symbols
    to additional rules defined in the current signature. *)
 
-(** The empty signature. It's a thunk to force the creation of a new record on
-    each call (and avoid unwanted sharing). *)
+(** The empty signature. WARNING: to be used for creating ghost signatures
+   only. Use Sig_state functions otherwise. It's a thunk to force the creation
+   of a new record on each call (and avoid unwanted sharing). *)
 let dummy : unit -> t = fun () ->
   { sign_symbols = ref StrMap.empty; sign_path = []
   ; sign_deps = ref Path.Map.empty; sign_builtins = ref StrMap.empty
   ; sign_notations = ref SymMap.empty; sign_ind = ref SymMap.empty }
-
-(** [create mp] creates an empty signature in the module [mp]. *)
-let create : Path.t -> t = fun sign_path ->
-  let d = dummy () in { d with sign_path }
 
 (** [find sign name] finds the symbol named [name] in [sign] if it exists, and
     raises the [Not_found] exception otherwise. *)
