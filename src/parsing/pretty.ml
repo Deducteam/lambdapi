@@ -8,25 +8,20 @@
 open! Lplib
 open Base
 open Common
-open Error
 open Pos
 open Syntax
 open Format
 open Core
 
-(** check whether identifiers are Lambdapi keywords. *)
-let check_keywords = ref false
-
-let raw_ident : popt -> string pp = fun pos ppf s ->
-  if !check_keywords && LpLexer.is_keyword s then
-    fatal pos "%s is a Lambdapi keyword." s
+let raw_ident : string pp = fun ppf s ->
+  if LpLexer.is_keyword s then out ppf "{|%a|}" Print.pp_uid s
   else Print.pp_uid ppf s
 
-let ident : p_ident pp = fun ppf {elt=s; pos} -> raw_ident pos ppf s
+let ident : p_ident pp = fun ppf {elt;_} -> raw_ident ppf elt
 
-let meta_ident : p_meta_ident pp = fun ppf {elt; pos} ->
+let meta_ident : p_meta_ident pp = fun ppf {elt;_} ->
   match elt with
-  | Name s -> raw_ident pos ppf s
+  | Name s -> raw_ident ppf s
   | Numb i -> out ppf "%d" i
 
 let param_id : p_ident option pp = fun ppf idopt ->
@@ -36,14 +31,14 @@ let param_id : p_ident option pp = fun ppf idopt ->
 
 let param_ids : p_ident option list pp = List.pp param_id " "
 
-let raw_path : popt -> Path.t pp = fun pos -> List.pp (raw_ident pos) "."
+let raw_path : Path.t pp = List.pp raw_ident "."
 
-let path : p_path pp = fun ppf {elt=p;pos} -> raw_path pos ppf p
+let path : p_path pp = fun ppf {elt;_} -> raw_path ppf elt
 
-let qident : p_qident pp = fun ppf {elt=(mp,s); pos} ->
+let qident : p_qident pp = fun ppf {elt=(mp,s);_} ->
   match mp with
-  | [] -> raw_ident pos ppf s
-  | _::_ -> out ppf "%a.%a" (raw_path pos) mp (raw_ident pos) s
+  | [] -> raw_ident ppf s
+  | _::_ -> out ppf "%a.%a" raw_path mp raw_ident s
 
 (* ends with a space *)
 let modifier : p_modifier pp = fun ppf {elt; _} ->

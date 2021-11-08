@@ -68,7 +68,6 @@ let beautify_cmd : Config.t -> string -> unit = fun cfg file ->
   let run _ =
     Config.init cfg;
     let cmds = Compile.parse_file file in
-    Pretty.check_keywords := true;
     Pretty.beautify cmds
   in Error.handle_exceptions run
 
