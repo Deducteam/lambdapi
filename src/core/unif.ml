@@ -1,7 +1,7 @@
 (** Solving unification constraints. *)
 
-open! Lplib
-open Lplib.Extra
+open Lplib
+open Color
 open Timed
 open Common
 open Error

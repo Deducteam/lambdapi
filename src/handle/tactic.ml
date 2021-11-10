@@ -11,7 +11,6 @@ open Term
 open Proof
 open Print
 open Timed
-open Extra
 
 (** Logging function for tactics. *)
 let log_tact = Logger.make 't' "tact" "tactics"
@@ -35,7 +34,7 @@ let add_axiom : Sig_state.t -> meta -> Sig_state.t = fun ss m ->
   in
   (* Create a symbol with the same type as the metavariable *)
   let ss, sym =
-    Console.out 3 (red "(symb) add axiom %a: %a@.")
+    Console.out 3 (Color.red "(symb) add axiom %a: %a@.")
       pp_uid name pp_term !(m.meta_type);
     Sig_state.add_symbol
       ss Public Const Eager true (Pos.none name) !(m.meta_type) [] None
@@ -76,7 +75,7 @@ let tac_admit :
    state [ps] and fails if constraints are unsolvable. *)
 let tac_solve : popt -> proof_state -> proof_state = fun pos ps ->
   if Logger.log_enabled () then
-    log_tact (red "@[<v>tac_solve@ %a@]") pp_goals ps;
+    log_tact (Color.red "@[<v>tac_solve@ %a@]") pp_goals ps;
   let gs_typ, gs_unif = List.partition is_typ ps.proof_goals in
   let p = new_problem() in
   let f ms = function
@@ -103,7 +102,7 @@ let tac_refine :
       -> proof_state =
   fun pos ps gt gs p t ->
   if Logger.log_enabled () then
-    log_tact (red "@[<v>@[tac_refine@ %a@]@,%a@]%a")
+    log_tact (Color.red "@[<v>@[tac_refine@ %a@]@,%a@]%a")
       pp_term t pp_goals ps pp_problem p;
   let c = Env.to_ctxt gt.goal_hyps in
   if LibMeta.occurs gt.goal_meta c t then fatal pos "Circular refinement.";
@@ -113,7 +112,7 @@ let tac_refine :
       pp_term t
       pp_term gt.goal_type;
   if Logger.log_enabled () then
-    log_tact (red "%a ≔ %a") pp_meta gt.goal_meta pp_term t;
+    log_tact (Color.red "%a ≔ %a") pp_meta gt.goal_meta pp_term t;
   LibMeta.set p gt.goal_meta
     (Bindlib.unbox (Bindlib.bind_mvar (Env.vars gt.goal_hyps) (lift t)));
   (* Convert the metas and constraints of [p] not in [gs] into new goals. *)

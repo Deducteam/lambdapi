@@ -6,8 +6,7 @@ open Error
 open Term
 open Print
 open Debug
-open Lplib
-open Extra
+open Lplib.Color
 
 (** Logging function for typing. *)
 let log_infr = Logger.make 'i' "infr" "type inference/checking"

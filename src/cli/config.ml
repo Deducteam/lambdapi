@@ -46,7 +46,7 @@ let init : config -> unit = fun cfg ->
   Option.iter Console.set_default_verbose cfg.verbose;
   Error.no_wrn := cfg.no_warnings;
   Logger.set_default_debug cfg.debug;
-  Extra.color := not cfg.no_colors;
+  Color.color := not cfg.no_colors;
   Handle.Command.too_long := cfg.too_long;
   (* Log some configuration data. *)
   if Logger.log_enabled () then

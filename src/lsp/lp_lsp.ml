@@ -269,7 +269,7 @@ let get_logs ~doc ~line ~pos : string =
   match first_error with
   | Some ((_, msg), Some loc)
       when compare (loc.start_line, loc.start_col) (line, pos) <= 0 ->
-    Format.asprintf ("\n[%s]\n" ^^ (Extra.red "%s")) (Pos.to_string loc) msg
+    Format.asprintf ("\n[%s]\n" ^^ (Color.red "%s")) (Pos.to_string loc) msg
   | _ ->
     match closest_before (line, pos) doc.Lp_doc.logs with
     | None -> ""

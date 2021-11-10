@@ -145,7 +145,7 @@ let check_rule : Scope.pre_rule Pos.loc -> rule = fun ({pos; elt} as pr) ->
          only used for printing. *)
       let rhs = Bindlib.(unbox (bind_mvar vars pr_rhs)) in
       let naive_rule = {lhs; rhs; arity; arities; vars; xvars_nb = 0} in
-      log_subj (Extra.red "%a") pp_rule (s, naive_rule);
+      log_subj (Color.red "%a") pp_rule (s, naive_rule);
     end;
   (* Replace [Patt] nodes of LHS with corresponding elements of [vars]. *)
   let lhs_vars = _Appl_Symb s (List.map (patt_to_tenv vars) lhs) in

@@ -4,7 +4,7 @@ open Term
 open Timed
 open Common
 open Print
-open Lplib.Extra
+open Lplib.Color
 
 (** Logging function for unification. *)
 let log_inv = Logger.make 'v' "invr" "inverse"

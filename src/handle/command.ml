@@ -138,7 +138,7 @@ let handle_rule : sig_state -> p_rule -> sym = fun ss r ->
       pp_sym sym;
   let rule = Tool.Sr.check_rule pr in
   Sign.add_rule ss.signature sym rule;
-  Console.out 3 (red "(rule) add %a@.") pp_rule (sym, rule);
+  Console.out 3 (Color.red "(rule) add %a@.") pp_rule (sym, rule);
   sym
 
 (** [handle_inductive_symbol ss e p strat x xs a] handles the command
@@ -168,7 +168,7 @@ let handle_inductive_symbol : sig_state -> expo -> prop -> match_strat
     fatal pos "We have %a : %a." pp_uid name pp_term typ
   end;
   (* Actually add the symbol to the signature and the state. *)
-  Console.out 3 (red "(symb) %a : %a@.") pp_uid name pp_term typ;
+  Console.out 3 (Color.red "(symb) %a : %a@.") pp_uid name pp_term typ;
   let r = add_symbol ss expo prop mstrat false id typ impl None in
   Print.sig_state := fst r; r
 
@@ -197,7 +197,7 @@ let get_proof_data : compiler -> sig_state -> p_command ->
   sig_state * proof_data option * Query.result =
   fun compile ss ({elt; pos} as cmd) ->
   if Logger.log_enabled () then
-    log_hndl (red "@[%a@ %a@]") Pos.pp pos Pretty.command cmd;
+    log_hndl (Color.red "@[%a@ %a@]") Pos.pp pos Pretty.command cmd;
   match elt with
   | P_query(q) -> (ss, None, Query.handle ss None q)
   | P_require(b,ps) ->
@@ -288,7 +288,7 @@ let get_proof_data : compiler -> sig_state -> p_command ->
         if Sign.mem ss.signature rec_name then
           fatal pos "Symbol %a already exists." pp_uid rec_name;
         let (ss, rec_sym) =
-          Console.out 3 (red "(symb) %a : %a@.")
+          Console.out 3 (Color.red "(symb) %a : %a@.")
             pp_uid rec_name pp_term rec_typ;
           let id = Pos.make pos rec_name in
           let r = add_symbol ss expo Defin Eager false id rec_typ [] None
@@ -447,7 +447,7 @@ let get_proof_data : compiler -> sig_state -> p_command ->
                   in List.fold_left admit_goal ss ps.proof_goals
             in
             (* Add the symbol in the signature with a warning. *)
-            Console.out 3 (red "(symb) add %a : %a@.")
+            Console.out 3 (Color.red "(symb) add %a : %a@.")
               pp_uid id pp_term a;
             wrn pe.pos "Proof admitted.";
             let t = Option.map (fun t -> t.elt) t in
@@ -458,7 +458,7 @@ let get_proof_data : compiler -> sig_state -> p_command ->
               (Console.out 1 "%a" Proof.pp_goals ps;
                fatal pe.pos "The proof is not finished.");
             (* Add the symbol in the signature. *)
-            Console.out 3 (red "(symb) add %a : %a@.")
+            Console.out 3 (Color.red "(symb) add %a : %a@.")
               pp_uid id pp_term a;
             let t = Option.map (fun t -> t.elt) t in
             fst (add_symbol ss expo prop mstrat opaq p_sym_nam a impl t)

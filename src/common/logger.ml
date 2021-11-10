@@ -1,5 +1,6 @@
-open Lplib.Base
-open Lplib.Extra
+open Lplib
+open Base
+open Color
 
 (** Type of a logging function. It needs to be boxed for higher-rank
    polymorphism reasons *)
