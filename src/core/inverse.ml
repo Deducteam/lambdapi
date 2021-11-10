@@ -3,7 +3,6 @@
 open Term
 open Timed
 open Common
-open Debug
 open Print
 open Lplib.Extra
 

@@ -11,7 +11,6 @@ open Term
 open Proof
 open Print
 open Timed
-open Debug
 open Extra
 
 (** Logging function for tactics. *)

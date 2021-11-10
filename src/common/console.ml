@@ -3,7 +3,6 @@
 open Timed
 open Lplib.Base
 open Lplib.Extra
-open Debug
 
 (** [out_fmt] main output formatter. *)
 let out_fmt = Stdlib.ref Format.std_formatter

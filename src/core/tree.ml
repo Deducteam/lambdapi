@@ -16,8 +16,6 @@ open Term
 open LibTerm
 open Tree_type
 
-module Logger = Debug.Logger
-
 let log = Logger.make 'd' "tree" "Compilation of decision trees"
 let log = log.pp
 

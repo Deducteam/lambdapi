@@ -9,7 +9,6 @@ open Term
 open Error
 open Print
 open Proof
-open Debug
 
 (** Logging function for the rewrite tactic. *)
 let log_rewr = Logger.make 'r' "rewr" "the rewrite tactic"

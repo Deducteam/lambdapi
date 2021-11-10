@@ -19,7 +19,6 @@ open Term
 open Print
 open Parsing
 open Syntax
-open Debug
 
 (** Logging function for generating of inductive principle. *)
 let log_ind = Logger.make 'g' "indu" "induction principles generation"

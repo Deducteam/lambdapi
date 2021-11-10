@@ -10,7 +10,6 @@ open Lplib.Extra
 open Common
 open Error
 open Core
-open Debug
 
 (** Logging function for external checkers. *)
 let log_xtrn = Logger.make 'x' "xtrn" "external tools"

@@ -9,7 +9,6 @@ open Error
 open Core
 open Term
 open Print
-open Debug
 
 (** Logging function for external prover calling with Why3. *)
 let log_why3 = Logger.make 'w' "why3" "why3 provers"

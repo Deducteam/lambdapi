@@ -9,7 +9,8 @@
 
 open Timed
 open Lplib.Base
-open Common.Debug
+open Common
+open Debug
 open! Lplib
 
 let log_term = Logger.make 'm' "term" "term building"

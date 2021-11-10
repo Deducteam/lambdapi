@@ -8,7 +8,6 @@ open Core
 open Parsing
 open Term
 open Print
-open Debug
 
 (** Logging function for typing. *)
 let log_subj = Logger.make 's' "subj" "subject-reduction"
