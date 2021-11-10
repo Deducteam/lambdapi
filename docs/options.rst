@@ -53,48 +53,51 @@ flags.
 Configuration flags
 ^^^^^^^^^^^^^^^^^^^
 
--c, --gen-obj  instructs ``lambdapi`` to generate object files for every
-  checked module (including dependencies). Object files have the extension
-  ``.lpo`` and they are automatically read back when necessary if they exist and
-  are up to date (they are regenerated otherwise).
+``-c``, ``--gen-obj`` instructs ``lambdapi`` to generate object files
+for every checked module (including dependencies). Object files have
+the extension ``.lpo`` and they are automatically read back when
+necessary if they exist and are up to date (they are regenerated
+otherwise).
 
---verbose <NUM>  sets the verbosity level to the given natural number (the
-  default value is 1). A value of 0 should not print anything, and the higher
-  values print more and more information.
+``--verbose <NUM>`` sets the verbosity level to the given natural
+number (the default value is 1). A value of 0 should not print
+anything, and the higher values print more and more information.
 
---lib-root <DIR>  sets the library root, that is, the folder corresponding to
-  the entry point of the Lambdapi package system. This is the folder under which
-  every package is installed, and a default value is only known if the program
-  has been installed. In development mode, ``--lib-root lib`` must be given
-  (assuming Lambdapi is run at the root of the repository).
+``--lib-root <DIR>`` sets the library root, that is, the folder
+corresponding to the entry point of the Lambdapi package system. This
+is the folder under which every package is installed, and a default
+value is only known if the program has been installed. In development
+mode, ``--lib-root lib`` must be given (assuming Lambdapi is run at
+the root of the repository).
 
---map-dir <MOD:DIR>  maps an arbitrary directory ``DIR`` under a module path
-  ``MOD`` (relative to the root directory). This option is mainly useful during
-  the development of a package (before it has been installed). However it can
-  also be accessed using a package configuration file (``lambdapi.pkg``) at the
-  root of the library’s source tree. More information on that is given in the
-  section about the module system.
+``--map-dir <MOD:DIR>`` maps an arbitrary directory ``DIR`` under a
+module path ``MOD`` (relative to the root directory). This option is
+mainly useful during the development of a package (before it has been
+installed). However it can also be accessed using a package
+configuration file (``lambdapi.pkg``) at the root of the library’s
+source tree. More information on that is given in the section about
+the module system.
 
 Debugging flags
 ^^^^^^^^^^^^^^^
 
---debug <FLAGS>  enables the debugging modes specified by every
-  character of ``FLAGS``. Details on available character flags are obtained
-  using ``--help``.
+``--debug <FLAGS>`` enables the debugging modes specified by every
+character of ``FLAGS``. Details on available character flags are
+obtained using ``--help``.
 
---timeout <NUM>  gives up type-checking after the given number of seconds.
-  Note that the timeout is reset between each file, and that the parameter of
-  the command is expected to be a natural number.
+``--timeout <NUM>`` gives up type-checking after the given number of
+seconds.  Note that the timeout is reset between each file, and that
+the parameter of the command is expected to be a natural number.
 
 Confluence checking
 ^^^^^^^^^^^^^^^^^^^
 
---confluence <CMD>  check the confluence of the rewriting system by calling an
-   external prover with the command ``CMD``. The given command receives
-   `HRS`_ formatted text on its standard input, and is expected to output on the
-   first line of its standard output either ``YES``, ``NO`` or ``MAYBE``.
-   As an example, ``echo MAYBE`` is the simplest possible (valid) confluence
-   checker that can be used.
+``--confluence <CMD>`` check the confluence of the rewriting system by
+calling an external prover with the command ``CMD``. The given command
+receives `HRS`_ formatted text on its standard input, and is expected
+to output on the first line of its standard output either ``YES``,
+``NO`` or ``MAYBE``.  As an example, ``echo MAYBE`` is the simplest
+possible (valid) confluence checker that can be used.
 
 
 For now, only the `CSI^ho`_ confluence checker has been tested with Lambdapi. It
@@ -108,11 +111,12 @@ following dummy command:
 Termination checking
 ^^^^^^^^^^^^^^^^^^^^
 
---termination <CMD>  check the termination of the rewriting system by calling an
-  external prover with the command ``CMD``. The given command receives `XTC`_
-  formatted text on its standard input, and is expected to output on the first
-  line of its standard output either ``YES``, ``NO`` or ``MAYBE``.
-  ``echo MAYBE`` is the simplest (valid) command for checking termination.
+``--termination <CMD>`` check the termination of the rewriting system
+by calling an external prover with the command ``CMD``. The given
+command receives `XTC`_ formatted text on its standard input, and is
+expected to output on the first line of its standard output either
+``YES``, ``NO`` or ``MAYBE``.  ``echo MAYBE`` is the simplest (valid)
+command for checking termination.
 
 To the best of our knowledge, the only termination checker that is
 compatible with all the features of Lambdapi is
@@ -133,32 +137,34 @@ following dummy command:
 Specific flags for the “check” command
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
---too-long <FLOAT>  gives a warning for each interpreted source file command
-   taking more than the given number of seconds to be checked. The parameter
-   ``FLOAT`` is expected to be a floating point number.
+``--too-long <FLOAT>`` gives a warning for each interpreted source
+file command taking more than the given number of seconds to be
+checked. The parameter ``FLOAT`` is expected to be a floating point
+number.
 
---recompile  forces the compilation of the files given on the command line even
-   if they have an up-to-date object file.
+``--recompile`` forces the compilation of the files given on the
+command line even if they have an up-to-date object file.
 
 Specific flags for the “lsp” command
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
---standard-lsp  restricts to standard LSP protocol (no extension).
+``--standard-lsp`` restricts to standard LSP protocol (no extension).
 
---lsp-log-file <FILE>  sets the log file for the LSP server. If not given, the
-   file ``/tmp/lambdapi_lsp_log.txt`` is used.
+``--lsp-log-file <FILE>`` sets the log file for the LSP server. If not
+given, the file ``/tmp/lambdapi_lsp_log.txt`` is used.
 
 Specific flags for the “install” and “uninstall” commands
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
---dry-run  prints the system commands that should be called instead of running
-   them.
+``--dry-run`` prints the system commands that should be called instead
+of running them.
 
 Specific flags for the “decision-tree” command
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
---ghost  print the decision tree of a ghost symbol. Ghost symbols are symbols
-   used internally that cannot be used in the concrete syntax.
+``--ghost`` print the decision tree of a ghost symbol. Ghost symbols
+are symbols used internally that cannot be used in the concrete
+syntax.
 
 .. _HRS: http://project-coco.uibk.ac.at/problems/hrs.php
 .. _CSI^ho: http://cl-informatik.uibk.ac.at/software/csi/ho/
