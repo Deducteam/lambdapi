@@ -14,15 +14,12 @@ type logger =
   ; logger_pp : logger_pp (** Type of a logging function. *)
   }
 
-module List = List
-
 (** [loggers] contains the registered logging functions. *)
 let loggers : logger list Stdlib.ref = Stdlib.ref []
 
-
-(** [log_enabled] is the cached result of whether there exists
-      an enabled logging function. Its main use is to guard logging operations
-      to avoid performing unnecessary computations.*)
+(** [log_enabled] is the cached result of whether there exists an enabled
+   logging function. Its main use is to guard logging operations to avoid
+   performing unnecessary computations.*)
 let _log_enabled = ref false
 let log_enabled () = !_log_enabled
 let update_log_enabled () =
@@ -33,12 +30,12 @@ let update_log_enabled () =
 let make logger_key logger_name logger_desc =
   (* Sanity checks. *)
   if String.length logger_name <> 4 then
-    invalid_arg "Debug.Logger.make: name must be 4 characters long";
+    invalid_arg "Logger.make: name must be 4 characters long";
   let check data =
     if logger_key  = data.logger_key then
-      invalid_arg "Debug.Logger.make: key is already used";
+      invalid_arg "Logger.make: key is already used";
     if logger_name = data.logger_name then
-      invalid_arg "Debug.Logger.make: name is already used"
+      invalid_arg "Logger.make: name is already used"
   in
   List.iter check Stdlib.(!loggers);
 
