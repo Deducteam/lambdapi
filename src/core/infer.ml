@@ -6,7 +6,7 @@ open Error
 open Term
 open Print
 open Debug
-open Lplib.Color
+open Lplib
 
 (** Logging function for typing. *)
 let log_infr = Logger.make 'i' "infr" "type inference/checking"
@@ -34,7 +34,8 @@ let set_to_prod : int -> problem -> meta -> unit = fun d p m ->
   (* result *)
   let r = _Prod a b in
   if Logger.log_enabled () then
-    log_infr (red "%a%a ≔ %a") D.depth d pp_meta m pp_term (Bindlib.unbox r);
+    log_infr (Color.red "%a%a ≔ %a") D.depth d
+      pp_meta m pp_term (Bindlib.unbox r);
   LibMeta.set p m (Bindlib.unbox (Bindlib.bind_mvar vs r))
 
 (** [conv d p c a b] adds the the constraint [(c,a,b)] in [p], if [a] and
@@ -43,7 +44,7 @@ let conv : int -> problem -> ctxt -> term -> term -> unit = fun d p c a b ->
   if not (Eval.pure_eq_modulo c a b) then begin
     let cstr = (c,a,b) in
     if Logger.log_enabled () then
-      log_infr (mag "%aadd %a") D.depth d pp_constr cstr;
+      log_infr (Color.mag "%aadd %a") D.depth d pp_constr cstr;
     p := {!p with to_solve = cstr::!p.to_solve}
   end
 
@@ -196,10 +197,11 @@ and check : int -> problem -> ctxt -> term -> term -> unit = fun d p c t a ->
 let infer_noexn : problem -> ctxt -> term -> term option = fun p c t ->
   try
     if Logger.log_enabled () then
-      log_hndl (blu "infer_noexn %a%a") pp_ctxt c pp_term t;
+      log_hndl (Color.blu "infer_noexn %a%a") pp_ctxt c pp_term t;
     let a = time_of (fun () -> infer 0 p c t) in
     if Logger.log_enabled () then
-      log_hndl (blu "@[<v2>@[result of infer_noexn:@ %a@]%a@]") pp_term a
+      log_hndl (Color.blu "@[<v2>@[result of infer_noexn:@ %a@]%a@]")
+        pp_term a
         (fun fmt constraints -> if constraints <> [] then
           Format.fprintf fmt ";@ @[constraints:@ %a@]" pp_constrs constraints)
         !p.to_solve;
@@ -213,10 +215,10 @@ let infer_noexn : problem -> ctxt -> term -> term option = fun p c t ->
 let check_noexn : problem -> ctxt -> term -> term -> bool = fun p c t a ->
   try
     if Logger.log_enabled () then
-      log_hndl (blu "check_noexn %a") pp_typing (c, t, a);
+      log_hndl (Color.blu "check_noexn %a") pp_typing (c, t, a);
     time_of (fun () -> check 0 p c t a);
     if Logger.log_enabled () && !p.to_solve <> [] then
-      log_hndl (blu "result of check_noexn:%a") pp_constrs !p.to_solve;
+      log_hndl (Color.blu "result of check_noexn:%a") pp_constrs !p.to_solve;
     true
   with NotTypable -> false
 

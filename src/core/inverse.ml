@@ -4,7 +4,7 @@ open Term
 open Timed
 open Common
 open Print
-open Lplib.Color
+open Lplib
 
 (** Logging function for unification. *)
 let log_inv = Logger.make 'v' "invr" "inverse"
@@ -26,7 +26,7 @@ let const_graph : sym -> (sym * sym) list = fun s ->
   if Logger.log_enabled () then log_inv "check rules of %a" pp_sym s;
   let add s0 s1 l =
     if Logger.log_enabled () then
-      log_inv (yel "%a %a ↪ %a") pp_sym s pp_sym s0 pp_sym s1;
+      log_inv (Color.yel "%a %a ↪ %a") pp_sym s pp_sym s0 pp_sym s1;
     (s0,s1)::l
   in
   let f l rule =
@@ -64,9 +64,9 @@ let prod_graph : sym -> (sym * sym * sym * bool) list = fun s ->
   if Logger.log_enabled () then log_inv "check rules of %a" pp_sym s;
   let add (s0,s1,s2,b) l =
     if Logger.log_enabled () then
-      if b then log_inv (yel "%a (%a _ _) ↪ Π x:%a _, %a _[x]")
+      if b then log_inv (Color.yel "%a (%a _ _) ↪ Π x:%a _, %a _[x]")
                   pp_sym s pp_sym s0 pp_sym s1 pp_sym s2
-      else log_inv (yel "%a (%a _ _) ↪ %a _ → %a _")
+      else log_inv (Color.yel "%a (%a _ _) ↪ %a _ → %a _")
              pp_sym s pp_sym s0 pp_sym s1 pp_sym s2;
     (s0,s1,s2,b)::l
   in
