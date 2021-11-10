@@ -39,7 +39,7 @@ type t = {
   mutable root  : Pure.state; (* Only mutated after parsing. *)
   mutable final : Pure.state; (* Only mutated after parsing. *)
   nodes : doc_node list;
-  (* severity is same as LSP specifications*)
+  (* severity is same as LSP specifications : https://git.io/JiGAB *)
   logs : ((int * string) * Pos.popt) list; (*((severity, message), location)*)
   map : Syntax.qident RangeMap.t;
 }

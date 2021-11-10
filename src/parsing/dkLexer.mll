@@ -4,13 +4,6 @@ open Common
 open Error
 open Pos
 
-let filename = ref ""
-
-let make_pos : Lexing.position * Lexing.position -> 'a -> 'a loc =
-  fun lps elt ->
-    let fname = !filename in
-    make (Some (locate ~fname lps)) elt
-
 let locate_lexbuf : Lexing.lexbuf -> Pos.pos = fun lexbuf ->
   locate (lexbuf.lex_start_p, lexbuf.lex_curr_p)
 
