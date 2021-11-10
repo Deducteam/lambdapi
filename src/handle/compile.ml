@@ -56,13 +56,13 @@ let rec compile_with :
     end;
   match Path.Map.find_opt mp !loaded with
   | Some sign ->
-    Console.out 2 "%a already loaded\n" Print.pp_path mp; sign
+    Console.out 1 "%a already loaded" Print.pp_path mp; sign
   | None ->
     if force || Extra.more_recent (src ()) obj then
     begin
       let forced = if force then " (forced)" else "" in
       let src = src () in
-      Console.out 1 "Loading \"%s\"%s ...\n%!" src forced;
+      Console.out 1 "Loading \"%s\"%s ..." src forced;
       loading := mp :: !loading;
       let sign = Sig_state.create_sign mp in
       let sig_st = Stdlib.ref (Sig_state.of_sign sign) in
@@ -78,11 +78,11 @@ let rec compile_with :
       Sign.strip_private sign;
       if Stdlib.(!gen_obj) then Sign.write sign obj;
       loading := List.tl !loading;
-      Console.out 1 "Checked \"%s\"\n%!" src; sign
+      Console.out 1 "Checked %S" src; sign
     end
     else
     begin
-      Console.out 2 "Loading \"%s\" ...\n%!" (src ());
+      Console.out 1 "Loading %S ..." (src ());
       let sign = Sign.read obj in
       let compile mp _ = ignore (compile_with ~handle ~force:false mp) in
       Path.Map.iter compile !(sign.sign_deps);
@@ -94,7 +94,7 @@ let rec compile_with :
       let sm = Path.Map.find Unif_rule.path !(sign.sign_deps) in
       if Extra.StrMap.mem Unif_rule.equiv.sym_name sm then
         Tree.update_dtree Unif_rule.equiv;
-      Console.out 2 "Loaded \"%s\"\n%!" obj; sign
+      Console.out 1 "Loaded %S" obj; sign
     end
 
 (** [compile force mp] compiles module path [mp] using

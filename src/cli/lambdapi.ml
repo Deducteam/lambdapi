@@ -246,7 +246,7 @@ let help_cmd =
   Term.info "help" ~doc
 
 let version_cmd =
-  let run () = Console.out 0 "Lambdapi version: %s\n%!" Version.version in
+  let run () = Console.out 0 "Lambdapi version: %s" Version.version in
   let doc = "Display the current version of Lambdapi." in
   Term.(const run $ const ()),
   Term.info "version" ~doc

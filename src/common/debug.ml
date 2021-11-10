@@ -72,23 +72,19 @@ let new_logger : char -> string -> string -> logger = fun key name desc ->
   in
   {logger}
 
-(** Logging function for command handling. *)
+(** Logging function for top-level calls. *)
 let logger_hndl = new_logger 'h' "hndl" "command handling"
 let log_hndl = logger_hndl.logger
 
 (** To print time data. *)
 let do_print_time = ref false
 
-(** Print current time. *)
-let print_time : string -> unit = fun s ->
-  if !do_print_time && !log_enabled then log_hndl "@%f %s" (Sys.time()) s
-
 (** [time_of f x] computes [f x] and the time for computing it. *)
-let time_of : (unit -> 'b) -> 'b = fun f ->
+let time_of : string -> (unit -> 'b) -> 'b = fun s f ->
   if !do_print_time && !log_enabled then
       let t0 = Sys.time() in
-      try let y = f () in log_hndl "%f" (Sys.time() -. t0); y
-      with e -> log_hndl "%f" (Sys.time() -. t0); raise e
+      try let y = f () in log_hndl "%s time: %f" s (Sys.time() -. t0); y
+      with e -> log_hndl "%s %f" s (Sys.time() -. t0); raise e
   else f ()
 
 (** Printing functions. *)

@@ -21,7 +21,7 @@ let infer : Pos.popt -> problem -> ctxt -> term -> term = fun pos p ctx t ->
   match Infer.infer_noexn p ctx t with
   | None -> fatal pos "%a is not typable." pp_term t
   | Some a ->
-      if time_of (fun () -> Unif.solve_noexn p) then
+      if Unif.solve_noexn p then
         begin
           if !p.unsolved = [] then a
           else
@@ -36,7 +36,7 @@ and under the constraints of [p], or
 let check : Pos.popt -> problem -> ctxt -> term -> term -> unit =
   fun pos p ctx t a ->
   if Infer.check_noexn p ctx t a then
-    if time_of (fun () -> Unif.solve_noexn p) then
+    if Unif.solve_noexn p then
       begin
         if !p.unsolved <> [] then
           (List.iter (wrn pos "Cannot solve %a.\n" pp_constr) !p.unsolved;
@@ -52,7 +52,7 @@ let check_sort : Pos.popt -> problem -> ctxt -> term -> unit =
   match Infer.infer_noexn p ctx t with
   | None -> fatal pos "[%a] is not typable." pp_term t
   | Some a ->
-      if time_of (fun () -> Unif.solve_noexn p) then
+      if Unif.solve_noexn p then
         begin
           if !p.unsolved = [] then
             match unfold a with
@@ -72,7 +72,7 @@ type result = (unit -> string) option
 (** [return pp x] prints [x] using [pp] on [Stdlib.(!out_fmt)] at verbose
    level 1 and returns a function for printing [x] on a string using [pp]. *)
 let return : 'a pp -> 'a -> result = fun pp x ->
-  Console.out 1 (Extra.red "%a" ^^ "\n") pp x;
+  Console.out 1 (Extra.red "%a") pp x;
   Some (fun () -> Format.asprintf "%a" pp x)
 
 (** [handle_query ss ps q] *)
@@ -81,20 +81,20 @@ let handle : Sig_state.t -> proof_state option -> p_query -> result =
   match elt with
   | P_query_debug(e,s) ->
       set_debug e s;
-      Console.out 3 "(flag) debug → %s%s\n" (if e then "+" else "-") s;
+      Console.out 1 "debug %s%s" (if e then "+" else "-") s;
       None
   | P_query_verbose(i) ->
       if Timed.(!Console.verbose) = 0 then
         (Timed.(Console.verbose := i);
-         Console.out 1 "(flag) verbose → %i\n" i)
+         Console.out 1 "verbose %i" i)
       else
-        (Console.out 1 "(flag) verbose → %i\n" i;
+        (Console.out 1 "verbose %i" i;
          Timed.(Console.verbose := i));
       None
   | P_query_flag(id,b) ->
       (try Console.set_flag id b
        with Not_found -> fatal pos "Unknown flag \"%s\"." id);
-      Console.out 3 "(flag) %s → %b\n" id b;
+      Console.out 1 "flag %s ≔ %b" id b;
       None
   | P_query_prover(s) -> Timed.(Why3_tactic.default_prover := s); None
   | P_query_prover_timeout(n) -> Timed.(Why3_tactic.timeout := n); None
@@ -179,7 +179,7 @@ let handle : Sig_state.t -> proof_state option -> p_query -> result =
   | P_query_proofterm -> assert false (* already done *)
   | P_query_assert(must_fail, P_assert_typing(pt,pa)) ->
       let t = scope pt and a = scope pa in
-      Console.out 1 "(asrt) it is %b that %a\n" (not must_fail)
+      Console.out 2 "assertion: it is %b that %a" (not must_fail)
         pp_typing (ctxt, t, a);
       (* Check that [a] is typable by a sort. *)
       check_sort pos p ctxt a;
@@ -191,7 +191,7 @@ let handle : Sig_state.t -> proof_state option -> p_query -> result =
       None
   | P_query_assert(must_fail, P_assert_conv(pt,pu)) ->
       let t = scope pt and u = scope pu in
-      Console.out 1 "(asrt) it is %b that %a\n" (not must_fail)
+      Console.out 2 "assertion: it is %b that %a" (not must_fail)
         pp_constr (ctxt, t, u);
       (* Check that [t] is typable. *)
       let a = infer pt.pos p ctxt t in

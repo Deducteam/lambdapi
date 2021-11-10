@@ -192,10 +192,8 @@ let infer_noexn : problem -> ctxt -> term -> term option = fun p c t ->
   try
     if !log_enabled then
       log_hndl (blu "infer_noexn %a%a") pp_ctxt c pp_term t;
-    let a = time_of (fun () -> infer 0 p c t) in
-    if !log_enabled then
-      log_hndl (blu "result of infer_noexn: %a%a")
-        pp_term a pp_constrs !p.to_solve;
+    let a = time_of "infer" (fun () -> infer 0 p c t) in
+    if !log_enabled then log_hndl (blu "result of infer_noexn: %a") pp_term a;
     Some a
   with NotTypable -> None
 
@@ -206,9 +204,7 @@ let infer_noexn : problem -> ctxt -> term -> term option = fun p c t ->
 let check_noexn : problem -> ctxt -> term -> term -> bool = fun p c t a ->
   try
     if !log_enabled then log_hndl (blu "check_noexn %a") pp_typing (c,t,a);
-    time_of (fun () -> check 0 p c t a);
-    if !log_enabled && !p.to_solve <> [] then
-      log_hndl (blu "result of check_noexn:%a") pp_constrs !p.to_solve;
+    time_of "check" (fun () -> check 0 p c t a);
     true
   with NotTypable -> false
 
