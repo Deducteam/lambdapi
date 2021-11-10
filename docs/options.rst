@@ -60,7 +60,7 @@ Configuration flags
 
 --verbose <NUM>  sets the verbosity level to the given natural number (the
   default value is 1). A value of 0 should not print anything, and the higher
-  values (up to 3) print more and more information.
+  values print more and more information.
 
 --lib-root <DIR>  sets the library root, that is, the folder corresponding to
   the entry point of the Lambdapi package system. This is the folder under which
