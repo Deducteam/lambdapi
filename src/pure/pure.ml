@@ -51,10 +51,10 @@ module Tactic = struct
 end
 
 (** Representation of a single proof (abstract). *)
-module Rproof = struct
+module ProofTree = struct
   type t = Syntax.p_proof
   let equal = Syntax.eq_p_proof
-  let fold = Syntax.fold_proof
+  let fold f a p = let f' a t _ = f a t in Syntax.fold_proof f' a p
 end
 
 type state = Time.t * Sig_state.t
@@ -126,7 +126,7 @@ let current_goals : proof_state -> goal list =
 
 type command_result =
   | Cmd_OK    of state * string option
-  | Cmd_Proof of proof_state * Rproof.t * Pos.popt * Pos.popt
+  | Cmd_Proof of proof_state * ProofTree.t * Pos.popt * Pos.popt
   | Cmd_Error of Pos.popt option * string
 
 type tactic_result =

@@ -69,7 +69,7 @@ let process_pstep (pstate,diags,logs) tac =
     pstate, (loc, 1, msg, None) :: diags, ((1, msg), loc) :: logs
 
 let process_proof pstate tacs logs =
-  Pure.Rproof.fold process_pstep (pstate,[],logs) tacs
+  Pure.ProofTree.fold process_pstep (pstate,[],logs) tacs
 
 let get_goals dg_proof =
   let rec get_goals_aux goals dg_proof =

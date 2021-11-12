@@ -24,7 +24,7 @@ module Tactic : sig
 end
 
 (** Abstract representation of a proof. *)
-module Rproof : sig
+module ProofTree : sig
   type t
   val equal : t -> t -> bool
   val fold : ('a -> Tactic.t -> 'a) -> 'a -> t -> 'a
@@ -59,7 +59,7 @@ val current_goals : proof_state -> goal list
 type command_result =
   | Cmd_OK    of state * string option
   (** Command is done. *)
-  | Cmd_Proof of proof_state * Rproof.t * Pos.popt * Pos.popt
+  | Cmd_Proof of proof_state * ProofTree.t * Pos.popt * Pos.popt
   (** Enter proof mode (positions are for statement and qed). *)
   | Cmd_Error of Pos.popt option * string
   (** Error report. *)
