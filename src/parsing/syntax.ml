@@ -213,7 +213,7 @@ type p_tactic_aux =
 
 type p_tactic = p_tactic_aux loc
 
-let is_have {elt;_} = match elt with P_tac_have _ -> true | _ -> false
+let is_tac_have {elt;_} = match elt with P_tac_have _ -> true | _ -> false
 
 (** Parser-level representation of a proof. *)
 type p_subproof = p_proofstep list
@@ -221,15 +221,6 @@ type p_subproof = p_proofstep list
 and p_proofstep = Tactic of p_tactic * p_subproof list
 
 type p_proof = p_subproof list
-
-(** [p_tactic_list_of_p_proof p] converts the p_proof [p]
-   into a list of p_tactic's. *)
-let rec p_tactics_of_proof : p_proof -> p_tactic list = function
-  | [] -> []
-  | sp::spl ->
-    match sp with
-    | [] ->  p_tactics_of_proof spl
-    | Tactic(t, spl')::psl -> t :: p_tactics_of_proof (spl'@psl::spl)
 
 type p_proof_end_aux =
   | P_proof_end
@@ -437,10 +428,11 @@ let eq_p_command : p_command eq = fun {elt=c1;_} {elt=c2;_} ->
 
 (** [fold_proof f acc p] recursively builds a value of type ['a] by starting
    from [acc] and by applying [f] to every tactic of [p]. *)
-let fold_proof : ('a -> p_tactic -> 'a) -> 'a -> p_proof -> 'a = fun f ->
+let fold_proof : ('a -> p_tactic -> p_subproof list -> 'a)
+  -> 'a -> p_proof -> 'a = fun f ->
   let rec subproof a sp = List.fold_left proofstep a sp
-  and proofstep a (Tactic(t, spl)) = List.fold_left subproof (f a t) spl in
-  List.fold_left subproof
+  and proofstep a (Tactic(t, spl)) = List.fold_left subproof (f a t spl) spl
+  in List.fold_left subproof
 
 (** [fold_idents f a ast] allows to recursively build a value of type ['a]
    starting from [a] and by applying [f] on each identifier occurring in [ast]
@@ -585,8 +577,8 @@ let fold_idents : ('a -> p_qident -> 'a) -> 'a -> p_command list -> 'a =
     List.fold_left fold_cons a ((id,t)::cons_list)
   in
 
-  let fold_sym_prf : 'a -> (p_proof * p_proof_end) -> 'a =
-    fun a (p, _) -> snd (fold_proof fold_tactic (StrSet.empty, a) p)
+  let fold_sym_prf : 'a -> (p_proof * p_proof_end) -> 'a = fun a (p, _) ->
+    let f a t _  = fold_tactic a t in snd (fold_proof f (StrSet.empty, a) p)
   in
 
   let fold_args : StrSet.t * 'a -> p_params -> StrSet.t * 'a =

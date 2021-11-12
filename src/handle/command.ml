@@ -505,76 +505,27 @@ let get_proof_data : compiler -> sig_state -> p_command ->
       wrn pos "It took %.2f seconds to handle the command." tm;
     ss
   with
-  | Timeout                as e -> raise e
-  | Fatal(Some(Some(_)),_) as e -> raise e
-  | Fatal(None         ,m)      -> fatal pos "Error on command.\n%s" m
-  | Fatal(Some(None)   ,m)      -> fatal pos "Error on command.\n%s" m
-  | e                           ->
-      fatal pos "Uncaught exception: %s." (Printexc.to_string e)
+  | Timeout               as e -> raise e
+  | Fatal(Some(Some _),_) as e -> raise e
+  | Fatal(None        ,m)      -> fatal pos "Error on command.\n%s" m
+  | Fatal(Some(None)  ,m)      -> fatal pos "Error on command.\n%s" m
+  | e -> fatal pos "Uncaught exception: %s." (Printexc.to_string e)
 
-let string_of_p_tactic = function
-  | P_tac_admit -> "admit"
-  | P_tac_apply _ -> "apply"
-  | P_tac_assume _ -> "assume"
-  | P_tac_fail -> "fail"
-  | P_tac_focus _ ->  "focus"
-  | P_tac_generalize _ -> "generalize"
-  | P_tac_have _ -> "have"
-  | P_tac_induction -> "induction"
-  | P_tac_query _ -> "query"
-  | P_tac_refine _ -> "refine"
-  | P_tac_refl -> "reflexivity"
-  | P_tac_rewrite _ -> "rewrite"
-  | P_tac_simpl _ -> "simpl"
-  | P_tac_solve -> "solve"
-  | P_tac_sym -> "symmetry"
-  | P_tac_why3 _ -> "why3"
-
-(**[handle_proof f accu p] works exactly as [proof_fold_left f accu p]
-   except it outputs fatal errors if an incorrect number of goals is
-   given by the user*)
-let rec handle_proof f accu = function
-  | [] -> accu
-  | sp::spl ->
-    match sp with
-      | [] -> handle_proof f accu spl
-      | Tactic(t, splbis)::psl ->
-        let _, ps, _ = accu in
-        let _, psn, _ = f accu t in
-        let og = List.length ps.proof_goals in
-        let ng = List.length psn.proof_goals in
-        let gg = List.length splbis in
-        if ng - og == 0 && gg != 0 then
-          begin
-            fatal t.pos
-            "The tactic `%s` didn't generate subgoals but some were given"
-            (string_of_p_tactic t.elt)
-          end
-        (*The tactic have behaves differently*)
-        else if is_have t && ng - og <> gg then
-            begin
-              fatal t.pos
-              "The tactic `%s` has generated %s goals but %s were given"
-              (string_of_p_tactic t.elt)
-              (string_of_int (ng - og))
-              (string_of_int gg)
-            end
-        else if
-           (*The right amount of goals need to be created*)
-           ng - og + 1 <> gg
-           (*Tactic mustn't be "have"*)
-           && not (is_have t)
-           (*Goals must be created*)
-           && ng - og > 0
-          then
-            begin
-              fatal t.pos
-              "The tactic `%s` has generated %s goals but %s were given"
-              (string_of_p_tactic t.elt)
-              (string_of_int (ng - og + 1))
-              (string_of_int gg)
-            end
-        else handle_proof f (f accu t) (splbis@psl::spl)
+let handle_tactic d (ss, ps, _) t spl =
+  let (_, ps', _) as a = Tactic.handle ss d.pdata_prv ps t in
+  let nb_goals_before = List.length ps.proof_goals in
+  let nb_goals_after = List.length ps'.proof_goals in
+  let nb_subproofs = List.length spl in
+  if nb_goals_after = nb_goals_before && nb_subproofs != 0 then
+    fatal t.pos "Subproofs given while there is no new subgoal."
+  else if is_tac_have t && nb_goals_after - nb_goals_before <> nb_subproofs then
+    fatal t.pos "[have] %d subproof(s) given while there are %d new subgoal(s)."
+      nb_subproofs (nb_goals_after - nb_goals_before)
+  else if nb_goals_after - nb_goals_before + 1 <> nb_subproofs
+       && not (is_tac_have t) && nb_goals_after - nb_goals_before > 0 then
+    fatal t.pos "%d subproofs given while there are %d new subgoals."
+      nb_subproofs (nb_goals_after - nb_goals_before + 1)
+  else a
 
 (** [handle compile_mod ss cmd] retrieves proof data from [cmd] (with
     {!val:get_proof_data}) and handles proofs using functions from
@@ -589,9 +540,6 @@ let handle : compiler -> Sig_state.t -> Syntax.p_command -> Sig_state.t =
   match p with
   | None -> ss
   | Some d ->
-      let ss, ps, _ =
-      handle_proof
-        (fun (ss, ps, _) tac -> Tactic.handle ss d.pdata_prv ps tac)
-        (ss, d.pdata_p_state, None) d.pdata_tactics
-      in
-      d.pdata_finalize ss ps
+    let ss, ps, _ =
+      fold_proof (handle_tactic d) (ss, d.pdata_p_state, None) d.pdata_tactics
+    in d.pdata_finalize ss ps
