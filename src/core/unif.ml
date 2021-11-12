@@ -469,4 +469,6 @@ let solve : problem -> unit = fun p ->
 let solve_noexn : ?type_check:bool -> problem -> bool =
   fun ?(type_check=true) p ->
   Stdlib.(do_type_check := type_check);
-  try time_of (fun () -> solve p; true) with Unsolvable -> false
+  if Logger.log_enabled () then
+    log_hndl (Color.blu "solve_noexn %a") pp_problem p;
+  try time_of "solve" (fun () -> solve p; true) with Unsolvable -> false

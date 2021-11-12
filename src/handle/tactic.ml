@@ -34,7 +34,7 @@ let add_axiom : Sig_state.t -> meta -> Sig_state.t = fun ss m ->
   in
   (* Create a symbol with the same type as the metavariable *)
   let ss, sym =
-    Console.out 3 (Color.red "(symb) add axiom %a: %a@.")
+    Console.out 1 (Color.red "axiom %a: %a")
       pp_uid name pp_term !(m.meta_type);
     Sig_state.add_symbol
       ss Public Const Eager true (Pos.none name) !(m.meta_type) [] None

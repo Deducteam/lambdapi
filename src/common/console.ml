@@ -22,7 +22,7 @@ let set_default_verbose : int -> unit = fun i ->
     output channel is automatically flushed if logging modes are enabled. *)
 let out : int -> 'a outfmt -> 'a = fun lvl fmt ->
   let out = Format.(if lvl > !verbose then ifprintf else fprintf) in
-    out Stdlib.(!out_fmt) fmt
+  out Stdlib.(!out_fmt) (fmt ^^ "@.")
 
 (** List of registered boolean flags, with their default values. *)
 let boolean_flags : (bool * bool ref) StrMap.t Stdlib.ref =

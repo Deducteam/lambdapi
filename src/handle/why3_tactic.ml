@@ -28,8 +28,8 @@ let timeout : int ref = ref 2
 let why3_config : Why3.Whyconf.config =
   let cfg = Why3.Whyconf.init_config None in
   let provers = Why3.Whyconf.get_provers cfg in
-  Console.out 2 "available provers for why3:@.";
-  let pp_prover p _ = Console.out 2 "%a@." Why3.Whyconf.print_prover p in
+  Console.out 2 "provers available for why3:";
+  let pp_prover p _ = Console.out 2 "%a" Why3.Whyconf.print_prover p in
   Why3.Whyconf.Mprover.iter pp_prover provers;
   cfg
 

@@ -4,7 +4,7 @@ open Library
 open Error
 
 let run_command : bool -> string -> unit = fun dry_run cmd ->
-  if dry_run then Console.out 1 "%s@." cmd else
+  if dry_run then Console.out 1 "%s" cmd else
   match Sys.command cmd with
   | 0 -> ()
   | _ -> fatal_no_pos "Command [%s] failed." cmd

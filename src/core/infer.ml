@@ -198,7 +198,7 @@ let infer_noexn : problem -> ctxt -> term -> term option = fun p c t ->
   try
     if Logger.log_enabled () then
       log_hndl (Color.blu "infer_noexn %a%a") pp_ctxt c pp_term t;
-    let a = time_of (fun () -> infer 0 p c t) in
+    let a = time_of "infer" (fun () -> infer 0 p c t) in
     if Logger.log_enabled () then
       log_hndl (Color.blu "@[<v2>@[result of infer_noexn:@ %a@]%a@]")
         pp_term a
@@ -216,7 +216,7 @@ let check_noexn : problem -> ctxt -> term -> term -> bool = fun p c t a ->
   try
     if Logger.log_enabled () then
       log_hndl (Color.blu "check_noexn %a") pp_typing (c, t, a);
-    time_of (fun () -> check 0 p c t a);
+    time_of "check" (fun () -> check 0 p c t a);
     if Logger.log_enabled () && !p.to_solve <> [] then
       log_hndl (Color.blu "result of check_noexn:%a") pp_constrs !p.to_solve;
     true

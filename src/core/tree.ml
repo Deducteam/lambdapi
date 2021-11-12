@@ -16,7 +16,7 @@ open Term
 open LibTerm
 open Tree_type
 
-let log = Logger.make 'd' "tree" "Compilation of decision trees"
+let log = Logger.make 'd' "tree" "compilation of decision trees"
 let log = log.pp
 
 (** {1 Types for decision trees}

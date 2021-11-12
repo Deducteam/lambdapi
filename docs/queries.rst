@@ -41,13 +41,13 @@ negative tests.
 ``verbose``
 -----------
 
-Takes as argument an integer between 0 and 3. Higher is the verbose
+Takes as argument a non-negative integer. Higher is the verbose
 level, more details are printed. At the beginning, the verbose is set
 to 1.
 
 ::
 
-   set verbose 3;
+   verbose 3;
 
 ``debug``
 ---------
