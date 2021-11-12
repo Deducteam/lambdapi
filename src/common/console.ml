@@ -3,7 +3,6 @@
 open Timed
 open Lplib.Base
 open Lplib.Extra
-open Debug
 
 (** [out_fmt] main output formatter. *)
 let out_fmt = Stdlib.ref Format.std_formatter
@@ -22,8 +21,8 @@ let set_default_verbose : int -> unit = fun i ->
     [lvl] is strictly greater than the current verbosity level.  Note that the
     output channel is automatically flushed if logging modes are enabled. *)
 let out : int -> 'a outfmt -> 'a = fun lvl fmt ->
-  if lvl > !verbose then Format.ifprintf Stdlib.(!out_fmt) fmt
-  else Format.fprintf Stdlib.(!out_fmt) (fmt ^^ "@.")
+  let out = Format.(if lvl > !verbose then ifprintf else fprintf) in
+  out Stdlib.(!out_fmt) (fmt ^^ "@.")
 
 (** List of registered boolean flags, with their default values. *)
 let boolean_flags : (bool * bool ref) StrMap.t Stdlib.ref =
@@ -49,12 +48,7 @@ let reset_default : unit -> unit = fun () ->
   (* Reset verbosity level. *)
   verbose := Stdlib.(!default_verbose);
   (* Reset debugging flags. *)
-  log_enabled := false;
-  let reset l =
-    let v = String.contains Stdlib.(!default_loggers) l.logger_key in
-    l.logger_enabled := v; if v then log_enabled := true;
-  in
-  List.iter reset Stdlib.(!loggers);
+  Logger.reset_loggers ();
   (* Reset flags to their default values. *)
   let reset _ (default, r) = r := default in
   StrMap.iter reset Stdlib.(!boolean_flags)
@@ -65,7 +59,7 @@ module State = struct
   type t =
     { verbose: int
     (** Verbosity level. *)
-    ; loggers: (char * bool) list
+    ; loggers: string
     (** Loggers enabled. *)
     ; bflags: bool StrMap.t
     (** Boolean flags. *) }
@@ -78,10 +72,7 @@ module State = struct
       boolean flags, pushing it to the stack. *)
   let push : unit -> unit = fun () ->
     let verbose = !verbose in
-    let loggers =
-      let fn l = (l.logger_key, !(l.logger_enabled)) in
-      List.map fn Stdlib.(!loggers)
-    in
+    let loggers = Logger.get_activated_loggers () in
     let bflags : bool StrMap.t =
       let fn (_,r) = !r in
       StrMap.map fn Stdlib.(!boolean_flags)
@@ -94,12 +85,7 @@ module State = struct
     (* Reset verbosity level. *)
     verbose := v;
     (* Reset debugging flags. *)
-    log_enabled := false;
-    let reset logger =
-      let v = try List.assoc logger.logger_key l with Not_found -> false in
-      logger.logger_enabled := v; if v then log_enabled := true;
-    in
-    List.iter reset Stdlib.(!loggers);
+    Logger.reset_loggers ~default:l ();
     (* Reset boolean flags. *)
     let reset k (_,r) =
       try r := StrMap.find k f

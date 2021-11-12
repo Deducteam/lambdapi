@@ -7,8 +7,8 @@ open Timed
 open Error
 open Debug
 
-let log_lib = new_logger 'l' "libr" "library files"
-let log_lib = log_lib.logger
+let log_lib = Logger.make 'l' "libr" "library files"
+let log_lib = log_lib.pp
 
 (** Representation of the mapping from module paths to files. *)
 module LibMap :
@@ -83,8 +83,8 @@ module LibMap :
       let concat root ks =
         List.fold_left Filename.concat root ks in
       let rec get (root, old_ks) ks map =
-        if !log_enabled then
-          log_lib "get %S\n[%a]\n[%a]\n%a" root
+        if Logger.log_enabled () then
+          log_lib "get @[<hv>%S@ [%a]@ [%a]@ %a@]" root
             (D.list D.string) old_ks (D.list D.string) ks (D.strmap pp) map;
         match ks with
         | []      -> concat root old_ks
@@ -153,11 +153,11 @@ let set_lib_root : string option -> unit = fun dir ->
           match Sys.command cmd with
           | 0 -> ()
           | _ ->
-              fatal_msg "Library root cannot be set:\n";
-              fatal_no_pos "Command \"%s\" had a non-zero exit." cmd
-          | exception Failure(msg) ->
-              fatal_msg "Library root cannot be set:\n";
-              fatal_msg "Command \"%s\" failed:\n" cmd;
+              fatal_msg "Library root cannot be set:@.";
+              fatal_no_pos "Command %S had a non-zero exit." cmd
+          | exception Failure msg ->
+              fatal_msg "Library root cannot be set:@.";
+              fatal_msg "Command %S failed:@." cmd;
               fatal_no_pos "%s" msg
       end;
       (* Register the library root as part of the module mapping.
@@ -188,8 +188,8 @@ let file_of_path : Path.t -> string = fun mp ->
   let mp = List.map Escape.unescape mp in
   try
     let fp = LibMap.get mp !lib_mappings in
-    if !log_enabled then
-      log_lib "file_of_path %a\n%a\n= %S"
+    if Logger.log_enabled () then
+      log_lib "file_of_path @[<hv>%a@ %a@ = %S@]"
         Path.pp mp LibMap.pp !lib_mappings fp;
     fp
   with LibMap.Root_not_set -> fatal_no_pos "Library root not set."
@@ -223,7 +223,7 @@ let path_of_file : (string -> string) -> string -> Path.t =
   let ext = Filename.extension fname in
   if not (List.mem ext valid_extensions) then
     begin
-      fatal_msg "Invalid extension for [%s].\n" fname;
+      fatal_msg "Invalid extension for [%s].@." fname;
       let pp_exp = List.pp (fun ppf -> Format.fprintf ppf "[%s]") ", " in
       fatal_no_pos "Expected any of: %a." pp_exp valid_extensions
     end;
@@ -245,7 +245,7 @@ let path_of_file : (string -> string) -> string -> Path.t =
     match !mapping with
     | Some(mp, fp) -> (mp, fp)
     | None           ->
-        fatal_msg "%s cannot be mapped under the library root.\n" fname;
+        fatal_msg "%s cannot be mapped under the library root.@." fname;
         fatal_msg "Consider adding a package file under your source tree, ";
         fatal_no_pos "or use the [--map-dir] option."
   in
@@ -256,7 +256,7 @@ let path_of_file : (string -> string) -> string -> Path.t =
     String.sub base (len_fp + 1) (len_base - len_fp - 1)
   in
   let full_mp = mp @ List.map escape (String.split_on_char '/' rest) in
-  log_lib "path_of_file %S\n= %a" fname Path.pp full_mp;
+  log_lib "path_of_file @[<hv>%S@ = %a@]" fname Path.pp full_mp;
   full_mp
 
 (** [install_path fname] prefixes the filename [fname] by the path to the

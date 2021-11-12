@@ -9,27 +9,27 @@ let write_file : string -> (formatter -> unit) -> unit = fun fn pp ->
   pp ppf; pp_print_flush ppf (); close_out oc
 
 let pp_makefile : formatter -> unit = fun ppf ->
-  fprintf ppf
-    ".POSIX:\n\
-     SRC = \n\
-     OBJ = $(SRC:.lp=.lpo)\n\
-     .SUFFIXES:\n\
-     \n\
-     all: $(OBJ)\n\
-     \n\
-     install: $(OBJ) %s\n\
-     \tlambdapi install %s $(OBJ) $(SRC)\n\
-     \n\
-     uninstall:\n\
-     \tlambdapi uninstall lambdapi.pkg\n\
-     \n\
-     clean:\n\
-     \trm -f $(OBJ)\n\
-     \n\
-     .SUFFIXES: .lp .lpo\n\
-     \n\
-     .lp.lpo:\n\
-     \tlambdapi check --gen-obj $<\n" Package.pkg_file Package.pkg_file
+  fprintf ppf "\
+.POSIX:
+SRC =
+OBJ = $(SRC:.lp=.lpo)
+.SUFFIXES:
+
+all: $(OBJ)
+
+install: $(OBJ) %s
+	lambdapi install %s $(OBJ) $(SRC)
+
+uninstall:
+	lambdapi uninstall lambdapi.pkg
+
+clean:
+	rm -f $(OBJ)
+
+.SUFFIXES: .lp .lpo
+
+.lp.lpo:
+	lambdapi check --gen-obj $<@." Package.pkg_file Package.pkg_file
 
 let run : Path.t -> unit = fun root_path ->
   let run _ =
@@ -40,12 +40,12 @@ let run : Path.t -> unit = fun root_path ->
       | s::_ -> s
     in
     if Sys.file_exists pkg_name then
-      fatal_no_pos "Cannot create the package: \"%s\" already exists."
+      fatal_no_pos "Cannot create the package: %S already exists."
         pkg_name;
     Unix.mkdir pkg_name 0o700;
     (* Write the package configuration file. *)
     let pp_pkg_file ppf =
-      fprintf ppf "package_name = %s\nroot_path    = %a\n"
+      fprintf ppf "package_name = %s@.root_path    = %a@."
         pkg_name Path.pp root_path
     in
     write_file (Filename.concat pkg_name Package.pkg_file) pp_pkg_file;

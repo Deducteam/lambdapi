@@ -45,8 +45,8 @@ let add_suffix : string -> string -> string = fun n s ->
 let split : char -> string -> string list = fun c s ->
   let sc = String.make 1 c in
   let rec fix_split mp m l =
-    (*Format.printf "fix_split %a\n%a\n%a\n\n"
-        (D.list D.string) mp (D.option D.string) m (D.list D.string) l;*)
+    (* Format.printf "fix_split @[<hv>%a@ %a@ %a@]@.@."
+        (D.list D.string) mp (D.option D.string) m (D.list D.string) l; *)
     match m, l with
     | None, [] -> List.rev mp
     | Some m, [] -> List.rev (m::mp)

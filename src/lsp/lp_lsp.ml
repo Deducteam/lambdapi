@@ -265,21 +265,23 @@ let get_logs ~doc ~line ~pos : string =
     (List.fold_left (^) "\n" (List.map log_to_str doc.Lp_doc.logs));
   (* DEBUG LOG END *)
   let line = line+1 in
-  let end_limit = match get_first_error doc with
-  | Some ((_,_), Some errpos) ->
-    let errpos = (errpos.start_line, errpos.start_col) in
-    if compare errpos (line, pos) <= 0 then errpos else (line, pos)
-  | _ -> (line,pos)
+  let end_limit =
+    match get_first_error doc with
+    | Some ((_,_), Some errpos) ->
+      let errpos = (errpos.start_line, errpos.start_col) in
+      if compare errpos (line, pos) <= 0 then errpos else (line, pos)
+    | _ -> (line,pos)
   in
-  let logs = List.filter_map (
-    fun ((_,msg),loc) -> match loc with
-    | Some Pos.{start_line; start_col; _} when
-      compare (start_line,start_col) end_limit <= 0 -> Some msg
-    | _ -> None
-  ) doc.Lp_doc.logs
+  let logs =
+    List.filter_map
+      (fun ((_,msg),loc) ->
+         match loc with
+         | Some Pos.{start_line; start_col; _}
+           when compare (start_line,start_col) end_limit <= 0 -> Some msg
+         | _ -> None)
+      doc.Lp_doc.logs
   in
   String.concat "" logs
-
 
 let do_goals ofmt ~id params =
   let uri, line, pos = get_docTextPosition params in

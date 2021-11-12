@@ -41,7 +41,7 @@ let rec compile_with :
     | (false, false) ->
         fatal_no_pos "File \"%s.lp\" (or .dk) not found." base
     | (true , true ) ->
-        wrn None "Both \"%s\" and \"%s\" exist. We take \"%s\"."
+        wrn None "Both %S and %S exist. We take %S."
           src legacy src; src
     | (true , false) -> src
     | (false, true ) -> legacy
@@ -49,9 +49,9 @@ let rec compile_with :
   let obj = base ^ obj_extension in
   if List.mem mp !loading then
     begin
-      fatal_msg "Circular dependencies detected in \"%s\".\n" (src ());
-      fatal_msg "Dependency stack for module %a:\n" Print.pp_path mp;
-      List.iter (fatal_msg "- %a\n" Print.pp_path) !loading;
+      fatal_msg "Circular dependencies detected in %S.@." (src ());
+      fatal_msg "Dependency stack for module %a:@." Print.pp_path mp;
+      List.iter (fatal_msg "- %a@." Print.pp_path) !loading;
       fatal_no_pos "Build aborted."
     end;
   match Path.Map.find_opt mp !loaded with
@@ -62,7 +62,7 @@ let rec compile_with :
     begin
       let forced = if force then " (forced)" else "" in
       let src = src () in
-      Console.out 1 "Loading \"%s\"%s ..." src forced;
+      Console.out 1 "Loading %S ..." src forced;
       loading := mp :: !loading;
       let sign = Sig_state.create_sign mp in
       let sig_st = Stdlib.ref (Sig_state.of_sign sign) in

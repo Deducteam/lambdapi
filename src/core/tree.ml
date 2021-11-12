@@ -16,8 +16,8 @@ open Term
 open LibTerm
 open Tree_type
 
-let log = Debug.new_logger 'd' "tree" "compilation of decision trees"
-let log = log.logger
+let log = Logger.make 'd' "tree" "compilation of decision trees"
+let log = log.pp
 
 (** {1 Types for decision trees}
 
@@ -476,7 +476,7 @@ module CM = struct
         let cond_pool =
           match i with
           | Some(i) ->
-              if !Debug.log_enabled then
+              if Logger.log_enabled () then
                 log "Registering non linearity constraint on position [%a] \
                      on %d"
                   pp_arg_path a.arg_path i;
@@ -703,17 +703,17 @@ let compile : match_strat -> CM.t -> tree = fun mstrat m ->
   fun vars_id ({clauses; positions; slot} as cm) ->
   if CM.is_empty cm then Fail else
   let compile_cv = compile vars_id in
-  if !Debug.log_enabled then log "Compile@\n%a" CM.pp cm;
+  if Logger.log_enabled () then log "Compile@ %a" CM.pp cm;
   match CM.yield mstrat cm with
   | Yield({c_rhs; c_subst; c_lhs; _}) ->
       harvest c_lhs c_rhs c_subst vars_id slot
   | Condition(cond)                        ->
-      if !Debug.log_enabled then log "Condition [%a]" pp_tree_cond cond;
+      if Logger.log_enabled () then log "Condition [%a]" pp_tree_cond cond;
       let ok   = compile_cv {cm with clauses = CM.cond_ok   cond clauses} in
       let fail = compile_cv {cm with clauses = CM.cond_fail cond clauses} in
       Cond({ok; cond; fail})
   | Check_stack                            ->
-      if !Debug.log_enabled then log "Check stack";
+      if Logger.log_enabled () then log "Check stack";
       let left =
         let positions, clauses = CM.empty_stack clauses in
         compile_cv {cm with clauses; positions}
@@ -721,7 +721,7 @@ let compile : match_strat -> CM.t -> tree = fun mstrat m ->
       let right = compile_cv {cm with clauses=CM.not_empty_stack clauses} in
       Eos(left, right)
   | Specialise(swap)                       ->
-      if !Debug.log_enabled then log "Swap on column %d" swap;
+      if Logger.log_enabled () then log "Swap on column %d" swap;
       let store = CM.store cm swap in
       let updated =
         List.map (CM.update_aux swap slot positions vars_id) clauses

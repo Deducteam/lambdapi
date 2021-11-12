@@ -138,7 +138,7 @@ let handle_rule : sig_state -> p_rule -> sym = fun ss r ->
       pp_sym sym;
   let rule = Tool.Sr.check_rule pr in
   Sign.add_rule ss.signature sym rule;
-  Console.out 2 (red "rule %a") pp_rule (sym, rule);
+  Console.out 2 (Color.red "rule %a") pp_rule (sym, rule);
   sym
 
 (** [handle_inductive_symbol ss e p strat x xs a] handles the command
@@ -163,11 +163,12 @@ let handle_inductive_symbol : sig_state -> expo -> prop -> match_strat
   (* We check that [typ] is typable by a sort. *)
   Query.check_sort pos p [] typ;
   (* We check that no metavariable remains. *)
-  if !p.metas <> MetaSet.empty then
-    (fatal_msg "The type of %a has unsolved metavariables.\n" pp_uid name;
-     fatal pos "We have %a : %a." pp_uid name pp_term typ);
+  if !p.metas <> MetaSet.empty then begin
+    fatal_msg "The type of %a has unsolved metavariables.@." pp_uid name;
+    fatal pos "We have %a : %a." pp_uid name pp_term typ
+  end;
   (* Actually add the symbol to the signature and the state. *)
-  Console.out 2 (red "symbol %a : %a") pp_uid name pp_term typ;
+  Console.out 2 (Color.red "symbol %a : %a") pp_uid name pp_term typ;
   let r = add_symbol ss expo prop mstrat false id typ impl None in
   Print.sig_state := fst r; r
 
@@ -195,7 +196,7 @@ type proof_data =
 let get_proof_data : compiler -> sig_state -> p_command ->
   sig_state * proof_data option * Query.result =
   fun compile ss ({elt; pos} as cmd) ->
-  Console.out 3 (cya "%a") Pos.pp pos;
+  Console.out 3 (Color.cya "%a") Pos.pp pos;
   Console.out 4 "%a" Pretty.command cmd;
   match elt with
   | P_query(q) -> (ss, None, Query.handle ss None q)
@@ -287,7 +288,8 @@ let get_proof_data : compiler -> sig_state -> p_command ->
         if Sign.mem ss.signature rec_name then
           fatal pos "Symbol %a already exists." pp_uid rec_name;
         let (ss, rec_sym) =
-          Console.out 2 (red "symbol %a : %a") pp_uid rec_name pp_term rec_typ;
+          Console.out 2 (Color.red "symbol %a : %a")
+            pp_uid rec_name pp_term rec_typ;
           let id = Pos.make pos rec_name in
           let r = add_symbol ss expo Defin Eager false id rec_typ [] None
           in Print.sig_state := fst r; r
@@ -390,7 +392,8 @@ let get_proof_data : compiler -> sig_state -> p_command ->
               | Prod(_, by), Abst(_, be) ->
                   let x, ty, te = Bindlib.unbind2 by be in
                   if Bindlib.(binder_constant by && binder_constant be) then
-                    wrn pos "Variable [%a] could be replaced by [_]." pp_var x;
+                    wrn pos "Variable [%a] could be replaced by [_]."
+                      pp_var x;
                   binders_warn (k-1) ty te
               | _ -> assert false
           in binders_warn (Syntax.nb_params p_sym_arg) a.elt t.elt
@@ -444,7 +447,7 @@ let get_proof_data : compiler -> sig_state -> p_command ->
                   in List.fold_left admit_goal ss ps.proof_goals
             in
             (* Add the symbol in the signature with a warning. *)
-            Console.out 2 (red "symbol %a : %a") pp_uid id pp_term a;
+            Console.out 2 (Color.red "symbol %a : %a") pp_uid id pp_term a;
             wrn pe.pos "Proof admitted.";
             let t = Option.map (fun t -> t.elt) t in
             fst (add_symbol ss expo prop mstrat opaq p_sym_nam a impl t)
@@ -454,7 +457,7 @@ let get_proof_data : compiler -> sig_state -> p_command ->
               (Console.out 1 "%a" Proof.pp_goals ps;
                fatal pe.pos "The proof is not finished.");
             (* Add the symbol in the signature. *)
-            Console.out 2 (red "symbol %a : %a") pp_uid id pp_term a;
+            Console.out 2 (Color.red "symbol %a : %a") pp_uid id pp_term a;
             let t = Option.map (fun t -> t.elt) t in
             fst (add_symbol ss expo prop mstrat opaq p_sym_nam a impl t)
       in
@@ -505,8 +508,8 @@ let get_proof_data : compiler -> sig_state -> p_command ->
   with
   | Timeout                as e -> raise e
   | Fatal(Some(Some(_)),_) as e -> raise e
-  | Fatal(None         ,m)      -> fatal pos "Error on command.\n%s" m
-  | Fatal(Some(None)   ,m)      -> fatal pos "Error on command.\n%s" m
+  | Fatal(None         ,m)      -> fatal pos "Error on command.@.%s" m
+  | Fatal(Some(None)   ,m)      -> fatal pos "Error on command.@.%s" m
   | e                           ->
       fatal pos "Uncaught exception: %s." (Printexc.to_string e)
 

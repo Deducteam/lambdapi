@@ -93,8 +93,8 @@ and print_type : int -> string -> term pp = fun i s ppf t ->
          (print_type i s) a (print_type i s) b
   | LLet(_,t,u)             -> print_type i s ppf (Bindlib.subst u t)
 
-(** [print_rule ppf s r] outputs the rule declaration corresponding [r] (on the
-    symbol [s]), to [ppf]. *)
+(** [print_rule ppf s r] outputs the rule declaration corresponding [r] (on
+   the symbol [s]), to [ppf]. *)
 let print_rule : Format.formatter -> int -> sym -> rule -> unit =
   fun ppf i s r ->
   (* Print the rewriting rule. *)

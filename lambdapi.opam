@@ -14,7 +14,7 @@ homepage: "https://github.com/Deducteam/lambdapi"
 bug-reports: "https://github.com/Deducteam/lambdapi/issues"
 depends: [
   "dune" {>= "2.1"}
-  "ocaml" {>= "4.07.0"}
+  "ocaml" {>= "4.08.0"}
   "menhir" {>= "20200624"}
   "sedlex" {>= "2.2"}
   "alcotest" {with-test}
