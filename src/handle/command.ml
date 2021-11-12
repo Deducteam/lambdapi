@@ -531,7 +531,7 @@ let string_of_p_tactic = function
   | P_tac_why3 _ -> "why3"
 
 (**[handle_proof f accu p] works exactly as [proof_fold_left f accu p]
-   except it outputs fatal errors if an incorrect number of goals is 
+   except it outputs fatal errors if an incorrect number of goals is
    given by the user*)
 let rec handle_proof f accu = function
   | [] -> accu
@@ -539,7 +539,7 @@ let rec handle_proof f accu = function
     match sp with
       | [] -> handle_proof f accu spl
       | Tactic(t, splbis)::psl ->
-        let _, ps, _ = accu in 
+        let _, ps, _ = accu in
         let _, psn, _ = f accu t in
         let og = List.length ps.proof_goals in
         let ng = List.length psn.proof_goals in
@@ -563,12 +563,12 @@ let rec handle_proof f accu = function
            (*The right amount of goals need to be created*)
            ng - og + 1 <> gg
            (*Tactic mustn't be "have"*)
-           && not (is_have t) 
+           && not (is_have t)
            (*Goals must be created*)
            && ng - og > 0
           then
             begin
-              fatal t.pos 
+              fatal t.pos
               "The tactic `%s` has generated %s goals but %s were given"
               (string_of_p_tactic t.elt)
               (string_of_int (ng - og + 1))
