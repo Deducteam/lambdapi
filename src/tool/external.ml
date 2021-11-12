@@ -9,13 +9,11 @@ open Lplib.Extra
 
 open Common
 open Error
-open Timed
 open Core
-open Debug
 
 (** Logging function for external checkers. *)
-let log_xtrn = new_logger 'x' "xtrn" "external tools"
-let log_xtrn = log_xtrn.logger
+let log_xtrn = Logger.make 'x' "xtrn" "external tools"
+let log_xtrn = log_xtrn.pp
 
 (** [run prop pp cmd sign] runs the external checker given by the Unix command
     [cmd] on the signature [sign]. The signature is processed and written to a
@@ -30,22 +28,22 @@ let log_xtrn = log_xtrn.logger
 let run : string -> Sign.t pp -> string -> Sign.t -> bool option =
     fun prop pp cmd sign ->
   (* Run the command. *)
-  if !log_enabled then log_xtrn "Running %s command [%s]" prop cmd;
+  if Logger.log_enabled () then log_xtrn "Running %s command [%s]" prop cmd;
   let (ic, oc, ec) = Unix.open_process_full cmd (Unix.environment ()) in
   (* Feed it the printed signature. *)
   pp (Format.formatter_of_out_channel oc) sign;
   flush oc; close_out oc;
-  if !log_enabled then log_xtrn "Wrote the data and closed the pipe.";
+  if Logger.log_enabled() then log_xtrn "Wrote the data and closed the pipe.";
   (* Read the answer (and possible error messages). *)
   let out = input_lines ic in
-  if !log_enabled && out <> [] then
+  if Logger.log_enabled () && out <> [] then
     begin
       log_xtrn "==== Data written to [stdout] ====";
       List.iter (log_xtrn "%s") out;
       log_xtrn "==================================";
     end;
   let err = input_lines ec in
-  if !log_enabled && err <> [] then
+  if Logger.log_enabled () && err <> [] then
     begin
       log_xtrn "==== Data written to [stderr] ====";
       List.iter (log_xtrn "%s") err;

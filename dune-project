@@ -18,7 +18,7 @@ mostly compatible with Dedukti.
 This package contains both the `lambdapi` proof assistant and the `lp-lsp`
 Language Server Protocol helper for IDEs to check lambdapi files.")
  (depends
-  (ocaml (>= 4.07.0))
+  (ocaml (>= 4.08.0))
   (menhir (>= 20200624))
   (sedlex (>= 2.2))
   (alcotest :with-test)

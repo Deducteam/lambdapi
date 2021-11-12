@@ -9,11 +9,10 @@ open Error
 open Core
 open Term
 open Print
-open Debug
 
 (** Logging function for external prover calling with Why3. *)
-let log_why3 = new_logger 'w' "why3" "why3 provers"
-let log_why3 = log_why3.logger
+let log_why3 = Logger.make 'w' "why3" "why3 provers"
+let log_why3 = log_why3.pp
 
 (** [default_prover] contains the name of the current prover. Note that it can
     be changed by using the "set prover <string>" command. *)
@@ -29,8 +28,8 @@ let timeout : int ref = ref 2
 let why3_config : Why3.Whyconf.config =
   let cfg = Why3.Whyconf.init_config None in
   let provers = Why3.Whyconf.get_provers cfg in
-  Console.out 2 "available provers for why3:\n";
-  let pp_prover p _ = Console.out 2 "%a\n" Why3.Whyconf.print_prover p in
+  Console.out 2 "provers available for why3:";
+  let pp_prover p _ = Console.out 2 "%a" Why3.Whyconf.print_prover p in
   Why3.Whyconf.Mprover.iter pp_prover provers;
   cfg
 
@@ -156,17 +155,17 @@ let run_task : Why3.Task.task -> Pos.popt -> string -> bool =
   (* Fail if we did not find a matching prover. *)
   if Why3.Whyconf.Mprover.is_empty provers then
     begin
-      fatal_msg "prover \"%s\" not found.\n" prover_name;
+      fatal_msg "prover %S not found.@." prover_name;
       let provers = Why3.Whyconf.get_provers why3_config in
       let _ =
         if Why3.Whyconf.Mprover.is_empty provers then
-          fatal_msg "There are no available Why3 provers.\n"
+          fatal_msg "There are no available Why3 provers.@."
         else
-          let fn p _ = fatal_msg " - %a\n" Why3.Whyconf.print_prover p in
-          fatal_msg "The available Why3 provers are:\n";
+          let fn p _ = fatal_msg " - %a@." Why3.Whyconf.print_prover p in
+          fatal_msg "The available Why3 provers are:@.";
           Why3.Whyconf.Mprover.iter fn provers
       in
-      fatal_msg "Why3 configuration read from \"%s\".\n"
+      fatal_msg "Why3 configuration read from %S.@."
         (Why3.Whyconf.get_conf_file why3_config);
       fatal_msg "Your prover might not be installed or detected, ";
       fatal pos "remember to run [why3 config detect]."
@@ -175,7 +174,7 @@ let run_task : Why3.Task.task -> Pos.popt -> string -> bool =
   let prover = snd (Why3.Whyconf.Mprover.max_binding provers) in
   let driver =
     try Why3.Whyconf.(load_driver why3_main why3_env prover)
-    with e -> fatal pos "Failed to load driver for \"%s\": %a"
+    with e -> fatal pos "Failed to load driver for %S: %a"
                 prover.prover.prover_name Why3.Exn_printer.exn_printer e
   in
   (* Actually run the prover. *)
@@ -193,12 +192,12 @@ let handle :
   fun ss pos prover_name {goal_meta = m; goal_hyps = hyps; goal_type = trm} ->
   (* Get the name of the prover. *)
   let prover_name = Option.get !default_prover prover_name in
-  if !log_enabled then log_why3 "running with prover \"%s\"" prover_name;
+  if Logger.log_enabled () then log_why3 "running with prover %S" prover_name;
   (* Encode the goal in Why3. *)
   let tsk = encode ss pos hyps trm in
   (* Run the task with the prover named [prover_name]. *)
   if not (run_task tsk pos prover_name) then
-    fatal pos "\"%s\" did not find a proof" prover_name;
+    fatal pos "%S did not find a proof" prover_name;
   (* Create a new axiom name that represents the proved goal. *)
   let axiom_name = new_axiom_name () in
   (* Add the axiom to the current signature. *)
@@ -206,7 +205,8 @@ let handle :
     Sign.add_symbol ss.signature Privat Const Eager true
       (Pos.make pos axiom_name) !(m.meta_type) []
   in
-  if !log_enabled then log_why3 "axiom %a created" Print.pp_uid axiom_name;
+  if Logger.log_enabled () then
+    log_why3 "axiom %a created" Print.pp_uid axiom_name;
   (* Return the variable terms of each item in the context. *)
   let terms = List.rev_map (fun (_, (x, _, _)) -> mk_Vari x) hyps in
   (* Apply the instance of the axiom with context. *)

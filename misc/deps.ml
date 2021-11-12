@@ -50,9 +50,9 @@ let rec handle_line : M.t -> string -> M.t = fun s l ->
 let _ =
   let work f n =
     let mods = M.remove n (fold_lines handle_line M.empty f) in
-    M.iter (Printf.printf "#REQUIRE %s.\n%!") mods
+    M.iter (Format.printf "#REQUIRE %s.@.") mods
   in
   match Sys.argv with
   | [| _ ; f ; n |] -> work f n
   | _               ->
-      Printf.eprintf "Usage: %s file.dk modname\n%!" Sys.argv.(0)
+      Format.eprintf "Usage: %s file.dk modname@." Sys.argv.(0)

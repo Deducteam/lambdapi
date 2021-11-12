@@ -15,8 +15,8 @@ open Term
 open Sig_state
 
 (** Logging function for printing. *)
-let log_prnt = new_logger 'p' "prnt" "pretty-printing"
-let log_prnt = log_prnt.logger
+let log_prnt = Logger.make 'p' "prnt" "pretty-printing"
+let log_prnt = log_prnt.pp
 
 (** Current signature state. *)
 let sig_state : sig_state ref = ref Sig_state.dummy
@@ -86,17 +86,15 @@ let pp_match_strat : match_strat pp = fun ppf s ->
 
 let pp_sym : sym pp = fun ppf s ->
   if !print_implicits && s.sym_impl <> [] then out ppf "@";
-  let n = s.sym_name in
-  if StrMap.mem n !sig_state.in_scope then
-    (* For printing Unif_rule.cons unescaped. *)
-    if s == Unif_rule.cons then out ppf "%s" n else pp_uid ppf n
+  let ss = !sig_state and n = s.sym_name and p = s.sym_path in
+  if Path.Set.mem p ss.open_paths then pp_uid ppf n
   else
-    match Path.Map.find_opt s.sym_path (!sig_state).path_alias with
+    match Path.Map.find_opt p ss.path_alias with
     | None ->
         (* Hack for printing symbols replacing metavariables in infer.ml
-           unqualified and unescaped. *)
-        if n <> "" && let c = n.[0] in c = '$' || c = '?' then out ppf "%s" n
-        else out ppf "%a.%a" pp_path s.sym_path pp_uid n
+           unqualified. *)
+        if n <> "" && let c = n.[0] in c = '$' || c = '?' then pp_uid ppf n
+        else out ppf "%a.%a" pp_path p pp_uid n
     | Some alias -> out ppf "%a.%a" pp_uid alias pp_uid n
 
 let pp_var : 'a Bindlib.var pp = fun ppf x -> pp_uid ppf (Bindlib.name_of x)
@@ -299,26 +297,25 @@ let pp_ctxt : ctxt pp = fun ppf ctx ->
       let pp_def ppf t = out ppf " ≔ %a" pp_term t in
       let pp_decl ppf (x,a,t) =
         out ppf "%a%a%a" pp_var x pp_type a (Option.pp pp_def) t in
-      List.pp pp_decl "\n, " ppf (List.rev ctx);
-      if ctx <> [] then out ppf " ";
-      out ppf "\n⊢ "
+      out ppf "%a%s⊢ "
+        (List.pp pp_decl ",@ ") (List.rev ctx)
+        (if ctx <> [] then "@ " else "")
     end
 
 let pp_typing : constr pp = fun ppf (ctx, t, u) ->
-  out ppf "%a%a : %a" pp_ctxt ctx pp_term t pp_term u
+  out ppf "%a%a@ : %a" pp_ctxt ctx pp_term t pp_term u
 
 let pp_constr : constr pp = fun ppf (ctx, t, u) ->
-  out ppf "%a%a ≡ %a" pp_ctxt ctx pp_term t pp_term u
+  out ppf "%a%a@ ≡ %a" pp_ctxt ctx pp_term t pp_term u
 
-let pp_constrs : constr list pp = fun ppf ->
-  List.iter (out ppf "\n  ; %a" pp_constr)
+let pp_constrs : constr list pp = List.pp pp_constr ";@ "
 
 (* for debug only *)
-let pp_metaset : MetaSet.t pp = fun ppf ->
-  MetaSet.iter (out ppf "%a," pp_meta)
+let pp_metaset : MetaSet.t pp =
+  D.iter ~sep:(fun fmt () -> Format.fprintf fmt ",@ ") MetaSet.iter pp_meta
 
 let pp_problem : problem pp = fun ppf p ->
   out ppf
-    "{recompute=%b; metas={%a}; to_solve=[%a];\n  unsolved=[%a]}"
+    "{ recompute=%b;@ metas={%a};@ to_solve=[%a];@  unsolved=[%a] }"
     !p.recompute pp_metaset !p.metas pp_constrs !p.to_solve pp_constrs
     !p.unsolved

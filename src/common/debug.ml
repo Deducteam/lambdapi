@@ -1,100 +1,14 @@
 open Lplib.Base
 open Lplib.Extra
-open Timed
-
-(** Type of a logging function. *)
-type logger = { logger : 'a. 'a outfmt -> 'a }
-
-(** Type of logging function data. *)
-type logger_data =
-  { logger_key     : char     (** Character used to unable the logger.      *)
-  ; logger_name    : string   (** 4 character name used as prefix in logs.  *)
-  ; logger_desc    : string   (** Description of the log displayed in help. *)
-  ; logger_enabled : bool ref (** Is the log enabled? *) }
-
-(** [log_enabled] is (automatically) set to true by {!val:set_debug} or
-    functions of {!module:State} when some logging functions may print
-    messages. Its main use is to guard logging operations to avoid performing
-    unnecessary computations. *)
-let log_enabled : bool ref = ref false
-
-(** [loggers] constains the registered logging functions. *)
-let loggers : logger_data list Stdlib.ref = Stdlib.ref []
-
-(** [default_loggers] give the loggers enabled by default. *)
-let default_loggers : string Stdlib.ref = Stdlib.ref ""
-
-(** [log_summary ()] gives the keys and descriptions for logging options. *)
-let log_summary : unit -> (char * string) list = fun () ->
-  let fn data = (data.logger_key, data.logger_desc) in
-  let compare (c1, _) (c2, _) = Char.compare c1 c2 in
-  List.sort compare (List.map fn Stdlib.(!loggers))
-
-(** [set_debug value key] enables or disables the loggers corresponding to every
-    character of [str] according to [value]. *)
-let set_debug : bool -> string -> unit = fun value str ->
-  let fn {logger_key; logger_enabled; _} =
-    if String.contains str logger_key then logger_enabled := value
-  in
-  List.iter fn Stdlib.(!loggers);
-  let is_enabled data = !(data.logger_enabled) in
-  log_enabled := List.exists is_enabled Stdlib.(!loggers)
-
-(** [set_default_debug str] declares the debug flags of [str] to be enabled by
-    default. *)
-let set_default_debug : string -> unit = fun str ->
-  Stdlib.(default_loggers := str); set_debug true str
-
-(** [new_logger key name desc] returns (and registers) a new logger. *)
-let new_logger : char -> string -> string -> logger = fun key name desc ->
-  (* Sanity checks. *)
-  if String.length name <> 4 then
-    invalid_arg "Console.new_logger: name must be 4 characters long";
-  let check data =
-    if key = data.logger_key then
-      invalid_arg "Console.new_logger: already used key";
-    if name = data.logger_name then
-      invalid_arg "Console.new_logger: already used name"
-  in
-  List.iter check Stdlib.(!loggers);
-  (* Logger registration. *)
-  let enabled = ref false in
-  let data =
-    { logger_key = key ; logger_name = name
-    ; logger_desc = desc ; logger_enabled = enabled }
-  in
-  let cmp_loggers l1 l2 = Char.compare l1.logger_key l2.logger_key in
-  Stdlib.(loggers := List.sort cmp_loggers (data :: !loggers));
-  (* Actual printing function. *)
-  let logger fmt =
-    let pp = Format.(if !enabled then fprintf else ifprintf) in
-    pp Stdlib.(!Error.err_fmt) (fmt ^^ "\n%!")
-  in
-  {logger}
-
-(** Logging function for command handling. *)
-let logger_hndl = new_logger 'h' "hndl" "command handling"
-let log_hndl = logger_hndl.logger
-
-(** To print time data. *)
-let do_print_time = ref false
-
-(** Print current time. *)
-let print_time : string -> unit = fun s ->
-  if !do_print_time && !log_enabled then log_hndl "@%f %s" (Sys.time()) s
-
-(** [time_of f x] computes [f x] and the time for computing it. *)
-let time_of : (unit -> 'b) -> 'b = fun f ->
-  if !do_print_time && !log_enabled then
-      let t0 = Sys.time() in
-      try let y = f () in log_hndl "%f" (Sys.time() -. t0); y
-      with e -> log_hndl "%f" (Sys.time() -. t0); raise e
-  else f ()
 
 (** Printing functions. *)
 module D = struct
 
   let ignore : 'a pp = fun _ _ -> ()
+
+  let log_and_return logger el = logger el; el
+
+  let log_and_raise logger exc = logger exc; raise exc
 
   let depth : int pp = fun ppf l ->
     for _i = 1 to l do out ppf " " done; out ppf "%d. " l
@@ -140,4 +54,37 @@ module D = struct
   let strmap : 'a pp -> 'a StrMap.t pp = fun elt ->
     map StrMap.iter string ", " elt "; "
 
+  let iter ?sep:(pp_sep = Format.pp_print_cut) iter pp_elt ppf v =
+    let is_first = ref true in
+    let pp_elt v =
+      if !is_first then (is_first := false) else pp_sep ppf ();
+      pp_elt ppf v
+    in
+    iter pp_elt v
+
+  (* To be used in a hov (and not default) box *)
+  let surround beg fin inside =
+    fun fmt v -> Format.fprintf fmt "%s@;<0 2>@[<hv>%a@]@,%s" beg inside v fin
+
+  let bracket inside = surround "[" "]" inside
+
 end
+
+(** Logging function for command handling. *)
+
+(* The two successive let-bindings are necessary for type variable
+   generalisation purposes *)
+let log_hndl = Logger.make 'h' "hndl" "command handling"
+let log_hndl = log_hndl.pp
+
+(** To print time data. *)
+let do_print_time = ref false
+
+(** [time_of f x] computes [f x] and the time for computing it. *)
+let time_of : string -> (unit -> 'b) -> 'b = fun s f ->
+  if !do_print_time && Logger.log_enabled () then begin
+    let t0 = Sys.time () in
+    let log _ = log_hndl "%s time: %f" s (Sys.time () -. t0) in
+    try f () |> D.log_and_return log
+    with e -> e |> D.log_and_raise log
+  end else f ()

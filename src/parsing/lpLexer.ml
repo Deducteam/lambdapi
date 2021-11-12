@@ -174,18 +174,31 @@ let path_of_string : string -> Path.t = fun s ->
    suffix consisting of a sequence of digits into an integer, and increment
    it, we cannot use as bound variable names escaped identifiers or regular
    identifiers ending with a non-negative integer with leading zeros. *)
-let invalid_bindlib_id = [%sedlex.regexp? escid | (Star any, Plus '0', nat)]
+let valid_bindlib_id = [%sedlex.regexp?
+    Star (Compl digit), Star (Plus digit, Plus (Compl digit)), Opt nat]
 
-let is_invalid_bindlib_id : string -> bool = fun s ->
-  let lexbuf = Sedlexing.Utf8.from_string s in
+let is_valid_bindlib_id : string -> bool = fun s ->
+  s = "" || (s.[0] <> '{'
+  && let lexbuf = Sedlexing.Utf8.from_string s in
   match%sedlex lexbuf with
-  | invalid_bindlib_id, eof -> true
-  | _ -> false
+  | valid_bindlib_id, eof -> true
+  | _ -> false)
+
+let is_invalid_bindlib_id s = not (is_valid_bindlib_id s)
 
 (* unit test *)
 let _ =
-  assert (let f = is_invalid_bindlib_id in
-          f "00" && f "01" && f "a01" && f "{|:|}")
+  assert (is_invalid_bindlib_id "00");
+  assert (is_invalid_bindlib_id "01");
+  assert (is_invalid_bindlib_id "a01");
+  assert (is_invalid_bindlib_id "{|:|}");
+  assert (is_valid_bindlib_id "_x_100");
+  assert (is_valid_bindlib_id "_z1002");
+  assert (is_valid_bindlib_id "case_ex2_intro");
+  assert (is_valid_bindlib_id "case_ex02_intro");
+  assert (is_valid_bindlib_id "case_ex02_intro0");
+  assert (is_valid_bindlib_id "case_ex02_intro1");
+  assert (is_valid_bindlib_id "case_ex02_intro10")
 
 (** [nom buf] eats whitespaces and comments in buffer [buf]. *)
 let rec nom : lexbuf -> unit = fun buf ->
