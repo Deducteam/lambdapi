@@ -99,6 +99,7 @@
 %token COMMA
 %token COLON
 %token EQUIV
+%token GT
 %token HOOK_ARROW
 %token LAMBDA
 %token L_CU_BRACKET
@@ -109,7 +110,6 @@
 %token R_CU_BRACKET
 %token R_PAREN
 %token R_SQ_BRACKET
-%token RT
 %token SEMICOLON
 %token TURNSTILE
 %token VBAR
@@ -132,15 +132,13 @@
 
 %%
 
-separated_nonempty_list_additional_last_sep(arg, sep):
+sep_ne_list_with_opt_end_sep(arg, sep):
   | a=arg { [a] }
   | a=arg; sep { [a] }
-  | a=arg; sep; l=separated_nonempty_list_additional_last_sep(arg, sep)
-    { a :: l }
+  | a=arg; sep; l=sep_ne_list_with_opt_end_sep(arg, sep) { a :: l }
 
-separated_list_additional_last_sep(arg, sep):
-  l=loption(separated_nonempty_list_additional_last_sep(arg, sep))
-    { l }
+sep_list_with_opt_end_sep(arg, sep):
+  l=loption(sep_ne_list_with_opt_end_sep(arg, sep)) { l }
 
 uid: i=UID { make_pos $sloc i}
 
@@ -255,19 +253,14 @@ proof_end:
   | END { make_pos $sloc Syntax.P_proof_end }
 
 proof:
-  (*in case there are more than one goal to prove in the beginning*)
-  | BEGIN l=proof_block+ pe=proof_end { l, pe }
-  (*in case there is just one goal (or none) to prove in the beginning*)
-  | BEGIN
-      l=separated_list_additional_last_sep(proof_step, SEMICOLON)
-    pe=proof_end
+  | BEGIN l=subproof+ pe=proof_end { l, pe }
+  | BEGIN l=sep_list_with_opt_end_sep(proof_step, SEMICOLON) pe=proof_end
       { [l], pe }
 
-proof_block:
-  LT l=separated_list_additional_last_sep(proof_step, SEMICOLON)
-  RT { l }
+subproof:
+  | LT l=sep_list_with_opt_end_sep(proof_step, SEMICOLON) GT { l }
 
-proof_step: t=tactic l=proof_block* { Tactic(t, l) }
+proof_step: t=tactic l=subproof* { Tactic(t, l) }
 
 constructor:
   | i=uid ps=params* COLON t=term

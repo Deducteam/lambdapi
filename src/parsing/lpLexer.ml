@@ -82,6 +82,7 @@ type token =
   | COMMA
   | COLON
   | EQUIV
+  | GT
   | HOOK_ARROW
   | LAMBDA
   | L_CU_BRACKET
@@ -92,7 +93,6 @@ type token =
   | R_CU_BRACKET
   | R_PAREN
   | R_SQ_BRACKET
-  | RT
   | SEMICOLON
   | TURNSTILE
   | VBAR
@@ -373,7 +373,7 @@ let lexer buf =
   | '}' -> R_CU_BRACKET
   | ')' -> R_PAREN
   | ']' -> R_SQ_BRACKET
-  | '>' -> RT
+  | '>' -> GT
   | ';' -> SEMICOLON
   | 0x22a2 (* ⊢ *) -> TURNSTILE
   | '|' -> VBAR
