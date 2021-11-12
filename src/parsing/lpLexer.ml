@@ -82,14 +82,14 @@ type token =
   | COMMA
   | COLON
   | EQUIV
-  | GT
   | HOOK_ARROW
   | LAMBDA
+  | L_AN_BRACKET
   | L_CU_BRACKET
   | L_PAREN
   | L_SQ_BRACKET
-  | LT
   | PI
+  | R_AN_BRACKET
   | R_CU_BRACKET
   | R_PAREN
   | R_SQ_BRACKET
@@ -365,15 +365,15 @@ let lexer buf =
   | 0x2261 (* ≡ *) -> EQUIV
   | 0x21aa (* ↪ *) -> HOOK_ARROW
   | 0x03bb (* λ *) -> LAMBDA
+  | 0x2329 (* 〈 *) -> L_AN_BRACKET
   | '{' -> L_CU_BRACKET
   | '(' -> L_PAREN
   | '[' -> L_SQ_BRACKET
-  | '<' -> LT
   | 0x03a0 (* Π *) -> PI
+  | 0x232a (* 〉 *) -> R_AN_BRACKET
   | '}' -> R_CU_BRACKET
   | ')' -> R_PAREN
   | ']' -> R_SQ_BRACKET
-  | '>' -> GT
   | ';' -> SEMICOLON
   | 0x22a2 (* ⊢ *) -> TURNSTILE
   | '|' -> VBAR

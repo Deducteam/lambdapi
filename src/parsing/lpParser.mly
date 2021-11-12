@@ -99,14 +99,14 @@
 %token COMMA
 %token COLON
 %token EQUIV
-%token GT
 %token HOOK_ARROW
 %token LAMBDA
+%token L_AN_BRACKET
 %token L_CU_BRACKET
 %token L_PAREN
 %token L_SQ_BRACKET
-%token LT
 %token PI
+%token R_AN_BRACKET
 %token R_CU_BRACKET
 %token R_PAREN
 %token R_SQ_BRACKET
@@ -161,7 +161,7 @@ param_id:
 params:
   | x=param_id { ([x], None, false) }
   | L_PAREN xs=param_id+ COLON a=term R_PAREN { (xs, Some(a), false) }
-  | L_CU_BRACKET xs=param_id+ a=preceded(COLON, term)? R_CU_BRACKET
+  | L_SQ_BRACKET xs=param_id+ a=preceded(COLON, term)? R_SQ_BRACKET
     { (xs, a, true) }
 
 rw_patt:
@@ -258,7 +258,8 @@ proof:
       { [l], pe }
 
 subproof:
-  | LT l=sep_list_with_opt_end_sep(proof_step, SEMICOLON) GT { l }
+  | L_CU_BRACKET l=sep_list_with_opt_end_sep(proof_step, SEMICOLON)
+    R_CU_BRACKET { l }
 
 proof_step: t=tactic l=subproof* { Tactic(t, l) }
 
@@ -310,7 +311,7 @@ command:
   | q=query SEMICOLON { make_pos $sloc (P_query(q)) }
   | EOF { raise End_of_file }
 
-env: L_SQ_BRACKET ts=separated_list(SEMICOLON, term) R_SQ_BRACKET { ts }
+env: L_AN_BRACKET ts=separated_list(SEMICOLON, term) R_AN_BRACKET { ts }
 
 aterm:
   | ti=term_id { ti }
@@ -321,7 +322,7 @@ aterm:
         make_pos $sloc (P_Meta(mid, Option.map Array.of_list e)) }
   | p=patt_id e=env? { make_pos $sloc (P_Patt(p,Option.map Array.of_list e)) }
   | L_PAREN t=term R_PAREN { make_pos $sloc (P_Wrap(t)) }
-  | L_CU_BRACKET t=term R_CU_BRACKET { make_pos $sloc (P_Expl(t)) }
+  | L_SQ_BRACKET t=term R_SQ_BRACKET { make_pos $sloc (P_Expl(t)) }
   | n=INT { make_pos $sloc (P_NLit(n)) }
 
 saterm:
@@ -352,7 +353,7 @@ rule: l=term HOOK_ARROW r=term { make_pos $sloc (l, r) }
 equation: l=term EQUIV r=term { (l, r) }
 
 unif_rule: e=equation HOOK_ARROW
-  L_SQ_BRACKET es=separated_nonempty_list(SEMICOLON, equation) R_SQ_BRACKET
+  L_CU_BRACKET es=separated_nonempty_list(SEMICOLON, equation) R_CU_BRACKET
     { (* FIXME: give sensible positions instead of Pos.none and P.appl. *)
       let equiv = P.qiden Unif_rule.path Unif_rule.equiv.sym_name in
       let cons = P.qiden Unif_rule.path Unif_rule.cons.sym_name in
