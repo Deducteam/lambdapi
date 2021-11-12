@@ -81,10 +81,10 @@ let log_hndl = log_hndl.pp
 let do_print_time = ref false
 
 (** [time_of f x] computes [f x] and the time for computing it. *)
-let time_of : (unit -> 'b) -> 'b = fun f ->
+let time_of : string -> (unit -> 'b) -> 'b = fun s f ->
   if !do_print_time && Logger.log_enabled () then begin
     let t0 = Sys.time () in
-    try f () |> D.log_and_return (fun _ -> log_hndl "%f" (Sys.time () -. t0))
-    with e ->
-      e |> D.log_and_raise  (fun _ -> log_hndl "%f" (Sys.time () -. t0))
+    let log _ = log_hndl "%s time: %f" s (Sys.time () -. t0) in
+    try f () |> D.log_and_return log
+    with e -> e |> D.log_and_raise log
   end else f ()

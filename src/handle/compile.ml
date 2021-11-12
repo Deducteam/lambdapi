@@ -62,7 +62,7 @@ let rec compile_with :
     begin
       let forced = if force then " (forced)" else "" in
       let src = src () in
-      Console.out 1 "Loading %S ..." src forced;
+      Console.out 1 "Loading %S%s..." src forced;
       loading := mp :: !loading;
       let sign = Sig_state.create_sign mp in
       let sig_st = Stdlib.ref (Sig_state.of_sign sign) in

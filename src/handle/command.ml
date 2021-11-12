@@ -129,7 +129,7 @@ let handle_modifiers : p_modifier list -> prop * expo * match_strat =
    set [syms] extended with the symbol [s] defined by [r]. However, it does
    not update the decision tree of [s]. *)
 let handle_rule : sig_state -> p_rule -> sym = fun ss r ->
-  Console.out 3 (cya "%a") Pos.pp r.pos;
+  Console.out 3 (Color.cya "%a") Pos.pp r.pos;
   Console.out 4 "%a" (Pretty.rule "rule") r;
   let pr = scope_rule false ss r in
   let sym = pr.elt.pr_sym in

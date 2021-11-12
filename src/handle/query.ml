@@ -9,7 +9,6 @@ open Core
 open Term
 open Print
 open Proof
-open Debug
 open! Lplib
 open Base
 open Timed
@@ -72,7 +71,7 @@ type result = (unit -> string) option
 (** [return pp x] prints [x] using [pp] on [Stdlib.(!out_fmt)] at verbose
    level 1 and returns a function for printing [x] on a string using [pp]. *)
 let return : 'a pp -> 'a -> result = fun pp x ->
-  Console.out 1 (Extra.red "%a") pp x;
+  Console.out 1 (Color.red "%a") pp x;
   Some (fun () -> Format.asprintf "%a" pp x)
 
 (** [handle_query ss ps q] *)
