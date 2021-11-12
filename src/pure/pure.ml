@@ -54,7 +54,7 @@ end
 module Rproof = struct
   type t = Syntax.p_proof
   let equal = Syntax.eq_p_proof
-  let fold_left = Syntax.p_proof_fold_left
+  let fold = Syntax.fold_proof
 end
 
 type state = Time.t * Sig_state.t

@@ -191,7 +191,7 @@ type p_query_aux =
 
 type p_query = p_query_aux loc
 
-(** Parser-level representation of a proof tactic. *)
+(** Parser-level representation of a tactic. *)
 type p_tactic_aux =
   | P_tac_admit
   | P_tac_apply of p_term
@@ -213,20 +213,23 @@ type p_tactic_aux =
 
 type p_tactic = p_tactic_aux loc
 
-type p_proof_step = Tactic of p_tactic * p_subproof list
-and p_subproof = p_proof_step list;;
+let is_have {elt;_} = match elt with P_tac_have _ -> true | _ -> false
 
-type p_proof = p_subproof list;;
+(** Parser-level representation of a proof. *)
+type p_subproof = p_proofstep list
 
-(**[p_tactic_list_of_p_proof] converts the p_proof [p]
-   into a list of tactics*)
-let rec  p_tactic_list_of_p_proof : p_proof -> p_tactic list = function
-| [] -> []
-| sp::spl ->
-  match sp with
-    | [] ->  p_tactic_list_of_p_proof spl
-    | Tactic(t, splbis)::psl
-      -> t:: p_tactic_list_of_p_proof (splbis@psl::spl);;
+and p_proofstep = Tactic of p_tactic * p_subproof list
+
+type p_proof = p_subproof list
+
+(** [p_tactic_list_of_p_proof p] converts the p_proof [p]
+   into a list of p_tactic's. *)
+let rec p_tactics_of_proof : p_proof -> p_tactic list = function
+  | [] -> []
+  | sp::spl ->
+    match sp with
+    | [] ->  p_tactics_of_proof spl
+    | Tactic(t, spl')::psl -> t :: p_tactics_of_proof (spl'@psl::spl)
 
 type p_proof_end_aux =
   | P_proof_end
@@ -260,7 +263,6 @@ type p_symbol =
   ; p_sym_typ : p_term option (** symbol type *)
   ; p_sym_trm : p_term option (** symbol definition *)
   ; p_sym_prf : (p_proof * p_proof_end) option (** proof script *)
-  (*; p_sym_prf : (p_tactic list * p_proof_end) option (** proof script *)*)
   ; p_sym_def : bool (** is it a definition ? *) }
 
 (** Parser-level representation of a single command. *)
@@ -385,57 +387,32 @@ let eq_p_tactic : p_tactic eq = fun {elt=t1;_} {elt=t2;_} ->
   | P_tac_sym, P_tac_sym -> true
   | _, _ -> false
 
-(** [is_have t] returns true if and only if the tactic [t]
-    is have*)
-let is_have : p_tactic -> bool = fun {elt=t1;_} ->
-  match t1 with
-  | P_tac_have(_, _) -> true
-  | _ -> false
+let rec eq_p_subproof : p_subproof eq = fun sp1 sp2 ->
+  List.eq eq_p_proofstep sp1 sp2
 
-(** [p_proof_fold_left f accu p] behaves as List.fold_left [f] [accu] l
-    where l denotes the list of the tactics used in the proof [p]*)
-let rec p_proof_fold_left :
-('a -> p_tactic -> 'a) -> 'a -> p_proof -> 'a = fun f accu p ->
-match p with
-| [] -> accu
-| sp::spl ->
-  match sp with
-    | [] -> p_proof_fold_left f accu spl
-    | Tactic(t, splbis)::psl ->
-      p_proof_fold_left f (f accu t) (splbis@psl::spl);;
+and eq_p_proofstep : p_proofstep eq = fun ps1 ps2 ->
+  match ps1, ps2 with
+  | Tactic(t1,spl1), Tactic(t2,spl2) ->
+    eq_p_tactic t1 t2 && List.eq eq_p_subproof spl1 spl2
 
-(** [eq_p_proof p1 p2] tells whether [p1] and [p2] are the same proofs. *)
-let rec eq_p_proof : p_proof -> p_proof -> bool = fun p1 p2 ->
-  match p1, p2 with
-  | [], [] -> true
-  | [], _  -> false
-  | _, []  -> false
-  | sp1::spl1, sp2::spl2 ->
-    match sp1, sp2 with
-    | [], [] -> eq_p_proof spl1 spl2
-    | [], _  -> false
-    | _, []  -> false
-    | Tactic(t1, splbis1)::psl1, Tactic(t2, splbis2)::psl2 ->
-      eq_p_tactic t1 t2
-      && eq_p_proof (splbis1@psl1::spl1) (splbis2@psl2::spl2)
+let eq_p_proof : p_proof eq = List.eq eq_p_subproof
 
-let eq_p_symbol : p_symbol eq =
-  let eq_tac (ts1,pe1) (ts2,pe2) =
-    eq_p_proof ts1 ts2 && pe1.elt = pe2.elt in
-    (*List.eq eq_p_tactic ts1 ts2 && pe1.elt = pe2.elt in*)
-  fun
-    { p_sym_mod=p_sym_mod1; p_sym_nam=p_sym_nam1; p_sym_arg=p_sym_arg1;
-      p_sym_typ=p_sym_typ1; p_sym_trm=p_sym_trm1; p_sym_prf=p_sym_prf1;
-      p_sym_def=p_sym_def1}
-    { p_sym_mod=p_sym_mod2; p_sym_nam=p_sym_nam2; p_sym_arg=p_sym_arg2;
-      p_sym_typ=p_sym_typ2; p_sym_trm=p_sym_trm2; p_sym_prf=p_sym_prf2;
-      p_sym_def=p_sym_def2} ->
+let eq_p_sym_prf : (p_proof * p_proof_end) eq = fun (p1, pe1) (p2, pe2) ->
+  pe1.elt = pe2.elt && eq_p_proof p1 p2
+
+let eq_p_symbol : p_symbol eq = fun
+  { p_sym_mod=p_sym_mod1; p_sym_nam=p_sym_nam1; p_sym_arg=p_sym_arg1;
+    p_sym_typ=p_sym_typ1; p_sym_trm=p_sym_trm1; p_sym_prf=p_sym_prf1;
+    p_sym_def=p_sym_def1}
+  { p_sym_mod=p_sym_mod2; p_sym_nam=p_sym_nam2; p_sym_arg=p_sym_arg2;
+    p_sym_typ=p_sym_typ2; p_sym_trm=p_sym_trm2; p_sym_prf=p_sym_prf2;
+    p_sym_def=p_sym_def2} ->
   p_sym_mod1 = p_sym_mod2
   && eq_p_ident p_sym_nam1 p_sym_nam2
   && List.eq eq_p_params p_sym_arg1 p_sym_arg2
   && Option.eq eq_p_term p_sym_typ1 p_sym_typ2
   && Option.eq eq_p_term p_sym_trm1 p_sym_trm2
-  && Option.eq eq_tac p_sym_prf1 p_sym_prf2
+  && Option.eq eq_p_sym_prf p_sym_prf1 p_sym_prf2
   && p_sym_def1 = p_sym_def2
 
 (** [eq_command c1 c2] tells whether [c1] and [c2] are the same commands. They
@@ -457,6 +434,13 @@ let eq_p_command : p_command eq = fun {elt=c1;_} {elt=c2;_} ->
   | P_unif_rule r1, P_unif_rule r2 -> eq_p_rule r1 r2
   | P_query(q1), P_query(q2) -> eq_p_query q1 q2
   | _, _ -> false
+
+(** [fold_proof f acc p] recursively builds a value of type ['a] by starting
+   from [acc] and by applying [f] to every tactic of [p]. *)
+let fold_proof : ('a -> p_tactic -> 'a) -> 'a -> p_proof -> 'a = fun f ->
+  let rec subproof a sp = List.fold_left proofstep a sp
+  and proofstep a (Tactic(t, spl)) = List.fold_left subproof (f a t) spl in
+  List.fold_left subproof
 
 (** [fold_idents f a ast] allows to recursively build a value of type ['a]
    starting from [a] and by applying [f] on each identifier occurring in [ast]
@@ -601,8 +585,8 @@ let fold_idents : ('a -> p_qident -> 'a) -> 'a -> p_command list -> 'a =
     List.fold_left fold_cons a ((id,t)::cons_list)
   in
 
-  let fold_proof : 'a -> (p_proof * p_proof_end) -> 'a =
-    fun a (ts, _) -> snd (p_proof_fold_left fold_tactic (StrSet.empty, a) ts)
+  let fold_sym_prf : 'a -> (p_proof * p_proof_end) -> 'a =
+    fun a (p, _) -> snd (fold_proof fold_tactic (StrSet.empty, a) p)
   in
 
   let fold_args : StrSet.t * 'a -> p_params -> StrSet.t * 'a =
@@ -613,16 +597,6 @@ let fold_idents : ('a -> p_qident -> 'a) -> 'a -> p_command list -> 'a =
     | Some t -> fold_term_vars vs a t
   in
 
-  (*
-  (**[tac_list_option_of_pproof_option p_sym_prf] is a temporary function
-  used to convert [p_sym_prf] in an (p_tactic list * p_proof_end) type*)
-  let tac_list_option_of_pproof_option
-    : (p_proof * p_proof_end) option -> (p_tactic list * p_proof_end) option
-    = function
-    | None -> None
-    | Some (p, pe) -> Some (p_tactic_list_of_p_proof p, pe)
-  in
-  *)
   let fold_command : 'a -> p_command -> 'a = fun a {elt;pos} ->
     match elt with
     | P_require (_, _)
@@ -639,7 +613,7 @@ let fold_idents : ('a -> p_qident -> 'a) -> 'a -> p_command list -> 'a =
     | P_symbol {p_sym_nam;p_sym_arg;p_sym_typ;p_sym_trm;p_sym_prf;_} ->
         let d = Pos.none P_Type in
         let t = match p_sym_trm with Some t -> t | None -> d in
-        Option.fold fold_proof
+        Option.fold fold_sym_prf
           (fold_term a
              (Pos.make pos
                 (P_LLet (p_sym_nam, p_sym_arg, p_sym_typ, t, d))))

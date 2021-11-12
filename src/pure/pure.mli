@@ -27,7 +27,7 @@ end
 module Rproof : sig
   type t
   val equal : t -> t -> bool
-  val fold_left : ('a -> Tactic.t -> 'a) -> 'a -> t -> 'a
+  val fold : ('a -> Tactic.t -> 'a) -> 'a -> t -> 'a
 end
 
 (** Representation of the state when at the toplevel. *)

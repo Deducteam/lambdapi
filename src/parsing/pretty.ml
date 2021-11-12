@@ -245,30 +245,26 @@ let notation : Sign.notation pp = fun ppf n ->
   | _ -> ()
 
 (** [proof ppf p] pretty prints proof [p] using formatter [ppf] *)
-let rec proof : (p_proof * p_proof_end) pp =
-  fun ppf (p, pe) ->
-    out ppf "begin@[<hv2>@ %a@ @]%a"
-      (fun ppf -> function
-        (* No braces for a single toplevel block *)
-      | [block] -> proof_steps ppf block
-      | blocks -> proof_blocks ppf blocks) p
-      proof_end pe
-and proof_blocks : p_subproof list pp  =
-  fun ppf blocks ->
-    out ppf "@[<hv>%a@]"
-      (pp_print_list ~pp_sep:pp_print_space proof_block) blocks
-and proof_block : p_subproof pp =
-  fun ppf block ->
-    out ppf "<@[<hv2>@ %a@ @]>"
-      proof_steps block
-and proof_steps : p_proof_step list pp =
-  fun ppf steps ->
-    pp_print_list ~pp_sep:pp_print_space proof_step ppf steps
-and proof_step : p_proof_step pp =
-  fun ppf (Tactic (t, blocks)) ->
-    out ppf "@[<hv2>%a@,%a;@]"
-      tactic t
-      proof_blocks blocks
+
+let rec subproof : p_subproof pp = fun ppf sp ->
+  out ppf "<@[<hv2>@ %a@ @]>" proofsteps sp
+
+and subproofs : p_subproof list pp = fun ppf spl ->
+  out ppf "@[<hv>%a@]" (pp_print_list ~pp_sep:pp_print_space subproof) spl
+
+and proofsteps : p_proofstep list pp = fun ppf psl ->
+  pp_print_list ~pp_sep:pp_print_space proofstep ppf psl
+
+and proofstep : p_proofstep pp = fun ppf (Tactic (t, spl)) ->
+  out ppf "@[<hv2>%a@,%a;@]" tactic t subproofs spl
+
+let proof : (p_proof * p_proof_end) pp = fun ppf (p, pe) ->
+  out ppf "begin@[<hv2>@ %a@ @]%a"
+    (fun ppf -> function
+       | [block] -> proofsteps ppf block
+       (* No braces for a single toplevel block *)
+       | blocks -> subproofs ppf blocks) p
+    proof_end pe
 
 let command : p_command pp = fun ppf {elt;_} ->
   begin match elt with
