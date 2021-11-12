@@ -5,12 +5,9 @@ symbol B:TYPE;
 symbol b:B;
 symbol h:B → A;
 
-/*FIXME
 opaque symbol lem:A ≔
 begin
-  have x:B
-  {apply b}
-  {apply h;
-  apply x}
+  have x:B {apply b};
+  apply h;
+  apply x
 end;
-*/

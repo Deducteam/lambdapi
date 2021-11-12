@@ -263,7 +263,6 @@ let handle : Sig_state.t -> bool -> proof_state -> p_tactic -> proof_state =
       let v = new_tvar id.elt in
       let env' = Env.add v bt None env in
       let m2 = LibMeta.fresh p (Env.to_prod env' (lift gt.goal_type)) (n+1) in
-      let gs = Goal.of_meta m1 :: Goal.of_meta m2 :: gs in
       let ts = Env.to_tbox env in
       let u = Bindlib.unbox (_Meta m2 (Array.append ts [|_Meta m1 ts|])) in
       tac_refine pos ps gt gs p u

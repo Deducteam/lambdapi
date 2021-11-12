@@ -46,15 +46,13 @@ builtin "eq"    ≔ =;
 builtin "refl"  ≔ =_refl;
 builtin "eqind" ≔ =_ind;
 
-/*FIXME
 symbol rewrite_test1 T (x y : π T) (f : π T → Type) : π (x = y ⇒ f x ⇒ f y)
 ≔ begin
   assume T x y f eqxy;
-  have e : π (x = y)
-  {refine eqxy}
-  {rewrite e;
-  assume fy; apply fy}
-end;*/
+  have e : π (x = y) {refine eqxy};
+  rewrite e;
+  assume fy; apply fy
+end;
 
 symbol 𝔹 : TYPE;
 symbol true : 𝔹;
