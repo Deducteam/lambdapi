@@ -8,11 +8,10 @@ open Core
 open Parsing
 open Term
 open Print
-open Debug
 
 (** Logging function for typing. *)
-let log_subj = new_logger 's' "subj" "subject-reduction"
-let log_subj = log_subj.logger
+let log_subj = Logger.make 's' "subj" "subject-reduction"
+let log_subj = log_subj.pp
 
 (** [build_meta_type p k] builds the type “Πx1:A1,⋯,xk:Ak,A(k+1)” where the
    type “Ai = Mi[x1,⋯,x(i-1)]” is defined as the metavariable “Mi” which has
@@ -139,14 +138,14 @@ let check_rule : Scope.pre_rule Pos.loc -> rule = fun ({pos; elt} as pr) ->
      fatal pos "Unknown pattern variables: %a"
        (Array.pp Print.pp_var ",") xvars);
   let arity = List.length lhs in
-  if !log_enabled then
+  if Logger.log_enabled () then
     begin
       (* The unboxing here could be harmful since it leads to [pr_rhs] being
          unboxed twice. However things should be fine here since the result is
          only used for printing. *)
       let rhs = Bindlib.(unbox (bind_mvar vars pr_rhs)) in
       let naive_rule = {lhs; rhs; arity; arities; vars; xvars_nb = 0} in
-      log_subj (Extra.red "%a") pp_rule (s, naive_rule);
+      log_subj (Color.red "%a") pp_rule (s, naive_rule);
     end;
   (* Replace [Patt] nodes of LHS with corresponding elements of [vars]. *)
   let lhs_vars = _Appl_Symb s (List.map (patt_to_tenv vars) lhs) in
@@ -175,8 +174,8 @@ let check_rule : Scope.pre_rule Pos.loc -> rule = fun ({pos; elt} as pr) ->
     let te_envs = Array.map meta_to_tenv metas in
     Bindlib.msubst b te_envs
   in
-  if !log_enabled then
-    log_subj "replace pattern variables by metavariables\n%a ↪ %a"
+  if Logger.log_enabled () then
+    log_subj "replace pattern variables by metavariables:@ %a ↪ %a"
       pp_term lhs_with_metas pp_term rhs_with_metas;
   (* Infer the typing constraints of the LHS. *)
   match Infer.infer_noexn p [] lhs_with_metas with
@@ -187,8 +186,8 @@ let check_rule : Scope.pre_rule Pos.loc -> rule = fun ({pos; elt} as pr) ->
   if not (Unif.solve_noexn ~type_check:false p) then
     fatal pos "The LHS is not typable.";
   let lhs_constrs = !p.unsolved in
-  if !log_enabled then
-    log_subj "LHS: %a%a\n%a ↪ %a"
+  if Logger.log_enabled () then
+    log_subj "LHS: %a%a@ %a ↪ %a"
       pp_term ty_lhs pp_constrs lhs_constrs
       pp_term lhs_with_metas pp_term rhs_with_metas;
   (* We build a map allowing to find a variable index from its name. *)
@@ -220,8 +219,8 @@ let check_rule : Scope.pre_rule Pos.loc -> rule = fun ({pos; elt} as pr) ->
     in
     Array.iter instantiate metas; Stdlib.(!symbols)
   in
-  if !log_enabled then
-    log_subj "replace LHS metavariables by function symbols\n%a ↪ %a"
+  if Logger.log_enabled () then
+    log_subj "replace LHS metavariables by function symbols:@ %a ↪ %a"
       pp_term lhs_with_metas pp_term rhs_with_metas;
   (* TODO complete the constraints into a set of rewriting rule on
      the function symbols of [symbols]. *)
@@ -244,7 +243,7 @@ let check_rule : Scope.pre_rule Pos.loc -> rule = fun ({pos; elt} as pr) ->
   let cs = List.filter (fun c -> not (is_lhs_constr c)) !p.unsolved in
   if cs <> [] then
     begin
-      List.iter (fatal_msg "Cannot solve %a\n" pp_constr) cs;
+      List.iter (fatal_msg "Cannot solve %a@." pp_constr) cs;
       fatal pos "Unable to prove type preservation."
     end;
   (* Replace metavariable symbols by term_env variables, and bind them. *)

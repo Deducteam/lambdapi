@@ -45,11 +45,11 @@ let init : config -> unit = fun cfg ->
   List.iter Library.add_mapping cfg.map_dir;
   Option.iter Console.set_default_verbose cfg.verbose;
   Error.no_wrn := cfg.no_warnings;
-  Debug.set_default_debug cfg.debug;
-  Extra.color := not cfg.no_colors;
+  Logger.set_default_debug cfg.debug;
+  Color.color := not cfg.no_colors;
   Handle.Command.too_long := cfg.too_long;
   (* Log some configuration data. *)
-  if Timed.(!Debug.log_enabled) then
+  if Logger.log_enabled () then
     begin
       Library.log_lib "running directory: %s" (Filename.current_dir ());
       Library.log_lib "library root path: %s"
@@ -122,7 +122,7 @@ let no_warnings : bool Term.t =
 let debug : string Term.t =
   let descs =
     let fn (k, d) = Printf.sprintf "$(b,\"%c\") (for %s)" k d in
-    String.concat ", " (List.map fn (Debug.log_summary ()))
+    String.concat ", " (List.map fn (Logger.log_summary ()))
   in
   let doc =
     Printf.sprintf

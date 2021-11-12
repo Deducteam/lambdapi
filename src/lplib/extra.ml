@@ -10,27 +10,9 @@ module StrMap = Map.Make (String)
 (** Functional sets of strings. *)
 module StrSet = Set.Make (String)
 
-(** [color] tells whether colors can be used in the output. *)
-let color : bool Stdlib.ref = Stdlib.ref true
-
-(** Format transformers (colors). *)
-let colorize k fmt =
-  if Stdlib.(!color) then "\027[" ^^ k ^^ "m" ^^ fmt ^^ "\027[0m%!" else fmt
-
-let red fmt = colorize "31" fmt
-let gre fmt = colorize "32" fmt
-let yel fmt = colorize "33" fmt
-let blu fmt = colorize "34" fmt
-let mag fmt = colorize "35" fmt
-let cya fmt = colorize "36" fmt
-
-(** [g_or_r cond fmt] colors the format [fmt] in green if [cond] is [true] and
-    in red otherwise. *)
-let g_or_r cond = if cond then gre else red
-
-(** [get_safe_prefix p strings] returns a string starting with [p] and so that,
-    there is no non-negative integer [k] such that [p ^ string_of_int k] belongs
-    to [strings]. *)
+(** [get_safe_prefix p strings] returns a string starting with [p] and so
+   that, there is no non-negative integer [k] such that [p ^ string_of_int k]
+   belongs to [strings]. *)
 let get_safe_prefix : string -> StrSet.t -> string =
  fun head set ->
   let head_len = String.length head in
@@ -77,14 +59,9 @@ let with_timeout : int -> ('a -> 'b) -> 'a -> 'b =
 (** [input_lines ic] reads the input channel [ic] line by line and returns its
     contents. The trailing newlines are removed in lines. The input channel is
     not closed by the function. *)
-let input_lines : in_channel -> string list =
- fun ic ->
+let input_lines : in_channel -> string list = fun ic ->
   let lines = ref [] in
-  try
-    while true do
-      lines := input_line ic :: !lines
-    done;
-    assert false (* Unreachable. *)
+  try while true do lines := input_line ic :: !lines done; assert false
   with End_of_file -> List.rev !lines
 
 (** [run_process cmd] runs the command [cmd] and returns the list of the lines
@@ -98,8 +75,9 @@ let run_process : string -> string list option =
   | Unix.WEXITED 0 -> Some res
   | _ -> None
 
-(** [file_time fname] returns the modification time of file [fname] represented
-    as a [float]. [neg_infinity] is returned if the file does not exist. *)
+(** [file_time fname] returns the modification time of file [fname]
+   represented as a [float]. [neg_infinity] is returned if the file does not
+   exist. *)
 let file_time : string -> float = fun fname ->
   if Sys.file_exists fname then Unix.((stat fname).st_mtime) else neg_infinity
 

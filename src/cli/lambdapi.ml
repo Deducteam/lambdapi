@@ -102,7 +102,7 @@ let decision_tree_cmd : Config.t -> Syntax.qident -> bool -> unit =
     in
     if Timed.(!(sym.sym_rules)) = [] then
       wrn None "Cannot print decision tree: \
-                symbol \"%s\" does not have any rule." sym.sym_name
+                symbol %S does not have any rule." sym.sym_name
     else Console.out 0 "%a" Tool.Tree_graphviz.to_dot sym
   in
   Error.handle_exceptions run
@@ -246,7 +246,7 @@ let help_cmd =
   Term.info "help" ~doc
 
 let version_cmd =
-  let run () = Console.out 0 "Lambdapi version: %s\n%!" Version.version in
+  let run () = Console.out 0 "Lambdapi version: %s@." Version.version in
   let doc = "Display the current version of Lambdapi." in
   Term.(const run $ const ()),
   Term.info "version" ~doc

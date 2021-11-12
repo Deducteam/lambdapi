@@ -6,10 +6,10 @@ let unzip = split
 
 open Base
 
-(** [pp pp_elt sep oc l] prints the list [l] on the channel [oc] using [sep] as
-    separator, and [pp_elt] for printing the elements. *)
-let pp : 'a pp -> string -> 'a list pp = fun pp_elt sep ->
-  Format.pp_print_list ~pp_sep:(pp_sep sep) pp_elt
+(** [pp pp_elt sep oc l] prints the list [l] on the channel [oc] using [sep]
+   as separator, and [pp_elt] for printing the elements. *)
+let pp : 'a pp -> unit outfmt -> 'a list pp = fun pp_elt sep ->
+  Format.pp_print_list ~pp_sep:(pp_unit sep) pp_elt
 
 (** Total order on lists. *)
 let cmp : 'a cmp -> 'a list cmp = fun cmp_elt ->
@@ -163,8 +163,8 @@ let destruct : 'a list -> int -> 'a list * 'a * 'a list =
 let reconstruct : 'a list -> 'a list -> 'a list -> 'a list = fun l m r ->
   L.rev_append l (m @ r)
 
-(** [init n f] creates a list with [f 0] up to [f n] as its elements. Note that
-    [Invalid_argument] is raised if [n] is negative. *)
+(** [init n f] creates a list with [f 0] up to [f n] as its elements. Note
+   that [Invalid_argument] is raised if [n] is negative. *)
 let init : int -> (int -> 'a) -> 'a list = fun n f ->
   if n < 0 then invalid_arg "Extra.List.init";
   let rec loop k = if k > n then [] else f k :: loop (k + 1) in
