@@ -220,7 +220,7 @@ let tactic : p_tactic pp = fun ppf { elt;  _ } ->
   | P_tac_why3 p ->
       let prover ppf s = out ppf " %S" s in
       out ppf "why3%a" (Option.pp prover) p
-  end;;
+  end
 
 (* starts with a space if distinct from [Pratter.Neither] *)
 let assoc : Pratter.associativity pp = fun ppf a ->

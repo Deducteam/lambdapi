@@ -35,13 +35,3 @@ let for_all : (char -> bool) -> string -> bool =
   let len_s = S.length s in
   let rec for_all i = i >= len_s || (p (S.get s i) && for_all (i + 1)) in
   for_all 0
-
-let rec repeat_aux : char list -> int -> char list = fun s n ->
-  match n with
-  | 0 -> []
-  | n -> s @ (repeat_aux s (n - 1))
-
-(**[repeat s n] returns the string [s] repeated [n] times
-  (if n = 0, returns the empty string)*)
-let repeat : string -> int -> string = fun s n ->
-  of_list (repeat_aux (to_list s) n);;

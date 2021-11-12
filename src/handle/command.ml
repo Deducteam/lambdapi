@@ -522,7 +522,7 @@ let handle_tactic d (ss, ps, _) t spl =
     fatal t.pos "Subproofs given while there is no new subgoal."
   else if is_tac_have t && nb_goals_after - nb_goals_before <> nb_subproofs
   then fatal t.pos
-      "[have] %d subproof(s) given while there are %d new subgoal(s)."
+      "%d subproof(s) given while there are %d new subgoal(s)."
       nb_subproofs (nb_goals_after - nb_goals_before)
   else if nb_goals_after - nb_goals_before + 1 <> nb_subproofs
        && not (is_tac_have t) && nb_goals_after - nb_goals_before > 0 then
