@@ -30,7 +30,7 @@ rule π ($p ⇒ $q) ↪ π $p → π $q;
 
 // Universal quantification
 
-constant symbol ∀ {a} : (τ a → Prop) → Prop;
+constant symbol ∀ [a] : (τ a → Prop) → Prop;
 
 notation ∀ quantifier;
 
@@ -38,12 +38,12 @@ rule π (∀ $f) ↪ Π x, π ($f x);
 
 // polymorphic Leibniz equality
 
-constant symbol = {a} : τ a → τ a → Prop;
+constant symbol = [a] : τ a → τ a → Prop;
 
 notation = infix 10;
 
-constant symbol eq_refl {a} (x:τ a) : π (x = x);
-constant symbol ind_eq {a} {x y:τ a} : π (x = y) → Π p, π (p y) → π (p x);
+constant symbol eq_refl [a] (x:τ a) : π (x = x);
+constant symbol ind_eq [a] [x y:τ a] : π (x = y) → Π p, π (p y) → π (p x);
 
 builtin "eq"    ≔ =;
 builtin "refl"  ≔ eq_refl;
@@ -79,44 +79,44 @@ with s $x + $y ↪ s ($x + $y);
 
 opaque symbol add0r x : π (x + 0 = x) ≔
 begin
-  induction;
-  // case x = 0
-  reflexivity;
-  // case x = s x'
-  assume x' h; simplify; rewrite h; reflexivity;
+  induction
+  {// case x = 0
+  reflexivity}
+  {// case x = s x'
+  assume x' h; simplify; rewrite h; reflexivity}
 end;
 
 rule $x + 0 ↪ $x;
 
 opaque symbol addsr x y : π (x + s y = s (x + y)) ≔
 begin
-  induction;
-  // case x = 0
-  reflexivity;
-  // case x = s x'
-  assume x' h y; simplify; rewrite h; reflexivity;
+  induction
+  {// case x = 0
+  reflexivity}
+  {// case x = s x'
+  assume x' h y; simplify; rewrite h; reflexivity}
 end;
 
 rule $x + s $y ↪ s ($x + $y);
 
 opaque symbol add_com x y : π (x + y = y + x) ≔
 begin
-  induction;
-  // case x = 0
-  reflexivity;
-  // case x = s x'
-  simplify; assume x' h y; rewrite h; reflexivity;
+  induction
+  {// case x = 0
+  reflexivity}
+  {// case x = s x'
+  simplify; assume x' h y; rewrite h; reflexivity}
 end;
 
 // Addition is associative
 
 opaque symbol add_assoc x y z : π ((x + y) + z = x + (y + z)) ≔
 begin
-  induction;
-  // case x = 0
-  reflexivity;
-  // case x = s x'
-  assume x' h y z; simplify; rewrite h; reflexivity;
+  induction
+  {// case x = 0
+  reflexivity}
+  {// case x = s x'
+  assume x' h y z; simplify; rewrite h; reflexivity}
 end;
 
 rule ($x + $y) + $z ↪ $x + ($y + $z);

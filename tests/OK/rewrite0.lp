@@ -4,7 +4,7 @@ constant symbol U : TYPE;
 
 injective symbol T : U → TYPE;
 
-constant symbol pi {a} : (T a → U) → U;
+constant symbol pi [a] : (T a → U) → U;
 
 rule T (pi $f) ↪ Π x, T ($f x);
 
@@ -53,7 +53,7 @@ constant symbol Prop : TYPE;
 
 symbol P : Prop → TYPE;
 
-constant symbol all {a} : (T a → Prop) → Prop;
+constant symbol all [a] : (T a → Prop) → Prop;
 
 rule P (all $f) ↪ Π x, P ($f x);
 
@@ -75,7 +75,7 @@ with beq (s _ ) 0      ↪ false;
 
 // Leibniz equality.
 
-constant symbol = {a} : T a → T a → Prop;
+constant symbol = [a] : T a → T a → Prop;
 
 notation = infix 0.1;
 
@@ -96,15 +96,15 @@ builtin "refl"  ≔ refl;
 opaque symbol add_succ_r n m : P (n + s m = s (n + m))
 ≔ begin
   assume n m;
-  refine nat_ind (λ n, n + s m = s (n + m)) _ _ n;
-  // Case 0;
+  refine nat_ind (λ n, n + s m = s (n + m)) _ _ n
+  { // Case 0;
   simplify;
-  reflexivity;
-  // Case s;
+  reflexivity }
+  { // Case s;
   simplify;
   assume pn ih;
   rewrite ih;
-  reflexivity;
+  reflexivity }
 end;
 
 opaque symbol test0 x y z : P ((x + s y) + z = (s (x + y)) + z)

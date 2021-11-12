@@ -122,46 +122,46 @@ end;
 // [z] is right neutral for add.
 opaque symbol add0r n : P (eq nat (add n z) n)
 ≔ begin
-  refine nat_ind (λ n, eq _ (add n z) n) ?CZ ?CS;
-  // Case Z;
+  refine nat_ind (λ n, eq _ (add n z) n) ?CZ ?CS
+  { // Case Z;
   simplify;
-  refine refl nat z;
-  // Case S;
+  refine refl nat z }
+  { // Case S;
   assume n h;
   simplify;
-  refine s_eq (add n z) n h;
+  refine s_eq (add n z) n h }
 end;
 
 // [Π n m, n + S m = S (n+m)]
 opaque symbol add_succ_r : Π n m, P (eq nat (add n (s m)) (s (add n m)))
 ≔ begin
   assume n m;
-  refine nat_ind (λ n, eq nat (add n (s m)) (s (add n m))) ?CZ[n;m] ?CS[n;m] n;
-  // Case Z;
+  refine nat_ind (λ n, eq nat (add n (s m)) (s (add n m))) ?CZ 〈 n; m 〉 ?CS 〈 n; m 〉 n
+  { // Case Z
   simplify;
-  refine refl nat (s m);
-  // Case S;
+  refine refl nat (s m) }
+  { // Case S
   simplify;
   assume pn ih;
   rewrite ih;
   simplify;
-  refine refl nat (s (s (add pn m)));
+  refine refl nat (s (s (add pn m))) }
 end;
 
 // Commutativity of the addition.
 opaque symbol addcomm : Π n m, P (eq nat (add n m) (add m n))
 ≔ begin
   assume n m;
-  refine nat_ind (λ (n:N), eq nat (add n m) (add m n)) ?CZ[n;m] ?CS[n;m] n;
-  // Case Z;
+  refine nat_ind (λ (n:N), eq nat (add n m) (add m n)) ?CZ 〈 n; m 〉 ?CS 〈 n; m 〉 n
+  { // Case Z
   simplify;
-  generalize m; symmetry; refine add0r y;
-  // Case S;
+  generalize m; symmetry; refine add0r y }
+  { // Case S
   simplify;
   assume k ih;
   rewrite ih;
   rewrite add_succ_r m k;
-  refine refl nat (s (add m k));
+  refine refl nat (s (add m k)) }
 end;
 
 // Adding the same value is the same as multiplying by 2.

@@ -649,10 +649,10 @@ assert p pnil pcons a n x v
 // Equality
 /////////////////////////////
 
-constant symbol = {a} : τ a → τ a → Prop;
+constant symbol = [a] : τ a → τ a → Prop;
 notation = infix 1;
-constant symbol eq_refl {a} (x : τ a) : π(x = x);
-constant symbol eq_ind {a} (x y : τ a) : π(x = y) → Π p, π(p y) → π(p x);
+constant symbol eq_refl [a] (x : τ a) : π(x = x);
+constant symbol eq_ind [a] (x y : τ a) : π(x = y) → Π p, π(p y) → π(p x);
 
 // Set builtins for the rewrite tactic
 builtin "T"     ≔ τ;
@@ -672,14 +672,14 @@ end;
 
 opaque symbol plus_n_0 (n:N) : π(n + 0 = n) ≔
 begin
-  induction;
-  // Case n = O
-  reflexivity;
-  // Case n = S n'
+  induction
+  {// Case n = O
+  reflexivity}
+  {// Case n = S n'
   assume n' Hn';
   simplify;
   rewrite Hn';
-  reflexivity;
+  reflexivity}
 end;
 
 // About lists
@@ -696,10 +696,10 @@ opaque symbol length_app (l2 l1 : List):
   π(length l1 + length l2 = length (app l1 l2)) ≔
 begin
   assume l2;
-  induction;
-  reflexivity;
-  assume x l1 IHl1;
+  induction
+  {reflexivity}
+  {assume x l1 IHl1;
   simplify;
   rewrite IHl1;
-  reflexivity;
+  reflexivity}
 end;

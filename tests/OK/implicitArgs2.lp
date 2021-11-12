@@ -12,7 +12,7 @@ constant symbol zero : T Nat;
 constant symbol s : N → N;
 
 
-constant symbol id : Π{Typ:U}, T Typ → T Typ;
+constant symbol id : Π[Typ:U], T Typ → T Typ;
 // A version in full, without implicit arguments
 constant symbol idF : Π(Typ:U), T Typ → T Typ;
 

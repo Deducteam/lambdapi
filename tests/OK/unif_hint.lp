@@ -39,24 +39,24 @@ symbol iz: I z;
 //    &x ≡ z   &y ≡ z
 // -------------------
 //    plus &x &y ≡ z
-unif_rule (plus $x $y) ≡ z ↪ [ $x ≡ z; $y ≡ z ];
+unif_rule (plus $x $y) ≡ z ↪ { $x ≡ z; $y ≡ z };
 // Trigger the unification problem plus ?1 ?2 ≡ z
 compute H (plus _ _) iz;
 
 constant symbol Pair: U → TYPE;
-constant symbol pair {t: U}:  T t → T t → Pair t;
-symbol fst {t}: Pair t → T t;
-symbol snd {t}: Pair t → T t;
-unif_rule fst $p ≡ $f ↪ [ $p ≡ pair $f $s ];
-unif_rule snd $p ≡ $s ↪ [ $p ≡ pair $f $s ];
-constant symbol K {t}: T t → TYPE;
-constant symbol J {t} (p: Pair t): K (fst p) → TYPE;
+constant symbol pair [t: U]:  T t → T t → Pair t;
+symbol fst [t]: Pair t → T t;
+symbol snd [t]: Pair t → T t;
+unif_rule fst $p ≡ $f ↪ { $p ≡ pair $f $s };
+unif_rule snd $p ≡ $s ↪ { $p ≡ pair $f $s };
+constant symbol K [t]: T t → TYPE;
+constant symbol J [t] (p: Pair t): K (fst p) → TYPE;
 constant symbol kz: K z;
 compute J (pair _ z) kz;
 
 // The arrow problem
 symbol arrow : U → U → U;
 rule T (arrow $t $u) ↪ T $t → T $u;
-unif_rule $a → $b ≡ T $c ↪ [ $a ≡ T $ea; $b ≡ T $eb; $c ≡ arrow $ea $eb ];
+unif_rule $a → $b ≡ T $c ↪ { $a ≡ T $ea; $b ≡ T $eb; $c ≡ arrow $ea $eb };
 symbol eq (t: U): T t → T t → Bool;
 compute eq _ (λ _, z) (λ _, z);

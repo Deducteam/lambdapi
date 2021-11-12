@@ -37,46 +37,45 @@ end;
 opaque symbol add0r n : P (n + 0 = n)
 ≔ begin
   // FIXME try to infer the predicate
-  refine nat_ind (λ n, n + 0 = n) ?CZ ?CS;
-  // Case Z
+  refine nat_ind (λ n, n + 0 = n) ?CZ ?CS
+  {// Case Z
   simplify;
-  reflexivity;
-  // Case S
+  reflexivity}
+  {// Case S
   assume n h;
   simplify;
-  refine s_eq (n + 0) n h;
+  refine s_eq (n + 0) n h}
 end;
 
 // [Π n m, n + S m = S (n+m)]
 opaque symbol add_succ_r n m : P (n + (s m) = s (n + m))
 ≔ begin
   assume n m;
-  refine nat_ind (λ n, n + (s m) = s (n + m)) ?case_0 ?case_s n;
-  // Case Z
+  refine nat_ind (λ n, n + (s m) = s (n + m)) ?case_0 ?case_s n
+  {// Case Z
   simplify;
-  refine refl nat (s m);
-  // Case S
+  refine refl nat (s m)}
+  {// Case S
   simplify;
   assume pn ih;
   rewrite ih;
   simplify;
-  refine refl nat (s (s (pn + m)));
+  refine refl nat (s (s (pn + m)))}
 end;
 
 // Commutativity of the addition.
 opaque symbol addcomm n m : P (n + m = m + n)
 ≔ begin
   assume n m;
-  // FIXME try to infer nat
-  refine nat_ind (λ n, n + m = m + n) ?case_0 ?case_s n;
-  // Case Z
+  refine nat_ind (λ n, n + m = m + n) ?case_0 ?case_s n
+  {// Case Z
   simplify;
-  refine eq_sym _ (m + z) m (add0r m); // TODO add a symmetry tactic
-  // Case S
+  refine eq_sym _ (m + z) m (add0r m)} // TODO add a symmetry tactic
+  {// Case S
   simplify;
   assume k ih;
   rewrite ih;
-  reflexivity;
+  reflexivity}
 end;
 
 // Adding the same value is the same as multiplying by 2.

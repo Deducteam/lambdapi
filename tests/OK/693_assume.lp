@@ -3,7 +3,7 @@ symbol Type : TYPE;
 
 injective symbol π : Prop → TYPE;
 
-symbol ∀ {x : Prop} : (π x → Prop) → Prop;
+symbol ∀ [x : Prop] : (π x → Prop) → Prop;
 
 rule π (∀ $f) ↪  Π w, π ($f w);
 
