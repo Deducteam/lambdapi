@@ -51,15 +51,15 @@ rule diff (λ x, x) _ ↪ succ e;
 
 symbol cos: E → E;    symbol sin: E → E;
 // Terms filtered may contain bound variables if the allowed variables are
-// indicated inside brackets as in ‘$v 〈 x 〉’, which can contain variable ‘x’.
-rule diff (λ x, sin $v 〈 x 〉) ↪ fprod (diff (λ x, $v 〈 x 〉)) cos;
+// indicated inside brackets as in ‘$v.[x]’, which can contain variable ‘x’.
+rule diff (λ x, sin $v.[x]) ↪ fprod (diff (λ x, $v.[x])) cos;
 
 symbol bin: E → E → E;
 symbol diff1: (E → E → E) → E → E → E;
 // A pattern variable with an environment filters terms that, among the bound
 // variables in the scope of the pattern variable, contain at most the ones in
 // the environment.
-rule diff1 (λ x, λ y, $v 〈 x 〉) ↪ λ _, diff (λ x, $v 〈 x 〉);
+rule diff1 (λ x, λ y, $v.[x]) ↪ λ _, diff (λ x, $v.[x]);
 assertnot ⊢ diff1 (λ x y, bin x y) ≡ λ _ _, e;
 assert ⊢ diff1 (λ x _, x) ≡ λ _, λ _, succ e;
 // this rule can be written more simply as
@@ -67,14 +67,14 @@ rule diff1 (λ x _, _) ↪ λ _ _, e;
 assertnot ⊢ diff1 (λ x y, bin x y) ≡ λ _ _, e;
 
 symbol scope: (E → E) → E;
-rule scope (λ _, $p 〈 〉) ↪ $p 〈 〉;
+rule scope (λ _, $p.[]) ↪ $p.[];
 // The environment of a pattern variable only concerns variables in its
 // scope at declaration time
 assert ⊢ λ x, scope (λ _, x) ≡ λ x, x;
 // Here the ‘x’ variable is not introduced by the abstraction matched in the
-// rule on ‘scope’, so it may appear in the term that matches ‘$p 〈 〉’.
+// rule on ‘scope’, so it may appear in the term that matches ‘$p.[〉’.
 
 symbol f: ((E → E) → E → E) → E;
 // Application of bound variables to patterns are authorised
-rule f (λ x _, x $p 〈 〉) ↪ $p 〈 〉;
+rule f (λ x _, x $p.[]) ↪ $p.[];
 assert ⊢ f (λ x _, x e) ≡ e;

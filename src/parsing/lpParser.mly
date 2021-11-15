@@ -90,20 +90,19 @@
 
 // symbols
 
-%token ASSIGN
 %token ARROW
+%token ASSIGN
 %token BACKQUOTE
 %token COMMA
 %token COLON
+%token DOT
 %token EQUIV
 %token HOOK_ARROW
 %token LAMBDA
-%token L_AN_BRACKET
 %token L_CU_BRACKET
 %token L_PAREN
 %token L_SQ_BRACKET
 %token PI
-%token R_AN_BRACKET
 %token R_CU_BRACKET
 %token R_PAREN
 %token R_SQ_BRACKET
@@ -308,7 +307,8 @@ command:
   | q=query SEMICOLON { make_pos $sloc (P_query(q)) }
   | EOF { raise End_of_file }
 
-env: L_AN_BRACKET ts=separated_list(SEMICOLON, term) R_AN_BRACKET { ts }
+env: DOT L_SQ_BRACKET ts=separated_list(SEMICOLON, term) R_SQ_BRACKET
+  { ts }
 
 aterm:
   | ti=term_id { ti }

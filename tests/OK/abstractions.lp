@@ -2,7 +2,7 @@
 symbol R : TYPE;
 
 symbol flip : (R → R → R) → (R → R → R);
-rule flip (λ x, λ y, $f 〈 x; y 〉) ↪ λ (x:R), λ (y:R), $f 〈 y; x 〉;
+rule flip (λ x, λ y, $f.[x; y]) ↪ λ (x:R), λ (y:R), $f.[y; x];
 
 symbol f : R → R → R;
 symbol x : R;
