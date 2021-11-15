@@ -189,7 +189,7 @@ tactic:
   | INDUCTION { make_pos $sloc P_tac_induction }
   | REFINE t=term { make_pos $sloc (P_tac_refine t) }
   | REFLEXIVITY { make_pos $sloc P_tac_refl }
-  | REWRITE d=ASSOC? p=delimited(L_SQ_BRACKET, rw_patt, R_SQ_BRACKET)? t=term
+  | REWRITE d=ASSOC? p=delimited(L_CU_BRACKET, rw_patt, R_CU_BRACKET)? t=term
     { let b = match d with Some Pratter.Left -> false | _ -> true in
       make_pos $sloc (P_tac_rewrite(b,p,t)) }
   | SIMPLIFY i=id? { make_pos $sloc (P_tac_simpl i) }
