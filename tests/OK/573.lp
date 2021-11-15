@@ -10,4 +10,4 @@ injective symbol π : Prop → TYPE;
 constant symbol ∀ [a] : (τ a → Prop) → Prop;
 notation ∀ quantifier;
 
-unif_rule π $p ≡ Π x:$t, π $q.[x] ↪ { $p ≡ `∀ x:$t, $q.[x] };
+unif_rule π $p ≡ Π x:$t, π $q.[x] ↪ [ $p ≡ `∀ x:$t, $q.[x] ];

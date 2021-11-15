@@ -347,7 +347,7 @@ function decorate(openEditor : TextEditor, range : Range | null, decorationType 
 function stepCommand(document: TextDocument, currentPos: Position, forward: boolean, terminators? : string[]){
 
     if (terminators == undefined)
-        terminators = [';', 'begin', '<'];
+        terminators = [';', 'begin', '{'];
 
     let docBegin : Position = document.positionAt(0);
     let docEnd : Position = new Position(document.lineCount, 0);

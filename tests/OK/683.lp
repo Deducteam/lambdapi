@@ -9,6 +9,6 @@ rule T prop ↪ Prop;
 symbol ∀ [x : Type] : (T x → Prop) → Prop;
 notation ∀ quantifier;
 
-unif_rule Prop ≡ T $t ↪ { $t ≡ prop };
+unif_rule Prop ≡ T $t ↪ [ $t ≡ prop ];
 
 symbol ⊥ : Prop ≔ `∀ C : Prop, C;

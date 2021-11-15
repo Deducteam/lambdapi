@@ -176,6 +176,8 @@ rw_patt:
     }
   | u=term AS x=uid IN t=term { make_pos $sloc (Rw_TermAsIdInTerm(u,(x,t))) }
 
+rw_patt_spec: DOT L_SQ_BRACKET p=rw_patt R_SQ_BRACKET { p }
+
 tactic:
   | q=query { make_pos $sloc (P_tac_query q) }
   | ADMIT { make_pos $sloc P_tac_admit }
@@ -188,7 +190,7 @@ tactic:
   | INDUCTION { make_pos $sloc P_tac_induction }
   | REFINE t=term { make_pos $sloc (P_tac_refine t) }
   | REFLEXIVITY { make_pos $sloc P_tac_refl }
-  | REWRITE d=ASSOC? p=delimited(L_CU_BRACKET, rw_patt, R_CU_BRACKET)? t=term
+  | REWRITE d=ASSOC? p=rw_patt_spec? t=term
     { let b = match d with Some Pratter.Left -> false | _ -> true in
       make_pos $sloc (P_tac_rewrite(b,p,t)) }
   | SIMPLIFY i=id? { make_pos $sloc (P_tac_simpl i) }
@@ -350,7 +352,7 @@ rule: l=term HOOK_ARROW r=term { make_pos $sloc (l, r) }
 equation: l=term EQUIV r=term { (l, r) }
 
 unif_rule: e=equation HOOK_ARROW
-  L_CU_BRACKET es=separated_nonempty_list(SEMICOLON, equation) R_CU_BRACKET
+  L_SQ_BRACKET es=separated_nonempty_list(SEMICOLON, equation) R_SQ_BRACKET
     { (* FIXME: give sensible positions instead of Pos.none and P.appl. *)
       let equiv = P.qiden Unif_rule.path Unif_rule.equiv.sym_name in
       let cons = P.qiden Unif_rule.path Unif_rule.cons.sym_name in
