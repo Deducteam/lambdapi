@@ -213,7 +213,8 @@ type p_tactic_aux =
 
 type p_tactic = p_tactic_aux loc
 
-let is_tac_have {elt;_} = match elt with P_tac_have _ -> true | _ -> false
+(** [is_destructive t] says whether tactic [t] changes the current goal. *)
+let is_destructive {elt;_} = match elt with P_tac_have _ -> false | _ -> true
 
 (** Parser-level representation of a proof. *)
 type p_subproof = p_proofstep list

@@ -513,22 +513,25 @@ let get_proof_data : compiler -> sig_state -> p_command ->
   | e                           ->
       fatal pos "Uncaught exception: %s." (Printexc.to_string e)
 
-let handle_tactic d (ss, ps, _) t spl =
+(** [handle_tactic d r tac spl] calls [Tactic.handle] and checks that the
+   number of goals of the new proof state is compatible with the list of
+   subproofs [spl]. *)
+let handle_tactic : proof_data -> Sig_state.t * proof_state * Query.result ->
+   p_tactic -> p_subproof list -> Sig_state.t * proof_state * Query.result =
+  fun d (ss, ps, _) t spl ->
   let (_, ps', _) as a = Tactic.handle ss d.pdata_prv ps t in
   let nb_goals_before = List.length ps.proof_goals in
   let nb_goals_after = List.length ps'.proof_goals in
   let nb_subproofs = List.length spl in
-  if nb_goals_after = nb_goals_before && nb_subproofs != 0 then
-    fatal t.pos "Subproofs given while there is no new subgoal."
-  else if is_tac_have t && nb_goals_after - nb_goals_before <> nb_subproofs
-  then fatal t.pos
-      "%d subproof(s) given while there are %d new subgoal(s)."
-      nb_subproofs (nb_goals_after - nb_goals_before)
-  else if nb_goals_after - nb_goals_before + 1 <> nb_subproofs
-       && not (is_tac_have t) && nb_goals_after - nb_goals_before > 0 then
-    fatal t.pos "%d subproofs given while there are %d new subgoals."
-      nb_subproofs (nb_goals_after - nb_goals_before + 1)
-  else a
+  let nb_newgoals = nb_goals_after - nb_goals_before in
+  let ok =
+    if nb_newgoals <= 0 then nb_subproofs = 0
+    else if is_destructive t then nb_newgoals + 1 = nb_subproofs
+    else nb_newgoals = nb_subproofs
+  in
+  if ok then a
+  else fatal t.pos "%d subproofs given while there are %d new subgoals."
+         nb_subproofs nb_newgoals
 
 (** [handle compile_mod ss cmd] retrieves proof data from [cmd] (with
     {!val:get_proof_data}) and handles proofs using functions from
