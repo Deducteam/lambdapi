@@ -1,5 +1,16 @@
 ### Unreleased
 
+#### Structured proof scripts (2021-11-16)
+
+A tactic replacing the current goal by n new goals must be followed by n proof scripts enclosed in curly brackets. For instance, instead of writing `induction; /* case 0 */ t1; ..; tm; /* case s */ q1; ..; qn`, we must now write `induction {t1; ..; tm} {q1; ..; qn}`.
+
+Exception for tactics not really changing the current goal like "have": `/* proof of u */ have h: t; /* proof of t */ t1; ..; tm; /* proof of u continued */ q1; ..; qn` must now be written `have h: t {t1; ..; tm}; q1; ..; qn`.
+
+Other modifications in the grammar:
+- Curly brackets are reserved for proof script structuration.
+- Implicit arguments are must be declared using square brackets instead of curly brackets: we must write `[a:Set]` instead of `{a:Set}`.
+- Term environments and rewrite patterns must be preceded by a dot: we must now write `$f.[x]` instead of `$f[x]`.
+
 #### Improve evaluation and convertibility test (2021-06-02)
 
 - fix `_LLet` by calling mk_LLet
