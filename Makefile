@@ -18,10 +18,6 @@ odoc:
 doc:
 	$(MAKE) -C docs syntax.bnf syntax_dedukti.bnf html
 
-.PHONY: vscode
-vscode:
-	$(MAKE) -C editors/vscode
-
 #### Unit tests and sanity check #############################################
 
 OK_TESTFILES = $(sort $(wildcard tests/OK/*.dk tests/OK/*.lp))
@@ -121,7 +117,6 @@ install: bin
 uninstall:
 	@dune uninstall lambdapi
 
-# Install for the vim mode (in the user's directory).
 .PHONY: install_vim
 install_vim: $(wildcard editors/vim/*/*.vim)
 ifeq ($(wildcard $(VIMDIR)/.),)
@@ -146,6 +141,10 @@ else
 	@dune install lambdapi-mode
 	@printf "\e[36mEmacs mode installed.\e[39m\n"
 endif
+
+.PHONY: install_vscode
+install_vscode:
+	$(MAKE) -C editors/vscode
 
 opam-release:
 	dune-release distrib
