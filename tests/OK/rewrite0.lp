@@ -111,12 +111,12 @@ opaque symbol test0 x y z : P ((x + s y) + z = (s (x + y)) + z)
 ≔ begin
   assume x y z;
   rewrite add_succ_r;
-  refine refl nat ((s (x + y)) + z);
+  refine refl nat ((s (x + y)) + z)
 end;
 
 opaque symbol test1 a (x y : T a) : P(x = y) → P(y = x)
 ≔ begin
   assume a x y xy;
   rewrite left xy;
-  reflexivity;
+  reflexivity
 end;

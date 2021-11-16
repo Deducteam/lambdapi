@@ -28,5 +28,5 @@ symbol is_true ≔ if ⊤ ⊥;
 symbol test b : π (is_true b ⇒ ⊤)
 ≔ begin
   assume b H;
-  refine top;
+  refine top
 end;

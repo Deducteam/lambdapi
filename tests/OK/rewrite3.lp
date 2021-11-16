@@ -67,7 +67,7 @@ with not true ↪ false;
 
 symbol reflexivity_test2 : π (not (not true) = true) ≔
 begin
-  reflexivity;
+  reflexivity
 end;
 
 symbol rewrite_test3 T (x : π T) (f g : π T → π T) (p : π T → Type):
@@ -75,5 +75,5 @@ symbol rewrite_test3 T (x : π T) (f g : π T → π T) (p : π T → Type):
 ≔ begin
   assume T x f g p e;
   rewrite e;
-  refine (λ u, u);
+  refine (λ u, u)
 end;

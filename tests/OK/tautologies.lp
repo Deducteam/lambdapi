@@ -18,5 +18,5 @@ rule bool_and $a $a ↪ $a;
 opaque symbol and_idempotent_rw a : P (bool_and a a = a)
 ≔ begin
   assume a;
-  reflexivity;
+  reflexivity
 end;

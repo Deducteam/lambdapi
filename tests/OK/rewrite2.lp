@@ -128,7 +128,7 @@ opaque symbol test1 a b c : π (a + (b + c) = c + (a + b))
   assume a b c;
   rewrite left add_assoc;
   rewrite add_com;
-  reflexivity;
+  reflexivity
 end;
 
 // test rewriting under abstractions
@@ -139,7 +139,7 @@ symbol test2 a b : π (f (a + b) (λ _, 0) = f (b + a) (λ _, 0))
 ≔ begin
   assume a b;
   rewrite add_com;
-  reflexivity;
+  reflexivity
 end;
 
 symbol test3 a b :
@@ -147,5 +147,5 @@ symbol test3 a b :
 ≔ begin
   assume a b;
   rewrite add_com;
-  reflexivity;
+  reflexivity
 end;

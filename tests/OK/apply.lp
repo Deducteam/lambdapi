@@ -5,7 +5,7 @@ opaque symbol test1 : (A → B) → A → B
 ≔ begin
   assume h1 h2;
   apply h1;
-  apply h2;
+  apply h2
 end;
 
 constant symbol C : TYPE;

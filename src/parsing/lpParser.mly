@@ -128,14 +128,6 @@
 
 %%
 
-sep_ne_list_with_opt_end_sep(arg, sep):
-  | a=arg { [a] }
-  | a=arg; sep { [a] }
-  | a=arg; sep; l=sep_ne_list_with_opt_end_sep(arg, sep) { a :: l }
-
-sep_list_with_opt_end_sep(arg, sep):
-  l=loption(sep_ne_list_with_opt_end_sep(arg, sep)) { l }
-
 uid: i=UID { make_pos $sloc i}
 
 id:
@@ -252,12 +244,10 @@ proof_end:
 
 proof:
   | BEGIN l=subproof+ pe=proof_end { l, pe }
-  | BEGIN l=sep_list_with_opt_end_sep(proof_step, SEMICOLON) pe=proof_end
-      { [l], pe }
+  | BEGIN l=separated_list(SEMICOLON,proof_step) pe=proof_end { [l], pe }
 
 subproof:
-  | L_CU_BRACKET l=sep_list_with_opt_end_sep(proof_step, SEMICOLON)
-    R_CU_BRACKET { l }
+  L_CU_BRACKET l=separated_list(SEMICOLON,proof_step) R_CU_BRACKET { l }
 
 proof_step: t=tactic l=subproof* { Tactic(t, l) }
 
@@ -289,13 +279,13 @@ command:
     po=proof? SEMICOLON
     { let sym =
         {p_sym_mod=ms; p_sym_nam=s; p_sym_arg=al; p_sym_typ=Some(a);
-         p_sym_trm=None; p_sym_def=false; p_sym_prf= po}
+         p_sym_trm=None; p_sym_def=false; p_sym_prf=po}
       in make_pos $sloc (P_symbol(sym)) }
   | ms=modifier* SYMBOL s=uid al=params* ao=preceded(COLON, term)?
     ASSIGN tp=term_proof SEMICOLON
     { let sym =
         {p_sym_mod=ms; p_sym_nam=s; p_sym_arg=al; p_sym_typ=ao;
-         p_sym_trm=fst tp; p_sym_prf= snd tp; p_sym_def=true}
+         p_sym_trm=fst tp; p_sym_prf=snd tp; p_sym_def=true}
       in make_pos $sloc (P_symbol(sym)) }
   | ms=modifier* xs=params* INDUCTIVE
     is=separated_nonempty_list(WITH, inductive) SEMICOLON

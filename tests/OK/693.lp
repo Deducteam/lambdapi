@@ -30,5 +30,5 @@ constant symbol nat: Set;
 
 symbol test_assume (a b : τ nat) f : π (a = b ⇒ f a ⇒ f b) ≔
 begin
-  assume a b f; assume eab; rewrite eab; assume fb; apply fb;
+  assume a b f; assume eab; rewrite eab; assume fb; apply fb
 end;
