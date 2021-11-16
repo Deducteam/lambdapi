@@ -299,8 +299,7 @@ command:
   | q=query SEMICOLON { make_pos $sloc (P_query(q)) }
   | EOF { raise End_of_file }
 
-env: DOT L_SQ_BRACKET ts=separated_list(SEMICOLON, term) R_SQ_BRACKET
-  { ts }
+env: DOT L_SQ_BRACKET ts=separated_list(SEMICOLON, term) R_SQ_BRACKET { ts }
 
 aterm:
   | ti=term_id { ti }
