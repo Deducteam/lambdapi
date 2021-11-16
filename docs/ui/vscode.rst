@@ -1,7 +1,7 @@
 `VSCode`_
 =========
 
-Lambdapi provides an extension for VSCode editing (>= 1.37) . The
+Lambdapi provides an extension for VSCode editing (>= 1.37). The
 extension was developed from a bare-bones LSP template, as lambdapi
 implements the LSP standard more or less to the letter, but includes
 some extra features to handle proofs and goals. To install it from the
@@ -9,7 +9,7 @@ some extra features to handle proofs and goals. To install it from the
 
 .. code:: bash
 
-   make vscode
+   make install_vscode
 
 This requires to have ``npm`` and ``node-typescript`` installed:
 
