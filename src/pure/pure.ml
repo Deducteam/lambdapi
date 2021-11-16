@@ -161,9 +161,8 @@ let handle_command : state -> Command.t -> command_result =
     | None ->
         let qres = Option.map (fun f -> f ()) qres in Cmd_OK ((t, ss), qres)
     | Some(d) ->
-        let ps = (t, ss, d.pdata_p_state, d.pdata_finalize, d.pdata_prv) in
-        let ts = d.pdata_tactics in
-        Cmd_Proof(ps, ts, d.pdata_stmt_pos, d.pdata_end_pos)
+        let ps = (t, ss, d.pdata_state, d.pdata_finalize, d.pdata_prv) in
+        Cmd_Proof(ps, d.pdata_proof, d.pdata_sym_pos, d.pdata_end_pos)
   with Fatal(p,m) -> Cmd_Error(p,m)
 
 let handle_tactic : proof_state -> Tactic.t -> tactic_result =
