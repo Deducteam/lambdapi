@@ -64,8 +64,7 @@ must be run to make Why3 know the available provers.
 
 Using Opam, a suitable OCaml environment can be setup as follows:
 ```bash
-opam switch 4.11.1
-opam install dune bindlib timed menhir pratter yojson cmdliner why3 alcotest alt-ergo odoc
+opam install dune bindlib timed sedlex menhir pratter yojson cmdliner why3 alcotest alt-ergo odoc
 why3 config detect
 ```
 
