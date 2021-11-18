@@ -351,9 +351,8 @@ let handle : Sig_state.t -> bool -> proof_state -> p_tactic -> tac_output =
    output [r] and checks that the number of goals of the new proof state is
    compatible with the list of subproofs [spl]. *)
 let handle : bool -> tac_output -> p_tactic -> int -> tac_output =
-  fun prv (ss, ps, _) t nb_subproofs ->
-  (*FIXME: previous queries are ignored*)
-  let (_, ps', _) as a = handle ss prv ps t in
+  fun prv (ss, ps, r) t nb_subproofs ->
+  let (ss', ps', r') = handle ss prv ps t in
   let nb_goals_before = List.length ps.proof_goals in
   let nb_goals_after = List.length ps'.proof_goals in
   let nb_newgoals = nb_goals_after - nb_goals_before in
@@ -362,6 +361,6 @@ let handle : bool -> tac_output -> p_tactic -> int -> tac_output =
     else if is_destructive t then nb_newgoals + 1 = nb_subproofs
     else nb_newgoals = nb_subproofs
   in
-  if ok then a
+  if ok then (ss', ps', Query.concat r r')
   else fatal t.pos "%d subproofs given while there are %d new subgoals."
          nb_subproofs nb_newgoals

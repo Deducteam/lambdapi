@@ -22,5 +22,8 @@ val check_sort : popt -> problem -> ctxt -> term -> unit
 (** Result of query displayed on hover in the editor. *)
 type result = (unit -> string) option
 
+(** [concat r1 r2] concatenates [r1] and [r2]. *)
+val concat : result -> result -> result
+
 (** [handle_query ss ps q] *)
 val handle : Sig_state.t -> proof_state option -> p_query -> result

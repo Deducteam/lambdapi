@@ -68,6 +68,14 @@ let check_sort : Pos.popt -> problem -> ctxt -> term -> unit =
 (** Result of query displayed on hover in the editor. *)
 type result = (unit -> string) option
 
+(** [concat r1 r2] concatenates [r1] and [r2]. *)
+let concat : result -> result -> result = fun r1 r2 ->
+  match r1, r2 with
+  | None, None -> None
+  | None, Some r -> Some r
+  | Some r, None -> Some r
+  | Some r1, Some r2 -> Some (fun () -> r1 () ^ r2 ())
+
 (** [return pp x] prints [x] using [pp] on [Stdlib.(!out_fmt)] at verbose
    level 1 and returns a function for printing [x] on a string using [pp]. *)
 let return : 'a pp -> 'a -> result = fun pp x ->
