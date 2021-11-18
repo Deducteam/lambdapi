@@ -347,9 +347,9 @@ let handle : Sig_state.t -> bool -> proof_state -> p_tactic -> tac_output =
   try handle ss prv ps tac
   with Fatal _ as e -> Console.out 1 "%a@." pp_goals ps; raise e
 
-(** [handle prv r tac spl] applies the tactic [tac] from the previous tactic
+(** [handle prv r tac n] applies the tactic [tac] from the previous tactic
    output [r] and checks that the number of goals of the new proof state is
-   compatible with the list of subproofs [spl]. *)
+   compatible with the number [n] of subproofs. *)
 let handle : bool -> tac_output -> p_tactic -> int -> tac_output =
   fun prv (ss, ps, _) t nb_subproofs ->
   let (_, ps', _) as a = handle ss prv ps t in
