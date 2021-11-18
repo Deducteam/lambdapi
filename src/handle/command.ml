@@ -514,29 +514,6 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
   | e                           ->
       fatal pos "Uncaught exception: %s." (Printexc.to_string e)
 
-(** Representation of a tactic output. *)
-type tac_output = Sig_state.t * proof_state * Query.result
-
-(** [handle_tactic prv r tac spl] calls [Tactic.handle] and checks that the
-   number of goals of the new proof state is compatible with the list of
-   subproofs [spl]. *)
-let handle_tactic :
-      bool -> tac_output -> p_tactic -> p_subproof list -> tac_output =
-  fun prv (ss, ps, _) t spl ->
-  let (_, ps', _) as a = Tactic.handle ss prv ps t in
-  let nb_goals_before = List.length ps.proof_goals in
-  let nb_goals_after = List.length ps'.proof_goals in
-  let nb_subproofs = List.length spl in
-  let nb_newgoals = nb_goals_after - nb_goals_before in
-  let ok =
-    if nb_newgoals <= 0 then nb_subproofs = 0
-    else if is_destructive t then nb_newgoals + 1 = nb_subproofs
-    else nb_newgoals = nb_subproofs
-  in
-  if ok then a
-  else fatal t.pos "%d subproofs given while there are %d new subgoals."
-         nb_subproofs nb_newgoals
-
 (** [handle compile_mod ss cmd] retrieves proof data from [cmd] (with
     {!val:get_proof_data}) and handles proofs using functions from
     {!module:Tactic} The function [compile_mod] is used to compile required
@@ -551,6 +528,6 @@ let handle : compiler -> Sig_state.t -> Syntax.p_command -> Sig_state.t =
   | None -> ss
   | Some d ->
     let ss, ps, _ =
-      fold_proof (handle_tactic d.pdata_prv)
+      fold_proof (Tactic.handle d.pdata_prv)
         (ss, d.pdata_state, None) d.pdata_proof
     in d.pdata_finalize ss ps

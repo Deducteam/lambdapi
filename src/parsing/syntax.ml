@@ -429,10 +429,11 @@ let eq_p_command : p_command eq = fun {elt=c1;_} {elt=c2;_} ->
 
 (** [fold_proof f acc p] recursively builds a value of type ['a] by starting
    from [acc] and by applying [f] to every tactic of [p]. *)
-let fold_proof : ('a -> p_tactic -> p_subproof list -> 'a)
-  -> 'a -> p_proof -> 'a = fun f ->
+let fold_proof : ('a -> p_tactic -> int -> 'a) -> 'a -> p_proof -> 'a =
+  fun f ->
   let rec subproof a sp = List.fold_left proofstep a sp
-  and proofstep a (Tactic(t, spl)) = List.fold_left subproof (f a t spl) spl
+  and proofstep a (Tactic(t, spl)) =
+    List.fold_left subproof (f a t (List.length spl)) spl
   in List.fold_left subproof
 
 (** [fold_idents f a ast] allows to recursively build a value of type ['a]

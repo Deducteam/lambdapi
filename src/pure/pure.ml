@@ -54,7 +54,7 @@ end
 module ProofTree = struct
   type t = Syntax.p_proof
   let equal = Syntax.eq_p_proof
-  let fold f a p = let f' a t _ = f a t in Syntax.fold_proof f' a p
+  let fold = Syntax.fold_proof
 end
 
 type state = Time.t * Sig_state.t
@@ -165,10 +165,10 @@ let handle_command : state -> Command.t -> command_result =
         Cmd_Proof(ps, d.pdata_proof, d.pdata_sym_pos, d.pdata_end_pos)
   with Fatal(p,m) -> Cmd_Error(p,m)
 
-let handle_tactic : proof_state -> Tactic.t -> tactic_result =
-  fun (_, ss, ps, finalize, prv) tac ->
+let handle_tactic : proof_state -> Tactic.t -> int -> tactic_result =
+  fun (_, ss, ps, finalize, prv) tac n ->
   try
-    let ss, ps, qres = Handle.Tactic.handle ss prv ps tac in
+    let ss, ps, qres = Handle.Tactic.handle prv (ss, ps, None) tac n in
     let qres = Option.map (fun f -> f ()) qres in
     Tac_OK((Time.save (), ss, ps, finalize, prv), qres)
   with Fatal(p,m) -> Tac_Error(p,m)

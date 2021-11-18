@@ -320,10 +320,12 @@ let handle : Sig_state.t -> bool -> proof_state -> p_tactic -> proof_state =
       let p = new_problem() in
       tac_refine pos ps gt gs p (Why3_tactic.handle ss pos cfg gt)
 
+(** Representation of a tactic output. *)
+type tac_output = Sig_state.t * proof_state * Query.result
+
 (** [handle ss prv ps tac] applies tactic [tac] in the proof state [ps] and
    returns the new proof state. *)
-let handle : Sig_state.t -> bool -> proof_state -> p_tactic
-             -> Sig_state.t * proof_state * Query.result =
+let handle : Sig_state.t -> bool -> proof_state -> p_tactic -> tac_output =
   fun ss prv ps ({elt;pos} as tac) ->
   match elt with
   | P_tac_fail -> fatal pos "Call to tactic \"fail\""
@@ -340,8 +342,26 @@ let handle : Sig_state.t -> bool -> proof_state -> p_tactic
         log_tact "%a@ %a" Proof.Goal.pp g Pretty.tactic tac;
       ss, handle ss prv ps tac, None
 
-let handle : Sig_state.t -> bool -> proof_state -> p_tactic
-             -> Sig_state.t * proof_state * Query.result =
+let handle : Sig_state.t -> bool -> proof_state -> p_tactic -> tac_output =
   fun ss prv ps tac ->
   try handle ss prv ps tac
   with Fatal _ as e -> Console.out 1 "%a@." pp_goals ps; raise e
+
+(** [handle prv r tac spl] applies the tactic [tac] from the previous tactic
+   output [r] and checks that the number of goals of the new proof state is
+   compatible with the list of subproofs [spl]. *)
+let handle : bool -> tac_output -> p_tactic -> int -> tac_output =
+  fun prv (ss, ps, _) t nb_subproofs ->
+  (*FIXME: previous queries are ignored*)
+  let (_, ps', _) as a = handle ss prv ps t in
+  let nb_goals_before = List.length ps.proof_goals in
+  let nb_goals_after = List.length ps'.proof_goals in
+  let nb_newgoals = nb_goals_after - nb_goals_before in
+  let ok =
+    if nb_newgoals <= 0 then nb_subproofs = 0
+    else if is_destructive t then nb_newgoals + 1 = nb_subproofs
+    else nb_newgoals = nb_subproofs
+  in
+  if ok then a
+  else fatal t.pos "%d subproofs given while there are %d new subgoals."
+         nb_subproofs nb_newgoals

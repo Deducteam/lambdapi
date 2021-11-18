@@ -27,7 +27,7 @@ end
 module ProofTree : sig
   type t
   val equal : t -> t -> bool
-  val fold : ('a -> Tactic.t -> 'a) -> 'a -> t -> 'a
+  val fold : ('a -> Tactic.t -> int -> 'a) -> 'a -> t -> 'a
 end
 
 (** Representation of the state when at the toplevel. *)
@@ -80,9 +80,10 @@ val initial_state : string -> state
     [Cmd_Error] constuctor). *)
 val handle_command : state -> Command.t -> command_result
 
-(** [handle_tactic st tac] evaluated the tactic [tac] in state [st], returning
-    a new proof state (with [Tac_OK]) or an error (with [Tac_Error]). *)
-val handle_tactic : proof_state -> Tactic.t -> tactic_result
+(** [handle_tactic ps tac n] evaluates the tactic [tac] with [n] subproofs in
+   proof state [ps], returning a new proof state (with [Tac_OK]) or an error
+   (with [Tac_Error]). *)
+val handle_tactic : proof_state -> Tactic.t -> int -> tactic_result
 
 (** [end_proof st] finalises the proof which state is [st], returning a result
     at the command level for the whole theorem. This function should be called
