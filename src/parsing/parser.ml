@@ -82,11 +82,11 @@ module Lp : PARSER = struct
       Stream.from generator
 
   let parse inchan =
-    stream_of_lexbuf ~inchan (Sedlexing.Utf8.from_channel inchan) 
+    stream_of_lexbuf ~inchan (Sedlexing.Utf8.from_channel inchan)
 
-  let parse_file fname = 
+  let parse_file fname =
     let inchan = open_in fname in
-    stream_of_lexbuf ~inchan ~fname (Sedlexing.Utf8.from_channel inchan) 
+    stream_of_lexbuf ~inchan ~fname (Sedlexing.Utf8.from_channel inchan)
 
   let parse_string fname s =
     stream_of_lexbuf ~fname (Sedlexing.Utf8.from_string s)
@@ -99,8 +99,8 @@ module Dk : PARSER = struct
     (* Input channel passed as parameter to be closed at the end of stream. *)
     Syntax.p_command Stream.t =
     fun ?inchan ?fname lexbuf ->
-      let fn n = 
-        lexbuf.lex_curr_p <- {lexbuf.lex_curr_p with pos_fname = n} 
+      let fn n =
+        lexbuf.lex_curr_p <- {lexbuf.lex_curr_p with pos_fname = n}
       in
       Option.iter fn fname;
         (*In OCaml >= 4.11: Lexing.set_filename lexbuf fname;*)
