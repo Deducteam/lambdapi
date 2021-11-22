@@ -353,11 +353,21 @@ let handle : bool -> tac_output -> p_tactic -> int -> tac_output =
   let nb_goals_before = List.length ps.proof_goals in
   let nb_goals_after = List.length ps'.proof_goals in
   let nb_newgoals = nb_goals_after - nb_goals_before in
-  let ok =
-    if nb_newgoals <= 0 then nb_subproofs = 0
-    else if is_destructive t then nb_newgoals + 1 = nb_subproofs
-    else nb_newgoals = nb_subproofs
-  in
-  if ok then a
-  else fatal t.pos "%d subproofs given while there are %d new subgoals."
-         nb_subproofs nb_newgoals
+  if nb_newgoals <= 0 then
+    if nb_subproofs = 0 then a
+    else fatal t.pos "A subproof is given but there is no subgoal."
+  else if is_destructive t then
+    match nb_newgoals + 1 - nb_subproofs with
+    | 0 -> a
+    | n when n > 0 ->
+      fatal t.pos "Missing subproofs (%d subproofs for %d subgoals)."
+        nb_subproofs (nb_newgoals + 1)
+    | _ -> fatal t.pos "Too many subproofs (%d subproofs for %d subgoals)."
+             nb_subproofs (nb_newgoals + 1)
+  else match nb_newgoals - nb_subproofs with
+    | 0 -> a
+    | n when n > 0 ->
+      fatal t.pos "Missing subproofs (%d subproofs for %d subgoals)."
+        nb_subproofs nb_newgoals
+    | _ -> fatal t.pos "Too many subproofs (%d subproofs for %d subgoals)."
+             nb_subproofs nb_newgoals
