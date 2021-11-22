@@ -19,13 +19,14 @@
 ;;; Code:
 
 (require 'eglot)
-(require 'lambdapi-vars)
-(require 'lambdapi-smie)
-(require 'lambdapi-capf)
 (require 'lambdapi-abbrev)
+(require 'lambdapi-capf)
 (require 'lambdapi-input)
-(require 'lambdapi-proofs)
 (require 'lambdapi-layout)
+(require 'lambdapi-proofs)
+(require 'lambdapi-smie)
+(require 'lambdapi-vars)
+
 ;;; Legacy
 ;; Syntax table (legacy syntax)
 (defvar lambdapi-mode-legacy-syntax-table nil "Syntax table for LambdaPi.")
