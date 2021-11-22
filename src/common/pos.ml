@@ -43,7 +43,7 @@ let in_pos : pos -> 'a -> 'a loc = fun p elt -> make (Some p) elt
 let end_pos : popt -> popt = fun po ->
   match po with
   | None -> None
-  | Some p -> Some {p with start_line = p.end_line; start_col = p.end_line}
+  | Some p -> Some {p with start_line = p.end_line; start_col = p.end_col}
 
 (** [cat p1 p2] returns a position starting from [p1] start and ending with
    [p2] end. [p1] and [p2] must have the same filename. *)
