@@ -74,8 +74,7 @@ let tac_admit :
 (** [tac_solve pos ps] tries to simplify the unification goals of the proof
    state [ps] and fails if constraints are unsolvable. *)
 let tac_solve : popt -> proof_state -> proof_state = fun pos ps ->
-  if Logger.log_enabled () then
-    log_tact "@[<v>tac_solve@ %a@]" pp_goals ps;
+  if Logger.log_enabled () then log_tact "@[<v>tac_solve@ %a@]" pp_goals ps;
   let gs_typ, gs_unif = List.partition is_typ ps.proof_goals in
   let p = new_problem() in
   let f ms = function
@@ -338,11 +337,6 @@ let handle : Sig_state.t -> bool -> proof_state -> p_tactic -> tac_output =
     if Logger.log_enabled () then
       log_tact ("%a@\n" ^^ Color.red "%a") Proof.Goal.pp g Pretty.tactic tac;
     ss, handle ss prv ps tac, None
-
-let handle : Sig_state.t -> bool -> proof_state -> p_tactic -> tac_output =
-  fun ss prv ps tac ->
-  try handle ss prv ps tac
-  with Fatal _ as e -> Console.out 1 "%a@." pp_goals ps; raise e
 
 (** [handle prv r tac n] applies the tactic [tac] from the previous tactic
    output [r] and checks that the number of goals of the new proof state is

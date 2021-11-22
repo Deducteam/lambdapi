@@ -456,8 +456,7 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
         | P_proof_end ->
             (* Check that the proof is indeed finished. *)
             if not (finished ps) then
-              (Console.out 1 "%a" Proof.pp_goals ps;
-               fatal pe.pos "The proof is not finished.");
+              fatal pe.pos "The proof is not finished.";
             (* Add the symbol in the signature. *)
             Console.out 2 (Color.red "symbol %a : %a") pp_uid id pp_term a;
             let t = Option.map (fun t -> t.elt) t in
