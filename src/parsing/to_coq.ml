@@ -11,6 +11,7 @@ open Core
 let translate_ident : string -> string = function
   | "forall" -> "_forall"
   | "Type" -> "_Type"
+  | "exists" -> "_exists"
   | s -> s
 
 let raw_ident : string pp = fun ppf s ->
