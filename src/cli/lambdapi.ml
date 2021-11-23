@@ -68,7 +68,7 @@ let beautify_cmd : Config.t -> string -> unit = fun cfg file ->
   let run _ =
     Config.init cfg;
     let cmds = Compile.parse_file file in
-    Pretty.beautify cmds
+    To_coq.print cmds
   in Error.handle_exceptions run
 
 (** Running the LSP server. *)
