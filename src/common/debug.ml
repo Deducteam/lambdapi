@@ -81,7 +81,7 @@ let log_hndl = log_hndl.pp
 let do_print_time = ref false
 
 (** [time_of f x] computes [f x] and prints the time for computing it if
-   [!di_print_time] is true. *)
+   [!do_print_time] is true. *)
 let time_of : string -> (unit -> 'b) -> 'b = fun s f ->
   if !do_print_time && Logger.log_enabled () then begin
     let t0 = Sys.time () in
