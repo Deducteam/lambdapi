@@ -95,9 +95,14 @@ end
 (** Parsing legacy (Dedukti2) syntax. *)
 module Dk : PARSER = struct
 
-  let token =
+  let token : Lexing.lexbuf -> DkLexer.token =
     let r = ref DkLexer.EOF in fun lb ->
     Debug.record_time "lexing" (fun () -> r := DkLexer.token lb); !r
+
+  let command :
+    (Lexing.lexbuf -> DkLexer.token) -> Lexing.lexbuf -> Syntax.p_command =
+    let r = ref (Pos.none (Syntax.P_open [])) in fun token lb ->
+    Debug.record_time "parsing" (fun () -> r := DkParser.command token lb); !r
 
   let stream_of_lexbuf :
     ?inchan:in_channel -> ?fname:string -> Lexing.lexbuf ->
@@ -110,7 +115,7 @@ module Dk : PARSER = struct
       Option.iter fn fname;
         (*In OCaml >= 4.11: Lexing.set_filename lexbuf fname;*)
       let generator _ =
-        try Some(DkParser.command token lexbuf)
+        try Some (command token lexbuf)
         with
         | End_of_file -> Option.iter close_in inchan; None
         | DkParser.Error ->
