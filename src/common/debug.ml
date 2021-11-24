@@ -77,10 +77,11 @@ end
 let log_hndl = Logger.make 'h' "hndl" "command handling"
 let log_hndl = log_hndl.pp
 
-(** To print time data. *)
-let do_print_time = ref false
+(** To print time when calling [time_of]. *)
+let do_print_time = ref true
 
-(** [time_of f x] computes [f x] and the time for computing it. *)
+(** [time_of f x] computes [f x] and prints the time for computing it if
+   [!di_print_time] is true. *)
 let time_of : string -> (unit -> 'b) -> 'b = fun s f ->
   if !do_print_time && Logger.log_enabled () then begin
     let t0 = Sys.time () in
@@ -88,3 +89,51 @@ let time_of : string -> (unit -> 'b) -> 'b = fun s f ->
     try f () |> D.log_and_return log
     with e -> e |> D.log_and_raise log
   end else f ()
+
+(** To record time with [record_time]. *)
+let do_record_time = ref true
+
+(** [record_time s f] records under [s] the time spent in calling [f].
+    [print_time ()] outputs the recorded times. *)
+let record_time, print_time =
+  let map = ref StrMap.empty in
+  let record_time : string -> (unit -> unit) -> unit = fun s f ->
+    let t0 = Sys.time () in
+    let add_time () =
+      let d = Sys.time () -. t0 in
+      let fup t = Some (Lplib.Option.get 0.0 t +. d) in
+      map := StrMap.update s fup !map in
+    try f (); add_time () with e -> add_time (); raise e
+  in
+  let do_not_record_time _ f = f () in
+  let print_time : float -> unit -> unit = fun t0 () ->
+    let tt = Sys.time () -. t0 in
+    Format.printf "time %.2fs" tt;
+    let map = !map in
+    let get_val s = try StrMap.find s map with Not_found -> 0.0 in
+    let lexing = get_val "lexing"
+    and parsing = get_val "parsing" in
+    let map = StrMap.add "parsing" (parsing -. lexing) map in
+    StrMap.iter
+      (fun s t ->
+         Format.printf " %s %.2fs (%.0f%%)" s t (100.0 *. t /. tt)) map;
+    Format.printf "@."
+  in
+  let do_not_print_time _ () = () in
+  if !do_record_time then record_time, print_time
+  else do_not_record_time, do_not_print_time
+
+(** [stream_iter f s] is the same as [Stream.iter f s] but records the time in
+   peeking the elements of the stream. *)
+let stream_iter : ('a -> unit) -> 'a Stream.t -> unit =
+  if not !do_print_time then Stream.iter else fun f strm ->
+  let peek strm =
+    let open Stdlib in let r = ref None in
+    record_time "parsing" (fun () -> r := Stream.peek strm); !r
+  in
+  let rec do_rec () =
+    match peek strm with
+      Some a -> Stream.junk strm; ignore(f a); do_rec ()
+    | None -> ()
+  in
+  do_rec ()

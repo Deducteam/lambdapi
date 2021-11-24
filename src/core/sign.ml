@@ -156,6 +156,8 @@ let link : t -> unit = fun sign ->
   let f s i m = SymMap.add (link_symb s) (link_ind_data i) m in
   sign.sign_ind := SymMap.fold f !(sign.sign_ind) SymMap.empty
 
+let link s = Debug.record_time "link" (fun () -> link s)
+
 (** [unlink sign] removes references to external symbols (and thus signatures)
     in the signature [sign]. This function is used to minimize the size of our
     object files, by preventing a recursive inclusion of all the dependencies.

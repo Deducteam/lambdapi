@@ -94,6 +94,11 @@ end
 
 (** Parsing legacy (Dedukti2) syntax. *)
 module Dk : PARSER = struct
+
+  let token =
+    let r = ref DkLexer.EOF in fun lb ->
+    Debug.record_time "lexing" (fun () -> r := DkLexer.token lb); !r
+
   let stream_of_lexbuf :
     ?inchan:in_channel -> ?fname:string -> Lexing.lexbuf ->
     (* Input channel passed as parameter to be closed at the end of stream. *)
@@ -105,7 +110,7 @@ module Dk : PARSER = struct
       Option.iter fn fname;
         (*In OCaml >= 4.11: Lexing.set_filename lexbuf fname;*)
       let generator _ =
-        try Some(DkParser.command DkLexer.token lexbuf)
+        try Some(DkParser.command token lexbuf)
         with
         | End_of_file -> Option.iter close_in inchan; None
         | DkParser.Error ->

@@ -440,6 +440,10 @@ and tree_walk : config -> dtree -> stack -> (term * stack) option =
   in
   walk tree stk 0 VarMap.empty IntMap.empty
 
+let whnf =
+  let open Stdlib in let r = ref mk_Kind in fun c t ->
+  Debug.record_time "eval" (fun () -> r := whnf c t); !r
+
 (** [snf c t] computes a snf of [t], unfolding the variables defined in the
    context [c]. *)
 let snf : ctxt -> term -> term = fun c t ->
