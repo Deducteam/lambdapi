@@ -18,7 +18,7 @@ let gen_obj = Stdlib.ref false
     looking at its extension. *)
 let parse_file : string -> Syntax.ast = fun fname ->
   match Filename.check_suffix fname src_extension with
-  | true  -> Parser.parse_file fname
+  | true  -> Parser.Lp.parse_file fname
   | false -> Parser.Dk.parse_file fname
 
 (** [compile_with ~handle ~force mp] compiles the file corresponding to module
@@ -56,13 +56,13 @@ let rec compile_with :
     end;
   match Path.Map.find_opt mp !loaded with
   | Some sign ->
-    Console.out 1 "%a already loaded" Print.pp_path mp; sign
+    Console.out 2 "%a already loaded" Print.pp_path mp; sign
   | None ->
     if force || Extra.more_recent (src ()) obj then
     begin
       let forced = if force then " (forced)" else "" in
       let src = src () in
-      Console.out 1 "Loading %S%s..." src forced;
+      Console.out 1 "Loading %S%s ..." src forced;
       loading := mp :: !loading;
       let sign = Sig_state.create_sign mp in
       let sig_st = Stdlib.ref (Sig_state.of_sign sign) in
@@ -78,7 +78,7 @@ let rec compile_with :
       Sign.strip_private sign;
       if Stdlib.(!gen_obj) then Sign.write sign obj;
       loading := List.tl !loading;
-      Console.out 1 "Checked %S" src; sign
+      Console.out 2 "Checked %S" src; sign
     end
     else
     begin
@@ -94,7 +94,7 @@ let rec compile_with :
       let sm = Path.Map.find Unif_rule.path !(sign.sign_deps) in
       if Extra.StrMap.mem Unif_rule.equiv.sym_name sm then
         Tree.update_dtree Unif_rule.equiv;
-      Console.out 1 "Loaded %S" obj; sign
+      Console.out 2 "Loaded %S" obj; sign
     end
 
 (** [compile force mp] compiles module path [mp] using
