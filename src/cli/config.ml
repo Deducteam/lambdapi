@@ -108,8 +108,7 @@ let verbose : int option Term.t =
   let doc =
     "Set the verbosity level to $(docv). A value smaller or equal to 0 will \
      disable all printing (on standard output). Greater numbers lead to more \
-     and more informations being written to standard output. There is no \
-     difference between the values of 3 and more."
+     and more informations being written to standard output."
   in
   Arg.(value & opt (some int) None & info ["verbose"; "v"] ~docv:"NUM" ~doc)
 
