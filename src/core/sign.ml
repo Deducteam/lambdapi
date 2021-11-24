@@ -243,8 +243,8 @@ let write : t -> string -> unit = fun sign fname ->
   match Unix.fork () with
   | 0 -> let oc = open_out fname in
          unlink sign; Marshal.to_channel oc sign [Marshal.Closures];
-         close_out oc; exit 0
-  | i -> ignore (Unix.waitpid [] i)
+         close_out oc; Stdlib.(Debug.do_print_time := false); exit 0
+  | i -> ignore (Unix.waitpid [] i); Stdlib.(Debug.do_print_time := true)
 
 (* NOTE [Unix.fork] is used to safely [unlink] and write an object file, while
    preserving a valid copy of the written signature in the parent process. *)

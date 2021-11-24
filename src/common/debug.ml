@@ -77,13 +77,9 @@ end
 let log_hndl = Logger.make 'h' "hndl" "command handling"
 let log_hndl = log_hndl.pp
 
-(** To print time when calling [time_of]. *)
-let do_print_time = ref false
-
-(** [time_of f x] computes [f x] and prints the time for computing it if
-   [!do_print_time] is true. *)
+(** [time_of f x] computes [f x] and prints the time for computing it. *)
 let time_of : string -> (unit -> 'b) -> 'b = fun s f ->
-  if !do_print_time && Logger.log_enabled () then begin
+  if false && Logger.log_enabled () then begin
     let t0 = Sys.time () in
     let log _ = log_hndl "%s time: %f" s (Sys.time () -. t0) in
     try f () |> D.log_and_return log
@@ -92,6 +88,7 @@ let time_of : string -> (unit -> 'b) -> 'b = fun s f ->
 
 (** To record time with [record_time]. *)
 let do_record_time = ref true
+let do_print_time = ref true
 
 (** [record_time s f] records under [s] the time spent in calling [f].
     [print_time ()] outputs the recorded times. *)
@@ -107,6 +104,7 @@ let record_time, print_time =
   in
   let do_not_record_time _ f = f () in
   let print_time : float -> unit -> unit = fun t0 () ->
+    if not !do_print_time then () else
     let tt = Sys.time () -. t0 in
     Format.printf "time %.2fs" tt;
     let map = !map in
