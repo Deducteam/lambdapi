@@ -24,7 +24,7 @@ let infer : Pos.popt -> problem -> ctxt -> term -> term = fun pos p ctx t ->
         begin
           if !p.unsolved = [] then a
           else
-            (List.iter (wrn pos "Cannot solve %a.@." pp_constr) !p.unsolved;
+            (List.iter (wrn pos "Cannot solve %a." pp_constr) !p.unsolved;
              fatal pos "Failed to infer the type of %a." pp_term t)
         end
       else fatal pos "%a is not typable." pp_term t
@@ -38,7 +38,7 @@ let check : Pos.popt -> problem -> ctxt -> term -> term -> unit =
     if Unif.solve_noexn p then
       begin
         if !p.unsolved <> [] then
-          (List.iter (wrn pos "Cannot solve %a.@." pp_constr) !p.unsolved;
+          (List.iter (wrn pos "Cannot solve %a." pp_constr) !p.unsolved;
            fatal pos "[%a] does not have type [%a]." pp_term t pp_term a)
       end
     else fatal pos "[%a] does not have type [%a]." pp_term t pp_term a
@@ -59,7 +59,7 @@ let check_sort : Pos.popt -> problem -> ctxt -> term -> unit =
             | _ -> fatal pos "[%a] has type [%a] and not a sort."
                      pp_term t pp_term a
           else
-            (List.iter (wrn pos "Cannot solve %a.@." pp_constr) !p.unsolved;
+            (List.iter (wrn pos "Cannot solve %a." pp_constr) !p.unsolved;
              fatal pos "Failed to check that [%a] is typable by a sort."
                pp_term a)
         end
@@ -207,7 +207,7 @@ let handle : Sig_state.t -> proof_state option -> p_query -> result =
           if Eval.eq_modulo ctxt t u = must_fail then
              fatal pos "Assertion failed."
         end else begin
-          List.iter (wrn pos "Cannot solve [%a].@." pp_constr) !p.unsolved;
+          List.iter (wrn pos "Cannot solve [%a]." pp_constr) !p.unsolved;
           fatal pos "[%a] has type [%a],@ [%a] has type [%a]@.\
                     Those two types are not unifiable."
             pp_term t pp_term a pp_term u pp_term b
