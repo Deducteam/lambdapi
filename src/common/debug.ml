@@ -78,7 +78,7 @@ let log_hndl = Logger.make 'h' "hndl" "command handling"
 let log_hndl = log_hndl.pp
 
 (** To print time when calling [time_of]. *)
-let do_print_time = ref true
+let do_print_time = ref false
 
 (** [time_of f x] computes [f x] and prints the time for computing it if
    [!di_print_time] is true. *)
