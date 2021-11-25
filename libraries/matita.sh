@@ -38,17 +38,28 @@ if [[ ! -d ${DIR} ]]; then
   # Applying the changes (add "#REQUIRE" and create "matita.dk").
   echo -n "  - applying changes... "
   for FILE in `find ${DIR} -type f -name "*.dk"`; do
+
+    # remove \#NAME commands
+    # replace every 0 by z to avoid problems with Bindlib ...
     sed -i -e '/^#NAME [a-zA-Z_]\+./d' -e 's/0/z/g' ${FILE}
+
+    # add \#REQUIRE commands ...
     MODNAME=`basename "${FILE}" ".dk"`
     ocaml ../misc/deps.ml ${FILE} ${MODNAME} > ${FILE}.aux
     cat ${FILE} >> ${FILE}.aux
     mv ${FILE}.aux ${FILE}
 
+    # generate matita.dk
     echo "#REQUIRE ${MODNAME}." >> ${DIR}/matita.dk
   done
+  # add missing abstraction domain in cic.dk
   sed -i "s/(x => b x)/(x : Term s1 a => b x)/g" ${DIR}/cic.dk
+  # comment the proof of le_fact_10 in matita_arithmetic_factorial
+  FILE=${DIR}/matita_arithmetics_factorial
+  awk -f matita.awk ${FILE}.dk > ${FILE}.aux
+  mv -f ${FILE}.aux ${FILE}.dk 
   echo "OK"
-
+  
   # Cleaning up.
   echo -n "  - cleaning up...      "
   rm ${DIR}/Makefile
