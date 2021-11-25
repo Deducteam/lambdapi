@@ -43,7 +43,7 @@ if [[ ! -d ${DIR} ]]; then
     # replace every 0 by z to avoid problems with Bindlib ...
     sed -i -e '/^#NAME [a-zA-Z_]\+./d' -e 's/0/z/g' ${FILE}
 
-    # add \#REQUIRE commands ...
+    # add \#REQUIRE commands
     MODNAME=`basename "${FILE}" ".dk"`
     ocaml ../misc/deps.ml ${FILE} ${MODNAME} > ${FILE}.aux
     cat ${FILE} >> ${FILE}.aux
@@ -59,7 +59,7 @@ if [[ ! -d ${DIR} ]]; then
   awk -f matita.awk ${FILE}.dk > ${FILE}.aux
   mv -f ${FILE}.aux ${FILE}.dk 
   echo "OK"
-  
+
   # Cleaning up.
   echo -n "  - cleaning up...      "
   rm ${DIR}/Makefile
