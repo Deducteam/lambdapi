@@ -19,7 +19,7 @@ This package contains both the `lambdapi` proof assistant and the `lp-lsp`
 Language Server Protocol helper for IDEs to check lambdapi files.")
  (depends
   (ocaml (>= 4.08.0))
-  (menhir (>= 20200624))
+  (menhir (>= 20200624)) (menhir (<= 20211012))
   (sedlex (>= 2.2))
   (alcotest :with-test)
   (bindlib (>= 5.0.1))
