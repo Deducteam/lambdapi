@@ -195,50 +195,7 @@ else
   rm -f ${DIR}/error.log
 fi
 
-# Moving to the working directory.
+# Check the files
 cd ${DIR}
-
-# Compiling the theory file.
-lambdapi check --gen-obj --lib-root . --no-warnings FOL.dk
-
-# Checking function.
-function check() {
-  # Module checking (given its name, without "_sig" or "_prf".
-  function check_module() {
-    SIG_FILE="$1_sig.dk"
-    OBJ_FILE="$1_sig.lpo"
-    PRF_FILE="$1_prf.dk"
-    lambdapi check --verbose 0 --gen-obj --lib-root . --no-warnings ${SIG_FILE}
-    if [ $? -ne 0 ]; then
-      echo -e "\033[0;31mKO\033[0m ${SIG_FILE}"
-      echo "FAILED ${SIG_FILE}" >> error.log
-    elif [ -f "${PRF_FILE}" ]; then
-      echo -e "\033[0;32mOK\033[0m ${SIG_FILE}"
-      lambdapi check --verbose 0 --lib-root . --no-warnings ${PRF_FILE}
-      if [ $? -ne 0 ]; then
-        echo -e "\033[0;31mKO\033[0m ${PRF_FILE}"
-        echo "FAILED ${PRF_FILE}" >> error.log
-      else
-        echo -e "\033[0;32mOK\033[0m ${PRF_FILE}"
-      fi
-      rm ${OBJ_FILE}
-    else
-      echo -e "\033[0;33mBL\033[0m ${SIG_FILE}"
-      echo "BLACK LISTED ${PRF_FILE}" >> error.log
-    fi
-  }
-
-  # Export the module checking function.
-  export -f check_module
-
-  # Run module check on all modules.
-  find -name "*_sig.dk" | sort | sed 's/_sig\.dk//g' \
-    | xargs -P ${NBWORKERS} -n 1 -I{} bash -c "check_module {}"
-}
-
-# Export stuff for the checking function.
-export readonly NBWORKERS=${NBWORKERS}
-export -f check
-
-# Run the actual checks.
-\time -f "Finished in %E at %P with %MKb of RAM" bash -c "check"
+\time -f "Finished in %E at %P with %MKb of RAM" \
+  lambdapi check --lib-root . --no-warnings *_prf.dk
