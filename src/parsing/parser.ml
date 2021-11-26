@@ -105,7 +105,7 @@ module Dk : PARSER = struct
       Option.iter fn fname;
         (*In OCaml >= 4.11: Lexing.set_filename lexbuf fname;*)
       let generator _ =
-        try Some(DkParser.command DkLexer.token lexbuf)
+        try Some (DkParser.line DkLexer.token lexbuf)
         with
         | End_of_file -> Option.iter close_in inchan; None
         | DkParser.Error ->
