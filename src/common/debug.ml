@@ -87,7 +87,7 @@ let time_of : string -> (unit -> 'b) -> 'b = fun s f ->
   end else f ()
 
 (** To record time with [record_time]. *)
-let do_record_time = ref true
+let do_record_time = ref false
 let do_print_time = ref true
 
 type task =

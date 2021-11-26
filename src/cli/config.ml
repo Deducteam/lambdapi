@@ -16,6 +16,7 @@ type config =
   ; no_warnings : bool
   ; debug       : string
   ; no_colors   : bool
+  ; record_time : bool
   ; too_long    : float
   ; confluence  : string option
   ; termination : string option }
@@ -32,6 +33,7 @@ let default_config =
   ; no_warnings = false
   ; debug       = ""
   ; no_colors   = false
+  ; record_time = false
   ; too_long    = infinity
   ; confluence  = None
   ; termination = None }
@@ -47,6 +49,7 @@ let init : config -> unit = fun cfg ->
   Error.no_wrn := cfg.no_warnings;
   Logger.set_default_debug cfg.debug;
   Color.color := not cfg.no_colors;
+  Debug.do_record_time := cfg.record_time;
   Handle.Command.too_long := cfg.too_long;
   (* Log some configuration data. *)
   if Logger.log_enabled () then
@@ -138,6 +141,13 @@ let no_colors : bool Term.t =
   in
   Arg.(value & flag & info ["no-colors"] ~doc)
 
+let record_time : bool Term.t =
+  let doc =
+    "Print statistics on the time spent in different tasks (parsing, typing, \
+     etc.). Note that it slows down the program."
+  in
+  Arg.(value & flag & info ["record-time"] ~doc)
+
 let too_long : float Term.t =
   let doc =
     "Print a warning every time that a command requires more than $(docv) \
@@ -170,14 +180,14 @@ let termination : string option Term.t =
 
 (** [full] gathers the command line arguments common to most commands. *)
 let full : config Term.t =
-  let fn gen_obj lib_root map_dir verbose no_warnings
-      debug no_colors too_long confluence termination =
-    { gen_obj ; lib_root ; map_dir ; verbose ; no_warnings
-    ; debug ; no_colors ; too_long ; confluence ; termination }
+  let fn gen_obj lib_root map_dir verbose no_warnings debug
+      no_colors record_time too_long confluence termination =
+    { gen_obj ; lib_root ; map_dir ; verbose ; no_warnings ; debug
+    ; no_colors ; record_time ; too_long ; confluence ; termination }
   in
   let open Term in
-  const fn $ gen_obj $ lib_root $ map_dir $ verbose
-  $ no_warnings $ debug $ no_colors $ too_long $ confluence $ termination
+  const fn $ gen_obj $ lib_root $ map_dir $ verbose $ no_warnings $ debug
+  $ no_colors $ record_time $ too_long $ confluence $ termination
 
 (** [minimal] gathers the minimal command line options to enable debugging and
     access to the library root. *)
