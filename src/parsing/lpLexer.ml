@@ -413,4 +413,4 @@ let lexer : lexbuf -> unit -> token * Lexing.position * Lexing.position =
 
 let lexer =
   let r = ref (EOF, Lexing.dummy_pos, Lexing.dummy_pos) in fun lb () ->
-  Debug.record_time "lexing" (fun () -> r := lexer lb ()); !r
+  Debug.(record_time Lexing (fun () -> r := lexer lb ())); !r

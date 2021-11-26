@@ -156,7 +156,7 @@ let link : t -> unit = fun sign ->
   let f s i m = SymMap.add (link_symb s) (link_ind_data i) m in
   sign.sign_ind := SymMap.fold f !(sign.sign_ind) SymMap.empty
 
-let link s = Debug.record_time "link" (fun () -> link s)
+let link s = Debug.(record_time Sharing (fun () -> link s))
 
 (** [unlink sign] removes references to external symbols (and thus signatures)
     in the signature [sign]. This function is used to minimize the size of our
@@ -249,7 +249,7 @@ let write : t -> string -> unit = fun sign fname ->
          close_out oc; Stdlib.(Debug.do_print_time := false); exit 0
   | i -> ignore (Unix.waitpid [] i); Stdlib.(Debug.do_print_time := true)
 
-let write s n = Debug.record_time "write" (fun () -> write s n)
+let write s n = Debug.(record_time Writing (fun () -> write s n))
 
 (** [read fname] reads a signature from the object file [fname]. Note that the
     file can only be read properly if it was build with the same binary as the
@@ -320,7 +320,7 @@ let read : string -> t = fun fname ->
 
 let read =
   let open Stdlib in let r = ref (dummy ()) in fun n ->
-  Debug.record_time "read" (fun () -> r := read n); !r
+  Debug.(record_time Reading (fun () -> r := read n)); !r
 
 (** [add_rule sign sym r] adds the new rule [r] to the symbol [sym].  When the
     rule does not correspond to a symbol of signature [sign],  it is stored in

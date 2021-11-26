@@ -90,32 +90,72 @@ let time_of : string -> (unit -> 'b) -> 'b = fun s f ->
 let do_record_time = ref true
 let do_print_time = ref true
 
+type task =
+  | Lexing
+  | Parsing
+  | Scoping
+  | Rewriting
+  | Typing
+  | Solving
+  | Reading
+  | Sharing
+  | Writing
+
+let index = function
+  | Lexing -> 0
+  | Parsing -> 1
+  | Scoping -> 2
+  | Rewriting -> 3
+  | Typing -> 4
+  | Solving -> 5
+  | Reading -> 6
+  | Sharing -> 7
+  | Writing -> 8
+
+let nb_tasks = 9
+
+let task_name ppf = function
+  | 0 -> Format.pp_print_string ppf "lexing"
+  | 1 -> Format.pp_print_string ppf "parsing"
+  | 2 -> Format.pp_print_string ppf "scoping"
+  | 3 -> Format.pp_print_string ppf "rewriting"
+  | 4 -> Format.pp_print_string ppf "typing"
+  | 5 -> Format.pp_print_string ppf "solving"
+  | 6 -> Format.pp_print_string ppf "reading"
+  | 7 -> Format.pp_print_string ppf "sharing"
+  | 8 -> Format.pp_print_string ppf "writing"
+  | _ -> assert false
+
 (** [record_time s f] records under [s] the time spent in calling [f].
     [print_time ()] outputs the recorded times. *)
 let record_time, print_time =
-  let map = ref StrMap.empty in
-  let record_time : string -> (unit -> unit) -> unit = fun s f ->
+  let tm = Float.Array.make nb_tasks 0.0 and call_stack = ref [] in
+  let add_time task d =
+    let i = index task in Float.Array.(set tm i (get tm i +. d)) in
+  let record_time : task -> (unit -> unit) -> unit = fun task f ->
     let t0 = Sys.time () in
-    let add_time () =
+    call_stack := task::!call_stack;
+    let end_task () =
       let d = Sys.time () -. t0 in
-      let fup t = Some (Lplib.Option.get 0.0 t +. d) in
-      map := StrMap.update s fup !map in
-    try f (); add_time () with e -> add_time (); raise e
+      call_stack := List.tl !call_stack;
+      add_time task d;
+      match !call_stack with
+      | [] -> ()
+      | task::_ -> add_time task (-. d)
+    in
+    try f (); end_task () with e -> end_task (); raise e
   in
   let do_not_record_time _ f = f () in
   let print_time : float -> unit -> unit = fun t0 () ->
     if not !do_print_time then () else
-    let tt = Sys.time () -. t0 in
-    Format.printf "time %.2fs" tt;
-    let map = !map in
-    let get_val s = try StrMap.find s map with Not_found -> 0.0 in
-    let lexing = get_val "lexing"
-    and parsing = get_val "parsing" in
-    let map = StrMap.add "parsing" (parsing -. lexing) map in
-    StrMap.iter
-      (fun s t ->
-         Format.printf " %s %.2fs (%.0f%%)" s t (100.0 *. t /. tt)) map;
-    Format.printf "@."
+    let total = Sys.time () -. t0 in
+    Format.printf "total %.2fs" total;
+    let pp_task i d =
+      Format.printf " %a %.2fs (%.0f%%)" task_name i d (100.0 *. d /. total)
+    in
+    Float.Array.iteri pp_task tm;
+    let d = total -. (Float.Array.fold_left (+.) 0.0 tm) in
+    Format.printf " other %.2fs (%.0f%%)@." d (100.0 *. d /. total)
   in
   let do_not_print_time _ () = () in
   if !do_record_time then record_time, print_time
@@ -127,7 +167,7 @@ let stream_iter : ('a -> unit) -> 'a Stream.t -> unit =
   if not !do_print_time then Stream.iter else fun f strm ->
   let peek strm =
     let open Stdlib in let r = ref None in
-    record_time "parsing" (fun () -> r := Stream.peek strm); !r
+    record_time Parsing (fun () -> r := Stream.peek strm); !r
   in
   let rec do_rec () =
     match peek strm with

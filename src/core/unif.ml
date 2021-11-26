@@ -475,4 +475,4 @@ let solve_noexn : ?type_check:bool -> problem -> bool =
 
 let solve_noexn =
   let open Stdlib in let r = ref false in fun ?type_check p ->
-  Debug.record_time "unif" (fun () -> r := solve_noexn ?type_check p); !r
+  Debug.(record_time Solving (fun () -> r := solve_noexn ?type_check p)); !r

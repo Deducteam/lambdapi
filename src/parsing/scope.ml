@@ -467,7 +467,7 @@ and scope_head : int -> mode -> sig_state -> env -> p_term -> tbox =
 
 let scope =
   let open Stdlib in let r = ref _Kind in fun k md ss env t ->
-  Debug.record_time "scoping" (fun () -> r := scope k md ss env t); !r
+  Debug.(record_time Scoping (fun () -> r := scope k md ss env t)); !r
 
 (** [scope expo ss env p mok mon t] turns into a term a pterm [t] in the
    signature state [ss], the environment [env] (for bound variables). [mok k]

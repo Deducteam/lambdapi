@@ -191,7 +191,9 @@ and check : int -> problem -> ctxt -> term -> term -> unit = fun d p c t a ->
 
 let infer =
   let open Stdlib in let r = ref mk_Kind in fun d p c t ->
-  Debug.record_time "infer" (fun () -> r := infer d p c t); !r
+  Debug.(record_time Typing (fun () -> r := infer d p c t)); !r
+
+let check d p c t a = Debug.(record_time Typing (fun () -> check d p c t a))
 
 (** [infer_noexn p c t] returns [None] if the type of [t] in context [c]
    cannot be inferred, or [Some a] where [a] is some type of [t] in the

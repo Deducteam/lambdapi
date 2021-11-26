@@ -97,12 +97,12 @@ module Dk : PARSER = struct
 
   let token : Lexing.lexbuf -> DkLexer.token =
     let r = ref DkLexer.EOF in fun lb ->
-    Debug.record_time "lexing" (fun () -> r := DkLexer.token lb); !r
+    Debug.(record_time Lexing (fun () -> r := DkLexer.token lb)); !r
 
   let command :
     (Lexing.lexbuf -> DkLexer.token) -> Lexing.lexbuf -> Syntax.p_command =
     let r = ref (Pos.none (Syntax.P_open [])) in fun token lb ->
-    Debug.record_time "parsing" (fun () -> r := DkParser.command token lb); !r
+    Debug.(record_time Parsing (fun () -> r := DkParser.command token lb)); !r
 
   let stream_of_lexbuf :
     ?inchan:in_channel -> ?fname:string -> Lexing.lexbuf ->
