@@ -133,33 +133,32 @@ let record_time, print_time =
   let add_time task d =
     let i = index task in Float.Array.(set tm i (get tm i +. d)) in
   let record_time : task -> (unit -> unit) -> unit = fun task f ->
-    let t0 = Sys.time () in
-    call_stack := task::!call_stack;
-    let end_task () =
-      let d = Sys.time () -. t0 in
-      call_stack := List.tl !call_stack;
-      add_time task d;
-      match !call_stack with
-      | [] -> ()
-      | task::_ -> add_time task (-. d)
-    in
-    try f (); end_task () with e -> end_task (); raise e
+    if !do_record_time then begin
+      let t0 = Sys.time () in
+      call_stack := task::!call_stack;
+      let end_task () =
+        let d = Sys.time () -. t0 in
+        call_stack := List.tl !call_stack;
+        add_time task d;
+        match !call_stack with
+        | [] -> ()
+        | task::_ -> add_time task (-. d)
+      in
+      try f (); end_task () with e -> end_task (); raise e
+    end else f ()
+  and print_time : float -> unit -> unit = fun t0 () ->
+    if !do_record_time && !do_print_time then begin
+      let total = Sys.time () -. t0 in
+      Format.printf "total %.2fs" total;
+      let pp_task i d =
+        Format.printf " %a %.2fs (%.0f%%)" task_name i d (100.0 *. d /. total)
+      in
+      Float.Array.iteri pp_task tm;
+      let d = total -. (Float.Array.fold_left (+.) 0.0 tm) in
+      Format.printf " other %.2fs (%.0f%%)@." d (100.0 *. d /. total)
+    end
   in
-  let do_not_record_time _ f = f () in
-  let print_time : float -> unit -> unit = fun t0 () ->
-    if not !do_print_time then () else
-    let total = Sys.time () -. t0 in
-    Format.printf "total %.2fs" total;
-    let pp_task i d =
-      Format.printf " %a %.2fs (%.0f%%)" task_name i d (100.0 *. d /. total)
-    in
-    Float.Array.iteri pp_task tm;
-    let d = total -. (Float.Array.fold_left (+.) 0.0 tm) in
-    Format.printf " other %.2fs (%.0f%%)@." d (100.0 *. d /. total)
-  in
-  let do_not_print_time _ () = () in
-  if !do_record_time then record_time, print_time
-  else do_not_record_time, do_not_print_time
+  record_time, print_time
 
 (** [stream_iter f s] is the same as [Stream.iter f s] but records the time in
    peeking the elements of the stream. *)
