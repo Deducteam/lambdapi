@@ -35,10 +35,13 @@
 
     let let_ lps i t u v = make_pos lps (P_LLet(p_ident i, [], Some t, u, v))
 
+    let defin lps = make_pos lps (P_prop Defin)
+    let const lps = make_pos lps (P_prop Const)
+    let inj lps = make_pos lps (P_prop Injec)
+    let ac lps = make_pos lps (P_prop (AC false))
+
     let opaq lps = make_pos lps P_opaq
     let protec lps = make_pos lps (P_expo Protec)
-    let ac lps = make_pos lps (P_prop (AC false))
-    let inj lps = make_pos lps (P_prop Injec)
 
     let symbol lps p_sym_mod i ps p_sym_typ p_sym_trm =
       make_pos lps (P_symbol
@@ -55,8 +58,10 @@
       function
       | [] | [_,"SNF"] -> {strategy=SNF; steps=None}
       | [_,"WHNF"] -> {strategy=WHNF; steps=None}
-      | [(_,k);(_,"SNF")] -> {strategy=SNF; steps=Some(int_of_string k)}
-      | [(_,k);(_,"WHNF")] -> {strategy=WHNF; steps=Some(int_of_string k)}
+      | [(lps,_);(_,"SNF")]
+      | [(lps,_);(_,"WHNF")]
+      | [(_,"SNF");(lps,_)]
+      | [(_,"WHNF");(lps,_)] -> fail lps "Command not supported"
       | (lps,_)::_ -> fail lps "Invalid strategy"
 
     let normalize lps t ids = make_pos lps (P_query_normalize(t, strat ids))
@@ -118,13 +123,13 @@
 
 line:
   | id=ID ps=param* COLON ty=term DOT
-    { symbol $sloc [] id ps (Some ty) None }
+    { symbol $sloc [const(fst id)] id ps (Some ty) None }
   | KW_PRV id=ID ps=param* COLON ty=term DOT
-    { symbol $sloc [protec $1] id ps (Some ty) None }
+    { symbol $sloc [const(fst id);protec $1] id ps (Some ty) None }
   | KW_DEF id=ID COLON ty=term DOT
-    { symbol $sloc [] id [] (Some ty) None }
+    { symbol $sloc [defin $1] id [] (Some ty) None }
   | KW_PRV KW_DEF id=ID COLON ty=term DOT
-    { symbol $sloc [protec $1] id [] (Some ty) None }
+    { symbol $sloc [protec $1; defin $2] id [] (Some ty) None }
   | KW_INJ id=ID COLON ty=term DOT
     { symbol $sloc [inj $1] id [] (Some ty) None }
   | KW_PRV KW_INJ id=ID COLON ty=term DOT
@@ -138,25 +143,25 @@ line:
   | KW_PRV KW_DEFACU id=ID LEFTSQU ty=term COMMA neu=term RIGHTSQU DOT
     { let _ = id and _ = ty and _ = neu in fail $2 "Unsupported command" }
   | KW_DEF id=ID COLON ty=term DEF te=term DOT
-    { symbol $sloc [] id [] (Some ty) (Some te) }
+    { symbol $sloc [defin $1] id [] (Some ty) (Some te) }
   | KW_DEF id=ID DEF te=term DOT
-    { symbol $sloc [] id [] None (Some te) }
+    { symbol $sloc [defin $1] id [] None (Some te) }
   | KW_DEF id=ID ps=param+ COLON ty=term DEF te=term DOT
-    { symbol $sloc [] id ps (Some ty) (Some te) }
+    { symbol $sloc [defin $1] id ps (Some ty) (Some te) }
   | KW_DEF id=ID ps=param+ DEF te=term DOT
-    { symbol $sloc [] id ps None (Some te) }
+    { symbol $sloc [defin $1] id ps None (Some te) }
   | KW_PRV KW_DEF id=ID COLON ty=term DEF te=term DOT
-    { symbol $sloc [protec $1] id [] (Some ty) (Some te) }
+    { symbol $sloc [protec $1; defin $2] id [] (Some ty) (Some te) }
   | KW_PRV KW_DEF id=ID DEF te=term DOT
-    { symbol $sloc [protec $1] id [] None (Some te) }
+    { symbol $sloc [protec $1; defin $2] id [] None (Some te) }
   | KW_PRV KW_DEF id=ID ps=param+ COLON ty=term DEF te=term DOT
-    { symbol $sloc [protec $1] id ps (Some ty) (Some te) }
+    { symbol $sloc [protec $1; defin $2] id ps (Some ty) (Some te) }
   | KW_PRV KW_DEF id=ID ps=param+ DEF te=term DOT
-    { symbol $sloc [protec $1] id ps None (Some te) }
+    { symbol $sloc [protec $1; defin $2] id ps None (Some te) }
   | KW_THM id=ID COLON ty=term DEF te=term DOT
-    { symbol $sloc [opaq $1] id [] (Some ty) (Some te) }
+    { symbol $sloc [opaq $1; defin(fst id)] id [] (Some ty) (Some te) }
   | KW_THM id=ID ps=param+ COLON ty=term DEF te=term DOT
-    { symbol $sloc [opaq $1] id ps (Some ty) (Some te) }
+    { symbol $sloc [opaq $1; defin(fst id)] id ps (Some ty) (Some te) }
   | rs=rule+ DOT
     { make_pos $sloc (P_rules (List.map DkRule.to_p_rule rs)) }
 
