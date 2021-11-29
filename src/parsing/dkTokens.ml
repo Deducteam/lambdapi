@@ -2,7 +2,7 @@
 
 open DkBasic
 
-type loc = Common.Pos.pos
+type loc = Lexing.position * Lexing.position
 
 type token =
   | UNDERSCORE of loc

@@ -5,11 +5,11 @@
   open Lexing
   open DkTokens
   open Format
-  open Common.Pos
+  open Common
 
-  let get_loc lexbuf = locate (lexbuf.lex_start_p, lexbuf.lex_curr_p)
+  let get_loc lexbuf = lexbuf.lex_start_p, lexbuf.lex_curr_p
 
-  let fail lc msg = Common.Error.fatal (Some lc) "%s" msg
+  let fail lps msg = Error.fatal (Some (Pos.locate lps)) "%s" msg
 }
 
 let space   = [' ' '\t' '\r']
