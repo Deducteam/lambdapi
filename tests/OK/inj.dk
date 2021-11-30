@@ -1,6 +1,6 @@
 type : Type.
 
-inj eta : type -> Type.
+injective eta : type -> Type.
 
 arr : type -> type -> type.
 

@@ -9,5 +9,5 @@
 
 (ocamllex dkLexer)
 (menhir
- (flags (--external-tokens DkLexer))
+ (flags (--external-tokens DkTokens))
  (modules dkParser))

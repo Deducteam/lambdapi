@@ -18,7 +18,7 @@ let wrn : Pos.popt -> 'a outfmt -> 'a = fun pos fmt ->
   let open Stdlib in
   let fprintf = if !no_wrn then Format.ifprintf else Format.fprintf in
   match pos with
-  | None   -> fprintf !err_fmt (Color.yel fmt)
+  | None   -> fprintf !err_fmt (Color.yel fmt ^^ "@.")
   | Some _ ->
     fprintf !err_fmt (Color.yel ("[%a]@ " ^^ fmt ^^ "@.")) Pos.pp pos
 
