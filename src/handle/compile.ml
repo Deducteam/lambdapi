@@ -74,7 +74,7 @@ let rec compile_with :
         Stdlib.(sig_st :=
                   handle (compile_with ~handle ~force:false) !sig_st cmd)
       in
-      Stream.iter consume (parse_file src);
+      Debug.stream_iter consume (parse_file src);
       Sign.strip_private sign;
       if Stdlib.(!gen_obj) then Sign.write sign obj;
       loading := List.tl !loading;

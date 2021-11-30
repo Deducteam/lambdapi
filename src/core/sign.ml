@@ -156,6 +156,8 @@ let link : t -> unit = fun sign ->
   let f s i m = SymMap.add (link_symb s) (link_ind_data i) m in
   sign.sign_ind := SymMap.fold f !(sign.sign_ind) SymMap.empty
 
+let link s = Debug.(record_time Sharing (fun () -> link s))
+
 (** [unlink sign] removes references to external symbols (and thus signatures)
     in the signature [sign]. This function is used to minimize the size of our
     object files, by preventing a recursive inclusion of all the dependencies.
@@ -238,19 +240,23 @@ let strip_private : t -> unit = fun sign ->
 
 (** [write sign file] writes the signature [sign] to the file [fname]. *)
 let write : t -> string -> unit = fun sign fname ->
+  (* [Unix.fork] is used to safely [unlink] and write an object file, while
+     preserving a valid copy of the written signature in the parent
+     process. *)
   match Unix.fork () with
   | 0 -> let oc = open_out fname in
          unlink sign; Marshal.to_channel oc sign [Marshal.Closures];
-         close_out oc; exit 0
-  | i -> ignore (Unix.waitpid [] i)
+         close_out oc; Stdlib.(Debug.do_print_time := false); exit 0
+  | i -> ignore (Unix.waitpid [] i); Stdlib.(Debug.do_print_time := true)
 
-(* NOTE [Unix.fork] is used to safely [unlink] and write an object file, while
-   preserving a valid copy of the written signature in the parent process. *)
+let write s n = Debug.(record_time Writing (fun () -> write s n))
 
 (** [read fname] reads a signature from the object file [fname]. Note that the
     file can only be read properly if it was build with the same binary as the
     one being evaluated. If this is not the case, the program gracefully fails
     with an error message. *)
+(* NOTE here, we rely on the fact that a marshaled closure can only be read by
+   processes running the same binary as the one that produced it. *)
 let read : string -> t = fun fname ->
   let ic = open_in fname in
   let sign =
@@ -259,8 +265,7 @@ let read : string -> t = fun fname ->
       close_in ic; sign
     with Failure _ ->
       close_in ic;
-      fatal_no_pos "File %S is incompatible with current binary...@."
-        fname
+      fatal_no_pos "File %S is incompatible with current binary." fname
   in
   (* Timed references need reset after unmarshaling (see [Timed] doc). *)
   let reset_timed_refs sign =
@@ -313,8 +318,9 @@ let read : string -> t = fun fname ->
   in
   reset_timed_refs sign
 
-(* NOTE here, we rely on the fact that a marshaled closure can only be read by
-   processes running the same binary as the one that produced it. *)
+let read =
+  let open Stdlib in let r = ref (dummy ()) in fun n ->
+  Debug.(record_time Reading (fun () -> r := read n)); !r
 
 (** [add_rule sign sym r] adds the new rule [r] to the symbol [sym].  When the
     rule does not correspond to a symbol of signature [sign],  it is stored in

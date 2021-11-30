@@ -58,7 +58,10 @@ let parse_cmd : Config.t -> string list -> unit = fun cfg files ->
     Config.init cfg;
     (* We save time to run each file in the same environment. *)
     let time = Time.save () in
-    let handle file = Time.restore time; ignore (Compile.parse_file file) in
+    let consume _ = () in
+    let handle file =
+      Time.restore time;
+      Debug.stream_iter consume (Compile.parse_file file) in
     List.iter handle files
   in
   Error.handle_exceptions run
@@ -258,6 +261,8 @@ let default_cmd =
   Term.info "lambdapi" ~version ~doc ~sdocs
 
 let _ =
+  let t0 = Sys.time () in
+  Stdlib.at_exit (Debug.print_time t0);
   Printexc.record_backtrace true;
   let cmds =
     [ check_cmd ; parse_cmd ; beautify_cmd ; lsp_server_cmd

@@ -472,3 +472,7 @@ let solve_noexn : ?type_check:bool -> problem -> bool =
   if Logger.log_enabled () then
     log_hndl (Color.blu "solve_noexn %a") pp_problem p;
   try time_of "solve" (fun () -> solve p; true) with Unsolvable -> false
+
+let solve_noexn =
+  let open Stdlib in let r = ref false in fun ?type_check p ->
+  Debug.(record_time Solving (fun () -> r := solve_noexn ?type_check p)); !r
