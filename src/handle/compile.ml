@@ -55,14 +55,13 @@ let rec compile_with :
       fatal_no_pos "Build aborted."
     end;
   match Path.Map.find_opt mp !loaded with
-  | Some sign ->
-    Console.out 2 "%a already loaded" Print.pp_path mp; sign
+  | Some sign -> sign
   | None ->
     if force || Extra.more_recent (src ()) obj then
     begin
       let forced = if force then " (forced)" else "" in
       let src = src () in
-      Console.out 1 "Loading %S%s ..." src forced;
+      Console.out 1 "Checking %S%s ..." src forced;
       loading := mp :: !loading;
       let sign = Sig_state.create_sign mp in
       let sig_st = Stdlib.ref (Sig_state.of_sign sign) in
@@ -78,7 +77,7 @@ let rec compile_with :
       Sign.strip_private sign;
       if Stdlib.(!gen_obj) then Sign.write sign obj;
       loading := List.tl !loading;
-      Console.out 2 "Checked %S" src; sign
+      sign
     end
     else
     begin
@@ -94,12 +93,11 @@ let rec compile_with :
       let sm = Path.Map.find Unif_rule.path !(sign.sign_deps) in
       if Extra.StrMap.mem Unif_rule.equiv.sym_name sm then
         Tree.update_dtree Unif_rule.equiv;
-      Console.out 2 "Loaded %S" obj; sign
+      sign
     end
 
-(** [compile force mp] compiles module path [mp] using
-    {!val:Command.with_proofs}, forcing compilation of up-to-date files if
-    [force] is true. *)
+(** [compile force mp] compiles module path [mp] using [compile_with], forcing
+   compilation of up-to-date files if [force] is true. *)
 let compile force = compile_with ~handle:Command.handle ~force
 
 (** [recompile] indicates whether we should recompile files who have an object

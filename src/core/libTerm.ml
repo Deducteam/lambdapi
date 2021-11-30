@@ -8,7 +8,7 @@ open Lplib.Extra
 let to_tvar : term -> tvar = fun t ->
   match t with Vari(x) -> x | _ -> assert false
 
-(** {b NOTE} the {!val:Array.map to_tvar} function is useful when working
+(** {b NOTE} the [Array.map to_tvar] function is useful when working
    with multiple binders. For example, this is the case when manipulating
    pattern variables ([Patt] constructor) or metatavariables ([Meta]
    constructor).  Remark that it is important for these constructors to hold

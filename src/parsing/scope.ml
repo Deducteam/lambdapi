@@ -469,12 +469,11 @@ let scope =
   let open Stdlib in let r = ref _Kind in fun k md ss env t ->
   Debug.(record_time Scoping (fun () -> r := scope k md ss env t)); !r
 
-(** [scope expo ss env p mok mon t] turns into a term a pterm [t] in the
+(** [scope prv ss env p mok mon t] turns a pterm [t] into a term in the
    signature state [ss], the environment [env] (for bound variables). [mok k]
    says if there already exists a meta with key [k]. [mon n] says if there
-   already exissts a meta with name [n]. Generated metas are added to [p]. If
-   [expo] is {!constructor:Public}, then the term must not contain any private
-   subterms. *)
+   already exists a meta with name [n]. Generated metas are added to
+   [p]. [prv] indicates if private symbols are allowed. *)
 let scope_term :
       bool -> sig_state -> env
       -> problem -> (int -> meta option) -> (string -> meta option)

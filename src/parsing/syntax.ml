@@ -85,7 +85,8 @@ and get_impl_term_aux : p_term_aux -> bool list = fun t ->
   | P_Wrap(t) -> get_impl_term t
   | _ -> []
 
-(** [p_get_args t] is {!val:LibTerm.get_args} on syntax-level terms. *)
+(** [p_get_args t] is like {!val:Core.Term.get_args} but on syntax-level
+   terms. *)
 let p_get_args : p_term -> p_term * p_term list = fun t ->
   let rec p_get_args t acc =
     match t.elt with

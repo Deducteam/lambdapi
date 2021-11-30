@@ -1,11 +1,11 @@
 (** Representation of trees as graphviz files.
 
-    {{:https://graphviz.org}Graphviz} is a graph visualization software.  This
-    module handles the conversion from {!type:Tree.t} data structures files in
-    the [dot] language that can be interpreted by graphviz.
+   {{:https://graphviz.org}Graphviz} is a graph visualization software. This
+   module handles the conversion from {!type:Core.Term.dtree} data structures
+   in the [dot] language that can be interpreted by graphviz.
 
-    See the chapter [doc/options.md#printing-decision-trees] of the
-    documentation for more information. *)
+   See the chapter [doc/options.md#printing-decision-trees] of the
+   documentation for more information. *)
 
 open! Lplib
 open Lplib.Base

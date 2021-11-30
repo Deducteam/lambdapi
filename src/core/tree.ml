@@ -22,7 +22,7 @@ let log = log.pp
 (** {1 Types for decision trees}
 
     The types involved in the definition of decision trees are given in module
-    {!module:Tree_types} (they could not be defined here as this would lead to
+    {!module:Tree_type} (they could not be defined here as this would lead to
     a cyclic dependency).
 
     {b Example:} let us consider the rewrite system for symbol [f] defined as:
@@ -42,7 +42,7 @@ let log = log.pp
     a matching on symbol [u] or a variable or wildcard when [?]. Typically the
     portion [S─∘─Z] is made possible by a swap. *)
 
-(** Representation of a tree (see {!type:Term.tree}). *)
+(** Representation of a tree (see {!type:Tree_type.tree}). *)
 type tree = (rhs * int) Tree_type.tree
 
 (** {1 Conditions for decision trees}
@@ -172,11 +172,11 @@ end
 
 (** {1 Clause matrix and pattern matching problem} *)
 
-(** {b NOTE} we ideally need the {!type:stack} of terms used during evaluation
+(** {b NOTE} We ideally need the type [stack] of terms used during evaluation
     (argument [stk] of {!val:Eval.tree_walk}) to have fast element access (for
     swaps) as well as fast destruction and reconstruction operations (for more
-    information on these operations have a look at  {!val:Extra.List.destruct}
-    and {!val:Extra.List.reconstruct}).  These operations are intuitively used
+    information on these operations have a look at  {!val:Lplib.List.destruct}
+    and {!val:Lplib.List.reconstruct}).  These operations are intuitively used
     to inspect a particular element, reduce it, and then reinsert it. It seems
     that in practice,  the naive representation based on lists performs better
     than more elaborate solutions, unless there are rules with many arguments.
@@ -684,12 +684,13 @@ let harvest :
     having (as head structure) symbol [s] will be accepted.
 
     The second bullet is managed by the substitution of type
-    {!type:rhs_substit}. If a LHS contains a named pattern variable, then it
+    {!type:Tree_type.rhs_substit}. If a LHS contains a named pattern variable,
+    then it
     is used in the RHS. Sub-terms that are filtered by named variables that
     are bound in the RHS are saved into an array during evaluation. When a
     leaf is reached, the substitution is applied on the RHS, copying terms
     from that array to the RHS. Subterms are saved into the array when field
-    {!field:CM.store} of nodes is true. *)
+    [store] of nodes is true. *)
 
 (** [compile mstrat m] translates the pattern matching problem encoded by the
     matrix [m] into a decision tree following strategy [mstrat]. *)

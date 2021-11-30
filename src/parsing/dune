@@ -8,6 +8,5 @@
 (menhir (flags --explain --external-tokens LpLexer) (modules lpParser))
 
 (ocamllex dkLexer)
-(menhir
- (flags (--external-tokens DkTokens))
- (modules dkParser))
+
+(menhir (flags --explain --external-tokens DkTokens) (modules dkParser))

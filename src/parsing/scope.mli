@@ -8,18 +8,17 @@ open Syntax
 open Common
 open Pos
 
-(** [scope expo ss env p mok mon t] turns into a term a pterm [t] in the
+(** [scope prv ss env p mok mon t] turns a pterm [t] into a term in the
    signature state [ss], the environment [env] (for bound variables). [mok k]
    says if there already exists a meta with key [k]. [mon n] says if there
-   already exissts a meta with name [n]. Generated metas are added to [p]. If
-   [expo] is {!constructor:Public}, then the term must not contain any private
-   subterms. *)
+   already exists a meta with name [n]. Generated metas are added to [p].
+   [prv] indicates if private symbols are allowed. *)
 val scope_term :
       bool -> sig_state -> env
       -> problem -> (int -> meta option) -> (string -> meta option)
       -> p_term -> term
 
-(** [scope_term_with_params expo ss env p mok mon t] is similar to [scope_term
+(** [scope_term_with_params prv ss env p mok mon t] is similar to [scope_term
    expo ss env p mok mon t] except that [t] must be a product or an
    abstraction. In this case, no warnings are issued if the top binders are
    constant. *)
