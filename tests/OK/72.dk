@@ -1,6 +1,6 @@
 typ : Type.
 
-inj eta : typ -> Type.
+injective eta : typ -> Type.
 
 prod : A : typ -> (eta A -> typ) -> typ.
 

@@ -501,7 +501,7 @@ let get_proof_data : compiler -> sig_state -> p_command ->
   fun compile ss ({pos;_} as cmd) ->
   Print.sig_state := ss;
   try
-    let (tm, ss) = time (get_proof_data compile ss) cmd in
+    let (tm, ss) = Extra.time (get_proof_data compile ss) cmd in
     if Stdlib.(tm >= !too_long) then
       wrn pos "It took %.2f seconds to handle the command." tm;
     ss

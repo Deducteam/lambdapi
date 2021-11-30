@@ -77,14 +77,100 @@ end
 let log_hndl = Logger.make 'h' "hndl" "command handling"
 let log_hndl = log_hndl.pp
 
-(** To print time data. *)
-let do_print_time = ref false
-
-(** [time_of f x] computes [f x] and the time for computing it. *)
+(** [time_of f x] computes [f x] and prints the time for computing it. *)
 let time_of : string -> (unit -> 'b) -> 'b = fun s f ->
-  if !do_print_time && Logger.log_enabled () then begin
+  if false && Logger.log_enabled () then begin
     let t0 = Sys.time () in
     let log _ = log_hndl "%s time: %f" s (Sys.time () -. t0) in
     try f () |> D.log_and_return log
     with e -> e |> D.log_and_raise log
   end else f ()
+
+(** To record time with [record_time]. *)
+let do_record_time = ref false
+let do_print_time = ref true
+
+type task =
+  | Lexing
+  | Parsing
+  | Scoping
+  | Rewriting
+  | Typing
+  | Solving
+  | Reading
+  | Sharing
+  | Writing
+
+let index = function
+  | Lexing -> 0
+  | Parsing -> 1
+  | Scoping -> 2
+  | Rewriting -> 3
+  | Typing -> 4
+  | Solving -> 5
+  | Reading -> 6
+  | Sharing -> 7
+  | Writing -> 8
+
+let nb_tasks = 9
+
+let task_name ppf = function
+  | 0 -> Format.pp_print_string ppf "lexing"
+  | 1 -> Format.pp_print_string ppf "parsing"
+  | 2 -> Format.pp_print_string ppf "scoping"
+  | 3 -> Format.pp_print_string ppf "rewriting"
+  | 4 -> Format.pp_print_string ppf "typing"
+  | 5 -> Format.pp_print_string ppf "solving"
+  | 6 -> Format.pp_print_string ppf "reading"
+  | 7 -> Format.pp_print_string ppf "sharing"
+  | 8 -> Format.pp_print_string ppf "writing"
+  | _ -> assert false
+
+(** [record_time s f] records under [s] the time spent in calling [f].
+    [print_time ()] outputs the recorded times. *)
+let record_time, print_time =
+  let tm = Float.Array.make nb_tasks 0.0 and call_stack = ref [] in
+  let add_time task d =
+    let i = index task in Float.Array.(set tm i (get tm i +. d)) in
+  let record_time : task -> (unit -> unit) -> unit = fun task f ->
+    if !do_record_time then begin
+      let t0 = Sys.time () in
+      call_stack := task::!call_stack;
+      let end_task () =
+        let d = Sys.time () -. t0 in
+        call_stack := List.tl !call_stack;
+        add_time task d;
+        match !call_stack with
+        | [] -> ()
+        | task::_ -> add_time task (-. d)
+      in
+      try f (); end_task () with e -> end_task (); raise e
+    end else f ()
+  and print_time : float -> unit -> unit = fun t0 () ->
+    if !do_record_time && !do_print_time then begin
+      let total = Sys.time () -. t0 in
+      Format.printf "total %.2fs" total;
+      let pp_task i d =
+        Format.printf " %a %.2fs (%.0f%%)" task_name i d (100.0 *. d /. total)
+      in
+      Float.Array.iteri pp_task tm;
+      let d = total -. (Float.Array.fold_left (+.) 0.0 tm) in
+      Format.printf " other %.2fs (%.0f%%)@." d (100.0 *. d /. total)
+    end
+  in
+  record_time, print_time
+
+(** [stream_iter f s] is the same as [Stream.iter f s] but records the time in
+   peeking the elements of the stream. *)
+let stream_iter : ('a -> unit) -> 'a Stream.t -> unit =
+  if not !do_print_time then Stream.iter else fun f strm ->
+  let peek strm =
+    let open Stdlib in let r = ref None in
+    record_time Parsing (fun () -> r := Stream.peek strm); !r
+  in
+  let rec do_rec () =
+    match peek strm with
+      Some a -> Stream.junk strm; ignore(f a); do_rec ()
+    | None -> ()
+  in
+  do_rec ()

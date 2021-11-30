@@ -189,6 +189,12 @@ and check : int -> problem -> ctxt -> term -> term -> unit = fun d p c t a ->
     log_infr "%acheck %a" D.depth d pp_typing (c, t, a);
   conv d p c (infer (d+1) p c t) a
 
+let infer =
+  let open Stdlib in let r = ref mk_Kind in fun d p c t ->
+  Debug.(record_time Typing (fun () -> r := infer d p c t)); !r
+
+let check d p c t a = Debug.(record_time Typing (fun () -> check d p c t a))
+
 (** [infer_noexn p c t] returns [None] if the type of [t] in context [c]
    cannot be inferred, or [Some a] where [a] is some type of [t] in the
    context [c], possibly adding new constraints in [p]. The metavariables of
@@ -222,4 +228,7 @@ let check_noexn : problem -> ctxt -> term -> term -> bool = fun p c t a ->
     true
   with NotTypable -> false
 
+(** Given a meta [m] of type [Πx1:a1,..,Πxn:an,b], [set_to_prod p m] sets
+   [m] to a product term of the form [Πy:m1[x1;..;xn],m2[x1;..;xn;y]] with
+   [m1] and [m2] fresh metavariables, and adds these metavariables to [p]. *)
 let set_to_prod = set_to_prod 0

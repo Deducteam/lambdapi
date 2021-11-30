@@ -37,9 +37,15 @@ if [[ ! -d ${DIR} ]]; then
 
   # Applying the changes (add "#REQUIRE logic", remove "#NAME ...").
   echo -n "  - applying changes... "
-  sed -i "s/^#NAME [a-zA-Z0-9_]\+.//g" ${DIR}/logic.dk
+
+  # remove SEQ005_size7.dk which takes too much memory
+  rm -f ${DIR}/SEQ005_size7.dk
+
+  # remove \#NAME commands
+  # replace every 0 by z to avoid problems with Bindlib ...
+  sed -i -e '/^#NAME [a-zA-Z0-9_]\+./d' -e 's/0/z/g' ${DIR}/logic.dk
   for FILE in `ls ${DIR}/SEQ*.dk`; do
-    sed -i "s/^#NAME [a-zA-Z0-9_]\+./#REQUIRE logic./g" ${FILE}
+    sed -i -e 's/^#NAME [a-zA-Z0-9_]\+./#REQUIRE logic./' -e 's/0/z/g' ${FILE}
   done
   echo "OK"
 
@@ -55,11 +61,10 @@ fi
 
 # Checking function.
 function check_verine() {
+  LP='lambdapi check --lib-root . --no-warnings'
   rm -f logic.lpo
-  lambdapi check --gen-obj --lib-root . --no-warnings logic.dk
-  for FILE in `ls SEQ*.dk`; do
-    lambdapi check --lib-root . --no-warnings ${FILE}
-  done
+  ${LP} -c logic.dk
+  for FILE in `ls SEQ*.dk`; do ${LP} ${FILE}; done
 }
 
 # Export the checking function.

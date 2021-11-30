@@ -1,5 +1,9 @@
 ### Unreleased
 
+#### Update dkParser to be in sync with dkcheck (2021-11-30)
+
+#### Add option --record-time (2021-11-30)
+
 #### Improve evaluation and convertibility test (2021-06-02)
 
 - fix `_LLet` by calling mk_LLet

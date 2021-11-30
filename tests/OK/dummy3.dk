@@ -1,6 +1,0 @@
-#REQUIRE tests.OK.dummy1.
-#REQUIRE tests.OK.dummy2.
-
-def one := tests.OK.dummy1.s tests.OK.dummy1.z.
-
-#ASSERT one == tests.OK.dummy1.plus one tests.OK.dummy1.z.

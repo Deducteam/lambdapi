@@ -408,4 +408,9 @@ let lexer buf =
 
 (** [lexer buf] is a lexing function on buffer [buf] that can be passed to
     a parser. *)
-let lexer = with_tokenizer lexer
+let lexer : lexbuf -> unit -> token * Lexing.position * Lexing.position =
+  with_tokenizer lexer
+
+let lexer =
+  let r = ref (EOF, Lexing.dummy_pos, Lexing.dummy_pos) in fun lb () ->
+  Debug.(record_time Lexing (fun () -> r := lexer lb ())); !r
