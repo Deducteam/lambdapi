@@ -95,12 +95,12 @@ end
 (** Parsing legacy (Dedukti2) syntax. *)
 module Dk : PARSER = struct
 
-  let token : Lexing.lexbuf -> DkLexer.token =
-    let r = ref DkLexer.EOF in fun lb ->
+  let token : Lexing.lexbuf -> DkTokens.token =
+    let r = ref DkTokens.EOF in fun lb ->
     Debug.(record_time Lexing (fun () -> r := DkLexer.token lb)); !r
 
   let command :
-    (Lexing.lexbuf -> DkLexer.token) -> Lexing.lexbuf -> Syntax.p_command =
+    (Lexing.lexbuf -> DkTokens.token) -> Lexing.lexbuf -> Syntax.p_command =
     let r = ref (Pos.none (Syntax.P_open [])) in fun token lb ->
     Debug.(record_time Parsing (fun () -> r := DkParser.line token lb)); !r
 
