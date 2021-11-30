@@ -217,72 +217,68 @@ let rec nom : lexbuf -> unit = fun buf ->
   | comment -> nom buf
   | _ -> ()
 
-let is_keyword : string -> bool =
-  let kws =
-    List.sort String.compare
-      [ "abort"
-      ; "admit"
-      ; "admitted"
-      ; "apply"
-      ; "as"
-      ; "assert"
-      ; "assertnot"
-      ; "associative"
-      ; "assume"
-      ; "begin"
-      ; "builtin"
-      ; "commutative"
-      ; "compute"
-      ; "constant"
-      ; "debug"
-      ; "end"
-      ; "fail"
-      ; "flag"
-      ; "focus"
-      ; "generalize"
-      ; "have"
-      ; "in"
-      ; "induction"
-      ; "inductive"
-      ; "infix"
-      ; "injective"
-      ; "left"
-      ; "let"
-      ; "off"
-      ; "on"
-      ; "opaque"
-      ; "open"
-      ; "prefix"
-      ; "print"
-      ; "private"
-      ; "proofterm"
-      ; "protected"
-      ; "prover"
-      ; "prover_timeout"
-      ; "quantifier"
-      ; "refine"
-      ; "reflexivity"
-      ; "require"
-      ; "rewrite"
-      ; "right"
-      ; "rule"
-      ; "sequential"
-      ; "set"
-      ; "simplify"
-      ; "solve"
-      ; "symbol"
-      ; "symmetry"
-      ; "type"
-      ; "TYPE"
-      ; "unif_rule"
-      ; "verbose"
-      ; "why3"
-      ; "with" ]
-  in
-  fun s ->
-  (* NOTE this function may be optimised using a map, a hashtable, or using
-     [match%sedlex]. *)
-    List.mem_sorted String.compare s kws
+let keyword_table = Hashtbl.create 59
+
+let is_keyword : string -> bool = Hashtbl.mem keyword_table
+
+let _ = List.iter (fun (s, k) -> Hashtbl.add keyword_table s k)
+    [ "abort", ABORT
+    ; "admit", ADMIT
+    ; "admitted", ADMITTED
+    ; "apply", APPLY
+    ; "as", AS
+    ; "assert", ASSERT
+    ; "assertnot", ASSERTNOT
+    ; "associative", ASSOCIATIVE
+    ; "assume", ASSUME
+    ; "begin", BEGIN
+    ; "builtin", BUILTIN
+    ; "commutative", COMMUTATIVE
+    ; "compute", COMPUTE
+    ; "constant", CONSTANT
+    ; "debug", DEBUG
+    ; "end", END
+    ; "fail", FAIL
+    ; "flag", FLAG
+    ; "focus", FOCUS
+    ; "generalize", GENERALIZE
+    ; "have", HAVE
+    ; "in", IN
+    ; "induction", INDUCTION
+    ; "inductive", INDUCTIVE
+    ; "infix", INFIX
+    ; "injective", INJECTIVE
+    ; "left", ASSOC(Pratter.Left)
+    ; "let", LET
+    ; "off", SWITCH(false)
+    ; "on", SWITCH(true)
+    ; "opaque", OPAQUE
+    ; "open", OPEN
+    ; "prefix", PREFIX
+    ; "print", PRINT
+    ; "private", PRIVATE
+    ; "proofterm", PROOFTERM
+    ; "protected", PROTECTED
+    ; "prover", PROVER
+    ; "prover_timeout", PROVER_TIMEOUT
+    ; "quantifier", QUANTIFIER
+    ; "refine", REFINE
+    ; "reflexivity", REFLEXIVITY
+    ; "require", REQUIRE
+    ; "rewrite", REWRITE
+    ; "right", ASSOC(Pratter.Right)
+    ; "rule", RULE
+    ; "sequential", SEQUENTIAL
+    ; "simplify", SIMPLIFY
+    ; "solve", SOLVE
+    ; "symbol", SYMBOL
+    ; "symmetry", SYMMETRY
+    ; "type", TYPE_QUERY
+    ; "TYPE", TYPE_TERM
+    ; "unif_rule", UNIF_RULE
+    ; "verbose", VERBOSE
+    ; "why3", WHY3
+    ; "with", WITH ]
 
 let tail : lexbuf -> string = fun buf ->
   Utf8.sub_lexeme buf 1 (lexeme_length buf - 1)
@@ -403,8 +399,7 @@ let lexer buf =
   (* invalid token *)
 
   | _ ->
-      let loc = locate (lexing_positions buf) in
-      raise (SyntaxError(Pos.make (Some(loc)) (Utf8.lexeme buf)))
+      raise (SyntaxError(make_pos (lexing_positions buf) (Utf8.lexeme buf)))
 
 (** [lexer buf] is a lexing function on buffer [buf] that can be passed to
     a parser. *)
