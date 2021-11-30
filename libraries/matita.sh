@@ -40,8 +40,9 @@ if [[ ! -d ${DIR} ]]; then
   for FILE in `find ${DIR} -type f -name "*.dk"`; do
 
     # remove \#NAME commands
-    # replace every 0 by z to avoid problems with Bindlib ...
-    sed -i -e '/^#NAME [a-zA-Z_]\+./d' -e 's/0/z/g' ${FILE}
+    # replace every 0 by z to avoid problems with Bindlib
+    # replace injective by injective_
+    sed -i -e '/^#NAME [a-zA-Z_]\+./d' -e 's/0/z/g' -e 's/injective/injective_/g' ${FILE}
 
     # add \#REQUIRE commands
     MODNAME=`basename "${FILE}" ".dk"`
