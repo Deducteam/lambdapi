@@ -449,6 +449,10 @@ let snf : ctxt -> term -> term = fun c t ->
   (*if Logger.log_enabled () then
     log_eval "snf %a%a\n= %a" pp_ctxt c pp_term t pp_term r;*) r
 
+let snf =
+  let open Stdlib in let r = ref mk_Kind in fun c t ->
+  Debug.(record_time Rewriting (fun () -> r := snf c t)); !r
+
 (** [hnf c t] computes a hnf of [t], unfolding the variables defined in the
    context [c], and using user-defined rewrite rules. *)
 let hnf : ctxt -> term -> term = fun c t ->
@@ -458,10 +462,18 @@ let hnf : ctxt -> term -> term = fun c t ->
   (*if Logger.log_enabled () then
     log_eval "hnf %a%a\n= %a" pp_ctxt c pp_term t pp_term r;*) r
 
+let hnf =
+  let open Stdlib in let r = ref mk_Kind in fun c t ->
+  Debug.(record_time Rewriting (fun () -> r := hnf c t)); !r
+
 (** [eq_modulo c a b] tests the convertibility of [a] and [b] in context
    [c]. WARNING: may have side effects in TRef's introduced by whnf. *)
 let eq_modulo : ctxt -> term -> term -> bool = fun c ->
   eq_modulo whnf (cfg_of_ctx c true)
+
+let eq_modulo =
+  let open Stdlib in let r = ref false in fun c t u ->
+  Debug.(record_time Rewriting (fun () -> r := eq_modulo c t u)); !r
 
 (** [pure_eq_modulo c a b] tests the convertibility of [a] and [b] in context
    [c] with no side effects. *)
@@ -477,6 +489,10 @@ let whnf : ?rewrite:bool -> ctxt -> term -> term = fun ?(rewrite=true) c t ->
   (*if Logger.log_enabled () then
     log_eval "whnf %a%a\n= %a" pp_ctxt c pp_term t pp_term r;*) r
 
+let whnf =
+  let open Stdlib in let r = ref mk_Kind in fun ?rewrite c t ->
+  Debug.(record_time Rewriting (fun () -> r := whnf ?rewrite c t)); !r
+
 (** [simplify t] computes a beta whnf of [t] belonging to the set S such that:
 - terms of S are in beta whnf normal format
 - if [t] is a product, then both its domain and codomain are in S. *)
@@ -487,6 +503,10 @@ let rec simplify : term -> term = fun t ->
      let b = Bindlib.bind_var x (lift (simplify b)) in
      mk_Prod (simplify a, Bindlib.unbox b)
   | h, ts -> add_args_map h (whnf ~rewrite:false []) ts
+
+let simplify =
+  let open Stdlib in let r = ref mk_Kind in fun t ->
+  Debug.(record_time Rewriting (fun () -> r := simplify t)); !r
 
 (** If [s] is a non-opaque symbol having a definition, [unfold_sym s t]
    replaces in [t] all the occurrences of [s] by its definition. *)
@@ -539,6 +559,10 @@ let tree_walk : problem -> ctxt -> dtree -> stack -> (term * stack) option =
   fun p c dt ts ->
   let c = {context=c; defmap=Ctxt.to_map c; problem=p; rewrite=true} in
   tree_walk c dt ts
+
+let tree_walk =
+  let open Stdlib in let r = ref None in fun p c t s ->
+  Debug.(record_time Rewriting (fun () -> r := tree_walk p c t s)); !r
 
 (** Dedukti evaluation strategies. *)
 type strategy =

@@ -64,4 +64,4 @@ fi
 # Checking the files.
 cd ${DIR}
 \time -f "Finished in %E at %P with %MKb of RAM" \
-  lambdapi check --lib-root . --no-warnings focalide.dk
+  lambdapi check --lib-root . --no-warnings -c focalide.dk

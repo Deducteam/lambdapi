@@ -57,20 +57,7 @@ if [[ ! -d ${DIR} ]]; then
   echo ""
 fi
 
-# Checking function.
-function check_holide() {
-  rm -f hol.lpo
-  lambdapi check --gen-obj --lib-root . --no-warnings hol.dk
-  for FILE in `ls *.dk`; do
-    if [ ${FILE} != "hol.dk" ]; then
-      lambdapi check --lib-root . --no-warnings ${FILE}
-    fi
-  done
-}
-
-# Export the checking function.
-export -f check_holide
-
-# Run the actual checks.
+# Check the files.
 cd ${DIR}
-\time -f "Finished in %E at %P with %MKb of RAM" bash -c "check_holide"
+\time -f "Finished in %E at %P with %MKb of RAM" \
+  lambdapi check --lib-root . --no-warnings *.dk
