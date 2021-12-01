@@ -185,10 +185,10 @@ let query : p_query pp = fun ppf { elt; _ } ->
   | P_query_debug(true ,s) -> out ppf "set debug \"+%s\"" s
   | P_query_debug(false,s) -> out ppf "set debug \"-%s\"" s
   | P_query_flag(s, b) ->
-      out ppf "set flag %S %s" s (if b then "on" else "off")
+      out ppf "set flag \"%s\" %s" s (if b then "on" else "off")
   | P_query_infer(t, _) -> out ppf "type %a" term t
   | P_query_normalize(t, _) -> out ppf "compute %a" term t
-  | P_query_prover s -> out ppf "set prover %S" s
+  | P_query_prover s -> out ppf "set prover \"%s\"" s
   | P_query_prover_timeout n -> out ppf "set prover_timeout %d" n
   | P_query_print None -> out ppf "print"
   | P_query_print(Some qid) -> out ppf "print %a" qident qid
@@ -218,7 +218,7 @@ let tactic : p_tactic pp = fun ppf { elt;  _ } ->
   | P_tac_solve -> out ppf "solve"
   | P_tac_sym -> out ppf "symmetry"
   | P_tac_why3 p ->
-      let prover ppf s = out ppf " %S" s in
+      let prover ppf s = out ppf " \"%s\"" s in
       out ppf "why3%a" (Option.pp prover) p
   end;
   out ppf ";"
@@ -243,7 +243,7 @@ let proof : (p_tactic list * p_proof_end) pp = fun ppf (prf, prf_end) ->
 
 let command : p_command pp = fun ppf { elt; _ } ->
   begin match elt with
-  | P_builtin (s, qid) -> out ppf "@[builtin %S@ ≔ %a@]" s qident qid
+  | P_builtin (s, qid) -> out ppf "@[builtin \"%s\"@ ≔ %a@]" s qident qid
   | P_inductive (_, _, []) -> assert false (* not possible *)
   | P_inductive (ms, xs, i :: il) ->
       out ppf "@[<v>@[%a%a@]%a@,%a@,end@]"
