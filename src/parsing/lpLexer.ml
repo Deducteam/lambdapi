@@ -12,7 +12,7 @@ let fail : Sedlexing.lexbuf -> string -> 'a = fun lb msg ->
   raise (SyntaxError (make_pos (lexing_positions lb) msg))
 
 let invalid_character : Sedlexing.lexbuf -> 'a = fun lb ->
-  fail lb ("Invalid character: " ^ Utf8.lexeme lb)
+  fail lb ("Invalid character: \"" ^ Utf8.lexeme lb ^ "\".")
 
 (** Tokens. *)
 type token =
@@ -393,7 +393,7 @@ let rec token lb =
 
 and comment i lb =
   match%sedlex lb with
-  | eof -> fail lb "Unterminated comment"
+  | eof -> fail lb "Unterminated comment."
   | "*/" -> if i=0 then token lb else comment (i-1) lb
   | "/*" -> comment (i+1) lb
   | any -> comment i lb
@@ -401,7 +401,7 @@ and comment i lb =
 
 and string buf lb =
   match%sedlex lb with
-  | eof -> fail lb "Unterminated string"
+  | eof -> fail lb "Unterminated string."
   | '\\', '"' -> Buffer.add_string buf (Utf8.lexeme lb); string buf lb
   | '"' -> STRINGLIT(Buffer.contents buf)
   | any -> Buffer.add_string buf (Utf8.lexeme lb); string buf lb
