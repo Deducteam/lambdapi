@@ -8,8 +8,8 @@
   open Syntax
   open Core
 
-  let qid_of_path loc p =
-    let (mp, id) = List.split_last p in make_pos loc (mp, id)
+  let qid_of_path lps p =
+    let (mp, id) = List.split_last p in make_pos lps (mp, id)
 
   let make_abst startpos ps t endpos =
     if ps = [] then t else make_pos (startpos,endpos) (P_Abst(ps,t))
