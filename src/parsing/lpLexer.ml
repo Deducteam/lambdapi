@@ -112,12 +112,13 @@ type token =
   | QID of Path.t
   | ID_EXPL of Path.t
 
-(** Some regexp names. *)
+(** Some regexp definitions. *)
 let digit = [%sedlex.regexp? '0' .. '9']
 let nonzero_nat = [%sedlex.regexp? '1' .. '9', Star digit]
 let nat = [%sedlex.regexp? '0' | nonzero_nat]
 let float = [%sedlex.regexp? nat, '.', Plus digit]
 let oneline_comment = [%sedlex.regexp? "//", Star (Compl ('\n' | '\r'))]
+let string = [%sedlex.regexp? '"', Star (Compl '"'), '"']
 
 (** Identifiers.
 
@@ -159,9 +160,6 @@ let uid = [%sedlex.regexp? regid | escid]
 
 (** Qualified identifiers. *)
 let qid = [%sedlex.regexp? uid, Plus ('.', uid)]
-
-(** Identifiers, qualified or not. *)
-let id = [%sedlex.regexp? uid | qid]
 
 (** [escape s] converts a string [s] into an escaped identifier if it is not
    regular. We do not check whether [s] contains ["|}"]. FIXME? *)
@@ -269,8 +267,11 @@ let _ = List.iter (fun (s, k) -> Hashtbl.add keyword_table s k)
     ; "why3", WHY3
     ; "with", WITH ]
 
-let tail : Sedlexing.lexbuf -> string = fun lb ->
+let remove_first : Sedlexing.lexbuf -> string = fun lb ->
   Utf8.sub_lexeme lb 1 (lexeme_length lb - 1)
+
+let remove_last : Sedlexing.lexbuf -> string = fun lb ->
+  Utf8.sub_lexeme lb 0 (lexeme_length lb - 1)
 
 (** Lexer. *)
 let rec token lb =
@@ -350,11 +351,12 @@ let rec token lb =
   | "with" -> WITH
 
   (* other tokens *)
-  | '+', Plus lowercase -> DEBUG_FLAGS(true, tail lb)
-  | '-', Plus lowercase -> DEBUG_FLAGS(false, tail lb)
+  | '+', Plus lowercase -> DEBUG_FLAGS(true, remove_first lb)
+  | '-', Plus lowercase -> DEBUG_FLAGS(false, remove_first lb)
   | nat -> INT(int_of_string (Utf8.lexeme lb))
   | float -> FLOAT(float_of_string (Utf8.lexeme lb))
-  | '"' -> string (Buffer.create 42) lb
+  (*| '"' -> string (Buffer.create 42) lb*)
+  | string -> STRINGLIT(Utf8.sub_lexeme lb 1 (lexeme_length lb - 2))
 
   (* symbols *)
   | 0x2254 (* ≔ *) -> ASSIGN
@@ -378,15 +380,24 @@ let rec token lb =
   | '_' -> WILD
 
   (* identifiers *)
-  | '?', nat -> UID_META(Syntax.Numb(int_of_string(tail lb)))
-  | '?', uid -> UID_META(Syntax.Name(uid_of_string(tail lb)))
-  | '$', uid -> UID_PAT(uid_of_string(tail lb))
+  | '?', nat -> UID_META(Syntax.Numb(int_of_string(remove_first lb)))
 
-  | '@', uid -> ID_EXPL[uid_of_string(tail lb)]
-  | '@', qid -> ID_EXPL(path_of_string(tail lb))
+  | '?', regid -> UID_META(Syntax.Name(remove_first lb))
+  | '?', escid -> UID_META(Syntax.Name(uid_of_string(remove_first lb)))
 
-  | uid -> UID(uid_of_string(Utf8.lexeme lb))
-  | qid -> QID(path_of_string(Utf8.lexeme lb))
+  | '$', regid -> UID_PAT(remove_first lb)
+  | '$', escid -> UID_PAT(uid_of_string(remove_first lb))
+
+  | '@', regid -> ID_EXPL[remove_first lb]
+  | '@', escid -> ID_EXPL[uid_of_string(remove_first lb)]
+
+  | '@', qid -> ID_EXPL(path_of_string(remove_first lb))
+
+  | regid -> UID(Utf8.lexeme lb)
+  | escid -> UID(uid_of_string(Utf8.lexeme lb))
+
+  | regid, '.' -> qid [remove_last lb] lb
+  | escid, '.' -> qid [uid_of_string(remove_last lb)] lb
 
   (* invalid character *)
   | _ -> invalid_character lb
@@ -406,6 +417,16 @@ and string buf lb =
   | '"' -> STRINGLIT(Buffer.contents buf)
   | any -> Buffer.add_string buf (Utf8.lexeme lb); string buf lb
   | _ -> invalid_character lb
+
+and qid ids lb =
+  match%sedlex lb with
+  | regid, '.' -> qid (remove_last lb :: ids) lb
+  | escid, '.' -> qid (uid_of_string(remove_last lb) :: ids) lb
+  | regid -> QID(List.rev (Utf8.lexeme lb :: ids))
+  | escid -> QID(List.rev (uid_of_string (Utf8.lexeme lb) :: ids))
+  | _ ->
+    fail lb ("Invalid identifier: \""
+             ^ String.concat "." (List.rev (Utf8.lexeme lb :: ids)) ^ "\".")
 
 (** [token buf] is a lexing function on buffer [buf] that can be passed to
     a parser. *)
