@@ -152,11 +152,7 @@ let is_regid : string -> bool = fun s ->
 
 (** Unqualified escaped identifiers are any non-empty sequence of characters
    (except "|}") between "{|" and "|}". *)
-let escid =
-  [%sedlex.regexp? "{|", Plus (Compl '|' | '|', Compl '}'), Star '|', "|}"]
-
-(** Unqualified identifiers, regular or escaped. *)
-let id = [%sedlex.regexp? regid | escid]
+let escid = [%sedlex.regexp? "{|", Plus (Compl '|' | '|', Compl '}'), "|}"]
 
 (** [escape s] converts a string [s] into an escaped identifier if it is not
    regular. We do not check whether [s] contains ["|}"]. FIXME? *)
