@@ -110,7 +110,7 @@ type token =
 
   (* identifiers *)
   | ID of string
-  | PATH of Path.t
+  | PATH of Path.t (* in reverse order *)
 
 (** Some regexp definitions. *)
 let digit = [%sedlex.regexp? '0' .. '9']
@@ -170,9 +170,6 @@ let escape s = if is_regid s then s else "{|" ^ s ^ "|}"
 let remove_useless_escape : string -> string = fun s ->
   let s' = Escape.unescape s in if is_regid s' then s' else s
 
-let path_of_string : string -> Path.t = fun s ->
-  List.map remove_useless_escape (Path.of_string s)
-
 (** Identifiers not compatible with Bindlib. Because Bindlib converts any
    suffix consisting of a sequence of digits into an integer, and increment
    it, we cannot use as bound variable names escaped identifiers or regular
@@ -189,7 +186,7 @@ let is_valid_bindlib_id : string -> bool = fun s ->
 
 let is_invalid_bindlib_id s = not (is_valid_bindlib_id s)
 
-(* unit test *)
+(* unit tests *)
 let _ =
   assert (is_invalid_bindlib_id "00");
   assert (is_invalid_bindlib_id "01");
@@ -396,8 +393,8 @@ and path ids lb =
   match%sedlex lb with
   | regid, '.' -> path (remove_last lb :: ids) lb
   | escid, '.' -> path (remove_useless_escape(remove_last lb) :: ids) lb
-  | regid -> PATH(List.rev (Utf8.lexeme lb :: ids))
-  | escid -> PATH(List.rev (remove_useless_escape (Utf8.lexeme lb) :: ids))
+  | regid -> PATH(Utf8.lexeme lb :: ids)
+  | escid -> PATH(remove_useless_escape (Utf8.lexeme lb) :: ids)
   | _ ->
     fail lb ("Invalid identifier: \""
              ^ String.concat "." (List.rev (Utf8.lexeme lb :: ids)) ^ "\".")
@@ -410,13 +407,13 @@ and comment i lb =
   | any -> comment i lb
   | _ -> invalid_character lb
 
-and string buf lb =
+(*and string buf lb =
   match%sedlex lb with
   | eof -> fail lb "Unterminated string."
   | '\\', '"' -> Buffer.add_string buf (Utf8.lexeme lb); string buf lb
   | '"' -> STRINGLIT(Buffer.contents buf)
   | any -> Buffer.add_string buf (Utf8.lexeme lb); string buf lb
-  | _ -> invalid_character lb
+  | _ -> invalid_character lb*)
 
 (** [token buf] is a lexing function on buffer [buf] that can be passed to
     a parser. *)

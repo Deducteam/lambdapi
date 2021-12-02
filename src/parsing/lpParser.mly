@@ -8,8 +8,9 @@
   open Syntax
   open Core
 
-  let qid_of_path lps p =
-    let (mp, id) = List.split_last p in make_pos lps (mp, id)
+  let qid_of_path lps = function
+    | [] -> assert false
+    | id::mp -> make_pos lps (List.rev mp, id)
 
   let make_abst startpos ps t endpos =
     if ps = [] then t else make_pos (startpos,endpos) (P_Abst(ps,t))
@@ -131,7 +132,7 @@ id:
   | p=PATH { qid_of_path $sloc p}
   | s=ID { make_pos $sloc ([], s) }
 
-path: p=PATH { make_pos $sloc p}
+path: p=PATH { make_pos $sloc (List.rev p) }
 
 term_id:
   | i=id { make_pos $sloc (P_Iden(i, false)) }
