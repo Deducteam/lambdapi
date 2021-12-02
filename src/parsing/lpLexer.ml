@@ -85,11 +85,13 @@ type token =
   | SWITCH of bool
 
   (* symbols *)
-  | ASSIGN
   | ARROW
+  | ASSIGN
+  | AT
   | BACKQUOTE
   | COMMA
   | COLON
+  | DOLLAR
   | EQUIV
   | HOOK_ARROW
   | LAMBDA
@@ -97,20 +99,18 @@ type token =
   | L_PAREN
   | L_SQ_BRACKET
   | PI
+  | QUESTION_MARK
   | R_CU_BRACKET
   | R_PAREN
   | R_SQ_BRACKET
   | SEMICOLON
   | TURNSTILE
+  | UNDERSCORE
   | VBAR
-  | WILD
 
   (* identifiers *)
-  | UID of string
-  | UID_META of Syntax.meta_ident
-  | UID_PAT of string
-  | QID of Path.t
-  | ID_EXPL of Path.t
+  | ID of string
+  | PATH of Path.t
 
 (** Some regexp definitions. *)
 let digit = [%sedlex.regexp? '0' .. '9']
@@ -133,15 +133,15 @@ let string = [%sedlex.regexp? '"', Star (Compl '"'), '"']
 
    Identifiers need to be normalized so that an escaped identifier, once
    unescaped, is not regular. To this end, every identifier of the form
-   ["{|s|}"] with s regular, is understood as ["s"] (function uid_of_string
-   below).
+   ["{|s|}"] with s regular, is understood as ["s"] (function
+   [remove_useless_escape] below).
 
    Finally, identifiers must not be empty, so that we can use the empty string
    for the path of ghost signatures. *)
 
 (** Unqualified regular identifiers are any non-empty sequence of characters
    not among: *)
-let forbidden_letter = [%sedlex.regexp? Chars " ,;\r\t\n(){}[]:.`\""]
+let forbidden_letter = [%sedlex.regexp? Chars " ,;\r\t\n(){}[]:.`\"@$|?"]
 let regid = [%sedlex.regexp? Plus (Compl forbidden_letter)]
 
 let is_regid : string -> bool = fun s ->
@@ -156,22 +156,22 @@ let escid =
   [%sedlex.regexp? "{|", Plus (Compl '|' | '|', Compl '}'), Star '|', "|}"]
 
 (** Unqualified identifiers, regular or escaped. *)
-let uid = [%sedlex.regexp? regid | escid]
+let id = [%sedlex.regexp? regid | escid]
 
 (** Qualified identifiers. *)
-let qid = [%sedlex.regexp? uid, Plus ('.', uid)]
+let path = [%sedlex.regexp? id, Plus ('.', id)]
 
 (** [escape s] converts a string [s] into an escaped identifier if it is not
    regular. We do not check whether [s] contains ["|}"]. FIXME? *)
 let escape s = if is_regid s then s else "{|" ^ s ^ "|}"
 
-(** [uid_of_string s] replaces escaped regular identifiers by their unescape
-   form. *)
-let uid_of_string : string -> string = fun s ->
+(** [remove_useless_escape s] replaces escaped regular identifiers by their
+   unescape form. *)
+let remove_useless_escape : string -> string = fun s ->
   let s' = Escape.unescape s in if is_regid s' then s' else s
 
 let path_of_string : string -> Path.t = fun s ->
-  List.map uid_of_string (Path.of_string s)
+  List.map remove_useless_escape (Path.of_string s)
 
 (** Identifiers not compatible with Bindlib. Because Bindlib converts any
    suffix consisting of a sequence of digits into an integer, and increment
@@ -377,30 +377,30 @@ let rec token lb =
   | ';' -> SEMICOLON
   | 0x22a2 (* ⊢ *) -> TURNSTILE
   | '|' -> VBAR
-  | '_' -> WILD
+  | '_' -> UNDERSCORE
+  | '?' -> QUESTION_MARK
+  | '$' -> DOLLAR
+  | '@' -> AT
 
   (* identifiers *)
-  | '?', nat -> UID_META(Syntax.Numb(int_of_string(remove_first lb)))
+  | regid -> ID(Utf8.lexeme lb)
+  | escid -> ID(remove_useless_escape(Utf8.lexeme lb))
 
-  | '?', regid -> UID_META(Syntax.Name(remove_first lb))
-  | '?', escid -> UID_META(Syntax.Name(uid_of_string(remove_first lb)))
-
-  | '$', regid -> UID_PAT(remove_first lb)
-  | '$', escid -> UID_PAT(uid_of_string(remove_first lb))
-
-  | '@', regid -> ID_EXPL[remove_first lb]
-  | '@', escid -> ID_EXPL[uid_of_string(remove_first lb)]
-
-  | '@', qid -> ID_EXPL(path_of_string(remove_first lb))
-
-  | regid -> UID(Utf8.lexeme lb)
-  | escid -> UID(uid_of_string(Utf8.lexeme lb))
-
-  | regid, '.' -> qid [remove_last lb] lb
-  | escid, '.' -> qid [uid_of_string(remove_last lb)] lb
+  | regid, '.' -> path [remove_last lb] lb
+  | escid, '.' -> path [remove_useless_escape(remove_last lb)] lb
 
   (* invalid character *)
   | _ -> invalid_character lb
+
+and path ids lb =
+  match%sedlex lb with
+  | regid, '.' -> path (remove_last lb :: ids) lb
+  | escid, '.' -> path (remove_useless_escape(remove_last lb) :: ids) lb
+  | regid -> PATH(List.rev (Utf8.lexeme lb :: ids))
+  | escid -> PATH(List.rev (remove_useless_escape (Utf8.lexeme lb) :: ids))
+  | _ ->
+    fail lb ("Invalid identifier: \""
+             ^ String.concat "." (List.rev (Utf8.lexeme lb :: ids)) ^ "\".")
 
 and comment i lb =
   match%sedlex lb with
@@ -417,16 +417,6 @@ and string buf lb =
   | '"' -> STRINGLIT(Buffer.contents buf)
   | any -> Buffer.add_string buf (Utf8.lexeme lb); string buf lb
   | _ -> invalid_character lb
-
-and qid ids lb =
-  match%sedlex lb with
-  | regid, '.' -> qid (remove_last lb :: ids) lb
-  | escid, '.' -> qid (uid_of_string(remove_last lb) :: ids) lb
-  | regid -> QID(List.rev (Utf8.lexeme lb :: ids))
-  | escid -> QID(List.rev (uid_of_string (Utf8.lexeme lb) :: ids))
-  | _ ->
-    fail lb ("Invalid identifier: \""
-             ^ String.concat "." (List.rev (Utf8.lexeme lb :: ids)) ^ "\".")
 
 (** [token buf] is a lexing function on buffer [buf] that can be passed to
     a parser. *)

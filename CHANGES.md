@@ -1,5 +1,11 @@
 ### Unreleased
 
+#### Improve and simplify LP lexer (2021-12-02)
+
+- allow nested comments (fix #710)
+- generate only one kind of identifier
+- replace everywhere `%S` by `\"%s\"`
+
 #### Update dkParser to be in sync with dkcheck (2021-11-30)
 
 #### Add option --record-time (2021-11-30)

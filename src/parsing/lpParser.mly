@@ -90,11 +90,13 @@
 
 // symbols
 
-%token ASSIGN
+%token AT
 %token ARROW
+%token ASSIGN
 %token BACKQUOTE
 %token COMMA
 %token COLON
+%token DOLLAR
 %token EQUIV
 %token HOOK_ARROW
 %token LAMBDA
@@ -102,48 +104,46 @@
 %token L_PAREN
 %token L_SQ_BRACKET
 %token PI
+%token QUESTION_MARK
 %token R_CU_BRACKET
 %token R_PAREN
 %token R_SQ_BRACKET
 %token SEMICOLON
 %token TURNSTILE
+%token UNDERSCORE
 %token VBAR
-%token WILD
 
 // identifiers
 
-%token <string> UID
-%token <Syntax.meta_ident> UID_META
-%token <string> UID_PAT
-%token <Path.t> QID
-%token <Path.t> ID_EXPL
+%token <string> ID
+%token <Path.t> PATH
 
 // types
 
 %start <Syntax.p_command> command
 %start <Syntax.p_qident> id
 
-%type <Sign.notation> notation
-
 %%
 
-uid: i=UID { make_pos $sloc i}
+uid: s=ID { make_pos $sloc s}
 
 id:
-  | p=QID { qid_of_path $sloc p}
-  | i=UID { make_pos $sloc ([], i) }
+  | p=PATH { qid_of_path $sloc p}
+  | s=ID { make_pos $sloc ([], s) }
 
-path: i=QID { make_pos $sloc i}
+path: p=PATH { make_pos $sloc p}
 
 term_id:
   | i=id { make_pos $sloc (P_Iden(i, false)) }
-  | p=ID_EXPL { make_pos $sloc (P_Iden(qid_of_path $sloc p, true)) }
+  | AT i=id { make_pos $sloc (P_Iden(i, true)) }
 
-patt_id: p=UID_PAT { if p = "_" then None else Some(make_pos $sloc p) }
+patt_id:
+  | s=uid { Some s }
+  | UNDERSCORE { None }
 
 param_id:
-  | i=uid { Some i }
-  | WILD { None }
+  | s=uid { Some s }
+  | UNDERSCORE { None }
 
 params:
   | x=param_id { ([x], None, false) }
@@ -205,7 +205,7 @@ float_or_int:
 
 notation:
   | INFIX a=ASSOC? p=float_or_int { Infix(Option.get Pratter.Neither a, p) }
-  | PREFIX p=float_or_int { Prefix(p) }
+  | PREFIX p=float_or_int { Sign.Prefix(p) }
   | QUANTIFIER { Quant }
 
 assert_kw:
@@ -291,14 +291,18 @@ command:
 
 env: L_SQ_BRACKET ts=separated_list(SEMICOLON, term) R_SQ_BRACKET { ts }
 
+meta_id:
+  | n=INT { make_pos $sloc (Numb n) }
+  | i=ID { make_pos $sloc (Name i) }
+
 aterm:
   | ti=term_id { ti }
-  | WILD { make_pos $sloc P_Wild }
+  | UNDERSCORE { make_pos $sloc P_Wild }
   | TYPE_TERM { make_pos $sloc P_Type }
-  | m=UID_META e=env?
-      { let mid = make_pos $loc(m) m in
-        make_pos $sloc (P_Meta(mid, Option.map Array.of_list e)) }
-  | p=patt_id e=env? { make_pos $sloc (P_Patt(p,Option.map Array.of_list e)) }
+  | QUESTION_MARK i=meta_id e=env?
+    { make_pos $sloc (P_Meta(i, Option.map Array.of_list e)) }
+  | DOLLAR i=patt_id e=env?
+    { make_pos $sloc (P_Patt(i, Option.map Array.of_list e)) }
   | L_PAREN t=term R_PAREN { make_pos $sloc (P_Wrap(t)) }
   | L_CU_BRACKET t=term R_CU_BRACKET { make_pos $sloc (P_Expl(t)) }
   | n=INT { make_pos $sloc (P_NLit(n)) }
