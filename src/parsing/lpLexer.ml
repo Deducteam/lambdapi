@@ -158,9 +158,6 @@ let escid =
 (** Unqualified identifiers, regular or escaped. *)
 let id = [%sedlex.regexp? regid | escid]
 
-(** Qualified identifiers. *)
-let path = [%sedlex.regexp? id, Plus ('.', id)]
-
 (** [escape s] converts a string [s] into an escaped identifier if it is not
    regular. We do not check whether [s] contains ["|}"]. FIXME? *)
 let escape s = if is_regid s then s else "{|" ^ s ^ "|}"
