@@ -165,36 +165,6 @@ let escape s = if is_regid s then s else "{|" ^ s ^ "|}"
 let remove_useless_escape : string -> string = fun s ->
   let s' = Escape.unescape s in if is_regid s' then s' else s
 
-(** Identifiers not compatible with Bindlib. Because Bindlib converts any
-   suffix consisting of a sequence of digits into an integer, and increment
-   it, we cannot use as bound variable names escaped identifiers or regular
-   identifiers ending with a non-negative integer with leading zeros. *)
-let valid_bindlib_id = [%sedlex.regexp?
-    Star (Compl digit), Star (Plus digit, Plus (Compl digit)), Opt nat]
-
-let is_valid_bindlib_id : string -> bool = fun s ->
-  s = "" || (s.[0] <> '{'
-  && let lb = Utf8.from_string s in
-  match%sedlex lb with
-  | valid_bindlib_id, eof -> true
-  | _ -> false)
-
-let is_invalid_bindlib_id s = not (is_valid_bindlib_id s)
-
-(* unit tests *)
-let _ =
-  assert (is_invalid_bindlib_id "00");
-  assert (is_invalid_bindlib_id "01");
-  assert (is_invalid_bindlib_id "a01");
-  assert (is_invalid_bindlib_id "{|:|}");
-  assert (is_valid_bindlib_id "_x_100");
-  assert (is_valid_bindlib_id "_z1002");
-  assert (is_valid_bindlib_id "case_ex2_intro");
-  assert (is_valid_bindlib_id "case_ex02_intro");
-  assert (is_valid_bindlib_id "case_ex02_intro0");
-  assert (is_valid_bindlib_id "case_ex02_intro1");
-  assert (is_valid_bindlib_id "case_ex02_intro10")
-
 (** Keywords table. *)
 let keyword_table = Hashtbl.create 59
 
