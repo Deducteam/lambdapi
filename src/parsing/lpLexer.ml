@@ -165,70 +165,6 @@ let escape s = if is_regid s then s else "{|" ^ s ^ "|}"
 let remove_useless_escape : string -> string = fun s ->
   let s' = Escape.unescape s in if is_regid s' then s' else s
 
-(** Keywords table. *)
-let keyword_table = Hashtbl.create 59
-
-let is_keyword : string -> bool = Hashtbl.mem keyword_table
-
-let _ = List.iter (fun (s, k) -> Hashtbl.add keyword_table s k)
-    [ "abort", ABORT
-    ; "admit", ADMIT
-    ; "admitted", ADMITTED
-    ; "apply", APPLY
-    ; "as", AS
-    ; "assert", ASSERT
-    ; "assertnot", ASSERTNOT
-    ; "associative", ASSOCIATIVE
-    ; "assume", ASSUME
-    ; "begin", BEGIN
-    ; "builtin", BUILTIN
-    ; "commutative", COMMUTATIVE
-    ; "compute", COMPUTE
-    ; "constant", CONSTANT
-    ; "debug", DEBUG
-    ; "end", END
-    ; "fail", FAIL
-    ; "flag", FLAG
-    ; "focus", FOCUS
-    ; "generalize", GENERALIZE
-    ; "have", HAVE
-    ; "in", IN
-    ; "induction", INDUCTION
-    ; "inductive", INDUCTIVE
-    ; "infix", INFIX
-    ; "injective", INJECTIVE
-    ; "left", ASSOC(Pratter.Left)
-    ; "let", LET
-    ; "off", SWITCH(false)
-    ; "on", SWITCH(true)
-    ; "opaque", OPAQUE
-    ; "open", OPEN
-    ; "prefix", PREFIX
-    ; "print", PRINT
-    ; "private", PRIVATE
-    ; "proofterm", PROOFTERM
-    ; "protected", PROTECTED
-    ; "prover", PROVER
-    ; "prover_timeout", PROVER_TIMEOUT
-    ; "quantifier", QUANTIFIER
-    ; "refine", REFINE
-    ; "reflexivity", REFLEXIVITY
-    ; "require", REQUIRE
-    ; "rewrite", REWRITE
-    ; "right", ASSOC(Pratter.Right)
-    ; "rule", RULE
-    ; "sequential", SEQUENTIAL
-    ; "simplify", SIMPLIFY
-    ; "solve", SOLVE
-    ; "symbol", SYMBOL
-    ; "symmetry", SYMMETRY
-    ; "type", TYPE_QUERY
-    ; "TYPE", TYPE_TERM
-    ; "unif_rule", UNIF_RULE
-    ; "verbose", VERBOSE
-    ; "why3", WHY3
-    ; "with", WITH ]
-
 let remove_first : Sedlexing.lexbuf -> string = fun lb ->
   Utf8.sub_lexeme lb 1 (lexeme_length lb - 1)
 
@@ -317,7 +253,6 @@ let rec token lb =
   | '-', Plus lowercase -> DEBUG_FLAGS(false, remove_first lb)
   | nat -> INT(int_of_string (Utf8.lexeme lb))
   | float -> FLOAT(float_of_string (Utf8.lexeme lb))
-  (*| '"' -> string (Buffer.create 42) lb*)
   | string -> STRINGLIT(Utf8.sub_lexeme lb 1 (lexeme_length lb - 2))
 
   (* symbols *)
@@ -371,14 +306,6 @@ and comment i lb =
   | "/*" -> comment (i+1) lb
   | any -> comment i lb
   | _ -> invalid_character lb
-
-(*and string buf lb =
-  match%sedlex lb with
-  | eof -> fail lb "Unterminated string."
-  | '\\', '"' -> Buffer.add_string buf (Utf8.lexeme lb); string buf lb
-  | '"' -> STRINGLIT(Buffer.contents buf)
-  | any -> Buffer.add_string buf (Utf8.lexeme lb); string buf lb
-  | _ -> invalid_character lb*)
 
 (** [token buf] is a lexing function on buffer [buf] that can be passed to
     a parser. *)

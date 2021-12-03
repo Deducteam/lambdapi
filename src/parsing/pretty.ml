@@ -13,8 +13,73 @@ open Syntax
 open Format
 open Core
 
+(** Keywords table. *)
+let keyword_table = Hashtbl.create 59
+
+let is_keyword : string -> bool = Hashtbl.mem keyword_table
+
+let _ = let open LpLexer in
+  List.iter (fun (s, k) -> Hashtbl.add keyword_table s k)
+    [ "abort", ABORT
+    ; "admit", ADMIT
+    ; "admitted", ADMITTED
+    ; "apply", APPLY
+    ; "as", AS
+    ; "assert", ASSERT
+    ; "assertnot", ASSERTNOT
+    ; "associative", ASSOCIATIVE
+    ; "assume", ASSUME
+    ; "begin", BEGIN
+    ; "builtin", BUILTIN
+    ; "commutative", COMMUTATIVE
+    ; "compute", COMPUTE
+    ; "constant", CONSTANT
+    ; "debug", DEBUG
+    ; "end", END
+    ; "fail", FAIL
+    ; "flag", FLAG
+    ; "focus", FOCUS
+    ; "generalize", GENERALIZE
+    ; "have", HAVE
+    ; "in", IN
+    ; "induction", INDUCTION
+    ; "inductive", INDUCTIVE
+    ; "infix", INFIX
+    ; "injective", INJECTIVE
+    ; "left", ASSOC(Pratter.Left)
+    ; "let", LET
+    ; "off", SWITCH(false)
+    ; "on", SWITCH(true)
+    ; "opaque", OPAQUE
+    ; "open", OPEN
+    ; "prefix", PREFIX
+    ; "print", PRINT
+    ; "private", PRIVATE
+    ; "proofterm", PROOFTERM
+    ; "protected", PROTECTED
+    ; "prover", PROVER
+    ; "prover_timeout", PROVER_TIMEOUT
+    ; "quantifier", QUANTIFIER
+    ; "refine", REFINE
+    ; "reflexivity", REFLEXIVITY
+    ; "require", REQUIRE
+    ; "rewrite", REWRITE
+    ; "right", ASSOC(Pratter.Right)
+    ; "rule", RULE
+    ; "sequential", SEQUENTIAL
+    ; "simplify", SIMPLIFY
+    ; "solve", SOLVE
+    ; "symbol", SYMBOL
+    ; "symmetry", SYMMETRY
+    ; "type", TYPE_QUERY
+    ; "TYPE", TYPE_TERM
+    ; "unif_rule", UNIF_RULE
+    ; "verbose", VERBOSE
+    ; "why3", WHY3
+    ; "with", WITH ]
+
 let raw_ident : string pp = fun ppf s ->
-  if LpLexer.is_keyword s then out ppf "{|%a|}" Print.pp_uid s
+  if is_keyword s then out ppf "{|%a|}" Print.pp_uid s
   else Print.pp_uid ppf s
 
 let ident : p_ident pp = fun ppf {elt;_} -> raw_ident ppf elt

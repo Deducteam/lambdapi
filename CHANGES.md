@@ -6,6 +6,7 @@
 - generate only one kind of identifiers
 - replace everywhere `%S` by `\"%s\"`
 - move checking compatibility with Bindlib of identifiers from lexer to scope
+- move is_keyword from lexer to pretty
 
 #### Update dkParser to be in sync with dkcheck (2021-11-30)
 
