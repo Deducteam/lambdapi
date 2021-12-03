@@ -128,6 +128,14 @@
 
 %%
 
+sep_ne_list_with_opt_last_sep(arg, sep):
+  | a=arg { [a] }
+  | a=arg sep { [a] }
+  | a=arg sep l=sep_ne_list_with_opt_last_sep(arg, sep) { a :: l }
+
+sep_list_with_opt_last_sep(arg, sep):
+  l=loption(sep_ne_list_with_opt_last_sep(arg, sep)) { l }
+
 uid: i=UID { make_pos $sloc i}
 
 id:
@@ -244,10 +252,12 @@ proof_end:
 
 proof:
   | BEGIN l=subproof+ pe=proof_end { l, pe }
-  | BEGIN l=separated_list(SEMICOLON,proof_step) pe=proof_end { [l], pe }
+  | BEGIN l=sep_list_with_opt_last_sep(proof_step,SEMICOLON) pe=proof_end
+    { [l], pe }
 
 subproof:
-  L_CU_BRACKET l=separated_list(SEMICOLON,proof_step) R_CU_BRACKET { l }
+  L_CU_BRACKET l=sep_list_with_opt_last_sep(proof_step,SEMICOLON) R_CU_BRACKET
+    { l }
 
 proof_step: t=tactic l=subproof* { Tactic(t, l) }
 
