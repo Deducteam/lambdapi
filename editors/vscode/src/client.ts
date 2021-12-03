@@ -353,6 +353,8 @@ function stepCommand(document: TextDocument, currentPos: Position, forward: bool
     let docEnd : Position = new Position(document.lineCount, 0);
     if (forward){
         let textAfter : string = document.getText(new Range(currentPos, docEnd));
+        // remove first character
+        textAfter = textAfter.substr(1, textAfter.length - 1);
         
         // get the positions of end of matched terminators
         let positions = terminators.map((term) => {
