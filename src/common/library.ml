@@ -168,8 +168,7 @@ let set_lib_root : string option -> unit = fun dir ->
    the file name [fn] if [mn] is not already mapped and [fn] is a valid
    directory. In case of failure the program terminates and a graceful error
    message is displayed. *)
-let add_mapping : string * string -> unit = fun (mn, fn) ->
-  let mp = Path.of_string mn in
+let add_mapping : Path.t * string -> unit = fun (mp, fn) ->
   let fn =
     try Filename.realpath fn
     with Invalid_argument f -> fatal_no_pos "%s: No such file or directory" f

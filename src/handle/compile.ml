@@ -123,8 +123,8 @@ open Console
     they have finished. An optional library mapping or state can be passed as
     argument to change the settings. *)
 module Pure : sig
-  val compile : ?lm:string*string -> ?st:State.t -> bool -> Path.t -> Sign.t
-  val compile_file : ?lm:string*string -> ?st:State.t -> string -> Sign.t
+  val compile : ?lm:Path.t*string -> ?st:State.t -> bool -> Path.t -> Sign.t
+  val compile_file : ?lm:Path.t*string -> ?st:State.t -> string -> Sign.t
 end = struct
 
   (* [pure_apply_cfg ?lm ?st f] is function [f] but pure (without side
@@ -132,7 +132,7 @@ end = struct
      {!val:Library.lib_mappings}. Arguments [?lm] allows to set the library
      mappings and [?st] sets the state. *)
   let pure_apply_cfg :
-        ?lm:string*string -> ?st:State.t -> ('a -> 'b) -> 'a -> 'b =
+        ?lm:Path.t*string -> ?st:State.t -> ('a -> 'b) -> 'a -> 'b =
     fun ?lm ?st f x ->
     let libmap = !lib_mappings in
     State.push ();

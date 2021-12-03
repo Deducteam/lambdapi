@@ -3,7 +3,6 @@
 open Lplib
 open Core
 open Common
-open Parsing
 
 (** Abstract representation of a command (top-level item). *)
 module Command : sig
@@ -13,7 +12,7 @@ module Command : sig
   val print : t Base.pp [@@ocaml.toplevel_printer]
 end
 
-val rangemap : Command.t list -> Syntax.qident RangeMap.t
+val rangemap : Command.t list -> Term.qident RangeMap.t
 
 (** Abstract representation of a tactic (proof item). *)
 module Tactic : sig

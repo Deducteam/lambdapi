@@ -2,6 +2,7 @@ open Cmdliner
 open Common
 open Error
 open Format
+open Parsing
 
 let write_file : string -> (formatter -> unit) -> unit = fun fn pp ->
   let oc = open_out fn in
