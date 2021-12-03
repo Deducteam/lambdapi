@@ -1,10 +1,9 @@
 (** Management of escaped identifiers ["{|...|}"]. *)
 
 (** [is_escaped s] tells if [s] begins with ["{|"] and ends with ["|}"]
-   without overlapping. *)
-let is_escaped : string -> bool = fun s ->
-  let n = String.length s in
-  n > 3 && s.[0] = '{' && s.[1] = '|' && s.[n-2] = '|' && s.[n-1] = '}'
+   without overlapping. For efficiency, we just test that it starts with
+   ['{']. *)
+let is_escaped : string -> bool = fun s -> s <> "" && s.[0] = '{'
 
 (** [unescape s] removes ["{|"] and ["|}"] if [s] is an escaped identifier. *)
 let unescape : string -> string = fun s ->
