@@ -6,6 +6,12 @@ open Sedlexing
 open Common
 open Pos
 
+let remove_first : Sedlexing.lexbuf -> string = fun lb ->
+  Utf8.sub_lexeme lb 1 (lexeme_length lb - 1)
+
+let remove_last : Sedlexing.lexbuf -> string = fun lb ->
+  Utf8.sub_lexeme lb 0 (lexeme_length lb - 1)
+
 exception SyntaxError of strloc
 
 let fail : Sedlexing.lexbuf -> string -> 'a = fun lb msg ->
@@ -164,12 +170,6 @@ let escape s = if is_regid s then s else "{|" ^ s ^ "|}"
    unescape form. *)
 let remove_useless_escape : string -> string = fun s ->
   let s' = Escape.unescape s in if is_regid s' then s' else s
-
-let remove_first : Sedlexing.lexbuf -> string = fun lb ->
-  Utf8.sub_lexeme lb 1 (lexeme_length lb - 1)
-
-let remove_last : Sedlexing.lexbuf -> string = fun lb ->
-  Utf8.sub_lexeme lb 0 (lexeme_length lb - 1)
 
 (** Lexer. *)
 let rec token lb =
