@@ -24,7 +24,6 @@ jobs:
           ocaml-version: ${{ matrix.ocaml-version }}
       - name: installing dependencies...
         run: |
-          opam pin add menhir 20211012
           opam update
           opam upgrade
           opam pin add -n -k path lambdapi .
