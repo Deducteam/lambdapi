@@ -21,7 +21,6 @@
     "dedukti"
   ],
   "homepage": "https://github.com/Deducteam/lambdapi",
-  "enableProposedApi": true,
   "activationEvents": [
     "onLanguage:lp"
   ],
