@@ -173,7 +173,7 @@ tactic:
   | q=query { make_pos $sloc (P_tac_query q) }
   | ADMIT { make_pos $sloc P_tac_admit }
   | APPLY t=term { make_pos $sloc (P_tac_apply t) }
-  | ASSUME xs=param+ { make_pos $sloc (P_tac_assume xs) }
+  | ASSUME xs=param* { make_pos $sloc (P_tac_assume xs) }
   | FAIL { make_pos $sloc P_tac_fail }
   | FOCUS i=INT { make_pos $sloc (P_tac_focus i) }
   | GENERALIZE i=uid { make_pos $sloc (P_tac_generalize i) }

@@ -47,3 +47,10 @@ opaque symbol thm_imp : Π (a b : Prop), P (imp a b) → P a → P b
     assume a b pab pa;
     why3;
 end;
+
+// With automatic assumption
+opaque symbol thm_imp* : Π (a b : Prop), P (imp a b) → P a → P b
+≔ begin
+    assume;
+    why3;
+end;

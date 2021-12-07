@@ -220,6 +220,9 @@ let handle : Sig_state.t -> bool -> proof_state -> p_tactic -> proof_state =
                  else let p = new_problem() in
                       p, scope p (P.appl_wild pt n) in
       tac_refine pos ps gt gs p t
+  | P_tac_assume [] ->
+      let arity = count_products (Env.to_ctxt env) gt.goal_type in 
+      assume arity
   | P_tac_assume idopts ->
       (* Check that the given identifiers are not already used. *)
       List.iter (Option.iter check) idopts;

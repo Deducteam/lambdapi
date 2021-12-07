@@ -64,7 +64,10 @@ refines the focused typing goal with ``t _ … _`` (with n underscores).
 
 If the focused typing goal is of the form ``Π x₁ … xₙ,T``, then
 ``assume h₁ … hₙ`` replaces it by ``T`` with ``xᵢ`` replaced by
-``hᵢ``.
+``hᵢ``. It can be used without arguments: if the goal is of the form
+``Π x₁ … xₙ,T`` with ``T`` not convertible with a product,
+``assume`` generates ``n`` hypotheses and replaces the goal by ``T``
+where the ``xᵢ`` have been substituted by ``hi``.
 
 ``generalize``
 --------------

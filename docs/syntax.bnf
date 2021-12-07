@@ -38,7 +38,7 @@
 <tactic> ::= <query>
            | admit
            | apply <term>
-           | assume <param>+
+           | assume <param>*
            | fail
            | focus <int>
            | generalize <uid>
