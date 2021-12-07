@@ -144,6 +144,43 @@ let fresh_meta_tbox : mode -> env -> tbox = fun md env ->
   | M_RHS d -> Env.fresh_meta_tbox d.m_rhs_new_metas env
   | _ -> assert false
 
+(** [is_invalid_bindlib_id s] says whether [s] can be safely used as variable
+   name in Bindlib. Indeed, because Bindlib converts any suffix consisting of
+   a sequence of digits into an integer, and increment it, we cannot use as
+   bound variable names escaped identifiers or regular identifiers ending with
+   a non-negative integer with leading zeros. *)
+let is_invalid_bindlib_id : string -> bool =
+  let rec last_digit s k =
+    let l = k-1 in
+    if l < 0 then 0 else
+      match s.[l] with
+      | '0' .. '9' -> last_digit s l
+      | _ -> k
+  in
+  fun s ->
+    let n = String.length s - 1 in
+    n >= 0 &&
+    match s.[n] with
+    | '0' .. '9' -> let k = last_digit s n in s.[k] = '0' && k < n
+    | '}' -> true
+    | _ -> false
+
+(* unit tests *)
+let _ =
+  let invalid = is_invalid_bindlib_id in
+  let valid s = not (invalid s) in
+  assert (invalid "00");
+  assert (invalid "01");
+  assert (invalid "a01");
+  assert (invalid "{|:|}");
+  assert (valid "_x_100");
+  assert (valid "_z1002");
+  assert (valid "case_ex2_intro");
+  assert (valid "case_ex02_intro");
+  assert (valid "case_ex02_intro0");
+  assert (valid "case_ex02_intro1");
+  assert (valid "case_ex02_intro10")
+
 (** [scope md ss env t] turns a parser-level term [t] into an actual term. The
    variables of the environment [env] may appear in [t], and the scoping mode
    [md] changes the behaviour related to certain constructors. The signature
@@ -267,10 +304,10 @@ and scope_binder : ?warn:bool -> int -> mode -> sig_state ->
           let t = aux env idopts in
           cons a (Bindlib.bind_var v t)
       | Some {elt=id;pos}::idopts ->
-          if LpLexer.is_invalid_bindlib_id id then
-            fatal pos "Escaped identifiers or regular identifiers \
+          if is_invalid_bindlib_id id then
+            fatal pos "%s: Escaped identifiers or regular identifiers \
                        having an integer suffix with leading zeros \
-                       are not allowed for bound variable names.";
+                       are not allowed for bound variable names." id;
           let v = new_tvar id in
           let env = Env.add v a None env in
           let t = aux env idopts in

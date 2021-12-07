@@ -212,7 +212,7 @@ let get_proof_data : compiler -> sig_state -> p_command ->
   | P_builtin(s,qid) ->
       let sym = find_sym ~prt:true ~prv:true ss qid in
       Builtin.check ss pos s sym;
-      Console.out 2 "builtin %S ≔ %a" s pp_sym sym;
+      Console.out 2 "builtin \"%s\" ≔ %a" s pp_sym sym;
       (add_builtin ss s sym, None, None)
   | P_notation(qid,n) ->
       let sym = find_sym ~prt:true ~prv:true ss qid in

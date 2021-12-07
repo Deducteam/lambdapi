@@ -11,6 +11,10 @@ open Error
 open Version
 open Handle
 
+type qident = Core.Term.qident
+
+module CLT = Cmdliner.Term
+
 (* NOTE only standard [Stdlib] references here. *)
 
 (** {3 Evaluation of commands. *)
@@ -81,7 +85,7 @@ let lsp_server_cmd : Config.t -> bool -> string -> unit =
   Error.handle_exceptions run
 
 (** Printing a decision tree. *)
-let decision_tree_cmd : Config.t -> Syntax.qident -> bool -> unit =
+let decision_tree_cmd : Config.t -> qident -> bool -> unit =
   fun cfg (mp, sym) ghost ->
   let run _ =
     Timed.(Console.verbose := 0);
@@ -105,7 +109,7 @@ let decision_tree_cmd : Config.t -> Syntax.qident -> bool -> unit =
     in
     if Timed.(!(sym.sym_rules)) = [] then
       wrn None "Cannot print decision tree: \
-                symbol %S does not have any rule." sym.sym_name
+                symbol \"%s\" does not have any rule." sym.sym_name
     else Console.out 0 "%a" Tool.Tree_graphviz.to_dot sym
   in
   Error.handle_exceptions run
@@ -114,14 +118,14 @@ let decision_tree_cmd : Config.t -> Syntax.qident -> bool -> unit =
 
 (** Options that are specific to the ["check"] command. *)
 
-let timeout : int option Term.t =
+let timeout : int option CLT.t =
   let doc =
     "Timeout after $(docv) seconds. The program is interrupted with an error \
      as soon as the specified number of seconds is elapsed."
   in
   Arg.(value & opt (some int) None & info ["timeout"] ~docv:"NUM" ~doc)
 
-let recompile : bool Term.t =
+let recompile : bool CLT.t =
   let doc =
     "Recompile the files even if they have an up-to-date object file."
   in
@@ -129,14 +133,14 @@ let recompile : bool Term.t =
 
 (** Options that are specific to the ["lsp-server"] command. *)
 
-let standard_lsp : bool Term.t =
+let standard_lsp : bool CLT.t =
   let doc =
     "Restrict to standard LSP protocol, avoiding interactive proof support \
      extensions that are not supported by all editors."
   in
   Arg.(value & flag & info ["standard-lsp"] ~doc)
 
-let lsp_log_file : string Term.t =
+let lsp_log_file : string CLT.t =
   let default = Lsp.Lp_lsp.default_log_file in
   let doc =
     Printf.sprintf
@@ -147,28 +151,26 @@ let lsp_log_file : string Term.t =
 
 (** Specific to the ["decision-tree"] command. *)
 
-let qsym : Syntax.qident Term.t =
-  let qsym_conv: Syntax.qident Arg.conv =
-    let parse (s: string): (Syntax.qident, [>`Msg of string]) result =
-      match Parser.qident_of_string s with
-      | Error(p) ->
-          Error(`Msg(Format.asprintf "[%a] invalid argument" Pos.pp p))
-      | Ok(id) -> Ok(id)
+let qident : qident CLT.t =
+  let qident_conv: qident Arg.conv =
+    let parse (s: string): (qident, [>`Msg of string]) result =
+      try Ok(Parser.qident_of_string s)
+      with Fatal(_,s) -> Error(`Msg(s))
     in
     let print fmt qid = Pretty.qident fmt (Pos.none qid) in
     Arg.conv (parse, print)
   in
   let doc = "Fully qualified symbol name with dot separated identifiers." in
   let i = Arg.(info [] ~docv:"MOD_PATH.SYM" ~doc) in
-  Arg.(value & pos 0 qsym_conv ([], "") & i)
+  Arg.(value & pos 0 qident_conv ([], "") & i)
 
-let ghost : bool Term.t =
+let ghost : bool CLT.t =
   let doc = "Print the decision tree of a ghost symbol." in
   Arg.(value & flag & info [ "ghost" ] ~doc)
 
 (** Remaining arguments: source files. *)
 
-let file : string Term.t =
+let file : string CLT.t =
   let doc =
     Printf.sprintf
       "Source file with the [%s] extension (or with the [%s] extension when \
@@ -176,7 +178,7 @@ let file : string Term.t =
   in
   Arg.(required & pos 0 (some non_dir_file) None & info [] ~docv:"FILE" ~doc)
 
-let files : string list Term.t =
+let files : string list CLT.t =
   let doc =
     Printf.sprintf
       "Source file with the [%s] extension (or with the [%s] extension when \
@@ -217,48 +219,48 @@ let man_pkg_file =
 
 let check_cmd =
   let doc = "Type-checks the given files." in
-  Term.(const check_cmd $ Config.full $ timeout $ recompile $ files),
-  Term.info "check" ~doc ~man:man_pkg_file
+  CLT.(const check_cmd $ Config.full $ timeout $ recompile $ files),
+  CLT.info "check" ~doc ~man:man_pkg_file
 
 let decision_tree_cmd =
   let doc =
     "Prints decision tree of a symbol to standard output using the \
      Dot language. Piping to `dot -Tpng | display' displays the tree."
   in
-  Term.(const decision_tree_cmd $ Config.full $ qsym $ ghost),
-  Term.info "decision-tree" ~doc ~man:man_pkg_file
+  CLT.(const decision_tree_cmd $ Config.full $ qident $ ghost),
+  CLT.info "decision-tree" ~doc ~man:man_pkg_file
 
 let parse_cmd =
   let doc = "Run the parser on the given files." in
-  Term.(const parse_cmd $ Config.full $ files),
-  Term.info "parse" ~doc ~man:man_pkg_file
+  CLT.(const parse_cmd $ Config.full $ files),
+  CLT.info "parse" ~doc ~man:man_pkg_file
 
 let beautify_cmd =
   let doc = "Run the parser and pretty-printer on the given files." in
-  Term.(const beautify_cmd $ Config.full $ file),
-  Term.info "beautify" ~doc ~man:man_pkg_file
+  CLT.(const beautify_cmd $ Config.full $ file),
+  CLT.info "beautify" ~doc ~man:man_pkg_file
 
 let lsp_server_cmd =
   let doc = "Runs the LSP server." in
-  Term.(const lsp_server_cmd $ Config.full $ standard_lsp $ lsp_log_file),
-  Term.info "lsp" ~doc ~man:man_pkg_file
+  CLT.(const lsp_server_cmd $ Config.full $ standard_lsp $ lsp_log_file),
+  CLT.info "lsp" ~doc ~man:man_pkg_file
 
 let help_cmd =
   let doc = "Display the main help page for Lambdapi." in
-  Term.(ret (const (`Help (`Pager, None)))),
-  Term.info "help" ~doc
+  CLT.(ret (const (`Help (`Pager, None)))),
+  CLT.info "help" ~doc
 
 let version_cmd =
   let run () = Console.out 0 "Lambdapi version: %s" Version.version in
   let doc = "Display the current version of Lambdapi." in
-  Term.(const run $ const ()),
-  Term.info "version" ~doc
+  CLT.(const run $ const ()),
+  CLT.info "version" ~doc
 
 let default_cmd =
   let doc = "A type-checker for the lambdapi-calculus modulo rewriting." in
   let sdocs = Manpage.s_common_options in
-  Term.(ret (const (`Help (`Pager, None)))),
-  Term.info "lambdapi" ~version ~doc ~sdocs
+  CLT.(ret (const (`Help (`Pager, None)))),
+  CLT.info "lambdapi" ~version ~doc ~sdocs
 
 let _ =
   let t0 = Sys.time () in
@@ -269,4 +271,4 @@ let _ =
     ; decision_tree_cmd ; help_cmd ; version_cmd
     ; Init.cmd ; Install.install_cmd ; Install.uninstall_cmd ]
   in
-  Term.(exit (eval_choice default_cmd cmds))
+  CLT.(exit (eval_choice default_cmd cmds))

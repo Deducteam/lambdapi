@@ -155,7 +155,7 @@ let run_task : Why3.Task.task -> Pos.popt -> string -> bool =
   (* Fail if we did not find a matching prover. *)
   if Why3.Whyconf.Mprover.is_empty provers then
     begin
-      fatal_msg "prover %S not found.@." prover_name;
+      fatal_msg "prover \"%s\" not found.@." prover_name;
       let provers = Why3.Whyconf.get_provers why3_config in
       let _ =
         if Why3.Whyconf.Mprover.is_empty provers then
@@ -165,7 +165,7 @@ let run_task : Why3.Task.task -> Pos.popt -> string -> bool =
           fatal_msg "The available Why3 provers are:@.";
           Why3.Whyconf.Mprover.iter fn provers
       in
-      fatal_msg "Why3 configuration read from %S.@."
+      fatal_msg "Why3 configuration read from \"%s\".@."
         (Why3.Whyconf.get_conf_file why3_config);
       fatal_msg "Your prover might not be installed or detected, ";
       fatal pos "remember to run [why3 config detect]."
@@ -174,7 +174,7 @@ let run_task : Why3.Task.task -> Pos.popt -> string -> bool =
   let prover = snd (Why3.Whyconf.Mprover.max_binding provers) in
   let driver =
     try Why3.Whyconf.(load_driver why3_main why3_env prover)
-    with e -> fatal pos "Failed to load driver for %S: %a"
+    with e -> fatal pos "Failed to load driver for \"%s\": %a"
                 prover.prover.prover_name Why3.Exn_printer.exn_printer e
   in
   (* Actually run the prover. *)
@@ -192,12 +192,13 @@ let handle :
   fun ss pos prover_name {goal_meta = m; goal_hyps = hyps; goal_type = trm} ->
   (* Get the name of the prover. *)
   let prover_name = Option.get !default_prover prover_name in
-  if Logger.log_enabled () then log_why3 "running with prover %S" prover_name;
+  if Logger.log_enabled () then
+    log_why3 "running with prover \"%s\"" prover_name;
   (* Encode the goal in Why3. *)
   let tsk = encode ss pos hyps trm in
   (* Run the task with the prover named [prover_name]. *)
   if not (run_task tsk pos prover_name) then
-    fatal pos "%S did not find a proof" prover_name;
+    fatal pos "\"%s\" did not find a proof" prover_name;
   (* Create a new axiom name that represents the proved goal. *)
   let axiom_name = new_axiom_name () in
   (* Add the axiom to the current signature. *)

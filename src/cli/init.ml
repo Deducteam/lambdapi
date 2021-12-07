@@ -2,6 +2,7 @@ open Cmdliner
 open Common
 open Error
 open Format
+open Parsing
 
 let write_file : string -> (formatter -> unit) -> unit = fun fn pp ->
   let oc = open_out fn in
@@ -40,7 +41,7 @@ let run : Path.t -> unit = fun root_path ->
       | s::_ -> s
     in
     if Sys.file_exists pkg_name then
-      fatal_no_pos "Cannot create the package: %S already exists."
+      fatal_no_pos "Cannot create the package: \"%s\" already exists."
         pkg_name;
     Unix.mkdir pkg_name 0o700;
     (* Write the package configuration file. *)

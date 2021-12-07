@@ -11,22 +11,23 @@
 
 
 
-<id> ::= <qid>
-       | <uid>
+<qid> ::= <uid>
+        | <qid>
 
 <path> ::= <qid>
 
-<term_id> ::= <id>
-            | @<id>
+<qid_expl> ::= <uid>_EXPL
+             | <qid>_EXPL
 
-<patt_id> ::= $<uid>
+<term_id> ::= <qid>
+            | <qid_expl>
 
-<param_id> ::= <uid>
-             | _
+<param> ::= <uid>
+          | UNDERSCORE
 
-<params> ::= <param_id>
-           | ( <param_id>+ : <term> )
-           | { <param_id>+ [: <term>] }
+<param_list> ::= <param>
+               | ( <param>+ : <term> )
+               | { <param>+ [: <term>] }
 
 <rw_patt> ::= <term>
             | in <term>
@@ -37,7 +38,7 @@
 <tactic> ::= <query>
            | admit
            | apply <term>
-           | assume <param_id>+
+           | assume <param>+
            | fail
            | focus <int>
            | generalize <uid>
@@ -46,7 +47,7 @@
            | refine <term>
            | reflexivity
            | rewrite [<assoc>] [[ <rw_patt> ]] <term>
-           | simplify [<id>]
+           | simplify [<qid>]
            | solve
            | symmetry
            | why3 ["<string>"]
@@ -70,10 +71,10 @@
 <assert_kw> ::= assert
               | assertnot
 
-<query> ::= <assert_kw> <params>* ⊢ <term> : <term>
-          | <assert_kw> <params>* ⊢ <term> ≡ <term>
+<query> ::= <assert_kw> <param_list>* ⊢ <term> : <term>
+          | <assert_kw> <param_list>* ⊢ <term> ≡ <term>
           | compute <term>
-          | print [<id>]
+          | print [<qid>]
           | proofterm
           | debug (+ | -)<string>
           | flag "<string>" <switch>
@@ -88,9 +89,9 @@
 
 <proof> ::= begin (<tactic> ;)* <proof_end>
 
-<constructor> ::= <uid> <params>* : <term>
+<constructor> ::= <uid> <param_list>* : <term>
 
-<inductive> ::= <uid> <params>* : <term> ≔ [|] [<constructor>
+<inductive> ::= <uid> <param_list>* : <term> ≔ [|] [<constructor>
                 (| <constructor>)*]
 
 <term_proof> ::= <term>
@@ -101,26 +102,26 @@
             | require <path>* ;
             | require <path> as <uid> ;
             | open <path>* ;
-            | <modifier>* symbol <uid> <params>* : <term> [<proof>]
+            | <modifier>* symbol <uid> <param_list>* : <term> [<proof>]
               ;
-            | <modifier>* symbol <uid> <params>* [: <term>] ≔
+            | <modifier>* symbol <uid> <param_list>* [: <term>] ≔
               <term_proof> ;
-            | <modifier>* <params>* inductive <inductive> (with <inductive>)*
-              ;
+            | <modifier>* <param_list>* inductive <inductive> (with
+              <inductive>)* ;
             | rule <rule> (with <rule>)* ;
-            | builtin "<string>" ≔ <id> ;
+            | builtin "<string>" ≔ <qid> ;
             | unif_rule <unif_rule> ;
-            | notation <id> <notation> ;
+            | notation <qid> <notation> ;
             | <query> ;
             
 
 <env> ::= [ [<term> (; <term>)*] ]
 
 <aterm> ::= <term_id>
-          | _
+          | UNDERSCORE
           | TYPE
           | ?<uid> [<env>]
-          | <patt_id> [<env>]
+          | $<uid>T [<env>]
           | ( <term> )
           | { <term> }
           | <int>
@@ -130,15 +131,15 @@
 <bterm> ::= ` <term_id> <binder>
           | Π <binder>
           | λ <binder>
-          | let <uid> <params>* [: <term>] ≔ <term> in <term>
+          | let <uid> <param_list>* [: <term>] ≔ <term> in <term>
 
 <term> ::= <bterm>
          | <saterm>
          | <saterm> <bterm>
          | <saterm> → <term>
 
-<binder> ::= <params>+ , <term>
-           | <param_id> : <term> , <term>
+<binder> ::= <param_list>+ , <term>
+           | <param> : <term> , <term>
 
 <rule> ::= <term> ↪ <term>
 

@@ -4,6 +4,7 @@
 open Common
 open Core
 open Handle
+open Parsing
 
 let _ =
   Library.set_lib_root None;

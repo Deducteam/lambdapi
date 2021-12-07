@@ -17,7 +17,7 @@ module D = struct
 
   let int : int pp = fun ppf i -> out ppf "%d" i
 
-  let string : string pp = fun ppf s -> out ppf "%S" s
+  let string : string pp = fun ppf s -> out ppf "\"%s\"" s
 
   let option : 'a pp -> 'a option pp = fun elt ppf o ->
     match o with

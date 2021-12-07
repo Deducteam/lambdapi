@@ -1,7 +1,8 @@
 (** Package configuration file interface. *)
 
 open Lplib
-open Lplib.Extra
+open Extra
+open Common
 open Error
 
 (** A package configuration file is expected at the root of every package. The
@@ -59,7 +60,7 @@ let read : string -> config_data = fun fname ->
   in
   (* Building the configuration. *)
   let package_name = get "package_name" in
-  let root_path = Path.of_string (get "root_path") in
+  let root_path = Parser.path_of_string (get "root_path") in
   {package_name; root_path}
 
 (** [find_config fname] looks for a configuration file above [fname], which is
@@ -88,4 +89,4 @@ let apply_config : string -> unit = fun fname ->
   | Some(cfg_file) ->
   let {root_path; _} = read cfg_file in
   let root = Filename.dirname cfg_file in
-  Library.add_mapping (String.concat "." root_path, root)
+  Library.add_mapping (root_path, root)
