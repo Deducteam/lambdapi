@@ -80,8 +80,7 @@ Overview of directories and files
   * ``command.ml``: command handling
   * ``compile.ml``: file parsing and compiling (.lpo files)
   * ``inductive.ml``: generation of induction principles
-  * ``query.ml``: handling of queries
-      (commands that do not change the signature or the proof state)
+  * ``query.ml``: handling of queries (commands that do not change the signature or the proof state)
 
   * tactics:
 
@@ -117,8 +116,7 @@ Overview of directories and files
   * ``lpLexer.ml``: lexer for Lambdapi syntax
   * ``lpParser.mly``: parser for Lambdapi syntax
   * ``parser.ml``: interfaces for parsers
-  * ``pretty.ml``: pretty print the abstract syntax
-     (used to convert Dedukti files into Lambdapi files)
+  * ``pretty.ml``: pretty print the abstract syntax (used to convert Dedukti files into Lambdapi files)
   * ``syntax.ml``: abstract syntax
 
 * ``src/pure/``: pure interface (mainly used by the LSP server)
@@ -140,17 +138,11 @@ Overview of directories and files
 
 * ``misc/``:
 
-  * ``gen_version.ml``: script used by dune to generate
-     ``_build/default/src/core/version.ml`` used in ``lambdapi.ml``
-  * ``sanity_check.sh``: script checking some style guidelines below
-     (called by ``make sanity_check``)
-  * ``generate_tests.ml``: creates test files in ``tests/OK`` that can
-     be parametrised
-  * ``listings.tex``: setup of the LaTeX package
-     `listings <https://www.ctan.org/pkg/listings>`__ for including
-     Lambdapi code into a LaTeX document
-  * ``deps.ml``: gives the ``#REQUIRE`` commands that should be added
-     at the beginning of a Dedukti file
+  * ``gen_version.ml``: script used by dune to generate ``_build/default/src/core/version.ml`` used in ``lambdapi.ml``
+  * ``sanity_check.sh``: script checking some style guidelines below (called by ``make sanity_check``)
+  * ``generate_tests.ml``: creates test files in ``tests/OK`` that can be parametrised
+  * ``listings.tex``: setup of the LaTeX package `listings <https://www.ctan.org/pkg/listings>`__ for including Lambdapi code into a LaTeX document
+  * ``deps.ml``: gives the ``#REQUIRE`` commands that should be added at the beginning of a Dedukti file
 
 .. _Sphinx: https://www.sphinx-doc.org/en/master/
 .. _Restructured Text: https://www.sphinx-doc.org/en/master/usage/restructuredtext/basics.html

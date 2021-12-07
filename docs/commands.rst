@@ -14,13 +14,13 @@ One-line comments are introduced by ``//``:
 
    // These words are ignored
 
-And multi-line comments are opened with ``/*`` and closed with ``*/``.
+And multi-line comments are opened with ``/*`` and closed with ``*/``. Multi-line comments can be nested.
 
 ::
 
    /* These
       words are
-      ignored */
+      ignored /* these ones too */ */
 
 ``require``
 -----------
@@ -69,10 +69,10 @@ unification goals the system could not solve automatically. It can
 also be used to give a definition interactively (if no defining term
 is provided).
 
-Without ``≔``, this is just a symbol declaration. The following proof
-script does *not* provide a proof of *type* but help the system solve
-unification constraints it couldn't solve automatically for checking
-the well-sortedness of *type*.
+Without ``≔``, this is just a symbol declaration. Note that, in this
+case, the following proof script does *not* provide a proof of *type*
+but help the system solve unification constraints it couldn't solve
+automatically for checking the well-sortedness of *type*.
 
 For defining a symbol or proving a theorem, which is the same thing,
 ``≔`` is mandatory. If no defining *term* is provided, then the
@@ -95,14 +95,18 @@ Examples:
    symbol F : N → TYPE;
    symbol idF n : F n → F n ≔
    begin
-     assume n x;
-     apply x;
+     assume n x; apply x;
    end;
 
 **Modifiers:**
 
 Modifiers are keywords that precede a symbol declaration to provide
 the system with additional information on its properties and behavior.
+
+- **Opacity modifier**:
+
+  - ``opaque``: The symbol will never be reduced to its
+    definition. This modifier is generally used for actual theorems.
 
 - **Property modifiers** (used by the unification engine or the conversion):
 
@@ -147,7 +151,7 @@ the system with additional information on its properties and behavior.
   - Externally defined protected symbols cannot appear in the right
     hand side of a rewriting rule.
 
-- **Matching strategy modifiers:**
+- **Matching strategy modifier:**
 
   - ``sequential``: modifies the pattern matching algorithm. By default,
     the order of rule declarations is not taken into account. This
@@ -173,20 +177,20 @@ Examples:
    private symbol aux : Π n, List n → Nat;
 
 **Implicit arguments:** Some arguments can be declared as implicit by
-encloding them into curly brackets ``{`` … ``}``. Then, they must not
+encloding them into square brackets ``[`` … ``]``. Then, they must not
 be given by the user later.  Implicit arguments are replaced by ``_``
 at parsing time, generating fresh metavariables. An argument declared
-as implicit can be explicitly given by enclosing it between curly
-brackets ``{`` … ``}`` though. If a function symbol is prefixed by
+as implicit can be explicitly given by enclosing it between square
+brackets ``[`` … ``]`` though. If a function symbol is prefixed by
 ``@`` then the implicit arguments mechanism is disabled and all the
 arguments must be explicitly given.
 
 ::
 
-   symbol eq {a:U} : T a → T a → Prop;
-   // The first argument of `eq` is declared as implicit and must not be given
-   // unless `eq` is prefixed by `@`.
-   // Hence, [eq t u], [eq {_} t u] and [@eq _ t u] are all valid and equivalent.
+   symbol eq [a:U] : T a → T a → Prop;
+   // The first argument of "eq" is declared as implicit and must not be given
+   // unless "eq" is prefixed by "@".
+   // Hence, "eq t u", "eq [_] t u" and "@eq _ t u" are all valid and equivalent.
 
 **Notations**: Some notation can be declared for a symbol. See the commands
 ``notation`` and ``builtin``.
@@ -203,7 +207,7 @@ command.
    rule add (succ $n) $m ↪ succ (add $n $m);
    rule mul zero      _  ↪ zero;
 
-Terms prefixed by the sigil ``$`` and ``_`` are pattern variables.
+Identifiers prefixed by ``$`` are pattern variables.
 
 **Higher-order pattern-matching**. Lambdapi allows higher-order
 pattern-matching on patterns à la Miller but modulo β-equivalence only
@@ -211,36 +215,36 @@ pattern-matching on patterns à la Miller but modulo β-equivalence only
 
 ::
 
-   rule diff (λx, sin $F[x]) ↪ λx, diff (λx, $F[x]) x × cos $F[x];
+   rule diff (λx, sin $F.[x]) ↪ λx, diff (λx, $F.[x]) x × cos $F.[x];
 
 Patterns can contain abstractions ``λx, _`` and the user may attach an
-environment made of *distinct* bound variables to a pattern variable to
-indicate which bound variable can occur in the matched term. The
+environment made of *distinct* bound variables to a pattern variable
+to indicate which bound variable can occur in the matched term. The
 environment is a semicolon-separated list of variables enclosed in
-square brackets ``[x;y;...]``. For instance, a term of the form
-``λx y,t`` matches the pattern ``λx y,$F[x]`` only if ``y`` does not
-freely occur in ``t``.
+square brackets preceded by a dot: ``.[x;y;...]``. For instance, a
+term of the form ``λx y,t`` matches the pattern ``λx y,$F.[x]`` only
+if ``y`` does not freely occur in ``t``.
 
 ::
 
-   rule lam (λx, app $F[] x) ↪ $F; // η-reduction
+   rule lam (λx, app $F.[] x) ↪ $F; // η-reduction
 
-Hence, the rule ``lam (λx, app $F[] x) ↪ $F`` implements η-reduction
+Hence, the rule ``lam (λx, app $F.[] x) ↪ $F`` implements η-reduction
 since no valid instance of ``$F`` can contain ``x``.
 
 Pattern variables cannot appear at the head of an application:
-``$F[] x`` is not allowed. The converse ``x $F[]`` is.
+``$F.[] x`` is not allowed. The converse ``x $F.[]`` is allowed.
 
-A pattern variable ``$P[]`` can be shortened to ``$P`` when there is no
-ambiguity, i.e. when the variable is not under a binder (unlike in the
+A pattern variable ``$P.[]`` can be shortened to ``$P`` when there is no
+ambiguity, i.e. when the variable is not under a binder (unlike in the
 rule η above).
 
 It is possible to define an unnamed pattern variable with the syntax
-``$_[x;y]``.
+``$_.[x;y]``.
 
 The unnamed pattern variable ``_`` is always the most general: if ``x``
 and ``y`` are the only variables in scope, then ``_`` is equivalent to
-``$_[x;y]``.
+``$_.[x;y]``.
 
 In rule left-hand sides, λ-expressions cannot have type annotations.
 
@@ -275,7 +279,7 @@ rule.
 
 Adding sets of rules allows to maintain confluence.
 
-Examples of patterns are available in ``tests/OK/patterns.lp``.
+Examples of patterns are available in `patterns.lp <https://github.com/Deducteam/lambdapi/blob/master/tests/OK/patterns.lp>`__.
 
 ``notation``
 ----------------
@@ -327,7 +331,7 @@ negation with some priority level.
 * Parsing of operators is performed with the `pratter`_ library.
 
 
-**quantifier** Allows to write ``\`f x, t`` instead of ``f (λ x, t)``:
+**quantifier** Allows to write ```f x, t`` instead of ``f (λ x, t)``:
 
 ::
 
