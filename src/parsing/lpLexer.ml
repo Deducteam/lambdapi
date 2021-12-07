@@ -6,6 +6,24 @@ open Sedlexing
 open Common
 open Pos
 
+let remove_first : Sedlexing.lexbuf -> string = fun lb ->
+  Utf8.sub_lexeme lb 1 (lexeme_length lb - 1)
+
+let remove_last : Sedlexing.lexbuf -> string = fun lb ->
+  Utf8.sub_lexeme lb 0 (lexeme_length lb - 1)
+
+let remove_ends : Sedlexing.lexbuf -> string = fun lb ->
+  Utf8.sub_lexeme lb 1 (lexeme_length lb - 2)
+
+exception SyntaxError of strloc
+
+let fail : Sedlexing.lexbuf -> string -> 'a = fun lb msg ->
+  raise (SyntaxError (make_pos (lexing_positions lb) msg))
+
+let invalid_character : Sedlexing.lexbuf -> 'a = fun lb ->
+  fail lb ("Invalid character: \"" ^ Utf8.lexeme lb ^ "\".")
+
+(** Tokens. *)
 type token =
   (* end of file *)
   | EOF
@@ -94,24 +112,24 @@ type token =
   | R_SQ_BRACKET
   | SEMICOLON
   | TURNSTILE
+  | UNDERSCORE
   | VBAR
-  | WILD
 
   (* identifiers *)
   | UID of string
+  | UID_EXPL of string
   | UID_META of Syntax.meta_ident
-  | UID_PAT of string
-  | QID of Path.t
-  | ID_EXPL of Path.t
+  | UID_PATT of string
+  | QID of Path.t (* in reverse order *)
+  | QID_EXPL of Path.t (* in reverse order *)
 
-exception SyntaxError of strloc
-
+(** Some regexp definitions. *)
 let digit = [%sedlex.regexp? '0' .. '9']
 let nonzero_nat = [%sedlex.regexp? '1' .. '9', Star digit]
 let nat = [%sedlex.regexp? '0' | nonzero_nat]
 let float = [%sedlex.regexp? nat, '.', Plus digit]
-let stringlit = [%sedlex.regexp? '"', Star (Compl ('"' | '\n')), '"']
-let comment = [%sedlex.regexp? "//", Star (Compl ('\n' | '\r'))]
+let oneline_comment = [%sedlex.regexp? "//", Star (Compl ('\n' | '\r'))]
+let string = [%sedlex.regexp? '"', Star (Compl '"'), '"']
 
 (** Identifiers.
 
@@ -126,174 +144,56 @@ let comment = [%sedlex.regexp? "//", Star (Compl ('\n' | '\r'))]
 
    Identifiers need to be normalized so that an escaped identifier, once
    unescaped, is not regular. To this end, every identifier of the form
-   ["{|s|}"] with s regular, is understood as ["s"] (function uid_of_string
-   below).
+   ["{|s|}"] with s regular, is understood as ["s"] (function
+   [remove_useless_escape] below).
 
    Finally, identifiers must not be empty, so that we can use the empty string
    for the path of ghost signatures. *)
 
 (** Unqualified regular identifiers are any non-empty sequence of characters
    not among: *)
-let forbidden_letter = [%sedlex.regexp? Chars " ,;\r\t\n(){}[]:.`\""]
+let forbidden_letter = [%sedlex.regexp? Chars " ,;\r\t\n(){}[]:.`\"@$|?"]
 let regid = [%sedlex.regexp? Plus (Compl forbidden_letter)]
 
 let is_regid : string -> bool = fun s ->
-  let lexbuf = Sedlexing.Utf8.from_string s in
-  match%sedlex lexbuf with
+  let lb = Utf8.from_string s in
+  match%sedlex lb with
   | regid, eof -> true
   | _ -> false
 
 (** Unqualified escaped identifiers are any non-empty sequence of characters
-   (except "|}") between "{|" and "|}". *)
-let escid =
-  [%sedlex.regexp? "{|", Plus (Compl '|' | '|', Compl '}'), Star '|', "|}"]
-
-(** Unqualified identifiers, regular or escaped. *)
-let uid = [%sedlex.regexp? regid | escid]
-
-(** Qualified identifiers. *)
-let qid = [%sedlex.regexp? uid, Plus ('.', uid)]
-
-(** Identifiers, qualified or not. *)
-let id = [%sedlex.regexp? uid | qid]
+    (except "|}") between "{|" and "|}". *)
+let notbars = [%sedlex.regexp? Star (Compl '|')]
+let escid = [%sedlex.regexp?
+    "{|", notbars, '|', Star ('|' | Compl (Chars "|}"), notbars, '|'), '}']
 
 (** [escape s] converts a string [s] into an escaped identifier if it is not
    regular. We do not check whether [s] contains ["|}"]. FIXME? *)
 let escape s = if is_regid s then s else "{|" ^ s ^ "|}"
 
-(** [uid_of_string s] replaces escaped regular identifiers by their unescape
-   form. *)
-let uid_of_string : string -> string = fun s ->
+(** [remove_useless_escape s] replaces escaped regular identifiers by their
+   unescape form. *)
+let remove_useless_escape : string -> string = fun s ->
   let s' = Escape.unescape s in if is_regid s' then s' else s
 
-let path_of_string : string -> Path.t = fun s ->
-  List.map uid_of_string (Path.of_string s)
-
-(** Identifiers not compatible with Bindlib. Because Bindlib converts any
-   suffix consisting of a sequence of digits into an integer, and increment
-   it, we cannot use as bound variable names escaped identifiers or regular
-   identifiers ending with a non-negative integer with leading zeros. *)
-let valid_bindlib_id = [%sedlex.regexp?
-    Star (Compl digit), Star (Plus digit, Plus (Compl digit)), Opt nat]
-
-let is_valid_bindlib_id : string -> bool = fun s ->
-  s = "" || (s.[0] <> '{'
-  && let lexbuf = Sedlexing.Utf8.from_string s in
-  match%sedlex lexbuf with
-  | valid_bindlib_id, eof -> true
-  | _ -> false)
-
-let is_invalid_bindlib_id s = not (is_valid_bindlib_id s)
-
-(* unit test *)
-let _ =
-  assert (is_invalid_bindlib_id "00");
-  assert (is_invalid_bindlib_id "01");
-  assert (is_invalid_bindlib_id "a01");
-  assert (is_invalid_bindlib_id "{|:|}");
-  assert (is_valid_bindlib_id "_x_100");
-  assert (is_valid_bindlib_id "_z1002");
-  assert (is_valid_bindlib_id "case_ex2_intro");
-  assert (is_valid_bindlib_id "case_ex02_intro");
-  assert (is_valid_bindlib_id "case_ex02_intro0");
-  assert (is_valid_bindlib_id "case_ex02_intro1");
-  assert (is_valid_bindlib_id "case_ex02_intro10")
-
-(** [nom buf] eats whitespaces and comments in buffer [buf]. *)
-let rec nom : lexbuf -> unit = fun buf ->
-  let rec nom_comment buf =
-    match%sedlex buf with
-    | eof -> raise (SyntaxError (Pos.none "Unterminated comment."))
-    | "*/" -> nom buf
-    | any -> nom_comment buf
-    | _ -> assert false
-  in
-  match%sedlex buf with
-  | ' ' -> nom buf
-  | '\t' -> nom buf
-  | '\n' -> nom buf
-  | '\r' -> nom buf
-  | "\r\n" -> nom buf
-  | "/*" -> nom_comment buf
-  | comment -> nom buf
-  | _ -> ()
-
-let keyword_table = Hashtbl.create 59
-
-let is_keyword : string -> bool = Hashtbl.mem keyword_table
-
-let _ = List.iter (fun (s, k) -> Hashtbl.add keyword_table s k)
-    [ "abort", ABORT
-    ; "admit", ADMIT
-    ; "admitted", ADMITTED
-    ; "apply", APPLY
-    ; "as", AS
-    ; "assert", ASSERT
-    ; "assertnot", ASSERTNOT
-    ; "associative", ASSOCIATIVE
-    ; "assume", ASSUME
-    ; "begin", BEGIN
-    ; "builtin", BUILTIN
-    ; "commutative", COMMUTATIVE
-    ; "compute", COMPUTE
-    ; "constant", CONSTANT
-    ; "debug", DEBUG
-    ; "end", END
-    ; "fail", FAIL
-    ; "flag", FLAG
-    ; "focus", FOCUS
-    ; "generalize", GENERALIZE
-    ; "have", HAVE
-    ; "in", IN
-    ; "induction", INDUCTION
-    ; "inductive", INDUCTIVE
-    ; "infix", INFIX
-    ; "injective", INJECTIVE
-    ; "left", ASSOC(Pratter.Left)
-    ; "let", LET
-    ; "off", SWITCH(false)
-    ; "on", SWITCH(true)
-    ; "opaque", OPAQUE
-    ; "open", OPEN
-    ; "prefix", PREFIX
-    ; "print", PRINT
-    ; "private", PRIVATE
-    ; "proofterm", PROOFTERM
-    ; "protected", PROTECTED
-    ; "prover", PROVER
-    ; "prover_timeout", PROVER_TIMEOUT
-    ; "quantifier", QUANTIFIER
-    ; "refine", REFINE
-    ; "reflexivity", REFLEXIVITY
-    ; "require", REQUIRE
-    ; "rewrite", REWRITE
-    ; "right", ASSOC(Pratter.Right)
-    ; "rule", RULE
-    ; "sequential", SEQUENTIAL
-    ; "simplify", SIMPLIFY
-    ; "solve", SOLVE
-    ; "symbol", SYMBOL
-    ; "symmetry", SYMMETRY
-    ; "type", TYPE_QUERY
-    ; "TYPE", TYPE_TERM
-    ; "unif_rule", UNIF_RULE
-    ; "verbose", VERBOSE
-    ; "why3", WHY3
-    ; "with", WITH ]
-
-let tail : lexbuf -> string = fun buf ->
-  Utf8.sub_lexeme buf 1 (lexeme_length buf - 1)
-
-let lexer buf =
-  nom buf;
-  match%sedlex buf with
+(** Lexer. *)
+let rec token lb =
+  match%sedlex lb with
 
   (* end of file *)
-
   | eof -> EOF
 
-  (* keywords *)
+  (* spaces *)
+  | ' ' -> token lb
+  | '\t' -> token lb
+  | '\n' -> token lb
+  | '\r' -> token lb
 
+  (* comments *)
+  | oneline_comment -> token lb
+  | "/*" -> comment 0 lb
+
+  (* keywords *)
   | "abort" -> ABORT
   | "admit" -> ADMIT
   | "admitted" -> ADMITTED
@@ -354,22 +254,19 @@ let lexer buf =
   | "with" -> WITH
 
   (* other tokens *)
-
-  | '+', Plus lowercase -> DEBUG_FLAGS(true, tail buf)
-  | '-', Plus lowercase -> DEBUG_FLAGS(false, tail buf)
-  | nat -> INT(int_of_string (Utf8.lexeme buf))
-  | float -> FLOAT(float_of_string (Utf8.lexeme buf))
-  | stringlit ->
-      (* Remove the quotes from [lexbuf] *)
-      STRINGLIT(Utf8.sub_lexeme buf 1 (lexeme_length buf - 2))
+  | '+', Plus lowercase -> DEBUG_FLAGS(true, remove_first lb)
+  | '-', Plus lowercase -> DEBUG_FLAGS(false, remove_first lb)
+  | nat -> INT(int_of_string (Utf8.lexeme lb))
+  | float -> FLOAT(float_of_string (Utf8.lexeme lb))
+  | string -> STRINGLIT(Utf8.sub_lexeme lb 1 (lexeme_length lb - 2))
 
   (* symbols *)
-
   | 0x2254 (* ≔ *) -> ASSIGN
   | 0x2192 (* → *) -> ARROW
   | '`' -> BACKQUOTE
   | ',' -> COMMA
   | ':' -> COLON
+  | '.' -> DOT
   | 0x2261 (* ≡ *) -> EQUIV
   | 0x21aa (* ↪ *) -> HOOK_ARROW
   | 0x03bb (* λ *) -> LAMBDA
@@ -383,32 +280,54 @@ let lexer buf =
   | ';' -> SEMICOLON
   | 0x22a2 (* ⊢ *) -> TURNSTILE
   | '|' -> VBAR
-  | '_' -> WILD
+  | '_' -> UNDERSCORE
 
   (* identifiers *)
+  | regid -> UID(Utf8.lexeme lb)
+  | escid -> UID(remove_useless_escape(Utf8.lexeme lb))
+  | '@', regid -> UID_EXPL(remove_first lb)
+  | '@', escid -> UID_EXPL(remove_useless_escape(remove_first lb))
+  | '?', nat -> UID_META(Numb(int_of_string(remove_first lb)))
+  | '?', regid -> UID_META(Name(remove_first lb))
+  | '?', escid -> UID_META(Name(remove_useless_escape(remove_first lb)))
+  | '$', regid -> UID_PATT(remove_first lb)
+  | '$', escid -> UID_PATT(remove_useless_escape(remove_first lb))
 
-  | '?', nat -> UID_META(Syntax.Numb(int_of_string(tail buf)))
-  | '?', uid -> UID_META(Syntax.Name(uid_of_string(tail buf)))
-  | '$', uid -> UID_PAT(uid_of_string(tail buf))
+  | regid, '.' -> qid false [remove_last lb] lb
+  | escid, '.' -> qid false [remove_useless_escape(remove_last lb)] lb
+  | '@', regid, '.' -> qid true [remove_ends lb] lb
+  | '@', escid, '.' -> qid true [remove_useless_escape(remove_ends lb)] lb
 
-  | '@', uid -> ID_EXPL[uid_of_string(tail buf)]
-  | '@', qid -> ID_EXPL(path_of_string(tail buf))
+  (* invalid character *)
+  | _ -> invalid_character lb
 
-  | uid -> UID(uid_of_string(Utf8.lexeme buf))
-  | qid -> QID(path_of_string(Utf8.lexeme buf))
-
-  | '.' -> DOT
-
-  (* invalid token *)
-
+and qid expl ids lb =
+  match%sedlex lb with
+  | regid, '.' -> qid expl (remove_last lb :: ids) lb
+  | escid, '.' -> qid expl (remove_useless_escape(remove_last lb) :: ids) lb
+  | regid ->
+    if expl then QID_EXPL(Utf8.lexeme lb :: ids)
+    else QID(Utf8.lexeme lb :: ids)
+  | escid ->
+    if expl then QID_EXPL(remove_useless_escape (Utf8.lexeme lb) :: ids)
+    else QID(remove_useless_escape (Utf8.lexeme lb) :: ids)
   | _ ->
-      raise (SyntaxError(make_pos (lexing_positions buf) (Utf8.lexeme buf)))
+    fail lb ("Invalid identifier: \""
+             ^ String.concat "." (List.rev (Utf8.lexeme lb :: ids)) ^ "\".")
 
-(** [lexer buf] is a lexing function on buffer [buf] that can be passed to
+and comment i lb =
+  match%sedlex lb with
+  | eof -> fail lb "Unterminated comment."
+  | "*/" -> if i=0 then token lb else comment (i-1) lb
+  | "/*" -> comment (i+1) lb
+  | any -> comment i lb
+  | _ -> invalid_character lb
+
+(** [token buf] is a lexing function on buffer [buf] that can be passed to
     a parser. *)
-let lexer : lexbuf -> unit -> token * Lexing.position * Lexing.position =
-  with_tokenizer lexer
+let token : lexbuf -> unit -> token * Lexing.position * Lexing.position =
+  with_tokenizer token
 
-let lexer =
+let token =
   let r = ref (EOF, Lexing.dummy_pos, Lexing.dummy_pos) in fun lb () ->
-  Debug.(record_time Lexing (fun () -> r := lexer lb ())); !r
+  Debug.(record_time Lexing (fun () -> r := token lb ())); !r

@@ -11,7 +11,6 @@
 (************************************************************************)
 
 open Common
-open Parsing
 open! Lplib
 
 module LSP = Lsp_base
@@ -41,7 +40,7 @@ type t = {
   nodes : doc_node list;
   (* severity is same as LSP specifications : https://git.io/JiGAB *)
   logs : ((int * string) * Pos.popt) list; (*((severity, message), location)*)
-  map : Syntax.qident RangeMap.t;
+  map : Core.Term.qident RangeMap.t;
 }
 
 let option_default o1 d =

@@ -1,6 +1,6 @@
 ### Unreleased
 
-#### Structured proof scripts (2021-11-30)
+#### Structured proof scripts (2021-12-07)
 
 A tactic replacing the current goal by n new goals must be followed by n proof scripts enclosed in curly brackets. For instance, instead of writing `induction; /* case 0 */ t1; ..; tm; /* case s */ q1; ..; qn`, we must now write `induction {t1; ..; tm} {q1; ..; qn}`.
 
@@ -10,6 +10,17 @@ Other modifications in the grammar:
 - Curly brackets are reserved for proof script structuration.
 - Implicit arguments are must be declared using square brackets instead of curly brackets: we must write `[a:Set]` instead of `{a:Set}`.
 - Term environments and rewrite patterns must be preceded by a dot: we must now write `$f.[x]` instead of `$f[x]`.
+
+#### Improve and simplify LP lexer (2021-12-07)
+
+- allow nested comments (fix #710)
+- replace everywhere `%S` by `\"%s\"`
+- move checking compatibility with Bindlib of identifiers from lexer to scope
+- move `is_keyword` from `lexer` to `pretty`
+- move `package.ml` from `common/` to `parsing/`
+- change `Config.map_dir` field type to `(Path.t * string) list`,
+  `Library.add_mapping` type to `Path.t * string -> unit`
+  and Compile.compile argument `lm` type to `Path.t * string`
 
 #### Update dkParser to be in sync with dkcheck (2021-11-30)
 

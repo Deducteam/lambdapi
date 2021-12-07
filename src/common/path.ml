@@ -15,9 +15,6 @@ module Path =
     (** [compare] is a standard comparison function on paths. *)
     let compare : t cmp = Stdlib.compare
 
-    (** [of_string s] converts a string [s] lexed as qid into a path. *)
-    let of_string : string -> t = Escape.split '.'
-
   end
 
 include Path
