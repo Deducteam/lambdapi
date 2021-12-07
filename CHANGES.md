@@ -3,7 +3,6 @@
 #### Improve and simplify LP lexer (2021-12-02)
 
 - allow nested comments (fix #710)
-- generate only one kind of identifiers
 - replace everywhere `%S` by `\"%s\"`
 - move checking compatibility with Bindlib of identifiers from lexer to scope
 - move `is_keyword` from `lexer` to `pretty`

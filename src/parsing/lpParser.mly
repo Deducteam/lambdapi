@@ -143,14 +143,14 @@ term_id:
   | i=qid { make_pos $sloc (P_Iden(i, false)) }
   | i=qid_expl { make_pos $sloc (P_Iden(i, true)) }
 
-param_id:
+param:
   | s=uid { Some s }
   | UNDERSCORE { None }
 
-params:
-  | x=param_id { ([x], None, false) }
-  | L_PAREN xs=param_id+ COLON a=term R_PAREN { (xs, Some(a), false) }
-  | L_CU_BRACKET xs=param_id+ a=preceded(COLON, term)? R_CU_BRACKET
+param_list:
+  | x=param { ([x], None, false) }
+  | L_PAREN xs=param+ COLON a=term R_PAREN { (xs, Some(a), false) }
+  | L_CU_BRACKET xs=param+ a=preceded(COLON, term)? R_CU_BRACKET
     { (xs, a, true) }
 
 rw_patt:
@@ -173,7 +173,7 @@ tactic:
   | q=query { make_pos $sloc (P_tac_query q) }
   | ADMIT { make_pos $sloc P_tac_admit }
   | APPLY t=term { make_pos $sloc (P_tac_apply t) }
-  | ASSUME xs=param_id+ { make_pos $sloc (P_tac_assume xs) }
+  | ASSUME xs=param+ { make_pos $sloc (P_tac_assume xs) }
   | FAIL { make_pos $sloc P_tac_fail }
   | FOCUS i=INT { make_pos $sloc (P_tac_focus i) }
   | GENERALIZE i=uid { make_pos $sloc (P_tac_generalize i) }
@@ -215,11 +215,11 @@ assert_kw:
   | ASSERTNOT { true }
 
 query:
-  | k=assert_kw ps=params* TURNSTILE t=term COLON a=term
+  | k=assert_kw ps=param_list* TURNSTILE t=term COLON a=term
     { let t = make_abst $startpos(ps) ps t $endpos(t) in
       let a = make_prod $startpos(ps) ps a $endpos(a) in
       make_pos $sloc (P_query_assert(k, P_assert_typing(t, a))) }
-  | k=assert_kw ps=params* TURNSTILE t=term EQUIV u=term
+  | k=assert_kw ps=param_list* TURNSTILE t=term EQUIV u=term
     { let t = make_abst $startpos(ps) ps t $endpos(t) in
       let u = make_abst $startpos(ps) ps u $endpos(u) in
       make_pos $sloc (P_query_assert(k, P_assert_conv(t, u))) }
@@ -243,12 +243,10 @@ proof_end:
 
 proof: BEGIN ts=terminated(tactic, SEMICOLON)* pe=proof_end { ts, pe }
 
-constructor:
-  | i=uid ps=params* COLON t=term
+constructor: i=uid ps=param_list* COLON t=term
     { (i, make_prod $startpos(ps) ps t $endpos(t)) }
 
-inductive:
-  | i=uid ps=params* COLON t=term ASSIGN
+inductive: i=uid ps=param_list* COLON t=term ASSIGN
     VBAR? l=separated_list(VBAR, constructor)
     { let t = make_prod $startpos(ps) ps t $endpos(t) in
       make_pos $sloc (i,t,l) }
@@ -267,19 +265,19 @@ command:
     { make_pos $sloc (P_require_as(i,a)) }
   | OPEN l=list(path) SEMICOLON
     { make_pos $sloc (P_open l) }
-  | ms=modifier* SYMBOL s=uid al=params* COLON a=term
+  | ms=modifier* SYMBOL s=uid al=param_list* COLON a=term
     po=proof? SEMICOLON
     { let sym =
         {p_sym_mod=ms; p_sym_nam=s; p_sym_arg=al; p_sym_typ=Some(a);
          p_sym_trm=None; p_sym_def=false; p_sym_prf=po}
       in make_pos $sloc (P_symbol(sym)) }
-  | ms=modifier* SYMBOL s=uid al=params* ao=preceded(COLON, term)?
+  | ms=modifier* SYMBOL s=uid al=param_list* ao=preceded(COLON, term)?
     ASSIGN tp=term_proof SEMICOLON
     { let sym =
         {p_sym_mod=ms; p_sym_nam=s; p_sym_arg=al; p_sym_typ=ao;
          p_sym_trm=fst tp; p_sym_prf=snd tp; p_sym_def=true}
       in make_pos $sloc (P_symbol(sym)) }
-  | ms=modifier* xs=params* INDUCTIVE
+  | ms=modifier* xs=param_list* INDUCTIVE
     is=separated_nonempty_list(WITH, inductive) SEMICOLON
       { make_pos $sloc (P_inductive(ms,xs,is)) }
   | RULE rs=separated_nonempty_list(WITH, rule) SEMICOLON
@@ -293,14 +291,13 @@ command:
 
 env: L_SQ_BRACKET ts=separated_list(SEMICOLON, term) R_SQ_BRACKET { ts }
 
-meta_id: UID_META { make_pos $sloc $1 }
-
 aterm:
   | ti=term_id { ti }
   | UNDERSCORE { make_pos $sloc P_Wild }
   | TYPE_TERM { make_pos $sloc P_Type }
-  | i=meta_id e=env?
-    { make_pos $sloc (P_Meta(i, Option.map Array.of_list e)) }
+  | s=UID_META e=env?
+    { let i = make_pos $loc(s) s in
+      make_pos $sloc (P_Meta(i, Option.map Array.of_list e)) }
   | s=UID_PATT e=env?
     { let i = if s = "_" then None else Some(make_pos $loc(s) s) in
       make_pos $sloc (P_Patt(i, Option.map Array.of_list e)) }
@@ -318,7 +315,7 @@ bterm:
       make_pos $sloc (P_Appl(q, b)) }
   | PI b=binder { make_pos $sloc (P_Prod(fst b, snd b)) }
   | LAMBDA b=binder { make_pos $sloc (P_Abst(fst b, snd b)) }
-  | LET x=uid a=params* b=preceded(COLON, term)? ASSIGN t=term IN u=term
+  | LET x=uid a=param_list* b=preceded(COLON, term)? ASSIGN t=term IN u=term
       { make_pos $sloc (P_LLet(x, a, b, t, u)) }
 
 term:
@@ -328,8 +325,8 @@ term:
   | t=saterm ARROW u=term { make_pos $sloc (P_Arro(t, u)) }
 
 binder:
-  | ps=params+ COMMA t=term { (ps, t) }
-  | p=param_id COLON a=term COMMA t=term { ([[p], Some a, false], t) }
+  | ps=param_list+ COMMA t=term { (ps, t) }
+  | p=param COLON a=term COMMA t=term { ([[p], Some a, false], t) }
 
 rule: l=term HOOK_ARROW r=term { make_pos $sloc (l, r) }
 
