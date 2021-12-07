@@ -8,9 +8,9 @@ Exception for tactics not really changing the current goal like "have": `/* proo
 
 Other modifications in the grammar:
 - Curly brackets are reserved for proof script structuration.
-- Implicit arguments are must be declared using square brackets instead of curly brackets: we must write `[a:Set]` instead of `{a:Set}`.
+- Implicit arguments must be declared using square brackets instead of curly brackets: we must write `[a:Set]` instead of `{a:Set}`.
 - Term environments and rewrite patterns must be preceded by a dot: we must now write `$f.[x]` instead of `$f[x]`.
-- Remove the `focus` command.
+- The `focus` command is removed since it breaks structuration.
 
 #### Improve and simplify LP lexer (2021-12-07)
 
