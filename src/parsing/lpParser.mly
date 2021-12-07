@@ -91,13 +91,11 @@
 
 // symbols
 
-%token AT
 %token ARROW
 %token ASSIGN
 %token BACKQUOTE
 %token COMMA
 %token COLON
-%token DOLLAR
 %token EQUIV
 %token HOOK_ARROW
 %token LAMBDA
@@ -105,7 +103,6 @@
 %token L_PAREN
 %token L_SQ_BRACKET
 %token PI
-%token QUESTION_MARK
 %token R_CU_BRACKET
 %token R_PAREN
 %token R_SQ_BRACKET
@@ -116,31 +113,35 @@
 
 // identifiers
 
-%token <string> ID
-%token <Path.t> PATH
+%token <string> UID
+%token <string> UID_EXPL
+%token <Syntax.meta_ident> UID_META
+%token <string> UID_PATT
+%token <Path.t> QID
+%token <Path.t> QID_EXPL
 
 // types
 
 %start <Syntax.p_command> command
-%start <Syntax.p_qident> id
+%start <Syntax.p_qident> qid
 
 %%
 
-uid: s=ID { make_pos $sloc s}
+uid: s=UID { make_pos $sloc s}
 
-id:
-  | p=PATH { qid_of_path $sloc p}
-  | s=ID { make_pos $sloc ([], s) }
+qid:
+  | s=UID { make_pos $sloc ([], s) }
+  | p=QID { qid_of_path $sloc p }
 
-path: p=PATH { make_pos $sloc (List.rev p) }
+path: p=QID { make_pos $sloc (List.rev p) }
+
+qid_expl:
+  | s=UID_EXPL { make_pos $sloc ([], s) }
+  | p=QID_EXPL { qid_of_path $sloc p }
 
 term_id:
-  | i=id { make_pos $sloc (P_Iden(i, false)) }
-  | AT i=id { make_pos $sloc (P_Iden(i, true)) }
-
-patt_id:
-  | s=uid { Some s }
-  | UNDERSCORE { None }
+  | i=qid { make_pos $sloc (P_Iden(i, false)) }
+  | i=qid_expl { make_pos $sloc (P_Iden(i, true)) }
 
 param_id:
   | s=uid { Some s }
@@ -183,7 +184,7 @@ tactic:
   | REWRITE d=ASSOC? p=delimited(L_SQ_BRACKET, rw_patt, R_SQ_BRACKET)? t=term
     { let b = match d with Some Pratter.Left -> false | _ -> true in
       make_pos $sloc (P_tac_rewrite(b,p,t)) }
-  | SIMPLIFY i=id? { make_pos $sloc (P_tac_simpl i) }
+  | SIMPLIFY i=qid? { make_pos $sloc (P_tac_simpl i) }
   | SOLVE { make_pos $sloc P_tac_solve }
   | SYMMETRY { make_pos $sloc P_tac_sym }
   | WHY3 s=STRINGLIT? { make_pos $sloc (P_tac_why3 s) }
@@ -224,7 +225,7 @@ query:
       make_pos $sloc (P_query_assert(k, P_assert_conv(t, u))) }
   | COMPUTE t=term
     { make_pos $sloc (P_query_normalize(t, {strategy=SNF; steps=None})) }
-  | PRINT i=id? { make_pos $sloc (P_query_print i) }
+  | PRINT i=qid? { make_pos $sloc (P_query_print i) }
   | PROOFTERM { make_pos $sloc P_query_proofterm }
   | DEBUG fl=DEBUG_FLAGS
     { let (b, s) = fl in make_pos $sloc (P_query_debug(b, s)) }
@@ -283,27 +284,26 @@ command:
       { make_pos $sloc (P_inductive(ms,xs,is)) }
   | RULE rs=separated_nonempty_list(WITH, rule) SEMICOLON
       { make_pos $sloc (P_rules(rs)) }
-  | BUILTIN s=STRINGLIT ASSIGN i=id SEMICOLON
+  | BUILTIN s=STRINGLIT ASSIGN i=qid SEMICOLON
     { make_pos $loc (P_builtin(s,i)) }
   | UNIF_RULE r=unif_rule SEMICOLON { make_pos $loc (P_unif_rule(r)) }
-  | NOTATION i=id n=notation SEMICOLON { make_pos $loc (P_notation(i,n)) }
+  | NOTATION i=qid n=notation SEMICOLON { make_pos $loc (P_notation(i,n)) }
   | q=query SEMICOLON { make_pos $sloc (P_query(q)) }
   | EOF { raise End_of_file }
 
 env: L_SQ_BRACKET ts=separated_list(SEMICOLON, term) R_SQ_BRACKET { ts }
 
-meta_id:
-  | n=INT { make_pos $sloc (Numb n) }
-  | i=ID { make_pos $sloc (Name i) }
+meta_id: UID_META { make_pos $sloc $1 }
 
 aterm:
   | ti=term_id { ti }
   | UNDERSCORE { make_pos $sloc P_Wild }
   | TYPE_TERM { make_pos $sloc P_Type }
-  | QUESTION_MARK i=meta_id e=env?
+  | i=meta_id e=env?
     { make_pos $sloc (P_Meta(i, Option.map Array.of_list e)) }
-  | DOLLAR i=patt_id e=env?
-    { make_pos $sloc (P_Patt(i, Option.map Array.of_list e)) }
+  | s=UID_PATT e=env?
+    { let i = if s = "_" then None else Some(make_pos $loc(s) s) in
+      make_pos $sloc (P_Patt(i, Option.map Array.of_list e)) }
   | L_PAREN t=term R_PAREN { make_pos $sloc (P_Wrap(t)) }
   | L_CU_BRACKET t=term R_CU_BRACKET { make_pos $sloc (P_Expl(t)) }
   | n=INT { make_pos $sloc (P_NLit(n)) }

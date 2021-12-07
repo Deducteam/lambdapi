@@ -12,6 +12,9 @@ let remove_first : Sedlexing.lexbuf -> string = fun lb ->
 let remove_last : Sedlexing.lexbuf -> string = fun lb ->
   Utf8.sub_lexeme lb 0 (lexeme_length lb - 1)
 
+let remove_ends : Sedlexing.lexbuf -> string = fun lb ->
+  Utf8.sub_lexeme lb 1 (lexeme_length lb - 2)
+
 exception SyntaxError of strloc
 
 let fail : Sedlexing.lexbuf -> string -> 'a = fun lb msg ->
@@ -93,11 +96,9 @@ type token =
   (* symbols *)
   | ARROW
   | ASSIGN
-  | AT
   | BACKQUOTE
   | COMMA
   | COLON
-  | DOLLAR
   | EQUIV
   | HOOK_ARROW
   | LAMBDA
@@ -105,7 +106,6 @@ type token =
   | L_PAREN
   | L_SQ_BRACKET
   | PI
-  | QUESTION_MARK
   | R_CU_BRACKET
   | R_PAREN
   | R_SQ_BRACKET
@@ -115,8 +115,12 @@ type token =
   | VBAR
 
   (* identifiers *)
-  | ID of string
-  | PATH of Path.t (* in reverse order *)
+  | UID of string
+  | UID_EXPL of string
+  | UID_META of Syntax.meta_ident
+  | UID_PATT of string
+  | QID of Path.t (* in reverse order *)
+  | QID_EXPL of Path.t (* in reverse order *)
 
 (** Some regexp definitions. *)
 let digit = [%sedlex.regexp? '0' .. '9']
@@ -275,26 +279,36 @@ let rec token lb =
   | 0x22a2 (* ⊢ *) -> TURNSTILE
   | '|' -> VBAR
   | '_' -> UNDERSCORE
-  | '?' -> QUESTION_MARK
-  | '$' -> DOLLAR
-  | '@' -> AT
 
   (* identifiers *)
-  | regid -> ID(Utf8.lexeme lb)
-  | escid -> ID(remove_useless_escape(Utf8.lexeme lb))
+  | regid -> UID(Utf8.lexeme lb)
+  | escid -> UID(remove_useless_escape(Utf8.lexeme lb))
+  | '@', regid -> UID_EXPL(remove_first lb)
+  | '@', escid -> UID_EXPL(remove_useless_escape(remove_first lb))
+  | '?', nat -> UID_META(Numb(int_of_string(remove_first lb)))
+  | '?', regid -> UID_META(Name(remove_first lb))
+  | '?', escid -> UID_META(Name(remove_useless_escape(remove_first lb)))
+  | '$', regid -> UID_PATT(remove_first lb)
+  | '$', escid -> UID_PATT(remove_useless_escape(remove_first lb))
 
-  | regid, '.' -> path [remove_last lb] lb
-  | escid, '.' -> path [remove_useless_escape(remove_last lb)] lb
+  | regid, '.' -> qid false [remove_last lb] lb
+  | escid, '.' -> qid false [remove_useless_escape(remove_last lb)] lb
+  | '@', regid, '.' -> qid true [remove_ends lb] lb
+  | '@', escid, '.' -> qid true [remove_useless_escape(remove_ends lb)] lb
 
   (* invalid character *)
   | _ -> invalid_character lb
 
-and path ids lb =
+and qid expl ids lb =
   match%sedlex lb with
-  | regid, '.' -> path (remove_last lb :: ids) lb
-  | escid, '.' -> path (remove_useless_escape(remove_last lb) :: ids) lb
-  | regid -> PATH(Utf8.lexeme lb :: ids)
-  | escid -> PATH(remove_useless_escape (Utf8.lexeme lb) :: ids)
+  | regid, '.' -> qid expl (remove_last lb :: ids) lb
+  | escid, '.' -> qid expl (remove_useless_escape(remove_last lb) :: ids) lb
+  | regid ->
+    if expl then QID_EXPL(Utf8.lexeme lb :: ids)
+    else QID(Utf8.lexeme lb :: ids)
+  | escid ->
+    if expl then QID_EXPL(remove_useless_escape (Utf8.lexeme lb) :: ids)
+    else QID(remove_useless_escape (Utf8.lexeme lb) :: ids)
   | _ ->
     fail lb ("Invalid identifier: \""
              ^ String.concat "." (List.rev (Utf8.lexeme lb :: ids)) ^ "\".")
