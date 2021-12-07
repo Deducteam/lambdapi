@@ -1,6 +1,6 @@
 ### Unreleased
 
-#### Improve and simplify LP lexer (2021-12-02)
+#### Improve and simplify LP lexer (2021-12-07)
 
 - allow nested comments (fix #710)
 - replace everywhere `%S` by `\"%s\"`
