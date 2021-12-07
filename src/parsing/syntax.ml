@@ -35,8 +35,7 @@ type p_meta_ident = meta_ident loc
 type p_path = Path.t loc
 
 (** Representation of a possibly qualified (and located) identifier. *)
-type qident = Term.qident
-type p_qident = qident loc
+type p_qident = Term.qident loc
 
 (** Parser-level (located) term representation. *)
 type p_term = p_term_aux loc

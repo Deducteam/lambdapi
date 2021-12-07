@@ -2,6 +2,7 @@ open Cmdliner
 open Common
 open Library
 open Error
+open Parsing
 
 let run_command : bool -> string -> unit = fun dry_run cmd ->
   if dry_run then Console.out 1 "%s" cmd else

@@ -4,6 +4,11 @@ open! Lplib
 open Cmdliner
 open Common
 open Library
+open Parsing
+
+type qident = Core.Term.qident
+
+module CLT = Cmdliner.Term
 
 (** {3 Configuration type for common values} *)
 
@@ -11,7 +16,7 @@ open Library
 type config =
   { gen_obj     : bool
   ; lib_root    : string option
-  ; map_dir     : (string * string) list
+  ; map_dir     : (Path.t * string) list
   ; verbose     : int option
   ; no_warnings : bool
   ; debug       : string
@@ -67,7 +72,7 @@ let init : config -> unit = fun cfg ->
 
 (** General purpose options. *)
 
-let gen_obj : bool Term.t =
+let gen_obj : bool CLT.t =
   let doc =
     Printf.sprintf
       "Produce object files with the [%s] extension. These object files can \
@@ -78,7 +83,7 @@ let gen_obj : bool Term.t =
   in
   Arg.(value & flag & info ["gen-obj"; "c"] ~doc)
 
-let lib_root : string option Term.t =
+let lib_root : string option CLT.t =
   let doc =
     "Set the library root to be the directory $(docv). The library root \
      is a common path under which every module is placed. \
@@ -94,7 +99,15 @@ let lib_root : string option Term.t =
   in
   Arg.(value & opt (some dir) None & info ["lib-root"] ~docv:"DIR" ~doc)
 
-let map_dir : (string * string) list Term.t =
+let map_dir : (Path.t * string) list CLT.t =
+  let path_conv: Path.t Arg.conv =
+    let parse (s: string): (Path.t, [>`Msg of string]) result =
+      try Ok(Parser.path_of_string s)
+      with Error.Fatal(_,s) -> Error(`Msg(s))
+    in
+    let print fmt p = Path.pp fmt p in
+    Arg.conv (parse, print)
+  in
   let doc =
     "Map all the modules having MOD as a prefix of their module path to \
      files under the directory DIR. The corresponding modules under the \
@@ -103,11 +116,11 @@ let map_dir : (string * string) list Term.t =
      expected folder under the library root."
   in
   let i = Arg.(info ["map-dir"] ~docv:"MOD:DIR" ~doc) in
-  Arg.(value & opt_all (pair ~sep:':' string dir) [] & i)
+  Arg.(value & opt_all (pair ~sep:':' path_conv dir) [] & i)
 
 (** Debugging and output options. *)
 
-let verbose : int option Term.t =
+let verbose : int option CLT.t =
   let doc =
     "Set the verbosity level to $(docv). A value smaller or equal to 0 will \
      disable all printing (on standard output). Greater numbers lead to more \
@@ -115,13 +128,13 @@ let verbose : int option Term.t =
   in
   Arg.(value & opt (some int) None & info ["verbose"; "v"] ~docv:"NUM" ~doc)
 
-let no_warnings : bool Term.t =
+let no_warnings : bool CLT.t =
   let doc =
     "Disable the printing of all warnings."
   in
   Arg.(value & flag & info ["no-warnings"; "w"] ~doc)
 
-let debug : string Term.t =
+let debug : string CLT.t =
   let descs =
     let fn (k, d) = Printf.sprintf "$(b,\"%c\") (for %s)" k d in
     String.concat ", " (List.map fn (Logger.log_summary ()))
@@ -133,7 +146,7 @@ let debug : string Term.t =
   in
   Arg.(value & opt string "" & info ["debug"] ~docv:"FLAGS" ~doc)
 
-let no_colors : bool Term.t =
+let no_colors : bool CLT.t =
   let doc =
     "Disable the use of colors when printing to the terminal. Note that the \
      default behaviour is to rely on ANSI escape sequences in order to make \
@@ -141,14 +154,14 @@ let no_colors : bool Term.t =
   in
   Arg.(value & flag & info ["no-colors"] ~doc)
 
-let record_time : bool Term.t =
+let record_time : bool CLT.t =
   let doc =
     "Print statistics on the time spent in different tasks (parsing, typing, \
      etc.). Note that it slows down the program."
   in
   Arg.(value & flag & info ["record-time"] ~doc)
 
-let too_long : float Term.t =
+let too_long : float CLT.t =
   let doc =
     "Print a warning every time that a command requires more than $(docv) \
      seconds to execute. The command is not interrupted."
@@ -157,7 +170,7 @@ let too_long : float Term.t =
 
 (** External checker options. *)
 
-let confluence : string option Term.t =
+let confluence : string option CLT.t =
   let doc =
     "Use the command $(docv) for checking confluence. The command $(docv) \
      should accept HRS-formatted text on its standard input (For more info \
@@ -167,7 +180,7 @@ let confluence : string option Term.t =
   in
   Arg.(value & opt (some string) None & info ["confluence"] ~docv:"CMD" ~doc)
 
-let termination : string option Term.t =
+let termination : string option CLT.t =
   let doc =
     "Use the command $(docv) for checking termination. The command $(docv) \
      should accept XTC-formatted text on its standard input (for more info \
@@ -179,7 +192,7 @@ let termination : string option Term.t =
 (** Gathering options under a configuration. *)
 
 (** [full] gathers the command line arguments common to most commands. *)
-let full : config Term.t =
+let full : config CLT.t =
   let fn gen_obj lib_root map_dir verbose no_warnings debug
       no_colors record_time too_long confluence termination =
     { gen_obj ; lib_root ; map_dir ; verbose ; no_warnings ; debug
@@ -191,8 +204,8 @@ let full : config Term.t =
 
 (** [minimal] gathers the minimal command line options to enable debugging and
     access to the library root. *)
-let minimal : config Term.t =
+let minimal : config CLT.t =
   let fn lib_root map_dir verbose debug no_colors =
     { default_config with lib_root ; map_dir ; verbose ; debug ; no_colors }
   in
-  Term.(const fn $ lib_root $ map_dir $ verbose $ debug $ no_colors)
+  CLT.(const fn $ lib_root $ map_dir $ verbose $ debug $ no_colors)

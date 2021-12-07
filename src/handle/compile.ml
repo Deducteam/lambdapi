@@ -41,7 +41,7 @@ let rec compile_with :
     | (false, false) ->
         fatal_no_pos "File \"%s.lp\" (or .dk) not found." base
     | (true , true ) ->
-        wrn None "Both %S and %S exist. We take %S."
+        wrn None "Both \"%s\" and \"%s\" exist. We take \"%s\"."
           src legacy src; src
     | (true , false) -> src
     | (false, true ) -> legacy
@@ -49,7 +49,7 @@ let rec compile_with :
   let obj = base ^ obj_extension in
   if List.mem mp !loading then
     begin
-      fatal_msg "Circular dependencies detected in %S.@." (src ());
+      fatal_msg "Circular dependencies detected in \"%s\".@." (src ());
       fatal_msg "Dependency stack for module %a:@." Print.pp_path mp;
       List.iter (fatal_msg "- %a@." Print.pp_path) !loading;
       fatal_no_pos "Build aborted."
@@ -61,7 +61,7 @@ let rec compile_with :
     begin
       let forced = if force then " (forced)" else "" in
       let src = src () in
-      Console.out 1 "Checking %S%s ..." src forced;
+      Console.out 1 "Loading \"%s\"%s ..." src forced;
       loading := mp :: !loading;
       let sign = Sig_state.create_sign mp in
       let sig_st = Stdlib.ref (Sig_state.of_sign sign) in
@@ -81,7 +81,7 @@ let rec compile_with :
     end
     else
     begin
-      Console.out 1 "Loading %S ..." (src ());
+      Console.out 1 "Loading \"%s\" ..." (src ());
       let sign = Sign.read obj in
       let compile mp _ = ignore (compile_with ~handle ~force:false mp) in
       Path.Map.iter compile !(sign.sign_deps);
@@ -121,8 +121,8 @@ open Console
     they have finished. An optional library mapping or state can be passed as
     argument to change the settings. *)
 module Pure : sig
-  val compile : ?lm:string*string -> ?st:State.t -> bool -> Path.t -> Sign.t
-  val compile_file : ?lm:string*string -> ?st:State.t -> string -> Sign.t
+  val compile : ?lm:Path.t*string -> ?st:State.t -> bool -> Path.t -> Sign.t
+  val compile_file : ?lm:Path.t*string -> ?st:State.t -> string -> Sign.t
 end = struct
 
   (* [pure_apply_cfg ?lm ?st f] is function [f] but pure (without side
@@ -130,7 +130,7 @@ end = struct
      {!val:Library.lib_mappings}. Arguments [?lm] allows to set the library
      mappings and [?st] sets the state. *)
   let pure_apply_cfg :
-        ?lm:string*string -> ?st:State.t -> ('a -> 'b) -> 'a -> 'b =
+        ?lm:Path.t*string -> ?st:State.t -> ('a -> 'b) -> 'a -> 'b =
     fun ?lm ?st f x ->
     let libmap = !lib_mappings in
     State.push ();

@@ -1,5 +1,16 @@
 ### Unreleased
 
+#### Improve and simplify LP lexer (2021-12-07)
+
+- allow nested comments (fix #710)
+- replace everywhere `%S` by `\"%s\"`
+- move checking compatibility with Bindlib of identifiers from lexer to scope
+- move `is_keyword` from `lexer` to `pretty`
+- move `package.ml` from `common/` to `parsing/`
+- change `Config.map_dir` field type to `(Path.t * string) list`,
+  `Library.add_mapping` type to `Path.t * string -> unit`
+  and Compile.compile argument `lm` type to `Path.t * string`
+
 #### Update dkParser to be in sync with dkcheck (2021-11-30)
 
 #### Add option --record-time (2021-11-30)
