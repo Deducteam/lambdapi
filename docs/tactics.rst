@@ -194,11 +194,11 @@ Replaces a goal of the form ``P (t = u)`` by the goal ``P (u = t)``.
 ``rewrite``
 -----------
 
-The ``rewrite`` tactic takes as argument a term ``t`` of type
-``Π x₁ … xₙ,P(l = r)`` prefixed by an optional ``left`` (to indicate that the
+The ``rewrite`` tactic takes as argument a term ``t`` of type ``Π x₁ …
+xₙ,P(l = r)`` prefixed by an optional ``left`` (to indicate that the
 equation should be used from right to left) and an optional rewrite
-pattern in square brackets, following the syntax and semantics of
-SSReflect rewrite patterns:
+pattern in square brackets prefixed by a dot, following the syntax and
+semantics of SSReflect rewrite patterns:
 
 ::
 
@@ -210,7 +210,8 @@ SSReflect rewrite patterns:
      | <term> "in" <ident> "in" <term>
      | <term> "as" <ident> "in" <term>
 
-See `A Small Scale Reflection Extension for the Coq
+See examples in `rewrite1.lp <https://github.com/Deducteam/lambdapi/blob/master/tests/OK/rewrite1.lp>`_
+and `A Small Scale Reflection Extension for the Coq
 system <http://hal.inria.fr/inria-00258384>`_, by Georges Gonthier,
 Assia Mahboubi and Enrico Tassi, INRIA Research Report 6455, 2016,
 section 8, p. 48, for more details.
