@@ -8,7 +8,7 @@ symbol Prop ≔ τ prop;
 
 constant symbol ⊤ : Prop;
 
-constant symbol ∀ {a} : (τ a → Prop) → Prop;
+constant symbol ∀ [a] : (τ a → Prop) → Prop;
 
 notation ∀ quantifier;
 

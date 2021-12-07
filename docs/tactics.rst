@@ -16,9 +16,24 @@ goals at once, all the other tactics applies to the first goal only,
 which is called the *focused* goal, and this focused goal must be a
 typing goal.
 
-One can change the focus goal by using the ``focus`` tactic.
-
 The proof is complete only when all generated goals have been solved.
+
+Proof scripts must be structured. The general rule is: when a tactic
+generates several subgoals, the proof of each subgoal must be enclosed
+between curly brackets:
+
+::
+   
+   opaque symbol ≤0 [x] : π(x ≤ 0 ⇒ x = 0) ≔
+   begin
+     have l : Π x y, π(x ≤ y ⇒ y = 0 ⇒ x = 0)
+     { // subproof of l
+       refine ind_≤ _ _ _
+       { /* case 0 */ reflexivity }
+       { /* case s */ assume x y xy h a; apply ⊥ₑ; apply s≠0 _ a }
+     };
+     assume x h; apply l _ _ h _; reflexivity
+   end;
 
 Reminder: the BNF grammar of tactics is in `syntax.bnf <https://raw.githubusercontent.com/Deducteam/lambdapi/master/docs/syntax.bnf>`__.
 
@@ -26,14 +41,6 @@ Reminder: the BNF grammar of tactics is in `syntax.bnf <https://raw.githubuserco
 ---------
 
 Start a proof.
-
-``focus``
----------
-
-Put the focus on another goal. A goal is identified by its number in
-the list of goals displayed by the ``print`` command. In Emacs,
-clicking on the goal will add the required ``focus`` command in the
-source.
 
 ``end``
 -------
@@ -170,9 +177,9 @@ declarations:
 
    builtin "T"     ≔ … // : U → TYPE
    builtin "P"     ≔ … // : Prop → TYPE
-   builtin "eq"    ≔ … // : Π {a}, T a → T a → Prop
-   builtin "refl"  ≔ … // : Π {a} (x:T a), P(x = x)
-   builtin "eqind" ≔ … // : Π {a} x y, P(x = y) → Π p:T a → Prop, P(p y) → P(p x)
+   builtin "eq"    ≔ … // : Π [a], T a → T a → Prop
+   builtin "refl"  ≔ … // : Π [a] (x:T a), P(x = x)
+   builtin "eqind" ≔ … // : Π [a] x y, P(x = y) → Π p:T a → Prop, P(p y) → P(p x)
 
 ``reflexivity``
 ---------------
@@ -187,11 +194,11 @@ Replaces a goal of the form ``P (t = u)`` by the goal ``P (u = t)``.
 ``rewrite``
 -----------
 
-The ``rewrite`` tactic takes as argument a term ``t`` of type
-``Π x₁ … xₙ,P(l = r)`` prefixed by an optional ``left`` (to indicate that the
+The ``rewrite`` tactic takes as argument a term ``t`` of type ``Π x₁ …
+xₙ,P(l = r)`` prefixed by an optional ``left`` (to indicate that the
 equation should be used from right to left) and an optional rewrite
-pattern in square brackets, following the syntax and semantics of
-SSReflect rewrite patterns:
+pattern in square brackets prefixed by a dot, following the syntax and
+semantics of SSReflect rewrite patterns:
 
 ::
 
@@ -203,7 +210,8 @@ SSReflect rewrite patterns:
      | <term> "in" <ident> "in" <term>
      | <term> "as" <ident> "in" <term>
 
-See `A Small Scale Reflection Extension for the Coq
+See examples in `rewrite1.lp <https://github.com/Deducteam/lambdapi/blob/master/tests/OK/rewrite1.lp>`_
+and `A Small Scale Reflection Extension for the Coq
 system <http://hal.inria.fr/inria-00258384>`_, by Georges Gonthier,
 Assia Mahboubi and Enrico Tassi, INRIA Research Report 6455, 2016,
 section 8, p. 48, for more details.

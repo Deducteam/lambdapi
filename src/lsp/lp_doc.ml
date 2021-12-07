@@ -53,10 +53,10 @@ let buf_get_and_clear buf =
   let res = Buffer.contents buf in
   Buffer.clear buf; res
 
-let process_pstep (pstate,diags,logs) tac =
+let process_pstep (pstate,diags,logs) tac nb_subproofs =
   let open Pure in
   let tac_loc = Tactic.get_pos tac in
-  let hndl_tac_res = handle_tactic pstate tac in
+  let hndl_tac_res = handle_tactic pstate tac nb_subproofs in
   let logs = ((3, buf_get_and_clear lp_logger), tac_loc) :: logs in
   match hndl_tac_res with
   | Tac_OK (pstate, qres) ->
@@ -68,7 +68,7 @@ let process_pstep (pstate,diags,logs) tac =
     pstate, (loc, 1, msg, None) :: diags, ((1, msg), loc) :: logs
 
 let process_proof pstate tacs logs =
-  List.fold_left process_pstep (pstate,[],logs) tacs
+  Pure.ProofTree.fold process_pstep (pstate,[],logs) tacs
 
 let get_goals dg_proof =
   let rec get_goals_aux goals dg_proof =

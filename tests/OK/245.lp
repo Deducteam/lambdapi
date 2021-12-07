@@ -18,23 +18,23 @@ notation --> infix right 6;
 
 rule eps ($a --> $b) ↪ eps $a → eps $b;
 
-constant symbol all : Π {A : Type}, eta ((A > o) > o);
+constant symbol all : Π [A : Type], eta ((A > o) > o);
 rule eps (@all $a $b) ↪ Π (x : eta $a), eps ($b x);
 
 // Leibniz equality
 symbol = :
-  Π {A : Type}, eta (A > A > o) ≔
+  Π [A : Type], eta (A > A > o) ≔
   λ A x y, all (λ p , p x 
   --> p y);
 notation = infix right 7;
 
 // reflexivity of equality
 symbol eq_refl :
-  Π {A : Type}, eps (@all A (λ x, x = x)) ≔
+  Π [A : Type], eps (@all A (λ x, x = x)) ≔
   λ A x q H, H;
 
 // symmetry of equality
 symbol eq_sym :
-  Π {A : Type} (x y : eta A),
+  Π [A : Type] (x y : eta A),
   eps (x = y --> y = x) ≔
   λ A x y H, H (λ y, y = x) (eq_refl x);

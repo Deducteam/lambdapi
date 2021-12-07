@@ -50,6 +50,13 @@ module Tactic = struct
   let print = Util.pp_located Pretty.tactic
 end
 
+(** Representation of a single proof (abstract). *)
+module ProofTree = struct
+  type t = Syntax.p_proof
+  let equal = Syntax.eq_p_proof
+  let fold = Syntax.fold_proof
+end
+
 type state = Time.t * Sig_state.t
 
 (** Exception raised by [parse_text] on error. *)
@@ -119,7 +126,7 @@ let current_goals : proof_state -> goal list =
 
 type command_result =
   | Cmd_OK    of state * string option
-  | Cmd_Proof of proof_state * Tactic.t list * Pos.popt * Pos.popt
+  | Cmd_Proof of proof_state * ProofTree.t * Pos.popt * Pos.popt
   | Cmd_Error of Pos.popt option * string
 
 type tactic_result =
@@ -154,15 +161,14 @@ let handle_command : state -> Command.t -> command_result =
     | None ->
         let qres = Option.map (fun f -> f ()) qres in Cmd_OK ((t, ss), qres)
     | Some(d) ->
-        let ps = (t, ss, d.pdata_p_state, d.pdata_finalize, d.pdata_prv) in
-        let ts = d.pdata_tactics in
-        Cmd_Proof(ps, ts, d.pdata_stmt_pos, d.pdata_end_pos)
+        let ps = (t, ss, d.pdata_state, d.pdata_finalize, d.pdata_prv) in
+        Cmd_Proof(ps, d.pdata_proof, d.pdata_sym_pos, d.pdata_end_pos)
   with Fatal(p,m) -> Cmd_Error(p,m)
 
-let handle_tactic : proof_state -> Tactic.t -> tactic_result =
-  fun (_, ss, ps, finalize, prv) tac ->
+let handle_tactic : proof_state -> Tactic.t -> int -> tactic_result =
+  fun (_, ss, ps, finalize, prv) tac n ->
   try
-    let ss, ps, qres = Handle.Tactic.handle ss prv ps tac in
+    let ss, ps, qres = Handle.Tactic.handle prv (ss, ps, None) tac n in
     let qres = Option.map (fun f -> f ()) qres in
     Tac_OK((Time.save (), ss, ps, finalize, prv), qres)
   with Fatal(p,m) -> Tac_Error(p,m)

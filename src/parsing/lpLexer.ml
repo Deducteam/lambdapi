@@ -47,7 +47,6 @@ type token =
   | END
   | FAIL
   | FLAG
-  | FOCUS
   | GENERALIZE
   | HAVE
   | IN
@@ -99,6 +98,7 @@ type token =
   | BACKQUOTE
   | COMMA
   | COLON
+  | DOT
   | EQUIV
   | HOOK_ARROW
   | LAMBDA
@@ -211,7 +211,6 @@ let rec token lb =
   | "end" -> END
   | "fail" -> FAIL
   | "flag" -> FLAG
-  | "focus" -> FOCUS
   | "generalize" -> GENERALIZE
   | "have" -> HAVE
   | "in" -> IN
@@ -265,6 +264,7 @@ let rec token lb =
   | '`' -> BACKQUOTE
   | ',' -> COMMA
   | ':' -> COLON
+  | '.' -> DOT
   | 0x2261 (* ≡ *) -> EQUIV
   | 0x21aa (* ↪ *) -> HOOK_ARROW
   | 0x03bb (* λ *) -> LAMBDA

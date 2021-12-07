@@ -31,7 +31,7 @@ constant symbol Vect : T Nat → U;
 symbol nil : T (Vect zero);
 
 // The nat is declared to be implicit
-constant symbol cons : Π{n:T Nat}, T Bool → T (Vect n) → T (Vect (s n));
+constant symbol cons : Π[n:T Nat], T Bool → T (Vect n) → T (Vect (s n));
 
 // TEST IMPLICIT ARGUMENTS FOR A DEFINITION, WITHOUT THE @ MARKER
 // [true]
@@ -57,4 +57,4 @@ symbol append : Π (n:T Nat) (m:T Nat), T (Vect n) → T (Vect m) → T (Vect (n
 rule append zero    $m nil           $v2  ↪ $v2;
 rule append (s $pn) $m (cons $h $t)  $v2  ↪ @cons ($pn + $m) $h (append $pn $m $t $v2);
 
-rule append (s $pn) $m (cons $h $t)  $v2  ↪ cons {$pn + $m} $h (append $pn $m $t $v2);
+rule append (s $pn) $m (cons $h $t)  $v2  ↪ cons [$pn + $m] $h (append $pn $m $t $v2);

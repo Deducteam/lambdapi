@@ -10,5 +10,5 @@
    symbol idF n : F n → F n ≔
    begin
      assume n x;
-     apply x;
+     apply x
    end;

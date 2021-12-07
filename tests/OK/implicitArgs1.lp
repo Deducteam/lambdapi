@@ -16,11 +16,11 @@ constant symbol s : N → N;
 // Mini polymorphic lists
 constant symbol List : U → U;
 
-constant symbol nil : Π{Typ:U}, T(List Typ);
+constant symbol nil : Π[Typ:U], T(List Typ);
 // A version in full, without implicit arguments
 constant symbol nilF : Π(Typ:U), T(List Typ);
 
-constant symbol cons : Π{Typ:U}, T Typ → T (List Typ) → T (List Typ);
+constant symbol cons : Π[Typ:U], T Typ → T (List Typ) → T (List Typ);
 // A version in full, without implicit arguments
 constant symbol consF : Π(Typ:U), T Typ → T (List Typ) → T (List Typ);
 

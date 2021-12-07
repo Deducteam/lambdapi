@@ -3,7 +3,7 @@ symbol Type : TYPE;
 
 injective symbol π : Prop → TYPE;
 
-symbol ∀ {x : Prop} : (π x → Prop) → Prop;
+symbol ∀ [x : Prop] : (π x → Prop) → Prop;
 
 rule π (∀ $f) ↪  Π w, π ($f w);
 
@@ -28,5 +28,5 @@ symbol is_true ≔ if ⊤ ⊥;
 symbol test b : π (is_true b ⇒ ⊤)
 ≔ begin
   assume b H;
-  refine top;
+  refine top
 end;

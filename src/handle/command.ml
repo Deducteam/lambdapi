@@ -176,14 +176,17 @@ let handle_inductive_symbol : sig_state -> expo -> prop -> match_strat
     the proof mode is entered, and its finalizer is called when the proof mode
     is exited (i.e., when a terminator like “end” is used).  Note that tactics
     do not work on this structure directly,  although they act on the contents
-    of its [pdata_p_state] field. *)
+    of its [pdata_state] field. *)
 type proof_data =
-  { pdata_stmt_pos : Pos.popt (** Position of the declared symbol. *)
-  ; pdata_p_state  : proof_state (** Proof state. *)
-  ; pdata_tactics  : p_tactic list (** Tactics. *)
+  { pdata_sym_pos  : Pos.popt (** Position of the declared symbol. *)
+  ; pdata_state    : proof_state (** Proof state. *)
+  ; pdata_proof    : p_proof (** Proof. *)
   ; pdata_finalize : sig_state -> proof_state -> sig_state (** Finalizer. *)
   ; pdata_end_pos  : Pos.popt (** Position of the proof's terminator. *)
   ; pdata_prv      : bool (** [true] iff private symbols are allowed. *) }
+
+(** Representation of a command output. *)
+type cmd_output = sig_state * proof_data option * Query.result
 
 (** [get_proof_data compile ss cmd] tries to handle the command [cmd] with
     [ss] as the signature state and [compile] as the main compilation function
@@ -193,8 +196,7 @@ type proof_data =
     This structure contains the list of the tactics to be executed, as well as
     the initial state of the proof.  The checking of the proof is then handled
     separately. Note that [Fatal] is raised in case of an error. *)
-let get_proof_data : compiler -> sig_state -> p_command ->
-  sig_state * proof_data option * Query.result =
+let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
   fun compile ss ({elt; pos} as cmd) ->
   Console.out 3 (Color.cya "%a") Pos.pp pos;
   Console.out 4 "%a" Pretty.command cmd;
@@ -412,7 +414,7 @@ let get_proof_data : compiler -> sig_state -> p_command ->
             | Some {elt=t;pos} -> Query.infer pos p [] t
       in
       (* Get tactics and proof end. *)
-      let pdata_tactics, pe =
+      let pdata_proof, pe =
         match p_sym_prf with
         | None -> [], Pos.make (Pos.end_pos pos) P_proof_end
         | Some (ts, pe) -> ts, pe
@@ -454,15 +456,14 @@ let get_proof_data : compiler -> sig_state -> p_command ->
         | P_proof_end ->
             (* Check that the proof is indeed finished. *)
             if not (finished ps) then
-              (Console.out 1 "%a" Proof.pp_goals ps;
-               fatal pe.pos "The proof is not finished.");
+              fatal pe.pos "The proof is not finished.";
             (* Add the symbol in the signature. *)
             Console.out 2 (Color.red "symbol %a : %a") pp_uid id pp_term a;
             let t = Option.map (fun t -> t.elt) t in
             fst (add_symbol ss expo prop mstrat opaq p_sym_nam a impl t)
       in
       (* Create the proof state. *)
-      let pdata_p_state =
+      let pdata_state =
         let proof_goals = Proof.add_goals_of_problem p [] in
         if p_sym_def then
           (* Add a new focused goal and refine on it. *)
@@ -481,9 +482,9 @@ let get_proof_data : compiler -> sig_state -> p_command ->
           let ps = {proof_name = p_sym_nam; proof_term = None; proof_goals} in
           Tactic.tac_solve pos ps
       in
-      if p_sym_prf = None && not (finished pdata_p_state) then wrn pos
+      if p_sym_prf = None && not (finished pdata_state) then wrn pos
         "Some metavariables could not be solved: a proof must be given";
-      { pdata_stmt_pos=p_sym_nam.pos; pdata_p_state; pdata_tactics
+      { pdata_sym_pos=p_sym_nam.pos; pdata_state; pdata_proof
       ; pdata_finalize; pdata_end_pos=pe.pos; pdata_prv }
     in
     (ss, Some pdata, None)
@@ -496,8 +497,7 @@ let too_long = Stdlib.ref infinity
     exception handling. In particular, the position of [cmd] is used on errors
     that lack a specific position. All exceptions except [Timeout] and [Fatal]
     are captured, although they should not occur. *)
-let get_proof_data : compiler -> sig_state -> p_command ->
-  sig_state * proof_data option * Query.result =
+let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
   fun compile ss ({pos;_} as cmd) ->
   Print.sig_state := ss;
   try
@@ -526,9 +526,7 @@ let handle : compiler -> Sig_state.t -> Syntax.p_command -> Sig_state.t =
   match p with
   | None -> ss
   | Some d ->
-      let ss, ps, _ =
-        List.fold_left
-          (fun (ss, ps, _) tac -> Tactic.handle ss d.pdata_prv ps tac)
-          (ss, d.pdata_p_state, None) d.pdata_tactics
-      in
-      d.pdata_finalize ss ps
+    let ss, ps, _ =
+      fold_proof (Tactic.handle d.pdata_prv)
+        (ss, d.pdata_state, None) d.pdata_proof
+    in d.pdata_finalize ss ps
