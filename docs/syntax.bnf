@@ -51,7 +51,6 @@
            | apply <term>
            | assume <param>+
            | fail
-           | focus <int>
            | generalize <uid>
            | have <uid> : <term>
            | induction
