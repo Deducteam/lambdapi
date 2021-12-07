@@ -2,7 +2,7 @@
 
     This module contains the definition of the core abstract syntax tree (AST)
     of the language, together with smart constructors and low level operation.
-    The representation strongly relies on the {!module:Bindlib} library, which
+    The representation strongly relies on the [Bindlib] library, which
     provides a convenient abstraction to work with binders.
 
     @see <https://rlepigre.github.io/ocaml-bindlib/> *)
@@ -79,7 +79,7 @@ and dtree = (rhs * int) Tree_type.dtree
 
 (** Representation of a user-defined symbol. Symbols carry a "mode" indicating
     whether they may be given rewriting rules or a definition. Invariants must
-    be enforced for "mode" consistency (see {!type:sym_prop}).  *)
+    be enforced for "mode" consistency (see {!type:prop}).  *)
 and sym =
   { sym_expo  : expo (** Visibility. *)
   ; sym_path  : Common.Path.t (** Module in which the symbol is defined. *)
@@ -108,7 +108,7 @@ and sym =
 (** {b NOTE} the value of the {!field:sym_prop} field of symbols restricts the
     value of their {!field:sym_def} and {!field:sym_rules} fields. A symbol is
     not allowed to be given rewriting rules (or a definition) when its mode is
-    set to {!constructor:Constant}. Moreover, a symbol should not be given at
+    set to {!constructor:Const}. Moreover, a symbol should not be given at
     the same time a definition (i.e., {!field:sym_def} different from [None])
     and rewriting rules (i.e., {!field:sym_rules} is non-empty). *)
 
@@ -174,11 +174,11 @@ and sym =
     that are constructed when matching the LHS of the rule. *)
 
 (** All variables of rewriting rules that appear in the RHS must appear in the
-    LHS. This constraint is checked in {!module:Sr}.In the case of unification
-    rules, we allow variables to appear only in the RHS.  In that case, these
-    variables are replaced by fresh meta-variables each time the rule is used.
-    The last  {!field:terms.rule.xvars} variables of  {!field:terms.rule.vars}
-    are such RHS-only variables. *)
+   LHS. This constraint is checked in {!module:Tool.Sr}.In the case of
+   unification rules, we allow variables to appear only in the RHS.  In that
+   case, these variables are replaced by fresh meta-variables each time the
+   rule is used.  The last {!field:Term.rule.xvars_nb} variables of
+   {!field:Term.rule.vars} are such RHS-only variables. *)
 
 (** Representation of a "term with environment", which intuitively corresponds
     to a term with bound variables (or a "higher-order" term) represented with
@@ -201,16 +201,16 @@ and sym =
     with the environment [env]. *)
 
 (** During evaluation, we only try to apply rewriting rules when we reduce the
-    application of a symbol [s] to a list of argument [ts]. At this point, the
-    symbol [s] contains  every rule [r] that can potentially be applied in its
-    {!field:sym_rules} field.  To check if a rule [r] applies,  we  match  the
-    elements of [r.lhs] with those of [ts] while building an environment [env]
-    of type {!type:term_env array}. During this process, a pattern of the form
-    {!constructor:Patt}[(Some i,s,e)] matched against a term [u] will  results
-    in [env.(i)] being set to [u]. If all terms of [ts] can be matched against
-    corresponding patterns, then environment [env] is fully constructed and it
-    can hence be substituted in [r.rhs] with [Bindlib.msubst r.rhs env] to get
-    the result of the application of the rule. *)
+   application of a symbol [s] to a list of argument [ts]. At this point, the
+   symbol [s] contains every rule [r] that can potentially be applied in its
+   {!field:sym_rules} field. To check if a rule [r] applies, we match the
+   elements of [r.lhs] with those of [ts] while building an environment [env]
+   of type [{!type:Term.term_env} array]. During this process, a pattern of
+   the form {!constructor:Patt}[(Some i,s,e)] matched against a term [u] will
+   results in [env.(i)] being set to [u]. If all terms of [ts] can be matched
+   against corresponding patterns, then environment [env] is fully constructed
+   and it can hence be substituted in [r.rhs] with [Bindlib.msubst r.rhs env]
+   to get the result of the application of the rule. *)
 
 (** {3 Metavariables and related functions} *)
 
@@ -239,7 +239,7 @@ type tbox = term Bindlib.box
 
 type tebox = term_env Bindlib.box
 
-(** Minimize [impl] to enforce our invariant (see {!type:Terms.sym}). *)
+(** Minimize [impl] to enforce our invariant (see {!type:Term.sym}). *)
 val minimize_impl : bool list -> bool list
 
 (** Basic printing function (for debug). *)
@@ -381,7 +381,7 @@ val mk_Wild : term
 val mk_TRef : term option ref -> term
 val mk_LLet : term * term * tbinder -> term
 
-(** mk_Appl_not_canonical t u] builds the non-canonical (wrt. C and AC
+(** [mk_Appl_not_canonical t u] builds the non-canonical (wrt. C and AC
    symbols) application of [t] to [u]. WARNING: to use only in Sign.link. *)
 val mk_Appl_not_canonical : term * term -> term
 

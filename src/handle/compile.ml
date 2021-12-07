@@ -55,8 +55,7 @@ let rec compile_with :
       fatal_no_pos "Build aborted."
     end;
   match Path.Map.find_opt mp !loaded with
-  | Some sign ->
-    Console.out 2 "%a already loaded" Print.pp_path mp; sign
+  | Some sign -> sign
   | None ->
     if force || Extra.more_recent (src ()) obj then
     begin
@@ -78,7 +77,7 @@ let rec compile_with :
       Sign.strip_private sign;
       if Stdlib.(!gen_obj) then Sign.write sign obj;
       loading := List.tl !loading;
-      Console.out 2 "Checked \"%s\"" src; sign
+      sign
     end
     else
     begin
@@ -94,12 +93,11 @@ let rec compile_with :
       let sm = Path.Map.find Unif_rule.path !(sign.sign_deps) in
       if Extra.StrMap.mem Unif_rule.equiv.sym_name sm then
         Tree.update_dtree Unif_rule.equiv;
-      Console.out 2 "Loaded \"%s\"" obj; sign
+      sign
     end
 
-(** [compile force mp] compiles module path [mp] using
-    {!val:Command.with_proofs}, forcing compilation of up-to-date files if
-    [force] is true. *)
+(** [compile force mp] compiles module path [mp] using [compile_with], forcing
+   compilation of up-to-date files if [force] is true. *)
 let compile force = compile_with ~handle:Command.handle ~force
 
 (** [recompile] indicates whether we should recompile files who have an object

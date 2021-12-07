@@ -13,7 +13,7 @@ val set_to_prod : problem -> meta -> unit
 val infer_noexn : problem -> ctxt -> term -> term option
 
 (** [check_noexn p ctx t a] tells whether the term [t] has type [a] in the
-   context [ctx], possibly adding new constraints in |p]. The metavariables of
+   context [ctx], possibly adding new constraints in [p]. The metavariables of
    [p] are updated when a metavariable is instantiated or created. The context
    [ctx] and the type [a] must be well sorted. *)
 val check_noexn : problem -> ctxt -> term -> term -> bool

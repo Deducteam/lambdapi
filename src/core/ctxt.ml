@@ -64,7 +64,7 @@ let sub : ctxt -> tvar array -> ctxt = fun ctx vs ->
   in
   List.fold_right f ctx []
 
-(** [unfold ctx t] behaves like {!val:Term.unfold t} unless term[t] is of the
+(** [unfold ctx t] behaves like {!val:Term.unfold} unless term [t] is of the
     form [Vari(x)] with [x] defined in [ctx]. In this case, [t] is replaced by
     the definition of [x] in [ctx].  In particular, if no operation is carried
     out on [t], we have [unfold ctx t == t]. *)
@@ -91,7 +91,7 @@ let rec unfold : ctxt -> term -> term = fun ctx t ->
       end
   | _ -> t
 
-(** [get_args ctx t] decomposes term [t] as {!val:LibTerm.get_args} does, but
+(** [get_args ctx t] decomposes term [t] as {!val:Term.get_args} does, but
     any variable encountered is replaced by its definition in [ctx] (if it
     exists). *)
 let get_args : ctxt -> term -> term * term list = fun ctx t ->

@@ -153,12 +153,12 @@ let destruct : 'a list -> int -> 'a list * 'a * 'a list =
     | v :: r, i -> destruct (v :: l) (i - 1) r
   in
   fun e i ->
-  if i < 0 then invalid_arg "Extra.List.deconstruct";
+  if i < 0 then invalid_arg __LOC__;
   destruct [] i e
 
 (** [reconstruct left_rev l right] concatenates (reversed) [left_rev], [l] and
     [right]. This function will typically be used in combination with
-    {!val:deconstruct} to insert a sublist [l] in the place of the element at
+    {!val:destruct} to insert a sublist [l] in the place of the element at
     the specified position in the specified list. *)
 let reconstruct : 'a list -> 'a list -> 'a list -> 'a list = fun l m r ->
   L.rev_append l (m @ r)
