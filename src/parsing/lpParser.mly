@@ -43,7 +43,6 @@
 %token END
 %token FAIL
 %token FLAG
-%token FOCUS
 %token GENERALIZE
 %token HAVE
 %token IN
@@ -186,7 +185,6 @@ tactic:
   | APPLY t=term { make_pos $sloc (P_tac_apply t) }
   | ASSUME xs=param+ { make_pos $sloc (P_tac_assume xs) }
   | FAIL { make_pos $sloc P_tac_fail }
-  | FOCUS i=INT { make_pos $sloc (P_tac_focus i) }
   | GENERALIZE i=uid { make_pos $sloc (P_tac_generalize i) }
   | HAVE i=uid COLON t=term { make_pos $sloc (P_tac_have(i,t)) }
   | INDUCTION { make_pos $sloc P_tac_induction }

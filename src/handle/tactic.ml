@@ -165,9 +165,6 @@ let handle : Sig_state.t -> bool -> proof_state -> p_tactic -> proof_state =
   match elt with
   | P_tac_fail
   | P_tac_query _ -> assert false (* done before *)
-  | P_tac_focus(i) ->
-      (try {ps with proof_goals = List.swap i ps.proof_goals}
-       with Invalid_argument _ -> fatal pos "Invalid goal index.")
   | P_tac_simpl None ->
       {ps with proof_goals = Goal.simpl (Eval.snf []) g :: gs}
   | P_tac_simpl (Some qid) ->
@@ -197,7 +194,6 @@ let handle : Sig_state.t -> bool -> proof_state -> p_tactic -> proof_state =
   match elt with
   | P_tac_admit
   | P_tac_fail
-  | P_tac_focus _
   | P_tac_query _
   | P_tac_simpl _
   | P_tac_solve -> assert false (* done before *)
