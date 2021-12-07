@@ -38,7 +38,6 @@ let _ = let open LpLexer in
     ; "end", END
     ; "fail", FAIL
     ; "flag", FLAG
-    ; "focus", FOCUS
     ; "generalize", GENERALIZE
     ; "have", HAVE
     ; "in", IN
@@ -267,7 +266,6 @@ let tactic : p_tactic pp = fun ppf { elt;  _ } ->
   | P_tac_assume ids ->
       out ppf "assume%a" (List.pp (pp_unit " " |+ param_id) "") ids
   | P_tac_fail -> out ppf "fail"
-  | P_tac_focus i -> out ppf "focus %i" i
   | P_tac_generalize id -> out ppf "generalize %a" ident id
   | P_tac_have (id, t) -> out ppf "have %a: %a" ident id term t
   | P_tac_induction -> out ppf "induction"
@@ -285,8 +283,7 @@ let tactic : p_tactic pp = fun ppf { elt;  _ } ->
   | P_tac_why3 p ->
       let prover ppf s = out ppf " \"%s\"" s in
       out ppf "why3%a" (Option.pp prover) p
-  end;
-  out ppf ";"
+  end
 
 (* starts with a space if distinct from [Pratter.Neither] *)
 let assoc : Pratter.associativity pp = fun ppf a ->
@@ -301,10 +298,25 @@ let notation : Sign.notation pp = fun ppf -> function
   | Quant -> out ppf "quantifier"
   | _ -> ()
 
-let proof : (p_tactic list * p_proof_end) pp = fun ppf (prf, prf_end) ->
-  out ppf "begin@ @[<2>%a@]@ %a"
-    (List.pp tactic "@ ") prf
-    proof_end prf_end
+let rec subproof : p_subproof pp = fun ppf sp ->
+  out ppf "<@[<hv2>@ %a@ @]>" proofsteps sp
+
+and subproofs : p_subproof list pp = fun ppf spl ->
+  out ppf "@[<hv>%a@]" (pp_print_list ~pp_sep:pp_print_space subproof) spl
+
+and proofsteps : p_proofstep list pp = fun ppf psl ->
+  pp_print_list ~pp_sep:pp_print_space proofstep ppf psl
+
+and proofstep : p_proofstep pp = fun ppf (Tactic (t, spl)) ->
+  out ppf "@[<hv2>%a@,%a;@]" tactic t subproofs spl
+
+let proof : (p_proof * p_proof_end) pp = fun ppf (p, pe) ->
+  out ppf "begin@[<hv2>@ %a@ @]%a"
+    (fun ppf -> function
+       | [block] -> proofsteps ppf block
+       (* No braces for a single toplevel block *)
+       | blocks -> subproofs ppf blocks) p
+    proof_end pe
 
 let command : p_command pp = fun ppf { elt; _ } ->
   begin match elt with

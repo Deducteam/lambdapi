@@ -9,6 +9,15 @@
 <assoc> ::= left
           | right
 
+<sep_ne_list_with_opt_last_sep(arg, sep)> ::= arg
+                                            | arg sep
+                                            | arg sep
+                                              <sep_ne_list_with_opt_last_sep(arg,
+                                              sep)>
+
+<sep_list_with_opt_last_sep(arg, sep)> ::= [<sep_ne_list_with_opt_last_sep(arg,
+                                           sep)>]
+
 
 
 <qid> ::= <uid>
@@ -27,13 +36,15 @@
 
 <param_list> ::= <param>
                | ( <param>+ : <term> )
-               | { <param>+ [: <term>] }
+               | [ <param>+ [: <term>] ]
 
 <rw_patt> ::= <term>
             | in <term>
             | in <uid> in <term>
             | <term> in <term> [in <term>]
             | <term> as <uid> in <term>
+
+<rw_patt_spec> ::= DOT [ <rw_patt> ]
 
 <tactic> ::= <query>
            | admit
@@ -46,7 +57,7 @@
            | induction
            | refine <term>
            | reflexivity
-           | rewrite [<assoc>] [[ <rw_patt> ]] <term>
+           | rewrite [<assoc>] [<rw_patt_spec>] <term>
            | simplify [<qid>]
            | solve
            | symmetry
@@ -87,7 +98,14 @@
               | admitted
               | end
 
-<proof> ::= begin (<tactic> ;)* <proof_end>
+<proof> ::= begin <subproof>+ <proof_end>
+          | begin <sep_list_with_opt_last_sep(<proof_step>, ;)>
+            <proof_end>
+
+<subproof> ::= { <sep_list_with_opt_last_sep(<proof_step>,
+               ;)> }
+
+<proof_step> ::= <tactic> <subproof>*
 
 <constructor> ::= <uid> <param_list>* : <term>
 
@@ -115,7 +133,7 @@
             | <query> ;
             
 
-<env> ::= [ [<term> (; <term>)*] ]
+<env> ::= DOT [ [<term> (; <term>)*] ]
 
 <aterm> ::= <term_id>
           | UNDERSCORE
@@ -123,7 +141,7 @@
           | ?<uid> [<env>]
           | $<uid>T [<env>]
           | ( <term> )
-          | { <term> }
+          | [ <term> ]
           | <int>
 
 <saterm> ::= <aterm>+

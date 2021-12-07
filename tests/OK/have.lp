@@ -7,8 +7,7 @@ symbol h:B → A;
 
 opaque symbol lem:A ≔
 begin
-  have x:B;
-  apply b;
+  have x:B {apply b};
   apply h;
-  apply x;
+  apply x
 end;

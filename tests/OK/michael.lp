@@ -15,7 +15,7 @@ constant symbol --> : eta (o > o > o);
 notation --> infix right 6;
 rule eps ($a --> $b) ↪ eps $a → eps $b;
 
-constant symbol all : Π {A : Type}, eta ((A > o) > o);
+constant symbol all : Π [A : Type], eta ((A > o) > o);
 rule eps (@all $a $b) ↪ Π (x : eta $a), eps ($b x);
 
 symbol false : eta o ≔ all (λ p, p);

@@ -11,5 +11,5 @@ begin
 assume x y z;
 generalize y;
 assume y z;
-apply h x y z;
+apply h x y z
 end;

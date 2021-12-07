@@ -5,7 +5,7 @@ open Timed
 
 let meta_counter : int Stdlib.ref = Stdlib.ref (-1)
 
-(** [reset_counter ()] resets the counter used to produce meta keys. *)
+(** [reset_meta_counter ()] resets the counter used to produce meta keys. *)
 let reset_meta_counter () = Stdlib.(meta_counter := -1)
 
 (** [fresh p ?name a n] creates a fresh metavariable of type [a] and arity [n]

@@ -20,7 +20,7 @@ constant symbol case (p : B → Prop) : P (p true) → P (p false) → Π b, P b
 opaque symbol notK : Π b, P (eq (neg (neg b)) b)
 ≔ begin
   assume b;
-  apply case (λ b, eq (neg (neg b)) b);
-  apply refl;
-  apply refl;
+  apply case (λ b, eq (neg (neg b)) b)
+  {apply refl}
+  {apply refl}
 end;

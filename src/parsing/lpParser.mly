@@ -43,7 +43,6 @@
 %token END
 %token FAIL
 %token FLAG
-%token FOCUS
 %token GENERALIZE
 %token HAVE
 %token IN
@@ -96,6 +95,7 @@
 %token BACKQUOTE
 %token COMMA
 %token COLON
+%token DOT
 %token EQUIV
 %token HOOK_ARROW
 %token LAMBDA
@@ -127,6 +127,14 @@
 
 %%
 
+sep_ne_list_with_opt_last_sep(arg, sep):
+  | a=arg { [a] }
+  | a=arg sep { [a] }
+  | a=arg sep l=sep_ne_list_with_opt_last_sep(arg, sep) { a :: l }
+
+sep_list_with_opt_last_sep(arg, sep):
+  l=loption(sep_ne_list_with_opt_last_sep(arg, sep)) { l }
+
 uid: s=UID { make_pos $sloc s}
 
 qid:
@@ -150,7 +158,7 @@ param:
 param_list:
   | x=param { ([x], None, false) }
   | L_PAREN xs=param+ COLON a=term R_PAREN { (xs, Some(a), false) }
-  | L_CU_BRACKET xs=param+ a=preceded(COLON, term)? R_CU_BRACKET
+  | L_SQ_BRACKET xs=param+ a=preceded(COLON, term)? R_SQ_BRACKET
     { (xs, a, true) }
 
 rw_patt:
@@ -169,19 +177,20 @@ rw_patt:
     }
   | u=term AS x=uid IN t=term { make_pos $sloc (Rw_TermAsIdInTerm(u,(x,t))) }
 
+rw_patt_spec: DOT L_SQ_BRACKET p=rw_patt R_SQ_BRACKET { p }
+
 tactic:
   | q=query { make_pos $sloc (P_tac_query q) }
   | ADMIT { make_pos $sloc P_tac_admit }
   | APPLY t=term { make_pos $sloc (P_tac_apply t) }
   | ASSUME xs=param+ { make_pos $sloc (P_tac_assume xs) }
   | FAIL { make_pos $sloc P_tac_fail }
-  | FOCUS i=INT { make_pos $sloc (P_tac_focus i) }
   | GENERALIZE i=uid { make_pos $sloc (P_tac_generalize i) }
   | HAVE i=uid COLON t=term { make_pos $sloc (P_tac_have(i,t)) }
   | INDUCTION { make_pos $sloc P_tac_induction }
   | REFINE t=term { make_pos $sloc (P_tac_refine t) }
   | REFLEXIVITY { make_pos $sloc P_tac_refl }
-  | REWRITE d=ASSOC? p=delimited(L_SQ_BRACKET, rw_patt, R_SQ_BRACKET)? t=term
+  | REWRITE d=ASSOC? p=rw_patt_spec? t=term
     { let b = match d with Some Pratter.Left -> false | _ -> true in
       make_pos $sloc (P_tac_rewrite(b,p,t)) }
   | SIMPLIFY i=qid? { make_pos $sloc (P_tac_simpl i) }
@@ -241,7 +250,16 @@ proof_end:
   | ADMITTED { make_pos $sloc Syntax.P_proof_admitted }
   | END { make_pos $sloc Syntax.P_proof_end }
 
-proof: BEGIN ts=terminated(tactic, SEMICOLON)* pe=proof_end { ts, pe }
+proof:
+  | BEGIN l=subproof+ pe=proof_end { l, pe }
+  | BEGIN l=sep_list_with_opt_last_sep(proof_step,SEMICOLON) pe=proof_end
+    { [l], pe }
+
+subproof:
+  L_CU_BRACKET l=sep_list_with_opt_last_sep(proof_step,SEMICOLON) R_CU_BRACKET
+    { l }
+
+proof_step: t=tactic l=subproof* { Tactic(t, l) }
 
 constructor: i=uid ps=param_list* COLON t=term
     { (i, make_prod $startpos(ps) ps t $endpos(t)) }
@@ -289,7 +307,7 @@ command:
   | q=query SEMICOLON { make_pos $sloc (P_query(q)) }
   | EOF { raise End_of_file }
 
-env: L_SQ_BRACKET ts=separated_list(SEMICOLON, term) R_SQ_BRACKET { ts }
+env: DOT L_SQ_BRACKET ts=separated_list(SEMICOLON, term) R_SQ_BRACKET { ts }
 
 aterm:
   | ti=term_id { ti }
@@ -302,7 +320,7 @@ aterm:
     { let i = if s = "_" then None else Some(make_pos $loc(s) s) in
       make_pos $sloc (P_Patt(i, Option.map Array.of_list e)) }
   | L_PAREN t=term R_PAREN { make_pos $sloc (P_Wrap(t)) }
-  | L_CU_BRACKET t=term R_CU_BRACKET { make_pos $sloc (P_Expl(t)) }
+  | L_SQ_BRACKET t=term R_SQ_BRACKET { make_pos $sloc (P_Expl(t)) }
   | n=INT { make_pos $sloc (P_NLit(n)) }
 
 saterm:

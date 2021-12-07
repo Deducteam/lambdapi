@@ -74,8 +74,7 @@ let tac_admit :
 (** [tac_solve pos ps] tries to simplify the unification goals of the proof
    state [ps] and fails if constraints are unsolvable. *)
 let tac_solve : popt -> proof_state -> proof_state = fun pos ps ->
-  if Logger.log_enabled () then
-    log_tact (Color.red "@[<v>tac_solve@ %a@]") pp_goals ps;
+  if Logger.log_enabled () then log_tact "@[<v>tac_solve@ %a@]" pp_goals ps;
   let gs_typ, gs_unif = List.partition is_typ ps.proof_goals in
   let p = new_problem() in
   let f ms = function
@@ -102,15 +101,12 @@ let tac_refine :
       -> proof_state =
   fun pos ps gt gs p t ->
   if Logger.log_enabled () then
-    log_tact (Color.red "@[<v>@[tac_refine@ %a@]@,%a@]%a")
-      pp_term t pp_goals ps pp_problem p;
+    log_tact "@[tac_refine@ %a@]" pp_term t;
   let c = Env.to_ctxt gt.goal_hyps in
   if LibMeta.occurs gt.goal_meta c t then fatal pos "Circular refinement.";
   (* Check that [t] has the required type. *)
   if not (Infer.check_noexn p c t gt.goal_type) then
-    fatal pos "%a@ does not have type@ %a."
-      pp_term t
-      pp_term gt.goal_type;
+    fatal pos "%a@ does not have type@ %a." pp_term t pp_term gt.goal_type;
   if Logger.log_enabled () then
     log_tact (Color.red "%a ≔ %a") pp_meta gt.goal_meta pp_term t;
   LibMeta.set p gt.goal_meta
@@ -169,9 +165,6 @@ let handle : Sig_state.t -> bool -> proof_state -> p_tactic -> proof_state =
   match elt with
   | P_tac_fail
   | P_tac_query _ -> assert false (* done before *)
-  | P_tac_focus(i) ->
-      (try {ps with proof_goals = List.swap i ps.proof_goals}
-       with Invalid_argument _ -> fatal pos "Invalid goal index.")
   | P_tac_simpl None ->
       {ps with proof_goals = Goal.simpl (Eval.snf []) g :: gs}
   | P_tac_simpl (Some qid) ->
@@ -201,7 +194,6 @@ let handle : Sig_state.t -> bool -> proof_state -> p_tactic -> proof_state =
   match elt with
   | P_tac_admit
   | P_tac_fail
-  | P_tac_focus _
   | P_tac_query _
   | P_tac_simpl _
   | P_tac_solve -> assert false (* done before *)
@@ -263,7 +255,6 @@ let handle : Sig_state.t -> bool -> proof_state -> p_tactic -> proof_state =
       let v = new_tvar id.elt in
       let env' = Env.add v bt None env in
       let m2 = LibMeta.fresh p (Env.to_prod env' (lift gt.goal_type)) (n+1) in
-      let gs = Goal.of_meta m1 :: Goal.of_meta m2 :: gs in
       let ts = Env.to_tbox env in
       let u = Bindlib.unbox (_Meta m2 (Array.append ts [|_Meta m1 ts|])) in
       tac_refine pos ps gt gs p u
@@ -321,28 +312,52 @@ let handle : Sig_state.t -> bool -> proof_state -> p_tactic -> proof_state =
       let p = new_problem() in
       tac_refine pos ps gt gs p (Why3_tactic.handle ss pos cfg gt)
 
+(** Representation of a tactic output. *)
+type tac_output = Sig_state.t * proof_state * Query.result
+
 (** [handle ss prv ps tac] applies tactic [tac] in the proof state [ps] and
    returns the new proof state. *)
-let handle : Sig_state.t -> bool -> proof_state -> p_tactic
-             -> Sig_state.t * proof_state * Query.result =
+let handle : Sig_state.t -> bool -> proof_state -> p_tactic -> tac_output =
   fun ss prv ps ({elt;pos} as tac) ->
   match elt with
   | P_tac_fail -> fatal pos "Call to tactic \"fail\""
   | P_tac_query(q) ->
-      if Logger.log_enabled () then log_tact "%a@." Pretty.tactic tac;
-      ss, ps, Query.handle ss (Some ps) q
+    if Logger.log_enabled () then log_tact "%a@." Pretty.tactic tac;
+    ss, ps, Query.handle ss (Some ps) q
   | _ ->
   match ps.proof_goals with
   | [] -> fatal pos "No remaining goals."
   | Typ gt::_ when elt = P_tac_admit ->
-      let ss, ps = tac_admit ss ps gt in ss, ps, None
+    let ss, ps = tac_admit ss ps gt in ss, ps, None
   | g::_ ->
-      if Logger.log_enabled () then
-        log_tact "%a@ %a" Proof.Goal.pp g Pretty.tactic tac;
-      ss, handle ss prv ps tac, None
+    if Logger.log_enabled () then
+      log_tact ("%a@\n" ^^ Color.red "%a") Proof.Goal.pp g Pretty.tactic tac;
+    ss, handle ss prv ps tac, None
 
-let handle : Sig_state.t -> bool -> proof_state -> p_tactic
-             -> Sig_state.t * proof_state * Query.result =
-  fun ss prv ps tac ->
-  try handle ss prv ps tac
-  with Fatal _ as e -> Console.out 1 "%a@." pp_goals ps; raise e
+(** [handle prv r tac n] applies the tactic [tac] from the previous tactic
+   output [r] and checks that the number of goals of the new proof state is
+   compatible with the number [n] of subproofs. *)
+let handle : bool -> tac_output -> p_tactic -> int -> tac_output =
+  fun prv (ss, ps, _) t nb_subproofs ->
+  let (_, ps', _) as a = handle ss prv ps t in
+  let nb_goals_before = List.length ps.proof_goals in
+  let nb_goals_after = List.length ps'.proof_goals in
+  let nb_newgoals = nb_goals_after - nb_goals_before in
+  if nb_newgoals <= 0 then
+    if nb_subproofs = 0 then a
+    else fatal t.pos "A subproof is given but there is no subgoal."
+  else if is_destructive t then
+    match nb_newgoals + 1 - nb_subproofs with
+    | 0 -> a
+    | n when n > 0 ->
+      fatal t.pos "Missing subproofs (%d subproofs for %d subgoals)."
+        nb_subproofs (nb_newgoals + 1)
+    | _ -> fatal t.pos "Too many subproofs (%d subproofs for %d subgoals)."
+             nb_subproofs (nb_newgoals + 1)
+  else match nb_newgoals - nb_subproofs with
+    | 0 -> a
+    | n when n > 0 ->
+      fatal t.pos "Missing subproofs (%d subproofs for %d subgoals)."
+        nb_subproofs nb_newgoals
+    | _ -> fatal t.pos "Too many subproofs (%d subproofs for %d subgoals)."
+             nb_subproofs nb_newgoals
