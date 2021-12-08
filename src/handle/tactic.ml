@@ -309,8 +309,13 @@ let handle : Sig_state.t -> bool -> proof_state -> p_tactic -> proof_state =
       | _ -> assert false
       end
   | P_tac_why3 cfg ->
-      let p = new_problem() in
-      tac_refine pos ps gt gs p (Why3_tactic.handle ss pos cfg gt)
+      let arity = count_products (Env.to_ctxt env) gt.goal_type in
+      let ps = assume arity in
+      (match ps.proof_goals with
+      | Typ gt::gs ->
+          let p = new_problem() in
+          tac_refine pos ps gt gs p (Why3_tactic.handle ss pos cfg gt)
+      | _ -> assert false)
 
 (** Representation of a tactic output. *)
 type tac_output = Sig_state.t * proof_state * Query.result
