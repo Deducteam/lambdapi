@@ -127,33 +127,33 @@ export function activate(context: ExtensionContext) {
                 *if true, the "Proof" panel is updated when the cursor is moved
                 *if false, updated when keybindings are pressed
             */
-            commands.registerCommand('extension.vscode-lp.cursor', () => toggleCursorMode(context));
+            commands.registerCommand('extension.lambdapi.cursor', () => toggleCursorMode(context));
  
             //Navigate proof : step forward in a proof 
-            commands.registerCommand('extension.vscode-lp.fw', () => checkProofForward(context));
+            commands.registerCommand('extension.lambdapi.fw', () => checkProofForward(context));
             
             //Navigate proof : step backward in a proof
-            commands.registerCommand('extension.vscode-lp.bw', () => checkProofBackward(context));
+            commands.registerCommand('extension.lambdapi.bw', () => checkProofBackward(context));
 
             //Navigate proof : move proof highlight to cursor
-            commands.registerCommand('extension.vscode-lp.tc', () => checkProofUntilCursor(context));
+            commands.registerCommand('extension.lambdapi.tc', () => checkProofUntilCursor(context));
             
             //Window follows proof or not
-            commands.registerCommand('extension.vscode-lp.reveal', () => toggleFollowMode(context))
+            commands.registerCommand('extension.lambdapi.reveal', () => toggleFollowMode(context))
 
             //Center window on proof state
-            commands.registerCommand('extension.vscode-lp.center', () => goToProofState(context));
+            commands.registerCommand('extension.lambdapi.center', () => goToProofState(context));
 
             //Go to next/previous proof
-            commands.registerCommand('extension.vscode-lp.nx', () => nextProof(context, true));
-            commands.registerCommand('extension.vscode-lp.pv', () => nextProof(context, false));
+            commands.registerCommand('extension.lambdapi.nx', () => nextProof(context, true));
+            commands.registerCommand('extension.lambdapi.pv', () => nextProof(context, false));
 
         });
 
         context.subscriptions.push(client.start());
     };
     
-    commands.registerCommand('extension.vscode-lp.restart', restart);
+    commands.registerCommand('extension.lambdapi.restart', restart);
     
     restart();
 }
