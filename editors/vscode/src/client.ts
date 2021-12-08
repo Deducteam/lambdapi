@@ -1,7 +1,5 @@
-/* --------------------------------------------------------------------------------------------
- * Copyright (c) Microsoft Corporation. All rights reserved.
- * Licensed under the MIT License. See License.txt in the project root for license information.
- * ------------------------------------------------------------------------------------------ */
+// VSCode extension for https://github.com/Deducteam/lambdapi
+// a proof assistant based on the λΠ-calculus modulo rewriting
 
 import { workspace, ExtensionContext, Position, Uri, commands, window, WebviewPanel, ViewColumn, TextEditor, TextDocument, SnippetString, Range, TextEditorDecorationType, Pseudoterminal, EventEmitter, TreeItemCollapsibleState, WebviewViewProvider, CancellationToken, WebviewView, WebviewViewResolveContext, TextDocumentChangeEvent, Diagnostic, languages } from 'vscode';
 
@@ -137,7 +135,7 @@ export function activate(context: ExtensionContext) {
             //Navigate proof : step backward in a proof
             commands.registerCommand('extension.vscode-lp.bw', () => checkProofBackward(context));
 
-            //Navigate proof : move proof higlight to cursor
+            //Navigate proof : move proof highlight to cursor
             commands.registerCommand('extension.vscode-lp.tc', () => checkProofUntilCursor(context));
             
             //Window follows proof or not

@@ -1,10 +1,9 @@
-world: compile
-	#node_modules/.bin/vsce package
+default: compile
 
 clean:
 	rm -rf node_modules/ out/
 
-LP-VSCODE=~/.vscode/extensions/lp-vscode
+LP-VSCODE=~/.vscode/extensions/lambdapi
 .PHONY: node_modules
 node_modules:
 	npm install
