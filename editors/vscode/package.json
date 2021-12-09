@@ -8,7 +8,7 @@
     "François Lefoulon <francois.lefoulon@lilo.org>",
     "Ashish Barnawal <ashbrnwl.2000@gmail.com>"
   ],
-  "version": "0.1.0",
+  "version": "0.1.1",
   "publisher": "Deducteam",
   "engines": {
     "vscode": "^1.37.0"
@@ -17,8 +17,11 @@
     "Programming Languages"
   ],
   "keywords": [
-      "interactive theorem proving", "dependent types", "rewriting",
-      "dedukti", "lambdapi"
+    "interactive theorem proving",
+    "dependent types",
+    "rewriting",
+    "dedukti",
+    "lambdapi"
   ],
   "homepage": "https://github.com/Deducteam/lambdapi",
   "repository": {

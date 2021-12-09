@@ -30,18 +30,18 @@ Type one of the suggested snippets described below, then press
 character. If a snippet completion does not seem to work, try pressing
 ``Ctrl+Space`` to see completion suggestions.
 
-*Common symbols*: \```ra``: →, \```is``: ≔, \```re``: ↪, \```all``: ∀, \```ex``: ∃, \```imp``: ⇒, \```or`` : ∨, \```and`` : ∧, \```not`` : ¬, \```th``: ⊢, \```eq``: ≡, \```box``: □, \```cons``: ⸬
+*Common symbols*: `` `ra``: →, `` `is``: ≔, `` `re``: ↪, `` `all``: ∀, `` `ex``: ∃, `` `imp``: ⇒, `` `or`` : ∨, `` `and`` : ∧, `` `not`` : ¬, `` `th``: ⊢, `` `eq``: ≡, `` `box``: □, `` `cons``: ⸬
 
-*Greek letters*: For every letter ``l``, typing \```l`` will suggest a
-corresponding unicode greek letter (for instance \```b`` will suggest
+*Greek letters*: For every letter ``l``, typing `` `l`` will suggest a
+corresponding unicode greek letter (for instance `` `b`` will suggest
 β). Some greek letters are present in a variant form as in LaTeX,
-accessible with \```vl`` (for instance, \```f`` will suggest ϕ and
-\```vf`` will suggest φ).
+accessible with `` `vl`` (for instance, `` `f`` will suggest ϕ and
+`` `vf`` will suggest φ).
 
 *Fonts*: For every letter ``l``, the following prefixes change the
-font of ``l``: \```dl`` for double-struck (ℕ), \```il``: italic (𝑁),
-\```Il``: bold italic (𝑵), \```sl``: script (𝒩 ), \```Sl``: bold
-script (𝓝), \```fl``: Fraktur (𝔑).
+font of ``l``: `` `dl`` for double-struck (ℕ), `` `il``: italic (𝑁),
+`` `Il``: bold italic (𝑵), `` `sl``: script (𝒩 ), `` `Sl``: bold
+script (𝓝), `` `fl``: Fraktur (𝔑).
 
 **Recommended additional extension**
 
