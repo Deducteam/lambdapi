@@ -1,4 +1,4 @@
-This extension provides support for the [Lambdapi](https://github.com/Deducteam/lambdapi) proof assistant. See the [User manual](https://lambdapi.readthedocs.io/) to know more about Lambdapi. It provides syntax highlighting, go-to-definition, key-bindings for proof navigation, and snippets for inputing common mathematical unicode symbols.
+This extension provides support for the [Lambdapi](https://github.com/Deducteam/lambdapi) language and proof assistant. See the [User manual](https://lambdapi.readthedocs.io/) to know more about Lambdapi. The extension provides syntax highlighting, go-to-definition, key-bindings for proof navigation, and snippets for inputing common mathematical symbols.
 
 **Proof navigation**
 
@@ -25,11 +25,10 @@ set up a key-binding for "Go back" in File -> Preferences -> Keyboard shortcuts.
 
 **Snippets**
 
-Type one of the suggested snippets described below, then press Enter
-or Tab to confirm adding the chosen Unicode character.
-
-If a snippet completion does not seem to work, try pressing ``Ctrl+Space`` to
-see completion suggestions.
+Type one of the suggested snippets described below, then press
+``Enter`` or ``Tab`` to confirm adding the chosen Unicode
+character. If a snippet completion does not seem to work, try pressing
+``Ctrl+Space`` to see completion suggestions.
 
 *Common symbols*: \```ra``: →, \```is``: ≔, \```re``: ↪, \```all``: ∀, \```ex``: ∃, \```imp``: ⇒, \```or`` : ∨, \```and`` : ∧, \```not`` : ¬, \```th``: ⊢, \```eq``: ≡, \```box``: □, \```cons``: ⸬
 
@@ -39,16 +38,11 @@ corresponding unicode greek letter (for instance \```b`` will suggest
 accessible with \```vl`` (for instance, \```f`` will suggest ϕ and
 \```vf`` will suggest φ).
 
-*Fonts*: For every letter ``l``, the following prefixes change the font of ``l``
-(for instance, \```dN`` is double struck ``N``, ℕ):
-
-* \```dl``: double-struck (ℕ)
-* \```il``: italic (𝑁)
-* \```Il``: bold italic (𝑵)
-* \```sl``: script (𝒩 )
-* \```Sl``: bold script (𝓝)
-* \```fl``: Fraktur (𝔑)
+*Fonts*: For every letter ``l``, the following prefixes change the
+font of ``l``: \```dl`` for double-struck (ℕ), \```il``: italic (𝑁),
+\```Il``: bold italic (𝑵), \```sl``: script (𝒩 ), \```Sl``: bold
+script (𝓝), \```fl``: Fraktur (𝔑).
 
 **Recommended additional extension**
 
-- [unicode-math](https://marketplace.visualstudio.com/items?itemName=GuidoTapia2.unicode-math-vscode) allows for replacing ``->`` with →, ``_1`` with the index ₁ and many other unicode characters by simply pressing Tab.
+- [unicode-math](https://marketplace.visualstudio.com/items?itemName=GuidoTapia2.unicode-math-vscode) replaces ``->`` by →, ``_1`` by ₁, and many other unicode characters by simply pressing ``Tab``.
