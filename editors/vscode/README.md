@@ -1,51 +1,54 @@
-VSCode extension for Lambdapi
-=============================
+This extension provides support for the [Lambdapi](https://github.com/Deducteam/lambdapi) proof assistant. See the [User manual](https://lambdapi.readthedocs.io/) to know more about Lambdapi. It provides syntax highlighting, go-to-definition, key-bindings for proof navigation, and snippets for inputing common mathematical unicode symbols.
 
-Usage
------
+**Proof navigation**
 
-See the [user manual](https://lambdapi.readthedocs.io/en/latest/ui/vscode.html>).
+Goals are visualised in a panel on the right side of the editor.
+You can navigate in proof with the following key-bindings:
 
-Installation from the sources
------------------------------
+- ``Ctrl+Right``: go one step forward
+- ``Ctrl+Left``: go one step backward
+- ``Ctrl+Up``: go to the previous proof (or the beginning)
+- ``Ctrl+Down``: go to the next proof (or the end)
+- ``Ctrl+Enter``: go to the position of the cursor
+- ``Ctrl+Alt+c``: toggle cursor mode (proof highlight follows the cursor or not)
+- ``Ctrl+Alt+w``: toggle follow mode (proof highlight is always centered in the window when keybindings are pressed)
+- ``Shift+Alt+w``: center proof highlight in the current window
 
-- download `$node_file.tar.xz` from [node.js](https://nodejs.org/)
+**Hover and go-to-definition**
 
-- extract node:
+Hovering a token will display its type if available.
+For the go-to-definition, you can either:
 
-```bash
-sudo apt-get install xz-utils # if you do not have xz already installed
-tar xfa $node_file.tar.xz # creates $node_dir
-```
+* press `F12` when the cursor is within the range of a certain symbol
+* or `right-click` on the symbol -> "Go to definition". It is advised to
+set up a key-binding for "Go back" in File -> Preferences -> Keyboard shortcuts.
 
-- add `$node_dir/bin` in your `$PATH`:
+**Snippets**
 
-```bash
-export PATH=$node_dir:$PATH
-```
+Type one of the suggested snippets described below, then press Enter
+or Tab to confirm adding the chosen Unicode character.
 
-- add `$node_dir/lib/node_modules` in your `$NODE_PATH`:
+If a snippet completion does not seem to work, try pressing ``Ctrl+Space`` to
+see completion suggestions.
 
-```bash
-export NODE_PATH=$node_dir/lib/node_modules:$NODE_PATH
-```
+*Common symbols*: \```ra``: →, \```is``: ≔, \```re``: ↪, \```all``: ∀, \```ex``: ∃, \```imp``: ⇒, \```or`` : ∨, \```and`` : ∧, \```not`` : ¬, \```th``: ⊢, \```eq``: ≡, \```box``: □, \```cons``: ⸬
 
-- install dependencies:
+*Greek letters*: For every letter ``l``, typing \```l`` will suggest a
+corresponding unicode greek letter (for instance \```b`` will suggest
+β). Some greek letters are present in a variant form as in LaTeX,
+accessible with \```vl`` (for instance, \```f`` will suggest ϕ and
+\```vf`` will suggest φ).
 
-```bash
-npm install -g @types/vscode
-npm install -g vsce # for creating VSCE packages only
-```
+*Fonts*: For every letter ``l``, the following prefixes change the font of ``l``
+(for instance, \```dN`` is double struck ``N``, ℕ):
 
-- compilation:
+* \```dl``: double-struck (ℕ)
+* \```il``: italic (𝑁)
+* \```Il``: bold italic (𝑵)
+* \```sl``: script (𝒩 )
+* \```Sl``: bold script (𝓝)
+* \```fl``: Fraktur (𝔑)
 
-```bash
-npm install
-npm run compile
-```
+**Recommended additional extension**
 
-- create a VSCE package:
-
-```bash
-vsce package # creates the file lambdapi-0.1.0.vsix
-```
+- [unicode-math](https://marketplace.visualstudio.com/items?itemName=GuidoTapia2.unicode-math-vscode) allows for replacing ``->`` with →, ``_1`` with the index ₁ and many other unicode characters by simply pressing Tab.

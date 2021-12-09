@@ -1,6 +1,6 @@
 {
   "name": "lambdapi",
-  "displayName": "Lambdapi-VSCode",
+  "displayName": "lambdapi",
   "description": "VSCode extension for the Lambdapi proof assistant",
   "contributors": [
     "Emilio Jesús Gallego Arias <e@x80.org>",
@@ -17,8 +17,8 @@
     "Programming Languages"
   ],
   "keywords": [
-    "theorem proving",
-    "dedukti"
+      "interactive theorem proving", "dependent types", "rewriting",
+      "dedukti", "lambdapi"
   ],
   "homepage": "https://github.com/Deducteam/lambdapi",
   "repository": {
