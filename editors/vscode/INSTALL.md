@@ -35,10 +35,10 @@ npm install -g vsce # for creating VSCE packages only
 make
 ```
 
-- manual installation (for testing):
+- manual (un)installation (for testing):
 
 ```bash
-make install
+make [install|uninstall]
 ```
 
 The install script creates a symbolic link from
@@ -49,6 +49,15 @@ override this link location [for example for ``vscodium``] by setting the
 ```bash
 VSCE_DIR=~/.vscodium/extensions make install
 ```
+
+Another solution for install is:
+
+```bash
+code --install-extension lambdapi-$version.vsix
+```
+
+Uninstallation can be done from code: go to extensions (Ctrl+Shift+X),
+chose lambdapi and click on uninstall.
 
 Package generation and publication
 ----------------------------------
