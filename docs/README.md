@@ -17,9 +17,14 @@ The documentation is available at <https://lambdapi.readthedocs.io>.
 It can also be generated from the sources and browsed locally using any web
 browser.
 
-To generate the documentation, 
-[Sphinx](https://www.sphinx-doc.org/en/master/index.html) is required
-(it can be installed using `pip` with `pip install -U sphinx`).
+To generate the documentation, [Sphinx](https://www.sphinx-doc.org/)
+and `sphinx_rtd_theme` are required.  They can be installed using
+`pip` as follows:
+
+```bash
+sudo apt install python3-pip
+pip install -U sphinx sphinx_rtd_theme
+```
 
 Change to directory `docs/` from the root of the sources
 and use `make html` to generate `html` files into `docs/_build/html`.
