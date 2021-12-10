@@ -3,7 +3,7 @@
 
 You can get the VSCode extension for Lambdapi from the `Marketplace <https://marketplace.visualstudio.com/items?itemName=Deducteam.lambdapi>`__.
 
-To install it from the sources, see `CONTRIBUTING.md <https://github.com/Deducteam/lambdapi/blob/master/editors/vscode/CONTRIBUTING.md>`__.
+To install it from the sources, see `INSTALL.md <https://github.com/Deducteam/lambdapi/blob/master/editors/vscode/INSTALL.md>`__.
 
 ..
   the following is generated automatically from editors/vscode/README.md
