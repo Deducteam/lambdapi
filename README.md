@@ -40,7 +40,7 @@ The installation gives you:
 
 * a main executable ``lambdapi`` in your ``PATH``
 * OCaml libraries
-* a ``lambdapi`` mode for ``Vim`
+* a ``lambdapi`` mode for ``vim``
 * a ``lambdapi`` mode for ``emacs``
 
 To browse the source code documentation, you can do:
