@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Release of the VSCode extension on the Marketplace (2021-12-10)
 
-- Add `editors/vscode/CHANGES.md` and `editors/vscode/CHANGES.md`.
+- Add `editors/vscode/CHANGES.md` and `editors/vscode/CONTRIBUTING.md`.
 - Update documentation and README.md files.
 
 ### Structured proof scripts (2021-12-07)
