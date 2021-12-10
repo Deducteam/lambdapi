@@ -55,10 +55,10 @@
       "type": "object",
       "title": "lambdapi configuration",
       "properties": {
-        "lp.path": {
+        "lambdapi.path": {
           "type": "string",
-          "default": "lp-lsp",
-          "description": "Path to lp-lsp binary"
+          "default": "lambdapi",
+          "description": "Path to lambdapi binary"
         }
       }
     },

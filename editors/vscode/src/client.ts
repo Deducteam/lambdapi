@@ -65,10 +65,12 @@ export function activate(context: ExtensionContext) {
 
     //Following mode : whether the window follows proofState automatically or not
     context.workspaceState.update('follow', true);
+    
+    const lspServerPath = workspace.getConfiguration('lambdapi').path;
+    console.log(lspServerPath);
 
-    // XXX: Get from configuration
     let serverOptions = {
-        command: 'lambdapi',
+        command: lspServerPath,
         args: [ 'lsp' ]
         // args: [ '--std' ]
     };
@@ -84,8 +86,8 @@ export function activate(context: ExtensionContext) {
         }
 
         client = new LanguageClient(
-            'LambdaPi-VSCode',
-            'Lambdapi Language Server',
+            'lambdapi',
+            'lambdapi language server',
             serverOptions,
             clientOptions
         );
