@@ -4,6 +4,9 @@ Contributing to Lambdapi
 Contributions to `lambdapi` are very welcome!
 Here are some guidelines for contributing to this project.
 
+For contributing to the VSCode extension, see
+`editors/vscode/INSTALL.md` and `editors/vscode/CONTRIBUTING.md`.
+
 For contributing to the User Manual, see `docs/README.md`.
 
 Branching and pull-request policy

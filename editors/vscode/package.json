@@ -1,15 +1,15 @@
 {
-  "name": "vscode-lp",
-  "displayName": "LambdaPi-VSCode",
-  "description": "Proof-checking mode for the lambdapi proof assistant",
+  "name": "lambdapi",
+  "displayName": "lambdapi",
+  "description": "VSCode extension for the Lambdapi proof assistant",
   "contributors": [
     "Emilio Jesús Gallego Arias <e@x80.org>",
     "Houda Mouzoun <houda.mouzoun@gmail.com>",
     "François Lefoulon <francois.lefoulon@lilo.org>",
     "Ashish Barnawal <ashbrnwl.2000@gmail.com>"
   ],
-  "version": "0.1.0",
-  "publisher": "MINES ParisTech / INRIA",
+  "version": "0.1.2",
+  "publisher": "Deducteam",
   "engines": {
     "vscode": "^1.37.0"
   },
@@ -17,11 +17,17 @@
     "Programming Languages"
   ],
   "keywords": [
-    "theorem proving",
-    "dedukti"
+    "interactive theorem proving",
+    "dependent types",
+    "rewriting",
+    "dedukti",
+    "lambdapi"
   ],
   "homepage": "https://github.com/Deducteam/lambdapi",
-  "enableProposedApi": true,
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Deducteam/lambdapi"
+  },
   "activationEvents": [
     "onLanguage:lp"
   ],
@@ -30,7 +36,6 @@
       {
         "id": "lp",
         "aliases": [
-          "Dedukti",
           "Lambdapi"
         ],
         "extensions": [
@@ -50,51 +55,51 @@
       "type": "object",
       "title": "lambdapi configuration",
       "properties": {
-        "lp.path": {
+        "lambdapi.path": {
           "type": "string",
-          "default": "lp-lsp",
-          "description": "Path to lp-lsp binary"
+          "default": "lambdapi",
+          "description": "Path to lambdapi binary"
         }
       }
     },
     "commands": [
       {
-        "command": "extension.vscode-lp.restart",
+        "command": "extension.lambdapi.restart",
         "title": "Restart the Lambdapi VSCode mode",
         "category": "Lambdapi"
       },
       {
-        "command": "extension.vscode-lp.fw",
+        "command": "extension.lambdapi.fw",
         "title": "Step Forward in a Lambdapi proof",
         "category": "Lambdapi"
       },
       {
-        "command": "extension.vscode-lp.bw",
+        "command": "extension.lambdapi.bw",
         "title": "Step Backwards in a Lambdapi proof",
         "category": "Lambdapi"
       },
       {
-        "command": "extension.vscode-lp.tc",
+        "command": "extension.lambdapi.tc",
         "title": "Navigate until cursor in a Lambdapi proof",
         "category": "Lambdapi"
       },
       {
-        "command": "extension.vscode-lp.cursor",
+        "command": "extension.lambdapi.cursor",
         "title": "Toggle navigation w/ cursor only or keybindings",
         "category": "Lambdapi"
       },
       {
-        "command": "extension.vscode-lp.reveal",
+        "command": "extension.lambdapi.reveal",
         "title": "Toggle centered highlight",
         "category": "Lambdapi"
       },
       {
-        "command": "extension.vscode-lp.nx",
+        "command": "extension.lambdapi.nx",
         "title": "Go to next proof",
         "category": "Lambdapi"
       },
       {
-        "command": "extension.vscode-lp.pv",
+        "command": "extension.lambdapi.pv",
         "title": "Go to previous proof",
         "category": "Lambdapi"
       }
@@ -102,42 +107,42 @@
     "keybindings": [
       {
         "key": "ctrl+right",
-        "command": "extension.vscode-lp.fw",
+        "command": "extension.lambdapi.fw",
         "when": "editorTextFocus && editorLangId == lp"
       },
       {
         "key": "ctrl+left",
-        "command": "extension.vscode-lp.bw",
+        "command": "extension.lambdapi.bw",
         "when": "editorTextFocus && editorLangId == lp"
       },
       {
         "key": "ctrl+enter",
-        "command": "extension.vscode-lp.tc",
+        "command": "extension.lambdapi.tc",
         "when": "editorTextFocus && editorLangId == lp"
       },
       {
         "key": "ctrl+alt+c",
-        "command": "extension.vscode-lp.cursor",
+        "command": "extension.lambdapi.cursor",
         "when": "editorTextFocus && editorLangId == lp"
       },
       {
         "key": "ctrl+alt+w",
-        "command": "extension.vscode-lp.reveal",
+        "command": "extension.lambdapi.reveal",
         "when": "editorTextFocus && editorLangId == lp"
       },
       {
         "key": "shift+alt+w",
-        "command": "extension.vscode-lp.center",
+        "command": "extension.lambdapi.center",
         "when": "editorTextFocus && editorLangId == lp"
       },
       {
         "key": "ctrl+up",
-        "command": "extension.vscode-lp.pv",
+        "command": "extension.lambdapi.pv",
         "when": "editorTextFocus && editorLangId == lp"
       },
       {
         "key": "ctrl+down",
-        "command": "extension.vscode-lp.nx",
+        "command": "extension.lambdapi.nx",
         "when": "editorTextFocus && editorLangId == lp"
       }
     ],

@@ -1,7 +1,5 @@
-/* --------------------------------------------------------------------------------------------
- * Copyright (c) Microsoft Corporation. All rights reserved.
- * Licensed under the MIT License. See License.txt in the project root for license information.
- * ------------------------------------------------------------------------------------------ */
+// VSCode extension for https://github.com/Deducteam/lambdapi
+// a proof assistant based on the λΠ-calculus modulo rewriting
 
 import { workspace, ExtensionContext, Position, Uri, commands, window, WebviewPanel, ViewColumn, TextEditor, TextDocument, SnippetString, Range, TextEditorDecorationType, Pseudoterminal, EventEmitter, TreeItemCollapsibleState, WebviewViewProvider, CancellationToken, WebviewView, WebviewViewResolveContext, TextDocumentChangeEvent, Diagnostic, languages } from 'vscode';
 
@@ -67,10 +65,12 @@ export function activate(context: ExtensionContext) {
 
     //Following mode : whether the window follows proofState automatically or not
     context.workspaceState.update('follow', true);
+    
+    const lspServerPath = workspace.getConfiguration('lambdapi').path;
+    console.log(lspServerPath);
 
-    // XXX: Get from configuration
     let serverOptions = {
-        command: 'lambdapi',
+        command: lspServerPath,
         args: [ 'lsp' ]
         // args: [ '--std' ]
     };
@@ -86,8 +86,8 @@ export function activate(context: ExtensionContext) {
         }
 
         client = new LanguageClient(
-            'LambdaPi-VSCode',
-            'Lambdapi Language Server',
+            'lambdapi',
+            'lambdapi language server',
             serverOptions,
             clientOptions
         );
@@ -129,33 +129,33 @@ export function activate(context: ExtensionContext) {
                 *if true, the "Proof" panel is updated when the cursor is moved
                 *if false, updated when keybindings are pressed
             */
-            commands.registerCommand('extension.vscode-lp.cursor', () => toggleCursorMode(context));
+            commands.registerCommand('extension.lambdapi.cursor', () => toggleCursorMode(context));
  
             //Navigate proof : step forward in a proof 
-            commands.registerCommand('extension.vscode-lp.fw', () => checkProofForward(context));
+            commands.registerCommand('extension.lambdapi.fw', () => checkProofForward(context));
             
             //Navigate proof : step backward in a proof
-            commands.registerCommand('extension.vscode-lp.bw', () => checkProofBackward(context));
+            commands.registerCommand('extension.lambdapi.bw', () => checkProofBackward(context));
 
-            //Navigate proof : move proof higlight to cursor
-            commands.registerCommand('extension.vscode-lp.tc', () => checkProofUntilCursor(context));
+            //Navigate proof : move proof highlight to cursor
+            commands.registerCommand('extension.lambdapi.tc', () => checkProofUntilCursor(context));
             
             //Window follows proof or not
-            commands.registerCommand('extension.vscode-lp.reveal', () => toggleFollowMode(context))
+            commands.registerCommand('extension.lambdapi.reveal', () => toggleFollowMode(context))
 
             //Center window on proof state
-            commands.registerCommand('extension.vscode-lp.center', () => goToProofState(context));
+            commands.registerCommand('extension.lambdapi.center', () => goToProofState(context));
 
             //Go to next/previous proof
-            commands.registerCommand('extension.vscode-lp.nx', () => nextProof(context, true));
-            commands.registerCommand('extension.vscode-lp.pv', () => nextProof(context, false));
+            commands.registerCommand('extension.lambdapi.nx', () => nextProof(context, true));
+            commands.registerCommand('extension.lambdapi.pv', () => nextProof(context, false));
 
         });
 
         context.subscriptions.push(client.start());
     };
     
-    commands.registerCommand('extension.vscode-lp.restart', restart);
+    commands.registerCommand('extension.lambdapi.restart', restart);
     
     restart();
 }

@@ -1,8 +1,8 @@
 Lambdapi, a proof assistant based on the λΠ-calculus modulo rewriting [![Gitter][gitter-badge]][gitter-link] [![Matrix][matrix-badge]][matrix-link]
 =====================================================================
 
-[User Manual](https://lambdapi.readthedocs.io)
--------------
+``>>>>>`` [User Manual](https://lambdapi.readthedocs.io) ``<<<<<``
+------------------------------------------------------------------
 
 Issues can be reported on the following
 [issue tracker](https://github.com/Deducteam/lambdapi/issues).
@@ -25,24 +25,29 @@ Installation via Opam
 ---------------------
 
 Lambdapi is under active development. A new version of the `lambdapi`
-[Opam](http://opam.ocaml.org/) package will be released soon,
-when the development will have reached a
-more stable point. For now, we advise you to pin the development
-repository to get the latest development version:
+[Opam](http://opam.ocaml.org/) package will be released soon. For now,
+we advise to pin the development repository to get the latest
+development version:
+
 ```bash
 opam pin add lambdapi https://github.com/Deducteam/lambdapi.git
 opam install lambdapi # install emacs and vim support as well
 ```
-For installing the VSCode extension, you need to get the sources (see below).
+
+The VSCode extension is available on the [Marketplace](https://marketplace.visualstudio.com/items?itemName=Deducteam.lambdapi).
 
 The installation gives you:
 
-* a main executable named ``lambdapi`` in your ``PATH``
-* an OCaml library called ``lambdapi.core`` (system internals)
-* an OCaml library called ``lambdapi.pure`` (pure interface)
-* an OCaml library called ``lambdapi.lsp`` (LSP server)
-* a ``lambdapi`` mode for ``Vim`` (optional)
-* a ``lambdapi`` mode for ``emacs`` (optional)
+* a main executable ``lambdapi`` in your ``PATH``
+* OCaml libraries
+* a ``lambdapi`` mode for ``Vim`
+* a ``lambdapi`` mode for ``emacs``
+
+To browse the source code documentation, you can do:
+```bash
+opam install odig
+odig doc lambdapi
+```
 
 Compilation from the sources
 ----------------------------
@@ -52,14 +57,7 @@ You can get the sources using `git` as follows:
 git clone https://github.com/Deducteam/lambdapi.git
 ```
 
-Dependencies are described in `lambdapi.opam`. For running tests, one
-also needs [alcotest](https://github.com/mirage/alcotest) and
-[alt-ergo](https://alt-ergo.ocamlpro.com/). For building the source
-code documentation, one needs
-[odoc](https://github.com/ocaml/odoc). For building the User Manual,
-see `docs/README.md`.
-
-**Note on Why3:** the command `why3 config detect`
+Dependencies are described in `lambdapi.opam`. The command `why3 config detect`
 must be run to make Why3 know the available provers.
 
 Using Opam, a suitable OCaml environment can be setup as follows:
@@ -78,14 +76,22 @@ make doc                    # Build the user documentation (avalaible on readthe
 make odoc                   # Build the developer documentation
 make install                # Install lambdapi
 make install_emacs          # Install emacs mode
-make install_vim            # Install vim support
 make install_vscode         # Install vscode extension
+make install_vim            # Install vim support
 ```
 
 **Note:** you can run `lambdapi` without installing it with `dune exec -- lambdapi`.
 
-**Note:** the starting file of the source code html documentation is
+For running tests, one also needs
+[alcotest](https://github.com/mirage/alcotest) and
+[alt-ergo](https://alt-ergo.ocamlpro.com/).
+
+For building the source code documentation, one needs
+[odoc](https://github.com/ocaml/odoc). The starting file of the source
+code html documentation is
 `_build/default/_doc/_html/lambdapi/index.html`.
+
+For building the User Manual, see `docs/README.md`.
 
 The following commands can be used to clean up the repository:
 ```bash

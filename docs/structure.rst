@@ -20,8 +20,7 @@ Overview of directories and files
     * ``src/*.ts``: source code of the extension
     * ``syntaxes/lp.tmLanguage.json``: grammar of Lambdapi
     * ``tsconfig.json``: TypeScript configuration (directories, …)
-    * ``vscode.proposed.d.ts``: VSCode API (Microsoft file)
-      <https://raw.githubusercontent.com/microsoft/vscode/master/src/vs/vscode.proposed.d.ts>
+    * ``vscode.d.ts``: `VSCode API <https://github.com/microsoft/vscode/blob/main/src/vscode-dts/vscode.d.ts>`_ (Microsoft file)
 
 * ``libraries/``: libraries of Dedukti files (see ``Makefile``)
 

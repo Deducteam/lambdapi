@@ -8,7 +8,6 @@
     "rootDir": "."
   },
   "files": [
-    // "vscode.proposed.d.ts",
     "src/client.ts"
   ],
   // Default if not specified is node_modules, out, etc...
