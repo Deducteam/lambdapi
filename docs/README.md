@@ -4,10 +4,10 @@ Lambdapi user manual
 Who is this for?
 ----------------
 
-The Lamdbapi user manual concerns mainly people that want to develop proofs or
+The Lamdbapi user manual concerns mainly people who want to develop proofs or
 encodings of logics using Lambdapi. People who want to use Lambdapi as an API
 for proof interoperability should consult the OCaml documentation generated with
-`make doc` at the root of the git repository.
+`make odoc` at the root of the git repository.
 
 Where do I start?
 -----------------
@@ -20,6 +20,7 @@ browser.
 To generate the documentation, 
 [Sphinx](https://www.sphinx-doc.org/en/master/index.html) is required
 (it can be installed using `pip` with `pip install -U sphinx`).
+
 Change to directory `docs/` from the root of the sources
 and use `make html` to generate `html` files into `docs/_build/html`.
 The entry point of the documentation is `docs/_build/html/index.html`.

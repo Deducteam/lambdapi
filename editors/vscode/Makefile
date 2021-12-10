@@ -1,14 +1,17 @@
-default: compile
+default:
+	npm install
+	npm run compile
 
 clean:
-	rm -rf node_modules/ out/
+	rm -rf node_modules out
 
-LP-VSCODE=~/.vscode/extensions/lambdapi
-.PHONY: node_modules
-node_modules:
-	npm install
-	rm -f $(LP-VSCODE)
-	ln -sf `pwd` $(LP-VSCODE)
+# folder for VSCode extensions
+VSCE_DIR=~/.vscode/extensions
+install:
+	ln -sf `pwd` $(VSCE_DIR)/lambdapi
 
-compile: node_modules
-	npm run compile
+uninstall:
+	rm -f $(VSCE_DIR)/lambdapi
+
+package:
+	vsce package

@@ -6,6 +6,8 @@ Here are some guidelines for contributing to this project.
 
 For contributing to the User Manual, see `docs/README.md`.
 
+For contributing to the VSCode extension, see `editors/vscode/CONTRIBUTING.md`.
+
 Branching and pull-request policy
 ---------------------------------
 

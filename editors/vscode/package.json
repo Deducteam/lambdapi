@@ -26,7 +26,7 @@
   "homepage": "https://github.com/Deducteam/lambdapi",
   "repository": {
     "type": "git",
-    "url": "https://github.com/Deducteam/lambdapi.git"
+    "url": "https://github.com/Deducteam/lambdapi"
   },
   "activationEvents": [
     "onLanguage:lp"

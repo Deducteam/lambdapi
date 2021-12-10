@@ -1,4 +1,4 @@
-This extension provides support for the [Lambdapi](https://github.com/Deducteam/lambdapi) language and proof assistant. See the [User manual](https://lambdapi.readthedocs.io/) to know more about Lambdapi. The extension provides syntax highlighting, go-to-definition, key-bindings for proof navigation, and snippets for inputing common mathematical symbols.
+This extension provides support for the [Lambdapi](https://github.com/Deducteam/lambdapi) language and proof assistant. See the [User manual](https://lambdapi.readthedocs.io/) to know more about Lambdapi. The extension provides syntax highlighting, go-to-definition, key-bindings for proof navigation, and snippets for inputing common mathematical symbols. Logs (command ``debug``) are displayed in a terminal which opens automatically when needed.
 
 **Proof navigation**
 
@@ -30,6 +30,7 @@ Type one of the suggested snippets described below, then press
 character. If a snippet completion does not seem to work, try pressing
 ``Ctrl+Space`` to see completion suggestions.
 
+<!-- In Markdown code, backquote is obtained by putting spaces around. -->
 *Common symbols*: `` `ra``: →, `` `is``: ≔, `` `re``: ↪, `` `all``: ∀, `` `ex``: ∃, `` `imp``: ⇒, `` `or`` : ∨, `` `and`` : ∧, `` `not`` : ¬, `` `th``: ⊢, `` `eq``: ≡, `` `box``: □, `` `cons``: ⸬
 
 *Greek letters*: For every letter ``l``, typing `` `l`` will suggest a
