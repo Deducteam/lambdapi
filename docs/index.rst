@@ -41,8 +41,7 @@ For installation instructions, see `README
 For developers
 """"""""""""""
 
-`Guidelines for contributing
-<https://github.com/Deducteam/lambdapi/blob/master/CONTRIBUTING.md>`__.
+`Guidelines for contributing <https://github.com/Deducteam/lambdapi/blob/master/CONTRIBUTING.md>`__
 
 .. toctree::
    :maxdepth: 1
