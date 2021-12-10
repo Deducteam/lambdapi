@@ -1,10 +1,9 @@
-# Changelog
 All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## 2.0.0 (2021-12-10)
 
 ### Release of the VSCode extension on the Marketplace (2021-12-10)
 
@@ -473,7 +472,7 @@ Introducing the `why3` tactic to call external provers.
 
 ### Rewriting using decision trees (2019-09-17)
 
-## [1.0.0] - 2018-11-28
+## 1.0.0 (2018-11-28)
 
 First major release of Lambdapi. It introduces:
  - a new syntax for developing proofs in the system,
@@ -482,6 +481,6 @@ First major release of Lambdapi. It introduces:
  - more things.
  - Consolidate the LSP OPAM package into the main one (@ejgallego)
 
-## [0.1.0] - 2018-09-19
+## 0.1.0 (2018-09-19)
 
 First release of Lambdapi.
