@@ -17,7 +17,9 @@ TODO list for a new release on github and opam using [dune-release](https://gith
 
 In a new directory:
 
-- git clone git@github.com:Deducteam/lambdapi.git
+- git clone git@github.com:fblanqui/lambdapi.git
+
+- git checkout release
 
 - dune-release tag
 
