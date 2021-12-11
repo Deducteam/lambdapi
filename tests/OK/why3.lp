@@ -4,7 +4,6 @@ require open tests.OK.nat;
 prover "Alt-Ergo";
 prover_timeout 2;
 
-
 opaque symbol tautology : Π (a : Prop), P a → P a
 ≔ begin
     why3;
