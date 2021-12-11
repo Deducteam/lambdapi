@@ -12,7 +12,9 @@ let test_ko f () =
   Alcotest.(check bool) f r false
 
 let _ =
-  Common.Library.set_lib_root None;
+  (* Set library root to avoid creating files out of the sandbox when
+     opam runs tests. *)
+  Common.Library.set_lib_root (Some (Sys.getcwd ()));
   let open Alcotest in
   let files = Lplib.Extra.files Common.Library.is_valid_src_extension "OK" in
   let tests_ok = List.map (fun f -> test_case f `Quick (test_ok f)) files in
