@@ -1,7 +1,7 @@
 TODO list for a new release on github and opam using [dune-release](https://github.com/ocamllabs/dune-release)
 -------------------------------------------------------------------
 
-- create a new branch for preparing the release
+- git checkout -b release
 
 - in CHANGES.md, replace Unreleased by the new release number + date + summary of the most important changes
 
@@ -13,7 +13,7 @@ TODO list for a new release on github and opam using [dune-release](https://gith
 
 - dune-release distrib + fix problems
 
-- commit, push, create a PR, merge
+- commit and push
 
 In a new directory:
 
@@ -32,3 +32,7 @@ In a new directory:
 - dune-release opam pkg
 
 - dune-release opam submit
+
+Once published on opam:
+
+- merge PR on master
