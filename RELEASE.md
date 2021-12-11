@@ -21,7 +21,9 @@ In a new directory:
 
 - git checkout release
 
-- dune-release tag (git tag -d $version to remove previous tag)
+- git tag -d $version + git fetch + git merge after changes
+
+- dune-release tag
 
 - dune-release distrib
 
