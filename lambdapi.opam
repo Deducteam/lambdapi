@@ -41,7 +41,7 @@ license: "CECILL-2.1"
 homepage: "https://github.com/Deducteam/lambdapi"
 bug-reports: "https://github.com/Deducteam/lambdapi/issues"
 depends: [
-  "dune" {>= "2.1"}
+  "dune" {>= "2.7"}
   "ocaml" {>= "4.08.0"}
   "menhir" {>= "20200624"}
   "sedlex" {>= "2.2"}
@@ -54,9 +54,10 @@ depends: [
   "yojson" {>= "1.6.0"}
   "cmdliner" {>= "1.0.3"}
   "stdlib-shims" {>= "0.1.0"}
+  "odoc" {with-doc}
 ]
 build: [
-  ["dune" "subst"] {pinned}
+  ["dune" "subst"] {dev}
   [
     "dune"
     "build"

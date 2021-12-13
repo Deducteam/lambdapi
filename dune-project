@@ -1,14 +1,14 @@
-(lang dune 2.1)
-(name lambdapi)
-
-(using menhir 1.0)
+(lang dune 2.7)
 
 (generate_opam_files true)
 
+(name lambdapi)
 (source (github Deducteam/lambdapi))
-(license CECILL-2.1)
 (authors "Deducteam")
 (maintainers "dedukti-dev@inria.fr")
+(license CECILL-2.1)
+
+(using menhir 1.0)
 
 (package
  (name lambdapi)
