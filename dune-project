@@ -9,6 +9,7 @@
 (license CECILL-2.1)
 (authors "Deducteam")
 (maintainers "dedukti-dev@inria.fr")
+
 (package
  (name lambdapi)
  (synopsis "Proof assistant for the λΠ-calculus modulo rewriting")
@@ -17,7 +18,7 @@
 - A lambdapi command for checking .lp or .dk files,
 translating .dk files to .lp files, or launching
 an LSP server for editing .lp files.
-- A rich Emacs mode based on LSP (available also on MELPA).
+- A rich Emacs mode based on LSP (available on MELPA too).
 - A very basic mode for Vim.
 - OCaml libraries.
 A VSCode extension is also available on the VSCode Marketplace.
@@ -32,6 +33,7 @@ easily define inductive-recursive types for instance.
 Rewrite rules can be exported to the TRS and XTC formats
 for checking confluence and termination with external tools.
 A symbol can be declared associative and commutative.
+Lambdapi supports unicode symbols and infix operators.
 
 Lambdapi does not come with a pre-defined logic. It is a
 powerful logical framework in which one can easily define
@@ -50,6 +52,7 @@ the Why3 platform.")
   (menhir (>= 20200624))
   (sedlex (>= 2.2))
   (alcotest :with-test)
+  (alt-ergo :with-test)
   (bindlib (>= 5.0.1))
   (timed (>= 1.0))
   (pratter (>= 1.2))
