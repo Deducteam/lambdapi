@@ -200,7 +200,12 @@ and scope_parsed : int -> mode -> sig_state -> env -> p_term -> tbox =
   begin
     match p_head.elt, md with
     | P_Patt _, M_LHS _ when args <> [] ->
-      fatal t.pos "Pattern variables cannot be applied."
+      begin match args with
+        | [{elt=P_Expl _;_}] ->
+          fatal t.pos "Explicit terms are forbidden in rule LHS. \
+                       You perhaps forgot to write a dot before?"
+        | _ -> fatal t.pos "Pattern variables cannot be applied."
+      end
     | _ -> ()
   end;
   (* Scope the head and obtain the implicitness of arguments. *)
