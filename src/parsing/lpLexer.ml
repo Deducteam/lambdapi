@@ -21,7 +21,7 @@ let fail : Sedlexing.lexbuf -> string -> 'a = fun lb msg ->
   raise (SyntaxError (make_pos (lexing_positions lb) msg))
 
 let invalid_character : Sedlexing.lexbuf -> 'a = fun lb ->
-  fail lb ("Invalid character: \"" ^ Utf8.lexeme lb ^ "\".")
+  fail lb "Invalid character"
 
 (** Tokens. *)
 type token =
