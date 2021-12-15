@@ -144,21 +144,4 @@ endif
 
 .PHONY: install_vscode
 install_vscode:
-	$(MAKE) -C editors/vscode
-
-opam-release:
-	dune-release distrib
-	dune-release opam pkg
-
-OPAM_REPO=/home/egallego/external/coq/opam-deducteam
-OPAM_LP_VER=$(shell dune-release log -t)
-# Prior to build:
-# - dune-release log edit && dune-release tag commit [or edit by yourself]
-# - dune-release tag                                 [or git tag]
-repos_release:
-	rm -rf _build
-	dune-release distrib
-	dune-release publish distrib
-	dune-release opam pkg -p lambdapi
-	cp -a _build/lambdapi.$(OPAM_LP_VER) $(OPAM_REPO)/packages/lambdapi/
-	cd $(OPAM_REPO) && git add -A && git commit -a -m "[lambdapi] new version $(OPAM_LP_VER)"
+	$(MAKE) -C editors/vscode install
