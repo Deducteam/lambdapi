@@ -62,8 +62,7 @@ module Lp : PARSER = struct
         | LpLexer.SyntaxError {pos=Some pos; elt} -> parser_fatal pos "%s" elt
         | LpParser.Error ->
             let pos = Pos.locate (Sedlexing.lexing_positions lb) in
-            parser_fatal pos
-              "Unexpected character: %s" (Sedlexing.Utf8.lexeme lb)
+            parser_fatal pos "Unexpected token: %s" (Sedlexing.Utf8.lexeme lb)
       in
       Stream.from generator
 
@@ -132,10 +131,9 @@ let path_of_string : string -> Path.t = fun s ->
     begin match token lb () with
       | UID s, _, _ -> [s]
       | QID p, _, _ -> List.rev p
-      | _ -> Error.fatal_no_pos "Invalid path."
+      | _ -> Error.fatal_no_pos "\"%s\" is not a path." s
     end
-  with SyntaxError {elt;_} ->
-    Error.fatal_no_pos "Syntax error in path: %s." elt
+  with SyntaxError _ -> Error.fatal_no_pos "\"%s\" is not a path." s
 
 (** [qident_of_string s] converts the string [s] into a qident. *)
 let qident_of_string : string -> Core.Term.qident = fun s ->
@@ -143,10 +141,9 @@ let qident_of_string : string -> Core.Term.qident = fun s ->
   let lb = Sedlexing.Utf8.from_string s in
   try
     begin match token lb () with
-      | UID s, _, _ -> ([], s)
       | QID [], _, _ -> assert false
       | QID (s::p), _, _ -> (List.rev p, s)
-      | _ -> Error.fatal_no_pos "Invalid qualified identifier."
+      | _ -> Error.fatal_no_pos "\"%s\" is not a qualified identifier." s
     end
-  with SyntaxError {elt;_} ->
-    Error.fatal_no_pos "Syntax error in qualified identifier: %s." elt
+  with SyntaxError _ ->
+    Error.fatal_no_pos "\"%s\" is not a qualified identifier." s
