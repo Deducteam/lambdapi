@@ -141,7 +141,9 @@ qid:
   | s=UID { make_pos $sloc ([], s) }
   | p=QID { qid_of_path $sloc p }
 
-path: p=QID { make_pos $sloc (List.rev p) }
+path:
+  | UID { raise Error.NotQualified }
+  | p=QID { make_pos $sloc (List.rev p) }
 
 qid_expl:
   | s=UID_EXPL { make_pos $sloc ([], s) }
@@ -279,8 +281,8 @@ command:
     { make_pos $sloc (P_require(true,l)) }
   | REQUIRE l=list(path) SEMICOLON
     { make_pos $sloc (P_require(false,l)) }
-  | REQUIRE i=path AS a=uid SEMICOLON
-    { make_pos $sloc (P_require_as(i,a)) }
+  | REQUIRE p=path AS i=uid SEMICOLON
+    { make_pos $sloc (P_require_as(p,i)) }
   | OPEN l=list(path) SEMICOLON
     { make_pos $sloc (P_open l) }
   | ms=modifier* SYMBOL s=uid al=param_list* COLON a=term
