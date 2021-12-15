@@ -1,14 +1,15 @@
-(lang dune 2.1)
+(lang dune 2.7)
+
+(generate_opam_files false)
+
 (name lambdapi)
+(source (github Deducteam/lambdapi))
+(authors "Deducteam")
+(maintainers "dedukti-dev@inria.fr")
+(license CECILL-2.1)
 
 (using menhir 1.0)
 
-(generate_opam_files true)
-
-(source (github Deducteam/lambdapi))
-(license CECILL-2.1)
-(authors "Deducteam")
-(maintainers "dedukti-dev@inria.fr")
 (package
  (name lambdapi)
  (synopsis "Proof assistant for the λΠ-calculus modulo rewriting")
@@ -17,35 +18,41 @@
 - A lambdapi command for checking .lp or .dk files,
 translating .dk files to .lp files, or launching
 an LSP server for editing .lp files.
-- A rich Emacs mode based on LSP (available also on MELPA).
+- A rich Emacs mode based on LSP (available on MELPA too).
 - A very basic mode for Vim.
 - OCaml libraries.
-A VSCode extension is available on the VSCode Marketplace.
+A VSCode extension is also available on the VSCode Marketplace.
 
-Lambdapi user manual: https://lambdapi.readthedocs.io/
+Find Lambdapi user manual on https://lambdapi.readthedocs.io/.
 
 Lambdapi provides a rich type system with dependent types.
 In Lambdapi, one can define both type and function symbols
 by using rewriting rules (oriented equations). The declaration
 of symbols and rewriting rules is separated so that one can
-easily define inductive-recursive types.
+easily define inductive-recursive types for instance.
+Rewrite rules can be exported to the TRS and XTC formats
+for checking confluence and termination with external tools.
+A symbol can be declared associative and commutative.
+Lambdapi supports unicode symbols and infix operators.
 
-Lambdapi provides interactive modes for proving both unification
-goals and typing goals, and tactics for solving them step by step.
-In particular, Lambdapi provides a rewrite tactic similar to
-the one of SSReflect, and a why3 tactic for calling external
-automated provers through the Why3 platform.
+Lambdapi does not come with a pre-defined logic. It is a
+powerful logical framework in which one can easily define
+its own logic and build and check proofs in this logic.
+There exist .lp files defining first or higher-order logic
+and complex type systems like in Coq or Agda.
 
-Lambdapi provides a basic module and package system.
-
-Finally, rewrite rules can be exported to the TRS and XTC
-formats for checking confluence and termination
-with external tools.")
+Lambdapi provides a basic module and package system,
+interactive modes for proving both unification goals
+and typing goals, and tactics for solving them step by step.
+In particular, a rewrite tactic like in SSReflect, and
+a why3 tactic for calling external automated provers through
+the Why3 platform.")
  (depends
   (ocaml (>= 4.08.0))
   (menhir (>= 20200624))
   (sedlex (>= 2.2))
   (alcotest :with-test)
+  (alt-ergo :with-test) (alt-ergo (<= 2.4.0))
   (bindlib (>= 5.0.1))
   (timed (>= 1.0))
   (pratter (>= 1.2))

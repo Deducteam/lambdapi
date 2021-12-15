@@ -9,3 +9,7 @@
   lambdapi.pkg)
  (libraries lambdapi.core lambdapi.parsing lambdapi.handle lambdapi.tool
             alcotest))
+
+(rule
+ (alias runtest)
+  (action (run why3 config detect)))

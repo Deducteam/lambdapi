@@ -7,7 +7,9 @@ open Handle
 open Parsing
 
 let _ =
-  Library.set_lib_root None;
+  (* Set library root to avoid creating files out of the sandbox when
+     opam runs tests. *)
+  Library.set_lib_root (Some (Sys.getcwd ()));
   match Package.find_config "." with
   | None -> assert false
   | Some(f) -> Package.apply_config f
@@ -36,8 +38,9 @@ let test_xtc () =
 
 (** Decision tree of regular symbol. *)
 let test_dtree () =
-  let id = Pos.none (["tests";"OK";"bool"],"bool_or") in
-  let sym = Sig_state.find_sym ~prt:true ~prv:true bool_ss id in
+  let sign = compile "OK/bool.lp" in
+  let sym, _ =
+    Lplib.Extra.StrMap.find "bool_or" Timed.(!(sign.Sign.sign_symbols)) in
   let buf = Buffer.create 16 in
   let fmt = Format.formatter_of_buffer buf in
   Tool.Tree_graphviz.to_dot fmt sym;
