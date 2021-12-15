@@ -60,9 +60,14 @@ module Lp : PARSER = struct
         | End_of_file -> Option.iter close_in inchan; None
         | LpLexer.SyntaxError {pos=None; _} -> assert false
         | LpLexer.SyntaxError {pos=Some pos; elt} -> parser_fatal pos "%s" elt
+        | Error.NotQualified ->
+          let pos = Pos.locate (Sedlexing.lexing_positions lb) in
+          parser_fatal pos
+            "Unqualified identifier (the root_path is missing)."
         | LpParser.Error ->
             let pos = Pos.locate (Sedlexing.lexing_positions lb) in
-            parser_fatal pos "Unexpected token: %s" (Sedlexing.Utf8.lexeme lb)
+            parser_fatal pos "Unexpected token: \"%s\"."
+              (Sedlexing.Utf8.lexeme lb)
       in
       Stream.from generator
 
@@ -105,7 +110,7 @@ module Dk : PARSER = struct
         | End_of_file -> Option.iter close_in inchan; None
         | DkParser.Error ->
             let pos = Pos.locate (Lexing.(lb.lex_start_p, lb.lex_curr_p)) in
-            parser_fatal pos "Unexpected token [%s]." (Lexing.lexeme lb)
+            parser_fatal pos "Unexpected token \"%s\"." (Lexing.lexeme lb)
       in
       Stream.from generator
 

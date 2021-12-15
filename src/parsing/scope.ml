@@ -200,7 +200,12 @@ and scope_parsed : int -> mode -> sig_state -> env -> p_term -> tbox =
   begin
     match p_head.elt, md with
     | P_Patt _, M_LHS _ when args <> [] ->
-      fatal t.pos "Pattern variables cannot be applied."
+      begin match args with
+        | [{elt=P_Expl _;_}] ->
+          fatal t.pos "Explicit terms are forbidden in rule LHS. \
+                       You perhaps forgot to write a dot before?"
+        | _ -> fatal t.pos "Pattern variables cannot be applied."
+      end
     | _ -> ()
   end;
   (* Scope the head and obtain the implicitness of arguments. *)
@@ -305,7 +310,7 @@ and scope_binder : ?warn:bool -> int -> mode -> sig_state ->
           cons a (Bindlib.bind_var v t)
       | Some {elt=id;pos}::idopts ->
           if is_invalid_bindlib_id id then
-            fatal pos "%s: Escaped identifiers or regular identifiers \
+            fatal pos "\"%s\": Escaped identifiers or regular identifiers \
                        having an integer suffix with leading zeros \
                        are not allowed for bound variable names." id;
           let v = new_tvar id in
