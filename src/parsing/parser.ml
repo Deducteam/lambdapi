@@ -62,8 +62,7 @@ module Lp : PARSER = struct
         | LpLexer.SyntaxError {pos=Some pos; elt} -> parser_fatal pos "%s" elt
         | LpParser.Error ->
             let pos = Pos.locate (Sedlexing.lexing_positions lb) in
-            parser_fatal pos
-              "Unexpected character: %s" (Sedlexing.Utf8.lexeme lb)
+            parser_fatal pos "Unexpected token: %s" (Sedlexing.Utf8.lexeme lb)
       in
       Stream.from generator
 

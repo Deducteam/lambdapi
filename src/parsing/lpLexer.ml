@@ -123,6 +123,7 @@ type token =
   | QID_EXPL of Path.t (* in reverse order *)
 
 (** Some regexp definitions. *)
+let space = [%sedlex.regexp? Chars " \t\n\r"]
 let digit = [%sedlex.regexp? '0' .. '9']
 let nonzero_nat = [%sedlex.regexp? '1' .. '9', Star digit]
 let nat = [%sedlex.regexp? '0' | nonzero_nat]
@@ -151,8 +152,8 @@ let string = [%sedlex.regexp? '"', Star (Compl '"'), '"']
 
 (** Unqualified regular identifiers are any non-empty sequence of characters
    not among: *)
-let forbidden_letter = [%sedlex.regexp? Chars " ,;\r\t\n(){}[]:.`\"@$|?"]
-let regid = [%sedlex.regexp? Plus (Compl forbidden_letter)]
+let forbidden_letter = [%sedlex.regexp? Chars " ,;\r\t\n(){}[]:.`\"@$|?/*"]
+let regid = [%sedlex.regexp? '/' | '*' | Plus (Compl forbidden_letter)]
 
 let is_regid : string -> bool = fun s ->
   let lb = Utf8.from_string s in
@@ -183,14 +184,11 @@ let rec token lb =
   | eof -> EOF
 
   (* spaces *)
-  | ' ' -> token lb
-  | '\t' -> token lb
-  | '\n' -> token lb
-  | '\r' -> token lb
+  | space -> token lb
 
   (* comments *)
   | oneline_comment -> token lb
-  | "/*" -> comment 0 lb
+  | "/*" -> comment token 0 lb
 
   (* keywords *)
   | "abort" -> ABORT
@@ -301,6 +299,8 @@ let rec token lb =
 
 and qid expl ids lb =
   match%sedlex lb with
+  | oneline_comment -> qid expl ids lb
+  | "/*" -> comment (qid expl ids) 0 lb
   | regid, '.' -> qid expl (remove_last lb :: ids) lb
   | escid, '.' -> qid expl (remove_useless_escape(remove_last lb) :: ids) lb
   | regid ->
@@ -313,12 +313,12 @@ and qid expl ids lb =
     fail lb ("Invalid identifier: \""
              ^ String.concat "." (List.rev (Utf8.lexeme lb :: ids)) ^ "\".")
 
-and comment i lb =
+and comment next i lb =
   match%sedlex lb with
   | eof -> fail lb "Unterminated comment."
-  | "*/" -> if i=0 then token lb else comment (i-1) lb
-  | "/*" -> comment (i+1) lb
-  | any -> comment i lb
+  | "*/" -> if i=0 then next lb else comment next (i-1) lb
+  | "/*" -> comment next (i+1) lb
+  | any -> comment next i lb
   | _ -> invalid_character lb
 
 (** [token buf] is a lexing function on buffer [buf] that can be passed to
