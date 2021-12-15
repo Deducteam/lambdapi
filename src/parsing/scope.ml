@@ -305,7 +305,7 @@ and scope_binder : ?warn:bool -> int -> mode -> sig_state ->
           cons a (Bindlib.bind_var v t)
       | Some {elt=id;pos}::idopts ->
           if is_invalid_bindlib_id id then
-            fatal pos "%s: Escaped identifiers or regular identifiers \
+            fatal pos "\"%s\": Escaped identifiers or regular identifiers \
                        having an integer suffix with leading zeros \
                        are not allowed for bound variable names." id;
           let v = new_tvar id in
