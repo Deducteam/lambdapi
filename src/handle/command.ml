@@ -48,6 +48,11 @@ let _ =
    signature state. On success, an updated signature state is returned. *)
 let handle_open : sig_state -> p_path -> sig_state =
   fun ss {elt=p;pos} ->
+  (* Check that [p] is not an alias. *)
+  match p with
+  | [a] when StrMap.mem a ss.alias_path ->
+    fatal pos "Module aliases cannot be open."
+  | _ ->
   (* Check that [p] has been required. *)
   if not (Path.Map.mem p !(ss.signature.sign_deps)) then
     fatal pos "Module %a needs to be required first." pp_path p;
