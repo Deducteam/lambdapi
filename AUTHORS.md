@@ -8,6 +8,7 @@ Active Contributors (in alphabetical order)
 Past Contributors (in alphabetical order)
 =========================================
 
+- Aurélien Castre (2021)
 - Ashish Kumar Barnawal (2020-2021)
 - Yann Leray (2021)
 - Amélie Ledein (2020)
