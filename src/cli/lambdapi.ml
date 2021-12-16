@@ -65,7 +65,7 @@ let parse_cmd : Config.t -> string list -> unit = fun cfg files ->
     let consume _ = () in
     let handle file =
       Time.restore time;
-      Debug.stream_iter consume (Compile.parse_file file) in
+      Debug.stream_iter consume (Parser.parse_file file) in
     List.iter handle files
   in
   Error.handle_exceptions run
@@ -74,7 +74,7 @@ let parse_cmd : Config.t -> string list -> unit = fun cfg files ->
 let beautify_cmd : Config.t -> string -> unit = fun cfg file ->
   let run _ =
     Config.init cfg;
-    let cmds = Compile.parse_file file in
+    let cmds = Parser.parse_file file in
     Pretty.beautify cmds
   in Error.handle_exceptions run
 

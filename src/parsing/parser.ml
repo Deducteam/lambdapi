@@ -152,3 +152,10 @@ let qident_of_string : string -> Core.Term.qident = fun s ->
     end
   with SyntaxError _ ->
     Error.fatal_no_pos "\"%s\" is not a qualified identifier." s
+
+(** [parse_file fname] selects and runs the correct parser on file [fname], by
+    looking at its extension. *)
+let parse_file : string -> Syntax.ast = fun fname ->
+  match Filename.check_suffix fname Library.src_extension with
+  | true  -> Lp.parse_file fname
+  | false -> Dk.parse_file fname

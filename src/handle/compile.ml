@@ -14,13 +14,6 @@ open Library
     source files. The default behaviour is not te generate them. *)
 let gen_obj = Stdlib.ref false
 
-(** [parse_file fname] selects and runs the correct parser on file [fname], by
-    looking at its extension. *)
-let parse_file : string -> Syntax.ast = fun fname ->
-  match Filename.check_suffix fname src_extension with
-  | true  -> Parser.Lp.parse_file fname
-  | false -> Parser.Dk.parse_file fname
-
 (** [compile_with ~handle ~force mp] compiles the file corresponding to module
    path [mp] using function [~handle] to process commands. Module [mp] is
    processed when it is necessary, i.e. the corresponding object file does not
@@ -73,7 +66,7 @@ let rec compile_with :
         Stdlib.(sig_st :=
                   handle (compile_with ~handle ~force:false) !sig_st cmd)
       in
-      Debug.stream_iter consume (parse_file src);
+      Debug.stream_iter consume (Parser.parse_file src);
       Sign.strip_private sign;
       if Stdlib.(!gen_obj) then Sign.write sign obj;
       loading := List.tl !loading;
@@ -97,7 +90,7 @@ let rec compile_with :
     end
 
 (** [compile force mp] compiles module path [mp] using [compile_with], forcing
-   compilation of up-to-date files if [force] is true. *)
+    compilation of up-to-date files if [force] is true. *)
 let compile force = compile_with ~handle:Command.handle ~force
 
 (** [recompile] indicates whether we should recompile files who have an object
@@ -105,8 +98,9 @@ let compile force = compile_with ~handle:Command.handle ~force
     that are given on the command line explicitly, not their dependencies. *)
 let recompile = Stdlib.ref false
 
-(** [compile_file fname] is the main compiling function. It is called from the
-    main program exclusively. *)
+(** [compile_file fname] looks for a package configuration file for
+    [fname] and compiles [fname]. It is the main compiling function. It
+    is called from the main program exclusively. *)
 let compile_file : string -> Sign.t = fun fname ->
   Package.apply_config fname;
   (* Compute the module path (checking the extension). *)
