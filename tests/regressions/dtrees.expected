@@ -1,0 +1,60 @@
+=> tests.OK.bool.bool_or
+graph {
+       0 [label="0" shape="box"];
+       1 [label="0" shape="box"];
+       0 -- 1 [label=<false<sub>0</sub>>];
+       2 [label="$v0_b"];
+       1 -- 2 [label=<*>];
+       3 [label="0" shape="box"];
+       0 -- 3 [label=<true<sub>0</sub>>];
+       4 [label="true"];
+       3 -- 4 [label=<*>];
+       5 [label="0"];
+       0 -- 5 [label=<*>];
+       6 [label="$v0_b"];
+       5 -- 6 [label=<false<sub>0</sub>>];
+       7 [label="true"];
+       5 -- 7 [label=<true<sub>0</sub>>];
+}
+=> ghost symbol #equiv from tests.OK.unif_hint
+graph {
+       0 [label="0"];
+       1 [label="0" shape="box"];
+       0 -- 1 [label=<fst<sub>2</sub>>];
+       2 [label="0" shape="box"];
+       1 -- 2 [label=<*>];
+       3 [label="0" shape="box"];
+       2 -- 3 [label=<*>];
+       4 [label="$v1_p ≡ pair $v2_f $v4_s"];
+       3 -- 4 [label=<*>];
+       5 [label="2"];
+       0 -- 5 [label=<plus<sub>2</sub>>];
+       6 [label="0" shape="box"];
+       5 -- 6 [label=<z<sub>0</sub>>];
+       7 [label="0" shape="box"];
+       6 -- 7 [label=<*>];
+       8 [label="($v0_x ≡ z) ; ($v1_y ≡ z)"];
+       7 -- 8 [label=<*>];
+       9 [label="0" shape="box"];
+       0 -- 9 [label=<snd<sub>2</sub>>];
+       10 [label="0" shape="box"];
+       9 -- 10 [label=<*>];
+       11 [label="0" shape="box"];
+       10 -- 11 [label=<*>];
+       12 [label="$v1_p ≡ pair $v4_f $v2_s"];
+       11 -- 12 [label=<*>];
+       13 [label="2"];
+       0 -- 13 [label=<Πv0>];
+       14 [label="0" shape="box"];
+       13 -- 14 [label=<T<sub>1</sub>>];
+       15 [label="0" shape="box"];
+       14 -- 15 [label=<*>];
+       16 [label=< ⊆ FV(1)> shape="diamond"];
+       15 -- 16 [label=<*>];
+       17 [label="0" shape="box"];
+       16 -- 17 [label=<✓>];
+       18 [label="($v0_b ≡ T $v3_eb) ; (($v1_a ≡ T $v4_ea) ; ($v2_c ≡ arrow $v4_ea $v3_eb))"];
+       17 -- 18 [label=<*>];
+       19 [label=<!>];
+       16 -- 19 [label="!"];
+}

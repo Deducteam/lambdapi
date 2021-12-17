@@ -1,0 +1,86 @@
+(FUN
+  lam  : term -> (term -> term) -> term
+  app  : term -> term -> term
+  pi   : term -> (term -> term) -> term
+  type : term
+)
+
+(COMMENT beta-reduction)
+(VAR
+  v_x   : term
+  m_typ : term
+  m_B   : term
+  m_F   : term -> term
+)
+(RULES app(lam(m_typ,\v_x. m_F v_x), m_B) -> m_F(m_B))
+
+(COMMENT TYPE keyword)
+(FUN TYPE : term)
+
+(COMMENT symbols)
+(FUN c_tests_OK_bool_B : term)
+(FUN c_tests_OK_bool_bool_and : term)
+(FUN c_tests_OK_bool_bool_impl : term)
+(FUN c_tests_OK_bool_bool_neg : term)
+(FUN c_tests_OK_bool_bool_or : term)
+(FUN c_tests_OK_bool_bool_xor : term)
+(FUN c_tests_OK_bool_false : term)
+(FUN c_tests_OK_bool_true : term)
+
+(COMMENT rewriting rules)
+(VAR
+  $v0_b : term
+)
+(RULES app(app(c_tests_OK_bool_bool_and,c_tests_OK_bool_true),$v0_b)
+    -> $v0_b)
+(VAR
+  $v0 : term
+)
+(RULES app(app(c_tests_OK_bool_bool_and,c_tests_OK_bool_false),$v0)
+    -> c_tests_OK_bool_false)
+(VAR
+  $v0_b : term
+)
+(RULES app(app(c_tests_OK_bool_bool_and,$v0_b),c_tests_OK_bool_true)
+    -> $v0_b)
+(VAR
+  $v0 : term
+)
+(RULES app(app(c_tests_OK_bool_bool_and,$v0),c_tests_OK_bool_false)
+    -> c_tests_OK_bool_false)
+(VAR
+  a : term
+  b : term
+)
+(RULES c_tests_OK_bool_bool_impl
+    -> lam(c_tests_OK_bool_B,\a.lam(c_tests_OK_bool_B,\b.app(app(c_tests_OK_bool_bool_or,b),app(c_tests_OK_bool_bool_neg,a)))))
+(RULES app(c_tests_OK_bool_bool_neg,c_tests_OK_bool_true)
+    -> c_tests_OK_bool_false)
+(RULES app(c_tests_OK_bool_bool_neg,c_tests_OK_bool_false)
+    -> c_tests_OK_bool_true)
+(VAR
+  $v0 : term
+)
+(RULES app(app(c_tests_OK_bool_bool_or,c_tests_OK_bool_true),$v0)
+    -> c_tests_OK_bool_true)
+(VAR
+  $v0_b : term
+)
+(RULES app(app(c_tests_OK_bool_bool_or,c_tests_OK_bool_false),$v0_b)
+    -> $v0_b)
+(VAR
+  $v0 : term
+)
+(RULES app(app(c_tests_OK_bool_bool_or,$v0),c_tests_OK_bool_true)
+    -> c_tests_OK_bool_true)
+(VAR
+  $v0_b : term
+)
+(RULES app(app(c_tests_OK_bool_bool_or,$v0_b),c_tests_OK_bool_false)
+    -> $v0_b)
+(VAR
+  a : term
+  b : term
+)
+(RULES c_tests_OK_bool_bool_xor
+    -> lam(c_tests_OK_bool_B,\a.lam(c_tests_OK_bool_B,\b.app(app(c_tests_OK_bool_bool_or,app(app(c_tests_OK_bool_bool_and,a),app(c_tests_OK_bool_bool_neg,b))),app(app(c_tests_OK_bool_bool_and,b),app(c_tests_OK_bool_bool_neg,a))))))
