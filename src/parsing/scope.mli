@@ -51,9 +51,17 @@ type pre_rule =
 (** [rule_of_pre_rule r] converts a pre-rewrite rule into a rewrite rule. *)
 val rule_of_pre_rule : pre_rule loc -> rule
 
-(** [scope_rule ur ss r] turns a parser-level rewriting rule [r], or a
-    unification rule if [ur] is true, into a pre-rewriting rule. *)
-val scope_rule : bool -> sig_state -> p_rule -> pre_rule loc
+(** [scope_rule ss r] turns a parser-level rewriting rule [r] into a
+    pre-rewriting rule. *)
+val scope_rule : sig_state -> p_rule -> pre_rule loc
+
+(** [scope_unif_rule ss r] turns a parser-level unification rule [r] into a
+    pre-rewriting rule. *)
+val scope_unif_rule : sig_state -> p_rule -> pre_rule loc
+
+(** [scope_meta_rule ss r] turns a parser-level meta rewriting rule [r]
+    into a pre-rewriting rule. *)
+val scope_meta_rule : sig_state -> p_rule -> pre_rule loc
 
 (** [scope_rw_patt ss env t] turns a parser-level rewrite tactic specification
     [s] into an actual rewrite specification (possibly containing variables of

@@ -136,7 +136,7 @@ let handle_modifiers : p_modifier list -> prop * expo * match_strat =
 let handle_rule : sig_state -> p_rule -> sym = fun ss r ->
   Console.out 3 (Color.cya "%a") Pos.pp r.pos;
   Console.out 4 "%a" (Pretty.rule "rule") r;
-  let pr = scope_rule false ss r in
+  let pr = scope_rule ss r in
   let sym = pr.elt.pr_sym in
   if !(sym.sym_def) <> None then
     fatal pr.pos "No rewriting rule can be given on the defined symbol %a."
@@ -227,7 +227,7 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
       (add_notation ss sym n, None, None)
   | P_unif_rule(h) ->
       (* Approximately same processing as rules without SR checking. *)
-      let pur = scope_rule true ss h in
+      let pur = scope_unif_rule ss h in
       let urule = Scope.rule_of_pre_rule pur in
       Sign.add_rule ss.signature Unif_rule.equiv urule;
       Tree.update_dtree Unif_rule.equiv;
