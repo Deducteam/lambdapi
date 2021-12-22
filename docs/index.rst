@@ -9,11 +9,18 @@ Lambdapi User Manual
 Lambdapi is a proof assistant for the λΠ-calculus modulo
 rewriting. See :doc:`about` for more details.
 
-For installation instructions, see `README
-<https://github.com/Deducteam/lambdapi/blob/master/README.md>`__.
+Lambdapi files must end with ``.lp``. But Lambdapi can also read
+`Dedukti <https://deducteam.github.io/>`__ files ending with ``.dk``
+and convert them to Lambdapi files.
 
-Lambdapi files must end with ``.lp``. But Lambdapi can also read `Dedukti <https://deducteam.github.io/>`__
-files ending with ``.dk`` and convert them to Lambdapi files.
+`Installation instructions
+<https://github.com/Deducteam/lambdapi/blob/master/README.md>`__
+- `Frequently Asked Questions
+<https://github.com/Deducteam/lambdapi/discussions>`__
+- `Issue tracker
+<https://github.com/Deducteam/lambdapi/issues>`__
+
+`Example of developments using Lambdapi <https://github.com/fblanqui/lib>`__
 
 .. toctree::
    :maxdepth: 1
