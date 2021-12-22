@@ -183,18 +183,21 @@ let _ =
   assert (valid "case_ex02_intro1");
   assert (valid "case_ex02_intro10")
 
-(** [scope md ss env t] turns a parser-level term [t] into an actual term. The
-   variables of the environment [env] may appear in [t], and the scoping mode
-   [md] changes the behaviour related to certain constructors. The signature
-   state [ss] is used to convert identifiers into symbols according to
-   [find_qid]. *)
-let rec scope : int -> mode -> sig_state -> env -> p_term -> tbox =
-  fun k md ss env t -> scope_parsed k md ss env (Pratt.parse ss env t)
+(** [scope md ss env b t] turns a parser-level term [t] into an actual
+   term. The variables of the environment [env] may appear in [t], and the
+   scoping mode [md] changes the behaviour related to certain
+   constructors. The signature state [ss] is used to convert identifiers into
+   symbols according to [find_qid]. [b] tells whether we scope a type. *)
+let rec scope :
+  ?typ:bool -> int -> mode -> sig_state -> env -> p_term -> tbox =
+  fun ?(typ=false) k md ss env t ->
+  scope_parsed ~typ k md ss env (Pratt.parse ss env t)
 
 (** [scope_parsed md ss env t] turns a parser-level, Pratt-parsed term [t]
    into an actual term. *)
-and scope_parsed : int -> mode -> sig_state -> env -> p_term -> tbox =
-  fun k md ss env t ->
+and scope_parsed :
+  ?typ:bool -> int -> mode -> sig_state -> env -> p_term -> tbox =
+  fun ?(typ=false) k md ss env t ->
   if Logger.log_enabled () then log_scop "%a%a" D.depth k Pretty.term t;
   (* Extract the spine. *)
   let p_head, args = Syntax.p_get_args t in
@@ -211,7 +214,7 @@ and scope_parsed : int -> mode -> sig_state -> env -> p_term -> tbox =
     | _ -> ()
   end;
   (* Scope the head and obtain the implicitness of arguments. *)
-  let h = scope_head k md ss env p_head in
+  let h = scope_head ~typ k md ss env p_head in
   (* Find out whether [h] has implicit arguments. *)
   let rec get_impl p_head =
     match p_head.elt with
@@ -279,7 +282,7 @@ and scope_domain : int -> mode -> sig_state -> env -> p_term option -> tbox =
   | (Some {elt=P_Wild;_}|None), M_LHS data ->
       fresh_patt data None (Env.to_tbox env)
   | (Some {elt=P_Wild;_}|None), _ -> fresh_meta_type md env
-  | Some a, _ -> scope k md ss env a
+  | Some a, _ -> scope ~typ:true k md ss env a
 
 (** [scope_binder ?warn mode ss cons env params_list t] scopes [t] in mode
    [md], signature state [ss] and environment [env]. [params_list] is a list
@@ -287,16 +290,16 @@ and scope_domain : int -> mode -> sig_state -> env -> p_term option -> tbox =
    [cons] (either [_Abst] or [_Prod]). If [?warn] is true (the default), a
    warning is printed when the variable that is bound by the binder does not
    appear in the body. *)
-and scope_binder : ?warn:bool -> int -> mode -> sig_state ->
+and scope_binder : ?typ:bool -> ?warn:bool -> int -> mode -> sig_state ->
   (tbox -> tbinder Bindlib.box -> tbox) -> Env.t -> p_params list ->
   p_term option -> tbox =
-  fun ?(warn=true) k md ss cons env params_list t ->
+  fun ?(typ=false) ?(warn=true) k md ss cons env params_list t ->
   let rec scope_params_list env params_list =
     match params_list with
     | [] ->
         begin
           match t with
-          | Some t -> scope (k+1) md ss env t
+          | Some t -> scope ~typ (k+1) md ss env t
           | None -> fresh_meta_type md env
         end
     | (idopts,typopt,_implicit)::params_list ->
@@ -326,8 +329,9 @@ and scope_binder : ?warn:bool -> int -> mode -> sig_state ->
   scope_params_list env params_list
 
 (** [scope_head md ss env t] scopes [t] as term head. *)
-and scope_head : int -> mode -> sig_state -> env -> p_term -> tbox =
-  fun k md ss env t ->
+and scope_head :
+  ?typ:bool -> int -> mode -> sig_state -> env -> p_term -> tbox =
+  fun ?(typ=false) k md ss env t ->
   match (t.elt, md) with
   | (P_Type, M_LHS(_)) -> fatal t.pos "TYPE is not allowed in a LHS."
   | (P_Type, _) -> _Type
@@ -349,7 +353,8 @@ and scope_head : int -> mode -> sig_state -> env -> p_term -> tbox =
     _TEnv (_TE_Vari x) (Env.to_tbox env)
   | (P_Wild, M_LHS data) -> fresh_patt data None (Env.to_tbox env)
   | (P_Wild, M_Patt) -> _Wild
-  | (P_Wild, (M_RHS _|M_Term _)) -> fresh_meta_tbox md env
+  | (P_Wild, (M_RHS _|M_Term _)) ->
+    if typ then fresh_meta_type md env else fresh_meta_tbox md env
 
   | (P_Meta({elt;pos},ts), M_Term d) ->
       let m =
@@ -472,7 +477,8 @@ and scope_head : int -> mode -> sig_state -> env -> p_term -> tbox =
   | (P_Arro(_,_), M_Patt) ->
       fatal t.pos "Implications are not allowed in a pattern."
   | (P_Arro(a,b), _) ->
-    _Impl (scope (k+1) md ss env a) (scope (k+1) md ss env b)
+    _Impl (scope ~typ:true (k+1) md ss env a)
+          (scope ~typ:true (k+1) md ss env b)
 
   | (P_Abst(_,_), M_Patt) ->
       fatal t.pos "Abstractions are not allowed in a pattern."
@@ -480,10 +486,10 @@ and scope_head : int -> mode -> sig_state -> env -> p_term -> tbox =
 
   | (P_Prod(_,_), M_Patt) ->
       fatal t.pos "Dependent products are not allowed in a pattern."
-  | (P_Prod(xs,b), _) -> scope_binder k md ss _Prod env xs (Some(b))
+  | (P_Prod(xs,b), _) -> scope_binder ~typ:true k md ss _Prod env xs (Some(b))
 
   | (P_LLet(x,xs,a,t,u), (M_Term _|M_URHS _|M_RHS _)) ->
-      let a = scope_binder (k+1) md ss _Prod env xs a in
+      let a = scope_binder ~typ:true (k+1) md ss _Prod env xs a in
       let t = scope_binder (k+1) md ss _Abst env xs (Some(t)) in
       let v = new_tvar x.elt in
       let u = scope (k+1) md ss (Env.add v a (Some(t)) env) u in
@@ -504,14 +510,14 @@ and scope_head : int -> mode -> sig_state -> env -> p_term -> tbox =
 
   (* Evade the addition of implicit arguments inside the wrap *)
   | (P_Wrap ({ elt = (P_Iden _ | P_Abst _); _ } as id), _) ->
-    scope_head (k+1) md ss env id
-  | (P_Wrap t, _) -> scope (k+1) md ss env t
+    scope_head ~typ (k+1) md ss env id
+  | (P_Wrap t, _) -> scope ~typ (k+1) md ss env t
 
   | (P_Expl(_), _) -> fatal t.pos "Explicit argument not allowed here."
 
 let scope =
-  let open Stdlib in let r = ref _Kind in fun k md ss env t ->
-  Debug.(record_time Scoping (fun () -> r := scope k md ss env t)); !r
+  let open Stdlib in let r = ref _Kind in fun ?(typ=false) k md ss env t ->
+  Debug.(record_time Scoping (fun () -> r := scope ~typ k md ss env t)); !r
 
 (** [scope prv ss env p mok mon t] turns a pterm [t] into a term in the
    signature state [ss], the environment [env] (for bound variables). [mok k]
@@ -519,14 +525,14 @@ let scope =
    already exists a meta with name [n]. Generated metas are added to
    [p]. [prv] indicates if private symbols are allowed. *)
 let scope_term :
-      bool -> sig_state -> env
+      ?typ:bool -> bool -> sig_state -> env
       -> problem -> (int -> meta option) -> (string -> meta option)
       -> p_term -> term =
-  fun m_term_prv ss env
+  fun ?(typ=false) m_term_prv ss env
       m_term_new_metas m_term_meta_of_key m_term_meta_of_name t ->
   let md = M_Term {m_term_new_metas; m_term_meta_of_key;
                    m_term_meta_of_name; m_term_prv} in
-  Bindlib.unbox (scope 0 md ss env t)
+  Bindlib.unbox (scope ~typ 0 md ss env t)
 
 (** [scope_term_with_params expo ss env p mok mon t] is similar to [scope_term
    expo ss env p mok mon t] except that [t] must be a product or an
@@ -541,12 +547,12 @@ let scope_term_with_params :
   if Logger.log_enabled () then log_scop "%a" Pretty.term t;
   let md = M_Term {m_term_new_metas; m_term_meta_of_key;
                    m_term_meta_of_name; m_term_prv} in
-  let scope_b cons xs u =
-    Bindlib.unbox (scope_binder ~warn:false 0 md ss cons env xs (Some u))
+  let scope_b typ cons xs u =
+    Bindlib.unbox (scope_binder ~typ ~warn:false 0 md ss cons env xs (Some u))
   in
   match t.elt with
-  | P_Abst(xs,u) -> scope_b _Abst xs u
-  | P_Prod(xs,u) -> scope_b _Prod xs u
+  | P_Abst(xs,u) -> scope_b false _Abst xs u
+  | P_Prod(xs,u) -> scope_b true _Prod xs u
   | _ -> assert false
 
 (** [patt_vars t] returns a couple [(pvs,nl)]. The first compoment [pvs] is an

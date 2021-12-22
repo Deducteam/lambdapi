@@ -162,7 +162,7 @@ let handle_inductive_symbol : sig_state -> expo -> prop -> match_strat
   (* We scope the type of the declaration. *)
   let p = new_problem() in
   let typ =
-    (if xs = [] then scope_term else scope_term_with_params)
+    (if xs = [] then scope_term ~typ:true else scope_term_with_params)
       (expo = Privat) ss Env.empty p (fun _ -> None) (fun _ -> None) typ
   in
   (* We check that [typ] is typable by a sort. *)
@@ -353,14 +353,14 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
        issued during scoping if a parameter is unused in the type or in the
        definition. In this case, this verification must therefore be done
        afterwards. *)
-    let scope =
+    let scope ?(typ=false) =
       (if p_sym_arg = [] || p_sym_typ = None || p_sym_trm = None
-       then scope_term
+       then scope_term ~typ
        else scope_term_with_params)
         (expo = Privat) ss Env.empty p (fun _ -> None) (fun _ -> None)
     in
     (* Scoping function keeping track of the position. *)
-    let scope t = Pos.make t.pos (scope t) in
+    let scope ?(typ=false) t = Pos.make t.pos (scope ~typ t) in
     (* Desugaring of parameters and scoping of [p_sym_trm]. *)
     let pt, t =
       match p_sym_trm with
@@ -387,7 +387,7 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
             if p_sym_arg = [] then a
             else let pos = Pos.(cat (end_pos p_sym_nam.pos) a.pos) in
                  Pos.make pos (P_Prod(p_sym_arg, a))
-          in Some (scope a), Syntax.get_impl_term a
+          in Some (scope ~typ:true a), Syntax.get_impl_term a
     in
     (* If there are parameters, output a warning if they are not used. *)
     if p_sym_arg <> [] then

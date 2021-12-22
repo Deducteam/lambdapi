@@ -170,7 +170,8 @@ let handle : Sig_state.t -> proof_state option -> p_query -> result =
     | None -> fun _ -> None
     | Some ps -> Proof.meta_of_name ps in
   let p = new_problem() in
-  let scope = Scope.scope_term true ss env p meta_of_key meta_of_name in
+  let scope ?(typ=false) =
+    Scope.scope_term ~typ true ss env p meta_of_key meta_of_name in
   let ctxt = Env.to_ctxt env in
   match elt with
   | P_query_debug(_,_)
@@ -181,7 +182,7 @@ let handle : Sig_state.t -> proof_state option -> p_query -> result =
   | P_query_print(_)
   | P_query_proofterm -> assert false (* already done *)
   | P_query_assert(must_fail, P_assert_typing(pt,pa)) ->
-      let t = scope pt and a = scope pa in
+      let t = scope pt and a = scope ~typ:true pa in
       Console.out 2 "assertion: it is %b that %a" (not must_fail)
         pp_typing (ctxt, t, a);
       (* Check that [a] is typable by a sort. *)

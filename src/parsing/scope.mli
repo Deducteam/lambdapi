@@ -15,8 +15,8 @@ open Pos
    says if there already exists a meta with key [k]. [mon n] says if there
    already exists a meta with name [n]. Generated metas are added to [p].
    [prv] indicates if private symbols are allowed. *)
-val scope_term :
-      bool -> sig_state -> env
+val scope_term : ?typ:bool (* default: false *)
+      -> bool -> sig_state -> env
       -> problem -> (int -> meta option) -> (string -> meta option)
       -> p_term -> term
 
