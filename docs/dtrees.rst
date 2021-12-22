@@ -4,7 +4,7 @@ Decision trees
 The pattern matching algorithm uses decision trees. These decision trees
 are attached to symbols and can be inspected for debugging purposes.
 To print the decision tree of a symbol ``s`` of a module whose *module path* is
-``M`` (see :doc:`Module path </module>`), its decision tree may be printed with
+``M`` (see :doc:`Module path <module>`), its decision tree may be printed with
 
 ::
 

@@ -17,7 +17,7 @@ root* (a folder under which all libraries are installed).
 By default, the library root is ``/usr/local/lib/lambdapi/lib_root`` or
 ``$OPAM_SWITCH_PREFIX/lib/lambdapi/lib_root`` if ``OPAM_SWITCH_PREFIX``
 is defined. An alternative library root can be specified using the environment
-variable ``LAMBDAPI_LIB_ROOT`` or the :doc:`command line flag </options>`
+variable ``LAMBDAPI_LIB_ROOT`` or the :doc:`command line flag <options>`
 ``--lib-root``.
 
 The typical case is when we want to access a module of some installed

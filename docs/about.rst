@@ -1,53 +1,37 @@
 What is Lambdapi?
 =================
 
-The Lambdapi system is several things. It extends `Dedukti`_ with new
-features, especially interactive proof development.
+Lambdapi is an interactive proof system featuring dependent types like
+in Martin-Lőf's type theory, but allowing to define objects and types
+using oriented equations, aka rewriting rules, and reason modulo those
+equations.
 
-A logical framework
--------------------
+This allows to simplify some proofs, and formalize complex
+mathematical objects that are otherwise impossible or difficult to
+formalize in more traditional proof systems.
 
-The core theoretical system of Lambdapi is a logical framework based on the
-λΠ-calculus modulo rewriting. It is hence a dependent type theory that is very
-similar to Martin-Lőf’s dependent type theory (i.e., it is an extension of the
-simply-typed λ-calculus), but it has the peculiarity of allowing the user to
-define functions and types with rewriting rules. Although the system
-seems to be very simple at first, it is surprisingly powerful. In particular,
-it allows the encoding of the theories behind Coq or HOL.
+Lambdapi can also take as input `Dedukti`_ files, and can thus be used
+as an interoperability tool.
 
-A tool for interoperability of proof systems
---------------------------------------------
+Lambdapi is a logical framework and does not come with a pre-defined
+logic. However, it is easy to define a logic by a few symbols and
+rules. See for instance, the file `FOL.lp
+<https://github.com/fblanqui/lib/blob/master/FOL.lp>`__ which defines
+(polymorphic) first-order logic. There also exist definitions for the
+logics of HOL, Coq or Agda.
 
-The ability to encode several rather different systems make of Lambdapi an
-ideal target for proof interoperability. Indeed, one can for example export a
-proof written in `Matita`_ (an implementation of the calculus of inductive
-constructions) to the `OpenTheory`_ format (shared between several
-implementations of HOL).
+Here are some of the features of Lambdapi:
 
-An interactive proof system
----------------------------
-
-Being aimed at interoperability, Dedukti was never intended to become a tool
-for writing proofs directly. On the contrary, Lambdapi is aimed at providing
-an interactive proof mechanism, while remaining compatible with ``Dedukti``
-(and its interoperability capabilities).
-
-Here is a list of new features brought by Lambdapi:
-- a new syntax suitable for proof developments (including tactics),
-- support for unicode (UTF-8) and (user-defined) infix operators,
-- automatic resolution of dependencies,
-- a simpler, more reliable and fully documented implementation,
-- more reliable operations on binders thanks to the Bindlib library,
-- a general notion of metavariables, useful for implicit arguments and goals.
-
-An experimental proof system
-----------------------------
-
-Finally, let us note that Lambdapi is to be considered (at least for now) as
-an experimental proof system based on the λΠ-calculus modulo rewriting. It is
-aimed at exploring (and experimenting with) the many possibilities offered by
-rewriting, and the associated notion of conversion. In particular, it leads to
-simpler proofs, where many details are delegated to the conversion rule.
+- Emacs and VSCode plugins (based on LSP)
+- support for unicode (UTF-8) and user-defined infix operators
+- symbols can be declared commutative, or associative and commutative
+- some arguments can be declared as implicit: the system will try to find out their value automatically
+- symbol and rule declarations are separated so that one can easily define inductive-recursive types or turn a proved equation into a rewriting rule
+- support for interactive resolution of typing goals, and unification goals as well, using tactics
+- a rewrite tactic similar to the one of SSReflect in Coq
+- the possibility of calling external automated provers
+- a command is provided for automatically generating an induction principle for (mutually defined) strictly-positive inductive types
+- Lambdapi can call external provers for checking the confluence and termination of user-defined rewriting rules by translating them to the `XTC <https://github.com/TermCOMP/TPDB/blob/master/xml/xtc.xsd>`__ and `HRS <http://project-coco.uibk.ac.at/problems/hrs.php>`__ formats used in the termination and confluence competitions
 
 Some bibliographic references
 -----------------------------

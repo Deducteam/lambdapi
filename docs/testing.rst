@@ -1,4 +1,4 @@
-Supported libraries
+Testing
 ===================
 
 You can run tests using the following commands.
