@@ -1,4 +1,6 @@
-(** Scoping. *)
+(** Scoping. Convert parsed terms in core terms by finding out which
+   identifiers are bound variables or function symbol declared in open
+   modules. *)
 
 open! Lplib
 open Common

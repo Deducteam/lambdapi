@@ -1,4 +1,4 @@
-(** Query (available in tactics and at the toplevel). *)
+(** Handling of queries. *)
 
 open Common
 open Error

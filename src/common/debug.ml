@@ -1,3 +1,5 @@
+(** Helper functions for debugging. **)
+
 open Lplib.Base
 open Lplib.Extra
 

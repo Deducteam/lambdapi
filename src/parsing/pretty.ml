@@ -3,7 +3,7 @@
     This module defines functions that allow printing elements of syntax found
     in the parser-level abstract syntax. This is used, for example, to print a
     file in the Lambdapi syntax, given the AST obtained when parsing a file in
-    the legacy (Dedukti) syntax. *)
+    the Dedukti syntax. *)
 
 open! Lplib
 open Base

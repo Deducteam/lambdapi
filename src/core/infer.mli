@@ -1,3 +1,5 @@
+(** Type inference and checking *)
+
 open Term
 
 (** Given a meta [m] of type [Πx1:a1,..,Πxn:an,b], [set_to_prod p m] sets [m]

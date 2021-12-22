@@ -1,3 +1,5 @@
+(** Checking that a rule preserves typing (subject reduction property). *)
+
 open Core
 open Common
 open Parsing

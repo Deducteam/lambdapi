@@ -1,4 +1,4 @@
-(** Toplevel commands. *)
+(** Handling of commands. *)
 
 open! Lplib
 open Lplib.Extra

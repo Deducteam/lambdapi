@@ -1,6 +1,5 @@
-(* Lambdapi Menhir parser. We need to parse UTF8 - and hence use Sedlex.
-   Using Sedlex (and not Ocamllex) requires to use the "revised" API of
-   Menhir which abstracts the Lexing buffer. *)
+(** Lambdapi parser, using the parser generator Menhir. *)
+
 %{
   open Lplib
   open Common

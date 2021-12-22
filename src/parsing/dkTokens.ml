@@ -1,4 +1,4 @@
-(* parsing/tokens.ml *)
+(** Dedukti source file parsing/tokens.ml. *)
 
 open DkBasic
 

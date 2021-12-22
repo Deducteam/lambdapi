@@ -1,9 +1,9 @@
-(** Term representation.
+(** Internal representation of terms.
 
-    This module contains the definition of the core abstract syntax tree (AST)
-    of the language, together with smart constructors and low level operation.
-    The representation strongly relies on the [Bindlib] library, which
-    provides a convenient abstraction to work with binders.
+   This module contains the definition of the internal representation of
+   terms, together with smart constructors and low level operation. The
+   representation strongly relies on the {!module:Bindlib} library, which
+   provides a convenient abstraction to work with binders.
 
     @see <https://rlepigre.github.io/ocaml-bindlib/> *)
 

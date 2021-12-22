@@ -1,4 +1,4 @@
-(** Management of escaped identifiers ["{|...|}"]. *)
+(** Escaped identifiers ["{|...|}"]. *)
 
 (** [is_escaped s] tells if [s] begins with ["{|"] and ends with ["|}"]
    without overlapping. For efficiency, we just test that it starts with

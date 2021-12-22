@@ -1,3 +1,5 @@
+(** Handling of queries. *)
+
 open Core
 open Term
 open Parsing.Syntax
