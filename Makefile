@@ -16,8 +16,8 @@ odoc:
 
 .PHONY: doc
 doc:
-	$(MAKE) -C docs -f Makefile.bnf
-	$(MAKE) -C docs html
+	$(MAKE) -C doc -f Makefile.bnf
+	$(MAKE) -C doc html
 
 #### Unit tests and sanity check #############################################
 

@@ -91,7 +91,7 @@ For building the source code documentation, one needs
 code html documentation is
 `_build/default/_doc/_html/lambdapi/index.html`.
 
-For building the User Manual, see `docs/README.md`.
+For building the User Manual, see `doc/README.md`.
 
 The following commands can be used to clean up the repository:
 ```bash

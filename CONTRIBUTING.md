@@ -7,7 +7,7 @@ Here are some guidelines for contributing to this project.
 For contributing to the VSCode extension, see
 `editors/vscode/INSTALL.md` and `editors/vscode/CONTRIBUTING.md`.
 
-For contributing to the User Manual, see `docs/README.md`.
+For contributing to the User Manual, see `doc/README.md`.
 
 Branching and pull-request policy
 ---------------------------------
@@ -21,7 +21,7 @@ your contribution, push it and, then, make a pull-request from the
 Github web interface. Pull-requests are then reviewed, commented and
 eventually merged.
 
-- If the file structure is changed, `docs/structure.rst` should be changed as
+- If the file structure is changed, `doc/structure.rst` should be changed as
   well.
 - Important contributions should update the file `CHANGES.md`.
 
@@ -81,8 +81,8 @@ following files:
 - `editors/vscode/lp.configuration.json` (comments configuration),
 - `editors/vscode/syntaxes/lp.tmLanguage.json` (syntax highlighting),
 - `tools/listings.tex`
-- `docs/Makefile`
-- the User Manual files in the `docs/` repository
+- `doc/Makefile`
+- the User Manual files in the `doc/` repository
 
 and do `make doc` for generating BNF grammars.
 
