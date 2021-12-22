@@ -1,4 +1,4 @@
-(** Package configuration file interface. *)
+(** Find and read lambdapi.pkg files. *)
 
 open Lplib
 open Extra

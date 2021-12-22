@@ -1,4 +1,4 @@
-(** Flag management. *)
+(** Verbose level and loggers management. *)
 
 open Timed
 open Lplib.Base

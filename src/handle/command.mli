@@ -1,3 +1,5 @@
+(** Handling of commands. *)
+
 open Parsing
 open Core
 open Proof

@@ -1,4 +1,4 @@
-(** Calling a prover using Why3. *)
+(** Implementation of the why3 tactic. *)
 
 open! Lplib
 open Lplib.Extra

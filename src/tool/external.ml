@@ -1,8 +1,4 @@
-(** Call to external checkers.
-
-    This module provides a high-level primitive to run an external checker, by
-    calling a Unix command. This is used, for instance, to run a confluence or
-    termination checker. *)
+(** Provides a function for calling external checkers using a Unix command. *)
 
 open Lplib.Base
 open Lplib.Extra

@@ -36,12 +36,11 @@ Input files
 -----------
 
 The commands ``check``, ``parse`` and ``beautify`` expect input files
-with either the standard ``.lp`` extension, or the legacy (Dedukti)
-``.dk`` extension. The appropriate parser is selected automatically.
+with either the ``.lp`` extension, or the ``.dk`` extension.
+The appropriate parser is selected automatically.
 
-**Note:** the ``beautify`` command outputs only *standard syntax*, and
-hence it can be used to convert legacy syntax files (with the ``.dk``
-extension) into the Lambdapi syntax.
+**Note:** the ``beautify`` command outputs Lambdapi syntax, and
+thus can be used to convert a ``.dk`` file to a ``.lp`` file.
 
 Common flags
 ------------

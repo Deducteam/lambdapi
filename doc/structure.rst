@@ -20,7 +20,6 @@ Overview of directories and files
     * ``src/*.ts``: source code of the extension
     * ``syntaxes/lp.tmLanguage.json``: grammar of Lambdapi
     * ``tsconfig.json``: TypeScript configuration (directories, …)
-    * ``vscode.d.ts``: `VSCode API <https://github.com/microsoft/vscode/blob/main/src/vscode-dts/vscode.d.ts>`_ (Microsoft file)
 
 * ``libraries/``: libraries of Dedukti files (see ``Makefile``)
 
@@ -33,12 +32,12 @@ Overview of directories and files
 
 * ``src/common/``: miscellaneous modules and libraries
 
-  * ``debug.ml``: debugging tools
   * ``console.ml``: flag management
+  * ``debug.ml``: debugging tools
   * ``error.ml``: warning and error management
   * ``escape.ml``: basic functions on escaped identifiers
   * ``library.ml``: Lambdapi library management
-  * ``package.ml``: management of package files ``lambdapi.pkg``
+  * ``logger.ml``: logging tools
   * ``path.ml``: module paths in the Lambdapi library
   * ``pos.ml``: source file position management
 
@@ -48,6 +47,7 @@ Overview of directories and files
 
     * ``term.ml``: internal representation of terms
     * ``libTerm.ml``: basic operations on terms
+    * ``libMeta.ml``: basic operations on metavariables
     * ``print.ml``: pretty printing of terms
     * ``env.ml``: maps identifier -> variable and type
     
@@ -59,7 +59,7 @@ Overview of directories and files
 
   * rewriting:
 
-    * ``tree_types.ml``: types and basic functions for decision trees
+    * ``tree_type.ml``: types and basic functions for decision trees
     * ``tree.ml``: compilation of rewriting rules to decision trees
     * ``eval.ml``: rewriting engine
 
@@ -105,18 +105,33 @@ Overview of directories and files
 
 * ``src/parsing/``: parsing Dedukti and Lambdapi files
 
+  * pkg file parsing;
+    
+    * ``package.ml``: parsing of package files ``lambdapi.pkg``
+
+  * abstract syntax:
+
+    * ``syntax.ml``: abstract syntax
+          
+  * dk file parsing:
+    
+    * ``dkBasic.ml``: basic definitions for dk parsing
+    * ``dkTokens.ml``: lexing tokens for dk syntax
+    * ``dkLexer.mll``: lexer for dk syntax
+    * ``dkRule.ml``: convert dk rules into lp rules
+    * ``dkParser.mly``: parser for dk syntax
+
+  * lp file parsing:
+    
+    * ``lpLexer.ml``: lexer for Lambdapi syntax
+    * ``lpParser.mly``: parser for Lambdapi syntax
+    * ``parser.ml``: interfaces for parsers
+    * ``pretty.ml``: pretty print the abstract syntax (used to convert Dedukti files into Lambdapi files)
+
   * scoping:
 
     * ``pratt.ml``: parsing of applications wrt symbol notations
     * ``scope.ml``: convert the abstract syntax into terms
-
-  * ``dkLexer.mll``: lexer for Dedukti2 syntax
-  * ``dkParser.mly``: parser for Dedukti2 syntax
-  * ``lpLexer.ml``: lexer for Lambdapi syntax
-  * ``lpParser.mly``: parser for Lambdapi syntax
-  * ``parser.ml``: interfaces for parsers
-  * ``pretty.ml``: pretty print the abstract syntax (used to convert Dedukti files into Lambdapi files)
-  * ``syntax.ml``: abstract syntax
 
 * ``src/pure/``: pure interface (mainly used by the LSP server)
 

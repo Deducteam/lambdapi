@@ -1,3 +1,5 @@
+(** Solving unification constraints. *)
+
 open Term
 
 (** [solve_noexn ~type_check p] tries to simplify the constraints of [p]. It

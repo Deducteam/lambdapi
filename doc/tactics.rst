@@ -5,7 +5,7 @@ The ``symbol`` command allows the user to enter an interactive mode to
 solve typing goals of the form ``x₁:A₁, …, xₙ:Aₙ ⊢ ?M : U`` (find a
 term of a given type materialized by a metavariable ``?M``) and
 unification goals of the form ``x₁:A₁, …, xₙ:Aₙ ⊢ U ≡ V`` (prove that
-two terms are equivalent).
+two terms are equivalent modulo the user-defined rewriting rules).
 
 The following tactics help users to refine typing goals and transform
 unification goals step by step. A tactic application may generate new
@@ -37,10 +37,14 @@ between curly brackets:
 
 Reminder: the BNF grammar of tactics is in `syntax.bnf <https://raw.githubusercontent.com/Deducteam/lambdapi/master/docs/syntax.bnf>`__.
 
+.. _begin:
+
 ``begin``
 ---------
 
 Start a proof.
+
+.. _end:
 
 ``end``
 -------
@@ -49,10 +53,14 @@ Exit the proof mode when all goals have been solved. It then adds in
 the environment the symbol declaration or definition the proof is
 about.
 
+.. _abort:
+
 ``abort``
 ---------
 
 Exit the proof mode without changing the environment.
+
+.. _admitted:
 
 ``admitted``
 ------------
@@ -60,11 +68,15 @@ Exit the proof mode without changing the environment.
 Add axioms in the environment to solve the remaining goals and exit of
 the proof mode.
 
+.. _apply:
+
 ``apply``
 ---------
 
 If ``t`` is a term of type ``Π x₁:T₁, …, Π xₙ:Tₙ,U``, then ``apply t``
 refines the focused typing goal with ``t _ … _`` (with n underscores).
+
+.. _assume:
 
 ``assume``
 ----------
@@ -73,6 +85,8 @@ If the focused typing goal is of the form ``Π x₁ … xₙ,T``, then
 ``assume h₁ … hₙ`` replaces it by ``T`` with ``xᵢ`` replaced by
 ``hᵢ``.
 
+.. _generalize:
+
 ``generalize``
 --------------
 
@@ -80,18 +94,24 @@ If the focused goal is of the form ``x₁:A₁, …, xₙ:Aₙ, y₁:B₁, …, 
 ⊢ ?₁ : U``, then ``generalize y₁`` transforms it into the new goal
 ``x₁:A₁, …, xₙ:Aₙ ⊢ ?₂ : Π y₁:B₁, …, Π yₚ:Bₚ, U``.
 
+.. _have:
+
 ``have``
 --------
 
 ``have x: t`` generates a new goal for ``t`` and then let the user prove
 the focused typing goal assuming ``x: t``.
-         
+
+.. _induction:
+
 ``induction``
 -------------
 
 If the focused goal is of the form ``Π x:I …, …`` with ``I`` an
 inductive type, then ``induction`` refines it by applying the
 induction principle of ``I``.
+
+.. _refine:
 
 ``refine``
 ----------
@@ -103,6 +123,8 @@ or new metavariable names ``?n`` as well. The type-checking and
 unification algorithms will then try to instantiate some of the
 metavariables. The new metavariables that cannot be solved are added
 as new goals.
+
+.. _simplify:
 
 ``simplify``
 ------------
@@ -118,10 +140,14 @@ If ``f`` is a symbol identifier having rewriting rules, then ``simpl
 f`` applies these rules bottom-up on every occurrence of ``f`` in the
 focused goal.
 
+.. _solve:
+
 ``solve``
 ---------
 
 Simplify unification goals as much as possible.
+
+.. _why3:
 
 ``why3``
 --------
@@ -129,7 +155,7 @@ Simplify unification goals as much as possible.
 The tactic ``why3`` calls a prover (using the why3 platform) to solve
 the current goal. The user can specify the prover in two ways :
 
-* globally by using the command ``set prover`` described in :doc:`queries`
+* globally by using the command ``prover`` described in :doc:`queries`
 
 * locally by the tactic ``why3 "<prover_name>"`` if the user wants to change the
   prover inside an interactive mode.
@@ -154,10 +180,14 @@ The user should define those symbols using builtins as follows :
 **Important note:** you must run ``why3 config detect`` to make
 Why3 know about the available provers.
 
+.. _admit:
+
 ``admit``
 ---------
 
 Adds in the environment new symbols (axioms) proving the focused goal.
+
+.. _fail:
 
 ``fail``
 --------
@@ -181,15 +211,21 @@ declarations:
    builtin "refl"  ≔ … // : Π [a] (x:T a), P(x = x)
    builtin "eqind" ≔ … // : Π [a] x y, P(x = y) → Π p:T a → Prop, P(p y) → P(p x)
 
+.. _reflexivity:
+
 ``reflexivity``
 ---------------
 
 Solves a goal of the form ``Π x₁, …, Π xₙ, P (t = u)`` when ``t ≡ u``.
 
+.. _symmetry:
+
 ``symmetry``
 ------------
 
 Replaces a goal of the form ``P (t = u)`` by the goal ``P (u = t)``.
+
+.. _rewrite:
 
 ``rewrite``
 -----------

@@ -23,7 +23,8 @@
 <qid> ::= <uid>
         | <qid>
 
-<path> ::= <qid>
+<path> ::= <uid>
+         | <qid>
 
 <qid_expl> ::= <uid>_EXPL
              | <qid>_EXPL

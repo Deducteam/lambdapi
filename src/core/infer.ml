@@ -1,4 +1,4 @@
-(** Generating constraints for type inference and type checking. *)
+(** Type inference and checking *)
 
 open Timed
 open Common

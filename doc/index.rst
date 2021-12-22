@@ -6,14 +6,21 @@
 Lambdapi User Manual
 ====================
 
-Lambdapi is a proof assistant based on the λΠ-calculus modulo
-rewriting, mostly compatible with the type checker `Dedukti
-<https://github.com/Deducteam/dedukti>`__. Lambdapi files must end
-with `.lp`. But Lambdapi can also read Dedukti files ending with `.dk`
+Lambdapi is a proof assistant for the λΠ-calculus modulo
+rewriting. See :doc:`about` for more details.
+
+Lambdapi files must end with ``.lp``. But Lambdapi can also read
+`Dedukti <https://deducteam.github.io/>`__ files ending with ``.dk``
 and convert them to Lambdapi files.
 
-For installation instructions, see `README
-<https://github.com/Deducteam/lambdapi/blob/master/README.md>`__.
+`Installation instructions
+<https://github.com/Deducteam/lambdapi/blob/master/README.md>`__
+- `Frequently Asked Questions
+<https://github.com/Deducteam/lambdapi/discussions>`__
+- `Issue tracker
+<https://github.com/Deducteam/lambdapi/issues>`__
+
+`Example of developments using Lambdapi <https://github.com/fblanqui/lib>`__
 
 .. toctree::
    :maxdepth: 1
@@ -25,7 +32,7 @@ For installation instructions, see `README
 .. toctree::
    :maxdepth: 2
 
-   ui/ui.rst
+   ui.rst
 
 .. toctree::
    :maxdepth: 1
@@ -49,7 +56,7 @@ For developers
    structure.rst
    implementation.rst
    dtrees.rst
-   libraries.rst
+   testing.rst
    profiling.rst
 
 Indices and tables

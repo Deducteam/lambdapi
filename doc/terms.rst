@@ -32,16 +32,16 @@ to ``i``.
 non-negative integer with leading zeros cannot be used for bound
 variable names.
 
-**Convention:** identifiers starting with a capital letter denote
+**Convention:** identifiers starting with an uppercase letter denote
 types and predicates (e.g.  ``Nat``, ``List``), and identifiers
-starting with a small letter denote constructors, functions and proofs
+starting with a lowercase letter denote constructors, functions and proofs
 (e.g. ``zero``, ``add``, ``refl``).
 
 Terms
 -----
 A user-defined term can be either:
 
-* ``TYPE``
+* ``TYPE``, the sort for types
 
 * a possibly qualified identifier denoting either:
 
@@ -56,13 +56,12 @@ A user-defined term can be either:
 
 * a dependent product ``Π(x:A) y z,T``
 
-* a non-dependent product ``A → T`` (syntactic sugar for ``Π x:A,T`` with ``x``
-  not occurring in ``T``)
+* a non-dependent product ``A → T`` (syntactic sugar for ``Π x:A,T`` when ``x``
+  does not occur in ``T``)
 
-* a ``let f (x:A) y z: T ≔ t in`` construction (with ``let f x : A ≔ t in u``
-  being a syntactic sugar for ``let f : Π x : _ → A ≔ λ x, t in u``)
+* a ``let f (x:A) y z: T ≔ t in`` construction
 
-* application is written by space-separated juxtaposition, except for
+* an application written by space-separated juxtaposition, except for
   symbol identifiers declared as infix (e.g. ``x + y``)
 
 * a meta-variable application ``?M.[t;u;v]``. ``?M`` alone, without arguments
@@ -73,14 +72,13 @@ A user-defined term can be either:
   alone, without arguments between square brackets, is a shorthand for
   ``$P.[]``. This short-hand is not allowed under binders.
 
-* ``_`` for an unknown term or a term we don’t care about. It is replaced by a
+* ``_`` for an unknown term or a term we don't care about. It is replaced by a
   fresh metavariable (or a fresh pattern variable in a rule left-hand side)
   applied to all the variables of the context.
 
-* an integer between 0 and 2^30-1 if the builtins “0” and “+1” are defined (see
-  the ``builtin`` :doc:`commands`)
+* an integer between 0 and 2^30-1 if the :ref:`builtins <builtin>` "0" and "+1" are defined
 
+* a term enclosed between square brackets ``[`` … ``]`` for explicitly
+  giving the value of an argument declared as implicit
+  
 Subterms can be parenthesized to avoid ambiguities.
-
-In case of the application of a function symbol, an implicit argument
-can be given by enclosing it between square brackets ``[`` … ``]``.

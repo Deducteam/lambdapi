@@ -1,10 +1,9 @@
 (** Parsing functions for Lambdapi.
 
     This module includes two parsers: a parser for the Lambdapi syntax whose
-    functions are available either through the submodule
-    {!module:Parser.Lp}, or directly in {!module:Parser}; and another
-    parser for the Dedukti 2.7 syntax, available through
-    {!module:Parser.Dk}. *)
+    functions are available either through the submodule {!module:Parser.Lp}
+    or directly in {!module:Parser}, and a parser for the Dedukti syntax
+    available through {!module:Parser.Dk}. *)
 
 open! Lplib
 open Base

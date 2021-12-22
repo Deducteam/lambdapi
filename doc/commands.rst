@@ -3,10 +3,8 @@ Commands
 
 The BNF grammar of Lambdapi is in `syntax.bnf <https://raw.githubusercontent.com/Deducteam/lambdapi/master/docs/syntax.bnf>`__.
 
-In this section, we will illustrate the syntax of Lambdapi using
-examples. The first thing to note is that Lambdapi files are formed of a
-list of commands. A command starts with a particular reserved keyword
-and ends with a semi-colon.
+Lambdapi files are formed of a list of commands. A command starts with
+a particular reserved keyword and ends with a semi-colon.
 
 One-line comments are introduced by ``//``:
 
@@ -14,7 +12,7 @@ One-line comments are introduced by ``//``:
 
    // These words are ignored
 
-And multi-line comments are opened with ``/*`` and closed with ``*/``. Multi-line comments can be nested.
+Multi-line comments are opened with ``/*`` and closed with ``*/``. They can be nested.
 
 ::
 
@@ -22,6 +20,8 @@ And multi-line comments are opened with ``/*`` and closed with ``*/``. Multi-lin
       words are
       ignored /* these ones too */ */
 
+.. _require:
+      
 ``require``
 -----------
 
@@ -39,6 +39,8 @@ can be referred to with the provided name.
 Note that ``require`` always take as argument a qualified
 identifier. See :doc:`module` for more details.
 
+.. _open:
+
 ``open``
 --------
 
@@ -53,6 +55,8 @@ in argument. It can also be combined with the ``require`` command.
 
 Note that ``open`` always take as argument a qualified
 identifier. See :doc:`module` for more details.
+
+.. _symbol:
 
 ``symbol``
 ----------
@@ -192,8 +196,10 @@ arguments must be explicitly given.
    // unless "eq" is prefixed by "@".
    // Hence, "eq t u", "eq [_] t u" and "@eq _ t u" are all valid and equivalent.
 
-**Notations**: Some notation can be declared for a symbol. See the commands
-``notation`` and ``builtin``.
+**Notations**: Some notation can be declared for a symbol using the
+ commands :ref:`notation` and :ref:`builtin`.
+
+.. _rule:
 
 ``rule``
 --------
@@ -208,6 +214,20 @@ command.
    rule mul zero      _  ↪ zero;
 
 Identifiers prefixed by ``$`` are pattern variables.
+
+User-defined rules are assumed to form a confluent (the order of rule
+applications is not important) and terminating (there is no infinite
+rewrite sequences) rewriting system when combined with
+β-reduction. The verification is left to the user. The user can
+however call external provers for trying to check those properties
+automatically using the :doc:`command line options <options>`
+``--confluence`` and ``--termination``.
+
+Rules must also preserve typing (subject-reduction property), that is,
+if an instance of a left-hand side has some type, then the
+corresponding instance of the right-hand side should have the same
+type. Lambdapi implements an algorithm trying to check this property
+automatically.
 
 **Higher-order pattern-matching**. Lambdapi allows higher-order
 pattern-matching on patterns à la Miller but modulo β-equivalence only
@@ -279,7 +299,9 @@ rule.
 
 Adding sets of rules allows to maintain confluence.
 
-Examples of patterns are available in `patterns.lp <https://github.com/Deducteam/lambdapi/blob/master/tests/OK/patterns.lp>`__.
+Other examples of patterns are available in `patterns.lp <https://github.com/Deducteam/lambdapi/blob/master/tests/OK/patterns.lp>`__.
+
+.. _notation:
 
 ``notation``
 ----------------
@@ -341,6 +363,7 @@ negation with some priority level.
    type λ p, `∀ x, p; // quantifiers can be written as such
    type λ p, `f x, p; // works as well if f is any symbol
 
+.. _builtin:
 
 ``builtin``
 ---------------
@@ -362,6 +385,8 @@ and ``"+1"`` as follows:
    builtin "0"  ≔ zero; // : N
    builtin "+1" ≔ succ; // : N → N
    type 42;
+
+.. _unif_rule:
 
 ``unif_rule``
 -----------------
@@ -387,6 +412,8 @@ transformed into ``?x ≡ bool``.
 
 *WARNING* This feature is experimental and there is no sanity check
 performed on the rules.
+
+.. _inductive:
 
 ``inductive``
 -------------

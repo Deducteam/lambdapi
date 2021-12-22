@@ -1,4 +1,4 @@
-(** Toplevel commands. *)
+(** Handling of tactics. *)
 
 open! Lplib
 open Common

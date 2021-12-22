@@ -1,3 +1,5 @@
+(** Functions for creating loggers. **)
+
 open Lplib.Base
 
 (** [log_enabled] is the cached result of whether there exists an enabled

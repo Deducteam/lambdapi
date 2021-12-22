@@ -1,6 +1,8 @@
 Queries
 =======
 
+.. _print:
+
 ``print``
 ---------
 
@@ -8,20 +10,29 @@ When called with a symbol identifier as argument, displays information
 (type, notation, rules, etc.) about that symbol. Without argument,
 displays the list of current goals (in proof mode only).
 
+.. _proofterm:
+
 ``proofterm``
 -------------
 
 Outputs the current proof term (in proof mode only).
+
+.. _type:
 
 ``type``
 --------
 
 Returns the type of a term.
 
+.. _compute:
+
 ``compute``
 -----------
 
 Computes the normal form of a term.
+
+.. _assert:
+.. _assertnot:
 
 ``assert``, ``assertnot``
 -------------------------
@@ -38,6 +49,8 @@ negative tests.
    assertnot ⊢ zero ≡ succ zero;
    assertnot ⊢ succ : Nat;
 
+.. _verbose:
+   
 ``verbose``
 -----------
 
@@ -49,6 +62,8 @@ to 1.
 
    verbose 3;
 
+.. _debug:
+   
 ``debug``
 ---------
 
@@ -63,6 +78,8 @@ debug mode for some functionalities as follows:
 Each functionality is represented by a single character. For instance,
 ``i`` stands for type inference. To get the list of all debuggable
 functionalities, run the command ``lambdapi check --help``.
+
+.. _flag:
 
 ``flag``
 --------
@@ -80,6 +97,8 @@ rewrite engine by reducing η-redexes.
    flag "print_meta_types" on; // default is off
    flag "print_meta_args" off; // default is on
 
+.. _prover:
+
 ``prover``
 ----------
 
@@ -90,6 +109,8 @@ Changes the prover used by the ``why3`` tactic. By default, it uses
 
    prover "Eprover";
 
+.. _prover_timeout:
+   
 ``prover_timeout``
 ------------------
 

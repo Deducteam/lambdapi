@@ -1,5 +1,5 @@
 {
-  (* parsing/lexer.mll *)
+  (** Dedukti source file parsing/lexer.mll. *)
 
   open DkBasic
   open Lexing

@@ -1,4 +1,4 @@
-(** Type-checking and inference. *)
+(** Checking that a rule preserves typing (subject reduction property). *)
 
 open! Lplib
 open Timed

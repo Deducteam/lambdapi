@@ -1,6 +1,5 @@
-(** Lexer for Lambdapi syntax. Uses Sedlex, a Utf8 friendly lexer. Some helper
-    functions to check if a string conflicts with the syntax are also
-    provided. *)
+(** Lexer for Lambdapi syntax, using Sedlex, a Utf8 lexer generator. *)
+
 open Lplib
 open Sedlexing
 open Common

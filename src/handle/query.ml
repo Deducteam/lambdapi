@@ -1,4 +1,4 @@
-(** Query (available in tactics and at the toplevel). *)
+(** Handling of queries. *)
 
 open Common
 open Error
@@ -117,7 +117,7 @@ let handle : Sig_state.t -> proof_state option -> p_query -> result =
           out ppf ": %a" pp_prod (!(s.sym_type), s.sym_impl) in
         (* print its definition *)
         let pp_def ppf s =
-          Option.iter (out ppf "≔ %a" pp_term) !(s.sym_def) in
+          Option.iter (out ppf "@ ≔ %a" pp_term) !(s.sym_def) in
         (* print its notation *)
         let pp_notation : Sign.notation option pp = fun ppf n ->
           Option.iter
@@ -127,7 +127,7 @@ let handle : Sig_state.t -> proof_state option -> p_query -> result =
           match !(s.sym_rules) with
           | [] -> ()
           | rs -> let pp_rule ppf r = pp_rule ppf (s,r) in
-                  out ppf "@[<v2>rules:@,%a@,@]" (List.pp pp_rule "@,") rs
+                  out ppf "@[<v2>rules:@,%a@]" (List.pp pp_rule "@,") rs
         in
         (* print its constructors (if it is an inductive type) *)
         let pp_constructors ppf s =
@@ -141,13 +141,13 @@ let handle : Sig_state.t -> proof_state option -> p_query -> result =
             out ppf "%a: %a" pp_sym s pp_term !(s.sym_type) in
           let pp_ind : ind_data pp = fun ppf ind ->
             out ppf
-              "@[<v2>constructors:@,%a@]@.@[<v2>induction principle:@,%a@]"
-              (List.pp pp_decl "") ind.ind_cons pp_decl ind.ind_prop
+              "@[<v2>constructors:@,%a@]@,@[<v2>induction principle:@,%a@]"
+              (List.pp pp_decl "@,") ind.ind_cons pp_decl ind.ind_prop
           in
           try pp_ind ppf (SymMap.find s Timed.(!(sign.sign_ind)))
           with Not_found -> ()
         in
-        out ppf "@[<hov>%a@,%a@ %a@]@.%a%a%a@]"
+        out ppf "@[<hov>%a@,%a%a@]@.%a%a%a@]"
           pp_trunk s pp_type s pp_def s pp_notation (notation_of s)
           pp_rules s pp_constructors s
       in

@@ -1,3 +1,5 @@
+(** Functions for creating loggers. **)
+
 open Lplib
 open Base
 open Color

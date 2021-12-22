@@ -1,4 +1,4 @@
-(* part of kernel/basic.ml *)
+(** Part of the Dedukti source file kernel/basic.ml. *)
 
 type ident = string
 

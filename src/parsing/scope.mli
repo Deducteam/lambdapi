@@ -1,4 +1,6 @@
-(** Scoping: transforms p_term's into term's. *)
+(** Scoping. Convert parsed terms in core terms by finding out which
+   identifiers are bound variables or function symbol declared in open
+   modules. *)
 
 open Core
 open Sig_state
