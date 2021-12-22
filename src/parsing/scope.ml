@@ -494,7 +494,7 @@ and scope_head :
       let a = scope_binder ~typ:true (k+1) md ss _Prod env xs a in
       let t = scope_binder (k+1) md ss _Abst env xs (Some(t)) in
       let v = new_tvar x.elt in
-      let u = scope (k+1) md ss (Env.add v a (Some(t)) env) u in
+      let u = scope ~typ (k+1) md ss (Env.add v a (Some(t)) env) u in
       if not (Bindlib.occur v u) then
         wrn x.pos "Useless let-binding (%s is not bound)." x.elt;
       _LLet a t (Bindlib.bind_var v u)
