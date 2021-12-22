@@ -183,17 +183,18 @@ let _ =
   assert (valid "case_ex02_intro1");
   assert (valid "case_ex02_intro10")
 
-(** [scope md ss env b t] turns a parser-level term [t] into an actual
+(** [scope ~typ md ss env t] turns a parser-level term [t] into an actual
    term. The variables of the environment [env] may appear in [t], and the
    scoping mode [md] changes the behaviour related to certain
    constructors. The signature state [ss] is used to convert identifiers into
-   symbols according to [find_qid]. [b] tells whether we scope a type. *)
+   symbols according to [find_qid]. [typ] tells whether we scope a type
+   (default is false). *)
 let rec scope :
   ?typ:bool -> int -> mode -> sig_state -> env -> p_term -> tbox =
   fun ?(typ=false) k md ss env t ->
   scope_parsed ~typ k md ss env (Pratt.parse ss env t)
 
-(** [scope_parsed md ss env t] turns a parser-level, Pratt-parsed term [t]
+(** [scope_parsed ~typ md ss env t] turns a parser-level Pratt-parsed term [t]
    into an actual term. *)
 and scope_parsed :
   ?typ:bool -> int -> mode -> sig_state -> env -> p_term -> tbox =
@@ -284,12 +285,13 @@ and scope_domain : int -> mode -> sig_state -> env -> p_term option -> tbox =
   | (Some {elt=P_Wild;_}|None), _ -> fresh_meta_type md env
   | Some a, _ -> scope ~typ:true k md ss env a
 
-(** [scope_binder ?warn mode ss cons env params_list t] scopes [t] in mode
-   [md], signature state [ss] and environment [env]. [params_list] is a list
-   of paramters to abstract on. For each parameter, a tbox is built using
-   [cons] (either [_Abst] or [_Prod]). If [?warn] is true (the default), a
+(** [scope_binder ~typ ~warn mode ss cons env params_list t] scopes [t] in
+   mode [md], signature state [ss] and environment [env]. [params_list] is a
+   list of paramters to abstract on. For each parameter, a tbox is built using
+   [cons] (either [_Abst] or [_Prod]). If [warn] is true (the default), a
    warning is printed when the variable that is bound by the binder does not
-   appear in the body. *)
+   appear in the body. [typ] indicates if we scope a type (default is
+   false). *)
 and scope_binder : ?typ:bool -> ?warn:bool -> int -> mode -> sig_state ->
   (tbox -> tbinder Bindlib.box -> tbox) -> Env.t -> p_params list ->
   p_term option -> tbox =
@@ -328,7 +330,7 @@ and scope_binder : ?typ:bool -> ?warn:bool -> int -> mode -> sig_state ->
   in
   scope_params_list env params_list
 
-(** [scope_head md ss env t] scopes [t] as term head. *)
+(** [scope_head ~typ md ss env t] scopes [t] as term head. *)
 and scope_head :
   ?typ:bool -> int -> mode -> sig_state -> env -> p_term -> tbox =
   fun ?(typ=false) k md ss env t ->
@@ -519,11 +521,12 @@ let scope =
   let open Stdlib in let r = ref _Kind in fun ?(typ=false) k md ss env t ->
   Debug.(record_time Scoping (fun () -> r := scope ~typ k md ss env t)); !r
 
-(** [scope prv ss env p mok mon t] turns a pterm [t] into a term in the
+(** [scope ~typ prv ss env p mok mon t] turns a pterm [t] into a term in the
    signature state [ss], the environment [env] (for bound variables). [mok k]
    says if there already exists a meta with key [k]. [mon n] says if there
    already exists a meta with name [n]. Generated metas are added to
-   [p]. [prv] indicates if private symbols are allowed. *)
+   [p]. [prv] indicates if private symbols are allowed. [typ] indicates
+   whether [t] should be a type (default is false). *)
 let scope_term :
       ?typ:bool -> bool -> sig_state -> env
       -> problem -> (int -> meta option) -> (string -> meta option)
