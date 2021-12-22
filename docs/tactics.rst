@@ -13,7 +13,7 @@ goals/metavariables.
 
 Except for the ``solve`` tactic which applies to all the unification
 goals at once, all the other tactics applies to the first goal only,
-which is called the *focused*: goal, and this focused goal must be a
+which is called the *focused* goal, and this focused goal must be a
 typing goal.
 
 The proof is complete only when all generated goals have been solved.
