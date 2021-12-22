@@ -215,6 +215,20 @@ command.
 
 Identifiers prefixed by ``$`` are pattern variables.
 
+User-defined rules are assumed to form a confluent (the order of rule
+applications is not important) and terminating (there is no infinite
+rewrite sequences) rewriting system when combined with
+β-reduction. The verification is left to the user. The user can
+however call external provers for trying to check those properties
+automatically using the :doc:`command line options <options>`
+``--confluence`` and ``--termination``.
+
+Rules must also preserve typing (subject-reduction property), that is,
+if an instance of a left-hand side has some type, then the
+corresponding instance of the right-hand side should have the same
+type. Lambdapi implements an algorithm trying to check this property
+automatically.
+
 **Higher-order pattern-matching**. Lambdapi allows higher-order
 pattern-matching on patterns à la Miller but modulo β-equivalence only
 (and not βη).
@@ -285,7 +299,7 @@ rule.
 
 Adding sets of rules allows to maintain confluence.
 
-Examples of patterns are available in `patterns.lp <https://github.com/Deducteam/lambdapi/blob/master/tests/OK/patterns.lp>`__.
+Other examples of patterns are available in `patterns.lp <https://github.com/Deducteam/lambdapi/blob/master/tests/OK/patterns.lp>`__.
 
 .. _notation:
 
