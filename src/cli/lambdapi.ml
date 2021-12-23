@@ -48,8 +48,9 @@ let check_cmd : Config.t -> int option -> bool -> string list -> unit =
         in
         Option.iter run chk
       in
-      run_checker "confluence"  Tool.Hrs.to_HRS cfg.confluence  "confluent";
-      run_checker "termination" Tool.Xtc.to_XTC cfg.termination "terminating"
+      run_checker "confluence" Export.Hrs.to_HRS cfg.confluence "confluent";
+      run_checker
+        "termination" Export.Xtc.to_XTC cfg.termination "terminating"
     in
     List.iter handle files
   in

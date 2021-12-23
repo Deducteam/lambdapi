@@ -3,4 +3,5 @@
  (public_name lambdapi)
  (modes byte native)
  (modules :standard)
- (libraries cmdliner lambdapi.lsp lambdapi.tool lambdapi.handle))
+ (libraries cmdliner lambdapi.lsp lambdapi.tool lambdapi.handle
+            lambdapi.export))

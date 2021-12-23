@@ -100,3 +100,7 @@ and sident op buf = parse
   { Buffer.add_char buf c; sident op buf lexbuf }
   | eof
   { fail (get_loc lexbuf) "Unexpected end of file in ident." }
+
+and is_ident = parse
+  | ident { true }
+  | _ { false }
