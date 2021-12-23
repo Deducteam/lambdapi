@@ -176,6 +176,8 @@ The user should define those symbols using builtins as follows :
    builtin "and" ≔ … // : Prop → Prop → Prop
    builtin "or"  ≔ … // : Prop → Prop → Prop
    builtin "not" ≔ … // : Prop → Prop
+   builtin "all" ≔ … // : Π x: U, (T x → Prop) → Prop
+   builtin "ex"  ≔ … // : Π x: U, (T x → Prop) → Prop
 
 **Important note:** you must run ``why3 config detect`` to make
 Why3 know about the available provers.
