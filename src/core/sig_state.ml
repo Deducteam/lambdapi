@@ -27,7 +27,7 @@ let create_sign : Path.t -> Sign.t = fun sign_path ->
 (** State of the signature, including aliasing and accessible symbols. *)
 type sig_state =
   { signature : Sign.t                    (** Current signature. *)
-  ; in_scope  : (sym * Pos.popt) StrMap.t (** Symbols in scope.  *)
+  ; in_scope  : sym StrMap.t              (** Symbols in scope.  *)
   ; alias_path: Path.t StrMap.t           (** Alias to path map. *)
   ; path_alias: string Path.Map.t         (** Path to alias map. *)
   ; builtins  : sym StrMap.t              (** Builtins. *)
@@ -58,7 +58,7 @@ let add_symbol : sig_state -> expo -> prop -> match_strat
     | Some t -> sym.sym_def := Some (cleanup t)
     | None -> ()
   end;
-  let in_scope = StrMap.add id.elt (sym, id.pos) ss.in_scope in
+  let in_scope = StrMap.add id.elt sym ss.in_scope in
   {ss with in_scope}, sym
 
 (** [add_notation ss s n] maps [s] notation to [n] in [ss]. *)
@@ -128,7 +128,7 @@ let find_sym : prt:bool -> prv:bool -> sig_state -> qident loc -> sym =
     match mp with
     | [] -> (* Symbol in scope. *)
         begin
-          try fst (StrMap.find s st.in_scope)
+          try StrMap.find s st.in_scope
           with Not_found -> fatal pos "Unknown object %s." s
         end
     | [m] when StrMap.mem m st.alias_path -> (* Aliased module path. *)
