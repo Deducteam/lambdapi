@@ -110,8 +110,7 @@ let open_sign : sig_state -> Sign.t -> sig_state = fun ss sign ->
 (** [of_sign sign] creates a state from the signature [sign] with ghost
     signatures opened. *)
 let of_sign : Sign.t -> sig_state = fun signature ->
-  let open_paths = Path.Set.singleton signature.sign_path in
-  open_sign {dummy with signature; open_paths} Unif_rule.sign
+  open_sign {dummy with signature} Unif_rule.sign
 
 (** [find_sym ~prt ~prv b st qid] returns the symbol
     corresponding to the qualified identifier [qid]. If [fst qid.elt] is
