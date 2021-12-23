@@ -209,8 +209,8 @@ let check_rule : Scope.pre_rule Pos.loc -> rule = fun ({pos; elt} as pr) ->
         (* Instantiate recursively the meta-variables of the type. *)
         LibMeta.iter true instantiate [] !(m.meta_type);
         (* Instantiation of [m]. *)
-        let s = Term.create_sym None (Sign.current_path()) Privat Defin Eager
-            false (LibMeta.name m) !(m.meta_type) [] in
+        let s = Term.create_sym (Sign.current_path()) Privat Defin Eager
+            false (Pos.none (LibMeta.name m)) !(m.meta_type) [] in
         Stdlib.(symbols := s :: !symbols);
         (* Build a definition for [m]. *)
         let xs = Array.init m.meta_arity (new_tvar_ind "x") in

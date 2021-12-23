@@ -81,17 +81,6 @@ let loading : Path.t list ref = ref []
 let current_path : unit -> Path.t =
   fun () -> (Path.Map.find (List.hd !loading) !loaded).sign_path
 
-(** [create_sym expo prop opaq name typ impl] creates a new symbol with the
-   exposition [expo], property [prop], name [name], type [typ], implicit
-   arguments [impl], opacity [opaq]. *)
-let create_sym :
-  Pos.popt -> expo -> prop -> bool -> string -> term -> bool list -> sym =
-  fun sym_pos sym_expo sym_prop sym_opaq sym_name typ sym_impl ->
-  let sym_path = current_path() in
-  { sym_expo; sym_path; sym_name; sym_type = ref typ; sym_impl; sym_prop;
-    sym_def = ref None; sym_opaq; sym_rules = ref [];
-    sym_mstrat = Eager; sym_dtree = ref Tree_type.empty_dtree; sym_pos }
-
 (** [link sign] establishes physical links to the external symbols. *)
 let link : t -> unit = fun sign ->
   let rec link_term mk_Appl t =

@@ -283,12 +283,12 @@ module Sym : Map.OrderedType with type t = sym
 module SymSet : Set.S with type elt = sym
 module SymMap : Map.S with type key = sym
 
-(** [create_sym pos path expo prop opaq name typ impl] creates a new symbol
-   with position [pos], path [path], exposition [expo], property [prop],
-   opacity [opaq], matching strategy [mstrat], name [name], type [typ],
-   implicit arguments [impl], no definition and no rules. *)
-val create_sym : Pos.popt -> Path.t -> expo -> prop -> match_strat -> bool ->
-  string -> term -> bool list -> sym
+(** [create_sym path expo prop opaq name typ impl] creates a new symbol with
+   position [pos], path [path], exposition [expo], property [prop], opacity
+   [opaq], matching strategy [mstrat], name [name.elt], type [typ], implicit
+   arguments [impl], position [name.pos], no definition and no rules. *)
+val create_sym : Path.t -> expo -> prop -> match_strat -> bool ->
+  Pos.strloc -> term -> bool list -> sym
 
 (** [is_constant s] tells whether the symbol is a constant. *)
 val is_constant : sym -> bool

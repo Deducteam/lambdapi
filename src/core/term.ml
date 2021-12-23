@@ -340,12 +340,12 @@ let new_problem : unit -> problem = fun () ->
 
 (** [create_sym path expo prop opaq name typ impl] creates a new symbol with
    path [path], exposition [expo], property [prop], opacity [opaq], matching
-   strategy [mstrat], name [name], type [typ], implicit arguments [impl], no
-   definition and no rules. *)
-let create_sym : Pos.popt -> Path.t -> expo -> prop -> match_strat -> bool ->
-  string -> term -> bool list -> sym =
-  fun sym_pos sym_path sym_expo sym_prop sym_mstrat sym_opaq sym_name typ
-    sym_impl ->
+   strategy [mstrat], name [name.elt], type [typ], implicit arguments [impl],
+   position [name.pos], no definition and no rules. *)
+let create_sym : Path.t -> expo -> prop -> match_strat -> bool ->
+  Pos.strloc -> term -> bool list -> sym =
+  fun sym_path sym_expo sym_prop sym_mstrat sym_opaq
+    { elt = sym_name; pos = sym_pos } typ sym_impl ->
   {sym_path; sym_name; sym_type = ref typ; sym_impl; sym_def = ref None;
    sym_opaq; sym_rules = ref []; sym_dtree = ref Tree_type.empty_dtree;
    sym_mstrat; sym_prop; sym_expo; sym_pos }
@@ -565,7 +565,7 @@ let right_aliens : sym -> term -> term list = fun s ->
 
 (* unit test *)
 let _ =
-  let s = create_sym None [] Privat (AC true) Eager false "+" Kind [] in
+  let s = create_sym [] Privat (AC true) Eager false (Pos.none "+") Kind [] in
   let t1 = Vari (new_tvar "x1") in
   let t2 = Vari (new_tvar "x2") in
   let t3 = Vari (new_tvar "x3") in
