@@ -31,7 +31,7 @@ type notation =
 (** Representation of a signature. It roughly corresponds to a set of symbols,
     defined in a single module (or file). *)
 type t =
-  { sign_symbols  : (sym * Pos.popt) StrMap.t ref
+  { sign_symbols  : sym StrMap.t ref
   ; sign_path     : Path.t
   ; sign_deps     : rule list StrMap.t Path.Map.t ref
   (** Maps a path to a list of pairs (symbol name, rule). *)
@@ -55,7 +55,7 @@ let dummy : unit -> t = fun () ->
 (** [find sign name] finds the symbol named [name] in [sign] if it exists, and
     raises the [Not_found] exception otherwise. *)
 let find : t -> string -> sym =
-  fun sign name -> fst (StrMap.find name !(sign.sign_symbols))
+  fun sign name -> StrMap.find name !(sign.sign_symbols)
 
 (** [mem sign name] checks whether a symbol named [name] exists in [sign]. *)
 let mem : t -> string -> bool =
@@ -80,16 +80,6 @@ let loading : Path.t list ref = ref []
 (** [current_path ()] returns the current signature path. *)
 let current_path : unit -> Path.t =
   fun () -> (Path.Map.find (List.hd !loading) !loaded).sign_path
-
-(** [create_sym expo prop opaq name typ impl] creates a new symbol with the
-   exposition [expo], property [prop], name [name], type [typ], implicit
-   arguments [impl], opacity [opaq]. *)
-let create_sym : expo -> prop -> bool -> string -> term -> bool list -> sym =
-  fun sym_expo sym_prop sym_opaq sym_name typ sym_impl ->
-  let sym_path = current_path() in
-  { sym_expo; sym_path; sym_name; sym_type = ref typ; sym_impl; sym_prop;
-    sym_def = ref None; sym_opaq; sym_rules = ref [];
-    sym_mstrat = Eager; sym_dtree = ref Tree_type.empty_dtree }
 
 (** [link sign] establishes physical links to the external symbols. *)
 let link : t -> unit = fun sign ->
@@ -124,7 +114,7 @@ let link : t -> unit = fun sign ->
     try find (Path.Map.find s.sym_path !loaded) s.sym_name
     with Not_found -> assert false
   in
-  let f _ (s,_) =
+  let f _ s =
     s.sym_type  := link_term mk_Appl !(s.sym_type);
     s.sym_def   := Option.map (link_term mk_Appl) !(s.sym_def);
     s.sym_rules := List.map link_rule !(s.sym_rules)
@@ -147,7 +137,7 @@ let link : t -> unit = fun sign ->
   sign.sign_notations :=
     SymMap.fold (fun s n m -> SymMap.add (link_symb s) n m)
       !(sign.sign_notations) SymMap.empty;
-  StrMap.iter (fun _ (s, _) -> Tree.update_dtree s) !(sign.sign_symbols);
+  StrMap.iter (fun _ s -> Tree.update_dtree s) !(sign.sign_symbols);
   let link_ind_data i =
     { ind_cons = List.map link_symb i.ind_cons;
       ind_prop = link_symb i.ind_prop; ind_nb_params = i.ind_nb_params;
@@ -195,7 +185,7 @@ let unlink : t -> unit = fun sign ->
     let (_, rhs) = Bindlib.unmbind r.rhs in
     unlink_term rhs
   in
-  let f _ (s,_) =
+  let f _ s =
     unlink_term !(s.sym_type);
     Option.iter unlink_term !(s.sym_def);
     List.iter unlink_rule !(s.sym_rules)
@@ -216,25 +206,24 @@ let unlink : t -> unit = fun sign ->
    [prop], matching strategy [strat], opacity [opaq], type [typ], implicit
    arguments [impl], no definition and no rules. [name] should not already be
    used in [sign]. The created symbol is returned. *)
-let add_symbol :
-      t -> expo -> prop -> match_strat -> bool -> strloc -> term ->
+let add_symbol : t -> expo -> prop -> match_strat -> bool -> strloc -> term ->
       bool list -> sym =
-  fun sign sym_expo sym_prop sym_mstrat sym_opaq {elt=sym_name;pos} typ
-      impl ->
+  fun sign sym_expo sym_prop sym_mstrat sym_opaq {elt=sym_name; pos=sym_pos}
+    typ impl ->
   let sym =
     { sym_path = sign.sign_path; sym_name; sym_type = ref (cleanup typ);
       sym_impl = minimize_impl impl; sym_def = ref None; sym_opaq;
       sym_rules = ref []; sym_dtree = ref Tree_type.empty_dtree; sym_mstrat;
-      sym_prop; sym_expo }
+      sym_prop; sym_expo; sym_pos }
   in
-  sign.sign_symbols := StrMap.add sym_name (sym, pos) !(sign.sign_symbols);
+  sign.sign_symbols := StrMap.add sym_name sym !(sign.sign_symbols);
   sym
 
 (** [strip_private sign] removes private symbols from signature [sign]. *)
 let strip_private : t -> unit = fun sign ->
   let not_prv sym = not (Term.is_private sym) in
   sign.sign_symbols :=
-    StrMap.filter (fun _ s -> not_prv (fst s)) !(sign.sign_symbols);
+    StrMap.filter (fun _ s -> not_prv s) !(sign.sign_symbols);
   sign.sign_notations :=
     Term.SymMap.filter (fun s _ -> not_prv s) !(sign.sign_notations)
 
@@ -303,7 +292,7 @@ let read : string -> t = fun fname ->
       Option.iter reset_term !(s.sym_def);
       List.iter reset_rule !(s.sym_rules)
     in
-    StrMap.iter (fun _ (s,_) -> reset_sym s) !(sign.sign_symbols);
+    StrMap.iter (fun _ s -> reset_sym s) !(sign.sign_symbols);
     StrMap.iter (fun _ s -> shallow_reset_sym s) !(sign.sign_builtins);
     SymMap.iter (fun s _ -> shallow_reset_sym s) !(sign.sign_notations);
     let f _ sm = StrMap.iter (fun _ rs -> List.iter reset_rule rs) sm in

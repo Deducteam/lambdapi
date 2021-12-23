@@ -173,7 +173,7 @@ let rec infer : int -> problem -> ctxt -> term -> term = fun d p c t ->
       (* The type of [Meta(m,ts)] is the same as the one obtained by applying
          to [ts] a new symbol having the same type as [m]. *)
       let s = Term.create_sym (Sign.current_path()) Privat Const
-          Eager true ("?" ^ LibMeta.name m) !(m.meta_type) [] in
+          Eager true (Pos.none ("?" ^ LibMeta.name m)) !(m.meta_type) [] in
       if Logger.log_enabled () then
         log_infr "%areplace meta by fresh symbol" D.depth d;
       infer d p c

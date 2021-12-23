@@ -27,7 +27,7 @@ let create_sign : Path.t -> Sign.t = fun sign_path ->
 (** State of the signature, including aliasing and accessible symbols. *)
 type sig_state =
   { signature : Sign.t                    (** Current signature. *)
-  ; in_scope  : (sym * Pos.popt) StrMap.t (** Symbols in scope.  *)
+  ; in_scope  : sym StrMap.t              (** Symbols in scope.  *)
   ; alias_path: Path.t StrMap.t           (** Alias to path map. *)
   ; path_alias: string Path.Map.t         (** Path to alias map. *)
   ; builtins  : sym StrMap.t              (** Builtins. *)
@@ -58,7 +58,7 @@ let add_symbol : sig_state -> expo -> prop -> match_strat
     | Some t -> sym.sym_def := Some (cleanup t)
     | None -> ()
   end;
-  let in_scope = StrMap.add id.elt (sym, id.pos) ss.in_scope in
+  let in_scope = StrMap.add id.elt sym ss.in_scope in
   {ss with in_scope}, sym
 
 (** [add_notation ss s n] maps [s] notation to [n] in [ss]. *)
@@ -107,10 +107,10 @@ let open_sign : sig_state -> Sign.t -> sig_state = fun ss sign ->
   let open_paths = Path.Set.add sign.sign_path ss.open_paths in
   {ss with in_scope; builtins; notations; open_paths}
 
-(** [of_sign sign] creates a state from the signature [sign] with ghost
-    signatures opened but not [sign] itself. *)
+(** [of_sign sign] creates a state from the signature [sign] and open it as
+   well as the ghost signatures. *)
 let of_sign : Sign.t -> sig_state = fun signature ->
-  open_sign {dummy with signature} Unif_rule.sign
+  open_sign (open_sign {dummy with signature} Unif_rule.sign) signature
 
 (** [find_sym ~prt ~prv b st qid] returns the symbol
     corresponding to the qualified identifier [qid]. If [fst qid.elt] is
@@ -128,7 +128,7 @@ let find_sym : prt:bool -> prv:bool -> sig_state -> qident loc -> sym =
     match mp with
     | [] -> (* Symbol in scope. *)
         begin
-          try fst (StrMap.find s st.in_scope)
+          try StrMap.find s st.in_scope
           with Not_found -> fatal pos "Unknown object %s." s
         end
     | [m] when StrMap.mem m st.alias_path -> (* Aliased module path. *)

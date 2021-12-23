@@ -19,7 +19,7 @@ let log_term = log_term.pp
 (** {3 Term (and symbol) representation} *)
 
 (** Representation of a possibly qualified identifier. *)
-type qident = Common.Path.t * string
+type qident = Path.t * string
 
 (** Pattern-matching strategy modifiers. *)
 type match_strat =
@@ -88,7 +88,7 @@ and dtree = (rhs * int) Tree_type.dtree
     be enforced for "mode" consistency (see {!type:sym_prop}).  *)
 and sym =
   { sym_expo  : expo (** Visibility. *)
-  ; sym_path  : Common.Path.t (** Module in which the symbol is defined. *)
+  ; sym_path  : Path.t (** Module in which the symbol is defined. *)
   ; sym_name  : string (** Name. *)
   ; sym_type  : term ref (** Type. *)
   ; sym_impl  : bool list (** Implicit arguments ([true] meaning implicit). *)
@@ -97,7 +97,8 @@ and sym =
   ; sym_opaq  : bool (** Opacity. *)
   ; sym_rules : rule list ref (** Rewriting rules. *)
   ; sym_mstrat: match_strat (** Matching strategy. *)
-  ; sym_dtree : dtree ref (** Decision tree used for matching. *) }
+  ; sym_dtree : dtree ref (** Decision tree used for matching. *)
+  ; sym_pos   : Pos.popt (** Position in source file. *) }
 
 (** {b NOTE} that {!field:sym_type} holds a (timed) reference for a  technical
     reason related to the writing of signatures as binary files  (in  relation
@@ -290,7 +291,7 @@ let new_tvar : string -> tvar = Bindlib.new_var of_tvar
 
 (** [new_tvar_ind s i] creates a new [tvar] of name [s ^ string_of_int i]. *)
 let new_tvar_ind : string -> int -> tvar = fun s i ->
-  new_tvar (Common.Escape.add_prefix s (string_of_int i))
+  new_tvar (Escape.add_prefix s (string_of_int i))
 
 (** [of_tevar x] injects the [Bindlib] variable [x] in a {!type:term_env}. *)
 let of_tevar : tevar -> term_env = fun x -> TE_Vari(x)
@@ -339,14 +340,15 @@ let new_problem : unit -> problem = fun () ->
 
 (** [create_sym path expo prop opaq name typ impl] creates a new symbol with
    path [path], exposition [expo], property [prop], opacity [opaq], matching
-   strategy [mstrat], name [name], type [typ], implicit arguments [impl], no
-   definition and no rules. *)
-let create_sym : Common.Path.t -> expo -> prop -> match_strat -> bool ->
-  string -> term -> bool list -> sym =
-  fun sym_path sym_expo sym_prop sym_mstrat sym_opaq sym_name typ sym_impl ->
+   strategy [mstrat], name [name.elt], type [typ], implicit arguments [impl],
+   position [name.pos], no definition and no rules. *)
+let create_sym : Path.t -> expo -> prop -> match_strat -> bool ->
+  Pos.strloc -> term -> bool list -> sym =
+  fun sym_path sym_expo sym_prop sym_mstrat sym_opaq
+    { elt = sym_name; pos = sym_pos } typ sym_impl ->
   {sym_path; sym_name; sym_type = ref typ; sym_impl; sym_def = ref None;
    sym_opaq; sym_rules = ref []; sym_dtree = ref Tree_type.empty_dtree;
-   sym_mstrat; sym_prop; sym_expo }
+   sym_mstrat; sym_prop; sym_expo; sym_pos }
 
 (** [is_constant s] tells whether [s] is a constant. *)
 let is_constant : sym -> bool = fun s -> s.sym_prop = Const
@@ -563,7 +565,7 @@ let right_aliens : sym -> term -> term list = fun s ->
 
 (* unit test *)
 let _ =
-  let s = create_sym [] Privat (AC true) Eager false "+" Kind [] in
+  let s = create_sym [] Privat (AC true) Eager false (Pos.none "+") Kind [] in
   let t1 = Vari (new_tvar "x1") in
   let t2 = Vari (new_tvar "x2") in
   let t3 = Vari (new_tvar "x3") in
