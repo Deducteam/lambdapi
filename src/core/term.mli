@@ -9,11 +9,12 @@
 
 open Timed
 open Lplib.Base
+open Common
 
 (** {3 Term (and symbol) representation} *)
 
 (** Representation of a possibly qualified identifier. *)
-type qident = Common.Path.t * string
+type qident = Path.t * string
 
 (** Pattern-matching strategy modifiers. *)
 type match_strat =
@@ -82,7 +83,7 @@ and dtree = (rhs * int) Tree_type.dtree
     be enforced for "mode" consistency (see {!type:prop}).  *)
 and sym =
   { sym_expo  : expo (** Visibility. *)
-  ; sym_path  : Common.Path.t (** Module in which the symbol is defined. *)
+  ; sym_path  : Path.t (** Module in which the symbol is defined. *)
   ; sym_name  : string (** Name. *)
   ; sym_type  : term ref (** Type. *)
   ; sym_impl  : bool list (** Implicit arguments ([true] meaning implicit). *)
@@ -127,7 +128,8 @@ and sym =
   ; vars     : tevar array
   (** Bindlib variables used to build [rhs]. The last [xvars_nb] variables
       appear only in [rhs]. *)
-  ; xvars_nb : int (** Number of variables in [rhs] but not in [lhs]. *) }
+  ; xvars_nb : int (** Number of variables in [rhs] but not in [lhs]. *)
+  ; rule_pos : Pos.popt (** Position of the rule in the source file. *) }
 
 (** The LHS (or pattern) of a rewriting rule is always formed of a head symbol
     (on which the rule is defined) applied to a list of pattern arguments. The
@@ -284,7 +286,7 @@ module SymMap : Map.S with type key = sym
    path [path], exposition [expo], property [prop], opacity [opaq], matching
    strategy [mstrat], name [name], type [typ], implicit arguments [impl], no
    definition and no rules. *)
-val create_sym : Common.Path.t -> expo -> prop -> match_strat -> bool ->
+val create_sym : Path.t -> expo -> prop -> match_strat -> bool ->
   string -> term -> bool list -> sym
 
 (** [is_constant s] tells whether the symbol is a constant. *)

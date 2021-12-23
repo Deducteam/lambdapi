@@ -133,7 +133,8 @@ and sym =
   ; vars     : tevar array
   (** Bindlib variables used to build [rhs]. The last [xvars_nb] variables
       appear only in [rhs]. *)
-  ; xvars_nb : int (** Number of variables in [rhs] but not in [lhs]. *) }
+  ; xvars_nb : int (** Number of variables in [rhs] but not in [lhs]. *)
+  ; rule_pos : Pos.popt (** Position of the rule in the source file. *) }
 
 (** {b NOTE} that the second parameter of the {!constructor:Patt}  constructor
     holds an array of terms. This is essential for variables binding: using an

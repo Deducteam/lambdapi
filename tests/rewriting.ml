@@ -32,7 +32,7 @@ let sig_state, a = add_sym sig_state "A"
 let parse_rule s =
   let r = Parser.Lp.parse_string "rewrite_test rule" s |> Stream.next in
   let r = match r.elt with Syntax.P_rules [r] -> r | _ -> assert false in
-  (Scope.scope_rule false sig_state r).elt |> Scope.rule_of_pre_rule
+  Scope.scope_rule false sig_state r |> Scope.rule_of_pre_rule
 
 let arrow_matching () =
   (* Matching on a product. *)
