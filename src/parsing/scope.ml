@@ -630,19 +630,21 @@ type pre_rule =
   (** Number of variables that appear in the RHS but not in the LHS. *) }
 
 (** [rule_of_pre_rule r] converts a pre-rewrite rule into a rewrite rule. *)
-let rule_of_pre_rule : pre_rule -> rule =
-  fun {pr_lhs; pr_vars; pr_rhs; pr_arities; pr_xvars_nb; _} ->
+let rule_of_pre_rule : pre_rule loc -> rule =
+  fun { elt = pr; pos = rule_pos } ->
+  let {pr_lhs; pr_vars; pr_rhs; pr_arities; pr_xvars_nb; _} = pr in
   { lhs = pr_lhs
   ; rhs = Bindlib.(unbox (bind_mvar pr_vars pr_rhs))
   ; arity = List.length pr_lhs
   ; arities = pr_arities
   ; vars = pr_vars
-  ; xvars_nb = pr_xvars_nb }
+  ; xvars_nb = pr_xvars_nb
+  ; rule_pos }
 
 (** [scope_rule ur ss r] turns a parser-level rewriting rule [r], or a
     unification rule if [ur] is true, into a pre-rewriting rule. *)
-let scope_rule : bool -> sig_state -> p_rule -> pre_rule loc = fun ur ss r ->
-  let (p_lhs, p_rhs) = r.elt in
+let scope_rule : bool -> sig_state -> p_rule -> pre_rule loc =
+  fun ur ss { elt = (p_lhs, p_rhs); pos } ->
   (* Compute the set of pattern variables on both sides. *)
   let (pvs_lhs, nl) = patt_vars p_lhs in
   (* NOTE to reject non-left-linear rules check [nl = []] here. *)
@@ -657,7 +659,7 @@ let scope_rule : bool -> sig_state -> p_rule -> pre_rule loc = fun ur ss r ->
   in
   List.iter check_arity pvs_rhs;
   (* Scope the LHS and get the reserved index for named pattern variables. *)
-  let (pr_lhs, lhs_indices, lhs_arities, lhs_names, lhs_size) =
+  let (pr_lhs, lhs_indices, lhs_arities, pr_names, lhs_size) =
     let mode =
       M_LHS{ m_lhs_prv     = is_private (get_root ss [] p_lhs)
            ; m_lhs_indices = Hashtbl.create 7
@@ -674,7 +676,7 @@ let scope_rule : bool -> sig_state -> p_rule -> pre_rule loc = fun ur ss r ->
     | _                                                  -> assert false
   in
   (* Check the head symbol and build the actual LHS. *)
-  let (sym, pr_lhs) =
+  let (pr_sym, pr_lhs) =
     let (h, args) = get_args pr_lhs in
     match h with
     | Symb(s) ->
@@ -689,7 +691,7 @@ let scope_rule : bool -> sig_state -> p_rule -> pre_rule loc = fun ur ss r ->
     Array.init lhs_size (fun i ->
         new_tevar
           (try Escape.add_suffix (Printf.sprintf "v%i_" i)
-                 (Hashtbl.find lhs_names i)
+                 (Hashtbl.find pr_names i)
            with Not_found -> Printf.sprintf "v%i" i))
   in
   let mode =
@@ -700,7 +702,7 @@ let scope_rule : bool -> sig_state -> p_rule -> pre_rule loc = fun ur ss r ->
       M_URHS{ m_urhs_data = htbl_vars ; m_urhs_vars_nb = Array.length pr_vars
             ; m_urhs_xvars = [] }
     else
-      M_RHS{ m_rhs_prv = is_private sym; m_rhs_data = htbl_vars;
+      M_RHS{ m_rhs_prv = is_private pr_sym; m_rhs_data = htbl_vars;
              m_rhs_new_metas = new_problem() }
   in
   let pr_rhs = scope 0 mode ss Env.empty p_rhs in
@@ -730,13 +732,13 @@ let scope_rule : bool -> sig_state -> p_rule -> pre_rule loc = fun ur ss r ->
         (Array.append pr_vars xvars, Array.length xvars)
       in
       (* We put everything together to build the pre-rule. *)
-      { pr_sym = sym ; pr_lhs ; pr_vars ; pr_rhs ; pr_arities
-      ; pr_names = lhs_names ; pr_xvars_nb }
+      { pr_sym ; pr_lhs ; pr_vars ; pr_rhs ; pr_arities
+      ; pr_names ; pr_xvars_nb }
     else (* Rewrite rule. *)
-      { pr_sym = sym ; pr_lhs ; pr_vars ; pr_rhs ; pr_arities
-      ; pr_names = lhs_names ; pr_xvars_nb=0 }
+      { pr_sym ; pr_lhs ; pr_vars ; pr_rhs ; pr_arities
+      ; pr_names ; pr_xvars_nb=0 }
   in
-  Pos.make r.pos prerule
+  Pos.make pos prerule
 
 (** [scope_pattern ss env t] turns a parser-level term [t] into an actual term
     that will correspond to selection pattern (rewrite tactic). *)

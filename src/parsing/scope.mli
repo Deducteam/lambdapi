@@ -49,7 +49,7 @@ type pre_rule =
   (** Number of variables that appear in the RHS but not in the LHS. *) }
 
 (** [rule_of_pre_rule r] converts a pre-rewrite rule into a rewrite rule. *)
-val rule_of_pre_rule : pre_rule -> rule
+val rule_of_pre_rule : pre_rule loc -> rule
 
 (** [scope_rule ur ss r] turns a parser-level rewriting rule [r], or a
     unification rule if [ur] is true, into a pre-rewriting rule. *)

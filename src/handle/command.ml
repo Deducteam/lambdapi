@@ -227,7 +227,7 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
       (add_notation ss sym n, None, None)
   | P_unif_rule(h) ->
       (* Approximately same processing as rules without SR checking. *)
-      let pur = (scope_rule true ss h).elt in
+      let pur = scope_rule true ss h in
       let urule = Scope.rule_of_pre_rule pur in
       Sign.add_rule ss.signature Unif_rule.equiv urule;
       Tree.update_dtree Unif_rule.equiv;
