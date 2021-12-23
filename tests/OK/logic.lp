@@ -113,3 +113,7 @@ builtin "imp"   ≔ imp;
 builtin "and"   ≔ {|and|};
 builtin "or"    ≔ or;
 builtin "not"   ≔ not;
+
+constant symbol ex: Π (a : U), (T a → Prop) → Prop;
+builtin "ex" ≔ ex; 
+builtin "all" ≔ all;
