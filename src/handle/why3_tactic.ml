@@ -107,14 +107,14 @@ end = struct
            fresh constants are inhabited. *)
         match get_args te with
         | Symb s, [] ->
-          let id = Ident.id_fresh s.sym_name in
+          let id = Why3.Ident.id_fresh s.sym_name in
           let sym = Why3.(Ty.create_tysymbol id [] Ty.NoDef) in
           ((te,TySym sym)::tbl, Why3.Ty.ty_app sym [])
         | Vari x, [] ->
           let sym = Why3.Ty.tv_of_string (Bindlib.name_of x) in
           ((te,TyVar sym)::tbl, Why3.Ty.ty_var sym)
         | _ ->
-          let id = Ident.id_fresh "ty" in
+          let id = Why3.Ident.id_fresh "ty" in
           let sym = Why3.(Ty.create_tysymbol id [] Ty.NoDef) in
           ((te,TySym sym)::tbl, Why3.Ty.ty_app sym []))
 
@@ -164,7 +164,7 @@ let translate_term : config -> cnst_table -> TyTable.t -> term ->
         let x, t = Bindlib.unbind t in
         let (tbl, ty_tbl ,t) = translate_prop tbl ty_tbl t in
         let tquant =
-          let id = Ident.id_fresh (Bindlib.name_of x) in
+          let id = Why3.Ident.id_fresh (Bindlib.name_of x) in
           let vid = Why3.(Term.create_vsymbol id) ty in
           let close =
             if s == cfg.symb_ex then Why3.Term.t_exists_close
