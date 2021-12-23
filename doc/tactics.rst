@@ -35,7 +35,7 @@ between curly brackets:
      assume x h; apply l _ _ h _; reflexivity
    end;
 
-Reminder: the BNF grammar of tactics is in `syntax.bnf <https://raw.githubusercontent.com/Deducteam/lambdapi/master/docs/syntax.bnf>`__.
+Reminder: the BNF grammar of tactics is in `lambdapi.bnf <https://raw.githubusercontent.com/Deducteam/lambdapi/master/doc/lambdapi.bnf>`__.
 
 .. _begin:
 
