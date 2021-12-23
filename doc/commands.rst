@@ -1,7 +1,7 @@
 Commands
 ========
 
-The BNF grammar of Lambdapi is in `syntax.bnf <https://raw.githubusercontent.com/Deducteam/lambdapi/master/docs/syntax.bnf>`__.
+The BNF grammar of Lambdapi is in `lambdapi.bnf <https://raw.githubusercontent.com/Deducteam/lambdapi/master/doc/lambdapi.bnf>`__.
 
 Lambdapi files are formed of a list of commands. A command starts with
 a particular reserved keyword and ends with a semi-colon.

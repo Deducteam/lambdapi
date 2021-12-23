@@ -1,10 +1,8 @@
 Compatibility with Dedukti
 ==========================
 
-Lambdapi can read `Dedukti <https://deducteam.github.io/>`__ files
-with the extension ``.dk``. The Dedukti grammar is given in
-`syntax_dedukti.bnf
-<https://raw.githubusercontent.com/Deducteam/lambdapi/master/docs/syntax_dedukti.bnf>`__.
+Lambdapi can read `Dedukti <https://raw.githubusercontent.com/Deducteam/Dedukti/master/syntax.bnf>`__ files
+with the extension ``.dk``.
 
 Moreover, a Lambdapi file can refer to a symbol declared in a Dedukti file.
 

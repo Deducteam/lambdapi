@@ -33,8 +33,7 @@ type token =
   | ADMITTED
   | APPLY
   | AS
-  | ASSERT
-  | ASSERTNOT
+  | ASSERT of bool (* true for "assertnot" *)
   | ASSOCIATIVE
   | ASSUME
   | BEGIN
@@ -83,11 +82,11 @@ type token =
   | WITH
 
   (* other tokens *)
-  | ASSOC of Pratter.associativity
   | DEBUG_FLAGS of (bool * string)
       (* Tuple constructor (with parens) required by Menhir. *)
   | INT of int
   | FLOAT of float
+  | SIDE of Pratter.associativity
   | STRINGLIT of string
   | SWITCH of bool
 
@@ -195,8 +194,8 @@ let rec token lb =
   | "admitted" -> ADMITTED
   | "apply" -> APPLY
   | "as" -> AS
-  | "assert" -> ASSERT
-  | "assertnot" -> ASSERTNOT
+  | "assert" -> ASSERT false
+  | "assertnot" -> ASSERT true
   | "associative" -> ASSOCIATIVE
   | "assume" -> ASSUME
   | "begin" -> BEGIN
@@ -215,7 +214,7 @@ let rec token lb =
   | "inductive" -> INDUCTIVE
   | "infix" -> INFIX
   | "injective" -> INJECTIVE
-  | "left" -> ASSOC(Pratter.Left)
+  | "left" -> SIDE(Pratter.Left)
   | "let" -> LET
   | "notation" -> NOTATION
   | "off" -> SWITCH(false)
@@ -234,7 +233,7 @@ let rec token lb =
   | "reflexivity" -> REFLEXIVITY
   | "require" -> REQUIRE
   | "rewrite" -> REWRITE
-  | "right" -> ASSOC(Pratter.Right)
+  | "right" -> SIDE(Pratter.Right)
   | "rule" -> RULE
   | "sequential" -> SEQUENTIAL
   | "simplify" -> SIMPLIFY

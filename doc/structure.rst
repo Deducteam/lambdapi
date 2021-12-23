@@ -1,9 +1,9 @@
 Overview of directories and files
 =================================
 
-* ``docs/``: documentation in `ReStructured Text`_ format
+* ``doc/``: documentation in `ReStructured Text`_ format
 
-  * ``docs/README.md``: introduction to the user manual and guidelines
+  * ``doc/README.md``: introduction to the user manual and guidelines
 
 * ``editors/``: editor plugins for handling Lambdapi files
 
