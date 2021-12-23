@@ -11,7 +11,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   two new builtins ("ex" and "all"). Codewise, it requires a new
   translation from encoded types to Why3 types.
 
-## 2.0.0 (2021-12-10)
+- A small tutorial in tests/OK/tuto.lp.
+
+## 2.0.0 (2021-12-15)
 
 ### Release of the VSCode extension on the Marketplace (2021-12-10)
 
