@@ -10,13 +10,14 @@ open Syntax
 open Common
 open Pos
 
-(** [scope prv ss env p mok mon t] turns a pterm [t] into a term in the
+(** [scope ~typ prv ss env p mok mon t] turns a pterm [t] into a term in the
    signature state [ss], the environment [env] (for bound variables). [mok k]
    says if there already exists a meta with key [k]. [mon n] says if there
    already exists a meta with name [n]. Generated metas are added to [p].
-   [prv] indicates if private symbols are allowed. *)
-val scope_term :
-      bool -> sig_state -> env
+   [prv] indicates if private symbols are allowed. [typ] indicates whether [t]
+   should be type (default is false). *)
+val scope_term : ?typ:bool (* default: false *)
+      -> bool -> sig_state -> env
       -> problem -> (int -> meta option) -> (string -> meta option)
       -> p_term -> term
 
