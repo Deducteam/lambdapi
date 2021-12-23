@@ -16,7 +16,7 @@ graph {
        7 [label="tests.OK.bool.true"];
        5 -- 7 [label=<true<sub>0</sub>>];
 }
-=> ghost symbol #equiv from tests.OK.unif_hint
+=> ghost symbol ≡ from tests.OK.unif_hint
 graph {
        0 [label="0"];
        1 [label="0" shape="box"];
