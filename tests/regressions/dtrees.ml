@@ -19,5 +19,5 @@ let () =
   (* Ghost symbol *)
   (* We don't use [Pure] to keep rules added to unif hint symbols *)
   ignore @@ Compile.compile_file "../OK/unif_hint.lp";
-  Format.printf "=> ghost symbol #equiv from tests.OK.unif_hint@\n";
+  Format.printf "=> ghost symbol ≡ from tests.OK.unif_hint@\n";
   Tool.Tree_graphviz.to_dot Format.std_formatter Unif_rule.equiv
