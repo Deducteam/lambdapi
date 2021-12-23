@@ -20,7 +20,9 @@ and convert them to Lambdapi files.
 - `Issue tracker
 <https://github.com/Deducteam/lambdapi/issues>`__
 
-`Example of developments using Lambdapi <https://github.com/fblanqui/lib>`__
+`Learn the basics of Lambdapi in 15 minutes <https://raw.githubusercontent.com/Deducteam/lambdapi/master/tests/OK/tuto.lp>`__
+
+`Other examples of developments using Lambdapi <https://github.com/fblanqui/lib>`__
 
 .. toctree::
    :maxdepth: 1
