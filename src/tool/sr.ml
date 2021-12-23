@@ -144,7 +144,8 @@ let check_rule : Scope.pre_rule Pos.loc -> rule = fun ({pos; elt} as pr) ->
          unboxed twice. However things should be fine here since the result is
          only used for printing. *)
       let rhs = Bindlib.(unbox (bind_mvar vars pr_rhs)) in
-      let naive_rule = {lhs; rhs; arity; arities; vars; xvars_nb = 0} in
+      let naive_rule =
+        {lhs; rhs; arity; arities; vars; xvars_nb = 0; rule_pos = pos} in
       log_subj (Color.red "%a") pp_rule (s, naive_rule);
     end;
   (* Replace [Patt] nodes of LHS with corresponding elements of [vars]. *)
@@ -251,4 +252,4 @@ let check_rule : Scope.pre_rule Pos.loc -> rule = fun ({pos; elt} as pr) ->
   (* TODO environment minimisation ? *)
   (* Construct the rule. *)
   let rhs = Bindlib.unbox (Bindlib.bind_mvar vars rhs) in
-  { lhs ; rhs ; arity ; arities ; vars; xvars_nb = 0 }
+  { lhs ; rhs ; arity ; arities ; vars; xvars_nb = 0; rule_pos = pos }
