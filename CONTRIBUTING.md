@@ -12,32 +12,30 @@ For contributing to the User Manual, see `doc/README.md`.
 Branching and pull-request policy
 ---------------------------------
 
-The Github repo has a branch for each release and the `master` branch
-for the development of the next release.
+For the moment, the Github repo uses only one branch, `master`.
+Releases are tagged.
 
-Contributions to Lambdapi should be done by using pull-requests on
-Github. You should first clone Lambdapi on Github, create a branch for
-your contribution, push it and, then, make a pull-request from the
-Github web interface. Pull-requests are then reviewed, commented and
-eventually merged.
+Contributions to Lambdapi should be done by doing pull-requests from
+your forked repo of Lambdapi. Pull-requests are then reviewed,
+commented and eventually merged.
 
-- If the file structure is changed, `doc/structure.rst` should be changed as
-  well.
+- If the file structure is changed, `doc/structure.rst` should be changed as well.
 - Important contributions should update the file `CHANGES.md`.
 
 General style and indentation
 -----------------------------
 
-In the interest of code source uniformity, we ask that:
- - the *tabulation character should be banned*,
+In the interest of code source uniformity, we require:
+ - do not use tabulation characters
  - one indentation unit is equal to two spaces,
- - there should be *no trailing spaces* at the end of lines,
- - line length should be limited to *78 characters* excluding newline
-   (except for `@see` commands for `ocamldoc`).
+ - there should be no trailing spaces at the end of lines,
+ - line length should be limited to 78 characters excluding newline
+   (except for `@see` commands for `ocamldoc`)
+ - do not align commas, arrow or comments in match constructions
 
-You should at the very least run `make sanity_check` before committing
+You should run `make sanity_check` before committing
 anything. The script `misc/git_hook_helper.sh` helps setting up a
-git hook to run `make sanity_check` automatically *before* each
+git hook to run `make sanity_check` automatically before each
 commit. It is encouraged to set up such a hook. The script may be
 called with the `-b` option to include compilation in the hook.
 Please check that you have GNU awk (gawk) installed or another UTF-8
