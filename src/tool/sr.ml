@@ -202,21 +202,21 @@ let check_rule : Scope.pre_rule Pos.loc -> rule = fun ({pos; elt} as pr) ->
     let rec instantiate m =
       match !(m.meta_value) with
       | Some _ ->
-          (* Instantiate recursively the meta-variables of the definition. *)
-          let t = mk_Meta(m, Array.make m.meta_arity mk_Kind) in
-          LibMeta.iter true instantiate [] t
+        (* Instantiate recursively the meta-variables of the definition. *)
+        let t = mk_Meta(m, Array.make m.meta_arity mk_Kind) in
+        LibMeta.iter true instantiate [] t
       | None ->
-          (* Instantiate recursively the meta-variables of the type. *)
-          LibMeta.iter true instantiate [] !(m.meta_type);
-          (* Instantiation of [m]. *)
-          let s = Term.create_sym (Sign.current_path()) Privat Defin Eager
-                    false (LibMeta.name m) !(m.meta_type) [] in
-          Stdlib.(symbols := s :: !symbols);
-          (* Build a definition for [m]. *)
-          let xs = Array.init m.meta_arity (new_tvar_ind "x") in
-          let s = _Symb s in
-          let def = Array.fold_left (fun t x -> _Appl t (_Vari x)) s xs in
-          m.meta_value := Some(Bindlib.unbox (Bindlib.bind_mvar xs def))
+        (* Instantiate recursively the meta-variables of the type. *)
+        LibMeta.iter true instantiate [] !(m.meta_type);
+        (* Instantiation of [m]. *)
+        let s = Term.create_sym None (Sign.current_path()) Privat Defin Eager
+            false (LibMeta.name m) !(m.meta_type) [] in
+        Stdlib.(symbols := s :: !symbols);
+        (* Build a definition for [m]. *)
+        let xs = Array.init m.meta_arity (new_tvar_ind "x") in
+        let s = _Symb s in
+        let def = Array.fold_left (fun t x -> _Appl t (_Vari x)) s xs in
+        m.meta_value := Some(Bindlib.unbox (Bindlib.bind_mvar xs def))
     in
     Array.iter instantiate metas; Stdlib.(!symbols)
   in
