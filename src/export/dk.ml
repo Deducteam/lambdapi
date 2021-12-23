@@ -4,6 +4,8 @@ open Lplib.Base
 open Common
 open Core
 open Timed
+open Term
+open Lplib.Extra
 
 (** Dedukti keywords. *)
 let keyword_table = Hashtbl.create 59
@@ -46,8 +48,6 @@ let _ = let open Parsing.DkTokens in
     ; "#PRINT", PRINT loc
     ; "#GDT", GDT loc]
 
-let out = Format.fprintf
-
 let string = Format.pp_print_string
 
 let is_ident : string -> bool = fun s ->
@@ -69,6 +69,18 @@ let path : Path.t pp = fun ppf p ->
 
 let require : Path.t -> 'a -> unit = fun p _ ->
   Format.printf "#REQUIRE %a." path p
+
+type item = Sym of sym | Rule of rule
+
+let items_of_sign : Sign.t -> item list = fun sign ->
+  let _add_sym sym items = Sym sym :: items
+  and _add_rule rule items = Rule rule :: items in
+  let add_sign_symbol _name (_sym, _pos) items = items
+  in
+  let add_sign_dep _path _map items = items
+  in
+  StrMap.fold add_sign_symbol !(sign.sign_symbols)
+    (Path.Map.fold add_sign_dep !(sign.sign_deps) [])
 
 let sign : Sign.t -> unit = fun s ->
   Path.Map.iter require !(s.sign_deps)
