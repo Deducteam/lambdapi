@@ -25,8 +25,8 @@ let _ = let open LpLexer in
     ; "admitted", ADMITTED
     ; "apply", APPLY
     ; "as", AS
-    ; "assert", ASSERT
-    ; "assertnot", ASSERTNOT
+    ; "assert", ASSERT false
+    ; "assertnot", ASSERT true
     ; "associative", ASSOCIATIVE
     ; "assume", ASSUME
     ; "begin", BEGIN
@@ -45,7 +45,7 @@ let _ = let open LpLexer in
     ; "inductive", INDUCTIVE
     ; "infix", INFIX
     ; "injective", INJECTIVE
-    ; "left", ASSOC(Pratter.Left)
+    ; "left", SIDE(Pratter.Left)
     ; "let", LET
     ; "off", SWITCH(false)
     ; "on", SWITCH(true)
@@ -63,7 +63,7 @@ let _ = let open LpLexer in
     ; "reflexivity", REFLEXIVITY
     ; "require", REQUIRE
     ; "rewrite", REWRITE
-    ; "right", ASSOC(Pratter.Right)
+    ; "right", SIDE(Pratter.Right)
     ; "rule", RULE
     ; "sequential", SEQUENTIAL
     ; "simplify", SIMPLIFY
@@ -286,14 +286,14 @@ let tactic : p_tactic pp = fun ppf { elt;  _ } ->
   end
 
 (* starts with a space if distinct from [Pratter.Neither] *)
-let assoc : Pratter.associativity pp = fun ppf a ->
+let side : Pratter.associativity pp = fun ppf a ->
   out ppf (match a with
            | Pratter.Neither -> ""
            | Pratter.Left -> " left"
            | Pratter.Right -> " right")
 
 let notation : Sign.notation pp = fun ppf -> function
-  | Infix (a, p) -> out ppf "infix%a %f" assoc a p
+  | Infix (a, p) -> out ppf "infix%a %f" side a p
   | Prefix p -> out ppf "prefix %f" p
   | Quant -> out ppf "quantifier"
   | _ -> ()
