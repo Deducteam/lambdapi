@@ -266,6 +266,7 @@ type p_command_aux =
   | P_inductive of p_modifier list * p_params list * p_inductive list
   | P_builtin of string * p_qident
   | P_notation of p_qident * Sign.notation
+  | P_coercion of p_rule
   | P_unif_rule of p_rule
   | P_query of p_query
 
@@ -593,6 +594,7 @@ let fold_idents : ('a -> p_qident -> 'a) -> 'a -> p_command list -> 'a =
     | P_query q -> fold_query_vars StrSet.empty a q
     | P_builtin (_, qid)
     | P_notation (qid, _) -> f a qid
+    | P_coercion r
     | P_unif_rule r -> fold_rule a r
     | P_rules rs -> List.fold_left fold_rule a rs
     | P_inductive (_, xs, ind_list) ->

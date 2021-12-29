@@ -40,8 +40,36 @@ let unif : problem -> octxt -> term -> term -> unit =
 
 (** {1 Handling coercions} *)
 
+(** [is_value t] is true if term [t] does not contain [Coercions.coerce]. *)
+let is_value t =
+  let exception Found in
+  (* TODO: write a generic [iter] that operates on leaves *)
+  let rec is_value t =
+    match unfold t with
+    | TRef _ -> assert false
+    | TEnv _ -> assert false
+    | Wild -> assert false
+    | Patt _ -> assert false
+    | Plac _ -> assert false
+    | Type | Kind | Vari _ | Meta _ -> ()
+    | Symb s -> if Coercions.is_ghost s then raise Found
+    | Appl(t,u) -> is_value t; is_value u
+    | Prod(a,b)
+    | Abst(a,b) -> is_value a; is_value (snd (Bindlib.unbind b))
+    | LLet(a,t,u) -> is_value a; is_value t; is_value (snd (Bindlib.unbind u))
+  in
+  try is_value t; true with Found -> false
+
 (* Simply unify types, no coercions yet. *)
-let coerce pb c t a b = unif pb c a b; (t, false)
+let coerce pb c t a b = 
+  if Logger.log_enabled () then log "Coerce [%a: %a = %a]"
+    Print.pp_term t Print.pp_term a Print.pp_term b;
+  let reduced = 
+    add_args (mk_Symb Coercions.coerce) [a; t; b]
+    |> Eval.snf (classic c)
+  in
+  if is_value reduced then (reduced, true) else (
+    unif pb c a b; (t, false))
 
 (** {1 Other rules} *)
 
