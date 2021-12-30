@@ -265,17 +265,17 @@ and scope_domain : int -> mode -> sig_state -> env -> p_term option -> tbox =
   | (Some {elt=P_Wild;_}|None), _ -> _Plac true
   | Some a, _ -> scope ~typ:true k md ss env a
 
-(** [scope_binder ~typ ~warn mode ss cons env params_list t] scopes [t] in
+(** [scope_binder ~typ mode ss cons env params_list t] scopes [t] in
    mode [md], signature state [ss] and environment [env]. [params_list] is a
    list of paramters to abstract on. For each parameter, a tbox is built using
    [cons] (either [_Abst] or [_Prod]). If [warn] is true (the default), a
    warning is printed when the variable that is bound by the binder does not
    appear in the body. [typ] indicates if we scope a type (default is
    false). *)
-and scope_binder : ?typ:bool -> ?warn:bool -> int -> mode -> sig_state ->
+and scope_binder : ?typ:bool -> int -> mode -> sig_state ->
   (tbox -> tbinder Bindlib.box -> tbox) -> Env.t -> p_params list ->
   p_term option -> tbox =
-  fun ?(typ=false) ?(warn=true) k md ss cons env params_list t ->
+  fun ?(typ=false) k md ss cons env params_list t ->
   let rec scope_params_list env params_list =
     match params_list with
     | [] ->
@@ -303,8 +303,6 @@ and scope_binder : ?typ:bool -> ?warn:bool -> int -> mode -> sig_state ->
           let v = new_tvar id in
           let env = Env.add v a None env in
           let t = aux env idopts in
-          if warn && id.[0] <> '_' && not (Bindlib.occur v t) then
-            wrn pos "Variable %s could be replaced by '_'." id;
           cons a (Bindlib.bind_var v t)
     in aux env idopts
   in
@@ -487,19 +485,6 @@ let scope_term : ?typ:bool -> ?mok:(int -> meta option) ->
   fun ?(typ=false) ?(mok=fun _ -> None) m_term_prv ss env t ->
   let md = M_Term {m_term_meta_of_key=mok; m_term_prv} in
   Bindlib.unbox (scope ~typ 0 md ss env t)
-
-let scope_term_with_params : ?mok:(int -> meta option) -> bool
-  -> sig_state -> env -> p_term -> term =
-  fun ?(mok=fun _ -> None) m_term_prv ss env t ->
-  if Logger.log_enabled () then log_scop "%a" Pretty.term t;
-  let md = M_Term {m_term_meta_of_key=mok; m_term_prv} in
-  let scope_b typ cons xs u =
-    Bindlib.unbox (scope_binder ~typ ~warn:false 0 md ss cons env xs (Some u))
-  in
-  match t.elt with
-  | P_Abst(xs,u) -> scope_b false _Abst xs u
-  | P_Prod(xs,u) -> scope_b true _Prod xs u
-  | _ -> assert false
 
 (** [patt_vars t] returns a couple [(pvs,nl)]. The first compoment [pvs] is an
     association list giving the arity of all the “pattern variables” appearing

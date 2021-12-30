@@ -161,10 +161,7 @@ let handle_inductive_symbol : sig_state -> expo -> prop -> match_strat
   let impl = Syntax.get_impl_term typ in
   (* We scope the type of the declaration. *)
   let p = new_problem() in
-  let typ =
-    (if xs = [] then scope_term ~typ:true else scope_term_with_params)
-      (expo = Privat) ss Env.empty typ
-  in
+  let typ = scope_term ~typ:true (expo = Privat) ss Env.empty typ in
   (* We check that [typ] is typable by a sort. *)
   let (typ,  _) = Query.check_sort pos p [] typ in
   (* We check that no metavariable remains. *)
@@ -353,17 +350,7 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
     (* Problem recording metavariables and constraints. *)
     let p = new_problem() in
     (* Scoping the definition and the type. *)
-    (* If there are parameters and both a type and a definition, then we use
-       scope_term_with_params instead of scope_term, so that no warning is
-       issued during scoping if a parameter is unused in the type or in the
-       definition. In this case, this verification must therefore be done
-       afterwards. *)
-    let scope ?(typ=false) =
-      (if p_sym_arg = [] || p_sym_typ = None || p_sym_trm = None
-       then scope_term ~typ
-       else scope_term_with_params)
-        (expo = Privat) ss Env.empty
-    in
+    let scope ?(typ=false) = scope_term ~typ (expo = Privat) ss Env.empty in
     (* Scoping function keeping track of the position. *)
     let scope ?(typ=false) t = Pos.make t.pos (scope ~typ t) in
     (* Desugaring of parameters and scoping of [p_sym_trm]. *)
@@ -394,23 +381,6 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
                  Pos.make pos (P_Prod(p_sym_arg, a))
           in Some (scope ~typ:true a), Syntax.get_impl_term a
     in
-    (* If there are parameters, output a warning if they are not used. *)
-    if p_sym_arg <> [] then
-      begin match a, t with
-      | Some a, Some t ->
-          let rec binders_warn k ty te =
-            if k <= 0 then () else
-              match ty, te with
-              | Prod(_, by), Abst(_, be) ->
-                  let x, ty, te = Bindlib.unbind2 by be in
-                  if Bindlib.(binder_constant by && binder_constant be) then
-                    wrn pos "Variable [%a] could be replaced by [_]."
-                      pp_var x;
-                  binders_warn (k-1) ty te
-              | _ -> assert false
-          in binders_warn (Syntax.nb_params p_sym_arg) a.elt t.elt
-      | _ -> ()
-      end;
     (* Build proof data. *)
     let pdata =
       (* Type of the symbol. *)

@@ -22,14 +22,6 @@ val scope_term :
   ?mok:(int -> meta option) ->
   bool -> sig_state -> env -> p_term -> term
 
-
-(** [scope_term_with_params expo ss env t] is similar to [scope_term expo ss
-   env t] except that [t] must be a product or an abstraction. In this case,
-   no warnings are issued if the top binders are constant. *)
-val scope_term_with_params :
-  ?mok:(int -> meta option) ->
-  bool -> sig_state -> env -> p_term -> term
-
 (** Representation of a rewriting rule prior to SR-checking. *)
 type pre_rule =
   { pr_sym      : sym
