@@ -344,9 +344,10 @@ function decorate(openEditor : TextEditor, range : Range | null, decorationType 
 }
 
 // returns the Position of next or previous command
-function stepCommand(document: TextDocument, currentPos: Position, forward: boolean){
+function stepCommand(document: TextDocument, currentPos: Position, forward: boolean, terminators?: string[]){
 
-    const terminators = [';', 'begin'];
+    if(terminators === undefined || terminators === null)
+        terminators = [';', 'begin', '{'];
 
     let docBegin : Position = document.positionAt(0);
     let docEnd : Position = new Position(document.lineCount, 0);
