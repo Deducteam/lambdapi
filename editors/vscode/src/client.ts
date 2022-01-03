@@ -358,7 +358,7 @@ function stepCommand(document: TextDocument, currentPos: Position, forward: bool
 
     let termPositions = [...document.getText().matchAll(termRegex)]
         .map(rm => rm.index ? rm.index + rm[0].length : undefined)
-        .filter((x) : x is number => x !== undefined)
+        .filter((x) : x is number => x !== undefined) // remove undefined
         .map(x => document.positionAt(x));
 
     let nextCmdPos = termPositions
