@@ -145,7 +145,3 @@ else
 	@dune install lambdapi-mode
 	@printf "\e[36mEmacs mode installed.\e[39m\n"
 endif
-
-.PHONY: install_vscode
-install_vscode:
-	$(MAKE) -C editors/vscode install
