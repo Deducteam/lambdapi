@@ -180,7 +180,7 @@ query:
     { make_pos $sloc (P_query_infer(t, {strategy=NONE; steps=None}))}
 
 path:
-  | UID { raise Error.NotQualified }
+  | UID { LpLexer.syntax_error $sloc "Unqualified identifier" }
   | p=QID { make_pos $sloc (List.rev p) }
 
 modifier:
@@ -308,7 +308,7 @@ rw_patt:
     { let ident_of_term {elt; _} =
         match elt with
         | P_Iden({elt=([], x); pos}, _) -> Pos.make pos x
-        | _ -> $syntaxerror
+        | _ -> LpLexer.syntax_error $sloc "Not an identifier"
       in
       match t with
       | Some(t) -> make_pos $sloc (Rw_TermInIdInTerm(u, (ident_of_term x, t)))

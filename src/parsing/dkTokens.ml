@@ -30,7 +30,6 @@ type token =
   | DEF
   | COMMA
   | COLON
-  | CCOLON
   | EQUAL
   | ARROW
   | EVAL of loc
@@ -42,4 +41,3 @@ type token =
   | PRINT of loc
   | GDT of loc
   | STRING of string
-  | INT of int

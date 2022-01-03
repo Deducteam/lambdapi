@@ -3,10 +3,6 @@
 open Lplib
 open Base
 
-(** Exception raised by the parser when an unqualified identifier is given
-   instead of a qualified one. *)
-exception NotQualified
-
 (** [err_fmt] warning/error output formatter. *)
 let err_fmt = Stdlib.ref Format.err_formatter
 
