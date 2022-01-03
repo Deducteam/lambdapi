@@ -346,7 +346,7 @@ equation: l=term EQUIV r=term { (l, r) }
 notation:
   | INFIX a=SIDE? p=float_or_int { Infix(Option.get Pratter.Neither a, p) }
   | PREFIX p=float_or_int { Sign.Prefix(p) }
-  | QUANTIFIER { Quant }
+  | QUANTIFIER { Sign.Quant }
 
 float_or_int:
   | p=FLOAT { p }
