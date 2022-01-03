@@ -23,7 +23,6 @@ let pp_sep : string -> unit pp = fun s ff () -> Format.pp_print_string ff s
 let pp_if : bool -> 'a pp -> 'a pp = fun b pp ppf arg ->
   if b then out ppf "%a" pp arg
 
-
 (** Type of comparison functions. *)
 type 'a cmp = 'a -> 'a -> int
 

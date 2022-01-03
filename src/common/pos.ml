@@ -1,5 +1,8 @@
 (** Positions in Lambdapi files. *)
 
+open Lplib
+open Base
+
 (** Type of a position, corresponding to a continuous range of characters in a
     (utf8-encoded) source. *)
 type pos =
@@ -8,6 +11,13 @@ type pos =
   ; start_col  : int (** Column number (utf8) of the starting point. *)
   ; end_line   : int (** Line number of the ending point.            *)
   ; end_col    : int (** Column number (utf8) of the ending point.   *) }
+
+(** Total comparison function on pos. *)
+let cmp : pos cmp = fun p1 p2 ->
+  let cmp = Int.compare in
+  lex3 cmp cmp (lex3 (Option.cmp String.compare) cmp cmp)
+    (p1.start_line, p1.start_col, (p1.fname, p1.end_line, p1.end_col))
+    (p2.start_line, p2.start_col, (p2.fname, p2.end_line, p2.end_col))
 
 (** Convenient short name for an optional position. *)
 type popt = pos option
