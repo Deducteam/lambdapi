@@ -123,6 +123,9 @@
 %start <Syntax.p_command> command
 %start <Syntax.p_qident> qid
 
+// patch (see https://github.com/Deducteam/lambdapi/pull/798)
+%type <Syntax.p_term * Syntax.p_term> equation
+
 %%
 
 command:
@@ -344,7 +347,8 @@ unif_rule: e=equation HOOK_ARROW
 equation: l=term EQUIV r=term { (l, r) }
 
 notation:
-  | INFIX a=SIDE? p=float_or_int { Infix(Option.get Pratter.Neither a, p) }
+  | INFIX a=SIDE? p=float_or_int
+    { Sign.Infix(Option.get Pratter.Neither a, p) }
   | PREFIX p=float_or_int { Sign.Prefix(p) }
   | QUANTIFIER { Sign.Quant }
 
