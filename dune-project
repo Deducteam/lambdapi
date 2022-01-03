@@ -8,7 +8,7 @@
 (maintainers "dedukti-dev@inria.fr")
 (license CECILL-2.1)
 
-(using menhir 1.0)
+(using menhir 2.0)
 
 (package
  (name lambdapi)
