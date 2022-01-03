@@ -35,22 +35,13 @@ npm install -g vsce # for creating VSCE packages only
 make
 ```
 
-- manual (un)installation (for testing):
+- create a VSCE package:
 
 ```bash
-make [install|uninstall]
+vsce package # creates the file lambdapi-$version.vsix
 ```
 
-The install script creates a symbolic link from
-``~/.vscode/extensions/lambapi`` to the current directory. You can
-override this link location [for example for ``vscodium``] by setting the
-``VSCE_DIR`` environment variable:
-
-```bash
-VSCE_DIR=~/.vscodium/extensions make install
-```
-
-Another solution for install is:
+- install the extension:
 
 ```bash
 code --install-extension lambdapi-$version.vsix
@@ -58,9 +49,3 @@ code --install-extension lambdapi-$version.vsix
 
 Uninstallation can be done from code: go to extensions (Ctrl+Shift+X),
 chose lambdapi and click on uninstall.
-
-- create a VSCE package (optional):
-
-```bash
-vsce package # creates the file lambdapi-$version.vsix
-```

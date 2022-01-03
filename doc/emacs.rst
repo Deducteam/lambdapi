@@ -2,7 +2,7 @@
 
 Emacs
 =====
-`MELPA <https://melpa.org/#/lambdapi-mode>`_
+`MELPA package <https://melpa.org/#/lambdapi-mode>`_
 
 Lambdapi source code can be edited with the `emacs`_ editor with the major
 mode ``lambdapi-mode``. It requires Emacs 26.1 or higher and provides:
@@ -14,7 +14,7 @@ mode ``lambdapi-mode``. It requires Emacs 26.1 or higher and provides:
 * Typing of symbol at point (in minibuffer)
 * Type checking declarations
 
-List of short-cuts
+Short-cuts
 ------------------
 
 * ``C-c C-c``: jump to cursor position
