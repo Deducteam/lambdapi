@@ -344,48 +344,28 @@ function decorate(openEditor : TextEditor, range : Range | null, decorationType 
 }
 
 // returns the Position of next or previous command
-function stepCommand(document: TextDocument, currentPos: Position, forward: boolean, terminators? : string[]){
+function stepCommand(document: TextDocument, currentPos: Position, forward: boolean, terminators?: string[]){
 
-    if (terminators == undefined)
+    if(terminators === undefined || terminators === null)
         terminators = [';', 'begin', '{'];
 
     let docBegin : Position = document.positionAt(0);
     let docEnd : Position = new Position(document.lineCount, 0);
-    if (forward){
-        let textAfter : string = document.getText(new Range(currentPos, docEnd));
-        // remove first character
-        textAfter = textAfter.substr(1, textAfter.length - 1);
-        
-        // get the positions of end of matched terminators
-        let positions = terminators.map((term) => {
-            let pos = textAfter.indexOf(term);
-            return pos < 0 ? -1 : pos + term.length;
-        }).filter(x => x > 0);
 
-        if (!positions || positions.length == 0) 
-            return docEnd;
-        
-        let res = Math.min(...positions);
-        let nextCmdPos : Position = document.positionAt(document.offsetAt(currentPos) + res);
-        return nextCmdPos;
-    } else {
-        let textBefore : string = document.getText(new Range(docBegin, currentPos));
-        // remove last character
-        textBefore = textBefore.substr(0, textBefore.length - 1);
-        
-        // get the positions of end of matched terminators
-        let positions = terminators.map((term) => {
-            let pos = textBefore.lastIndexOf(term);
-            return pos < 0 ? -1 : pos + term.length - 1; // off by 1
-        }).filter(x => x > 0);
+    const minPos = (a : Position, b : Position) => a.compareTo(b) < 0 ? a : b;
+    const maxPos = (a : Position, b : Position) => a.compareTo(b) > 0 ? a : b;
+    const termRegex = new RegExp(terminators.join("|"), 'gi');
 
-        if (!positions || positions.length == 0) 
-            return docBegin;
+    let termPositions = [...document.getText().matchAll(termRegex)]
+        .map(rm => rm.index ? rm.index + rm[0].length : undefined)
+        .filter((x) : x is number => x !== undefined) // remove undefined
+        .map(x => document.positionAt(x));
 
-        let res =  Math.max(...positions);
-        let prevCmdPos : Position = document.positionAt(res + 1);
-        return prevCmdPos;
-    }
+    let nextCmdPos = termPositions
+        .filter(p => currentPos.compareTo(p) * (forward ? 1 : -1) < 0)
+        .reduce(forward ? minPos : maxPos, forward ? docEnd : docBegin);
+
+    return nextCmdPos;
 }
 
 function checkProofForward(context : ExtensionContext) {

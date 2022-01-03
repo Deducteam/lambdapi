@@ -59,10 +59,6 @@ module Lp : PARSER = struct
         | End_of_file -> Option.iter close_in inchan; None
         | LpLexer.SyntaxError {pos=None; _} -> assert false
         | LpLexer.SyntaxError {pos=Some pos; elt} -> parser_fatal pos "%s" elt
-        | Error.NotQualified ->
-          let pos = Pos.locate (Sedlexing.lexing_positions lb) in
-          parser_fatal pos
-            "Unqualified identifier (the root_path is missing)."
         | LpParser.Error ->
             let pos = Pos.locate (Sedlexing.lexing_positions lb) in
             parser_fatal pos "Unexpected token: \"%s\"."

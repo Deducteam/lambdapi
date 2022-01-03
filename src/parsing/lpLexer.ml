@@ -16,8 +16,11 @@ let remove_ends : Sedlexing.lexbuf -> string = fun lb ->
 
 exception SyntaxError of strloc
 
+let syntax_error : Lexing.position * Lexing.position -> string -> 'a =
+  fun pos msg -> raise (SyntaxError (Pos.make_pos pos msg))
+
 let fail : Sedlexing.lexbuf -> string -> 'a = fun lb msg ->
-  raise (SyntaxError (make_pos (lexing_positions lb) msg))
+  syntax_error (Sedlexing.lexing_positions lb) msg
 
 let invalid_character : Sedlexing.lexbuf -> 'a = fun lb ->
   fail lb "Invalid character"

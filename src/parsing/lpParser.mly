@@ -123,6 +123,9 @@
 %start <Syntax.p_command> command
 %start <Syntax.p_qident> qid
 
+// patch (see https://github.com/Deducteam/lambdapi/pull/798)
+%type <Syntax.p_term * Syntax.p_term> equation
+
 %%
 
 command:
@@ -180,7 +183,7 @@ query:
     { make_pos $sloc (P_query_infer(t, {strategy=NONE; steps=None}))}
 
 path:
-  | UID { raise Error.NotQualified }
+  | UID { LpLexer.syntax_error $sloc "Unqualified identifier" }
   | p=QID { make_pos $sloc (List.rev p) }
 
 modifier:
@@ -308,7 +311,7 @@ rw_patt:
     { let ident_of_term {elt; _} =
         match elt with
         | P_Iden({elt=([], x); pos}, _) -> Pos.make pos x
-        | _ -> $syntaxerror
+        | _ -> LpLexer.syntax_error $sloc "Not an identifier"
       in
       match t with
       | Some(t) -> make_pos $sloc (Rw_TermInIdInTerm(u, (ident_of_term x, t)))
@@ -344,9 +347,10 @@ unif_rule: e=equation HOOK_ARROW
 equation: l=term EQUIV r=term { (l, r) }
 
 notation:
-  | INFIX a=SIDE? p=float_or_int { Infix(Option.get Pratter.Neither a, p) }
+  | INFIX a=SIDE? p=float_or_int
+    { Sign.Infix(Option.get Pratter.Neither a, p) }
   | PREFIX p=float_or_int { Sign.Prefix(p) }
-  | QUANTIFIER { Quant }
+  | QUANTIFIER { Sign.Quant }
 
 float_or_int:
   | p=FLOAT { p }
