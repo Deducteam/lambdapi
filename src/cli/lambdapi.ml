@@ -76,7 +76,7 @@ let export_cmd : Config.t -> string -> unit = fun cfg file ->
     Config.init {cfg with verbose = Some 0};
     let cmds = Parser.parse_file file in
     match cfg.output with
-    | Some Lp | None -> Pretty.beautify cmds
+    | Some Lp | None -> Pretty.ast std_formatter cmds
     | Some Dk -> Export.Dk.sign (Compile.compile_file file)
   in Error.handle_exceptions run
 

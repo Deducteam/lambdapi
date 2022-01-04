@@ -357,6 +357,3 @@ let command : p_command pp = fun ppf { elt; _ } ->
 
 let ast : ast pp = fun ppf ->
   Stream.iter ((command +| pp_unit "@.") ppf)
-
-(** [beautify cmds] pretty-prints the commands [cmds] to standard output. *)
-let beautify : ast -> unit = ast std_formatter
