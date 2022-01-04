@@ -5,6 +5,8 @@ open Timed
 open Common
 open Core open Term
 
+let string = Format.pp_print_string
+
 (** Dedukti keywords. *)
 let keyword_table = Hashtbl.create 59
 
@@ -27,7 +29,6 @@ let _ = let open Parsing.DkTokens in
     ; "->", ARROW
     ; "=>", FATARROW
     ; ":=", DEF
-    ; "_", UNDERSCORE loc
     ; "Type", TYPE loc
     ; "def", KW_DEF loc
     ; "defac", KW_DEFAC loc
@@ -46,8 +47,6 @@ let _ = let open Parsing.DkTokens in
     ; "#PRINT", PRINT loc
     ; "#GDT", GDT loc]
 
-let string = Format.pp_print_string
-
 let is_ident : string -> bool = fun s ->
   Parsing.DkLexer.is_ident (Lexing.from_string s)
 
@@ -60,9 +59,13 @@ let ident : string pp = fun ppf s ->
   else if is_ident s then string ppf s
   else escape ppf s
 
+let current_path = Stdlib.ref []
+
 let path : Path.t pp = fun ppf p ->
+  if p <> Stdlib.(!current_path) then
   match p with
-  | [_root_path; m] -> out ppf "%s" m
+  | [] -> ()
+  | [_root_path; m] -> out ppf "%a." ident m
   | _ -> assert false
 
 type item =
@@ -76,36 +79,68 @@ let pos_of_item : item -> Pos.popt = fun i ->
 
 let cmp : item cmp = cmp_map (Lplib.Option.cmp Pos.cmp) pos_of_item
 
-let var : tvar pp = fun ppf v -> out ppf "%s" (Bindlib.name_of v)
+let tvar : tvar pp = fun ppf v -> ident ppf (Bindlib.name_of v)
+let tevar : tevar pp = fun ppf v -> ident ppf (Bindlib.name_of v)
 
 let rec term : term pp = fun ppf t ->
   match unfold t with
-  | Vari v -> var ppf v
+  | Vari v -> tvar ppf v
   | Type -> out ppf "Type"
   | Kind -> assert false
-  | Symb s -> out ppf "%a%s" path s.sym_path s.sym_name
+  | Symb s -> out ppf "%a%a" path s.sym_path ident s.sym_name
   | Prod(a,b) ->
-    let x,b = Bindlib.unbind b in
-    out ppf "(%a : %a -> %a)" var x term a term b
+    let x,b' = Bindlib.unbind b in
+    if Bindlib.binder_constant b then out ppf "(%a -> %a)" term a term b'
+    else out ppf "(%a : %a -> %a)" tvar x term a term b'
   | Abst(a,b) ->
     let x,b = Bindlib.unbind b in
-    out ppf "(%a : %a => %a)" var x term a term b
-  | Appl(a,b) -> out ppf "(%a %a)" term a term b
+    out ppf "(%a : %a => %a)" tvar x term a term b
+  | Appl _ ->
+    let h, ts = get_args t in
+    out ppf "(%a%a)" term h (List.pp (prefix " " term) "") ts
   | LLet(a,t,u) ->
     let x,u = Bindlib.unbind u in
-    out ppf "((%a : %a := %a) => %a)" var x term a term t term u
+    out ppf "((%a : %a := %a) => %a)" tvar x term a term t term u
+  | Patt(_,s,ts) -> out ppf "%a%a" ident s (Array.pp (prefix " " term) "") ts
+  | TEnv(te, ts) -> out ppf "%a%a" tenv te (Array.pp (prefix " " term) "") ts
+  | TRef _ -> assert false
   | Wild -> assert false
   | Meta _ -> assert false
-  | Patt _ -> assert false
-  | TEnv _ -> assert false
-  | TRef _ -> assert false
+
+and tenv : term_env pp = fun ppf te ->
+  match te with
+  | TE_Vari v -> tevar ppf v
+  | TE_Some _ -> assert false
+  | TE_None -> assert false
+
+let modifiers : sym -> string list = fun s ->
+  let open Stdlib in
+  let r = ref [] in
+  let add m = r := m::!r in
+  if s.sym_opaq then add "thm"
+  else begin
+    if s.sym_expo = Protec then add "private";
+    match s.sym_prop with
+    | Const -> ()
+    | Injec -> add "injective"
+    | AC _ -> add "defac"
+    | Defin -> add "def"
+    | Assoc _ -> assert false
+    | Commu -> assert false
+  end;
+  !r
 
 let sym_decl : sym pp = fun ppf s ->
-  out ppf "%s : %a.@." s.sym_name term !(s.sym_type)
+  out ppf "%a%a : %a%a.@."
+    (List.pp (suffix string " ") "") (modifiers s)
+    ident s.sym_name term !(s.sym_type)
+    (Option.pp (prefix " :=" term)) !(s.sym_def)
 
 let rule_decl : (Path.t * string * rule) pp = fun ppf (p, n, r) ->
-  let _, rhs = Bindlib.unmbind r.rhs in
-  out ppf "[] %a%s %a --> %a.@." path p n (List.pp term " ") r.lhs term rhs
+  let xs, rhs = Bindlib.unmbind r.rhs in
+  out ppf "[%a] %a%a%a --> %a.@."
+    (Array.pp tevar ", ") xs
+    path p ident n (List.pp (prefix " " term) "") r.lhs term rhs
 
 let item : item pp = fun ppf item ->
   match item with
@@ -123,8 +158,9 @@ let items_of_sign : Sign.t -> item list = fun sign ->
     (Path.Map.fold add_sign_dep !(sign.sign_deps) [])
 
 let require : Path.t -> _ -> unit = fun p _ ->
-  Format.printf "#REQUIRE %a.@." path p
+  if p != Unif_rule.path then Format.printf "#REQUIRE %a.@." path p
 
 let sign : Sign.t -> unit = fun sign ->
   Path.Map.iter require !(sign.sign_deps);
+  Stdlib.(current_path := sign.sign_path);
   List.iter (item Format.std_formatter) (items_of_sign sign)

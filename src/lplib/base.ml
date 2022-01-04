@@ -23,6 +23,11 @@ let pp_sep : string -> unit pp = fun s ff () -> Format.pp_print_string ff s
 let pp_if : bool -> 'a pp -> 'a pp = fun b pp ppf arg ->
   if b then out ppf "%a" pp arg
 
+let prefix : string -> 'a pp -> 'a pp = fun s pp ppf x ->
+  out ppf "%s%a" s pp x
+let suffix : 'a pp -> string -> 'a pp = fun pp s ppf x ->
+  out ppf "%a%s" pp x s
+
 (** Type of comparison functions. *)
 type 'a cmp = 'a -> 'a -> int
 

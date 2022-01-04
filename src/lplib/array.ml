@@ -11,8 +11,8 @@ let for_all2 : ('a -> 'b -> bool) -> 'a array -> 'b array -> bool =
   let f x y = if not (f x y) then raise Done in
   try iter2 f a1 a2; true with Done -> false
 
-(** [pp pp_elt sep oc a] prints the array list [a] on the channel [oc] using
-    [sep] as separator, and [pp_e] for printing the elements. *)
+(** [pp pp_elt sep ppf a] prints the array [a] on the formatter [ppf] using
+    [sep] as separator and [pp_elt] for printing the elements. *)
 let pp : 'a pp -> string -> 'a array pp =
  fun pp_elt sep oc a ->
   let n = A.length a in

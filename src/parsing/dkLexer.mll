@@ -61,8 +61,8 @@ rule token = parse
   | mident as md '.' '{' '|'
   {sident (Some (mk_mident md)) (Buffer.create 42) lexbuf}
   | '"' { string (Buffer.create 42) lexbuf }
-  | _   as s
-  { let msg = sprintf "Unexpected characters '%s'." (String.make 1 s) in
+  | _   as c
+  { let msg = sprintf "Unexpected character '%c'." c in
     fail (get_loc lexbuf) msg }
   | eof { EOF }
 
@@ -102,5 +102,5 @@ and sident op buf = parse
   { fail (get_loc lexbuf) "Unexpected end of file in ident." }
 
 and is_ident = parse
-  | ident { true }
+  | ident eof { true }
   | _ { false }
