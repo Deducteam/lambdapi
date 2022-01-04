@@ -7,11 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- The command export to translate signatures to the lp or dk files formats.
+
+- New release of the VSCode extension.
+
+- A small tutorial in tests/OK/tutorial.lp.
+
 - The why3 tactic handles universal and existential quantifiers through
   two new builtins ("ex" and "all"). Codewise, it requires a new
   translation from encoded types to Why3 types.
 
-- A small tutorial in tests/OK/tuto.lp.
+### Changed
+
+- Moved the files tool/hrs.ml and tool/xtc.ml into the new export/ directory.
+
+### Removed
+
+- The command beautify superseded by the new command export.
 
 ## 2.0.0 (2021-12-15)
 
