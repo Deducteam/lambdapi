@@ -2,4 +2,4 @@
  (name pure)
  (public_name lambdapi.pure)
  (modules :standard)
- (libraries handle core))
+ (libraries lambdapi.handle lambdapi.core))

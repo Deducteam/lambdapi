@@ -2,4 +2,4 @@
  (name export)
  (public_name lambdapi.export)
  (modules :standard)
- (libraries core parsing lplib))
+ (libraries lambdapi.core lambdapi.parsing lambdapi.lplib))
