@@ -7,7 +7,10 @@ open Core open Term
 
 let string = Format.pp_print_string
 
-(** Dedukti keywords. *)
+(** Translation of identifiers. Lambdapi identifiers that are Dedukti keywords
+   or invalid Dedukti identifiers are escaped, a feature offered by
+   Dedukti. *)
+
 let keyword_table = Hashtbl.create 59
 
 let is_keyword : string -> bool = Hashtbl.mem keyword_table
@@ -59,6 +62,9 @@ let ident : string pp = fun ppf s ->
   else if is_ident s then string ppf s
   else escape ppf s
 
+(** Translation of paths. Paths equal to the [!current_path] are not
+   printed. *)
+
 let current_path = Stdlib.ref []
 
 let path : Path.t pp = fun ppf p ->
@@ -68,16 +74,21 @@ let path : Path.t pp = fun ppf p ->
   | [_root_path; m] -> out ppf "%a." ident m
   | _ -> assert false
 
-type item =
+(** Type of Dedukti declarations. *)
+type decl =
   | Sym of sym
   | Rule of (Path.t * string * rule)
 
-let pos_of_item : item -> Pos.popt = fun i ->
+(** Declarations are ordered wrt their positions in the source. *)
+
+let pos_of_decl : decl -> Pos.popt = fun i ->
   match i with
   | Sym s -> s.sym_pos
   | Rule (_,_,r) -> r.rule_pos
 
-let cmp : item cmp = cmp_map (Lplib.Option.cmp Pos.cmp) pos_of_item
+let cmp : decl cmp = cmp_map (Lplib.Option.cmp Pos.cmp) pos_of_decl
+
+(** Translation of terms. *)
 
 let tvar : tvar pp = fun ppf v -> ident ppf (Bindlib.name_of v)
 let tevar : tevar pp = fun ppf v -> ident ppf (Bindlib.name_of v)
@@ -113,6 +124,8 @@ and tenv : term_env pp = fun ppf te ->
   | TE_Some _ -> assert false
   | TE_None -> assert false
 
+(** Translation of declarations. *)
+
 let modifiers : sym -> string list = fun s ->
   let open Stdlib in
   let r = ref [] in
@@ -142,12 +155,14 @@ let rule_decl : (Path.t * string * rule) pp = fun ppf (p, n, r) ->
     (Array.pp tevar ", ") xs
     path p ident n (List.pp (prefix " " term) "") r.lhs term rhs
 
-let item : item pp = fun ppf item ->
-  match item with
+let decl : decl pp = fun ppf decl ->
+  match decl with
   | Sym s -> sym_decl ppf s
   | Rule r -> rule_decl ppf r
 
-let items_of_sign : Sign.t -> item list = fun sign ->
+(** [decls_of_sign sign] computes an ordered list of declarations from the
+   signature [sign]. *)
+let decls_of_sign : Sign.t -> decl list = fun sign ->
   let add_sym l s = List.insert cmp (Sym s) l
   and add_rule p n l r = List.insert cmp (Rule (p, n, r)) l in
   let add_sign_symbol n s l =
@@ -157,10 +172,12 @@ let items_of_sign : Sign.t -> item list = fun sign ->
   StrMap.fold add_sign_symbol !(sign.sign_symbols)
     (Path.Map.fold add_sign_dep !(sign.sign_deps) [])
 
+(** Translation of a signature. *)
+
 let require : Path.t -> _ -> unit = fun p _ ->
   if p != Unif_rule.path then Format.printf "#REQUIRE %a.@." path p
 
 let sign : Sign.t -> unit = fun sign ->
   Path.Map.iter require !(sign.sign_deps);
   Stdlib.(current_path := sign.sign_path);
-  List.iter (item Format.std_formatter) (items_of_sign sign)
+  List.iter (decl Format.std_formatter) (decls_of_sign sign)
