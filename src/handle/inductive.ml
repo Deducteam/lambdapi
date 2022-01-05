@@ -294,6 +294,8 @@ let iter_rec_rules :
       popt -> inductive -> tvar array -> ind_pred_map
       -> (p_rule -> unit) -> unit =
   fun pos ind_list vs ind_pred_map f ->
+  (* Rules are declared after recursor declarations. *)
+  let rules_pos = shift (List.length ind_list + 1) (end_pos pos) in
   let n = Array.length vs in
 
   (* variable name used for a recursor case argument *)
@@ -345,7 +347,7 @@ let iter_rec_rules :
     let nonrec_dom _ _ next = next in
     let codom xs rhs _ ts =
       let cons_arg = P.appl_list (P.iden cons_sym.sym_name) (List.rev xs) in
-      P.rule (app_rec ind_sym ts cons_arg) rhs
+      Pos.make rules_pos (app_rec ind_sym ts cons_arg, rhs)
     in
     fold_cons_type pos ind_pred_map "" ind_sym vs cons_sym inj_var
       init aux acc_rec_dom rec_dom acc_nonrec_dom nonrec_dom codom

@@ -55,9 +55,19 @@ let is_ident : string -> bool = fun s ->
 
 let escape : string pp = fun ppf s -> out ppf "{|%s|}" s
 
+let replace_spaces : string -> string = fun s ->
+  let open Bytes in
+  let b = of_string s in
+  for i=0 to length b - 1 do
+    match get b i with
+    | ' ' | '\n' -> set b i '_'
+    | _ -> ()
+  done;
+  to_string b
+
 let ident : string pp = fun ppf s ->
   if s = "" then escape ppf s
-  else if s.[0] = '{' then string ppf s
+  else if s.[0] = '{' then string ppf (replace_spaces s)
   else if is_keyword s then escape ppf s
   else if is_ident s then string ppf s
   else escape ppf s
@@ -66,13 +76,18 @@ let ident : string pp = fun ppf s ->
    printed. Non-empty paths end with a dot. We assume that the module p1.p2.p3
    is in the file p1_p2_p3.dk. *)
 
+let path_elt : string pp = fun ppf s ->
+  if s <> "" && s.[0] = '{' then
+    string ppf (replace_spaces (Escape.unescape s))
+  else string ppf s
+
 let current_path = Stdlib.ref []
 
 let path : Path.t pp = fun ppf p ->
   if p <> Stdlib.(!current_path) then
   match p with
   | [] -> ()
-  | p -> out ppf "%a." (List.pp ident "_") p
+  | p -> out ppf "%a." (List.pp path_elt "_") p
 
 let qid : (Path.t * string) pp = fun ppf (p, i) ->
   out ppf "%a%a" path p ident i
@@ -123,8 +138,10 @@ let rec term : bool -> term pp = fun b ppf t ->
   | LLet(a,t,u) ->
     let x,u = Bindlib.unbind u in
     out ppf "((%a : %a := %a) => %a)" tvar x (term b) a (term b) t (term b) u
+  | Patt(_,s,[||]) -> ident ppf s
   | Patt(_,s,ts) ->
-    out ppf "%a%a" ident s (Array.pp (prefix " " (term b)) "") ts
+    out ppf "(%a%a)" ident s (Array.pp (prefix " " (term b)) "") ts
+  | TEnv(te, [||]) -> tenv ppf te
   | TEnv(te, ts) ->
     out ppf "%a%a" tenv te (Array.pp (prefix " " (term b)) "") ts
   | TRef _ -> assert false
@@ -152,9 +169,20 @@ let modifiers : sym -> string list = fun s ->
 let sym_decl : sym pp = fun ppf s ->
   match !(s.sym_def) with
   | None ->
-    out ppf "%a%a : %a.@."
-      (List.pp (suffix string " ") "") (modifiers s)
-      ident s.sym_name (term true) !(s.sym_type)
+    begin match s.sym_prop with
+      | AC _ ->
+        begin match unfold !(s.sym_type) with
+          | Prod(t,_) ->
+            out ppf "%a%a [%a].@."
+              (List.pp (suffix string " ") "") (modifiers s)
+              ident s.sym_name (term true) t
+          | _ -> assert false
+        end
+      | _ ->
+        out ppf "%a%a : %a.@."
+          (List.pp (suffix string " ") "") (modifiers s)
+          ident s.sym_name (term true) !(s.sym_type)
+    end
   | Some d ->
     if s.sym_opaq then
       out ppf "thm %a : %a := %a.@."
@@ -176,8 +204,8 @@ let decl : decl pp = fun ppf decl ->
   | Sym s -> sym_decl ppf s
   | Rule r -> rule_decl ppf r
 
-(** [decls_of_sign sign] computes an ordered list of declarations from the
-   signature [sign]. *)
+(** [decls_of_sign sign] computes a list of declarations for the
+   signature [sign], in order of appearance in the source. *)
 let decls_of_sign : Sign.t -> decl list = fun sign ->
   let add_sym l s = List.insert cmp (Sym s) l
   and add_rule p n l r =

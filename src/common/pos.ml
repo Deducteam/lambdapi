@@ -70,11 +70,14 @@ let cat : popt -> popt -> popt = fun p1 p2 ->
   | None, Some p -> Some p
   | None, None -> None
 
-(** [before p] returns a position that is before [p]. *)
-let before : popt -> popt = fun p ->
+(** [shift k p] returns a position that is [k] characters before [p]. *)
+let shift : int -> popt -> popt = fun k p ->
   match p with
   | None -> assert false
-  | Some ({start_line; _} as p) -> Some {p with start_line = start_line - 1}
+  | Some ({start_col; _} as p) -> Some {p with start_col = start_col + k}
+
+let after = shift 1
+let before = shift (-1)
 
 (** [to_string ?print_fname pos] transforms [pos] into a readable string. If
     [print_fname] is [true] (the default), the filename contained in [pos] is

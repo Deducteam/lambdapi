@@ -21,10 +21,11 @@ let log_tact = log_tact.pp
     new compiled module. *)
 let admitted : int Stdlib.ref = Stdlib.ref (-1)
 
-(** [add_axiom ss m] adds in signature state [ss] a new axiom symbol of type
-   [!(m.meta_type)] and instantiate [m] with it. WARNING: It does not check
-   whether the type of [m] contains metavariables. *)
-let add_axiom : Sig_state.t -> popt -> meta -> Sig_state.t = fun ss pos m ->
+(** [add_axiom ss sym_pos m] adds in signature state [ss] a new axiom symbol
+   of type [!(m.meta_type)] and instantiate [m] with it. WARNING: It does not
+   check whether the type of [m] contains metavariables. *)
+let add_axiom : Sig_state.t -> popt -> meta -> Sig_state.t =
+  fun ss sym_pos m ->
   let name =
     let i = Stdlib.(incr admitted; !admitted) in
     let p = Printf.sprintf "_ax%i" i in
@@ -36,8 +37,15 @@ let add_axiom : Sig_state.t -> popt -> meta -> Sig_state.t = fun ss pos m ->
   let ss, sym =
     Console.out 1 (Color.red "axiom %a: %a")
       pp_uid name pp_term !(m.meta_type);
-    Sig_state.add_symbol
-      ss Public Defin Eager true (Pos.make pos name) !(m.meta_type) [] None
+    (* Temporary hack for axioms to have a declaration position in the order
+       they are created. *)
+    let pos =
+      let n = Stdlib.(!admitted) in
+      if n > 100 then assert false
+      else shift (n - 100) sym_pos
+    in
+    let id = Pos.make pos name in
+    Sig_state.add_symbol ss Public Defin Eager true id !(m.meta_type) [] None
   in
   (* Create the value which will be substituted for the metavariable. This
      value is [sym x0 ... xn] where [xi] are variables that will be
@@ -50,25 +58,26 @@ let add_axiom : Sig_state.t -> popt -> meta -> Sig_state.t = fun ss pos m ->
   in
   LibMeta.set (new_problem()) m meta_value; ss
 
-(** [admit_meta ss pos m] adds as many axioms as needed in the signature state
-   [ss] to instantiate the metavariable [m] by a fresh axiom added to the
-   signature [ss]. *)
-let admit_meta : Sig_state.t -> popt -> meta -> Sig_state.t = fun ss pos m ->
+(** [admit_meta ss sym_pos m] adds as many axioms as needed in the signature
+   state [ss] to instantiate the metavariable [m] by a fresh axiom added to
+   the signature [ss]. *)
+let admit_meta : Sig_state.t -> popt -> meta -> Sig_state.t =
+  fun ss sym_pos m ->
   let ss = Stdlib.ref ss in
   (* [ms] records the metas that we are instantiating. *)
   let rec admit ms m =
     (* This assertion should be ensured by the typechecking algorithm. *)
     assert (not (MetaSet.mem m ms));
     LibMeta.iter true (admit (MetaSet.add m ms)) [] !(m.meta_type);
-    Stdlib.(ss := add_axiom !ss pos m)
+    Stdlib.(ss := add_axiom !ss sym_pos m)
   in
   admit MetaSet.empty m; Stdlib.(!ss)
 
 (** [tac_admit ss pos ps gt] admits typing goal [gt]. *)
 let tac_admit :
   Sig_state.t -> popt -> proof_state -> goal_typ -> Sig_state.t * proof_state
-  = fun ss pos ps gt ->
-  let ss = admit_meta ss pos gt.goal_meta in
+  = fun ss sym_pos ps gt ->
+  let ss = admit_meta ss sym_pos gt.goal_meta in
   ss, remove_solved_goals ps
 
 (** [tac_solve pos ps] tries to simplify the unification goals of the proof
@@ -335,7 +344,7 @@ let handle :
   match ps.proof_goals with
   | [] -> fatal pos "No remaining goals."
   | Typ gt::_ when elt = P_tac_admit ->
-    let ss, ps = tac_admit ss (before sym_pos) ps gt in ss, ps, None
+    let ss, ps = tac_admit ss sym_pos ps gt in ss, ps, None
   | g::_ ->
     if Logger.log_enabled () then
       log_tact ("%a@\n" ^^ Color.red "%a") Proof.Goal.pp g Pretty.tactic tac;
