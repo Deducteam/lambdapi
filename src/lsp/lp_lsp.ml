@@ -350,7 +350,8 @@ let do_definition ofmt ~id params =
       (* A JSON with the path towards the definition of the term
          and its position is returned
          /!\ : extension is fixed, only works for .lp files *)
-        mk_definfo Library.(file_of_path s.Term.sym_path ^ src_extension) pos
+        mk_definfo
+          Library.(file_of_path s.Term.sym_path ^ lp_src_extension) pos
   in
   let msg = LSP.mk_reply ~id ~result:sym_info in
   LIO.send_json ofmt msg

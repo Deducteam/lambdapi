@@ -64,12 +64,12 @@ exception Parse_error of Pos.pos * string
 
 let parse_text : state -> fname:string -> string -> Command.t list * state =
     fun (t,st) ~fname s ->
-  let old_syntax = Filename.check_suffix fname legacy_src_extension in
+  let dk_syntax = Filename.check_suffix fname dk_src_extension in
   try
     Time.restore t;
     let ast =
       let strm =
-        if old_syntax then Parser.Dk.parse_string fname s
+        if dk_syntax then Parser.Dk.parse_string fname s
         else Parser.parse_string fname s
       in
       (* NOTE this processing could be avoided with a parser for a list of

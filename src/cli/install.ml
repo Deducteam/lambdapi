@@ -106,9 +106,9 @@ let files : string list Term.t =
   let doc =
     Printf.sprintf
       "Source file with the [%s] extension (or with the [%s] extension when \
-       using the legacy Dedukti syntax), object file with the [%s] extension,
+       using the Dedukti syntax), object file with the [%s] extension,
        or package configuration file $(b,%s)."
-       src_extension legacy_src_extension obj_extension Package.pkg_file
+       lp_src_extension dk_src_extension obj_extension Package.pkg_file
   in
   Arg.(value & (pos_all non_dir_file []) & info [] ~docv:"FILE" ~doc)
 

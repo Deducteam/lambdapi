@@ -77,7 +77,7 @@ module Lp : PARSER = struct
     stream_of_lexbuf ~fname (Sedlexing.Utf8.from_string s)
 end
 
-(** Parsing legacy (Dedukti2) syntax. *)
+(** Parsing dk syntax. *)
 module Dk : PARSER = struct
 
   let token : Lexing.lexbuf -> DkTokens.token =
@@ -151,6 +151,6 @@ let qident_of_string : string -> Core.Term.qident = fun s ->
 (** [parse_file fname] selects and runs the correct parser on file [fname], by
     looking at its extension. *)
 let parse_file : string -> Syntax.ast = fun fname ->
-  match Filename.check_suffix fname Library.src_extension with
+  match Filename.check_suffix fname Library.lp_src_extension with
   | true  -> Lp.parse_file fname
   | false -> Dk.parse_file fname

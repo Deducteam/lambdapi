@@ -185,7 +185,7 @@ let file : string CLT.t =
   let doc =
     Printf.sprintf
       "Source file with the [%s] extension (or with the [%s] extension when \
-       using the Dedukti syntax)." src_extension legacy_src_extension
+       using the Dedukti syntax)." lp_src_extension dk_src_extension
   in
   Arg.(required & pos 0 (some non_dir_file) None & info [] ~docv:"FILE" ~doc)
 
@@ -193,7 +193,7 @@ let files : string list CLT.t =
   let doc =
     Printf.sprintf
       "Source file with the [%s] extension (or with the [%s] extension when \
-       using the legacy Dedukti syntax)." src_extension legacy_src_extension
+       using the Dedukti syntax)." lp_src_extension dk_src_extension
   in
   Arg.(value & (pos_all non_dir_file []) & info [] ~docv:"FILE" ~doc)
 
