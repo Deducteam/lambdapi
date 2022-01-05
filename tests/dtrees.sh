@@ -12,7 +12,7 @@ ok() {
     printf '\033[32mOK\033[0m %s\n' "$1"
 }
 
-LAMBDAPI="lambdapi decision-tree --verbose 0 --map-dir=tests:tests"
+LAMBDAPI="dune exec -- lambdapi decision-tree -v 0 --map-dir=tests:tests"
 
 out="$(${LAMBDAPI} tests.OK.nat.+)"
 if [ -z "$out" ]; then
