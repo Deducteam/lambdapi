@@ -22,6 +22,10 @@ doc: bnf
 bnf:
 	$(MAKE) -C doc -f Makefile.bnf
 
+.PHONY: lib
+lib:
+	$(MAKE) -C Logic
+
 #### Unit tests and sanity check #############################################
 
 OK_TESTFILES = $(sort $(wildcard tests/OK/*.dk tests/OK/*.lp))
@@ -89,6 +93,8 @@ clean:
 	@dune clean
 	@$(MAKE) -C editors/emacs clean
 	@$(MAKE) -C editors/vscode clean
+	@rm -f tests/OK/*.lpo
+	@$(MAKE) -C Logic clean
 
 .PHONY: distclean
 distclean: clean

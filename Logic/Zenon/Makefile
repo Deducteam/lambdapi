@@ -3,13 +3,15 @@ SRC = $(wildcard *.lp)
 OBJ = $(SRC:.lp=.lpo)
 .SUFFIXES:
 
+LAMBDAPI = dune exec -- lambdapi
+
 all: $(OBJ)
 
 install: $(OBJ) lambdapi.pkg
-	lambdapi install lambdapi.pkg $(OBJ) $(SRC)
+	$(LAMBDAPI) install lambdapi.pkg $(OBJ) $(SRC)
 
 uninstall:
-	lambdapi uninstall lambdapi.pkg
+	$(LAMBDAPI) uninstall lambdapi.pkg
 
 clean:
 	rm -f $(OBJ)
@@ -17,4 +19,4 @@ clean:
 .SUFFIXES: .lp .lpo
 
 .lp.lpo:
-	lambdapi check --gen-obj $<
+	$(LAMBDAPI) check --gen-obj $<
