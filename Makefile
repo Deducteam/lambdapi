@@ -116,10 +116,12 @@ fullclean: distclean
 .PHONY: install
 install: bin
 	@dune install lambdapi
+	$(MAKE) -C Logic install
 
 .PHONY: uninstall
 uninstall:
 	@dune uninstall lambdapi
+	$(MAKE) -C Logic uninstall
 
 .PHONY: install_vim
 install_vim: $(wildcard editors/vim/*/*.vim)
