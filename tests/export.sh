@@ -26,10 +26,10 @@ do
     esac
 done
 
-# compile lp files
+# compile lp files (optional)
 compile() {
-    echo compile lp files ...
     cd $root
+    echo compile lp files (optional) ...
     #$lambdapi check -w -c $lp_files # does not work because of #802
     for f in $lp_files
     do
@@ -37,12 +37,12 @@ compile() {
         $lambdapi check -w -v 0 -c $f
     done
 }
-time compile
+time compile # can be commented
 
 # translate lp files to dk files
 translate() {
-    echo translate lp files ...
     cd $root
+    echo translate lp files ...
     for f in $lp_files
     do
         f=${f%.lp}
@@ -56,8 +56,10 @@ time translate
 
 # check dk files
 check() {
-    echo check dk files ...
     cd /tmp/
+    echo 'remove #REQUIRE commands (to be removed when https://github.com/Deducteam/Dedukti/issues/262 is fixed) ...'
+    sed -i -e 's/#REQUIRE.*$//' $dk_files    
+    echo check dk files ...
     dkcheck.native -q -e `dkdep.native -q -s $dk_files`
     if test $? -ne 0; then echo KO; exit 1; fi
 }

@@ -220,9 +220,9 @@ let decls_of_sign : Sign.t -> decl list = fun sign ->
 (** Translation of a signature. *)
 
 let require : Path.t -> _ -> unit = fun p _ ->
-  if p != Unif_rule.path then Format.printf "#REQUIRE %a@." path p
+  if p <> Unif_rule.path then Format.printf "#REQUIRE %a@." path p
 
 let sign : Sign.t -> unit = fun sign ->
-  (*Path.Map.iter require !(sign.sign_deps);*)
+  Path.Map.iter require !(sign.sign_deps);
   Stdlib.(current_path := sign.sign_path);
   List.iter (decl Format.std_formatter) (decls_of_sign sign)
