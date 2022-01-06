@@ -22,6 +22,10 @@ doc: bnf
 bnf:
 	$(MAKE) -C doc -f Makefile.bnf
 
+.PHONY: lib
+lib:
+	$(MAKE) -C Logic
+
 #### Unit tests and sanity check #############################################
 
 OK_TESTFILES = $(sort $(wildcard tests/OK/*.dk tests/OK/*.lp))
@@ -32,12 +36,14 @@ tests: bin
 	@dune runtest --only-packages lambdapi
 	@printf "## Decision tree tests ##\n"
 	@dune exec --only-packages lambdapi -- tests/dtrees.sh
+	$(MAKE) -C Logic
 
 .PHONY: real_tests
 real_tests: bin
 	@dune runtest --only-packages lambdapi
 	@printf "## Decision tree tests ##\n"
 	@dune exec --only-packages lambdapi -- tests/dtrees.sh
+	$(MAKE) -C Logic
 
 .PHONY: sanity_check
 sanity_check: misc/sanity_check.sh
@@ -87,6 +93,8 @@ clean:
 	@dune clean
 	@$(MAKE) -C editors/emacs clean
 	@$(MAKE) -C editors/vscode clean
+	@rm -f tests/OK/*.lpo
+	@$(MAKE) -C Logic clean
 
 .PHONY: distclean
 distclean: clean
@@ -116,10 +124,12 @@ fullclean: distclean
 .PHONY: install
 install: bin
 	@dune install lambdapi
+	$(MAKE) -C Logic install
 
 .PHONY: uninstall
 uninstall:
 	@dune uninstall lambdapi
+	$(MAKE) -C Logic uninstall
 
 .PHONY: install_vim
 install_vim: $(wildcard editors/vim/*/*.vim)

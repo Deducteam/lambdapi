@@ -11,7 +11,7 @@ rewriting. See :doc:`about` for more details.
 
 Lambdapi files must end with ``.lp``. But Lambdapi can also read
 `Dedukti <https://deducteam.github.io/>`__ files ending with ``.dk``
-and convert them to Lambdapi files.
+and convert them to Lambdapi files (see :doc:`dedukti`).
 
 `Installation instructions
 <https://github.com/Deducteam/lambdapi/blob/master/README.md>`__
@@ -20,9 +20,13 @@ and convert them to Lambdapi files.
 - `Issue tracker
 <https://github.com/Deducteam/lambdapi/issues>`__
 
-`Learn the basics of Lambdapi in 15 minutes <https://raw.githubusercontent.com/Deducteam/lambdapi/master/tests/OK/tutorial.lp>`__
+`Learn Lambdapi in 15 minutes <https://raw.githubusercontent.com/Deducteam/lambdapi/master/tests/OK/tutorial.lp>`__
 
-`Other examples of developments using Lambdapi <https://github.com/fblanqui/lib>`__
+`Library of logics
+<https://github.com/Deducteam/lambdapi/tree/master/Logic>`__ provided
+with the installation of Lambdapi. For instance, do ``require
+Logic.TFF.Main;`` to use the symbols defined in `Logic/TFF/Main
+<https://github.com/Deducteam/lambdapi/tree/master/Logic>`__.
 
 .. toctree::
    :maxdepth: 1
