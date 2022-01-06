@@ -32,12 +32,14 @@ tests: bin
 	@dune runtest --only-packages lambdapi
 	@printf "## Decision tree tests ##\n"
 	@dune exec --only-packages lambdapi -- tests/dtrees.sh
+	$(MAKE) -C Logic
 
 .PHONY: real_tests
 real_tests: bin
 	@dune runtest --only-packages lambdapi
 	@printf "## Decision tree tests ##\n"
 	@dune exec --only-packages lambdapi -- tests/dtrees.sh
+	$(MAKE) -C Logic
 
 .PHONY: sanity_check
 sanity_check: misc/sanity_check.sh
