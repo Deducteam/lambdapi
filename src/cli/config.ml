@@ -12,6 +12,9 @@ module CLT = Cmdliner.Term
 
 (** {3 Configuration type for common values} *)
 
+(** Output formats for the export command. *)
+type output = Lp | Dk
+
 (** Configuration value for the commonly available options. *)
 type config =
   { gen_obj     : bool
@@ -24,7 +27,8 @@ type config =
   ; record_time : bool
   ; too_long    : float
   ; confluence  : string option
-  ; termination : string option }
+  ; termination : string option
+  ; output      : output option }
 
 (** Short synonym of the [config] type. *)
 type t = config
@@ -41,7 +45,8 @@ let default_config =
   ; record_time = false
   ; too_long    = infinity
   ; confluence  = None
-  ; termination = None }
+  ; termination = None
+  ; output      = None }
 
 (** [init cfg] runs the necessary initializations according to [cfg]. This has
     to be done prior to any other (non-trivial) task. *)
@@ -100,8 +105,8 @@ let lib_root : string option CLT.t =
   Arg.(value & opt (some dir) None & info ["lib-root"] ~docv:"DIR" ~doc)
 
 let map_dir : (Path.t * string) list CLT.t =
-  let path_conv: Path.t Arg.conv =
-    let parse (s: string): (Path.t, [>`Msg of string]) result =
+  let path : Path.t Arg.conv =
+    let parse (s: string) : (Path.t, [>`Msg of string]) result =
       try Ok(Parser.path_of_string s)
       with Error.Fatal(_,s) -> Error(`Msg(s))
     in
@@ -116,7 +121,7 @@ let map_dir : (Path.t * string) list CLT.t =
      expected folder under the library root."
   in
   let i = Arg.(info ["map-dir"] ~docv:"MOD:DIR" ~doc) in
-  Arg.(value & opt_all (pair ~sep:':' path_conv dir) [] & i)
+  Arg.(value & opt_all (pair ~sep:':' path dir) [] & i)
 
 (** Debugging and output options. *)
 
@@ -189,18 +194,42 @@ let termination : string option CLT.t =
   in
   Arg.(value & opt (some string) None & info ["termination"] ~docv:"CMD" ~doc)
 
+(** Output format option. *)
+
+let output : output option CLT.t =
+  let output : output Arg.conv =
+    let parse (s: string) : (output, [>`Msg of string]) result =
+      match s with
+      | "lp" -> Ok Lp
+      | "dk" -> Ok Dk
+      | _ -> Error(`Msg "Invalid format")
+    in
+    let print fmt o =
+      Format.pp_print_string fmt
+        (match o with
+         | Lp -> "lp"
+         | Dk -> "dk")
+    in
+    Arg.conv (parse, print)
+  in
+  let doc =
+    "Set the output format of the export command. The value of $(docv) must \
+     be one of `lp' or `dk` (default=lp)."
+  in
+  Arg.(value & opt (some output) None & info ["output";"o"] ~docv:"FMT" ~doc)
+
 (** Gathering options under a configuration. *)
 
 (** [full] gathers the command line arguments common to most commands. *)
 let full : config CLT.t =
   let fn gen_obj lib_root map_dir verbose no_warnings debug
-      no_colors record_time too_long confluence termination =
+      no_colors record_time too_long confluence termination output =
     { gen_obj ; lib_root ; map_dir ; verbose ; no_warnings ; debug
-    ; no_colors ; record_time ; too_long ; confluence ; termination }
+    ; no_colors ; record_time ; too_long ; confluence ; termination ; output }
   in
   let open Term in
   const fn $ gen_obj $ lib_root $ map_dir $ verbose $ no_warnings $ debug
-  $ no_colors $ record_time $ too_long $ confluence $ termination
+  $ no_colors $ record_time $ too_long $ confluence $ termination $ output
 
 (** [minimal] gathers the minimal command line options to enable debugging and
     access to the library root. *)

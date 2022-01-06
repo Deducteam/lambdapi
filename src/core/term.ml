@@ -100,24 +100,28 @@ and sym =
   ; sym_dtree : dtree ref (** Decision tree used for matching. *)
   ; sym_pos   : Pos.popt (** Position in source file. *) }
 
-(** {b NOTE} that {!field:sym_type} holds a (timed) reference for a  technical
+(** {b NOTE} {!field:sym_type} holds a (timed) reference for a  technical
     reason related to the writing of signatures as binary files  (in  relation
-    to {!val:Sign.link} and {!val:Sign.unlink}).  This is necessary to enforce
+    to {!val:Sign.link} and {!val:Sign.unlink}).  This is necessary to
     ensure that two identical symbols are always physically equal, even across
     signatures. It should NOT be otherwise mutated. *)
 
-(** {b NOTE} we maintain the invariant that {!field:sym_impl} never ends  with
+(** {b NOTE} We maintain the invariant that {!field:sym_impl} never ends  with
     [false]. Indeed, this information would be redundant. If a symbol has more
     arguments than there are booleans in the list then the extra arguments are
     all explicit. Finally, note that {!field:sym_impl} is empty if and only if
     the symbol has no implicit parameters. *)
 
-(** {b NOTE} the value of the {!field:sym_prop} field of symbols restricts the
-    value of their {!field:sym_def} and {!field:sym_rules} fields. A symbol is
+(** {b NOTE} {!field:sym_prop} restricts the possible
+    values of {!field:sym_def} and {!field:sym_rules} fields. A symbol is
     not allowed to be given rewriting rules (or a definition) when its mode is
     set to {!constructor:Constant}. Moreover, a symbol should not be given at
     the same time a definition (i.e., {!field:sym_def} different from [None])
     and rewriting rules (i.e., {!field:sym_rules} is non-empty). *)
+
+(** {b NOTE} For generated symbols (recursors, axioms), {!field:sym_pos} may
+   not be valid positions in the source. These virtual positions are however
+   important for exporting lambdapi files to other formats. *)
 
 (** {3 Representation of rewriting rules} *)
 
@@ -137,14 +141,17 @@ and sym =
   ; xvars_nb : int (** Number of variables in [rhs] but not in [lhs]. *)
   ; rule_pos : Pos.popt (** Position of the rule in the source file. *) }
 
-(** {b NOTE} that the second parameter of the {!constructor:Patt}  constructor
-    holds an array of terms. This is essential for variables binding: using an
-    array of variables would NOT suffice. *)
+(** {b NOTE} The second parameter of {!constructor:Patt} holds an array of
+   terms. This is essential for variables binding: using an array of variables
+   would NOT suffice. *)
 
-(** {b NOTE} that the value of the {!field:arity} field  (of a rewriting rule)
-    gives the number of arguments contained in its LHS. As a consequence,  the
-    value of [r.arity] is always equal to [List.length r.lhs] and it gives the
-    minimal number of arguments required to match the LHS of the rule. *)
+(** {b NOTE} {!field:arity} gives the number of arguments contained in the
+   LHS. As a consequence, it is always equal to [List.length r.lhs] and it
+   gives the minimal number of arguments required to match the LHS. *)
+
+(** {b NOTE} For generated rules, {!field:rule_pos} may not be valid positions
+   in the source. These virtual positions are however important for exporting
+   lambdapi files to other formats. *)
 
 (** The RHS (or action) or a rewriting rule is represented by a term, in which
     (higher-order) variables representing "terms with environments" (see the

@@ -2,4 +2,4 @@
  (name common)
  (public_name lambdapi.common)
  (modules :standard)
- (libraries timed lplib))
+ (libraries timed lambdapi.lplib))

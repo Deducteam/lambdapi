@@ -188,7 +188,7 @@ let check_rule : Scope.pre_rule Pos.loc -> rule = fun ({pos; elt} as pr) ->
     fatal pos "The LHS is not typable.";
   let lhs_constrs = !p.unsolved in
   if Logger.log_enabled () then
-    log_subj "LHS: %a%a@ %a ↪ %a"
+    log_subj "LHS type: %a@.constraints: %a@.%a ↪ %a"
       pp_term ty_lhs pp_constrs lhs_constrs
       pp_term lhs_with_metas pp_term rhs_with_metas;
   (* We build a map allowing to find a variable index from its name. *)

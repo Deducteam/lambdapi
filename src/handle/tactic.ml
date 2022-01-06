@@ -21,10 +21,11 @@ let log_tact = log_tact.pp
     new compiled module. *)
 let admitted : int Stdlib.ref = Stdlib.ref (-1)
 
-(** [add_axiom ss m] adds in signature state [ss] a new axiom symbol of type
-   [!(m.meta_type)] and instantiate [m] with it. WARNING: It does not check
-   whether the type of [m] contains metavariables. *)
-let add_axiom : Sig_state.t -> meta -> Sig_state.t = fun ss m ->
+(** [add_axiom ss sym_pos m] adds in signature state [ss] a new axiom symbol
+   of type [!(m.meta_type)] and instantiate [m] with it. WARNING: It does not
+   check whether the type of [m] contains metavariables. *)
+let add_axiom : Sig_state.t -> popt -> meta -> Sig_state.t =
+  fun ss sym_pos m ->
   let name =
     let i = Stdlib.(incr admitted; !admitted) in
     let p = Printf.sprintf "_ax%i" i in
@@ -36,8 +37,15 @@ let add_axiom : Sig_state.t -> meta -> Sig_state.t = fun ss m ->
   let ss, sym =
     Console.out 1 (Color.red "axiom %a: %a")
       pp_uid name pp_term !(m.meta_type);
-    Sig_state.add_symbol
-      ss Public Const Eager true (Pos.none name) !(m.meta_type) [] None
+    (* Temporary hack for axioms to have a declaration position in the order
+       they are created. *)
+    let pos =
+      let n = Stdlib.(!admitted) in
+      if n > 100 then assert false
+      else shift (n - 100) sym_pos
+    in
+    let id = Pos.make pos name in
+    Sig_state.add_symbol ss Public Defin Eager true id !(m.meta_type) [] None
   in
   (* Create the value which will be substituted for the metavariable. This
      value is [sym x0 ... xn] where [xi] are variables that will be
@@ -50,25 +58,26 @@ let add_axiom : Sig_state.t -> meta -> Sig_state.t = fun ss m ->
   in
   LibMeta.set (new_problem()) m meta_value; ss
 
-(** [admit_meta ss m] adds as many axioms as needed in the signature state
-   [ss] to instantiate the metavariable [m] by a fresh axiom added to the
-   signature [ss]. *)
-let admit_meta : Sig_state.t -> meta -> Sig_state.t = fun ss m ->
+(** [admit_meta ss sym_pos m] adds as many axioms as needed in the signature
+   state [ss] to instantiate the metavariable [m] by a fresh axiom added to
+   the signature [ss]. *)
+let admit_meta : Sig_state.t -> popt -> meta -> Sig_state.t =
+  fun ss sym_pos m ->
   let ss = Stdlib.ref ss in
   (* [ms] records the metas that we are instantiating. *)
   let rec admit ms m =
     (* This assertion should be ensured by the typechecking algorithm. *)
     assert (not (MetaSet.mem m ms));
     LibMeta.iter true (admit (MetaSet.add m ms)) [] !(m.meta_type);
-    Stdlib.(ss := add_axiom !ss m)
+    Stdlib.(ss := add_axiom !ss sym_pos m)
   in
   admit MetaSet.empty m; Stdlib.(!ss)
 
-(** [tac_admit pos ps gt] admits typing goal [gt]. *)
+(** [tac_admit ss pos ps gt] admits typing goal [gt]. *)
 let tac_admit :
-      Sig_state.t -> proof_state -> goal_typ -> Sig_state.t * proof_state =
-  fun ss ps gt ->
-  let ss = admit_meta ss gt.goal_meta in
+  Sig_state.t -> popt -> proof_state -> goal_typ -> Sig_state.t * proof_state
+  = fun ss sym_pos ps gt ->
+  let ss = admit_meta ss sym_pos gt.goal_meta in
   ss, remove_solved_goals ps
 
 (** [tac_solve pos ps] tries to simplify the unification goals of the proof
@@ -155,10 +164,11 @@ let count_products : ctxt -> term -> int = fun c ->
     | _ -> acc
   in count 0
 
-(** [handle ss prv ps tac] applies tactic [tac] in the proof state [ps] and
-   returns the new proof state. *)
-let handle : Sig_state.t -> bool -> proof_state -> p_tactic -> proof_state =
-  fun ss prv ps {elt;pos} ->
+(** [handle ss sym_pos prv ps tac] applies tactic [tac] in the proof state
+   [ps] and returns the new proof state. *)
+let handle :
+  Sig_state.t -> popt -> bool -> proof_state -> p_tactic -> proof_state =
+  fun ss sym_pos prv ps {elt;pos} ->
   match ps.proof_goals with
   | [] -> assert false (* done before *)
   | g::gs ->
@@ -314,16 +324,17 @@ let handle : Sig_state.t -> bool -> proof_state -> p_tactic -> proof_state =
       (match ps.proof_goals with
       | Typ gt::gs ->
           let p = new_problem() in
-          tac_refine pos ps gt gs p (Why3_tactic.handle ss pos cfg gt)
+          tac_refine pos ps gt gs p (Why3_tactic.handle ss sym_pos cfg gt)
       | _ -> assert false)
 
 (** Representation of a tactic output. *)
 type tac_output = Sig_state.t * proof_state * Query.result
 
-(** [handle ss prv ps tac] applies tactic [tac] in the proof state [ps] and
-   returns the new proof state. *)
-let handle : Sig_state.t -> bool -> proof_state -> p_tactic -> tac_output =
-  fun ss prv ps ({elt;pos} as tac) ->
+(** [handle ss sym_pos prv ps tac] applies tactic [tac] in the proof state
+   [ps] and returns the new proof state. *)
+let handle :
+  Sig_state.t -> popt -> bool -> proof_state -> p_tactic -> tac_output =
+  fun ss sym_pos prv ps ({elt;pos} as tac) ->
   match elt with
   | P_tac_fail -> fatal pos "Call to tactic \"fail\""
   | P_tac_query(q) ->
@@ -333,18 +344,18 @@ let handle : Sig_state.t -> bool -> proof_state -> p_tactic -> tac_output =
   match ps.proof_goals with
   | [] -> fatal pos "No remaining goals."
   | Typ gt::_ when elt = P_tac_admit ->
-    let ss, ps = tac_admit ss ps gt in ss, ps, None
+    let ss, ps = tac_admit ss sym_pos ps gt in ss, ps, None
   | g::_ ->
     if Logger.log_enabled () then
       log_tact ("%a@\n" ^^ Color.red "%a") Proof.Goal.pp g Pretty.tactic tac;
-    ss, handle ss prv ps tac, None
+    ss, handle ss sym_pos prv ps tac, None
 
-(** [handle prv r tac n] applies the tactic [tac] from the previous tactic
-   output [r] and checks that the number of goals of the new proof state is
-   compatible with the number [n] of subproofs. *)
-let handle : bool -> tac_output -> p_tactic -> int -> tac_output =
-  fun prv (ss, ps, _) t nb_subproofs ->
-  let (_, ps', _) as a = handle ss prv ps t in
+(** [handle sym_pos prv r tac n] applies the tactic [tac] from the previous
+   tactic output [r] and checks that the number of goals of the new proof
+   state is compatible with the number [n] of subproofs. *)
+let handle : popt -> bool -> tac_output -> p_tactic -> int -> tac_output =
+  fun sym_pos prv (ss, ps, _) t nb_subproofs ->
+  let (_, ps', _) as a = handle ss sym_pos prv ps t in
   let nb_goals_before = List.length ps.proof_goals in
   let nb_goals_after = List.length ps'.proof_goals in
   let nb_newgoals = nb_goals_after - nb_goals_before in

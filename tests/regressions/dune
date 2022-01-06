@@ -1,3 +1,3 @@
 (tests
  (names hrs xtc dtrees)
- (libraries timed lambdapi.tool lambdapi.core lambdapi.common lambdapi.handle))
+ (libraries timed lambdapi.export lambdapi.core lambdapi.common lambdapi.handle))

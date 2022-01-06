@@ -28,16 +28,16 @@ let rec compile_with :
   let src () =
     (* Searching for source is delayed because we may not need it
        in case of "ghost" signatures (such as for unification rules). *)
-    let src = base ^ src_extension in
-    let legacy = base ^ legacy_src_extension in
-    match (Sys.file_exists src, Sys.file_exists legacy) with
+    let lp_src = base ^ lp_src_extension in
+    let dk_src = base ^ dk_src_extension in
+    match (Sys.file_exists lp_src, Sys.file_exists dk_src) with
     | (false, false) ->
         fatal_no_pos "File \"%s.lp\" (or .dk) not found." base
     | (true , true ) ->
         wrn None "Both \"%s\" and \"%s\" exist. We take \"%s\"."
-          src legacy src; src
-    | (true , false) -> src
-    | (false, true ) -> legacy
+          lp_src dk_src lp_src; lp_src
+    | (true , false) -> lp_src
+    | (false, true ) -> dk_src
   in
   let obj = base ^ obj_extension in
   if List.mem mp !loading then

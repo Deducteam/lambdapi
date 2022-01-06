@@ -34,7 +34,6 @@ let check_cmd : Config.t -> int option -> bool -> string list -> unit =
         match timeout with
         | None    -> Compile.compile_file file
         | Some(i) ->
-            if i <= 0 then fatal_no_pos "Invalid timeout value [%i] (≤ 0)." i;
             try with_timeout i Compile.compile_file file
             with Timeout ->
               fatal_no_pos "Compilation timed out for [%s]." file
@@ -48,8 +47,9 @@ let check_cmd : Config.t -> int option -> bool -> string list -> unit =
         in
         Option.iter run chk
       in
-      run_checker "confluence"  Tool.Hrs.to_HRS cfg.confluence  "confluent";
-      run_checker "termination" Tool.Xtc.to_XTC cfg.termination "terminating"
+      run_checker "confluence" Export.Hrs.to_HRS cfg.confluence "confluent";
+      run_checker
+        "termination" Export.Xtc.to_XTC cfg.termination "terminating"
     in
     List.iter handle files
   in
@@ -71,11 +71,13 @@ let parse_cmd : Config.t -> string list -> unit = fun cfg files ->
   Error.handle_exceptions run
 
 (** Running the pretty-printing mode. *)
-let beautify_cmd : Config.t -> string -> unit = fun cfg file ->
+let export_cmd : Config.t -> string -> unit = fun cfg file ->
   let run _ =
-    Config.init cfg;
+    Config.init {cfg with verbose = Some 0};
     let cmds = Parser.parse_file file in
-    Pretty.beautify cmds
+    match cfg.output with
+    | Some Lp | None -> Pretty.ast Format.std_formatter cmds
+    | Some Dk -> Export.Dk.sign (Compile.compile_file file)
   in Error.handle_exceptions run
 
 (** Running the LSP server. *)
@@ -119,11 +121,20 @@ let decision_tree_cmd : Config.t -> qident -> bool -> unit =
 (** Options that are specific to the ["check"] command. *)
 
 let timeout : int option CLT.t =
+  let timeout : int Arg.conv =
+    let parse (s : string): (int, [>`Msg of string]) result =
+      match int_of_string_opt s with
+      | Some v when v > 0 -> Ok v
+      | _ -> Error(`Msg "Invalid timeout value")
+    in
+    let print fmt v = Format.pp_print_int fmt v in
+    Arg.conv (parse, print)
+  in
   let doc =
     "Timeout after $(docv) seconds. The program is interrupted with an error \
      as soon as the specified number of seconds is elapsed."
   in
-  Arg.(value & opt (some int) None & info ["timeout"] ~docv:"NUM" ~doc)
+  Arg.(value & opt (some timeout) None & info ["timeout"] ~docv:"NUM" ~doc)
 
 let recompile : bool CLT.t =
   let doc =
@@ -152,7 +163,7 @@ let lsp_log_file : string CLT.t =
 (** Specific to the ["decision-tree"] command. *)
 
 let qident : qident CLT.t =
-  let qident_conv: qident Arg.conv =
+  let qident : qident Arg.conv =
     let parse (s: string): (qident, [>`Msg of string]) result =
       try Ok(Parser.qident_of_string s)
       with Fatal(_,s) -> Error(`Msg(s))
@@ -162,7 +173,7 @@ let qident : qident CLT.t =
   in
   let doc = "Fully qualified symbol name with dot separated identifiers." in
   let i = Arg.(info [] ~docv:"MOD_PATH.SYM" ~doc) in
-  Arg.(value & pos 0 qident_conv ([], "") & i)
+  Arg.(value & pos 0 qident ([], "") & i)
 
 let ghost : bool CLT.t =
   let doc = "Print the decision tree of a ghost symbol." in
@@ -174,7 +185,7 @@ let file : string CLT.t =
   let doc =
     Printf.sprintf
       "Source file with the [%s] extension (or with the [%s] extension when \
-       using the Dedukti syntax)." src_extension legacy_src_extension
+       using the Dedukti syntax)." lp_src_extension dk_src_extension
   in
   Arg.(required & pos 0 (some non_dir_file) None & info [] ~docv:"FILE" ~doc)
 
@@ -182,7 +193,7 @@ let files : string list CLT.t =
   let doc =
     Printf.sprintf
       "Source file with the [%s] extension (or with the [%s] extension when \
-       using the legacy Dedukti syntax)." src_extension legacy_src_extension
+       using the Dedukti syntax)." lp_src_extension dk_src_extension
   in
   Arg.(value & (pos_all non_dir_file []) & info [] ~docv:"FILE" ~doc)
 
@@ -235,10 +246,10 @@ let parse_cmd =
   CLT.(const parse_cmd $ Config.full $ files),
   CLT.info "parse" ~doc ~man:man_pkg_file
 
-let beautify_cmd =
-  let doc = "Run the parser and pretty-printer on the given files." in
-  CLT.(const beautify_cmd $ Config.full $ file),
-  CLT.info "beautify" ~doc ~man:man_pkg_file
+let export_cmd =
+  let doc = "Translate the given files to other formats." in
+  CLT.(const export_cmd $ Config.full $ file),
+  CLT.info "export" ~doc ~man:man_pkg_file
 
 let lsp_server_cmd =
   let doc = "Runs the LSP server." in
@@ -267,7 +278,7 @@ let _ =
   Stdlib.at_exit (Debug.print_time t0);
   Printexc.record_backtrace true;
   let cmds =
-    [ check_cmd ; parse_cmd ; beautify_cmd ; lsp_server_cmd
+    [ check_cmd ; parse_cmd ; export_cmd ; lsp_server_cmd
     ; decision_tree_cmd ; help_cmd ; version_cmd
     ; Init.cmd ; Install.install_cmd ; Install.uninstall_cmd ]
   in

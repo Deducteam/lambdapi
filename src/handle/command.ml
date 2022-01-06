@@ -245,6 +245,9 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
       (* Add inductive types in the signature. *)
       let add_ind_sym (ss, ind_sym_list) {elt=(id,pt,_); _} =
         let (ss, ind_sym) =
+          (* All inductive types are declared at position [pos]
+             so that constructors are declared afterwards. *)
+          let id = {id with pos} in
           handle_inductive_symbol ss expo Const Eager id params pt in
         (ss, ind_sym::ind_sym_list)
       in
@@ -297,6 +300,8 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
         let (ss, rec_sym) =
           Console.out 2 (Color.red "symbol %a : %a")
             pp_uid rec_name pp_term rec_typ;
+          (* Recursors are declared after the types and constructors. *)
+          let pos = after (end_pos pos) in
           let id = Pos.make pos rec_name in
           let r = add_symbol ss expo Defin Eager false id rec_typ [] None
           in Print.sig_state := fst r; r
@@ -440,7 +445,7 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
               match ps.proof_term with
               | Some m when opaq ->
                   (* We admit the initial goal only. *)
-                  Tactic.admit_meta ss m
+                  Tactic.admit_meta ss p_sym_nam.pos m
               | _ ->
                   (* We admit all the remaining typing goals. *)
                   let admit_goal ss g =
@@ -449,7 +454,7 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
                     | Typ gt ->
                         let m = gt.goal_meta in
                         match !(m.meta_value) with
-                        | None -> Tactic.admit_meta ss m
+                        | None -> Tactic.admit_meta ss p_sym_nam.pos m
                         | Some _ -> ss
                   in List.fold_left admit_goal ss ps.proof_goals
             in
@@ -532,6 +537,6 @@ let handle : compiler -> Sig_state.t -> Syntax.p_command -> Sig_state.t =
   | None -> ss
   | Some d ->
     let ss, ps, _ =
-      fold_proof (Tactic.handle d.pdata_prv)
+      fold_proof (Tactic.handle d.pdata_sym_pos d.pdata_prv)
         (ss, d.pdata_state, None) d.pdata_proof
     in d.pdata_finalize ss ps
