@@ -131,7 +131,7 @@ following dummy command:
 ``--termination "cat > output.trs; echo MAYBE"``.
 
 Specific flags for the ``check`` command
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 ``--too-long=<FLOAT>`` gives a warning for each interpreted source
 file command taking more than the given number of seconds to be
@@ -142,14 +142,14 @@ number.
 command line even if they have an up-to-date object file.
 
 Specific flags for the ``export`` command
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 ``-o <FMT>``, ``--output=<FMT>`` instructs ``lambdapi`` to translate
 the file given in argument to the format ``<FMT>``, which can be
 ``lp`` or ``dk``.
 
 Specific flags for the ``lsp`` command
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 ``--standard-lsp`` restricts to standard LSP protocol (no extension).
 
@@ -157,13 +157,13 @@ Specific flags for the ``lsp`` command
 given, the file ``/tmp/lambdapi_lsp_log.txt`` is used.
 
 Specific flags for the ``install`` and ``uninstall`` commands
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 ``--dry-run`` prints the system commands that should be called instead
 of running them.
 
 Specific flags for the ``decision-tree`` command
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 ``--ghost`` print the decision tree of a ghost symbol. Ghost symbols
 are symbols used internally that cannot be used in the concrete
