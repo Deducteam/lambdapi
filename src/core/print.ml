@@ -110,6 +110,9 @@ let nat_of_term : term -> int = fun t ->
     with Not_found -> raise Not_a_nat
   in
   let zero = get_builtin "0" in
+  match get_args t with
+  | (Symb s, []) when s == zero -> 0
+  | _ ->
   let succ = get_builtin "+1" in
   let rec nat acc = fun t ->
     match get_args t with

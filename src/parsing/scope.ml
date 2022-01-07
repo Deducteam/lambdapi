@@ -503,6 +503,7 @@ and scope_head :
   | (P_LLet(_), M_Patt) ->
       fatal t.pos "Let-bindings are not allowed in a pattern."
 
+  | (P_NLit(0), _) -> _Symb (Builtin.get ss t.pos "0")
   | (P_NLit(n), _) ->
       let sym_z = _Symb (Builtin.get ss t.pos "0")
       and sym_s = _Symb (Builtin.get ss t.pos "+1") in
