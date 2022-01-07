@@ -124,7 +124,7 @@ let handle : Sig_state.t -> proof_state option -> p_query -> result =
         in
         (* Function to print a symbol declaration. *)
         let pp_decl ppf s =
-          out ppf "%a%a%asymbol %a : %a;@.%a%a%a"
+          out ppf "%a%a%asymbol %a : %a%a;@.%a%a"
             pp_expo s.sym_expo pp_prop s.sym_prop
             pp_match_strat s.sym_mstrat pp_sym s
             pp_prod (!(s.sym_type), s.sym_impl)
