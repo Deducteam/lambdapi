@@ -1,4 +1,4 @@
-PKG := TFF U Zenon
+PKG := TFF U Zenon PTS
 
 .PHONY: default
 default:
