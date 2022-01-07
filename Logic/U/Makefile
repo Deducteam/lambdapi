@@ -5,7 +5,8 @@ OBJ = $(SRC:.lp=.lpo)
 
 LAMBDAPI = dune exec -- lambdapi
 
-all: $(OBJ)
+all:
+	$(LAMBDAPI) check $(SRC)
 
 install: $(OBJ) lambdapi.pkg
 	$(LAMBDAPI) install lambdapi.pkg $(OBJ) $(SRC)

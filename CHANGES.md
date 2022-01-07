@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- In Logic/, a library of logics.
+
 - The command export to translate signatures to the lp or dk files formats.
 
 - New release of the VSCode extension.
