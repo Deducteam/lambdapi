@@ -16,5 +16,5 @@ constant symbol α₁ : F (a * □);
 // rules
 constant symbol ρ₁ : F (r * * *);
 constant symbol ρ₂ : F (r □ * *);
-constant symbol ρ₃ : F (r * □ *);
-constant symbol ρ₄ : F (r □ □ *);
+constant symbol ρ₃ : F (r * □ □);
+constant symbol ρ₄ : F (r □ □ □);
