@@ -106,50 +106,46 @@ let handle : Sig_state.t -> proof_state option -> p_query -> result =
   | P_query_print(Some qid) ->
       let pp_sym_info ppf s =
         let open Timed in
-        (* print its name and modifiers *)
-        let pp_trunk ppf s =
-          out ppf "%a%a%asymbol %a"
-            pp_expo s.sym_expo pp_prop s.sym_prop
-            pp_match_strat s.sym_mstrat pp_sym s
-        in
-        (* print its type *)
-        let pp_type ppf s =
-          out ppf ": %a" pp_prod (!(s.sym_type), s.sym_impl) in
-        (* print its definition *)
-        let pp_def ppf s =
-          Option.iter (out ppf "@ ≔ %a" pp_term) !(s.sym_def) in
-        (* print its notation *)
-        let pp_notation : Sign.notation option pp = fun ppf n ->
+        (* Function to print a definition. *)
+        let pp_def ppf = Option.iter (out ppf "@ ≔ %a" pp_term) in
+        (* Function to print a notation *)
+        let pp_notation ppf s =
           Option.iter
-            (out ppf "notation %a %a@." pp_sym s pp_notation) n in
-        (* print its rules *)
+            (out ppf "notation %a %a;@." pp_sym s pp_notation)
+            (notation_of s) in
+        (* Function to print rules. *)
         let pp_rules ppf s =
           match !(s.sym_rules) with
           | [] -> ()
-          | rs -> let pp_rule ppf r = pp_rule ppf (s,r) in
-                  out ppf "@[<v2>rules:@,%a@]" (List.pp pp_rule "@,") rs
+          | r::rs ->
+            let pp_rule ppf r = pp_rule ppf (s,r) in
+            let pp_with ppf r = out ppf "@.with %a" pp_rule r in
+            out ppf "rule %a%a;@." pp_rule r (List.pp pp_with "") rs
         in
-        (* print its constructors (if it is an inductive type) *)
-        let pp_constructors ppf s =
+        (* Function to print a symbol declaration. *)
+        let pp_decl ppf s =
+          out ppf "%a%a%asymbol %a : %a;@.%a%a%a"
+            pp_expo s.sym_expo pp_prop s.sym_prop
+            pp_match_strat s.sym_mstrat pp_sym s
+            pp_prod (!(s.sym_type), s.sym_impl)
+            pp_def !(s.sym_def) pp_notation s pp_rules s
+        in
+        (* Function to print constructors and the induction principle if [qid]
+           is an inductive type. *)
+        let pp_ind ppf s =
           let open Sign in
           (* get the signature of [s] *)
           let sign =
             try Path.Map.find s.sym_path Timed.(!loaded)
             with Not_found -> assert false
           in
-          let pp_decl : sym pp = fun ppf s ->
-            out ppf "%a: %a" pp_sym s pp_term !(s.sym_type) in
-          let pp_ind : ind_data pp = fun ppf ind ->
-            out ppf
-              "@[<v2>constructors:@,%a@]@,@[<v2>induction principle:@,%a@]"
-              (List.pp pp_decl "@,") ind.ind_cons pp_decl ind.ind_prop
-          in
-          try pp_ind ppf (SymMap.find s Timed.(!(sign.sign_ind)))
+          try
+            let ind = SymMap.find s Timed.(!(sign.sign_ind)) in
+            List.pp pp_decl "" ppf ind.ind_cons;
+            pp_decl ppf ind.ind_prop
           with Not_found -> ()
         in
-        out ppf "@[<hov>%a@,%a%a@]@.%a%a%a@]"
-          pp_trunk s pp_type s pp_def s pp_notation (notation_of s)
-          pp_rules s pp_constructors s
+        pp_decl ppf s; pp_ind ppf s
       in
       return pp_sym_info (Sig_state.find_sym ~prt:true ~prv:true ss qid)
   | P_query_proofterm ->
