@@ -171,11 +171,11 @@ let _ =
     must be a type (defaults to false). *)
 let rec scope : ?typ:bool -> int -> mode -> sig_state -> env -> p_term ->
   tbox =
-  fun ?(typ=false) k md ss env t -> 
+  fun ?(typ=false) k md ss env t ->
   scope_parsed ~typ k md ss env (Pratt.parse ss env t)
 
-(** [scope_parsed ~typ md ss env t] turns a parser-level, Pratt-parsed term [t]
-    into an actual term. *)
+(** [scope_parsed ~typ md ss env t] turns a parser-level, Pratt-parsed
+    term [t] into an actual term. *)
 and scope_parsed :
   ?typ:bool -> int -> mode -> sig_state -> env -> p_term -> tbox =
   fun ?(typ=false) k md ss env t ->
@@ -337,7 +337,7 @@ and scope_head :
 
   | (P_Meta({elt;pos} as mk,ts), M_Term {m_term_meta_of_key;_}) -> (
       match m_term_meta_of_key elt with
-      | None -> 
+      | None ->
           fatal pos "Metavariable %a not found among generated variables: \
                      metavariables can only be created by the system."
             Pretty.meta_ident mk

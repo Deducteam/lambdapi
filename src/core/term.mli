@@ -220,15 +220,14 @@ and sym =
 
 (** {3 Metavariables and related functions} *)
 
-(** Representation of a metavariable,  which corresponds to a place-holder for
-    a (yet unknown) term which free variables are bound by an environment. The
-    substitution of the free variables with the environment is suspended until
-    the metavariable is instantiated (i.e., set to a particular term).  When a
-    metavariable [m] is instantiated,  the suspended substitution is  unlocked
-    and terms of the form {!constructor:Meta}[(m,env)] can be unfolded. *)
+(** Representation of a metavariable,  which corresponds to a yet unknown
+    term typable in some context. The substitution of the free variables
+    of the context is suspended until the metavariable is instantiated
+    (i.e., set to a particular term).  When a metavariable [m] is
+    instantiated,  the suspended substitution is  unlocked and terms of
+    the form {!constructor:Meta}[(m,env)] can be unfolded. *)
  and meta =
   { meta_key   : int (** Unique key. *)
-  ; meta_name  : string option (** Optional name. *)
   ; meta_type  : term ref (** Type. *)
   ; meta_arity : int (** Arity (environment size). *)
   ; meta_value : tmbinder option ref (** Definition. *) }

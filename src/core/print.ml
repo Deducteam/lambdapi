@@ -126,9 +126,7 @@ let are_quant_args : term list -> bool = fun args ->
   | _ -> false
 
 let pp_meta_name : meta pp = fun ppf m ->
-  match m.meta_name with
-  | Some s -> pp_uid ppf s
-  | None -> out ppf "%d" m.meta_key
+  out ppf "%d" m.meta_key
 
 (** The possible priority levels are [`Func] (top level, including abstraction
    and product), [`Appl] (application) and [`Atom] (smallest priority). *)

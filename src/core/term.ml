@@ -202,15 +202,14 @@ and sym =
 
 (** {3 Metavariables and related functions} *)
 
-(** Representation of a metavariable,  which corresponds to a place-holder for
-    a (yet unknown) term which free variables are bound by an environment. The
-    substitution of the free variables with the environment is suspended until
-    the metavariable is instantiated (i.e., set to a particular term).  When a
-    metavariable [m] is instantiated,  the suspended substitution is  unlocked
-    and terms of the form {!constructor:Meta}[(m,env)] can be unfolded. *)
+(** Representation of a metavariable,  which corresponds to a yet unknown
+    term typable in some context. The substitution of the free variables
+    of the context is suspended until the metavariable is instantiated
+    (i.e., set to a particular term).  When a metavariable [m] is
+    instantiated,  the suspended substitution is  unlocked and terms of
+    the form {!constructor:Meta}[(m,env)] can be unfolded. *)
  and meta =
   { meta_key   : int (** Unique key. *)
-  ; meta_name  : string option (** Optional name. *)
   ; meta_type  : term ref (** Type. *)
   ; meta_arity : int (** Arity (environment size). *)
   ; meta_value : tmbinder option ref (** Definition. *) }
@@ -247,7 +246,7 @@ let rec pp_term : term pp = fun ppf t ->
   | Appl(a,b) -> out ppf "(%a %a)" pp_term a pp_term b
   | Meta(m,ts) -> out ppf "?%a%a" pp_meta m pp_terms ts
   | Patt(i,s,ts) -> out ppf "$%a_%s%a" (D.option D.int) i s pp_terms ts
-  | Plac(_) -> out ppf "_" 
+  | Plac(_) -> out ppf "_"
   | TEnv(te,ts) -> out ppf "<%a>%a" pp_tenv te pp_terms ts
   | Wild -> out ppf "_"
   | TRef r -> out ppf "&%a" (Option.pp pp_term) !r
@@ -261,9 +260,7 @@ and pp_binder : (term * tbinder) pp = fun ppf (a,b) ->
   let x, b = Bindlib.unbind b in
   out ppf "%a: %a, %a" pp_var x pp_term a pp_term b
 and pp_meta : meta pp = fun ppf m ->
-  match m.meta_name with
-  | None -> out ppf "%d" m.meta_key
-  | Some s -> out ppf "%s" s
+  out ppf "%d" m.meta_key
 and pp_sym : sym pp = fun ppf s -> out ppf "%s" s.sym_name
 and pp_tenv : term_env pp = fun ppf te ->
   match te with

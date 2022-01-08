@@ -458,7 +458,7 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
         let proof_goals = Proof.add_goals_of_problem p [] in
         if p_sym_def then
           (* Add a new focused goal and refine on it. *)
-          let m = LibMeta.fresh p ~name:id a 0 in
+          let m = LibMeta.fresh p a 0 in
           let g = Goal.of_meta m in
           let ps = {proof_name = p_sym_nam; proof_term = Some m;
                     proof_goals = g :: proof_goals} in

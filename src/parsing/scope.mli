@@ -18,7 +18,7 @@ open Pos
     [t], but metavariables in the image of [mok] may be used. The function
     [mok] defaults to the function constant to [None] *)
 val scope_term :
-  ?typ:bool (* default: false *) -> 
+  ?typ:bool (* default: false *) ->
   ?mok:(int -> meta option) ->
   bool -> sig_state -> env -> p_term -> term
 

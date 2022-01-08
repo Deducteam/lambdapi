@@ -11,23 +11,24 @@ let reset_meta_counter () = Stdlib.(meta_counter := -1)
 
 (** [fresh p ?name a n] creates a fresh metavariable of type [a] and arity [n]
    with the optional name [name], and adds it to [p]. *)
-let fresh : problem -> ?name:string -> term -> int -> meta =
-  fun p ?name a n ->
+let fresh : problem -> term -> int -> meta =
+  fun p a n ->
   let m = {meta_key = Stdlib.(incr meta_counter; !meta_counter);
-           meta_name = name; meta_type = ref a; meta_arity = n;
+           meta_type = ref a; meta_arity = n;
            meta_value = ref None } in
   p := {!p with metas = MetaSet.add m !p.metas}; m
 
-(** [fresh_box p ?name a n] is the boxed counterpart of [fresh_meta]. It is
-   only useful in the rare cases where the type of a metavariable contains a
-   free term variable environment. This should only happens when scoping the
-   rewriting rules, use this function with care.  The metavariable is created
-   immediately with a dummy type, and the type becomes valid at unboxing. The
-   boxed metavariable should be unboxed at most once, otherwise its type may
-   be rendered invalid in some contexts. *)
-let fresh_box: problem -> ?name:string -> tbox -> int -> meta Bindlib.box =
-  fun p ?name a n ->
-  let m = fresh p ?name mk_Kind n in
+(** [fresh_box p a n] is the boxed counterpart of [fresh_meta]. It is
+    only useful in the rare cases where the type of a metavariable
+    contains a free term variable environment. This should only happens
+    when scoping the rewriting rules, use this function with care.
+    The metavariable is created immediately with a dummy type, and the
+    type becomes valid at unboxing. The boxed metavariable should be
+    unboxed at most once, otherwise its type may be rendered invalid in
+    some contexts. *)
+let fresh_box: problem -> tbox -> int -> meta Bindlib.box =
+  fun p a n ->
+  let m = fresh p mk_Kind n in
   Bindlib.box_apply (fun a -> m.meta_type := a; m) a
 
 (** [set p m v] sets the metavariable [m] of [p] to [v]. WARNING: No specific
@@ -37,36 +38,23 @@ let set : problem -> meta -> tmbinder -> unit = fun p m v ->
   m.meta_type := mk_Kind; (* to save memory *) m.meta_value := Some v;
   p := {!p with metas = MetaSet.remove m !p.metas}
 
-(** [name m] returns a string representation of [m]. *)
-let name : meta -> string = fun m ->
-  match m.meta_name with
-  | Some n -> n
-  | None -> string_of_int m.meta_key
-
-(** [of_name p n] returns [Some m] if [m] is an element of the set of metas of
-   [p] with name [n], and [None] otherwise. *)
-let of_name : string -> problem -> meta option = fun n p ->
-  let exception Found of meta in
-  let f m = if m.meta_name = Some n then raise (Found m) in
-  try MetaSet.iter f !p.metas; None with Found m -> Some m
-
-(** [make p ?name ctx a] creates a fresh metavariable term named [?name] (if
+(** [make p ctx a] creates a fresh metavariable term named [?name] (if
     provided) of type [a] in the context [ctx], and adds it to [p]. *)
-let make : problem -> ?name:string -> ctxt -> term -> term =
-  fun p ?name ctx a ->
+let make : problem -> ctxt -> term -> term =
+  fun p ctx a ->
   let a, k = Ctxt.to_prod ctx a in
-  let m = fresh ?name p a k in
+  let m = fresh p a k in
   let get_var (x,_,d) = if d = None then Some (mk_Vari x) else None in
   mk_Meta(m, Array.of_list (List.filter_rev_map get_var ctx))
 
-(** [bmake p ?name bctx a] is the boxed version of {!make}: it creates
+(** [bmake p bctx a] is the boxed version of {!make}: it creates
     a fresh {e boxed} metavariable in {e boxed} context [bctx] of {e
     boxed} type [a]. It is the same as [lift (make p c b)] (provided that
     [bctx] is boxed [c] and [a] is boxed [b]), but more efficient. *)
-let bmake : problem -> ?name:string -> bctxt -> tbox -> tbox =
-  fun p ?name bctx a ->
+let bmake : problem -> bctxt -> tbox -> tbox =
+  fun p bctx a ->
   let (a, k) = Ctxt.to_prod_box bctx a in
-  let m = fresh_box ?name p a k in
+  let m = fresh_box p a k in
   let get_var (x, _) = _Vari x in
   _Meta_full m (Array.of_list (List.rev_map get_var bctx))
 

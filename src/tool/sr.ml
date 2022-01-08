@@ -153,17 +153,14 @@ let check_rule : Scope.pre_rule Pos.loc -> rule = fun ({pos; elt} as pr) ->
     end;
   (* Replace [Patt] nodes of LHS with corresponding elements of [vars]. *)
   let lhs_vars = _Appl_Symb s (List.map (patt_to_tenv vars) lhs) in
-  (* Create metavariables that will stand for the variables of [vars].
-     These metavariables are prefixed by "$" so that we can recognize them. *)
-  let var_names = Array.map (fun x -> "$" ^ Bindlib.name_of x) vars in
   let p = new_problem() in
   let metas =
-    let f i name =
+    let f i _ =
       let arity = arities.(i) in
       (*FIXME: build_meta_type should take a sort as argument as some pattern
          variables are types and thus of sort KIND! *)
-      LibMeta.fresh p ~name (build_meta_type p arity) arity
-    in Array.mapi f var_names
+      LibMeta.fresh p (build_meta_type p arity) arity
+    in Array.mapi f vars
   in
   (* Substitute them in the LHS and in the RHS. *)
   let lhs_with_metas, rhs_with_metas =
@@ -194,9 +191,6 @@ let check_rule : Scope.pre_rule Pos.loc -> rule = fun ({pos; elt} as pr) ->
     log_subj "LHS type: %a@.constraints: %a@.%a ↪ %a"
       pp_term ty_lhs pp_constrs lhs_constrs
       pp_term lhs_with_metas pp_term rhs_with_metas;
-  (* We build a map allowing to find a variable index from its name. *)
-  let htbl : index_tbl = Hashtbl.create (Array.length vars) in
-  Array.iteri (fun i name -> Hashtbl.add htbl name i) var_names;
   (* We instantiate all the uninstantiated metavariables of the LHS (including
      those appearing in the types of these metavariables) using fresh function
      symbols. We also keep a list of those symbols. *)
@@ -212,8 +206,10 @@ let check_rule : Scope.pre_rule Pos.loc -> rule = fun ({pos; elt} as pr) ->
         (* Instantiate recursively the meta-variables of the type. *)
         LibMeta.iter true instantiate [] !(m.meta_type);
         (* Instantiation of [m]. *)
-        let s = Term.create_sym (Sign.current_path()) Privat Defin Eager
-            false (Pos.none (LibMeta.name m)) !(m.meta_type) [] in
+        let s =
+          let name = Pos.none @@ Printf.sprintf "$%d" m.meta_key in
+          Term.create_sym (Sign.current_path()) Privat Defin Eager
+            false name !(m.meta_type) [] in
         Stdlib.(symbols := s :: !symbols);
         (* Build a definition for [m]. *)
         let xs = Array.init m.meta_arity (new_tvar_ind "x") in
@@ -221,7 +217,8 @@ let check_rule : Scope.pre_rule Pos.loc -> rule = fun ({pos; elt} as pr) ->
         let def = Array.fold_left (fun t x -> _Appl t (_Vari x)) s xs in
         m.meta_value := Some(Bindlib.unbox (Bindlib.bind_mvar xs def))
     in
-    Array.iter instantiate metas; Stdlib.(!symbols)
+    Array.iter instantiate metas;
+    Stdlib.(!symbols)
   in
   if Logger.log_enabled () then
     log_subj "replace LHS metavariables by function symbols:@ %a ↪ %a"
@@ -251,6 +248,11 @@ let check_rule : Scope.pre_rule Pos.loc -> rule = fun ({pos; elt} as pr) ->
       List.iter (fatal_msg "Cannot solve %a@." pp_constr) cs;
       fatal pos "Unable to prove type preservation."
     end;
+  (* We build a map allowing to find a variable index from its key. *)
+  let htbl : index_tbl = Hashtbl.create (Array.length vars) in
+  Array.iteri
+    (fun i m -> Hashtbl.add htbl (Printf.sprintf "$%d" m.meta_key) i)
+    metas;
   (* Replace metavariable symbols by term_env variables, and bind them. *)
   let rhs = symb_to_tenv pr symbols htbl rhs_with_metas in
   (* TODO environment minimisation ? *)

@@ -28,10 +28,7 @@ let add_axiom : Sig_state.t -> popt -> meta -> Sig_state.t =
   fun ss sym_pos m ->
   let name =
     let i = Stdlib.(incr admitted; !admitted) in
-    let p = Printf.sprintf "_ax%i" i in
-    match m.meta_name with
-    | Some n -> Escape.add_suffix (p ^ "_") n
-    | _ -> p
+    Printf.sprintf "_ax%i" i
   in
   (* Create a symbol with the same type as the metavariable *)
   let ss, sym =

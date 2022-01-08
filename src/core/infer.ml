@@ -192,7 +192,8 @@ and infer_aux : problem -> octxt -> term -> term * term * bool =
       in
       match Eval.whnf (classic c) t_ty with
       | Prod (dom, range) ->
-          if Logger.log_enabled () then log "Appl-prod arg [%a]" Print.pp_term u;
+          if Logger.log_enabled () then
+            log "Appl-prod arg [%a]" Print.pp_term u;
           let u, cu_u = force pb c u dom in
           return cu_u t u range
       | Meta (_, _) ->
@@ -208,7 +209,8 @@ and infer_aux : problem -> octxt -> term -> term * term * bool =
           let domain = unbox domain
           and range = unbox range in
           let t, cu_t' = coerce pb c t t_ty (mk_Prod (domain, range)) in
-          if Logger.log_enabled () then log "Appl-default arg [%a]" Print.pp_term u;
+          if Logger.log_enabled () then
+            log "Appl-default arg [%a]" Print.pp_term u;
           let u, cu_u = force pb c u domain in
           return (cu_t' || cu_u) t u range )
 
