@@ -129,9 +129,7 @@ let are_quant_args : term list -> bool = fun args ->
   | _ -> false
 
 let pp_meta_name : meta pp = fun ppf m ->
-  match m.meta_name with
-  | Some s -> pp_uid ppf s
-  | None -> out ppf "%d" m.meta_key
+  out ppf "%d" m.meta_key
 
 (** The possible priority levels are [`Func] (top level, including abstraction
    and product), [`Appl] (application) and [`Atom] (smallest priority). *)
@@ -234,6 +232,7 @@ and pp_term : term pp = fun ppf t ->
     | Kind        -> out ppf "KIND"
     | Symb(s)     -> pp_sym ppf s
     | Meta(m,e)   -> out ppf "%a%a" pp_meta m pp_env e
+    | Plac(_)     -> out ppf "_"
     | Patt(_,n,e) -> out ppf "$%a%a" pp_uid n pp_env e
     | TEnv(t,e)   -> out ppf "$%a%a" pp_term_env t pp_env e
     (* Product and abstraction (only them can be wrapped). *)

@@ -57,7 +57,10 @@ type term = private
   (** Pattern variable application (only used in rewriting rules LHS). *)
   | TEnv of term_env * term array
   (** Term environment (only used in rewriting rules RHS). *)
-  | Wild (** Wildcard (only used for surface matching, never in a LHS). *)
+  | Wild (** Wildcard (only used for surface matching, never in LHS). *)
+  | Plac of bool
+  (** [Plac b] is a placeholder, or hole, for not given terms. Boolean
+      [b] is true if the placeholder stands for a type. *)
   | TRef of term option ref (** Reference cell (used in surface matching). *)
   | LLet of term * term * tbinder
   (** [LLet(a, t, u)] is [let x : a ≔ t in u] (with [x] bound in [u]). *)
@@ -217,15 +220,14 @@ and sym =
 
 (** {3 Metavariables and related functions} *)
 
-(** Representation of a metavariable,  which corresponds to a place-holder for
-    a (yet unknown) term which free variables are bound by an environment. The
-    substitution of the free variables with the environment is suspended until
-    the metavariable is instantiated (i.e., set to a particular term).  When a
-    metavariable [m] is instantiated,  the suspended substitution is  unlocked
-    and terms of the form {!constructor:Meta}[(m,env)] can be unfolded. *)
+(** Representation of a metavariable,  which corresponds to a yet unknown
+    term typable in some context. The substitution of the free variables
+    of the context is suspended until the metavariable is instantiated
+    (i.e., set to a particular term).  When a metavariable [m] is
+    instantiated,  the suspended substitution is  unlocked and terms of
+    the form {!constructor:Meta}[(m,env)] can be unfolded. *)
  and meta =
   { meta_key   : int (** Unique key. *)
-  ; meta_name  : string option (** Optional name. *)
   ; meta_type  : term ref (** Type. *)
   ; meta_arity : int (** Arity (environment size). *)
   ; meta_value : tmbinder option ref (** Definition. *) }
@@ -249,10 +251,16 @@ val minimize_impl : bool list -> bool list
 val pp_term : term pp
 
 (** Typing context associating a [Bindlib] variable to a type and possibly a
-   definition. The typing environment [x1:A1,..,xn:An] is represented by the
-   list [xn:An;..;x1:A1] in reverse order (last added variable comes
-   first). *)
+    definition. The typing environment [x1:A1,..,xn:An] is represented by the
+    list [xn:An;..;x1:A1] in reverse order (last added variable comes
+    first). *)
 type ctxt = (tvar * term * term option) list
+
+(** Typing context with lifted terms. Used to optimise type checking and avoid
+    lifting terms several times. Definitions are not included because these
+    contexts are used to create meta variables types, which do not use [let]
+    definitions. *)
+type bctxt = (tvar * tbox) list
 
 (** Type of unification constraints. *)
 type constr = ctxt * term * term
@@ -381,6 +389,7 @@ val mk_Meta : meta * term array -> term
 val mk_Patt : int option * string * term array -> term
 val mk_TEnv : term_env * term array -> term
 val mk_Wild : term
+val mk_Plac : bool -> term
 val mk_TRef : term option ref -> term
 val mk_LLet : term * term * tbinder -> term
 
@@ -460,6 +469,9 @@ val _TEnv : tebox -> tbox array -> tbox
 
 (** [_Wild] injects the constructor [Wild] into the {!type:tbox} type. *)
 val _Wild : tbox
+
+(** [_Plac] injects the constructor [Plac] into the {!type:tbox} type. *)
+val _Plac : bool -> tbox
 
 (** [_TRef r] injects the constructor [TRef(r)] into the {!type:tbox} type. It
     should be the case that [!r] is [None]. *)

@@ -37,7 +37,7 @@ end;
 opaque symbol add0r n : P (n + 0 = n)
 ≔ begin
   // FIXME try to infer the predicate
-  refine nat_ind (λ n, n + 0 = n) ?CZ ?CS
+  refine nat_ind (λ n, n + 0 = n) _ _
   {// Case Z
   simplify;
   reflexivity}
@@ -51,7 +51,7 @@ end;
 opaque symbol add_succ_r n m : P (n + (s m) = s (n + m))
 ≔ begin
   assume n m;
-  refine nat_ind (λ n, n + (s m) = s (n + m)) ?case_0 ?case_s n
+  refine nat_ind (λ n, n + (s m) = s (n + m)) _ _ n
   {// Case Z
   simplify;
   refine refl nat (s m)}
@@ -67,7 +67,7 @@ end;
 opaque symbol addcomm n m : P (n + m = m + n)
 ≔ begin
   assume n m;
-  refine nat_ind (λ n, n + m = m + n) ?case_0 ?case_s n
+  refine nat_ind (λ n, n + m = m + n) _ _ n
   {// Case Z
   simplify;
   refine eq_sym _ (m + z) m (add0r m)} // TODO add a symmetry tactic

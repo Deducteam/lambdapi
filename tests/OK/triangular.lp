@@ -5,4 +5,4 @@ symbol triangle : N → N;
 rule triangle (s $n) ↪ (s $n) + (triangle $n)
 with triangle z      ↪ z;
 
-assert ⊢ triangle 300 ≡ 45150;
+compute triangle 300; // ≡ 45150;

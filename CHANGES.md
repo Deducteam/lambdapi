@@ -19,13 +19,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   two new builtins ("ex" and "all"). Codewise, it requires a new
   translation from encoded types to Why3 types.
 
+- Tems may be _placeholders_. Placeholders are holes in the
+  concrete syntax. They are refined into metavariables. *Placeholders
+  cannot appear nonlinearly in terms*. From [A Bidirectional Refinement
+  Algorithm...](https://arxiv.org/abs/1202.4905), p. 31,
+  > Non linear placeholders are not allowed since two occurrences could be
+  in contexts that bind different set of variables and instantiation with
+  terms that live in one context would make no sense in the other one.
+
 ### Changed
 
 - Moved the files tool/hrs.ml and tool/xtc.ml into the new export/ directory.
 
+- Because placeholders are simple holes, the term `_ → _` is scoped
+  into a full dependent product `Π x: M, N` where `N` is a metavariable
+  that depend on `x` (see file `tests/OK/767.lp`)
+
+- Type checking is slower following #696 because of refinement (not only
+  the type but also the term must be destructured and rebuilt),
+  |         | master | refiner |
+  |---------|--------|---------|
+  | holide  | 7:0    | 11:33   |
+  | iprover | 5:58   | 6:50    |
+
 ### Removed
 
 - The command beautify superseded by the new command export.
+
+- Unused variable warning: whether a variable is used or not cannot be
+  decided while scoping (following #696) since placeholders that do not
+  depend on variables may be refined later into metavariables that may
+  depend on them.
+
+- Metavariables cannot be referenced by their name anymore, hence the
+  syntax `?M.[x;y]` is obsolete, but `?0.[x;y]` isn't
 
 ## 2.0.0 (2021-12-15)
 

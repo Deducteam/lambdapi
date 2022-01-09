@@ -161,12 +161,9 @@ let handle_inductive_symbol : sig_state -> expo -> prop -> match_strat
   let impl = Syntax.get_impl_term typ in
   (* We scope the type of the declaration. *)
   let p = new_problem() in
-  let typ =
-    (if xs = [] then scope_term ~typ:true else scope_term_with_params)
-      (expo = Privat) ss Env.empty p (fun _ -> None) (fun _ -> None) typ
-  in
+  let typ = scope_term ~typ:true (expo = Privat) ss Env.empty typ in
   (* We check that [typ] is typable by a sort. *)
-  Query.check_sort pos p [] typ;
+  let (typ,  _) = Query.check_sort pos p [] typ in
   (* We check that no metavariable remains. *)
   if !p.metas <> MetaSet.empty then begin
     fatal_msg "The type of %a has unsolved metavariables.@." pp_uid name;
@@ -353,17 +350,7 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
     (* Problem recording metavariables and constraints. *)
     let p = new_problem() in
     (* Scoping the definition and the type. *)
-    (* If there are parameters and both a type and a definition, then we use
-       scope_term_with_params instead of scope_term, so that no warning is
-       issued during scoping if a parameter is unused in the type or in the
-       definition. In this case, this verification must therefore be done
-       afterwards. *)
-    let scope ?(typ=false) =
-      (if p_sym_arg = [] || p_sym_typ = None || p_sym_trm = None
-       then scope_term ~typ
-       else scope_term_with_params)
-        (expo = Privat) ss Env.empty p (fun _ -> None) (fun _ -> None)
-    in
+    let scope ?(typ=false) = scope_term ~typ (expo = Privat) ss Env.empty in
     (* Scoping function keeping track of the position. *)
     let scope ?(typ=false) t = Pos.make t.pos (scope ~typ t) in
     (* Desugaring of parameters and scoping of [p_sym_trm]. *)
@@ -394,34 +381,28 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
                  Pos.make pos (P_Prod(p_sym_arg, a))
           in Some (scope ~typ:true a), Syntax.get_impl_term a
     in
-    (* If there are parameters, output a warning if they are not used. *)
-    if p_sym_arg <> [] then
-      begin match a, t with
-      | Some a, Some t ->
-          let rec binders_warn k ty te =
-            if k <= 0 then () else
-              match ty, te with
-              | Prod(_, by), Abst(_, be) ->
-                  let x, ty, te = Bindlib.unbind2 by be in
-                  if Bindlib.(binder_constant by && binder_constant be) then
-                    wrn pos "Variable [%a] could be replaced by [_]."
-                      pp_var x;
-                  binders_warn (k-1) ty te
-              | _ -> assert false
-          in binders_warn (Syntax.nb_params p_sym_arg) a.elt t.elt
-      | _ -> ()
-      end;
     (* Build proof data. *)
     let pdata =
       (* Type of the symbol. *)
-      let a =
+      let (t, a) =
         match a with
-        | Some {elt=t;pos} -> (* Check that the given type is well sorted. *)
-            Query.check_sort pos p [] t; t
+        | Some {elt=a;pos} -> (* Check that the given type is well sorted. *)
+            let (a, _) = Query.check_sort pos p [] a in
+            let t =
+              match t with
+              | None -> None
+              | Some {elt=t;pos} ->
+                  (* Refine definition (remove placeholders &c.) *)
+                  let t = Infer.check_noexn p [] t a in
+                  Option.map (Pos.make pos) t
+            in
+            (t, a)
         | None -> (* If no type is given, infer it from the definition. *)
             match t with
             | None -> assert false
-            | Some {elt=t;pos} -> Query.infer pos p [] t
+            | Some {elt=t;pos} ->
+                let (t, a) = Query.infer pos p [] t in
+                (Some (Pos.make pos t), a)
       in
       (* Get tactics and proof end. *)
       let pdata_proof, pe =
@@ -477,7 +458,7 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
         let proof_goals = Proof.add_goals_of_problem p [] in
         if p_sym_def then
           (* Add a new focused goal and refine on it. *)
-          let m = LibMeta.fresh p ~name:id a 0 in
+          let m = LibMeta.fresh p a 0 in
           let g = Goal.of_meta m in
           let ps = {proof_name = p_sym_nam; proof_term = Some m;
                     proof_goals = g :: proof_goals} in

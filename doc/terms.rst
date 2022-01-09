@@ -49,7 +49,6 @@ A user-defined term can be either:
      current file or in some previously open module, possibly prefixed by ``@``
      to disallow implicit arguments
    * a bound variable
-   * a metavariable or goal when prefixed by ``?``
 
 * an anonymous function ``λ(x:A) y z,t`` mapping ``x``, ``y`` and ``z``
   (of type ``A`` for ``x``) to ``t``
@@ -64,9 +63,9 @@ A user-defined term can be either:
 * an application written by space-separated juxtaposition, except for
   symbol identifiers declared as infix (e.g. ``x + y``)
 
-* a meta-variable application ``?M.[t;u;v]``. ``?M`` alone, without arguments
-  between square brackets, is a shorthand for ``?M.[x1;..;xn]`` where
-  ``x1;..;xn`` are all the variables of the context.
+* a hole ``_`` to be filled automatically.
+
+* a metavariable ``?0.[x;y]`` that has been generated previously.
 
 * a pattern-variable application ``$P.[x;y]`` (in rules only). ``$P``
   alone, without arguments between square brackets, is a shorthand for

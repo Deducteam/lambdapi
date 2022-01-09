@@ -132,15 +132,6 @@ let meta_of_key : proof_state -> int -> meta option = fun ps key ->
   in
   List.find_map f ps.proof_goals
 
-(** [meta_of_name ps n] returns [Some m] where [m] is a meta of [ps] whose
-   name is [n], or else it returns [None]. *)
-let meta_of_name : proof_state -> string -> meta option = fun ps n ->
-  let f = function
-    | Typ {goal_meta=m;_} when m.meta_name = Some n -> Some m
-    | _ -> None
-  in
-  List.find_map f ps.proof_goals
-
 (** [focus_env ps] returns the scoping environment of the focused goal or the
    empty environment if there is none. *)
 let focus_env : proof_state option -> Env.t = fun ps ->
