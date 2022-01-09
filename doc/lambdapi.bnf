@@ -77,7 +77,7 @@ QID ::= [UID "."]+ UID
 <aterm> ::= <term_id>
           | "_"
           | "TYPE"
-          | "?" UID [<env>]
+          | "?" UID <env>
           | "$" UID [<env>]
           | "(" <term> ")"
           | "[" <term> "]"

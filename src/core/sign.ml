@@ -99,6 +99,7 @@ let link : t -> unit = fun sign ->
         mk_LLet(link_term mk_Appl a, link_term mk_Appl t, link_binder u)
     | Appl(t,u)   -> mk_Appl(link_term mk_Appl t, link_term mk_Appl u)
     | Meta(_,_)   -> assert false
+    | Plac _      -> assert false
     | Patt(i,n,m) -> mk_Patt(i, n, Array.map (link_term mk_Appl) m)
     | TEnv(t,m)   -> mk_TEnv(t, Array.map (link_term mk_Appl) m)
     | Wild        -> assert false
@@ -176,6 +177,7 @@ let unlink : t -> unit = fun sign ->
     | LLet(a,t,u)  -> unlink_term a; unlink_term t; unlink_binder u
     | Appl(t,u)    -> unlink_term t; unlink_term u
     | Meta(_,_)    -> assert false (* Should not happen, uninstantiated. *)
+    | Plac _       -> assert false (* Should be replaced by a term *)
     | Patt(_,_,_)  -> () (* The environment only contains variables. *)
     | TEnv(t,m)    -> unlink_term_env t; Array.iter unlink_term m
     | Wild         -> ()
@@ -274,6 +276,7 @@ let read : string -> t = fun fname ->
       | LLet(a,t,u) -> reset_term a; reset_term t; reset_binder u
       | Appl(t,u)   -> reset_term t; reset_term u
       | Meta(_,_)   -> assert false
+      | Plac _      -> assert false
       | Patt(_,_,m) -> Array.iter reset_term m
       | TEnv(_,m)   -> Array.iter reset_term m
       | Wild        -> ()

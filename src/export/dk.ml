@@ -147,6 +147,7 @@ let rec term : bool -> term pp = fun b ppf t ->
   | TRef _ -> assert false
   | Wild -> assert false
   | Meta _ -> assert false
+  | Plac _ -> assert false
 
 (** Translation of declarations. *)
 

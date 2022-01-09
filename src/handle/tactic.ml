@@ -28,10 +28,7 @@ let add_axiom : Sig_state.t -> popt -> meta -> Sig_state.t =
   fun ss sym_pos m ->
   let name =
     let i = Stdlib.(incr admitted; !admitted) in
-    let p = Printf.sprintf "_ax%i" i in
-    match m.meta_name with
-    | Some n -> Escape.add_suffix (p ^ "_") n
-    | _ -> p
+    Printf.sprintf "_ax%i" i
   in
   (* Create a symbol with the same type as the metavariable *)
   let ss, sym =
@@ -114,8 +111,10 @@ let tac_refine :
   let c = Env.to_ctxt gt.goal_hyps in
   if LibMeta.occurs gt.goal_meta c t then fatal pos "Circular refinement.";
   (* Check that [t] has the required type. *)
-  if not (Infer.check_noexn p c t gt.goal_type) then
-    fatal pos "%a@ does not have type@ %a." pp_term t pp_term gt.goal_type;
+  match Infer.check_noexn p c t gt.goal_type with
+  | None ->
+      fatal pos "%a@ does not have type@ %a."  pp_term t  pp_term gt.goal_type
+  | Some t ->
   if Logger.log_enabled () then
     log_tact (Color.red "%a ≔ %a") pp_meta gt.goal_meta pp_term t;
   LibMeta.set p gt.goal_meta
@@ -146,12 +145,21 @@ let ind_data : popt -> Env.t -> term -> Sign.ind_data = fun pos env a ->
    typing goal [gt]. *)
 let tac_induction : popt -> proof_state -> goal_typ -> goal list
     -> proof_state = fun pos ps ({goal_type;goal_hyps;_} as gt) gs ->
-  match Eval.whnf (Env.to_ctxt goal_hyps) goal_type with
+  let ctx = Env.to_ctxt goal_hyps in
+  match Eval.whnf ctx goal_type with
   | Prod(a,_) ->
       let ind = ind_data pos goal_hyps a in
       let n = ind.ind_nb_params + ind.ind_nb_types + ind.ind_nb_cons in
-      let p = new_problem() in
-      let t = Env.app_fresh_meta_terms p (mk_Symb ind.ind_prop) n goal_hyps in
+      let p = new_problem () in
+      let metas =
+        let fresh_meta _ =
+          let mt = LibMeta.make p ctx mk_Type in
+          LibMeta.make p ctx mt
+        in
+        (* Reverse to have goals properly sorted. *)
+        List.(rev (init (n - 1) fresh_meta))
+      in
+      let t = add_args (mk_Symb ind.ind_prop) metas in
       tac_refine pos ps gt gs p t
   | _ -> fatal pos "[%a] is not a product." pp_term goal_type
 
@@ -185,8 +193,7 @@ let handle :
   match g with
   | Unif _ -> fatal pos "Not a typing goal."
   | Typ ({goal_hyps=env;_} as gt) ->
-  let scope p t = Scope.scope_term prv ss env p
-                    (Proof.meta_of_key ps) (Proof.meta_of_name ps) t in
+  let scope t = Scope.scope_term ~mok:(Proof.meta_of_key ps) prv ss env t in
   (* Function for checking that an identifier is not already in use. *)
   let check id =
     if Env.mem id.elt env then fatal id.pos "Identifier already in use." in
@@ -199,7 +206,7 @@ let handle :
         if k <= 0 then acc else mk_idopts (idopt::acc) (k-1) in
       let t = P.abst_list (mk_idopts [] n) P.wild in
       let p = new_problem() in
-      tac_refine pos ps gt gs p (scope p t)
+      tac_refine pos ps gt gs p (scope t)
   in
   match elt with
   | P_tac_admit
@@ -208,19 +215,18 @@ let handle :
   | P_tac_simpl _
   | P_tac_solve -> assert false (* done before *)
   | P_tac_apply pt ->
-      let p = new_problem() in
-      let t = scope p pt in
+      let t = scope pt in
       (* Compute the product arity of the type of [t]. *)
       (* FIXME: this does not take into account implicit arguments. *)
       let n =
         let c = Env.to_ctxt env in
+        let p = new_problem () in
         match Infer.infer_noexn p c t with
         | None -> fatal pos "[%a] is not typable." pp_term t
-        | Some a -> count_products c a
+        | Some (_, a) -> count_products c a
       in
-      let p, t = if n <= 0 then p, t
-                 else let p = new_problem() in
-                      p, scope p (P.appl_wild pt n) in
+      let t = scope (P.appl_wild pt n) in
+      let p = new_problem () in
       tac_refine pos ps gt gs p t
   | P_tac_assume idopts ->
       (* Check that the given identifiers are not already used. *)
@@ -228,7 +234,7 @@ let handle :
       (* Check that the given identifiers are pairwise distinct. *)
       Syntax.check_distinct idopts;
       let p = new_problem() in
-      tac_refine pos ps gt gs p (scope p (P.abst_list idopts P.wild))
+      tac_refine pos ps gt gs p (scope (P.abst_list idopts P.wild))
   | P_tac_generalize {elt=id; pos=idpos} ->
       (* From a goal [e1,id:a,e2 ⊢ ?[e1,id,e2] : u], generate a new goal [e1 ⊢
          ?m[e1] : Π id:a, Π e2, u], and refine [?[e]] with [?m[e1] id e2]. *)
@@ -252,25 +258,30 @@ let handle :
          and [e,x:t ⊢ ?2[e,x] : u], and refine [?[e]] with [?2[e,?1[e]]. *)
       check id;
       let p = new_problem() in
-      let t = scope p t in
+      let t = scope t in
       (* Generate the constraints for [t] to be of type [Type]. *)
       let c = Env.to_ctxt gt.goal_hyps in
-      if not (Infer.check_noexn p c t mk_Type) then
-        fatal pos "%a is not of type Type." pp_term t;
-      (* Create a new goal of type [t]. *)
-      let n = List.length env in
-      let bt = lift t in
-      let m1 = LibMeta.fresh p (Env.to_prod env bt) n in
-      (* Refine the focused goal. *)
-      let v = new_tvar id.elt in
-      let env' = Env.add v bt None env in
-      let m2 = LibMeta.fresh p (Env.to_prod env' (lift gt.goal_type)) (n+1) in
-      let ts = Env.to_tbox env in
-      let u = Bindlib.unbox (_Meta m2 (Array.append ts [|_Meta m1 ts|])) in
-      tac_refine pos ps gt gs p u
+      begin
+        match Infer.check_noexn p c t mk_Type with
+        | None -> fatal pos "%a is not of type Type." pp_term t
+        | Some t ->
+        (* Create a new goal of type [t]. *)
+        let n = List.length env in
+        let bt = lift t in
+        let m1 = LibMeta.fresh p (Env.to_prod env bt) n in
+        (* Refine the focused goal. *)
+        let v = new_tvar id.elt in
+        let env' = Env.add v bt None env in
+        let m2 =
+          LibMeta.fresh p (Env.to_prod env' (lift gt.goal_type)) (n+1)
+        in
+        let ts = Env.to_tbox env in
+        let u = Bindlib.unbox (_Meta m2 (Array.append ts [|_Meta m1 ts|])) in
+        tac_refine pos ps gt gs p u
+      end
   | P_tac_induction -> tac_induction pos ps gt gs
   | P_tac_refine t ->
-      let p = new_problem() in tac_refine pos ps gt gs p (scope p t)
+      let p = new_problem() in tac_refine pos ps gt gs p (scope t)
   | P_tac_refl ->
       let cfg = Rewrite.get_eq_config ss pos in
       let (a,l,_), vs = Rewrite.get_eq_data cfg pos gt.goal_type in
@@ -292,7 +303,7 @@ let handle :
       let pat = Option.map (Scope.scope_rw_patt ss env) pat in
       let p = new_problem() in
       tac_refine pos ps gt gs p
-        (Rewrite.rewrite ss p pos gt l2r pat (scope p eq))
+        (Rewrite.rewrite ss p pos gt l2r pat (scope eq))
   | P_tac_sym ->
       let cfg = Rewrite.get_eq_config ss pos in
       let (a,l,r), vs = Rewrite.get_eq_data cfg pos gt.goal_type in

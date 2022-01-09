@@ -70,6 +70,7 @@ let snf : (term -> term) -> (term -> term) = fun whnf ->
         mk_Abst(snf a, Bindlib.unbox (Bindlib.bind_var x (lift (snf b))))
     | Appl(t,u)   -> mk_Appl(snf t, snf u)
     | Meta(m,ts)  -> mk_Meta(m, Array.map snf ts)
+    | Plac _      -> assert false (* Typechecked terms are evaluated *)
     | Patt(_,_,_) -> assert false
     | TEnv(_,_)   -> assert false
     | Wild        -> assert false
@@ -431,6 +432,8 @@ and tree_walk : config -> dtree -> stack -> (term * stack) option =
           | Kind
           | Type
           | Meta(_, _) -> default ()
+          | Plac _     -> assert false
+             (* Should not appear in typechecked terms. *)
           | TRef(_)    -> assert false (* Should be reduced by [whnf_stk]. *)
           | Appl(_)    -> assert false (* Should be reduced by [whnf_stk]. *)
           | LLet(_)    -> assert false (* Should be reduced by [whnf_stk]. *)
