@@ -3,7 +3,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
-## Unreleased
+## 2.1.0 (2022-01-11)
 
 ### Added
 
@@ -52,7 +52,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   depend on them.
 
 - Metavariables cannot be referenced by their name anymore, hence the
-  syntax `?M.[x;y]` is obsolete, but `?0.[x;y]` isn't
+  syntax `?M.[x;y]` is obsolete, but `?0.[x;y]` isn't.
 
 ## 2.0.0 (2021-12-15)
 

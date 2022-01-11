@@ -4,12 +4,14 @@ synopsis: "Proof assistant for the λΠ-calculus modulo rewriting"
 description: """
 This package provides:
 - A lambdapi command for checking .lp or .dk files,
-translating .dk files to .lp files, or launching
-an LSP server for editing .lp files.
+translating .dk files to .lp files and vice versa,
+or launching an LSP server for editing .lp files.
+- A library of logic definitions and basic definitions and proofs
+on natural numbers and polymorphic lists.
 - A rich Emacs mode based on LSP (available on MELPA too).
-- A very basic mode for Vim.
+- A basic mode for Vim.
 - OCaml libraries.
-A VSCode extension is also available on the VSCode Marketplace.
+A VSCode extension is available on the VSCode Marketplace.
 
 Find Lambdapi user manual on https://lambdapi.readthedocs.io/.
 

@@ -2,14 +2,14 @@ Active Contributors (in alphabetical order)
 ===========================================
 
 - Frédéric Blanqui (coordinator)
-- Emilio Gallego (2018-)
 - Gabriel Hondet (2019-)
+- Ashish Kumar Barnawal (2020-)
 
 Past Contributors (in alphabetical order)
 =========================================
 
+- Emilio Gallego (2018-2021)
 - Aurélien Castre (2021)
-- Ashish Kumar Barnawal (2020-2021)
 - Yann Leray (2021)
 - Amélie Ledein (2020)
 - Yacine El Haddad (2019)
