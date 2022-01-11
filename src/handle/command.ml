@@ -230,6 +230,13 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
       Tree.update_dtree Unif_rule.equiv;
       Console.out 2 "unif_rule %a" pp_unif_rule (Unif_rule.equiv, urule);
       (ss, None, None)
+  | P_coercion(c) ->
+      let pc = scope_rule true ss c in
+      let r = Scope.rule_of_pre_rule pc in
+      Sign.add_rule ss.signature Coercions.coerce r;
+      Tree.update_dtree Coercions.coerce;
+      Console.out 2 "coercion %a" pp_rule (Coercions.coerce, r);
+      (ss, None, None)
 
   | P_inductive(ms, params, p_ind_list) ->
       (* Check modifiers. *)

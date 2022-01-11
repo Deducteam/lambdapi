@@ -40,8 +40,38 @@ let unif : problem -> octxt -> term -> term -> unit =
 
 (** {1 Handling coercions} *)
 
+(** [is_value t] is true if term [t] does not contain [Coercions.coerce]. *)
+let is_value t =
+  let exception Found in
+  (* TODO: write a generic [iter] that operates on leaves *)
+  let rec is_value t =
+    match unfold t with
+    | TRef _ -> assert false
+    | TEnv _ -> assert false
+    | Wild -> assert false
+    | Patt _ -> assert false
+    | Plac _ -> assert false
+    | Type | Kind | Vari _ | Meta _ -> ()
+    | Symb s -> if Coercions.is_ghost s then raise Found
+    | Appl(t,u) -> is_value t; is_value u
+    | Prod(a,b)
+    | Abst(a,b) -> is_value a; is_value (snd (Bindlib.unbind b))
+    | LLet(a,t,u) -> is_value a; is_value t; is_value (snd (Bindlib.unbind u))
+  in
+  try is_value t; true with Found -> false
+
 (* Simply unify types, no coercions yet. *)
-let coerce pb c t a b = unif pb c a b; (t, false)
+let coerce pb c t a b =
+  if Logger.log_enabled () then
+    log "Coerce [%a: %a = %a]"
+      Print.pp_term t Print.pp_term a Print.pp_term b;
+  let reduced =
+    add_args (mk_Symb Coercions.coerce) [a; t; b]
+    |> Eval.snf (classic c)
+  in
+  if is_value reduced then (reduced, true) else (
+    unif pb c a b;
+    (t, false))
 
 (** {1 Other rules} *)
 
@@ -76,16 +106,33 @@ and force : problem -> octxt -> term -> term -> term * bool =
  fun pb c te ty ->
  if Logger.log_enabled () then
    log "Force [%a] of [%a]" Print.pp_term te Print.pp_term ty;
+ let default () =
+   let (t, a, cui) = infer pb c te in
+   let t, cu = coerce pb c t a ty in
+   (t, cu || cui)
+ in
  match unfold te with
  | Plac true ->
      unif pb c ty mk_Type;
      (unbox (LibMeta.bmake pb (boxed c) _Type), true)
  | Plac false ->
      (unbox (LibMeta.bmake pb (boxed c) (lift ty)), true)
- | _ ->
-     let (t, a, cui) = infer pb c te in
-     let t, cu = coerce pb c t a ty in
-     (t, cu || cui)
+ | Abst (dom, t) -> (
+     match Eval.whnf (classic c) ty with
+       | Prod (e1, e2) ->
+           let (dom, cu_dom) = force pb c dom mk_Type in
+           unif pb c dom e1;
+           let x, t, e2 = Bindlib.unbind2 t e2 in
+           let c = extend c x dom in
+           let (t, cu_t) = force pb c t e2 in
+           let top =
+             if cu_t || cu_dom then
+               mk_Abst (dom, Bindlib.(lift t |> bind_var x |> unbox))
+           else te
+           in
+           (top, cu_t || cu_dom)
+       | _ -> default () )
+ | _ -> default ()
 
 and infer_aux : problem -> octxt -> term -> term * term * bool =
  fun pb c t ->
