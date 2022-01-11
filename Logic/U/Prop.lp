@@ -24,4 +24,4 @@ rule Prf ($p ∧ $q) ↪ Π r, (Prf $p → Prf $q → Prf r) → Prf r;
 
 constant symbol ∨ : Prop → Prop → Prop; notation ∨ infix right 20;
 
-rule Prf ($p ∨ $q) ↪ Π r, (Prf $p → Prf r) → (Prf $p → Prf r) → Prf r;
+rule Prf ($p ∨ $q) ↪ Π r, (Prf $p → Prf r) → (Prf $q → Prf r) → Prf r;

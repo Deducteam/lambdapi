@@ -20,4 +20,4 @@ clean:
 .SUFFIXES: .lp .lpo
 
 .lp.lpo:
-	$(LAMBDAPI) check --gen-obj $<
+	$(LAMBDAPI) check -v 0 -w -c $<
