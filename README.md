@@ -11,6 +11,7 @@ Questions can be asked on the following
 [forum](https://github.com/Deducteam/lambdapi/discussions).
 
 Examples of developments made with Lambdapi:
+- [Logic definitions](https://github.com/Deducteam/lambdapi/tree/master/Logic) installed with Lambdapi
 - [library on natural numbers and polymorphic lists](https://github.com/fblanqui/lib)
 - [`tests/OK` directory](https://github.com/Deducteam/lambdapi/tree/master/tests/OK) (used for testing and continuous integration)
 

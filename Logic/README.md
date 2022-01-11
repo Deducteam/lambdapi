@@ -1,4 +1,5 @@
-Repository of various logic definitions:
+Repository of logic definitions
+===============================
 
 - TFF: polymorphic first-order logic
 
