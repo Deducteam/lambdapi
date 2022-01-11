@@ -22,11 +22,13 @@ and convert them to Lambdapi files (see :doc:`dedukti`).
 
 `Learn Lambdapi in 15 minutes <https://raw.githubusercontent.com/Deducteam/lambdapi/master/tests/OK/tutorial.lp>`__
 
-`Library of logics
-<https://github.com/Deducteam/lambdapi/tree/master/Logic>`__ provided
-with the installation of Lambdapi. For instance, do ``require
-Logic.TFF.Main;`` to use the symbols defined in `Logic/TFF/Main
-<https://github.com/Deducteam/lambdapi/tree/master/Logic>`__.
+Examples of developments made with Lambdapi:
+
+  - `Logic definitions provided with Lambdapi <https://github.com/Deducteam/lambdapi/tree/master/Logic>`__
+  - `Basic library on natural numbers and polymorphic lists <https://github.com/fblanqui/lib>`__
+  - `Example of inductive-recursive type definition <https://github.com/Deducteam/lambdapi/blob/master/tests/OK/indrec.lp>`__
+  - `Example of inductive-inductive type definition <https://github.com/Deducteam/lambdapi/blob/master/tests/OK/indind.lp>`__
+  - `Test files <https://github.com/Deducteam/lambdapi/tree/master/tests/OK>`__
 
 .. toctree::
    :maxdepth: 1
