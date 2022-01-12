@@ -36,11 +36,6 @@ let print_implicits : bool ref = Console.register_flag "print_implicits" false
 let print_meta_types : bool ref =
   Console.register_flag "print_meta_types" false
 
-(** Flag for printing the arguments of metavariables. Remark: this does not
-   generate parsable terms; use for debug only. *)
-let print_meta_args : bool ref =
-  Console.register_flag "print_meta_args" true
-
 (** Flag for printing contexts in unification problems. *)
 let print_contexts : bool ref = Console.register_flag "print_contexts" false
 
@@ -128,17 +123,14 @@ let are_quant_args : term list -> bool = fun args ->
   | [b] -> is_abst b
   | _ -> false
 
-let pp_meta_name : meta pp = fun ppf m ->
-  out ppf "%d" m.meta_key
-
 (** The possible priority levels are [`Func] (top level, including abstraction
    and product), [`Appl] (application) and [`Atom] (smallest priority). *)
 type priority = [`Func | `Appl | `Atom]
 
 let rec pp_meta : meta pp = fun ppf m ->
   if !print_meta_types then
-    out ppf "(?%a:%a)" pp_meta_name m pp_term !(m.meta_type)
-  else out ppf "?%a" pp_meta_name m
+    out ppf "(?%d:%a)" m.meta_key pp_term !(m.meta_type)
+  else out ppf "?%d" m.meta_key
 
 and pp_type : term pp = fun ppf a ->
   if !print_domains then out ppf ": %a" pp_term a
@@ -209,10 +201,7 @@ and pp_term : term pp = fun ppf t ->
     | _ -> assert false
 
   and pp_head wrap ppf t =
-    let pp_env ppf ar =
-      if !print_meta_args && ar <> [||] then
-        out ppf "[%a]" (Array.pp func ";") ar
-    in
+    let pp_env ppf ar = out ppf "[%a]" (Array.pp func ";") ar in
     let pp_term_env ppf te =
       match te with
       | TE_Vari(m) -> pp_var ppf m
@@ -231,7 +220,7 @@ and pp_term : term pp = fun ppf t ->
     | Type        -> out ppf "TYPE"
     | Kind        -> out ppf "KIND"
     | Symb(s)     -> pp_sym ppf s
-    | Meta(m,e)   -> out ppf "%a%a" pp_meta m pp_env e
+    | Meta(m,e)   -> out ppf "%a.%a" pp_meta m pp_env e
     | Plac(_)     -> out ppf "_"
     | Patt(_,n,e) -> out ppf "$%a%a" pp_uid n pp_env e
     | TEnv(t,e)   -> out ppf "$%a%a" pp_term_env t pp_env e
