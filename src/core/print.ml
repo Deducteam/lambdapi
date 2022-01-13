@@ -201,7 +201,7 @@ and pp_term : term pp = fun ppf t ->
     | _ -> assert false
 
   and pp_head wrap ppf t =
-    let pp_env ppf ar = out ppf "[%a]" (Array.pp func ";") ar in
+    let pp_env ppf ar = out ppf ".[%a]" (Array.pp func ";") ar in
     let pp_term_env ppf te =
       match te with
       | TE_Vari(m) -> pp_var ppf m
@@ -220,7 +220,7 @@ and pp_term : term pp = fun ppf t ->
     | Type        -> out ppf "TYPE"
     | Kind        -> out ppf "KIND"
     | Symb(s)     -> pp_sym ppf s
-    | Meta(m,e)   -> out ppf "%a.%a" pp_meta m pp_env e
+    | Meta(m,e)   -> out ppf "%a%a" pp_meta m pp_env e
     | Plac(_)     -> out ppf "_"
     | Patt(_,n,e) -> out ppf "$%a%a" pp_uid n pp_env e
     | TEnv(t,e)   -> out ppf "$%a%a" pp_term_env t pp_env e
