@@ -29,10 +29,4 @@ symbol car [a: Set] [b: Set] (_: El (cell a b)): El a;
 symbol cdr [a: Set] [b: Set] (_: El (cell a b)): El b;
 coercion #c (El (cell $a $b)) $t (El (cell $c $d)) ↪
   cons (#c (El $a) (car $t) (El $c)) (#c (El $b) (cdr $t) (El $d));
-assert (x y: El float) ⊢ cons [float] [float] x y: El (cell nat nat);
-
-// Note that it does not work if the implicit arguments are not set:
-assertnot (x y: El float) ⊢ cons x y: El (cell nat nat);
-// this is because unification constraints are delayed. To pass this
-// example, we need to first unify then apply coercions in
-// Infer.coerce
+assert (x y: El float) ⊢ cons x y: El (cell nat nat);

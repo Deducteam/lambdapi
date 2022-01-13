@@ -9,6 +9,9 @@ open Timed
 let log = Logger.make 'i' "infr" "type inference/checking"
 let log = log.pp
 
+(** Unification *)
+let solve : (problem -> bool) ref = ref (fun _ -> false)
+
 (* Optimised context *)
 type octxt = ctxt * bctxt
 let boxed = snd
@@ -62,16 +65,32 @@ let is_value t =
 
 (* Simply unify types, no coercions yet. *)
 let coerce pb c t a b =
-  if Logger.log_enabled () then
-    log "Coerce [%a: %a = %a]"
-      Print.pp_term t Print.pp_term a Print.pp_term b;
-  let reduced =
-    add_args (mk_Symb Coercions.coerce) [a; t; b]
-    |> Eval.snf (classic c)
-  in
-  if is_value reduced then (reduced, true) else (
+  (* FIXME: tests/OK/273.lp fails if this option isn't used (because when
+     no coercion is needed, unification constraints may be postponed) *)
+  if !(Coercions.coerce.sym_dtree) == Tree_type.empty_dtree then (
     unif pb c a b;
     (t, false))
+  else
+    let timestamp = Time.save () in
+    if Logger.log_enabled () then
+      log "Coerce [%a: %a = %a]"
+        Print.pp_term t Print.pp_term a Print.pp_term b;
+    unif pb c a b;
+    if !solve pb then
+      (t, false)
+    else (
+      (* Removed unsatisfiable constraint from problem *)
+      Time.restore timestamp;
+      (* Try to find a coercion *)
+      let coerced =
+        add_args (mk_Symb Coercions.coerce) [a; t; b]
+        |> Eval.snf (classic c)
+      in
+      if is_value coerced then (coerced, true) else (
+        (* If no coercion can be found, we hope that the constraint will
+           be solved later *)
+        unif pb c a b;
+        (t, false)))
 
 (** {1 Other rules} *)
 

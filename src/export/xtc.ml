@@ -175,7 +175,10 @@ let get_vars : sym -> rule -> (string * Term.term) list = fun s r ->
   | Some _ ->
   let cs = List.rev_map (fun (_,t,u) -> (t,u)) !p.to_solve in
   let ctx = List.map (fun (x,a,_) -> (x,a)) ctx in
-  List.map (fun (v,ty) -> Bindlib.name_of v, List.assoc ty cs) ctx
+  let f (v, ty) =
+    Option.map (fun ty -> Bindlib.name_of v, ty) (List.assoc_opt ty cs)
+  in
+  List.filter_map f ctx
 
 (** [to_XTC ppf sign] outputs a XTC representation of the rewriting system of
     the signature [sign] to [ppf]. *)
