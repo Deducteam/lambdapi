@@ -136,7 +136,9 @@ end = struct
     Option.iter State.apply st;
     let restore () =
       State.pop ();
-      lib_mappings := libmap
+      lib_mappings := libmap;
+      Unif_rule.equiv.sym_dtree := Tree_type.empty_dtree;
+      Coercions.coerce.sym_dtree := Tree_type.empty_dtree
     in
     try
       let res = f x in
