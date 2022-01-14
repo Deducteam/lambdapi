@@ -153,7 +153,7 @@ let string = [%sedlex.regexp? '"', Star (Compl '"'), '"']
 
 (** Unqualified regular identifiers are any non-empty sequence of characters
    not among: *)
-let forbidden_letter = [%sedlex.regexp? Chars " ,;\r\t\n(){}[]:.`\"@$|?/*"]
+let forbidden_letter = [%sedlex.regexp? Chars " ,;\r\t\n(){}[]:.`\"@$|"]
 let regid = [%sedlex.regexp? '/' | '*' | Plus (Compl forbidden_letter)]
 
 let is_regid : string -> bool = fun s ->
@@ -190,6 +190,7 @@ let rec token lb =
   (* comments *)
   | oneline_comment -> token lb
   | "/*" -> comment token 0 lb
+  | "*/" -> invalid_character lb
 
   (* keywords *)
   | "abort" -> ABORT
