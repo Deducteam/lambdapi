@@ -41,6 +41,24 @@ let unif : problem -> octxt -> term -> term -> unit =
      pb := {!pb with to_solve = (classic c, a, b) :: !pb.to_solve}
    end
 
+(** [solve1 pb c a b] tries to solve the equation [a = b] in context
+    [c] in particular: it first try to solve this equation only (in
+    a new problem), then if it fails it tries to solve it with other
+    equations of [c]. The function is pure in case of failure. *)
+let solve1 : problem -> octxt -> term -> term -> bool = fun pb c a b ->
+  let timestamp = Time.save () in
+  let subpb = ref { !pb with unsolved=[]; to_solve=[] } in
+  unif subpb c a b;
+  if !solve subpb then (
+    (* Backup meta instantiations in the original problem *)
+    pb := { !pb with metas = !subpb.metas };
+    true)
+  else (
+    Time.restore timestamp;
+    unif pb c a b;
+    !solve pb || (Time.restore timestamp; false))
+
+
 (** {1 Handling coercions} *)
 
 (** [is_value t] is true if term [t] does not contain [Coercions.coerce]. *)
@@ -49,38 +67,36 @@ let is_value t =
   (* TODO: write a generic [iter] that operates on leaves *)
   let rec is_value t =
     match unfold t with
-    | TRef _ -> assert false
-    | TEnv _ -> assert false
+    | TRef _-> assert false
+    | TEnv _-> assert false
     | Wild -> assert false
     | Patt _ -> assert false
     | Plac _ -> assert false
     | Type | Kind | Vari _ | Meta _ -> ()
-    | Symb s -> if Coercions.is_ghost s then raise Found
-    | Appl(t,u) -> is_value t; is_value u
+    | Symb s when Coercions.is_ghost s -> raise Found
+    | Symb _-> ()
+    | Appl (t, u) -> is_value t; is_value u
     | Prod(a,b)
-    | Abst(a,b) -> is_value a; is_value (snd (Bindlib.unbind b))
-    | LLet(a,t,u) -> is_value a; is_value t; is_value (snd (Bindlib.unbind u))
+    | Abst(a,b) ->
+        is_value a; is_value (snd (Bindlib.unbind b))
+    | LLet(a,t,u) ->
+        is_value a; is_value t; is_value (snd (Bindlib.unbind u))
   in
   try is_value t; true with Found -> false
 
 (* Simply unify types, no coercions yet. *)
 let coerce pb c t a b =
+  if Eval.eq_modulo (classic c) a b then (t, false) else
   (* FIXME: tests/OK/273.lp fails if this option isn't used (because when
      no coercion is needed, unification constraints may be postponed) *)
   if !(Coercions.coerce.sym_dtree) == Tree_type.empty_dtree then (
     unif pb c a b;
     (t, false))
   else
-    let timestamp = Time.save () in
-    if Logger.log_enabled () then
-      log "Coerce [%a: %a = %a]"
-        Print.pp_term t Print.pp_term a Print.pp_term b;
-    unif pb c a b;
-    if !solve pb then
-      (t, false)
-    else (
-      (* Removed unsatisfiable constraint from problem *)
-      Time.restore timestamp;
+    if solve1 pb c a b then (t, false) else (
+      if Logger.log_enabled () then
+        log "Cast [%a: %a = %a]"
+          Print.pp_term t Print.pp_term a Print.pp_term b;
       (* Try to find a coercion *)
       let coerced =
         add_args (mk_Symb Coercions.coerce) [a; t; b]
