@@ -190,7 +190,6 @@ let rec token lb =
   (* comments *)
   | oneline_comment -> token lb
   | "/*" -> comment token 0 lb
-  | "*/" -> invalid_character lb
 
   (* keywords *)
   | "abort" -> ABORT
