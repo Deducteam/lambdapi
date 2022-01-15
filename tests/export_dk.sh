@@ -19,6 +19,8 @@ do
         escape_path|'a b/escape file');; # because dedukti does not accept spaces in module names
         262_private_in_lhs);; # because dedukti does not accept protected symbols in rule LHS arguments
         273);; # because dedukti SR algorithm fails
+        file.with.dot|req.file.with.dot);; #FIXME
+        indind);; #FIXME
         *) lp_files="$dir/$f.lp $lp_files";
            f=`echo $f | sed -e 's/\//_/g'`;
            dk_files="${outdir}_$f.dk $dk_files";
@@ -29,11 +31,11 @@ done
 # compile lp files (optional)
 compile() {
     cd $root
-    echo compile lp files (optional) ...
+    echo 'compile lp files (optional) ...'
     #$lambdapi check -w -c $lp_files # does not work because of #802
     for f in $lp_files
     do
-        echo compile $f ...
+        echo "compile $f ..."
         $lambdapi check -w -v 0 -c $f
     done
 }
@@ -42,7 +44,7 @@ time compile # can be commented
 # translate lp files to dk files
 translate() {
     cd $root
-    echo translate lp files ...
+    echo 'translate lp files ...'
     for f in $lp_files
     do
         f=${f%.lp}
