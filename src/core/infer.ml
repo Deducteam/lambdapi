@@ -46,6 +46,8 @@ let unif : problem -> octxt -> term -> term -> unit =
     a new problem), then if it fails it tries to solve it with other
     equations of [c]. The function is pure in case of failure. *)
 let solve1 : problem -> octxt -> term -> term -> bool = fun pb c a b ->
+  if Logger.log_enabled () then
+    log "Immediately solving %a" Print.pp_constr ((classic c), a, b);
   let timestamp = Time.save () in
   let subpb = ref { !pb with unsolved=[]; to_solve=[] } in
   unif subpb c a b;
@@ -57,7 +59,6 @@ let solve1 : problem -> octxt -> term -> term -> bool = fun pb c a b ->
     Time.restore timestamp;
     unif pb c a b;
     !solve pb || (Time.restore timestamp; false))
-
 
 (** {1 Handling coercions} *)
 
@@ -84,6 +85,31 @@ let is_value t =
   in
   try is_value t; true with Found -> false
 
+(** [unify_remains pb c t] traverses term [t] and for each subterm of
+    the form [#c a t b] it tries to [solve1 pb c a b] *)
+let unify_remains pb c t =
+  if Logger.log_enabled () then
+    log "Unifying remains of [%a]" Print.pp_term t;
+  let exception Failure in
+  let rec unre t =
+    match get_args t with
+    | TRef _, _-> assert false
+    | TEnv _, _ -> assert false
+    | Wild, _ -> assert false
+    | Patt _, _ -> assert false
+    | Plac _, _ -> assert false
+    | (Type | Kind | Vari _ | Meta _), _ -> ()
+    | Symb s, [a;_;b] when Coercions.is_ghost s ->
+        if not (solve1 pb c a b) then raise Failure
+    | Symb _, args -> List.iter unre args
+    | (Prod(a,b) | Abst(a,b)), args ->
+        unre a; unre (snd (Bindlib.unbind b)); List.iter unre args
+    | LLet(a,t,u), args ->
+        unre a; unre t; unre (snd (Bindlib.unbind u)); List.iter unre args
+    | Appl _, _ -> assert false
+  in
+  try unre t; true with Failure -> false
+
 (* Simply unify types, no coercions yet. *)
 let coerce pb c t a b =
   if Eval.eq_modulo (classic c) a b then (t, false) else
@@ -97,16 +123,20 @@ let coerce pb c t a b =
       if Logger.log_enabled () then
         log "Cast [%a: %a = %a]"
           Print.pp_term t Print.pp_term a Print.pp_term b;
-      (* Try to find a coercion *)
-      let coerced =
-        add_args (mk_Symb Coercions.coerce) [a; t; b]
-        |> Eval.snf (classic c)
-      in
-      if is_value coerced then (coerced, true) else (
-        (* If no coercion can be found, we hope that the constraint will
-           be solved later *)
-        unif pb c a b;
-        (t, false)))
+      let reduced = ref (add_args (mk_Symb Coercions.coerce) [a; t; b]) in
+      let exception Over in
+      let exception Failure in
+      try
+        while true do
+          reduced := Eval.snf (classic c) !reduced;
+          if is_value !reduced then raise Over;
+          let size = MetaSet.cardinal !pb.metas in
+          ignore (unify_remains pb c !reduced);
+          if not ((MetaSet.cardinal !pb.metas) < size) then raise Failure
+        done; assert false
+      with
+        | Over -> (!reduced, true)
+        | Failure -> unif pb c a b; (t, false))
 
 (** {1 Other rules} *)
 
