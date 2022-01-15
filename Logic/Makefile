@@ -1,7 +1,7 @@
 PKG := TFF U Zenon PTS
 
 .PHONY: default
-default:
+default: clean
 	for p in $(PKG); do $(MAKE) -C $$p; done
 
 %:
