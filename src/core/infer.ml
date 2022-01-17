@@ -66,25 +66,8 @@ let solve1 : problem -> octxt -> term -> term -> bool = fun pb c a b ->
     [Coercions.coerce]. *)
 let has_coercions t =
   let exception Found in
-  (* TODO: write a generic [iter] that operates on leaves *)
-  let rec has t =
-    match unfold t with
-    | TRef _-> assert false
-    | TEnv _-> assert false
-    | Wild -> assert false
-    | Patt _ -> assert false
-    | Plac _ -> assert false
-    | Type | Kind | Vari _ | Meta _ -> ()
-    | Symb s when Coercion.is_coercion s -> raise Found
-    | Symb _-> ()
-    | Appl (t, u) -> has t; has u
-    | Prod(a,b)
-    | Abst(a,b) ->
-        has a; has (snd (Bindlib.unbind b))
-    | LLet(a,t,u) ->
-        has a; has t; has (snd (Bindlib.unbind u))
-  in
-  try has t; false with Found -> true
+  let do_symb s = if Coercion.is_coercion s then raise Found in
+  try LibTerm.iter ~do_symb t; false with Found -> true
 
 (** [solve_coercions pb c t] traverses term [t] and for each subterm of
     the form [#c a t b] it tries to [solve1 pb c a b] *)

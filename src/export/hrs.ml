@@ -56,15 +56,12 @@ let print_rule : Format.formatter -> term -> term -> unit =
   (* gets pattern and binded variable names *)
   let add_var_names : StrSet.t -> term -> StrSet.t = fun ns t ->
     let names = Stdlib.ref ns in
-    let fn t =
-      match t with
-      | Patt(_,n,_) -> Stdlib.(names := StrSet.add ("$" ^ n) !names)
-      | Abst(_,b) ->
-        let (x, _) = Bindlib.unbind b in
-        Stdlib.(names := StrSet.add (Bindlib.name_of x) !names)
-      | _           -> ()
+    let do_patt _ n _ = Stdlib.(names := StrSet.add ("$" ^ n) !names) in
+    let do_abst _ b =
+      let (x, _) = Bindlib.unbind b in
+      Stdlib.(names := StrSet.add (Bindlib.name_of x) !names)
     in
-    LibTerm.iter fn t;
+    LibTerm.iter ~do_patt ~do_abst t;
     Stdlib.(!names)
   in
   let names = add_var_names StrSet.empty lhs in

@@ -34,29 +34,59 @@ let remove_impl_args : sym -> term list -> term list = fun s ts ->
   in
   remove s.sym_impl ts
 
-(** [iter f t] applies the function [f] to every node of the term [t] with
-   bound variables replaced by [Kind]. Note: [f] is called on already unfolded
-   terms only. *)
-let iter : (term -> unit) -> term -> unit = fun action ->
+(** General iterator on {b unfolded} terms. For each constructor
+    [C] which takes arguments [a1], ..., [an] of the {!term} type, a
+    function [do_c] which takes as many arguments as the constructor [C]
+    (or [()] if the constructor is constant). For instance, to operate
+    on all symbols of a term [t], [iter ~do_symb:(fun s -> ...) t]. *)
+let iter
+  ?(do_wild = ignore)
+  ?(do_symb = ignore)
+  ?(do_vari = ignore)
+  ?(do_Type = ignore)
+  ?(do_Kind = ignore)
+  ?(do_patt = fun _ _ _ -> ())
+  ?(do_plac = fun _ -> ())
+  ?(do_meta = fun _ _ -> ())
+  ?(do_appl = fun _ _ -> ())
+  ?(do_abst = fun _ _ -> ())
+  ?(do_prod = fun _ _ -> ())
+  ?(do_llet = fun _ _ _ -> ()) =
   let rec iter t =
-    let t = unfold t in
-    action t;
-    match t with
-    | Wild
-    | Plac _
-    | TRef(_)
-    | Vari(_)
-    | Type
-    | Kind
-    | Symb(_)     -> ()
-    | Patt(_,_,ts)
-    | TEnv(_,ts)
-    | Meta(_,ts)  -> Array.iter iter ts
-    | Prod(a,b)
-    | Abst(a,b)   -> iter a; iter (Bindlib.subst b mk_Kind)
-    | Appl(t,u)   -> iter t; iter u
-    | LLet(a,t,u) -> iter a; iter t; iter (Bindlib.subst u mk_Kind)
-  in iter
+    match unfold t with
+    | TRef _ -> assert false (* should not appear in unfolded terms *)
+    | TEnv _ -> assert false (* should not appear in unfolded terms *)
+    | Wild -> do_wild ()
+    | Type -> do_Type ()
+    | Kind -> do_Kind ()
+    | Symb s -> do_symb s
+    | Vari x -> do_vari x
+    | Plac b -> do_plac b
+    | Patt (i,n,ts) ->
+        do_patt i n ts;
+        Array.iter iter ts
+    | Meta (m,ts) ->
+        do_meta m ts;
+        Array.iter iter ts
+    | Appl (t, u) ->
+        do_appl t u;
+        iter t;
+        iter u
+    | Abst(a,b) ->
+        do_abst a b;
+        iter a;
+        iter (snd (Bindlib.unbind b))
+    | Prod(a,b) ->
+        do_prod a b;
+        iter a;
+        iter (snd (Bindlib.unbind b))
+    | LLet(a,t,u) ->
+        do_llet a t u;
+        iter a;
+        iter t;
+        iter (snd (Bindlib.unbind u))
+  in
+  iter
 
 (** [unbind_name b s] is like [Bindlib.unbind b] but returns a valid variable
     name when [b] binds no variable. The string [s] is the prefix of the
