@@ -42,7 +42,7 @@ let unif : problem -> octxt -> term -> term -> unit =
    end
 
 (** [solve1 pb c a b] tries to solve the equation [a = b] in context
-    [c] in particular: it first try to solve this equation only (in
+    [c] in particular: it first tries to solve this equation only (in
     a new problem), then if it fails it tries to solve it with other
     equations of [c]. The function is pure in case of failure. *)
 let solve1 : problem -> octxt -> term -> term -> bool = fun pb c a b ->
@@ -62,11 +62,12 @@ let solve1 : problem -> octxt -> term -> term -> bool = fun pb c a b ->
 
 (** {1 Handling coercions} *)
 
-(** [is_value t] is true if term [t] does not contain [Coercions.coerce]. *)
-let is_value t =
+(** [has_coercions t] is true if term [t] contains the symbol
+    [Coercions.coerce]. *)
+let has_coercions t =
   let exception Found in
   (* TODO: write a generic [iter] that operates on leaves *)
-  let rec is_value t =
+  let rec has t =
     match unfold t with
     | TRef _-> assert false
     | TEnv _-> assert false
@@ -76,22 +77,22 @@ let is_value t =
     | Type | Kind | Vari _ | Meta _ -> ()
     | Symb s when Coercions.is_ghost s -> raise Found
     | Symb _-> ()
-    | Appl (t, u) -> is_value t; is_value u
+    | Appl (t, u) -> has t; has u
     | Prod(a,b)
     | Abst(a,b) ->
-        is_value a; is_value (snd (Bindlib.unbind b))
+        has a; has (snd (Bindlib.unbind b))
     | LLet(a,t,u) ->
-        is_value a; is_value t; is_value (snd (Bindlib.unbind u))
+        has a; has t; has (snd (Bindlib.unbind u))
   in
-  try is_value t; true with Found -> false
+  try has t; false with Found -> true
 
-(** [unify_remains pb c t] traverses term [t] and for each subterm of
+(** [solve_coercions pb c t] traverses term [t] and for each subterm of
     the form [#c a t b] it tries to [solve1 pb c a b] *)
-let unify_remains pb c t =
+let solve_coercions pb c t =
   if Logger.log_enabled () then
     log "Unifying remains of [%a]" Print.pp_term t;
   let exception Failure in
-  let rec unre t =
+  let rec solve t =
     match get_args t with
     | TRef _, _-> assert false
     | TEnv _, _ -> assert false
@@ -101,27 +102,29 @@ let unify_remains pb c t =
     | (Type | Kind | Vari _ | Meta _), _ -> ()
     | Symb s, [a;_;b] when Coercions.is_ghost s ->
         if not (solve1 pb c a b) then raise Failure
-    | Symb _, args -> List.iter unre args
+    | Symb _, args -> List.iter solve args
     | (Prod(a,b) | Abst(a,b)), args ->
-        unre a; unre (snd (Bindlib.unbind b)); List.iter unre args
+        solve a; solve (snd (Bindlib.unbind b)); List.iter solve args
     | LLet(a,t,u), args ->
-        unre a; unre t; unre (snd (Bindlib.unbind u)); List.iter unre args
+        solve a; solve t; solve (snd (Bindlib.unbind u)); List.iter solve args
     | Appl _, _ -> assert false
   in
-  try unre t; true with Failure -> false
+  try solve t; true with Failure -> false
 
-(* Simply unify types, no coercions yet. *)
+(** [coerce pb c t a b] tries to coerce term [t] of type [a] into type
+    [b] in problem [pb] and context [c]. In particular, if [a] and [b]
+    can be unified, then [t] is unchanged. Otherwise, a cast is sought
+    from [a] to [b]. *)
 let coerce pb c t a b =
-  if Eval.eq_modulo (classic c) a b then (t, false) else
-  (* FIXME: tests/OK/273.lp fails if this option isn't used (because when
-     no coercion is needed, unification constraints may be postponed) *)
+  if Eval.pure_eq_modulo (classic c) a b then (t, false) else
+  (* FIXME: tests/OK/273.lp fails if this case isn't used. *)
   if !(Coercions.coerce.sym_dtree) == Tree_type.empty_dtree then (
     unif pb c a b;
     (t, false))
   else
     if solve1 pb c a b then (t, false) else (
       if Logger.log_enabled () then
-        log "Cast [%a: %a = %a]"
+        log "Cast [%a: %a <= %a]"
           Print.pp_term t Print.pp_term a Print.pp_term b;
       let reduced = ref (add_args (mk_Symb Coercions.coerce) [a; t; b]) in
       let exception Over in
@@ -129,9 +132,9 @@ let coerce pb c t a b =
       try
         while true do
           reduced := Eval.snf (classic c) !reduced;
-          if is_value !reduced then raise Over;
+          if not (has_coercions !reduced) then raise Over;
           let size = MetaSet.cardinal !pb.metas in
-          ignore (unify_remains pb c !reduced);
+          ignore (solve_coercions pb c !reduced);
           if not ((MetaSet.cardinal !pb.metas) < size) then raise Failure
         done; assert false
       with
