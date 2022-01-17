@@ -102,7 +102,7 @@ let decision_tree_cmd : Config.t -> qident -> bool -> unit =
       let ss = Sig_state.of_sign sign in
       if ghost then
         (* Search through ghost symbols. *)
-        try StrMap.find sym Timed.(!(Unif_rule.sign.sign_symbols))
+        try StrMap.find sym Timed.(!(Ghost.sign.sign_symbols))
         with Not_found -> fatal_no_pos "Unknown ghost symbol %s." sym
       else
         try Sig_state.find_sym ~prt:true ~prv:true ss (Pos.none (mp, sym))

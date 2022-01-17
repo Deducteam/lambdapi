@@ -233,9 +233,9 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
   | P_coercion(c) ->
       let pc = scope_rule true ss c in
       let r = Scope.rule_of_pre_rule pc in
-      Sign.add_rule ss.signature Coercions.coerce r;
-      Tree.update_dtree Coercions.coerce;
-      Console.out 2 "coercion %a" pp_rule (Coercions.coerce, r);
+      Sign.add_rule ss.signature Coercion.coerce r;
+      Tree.update_dtree Coercion.coerce;
+      Console.out 2 "coercion %a" pp_rule (Coercion.coerce, r);
       (ss, None, None)
 
   | P_inductive(ms, params, p_ind_list) ->

@@ -84,12 +84,7 @@ let rec compile_with :
          we need to explicitly update the decision tree of their
          symbols since it is not done in linking which normally follows
          loading. *)
-      let sm = Path.Map.find Coercions.path !(sign.sign_deps) in
-      if Extra.StrMap.mem Coercions.coerce.sym_name sm then
-        Tree.update_dtree Coercions.coerce;
-      let sm = Path.Map.find Unif_rule.path !(sign.sign_deps) in
-      if Extra.StrMap.mem Unif_rule.equiv.sym_name sm then
-        Tree.update_dtree Unif_rule.equiv;
+      Ghost.iter Tree.update_dtree;
       sign
     end
 
@@ -137,8 +132,7 @@ end = struct
     let restore () =
       State.pop ();
       lib_mappings := libmap;
-      Unif_rule.equiv.sym_dtree := Tree_type.empty_dtree;
-      Coercions.coerce.sym_dtree := Tree_type.empty_dtree
+      Ghost.iter (fun s -> s.sym_dtree := Tree_type.empty_dtree)
     in
     try
       let res = f x in

@@ -75,7 +75,7 @@ let has_coercions t =
     | Patt _ -> assert false
     | Plac _ -> assert false
     | Type | Kind | Vari _ | Meta _ -> ()
-    | Symb s when Coercions.is_ghost s -> raise Found
+    | Symb s when Coercion.is_coercion s -> raise Found
     | Symb _-> ()
     | Appl (t, u) -> has t; has u
     | Prod(a,b)
@@ -100,7 +100,7 @@ let solve_coercions pb c t =
     | Patt _, _ -> assert false
     | Plac _, _ -> assert false
     | (Type | Kind | Vari _ | Meta _), _ -> ()
-    | Symb s, [a;_;b] when Coercions.is_ghost s ->
+    | Symb s, [a;_;b] when Coercion.is_coercion s ->
         if not (solve1 pb c a b) then raise Failure
     | Symb _, args -> List.iter solve args
     | (Prod(a,b) | Abst(a,b)), args ->
@@ -118,7 +118,7 @@ let solve_coercions pb c t =
 let coerce pb c t a b =
   if Eval.pure_eq_modulo (classic c) a b then (t, false) else
   (* FIXME: tests/OK/273.lp fails if this case isn't used. *)
-  if !(Coercions.coerce.sym_dtree) == Tree_type.empty_dtree then (
+  if !(Coercion.coerce.sym_dtree) == Tree_type.empty_dtree then (
     unif pb c a b;
     (t, false))
   else
@@ -126,7 +126,7 @@ let coerce pb c t a b =
       if Logger.log_enabled () then
         log "Cast [%a: %a <= %a]"
           Print.pp_term t Print.pp_term a Print.pp_term b;
-      let reduced = ref (add_args (mk_Symb Coercions.coerce) [a; t; b]) in
+      let reduced = ref (Coercion.apply t a b) in
       let exception Over in
       let exception Failure in
       try

@@ -336,8 +336,8 @@ rule: l=term HOOK_ARROW r=term { make_pos $sloc (l, r) }
 unif_rule: e=equation HOOK_ARROW
   L_SQ_BRACKET es=separated_nonempty_list(SEMICOLON, equation) R_SQ_BRACKET
     { (* FIXME: give sensible positions instead of Pos.none and P.appl. *)
-      let equiv = P.qiden Unif_rule.path Unif_rule.equiv.sym_name in
-      let cons = P.qiden Unif_rule.path Unif_rule.cons.sym_name in
+      let equiv = P.qiden Ghost.sign.sign_path Unif_rule.equiv.sym_name in
+      let cons = P.qiden Ghost.sign.sign_path Unif_rule.cons.sym_name in
       let mk_equiv (t, u) = P.appl (P.appl equiv t) u in
       let lhs = mk_equiv e in
       let es = List.rev_map mk_equiv es in
