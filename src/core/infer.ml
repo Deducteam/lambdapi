@@ -64,13 +64,6 @@ let solve1 : problem -> octxt -> term -> term -> bool = fun pb c a b ->
 
 (** {1 Handling coercions} *)
 
-(** [has_coercions t] is true if term [t] contains the symbol
-    [Coercions.coerce]. *)
-let has_coercions t =
-  let exception Found in
-  let do_symb s = if Coercion.is_coercion s then raise Found in
-  try LibTerm.iter ~do_symb t; false with Found -> true
-
 (** [solve_coercions pb c t] traverses term [t] and for each subterm of
     the form [#c a t b] it tries to [solve1 pb c a b] *)
 let solve_coercions pb c t =
@@ -119,7 +112,7 @@ let coerce pb c t a b =
            rule to be triggered, so loop.*)
         while true do
           reduced := Eval.snf (classic c) !reduced;
-          if not (has_coercions !reduced) then raise Over;
+          if not (Coercion.has_coercions !reduced) then raise Over;
           let size = MetaSet.cardinal !pb.metas in
           ignore (solve_coercions pb c !reduced);
           if not ((MetaSet.cardinal !pb.metas) < size) then raise Failure
