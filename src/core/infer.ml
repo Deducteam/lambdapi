@@ -42,23 +42,25 @@ let unif : problem -> octxt -> term -> term -> unit =
    end
 
 (** [solve1 pb c a b] tries to solve the equation [a = b] in context
-    [c] in particular: it first tries to solve this equation only (in
-    a new problem), then if it fails it tries to solve it with other
-    equations of [c]. The function is pure in case of failure. *)
+    [c] in particular: it calls unification and returns [true] if [a] is
+    convertible to [b] after that (even if there are still some unsolved
+    equations). If [a = b] cannot be solved, [false] is returned and
+    [pb] is reduced as much as it can without the equation [a = b].*)
 let solve1 : problem -> octxt -> term -> term -> bool = fun pb c a b ->
   if Logger.log_enabled () then
     log "Immediately solving %a" Print.pp_constr ((classic c), a, b);
-  let timestamp = Time.save () in
-  let subpb = ref { !pb with unsolved=[]; to_solve=[] } in
-  unif subpb c a b;
-  if !solve subpb then (
-    (* Backup meta instantiations in the original problem *)
-    pb := { !pb with metas = !subpb.metas };
-    true)
-  else (
-    Time.restore timestamp;
-    unif pb c a b;
-    !solve pb || (Time.restore timestamp; false))
+  let before = Time.save () in
+  unif pb c a b;
+  !solve pb (* Either everything is solved *) || (
+    (* or at least enough is solved to equate [a] and [b] *)
+    (Eval.pure_eq_modulo (classic c) a b &&
+      (pb := { !pb with recompute = true }; true)) || (
+      (* or [a = b] cannot be solved, so we get back to when the
+         constraint wasn't there and we solve as much as we can *)
+      Time.restore before;
+      (* try to solve as much as we can and leave the rest *)
+      if not (!solve pb) then pb := {!pb with recompute = true};
+      false))
 
 (** {1 Handling coercions} *)
 
@@ -99,12 +101,7 @@ let solve_coercions pb c t =
     can be unified, then [t] is unchanged. Otherwise, a cast is sought
     from [a] to [b]. *)
 let coerce pb c t a b =
-  if Eval.pure_eq_modulo (classic c) a b then (t, false) else
-  (* FIXME: tests/OK/273.lp fails if this case isn't used. *)
-  if !(Coercion.coerce.sym_dtree) == Tree_type.empty_dtree then (
-    unif pb c a b;
-    (t, false))
-  else
+  if Eval.pure_eq_modulo (classic c) a b then (t, false) else (
     if solve1 pb c a b then (t, false) else (
       if Logger.log_enabled () then
         log "Cast [%a: %a <= %a]"
@@ -113,6 +110,13 @@ let coerce pb c t a b =
       let exception Over in
       let exception Failure in
       try
+        (* The following loop iteratively reduces coercions. First
+           coercions are reduced using coercion rules. If there are no
+           more coercions, succeed. Otherwise if there are coercions of
+           the form [c a t b], try to unify [a]s and [b]s to simplify
+           the coercion to [t]. If nothing can be instantiated, fail. Else
+           maybe the instantiated metavariable allows some new coercion
+           rule to be triggered, so loop.*)
         while true do
           reduced := Eval.snf (classic c) !reduced;
           if not (has_coercions !reduced) then raise Over;
@@ -121,8 +125,15 @@ let coerce pb c t a b =
           if not ((MetaSet.cardinal !pb.metas) < size) then raise Failure
         done; assert false
       with
-        | Over -> (!reduced, true)
-        | Failure -> unif pb c a b; (t, false))
+        | Over ->
+            if Logger.log_enabled () then
+              log (Color.gre "Cast [@[%a:@ %a@ <=@ %a@ ->@ %a@]]")
+                Print.pp_term t
+                Print.pp_term a
+                Print.pp_term b
+                Print.pp_term !reduced;
+              (!reduced, true)
+        | Failure -> unif pb c a b; (t, false)))
 
 (** {1 Other rules} *)
 
