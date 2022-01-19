@@ -111,7 +111,7 @@ let coerce pb c t a b =
            maybe the instantiated metavariable allows some new coercion
            rule to be triggered, so loop.*)
         while true do
-          reduced := Eval.snf (classic c) !reduced;
+          reduced := Eval.snf ~pb (classic c) !reduced;
           if not (Coercion.has_coercions !reduced) then raise Over;
           let size = MetaSet.cardinal !pb.metas in
           ignore (solve_coercions pb c !reduced);

@@ -35,11 +35,11 @@ val tree_walk : problem -> ctxt -> dtree -> stack -> (term * stack) option
 
 (** [whnf ~rewrite c t] computes a whnf of the term [t] in context
    [c]. User-defined rewrite rules are used only if [~rewrite = true]. *)
-val whnf : ?rewrite:bool -> ctxt -> term -> term
+val whnf : ?pb:problem -> ?rewrite:bool -> ctxt -> term -> term
 
 (** [eq_modulo c a b] tests the convertibility of [a] and [b] in context
    [c]. WARNING: may have side effects in TRef's introduced by whnf. *)
-val eq_modulo : ctxt -> term -> term -> bool
+val eq_modulo : ?pb:problem -> ctxt -> term -> term -> bool
 
 (** [pure_eq_modulo c a b] tests the convertibility of [a] and [b] in context
    [c] with no side effects. *)
@@ -47,11 +47,11 @@ val pure_eq_modulo : ctxt -> term -> term -> bool
 
 (** [snf c t] computes the strong normal form of the term [t] in the context
    [c]. It unfolds variables defined in the context [c]. *)
-val snf : ctxt -> term -> term
+val snf : ?pb:problem -> ctxt -> term -> term
 
 (** [hnf t] computes a head-normal form of the term [t] wrt beta-reduction,
    user-defined rewrite rules and variables defined in the context [c]. *)
-val hnf : ctxt -> term -> term
+val hnf : ?pb:problem -> ctxt -> term -> term
 
 (** [simplify t] computes a beta whnf of [t] belonging to the set S such that:
 - terms of S are in beta whnf normal format

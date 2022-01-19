@@ -86,8 +86,9 @@ type config =
 
 (*let pp_defmap = D.map VarMap.iter pp_var " ≔ " pp_term "; "*)
 
-let cfg_of_ctx : ctxt -> bool -> config = fun context rewrite ->
-  {context; defmap = Ctxt.to_map context; rewrite; problem = new_problem()}
+let cfg_of_ctx : ?pb:problem -> ctxt -> bool -> config =
+  fun ?(pb=new_problem ()) context rewrite ->
+  {context; defmap = Ctxt.to_map context; rewrite; problem = pb}
 
 let unfold_cfg : config -> term -> term = fun c a ->
   let a = unfold a in
@@ -445,56 +446,58 @@ and tree_walk : config -> dtree -> stack -> (term * stack) option =
 
 (** [snf c t] computes a snf of [t], unfolding the variables defined in the
    context [c]. *)
-let snf : ctxt -> term -> term = fun c t ->
+let snf : ?pb:problem -> ctxt -> term -> term = fun ?pb c t ->
   Stdlib.(steps := 0);
-  let u = snf (whnf (cfg_of_ctx c true)) t in
+  let u = snf (whnf (cfg_of_ctx ?pb c true)) t in
   let r = if Stdlib.(!steps = 0) then unfold t else u in
   (*if Logger.log_enabled () then
     log_eval "snf %a%a\n= %a" pp_ctxt c pp_term t pp_term r;*) r
 
 let snf =
-  let open Stdlib in let r = ref mk_Kind in fun c t ->
-  Debug.(record_time Rewriting (fun () -> r := snf c t)); !r
+  let open Stdlib in let r = ref mk_Kind in fun ?pb c t ->
+  Debug.(record_time Rewriting (fun () -> r := snf ?pb c t)); !r
 
 (** [hnf c t] computes a hnf of [t], unfolding the variables defined in the
    context [c], and using user-defined rewrite rules. *)
-let hnf : ctxt -> term -> term = fun c t ->
+let hnf : ?pb:problem -> ctxt -> term -> term = fun ?pb c t ->
   Stdlib.(steps := 0);
-  let u = hnf (whnf (cfg_of_ctx c true)) t in
+  let u = hnf (whnf (cfg_of_ctx ?pb c true)) t in
   let r = if Stdlib.(!steps = 0) then unfold t else u in
   (*if Logger.log_enabled () then
     log_eval "hnf %a%a\n= %a" pp_ctxt c pp_term t pp_term r;*) r
 
 let hnf =
-  let open Stdlib in let r = ref mk_Kind in fun c t ->
-  Debug.(record_time Rewriting (fun () -> r := hnf c t)); !r
+  let open Stdlib in let r = ref mk_Kind in fun ?pb c t ->
+  Debug.(record_time Rewriting (fun () -> r := hnf ?pb c t)); !r
 
 (** [eq_modulo c a b] tests the convertibility of [a] and [b] in context
    [c]. WARNING: may have side effects in TRef's introduced by whnf. *)
-let eq_modulo : ctxt -> term -> term -> bool = fun c ->
-  eq_modulo whnf (cfg_of_ctx c true)
+let eq_modulo : ?pb:problem -> ctxt -> term -> term -> bool = fun ?pb c ->
+  eq_modulo whnf (cfg_of_ctx ?pb c true)
 
 let eq_modulo =
-  let open Stdlib in let r = ref false in fun c t u ->
-  Debug.(record_time Rewriting (fun () -> r := eq_modulo c t u)); !r
+  let open Stdlib in let r = ref false in fun ?pb c t u ->
+  Debug.(record_time Rewriting (fun () -> r := eq_modulo ?pb c t u)); !r
 
 (** [pure_eq_modulo c a b] tests the convertibility of [a] and [b] in context
    [c] with no side effects. *)
-let pure_eq_modulo : ctxt -> term -> term -> bool = fun c a b ->
+let pure_eq_modulo : ctxt -> term -> term -> bool =
+  fun c a b ->
   Timed.pure_test (fun (c,a,b) -> eq_modulo c a b) (c,a,b)
 
 (** [whnf c t] computes a whnf of [t], unfolding the variables defined in the
    context [c], and using user-defined rewrite rules if [~rewrite]. *)
-let whnf : ?rewrite:bool -> ctxt -> term -> term = fun ?(rewrite=true) c t ->
+let whnf : ?pb:problem -> ?rewrite:bool -> ctxt -> term -> term =
+  fun ?pb ?(rewrite=true) c t ->
   Stdlib.(steps := 0);
-  let u = whnf (cfg_of_ctx c rewrite) t in
+  let u = whnf (cfg_of_ctx ?pb c rewrite) t in
   let r = if Stdlib.(!steps = 0) then unfold t else u in
   (*if Logger.log_enabled () then
     log_eval "whnf %a%a\n= %a" pp_ctxt c pp_term t pp_term r;*) r
 
 let whnf =
-  let open Stdlib in let r = ref mk_Kind in fun ?rewrite c t ->
-  Debug.(record_time Rewriting (fun () -> r := whnf ?rewrite c t)); !r
+  let open Stdlib in let r = ref mk_Kind in fun ?pb ?rewrite c t ->
+  Debug.(record_time Rewriting (fun () -> r := whnf ?pb ?rewrite c t)); !r
 
 (** [simplify t] computes a beta whnf of [t] belonging to the set S such that:
 - terms of S are in beta whnf normal format
