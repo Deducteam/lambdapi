@@ -82,13 +82,14 @@ type config =
   { context : ctxt (** Context of the reduction used for generating metas. *)
   ; defmap : term VarMap.t (** Variable definitions. *)
   ; rewrite : bool (** Use user-defined rewrite rules. *)
+  ; protect : bool (** If true, protected symbol are not rewritten. *)
   ; problem : problem (** Generated metavariables. *) }
 
 (*let pp_defmap = D.map VarMap.iter pp_var " ≔ " pp_term "; "*)
 
-let cfg_of_ctx : ?pb:problem -> ctxt -> bool -> config =
-  fun ?(pb=new_problem ()) context rewrite ->
-  {context; defmap = Ctxt.to_map context; rewrite; problem = pb}
+let cfg_of_ctx : ?protect:bool -> ?pb:problem -> ctxt -> bool -> config =
+  fun ?(protect=false) ?(pb=new_problem ()) context rewrite ->
+  {context; protect; defmap = Ctxt.to_map context; rewrite; problem = pb}
 
 let unfold_cfg : config -> term -> term = fun c a ->
   let a = unfold a in
@@ -200,10 +201,11 @@ and whnf_stk : config -> term -> stack -> term * stack = fun c t stk ->
   | LLet(_,t,u), stk ->
     Stdlib.incr steps; whnf_stk c (Bindlib.subst u t) stk
   | (Symb s as h, stk) as r when c.rewrite ->
-    begin match !(s.sym_def) with
-    | Some t ->
-      if s.sym_opaq then r else (Stdlib.incr steps; whnf_stk c t stk)
-    | None ->
+    begin match !(s.sym_def), s.sym_expo with
+    | Some t, _ ->
+        if s.sym_opaq then r else (Stdlib.incr steps; whnf_stk c t stk)
+    | None, Protec when c.protect -> r
+    | None, _ ->
       (* If [s] is modulo C or AC, we put its arguments in whnf and reorder
          them to have a term in AC-canonical form. *)
       let stk =
@@ -445,35 +447,37 @@ and tree_walk : config -> dtree -> stack -> (term * stack) option =
   walk tree stk 0 VarMap.empty IntMap.empty
 
 (** [snf c t] computes a snf of [t], unfolding the variables defined in the
-   context [c]. *)
-let snf : ?pb:problem -> ctxt -> term -> term = fun ?pb c t ->
+    context [c]. *)
+let snf : ?pb:problem -> ?protect:bool -> ctxt -> term -> term =
+  fun ?pb ?protect c t ->
   Stdlib.(steps := 0);
-  let u = snf (whnf (cfg_of_ctx ?pb c true)) t in
+  let u = snf (whnf (cfg_of_ctx ?pb ?protect c true)) t in
   let r = if Stdlib.(!steps = 0) then unfold t else u in
   (*if Logger.log_enabled () then
     log_eval "snf %a%a\n= %a" pp_ctxt c pp_term t pp_term r;*) r
 
 let snf =
-  let open Stdlib in let r = ref mk_Kind in fun ?pb c t ->
-  Debug.(record_time Rewriting (fun () -> r := snf ?pb c t)); !r
+  let open Stdlib in let r = ref mk_Kind in fun ?pb ?protect c t ->
+  Debug.(record_time Rewriting (fun () -> r := snf ?pb ?protect c t)); !r
 
 (** [hnf c t] computes a hnf of [t], unfolding the variables defined in the
    context [c], and using user-defined rewrite rules. *)
-let hnf : ?pb:problem -> ctxt -> term -> term = fun ?pb c t ->
+let hnf : ?pb:problem -> ?protect:bool -> ctxt -> term -> term =
+  fun ?pb ?protect c t ->
   Stdlib.(steps := 0);
-  let u = hnf (whnf (cfg_of_ctx ?pb c true)) t in
+  let u = hnf (whnf (cfg_of_ctx ?pb ?protect c true)) t in
   let r = if Stdlib.(!steps = 0) then unfold t else u in
   (*if Logger.log_enabled () then
     log_eval "hnf %a%a\n= %a" pp_ctxt c pp_term t pp_term r;*) r
 
 let hnf =
-  let open Stdlib in let r = ref mk_Kind in fun ?pb c t ->
-  Debug.(record_time Rewriting (fun () -> r := hnf ?pb c t)); !r
+  let open Stdlib in let r = ref mk_Kind in fun ?pb ?protect c t ->
+  Debug.(record_time Rewriting (fun () -> r := hnf ?pb ?protect c t)); !r
 
 (** [eq_modulo c a b] tests the convertibility of [a] and [b] in context
    [c]. WARNING: may have side effects in TRef's introduced by whnf. *)
 let eq_modulo : ?pb:problem -> ctxt -> term -> term -> bool = fun ?pb c ->
-  eq_modulo whnf (cfg_of_ctx ?pb c true)
+  eq_modulo whnf (cfg_of_ctx ?pb ~protect:false c true)
 
 let eq_modulo =
   let open Stdlib in let r = ref false in fun ?pb c t u ->
@@ -487,17 +491,20 @@ let pure_eq_modulo : ctxt -> term -> term -> bool =
 
 (** [whnf c t] computes a whnf of [t], unfolding the variables defined in the
    context [c], and using user-defined rewrite rules if [~rewrite]. *)
-let whnf : ?pb:problem -> ?rewrite:bool -> ctxt -> term -> term =
-  fun ?pb ?(rewrite=true) c t ->
+let whnf : ?pb:problem -> ?protect:bool -> ?rewrite:bool -> ctxt -> term ->
+  term =
+  fun ?pb ?protect ?(rewrite=true) c t ->
   Stdlib.(steps := 0);
-  let u = whnf (cfg_of_ctx ?pb c rewrite) t in
+  let u = whnf (cfg_of_ctx ?pb ?protect c rewrite) t in
   let r = if Stdlib.(!steps = 0) then unfold t else u in
   (*if Logger.log_enabled () then
     log_eval "whnf %a%a\n= %a" pp_ctxt c pp_term t pp_term r;*) r
 
 let whnf =
-  let open Stdlib in let r = ref mk_Kind in fun ?pb ?rewrite c t ->
-  Debug.(record_time Rewriting (fun () -> r := whnf ?pb ?rewrite c t)); !r
+  let open Stdlib in let r = ref mk_Kind in fun ?pb ?protect ?rewrite c t ->
+  Debug.(record_time Rewriting
+    (fun () -> r := whnf ?pb ?protect ?rewrite c t));
+  !r
 
 (** [simplify t] computes a beta whnf of [t] belonging to the set S such that:
 - terms of S are in beta whnf normal format
@@ -561,14 +568,19 @@ let unfold_sym : sym -> term -> term =
    reduction step taken in elements of the stack is preserved (this is done
    using {!constructor:Term.term.TRef}). Fresh metavariables generated by
    unification rules with extra pattern variables are added in [p]. *)
-let tree_walk : problem -> ctxt -> dtree -> stack -> (term * stack) option =
-  fun p c dt ts ->
-  let c = {context=c; defmap=Ctxt.to_map c; problem=p; rewrite=true} in
+let tree_walk : ?protect:bool -> problem -> ctxt -> dtree -> stack ->
+  (term * stack) option =
+  fun ?(protect=false) p c dt ts ->
+  let c =
+    {context=c; protect; defmap=Ctxt.to_map c; problem=p; rewrite=true}
+  in
   tree_walk c dt ts
 
 let tree_walk =
-  let open Stdlib in let r = ref None in fun p c t s ->
-  Debug.(record_time Rewriting (fun () -> r := tree_walk p c t s)); !r
+  let open Stdlib in let r = ref None in fun ?protect p c t s ->
+  Debug.(record_time Rewriting
+    (fun () -> r := tree_walk ?protect p c t s));
+  !r
 
 (** Dedukti evaluation strategies. *)
 type strategy =
