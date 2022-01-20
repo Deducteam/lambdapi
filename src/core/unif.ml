@@ -79,14 +79,12 @@ let try_unif_rules : problem -> ctxt -> term -> term -> bool =
   let open Unif_rule in
   try
     let rhs =
-      match Eval.tree_walk p c !(equiv.sym_dtree) [s;t] with
-      | Some(r,[]) -> r
-      | Some(_)    -> assert false (* Everything should be matched *)
-      | None       ->
-      match Eval.tree_walk p c !(equiv.sym_dtree) [t;s] with
-      | Some(r,[]) -> r
-      | Some(_)    -> assert false (* Everything should be matched *)
-      | None       -> raise No_match
+      let start = add_args (mk_Symb equiv) [s;t] in
+      let reduced = Eval.whnf ~problem:p c start in
+      if reduced != start then reduced else
+        let start = add_args (mk_Symb equiv) [t;s] in
+        let reduced = Eval.whnf ~problem:p c start in
+        if reduced != start then reduced else raise No_match
     in
     let cs = List.map (fun (t,u) -> (c,t,u)) (unpack rhs) in
     if Logger.log_enabled () then log_unif "rewrites to:%a" pp_constrs cs;
