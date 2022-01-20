@@ -76,6 +76,8 @@ let snf : (term -> term) -> (term -> term) = fun whnf ->
     | TRef(_)     -> assert false
   in snf
 
+type rw_tag = [ `NoBeta | `NoRw | `NoExpand ]
+
 (** Configuration of the reduction engine. *)
 module Config = struct
 
@@ -83,12 +85,21 @@ module Config = struct
     { context : ctxt
     (** Context of the reduction used for generating metas. *)
     ; defmap : term VarMap.t (** Variable definitions. *)
-    ; rewrite : bool (** Use user-defined rewrite rules. *)
+    ; rewrite : bool (** Whether to apply user-defined rewriting rules. *)
+    ; expand_defs : bool (** Whether to expand definitions. *)
+    ; beta : bool (** Whether to beta-normalise *)
     ; problem : problem (** Generated metavariables. *) }
 
-  let make : ?problem:problem -> ?rewrite:bool -> ctxt -> t =
-  fun ?(problem=new_problem ()) ?(rewrite=true) context ->
-    {context; defmap = Ctxt.to_map context; rewrite; problem}
+  (** [make ?problem ?rewrite c] creates a new configuration with problem
+      [?problem] (being new if not provided), tags [?rewrite] (being empty if
+      not provided) and context [c]. By default, beta reduction and rewriting
+      is enabled for all symbols. *)
+  let make : ?problem:problem -> ?tags:rw_tag list -> ctxt -> t =
+  fun ?(problem=new_problem ()) ?(tags=[]) context ->
+    let beta = not @@ List.mem `NoBeta tags in
+    let expand_defs = not @@ List.mem `NoExpand tags in
+    let rewrite = not @@ List.mem `NoRw tags in
+    {context; defmap = Ctxt.to_map context; rewrite; expand_defs; beta; problem}
 
   let unfold : t -> term -> term = fun c a ->
     let a = unfold a in
@@ -201,14 +212,16 @@ and whnf_stk : config -> term -> stack -> term * stack = fun c t stk ->
   let t = unfold t in
   match t, stk with
   | Appl(f,u), stk -> whnf_stk c f (to_tref u::stk)
-  | Abst(_,f), u::stk ->
+  | Abst(_,f), u::stk when c.Config.beta ->
     Stdlib.incr steps; whnf_stk c (Bindlib.subst f u) stk
   | LLet(_,t,u), stk ->
     Stdlib.incr steps; whnf_stk c (Bindlib.subst u t) stk
-  | (Symb s as h, stk) as r when c.rewrite ->
+  | (Symb s as h, stk) as r ->
     begin match !(s.sym_def) with
     | Some t ->
-      if s.sym_opaq then r else (Stdlib.incr steps; whnf_stk c t stk)
+      if s.sym_opaq || not c.Config.expand_defs then r else
+        (Stdlib.incr steps; whnf_stk c t stk)
+    | None when not c.Config.rewrite -> r
     | None ->
       (* If [s] is modulo C or AC, we put its arguments in whnf and reorder
          them to have a term in AC-canonical form. *)
@@ -497,31 +510,32 @@ let pure_eq_modulo : ctxt -> term -> term -> bool = fun c a b ->
    context [c], and using user-defined rewrite rules if [~rewrite]. *)
 let whnf :
      ?problem:problem
-  -> ?rewrite:bool
+  -> ?tags:rw_tag list
   -> ctxt -> term -> term =
-  fun ?problem ?rewrite c t ->
+  fun ?problem ?tags c t ->
   Stdlib.(steps := 0);
-  let u = whnf (Config.make ?problem ?rewrite c) t in
+  let u = whnf (Config.make ?problem ?tags c) t in
   let r = if Stdlib.(!steps = 0) then unfold t else u in
   (*if Logger.log_enabled () then
     log_eval "whnf %a%a\n= %a" ctxt c term t term r;*) r
 
 let whnf =
-  let open Stdlib in let r = ref mk_Kind in fun ?problem ?rewrite c t ->
+  let open Stdlib in let r = ref mk_Kind in fun ?problem ?tags c t ->
   Debug.(
-    record_time Rewriting (fun () -> r := whnf ?problem ?rewrite c t));
+    record_time Rewriting (fun () -> r := whnf ?problem ?tags c t));
   !r
 
 (** [simplify t] computes a beta whnf of [t] belonging to the set S such that:
 - terms of S are in beta whnf normal format
 - if [t] is a product, then both its domain and codomain are in S. *)
 let rec simplify : term -> term = fun t ->
-  match get_args (whnf ~rewrite:false [] t) with
+  let tags = [`NoRw; `NoExpand ] in
+  match get_args (whnf ~tags [] t) with
   | Prod(a,b), _ ->
      let x, b = Bindlib.unbind b in
      let b = Bindlib.bind_var x (lift (simplify b)) in
      mk_Prod (simplify a, Bindlib.unbox b)
-  | h, ts -> add_args_map h (whnf ~rewrite:false []) ts
+  | h, ts -> add_args_map h (whnf ~tags []) ts
 
 let simplify =
   let open Stdlib in let r = ref mk_Kind in fun t ->
