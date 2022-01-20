@@ -35,6 +35,4 @@ jobs:
           opam pin add dedukti https://github.com/Deducteam/dedukti.git
           opam install alt-ergo dedukti
           why3 config detect
-          make real_tests
-          lambdapi=lambdapi tests/export_dk.sh
-          lambdapi=lambdapi tests/export_lp.sh
+          make tests

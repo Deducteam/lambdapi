@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Test lp export
+echo '############ test export -o lp ############'
 
 TIMEFORMAT="%E"
 root=`pwd`

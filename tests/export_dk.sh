@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Test dk export (requires dkcheck and dkdep)
+echo '############ test export -o dk ############'
 
 TIMEFORMAT="%E"
 root=`pwd`
@@ -39,7 +39,7 @@ compile() {
         $lambdapi check -w -v 0 -c $f
     done
 }
-time compile # can be commented
+#time compile
 
 # translate lp files to dk files
 translate() {
