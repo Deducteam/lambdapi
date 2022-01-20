@@ -30,7 +30,7 @@ jobs:
           opam install --deps-only -d -t lambdapi
       - name: running tests...
         run: |
-          opam pin add dedukti https://github.com/Deducteam/dedukti.git#master
+          opam pin add dedukti https://github.com/Deducteam/dedukti.git
           opam install alt-ergo dedukti
           eval $(opam env)
           why3 config detect
