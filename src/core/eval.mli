@@ -21,19 +21,30 @@ open Term
 (** Flag indicating whether eta-reduction should be used or not. *)
 val eta_equality : bool Timed.ref
 
+(** Tags for rewriting configuration. *)
+type rw_tag =
+  [ `NoBeta (** If true, no beta-reduction is performed. *)
+  | `NoRw (** If true, no user-defined rewrite rule is used. *)
+  | `NoExpand (** If true, definitions are not expanded. *) ]
+
+(** Functions that use the rewriting engine and accept an optional argument
+    [tags] of type [rw_tag list] have the following behaviour.
+    - If the argument is not given, then no tag is active and the rewrite
+      engine is not constrained.
+    - Each tag if present disables some functionality of the rewrite
+      engine. The descriptions of the functionalities are given in the
+      documentation of {!rw_tag}. *)
+
 (** Abstract machine stack. *)
 type stack = term list
 
-(** [whnf ?problem ?rewrite c t] computes a whnf of the term [t] in context
+(** [whnf ?problem ?tags c t] computes a whnf of the term [t] in context
     [c].  Rewriting may generate new metavariables that are added to [problem]
-    if given User-defined rewrite rules are used only if [?rewrite = true]. *)
-val whnf
-  :  ?problem:problem
-  -> ?rewrite:bool
-  -> ctxt -> term -> term
+    if given. *)
+val whnf : ?problem:problem -> ?tags:rw_tag list -> ctxt -> term -> term
 
 (** [eq_modulo c a b] tests the convertibility of [a] and [b] in context
-   [c]. WARNING: may have side effects in TRef's introduced by whnf. *)
+    [c]. WARNING: may have side effects in TRef's introduced by whnf. *)
 val eq_modulo : ctxt -> term -> term -> bool
 
 (** [pure_eq_modulo c a b] tests the convertibility of [a] and [b] in context
