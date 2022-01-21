@@ -287,6 +287,7 @@ let rec token lb =
   | '?', nat -> UID_META(int_of_string(remove_first lb))
   | '$', regid -> UID_PATT(remove_first lb)
   | '$', escid -> UID_PATT(remove_useless_escape(remove_first lb))
+  | '$', nat -> UID_PATT(remove_first lb)
 
   | regid, '.' -> qid false [remove_last lb] lb
   | escid, '.' -> qid false [remove_useless_escape(remove_last lb)] lb

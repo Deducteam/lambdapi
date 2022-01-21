@@ -219,7 +219,7 @@ let shift : term -> term =
     | Appl(a,b) -> _Appl (shift a) (shift b)
     | Meta(m,ts) -> _Meta m (Array.map shift ts)
     | Patt(None,_,_) -> assert false
-    | Patt(Some i,n,ts) -> _Patt (Some(-i-1)) ("." ^ n) (Array.map shift ts)
+    | Patt(Some i,n,ts) -> _Patt (Some(-i-1)) (n ^ "'") (Array.map shift ts)
     | TEnv(te,ts) -> _TEnv (shift_tenv te) (Array.map shift ts)
     | Wild -> _Wild
     | Plac b -> _Plac b

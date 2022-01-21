@@ -121,10 +121,10 @@ let fresh_patt : lhs_data -> string option -> tbox array -> tbox =
           Hashtbl.add data.m_lhs_indices name i;
           Hashtbl.add data.m_lhs_names i name; i
       in
-      _Patt (Some i) (Escape.add_suffix (Printf.sprintf "v%i_" i) name) ts
+      _Patt (Some i) (Printf.sprintf "%i" i) ts
   | None ->
       let i = fresh_index () in
-      _Patt (Some i) (Printf.sprintf "v%i" i) ts
+      _Patt (Some i) (Printf.sprintf "%i" i) ts
 
 (** [is_invalid_bindlib_id s] says whether [s] can be safely used as variable
    name in Bindlib. Indeed, because Bindlib converts any suffix consisting of
@@ -324,7 +324,7 @@ and scope_head :
 
   | (P_Wild, M_URHS(data)) ->
     let x =
-      let name = Printf.sprintf "v%i" data.m_urhs_vars_nb in
+      let name = Printf.sprintf "%i" data.m_urhs_vars_nb in
       let x = new_tevar name in
       data.m_urhs_vars_nb <- data.m_urhs_vars_nb + 1;
       data.m_urhs_xvars <- (name, x) :: data.m_urhs_xvars;
@@ -394,9 +394,7 @@ and scope_head :
               (* Search in variables already declared in RHS. *)
               try List.assoc id r.m_urhs_xvars
               with Not_found ->
-                let name = Escape.add_suffix
-                             (Printf.sprintf "v%i_" r.m_urhs_vars_nb) id
-                in
+                let name = Printf.sprintf "%i" r.m_urhs_vars_nb in
                 let x = new_tevar name in
                 r.m_urhs_vars_nb <- r.m_urhs_vars_nb + 1;
                 r.m_urhs_xvars   <- (id, x) :: r.m_urhs_xvars;
@@ -616,12 +614,7 @@ let scope_rule : bool -> sig_state -> p_rule -> pre_rule loc =
   in
   (* Create the pattern variables that can be bound in the RHS. *)
   let pr_vars =
-    Array.init lhs_size (fun i ->
-        new_tevar
-          (try Escape.add_suffix (Printf.sprintf "v%i_" i)
-                 (Hashtbl.find pr_names i)
-           with Not_found -> Printf.sprintf "v%i" i))
-  in
+    Array.init lhs_size (fun i -> new_tevar (Printf.sprintf "%i" i)) in
   let mode =
     let htbl_vars = Hashtbl.create (Hashtbl.length lhs_indices) in
     let fn k i = Hashtbl.add htbl_vars k pr_vars.(i) in
