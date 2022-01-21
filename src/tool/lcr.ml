@@ -419,16 +419,14 @@ let check_cp_subterms_eq_rule : Pos.popt -> sym_rule -> sym_rule -> unit =
 (** [can_handle r] says if the sym_rule [r] can be handled. *)
 let can_handle : sym_rule -> bool = fun (s,r) -> not (is_modulo s || is_ho r)
 
-(** [iter_rules h s rs] iterates function [f] on every rule of [rs]. *)
-let iter_rules : (sym_rule -> unit) -> sym -> rule list -> unit = fun h s ->
-  if not (is_modulo s) then
-    let rec iter = function
-      | r::rs when not (is_ho r) -> h (s,r); iter rs
-      | _ -> ()
-    in iter
-  else fun _ -> ()
+(** [iter_rules h rs] iterates function [f] on every rule of [rs]. *)
+let iter_rules : (rule -> unit) -> rule list -> unit = fun h ->
+  let rec iter = function
+    | r::rs -> if not (is_ho r) then h r; iter rs
+    | _ -> ()
+  in iter
 
-(** [iter_rules h s rs] iterates function [f] on every rule of [rs]. *)
+(** [iter_rules h rs] iterates function [f] on every rule of [rs]. *)
 let iter_sym_rules : (sym_rule -> unit) -> sym_rule list -> unit = fun h ->
   let rec iter = function
     | [] -> ()
@@ -444,7 +442,8 @@ let iter_rules_of_sym : (rule -> unit) -> sym -> unit = fun h s ->
 
 (** [check_cp_subterms_eq pos sr1] checks the critical pairs between
    all the subterms of the [sr1] LHS and all the possible rule LHS's. *)
-let check_cp_subterms_eq : Pos.popt -> sym_rule -> unit = fun pos lr ->
+let check_cp_subterms_eq : Pos.popt -> sym_rule -> unit =
+  fun pos ((_,x) as lr) ->
   (*if Logger.log_enabled() then
     log_cp "check_cp_subterms@.%a@.%a" Print.pp_rule lr Print.pp_rule gd;*)
   let l = shift (lhs lr) and r = shift (rhs lr) in
@@ -454,14 +453,14 @@ let check_cp_subterms_eq : Pos.popt -> sym_rule -> unit = fun pos lr ->
     | None ->
       match p with
       | [] ->
-        let h gd =
-          if snd gd != snd lr then
+        let h y = if y != x then let gd = (s, y) in
             check_cp_subterm_rule pos l r p l_p (lhs gd) (rhs gd)
         in
-        iter_rules h s !(s.sym_rules);
+        iter_rules h !(s.sym_rules);
       | _ ->
-        let h gd = check_cp_subterm_rule pos l r p l_p (lhs gd) (rhs gd) in
-        iter_rules h s !(s.sym_rules)
+        let h y = let gd = (s, y) in
+          check_cp_subterm_rule pos l r p l_p (lhs gd) (rhs gd) in
+        iter_rules h !(s.sym_rules)
   in
   iter_subterms_eq pos f l
 
@@ -485,15 +484,11 @@ let check_cp_rules : Pos.popt -> sym_rule list -> unit = fun pos rs ->
 
 (** [check_cp_sign pos rs] checks all the critical pairs between all the rules
    of the signature and [rs]. *)
-let check_cp_sign : Pos.popt -> Sign.t -> sym_rule list -> unit =
+(*let check_cp_sign : Pos.popt -> Sign.t -> sym_rule list -> unit =
   fun pos sign rs ->
   (* TODO: to be optimized by recording in sym type some useful data to avoid
      traversing all LHS's again and again. *)
   (* We first build a map symbol s to new rules on s. *)
-  let _new_rules =
-    let f map (s,r) = SymMap.add s r map in
-    List.fold_left f SymMap.empty rs
-  in
   let f _ s =
     if is_definable s then begin
       if Logger.log_enabled() then log_cp "check %a" pp_sym s;
@@ -501,12 +496,51 @@ let check_cp_sign : Pos.popt -> Sign.t -> sym_rule list -> unit =
       iter_rules_of_sym h s
     end
   in
+  StrMap.iter f !(sign.Sign.sign_symbols)*)
+
+(** [check_cp_sign pos rs] checks all the critical pairs between all the rules
+   of the signature and [rs]. *)
+let check_cp_sign : Pos.popt -> Sign.t -> sym_rule list -> unit =
+  fun pos sign rs ->
+  (* We build a map between a symbol and its new rules. *)
+  let new_rules : rule list SymMap.t =
+    let f map (s,r) =
+      let h = function Some rs -> Some(r::rs) | None -> Some[r] in
+      SymMap.update s h map in
+    List.fold_left f SymMap.empty rs
+  in
+  (* [cp_positions s] maps every definable symbol s' such that there is a rule
+     l-->r of [s] and a position p<>[] of l such that l_p is headed by s' to
+     (p,l_p). *)
+  let cp_positions : sym -> (term * term * int list * term) SymMap.t =
+    fun s ->
+    let map = Stdlib.ref SymMap.empty in
+    let f r =
+      let lr = (s,r) in let l = lhs lr and r = rhs lr in
+      let h s' p l_p = Stdlib.(map := SymMap.add s' (l,r,p,l_p) !map) in
+      iter_subterms pos h l
+    in
+    iter_rules_of_sym f s; Stdlib.(!map)
+  in
+  let f _ s =
+    let h s' (l,r,p,l_p) =
+      match SymMap.find_opt s' new_rules with
+      | None -> ()
+      | Some rs ->
+        let h' r' =
+          let gd = (s',r') in
+          check_cp_subterm_rule pos l r p l_p (lhs gd) (rhs gd)
+        in
+        iter_rules h' rs
+    in
+    SymMap.iter h (cp_positions s)
+  in
   StrMap.iter f !(sign.Sign.sign_symbols)
 
 (** [check_cps rs] checks all the critical pairs generating by adding [rs]. *)
 let check_cps : Pos.popt -> Sig_state.t -> sym_rule list -> unit =
-  fun pos _ss rs ->
+  fun pos ss rs ->
   check_cp_rules pos rs;
-  iter_sym_rules (check_cp_subterms_eq pos) rs
-(*check_cp_sign pos ss.Sig_state.signature rs*)
+  iter_sym_rules (check_cp_subterms_eq pos) rs;
+  check_cp_sign pos ss.Sig_state.signature rs
 (*FIXME: check dependencies too *)
