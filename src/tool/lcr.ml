@@ -498,29 +498,47 @@ let check_cp_rules : Pos.popt -> sym_rule list -> unit = fun pos rs ->
   in
   StrMap.iter f !(sign.Sign.sign_symbols)*)
 
+(** Type of critical pair positions (l,r,p,l_p). *)
+type cp_pos = term * term * int list * term
+
+(** [cp_pos_of_sym pos s] maps every definable symbol s' such that there
+   is a rule l-->r of [s] and a position p<>[] of l such that l_p is headed by
+   s' to (l,r,p,l_p). *)
+let cp_pos_of_sym : Pos.popt -> sym -> cp_pos SymMap.t = fun pos s ->
+  let open Stdlib in
+  let map = ref SymMap.empty in
+  let f r =
+    let lr = (s,r) in let l = lhs lr and r = rhs lr in
+    let h s' p l_p = map := SymMap.add s' (l,r,p,l_p) !map in
+    iter_subterms pos h l
+  in
+  iter_rules_of_sym f s; !map
+
+(** [cp_pos s rs map] maps every definable symbol s' such that there is a
+   rule l-->r of [rs] and a position p<>[] of l such that l_p is headed by s'
+   to (l,r,p,l_p). *)
+let update_cp_pos :
+  Pos.popt -> sym -> rule list -> cp_pos SymMap.t -> cp_pos SymMap.t =
+  fun pos s rs map ->
+  let open Stdlib in
+  let map = ref map in
+  let f r =
+    let lr = (s,r) in let l = lhs lr and r = rhs lr in
+    let h s' p l_p = map := SymMap.add s' (l,r,p,l_p) !map in
+    iter_subterms pos h l
+  in
+  iter_rules f rs; !map
+
 (** [check_cp_sign pos rs] checks all the critical pairs between all the rules
    of the signature and [rs]. *)
 let check_cp_sign : Pos.popt -> Sign.t -> sym_rule list -> unit =
   fun pos sign rs ->
-  (* We build a map between a symbol and its new rules. *)
+  (* Map between a symbol and its new rules. *)
   let new_rules : rule list SymMap.t =
     let f map (s,r) =
       let h = function Some rs -> Some(r::rs) | None -> Some[r] in
       SymMap.update s h map in
     List.fold_left f SymMap.empty rs
-  in
-  (* [cp_positions s] maps every definable symbol s' such that there is a rule
-     l-->r of [s] and a position p<>[] of l such that l_p is headed by s' to
-     (p,l_p). *)
-  let cp_positions : sym -> (term * term * int list * term) SymMap.t =
-    fun s ->
-    let map = Stdlib.ref SymMap.empty in
-    let f r =
-      let lr = (s,r) in let l = lhs lr and r = rhs lr in
-      let h s' p l_p = Stdlib.(map := SymMap.add s' (l,r,p,l_p) !map) in
-      iter_subterms pos h l
-    in
-    iter_rules_of_sym f s; Stdlib.(!map)
   in
   let f _ s =
     let h s' (l,r,p,l_p) =
@@ -533,7 +551,7 @@ let check_cp_sign : Pos.popt -> Sign.t -> sym_rule list -> unit =
         in
         iter_rules h' rs
     in
-    SymMap.iter h (cp_positions s)
+    SymMap.iter h (cp_pos_of_sym pos s)
   in
   StrMap.iter f !(sign.Sign.sign_symbols)
 
