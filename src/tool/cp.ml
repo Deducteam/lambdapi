@@ -58,14 +58,14 @@ let iter_subterms_eq :
 (** [iter_subterms_eq pos f p t] iterates f on all subterms of [t] headed by a
    defined function symbol. [p] is the position of [t] in reverse order. *)
 let iter_subterms_from_pos :
-  int list -> Pos.popt -> (int list -> term -> unit) -> term -> unit =
+  int list -> Pos.popt -> (sym -> int list -> term -> unit) -> term -> unit =
   fun p _pos f t ->
   let rec iter p t =
     if Logger.log_enabled() then
       log_cp "iter_subterms_eq %a %a" subterm_pos p pp_term t;
     let h, _ = get_args t in
     match unfold h with
-    | Symb s -> if is_defined s then iter_app p t
+    | Symb s -> if is_defined s then iter_app s p t
     | Patt(None,_,_) -> assert false
     | Patt _
     | Vari _ -> iter_args p t
@@ -80,10 +80,10 @@ let iter_subterms_from_pos :
     | Plac _ -> assert false
     | TRef _ -> assert false
     | LLet _ -> assert false
-  and iter_app p t =
-    f p t;
+  and iter_app s p t =
+    f s p t;
     match unfold t with
-    | Appl(a,b) -> iter (1::p) b; iter_app (0::p) a
+    | Appl(a,b) -> iter (1::p) b; iter_app s (0::p) a
     | _ -> ()
   and iter_args p t =
     match unfold t with
@@ -94,12 +94,13 @@ let iter_subterms_from_pos :
 (** [iter_subterms_eq pos f t] iterates f on all subterms of [t] headed by a
    defined function symbol. *)
 let iter_subterms_eq :
-  Pos.popt -> (int list -> term -> unit) -> term -> unit =
+  Pos.popt -> (sym -> int list -> term -> unit) -> term -> unit =
   iter_subterms_from_pos []
 
 (** [iter_subterms pos f t] iterates f on all strict subterms of [t] headed by
    a defined function symbol. *)
-let iter_subterms : Pos.popt -> (int list -> term -> unit) -> term -> unit =
+let iter_subterms :
+  Pos.popt -> (sym -> int list -> term -> unit) -> term -> unit =
   fun pos f t ->
   if Logger.log_enabled() then log_cp "iter_subterms %a" pp_term t;
   match unfold t with
@@ -383,25 +384,42 @@ let check_cp_subterm_rule :
   | None -> ()
 
 (** [check_cp_subterms_rule pos sr1 sr2] checks the critical pairs between all
-   the strict subterms of [sr1] LHS and the [sr2] LHS. *)
+   the strict subterms of the [sr1] LHS and the [sr2] LHS. *)
 let check_cp_subterms_rule : Pos.popt -> sym_rule -> sym_rule -> unit =
   fun pos lr gd ->
   (*if Logger.log_enabled() then
     log_cp "check_cp_subterms@.%a@.%a" Print.pp_rule lr Print.pp_rule gd;*)
   let l = lhs lr and r = rhs lr and g = lhs gd and d = rhs gd in
   let l = shift l and r = shift r in
-  let f p l_p = check_cp_subterm_rule pos l r p l_p g d in
+  let f _ p l_p = check_cp_subterm_rule pos l r p l_p g d in
   iter_subterms pos f l
 
 (** [check_cp_subterms_eq_rule pos sr1 sr2] checks the critical pairs between
-   all the subterms of [sr1] LHS and the [sr2] LHS. *)
+   all the subterms of the [sr1] LHS and the [sr2] LHS. *)
 let check_cp_subterms_eq_rule : Pos.popt -> sym_rule -> sym_rule -> unit =
   fun pos lr gd ->
   (*if Logger.log_enabled() then
     log_cp "check_cp_subterms@.%a@.%a" Print.pp_rule lr Print.pp_rule gd;*)
   let l = lhs lr and r = rhs lr and g = lhs gd and d = rhs gd in
   let l = shift l and r = shift r in
-  let f p l_p = check_cp_subterm_rule pos l r p l_p g d in
+  let f _ p l_p = check_cp_subterm_rule pos l r p l_p g d in
+  iter_subterms_eq pos f l
+
+(** [check_cp_subterms_eq pos sr1] checks the critical pairs between
+   all the subterms of the [sr1] LHS and all the possible rule LHS's. *)
+let check_cp_subterms_eq : Pos.popt -> sym_rule -> unit = fun pos lr ->
+  (*if Logger.log_enabled() then
+    log_cp "check_cp_subterms@.%a@.%a" Print.pp_rule lr Print.pp_rule gd;*)
+  let l = shift (lhs lr) and r = shift (rhs lr) in
+  let f s p l_p =
+    let g rule =
+      if p <> [] || rule != snd lr then
+      let gd = (s, rule) in
+      let g = lhs gd and d = rhs gd in
+      check_cp_subterm_rule pos l r p l_p g d
+    in
+    List.iter g !(s.sym_rules)
+  in
   iter_subterms_eq pos f l
 
 (** [iter_head_tail f l] iterates [f] on all pairs (head, tail) of [l]. *)
@@ -411,8 +429,8 @@ let rec iter_head_tail : ('a -> 'a list -> unit) -> 'a list -> unit =
   | [] -> ()
   | h::t -> f h t; iter_head_tail f t
 
-(** [check_cps rs] checks all the critical pairs of [rs]. *)
-let check_cps : Pos.popt -> sym_rule list -> unit = fun pos rs ->
+(** [filter rs] removes rules that cannot be handled (yet). *)
+let filter : Pos.popt -> sym_rule list -> sym_rule list = fun pos rs ->
   let not_handled = Stdlib.ref false in
   let rs =
     let is_ho r = Array.exists (fun i -> i > 0) r.arities in
@@ -425,15 +443,18 @@ let check_cps : Pos.popt -> sym_rule list -> unit = fun pos rs ->
   if Stdlib.(!not_handled) then
     wrn pos "The local confluence checker ignores rules on AC symbols \
              and rules with higher-order variables.";
+  rs
+
+(** [check_cp_rules rs] checks all the critical pairs of [rs] with itself. *)
+let check_cp_rules : Pos.popt -> sym_rule list -> unit = fun pos rs ->
+  let rs = filter pos rs in
   let f r rs =
     check_cp_subterms_rule pos r r;
     List.iter (check_cp_subterms_eq_rule pos r) rs
   in
   iter_head_tail f rs
 
-(** [check_cps_rel rs1 rs2] checks all the critical pairs between a subterm of
-   a [rs1] LHS and a [rs2] LHS. *)
-let check_cps_rel : Pos.popt -> sym_rule list -> sym_rule list -> unit =
-  fun pos rs1 rs2 ->
-  List.iter (fun r1 ->
-      List.iter (fun r2 -> check_cp_subterms_rule pos r1 r2) rs2) rs1
+(** [check_cps rs] checks all the critical pairs generating by adding [rs]. *)
+let check_cps : Pos.popt -> sym_rule list -> unit = fun pos rs ->
+  let rs = filter pos rs in
+  List.iter (check_cp_subterms_eq pos) rs
