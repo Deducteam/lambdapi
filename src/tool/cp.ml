@@ -413,12 +413,18 @@ let rec iter_head_tail : ('a -> 'a list -> unit) -> 'a list -> unit =
 
 (** [check_cps rs] checks all the critical pairs of [rs]. *)
 let check_cps : Pos.popt -> sym_rule list -> unit = fun pos rs ->
-  let has_modulo = Stdlib.ref false in
-  let f (s,_) =
-    if is_modulo s then Stdlib.(has_modulo := true; false) else true in
-  let rs = List.filter f rs in
-  if Stdlib.(!has_modulo) then
-    wrn pos "The local confluence checker ignores rules on AC symbols.";
+  let not_handled = Stdlib.ref false in
+  let rs =
+    let is_ho r = Array.exists (fun i -> i > 0) r.arities in
+    let f (s,r) =
+      if is_modulo s || is_ho r then Stdlib.(not_handled := true; false)
+      else true
+    in
+    List.filter f rs
+  in
+  if Stdlib.(!not_handled) then
+    wrn pos "The local confluence checker ignores rules on AC symbols \
+             and rules with higher-order variables.";
   let f r rs =
     check_cp_subterms_rule pos r r;
     List.iter (check_cp_subterms_eq_rule pos r) rs
