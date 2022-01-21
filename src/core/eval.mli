@@ -4,13 +4,13 @@ Preliminary remarks. We define the head-structure of a term t as:
 - λx:_,h if t=λx:a,u and h is the head-structure of u
 - Π if t=Πx:a,u
 - h _ if t=uv and h is the head-structure of u
-- ? if t=?M[t1,..,tn] (and ?M is not instantiated)
+- ? if t=?M.[t1;...;tn] (and ?M is not instantiated)
 - t itself otherwise (TYPE, KIND, x, f)
 
 A term t is in head-normal form (hnf) if its head-structure is invariant by
 reduction.
 
-A term t is in weak head-normal form (whnf) if it is an abstration or if it
+A term t is in weak head-normal form (whnf) if it is an abstraction or if it
 is in hnf. In particular, a term in head-normal form is in weak head-normal
 form.
 
@@ -30,38 +30,44 @@ type rw_tag =
 (** Functions that use the rewriting engine and accept an optional argument
     [tags] of type [rw_tag list] have the following behaviour.
     - If the argument is not given, then no tag is active and the rewrite
-      engine is not constrained.
+      engine is not constrained: it uses user defined reduction rules, it
+      expands variable definitions (that are stored in the {!ctxt}) and
+      performs beta reductions.
     - Each tag if present disables some functionality of the rewrite
       engine. The descriptions of the functionalities are given in the
       documentation of {!rw_tag}. *)
 
-(** Abstract machine stack. *)
-type stack = term list
+(** Reduction functions also accept an optional {!problem} that is used to
+    store metavariables that may be created while rewriting. Such
+    metavariables may be created by particular rewrite rules (such as
+    unification rules), but not by rules declared with [rule t ↪ u;]. *)
+
+(** {b NOTE} that all reduction functions, and {!eq_modulo}, may reduce
+    in-place some subterms of the reduced term. *)
 
 (** [whnf ?problem ?tags c t] computes a whnf of the term [t] in context
-    [c].  Rewriting may generate new metavariables that are added to [problem]
-    if given. *)
+    [c]. *)
 val whnf : ?problem:problem -> ?tags:rw_tag list -> ctxt -> term -> term
 
 (** [eq_modulo c a b] tests the convertibility of [a] and [b] in context
-    [c]. WARNING: may have side effects in TRef's introduced by whnf. *)
+    [c]. *)
 val eq_modulo : ctxt -> term -> term -> bool
 
 (** [pure_eq_modulo c a b] tests the convertibility of [a] and [b] in context
    [c] with no side effects. *)
 val pure_eq_modulo : ctxt -> term -> term -> bool
 
-(** [snf c t] computes the strong normal form of the term [t] in the context
-   [c]. It unfolds variables defined in the context [c]. *)
-val snf : ctxt -> term -> term
+(** [snf ?problem ?tags c t] computes the strong normal form of the term [t]
+    in the context [c]. *)
+val snf : ?problem:problem -> ?tags:rw_tag list -> ctxt -> term -> term
 
-(** [hnf t] computes a head-normal form of the term [t] wrt beta-reduction,
-   user-defined rewrite rules and variables defined in the context [c]. *)
-val hnf : ctxt -> term -> term
+(** [hnf ?problem ?tags c t] computes a head-normal form of the term [t] in
+    context [c]. *)
+val hnf : ?problem:problem -> ?tags:rw_tag list -> ctxt -> term -> term
 
 (** [simplify t] computes a beta whnf of [t] belonging to the set S such that:
-- terms of S are in beta whnf normal format
-- if [t] is a product, then both its domain and codomain are in S. *)
+    - terms of S are in beta whnf normal format
+    - if [t] is a product, then both its domain and codomain are in S. *)
 val simplify : term -> term
 
 (** If [s] is a non-opaque symbol having a definition, [unfold_sym s t]
