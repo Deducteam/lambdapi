@@ -130,20 +130,22 @@ let handle_modifiers : p_modifier list -> prop * expo * match_strat =
   in
   (prop, expo, strat)
 
-(** [handle_rule ss syms r] checks rule [r], adds it in [ss] and returns the
-   head symbol of the lhs and the rule itself. *)
-let handle_rule : sig_state -> p_rule -> sym * rule = fun ss r ->
+(** [check_rule ss syms r] checks rule [r] and returns the head symbol of the
+   lhs and the rule itself. *)
+let check_rule : sig_state -> p_rule -> sym * rule = fun ss r ->
   Console.out 3 (Color.cya "%a") Pos.pp r.pos;
   Console.out 4 "%a" (Pretty.rule "rule") r;
   let pr = scope_rule false ss r in
   let sym = pr.elt.pr_sym in
   if !(sym.sym_def) <> None then
-    fatal pr.pos "No rewriting rule can be given on the defined symbol %a."
-      pp_sym sym;
-  let rule = Tool.Sr.check_rule pr in
+    fatal pr.pos "No rewriting rule can be given on a defined symbol.";
+  sym, Tool.Sr.check_rule pr
+
+(** [handle_rule ss syms r] checks rule [r], adds it in [ss] and returns the
+   head symbol of the lhs and the rule itself. *)
+let add_rule : sig_state -> sym * rule -> unit = fun ss (sym, rule) ->
   Sign.add_rule ss.signature sym rule;
-  Console.out 2 (Color.red "rule %a") pp_rule (sym, rule);
-  sym, rule
+  Console.out 2 (Color.red "rule %a") pp_rule (sym, rule)
 
 (** [handle_inductive_symbol ss e p strat x xs a] handles the command
     [e p strat symbol x xs : a] with [ss] as the signature state.
@@ -209,11 +211,13 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
   | P_open(ps) -> (List.fold_left handle_open ss ps, None, None)
   | P_rules(rs) ->
       let handle_rule (syms, rs) r =
-        let (s,_) as r = handle_rule ss r in SymSet.add s syms, r::rs
+        let (s,_) as r = check_rule ss r in SymSet.add s syms, r::rs
       in
       let syms, rs = List.fold_left handle_rule (SymSet.empty, []) rs in
+      Tool.Cp.check_cps pos ss rs;
+      List.iter (add_rule ss) (List.rev rs);
+      (*FIXME:remove List.rev by fixing regression/hrs.expected*)
       SymSet.iter Tree.update_dtree syms;
-      Tool.Cp.check_cps pos rs;
       (ss, None, None)
   | P_builtin(s,qid) ->
       let sym = find_sym ~prt:true ~prv:true ss qid in
@@ -314,7 +318,7 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
       (* Add recursor rules in the signature. *)
       with_no_wrn
         (Inductive.iter_rec_rules pos ind_list vs ind_pred_map)
-        (fun r -> ignore (handle_rule ss r));
+        (fun r -> add_rule ss (check_rule ss r));
       List.iter Tree.update_dtree rec_sym_list;
       (* Store the inductive structure in the signature *)
       let ind_nb_types = List.length ind_list in
