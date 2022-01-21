@@ -117,7 +117,9 @@ let eq_modulo : (config -> term -> term) -> (config -> term -> term -> bool) =
     | _, LLet(_,t,u) ->
       let x,u = Bindlib.unbind u in
       eq {c with defmap = VarMap.add x t c.defmap} ((a,u)::l)
-    | Patt _, _ | _, Patt _
+    | Patt(Some i,_,ts), Patt(Some j,_,us) ->
+      if i=j then eq c (List.add_array2 ts us l) else raise Exit
+    | Patt(None,_,_), _ | _, Patt(None,_,_) -> assert false
     | TEnv _, _| _, TEnv _ -> assert false
     | Kind, Kind
     | Type, Type -> eq c l
@@ -135,6 +137,7 @@ let eq_modulo : (config -> term -> term) -> (config -> term -> term -> bool) =
     (* cases of failure *)
     | Kind, _ | _, Kind
     | Type, _ | _, Type
+    | Patt _, _ | _, Patt _
       -> raise Exit
     | ((Symb f, (Vari _|Meta _|Prod _|Abst _))
       | ((Vari _|Meta _|Prod _|Abst _), Symb f)) when is_constant f ->
@@ -143,7 +146,9 @@ let eq_modulo : (config -> term -> term) -> (config -> term -> term -> bool) =
     let a = whnf c a and b = whnf c b in
     (*if Logger.log_enabled () then log_conv "%a ≡ %a" pp_term a pp_term b;*)
     match a, b with
-    | Patt _, _ | _, Patt _
+    | Patt(Some i,_,ts), Patt(Some j,_,us) ->
+      if i=j then eq c (List.add_array2 ts us l) else raise Exit
+    | Patt(None,_,_), _ | _, Patt(None,_,_) -> assert false
     | TEnv _, _| _, TEnv _ -> assert false
     | Kind, Kind
     | Type, Type -> eq c l
@@ -431,13 +436,13 @@ and tree_walk : config -> dtree -> stack -> (term * stack) option =
               end
           | Kind
           | Type
+          | Patt _
           | Meta(_, _) -> default ()
           | Plac _     -> assert false
              (* Should not appear in typechecked terms. *)
           | TRef(_)    -> assert false (* Should be reduced by [whnf_stk]. *)
           | Appl(_)    -> assert false (* Should be reduced by [whnf_stk]. *)
           | LLet(_)    -> assert false (* Should be reduced by [whnf_stk]. *)
-          | Patt(_)    -> assert false (* Should not appear in terms. *)
           | TEnv(_)    -> assert false (* Should not appear in terms. *)
           | Wild       -> assert false (* Should not appear in terms. *)
   in

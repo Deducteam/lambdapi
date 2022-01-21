@@ -201,7 +201,8 @@ and pp_term : term pp = fun ppf t ->
     | _ -> assert false
 
   and pp_head wrap ppf t =
-    let pp_env ppf ar = out ppf ".[%a]" (Array.pp func ";") ar in
+    let pp_env ppf ts =
+      if Array.length ts > 0 then out ppf ".[%a]" (Array.pp func ";") ts in
     let pp_term_env ppf te =
       match te with
       | TE_Vari(m) -> pp_var ppf m

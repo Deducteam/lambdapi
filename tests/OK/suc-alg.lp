@@ -20,6 +20,7 @@ with sₙ $x ⊕ₙ sₙ $y ↪ sₙ ($x ⊕ₙ $y);
 // addition on natural numbers
 symbol + : ℕ → ℕ → ℕ; notation + infix right 5;
 
+debug +f;
 rule 0ₙ + $y ↪ $y
 with $x + 0ₙ ↪ $x
 with sₙ $x + $y ↪ sₙ ($x + $y)

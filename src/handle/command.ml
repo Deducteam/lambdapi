@@ -131,9 +131,8 @@ let handle_modifiers : p_modifier list -> prop * expo * match_strat =
   (prop, expo, strat)
 
 (** [handle_rule ss syms r] checks rule [r], adds it in [ss] and returns the
-   set [syms] extended with the symbol [s] defined by [r]. However, it does
-   not update the decision tree of [s]. *)
-let handle_rule : sig_state -> p_rule -> sym = fun ss r ->
+   head symbol of the lhs and the rule itself. *)
+let handle_rule : sig_state -> p_rule -> sym * rule = fun ss r ->
   Console.out 3 (Color.cya "%a") Pos.pp r.pos;
   Console.out 4 "%a" (Pretty.rule "rule") r;
   let pr = scope_rule false ss r in
@@ -144,7 +143,7 @@ let handle_rule : sig_state -> p_rule -> sym = fun ss r ->
   let rule = Tool.Sr.check_rule pr in
   Sign.add_rule ss.signature sym rule;
   Console.out 2 (Color.red "rule %a") pp_rule (sym, rule);
-  sym
+  sym, rule
 
 (** [handle_inductive_symbol ss e p strat x xs a] handles the command
     [e p strat symbol x xs : a] with [ss] as the signature state.
@@ -209,9 +208,12 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
   | P_require_as(p,id) -> (handle_require_as compile ss p id, None, None)
   | P_open(ps) -> (List.fold_left handle_open ss ps, None, None)
   | P_rules(rs) ->
-      let handle_rule syms r = SymSet.add (handle_rule ss r) syms in
-      let syms = List.fold_left handle_rule SymSet.empty rs in
+      let handle_rule (syms, rs) r =
+        let (s,_) as r = handle_rule ss r in SymSet.add s syms, r::rs
+      in
+      let syms, rs = List.fold_left handle_rule (SymSet.empty, []) rs in
       SymSet.iter Tree.update_dtree syms;
+      Tool.Cp.check_cps pos rs;
       (ss, None, None)
   | P_builtin(s,qid) ->
       let sym = find_sym ~prt:true ~prv:true ss qid in
