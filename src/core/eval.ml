@@ -470,31 +470,33 @@ and tree_walk : config -> dtree -> stack -> (term * stack) option =
 (** {1 Define exposed functions}
     that take optional arguments rather than a config. *)
 
+type reducer = ?problem:problem -> ?tags:rw_tag list -> ctxt -> term -> term
+
+let time_reducer (f: reducer): reducer =
+  let open Stdlib in let r = ref mk_Kind in fun ?problem ?tags c t ->
+    Debug.(record_time Rewriting (fun () -> r := f ?problem ?tags c t)); !r
+
 (** [snf c t] computes a snf of [t], unfolding the variables defined in the
    context [c]. *)
-let snf : ctxt -> term -> term = fun c t ->
+let snf : reducer = fun ?problem ?tags c t ->
   Stdlib.(steps := 0);
-  let u = snf (whnf (Config.make c)) t in
+  let u = snf (whnf (Config.make ?problem ?tags c)) t in
   let r = if Stdlib.(!steps = 0) then unfold t else u in
   (*if Logger.log_enabled () then
     log_eval "snf %a%a\n= %a" pp_ctxt c pp_term t pp_term r;*) r
 
-let snf =
-  let open Stdlib in let r = ref mk_Kind in fun c t ->
-  Debug.(record_time Rewriting (fun () -> r := snf c t)); !r
+let snf = time_reducer snf
 
 (** [hnf c t] computes a hnf of [t], unfolding the variables defined in the
     context [c], and using user-defined rewrite rules. *)
-let hnf : ctxt -> term -> term = fun c t ->
+let hnf : reducer = fun ?problem ?tags c t ->
   Stdlib.(steps := 0);
-  let u = hnf (whnf (Config.make c)) t in
+  let u = hnf (whnf (Config.make ?problem ?tags c)) t in
   let r = if Stdlib.(!steps = 0) then unfold t else u in
   (*if Logger.log_enabled () then
     log_eval "hnf %a%a\n= %a" pp_ctxt c pp_term t pp_term r;*) r
 
-let hnf =
-  let open Stdlib in let r = ref mk_Kind in fun c t ->
-  Debug.(record_time Rewriting (fun () -> r := hnf c t)); !r
+let hnf = time_reducer hnf
 
 (** [eq_modulo c a b] tests the convertibility of [a] and [b] in context
     [c]. WARNING: may have side effects in TRef's introduced by whnf. *)
@@ -512,22 +514,14 @@ let pure_eq_modulo : ctxt -> term -> term -> bool = fun c a b ->
 
 (** [whnf c t] computes a whnf of [t], unfolding the variables defined in the
    context [c], and using user-defined rewrite rules if [~rewrite]. *)
-let whnf :
-     ?problem:problem
-  -> ?tags:rw_tag list
-  -> ctxt -> term -> term =
-  fun ?problem ?tags c t ->
+let whnf : reducer = fun ?problem ?tags c t ->
   Stdlib.(steps := 0);
   let u = whnf (Config.make ?problem ?tags c) t in
   let r = if Stdlib.(!steps = 0) then unfold t else u in
   (*if Logger.log_enabled () then
     log_eval "whnf %a%a\n= %a" pp_ctxt c pp_term t pp_term r;*) r
 
-let whnf =
-  let open Stdlib in let r = ref mk_Kind in fun ?problem ?tags c t ->
-  Debug.(
-    record_time Rewriting (fun () -> r := whnf ?problem ?tags c t));
-  !r
+let whnf = time_reducer whnf
 
 (** [simplify t] computes a beta whnf of [t] belonging to the set S such that:
 - terms of S are in beta whnf normal format
