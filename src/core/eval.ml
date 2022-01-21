@@ -84,7 +84,7 @@ module Config = struct
   type t =
     { context : ctxt
     (** Context of the reduction used for generating metas. *)
-    ; defmap : term VarMap.t (** Variable definitions. *)
+    ; varmap : term VarMap.t (** Variable definitions. *)
     ; rewrite : bool (** Whether to apply user-defined rewriting rules. *)
     ; expand_defs : bool (** Whether to expand definitions. *)
     ; beta : bool (** Whether to beta-normalise *)
@@ -99,17 +99,18 @@ module Config = struct
     let beta = not @@ List.mem `NoBeta tags in
     let expand_defs = not @@ List.mem `NoExpand tags in
     let rewrite = not @@ List.mem `NoRw tags in
-    {context; defmap = Ctxt.to_map context; rewrite; expand_defs; beta; problem}
+    {context; varmap = Ctxt.to_map context; rewrite; expand_defs; beta; problem}
 
-  let unfold : t -> term -> term = fun c a ->
-    let a = unfold a in
-    match a with
-    | Vari x ->
-      begin match VarMap.find_opt x c.defmap with
+  (** [unfold c a] unfolds [a] if it's a variable defined in the configuration
+      [c]. *)
+  let rec unfold : t -> term -> term = fun c a ->
+    match Term.unfold a with
+    | Vari x as a->
+      begin match VarMap.find_opt x c.varmap with
         | None -> a
-        | Some v -> unfold v
+        | Some v -> unfold c v
       end
-    | _ -> a
+    | a -> a
 
 end
 
@@ -129,10 +130,10 @@ let eq_modulo : (config -> term -> term) -> config -> term -> term -> bool =
     match a, b with
     | LLet(_,t,u), _ ->
       let x,u = Bindlib.unbind u in
-      eq {c with defmap = VarMap.add x t c.defmap} ((u,b)::l)
+      eq {c with varmap = VarMap.add x t c.varmap} ((u,b)::l)
     | _, LLet(_,t,u) ->
       let x,u = Bindlib.unbind u in
-      eq {c with defmap = VarMap.add x t c.defmap} ((a,u)::l)
+      eq {c with varmap = VarMap.add x t c.varmap} ((a,u)::l)
     | Patt _, _ | _, Patt _
     | TEnv _, _| _, TEnv _ -> assert false
     | Kind, Kind
@@ -246,7 +247,7 @@ and whnf_stk : config -> term -> stack -> term * stack = fun c t stk ->
         Stdlib.incr steps; whnf_stk c t' stk'
     end
   | (Vari x, stk) as r ->
-    begin match VarMap.find_opt x c.defmap with
+    begin match VarMap.find_opt x c.varmap with
     | Some v -> Stdlib.incr steps; whnf_stk c v stk
     | None -> r
     end
