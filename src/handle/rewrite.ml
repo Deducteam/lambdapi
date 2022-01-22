@@ -174,7 +174,7 @@ let get_eq_data :
     | Prod(_,t), _ -> let v,t = Bindlib.unbind t in get_eq (v::vs) t true
     | p, [u] when is_symb cfg.symb_P p ->
       begin
-        let u = Eval.whnf ~rewrite:false [] u in
+        let u = Eval.whnf ~tags:[`NoRw; `NoExpand] [] u in
         try return vs (get_eq_args u)
         with Not_eq _ ->
           (try return vs (get_eq_args (Eval.whnf [] u))

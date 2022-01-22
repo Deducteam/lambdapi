@@ -79,14 +79,12 @@ let try_unif_rules : problem -> ctxt -> term -> term -> bool =
   let open Unif_rule in
   try
     let rhs =
-      match Eval.tree_walk p c !(equiv.sym_dtree) [s;t] with
-      | Some(r,[]) -> r
-      | Some(_)    -> assert false (* Everything should be matched *)
-      | None       ->
-      match Eval.tree_walk p c !(equiv.sym_dtree) [t;s] with
-      | Some(r,[]) -> r
-      | Some(_)    -> assert false (* Everything should be matched *)
-      | None       -> raise No_match
+      let start = add_args (mk_Symb equiv) [s;t] in
+      let reduced = Eval.whnf ~problem:p c start in
+      if reduced != start then reduced else
+        let start = add_args (mk_Symb equiv) [t;s] in
+        let reduced = Eval.whnf ~problem:p c start in
+        if reduced != start then reduced else raise No_match
     in
     let cs = List.map (fun (t,u) -> (c,t,u)) (unpack rhs) in
     if Logger.log_enabled () then log_unif "rewrites to:%a" pp_constrs cs;
@@ -363,8 +361,8 @@ let solve : problem -> unit = fun p ->
   p := {!p with to_solve};
 
   (* We first try without normalizing wrt user-defined rules. *)
-  let t1 = Eval.whnf ~rewrite:false c t1
-  and t2 = Eval.whnf ~rewrite:false c t2 in
+  let t1 = Eval.whnf ~tags:[`NoRw] c t1
+  and t2 = Eval.whnf ~tags:[`NoRw] c t2 in
   if Logger.log_enabled () then log_unif (gre "solve %a") pp_constr (c,t1,t2);
   let h1, ts1 = get_args t1 and h2, ts2 = get_args t2 in
 
