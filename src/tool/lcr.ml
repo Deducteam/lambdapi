@@ -420,13 +420,15 @@ let check_cp_subterms_eq_rule : Pos.popt -> sym_rule -> sym_rule -> unit =
 let can_handle : sym_rule -> bool = fun (s,r) -> not (is_modulo s || is_ho r)
 
 (** [iter_rules h rs] iterates function [f] on every rule of [rs]. *)
-let iter_rules : (rule -> unit) -> rule list -> unit = fun h ->
-  let rec iter = function
-    | r::rs -> if not (is_ho r) then h r; iter rs
-    | _ -> ()
-  in iter
+let iter_rules : (rule -> unit) -> sym -> rule list -> unit = fun h s ->
+  if is_modulo s then
+    let rec iter = function
+      | r::rs -> if not (is_ho r) then h r; iter rs
+      | _ -> ()
+    in iter
+  else fun _ -> ()
 
-(** [iter_rules h rs] iterates function [f] on every rule of [rs]. *)
+(** [iter_sym_rules h rs] iterates function [f] on every rule of [rs]. *)
 let iter_sym_rules : (sym_rule -> unit) -> sym_rule list -> unit = fun h ->
   let rec iter = function
     | [] -> ()
@@ -456,11 +458,11 @@ let check_cp_subterms_eq : Pos.popt -> sym_rule -> unit =
         let h y = if y != x then let gd = (s, y) in
             check_cp_subterm_rule pos l r p l_p (lhs gd) (rhs gd)
         in
-        iter_rules h !(s.sym_rules);
+        iter_rules h s !(s.sym_rules);
       | _ ->
         let h y = let gd = (s, y) in
           check_cp_subterm_rule pos l r p l_p (lhs gd) (rhs gd) in
-        iter_rules h !(s.sym_rules)
+        iter_rules h s !(s.sym_rules)
   in
   iter_subterms_eq pos f l
 
@@ -527,7 +529,7 @@ let update_cp_pos :
     let h s' p l_p = map := SymMap.add s' (l,r,p,l_p) !map in
     iter_subterms pos h l
   in
-  iter_rules f rs; !map
+  iter_rules f s rs; !map
 
 (** [check_cp_sign pos rs] checks all the critical pairs between all the rules
    of the signature and [rs]. *)
@@ -549,7 +551,7 @@ let check_cp_sign : Pos.popt -> Sign.t -> sym_rule list -> unit =
           let gd = (s',r') in
           check_cp_subterm_rule pos l r p l_p (lhs gd) (rhs gd)
         in
-        iter_rules h' rs
+        iter_rules h' s' rs
     in
     SymMap.iter h (cp_pos_of_sym pos s)
   in
