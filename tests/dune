@@ -1,5 +1,5 @@
 (tests
- (names ok_ko rewriting purity kernel)
+ (names ok_ko rewriting purity meta kernel)
  (deps
   (glob_files OK/*.lp)
   (glob_files OK/*.dk)

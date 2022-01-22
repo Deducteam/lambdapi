@@ -569,10 +569,22 @@ let rule_of_pre_rule : pre_rule loc -> rule =
   ; xvars_nb = pr_xvars_nb
   ; rule_pos }
 
-(** [scope_rule ur ss r] turns a parser-level rewriting rule [r], or a
-    unification rule if [ur] is true, into a pre-rewriting rule. *)
-let scope_rule : bool -> sig_state -> p_rule -> pre_rule loc =
-  fun ur ss { elt = (p_lhs, p_rhs); pos } ->
+(** The status of rewrite rules. *)
+type rule_status =
+  | Regular (** Regular LPMT rewrite rule *)
+  | Unif
+    (** Unification rule: rewrite a unification problem into another
+        unification problem. *)
+  | Meta
+    (** Meta rewrite rule: such rewrite rules are allowed to rewrite
+        constant symbols *)
+
+(** [scope_rule rst ss r] turns a parser-level rewriting rule [r] into
+    a pre-rewriting rule. Argument [rst] specifies the nature of the
+    rewrite rulea unification rule if [rst] is [Unif], *)
+let scope_rule : rule_status -> sig_state -> p_rule -> pre_rule loc =
+  fun rst ss r ->
+  let (p_lhs, p_rhs) = r.elt in
   (* Compute the set of pattern variables on both sides. *)
   let (pvs_lhs, nl) = patt_vars p_lhs in
   (* NOTE to reject non-left-linear rules check [nl = []] here. *)
@@ -608,8 +620,10 @@ let scope_rule : bool -> sig_state -> p_rule -> pre_rule loc =
     let (h, args) = get_args pr_lhs in
     match h with
     | Symb(s) ->
-        if is_constant s then fatal p_lhs.pos "Constant LHS head symbol.";
-        if s.sym_expo = Protec && ss.signature.sign_path <> s.sym_path then
+        if rst <> Meta && is_constant s then
+          fatal p_lhs.pos "Constant LHS head symbol.";
+        if rst <> Meta && s.sym_expo = Protec &&
+           ss.signature.sign_path <> s.sym_path then
           fatal p_lhs.pos "Cannot define rules on foreign protected symbols.";
         (s, args)
     | _ -> fatal p_lhs.pos "No head symbol in LHS."
@@ -626,10 +640,12 @@ let scope_rule : bool -> sig_state -> p_rule -> pre_rule loc =
     let htbl_vars = Hashtbl.create (Hashtbl.length lhs_indices) in
     let fn k i = Hashtbl.add htbl_vars k pr_vars.(i) in
     Hashtbl.iter fn lhs_indices;
-    if ur then
-      M_URHS{ m_urhs_data = htbl_vars ; m_urhs_vars_nb = Array.length pr_vars
-            ; m_urhs_xvars = [] }
-    else
+    match rst with
+    | Unif ->
+        M_URHS{ m_urhs_data = htbl_vars;
+                m_urhs_vars_nb = Array.length pr_vars;
+                m_urhs_xvars = [] }
+    | Regular | Meta ->
       M_RHS{ m_rhs_prv = is_private pr_sym; m_rhs_data = htbl_vars;
              m_rhs_new_metas = new_problem() }
   in
@@ -643,7 +659,8 @@ let scope_rule : bool -> sig_state -> p_rule -> pre_rule loc =
       in
       Array.init lhs_size fn
     in
-    if ur then (* Unification rule. *)
+    match rst with
+    | Unif ->
       (* We scope the RHS and retrieve variables not occurring in the LHS. *)
       let xvars =
         match mode with
@@ -662,11 +679,17 @@ let scope_rule : bool -> sig_state -> p_rule -> pre_rule loc =
       (* We put everything together to build the pre-rule. *)
       { pr_sym ; pr_lhs ; pr_vars ; pr_rhs ; pr_arities
       ; pr_names ; pr_xvars_nb }
-    else (* Rewrite rule. *)
+    | Regular | Meta ->
       { pr_sym ; pr_lhs ; pr_vars ; pr_rhs ; pr_arities
       ; pr_names ; pr_xvars_nb=0 }
   in
-  Pos.make pos prerule
+  Pos.make r.pos prerule
+
+let scope_unif_rule : sig_state -> p_rule -> pre_rule loc = scope_rule Unif
+
+let scope_meta_rule : sig_state -> p_rule -> pre_rule loc = scope_rule Meta
+
+let scope_rule : sig_state -> p_rule -> pre_rule loc = scope_rule Regular
 
 (** [scope_pattern ss env t] turns a parser-level term [t] into an actual term
     that will correspond to selection pattern (rewrite tactic). *)
