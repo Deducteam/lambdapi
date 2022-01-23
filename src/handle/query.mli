@@ -1,9 +1,8 @@
 (** Handling of queries. *)
 
-open Core
-open Term
-open Parsing.Syntax
-open Common.Pos
+open Core open Term
+open Parsing open Syntax
+open Common open Pos
 open Proof
 
 (** [infer pos p c t] returns a couple [(t',a)] where [a] is the type of [t]

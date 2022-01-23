@@ -10,10 +10,8 @@
 (* Status: Very Experimental                                            *)
 (************************************************************************)
 
-open! Lplib
-open Lplib.Extra
+open Lplib open Extra
 open Common
-
 open Core
 
 module F = Format

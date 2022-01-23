@@ -1,19 +1,10 @@
 (** Handling of commands. *)
 
-open! Lplib
-open Lplib.Extra
+open Lplib open Extra
 open Timed
-open Common
-open Error
-open Core
-open Term
-open Sign
-open Pos
-open Parsing
-open Syntax
-open Sig_state
-open Scope
-open Print
+open Common open Error open Pos
+open Core open Term open Sign open Sig_state open Print
+open Parsing open Syntax open Scope
 open Proof
 
 (** Type alias for a function that compiles a Lambdapi module. *)

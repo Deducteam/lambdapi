@@ -1,11 +1,8 @@
 (** Evaluation and conversion. *)
 
-open! Lplib
-open Lplib.Extra
+open Lplib open Extra
 open Timed
-open Common
-open Error
-open Debug
+open Common open Error open Debug
 open Term
 open Print
 

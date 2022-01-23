@@ -5,12 +5,9 @@
     log messages, and feedback in case of success or error while type-checking
     terms or testing convertibility. *)
 
-open! Lplib
-open Lplib.Base
-open Lplib.Extra
+open Lplib open Base open Extra
 open Timed
-open Common
-open Debug
+open Common open Debug
 open Term
 open Sig_state
 

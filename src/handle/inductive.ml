@@ -9,16 +9,11 @@
    In the OCaml code, the prefix "ind" is used for inductive types. The prefix
    "rec" is used for recursors, aka induction principles. *)
 
-open! Lplib
+open Lplib
 open Timed
-open Common
-open Pos
-open Error
-open Core
-open Term
-open Print
-open Parsing
-open Syntax
+open Common open Pos open Error
+open Core open Term open Print
+open Parsing open Syntax
 
 (** Logging function for generating of inductive principle. *)
 let log_ind = Logger.make 'g' "indu" "induction principles generation"

@@ -3,13 +3,9 @@
 
     @see <http://project-coco.uibk.ac.at/problems/hrs.php>. *)
 
-open! Lplib
-open Lplib.Base
-open Lplib.Extra
+open Lplib open Base open Extra
 open Timed
-open Core
-open Term
-open Print
+open Core open Term open Print
 
 (** [print_sym ppf s] outputs the fully qualified name of [s] to [ppf]. The
    name is prefixed by ["c_"], and modules are separated with ["_"], not

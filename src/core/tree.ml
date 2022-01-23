@@ -5,12 +5,8 @@
 
     @see <https://dblp.uni-trier.de/rec/html/conf/ml/Maranget08> *)
 
-open! Lplib
-open Lplib.Base
-open Lplib.Extra
-
+open Lplib open Base open Extra
 open Common
-
 open Timed
 open Term
 open LibTerm

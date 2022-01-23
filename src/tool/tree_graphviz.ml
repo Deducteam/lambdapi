@@ -7,13 +7,9 @@
    See the chapter [doc/options.md#printing-decision-trees] of the
    documentation for more information. *)
 
-open! Lplib
-open Lplib.Base
-
+open Lplib open Base
 open Timed
-open Core
-open Term
-open Tree_type
+open Core open Term open Tree_type
 
 (** Printing hint for conversion to graphviz. *)
 type dot_term =

@@ -1,5 +1,6 @@
 module A = Stdlib.Array
 include A
+
 open Base
 
 (** [for_all2 p a1 a2] checks if the corresponding elements of arrays [a1] and

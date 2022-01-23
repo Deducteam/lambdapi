@@ -1,13 +1,10 @@
 (** Checking that a rule preserves typing (subject reduction property). *)
 
-open! Lplib
+open Lplib
 open Timed
-open Common
-open Error
-open Core
+open Common open Error
+open Core open Term open Print
 open Parsing
-open Term
-open Print
 
 (** Logging function for typing. *)
 let log_subj = Logger.make 's' "subj" "subject-reduction"

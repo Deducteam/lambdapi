@@ -1,13 +1,9 @@
 (** Registering and checking builtin symbols. *)
 
-open Lplib.Base
-open Lplib.Extra
-
+open Lplib open Base open Extra
 open Timed
-open Common
+open Common open Error open Pos
 open Term
-open Error
-open Pos
 open Sig_state
 
 (** [get pos map name] returns the symbol mapped to the “builtin symbol” named
