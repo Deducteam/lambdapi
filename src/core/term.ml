@@ -232,6 +232,7 @@ let minimize_impl : bool list -> bool list =
   fun l -> List.rev (rem_false (List.rev l))
 
 (** Printing functions for debug. *)
+module Raw = struct
 let rec term : term pp = fun ppf t ->
   match t with
   | Vari v -> var ppf v
@@ -269,6 +270,7 @@ and tenv : term_env pp = fun ppf te ->
     let vs, b = Bindlib.unmbind mb in
     out ppf "%a,%a" (D.array var) vs term b
   | TE_None -> ()
+end
 
 (** Typing context associating a [Bindlib] variable to a type and possibly a
     definition. The typing environment [x1:A1,..,xn:An] is represented by the
@@ -551,7 +553,8 @@ let right_aliens : sym -> term -> term list = fun s ->
         else aliens (u :: acc) us
   in fun t -> let r = aliens [] [t] in
   if Logger.log_enabled () then
-    log_term "right_aliens %a %a = %a" sym s term t (D.list term) r;
+    log_term "right_aliens %a %a = %a"
+      Raw.sym s Raw.term t (D.list Raw.term) r;
   r
 
 (* unit test *)

@@ -12,6 +12,7 @@ open Term
 open Env
 open Sig_state
 open Debug
+open Print
 
 (** Logging function for term scoping. *)
 let log_scop = Logger.make 'o' "scop" "term scoping"
@@ -219,7 +220,7 @@ and scope_parsed :
   (* Scope and insert the (implicit) arguments. *)
   add_impl k md ss env t.pos h impl args
   |> D.log_and_return
-    (fun e -> log_scop "%agot %a" D.depth k Print.term (Bindlib.unbox e))
+    (fun e -> log_scop "%agot %a" D.depth k term (Bindlib.unbox e))
 
 (** [add_impl md ss env loc h impl args] scopes [args] and returns the
    application of [h] to the scoped arguments. [impl] is a boolean list
@@ -366,7 +367,7 @@ and scope_head :
                   fatal ts.(j).pos
                     "Variable %a appears more than once \
                      in the environment of a pattern variable."
-                    Print.var vs.(j)
+                    var vs.(j)
               done
             done;
             Array.map _Vari vs

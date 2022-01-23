@@ -9,6 +9,7 @@ open Parsing
 open Core
 open Sign
 open Library
+open Print
 
 (** [gen_obj] indicates whether we should generate object files when compiling
     source files. The default behaviour is not te generate them. *)
@@ -43,8 +44,8 @@ let rec compile_with :
   if List.mem mp !loading then
     begin
       fatal_msg "Circular dependencies detected in \"%s\".@." (src ());
-      fatal_msg "Dependency stack for module %a:@." Print.path mp;
-      List.iter (fatal_msg "- %a@." Print.path) !loading;
+      fatal_msg "Dependency stack for module %a:@." path mp;
+      List.iter (fatal_msg "- %a@." path) !loading;
       fatal_no_pos "Build aborted."
     end;
   match Path.Map.find_opt mp !loaded with

@@ -59,13 +59,13 @@ let add_unif_rule_constr : problem -> constr -> unit = fun p (c,t,u) ->
   match Infer.infer_noexn p c t with
   | None ->
       Error.fatal_no_pos "@[Unification rule lead to an untypable term:@ %a@]"
-        Print.term t
+        term t
   | Some (t, a) ->
       match Infer.infer_noexn p c u with
       | None ->
           Error.fatal_no_pos
             "@[Unification rule lead to an untypable term:@ %a@]"
-            Print.term u
+            term u
       | Some (u, b) ->
           add_constr p (c, t, u);
           if not (Eval.pure_eq_modulo c a b) then add_constr p (c, a, b)

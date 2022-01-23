@@ -292,7 +292,7 @@ let handle :
       (Pos.make pos axiom_name) !(m.meta_type) []
   in
   if Logger.log_enabled () then
-    log_why3 "axiom %a created" Print.uid axiom_name;
+    log_why3 "axiom %a created" uid axiom_name;
   (* Return the variable terms of each item in the context. *)
   let terms = List.rev_map (fun (_, (x, _, _)) -> mk_Vari x) hyps in
   (* Apply the instance of the axiom with context. *)

@@ -53,9 +53,9 @@ let notation : Sign.notation pp = fun ppf notation ->
   | Succ -> out ppf "builtin \"+1\""
   | Quant -> out ppf "quantifier"
 
-let uid = string
+let uid : string pp = string
 
-let path : Path.t pp = List.pp uid "."
+let path : Path.t pp = Path.pp
 
 let prop : prop pp = fun ppf p ->
   match p with

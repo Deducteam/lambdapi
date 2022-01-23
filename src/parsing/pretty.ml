@@ -78,8 +78,8 @@ let _ = let open LpLexer in
     ; "with", WITH ]
 
 let raw_ident : string pp = fun ppf s ->
-  if is_keyword s then out ppf "{|%a|}" Print.uid s
-  else Print.uid ppf s
+  if is_keyword s then out ppf "{|%s|}" s
+  else string ppf s
 
 let ident : p_ident pp = fun ppf {elt;_} -> raw_ident ppf elt
 

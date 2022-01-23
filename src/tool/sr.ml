@@ -139,7 +139,7 @@ let check_rule : Scope.pre_rule Pos.loc -> rule = fun ({pos; elt} as pr) ->
   if pr_xvars_nb <> 0 then
     (let xvars = Array.drop (Array.length vars - pr_xvars_nb) vars in
      fatal pos "Unknown pattern variables: %a"
-       (Array.pp Print.var ",") xvars);
+       (Array.pp var ",") xvars);
   let arity = List.length lhs in
   if Logger.log_enabled () then
     begin

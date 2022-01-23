@@ -248,7 +248,9 @@ type tebox = term_env Bindlib.box
 val minimize_impl : bool list -> bool list
 
 (** Basic printing function (for debug). *)
-val term : term pp
+module Raw : sig
+  val term : term pp
+end
 
 (** Typing context associating a [Bindlib] variable to a type and possibly a
     definition. The typing environment [x1:A1,..,xn:An] is represented by the

@@ -421,7 +421,7 @@ let hover_symInfo ofmt ~id params =
       | None -> msg_fail "hover_SymInfo" "Sym not found"
       | Some sym -> !(sym.sym_type)
     in
-    let sym_type = Format.asprintf "%a" Print.term sym_found in
+    let sym_type = Format.asprintf "%a" Core.Print.term sym_found in
     let result : J.t =
       `Assoc [ "contents", `String sym_type; "range", range ] in
     let msg = LSP.mk_reply ~id ~result in

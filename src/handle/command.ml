@@ -172,7 +172,7 @@ let handle_inductive_symbol : sig_state -> expo -> prop -> match_strat
   (* Actually add the symbol to the signature and the state. *)
   Console.out 2 (Color.red "symbol %a : %a") uid name term typ;
   let r = add_symbol ss expo prop mstrat false id typ impl None in
-  Print.sig_state := fst r; r
+  sig_state := fst r; r
 
 (** Representation of a yet unchecked proof. The structure is initialized when
     the proof mode is entered, and its finalizer is called when the proof mode
@@ -301,7 +301,7 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
           let pos = after (end_pos pos) in
           let id = Pos.make pos rec_name in
           let r = add_symbol ss expo Defin Eager false id rec_typ [] None
-          in Print.sig_state := fst r; r
+          in sig_state := fst r; r
         in
         (ss, rec_sym::rec_sym_list)
       in
@@ -490,7 +490,7 @@ let too_long = Stdlib.ref infinity
     are captured, although they should not occur. *)
 let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
   fun compile ss ({pos;_} as cmd) ->
-  Print.sig_state := ss;
+  sig_state := ss;
   try
     let (tm, ss) = Extra.time (get_proof_data compile ss) cmd in
     if Stdlib.(tm >= !too_long) then
