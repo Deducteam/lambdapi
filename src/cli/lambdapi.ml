@@ -7,6 +7,7 @@ open Core
 open Cmdliner
 open Version
 open Handle
+open Base
 
 type qident = Core.Term.qident
 
@@ -124,8 +125,7 @@ let timeout : int option CLT.t =
       | Some v when v > 0 -> Ok v
       | _ -> Error(`Msg "Invalid timeout value")
     in
-    let print fmt v = Format.pp_print_int fmt v in
-    Arg.conv (parse, print)
+    Arg.conv (parse, int)
   in
   let doc =
     "Timeout after $(docv) seconds. The program is interrupted with an error \

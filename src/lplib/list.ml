@@ -6,10 +6,10 @@ let unzip = split
 
 open Base
 
-(** [pp pp_elt sep ppf l] prints the list [l] on the formatter [ppf] using
-   [sep] as separator, and [pp_elt] for printing the elements. *)
-let pp : 'a pp -> unit outfmt -> 'a list pp = fun pp_elt sep ->
-  Format.pp_print_list ~pp_sep:(pp_unit sep) pp_elt
+(** [pp elt sep ppf l] prints the list [l] on the formatter [ppf] using
+   [sep] as separator, and [elt] for printing the elements. *)
+let pp : 'a pp -> unit outfmt -> 'a list pp = fun elt sep ->
+  Format.pp_print_list ~pp_sep:(unit sep) elt
 
 (** Total order on lists. *)
 let cmp : 'a cmp -> 'a list cmp = fun cmp_elt ->

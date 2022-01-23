@@ -39,8 +39,8 @@ let rec compile_with :
   if List.mem mp !loading then
     begin
       fatal_msg "Circular dependencies detected in \"%s\".@." (src ());
-      fatal_msg "Dependency stack for module %a:@." Print.pp_path mp;
-      List.iter (fatal_msg "- %a@." Print.pp_path) !loading;
+      fatal_msg "Dependency stack for module %a:@." Path.pp mp;
+      List.iter (fatal_msg "- %a@." Path.pp) !loading;
       fatal_no_pos "Build aborted."
     end;
   match Path.Map.find_opt mp !loaded with

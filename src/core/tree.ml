@@ -187,10 +187,9 @@ end
     is attached. When reducing a term,  if a line filters the term  (i.e., the
     term matches the pattern) then term is rewritten to the RHS. *)
 module CM = struct
-  (** [pp_head ppf t] prints head of term [t]. *)
-  let pp_head : term pp = fun ppf t ->
-    let open Format in
-    pp_print_string ppf
+  (** [head ppf t] prints head of term [t]. *)
+  let head : term pp = fun ppf t ->
+    string ppf
       ( match get_args t with
         | Symb s, _ -> s.sym_name
         | Patt _, _ -> "$"
@@ -204,13 +203,10 @@ module CM = struct
     { arg_path : int list (** Reversed path to the subterm. *)
     ; arg_rank : int      (** Number of binders along the path. *) }
 
-  (** [pp_arg_path ppf pth] prints path [pth] as a dotted list of integers to
+  (** [arg_path ppf pth] prints path [pth] as a dotted list of integers to
       formatter [ppf]. *)
-  let pp_arg_path : int list pp = fun ppf pth ->
-    Format.(
-      fprintf ppf "{%a}"
-        (pp_print_list ~pp_sep:(Base.pp_sep ".") pp_print_int)
-        (List.rev pth))
+  let arg_path : int list pp = fun ppf pth ->
+    out ppf "{%a}" (List.pp int ".") (List.rev pth)
 
   (** {b NOTE} the {!field:arg_path} describes a path to the represented term.
       The idea is that each index of the list tells under which argument to go
@@ -235,12 +231,10 @@ module CM = struct
     ; cond_pool   : CP.t
     (** Condition pool with convertibility and free variable constraints. *) }
 
-  (** [pp_clause ppf c] pretty prints clause [c] to formatter [ppf]. *)
-  let pp_clause : clause pp = fun ppf {c_lhs; _} ->
-    let open Format in
-    fprintf ppf "| @[<h>%a@] |"
-      (pp_print_list ~pp_sep:(Base.pp_sep " | ") pp_head)
-      (Array.to_list c_lhs)
+  (** [clause ppf c] pretty prints clause [c] to formatter [ppf]. *)
+  let clause : clause pp = fun ppf {c_lhs; _} ->
+    out ppf "| @[<h>%a@] |"
+      (List.pp head " | ") (Array.to_list c_lhs)
 
   (** Type of clause matrices. *)
   type t =
@@ -254,9 +248,8 @@ module CM = struct
 
   (** [pp ppf cm] pretty prints clause matrix [cm] to formatter [ppf]. *)
   let pp : t pp = fun ppf {clauses; _} ->
-    let open Format in
-    fprintf ppf "[@[<v>%a@]]" (pp_print_list ~pp_sep:pp_print_space pp_clause)
-      clauses
+    out ppf "[@[<v>%a@]]"
+      Format.(pp_print_list ~pp_sep:pp_print_space clause) clauses
 
   (** Available operations on clause matrices. Every operation corresponds to
       decision made during evaluation. This type is not used outside of the
@@ -475,7 +468,7 @@ module CM = struct
               if Logger.log_enabled () then
                 log "Registering non linearity constraint on position [%a] \
                      on %d"
-                  pp_arg_path a.arg_path i;
+                  arg_path a.arg_path i;
               CP.register_nl mem i cond_pool
           | None    -> cond_pool
         in
@@ -705,7 +698,7 @@ let compile : match_strat -> CM.t -> tree = fun mstrat m ->
   | Yield({c_rhs; c_subst; c_lhs; _}) ->
       harvest c_lhs c_rhs c_subst vars_id slot
   | Condition(cond)                        ->
-      if Logger.log_enabled () then log "Condition [%a]" pp_tree_cond cond;
+      if Logger.log_enabled () then log "Condition [%a]" tree_cond cond;
       let ok   = compile_cv {cm with clauses = CM.cond_ok   cond clauses} in
       let fail = compile_cv {cm with clauses = CM.cond_fail cond clauses} in
       Cond({ok; cond; fail})

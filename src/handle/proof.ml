@@ -41,7 +41,7 @@ module Goal = struct
   let of_meta : meta -> goal = fun m ->
     let goal_hyps, goal_type =
       (*let s = Format.asprintf "%s, of_meta %a(%d):%a" __LOC__
-                pp_meta m m.meta_arity pp_term !(m.meta_type) in*)
+                meta m m.meta_arity term !(m.meta_type) in*)
       Env.of_prod_nth [] m.meta_arity !(m.meta_type) in
     Typ {goal_meta = m; goal_hyps; goal_type}
 
@@ -54,19 +54,19 @@ module Goal = struct
   (** [pp ppf g] prints on [ppf] the goal [g] without its hypotheses. *)
   let pp : goal pp = fun ppf g ->
     match g with
-    | Typ gt -> out ppf "%a: %a" pp_meta gt.goal_meta pp_term gt.goal_type
-    | Unif (_, t, u) -> out ppf "%a ≡ %a" pp_term t pp_term u
+    | Typ gt -> out ppf "%a: %a" meta gt.goal_meta term gt.goal_type
+    | Unif (_, t, u) -> out ppf "%a ≡ %a" term t term u
 
-  (** [pp_hyps ppf g] prints on [ppf] the hypotheses of the goal [g]. *)
-  let pp_hyps : goal pp =
+  (** [hyps ppf g] prints on [ppf] the hypotheses of the goal [g]. *)
+  let hyps : goal pp =
     let env_elt ppf (s,(_,t,_)) =
-      out ppf "%a: %a" pp_uid s pp_term (Bindlib.unbox t)
+      out ppf "%a: %a" uid s term (Bindlib.unbox t)
     in
     let ctx_elt ppf (x,a,t) =
-      out ppf "%a: %a" pp_var x pp_term a;
+      out ppf "%a: %a" var x term a;
       match t with
       | None -> ()
-      | Some t -> out ppf " ≔ %a" pp_term t
+      | Some t -> out ppf " ≔ %a" term t
     in
     let hyps hyp ppf l =
       if l <> [] then
@@ -102,12 +102,12 @@ type proof_state =
 (** [finished ps] tells whether there are unsolved goals in [ps]. *)
 let finished : proof_state -> bool = fun ps -> ps.proof_goals = []
 
-(** [pp_goals ppf gl] prints the goal list [gl] to channel [ppf]. *)
-let pp_goals : proof_state pp = fun ppf ps ->
+(** [goals ppf gl] prints the goal list [gl] to channel [ppf]. *)
+let goals : proof_state pp = fun ppf ps ->
   match ps.proof_goals with
   | [] -> out ppf "No goals."
   | g::_ ->
-      out ppf "@[<v>%a%a@]" Goal.pp_hyps g
+      out ppf "@[<v>%a%a@]" Goal.hyps g
         (fun ppf -> List.iteri (fun i g -> out ppf "%d. %a@," i Goal.pp g))
         ps.proof_goals
 

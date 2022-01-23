@@ -144,7 +144,7 @@ let do_symbols ofmt ~id params =
         let open Term in
         (* LIO.log_error "sym"
          ( s.sym_name ^ " | "
-         ^ Format.asprintf "%a" pp_term !(s.sym_type)); *)
+         ^ Format.asprintf "%a" term !(s.sym_type)); *)
         Option.map_default
           (fun p -> mk_syminfo file
               (s.sym_name, s.sym_path, kind_of_type s, p) :: l) l s.sym_pos)
@@ -419,7 +419,7 @@ let hover_symInfo ofmt ~id params =
       | None -> msg_fail "hover_SymInfo" "Sym not found"
       | Some sym -> !(sym.sym_type)
     in
-    let sym_type = Format.asprintf "%a" Print.pp_term sym_found in
+    let sym_type = Format.asprintf "%a" Core.Print.term sym_found in
     let result : J.t =
       `Assoc [ "contents", `String sym_type; "range", range ] in
     let msg = LSP.mk_reply ~id ~result in

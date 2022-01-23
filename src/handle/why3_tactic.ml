@@ -24,8 +24,8 @@ let why3_config : Why3.Whyconf.config =
   let cfg = Why3.Whyconf.init_config None in
   let provers = Why3.Whyconf.get_provers cfg in
   Console.out 2 "provers available for why3:";
-  let pp_prover p _ = Console.out 2 "%a" Why3.Whyconf.print_prover p in
-  Why3.Whyconf.Mprover.iter pp_prover provers;
+  let prover p _ = Console.out 2 "%a" Why3.Whyconf.print_prover p in
+  Why3.Whyconf.Mprover.iter prover provers;
   cfg
 
 (** [why3_main] is the main section of the Why3 configuration. *)
@@ -202,7 +202,7 @@ let encode : Sig_state.t -> Pos.popt -> Env.env -> term -> Why3.Task.task =
     match translate_term cfg constants types g with
     | Some(tbl, ty_tbl, why3_term) -> (tbl, ty_tbl, why3_term)
     | None                         ->
-        fatal pos "The goal [%a] is not of the form [P _]" pp_term g
+        fatal pos "The goal [%a] is not of the form [P _]" term g
   in
   (* Add the declaration of every constant in a task. *)
   let fn tsk (_,t) = Why3.Task.add_param_decl tsk t in
@@ -287,7 +287,7 @@ let handle :
       (Pos.make pos axiom_name) !(m.meta_type) []
   in
   if Logger.log_enabled () then
-    log_why3 "axiom %a created" Print.pp_uid axiom_name;
+    log_why3 "axiom %a created" uid axiom_name;
   (* Return the variable terms of each item in the context. *)
   let terms = List.rev_map (fun (_, (x, _, _)) -> mk_Vari x) hyps in
   (* Apply the instance of the axiom with context. *)

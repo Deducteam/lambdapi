@@ -230,43 +230,45 @@ let minimize_impl : bool list -> bool list =
   fun l -> List.rev (rem_false (List.rev l))
 
 (** Printing functions for debug. *)
-let rec pp_term : term pp = fun ppf t ->
+module Raw = struct
+let rec term : term pp = fun ppf t ->
   match t with
-  | Vari v -> pp_var ppf v
+  | Vari v -> var ppf v
   | Type -> out ppf "TYPE"
   | Kind -> out ppf "KIND"
-  | Symb s -> pp_sym ppf s
+  | Symb s -> sym ppf s
   | Prod(a,b) ->
       if Bindlib.binder_constant b then
-        let _, b = Bindlib.unbind b in out ppf "(%a → %a)" pp_term a pp_term b
-      else out ppf "(Π %a)" pp_binder (a,b)
-  | Abst(a,b) -> out ppf "(λ %a)" pp_binder (a,b)
-  | Appl(a,b) -> out ppf "(%a %a)" pp_term a pp_term b
-  | Meta(m,ts) -> out ppf "?%a%a" pp_meta m pp_terms ts
-  | Patt(i,s,ts) -> out ppf "$%a_%s%a" (D.option D.int) i s pp_terms ts
+        let _, b = Bindlib.unbind b in out ppf "(%a → %a)" term a term b
+      else out ppf "(Π %a)" binder (a,b)
+  | Abst(a,b) -> out ppf "(λ %a)" binder (a,b)
+  | Appl(a,b) -> out ppf "(%a %a)" term a term b
+  | Meta(m,ts) -> out ppf "?%a%a" meta m terms ts
+  | Patt(i,s,ts) -> out ppf "$%a_%s%a" (D.option D.int) i s terms ts
   | Plac(_) -> out ppf "_"
-  | TEnv(te,ts) -> out ppf "<%a>%a" pp_tenv te pp_terms ts
+  | TEnv(te,ts) -> out ppf "<%a>%a" tenv te terms ts
   | Wild -> out ppf "_"
-  | TRef r -> out ppf "&%a" (Option.pp pp_term) !r
+  | TRef r -> out ppf "&%a" (Option.pp term) !r
   | LLet(a,t,u) ->
       let x, u = Bindlib.unbind u in
-      out ppf "let %a: %a ≔ %a in %a" pp_var x pp_term a pp_term t pp_term u
-and pp_terms : term array pp = fun ppf ts ->
-  (*if Array.length ts > 0 then*) D.array pp_term ppf ts
-and pp_var : tvar pp = fun ppf v -> out ppf "%s" (Bindlib.name_of v)
-and pp_binder : (term * tbinder) pp = fun ppf (a,b) ->
+      out ppf "let %a: %a ≔ %a in %a" var x term a term t term u
+and terms : term array pp = fun ppf ts ->
+  (*if Array.length ts > 0 then*) D.array term ppf ts
+and var : tvar pp = fun ppf v -> out ppf "%s" (Bindlib.name_of v)
+and binder : (term * tbinder) pp = fun ppf (a,b) ->
   let x, b = Bindlib.unbind b in
-  out ppf "%a: %a, %a" pp_var x pp_term a pp_term b
-and pp_meta : meta pp = fun ppf m ->
+  out ppf "%a: %a, %a" var x term a term b
+and meta : meta pp = fun ppf m ->
   out ppf "%d" m.meta_key
-and pp_sym : sym pp = fun ppf s -> out ppf "%s" s.sym_name
-and pp_tenv : term_env pp = fun ppf te ->
+and sym : sym pp = fun ppf s -> out ppf "%s" s.sym_name
+and tenv : term_env pp = fun ppf te ->
   match te with
   | TE_Vari v -> out ppf "%s" (Bindlib.name_of v)
   | TE_Some mb ->
     let vs, b = Bindlib.unmbind mb in
-    out ppf "%a,%a" (D.array pp_var) vs pp_term b
+    out ppf "%a,%a" (D.array var) vs term b
   | TE_None -> ()
+end
 
 (** Typing context associating a [Bindlib] variable to a type and possibly a
     definition. The typing environment [x1:A1,..,xn:An] is represented by the
@@ -549,7 +551,8 @@ let right_aliens : sym -> term -> term list = fun s ->
         else aliens (u :: acc) us
   in fun t -> let r = aliens [] [t] in
   if Logger.log_enabled () then
-    log_term "right_aliens %a %a = %a" pp_sym s pp_term t (D.list pp_term) r;
+    log_term "right_aliens %a %a = %a"
+      Raw.sym s Raw.term t (D.list Raw.term) r;
   r
 
 (* unit test *)
@@ -571,7 +574,7 @@ let _ =
    or AC symbols. *)
 let mk_Appl : term * term -> term = fun (t, u) ->
   (* if Logger.log_enabled () then
-    log_term "mk_Appl(%a, %a)" pp_term t pp_term u;
+    log_term "mk_Appl(%a, %a)" term t term u;
   let r = *)
   match get_args t with
   | Symb s, [t1] ->
@@ -594,7 +597,7 @@ let mk_Appl : term * term -> term = fun (t, u) ->
   | _ -> Appl (t, u)
   (* in
   if Logger.log_enabled () then
-    log_term "mk_Appl(%a, %a) = %a" pp_term t pp_term u pp_term r;
+    log_term "mk_Appl(%a, %a) = %a" term t term u term r;
   r *)
 
 (** mk_Appl_not_canonical t u] builds the non-canonical (wrt. C and AC

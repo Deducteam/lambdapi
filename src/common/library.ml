@@ -49,7 +49,7 @@ module LibMap :
     type t = Node of string option * t StrMap.t
 
     let rec pp ppf (Node(po, map)) =
-      Format.fprintf ppf "Node(%a,%a)"
+      out ppf "Node(%a,%a)"
         (D.option D.string) po (D.strmap pp) map
 
     let empty = Node(None, StrMap.empty)
@@ -220,8 +220,8 @@ let path_of_file : (string -> string) -> string -> Path.t =
   if not (List.mem ext valid_extensions) then
     begin
       fatal_msg "Invalid extension for [%s].@." fname;
-      let pp_exp = List.pp (fun ppf -> Format.fprintf ppf "[%s]") ", " in
-      fatal_no_pos "Expected any of: %a." pp_exp valid_extensions
+      let exp = List.pp (fun ppf -> out ppf "[%s]") ", " in
+      fatal_no_pos "Expected any of: %a." exp valid_extensions
     end;
   (* Normalizing the file path. *)
   let fname = Filename.normalize fname in

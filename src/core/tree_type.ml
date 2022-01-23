@@ -31,8 +31,8 @@ module TC =
     (** [pp oc c] prints tree constructor [c] to output channel [o]. *)
     let pp : t pp = fun oc c ->
       match c with
-      | Vari(d)     -> Format.pp_print_int oc d
-      | Symb(_,s,a) -> Format.fprintf oc "%s %d-ary" s a
+      | Vari(d)     -> int oc d
+      | Symb(_,s,a) -> out oc "%s %d-ary" s a
 
     (** [compare c1 c2] implements a total order on constructors. *)
     let compare : t -> t -> int = Stdlib.compare
@@ -59,10 +59,10 @@ type tree_cond =
     reduced contains free variables, those can appear in a subterm even if not
     in the array. *)
 
-let pp_tree_cond : tree_cond pp = fun ppf tc ->
+let tree_cond : tree_cond pp = fun ppf tc ->
   match tc with
-  | CondNL(i, j) -> Format.fprintf ppf "Nl(%d, %d)" i j
-  | CondFV(i, _) -> Format.fprintf ppf "Fv(%d)" i
+  | CondNL(i, j) -> out ppf "Nl(%d, %d)" i j
+  | CondFV(i, _) -> out ppf "Fv(%d)" i
 
 (** Substitution of variables in a RHS. During the filtering process, some
     subterms of the filtered term may be stored in an array. Let [v] be that

@@ -4,13 +4,14 @@ open Core
 open Common open Error open Library
 open Parsing
 open Handle
+open Base
 
 (* Should be lifted *)
 module Util = struct
 
-  let pp_located pp fmt ({Pos.pos; _} as e) =
+  let located pp ppf ({Pos.pos; _} as e) =
     let pos = Option.map Pos.to_string pos in
-    Format.fprintf fmt "[%a] %a" (Option.pp Format.pp_print_string) pos pp e
+    out ppf "[%a] %a" (Option.pp string) pos pp e
 
 end
 
@@ -19,7 +20,7 @@ module Command = struct
   type t = Syntax.p_command
   let equal = Syntax.eq_p_command
   let get_pos c = Pos.(c.pos)
-  let print = Util.pp_located Pretty.command
+  let print = Util.located Pretty.command
 end
 
 let interval_of_pos : Pos.pos -> Range.t =
@@ -44,7 +45,7 @@ module Tactic = struct
   type t = Syntax.p_tactic
   let equal = Syntax.eq_p_tactic
   let get_pos t = Pos.(t.pos)
-  let print = Util.pp_located Pretty.tactic
+  let print = Util.located Pretty.tactic
 end
 
 (** Representation of a single proof (abstract). *)
@@ -103,16 +104,16 @@ let string_of_goal : Proof.goal -> goal =
     res
   in
   let open Print in
-  let env_elt (s,(_,t,_)) = s, to_string pp_term (Bindlib.unbox t) in
-  let ctx_elt (x,a,_) = to_string pp_var x, to_string pp_term a in
+  let env_elt (s,(_,t,_)) = s, to_string term (Bindlib.unbox t) in
+  let ctx_elt (x,a,_) = to_string var x, to_string term a in
   fun g ->
   match g with
   | Proof.Typ gt ->
-      let meta = to_string pp_meta gt.goal_meta in
-      let typ = to_string pp_term gt.goal_type in
+      let meta = to_string meta gt.goal_meta in
+      let typ = to_string term gt.goal_type in
       List.rev_map env_elt gt.goal_hyps, Typ (meta, typ)
   | Proof.Unif (c,t,u) ->
-      let t = to_string pp_term t and u = to_string pp_term u in
+      let t = to_string term t and u = to_string term u in
       List.rev_map ctx_elt c, Unif (t,u)
 
 let current_goals : proof_state -> goal list =
