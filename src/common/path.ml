@@ -10,7 +10,7 @@ module Path =
     (** [pp ppf p] prints path [p] on the formatter [ppf]. Remark: to be used
        in Common only as it does not escape identifiers that need to be
        escaped. *)
-    let pp : t pp = Lplib.List.pp Format.pp_print_string "."
+    let pp : t pp = Lplib.List.pp string "."
 
     (** [compare] is a standard comparison function on paths. *)
     let compare : t cmp = Stdlib.compare

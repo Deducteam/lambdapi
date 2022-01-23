@@ -9,7 +9,7 @@ let write_file : string -> (formatter -> unit) -> unit = fun fn pp ->
   let ppf = formatter_of_out_channel oc in
   pp ppf; pp_print_flush ppf (); close_out oc
 
-let pp_makefile : formatter -> unit = fun ppf ->
+let makefile : formatter -> unit = fun ppf ->
   fprintf ppf "\
 .POSIX:
 SRC =
@@ -45,13 +45,13 @@ let run : Path.t -> unit = fun root_path ->
         pkg_name;
     Unix.mkdir pkg_name 0o700;
     (* Write the package configuration file. *)
-    let pp_pkg_file ppf =
+    let pkg_file ppf =
       fprintf ppf "package_name = %s@.root_path    = %a@."
         pkg_name Path.pp root_path
     in
-    write_file (Filename.concat pkg_name Package.pkg_file) pp_pkg_file;
+    write_file (Filename.concat pkg_name Package.pkg_file) pkg_file;
     (* Write the Makefile and example file. *)
-    write_file (Filename.concat pkg_name "Makefile") pp_makefile;
+    write_file (Filename.concat pkg_name "Makefile") makefile;
   in
   Error.handle_exceptions run
 

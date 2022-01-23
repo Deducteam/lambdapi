@@ -5,6 +5,7 @@ open Cmdliner
 open Common
 open Library
 open Parsing
+open Base
 
 type qident = Core.Term.qident
 
@@ -67,7 +68,7 @@ let init : config -> unit = fun cfg ->
       Library.log_lib "running directory: %s" (Filename.current_dir ());
       Library.log_lib "library root path: %s"
         (match !lib_root with None -> assert false | Some(p) -> p);
-      let f = Library.log_lib "mapping: %a → %s" Core.Print.pp_path in
+      let f = Library.log_lib "mapping: %a → %s" Core.Print.path in
       Library.iter f
     end;
   (* Initialise the [Pure] interface (this must come last). *)
@@ -205,7 +206,7 @@ let output : output option CLT.t =
       | _ -> Error(`Msg "Invalid format")
     in
     let print fmt o =
-      Format.pp_print_string fmt
+      string fmt
         (match o with
          | Lp -> "lp"
          | Dk -> "dk")

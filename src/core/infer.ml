@@ -33,7 +33,7 @@ let unif : problem -> octxt -> term -> term -> unit =
     [eq_modulo]. *)
    begin
      if Logger.log_enabled () then
-       log (Color.yel "add constraint %a") Print.pp_constr
+       log (Color.yel "add constraint %a") Print.constr
          (classic c, a, b);
      pb := {!pb with to_solve = (classic c, a, b) :: !pb.to_solve}
    end
@@ -56,7 +56,7 @@ let coerce pb c t a b = unif pb c a b; (t, false)
     [s]. *)
 let rec type_enforce : problem -> octxt -> term -> term * term * bool =
  fun pb c a ->
-  if Logger.log_enabled () then log "Type enforce [%a]" Print.pp_term a;
+  if Logger.log_enabled () then log "Type enforce [%a]" Print.term a;
   let a, s, cui = infer pb c a in
   let sort =
     match unfold s with
@@ -75,7 +75,7 @@ let rec type_enforce : problem -> octxt -> term -> term * term * bool =
 and force : problem -> octxt -> term -> term -> term * bool =
  fun pb c te ty ->
  if Logger.log_enabled () then
-   log "Force [%a] of [%a]" Print.pp_term te Print.pp_term ty;
+   log "Force [%a] of [%a]" Print.term te Print.term ty;
  match unfold te with
  | Plac true ->
      unif pb c ty mk_Type;
@@ -141,7 +141,7 @@ and infer_aux : problem -> octxt -> term -> term * term * bool =
         | Kind ->
             Error.fatal_msg "Let bindings cannot have a body of type Kind.";
             Error.fatal_msg "Body of let binding [%a] has type Kind."
-              Print.pp_term u;
+              Print.term u;
             raise NotTypable
         | _ -> () );
       let u_ty = Bindlib.(u_ty |> lift |> bind_var x |> unbox) in
@@ -193,7 +193,7 @@ and infer_aux : problem -> octxt -> term -> term * term * bool =
       match Eval.whnf (classic c) t_ty with
       | Prod (dom, range) ->
           if Logger.log_enabled () then
-            log "Appl-prod arg [%a]" Print.pp_term u;
+            log "Appl-prod arg [%a]" Print.term u;
           let u, cu_u = force pb c u dom in
           return cu_u t u range
       | Meta (_, _) ->
@@ -210,16 +210,16 @@ and infer_aux : problem -> octxt -> term -> term * term * bool =
           and range = unbox range in
           let t, cu_t' = coerce pb c t t_ty (mk_Prod (domain, range)) in
           if Logger.log_enabled () then
-            log "Appl-default arg [%a]" Print.pp_term u;
+            log "Appl-default arg [%a]" Print.term u;
           let u, cu_u = force pb c u domain in
           return (cu_t' || cu_u) t u range )
 
 
 and infer : problem -> octxt -> term -> term * term * bool = fun pb c t ->
-  if Logger.log_enabled () then log "Infer [%a]" Print.pp_term t;
+  if Logger.log_enabled () then log "Infer [%a]" Print.term t;
   let t, t_ty, cu = infer_aux pb c t in
   if Logger.log_enabled () then
-    log "Inferred [%a:@ %a]" Print.pp_term t Print.pp_term t_ty;
+    log "Inferred [%a:@ %a]" Print.term t Print.term t_ty;
   (t, t_ty, cu)
 
 (** {b NOTE} when unbinding a binder [b] (e.g. when inferring the type of an
@@ -243,18 +243,18 @@ let noexn : (problem -> octxt -> 'a -> 'b) -> problem -> ctxt -> 'a ->
 
 let infer_noexn pb c t : (term * term) option =
   if Logger.log_enabled () then
-    log "Top infer %a%a" Print.pp_ctxt c Print.pp_term t;
+    log "Top infer %a%a" Print.ctxt c Print.term t;
   let infer pb c t = let (t,t_ty,_) = infer pb c t in (t, t_ty) in
   noexn infer pb c t
 
 let check_noexn pb c t a : term option =
-  if Logger.log_enabled () then log "Top check \"%a\"" Print.pp_typing
+  if Logger.log_enabled () then log "Top check \"%a\"" Print.typing
       (c, t, a);
   let force pb c (t, a) = fst (force pb c t a) in
   noexn force pb c (t, a)
 
 let check_sort_noexn pb c t : (term * term) option =
   if Logger.log_enabled () then
-    log "Top check sort %a%a" Print.pp_ctxt c Print.pp_term t;
+    log "Top check sort %a%a" Print.ctxt c Print.term t;
   let type_enforce pb c t = let (t, s, _) = type_enforce pb c t in (t, s) in
   noexn type_enforce pb c t

@@ -63,7 +63,7 @@ let colorize k format =
     ("@{<" ^ string_of_color k ^ ">" ^ string_of_format format ^ "@}")
   format
 
-let pp_color p_col printer fmt =
+let pp p_col printer fmt =
   update_with_color fmt;
   let a : _ format = "%a" in
   Format.fprintf fmt (p_col a) printer

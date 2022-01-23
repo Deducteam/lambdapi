@@ -84,7 +84,7 @@ let ind_typ_with_codom :
     | (Prod(a,b), _) ->
         let (x,b) = LibTerm.unbind_name s b in
         _Prod (lift a) (Bindlib.bind_var x (aux (x::xs) b))
-    | _ -> fatal pos "The type of %a is not supported" pp_sym ind_sym
+    | _ -> fatal pos "The type of %a is not supported" sym ind_sym
   in
   aux (List.map (fun (_,(v,_,_)) -> v) env) a
 
@@ -192,7 +192,7 @@ let fold_cons_type
           let d = List.assq ind_sym ind_pred_map in
           codom xs acc d.ind_var ts
         else fatal pos "%a is not a constructor of %a"
-               pp_sym cons_sym pp_sym ind_sym
+               sym cons_sym sym ind_sym
     | (Prod(t,u), _) ->
        let x, u = LibTerm.unbind_name x_str u in
        let x = inj_var (List.length xs) x in
@@ -210,9 +210,9 @@ let fold_cons_type
                    let next = fold (x::xs) (acc_nonrec_dom acc x) u in
                    nonrec_dom t x next
              end
-         | _ -> fatal pos "The type of %a is not supported" pp_sym cons_sym
+         | _ -> fatal pos "The type of %a is not supported" sym cons_sym
        end
-    | _ -> fatal pos "The type of %a is not supported" pp_sym cons_sym
+    | _ -> fatal pos "The type of %a is not supported" sym cons_sym
   in
   let _, t = Env.of_prod_using [] vs !(cons_sym.sym_type) in
   fold (List.mapi inj_var (Array.to_list vs)) init t
@@ -301,27 +301,27 @@ let iter_rec_rules :
   (* variable name used for a recursor case argument *)
   let case_arg_name cons_sym = cons_sym.sym_name in
 
-  (* [app_rec sym_ind ts t] generates the application of the recursor of
+  (* [arec sym_ind ts t] generates the application of the recursor of
      [ind_sym] to the type parameters [ts] and the constructor argument
      [t]. *)
-  let app_rec : sym -> term list -> p_term -> p_term = fun sym_ind ts t ->
+  let arec : sym -> term list -> p_term -> p_term = fun sym_ind ts t ->
     (* Note: there cannot be name clashes between pattern variable names and
        function symbol names since pattern variables are prefixed by $. *)
-    let app_patt t n = P.appl t (P.patt0 n) in
+    let apatt t n = P.appl t (P.patt0 n) in
     let head = P.iden (rec_name sym_ind) in
     (* add a wildcard for each parameter *)
     let head = P.appl_wild head n in
     (* add a predicate variable for each inductive type *)
     let head =
-      let app_pred (_,d) t = app_patt t (Bindlib.name_of d.ind_var) in
-      List.fold_right app_pred ind_pred_map head
+      let apred (_,d) t = apatt t (Bindlib.name_of d.ind_var) in
+      List.fold_right apred ind_pred_map head
     in
     (* add a case variable for each constructor *)
-    let app_case t cons_sym = app_patt t (case_arg_name cons_sym) in
-    let app_cases t (_, cons_sym_list) =
-      List.fold_left app_case t cons_sym_list
+    let acase t cons_sym = apatt t (case_arg_name cons_sym) in
+    let acases t (_, cons_sym_list) =
+      List.fold_left acase t cons_sym_list
     in
-    let head = List.fold_left app_cases head ind_list in
+    let head = List.fold_left acases head ind_list in
     P.appl (P.appl_wild head (List.length ts - n)) t
   in
 
@@ -339,7 +339,7 @@ let iter_rec_rules :
         List.fold_right (fun (_,(x,_,_)) t -> P.appl t (P.var x)) env t in
       let add_abst t (_,(x,_,_)) =
         P.abst (Some (Pos.none (Bindlib.name_of x))) t in
-      List.fold_left add_abst (app_rec s ts (env_appl x env)) env
+      List.fold_left add_abst (arec s ts (env_appl x env)) env
     in
     let acc_rec_dom acc x aux = P.appl (P.appl acc x) aux in
     let rec_dom _ _ _ next = next in
@@ -347,7 +347,7 @@ let iter_rec_rules :
     let nonrec_dom _ _ next = next in
     let codom xs rhs _ ts =
       let cons_arg = P.appl_list (P.iden cons_sym.sym_name) (List.rev xs) in
-      Pos.make rules_pos (app_rec ind_sym ts cons_arg, rhs)
+      Pos.make rules_pos (arec ind_sym ts cons_arg, rhs)
     in
     fold_cons_type pos ind_pred_map "" ind_sym vs cons_sym inj_var
       init aux acc_rec_dom rec_dom acc_nonrec_dom nonrec_dom codom
