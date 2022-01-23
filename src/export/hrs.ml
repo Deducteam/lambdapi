@@ -3,19 +3,15 @@
 
     @see <http://project-coco.uibk.ac.at/problems/hrs.php>. *)
 
-open! Lplib
-open Lplib.Base
-open Lplib.Extra
+open Lplib open Base open Extra
 open Timed
-open Core
-open Term
-open Print
+open Core open Term open Print
 
 (** [print_sym ppf s] outputs the fully qualified name of [s] to [ppf]. The
    name is prefixed by ["c_"], and modules are separated with ["_"], not
    ["."]. *)
 let print_sym : sym pp = fun ppf s ->
-  let print_path = List.pp Format.pp_print_string "_" in
+  let print_path = List.pp string "_" in
   out ppf "c_%a_%s" print_path s.sym_path s.sym_name
 
 (** [print_patt ppf p] outputs TPDB format corresponding to the pattern [p],
@@ -31,7 +27,7 @@ let print_term : bool -> term pp = fun lhs ->
     | Wild         -> assert false
     | Kind         -> assert false
     (* Printing of atoms. *)
-    | Vari(x)      -> out ppf "%a" pp_var x
+    | Vari(x)      -> out ppf "%a" var x
     | Type         -> out ppf "TYPE"
     | Symb(s)      -> print_sym ppf s
     | Patt(i,n,ts) ->
@@ -41,11 +37,11 @@ let print_term : bool -> term pp = fun lhs ->
     | Appl(t,u)    -> out ppf "app(%a,%a)" pp t pp u
     | Abst(a,t)    ->
         let (x, t) = Bindlib.unbind t in
-        if lhs then out ppf "lam(m_typ,\\%a.%a)" pp_var x pp t
-        else out ppf "lam(%a,\\%a.%a)" pp a pp_var x pp t
+        if lhs then out ppf "lam(m_typ,\\%a.%a)" var x pp t
+        else out ppf "lam(%a,\\%a.%a)" pp a var x pp t
     | Prod(a,b)    ->
         let (x, b) = Bindlib.unbind b in
-        out ppf "pi(%a,\\%a.%a)" pp a pp_var x pp b
+        out ppf "pi(%a,\\%a.%a)" pp a var x pp b
     | LLet(_,t,u)  -> pp ppf (Bindlib.subst u t)
   in pp
 
@@ -72,8 +68,8 @@ let print_rule : Format.formatter -> term -> term -> unit =
   if not (StrSet.is_empty names) then
     begin
       let print_name ppf x = out ppf "  %s : term\n" x in
-      let pp_strset ppf = StrSet.iter (print_name ppf) in
-      out ppf "(VAR\n%a)\n" pp_strset names
+      let strset ppf = StrSet.iter (print_name ppf) in
+      out ppf "(VAR\n%a)\n" strset names
     end;
   (* Print the rewriting rule. *)
   out ppf "(RULES %a" (print_term true) lhs;

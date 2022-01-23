@@ -2,8 +2,7 @@
 
 open Lplib
 open Sedlexing
-open Common
-open Pos
+open Common open Pos
 
 let remove_first : Sedlexing.lexbuf -> string = fun lb ->
   Utf8.sub_lexeme lb 1 (lexeme_length lb - 1)

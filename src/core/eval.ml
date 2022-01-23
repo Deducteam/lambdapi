@@ -1,11 +1,8 @@
 (** Evaluation and conversion. *)
 
-open! Lplib
-open Lplib.Extra
+open Lplib open Extra
 open Timed
-open Common
-open Error
-open Debug
+open Common open Error open Debug
 open Term
 open Print
 
@@ -53,9 +50,9 @@ let hnf : (term -> term) -> (term -> term) = fun whnf ->
 (** [snf whnf t] computes a snf of [t] using [whnf]. *)
 let snf : (term -> term) -> (term -> term) = fun whnf ->
   let rec snf t =
-    if Logger.log_enabled () then log_eval "snf %a" pp_term t;
+    if Logger.log_enabled () then log_eval "snf %a" term t;
     let h = whnf t in
-    if Logger.log_enabled () then log_eval "whnf %a = %a" pp_term t pp_term h;
+    if Logger.log_enabled () then log_eval "whnf %a = %a" term t term h;
     match h with
     | Vari _
     | Type
@@ -84,7 +81,7 @@ type config =
   ; rewrite : bool (** Use user-defined rewrite rules. *)
   ; problem : problem (** Generated metavariables. *) }
 
-(*let pp_defmap = D.map VarMap.iter pp_var " ≔ " pp_term "; "*)
+(*let defmap = D.map VarMap.iter var " ≔ " term "; "*)
 
 let cfg_of_ctx : ctxt -> bool -> config = fun context rewrite ->
   {context; defmap = Ctxt.to_map context; rewrite; problem = new_problem()}
@@ -107,7 +104,7 @@ let eq_modulo : (config -> term -> term) -> (config -> term -> term -> bool) =
     match l with
     | [] -> ()
     | (a,b)::l ->
-    (*if Logger.log_enabled () then log_conv "%a ≡ %a" pp_term a pp_term b;*)
+    (*if Logger.log_enabled () then log_conv "%a ≡ %a" term a term b;*)
     let a = unfold_cfg c a and b = unfold_cfg c b in
     if a == b then eq c l else
     match a, b with
@@ -144,7 +141,7 @@ let eq_modulo : (config -> term -> term) -> (config -> term -> term -> bool) =
       raise Exit
     | _ ->
     let a = whnf c a and b = whnf c b in
-    (*if Logger.log_enabled () then log_conv "%a ≡ %a" pp_term a pp_term b;*)
+    (*if Logger.log_enabled () then log_conv "%a ≡ %a" term a term b;*)
     match a, b with
     | Patt(Some i,_,ts), Patt(Some j,_,us) ->
       if i=j then eq c (List.add_array2 ts us l) else raise Exit
@@ -165,7 +162,7 @@ let eq_modulo : (config -> term -> term) -> (config -> term -> term -> bool) =
     | _ -> raise Exit
   in
   fun c a b ->
-  if Logger.log_enabled () then log_conv "%a ≡ %a" pp_term a pp_term b;
+  if Logger.log_enabled () then log_conv "%a ≡ %a" term a term b;
   try eq c [(a,b)]; true
   with Exit -> if Logger.log_enabled () then log_conv "failed"; false
 
@@ -182,12 +179,12 @@ let to_tref : term -> term = fun t ->
 
 (** [whnf c t] computes a whnf of the term [t] wrt configuration [c]. *)
 let rec whnf : config -> term -> term = fun c t ->
-  (*if Logger.log_enabled () then log_eval "whnf %a" pp_term t;*)
+  (*if Logger.log_enabled () then log_eval "whnf %a" term t;*)
   let n = Stdlib.(!steps) in
   let u, stk = whnf_stk c t [] in
   let r = if Stdlib.(!steps) <> n then add_args u stk else unfold t in
   (*if Logger.log_enabled () then
-    log_eval "whnf %a%a = %a" pp_ctxt c.context pp_term t pp_term r;*)
+    log_eval "whnf %a%a = %a" ctxt c.context term t term r;*)
   r
 
 (** [whnf_stk c t stk] computes a whnf of [add_args t stk] wrt
@@ -195,7 +192,7 @@ let rec whnf : config -> term -> term = fun c t ->
 and whnf_stk : config -> term -> stack -> term * stack = fun c t stk ->
   (*if Logger.log_enabled () then
     log_eval "whnf_stk %a%a %a"
-      pp_ctxt c.context pp_term t (D.list pp_term) stk;*)
+      ctxt c.context term t (D.list term) stk;*)
   let t = unfold t in
   match t, stk with
   | Appl(f,u), stk -> whnf_stk c f (to_tref u::stk)
@@ -226,8 +223,8 @@ and whnf_stk : config -> term -> stack -> term * stack = fun c t stk ->
       | None -> h, stk
       | Some (t', stk') ->
         if Logger.log_enabled () then
-          log_eval "tree_walk %a%a %a = %a %a" pp_ctxt c.context
-            pp_term t (D.list pp_term) stk pp_term t' (D.list pp_term) stk';
+          log_eval "tree_walk %a%a %a = %a %a" ctxt c.context
+            term t (D.list term) stk term t' (D.list term) stk';
         Stdlib.incr steps; whnf_stk c t' stk'
     end
   | (Vari x, stk) as r ->
@@ -455,7 +452,7 @@ let snf : ctxt -> term -> term = fun c t ->
   let u = snf (whnf (cfg_of_ctx c true)) t in
   let r = if Stdlib.(!steps = 0) then unfold t else u in
   (*if Logger.log_enabled () then
-    log_eval "snf %a%a\n= %a" pp_ctxt c pp_term t pp_term r;*) r
+    log_eval "snf %a%a\n= %a" ctxt c term t term r;*) r
 
 let snf =
   let open Stdlib in let r = ref mk_Kind in fun c t ->
@@ -468,7 +465,7 @@ let hnf : ctxt -> term -> term = fun c t ->
   let u = hnf (whnf (cfg_of_ctx c true)) t in
   let r = if Stdlib.(!steps = 0) then unfold t else u in
   (*if Logger.log_enabled () then
-    log_eval "hnf %a%a\n= %a" pp_ctxt c pp_term t pp_term r;*) r
+    log_eval "hnf %a%a\n= %a" ctxt c term t term r;*) r
 
 let hnf =
   let open Stdlib in let r = ref mk_Kind in fun c t ->
@@ -495,7 +492,7 @@ let whnf : ?rewrite:bool -> ctxt -> term -> term = fun ?(rewrite=true) c t ->
   let u = whnf (cfg_of_ctx c rewrite) t in
   let r = if Stdlib.(!steps = 0) then unfold t else u in
   (*if Logger.log_enabled () then
-    log_eval "whnf %a%a\n= %a" pp_ctxt c pp_term t pp_term r;*) r
+    log_eval "whnf %a%a\n= %a" ctxt c term t term r;*) r
 
 let whnf =
   let open Stdlib in let r = ref mk_Kind in fun ?rewrite c t ->

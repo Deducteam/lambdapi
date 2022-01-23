@@ -1,7 +1,5 @@
 open Cmdliner
-open Common
-open Library
-open Error
+open Common open Library open Error
 open Parsing
 
 let run_command : bool -> string -> unit = fun dry_run cmd ->

@@ -1,19 +1,10 @@
 (** Handling of commands. *)
 
-open! Lplib
-open Lplib.Extra
+open Lplib open Extra
 open Timed
-open Common
-open Error
-open Core
-open Term
-open Sign
-open Pos
-open Parsing
-open Syntax
-open Sig_state
-open Scope
-open Print
+open Common open Error open Pos
+open Core open Term open Sign open Sig_state open Print
+open Parsing open Syntax open Scope
 open Proof
 
 (** Type alias for a function that compiles a Lambdapi module. *)
@@ -26,7 +17,7 @@ let _ =
     let p = new_problem() in p := {!p with to_solve = [[], t, u]};
     Unif.solve_noexn p && !p.unsolved = [] && !p.metas = MetaSet.empty
   in
-  let register = Builtin.register_expected_type eq_noexn pp_term in
+  let register = Builtin.register_expected_type eq_noexn term in
   let expected_zero_type ss _pos =
     try
       match !((StrMap.find "+1" ss.builtins).sym_type) with
@@ -55,7 +46,7 @@ let handle_open : sig_state -> p_path -> sig_state =
   | _ ->
   (* Check that [p] has been required. *)
   if not (Path.Map.mem p !(ss.signature.sign_deps)) then
-    fatal pos "Module %a needs to be required first." pp_path p;
+    fatal pos "Module %a needs to be required first." path p;
   (* Obtain the signature corresponding to [p]. *)
   open_sign ss (Path.Map.find p !(Sign.loaded))
 
@@ -67,7 +58,7 @@ let handle_require : compiler -> bool -> sig_state -> p_path -> sig_state =
   fun compile b ss {elt=p;pos} ->
   (* Check that the module has not already been required. *)
   if Path.Map.mem p !(ss.signature.sign_deps) then
-    fatal pos "Module %a is already required." pp_path p;
+    fatal pos "Module %a is already required." path p;
   (* Compile required path (adds it to [Sign.loaded] among other things) *)
   ignore (compile p);
   (* Add the dependency (it was compiled already while parsing). *)
@@ -136,10 +127,10 @@ let check_rule : sig_state -> p_rule -> sym * rule = fun ss r ->
   Console.out 3 (Color.cya "%a") Pos.pp r.pos;
   Console.out 4 "%a" (Pretty.rule "rule") r;
   let pr = scope_rule false ss r in
-  let sym = pr.elt.pr_sym in
-  if !(sym.sym_def) <> None then
+  let s = pr.elt.pr_sym in
+  if !(s.sym_def) <> None then
     fatal pr.pos "No rewriting rule can be given on a defined symbol.";
-  sym, Tool.Sr.check_rule pr
+  s, Tool.Sr.check_rule pr
 
 (** [handle_rule ss syms r] checks rule [r], adds it in [ss] and returns the
    head symbol of the lhs and the rule itself. *)
@@ -155,7 +146,7 @@ let handle_inductive_symbol : sig_state -> expo -> prop -> match_strat
   fun ss expo prop mstrat ({elt=name;pos} as id) xs typ ->
   (* We check that [id] is not already used. *)
   if Sign.mem ss.signature name then
-    fatal pos "Symbol %a already exists." pp_uid name;
+    fatal pos "Symbol %a already exists." uid name;
   (* Desugaring of arguments of [typ]. *)
   let typ = if xs = [] then typ else Pos.none (P_Prod(xs, typ)) in
   (* Obtaining the implicitness of arguments. *)
@@ -167,13 +158,13 @@ let handle_inductive_symbol : sig_state -> expo -> prop -> match_strat
   let (typ,  _) = Query.check_sort pos p [] typ in
   (* We check that no metavariable remains. *)
   if !p.metas <> MetaSet.empty then begin
-    fatal_msg "The type of %a has unsolved metavariables.@." pp_uid name;
-    fatal pos "We have %a : %a." pp_uid name pp_term typ
+    fatal_msg "The type of %a has unsolved metavariables.@." uid name;
+    fatal pos "We have %a : %a." uid name term typ
   end;
   (* Actually add the symbol to the signature and the state. *)
-  Console.out 2 (Color.red "symbol %a : %a") pp_uid name pp_term typ;
+  Console.out 2 (Color.red "symbol %a : %a") uid name term typ;
   let r = add_symbol ss expo prop mstrat false id typ impl None in
-  Print.sig_state := fst r; r
+  sig_state := fst r; r
 
 (** Representation of a yet unchecked proof. The structure is initialized when
     the proof mode is entered, and its finalizer is called when the proof mode
@@ -219,22 +210,22 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
       (*FIXME:remove List.rev by fixing regression/hrs.expected*)
       SymSet.iter Tree.update_dtree syms;
       (ss, None, None)
-  | P_builtin(s,qid) ->
-      let sym = find_sym ~prt:true ~prv:true ss qid in
-      Builtin.check ss pos s sym;
-      Console.out 2 "builtin \"%s\" ≔ %a" s pp_sym sym;
-      (add_builtin ss s sym, None, None)
+  | P_builtin(n,qid) ->
+      let s = find_sym ~prt:true ~prv:true ss qid in
+      Builtin.check ss pos n s;
+      Console.out 2 "builtin \"%s\" ≔ %a" n sym s;
+      (add_builtin ss n s, None, None)
   | P_notation(qid,n) ->
-      let sym = find_sym ~prt:true ~prv:true ss qid in
-      Console.out 2 "notation %a %a" pp_sym sym pp_notation n;
-      (add_notation ss sym n, None, None)
+      let s = find_sym ~prt:true ~prv:true ss qid in
+      Console.out 2 "notation %a %a" sym s notation n;
+      (add_notation ss s n, None, None)
   | P_unif_rule(h) ->
       (* Approximately same processing as rules without SR checking. *)
       let pur = scope_rule true ss h in
       let urule = Scope.rule_of_pre_rule pur in
       Sign.add_rule ss.signature Unif_rule.equiv urule;
       Tree.update_dtree Unif_rule.equiv;
-      Console.out 2 "unif_rule %a" pp_unif_rule (Unif_rule.equiv, urule);
+      Console.out 2 "unif_rule %a" unif_rule (Unif_rule.equiv, urule);
       (ss, None, None)
 
   | P_inductive(ms, params, p_ind_list) ->
@@ -299,15 +290,15 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
       let add_recursor (ss, rec_sym_list) ind_sym rec_typ =
         let rec_name = Inductive.rec_name ind_sym in
         if Sign.mem ss.signature rec_name then
-          fatal pos "Symbol %a already exists." pp_uid rec_name;
+          fatal pos "Symbol %a already exists." uid rec_name;
         let (ss, rec_sym) =
           Console.out 2 (Color.red "symbol %a : %a")
-            pp_uid rec_name pp_term rec_typ;
+            uid rec_name term rec_typ;
           (* Recursors are declared after the types and constructors. *)
           let pos = after (end_pos pos) in
           let id = Pos.make pos rec_name in
           let r = add_symbol ss expo Defin Eager false id rec_typ [] None
-          in Print.sig_state := fst r; r
+          in sig_state := fst r; r
         in
         (ss, rec_sym::rec_sym_list)
       in
@@ -335,7 +326,7 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
     (* We check that the identifier is not already used. *)
     let {elt=id; _} = p_sym_nam in
     if Sign.mem ss.signature id then
-      fatal p_sym_nam.pos "Symbol %a already exists." pp_uid id;
+      fatal p_sym_nam.pos "Symbol %a already exists." uid id;
     (* Check that this is a syntactically valid symbol declaration. *)
     begin
       match p_sym_typ, p_sym_def, p_sym_trm, p_sym_prf with
@@ -446,7 +437,7 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
                   in List.fold_left admit_goal ss ps.proof_goals
             in
             (* Add the symbol in the signature with a warning. *)
-            Console.out 2 (Color.red "symbol %a : %a") pp_uid id pp_term a;
+            Console.out 2 (Color.red "symbol %a : %a") uid id term a;
             wrn pe.pos "Proof admitted.";
             let t = Option.map (fun t -> t.elt) t in
             fst (add_symbol ss expo prop mstrat opaq p_sym_nam a impl t)
@@ -455,7 +446,7 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
             if not (finished ps) then
               fatal pe.pos "The proof is not finished.";
             (* Add the symbol in the signature. *)
-            Console.out 2 (Color.red "symbol %a : %a") pp_uid id pp_term a;
+            Console.out 2 (Color.red "symbol %a : %a") uid id term a;
             let t = Option.map (fun t -> t.elt) t in
             fst (add_symbol ss expo prop mstrat opaq p_sym_nam a impl t)
       in
@@ -496,7 +487,7 @@ let too_long = Stdlib.ref infinity
     are captured, although they should not occur. *)
 let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
   fun compile ss ({pos;_} as cmd) ->
-  Print.sig_state := ss;
+  sig_state := ss;
   try
     let (tm, ss) = Extra.time (get_proof_data compile ss) cmd in
     if Stdlib.(tm >= !too_long) then

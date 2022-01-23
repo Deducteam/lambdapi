@@ -1,13 +1,10 @@
 (** Checking that a rule preserves typing (subject reduction property). *)
 
-open! Lplib
+open Lplib
 open Timed
-open Common
-open Error
-open Core
+open Common open Error
+open Core open Term open Print
 open Parsing
-open Term
-open Print
 
 (** Logging function for typing. *)
 let log_subj = Logger.make 's' "subj" "subject-reduction"
@@ -139,7 +136,7 @@ let check_rule : Scope.pre_rule Pos.loc -> rule = fun ({pos; elt} as pr) ->
   if pr_xvars_nb <> 0 then
     (let xvars = Array.drop (Array.length vars - pr_xvars_nb) vars in
      fatal pos "Unknown pattern variables: %a"
-       (Array.pp Print.pp_var ",") xvars);
+       (Array.pp var ",") xvars);
   let arity = List.length lhs in
   if Logger.log_enabled () then
     begin
@@ -149,7 +146,7 @@ let check_rule : Scope.pre_rule Pos.loc -> rule = fun ({pos; elt} as pr) ->
       let rhs = Bindlib.(unbox (bind_mvar vars pr_rhs)) in
       let naive_rule =
         {lhs; rhs; arity; arities; vars; xvars_nb = 0; rule_pos = pos} in
-      log_subj (Color.red "%a") pp_rule (s, naive_rule);
+      log_subj (Color.red "%a") rule (s, naive_rule);
     end;
   (* Replace [Patt] nodes of LHS with corresponding elements of [vars]. *)
   let lhs_vars = _Appl_Symb s (List.map (patt_to_tenv vars) lhs) in
@@ -177,7 +174,7 @@ let check_rule : Scope.pre_rule Pos.loc -> rule = fun ({pos; elt} as pr) ->
   in
   if Logger.log_enabled () then
     log_subj "replace pattern variables by metavariables:@ %a ↪ %a"
-      pp_term lhs_with_metas pp_term rhs_with_metas;
+      term lhs_with_metas term rhs_with_metas;
   (* Infer the typing constraints of the LHS. *)
   match Infer.infer_noexn p [] lhs_with_metas with
   | None -> fatal pos "The LHS is not typable."
@@ -189,8 +186,8 @@ let check_rule : Scope.pre_rule Pos.loc -> rule = fun ({pos; elt} as pr) ->
   let lhs_constrs = !p.unsolved in
   if Logger.log_enabled () then
     log_subj "LHS type: %a@.constraints: %a@.%a ↪ %a"
-      pp_term ty_lhs pp_constrs lhs_constrs
-      pp_term lhs_with_metas pp_term rhs_with_metas;
+      term ty_lhs constrs lhs_constrs
+      term lhs_with_metas term rhs_with_metas;
   (* We instantiate all the uninstantiated metavariables of the LHS (including
      those appearing in the types of these metavariables) using fresh function
      symbols. We also keep a list of those symbols. *)
@@ -222,7 +219,7 @@ let check_rule : Scope.pre_rule Pos.loc -> rule = fun ({pos; elt} as pr) ->
   in
   if Logger.log_enabled () then
     log_subj "replace LHS metavariables by function symbols:@ %a ↪ %a"
-      pp_term lhs_with_metas pp_term rhs_with_metas;
+      term lhs_with_metas term rhs_with_metas;
   (* TODO complete the constraints into a set of rewriting rule on
      the function symbols of [symbols]. *)
   (* Compute the constraints for the RHS to have the same type as the LHS. *)
@@ -245,7 +242,7 @@ let check_rule : Scope.pre_rule Pos.loc -> rule = fun ({pos; elt} as pr) ->
   let cs = List.filter (fun c -> not (is_lhs_constr c)) !p.unsolved in
   if cs <> [] then
     begin
-      List.iter (fatal_msg "Cannot solve %a@." pp_constr) cs;
+      List.iter (fatal_msg "Cannot solve %a@." constr) cs;
       fatal pos "Unable to prove type preservation."
     end;
   (* We build a map allowing to find a variable index from its key. *)

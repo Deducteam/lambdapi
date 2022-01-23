@@ -36,5 +36,5 @@ let eq : 'a eq -> 'a option eq = fun eq_elt o1 o2 ->
   | Some e1, Some e2 -> eq_elt e1 e2
   | _ -> false
 
-let pp : 'a pp -> 'a option pp = fun pp_elt ppf o ->
-  match o with None -> () | Some e -> pp_elt ppf e
+let pp : 'a pp -> 'a option pp = fun elt ppf o ->
+  match o with None -> () | Some e -> elt ppf e
