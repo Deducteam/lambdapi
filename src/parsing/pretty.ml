@@ -5,10 +5,8 @@
     file in the Lambdapi syntax, given the AST obtained when parsing a file in
     the Dedukti syntax. *)
 
-open! Lplib
-open Base
-open Common
-open Pos
+open Lplib open Base
+open Common open Pos
 open Syntax
 open Format
 open Core

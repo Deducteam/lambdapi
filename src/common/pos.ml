@@ -1,7 +1,6 @@
 (** Positions in Lambdapi files. *)
 
-open Lplib
-open Base
+open Lplib open Base
 
 (** Type of a position, corresponding to a continuous range of characters in a
     (utf8-encoded) source. *)

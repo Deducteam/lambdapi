@@ -1,16 +1,10 @@
 (** Handling of queries. *)
 
-open Common
-open Error
-open Pos
-open Parsing
-open Syntax
-open Core
-open Term
-open Print
+open Common open Error open Pos
+open Parsing open Syntax
+open Core open Term open Print
 open Proof
-open! Lplib
-open Base
+open Lplib open Base
 open Timed
 
 let infer : Pos.popt -> problem -> ctxt -> term -> term * term =

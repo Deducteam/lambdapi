@@ -1,7 +1,6 @@
 (** Helper functions for debugging. **)
 
-open Lplib.Base
-open Lplib.Extra
+open Lplib open Base open Extra
 
 (** Printing functions. *)
 module D = struct

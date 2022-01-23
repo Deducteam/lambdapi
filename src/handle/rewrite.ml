@@ -1,13 +1,9 @@
 (** Implementation of the rewrite tactic. *)
 
-open! Lplib
+open Lplib
 open Timed
-open Common
-open Pos
-open Core
-open Term
-open Error
-open Print
+open Common open Pos open Error
+open Core open Term open Print
 open Proof
 
 (** Logging function for the rewrite tactic. *)

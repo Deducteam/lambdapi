@@ -8,10 +8,8 @@
     @see <https://rlepigre.github.io/ocaml-bindlib/> *)
 
 open Timed
-open Lplib.Base
-open Common
-open Debug
-open! Lplib
+open Lplib open Base
+open Common open Debug
 
 let log_term = Logger.make 'm' "term" "term building"
 let log_term = log_term.pp

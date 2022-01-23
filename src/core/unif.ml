@@ -1,14 +1,11 @@
 (** Solving unification constraints. *)
 
-open Lplib
-open Color
+open Lplib open Color
 open Timed
-open Common
-open Error
+open Common open Error open Debug
 open Term
 open LibTerm
 open Print
-open Debug
 
 (** Logging function for unification. *)
 let log_unif = Logger.make 'u' "unif" "unification"

@@ -1,6 +1,6 @@
 (** Functions for creating loggers. **)
 
-open Lplib.Base
+open Lplib open Base
 
 (** [log_enabled] is the cached result of whether there exists an enabled
    logging function. Its main use is to guard logging operations to avoid

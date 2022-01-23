@@ -1,15 +1,10 @@
 (** Handling of tactics. *)
 
-open! Lplib
-open Common
-open Error
-open Pos
-open Parsing
-open Syntax
-open Core
-open Term
+open Lplib
+open Common open Error open Pos
+open Parsing open Syntax
+open Core open Term open Print
 open Proof
-open Print
 open Timed
 
 (** Logging function for tactics. *)

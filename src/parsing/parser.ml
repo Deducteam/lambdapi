@@ -5,8 +5,7 @@
     or directly in {!module:Parser}, and a parser for the Dedukti syntax
     available through {!module:Parser.Dk}. *)
 
-open! Lplib
-open Base
+open Lplib open Base
 open Common
 
 (** [parser_fatal pos fmt] is a wrapper for [Error.fatal] that enforces

@@ -1,13 +1,9 @@
 (** Proofs and tactics. *)
 
-open! Lplib
-open Base
+open Lplib open Base
 open Timed
-open Core
-open Term
-open Print
-open Common
-open Pos
+open Core open Term open Print
+open Common open Pos
 
 (** Type of goals. *)
 type goal_typ =

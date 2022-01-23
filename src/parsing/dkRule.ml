@@ -1,7 +1,5 @@
 open Syntax
-open Common
-open Pos
-open Error
+open Common open Pos open Error
 open Lplib
 
 (** [get_args t] decomposes the parser level term [t] into a spine [(h,args)],

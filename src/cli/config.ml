@@ -1,9 +1,8 @@
 (** Configuration for the CLI and common flags. *)
 
-open! Lplib
+open Lplib
 open Cmdliner
-open Common
-open Library
+open Common open Library
 open Parsing
 open Base
 

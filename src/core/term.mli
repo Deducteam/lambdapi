@@ -8,7 +8,7 @@
     @see <https://rlepigre.github.io/ocaml-bindlib/> *)
 
 open Timed
-open Lplib.Base
+open Lplib open Base
 open Common
 
 (** {3 Term (and symbol) representation} *)

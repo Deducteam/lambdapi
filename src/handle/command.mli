@@ -1,11 +1,9 @@
 (** Handling of commands. *)
 
-open Parsing
-open Core
+open Parsing open Syntax
+open Core open Sig_state
 open Proof
-open Sig_state
-open Syntax
-open Common.Pos
+open Common open Pos
 
 (** [too_long] indicates the duration after which a warning should be given to
     indicate commands that take too long to execute. *)

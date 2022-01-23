@@ -1,11 +1,8 @@
-open! Lplib
-
+open Lplib
 open Timed
 open Core
-open Common
+open Common open Error open Library
 open Parsing
-open Error
-open Library
 open Handle
 open Base
 

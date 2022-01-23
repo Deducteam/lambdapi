@@ -1,7 +1,6 @@
 (** Warnings and errors. *)
 
-open Lplib
-open Base
+open Lplib open Base
 
 (** [err_fmt] warning/error output formatter. *)
 let err_fmt = Stdlib.ref Format.err_formatter

@@ -1,6 +1,5 @@
 open Cmdliner
-open Common
-open Error
+open Common open Error
 open Format
 open Parsing
 

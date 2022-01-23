@@ -1,15 +1,10 @@
 (** High-level compilation functions. *)
 
-open! Lplib
-
+open Lplib
 open Timed
-open Common
-open Error
+open Common open Error open Library
 open Parsing
-open Core
-open Sign
-open Library
-open Print
+open Core open Sign open Print
 
 (** [gen_obj] indicates whether we should generate object files when compiling
     source files. The default behaviour is not te generate them. *)
