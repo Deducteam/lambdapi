@@ -134,9 +134,9 @@ let check_rule : sig_state -> p_rule -> sym * rule = fun ss r ->
 
 (** [handle_rule ss syms r] checks rule [r], adds it in [ss] and returns the
    head symbol of the lhs and the rule itself. *)
-let add_rule : sig_state -> sym * rule -> unit = fun ss (sym, rule) ->
-  Sign.add_rule ss.signature sym rule;
-  Console.out 2 (Color.red "rule %a") pp_rule (sym, rule)
+let add_rule : sig_state -> sym * rule -> unit = fun ss ((s,r) as x) ->
+  Sign.add_rule ss.signature s r;
+  Console.out 2 (Color.red "rule %a") rule x
 
 (** [handle_inductive_symbol ss e p strat x xs a] handles the command
     [e p strat symbol x xs : a] with [ss] as the signature state.

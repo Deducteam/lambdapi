@@ -8,8 +8,8 @@ open Lplib open Base open Extra
 let log_cp = Logger.make 'f' "lcr " "local confluence"
 let log_cp = log_cp.pp
 
-let pp_rule : (term * term) pp = fun ppf (l,r) ->
-  out ppf "%a ↪ %a" pp_term l pp_term r
+let rule : (term * term) pp = fun ppf (l,r) ->
+  out ppf "%a ↪ %a" term l term r
 
 (** Symbol with rule. *)
 type sym_rule = sym * rule
@@ -57,7 +57,7 @@ let iter_subterms_eq :
     | Abst(_a,_b), []
     | Prod(_a,_b), [] ->
       wrn pos "Ignore subterms of [%a]@ at position >= %a."
-        pp_term t subterm_pos p
+        term t subterm_pos p
       (*iter (0::p) a; let _,b = Bindlib.unbind b in iter (1::p) b*)
     | Abst _, _ -> assert false
     | Prod _, _ -> assert false
@@ -80,7 +80,7 @@ let iter_subterms_from_pos :
   fun p _pos f t ->
   let rec iter p t =
     (*if Logger.log_enabled() then
-      log_cp "iter_subterms_eq %a %a" subterm_pos p pp_term t;*)
+      log_cp "iter_subterms_eq %a %a" subterm_pos p term t;*)
     let h, _ = get_args t in
     match unfold h with
     | Symb s -> if is_definable s then iter_app s p t else iter_args p t
@@ -119,7 +119,7 @@ let iter_subterms_eq :
 let iter_subterms :
   Pos.popt -> (sym -> int list -> term -> unit) -> term -> unit =
   fun pos f t ->
-  (*if Logger.log_enabled() then log_cp "iter_subterms %a" pp_term t;*)
+  (*if Logger.log_enabled() then log_cp "iter_subterms %a" term t;*)
   match unfold t with
   | Symb _
   | Patt _
@@ -161,7 +161,7 @@ let iter_subterms :
 let replace : term -> int list -> term -> term = fun t p u ->
   let rec replace t p =
     (*if Logger.log_enabled() then
-      log_cp "replace [%a] %a" pp_term t subterm_pos p;*)
+      log_cp "replace [%a] %a" term t subterm_pos p;*)
     match p with
     | [] -> u
     | 0::p ->
@@ -371,7 +371,7 @@ let check_cp_subterm_rule :
   Pos.popt -> term -> term -> int list -> term -> term -> term -> unit =
   fun pos l r p l_p g d ->
   (*if Logger.log_enabled() then
-    log_cp "check_cp_subterm_rule %a" pp_term l_p;*)
+    log_cp "check_cp_subterm_rule %a" term l_p;*)
   match unif pos l_p g with
   | Some s ->
     let r1 = subs s r and r2 = subs s (replace l p d) in
@@ -381,8 +381,8 @@ let check_cp_subterm_rule :
                      with %a@.\
                    t ↪%a %a@.  \
                      with %a"
-        pp_term (subs s l) pp_term r1 pp_rule (l,r)
-        subterm_pos p pp_term r2 pp_rule (g,d);
+        term (subs s l) term r1 rule (l,r)
+        subterm_pos p term r2 rule (g,d);
     if not (Eval.eq_modulo [] r1 r2) then
       wrn pos "Unjoinable critical pair:@.\
                t ≔ %a@.\
@@ -390,8 +390,8 @@ let check_cp_subterm_rule :
                  with %a@.\
                t ↪%a %a@.  \
                  with %a"
-        pp_term (subs s l) pp_term r1 pp_rule (l,r)
-        subterm_pos p pp_term r2 pp_rule (g,d)
+        term (subs s l) term r1 rule (l,r)
+        subterm_pos p term r2 rule (g,d)
   | None -> ()
 
 (** [check_cp_subterms_rule pos sr1 sr2] checks the critical pairs between all
@@ -399,7 +399,7 @@ let check_cp_subterm_rule :
 let check_cp_subterms_rule : Pos.popt -> sym_rule -> sym_rule -> unit =
   fun pos lr gd ->
   (*if Logger.log_enabled() then
-    log_cp "check_cp_subterms@.%a@.%a" Print.pp_rule lr Print.pp_rule gd;*)
+    log_cp "check_cp_subterms@.%a@.%a" Print.rule lr Print.rule gd;*)
   let l = lhs lr and r = rhs lr and g = lhs gd and d = rhs gd in
   let l = shift l and r = shift r in
   let f _ p l_p = check_cp_subterm_rule pos l r p l_p g d in
@@ -410,7 +410,7 @@ let check_cp_subterms_rule : Pos.popt -> sym_rule -> sym_rule -> unit =
 let check_cp_subterms_eq_rule : Pos.popt -> sym_rule -> sym_rule -> unit =
   fun pos lr gd ->
   (*if Logger.log_enabled() then
-    log_cp "check_cp_subterms@.%a@.%a" Print.pp_rule lr Print.pp_rule gd;*)
+    log_cp "check_cp_subterms@.%a@.%a" Print.rule lr Print.rule gd;*)
   let l = lhs lr and r = rhs lr and g = lhs gd and d = rhs gd in
   let l = shift l and r = shift r in
   let f _ p l_p = check_cp_subterm_rule pos l r p l_p g d in
@@ -447,7 +447,7 @@ let iter_rules_of_sym : (rule -> unit) -> sym -> unit = fun h s ->
 let check_cp_subterms_eq : Pos.popt -> sym_rule -> unit =
   fun pos ((_,x) as lr) ->
   (*if Logger.log_enabled() then
-    log_cp "check_cp_subterms@.%a@.%a" Print.pp_rule lr Print.pp_rule gd;*)
+    log_cp "check_cp_subterms@.%a@.%a" Print.rule lr Print.rule gd;*)
   let l = shift (lhs lr) and r = shift (rhs lr) in
   let f s p l_p =
     match !(s.sym_def) with
@@ -493,7 +493,7 @@ let check_cp_rules : Pos.popt -> sym_rule list -> unit = fun pos rs ->
   (* We first build a map symbol s to new rules on s. *)
   let f _ s =
     if is_definable s then begin
-      if Logger.log_enabled() then log_cp "check %a" pp_sym s;
+      if Logger.log_enabled() then log_cp "check %a" sym s;
       let h r = iter_sym_rules (check_cp_subterms_eq_rule pos (s,r)) rs in
       iter_rules_of_sym h s
     end
