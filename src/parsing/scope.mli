@@ -2,13 +2,9 @@
    identifiers are bound variables or function symbol declared in open
    modules. *)
 
-open Core
-open Sig_state
-open Term
-open Env
+open Core open Sig_state open Term open Env
 open Syntax
-open Common
-open Pos
+open Common open Pos
 
 (** [scope ~typ ~mok prv expo ss env p t] turns a pterm [t] into a term in
     the signature state [ss] and environment [env] (for bound

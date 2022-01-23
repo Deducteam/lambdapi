@@ -1,9 +1,7 @@
 (** Find and read lambdapi.pkg files. *)
 
-open Lplib
-open Extra
-open Common
-open Error
+open Lplib open Extra
+open Common open Error
 
 (** A package configuration file is expected at the root of every package. The
     file is used to figure out the module path under which the package must be

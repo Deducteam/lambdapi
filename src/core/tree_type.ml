@@ -1,7 +1,6 @@
 (** Miscellaneous types and utilities for decision trees. *)
 
-open Lplib
-open Lplib.Base
+open Lplib open Base
 open Common
 
 (** {3 Atomic pattern constructor representation} *)

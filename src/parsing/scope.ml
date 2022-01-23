@@ -2,16 +2,10 @@
    identifiers are bound variables or function symbol declared in open
    modules. *)
 
-open! Lplib
-open Common
-open Error
-open Pos
+open Lplib
+open Common open Error open Pos open Debug
 open Syntax
-open Core
-open Term
-open Env
-open Sig_state
-open Debug
+open Core open Term open Env open Sig_state
 
 (** Logging function for term scoping. *)
 let log_scop = Logger.make 'o' "scop" "term scoping"

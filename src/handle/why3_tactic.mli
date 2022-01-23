@@ -1,8 +1,7 @@
 (** Calling a prover using Why3. *)
 
 open Common
-open Core
-open Term
+open Core open Term
 open Timed
 
 (** [default_prover] contains the name of the current prover. Note that it can

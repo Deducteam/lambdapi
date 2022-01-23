@@ -1,11 +1,8 @@
 (** Lambdapi library management. *)
 
-open Lplib
-open Lplib.Base
-open Lplib.Extra
+open Lplib open Base open Extra
 open Timed
-open Error
-open Debug
+open Error open Debug
 
 let log_lib = Logger.make 'l' "libr" "library files"
 let log_lib = log_lib.pp

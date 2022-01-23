@@ -1,14 +1,9 @@
 (** Implementation of the why3 tactic. *)
 
-open! Lplib
-open Lplib.Extra
-
+open Lplib open Extra
 open Timed
-open Common
-open Error
-open Core
-open Term
-open Print
+open Common open Error
+open Core open Term open Print
 
 (** Logging function for external prover calling with Why3. *)
 let log_why3 = Logger.make 'w' "why3" "why3 provers"

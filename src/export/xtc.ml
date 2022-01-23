@@ -3,13 +3,9 @@
     @see <http://cl2-informatik.uibk.ac.at/mercurial.cgi/TPDB/file/tip/xml/xtc.xsd>
 *)
 
-open! Lplib
-open Lplib.Base
-open Lplib.Extra
+open Lplib open Base open Extra
 open Timed
-open Core
-open Term
-open Print
+open Core open Term open Print
 
 (** [print_sym ppf s] outputs the fully qualified name of [s] to
    [ppf]. Modules are separated with ["."]. *)

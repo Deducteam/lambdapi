@@ -11,7 +11,7 @@
 (************************************************************************)
 
 open Common
-open! Lplib
+open Lplib
 
 module LSP = Lsp_base
 

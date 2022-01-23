@@ -1,6 +1,6 @@
 (** Module paths in the Lambdapi library. *)
 
-open Lplib.Base
+open Lplib open Base
 
 module Path =
   struct

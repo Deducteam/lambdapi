@@ -1,13 +1,10 @@
 (** Main program. *)
 
-open! Lplib
-open Lplib.Extra
-open Common
+open Lplib open Extra
+open Common open Library open Error
 open Parsing
 open Core
 open Cmdliner
-open Library
-open Error
 open Version
 open Handle
 

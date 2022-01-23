@@ -1,11 +1,7 @@
 (** Signature for symbols. *)
 
-open! Lplib
-open Lplib.Extra
-
-open Common
-open Error
-open Pos
+open Lplib open Extra
+open Common open Error open Pos
 open Timed
 open Term
 
