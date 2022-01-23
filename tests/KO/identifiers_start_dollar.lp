@@ -1,0 +1,1 @@
+symbol $foo: TYPE;
