@@ -1,10 +1,7 @@
 (** Provides a function for calling external checkers using a Unix command. *)
 
-open Lplib.Base
-open Lplib.Extra
-
-open Common
-open Error
+open Lplib open Base open Extra
+open Common open Error
 open Core
 
 (** Logging function for external checkers. *)

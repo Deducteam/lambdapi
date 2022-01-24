@@ -2,8 +2,7 @@
 
 %{
   open Lplib
-  open Common
-  open Pos
+  open Common open Pos
   open Syntax
   open Core
 

@@ -17,8 +17,10 @@ let (++) (p1: 'a pp) (p2: 'b pp) : ('a * 'b) pp = fun ppf (arg1, arg2) ->
 let (|+) p1 p2 : 'a pp = fun ppf arg -> (p1 ++ p2) ppf ((), arg)
 let (+|) p1 p2 : 'a pp = fun ppf arg -> (p1 ++ p2) ppf (arg, ())
 
-let pp_unit : unit outfmt -> unit pp = fun fmt ppf () -> out ppf fmt
-let pp_sep : string -> unit pp = fun s ff () -> Format.pp_print_string ff s
+let int : int pp = Format.pp_print_int
+let string : string pp = Format.pp_print_string
+let unit : unit outfmt -> unit pp = fun fmt ppf () -> out ppf fmt
+let sep : string -> unit pp = fun s ff () -> string ff s
 
 let pp_if : bool -> 'a pp -> 'a pp = fun b pp ppf arg ->
   if b then out ppf "%a" pp arg

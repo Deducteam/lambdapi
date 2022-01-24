@@ -1,7 +1,6 @@
 (** Positions in Lambdapi files. *)
 
-open Lplib
-open Base
+open Lplib open Base
 
 (** Type of a position, corresponding to a continuous range of characters in a
     (utf8-encoded) source. *)
@@ -100,15 +99,15 @@ let to_string : ?print_fname:bool -> pos -> string =
 (** [pp ppf pos] prints the optional position [pos] on [ppf]. *)
 let pp : popt Lplib.Base.pp = fun ppf p ->
   match p with
-  | None    -> Format.pp_print_string ppf "unknown location"
-  | Some(p) -> Format.pp_print_string ppf (to_string p)
+  | None    -> string ppf "unknown location"
+  | Some(p) -> string ppf (to_string p)
 
-(** [pp_short ppf pos] prints the optional position [pos] on [ppf]. *)
-let pp_short : popt Lplib.Base.pp = fun ppf p ->
+(** [short ppf pos] prints the optional position [pos] on [ppf]. *)
+let short : popt Lplib.Base.pp = fun ppf p ->
   match p with
-  | None    -> Format.pp_print_string ppf "unknown location"
+  | None    -> string ppf "unknown location"
   | Some(p) -> let print_fname=false in
-               Format.pp_print_string ppf (to_string ~print_fname p)
+               string ppf (to_string ~print_fname p)
 
 (** [map f loc] applies function [f] on the value of [loc] and keeps the
     position unchanged. *)

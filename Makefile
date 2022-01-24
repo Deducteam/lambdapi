@@ -34,15 +34,9 @@ KO_TESTFILES = $(sort $(wildcard tests/KO/*.dk tests/KO/*.lp))
 .PHONY: tests
 tests: bin
 	@dune runtest --only-packages lambdapi
-	@printf "## Decision tree tests ##\n"
 	@dune exec --only-packages lambdapi -- tests/dtrees.sh
-	$(MAKE) -C Logic
-
-.PHONY: real_tests
-real_tests: bin
-	@dune runtest --only-packages lambdapi
-	@printf "## Decision tree tests ##\n"
-	@dune exec --only-packages lambdapi -- tests/dtrees.sh
+	@dune exec --only-packages lambdapi -- tests/export_dk.sh
+	@dune exec --only-packages lambdapi -- tests/export_lp.sh
 	$(MAKE) -C Logic
 
 .PHONY: sanity_check

@@ -1,15 +1,10 @@
 (** Handling of tactics. *)
 
-open! Lplib
-open Common
-open Error
-open Pos
-open Parsing
-open Syntax
-open Core
-open Term
+open Lplib
+open Common open Error open Pos
+open Parsing open Syntax
+open Core open Term open Print
 open Proof
-open Print
 open Timed
 
 (** Logging function for tactics. *)
@@ -33,7 +28,7 @@ let add_axiom : Sig_state.t -> popt -> meta -> Sig_state.t =
   (* Create a symbol with the same type as the metavariable *)
   let ss, sym =
     Console.out 1 (Color.red "axiom %a: %a")
-      pp_uid name pp_term !(m.meta_type);
+      uid name term !(m.meta_type);
     (* Temporary hack for axioms to have a declaration position in the order
        they are created. *)
     let pos =
@@ -80,7 +75,7 @@ let tac_admit :
 (** [tac_solve pos ps] tries to simplify the unification goals of the proof
    state [ps] and fails if constraints are unsolvable. *)
 let tac_solve : popt -> proof_state -> proof_state = fun pos ps ->
-  if Logger.log_enabled () then log_tact "@[<v>tac_solve@ %a@]" pp_goals ps;
+  if Logger.log_enabled () then log_tact "@[<v>tac_solve@ %a@]" goals ps;
   let gs_typ, gs_unif = List.partition is_typ ps.proof_goals in
   let p = new_problem() in
   let f ms = function
@@ -107,20 +102,20 @@ let tac_refine :
       -> proof_state =
   fun pos ps gt gs p t ->
   if Logger.log_enabled () then
-    log_tact "@[tac_refine@ %a@]" pp_term t;
+    log_tact "@[tac_refine@ %a@]" term t;
   let c = Env.to_ctxt gt.goal_hyps in
   if LibMeta.occurs gt.goal_meta c t then fatal pos "Circular refinement.";
   (* Check that [t] has the required type. *)
   match Infer.check_noexn p c t gt.goal_type with
   | None ->
-      fatal pos "%a@ does not have type@ %a."  pp_term t  pp_term gt.goal_type
+      fatal pos "%a@ does not have type@ %a."  term t  term gt.goal_type
   | Some t ->
   if Logger.log_enabled () then
-    log_tact (Color.red "%a ≔ %a") pp_meta gt.goal_meta pp_term t;
+    log_tact (Color.red "%a ≔ %a") meta gt.goal_meta term t;
   LibMeta.set p gt.goal_meta
     (Bindlib.unbox (Bindlib.bind_mvar (Env.vars gt.goal_hyps) (lift t)));
   (* Convert the metas and constraints of [p] not in [gs] into new goals. *)
-  if Logger.log_enabled () then log_tact "%a" pp_problem p;
+  if Logger.log_enabled () then log_tact "%a" problem p;
   tac_solve pos {ps with proof_goals = Proof.add_goals_of_problem p gs}
 
 (** [ind_data t] returns the [ind_data] structure of [s] if [t] is of the
@@ -135,11 +130,11 @@ let ind_data : popt -> Env.t -> term -> Sign.ind_data = fun pos env a ->
           let ind = SymMap.find s !(sign.sign_ind) in
           let ctxt = Env.to_ctxt env in
           if LibTerm.distinct_vars ctxt (Array.of_list ts) = None
-          then fatal pos "%a is not applied to distinct variables." pp_sym s
+          then fatal pos "%a is not applied to distinct variables." sym s
           else ind
-        with Not_found -> fatal pos "%a is not an inductive type." pp_sym s
+        with Not_found -> fatal pos "%a is not an inductive type." sym s
       end
-  | _ -> fatal pos "%a is not headed by an inductive type." pp_term a
+  | _ -> fatal pos "%a is not headed by an inductive type." term a
 
 (** [tac_induction pos ps gt] tries to apply the induction tactic on the
    typing goal [gt]. *)
@@ -161,7 +156,7 @@ let tac_induction : popt -> proof_state -> goal_typ -> goal list
       in
       let t = add_args (mk_Symb ind.ind_prop) metas in
       tac_refine pos ps gt gs p t
-  | _ -> fatal pos "[%a] is not a product." pp_term goal_type
+  | _ -> fatal pos "[%a] is not a product." term goal_type
 
 (** [count_products a] returns the number of consecutive products at
    the top of the term [a]. *)
@@ -222,7 +217,7 @@ let handle :
         let c = Env.to_ctxt env in
         let p = new_problem () in
         match Infer.infer_noexn p c t with
-        | None -> fatal pos "[%a] is not typable." pp_term t
+        | None -> fatal pos "[%a] is not typable." term t
         | Some (_, a) -> count_products c a
       in
       let t = scope (P.appl_wild pt n) in
@@ -251,7 +246,7 @@ let handle :
               me1 (x::e2)
           in
           tac_refine pos ps gt gs p t
-        with Not_found -> fatal idpos "Unknown hypothesis %a" pp_uid id;
+        with Not_found -> fatal idpos "Unknown hypothesis %a" uid id;
       end
   | P_tac_have(id, t) ->
       (* From a goal [e ⊢ ?[e] : u], generate two new goals [e ⊢ ?1[e] : t]
@@ -263,7 +258,7 @@ let handle :
       let c = Env.to_ctxt gt.goal_hyps in
       begin
         match Infer.check_noexn p c t mk_Type with
-        | None -> fatal pos "%a is not of type Type." pp_term t
+        | None -> fatal pos "%a is not of type Type." term t
         | Some t ->
         (* Create a new goal of type [t]. *)
         let n = List.length env in

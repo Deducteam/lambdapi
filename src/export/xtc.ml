@@ -3,18 +3,14 @@
     @see <http://cl2-informatik.uibk.ac.at/mercurial.cgi/TPDB/file/tip/xml/xtc.xsd>
 *)
 
-open! Lplib
-open Lplib.Base
-open Lplib.Extra
+open Lplib open Base open Extra
 open Timed
-open Core
-open Term
-open Print
+open Core open Term open Print
 
 (** [print_sym ppf s] outputs the fully qualified name of [s] to
    [ppf]. Modules are separated with ["."]. *)
 let print_sym : sym pp = fun ppf s ->
-  out ppf "%a.%a" pp_path s.sym_path pp_uid s.sym_name
+  out ppf "%a.%a" path s.sym_path uid s.sym_name
 
 type symb_status = Object_level | Basic_type | Type_cstr
 
@@ -46,7 +42,7 @@ let rec print_term : int -> string -> term pp = fun i s ppf t ->
   | Type                    -> assert false
   | Prod(_,_)               -> assert false
   (* Printing of atoms. *)
-  | Vari(x)                 -> out ppf "<var>v_%a</var>@." pp_var x
+  | Vari(x)                 -> out ppf "<var>v_%a</var>@." var x
   | Symb(s)                 ->
      out ppf "<funapp>@.<name>%a</name>@.</funapp>@." print_sym s
   | Patt(j,n,ts)            ->
@@ -58,7 +54,7 @@ let rec print_term : int -> string -> term pp = fun i s ppf t ->
   | Abst(a,t)               ->
      let (x, t) = Bindlib.unbind t in
      out ppf "<lambda>@.<var>v_%a</var>@.<type>%a<type>@.%a</lambda>@."
-       pp_var x (print_type i s) a (print_term i s) t
+       var x (print_type i s) a (print_term i s) t
   | LLet(_,t,u)             -> print_term i s ppf (Bindlib.subst u t)
 
 and print_type : int -> string -> term pp = fun i s ppf t ->
@@ -81,7 +77,7 @@ and print_type : int -> string -> term pp = fun i s ppf t ->
   | Abst(a,t)               ->
      let (x, t) = Bindlib.unbind t in
      out ppf "<lambda>@.<var>v_%a</var>@.<type>%a<type>@.%a</lambda>@."
-       pp_var x (print_type i s) a (print_type i s) t
+       var x (print_type i s) a (print_type i s) t
   | Prod(a,b)               ->
      if Bindlib.binder_constant b
      then
@@ -90,7 +86,7 @@ and print_type : int -> string -> term pp = fun i s ppf t ->
          (print_type i s) (snd (Bindlib.unbind b))
      else
        let (x, b) = Bindlib.unbind b in
-       out ppf "<arrow>@.<var>v_%a</var>@." pp_var x;
+       out ppf "<arrow>@.<var>v_%a</var>@." var x;
        out ppf "<type>@.%a</type>@.<type>@.%a</type>@.</arrow>"
          (print_type i s) a (print_type i s) b
   | LLet(_,t,u)             -> print_type i s ppf (Bindlib.subst u t)

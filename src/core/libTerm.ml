@@ -1,7 +1,7 @@
 (** Basic operations on terms. *)
 
 open Term
-open Lplib.Extra
+open Lplib open Extra
 
 (** [to_tvar t] returns [x] if [t] is of the form [Vari x] and fails
     otherwise. *)

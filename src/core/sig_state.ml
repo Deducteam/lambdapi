@@ -9,10 +9,8 @@
    but through the current module only, in order to setup the [sig_state]
    properly. *)
 
-open Lplib.Extra
-open Common
-open Error
-open Pos
+open Lplib open Extra
+open Common open Error open Pos
 open Timed
 open Term
 open Sign

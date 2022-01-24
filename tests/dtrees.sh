@@ -1,5 +1,6 @@
 #!/bin/sh
-# Test Lambdapi decision-tree command
+
+echo '############ test decision-tree ############'
 
 set -uf
 
