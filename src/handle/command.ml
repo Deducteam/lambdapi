@@ -205,7 +205,7 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
         let (s,_) as r = check_rule ss r in SymSet.add s syms, r::rs
       in
       let syms, rs = List.fold_left handle_rule (SymSet.empty, []) rs in
-      Tool.Lcr.check_cps pos ss rs;
+      Tool.Lcr.check_cps pos ss.signature rs;
       List.iter (add_rule ss) (List.rev rs);
       (*FIXME:remove List.rev by fixing regression/hrs.expected*)
       SymSet.iter Tree.update_dtree syms;
