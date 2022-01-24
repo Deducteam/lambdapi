@@ -1,4 +1,23 @@
-(** Compute critical pairs and check local confluence incrementally. *)
+(** Incremental verification of local confluence
+
+by checking the joinability of critical pairs.
+
+- CP(l-->r, p, g-->d) = { (s(r), s(l[d]_p) | s = mgu(l|_p,g) } is the critical
+   pair between l|_p and g.
+
+- CP*(l-->r, g-->d) = U { CP(l-->r, p, g-->d) | p in FPos(l) }
+
+- CP*(R,S) = U { CP*(l-->r, g-->d) | l-->r in R, g-->d in S }
+
+The set of critical pairs of a rewrite system R is CP(R) = CP*(R,R).
+
+We have CP(R U S) = CP*(R,R) U CP*(R,S) U CP*(S,R U S).
+
+As a consequence, assuming that we already checked the local confluence of R
+   and add a new set S of rules, we do not need to check CP*(R,R) again.
+
+Warning: we currently do not take into account the rules having higher-order
+   pattern variables and critical pairs on AC symbols. *)
 
 open Core open Term open Print
 open Timed
