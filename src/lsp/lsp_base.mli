@@ -11,6 +11,7 @@
 (************************************************************************)
 
 open Common
+
 module J = Yojson.Basic
 
 val std_protocol : bool ref

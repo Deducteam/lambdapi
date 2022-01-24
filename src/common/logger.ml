@@ -1,8 +1,6 @@
 (** Functions for creating loggers. **)
 
-open Lplib
-open Base
-open Color
+open Lplib open Base open Color
 
 (** Type of a logging function. It needs to be boxed for higher-rank
    polymorphism reasons *)

@@ -5,10 +5,8 @@
     file in the Lambdapi syntax, given the AST obtained when parsing a file in
     the Dedukti syntax. *)
 
-open! Lplib
-open Base
-open Common
-open Pos
+open Lplib open Base
+open Common open Pos
 open Syntax
 open Format
 open Core
@@ -78,8 +76,8 @@ let _ = let open LpLexer in
     ; "with", WITH ]
 
 let raw_ident : string pp = fun ppf s ->
-  if is_keyword s then out ppf "{|%a|}" Print.pp_uid s
-  else Print.pp_uid ppf s
+  if is_keyword s then out ppf "{|%s|}" s
+  else string ppf s
 
 let ident : p_ident pp = fun ppf {elt;_} -> raw_ident ppf elt
 
@@ -105,9 +103,9 @@ let qident : p_qident pp = fun ppf {elt=(mp,s);_} ->
 (* ends with a space *)
 let modifier : p_modifier pp = fun ppf {elt; _} ->
   match elt with
-  | P_expo(e)   -> Print.pp_expo ppf e
-  | P_mstrat(s) -> Print.pp_match_strat ppf s
-  | P_prop(p)   -> Print.pp_prop ppf p
+  | P_expo(e)   -> Print.expo ppf e
+  | P_mstrat(s) -> Print.match_strat ppf s
+  | P_prop(p)   -> Print.prop ppf p
   | P_opaq      -> out ppf "opaque "
 
 (* ends with a space if the list is not empty *)
@@ -263,7 +261,7 @@ let tactic : p_tactic pp = fun ppf { elt;  _ } ->
   | P_tac_admit -> out ppf "admit"
   | P_tac_apply t -> out ppf "apply %a" term t
   | P_tac_assume ids ->
-      out ppf "assume%a" (List.pp (pp_unit " " |+ param_id) "") ids
+      out ppf "assume%a" (List.pp (unit " " |+ param_id) "") ids
   | P_tac_fail -> out ppf "fail"
   | P_tac_generalize id -> out ppf "generalize %a" ident id
   | P_tac_have (id, t) -> out ppf "have %a: %a" ident id term t
@@ -330,9 +328,7 @@ let command : p_command pp = fun ppf { elt; _ } ->
   | P_open ps -> out ppf "open %a" (List.pp path " ") ps
   | P_query q -> query ppf q
   | P_require (b, ps) ->
-      out ppf "require%a %a"
-        (pp_if b (pp_unit " open")) ()
-        (List.pp path " ") ps
+    out ppf "require%a %a" (pp_if b (unit " open")) () (List.pp path " ") ps
   | P_require_as (p,i) -> out ppf "@[require %a@ as %a@]" path p ident i
   | P_rules [] -> assert false (* not possible *)
   | P_rules (r :: rs) ->
@@ -347,9 +343,9 @@ let command : p_command pp = fun ppf { elt; _ } ->
         ident p_sym_nam
         params_list p_sym_arg
         typ p_sym_typ
-        (pp_if p_sym_def (pp_unit "@ ≔")) ()
-        (Option.pp (pp_sep " " |+ term)) p_sym_trm
-        (Option.pp (pp_unit "@," |+ proof)) p_sym_prf
+        (pp_if p_sym_def (unit "@ ≔")) ()
+        (Option.pp (sep " " |+ term)) p_sym_trm
+        (Option.pp (unit "@," |+ proof)) p_sym_prf
     end
   | P_unif_rule ur -> out ppf "unif_rule %a" unif_rule ur
   | P_coercion c -> rule "coercion" ppf c
@@ -357,4 +353,4 @@ let command : p_command pp = fun ppf { elt; _ } ->
   out ppf ";"
 
 let ast : ast pp = fun ppf ->
-  Stream.iter ((command +| pp_unit "@.") ppf)
+  Stream.iter ((command +| unit "@.") ppf)

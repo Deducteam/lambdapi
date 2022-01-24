@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Test dk export (requires dkcheck.native and dkdep.native)
+echo '############ test export -o dk ############'
 
 TIMEFORMAT="%E"
 root=`pwd`
@@ -39,7 +39,7 @@ compile() {
         $lambdapi check -w -v 0 -c $f
     done
 }
-time compile # can be commented
+#time compile
 
 # translate lp files to dk files
 translate() {
@@ -62,7 +62,7 @@ check() {
     echo 'remove #REQUIRE commands (to be removed when https://github.com/Deducteam/Dedukti/issues/262 is fixed) ...'
     sed -i -e 's/#REQUIRE.*$//' $dk_files    
     echo check dk files ...
-    dkcheck.native -q -e `dkdep.native -q -s $dk_files`
+    dkcheck -q -e `dkdep -q -s $dk_files`
     if test $? -ne 0; then echo KO; exit 1; fi
 }
 time check

@@ -1,5 +1,6 @@
 module A = Stdlib.Array
 include A
+
 open Base
 
 (** [for_all2 p a1 a2] checks if the corresponding elements of arrays [a1] and
@@ -11,14 +12,14 @@ let for_all2 : ('a -> 'b -> bool) -> 'a array -> 'b array -> bool =
   let f x y = if not (f x y) then raise Done in
   try iter2 f a1 a2; true with Done -> false
 
-(** [pp pp_elt sep ppf a] prints the array [a] on the formatter [ppf] using
-    [sep] as separator and [pp_elt] for printing the elements. *)
+(** [pp elt sep ppf a] prints the array [a] on the formatter [ppf] using
+    [sep] as separator and [elt] for printing the elements. *)
 let pp : 'a pp -> string -> 'a array pp =
- fun pp_elt sep oc a ->
+ fun elt sep oc a ->
   let n = A.length a in
-  if n > 0 then pp_elt oc (A.get a 0);
+  if n > 0 then elt oc (A.get a 0);
   for i = 1 to n - 1 do
-    Format.fprintf oc "%s%a" sep pp_elt (A.get a i)
+    out oc "%s%a" sep elt (A.get a i)
   done
 
 (** Comparison function on arrays. *)

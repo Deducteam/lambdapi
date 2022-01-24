@@ -5,7 +5,7 @@ open Timed
 open Common
 open Core open Term
 
-let string = Format.pp_print_string
+let string = string
 
 (** Translation of identifiers. Lambdapi identifiers that are Dedukti keywords
    or invalid Dedukti identifiers are escaped, a feature offered by

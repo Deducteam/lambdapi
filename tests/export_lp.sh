@@ -1,10 +1,12 @@
 #!/bin/bash
 
-# Test lp export
+echo '############ test export -o lp ############'
 
 TIMEFORMAT="%E"
 root=`pwd`
 lambdapi='dune exec -- lambdapi'
+
+cd tests
 
 outdir=.tmp
 #rm -rf $outdir
@@ -13,7 +15,6 @@ cp -f lambdapi.pkg $outdir
 
 # translate lp files
 translate() {
-    cd $root
     echo translate lp files ...
     for f in OK/*.lp 'OK/a b/escape file.lp'
     do
