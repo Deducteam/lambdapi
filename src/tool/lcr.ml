@@ -367,20 +367,28 @@ let unif : Pos.popt -> term -> term -> term IntMap.t option =
 
 (* Unit tests. *)
 let _ =
-  let var i = mk_Patt (Some i, Format.sprintf "v%d" i, [||]) in
+  let var i = mk_Patt (Some i, Format.sprintf "%d" i, [||]) in
+  let v0 = var 0
+  and v1 = var 1 in
   let sym name =
     create_sym [] Public Defin Eager false (Pos.none name) mk_Type [] in
-  let v0 = var 0 and v1 = var 1 and _v2 = var 2
-  and f = sym "f" and g = sym "g" and _h = sym "h" in
+  let a_ = sym "a"
+  and b_ = sym "b"
+  and s_ = sym "s"
+  and f_ = sym "f" in
   let app s ts = add_args (mk_Symb s) ts in
+  let a = app a_ []
+  and b = app b_ []
+  and s t = app s_ [t]
+  and f t u = app f_ [t; u] in
   let open IntMap in
-  assert (unif None v0 v0 = Some empty);
-  assert (unif None (app f []) (app f []) = Some empty);
-  assert (unif None (app f [v0]) v1 = Some (add 1 (app f [v0]) empty));
-  assert (unif None (app g [app f [v0]; v1]) (app g [v1; app f [v0]])
-          = Some (add 1 (app f [v0]) empty));
-  assert (unif None (app f []) (app g []) = None);
-  assert (unif None v0 (app f [v0]) = None)
+  let unif = unif None in
+  assert (unif v0 v0 = Some empty);
+  assert (unif a a = Some empty);
+  assert (unif (s v0) v1 = Some (add 1 (s v0) empty));
+  assert (unif (f (s v0) v1) (f v1 (s v0)) = Some (add 1 (s v0) empty));
+  assert (unif a b = None);
+  assert (unif v0 (s v0) = None)
 
 (** [check_cp_subterm_rule pos l r p l_p g d] checks that, if [l_p] and [g]
    are unifiable with mgu [s], then [s(r)] and [s(l[d]_p)] are
