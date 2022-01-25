@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 - Incremental local confluence checking for non higher-order and non AC rules.
 
+### Changed
+
+- `whnf` function takes a problem as argument and a list of tags that configure
+  the rewriting. Tags may block beta reduction, block definition expansion or
+  block rewriting.
+
+### Removed
+
+- `tree_walk` is no longer in the API
+
 ## 2.1.0 (2022-01-17)
 
 ### Added
