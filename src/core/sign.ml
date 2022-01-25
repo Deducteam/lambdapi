@@ -24,6 +24,9 @@ type notation =
   | Succ
   | Quant
 
+(** Type of critical pair positions (l,r,p,l_p). *)
+type cp_pos = term * term * int list * term
+
 (** Representation of a signature. It roughly corresponds to a set of symbols,
     defined in a single module (or file). *)
 type t =
@@ -34,7 +37,8 @@ type t =
   ; sign_builtins : sym StrMap.t ref
   ; sign_notations: notation SymMap.t ref
   (** Maps symbols to their notation if they have some. *)
-  ; sign_ind      : ind_data SymMap.t ref }
+  ; sign_ind      : ind_data SymMap.t ref
+  ; sign_cp_pos   : cp_pos SymMap.t ref }
 
 (* NOTE the [deps] field contains a hashtable binding the external modules on
    which the current signature depends to an association list mapping symbols
@@ -46,7 +50,8 @@ type t =
 let dummy : unit -> t = fun () ->
   { sign_symbols = ref StrMap.empty; sign_path = []
   ; sign_deps = ref Path.Map.empty; sign_builtins = ref StrMap.empty
-  ; sign_notations = ref SymMap.empty; sign_ind = ref SymMap.empty }
+  ; sign_notations = ref SymMap.empty; sign_ind = ref SymMap.empty
+  ; sign_cp_pos = ref SymMap.empty }
 
 (** [find sign name] finds the symbol named [name] in [sign] if it exists, and
     raises the [Not_found] exception otherwise. *)
@@ -79,41 +84,45 @@ let current_path : unit -> Path.t =
 
 (** [link sign] establishes physical links to the external symbols. *)
 let link : t -> unit = fun sign ->
-  let rec link_term mk_Appl t =
-    let link_binder b =
-      let (x,t) = Bindlib.unbind b in
-      Bindlib.unbox (Bindlib.bind_var x (lift (link_term mk_Appl t)))
-    in
-    match unfold t with
-    | Vari(_)     -> t
-    | Type        -> t
-    | Kind        -> t
-    | Symb(s)     -> mk_Symb(link_symb s)
-    | Prod(a,b)   -> mk_Prod(link_term mk_Appl a, link_binder b)
-    | Abst(a,t)   -> mk_Abst(link_term mk_Appl a, link_binder t)
-    | LLet(a,t,u) ->
-        mk_LLet(link_term mk_Appl a, link_term mk_Appl t, link_binder u)
-    | Appl(t,u)   -> mk_Appl(link_term mk_Appl t, link_term mk_Appl u)
-    | Meta(_,_)   -> assert false
-    | Plac _      -> assert false
-    | Patt(i,n,m) -> mk_Patt(i, n, Array.map (link_term mk_Appl) m)
-    | TEnv(t,m)   -> mk_TEnv(t, Array.map (link_term mk_Appl) m)
-    | Wild        -> assert false
-    | TRef(_)     -> assert false
-  and link_rule r =
-    let lhs = List.map (link_term mk_Appl_not_canonical) r.lhs in
-    let (xs, rhs) = Bindlib.unmbind r.rhs in
-    let rhs = lift (link_term mk_Appl rhs) in
-    let rhs = Bindlib.unbox (Bindlib.bind_mvar xs rhs) in
-    {r with lhs ; rhs}
-  and link_symb s =
+  let link_symb s =
     if s.sym_path = sign.sign_path then s else
     try find (Path.Map.find s.sym_path !loaded) s.sym_name
     with Not_found -> assert false
   in
+  let link_term mk_Appl =
+    let rec link_term t =
+      match unfold t with
+      | Vari _
+      | Type
+      | Kind -> t
+      | Symb s -> mk_Symb(link_symb s)
+      | Prod(a,b) -> mk_Prod(link_term a, link_binder b)
+      | Abst(a,b) -> mk_Abst(link_term a, link_binder b)
+      | LLet(a,t,b) -> mk_LLet(link_term a, link_term t, link_binder b)
+      | Appl(a,b)   -> mk_Appl(link_term a, link_term b)
+      | Patt(i,n,ts)-> mk_Patt(i, n, Array.map link_term ts)
+      | TEnv(te,ts) -> mk_TEnv(te, Array.map link_term ts)
+      | Meta _ -> assert false
+      | Plac _ -> assert false
+      | Wild -> assert false
+      | TRef _ -> assert false
+    and link_binder b =
+      let (x,t) = Bindlib.unbind b in
+      Bindlib.unbox (Bindlib.bind_var x (lift (link_term t)))
+    in link_term
+  in
+  let link_lhs = link_term mk_Appl_not_canonical
+  and link_term = link_term mk_Appl in
+  let link_rule r =
+    let lhs = List.map link_lhs r.lhs in
+    let (xs, rhs) = Bindlib.unmbind r.rhs in
+    let rhs = lift (link_term rhs) in
+    let rhs = Bindlib.unbox (Bindlib.bind_mvar xs rhs) in
+    {r with lhs ; rhs}
+  in
   let f _ s =
-    s.sym_type  := link_term mk_Appl !(s.sym_type);
-    s.sym_def   := Option.map (link_term mk_Appl) !(s.sym_def);
+    s.sym_type  := link_term !(s.sym_type);
+    s.sym_def   := Option.map link_term !(s.sym_def);
     s.sym_rules := List.map link_rule !(s.sym_rules)
   in
   StrMap.iter f !(sign.sign_symbols);
@@ -141,44 +150,42 @@ let link : t -> unit = fun sign ->
       ind_nb_types = i.ind_nb_types; ind_nb_cons = i.ind_nb_cons }
   in
   let f s i m = SymMap.add (link_symb s) (link_ind_data i) m in
-  sign.sign_ind := SymMap.fold f !(sign.sign_ind) SymMap.empty
+  sign.sign_ind := SymMap.fold f !(sign.sign_ind) SymMap.empty;
+  let link_cp_pos (l,r,p,l_p) = link_lhs l, link_term r, p, link_lhs l_p in
+  let f s cp m = SymMap.add (link_symb s) (link_cp_pos cp) m in
+  sign.sign_cp_pos := SymMap.fold f !(sign.sign_cp_pos) SymMap.empty
 
 let link s = Debug.(record_time Sharing (fun () -> link s))
 
 (** [unlink sign] removes references to external symbols (and thus signatures)
-    in the signature [sign]. This function is used to minimize the size of our
+    in the signature [sign]. This function is used to minimize the size of
     object files, by preventing a recursive inclusion of all the dependencies.
     Note however that [unlink] processes [sign] in place, which means that the
     signature is invalidated in the process. *)
 let unlink : t -> unit = fun sign ->
   let unlink_sym s =
-    s.sym_dtree := Tree_type.empty_dtree ;
+    s.sym_dtree := Tree_type.empty_dtree;
     if s.sym_path <> sign.sign_path then
       (s.sym_type := mk_Kind; s.sym_rules := [])
   in
   let rec unlink_term t =
-    let unlink_binder b = unlink_term (snd (Bindlib.unbind b)) in
-    let unlink_term_env t =
-      match t with
-      | TE_Vari(_) -> ()
-      | _          -> assert false (* Should not happen, matching-specific. *)
-    in
     match unfold t with
-    | Vari(_)      -> ()
-    | Type         -> ()
-    | Kind         -> ()
-    | Symb(s)      -> unlink_sym s
-    | Prod(a,b)    -> unlink_term a; unlink_binder b
-    | Abst(a,t)    -> unlink_term a; unlink_binder t
-    | LLet(a,t,u)  -> unlink_term a; unlink_term t; unlink_binder u
-    | Appl(t,u)    -> unlink_term t; unlink_term u
-    | Meta(_,_)    -> assert false (* Should not happen, uninstantiated. *)
-    | Plac _       -> assert false (* Should be replaced by a term *)
-    | Patt(_,_,_)  -> () (* The environment only contains variables. *)
-    | TEnv(t,m)    -> unlink_term_env t; Array.iter unlink_term m
-    | Wild         -> ()
-    | TRef(_)      -> ()
-  and unlink_rule r =
+    | Symb s -> unlink_sym s
+    | Prod(a,b)
+    | Abst(a,b) -> unlink_term a; unlink_binder b
+    | LLet(a,t,b) -> unlink_term a; unlink_term t; unlink_binder b
+    | Appl(a,b) -> unlink_term a; unlink_term b
+    | Meta _ -> assert false
+    | Plac _ -> assert false
+    | Wild   -> assert false
+    | TRef _ -> assert false
+    | TEnv(_,ts) -> Array.iter unlink_term ts
+    | Patt _
+    | Vari _
+    | Type
+    | Kind -> ()
+  and unlink_binder b = unlink_term (snd (Bindlib.unbind b)) in
+  let unlink_rule r =
     List.iter unlink_term r.lhs;
     let (_, rhs) = Bindlib.unmbind r.rhs in
     unlink_term rhs
@@ -197,7 +204,11 @@ let unlink : t -> unit = fun sign ->
     List.iter unlink_sym i.ind_cons; unlink_sym i.ind_prop
   in
   let f s i = unlink_sym s; unlink_ind_data i in
-  SymMap.iter f !(sign.sign_ind)
+  SymMap.iter f !(sign.sign_ind);
+  let unlink_cp_pos (l,r,_,l_p) =
+    unlink_term l; unlink_term r; unlink_term l_p in
+  let f s cp = unlink_sym s; unlink_cp_pos cp in
+  SymMap.iter f !(sign.sign_cp_pos)
 
 (** [add_symbol sign expo prop mstrat opaq name typ impl] adds in the
    signature [sign] a symbol with name [name], exposition [expo], property
@@ -255,56 +266,59 @@ let read : string -> t = fun fname ->
       fatal_no_pos "File \"%s\" is incompatible with current binary." fname
   in
   (* Timed references need reset after unmarshaling (see [Timed] doc). *)
-  let reset_timed_refs sign =
-    unsafe_reset sign.sign_symbols;
-    unsafe_reset sign.sign_deps;
-    unsafe_reset sign.sign_builtins;
-    unsafe_reset sign.sign_notations;
-    let rec reset_term t =
-      let reset_binder b = reset_term (snd (Bindlib.unbind b)) in
-      match unfold t with
-      | Vari(_)     -> ()
-      | Type        -> ()
-      | Kind        -> ()
-      | Symb(s)     -> shallow_reset_sym s
-      | Prod(a,b)   -> reset_term a; reset_binder b
-      | Abst(a,t)   -> reset_term a; reset_binder t
-      | LLet(a,t,u) -> reset_term a; reset_term t; reset_binder u
-      | Appl(t,u)   -> reset_term t; reset_term u
-      | Meta(_,_)   -> assert false
-      | Plac _      -> assert false
-      | Patt(_,_,m) -> Array.iter reset_term m
-      | TEnv(_,m)   -> Array.iter reset_term m
-      | Wild        -> ()
-      | TRef(r)     -> unsafe_reset r; Option.iter reset_term !r
-    and reset_rule r =
-      List.iter reset_term r.lhs;
-      reset_term (snd (Bindlib.unmbind r.rhs))
-    and shallow_reset_sym s =
-      unsafe_reset s.sym_type;
-      unsafe_reset s.sym_def;
-      unsafe_reset s.sym_rules
-    in
-    let reset_sym s =
-      shallow_reset_sym s;
-      reset_term !(s.sym_type);
-      Option.iter reset_term !(s.sym_def);
-      List.iter reset_rule !(s.sym_rules)
-    in
-    StrMap.iter (fun _ s -> reset_sym s) !(sign.sign_symbols);
-    StrMap.iter (fun _ s -> shallow_reset_sym s) !(sign.sign_builtins);
-    SymMap.iter (fun s _ -> shallow_reset_sym s) !(sign.sign_notations);
-    let f _ sm = StrMap.iter (fun _ rs -> List.iter reset_rule rs) sm in
-    Path.Map.iter f !(sign.sign_deps);
-    let shallow_reset_ind_data i =
-      shallow_reset_sym i.ind_prop;
-      List.iter shallow_reset_sym i.ind_cons
-    in
-    let f s i = shallow_reset_sym s; shallow_reset_ind_data i in
-    SymMap.iter f !(sign.sign_ind);
-    sign
+  unsafe_reset sign.sign_symbols;
+  unsafe_reset sign.sign_deps;
+  unsafe_reset sign.sign_builtins;
+  unsafe_reset sign.sign_notations;
+  unsafe_reset sign.sign_ind;
+  unsafe_reset sign.sign_cp_pos;
+  let shallow_reset_sym s =
+    unsafe_reset s.sym_type;
+    unsafe_reset s.sym_def;
+    unsafe_reset s.sym_rules
   in
-  reset_timed_refs sign
+  let rec reset_term t =
+    match unfold t with
+    | Vari _
+    | Type
+    | Kind -> ()
+    | Symb s -> shallow_reset_sym s
+    | Prod(a,b)
+    | Abst(a,b) -> reset_term a; reset_binder b
+    | LLet(a,t,b) -> reset_term a; reset_term t; reset_binder b
+    | Appl(a,b) -> reset_term a; reset_term b
+    | Patt(_,_,ts)
+    | TEnv(_,ts) -> Array.iter reset_term ts
+    | TRef r -> unsafe_reset r; Option.iter reset_term !r
+    | Wild -> assert false
+    | Meta _ -> assert false
+    | Plac _ -> assert false
+  and reset_binder b = reset_term (snd (Bindlib.unbind b)) in
+  let reset_rule r =
+    List.iter reset_term r.lhs;
+    reset_term (snd (Bindlib.unmbind r.rhs))
+  in
+  let reset_sym s =
+    shallow_reset_sym s;
+    reset_term !(s.sym_type);
+    Option.iter reset_term !(s.sym_def);
+    List.iter reset_rule !(s.sym_rules)
+  in
+  StrMap.iter (fun _ s -> reset_sym s) !(sign.sign_symbols);
+  StrMap.iter (fun _ s -> shallow_reset_sym s) !(sign.sign_builtins);
+  SymMap.iter (fun s _ -> shallow_reset_sym s) !(sign.sign_notations);
+  let f _ sm = StrMap.iter (fun _ rs -> List.iter reset_rule rs) sm in
+  Path.Map.iter f !(sign.sign_deps);
+  let f s i =
+    shallow_reset_sym s; shallow_reset_sym i.ind_prop;
+    List.iter shallow_reset_sym i.ind_cons
+  in
+  SymMap.iter f !(sign.sign_ind);
+  let f s (l,r,_,l_p) =
+    shallow_reset_sym s; reset_term l; reset_term r; reset_term l_p
+  in
+  SymMap.iter f !(sign.sign_cp_pos);
+  sign
 
 let read =
   let open Stdlib in let r = ref (dummy ()) in fun n ->
