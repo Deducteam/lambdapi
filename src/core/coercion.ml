@@ -3,7 +3,7 @@ open Term
 
 let coerce : sym =
   let id = Pos.none "#c" in
-  Sign.add_symbol Ghost.sign Public Defin Eager false id mk_Kind []
+  Sign.add_symbol Ghost.sign Public Defin Eager `None id mk_Kind []
 
 let is_coercion : sym -> bool = (==) coerce
 

@@ -234,11 +234,13 @@ type p_modifier_aux =
   | P_expo of Term.expo (** visibility of symbol outside its modules *)
   | P_prop of Term.prop (** symbol properties: constant, definable, ... *)
   | P_opaq (** opacity *)
+  | P_redopaque
 
 type p_modifier = p_modifier_aux loc
 
 let is_prop {elt; _} = match elt with P_prop(_) -> true | _ -> false
 let is_opaq {elt; _} = match elt with P_opaq -> true | _ -> false
+let is_redopaque {elt; _} = match elt with P_redopaque -> true | _ -> false
 let is_expo {elt; _} = match elt with P_expo(_) -> true | _ -> false
 let is_mstrat {elt; _} = match elt with P_mstrat(_) -> true | _ -> false
 

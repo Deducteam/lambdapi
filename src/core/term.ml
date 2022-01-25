@@ -43,6 +43,8 @@ type prop =
   | Assoc of bool (** Associative left if [true], right if [false]. *)
   | AC of bool (** Associative and commutative. *)
 
+type opacity = [`Full | `Reduction | `None]
+
 (** Representation of a term (or types) in a general sense. Values of the type
     are also used, for example, in the representation of patterns or rewriting
     rules. Specific constructors are included for such applications,  and they
@@ -93,7 +95,7 @@ and sym =
   ; sym_impl  : bool list (** Implicit arguments ([true] meaning implicit). *)
   ; sym_prop  : prop (** Property. *)
   ; sym_def   : term option ref (** Definition with ≔. *)
-  ; sym_opaq  : bool (** Opacity. *)
+  ; sym_opaq  : opacity (** Opacity. *)
   ; sym_rules : rule list ref (** Rewriting rules. *)
   ; sym_mstrat: match_strat (** Matching strategy. *)
   ; sym_dtree : dtree ref (** Decision tree used for matching. *)
@@ -353,7 +355,7 @@ let new_problem : unit -> problem = fun () ->
    path [path], exposition [expo], property [prop], opacity [opaq], matching
    strategy [mstrat], name [name.elt], type [typ], implicit arguments [impl],
    position [name.pos], no definition and no rules. *)
-let create_sym : Path.t -> expo -> prop -> match_strat -> bool ->
+let create_sym : Path.t -> expo -> prop -> match_strat -> opacity ->
   Pos.strloc -> term -> bool list -> sym =
   fun sym_path sym_expo sym_prop sym_mstrat sym_opaq
     { elt = sym_name; pos = sym_pos } typ sym_impl ->
@@ -557,7 +559,7 @@ let right_aliens : sym -> term -> term list = fun s ->
 
 (* unit test *)
 let _ =
-  let s = create_sym [] Privat (AC true) Eager false (Pos.none "+") Kind [] in
+  let s = create_sym [] Privat (AC true) Eager `None (Pos.none "+") Kind [] in
   let t1 = Vari (new_tvar "x1") in
   let t2 = Vari (new_tvar "x2") in
   let t3 = Vari (new_tvar "x3") in

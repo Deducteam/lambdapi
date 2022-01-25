@@ -37,7 +37,7 @@ let add_axiom : Sig_state.t -> popt -> meta -> Sig_state.t =
       else shift (n - 100) sym_pos
     in
     let id = Pos.make pos name in
-    Sig_state.add_symbol ss Public Defin Eager true id !(m.meta_type) [] None
+    Sig_state.add_symbol ss Public Defin Eager `Full id !(m.meta_type) [] None
   in
   (* Create the value which will be substituted for the metavariable. This
      value is [sym x0 ... xn] where [xi] are variables that will be

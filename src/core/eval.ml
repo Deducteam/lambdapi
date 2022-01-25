@@ -76,7 +76,7 @@ let snf : (term -> term) -> (term -> term) = fun whnf ->
     | TRef(_)     -> assert false
   in snf
 
-type rw_tag = [ `NoBeta | `NoRw | `NoExpand ]
+type rw_tag = [ `NoBeta | `NoRw | `NoExpand | `Redopaque ]
 
 (** Configuration of the reduction engine. *)
 
@@ -89,6 +89,7 @@ module Config = struct
     ; rewrite : bool (** Whether to apply user-defined rewriting rules. *)
     ; expand_defs : bool (** Whether to expand definitions. *)
     ; beta : bool (** Whether to beta-normalise *)
+    ; expand_redopaque: bool (** Whether to reduce redopaque symbols *)
     ; problem : problem (** Generated metavariables. *) }
 
   (** [make ?problem ?rewrite c] creates a new configuration with problem
@@ -100,8 +101,9 @@ module Config = struct
     let beta = not @@ List.mem `NoBeta tags in
     let expand_defs = not @@ List.mem `NoExpand tags in
     let rewrite = not @@ List.mem `NoRw tags in
+    let expand_redopaque = List.mem `Redopaque tags in
     {context; varmap = Ctxt.to_map context; rewrite; expand_defs;
-     beta; problem}
+     beta; problem; expand_redopaque}
 
   (** [unfold c a] unfolds [a] if it's a variable defined in the configuration
       [c]. *)
@@ -179,6 +181,8 @@ let eq_modulo : (config -> term -> term) -> config -> term -> term -> bool =
     | _ -> raise Exit
   in
   fun c a b ->
+    (* Allow expansion for conversion *)
+    let c = Config.{ c with expand_redopaque = true } in
   if Logger.log_enabled () then log_conv "%a ≡ %a" term a term b;
   try eq c [(a,b)]; true
   with Exit -> if Logger.log_enabled () then log_conv "failed"; false
@@ -222,7 +226,8 @@ and whnf_stk : config -> term -> stack -> term * stack = fun c t stk ->
   | (Symb s as h, stk) as r ->
     begin match !(s.sym_def) with
     | Some t ->
-      if s.sym_opaq || not c.Config.expand_defs then r else
+      if s.sym_opaq = `Full || not c.Config.expand_defs ||
+         (not c.Config.expand_redopaque && s.sym_opaq = `Reduction) then r else
         (Stdlib.incr steps; whnf_stk c t stk)
     | None when not c.Config.rewrite -> r
     | None ->
@@ -564,7 +569,7 @@ let unfold_sym : sym -> term -> term =
     in unfold_sym
   in
   fun s ->
-  if s.sym_opaq then fun t -> t else
+  if s.sym_opaq = `Full then fun t -> t else
   match !(s.sym_def) with
   | Some d -> unfold_sym s (add_args d)
   | None ->

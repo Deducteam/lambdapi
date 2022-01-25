@@ -283,7 +283,7 @@ let handle :
   let axiom_name = new_axiom_name () in
   (* Add the axiom to the current signature. *)
   let a =
-    Sign.add_symbol ss.signature Public Defin Eager true
+    Sign.add_symbol ss.signature Public Defin Eager `Full
       (Pos.make pos axiom_name) !(m.meta_type) []
   in
   if Logger.log_enabled () then

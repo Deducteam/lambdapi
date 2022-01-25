@@ -89,6 +89,7 @@ let handle_modifiers : p_modifier list -> prop * expo * match_strat =
     | {elt=P_mstrat _;_} as s::ms ->
         get_modifiers (props, expos, s::strats) ms
     | {elt=P_opaq;_}::ms -> get_modifiers acc ms
+    | {elt=P_redopaque;_}::ms -> get_modifiers acc ms
   in
   let props, expos, strats = get_modifiers ([],[],[]) ms in
   let prop =
@@ -162,7 +163,7 @@ let handle_inductive_symbol : sig_state -> expo -> prop -> match_strat
   end;
   (* Actually add the symbol to the signature and the state. *)
   Console.out 2 (Color.red "symbol %a : %a") uid name term typ;
-  let r = add_symbol ss expo prop mstrat false id typ impl None in
+  let r = add_symbol ss expo prop mstrat `None id typ impl None in
   sig_state := fst r; r
 
 (** Representation of a yet unchecked proof. The structure is initialized when
@@ -298,7 +299,7 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
           (* Recursors are declared after the types and constructors. *)
           let pos = after (end_pos pos) in
           let id = Pos.make pos rec_name in
-          let r = add_symbol ss expo Defin Eager false id rec_typ [] None
+          let r = add_symbol ss expo Defin Eager `None id rec_typ [] None
           in sig_state := fst r; r
         in
         (ss, rec_sym::rec_sym_list)
@@ -338,13 +339,19 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
     (* Verify modifiers. *)
     let prop, expo, mstrat = handle_modifiers p_sym_mod in
     let opaq = List.exists Syntax.is_opaq p_sym_mod in
+    let redopaque = List.exists Syntax.is_redopaque p_sym_mod in
     let pdata_prv = expo = Privat || (p_sym_def && opaq) in
-    (match p_sym_def, opaq, prop, mstrat with
-     | false, true, _, _ -> fatal pos "Symbol declarations cannot be opaque."
-     | true, _, Const, _ -> fatal pos "Definitions cannot be constant."
-     | true, _, _, Sequen ->
+    (match p_sym_def, opaq, redopaque, prop, mstrat with
+     | false, true, _, _, _ -> fatal pos "Symbol declarations cannot be opaque."
+     | _, true, true, _, _ ->
+       fatal pos "A definition cannot be opaque and redopaque."
+     | true, _, _, Const, _ -> fatal pos "Definitions cannot be constant."
+     | true, _, _, _, Sequen ->
          fatal pos "Definitions cannot have matching strategies."
      | _ -> ());
+    let opaq =
+      if opaq then `Full else if redopaque then `Reduction else `None
+    in
     (* Problem recording metavariables and constraints. *)
     let p = new_problem() in
     (* Scoping the definition and the type. *)
@@ -421,8 +428,8 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
             if finished ps then
               ( wrn pe.pos "The proof is finished. Use 'end' instead."; ss )
             else
-              match ps.proof_term with
-              | Some m when opaq ->
+              match ps.proof_term, opaq with
+              | Some m, `Full ->
                   (* We admit the initial goal only. *)
                   Tactic.admit_meta ss p_sym_nam.pos m
               | _ ->

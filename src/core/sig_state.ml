@@ -46,7 +46,7 @@ let dummy : sig_state =
    [p], strategy [st], name [x], type [a], implicit arguments [impl] and
    optional definition [def]. This new symbol is returned too. *)
 let add_symbol : sig_state -> expo -> prop -> match_strat
-    -> bool -> strloc -> term -> bool list -> term option -> sig_state * sym =
+    -> opacity -> strloc -> term -> bool list -> term option -> sig_state * sym =
   fun ss expo prop mstrat opaq id typ impl def ->
   let sym =
     Sign.add_symbol ss.signature expo prop mstrat opaq id

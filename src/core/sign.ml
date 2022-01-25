@@ -204,7 +204,7 @@ let unlink : t -> unit = fun sign ->
    [prop], matching strategy [strat], opacity [opaq], type [typ], implicit
    arguments [impl], no definition and no rules. [name] should not already be
    used in [sign]. The created symbol is returned. *)
-let add_symbol : t -> expo -> prop -> match_strat -> bool -> strloc -> term ->
+let add_symbol : t -> expo -> prop -> match_strat -> opacity -> strloc -> term ->
       bool list -> sym =
   fun sign sym_expo sym_prop sym_mstrat sym_opaq {elt=sym_name; pos=sym_pos}
     typ impl ->

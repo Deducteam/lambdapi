@@ -60,6 +60,7 @@
 %token PROVER
 %token PROVER_TIMEOUT
 %token QUANTIFIER
+%token REDOPAQUE
 %token REFINE
 %token REFLEXIVITY
 %token REQUIRE
@@ -195,6 +196,7 @@ modifier:
   | CONSTANT { make_pos $sloc (P_prop Term.Const) }
   | INJECTIVE { make_pos $sloc (P_prop Term.Injec) }
   | OPAQUE { make_pos $sloc P_opaq }
+  | REDOPAQUE { make_pos $sloc P_redopaque }
   | PRIVATE { make_pos $sloc (P_expo Term.Privat) }
   | PROTECTED { make_pos $sloc (P_expo Term.Protec) }
   | SEQUENTIAL { make_pos $sloc (P_mstrat Term.Sequen) }

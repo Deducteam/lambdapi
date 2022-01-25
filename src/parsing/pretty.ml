@@ -107,6 +107,7 @@ let modifier : p_modifier pp = fun ppf {elt; _} ->
   | P_mstrat(s) -> Print.match_strat ppf s
   | P_prop(p)   -> Print.prop ppf p
   | P_opaq      -> out ppf "opaque "
+  | P_redopaque -> out ppf "redopaque"
 
 (* ends with a space if the list is not empty *)
 let modifiers : p_modifier list pp = List.pp modifier ""

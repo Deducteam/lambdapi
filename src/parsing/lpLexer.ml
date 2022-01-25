@@ -67,6 +67,7 @@ type token =
   | PROVER
   | PROVER_TIMEOUT
   | QUANTIFIER
+  | REDOPAQUE
   | REFINE
   | REFLEXIVITY
   | REQUIRE
@@ -233,6 +234,7 @@ let rec token lb =
   | "prover" -> PROVER
   | "prover_timeout" -> PROVER_TIMEOUT
   | "quantifier" -> QUANTIFIER
+  | "redopaque" -> REDOPAQUE
   | "refine" -> REFINE
   | "reflexivity" -> REFLEXIVITY
   | "require" -> REQUIRE

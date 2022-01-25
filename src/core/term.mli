@@ -40,6 +40,8 @@ type prop =
   | Assoc of bool (** Associative left if [true], right if [false]. *)
   | AC of bool (** Associative and commutative. *)
 
+type opacity = [`Full | `Reduction | `None]
+
 (** Representation of a term (or types) in a general sense. Values of the type
     are also used, for example, in the representation of patterns or rewriting
     rules. Specific constructors are included for such applications,  and they
@@ -92,7 +94,7 @@ and sym =
   ; sym_impl  : bool list (** Implicit arguments ([true] meaning implicit). *)
   ; sym_prop  : prop (** Property. *)
   ; sym_def   : term option ref (** Definition with ≔. *)
-  ; sym_opaq  : bool (** Opacity. *)
+  ; sym_opaq  : opacity (** Opacity. *)
   ; sym_rules : rule list ref (** Rewriting rules. *)
   ; sym_mstrat: match_strat (** Matching strategy. *)
   ; sym_dtree : dtree ref (** Decision tree used for matching. *)
@@ -297,7 +299,7 @@ module SymMap : Map.S with type key = sym
    position [pos], path [path], exposition [expo], property [prop], opacity
    [opaq], matching strategy [mstrat], name [name.elt], type [typ], implicit
    arguments [impl], position [name.pos], no definition and no rules. *)
-val create_sym : Path.t -> expo -> prop -> match_strat -> bool ->
+val create_sym : Path.t -> expo -> prop -> match_strat -> opacity ->
   Pos.strloc -> term -> bool list -> sym
 
 (** [is_constant s] tells whether the symbol is a constant. *)
