@@ -24,9 +24,6 @@ type notation =
   | Succ
   | Quant
 
-(** Type of critical pair positions (l,r,p,l_p). *)
-type cp_pos = term * term * int list * term
-
 (** Representation of a signature. It roughly corresponds to a set of symbols,
     defined in a single module (or file). *)
 type t =
@@ -37,8 +34,7 @@ type t =
   ; sign_builtins : sym StrMap.t ref
   ; sign_notations: notation SymMap.t ref
   (** Maps symbols to their notation if they have some. *)
-  ; sign_ind      : ind_data SymMap.t ref
-  ; sign_cp_pos   : cp_pos SymMap.t ref }
+  ; sign_ind      : ind_data SymMap.t ref }
 
 (* NOTE the [deps] field contains a hashtable binding the external modules on
    which the current signature depends to an association list mapping symbols
@@ -50,8 +46,7 @@ type t =
 let dummy : unit -> t = fun () ->
   { sign_symbols = ref StrMap.empty; sign_path = []
   ; sign_deps = ref Path.Map.empty; sign_builtins = ref StrMap.empty
-  ; sign_notations = ref SymMap.empty; sign_ind = ref SymMap.empty
-  ; sign_cp_pos = ref SymMap.empty }
+  ; sign_notations = ref SymMap.empty; sign_ind = ref SymMap.empty }
 
 (** [find sign name] finds the symbol named [name] in [sign] if it exists, and
     raises the [Not_found] exception otherwise. *)
@@ -120,10 +115,13 @@ let link : t -> unit = fun sign ->
     let rhs = Bindlib.unbox (Bindlib.bind_mvar xs rhs) in
     {r with lhs ; rhs}
   in
+  let link_cp_pos (l,r,p,l_p) = link_lhs l, link_term r, p, link_lhs l_p in
   let f _ s =
-    s.sym_type  := link_term !(s.sym_type);
-    s.sym_def   := Option.map link_term !(s.sym_def);
-    s.sym_rules := List.map link_rule !(s.sym_rules)
+    s.sym_type := link_term !(s.sym_type);
+    s.sym_def := Option.map link_term !(s.sym_def);
+    s.sym_rules := List.map link_rule !(s.sym_rules);
+    s.sym_cp_pos := List.map link_cp_pos !(s.sym_cp_pos)
+    (* s.sym_dtree is recomputed a few lines below. *)
   in
   StrMap.iter f !(sign.sign_symbols);
   let f mp sm =
@@ -150,10 +148,7 @@ let link : t -> unit = fun sign ->
       ind_nb_types = i.ind_nb_types; ind_nb_cons = i.ind_nb_cons }
   in
   let f s i m = SymMap.add (link_symb s) (link_ind_data i) m in
-  sign.sign_ind := SymMap.fold f !(sign.sign_ind) SymMap.empty;
-  let link_cp_pos (l,r,p,l_p) = link_lhs l, link_term r, p, link_lhs l_p in
-  let f s cp m = SymMap.add (link_symb s) (link_cp_pos cp) m in
-  sign.sign_cp_pos := SymMap.fold f !(sign.sign_cp_pos) SymMap.empty
+  sign.sign_ind := SymMap.fold f !(sign.sign_ind) SymMap.empty
 
 let link s = Debug.(record_time Sharing (fun () -> link s))
 
@@ -204,11 +199,7 @@ let unlink : t -> unit = fun sign ->
     List.iter unlink_sym i.ind_cons; unlink_sym i.ind_prop
   in
   let f s i = unlink_sym s; unlink_ind_data i in
-  SymMap.iter f !(sign.sign_ind);
-  let unlink_cp_pos (l,r,_,l_p) =
-    unlink_term l; unlink_term r; unlink_term l_p in
-  let f s cp = unlink_sym s; unlink_cp_pos cp in
-  SymMap.iter f !(sign.sign_cp_pos)
+  SymMap.iter f !(sign.sign_ind)
 
 (** [add_symbol sign expo prop mstrat opaq name typ impl] adds in the
    signature [sign] a symbol with name [name], exposition [expo], property
@@ -217,15 +208,12 @@ let unlink : t -> unit = fun sign ->
    used in [sign]. The created symbol is returned. *)
 let add_symbol : t -> expo -> prop -> match_strat -> bool -> strloc -> term ->
       bool list -> sym =
-  fun sign sym_expo sym_prop sym_mstrat sym_opaq {elt=sym_name; pos=sym_pos}
-    typ impl ->
+  fun sign sym_expo sym_prop sym_mstrat sym_opaq name typ impl ->
   let sym =
-    { sym_path = sign.sign_path; sym_name; sym_type = ref (cleanup typ);
-      sym_impl = minimize_impl impl; sym_def = ref None; sym_opaq;
-      sym_rules = ref []; sym_dtree = ref Tree_type.empty_dtree; sym_mstrat;
-      sym_prop; sym_expo; sym_pos }
+    create_sym sign.sign_path sym_expo sym_prop sym_mstrat sym_opaq name
+      (cleanup typ) (minimize_impl impl)
   in
-  sign.sign_symbols := StrMap.add sym_name sym !(sign.sign_symbols);
+  sign.sign_symbols := StrMap.add name.elt sym !(sign.sign_symbols);
   sym
 
 (** [strip_private sign] removes private symbols from signature [sign]. *)
@@ -271,11 +259,12 @@ let read : string -> t = fun fname ->
   unsafe_reset sign.sign_builtins;
   unsafe_reset sign.sign_notations;
   unsafe_reset sign.sign_ind;
-  unsafe_reset sign.sign_cp_pos;
   let shallow_reset_sym s =
     unsafe_reset s.sym_type;
     unsafe_reset s.sym_def;
-    unsafe_reset s.sym_rules
+    unsafe_reset s.sym_rules;
+    unsafe_reset s.sym_cp_pos
+    (* s.sym_dtree is not reset since it is recomputed. *)
   in
   let rec reset_term t =
     match unfold t with
@@ -298,11 +287,13 @@ let read : string -> t = fun fname ->
     List.iter reset_term r.lhs;
     reset_term (snd (Bindlib.unmbind r.rhs))
   in
+  let reset_cp_pos (l,r,_,l_p) = reset_term l; reset_term r; reset_term l_p in
   let reset_sym s =
     shallow_reset_sym s;
     reset_term !(s.sym_type);
     Option.iter reset_term !(s.sym_def);
-    List.iter reset_rule !(s.sym_rules)
+    List.iter reset_rule !(s.sym_rules);
+    List.iter reset_cp_pos !(s.sym_cp_pos)
   in
   StrMap.iter (fun _ s -> reset_sym s) !(sign.sign_symbols);
   StrMap.iter (fun _ s -> shallow_reset_sym s) !(sign.sign_builtins);
@@ -314,10 +305,6 @@ let read : string -> t = fun fname ->
     List.iter shallow_reset_sym i.ind_cons
   in
   SymMap.iter f !(sign.sign_ind);
-  let f s (l,r,_,l_p) =
-    shallow_reset_sym s; reset_term l; reset_term r; reset_term l_p
-  in
-  SymMap.iter f !(sign.sign_cp_pos);
   sign
 
 let read =

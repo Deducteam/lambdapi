@@ -96,7 +96,8 @@ and sym =
   ; sym_rules : rule list ref (** Rewriting rules. *)
   ; sym_mstrat: match_strat (** Matching strategy. *)
   ; sym_dtree : dtree ref (** Decision tree used for matching. *)
-  ; sym_pos   : Pos.popt (** Position in source file. *) }
+  ; sym_pos   : Pos.popt (** Position in source file. *)
+  ; sym_cp_pos: cp_pos list ref (** Positions of critical pairs. *) }
 
 (** {b NOTE} that {!field:sym_type} holds a (timed) reference for a  technical
     reason related to the writing of signatures as binary files  (in  relation
@@ -217,6 +218,9 @@ and sym =
    against corresponding patterns, then environment [env] is fully constructed
    and it can hence be substituted in [r.rhs] with [Bindlib.msubst r.rhs env]
    to get the result of the application of the rule. *)
+
+(** Type of critical pair positions (l,r,p,l_p). *)
+ and cp_pos = term * term * int list * term
 
 (** {3 Metavariables and related functions} *)
 
