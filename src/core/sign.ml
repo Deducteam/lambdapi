@@ -134,7 +134,7 @@ let link : t -> unit = fun sign ->
   sign.sign_notations :=
     SymMap.fold (fun s n m -> SymMap.add (link_symb s) n m)
       !(sign.sign_notations) SymMap.empty;
-  StrMap.iter (fun _ s -> Tree.update_dtree s) !(sign.sign_symbols);
+  StrMap.iter (fun _ s -> Tree.update_dtree s []) !(sign.sign_symbols);
   let link_ind_data i =
     { ind_cons = List.map link_symb i.ind_cons;
       ind_prop = link_symb i.ind_prop; ind_nb_params = i.ind_nb_params;
@@ -318,6 +318,17 @@ let add_rule : t -> sym -> rule -> unit = fun sign sym r ->
   if sym.sym_path <> sign.sign_path then
     let sm = Path.Map.find sym.sym_path !(sign.sign_deps) in
     let f = function None -> Some [r] | Some rs -> Some (rs @ [r]) in
+    let sm = StrMap.update sym.sym_name f sm in
+    sign.sign_deps := Path.Map.add sym.sym_path sm !(sign.sign_deps)
+
+(** [add_rules sign sym rs] adds the new rules [rs] to the symbol [sym]. When
+   the rules do not correspond to a symbol of signature [sign], they are
+   stored in its dependencies. *)
+let add_rules : t -> sym -> rule list -> unit = fun sign sym rs ->
+  sym.sym_rules := !(sym.sym_rules) @ rs;
+  if sym.sym_path <> sign.sign_path then
+    let sm = Path.Map.find sym.sym_path !(sign.sign_deps) in
+    let f = function None -> Some rs | Some rs' -> Some (rs' @ rs) in
     let sm = StrMap.update sym.sym_name f sm in
     sign.sign_deps := Path.Map.add sym.sym_path sm !(sign.sign_deps)
 

@@ -81,7 +81,7 @@ let rec compile_with :
          not done in linking which normally follows loading. *)
       let sm = Path.Map.find Unif_rule.path !(sign.sign_deps) in
       if Extra.StrMap.mem Unif_rule.equiv.sym_name sm then
-        Tree.update_dtree Unif_rule.equiv;
+        Tree.update_dtree Unif_rule.equiv [];
       sign
     end
 

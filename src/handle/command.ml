@@ -201,13 +201,17 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
   | P_require_as(p,id) -> (handle_require_as compile ss p id, None, None)
   | P_open(ps) -> (List.fold_left handle_open ss ps, None, None)
   | P_rules(rs) ->
-      let handle_rule (syms, rs) r =
-        let (s,_) as r = check_rule ss r in SymSet.add s syms, r::rs
+      let handle_rule (srs, map) r =
+        let (s,r) as sr = check_rule ss r in
+        let h = function Some rs -> Some(r::rs) | None -> Some[r] in
+        sr::srs, SymMap.update s h map
       in
-      let syms, rs = List.fold_left handle_rule (SymSet.empty, []) rs in
-      Tool.Lcr.check_cps pos ss.signature rs;
-      List.iter (add_rule ss) rs;
-      SymSet.iter Tree.update_dtree syms;
+      let srs, map = List.fold_left handle_rule ([], SymMap.empty) rs in
+      SymMap.iter Tree.update_dtree map;
+      Tool.Lcr.check_cps pos ss.signature srs map;
+      SymMap.iter (Sign.add_rules ss.signature) map;
+      if !Console.verbose >= 2 then
+        List.iter (Console.out 2 (Color.red "rule %a") rule) (List.rev srs);
       (ss, None, None)
   | P_builtin(n,qid) ->
       let s = find_sym ~prt:true ~prv:true ss qid in
@@ -223,7 +227,7 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
       let pur = scope_rule true ss h in
       let urule = Scope.rule_of_pre_rule pur in
       Sign.add_rule ss.signature Unif_rule.equiv urule;
-      Tree.update_dtree Unif_rule.equiv;
+      Tree.update_dtree Unif_rule.equiv [];
       Console.out 2 "unif_rule %a" unif_rule (Unif_rule.equiv, urule);
       (ss, None, None)
 
@@ -309,7 +313,7 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
       with_no_wrn
         (Inductive.iter_rec_rules pos ind_list vs ind_pred_map)
         (fun r -> add_rule ss (check_rule ss r));
-      List.iter Tree.update_dtree rec_sym_list;
+      List.iter (fun s -> Tree.update_dtree s []) rec_sym_list;
       (* Store the inductive structure in the signature *)
       let ind_nb_types = List.length ind_list in
       List.iter2
