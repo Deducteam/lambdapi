@@ -206,8 +206,7 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
       in
       let syms, rs = List.fold_left handle_rule (SymSet.empty, []) rs in
       Tool.Lcr.check_cps pos ss.signature rs;
-      List.iter (add_rule ss) (List.rev rs);
-      (*FIXME:remove List.rev by fixing regression/hrs.expected*)
+      List.iter (add_rule ss) rs;
       SymSet.iter Tree.update_dtree syms;
       (ss, None, None)
   | P_builtin(n,qid) ->
