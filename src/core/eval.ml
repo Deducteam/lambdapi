@@ -136,7 +136,7 @@ let eq_modulo : (config -> term -> term) -> config -> term -> term -> bool =
       let x,u = Bindlib.unbind u in
       eq {cfg with varmap = VarMap.add x t cfg.varmap} ((a,u)::l)
     | Patt(Some i,_,ts), Patt(Some j,_,us) ->
-      if i=j then eq c (List.add_array2 ts us l) else raise Exit
+      if i=j then eq cfg (List.add_array2 ts us l) else raise Exit
     | Patt(None,_,_), _ | _, Patt(None,_,_) -> assert false
     | TEnv _, _| _, TEnv _ -> assert false
     | Kind, Kind
@@ -165,7 +165,7 @@ let eq_modulo : (config -> term -> term) -> config -> term -> term -> bool =
     (*if Logger.log_enabled () then log_conv "%a ≡ %a" term a term b;*)
     match a, b with
     | Patt(Some i,_,ts), Patt(Some j,_,us) ->
-      if i=j then eq c (List.add_array2 ts us l) else raise Exit
+      if i=j then eq cfg (List.add_array2 ts us l) else raise Exit
     | Patt(None,_,_), _ | _, Patt(None,_,_) -> assert false
     | TEnv _, _| _, TEnv _ -> assert false
     | Kind, Kind
