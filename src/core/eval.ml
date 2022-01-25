@@ -99,16 +99,17 @@ module Config = struct
     let beta = not @@ List.mem `NoBeta tags in
     let expand_defs = not @@ List.mem `NoExpand tags in
     let rewrite = not @@ List.mem `NoRw tags in
-    {context; varmap = Ctxt.to_map context; rewrite; expand_defs; beta; problem}
+    {context; varmap = Ctxt.to_map context; rewrite; expand_defs;
+     beta; problem}
 
-  (** [unfold c a] unfolds [a] if it's a variable defined in the configuration
-      [c]. *)
-  let rec unfold : t -> term -> term = fun c a ->
+  (** [unfold cfg a] unfolds [a] if it's a variable defined in the
+      configuration [cfg]. *)
+  let rec unfold : t -> term -> term = fun cfg a ->
     match Term.unfold a with
     | Vari x as a->
-      begin match VarMap.find_opt x c.varmap with
+      begin match VarMap.find_opt x cfg.varmap with
         | None -> a
-        | Some v -> unfold c v
+        | Some v -> unfold cfg v
       end
     | a -> a
 
@@ -120,35 +121,35 @@ type config = Config.t
     [whnf]. *)
 let eq_modulo : (config -> term -> term) -> config -> term -> term -> bool =
   fun whnf ->
-  let rec eq : config -> (term * term) list -> unit = fun c l ->
+  let rec eq : config -> (term * term) list -> unit = fun cfg l ->
     match l with
     | [] -> ()
     | (a,b)::l ->
     (*if Logger.log_enabled () then log_conv "%a ≡ %a" term a term b;*)
-    let a = Config.unfold c a and b = Config.unfold c b in
-    if a == b then eq c l else
+    let a = Config.unfold cfg a and b = Config.unfold cfg b in
+    if a == b then eq cfg l else
     match a, b with
     | LLet(_,t,u), _ ->
       let x,u = Bindlib.unbind u in
-      eq {c with varmap = VarMap.add x t c.varmap} ((u,b)::l)
+      eq {cfg with varmap = VarMap.add x t cfg.varmap} ((u,b)::l)
     | _, LLet(_,t,u) ->
       let x,u = Bindlib.unbind u in
-      eq {c with varmap = VarMap.add x t c.varmap} ((a,u)::l)
+      eq {cfg with varmap = VarMap.add x t cfg.varmap} ((a,u)::l)
     | Patt _, _ | _, Patt _
     | TEnv _, _| _, TEnv _ -> assert false
     | Kind, Kind
-    | Type, Type -> eq c l
-    | Vari x, Vari y -> if Bindlib.eq_vars x y then eq c l else raise Exit
-    | Symb f, Symb g when f == g -> eq c l
+    | Type, Type -> eq cfg l
+    | Vari x, Vari y -> if Bindlib.eq_vars x y then eq cfg l else raise Exit
+    | Symb f, Symb g when f == g -> eq cfg l
     | Prod(a1,b1), Prod(a2,b2)
     | Abst(a1,b1), Abst(a2,b2) ->
-      let _,b1,b2 = Bindlib.unbind2 b1 b2 in eq c ((a1,a2)::(b1,b2)::l)
+      let _,b1,b2 = Bindlib.unbind2 b1 b2 in eq cfg ((a1,a2)::(b1,b2)::l)
     | Abst _, (Type|Kind|Prod _)
     | (Type|Kind|Prod _), Abst _ -> raise Exit
     | (Abst(_ ,b), t | t, Abst(_ ,b)) when !eta_equality ->
-      let x,b = Bindlib.unbind b in eq c ((b, mk_Appl(t, mk_Vari x))::l)
+      let x,b = Bindlib.unbind b in eq cfg ((b, mk_Appl(t, mk_Vari x))::l)
     | Meta(m1,a1), Meta(m2,a2) when m1 == m2 ->
-      eq c (if a1 == a2 then l else List.add_array2 a1 a2 l)
+      eq cfg (if a1 == a2 then l else List.add_array2 a1 a2 l)
     (* cases of failure *)
     | Kind, _ | _, Kind
     | Type, _ | _, Type
@@ -157,28 +158,28 @@ let eq_modulo : (config -> term -> term) -> config -> term -> term -> bool =
       | ((Vari _|Meta _|Prod _|Abst _), Symb f)) when is_constant f ->
       raise Exit
     | _ ->
-    let a = whnf c a and b = whnf c b in
+    let a = whnf cfg a and b = whnf cfg b in
     (*if Logger.log_enabled () then log_conv "%a ≡ %a" term a term b;*)
     match a, b with
     | Patt _, _ | _, Patt _
     | TEnv _, _| _, TEnv _ -> assert false
     | Kind, Kind
-    | Type, Type -> eq c l
-    | Vari x, Vari y when Bindlib.eq_vars x y -> eq c l
-    | Symb f, Symb g when f == g -> eq c l
+    | Type, Type -> eq cfg l
+    | Vari x, Vari y when Bindlib.eq_vars x y -> eq cfg l
+    | Symb f, Symb g when f == g -> eq cfg l
     | Prod(a1,b1), Prod(a2,b2)
     | Abst(a1,b1), Abst(a2,b2) ->
-      let _,b1,b2 = Bindlib.unbind2 b1 b2 in eq c ((a1,a2)::(b1,b2)::l)
+      let _,b1,b2 = Bindlib.unbind2 b1 b2 in eq cfg ((a1,a2)::(b1,b2)::l)
     | (Abst(_ ,b), t | t, Abst(_ ,b)) when !eta_equality ->
-      let x,b = Bindlib.unbind b in eq c ((b, mk_Appl(t, mk_Vari x))::l)
+      let x,b = Bindlib.unbind b in eq cfg ((b, mk_Appl(t, mk_Vari x))::l)
     | Meta(m1,a1), Meta(m2,a2) when m1 == m2 ->
-      eq c (if a1 == a2 then l else List.add_array2 a1 a2 l)
-    | Appl(t1,u1), Appl(t2,u2) -> eq c ((u1,u2)::(t1,t2)::l)
+      eq cfg (if a1 == a2 then l else List.add_array2 a1 a2 l)
+    | Appl(t1,u1), Appl(t2,u2) -> eq cfg ((u1,u2)::(t1,t2)::l)
     | _ -> raise Exit
   in
-  fun c a b ->
+  fun cfg a b ->
   if Logger.log_enabled () then log_conv "%a ≡ %a" term a term b;
-  try eq c [(a,b)]; true
+  try eq cfg [(a,b)]; true
   with Exit -> if Logger.log_enabled () then log_conv "failed"; false
 
 (** Abstract machine stack. *)
@@ -194,35 +195,35 @@ let to_tref : term -> term = fun t ->
 
 (** {1 Define the main {!whnf} function that takes a {!config} as argument} *)
 
-(** [whnf c t] computes a whnf of the term [t] wrt configuration [c]. *)
-let rec whnf : config -> term -> term = fun c t ->
+(** [whnf cfg t] computes a whnf of the term [t] wrt configuration [c]. *)
+let rec whnf : config -> term -> term = fun cfg t ->
   (*if Logger.log_enabled () then log_eval "whnf %a" term t;*)
   let n = Stdlib.(!steps) in
-  let u, stk = whnf_stk c t [] in
+  let u, stk = whnf_stk cfg t [] in
   let r = if Stdlib.(!steps) <> n then add_args u stk else unfold t in
   (*if Logger.log_enabled () then
     log_eval "whnf %a%a = %a" ctxt c.context term t term r;*)
   r
 
-(** [whnf_stk c t stk] computes a whnf of [add_args t stk] wrt
+(** [whnf_stk cfg t stk] computes a whnf of [add_args t stk] wrt
     configuration [c]. *)
-and whnf_stk : config -> term -> stack -> term * stack = fun c t stk ->
+and whnf_stk : config -> term -> stack -> term * stack = fun cfg t stk ->
   (*if Logger.log_enabled () then
     log_eval "whnf_stk %a%a %a"
       ctxt c.context term t (D.list term) stk;*)
   let t = unfold t in
   match t, stk with
-  | Appl(f,u), stk -> whnf_stk c f (to_tref u::stk)
-  | Abst(_,f), u::stk when c.Config.beta ->
-    Stdlib.incr steps; whnf_stk c (Bindlib.subst f u) stk
+  | Appl(f,u), stk -> whnf_stk cfg f (to_tref u::stk)
+  | Abst(_,f), u::stk when cfg.Config.beta ->
+    Stdlib.incr steps; whnf_stk cfg (Bindlib.subst f u) stk
   | LLet(_,t,u), stk ->
-    Stdlib.incr steps; whnf_stk c (Bindlib.subst u t) stk
+    Stdlib.incr steps; whnf_stk cfg (Bindlib.subst u t) stk
   | (Symb s as h, stk) as r ->
     begin match !(s.sym_def) with
     | Some t ->
-      if s.sym_opaq || not c.Config.expand_defs then r else
-        (Stdlib.incr steps; whnf_stk c t stk)
-    | None when not c.Config.rewrite -> r
+      if s.sym_opaq || not cfg.Config.expand_defs then r else
+        (Stdlib.incr steps; whnf_stk cfg t stk)
+    | None when not cfg.Config.rewrite -> r
     | None ->
       (* If [s] is modulo C or AC, we put its arguments in whnf and reorder
          them to have a term in AC-canonical form. *)
@@ -230,7 +231,7 @@ and whnf_stk : config -> term -> stack -> term * stack = fun c t stk ->
         if is_modulo s then
           let n = Stdlib.(!steps) in
           (* We put the arguments in whnf. *)
-          let stk' = List.map (whnf c) stk in
+          let stk' = List.map (whnf cfg) stk in
           if Stdlib.(!steps) = n then (* No argument has been reduced. *)
             stk
           else (* At least one argument has been reduced. *)
@@ -238,17 +239,17 @@ and whnf_stk : config -> term -> stack -> term * stack = fun c t stk ->
             snd (get_args (add_args h stk'))
         else stk
       in
-      match tree_walk c !(s.sym_dtree) stk with
+      match tree_walk cfg !(s.sym_dtree) stk with
       | None -> h, stk
       | Some (t', stk') ->
         if Logger.log_enabled () then
-          log_eval "tree_walk %a%a %a = %a %a" ctxt c.context
+          log_eval "tree_walk %a%a %a = %a %a" ctxt cfg.context
             term t (D.list term) stk term t' (D.list term) stk';
-        Stdlib.incr steps; whnf_stk c t' stk'
+        Stdlib.incr steps; whnf_stk cfg t' stk'
     end
   | (Vari x, stk) as r ->
-    begin match VarMap.find_opt x c.varmap with
-    | Some v -> Stdlib.incr steps; whnf_stk c v stk
+    begin match VarMap.find_opt x cfg.varmap with
+    | Some v -> Stdlib.incr steps; whnf_stk cfg v stk
     | None -> r
     end
   | r -> r
@@ -273,7 +274,7 @@ and whnf_stk : config -> term -> stack -> term * stack = fun c t stk ->
     3. a {!constructor:Tree_type.TC.t.Vari} which is a simplified
        representation of a variable for trees. *)
 
-(** [tree_walk c dt stk] tries to apply a rewrite rule by matching the stack
+(** [tree_walk cfg dt stk] tries to apply a rewrite rule by matching the stack
     [stk] against the decision tree [dt].  The resulting state of the abstract
     machine is returned in case of success.  Even if matching fails, the stack
     [stk] may be imperatively updated since a reduction step taken in elements
@@ -282,7 +283,7 @@ and whnf_stk : config -> term -> stack -> term * stack = fun c t stk ->
     unification rules with extra pattern variables are added to
     the problem of [c]. *)
 and tree_walk : config -> dtree -> stack -> (term * stack) option =
-  fun c tree stk ->
+  fun cfg tree stk ->
   let (lazy capacity, lazy tree) = tree in
   let vars = Array.make capacity mk_Kind in (* dummy terms *)
   let bound = Array.make capacity TE_None in
@@ -320,8 +321,8 @@ and tree_walk : config -> dtree -> stack -> (term * stack) option =
         List.iter f rhs_subst;
         (* Complete the array with fresh meta-variables if needed. *)
         for i = env_len - xvars to env_len - 1 do
-          let mt = LibMeta.make c.problem c.context mk_Type in
-          let t = LibMeta.make c.problem c.context mt in
+          let mt = LibMeta.make cfg.problem cfg.context mk_Type in
+          let t = LibMeta.make cfg.problem cfg.context mt in
           let b = Bindlib.raw_mbinder [||] [||] 0 of_tvar (fun _ -> t) in
           env.(i) <- TE_Some(b)
         done;
@@ -330,7 +331,7 @@ and tree_walk : config -> dtree -> stack -> (term * stack) option =
         let next =
           match cond with
           | CondNL(i, j) ->
-            if eq_modulo whnf c vars.(i) vars.(j) then ok else fail
+            if eq_modulo whnf cfg vars.(i) vars.(j) then ok else fail
           | CondFV(i,xs) ->
               let allowed =
                 (* Variables that are allowed in the term. *)
@@ -353,7 +354,7 @@ and tree_walk : config -> dtree -> stack -> (term * stack) option =
               then (bound.(i) <- TE_Some(Bindlib.unbox b); ok) else
               (* As a last resort we try matching the SNF. *)
               let b = Bindlib.bind_mvar allowed
-                        (lift (snf (whnf c) vars.(i))) in
+                        (lift (snf (whnf cfg) vars.(i))) in
               if no_forbidden b
               then (bound.(i) <- TE_Some(Bindlib.unbox b); ok)
               else fail
@@ -380,7 +381,7 @@ and tree_walk : config -> dtree -> stack -> (term * stack) option =
           Option.bind fn default
         else
           let s = Stdlib.(!steps) in
-          let (t, args) = whnf_stk c examined [] in
+          let (t, args) = whnf_stk cfg examined [] in
           let args = if store then List.map to_tref args else args in
           (* If some reduction has been performed by [whnf_stk] ([steps <>
              0]), update the value of [examined] which may be stored into
@@ -470,17 +471,17 @@ and tree_walk : config -> dtree -> stack -> (term * stack) option =
 type reducer = ?problem:problem -> ?tags:rw_tag list -> ctxt -> term -> term
 
 let time_reducer (f: reducer): reducer =
-  let open Stdlib in let r = ref mk_Kind in fun ?problem ?tags c t ->
-    Debug.(record_time Rewriting (fun () -> r := f ?problem ?tags c t)); !r
+  let open Stdlib in let r = ref mk_Kind in fun ?problem ?tags cfg t ->
+    Debug.(record_time Rewriting (fun () -> r := f ?problem ?tags cfg t)); !r
 
 (** [snf c t] computes a snf of [t], unfolding the variables defined in the
-   context [c]. *)
+    context [c]. *)
 let snf : reducer = fun ?problem ?tags c t ->
   Stdlib.(steps := 0);
   let u = snf (whnf (Config.make ?problem ?tags c)) t in
   let r = if Stdlib.(!steps = 0) then unfold t else u in
   (*if Logger.log_enabled () then
-    log_eval "snf %a%a\n= %a" ctxt c term t term r;*) r
+    log_eval "snf %a%a\n= %a" ctxt cfg term t term r;*) r
 
 let snf = time_reducer snf
 
@@ -491,7 +492,7 @@ let hnf : reducer = fun ?problem ?tags c t ->
   let u = hnf (whnf (Config.make ?problem ?tags c)) t in
   let r = if Stdlib.(!steps = 0) then unfold t else u in
   (*if Logger.log_enabled () then
-    log_eval "hnf %a%a\n= %a" ctxt c term t term r;*) r
+    log_eval "hnf %a%a\n= %a" ctxt cfg term t term r;*) r
 
 let hnf = time_reducer hnf
 
@@ -569,9 +570,9 @@ let unfold_sym : sym -> term -> term =
   match !(s.sym_rules) with
   | [] -> fun t -> t
   | _ ->
-      let c = Config.make [] and dt = !(s.sym_dtree) in
+      let cfg = Config.make [] and dt = !(s.sym_dtree) in
       let unfold_sym_app args =
-        match tree_walk c dt args with
+        match tree_walk cfg dt args with
         | Some(r,ts) -> add_args r ts
         | None -> add_args (mk_Symb s) args
       in unfold_sym s unfold_sym_app
