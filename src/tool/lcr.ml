@@ -61,38 +61,6 @@ type subterm_pos = int list
 
 let subterm_pos : subterm_pos pp = fun ppf l -> D.(list int) ppf (List.rev l)
 
-(** [iter_subterms_eq pos f t] iterates f on all subterms of [t] headed by a
-   defined function symbol. *)
-(*
-let iter_subterms_eq :
-  Pos.popt -> (int list -> term -> unit) -> term -> unit =
-  fun pos f t ->
-  let rec iter p t =
-    match get_args t with
-    | Symb s, ts ->
-      if is_defined s then f p t;
-      List.iteri (fun i t -> iter (i::p) t) ts
-    | Patt _, _
-    | Vari _, _ -> ()
-    | Abst(_a,_b), []
-    | Prod(_a,_b), [] ->
-      wrn pos "Ignore subterms of [%a]@ at position >= %a."
-        term t subterm_pos p
-      (*iter (0::p) a; let _,b = Bindlib.unbind b in iter (1::p) b*)
-    | Abst _, _ -> assert false
-    | Prod _, _ -> assert false
-    | Appl _, _ -> assert false
-    | Type, _ -> assert false
-    | Kind, _ -> assert false
-    | Meta _, _ -> assert false
-    | TEnv _, _ -> assert false
-    | Wild, _ -> assert false
-    | Plac _, _ -> assert false
-    | TRef _, _ -> assert false
-    | LLet _, _ -> assert false
-  in iter [] t
-*)
-
 (** [iter_subterms_eq pos f p t] iterates f on all subterms of [t] headed by a
    defined function symbol. [p] is the position of [t] in reverse order. *)
 let iter_subterms_from_pos :
@@ -158,24 +126,6 @@ let iter_subterms :
   | Plac _ -> assert false
   | TRef _ -> assert false
   | LLet _ -> assert false
-
-(** [replace t p u] replaces the subterm of [t] at position [p] by [u]. *)
-(*let replace : term -> int list -> term -> term = fun t p u ->
-  let rec replace t p =
-    match p with
-    | [] -> u
-    | i::p ->
-      match get_args t with
-      | Symb s, ts -> aux (mk_Symb s) i ts p
-      | _ -> invalid_arg __LOC__
-  and aux h i ts p =
-    match ts with
-    | [] -> assert false
-    | t::ts ->
-      if i <= 0 then add_args h (replace t p :: ts)
-      else aux (mk_Appl (h, t)) (i-1) ts p
-  in replace t p
-*)
 
 (** [replace t p u] replaces the subterm of [t] at position [p] by [u]. *)
 let replace : term -> int list -> term -> term = fun t p u ->
@@ -274,50 +224,6 @@ let shift : term -> term =
 (** [unif pos t u] returns [None] if [t] and [u] are not unifiable, and [Some
    s] with [s] the mgu otherwise. Precondition: [l] and [r] must have distinct
    indexes in Patt subterms. *)
-(*let unif : Pos.popt -> term -> term -> term IntMap.t option =
-  fun pos t u ->
-  let is_patt i = function Patt(Some j,_,_) -> j=i | _ -> false in
-  let exception NotUnifiable in
-  let rec unif s = function
-    | [] -> s
-    | (t, u)::l ->
-      match get_args t, get_args u with
-      | (Symb f, ts), (Symb g, us) ->
-        if f == g then
-          let f l t u = (t,u)::l in
-          let l' =
-            try List.fold_left2 f l ts us
-            with Invalid_argument _ -> raise NotUnifiable
-          in
-          unif s l'
-        else raise NotUnifiable
-      | (Patt(None,_,_), _), _
-      | _, (Patt(None,_,_), _)
-      | (Patt _, _::_), _
-      | _, (Patt _, _::_)
-        -> assert false
-      | (Patt(Some i,_,_), _), _ ->
-        begin match IntMap.find_opt i s with
-          | Some t -> unif s ((t, u)::l)
-          | None ->
-            if is_patt i u then unif s l
-            else if occurs i u then raise NotUnifiable
-            else unif (IntMap.add i u s) l
-        end
-      | _, (Patt(Some i,_,_), _) ->
-        begin
-          match IntMap.find_opt i s with
-          | Some u -> unif s ((t, u)::l)
-          | None ->
-            if occurs i t then raise NotUnifiable
-            else unif (IntMap.add i t s) l
-        end
-      | _ ->
-        wrn pos "Unification of non-algebraic terms not implemented yet.";
-        raise NotUnifiable
-  in try Some (unif IntMap.empty [t,u]) with NotUnifiable -> None
-*)
-
 let unif : Pos.popt -> term -> term -> term IntMap.t option =
   fun _pos t u ->
   let is_patt i = function Patt(Some j,_,_) -> j=i | _ -> false in
