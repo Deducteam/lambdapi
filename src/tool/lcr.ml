@@ -436,7 +436,9 @@ let check_cps :
   fun pos sign srs sym_map ->
   (* Verification of CP*(S,S). *)
   check_cp_rules pos srs;
-  (* Verification of CP*(S,R). *)
+  (* Verification of CP*(S,R). /!\ Here, we use the fact that decision trees
+     include new rules for testing joinability, but new rules have not been
+     added in the symbols yet. *)
   iter_sym_rules (check_cp_subterms_eq pos) srs;
   (* Verification of CP*(R,S). *)
   check_cp_sign pos sign sym_map;
