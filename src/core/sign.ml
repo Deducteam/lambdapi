@@ -24,9 +24,6 @@ type notation =
   | Succ
   | Quant
 
-(** Type of critical pair positions (l,r,p,l_p) with p in reverse order. *)
-type cp_pos = term * term * int list * term
-
 (** Representation of a signature. It roughly corresponds to a set of symbols,
     defined in a single module (or file). *)
 type t =

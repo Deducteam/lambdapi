@@ -21,7 +21,7 @@ Warning: we currently do not take into account the rules having higher-order
 
 open Core open Term open Print
 open Timed
-open Common open Error open Debug
+open Common open Error
 open Lplib open Base open Extra
 
 let log_cp = Logger.make 'k' "lcr " "local confluence"
@@ -55,16 +55,10 @@ let rule_of_def : sym -> term -> rule = fun s d ->
   {lhs=[]; rhs; arity=0; arities=[||]; vars=[||]; xvars_nb=0;
    rule_pos=s.sym_pos}
 
-(** Positions in terms: the i-th argument of a constructor has position
-   i-1. *)
-type subterm_pos = int list
-
-let subterm_pos : subterm_pos pp = fun ppf l -> D.(list int) ppf (List.rev l)
-
 (** [iter_subterms_eq pos f p t] iterates f on all subterms of [t] headed by a
    defined function symbol. [p] is the position of [t] in reverse order. *)
-let iter_subterms_from_pos :
-  int list -> Pos.popt -> (sym -> int list -> term -> unit) -> term -> unit =
+let iter_subterms_from_pos : subterm_pos ->
+  Pos.popt -> (sym -> subterm_pos -> term -> unit) -> term -> unit =
   fun p _pos f t ->
   let rec iter p t =
     (*if Logger.log_enabled() then
@@ -99,13 +93,13 @@ let iter_subterms_from_pos :
 (** [iter_subterms_eq pos f t] iterates f on all subterms of [t] headed by a
    defined function symbol. *)
 let iter_subterms_eq :
-  Pos.popt -> (sym -> int list -> term -> unit) -> term -> unit =
+  Pos.popt -> (sym -> subterm_pos -> term -> unit) -> term -> unit =
   iter_subterms_from_pos []
 
 (** [iter_subterms pos f t] iterates f on all strict subterms of [t] headed by
    a defined function symbol. *)
 let iter_subterms :
-  Pos.popt -> (sym -> int list -> term -> unit) -> term -> unit =
+  Pos.popt -> (sym -> subterm_pos -> term -> unit) -> term -> unit =
   fun pos f t ->
   (*if Logger.log_enabled() then log_cp "iter_subterms %a" term t;*)
   match unfold t with
@@ -128,7 +122,7 @@ let iter_subterms :
   | LLet _ -> assert false
 
 (** [replace t p u] replaces the subterm of [t] at position [p] by [u]. *)
-let replace : term -> int list -> term -> term = fun t p u ->
+let replace : term -> subterm_pos -> term -> term = fun t p u ->
   let rec replace t p =
     (*if Logger.log_enabled() then
       log_cp "replace [%a] %a" term t subterm_pos p;*)
@@ -147,7 +141,7 @@ let replace : term -> int list -> term -> term = fun t p u ->
         | _ -> assert false
       end
     | _ -> assert false
-  in replace t (List.rev p)
+  in replace t (List.rev p) (* positions are in reverse order *)
 
 (** [occurs i t] returns [true] iff [Patt(i,_,_)] is a subterm of [t]. *)
 let occurs : int -> term -> bool = fun i ->
@@ -302,7 +296,7 @@ let _ =
    joinable. Precondition: [l] and [r] must have distinct indexes in Patt
    subterms. *)
 let check_cp_subterm_rule :
-  Pos.popt -> term -> term -> int list -> term -> term -> term -> unit =
+  Pos.popt -> term -> term -> subterm_pos -> term -> term -> term -> unit =
   fun pos l r p l_p g d ->
   (*if Logger.log_enabled() then
     log_cp "check_cp_subterm_rule %a" term l_p;*)
@@ -458,9 +452,8 @@ let check_cps :
 (** [update_cp_pos pos map rs] extends [map] by mapping every definable symbol
    s' such that there is a rule l-->r of [rs] and a position p of l such that
    l_p is headed by s' to (l,r,p,l_p). *)
-let update_cp_pos :
-  Pos.popt -> Sign.cp_pos list SymMap.t -> rule list SymMap.t
-  -> Sign.cp_pos list SymMap.t =
+let update_cp_pos : Pos.popt -> cp_pos list SymMap.t -> rule list SymMap.t ->
+  cp_pos list SymMap.t =
   let add_elt : sym -> 'a -> 'a list SymMap.t -> 'a list SymMap.t =
     fun s x map ->
     let h = function None -> Some[x] | Some xs -> Some(x::xs) in

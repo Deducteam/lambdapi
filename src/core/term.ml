@@ -754,3 +754,12 @@ let cleanup : term -> term =
    effect of gathering its free variables, making them available for binding.
    Bound variable names are automatically updated in the process. *)
 let lift = lift _Appl
+
+(** Positions in terms in reverse order. The i-th argument of a constructor
+   has position i-1. *)
+type subterm_pos = int list
+
+let subterm_pos : subterm_pos pp = fun ppf l -> D.(list int) ppf (List.rev l)
+
+(** Type of critical pair positions (l,r,p,l_p). *)
+type cp_pos = term * term * subterm_pos * term
