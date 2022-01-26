@@ -28,12 +28,9 @@ lib:
 
 #### Unit tests and sanity check #############################################
 
-OK_TESTFILES = $(sort $(wildcard tests/OK/*.dk tests/OK/*.lp))
-KO_TESTFILES = $(sort $(wildcard tests/KO/*.dk tests/KO/*.lp))
-
 .PHONY: tests
 tests: bin
-	@dune runtest --only-packages lambdapi
+	@dune exec --only-packages lambdapi -- tests/runtests.sh
 	@dune exec --only-packages lambdapi -- tests/dtrees.sh
 	@dune exec --only-packages lambdapi -- tests/export_dk.sh
 	@dune exec --only-packages lambdapi -- tests/export_lp.sh
