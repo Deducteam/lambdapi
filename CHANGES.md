@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ### Added
 
 - Incremental local confluence checking for non higher-order and non AC rules.
-- Add export -o hrs and -o xtc
+- Add options -o hrs and -o xtc to the export command.
 
 ### Changed
 
