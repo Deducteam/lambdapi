@@ -208,10 +208,13 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
       in
       let srs, map = List.fold_left handle_rule ([], SymMap.empty) rs in
       SymMap.iter Tree.update_dtree map;
-      Tool.Lcr.check_cps pos ss.signature srs map;
+      let sign = ss.signature in
+      Tool.Lcr.check_cps pos sign srs map;
       SymMap.iter (Sign.add_rules ss.signature) map;
       if !Console.verbose >= 2 then
         List.iter (Console.out 2 (Color.red "rule %a") rule) (List.rev srs);
+      sign.Sign.sign_cp_pos :=
+        Tool.Lcr.update_cp_pos pos !(sign.Sign.sign_cp_pos) map;
       (ss, None, None)
   | P_builtin(n,qid) ->
       let s = find_sym ~prt:true ~prv:true ss qid in
