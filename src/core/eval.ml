@@ -155,8 +155,7 @@ let eq_modulo : (config -> term -> term) -> config -> term -> term -> bool =
     (* cases of failure *)
     | Kind, _ | _, Kind
     | Type, _ | _, Type
-    | Patt _, _ | _, Patt _
-      -> raise Exit
+    | Patt _, _ | _, Patt _ -> raise Exit
     | ((Symb f, (Vari _|Meta _|Prod _|Abst _))
       | ((Vari _|Meta _|Prod _|Abst _), Symb f)) when is_constant f ->
       raise Exit

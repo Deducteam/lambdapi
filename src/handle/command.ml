@@ -201,18 +201,26 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
   | P_require_as(p,id) -> (handle_require_as compile ss p id, None, None)
   | P_open(ps) -> (List.fold_left handle_open ss ps, None, None)
   | P_rules(rs) ->
+    (* Scope rules, and check that they preserve typing. Return the list of
+       rules [srs] and also a map [map] mapping every symbol defined by a rule
+       of [srs] to its defining rules. *)
       let handle_rule (srs, map) r =
         let (s,r) as sr = check_rule ss r in
         let h = function Some rs -> Some(r::rs) | None -> Some[r] in
         sr::srs, SymMap.update s h map
       in
       let srs, map = List.fold_left handle_rule ([], SymMap.empty) rs in
+      (* /!\ Update decision trees without adding the rules themselves. It is
+         important for local confluence checking. *)
       SymMap.iter Tree.update_dtree map;
       let sign = ss.signature in
+      (* Local confluence checking. *)
       Tool.Lcr.check_cps pos sign srs map;
+      (* Add rules in the signature. *)
       SymMap.iter (Sign.add_rules ss.signature) map;
       if !Console.verbose >= 2 then
         List.iter (Console.out 2 (Color.red "rule %a") rule) (List.rev srs);
+      (* Update critical pair positions. *)
       sign.Sign.sign_cp_pos :=
         Tool.Lcr.update_cp_pos pos !(sign.Sign.sign_cp_pos) map;
       (ss, None, None)
