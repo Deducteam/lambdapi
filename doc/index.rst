@@ -30,6 +30,8 @@ Examples of developments made with Lambdapi:
   - `Example of inductive-inductive type definition <https://github.com/Deducteam/lambdapi/blob/master/tests/OK/indind.lp>`__
   - `Test files <https://github.com/Deducteam/lambdapi/tree/master/tests/OK>`__
 
+`Opam repository of Lambdapi developments <https://github.com/Deducteam/opam-lambdapi-repository>`__
+
 .. toctree::
    :maxdepth: 1
 
