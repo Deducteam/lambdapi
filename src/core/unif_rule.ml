@@ -22,14 +22,13 @@ let sign : Sign.t =
   Sign.loaded := Path.Map.add path sign !(Sign.loaded);
   sign
 
-(** Symbol of name LpLexer.equiv, with infix notation. *)
+(** Symbol "≡". *)
 let equiv : sym =
   let id = Pos.none "≡" in
   let s = Sign.add_symbol sign Public Defin Eager false id mk_Kind [] in
-  Sign.add_notation sign s (Infix(Pratter.Neither, 1.1)); s
+  Sign.add_notation sign s (Infix(Pratter.Neither, 2.0)); s
 
-(** Symbol of name LpLexer.cons, with infix right notation with priority <
-   LpLexer.equiv. *)
+(** Symbol ";". *)
 let cons : sym =
   let id = Pos.none ";" in
   let s = Sign.add_symbol sign Public Const Eager true id mk_Kind [] in
@@ -49,5 +48,9 @@ let rec unpack : term -> (term * term) list = fun eqs ->
       else assert false
   | _ -> assert false
 
-(** [is_ghost s] is true iff [s] is a symbol of the ghost signature. *)
-let is_ghost : sym -> bool = fun s -> s == equiv || s == cons
+(** [mem s] is true iff [s] belongs to [sign]. *)
+let mem : sym -> bool = fun s -> s == equiv || s == cons
+
+(** [remove_rules()] removes the rules added on [equiv]. *)
+let remove_rules : unit -> unit = fun () ->
+  equiv.sym_rules := []; equiv.sym_dtree := Tree_type.empty_dtree
