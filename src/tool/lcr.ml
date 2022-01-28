@@ -17,19 +17,33 @@ As a consequence, assuming that we already checked the local confluence of R
    and add a new set S of rules, we do not need to check CP*(R,R) again.
 
 Warning: we currently do not take into account the rules having higher-order
-   pattern variables and critical pairs on AC symbols. *)
+   pattern variables and critical pairs on AC symbols.
+
+Remark: When trying to unify a subterm of a rule LHS with the LHS of another
+   rule, we need to rename the pattern variables of one of the LHS to avoid
+   name clashes. To this end, we use the [shift] function below which replaces
+   [Patt(i,n,_)] by [Patt(-i-1,n ^ "'",_)]. The printing function [subs] below
+   takes this into account. *)
 
 open Core open Term open Print
 open Timed
-open Common open Error
+open Common open Error open Debug
 open Lplib open Base open Extra
 
 let log_cp = Logger.make 'k' "lcr " "local confluence"
 let log_cp = log_cp.pp
 
+(** Function for printing a pair of terms as a rule. *)
 let rule : (term * term) pp = fun ppf (l,r) -> out ppf "%a ↪ %a" term l term r
 
-(** Symbol with rule. *)
+(** Type for pattern variable substitutions. *)
+type subs = term IntMap.t
+
+let subs : term IntMap.t pp =
+  let var ppf i = if i >= 0 then out ppf "$%d" i else out ppf "$%d'" (-i-1) in
+  D.map IntMap.iter var " ≔ " term "; "
+
+(** Type for a symbol with a rule. *)
 type sym_rule = sym * rule
 
 let lhs : sym_rule -> term = fun (s, r) -> add_args (mk_Symb s) r.lhs
@@ -123,9 +137,10 @@ let iter_subterms :
 
 (** [replace t p u] replaces the subterm of [t] at position [p] by [u]. *)
 let replace : term -> subterm_pos -> term -> term = fun t p u ->
+  (*if Logger.log_enabled() then log_cp "replace by %a" term u;*)
   let rec replace t p =
     (*if Logger.log_enabled() then
-      log_cp "replace [%a] %a" term t subterm_pos p;*)
+      log_cp "at %a in %a" subterm_pos p term t;*)
     match p with
     | [] -> u
     | 0::p ->
@@ -162,31 +177,36 @@ let occurs : int -> term -> bool = fun i ->
     | LLet _ -> assert false
   in occ
 
-(** [subs s t] applies the pattern substitution [s] to [t]. *)
-let subs : term IntMap.t -> term -> term = fun s ->
-  let rec subs t =
+(** [apply_subs s t] applies the pattern substitution [s] to [t]. *)
+let apply_subs : term IntMap.t -> term -> term = fun s ->
+  (*if Logger.log_enabled() then log_cp "apply_subs by %a" subs s;*)
+  let rec apply_subs t =
+    (*if Logger.log_enabled() then log_cp "%a" term t;*)
     match unfold t with
     | Patt(None, _, _) -> assert false
-    | Patt(Some i,_,[||]) -> begin try IntMap.find i s with Not_found -> t end
-    | Patt _ -> assert false
+    | Patt(Some i,_,[||]) ->
+      begin try IntMap.find i s with Not_found -> t end
+    | Patt(i,n,ts) -> mk_Patt (i, n, Array.map apply_subs ts)
     | Vari _ | Symb _ | Type | Kind -> t
-    | Appl(u,v) -> mk_Appl (subs u, subs v)
+    | Appl(u,v) -> mk_Appl (apply_subs u, apply_subs v)
     | Abst(a,b) ->
       let x,b = Bindlib.unbind b in
-      mk_Abst (subs a, Bindlib.unbox (Bindlib.bind_var x (lift (subs b))))
+      mk_Abst (apply_subs a,
+               Bindlib.unbox (Bindlib.bind_var x (lift (apply_subs b))))
     | Prod(a,b) ->
       let x,b = Bindlib.unbind b in
-      mk_Prod (subs a, Bindlib.unbox (Bindlib.bind_var x (lift (subs b))))
+      mk_Prod (apply_subs a,
+               Bindlib.unbox (Bindlib.bind_var x (lift (apply_subs b))))
     | LLet(a,t,b) ->
       let x,b = Bindlib.unbind b in
-      mk_LLet (subs a, subs t,
-               Bindlib.unbox (Bindlib.bind_var x (lift (subs b))))
-    | Meta(m,ts) -> mk_Meta (m, Array.map subs ts)
-    | TEnv(te,ts) -> mk_TEnv (te, Array.map subs ts)
+      mk_LLet (apply_subs a, apply_subs t,
+               Bindlib.unbox (Bindlib.bind_var x (lift (apply_subs b))))
+    | Meta(m,ts) -> mk_Meta (m, Array.map apply_subs ts)
+    | TEnv(te,ts) -> mk_TEnv (te, Array.map apply_subs ts)
     | TRef _ -> assert false
     | Wild -> assert false
     | Plac _ -> assert false
-  in subs
+  in apply_subs
 
 (** [shift t] replaces in [t] every pattern index i by -i-1. *)
 let shift : term -> term =
@@ -216,8 +236,8 @@ let shift : term -> term =
   in fun t -> Bindlib.unbox (shift t)
 
 (** [unif pos t u] returns [None] if [t] and [u] are not unifiable, and [Some
-   s] with [s] the mgu otherwise. Precondition: [l] and [r] must have distinct
-   indexes in Patt subterms. *)
+   s] with [s] an idempotent mgu otherwise. Precondition: [l] and [r] must
+   have distinct indexes in Patt subterms. *)
 let unif : Pos.popt -> term -> term -> term IntMap.t option =
   fun _pos t u ->
   let is_patt i = function Patt(Some j,_,_) -> j=i | _ -> false in
@@ -225,6 +245,8 @@ let unif : Pos.popt -> term -> term -> term IntMap.t option =
   let rec unif s = function
     | [] -> s
     | (t, u)::l ->
+      (*if Logger.log_enabled() then
+        log_cp "unif %a ≡ %a with %a" term t term u subs s;*)
       match t, u with
       | Symb f, Symb g -> if f == g then unif s l else raise NotUnifiable
       | Appl(a,b), Appl(c,d) -> unif s ((a,c)::(b,d)::l)
@@ -237,24 +259,8 @@ let unif : Pos.popt -> term -> term -> term IntMap.t option =
         if Bindlib.eq_vars x y then unif s l else raise NotUnifiable
       | Patt(None,_,_), _
       | _, Patt(None,_,_) -> assert false
-      | Patt(Some i,_,ts), _ ->
-        assert (Array.length ts = 0);
-        begin match IntMap.find_opt i s with
-          | Some t -> unif s ((t, u)::l)
-          | None ->
-            if is_patt i u then unif s l
-            else if occurs i u then raise NotUnifiable
-            else unif (IntMap.add i u s) l
-        end
-      | _, Patt(Some i,_,ts) ->
-        assert (Array.length ts = 0);
-        begin
-          match IntMap.find_opt i s with
-          | Some u -> unif s ((t, u)::l)
-          | None ->
-            if occurs i t then raise NotUnifiable
-            else unif (IntMap.add i t s) l
-        end
+      | Patt(Some i,_,ts), u
+      | u, Patt(Some i,_,ts) -> unif_patt s i ts u l
       | Type, Type
       | Kind, Kind -> unif s l
       | Meta _, _ | _, Meta _ -> assert false
@@ -264,6 +270,14 @@ let unif : Pos.popt -> term -> term -> term IntMap.t option =
       | TRef _, _ | _, TRef _ -> assert false
       | LLet _, _ | _, LLet _ -> assert false
       | _ -> raise NotUnifiable
+  and unif_patt s i ts u l =
+    assert (Array.length ts = 0);
+    if is_patt i u then unif s l
+    else if occurs i u then raise NotUnifiable
+    else let s0 = IntMap.singleton i u in
+      let s' = IntMap.add i u (IntMap.map (apply_subs s0) s) in
+      let f (a,b) = apply_subs s' a, apply_subs s' b in
+      unif s' (List.map f l)
   in try Some (unif IntMap.empty [t,u]) with NotUnifiable -> None
 
 (* Unit tests. *)
@@ -299,26 +313,30 @@ let check_cp_subterm_rule :
   Pos.popt -> term -> term -> subterm_pos -> term -> term -> term -> unit =
   fun pos l r p l_p g d ->
   (*if Logger.log_enabled() then
-    log_cp "check_cp_subterm_rule %a" term l_p;*)
+    log_cp "check_cp_subterm_rule \
+            @[<v>l ≔ %a@ r ≔ %a@ p ≔ %a@ l_p ≔ %a@ g ≔ %a@ d ≔ %a]"
+      term l term r subterm_pos p term l_p term g term d;*)
   match unif pos l_p g with
   | Some s ->
-    let r1 = subs s r and r2 = subs s (replace l p d) in
-    Console.out 2 "Critical pair:@.\
-                   t ≔ %a@.\
-                   t ↪[] %a@.  \
-                     with %a@.\
-                   t ↪%a %a@.  \
-                     with %a"
-        term (subs s l) term r1 rule (l,r)
+    (*if Logger.log_enabled() then
+      log_cp "@[<v>s ≔ %a@ replace l p d ≔ %a]" subs s term (replace l p d);*)
+    let r1 = apply_subs s r and r2 = apply_subs s (replace l p d) in
+    Console.out 2 "@[<v>Critical pair:@ \
+                   t ≔ %a@ \
+                   t ↪[] %a@   \
+                     with %a@ \
+                   t ↪%a %a@   \
+                     with %a]"
+        term (apply_subs s l) term r1 rule (l,r)
         subterm_pos p term r2 rule (g,d);
     if not (Eval.eq_modulo [] r1 r2) then
-      wrn pos "Unjoinable critical pair:@.\
-               t ≔ %a@.\
-               t ↪[] %a@.  \
-                 with %a@.\
-               t ↪%a %a@.  \
-                 with %a"
-        term (subs s l) term r1 rule (l,r)
+      wrn pos "@[<v>Unjoinable critical pair:@ \
+               t ≔ %a@ \
+               t ↪[] %a@   \
+                 with %a@ \
+               t ↪%a %a@   \
+                 with %a]"
+        term (apply_subs s l) term r1 rule (l,r)
         subterm_pos p term r2 rule (g,d)
   | None -> ()
 
@@ -467,10 +485,10 @@ let update_cp_pos : Pos.popt -> cp_pos list SymMap.t -> rule list SymMap.t ->
   let f s rs =
     let h r =
       let lr = (s,r) in let l = lhs lr and r = rhs lr in
-      let h' s' p l_p = map := add_elt s' (l,r,p,l_p) !map;
-        if Logger.log_enabled() then
+      let h' s' p l_p = map := add_elt s' (l,r,p,l_p) !map
+        (*if Logger.log_enabled() then
           log_cp "add_cp_pos %a ↪ %a, %a, %a"
-            term l term r subterm_pos p term l_p
+            term l term r subterm_pos p term l_p*)
       in
       iter_subterms_eq pos h' l
     in

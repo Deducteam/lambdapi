@@ -19,7 +19,7 @@ let wrn : Pos.popt -> 'a outfmt -> 'a = fun pos fmt ->
   match pos with
   | None   -> fprintf !err_fmt (Color.yel fmt ^^ "@.")
   | Some _ ->
-    fprintf !err_fmt (Color.yel ("[%a]@ " ^^ fmt ^^ "@.")) Pos.pp pos
+    fprintf !err_fmt (Color.yel ("[%a]@ " ^^ fmt) ^^ "@.") Pos.pp pos
 
 (** [with_no_wrn f x] disables warnings before executing [f x] and then
     restores the initial state of warnings. The result of [f x] is returned.

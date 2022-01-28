@@ -55,6 +55,9 @@ module D = struct
   let strmap : 'a pp -> 'a StrMap.t pp = fun elt ->
     map StrMap.iter string ", " elt "; "
 
+  let intmap : 'a pp -> 'a IntMap.t pp = fun elt ->
+    map IntMap.iter int ", " elt "; "
+
   let iter ?sep:(sep = Format.pp_print_cut) iter elt ppf v =
     let is_first = ref true in
     let elt v =

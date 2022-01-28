@@ -125,7 +125,7 @@ let eq_modulo : (config -> term -> term) -> config -> term -> term -> bool =
     match l with
     | [] -> ()
     | (a,b)::l ->
-    (*if Logger.log_enabled () then log_conv "%a ≡ %a" term a term b;*)
+    if Logger.log_enabled () then log_conv "1: %a ≡ %a" term a term b;
     let a = Config.unfold cfg a and b = Config.unfold cfg b in
     if a == b then eq cfg l else
     match a, b with
@@ -135,9 +135,9 @@ let eq_modulo : (config -> term -> term) -> config -> term -> term -> bool =
     | _, LLet(_,t,u) ->
       let x,u = Bindlib.unbind u in
       eq {cfg with varmap = VarMap.add x t cfg.varmap} ((a,u)::l)
+    | Patt(None,_,_), _ | _, Patt(None,_,_) -> assert false
     | Patt(Some i,_,ts), Patt(Some j,_,us) ->
       if i=j then eq cfg (List.add_array2 ts us l) else raise Exit
-    | Patt(None,_,_), _ | _, Patt(None,_,_) -> assert false
     | TEnv _, _| _, TEnv _ -> assert false
     | Kind, Kind
     | Type, Type -> eq cfg l
@@ -154,18 +154,17 @@ let eq_modulo : (config -> term -> term) -> config -> term -> term -> bool =
       eq cfg (if a1 == a2 then l else List.add_array2 a1 a2 l)
     (* cases of failure *)
     | Kind, _ | _, Kind
-    | Type, _ | _, Type
-    | Patt _, _ | _, Patt _ -> raise Exit
+    | Type, _ | _, Type -> raise Exit
     | ((Symb f, (Vari _|Meta _|Prod _|Abst _))
       | ((Vari _|Meta _|Prod _|Abst _), Symb f)) when is_constant f ->
       raise Exit
     | _ ->
     let a = whnf cfg a and b = whnf cfg b in
-    (*if Logger.log_enabled () then log_conv "%a ≡ %a" term a term b;*)
+    if Logger.log_enabled () then log_conv "2: %a ≡ %a" term a term b;
     match a, b with
+    | Patt(None,_,_), _ | _, Patt(None,_,_) -> assert false
     | Patt(Some i,_,ts), Patt(Some j,_,us) ->
       if i=j then eq cfg (List.add_array2 ts us l) else raise Exit
-    | Patt(None,_,_), _ | _, Patt(None,_,_) -> assert false
     | TEnv _, _| _, TEnv _ -> assert false
     | Kind, Kind
     | Type, Type -> eq cfg l
