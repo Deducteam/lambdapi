@@ -520,7 +520,8 @@ let whnf : reducer = fun ?problem ?tags c t ->
   let u = whnf (Config.make ?problem ?tags c) t in
   let r = if Stdlib.(!steps = 0) then unfold t else u in
   (*if Logger.log_enabled () then
-    log_eval "whnf %a%a\n= %a" ctxt c term t term r; r*)
+    log_eval "whnf %a%a\n= %a" ctxt c term t term r;*)
+  r
 
 let whnf = time_reducer whnf
 
