@@ -3,11 +3,7 @@
 symbol G:TYPE;
 
 symbol *:G → G → G; notation * infix 10;
-
-// symbol 1:G;
 symbol e:G;
-
-//symbol ⁻¹:G → G; notation ⁻¹ postfix;
 symbol inv:G → G;
 
 rule ($x * $y) * $z ↪ $x * ($y * $z)
