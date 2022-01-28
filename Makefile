@@ -84,8 +84,8 @@ clean:
 	@dune clean
 	@$(MAKE) -C editors/emacs clean
 	@$(MAKE) -C editors/vscode clean
-	@rm -f tests/OK/*.lpo
 	@$(MAKE) -C Logic clean
+	@find . -type f -name "*.lpo" -exec rm {} \;
 
 .PHONY: distclean
 distclean: clean
@@ -97,7 +97,6 @@ distclean: clean
 	@cd libraries && ./dklib.sh clean
 	@cd libraries && ./zenon_modulo.sh clean
 	@find . -type f -name "*~" -exec rm {} \;
-	@find . -type f -name "*.lpo" -exec rm {} \;
 	@find . -type f -name "*.gv" -exec rm {} \;
 
 .PHONY: fullclean
