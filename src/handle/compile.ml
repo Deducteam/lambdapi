@@ -111,8 +111,8 @@ let compile_file : string -> Sign.t = fun fname ->
 let pure_apply_cfg :
   ?lm:Path.t*string -> ?st:Console.State.t -> ('a -> 'b) -> 'a -> 'b =
   fun ?lm ?st f x ->
-  let libmap = !lib_mappings in
-  let unif_rules = !(Unif_rule.equiv.sym_rules)
+  let libmap = !lib_mappings
+  and unif_rules = !(Unif_rule.equiv.sym_rules)
   and unif_dtree = !(Unif_rule.equiv.sym_dtree) in
   Console.State.push ();
   Option.iter Library.add_mapping lm;
