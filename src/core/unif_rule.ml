@@ -50,7 +50,3 @@ let rec unpack : term -> (term * term) list = fun eqs ->
 
 (** [mem s] is true iff [s] belongs to [sign]. *)
 let mem : sym -> bool = fun s -> s == equiv || s == cons
-
-(** [remove_rules()] removes the rules added on [equiv]. *)
-let remove_rules : unit -> unit = fun () ->
-  equiv.sym_rules := []; equiv.sym_dtree := Tree_type.empty_dtree

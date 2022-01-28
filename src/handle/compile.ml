@@ -4,7 +4,7 @@ open Lplib
 open Timed
 open Common open Error open Library
 open Parsing
-open Core open Sign
+open Core open Sign open Term
 
 (** [gen_obj] indicates whether we should generate object files when compiling
     source files. The default behaviour is not te generate them. *)
@@ -112,11 +112,17 @@ let pure_apply_cfg :
   ?lm:Path.t*string -> ?st:Console.State.t -> ('a -> 'b) -> 'a -> 'b =
   fun ?lm ?st f x ->
   let libmap = !lib_mappings in
+  let unif_rules = !(Unif_rule.equiv.sym_rules)
+  and unif_dtree = !(Unif_rule.equiv.sym_dtree) in
   Console.State.push ();
   Option.iter Library.add_mapping lm;
   Option.iter Console.State.apply st;
   let restore () =
-    Console.State.pop (); lib_mappings := libmap; Unif_rule.remove_rules() in
+    lib_mappings := libmap;
+    Unif_rule.equiv.sym_rules := unif_rules;
+    Unif_rule.equiv.sym_dtree := unif_dtree;
+    Console.State.pop ()
+  in
   try let res = f x in restore (); res
   with e -> restore (); raise e
 
