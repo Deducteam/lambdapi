@@ -126,11 +126,10 @@ let pure_apply_cfg :
   try let res = f x in restore (); res
   with e -> restore (); raise e
 
-(** /!\ For testing only. Pure wrappers around compilation
-   functions. Functions provided perform the same computations as the ones
-   defined earlier, but restore the state when they have finished. An optional
-   library mapping or state can be passed as argument to change the
-   settings. *)
+(** Pure wrappers around compilation functions. Functions provided perform the
+   same computations as the ones defined earlier, but restore the state when
+   they have finished. An optional library mapping or state can be passed as
+   argument to change the settings. *)
 let pure_compile :
   ?lm:Path.t*string -> ?st:Console.State.t -> bool -> Path.t -> Sign.t
   = fun ?lm ?st force mp ->
