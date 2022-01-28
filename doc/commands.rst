@@ -197,111 +197,9 @@ arguments must be explicitly given.
    // Hence, "eq t u", "eq [_] t u" and "@eq _ t u" are all valid and equivalent.
 
 **Notations**: Some notation can be declared for a symbol using the
- commands :ref:`notation` and :ref:`builtin`.
+commands :ref:`notation` and :ref:`builtin`.
 
-.. _rule:
-
-``rule``
---------
-
-Rewriting rules for definable symbols are declared using the ``rule``
-command.
-
-::
-
-   rule add zero      $n ↪ $n;
-   rule add (succ $n) $m ↪ succ (add $n $m);
-   rule mul zero      _  ↪ zero;
-
-Identifiers prefixed by ``$`` are pattern variables.
-
-User-defined rules are assumed to form a confluent (the order of rule
-applications is not important) and terminating (there is no infinite
-rewrite sequences) rewriting system when combined with
-β-reduction. The verification is left to the user. The user can
-however call external provers for trying to check those properties
-automatically using the :doc:`command line options <options>`
-``--confluence`` and ``--termination``.
-
-Rules must also preserve typing (subject-reduction property), that is,
-if an instance of a left-hand side has some type, then the
-corresponding instance of the right-hand side should have the same
-type. Lambdapi implements an algorithm trying to check this property
-automatically.
-
-**Higher-order pattern-matching**. Lambdapi allows higher-order
-pattern-matching on patterns à la Miller but modulo β-equivalence only
-(and not βη).
-
-::
-
-   rule diff (λx, sin $F.[x]) ↪ λx, diff (λx, $F.[x]) x × cos $F.[x];
-
-Patterns can contain abstractions ``λx, _`` and the user may attach an
-environment made of *distinct* bound variables to a pattern variable
-to indicate which bound variable can occur in the matched term. The
-environment is a semicolon-separated list of variables enclosed in
-square brackets preceded by a dot: ``.[x;y;...]``. For instance, a
-term of the form ``λx y,t`` matches the pattern ``λx y,$F.[x]`` only
-if ``y`` does not freely occur in ``t``.
-
-::
-
-   rule lam (λx, app $F.[] x) ↪ $F; // η-reduction
-
-Hence, the rule ``lam (λx, app $F.[] x) ↪ $F`` implements η-reduction
-since no valid instance of ``$F`` can contain ``x``.
-
-Pattern variables cannot appear at the head of an application:
-``$F.[] x`` is not allowed. The converse ``x $F.[]`` is allowed.
-
-A pattern variable ``$P.[]`` can be shortened to ``$P`` when there is no
-ambiguity, i.e. when the variable is not under a binder (unlike in the
-rule η above).
-
-It is possible to define an unnamed pattern variable with the syntax
-``$_.[x;y]``.
-
-The unnamed pattern variable ``_`` is always the most general: if ``x``
-and ``y`` are the only variables in scope, then ``_`` is equivalent to
-``$_.[x;y]``.
-
-In rule left-hand sides, λ-expressions cannot have type annotations.
-
-**Important**. In contrast to languages like OCaml, Coq, Agda, etc. rule
-left-hand sides can contain defined symbols:
-
-::
-
-   rule add (add x y) z ↪ add x (add y z);
-
-They can overlap:
-
-::
-
-   rule add zero x ↪ x
-   with add x zero ↪ x;
-
-And they can be non-linear:
-
-::
-
-   rule minus x x ↪ zero;
-
-Note that rewriting rules can also be defined simultaneously, using the
-``with`` keyword instead of the ``rule`` keyword for all but the first
-rule.
-
-::
-
-   rule add zero      $n ↪ $n
-   with add (succ $n) $m ↪ succ (add $n $m);
-
-Adding sets of rules allows to maintain confluence.
-
-Other examples of patterns are available in `patterns.lp <https://github.com/Deducteam/lambdapi/blob/master/tests/OK/patterns.lp>`__.
-
-.. _notation:
+ .. _notation:
 
 ``notation``
 ----------------
@@ -385,6 +283,113 @@ and ``"+1"`` as follows:
    builtin "0"  ≔ zero; // : N
    builtin "+1" ≔ succ; // : N → N
    type 42;
+
+.. _rule:
+
+``rule``
+--------
+
+Rewriting rules for definable symbols are declared using the ``rule``
+command.
+
+::
+
+   rule add zero      $n ↪ $n;
+   rule add (succ $n) $m ↪ succ (add $n $m);
+   rule mul zero      _  ↪ zero;
+
+Identifiers prefixed by ``$`` are pattern variables.
+
+User-defined rules are assumed to form a confluent (the order of rule
+applications is not important) and terminating (there is no infinite
+rewrite sequences) rewriting system when combined with β-reduction.
+
+The verification is left to the user, who can call external provers
+for trying to check those properties automatically using the
+:doc:`command line options <options>` ``--confluence`` and
+``--termination``.
+
+Lambdapi will however try to check at each ``rule`` command that the
+added rules preserve local confluence, by checking the joinability of
+critical pairs between the added rules and the rules already added in
+the signature (critical pairs involving AC symbols or non-nullary
+pattern variables are currently not checked). A warning is output if
+Lambdapi finds a non-joinable critical pair. To avoid such a warning,
+it may be useful to declare several rules in the same ``rule`` command
+by using the keyword ``with``:
+
+::
+
+   rule add zero      $n ↪ $n
+   with add (succ $n) $m ↪ succ (add $n $m);
+
+Rules must also preserve typing (subject-reduction property), that is,
+if an instance of a left-hand side has some type, then the
+corresponding instance of the right-hand side should have the same
+type. Lambdapi implements an algorithm trying to check this property
+automatically, and will not accept a rule if it does not pass this
+test.
+
+**Higher-order pattern-matching**. Lambdapi allows higher-order
+pattern-matching on patterns à la Miller but modulo β-equivalence only
+(and not βη).
+
+::
+
+   rule diff (λx, sin $F.[x]) ↪ λx, diff (λx, $F.[x]) x × cos $F.[x];
+
+Patterns can contain abstractions ``λx, _`` and the user may attach an
+environment made of *distinct* bound variables to a pattern variable
+to indicate which bound variable can occur in the matched term. The
+environment is a semicolon-separated list of variables enclosed in
+square brackets preceded by a dot: ``.[x;y;...]``. For instance, a
+term of the form ``λx y,t`` matches the pattern ``λx y,$F.[x]`` only
+if ``y`` does not freely occur in ``t``.
+
+::
+
+   rule lam (λx, app $F.[] x) ↪ $F; // η-reduction
+
+Hence, the rule ``lam (λx, app $F.[] x) ↪ $F`` implements η-reduction
+since no valid instance of ``$F`` can contain ``x``.
+
+Pattern variables cannot appear at the head of an application:
+``$F.[] x`` is not allowed. The converse ``x $F.[]`` is allowed.
+
+A pattern variable ``$P.[]`` can be shortened to ``$P`` when there is no
+ambiguity, i.e. when the variable is not under a binder (unlike in the
+rule η above).
+
+It is possible to define an unnamed pattern variable with the syntax
+``$_.[x;y]``.
+
+The unnamed pattern variable ``_`` is always the most general: if ``x``
+and ``y`` are the only variables in scope, then ``_`` is equivalent to
+``$_.[x;y]``.
+
+In rule left-hand sides, λ-expressions cannot have type annotations.
+
+**Important**. In contrast to languages like OCaml, Coq, Agda, etc. rule
+left-hand sides can contain defined symbols:
+
+::
+
+   rule add (add x y) z ↪ add x (add y z);
+
+They can overlap:
+
+::
+
+   rule add zero x ↪ x
+   with add x zero ↪ x;
+
+And they can be non-linear:
+
+::
+
+   rule minus x x ↪ zero;
+
+Other examples of patterns are available in `patterns.lp <https://github.com/Deducteam/lambdapi/blob/master/tests/OK/patterns.lp>`__.
 
 .. _unif_rule:
 
