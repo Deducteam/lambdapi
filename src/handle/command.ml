@@ -123,7 +123,7 @@ let handle_modifiers : p_modifier list -> prop * expo * match_strat =
 
 (** [check_rule ss syms r] checks rule [r] and returns the head symbol of the
    lhs and the rule itself. *)
-let check_rule : sig_state -> p_rule -> sym * rule = fun ss r ->
+let check_rule : sig_state -> p_rule -> sym_rule = fun ss r ->
   Console.out 3 (Color.cya "%a") Pos.pp r.pos;
   Console.out 4 "%a" (Pretty.rule "rule") r;
   let pr = scope_rule false ss r in
@@ -134,9 +134,9 @@ let check_rule : sig_state -> p_rule -> sym * rule = fun ss r ->
 
 (** [handle_rule ss syms r] checks rule [r], adds it in [ss] and returns the
    head symbol of the lhs and the rule itself. *)
-let add_rule : sig_state -> sym * rule -> unit = fun ss ((s,r) as x) ->
+let add_rule : sig_state -> sym_rule -> unit = fun ss ((s,r) as x) ->
   Sign.add_rule ss.signature s r;
-  Console.out 2 (Color.red "rule %a") rule x
+  Console.out 2 (Color.red "rule %a") sym_rule x
 
 (** [handle_inductive_symbol ss e p strat x xs a] handles the command
     [e p strat symbol x xs : a] with [ss] as the signature state.
@@ -219,7 +219,8 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
       (* Add rules in the signature. *)
       SymMap.iter (Sign.add_rules ss.signature) map;
       if !Console.verbose >= 2 then
-        List.iter (Console.out 2 (Color.red "rule %a") rule) (List.rev srs);
+        List.iter (Console.out 2 (Color.red "rule %a") sym_rule)
+          (List.rev srs);
       (* Update critical pair positions. *)
       sign.Sign.sign_cp_pos :=
         Tool.Lcr.update_cp_pos pos !(sign.Sign.sign_cp_pos) map;
@@ -239,7 +240,7 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
       let urule = Scope.rule_of_pre_rule pur in
       Sign.add_rule ss.signature Unif_rule.equiv urule;
       Tree.update_dtree Unif_rule.equiv [];
-      Console.out 2 "unif_rule %a" unif_rule (Unif_rule.equiv, urule);
+      Console.out 2 "unif_rule %a" unif_rule urule;
       (ss, None, None)
 
   | P_inductive(ms, params, p_ind_list) ->

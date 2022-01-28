@@ -33,8 +33,8 @@ open Lplib open Base open Extra
 let log_cp = Logger.make 'k' "lcr " "local confluence"
 let log_cp = log_cp.pp
 
-(** Function for printing a pair of terms as a rule. *)
-let rule : (term * term) pp = fun ppf (l,r) -> out ppf "%a ↪ %a" term l term r
+let rule_of_pair : (term * term) pp =
+  fun ppf (l,r) -> out ppf "%a ↪ %a" term l term r
 
 (** Type for pattern variable substitutions. *)
 type subs = term IntMap.t
@@ -42,14 +42,6 @@ type subs = term IntMap.t
 let subs : term IntMap.t pp =
   let var ppf i = if i >= 0 then out ppf "$%d" i else out ppf "$%d'" (-i-1) in
   D.map IntMap.iter var " ≔ " term "; "
-
-(** Type for a symbol with a rule. *)
-type sym_rule = sym * rule
-
-let lhs : sym_rule -> term = fun (s, r) -> add_args (mk_Symb s) r.lhs
-let rhs : sym_rule -> term = fun (_, r) -> LibTerm.term_of_rhs r
-
-let sym_rule : sym_rule pp = fun ppf r -> rule ppf (lhs r, rhs r)
 
 (** [is_ho r] says if [r] uses higher-order variables. *)
 let is_ho : rule -> bool = fun r -> Array.exists (fun i -> i > 0) r.arities
@@ -327,8 +319,8 @@ let check_cp_subterm_rule :
                      with %a@ \
                    t ↪%a %a@   \
                      with %a]"
-        term (apply_subs s l) term r1 rule (l,r)
-        subterm_pos p term r2 rule (g,d);
+        term (apply_subs s l) term r1 rule_of_pair (l,r)
+        subterm_pos p term r2 rule_of_pair (g,d);
     if not (Eval.eq_modulo [] r1 r2) then
       wrn pos "@[<v>Unjoinable critical pair:@ \
                t ≔ %a@ \
@@ -336,8 +328,8 @@ let check_cp_subterm_rule :
                  with %a@ \
                t ↪%a %a@   \
                  with %a]"
-        term (apply_subs s l) term r1 rule (l,r)
-        subterm_pos p term r2 rule (g,d)
+        term (apply_subs s l) term r1 rule_of_pair (l,r)
+        subterm_pos p term r2 rule_of_pair (g,d)
   | None -> ()
 
 (** [check_cp_subterms_rule pos sr1 sr2] checks the critical pairs between all

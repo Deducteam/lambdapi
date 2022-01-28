@@ -269,15 +269,14 @@ let rec prod : (term * bool list) pp = fun ppf (t, impl) ->
       out ppf "Π %a: %a, %a" var x term a prod (b, impl)
   | _ -> term ppf t
 
-let rule : (sym * rule) pp = fun ppf (s,r) ->
-  let lhs = add_args (mk_Symb s) r.lhs in
-  let (_, rhs) = Bindlib.unmbind r.rhs in
-  out ppf "%a ↪ %a" term lhs term rhs
+let sym_rule : sym_rule pp = fun ppf r ->
+  out ppf "%a ↪ %a" term (lhs r) term (rhs r)
 
-let unif_rule : (sym * rule) pp = fun ppf (s,r) ->
-  let lhs = add_args (mk_Symb s) r.lhs in
-  let (_, rhs) = Bindlib.unmbind r.rhs in
-  out ppf "%a ↪ [ %a ]" term lhs term rhs
+let rule_of : sym -> rule pp = fun s ppf r -> sym_rule ppf (s,r)
+
+let unif_rule : rule pp = rule_of Unif_rule.equiv
+
+let rules_of : sym pp = fun ppf s -> D.list (rule_of s) ppf !(s.sym_rules)
 
 (* ends with a space if [!print_contexts = true] *)
 let ctxt : ctxt pp = fun ppf ctx ->

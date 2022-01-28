@@ -95,20 +95,16 @@ and print_type : int -> string -> term pp = fun i s ppf t ->
    the symbol [s]), to [ppf]. *)
 let print_rule : Format.formatter -> int -> sym -> rule -> unit =
   fun ppf i s r ->
-  (* Print the rewriting rule. *)
-  let lhs = add_args (mk_Symb s) r.lhs in
+  let x = s,r in let lhs = lhs x and rhs = rhs x in
   out ppf "<rule>@.<lhs>@.%a</lhs>@." (print_term i s.sym_name) lhs;
-  let rhs = LibTerm.term_of_rhs r in
   out ppf "<rhs>@.%a</rhs>@.</rule>@." (print_term i s.sym_name) rhs
 
 (** [print_tl_rule] is identical to [print_rule] but for type-level rule  *)
 let print_tl_rule : Format.formatter -> int -> sym -> rule -> unit =
   fun ppf i s r ->
-  (* Print the type level rewriting rule. *)
-  let lhs = add_args (mk_Symb s) r.lhs in
+  let x = s,r in let lhs = lhs x and rhs = rhs x in
   out ppf "<typeLevelRule>@.<TLlhs>@.%a</TLlhs>@."
     (print_type i s.sym_name) lhs;
-  let rhs = LibTerm.term_of_rhs r in
   out ppf "<TLrhs>@.%a</TLrhs>@.</typeLevelRule>@."
     (print_type i s.sym_name) rhs
 

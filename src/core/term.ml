@@ -763,3 +763,23 @@ let subterm_pos : subterm_pos pp = fun ppf l -> D.(list int) ppf (List.rev l)
 
 (** Type of critical pair positions (l,r,p,l_p). *)
 type cp_pos = term * term * subterm_pos * term
+
+(** [term_of_rhs r] converts the RHS (right hand side) of the rewriting rule
+    [r] into a term. The bound higher-order variables of the original RHS are
+    substituted using [Patt] constructors. They are thus represented as their
+    LHS counterparts. This is a more convenient way of representing terms when
+    analysing confluence or termination. *)
+let term_of_rhs : rule -> term = fun r ->
+  let fn i x =
+    let (name, arity) = (Bindlib.name_of x, r.arities.(i)) in
+    let vars = Array.init arity (new_tvar_ind "x") in
+    let p = _Patt (Some i) name (Array.map _Vari vars) in
+    TE_Some(Bindlib.unbox (Bindlib.bind_mvar vars p))
+  in
+  Bindlib.msubst r.rhs (Array.mapi fn r.vars)
+
+(** Type of a symbol and a rule. *)
+type sym_rule = sym * rule
+
+let lhs : sym_rule -> term = fun (s, r) -> add_args (mk_Symb s) r.lhs
+let rhs : sym_rule -> term = fun (_, r) -> term_of_rhs r

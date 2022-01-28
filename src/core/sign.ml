@@ -122,19 +122,16 @@ let link : t -> unit = fun sign ->
   let f _ s =
     s.sym_type := link_term !(s.sym_type);
     s.sym_def := Option.map link_term !(s.sym_def);
-    s.sym_rules := List.map link_rule !(s.sym_rules)
-    (* s.sym_dtree is recomputed a few lines below. *)
+    s.sym_rules := List.map link_rule !(s.sym_rules);
+    Tree.update_dtree s []
   in
   StrMap.iter f !(sign.sign_symbols);
   let f mp sm =
     let sign = Path.Map.find mp !loaded in
     let g n rs =
       let s = find sign n in
-      s.sym_rules := !(s.sym_rules) @ List.map link_rule rs
-      (* /!\ The update of s.sym_dtree is not done here but later as a side
-         effect of link (dtree update of sign_symbols below) since
-         dependencies are recompiled or loaded and, in case a dependency is
-         loaded, it is linked too. *)
+      s.sym_rules := !(s.sym_rules) @ List.map link_rule rs;
+      Tree.update_dtree s []
     in
     StrMap.iter g sm
   in
@@ -143,7 +140,6 @@ let link : t -> unit = fun sign ->
   sign.sign_notations :=
     SymMap.fold (fun s n m -> SymMap.add (link_symb s) n m)
       !(sign.sign_notations) SymMap.empty;
-  StrMap.iter (fun _ s -> Tree.update_dtree s []) !(sign.sign_symbols);
   let link_ind_data i =
     { ind_cons = List.map link_symb i.ind_cons;
       ind_prop = link_symb i.ind_prop; ind_nb_params = i.ind_nb_params;
@@ -320,8 +316,9 @@ let read =
   Debug.(record_time Reading (fun () -> r := read n)); !r
 
 (** [add_rule sign sym r] adds the new rule [r] to the symbol [sym].  When the
-    rule does not correspond to a symbol of signature [sign],  it is stored in
-    its dependencies. *)
+   rule does not correspond to a symbol of signature [sign], it is stored in
+   its dependencies. /!\ does not update the decision tree or the critical
+   pairs. *)
 let add_rule : t -> sym -> rule -> unit = fun sign sym r ->
   sym.sym_rules := !(sym.sym_rules) @ [r];
   if sym.sym_path <> sign.sign_path then
@@ -332,7 +329,8 @@ let add_rule : t -> sym -> rule -> unit = fun sign sym r ->
 
 (** [add_rules sign sym rs] adds the new rules [rs] to the symbol [sym]. When
    the rules do not correspond to a symbol of signature [sign], they are
-   stored in its dependencies. *)
+   stored in its dependencies. /!\ does not update the decision tree or the
+   critical pairs. *)
 let add_rules : t -> sym -> rule list -> unit = fun sign sym rs ->
   sym.sym_rules := !(sym.sym_rules) @ rs;
   if sym.sym_path <> sign.sign_path then

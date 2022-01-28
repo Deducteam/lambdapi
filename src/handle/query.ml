@@ -104,7 +104,7 @@ let handle : Sig_state.t -> proof_state option -> p_query -> result =
           match !(s.sym_rules) with
           | [] -> ()
           | r::rs ->
-            let rule ppf r = rule ppf (s,r) in
+            let rule ppf r = sym_rule ppf (s,r) in
             let with_rule ppf r = out ppf "@.with %a" rule r in
             out ppf "rule %a%a;@." rule r (List.pp with_rule "") rs
         in

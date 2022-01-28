@@ -141,6 +141,7 @@ let rec inverse : sym -> term -> term = fun s v ->
   | _ -> raise Not_found
 
 let inverse : sym -> term -> term = fun s v ->
-  let t = inverse s v in
-  if Eval.eq_modulo [] (mk_Appl(mk_Symb s,t)) v then t
-  else raise Not_found
+  let t = inverse s v in let v' = mk_Appl(mk_Symb s,t) in
+  if Eval.eq_modulo [] v' v then t
+  else (if Logger.log_enabled() then log_inv "%a ≢ %a@" term v' term v;
+        raise Not_found)
