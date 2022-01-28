@@ -4,7 +4,7 @@ open Lplib
 open Timed
 open Common open Error open Library
 open Parsing
-open Core open Sign
+open Core open Sign open Term
 
 (** [gen_obj] indicates whether we should generate object files when compiling
     source files. The default behaviour is not te generate them. *)
@@ -104,40 +104,39 @@ let compile_file : string -> Sign.t = fun fname ->
   (* Run compilation. *)
   compile Stdlib.(!recompile) mp
 
-open Console
+(** [pure_apply_cfg ?lm ?st f] is function [f] but pure (without side
+   effects). The side effects taken into account occur in
+   {!val:Console.State.t} and {!val:Library.lib_mappings}. Arguments [?lm]
+   allows to set the library mappings and [?st] sets the state. *)
+let pure_apply_cfg :
+  ?lm:Path.t*string -> ?st:Console.State.t -> ('a -> 'b) -> 'a -> 'b =
+  fun ?lm ?st f x ->
+  let libmap = !lib_mappings
+  and unif_rules = !(Unif_rule.equiv.sym_rules)
+  and unif_dtree = !(Unif_rule.equiv.sym_dtree) in
+  Console.State.push ();
+  Option.iter Library.add_mapping lm;
+  Option.iter Console.State.apply st;
+  let restore () =
+    lib_mappings := libmap;
+    Unif_rule.equiv.sym_rules := unif_rules;
+    Unif_rule.equiv.sym_dtree := unif_dtree;
+    Console.State.pop ()
+  in
+  try let res = f x in restore (); res
+  with e -> restore (); raise e
 
-(** Pure wrappers around compilation functions. Functions provided perform the
-    same computations as the ones defined earlier, but restores the state when
-    they have finished. An optional library mapping or state can be passed as
-    argument to change the settings. *)
-module Pure : sig
-  val compile : ?lm:Path.t*string -> ?st:State.t -> bool -> Path.t -> Sign.t
-  val compile_file : ?lm:Path.t*string -> ?st:State.t -> string -> Sign.t
-end = struct
-
-  (* [pure_apply_cfg ?lm ?st f] is function [f] but pure (without side
-     effects). The side effects taken into account occur in {!val:State.t} and
-     {!val:Library.lib_mappings}. Arguments [?lm] allows to set the library
-     mappings and [?st] sets the state. *)
-  let pure_apply_cfg :
-        ?lm:Path.t*string -> ?st:State.t -> ('a -> 'b) -> 'a -> 'b =
-    fun ?lm ?st f x ->
-    let libmap = !lib_mappings in
-    State.push ();
-    Option.iter Library.add_mapping lm;
-    Option.iter State.apply st;
-    let restore () =
-      State.pop ();
-      lib_mappings := libmap
-    in
-    try
-      let res = f x in
-      restore (); res
-    with e -> restore (); raise e
-
-  let compile ?lm ?st force mp =
+(** /!\ For testing only. Pure wrappers around compilation
+   functions. Functions provided perform the same computations as the ones
+   defined earlier, but restore the state when they have finished. An optional
+   library mapping or state can be passed as argument to change the
+   settings. *)
+let pure_compile :
+  ?lm:Path.t*string -> ?st:Console.State.t -> bool -> Path.t -> Sign.t
+  = fun ?lm ?st force mp ->
     let f (force, mp) = compile force mp in
     pure_apply_cfg ?lm ?st f (force, mp)
 
-  let compile_file ?lm ?st = pure_apply_cfg ?lm ?st compile_file
-end
+let pure_compile_file :
+  ?lm:Path.t*string -> ?st:Console.State.t -> string -> Sign.t
+  = fun ?lm ?st -> pure_apply_cfg ?lm ?st compile_file
