@@ -182,7 +182,7 @@ let to_XTC : Format.formatter -> Sign.t -> unit = fun ppf sign ->
   let iter_symbols : (sym -> unit) -> unit = fun fn ->
     (* Iterate on all symbols of a signature, excluding ghost symbols. *)
     let iter_symbols sign =
-      let not_on_ghosts _ s = if not (Unif_rule.is_ghost s) then fn s in
+      let not_on_ghosts _ s = if not (Unif_rule.mem s) then fn s in
       StrMap.iter not_on_ghosts Sign.(!(sign.sign_symbols))
     in
     List.iter (fun (_, sign) -> iter_symbols sign) deps
