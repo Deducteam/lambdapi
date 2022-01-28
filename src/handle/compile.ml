@@ -111,16 +111,18 @@ let compile_file : string -> Sign.t = fun fname ->
 let pure_apply_cfg :
   ?lm:Path.t*string -> ?st:Console.State.t -> ('a -> 'b) -> 'a -> 'b =
   fun ?lm ?st f x ->
-  let libmap = !lib_mappings
+  let lib_mappings = !Library.lib_mappings
   and unif_rules = !(Unif_rule.equiv.sym_rules)
-  and unif_dtree = !(Unif_rule.equiv.sym_dtree) in
+  and unif_dtree = !(Unif_rule.equiv.sym_dtree)
+  and unif_cp_pos = !(Unif_rule.sign.sign_cp_pos) in
   Console.State.push ();
   Option.iter Library.add_mapping lm;
   Option.iter Console.State.apply st;
   let restore () =
-    lib_mappings := libmap;
+    Library.lib_mappings := lib_mappings;
     Unif_rule.equiv.sym_rules := unif_rules;
     Unif_rule.equiv.sym_dtree := unif_dtree;
+    Unif_rule.sign.sign_cp_pos := unif_cp_pos;
     Console.State.pop ()
   in
   try let res = f x in restore (); res

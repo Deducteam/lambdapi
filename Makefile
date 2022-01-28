@@ -30,7 +30,8 @@ lib:
 
 .PHONY: tests
 tests: bin
-	@dune exec --only-packages lambdapi -- tests/runtests.sh
+#	@dune exec --only-packages lambdapi -- tests/runtests.sh
+	@dune runtest
 	@dune exec --only-packages lambdapi -- tests/dtrees.sh
 	@dune exec --only-packages lambdapi -- tests/export_dk.sh
 	@dune exec --only-packages lambdapi -- tests/export_lp.sh
