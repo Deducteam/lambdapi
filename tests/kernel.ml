@@ -10,7 +10,7 @@ let open_sign_default () =
   (* Check that by default, [Sig_state.of_sign s] opens [s] *)
   let sign = Sig_state.create_sign [ "dummy" ] in
   let _ =
-    Sign.add_symbol sign Term.Public Term.Defin Term.Eager false
+    Sign.add_symbol sign Term.Public Term.Defin Term.Eager `None
       (Pos.none "foo") Term.mk_Type []
   in
   let ss = Sig_state.of_sign sign in
