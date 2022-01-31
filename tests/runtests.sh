@@ -6,7 +6,6 @@ TIMEFORMAT="%Es"
 out=/tmp/lambdapi.output
 
 ok_tests() {
-    echo "############ OK tests$header ############" 
     for f in 'tests/OK/a b/escape file.lp' tests/OK/*.lp tests/OK/*.dk
     do
         echo lambdapi check $options $f ...
@@ -14,11 +13,6 @@ ok_tests() {
         if test $? -ne 0; then cat $out; exit 1; fi
     done
 }
-rm -f 'tests/OK/a b/escape file.lpo' tests/OK/*.lpo
-time ok_tests
-options='-c'
-header=" with options: $options"
-time ok_tests
 
 ko_tests() {
     echo '############ KO tests ############' 
@@ -29,4 +23,13 @@ ko_tests() {
         if test $? -eq 0; then cat $out; exit 1; fi
     done
 }
-time ko_tests
+
+rm -f 'tests/OK/a b/escape file.lpo' tests/OK/*.lpo
+
+echo "############ compile tests/OK files ############"
+options='-c'
+time ok_tests
+
+echo "############ load tests/OK files ############"
+options=''
+time ok_tests
