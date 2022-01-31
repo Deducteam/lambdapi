@@ -438,7 +438,7 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
               (* We admit all the remaining typing goals. *)
               let admit_goal ss g =
                 match g with
-                | Unif _ -> fatal pos "Remaining unification goals."
+                | Unif _ -> fatal pos "Cannot admit unification goals."
                 | Typ gt ->
                   let m = gt.goal_meta in
                   match !(m.meta_value) with
