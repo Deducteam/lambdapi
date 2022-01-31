@@ -159,17 +159,3 @@ let sym_to_var : tvar StrMap.t -> term -> term = fun map ->
     let (x,b) = Bindlib.unbind b in
     Bindlib.unbox (Bindlib.bind_var x (lift (to_var b)))
   in fun t -> if StrMap.is_empty map then t else to_var t
-
-(** [term_of_rhs r] converts the RHS (right hand side) of the rewriting rule
-    [r] into a term. The bound higher-order variables of the original RHS are
-    substituted using [Patt] constructors. They are thus represented as their
-    LHS counterparts. This is a more convenient way of representing terms when
-    analysing confluence or termination. *)
-let term_of_rhs : rule -> term = fun r ->
-  let fn i x =
-    let (name, arity) = (Bindlib.name_of x, r.arities.(i)) in
-    let vars = Array.init arity (new_tvar_ind "x") in
-    let p = _Patt (Some i) name (Array.map _Vari vars) in
-    TE_Some(Bindlib.unbox (Bindlib.bind_mvar vars p))
-  in
-  Bindlib.msubst r.rhs (Array.mapi fn r.vars)

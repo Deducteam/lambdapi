@@ -125,7 +125,7 @@ let eq_modulo : (config -> term -> term) -> config -> term -> term -> bool =
     match l with
     | [] -> ()
     | (a,b)::l ->
-    (*if Logger.log_enabled () then log_conv "%a ≡ %a" term a term b;*)
+    (*if Logger.log_enabled () then log_conv "1: %a ≡ %a" term a term b;*)
     let a = Config.unfold cfg a and b = Config.unfold cfg b in
     if a == b then eq cfg l else
     match a, b with
@@ -135,7 +135,9 @@ let eq_modulo : (config -> term -> term) -> config -> term -> term -> bool =
     | _, LLet(_,t,u) ->
       let x,u = Bindlib.unbind u in
       eq {cfg with varmap = VarMap.add x t cfg.varmap} ((a,u)::l)
-    | Patt _, _ | _, Patt _
+    | Patt(None,_,_), _ | _, Patt(None,_,_) -> assert false
+    | Patt(Some i,_,ts), Patt(Some j,_,us) ->
+      if i=j then eq cfg (List.add_array2 ts us l) else raise Exit
     | TEnv _, _| _, TEnv _ -> assert false
     | Kind, Kind
     | Type, Type -> eq cfg l
@@ -152,16 +154,17 @@ let eq_modulo : (config -> term -> term) -> config -> term -> term -> bool =
       eq cfg (if a1 == a2 then l else List.add_array2 a1 a2 l)
     (* cases of failure *)
     | Kind, _ | _, Kind
-    | Type, _ | _, Type
-      -> raise Exit
+    | Type, _ | _, Type -> raise Exit
     | ((Symb f, (Vari _|Meta _|Prod _|Abst _))
       | ((Vari _|Meta _|Prod _|Abst _), Symb f)) when is_constant f ->
       raise Exit
     | _ ->
     let a = whnf cfg a and b = whnf cfg b in
-    (*if Logger.log_enabled () then log_conv "%a ≡ %a" term a term b;*)
+    (*if Logger.log_enabled () then log_conv "2: %a ≡ %a" term a term b;*)
     match a, b with
-    | Patt _, _ | _, Patt _
+    | Patt(None,_,_), _ | _, Patt(None,_,_) -> assert false
+    | Patt(Some i,_,ts), Patt(Some j,_,us) ->
+      if i=j then eq cfg (List.add_array2 ts us l) else raise Exit
     | TEnv _, _| _, TEnv _ -> assert false
     | Kind, Kind
     | Type, Type -> eq cfg l
@@ -202,7 +205,7 @@ let rec whnf : config -> term -> term = fun cfg t ->
   let u, stk = whnf_stk cfg t [] in
   let r = if Stdlib.(!steps) <> n then add_args u stk else unfold t in
   (*if Logger.log_enabled () then
-    log_eval "whnf %a%a = %a" ctxt c.context term t term r;*)
+    log_eval "whnf %a%a = %a" ctxt cfg.context term t term r;*)
   r
 
 (** [whnf_stk cfg t stk] computes a whnf of [add_args t stk] wrt
@@ -210,7 +213,7 @@ let rec whnf : config -> term -> term = fun cfg t ->
 and whnf_stk : config -> term -> stack -> term * stack = fun cfg t stk ->
   (*if Logger.log_enabled () then
     log_eval "whnf_stk %a%a %a"
-      ctxt c.context term t (D.list term) stk;*)
+      ctxt cfg.context term t (D.list term) stk;*)
   let t = unfold t in
   match t, stk with
   | Appl(f,u), stk -> whnf_stk cfg f (to_tref u::stk)
@@ -453,13 +456,13 @@ and tree_walk : config -> dtree -> stack -> (term * stack) option =
               end
           | Kind
           | Type
+          | Patt _
           | Meta(_, _) -> default ()
           | Plac _     -> assert false
              (* Should not appear in typechecked terms. *)
           | TRef(_)    -> assert false (* Should be reduced by [whnf_stk]. *)
           | Appl(_)    -> assert false (* Should be reduced by [whnf_stk]. *)
           | LLet(_)    -> assert false (* Should be reduced by [whnf_stk]. *)
-          | Patt(_)    -> assert false (* Should not appear in terms. *)
           | TEnv(_)    -> assert false (* Should not appear in terms. *)
           | Wild       -> assert false (* Should not appear in terms. *)
   in
@@ -517,7 +520,8 @@ let whnf : reducer = fun ?problem ?tags c t ->
   let u = whnf (Config.make ?problem ?tags c) t in
   let r = if Stdlib.(!steps = 0) then unfold t else u in
   (*if Logger.log_enabled () then
-    log_eval "whnf %a%a\n= %a" ctxt c term t term r;*) r
+    log_eval "whnf %a%a\n= %a" ctxt c term t term r;*)
+  r
 
 let whnf = time_reducer whnf
 

@@ -76,6 +76,10 @@ let export_cmd : Config.t -> string -> unit = fun cfg file ->
     match cfg.output with
     | Some Lp | None -> Pretty.ast Format.std_formatter cmds
     | Some Dk -> Export.Dk.sign (Compile.compile_file file)
+    | Some Hrs ->
+      Export.Hrs.to_HRS Format.std_formatter (Compile.compile_file file)
+    | Some Xtc ->
+      Export.Xtc.to_XTC Format.std_formatter (Compile.compile_file file)
   in Error.handle_exceptions run
 
 (** Running the LSP server. *)

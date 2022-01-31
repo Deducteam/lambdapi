@@ -29,55 +29,55 @@
 
 (COMMENT rewriting rules)
 (VAR
-  $v0_b : term
+  $0 : term
 )
-(RULES app(app(c_tests_OK_bool_bool_and,c_tests_OK_bool_true),$v0_b)
-    -> $v0_b)
-(VAR
-  $v0 : term
-)
-(RULES app(app(c_tests_OK_bool_bool_and,c_tests_OK_bool_false),$v0)
+(RULES app(app(c_tests_OK_bool_bool_and,$0),c_tests_OK_bool_false)
     -> c_tests_OK_bool_false)
 (VAR
-  $v0_b : term
+  $0 : term
 )
-(RULES app(app(c_tests_OK_bool_bool_and,$v0_b),c_tests_OK_bool_true)
-    -> $v0_b)
+(RULES app(app(c_tests_OK_bool_bool_and,$0),c_tests_OK_bool_true)
+    -> $0)
 (VAR
-  $v0 : term
+  $0 : term
 )
-(RULES app(app(c_tests_OK_bool_bool_and,$v0),c_tests_OK_bool_false)
+(RULES app(app(c_tests_OK_bool_bool_and,c_tests_OK_bool_false),$0)
     -> c_tests_OK_bool_false)
+(VAR
+  $0 : term
+)
+(RULES app(app(c_tests_OK_bool_bool_and,c_tests_OK_bool_true),$0)
+    -> $0)
 (VAR
   a : term
   b : term
 )
 (RULES c_tests_OK_bool_bool_impl
     -> lam(c_tests_OK_bool_B,\a.lam(c_tests_OK_bool_B,\b.app(app(c_tests_OK_bool_bool_or,b),app(c_tests_OK_bool_bool_neg,a)))))
-(RULES app(c_tests_OK_bool_bool_neg,c_tests_OK_bool_true)
-    -> c_tests_OK_bool_false)
 (RULES app(c_tests_OK_bool_bool_neg,c_tests_OK_bool_false)
     -> c_tests_OK_bool_true)
+(RULES app(c_tests_OK_bool_bool_neg,c_tests_OK_bool_true)
+    -> c_tests_OK_bool_false)
 (VAR
-  $v0 : term
+  $0 : term
 )
-(RULES app(app(c_tests_OK_bool_bool_or,c_tests_OK_bool_true),$v0)
+(RULES app(app(c_tests_OK_bool_bool_or,$0),c_tests_OK_bool_false)
+    -> $0)
+(VAR
+  $0 : term
+)
+(RULES app(app(c_tests_OK_bool_bool_or,$0),c_tests_OK_bool_true)
     -> c_tests_OK_bool_true)
 (VAR
-  $v0_b : term
+  $0 : term
 )
-(RULES app(app(c_tests_OK_bool_bool_or,c_tests_OK_bool_false),$v0_b)
-    -> $v0_b)
+(RULES app(app(c_tests_OK_bool_bool_or,c_tests_OK_bool_false),$0)
+    -> $0)
 (VAR
-  $v0 : term
+  $0 : term
 )
-(RULES app(app(c_tests_OK_bool_bool_or,$v0),c_tests_OK_bool_true)
+(RULES app(app(c_tests_OK_bool_bool_or,c_tests_OK_bool_true),$0)
     -> c_tests_OK_bool_true)
-(VAR
-  $v0_b : term
-)
-(RULES app(app(c_tests_OK_bool_bool_or,$v0_b),c_tests_OK_bool_false)
-    -> $v0_b)
 (VAR
   a : term
   b : term

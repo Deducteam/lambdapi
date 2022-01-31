@@ -5,11 +5,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## Unreleased
 
+### Added
+
+- Incremental local confluence checking for non higher-order and non AC rules.
+- Add options -o hrs and -o xtc to the export command.
+
 ### Changed
 
 - `whnf` function takes a problem as argument and a list of tags that configure
   the rewriting. Tags may block beta reduction, block definition expansion or
   block rewriting.
+- Do not print empty term environments `.[]`.
+- Allow users to use the pattern variables `$0`, `$1`, etc. and internally name pattern variables by their index.
+- Fixed debug flag printing in Pretty.
 
 ### Removed
 

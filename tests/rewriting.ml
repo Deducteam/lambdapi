@@ -36,7 +36,7 @@ let arrow_matching () =
   (* Matching on a product. *)
   let rule = parse_rule "rule C (A → A) ↪ Ok;" in
   Sign.add_rule sig_state.signature c rule;
-  Tree.update_dtree c;
+  Tree.update_dtree c [];
   let lhs = parse_term "C (A → A)" |> scope_term sig_state in
   Alcotest.(check bool)
     "ok"
@@ -49,7 +49,7 @@ let arrow_matching = Timed.pure_apply arrow_matching
 let prod_matching () =
   let rule = parse_rule "rule C (Π _: _, A) ↪ Ok;" in
   Sign.add_rule sig_state.signature c rule;
-  Tree.update_dtree c;
+  Tree.update_dtree c [];
   let lhs = parse_term "C (A → A)" |> scope_term sig_state in
   Alcotest.(check bool)
     "ok"
@@ -62,7 +62,7 @@ let arrow_default () =
   (* Assert that a product can be considered as a default case. *)
   let rule = parse_rule "rule C _ ↪ Ok;" in
   Sign.add_rule sig_state.signature  c rule;
-  Tree.update_dtree c;
+  Tree.update_dtree c [];
   let lhs = parse_term "C (A → A)" |> scope_term sig_state in
   Alcotest.(check bool)
     "Ok"

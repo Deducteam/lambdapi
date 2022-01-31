@@ -500,3 +500,25 @@ val lift : term -> tbox
    the names of bound variables are updated. This is useful to avoid any form
    of "visual capture" while printing terms. *)
 val cleanup : term -> term
+
+(** Positions in terms in reverse order. The i-th argument of a constructor
+   has position i-1. *)
+type subterm_pos = int list
+
+val subterm_pos : subterm_pos pp
+
+(** Type of critical pair positions (l,r,p,l_p). *)
+type cp_pos = term * term * subterm_pos * term
+
+(** [term_of_rhs r] converts the RHS (right hand side) of the rewriting rule
+    [r] into a term. The bound higher-order variables of the original RHS are
+    substituted using [Patt] constructors. They are thus represented as their
+    LHS counterparts. This is a more convenient way of representing terms when
+    analysing confluence or termination. *)
+val term_of_rhs : rule -> term
+
+(** Type of a symbol and a rule. *)
+type sym_rule = sym * rule
+
+val lhs : sym_rule -> term
+val rhs : sym_rule -> term

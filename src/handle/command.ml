@@ -121,21 +121,22 @@ let handle_modifiers : p_modifier list -> prop * expo * match_strat =
   in
   (prop, expo, strat)
 
-(** [handle_rule ss syms r] checks rule [r], adds it in [ss] and returns the
-   set [syms] extended with the symbol [s] defined by [r]. However, it does
-   not update the decision tree of [s]. *)
-let handle_rule : sig_state -> p_rule -> sym = fun ss r ->
+(** [check_rule ss syms r] checks rule [r] and returns the head symbol of the
+   lhs and the rule itself. *)
+let check_rule : sig_state -> p_rule -> sym_rule = fun ss r ->
   Console.out 3 (Color.cya "%a") Pos.pp r.pos;
   Console.out 4 "%a" (Pretty.rule "rule") r;
   let pr = scope_rule false ss r in
   let s = pr.elt.pr_sym in
   if !(s.sym_def) <> None then
-    fatal pr.pos "No rewriting rule can be given on the defined symbol %a."
-      sym s;
-  let r = Tool.Sr.check_rule pr in
+    fatal pr.pos "No rewriting rule can be given on a defined symbol.";
+  s, Tool.Sr.check_rule pr
+
+(** [handle_rule ss syms r] checks rule [r], adds it in [ss] and returns the
+   head symbol of the lhs and the rule itself. *)
+let add_rule : sig_state -> sym_rule -> unit = fun ss ((s,r) as x) ->
   Sign.add_rule ss.signature s r;
-  Console.out 2 (Color.red "rule %a") rule (s,r);
-  s
+  Console.out 2 (Color.red "rule %a") sym_rule x
 
 (** [handle_inductive_symbol ss e p strat x xs a] handles the command
     [e p strat symbol x xs : a] with [ss] as the signature state.
@@ -200,9 +201,29 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
   | P_require_as(p,id) -> (handle_require_as compile ss p id, None, None)
   | P_open(ps) -> (List.fold_left handle_open ss ps, None, None)
   | P_rules(rs) ->
-      let handle_rule syms r = SymSet.add (handle_rule ss r) syms in
-      let syms = List.fold_left handle_rule SymSet.empty rs in
-      SymSet.iter Tree.update_dtree syms;
+    (* Scope rules, and check that they preserve typing. Return the list of
+       rules [srs] and also a map [map] mapping every symbol defined by a rule
+       of [srs] to its defining rules. *)
+      let handle_rule (srs, map) r =
+        let (s,r) as sr = check_rule ss r in
+        let h = function Some rs -> Some(r::rs) | None -> Some[r] in
+        sr::srs, SymMap.update s h map
+      in
+      let srs, map = List.fold_left handle_rule ([], SymMap.empty) rs in
+      (* /!\ Update decision trees without adding the rules themselves. It is
+         important for local confluence checking. *)
+      SymMap.iter Tree.update_dtree map;
+      let sign = ss.signature in
+      (* Local confluence checking. *)
+      Tool.Lcr.check_cps pos sign srs map;
+      (* Add rules in the signature. *)
+      SymMap.iter (Sign.add_rules ss.signature) map;
+      if !Console.verbose >= 2 then
+        List.iter (Console.out 2 (Color.red "rule %a") sym_rule)
+          (List.rev srs);
+      (* Update critical pair positions. *)
+      sign.Sign.sign_cp_pos :=
+        Tool.Lcr.update_cp_pos pos !(sign.Sign.sign_cp_pos) map;
       (ss, None, None)
   | P_builtin(n,qid) ->
       let s = find_sym ~prt:true ~prv:true ss qid in
@@ -218,8 +239,8 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
       let pur = scope_rule true ss h in
       let urule = Scope.rule_of_pre_rule pur in
       Sign.add_rule ss.signature Unif_rule.equiv urule;
-      Tree.update_dtree Unif_rule.equiv;
-      Console.out 2 "unif_rule %a" unif_rule (Unif_rule.equiv, urule);
+      Tree.update_dtree Unif_rule.equiv [];
+      Console.out 2 "unif_rule %a" unif_rule urule;
       (ss, None, None)
 
   | P_inductive(ms, params, p_ind_list) ->
@@ -303,8 +324,8 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
       (* Add recursor rules in the signature. *)
       with_no_wrn
         (Inductive.iter_rec_rules pos ind_list vs ind_pred_map)
-        (fun r -> ignore (handle_rule ss r));
-      List.iter Tree.update_dtree rec_sym_list;
+        (fun r -> add_rule ss (check_rule ss r));
+      List.iter (fun s -> Tree.update_dtree s []) rec_sym_list;
       (* Store the inductive structure in the signature *)
       let ind_nb_types = List.length ind_list in
       List.iter2

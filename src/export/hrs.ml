@@ -78,9 +78,7 @@ let print_rule : Format.formatter -> term -> term -> unit =
 (** [print_sym_rule ppf s r] outputs the rule declaration corresponding [r]
    (on the symbol [s]), to [ppf]. *)
 let print_sym_rule : Format.formatter -> sym -> rule -> unit = fun ppf s r ->
-  let lhs = add_args (mk_Symb s) r.lhs in
-  let rhs = LibTerm.term_of_rhs r in
-  print_rule ppf lhs rhs
+  let x = s,r in print_rule ppf (lhs x) (rhs x)
 
 (** [to_HRS ppf sign] outputs a TPDB representation of the rewriting system of
     the signature [sign] to [ppf]. *)

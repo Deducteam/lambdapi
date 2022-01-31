@@ -28,16 +28,14 @@ lib:
 
 #### Unit tests and sanity check #############################################
 
-OK_TESTFILES = $(sort $(wildcard tests/OK/*.dk tests/OK/*.lp))
-KO_TESTFILES = $(sort $(wildcard tests/KO/*.dk tests/KO/*.lp))
-
 .PHONY: tests
 tests: bin
-	@dune runtest --only-packages lambdapi
+#	@dune exec --only-packages lambdapi -- tests/runtests.sh
+	@dune runtest
 	@dune exec --only-packages lambdapi -- tests/dtrees.sh
 	@dune exec --only-packages lambdapi -- tests/export_dk.sh
 	@dune exec --only-packages lambdapi -- tests/export_lp.sh
-	$(MAKE) -C Logic
+	$(MAKE) lib
 
 .PHONY: sanity_check
 sanity_check: misc/sanity_check.sh
@@ -87,8 +85,8 @@ clean:
 	@dune clean
 	@$(MAKE) -C editors/emacs clean
 	@$(MAKE) -C editors/vscode clean
-	@rm -f tests/OK/*.lpo
 	@$(MAKE) -C Logic clean
+	@find . -type f -name "*.lpo" -exec rm {} \;
 
 .PHONY: distclean
 distclean: clean
@@ -100,7 +98,6 @@ distclean: clean
 	@cd libraries && ./dklib.sh clean
 	@cd libraries && ./zenon_modulo.sh clean
 	@find . -type f -name "*~" -exec rm {} \;
-	@find . -type f -name "*.lpo" -exec rm {} \;
 	@find . -type f -name "*.gv" -exec rm {} \;
 
 .PHONY: fullclean

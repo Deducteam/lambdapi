@@ -2,7 +2,7 @@
 
 echo '############ test export -o dk ############'
 
-TIMEFORMAT="%E"
+TIMEFORMAT="%Es"
 root=`pwd`
 lambdapi='dune exec -- lambdapi'
 
