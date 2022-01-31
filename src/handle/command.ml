@@ -428,21 +428,16 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
             if finished ps then
               ( wrn pe.pos "The proof is finished. Use 'end' instead."; ss )
             else
-              match ps.proof_term, opaq with
-              | Some m, `Full ->
-                  (* We admit the initial goal only. *)
-                  Tactic.admit_meta ss p_sym_nam.pos m
-              | _ ->
-                  (* We admit all the remaining typing goals. *)
-                  let admit_goal ss g =
-                    match g with
-                    | Unif _ -> ss
-                    | Typ gt ->
-                        let m = gt.goal_meta in
-                        match !(m.meta_value) with
-                        | None -> Tactic.admit_meta ss p_sym_nam.pos m
-                        | Some _ -> ss
-                  in List.fold_left admit_goal ss ps.proof_goals
+              (* We admit all the remaining typing goals. *)
+              let admit_goal ss g =
+                match g with
+                | Unif _ -> fatal pos "Cannot admit unification goals."
+                | Typ gt ->
+                  let m = gt.goal_meta in
+                  match !(m.meta_value) with
+                  | None -> Tactic.admit_meta ss p_sym_nam.pos m
+                  | Some _ -> ss
+              in List.fold_left admit_goal ss ps.proof_goals
             in
             (* Add the symbol in the signature with a warning. *)
             Console.out 2 (Color.red "symbol %a : %a") uid id term a;

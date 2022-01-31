@@ -37,7 +37,6 @@ tests: bin
 	@dune exec --only-packages lambdapi -- tests/dtrees.sh
 	@dune exec --only-packages lambdapi -- tests/export_dk.sh
 	@dune exec --only-packages lambdapi -- tests/export_lp.sh
-	$(MAKE) -C Logic
 
 .PHONY: sanity_check
 sanity_check: misc/sanity_check.sh
