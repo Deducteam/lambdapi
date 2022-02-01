@@ -78,7 +78,7 @@ let solve1 pb c a b =
     the form [#c a t b] it tries to [solve1 pb c a b] *)
 let solve_coercions pb c t =
   if Logger.log_enabled () then
-    log "Unifying remains of [%a]" term t;
+    log "Solving coercions of [%a]" term t;
   let exception Failure in
   let rec solve t =
     match get_args t with
@@ -98,6 +98,55 @@ let solve_coercions pb c t =
     | Appl _, _ -> assert false
   in
   try solve t; true with Failure -> false
+
+(** [reduce_coercions pb c t] rewrites (in context [c]) subterms of the form
+    [#c a u b] of term [t] to erase the coercion. Metavariables may be
+    generated and added to [pb] *)
+let reduce_coercions pb c t =
+  let rec redb cons a b =
+    let a = red a in
+    let x, b = Bindlib.unbind b in
+    let b = Bindlib.(red b |> lift |> bind_var x |> unbox) in
+    cons a b
+  and red t =
+    match get_args t with
+    | TRef _, _-> assert false
+    | TEnv _, _ -> assert false
+    | Wild, _ -> assert false
+    | Patt _, _ -> assert false
+    | Plac _, _ -> assert false
+    | Prod _, _::_ -> assert false
+    | (Type | Kind), _ -> t
+    | Symb s, [_;_;_] when Coercion.is_coercion s ->
+        let reduct =
+          Eval.whnf ~problem:pb (classic c) t
+        in
+        let hd, args = get_args reduct in
+        add_args (red hd) (List.map red args)
+    | (Vari _ | Meta _ | Symb _) as h, args ->
+        (* Note that [h] may be [#c] here. *)
+        add_args h (List.map red args)
+    | Prod(a,b), _ -> redb (fun a b -> mk_Prod(a,b)) a b
+    | Abst(a,b), args ->
+        add_args (redb (fun a b -> mk_Abst(a,b)) a b) (List.map red args)
+    | LLet(a,t,u), args ->
+        let a = red a in
+        let t = red t in
+        let x, u = Bindlib.unbind u in
+        let u = Bindlib.(red u |> lift |> bind_var x |> unbox) in
+        add_args (mk_LLet (a,t,u)) (List.map red args)
+    | Appl _, _ -> assert false
+    in
+    red t
+
+(* The same with logging *)
+let reduce_coercions pb c t =
+  if Logger.log_enabled () then
+    log "Reducing coercions of [%a]" term t;
+  let out = reduce_coercions pb c t in
+  if Logger.log_enabled () then
+    log "[%a] reduced to [%a]" term t term out;
+  out
 
 (** [coerce pb c t a b] tries to coerce term [t] of type [a] into type
     [b] in problem [pb] and context [c]. In particular, if [a] and [b]
@@ -121,7 +170,7 @@ let rec coerce pb c t a b =
            maybe the instantiated metavariable allows some new coercion
            rule to be triggered, so loop.*)
         while true do
-          reduced := Eval.snf ~problem:pb (classic c) !reduced;
+          reduced := reduce_coercions pb c !reduced;
           if not (Coercion.has_coercions !reduced) then raise Over;
           let size = MetaSet.cardinal !pb.metas in
           ignore (solve_coercions pb c !reduced);
