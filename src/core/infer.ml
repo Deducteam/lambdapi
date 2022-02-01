@@ -94,7 +94,7 @@ let solve_coercions pb c t =
     [b] in problem [pb] and context [c]. In particular, if [a] and [b]
     can be unified, then [t] is unchanged. Otherwise, a cast is sought
     from [a] to [b]. *)
-let coerce pb c t a b =
+let rec coerce pb c t a b =
   if Eval.pure_eq_modulo (classic c) a b then (t, false) else (
     if solve1 pb c a b then (t, false) else (
       if Logger.log_enabled () then
@@ -123,7 +123,10 @@ let coerce pb c t a b =
             if Logger.log_enabled () then
               log (Color.gre "Cast [@[%a:@ %a@ <=@ %a@ ->@ %a@]]")
                 term t term a term b term !reduced;
-              (!reduced, true)
+            (* HACK: call infer to enforce metavariable type constraints.
+               Ideally this should be done when checking the coercion rules *)
+            let (reduced, _, _) = infer pb c !reduced in
+            (reduced, true)
         | Failure -> unif pb c a b; (t, false)))
 
 (** {1 Other rules} *)
@@ -137,7 +140,7 @@ let coerce pb c t a b =
 (** [type_enforce pb c a] returns a tuple [(a',s)] where [a'] is refined
     term [a] and [s] is a sort (Type or Kind) such that [a'] is of type
     [s]. *)
-let rec type_enforce : problem -> octxt -> term -> term * term * bool =
+and type_enforce : problem -> octxt -> term -> term * term * bool =
  fun pb c a ->
   if Logger.log_enabled () then log "Type enforce [%a]" term a;
   let a, s, cui = infer pb c a in
