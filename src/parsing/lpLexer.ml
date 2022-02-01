@@ -86,7 +86,7 @@ type token =
   (* other tokens *)
   | DEBUG_FLAGS of (bool * string)
       (* Tuple constructor (with parens) required by Menhir. *)
-  | INT of int
+  | NAT of int
   | FLOAT of float
   | SIDE of Pratter.associativity
   | STRINGLIT of string
@@ -252,7 +252,7 @@ let rec token lb =
   (* other tokens *)
   | '+', Plus lowercase -> DEBUG_FLAGS(true, remove_first lb)
   | '-', Plus lowercase -> DEBUG_FLAGS(false, remove_first lb)
-  | nat -> INT(int_of_string (Utf8.lexeme lb))
+  | nat -> NAT(int_of_string (Utf8.lexeme lb))
   | float -> FLOAT(float_of_string (Utf8.lexeme lb))
   | string -> STRINGLIT(Utf8.sub_lexeme lb 1 (lexeme_length lb - 2))
 
