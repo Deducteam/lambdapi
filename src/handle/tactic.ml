@@ -33,8 +33,8 @@ let add_axiom : Sig_state.t -> popt -> meta -> Sig_state.t =
        they are created. *)
     let pos =
       let n = Stdlib.(!admitted) in
-      if n > 100 then assert false
-      else shift (n - 100) sym_pos
+      if n > 10000 then assert false
+      else shift (n - 10000) sym_pos
     in
     let id = Pos.make pos name in
     Sig_state.add_symbol ss Public Defin Eager `Full id !(m.meta_type) [] None
