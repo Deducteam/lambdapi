@@ -48,11 +48,10 @@ let unif : problem -> octxt -> term -> term -> unit =
     equations). If [a = b] cannot be solved, [false] is returned and
     [pb] is reduced as much as it can without the equation [a = b].*)
 let solve1 : problem -> octxt -> term -> term -> bool = fun pb c a b ->
-  if Logger.log_enabled () then
-    log "Immediately solving %a" constr ((classic c), a, b);
   let before = Time.save () in
   unif pb c a b;
-  !solve pb (* Either everything is solved *) || (
+  !solve pb (* Assert there is no unsatisfiable constraint *) &&
+  !pb.unsolved = [] (* Either everything is solved *) || (
     (* or at least enough is solved to equate [a] and [b] *)
     (Eval.pure_eq_modulo (classic c) a b &&
       (pb := { !pb with recompute = true }; true)) || (
@@ -62,6 +61,16 @@ let solve1 : problem -> octxt -> term -> term -> bool = fun pb c a b ->
       (* try to solve as much as we can and leave the rest *)
       if not (!solve pb) then pb := {!pb with recompute = true};
       false))
+
+let solve1 pb c a b =
+  if Logger.log_enabled () then
+    log "Immediately solving %a" constr ((classic c), a, b);
+  if solve1 pb c a b then
+    (if Logger.log_enabled () then
+       log (Color.gre "Solved %a") constr ((classic c), a, b); true)
+  else
+    (if Logger.log_enabled () then
+       log (Color.red "Failed solving %a") constr ((classic c), a, b); false)
 
 (** {1 Handling coercions} *)
 
