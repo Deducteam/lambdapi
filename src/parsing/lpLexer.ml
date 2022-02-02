@@ -153,7 +153,7 @@ let string = [%sedlex.regexp? '"', Star (Compl '"'), '"']
 (** Unqualified regular identifiers are any non-empty sequence of characters
    not among: *)
 let forbidden_letter = [%sedlex.regexp? Chars " ,;\r\t\n(){}[]:.`\"@$|/"]
-let regid = [%sedlex.regexp? '/' | '*' | Plus (Compl forbidden_letter)]
+let regid = [%sedlex.regexp? '/' | Plus (Compl forbidden_letter)]
 
 let is_regid : string -> bool = fun s ->
   let lb = Utf8.from_string s in
@@ -279,7 +279,7 @@ let rec token lb =
   | '_' -> UNDERSCORE
 
   (* identifiers *)
-  | '/' | regid -> UID(Utf8.lexeme lb)
+  | regid -> UID(Utf8.lexeme lb)
   | escid -> UID(remove_useless_escape(Utf8.lexeme lb))
   | '@', regid -> UID_EXPL(remove_first lb)
   | '@', escid -> UID_EXPL(remove_useless_escape(remove_first lb))
