@@ -79,7 +79,7 @@
 // other tokens
 
 %token <bool * string> DEBUG_FLAGS
-%token <int> INT
+%token <int> NAT
 %token <float> FLOAT
 %token <Pratter.associativity> SIDE
 %token <string> STRINGLIT
@@ -136,12 +136,13 @@ command:
     { make_pos $sloc (P_require_as(p,i)) }
   | OPEN l=list(path) SEMICOLON
     { make_pos $sloc (P_open l) }
-  | ms=modifier* SYMBOL s=uid al=param_list* COLON a=term po=proof? SEMICOLON
+  | ms=modifier* SYMBOL s=uid_or_nat al=param_list* COLON a=term
+    po=proof? SEMICOLON
     { let sym =
         {p_sym_mod=ms; p_sym_nam=s; p_sym_arg=al; p_sym_typ=Some(a);
          p_sym_trm=None; p_sym_def=false; p_sym_prf=po}
       in make_pos $sloc (P_symbol(sym)) }
-  | ms=modifier* SYMBOL s=uid al=param_list* ao=preceded(COLON, term)?
+  | ms=modifier* SYMBOL s=uid_or_nat al=param_list* ao=preceded(COLON, term)?
     ASSIGN tp=term_proof SEMICOLON
     { let sym =
         {p_sym_mod=ms; p_sym_nam=s; p_sym_arg=al; p_sym_typ=ao;
@@ -152,10 +153,11 @@ command:
       { make_pos $sloc (P_inductive(ms,xs,is)) }
   | RULE rs=separated_nonempty_list(WITH, rule) SEMICOLON
       { make_pos $sloc (P_rules(rs)) }
-  | BUILTIN s=STRINGLIT ASSIGN i=qid SEMICOLON
+  | BUILTIN s=STRINGLIT ASSIGN i=qid_or_nat SEMICOLON
     { make_pos $loc (P_builtin(s,i)) }
   | UNIF_RULE r=unif_rule SEMICOLON { make_pos $loc (P_unif_rule(r)) }
-  | NOTATION i=qid n=notation SEMICOLON { make_pos $loc (P_notation(i,n)) }
+  | NOTATION i=qid_or_nat n=notation SEMICOLON
+    { make_pos $loc (P_notation(i,n)) }
   | q=query SEMICOLON { make_pos $sloc (P_query(q)) }
   | EOF { raise End_of_file }
 
@@ -176,8 +178,8 @@ query:
     { let (b, s) = fl in make_pos $sloc (P_query_debug(b, s)) }
   | FLAG s=STRINGLIT b=SWITCH { make_pos $sloc (P_query_flag(s,b)) }
   | PROVER s=STRINGLIT { make_pos $sloc (P_query_prover(s)) }
-  | PROVER_TIMEOUT i=INT { make_pos $sloc (P_query_prover_timeout(i)) }
-  | VERBOSE i=INT { make_pos $sloc (P_query_verbose(i)) }
+  | PROVER_TIMEOUT n=NAT { make_pos $sloc (P_query_prover_timeout(n)) }
+  | VERBOSE n=NAT { make_pos $sloc (P_query_verbose(n)) }
   | TYPE_QUERY t=term
     { make_pos $sloc (P_query_infer(t, {strategy=NONE; steps=None}))}
 
@@ -198,6 +200,14 @@ modifier:
   | SEQUENTIAL { make_pos $sloc (P_mstrat Term.Sequen) }
 
 uid: s=UID { make_pos $sloc s}
+
+uid_or_nat:
+  | i=uid { i }
+  | n=NAT { make_pos $sloc (string_of_int n) }
+
+qid_or_nat:
+  | i=qid { i }
+  | n=NAT { make_pos $sloc ([], string_of_int n) }
 
 param_list:
   | x=param { ([x], None, false) }
@@ -232,15 +242,16 @@ aterm:
   | ti=term_id { ti }
   | UNDERSCORE { make_pos $sloc P_Wild }
   | TYPE_TERM { make_pos $sloc P_Type }
-  | s=UID_META e=env
-    { let i = make_pos $loc(s) s in
-      make_pos $sloc (P_Meta(i,Array.of_list e)) }
+  | s=UID_META ts=env?
+    { let i = make_pos $loc(s) s
+      and ts = match ts with None -> [||] | Some ts -> Array.of_list ts in
+      make_pos $sloc (P_Meta(i,ts)) }
   | s=UID_PATT e=env?
     { let i = if s = "_" then None else Some(make_pos $loc(s) s) in
       make_pos $sloc (P_Patt(i, Option.map Array.of_list e)) }
   | L_PAREN t=term R_PAREN { make_pos $sloc (P_Wrap(t)) }
   | L_SQ_BRACKET t=term R_SQ_BRACKET { make_pos $sloc (P_Expl(t)) }
-  | n=INT { make_pos $sloc (P_NLit(n)) }
+  | n=NAT { make_pos $sloc (P_NLit(n)) }
 
 env: DOT L_SQ_BRACKET ts=separated_list(SEMICOLON, term) R_SQ_BRACKET { ts }
 
@@ -297,7 +308,7 @@ tactic:
   | REWRITE d=SIDE? p=rw_patt_spec? t=term
     { let b = match d with Some Pratter.Left -> false | _ -> true in
       make_pos $sloc (P_tac_rewrite(b,p,t)) }
-  | SIMPLIFY i=qid? { make_pos $sloc (P_tac_simpl i) }
+  | SIMPLIFY i=qid_or_nat? { make_pos $sloc (P_tac_simpl i) }
   | SOLVE { make_pos $sloc P_tac_solve }
   | SYMMETRY { make_pos $sloc P_tac_sym }
   | WHY3 s=STRINGLIT? { make_pos $sloc (P_tac_why3 s) }
@@ -325,7 +336,7 @@ inductive: i=uid ps=param_list* COLON t=term ASSIGN
     { let t = make_prod $startpos(ps) ps t $endpos(t) in
       make_pos $sloc (i,t,l) }
 
-constructor: i=uid ps=param_list* COLON t=term
+constructor: i=uid_or_nat ps=param_list* COLON t=term
     { (i, make_prod $startpos(ps) ps t $endpos(t)) }
 
 rule: l=term HOOK_ARROW r=term { make_pos $sloc (l, r) }
@@ -346,13 +357,13 @@ unif_rule: e=equation HOOK_ARROW
 equation: l=term EQUIV r=term { (l, r) }
 
 notation:
-  | INFIX a=SIDE? p=float_or_int
+  | INFIX a=SIDE? p=float_or_nat
     { Sign.Infix(Option.get Pratter.Neither a, p) }
-  | PREFIX p=float_or_int { Sign.Prefix(p) }
+  | PREFIX p=float_or_nat { Sign.Prefix(p) }
   | QUANTIFIER { Sign.Quant }
 
-float_or_int:
+float_or_nat:
   | p=FLOAT { p }
-  | n=INT   { float_of_int n }
+  | n=NAT   { float_of_int n }
 
 %%

@@ -16,16 +16,16 @@ QID ::= [UID "."]+ UID
             | "require" <path>* ";"
             | "require" <path> "as" <uid> ";"
             | "open" <path>* ";"
-            | <modifier>* "symbol" <uid> <param_list>* ":" <term> [<proof>]
-              ";"
-            | <modifier>* "symbol" <uid> <param_list>* [":" <term>] "≔"
-              <term_proof> ";"
+            | <modifier>* "symbol" <uid_or_nat> <param_list>* ":" <term>
+              [<proof>] ";"
+            | <modifier>* "symbol" <uid_or_nat> <param_list>* [":" <term>]
+              "≔" <term_proof> ";"
             | <modifier>* <param_list>* "inductive" <inductive> ("with"
               <inductive>)* ";"
             | "rule" <rule> ("with" <rule>)* ";"
-            | "builtin" <stringlit> "≔" <qid> ";"
+            | "builtin" <stringlit> "≔" <qid_or_nat> ";"
             | "unif_rule" <unif_rule> ";"
-            | "notation" <qid> <notation> ";"
+            | "notation" <qid_or_nat> <notation> ";"
             | <query> ";"
             
 
@@ -37,8 +37,8 @@ QID ::= [UID "."]+ UID
           | "debug" ("+"|"-") <string>
           | "flag" <stringlit> <switch>
           | "prover" <stringlit>
-          | "prover_timeout" <int>
-          | "verbose" <int>
+          | "prover_timeout" <nat>
+          | "verbose" <nat>
           | "type" <term>
 
 <path> ::= UID
@@ -54,6 +54,12 @@ QID ::= [UID "."]+ UID
              | "sequential"
 
 <uid> ::= UID
+
+<uid_or_nat> ::= <uid>
+               | <nat>
+
+<qid_or_nat> ::= <qid>
+               | <nat>
 
 <param_list> ::= <param>
                | "(" <param>+ ":" <term> ")"
@@ -77,11 +83,11 @@ QID ::= [UID "."]+ UID
 <aterm> ::= <term_id>
           | "_"
           | "TYPE"
-          | "?" UID <env>
+          | "?" UID [<env>]
           | "$" UID [<env>]
           | "(" <term> ")"
           | "[" <term> "]"
-          | <int>
+          | <nat>
 
 <env> ::= "." "[" [<term> (";" <term>)*] "]"
 
@@ -127,7 +133,7 @@ QID ::= [UID "."]+ UID
            | "refine" <term>
            | "reflexivity"
            | "rewrite" [<side>] [<rw_patt_spec>] <term>
-           | "simplify" [<qid>]
+           | "simplify" [<qid_or_nat>]
            | "solve"
            | "symmetry"
            | "why3" [<stringlit>]
@@ -143,7 +149,7 @@ QID ::= [UID "."]+ UID
 <inductive> ::= <uid> <param_list>* ":" <term> "≔" ["|"] [<constructor>
                 ("|" <constructor>)*]
 
-<constructor> ::= <uid> <param_list>* ":" <term>
+<constructor> ::= <uid_or_nat> <param_list>* ":" <term>
 
 <rule> ::= <term> "↪" <term>
 
@@ -152,11 +158,11 @@ QID ::= [UID "."]+ UID
 
 <equation> ::= <term> "≡" <term>
 
-<notation> ::= "infix" [<side>] <float_or_int>
-             | "prefix" <float_or_int>
+<notation> ::= "infix" [<side>] <float_or_nat>
+             | "prefix" <float_or_nat>
              | "quantifier"
 
-<float_or_int> ::= <float>
-                 | <int>
+<float_or_nat> ::= <float>
+                 | <nat>
 
 

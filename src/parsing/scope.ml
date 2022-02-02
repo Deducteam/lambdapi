@@ -97,6 +97,19 @@ type mode =
   (** Scoping mode for unification rule right-hand sides. During  scoping, we
       always have [m_urhs_vars_nb = m_lhs_size + length m_urhs_xvars]. *)
 
+(** [scope_iden md ss env qid] scopes [qid] as a symbol. *)
+let scope_iden : mode -> sig_state -> env -> p_qident -> tbox =
+  fun md ss env qid ->
+  let prt = match md with M_LHS _ -> true | _ -> false
+  and prv =
+    match md with
+    | M_LHS(d) -> d.m_lhs_prv
+    | M_Term(d) -> d.m_term_prv
+    | M_RHS(d) -> d.m_rhs_prv
+    | _ -> false
+  in
+  find_qid prt prv ss env qid
+
 (** [fresh_patt name ts] creates a unique pattern variable applied to
    [ts]. [name] is used as suffix if distinct from [None]. *)
 let fresh_patt : lhs_data -> string option -> tbox array -> tbox =
@@ -115,10 +128,10 @@ let fresh_patt : lhs_data -> string option -> tbox array -> tbox =
           Hashtbl.add data.m_lhs_indices name i;
           Hashtbl.add data.m_lhs_names i name; i
       in
-      _Patt (Some i) (Printf.sprintf "%i" i) ts
+      _Patt (Some i) (string_of_int i) ts
   | None ->
       let i = fresh_index () in
-      _Patt (Some i) (Printf.sprintf "%i" i) ts
+      _Patt (Some i) (string_of_int i) ts
 
 (** [is_invalid_bindlib_id s] says whether [s] can be safely used as variable
    name in Bindlib. Indeed, because Bindlib converts any suffix consisting of
@@ -310,15 +323,29 @@ and scope_head :
   | (P_Type, M_LHS(_)) -> fatal t.pos "TYPE is not allowed in a LHS."
   | (P_Type, _) -> _Type
 
-  | (P_Iden(qid,_), M_LHS(d)) -> find_qid true d.m_lhs_prv ss env qid
-  | (P_Iden(qid,_), M_Term{m_term_prv=true;_}) ->
-      find_qid false true ss env qid
-  | (P_Iden(qid,_), M_RHS(d)) -> find_qid false d.m_rhs_prv ss env qid
-  | (P_Iden(qid,_), _) -> find_qid false false ss env qid
+  | (P_Iden(qid,_), _) -> scope_iden md ss env qid
+
+  | (P_NLit(0), _) ->
+    begin match Builtin.get_opt ss "0" with
+      | Some s -> _Symb s
+      | None -> scope_iden md ss env {t with elt=([],"0")}
+    end
+  | (P_NLit(n), _) ->
+    begin match Builtin.get_opt ss "0" with
+      | None -> scope_iden md ss env {t with elt=([], string_of_int n)}
+      | Some sym_z ->
+        match Builtin.get_opt ss "+1" with
+        | Some sym_s ->
+          let z = _Symb sym_z and s = _Symb sym_s in
+          let rec unsugar_nat_lit acc n =
+            if n <= 0 then acc else unsugar_nat_lit (_Appl s acc) (n-1) in
+          unsugar_nat_lit z n
+        | None -> scope_iden md ss env {t with elt=([], string_of_int n)}
+    end
 
   | (P_Wild, M_URHS(data)) ->
     let x =
-      let name = Printf.sprintf "%i" data.m_urhs_vars_nb in
+      let name = string_of_int data.m_urhs_vars_nb in
       let x = new_tevar name in
       data.m_urhs_vars_nb <- data.m_urhs_vars_nb + 1;
       data.m_urhs_xvars <- (name, x) :: data.m_urhs_xvars;
@@ -388,7 +415,7 @@ and scope_head :
               (* Search in variables already declared in RHS. *)
               try List.assoc id r.m_urhs_xvars
               with Not_found ->
-                let name = Printf.sprintf "%i" r.m_urhs_vars_nb in
+                let name = string_of_int r.m_urhs_vars_nb in
                 let x = new_tevar name in
                 r.m_urhs_vars_nb <- r.m_urhs_vars_nb + 1;
                 r.m_urhs_xvars   <- (id, x) :: r.m_urhs_xvars;
@@ -446,14 +473,6 @@ and scope_head :
       fatal t.pos "Let-bindings are not allowed in a LHS."
   | (P_LLet(_), M_Patt) ->
       fatal t.pos "Let-bindings are not allowed in a pattern."
-
-  | (P_NLit(0), _) -> _Symb (Builtin.get ss t.pos "0")
-  | (P_NLit(n), _) ->
-      let sym_z = _Symb (Builtin.get ss t.pos "0")
-      and sym_s = _Symb (Builtin.get ss t.pos "+1") in
-      let rec unsugar_nat_lit acc n =
-        if n <= 0 then acc else unsugar_nat_lit (_Appl sym_s acc) (n-1) in
-      unsugar_nat_lit sym_z n
 
   (* Evade the addition of implicit arguments inside the wrap *)
   | (P_Wrap ({ elt = (P_Iden _ | P_Abst _); _ } as id), _) ->
@@ -608,7 +627,7 @@ let scope_rule : bool -> sig_state -> p_rule -> pre_rule loc =
   in
   (* Create the pattern variables that can be bound in the RHS. *)
   let pr_vars =
-    Array.init lhs_size (fun i -> new_tevar (Printf.sprintf "%i" i)) in
+    Array.init lhs_size (fun i -> new_tevar (string_of_int i)) in
   let mode =
     let htbl_vars = Hashtbl.create (Hashtbl.length lhs_indices) in
     let fn k i = Hashtbl.add htbl_vars k pr_vars.(i) in

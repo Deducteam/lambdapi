@@ -27,9 +27,9 @@ ko_tests() {
 rm -f 'tests/OK/a b/escape file.lpo' tests/OK/*.lpo
 
 echo "############ compile tests/OK files ############"
-options='-c'
+options='-c -w'
 time ok_tests
 
 echo "############ load tests/OK files ############"
-options=''
+options='-w'
 time ok_tests

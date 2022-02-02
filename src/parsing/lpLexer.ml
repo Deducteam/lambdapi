@@ -86,7 +86,7 @@ type token =
   (* other tokens *)
   | DEBUG_FLAGS of (bool * string)
       (* Tuple constructor (with parens) required by Menhir. *)
-  | INT of int
+  | NAT of int
   | FLOAT of float
   | SIDE of Pratter.associativity
   | STRINGLIT of string
@@ -153,7 +153,7 @@ let string = [%sedlex.regexp? '"', Star (Compl '"'), '"']
 (** Unqualified regular identifiers are any non-empty sequence of characters
    not among: *)
 let forbidden_letter = [%sedlex.regexp? Chars " ,;\r\t\n(){}[]:.`\"@$|/"]
-let regid = [%sedlex.regexp? '/' | '*' | Plus (Compl forbidden_letter)]
+let regid = [%sedlex.regexp? '/' | Plus (Compl forbidden_letter)]
 
 let is_regid : string -> bool = fun s ->
   let lb = Utf8.from_string s in
@@ -252,7 +252,7 @@ let rec token lb =
   (* other tokens *)
   | '+', Plus lowercase -> DEBUG_FLAGS(true, remove_first lb)
   | '-', Plus lowercase -> DEBUG_FLAGS(false, remove_first lb)
-  | nat -> INT(int_of_string (Utf8.lexeme lb))
+  | nat -> NAT(int_of_string (Utf8.lexeme lb))
   | float -> FLOAT(float_of_string (Utf8.lexeme lb))
   | string -> STRINGLIT(Utf8.sub_lexeme lb 1 (lexeme_length lb - 2))
 
@@ -279,7 +279,7 @@ let rec token lb =
   | '_' -> UNDERSCORE
 
   (* identifiers *)
-  | '/' | regid -> UID(Utf8.lexeme lb)
+  | regid -> UID(Utf8.lexeme lb)
   | escid -> UID(remove_useless_escape(Utf8.lexeme lb))
   | '@', regid -> UID_EXPL(remove_first lb)
   | '@', escid -> UID_EXPL(remove_useless_escape(remove_first lb))
