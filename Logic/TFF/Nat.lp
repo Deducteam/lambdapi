@@ -51,9 +51,9 @@ end;
 
 symbol + : ℕ → ℕ → ℕ;
 
-notation + infix left 20;
+notation + infix right 20;
 
-assert x y z ⊢ x + y + z ≡ (x + y) + z; // check associativity
+assert x y z ⊢ x + y + z ≡ x + (y + z); // check associativity
 
 rule 0 + $y ↪ $y
 with s $x + $y ↪ s ($x + $y);
@@ -100,7 +100,7 @@ rule ($x + $y) + $z ↪ $x + ($y + $z);
 
 symbol × : ℕ → ℕ → ℕ; // \times
 
-notation × infix left 30;
+notation × infix right 30;
 
 assert x y z ⊢ x + y × z ≡ x + (y × z); // check priorities
 
@@ -123,13 +123,34 @@ induction
 { assume x' h y; simplify; rewrite h; reflexivity }
 end;
 
+/* We cannot declare
+rule $x × s $y ↪ $x × $y + $x;
+without having + declared as associative-commutative because of the
+Unjoinable critical pair:
+t ≔ s $0 × ($1' + $2')
+t ↪[] (s $0 × $1') + (s $0 × $2') ↪* $1' + (($0 × $1') + ($2' + ($0 × $2')))
+  with $0' × ($1' + $2') ↪ ($0' × $1') + ($0' × $2')
+t ↪[] ($1' + $2') + ($0 × ($1' + $2')) ↪* $1' + ($2' + (($0 × $1') + ($0 × $2')))
+  with s $0 × $1 ↪ $1 + ($0 × $1)]
+*/
+
+/* We cannot declare
 rule $x × s $y ↪ $x + $x × $y;
+without having + declared as associative-commutative because of the
+Unjoinable critical pair:
+t ≔ s $0 × s $1'
+t ↪[] s $0 + (s $0 × $1') ↪* s ($0 + ($1' + ($0 × $1')))
+  with $0' × s $1' ↪ $0' + ($0' × $1')
+t ↪[] s $1' + ($0 × s $1') ↪* s ($1' + ($0 + ($0 × $1')))
+  with s $0 × $1 ↪ $1 + ($0 × $1)]
+*/
 
 opaque symbol mul_com x y : π (x × y = y × x) ≔
 begin
 induction
 { reflexivity }
-{ assume x' h y; simplify; rewrite h; reflexivity }
+{ assume x' h y; rewrite mulsr; simplify; rewrite h; rewrite add_com;
+  reflexivity }
 end;
 
 // Multiplication distributes over addition
@@ -141,7 +162,16 @@ induction
 { assume x' h y z; simplify; rewrite h; reflexivity }
 end;
 
+/* We cannot declare
 rule ($x + $y) × $z ↪ $x × $z + $y × $z;
+without having + declared as associative-commutative because of the
+Unjoinable critical pair:
+t ≔ ($0 + s $1) × $2'
+t ↪[] ($0 × $2') + (s $1 × $2') ↪* ($0 × $2') + ($2' + ($1 × $2'))
+  with ($0' + $1') × $2' ↪ ($0' × $2') + ($1' × $2')
+t ↪[0; 1] s ($0 + $1) × $2' ↪* $2' + (($0 × $2') + ($1 × $2'))
+  with $0 + s $1 ↪ s ($0 + $1)]
+*/
 
 opaque symbol mul_addr x y z : π (z × (x + y) = z × x + z × y) ≔
 begin
@@ -149,7 +179,7 @@ assume x y z; rewrite mul_com; rewrite mul_addl; rewrite mul_com;
 rewrite .[y × _] mul_com; reflexivity
 end;
 
-rule $z × ($x + $y) ↪ $z × $x + $z × $y;
+//rule $z × ($x + $y) ↪ $z × $x + $z × $y;
 
 // Multiplication is associative
 
@@ -157,16 +187,25 @@ opaque symbol mul_assoc x y z : π ((x × y) × z = x × (y × z)) ≔
 begin
 induction
 { reflexivity }
-{ assume x' h y z; simplify; rewrite h; reflexivity }
+{ assume x' h y z; simplify; rewrite mul_addl; rewrite h; reflexivity }
 end;
 
+/* We cannot declare
 rule ($x × $y) × $z ↪ $x × ($y × $z);
+without having distributivity because
+Unjoinable critical pair:
+t ≔ (s $0 × $1) × $2'
+t ↪[] s $0 × ($1 × $2') ↪* ($1 × $2') + ($0 × ($1 × $2'))
+  with ($0' × $1') × $2' ↪ $0' × ($1' × $2')
+t ↪[0; 1] ($1 + ($0 × $1)) × $2' ↪* ($1 + ($0 × $1)) × $2'
+  with s $0 × $1 ↪ $1 + ($0 × $1)]
+*/
 
 // Maximum
 
 symbol ∨: ℕ → ℕ → ℕ;
 
-notation ∨ infix left 40;
+notation ∨ infix right 40;
 
 rule 0 ∨ $x ↪ $x
 with $x ∨ 0 ↪ $x

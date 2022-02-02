@@ -274,7 +274,7 @@ let unif : Pos.popt -> term -> term -> term IntMap.t option =
 
 (* Unit tests. *)
 let _ =
-  let var i = mk_Patt (Some i, Format.sprintf "%d" i, [||]) in
+  let var i = mk_Patt (Some i, string_of_int i, [||]) in
   let v0 = var 0
   and v1 = var 1 in
   let sym name =
@@ -324,12 +324,12 @@ let check_cp_subterm_rule :
     if not (Eval.eq_modulo [] r1 r2) then
       wrn pos "@[<v>Unjoinable critical pair:@ \
                t ≔ %a@ \
-               t ↪[] %a@   \
+               t ↪[] %a ↪* %a@   \
                  with %a@ \
-               t ↪%a %a@   \
+               t ↪%a %a ↪* %a@   \
                  with %a]"
-        term (apply_subs s l) term r1 rule_of_pair (l,r)
-        subterm_pos p term r2 rule_of_pair (g,d)
+        term (apply_subs s l) term r1 term (Eval.snf [] r1) rule_of_pair (l,r)
+        subterm_pos p term r2 term (Eval.snf [] r2) rule_of_pair (g,d)
   | None -> ()
 
 (** [check_cp_subterms_rule pos sr1 sr2] checks the critical pairs between all

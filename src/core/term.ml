@@ -741,19 +741,18 @@ let lift : (tbox -> tbox -> tbox) -> term -> tbox = fun mk_appl ->
   | TE_Some _ -> assert false (* Unreachable. *)
   in lift
 
+(** [lift t] lifts the {!type:term} [t] to the type {!type:tbox}. This has the
+   effect of gathering its free variables, making them available for binding.
+   Bound variable names are automatically updated in the process. *)
+let lift = lift _Appl
+and lift_not_canonical = lift _Appl_not_canonical
+
 (** [cleanup t] builds a copy of the {!type:term} [t] where every instantiated
    metavariable, instantiated term environment, and reference cell has been
    eliminated using {!val:unfold}. Another effect of the function is that the
    the names of bound variables are updated. This is useful to avoid any form
    of "visual capture" while printing terms. *)
-let cleanup : term -> term =
-  let mk_appl = Bindlib.box_apply2 (fun t u -> Appl(t,u)) in
-  fun t -> Bindlib.unbox (lift mk_appl t)
-
-(** [lift t] lifts the {!type:term} [t] to the type {!type:tbox}. This has the
-   effect of gathering its free variables, making them available for binding.
-   Bound variable names are automatically updated in the process. *)
-let lift = lift _Appl
+let cleanup : term -> term = fun t -> Bindlib.unbox (lift_not_canonical t)
 
 (** Positions in terms in reverse order. The i-th argument of a constructor
    has position i-1. *)

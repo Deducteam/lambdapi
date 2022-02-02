@@ -85,7 +85,7 @@ let filteri_map : (int -> 'a -> 'b option) -> 'a list -> 'b list = fun f l ->
   in loop 0 l
 
 (** [cut l k] returns a pair of lists [(l1, l2)] such that [l1] has length
-    [max (List.length l) k] and [l1 @ l2] is equal to [l]. *)
+    [min (List.length l) k] and [l1 @ l2] is equal to [l]. *)
 let cut : 'a list -> int -> 'a list * 'a list = fun l k ->
   let rec cut acc l k =
     if k <= 0 then (L.rev acc, l)
@@ -94,6 +94,13 @@ let cut : 'a list -> int -> 'a list * 'a list = fun l k ->
          | x :: l -> cut (x :: acc) l (k - 1)
   in
   if k <= 0 then ([], l) else cut [] l k
+
+let _ =
+  assert (cut [1;2;3] 0 = ([], [1;2;3]));
+  assert (cut [1;2;3] 1 = ([1], [2;3]));
+  assert (cut [1;2;3] 2 = ([1;2], [3]));
+  assert (cut [1;2;3] 3 = ([1;2;3], []));
+  assert (cut [1;2;3] 4 = ([1;2;3], []))
 
 (** [add_array a1 a2 l] returns a list containing the elements of [l], and the
     (corresponding) elements of [a1] and [a2]. Note that [a1] and [a2] should

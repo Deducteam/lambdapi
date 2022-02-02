@@ -2,7 +2,7 @@
 
 open Lplib
 open Timed
-open Common open Pos open Error
+open Common open Pos open Error open Debug
 open Core open Term open Print
 open Proof
 
@@ -19,14 +19,13 @@ let log_rewr = log_rewr.pp
     matching feature is used, one should make sure that [TRef] constructors do
     not appear both in [t] and in [u] at the same time. Indeed, the references
     are set naively, without occurrence checking. *)
-let eq : term -> term -> bool = fun a b -> a == b ||
+let _eq : term -> term -> bool = fun a b -> a == b ||
   let exception Not_equal in
   let rec eq l =
     match l with
     | []       -> ()
     | (a,b)::l ->
-    begin
-    if Logger.log_enabled () then log_rewr "eq [%a] [%a]" term a term b;
+    if Logger.log_enabled () then log_rewr "eq %a ≡ %a" term a term b;
     match (unfold a, unfold b) with
     | (a          , b          ) when a == b -> eq l
     | (Vari(x1)   , Vari(x2)   ) when Bindlib.eq_vars x1 x2 -> eq l
@@ -34,26 +33,95 @@ let eq : term -> term -> bool = fun a b -> a == b ||
     | (Kind       , Kind       ) -> eq l
     | (Symb(s1)   , Symb(s2)   ) when s1 == s2 -> eq l
     | (Prod(a1,b1), Prod(a2,b2))
-    | (Abst(a1,b1), Abst(a2,b2)) -> let (_, b1, b2) = Bindlib.unbind2 b1 b2 in
-                                    eq ((a1,a2)::(b1,b2)::l)
-    | (LLet(a1,t1,u1), LLet(a2,t2,u2)) ->
-        let (_, u1, u2) = Bindlib.unbind2 u1 u2 in
-        eq ((a1,a2)::(t1,t2)::(u1,u2)::l)
+    | (Abst(a1,b1), Abst(a2,b2)) ->
+      let (_, b1, b2) = Bindlib.unbind2 b1 b2 in eq ((a1,a2)::(b1,b2)::l)
+    | (LLet(a1,t1,b1), LLet(a2,t2,b2)) ->
+      let (_, b1, b2) = Bindlib.unbind2 b1 b2 in
+      eq ((a1,a2)::(t1,t2)::(b1,b2)::l)
     | (Appl(t1,u1), Appl(t2,u2)) -> eq ((t1,t2)::(u1,u2)::l)
     | (Meta(m1,e1), Meta(m2,e2)) when m1 == m2 ->
         eq (if e1 == e2 then l else List.add_array2 e1 e2 l)
-    | (Wild       , _          )
-    | (_          , Wild       ) -> eq l
-    | (TRef(r)    , b          ) -> r := Some(b); eq l
-    | (a          , TRef(r)    ) -> r := Some(a); eq l
-    | (Patt(_,_,_), _          )
-    | (_          , Patt(_,_,_))
-    | (TEnv(_,_)  , _          )
+    | (Wild       , _          ) -> eq l
+    | (_          , Wild       ) -> assert false
+    | (TRef(r)    , t          )
+    | (t          , TRef(r)    ) ->
+      if Logger.log_enabled() then log_rewr (Color.red "instantiate");
+      r := Some(t); eq l
+    | (Patt(_,_,_), _          ) -> assert false
+    | (_          , Patt(_,_,_)) -> assert false
+    | (TEnv(_,_)  , _          ) -> assert false
     | (_          , TEnv(_,_)  ) -> assert false
     | (_          , _          ) -> raise Not_equal
-    end
   in
   try eq [(a,b)]; true with Not_equal -> false
+
+(** [match_pat p t] instantiates the [TRef]'s of [p] so that [p] gets equal to
+   [t]. *)
+let match_pat : term -> term -> bool =
+  let exception Not_equal in
+  let rec eq l =
+    match l with
+    | [] -> ()
+    | (p,t)::l ->
+      let hp, ps, k = get_args_len p and ht, ts, n = get_args_len t in
+      if Logger.log_enabled() then
+        log_rewr "match_pat %a %a ≡ %a %a"
+          term hp (D.list term) ps term ht (D.list term) ts;
+      match hp with
+      | Wild ->
+        if k > n then
+          (if Logger.log_enabled() then log_rewr "k>n"; raise Not_equal);
+        let _, ts2 = List.cut ts (n-k) in
+        eq (List.fold_left2 (fun l pi ti -> (pi,ti)::l) l ps ts2)
+      | TRef r ->
+        if k > n then raise Not_equal;
+        let ts1, ts2 = List.cut ts (n-k) in
+        let u = add_args ht ts1 in
+        if Logger.log_enabled() then
+          log_rewr (Color.red "<TRef> ≔ %a") term u;
+        r := Some u;
+        eq (List.fold_left2 (fun l pi ti -> (pi,ti)::l) l ps ts2)
+      | _ ->
+        if k <> n then raise Not_equal;
+        let add_args l =
+          List.fold_left2 (fun l pi ti -> (pi,ti)::l) l ps ts in
+        match hp, ht with
+        | Type, Type
+        | Kind, Kind -> eq (add_args l)
+        | Vari x, Vari y when Bindlib.eq_vars x y -> eq (add_args l)
+        | Symb f, Symb g when f == g -> eq (add_args l)
+        | Prod(a1,b1), Prod(a2,b2)
+        | Abst(a1,b1), Abst(a2,b2) ->
+          let _,b1,b2 = Bindlib.unbind2 b1 b2 in
+          eq ((a1,a2)::(b1,b2)::add_args l)
+        | LLet(a1,t1,b1), LLet(a2,t2,b2) ->
+          let _,b1,b2 = Bindlib.unbind2 b1 b2 in
+          eq ((a1,a2)::(t1,t2)::(b1,b2)::add_args l)
+        | TRef _, _ -> assert false (* already done *)
+        | _, TRef _ -> assert false
+        | Wild, _ -> assert false (* already done *)
+        | _, Wild -> assert false
+        | Meta _, _ -> assert false
+        | Patt _, _ -> assert false
+        | _, Patt _ -> assert false
+        | TEnv _, _ -> assert false
+        | _, TEnv _ -> assert false
+        | Plac _, _ -> assert false
+        | _, Plac _ -> assert false
+        | Appl _, _ -> assert false
+        | _, Appl _ -> assert false
+        | _ ->
+          if Logger.log_enabled() then log_rewr "distinct heads";
+          raise Not_equal
+  in
+  fun p t ->
+    try
+      eq [(p,t)];
+      if Logger.log_enabled() then log_rewr "match_pat OK";
+      true
+    with Not_equal ->
+      if Logger.log_enabled() then log_rewr "match_pat KO";
+      false
 
 (** Equality configuration. *)
 type eq_config =
@@ -199,7 +267,7 @@ type to_subst = tvar array * term
 let rec add_refs : term -> term = fun t ->
   match unfold t with
   | Wild        -> mk_TRef(ref None)
-  | Appl(t1,t2) -> mk_Appl(add_refs t1, add_refs t2)
+  | Appl(t1,t2) -> mk_Appl_not_canonical(add_refs t1, add_refs t2)
   | _           -> t
 
 (** [match_pattern (xs,p) t] attempts to match the pattern [p] (containing the
@@ -209,16 +277,17 @@ let rec add_refs : term -> term = fun t ->
     equal to [t] (in terms of [eq]). *)
 let match_pattern : to_subst -> term -> term array option = fun (xs,p) t ->
   let ts = Array.map (fun _ -> mk_TRef(ref None)) xs in
-  let p = Bindlib.msubst (Bindlib.unbox (Bindlib.bind_mvar xs (lift p))) ts in
-  if eq p t then Some(Array.map unfold ts) else None
+  let p = lift_not_canonical p in
+  let p = Bindlib.msubst (Bindlib.unbox (Bindlib.bind_mvar xs p)) ts in
+  if match_pat p t then Some(Array.map unfold ts) else None
 
-(** [find_subst t (xs,p)] is given a term [t] and a pattern [p] (with “pattern
-    variables” of [xs]),  and it finds the first instance of (a term matching)
-    [p] in [t] (if there is any). If successful, the function returns an array
-    of terms corresponding to the substitution (see [match_pattern]). *)
+(** [find_subst t (xs,p)] finds the first instance of a subterm of [t]
+   matching [p] (if there is any). If successful, the function returns an
+   array of terms corresponding to the substitution (see [match_pattern]). *)
 let find_subst : term -> to_subst -> term array option = fun t (xs,p) ->
   let time = Time.save () in
   let rec find_sub_aux : term -> term array option = fun t ->
+    if Logger.log_enabled() then log_rewr "find_sub %a ≡ %a" term p term t;
     match match_pattern (xs,p) t with
     | None ->
         begin
@@ -243,7 +312,7 @@ let find_subst : term -> to_subst -> term array option = fun t (xs,p) ->
 let make_pat : term -> term -> bool = fun t p ->
   let time = Time.save () in
   let rec make_pat_aux : term -> bool = fun t ->
-    if eq t p then true else
+    if match_pat p t then true else
       begin
         Time.restore time;
         match unfold t with
@@ -262,7 +331,7 @@ let make_pat : term -> term -> bool = fun t p ->
 let bind_pattern : term -> term -> tbinder =  fun p t ->
   let z = new_tvar "z" in
   let rec replace : term -> tbox = fun t ->
-    if eq p t then _Vari z else
+    if match_pat p t then _Vari z else
     match unfold t with
     | Appl(t,u) -> _Appl (replace t) (replace u)
     | Prod(a,b) ->
@@ -327,11 +396,12 @@ let rewrite : Sig_state.t -> problem -> popt -> goal_typ -> bool ->
 
   (* Bind the variables in this new witness. *)
   let bound =
-    let triple = Bindlib.box_triple (lift t) (lift l) (lift r) in
+    let triple =
+      Bindlib.box_triple (lift t) (lift_not_canonical l) (lift r) in
     Bindlib.unbox (Bindlib.bind_mvar vars triple)
   in
 
-  (* Extract the term from the goal type (get “t” from “P t”). *)
+  (* Extract the term from the goal type (get “u” from “P u”). *)
   let g_term =
     match get_args g_type with
     | t, [u] when is_symb cfg.symb_P t -> u
