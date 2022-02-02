@@ -493,6 +493,11 @@ val _TE_None : tebox
     effect of gathering its free variables, making them available for binding.
     Bound variable names are automatically updated in the process. *)
 val lift : term -> tbox
+val lift_not_canonical : term -> tbox
+
+(** [bind v lift t] creates a tbinder by binding [v] in [lift t]. *)
+val bind : tvar -> (term -> tbox) -> term -> tbinder
+val binds : tvar array -> (term -> tbox) -> term -> tmbinder
 
 (** [cleanup t] builds a copy of the {!type:term} [t] where every instantiated
    metavariable, instantiated term environment, and reference cell has been

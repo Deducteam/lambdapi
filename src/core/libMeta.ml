@@ -63,8 +63,7 @@ let bmake : problem -> bctxt -> tbox -> tbox =
     updates [p] with generated metavariables. *)
 let make_codomain : problem -> ctxt -> term -> tbinder = fun p ctx a ->
   let x = new_tvar "x" in
-  let b = make p ((x, a, None) :: ctx) mk_Type in
-  Bindlib.unbox (Bindlib.bind_var x (lift b))
+  bind x lift (make p ((x, a, None) :: ctx) mk_Type)
 
 (** [bmake_codomain p bctx a] is [make_codomain p bctx a] but on boxed
     terms. *)

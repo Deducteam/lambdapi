@@ -183,16 +183,13 @@ let apply_subs : term IntMap.t -> term -> term = fun s ->
     | Appl(u,v) -> mk_Appl (apply_subs u, apply_subs v)
     | Abst(a,b) ->
       let x,b = Bindlib.unbind b in
-      mk_Abst (apply_subs a,
-               Bindlib.unbox (Bindlib.bind_var x (lift (apply_subs b))))
+      mk_Abst (apply_subs a, bind x lift (apply_subs b))
     | Prod(a,b) ->
       let x,b = Bindlib.unbind b in
-      mk_Prod (apply_subs a,
-               Bindlib.unbox (Bindlib.bind_var x (lift (apply_subs b))))
+      mk_Prod (apply_subs a, bind x lift (apply_subs b))
     | LLet(a,t,b) ->
       let x,b = Bindlib.unbind b in
-      mk_LLet (apply_subs a, apply_subs t,
-               Bindlib.unbox (Bindlib.bind_var x (lift (apply_subs b))))
+      mk_LLet (apply_subs a, apply_subs t, bind x lift (apply_subs b))
     | Meta(m,ts) -> mk_Meta (m, Array.map apply_subs ts)
     | TEnv(te,ts) -> mk_TEnv (te, Array.map apply_subs ts)
     | TRef _ -> assert false
@@ -274,7 +271,7 @@ let unif : Pos.popt -> term -> term -> term IntMap.t option =
 
 (* Unit tests. *)
 let _ =
-  let var i = mk_Patt (Some i, Format.sprintf "%d" i, [||]) in
+  let var i = mk_Patt (Some i, string_of_int i, [||]) in
   let v0 = var 0
   and v1 = var 1 in
   let sym name =
@@ -324,12 +321,12 @@ let check_cp_subterm_rule :
     if not (Eval.eq_modulo [] r1 r2) then
       wrn pos "@[<v>Unjoinable critical pair:@ \
                t ≔ %a@ \
-               t ↪[] %a@   \
+               t ↪[] %a ↪* %a@   \
                  with %a@ \
-               t ↪%a %a@   \
+               t ↪%a %a ↪* %a@   \
                  with %a]"
-        term (apply_subs s l) term r1 rule_of_pair (l,r)
-        subterm_pos p term r2 rule_of_pair (g,d)
+        term (apply_subs s l) term r1 term (Eval.snf [] r1) rule_of_pair (l,r)
+        subterm_pos p term r2 term (Eval.snf [] r2) rule_of_pair (g,d)
   | None -> ()
 
 (** [check_cp_subterms_rule pos sr1 sr2] checks the critical pairs between all

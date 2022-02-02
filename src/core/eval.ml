@@ -44,8 +44,7 @@ let hnf : (term -> term) -> (term -> term) = fun whnf ->
   let rec hnf t =
     match whnf t with
     | Abst(a,t) ->
-        let x, t = Bindlib.unbind t in
-        mk_Abst(a, Bindlib.unbox (Bindlib.bind_var x (lift (hnf t))))
+      let x, t = Bindlib.unbind t in mk_Abst(a, bind x lift (hnf t))
     | t -> t
   in hnf
 
@@ -62,15 +61,13 @@ let snf : (term -> term) -> (term -> term) = fun whnf ->
     | Symb _ -> h
     | LLet(_,t,b) -> snf (Bindlib.subst b t)
     | Prod(a,b) ->
-        let x, b = Bindlib.unbind b in
-        mk_Prod(snf a, Bindlib.unbox (Bindlib.bind_var x (lift (snf b))))
+        let x, b = Bindlib.unbind b in mk_Prod(snf a, bind x lift (snf b))
     | Abst(a,b) ->
-        let x, b = Bindlib.unbind b in
-        mk_Abst(snf a, Bindlib.unbox (Bindlib.bind_var x (lift (snf b))))
+        let x, b = Bindlib.unbind b in mk_Abst(snf a, bind x lift (snf b))
     | Appl(t,u)   -> mk_Appl(snf t, snf u)
     | Meta(m,ts)  -> mk_Meta(m, Array.map snf ts)
-    | Plac _      -> assert false (* Typechecked terms are evaluated *)
-    | Patt(_,_,_) -> assert false
+    | Patt(i,n,ts) -> mk_Patt(i,n,Array.map snf ts)
+    | Plac _      -> assert false
     | TEnv(_,_)   -> assert false
     | Wild        -> assert false
     | TRef(_)     -> assert false
@@ -125,7 +122,7 @@ let eq_modulo : (config -> term -> term) -> config -> term -> term -> bool =
     match l with
     | [] -> ()
     | (a,b)::l ->
-    (*if Logger.log_enabled () then log_conv "1: %a ≡ %a" term a term b;*)
+    if Logger.log_enabled () then log_conv "eq: %a ≡ %a" term a term b;
     let a = Config.unfold cfg a and b = Config.unfold cfg b in
     if a == b then eq cfg l else
     match a, b with
@@ -160,7 +157,7 @@ let eq_modulo : (config -> term -> term) -> config -> term -> term -> bool =
       raise Exit
     | _ ->
     let a = whnf cfg a and b = whnf cfg b in
-    (*if Logger.log_enabled () then log_conv "2: %a ≡ %a" term a term b;*)
+    if Logger.log_enabled () then log_conv "whnf: %a ≡ %a" term a term b;
     match a, b with
     | Patt(None,_,_), _ | _, Patt(None,_,_) -> assert false
     | Patt(Some i,_,ts), Patt(Some j,_,us) ->
@@ -181,7 +178,7 @@ let eq_modulo : (config -> term -> term) -> config -> term -> term -> bool =
     | _ -> raise Exit
   in
   fun cfg a b ->
-  if Logger.log_enabled () then log_conv "%a ≡ %a" term a term b;
+  if Logger.log_enabled () then log_conv "eq_modulo: %a ≡ %a" term a term b;
   try eq cfg [(a,b)]; true
   with Exit -> if Logger.log_enabled () then log_conv "failed"; false
 
@@ -317,9 +314,8 @@ and tree_walk : config -> dtree -> stack -> (term * stack) option =
                 let b = Bindlib.raw_mbinder [||] [||] 0 of_tvar (fun _ -> t)
                 in env.(slot) <- TE_Some(b)
               else
-                let b = lift vars.(pos) in
                 let xs = Array.map (fun e -> IntMap.find e id_vars) xs in
-                env.(slot) <- TE_Some(Bindlib.unbox (Bindlib.bind_mvar xs b))
+                env.(slot) <- TE_Some(binds xs lift vars.(pos))
         in
         List.iter f rhs_subst;
         (* Complete the array with fresh meta-variables if needed. *)
@@ -533,8 +529,7 @@ let rec simplify : term -> term = fun t ->
   match get_args (whnf ~tags [] t) with
   | Prod(a,b), _ ->
      let x, b = Bindlib.unbind b in
-     let b = Bindlib.bind_var x (lift (simplify b)) in
-     mk_Prod (simplify a, Bindlib.unbox b)
+     mk_Prod (simplify a, bind x lift (simplify b))
   | h, ts -> add_args_map h (whnf ~tags []) ts
 
 let simplify =
@@ -562,8 +557,7 @@ let unfold_sym : sym -> term -> term =
             | _ -> h
           in add_args h args
     and unfold_sym_binder b =
-      let x, b = Bindlib.unbind b in
-      Bindlib.unbox (Bindlib.bind_var x (lift (unfold_sym b)))
+      let x, b = Bindlib.unbind b in bind x lift (unfold_sym b)
     in unfold_sym
   in
   fun s ->
