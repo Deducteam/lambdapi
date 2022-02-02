@@ -80,13 +80,16 @@ zenon_modulo: bin
 
 #### Cleaning targets ########################################################
 
+.PHONY: lpoclean
+lpoclean:
+	@find . -type f -name "*.lpo" -exec rm {} \;
+
 .PHONY: clean
-clean:
+clean: lpoclean
 	@dune clean
 	@$(MAKE) -C editors/emacs clean
 	@$(MAKE) -C editors/vscode clean
 	@$(MAKE) -C Logic clean
-	@find . -type f -name "*.lpo" -exec rm {} \;
 
 .PHONY: distclean
 distclean: clean
