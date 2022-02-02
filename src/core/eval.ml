@@ -122,7 +122,7 @@ let eq_modulo : (config -> term -> term) -> config -> term -> term -> bool =
     match l with
     | [] -> ()
     | (a,b)::l ->
-    (*if Logger.log_enabled () then log_conv "1: %a ≡ %a" term a term b;*)
+    if Logger.log_enabled () then log_conv "eq: %a ≡ %a" term a term b;
     let a = Config.unfold cfg a and b = Config.unfold cfg b in
     if a == b then eq cfg l else
     match a, b with
@@ -157,7 +157,7 @@ let eq_modulo : (config -> term -> term) -> config -> term -> term -> bool =
       raise Exit
     | _ ->
     let a = whnf cfg a and b = whnf cfg b in
-    (*if Logger.log_enabled () then log_conv "2: %a ≡ %a" term a term b;*)
+    if Logger.log_enabled () then log_conv "whnf: %a ≡ %a" term a term b;
     match a, b with
     | Patt(None,_,_), _ | _, Patt(None,_,_) -> assert false
     | Patt(Some i,_,ts), Patt(Some j,_,us) ->
@@ -178,7 +178,7 @@ let eq_modulo : (config -> term -> term) -> config -> term -> term -> bool =
     | _ -> raise Exit
   in
   fun cfg a b ->
-  if Logger.log_enabled () then log_conv "%a ≡ %a" term a term b;
+  if Logger.log_enabled () then log_conv "eq_modulo: %a ≡ %a" term a term b;
   try eq cfg [(a,b)]; true
   with Exit -> if Logger.log_enabled () then log_conv "failed"; false
 
