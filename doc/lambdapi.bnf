@@ -66,6 +66,7 @@ QID ::= [UID "."]+ UID
                | "[" <param>+ [":" <term>] "]"
 
 <param> ::= <uid>
+          | <nat>
           | "_"
 
 <term> ::= <bterm>
