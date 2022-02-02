@@ -183,7 +183,7 @@ let rec coerce pb c t a b =
                 term t term a term b term !reduced;
             (* HACK: call infer to enforce metavariable type constraints.
                Ideally this should be done when checking the coercion rules *)
-            let (reduced, _, _) = infer pb c !reduced in
+            let (reduced, _) = force pb c !reduced b in
             (reduced, true)
         | Failure -> unif pb c a b; (t, false)))
 
