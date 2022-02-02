@@ -40,7 +40,7 @@ lambdapi.bnf: Makefile.bnf ../src/parsing/lpParser.mly
 	-e 's/PRINT/"print"/g' \
 	-e 's/REFINE/"refine"/g' \
 	-e 's/STRINGLIT/<stringlit>/g' \
-	-e 's/INT/<int>/g' \
+	-e 's/NAT/<nat>/g' \
 	-e 's/IN/"in"/g' \
 	-e 's/LET/"let"/g' \
 	-e 's/NOTATION/"notation"/g' \
