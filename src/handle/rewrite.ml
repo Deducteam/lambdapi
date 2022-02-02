@@ -10,119 +10,6 @@ open Proof
 let log_rewr = Logger.make 'r' "rewr" "the rewrite tactic"
 let log_rewr = log_rewr.pp
 
-(** [eq t u] tests the equality of [t] and [u] (up to α-equivalence).
-    It fails if [t] or [u] contain terms of the form [Patt(i,s,e)] or
-    [TEnv(te,env)].  In the process, subterms of the form [TRef(r)] in [t] and
-    [u] may be set with the corresponding value to enforce equality, and
-    variables appearing in [ctx] can be unfolded. In other words, [eq t u] can
-    be used to implement non-linear matching. When the
-    matching feature is used, one should make sure that [TRef] constructors do
-    not appear both in [t] and in [u] at the same time. Indeed, the references
-    are set naively, without occurrence checking. *)
-let _eq : term -> term -> bool = fun a b -> a == b ||
-  let exception Not_equal in
-  let rec eq l =
-    match l with
-    | []       -> ()
-    | (a,b)::l ->
-    if Logger.log_enabled () then log_rewr "eq %a ≡ %a" term a term b;
-    match (unfold a, unfold b) with
-    | (a          , b          ) when a == b -> eq l
-    | (Vari(x1)   , Vari(x2)   ) when Bindlib.eq_vars x1 x2 -> eq l
-    | (Type       , Type       )
-    | (Kind       , Kind       ) -> eq l
-    | (Symb(s1)   , Symb(s2)   ) when s1 == s2 -> eq l
-    | (Prod(a1,b1), Prod(a2,b2))
-    | (Abst(a1,b1), Abst(a2,b2)) ->
-      let (_, b1, b2) = Bindlib.unbind2 b1 b2 in eq ((a1,a2)::(b1,b2)::l)
-    | (LLet(a1,t1,b1), LLet(a2,t2,b2)) ->
-      let (_, b1, b2) = Bindlib.unbind2 b1 b2 in
-      eq ((a1,a2)::(t1,t2)::(b1,b2)::l)
-    | (Appl(t1,u1), Appl(t2,u2)) -> eq ((t1,t2)::(u1,u2)::l)
-    | (Meta(m1,e1), Meta(m2,e2)) when m1 == m2 ->
-        eq (if e1 == e2 then l else List.add_array2 e1 e2 l)
-    | (Wild       , _          ) -> eq l
-    | (_          , Wild       ) -> assert false
-    | (TRef(r)    , t          )
-    | (t          , TRef(r)    ) ->
-      if Logger.log_enabled() then log_rewr (Color.red "instantiate");
-      r := Some(t); eq l
-    | (Patt(_,_,_), _          ) -> assert false
-    | (_          , Patt(_,_,_)) -> assert false
-    | (TEnv(_,_)  , _          ) -> assert false
-    | (_          , TEnv(_,_)  ) -> assert false
-    | (_          , _          ) -> raise Not_equal
-  in
-  try eq [(a,b)]; true with Not_equal -> false
-
-(** [match_pat p t] instantiates the [TRef]'s of [p] so that [p] gets equal to
-   [t]. *)
-let match_pat : term -> term -> bool =
-  let exception Not_equal in
-  let rec eq l =
-    match l with
-    | [] -> ()
-    | (p,t)::l ->
-      let hp, ps, k = get_args_len p and ht, ts, n = get_args_len t in
-      if Logger.log_enabled() then
-        log_rewr "match_pat %a %a ≡ %a %a"
-          term hp (D.list term) ps term ht (D.list term) ts;
-      match hp with
-      | Wild ->
-        if k > n then
-          (if Logger.log_enabled() then log_rewr "k>n"; raise Not_equal);
-        let _, ts2 = List.cut ts (n-k) in
-        eq (List.fold_left2 (fun l pi ti -> (pi,ti)::l) l ps ts2)
-      | TRef r ->
-        if k > n then raise Not_equal;
-        let ts1, ts2 = List.cut ts (n-k) in
-        let u = add_args ht ts1 in
-        if Logger.log_enabled() then
-          log_rewr (Color.red "<TRef> ≔ %a") term u;
-        r := Some u;
-        eq (List.fold_left2 (fun l pi ti -> (pi,ti)::l) l ps ts2)
-      | _ ->
-        if k <> n then raise Not_equal;
-        let add_args l =
-          List.fold_left2 (fun l pi ti -> (pi,ti)::l) l ps ts in
-        match hp, ht with
-        | Type, Type
-        | Kind, Kind -> eq (add_args l)
-        | Vari x, Vari y when Bindlib.eq_vars x y -> eq (add_args l)
-        | Symb f, Symb g when f == g -> eq (add_args l)
-        | Prod(a1,b1), Prod(a2,b2)
-        | Abst(a1,b1), Abst(a2,b2) ->
-          let _,b1,b2 = Bindlib.unbind2 b1 b2 in
-          eq ((a1,a2)::(b1,b2)::add_args l)
-        | LLet(a1,t1,b1), LLet(a2,t2,b2) ->
-          let _,b1,b2 = Bindlib.unbind2 b1 b2 in
-          eq ((a1,a2)::(t1,t2)::(b1,b2)::add_args l)
-        | TRef _, _ -> assert false (* already done *)
-        | _, TRef _ -> assert false
-        | Wild, _ -> assert false (* already done *)
-        | _, Wild -> assert false
-        | Meta _, _ -> assert false
-        | Patt _, _ -> assert false
-        | _, Patt _ -> assert false
-        | TEnv _, _ -> assert false
-        | _, TEnv _ -> assert false
-        | Plac _, _ -> assert false
-        | _, Plac _ -> assert false
-        | Appl _, _ -> assert false
-        | _, Appl _ -> assert false
-        | _ ->
-          if Logger.log_enabled() then log_rewr "distinct heads";
-          raise Not_equal
-  in
-  fun p t ->
-    try
-      eq [(p,t)];
-      if Logger.log_enabled() then log_rewr "match_pat OK";
-      true
-    with Not_equal ->
-      if Logger.log_enabled() then log_rewr "match_pat KO";
-      false
-
 (** Equality configuration. *)
 type eq_config =
   { symb_P     : sym (** Encoding of propositions.        *)
@@ -219,8 +106,8 @@ let _ =
   in
   register_builtin "eqind" expected_eqind_type
 
-(** [get_eq_data pos cfg a] returns [((a,l,r),v)] if [a ≡ Π v1:A1, .., Π
-   vn:An, P (eq a l r)] and fails otherwise. *)
+(** [get_eq_data pos cfg a] returns [((a,l,r),[v1;..;vn])] if [a ≡ Π v1:A1,
+   .., Π vn:An, P (eq a l r)] and fails otherwise. *)
 let get_eq_data :
   eq_config -> popt -> term -> (term * term * term) * tvar array = fun cfg ->
   let exception Not_eq of term in
@@ -256,29 +143,96 @@ let get_eq_data :
     | Not_eq u ->
       fatal pos "Expected %a _ _ but found %a." sym cfg.symb_eq term u
 
-(** Type of a term with the free variables that need to be substituted (during
-    some unification process).  It is usually used to store the LHS of a proof
-    of equality, together with the variables that were quantified over. *)
+(** Type of a term with the free variables that need to be substituted. It is
+   usually used to store the LHS of a proof of equality, together with the
+   variables that were quantified over. *)
 type to_subst = tvar array * term
 
-(** [add_refs t] substitutes each wildcard of [t] using a fresh reference cell
-    ([TRef] constructor). This is used for unification, by performing  all the
-    substitutions in-place. *)
+(** [add_refs t] substitutes each wildcard of [t] by a fresh reference cell
+   ([TRef] constructor). This is used by matching, by performing all the
+   substitutions in-place, to deal with non-linear terms. *)
 let rec add_refs : term -> term = fun t ->
   match unfold t with
   | Wild        -> mk_TRef(ref None)
   | Appl(t1,t2) -> mk_Appl_not_canonical(add_refs t1, add_refs t2)
   | _           -> t
 
+(** [match_pat p t] instantiates the [TRef]'s of [p] so that [p] gets equal to
+   [t]. *)
+let match_pat : term -> term -> bool =
+  let exception Not_equal in
+  let rec eq l =
+    match l with
+    | [] -> ()
+    | (p,t)::l ->
+      let hp, ps, k = get_args_len p and ht, ts, n = get_args_len t in
+      if Logger.log_enabled() then
+        log_rewr "match_pat %a %a ≡ %a %a"
+          term hp (D.list term) ps term ht (D.list term) ts;
+      match hp with
+      | Wild ->
+        if k > n then
+          (if Logger.log_enabled() then log_rewr "k>n"; raise Not_equal);
+        let _, ts2 = List.cut ts (n-k) in
+        eq (List.fold_left2 (fun l pi ti -> (pi,ti)::l) l ps ts2)
+      | TRef r ->
+        if k > n then raise Not_equal;
+        let ts1, ts2 = List.cut ts (n-k) in
+        let u = add_args ht ts1 in
+        if Logger.log_enabled() then
+          log_rewr (Color.red "<TRef> ≔ %a") term u;
+        r := Some u;
+        eq (List.fold_left2 (fun l pi ti -> (pi,ti)::l) l ps ts2)
+      | _ ->
+        if k <> n then raise Not_equal;
+        let add_args l =
+          List.fold_left2 (fun l pi ti -> (pi,ti)::l) l ps ts in
+        match hp, ht with
+        | Type, Type
+        | Kind, Kind -> eq (add_args l)
+        | Vari x, Vari y when Bindlib.eq_vars x y -> eq (add_args l)
+        | Symb f, Symb g when f == g -> eq (add_args l)
+        | Prod(a1,b1), Prod(a2,b2)
+        | Abst(a1,b1), Abst(a2,b2) ->
+          let _,b1,b2 = Bindlib.unbind2 b1 b2 in
+          eq ((a1,a2)::(b1,b2)::add_args l)
+        | LLet(a1,t1,b1), LLet(a2,t2,b2) ->
+          let _,b1,b2 = Bindlib.unbind2 b1 b2 in
+          eq ((a1,a2)::(t1,t2)::(b1,b2)::add_args l)
+        | TRef _, _ -> assert false (* already done *)
+        | _, TRef _ -> assert false
+        | Wild, _ -> assert false (* already done *)
+        | _, Wild -> assert false
+        | Meta _, _ -> assert false
+        | Patt _, _ -> assert false
+        | _, Patt _ -> assert false
+        | TEnv _, _ -> assert false
+        | _, TEnv _ -> assert false
+        | Plac _, _ -> assert false
+        | _, Plac _ -> assert false
+        | Appl _, _ -> assert false
+        | _, Appl _ -> assert false
+        | _ ->
+          if Logger.log_enabled() then log_rewr "distinct heads";
+          raise Not_equal
+  in
+  fun p t ->
+    try
+      eq [(p,t)];
+      if Logger.log_enabled() then log_rewr "match_pat OK";
+      true
+    with Not_equal ->
+      if Logger.log_enabled() then log_rewr "match_pat KO";
+      false
+
 (** [match_pattern (xs,p) t] attempts to match the pattern [p] (containing the
     “pattern variables” of [xs]) with the term [t]. If successful,  it returns
-    [Some(ts)] where [ts] is an array of terms such that substituting elements
+    [Some ts] where [ts] is an array of terms such that substituting elements
     of [xs] by the corresponding elements of [ts] in [p] yields a term that is
-    equal to [t] (in terms of [eq]). *)
+    equal to [t]. *)
 let match_pattern : to_subst -> term -> term array option = fun (xs,p) t ->
   let ts = Array.map (fun _ -> mk_TRef(ref None)) xs in
-  let p = lift_not_canonical p in
-  let p = Bindlib.msubst (Bindlib.unbox (Bindlib.bind_mvar xs p)) ts in
+  let p = Bindlib.msubst (binds xs lift_not_canonical p) ts in
   if match_pat p t then Some(Array.map unfold ts) else None
 
 (** [find_subst t (xs,p)] finds the first instance of a subterm of [t]
@@ -360,8 +314,7 @@ let swap : eq_config -> term -> term -> term -> term -> term =
   let pred =
     let x = new_tvar "x" in
     let pred = add_args (mk_Symb cfg.symb_eq) [a; l; mk_Vari x] in
-    let pred = Bindlib.unbox (Bindlib.bind_var x (lift pred)) in
-    mk_Abst(mk_Appl(mk_Symb cfg.symb_T, a), pred)
+    mk_Abst(mk_Appl(mk_Symb cfg.symb_T, a), bind x lift pred)
   in
   (* We build the proof term. *)
   let refl_a_l = add_args (mk_Symb cfg.symb_refl) [a; l] in
@@ -474,8 +427,8 @@ let rewrite : Sig_state.t -> problem -> popt -> goal_typ -> bool ->
         let pred_bind = bind_pattern match_p g_term in
         let new_term = Bindlib.subst pred_bind p_r in
         let (x, p_x) = Bindlib.unbind p_x in
-        let pred_box = lift (Bindlib.subst pred_bind p_x) in
-        let pred_bind = Bindlib.unbox (Bindlib.bind_var x pred_box) in
+        let pred = Bindlib.subst pred_bind p_x in
+        let pred_bind = bind x lift pred in
         (pred_bind, new_term, t, l, r)
 
     | Some(Rw_IdInTerm(p)) ->
@@ -502,7 +455,7 @@ let rewrite : Sig_state.t -> problem -> popt -> goal_typ -> bool ->
               fatal pos "The pattern [%a] does not match [%a]."
                 term p term l
         in
-        let pat = Bindlib.unbox (Bindlib.bind_var id (lift p_refs)) in
+        let pat = bind id lift p_refs in
         (* The LHS of the pattern, i.e. the pattern with id replaced by *)
         (* id_val. *)
         let pat_l = Bindlib.subst pat id_val in
@@ -536,8 +489,7 @@ let rewrite : Sig_state.t -> problem -> popt -> goal_typ -> bool ->
         (* [l_x] is the pattern with [id] replaced by the variable X *)
         (* that we use for building the predicate. *)
         let (x, l_x) = Bindlib.unbind pat in
-        let pred_box = lift (Bindlib.subst pred_bind_l l_x) in
-        let pred_bind = Bindlib.unbox (Bindlib.bind_var x pred_box) in
+        let pred_bind = bind x lift (Bindlib.subst pred_bind_l l_x) in
         (pred_bind, new_term, t, l, r)
 
     (* Combinational patterns. *)
@@ -563,7 +515,7 @@ let rewrite : Sig_state.t -> problem -> popt -> goal_typ -> bool ->
         let id_val = id_val.(0) in
         (* [pat] is the full value of the pattern, with the wildcards now
            replaced by subterms of the goal and [id]. *)
-        let pat = Bindlib.unbox (Bindlib.bind_var id (lift p_refs)) in
+        let pat = bind id lift p_refs in
         let pat_l = Bindlib.subst pat id_val in
 
         (* We then try to match the wildcards in [s] with subterms of
@@ -613,8 +565,7 @@ let rewrite : Sig_state.t -> problem -> popt -> goal_typ -> bool ->
         (* The last step to build the predicate is to substitute
            [l_x] everywhere we find [pat_l] and bind that x. *)
         let pred = Bindlib.subst pred_bind_l l_x in
-        let pred_bind = Bindlib.bind_var x (lift pred) in
-        (Bindlib.unbox pred_bind, new_term, t, l, r)
+        (bind x lift pred, new_term, t, l, r)
 
     | Some(Rw_TermAsIdInTerm(s,p)) ->
         (* This pattern is essentially a let clause.  We first match the value
@@ -677,7 +628,7 @@ let rewrite : Sig_state.t -> problem -> popt -> goal_typ -> bool ->
                 term q term g_term
         in
         let id_val = id_val.(0) in
-        let pat = Bindlib.unbox (Bindlib.bind_var id (lift q_refs)) in
+        let pat = bind id lift q_refs in
         let pat_l = Bindlib.subst pat id_val in
         let sigma =
           match find_subst id_val (vars,l) with
@@ -699,8 +650,7 @@ let rewrite : Sig_state.t -> problem -> popt -> goal_typ -> bool ->
         let pred_bind_l = bind_pattern pat_l g_term in
         let new_term = Bindlib.subst pred_bind_l r_val in
         let l_x = Bindlib.subst pat id_x in
-        let pred_box = lift (Bindlib.subst pred_bind_l l_x) in
-        let pred_bind = Bindlib.unbox (Bindlib.bind_var x pred_box) in
+        let pred_bind = bind x lift (Bindlib.subst pred_bind_l l_x) in
         (pred_bind, new_term, t, l, r)
   in
 

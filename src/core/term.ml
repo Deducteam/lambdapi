@@ -747,6 +747,12 @@ let lift : (tbox -> tbox -> tbox) -> term -> tbox = fun mk_appl ->
 let lift = lift _Appl
 and lift_not_canonical = lift _Appl_not_canonical
 
+(** [bind v lift t] creates a tbinder by binding [v] in [lift t]. *)
+let bind : tvar -> (term -> tbox) -> term -> tbinder =
+  fun v lift t -> Bindlib.unbox (Bindlib.bind_var v (lift t))
+let binds : tvar array -> (term -> tbox) -> term -> tmbinder =
+  fun vs lift t -> Bindlib.unbox (Bindlib.bind_mvar vs (lift t))
+
 (** [cleanup t] builds a copy of the {!type:term} [t] where every instantiated
    metavariable, instantiated term environment, and reference cell has been
    eliminated using {!val:unfold}. Another effect of the function is that the

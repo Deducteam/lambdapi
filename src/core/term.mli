@@ -495,6 +495,10 @@ val _TE_None : tebox
 val lift : term -> tbox
 val lift_not_canonical : term -> tbox
 
+(** [bind v lift t] creates a tbinder by binding [v] in [lift t]. *)
+val bind : tvar -> (term -> tbox) -> term -> tbinder
+val binds : tvar array -> (term -> tbox) -> term -> tmbinder
+
 (** [cleanup t] builds a copy of the {!type:term} [t] where every instantiated
    metavariable, instantiated term environment, and reference cell has been
    eliminated using {!val:unfold}. Another effect of the function is that the

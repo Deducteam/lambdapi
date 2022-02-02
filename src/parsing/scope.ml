@@ -448,17 +448,17 @@ and scope_head :
   | (P_Appl(_,_), _) ->  assert false (* Unreachable. *)
 
   | (P_Arro(_,_), M_Patt) ->
-      fatal t.pos "Implications are not allowed in a pattern."
+      fatal t.pos "Arrows are not allowed in patterns."
   | (P_Arro(a,b), _) ->
     _Impl (scope ~typ:true (k+1) md ss env a)
           (scope ~typ:true (k+1) md ss env b)
 
   | (P_Abst(_,_), M_Patt) ->
-      fatal t.pos "Abstractions are not allowed in a pattern."
+      fatal t.pos "Abstractions are not allowed in patterns."
   | (P_Abst(xs,t), _) -> scope_binder k md ss _Abst env xs (Some(t))
 
   | (P_Prod(_,_), M_Patt) ->
-      fatal t.pos "Dependent products are not allowed in a pattern."
+      fatal t.pos "Dependent products are not allowed in patterns."
   | (P_Prod(xs,b), _) -> scope_binder ~typ:true k md ss _Prod env xs (Some(b))
 
   | (P_LLet(x,xs,a,t,u), (M_Term _|M_URHS _|M_RHS _)) ->
@@ -472,7 +472,7 @@ and scope_head :
   | (P_LLet(_), M_LHS(_)) ->
       fatal t.pos "Let-bindings are not allowed in a LHS."
   | (P_LLet(_), M_Patt) ->
-      fatal t.pos "Let-bindings are not allowed in a pattern."
+      fatal t.pos "Let-bindings are not allowed in patterns."
 
   (* Evade the addition of implicit arguments inside the wrap *)
   | (P_Wrap ({ elt = (P_Iden _ | P_Abst _); _ } as id), _) ->
@@ -690,18 +690,18 @@ let scope_rw_patt : sig_state -> env -> p_rw_patt -> (term, tbinder) rw_patt =
   | Rw_InIdInTerm(x,t) ->
       let v = new_tvar x.elt in
       let t = scope_pattern ss ((x.elt,(v, _Kind, None))::env) t in
-      Rw_InIdInTerm(Bindlib.unbox (Bindlib.bind_var v (lift t)))
+      Rw_InIdInTerm(bind v lift_not_canonical t)
   | Rw_IdInTerm(x,t) ->
       let v = new_tvar x.elt in
       let t = scope_pattern ss ((x.elt,(v, _Kind, None))::env) t in
-      Rw_IdInTerm(Bindlib.unbox (Bindlib.bind_var v (lift t)))
+      Rw_IdInTerm(bind v lift_not_canonical t)
   | Rw_TermInIdInTerm(u,(x,t)) ->
       let u = scope_pattern ss env u in
       let v = new_tvar x.elt in
       let t = scope_pattern ss ((x.elt,(v, _Kind, None))::env) t in
-      Rw_TermInIdInTerm(u, Bindlib.unbox (Bindlib.bind_var v (lift t)))
+      Rw_TermInIdInTerm(u, bind v lift_not_canonical t)
   | Rw_TermAsIdInTerm(u,(x,t)) ->
       let u = scope_pattern ss env u in
       let v = new_tvar x.elt in
       let t = scope_pattern ss ((x.elt,(v, _Kind, None))::env) t in
-      Rw_TermAsIdInTerm(u, Bindlib.unbox (Bindlib.bind_var v (lift t)))
+      Rw_TermAsIdInTerm(u, bind v lift_not_canonical t)

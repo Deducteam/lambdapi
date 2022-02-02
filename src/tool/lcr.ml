@@ -183,16 +183,13 @@ let apply_subs : term IntMap.t -> term -> term = fun s ->
     | Appl(u,v) -> mk_Appl (apply_subs u, apply_subs v)
     | Abst(a,b) ->
       let x,b = Bindlib.unbind b in
-      mk_Abst (apply_subs a,
-               Bindlib.unbox (Bindlib.bind_var x (lift (apply_subs b))))
+      mk_Abst (apply_subs a, bind x lift (apply_subs b))
     | Prod(a,b) ->
       let x,b = Bindlib.unbind b in
-      mk_Prod (apply_subs a,
-               Bindlib.unbox (Bindlib.bind_var x (lift (apply_subs b))))
+      mk_Prod (apply_subs a, bind x lift (apply_subs b))
     | LLet(a,t,b) ->
       let x,b = Bindlib.unbind b in
-      mk_LLet (apply_subs a, apply_subs t,
-               Bindlib.unbox (Bindlib.bind_var x (lift (apply_subs b))))
+      mk_LLet (apply_subs a, apply_subs t, bind x lift (apply_subs b))
     | Meta(m,ts) -> mk_Meta (m, Array.map apply_subs ts)
     | TEnv(te,ts) -> mk_TEnv (te, Array.map apply_subs ts)
     | TRef _ -> assert false

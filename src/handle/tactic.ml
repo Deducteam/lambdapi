@@ -112,8 +112,7 @@ let tac_refine :
   | Some t ->
   if Logger.log_enabled () then
     log_tact (Color.red "%a ≔ %a") meta gt.goal_meta term t;
-  LibMeta.set p gt.goal_meta
-    (Bindlib.unbox (Bindlib.bind_mvar (Env.vars gt.goal_hyps) (lift t)));
+  LibMeta.set p gt.goal_meta (binds (Env.vars gt.goal_hyps) lift t);
   (* Convert the metas and constraints of [p] not in [gs] into new goals. *)
   if Logger.log_enabled () then log_tact "%a" problem p;
   tac_solve pos {ps with proof_goals = Proof.add_goals_of_problem p gs}

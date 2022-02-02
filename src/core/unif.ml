@@ -219,9 +219,8 @@ let imitate_inj :
         | _ -> raise Cannot_imitate
       in build (List.length ts) [] !(s.sym_type)
     in
-    if Logger.log_enabled () then
-      log_unif (red "%a ≔ %a") meta m term t;
-    LibMeta.set p m (Bindlib.unbox (Bindlib.bind_mvar vars (lift t))); true
+    if Logger.log_enabled () then log_unif (red "%a ≔ %a") meta m term t;
+    LibMeta.set p m (binds vars lift t); true
   with Cannot_imitate | Invalid_argument _ -> false
 
 (** [imitate_lam_cond h ts] tells whether [ts] is headed by a variable not
