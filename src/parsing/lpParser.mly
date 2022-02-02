@@ -242,9 +242,10 @@ aterm:
   | ti=term_id { ti }
   | UNDERSCORE { make_pos $sloc P_Wild }
   | TYPE_TERM { make_pos $sloc P_Type }
-  | s=UID_META e=env
-    { let i = make_pos $loc(s) s in
-      make_pos $sloc (P_Meta(i,Array.of_list e)) }
+  | s=UID_META ts=env?
+    { let i = make_pos $loc(s) s
+      and ts = match ts with None -> [||] | Some ts -> Array.of_list ts in
+      make_pos $sloc (P_Meta(i,ts)) }
   | s=UID_PATT e=env?
     { let i = if s = "_" then None else Some(make_pos $loc(s) s) in
       make_pos $sloc (P_Patt(i, Option.map Array.of_list e)) }
