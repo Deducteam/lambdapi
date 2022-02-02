@@ -2,8 +2,8 @@
 
 require open Logic.TFF.Set Logic.TFF.Prop Logic.TFF.Main Logic.TFF.Eq;
 
-inductive ℕ : TYPE ≔
-| zero : ℕ
+inductive ℕ : TYPE ≔ // `dN
+| 0 : ℕ
 | s : ℕ → ℕ;
 
 // set code for ℕ
@@ -14,10 +14,10 @@ rule τ nat ↪ ℕ;
 
 // Enabling the use of decimal notation
 
-builtin "0"  ≔ zero;
+builtin "0"  ≔ 0;
 builtin "+1" ≔ s;
 
-assert ⊢ 42 : ℕ;
+assert ⊢ 1 : ℕ;
 
 // is0 predicate
 
@@ -203,7 +203,7 @@ t ↪[0; 1] ($1 + ($0 × $1)) × $2' ↪* ($1 + ($0 × $1)) × $2'
 
 // Maximum
 
-symbol ∨: ℕ → ℕ → ℕ;
+symbol ∨: ℕ → ℕ → ℕ; // || or \vee
 
 notation ∨ infix right 40;
 
@@ -243,7 +243,7 @@ end;
 
 // Order on ℕ
 
-constant symbol ≤ : ℕ → ℕ → Prop; notation ≤ infix 10;
+constant symbol ≤ : ℕ → ℕ → Prop; notation ≤ infix 10; // \le
 constant symbol 0≤ x : π(0 ≤ x);
 constant symbol s_mon_≤ x y : π(x ≤ y) → π(s x ≤ s y);
 
