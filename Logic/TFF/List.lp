@@ -94,4 +94,13 @@ begin
   { assume x l h; simplify; rewrite h; reflexivity }
 end;
 
+/* We cannot declare
 rule length (rev $l) ↪ length $l;
+without declaring + commutative because
+Unjoinable critical pair:
+t ≔ length (rev ($2 ⋅ $3))
+t ↪[] length ($2 ⋅ $3) ↪* length $2 + length $3
+  with length (rev $2') ↪ length $2'
+t ↪[1] length (rev $3 ⋅ rev $2) ↪* length $3 + length $2
+  with rev ($2 ⋅ $3) ↪ rev $3 ⋅ rev $2
+*/

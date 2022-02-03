@@ -41,7 +41,7 @@ let build_meta_type : problem -> int -> term = fun p k ->
 (** [patt_to_tenv vars t] converts pattern variables of [t] into corresponding
     term environment variables of [vars]. The index [i] in [Patt(Some(i),_,_)]
     indicates the index of the corresponding variable in [vars]. *)
-let patt_to_tenv : term_env Bindlib.var array -> term -> tbox = fun vars ->
+let patt_to_tenv : tevar array -> term -> tbox = fun vars ->
   let get_te i =
     match i with
     | None    -> assert false (* Cannot appear in LHS. *)
@@ -135,8 +135,7 @@ let check_rule : Scope.pre_rule Pos.loc -> rule = fun ({pos; elt} as pr) ->
   (* Check that the variables of the RHS are in the LHS. *)
   if pr_xvars_nb <> 0 then
     (let xvars = Array.drop (Array.length vars - pr_xvars_nb) vars in
-     fatal pos "Unknown pattern variables: %a"
-       (Array.pp var ",") xvars);
+     fatal pos "Unknown pattern variables: %a" (Array.pp var ",") xvars);
   let arity = List.length lhs in
   if Logger.log_enabled () then
     begin
@@ -162,15 +161,13 @@ let check_rule : Scope.pre_rule Pos.loc -> rule = fun ({pos; elt} as pr) ->
   (* Substitute them in the LHS and in the RHS. *)
   let lhs_with_metas, rhs_with_metas =
     let lhs_rhs = Bindlib.box_pair lhs_vars pr_rhs in
-    let b = Bindlib.bind_mvar vars lhs_rhs in
-    let b = Bindlib.unbox b in
+    let b = Bindlib.unbox (Bindlib.bind_mvar vars lhs_rhs) in
     let meta_to_tenv m =
       let xs = Array.init m.meta_arity (new_tvar_ind "x") in
       let ts = Array.map _Vari xs in
       TE_Some(Bindlib.unbox (Bindlib.bind_mvar xs (_Meta m ts)))
     in
-    let te_envs = Array.map meta_to_tenv metas in
-    Bindlib.msubst b te_envs
+    Bindlib.msubst b (Array.map meta_to_tenv metas)
   in
   if Logger.log_enabled () then
     log_subj "replace pattern variables by metavariables:@ %a ↪ %a"

@@ -87,7 +87,6 @@ let iter : bool -> (meta -> unit) -> ctxt -> term -> unit = fun b f c ->
     in
     Stdlib.ref (List.fold_left f VarMap.empty c)
   in
-  (*TODO: make iter tail recursive. *)
   let rec iter t =
     match unfold t with
     | Patt _
