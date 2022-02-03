@@ -283,20 +283,19 @@ let ctxt : ctxt pp = fun ppf ctx ->
   if !print_contexts then
     begin
       let def ppf t = out ppf " ≔ %a" term t in
-      let decl ppf (x,a,t) =
-        out ppf "%a%a%a" var x typ a (Option.pp def) t in
+      let decl ppf (x,a,t) = out ppf "%a%a%a" var x typ a (Option.pp def) t in
       out ppf "%a%s⊢ "
-        (List.pp decl ",@ ") (List.rev ctx)
-        (if ctx <> [] then "@ " else "")
+        (List.pp decl ", ") (List.rev ctx)
+        (if ctx <> [] then " " else "")
     end
 
 let typing : constr pp = fun ppf (ctx, t, u) ->
-  out ppf "%a%a@ : %a" ctxt ctx term t term u
+  out ppf "@[<h>%a%a : %a@]" ctxt ctx term t term u
 
 let constr : constr pp = fun ppf (ctx, t, u) ->
-  out ppf "%a%a@ ≡ %a" ctxt ctx term t term u
+  out ppf "@[<h>%a%a ≡ %a@]" ctxt ctx term t term u
 
-let constrs : constr list pp = List.pp constr ";@ "
+let constrs : constr list pp = List.pp constr "; "
 
 (* for debug only *)
 let metaset : MetaSet.t pp =
