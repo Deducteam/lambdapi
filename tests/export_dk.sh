@@ -18,7 +18,7 @@ do
         π/utf_path);; # because dedukti does not accept unicode characters in module names
         escape_path|'a b/escape file');; # because dedukti does not accept spaces in module names
         262_private_in_lhs);; # because dedukti does not accept protected symbols in rule LHS arguments
-        273);; # because dedukti SR algorithm fails
+        273|813);; # because dedukti SR algorithm fails
         file.with.dot|req.file.with.dot);; #FIXME
         indind);; #FIXME
         *) lp_files="$dir/$f.lp $lp_files";
