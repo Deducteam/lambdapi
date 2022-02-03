@@ -283,3 +283,10 @@ let split : ('a -> bool) -> 'a list -> 'a list * 'a * 'a list = fun f ->
     | [] -> raise Not_found
     | x::m -> if f x then (L.rev acc, x, m) else split (x::acc) m
   in split []
+
+(** [iter_head_tail f l] iterates [f] on all pairs (head, tail) of [l]. *)
+let rec iter_head_tail : ('a -> 'a list -> unit) -> 'a list -> unit =
+  fun f l ->
+  match l with
+  | [] -> ()
+  | h::t -> f h t; iter_head_tail f t

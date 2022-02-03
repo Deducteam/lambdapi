@@ -146,7 +146,8 @@ let link : t -> unit = fun sign ->
   in
   let f s i m = SymMap.add (link_symb s) (link_ind_data i) m in
   sign.sign_ind := SymMap.fold f !(sign.sign_ind) SymMap.empty;
-  let link_cp_pos (l,r,p,l_p) = link_lhs l, link_term r, p, link_lhs l_p in
+  let link_cp_pos (pos,l,r,p,l_p) =
+    pos, link_lhs l, link_term r, p, link_lhs l_p in
   let f s cps m = SymMap.add (link_symb s) (List.map link_cp_pos cps) m in
   sign.sign_cp_pos := SymMap.fold f !(sign.sign_cp_pos) SymMap.empty
 
@@ -199,7 +200,7 @@ let unlink : t -> unit = fun sign ->
     List.iter unlink_sym i.ind_cons; unlink_sym i.ind_prop in
   let f s i = unlink_sym s; unlink_ind_data i in
   SymMap.iter f !(sign.sign_ind);
-  let unlink_cp_pos (l,r,_,l_p) =
+  let unlink_cp_pos (_,l,r,_,l_p) =
     unlink_term l; unlink_term r; unlink_term l_p in
   let f s cps = unlink_sym s; List.iter unlink_cp_pos cps in
   SymMap.iter f !(sign.sign_cp_pos)
@@ -305,7 +306,8 @@ let read : string -> t = fun fname ->
     shallow_reset_sym i.ind_prop; List.iter shallow_reset_sym i.ind_cons in
   let f s i = shallow_reset_sym s; reset_ind i in
   SymMap.iter f !(sign.sign_ind);
-  let reset_cp_pos (l,r,_,l_p) = reset_term l; reset_term r; reset_term l_p in
+  let reset_cp_pos (_,l,r,_,l_p) =
+    reset_term l; reset_term r; reset_term l_p in
   let f s cps = shallow_reset_sym s; List.iter reset_cp_pos cps in
   SymMap.iter f !(sign.sign_cp_pos);
   sign

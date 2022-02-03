@@ -512,8 +512,8 @@ type subterm_pos = int list
 
 val subterm_pos : subterm_pos pp
 
-(** Type of critical pair positions (l,r,p,l_p). *)
-type cp_pos = term * term * subterm_pos * term
+(** Type of critical pair positions (pos,l,r,p,l_p). *)
+type cp_pos = Pos.popt * term * term * subterm_pos * term
 
 (** [term_of_rhs r] converts the RHS (right hand side) of the rewriting rule
     [r] into a term. The bound higher-order variables of the original RHS are
