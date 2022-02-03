@@ -314,22 +314,27 @@ let iter_rules_of_sym : (rule -> unit) -> sym -> unit = fun h s ->
     | None -> List.iter (fun r -> if not (is_ho r) then h r) !(s.sym_rules)
     | Some d -> h (rule_of_def s d)
 
-(** Type of rule identifiers. Hack: we use rule positions. *)
+(** Type of rule identifiers. Hack: we use the rule position to distinguish
+   between user-defined and generated rules (in completion), by giving a
+   unique negative start_line to every generated rule. *)
 type rule_id = Pos.pos
 
-let id_rule : rule -> rule_id = fun r ->
+(** [id_sym_rule r] returns the rule id of [r]. *)
+let id_sym_rule : sym_rule -> rule_id = fun (_,r) ->
   match r.rule_pos with Some p -> p | _ -> assert false
 
-let id_sym_rule : sym_rule -> rule_id = fun (_,r) -> id_rule r
-
+(** [new_rule_id()] generates a new unique rule id. *)
 let new_rule_id : unit -> rule_id =
   let open Stdlib in let n = ref 0 in fun () -> decr n;
   {fname=None; start_line=(!n); start_col=0; end_line=0; end_col=0}
 
-let is_generated : rule_id -> bool = fun p -> p.fname = None
+(** [is_generated i] says if [i] is a generated rule id. *)
+let is_generated : rule_id -> bool = fun p -> p.start_line < 0
 
-let int_of_rule_id : rule_id -> int = fun p ->
-  assert (is_generated p); p.start_line
+(** [int_of_rule_id i] returns a unique integer from [i]. /!\ [i] must be a
+   generated rule. *)
+let int_of_rule_id : rule_id -> int = fun i ->
+  assert (is_generated i); i.start_line
 
 (** Type of functions on critical pairs. *)
 type cp_fun =
@@ -340,6 +345,7 @@ type cp_fun =
   -> subs (* mgu(l_p,g) *)
   -> unit
 
+(** Type of functions on critical pair candidates. *)
 type cp_cand_fun =
   Pos.popt
   -> rule_id -> term -> term
@@ -347,6 +353,7 @@ type cp_cand_fun =
   -> rule_id -> term -> term
   -> unit
 
+(** [cp_cand_fun] turns a cp_fun into a cp_cand_fun. *)
 let cp_cand_fun : cp_fun -> cp_cand_fun = fun h pos i l r p l_p j g d ->
   Option.iter (h pos i l r p l_p j g d) (unif pos l_p g)
 
@@ -408,107 +415,107 @@ let typability_constraints : Pos.popt -> term -> subs option = fun pos t ->
   match Infer.infer_noexn p [] t with
   | None -> if Logger.log_enabled() then log_cp "not typable"; None
   | _ ->
-    (* Replace unsolved metas by symbols. *)
-    let s2p : int SymMap.t ref = ref SymMap.empty in
-    let meta_to_sym : meta -> unit = fun m ->
-      try
-        let i,n = MetaMap.find m !m2p in
-        let s = create_sym (Sign.current_path())
-            Public Defin Eager false (Pos.none n) mk_Kind [] in
-        let t = Bindlib.unbox (Bindlib.bind_mvar [||] (_Symb s)) in
-        Timed.(m.meta_value := Some t);
-        s2p := SymMap.add s i !s2p
-      with Not_found -> ()
+  (* Replace unsolved metas by symbols. *)
+  let s2p : int SymMap.t ref = ref SymMap.empty in
+  let meta_to_sym : meta -> unit = fun m ->
+    try
+      let i,n = MetaMap.find m !m2p in
+      let s = create_sym (Sign.current_path())
+          Public Defin Eager false (Pos.none n) mk_Kind [] in
+      let t = Bindlib.unbox (Bindlib.bind_mvar [||] (_Symb s)) in
+      Timed.(m.meta_value := Some t);
+      s2p := SymMap.add s i !s2p
+    with Not_found -> ()
+  in
+  MetaSet.iter meta_to_sym Timed.(!p).metas;
+  if Logger.log_enabled() then log_cp "meta_to_sym %a" problem p;
+  (* Try to solve constraints. *)
+  match Unif.solve_noexn ~type_check:false p with
+  | false ->
+    if Logger.log_enabled() then log_cp "unsolvable constraints"; None
+  | true ->
+  if Logger.log_enabled() then log_cp "after solve %a" problem p;
+  (* Function replacing generated symbols by their corresponding Patt. *)
+  let rec sym_to_patt : term -> term = fun t ->
+    match unfold t with
+    | Symb s ->
+      begin match SymMap.find_opt s !s2p with
+        | Some i -> mk_Patt(Some i, s.sym_name, [||])
+        | None -> t
+      end
+    | Appl(a,b) -> mk_Appl_not_canonical(sym_to_patt a, sym_to_patt b)
+    | _ -> t
+  in
+  (* Function converting a pair of terms into a rule, if possible. *)
+  let rule_of_terms : term -> term -> sym_rule option = fun l r ->
+    match get_args_len l with
+    | Symb s, lhs, arity ->
+      let vars = [||] and rule_pos = Some (new_rule_id()) in
+      let rhs = Bindlib.unbox (Bindlib.bind_mvar vars (Bindlib.box r)) in
+      let r = {lhs; rhs; arity; arities=[||]; vars; xvars_nb=0; rule_pos} in
+      Some (s,r)
+    | _ -> None
+  in
+  (* Turn constraints into rules. *)
+  let add_constr : sym_rule IntMap.t -> constr -> sym_rule IntMap.t =
+    fun rule_map (_,l,r) ->
+    let l,r = if Term.cmp l r > 0 then l,r else r,l in
+    match rule_of_terms l r with
+    | Some x ->
+      let i = id_sym_rule x in IntMap.add (int_of_rule_id i) x rule_map
+    | _ -> rule_map
+  in
+  let rule_map =
+    List.fold_left add_constr IntMap.empty Timed.(!p).unsolved in
+  (* [completion_step rule_map] computes a possibly new rule map by
+     simplifying [rule_map]. In case no rule has been removed or added, the
+     resulting map is physically equal to [rule_map]. *)
+  let completion_step : sym_rule IntMap.t -> sym_rule IntMap.t =
+    fun rule_map ->
+    if Logger.log_enabled() then
+      log_cp "completion_step %a" (D.intmap sym_rule) rule_map;
+    let new_rule_map = ref rule_map and modified = ref false in
+    let remove_rule i =
+      new_rule_map := IntMap.remove (int_of_rule_id i) !new_rule_map;
+      modified := true
     in
-    MetaSet.iter meta_to_sym Timed.(!p).metas;
-    if Logger.log_enabled() then log_cp "meta_to_sym %a" problem p;
-    (* Try to solve constraints. *)
-    match Unif.solve_noexn ~type_check:false p with
-    | false ->
-      if Logger.log_enabled() then log_cp "unsolvable constraint"; None
-    | true ->
-      if Logger.log_enabled() then log_cp "after solve %a" problem p;
-    (* Function replacing generated symbols by their corresponding Patt. *)
-    let rec sym_to_patt : term -> term = fun t ->
-      match unfold t with
-      | Symb s ->
-        begin match SymMap.find_opt s !s2p with
-          | Some i -> mk_Patt(Some i, s.sym_name, [||])
-          | None -> t
-        end
-      | Appl(a,b) -> mk_Appl_not_canonical(sym_to_patt a, sym_to_patt b)
-      | _ -> t
-    in
-    (* Function converting a pair of terms into a rule, if possible. *)
-    let rule_of_terms : term -> term -> sym_rule option = fun l r ->
-      match get_args_len l with
-      | Symb s, lhs, arity ->
-        let vars = [||] and rule_pos = Some (new_rule_id()) in
-        let rhs = Bindlib.unbox (Bindlib.bind_mvar vars (Bindlib.box r)) in
-        let r = {lhs; rhs; arity; arities=[||]; vars; xvars_nb=0; rule_pos} in
-        Some (s,r)
-      | _ -> None
-    in
-    (* Turn constraints into rules. *)
-    let add_constr : sym_rule IntMap.t -> constr -> sym_rule IntMap.t =
-      fun rule_map (_,l,r) ->
-      let l,r = if Term.cmp l r > 0 then l,r else r,l in
+    let add_rule l r =
       match rule_of_terms l r with
       | Some x ->
-        let i = id_sym_rule x in IntMap.add (int_of_rule_id i) x rule_map
-      | _ -> rule_map
-    in
-    let rule_map =
-      List.fold_left add_constr IntMap.empty Timed.(!p).unsolved in
-    (* [completion_step rule_map] computes a possibly new rule map by
-       simplifying [rule_map]. In case no rule has been removed or added, the
-       resulting map is physically equal to [rule_map]. *)
-    let completion_step : sym_rule IntMap.t -> sym_rule IntMap.t =
-      fun rule_map ->
-      if Logger.log_enabled() then
-        log_cp "completion_step %a" (D.intmap sym_rule) rule_map;
-      let new_rule_map = ref rule_map and modified = ref false in
-      let remove_rule i =
-        new_rule_map := IntMap.remove (int_of_rule_id i) !new_rule_map;
+        let i = id_sym_rule x in
+        new_rule_map := IntMap.add (int_of_rule_id i) x !new_rule_map;
         modified := true
-      in
-      let add_rule l r =
-        match rule_of_terms l r with
-        | Some x ->
-          let i = id_sym_rule x in
-          new_rule_map := IntMap.add (int_of_rule_id i) x !new_rule_map;
-          modified := true
-        | None -> ()
-      in
-      let cp_fun _pos i l r p _l_p _j _g d s =
-        assert (s = IntMap.empty);
-        remove_rule i;
-        let l' = replace l p d in
-        match cmp l' r with
-        | 0 -> ()
-        | n when n > 0 -> add_rule l' r
-        | _ -> add_rule r l'
-      in
-      let rs = IntMap.fold (fun _ r rs -> r::rs) rule_map [] in
-      iter_cps_of_rules cp_fun pos rs;
-      if !modified then !new_rule_map else rule_map
+      | None -> ()
     in
-    (* Completion. *)
-    let rec complete : sym_rule IntMap.t -> sym_rule IntMap.t =
-      fun rule_map ->
-      let new_rule_map = completion_step rule_map in
-      if new_rule_map == rule_map then rule_map else complete new_rule_map
+    let cp_fun _pos i l r p _l_p _j _g d s =
+      assert (s = IntMap.empty);
+      remove_rule i;
+      let l' = replace l p d in
+      match cmp l' r with
+      | 0 -> ()
+      | n when n > 0 -> add_rule l' r
+      | _ -> add_rule r l'
     in
-    let rule_map = complete rule_map in
-    (* Turn rules into a substitution. *)
-    let f _ ((s,_) as x) subs =
-      match SymMap.find_opt s !s2p with
-      | Some i -> IntMap.add i (sym_to_patt (rhs x)) subs
-      | None -> subs
-    in
-    let s = IntMap.fold f rule_map IntMap.empty in
-    if Logger.log_enabled() then log_cp "typing subs %a" subs s;
-    Some s
+    let rs = IntMap.fold (fun _ r rs -> r::rs) rule_map [] in
+    iter_cps_of_rules cp_fun pos rs;
+    if !modified then !new_rule_map else rule_map
+  in
+  (* Completion. *)
+  let rec complete : sym_rule IntMap.t -> sym_rule IntMap.t =
+    fun rule_map ->
+    let new_rule_map = completion_step rule_map in
+    if new_rule_map == rule_map then rule_map else complete new_rule_map
+  in
+  let rule_map = complete rule_map in
+  (* Turn completed rules into a substitution. *)
+  let f _ ((s,_) as x) subs =
+    match SymMap.find_opt s !s2p with
+    | Some i -> IntMap.add i (sym_to_patt (rhs x)) subs
+    | None -> subs
+  in
+  let s = IntMap.fold f rule_map IntMap.empty in
+  if Logger.log_enabled() then log_cp "typing subs %a" subs s;
+  Some s
 
 (** [check_cp pos _ l r p l_p _ g d s] checks that, if [l_p] and [g] are
    unifiable with mgu [s], then [s(r)] and [s(l[d]_p)] are
