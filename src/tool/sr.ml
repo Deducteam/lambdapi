@@ -180,9 +180,10 @@ let check_rule : Scope.pre_rule Pos.loc -> rule = fun ({pos; elt} as pr) ->
      a metavariable. *)
   if not (Unif.solve_noexn ~type_check:false p) then
     fatal pos "The LHS is not typable.";
-  let lhs_constrs = !p.unsolved in
+  let norm_constr (c,t,u) = (c, Eval.snf [] t, Eval.snf [] u) in
+  let lhs_constrs = List.map norm_constr !p.unsolved in
   if Logger.log_enabled () then
-    log_subj "LHS type: %a@.constraints: %a@.%a ↪ %a"
+    log_subj "@[<v>LHS type: %a@ LHS constraints: %a@ %a ↪ %a@]"
       term ty_lhs constrs lhs_constrs
       term lhs_with_metas term rhs_with_metas;
   (* We instantiate all the uninstantiated metavariables of the LHS (including
@@ -227,16 +228,36 @@ let check_rule : Scope.pre_rule Pos.loc -> rule = fun ({pos; elt} as pr) ->
   (* Solving the typing constraints of the RHS. *)
   if not (Unif.solve_noexn p) then
     fatal pos "The rewriting rule does not preserve typing.";
-  let is_lhs_constr c =
-    (* Contexts ignored: [Infer.check] is called with an empty context and
-       neither [Infer.check] nor [Unif.solve] generate contexts with defined
-       variables. *)
-    let eq (_,t1,u1) (_,t2,u2) =
-      Eval.(eq_modulo [] t1 t2 && eq_modulo [] u1 u2)
-      || Eval.(eq_modulo [] t1 u2 && eq_modulo [] t2 u1) in
-    List.exists (eq c) lhs_constrs
+  let rhs_constrs = List.map norm_constr !p.unsolved in
+  (* [matches p t] says if [t] is an instance of [p]. *)
+  let matches p t =
+    let rec matches s l =
+      match l with
+      | [] -> ()
+      | (p,t)::l ->
+        (*if Logger.log_enabled() then
+          log_subj "matches [%a] [%a]" term p term t;*)
+        match unfold p, unfold t with
+        | Vari x, _ ->
+          begin match VarMap.find_opt x s with
+            | Some u ->
+              if Eval.eq_modulo [] t u then matches s l else raise Exit
+            | None -> matches (VarMap.add x t s) l
+          end
+        | Symb f, Symb g when f == g -> matches s l
+        | Appl(t1,u1), Appl(t2,u2) -> matches s ((t1,t2)::(u1,u2)::l)
+        | _ -> raise Exit
+    in try matches VarMap.empty [p,t]; true with Exit -> false
   in
-  let cs = List.filter (fun c -> not (is_lhs_constr c)) !p.unsolved in
+  (* Function saying if a constraint is an instance of another one. *)
+  let is_inst ((_c1,t1,u1) as x1) ((_c2,t2,u2) as x2) =
+    if Logger.log_enabled() then
+      log_subj "is_inst [%a] [%a]" constr x1 constr x2;
+    let cons t u = add_args (mk_Symb Unif_rule.equiv) [t; u] in
+    matches (cons t1 u1) (cons t2 u2) || matches (cons t1 u1) (cons u2 t2)
+  in
+  let is_lhs_constr rc = List.exists (fun lc -> is_inst lc rc) lhs_constrs in
+  let cs = List.filter (fun rc -> not (is_lhs_constr rc)) rhs_constrs in
   if cs <> [] then
     begin
       List.iter (fatal_msg "Cannot solve %a@." constr) cs;
