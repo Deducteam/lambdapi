@@ -91,6 +91,7 @@ let link : t -> unit = fun sign ->
   let link_term mk_Appl =
     let rec link_term t =
       match unfold t with
+      | Db _ -> assert false
       | Vari _
       | Type
       | Kind -> t
@@ -176,6 +177,7 @@ let unlink : t -> unit = fun sign ->
     | Wild   -> assert false
     | TRef _ -> assert false
     | TEnv(_,ts) -> Array.iter unlink_term ts
+    | Db _ -> assert false
     | Patt _
     | Vari _
     | Type
@@ -272,6 +274,7 @@ let read : string -> t = fun fname ->
   in
   let rec reset_term t =
     match unfold t with
+    | Db _ -> assert false
     | Vari _
     | Type
     | Kind -> ()

@@ -32,6 +32,7 @@ let status : sym -> symb_status = fun s ->
 let rec print_term : int -> string -> term pp = fun i s ppf t ->
   match unfold t with
   (* Forbidden cases. *)
+  | Db _ -> assert false
   | Meta(_,_)               -> assert false
   | Plac _                  -> assert false
   | TRef(_)                 -> assert false
@@ -60,6 +61,7 @@ let rec print_term : int -> string -> term pp = fun i s ppf t ->
 and print_type : int -> string -> term pp = fun i s ppf t ->
   match unfold t with
   (* Forbidden cases. *)
+  | Db _ -> assert false
   | Meta(_,_)               -> assert false
   | Plac _                  -> assert false
   | TRef(_)                 -> assert false
@@ -116,6 +118,7 @@ let get_vars : sym -> rule -> (string * Term.term) list = fun s r ->
   let var_list : tvar list ref = ref [] in
   let rec subst_patt v t =
     match t with
+    | Db _ -> assert false
     | Type
     | Kind
     | TEnv (_, _)

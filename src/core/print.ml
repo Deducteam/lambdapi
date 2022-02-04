@@ -206,6 +206,7 @@ and term : term pp = fun ppf t ->
       | _          -> assert false
     in
     match unfold t with
+    | Db _        -> assert false
     | Appl(_,_)   -> assert false
     (* Application is handled separately, unreachable. *)
     | Wild        -> out ppf "_"

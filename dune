@@ -1,4 +1,4 @@
 ; Add project-wide flags here.
 (env
- (dev     (flags :standard))
- (release (flags :standard)))
+ (dev     (flags :standard -w -37))
+ (release (flags :standard -w -37)))

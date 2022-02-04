@@ -20,6 +20,7 @@ let print_term : bool -> term pp = fun lhs ->
   let rec pp ppf t =
     match unfold t with
     (* Forbidden cases. *)
+    | Db _ -> assert false
     | Meta(_,_)    -> assert false
     | Plac _       -> assert false
     | TRef(_)      -> assert false

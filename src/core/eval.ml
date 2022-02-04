@@ -55,6 +55,7 @@ let snf : (term -> term) -> (term -> term) = fun whnf ->
     let h = whnf t in
     if Logger.log_enabled () then log_eval "whnf %a = %a" term t term h;
     match h with
+    | Db _ -> assert false
     | Vari _
     | Type
     | Kind
@@ -415,6 +416,7 @@ and tree_walk : config -> dtree -> stack -> (term * stack) option =
             walk tr stk cursor vars_id id_vars
           in
           match t with
+          | Db _ -> assert false
           | Symb(s)    ->
               let cons = TC.Symb(s.sym_path, s.sym_name, List.length args) in
               begin

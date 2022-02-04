@@ -119,6 +119,7 @@ let tenv : term_env pp = fun ppf te ->
 
 let rec term : bool -> term pp = fun b ppf t ->
   match unfold t with
+  | Db _ -> assert false
   | Vari v -> tvar ppf v
   | Type -> out ppf "Type"
   | Kind -> assert false

@@ -91,6 +91,7 @@ and force : problem -> octxt -> term -> term -> term * bool =
 and infer_aux : problem -> octxt -> term -> term * term * bool =
  fun pb c t ->
   match unfold t with
+  | Db _ -> assert false
   | Patt _ -> assert false
   | TEnv _ -> assert false
   | Kind -> assert false

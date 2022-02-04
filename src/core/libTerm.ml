@@ -42,6 +42,7 @@ let iter : (term -> unit) -> term -> unit = fun action ->
     let t = unfold t in
     action t;
     match t with
+    | Db _ -> assert false
     | Wild
     | Plac _
     | TRef(_)

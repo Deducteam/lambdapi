@@ -65,6 +65,7 @@ type term =
   | TRef of term option ref (** Reference cell (used in surface matching). *)
   | LLet of term * term * tbinder
   (** [LLet(a, t, u)] is [let x : a ≔ t in u] (with [x] bound in [u]). *)
+  | Db of int (** Bound variable as de Bruijn index. *)
 
 (** {b NOTE} that a wildcard "_" of the concrete (source code) syntax may have
     a different representation depending on the application. For instance, the
@@ -233,6 +234,7 @@ let minimize_impl : bool list -> bool list =
 module Raw = struct
 let rec term : term pp = fun ppf t ->
   match t with
+  | Db _ -> assert false
   | Vari v -> var ppf v
   | Type -> out ppf "TYPE"
   | Kind -> out ppf "KIND"
@@ -715,6 +717,7 @@ let _TE_None : tebox = Bindlib.box TE_None
 let lift : (tbox -> tbox -> tbox) -> term -> tbox = fun mk_appl ->
   let rec lift t =
   match unfold t with
+  | Db _        -> assert false
   | Vari x      -> _Vari x
   | Type        -> _Type
   | Kind        -> _Kind

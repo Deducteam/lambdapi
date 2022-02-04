@@ -78,6 +78,7 @@ let replace : term -> subterm_pos -> term -> term = fun t p u ->
 let occurs : int -> term -> bool = fun i ->
   let rec occ t =
     match unfold t with
+    | Db _ -> assert false
     | Patt(None,_,_) -> assert false
     | Patt(Some j,_,_) -> i=j
     | Vari _ | Symb _ -> false
@@ -97,6 +98,7 @@ let occurs : int -> term -> bool = fun i ->
 let shift : term -> term =
   let rec shift : term -> tbox = fun t ->
     match unfold t with
+    | Db _ -> assert false
     | Vari x -> _Vari x
     | Type -> _Type
     | Kind -> _Kind
@@ -133,6 +135,7 @@ let apply_subs : subs -> term -> term = fun s t ->
   let rec apply_subs t =
     (*if Logger.log_enabled() then log_cp "%a" term t;*)
     match unfold t with
+    | Db _ -> assert false
     | Patt(None, _, _) -> assert false
     | Patt(Some i,_,[||]) ->
       begin try IntMap.find i s with Not_found -> t end
@@ -172,6 +175,7 @@ let iter_subterms_from_pos : subterm_pos -> iter =
     | Vari _ -> iter_args p t
     | Abst(a,b)
     | Prod(a,b) -> iter (0::p) a; let _,b = Bindlib.unbind b in iter (1::p) b
+    | Db _ -> assert false
     | Appl _ -> assert false
     | Type -> assert false
     | Kind -> assert false
@@ -201,6 +205,7 @@ let iter_subterms_eq : iter = iter_subterms_from_pos []
 let iter_subterms : iter = fun pos f t ->
   (*if Logger.log_enabled() then log_cp "iter_subterms %a" term t;*)
   match unfold t with
+  | Db _ -> assert false
   | Symb _
   | Patt _
   | Vari _ -> ()

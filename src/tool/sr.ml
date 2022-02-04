@@ -55,6 +55,7 @@ let patt_to_tenv : tevar array -> term -> tbox = fun vars ->
                      _Abst (trans a) (Bindlib.bind_var x (trans b))
     | Appl(t,u)   -> _Appl (trans t) (trans u)
     | Patt(i,_,a) -> _TEnv (_TE_Vari (get_te i)) (Array.map trans a)
+    | Db _        -> assert false
     | Type        -> assert false (* Cannot appear in LHS. *)
     | Kind        -> assert false (* Cannot appear in LHS. *)
     | Prod(_,_)   -> assert false (* Cannot appear in LHS. *)
@@ -86,6 +87,7 @@ let symb_to_tenv
     let ts = List.map symb_to_tenv ts in
     let (h, ts) =
       match h with
+      | Db _ -> assert false
       | Symb(f) when List.memq f syms ->
           let i =
             try Hashtbl.find htbl f.sym_name with Not_found ->
