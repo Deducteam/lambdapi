@@ -298,11 +298,11 @@ and tree_walk : config -> dtree -> stack -> (term * stack) option =
     let open Tree_type in
     match tree with
     | Fail -> None
-    | Leaf(rhs_subst, (act, xvars)) -> (* Apply the RHS substitution *)
+    | Leaf(rhs_subst, r) -> (* Apply the RHS substitution *)
         (* Allocate an environment where to place terms coming from the
            pattern variables for the action. *)
-        let env_len = OldBindlib.mbinder_arity act in
-        assert (List.length rhs_subst = env_len - xvars);
+        let env_len = Array.length r.vars in
+        assert (List.length rhs_subst = env_len - r.xvars_nb);
         let env = Array.make env_len TE_None in
         (* Retrieve terms needed in the action from the [vars] array. *)
         let f (pos, (slot, xs)) =
@@ -315,12 +315,12 @@ and tree_walk : config -> dtree -> stack -> (term * stack) option =
         in
         List.iter f rhs_subst;
         (* Complete the array with fresh meta-variables if needed. *)
-        for i = env_len - xvars to env_len - 1 do
+        for i = env_len - r.xvars_nb to env_len - 1 do
           let mt = LibMeta.make cfg.problem cfg.context mk_Type in
           let t = LibMeta.make cfg.problem cfg.context mt in
           env.(i) <- TE_Some(binds [||] lift t)
         done;
-        Some (OldBindlib.msubst act env, stk)
+        Some (OldBindlib.msubst r.rhs env, stk)
     | Cond({ok; cond; fail})                              ->
         let next =
           match cond with

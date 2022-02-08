@@ -81,14 +81,11 @@ type term = private
     the {!constructor:Patt} constructor to represend wildcards of the concrete
     syntax. They are thus considered to be fresh, unused pattern variables. *)
 
-(** Representation of a rewriting rule RHS (or action) as given in the type of
-    rewriting rules (see {!field:Term.rhs}) with the number of variables that
-    are not in the LHS. In decision trees, a RHS is stored in every leaf since
-    they correspond to matched rules. *)
+(** Representation of a rewriting rule RHS. *)
 and rhs = (term_env, term) OldBindlib.mbinder
 
 (** Representation of a decision tree (used for rewriting). *)
-and dtree = (rhs * int) Tree_type.dtree
+and dtree = rule Tree_type.dtree
 
 (** Representation of a user-defined symbol. Symbols carry a "mode" indicating
     whether they may be given rewriting rules or a definition. Invariants must
