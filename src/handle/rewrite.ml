@@ -336,7 +336,7 @@ let rewrite : Sig_state.t -> problem -> popt -> goal_typ -> bool ->
   let bound =
     let triple =
       Bindlib.box_triple (lift t) (lift_not_canonical l) (lift r) in
-    Bindlib.unbox (Bindlib.bind_mvar vars triple)
+    Bindlib.unbox (Bindlib.bind_mvar3 vars triple)
   in
 
   (* Extract the term from the goal type (get “u” from “P u”). *)
@@ -360,7 +360,7 @@ let rewrite : Sig_state.t -> problem -> popt -> goal_typ -> bool ->
                 term g_term term l
         in
         (* Build the required data from that substitution. *)
-        let (t, l, r) = Bindlib.msubst bound sigma in
+        let (t, l, r) = Bindlib.msubst3 bound sigma in
         let pred_bind = bind_pattern l g_term in
         (pred_bind, Bindlib.subst pred_bind r, t, l, r)
 
@@ -383,7 +383,7 @@ let rewrite : Sig_state.t -> problem -> popt -> goal_typ -> bool ->
                 term match_p term l
         in
         (* Build the data from the substitution. *)
-        let (t, l, r) = Bindlib.msubst bound sigma in
+        let (t, l, r) = Bindlib.msubst3 bound sigma in
         let pred_bind = bind_pattern l g_term in
         (pred_bind, Bindlib.subst pred_bind r, t, l, r)
 
@@ -406,7 +406,7 @@ let rewrite : Sig_state.t -> problem -> popt -> goal_typ -> bool ->
                 term match_p term l
         in
         (* Build the data from the substitution. *)
-        let (t, l, r) = Bindlib.msubst bound sigma in
+        let (t, l, r) = Bindlib.msubst3 bound sigma in
         let p_x = bind_pattern l match_p in
         let p_r = Bindlib.subst p_x r in
         let pred_bind = bind_pattern match_p g_term in
@@ -457,7 +457,7 @@ let rewrite : Sig_state.t -> problem -> popt -> goal_typ -> bool ->
         (* Build t, l, using the substitution we found. Note that r  *)
         (* corresponds to the value we get by applying rewrite to *)
         (* id val. *)
-        let (t,l,r) = Bindlib.msubst bound sigma in
+        let (t,l,r) = Bindlib.msubst3 bound sigma in
 
         (* The RHS of the pattern, i.e. the pattern with id replaced *)
         (* by the result of rewriting id_val. *)
@@ -519,7 +519,7 @@ let rewrite : Sig_state.t -> problem -> popt -> goal_typ -> bool ->
               fatal pos "The term [%a] does not match the LHS [%a]"
                 term s term l
         in
-        let (t,l,r) = Bindlib.msubst bound sigma in
+        let (t,l,r) = Bindlib.msubst3 bound sigma in
 
         (* First we work in [id_val], that is, we substitute all
            the occurrences of [l] in [id_val] with [r]. *)
@@ -586,7 +586,7 @@ let rewrite : Sig_state.t -> problem -> popt -> goal_typ -> bool ->
                 "The value of X, [%a], does not match the LHS, [%a]"
                 term id_val term l
         in
-        let (t,l,r) = Bindlib.msubst bound sigma in
+        let (t,l,r) = Bindlib.msubst3 bound sigma in
 
         (* Now to do some term building. *)
         let p_x = bind_pattern l p in
@@ -622,7 +622,7 @@ let rewrite : Sig_state.t -> problem -> popt -> goal_typ -> bool ->
                 "The value of [%a], [%a], in [%a] does not match [%a]."
                 var id term id_val term q term l
         in
-        let (t,l,r) = Bindlib.msubst bound sigma in
+        let (t,l,r) = Bindlib.msubst3 bound sigma in
 
         (* Rewrite in id. *)
         let id_bind = bind_pattern l id_val in

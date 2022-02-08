@@ -52,7 +52,7 @@ let to_dot : Format.formatter -> sym -> unit = fun ppf s ->
       incr node_count;
       match t with
       | Leaf(_,(a,_))                                                    ->
-          let _, acte = Bindlib.unmbind a in
+          let _, acte = OldBindlib.unmbind a in
           out ppf "@ %d [label=\"%a\"];" !node_count Print.term acte;
           out ppf "@ %d -- %d [label=<%a>];"
             father_l !node_count dotterm swon

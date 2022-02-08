@@ -137,20 +137,21 @@ let check_rule : Scope.pre_rule Pos.loc -> rule = fun ({pos; elt} as pr) ->
   (* Check that the variables of the RHS are in the LHS. *)
   if pr_xvars_nb <> 0 then
     (let xvars = Array.drop (Array.length vars - pr_xvars_nb) vars in
-     fatal pos "Unknown pattern variables: %a" (Array.pp var ",") xvars);
+     fatal pos "Unknown pattern variables: %a" (Array.pp tevar ",") xvars);
   let arity = List.length lhs in
   if Logger.log_enabled () then
     begin
       (* The unboxing here could be harmful since it leads to [pr_rhs] being
          unboxed twice. However things should be fine here since the result is
          only used for printing. *)
-      let rhs = Bindlib.(unbox (bind_mvar vars pr_rhs)) in
+      let rhs = OldBindlib.(unbox (bind_mvar vars pr_rhs)) in
       let naive_rule =
         {lhs; rhs; arity; arities; vars; xvars_nb = 0; rule_pos = pos} in
       log_subj (Color.red "%a") sym_rule (s, naive_rule);
     end;
   (* Replace [Patt] nodes of LHS with corresponding elements of [vars]. *)
-  let lhs_vars = _Appl_Symb s (List.map (patt_to_tenv vars) lhs) in
+  let lhs_vars = old_lift
+      (_Appl_Symb s (List.map (patt_to_tenv vars) lhs)) in
   let p = new_problem() in
   let metas =
     let f i _ =
@@ -162,14 +163,14 @@ let check_rule : Scope.pre_rule Pos.loc -> rule = fun ({pos; elt} as pr) ->
   in
   (* Substitute them in the LHS and in the RHS. *)
   let lhs_with_metas, rhs_with_metas =
-    let lhs_rhs = Bindlib.box_pair lhs_vars pr_rhs in
-    let b = Bindlib.unbox (Bindlib.bind_mvar vars lhs_rhs) in
+    let lhs_rhs = OldBindlib.box_pair lhs_vars pr_rhs in
+    let b = OldBindlib.unbox (OldBindlib.bind_mvar vars lhs_rhs) in
     let meta_to_tenv m =
       let xs = Array.init m.meta_arity (new_tvar_ind "x") in
       let ts = Array.map _Vari xs in
       TE_Some(Bindlib.unbox (Bindlib.bind_mvar xs (_Meta m ts)))
     in
-    Bindlib.msubst b (Array.map meta_to_tenv metas)
+    OldBindlib.msubst b (Array.map meta_to_tenv metas)
   in
   if Logger.log_enabled () then
     log_subj "replace pattern variables by metavariables:@ %a ↪ %a"
@@ -274,5 +275,5 @@ let check_rule : Scope.pre_rule Pos.loc -> rule = fun ({pos; elt} as pr) ->
   let rhs = symb_to_tenv pr symbols htbl rhs_with_metas in
   (* TODO environment minimisation ? *)
   (* Construct the rule. *)
-  let rhs = Bindlib.unbox (Bindlib.bind_mvar vars rhs) in
+  let rhs = OldBindlib.unbox (OldBindlib.bind_mvar vars (old_lift rhs)) in
   { lhs ; rhs ; arity ; arities ; vars; xvars_nb = 0; rule_pos = pos }

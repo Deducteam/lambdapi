@@ -170,6 +170,12 @@ let _ =
   assert (valid "case_ex02_intro1");
   assert (valid "case_ex02_intro10")
 
+let pp_env : env Base.pp =
+  let open Base in
+  let def ppf t = out ppf " ≔ %a" term t in
+  let elt ppf (s, (_,a,t)) = out ppf "%s: %a%a" s term a (Option.pp def) t in
+  (D.list elt)
+
 (** [scope ~typ md ss env t] turns a parser-level term [t] into an actual
     term. The variables of the environment [env] may appear in [t],
     and the scoping mode [md] changes the behaviour related to certain
@@ -186,7 +192,8 @@ let rec scope : ?typ:bool -> int -> mode -> sig_state -> env -> p_term ->
 and scope_parsed :
   ?typ:bool -> int -> mode -> sig_state -> env -> p_term -> tbox =
   fun ?(typ=false) k md ss env t ->
-  if Logger.log_enabled () then log_scop "%a%a" D.depth k Pretty.term t;
+  if Logger.log_enabled () then
+    log_scop "%a%a@ %a" D.depth k pp_env env Pretty.term t;
   (* Extract the spine. *)
   let p_head, args = Syntax.p_get_args t in
   (* Check that LHS pattern variables are applied to no argument. *)
@@ -556,10 +563,10 @@ type pre_rule =
   (** Head symbol of the LHS. *)
   ; pr_lhs      : term list
   (** Arguments of the LHS. *)
-  ; pr_vars     : term_env Bindlib.mvar
+  ; pr_vars     : term_env OldBindlib.mvar
   (** Pattern variables that appear in the RHS. The last [pr_xvars_nb]
       variables do not appear in the LHS. *)
-  ; pr_rhs      : tbox
+  ; pr_rhs      : term OldBindlib.box
   (** Body of the RHS, should only be unboxed once. *)
   ; pr_names    : (int, string) Hashtbl.t
   (** Gives the original name (if any) of pattern variable at given index. *)
@@ -573,7 +580,7 @@ let rule_of_pre_rule : pre_rule loc -> rule =
   fun { elt = pr; pos = rule_pos } ->
   let {pr_lhs; pr_vars; pr_rhs; pr_arities; pr_xvars_nb; _} = pr in
   { lhs = pr_lhs
-  ; rhs = Bindlib.(unbox (bind_mvar pr_vars pr_rhs))
+  ; rhs = OldBindlib.(unbox (bind_mvar pr_vars pr_rhs))
   ; arity = List.length pr_lhs
   ; arities = pr_arities
   ; vars = pr_vars
@@ -639,7 +646,7 @@ let scope_rule : bool -> sig_state -> p_rule -> pre_rule loc =
       M_RHS{ m_rhs_prv = is_private pr_sym; m_rhs_data = htbl_vars;
              m_rhs_new_metas = new_problem() }
   in
-  let pr_rhs = scope 0 mode ss Env.empty p_rhs in
+  let pr_rhs = old_lift (scope 0 mode ss Env.empty p_rhs) in
   let prerule =
     (* We put everything together to build the pre-rule. *)
     let pr_arities =

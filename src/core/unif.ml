@@ -120,7 +120,7 @@ let instantiate : problem -> ctxt -> meta -> term array -> term -> bool =
   fun p c m ts u ->
   if Logger.log_enabled () then log_unif "try instantiate";
   match instantiation c m ts u with
-  | Some b when Bindlib.is_closed b ->
+  | Some b when Bindlib.is_closed_tmbinder b ->
       let do_instantiate() =
         if Logger.log_enabled () then
           log_unif (red "%a ≔ %a") meta m term u;

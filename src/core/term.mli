@@ -11,6 +11,8 @@ open Timed
 open Lplib open Base
 open Common
 
+module OldBindlib = Bindlib
+
 (** {3 Term (and symbol) representation} *)
 
 (** Representation of a possibly qualified identifier. *)
@@ -39,6 +41,12 @@ type prop =
   | Commu (** Commutative. *)
   | Assoc of bool (** Associative left if [true], right if [false]. *)
   | AC of bool (** Associative and commutative. *)
+
+type tbinder
+
+type tmbinder
+
+type tvar
 
 (** Representation of a term (or types) in a general sense. Values of the type
     are also used, for example, in the representation of patterns or rewriting
@@ -77,7 +85,7 @@ type term = private
     rewriting rules (see {!field:Term.rhs}) with the number of variables that
     are not in the LHS. In decision trees, a RHS is stored in every leaf since
     they correspond to matched rules. *)
-and rhs = (term_env, term) Bindlib.mbinder
+and rhs = (term_env, term) OldBindlib.mbinder
 
 (** Representation of a decision tree (used for rewriting). *)
 and dtree = (rhs * int) Tree_type.dtree
@@ -199,6 +207,8 @@ and sym =
   (** Actual "term with environment" (used to instantiate a RHS). *)
   | TE_None (** Dummy term environment (used during matching). *)
 
+ and tevar = term_env OldBindlib.var
+
 (** The {!constructor:TEnv}[(te,env)] constructor intuitively corresponds to a
     term [te] with free variables together with an explicit environment [env].
     Note that the binding of the environment actually occurs in [te], when the
@@ -233,17 +243,119 @@ and sym =
   ; meta_arity : int (** Arity (environment size). *)
   ; meta_value : tmbinder option ref (** Definition. *) }
 
-and tbinder = (term, term) Bindlib.binder
+module Bindlib : sig
 
-and tmbinder = (term, term) Bindlib.mbinder
+(** [subst b v] substitutes the variable bound by [b] with the value [v]. *)
+val subst : tbinder -> term -> term
 
-and tvar = term Bindlib.var
+(** [msubst b vs] substitutes the variables bound by [b] with the values [vs].
+   Note that the length of the [vs] array should match the arity of the
+   multiple binder [b]. *)
+val msubst : tmbinder -> term array -> term
+val msubst3 :
+  (tmbinder * tmbinder * tmbinder) -> term array -> term * term * term
 
-and tevar = term_env Bindlib.var
+(** [new_var _ name] creates a new unique variable using [name]. *)
+val new_var : (tvar -> term) -> string -> tvar
+
+(** [new_mvar names] creates a new array of new unique variables using
+   [names]. *)
+val new_mvar : string array -> tvar array
+
+(** [name_of x] returns a printable name for variable [x]. *)
+val name_of : tvar -> string
+
+(** [unbind b] substitutes the binder [b] using a fresh variable. The variable
+    and the result of the substitution are returned. Note that the name of the
+    fresh variable is based on that of the binder.  The [mkfree] function used
+    to create the fresh variable is that of the variable that was bound by [b]
+    at its construction (see [new_var] and [bind_var]). *)
+val unbind : tbinder -> tvar * term
+
+(** [unbind2 f g] is similar to [unbind f], but it substitutes two binders [f]
+    and [g] at once using the same fresh variable. The name of the variable is
+    based on that of the binder [f]. Similarly, the [mkfree] syntactic wrapper
+    that is used for the fresh variable is the one that was given for creating
+    the variable that was bound to construct [f] (see [bind_var] and [new_var]
+    for details on this process). In particular, the use of [unbind2] may lead
+    to unexpected results if the binders [f] and [g] were not built using free
+    variables created with the same [mkfree]. *)
+val unbind2 : tbinder -> tbinder -> tvar * term * term
+
+(** [unmbind b] substitutes the multiple binder [b] with fresh variables. This
+    function is analogous to [unbind] for binders. Note that the names used to
+    create the fresh variables are based on those of the multiple binder.  The
+    syntactic wrapper (of [mkfree]) that is used to build the variables is the
+    one that was given when creating the multiple variables that were bound in
+    [b] (see [new_mvar] and [bind_mvar]). *)
+val unmbind : tmbinder -> tvar array * term
+
+(** Type of a term under construction. Using this representation,
+    the free variable of the term can be bound easily. *)
+type 'a box = 'a
+
+(** [box e] injects the value [e] into the [term box] type, assuming that it
+   is closed. Thus, if [e] contains variables, then they will not be
+   considered free. This means that no variable of [e] will be available for
+   binding. *)
+val box : 'a -> 'a box
+
+(** [box_apply f ba] applies the function [f] to a boxed argument [ba].  It is
+    equivalent to [apply_box (box f) ba], but is more efficient. *)
+val box_apply : ('a -> 'b) -> 'a box -> 'b box
+
+(** [bind_var x b] binds the variable [x] in [b], producing a boxed binder. *)
+val bind_var  : tvar -> term box -> tbinder box
+
+(** [bind_mvar xs b] binds the variables of [xs] in [b] to get a boxed binder.
+    It is the equivalent of [bind_var] for multiple variables. *)
+val bind_mvar : tvar array -> term box -> tmbinder box
+val bind_mvar3 : tvar array -> (term box * term box * term box)
+  -> tmbinder box * tmbinder box * tmbinder box
+
+(** [unbox e] can be called when the construction of a term is finished (e.g.,
+    when the desired variables have all been bound). *)
+val unbox : 'a box -> 'a
+
+(** [box_pair ba bb] is the same as [box_apply2 (fun a b -> (a,b)) ba bb]. *)
+val box_pair : 'a box -> 'b box -> ('a * 'b) box
+
+(** [box_triple] is similar to [box_pair], but for triples. *)
+val box_triple : 'a box -> 'b box -> 'c box -> ('a * 'b * 'c) box
+
+(** [compare_vars x y] safely compares [x] and [y].  Note that it is unsafe to
+    compare variables using [Pervasive.compare]. *)
+val compare_vars : tvar -> tvar -> int
+
+(** [eq_vars x y] safely computes the equality of [x] and [y]. Note that it is
+    unsafe to compare variables with the polymorphic equality function. *)
+val eq_vars : tvar -> tvar -> bool
+
+(** [binder_occur b] tests whether the bound variable occurs in [b]. *)
+val binder_occur : tbinder -> bool
+
+(** [binder_constant b] tests whether the [binder] [b] is constant (i.e.,  its
+    bound variable does not occur). *)
+val binder_constant : tbinder -> bool
+
+(** [mbinder_arity b] gives the arity of the [mbinder]. *)
+val mbinder_arity : tmbinder -> int
+
+(** [is_closed b] checks whether the [box] [b] is closed. *)
+val is_closed : term box -> bool
+val is_closed_tmbinder : tmbinder box -> bool
+
+(** [occur x b] tells whether variable [x] occurs in the [box] [b]. *)
+val occur : tvar -> term box -> bool
+val occur_tmbinder : tvar -> tmbinder box -> bool
+
+end
 
 type tbox = term Bindlib.box
 
 type tebox = term_env Bindlib.box
+
+val old_lift : term -> term OldBindlib.box
 
 (** Minimize [impl] to enforce our invariant (see {!type:Term.sym}). *)
 val minimize_impl : bool list -> bool list

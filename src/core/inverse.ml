@@ -35,8 +35,8 @@ let const_graph : sym -> (sym * sym) list = fun s ->
         begin
           match get_args l1 with
           | Symb s0, _ ->
-              let n = Bindlib.mbinder_arity rule.rhs in
-              let r = Bindlib.msubst rule.rhs (Array.make n TE_None) in
+              let n = OldBindlib.mbinder_arity rule.rhs in
+              let r = OldBindlib.msubst rule.rhs (Array.make n TE_None) in
               begin
                 match get_args r with
                 | Symb s1, _ -> add s0 s1 l
@@ -76,8 +76,8 @@ let prod_graph : sym -> (sym * sym * sym * bool) list = fun s ->
     begin
       match get_args l1 with
       | Symb s0, [_;_] ->
-        let n = Bindlib.mbinder_arity rule.rhs in
-        let r = Bindlib.msubst rule.rhs (Array.make n TE_None) in
+        let n = OldBindlib.mbinder_arity rule.rhs in
+        let r = OldBindlib.msubst rule.rhs (Array.make n TE_None) in
         begin
         match r with
         | Prod(a,b) ->

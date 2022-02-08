@@ -24,10 +24,10 @@ type pre_rule =
   (** Head symbol of the LHS. *)
   ; pr_lhs      : term list
   (** Arguments of the LHS. *)
-  ; pr_vars     : term_env Bindlib.mvar
+  ; pr_vars     : term_env OldBindlib.mvar
   (** Pattern variables that appear in the RHS. The last [pr_xvars_nb]
       variables do not appear in the LHS. *)
-  ; pr_rhs      : tbox
+  ; pr_rhs      : term OldBindlib.box
   (** Body of the RHS, should only be unboxed once. *)
   ; pr_names    : (int, string) Hashtbl.t
   (** Gives the original name (if any) of pattern variable at given index. *)

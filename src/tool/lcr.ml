@@ -47,7 +47,7 @@ let is_definable : sym -> bool = fun s ->
 
 (** [rule_of_def s d] creates the rule [s --> d]. *)
 let rule_of_def : sym -> term -> rule = fun s d ->
-  let rhs = Bindlib.unbox (Bindlib.bind_mvar [||] (Bindlib.box d)) in
+  let rhs = OldBindlib.unbox (OldBindlib.bind_mvar [||] (OldBindlib.box d)) in
   {lhs=[]; rhs; arity=0; arities=[||]; vars=[||]; xvars_nb=0;
    rule_pos=s.sym_pos}
 
@@ -456,7 +456,8 @@ let typability_constraints : Pos.popt -> term -> subs option = fun pos t ->
     match get_args_len l with
     | Symb s, lhs, arity ->
       let vars = [||] and rule_pos = Some (new_rule_id()) in
-      let rhs = Bindlib.unbox (Bindlib.bind_mvar vars (Bindlib.box r)) in
+      let rhs = OldBindlib.unbox
+          (OldBindlib.bind_mvar vars (OldBindlib.box r)) in
       let r = {lhs; rhs; arity; arities=[||]; vars; xvars_nb=0; rule_pos} in
       Some (s,r)
     | _ -> None

@@ -301,7 +301,7 @@ and tree_walk : config -> dtree -> stack -> (term * stack) option =
     | Leaf(rhs_subst, (act, xvars)) -> (* Apply the RHS substitution *)
         (* Allocate an environment where to place terms coming from the
            pattern variables for the action. *)
-        let env_len = Bindlib.mbinder_arity act in
+        let env_len = OldBindlib.mbinder_arity act in
         assert (List.length rhs_subst = env_len - xvars);
         let env = Array.make env_len TE_None in
         (* Retrieve terms needed in the action from the [vars] array. *)
@@ -310,11 +310,6 @@ and tree_walk : config -> dtree -> stack -> (term * stack) option =
           | TE_Vari(_) -> assert false
           | TE_Some(_) -> env.(slot) <- bound.(pos)
           | TE_None    ->
-              if Array.length xs = 0 then
-                let t = unfold vars.(pos) in
-                let b = Bindlib.raw_mbinder [||] [||] 0 of_tvar (fun _ -> t)
-                in env.(slot) <- TE_Some(b)
-              else
                 let xs = Array.map (fun e -> IntMap.find e id_vars) xs in
                 env.(slot) <- TE_Some(binds xs lift vars.(pos))
         in
@@ -323,10 +318,9 @@ and tree_walk : config -> dtree -> stack -> (term * stack) option =
         for i = env_len - xvars to env_len - 1 do
           let mt = LibMeta.make cfg.problem cfg.context mk_Type in
           let t = LibMeta.make cfg.problem cfg.context mt in
-          let b = Bindlib.raw_mbinder [||] [||] 0 of_tvar (fun _ -> t) in
-          env.(i) <- TE_Some(b)
+          env.(i) <- TE_Some(binds [||] lift t)
         done;
-        Some (Bindlib.msubst act env, stk)
+        Some (OldBindlib.msubst act env, stk)
     | Cond({ok; cond; fail})                              ->
         let next =
           match cond with
@@ -346,7 +340,8 @@ and tree_walk : config -> dtree -> stack -> (term * stack) option =
               in
               (* Ensure there are no variables from [forbidden] in [b]. *)
               let no_forbidden b =
-                not (IntMap.exists (fun _ x -> Bindlib.occur x b) forbidden)
+                not (IntMap.exists (fun _ x -> Bindlib.occur_tmbinder x b)
+                       forbidden)
               in
               (* We first attempt to match [vars.(i)] directly. *)
               let b = Bindlib.bind_mvar allowed (lift vars.(i)) in

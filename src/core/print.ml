@@ -89,7 +89,8 @@ let sym : sym pp = fun ppf s ->
         else out ppf "%a.%a" path p uid n
     | Some alias -> out ppf "%a.%a" uid alias uid n
 
-let var : 'a Bindlib.var pp = fun ppf x -> uid ppf (Bindlib.name_of x)
+let var : tvar pp = fun ppf x -> uid ppf (Bindlib.name_of x)
+let tevar : tevar pp = fun ppf x -> uid ppf (OldBindlib.name_of x)
 
 (** Exception raised when trying to convert a term into a nat. *)
 exception Not_a_nat
@@ -202,7 +203,7 @@ and term : term pp = fun ppf t ->
       if Array.length ts > 0 then out ppf ".[%a]" (Array.pp func ";") ts in
     let term_env ppf te =
       match te with
-      | TE_Vari(m) -> var ppf m
+      | TE_Vari(x) -> string ppf (OldBindlib.name_of x)
       | _          -> assert false
     in
     match unfold t with

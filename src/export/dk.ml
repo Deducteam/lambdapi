@@ -109,7 +109,7 @@ let cmp : decl cmp = cmp_map (Lplib.Option.cmp Pos.cmp) pos_of_decl
 (** Translation of terms. *)
 
 let tvar : tvar pp = fun ppf v -> ident ppf (Bindlib.name_of v)
-let tevar : tevar pp = fun ppf v -> ident ppf (Bindlib.name_of v)
+let tevar : tevar pp = fun ppf v -> ident ppf (OldBindlib.name_of v)
 
 let tenv : term_env pp = fun ppf te ->
   match te with
@@ -196,7 +196,7 @@ let sym_decl : sym pp = fun ppf s ->
         ident s.sym_name (term true) d
 
 let rule_decl : (Path.t * string * rule) pp = fun ppf (p, n, r) ->
-  let xs, rhs = Bindlib.unmbind r.rhs in
+  let xs, rhs = OldBindlib.unmbind r.rhs in
   out ppf "[%a] %a%a --> %a.@."
     (Array.pp tevar ", ") xs qid (p, n)
     (List.pp (prefix " " (term false)) "") r.lhs (term true) rhs

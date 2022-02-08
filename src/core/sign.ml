@@ -114,9 +114,9 @@ let link : t -> unit = fun sign ->
   and link_term = link_term mk_Appl in
   let link_rule r =
     let lhs = List.map link_lhs r.lhs in
-    let (xs, rhs) = Bindlib.unmbind r.rhs in
-    let rhs = lift (link_term rhs) in
-    let rhs = Bindlib.unbox (Bindlib.bind_mvar xs rhs) in
+    let (xs, rhs) = OldBindlib.unmbind r.rhs in
+    let rhs = old_lift (link_term rhs) in
+    let rhs = OldBindlib.unbox (OldBindlib.bind_mvar xs rhs) in
     {r with lhs ; rhs}
   in
   let f _ s =
@@ -185,7 +185,7 @@ let unlink : t -> unit = fun sign ->
   and unlink_binder b = unlink_term (snd (Bindlib.unbind b)) in
   let unlink_rule r =
     List.iter unlink_term r.lhs;
-    let (_, rhs) = Bindlib.unmbind r.rhs in
+    let (_, rhs) = OldBindlib.unmbind r.rhs in
     unlink_term rhs
   in
   let f _ s =
@@ -292,7 +292,7 @@ let read : string -> t = fun fname ->
   and reset_binder b = reset_term (snd (Bindlib.unbind b)) in
   let reset_rule r =
     List.iter reset_term r.lhs;
-    reset_term (snd (Bindlib.unmbind r.rhs))
+    reset_term (snd (OldBindlib.unmbind r.rhs))
   in
   let reset_sym s =
     shallow_reset_sym s;
