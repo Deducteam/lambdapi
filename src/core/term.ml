@@ -370,10 +370,6 @@ let bind_mvar : tvar array -> term -> tmbinder = fun xs t ->
     log_term "bind_mvar %a %a = %a" (D.array var) xs term t term b;
   Array.map name_of xs, b
 
-let bind_mvar3 : tvar array -> (term * term * term)
-  -> tmbinder * tmbinder * tmbinder = fun xs (t1, t2, t3) ->
-  bind_mvar xs t1, bind_mvar xs t2, bind_mvar xs t3
-
 (** [compare_vars x y] safely compares [x] and [y].  Note that it is unsafe to
     compare variables using [Pervasive.compare]. *)
 let compare_vars : tvar -> tvar -> int = fun (i,_) (j,_) -> Stdlib.compare i j

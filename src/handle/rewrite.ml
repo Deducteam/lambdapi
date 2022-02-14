@@ -334,7 +334,7 @@ let rewrite : Sig_state.t -> problem -> popt -> goal_typ -> bool ->
   let (t, l, r) = if l2r then (t, l, r) else (swap cfg a l r t, r, l) in
 
   (* Bind the variables in this new witness. *)
-  let bound = Bindlib.bind_mvar3 vars (t,l,r) in
+  let bound = let bind = Bindlib.bind_mvar vars in bind t, bind l, bind r in
 
   (* Extract the term from the goal type (get “u” from “P u”). *)
   let g_term =

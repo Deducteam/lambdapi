@@ -242,8 +242,6 @@ val bind_var  : tvar -> term -> tbinder
 (** [bind_mvar xs b] binds the variables of [xs] in [b] to get a boxed binder.
     It is the equivalent of [bind_var] for multiple variables. *)
 val bind_mvar : tvar array -> term -> tmbinder
-val bind_mvar3 : tvar array -> (term * term * term)
-  -> tmbinder * tmbinder * tmbinder
 
 (** [compare_vars x y] safely compares [x] and [y].  Note that it is unsafe to
     compare variables using [Pervasive.compare]. *)
