@@ -2,6 +2,8 @@ open Cmdliner
 open Common open Library open Error
 open Parsing
 
+module CLT = Cmdliner.Term
+
 let run_command : bool -> string -> unit = fun dry_run cmd ->
   if dry_run then Console.out 1 "%s" cmd else
   match Sys.command cmd with
@@ -85,14 +87,14 @@ let run_uninstall : Config.t -> bool -> string -> unit =
   in
   Error.handle_exceptions run
 
-let dry_run : bool Term.t =
+let dry_run : bool CLT.t =
   let doc =
     "Do not install anything, only print the command that would be executed \
      if the option was not given."
   in
   Arg.(value & flag & info ["dry-run"] ~doc)
 
-let pkg_file : string Term.t =
+let pkg_file : string CLT.t =
   let doc =
     Printf.sprintf
       "Path to the package configuration file $(b,%s) corresponding to the \
@@ -100,7 +102,7 @@ let pkg_file : string Term.t =
   in
   Arg.(required & pos 0 (some non_dir_file) None & info [] ~docv:"FILE" ~doc)
 
-let files : string list Term.t =
+let files : string list CLT.t =
   let doc =
     Printf.sprintf
       "Source file with the [%s] extension (or with the [%s] extension when \
@@ -112,10 +114,10 @@ let files : string list Term.t =
 
 let install_cmd =
   let doc = "Install the given files under the library root." in
-  Term.(const run_install $ Config.minimal $ dry_run $ files),
-  Term.info "install" ~doc
+  CLT.(const run_install $ Config.minimal $ dry_run $ files),
+  CLT.info "install" ~doc
 
 let uninstall_cmd =
   let doc = "Uninstall the files corresponding to the given package file." in
-  Term.(const run_uninstall $ Config.minimal $ dry_run $ pkg_file),
-  Term.info "uninstall" ~doc
+  CLT.(const run_uninstall $ Config.minimal $ dry_run $ pkg_file),
+  CLT.info "uninstall" ~doc

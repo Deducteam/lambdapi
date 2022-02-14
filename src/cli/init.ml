@@ -3,6 +3,8 @@ open Common open Error
 open Format
 open Parsing
 
+module CLT = Cmdliner.Term
+
 let write_file : string -> (formatter -> unit) -> unit = fun fn pp ->
   let oc = open_out fn in
   let ppf = formatter_of_out_channel oc in
@@ -54,7 +56,7 @@ let run : Path.t -> unit = fun root_path ->
   in
   Error.handle_exceptions run
 
-let root_path : Path.t Term.t =
+let root_path : Path.t CLT.t =
   let doc =
     "Defines the root path of the package. It is the module path under which \
      the package will be registered and installed (if desired), and it will \
@@ -69,5 +71,5 @@ let root_path : Path.t Term.t =
 
 let cmd =
   let doc = "Create a new Lambdapi package to get started with a project." in
-  Term.(const run $ root_path),
-  Term.info "init" ~doc
+  CLT.(const run $ root_path),
+  CLT.info "init" ~doc
