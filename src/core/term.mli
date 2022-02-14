@@ -218,13 +218,6 @@ val msubst : tmbinder -> term array -> term
 val msubst3 :
   (tmbinder * tmbinder * tmbinder) -> term array -> term * term * term
 
-(** [new_var name] creates a new unique variable of name [name]. *)
-val new_var : string -> tvar
-
-(** [new_mvar names] creates an array of new unique variables of name
-   [names]. *)
-val new_mvar : string array -> tvar array
-
 (** [name_of x] returns a printable name for variable [x]. *)
 val name_of : tvar -> string
 

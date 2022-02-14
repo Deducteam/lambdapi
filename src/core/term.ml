@@ -300,10 +300,6 @@ let subst : tbinder -> term -> term = fun (_,t) v ->
 let new_var : string -> tvar =
   let open Stdlib in let n = ref 0 in fun name -> incr n; !n, name
 
-(** [new_mvar names] creates an array of new unique variables of name
-   [names]. *)
-let new_mvar : string array -> tvar array = Array.map new_var
-
 (** [name_of x] returns the name of variable [x]. *)
 let name_of : tvar -> string = fun (_i,n) -> n (*^ string_of_int i*)
 
