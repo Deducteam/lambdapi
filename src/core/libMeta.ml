@@ -18,17 +18,6 @@ let fresh : problem -> term -> int -> meta =
            meta_value = ref None } in
   p := {!p with metas = MetaSet.add m !p.metas}; m
 
-(** [fresh_box p a n] is the boxed counterpart of [fresh_meta]. It is
-    only useful in the rare cases where the type of a metavariable
-    contains a free term variable environment. This should only happens
-    when scoping the rewriting rules, use this function with care.
-    The metavariable is created immediately with a dummy type, and the
-    type becomes valid at unboxing. The boxed metavariable should be
-    unboxed at most once, otherwise its type may be rendered invalid in
-    some contexts. *)
-let fresh_box: problem -> term -> int -> meta = fun p a n ->
-  let m = fresh p mk_Kind n in m.meta_type := a; m
-
 (** [set p m v] sets the metavariable [m] of [p] to [v]. WARNING: No specific
    check is performed, so this function may lead to cyclic terms. To use with
    care. *)
@@ -52,7 +41,7 @@ let make : problem -> ctxt -> term -> term =
 let bmake : problem -> bctxt -> term -> term =
   fun p bctx a ->
   let (a, k) = Ctxt.to_prod_box bctx a in
-  let m = fresh_box p a k in
+  let m = fresh p a k in
   let get_var (x, _) = mk_Vari x in
   mk_Meta (m, Array.of_list (List.rev_map get_var bctx))
 
