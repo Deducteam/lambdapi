@@ -106,7 +106,7 @@ let link : t -> unit = fun sign ->
       | Wild -> assert false
       | TRef _ -> assert false
     and link_binder b =
-      let (x,t) = Bindlib.unbind b in bind x lift (link_term t)
+      let (x,t) = Bindlib.unbind b in Bindlib.bind_var x (link_term t)
     in link_term
   in
   let link_lhs = link_term mk_Appl_not_canonical

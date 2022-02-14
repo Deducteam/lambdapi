@@ -44,7 +44,7 @@ let hnf : (term -> term) -> (term -> term) = fun whnf ->
   let rec hnf t =
     match whnf t with
     | Abst(a,t) ->
-      let x, t = Bindlib.unbind t in mk_Abst(a, bind x lift (hnf t))
+      let x, t = Bindlib.unbind t in mk_Abst(a, Bindlib.bind_var x (hnf t))
     | t -> t
   in hnf
 
@@ -61,9 +61,11 @@ let snf : (term -> term) -> (term -> term) = fun whnf ->
     | Symb _ -> h
     | LLet(_,t,b) -> snf (Bindlib.subst b t)
     | Prod(a,b) ->
-        let x, b = Bindlib.unbind b in mk_Prod(snf a, bind x lift (snf b))
+      let x, b = Bindlib.unbind b in
+      mk_Prod(snf a, Bindlib.bind_var x (snf b))
     | Abst(a,b) ->
-        let x, b = Bindlib.unbind b in mk_Abst(snf a, bind x lift (snf b))
+      let x, b = Bindlib.unbind b in
+      mk_Abst(snf a, Bindlib.bind_var x (snf b))
     | Appl(t,u)   -> mk_Appl(snf t, snf u)
     | Meta(m,ts)  -> mk_Meta(m, Array.map snf ts)
     | Patt(i,n,ts) -> mk_Patt(i,n,Array.map snf ts)
@@ -309,14 +311,14 @@ and tree_walk : config -> dtree -> stack -> (term * stack) option =
           | Some(_) -> env.(slot) <- bound.(pos)
           | None    ->
                 let xs = Array.map (fun e -> IntMap.find e id_vars) xs in
-                env.(slot) <- Some(binds xs lift vars.(pos))
+                env.(slot) <- Some(Bindlib.bind_mvar xs vars.(pos))
         in
         List.iter f rhs_subst;
         (* Complete the array with fresh meta-variables if needed. *)
         for i = r.vars_nb to env_len - 1 do
           let mt = LibMeta.make cfg.problem cfg.context mk_Type in
           let t = LibMeta.make cfg.problem cfg.context mt in
-          env.(i) <- Some(binds [||] lift t)
+          env.(i) <- Some(Bindlib.bind_mvar [||] t)
         done;
         Some (subst_patt env r.rhs, stk)
     | Cond({ok; cond; fail})                              ->
@@ -342,14 +344,13 @@ and tree_walk : config -> dtree -> stack -> (term * stack) option =
                        forbidden)
               in
               (* We first attempt to match [vars.(i)] directly. *)
-              let b = Bindlib.bind_mvar allowed (lift vars.(i)) in
+              let b = Bindlib.bind_mvar allowed vars.(i) in
               if no_forbidden b
-              then (bound.(i) <- Some(Bindlib.unbox b); ok) else
+              then (bound.(i) <- Some b; ok) else
               (* As a last resort we try matching the SNF. *)
-              let b = Bindlib.bind_mvar allowed
-                        (lift (snf (whnf cfg) vars.(i))) in
+              let b = Bindlib.bind_mvar allowed (snf (whnf cfg) vars.(i)) in
               if no_forbidden b
-              then (bound.(i) <- Some(Bindlib.unbox b); ok)
+              then (bound.(i) <- Some b; ok)
               else fail
         in
         walk next stk cursor vars_id id_vars
@@ -523,7 +524,7 @@ let rec simplify : term -> term = fun t ->
   match get_args (whnf ~tags [] t) with
   | Prod(a,b), _ ->
      let x, b = Bindlib.unbind b in
-     mk_Prod (simplify a, bind x lift (simplify b))
+     mk_Prod (simplify a, Bindlib.bind_var x (simplify b))
   | h, ts -> add_args_map h (whnf ~tags []) ts
 
 let simplify =
@@ -551,7 +552,7 @@ let unfold_sym : sym -> term -> term =
             | _ -> h
           in add_args h args
     and unfold_sym_binder b =
-      let x, b = Bindlib.unbind b in bind x lift (unfold_sym b)
+      let x, b = Bindlib.unbind b in Bindlib.bind_var x (unfold_sym b)
     in unfold_sym
   in
   fun s ->

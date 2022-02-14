@@ -155,5 +155,5 @@ let sym_to_var : tvar StrMap.t -> term -> term = fun map ->
     | TRef _ -> assert false
     | _ -> t
   and to_var_binder b =
-    let (x,b) = Bindlib.unbind b in bind x lift (to_var b)
+    let (x,b) = Bindlib.unbind b in Bindlib.bind_var x (to_var b)
   in fun t -> if StrMap.is_empty map then t else to_var t

@@ -236,38 +236,14 @@ val unbind2 : tbinder -> tbinder -> tvar * term * term
     create the fresh variables are based on those of the multiple binder. *)
 val unmbind : tmbinder -> tvar array * term
 
-(** Type of a term under construction. Using this representation,
-    the free variable of the term can be bound easily. *)
-type 'a box = 'a
-
-(** [box e] injects the value [e] into the [term box] type, assuming that it
-   is closed. Thus, if [e] contains variables, then they will not be
-   considered free. This means that no variable of [e] will be available for
-   binding. *)
-val box : 'a -> 'a box
-
-(** [box_apply f ba] applies the function [f] to a boxed argument [ba].  It is
-    equivalent to [apply_box (box f) ba], but is more efficient. *)
-val box_apply : ('a -> 'b) -> 'a box -> 'b box
-
 (** [bind_var x b] binds the variable [x] in [b], producing a boxed binder. *)
-val bind_var  : tvar -> term box -> tbinder box
+val bind_var  : tvar -> term -> tbinder
 
 (** [bind_mvar xs b] binds the variables of [xs] in [b] to get a boxed binder.
     It is the equivalent of [bind_var] for multiple variables. *)
-val bind_mvar : tvar array -> term box -> tmbinder box
-val bind_mvar3 : tvar array -> (term box * term box * term box)
-  -> tmbinder box * tmbinder box * tmbinder box
-
-(** [unbox e] can be called when the construction of a term is finished (e.g.,
-    when the desired variables have all been bound). *)
-val unbox : 'a box -> 'a
-
-(** [box_pair ba bb] is the same as [box_apply2 (fun a b -> (a,b)) ba bb]. *)
-val box_pair : 'a box -> 'b box -> ('a * 'b) box
-
-(** [box_triple] is similar to [box_pair], but for triples. *)
-val box_triple : 'a box -> 'b box -> 'c box -> ('a * 'b * 'c) box
+val bind_mvar : tvar array -> term -> tmbinder
+val bind_mvar3 : tvar array -> (term * term * term)
+  -> tmbinder * tmbinder * tmbinder
 
 (** [compare_vars x y] safely compares [x] and [y].  Note that it is unsafe to
     compare variables using [Pervasive.compare]. *)
@@ -288,16 +264,14 @@ val binder_constant : tbinder -> bool
 val mbinder_arity : tmbinder -> int
 
 (** [is_closed b] checks whether the [box] [b] is closed. *)
-val is_closed : term box -> bool
-val is_closed_tmbinder : tmbinder box -> bool
+val is_closed : term -> bool
+val is_closed_tmbinder : tmbinder -> bool
 
 (** [occur x b] tells whether variable [x] occurs in the [box] [b]. *)
-val occur : tvar -> term box -> bool
-val occur_tmbinder : tvar -> tmbinder box -> bool
+val occur : tvar -> term -> bool
+val occur_tmbinder : tvar -> tmbinder -> bool
 
 end
-
-type tbox = term Bindlib.box
 
 (** Minimize [impl] to enforce our invariant (see {!type:Term.sym}). *)
 val minimize_impl : bool list -> bool list
@@ -317,7 +291,7 @@ type ctxt = (tvar * term * term option) list
     lifting terms several times. Definitions are not included because these
     contexts are used to create meta variables types, which do not use [let]
     definitions. *)
-type bctxt = (tvar * tbox) list
+type bctxt = (tvar * term) list
 
 (** Type of unification constraints. *)
 type constr = ctxt * term * term
@@ -431,6 +405,7 @@ val mk_Type : term
 val mk_Kind : term
 val mk_Symb : sym -> term
 val mk_Prod : term * tbinder -> term
+val mk_Impl : term * term -> term
 val mk_Abst : term * tbinder -> term
 val mk_Appl : term * term -> term
 val mk_Meta : meta * term array -> term
@@ -453,94 +428,6 @@ val add_args : term -> term list -> term
    more efficient. *)
 val add_args_map : term -> (term -> term) -> term list -> term
 
-(** {3 Smart constructors and lifting (related to [Bindlib])} *)
-
-(** [_Vari x] injects the free variable [x] into the {!type:tbox} type so that
-    it may be available for binding. *)
-val _Vari : tvar -> tbox
-
-(** [_Type] injects the constructor [Type] into the {!type:tbox} type. *)
-val _Type : tbox
-
-(** [_Kind] injects the constructor [Kind] into the {!type:tbox} type. *)
-val _Kind : tbox
-
-(** [_Symb s] injects the constructor [Symb(s)] into the {!type:tbox} type. As
-    symbols are closed object they do not require lifting. *)
-val _Symb : sym -> tbox
-
-(** [_Appl t u] lifts an application node to the {!type:tbox} type given boxed
-   terms [t] and [u]. *)
-val _Appl : tbox -> tbox -> tbox
-
-(** [_Appl_not_canonical t u] lifts an application node to the {!type:tbox}
-   type given boxed terms [t] and [u], without putting it in canonical form
-   wrt. C and AC symbols. WARNING: to use in scoping of rewrite rule LHS only
-   as it breaks some invariants. *)
-val _Appl_not_canonical : tbox -> tbox -> tbox
-
-(** [_Appl_list a [b1;...;bn]] returns (... ((a b1) b2) ...) bn. *)
-val _Appl_list : tbox -> tbox list -> tbox
-
-(** [_Appl_Symb f ts] returns the same result that
-    _Appl_l ist (_Symb [f]) [ts]. *)
-val _Appl_Symb : sym -> tbox list -> tbox
-
-(** [_Prod a b] lifts a dependent product node to the {!type:tbox} type, given
-    a boxed term [a] for the domain of the product, and a boxed binder [b] for
-    its codomain. *)
-val _Prod : tbox -> tbinder Bindlib.box -> tbox
-
-val _Impl : tbox -> tbox -> tbox
-
-(** [_Abst a t] lifts an abstraction node to the {!type:tbox}  type,  given  a
-    boxed term [a] for the domain type, and a boxed binder [t]. *)
-val _Abst : tbox -> tbinder Bindlib.box -> tbox
-
-(** [_Meta m ar] lifts the metavariable [m] to the {!type:tbox} type given its
-    environment [ar]. As for symbols in {!val:_Symb}, metavariables are closed
-    objects so they do not require lifting. *)
-val _Meta : meta -> tbox array -> tbox
-
-(** [_Meta_full m ar] is similar to [_Meta m ar] but works with a metavariable
-    that is boxed. This is useful in very rare cases,  when metavariables need
-    to be able to contain free term environment variables. Using this function
-    in bad places is harmful for efficiency but not unsound. *)
-val _Meta_full : meta Bindlib.box -> tbox array -> tbox
-
-(** [_Patt i n ar] lifts a pattern variable to the {!type:tbox} type. *)
-val _Patt : int option -> string -> tbox array -> tbox
-
-(** [_Wild] injects the constructor [Wild] into the {!type:tbox} type. *)
-val _Wild : tbox
-
-(** [_Plac] injects the constructor [Plac] into the {!type:tbox} type. *)
-val _Plac : bool -> tbox
-
-(** [_TRef r] injects the constructor [TRef(r)] into the {!type:tbox} type. It
-    should be the case that [!r] is [None]. *)
-val _TRef : term option ref -> tbox
-
-(** [_LVal t a u] lifts val binding [val x := t : a in u<x>]. *)
-val _LLet : tbox -> tbox -> tbinder Bindlib.box -> tbox
-
-(** [lift t] lifts the {!type:term} [t] to the {!type:tbox} type. This has the
-    effect of gathering its free variables, making them available for binding.
-    Bound variable names are automatically updated in the process. *)
-val lift : term -> tbox
-val lift_not_canonical : term -> tbox
-
-(** [bind v lift t] creates a tbinder by binding [v] in [lift t]. *)
-val bind : tvar -> (term -> tbox) -> term -> tbinder
-val binds : tvar array -> (term -> tbox) -> term -> tmbinder
-
-(** [cleanup t] builds a copy of the {!type:term} [t] where every instantiated
-   metavariable, instantiated term environment, and reference cell has been
-   eliminated using {!val:unfold}. Another effect of the function is that the
-   the names of bound variables are updated. This is useful to avoid any form
-   of "visual capture" while printing terms. *)
-val cleanup : term -> term
-
 (** Positions in terms in reverse order. The i-th argument of a constructor
    has position i-1. *)
 type subterm_pos = int list
@@ -550,13 +437,6 @@ val subterm_pos : subterm_pos pp
 (** Type of critical pair positions (pos,l,r,p,l_p). *)
 type cp_pos = Pos.popt * term * term * subterm_pos * term
 
-(** [term_of_rhs r] converts the RHS (right hand side) of the rewriting rule
-    [r] into a term. The bound higher-order variables of the original RHS are
-    substituted using [Patt] constructors. They are thus represented as their
-    LHS counterparts. This is a more convenient way of representing terms when
-    analysing confluence or termination. *)
-val term_of_rhs : rule -> term
-
 (** Type of a symbol and a rule. *)
 type sym_rule = sym * rule
 
@@ -565,3 +445,6 @@ val rhs : sym_rule -> term
 
 (** Patt substitution. *)
 val subst_patt : tmbinder option array -> term -> term
+
+(** [cleanup t] unfold all metas and TRef's in [t]. *)
+val cleanup : term -> term

@@ -131,7 +131,7 @@ let get_vars : sym -> rule -> (string * Term.term) list = fun s r ->
     | Symb (_)            -> t
     | Abst (t1, b)        ->
        let (x,t2) = Bindlib.unbind b in
-       mk_Abst(subst_patt v t1, bind x lift (subst_patt v t2))
+       mk_Abst(subst_patt v t1, Bindlib.bind_var x (subst_patt v t2))
     | Appl (t1, t2)        -> mk_Appl(subst_patt v t1, subst_patt v t2)
     | Patt (None, _, _)    -> assert false
     | Patt (Some(i), _, a) ->

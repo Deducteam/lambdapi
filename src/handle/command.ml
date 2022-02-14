@@ -28,10 +28,11 @@ let _ =
   register "0" expected_zero_type;
   let expected_succ_type ss _pos =
     let typ_0 =
-      try lift !((StrMap.find "0" ss.builtins).sym_type)
-      with Not_found -> _Meta (LibMeta.fresh (new_problem()) mk_Type 0) [||]
+      try !((StrMap.find "0" ss.builtins).sym_type)
+      with Not_found ->
+        mk_Meta (LibMeta.fresh (new_problem()) mk_Type 0, [||])
     in
-    Bindlib.unbox (_Impl typ_0 typ_0)
+    mk_Impl (typ_0, typ_0)
   in
   register "+1" expected_succ_type
 

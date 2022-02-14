@@ -27,39 +27,38 @@ let to_prod : ctxt -> term -> term * int = fun ctx t ->
   let f (t,c) (x,a,v) =
     let b = Bindlib.bind_var x t in
     match v with
-    | None -> _Prod (lift a) b, c + 1
-    | Some v -> _LLet (lift a) (lift v) b, c
+    | None -> mk_Prod (a, b), c + 1
+    | Some v -> mk_LLet (a, v, b), c
   in
-  let t, c = List.fold_left f (lift t, 0) ctx in
-  Bindlib.unbox t, c
+  List.fold_left f (t, 0) ctx
 
 (** [to_prod_box bctx t] is similar to [to_prod bctx t] but operates on boxed
     contexts and terms. *)
-let to_prod_box : bctxt -> tbox -> tbox * int = fun bctx t ->
+let to_prod_box : bctxt -> term -> term * int = fun bctx t ->
   let f (t, c) (x, a) =
     let b = Bindlib.bind_var x t in
-    (_Prod a b, c + 1)
+    (mk_Prod(a,b), c + 1)
   in
   List.fold_left f (t, 0) bctx
 
 (** [box_context ctx] lifts context [ctx] to a boxed context. *)
 let box_context : ctxt -> bctxt =
   List.filter_map
-    (fun (x, t, u) -> if u = None then Some (x, lift t) else None)
+    (fun (x, t, u) -> if u = None then Some (x, t) else None)
 
 (** [to_abst ctx t] builds a sequence of abstractions over the context [ctx],
     in the term [t]. *)
 let to_abst : ctxt -> term -> term = fun ctx t ->
-  let f t (x, a, _) = _Abst (lift a) (Bindlib.bind_var x t) in
-  Bindlib.unbox (List.fold_left f (lift t) ctx)
+  let f t (x, a, _) = mk_Abst (a, Bindlib.bind_var x t) in
+  List.fold_left f t ctx
 
 (** [to_let ctx t] adds the defined variables of [ctx] on top of [t]. *)
 let to_let : ctxt -> term -> term = fun ctx t ->
   let f t = function
     | _, _, None -> t
-    | x, a, Some u -> _LLet (lift a) (lift u) (Bindlib.bind_var x t)
+    | x, a, Some u -> mk_LLet (a, u, Bindlib.bind_var x t)
   in
-  Bindlib.unbox (List.fold_left f (lift t) ctx)
+  List.fold_left f t ctx
 
 (** [sub ctx vs] returns the sub-context of [ctx] made of the variables of
     [vs]. *)

@@ -250,7 +250,7 @@ and term : term pp = fun ppf t ->
         out ppf " %a%a" bvar (b,x) abstractions t
     | t -> out ppf ", %a" func t
   in
-  func ppf (cleanup t)
+  func ppf t
 
 (*let term ppf t = out ppf "<%a printed %a>" Term.term t term t*)
 (*let term = Raw.term*)

@@ -26,10 +26,8 @@ let fresh : problem -> term -> int -> meta =
     type becomes valid at unboxing. The boxed metavariable should be
     unboxed at most once, otherwise its type may be rendered invalid in
     some contexts. *)
-let fresh_box: problem -> tbox -> int -> meta Bindlib.box =
-  fun p a n ->
-  let m = fresh p mk_Kind n in
-  Bindlib.box_apply (fun a -> m.meta_type := a; m) a
+let fresh_box: problem -> term -> int -> meta = fun p a n ->
+  let m = fresh p mk_Kind n in m.meta_type := a; m
 
 (** [set p m v] sets the metavariable [m] of [p] to [v]. WARNING: No specific
    check is performed, so this function may lead to cyclic terms. To use with
@@ -51,27 +49,26 @@ let make : problem -> ctxt -> term -> term =
     a fresh {e boxed} metavariable in {e boxed} context [bctx] of {e
     boxed} type [a]. It is the same as [lift (make p c b)] (provided that
     [bctx] is boxed [c] and [a] is boxed [b]), but more efficient. *)
-let bmake : problem -> bctxt -> tbox -> tbox =
+let bmake : problem -> bctxt -> term -> term =
   fun p bctx a ->
   let (a, k) = Ctxt.to_prod_box bctx a in
   let m = fresh_box p a k in
-  let get_var (x, _) = _Vari x in
-  _Meta_full m (Array.of_list (List.rev_map get_var bctx))
+  let get_var (x, _) = mk_Vari x in
+  mk_Meta (m, Array.of_list (List.rev_map get_var bctx))
 
 (** [make_codomain p ctx a] creates a fresh metavariable term of type [Type]
     in the context [ctx] extended with a fresh variable of type [a], and
     updates [p] with generated metavariables. *)
 let make_codomain : problem -> ctxt -> term -> tbinder = fun p ctx a ->
   let x = new_tvar "x" in
-  bind x lift (make p ((x, a, None) :: ctx) mk_Type)
+  Bindlib.bind_var x (make p ((x, a, None) :: ctx) mk_Type)
 
 (** [bmake_codomain p bctx a] is [make_codomain p bctx a] but on boxed
     terms. *)
-let bmake_codomain : problem -> bctxt -> tbox -> tbinder Bindlib.box =
+let bmake_codomain : problem -> bctxt -> term -> tbinder =
   fun p bctx a ->
   let x = new_tvar "x" in
-  let b = bmake p ((x, a) :: bctx) _Type in
-  Bindlib.bind_var x b
+  Bindlib.bind_var x (bmake p ((x, a) :: bctx) mk_Type)
 
 (** [iter b f c t] applies the function [f] to every metavariable of [t] and,
    if [x] is a variable of [t] mapped to [v] in the context [c], then to every

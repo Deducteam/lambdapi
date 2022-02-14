@@ -36,8 +36,8 @@ let get_config : Sig_state.t -> Pos.popt -> config = fun ss pos ->
 
 (** [prf_of p c ts t] returns the term [c.symb_prf (p t1 ... tn t)] where ts =
    [ts1;...;tsn]. *)
-let prf_of : config -> tvar -> tbox list -> tbox -> tbox = fun c p ts t ->
-  _Appl_Symb c.symb_prf [_Appl (_Appl_list (_Vari p) ts) t]
+let prf_of : config -> tvar -> term list -> term -> term = fun c p ts t ->
+  mk_Appl (mk_Symb c.symb_prf, mk_Appl (add_args (mk_Vari p) ts, t))
 
 (** compute safe prefixes for predicate and constructor argument variables. *)
 let gen_safe_prefixes : inductive -> string * string * string =
@@ -71,25 +71,25 @@ let gen_safe_prefixes : inductive -> string * string * string =
 (** Type of maps associating to every inductive type some data useful for
    generating the induction principles. *)
 type data = { ind_var : tvar (** predicate variable *)
-            ; ind_type : tbox (** predicate variable type *)
-            ; ind_conclu : tbox (** induction principle conclusion *) }
+            ; ind_type : term (** predicate variable type *)
+            ; ind_conclu : term (** induction principle conclusion *) }
 type ind_pred_map = (sym * data) list
 
 (** [ind_typ_with_codom pos ind_sym ind_env codom s a] assumes that [a] is of
-   the form [Π(i1:a1),...,Π(in:an), TYPE]. It then generates a [tbox] similar
+   the form [Π(i1:a1),...,Π(in:an), TYPE]. It then generates a [term] similar
    to this type except that [TYPE] is replaced by [codom [i1;...;in]]. The
    string [x_str] is used as prefix for the variables [ik]. *)
 let ind_typ_with_codom :
-      popt -> sym -> Env.t -> (tbox list -> tbox) -> string -> term -> tbox =
+      popt -> sym -> Env.t -> (term list -> term) -> string -> term -> term =
   fun pos ind_sym env codom x_str a ->
   let i = Stdlib.ref (-1) in
-  let rec aux : tvar list -> term -> tbox = fun xs a ->
+  let rec aux : tvar list -> term -> term = fun xs a ->
     match get_args a with
-    | (Type, _) -> codom (List.rev_map _Vari xs)
+    | (Type, _) -> codom (List.rev_map mk_Vari xs)
     | (Prod(a,b), _) ->
         let name = Stdlib.(incr i; x_str ^ string_of_int (!i)) in
         let (x,b) = LibTerm.unbind_name name b in
-        _Prod (lift a) (Bindlib.bind_var x (aux (x::xs) b))
+        mk_Prod (a, Bindlib.bind_var x (aux (x::xs) b))
     | _ -> fatal pos "The type of %a is not supported" sym ind_sym
   in
   aux (List.map (fun (_,(v,_,_)) -> v) env) a
@@ -116,15 +116,16 @@ let create_ind_pred_map :
     (* predicate variable *)
     let ind_var = new_tvar_ind p_str i in
     (* predicate type *)
-    let codom ts = _Impl (_Appl_Symb ind_sym ts) (_Symb c.symb_Prop) in
+    let codom ts =
+      mk_Impl (add_args (mk_Symb ind_sym) ts, mk_Symb c.symb_Prop) in
     let a = snd (Env.of_prod_using [] vs !(ind_sym.sym_type)) in
     let ind_type = ind_typ_with_codom pos ind_sym env codom x_str a in
     (* predicate conclusion *)
     let codom ts =
       let x = new_tvar x_str in
       let t = Bindlib.bind_var x
-                (prf_of c ind_var (List.remove_heads arity ts) (_Vari x)) in
-      _Prod (_Appl_Symb ind_sym ts) t
+          (prf_of c ind_var (List.remove_heads arity ts) (mk_Vari x)) in
+      mk_Prod (add_args (mk_Symb ind_sym) ts, t)
     in
     let ind_conclu = ind_typ_with_codom pos ind_sym env codom x_str a in
     (ind_sym, {ind_var; ind_type; ind_conclu})
@@ -241,26 +242,26 @@ let gen_rec_types :
 
   (* [case_of ind_sym cons_sym] creates the clause for the constructor
      [cons_sym] in the induction principle of [ind_sym]. *)
-  let case_of : sym -> sym -> tbox = fun ind_sym cons_sym ->
-    (* 'var = tvar, 'a = unit, 'aux = unit, 'c = tbox *)
+  let case_of : sym -> sym -> term = fun ind_sym cons_sym ->
+    (* 'var = tvar, 'a = unit, 'aux = unit, 'c = term *)
     (* the accumulator is not used *)
     let inj_var _ x = x in
     let init = () in
     (* aux computes the induction hypothesis *)
     let aux env _ p ts x =
-      let v = Env.appl (_Vari x) env in
-      let v = prf_of c p (List.map lift (List.remove_heads n ts)) v in
-      Env.to_prod_box env v
+      let v = Env.appl (mk_Vari x) env in
+      let v = prf_of c p (List.remove_heads n ts) v in
+      Env.to_prod env v
     in
     let acc_rec_dom _ _ _ = () in
     let rec_dom t x v next =
-      _Prod (lift t) (Bindlib.bind_var x (_Impl v next))
+      mk_Prod (t, Bindlib.bind_var x (mk_Impl (v, next)))
     in
     let acc_nonrec_dom _ _ = () in
-    let nonrec_dom t x next = _Prod (lift t) (Bindlib.bind_var x next) in
+    let nonrec_dom t x next = mk_Prod (t, Bindlib.bind_var x next) in
     let codom xs _ p ts =
-      prf_of c p (List.map lift (List.remove_heads n ts))
-        (_Appl_Symb cons_sym (List.rev_map _Vari xs))
+      prf_of c p (List.remove_heads n ts)
+        (add_args (mk_Symb cons_sym) (List.rev_map mk_Vari xs))
     in
     fold_cons_type pos ind_pred_map x_str ind_sym vs cons_sym inj_var
       init aux acc_rec_dom rec_dom acc_nonrec_dom nonrec_dom codom
@@ -269,17 +270,17 @@ let gen_rec_types :
   (* Generates an induction principle for each type. *)
   let gen_rec_type (_, d) =
     let add_clause_cons ind_sym cons_sym t =
-      _Impl (case_of ind_sym cons_sym) t
+      mk_Impl (case_of ind_sym cons_sym, t)
     in
     let add_clauses_ind (ind_sym, cons_sym_list) t =
       List.fold_right (add_clause_cons ind_sym) cons_sym_list t
     in
     let rec_typ = List.fold_right add_clauses_ind ind_list d.ind_conclu in
     let add_quantifier t (_,d) =
-      _Prod d.ind_type (Bindlib.bind_var d.ind_var t) in
+      mk_Prod (d.ind_type, Bindlib.bind_var d.ind_var t) in
     let rec_typ = List.fold_left add_quantifier rec_typ ind_pred_map in
-    let rec_typ = Env.to_prod_box env rec_typ in
-    Bindlib.unbox rec_typ
+    let rec_typ = Env.to_prod env rec_typ in
+    rec_typ
   in
 
   List.map gen_rec_type ind_pred_map

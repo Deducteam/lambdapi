@@ -15,9 +15,7 @@ type octxt = ctxt * bctxt
 let boxed = snd
 let classic = fst
 let extend (cctx, bctx) v ?def ty =
-  ((v, ty, def) :: cctx, if def <> None then bctx else (v, lift ty) :: bctx)
-
-let unbox = Bindlib.unbox
+  ((v, ty, def) :: cctx, if def <> None then bctx else (v, ty) :: bctx)
 
 (** Exception that may be raised by type inference. *)
 exception NotTypable
@@ -80,9 +78,9 @@ and force : problem -> octxt -> term -> term -> term * bool =
  match unfold te with
  | Plac true ->
      unif pb c ty mk_Type;
-     (unbox (LibMeta.bmake pb (boxed c) _Type), true)
+     (LibMeta.bmake pb (boxed c) mk_Type, true)
  | Plac false ->
-     (unbox (LibMeta.bmake pb (boxed c) (lift ty)), true)
+     (LibMeta.bmake pb (boxed c) ty, true)
  | _ ->
      let (t, a, cui) = infer pb c te in
      let t, cu = coerce pb c t a ty in
@@ -102,12 +100,12 @@ and infer_aux : problem -> octxt -> term -> term * term * bool =
       (t, a, false)
   | Symb s -> (t, !(s.sym_type), false)
   | Plac true ->
-      let m = LibMeta.bmake pb (boxed c) _Type in
-      (unbox m, mk_Type, true)
+      let m = LibMeta.bmake pb (boxed c) mk_Type in
+      (m, mk_Type, true)
   | Plac false ->
-      let mt = LibMeta.bmake pb (boxed c) _Type in
+      let mt = LibMeta.bmake pb (boxed c) mk_Type in
       let m = LibMeta.bmake pb (boxed c) mt in
-      (unbox m, unbox mt, true)
+      (m, mt, true)
   (* All metavariables inserted are typed. *)
   | (Meta (m, ts)) as t ->
       let cu = Stdlib.ref false in
@@ -145,12 +143,12 @@ and infer_aux : problem -> octxt -> term -> term * term * bool =
               term u;
             raise NotTypable
         | _ -> () );
-      let u_ty = Bindlib.(u_ty |> lift |> bind_var x |> unbox) in
+      let u_ty = Bindlib.bind_var x u_ty in
       let top_ty = mk_LLet (t_ty, t, u_ty) in
       let cu = cu_t_ty || cu_t || cu_u in
       let top =
         if cu then
-          let u = Bindlib.(u |> lift |> bind_var x |> unbox) in
+          let u = Bindlib.bind_var x u in
           mk_LLet(t_ty, t, u)
         else top
       in
@@ -161,12 +159,12 @@ and infer_aux : problem -> octxt -> term -> term * term * bool =
       let (x, b) = Bindlib.unbind b in
       let c = extend c x dom in
       let b, range, cu_b = infer pb c b in
-      let range = Bindlib.(lift range |> bind_var x |> unbox) in
+      let range = Bindlib.bind_var x range in
       let top_ty = mk_Prod (dom, range) in
       let cu = cu_b || cu_dom in
       let top =
         if cu then
-          let b = Bindlib.(lift b |> bind_var x |> unbox) in
+          let b = Bindlib.bind_var x b in
           mk_Abst (dom, b)
         else top
       in
@@ -180,7 +178,7 @@ and infer_aux : problem -> octxt -> term -> term * term * bool =
       let cu = cu_b || cu_dom in
       let top =
         if cu then
-          let b = Bindlib.(lift b |> bind_var x |> unbox) in
+          let b = Bindlib.bind_var x b in
           mk_Prod (dom, b)
         else top
       in
@@ -199,16 +197,12 @@ and infer_aux : problem -> octxt -> term -> term * term * bool =
           return cu_u t u range
       | Meta (_, _) ->
           let u, u_ty, cu_u = infer pb c u in
-          let range =
-            unbox (LibMeta.bmake_codomain pb (boxed c) (lift u_ty))
-          in
+          let range = LibMeta.bmake_codomain pb (boxed c) u_ty in
           unif pb c t_ty (mk_Prod (u_ty, range));
           return cu_u t u range
       | t_ty ->
-          let domain = LibMeta.bmake pb (boxed c) _Type in
+          let domain = LibMeta.bmake pb (boxed c) mk_Type in
           let range = LibMeta.bmake_codomain pb (boxed c) domain in
-          let domain = unbox domain
-          and range = unbox range in
           let t, cu_t' = coerce pb c t t_ty (mk_Prod (domain, range)) in
           if Logger.log_enabled () then
             log "Appl-default arg [%a]" term u;

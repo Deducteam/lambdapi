@@ -129,9 +129,7 @@ let rec inverse : sym -> term -> term = fun s v ->
       let t2 =
         let x, b = Bindlib.unbind b in
         let b = inverse s2 b in
-        if occ then
-          Bindlib.unbox (_Abst (lift a) (Bindlib.bind_var x (lift b)))
-        else b
+        if occ then mk_Abst (a, Bindlib.bind_var x b) else b
       in
       add_args (mk_Symb s0) [t1;t2]
   | _ -> raise Not_found

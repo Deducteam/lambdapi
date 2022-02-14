@@ -190,7 +190,7 @@ let encode : Sig_state.t -> Pos.popt -> Env.env -> term -> Why3.Task.task =
   let cfg = get_config ss pos in
   let (constants, types, hyps) =
     let translate_hyp (tbl,ty_tbl, map) (name, (_, hyp, _)) =
-      match translate_term cfg tbl ty_tbl (Bindlib.unbox hyp) with
+      match translate_term cfg tbl ty_tbl hyp with
       | Some(tbl, ty_tbl, why3_hyp) ->
         (tbl, ty_tbl, StrMap.add name why3_hyp map)
       | None -> (tbl, ty_tbl , map)

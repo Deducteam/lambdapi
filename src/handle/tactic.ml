@@ -45,8 +45,8 @@ let add_axiom : Sig_state.t -> popt -> meta -> Sig_state.t =
      metavariable. *)
   let meta_value =
     let vars = Array.init m.meta_arity (new_tvar_ind "x") in
-    let ax = _Appl_Symb sym (Array.to_list vars |> List.map _Vari) in
-    Bindlib.(bind_mvar vars ax |> unbox)
+    let ax = add_args (mk_Symb sym) (List.map mk_Vari (Array.to_list vars)) in
+    Bindlib.bind_mvar vars ax
   in
   LibMeta.set (new_problem()) m meta_value; ss
 
@@ -112,7 +112,7 @@ let tac_refine :
   | Some t ->
   if Logger.log_enabled () then
     log_tact (Color.red "%a ≔ %a") meta gt.goal_meta term t;
-  LibMeta.set p gt.goal_meta (binds (Env.vars gt.goal_hyps) lift t);
+  LibMeta.set p gt.goal_meta (Bindlib.bind_mvar (Env.vars gt.goal_hyps) t);
   (* Convert the metas and constraints of [p] not in [gs] into new goals. *)
   if Logger.log_enabled () then log_tact "%a" problem p;
   tac_solve pos {ps with proof_goals = Proof.add_goals_of_problem p gs}
@@ -250,10 +250,10 @@ let handle :
         try
           let p = new_problem() in
           let e2, x, e1 = List.split (fun (s,_) -> s = id) env in
-          let u = lift gt.goal_type in
-          let q = Env.to_prod_box [x] (Env.to_prod_box e2 u) in
+          let u = gt.goal_type in
+          let q = Env.to_prod [x] (Env.to_prod e2 u) in
           let m = LibMeta.fresh p (Env.to_prod e1 q) (List.length e1) in
-          let me1 = Bindlib.unbox (_Meta m (Env.to_tbox e1)) in
+          let me1 = mk_Meta (m, Env.to_tbox e1) in
           let t =
             List.fold_left (fun t (_,(v,_,_)) -> mk_Appl(t, mk_Vari v))
               me1 (x::e2)
@@ -275,16 +275,13 @@ let handle :
         | Some t ->
         (* Create a new goal of type [t]. *)
         let n = List.length env in
-        let bt = lift t in
-        let m1 = LibMeta.fresh p (Env.to_prod env bt) n in
+        let m1 = LibMeta.fresh p (Env.to_prod env t) n in
         (* Refine the focused goal. *)
         let v = new_tvar id.elt in
-        let env' = Env.add id.elt v bt None env in
-        let m2 =
-          LibMeta.fresh p (Env.to_prod env' (lift gt.goal_type)) (n+1)
-        in
+        let env' = Env.add id.elt v t None env in
+        let m2 = LibMeta.fresh p (Env.to_prod env' gt.goal_type) (n+1) in
         let ts = Env.to_tbox env in
-        let u = Bindlib.unbox (_Meta m2 (Array.append ts [|_Meta m1 ts|])) in
+        let u = mk_Meta (m2, Array.append ts [|mk_Meta (m1, ts)|]) in
         tac_refine pos ps gt gs p u
       end
   | P_tac_induction -> tac_induction pos ps gt gs

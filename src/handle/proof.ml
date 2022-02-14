@@ -59,9 +59,7 @@ module Goal = struct
 
   (** [hyps ppf g] prints on [ppf] the hypotheses of the goal [g]. *)
   let hyps : goal pp =
-    let env_elt ppf (s,(_,t,_)) =
-      out ppf "%a: %a" uid s term (Bindlib.unbox t)
-    in
+    let env_elt ppf (s,(_,t,_)) = out ppf "%a: %a" uid s term t in
     let ctx_elt ppf (x,a,t) =
       out ppf "%a: %a" var x term a;
       match t with
