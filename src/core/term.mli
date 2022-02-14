@@ -218,10 +218,10 @@ val msubst : tmbinder -> term array -> term
 val msubst3 :
   (tmbinder * tmbinder * tmbinder) -> term array -> term * term * term
 
-(** [new_var _ name] creates a new unique variable using [name]. *)
-val new_var : (tvar -> term) -> string -> tvar
+(** [new_var name] creates a new unique variable of name [name]. *)
+val new_var : string -> tvar
 
-(** [new_mvar names] creates a new array of new unique variables using
+(** [new_mvar names] creates an array of new unique variables of name
    [names]. *)
 val new_mvar : string array -> tvar array
 
@@ -230,27 +230,17 @@ val name_of : tvar -> string
 
 (** [unbind b] substitutes the binder [b] using a fresh variable. The variable
     and the result of the substitution are returned. Note that the name of the
-    fresh variable is based on that of the binder.  The [mkfree] function used
-    to create the fresh variable is that of the variable that was bound by [b]
-    at its construction (see [new_var] and [bind_var]). *)
+    fresh variable is based on that of the binder. *)
 val unbind : tbinder -> tvar * term
 
 (** [unbind2 f g] is similar to [unbind f], but it substitutes two binders [f]
     and [g] at once using the same fresh variable. The name of the variable is
-    based on that of the binder [f]. Similarly, the [mkfree] syntactic wrapper
-    that is used for the fresh variable is the one that was given for creating
-    the variable that was bound to construct [f] (see [bind_var] and [new_var]
-    for details on this process). In particular, the use of [unbind2] may lead
-    to unexpected results if the binders [f] and [g] were not built using free
-    variables created with the same [mkfree]. *)
+    based on that of the binder [f]. *)
 val unbind2 : tbinder -> tbinder -> tvar * term * term
 
 (** [unmbind b] substitutes the multiple binder [b] with fresh variables. This
     function is analogous to [unbind] for binders. Note that the names used to
-    create the fresh variables are based on those of the multiple binder.  The
-    syntactic wrapper (of [mkfree]) that is used to build the variables is the
-    one that was given when creating the multiple variables that were bound in
-    [b] (see [new_mvar] and [bind_mvar]). *)
+    create the fresh variables are based on those of the multiple binder. *)
 val unmbind : tmbinder -> tvar array * term
 
 (** Type of a term under construction. Using this representation,
@@ -344,9 +334,6 @@ module Var : Map.OrderedType with type t = tvar
 
 module VarSet : Set.S with type elt = tvar
 module VarMap : Map.S with type key = tvar
-
-(** [of_tvar x] injects the [Bindlib] variable [x] in a term. *)
-val of_tvar : tvar -> term
 
 (** [new_tvar s] creates a new [tvar] of name [s]. *)
 val new_tvar : string -> tvar

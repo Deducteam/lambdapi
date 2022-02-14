@@ -296,49 +296,36 @@ let subst : tbinder -> term -> term = fun (_,t) v ->
     log_term "subst %a [%a] = %a" term t term v term r;
   r
 
-(** [new_var _ name] creates a new unique variable using [name]. *)
-let new_var : (tvar -> term) -> string -> tvar =
-  let open Stdlib in let n = ref 0 in fun _ name -> incr n; !n, name
+(** [new_var name] creates a new unique variable of name [name]. *)
+let new_var : string -> tvar =
+  let open Stdlib in let n = ref 0 in fun name -> incr n; !n, name
 
-let mkfree : tvar -> term = fun x -> Vari x
-
-(** [new_mvar names] creates a new array of new unique variables using
+(** [new_mvar names] creates an array of new unique variables of name
    [names]. *)
-let new_mvar : string array -> tvar array = Array.map (new_var mkfree)
+let new_mvar : string array -> tvar array = Array.map new_var
 
-(** [name_of x] returns a printable name for variable [x]. *)
+(** [name_of x] returns the name of variable [x]. *)
 let name_of : tvar -> string = fun (_i,n) -> n (*^ string_of_int i*)
 
 (** [unbind b] substitutes the binder [b] using a fresh variable. The variable
     and the result of the substitution are returned. Note that the name of the
-    fresh variable is based on that of the binder.  The [mkfree] function used
-    to create the fresh variable is that of the variable that was bound by [b]
-    at its construction (see [new_var] and [bind_var]). *)
+    fresh variable is based on that of the binder. *)
 let unbind : tbinder -> tvar * term = fun ((name,_) as b) ->
-  let x = new_var mkfree name in x, subst b (Vari x)
+  let x = new_var name in x, subst b (Vari x)
 
 (** [unbind2 f g] is similar to [unbind f], but it substitutes two binders [f]
     and [g] at once using the same fresh variable. The name of the variable is
-    based on that of the binder [f]. Similarly, the [mkfree] syntactic wrapper
-    that is used for the fresh variable is the one that was given for creating
-    the variable that was bound to construct [f] (see [bind_var] and [new_var]
-    for details on this process). In particular, the use of [unbind2] may lead
-    to unexpected results if the binders [f] and [g] were not built using free
-    variables created with the same [mkfree]. *)
+    based on that of the binder [f]. *)
 let unbind2 : tbinder -> tbinder -> tvar * term * term =
   fun ((name1,_) as b1) b2 ->
-  let x = new_var mkfree name1 in x, subst b1 (Vari x), subst b2 (Vari x)
+  let x = new_var name1 in x, subst b1 (Vari x), subst b2 (Vari x)
 
 (** [unmbind b] substitutes the multiple binder [b] with fresh variables. This
     function is analogous to [unbind] for binders. Note that the names used to
-    create the fresh variables are based on those of the multiple binder.  The
-    syntactic wrapper (of [mkfree]) that is used to build the variables is the
-    one that was given when creating the multiple variables that were bound in
-    [b] (see [new_mvar] and [bind_mvar]). *)
+    create the fresh variables are based on those of the multiple binder. *)
 let unmbind : tmbinder -> tvar array * term = fun ((names,_) as b) ->
-  let xs =
-    Array.init (Array.length names) (fun i -> new_var mkfree names.(i)) in
-  xs, msubst b (Array.map mkfree xs)
+  let xs = Array.init (Array.length names) (fun i -> new_var names.(i)) in
+  xs, msubst b (Array.map (fun x -> Vari x) xs)
 
 (** Type of a term under construction. Using this representation,
     the free variable of the term can be bound easily. *)
@@ -536,11 +523,8 @@ end
 module VarSet = Set.Make(Var)
 module VarMap = Map.Make(Var)
 
-(** [of_tvar x] injects the [Bindlib] variable [x] in a term. *)
-let of_tvar : tvar -> term = fun x -> Vari(x)
-
 (** [new_tvar s] creates a new [tvar] of name [s]. *)
-let new_tvar : string -> tvar = Bindlib.new_var of_tvar
+let new_tvar : string -> tvar = Bindlib.new_var
 
 (** [new_tvar_ind s i] creates a new [tvar] of name [s ^ string_of_int i]. *)
 let new_tvar_ind : string -> int -> tvar = fun s i ->
