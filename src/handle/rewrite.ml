@@ -165,7 +165,7 @@ let matches : term -> term -> bool =
       | Wild -> assert false
       | Meta _ -> assert false
       | Patt _ -> assert false
-      | TEnv _ -> assert false
+      | Db _ -> assert false
       | Plac _ -> assert false
       | Appl _ -> assert false
       | Prod _ -> assert false
@@ -273,7 +273,7 @@ let bind_pattern : term -> term -> tbinder =  fun p t ->
         let x, body = Bindlib.unbind body in
         _LLet (replace typ) (replace def) (Bindlib.bind_var x (replace body))
     | Meta(m,ts) -> _Meta m (Array.map replace ts)
-    | TEnv _ -> assert false
+    | Db _ -> assert false
     | Wild -> assert false
     | TRef _ -> assert false
     | Patt _ -> assert false

@@ -20,11 +20,10 @@ let print_term : bool -> term pp = fun lhs ->
   let rec pp ppf t =
     match unfold t with
     (* Forbidden cases. *)
-    | Db _ -> assert false
     | Meta(_,_)    -> assert false
     | Plac _       -> assert false
     | TRef(_)      -> assert false
-    | TEnv(_,_)    -> assert false
+    | Db _ -> assert false
     | Wild         -> assert false
     | Kind         -> assert false
     (* Printing of atoms. *)

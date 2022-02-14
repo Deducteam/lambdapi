@@ -11,8 +11,6 @@ open Timed
 open Lplib open Base
 open Common open Debug
 
-module OldBindlib = Bindlib
-
 let log_term = Logger.make 'm' "term" "term building"
 let log_term = log_term.pp
 
@@ -59,15 +57,13 @@ type term =
   | Appl of term * term (** Term application. *)
   | Meta of meta * term array (** Metavariable application. *)
   | Patt of int option * string * term array
-  (** Pattern variable application (only used in rewriting rules LHS). *)
-  | TEnv of term_env * term array
-  (** Term environment (only used in rewriting rules RHS). *)
+  (** Pattern variable application (only used in rewriting rules). *)
+  | Db of int (** Bound variable as de Bruijn index. *)
   | Wild
   | Plac of bool
   | TRef of term option ref (** Reference cell (used in surface matching). *)
   | LLet of term * term * tbinder
   (** [LLet(a, t, u)] is [let x : a ≔ t in u] (with [x] bound in [u]). *)
-  | Db of int (** Bound variable as de Bruijn index. *)
 
 (** {b NOTE} that a wildcard "_" of the concrete (source code) syntax may have
     a different representation depending on the application. For instance, the
@@ -152,38 +148,17 @@ and sym =
    variables are replaced by fresh meta-variables each time the rule is
    used. *)
 
-(** Representation of a "term with environment", which intuitively corresponds
-    to a term with bound variables (or a "higher-order" term) represented with
-    the {!constructor:TE_Some} constructor. Other constructors are included so
-    that "terms with environments" can be bound in the RHS of rewriting rules.
-    This is purely technical. *)
- and term_env =
-  | TE_Vari of tevar
-  (** Free "term with environment" variable (used to build a RHS). *)
-  | TE_Some of tmbinder
-  (** Actual "term with environment" (used to instantiate a RHS). *)
-  | TE_None
-  (** Dummy term environment (used during matching). *)
-
-(** The {!constructor:TEnv}[(te,env)] constructor intuitively corresponds to a
-    term [te] with free variables together with an explicit environment [env].
-    Note that the binding of the environment actually occurs in [te], when the
-    constructor is of the form {!constructor:TE_Some}[(b)]. Indeed, [te] holds
-    a multiple binder [b] that binds every free variables of the term at once.
-    We then apply the substitution by performing a Bindlib substitution of [b]
-    with the environment [env]. *)
-
 (** During evaluation, we only try to apply rewriting rules when we reduce the
-    application of a symbol [s] to a list of argument [ts]. At this point, the
-    symbol [s] contains  every rule [r] that can potentially be applied in its
-    {!field:sym_rules} field.  To check if a rule [r] applies,  we  match  the
-    elements of [r.lhs] with those of [ts] while building an environment [env]
-    of type {!type:term_env array}. During this process, a pattern of the form
-    {!constructor:Patt}[(Some i,s,e)] matched against a term [u] will  results
-    in [env.(i)] being set to [u]. If all terms of [ts] can be matched against
-    corresponding patterns, then environment [env] is fully constructed and it
-    can hence be substituted in [r.rhs] with [Bindlib.msubst r.rhs env] to get
-    the result of the application of the rule. *)
+   application of a symbol [s] to a list of argument [ts]. At this point, the
+   symbol [s] contains every rule [r] that can potentially be applied in its
+   {!field:sym_rules} field. To check if a rule [r] applies, we match the
+   elements of [r.lhs] with those of [ts] while building an environment [env].
+   During this process, a pattern of
+   the form {!constructor:Patt}[(Some i,s,e)] matched against a term [u] will
+   results in [env.(i)] being set to [u]. If all terms of [ts] can be matched
+   against corresponding patterns, then environment [env] is fully constructed
+   and it can hence be substituted in [r.rhs] with [Bindlib.msubst r.rhs env]
+   to get the result of the application of the rule. *)
 
 (** {3 Metavariables and related functions} *)
 
@@ -204,8 +179,6 @@ and tbinder = string * term
 and tmbinder = string array * term
 
 and tvar = int * string
-
-and tevar = term_env OldBindlib.var
 
 module Bindlib = struct
 
@@ -246,7 +219,6 @@ and term : term pp = fun ppf t ->
   | Meta(m,ts) -> out ppf "?%d%a" m.meta_key terms ts
   | Patt(i,s,ts) -> out ppf "$%a_%s%a" (D.option D.int) i s terms ts
   | Plac(_) -> out ppf "_"
-  | TEnv _ -> assert false
   | Wild -> out ppf "_"
   | TRef r -> out ppf "&%a" (Option.pp term) !r
   | LLet(a,t,(n,b)) ->
@@ -267,7 +239,6 @@ and lift : int -> term -> term = fun l t ->
     | LLet(a,t,(n,u)) -> LLet(lift i a, lift i t, (n, lift (i+1) u))
     | Meta(m,ts) -> Meta(m, Array.map (lift i) ts)
     | Patt(j,n,ts) -> Patt(j,n, Array.map (lift i) ts)
-    | TEnv(te,ts) -> TEnv(te, Array.map (lift i) ts)
     | _ -> t
   in
   let r = lift 1 t in
@@ -294,7 +265,6 @@ and msubst : tmbinder -> term array -> term = fun (ns,t) vs ->
     | LLet(a,t,(n,u)) -> LLet(msubst i a, msubst i t, (n, msubst (i+1) u))
     | Meta(m,ts) -> Meta(m, Array.map (msubst i) ts)
     | Patt(j,n,ts) -> Patt(j,n, Array.map (msubst i) ts)
-    | TEnv(te,ts) -> TEnv(te, Array.map (msubst i) ts)
     | _ -> t
   in
   let r = if n = 0 then t else msubst 1 t in
@@ -319,7 +289,6 @@ let subst : tbinder -> term -> term = fun (_,t) v ->
     | LLet(a,t,(n,u)) -> LLet(subst i a, subst i t, (n, subst (i+1) u))
     | Meta(m,ts) -> Meta(m, Array.map (subst i) ts)
     | Patt(j,n,ts) -> Patt(j,n, Array.map (subst i) ts)
-    | TEnv(te,ts) -> TEnv(te, Array.map (subst i) ts)
     | _ -> t
   in
   let r = subst 1 t in
@@ -371,17 +340,6 @@ let unmbind : tmbinder -> tvar array * term = fun ((names,_) as b) ->
     Array.init (Array.length names) (fun i -> new_var mkfree names.(i)) in
   xs, msubst b (Array.map mkfree xs)
 
-(** [unmbind2 f g] is similar to [unmbind f],  but it substitutes two multiple
-    binder [f] and [g] at once, using the same fresh variables.  Note that the
-    two binders must have the same arity. This function may have an unexpected
-    results in some cases (see the documentation of [unbind2]). *)
-let unmbind2 : tmbinder -> tmbinder -> tvar array * term * term
-  = fun ((names,_) as b1) b2 ->
-  let xs =
-    Array.init (Array.length names) (fun i -> new_var mkfree names.(i)) in
-  let ts = Array.map mkfree xs in
-  xs, msubst b1 ts, msubst b2 ts
-
 (** Type of a term under construction. Using this representation,
     the free variable of the term can be bound easily. *)
 type 'a box = 'a
@@ -413,7 +371,6 @@ let bind_var  : tvar -> term box -> tbinder box = fun ((_,n) as x) ->
     | LLet(a,t,(n,u)) -> LLet(bind i a, bind i t, (n, bind (i+1) u))
     | Meta(m,ts) -> Meta(m, Array.map (bind i) ts)
     | Patt(j,n,ts) -> Patt(j,n, Array.map (bind i) ts)
-    | TEnv(te,ts) -> TEnv(te, Array.map (bind i) ts)
     | _ -> t
   in fun t ->
     let b = bind 1 t in
@@ -442,7 +399,6 @@ let bind_mvar : tvar array -> term box -> tmbinder box = fun xs t ->
     | LLet(a,t,(n,u)) -> LLet(bind i a, bind i t, (n, bind (i+1) u))
     | Meta(m,ts) -> Meta(m, Array.map (bind i) ts)
     | Patt(j,n,ts) -> Patt(j,n, Array.map (bind i) ts)
-    | TEnv(te,ts) -> TEnv(te, Array.map (bind i) ts)
     | _ -> t
   in
   let b = bind 1 t in
@@ -492,8 +448,7 @@ let binder_occur : tbinder -> bool = fun (_,t) ->
     | Prod(a,(_,u)) -> check i a; check (i+1) u
     | LLet(a,t,(_,u)) -> check i a; check i t; check (i+1) u
     | Meta(_,ts)
-    | Patt(_,_,ts)
-    | TEnv(_,ts) -> Array.iter (check i) ts
+    | Patt(_,_,ts) -> Array.iter (check i) ts
     | _ -> ()
   in
   let r = try check 1 t; false with Exit -> true in
@@ -518,8 +473,7 @@ let is_closed : term box -> bool =
     | Prod(a,(_,u)) -> check a; check u
     | LLet(a,t,(_,u)) -> check a; check t; check u
     | Meta(_,ts)
-    | Patt(_,_,ts)
-    | TEnv(_,ts) -> Array.iter check ts
+    | Patt(_,_,ts) -> Array.iter check ts
     | _ -> ()
   in fun t -> try check t; true with Exit -> false
 
@@ -535,8 +489,7 @@ let occur : tvar -> term box -> bool = fun x ->
     | Prod(a,(_,u)) -> check a; check u
     | LLet(a,t,(_,u)) -> check a; check t; check u
     | Meta(_,ts)
-    | Patt(_,_,ts)
-    | TEnv(_,ts) -> Array.iter check ts
+    | Patt(_,_,ts) -> Array.iter check ts
     | _ -> ()
   in fun t -> try check t; false with Exit -> true
 
@@ -545,8 +498,6 @@ let occur_tmbinder : tvar -> tmbinder box -> bool = fun x (_,t) -> occur x t
 end
 
 type tbox = term Bindlib.box
-
-type tebox = term_env Bindlib.box
 
 let unfold = Bindlib.unfold
 
@@ -594,12 +545,6 @@ let new_tvar : string -> tvar = Bindlib.new_var of_tvar
 (** [new_tvar_ind s i] creates a new [tvar] of name [s ^ string_of_int i]. *)
 let new_tvar_ind : string -> int -> tvar = fun s i ->
   new_tvar (Escape.add_prefix s (string_of_int i))
-
-(** [of_tevar x] injects the [Bindlib] variable [x] in a {!type:term_env}. *)
-let of_tevar : tevar -> term_env = fun x -> TE_Vari(x)
-
-(** [new_tevar s] creates a new [tevar] with name [s]. *)
-let new_tevar : string -> tevar = OldBindlib.new_var of_tevar
 
 (** Sets and maps of symbols. *)
 module Sym = struct
@@ -683,38 +628,26 @@ let is_symb : sym -> term -> bool = fun s t ->
   match unfold t with Symb(r) -> r == s | _ -> false
 
 (** Total order on terms. *)
-let cmp : term cmp =
-  let rec cmp t t' =
+let rec cmp : term cmp = fun t t' ->
     match unfold t, unfold t' with
-    | Db i, Db j -> Stdlib.compare i j
     | Vari x, Vari x' -> Bindlib.compare_vars x x'
     | Type, Type
     | Kind, Kind
     | Wild, Wild -> 0
     | Symb s, Symb s' -> Sym.compare s s'
-    | Prod(t,u), Prod(t',u')
-    | Abst(t,u), Abst(t',u') -> lex cmp cmp_binder (t,u) (t',u')
+    | Prod(t,(_,u)), Prod(t',(_,u'))
+    | Abst(t,(_,u)), Abst(t',(_,u')) -> lex cmp cmp (t,u) (t',u')
     | Appl(t,u), Appl(t',u') -> lex cmp cmp (u,t) (u',t')
     | Meta(m,ts), Meta(m',ts') ->
         lex Meta.compare (Array.cmp cmp) (m,ts) (m',ts')
     | Patt(i,s,ts), Patt(i',s',ts') ->
         lex3 Stdlib.compare Stdlib.compare (Array.cmp cmp)
           (i,s,ts) (i',s',ts')
-    | TEnv(e,ts), TEnv(e',ts') ->
-        lex cmp_tenv (Array.cmp cmp) (e,ts) (e',ts')
+    | Db i, Db j -> Stdlib.compare i j
     | TRef r, TRef r' -> Stdlib.compare r r'
-    | LLet(a,t,u), LLet(a',t',u') ->
-        lex3 cmp cmp cmp_binder (a,t,u) (a',t',u')
+    | LLet(a,t,(_,u)), LLet(a',t',(_,u')) ->
+        lex3 cmp cmp cmp (a,t,u) (a',t',u')
     | t, t' -> cmp_tag t t'
-  and cmp_binder t t' = let (_,t,t') = Bindlib.unbind2 t t' in cmp t t'
-  and cmp_mbinder t t' = let (_,t,t') = Bindlib.unmbind2 t t' in cmp t t'
-  and cmp_tenv e e' =
-    match e, e' with
-    | TE_Vari v, TE_Vari v' -> OldBindlib.compare_vars v v'
-    | TE_None, TE_None -> 0
-    | TE_Some t, TE_Some t' -> cmp_mbinder t t'
-    | _ -> cmp_tag e e'
-  in cmp
 
 (** [get_args t] decomposes the {!type:term} [t] into a pair [(h,args)], where
     [h] is the head term of [t] and [args] is the list of arguments applied to
@@ -762,11 +695,6 @@ let mk_TRef x = TRef x
 
 let mk_LLet (a,t,u) =
   if Bindlib.binder_constant u then Bindlib.subst u Kind else LLet (a,t,u)
-
-let mk_TEnv (te,ts) =
-  match te with
-  | TE_Some mb -> Bindlib.msubst mb ts
-  | _ -> TEnv (te,ts)
 
 (* We make the equality of terms modulo commutative and
    associative-commutative symbols syntactic by always ordering arguments in
@@ -950,10 +878,6 @@ let _Meta_full : meta Bindlib.box -> tbox array -> tbox = fun m ts ->
 let _Patt : int option -> string -> tbox array -> tbox = fun i n ts ->
   Bindlib.box_apply (fun ts -> Patt(i,n,ts)) (Bindlib.box_array ts)
 
-(** [_TEnv te ts] lifts a term environment to the {!type:tbox} type. *)
-let _TEnv : tebox -> tbox array -> tbox = fun te ts ->
-  Bindlib.box_apply2 (fun te ts -> mk_TEnv(te,ts)) te (Bindlib.box_array ts)
-
 (** [_Wild] injects the constructor [Wild] into the {!type:tbox} type. *)
 let _Wild : tbox = Bindlib.box Wild
 
@@ -968,13 +892,6 @@ let _TRef : term option ref -> tbox = fun r ->
 (** [_LLet t a u] lifts let binding [let x := t : a in u<x>]. *)
 let _LLet : tbox -> tbox -> tbinder Bindlib.box -> tbox =
   Bindlib.box_apply3 (fun a t u -> mk_LLet(a, t, u))
-
-(** [_TE_Vari x] injects a term environment variable [x] into the {!type:tbox}
-    type so that it may be available for binding. *)
-let _TE_Vari : tevar -> tebox = fun x -> TE_Vari x
-
-(** [_TE_None] injects the constructor [TE_None] into the {!type:tbox} type.*)
-let _TE_None : tebox = Bindlib.box TE_None
 
 (** [lift mk_appl t] lifts the {!type:term} [t] to the type {!type:tbox},
    using the function [mk_appl] in the case of an application. This has the
@@ -1037,7 +954,6 @@ let subst_patt : tmbinder option array -> term -> term = fun env ->
     | Abst(a,(n,b)) -> mk_Abst(subst_patt a, (n, subst_patt b))
     | Appl(a,b) -> mk_Appl(subst_patt a, subst_patt b)
     | Meta(m,ts) -> mk_Meta(m, Array.map subst_patt ts)
-    | TEnv _ -> assert false
     | LLet(a,t,(n,b)) ->
       mk_LLet(subst_patt a, subst_patt t, (n, subst_patt b))
     | Wild

@@ -77,7 +77,6 @@ let replace : term -> subterm_pos -> term -> term = fun t p u ->
 let occurs : int -> term -> bool = fun i ->
   let rec occ t =
     match unfold t with
-    | Db _ -> assert false
     | Patt(None,_,_) -> assert false
     | Patt(Some j,_,_) -> i=j
     | Vari _ | Symb _ -> false
@@ -86,7 +85,7 @@ let occurs : int -> term -> bool = fun i ->
     | Type -> assert false
     | Kind -> assert false
     | Meta _ -> assert false
-    | TEnv _ -> assert false
+    | Db _ -> assert false
     | Wild -> assert false
     | Plac _ -> assert false
     | TRef _ -> assert false
@@ -97,7 +96,6 @@ let occurs : int -> term -> bool = fun i ->
 let shift : term -> term =
   let rec shift : term -> tbox = fun t ->
     match unfold t with
-    | Db _ -> assert false
     | Vari x -> _Vari x
     | Type -> _Type
     | Kind -> _Kind
@@ -108,17 +106,13 @@ let shift : term -> term =
     | Meta(m,ts) -> _Meta m (Array.map shift ts)
     | Patt(None,_,_) -> assert false
     | Patt(Some i,n,ts) -> _Patt (Some(-i-1)) (n ^ "'") (Array.map shift ts)
-    | TEnv(te,ts) -> _TEnv (shift_tenv te) (Array.map shift ts)
+    | Db _ -> assert false
     | Wild -> _Wild
     | Plac b -> _Plac b
     | TRef r -> _TRef r
     | LLet(a,t,b) -> _LLet (shift a) (shift t) (shift_binder b)
   and shift_binder b =
     let x, t = Bindlib.unbind b in Bindlib.bind_var x (shift t)
-  and shift_tenv : term_env -> tebox = function
-    | TE_Vari x -> _TE_Vari x
-    | TE_None -> _TE_None
-    | TE_Some _ -> assert false
   in fun t -> Bindlib.unbox (shift t)
 
 (** Type for pattern variable substitutions. *)
@@ -134,7 +128,6 @@ let apply_subs : subs -> term -> term = fun s t ->
   let rec apply_subs t =
     (*if Logger.log_enabled() then log_cp "%a" term t;*)
     match unfold t with
-    | Db _ -> assert false
     | Patt(None, _, _) -> assert false
     | Patt(Some i,_,[||]) ->
       begin try IntMap.find i s with Not_found -> t end
@@ -151,7 +144,7 @@ let apply_subs : subs -> term -> term = fun s t ->
       let x,b = Bindlib.unbind b in
       mk_LLet (apply_subs a, apply_subs t, bind x lift (apply_subs b))
     | Meta(m,ts) -> mk_Meta (m, Array.map apply_subs ts)
-    | TEnv(te,ts) -> mk_TEnv (te, Array.map apply_subs ts)
+    | Db _ -> assert false
     | TRef _ -> assert false
     | Wild -> assert false
     | Plac _ -> assert false
@@ -174,12 +167,11 @@ let iter_subterms_from_pos : subterm_pos -> iter =
     | Vari _ -> iter_args p t
     | Abst(a,b)
     | Prod(a,b) -> iter (0::p) a; let _,b = Bindlib.unbind b in iter (1::p) b
-    | Db _ -> assert false
     | Appl _ -> assert false
     | Type -> assert false
     | Kind -> assert false
     | Meta _ -> assert false
-    | TEnv _ -> assert false
+    | Db _ -> assert false
     | Wild -> assert false
     | Plac _ -> assert false
     | TRef _ -> assert false
@@ -204,7 +196,6 @@ let iter_subterms_eq : iter = iter_subterms_from_pos []
 let iter_subterms : iter = fun pos f t ->
   (*if Logger.log_enabled() then log_cp "iter_subterms %a" term t;*)
   match unfold t with
-  | Db _ -> assert false
   | Symb _
   | Patt _
   | Vari _ -> ()
@@ -217,7 +208,7 @@ let iter_subterms : iter = fun pos f t ->
   | Type -> assert false
   | Kind -> assert false
   | Meta _ -> assert false
-  | TEnv _ -> assert false
+  | Db _ -> assert false
   | Wild -> assert false
   | Plac _ -> assert false
   | TRef _ -> assert false
@@ -252,7 +243,7 @@ let unif : Pos.popt -> term -> term -> term IntMap.t option =
       | Type, Type
       | Kind, Kind -> unif s l
       | Meta _, _ | _, Meta _ -> assert false
-      | TEnv _, _ | _, TEnv _ -> assert false
+      | Db _, _ | _, Db _ -> assert false
       | Wild, _ | _, Wild -> assert false
       | Plac _, _ | _, Plac _ -> assert false
       | TRef _, _ | _, TRef _ -> assert false

@@ -76,13 +76,12 @@ let symb_to_patt : Pos.popt -> (int * int) option SymMap.t -> term -> tbox =
       | Meta(_,_)   ->
           fatal pos "A metavariable could not be instantiated in the RHS."
       | Plac _      ->
-          fatal pos "A placeholder hasn't been instantiated in the RHS."
-      | TEnv(_,_)   -> assert false (* TEnv have been replaced in [t]. *)
+        fatal pos "A placeholder hasn't been instantiated in the RHS."
+      | Db _ -> assert false
       | Appl(_,_)   -> assert false (* Cannot appear in RHS. *)
       | Patt(_,_,_) -> assert false (* Cannot appear in RHS. *)
       | Wild        -> assert false (* Cannot appear in RHS. *)
       | TRef(_)     -> assert false (* Cannot appear in RHS. *)
-      | Db _ -> assert false
     in
     _Appl_list h ts
   in

@@ -91,7 +91,6 @@ let link : t -> unit = fun sign ->
   let link_term mk_Appl =
     let rec link_term t =
       match unfold t with
-      | Db _ -> assert false
       | Vari _
       | Type
       | Kind -> t
@@ -101,7 +100,7 @@ let link : t -> unit = fun sign ->
       | LLet(a,t,b) -> mk_LLet(link_term a, link_term t, link_binder b)
       | Appl(a,b)   -> mk_Appl(link_term a, link_term b)
       | Patt(i,n,ts)-> mk_Patt(i, n, Array.map link_term ts)
-      | TEnv(te,ts) -> mk_TEnv(te, Array.map link_term ts)
+      | Db _ -> assert false
       | Meta _ -> assert false
       | Plac _ -> assert false
       | Wild -> assert false
@@ -174,7 +173,6 @@ let unlink : t -> unit = fun sign ->
     | Plac _ -> assert false
     | Wild   -> assert false
     | TRef _ -> assert false
-    | TEnv(_,ts) -> Array.iter unlink_term ts
     | Db _ -> assert false
     | Patt _
     | Vari _
@@ -271,7 +269,6 @@ let read : string -> t = fun fname ->
   in
   let rec reset_term t =
     match unfold t with
-    | Db _ -> assert false
     | Vari _
     | Type
     | Kind -> ()
@@ -280,9 +277,9 @@ let read : string -> t = fun fname ->
     | Abst(a,b) -> reset_term a; reset_binder b
     | LLet(a,t,b) -> reset_term a; reset_term t; reset_binder b
     | Appl(a,b) -> reset_term a; reset_term b
-    | Patt(_,_,ts)
-    | TEnv(_,ts) -> Array.iter reset_term ts
+    | Patt(_,_,ts) -> Array.iter reset_term ts
     | TRef r -> unsafe_reset r; Option.iter reset_term !r
+    | Db _ -> assert false
     | Wild -> assert false
     | Meta _ -> assert false
     | Plac _ -> assert false

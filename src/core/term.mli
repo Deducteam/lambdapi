@@ -11,8 +11,6 @@ open Timed
 open Lplib open Base
 open Common
 
-module OldBindlib = Bindlib
-
 (** {3 Term (and symbol) representation} *)
 
 (** Representation of a possibly qualified identifier. *)
@@ -62,9 +60,8 @@ type term = private
   | Appl of term * term (** Term application. *)
   | Meta of meta * term array (** Metavariable application. *)
   | Patt of int option * string * term array
-  (** Pattern variable application (only used in rewriting rules LHS). *)
-  | TEnv of term_env * term array
-  (** Term environment (only used in rewriting rules RHS). *)
+  (** Pattern variable application (only used in rewriting rules). *)
+  | Db of int (** Bound variable as de Bruijn index. *)
   | Wild (** Wildcard (only used for surface matching, never in LHS). *)
   | Plac of bool
   (** [Plac b] is a placeholder, or hole, for not given terms. Boolean
@@ -72,7 +69,6 @@ type term = private
   | TRef of term option ref (** Reference cell (used in surface matching). *)
   | LLet of term * term * tbinder
   (** [LLet(a, t, u)] is [let x : a ≔ t in u] (with [x] bound in [u]). *)
-  | Db of int (** Bound variable as de Bruijn index. *)
 
 (** {b NOTE} that a wildcard "_" of the concrete (source code) syntax may have
     a different representation depending on the application. For instance, the
@@ -177,12 +173,6 @@ and sym =
     value of [r.arity] is always equal to [List.length r.lhs] and it gives the
     minimal number of arguments required to match the LHS of the rule. *)
 
-(** The RHS (or action) or a rewriting rule is represented by a term, in which
-    (higher-order) variables representing "terms with environments" (see the
-    {!type:term_env} type) are bound. To effectively apply the rewriting rule,
-    these  bound variables must be substituted using "terms with environments"
-    that are constructed when matching the LHS of the rule. *)
-
 (** All variables of rewriting rules that appear in the RHS must appear in the
    LHS. This constraint is checked in {!module:Tool.Sr}.In the case of
    unification rules, we allow variables to appear only in the RHS.  In that
@@ -190,34 +180,12 @@ and sym =
    rule is used.  The last {!field:Term.rule.xvars_nb} variables of
    {!field:Term.rule.vars} are such RHS-only variables. *)
 
-(** Representation of a "term with environment", which intuitively corresponds
-    to a term with bound variables (or a "higher-order" term) represented with
-    the {!constructor:TE_Some} constructor. Other constructors are included so
-    that "terms with environments" can be bound in the RHS of rewriting rules.
-    This is purely technical. *)
- and term_env =
-  | TE_Vari of tevar
-  (** Free "term with environment" variable (used to build a RHS). *)
-  | TE_Some of tmbinder
-  (** Actual "term with environment" (used to instantiate a RHS). *)
-  | TE_None (** Dummy term environment (used during matching). *)
-
- and tevar = term_env OldBindlib.var
-
-(** The {!constructor:TEnv}[(te,env)] constructor intuitively corresponds to a
-    term [te] with free variables together with an explicit environment [env].
-    Note that the binding of the environment actually occurs in [te], when the
-    constructor is of the form {!constructor:TE_Some}[(b)]. Indeed, [te] holds
-    a multiple binder [b] that binds every free variables of the term at once.
-    We then apply the substitution by performing a Bindlib substitution of [b]
-    with the environment [env]. *)
-
 (** During evaluation, we only try to apply rewriting rules when we reduce the
    application of a symbol [s] to a list of argument [ts]. At this point, the
    symbol [s] contains every rule [r] that can potentially be applied in its
    {!field:sym_rules} field. To check if a rule [r] applies, we match the
-   elements of [r.lhs] with those of [ts] while building an environment [env]
-   of type [{!type:Term.term_env} array]. During this process, a pattern of
+   elements of [r.lhs] with those of [ts] while building an environment [env].
+   During this process, a pattern of
    the form {!constructor:Patt}[(Some i,s,e)] matched against a term [u] will
    results in [env.(i)] being set to [u]. If all terms of [ts] can be matched
    against corresponding patterns, then environment [env] is fully constructed
@@ -348,8 +316,6 @@ end
 
 type tbox = term Bindlib.box
 
-type tebox = term_env Bindlib.box
-
 (** Minimize [impl] to enforce our invariant (see {!type:Term.sym}). *)
 val minimize_impl : bool list -> bool list
 
@@ -387,12 +353,6 @@ val new_tvar : string -> tvar
 
 (** [new_tvar_ind s i] creates a new [tvar] of name [s ^ string_of_int i]. *)
 val new_tvar_ind : string -> int -> tvar
-
-(** [of_tevar x] injects the [Bindlib] variable [x] in a {!type:term_env}. *)
-val of_tevar : tevar -> term_env
-
-(** [new_tevar s] creates a new [tevar] with name [s]. *)
-val new_tevar : string -> tevar
 
 (** Sets and maps of symbols. *)
 module Sym : Map.OrderedType with type t = sym
@@ -495,7 +455,6 @@ val mk_Abst : term * tbinder -> term
 val mk_Appl : term * term -> term
 val mk_Meta : meta * term array -> term
 val mk_Patt : int option * string * term array -> term
-val mk_TEnv : term_env * term array -> term
 val mk_Wild : term
 val mk_Plac : bool -> term
 val mk_TRef : term option ref -> term
@@ -572,9 +531,6 @@ val _Meta_full : meta Bindlib.box -> tbox array -> tbox
 (** [_Patt i n ar] lifts a pattern variable to the {!type:tbox} type. *)
 val _Patt : int option -> string -> tbox array -> tbox
 
-(** [_TEnv te ar] lifts a term environment to the {!type:tbox} type. *)
-val _TEnv : tebox -> tbox array -> tbox
-
 (** [_Wild] injects the constructor [Wild] into the {!type:tbox} type. *)
 val _Wild : tbox
 
@@ -587,13 +543,6 @@ val _TRef : term option ref -> tbox
 
 (** [_LVal t a u] lifts val binding [val x := t : a in u<x>]. *)
 val _LLet : tbox -> tbox -> tbinder Bindlib.box -> tbox
-
-(** [_TE_Vari x] injects a term environment variable [x] into the {!type:tbox}
-    type so that it may be available for binding. *)
-val _TE_Vari : tevar -> tebox
-
-(** [_TE_None] injects the constructor [TE_None] into the {!type:tbox} type.*)
-val _TE_None : tebox
 
 (** [lift t] lifts the {!type:term} [t] to the {!type:tbox} type. This has the
     effect of gathering its free variables, making them available for binding.

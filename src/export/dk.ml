@@ -109,18 +109,10 @@ let cmp : decl cmp = cmp_map (Lplib.Option.cmp Pos.cmp) pos_of_decl
 (** Translation of terms. *)
 
 let tvar : tvar pp = fun ppf v -> ident ppf (Bindlib.name_of v)
-let tevar : tevar pp = fun ppf v -> ident ppf (OldBindlib.name_of v)
-
-let tenv : term_env pp = fun ppf te ->
-  match te with
-  | TE_Vari v -> tevar ppf v
-  | TE_Some _ -> assert false
-  | TE_None -> assert false
 
 (** [term b ppf t] prints term [t]. Print abstraction domains if [b]. *)
 let rec term : bool -> term pp = fun b ppf t ->
   match unfold t with
-  | Db _ -> assert false
   | Vari v -> tvar ppf v
   | Type -> out ppf "Type"
   | Kind -> assert false
@@ -144,9 +136,7 @@ let rec term : bool -> term pp = fun b ppf t ->
   | Patt(Some i,_,[||]) -> int ppf i
   | Patt(Some i,_,ts) ->
     out ppf "(%d%a)" i (Array.pp (prefix " " (term b)) "") ts
-  | TEnv(te, [||]) -> tenv ppf te
-  | TEnv(te, ts) ->
-    out ppf "%a%a" tenv te (Array.pp (prefix " " (term b)) "") ts
+  | Db _ -> assert false
   | TRef _ -> assert false
   | Wild -> assert false
   | Meta _ -> assert false

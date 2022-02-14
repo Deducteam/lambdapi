@@ -81,7 +81,6 @@ let rec unfold : ctxt -> term -> term = fun ctx t ->
         | None    -> t
         | Some(b) -> unfold ctx (Bindlib.msubst b ts)
       end
-  | TEnv(TE_Some(b), ts) -> unfold ctx (Bindlib.msubst b ts)
   | TRef(r) ->
       begin
         match !r with

@@ -55,7 +55,6 @@ let snf : (term -> term) -> (term -> term) = fun whnf ->
     let h = whnf t in
     if Logger.log_enabled () then log_eval "whnf %a = %a" term t term h;
     match h with
-    | Db _ -> assert false
     | Vari _
     | Type
     | Kind
@@ -69,7 +68,7 @@ let snf : (term -> term) -> (term -> term) = fun whnf ->
     | Meta(m,ts)  -> mk_Meta(m, Array.map snf ts)
     | Patt(i,n,ts) -> mk_Patt(i,n,Array.map snf ts)
     | Plac _      -> assert false
-    | TEnv(_,_)   -> assert false
+    | Db _ -> assert false
     | Wild        -> assert false
     | TRef(_)     -> assert false
   in snf
@@ -136,7 +135,7 @@ let eq_modulo : (config -> term -> term) -> config -> term -> term -> bool =
     | Patt(None,_,_), _ | _, Patt(None,_,_) -> assert false
     | Patt(Some i,_,ts), Patt(Some j,_,us) ->
       if i=j then eq cfg (List.add_array2 ts us l) else raise Exit
-    | TEnv _, _| _, TEnv _ -> assert false
+    | Db i, Db j -> if i=j then eq cfg l else raise Exit
     | Kind, Kind
     | Type, Type -> eq cfg l
     | Vari x, Vari y -> if Bindlib.eq_vars x y then eq cfg l else raise Exit
@@ -153,8 +152,8 @@ let eq_modulo : (config -> term -> term) -> config -> term -> term -> bool =
     (* cases of failure *)
     | Kind, _ | _, Kind
     | Type, _ | _, Type -> raise Exit
-    | ((Symb f, (Vari _|Meta _|Prod _|Abst _))
-      | ((Vari _|Meta _|Prod _|Abst _), Symb f)) when is_constant f ->
+    | ((Symb f, (Vari _|Meta _|Prod _|Abst _|Db _))
+      | ((Vari _|Meta _|Prod _|Abst _|Db _), Symb f)) when is_constant f ->
       raise Exit
     | _ ->
     let a = whnf cfg a and b = whnf cfg b in
@@ -163,7 +162,7 @@ let eq_modulo : (config -> term -> term) -> config -> term -> term -> bool =
     | Patt(None,_,_), _ | _, Patt(None,_,_) -> assert false
     | Patt(Some i,_,ts), Patt(Some j,_,us) ->
       if i=j then eq cfg (List.add_array2 ts us l) else raise Exit
-    | TEnv _, _| _, TEnv _ -> assert false
+    | Db i, Db j -> if i=j then eq cfg l else raise Exit
     | Kind, Kind
     | Type, Type -> eq cfg l
     | Vari x, Vari y when Bindlib.eq_vars x y -> eq cfg l
@@ -410,7 +409,6 @@ and tree_walk : config -> dtree -> stack -> (term * stack) option =
             walk tr stk cursor vars_id id_vars
           in
           match t with
-          | Db _ -> assert false
           | Symb(s)    ->
               let cons = TC.Symb(s.sym_path, s.sym_name, List.length args) in
               begin
@@ -455,7 +453,7 @@ and tree_walk : config -> dtree -> stack -> (term * stack) option =
           | TRef(_)    -> assert false (* Should be reduced by [whnf_stk]. *)
           | Appl(_)    -> assert false (* Should be reduced by [whnf_stk]. *)
           | LLet(_)    -> assert false (* Should be reduced by [whnf_stk]. *)
-          | TEnv(_)    -> assert false (* Should not appear in terms. *)
+          | Db _ -> assert false
           | Wild       -> assert false (* Should not appear in terms. *)
   in
   walk tree stk 0 VarMap.empty IntMap.empty

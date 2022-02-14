@@ -51,7 +51,6 @@ let iter : (term -> unit) -> term -> unit = fun action ->
     | Kind
     | Symb(_)     -> ()
     | Patt(_,_,ts)
-    | TEnv(_,ts)
     | Meta(_,ts)  -> Array.iter iter ts
     | Prod(a,b)
     | Abst(a,b)   -> iter a; iter (Bindlib.subst b mk_Kind)
@@ -153,7 +152,6 @@ let sym_to_var : tvar StrMap.t -> term -> term = fun map ->
     | Appl(a,b)  -> mk_Appl(to_var a, to_var b)
     | Meta(m,ts) -> mk_Meta(m, Array.map to_var ts)
     | Patt _ -> assert false
-    | TEnv _ -> assert false
     | TRef _ -> assert false
     | _ -> t
   and to_var_binder b =
