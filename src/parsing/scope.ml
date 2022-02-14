@@ -276,7 +276,7 @@ and scope_domain : int -> mode -> sig_state -> env -> p_term option -> term =
   fun k md ss env a ->
   match a, md with
   | (Some {elt=P_Wild;_}|None), M_LHS data ->
-      fresh_patt data None (Env.to_tbox env)
+      fresh_patt data None (Env.to_terms env)
   | (Some {elt=P_Wild;_}|None), _ -> mk_Plac true
   | Some a, _ -> scope ~typ:true k md ss env a
 
@@ -354,8 +354,8 @@ and scope_head :
   | (P_Wild, M_URHS(data)) ->
     let i = data.m_urhs_vars_nb in
     data.m_urhs_vars_nb <- data.m_urhs_vars_nb + 1;
-    mk_Patt (Some i, "_", Env.to_tbox env)
-  | (P_Wild, M_LHS data) -> fresh_patt data None (Env.to_tbox env)
+    mk_Patt (Some i, "_", Env.to_terms env)
+  | (P_Wild, M_LHS data) -> fresh_patt data None (Env.to_terms env)
   | (P_Wild, M_Patt) -> mk_Wild
   | (P_Wild, (M_RHS _|M_Term _)) -> mk_Plac typ
 

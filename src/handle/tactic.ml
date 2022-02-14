@@ -253,7 +253,7 @@ let handle :
           let u = gt.goal_type in
           let q = Env.to_prod [x] (Env.to_prod e2 u) in
           let m = LibMeta.fresh p (Env.to_prod e1 q) (List.length e1) in
-          let me1 = mk_Meta (m, Env.to_tbox e1) in
+          let me1 = mk_Meta (m, Env.to_terms e1) in
           let t =
             List.fold_left (fun t (_,(v,_,_)) -> mk_Appl(t, mk_Vari v))
               me1 (x::e2)
@@ -280,7 +280,7 @@ let handle :
         let v = new_tvar id.elt in
         let env' = Env.add id.elt v t None env in
         let m2 = LibMeta.fresh p (Env.to_prod env' gt.goal_type) (n+1) in
-        let ts = Env.to_tbox env in
+        let ts = Env.to_terms env in
         let u = mk_Meta (m2, Array.append ts [|mk_Meta (m1, ts)|]) in
         tac_refine pos ps gt gs p u
       end

@@ -66,11 +66,11 @@ let vars : env -> tvar array = fun env ->
 let appl : term -> env -> term = fun t env ->
   List.fold_right (fun (_,(x,_,_)) t -> mk_Appl (t, mk_Vari x)) env t
 
-(** [to_tbox env] extracts the array of the {e not defined} variables in [env]
-   and injects them in the [tbox] type.  This is the same as [Array.map _Vari
-   (vars env)]. Note that the order is reversed: [to_tbox [(xn,an);..;(x1,a1)]
-   = [|x1;..;xn|]]. *)
-let to_tbox : env -> term array = fun env ->
+(** [to_terms env] extracts the array of the {e not defined} variables in
+   [env] and injects them in the [tbox] type.  This is the same as [Array.map
+   _Vari (vars env)]. Note that the order is reversed: [to_terms
+   [(xn,an);..;(x1,a1)] = [|x1;..;xn|]]. *)
+let to_terms : env -> term array = fun env ->
   let f (_, (x, _, u)) = if u = None then Some(mk_Vari x) else None in
   Array.of_list (List.filter_rev_map f env)
 

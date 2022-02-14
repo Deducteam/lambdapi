@@ -268,19 +268,19 @@ let imitate_lam : problem -> ctxt -> meta -> unit = fun p c m ->
       | _ ->
          let tm2 = Env.to_prod env mk_Type in
          let m2 = LibMeta.fresh p tm2 n in
-         let a = mk_Meta (m2, Env.to_tbox env) in
+         let a = mk_Meta (m2, Env.to_terms env) in
          let x = new_tvar "x" in
          let env' = Env.add "x" x a None env in
          let tm3 = Env.to_prod env' mk_Type in
          let m3 = LibMeta.fresh p tm3 (n+1) in
-         let b = mk_Meta (m3, Env.to_tbox env') in
+         let b = mk_Meta (m3, Env.to_terms env') in
          let u = mk_Prod (a, Bindlib.bind_var x b) in
          add_constr p (Env.to_ctxt env, u, t);
          x, a, env', b
     in
     let tm1 = Env.to_prod env' b in
     let m1 = LibMeta.fresh p tm1 (n+1) in
-    let u1 = mk_Meta (m1, Env.to_tbox env') in
+    let u1 = mk_Meta (m1, Env.to_terms env') in
     let xu1 = mk_Abst (a, Bindlib.bind_var x u1) in
     let v = Bindlib.bind_mvar (Env.vars env) xu1 in
     if Logger.log_enabled () then
