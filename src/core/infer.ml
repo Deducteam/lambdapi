@@ -216,7 +216,6 @@ and infer_aux : problem -> octxt -> term -> term * term * bool =
           let u, cu_u = force pb c u domain in
           return (cu_t' || cu_u) t u range )
 
-
 and infer : problem -> octxt -> term -> term * term * bool = fun pb c t ->
   if Logger.log_enabled () then log "Infer [%a]" term t;
   let t, t_ty, cu = infer_aux pb c t in
@@ -231,32 +230,28 @@ and infer : problem -> octxt -> term -> term * term * bool = fun pb c t ->
     Otherwise, the term [λ a: _, λ b: _, b] will be transformed to [λ _: ?1,
     λ b: ?2, b] whereas it should be [λ a: ?1.[], λ b: ?2.[a], b] *)
 
-(** [noexn f cs c args] initialises {!val:constraints} to [cs],
-    calls [f c args] and returns [Some(r,cs)] where [r] is the value of
-    the call to [f] and [cs] is the list of constraints gathered by
-    [f]. Function [f] may raise [NotTypable], in which case [None] is
-    returned. *)
+(** [noexn f p c arg] returns [Some r] if [f p c arg] returns [r], and [None]
+   if [f p c arg] raises [NotTypable]. *)
 let noexn : (problem -> octxt -> 'a -> 'b) -> problem -> ctxt -> 'a ->
   'b option =
-  fun f pb c args ->
-  try
-    Some (f pb (c, Ctxt.box_context c) args)
+  fun f p c arg ->
+  try Some (f p (c, Ctxt.box_context c) arg)
   with NotTypable -> None
 
 let infer_noexn pb c t : (term * term) option =
   if Logger.log_enabled () then
-    log "Top infer %a%a" ctxt c term t;
+    log (Color.blu "Top infer %a%a") ctxt c term t;
   let infer pb c t = let (t,t_ty,_) = infer pb c t in (t, t_ty) in
   noexn infer pb c t
 
 let check_noexn pb c t a : term option =
-  if Logger.log_enabled () then log "Top check \"%a\"" typing
-      (c, t, a);
+  if Logger.log_enabled () then
+    log (Color.blu "Top check %a") typing (c, t, a);
   let force pb c (t, a) = fst (force pb c t a) in
   noexn force pb c (t, a)
 
 let check_sort_noexn pb c t : (term * term) option =
   if Logger.log_enabled () then
-    log "Top check sort %a%a" ctxt c term t;
+    log (Color.blu "Top check sort %a%a") ctxt c term t;
   let type_enforce pb c t = let (t, s, _) = type_enforce pb c t in (t, s) in
   noexn type_enforce pb c t

@@ -121,23 +121,6 @@ let handle_modifiers : p_modifier list -> prop * expo * match_strat =
   in
   (prop, expo, strat)
 
-(** [check_rule ss syms r] checks rule [r] and returns the head symbol of the
-   lhs and the rule itself. *)
-let check_rule : sig_state -> p_rule -> sym_rule = fun ss r ->
-  Console.out 3 (Color.cya "%a") Pos.pp r.pos;
-  Console.out 4 "%a" (Pretty.rule "rule") r;
-  let pr = scope_rule false ss r in
-  let s = pr.elt.pr_sym in
-  if !(s.sym_def) <> None then
-    fatal pr.pos "No rewriting rule can be given on a defined symbol.";
-  s, Tool.Sr.check_rule pr
-
-(** [handle_rule ss syms r] checks rule [r], adds it in [ss] and returns the
-   head symbol of the lhs and the rule itself. *)
-let add_rule : sig_state -> sym_rule -> unit = fun ss ((s,r) as x) ->
-  Sign.add_rule ss.signature s r;
-  Console.out 2 (Color.red "rule %a") sym_rule x
-
 (** [handle_inductive_symbol ss e p strat x xs a] handles the command
     [e p strat symbol x xs : a] with [ss] as the signature state.
     On success, an updated signature state and the new symbol are returned. *)
@@ -202,10 +185,11 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
   | P_open(ps) -> (List.fold_left handle_open ss ps, None, None)
   | P_rules(rs) ->
     (* Scope rules, and check that they preserve typing. Return the list of
-       rules [srs] and also a map [map] mapping every symbol defined by a rule
+       rules [srs] and also a [map] mapping every symbol defined by a rule
        of [srs] to its defining rules. *)
-      let handle_rule (srs, map) r =
-        let (s,r) as sr = check_rule ss r in
+      let handle_rule (srs, map) pr =
+        let sr = scope_rule false ss pr in
+        let (s,r) as sr = Tool.Sr.check_rule pr.pos sr in
         let h = function Some rs -> Some(r::rs) | None -> Some[r] in
         sr::srs, SymMap.update s h map
       in
@@ -234,13 +218,12 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
       let s = find_sym ~prt:true ~prv:true ss qid in
       Console.out 2 "notation %a %a" sym s notation n;
       (add_notation ss s n, None, None)
-  | P_unif_rule(h) ->
-      (* Approximately same processing as rules without SR checking. *)
-      let pur = scope_rule true ss h in
-      let urule = Scope.rule_of_pre_rule pur in
-      Sign.add_rule ss.signature Unif_rule.equiv urule;
+  | P_unif_rule(pr) ->
+      (* Approximately same processing as rules without SR/LCR checking. *)
+      let (_,r) as sr = scope_rule true ss pr in
+      Sign.add_rule ss.signature sr;
       Tree.update_dtree Unif_rule.equiv [];
-      Console.out 2 "unif_rule %a" unif_rule urule;
+      Console.out 2 "unif_rule %a" unif_rule r;
       (ss, None, None)
 
   | P_inductive(ms, params, p_ind_list) ->
@@ -322,9 +305,14 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
           ind_sym_list_rev rec_typ_list_rev
       in
       (* Add recursor rules in the signature. *)
+      let add_rule pr =
+        let r = scope_rule false ss pr in
+        let r = Tool.Sr.check_rule pos r in
+        Sign.add_rule ss.signature r;
+        Console.out 2 (Color.red "rule %a") sym_rule r
+      in
       with_no_wrn
-        (Inductive.iter_rec_rules pos ind_list vs ind_pred_map)
-        (fun r -> add_rule ss (check_rule ss r));
+        (Inductive.iter_rec_rules pos ind_list vs ind_pred_map) add_rule;
       List.iter (fun s -> Tree.update_dtree s []) rec_sym_list;
       (* Store the inductive structure in the signature *)
       let ind_nb_types = List.length ind_list in

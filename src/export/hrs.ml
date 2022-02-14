@@ -31,10 +31,11 @@ let print_term : bool -> term pp = fun lhs ->
     | Vari(x)      -> out ppf "%a" var x
     | Type         -> out ppf "TYPE"
     | Symb(s)      -> print_sym ppf s
-    | Patt(i,n,ts) ->
-        if ts = [||] then out ppf "$%s" n else
+    | Patt(None,_,_) -> assert false
+    | Patt(Some i,n,ts) ->
+        if ts = [||] then out ppf "$%d" i else
           pp ppf (Array.fold_left (fun t u -> mk_Appl(t,u))
-                   (mk_Patt(i,n,[||])) ts)
+                   (mk_Patt(Some i,n,[||])) ts)
     | Appl(t,u)    -> out ppf "app(%a,%a)" pp t pp u
     | Abst(a,t)    ->
         let (x, t) = Bindlib.unbind t in
@@ -55,7 +56,10 @@ let print_rule : Format.formatter -> term -> term -> unit =
     let names = Stdlib.ref ns in
     let fn t =
       match t with
-      | Patt(_,n,_) -> Stdlib.(names := StrSet.add ("$" ^ n) !names)
+      | Patt(None,_,_) -> assert false
+      | Patt(Some i,_,_) ->
+        let name = Format.sprintf "$%d" i in
+        Stdlib.(names := StrSet.add name !names)
       | Abst(_,b) ->
         let (x, _) = Bindlib.unbind b in
         Stdlib.(names := StrSet.add (Bindlib.name_of x) !names)

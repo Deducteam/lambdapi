@@ -43,41 +43,52 @@ let prf_of : config -> tvar -> tbox list -> tbox -> tbox = fun c p ts t ->
 let gen_safe_prefixes : inductive -> string * string * string =
   let letter c = match c with 'a' | 'p' | 'x' -> true | _ -> false in
   fun ind_list ->
+  let open Extra in
   let clashing_names =
+    let rec add_name_from_type set t =
+      match unfold t with
+      | Prod(_,b) ->
+        let x,b = Bindlib.unbind b in
+        add_name_from_type (StrSet.add (Bindlib.name_of x) set) b
+      | _ -> set
+    in
     let add_name_from_sym set sym =
       let s = sym.sym_name in
-      if s <> "" && letter s.[0] then Extra.StrSet.add s set else set
+      let set = if s <> "" && letter s.[0] then StrSet.add s set else set in
+      add_name_from_type set !(sym.sym_type)
     in
     let add_names_from_ind set (ind_sym, cons_sym_list) =
       let set = add_name_from_sym set ind_sym in
       List.fold_left add_name_from_sym set cons_sym_list
     in
-    List.fold_left add_names_from_ind Extra.StrSet.empty ind_list
+    List.fold_left add_names_from_ind StrSet.empty ind_list
   in
-  let a_str = Extra.get_safe_prefix "a" clashing_names in
-  let p_str = Extra.get_safe_prefix "p" clashing_names in
-  let x_str = Extra.get_safe_prefix "x" clashing_names in
+  let a_str = get_safe_prefix "a" clashing_names in
+  let p_str = get_safe_prefix "p" clashing_names in
+  let x_str = get_safe_prefix "x" clashing_names in
   a_str, p_str, x_str
 
 (** Type of maps associating to every inductive type some data useful for
    generating the induction principles. *)
 type data = { ind_var : tvar (** predicate variable *)
             ; ind_type : tbox (** predicate variable type *)
-            ; ind_conclu : tbox (** induction principle conlusion *) }
+            ; ind_conclu : tbox (** induction principle conclusion *) }
 type ind_pred_map = (sym * data) list
 
 (** [ind_typ_with_codom pos ind_sym ind_env codom s a] assumes that [a] is of
    the form [Π(i1:a1),...,Π(in:an), TYPE]. It then generates a [tbox] similar
    to this type except that [TYPE] is replaced by [codom [i1;...;in]]. The
-   string [s] is used as prefix for the variables [ik]. *)
+   string [x_str] is used as prefix for the variables [ik]. *)
 let ind_typ_with_codom :
       popt -> sym -> Env.t -> (tbox list -> tbox) -> string -> term -> tbox =
-  fun pos ind_sym env codom s a ->
+  fun pos ind_sym env codom x_str a ->
+  let i = Stdlib.ref (-1) in
   let rec aux : tvar list -> term -> tbox = fun xs a ->
     match get_args a with
     | (Type, _) -> codom (List.rev_map _Vari xs)
     | (Prod(a,b), _) ->
-        let (x,b) = LibTerm.unbind_name s b in
+        let name = Stdlib.(incr i; x_str ^ string_of_int (!i)) in
+        let (x,b) = LibTerm.unbind_name name b in
         _Prod (lift a) (Bindlib.bind_var x (aux (x::xs) b))
     | _ -> fatal pos "The type of %a is not supported" sym ind_sym
   in
@@ -180,6 +191,7 @@ let fold_cons_type
       (codom : 'var list -> 'a -> tvar -> term list -> 'c)
 
     : 'c =
+  let i = Stdlib.ref (-1) in
   let rec fold : 'var list -> 'a -> term -> 'c = fun xs acc t ->
     match get_args t with
     | (Symb(s), ts) ->
@@ -189,7 +201,8 @@ let fold_cons_type
         else fatal pos "%a is not a constructor of %a"
                sym cons_sym sym ind_sym
     | (Prod(t,u), _) ->
-       let x, u = LibTerm.unbind_name x_str u in
+       let name = Stdlib.(incr i; x_str ^ string_of_int (!i)) in
+       let x, u = LibTerm.unbind_name name u in
        let x = inj_var (List.length xs) x in
        begin
          let env, b = Env.of_prod [] "y" t in

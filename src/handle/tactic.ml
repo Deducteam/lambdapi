@@ -195,9 +195,9 @@ let handle :
   let assume n =
     if n <= 0 then ps
     else
-      let idopt = Some (Pos.none "y") in
+      let idopt k = Some (Pos.none (Format.sprintf "y%d" k)) in
       let rec mk_idopts acc k =
-        if k <= 0 then acc else mk_idopts (idopt::acc) (k-1) in
+        if k <= 0 then acc else mk_idopts (idopt(n-k)::acc) (k-1) in
       let t = P.abst_list (mk_idopts [] n) P.wild in
       let p = new_problem() in
       tac_refine pos ps gt gs p (scope t)
@@ -227,8 +227,22 @@ let handle :
       List.iter (Option.iter check) idopts;
       (* Check that the given identifiers are pairwise distinct. *)
       Syntax.check_distinct idopts;
-      let p = new_problem() in
-      tac_refine pos ps gt gs p (scope (P.abst_list idopts P.wild))
+      let p = new_problem() and t = P.abst_list idopts P.wild in
+      let ps = tac_refine pos ps gt gs p (scope t) in
+      (* Rename assumed variables. *)
+      begin match ps.proof_goals with
+        | Typ gt::gs ->
+          let rec rename env idopts =
+            match env, idopts with
+            | x::env, None::idopts -> x::rename env idopts
+            | (_,v)::env, Some n::idopts -> (n.elt,v)::rename env idopts
+            | env, [] -> env
+            | [], _ -> assert false
+          in
+          let goal_hyps = rename gt.goal_hyps (List.rev idopts) in
+          {ps with proof_goals = Typ{gt with goal_hyps}::gs}
+        | _ -> assert false
+      end
   | P_tac_generalize {elt=id; pos=idpos} ->
       (* From a goal [e1,id:a,e2 ⊢ ?[e1,id,e2] : u], generate a new goal [e1 ⊢
          ?m[e1] : Π id:a, Π e2, u], and refine [?[e]] with [?m[e1] id e2]. *)
@@ -265,7 +279,7 @@ let handle :
         let m1 = LibMeta.fresh p (Env.to_prod env bt) n in
         (* Refine the focused goal. *)
         let v = new_tvar id.elt in
-        let env' = Env.add v bt None env in
+        let env' = Env.add id.elt v bt None env in
         let m2 =
           LibMeta.fresh p (Env.to_prod env' (lift gt.goal_type)) (n+1)
         in
@@ -299,7 +313,7 @@ let handle :
       tac_refine pos ps gt gs p
         (Rewrite.rewrite ss p pos gt l2r pat (scope eq))
   | P_tac_sym ->
-      let cfg = Rewrite.get_eq_config ss pos in
+      (*let cfg = Rewrite.get_eq_config ss pos in
       let (a,l,r), vs = Rewrite.get_eq_data cfg pos gt.goal_type in
       let n = Array.length vs in
       (* We first do [n] times the [assume] tactic. *)
@@ -311,6 +325,23 @@ let handle :
           if n = 0 then a,l,r
           else fst (Rewrite.get_eq_data cfg pos gt.goal_type)
         in
+        let p = new_problem() in
+        let prf =
+          let mt =
+            mk_Appl(mk_Symb cfg.symb_P,
+                    add_args (mk_Symb cfg.symb_eq) [a; r; l]) in
+          let meta_term = LibMeta.make p (Env.to_ctxt gt.goal_hyps) mt in
+          (* The proofterm is [eqind a r l M (λx,eq a l x) (refl a l)]. *)
+          Rewrite.swap cfg a r l meta_term
+        in
+        tac_refine pos ps gt gs p prf*)
+      let cfg = Rewrite.get_eq_config ss pos in
+      let (a,l,r), vs = Rewrite.get_eq_data cfg pos gt.goal_type in
+      let n = Array.length vs in
+      if n > 0 then fatal pos "Not an equality";
+      (* We then apply symmetry. *)
+      begin match ps.proof_goals with
+      | Typ gt::gs ->
         let p = new_problem() in
         let prf =
           let mt =

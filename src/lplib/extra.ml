@@ -26,7 +26,7 @@ let get_safe_prefix : string -> StrSet.t -> string =
     else acc
   in
   let res = StrSet.fold f set (-1) in
-  head ^ string_of_int (res + 1)
+  if res = -1 then head else head ^ string_of_int (res + 1)
 
 (** [time f x] times the application of [f] to [x], and returns the evaluation
     time in seconds together with the result of the application. *)

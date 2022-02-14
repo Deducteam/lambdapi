@@ -46,10 +46,12 @@ let rec print_term : int -> string -> term pp = fun i s ppf t ->
   | Vari(x)                 -> out ppf "<var>v_%a</var>@." var x
   | Symb(s)                 ->
      out ppf "<funapp>@.<name>%a</name>@.</funapp>@." print_sym s
-  | Patt(j,n,ts)            ->
-     if ts = [||] then out ppf "<var>%s_%i_%s</var>@." s i n else
+  | Patt(None,_,_) -> assert false
+  | Patt(Some j,n,ts)            ->
+     if ts = [||] then out ppf "<var>%s_%i_%i</var>@." s i j else
        print_term i s ppf
-         (Array.fold_left (fun t u -> mk_Appl(t,u)) (mk_Patt(j,n,[||])) ts)
+         (Array.fold_left
+            (fun t u -> mk_Appl(t,u)) (mk_Patt(Some j,n,[||])) ts)
   | Appl(t,u)               -> out ppf "<application>@.%a%a</application>@."
                                  (print_term i s) t (print_term i s) u
   | Abst(a,t)               ->
@@ -114,7 +116,7 @@ let print_tl_rule : Format.formatter -> int -> sym -> rule -> unit =
     in the form of a pair containing the name of the variable and its type,
     inferred by the solver. *)
 let get_vars : sym -> rule -> (string * Term.term) list = fun s r ->
-  let rule_ctx : tvar option array = Array.make (Array.length r.vars) None in
+  let rule_ctx : tvar option array = Array.make r.vars_nb None in
   let var_list : tvar list ref = ref [] in
   let rec subst_patt v t =
     match t with
@@ -134,14 +136,11 @@ let get_vars : sym -> rule -> (string * Term.term) list = fun s r ->
        let (x,t2) = Bindlib.unbind b in
        mk_Abst(subst_patt v t1, bind x lift (subst_patt v t2))
     | Appl (t1, t2)        -> mk_Appl(subst_patt v t1, subst_patt v t2)
-    | Patt (None, x, a)    ->
-       let v_i = new_tvar x in
-       var_list := v_i :: !var_list;
-       Array.fold_left (fun acc t -> mk_Appl(acc,t)) (mk_Vari v_i) a
-    | Patt (Some(i), x, a) ->
+    | Patt (None, _, _)    -> assert false
+    | Patt (Some(i), _, a) ->
        if v.(i) = None
        then
-         (let v_i = new_tvar x in
+         (let v_i = new_tvar (string_of_int i) in
           var_list := v_i :: !var_list;
           v.(i) <- Some(v_i));
        let v_i =

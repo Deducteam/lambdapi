@@ -287,7 +287,7 @@ and tree_walk : config -> dtree -> stack -> (term * stack) option =
   fun cfg tree stk ->
   let (lazy capacity, lazy tree) = tree in
   let vars = Array.make capacity mk_Kind in (* dummy terms *)
-  let bound = Array.make capacity TE_None in
+  let bound = Array.make capacity None in
   (* [walk tree stk cursor vars_id id_vars] where [stk] is the stack of terms
      to match and [cursor] the cursor indicating where to write in the [vars]
      array described in {!module:Term} as the environment of the RHS during
@@ -301,26 +301,25 @@ and tree_walk : config -> dtree -> stack -> (term * stack) option =
     | Leaf(rhs_subst, r) -> (* Apply the RHS substitution *)
         (* Allocate an environment where to place terms coming from the
            pattern variables for the action. *)
-        let env_len = Array.length r.vars in
-        assert (List.length rhs_subst = env_len - r.xvars_nb);
-        let env = Array.make env_len TE_None in
+        assert (List.length rhs_subst = r.vars_nb);
+        let env_len = r.vars_nb + r.xvars_nb in
+        let env = Array.make env_len None in
         (* Retrieve terms needed in the action from the [vars] array. *)
         let f (pos, (slot, xs)) =
           match bound.(pos) with
-          | TE_Vari(_) -> assert false
-          | TE_Some(_) -> env.(slot) <- bound.(pos)
-          | TE_None    ->
+          | Some(_) -> env.(slot) <- bound.(pos)
+          | None    ->
                 let xs = Array.map (fun e -> IntMap.find e id_vars) xs in
-                env.(slot) <- TE_Some(binds xs lift vars.(pos))
+                env.(slot) <- Some(binds xs lift vars.(pos))
         in
         List.iter f rhs_subst;
         (* Complete the array with fresh meta-variables if needed. *)
-        for i = env_len - r.xvars_nb to env_len - 1 do
+        for i = r.vars_nb to env_len - 1 do
           let mt = LibMeta.make cfg.problem cfg.context mk_Type in
           let t = LibMeta.make cfg.problem cfg.context mt in
-          env.(i) <- TE_Some(binds [||] lift t)
+          env.(i) <- Some(binds [||] lift t)
         done;
-        Some (OldBindlib.msubst r.rhs env, stk)
+        Some (subst_patt env r.rhs, stk)
     | Cond({ok; cond; fail})                              ->
         let next =
           match cond with
@@ -346,12 +345,12 @@ and tree_walk : config -> dtree -> stack -> (term * stack) option =
               (* We first attempt to match [vars.(i)] directly. *)
               let b = Bindlib.bind_mvar allowed (lift vars.(i)) in
               if no_forbidden b
-              then (bound.(i) <- TE_Some(Bindlib.unbox b); ok) else
+              then (bound.(i) <- Some(Bindlib.unbox b); ok) else
               (* As a last resort we try matching the SNF. *)
               let b = Bindlib.bind_mvar allowed
                         (lift (snf (whnf cfg) vars.(i))) in
               if no_forbidden b
-              then (bound.(i) <- TE_Some(Bindlib.unbox b); ok)
+              then (bound.(i) <- Some(Bindlib.unbox b); ok)
               else fail
         in
         walk next stk cursor vars_id id_vars

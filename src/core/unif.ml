@@ -8,8 +8,8 @@ open LibTerm
 open Print
 
 (** Logging function for unification. *)
-let log_unif = Logger.make 'u' "unif" "unification"
-let log_unif = log_unif.pp
+let logger = Logger.make 'u' "unif" "unification"
+let log = logger.pp
 
 (** Given a meta [m] of type [Πx1:a1,..,Πxn:an,b], [set_to_prod p m] sets [m]
    to a product term of the form [Πy:m1[x1;..;xn],m2[x1;..;xn;y]] with [m1]
@@ -25,14 +25,14 @@ let set_to_prod : problem -> meta -> unit = fun p m ->
   let a = _Meta m1 xs in
   (* codomain *)
   let y = new_tvar "y" in
-  let env' = Env.add y (_Meta m1 xs) None env in
+  let env' = Env.add "y" y (_Meta m1 xs) None env in
   let u2 = Env.to_prod env' (lift s) in
   let m2 = LibMeta.fresh p u2 (n+1) in
   let b = Bindlib.bind_var y (_Meta m2 (Array.append xs [|_Vari y|])) in
   (* result *)
   let r = _Prod a b in
   if Logger.log_enabled () then
-    log_unif (red "%a ≔ %a") meta m term (Bindlib.unbox r);
+    log (red "%a ≔ %a") meta m term (Bindlib.unbox r);
   LibMeta.set p m (Bindlib.unbox (Bindlib.bind_mvar vs r))
 
 (** [type_app c a ts] returns [Some u] where [u] is a type of [add_args x ts]
@@ -46,7 +46,7 @@ let rec type_app : ctxt -> term -> term list -> term option = fun c a ts ->
 
 (** [add_constr p c] adds the constraint [c] into [p.to_solve]. *)
 let add_constr : problem -> constr -> unit = fun p c ->
-  if Logger.log_enabled () then log_unif (mag "add %a") constr c;
+  if Logger.log_enabled () then log (mag "add %a") constr c;
   p := {!p with to_solve = c::!p.to_solve}
 
 (** [add_unif_rule_constr p (c,t,u)] adds to [p] the constraint [(c,t,u)]
@@ -71,7 +71,7 @@ let add_unif_rule_constr : problem -> constr -> unit = fun p (c,t,u) ->
    ⊢ s ≡ t] with the user-defined unification rules. *)
 let try_unif_rules : problem -> ctxt -> term -> term -> bool =
   fun p c s t ->
-  if Logger.log_enabled () then log_unif "check unif_rules";
+  if Logger.log_enabled () then log "check unif_rules";
   let exception No_match in
   let open Unif_rule in
   try
@@ -84,11 +84,11 @@ let try_unif_rules : problem -> ctxt -> term -> term -> bool =
         if reduced != start then reduced else raise No_match
     in
     let cs = List.map (fun (t,u) -> (c,t,u)) (unpack rhs) in
-    if Logger.log_enabled () then log_unif "rewrites to:%a" constrs cs;
+    if Logger.log_enabled () then log "rewrites to:%a" constrs cs;
     List.iter (add_unif_rule_constr p) cs;
     true
   with No_match ->
-    if Logger.log_enabled () then log_unif "found no unif_rule";
+    if Logger.log_enabled () then log "found no unif_rule";
     false
 
 (** [instantiable c m ts u] tells whether, in a problem [m[ts]=u], [m] can
@@ -108,7 +108,8 @@ let instantiation :
     | Some(vs, map) ->
         if LibMeta.occurs m c u then None
         else let u = Eval.simplify (Ctxt.to_let c (sym_to_var map u)) in
-             Some (Bindlib.bind_mvar vs (lift u))
+          Some (Logger.set_debug_in false 'm'
+                  (Bindlib.bind_mvar vs) (lift u))
 
 (** Checking type or not during meta instanciation. *)
 let do_type_check = Stdlib.ref true
@@ -118,25 +119,27 @@ let do_type_check = Stdlib.ref true
    metavariables of [p]. *)
 let instantiate : problem -> ctxt -> meta -> term array -> term -> bool =
   fun p c m ts u ->
-  if Logger.log_enabled () then log_unif "try instantiate";
+  if Logger.log_enabled () then log "try instantiate";
   match instantiation c m ts u with
   | Some b when Bindlib.is_closed_tmbinder b ->
       let do_instantiate() =
-        if Logger.log_enabled () then
-          log_unif (red "%a ≔ %a") meta m term u;
+        if Logger.log_enabled () then log (red "%a ≔ %a") meta m term u;
         LibMeta.set p m (Bindlib.unbox b);
         p := {!p with recompute = true}; true
       in
       if Stdlib.(!do_type_check) then
         begin
-          if Logger.log_enabled () then log_unif "check typing";
+          if Logger.log_enabled () then log "check typing";
           let typ_mts =
             match type_app c !(m.meta_type) (Array.to_list ts) with
             | Some a -> a
             | None -> assert false
           in
-          if Infer.check_noexn p c u typ_mts <> None then do_instantiate()
-          else (if Logger.log_enabled () then log_unif "typing failed"; false)
+          let r =
+            Logger.set_debug_in false 'i' (Infer.check_noexn p c u) typ_mts
+          in
+          if r <> None then do_instantiate()
+          else (if Logger.log_enabled () then log "typing failed"; false)
         end
       else do_instantiate()
   | i ->
@@ -144,10 +147,10 @@ let instantiate : problem -> ctxt -> meta -> term array -> term -> bool =
         begin
           match i with
           | None ->
-              if LibMeta.occurs m c u then log_unif "occur check failed"
-              else log_unif "arguments are not distinct variables: %a"
+              if LibMeta.occurs m c u then log "occur check failed"
+              else log "arguments are not distinct variables: %a"
                      (Array.pp term "; ") ts
-          | Some _ -> log_unif "not closed"
+          | Some _ -> log "not closed"
         end;
       false
 
@@ -158,9 +161,9 @@ let instantiate : problem -> ctxt -> meta -> term array -> term -> bool =
 let add_to_unsolved : problem -> ctxt -> term -> term -> unit =
   fun p c t1 t2 ->
   if Eval.pure_eq_modulo c t1 t2 then
-    (if Logger.log_enabled () then log_unif "equivalent terms")
+    (if Logger.log_enabled () then log "equivalent terms")
   else if not (try_unif_rules p c t1 t2) then
-    (if Logger.log_enabled () then log_unif "move to unsolved";
+    (if Logger.log_enabled () then log "move to unsolved";
      p := {!p with unsolved = (c,t1,t2)::!p.unsolved})
 
 (** [decompose p c ts1 ts2] tries to decompose a problem of the form [h ts1 ≡
@@ -168,7 +171,7 @@ let add_to_unsolved : problem -> ctxt -> term -> term -> unit =
    [t1;..;tn]] and [ts2 = [u1;..;un]]. *)
 let decompose : problem -> ctxt -> term list -> term list -> unit =
   fun p c ts1 ts2 ->
-    if Logger.log_enabled () && ts1 <> [] then log_unif "decompose";
+    if Logger.log_enabled () && ts1 <> [] then log "decompose";
     List.iter2 (fun a b -> add_constr p (c,a,b)) ts1 ts2
 
 (** For a problem of the form [h1 ≡ h2] with [h1 = m[ts]], [h2 = Πx:_,_] (or
@@ -177,7 +180,7 @@ let decompose : problem -> ctxt -> term list -> term list -> unit =
    [p]. *)
 let imitate_prod : problem -> ctxt -> meta -> term -> term -> unit =
   fun p c m h1 h2 ->
-  if Logger.log_enabled () then log_unif "imitate_prod %a" meta m;
+  if Logger.log_enabled () then log "imitate_prod %a" meta m;
   set_to_prod p m; add_constr p (c,h1,h2)
 
 (** For a problem [m[vs] ≡ s(ts)] in context [c], where [vs] are distinct
@@ -192,7 +195,7 @@ let imitate_inj :
       -> bool =
   fun p c m vs us s ts ->
   if Logger.log_enabled () then
-    log_unif "imitate_inj %a ≡ %a" term (add_args (mk_Meta(m,vs)) us)
+    log "imitate_inj %a ≡ %a" term (add_args (mk_Meta(m,vs)) us)
                                    term (add_args (mk_Symb s) ts);
   let exception Cannot_imitate in
   try
@@ -219,7 +222,7 @@ let imitate_inj :
         | _ -> raise Cannot_imitate
       in build (List.length ts) [] !(s.sym_type)
     in
-    if Logger.log_enabled () then log_unif (red "%a ≔ %a") meta m term t;
+    if Logger.log_enabled () then log (red "%a ≔ %a") meta m term t;
     LibMeta.set p m (binds vars lift t); true
   with Cannot_imitate | Invalid_argument _ -> false
 
@@ -245,13 +248,13 @@ let imitate_lam_cond : term -> term list -> bool = fun h ts ->
    a new metavariable of arity [n+1] and type
    [Πx1:a1,..,Πxn:an,Πx:m2[x1,..,xn],TYPE], and do as in the previous case. *)
 let imitate_lam : problem -> ctxt -> meta -> unit = fun p c m ->
-    if Logger.log_enabled () then log_unif "imitate_lam %a" meta m;
+    if Logger.log_enabled () then log "imitate_lam %a" meta m;
     let n = m.meta_arity in
     let env, t = Env.of_prod_nth c n !(m.meta_type) in
     let of_prod a b =
       let x,b = LibTerm.unbind_name "x" b in
       let a = lift a in
-      let env' = Env.add x a None env in
+      let env' = Env.add "x" x a None env in
       x, a, env', lift b
     in
     let x, a, env', b =
@@ -269,7 +272,7 @@ let imitate_lam : problem -> ctxt -> meta -> unit = fun p c m ->
          let m2 = LibMeta.fresh p tm2 n in
          let a = _Meta m2 (Env.to_tbox env) in
          let x = new_tvar "x" in
-         let env' = Env.add x a None env in
+         let env' = Env.add "x" x a None env in
          let tm3 = Env.to_prod env' _Type in
          let m3 = LibMeta.fresh p tm3 (n+1) in
          let b = _Meta m3 (Env.to_tbox env') in
@@ -283,19 +286,19 @@ let imitate_lam : problem -> ctxt -> meta -> unit = fun p c m ->
     let xu1 = _Abst a (Bindlib.bind_var x u1) in
     let v = Bindlib.bind_mvar (Env.vars env) xu1 in
     if Logger.log_enabled () then
-      log_unif (red "%a ≔ %a") meta m term (Bindlib.unbox xu1);
+      log (red "%a ≔ %a") meta m term (Bindlib.unbox xu1);
     LibMeta.set p m (Bindlib.unbox v)
 
 (** [inverse_opt s ts v] returns [Some(t, inverse s v)] if [ts=[t]], [s] is
    injective and [inverse s v] does not fail, and [None] otherwise. *)
 let inverse_opt : sym -> term list -> term -> (term * term) option =
   fun s ts v ->
-  if Logger.log_enabled () then log_unif "try inverse %a" sym s;
+  if Logger.log_enabled () then log "try inverse %a" sym s;
   try
     match ts with
     | [t] when is_injective s -> Some (t, Inverse.inverse s v)
     | _ -> raise Not_found
-  with Not_found -> if Logger.log_enabled () then log_unif "failed"; None
+  with Not_found -> if Logger.log_enabled () then log "failed"; None
 
 (** Exception raised when a constraint is not solvable. *)
 exception Unsolvable
@@ -319,7 +322,7 @@ let inverse : problem -> ctxt -> term -> sym -> term list -> term -> unit =
         match unfold t2 with
         | Prod _ when is_constant s -> error t1 t2
         | _ ->
-            if Logger.log_enabled () then log_unif "move to unsolved";
+            if Logger.log_enabled () then log "move to unsolved";
             p := {!p with unsolved = (c, t1, t2)::!p.unsolved}
 
 (** [sym_sym_whnf p c t1 s1 ts1 t2 s2 ts2 p] handles the case [s1(ts1) =
@@ -347,11 +350,12 @@ let solve : problem -> unit = fun p ->
   while !p.to_solve <> [] || (!p.recompute && !p.unsolved <> []) do
   match !p.to_solve with
   | [] ->
-      if Logger.log_enabled () then log_unif "recompute";
+      if Logger.log_enabled () then log "recompute";
       p := {!p with to_solve = !p.unsolved; unsolved = []; recompute = false}
   | (c,t1,t2)::to_solve ->
   (*if Logger.log_enabled () then
-    log_unif "%d constraints" (1 + List.length to_solve);*)
+    log "%d constraints" (1 + List.length to_solve);*)
+  if Logger.log_enabled() then log "solve problem %a" problem p;
 
   (* We remove the first constraint from [p] for not looping. *)
   p := {!p with to_solve};
@@ -359,7 +363,7 @@ let solve : problem -> unit = fun p ->
   (* We first try without normalizing wrt user-defined rules. *)
   let t1 = Eval.whnf ~tags:[`NoRw] c t1
   and t2 = Eval.whnf ~tags:[`NoRw] c t2 in
-  if Logger.log_enabled () then log_unif (gre "solve %a") constr (c,t1,t2);
+  if Logger.log_enabled () then log (gre "solve %a") constr (c,t1,t2);
   let h1, ts1 = get_args t1 and h2, ts2 = get_args t2 in
 
   match h1, h2 with
@@ -369,7 +373,7 @@ let solve : problem -> unit = fun p ->
   | Prod(a1,b1), Prod(a2,b2)
   | Abst(a1,b1), Abst(a2,b2) ->
       (* [ts1] and [ts2] must be empty because of typing or normalization. *)
-      if Logger.log_enabled () then log_unif "decompose";
+      if Logger.log_enabled () then log "decompose";
       add_constr p (c,a1,a2);
       let (x,b1,b2) = Bindlib.unbind2 b1 b2 in
       let c' = (x,a1,None)::c in
@@ -414,9 +418,9 @@ let solve : problem -> unit = fun p ->
 
   | _ ->
   (* We normalize wrt user-defined rules and try again. *)
-  if Logger.log_enabled () then log_unif "whnf";
+  if Logger.log_enabled () then log "whnf";
   let t1 = Eval.whnf c t1 and t2 = Eval.whnf c t2 in
-  if Logger.log_enabled () then log_unif (gre "solve %a") constr (c,t1,t2);
+  if Logger.log_enabled () then log (gre "solve %a") constr (c,t1,t2);
   let h1, ts1 = get_args t1 and h2, ts2 = get_args t2 in
 
   match h1, h2 with
@@ -426,7 +430,7 @@ let solve : problem -> unit = fun p ->
   | Prod(a1,b1), Prod(a2,b2)
   | Abst(a1,b1), Abst(a2,b2) ->
       (* [ts1] and [ts2] must be empty because of typing or normalization. *)
-      if Logger.log_enabled () then log_unif "decompose";
+      if Logger.log_enabled () then log "decompose";
       add_constr p (c,a1,a2);
       let (x,b1,b2) = Bindlib.unbind2 b1 b2 in
       let c' = (x,a1,None)::c in

@@ -82,7 +82,7 @@ type term = private
     syntax. They are thus considered to be fresh, unused pattern variables. *)
 
 (** Representation of a rewriting rule RHS. *)
-and rhs = (term_env, term) OldBindlib.mbinder
+and rhs = term
 
 (** Representation of a decision tree (used for rewriting). *)
 and dtree = rule Tree_type.dtree
@@ -135,9 +135,7 @@ and sym =
   ; arity    : int (** Required number of arguments to be applicable. *)
   ; arities  : int array
   (** Arities of the pattern variables bound in the RHS. *)
-  ; vars     : tevar array
-  (** Bindlib variables used to build [rhs]. The last [xvars_nb] variables
-      appear only in [rhs]. *)
+  ; vars_nb  : int (** Number of variables in [lhs]. *)
   ; xvars_nb : int (** Number of variables in [rhs] but not in [lhs]. *)
   ; rule_pos : Pos.popt (** Position of the rule in the source file. *) }
 
@@ -351,8 +349,6 @@ end
 type tbox = term Bindlib.box
 
 type tebox = term_env Bindlib.box
-
-val old_lift : term -> term OldBindlib.box
 
 (** Minimize [impl] to enforce our invariant (see {!type:Term.sym}). *)
 val minimize_impl : bool list -> bool list
@@ -637,3 +633,6 @@ type sym_rule = sym * rule
 
 val lhs : sym_rule -> term
 val rhs : sym_rule -> term
+
+(** Patt substitution. *)
+val subst_patt : tmbinder option array -> term -> term

@@ -117,6 +117,7 @@ let tenv : term_env pp = fun ppf te ->
   | TE_Some _ -> assert false
   | TE_None -> assert false
 
+(** [term b ppf t] prints term [t]. Print abstraction domains if [b]. *)
 let rec term : bool -> term pp = fun b ppf t ->
   match unfold t with
   | Db _ -> assert false
@@ -139,9 +140,10 @@ let rec term : bool -> term pp = fun b ppf t ->
   | LLet(a,t,u) ->
     let x,u = Bindlib.unbind u in
     out ppf "((%a : %a := %a) => %a)" tvar x (term b) a (term b) t (term b) u
-  | Patt(_,s,[||]) -> ident ppf s
-  | Patt(_,s,ts) ->
-    out ppf "(%a%a)" ident s (Array.pp (prefix " " (term b)) "") ts
+  | Patt(None,_,_) -> assert false
+  | Patt(Some i,_,[||]) -> int ppf i
+  | Patt(Some i,_,ts) ->
+    out ppf "(%d%a)" i (Array.pp (prefix " " (term b)) "") ts
   | TEnv(te, [||]) -> tenv ppf te
   | TEnv(te, ts) ->
     out ppf "%a%a" tenv te (Array.pp (prefix " " (term b)) "") ts
@@ -196,10 +198,13 @@ let sym_decl : sym pp = fun ppf s ->
         ident s.sym_name (term true) d
 
 let rule_decl : (Path.t * string * rule) pp = fun ppf (p, n, r) ->
-  let xs, rhs = OldBindlib.unmbind r.rhs in
-  out ppf "[%a] %a%a --> %a.@."
-    (Array.pp tevar ", ") xs qid (p, n)
-    (List.pp (prefix " " (term false)) "") r.lhs (term true) rhs
+  let rec var ppf i =
+    if i < 0 then ()
+    else if i = 0 then out ppf "0"
+    else out ppf "%a,%d" var (i-1) i
+  in
+  out ppf "[%a] %a%a --> %a.@." var (r.vars_nb - 1) qid (p, n)
+    (List.pp (prefix " " (term false)) "") r.lhs (term true) r.rhs
 
 let decl : decl pp = fun ppf decl ->
   match decl with

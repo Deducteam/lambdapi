@@ -138,6 +138,7 @@ and term : term pp = fun ppf t ->
   and appl ppf t = pp `Appl ppf t
   and func ppf t = pp `Func ppf t
   and pp p ppf t =
+    if Logger.log_enabled() then log_prnt "%a" Raw.term t;
     let (h, args) = get_args t in
     let pp_appl h args =
       match args with
@@ -259,7 +260,7 @@ and term : term pp = fun ppf t ->
   func ppf (cleanup t)
 
 (*let term ppf t = out ppf "<%a printed %a>" Term.term t term t*)
-(*let term = Term.term*)
+(*let term = Raw.term*)
 
 let rec prod : (term * bool list) pp = fun ppf (t, impl) ->
   match unfold t, impl with
@@ -295,16 +296,17 @@ let typing : constr pp = fun ppf (ctx, t, u) ->
   out ppf "@[<h>%a%a : %a@]" ctxt ctx term t term u
 
 let constr : constr pp = fun ppf (ctx, t, u) ->
-  out ppf "@[<h>%a%a ≡ %a@]" ctxt ctx term t term u
+  out ppf "@[<h>%a%a@ ≡ %a@]" ctxt ctx term t term u
 
-let constrs : constr list pp = List.pp constr "; "
+let constrs : constr list pp = fun ppf cs ->
+  let pp_sep ppf () = out ppf "@ ;" in
+  out ppf "@[<v>[%a]@]" (Format.pp_print_list ~pp_sep constr) cs
 
 (* for debug only *)
 let metaset : MetaSet.t pp =
-  D.iter ~sep:(fun fmt () -> out fmt ",@ ") MetaSet.iter meta
+  D.iter ~sep:(fun ppf () -> out ppf ",") MetaSet.iter meta
 
 let problem : problem pp = fun ppf p ->
   out ppf
-    "{ recompute=%b;@ metas={%a};@ to_solve=[%a];@  unsolved=[%a] }"
-    !p.recompute metaset !p.metas constrs !p.to_solve constrs
-    !p.unsolved
+    "{ recompute=%b;@ metas={%a};@ to_solve=%a;@ unsolved=%a }"
+    !p.recompute metaset !p.metas constrs !p.to_solve constrs !p.unsolved

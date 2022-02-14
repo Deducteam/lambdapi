@@ -77,7 +77,7 @@ type term =
     syntax. They are thus considered to be fresh, unused pattern variables. *)
 
 (** Representation of a rewriting rule RHS. *)
-and rhs = (term_env, term) OldBindlib.mbinder
+and rhs = term
 
 (** Representation of a decision tree (used for rewriting). *)
 and dtree = rule Tree_type.dtree
@@ -134,36 +134,23 @@ and sym =
   ; arity    : int (** Required number of arguments to be applicable. *)
   ; arities  : int array
   (** Arities of the pattern variables bound in the RHS. *)
-  ; vars     : tevar array
-  (** Bindlib variables used to build [rhs]. The last [xvars_nb] variables
-      appear only in [rhs]. *)
+  ; vars_nb  : int (** Number of variables in [lhs]. *)
   ; xvars_nb : int (** Number of variables in [rhs] but not in [lhs]. *)
   ; rule_pos : Pos.popt (** Position of the rule in the source file. *) }
 
-(** {b NOTE} The second parameter of {!constructor:Patt} holds an array of
-   terms. This is essential for variables binding: using an array of variables
-   would NOT suffice. *)
-
 (** {b NOTE} {!field:arity} gives the number of arguments contained in the
-   LHS. As a consequence, it is always equal to [List.length r.lhs] and it
-   gives the minimal number of arguments required to match the LHS. *)
+   LHS. It is always equal to [List.length r.lhs] and gives the minimal number
+   of arguments required to match the LHS. *)
 
 (** {b NOTE} For generated rules, {!field:rule_pos} may not be valid positions
    in the source. These virtual positions are however important for exporting
    lambdapi files to other formats. *)
 
-(** The RHS (or action) or a rewriting rule is represented by a term, in which
-    (higher-order) variables representing "terms with environments" (see the
-    {!type:term_env} type) are bound. To effectively apply the rewriting rule,
-    these  bound variables must be substituted using "terms with environments"
-    that are constructed when matching the LHS of the rule. *)
-
 (** All variables of rewriting rules that appear in the RHS must appear in the
-    LHS. This constraint is checked in {!module:Sr}.In the case of unification
-    rules, we allow variables to appear only in the RHS.  In that case, these
-    variables are replaced by fresh meta-variables each time the rule is used.
-    The last  {!field:terms.rule.xvars} variables of  {!field:terms.rule.vars}
-    are such RHS-only variables. *)
+   LHS. This constraint is checked in {!module:Sr}. In the case of unification
+   rules, we allow variables to appear only in the RHS. In that case, these
+   variables are replaced by fresh meta-variables each time the rule is
+   used. *)
 
 (** Representation of a "term with environment", which intuitively corresponds
     to a term with bound variables (or a "higher-order" term) represented with
@@ -220,44 +207,15 @@ and tvar = int * string
 
 and tevar = term_env OldBindlib.var
 
-(** Printing functions for debug. *)
-module Raw = struct
-let rec term : term pp = fun ppf t ->
-  match t with
-  | Db k -> out ppf "`%d" k
-  | Vari v -> var ppf v
-  | Type -> out ppf "TYPE"
-  | Kind -> out ppf "KIND"
-  | Symb s -> sym ppf s
-  | Prod(a,(n,b)) -> out ppf "(Π %s: %a, %a)" n term a term b
-  | Abst(a,(n,b)) -> out ppf "(λ %s: %a, %a)" n term a term b
-  | Appl(a,b) -> out ppf "(%a %a)" term a term b
-  | Meta(m,ts) -> out ppf "?%d%a" m.meta_key terms ts
-  | Patt(i,s,ts) -> out ppf "$%a_%s%a" (D.option D.int) i s terms ts
-  | Plac(_) -> out ppf "_"
-  | TEnv(te,ts) -> out ppf "<%a>%a" tenv te terms ts
-  | Wild -> out ppf "_"
-  | TRef r -> out ppf "&%a" (Option.pp term) !r
-  | LLet(a,t,(n,b)) ->
-    out ppf "let %s : %a ≔ %a in %a" n term a term t term b
-and var : tvar pp = fun ppf (i,n) -> out ppf "#%d_%s" i n
-and sym : sym pp = fun ppf s -> string ppf s.sym_name
-and terms : term array pp = fun ppf ts ->
-  if Array.length ts > 0 then D.array term ppf ts
-and tenv : term_env pp = fun ppf te ->
-  match te with
-  | TE_Vari v -> out ppf "%s" (OldBindlib.name_of v)
-  | TE_Some (ns,b) -> out ppf "%a, %a" (Array.pp string " ") ns term b
-  | TE_None -> ()
-end
-
 module Bindlib = struct
 
-(** [unfold t] repeatedly unfolds the definition of the surface constructor of
-    [t], until a significant {!type:term} constructor is found.  The term that
-    is returned cannot be an instantiated metavariable or term environment nor
-    a reference cell ({!constructor:TRef} constructor). Note that the returned
-    value is physically equal to [t] if no unfolding was performed. *)
+(** [unfold t] repeatedly unfolds the definition of the surface constructor
+   of [t], until a significant {!type:term} constructor is found.  The term
+   that is returned cannot be an instantiated metavariable or term
+   environment nor a reference cell ({!constructor:TRef} constructor). Note
+   that the returned value is physically equal to [t] if no unfolding was
+   performed. {b NOTE} that {!val:unfold} must (almost) always be called
+   before matching over a value of type {!type:term}. *)
 let rec unfold : term -> term = fun t ->
   match t with
   | Meta(m, ts) ->
@@ -274,25 +232,75 @@ let rec unfold : term -> term = fun t ->
       end
   | _ -> t
 
+(** Printing functions for debug. *)
+and term : term pp = fun ppf t ->
+  match unfold t with
+  | Db k -> out ppf "`%d" k
+  | Vari v -> var ppf v
+  | Type -> out ppf "TYPE"
+  | Kind -> out ppf "KIND"
+  | Symb s -> sym ppf s
+  | Prod(a,(n,b)) -> out ppf "(Π %s: %a, %a)" n term a term b
+  | Abst(a,(n,b)) -> out ppf "(λ %s: %a, %a)" n term a term b
+  | Appl(a,b) -> out ppf "(%a %a)" term a term b
+  | Meta(m,ts) -> out ppf "?%d%a" m.meta_key terms ts
+  | Patt(i,s,ts) -> out ppf "$%a_%s%a" (D.option D.int) i s terms ts
+  | Plac(_) -> out ppf "_"
+  | TEnv _ -> assert false
+  | Wild -> out ppf "_"
+  | TRef r -> out ppf "&%a" (Option.pp term) !r
+  | LLet(a,t,(n,b)) ->
+    out ppf "let %s : %a ≔ %a in %a" n term a term t term b
+and var : tvar pp = fun ppf (i,n) -> out ppf "%s%d" n i
+and sym : sym pp = fun ppf s -> string ppf s.sym_name
+and terms : term array pp = fun ppf ts ->
+  if Array.length ts > 0 then D.array term ppf ts
+
+(** [lift l t] updates indices when [t] is moved under [l] binders. *)
+and lift : int -> term -> term = fun l t ->
+  let rec lift i t =
+    match unfold t with
+    | Db k -> if k < i then t else Db (k+l)
+    | Appl(a,b) -> (*FIXME: mk_Appl*) Appl(lift i a, lift i b)
+    | Abst(a,(n,u)) -> Abst(lift i a, (n, lift (i+1) u))
+    | Prod(a,(n,u)) -> Prod(lift i a, (n ,lift (i+1) u))
+    | LLet(a,t,(n,u)) -> LLet(lift i a, lift i t, (n, lift (i+1) u))
+    | Meta(m,ts) -> Meta(m, Array.map (lift i) ts)
+    | Patt(j,n,ts) -> Patt(j,n, Array.map (lift i) ts)
+    | TEnv(te,ts) -> TEnv(te, Array.map (lift i) ts)
+    | _ -> t
+  in
+  let r = lift 1 t in
+  if Logger.log_enabled() then log_term "lift %d %a = %a" l term t term r;
+  r
+
 (** [msubst b vs] substitutes the variables bound by [b] with the values [vs].
    Note that the length of the [vs] array should match the arity of the
    multiple binder [b]. *)
 and msubst : tmbinder -> term array -> term = fun (ns,t) vs ->
   let n = Array.length ns in
   assert (Array.length vs = n);
-  if n = 0 then t else
+  (* [msubst i t] replaces [Db(i+j)] by [lift (i-1) vs.(n-j-1)]
+     for all [0 <= j < n]. *)
   let rec msubst i t =
-  match unfold t with
-  | Db k -> if k < i + n then vs.(k-i) else t
-  | Appl(a,b) -> (*FIXME: mk_Appl*) Appl(msubst i a, msubst i b)
-  | Abst(a,(n,u)) -> Abst(msubst i a, (n, msubst (i+1) u))
-  | Prod(a,(n,u)) -> Prod(msubst i a, (n, msubst (i+1) u))
-  | LLet(a,t,(n,u)) -> LLet(msubst i a, msubst i t, (n, msubst (i+1) u))
-  | Meta(m,ts) -> Meta(m, Array.map (msubst i) ts)
-  | Patt(j,n,ts) -> Patt(j,n, Array.map (msubst i) ts)
-  | TEnv(te,ts) -> TEnv(te, Array.map (msubst i) ts)
-  | _ -> t
-  in msubst 1 t
+    if Logger.log_enabled() then
+      log_term "msubst %d %a %a" i (D.array term) vs term t;
+    match unfold t with
+    | Db k -> let j = k-i in
+      if j<0 then t else (assert(j<n); lift (i-1) vs.(n-1-j))
+    | Appl(a,b) -> (*FIXME: mk_Appl*) Appl(msubst i a, msubst i b)
+    | Abst(a,(n,u)) -> Abst(msubst i a, (n, msubst (i+1) u))
+    | Prod(a,(n,u)) -> Prod(msubst i a, (n, msubst (i+1) u))
+    | LLet(a,t,(n,u)) -> LLet(msubst i a, msubst i t, (n, msubst (i+1) u))
+    | Meta(m,ts) -> Meta(m, Array.map (msubst i) ts)
+    | Patt(j,n,ts) -> Patt(j,n, Array.map (msubst i) ts)
+    | TEnv(te,ts) -> TEnv(te, Array.map (msubst i) ts)
+    | _ -> t
+  in
+  let r = if n = 0 then t else msubst 1 t in
+  if Logger.log_enabled() then
+    log_term "msubst %a %a = %a" term t (D.array term) vs term r;
+  r
 
 let msubst3 :
   (tmbinder * tmbinder * tmbinder) -> term array -> term * term * term =
@@ -302,9 +310,9 @@ let msubst3 :
 let subst : tbinder -> term -> term = fun (_,t) v ->
   let rec subst i t =
     (*if Logger.log_enabled() then
-      log_term "subst [%d≔%a] %a" i Raw.term v Raw.term t;*)
+      log_term "subst [%d≔%a] %a" i term v term t;*)
     match unfold t with
-    | Db k -> if k = i then v else t
+    | Db k -> if k = i then lift (i-1) v else t
     | Appl(a,b) -> (*FIXME: mk_Appl*) Appl(subst i a, subst i b)
     | Abst(a,(n,u)) -> Abst(subst i a, (n, subst (i+1) u))
     | Prod(a,(n,u)) -> Prod(subst i a, (n ,subst (i+1) u))
@@ -316,14 +324,12 @@ let subst : tbinder -> term -> term = fun (_,t) v ->
   in
   let r = subst 1 t in
   if Logger.log_enabled() then
-    log_term "@[<v>subst [1≔%a]@ %a =@ %a@]"
-      Raw.term v Raw.term t Raw.term r;
+    log_term "subst %a [%a] = %a" term t term v term r;
   r
 
 (** [new_var _ name] creates a new unique variable using [name]. *)
 let new_var : (tvar -> term) -> string -> tvar =
-  let open Stdlib in let n = ref 0 in
-  fun _ name -> incr n; !n, name
+  let open Stdlib in let n = ref 0 in fun _ name -> incr n; !n, name
 
 let mkfree : tvar -> term = fun x -> Vari x
 
@@ -332,7 +338,7 @@ let mkfree : tvar -> term = fun x -> Vari x
 let new_mvar : string array -> tvar array = Array.map (new_var mkfree)
 
 (** [name_of x] returns a printable name for variable [x]. *)
-let name_of : tvar -> string = fun (_,n) -> n
+let name_of : tvar -> string = fun (_i,n) -> n (*^ string_of_int i*)
 
 (** [unbind b] substitutes the binder [b] using a fresh variable. The variable
     and the result of the substitution are returned. Note that the name of the
@@ -398,8 +404,7 @@ let box_apply2 : ('a -> 'b -> 'c) -> 'a box -> 'b box -> 'c box = fun x -> x
 (** [bind_var x b] binds the variable [x] in [b], producing a boxed binder. *)
 let bind_var  : tvar -> term box -> tbinder box = fun ((_,n) as x) ->
   let rec bind i t =
-    (*if Logger.log_enabled() then
-      log_term "bind_var %a %d %a" Raw.var x i Raw.term t;*)
+    (*if Logger.log_enabled() then log_term "bind_var %d %a" i term t;*)
     match unfold t with
     | Vari y when y == x -> Db i
     | Appl(a,b) -> Appl(bind i a, bind i b)
@@ -411,19 +416,23 @@ let bind_var  : tvar -> term box -> tbinder box = fun ((_,n) as x) ->
     | TEnv(te,ts) -> TEnv(te, Array.map (bind i) ts)
     | _ -> t
   in fun t ->
-    let r = bind 1 t in
+    let b = bind 1 t in
     if Logger.log_enabled() then
-      log_term "@[<v>bind_var %a@ %a =@ %a@]"
-        Raw.var x Raw.term t Raw.term r;
-    n, r
+      log_term "bind_var %a %a = %a" var x term t term b;
+    n, b
 
 (** [bind_mvar xs b] binds the variables of [xs] in [b] to get a boxed binder.
     It is the equivalent of [bind_var] for multiple variables. *)
-let bind_mvar : tvar array -> term box -> tmbinder box = fun xs ->
+let bind_mvar : tvar array -> term box -> tmbinder box = fun xs t ->
+  let n = Array.length xs in
+  if n = 0 then [||], t else
   let open Stdlib in let open Extra in
+  (*if Logger.log_enabled() then
+    log_term "bind_mvar %a" (D.array var) xs;*)
   let map = ref IntMap.empty in
-  Array.iteri (fun i (ki,_) -> map := IntMap.add ki i !map) xs;
+  Array.iteri (fun i (ki,_) -> map := IntMap.add ki (n-1-i) !map) xs;
   let rec bind i t =
+    (*if Logger.log_enabled() then log_term "bind_mvar %d %a" i term t;*)
     match unfold t with
     | Vari (key,_) ->
       (match IntMap.find_opt key !map with Some k -> Db (i+k) | None -> t)
@@ -435,9 +444,11 @@ let bind_mvar : tvar array -> term box -> tmbinder box = fun xs ->
     | Patt(j,n,ts) -> Patt(j,n, Array.map (bind i) ts)
     | TEnv(te,ts) -> TEnv(te, Array.map (bind i) ts)
     | _ -> t
-  in fun t ->
-    if Array.length xs = 0 then [||], t
-    else Array.map name_of xs, bind 1 t
+  in
+  let b = bind 1 t in
+  if Logger.log_enabled() then
+    log_term "bind_mvar %a %a = %a" (D.array var) xs term t term b;
+  Array.map name_of xs, b
 
 let bind_mvar3 : tvar array -> (term box * term box * term box)
   -> tmbinder box * tmbinder box * tmbinder box = fun xs (t1, t2, t3) ->
@@ -473,7 +484,7 @@ let eq_vars : tvar -> tvar -> bool = fun x y -> compare_vars x y = 0
 let binder_occur : tbinder -> bool = fun (_,t) ->
   let rec check i t =
     (*if Logger.log_enabled() then
-      log_term "binder_occur %d %a" i Raw.term t;*)
+      log_term "binder_occur %d %a" i term t;*)
     match unfold t with
     | Db k when k = i -> raise Exit
     | Appl(a,b) -> check i a; check i b
@@ -487,7 +498,7 @@ let binder_occur : tbinder -> bool = fun (_,t) ->
   in
   let r = try check 1 t; false with Exit -> true in
   if Logger.log_enabled() then
-    log_term "binder_occur 1 %a = %b" Raw.term t r;
+    log_term "binder_occur 1 %a = %b" term t r;
   r
 
 (** [binder_constant b] tests whether the [binder] [b] is constant (i.e.,  its
@@ -536,6 +547,14 @@ end
 type tbox = term Bindlib.box
 
 type tebox = term_env Bindlib.box
+
+let unfold = Bindlib.unfold
+
+(** Printing functions for debug. *)
+module Raw = struct
+  let sym = Bindlib.sym
+  let term = Bindlib.term
+end
 
 (** Minimize [impl] to enforce our invariant (see {!type:Terms.sym}). *)
 let minimize_impl : bool list -> bool list =
@@ -648,30 +667,6 @@ let is_private : sym -> bool = fun s -> s.sym_expo = Privat
 let is_modulo : sym -> bool = fun s ->
   match s.sym_prop with Assoc _ | Commu | AC _ -> true | _ -> false
 
-(** [unfold t] repeatedly unfolds the definition of the surface constructor of
-    [t], until a significant {!type:term} constructor is found.  The term that
-    is returned cannot be an instantiated metavariable or term environment nor
-    a reference cell ({!constructor:TRef} constructor). Note that the returned
-    value is physically equal to [t] if no unfolding was performed. *)
-let rec unfold : term -> term = fun t ->
-  match t with
-  | Meta(m, ts) ->
-      begin
-        match !(m.meta_value) with
-        | None    -> t
-        | Some(b) -> unfold (Bindlib.msubst b ts)
-      end
-  | TRef(r) ->
-      begin
-        match !r with
-        | None    -> t
-        | Some(v) -> unfold v
-      end
-  | _ -> t
-
-(** {b NOTE} that {!val:unfold} must (almost) always be called before matching
-    over a value of type {!type:term}. *)
-
 (** [is_abst t] returns [true] iff [t] is of the form [Abst(_)]. *)
 let is_abst : term -> bool = fun t ->
   match unfold t with Abst(_) -> true | _ -> false
@@ -759,7 +754,7 @@ let mk_Kind = Kind
 let mk_Symb x = Symb x
 let mk_Prod (a,b) = Prod (a,b)
 let mk_Abst (a,b) = Abst (a,b)
-let mk_Meta (m,ts) = Meta (m,ts)
+let mk_Meta (m,ts) = (*assert (m.meta_arity = Array.length ts);*) Meta (m,ts)
 let mk_Patt (i,s,ts) = Patt (i,s,ts)
 let mk_Wild = Wild
 let mk_Plac b = Plac b
@@ -981,141 +976,6 @@ let _TE_Vari : tevar -> tebox = fun x -> TE_Vari x
 (** [_TE_None] injects the constructor [TE_None] into the {!type:tbox} type.*)
 let _TE_None : tebox = Bindlib.box TE_None
 
-module Old = struct
-
-type tbox = term OldBindlib.box
-type tebox = term_env OldBindlib.box
-
-let _Db : int -> tbox = fun k -> OldBindlib.box (Db k)
-
-(** [_Vari x] injects the free variable [x] into the {!type:tbox} type so that
-    it may be available for binding. *)
-let _Vari : tvar -> tbox = fun x -> OldBindlib.box (Vari x)
-
-(** [_Type] injects the constructor [Type] into the {!type:tbox} type. *)
-let _Type : tbox = OldBindlib.box Type
-
-(** [_Kind] injects the constructor [Kind] into the {!type:tbox} type. *)
-let _Kind : tbox = OldBindlib.box Kind
-
-(** [_Symb s] injects the constructor [Symb(s)] into the {!type:tbox} type. As
-    symbols are closed object they do not require lifting. *)
-let _Symb : sym -> tbox = fun s -> OldBindlib.box (Symb s)
-
-(** [_Appl t u] lifts an application node to the {!type:tbox} type given boxed
-   terms [t] and [u]. *)
-let _Appl : tbox -> tbox -> tbox =
-  OldBindlib.box_apply2 (fun t u -> mk_Appl (t,u))
-
-(** [_Appl_not_canonical t u] lifts an application node to the {!type:tbox}
-   type given boxed terms [t] and [u], without putting it in canonical form
-   wrt. C and AC symbols. WARNING: to use in scoping of rewrite rule LHS only
-   as it breaks some invariants. *)
-let _Appl_not_canonical : tbox -> tbox -> tbox =
-  OldBindlib.box_apply2 (fun t u -> Appl (t,u))
-
-(** [_Appl_list a [b1;...;bn]] returns (... ((a b1) b2) ...) bn. *)
-let _Appl_list : tbox -> tbox list -> tbox = List.fold_left _Appl
-
-(** [_Appl_Symb f ts] returns the same result that
-    _Appl_l ist (_Symb [f]) [ts]. *)
-let _Appl_Symb : sym -> tbox list -> tbox = fun f ts ->
-  _Appl_list (_Symb f) ts
-
-(** [_Prod a b] lifts a dependent product node to the {!type:tbox} type, given
-    a boxed term [a] for the domain of the product, and a boxed binder [b] for
-    its codomain. *)
-let _Prod : tbox -> tbinder OldBindlib.box -> tbox =
-  OldBindlib.box_apply2 (fun a b -> Prod(a,b))
-
-let impl : term -> term -> term = fun a b ->
-  let v = new_tvar "_" in mk_Prod(a, Bindlib.bind_var v b)
-
-let _Impl : tbox -> tbox -> tbox = OldBindlib.box_apply2 impl
-
-(** [_Abst a t] lifts an abstraction node to the {!type:tbox}  type,  given  a
-    boxed term [a] for the domain type, and a boxed binder [t]. *)
-let _Abst : tbox -> tbinder OldBindlib.box -> tbox =
-  OldBindlib.box_apply2 (fun a t -> Abst(a,t))
-
-(** [_Meta m ts] lifts the metavariable [m] to the {!type:tbox} type given its
-    environment [ts]. As for symbols in {!val:_Symb}, metavariables are closed
-    objects so they do not require lifting. *)
-let _Meta : meta -> tbox array -> tbox = fun m ts ->
-  OldBindlib.box_apply (fun ts -> Meta(m,ts)) (OldBindlib.box_array ts)
-
-(** [_Meta_full m ts] is similar to [_Meta m ts] but works with a metavariable
-    that is boxed. This is useful in very rare cases,  when metavariables need
-    to be able to contain free term environment variables. Using this function
-    in bad places is harmful for efficiency but not unsound. *)
-let _Meta_full : meta OldBindlib.box -> tbox array -> tbox = fun m ts ->
-  OldBindlib.box_apply2 (fun m ts -> Meta(m,ts)) m (OldBindlib.box_array ts)
-
-(** [_Patt i n ts] lifts a pattern variable to the {!type:tbox} type. *)
-let _Patt : int option -> string -> tbox array -> tbox = fun i n ts ->
-  OldBindlib.box_apply (fun ts -> Patt(i,n,ts)) (OldBindlib.box_array ts)
-
-(** [_TEnv te ts] lifts a term environment to the {!type:tbox} type. *)
-let _TEnv : tebox -> tbox array -> tbox = fun te ts ->
-  OldBindlib.box_apply2 (fun te ts -> mk_TEnv(te,ts))
-    te (OldBindlib.box_array ts)
-
-(** [_Wild] injects the constructor [Wild] into the {!type:tbox} type. *)
-let _Wild : tbox = OldBindlib.box Wild
-
-let _Plac : bool -> tbox = fun b -> OldBindlib.box (mk_Plac b)
-
-(** [_TRef r] injects the constructor [TRef(r)] into the {!type:tbox} type. It
-    should be the case that [!r] is [None]. *)
-let _TRef : term option ref -> tbox = fun r -> OldBindlib.box (TRef(r))
-
-(** [_LLet t a u] lifts let binding [let x := t : a in u<x>]. *)
-let _LLet : tbox -> tbox -> tbinder OldBindlib.box -> tbox =
-  OldBindlib.box_apply3 (fun a t u -> mk_LLet(a, t, u))
-
-(** [_TE_Vari x] injects a term environment variable [x] into the {!type:tbox}
-    type so that it may be available for binding. *)
-let _TE_Vari : tevar -> tebox = OldBindlib.box_var
-
-(** [_TE_None] injects the constructor [TE_None] into the {!type:tbox} type.*)
-let _TE_None : tebox = OldBindlib.box TE_None
-
-let lift : (tbox -> tbox -> tbox) -> term -> term OldBindlib.box =
-  fun mk_appl ->
-  let rec lift : term -> term OldBindlib.box = fun t ->
-  match unfold t with
-  | Prod(a,b) -> _Prod (lift a) (lift_binder b)
-  | Abst(a,b) -> _Abst (lift a) (lift_binder b)
-  | Appl(a,b) -> mk_appl (lift a) (lift b)
-  | Meta(m,ts) -> _Meta m (Array.map lift ts)
-  | Patt(i,n,ts) -> _Patt i n (Array.map lift ts)
-  | TEnv(te,ts)  -> _TEnv (lift_term_env te) (Array.map lift ts)
-  | LLet(a,t,u) -> _LLet (lift a) (lift t) (lift_binder u)
-  | Wild
-  | Plac _
-  | TRef _
-  | Db _
-  | Vari _
-  | Type
-  | Kind
-  | Symb _ -> OldBindlib.box t
-  (* We do not use [Bindlib.box_binder] here because it is possible for a free
-     variable to disappear from a term through metavariable instantiation. As
-     a consequence we must traverse the whole term, even when we find a closed
-     binder, so that the metadata on nested binders is also updated. *)
-  and lift_binder b =
-    let x,t = Bindlib.unbind b in
-    OldBindlib.box (Bindlib.bind_var x (OldBindlib.unbox (lift t)))
-  and lift_term_env : term_env -> tebox = function
-  | TE_Vari x -> _TE_Vari x
-  | TE_None   -> _TE_None
-  | TE_Some _ -> assert false (* Unreachable. *)
-  in lift
-
-end
-
-let old_lift = Old.lift Old._Appl
-
 (** [lift mk_appl t] lifts the {!type:term} [t] to the type {!type:tbox},
    using the function [mk_appl] in the case of an application. This has the
    effect of gathering its free variables, making them available for binding.
@@ -1155,17 +1015,37 @@ type cp_pos = Pos.popt * term * term * subterm_pos * term
     substituted using [Patt] constructors. They are thus represented as their
     LHS counterparts. This is a more convenient way of representing terms when
     analysing confluence or termination. *)
-let term_of_rhs : rule -> term = fun r ->
-  let f i tevar =
-    let (name, arity) = (OldBindlib.name_of tevar, r.arities.(i)) in
-    let vars = Array.init arity (new_tvar_ind "x") in
-    let p = _Patt (Some i) name (Array.map _Vari vars) in
-    TE_Some(Bindlib.unbox (Bindlib.bind_mvar vars p))
-  in
-  OldBindlib.msubst r.rhs (Array.mapi f r.vars)
+let term_of_rhs : rule -> term = fun r -> r.rhs
 
 (** Type of a symbol and a rule. *)
 type sym_rule = sym * rule
 
 let lhs : sym_rule -> term = fun (s, r) -> add_args (mk_Symb s) r.lhs
 let rhs : sym_rule -> term = fun (_, r) -> term_of_rhs r
+
+(** Patt substitution. *)
+let subst_patt : tmbinder option array -> term -> term = fun env ->
+  let rec subst_patt t =
+    match unfold t with
+    | Patt(Some i,n,ts) when 0 <= i && i < Array.length env ->
+      begin match env.(i) with
+        | Some b -> Bindlib.msubst b (Array.map subst_patt ts)
+        | None -> mk_Patt(Some i,n,Array.map subst_patt ts)
+      end
+    | Patt(i,n,ts) -> mk_Patt(i, n, Array.map subst_patt ts)
+    | Prod(a,(n,b)) -> mk_Prod(subst_patt a, (n, subst_patt b))
+    | Abst(a,(n,b)) -> mk_Abst(subst_patt a, (n, subst_patt b))
+    | Appl(a,b) -> mk_Appl(subst_patt a, subst_patt b)
+    | Meta(m,ts) -> mk_Meta(m, Array.map subst_patt ts)
+    | TEnv _ -> assert false
+    | LLet(a,t,(n,b)) ->
+      mk_LLet(subst_patt a, subst_patt t, (n, subst_patt b))
+    | Wild
+    | Plac _
+    | TRef _
+    | Db _
+    | Vari _
+    | Type
+    | Kind
+    | Symb _ -> t
+  in subst_patt

@@ -46,9 +46,8 @@ let is_definable : sym -> bool = fun s ->
   && not s.sym_opaq
 
 (** [rule_of_def s d] creates the rule [s --> d]. *)
-let rule_of_def : sym -> term -> rule = fun s d ->
-  let rhs = OldBindlib.unbox (OldBindlib.bind_mvar [||] (OldBindlib.box d)) in
-  {lhs=[]; rhs; arity=0; arities=[||]; vars=[||]; xvars_nb=0;
+let rule_of_def : sym -> term -> rule = fun s rhs ->
+  {lhs=[]; rhs; arity=0; arities=[||]; vars_nb=0; xvars_nb=0;
    rule_pos=s.sym_pos}
 
 (** [replace t p u] replaces the subterm of [t] at position [p] by [u]. *)
@@ -452,13 +451,11 @@ let typability_constraints : Pos.popt -> term -> subs option = fun pos t ->
     | _ -> t
   in
   (* Function converting a pair of terms into a rule, if possible. *)
-  let rule_of_terms : term -> term -> sym_rule option = fun l r ->
+  let rule_of_terms : term -> term -> sym_rule option = fun l rhs ->
     match get_args_len l with
     | Symb s, lhs, arity ->
-      let vars = [||] and rule_pos = Some (new_rule_id()) in
-      let rhs = OldBindlib.unbox
-          (OldBindlib.bind_mvar vars (OldBindlib.box r)) in
-      let r = {lhs; rhs; arity; arities=[||]; vars; xvars_nb=0; rule_pos} in
+      let r = {lhs; rhs; arity; arities=[||]; vars_nb=0; xvars_nb=0;
+               rule_pos=Some (new_rule_id())} in
       Some (s,r)
     | _ -> None
   in

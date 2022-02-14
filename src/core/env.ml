@@ -16,9 +16,9 @@ type t = env
 let empty : env = []
 
 (** [add v a t env] extends the environment [env] by mapping the string
-    [Bindlib.name_of v] to [(v,a,t)]. *)
-let add : tvar -> tbox -> tbox option -> env -> env = fun v a t env ->
-  (Bindlib.name_of v, (v, a, t)) :: env
+    [n] to [(v,a,t)]. *)
+let add : string -> tvar -> tbox -> tbox option -> env -> env =
+  fun n v a t env -> (n, (v, a, t)) :: env
 
 (** [find n env] returns the Bindlib variable associated to the variable  name
     [n] in the environment [env]. If none is found, [Not_found] is raised. *)
@@ -106,7 +106,7 @@ let of_prod : ctxt -> string -> term -> env * term = fun c s t ->
     try match_prod c t (fun a b ->
             let name = Stdlib.(incr i; s ^ string_of_int !i) in
             let x, b = LibTerm.unbind_name name b in
-            build_env (add x (lift a) None env) b)
+            build_env (add name x (lift a) None env) b)
     with Invalid_argument _ -> env, t
   in build_env [] t
 
@@ -123,7 +123,7 @@ let of_prod_nth : ctxt -> int -> term -> env * term = fun c n t ->
     if i >= n then env, t
     else match_prod c t (fun a b ->
              let x, b = Bindlib.unbind b in
-             build_env (i+1) (add x (lift a) None env) b)
+             build_env (i+1) (add (Bindlib.name_of x) x (lift a) None env) b)
   in build_env 0 [] t
 
 (** [of_prod_using c xs t] is similar to [of_prod s c n t] where [n =
@@ -136,6 +136,8 @@ let of_prod_using : ctxt -> tvar array -> term -> env * term = fun c xs t ->
   let rec build_env i env t =
     if i >= n then env, t
     else match_prod c t (fun a b ->
-             let env = add xs.(i) (lift a) None env in
-             build_env (i+1) env (Bindlib.subst b (mk_Vari(xs.(i)))))
+             let xi = xs.(i) in
+             let name = Bindlib.name_of xi in
+             let env = add name xi (lift a) None env in
+             build_env (i+1) env (Bindlib.subst b (mk_Vari xi)))
   in build_env 0 [] t

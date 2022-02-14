@@ -4,7 +4,6 @@
 
 open Core open Sig_state open Term open Env
 open Syntax
-open Common open Pos
 
 (** [scope ~typ ~mok prv expo ss env p t] turns a pterm [t] into a term in
     the signature state [ss] and environment [env] (for bound
@@ -18,30 +17,9 @@ val scope_term :
   ?mok:(int -> meta option) ->
   bool -> sig_state -> env -> p_term -> term
 
-(** Representation of a rewriting rule prior to SR-checking. *)
-type pre_rule =
-  { pr_sym      : sym
-  (** Head symbol of the LHS. *)
-  ; pr_lhs      : term list
-  (** Arguments of the LHS. *)
-  ; pr_vars     : term_env OldBindlib.mvar
-  (** Pattern variables that appear in the RHS. The last [pr_xvars_nb]
-      variables do not appear in the LHS. *)
-  ; pr_rhs      : term OldBindlib.box
-  (** Body of the RHS, should only be unboxed once. *)
-  ; pr_names    : (int, string) Hashtbl.t
-  (** Gives the original name (if any) of pattern variable at given index. *)
-  ; pr_arities  : int array
-  (** Gives the arity of all the pattern variables in field [pr_vars]. *)
-  ; pr_xvars_nb : int
-  (** Number of variables that appear in the RHS but not in the LHS. *) }
-
-(** [rule_of_pre_rule r] converts a pre-rewrite rule into a rewrite rule. *)
-val rule_of_pre_rule : pre_rule loc -> rule
-
 (** [scope_rule ur ss r] turns a parser-level rewriting rule [r], or a
     unification rule if [ur] is true, into a pre-rewriting rule. *)
-val scope_rule : bool -> sig_state -> p_rule -> pre_rule loc
+val scope_rule : bool -> sig_state -> p_rule -> sym_rule
 
 (** [scope_rw_patt ss env t] turns a parser-level rewrite tactic specification
     [s] into an actual rewrite specification (possibly containing variables of

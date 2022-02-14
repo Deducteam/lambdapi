@@ -114,9 +114,7 @@ let link : t -> unit = fun sign ->
   and link_term = link_term mk_Appl in
   let link_rule r =
     let lhs = List.map link_lhs r.lhs in
-    let (xs, rhs) = OldBindlib.unmbind r.rhs in
-    let rhs = old_lift (link_term rhs) in
-    let rhs = OldBindlib.unbox (OldBindlib.bind_mvar xs rhs) in
+    let rhs = link_term r.rhs in
     {r with lhs ; rhs}
   in
   let f _ s =
@@ -185,8 +183,7 @@ let unlink : t -> unit = fun sign ->
   and unlink_binder b = unlink_term (snd (Bindlib.unbind b)) in
   let unlink_rule r =
     List.iter unlink_term r.lhs;
-    let (_, rhs) = OldBindlib.unmbind r.rhs in
-    unlink_term rhs
+    unlink_term r.rhs
   in
   let f _ s =
     unlink_term !(s.sym_type);
@@ -292,7 +289,7 @@ let read : string -> t = fun fname ->
   and reset_binder b = reset_term (snd (Bindlib.unbind b)) in
   let reset_rule r =
     List.iter reset_term r.lhs;
-    reset_term (snd (OldBindlib.unmbind r.rhs))
+    reset_term r.rhs
   in
   let reset_sym s =
     shallow_reset_sym s;
@@ -323,7 +320,7 @@ let read =
    rule does not correspond to a symbol of signature [sign], it is stored in
    its dependencies. /!\ does not update the decision tree or the critical
    pairs. *)
-let add_rule : t -> sym -> rule -> unit = fun sign sym r ->
+let add_rule : t -> sym_rule -> unit = fun sign (sym,r) ->
   sym.sym_rules := !(sym.sym_rules) @ [r];
   if sym.sym_path <> sign.sign_path then
     let sm = Path.Map.find sym.sym_path !(sign.sign_deps) in

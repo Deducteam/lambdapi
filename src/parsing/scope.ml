@@ -7,6 +7,8 @@ open Common open Error open Pos open Debug
 open Syntax
 open Core open Term open Env open Sig_state open Print
 
+let term = Raw.term
+
 (** Logging function for term scoping. *)
 let log_scop = Logger.make 'o' "scop" "term scoping"
 let log_scop = log_scop.pp
@@ -76,7 +78,7 @@ type mode =
   | M_RHS of
       { m_rhs_prv  : bool
       (** True if private symbols are allowed. *)
-      ; m_rhs_data : (string, tevar) Hashtbl.t
+      ; m_rhs_data : (string, int) Hashtbl.t
       (** Environment for variables that we know to be bound in the RHS. *)
       ; mutable m_rhs_new_metas : problem
       (** Metavariables generated during scoping. *) }
@@ -87,13 +89,13 @@ type mode =
           variables  only in  the  RHS. It  is initialised  to  the number  of
           (distinct) variables in the LHS and incremented each time a variable
           of the RHS that was not in the LHS is scoped. *)
-      ; mutable m_urhs_xvars : (string * tevar) list
+      ; m_urhs_xvars : (string, int) Hashtbl.t
       (** Variables scoped that  were not in the LHS. This  field is only used
           in  unification  rules and  is  updated  imperatively for  each  new
           variable scoped. A couple [(n, v)]  is the name of the variable with
           the variable itself. The name is needed to ensure that two variables
           with the same name are scoped as the same variable. *)
-      ; m_urhs_data : (string, tevar) Hashtbl.t }
+      ; m_urhs_data : (string, int) Hashtbl.t }
   (** Scoping mode for unification rule right-hand sides. During  scoping, we
       always have [m_urhs_vars_nb = m_lhs_size + length m_urhs_xvars]. *)
 
@@ -128,7 +130,7 @@ let fresh_patt : lhs_data -> string option -> tbox array -> tbox =
           Hashtbl.add data.m_lhs_indices name i;
           Hashtbl.add data.m_lhs_names i name; i
       in
-      _Patt (Some i) (string_of_int i) ts
+      _Patt (Some i) name ts
   | None ->
       let i = fresh_index () in
       _Patt (Some i) (string_of_int i) ts
@@ -193,7 +195,7 @@ and scope_parsed :
   ?typ:bool -> int -> mode -> sig_state -> env -> p_term -> tbox =
   fun ?(typ=false) k md ss env t ->
   if Logger.log_enabled () then
-    log_scop "%a%a@ %a" D.depth k pp_env env Pretty.term t;
+    log_scop "%a<= %a@ %a" D.depth k pp_env env Pretty.term t;
   (* Extract the spine. *)
   let p_head, args = Syntax.p_get_args t in
   (* Check that LHS pattern variables are applied to no argument. *)
@@ -233,7 +235,7 @@ and scope_parsed :
   (* Scope and insert the (implicit) arguments. *)
   add_impl k md ss env t.pos h impl args
   |> D.log_and_return
-    (fun e -> log_scop "%agot %a" D.depth k term (Bindlib.unbox e))
+    (fun e -> log_scop "%a=> %a" D.depth k term (Bindlib.unbox e))
 
 (** [add_impl md ss env loc h impl args] scopes [args] and returns the
    application of [h] to the scoped arguments. [impl] is a boolean list
@@ -315,7 +317,7 @@ and scope_binder : ?typ:bool -> int -> mode -> sig_state ->
                        having an integer suffix with leading zeros \
                        are not allowed for bound variable names." id;
           let v = new_tvar id in
-          let env = Env.add v a None env in
+          let env = Env.add id v a None env in
           let t = aux env idopts in
           cons a (Bindlib.bind_var v t)
     in aux env idopts
@@ -351,14 +353,9 @@ and scope_head :
     end
 
   | (P_Wild, M_URHS(data)) ->
-    let x =
-      let name = string_of_int data.m_urhs_vars_nb in
-      let x = new_tevar name in
-      data.m_urhs_vars_nb <- data.m_urhs_vars_nb + 1;
-      data.m_urhs_xvars <- (name, x) :: data.m_urhs_xvars;
-      x
-    in
-    _TEnv (_TE_Vari x) (Env.to_tbox env)
+    let i = data.m_urhs_vars_nb in
+    data.m_urhs_vars_nb <- data.m_urhs_vars_nb + 1;
+    _Patt (Some i) "_" (Env.to_tbox env)
   | (P_Wild, M_LHS data) -> fresh_patt data None (Env.to_tbox env)
   | (P_Wild, M_Patt) -> _Wild
   | (P_Wild, (M_RHS _|M_Term _)) -> _Plac typ
@@ -412,7 +409,7 @@ and scope_head :
       end;
       fresh_patt d (Option.map (fun id -> id.elt) id) ts
   | (P_Patt(id,ts), M_URHS(r)) ->
-      let x =
+      let i =
         match id with
         | None     -> fatal t.pos "Wildcard pattern not allowed in a URHS."
         | Some {elt=id;_} ->
@@ -420,22 +417,22 @@ and scope_head :
             try Hashtbl.find r.m_urhs_data id
             with Not_found ->
               (* Search in variables already declared in RHS. *)
-              try List.assoc id r.m_urhs_xvars
+              try Hashtbl.find r.m_urhs_xvars id
               with Not_found ->
-                let name = string_of_int r.m_urhs_vars_nb in
-                let x = new_tevar name in
+                let i = r.m_urhs_vars_nb in
+                Hashtbl.add r.m_urhs_xvars id i;
                 r.m_urhs_vars_nb <- r.m_urhs_vars_nb + 1;
-                r.m_urhs_xvars   <- (id, x) :: r.m_urhs_xvars;
-                x
+                i
       in
       let ts =
         match ts with
         | None -> [||] (* $M stands for $M[] *)
         | Some ts -> Array.map (scope (k+1) md ss env) ts
       in
-      _TEnv (_TE_Vari x) ts
+      let name = match id with Some {elt;_} -> elt | None -> assert false in
+      _Patt (Some i) name ts
   | (P_Patt(id,ts), M_RHS(r)) ->
-      let x =
+      let i =
         match id with
         | None     -> fatal t.pos "Wildcard pattern not allowed in a RHS."
         | Some(id) ->
@@ -448,7 +445,8 @@ and scope_head :
         | None -> [||] (* $M stands for $M[] *)
         | Some ts -> Array.map (scope (k+1) md ss env) ts
       in
-      _TEnv (_TE_Vari x) ts
+      let name = match id with Some {elt;_} -> elt | None -> assert false in
+      _Patt (Some i) name ts
   | (P_Patt(_,_), _) ->
       fatal t.pos "Pattern variables are only allowed in rewriting rules."
 
@@ -472,7 +470,7 @@ and scope_head :
       let a = scope_binder ~typ:true (k+1) md ss _Prod env xs a in
       let t = scope_binder (k+1) md ss _Abst env xs (Some(t)) in
       let v = new_tvar x.elt in
-      let u = scope ~typ (k+1) md ss (Env.add v a (Some(t)) env) u in
+      let u = scope ~typ (k+1) md ss (Env.add x.elt v a (Some(t)) env) u in
       if not (Bindlib.occur v u) then
         wrn x.pos "Useless let-binding (%s is not bound)." x.elt;
       _LLet a t (Bindlib.bind_var v u)
@@ -483,8 +481,8 @@ and scope_head :
 
   (* Evade the addition of implicit arguments inside the wrap *)
   | (P_Wrap ({ elt = (P_Iden _ | P_Abst _); _ } as id), _) ->
-    scope_head ~typ (k+1) md ss env id
-  | (P_Wrap t, _) -> scope ~typ (k+1) md ss env t
+    scope_head ~typ k md ss env id
+  | (P_Wrap t, _) -> scope ~typ k md ss env t
 
   | (P_Expl(_), _) -> fatal t.pos "Explicit argument not allowed here."
 
@@ -557,40 +555,10 @@ let patt_vars : p_term -> (string * int) list * string list =
   in
   patt_vars ([],[])
 
-(** Representation of a rewriting rule prior to SR-checking. *)
-type pre_rule =
-  { pr_sym      : sym
-  (** Head symbol of the LHS. *)
-  ; pr_lhs      : term list
-  (** Arguments of the LHS. *)
-  ; pr_vars     : term_env OldBindlib.mvar
-  (** Pattern variables that appear in the RHS. The last [pr_xvars_nb]
-      variables do not appear in the LHS. *)
-  ; pr_rhs      : term OldBindlib.box
-  (** Body of the RHS, should only be unboxed once. *)
-  ; pr_names    : (int, string) Hashtbl.t
-  (** Gives the original name (if any) of pattern variable at given index. *)
-  ; pr_arities  : int array
-  (** Gives the arity of all the pattern variables in field [pr_vars]. *)
-  ; pr_xvars_nb : int
-  (** Number of variables that appear in the RHS but not in the LHS. *) }
-
-(** [rule_of_pre_rule r] converts a pre-rewrite rule into a rewrite rule. *)
-let rule_of_pre_rule : pre_rule loc -> rule =
-  fun { elt = pr; pos = rule_pos } ->
-  let {pr_lhs; pr_vars; pr_rhs; pr_arities; pr_xvars_nb; _} = pr in
-  { lhs = pr_lhs
-  ; rhs = OldBindlib.(unbox (bind_mvar pr_vars pr_rhs))
-  ; arity = List.length pr_lhs
-  ; arities = pr_arities
-  ; vars = pr_vars
-  ; xvars_nb = pr_xvars_nb
-  ; rule_pos }
-
 (** [scope_rule ur ss r] turns a parser-level rewriting rule [r], or a
     unification rule if [ur] is true, into a pre-rewriting rule. *)
-let scope_rule : bool -> sig_state -> p_rule -> pre_rule loc =
-  fun ur ss { elt = (p_lhs, p_rhs); pos } ->
+let scope_rule : bool -> sig_state -> p_rule -> sym_rule =
+  fun ur ss { elt = (p_lhs, p_rhs); pos = rule_pos } ->
   (* Compute the set of pattern variables on both sides. *)
   let (pvs_lhs, nl) = patt_vars p_lhs in
   (* NOTE to reject non-left-linear rules check [nl = []] here. *)
@@ -605,7 +573,7 @@ let scope_rule : bool -> sig_state -> p_rule -> pre_rule loc =
   in
   List.iter check_arity pvs_rhs;
   (* Scope the LHS and get the reserved index for named pattern variables. *)
-  let (pr_lhs, lhs_indices, lhs_arities, pr_names, lhs_size) =
+  let (lhs, lhs_indices, lhs_arities, vars_nb) =
     let mode =
       M_LHS{ m_lhs_prv     = is_private (get_root ss [] p_lhs)
            ; m_lhs_indices = Hashtbl.create 7
@@ -614,16 +582,23 @@ let scope_rule : bool -> sig_state -> p_rule -> pre_rule loc =
            ; m_lhs_size    = 0
            ; m_lhs_in_env  = nl @ List.map fst pvs_rhs }
     in
-    let pr_lhs = scope 0 mode ss Env.empty p_lhs in
+    let lhs = scope 0 mode ss Env.empty p_lhs in
     match mode with
-    | M_LHS{ m_lhs_indices; m_lhs_names; m_lhs_size; m_lhs_arities; _} ->
-        (Bindlib.unbox pr_lhs, m_lhs_indices, m_lhs_arities, m_lhs_names,
-         m_lhs_size)
-    | _                                                  -> assert false
+    | M_LHS{ m_lhs_indices; m_lhs_size; m_lhs_arities; m_lhs_names;
+             m_lhs_in_env; _ } -> let open D in
+      if Logger.log_enabled() then
+        log_scop "@[<v>lhs_size %d@ lhs_indices %a@ lhs_arities %a\
+                  @ lhs_names %a@ lhs_in_env %a@]" m_lhs_size
+          (hashtbl string int) m_lhs_indices
+          (hashtbl int int) m_lhs_arities
+          (hashtbl int string) m_lhs_names
+          (list string) m_lhs_in_env;
+      (lhs, m_lhs_indices, m_lhs_arities, m_lhs_size)
+    | _ -> assert false
   in
   (* Check the head symbol and build the actual LHS. *)
-  let (pr_sym, pr_lhs) =
-    let (h, args) = get_args pr_lhs in
+  let (sym, lhs) =
+    let (h, args) = get_args lhs in
     match h with
     | Symb(s) ->
         if is_constant s then fatal p_lhs.pos "Constant LHS head symbol.";
@@ -632,54 +607,32 @@ let scope_rule : bool -> sig_state -> p_rule -> pre_rule loc =
         (s, args)
     | _ -> fatal p_lhs.pos "No head symbol in LHS."
   in
+  if Timed.(!(sym.sym_def)) <> None then
+    fatal rule_pos "No rewriting rule can be given on a defined symbol.";
   (* Create the pattern variables that can be bound in the RHS. *)
-  let pr_vars =
-    Array.init lhs_size (fun i -> new_tevar (string_of_int i)) in
   let mode =
-    let htbl_vars = Hashtbl.create (Hashtbl.length lhs_indices) in
-    let fn k i = Hashtbl.add htbl_vars k pr_vars.(i) in
-    Hashtbl.iter fn lhs_indices;
     if ur then
-      M_URHS{ m_urhs_data = htbl_vars ; m_urhs_vars_nb = Array.length pr_vars
-            ; m_urhs_xvars = [] }
+      M_URHS{ m_urhs_data = lhs_indices
+            ; m_urhs_vars_nb = vars_nb
+            ; m_urhs_xvars = Hashtbl.create 7 }
     else
-      M_RHS{ m_rhs_prv = is_private pr_sym; m_rhs_data = htbl_vars;
-             m_rhs_new_metas = new_problem() }
+      M_RHS{ m_rhs_prv = is_private sym
+           ; m_rhs_data = lhs_indices
+           ; m_rhs_new_metas = new_problem() }
   in
-  let pr_rhs = old_lift (scope 0 mode ss Env.empty p_rhs) in
-  let prerule =
-    (* We put everything together to build the pre-rule. *)
-    let pr_arities =
-      let fn i =
-        try Hashtbl.find lhs_arities i
-        with Not_found -> assert false (* Unreachable. *)
-      in
-      Array.init lhs_size fn
-    in
-    if ur then (* Unification rule. *)
-      (* We scope the RHS and retrieve variables not occurring in the LHS. *)
-      let xvars =
-        match mode with
-        | M_URHS{m_urhs_xvars;_} -> m_urhs_xvars
-        | _ -> assert false (* Guarded by the [if ur] *)
-      in
-      (* Add RHS-only variables to [pr_vars] and get index of the first
-         one. *)
-      let (pr_vars, pr_xvars_nb) =
-        (* If there is no variable introduced in RHS, do nothing (typically
-           while scoping regular rewriting rules.) *)
-        if Stdlib.(xvars = []) then (pr_vars, 0) else
-        let xvars = Array.of_list (List.map snd xvars) in
-        (Array.append pr_vars xvars, Array.length xvars)
-      in
-      (* We put everything together to build the pre-rule. *)
-      { pr_sym ; pr_lhs ; pr_vars ; pr_rhs ; pr_arities
-      ; pr_names ; pr_xvars_nb }
-    else (* Rewrite rule. *)
-      { pr_sym ; pr_lhs ; pr_vars ; pr_rhs ; pr_arities
-      ; pr_names ; pr_xvars_nb=0 }
+  let rhs = scope 0 mode ss Env.empty p_rhs in
+  let arities =
+    let f i = try Hashtbl.find lhs_arities i with Not_found -> assert false in
+    Array.init vars_nb f
   in
-  Pos.make pos prerule
+  let xvars_nb =
+    match mode with
+    | M_URHS{m_urhs_vars_nb; _} -> m_urhs_vars_nb - vars_nb
+    | _ -> 0
+  in
+  let arity = List.length lhs in
+  let r = {lhs; rhs; arity; arities; vars_nb; xvars_nb; rule_pos} in
+  (sym,r)
 
 (** [scope_pattern ss env t] turns a parser-level term [t] into an actual term
     that will correspond to selection pattern (rewrite tactic). *)

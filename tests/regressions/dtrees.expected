@@ -25,7 +25,7 @@ graph {
        1 -- 2 [label=<*>];
        3 [label="0" shape="box"];
        2 -- 3 [label=<*>];
-       4 [label="$1 ≡ pair $2 $4"];
+       4 [label="$p ≡ pair $f $s"];
        3 -- 4 [label=<*>];
        5 [label="2"];
        0 -- 5 [label=<plus<sub>2</sub>>];
@@ -33,7 +33,7 @@ graph {
        5 -- 6 [label=<z<sub>0</sub>>];
        7 [label="0" shape="box"];
        6 -- 7 [label=<*>];
-       8 [label="($0 ≡ z) ; ($1 ≡ z)"];
+       8 [label="($x ≡ z) ; ($y ≡ z)"];
        7 -- 8 [label=<*>];
        9 [label="0" shape="box"];
        0 -- 9 [label=<snd<sub>2</sub>>];
@@ -41,7 +41,7 @@ graph {
        9 -- 10 [label=<*>];
        11 [label="0" shape="box"];
        10 -- 11 [label=<*>];
-       12 [label="$1 ≡ pair $4 $2"];
+       12 [label="$p ≡ pair $f $s"];
        11 -- 12 [label=<*>];
        13 [label="2"];
        0 -- 13 [label=<Πv0>];
@@ -53,7 +53,7 @@ graph {
        15 -- 16 [label=<*>];
        17 [label="0" shape="box"];
        16 -- 17 [label=<✓>];
-       18 [label="($0 ≡ T $3) ; (($1 ≡ T $4) ; ($2 ≡ arrow $4 $3))"];
+       18 [label="($b ≡ T $eb) ; (($a ≡ T $ea) ; ($c ≡ arrow $ea $eb))"];
        17 -- 18 [label=<*>];
        19 [label=<!>];
        16 -- 19 [label="!"];
