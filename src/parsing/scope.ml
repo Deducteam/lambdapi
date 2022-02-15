@@ -135,57 +135,14 @@ let fresh_patt : lhs_data -> string option -> term array -> term =
       let i = fresh_index () in
       mk_Patt (Some i, string_of_int i, ts)
 
-(** [is_invalid_bindlib_id s] says whether [s] can be safely used as variable
-   name in  Indeed, because converts any suffix consisting of
-   a sequence of digits into an integer, and increment it, we cannot use as
-   bound variable names escaped identifiers or regular identifiers ending with
-   a non-negative integer with leading zeros. *)
-let is_invalid_bindlib_id : string -> bool =
-  let rec last_digit s k =
-    let l = k-1 in
-    if l < 0 then 0 else
-      match s.[l] with
-      | '0' .. '9' -> last_digit s l
-      | _ -> k
-  in
-  fun s ->
-    let n = String.length s - 1 in
-    n >= 0 &&
-    match s.[n] with
-    | '0' .. '9' -> let k = last_digit s n in s.[k] = '0' && k < n
-    | '}' -> true
-    | _ -> false
-
-(* unit tests *)
-let _ =
-  let invalid = is_invalid_bindlib_id in
-  let valid s = not (invalid s) in
-  assert (invalid "00");
-  assert (invalid "01");
-  assert (invalid "a01");
-  assert (invalid "{|:|}");
-  assert (valid "_x_100");
-  assert (valid "_z1002");
-  assert (valid "case_ex2_intro");
-  assert (valid "case_ex02_intro");
-  assert (valid "case_ex02_intro0");
-  assert (valid "case_ex02_intro1");
-  assert (valid "case_ex02_intro10")
-
-let pp_env : env Base.pp =
-  let open Base in
-  let def ppf t = out ppf " ≔ %a" term t in
-  let elt ppf (s, (_,a,t)) = out ppf "%s: %a%a" s term a (Option.pp def) t in
-  (D.list elt)
-
 (** [scope ~typ md ss env t] turns a parser-level term [t] into an actual
     term. The variables of the environment [env] may appear in [t],
     and the scoping mode [md] changes the behaviour related to certain
     constructors. The signature state [ss] is used to convert identifiers
     into symbols according to [find_qid]. If [typ] is true, then [t]
     must be a type (defaults to false). *)
-let rec scope : ?typ:bool -> int -> mode -> sig_state -> env -> p_term ->
-  term =
+let rec scope :
+  ?typ:bool -> int -> mode -> sig_state -> env -> p_term -> term =
   fun ?(typ=false) k md ss env t ->
   scope_parsed ~typ k md ss env (Pratt.parse ss env t)
 
@@ -195,7 +152,7 @@ and scope_parsed :
   ?typ:bool -> int -> mode -> sig_state -> env -> p_term -> term =
   fun ?(typ=false) k md ss env t ->
   if Logger.log_enabled () then
-    log_scop "%a<= %a@ %a" D.depth k pp_env env Pretty.term t;
+    log_scop "%a<= %a@ %a" D.depth k Env.pp env Pretty.term t;
   (* Extract the spine. *)
   let p_head, args = Syntax.p_get_args t in
   (* Check that LHS pattern variables are applied to no argument. *)
@@ -298,23 +255,19 @@ and scope_binder : ?typ:bool -> int -> mode -> sig_state ->
       let dom = scope_domain (k+1) md ss env typopt in
       scope_params env idopts dom params_list
   and scope_params env idopts a params_list =
-    let rec aux env idopts =
+    let rec scope_params_aux env idopts =
       match idopts with
       | [] -> scope_params_list env params_list
       | None::idopts ->
           let v = new_var "_" in
-          let t = aux env idopts in
+          let t = scope_params_aux env idopts in
           cons (a, bind_var v t)
-      | Some {elt=id;pos}::idopts ->
-          if is_invalid_bindlib_id id then
-            fatal pos "\"%s\": Escaped identifiers or regular identifiers \
-                       having an integer suffix with leading zeros \
-                       are not allowed for bound variable names." id;
+      | Some {elt=id;_}::idopts ->
           let v = new_var id in
           let env = Env.add id v a None env in
-          let t = aux env idopts in
+          let t = scope_params_aux env idopts in
           cons (a, bind_var v t)
-    in aux env idopts
+    in scope_params_aux env idopts
   in
   scope_params_list env params_list
 

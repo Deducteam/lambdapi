@@ -1,6 +1,6 @@
 (** Scoping environment for variables. *)
 
-open Lplib
+open Lplib open Base
 open Term
 
 (** Type of an environment, used in scoping to associate names to
@@ -11,6 +11,14 @@ open Term
 type env = (string * (var * term * term option)) list
 
 type t = env
+
+(** [pp ppf env] prints the environment [env] on the formatter [ppf] (for
+   debug). *)
+let pp : env pp =
+  let def ppf t = out ppf " ≔ %a" Print.term t in
+  let elt ppf (s, (_,a,t)) =
+    out ppf "%s: %a%a" s Print.term a (Option.pp def) t in
+  Common.Debug.D.list elt
 
 (** [empty] is the empty environment. *)
 let empty : env = []
