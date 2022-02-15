@@ -117,7 +117,7 @@ let create_ind_pred_map :
     let ind_var = new_var_ind p_str i in
     (* predicate type *)
     let codom ts =
-      mk_Impl (add_args (mk_Symb ind_sym) ts, mk_Symb c.symb_Prop) in
+      mk_Arro (add_args (mk_Symb ind_sym) ts, mk_Symb c.symb_Prop) in
     let a = snd (Env.of_prod_using [] vs !(ind_sym.sym_type)) in
     let ind_type = ind_typ_with_codom pos ind_sym env codom x_str a in
     (* predicate conclusion *)
@@ -255,7 +255,7 @@ let gen_rec_types :
     in
     let acc_rec_dom _ _ _ = () in
     let rec_dom t x v next =
-      mk_Prod (t, bind_var x (mk_Impl (v, next)))
+      mk_Prod (t, bind_var x (mk_Arro (v, next)))
     in
     let acc_nonrec_dom _ _ = () in
     let nonrec_dom t x next = mk_Prod (t, bind_var x next) in
@@ -270,7 +270,7 @@ let gen_rec_types :
   (* Generates an induction principle for each type. *)
   let gen_rec_type (_, d) =
     let add_clause_cons ind_sym cons_sym t =
-      mk_Impl (case_of ind_sym cons_sym, t)
+      mk_Arro (case_of ind_sym cons_sym, t)
     in
     let add_clauses_ind (ind_sym, cons_sym_list) t =
       List.fold_right (add_clause_cons ind_sym) cons_sym_list t

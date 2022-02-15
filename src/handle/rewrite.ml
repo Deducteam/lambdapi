@@ -59,7 +59,7 @@ let _ =
     let term_Prop = get_domain_of_type symb_P in
     let a = new_var "a" in
     let term_T_a = mk_Appl (mk_Symb symb_T, mk_Vari a) in
-    let impls = mk_Impl (term_T_a, mk_Impl (term_T_a, term_Prop)) in
+    let impls = mk_Arro (term_T_a, mk_Arro (term_T_a, term_Prop)) in
     mk_Prod (term_U, bind_var a impls)
   in
   register_builtin "eq" expected_eq_type;
@@ -96,11 +96,11 @@ let _ =
     let term_T_a = mk_Appl (term_T, mk_Vari a) in
     let term_P_p_x = mk_Appl (term_P, mk_Appl (mk_Vari p, mk_Vari x)) in
     let term_P_p_y = mk_Appl (term_P, mk_Appl (mk_Vari p, mk_Vari y)) in
-    let impl = mk_Impl (term_P_p_y, term_P_p_x) in
+    let impl = mk_Arro (term_P_p_y, term_P_p_x) in
     let prod =
-      mk_Prod (mk_Impl (term_T_a, term_Prop), bind_var p impl) in
+      mk_Prod (mk_Arro (term_T_a, term_Prop), bind_var p impl) in
     let eq = add_args term_eq [mk_Vari a; mk_Vari x; mk_Vari y] in
-    let impl = mk_Impl (mk_Appl(term_P, eq), prod) in
+    let impl = mk_Arro (mk_Appl(term_P, eq), prod) in
     let prod = mk_Prod (term_T_a, bind_var y impl) in
     let prod = mk_Prod (term_T_a, bind_var x prod) in
     mk_Prod (term_U, bind_var a prod)

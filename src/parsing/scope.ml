@@ -454,7 +454,7 @@ and scope_head :
   | (P_Arro(_,_), M_Patt) ->
       fatal t.pos "Arrows are not allowed in patterns."
   | (P_Arro(a,b), _) ->
-    mk_Impl (scope ~typ:true (k+1) md ss env a,
+    mk_Arro (scope ~typ:true (k+1) md ss env a,
              scope ~typ:true (k+1) md ss env b)
 
   | (P_Abst(_,_), M_Patt) ->

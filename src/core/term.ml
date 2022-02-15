@@ -667,7 +667,7 @@ let mk_Type = Type
 let mk_Kind = Kind
 let mk_Symb x = Symb x
 let mk_Prod (a,b) = Prod (a,b)
-let mk_Impl (a,b) = let x = new_var "_" in Prod(a, bind_var x b)
+let mk_Arro (a,b) = let x = new_var "_" in Prod(a, bind_var x b)
 let mk_Abst (a,b) = Abst (a,b)
 let mk_Meta (m,ts) = (*assert (m.meta_arity = Array.length ts);*) Meta (m,ts)
 let mk_Patt (i,s,ts) = Patt (i,s,ts)

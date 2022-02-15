@@ -32,7 +32,7 @@ let _ =
       with Not_found ->
         mk_Meta (LibMeta.fresh (new_problem()) mk_Type 0, [||])
     in
-    mk_Impl (typ_0, typ_0)
+    mk_Arro (typ_0, typ_0)
   in
   register "+1" expected_succ_type
 

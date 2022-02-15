@@ -307,7 +307,7 @@ val mk_Type : term
 val mk_Kind : term
 val mk_Symb : sym -> term
 val mk_Prod : term * binder -> term
-val mk_Impl : term * term -> term
+val mk_Arro : term * term -> term
 val mk_Abst : term * binder -> term
 val mk_Appl : term * term -> term
 val mk_Meta : meta * term array -> term
