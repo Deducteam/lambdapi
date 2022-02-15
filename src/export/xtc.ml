@@ -22,7 +22,7 @@ let status : sym -> symb_status = fun s ->
      already gone under a product *)
   let rec is_arrow_kind : Term.term -> bool -> symb_status = fun t b ->
     match t with
-    | Prod(_,b) -> is_arrow_kind (snd (Bindlib.unbind b)) true
+    | Prod(_,b) -> is_arrow_kind (snd (unbind b)) true
     | Type      -> if b then Type_cstr else Basic_type
     | _         -> Object_level
   in is_arrow_kind !(s.sym_type) false
@@ -54,10 +54,10 @@ let rec print_term : int -> string -> term pp = fun i s ppf t ->
   | Appl(t,u)               -> out ppf "<application>@.%a%a</application>@."
                                  (print_term i s) t (print_term i s) u
   | Abst(a,t)               ->
-     let (x, t) = Bindlib.unbind t in
+     let (x, t) = unbind t in
      out ppf "<lambda>@.<var>v_%a</var>@.<type>%a<type>@.%a</lambda>@."
        var x (print_type i s) a (print_term i s) t
-  | LLet(_,t,u)             -> print_term i s ppf (Bindlib.subst u t)
+  | LLet(_,t,u)             -> print_term i s ppf (subst u t)
 
 and print_type : int -> string -> term pp = fun i s ppf t ->
   match unfold t with
@@ -77,21 +77,21 @@ and print_type : int -> string -> term pp = fun i s ppf t ->
   | Appl(t,u)               -> out ppf "<application>@.%a%a</application>@."
                       (print_type i s) t (print_term i s) u
   | Abst(a,t)               ->
-     let (x, t) = Bindlib.unbind t in
+     let (x, t) = unbind t in
      out ppf "<lambda>@.<var>v_%a</var>@.<type>%a<type>@.%a</lambda>@."
        var x (print_type i s) a (print_type i s) t
   | Prod(a,b)               ->
-     if Bindlib.binder_constant b
+     if binder_constant b
      then
        out ppf "<arrow>@.<type>@.%a</type>@.<type>@.%a</type>@.</arrow>@."
          (print_type i s) a
-         (print_type i s) (snd (Bindlib.unbind b))
+         (print_type i s) (snd (unbind b))
      else
-       let (x, b) = Bindlib.unbind b in
+       let (x, b) = unbind b in
        out ppf "<arrow>@.<var>v_%a</var>@." var x;
        out ppf "<type>@.%a</type>@.<type>@.%a</type>@.</arrow>"
          (print_type i s) a (print_type i s) b
-  | LLet(_,t,u)             -> print_type i s ppf (Bindlib.subst u t)
+  | LLet(_,t,u)             -> print_type i s ppf (subst u t)
 
 (** [print_rule ppf s r] outputs the rule declaration corresponding [r] (on
    the symbol [s]), to [ppf]. *)
@@ -130,8 +130,8 @@ let get_vars : sym -> rule -> (string * Term.term) list = fun s r ->
     | Vari _              -> assert false
     | Symb (_)            -> t
     | Abst (t1, b)        ->
-       let (x,t2) = Bindlib.unbind b in
-       mk_Abst(subst_patt v t1, Bindlib.bind_var x (subst_patt v t2))
+       let (x,t2) = unbind b in
+       mk_Abst(subst_patt v t1, bind_var x (subst_patt v t2))
     | Appl (t1, t2)        -> mk_Appl(subst_patt v t1, subst_patt v t2)
     | Patt (None, _, _)    -> assert false
     | Patt (Some(i), _, a) ->
@@ -163,7 +163,7 @@ let get_vars : sym -> rule -> (string * Term.term) list = fun s r ->
   | Some _ ->
   let cs = List.rev_map (fun (_,t,u) -> (t,u)) !p.to_solve in
   let ctx = List.map (fun (x,a,_) -> (x,a)) ctx in
-  List.map (fun (v,ty) -> Bindlib.name_of v, List.assoc ty cs) ctx
+  List.map (fun (v,ty) -> name_of v, List.assoc ty cs) ctx
 
 (** [to_XTC ppf sign] outputs a XTC representation of the rewriting system of
     the signature [sign] to [ppf]. *)

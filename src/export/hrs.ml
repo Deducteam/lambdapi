@@ -37,13 +37,13 @@ let print_term : bool -> term pp = fun lhs ->
                    (mk_Patt(Some i,n,[||])) ts)
     | Appl(t,u)    -> out ppf "app(%a,%a)" pp t pp u
     | Abst(a,t)    ->
-        let (x, t) = Bindlib.unbind t in
+        let (x, t) = unbind t in
         if lhs then out ppf "lam(m_typ,\\%a.%a)" var x pp t
         else out ppf "lam(%a,\\%a.%a)" pp a var x pp t
     | Prod(a,b)    ->
-        let (x, b) = Bindlib.unbind b in
+        let (x, b) = unbind b in
         out ppf "pi(%a,\\%a.%a)" pp a var x pp b
-    | LLet(_,t,u)  -> pp ppf (Bindlib.subst u t)
+    | LLet(_,t,u)  -> pp ppf (subst u t)
   in pp
 
 (** [print_rule ppf lhs rhs] outputs the rule declaration [lhs]->[rhs]
@@ -60,8 +60,8 @@ let print_rule : Format.formatter -> term -> term -> unit =
         let name = Format.sprintf "$%d" i in
         Stdlib.(names := StrSet.add name !names)
       | Abst(_,b) ->
-        let (x, _) = Bindlib.unbind b in
-        Stdlib.(names := StrSet.add (Bindlib.name_of x) !names)
+        let (x, _) = unbind b in
+        Stdlib.(names := StrSet.add (name_of x) !names)
       | _           -> ()
     in
     LibTerm.iter fn t;

@@ -21,7 +21,7 @@ let build_meta_type : problem -> int -> term = fun p k ->
   let ty_m = Array.make (k+1) mk_Type in
   for i = 0 to k do
     for j = (i-1) downto 0 do
-      ty_m.(i) <- mk_Prod (ty_m.(j), Bindlib.bind_var xs.(j) ty_m.(i))
+      ty_m.(i) <- mk_Prod (ty_m.(j), bind_var xs.(j) ty_m.(i))
     done
   done;
   (* We create the “Ai” terms and the “Mi” metavariables. *)
@@ -30,7 +30,7 @@ let build_meta_type : problem -> int -> term = fun p k ->
   (* We finally construct our type. *)
   let res = ref a.(k) in
   for i = k - 1 downto 0 do
-    res := mk_Prod (a.(i), Bindlib.bind_var xs.(i) !res)
+    res := mk_Prod (a.(i), bind_var xs.(i) !res)
   done;
   !res
 
@@ -59,16 +59,16 @@ let symb_to_patt : Pos.popt -> (int * int) option SymMap.t -> term -> term =
       | Type        -> (mk_Type  , ts)
       | Kind        -> (mk_Kind  , ts)
       | Abst(a,b)   ->
-          let (x, t) = Bindlib.unbind b in
-          let b = Bindlib.bind_var x (symb_to_patt t) in
+          let (x, t) = unbind b in
+          let b = bind_var x (symb_to_patt t) in
           (mk_Abst (symb_to_patt a, b), ts)
       | Prod(a,b)   ->
-          let (x, t) = Bindlib.unbind b in
-          let b = Bindlib.bind_var x (symb_to_patt t) in
+          let (x, t) = unbind b in
+          let b = bind_var x (symb_to_patt t) in
           (mk_Prod (symb_to_patt a, b), ts)
       | LLet(a,t,b) ->
-          let (x, u) = Bindlib.unbind b in
-          let b = Bindlib.bind_var x (symb_to_patt u) in
+          let (x, u) = unbind b in
+          let b = bind_var x (symb_to_patt u) in
           (mk_LLet (symb_to_patt a, symb_to_patt t, b), ts)
       | Meta(_,_)   ->
           fatal pos "A metavariable could not be instantiated in the RHS."
@@ -104,7 +104,7 @@ let check_rule : Pos.popt -> sym_rule -> sym_rule =
   let f m =
     let xs = Array.init m.meta_arity (new_tvar_ind "x") in
     let ts = Array.map mk_Vari xs in
-    Some(Bindlib.bind_mvar xs (mk_Meta (m, ts)))
+    Some(bind_mvar xs (mk_Meta (m, ts)))
   in
   let su = Array.map f metas in
   let lhs_with_metas = subst_patt su (add_args (mk_Symb s) lhs)
@@ -147,7 +147,7 @@ let check_rule : Pos.popt -> sym_rule -> sym_rule =
         let xs = Array.init m.meta_arity (new_tvar_ind "x") in
         let s = mk_Symb s in
         let def = Array.fold_left (fun t x -> _Appl t (mk_Vari x)) s xs in
-        m.meta_value := Some(Bindlib.bind_mvar xs def)
+        m.meta_value := Some(bind_mvar xs def)
     in
     Array.iter instantiate metas;
     Stdlib.(!symbols)
@@ -167,7 +167,7 @@ let check_rule : Pos.popt -> sym_rule -> sym_rule =
       let xs = Array.init m.meta_arity (new_tvar_ind "x") in
       let s = mk_Symb s in
       let def = Array.fold_left (fun t x -> mk_Appl (t, mk_Vari x)) s xs in
-      m.meta_value := Some(Bindlib.bind_mvar xs def)
+      m.meta_value := Some(bind_mvar xs def)
   in
   MetaSet.iter instantiate !p.metas;
   let f i m =

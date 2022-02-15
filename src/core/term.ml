@@ -1,11 +1,7 @@
 (** Internal representation of terms.
 
    This module contains the definition of the internal representation of
-   terms, together with smart constructors and low level operation. The
-   representation strongly relies on the {!module:Bindlib} library, which
-   provides a convenient abstraction to work with binders.
-
-    @see <https://rlepigre.github.io/ocaml-bindlib/> *)
+   terms, together with smart constructors and low level operation. *)
 
 open Timed
 open Lplib open Base
@@ -157,7 +153,7 @@ and sym =
    the form {!constructor:Patt}[(Some i,s,e)] matched against a term [u] will
    results in [env.(i)] being set to [u]. If all terms of [ts] can be matched
    against corresponding patterns, then environment [env] is fully constructed
-   and it can hence be substituted in [r.rhs] with [Bindlib.msubst r.rhs env]
+   and it can hence be substituted in [r.rhs] with [msubst r.rhs env]
    to get the result of the application of the rule. *)
 
 (** {3 Metavariables and related functions} *)
@@ -179,8 +175,6 @@ and tbinder = string * term
 and tmbinder = string array * term
 
 and tvar = int * string
-
-module Bindlib = struct
 
 (** [unfold t] repeatedly unfolds the definition of the surface constructor
    of [t], until a significant {!type:term} constructor is found.  The term
@@ -437,14 +431,10 @@ let occur : tvar -> term -> bool = fun x ->
 
 let occur_tmbinder : tvar -> tmbinder -> bool = fun x (_,t) -> occur x t
 
-end
-
-let unfold = Bindlib.unfold
-
 (** Printing functions for debug. *)
 module Raw = struct
-  let sym = Bindlib.sym
-  let term = Bindlib.term
+  let sym = sym
+  let term = term
 end
 
 (** Minimize [impl] to enforce our invariant (see {!type:Terms.sym}). *)
@@ -452,7 +442,7 @@ let minimize_impl : bool list -> bool list =
   let rec rem_false l = match l with false::l -> rem_false l | _ -> l in
   fun l -> List.rev (rem_false (List.rev l))
 
-(** Typing context associating a [Bindlib] variable to a type and possibly a
+(** Typing context associating a [ variable to a type and possibly a
     definition. The typing environment [x1:A1,..,xn:An] is represented by the
     list [xn:An;..;x1:A1] in reverse order (last added variable comes
     first). *)
@@ -464,14 +454,14 @@ type constr = ctxt * term * term
 (** Sets and maps of term variables. *)
 module Var = struct
   type t = tvar
-  let compare = Bindlib.compare_vars
+  let compare = compare_vars
 end
 
 module VarSet = Set.Make(Var)
 module VarMap = Map.Make(Var)
 
 (** [new_tvar s] creates a new [tvar] of name [s]. *)
-let new_tvar : string -> tvar = Bindlib.new_var
+let new_tvar : string -> tvar = new_var
 
 (** [new_tvar_ind s i] creates a new [tvar] of name [s ^ string_of_int i]. *)
 let new_tvar_ind : string -> int -> tvar = fun s i ->
@@ -561,7 +551,7 @@ let is_symb : sym -> term -> bool = fun s t ->
 (** Total order on terms. *)
 let rec cmp : term cmp = fun t t' ->
     match unfold t, unfold t' with
-    | Vari x, Vari x' -> Bindlib.compare_vars x x'
+    | Vari x, Vari x' -> compare_vars x x'
     | Type, Type
     | Kind, Kind
     | Wild, Wild -> 0
@@ -610,14 +600,14 @@ let get_args_len : term -> term * term list * int = fun t ->
    application is built as a left or right comb depending on the associativity
    of the symbol, and arguments are ordered in increasing order wrt [cmp].
 
-- In [LLet(_,_,b)], [Bindlib.binder_constant b = false] (useless let's are
+- In [LLet(_,_,b)], [binder_constant b = false] (useless let's are
    erased). *)
 let mk_Vari x = Vari x
 let mk_Type = Type
 let mk_Kind = Kind
 let mk_Symb x = Symb x
 let mk_Prod (a,b) = Prod (a,b)
-let mk_Impl (a,b) = let x = new_tvar "_" in Prod(a, Bindlib.bind_var x b)
+let mk_Impl (a,b) = let x = new_tvar "_" in Prod(a, bind_var x b)
 let mk_Abst (a,b) = Abst (a,b)
 let mk_Meta (m,ts) = (*assert (m.meta_arity = Array.length ts);*) Meta (m,ts)
 let mk_Patt (i,s,ts) = Patt (i,s,ts)
@@ -626,7 +616,7 @@ let mk_Plac b = Plac b
 let mk_TRef x = TRef x
 
 let mk_LLet (a,t,u) =
-  if Bindlib.binder_constant u then Bindlib.subst u Kind else LLet (a,t,u)
+  if binder_constant u then subst u Kind else LLet (a,t,u)
 
 (* We make the equality of terms modulo commutative and
    associative-commutative symbols syntactic by always ordering arguments in
@@ -764,7 +754,7 @@ let subst_patt : tmbinder option array -> term -> term = fun env ->
     match unfold t with
     | Patt(Some i,n,ts) when 0 <= i && i < Array.length env ->
       begin match env.(i) with
-        | Some b -> Bindlib.msubst b (Array.map subst_patt ts)
+        | Some b -> msubst b (Array.map subst_patt ts)
         | None -> mk_Patt(Some i,n,Array.map subst_patt ts)
       end
     | Patt(i,n,ts) -> mk_Patt(i, n, Array.map subst_patt ts)

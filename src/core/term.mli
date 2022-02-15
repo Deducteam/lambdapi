@@ -2,7 +2,7 @@
 
    This module contains the definition of the internal representation of
    terms, together with smart constructors and low level operation. The
-   representation strongly relies on the {!module:Bindlib} library, which
+   representation strongly relies on the {!module: library, which
    provides a convenient abstraction to work with binders.
 
     @see <https://rlepigre.github.io/ocaml-bindlib/> *)
@@ -189,7 +189,7 @@ and sym =
    the form {!constructor:Patt}[(Some i,s,e)] matched against a term [u] will
    results in [env.(i)] being set to [u]. If all terms of [ts] can be matched
    against corresponding patterns, then environment [env] is fully constructed
-   and it can hence be substituted in [r.rhs] with [Bindlib.msubst r.rhs env]
+   and it can hence be substituted in [r.rhs] with [msubst r.rhs env]
    to get the result of the application of the rule. *)
 
 (** {3 Metavariables and related functions} *)
@@ -205,8 +205,6 @@ and sym =
   ; meta_type  : term ref (** Type. *)
   ; meta_arity : int (** Arity (environment size). *)
   ; meta_value : tmbinder option ref (** Definition. *) }
-
-module Bindlib : sig
 
 (** [subst b v] substitutes the variable bound by [b] with the value [v]. *)
 val subst : tbinder -> term -> term
@@ -269,8 +267,6 @@ val is_closed_tmbinder : tmbinder -> bool
 val occur : tvar -> term -> bool
 val occur_tmbinder : tvar -> tmbinder -> bool
 
-end
-
 (** Minimize [impl] to enforce our invariant (see {!type:Term.sym}). *)
 val minimize_impl : bool list -> bool list
 
@@ -279,7 +275,7 @@ module Raw : sig
   val term : term pp
 end
 
-(** Typing context associating a [Bindlib] variable to a type and possibly a
+(** Typing context associating a [ variable to a type and possibly a
     definition. The typing environment [x1:A1,..,xn:An] is represented by the
     list [xn:An;..;x1:A1] in reverse order (last added variable comes
     first). *)
@@ -390,7 +386,7 @@ val get_args_len : term -> term * term list * int
    application is built as a left or right comb depending on the associativity
    of the symbol, and arguments are ordered in increasing order wrt [cmp].
 
-- In [LLet(_,_,b)], [Bindlib.binder_constant b = false] (useless let's are
+- In [LLet(_,_,b)], [binder_constant b = false] (useless let's are
    erased). *)
 val mk_Vari : tvar -> term
 val mk_Type : term

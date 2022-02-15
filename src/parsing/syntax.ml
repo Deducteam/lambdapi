@@ -107,8 +107,8 @@ module P  = struct
   (** [iden s] builds a [P_Iden] "@s". *)
   let iden : string -> p_term = qiden []
 
-  (** [var v] builds a [P_Iden] from [Bindlib.name_of v]. *)
-  let var : Term.tvar -> p_term = fun v -> iden (Term.Bindlib.name_of v)
+  (** [var v] builds a [P_Iden] from [name_of v]. *)
+  let var : Term.tvar -> p_term = fun v -> iden (Term.name_of v)
 
   (** [patt s ts] builds a [P_Patt] "$s[ts]". *)
   let patt : string -> p_term array option -> p_term = fun s ts ->

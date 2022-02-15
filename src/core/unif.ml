@@ -28,19 +28,19 @@ let set_to_prod : problem -> meta -> unit = fun p m ->
   let env' = Env.add "y" y (mk_Meta (m1, xs)) None env in
   let u2 = Env.to_prod env' s in
   let m2 = LibMeta.fresh p u2 (n+1) in
-  let b = Bindlib.bind_var y (mk_Meta (m2, Array.append xs [|mk_Vari y|])) in
+  let b = bind_var y (mk_Meta (m2, Array.append xs [|mk_Vari y|])) in
   (* result *)
   let r = mk_Prod (a, b) in
   if Logger.log_enabled () then
     log (red "%a ≔ %a") meta m term r;
-  LibMeta.set p m (Bindlib.bind_mvar vs r)
+  LibMeta.set p m (bind_mvar vs r)
 
 (** [type_app c a ts] returns [Some u] where [u] is a type of [add_args x ts]
    in context [c] where [x] is any term of type [a] if [x] can be applied to
    at least [List.length ts] arguments, and [None] otherwise. *)
 let rec type_app : ctxt -> term -> term list -> term option = fun c a ts ->
   match Eval.whnf c a, ts with
-  | Prod(_,b), t::ts -> type_app c (Bindlib.subst b t) ts
+  | Prod(_,b), t::ts -> type_app c (subst b t) ts
   | _, [] -> Some a
   | _, _ -> None
 
@@ -108,7 +108,7 @@ let instantiation :
     | Some(vs, map) ->
         if LibMeta.occurs m c u then None
         else let u = Eval.simplify (Ctxt.to_let c (sym_to_var map u)) in
-          Some (Logger.set_debug_in false 'm' (Bindlib.bind_mvar vs) u)
+          Some (Logger.set_debug_in false 'm' (bind_mvar vs) u)
 
 (** Checking type or not during meta instanciation. *)
 let do_type_check = Stdlib.ref true
@@ -120,7 +120,7 @@ let instantiate : problem -> ctxt -> meta -> term array -> term -> bool =
   fun p c m ts u ->
   if Logger.log_enabled () then log "try instantiate";
   match instantiation c m ts u with
-  | Some b when Bindlib.is_closed_tmbinder b ->
+  | Some b when is_closed_tmbinder b ->
       let do_instantiate() =
         if Logger.log_enabled () then log (red "%a ≔ %a") meta m term u;
         LibMeta.set p m b;
@@ -217,12 +217,12 @@ let imitate_inj :
         | Prod(a,b) ->
             let m = LibMeta.fresh p (Env.to_prod env a) k in
             let u = mk_Meta (m,vs) in
-            build (i-1) (u::acc) (Bindlib.subst b u)
+            build (i-1) (u::acc) (subst b u)
         | _ -> raise Cannot_imitate
       in build (List.length ts) [] !(s.sym_type)
     in
     if Logger.log_enabled () then log (red "%a ≔ %a") meta m term t;
-    LibMeta.set p m (Bindlib.bind_mvar vars t); true
+    LibMeta.set p m (bind_mvar vars t); true
   with Cannot_imitate | Invalid_argument _ -> false
 
 (** [imitate_lam_cond h ts] tells whether [ts] is headed by a variable not
@@ -232,7 +232,7 @@ let imitate_lam_cond : term -> term list -> bool = fun h ts ->
   | [] -> false
   | e :: _ ->
       match unfold e with
-      | Vari x -> not (Bindlib.occur x h)
+      | Vari x -> not (occur x h)
       | _ -> false
 
 (** For a problem of the form [Appl(m[ts],[Vari x;_]) ≡ _], where [m] is a
@@ -274,15 +274,15 @@ let imitate_lam : problem -> ctxt -> meta -> unit = fun p c m ->
          let tm3 = Env.to_prod env' mk_Type in
          let m3 = LibMeta.fresh p tm3 (n+1) in
          let b = mk_Meta (m3, Env.to_terms env') in
-         let u = mk_Prod (a, Bindlib.bind_var x b) in
+         let u = mk_Prod (a, bind_var x b) in
          add_constr p (Env.to_ctxt env, u, t);
          x, a, env', b
     in
     let tm1 = Env.to_prod env' b in
     let m1 = LibMeta.fresh p tm1 (n+1) in
     let u1 = mk_Meta (m1, Env.to_terms env') in
-    let xu1 = mk_Abst (a, Bindlib.bind_var x u1) in
-    let v = Bindlib.bind_mvar (Env.vars env) xu1 in
+    let xu1 = mk_Abst (a, bind_var x u1) in
+    let v = bind_mvar (Env.vars env) xu1 in
     if Logger.log_enabled () then
       log (red "%a ≔ %a") meta m term xu1;
     LibMeta.set p m v
@@ -373,11 +373,11 @@ let solve : problem -> unit = fun p ->
       (* [ts1] and [ts2] must be empty because of typing or normalization. *)
       if Logger.log_enabled () then log "decompose";
       add_constr p (c,a1,a2);
-      let (x,b1,b2) = Bindlib.unbind2 b1 b2 in
+      let (x,b1,b2) = unbind2 b1 b2 in
       let c' = (x,a1,None)::c in
       add_constr p (c',b1,b2);
 
-  | Vari x1, Vari x2 when Bindlib.eq_vars x1 x2 ->
+  | Vari x1, Vari x2 when eq_vars x1 x2 ->
       if List.same_length ts1 ts2 then decompose p c ts1 ts2
       else error t1 t2
 
@@ -430,11 +430,11 @@ let solve : problem -> unit = fun p ->
       (* [ts1] and [ts2] must be empty because of typing or normalization. *)
       if Logger.log_enabled () then log "decompose";
       add_constr p (c,a1,a2);
-      let (x,b1,b2) = Bindlib.unbind2 b1 b2 in
+      let (x,b1,b2) = unbind2 b1 b2 in
       let c' = (x,a1,None)::c in
       add_constr p (c',b1,b2)
 
-  | Vari x1, Vari x2 when Bindlib.eq_vars x1 x2 ->
+  | Vari x1, Vari x2 when eq_vars x1 x2 ->
       if List.same_length ts1 ts2 then decompose p c ts1 ts2
       else error t1 t2
 

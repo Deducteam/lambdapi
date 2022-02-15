@@ -46,7 +46,7 @@ let add_axiom : Sig_state.t -> popt -> meta -> Sig_state.t =
   let meta_value =
     let vars = Array.init m.meta_arity (new_tvar_ind "x") in
     let ax = add_args (mk_Symb sym) (List.map mk_Vari (Array.to_list vars)) in
-    Bindlib.bind_mvar vars ax
+    bind_mvar vars ax
   in
   LibMeta.set (new_problem()) m meta_value; ss
 
@@ -112,7 +112,7 @@ let tac_refine :
   | Some t ->
   if Logger.log_enabled () then
     log_tact (Color.red "%a ≔ %a") meta gt.goal_meta term t;
-  LibMeta.set p gt.goal_meta (Bindlib.bind_mvar (Env.vars gt.goal_hyps) t);
+  LibMeta.set p gt.goal_meta (bind_mvar (Env.vars gt.goal_hyps) t);
   (* Convert the metas and constraints of [p] not in [gs] into new goals. *)
   if Logger.log_enabled () then log_tact "%a" problem p;
   tac_solve pos {ps with proof_goals = Proof.add_goals_of_problem p gs}
@@ -162,7 +162,7 @@ let tac_induction : popt -> proof_state -> goal_typ -> goal list
 let count_products : ctxt -> term -> int = fun c ->
   let rec count acc t =
     match Eval.whnf c t with
-    | Prod(_,b) -> count (acc + 1) (Bindlib.subst b mk_Kind)
+    | Prod(_,b) -> count (acc + 1) (subst b mk_Kind)
     | _ -> acc
   in count 0
 

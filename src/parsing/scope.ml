@@ -136,7 +136,7 @@ let fresh_patt : lhs_data -> string option -> term array -> term =
       mk_Patt (Some i, string_of_int i, ts)
 
 (** [is_invalid_bindlib_id s] says whether [s] can be safely used as variable
-   name in Bindlib. Indeed, because Bindlib converts any suffix consisting of
+   name in  Indeed, because converts any suffix consisting of
    a sequence of digits into an integer, and increment it, we cannot use as
    bound variable names escaped identifiers or regular identifiers ending with
    a non-negative integer with leading zeros. *)
@@ -218,7 +218,7 @@ and scope_parsed :
     | P_Wrap e -> get_impl e
     | P_Iden (_, false) ->
         (* We avoid unboxing if [h] is not closed (and hence not a symbol). *)
-        if Bindlib.is_closed h then
+        if is_closed h then
           match h with
           | Symb s -> s.sym_impl
           | _ -> []
@@ -309,7 +309,7 @@ and scope_binder : ?typ:bool -> int -> mode -> sig_state ->
       | None::idopts ->
           let v = new_tvar "_" in
           let t = aux env idopts in
-          cons (a, Bindlib.bind_var v t)
+          cons (a, bind_var v t)
       | Some {elt=id;pos}::idopts ->
           if is_invalid_bindlib_id id then
             fatal pos "\"%s\": Escaped identifiers or regular identifiers \
@@ -318,7 +318,7 @@ and scope_binder : ?typ:bool -> int -> mode -> sig_state ->
           let v = new_tvar id in
           let env = Env.add id v a None env in
           let t = aux env idopts in
-          cons (a, Bindlib.bind_var v t)
+          cons (a, bind_var v t)
     in aux env idopts
   in
   scope_params_list env params_list
@@ -386,7 +386,7 @@ and scope_head :
             (* Check that [vs] are distinct variables. *)
             for i = 0 to Array.length vs - 2 do
               for j = i + 1 to Array.length vs - 1 do
-                if Bindlib.eq_vars vs.(i) vs.(j) then
+                if eq_vars vs.(i) vs.(j) then
                   fatal ts.(j).pos
                     "Variable %a appears more than once \
                      in the environment of a pattern variable."
@@ -471,9 +471,9 @@ and scope_head :
       let t = scope_binder (k+1) md ss mk_Abst env xs (Some(t)) in
       let v = new_tvar x.elt in
       let u = scope ~typ (k+1) md ss (Env.add x.elt v a (Some(t)) env) u in
-      if not (Bindlib.occur v u) then
+      if not (occur v u) then
         wrn x.pos "Useless let-binding (%s is not bound)." x.elt;
-      mk_LLet (a, t, Bindlib.bind_var v u)
+      mk_LLet (a, t, bind_var v u)
   | (P_LLet(_), M_LHS(_)) ->
       fatal t.pos "Let-bindings are not allowed in a LHS."
   | (P_LLet(_), M_Patt) ->
@@ -650,18 +650,18 @@ let scope_rw_patt : sig_state -> env -> p_rw_patt -> (term, tbinder) rw_patt =
   | Rw_InIdInTerm(x,t) ->
       let v = new_tvar x.elt in
       let t = scope_pattern ss ((x.elt,(v, mk_Kind, None))::env) t in
-      Rw_InIdInTerm(Bindlib.bind_var v t)
+      Rw_InIdInTerm(bind_var v t)
   | Rw_IdInTerm(x,t) ->
       let v = new_tvar x.elt in
       let t = scope_pattern ss ((x.elt,(v, mk_Kind, None))::env) t in
-      Rw_IdInTerm(Bindlib.bind_var v t)
+      Rw_IdInTerm(bind_var v t)
   | Rw_TermInIdInTerm(u,(x,t)) ->
       let u = scope_pattern ss env u in
       let v = new_tvar x.elt in
       let t = scope_pattern ss ((x.elt,(v, mk_Kind, None))::env) t in
-      Rw_TermInIdInTerm(u, Bindlib.bind_var v t)
+      Rw_TermInIdInTerm(u, bind_var v t)
   | Rw_TermAsIdInTerm(u,(x,t)) ->
       let u = scope_pattern ss env u in
       let v = new_tvar x.elt in
       let t = scope_pattern ss ((x.elt,(v, mk_Kind, None))::env) t in
-      Rw_TermAsIdInTerm(u, Bindlib.bind_var v t)
+      Rw_TermAsIdInTerm(u, bind_var v t)

@@ -48,8 +48,8 @@ let gen_safe_prefixes : inductive -> string * string * string =
     let rec add_name_from_type set t =
       match unfold t with
       | Prod(_,b) ->
-        let x,b = Bindlib.unbind b in
-        add_name_from_type (StrSet.add (Bindlib.name_of x) set) b
+        let x,b = unbind b in
+        add_name_from_type (StrSet.add (name_of x) set) b
       | _ -> set
     in
     let add_name_from_sym set sym =
@@ -89,7 +89,7 @@ let ind_typ_with_codom :
     | (Prod(a,b), _) ->
         let name = Stdlib.(incr i; x_str ^ string_of_int (!i)) in
         let (x,b) = LibTerm.unbind_name name b in
-        mk_Prod (a, Bindlib.bind_var x (aux (x::xs) b))
+        mk_Prod (a, bind_var x (aux (x::xs) b))
     | _ -> fatal pos "The type of %a is not supported" sym ind_sym
   in
   aux (List.map (fun (_,(v,_,_)) -> v) env) a
@@ -123,7 +123,7 @@ let create_ind_pred_map :
     (* predicate conclusion *)
     let codom ts =
       let x = new_tvar x_str in
-      let t = Bindlib.bind_var x
+      let t = bind_var x
           (prf_of c ind_var (List.remove_heads arity ts) (mk_Vari x)) in
       mk_Prod (add_args (mk_Symb ind_sym) ts, t)
     in
@@ -255,10 +255,10 @@ let gen_rec_types :
     in
     let acc_rec_dom _ _ _ = () in
     let rec_dom t x v next =
-      mk_Prod (t, Bindlib.bind_var x (mk_Impl (v, next)))
+      mk_Prod (t, bind_var x (mk_Impl (v, next)))
     in
     let acc_nonrec_dom _ _ = () in
-    let nonrec_dom t x next = mk_Prod (t, Bindlib.bind_var x next) in
+    let nonrec_dom t x next = mk_Prod (t, bind_var x next) in
     let codom xs _ p ts =
       prf_of c p (List.remove_heads n ts)
         (add_args (mk_Symb cons_sym) (List.rev_map mk_Vari xs))
@@ -277,7 +277,7 @@ let gen_rec_types :
     in
     let rec_typ = List.fold_right add_clauses_ind ind_list d.ind_conclu in
     let add_quantifier t (_,d) =
-      mk_Prod (d.ind_type, Bindlib.bind_var d.ind_var t) in
+      mk_Prod (d.ind_type, bind_var d.ind_var t) in
     let rec_typ = List.fold_left add_quantifier rec_typ ind_pred_map in
     let rec_typ = Env.to_prod env rec_typ in
     rec_typ
@@ -322,7 +322,7 @@ let iter_rec_rules :
     let head = P.appl_wild head n in
     (* add a predicate variable for each inductive type *)
     let head =
-      let apred (_,d) t = apatt t (Bindlib.name_of d.ind_var) in
+      let apred (_,d) t = apatt t (name_of d.ind_var) in
       List.fold_right apred ind_pred_map head
     in
     (* add a case variable for each constructor *)
@@ -347,7 +347,7 @@ let iter_rec_rules :
       let env_appl t env =
         List.fold_right (fun (_,(x,_,_)) t -> P.appl t (P.var x)) env t in
       let add_abst t (_,(x,_,_)) =
-        P.abst (Some (Pos.none (Bindlib.name_of x))) t in
+        P.abst (Some (Pos.none (name_of x))) t in
       List.fold_left add_abst (arec s ts (env_appl x env)) env
     in
     let acc_rec_dom acc x aux = P.appl (P.appl acc x) aux in

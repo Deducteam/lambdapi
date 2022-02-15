@@ -81,7 +81,7 @@ let occurs : int -> term -> bool = fun i ->
     | Patt(Some j,_,_) -> i=j
     | Vari _ | Symb _ -> false
     | Appl(u,v) -> occ u || occ v
-    | Abst(a,b) | Prod(a,b) -> occ a || let _,b = Bindlib.unbind b in occ b
+    | Abst(a,b) | Prod(a,b) -> occ a || let _,b = unbind b in occ b
     | Type -> assert false
     | Kind -> assert false
     | Meta _ -> assert false
@@ -111,7 +111,7 @@ let rec shift : term -> term = fun t ->
   | Db _ -> assert false
   | LLet(a,t,b) -> mk_LLet (shift a, shift t, shift_binder b)
 and shift_binder b =
-  let x, t = Bindlib.unbind b in Bindlib.bind_var x (shift t)
+  let x, t = unbind b in bind_var x (shift t)
 
 (** Type for pattern variable substitutions. *)
 type subs = term IntMap.t
@@ -133,14 +133,14 @@ let apply_subs : subs -> term -> term = fun s t ->
     | Vari _ | Symb _ | Type | Kind -> t
     | Appl(u,v) -> mk_Appl (apply_subs u, apply_subs v)
     | Abst(a,b) ->
-      let x,b = Bindlib.unbind b in
-      mk_Abst (apply_subs a, Bindlib.bind_var x (apply_subs b))
+      let x,b = unbind b in
+      mk_Abst (apply_subs a, bind_var x (apply_subs b))
     | Prod(a,b) ->
-      let x,b = Bindlib.unbind b in
-      mk_Prod (apply_subs a, Bindlib.bind_var x (apply_subs b))
+      let x,b = unbind b in
+      mk_Prod (apply_subs a, bind_var x (apply_subs b))
     | LLet(a,t,b) ->
-      let x,b = Bindlib.unbind b in
-      mk_LLet (apply_subs a, apply_subs t, Bindlib.bind_var x (apply_subs b))
+      let x,b = unbind b in
+      mk_LLet (apply_subs a, apply_subs t, bind_var x (apply_subs b))
     | Meta(m,ts) -> mk_Meta (m, Array.map apply_subs ts)
     | Db _ -> assert false
     | TRef _ -> assert false
@@ -164,7 +164,7 @@ let iter_subterms_from_pos : subterm_pos -> iter =
     | Patt _
     | Vari _ -> iter_args p t
     | Abst(a,b)
-    | Prod(a,b) -> iter (0::p) a; let _,b = Bindlib.unbind b in iter (1::p) b
+    | Prod(a,b) -> iter (0::p) a; let _,b = unbind b in iter (1::p) b
     | Appl _ -> assert false
     | Type -> assert false
     | Kind -> assert false
@@ -200,7 +200,7 @@ let iter_subterms : iter = fun pos f t ->
   | Abst(a,b)
   | Prod(a,b) ->
     iter_subterms_from_pos [0] pos f a;
-    let _,b = Bindlib.unbind b in iter_subterms_from_pos [1] pos f b;
+    let _,b = unbind b in iter_subterms_from_pos [1] pos f b;
   | Appl(a,b) ->
     iter_subterms_from_pos [0] pos f a; iter_subterms_from_pos [1] pos f b;
   | Type -> assert false
@@ -229,11 +229,11 @@ let unif : Pos.popt -> term -> term -> term IntMap.t option =
       | Appl(a,b), Appl(c,d) -> unif s ((a,c)::(b,d)::l)
       | Abst(a,b), Abst(c,d)
       | Prod(a,b), Prod(c,d) ->
-        let x,b = Bindlib.unbind b in
-        let d = Bindlib.subst d (mk_Vari x) in
+        let x,b = unbind b in
+        let d = subst d (mk_Vari x) in
         unif s ((a,c)::(b,d)::l)
       | Vari x, Vari y ->
-        if Bindlib.eq_vars x y then unif s l else raise NotUnifiable
+        if eq_vars x y then unif s l else raise NotUnifiable
       | Patt(None,_,_), _
       | _, Patt(None,_,_) -> assert false
       | Patt(Some i,_,ts), u
@@ -400,8 +400,8 @@ let typability_constraints : Pos.popt -> term -> subs option = fun pos t ->
     | Appl(a,b) -> mk_Appl_not_canonical(patt_to_meta a, patt_to_meta b)
     | Symb _ | Vari _ -> t
     | Abst(a,b) ->
-      let x,b = Bindlib.unbind b in
-      mk_Abst(patt_to_meta a, Bindlib.bind_var x (patt_to_meta b))
+      let x,b = unbind b in
+      mk_Abst(patt_to_meta a, bind_var x (patt_to_meta b))
     | _ -> assert false
   in
   let t = patt_to_meta t in
@@ -415,7 +415,7 @@ let typability_constraints : Pos.popt -> term -> subs option = fun pos t ->
       let i,n = MetaMap.find m !m2p in
       let s = create_sym (Sign.current_path())
           Public Defin Eager false (Pos.none n) mk_Kind [] in
-      let t = Bindlib.bind_mvar [||] (mk_Symb s) in
+      let t = bind_mvar [||] (mk_Symb s) in
       Timed.(m.meta_value := Some t);
       s2p := SymMap.add s i !s2p
     with Not_found -> ()

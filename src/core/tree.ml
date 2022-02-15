@@ -521,7 +521,7 @@ module CM = struct
           then Some({r with c_lhs = insert (Array.of_list args)})
           else None
       | Vari(x), Vari(y) ->
-          if lenh = lenp && Bindlib.eq_vars x y
+          if lenh = lenp && eq_vars x y
           then Some({r with c_lhs = insert (Array.of_list args)})
           else None
       | _      , Patt(_) ->
@@ -592,7 +592,7 @@ module CM = struct
       | t        ->
           let (a, b) = get t in
           assert (pargs = []) ; (* Patterns in β-normal form *)
-          let b = Bindlib.subst b (mk_Vari v) in
+          let b = subst b (mk_Vari v) in
           Some({r with c_lhs = insert r [|a; b|]})
 
     in

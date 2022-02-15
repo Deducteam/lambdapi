@@ -4,7 +4,7 @@ open Lplib
 open Term
 
 (** Type of an environment, used in scoping to associate names to
-    corresponding Bindlib variables and types. Note that it cannot be
+    corresponding variables and types. Note that it cannot be
     implemented by a map as the order is important. The structure is similar
     to then one of {!type:Term.ctxt}, a tuple [(x,a,t)] is a variable [x],
     its type [a] and possibly its definition [t] *)
@@ -20,7 +20,7 @@ let empty : env = []
 let add : string -> tvar -> term -> term option -> env -> env =
   fun n v a t env -> (n, (v, a, t)) :: env
 
-(** [find n env] returns the Bindlib variable associated to the variable  name
+(** [find n env] returns the variable associated to the variable  name
     [n] in the environment [env]. If none is found, [Not_found] is raised. *)
 let find : string -> env -> tvar = fun n env ->
   let (x,_,_) = List.assoc n env in x
@@ -34,7 +34,7 @@ let mem : string -> env -> bool = List.mem_assoc
     you obtain a term of the form [Πx1:a1,..,Πxn:an,t]. *)
 let to_prod : env -> term -> term = fun env t ->
   let add_prod t (_,(x,a,u)) =
-    let b = Bindlib.bind_var x t in
+    let b = bind_var x t in
     match u with
     | Some u -> mk_LLet (a, u, b)
     | None -> mk_Prod (a, b)
@@ -48,14 +48,14 @@ let to_prod : env -> term -> term = fun env t ->
     [to_abst [(xn,an,None);..;(x1,a1,None)] t = λx1:a1,..,λxn:an,t]. *)
 let to_abst : env -> term -> term = fun env t ->
   let add_abst t (_,(x,a,u)) =
-    let b = Bindlib.bind_var x t in
+    let b = bind_var x t in
     match u with
     | Some u -> mk_LLet (a, u, b)
     | None -> mk_Abst (a, b)
   in
   List.fold_left add_abst t env
 
-(** [vars env] extracts the array of the {e not defined} Bindlib variables in
+(** [vars env] extracts the array of the {e not defined} variables in
     [env]. Note that the order is reversed: [vars [(xn,an);..;(x1,a1)] =
     [|x1;..;xn|]]. *)
 let vars : env -> tvar array = fun env ->
@@ -116,8 +116,8 @@ let of_prod_nth : ctxt -> int -> term -> env * term = fun c n t ->
   let rec build_env i env t =
     if i >= n then env, t
     else match_prod c t (fun a b ->
-             let x, b = Bindlib.unbind b in
-             build_env (i+1) (add (Bindlib.name_of x) x a None env) b)
+             let x, b = unbind b in
+             build_env (i+1) (add (name_of x) x a None env) b)
   in build_env 0 [] t
 
 (** [of_prod_using c xs t] is similar to [of_prod s c n t] where [n =
@@ -131,7 +131,7 @@ let of_prod_using : ctxt -> tvar array -> term -> env * term = fun c xs t ->
     if i >= n then env, t
     else match_prod c t (fun a b ->
              let xi = xs.(i) in
-             let name = Bindlib.name_of xi in
+             let name = name_of xi in
              let env = add name xi a None env in
-             build_env (i+1) env (Bindlib.subst b (mk_Vari xi)))
+             build_env (i+1) env (subst b (mk_Vari xi)))
   in build_env 0 [] t

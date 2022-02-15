@@ -106,7 +106,7 @@ let link : t -> unit = fun sign ->
       | Wild -> assert false
       | TRef _ -> assert false
     and link_binder b =
-      let (x,t) = Bindlib.unbind b in Bindlib.bind_var x (link_term t)
+      let (x,t) = unbind b in bind_var x (link_term t)
     in link_term
   in
   let link_lhs = link_term mk_Appl_not_canonical
@@ -178,7 +178,7 @@ let unlink : t -> unit = fun sign ->
     | Vari _
     | Type
     | Kind -> ()
-  and unlink_binder b = unlink_term (snd (Bindlib.unbind b)) in
+  and unlink_binder b = unlink_term (snd (unbind b)) in
   let unlink_rule r =
     List.iter unlink_term r.lhs;
     unlink_term r.rhs
@@ -283,7 +283,7 @@ let read : string -> t = fun fname ->
     | Wild -> assert false
     | Meta _ -> assert false
     | Plac _ -> assert false
-  and reset_binder b = reset_term (snd (Bindlib.unbind b)) in
+  and reset_binder b = reset_term (snd (unbind b)) in
   let reset_rule r =
     List.iter reset_term r.lhs;
     reset_term r.rhs

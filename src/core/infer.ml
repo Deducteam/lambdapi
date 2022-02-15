@@ -38,7 +38,7 @@ let coerce pb c t a b = unif pb c a b; (t, false)
 
 (** NOTE: functions {!val:type_enforce}, {!val:force} and {!val:infer}
     return a boolean which is true iff the typechecked term has been
-    modified. It allows to bypass reconstruction of some Bindlib terms (which
+    modified. It allows to bypass reconstruction of some terms (which
     call [lift |> bind_var x |> unbox]). It reduces the type checking time of
     Holide by 21%. *)
 
@@ -109,7 +109,7 @@ and infer_aux : problem -> ctxt -> term -> term * term * bool =
               let (tsi, cuf) = force pb c ts.(i) ai in
               ts.(i) <- tsi;
               Stdlib.(cu := !cu || cuf);
-              let b = Bindlib.subst b ts.(i) in
+              let b = subst b ts.(i) in
               ref_esubst (i + 1) b
           | _ ->
               (* Meta type must be a product of arity greater or equal
@@ -124,7 +124,7 @@ and infer_aux : problem -> ctxt -> term -> term * term * bool =
       (* Check that [t] is of type [t_ty], and refine it *)
       let t, cu_t = force pb c t t_ty in
       (* Unbind [u] and get new context with [x: t_ty ≔ t] *)
-      let (x, u) = Bindlib.unbind u in
+      let (x, u) = unbind u in
       let c = (x, t_ty, Some t)::c in
       (* Infer type of [u'] and refine it. *)
       let u, u_ty, cu_u = infer pb c u in
@@ -135,12 +135,12 @@ and infer_aux : problem -> ctxt -> term -> term * term * bool =
               term u;
             raise NotTypable
         | _ -> () );
-      let u_ty = Bindlib.bind_var x u_ty in
+      let u_ty = bind_var x u_ty in
       let top_ty = mk_LLet (t_ty, t, u_ty) in
       let cu = cu_t_ty || cu_t || cu_u in
       let top =
         if cu then
-          let u = Bindlib.bind_var x u in
+          let u = bind_var x u in
           mk_LLet(t_ty, t, u)
         else top
       in
@@ -148,15 +148,15 @@ and infer_aux : problem -> ctxt -> term -> term * term * bool =
   | Abst (dom, b) as top ->
       (* Domain must by of type Type (and not Kind) *)
       let dom, cu_dom = force pb c dom mk_Type in
-      let (x, b) = Bindlib.unbind b in
+      let (x, b) = unbind b in
       let c = (x,dom,None)::c in
       let b, range, cu_b = infer pb c b in
-      let range = Bindlib.bind_var x range in
+      let range = bind_var x range in
       let top_ty = mk_Prod (dom, range) in
       let cu = cu_b || cu_dom in
       let top =
         if cu then
-          let b = Bindlib.bind_var x b in
+          let b = bind_var x b in
           mk_Abst (dom, b)
         else top
       in
@@ -164,13 +164,13 @@ and infer_aux : problem -> ctxt -> term -> term * term * bool =
   | Prod (dom, b) as top ->
       (* Domain must by of type Type (and not Kind) *)
       let dom, cu_dom = force pb c dom mk_Type in
-      let (x, b) = Bindlib.unbind b in
+      let (x, b) = unbind b in
       let c = (x,dom,None)::c in
       let b, b_s, cu_b = type_enforce pb c b in
       let cu = cu_b || cu_dom in
       let top =
         if cu then
-          let b = Bindlib.bind_var x b in
+          let b = bind_var x b in
           mk_Prod (dom, b)
         else top
       in
@@ -178,7 +178,7 @@ and infer_aux : problem -> ctxt -> term -> term * term * bool =
   | Appl (t, u) as top -> (
       let t, t_ty, cu_t = infer pb c t in
       let return m t u range =
-        let ty = Bindlib.subst range u and cu = cu_t || m in
+        let ty = subst range u and cu = cu_t || m in
         if cu then (mk_Appl (t, u), ty, cu) else (top, ty, cu)
       in
       match Eval.whnf c t_ty with

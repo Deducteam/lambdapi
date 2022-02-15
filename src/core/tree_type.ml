@@ -18,7 +18,7 @@ module TC =
       | Vari of int
       (** A bound  variable identified by a ({e  branch}-wise) unique integer.
           These variables  are used with  a bidirectional map  (implemented as
-          two maps) to  a higher order (Bindlib) variable. They  are also used
+          two maps) to  a higher order ( variable. They  are also used
           in the environment builder to refer  to the higher order variables a
           term may depend on. *)
 

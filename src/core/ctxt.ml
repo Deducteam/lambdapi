@@ -8,24 +8,24 @@ open Timed
     appears in it, and
 @raise [Not_found] otherwise. *)
 let type_of : tvar -> ctxt -> term = fun x ctx ->
-  let (_,a,_) = List.find (fun (y,_,_) -> Bindlib.eq_vars x y) ctx in a
+  let (_,a,_) = List.find (fun (y,_,_) -> eq_vars x y) ctx in a
 
 (** [def_of x ctx] returns the definition of [x] in the context [ctx] if it
     appears, and [None] otherwise *)
 let rec def_of : tvar -> ctxt -> ctxt * term option = fun x c ->
   match c with
   | []         -> [], None
-  | (y,_,d)::c -> if Bindlib.eq_vars x y then c,d else def_of x c
+  | (y,_,d)::c -> if eq_vars x y then c,d else def_of x c
 
 (** [mem x ctx] tells whether variable [x] is mapped in the context [ctx]. *)
 let mem : tvar -> ctxt -> bool = fun x ->
-  List.exists (fun (y,_,_) -> Bindlib.eq_vars x y)
+  List.exists (fun (y,_,_) -> eq_vars x y)
 
 (** [to_prod ctx t] builds a product by abstracting over the context [ctx], in
     the term [t]. It returns the number of products as well. *)
 let to_prod : ctxt -> term -> term * int = fun ctx t ->
   let f (t,c) (x,a,v) =
-    let b = Bindlib.bind_var x t in
+    let b = bind_var x t in
     match v with
     | None -> mk_Prod (a, b), c + 1
     | Some v -> mk_LLet (a, v, b), c
@@ -35,14 +35,14 @@ let to_prod : ctxt -> term -> term * int = fun ctx t ->
 (** [to_abst ctx t] builds a sequence of abstractions over the context [ctx],
     in the term [t]. *)
 let to_abst : ctxt -> term -> term = fun ctx t ->
-  let f t (x, a, _) = mk_Abst (a, Bindlib.bind_var x t) in
+  let f t (x, a, _) = mk_Abst (a, bind_var x t) in
   List.fold_left f t ctx
 
 (** [to_let ctx t] adds the defined variables of [ctx] on top of [t]. *)
 let to_let : ctxt -> term -> term = fun ctx t ->
   let f t = function
     | _, _, None -> t
-    | x, a, Some u -> mk_LLet (a, u, Bindlib.bind_var x t)
+    | x, a, Some u -> mk_LLet (a, u, bind_var x t)
   in
   List.fold_left f t ctx
 
@@ -50,7 +50,7 @@ let to_let : ctxt -> term -> term = fun ctx t ->
     [vs]. *)
 let sub : ctxt -> tvar array -> ctxt = fun ctx vs ->
   let f ((x,_,_) as hyp) ctx =
-    if Array.exists (Bindlib.eq_vars x) vs then hyp::ctx else ctx
+    if Array.exists (eq_vars x) vs then hyp::ctx else ctx
   in
   List.fold_right f ctx []
 
@@ -64,7 +64,7 @@ let rec unfold : ctxt -> term -> term = fun ctx t ->
       begin
         match !(m.meta_value) with
         | None    -> t
-        | Some(b) -> unfold ctx (Bindlib.msubst b ts)
+        | Some(b) -> unfold ctx (msubst b ts)
       end
   | TRef(r) ->
       begin

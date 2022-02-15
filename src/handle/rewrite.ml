@@ -33,7 +33,7 @@ let _ =
   let check_t_or_p _ss pos sym =
     let valid =
       match Eval.whnf [] !(sym.sym_type) with
-      | Prod(_, b) -> Eval.eq_modulo [] (snd (Bindlib.unbind b)) mk_Type
+      | Prod(_, b) -> Eval.eq_modulo [] (snd (unbind b)) mk_Type
       | _          -> false
     in
     if not valid then
@@ -60,7 +60,7 @@ let _ =
     let a = new_tvar "a" in
     let term_T_a = mk_Appl (mk_Symb symb_T, mk_Vari a) in
     let impls = mk_Impl (term_T_a, mk_Impl (term_T_a, term_Prop)) in
-    mk_Prod (term_U, Bindlib.bind_var a impls)
+    mk_Prod (term_U, bind_var a impls)
   in
   register_builtin "eq" expected_eq_type;
   let expected_refl_type pos map =
@@ -75,8 +75,8 @@ let _ =
     let appl_eq = mk_Appl (mk_Appl (appl_eq, mk_Vari x), mk_Vari x) in
     let appl = mk_Appl (mk_Symb symb_P, appl_eq) in
     let term_T_a = mk_Appl (mk_Symb symb_T, mk_Vari a) in
-    let prod = mk_Prod (term_T_a, Bindlib.bind_var x appl) in
-    mk_Prod (term_U, Bindlib.bind_var a prod)
+    let prod = mk_Prod (term_T_a, bind_var x appl) in
+    mk_Prod (term_U, bind_var a prod)
   in
   register_builtin "refl" expected_refl_type;
   let expected_eqind_type pos map =
@@ -98,12 +98,12 @@ let _ =
     let term_P_p_y = mk_Appl (term_P, mk_Appl (mk_Vari p, mk_Vari y)) in
     let impl = mk_Impl (term_P_p_y, term_P_p_x) in
     let prod =
-      mk_Prod (mk_Impl (term_T_a, term_Prop), Bindlib.bind_var p impl) in
+      mk_Prod (mk_Impl (term_T_a, term_Prop), bind_var p impl) in
     let eq = add_args term_eq [mk_Vari a; mk_Vari x; mk_Vari y] in
     let impl = mk_Impl (mk_Appl(term_P, eq), prod) in
-    let prod = mk_Prod (term_T_a, Bindlib.bind_var y impl) in
-    let prod = mk_Prod (term_T_a, Bindlib.bind_var x prod) in
-    mk_Prod (term_U, Bindlib.bind_var a prod)
+    let prod = mk_Prod (term_T_a, bind_var y impl) in
+    let prod = mk_Prod (term_T_a, bind_var x prod) in
+    mk_Prod (term_U, bind_var a prod)
   in
   register_builtin "eqind" expected_eqind_type
 
@@ -123,7 +123,7 @@ let get_eq_data :
   let rec get_eq vs t notin_whnf =
     if Logger.log_enabled () then log_rewr "get_eq %a" term t;
     match get_args t with
-    | Prod(_,t), _ -> let v,t = Bindlib.unbind t in get_eq (v::vs) t true
+    | Prod(_,t), _ -> let v,t = unbind t in get_eq (v::vs) t true
     | p, [u] when is_symb cfg.symb_P p ->
       begin
         let u = Eval.whnf ~tags:[`NoRw; `NoExpand] [] u in
@@ -187,7 +187,7 @@ let matches : term -> term -> bool =
         let add_args l =
           List.fold_left2 (fun l pi ti -> (pi,ti)::l) l ps ts in
         match hp, ht with
-        | Vari x, Vari y when Bindlib.eq_vars x y -> eq (add_args l)
+        | Vari x, Vari y when eq_vars x y -> eq (add_args l)
         | Symb f, Symb g when f == g -> eq (add_args l)
         | _ ->
           if Logger.log_enabled() then log_rewr "distinct heads";
@@ -209,7 +209,7 @@ let matches : term -> term -> bool =
 let matching_subs : to_subst -> term -> term array option = fun (xs,p) t ->
   (* We replace [xs] by fresh [TRef]'s. *)
   let ts = Array.map (fun _ -> mk_TRef(ref None)) xs in
-  let p = Bindlib.msubst (Bindlib.bind_mvar xs p) ts in
+  let p = msubst (bind_mvar xs p) ts in
   if matches p t then Some(Array.map unfold ts) else None
 
 (** [find_subst (xs,p) t] tries to find the first instance of a subterm of [t]
@@ -265,14 +265,14 @@ let bind_pattern : term -> term -> tbinder =  fun p t ->
     match unfold t with
     | Appl(t,u) -> mk_Appl (replace t, replace u)
     | Prod(a,b) ->
-        let x,b = Bindlib.unbind b in
-        mk_Prod (replace a, Bindlib.bind_var x (replace b))
+        let x,b = unbind b in
+        mk_Prod (replace a, bind_var x (replace b))
     | Abst(a,b) ->
-        let x,b = Bindlib.unbind b in
-        mk_Abst (replace a, Bindlib.bind_var x (replace b))
+        let x,b = unbind b in
+        mk_Abst (replace a, bind_var x (replace b))
     | LLet(typ, def, body) ->
-        let x, body = Bindlib.unbind body in
-        mk_LLet (replace typ, replace def, Bindlib.bind_var x (replace body))
+        let x, body = unbind body in
+        mk_LLet (replace typ, replace def, bind_var x (replace body))
     | Meta(m,ts) -> mk_Meta (m, Array.map replace ts)
     | Db _ -> assert false
     | Wild -> assert false
@@ -281,7 +281,7 @@ let bind_pattern : term -> term -> tbinder =  fun p t ->
     | Plac _ -> assert false
     | _ -> t
   in
-  Bindlib.bind_var z (replace t)
+  bind_var z (replace t)
 
 (** [swap cfg a r l t] returns a term of type [P (eq a l r)] from a term [t]
    of type [P (eq a r l)]. *)
@@ -291,7 +291,7 @@ let swap : eq_config -> term -> term -> term -> term -> term =
   let pred =
     let x = new_tvar "x" in
     let pred = add_args (mk_Symb cfg.symb_eq) [a; l; mk_Vari x] in
-    mk_Abst(mk_Appl(mk_Symb cfg.symb_T, a), Bindlib.bind_var x pred)
+    mk_Abst(mk_Appl(mk_Symb cfg.symb_T, a), bind_var x pred)
   in
   (* We build the proof term. *)
   let refl_a_l = add_args (mk_Symb cfg.symb_refl) [a; l] in
@@ -334,7 +334,7 @@ let rewrite : Sig_state.t -> problem -> popt -> goal_typ -> bool ->
   let (t, l, r) = if l2r then (t, l, r) else (swap cfg a l r t, r, l) in
 
   (* Bind the variables in this new witness. *)
-  let bound = let bind = Bindlib.bind_mvar vars in bind t, bind l, bind r in
+  let bound = let bind = bind_mvar vars in bind t, bind l, bind r in
 
   (* Extract the term from the goal type (get “u” from “P u”). *)
   let g_term =
@@ -357,9 +357,9 @@ let rewrite : Sig_state.t -> problem -> popt -> goal_typ -> bool ->
                 term g_term term l
         in
         (* Build the required data from that substitution. *)
-        let (t, l, r) = Bindlib.msubst3 bound sigma in
+        let (t, l, r) = msubst3 bound sigma in
         let pred_bind = bind_pattern l g_term in
-        (pred_bind, Bindlib.subst pred_bind r, t, l, r)
+        (pred_bind, subst pred_bind r, t, l, r)
 
     (* Basic patterns. *)
     | Some(Rw_Term(p)) ->
@@ -380,9 +380,9 @@ let rewrite : Sig_state.t -> problem -> popt -> goal_typ -> bool ->
                 term match_p term l
         in
         (* Build the data from the substitution. *)
-        let (t, l, r) = Bindlib.msubst3 bound sigma in
+        let (t, l, r) = msubst3 bound sigma in
         let pred_bind = bind_pattern l g_term in
-        (pred_bind, Bindlib.subst pred_bind r, t, l, r)
+        (pred_bind, subst pred_bind r, t, l, r)
 
     (* Nested patterns. *)
     | Some(Rw_InTerm(p)) ->
@@ -403,14 +403,14 @@ let rewrite : Sig_state.t -> problem -> popt -> goal_typ -> bool ->
                 term match_p term l
         in
         (* Build the data from the substitution. *)
-        let (t, l, r) = Bindlib.msubst3 bound sigma in
+        let (t, l, r) = msubst3 bound sigma in
         let p_x = bind_pattern l match_p in
-        let p_r = Bindlib.subst p_x r in
+        let p_r = subst p_x r in
         let pred_bind = bind_pattern match_p g_term in
-        let new_term = Bindlib.subst pred_bind p_r in
-        let (x, p_x) = Bindlib.unbind p_x in
-        let pred = Bindlib.subst pred_bind p_x in
-        let pred_bind = Bindlib.bind_var x pred in
+        let new_term = subst pred_bind p_r in
+        let (x, p_x) = unbind p_x in
+        let pred = subst pred_bind p_x in
+        let pred_bind = bind_var x pred in
         (pred_bind, new_term, t, l, r)
 
     | Some(Rw_IdInTerm(p)) ->
@@ -428,7 +428,7 @@ let rewrite : Sig_state.t -> problem -> popt -> goal_typ -> bool ->
                    the subterms where a rewrite happens. *)
         (* 5 - The new goal [new_term] is constructed by substituting [r_pat]
                in [pred_bind_l]. *)
-        let (id,p) = Bindlib.unbind p in
+        let (id,p) = unbind p in
         let p_refs = replace_wild_by_tref p in
         let id_val =
           match find_subst ([|id|],p_refs) g_term with
@@ -437,10 +437,10 @@ let rewrite : Sig_state.t -> problem -> popt -> goal_typ -> bool ->
               fatal pos "The pattern [%a] does not match [%a]."
                 term p term l
         in
-        let pat = Bindlib.bind_var id p_refs in
+        let pat = bind_var id p_refs in
         (* The LHS of the pattern, i.e. the pattern with id replaced by *)
         (* id_val. *)
-        let pat_l = Bindlib.subst pat id_val in
+        let pat_l = subst pat id_val in
 
         (* This must match with the LHS of the equality proof we use. *)
         let sigma =
@@ -454,11 +454,11 @@ let rewrite : Sig_state.t -> problem -> popt -> goal_typ -> bool ->
         (* Build t, l, using the substitution we found. Note that r  *)
         (* corresponds to the value we get by applying rewrite to *)
         (* id val. *)
-        let (t,l,r) = Bindlib.msubst3 bound sigma in
+        let (t,l,r) = msubst3 bound sigma in
 
         (* The RHS of the pattern, i.e. the pattern with id replaced *)
         (* by the result of rewriting id_val. *)
-        let pat_r = Bindlib.subst pat r in
+        let pat_r = subst pat r in
 
         (* Build the predicate, identifying all occurrences of pat_l *)
         (* substituting them, first with pat_r, for the new goal and *)
@@ -466,12 +466,12 @@ let rewrite : Sig_state.t -> problem -> popt -> goal_typ -> bool ->
         let pred_bind_l = bind_pattern pat_l g_term in
 
         (* This will be the new goal. *)
-        let new_term = Bindlib.subst pred_bind_l pat_r in
+        let new_term = subst pred_bind_l pat_r in
 
         (* [l_x] is the pattern with [id] replaced by the variable X *)
         (* that we use for building the predicate. *)
-        let (x, l_x) = Bindlib.unbind pat in
-        let pred_bind = Bindlib.bind_var x (Bindlib.subst pred_bind_l l_x) in
+        let (x, l_x) = unbind pat in
+        let pred_bind = bind_var x (subst pred_bind_l l_x) in
         (pred_bind, new_term, t, l, r)
 
     (* Combinational patterns. *)
@@ -483,7 +483,7 @@ let rewrite : Sig_state.t -> problem -> popt -> goal_typ -> bool ->
            occurrences of the first instance of [p] in [g_term] we rewrite all
            occurrences of the first instance of [s] in the subterm of [p] that
            was matched with the identifier. *)
-        let (id,p) = Bindlib.unbind p in
+        let (id,p) = unbind p in
         let p_refs = replace_wild_by_tref p in
         let id_val =
           match find_subst ([|id|],p_refs) g_term with
@@ -497,8 +497,8 @@ let rewrite : Sig_state.t -> problem -> popt -> goal_typ -> bool ->
         let id_val = id_val.(0) in
         (* [pat] is the full value of the pattern, with the wildcards now
            replaced by subterms of the goal and [id]. *)
-        let pat = Bindlib.bind_var id p_refs in
-        let pat_l = Bindlib.subst pat id_val in
+        let pat = bind_var id p_refs in
+        let pat_l = subst pat id_val in
 
         (* We then try to match the wildcards in [s] with subterms of
            [id_val]. *)
@@ -516,7 +516,7 @@ let rewrite : Sig_state.t -> problem -> popt -> goal_typ -> bool ->
               fatal pos "The term [%a] does not match the LHS [%a]"
                 term s term l
         in
-        let (t,l,r) = Bindlib.msubst3 bound sigma in
+        let (t,l,r) = msubst3 bound sigma in
 
         (* First we work in [id_val], that is, we substitute all
            the occurrences of [l] in [id_val] with [r]. *)
@@ -525,37 +525,37 @@ let rewrite : Sig_state.t -> problem -> popt -> goal_typ -> bool ->
         (* [new_id] is the value of [id_val] with [l] replaced
            by [r] and [id_x] is the value of [id_val] with the
            free variable [x]. *)
-        let new_id = Bindlib.subst id_bind r in
-        let (x, id_x) = Bindlib.unbind id_bind in
+        let new_id = subst id_bind r in
+        let (x, id_x) = unbind id_bind in
 
         (* Then we replace in pat_l all occurrences of [id]
            with [new_id]. *)
-        let pat_r = Bindlib.subst pat new_id in
+        let pat_r = subst pat new_id in
 
         (* To get the new goal we replace all occurrences of
           [pat_l] in [g_term] with [pat_r]. *)
         let pred_bind_l = bind_pattern pat_l g_term in
 
         (* [new_term] is the type of the new goal meta. *)
-        let new_term = Bindlib.subst pred_bind_l pat_r in
+        let new_term = subst pred_bind_l pat_r in
 
         (* Finally we need to build the predicate. First we build
            the term l_x, in a few steps. We substitute all the
            rewrites in new_id with x and we repeat some steps. *)
-        let l_x = Bindlib.subst pat id_x in
+        let l_x = subst pat id_x in
 
         (* The last step to build the predicate is to substitute
            [l_x] everywhere we find [pat_l] and bind that x. *)
-        let pred = Bindlib.subst pred_bind_l l_x in
-        (Bindlib.bind_var x pred, new_term, t, l, r)
+        let pred = subst pred_bind_l l_x in
+        (bind_var x pred, new_term, t, l, r)
 
     | Some(Rw_TermAsIdInTerm(s,p)) ->
         (* This pattern is essentially a let clause.  We first match the value
            of [pat] with some subterm of the goal, and then rewrite in each of
            the occurences of [id]. *)
-        let (id,pat) = Bindlib.unbind p in
+        let (id,pat) = unbind p in
         let s = replace_wild_by_tref s in
-        let p_s = Bindlib.subst p s in
+        let p_s = subst p s in
         (* Try to match p[s/id] with a subterm of the goal. *)
         let p_refs = replace_wild_by_tref p_s in
         if not (find_subterm_matching p_refs g_term) then
@@ -583,15 +583,15 @@ let rewrite : Sig_state.t -> problem -> popt -> goal_typ -> bool ->
                 "The value of X, [%a], does not match the LHS, [%a]"
                 term id_val term l
         in
-        let (t,l,r) = Bindlib.msubst3 bound sigma in
+        let (t,l,r) = msubst3 bound sigma in
 
         (* Now to do some term building. *)
         let p_x = bind_pattern l p in
-        let p_r = Bindlib.subst p_x r in
+        let p_r = subst p_x r in
         let pred_bind = bind_pattern p g_term in
-        let new_term = Bindlib.subst pred_bind p_r in
-        let (x, p_x) = Bindlib.unbind p_x in
-        let pred_bind = Bindlib.bind_var x (Bindlib.subst pred_bind p_x) in
+        let new_term = subst pred_bind p_r in
+        let (x, p_x) = unbind p_x in
+        let pred_bind = bind_var x (subst pred_bind p_x) in
         (pred_bind, new_term, t, l, r)
 
     | Some(Rw_InIdInTerm(q)) ->
@@ -599,7 +599,7 @@ let rewrite : Sig_state.t -> problem -> popt -> goal_typ -> bool ->
            [id_val] with [l],  we try to match a subterm of [id_val] with [l],
            and then we rewrite this subterm. As a consequence,  we just change
            the way we construct a [pat_r]. *)
-        let (id,q) = Bindlib.unbind q in
+        let (id,q) = unbind q in
         let q_refs = replace_wild_by_tref q in
         let id_val =
           match find_subst ([|id|],q_refs) g_term with
@@ -609,8 +609,8 @@ let rewrite : Sig_state.t -> problem -> popt -> goal_typ -> bool ->
                 term q term g_term
         in
         let id_val = id_val.(0) in
-        let pat = Bindlib.bind_var id q_refs in
-        let pat_l = Bindlib.subst pat id_val in
+        let pat = bind_var id q_refs in
+        let pat_l = subst pat id_val in
         let sigma =
           match find_subst (vars,l) id_val with
           | Some(sigma) -> sigma
@@ -619,19 +619,19 @@ let rewrite : Sig_state.t -> problem -> popt -> goal_typ -> bool ->
                 "The value of [%a], [%a], in [%a] does not match [%a]."
                 var id term id_val term q term l
         in
-        let (t,l,r) = Bindlib.msubst3 bound sigma in
+        let (t,l,r) = msubst3 bound sigma in
 
         (* Rewrite in id. *)
         let id_bind = bind_pattern l id_val in
-        let id_val = Bindlib.subst id_bind r in
-        let (x, id_x) = Bindlib.unbind id_bind in
+        let id_val = subst id_bind r in
+        let (x, id_x) = unbind id_bind in
 
         (* The new RHS of the pattern is obtained by rewriting in [id_val]. *)
-        let r_val = Bindlib.subst pat id_val in
+        let r_val = subst pat id_val in
         let pred_bind_l = bind_pattern pat_l g_term in
-        let new_term = Bindlib.subst pred_bind_l r_val in
-        let l_x = Bindlib.subst pat id_x in
-        let pred_bind = Bindlib.bind_var x (Bindlib.subst pred_bind_l l_x) in
+        let new_term = subst pred_bind_l r_val in
+        let l_x = subst pat id_x in
+        let pred_bind = bind_var x (subst pred_bind_l l_x) in
         (pred_bind, new_term, t, l, r)
   in
 

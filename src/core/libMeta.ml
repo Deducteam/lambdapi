@@ -39,7 +39,7 @@ let make : problem -> ctxt -> term -> term =
     updates [p] with generated metavariables. *)
 let make_codomain : problem -> ctxt -> term -> tbinder = fun p ctx a ->
   let x = new_tvar "x" in
-  Bindlib.bind_var x (make p ((x, a, None) :: ctx) mk_Type)
+  bind_var x (make p ((x, a, None) :: ctx) mk_Type)
 
 (** [iter b f c t] applies the function [f] to every metavariable of [t] and,
    if [x] is a variable of [t] mapped to [v] in the context [c], then to every
@@ -71,10 +71,10 @@ let iter : bool -> (meta -> unit) -> ctxt -> term -> unit = fun b f c ->
         | None -> ()
         end
     | Prod(a,b)
-    | Abst(a,b) -> iter a; iter (Bindlib.subst b mk_Kind)
+    | Abst(a,b) -> iter a; iter (subst b mk_Kind)
     | Appl(t,u) -> iter t; iter u
     | Meta(m,ts) -> f m; Array.iter iter ts; if b then iter !(m.meta_type)
-    | LLet(a,t,u) -> iter a; iter t; iter (Bindlib.subst u mk_Kind)
+    | LLet(a,t,u) -> iter a; iter t; iter (subst u mk_Kind)
   in iter
 
 (** [occurs m c t] tests whether the metavariable [m] occurs in the term [t]

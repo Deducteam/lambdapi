@@ -81,8 +81,8 @@ let prod_graph : sym -> (sym * sym * sym * bool) list = fun s ->
           match get_args a with
           | Symb s1, [_] ->
             begin
-            match get_args (Bindlib.subst b mk_Kind) with
-            | Symb(s2), [_] -> add (s0,s1,s2,Bindlib.binder_occur b) l
+            match get_args (subst b mk_Kind) with
+            | Symb(s2), [_] -> add (s0,s1,s2,binder_occur b) l
             | _ -> l
             end
           | _ -> l
@@ -127,9 +127,9 @@ let rec inverse : sym -> term -> term = fun s v ->
       in
       let t1 = inverse s1 a in
       let t2 =
-        let x, b = Bindlib.unbind b in
+        let x, b = unbind b in
         let b = inverse s2 b in
-        if occ then mk_Abst (a, Bindlib.bind_var x b) else b
+        if occ then mk_Abst (a, bind_var x b) else b
       in
       add_args (mk_Symb s0) [t1;t2]
   | _ -> raise Not_found

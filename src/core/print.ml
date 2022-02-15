@@ -89,7 +89,7 @@ let sym : sym pp = fun ppf s ->
         else out ppf "%a.%a" path p uid n
     | Some alias -> out ppf "%a.%a" uid alias uid n
 
-let var : tvar pp = fun ppf x -> uid ppf (Bindlib.name_of x)
+let var : tvar pp = fun ppf x -> uid ppf (name_of x)
 
 (** Exception raised when trying to convert a term into a nat. *)
 exception Not_a_nat
@@ -192,7 +192,7 @@ and term : term pp = fun ppf t ->
         begin
           match unfold b with
           | Abst(a,b) ->
-              let (x,p) = Bindlib.unbind b in
+              let (x,p) = unbind b in
               out ppf "`%a %a%a, %a" sym s var x typ a func p
           | _ -> assert false
         end
@@ -221,32 +221,32 @@ and term : term pp = fun ppf t ->
     (* Product and abstraction (only them can be wrapped). *)
     | Abst(a,b)   ->
         if wrap then out ppf "(";
-        let (x,t) = Bindlib.unbind b in
+        let (x,t) = unbind b in
         out ppf "λ %a" bvar (b,x);
         if !print_domains then out ppf ": %a, %a" func a func t
         else abstractions ppf t;
         if wrap then out ppf ")"
     | Prod(a,b)   ->
         if wrap then out ppf "(";
-        let (x,t) = Bindlib.unbind b in
-        if Bindlib.binder_occur b then
+        let (x,t) = unbind b in
+        if binder_occur b then
           out ppf "Π %a: %a, %a" var x appl a func t
         else out ppf "%a → %a" appl a func t;
         if wrap then out ppf ")"
     | LLet(a,t,b) ->
         if wrap then out ppf "(";
         out ppf "let ";
-        let (x,u) = Bindlib.unbind b in
+        let (x,u) = unbind b in
         bvar ppf (b,x);
         if !print_domains then out ppf ": %a" atom a;
         out ppf " ≔ %a in %a" func t func u;
         if wrap then out ppf ")"
   and bvar ppf (b,x) =
-    if Bindlib.binder_occur b then out ppf "%a" var x else out ppf "_"
+    if binder_occur b then out ppf "%a" var x else out ppf "_"
   and abstractions ppf t =
     match unfold t with
     | Abst(_,b) ->
-        let (x,t) = Bindlib.unbind b in
+        let (x,t) = unbind b in
         out ppf " %a%a" bvar (b,x) abstractions t
     | t -> out ppf ", %a" func t
   in
@@ -258,10 +258,10 @@ and term : term pp = fun ppf t ->
 let rec prod : (term * bool list) pp = fun ppf (t, impl) ->
   match unfold t, impl with
   | Prod(a,b), true::impl ->
-      let x, b = Bindlib.unbind b in
+      let x, b = unbind b in
       out ppf "Π {%a: %a}, %a" var x term a prod (b, impl)
   | Prod(a,b), false::impl ->
-      let x, b = Bindlib.unbind b in
+      let x, b = unbind b in
       out ppf "Π %a: %a, %a" var x term a prod (b, impl)
   | _ -> term ppf t
 
