@@ -39,13 +39,6 @@ type prop =
 (** Type for free variables. *)
 type var
 
-(** Type for binders. *)
-type binder
-type mbinder
-
-(** [mbinder_arity b] gives the arity of the [mbinder]. *)
-val mbinder_arity : mbinder -> int
-
 (** Representation of a term (or types) in a general sense. Values of the type
     are also used, for example, in the representation of patterns or rewriting
     rules. Specific constructors are included for such applications,  and they
@@ -69,6 +62,10 @@ type term = private
   | TRef of term option ref (** Reference cell (used in surface matching). *)
   | LLet of term * term * binder
   (** [LLet(a, t, u)] is [let x : a ≔ t in u] (with [x] bound in [u]). *)
+
+(** Type for binders. *)
+and binder = string * term
+and mbinder = string array * term
 
 (** {b NOTE} that a wildcard "_" of the concrete (source code) syntax may have
     a different representation depending on the context. For instance, the
@@ -120,7 +117,7 @@ and sym =
     LHS (left hand side),  which is the pattern that should be matched for the
     rule to apply, and a RHS (right hand side) giving the action to perform if
     the rule applies. More explanations are given below. *)
- and rule =
+and rule =
   { lhs      : term list (** Left hand side (LHS). *)
   ; rhs      : term (** Right hand side (RHS). *)
   ; arity    : int (** Required number of arguments to be applicable. *)
@@ -195,11 +192,14 @@ and sym =
     (i.e., set to a particular term).  When a metavariable [m] is
     instantiated,  the suspended substitution is  unlocked and terms of
     the form {!constructor:Meta}[(m,env)] can be unfolded. *)
- and meta =
+and meta =
   { meta_key   : int (** Unique key. *)
   ; meta_type  : term ref (** Type. *)
   ; meta_arity : int (** Arity (environment size). *)
   ; meta_value : mbinder option ref (** Definition. *) }
+
+(** [mbinder_arity b] gives the arity of the [mbinder]. *)
+val mbinder_arity : mbinder -> int
 
 (** Minimize [impl] to enforce our invariant (see {!type:Term.sym}). *)
 val minimize_impl : bool list -> bool list

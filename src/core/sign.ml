@@ -91,22 +91,20 @@ let link : t -> unit = fun sign ->
   let link_term mk_Appl =
     let rec link_term t =
       match unfold t with
-      | Vari _
+      | Db _
       | Type
       | Kind -> t
       | Symb s -> mk_Symb(link_symb s)
-      | Prod(a,b) -> mk_Prod(link_term a, link_binder b)
-      | Abst(a,b) -> mk_Abst(link_term a, link_binder b)
-      | LLet(a,t,b) -> mk_LLet(link_term a, link_term t, link_binder b)
+      | Prod(a,(n,b)) -> mk_Prod(link_term a, (n, link_term b))
+      | Abst(a,(n,b)) -> mk_Abst(link_term a, (n, link_term b))
+      | LLet(a,t,(n,b)) -> mk_LLet(link_term a, link_term t, (n, link_term b))
       | Appl(a,b)   -> mk_Appl(link_term a, link_term b)
       | Patt(i,n,ts)-> mk_Patt(i, n, Array.map link_term ts)
-      | Db _ -> assert false
+      | Vari _ -> assert false
       | Meta _ -> assert false
       | Plac _ -> assert false
       | Wild -> assert false
       | TRef _ -> assert false
-    and link_binder b =
-      let (x,t) = unbind b in bind_var x (link_term t)
     in link_term
   in
   let link_lhs = link_term mk_Appl_not_canonical
@@ -165,20 +163,20 @@ let unlink : t -> unit = fun sign ->
   let rec unlink_term t =
     match unfold t with
     | Symb s -> unlink_sym s
-    | Prod(a,b)
-    | Abst(a,b) -> unlink_term a; unlink_binder b
-    | LLet(a,t,b) -> unlink_term a; unlink_term t; unlink_binder b
+    | Prod(a,(_,b))
+    | Abst(a,(_,b)) -> unlink_term a; unlink_term b
+    | LLet(a,t,(_,b)) -> unlink_term a; unlink_term t; unlink_term b
     | Appl(a,b) -> unlink_term a; unlink_term b
     | Meta _ -> assert false
     | Plac _ -> assert false
     | Wild   -> assert false
     | TRef _ -> assert false
-    | Db _ -> assert false
+    | Vari _ -> assert false
     | Patt _
-    | Vari _
+    | Db _
     | Type
     | Kind -> ()
-  and unlink_binder b = unlink_term (snd (unbind b)) in
+  in
   let unlink_rule r =
     List.iter unlink_term r.lhs;
     unlink_term r.rhs
@@ -273,9 +271,9 @@ let read : string -> t = fun fname ->
     | Type
     | Kind -> ()
     | Symb s -> shallow_reset_sym s
-    | Prod(a,b)
-    | Abst(a,b) -> reset_term a; reset_binder b
-    | LLet(a,t,b) -> reset_term a; reset_term t; reset_binder b
+    | Prod(a,(_,b))
+    | Abst(a,(_,b)) -> reset_term a; reset_term b
+    | LLet(a,t,(_,b)) -> reset_term a; reset_term t; reset_term b
     | Appl(a,b) -> reset_term a; reset_term b
     | Patt(_,_,ts) -> Array.iter reset_term ts
     | TRef r -> unsafe_reset r; Option.iter reset_term !r
@@ -283,7 +281,7 @@ let read : string -> t = fun fname ->
     | Wild -> assert false
     | Meta _ -> assert false
     | Plac _ -> assert false
-  and reset_binder b = reset_term (snd (unbind b)) in
+  in
   let reset_rule r =
     List.iter reset_term r.lhs;
     reset_term r.rhs

@@ -61,6 +61,13 @@ type term =
   | LLet of term * term * binder
   (** [LLet(a, t, u)] is [let x : a ≔ t in u] (with [x] bound in [u]). *)
 
+(** Type for free variables. *)
+and var = int * string
+
+(** Type for binders. *)
+and binder = string * term
+and mbinder = string array * term
+
 (** {b NOTE} that a wildcard "_" of the concrete (source code) syntax may have
     a different representation depending on the context. For instance, the
     {!constructor:Wild} constructor is only used when matching patterns (e.g.,
@@ -163,14 +170,6 @@ and meta =
   ; meta_type  : term ref (** Type. *)
   ; meta_arity : int (** Arity (environment size). *)
   ; meta_value : mbinder option ref (** Definition. *) }
-
-(** Type for free variables. *)
-and var = int * string
-
-(** Type for binders. *)
-and binder = string * term
-
-and mbinder = string array * term
 
 (** [mbinder_arity b] gives the arity of the [mbinder]. *)
 let mbinder_arity : mbinder -> int = fun (names,_) -> Array.length names
