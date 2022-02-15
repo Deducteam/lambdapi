@@ -13,7 +13,7 @@ let term = Raw.term
 let log_scop = Logger.make 'o' "scop" "term scoping"
 let log_scop = log_scop.pp
 
-(** [find_qid prt prv ss env qid] returns a boxed term corresponding to a
+(** [find_qid prt prv ss env qid] returns a term corresponding to a
    variable of the environment [env] (or to a symbol) which name corresponds
    to [qid]. In the case where the module path [fst qid.elt] is empty, we
    first search for the name [snd qid.elt] in the environment, and if it is
@@ -217,12 +217,7 @@ and scope_parsed :
     match p_head.elt with
     | P_Wrap e -> get_impl e
     | P_Iden (_, false) ->
-        (* We avoid unboxing if [h] is not closed (and hence not a symbol). *)
-        if is_closed h then
-          match h with
-          | Symb s -> s.sym_impl
-          | _ -> []
-        else []
+      begin match h with Symb s -> s.sym_impl | _ -> [] end
     | P_Abst (params_list, t) ->
       Syntax.get_impl_params_list params_list @ get_impl t
     | _ -> []
