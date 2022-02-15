@@ -164,37 +164,118 @@ and meta =
   ; meta_arity : int (** Arity (environment size). *)
   ; meta_value : mbinder option ref (** Definition. *) }
 
+(** Type for free variables. *)
+and var = int * string
+
+(** Type for binders. *)
 and binder = string * term
 
 and mbinder = string array * term
 
-and var = int * string
+(** [mbinder_arity b] gives the arity of the [mbinder]. *)
+let mbinder_arity : mbinder -> int = fun (names,_) -> Array.length names
 
-(** [unfold t] repeatedly unfolds the definition of the surface constructor
-   of [t], until a significant {!type:term} constructor is found.  The term
-   that is returned cannot be an instantiated metavariable or term
-   environment nor a reference cell ({!constructor:TRef} constructor). Note
-   that the returned value is physically equal to [t] if no unfolding was
-   performed. {b NOTE} that {!val:unfold} must (almost) always be called
-   before matching over a value of type {!type:term}. *)
-let rec unfold : term -> term = fun t ->
-  match t with
-  | Meta(m, ts) ->
-      begin
-        match !(m.meta_value) with
-        | None    -> t
-        | Some(b) -> unfold (msubst b ts)
-      end
-  | TRef(r) ->
-      begin
-        match !r with
-        | None    -> t
-        | Some(v) -> unfold v
-      end
-  | _ -> t
+(** Minimize [impl] to enforce our invariant (see {!type:Terms.sym}). *)
+let minimize_impl : bool list -> bool list =
+  let rec rem_false l = match l with false::l -> rem_false l | _ -> l in
+  fun l -> List.rev (rem_false (List.rev l))
+
+(** [create_sym path expo prop opaq name typ impl] creates a new symbol with
+   path [path], exposition [expo], property [prop], opacity [opaq], matching
+   strategy [mstrat], name [name.elt], type [typ], implicit arguments [impl],
+   position [name.pos], no definition and no rules. *)
+let create_sym : Path.t -> expo -> prop -> match_strat -> bool ->
+  Pos.strloc -> term -> bool list -> sym =
+  fun sym_path sym_expo sym_prop sym_mstrat sym_opaq
+    { elt = sym_name; pos = sym_pos } typ sym_impl ->
+  {sym_path; sym_name; sym_type = ref typ; sym_impl; sym_def = ref None;
+   sym_opaq; sym_rules = ref []; sym_dtree = ref Tree_type.empty_dtree;
+   sym_mstrat; sym_prop; sym_expo; sym_pos }
+
+(** [is_constant s] tells whether [s] is a constant. *)
+let is_constant : sym -> bool = fun s -> s.sym_prop = Const
+
+(** [is_injective s] tells whether [s] is injective, which is in partiular the
+   case if [s] is constant. *)
+let is_injective : sym -> bool = fun s ->
+  match s.sym_prop with Const | Injec -> true | _ -> false
+
+(** [is_private s] tells whether the symbol [s] is private. *)
+let is_private : sym -> bool = fun s -> s.sym_expo = Privat
+
+(** [is_modulo s] tells whether the symbol [s] is modulo some equations. *)
+let is_modulo : sym -> bool = fun s ->
+  match s.sym_prop with Assoc _ | Commu | AC _ -> true | _ -> false
+
+(** Sets and maps of symbols. *)
+module Sym = struct
+  type t = sym
+  let compare s1 s2 =
+    if s1 == s2 then 0 else
+    match Stdlib.compare s1.sym_name s2.sym_name with
+    | 0 -> Stdlib.compare s1.sym_path s2.sym_path
+    | n -> n
+end
+
+module SymSet = Set.Make(Sym)
+module SymMap = Map.Make(Sym)
+
+(** [is_unset m] returns [true] if [m] is not instantiated. *)
+let is_unset : meta -> bool = fun m -> !(m.meta_value) = None
+
+(** Sets and maps of metavariables. *)
+module Meta = struct
+  type t = meta
+  let compare m1 m2 = m2.meta_key - m1.meta_key
+end
+
+module MetaSet = Set.Make(Meta)
+module MetaMap = Map.Make(Meta)
+
+(** [compare_vars x y] safely compares [x] and [y].  Note that it is unsafe to
+    compare variables using [Pervasive.compare]. *)
+let compare_vars : var -> var -> int = fun (i,_) (j,_) -> Stdlib.compare i j
+
+(** [eq_vars x y] safely computes the equality of [x] and [y]. Note that it is
+    unsafe to compare variables with the polymorphic equality function. *)
+let eq_vars : var -> var -> bool = fun x y -> compare_vars x y = 0
+
+(** [new_var name] creates a new unique variable of name [name]. *)
+let new_var : string -> var =
+  let open Stdlib in let n = ref 0 in fun name -> incr n; !n, name
+
+(** [new_var_ind s i] creates a new [var] of name [s ^ string_of_int i]. *)
+let new_var_ind : string -> int -> var = fun s i ->
+  new_var (Escape.add_prefix s (string_of_int i))
+
+(** [name_of x] returns the name of variable [x]. *)
+let name_of : var -> string = fun (_i,n) -> n (*^ string_of_int i*)
+
+(** Sets and maps of variables. *)
+module Var = struct
+  type t = var
+  let compare = compare_vars
+end
+
+module VarSet = Set.Make(Var)
+module VarMap = Map.Make(Var)
+
+let mk_bin s t1 t2 = Appl(Appl(Symb s, t1), t2)
+
+(** [mk_left_comb s t ts] builds a left comb of applications of [s] from
+   [t::ts] so that [mk_left_comb s t1 [t2; t3] = mk_bin s (mk_bin s t1 t2)
+   t3]. *)
+let mk_left_comb : sym -> term -> term list -> term = fun s ->
+  List.fold_left (mk_bin s)
+
+(** [mk_right_comb s ts t] builds a right comb of applications of [s] to
+   [ts@[p]] so that [mk_right_comb s [t1; t2] t3 = mk_bin s t1 (mk_bin s t2
+   t3)]. *)
+let mk_right_comb : sym -> term list -> term -> term = fun s ->
+  List.fold_right (mk_bin s)
 
 (** Printing functions for debug. *)
-and term : term pp = fun ppf t ->
+let rec term : term pp = fun ppf t ->
   match unfold t with
   | Db k -> out ppf "`%d" k
   | Vari v -> var ppf v
@@ -216,12 +297,36 @@ and sym : sym pp = fun ppf s -> string ppf s.sym_name
 and terms : term array pp = fun ppf ts ->
   if Array.length ts > 0 then D.array term ppf ts
 
+(** [unfold t] repeatedly unfolds the definition of the surface constructor
+   of [t], until a significant {!type:term} constructor is found.  The term
+   that is returned can be neither an instantiated metavariable
+   nor a reference cell ({!constructor:TRef} constructor). Note
+   that the returned value is physically equal to [t] if no unfolding was
+   performed. {b NOTE} that {!val:unfold} must (almost) always be called
+   before matching over a value of type {!type:term}. *)
+and unfold : term -> term = fun t ->
+  match t with
+  | Meta(m, ts) ->
+      begin
+        match !(m.meta_value) with
+        | None    -> t
+        | Some(b) -> unfold (msubst b ts)
+      end
+  | TRef(r) ->
+      begin
+        match !r with
+        | None    -> t
+        | Some(v) -> unfold v
+      end
+  | _ -> t
+
 (** [lift l t] updates indices when [t] is moved under [l] binders. *)
 and lift : int -> term -> term = fun l t ->
   let rec lift i t =
     match unfold t with
     | Db k -> if k < i then t else Db (k+l)
-    | Appl(a,b) -> (*FIXME: mk_Appl*) Appl(lift i a, lift i b)
+    | Appl(a,b) -> Appl(lift i a, lift i b)
+    (* No need to call mk_Appl here as we only change indices. *)
     | Abst(a,(n,u)) -> Abst(lift i a, (n, lift (i+1) u))
     | Prod(a,(n,u)) -> Prod(lift i a, (n ,lift (i+1) u))
     | LLet(a,t,(n,u)) -> LLet(lift i a, lift i t, (n, lift (i+1) u))
@@ -247,7 +352,7 @@ and msubst : mbinder -> term array -> term = fun (ns,t) vs ->
     match unfold t with
     | Db k -> let j = k-i in
       if j<0 then t else (assert(j<n); lift (i-1) vs.(n-1-j))
-    | Appl(a,b) -> (*FIXME: mk_Appl*) Appl(msubst i a, msubst i b)
+    | Appl(a,b) -> mk_Appl(msubst i a, msubst i b)
     | Abst(a,(n,u)) -> Abst(msubst i a, (n, msubst (i+1) u))
     | Prod(a,(n,u)) -> Prod(msubst i a, (n, msubst (i+1) u))
     | LLet(a,t,(n,u)) -> LLet(msubst i a, msubst i t, (n, msubst (i+1) u))
@@ -260,9 +365,144 @@ and msubst : mbinder -> term array -> term = fun (ns,t) vs ->
     log_term "msubst %a %a = %a" term t (D.array term) vs term r;
   r
 
-let msubst3 :
-  (mbinder * mbinder * mbinder) -> term array -> term * term * term =
-  fun (b1, b2, b3) ts -> msubst b1 ts, msubst b2 ts, msubst b3 ts
+(** Total order on terms. *)
+and cmp : term cmp = fun t t' ->
+  match unfold t, unfold t' with
+  | Vari x, Vari x' -> compare_vars x x'
+  | Type, Type
+  | Kind, Kind
+  | Wild, Wild -> 0
+  | Symb s, Symb s' -> Sym.compare s s'
+  | Prod(t,(_,u)), Prod(t',(_,u'))
+  | Abst(t,(_,u)), Abst(t',(_,u')) -> lex cmp cmp (t,u) (t',u')
+  | Appl(t,u), Appl(t',u') -> lex cmp cmp (u,t) (u',t')
+  | Meta(m,ts), Meta(m',ts') ->
+    lex Meta.compare (Array.cmp cmp) (m,ts) (m',ts')
+  | Patt(i,s,ts), Patt(i',s',ts') ->
+    lex3 Stdlib.compare Stdlib.compare (Array.cmp cmp)
+      (i,s,ts) (i',s',ts')
+  | Db i, Db j -> Stdlib.compare i j
+  | TRef r, TRef r' -> Stdlib.compare r r'
+  | LLet(a,t,(_,u)), LLet(a',t',(_,u')) ->
+    lex3 cmp cmp cmp (a,t,u) (a',t',u')
+  | t, t' -> cmp_tag t t'
+
+(** [get_args t] decomposes the {!type:term} [t] into a pair [(h,args)], where
+    [h] is the head term of [t] and [args] is the list of arguments applied to
+    [h] in [t]. The returned [h] cannot be an [Appl] node. *)
+and get_args : term -> term * term list = fun t ->
+  let rec get_args t acc =
+    match unfold t with
+    | Appl(t,u) -> get_args t (u::acc)
+    | t         -> t, acc
+  in get_args t []
+
+(** [get_args_len t] is similar to [get_args t] but it also returns the length
+    of the list of arguments. *)
+and get_args_len : term -> term * term list * int = fun t ->
+  let rec get_args_len acc len t =
+    match unfold t with
+    | Appl(t, u) -> get_args_len (u::acc) (len + 1) t
+    | t          -> (t, acc, len)
+  in
+  get_args_len [] 0 t
+
+(** [is_symb s t] tests whether [t] is of the form [Symb(s)]. *)
+and is_symb : sym -> term -> bool = fun s t ->
+  match unfold t with Symb(r) -> r == s | _ -> false
+
+(* We make the equality of terms modulo commutative and
+   associative-commutative symbols syntactic by always ordering arguments in
+   increasing order and by putting them in a comb form.
+
+   The term [t1 + t2 + t3] is represented by the left comb [(t1 + t2) + t3] if
+   + is left associative and [t1 + (t2 + t3)] if + is right associative. *)
+
+(** [left_aliens s t] returns the list of the biggest subterms of [t] not
+   headed by [s], assuming that [s] is left associative and [t] is in
+   canonical form. This is the reverse of [mk_left_comb]. *)
+and left_aliens : sym -> term -> term list = fun s ->
+  let rec aliens acc = function
+    | [] -> acc
+    | u::us ->
+        let h, ts = get_args u in
+        if is_symb s h then
+          match ts with
+          | t1 :: t2 :: _ -> aliens (t2 :: acc) (t1 :: us)
+          | _ -> aliens (u :: acc) us
+        else aliens (u :: acc) us
+  in fun t -> aliens [] [t]
+
+(** [right_aliens s t] returns the list of the biggest subterms of [t] not
+   headed by [s], assuming that [s] is right associative and [t] is in
+   canonical form. This is the reverse of [mk_right_comb]. *)
+and right_aliens : sym -> term -> term list = fun s ->
+  let rec aliens acc = function
+    | [] -> acc
+    | u::us ->
+        let h, ts = get_args u in
+        if is_symb s h then
+          match ts with
+          | t1 :: t2 :: _ -> aliens (t1 :: acc) (t2 :: us)
+          | _ -> aliens (u :: acc) us
+        else aliens (u :: acc) us
+  in fun t -> let r = aliens [] [t] in
+  if Logger.log_enabled () then
+    log_term "right_aliens %a %a = %a" sym s term t (D.list term) r;
+  r
+
+(** [mk_Appl t u] puts the application of [t] to [u] in canonical form wrt C
+   or AC symbols. *)
+and mk_Appl : term * term -> term = fun (t, u) ->
+  (* if Logger.log_enabled () then
+    log_term "mk_Appl(%a, %a)" term t term u;
+  let r = *)
+  match get_args t with
+  | Symb s, [t1] ->
+      begin
+        match s.sym_prop with
+        | Commu when cmp t1 u > 0 -> mk_bin s u t1
+        | AC true -> (* left associative symbol *)
+            let ts = left_aliens s t1 and us = left_aliens s u in
+            begin
+              match List.sort cmp (ts @ us) with
+              | v::vs -> mk_left_comb s v vs
+              | _ -> assert false
+            end
+        | AC false -> (* right associative symbol *)
+            let ts = right_aliens s t1 and us = right_aliens s u in
+            let vs, v = List.split_last (List.sort cmp (ts @ us))
+            in mk_right_comb s vs v
+        | _ -> Appl (t, u)
+      end
+  | _ -> Appl (t, u)
+  (* in
+  if Logger.log_enabled () then
+    log_term "mk_Appl(%a, %a) = %a" term t term u term r;
+  r *)
+
+(* unit test *)
+let _ =
+  let s = create_sym [] Privat (AC true) Eager false (Pos.none "+") Kind [] in
+  let t1 = Vari (new_var "x1") in
+  let t2 = Vari (new_var "x2") in
+  let t3 = Vari (new_var "x3") in
+  let left = mk_bin s (mk_bin s t1 t2) t3 in
+  let right = mk_bin s t1 (mk_bin s t2 t3) in
+  let eq = eq_of_cmp cmp in
+  assert (eq (mk_left_comb s t1 [t2; t3]) left);
+  assert (eq (mk_right_comb s [t1; t2] t3) right);
+  let eq = eq_of_cmp (List.cmp cmp) in
+  assert (eq (left_aliens s left) [t1; t2; t3]);
+  assert (eq (right_aliens s right) [t3; t2; t1])
+
+(** [is_abst t] returns [true] iff [t] is of the form [Abst(_)]. *)
+let is_abst : term -> bool = fun t ->
+  match unfold t with Abst(_) -> true | _ -> false
+
+(** [is_prod t] returns [true] iff [t] is of the form [Prod(_)]. *)
+let is_prod : term -> bool = fun t ->
+  match unfold t with Prod(_) -> true | _ -> false
 
 (** [subst b v] substitutes the variable bound by [b] with the value [v]. *)
 let subst : binder -> term -> term = fun (_,t) v ->
@@ -271,7 +511,7 @@ let subst : binder -> term -> term = fun (_,t) v ->
       log_term "subst [%d≔%a] %a" i term v term t;*)
     match unfold t with
     | Db k -> if k = i then lift (i-1) v else t
-    | Appl(a,b) -> (*FIXME: mk_Appl*) Appl(subst i a, subst i b)
+    | Appl(a,b) -> mk_Appl(subst i a, subst i b)
     | Abst(a,(n,u)) -> Abst(subst i a, (n, subst (i+1) u))
     | Prod(a,(n,u)) -> Prod(subst i a, (n ,subst (i+1) u))
     | LLet(a,t,(n,u)) -> LLet(subst i a, subst i t, (n, subst (i+1) u))
@@ -283,13 +523,6 @@ let subst : binder -> term -> term = fun (_,t) v ->
   if Logger.log_enabled() then
     log_term "subst %a [%a] = %a" term t term v term r;
   r
-
-(** [new_var name] creates a new unique variable of name [name]. *)
-let new_var : string -> var =
-  let open Stdlib in let n = ref 0 in fun name -> incr n; !n, name
-
-(** [name_of x] returns the name of variable [x]. *)
-let name_of : var -> string = fun (_i,n) -> n (*^ string_of_int i*)
 
 (** [unbind b] substitutes the binder [b] using a fresh variable. The variable
     and the result of the substitution are returned. Note that the name of the
@@ -311,13 +544,15 @@ let unmbind : mbinder -> var array * term = fun ((names,_) as b) ->
   let xs = Array.init (Array.length names) (fun i -> new_var names.(i)) in
   xs, msubst b (Array.map (fun x -> Vari x) xs)
 
-(** [bind_var x b] binds the variable [x] in [b], producing a boxed binder. *)
+(** [bind_var x t] binds the variable [x] in [t], producing a binder. *)
 let bind_var  : var -> term -> binder = fun ((_,n) as x) ->
   let rec bind i t =
     (*if Logger.log_enabled() then log_term "bind_var %d %a" i term t;*)
     match unfold t with
     | Vari y when y == x -> Db i
     | Appl(a,b) -> Appl(bind i a, bind i b)
+    (* No need to call mk_Appl here as we only replace free variables by de
+       Bruijn indices. *)
     | Abst(a,(n,u)) -> Abst(bind i a, (n, bind (i+1) u))
     | Prod(a,(n,u)) -> Prod(bind i a, (n, bind (i+1) u))
     | LLet(a,t,(n,u)) -> LLet(bind i a, bind i t, (n, bind (i+1) u))
@@ -330,7 +565,7 @@ let bind_var  : var -> term -> binder = fun ((_,n) as x) ->
       log_term "bind_var %a %a = %a" var x term t term b;
     n, b
 
-(** [bind_mvar xs b] binds the variables of [xs] in [b] to get a boxed binder.
+(** [bind_mvar xs t] binds the variables of [xs] in [t] to get a binder.
     It is the equivalent of [bind_var] for multiple variables. *)
 let bind_mvar : var array -> term -> mbinder = fun xs t ->
   let n = Array.length xs in
@@ -346,6 +581,8 @@ let bind_mvar : var array -> term -> mbinder = fun xs t ->
     | Vari (key,_) ->
       (match IntMap.find_opt key !map with Some k -> Db (i+k) | None -> t)
     | Appl(a,b) -> Appl(bind i a, bind i b)
+    (* No need to call mk_Appl here as we only replace free variables by de
+       Bruijn indices. *)
     | Abst(a,(n,u)) -> Abst(bind i a, (n, bind (i+1) u))
     | Prod(a,(n,u)) -> Prod(bind i a, (n, bind (i+1) u))
     | LLet(a,t,(n,u)) -> LLet(bind i a, bind i t, (n, bind (i+1) u))
@@ -357,14 +594,6 @@ let bind_mvar : var array -> term -> mbinder = fun xs t ->
   if Logger.log_enabled() then
     log_term "bind_mvar %a %a = %a" (D.array var) xs term t term b;
   Array.map name_of xs, b
-
-(** [compare_vars x y] safely compares [x] and [y].  Note that it is unsafe to
-    compare variables using [Pervasive.compare]. *)
-let compare_vars : var -> var -> int = fun (i,_) (j,_) -> Stdlib.compare i j
-
-(** [eq_vars x y] safely computes the equality of [x] and [y]. Note that it is
-    unsafe to compare variables with the polymorphic equality function. *)
-let eq_vars : var -> var -> bool = fun x y -> compare_vars x y = 0
 
 (** [binder_occur b] tests whether the bound variable occurs in [b]. *)
 let binder_occur : binder -> bool = fun (_,t) ->
@@ -389,9 +618,6 @@ let binder_occur : binder -> bool = fun (_,t) ->
 (** [binder_constant b] tests whether the [binder] [b] is constant (i.e.,  its
     bound variable does not occur). *)
 let binder_constant : binder -> bool = fun b -> not (binder_occur b)
-
-(** [mbinder_arity b] gives the arity of the [mbinder]. *)
-let mbinder_arity : mbinder -> int = fun (names,_) -> Array.length names
 
 (** [is_closed t] checks whether [t] is closed. *)
 let is_closed : term -> bool =
@@ -425,165 +651,6 @@ let occur : var -> term -> bool = fun x ->
 
 let occur_mbinder : var -> mbinder -> bool = fun x (_,t) -> occur x t
 
-(** Printing functions for debug. *)
-module Raw = struct
-  let sym = sym
-  let term = term
-end
-
-(** Minimize [impl] to enforce our invariant (see {!type:Terms.sym}). *)
-let minimize_impl : bool list -> bool list =
-  let rec rem_false l = match l with false::l -> rem_false l | _ -> l in
-  fun l -> List.rev (rem_false (List.rev l))
-
-(** Typing context associating a [ variable to a type and possibly a
-    definition. The typing environment [x1:A1,..,xn:An] is represented by the
-    list [xn:An;..;x1:A1] in reverse order (last added variable comes
-    first). *)
-type ctxt = (var * term * term option) list
-
-(** Type of unification constraints. *)
-type constr = ctxt * term * term
-
-(** Sets and maps of term variables. *)
-module Var = struct
-  type t = var
-  let compare = compare_vars
-end
-
-module VarSet = Set.Make(Var)
-module VarMap = Map.Make(Var)
-
-(** [new_var s] creates a new [var] of name [s]. *)
-let new_var : string -> var = new_var
-
-(** [new_var_ind s i] creates a new [var] of name [s ^ string_of_int i]. *)
-let new_var_ind : string -> int -> var = fun s i ->
-  new_var (Escape.add_prefix s (string_of_int i))
-
-(** Sets and maps of symbols. *)
-module Sym = struct
-  type t = sym
-  let compare s1 s2 =
-    if s1 == s2 then 0 else
-    match Stdlib.compare s1.sym_name s2.sym_name with
-    | 0 -> Stdlib.compare s1.sym_path s2.sym_path
-    | n -> n
-end
-
-module SymSet = Set.Make(Sym)
-module SymMap = Map.Make(Sym)
-
-(** Sets and maps of metavariables. *)
-module Meta = struct
-  type t = meta
-  let compare m1 m2 = m2.meta_key - m1.meta_key
-end
-
-module MetaSet = Set.Make(Meta)
-module MetaMap = Map.Make(Meta)
-
-(** Representation of unification problems. *)
-type problem_aux =
-  { to_solve  : constr list
-  (** List of unification problems to solve. *)
-  ; unsolved  : constr list
-  (** List of unification problems that could not be solved. *)
-  ; recompute : bool
-  (** Indicates whether unsolved problems should be rechecked. *)
-  ; metas : MetaSet.t
-  (** Set of unsolved metas. *) }
-
-type problem = problem_aux ref
-
-(** Create a new empty problem. *)
-let new_problem : unit -> problem = fun () ->
- ref {to_solve  = []; unsolved = []; recompute = false; metas = MetaSet.empty}
-
-(** [create_sym path expo prop opaq name typ impl] creates a new symbol with
-   path [path], exposition [expo], property [prop], opacity [opaq], matching
-   strategy [mstrat], name [name.elt], type [typ], implicit arguments [impl],
-   position [name.pos], no definition and no rules. *)
-let create_sym : Path.t -> expo -> prop -> match_strat -> bool ->
-  Pos.strloc -> term -> bool list -> sym =
-  fun sym_path sym_expo sym_prop sym_mstrat sym_opaq
-    { elt = sym_name; pos = sym_pos } typ sym_impl ->
-  {sym_path; sym_name; sym_type = ref typ; sym_impl; sym_def = ref None;
-   sym_opaq; sym_rules = ref []; sym_dtree = ref Tree_type.empty_dtree;
-   sym_mstrat; sym_prop; sym_expo; sym_pos }
-
-(** [is_constant s] tells whether [s] is a constant. *)
-let is_constant : sym -> bool = fun s -> s.sym_prop = Const
-
-(** [is_injective s] tells whether [s] is injective, which is in partiular the
-   case if [s] is constant. *)
-let is_injective : sym -> bool = fun s ->
-  match s.sym_prop with Const | Injec -> true | _ -> false
-
-(** [is_private s] tells whether the symbol [s] is private. *)
-let is_private : sym -> bool = fun s -> s.sym_expo = Privat
-
-(** [is_modulo s] tells whether the symbol [s] is modulo some equations. *)
-let is_modulo : sym -> bool = fun s ->
-  match s.sym_prop with Assoc _ | Commu | AC _ -> true | _ -> false
-
-(** [is_abst t] returns [true] iff [t] is of the form [Abst(_)]. *)
-let is_abst : term -> bool = fun t ->
-  match unfold t with Abst(_) -> true | _ -> false
-
-(** [is_prod t] returns [true] iff [t] is of the form [Prod(_)]. *)
-let is_prod : term -> bool = fun t ->
-  match unfold t with Prod(_) -> true | _ -> false
-
-(** [is_unset m] returns [true] if [m] is not instantiated. *)
-let is_unset : meta -> bool = fun m -> !(m.meta_value) = None
-
-(** [is_symb s t] tests whether [t] is of the form [Symb(s)]. *)
-let is_symb : sym -> term -> bool = fun s t ->
-  match unfold t with Symb(r) -> r == s | _ -> false
-
-(** Total order on terms. *)
-let rec cmp : term cmp = fun t t' ->
-    match unfold t, unfold t' with
-    | Vari x, Vari x' -> compare_vars x x'
-    | Type, Type
-    | Kind, Kind
-    | Wild, Wild -> 0
-    | Symb s, Symb s' -> Sym.compare s s'
-    | Prod(t,(_,u)), Prod(t',(_,u'))
-    | Abst(t,(_,u)), Abst(t',(_,u')) -> lex cmp cmp (t,u) (t',u')
-    | Appl(t,u), Appl(t',u') -> lex cmp cmp (u,t) (u',t')
-    | Meta(m,ts), Meta(m',ts') ->
-        lex Meta.compare (Array.cmp cmp) (m,ts) (m',ts')
-    | Patt(i,s,ts), Patt(i',s',ts') ->
-        lex3 Stdlib.compare Stdlib.compare (Array.cmp cmp)
-          (i,s,ts) (i',s',ts')
-    | Db i, Db j -> Stdlib.compare i j
-    | TRef r, TRef r' -> Stdlib.compare r r'
-    | LLet(a,t,(_,u)), LLet(a',t',(_,u')) ->
-        lex3 cmp cmp cmp (a,t,u) (a',t',u')
-    | t, t' -> cmp_tag t t'
-
-(** [get_args t] decomposes the {!type:term} [t] into a pair [(h,args)], where
-    [h] is the head term of [t] and [args] is the list of arguments applied to
-    [h] in [t]. The returned [h] cannot be an [Appl] node. *)
-let get_args : term -> term * term list = fun t ->
-  let rec get_args t acc =
-    match unfold t with
-    | Appl(t,u) -> get_args t (u::acc)
-    | t         -> t, acc
-  in get_args t []
-
-(** [get_args_len t] is similar to [get_args t] but it also returns the length
-    of the list of arguments. *)
-let get_args_len : term -> term * term list * int = fun t ->
-  let rec get_args_len acc len t =
-    match unfold t with
-    | Appl(t, u) -> get_args_len (u::acc) (len + 1) t
-    | t          -> (t, acc, len)
-  in
-  get_args_len [] 0 t
-
 (** Construction functions of the private type [term]. They ensure some
    invariants:
 
@@ -594,8 +661,7 @@ let get_args_len : term -> term * term list * int = fun t ->
    application is built as a left or right comb depending on the associativity
    of the symbol, and arguments are ordered in increasing order wrt [cmp].
 
-- In [LLet(_,_,b)], [binder_constant b = false] (useless let's are
-   erased). *)
+- In [LLet(_,_,b)], [binder_constant b = false] (useless let's are erased). *)
 let mk_Vari x = Vari x
 let mk_Type = Type
 let mk_Kind = Kind
@@ -608,109 +674,7 @@ let mk_Patt (i,s,ts) = Patt (i,s,ts)
 let mk_Wild = Wild
 let mk_Plac b = Plac b
 let mk_TRef x = TRef x
-
-let mk_LLet (a,t,u) =
-  if binder_constant u then subst u Kind else LLet (a,t,u)
-
-(* We make the equality of terms modulo commutative and
-   associative-commutative symbols syntactic by always ordering arguments in
-   increasing order and by putting them in a comb form.
-
-   The term [t1 + t2 + t3] is represented by the left comb [(t1 + t2) + t3] if
-   + is left associative and [t1 + (t2 + t3)] if + is right associative. *)
-
-let mk_bin s t1 t2 = Appl(Appl(Symb s, t1), t2)
-
-(** [mk_left_comb s t ts] builds a left comb of applications of [s] from
-   [t::ts] so that [mk_left_comb s t1 [t2; t3] = mk_bin s (mk_bin s t1 t2)
-   t3]. *)
-let mk_left_comb : sym -> term -> term list -> term = fun s ->
-  List.fold_left (mk_bin s)
-
-(** [mk_right_comb s ts t] builds a right comb of applications of [s] to
-   [ts@[p]] so that [mk_right_comb s [t1; t2] t3 = mk_bin s t1 (mk_bin s t2
-   t3)]. *)
-let mk_right_comb : sym -> term list -> term -> term = fun s ->
-  List.fold_right (mk_bin s)
-
-(** [left_aliens s t] returns the list of the biggest subterms of [t] not
-   headed by [s], assuming that [s] is left associative and [t] is in
-   canonical form. This is the reverse of [mk_left_comb]. *)
-let left_aliens : sym -> term -> term list = fun s ->
-  let rec aliens acc = function
-    | [] -> acc
-    | u::us ->
-        let h, ts = get_args u in
-        if is_symb s h then
-          match ts with
-          | t1 :: t2 :: _ -> aliens (t2 :: acc) (t1 :: us)
-          | _ -> aliens (u :: acc) us
-        else aliens (u :: acc) us
-  in fun t -> aliens [] [t]
-
-(** [right_aliens s t] returns the list of the biggest subterms of [t] not
-   headed by [s], assuming that [s] is right associative and [t] is in
-   canonical form. This is the reverse of [mk_right_comb]. *)
-let right_aliens : sym -> term -> term list = fun s ->
-  let rec aliens acc = function
-    | [] -> acc
-    | u::us ->
-        let h, ts = get_args u in
-        if is_symb s h then
-          match ts with
-          | t1 :: t2 :: _ -> aliens (t1 :: acc) (t2 :: us)
-          | _ -> aliens (u :: acc) us
-        else aliens (u :: acc) us
-  in fun t -> let r = aliens [] [t] in
-  if Logger.log_enabled () then
-    log_term "right_aliens %a %a = %a"
-      Raw.sym s Raw.term t (D.list Raw.term) r;
-  r
-
-(* unit test *)
-let _ =
-  let s = create_sym [] Privat (AC true) Eager false (Pos.none "+") Kind [] in
-  let t1 = Vari (new_var "x1") in
-  let t2 = Vari (new_var "x2") in
-  let t3 = Vari (new_var "x3") in
-  let left = mk_bin s (mk_bin s t1 t2) t3 in
-  let right = mk_bin s t1 (mk_bin s t2 t3) in
-  let eq = eq_of_cmp cmp in
-  assert (eq (mk_left_comb s t1 [t2; t3]) left);
-  assert (eq (mk_right_comb s [t1; t2] t3) right);
-  let eq = eq_of_cmp (List.cmp cmp) in
-  assert (eq (left_aliens s left) [t1; t2; t3]);
-  assert (eq (right_aliens s right) [t3; t2; t1])
-
-(** [mk_Appl t u] puts the application of [t] to [u] in canonical form wrt C
-   or AC symbols. *)
-let mk_Appl : term * term -> term = fun (t, u) ->
-  (* if Logger.log_enabled () then
-    log_term "mk_Appl(%a, %a)" term t term u;
-  let r = *)
-  match get_args t with
-  | Symb s, [t1] ->
-      begin
-        match s.sym_prop with
-        | Commu when cmp t1 u > 0 -> mk_bin s u t1
-        | AC true -> (* left associative symbol *)
-            let ts = left_aliens s t1 and us = left_aliens s u in
-            begin
-              match List.sort cmp (ts @ us) with
-              | v::vs -> mk_left_comb s v vs
-              | _ -> assert false
-            end
-        | AC false -> (* right associative symbol *)
-            let ts = right_aliens s t1 and us = right_aliens s u in
-            let vs, v = List.split_last (List.sort cmp (ts @ us))
-            in mk_right_comb s vs v
-        | _ -> Appl (t, u)
-      end
-  | _ -> Appl (t, u)
-  (* in
-  if Logger.log_enabled () then
-    log_term "mk_Appl(%a, %a) = %a" term t term u term r;
-  r *)
+let mk_LLet (a,t,u) = if binder_constant u then subst u Kind else LLet (a,t,u)
 
 (** mk_Appl_not_canonical t u] builds the non-canonical (wrt. C and AC
    symbols) application of [t] to [u]. WARNING: to use only in Sign.link. *)
@@ -720,27 +684,18 @@ let mk_Appl_not_canonical : term * term -> term = fun (t, u) -> Appl(t, u)
     arguments [args]. When [args] is empty, the returned value is (physically)
     equal to [t]. *)
 let add_args : term -> term list -> term = fun t ts ->
-  List.fold_left (fun t u -> mk_Appl(t,u)) t ts
+  match get_args t with
+  | Symb s, _ when is_modulo s ->
+    List.fold_left (fun t u -> mk_Appl(t,u)) t ts
+  | _ -> List.fold_left (fun t u -> Appl(t,u)) t ts
 
 (** [add_args_map f t ts] is equivalent to [add_args t (List.map f ts)] but
    more efficient. *)
 let add_args_map : term -> (term -> term) -> term list -> term = fun t f ts ->
-  List.fold_left (fun t u -> mk_Appl(t, f u)) t ts
-
-(** Positions in terms in reverse order. The i-th argument of a constructor
-   has position i-1. *)
-type subterm_pos = int list
-
-let subterm_pos : subterm_pos pp = fun ppf l -> D.(list int) ppf (List.rev l)
-
-(** Type of critical pair positions (pos,l,r,p,l_p). *)
-type cp_pos = Pos.popt * term * term * subterm_pos * term
-
-(** Type of a symbol and a rule. *)
-type sym_rule = sym * rule
-
-let lhs : sym_rule -> term = fun (s, r) -> add_args (mk_Symb s) r.lhs
-let rhs : sym_rule -> term = fun (_, r) -> r.rhs
+  match get_args t with
+  | Symb s, _ when is_modulo s ->
+    List.fold_left (fun t u -> mk_Appl(t, f u)) t ts
+  | _ -> List.fold_left (fun t u -> Appl(t, f u)) t ts
 
 (** Patt substitution. *)
 let subst_patt : mbinder option array -> term -> term = fun env ->
@@ -785,3 +740,50 @@ let rec cleanup : term -> term = fun t ->
   | Type
   | Kind
   | Symb _ -> t
+
+(** Type of a symbol and a rule. *)
+type sym_rule = sym * rule
+
+let lhs : sym_rule -> term = fun (s, r) -> add_args (mk_Symb s) r.lhs
+let rhs : sym_rule -> term = fun (_, r) -> r.rhs
+
+(** Positions in terms in reverse order. The i-th argument of a constructor
+   has position i-1. *)
+type subterm_pos = int list
+
+let subterm_pos : subterm_pos pp = fun ppf l -> D.(list int) ppf (List.rev l)
+
+(** Type of critical pair positions (pos,l,r,p,l_p). *)
+type cp_pos = Pos.popt * term * term * subterm_pos * term
+
+(** Typing context associating a [ variable to a type and possibly a
+    definition. The typing environment [x1:A1,..,xn:An] is represented by the
+    list [xn:An;..;x1:A1] in reverse order (last added variable comes
+    first). *)
+type ctxt = (var * term * term option) list
+
+(** Type of unification constraints. *)
+type constr = ctxt * term * term
+
+(** Representation of unification problems. *)
+type problem_aux =
+  { to_solve  : constr list
+  (** List of unification problems to solve. *)
+  ; unsolved  : constr list
+  (** List of unification problems that could not be solved. *)
+  ; recompute : bool
+  (** Indicates whether unsolved problems should be rechecked. *)
+  ; metas : MetaSet.t
+  (** Set of unsolved metas. *) }
+
+type problem = problem_aux ref
+
+(** Create a new empty problem. *)
+let new_problem : unit -> problem = fun () ->
+ ref {to_solve  = []; unsolved = []; recompute = false; metas = MetaSet.empty}
+
+(** Printing functions for debug. *)
+module Raw = struct
+  let sym = sym let _ = sym
+  let term = term let _ = term
+end

@@ -36,11 +36,15 @@ type prop =
   | Assoc of bool (** Associative left if [true], right if [false]. *)
   | AC of bool (** Associative and commutative. *)
 
-type binder
+(** Type for free variables. *)
+type var
 
+(** Type for binders. *)
+type binder
 type mbinder
 
-type var
+(** [mbinder_arity b] gives the arity of the [mbinder]. *)
+val mbinder_arity : mbinder -> int
 
 (** Representation of a term (or types) in a general sense. Values of the type
     are also used, for example, in the representation of patterns or rewriting
@@ -197,100 +201,8 @@ and sym =
   ; meta_arity : int (** Arity (environment size). *)
   ; meta_value : mbinder option ref (** Definition. *) }
 
-(** [subst b v] substitutes the variable bound by [b] with the value [v]. *)
-val subst : binder -> term -> term
-
-(** [msubst b vs] substitutes the variables bound by [b] with the values [vs].
-   Note that the length of the [vs] array should match the arity of the
-   multiple binder [b]. *)
-val msubst : mbinder -> term array -> term
-val msubst3 :
-  (mbinder * mbinder * mbinder) -> term array -> term * term * term
-
-(** [name_of x] returns a printable name for variable [x]. *)
-val name_of : var -> string
-
-(** [unbind b] substitutes the binder [b] using a fresh variable. The variable
-    and the result of the substitution are returned. Note that the name of the
-    fresh variable is based on that of the binder. *)
-val unbind : binder -> var * term
-
-(** [unbind2 f g] is similar to [unbind f], but it substitutes two binders [f]
-    and [g] at once using the same fresh variable. The name of the variable is
-    based on that of the binder [f]. *)
-val unbind2 : binder -> binder -> var * term * term
-
-(** [unmbind b] substitutes the multiple binder [b] with fresh variables. This
-    function is analogous to [unbind] for binders. Note that the names used to
-    create the fresh variables are based on those of the multiple binder. *)
-val unmbind : mbinder -> var array * term
-
-(** [bind_var x b] binds the variable [x] in [b], producing a boxed binder. *)
-val bind_var  : var -> term -> binder
-
-(** [bind_mvar xs b] binds the variables of [xs] in [b] to get a boxed binder.
-    It is the equivalent of [bind_var] for multiple variables. *)
-val bind_mvar : var array -> term -> mbinder
-
-(** [compare_vars x y] safely compares [x] and [y].  Note that it is unsafe to
-    compare variables using [Pervasive.compare]. *)
-val compare_vars : var -> var -> int
-
-(** [eq_vars x y] safely computes the equality of [x] and [y]. Note that it is
-    unsafe to compare variables with the polymorphic equality function. *)
-val eq_vars : var -> var -> bool
-
-(** [binder_occur b] tests whether the bound variable occurs in [b]. *)
-val binder_occur : binder -> bool
-
-(** [binder_constant b] tests whether the [binder] [b] is constant (i.e.,  its
-    bound variable does not occur). *)
-val binder_constant : binder -> bool
-
-(** [mbinder_arity b] gives the arity of the [mbinder]. *)
-val mbinder_arity : mbinder -> int
-
-(** [is_closed b] checks whether the [box] [b] is closed. *)
-val is_closed : term -> bool
-val is_closed_mbinder : mbinder -> bool
-
-(** [occur x b] tells whether variable [x] occurs in the [box] [b]. *)
-val occur : var -> term -> bool
-val occur_mbinder : var -> mbinder -> bool
-
 (** Minimize [impl] to enforce our invariant (see {!type:Term.sym}). *)
 val minimize_impl : bool list -> bool list
-
-(** Basic printing function (for debug). *)
-module Raw : sig
-  val term : term pp
-end
-
-(** Typing context associating a [ variable to a type and possibly a
-    definition. The typing environment [x1:A1,..,xn:An] is represented by the
-    list [xn:An;..;x1:A1] in reverse order (last added variable comes
-    first). *)
-type ctxt = (var * term * term option) list
-
-(** Type of unification constraints. *)
-type constr = ctxt * term * term
-
-(** Sets and maps of term variables. *)
-module Var : Map.OrderedType with type t = var
-
-module VarSet : Set.S with type elt = var
-module VarMap : Map.S with type key = var
-
-(** [new_var s] creates a new [var] of name [s]. *)
-val new_var : string -> var
-
-(** [new_var_ind s i] creates a new [var] of name [s ^ string_of_int i]. *)
-val new_var_ind : string -> int -> var
-
-(** Sets and maps of symbols. *)
-module Sym : Map.OrderedType with type t = sym
-module SymSet : Set.S with type elt = sym
-module SymMap : Map.S with type key = sym
 
 (** [create_sym path expo prop opaq name typ impl] creates a new symbol with
    position [pos], path [path], exposition [expo], property [prop], opacity
@@ -312,26 +224,40 @@ val is_private : sym -> bool
 (** [is_modulo s] tells whether the symbol [s] is modulo some equations. *)
 val is_modulo : sym -> bool
 
+(** Sets and maps of symbols. *)
+module Sym : Map.OrderedType with type t = sym
+module SymSet : Set.S with type elt = sym
+module SymMap : Map.S with type key = sym
+
+(** [compare_vars x y] safely compares [x] and [y].  Note that it is unsafe to
+    compare variables using [Pervasive.compare]. *)
+val compare_vars : var -> var -> int
+
+(** [eq_vars x y] safely computes the equality of [x] and [y]. Note that it is
+    unsafe to compare variables with the polymorphic equality function. *)
+val eq_vars : var -> var -> bool
+
+(** [new_var s] creates a new [var] of name [s]. *)
+val new_var : string -> var
+
+(** [new_var_ind s i] creates a new [var] of name [s ^ string_of_int i]. *)
+val new_var_ind : string -> int -> var
+
+(** [name_of x] returns the name of the variable [x]. *)
+val name_of : var -> string
+
+(** Sets and maps of term variables. *)
+module Var : Map.OrderedType with type t = var
+module VarSet : Set.S with type elt = var
+module VarMap : Map.S with type key = var
+
+(** [is_unset m] returns [true] if [m] is not instantiated. *)
+val is_unset : meta -> bool
+
 (** Sets and maps of metavariables. *)
 module Meta : Map.OrderedType with type t = meta
 module MetaSet : Set.S with type elt = Meta.t
 module MetaMap : Map.S with type key = Meta.t
-
-(** Representation of unification problems. *)
-type problem_aux =
-  { to_solve  : constr list
-  (** List of unification problems to solve. *)
-  ; unsolved  : constr list
-  (** List of unification problems that could not be solved. *)
-  ; recompute : bool
-  (** Indicates whether unsolved problems should be rechecked. *)
-  ; metas : MetaSet.t
-  (** Set of unsolved metas. *) }
-
-type problem = problem_aux ref
-
-(** Create a new empty problem. *)
-val new_problem : unit -> problem
 
 (** [unfold t] repeatedly unfolds the definition of the surface constructor of
    [t], until a significant {!type:term} constructor is found. The term that
@@ -343,17 +269,11 @@ val unfold : term -> term
 (** {b NOTE} that {!val:unfold} must (almost) always be called before matching
     over a value of type {!type:term}. *)
 
-(** Total orders terms. *)
-val cmp : term cmp
-
 (** [is_abst t] returns [true] iff [t] is of the form [Abst(_)]. *)
 val is_abst : term -> bool
 
 (** [is_prod t] returns [true] iff [t] is of the form [Prod(_)]. *)
 val is_prod : term -> bool
-
-(** [is_unset m] returns [true] if [m] is not instantiated. *)
-val is_unset : meta -> bool
 
 (** [is_symb s t] tests whether [t] is of the form [Symb(s)]. *)
 val is_symb : sym -> term -> bool
@@ -366,6 +286,9 @@ val get_args : term -> term * term list
 (** [get_args_len t] is similar to [get_args t] but it also returns the length
     of the list of arguments. *)
 val get_args_len : term -> term * term list * int
+
+(** Total orders terms. *)
+val cmp : term cmp
 
 (** Construction functions of the private type [term]. They ensure some
    invariants:
@@ -407,6 +330,82 @@ val add_args : term -> term list -> term
    more efficient. *)
 val add_args_map : term -> (term -> term) -> term list -> term
 
+(** [subst b v] substitutes the variable bound by [b] with the value [v]. *)
+val subst : binder -> term -> term
+
+(** [msubst b vs] substitutes the variables bound by [b] with the values [vs].
+   Note that the length of the [vs] array should match the arity of the
+   multiple binder [b]. *)
+val msubst : mbinder -> term array -> term
+
+(** [unbind b] substitutes the binder [b] using a fresh variable. The variable
+    and the result of the substitution are returned. Note that the name of the
+    fresh variable is based on that of the binder. *)
+val unbind : binder -> var * term
+
+(** [unbind2 f g] is similar to [unbind f], but it substitutes two binders [f]
+    and [g] at once using the same fresh variable. The name of the variable is
+    based on that of the binder [f]. *)
+val unbind2 : binder -> binder -> var * term * term
+
+(** [unmbind b] substitutes the multiple binder [b] with fresh variables. This
+    function is analogous to [unbind] for binders. Note that the names used to
+    create the fresh variables are based on those of the multiple binder. *)
+val unmbind : mbinder -> var array * term
+
+(** [bind_var x b] binds the variable [x] in [b], producing a boxed binder. *)
+val bind_var  : var -> term -> binder
+
+(** [bind_mvar xs b] binds the variables of [xs] in [b] to get a boxed binder.
+    It is the equivalent of [bind_var] for multiple variables. *)
+val bind_mvar : var array -> term -> mbinder
+
+(** [binder_occur b] tests whether the bound variable occurs in [b]. *)
+val binder_occur : binder -> bool
+
+(** [binder_constant b] tests whether the [binder] [b] is constant (i.e.,  its
+    bound variable does not occur). *)
+val binder_constant : binder -> bool
+
+(** [is_closed b] checks whether the [box] [b] is closed. *)
+val is_closed : term -> bool
+val is_closed_mbinder : mbinder -> bool
+
+(** [occur x b] tells whether variable [x] occurs in the [box] [b]. *)
+val occur : var -> term -> bool
+val occur_mbinder : var -> mbinder -> bool
+
+(** Patt substitution. *)
+val subst_patt : mbinder option array -> term -> term
+
+(** [cleanup t] unfold all metas and TRef's in [t]. *)
+val cleanup : term -> term
+
+(** Typing context associating a [ variable to a type and possibly a
+    definition. The typing environment [x1:A1,..,xn:An] is represented by the
+    list [xn:An;..;x1:A1] in reverse order (last added variable comes
+    first). *)
+type ctxt = (var * term * term option) list
+
+(** Type of unification constraints. *)
+type constr = ctxt * term * term
+
+(** Representation of unification problems. *)
+type problem_aux =
+  { to_solve  : constr list
+  (** List of unification problems to solve. *)
+  ; unsolved  : constr list
+  (** List of unification problems that could not be solved. *)
+  ; recompute : bool
+  (** Indicates whether unsolved problems should be rechecked. *)
+  ; metas : MetaSet.t
+  (** Set of unsolved metas. *) }
+
+type problem = problem_aux ref
+
+(** Create a new empty problem. *)
+val new_problem : unit -> problem
+
 (** Positions in terms in reverse order. The i-th argument of a constructor
    has position i-1. *)
 type subterm_pos = int list
@@ -422,8 +421,7 @@ type sym_rule = sym * rule
 val lhs : sym_rule -> term
 val rhs : sym_rule -> term
 
-(** Patt substitution. *)
-val subst_patt : mbinder option array -> term -> term
-
-(** [cleanup t] unfold all metas and TRef's in [t]. *)
-val cleanup : term -> term
+(** Basic printing function (for debug). *)
+module Raw : sig
+  val term : term pp
+end

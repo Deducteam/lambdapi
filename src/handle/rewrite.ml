@@ -335,8 +335,9 @@ let rewrite : Sig_state.t -> problem -> popt -> goal_typ -> bool ->
 
   (* Bind the variables in this new witness. *)
   let bound = let bind = bind_mvar vars in bind t, bind l, bind r in
+  let msubst3 (b1, b2, b3) ts = msubst b1 ts, msubst b2 ts, msubst b3 ts in
 
-  (* Extract the term from the goal type (get “u” from “P u”). *)
+(* Extract the term from the goal type (get “u” from “P u”). *)
   let g_term =
     match get_args g_type with
     | t, [u] when is_symb cfg.symb_P t -> u
