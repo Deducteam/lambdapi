@@ -38,9 +38,7 @@ let coerce pb c t a b = unif pb c a b; (t, false)
 
 (** NOTE: functions {!val:type_enforce}, {!val:force} and {!val:infer}
     return a boolean which is true iff the typechecked term has been
-    modified. It allows to bypass reconstruction of some terms (which
-    call [lift |> bind_var x |> unbox]). It reduces the type checking time of
-    Holide by 21%. *)
+    modified. It allows to bypass reconstruction of some terms. *)
 
 (** [type_enforce pb c a] returns a tuple [(a',s)] where [a'] is refined
     term [a] and [s] is a sort (Type or Kind) such that [a'] is of type
