@@ -57,7 +57,7 @@ let _ =
     let symb_P = Builtin.get pos map "P" in
     let term_U = get_domain_of_type symb_T in
     let term_Prop = get_domain_of_type symb_P in
-    let a = new_tvar "a" in
+    let a = new_var "a" in
     let term_T_a = mk_Appl (mk_Symb symb_T, mk_Vari a) in
     let impls = mk_Impl (term_T_a, mk_Impl (term_T_a, term_Prop)) in
     mk_Prod (term_U, bind_var a impls)
@@ -69,8 +69,8 @@ let _ =
     let symb_P = Builtin.get pos map "P" in
     let symb_eq = Builtin.get pos map "eq" in
     let term_U = get_domain_of_type symb_T in
-    let a = new_tvar "a" in
-    let x = new_tvar "x" in
+    let a = new_var "a" in
+    let x = new_var "x" in
     let appl_eq = mk_Appl (mk_Symb symb_eq, mk_Vari a) in
     let appl_eq = mk_Appl (mk_Appl (appl_eq, mk_Vari x), mk_Vari x) in
     let appl = mk_Appl (mk_Symb symb_P, appl_eq) in
@@ -89,10 +89,10 @@ let _ =
     let term_eq = mk_Symb symb_eq in
     let term_U = get_domain_of_type symb_T in
     let term_Prop = get_domain_of_type symb_P in
-    let a = new_tvar "a" in
-    let x = new_tvar "x" in
-    let y = new_tvar "y" in
-    let p = new_tvar "p" in
+    let a = new_var "a" in
+    let x = new_var "x" in
+    let y = new_var "y" in
+    let p = new_var "p" in
     let term_T_a = mk_Appl (term_T, mk_Vari a) in
     let term_P_p_x = mk_Appl (term_P, mk_Appl (mk_Vari p, mk_Vari x)) in
     let term_P_p_y = mk_Appl (term_P, mk_Appl (mk_Vari p, mk_Vari y)) in
@@ -110,7 +110,7 @@ let _ =
 (** [get_eq_data pos cfg a] returns [((a,l,r),[v1;..;vn])] if [a ≡ Π v1:A1,
    .., Π vn:An, P (eq a l r)] and fails otherwise. *)
 let get_eq_data :
-  eq_config -> popt -> term -> (term * term * term) * tvar array = fun cfg ->
+  eq_config -> popt -> term -> (term * term * term) * var array = fun cfg ->
   let exception Not_eq of term in
   let get_eq_args u =
     if Logger.log_enabled () then log_rewr "get_eq_args %a" term u;
@@ -147,7 +147,7 @@ let get_eq_data :
 (** Type of a term with the free variables that need to be substituted. It is
    usually used to store the LHS of a proof of equality, together with the
    variables that were quantified over. *)
-type to_subst = tvar array * term
+type to_subst = var array * term
 
 (** [matches p t] instantiates the [TRef]'s of [p] so that [p] gets equal
    to [t] and returns [true] if all [TRef]'s of [p] could be instantiated, and
@@ -258,8 +258,8 @@ let find_subterm_matching : term -> term -> bool = fun p t ->
 
 (** [bind_pattern p t] replaces in the term [t] every occurence of the pattern
    [p] by a fresh variable, and returns the binder on this variable. *)
-let bind_pattern : term -> term -> tbinder =  fun p t ->
-  let z = new_tvar "z" in
+let bind_pattern : term -> term -> binder =  fun p t ->
+  let z = new_var "z" in
   let rec replace : term -> term = fun t ->
     if matches p t then mk_Vari z else
     match unfold t with
@@ -289,7 +289,7 @@ let swap : eq_config -> term -> term -> term -> term -> term =
   fun cfg a r l t ->
   (* We build the predicate “λx:T a, eq a l x”. *)
   let pred =
-    let x = new_tvar "x" in
+    let x = new_var "x" in
     let pred = add_args (mk_Symb cfg.symb_eq) [a; l; mk_Vari x] in
     mk_Abst(mk_Appl(mk_Symb cfg.symb_T, a), bind_var x pred)
   in
@@ -314,7 +314,7 @@ let rec replace_wild_by_tref : term -> term = fun t ->
    equational lemma that is appied. It handles the full set of SSReflect
    patterns. *)
 let rewrite : Sig_state.t -> problem -> popt -> goal_typ -> bool ->
-              (term, tbinder) Parsing.Syntax.rw_patt option -> term -> term =
+              (term, binder) Parsing.Syntax.rw_patt option -> term -> term =
   fun ss p pos {goal_hyps=g_env; goal_type=g_type; _} l2r pat t ->
 
   (* Obtain the required symbols from the current signature. *)

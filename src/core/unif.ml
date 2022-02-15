@@ -24,7 +24,7 @@ let set_to_prod : problem -> meta -> unit = fun p m ->
   let m1 = LibMeta.fresh p u1 n in
   let a = mk_Meta (m1, xs) in
   (* codomain *)
-  let y = new_tvar "y" in
+  let y = new_var "y" in
   let env' = Env.add "y" y (mk_Meta (m1, xs)) None env in
   let u2 = Env.to_prod env' s in
   let m2 = LibMeta.fresh p u2 (n+1) in
@@ -101,7 +101,7 @@ let instantiable : ctxt -> meta -> term array -> term -> bool =
    be instantiated and returns the corresponding instantiation, simplified. It
    does not check whether the instantiation is closed though. *)
 let instantiation :
-      ctxt -> meta -> term array -> term -> tmbinder option =
+      ctxt -> meta -> term array -> term -> mbinder option =
   fun c m ts u ->
   match nl_distinct_vars c ts with
     | None -> None
@@ -120,7 +120,7 @@ let instantiate : problem -> ctxt -> meta -> term array -> term -> bool =
   fun p c m ts u ->
   if Logger.log_enabled () then log "try instantiate";
   match instantiation c m ts u with
-  | Some b when is_closed_tmbinder b ->
+  | Some b when is_closed_mbinder b ->
       let do_instantiate() =
         if Logger.log_enabled () then log (red "%a ≔ %a") meta m term u;
         LibMeta.set p m b;
@@ -269,7 +269,7 @@ let imitate_lam : problem -> ctxt -> meta -> unit = fun p c m ->
          let tm2 = Env.to_prod env mk_Type in
          let m2 = LibMeta.fresh p tm2 n in
          let a = mk_Meta (m2, Env.to_terms env) in
-         let x = new_tvar "x" in
+         let x = new_var "x" in
          let env' = Env.add "x" x a None env in
          let tm3 = Env.to_prod env' mk_Type in
          let m3 = LibMeta.fresh p tm3 (n+1) in

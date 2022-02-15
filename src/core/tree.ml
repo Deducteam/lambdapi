@@ -438,7 +438,7 @@ module CM = struct
     List.exists st_r cm.clauses
 
   let index_var : int VarMap.t -> term -> int = fun vi t ->
-    VarMap.find (to_tvar t) vi
+    VarMap.find (to_var t) vi
 
   (** [mk_wildcard vs] creates a pattern variable that accepts anything and in
       which variables [vs] can appear free. There is no order on [vs] because
@@ -569,8 +569,8 @@ module CM = struct
       clause [cls]. The domain [a] of the binder and [b[v/x]] are put back
       into the stack (in that order), with [a] with argument position 0 and
       [b[v/x]] as argument 1. *)
-  let binder : (term -> (term * tbinder)) -> VarSet.t -> int ->
-    tvar -> arg list -> clause list -> arg list * clause list =
+  let binder : (term -> (term * binder)) -> VarSet.t -> int ->
+    var -> arg list -> clause list -> arg list * clause list =
     fun get free_vars col v pos cls ->
     let (l, {arg_path; arg_rank}, r) = List.destruct pos col in
     let ab = {arg_path = 1 :: arg_path; arg_rank = arg_rank + 1} in
@@ -604,13 +604,13 @@ module CM = struct
       is the position of terms in clauses [cls] and [free_vars] is the set of
       {e free} variables introduced by other binders that may appear in
       patterns. *)
-  let abstract : VarSet.t -> int -> tvar -> arg list -> clause list ->
+  let abstract : VarSet.t -> int -> var -> arg list -> clause list ->
     arg list * clause list =
     binder (function Abst(a,b) -> a, b | _ -> assert false)
 
   (** [product free_vars col v pos cls] is like [abstract free_vars col v pos
       cls] for products. *)
-  let product : VarSet.t -> int -> tvar -> arg list -> clause list ->
+  let product : VarSet.t -> int -> var -> arg list -> clause list ->
     arg list * clause list =
     binder (function Prod(a, b) -> a, b | _ -> assert false)
 
@@ -739,7 +739,7 @@ let compile : match_strat -> CM.t -> tree = fun mstrat m ->
       let binder recon mat_transf =
         if List.for_all (fun x -> not (recon x)) column then None else
         let v_lvl = VarMap.cardinal vars_id in (* Level of the variable. *)
-        let var = new_tvar (Printf.sprintf "d%dv" v_lvl) in
+        let var = new_var (Printf.sprintf "d%dv" v_lvl) in
         let (positions, clauses) =
           mat_transf (keys vars_id) swap var positions updated
         in

@@ -340,7 +340,7 @@ and tree_walk : config -> dtree -> stack -> (term * stack) option =
               in
               (* Ensure there are no variables from [forbidden] in [b]. *)
               let no_forbidden b =
-                not (IntMap.exists (fun _ x -> occur_tmbinder x b)
+                not (IntMap.exists (fun _ x -> occur_mbinder x b)
                        forbidden)
               in
               (* We first attempt to match [vars.(i)] directly. *)

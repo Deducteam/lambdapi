@@ -89,7 +89,7 @@ let sym : sym pp = fun ppf s ->
         else out ppf "%a.%a" path p uid n
     | Some alias -> out ppf "%a.%a" uid alias uid n
 
-let var : tvar pp = fun ppf x -> uid ppf (name_of x)
+let var : var pp = fun ppf x -> uid ppf (name_of x)
 
 (** Exception raised when trying to convert a term into a nat. *)
 exception Not_a_nat

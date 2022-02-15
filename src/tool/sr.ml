@@ -15,7 +15,7 @@ let log_subj = log_subj.pp
    metavariables in [p]. *)
 let build_meta_type : problem -> int -> term = fun p k ->
   assert (k >= 0);
-  let xs = Array.init k (new_tvar_ind "x") in
+  let xs = Array.init k (new_var_ind "x") in
   let ts = Array.map mk_Vari xs in
   (* We create the types for the “Mi” metavariables. *)
   let ty_m = Array.make (k+1) mk_Type in
@@ -102,7 +102,7 @@ let check_rule : Pos.popt -> sym_rule -> sym_rule =
   in
   (* Replace Patt's by Meta's. *)
   let f m =
-    let xs = Array.init m.meta_arity (new_tvar_ind "x") in
+    let xs = Array.init m.meta_arity (new_var_ind "x") in
     let ts = Array.map mk_Vari xs in
     Some(bind_mvar xs (mk_Meta (m, ts)))
   in
@@ -144,7 +144,7 @@ let check_rule : Pos.popt -> sym_rule -> sym_rule =
             false name !(m.meta_type) [] in
         Stdlib.(symbols := SymSet.add s !symbols);
         (* Build a definition for [m]. *)
-        let xs = Array.init m.meta_arity (new_tvar_ind "x") in
+        let xs = Array.init m.meta_arity (new_var_ind "x") in
         let s = mk_Symb s in
         let def = Array.fold_left (fun t x -> _Appl t (mk_Vari x)) s xs in
         m.meta_value := Some(bind_mvar xs def)
@@ -164,7 +164,7 @@ let check_rule : Pos.popt -> sym_rule -> sym_rule =
           Privat Defin Eager false name !(m.meta_type) []
       in
       Stdlib.(map := SymMap.add s None !map; m2s := MetaMap.add m s !m2s);
-      let xs = Array.init m.meta_arity (new_tvar_ind "x") in
+      let xs = Array.init m.meta_arity (new_var_ind "x") in
       let s = mk_Symb s in
       let def = Array.fold_left (fun t x -> mk_Appl (t, mk_Vari x)) s xs in
       m.meta_value := Some(bind_mvar xs def)

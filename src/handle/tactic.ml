@@ -44,7 +44,7 @@ let add_axiom : Sig_state.t -> popt -> meta -> Sig_state.t =
      substituted by the terms of the explicit substitution of the
      metavariable. *)
   let meta_value =
-    let vars = Array.init m.meta_arity (new_tvar_ind "x") in
+    let vars = Array.init m.meta_arity (new_var_ind "x") in
     let ax = add_args (mk_Symb sym) (List.map mk_Vari (Array.to_list vars)) in
     bind_mvar vars ax
   in
@@ -277,7 +277,7 @@ let handle :
         let n = List.length env in
         let m1 = LibMeta.fresh p (Env.to_prod env t) n in
         (* Refine the focused goal. *)
-        let v = new_tvar id.elt in
+        let v = new_var id.elt in
         let env' = Env.add id.elt v t None env in
         let m2 = LibMeta.fresh p (Env.to_prod env' gt.goal_type) (n+1) in
         let ts = Env.to_terms env in

@@ -108,12 +108,12 @@ let cmp : decl cmp = cmp_map (Lplib.Option.cmp Pos.cmp) pos_of_decl
 
 (** Translation of terms. *)
 
-let tvar : tvar pp = fun ppf v -> ident ppf (name_of v)
+let var : var pp = fun ppf v -> ident ppf (name_of v)
 
 (** [term b ppf t] prints term [t]. Print abstraction domains if [b]. *)
 let rec term : bool -> term pp = fun b ppf t ->
   match unfold t with
-  | Vari v -> tvar ppf v
+  | Vari v -> var ppf v
   | Type -> out ppf "Type"
   | Kind -> assert false
   | Symb s -> qid ppf (s.sym_path, s.sym_name)
@@ -121,17 +121,17 @@ let rec term : bool -> term pp = fun b ppf t ->
     let x,u' = unbind u in
     if binder_constant u
     then out ppf "(%a -> %a)" (term b) t (term b) u'
-    else out ppf "(%a : %a -> %a)" tvar x (term b) t (term b) u'
+    else out ppf "(%a : %a -> %a)" var x (term b) t (term b) u'
   | Abst(t,u) ->
     let x,u = unbind u in
-    if b then out ppf "(%a : %a => %a)" tvar x (term b) t (term b) u
-    else out ppf "(%a => %a)" tvar x (term b) u
+    if b then out ppf "(%a : %a => %a)" var x (term b) t (term b) u
+    else out ppf "(%a => %a)" var x (term b) u
   | Appl _ ->
     let h, ts = get_args t in
     out ppf "(%a%a)" (term b) h (List.pp (prefix " " (term b)) "") ts
   | LLet(a,t,u) ->
     let x,u = unbind u in
-    out ppf "((%a : %a := %a) => %a)" tvar x (term b) a (term b) t (term b) u
+    out ppf "((%a : %a := %a) => %a)" var x (term b) a (term b) t (term b) u
   | Patt(None,_,_) -> assert false
   | Patt(Some i,_,[||]) -> int ppf i
   | Patt(Some i,_,ts) ->

@@ -1,11 +1,7 @@
 (** Internal representation of terms.
 
    This module contains the definition of the internal representation of
-   terms, together with smart constructors and low level operation. The
-   representation strongly relies on the {!module: library, which
-   provides a convenient abstraction to work with binders.
-
-    @see <https://rlepigre.github.io/ocaml-bindlib/> *)
+   terms, together with smart constructors and low level operation. *)
 
 open Timed
 open Lplib open Base
@@ -40,23 +36,23 @@ type prop =
   | Assoc of bool (** Associative left if [true], right if [false]. *)
   | AC of bool (** Associative and commutative. *)
 
-type tbinder
+type binder
 
-type tmbinder
+type mbinder
 
-type tvar
+type var
 
 (** Representation of a term (or types) in a general sense. Values of the type
     are also used, for example, in the representation of patterns or rewriting
     rules. Specific constructors are included for such applications,  and they
     are considered invalid in unrelated code. *)
 type term = private
-  | Vari of tvar (** Free variable. *)
+  | Vari of var (** Free variable. *)
   | Type (** "TYPE" constant. *)
   | Kind (** "KIND" constant. *)
   | Symb of sym (** User-defined symbol. *)
-  | Prod of term * tbinder (** Dependent product. *)
-  | Abst of term * tbinder (** Abstraction. *)
+  | Prod of term * binder (** Dependent product. *)
+  | Abst of term * binder (** Abstraction. *)
   | Appl of term * term (** Term application. *)
   | Meta of meta * term array (** Metavariable application. *)
   | Patt of int option * string * term array
@@ -67,25 +63,20 @@ type term = private
   (** [Plac b] is a placeholder, or hole, for not given terms. Boolean
       [b] is true if the placeholder stands for a type. *)
   | TRef of term option ref (** Reference cell (used in surface matching). *)
-  | LLet of term * term * tbinder
+  | LLet of term * term * binder
   (** [LLet(a, t, u)] is [let x : a ≔ t in u] (with [x] bound in [u]). *)
 
 (** {b NOTE} that a wildcard "_" of the concrete (source code) syntax may have
-    a different representation depending on the application. For instance, the
+    a different representation depending on the context. For instance, the
     {!constructor:Wild} constructor is only used when matching patterns (e.g.,
     with the "rewrite" tactic). In the LHS of a rewriting {!type:rule}, we use
     the {!constructor:Patt} constructor to represend wildcards of the concrete
     syntax. They are thus considered to be fresh, unused pattern variables. *)
 
-(** Representation of a rewriting rule RHS. *)
-and rhs = term
-
 (** Representation of a decision tree (used for rewriting). *)
 and dtree = rule Tree_type.dtree
 
-(** Representation of a user-defined symbol. Symbols carry a "mode" indicating
-    whether they may be given rewriting rules or a definition. Invariants must
-    be enforced for "mode" consistency (see {!type:prop}).  *)
+(** Representation of a user-defined symbol. *)
 and sym =
   { sym_expo  : expo (** Visibility. *)
   ; sym_path  : Path.t (** Module in which the symbol is defined. *)
@@ -127,7 +118,7 @@ and sym =
     the rule applies. More explanations are given below. *)
  and rule =
   { lhs      : term list (** Left hand side (LHS). *)
-  ; rhs      : rhs (** Right hand side (RHS). *)
+  ; rhs      : term (** Right hand side (RHS). *)
   ; arity    : int (** Required number of arguments to be applicable. *)
   ; arities  : int array
   (** Arities of the pattern variables bound in the RHS. *)
@@ -139,9 +130,9 @@ and sym =
     (on which the rule is defined) applied to a list of pattern arguments. The
     list of arguments is given in {!field:lhs},  but the head symbol itself is
     not stored in the rule, since rules are stored in symbols.  In the pattern
-    arguments of a LHS, [Patt(i,s,env)] is used to represent pattern variables
+    arguments of a LHS, [Patt(i,s,ts)] is used to represent pattern variables
     that are identified by a name [s] (unique in a rewriting rule). They carry
-    an environment [env] that should only contain distinct variables (terms of
+    an environment [ts] that should only contain distinct variables (terms of
     the form [Vari(x)]).  They correspond to the set of all the variables that
     may appear free in a matched term. The optional integer [i] corresponds to
     the reserved index for the matched term in the environment of the RHS
@@ -158,7 +149,7 @@ and sym =
        name (in the rule) that is generated automatically.
 
     Then, the term [f t u v w] matches the LHS with a substitution represented
-    by an array of terms (or rather “term environments”) [a] of length 3 if we
+    by an array of terms [a] of length 3 if we
     have [a.(0) = t], [a.(1) = u], [a.(1) = v] and [a.(2) = w].
 
     {b TODO} memorising [w] in the substitution is sub-optimal. In practice,
@@ -186,7 +177,7 @@ and sym =
    {!field:sym_rules} field. To check if a rule [r] applies, we match the
    elements of [r.lhs] with those of [ts] while building an environment [env].
    During this process, a pattern of
-   the form {!constructor:Patt}[(Some i,s,e)] matched against a term [u] will
+   the form {!constructor:Patt}[(Some i,_,_)] matched against a term [u] will
    results in [env.(i)] being set to [u]. If all terms of [ts] can be matched
    against corresponding patterns, then environment [env] is fully constructed
    and it can hence be substituted in [r.rhs] with [msubst r.rhs env]
@@ -204,68 +195,68 @@ and sym =
   { meta_key   : int (** Unique key. *)
   ; meta_type  : term ref (** Type. *)
   ; meta_arity : int (** Arity (environment size). *)
-  ; meta_value : tmbinder option ref (** Definition. *) }
+  ; meta_value : mbinder option ref (** Definition. *) }
 
 (** [subst b v] substitutes the variable bound by [b] with the value [v]. *)
-val subst : tbinder -> term -> term
+val subst : binder -> term -> term
 
 (** [msubst b vs] substitutes the variables bound by [b] with the values [vs].
    Note that the length of the [vs] array should match the arity of the
    multiple binder [b]. *)
-val msubst : tmbinder -> term array -> term
+val msubst : mbinder -> term array -> term
 val msubst3 :
-  (tmbinder * tmbinder * tmbinder) -> term array -> term * term * term
+  (mbinder * mbinder * mbinder) -> term array -> term * term * term
 
 (** [name_of x] returns a printable name for variable [x]. *)
-val name_of : tvar -> string
+val name_of : var -> string
 
 (** [unbind b] substitutes the binder [b] using a fresh variable. The variable
     and the result of the substitution are returned. Note that the name of the
     fresh variable is based on that of the binder. *)
-val unbind : tbinder -> tvar * term
+val unbind : binder -> var * term
 
 (** [unbind2 f g] is similar to [unbind f], but it substitutes two binders [f]
     and [g] at once using the same fresh variable. The name of the variable is
     based on that of the binder [f]. *)
-val unbind2 : tbinder -> tbinder -> tvar * term * term
+val unbind2 : binder -> binder -> var * term * term
 
 (** [unmbind b] substitutes the multiple binder [b] with fresh variables. This
     function is analogous to [unbind] for binders. Note that the names used to
     create the fresh variables are based on those of the multiple binder. *)
-val unmbind : tmbinder -> tvar array * term
+val unmbind : mbinder -> var array * term
 
 (** [bind_var x b] binds the variable [x] in [b], producing a boxed binder. *)
-val bind_var  : tvar -> term -> tbinder
+val bind_var  : var -> term -> binder
 
 (** [bind_mvar xs b] binds the variables of [xs] in [b] to get a boxed binder.
     It is the equivalent of [bind_var] for multiple variables. *)
-val bind_mvar : tvar array -> term -> tmbinder
+val bind_mvar : var array -> term -> mbinder
 
 (** [compare_vars x y] safely compares [x] and [y].  Note that it is unsafe to
     compare variables using [Pervasive.compare]. *)
-val compare_vars : tvar -> tvar -> int
+val compare_vars : var -> var -> int
 
 (** [eq_vars x y] safely computes the equality of [x] and [y]. Note that it is
     unsafe to compare variables with the polymorphic equality function. *)
-val eq_vars : tvar -> tvar -> bool
+val eq_vars : var -> var -> bool
 
 (** [binder_occur b] tests whether the bound variable occurs in [b]. *)
-val binder_occur : tbinder -> bool
+val binder_occur : binder -> bool
 
 (** [binder_constant b] tests whether the [binder] [b] is constant (i.e.,  its
     bound variable does not occur). *)
-val binder_constant : tbinder -> bool
+val binder_constant : binder -> bool
 
 (** [mbinder_arity b] gives the arity of the [mbinder]. *)
-val mbinder_arity : tmbinder -> int
+val mbinder_arity : mbinder -> int
 
 (** [is_closed b] checks whether the [box] [b] is closed. *)
 val is_closed : term -> bool
-val is_closed_tmbinder : tmbinder -> bool
+val is_closed_mbinder : mbinder -> bool
 
 (** [occur x b] tells whether variable [x] occurs in the [box] [b]. *)
-val occur : tvar -> term -> bool
-val occur_tmbinder : tvar -> tmbinder -> bool
+val occur : var -> term -> bool
+val occur_mbinder : var -> mbinder -> bool
 
 (** Minimize [impl] to enforce our invariant (see {!type:Term.sym}). *)
 val minimize_impl : bool list -> bool list
@@ -279,22 +270,22 @@ end
     definition. The typing environment [x1:A1,..,xn:An] is represented by the
     list [xn:An;..;x1:A1] in reverse order (last added variable comes
     first). *)
-type ctxt = (tvar * term * term option) list
+type ctxt = (var * term * term option) list
 
 (** Type of unification constraints. *)
 type constr = ctxt * term * term
 
 (** Sets and maps of term variables. *)
-module Var : Map.OrderedType with type t = tvar
+module Var : Map.OrderedType with type t = var
 
-module VarSet : Set.S with type elt = tvar
-module VarMap : Map.S with type key = tvar
+module VarSet : Set.S with type elt = var
+module VarMap : Map.S with type key = var
 
-(** [new_tvar s] creates a new [tvar] of name [s]. *)
-val new_tvar : string -> tvar
+(** [new_var s] creates a new [var] of name [s]. *)
+val new_var : string -> var
 
-(** [new_tvar_ind s i] creates a new [tvar] of name [s ^ string_of_int i]. *)
-val new_tvar_ind : string -> int -> tvar
+(** [new_var_ind s i] creates a new [var] of name [s ^ string_of_int i]. *)
+val new_var_ind : string -> int -> var
 
 (** Sets and maps of symbols. *)
 module Sym : Map.OrderedType with type t = sym
@@ -388,20 +379,20 @@ val get_args_len : term -> term * term list * int
 
 - In [LLet(_,_,b)], [binder_constant b = false] (useless let's are
    erased). *)
-val mk_Vari : tvar -> term
+val mk_Vari : var -> term
 val mk_Type : term
 val mk_Kind : term
 val mk_Symb : sym -> term
-val mk_Prod : term * tbinder -> term
+val mk_Prod : term * binder -> term
 val mk_Impl : term * term -> term
-val mk_Abst : term * tbinder -> term
+val mk_Abst : term * binder -> term
 val mk_Appl : term * term -> term
 val mk_Meta : meta * term array -> term
 val mk_Patt : int option * string * term array -> term
 val mk_Wild : term
 val mk_Plac : bool -> term
 val mk_TRef : term option ref -> term
-val mk_LLet : term * term * tbinder -> term
+val mk_LLet : term * term * binder -> term
 
 (** [mk_Appl_not_canonical t u] builds the non-canonical (wrt. C and AC
    symbols) application of [t] to [u]. WARNING: to use only in Sign.link. *)
@@ -432,7 +423,7 @@ val lhs : sym_rule -> term
 val rhs : sym_rule -> term
 
 (** Patt substitution. *)
-val subst_patt : tmbinder option array -> term -> term
+val subst_patt : mbinder option array -> term -> term
 
 (** [cleanup t] unfold all metas and TRef's in [t]. *)
 val cleanup : term -> term

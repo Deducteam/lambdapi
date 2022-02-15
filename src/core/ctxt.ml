@@ -7,18 +7,18 @@ open Timed
 (** [type_of x ctx] returns the type of [x] in the context [ctx] when it
     appears in it, and
 @raise [Not_found] otherwise. *)
-let type_of : tvar -> ctxt -> term = fun x ctx ->
+let type_of : var -> ctxt -> term = fun x ctx ->
   let (_,a,_) = List.find (fun (y,_,_) -> eq_vars x y) ctx in a
 
 (** [def_of x ctx] returns the definition of [x] in the context [ctx] if it
     appears, and [None] otherwise *)
-let rec def_of : tvar -> ctxt -> ctxt * term option = fun x c ->
+let rec def_of : var -> ctxt -> ctxt * term option = fun x c ->
   match c with
   | []         -> [], None
   | (y,_,d)::c -> if eq_vars x y then c,d else def_of x c
 
 (** [mem x ctx] tells whether variable [x] is mapped in the context [ctx]. *)
-let mem : tvar -> ctxt -> bool = fun x ->
+let mem : var -> ctxt -> bool = fun x ->
   List.exists (fun (y,_,_) -> eq_vars x y)
 
 (** [to_prod ctx t] builds a product by abstracting over the context [ctx], in
@@ -48,7 +48,7 @@ let to_let : ctxt -> term -> term = fun ctx t ->
 
 (** [sub ctx vs] returns the sub-context of [ctx] made of the variables of
     [vs]. *)
-let sub : ctxt -> tvar array -> ctxt = fun ctx vs ->
+let sub : ctxt -> var array -> ctxt = fun ctx vs ->
   let f ((x,_,_) as hyp) ctx =
     if Array.exists (eq_vars x) vs then hyp::ctx else ctx
   in

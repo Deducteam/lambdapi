@@ -3,12 +3,12 @@
 open Term
 open Lplib open Extra
 
-(** [to_tvar t] returns [x] if [t] is of the form [Vari x] and fails
+(** [to_var t] returns [x] if [t] is of the form [Vari x] and fails
     otherwise. *)
-let to_tvar : term -> tvar = fun t ->
+let to_var : term -> var = fun t ->
   match t with Vari(x) -> x | _ -> assert false
 
-(** {b NOTE} the [Array.map to_tvar] function is useful when working
+(** {b NOTE} the [Array.map to_var] function is useful when working
    with multiple binders. For example, this is the case when manipulating
    pattern variables ([Patt] constructor) or metatavariables ([Meta]
    constructor).  Remark that it is important for these constructors to hold
@@ -16,7 +16,7 @@ let to_tvar : term -> tvar = fun t ->
    be substituted when if it is injected in a term (using the [Vari]
    constructor). *)
 
-(** {b NOTE} the result of {!val:to_tvar} can generally NOT be precomputed. A
+(** {b NOTE} the result of {!val:to_var} can generally NOT be precomputed. A
     first reason is that we cannot know in advance what variable identifier is
     going to arise when working under binders,  for which fresh variables will
     often be generated. A second reason is that free variables should never be
@@ -61,23 +61,23 @@ let iter : (term -> unit) -> term -> unit = fun action ->
 (** [unbind_name b s] is like [unbind b] but returns a valid variable
     name when [b] binds no variable. The string [s] is the prefix of the
     variable's name.*)
-let unbind_name : string -> tbinder -> tvar * term = fun s b ->
+let unbind_name : string -> binder -> var * term = fun s b ->
   if binder_occur b then unbind b
-  else let x = new_tvar s in (x, subst b (mk_Vari x))
+  else let x = new_var s in (x, subst b (mk_Vari x))
 
 (** [unbind2_name b1 b2 s] is like [unbind2 b1 b2] but returns a valid
    variable name when [b1] or [b2] binds no variable. The string [s] is the
    prefix of the variable's name.*)
-let unbind2_name : string -> tbinder -> tbinder -> tvar * term * term =
+let unbind2_name : string -> binder -> binder -> var * term * term =
   fun s b1 b2 ->
   if binder_occur b1 || binder_occur b2 then
     unbind2 b1 b2
-  else let x = new_tvar s in
+  else let x = new_var s in
        (x, subst b1 (mk_Vari x), subst b2 (mk_Vari x))
 
 (** [distinct_vars ctx ts] checks that the terms [ts] are distinct
    variables. If so, the variables are returned. *)
-let distinct_vars : ctxt -> term array -> tvar array option = fun ctx ts ->
+let distinct_vars : ctxt -> term array -> var array option = fun ctx ts ->
   let exception Not_unique_var in
   let open Stdlib in
   let vars = ref VarSet.empty in
@@ -103,7 +103,7 @@ let distinct_vars : ctxt -> term array -> tvar array option = fun ctx ts ->
    metavariables into fresh symbols, and those metavariables are introduced by
    [sr.ml] which replaces pattern variables by metavariables. *)
 let nl_distinct_vars
-    : ctxt -> term array -> (tvar array * tvar StrMap.t) option =
+    : ctxt -> term array -> (var array * var StrMap.t) option =
   fun ctx ts ->
   let exception Not_a_var in
   let open Stdlib in
@@ -122,14 +122,14 @@ let nl_distinct_vars
         let v =
           try StrMap.find f.sym_name !patt_vars
           with Not_found ->
-            let v = new_tvar f.sym_name in
+            let v = new_var f.sym_name in
             patt_vars := StrMap.add f.sym_name v !patt_vars;
             v
         in to_var (mk_Vari v)
     | _ -> raise Not_a_var
   in
   let replace_nl_var v =
-    if VarSet.mem v !nl_vars then new_tvar "_" else v
+    if VarSet.mem v !nl_vars then new_var "_" else v
   in
   try
     let vs = Array.map to_var ts in
@@ -142,7 +142,7 @@ let nl_distinct_vars
 
 (** [sym_to_var m t] replaces in [t] every symbol [f] by a variable according
    to the map [map]. *)
-let sym_to_var : tvar StrMap.t -> term -> term = fun map ->
+let sym_to_var : var StrMap.t -> term -> term = fun map ->
   let rec to_var t =
     match unfold t with
     | Symb f -> (try mk_Vari (StrMap.find f.sym_name map) with Not_found -> t)

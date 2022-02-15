@@ -8,7 +8,7 @@ open Term
     implemented by a map as the order is important. The structure is similar
     to then one of {!type:Term.ctxt}, a tuple [(x,a,t)] is a variable [x],
     its type [a] and possibly its definition [t] *)
-type env = (string * (tvar * term * term option)) list
+type env = (string * (var * term * term option)) list
 
 type t = env
 
@@ -17,12 +17,12 @@ let empty : env = []
 
 (** [add v a t env] extends the environment [env] by mapping the string
     [n] to [(v,a,t)]. *)
-let add : string -> tvar -> term -> term option -> env -> env =
+let add : string -> var -> term -> term option -> env -> env =
   fun n v a t env -> (n, (v, a, t)) :: env
 
 (** [find n env] returns the variable associated to the variable  name
     [n] in the environment [env]. If none is found, [Not_found] is raised. *)
-let find : string -> env -> tvar = fun n env ->
+let find : string -> env -> var = fun n env ->
   let (x,_,_) = List.assoc n env in x
 
 (** [mem n env] returns [true] iff [n] is mapped to a variable in [env]. *)
@@ -58,7 +58,7 @@ let to_abst : env -> term -> term = fun env t ->
 (** [vars env] extracts the array of the {e not defined} variables in
     [env]. Note that the order is reversed: [vars [(xn,an);..;(x1,a1)] =
     [|x1;..;xn|]]. *)
-let vars : env -> tvar array = fun env ->
+let vars : env -> var array = fun env ->
   let f (_, (x, _, u)) = if u = None then Some(x) else None in
   Array.of_list (List.filter_rev_map f env)
 
@@ -80,7 +80,7 @@ let to_ctxt : env -> ctxt = List.map snd
 (** [match_prod c t f] returns [f a b] if [t] matches [Prod(a,b)] possibly
    after reduction.
 @raise [Invalid_argument] if [t] is not a product. *)
-let match_prod : ctxt -> term -> (term -> tbinder -> 'a) -> 'a = fun c t f ->
+let match_prod : ctxt -> term -> (term -> binder -> 'a) -> 'a = fun c t f ->
   match unfold t with
   | Prod(a,b) -> f a b
   | _ ->
@@ -125,7 +125,7 @@ let of_prod_nth : ctxt -> int -> term -> env * term = fun c n t ->
    [xs].
 @raise [Invalid_argument] if [t] does not evaluate to a series of (at least)
    [n] products. *)
-let of_prod_using : ctxt -> tvar array -> term -> env * term = fun c xs t ->
+let of_prod_using : ctxt -> var array -> term -> env * term = fun c xs t ->
   let n = Array.length xs in
   let rec build_env i env t =
     if i >= n then env, t

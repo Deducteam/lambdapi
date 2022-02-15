@@ -288,7 +288,7 @@ and scope_domain : int -> mode -> sig_state -> env -> p_term option -> term =
    appear in the body. [typ] indicates if we scope a type (default is
    false). *)
 and scope_binder : ?typ:bool -> int -> mode -> sig_state ->
-  (term * tbinder -> term) -> Env.t -> p_params list ->
+  (term * binder -> term) -> Env.t -> p_params list ->
   p_term option -> term =
   fun ?(typ=false) k md ss cons env params_list t ->
   let rec scope_params_list env params_list =
@@ -307,7 +307,7 @@ and scope_binder : ?typ:bool -> int -> mode -> sig_state ->
       match idopts with
       | [] -> scope_params_list env params_list
       | None::idopts ->
-          let v = new_tvar "_" in
+          let v = new_var "_" in
           let t = aux env idopts in
           cons (a, bind_var v t)
       | Some {elt=id;pos}::idopts ->
@@ -315,7 +315,7 @@ and scope_binder : ?typ:bool -> int -> mode -> sig_state ->
             fatal pos "\"%s\": Escaped identifiers or regular identifiers \
                        having an integer suffix with leading zeros \
                        are not allowed for bound variable names." id;
-          let v = new_tvar id in
+          let v = new_var id in
           let env = Env.add id v a None env in
           let t = aux env idopts in
           cons (a, bind_var v t)
@@ -469,7 +469,7 @@ and scope_head :
   | (P_LLet(x,xs,a,t,u), (M_Term _|M_URHS _|M_RHS _)) ->
       let a = scope_binder ~typ:true (k+1) md ss mk_Prod env xs a in
       let t = scope_binder (k+1) md ss mk_Abst env xs (Some(t)) in
-      let v = new_tvar x.elt in
+      let v = new_var x.elt in
       let u = scope ~typ (k+1) md ss (Env.add x.elt v a (Some(t)) env) u in
       if not (occur v u) then
         wrn x.pos "Useless let-binding (%s is not bound)." x.elt;
@@ -642,26 +642,26 @@ let scope_pattern : sig_state -> env -> p_term -> term = fun ss env t ->
 (** [scope_rw_patt ss env t] turns a parser-level rewrite tactic specification
     [s] into an actual rewrite specification (possibly containing variables of
     [env] and using [ss] for aliasing). *)
-let scope_rw_patt : sig_state -> env -> p_rw_patt -> (term, tbinder) rw_patt =
+let scope_rw_patt : sig_state -> env -> p_rw_patt -> (term, binder) rw_patt =
   fun ss env s ->
   match s.elt with
   | Rw_Term(t) -> Rw_Term(scope_pattern ss env t)
   | Rw_InTerm(t) -> Rw_InTerm(scope_pattern ss env t)
   | Rw_InIdInTerm(x,t) ->
-      let v = new_tvar x.elt in
+      let v = new_var x.elt in
       let t = scope_pattern ss ((x.elt,(v, mk_Kind, None))::env) t in
       Rw_InIdInTerm(bind_var v t)
   | Rw_IdInTerm(x,t) ->
-      let v = new_tvar x.elt in
+      let v = new_var x.elt in
       let t = scope_pattern ss ((x.elt,(v, mk_Kind, None))::env) t in
       Rw_IdInTerm(bind_var v t)
   | Rw_TermInIdInTerm(u,(x,t)) ->
       let u = scope_pattern ss env u in
-      let v = new_tvar x.elt in
+      let v = new_var x.elt in
       let t = scope_pattern ss ((x.elt,(v, mk_Kind, None))::env) t in
       Rw_TermInIdInTerm(u, bind_var v t)
   | Rw_TermAsIdInTerm(u,(x,t)) ->
       let u = scope_pattern ss env u in
-      let v = new_tvar x.elt in
+      let v = new_var x.elt in
       let t = scope_pattern ss ((x.elt,(v, mk_Kind, None))::env) t in
       Rw_TermAsIdInTerm(u, bind_var v t)

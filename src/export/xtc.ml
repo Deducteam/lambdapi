@@ -114,8 +114,8 @@ let print_tl_rule : Format.formatter -> int -> sym -> rule -> unit =
     in the form of a pair containing the name of the variable and its type,
     inferred by the solver. *)
 let get_vars : sym -> rule -> (string * Term.term) list = fun s r ->
-  let rule_ctx : tvar option array = Array.make r.vars_nb None in
-  let var_list : tvar list ref = ref [] in
+  let rule_ctx : var option array = Array.make r.vars_nb None in
+  let var_list : var list ref = ref [] in
   let rec subst_patt v t =
     match t with
     | Type
@@ -137,7 +137,7 @@ let get_vars : sym -> rule -> (string * Term.term) list = fun s r ->
     | Patt (Some(i), _, a) ->
        if v.(i) = None
        then
-         (let v_i = new_tvar (string_of_int i) in
+         (let v_i = new_var (string_of_int i) in
           var_list := v_i :: !var_list;
           v.(i) <- Some(v_i));
        let v_i =

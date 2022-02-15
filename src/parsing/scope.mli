@@ -24,4 +24,4 @@ val scope_rule : bool -> sig_state -> p_rule -> sym_rule
 (** [scope_rw_patt ss env t] turns a parser-level rewrite tactic specification
     [s] into an actual rewrite specification (possibly containing variables of
     [env] and using [ss] for aliasing). *)
-val scope_rw_patt : sig_state -> env -> p_rw_patt -> (term, tbinder) rw_patt
+val scope_rw_patt : sig_state -> env -> p_rw_patt -> (term, binder) rw_patt

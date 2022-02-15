@@ -44,12 +44,12 @@ type prop =
     rules. Specific constructors are included for such applications,  and they
     are considered invalid in unrelated code. *)
 type term =
-  | Vari of tvar (** Free variable. *)
+  | Vari of var (** Free variable. *)
   | Type (** "TYPE" constant. *)
   | Kind (** "KIND" constant. *)
   | Symb of sym (** User-defined symbol. *)
-  | Prod of term * tbinder (** Dependent product. *)
-  | Abst of term * tbinder (** Abstraction. *)
+  | Prod of term * binder (** Dependent product. *)
+  | Abst of term * binder (** Abstraction. *)
   | Appl of term * term (** Term application. *)
   | Meta of meta * term array (** Metavariable application. *)
   | Patt of int option * string * term array
@@ -58,25 +58,20 @@ type term =
   | Wild
   | Plac of bool
   | TRef of term option ref (** Reference cell (used in surface matching). *)
-  | LLet of term * term * tbinder
+  | LLet of term * term * binder
   (** [LLet(a, t, u)] is [let x : a ≔ t in u] (with [x] bound in [u]). *)
 
 (** {b NOTE} that a wildcard "_" of the concrete (source code) syntax may have
-    a different representation depending on the application. For instance, the
+    a different representation depending on the context. For instance, the
     {!constructor:Wild} constructor is only used when matching patterns (e.g.,
     with the "rewrite" tactic). In the LHS of a rewriting {!type:rule}, we use
     the {!constructor:Patt} constructor to represend wildcards of the concrete
     syntax. They are thus considered to be fresh, unused pattern variables. *)
 
-(** Representation of a rewriting rule RHS. *)
-and rhs = term
-
 (** Representation of a decision tree (used for rewriting). *)
 and dtree = rule Tree_type.dtree
 
-(** Representation of a user-defined symbol. Symbols carry a "mode" indicating
-    whether they may be given rewriting rules or a definition. Invariants must
-    be enforced for "mode" consistency (see {!type:sym_prop}).  *)
+(** Representation of a user-defined symbol. *)
 and sym =
   { sym_expo  : expo (** Visibility. *)
   ; sym_path  : Path.t (** Module in which the symbol is defined. *)
@@ -122,7 +117,7 @@ and sym =
     the rule applies. More explanations are given below. *)
  and rule =
   { lhs      : term list (** Left hand side (LHS). *)
-  ; rhs      : rhs (** Right hand side (RHS). *)
+  ; rhs      : term (** Right hand side (RHS). *)
   ; arity    : int (** Required number of arguments to be applicable. *)
   ; arities  : int array
   (** Arities of the pattern variables bound in the RHS. *)
@@ -139,10 +134,9 @@ and sym =
    lambdapi files to other formats. *)
 
 (** All variables of rewriting rules that appear in the RHS must appear in the
-   LHS. This constraint is checked in {!module:Sr}. In the case of unification
-   rules, we allow variables to appear only in the RHS. In that case, these
-   variables are replaced by fresh meta-variables each time the rule is
-   used. *)
+   LHS. In the case of unification rules, we allow variables to appear only in
+   the RHS. In that case, these variables are replaced by fresh meta-variables
+   each time the rule is used. *)
 
 (** During evaluation, we only try to apply rewriting rules when we reduce the
    application of a symbol [s] to a list of argument [ts]. At this point, the
@@ -150,10 +144,10 @@ and sym =
    {!field:sym_rules} field. To check if a rule [r] applies, we match the
    elements of [r.lhs] with those of [ts] while building an environment [env].
    During this process, a pattern of
-   the form {!constructor:Patt}[(Some i,s,e)] matched against a term [u] will
+   the form {!constructor:Patt}[(Some i,_,_)] matched against a term [u] will
    results in [env.(i)] being set to [u]. If all terms of [ts] can be matched
    against corresponding patterns, then environment [env] is fully constructed
-   and it can hence be substituted in [r.rhs] with [msubst r.rhs env]
+   and it can hence be substituted in [r.rhs] with [subst_patt env r.rhs]
    to get the result of the application of the rule. *)
 
 (** {3 Metavariables and related functions} *)
@@ -164,17 +158,17 @@ and sym =
     (i.e., set to a particular term).  When a metavariable [m] is
     instantiated,  the suspended substitution is  unlocked and terms of
     the form {!constructor:Meta}[(m,env)] can be unfolded. *)
- and meta =
+and meta =
   { meta_key   : int (** Unique key. *)
   ; meta_type  : term ref (** Type. *)
   ; meta_arity : int (** Arity (environment size). *)
-  ; meta_value : tmbinder option ref (** Definition. *) }
+  ; meta_value : mbinder option ref (** Definition. *) }
 
-and tbinder = string * term
+and binder = string * term
 
-and tmbinder = string array * term
+and mbinder = string array * term
 
-and tvar = int * string
+and var = int * string
 
 (** [unfold t] repeatedly unfolds the definition of the surface constructor
    of [t], until a significant {!type:term} constructor is found.  The term
@@ -217,7 +211,7 @@ and term : term pp = fun ppf t ->
   | TRef r -> out ppf "&%a" (Option.pp term) !r
   | LLet(a,t,(n,b)) ->
     out ppf "let %s : %a ≔ %a in %a" n term a term t term b
-and var : tvar pp = fun ppf (i,n) -> out ppf "%s%d" n i
+and var : var pp = fun ppf (i,n) -> out ppf "%s%d" n i
 and sym : sym pp = fun ppf s -> string ppf s.sym_name
 and terms : term array pp = fun ppf ts ->
   if Array.length ts > 0 then D.array term ppf ts
@@ -242,7 +236,7 @@ and lift : int -> term -> term = fun l t ->
 (** [msubst b vs] substitutes the variables bound by [b] with the values [vs].
    Note that the length of the [vs] array should match the arity of the
    multiple binder [b]. *)
-and msubst : tmbinder -> term array -> term = fun (ns,t) vs ->
+and msubst : mbinder -> term array -> term = fun (ns,t) vs ->
   let n = Array.length ns in
   assert (Array.length vs = n);
   (* [msubst i t] replaces [Db(i+j)] by [lift (i-1) vs.(n-j-1)]
@@ -267,11 +261,11 @@ and msubst : tmbinder -> term array -> term = fun (ns,t) vs ->
   r
 
 let msubst3 :
-  (tmbinder * tmbinder * tmbinder) -> term array -> term * term * term =
+  (mbinder * mbinder * mbinder) -> term array -> term * term * term =
   fun (b1, b2, b3) ts -> msubst b1 ts, msubst b2 ts, msubst b3 ts
 
 (** [subst b v] substitutes the variable bound by [b] with the value [v]. *)
-let subst : tbinder -> term -> term = fun (_,t) v ->
+let subst : binder -> term -> term = fun (_,t) v ->
   let rec subst i t =
     (*if Logger.log_enabled() then
       log_term "subst [%d≔%a] %a" i term v term t;*)
@@ -291,34 +285,34 @@ let subst : tbinder -> term -> term = fun (_,t) v ->
   r
 
 (** [new_var name] creates a new unique variable of name [name]. *)
-let new_var : string -> tvar =
+let new_var : string -> var =
   let open Stdlib in let n = ref 0 in fun name -> incr n; !n, name
 
 (** [name_of x] returns the name of variable [x]. *)
-let name_of : tvar -> string = fun (_i,n) -> n (*^ string_of_int i*)
+let name_of : var -> string = fun (_i,n) -> n (*^ string_of_int i*)
 
 (** [unbind b] substitutes the binder [b] using a fresh variable. The variable
     and the result of the substitution are returned. Note that the name of the
     fresh variable is based on that of the binder. *)
-let unbind : tbinder -> tvar * term = fun ((name,_) as b) ->
+let unbind : binder -> var * term = fun ((name,_) as b) ->
   let x = new_var name in x, subst b (Vari x)
 
 (** [unbind2 f g] is similar to [unbind f], but it substitutes two binders [f]
     and [g] at once using the same fresh variable. The name of the variable is
     based on that of the binder [f]. *)
-let unbind2 : tbinder -> tbinder -> tvar * term * term =
+let unbind2 : binder -> binder -> var * term * term =
   fun ((name1,_) as b1) b2 ->
   let x = new_var name1 in x, subst b1 (Vari x), subst b2 (Vari x)
 
 (** [unmbind b] substitutes the multiple binder [b] with fresh variables. This
     function is analogous to [unbind] for binders. Note that the names used to
     create the fresh variables are based on those of the multiple binder. *)
-let unmbind : tmbinder -> tvar array * term = fun ((names,_) as b) ->
+let unmbind : mbinder -> var array * term = fun ((names,_) as b) ->
   let xs = Array.init (Array.length names) (fun i -> new_var names.(i)) in
   xs, msubst b (Array.map (fun x -> Vari x) xs)
 
 (** [bind_var x b] binds the variable [x] in [b], producing a boxed binder. *)
-let bind_var  : tvar -> term -> tbinder = fun ((_,n) as x) ->
+let bind_var  : var -> term -> binder = fun ((_,n) as x) ->
   let rec bind i t =
     (*if Logger.log_enabled() then log_term "bind_var %d %a" i term t;*)
     match unfold t with
@@ -338,7 +332,7 @@ let bind_var  : tvar -> term -> tbinder = fun ((_,n) as x) ->
 
 (** [bind_mvar xs b] binds the variables of [xs] in [b] to get a boxed binder.
     It is the equivalent of [bind_var] for multiple variables. *)
-let bind_mvar : tvar array -> term -> tmbinder = fun xs t ->
+let bind_mvar : var array -> term -> mbinder = fun xs t ->
   let n = Array.length xs in
   if n = 0 then [||], t else
   let open Stdlib in let open Extra in
@@ -366,14 +360,14 @@ let bind_mvar : tvar array -> term -> tmbinder = fun xs t ->
 
 (** [compare_vars x y] safely compares [x] and [y].  Note that it is unsafe to
     compare variables using [Pervasive.compare]. *)
-let compare_vars : tvar -> tvar -> int = fun (i,_) (j,_) -> Stdlib.compare i j
+let compare_vars : var -> var -> int = fun (i,_) (j,_) -> Stdlib.compare i j
 
 (** [eq_vars x y] safely computes the equality of [x] and [y]. Note that it is
     unsafe to compare variables with the polymorphic equality function. *)
-let eq_vars : tvar -> tvar -> bool = fun x y -> compare_vars x y = 0
+let eq_vars : var -> var -> bool = fun x y -> compare_vars x y = 0
 
 (** [binder_occur b] tests whether the bound variable occurs in [b]. *)
-let binder_occur : tbinder -> bool = fun (_,t) ->
+let binder_occur : binder -> bool = fun (_,t) ->
   let rec check i t =
     (*if Logger.log_enabled() then
       log_term "binder_occur %d %a" i term t;*)
@@ -394,10 +388,10 @@ let binder_occur : tbinder -> bool = fun (_,t) ->
 
 (** [binder_constant b] tests whether the [binder] [b] is constant (i.e.,  its
     bound variable does not occur). *)
-let binder_constant : tbinder -> bool = fun b -> not (binder_occur b)
+let binder_constant : binder -> bool = fun b -> not (binder_occur b)
 
 (** [mbinder_arity b] gives the arity of the [mbinder]. *)
-let mbinder_arity : tmbinder -> int = fun (names,_) -> Array.length names
+let mbinder_arity : mbinder -> int = fun (names,_) -> Array.length names
 
 (** [is_closed t] checks whether [t] is closed. *)
 let is_closed : term -> bool =
@@ -413,10 +407,10 @@ let is_closed : term -> bool =
     | _ -> ()
   in fun t -> try check t; true with Exit -> false
 
-let is_closed_tmbinder : tmbinder -> bool = fun (_,t) -> is_closed t
+let is_closed_mbinder : mbinder -> bool = fun (_,t) -> is_closed t
 
 (** [occur x t] tells whether variable [x] occurs in [t]. *)
-let occur : tvar -> term -> bool = fun x ->
+let occur : var -> term -> bool = fun x ->
   let rec check t =
     match unfold t with
     | Vari y when y == x -> raise Exit
@@ -429,7 +423,7 @@ let occur : tvar -> term -> bool = fun x ->
     | _ -> ()
   in fun t -> try check t; false with Exit -> true
 
-let occur_tmbinder : tvar -> tmbinder -> bool = fun x (_,t) -> occur x t
+let occur_mbinder : var -> mbinder -> bool = fun x (_,t) -> occur x t
 
 (** Printing functions for debug. *)
 module Raw = struct
@@ -446,26 +440,26 @@ let minimize_impl : bool list -> bool list =
     definition. The typing environment [x1:A1,..,xn:An] is represented by the
     list [xn:An;..;x1:A1] in reverse order (last added variable comes
     first). *)
-type ctxt = (tvar * term * term option) list
+type ctxt = (var * term * term option) list
 
 (** Type of unification constraints. *)
 type constr = ctxt * term * term
 
 (** Sets and maps of term variables. *)
 module Var = struct
-  type t = tvar
+  type t = var
   let compare = compare_vars
 end
 
 module VarSet = Set.Make(Var)
 module VarMap = Map.Make(Var)
 
-(** [new_tvar s] creates a new [tvar] of name [s]. *)
-let new_tvar : string -> tvar = new_var
+(** [new_var s] creates a new [var] of name [s]. *)
+let new_var : string -> var = new_var
 
-(** [new_tvar_ind s i] creates a new [tvar] of name [s ^ string_of_int i]. *)
-let new_tvar_ind : string -> int -> tvar = fun s i ->
-  new_tvar (Escape.add_prefix s (string_of_int i))
+(** [new_var_ind s i] creates a new [var] of name [s ^ string_of_int i]. *)
+let new_var_ind : string -> int -> var = fun s i ->
+  new_var (Escape.add_prefix s (string_of_int i))
 
 (** Sets and maps of symbols. *)
 module Sym = struct
@@ -607,7 +601,7 @@ let mk_Type = Type
 let mk_Kind = Kind
 let mk_Symb x = Symb x
 let mk_Prod (a,b) = Prod (a,b)
-let mk_Impl (a,b) = let x = new_tvar "_" in Prod(a, bind_var x b)
+let mk_Impl (a,b) = let x = new_var "_" in Prod(a, bind_var x b)
 let mk_Abst (a,b) = Abst (a,b)
 let mk_Meta (m,ts) = (*assert (m.meta_arity = Array.length ts);*) Meta (m,ts)
 let mk_Patt (i,s,ts) = Patt (i,s,ts)
@@ -676,9 +670,9 @@ let right_aliens : sym -> term -> term list = fun s ->
 (* unit test *)
 let _ =
   let s = create_sym [] Privat (AC true) Eager false (Pos.none "+") Kind [] in
-  let t1 = Vari (new_tvar "x1") in
-  let t2 = Vari (new_tvar "x2") in
-  let t3 = Vari (new_tvar "x3") in
+  let t1 = Vari (new_var "x1") in
+  let t2 = Vari (new_var "x2") in
+  let t3 = Vari (new_var "x3") in
   let left = mk_bin s (mk_bin s t1 t2) t3 in
   let right = mk_bin s t1 (mk_bin s t2 t3) in
   let eq = eq_of_cmp cmp in
@@ -749,7 +743,7 @@ let lhs : sym_rule -> term = fun (s, r) -> add_args (mk_Symb s) r.lhs
 let rhs : sym_rule -> term = fun (_, r) -> r.rhs
 
 (** Patt substitution. *)
-let subst_patt : tmbinder option array -> term -> term = fun env ->
+let subst_patt : mbinder option array -> term -> term = fun env ->
   let rec subst_patt t =
     match unfold t with
     | Patt(Some i,n,ts) when 0 <= i && i < Array.length env ->

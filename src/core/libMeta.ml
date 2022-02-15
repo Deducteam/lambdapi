@@ -21,7 +21,7 @@ let fresh : problem -> term -> int -> meta =
 (** [set p m v] sets the metavariable [m] of [p] to [v]. WARNING: No specific
    check is performed, so this function may lead to cyclic terms. To use with
    care. *)
-let set : problem -> meta -> tmbinder -> unit = fun p m v ->
+let set : problem -> meta -> mbinder -> unit = fun p m v ->
   m.meta_type := mk_Kind; (* to save memory *) m.meta_value := Some v;
   p := {!p with metas = MetaSet.remove m !p.metas}
 
@@ -37,8 +37,8 @@ let make : problem -> ctxt -> term -> term =
 (** [make_codomain p ctx a] creates a fresh metavariable term of type [Type]
     in the context [ctx] extended with a fresh variable of type [a], and
     updates [p] with generated metavariables. *)
-let make_codomain : problem -> ctxt -> term -> tbinder = fun p ctx a ->
-  let x = new_tvar "x" in
+let make_codomain : problem -> ctxt -> term -> binder = fun p ctx a ->
+  let x = new_var "x" in
   bind_var x (make p ((x, a, None) :: ctx) mk_Type)
 
 (** [iter b f c t] applies the function [f] to every metavariable of [t] and,
