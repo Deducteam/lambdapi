@@ -267,6 +267,7 @@ let read : string -> t = fun fname ->
   in
   let rec reset_term t =
     match unfold t with
+    | Db _
     | Vari _
     | Type
     | Kind -> ()
@@ -277,7 +278,6 @@ let read : string -> t = fun fname ->
     | Appl(a,b) -> reset_term a; reset_term b
     | Patt(_,_,ts) -> Array.iter reset_term ts
     | TRef r -> unsafe_reset r; Option.iter reset_term !r
-    | Db _ -> assert false
     | Wild -> assert false
     | Meta _ -> assert false
     | Plac _ -> assert false
