@@ -59,9 +59,8 @@ let print_rule : Format.formatter -> term -> term -> unit =
       | Patt(Some i,_,_) ->
         let name = Format.sprintf "$%d" i in
         Stdlib.(names := StrSet.add name !names)
-      | Abst(_,b) ->
-        let (x, _) = unbind b in
-        Stdlib.(names := StrSet.add (name_of x) !names)
+      | Abst(_,(bi,_)) ->
+        Stdlib.(names := StrSet.add (binder_name bi) !names)
       | _           -> ()
     in
     LibTerm.iter fn t;

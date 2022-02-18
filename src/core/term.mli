@@ -43,6 +43,8 @@ type var
 type binder_info
 type mbinder_info
 
+val binder_name : binder_info -> string
+
 (** Representation of a term (or types) in a general sense. Values of the type
     are also used, for example, in the representation of patterns or rewriting
     rules. Specific constructors are included for such applications,  and they

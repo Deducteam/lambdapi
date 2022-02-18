@@ -277,7 +277,7 @@ let read : string -> t = fun fname ->
     | LLet(a,t,(_,b)) -> reset_term a; reset_term t; reset_term b
     | Appl(a,b) -> reset_term a; reset_term b
     | Patt(_,_,ts) -> Array.iter reset_term ts
-    | TRef r -> unsafe_reset r; Option.iter reset_term !r
+    | TRef _ -> assert false
     | Wild -> assert false
     | Meta _ -> assert false
     | Plac _ -> assert false

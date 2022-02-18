@@ -43,6 +43,8 @@ type prop =
 type binder_info = {binder_name : string; binder_bound : bool}
 type mbinder_info = {mbinder_name : string array; mbinder_bound : bool array}
 
+let binder_name : binder_info -> string = fun bi -> bi.binder_name
+
 (** Representation of a term (or types) in a general sense. Values of the type
     are also used, for example, in the representation of patterns or rewriting
     rules. Specific constructors are included for such applications,  and they
