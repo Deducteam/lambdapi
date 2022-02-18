@@ -267,9 +267,9 @@ let read : string -> t = fun fname ->
   in
   let rec reset_term t =
     match unfold t with
-    | Db _
     | Type
-    | Kind -> ()
+    | Kind
+    | Db _ -> ()
     | Symb s -> shallow_reset_sym s
     | Prod(a,(_,b))
     | Abst(a,(_,b)) -> reset_term a; reset_term b
