@@ -268,7 +268,6 @@ let read : string -> t = fun fname ->
   let rec reset_term t =
     match unfold t with
     | Db _
-    | Vari _
     | Type
     | Kind -> ()
     | Symb s -> shallow_reset_sym s
@@ -277,6 +276,7 @@ let read : string -> t = fun fname ->
     | LLet(a,t,(_,b)) -> reset_term a; reset_term t; reset_term b
     | Appl(a,b) -> reset_term a; reset_term b
     | Patt(_,_,ts) -> Array.iter reset_term ts
+    | Vari _ -> assert false
     | TRef _ -> assert false
     | Wild -> assert false
     | Meta _ -> assert false

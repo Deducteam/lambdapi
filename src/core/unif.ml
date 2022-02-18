@@ -108,7 +108,7 @@ let instantiation :
     | Some(vs, map) ->
         if LibMeta.occurs m c u then None
         else let u = Eval.simplify (Ctxt.to_let c (sym_to_var map u)) in
-          Some (Logger.set_debug_in false 'm' (bind_mvar vs) u)
+          Some ((*Logger.set_debug_in false 'm'*) (bind_mvar vs) u)
 
 (** Checking type or not during meta instanciation. *)
 let do_type_check = Stdlib.ref true
@@ -134,8 +134,8 @@ let instantiate : problem -> ctxt -> meta -> term array -> term -> bool =
             | Some a -> a
             | None -> assert false
           in
-          let r =
-            Logger.set_debug_in false 'i' (Infer.check_noexn p c u) typ_mts
+          let r = (*Logger.set_debug_in false 'i'*)
+            (Infer.check_noexn p c u) typ_mts
           in
           if r <> None then do_instantiate()
           else (if Logger.log_enabled () then log "typing failed"; false)
