@@ -88,7 +88,7 @@ let ind_typ_with_codom :
     | (Type, _) -> codom (List.rev_map mk_Vari xs)
     | (Prod(a,b), _) ->
         let name = Stdlib.(incr i; x_str ^ string_of_int (!i)) in
-        let (x,b) = LibTerm.unbind_name name b in
+        let (x,b) = unbind ~name b in
         mk_Prod (a, bind_var x (aux (x::xs) b))
     | _ -> fatal pos "The type of %a is not supported" sym ind_sym
   in
@@ -203,7 +203,7 @@ let fold_cons_type
                sym cons_sym sym ind_sym
     | (Prod(t,u), _) ->
        let name = Stdlib.(incr i; x_str ^ string_of_int (!i)) in
-       let x, u = LibTerm.unbind_name name u in
+       let x, u = unbind ~name u in
        let x = inj_var (List.length xs) x in
        begin
          let env, b = Env.of_prod [] "y" t in

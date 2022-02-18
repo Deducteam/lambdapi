@@ -39,6 +39,10 @@ type prop =
 (** Type for free variables. *)
 type var
 
+(** Data of a binder. *)
+type binder_info
+type mbinder_info
+
 (** Representation of a term (or types) in a general sense. Values of the type
     are also used, for example, in the representation of patterns or rewriting
     rules. Specific constructors are included for such applications,  and they
@@ -64,8 +68,8 @@ type term = private
   (** [LLet(a, t, u)] is [let x : a ≔ t in u] (with [x] bound in [u]). *)
 
 (** Type for binders. *)
-and binder = string * term
-and mbinder = string array * term
+and binder = binder_info * term
+and mbinder = mbinder_info * term
 
 (** {b NOTE} that a wildcard "_" of the concrete (source code) syntax may have
     a different representation depending on the context. For instance, the
@@ -300,8 +304,7 @@ val cmp : term cmp
    application is built as a left or right comb depending on the associativity
    of the symbol, and arguments are ordered in increasing order wrt [cmp].
 
-- In [LLet(_,_,b)], [binder_constant b = false] (useless let's are
-   erased). *)
+- In [LLet(_,_,b)], [binder_occur b = true] (useless let's are erased). *)
 val mk_Vari : var -> term
 val mk_Type : term
 val mk_Kind : term
@@ -338,15 +341,14 @@ val subst : binder -> term -> term
    multiple binder [b]. *)
 val msubst : mbinder -> term array -> term
 
-(** [unbind b] substitutes the binder [b] using a fresh variable. The variable
-    and the result of the substitution are returned. Note that the name of the
-    fresh variable is based on that of the binder. *)
-val unbind : binder -> var * term
+(** [unbind b] substitutes the binder [b] by a fresh variable of name [name]
+   if given, or the binder name otherwise. The variable and the result of the
+   substitution are returned. *)
+val unbind : ?name:string -> binder -> var * term
 
 (** [unbind2 f g] is similar to [unbind f], but it substitutes two binders [f]
-    and [g] at once using the same fresh variable. The name of the variable is
-    based on that of the binder [f]. *)
-val unbind2 : binder -> binder -> var * term * term
+   and [g] at once using the same fresh variable. *)
+val unbind2 : ?name:string -> binder -> binder -> var * term * term
 
 (** [unmbind b] substitutes the multiple binder [b] with fresh variables. This
     function is analogous to [unbind] for binders. Note that the names used to
@@ -356,16 +358,15 @@ val unmbind : mbinder -> var array * term
 (** [bind_var x b] binds the variable [x] in [b], producing a boxed binder. *)
 val bind_var  : var -> term -> binder
 
+(** [binder f b] applies f inside [b]. *)
+val binder : (term -> term) -> binder -> binder
+
 (** [bind_mvar xs b] binds the variables of [xs] in [b] to get a boxed binder.
     It is the equivalent of [bind_var] for multiple variables. *)
 val bind_mvar : var array -> term -> mbinder
 
 (** [binder_occur b] tests whether the bound variable occurs in [b]. *)
 val binder_occur : binder -> bool
-
-(** [binder_constant b] tests whether the [binder] [b] is constant (i.e.,  its
-    bound variable does not occur). *)
-val binder_constant : binder -> bool
 
 (** [is_closed b] checks whether the [box] [b] is closed. *)
 val is_closed : term -> bool

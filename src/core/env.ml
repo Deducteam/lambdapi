@@ -107,7 +107,7 @@ let of_prod : ctxt -> string -> term -> env * term = fun c s t ->
   let rec build_env env t =
     try match_prod c t (fun a b ->
             let name = Stdlib.(incr i; s ^ string_of_int !i) in
-            let x, b = LibTerm.unbind_name name b in
+            let x, b = unbind ~name b in
             build_env (add name x a None env) b)
     with Invalid_argument _ -> env, t
   in build_env [] t

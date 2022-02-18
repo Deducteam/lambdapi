@@ -39,6 +39,10 @@ type prop =
   | Assoc of bool (** Associative left if [true], right if [false]. *)
   | AC of bool (** Associative and commutative. *)
 
+(** Data of a binder. *)
+type binder_info = {binder_name : string; binder_bound : bool}
+type mbinder_info = {mbinder_name : string array; mbinder_bound : bool array}
+
 (** Representation of a term (or types) in a general sense. Values of the type
     are also used, for example, in the representation of patterns or rewriting
     rules. Specific constructors are included for such applications,  and they
@@ -65,8 +69,8 @@ type term =
 and var = int * string
 
 (** Type for binders. *)
-and binder = string * term
-and mbinder = string array * term
+and binder = binder_info * term
+and mbinder = mbinder_info * term
 
 (** {b NOTE} that a wildcard "_" of the concrete (source code) syntax may have
     a different representation depending on the context. For instance, the
@@ -172,7 +176,7 @@ and meta =
   ; meta_value : mbinder option ref (** Definition. *) }
 
 (** [mbinder_arity b] gives the arity of the [mbinder]. *)
-let mbinder_arity : mbinder -> int = fun (names,_) -> Array.length names
+let mbinder_arity : mbinder -> int = fun (i,_) -> Array.length i.mbinder_name
 
 (** Minimize [impl] to enforce our invariant (see {!type:Terms.sym}). *)
 let minimize_impl : bool list -> bool list =
@@ -281,8 +285,8 @@ let rec term : term pp = fun ppf t ->
   | Type -> out ppf "TYPE"
   | Kind -> out ppf "KIND"
   | Symb s -> sym ppf s
-  | Prod(a,(n,b)) -> out ppf "(Π %s: %a, %a)" n term a term b
-  | Abst(a,(n,b)) -> out ppf "(λ %s: %a, %a)" n term a term b
+  | Prod(a,(n,b)) -> out ppf "(Π %s: %a, %a)" n.binder_name term a term b
+  | Abst(a,(n,b)) -> out ppf "(λ %s: %a, %a)" n.binder_name term a term b
   | Appl(a,b) -> out ppf "(%a %a)" term a term b
   | Meta(m,ts) -> out ppf "?%d%a" m.meta_key terms ts
   | Patt(i,s,ts) -> out ppf "$%a_%s%a" (D.option D.int) i s terms ts
@@ -290,7 +294,7 @@ let rec term : term pp = fun ppf t ->
   | Wild -> out ppf "_"
   | TRef r -> out ppf "&%a" (Option.pp term) !r
   | LLet(a,t,(n,b)) ->
-    out ppf "let %s : %a ≔ %a in %a" n term a term t term b
+    out ppf "let %s : %a ≔ %a in %a" n.binder_name term a term t term b
 and var : var pp = fun ppf (i,n) -> out ppf "%s%d" n i
 and sym : sym pp = fun ppf s -> string ppf s.sym_name
 and terms : term array pp = fun ppf ts ->
@@ -340,8 +344,8 @@ and lift : int -> term -> term = fun l t ->
 (** [msubst b vs] substitutes the variables bound by [b] with the values [vs].
    Note that the length of the [vs] array should match the arity of the
    multiple binder [b]. *)
-and msubst : mbinder -> term array -> term = fun (ns,t) vs ->
-  let n = Array.length ns in
+and msubst : mbinder -> term array -> term = fun (bi,t) vs ->
+  let n = Array.length bi.mbinder_name in
   assert (Array.length vs = n);
   (* [msubst i t] replaces [Db(i+j)] by [lift (i-1) vs.(n-j-1)]
      for all [0 <= j < n]. *)
@@ -359,7 +363,9 @@ and msubst : mbinder -> term array -> term = fun (ns,t) vs ->
     | Patt(j,n,ts) -> Patt(j,n, Array.map (msubst i) ts)
     | _ -> t
   in
-  let r = if n = 0 then t else msubst 1 t in
+  let r =
+    if n = 0 || Array.for_all ((=) false) bi.mbinder_bound then t
+    else msubst 1 t in
   if Logger.log_enabled() then
     log_term "msubst %a %a = %a" term t (D.array term) vs term r;
   r
@@ -504,51 +510,59 @@ let is_prod : term -> bool = fun t ->
   match unfold t with Prod(_) -> true | _ -> false
 
 (** [subst b v] substitutes the variable bound by [b] with the value [v]. *)
-let subst : binder -> term -> term = fun (_,t) v ->
-  let rec subst i t =
-    (*if Logger.log_enabled() then
-      log_term "subst [%d≔%a] %a" i term v term t;*)
-    match unfold t with
-    | Db k -> if k = i then lift (i-1) v else t
-    | Appl(a,b) -> mk_Appl(subst i a, subst i b)
-    | Abst(a,(n,u)) -> Abst(subst i a, (n, subst (i+1) u))
-    | Prod(a,(n,u)) -> Prod(subst i a, (n ,subst (i+1) u))
-    | LLet(a,t,(n,u)) -> LLet(subst i a, subst i t, (n, subst (i+1) u))
-    | Meta(m,ts) -> Meta(m, Array.map (subst i) ts)
-    | Patt(j,n,ts) -> Patt(j,n, Array.map (subst i) ts)
-    | _ -> t
-  in
-  let r = subst 1 t in
-  if Logger.log_enabled() then
-    log_term "subst %a [%a] = %a" term t term v term r;
-  r
+let subst : binder -> term -> term = fun (bi,t) v ->
+  if bi.binder_bound then
+    begin
+      let rec subst i t =
+        (*if Logger.log_enabled() then
+          log_term "subst [%d≔%a] %a" i term v term t;*)
+        match unfold t with
+        | Db k -> if k = i then lift (i-1) v else t
+        | Appl(a,b) -> mk_Appl(subst i a, subst i b)
+        | Abst(a,(n,u)) -> Abst(subst i a, (n, subst (i+1) u))
+        | Prod(a,(n,u)) -> Prod(subst i a, (n ,subst (i+1) u))
+        | LLet(a,t,(n,u)) -> LLet(subst i a, subst i t, (n, subst (i+1) u))
+        | Meta(m,ts) -> Meta(m, Array.map (subst i) ts)
+        | Patt(j,n,ts) -> Patt(j,n, Array.map (subst i) ts)
+        | _ -> t
+      in
+      let r = subst 1 t in
+      if Logger.log_enabled() then
+        log_term "subst %a [%a] = %a" term t term v term r;
+      r
+    end
+  else t
 
-(** [unbind b] substitutes the binder [b] using a fresh variable. The variable
-    and the result of the substitution are returned. Note that the name of the
-    fresh variable is based on that of the binder. *)
-let unbind : binder -> var * term = fun ((name,_) as b) ->
-  let x = new_var name in x, subst b (Vari x)
+(** [unbind b] substitutes the binder [b] by a fresh variable of name [name]
+   if given, or the binder name otherwise. The variable and the result of the
+   substitution are returned. *)
+let unbind : ?name:string -> binder -> var * term =
+  fun ?(name="") ((bn,_) as b) ->
+  let n = if name="" then bn.binder_name else name in
+  let x = new_var n in x, subst b (Vari x)
 
 (** [unbind2 f g] is similar to [unbind f], but it substitutes two binders [f]
-    and [g] at once using the same fresh variable. The name of the variable is
-    based on that of the binder [f]. *)
-let unbind2 : binder -> binder -> var * term * term =
-  fun ((name1,_) as b1) b2 ->
-  let x = new_var name1 in x, subst b1 (Vari x), subst b2 (Vari x)
+   and [g] at once using the same fresh variable. *)
+let unbind2 : ?name:string -> binder -> binder -> var * term * term =
+  fun ?(name="") ((bn1,_) as b1) b2 ->
+  let n = if name="" then bn1.binder_name else name in
+  let x = new_var n in x, subst b1 (Vari x), subst b2 (Vari x)
 
 (** [unmbind b] substitutes the multiple binder [b] with fresh variables. This
     function is analogous to [unbind] for binders. Note that the names used to
     create the fresh variables are based on those of the multiple binder. *)
-let unmbind : mbinder -> var array * term = fun ((names,_) as b) ->
+let unmbind : mbinder -> var array * term =
+  fun (({mbinder_name=names;_},_) as b) ->
   let xs = Array.init (Array.length names) (fun i -> new_var names.(i)) in
   xs, msubst b (Array.map (fun x -> Vari x) xs)
 
 (** [bind_var x t] binds the variable [x] in [t], producing a binder. *)
-let bind_var  : var -> term -> binder = fun ((_,n) as x) ->
+let bind_var  : var -> term -> binder = fun ((_,n) as x) t ->
+  let bound = Stdlib.ref false in
   let rec bind i t =
     (*if Logger.log_enabled() then log_term "bind_var %d %a" i term t;*)
     match unfold t with
-    | Vari y when y == x -> Db i
+    | Vari y when y == x -> Stdlib.(bound := true); Db i
     | Appl(a,b) -> Appl(bind i a, bind i b)
     (* No need to call mk_Appl here as we only replace free variables by de
        Bruijn indices. *)
@@ -558,27 +572,36 @@ let bind_var  : var -> term -> binder = fun ((_,n) as x) ->
     | Meta(m,ts) -> Meta(m, Array.map (bind i) ts)
     | Patt(j,n,ts) -> Patt(j,n, Array.map (bind i) ts)
     | _ -> t
-  in fun t ->
-    let b = bind 1 t in
-    if Logger.log_enabled() then
-      log_term "bind_var %a %a = %a" var x term t term b;
-    n, b
+  in
+  let b = bind 1 t in
+  if Logger.log_enabled() then
+    log_term "bind_var %a %a = %a" var x term t term b;
+  {binder_name=n; binder_bound=Stdlib.(!bound)}, b
+
+(** [binder f b] applies f inside [b]. *)
+let binder : (term -> term) -> binder -> binder = fun f b ->
+  let x,t = unbind b in bind_var x (f t)
 
 (** [bind_mvar xs t] binds the variables of [xs] in [t] to get a binder.
     It is the equivalent of [bind_var] for multiple variables. *)
-let bind_mvar : var array -> term -> mbinder = fun xs t ->
+let bind_mvar : var array -> term -> mbinder =
+  let empty = {mbinder_name=[||]; mbinder_bound=[||]} in
+  fun xs t ->
   let n = Array.length xs in
-  if n = 0 then [||], t else
+  if n = 0 then empty, t else
   let open Stdlib in let open Extra in
   (*if Logger.log_enabled() then
     log_term "bind_mvar %a" (D.array var) xs;*)
-  let map = ref IntMap.empty in
+  let map = ref IntMap.empty and mbinder_bound = Array.make n false in
   Array.iteri (fun i (ki,_) -> map := IntMap.add ki (n-1-i) !map) xs;
   let rec bind i t =
     (*if Logger.log_enabled() then log_term "bind_mvar %d %a" i term t;*)
     match unfold t with
     | Vari (key,_) ->
-      (match IntMap.find_opt key !map with Some k -> Db (i+k) | None -> t)
+      begin match IntMap.find_opt key !map with
+        | Some k -> mbinder_bound.(k) <- true; Db (i+k)
+        | None -> t
+      end
     | Appl(a,b) -> Appl(bind i a, bind i b)
     (* No need to call mk_Appl here as we only replace free variables by de
        Bruijn indices. *)
@@ -592,11 +615,12 @@ let bind_mvar : var array -> term -> mbinder = fun xs t ->
   let b = bind 1 t in
   if Logger.log_enabled() then
     log_term "bind_mvar %a %a = %a" (D.array var) xs term t term b;
-  Array.map name_of xs, b
+  let bi = { mbinder_name = Array.map name_of xs; mbinder_bound } in
+  bi, b
 
 (** [binder_occur b] tests whether the bound variable occurs in [b]. *)
-let binder_occur : binder -> bool = fun (_,t) ->
-  let rec check i t =
+let binder_occur : binder -> bool = fun (bi,_) -> bi.binder_bound
+(*  let rec check i t =
     (*if Logger.log_enabled() then
       log_term "binder_occur %d %a" i term t;*)
     match unfold t with
@@ -613,10 +637,7 @@ let binder_occur : binder -> bool = fun (_,t) ->
   if Logger.log_enabled() then
     log_term "binder_occur 1 %a = %b" term t r;
   r
-
-(** [binder_constant b] tests whether the [binder] [b] is constant (i.e.,  its
-    bound variable does not occur). *)
-let binder_constant : binder -> bool = fun b -> not (binder_occur b)
+*)
 
 (** [is_closed t] checks whether [t] is closed. *)
 let is_closed : term -> bool =
@@ -660,7 +681,7 @@ let occur_mbinder : var -> mbinder -> bool = fun x (_,t) -> occur x t
    application is built as a left or right comb depending on the associativity
    of the symbol, and arguments are ordered in increasing order wrt [cmp].
 
-- In [LLet(_,_,b)], [binder_constant b = false] (useless let's are erased). *)
+- In [LLet(_,_,b)], [binder_occur b = true] (useless let's are erased). *)
 let mk_Vari x = Vari x
 let mk_Type = Type
 let mk_Kind = Kind
@@ -673,7 +694,7 @@ let mk_Patt (i,s,ts) = Patt (i,s,ts)
 let mk_Wild = Wild
 let mk_Plac b = Plac b
 let mk_TRef x = TRef x
-let mk_LLet (a,t,u) = if binder_constant u then subst u Kind else LLet (a,t,u)
+let mk_LLet (a,t,b) = if binder_occur b then LLet (a,t,b) else subst b Kind
 
 (** mk_Appl_not_canonical t u] builds the non-canonical (wrt. C and AC
    symbols) application of [t] to [u]. WARNING: to use only in Sign.link. *)
@@ -726,16 +747,16 @@ let subst_patt : mbinder option array -> term -> term = fun env ->
 let rec cleanup : term -> term = fun t ->
   match unfold t with
   | Patt(i,n,ts) -> mk_Patt(i, n, Array.map cleanup ts)
-  | Prod(a,(n,b)) -> mk_Prod(cleanup a, (n, cleanup b))
-  | Abst(a,(n,b)) -> mk_Abst(cleanup a, (n, cleanup b))
+  | Prod(a,b) -> mk_Prod(cleanup a, binder cleanup b)
+  | Abst(a,b) -> mk_Abst(cleanup a, binder cleanup b)
   | Appl(a,b) -> mk_Appl(cleanup a, cleanup b)
   | Meta(m,ts) -> mk_Meta(m, Array.map cleanup ts)
-  | LLet(a,t,(n,b)) -> mk_LLet(cleanup a, cleanup t, (n, cleanup b))
+  | LLet(a,t,b) -> mk_LLet(cleanup a, cleanup t, binder cleanup b)
   | Wild -> assert false
   | Plac _ -> assert false
   | TRef _ -> assert false
-  | Vari _ -> assert false
-  | Db _
+  | Db _ -> assert false
+  | Vari _
   | Type
   | Kind
   | Symb _ -> t

@@ -58,23 +58,6 @@ let iter : (term -> unit) -> term -> unit = fun action ->
     | LLet(a,t,u) -> iter a; iter t; iter (subst u mk_Kind)
   in iter
 
-(** [unbind_name b s] is like [unbind b] but returns a valid variable
-    name when [b] binds no variable. The string [s] is the prefix of the
-    variable's name.*)
-let unbind_name : string -> binder -> var * term = fun s b ->
-  if binder_occur b then unbind b
-  else let x = new_var s in (x, subst b (mk_Vari x))
-
-(** [unbind2_name b1 b2 s] is like [unbind2 b1 b2] but returns a valid
-   variable name when [b1] or [b2] binds no variable. The string [s] is the
-   prefix of the variable's name.*)
-let unbind2_name : string -> binder -> binder -> var * term * term =
-  fun s b1 b2 ->
-  if binder_occur b1 || binder_occur b2 then
-    unbind2 b1 b2
-  else let x = new_var s in
-       (x, subst b1 (mk_Vari x), subst b2 (mk_Vari x))
-
 (** [distinct_vars ctx ts] checks that the terms [ts] are distinct
    variables. If so, the variables are returned. *)
 let distinct_vars : ctxt -> term array -> var array option = fun ctx ts ->

@@ -81,16 +81,16 @@ and print_type : int -> string -> term pp = fun i s ppf t ->
      out ppf "<lambda>@.<var>v_%a</var>@.<type>%a<type>@.%a</lambda>@."
        var x (print_type i s) a (print_type i s) t
   | Prod(a,b)               ->
-     if binder_constant b
+     if binder_occur b
      then
+       let (x, b) = unbind b in
+       out ppf "<arrow>@.<var>v_%a</var>@." var x;
+       out ppf "<type>@.%a</type>@.<type>@.%a</type>@.</arrow>@."
+         (print_type i s) a (print_type i s) b
+     else
        out ppf "<arrow>@.<type>@.%a</type>@.<type>@.%a</type>@.</arrow>@."
          (print_type i s) a
          (print_type i s) (snd (unbind b))
-     else
-       let (x, b) = unbind b in
-       out ppf "<arrow>@.<var>v_%a</var>@." var x;
-       out ppf "<type>@.%a</type>@.<type>@.%a</type>@.</arrow>"
-         (print_type i s) a (print_type i s) b
   | LLet(_,t,u)             -> print_type i s ppf (subst u t)
 
 (** [print_rule ppf s r] outputs the rule declaration corresponding [r] (on

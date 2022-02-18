@@ -119,9 +119,9 @@ let rec term : bool -> term pp = fun b ppf t ->
   | Symb s -> qid ppf (s.sym_path, s.sym_name)
   | Prod(t,u) ->
     let x,u' = unbind u in
-    if binder_constant u
-    then out ppf "(%a -> %a)" (term b) t (term b) u'
-    else out ppf "(%a : %a -> %a)" var x (term b) t (term b) u'
+    if binder_occur u
+    then out ppf "(%a : %a -> %a)" var x (term b) t (term b) u'
+    else out ppf "(%a -> %a)" (term b) t (term b) u'
   | Abst(t,u) ->
     let x,u = unbind u in
     if b then out ppf "(%a : %a => %a)" var x (term b) t (term b) u

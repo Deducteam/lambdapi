@@ -251,7 +251,7 @@ let imitate_lam : problem -> ctxt -> meta -> unit = fun p c m ->
     let n = m.meta_arity in
     let env, t = Env.of_prod_nth c n !(m.meta_type) in
     let of_prod a b =
-      let x,b = LibTerm.unbind_name "x" b in
+      let x,b = unbind ~name:"x" b in
       let env' = Env.add "x" x a None env in
       x, a, env', b
     in
