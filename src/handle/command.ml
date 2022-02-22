@@ -232,6 +232,17 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
       (add_builtin ss n s, None, None)
   | P_notation(qid,n) ->
       let s = find_sym ~prt:true ~prv:true ss qid in
+      (* Check arity. *)
+      let expected =
+        match n with
+        | Prefix _ -> 1
+        | Infix _ -> 2
+        | Zero -> 0
+        | Succ -> 1
+        | Quant -> 1
+      and real = Tactic.count_products [] !(s.sym_type) in
+      if real < expected then
+        fatal pos "Notation incompatible with the type of %a" sym s;
       Console.out 2 "notation %a %a" sym s notation n;
       (add_notation ss s n, None, None)
   | P_unif_rule(h) ->
