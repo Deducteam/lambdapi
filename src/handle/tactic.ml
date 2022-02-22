@@ -110,7 +110,7 @@ let tac_refine : ?check:bool ->
     if check then
       match Infer.check_noexn p c t gt.goal_type with
       | None ->
-        fatal pos "%a@ does not have type@ %a."  term t  term gt.goal_type
+        fatal pos "%a@ does not have type@ %a." term t term gt.goal_type
       | Some t -> t
     else t
   in
