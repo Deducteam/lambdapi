@@ -28,17 +28,9 @@ MacOS. It might be possible to make it work on Windows too with Cygwin or
 Installation via Opam
 ---------------------
 
-Lambdapi is under active development. A new version of the `lambdapi`
-[Opam](http://opam.ocaml.org/) package will be released soon. For now,
-we advise to pin the development repository to get the latest
-development version:
-
 ```bash
-opam pin add lambdapi https://github.com/Deducteam/lambdapi.git
-opam install lambdapi # install emacs and vim support as well
+opam install lambdapi
 ```
-
-The VSCode extension is available on the [Marketplace](https://marketplace.visualstudio.com/items?itemName=Deducteam.lambdapi).
 
 The installation gives you:
 
@@ -47,11 +39,15 @@ The installation gives you:
 * a ``lambdapi`` mode for ``vim``
 * a ``lambdapi`` mode for ``emacs``
 
+The VSCode extension is available on the [Marketplace](https://marketplace.visualstudio.com/items?itemName=Deducteam.lambdapi).
+
 To browse the source code documentation, you can do:
 ```bash
 opam install odig
 odig doc lambdapi
 ```
+
+To install Lambdapi libraries, see the [opam-lambdapi-repository](https://github.com/Deducteam/opam-lambdapi-repository).
 
 Compilation from the sources
 ----------------------------
@@ -84,7 +80,7 @@ make install_vscode         # Install vscode extension
 make install_vim            # Install vim support
 ```
 
-**Note:** you can run `lambdapi` without installing it with `dune exec -- lambdapi`.
+You can run `lambdapi` without installing it with `dune exec -- lambdapi`.
 
 For running tests, one also needs
 [alcotest](https://github.com/mirage/alcotest) and

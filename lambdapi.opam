@@ -52,7 +52,6 @@ depends: [
   "sedlex" {>= "2.2"}
   "alcotest" {with-test}
   "alt-ergo" {with-test}
-  "alt-ergo" {<= "2.4.0"}
   "timed" {>= "1.0"}
   "pratter" {>= "1.2"}
   "why3" {>= "1.4.0"}
