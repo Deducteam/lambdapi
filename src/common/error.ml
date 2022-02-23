@@ -65,8 +65,8 @@ let fatal_no_pos : ('a,'b) koutfmt -> 'a = fun fmt ->
     [1] (indicating failure). Hence, [handle_exceptions] should only be called
     by the main program logic, not by the internals. *)
 let handle_exceptions : (unit -> unit) -> unit = fun f ->
-  Color.update_with_color Format.err_formatter;
   let exit_with : type a b. (a,b) koutfmt -> a = fun fmt ->
+    Color.update_with_color Format.err_formatter;
     Format.kfprintf (fun _ -> exit 1) Format.err_formatter
       (Color.red (fmt ^^ "@."))
   in
