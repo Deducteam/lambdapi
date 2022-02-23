@@ -3,7 +3,6 @@
 let compile = Timed.pure_apply Handle.Compile.compile_file
 
 let test_ok f () =
-  if f <> "OK/why3.lp" then
   (* Simply assert that there is no exception raised. *)
   Alcotest.(check unit) f (ignore (compile f)) ()
 
