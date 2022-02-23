@@ -48,8 +48,8 @@ let rec mark_close_stag old = function
   | stag -> old stag
 
 let update_with_color fmt =
-  if Stdlib.(!color) then begin
-    Format.pp_set_tags fmt true;
+  if Stdlib.(!color) <> Format.pp_get_mark_tags fmt () then begin
+    Format.pp_set_tags fmt Stdlib.(!color);
     let old_stag_functions = Format.pp_get_formatter_stag_functions fmt () in
     let mark_open_stag = mark_open_stag old_stag_functions.mark_open_stag
     and mark_close_stag = mark_close_stag old_stag_functions.mark_close_stag
