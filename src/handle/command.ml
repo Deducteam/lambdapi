@@ -407,26 +407,30 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
     (* Build proof data. *)
     let pdata =
       (* Type of the symbol. *)
-      let (t, a) =
+      let t, a =
         match a with
-        | Some {elt=a;pos} ->
-          (* Check that the given type is well sorted. *)
-          let a, _ = Query.check_sort pos p [] a in
-          let t =
-            match t with
-            | None -> None
-            | Some {elt=t;pos} ->
-              match Infer.check_noexn p [] t a with
-              | None -> fatal pos "%a@ cannot be of type@ %a" term t term a
-              | Some t -> Some (Pos.make pos t)
-          in
-          (t, a)
+        | Some {elt=a;pos} -> (* Check that the given type is well sorted. *)
+          begin match Infer.check_sort_noexn p [] a with
+            | None -> fatal pos "%a@ cannot be typed by a sort" term a
+            | Some (a,_) ->
+              let t =
+                match t with
+                | None -> None
+                | Some {elt=t;pos} ->
+                  match Infer.check_noexn p [] t a with
+                  | None ->
+                    fatal pos "%a@ cannot be of type@ %a" term t term a
+                  | Some t -> Some (Pos.make pos t)
+              in
+              (t, a)
+          end
         | None -> (* If no type is given, infer it from the definition. *)
           match t with
           | None -> assert false
           | Some {elt=t;pos} ->
-            let (t, a) = Query.infer pos p [] t in
-            (Some (Pos.make pos t), a)
+            match Infer.infer_noexn p [] t with
+            | None -> fatal pos "%a@ is not typable" term t
+            | Some (t,a) -> Some (Pos.make pos t), a
       in
       (* Get tactics and proof end. *)
       let pdata_proof, pe =
