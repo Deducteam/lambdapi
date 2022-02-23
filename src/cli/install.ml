@@ -112,10 +112,10 @@ let files : string list Term.t =
 
 let install_cmd =
   let doc = "Install the given files under the library root." in
-  Term.(const run_install $ Config.minimal $ dry_run $ files),
-  Term.info "install" ~doc
+  Cmd.v (Cmd.info "install" ~doc)
+    Cmdliner.Term.(const run_install $ Config.minimal $ dry_run $ files)
 
 let uninstall_cmd =
   let doc = "Uninstall the files corresponding to the given package file." in
-  Term.(const run_uninstall $ Config.minimal $ dry_run $ pkg_file),
-  Term.info "uninstall" ~doc
+  Cmd.v (Cmd.info "uninstall" ~doc)
+    Cmdliner.Term.(const run_uninstall $ Config.minimal $ dry_run $ pkg_file)
