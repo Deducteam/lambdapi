@@ -97,19 +97,23 @@ let tac_solve : popt -> proof_state -> proof_state = fun pos ps ->
 
 (** [tac_refine pos ps gt gs p t] refines the typing goal [gt] with [t]. [p]
    is the set of metavariables created by the scoping of [t]. *)
-let tac_refine :
+let tac_refine : ?check:bool ->
       popt -> proof_state -> goal_typ -> goal list -> problem -> term
       -> proof_state =
-  fun pos ps gt gs p t ->
+  fun ?(check=true) pos ps gt gs p t ->
   if Logger.log_enabled () then
     log_tact "@[tac_refine@ %a@]" term t;
   let c = Env.to_ctxt gt.goal_hyps in
   if LibMeta.occurs gt.goal_meta c t then fatal pos "Circular refinement.";
   (* Check that [t] has the required type. *)
-  match Infer.check_noexn p c t gt.goal_type with
-  | None ->
-      fatal pos "%a@ does not have type@ %a."  term t  term gt.goal_type
-  | Some t ->
+  let t =
+    if check then
+      match Infer.check_noexn p c t gt.goal_type with
+      | None ->
+        fatal pos "%a@ does not have type@ %a." term t term gt.goal_type
+      | Some t -> t
+    else t
+  in
   if Logger.log_enabled () then
     log_tact (Color.red "%a ≔ %a") meta gt.goal_meta term t;
   LibMeta.set p gt.goal_meta (binds (Env.vars gt.goal_hyps) lift t);

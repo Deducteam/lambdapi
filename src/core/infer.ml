@@ -215,12 +215,10 @@ and infer_aux : problem -> octxt -> term -> term * term * bool =
           let u, cu_u = force pb c u domain in
           return (cu_t' || cu_u) t u range )
 
-
 and infer : problem -> octxt -> term -> term * term * bool = fun pb c t ->
   if Logger.log_enabled () then log "Infer [%a]" term t;
   let t, t_ty, cu = infer_aux pb c t in
-  if Logger.log_enabled () then
-    log "Inferred [%a:@ %a]" term t term t_ty;
+  if Logger.log_enabled () then log "Inferred [%a:@ %a]" term t term t_ty;
   (t, t_ty, cu)
 
 (** {b NOTE} when unbinding a binder [b] (e.g. when inferring the type of an
@@ -235,22 +233,19 @@ and infer : problem -> octxt -> term -> term * term * bool = fun pb c t ->
     the call to [f] and [cs] is the list of constraints gathered by
     [f]. Function [f] may raise [NotTypable], in which case [None] is
     returned. *)
-let noexn : (problem -> octxt -> 'a -> 'b) -> problem -> ctxt -> 'a ->
-  'b option =
+let noexn :
+  (problem -> octxt -> 'a -> 'b) -> problem -> ctxt -> 'a -> 'b option =
   fun f pb c args ->
-  try
-    Some (f pb (c, Ctxt.box_context c) args)
+  try Some (f pb (c, Ctxt.box_context c) args)
   with NotTypable -> None
 
 let infer_noexn pb c t : (term * term) option =
-  if Logger.log_enabled () then
-    log "Top infer %a%a" ctxt c term t;
+  if Logger.log_enabled () then log "Top infer %a%a" ctxt c term t;
   let infer pb c t = let (t,t_ty,_) = infer pb c t in (t, t_ty) in
   noexn infer pb c t
 
 let check_noexn pb c t a : term option =
-  if Logger.log_enabled () then log "Top check \"%a\"" typing
-      (c, t, a);
+  if Logger.log_enabled () then log "Top check \"%a\"" typing (c, t, a);
   let force pb c (t, a) = fst (force pb c t a) in
   noexn force pb c (t, a)
 
