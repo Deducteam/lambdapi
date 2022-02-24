@@ -202,8 +202,7 @@ and infer_aux : problem -> ctxt -> term -> term * term * bool =
 and infer : problem -> ctxt -> term -> term * term * bool = fun pb c t ->
   if Logger.log_enabled () then log "Infer [%a]" term t;
   let t, t_ty, cu = infer_aux pb c t in
-  if Logger.log_enabled () then
-    log "Inferred [%a:@ %a]" term t term t_ty;
+  if Logger.log_enabled () then log "Inferred [%a:@ %a]" term t term t_ty;
   (t, t_ty, cu)
 
 (** {b NOTE} when unbinding a binder [b] (e.g. when inferring the type of an
@@ -211,7 +210,7 @@ and infer : problem -> ctxt -> term -> term * term * bool = fun pb c t ->
     binder [b] is constant. This is because during typechecking, the context
     must contain all variables traversed to build appropriate meta-variables.
     Otherwise, the term [λ a: _, λ b: _, b] will be transformed to [λ _: ?1,
-    λ b: ?2, b] whereas it should be [λ a: ?1.[], λ b: ?2.[a], b] *)
+    λ b: ?2, b] whereas it should be [λ a: ?1.[], λ b: ?2.[a], b]. *)
 
 (** [noexn f p c arg] returns [Some r] if [f p c arg] returns [r], and [None]
    if [f p c arg] raises [NotTypable]. *)

@@ -396,25 +396,30 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
     (* Build proof data. *)
     let pdata =
       (* Type of the symbol. *)
-      let (t, a) =
+      let t, a =
         match a with
         | Some {elt=a;pos} -> (* Check that the given type is well sorted. *)
-            let (a, _) = Query.check_sort pos p [] a in
-            let t =
-              match t with
-              | None -> None
-              | Some {elt=t;pos} ->
-                  (* Refine definition (remove placeholders &c.) *)
-                  let t = Infer.check_noexn p [] t a in
-                  Option.map (Pos.make pos) t
-            in
-            (t, a)
+          begin match Infer.check_sort_noexn p [] a with
+            | None -> fatal pos "%a@ cannot be typed by a sort" term a
+            | Some (a,_) ->
+              let t =
+                match t with
+                | None -> None
+                | Some {elt=t;pos} ->
+                  match Infer.check_noexn p [] t a with
+                  | None ->
+                    fatal pos "%a@ cannot be of type@ %a" term t term a
+                  | Some t -> Some (Pos.make pos t)
+              in
+              (t, a)
+          end
         | None -> (* If no type is given, infer it from the definition. *)
-            match t with
-            | None -> assert false
-            | Some {elt=t;pos} ->
-                let (t, a) = Query.infer pos p [] t in
-                (Some (Pos.make pos t), a)
+          match t with
+          | None -> assert false
+          | Some {elt=t;pos} ->
+            match Infer.infer_noexn p [] t with
+            | None -> fatal pos "%a@ is not typable" term t
+            | Some (t,a) -> Some (Pos.make pos t), a
       in
       (* Get tactics and proof end. *)
       let pdata_proof, pe =
@@ -472,9 +477,7 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
           match pt, t with
           | Some pt, Some t ->
               let gt = match g with Typ gt -> gt | _ -> assert false in
-              (*TODO there is no need for tac_refine to type-check [t] again
-                 if [a] is the type infered from [t]. *)
-              Tactic.tac_refine pt.pos ps gt proof_goals p t.elt
+              Tactic.tac_refine ~check:false pt.pos ps gt proof_goals p t.elt
           | _, _ -> Tactic.tac_solve pos ps
         else
           let ps = {proof_name = p_sym_nam; proof_term = None; proof_goals} in

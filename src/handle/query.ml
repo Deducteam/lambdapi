@@ -23,9 +23,7 @@ let infer : Pos.popt -> problem -> ctxt -> term -> term * term =
 
 let check : Pos.popt -> problem -> ctxt -> term -> term -> term =
   fun pos p ctx t a ->
-  let die () =
-    fatal pos "[%a] does not have type [%a]." term t term a
-  in
+  let die () = fatal pos "[%a] does not have type [%a]." term t term a in
   match Infer.check_noexn p ctx t a with
   | Some t ->
     if Unif.solve_noexn p then
