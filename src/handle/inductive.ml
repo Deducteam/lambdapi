@@ -186,7 +186,7 @@ let fold_cons_type
           let d = List.assq ind_sym ind_pred_map in
           codom xs acc d.ind_var ts
         else fatal pos "%a is not a constructor of %a"
-            sym cons_sym sym ind_sym
+               sym cons_sym sym ind_sym
     | (Prod(t,u), _) ->
        let x, u = LibTerm.unbind_name (x_str ^ string_of_int n) u in
        let x = inj_var (Array.length vs + n) x in
