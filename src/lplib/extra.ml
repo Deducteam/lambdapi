@@ -11,7 +11,7 @@ module StrMap = Map.Make (String)
 module StrSet = Set.Make (String)
 
 (** [get_safe_prefix p strings] returns a string starting with [p] and so
-   that, there is no non-negative integer [k] such that [p ^ string_of_int k]
+   that there is no non-negative integer [k] such that [p ^ string_of_int k]
    belongs to [strings]. *)
 let get_safe_prefix : string -> StrSet.t -> string =
  fun head set ->
