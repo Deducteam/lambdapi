@@ -73,15 +73,15 @@ type ind_pred_map = (sym * data) list
 let ind_typ_with_codom :
       popt -> sym -> Env.t -> (tbox list -> tbox) -> string -> term -> tbox =
   fun pos ind_sym env codom x_str a ->
-  let rec aux : tvar list -> term -> tbox = fun xs a ->
+  let rec aux : tvar list -> int -> term -> tbox = fun xs k a ->
     match get_args a with
     | (Type, _) -> codom (List.rev_map _Vari xs)
     | (Prod(a,b), _) ->
-        let (x,b) = LibTerm.unbind_name x_str b in
-        _Prod (lift a) (Bindlib.bind_var x (aux (x::xs) b))
+        let (x,b) = LibTerm.unbind_name (x_str ^ string_of_int k) b in
+        _Prod (lift a) (Bindlib.bind_var x (aux (x::xs) (k+1) b))
     | _ -> fatal pos "The type of %a is not supported" sym ind_sym
   in
-  aux (List.map (fun (_,(v,_,_)) -> v) env) a
+  aux (List.map (fun (_,(v,_,_)) -> v) env) 0 a
 
 (** [create_ind_pred_map pos c arity ind_list a_str p_str x_str] builds an
    [ind_pred_map] from [ind_list]. The resulting list is in reverse order wrt
