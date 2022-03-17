@@ -97,19 +97,23 @@ let tac_solve : popt -> proof_state -> proof_state = fun pos ps ->
 
 (** [tac_refine pos ps gt gs p t] refines the typing goal [gt] with [t]. [p]
    is the set of metavariables created by the scoping of [t]. *)
-let tac_refine :
+let tac_refine : ?check:bool ->
       popt -> proof_state -> goal_typ -> goal list -> problem -> term
       -> proof_state =
-  fun pos ps gt gs p t ->
+  fun ?(check=true) pos ps gt gs p t ->
   if Logger.log_enabled () then
     log_tact "@[tac_refine@ %a@]" term t;
   let c = Env.to_ctxt gt.goal_hyps in
   if LibMeta.occurs gt.goal_meta c t then fatal pos "Circular refinement.";
   (* Check that [t] has the required type. *)
-  match Infer.check_noexn p c t gt.goal_type with
-  | None ->
-      fatal pos "%a@ does not have type@ %a."  term t  term gt.goal_type
-  | Some t ->
+  let t =
+    if check then
+      match Infer.check_noexn p c t gt.goal_type with
+      | None ->
+        fatal pos "%a@ does not have type@ %a." term t term gt.goal_type
+      | Some t -> t
+    else t
+  in
   if Logger.log_enabled () then
     log_tact (Color.red "%a ≔ %a") meta gt.goal_meta term t;
   LibMeta.set p gt.goal_meta (binds (Env.vars gt.goal_hyps) lift t);
@@ -195,9 +199,15 @@ let handle :
   let assume n =
     if n <= 0 then ps
     else
-      let idopt = Some (Pos.none "y") in
+      let add_decl strings (s,_) = Extra.StrSet.add s strings in
+      let strings = List.fold_left add_decl Extra.StrSet.empty env in
+      let h = Extra.get_safe_prefix "h" strings in
       let rec mk_idopts acc k =
-        if k <= 0 then acc else mk_idopts (idopt::acc) (k-1) in
+        if k <= 0 then acc
+        else
+          let idopt = Some (Pos.make pos (h ^ string_of_int k)) in
+          mk_idopts (idopt::acc) (k-1)
+      in
       let t = P.abst_list (mk_idopts [] n) P.wild in
       let p = new_problem() in
       tac_refine pos ps gt gs p (scope t)
@@ -279,14 +289,13 @@ let handle :
   | P_tac_refl ->
       let cfg = Rewrite.get_eq_config ss pos in
       let (a,l,_), vs = Rewrite.get_eq_data cfg pos gt.goal_type in
-      let n = Array.length vs in
       (* We first do [n] times the [assume] tactic. *)
-      let ps = assume n in
+      let ps = assume (Array.length vs) in
       (* We then apply reflexivity. *)
       begin match ps.proof_goals with
       | Typ gt::gs ->
         let a,l =
-          if n = 0 then a,l
+          if Array.length vs = 0 then a,l
           else let (a,l,_),_ = Rewrite.get_eq_data cfg pos gt.goal_type in a,l
         in
         let prf = add_args (mk_Symb cfg.symb_refl) [a; l] in
@@ -301,14 +310,10 @@ let handle :
   | P_tac_sym ->
       let cfg = Rewrite.get_eq_config ss pos in
       let (a,l,r), vs = Rewrite.get_eq_data cfg pos gt.goal_type in
-      let n = Array.length vs in
-      (* We first do [n] times the [assume] tactic. *)
-      let ps = assume n in
-      (* We then apply symmetry. *)
       begin match ps.proof_goals with
       | Typ gt::gs ->
         let a,l,r =
-          if n = 0 then a,l,r
+          if Array.length vs = 0 then a,l,r
           else fst (Rewrite.get_eq_data cfg pos gt.goal_type)
         in
         let p = new_problem() in
@@ -324,8 +329,7 @@ let handle :
       | _ -> assert false
       end
   | P_tac_why3 cfg ->
-      let arity = count_products (Env.to_ctxt env) gt.goal_type in
-      let ps = assume arity in
+      let ps = assume (count_products (Env.to_ctxt env) gt.goal_type) in
       (match ps.proof_goals with
       | Typ gt::gs ->
           let p = new_problem() in
