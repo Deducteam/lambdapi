@@ -33,6 +33,6 @@ jobs:
           make sanity_check
           eval $(opam env)
           opam pin add dedukti https://github.com/Deducteam/dedukti.git
-          opam install alt-ergo dedukti
+          opam install alt-ergo.2.4.1 dedukti
           why3 config detect
           make tests
