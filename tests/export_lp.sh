@@ -18,10 +18,13 @@ translate() {
     echo translate lp files ...
     for f in OK/*.lp 'OK/a b/escape file.lp'
     do
-        out=$outdir/$f
-        echo "$f --> $out ..."
-        $lambdapi export -o lp -w -v 0 "$f" > "$out"
-        if test $? -ne 0; then echo KO; exit 1; fi
+        case $f in
+            OK/why3*.lp);; #FIXME
+            *) out=$outdir/$f
+               echo "$f --> $out ..."
+               $lambdapi export -o lp -w -v 0 "$f" > "$out"
+               if test $? -ne 0; then echo KO; exit 1; fi
+        esac
     done
 }
 time translate
@@ -30,8 +33,15 @@ time translate
 check() {
     cd $outdir
     echo check lp files ...
-    $lambdapi check -w -v 0 OK/*.lp
-    if test $? -ne 0; then echo KO; exit 1; fi
+    for f in OK/*.lp 'OK/a b/escape file.lp'
+    do
+        case $f in
+            OK/why3*.lp);; #FIXME
+            *) echo "lambdapi check $f ..."
+               $lambdapi check -w -v 0 "$f"
+               if test $? -ne 0; then echo KO; exit 1; fi
+        esac
+    done
 }
 time check
 
