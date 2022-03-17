@@ -71,5 +71,4 @@ let root_path : Path.t CLT.t =
 
 let cmd =
   let doc = "Create a new Lambdapi package to get started with a project." in
-  CLT.(const run $ root_path),
-  CLT.info "init" ~doc
+  Cmd.v (Cmd.info "init" ~doc) Cmdliner.Term.(const run $ root_path)

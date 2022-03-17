@@ -21,6 +21,7 @@ do
         273|813);; # because dedukti SR algorithm fails
         file.with.dot|req.file.with.dot);; #FIXME
         indind);; #FIXME
+        why3*);; #FIXME
         *) lp_files="$dir/$f.lp $lp_files";
            f=`echo $f | sed -e 's/\//_/g'`;
            dk_files="${outdir}_$f.dk $dk_files";

@@ -75,26 +75,25 @@ type data = { ind_var : var (** predicate variable *)
             ; ind_conclu : term (** induction principle conclusion *) }
 type ind_pred_map = (sym * data) list
 
-(** [ind_typ_with_codom pos ind_sym ind_env codom s a] assumes that [a] is of
-   the form [Π(i1:a1),...,Π(in:an), TYPE]. It then generates a [term] similar
+(** [ind_typ_with_codom pos ind_sym env codom x_str a] assumes that [a] is of
+   the form [Π(i1:a1),...,Π(in:an), TYPE]. It then generates a [tbox] similar
    to this type except that [TYPE] is replaced by [codom [i1;...;in]]. The
    string [x_str] is used as prefix for the variables [ik]. *)
 let ind_typ_with_codom :
       popt -> sym -> Env.t -> (term list -> term) -> string -> term -> term =
   fun pos ind_sym env codom x_str a ->
-  let i = Stdlib.ref (-1) in
-  let rec aux : var list -> term -> term = fun xs a ->
+  let rec aux : var list -> int -> term -> term = fun xs k a ->
     match get_args a with
     | (Type, _) -> codom (List.rev_map mk_Vari xs)
     | (Prod(a,b), _) ->
-        let name = Stdlib.(incr i; x_str ^ string_of_int (!i)) in
+        let name = x_str ^ string_of_int k in
         let (x,b) = unbind ~name b in
-        mk_Prod (a, bind_var x (aux (x::xs) b))
+        mk_Prod (a, bind_var x (aux (x::xs) (k+1) b))
     | _ -> fatal pos "The type of %a is not supported" sym ind_sym
   in
-  aux (List.map (fun (_,(v,_,_)) -> v) env) a
+  aux (List.map (fun (_,(v,_,_)) -> v) env) 0 a
 
-(** [create_ind_pred_map pos c ind_list a_str p_str x_str] builds an
+(** [create_ind_pred_map pos c arity ind_list a_str p_str x_str] builds an
    [ind_pred_map] from [ind_list]. The resulting list is in reverse order wrt
    [ind_list]. [a_str] is used as prefix for parameter names, [p_str] is used
    as prefix for predicate variable names, and [x_str] is used as prefix for
@@ -108,8 +107,7 @@ let create_ind_pred_map :
   let env =
     match ind_list with
     | [] -> assert false (* there must be at least one type definition *)
-    | (ind_sym, _) :: _ ->
-        fst (Env.of_prod_using [] vs !(ind_sym.sym_type))
+    | (ind_sym, _) :: _ -> fst (Env.of_prod_using [] vs !(ind_sym.sym_type))
   in
   (* create the ind_pred_map *)
   let create_sym_pred_data i (ind_sym,_) =
@@ -192,8 +190,7 @@ let fold_cons_type
       (codom : 'var list -> 'a -> var -> term list -> 'c)
 
     : 'c =
-  let i = Stdlib.ref (-1) in
-  let rec fold : 'var list -> 'a -> term -> 'c = fun xs acc t ->
+  let rec fold : 'var list -> int -> 'a -> term -> 'c = fun xs n acc t ->
     match get_args t with
     | (Symb(s), ts) ->
         if s == ind_sym then
@@ -202,9 +199,9 @@ let fold_cons_type
         else fatal pos "%a is not a constructor of %a"
                sym cons_sym sym ind_sym
     | (Prod(t,u), _) ->
-       let name = Stdlib.(incr i; x_str ^ string_of_int (!i)) in
+       let name = x_str ^ string_of_int n in
        let x, u = unbind ~name u in
-       let x = inj_var (List.length xs) x in
+       let x = inj_var (List.length xs + n) x in
        begin
          let env, b = Env.of_prod [] "y" t in
          match get_args b with
@@ -213,10 +210,10 @@ let fold_cons_type
                match List.assq_opt s ind_pred_map with
                | Some d ->
                    let v = aux env s d.ind_var ts x in
-                   let next = fold (x::xs) (acc_rec_dom acc x v) u in
+                   let next = fold (x::xs) (n+1) (acc_rec_dom acc x v) u in
                    rec_dom t x v next
                | None ->
-                   let next = fold (x::xs) (acc_nonrec_dom acc x) u in
+                   let next = fold (x::xs) (n+1) (acc_nonrec_dom acc x) u in
                    nonrec_dom t x next
              end
          | _ -> fatal pos "The type of %a is not supported" sym cons_sym
@@ -224,11 +221,11 @@ let fold_cons_type
     | _ -> fatal pos "The type of %a is not supported" sym cons_sym
   in
   let _, t = Env.of_prod_using [] vs !(cons_sym.sym_type) in
-  fold (List.mapi inj_var (Array.to_list vs)) init t
+  fold (List.mapi inj_var (Array.to_list vs)) 0 init t
 
-(** [gen_rec_type ss pos n ind_list ind_pred_map x_str] generates the
+(** [gen_rec_type c pos ind_list vs env ind_pred_map x_str] generates the
    induction principles for each type in the inductive definition [ind_list]
-   defined at the position [pos] whose number of parameters is [n]. [x_str] is
+   defined at the position [pos] whose parameters are [vs]. [x_str] is
    a string used for prefixing variable names that are generated. Remark: in
    the generated induction principles, each recursive argument is followed by
    its induction hypothesis. For instance, with [inductive T:TYPE := c:
@@ -279,8 +276,7 @@ let gen_rec_types :
     let add_quantifier t (_,d) =
       mk_Prod (d.ind_type, bind_var d.ind_var t) in
     let rec_typ = List.fold_left add_quantifier rec_typ ind_pred_map in
-    let rec_typ = Env.to_prod env rec_typ in
-    rec_typ
+    Env.to_prod env rec_typ
   in
 
   List.map gen_rec_type ind_pred_map

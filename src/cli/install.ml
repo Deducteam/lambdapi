@@ -114,10 +114,10 @@ let files : string list CLT.t =
 
 let install_cmd =
   let doc = "Install the given files under the library root." in
-  CLT.(const run_install $ Config.minimal $ dry_run $ files),
-  CLT.info "install" ~doc
+  Cmd.v (Cmd.info "install" ~doc)
+    Cmdliner.Term.(const run_install $ Config.minimal $ dry_run $ files)
 
 let uninstall_cmd =
   let doc = "Uninstall the files corresponding to the given package file." in
-  CLT.(const run_uninstall $ Config.minimal $ dry_run $ pkg_file),
-  CLT.info "uninstall" ~doc
+  Cmd.v (Cmd.info "uninstall" ~doc)
+    Cmdliner.Term.(const run_uninstall $ Config.minimal $ dry_run $ pkg_file)

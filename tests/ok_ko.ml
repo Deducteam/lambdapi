@@ -17,6 +17,12 @@ let _ =
   Common.Library.set_lib_root (Some (Sys.getcwd ()));
   let open Alcotest in
   let files = Lplib.Extra.files Common.Library.is_valid_src_extension "OK" in
+  (* Remove files using a prover. *)
+  let does_not_use_prover = function
+    | "OK/why3.lp" | "OK/why3_quantifiers.lp" -> false
+    | _ -> true
+  in
+  let files = List.filter does_not_use_prover files in
   let tests_ok = List.map (fun f -> test_case f `Quick (test_ok f)) files in
   let files = Lplib.Extra.files Common.Library.is_valid_src_extension "KO" in
   let tests_ko = List.map (fun f -> test_case f `Quick (test_ko f)) files in

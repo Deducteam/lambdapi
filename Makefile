@@ -37,6 +37,10 @@ tests: bin
 	@dune exec --only-packages lambdapi -- tests/export_dk.sh
 	@dune exec --only-packages lambdapi -- tests/export_lp.sh
 
+.PHONY: tests_alt_ergo
+tests_alt_ergo: bin
+	@dune exec --only-packages lambdapi -- lambdapi check tests/OK/why3*.lp
+
 .PHONY: sanity_check
 sanity_check: misc/sanity_check.sh
 	@./$<
