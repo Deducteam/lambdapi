@@ -3,7 +3,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
-## Unreleased
+## 2.2.0 (2022-03-18)
 
 ### Added
 
@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Do not print empty term environments `.[]`.
 - Allow users to use the pattern variables `$0`, `$1`, etc. and internally name pattern variables by their index.
 - Fixed debug flag printing in Pretty.
+- Compatibility with Cmdliner 1.1.0 and Bindlib 6.0.0.
 
 ### Removed
 
