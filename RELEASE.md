@@ -13,9 +13,10 @@ TODO list for a new release on Github
 
 - repeat (dune-release distrib; fix problems)
 
-- commit and push
+- git add and commit
 
-- to delete an existing tag: git tag -d $tag; git push --delete origin $tag
+- to delete a local tag: git tag -d $tag
+- to delete a remote tag: git push --delete origin $tag
 
 - dune-release tag
 
