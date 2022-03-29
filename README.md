@@ -11,6 +11,7 @@ Questions can be asked on the following
 [forum](https://github.com/Deducteam/lambdapi/discussions).
 
 Examples of developments made with Lambdapi:
+- [tutorial](https://raw.githubusercontent.com/Deducteam/lambdapi/master/tests/OK/tutorial.lp)
 - [logic definitions](https://github.com/Deducteam/lambdapi/tree/master/Logic) installed with Lambdapi
 - [inductive-recursive type definition](https://github.com/Deducteam/lambdapi/blob/master/tests/OK/indrec.lp)
 - [inductive-inductive type definition](https://github.com/Deducteam/lambdapi/blob/master/tests/OK/indind.lp)

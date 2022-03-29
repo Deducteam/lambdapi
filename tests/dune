@@ -8,7 +8,8 @@
   (glob_files KO/*.dk)
   lambdapi.pkg)
  (libraries lambdapi.core lambdapi.parsing lambdapi.handle lambdapi.tool
-            alcotest))
+            alcotest)
+ (flags -w +3))
 
 (rule
  (alias runtest)

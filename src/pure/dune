@@ -2,4 +2,5 @@
  (name pure)
  (public_name lambdapi.pure)
  (modules :standard)
- (libraries lambdapi.handle lambdapi.core))
+ (libraries lambdapi.handle lambdapi.core)
+ (flags -w +3))
