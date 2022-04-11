@@ -22,17 +22,12 @@ doc: bnf
 bnf:
 	$(MAKE) -C doc -f Makefile.bnf
 
-.PHONY: lib
-lib:
-	$(MAKE) -C Logic
-
 #### Unit tests and sanity check #############################################
 
 .PHONY: tests
 tests: bin
 	@dune runtest
 	@dune exec --only-packages lambdapi -- tests/runtests.sh
-	$(MAKE) lib
 	@dune exec --only-packages lambdapi -- tests/dtrees.sh
 	@dune exec --only-packages lambdapi -- tests/export_dk.sh
 	@dune exec --only-packages lambdapi -- tests/export_lp.sh
@@ -122,12 +117,10 @@ fullclean: distclean
 .PHONY: install
 install: bin
 	@dune install lambdapi
-	$(MAKE) -C Logic install
 
 .PHONY: uninstall
 uninstall:
 	@dune uninstall lambdapi
-	$(MAKE) -C Logic uninstall
 
 .PHONY: install_vim
 install_vim: $(wildcard editors/vim/*/*.vim)
