@@ -95,8 +95,7 @@ let decision_tree_cmd : Config.t -> qident -> bool -> unit =
     Timed.(Console.verbose := 0);
       (* To avoid printing the "Checked ..." line *)
     (* By default, search for a package from the current working directory. *)
-    let dir = Filename.concat (Sys.getcwd()) "." in
-    Package.apply_config dir;
+    Package.apply_config (Filename.concat (Sys.getcwd()) ".");
     Config.init cfg;
     let sym =
       let sign = Compile.compile false mp in
