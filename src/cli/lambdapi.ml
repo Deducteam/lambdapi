@@ -18,11 +18,11 @@ module CLT = Cmdliner.Term
 (** {3 Evaluation of commands. *)
 
 (** Running the main type-checking mode. *)
-let check_cmd : Config.t -> int option -> bool -> string list -> unit =
-    fun cfg timeout recompile files ->
+let check_cmd : Config.t -> int option -> string list -> unit =
+    fun cfg timeout files ->
   let run _ =
     let open Timed in
-    Config.init cfg; Stdlib.(Compile.recompile := recompile);
+    Config.init cfg;
     (* We save time to run each file in the same environment. *)
     let time = Time.save () in
     let handle file =
@@ -92,13 +92,12 @@ let lsp_server_cmd : Config.t -> bool -> string -> unit =
 let decision_tree_cmd : Config.t -> qident -> bool -> unit =
   fun cfg (mp, sym) ghost ->
   let run _ =
-    Timed.(Console.verbose := 0);
-      (* To avoid printing the "Checked ..." line *)
-    (* By default, search for a package from the current working directory. *)
-    Package.apply_config (Filename.concat (Sys.getcwd()) ".");
     Config.init cfg;
+    (* Search for a package from the current working directory. *)
+    Package.apply_config (Filename.concat (Sys.getcwd()) ".");
     let sym =
-      let sign = Compile.compile false mp in
+      Timed.(Console.verbose := 0); (* To avoid printing "Checked ..." *)
+      let sign = Compile.compile mp in
       let ss = Sig_state.of_sign sign in
       if ghost then
         (* Search through ghost symbols. *)
@@ -134,12 +133,6 @@ let timeout : int option CLT.t =
      as soon as the specified number of seconds is elapsed."
   in
   Arg.(value & opt (some timeout) None & info ["timeout"] ~docv:"NUM" ~doc)
-
-let recompile : bool CLT.t =
-  let doc =
-    "Recompile the files even if they have an up-to-date object file."
-  in
-  Arg.(value & flag & info ["recompile"] ~doc)
 
 (** Options that are specific to the ["lsp-server"] command. *)
 
@@ -230,7 +223,7 @@ let man_pkg_file =
 let check_cmd =
   let doc = "Type-checks the given files." in
   Cmd.v (Cmd.info "check" ~doc ~man:man_pkg_file)
-    CLT.(const check_cmd $ Config.full $ timeout $ recompile $ files)
+    CLT.(const check_cmd $ Config.full $ timeout $ files)
 
 let decision_tree_cmd =
   let doc =
