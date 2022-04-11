@@ -13,7 +13,7 @@ val recompile : bool Stdlib.ref
     that are given on the command line explicitly, not their dependencies. *)
 
 val compile : bool -> Path.t -> Sign.t
-(** [compile force mp] compiles module path [mp] using [compile_with], forcing
+(** [compile force mp] compiles module path [mp], forcing
     compilation of up-to-date files if [force] is true. *)
 
 val compile_file : string -> Sign.t

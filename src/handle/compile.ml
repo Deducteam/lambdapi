@@ -59,8 +59,7 @@ let rec compile_with :
       loaded := Path.Map.add mp sign !loaded;
       Stdlib.(Tactic.admitted := -1);
       let consume cmd =
-        Stdlib.(sig_st :=
-                  handle (compile_with ~handle ~force:false) !sig_st cmd)
+        Stdlib.(sig_st := handle (compile_with ~handle ~force) !sig_st cmd)
       in
       Debug.stream_iter consume (Parser.parse_file src);
       Sign.strip_private sign;
@@ -85,7 +84,7 @@ let rec compile_with :
       sign
     end
 
-(** [compile force mp] compiles module path [mp] using [compile_with], forcing
+(** [compile force mp] compiles module path [mp], forcing
     compilation of up-to-date files if [force] is true. *)
 let compile force = compile_with ~handle:Command.handle ~force
 
