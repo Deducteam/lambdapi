@@ -212,7 +212,7 @@ let valid_extensions : string list =
 (** [path_of_file escape fname] computes the module path that corresponds to
    the filename [fname]. [escape] converts irregular path elements into
    escaped identifiers if needed.
-@raise [Fatal] if [fn] doesn't have a valid extension. *)
+@raise [Fatal] if [fname] doesn't have a valid extension. *)
 let path_of_file : (string -> string) -> string -> Path.t =
   fun escape fname ->
   (* Sanity check: source file extension. *)
@@ -240,7 +240,7 @@ let path_of_file : (string -> string) -> string -> Path.t =
   let (mp, fp) =
     match !mapping with
     | Some(mp, fp) -> (mp, fp)
-    | None           ->
+    | None ->
         fatal_msg "%s cannot be mapped under the library root.@." fname;
         fatal_msg "Consider adding a package file under your source tree, ";
         fatal_no_pos "or use the [--map-dir] option."

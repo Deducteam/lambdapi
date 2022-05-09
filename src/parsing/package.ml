@@ -79,8 +79,8 @@ let find_config : string -> string option = fun fname ->
   in
   find fname
 
-(** [apply_config fname] attempts to find a configuration file that applies to
-    the (source) file [fname], and applies the corresponding configuration. *)
+(** [apply_config fname] attempts to find a configuration file from the
+   directory or file [fname], and applies the corresponding configuration. *)
 let apply_config : string -> unit = fun fname ->
   match find_config fname with
   | None           -> ()
