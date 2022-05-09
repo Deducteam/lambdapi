@@ -359,8 +359,8 @@ let solve : problem -> unit = fun p ->
   p := {!p with to_solve};
 
   (* We first try without normalizing wrt user-defined rules. *)
-  let t1 = Eval.whnf ~tags:[`NoRw] c t1
-  and t2 = Eval.whnf ~tags:[`NoRw] c t2 in
+  let t1 = Eval.whnf ~tags:[`NoRw; `NoExpand] c t1
+  and t2 = Eval.whnf ~tags:[`NoRw; `NoExpand] c t2 in
   if Logger.log_enabled () then log (gre "solve %a") constr (c,t1,t2);
   let h1, ts1 = get_args t1 and h2, ts2 = get_args t2 in
 
