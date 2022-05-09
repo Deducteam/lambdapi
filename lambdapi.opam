@@ -45,6 +45,7 @@ authors: ["Deducteam"]
 license: "CECILL-2.1"
 homepage: "https://github.com/Deducteam/lambdapi"
 bug-reports: "https://github.com/Deducteam/lambdapi/issues"
+dev-repo: "git+https://github.com/Deducteam/lambdapi.git"
 depends: [
   "dune" {>= "2.7"}
   "ocaml" {>= "4.08.0"}
@@ -73,4 +74,3 @@ build: [
     "@install"
   ]
 ]
-dev-repo: "git+https://github.com/Deducteam/lambdapi.git"
