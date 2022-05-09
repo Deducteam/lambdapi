@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Removed
 
+- Logic directory since it is now available on the [Lambdapi Opam repository](https://github.com/Deducteam/opam-lambdapi-repository).
+
 - Option --recompile.
 
 ## 2.2.0 (2022-03-18)
