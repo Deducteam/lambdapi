@@ -173,7 +173,7 @@ let record_time, print_time =
 let stream_iter : ('a -> unit) -> 'a Stream.t -> unit =
   if not !do_print_time then Stream.iter else fun f strm ->
   let peek strm =
-    let open Stdlib in let r = ref None in
+    let r = ref None in
     record_time Parsing (fun () -> r := Stream.peek strm); !r
   in
   let rec do_rec () =

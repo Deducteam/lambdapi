@@ -138,9 +138,6 @@ file command taking more than the given number of seconds to be
 checked. The parameter ``FLOAT`` is expected to be a floating point
 number.
 
-``--recompile`` forces the compilation of the files given on the
-command line even if they have an up-to-date object file.
-
 Specific flags for the ``export`` command
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 

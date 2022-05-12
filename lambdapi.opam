@@ -45,6 +45,7 @@ authors: ["Deducteam"]
 license: "CECILL-2.1"
 homepage: "https://github.com/Deducteam/lambdapi"
 bug-reports: "https://github.com/Deducteam/lambdapi/issues"
+dev-repo: "git+https://github.com/Deducteam/lambdapi.git"
 depends: [
   "dune" {>= "2.7"}
   "ocaml" {>= "4.08.0"}
@@ -54,6 +55,7 @@ depends: [
   "alt-ergo" {with-test}
   "timed" {>= "1.0"}
   "pratter" {>= "1.2"}
+  "camlp-streams" {>= "5.0"}
   "why3" {>= "1.4.0" & < "1.5.0"}
   "yojson" {>= "1.6.0"}
   "cmdliner" {>= "1.1.0"}
@@ -72,4 +74,3 @@ build: [
     "@install"
   ]
 ]
-dev-repo: "git+https://github.com/Deducteam/lambdapi.git"

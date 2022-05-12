@@ -3,7 +3,7 @@
  (public_name lambdapi.parsing)
  (modules :standard)
  (preprocess (pps sedlex.ppx))
- (libraries lambdapi.core menhirLib pratter sedlex sedlex.ppx lambdapi.common)
+ (libraries camlp-streams lambdapi.core menhirLib pratter sedlex sedlex.ppx lambdapi.common)
  (flags -w +3))
 
 (menhir (flags --explain --external-tokens LpLexer) (modules lpParser))

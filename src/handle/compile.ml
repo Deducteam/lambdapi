@@ -59,8 +59,7 @@ let rec compile_with :
       loaded := Path.Map.add mp sign !loaded;
       Stdlib.(Tactic.admitted := -1);
       let consume cmd =
-        Stdlib.(sig_st :=
-                  handle (compile_with ~handle ~force:false) !sig_st cmd)
+        Stdlib.(sig_st := handle (compile_with ~handle ~force) !sig_st cmd)
       in
       Debug.stream_iter consume (Parser.parse_file src);
       Sign.strip_private sign;
@@ -85,24 +84,18 @@ let rec compile_with :
       sign
     end
 
-(** [compile force mp] compiles module path [mp] using [compile_with], forcing
+(** [compile force mp] compiles module path [mp], forcing
     compilation of up-to-date files if [force] is true. *)
-let compile force = compile_with ~handle:Command.handle ~force
-
-(** [recompile] indicates whether we should recompile files who have an object
-    file that is already up to date. Note that this flag only applies to files
-    that are given on the command line explicitly, not their dependencies. *)
-let recompile = Stdlib.ref false
+let compile : ?force:bool -> Path.t -> Sign.t = fun ?(force=false) ->
+  compile_with ~handle:Command.handle ~force
 
 (** [compile_file fname] looks for a package configuration file for
     [fname] and compiles [fname]. It is the main compiling function. It
     is called from the main program exclusively. *)
-let compile_file : string -> Sign.t = fun fname ->
+let compile_file : ?force:bool -> string -> Sign.t =
+  fun ?(force=false) fname ->
   Package.apply_config fname;
-  (* Compute the module path (checking the extension). *)
-  let mp = path_of_file LpLexer.escape fname in
-  (* Run compilation. *)
-  compile Stdlib.(!recompile) mp
+  compile ~force (path_of_file LpLexer.escape fname)
 
 (** The functions provided in this module perform the same computations as the
    ones defined earlier, but restore the console state and the library
@@ -129,13 +122,11 @@ module PureUpToSign = struct
       with e -> restore (); raise e
 
   let compile :
-    ?lm:Path.t*string -> ?st:Console.State.t -> bool -> Path.t -> Sign.t
-    = fun ?lm ?st force mp ->
-      let f (force, mp) = compile force mp in
-      apply_cfg ?lm ?st f (force, mp)
+  ?lm:Path.t*string -> ?st:Console.State.t -> ?force:bool -> Path.t -> Sign.t
+    = fun ?lm ?st ?(force=false) -> apply_cfg ?lm ?st (compile ~force)
 
   let compile_file :
-    ?lm:Path.t*string -> ?st:Console.State.t -> string -> Sign.t
-    = fun ?lm ?st -> apply_cfg ?lm ?st compile_file
+  ?lm:Path.t*string -> ?st:Console.State.t -> ?force:bool -> string -> Sign.t
+    = fun ?lm ?st ?(force=false) -> apply_cfg ?lm ?st (compile_file ~force)
 
 end
