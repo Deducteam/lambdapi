@@ -12,7 +12,7 @@ Questions can be asked on the following
 
 Examples of developments made with Lambdapi:
 - [tutorial](https://raw.githubusercontent.com/Deducteam/lambdapi/master/tests/OK/tutorial.lp)
-- [logic definitions](https://github.com/Deducteam/lambdapi/tree/master/Logic) installed with Lambdapi
+- [some logic definitions](https://github.com/Deducteam/lambdapi-logics)
 - [inductive-recursive type definition](https://github.com/Deducteam/lambdapi/blob/master/tests/OK/indrec.lp)
 - [inductive-inductive type definition](https://github.com/Deducteam/lambdapi/blob/master/tests/OK/indind.lp)
 - [library on natural numbers and polymorphic lists](https://github.com/fblanqui/lib)
