@@ -30,6 +30,8 @@ let why3_config : Why3.Whyconf.config =
 
 (** [why3_main] is the main section of the Why3 configuration. *)
 let why3_main : Why3.Whyconf.main = Why3.Whyconf.get_main why3_config
+let why3_libdir : string = Why3.Whyconf.libdir why3_main
+let why3_datadir : string = Why3.Whyconf.datadir why3_main
 
 (** [why3_env] is the initialized Why3 environment. *)
 let why3_env : Why3.Env.env =
@@ -258,11 +260,10 @@ let run_task : Why3.Task.task -> Pos.popt -> string -> bool =
   in
   (* Actually run the prover. *)
   let command = prover.Why3.Whyconf.command
-  and libdir = ""
-  and datadir = ""
   and limit = {Why3.Call_provers.empty_limit with limit_time = !timeout} in
   let call =
-    Why3.Driver.prove_task ~command ~libdir ~datadir ~limit driver tsk in
+    Why3.Driver.prove_task ~command ~libdir:why3_libdir ~datadir:why3_datadir
+        ~limit driver tsk in
   Why3.Call_provers.((wait_on_call call).pr_answer = Valid)
 
 (** [handle ss pos prover_name g] runs the Why3 prover corresponding
