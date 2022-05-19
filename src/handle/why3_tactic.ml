@@ -257,9 +257,12 @@ let run_task : Why3.Task.task -> Pos.popt -> string -> bool =
                 prover.prover.prover_name Why3.Exn_printer.exn_printer e
   in
   (* Actually run the prover. *)
-  let limit = {Why3.Call_provers.empty_limit with limit_time = !timeout} in
-  let command = prover.Why3.Whyconf.command in
-  let call = Why3.Driver.prove_task ~limit ~command driver tsk in
+  let command = prover.Why3.Whyconf.command
+  and libdir = ""
+  and datadir = ""
+  and limit = {Why3.Call_provers.empty_limit with limit_time = !timeout} in
+  let call =
+    Why3.Driver.prove_task ~command ~libdir ~datadir ~limit driver tsk in
   Why3.Call_provers.((wait_on_call call).pr_answer = Valid)
 
 (** [handle ss pos prover_name g] runs the Why3 prover corresponding
