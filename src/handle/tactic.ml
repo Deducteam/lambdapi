@@ -18,8 +18,9 @@ let admitted : int Stdlib.ref = Stdlib.ref (-1)
 
 (** [add_axiom ss sym_pos m] adds in signature state [ss] a new axiom symbol
    of type [!(m.meta_type)] and instantiate [m] with it. WARNING: It does not
-   check whether the type of [m] contains metavariables. *)
-let add_axiom : Sig_state.t -> popt -> meta -> Sig_state.t =
+   check whether the type of [m] contains metavariables. Return updated signature
+   state [ss] and the new axiom symbol.*)
+let add_axiom : Sig_state.t -> popt -> meta -> Sig_state.t * sym =
   fun ss sym_pos m ->
   let name =
     let i = Stdlib.(incr admitted; !admitted) in
@@ -48,7 +49,7 @@ let add_axiom : Sig_state.t -> popt -> meta -> Sig_state.t =
     let ax = _Appl_Symb sym (Array.to_list vars |> List.map _Vari) in
     Bindlib.(bind_mvar vars ax |> unbox)
   in
-  LibMeta.set (new_problem()) m meta_value; ss
+  LibMeta.set (new_problem()) m meta_value; (ss, sym)
 
 (** [admit_meta ss sym_pos m] adds as many axioms as needed in the signature
    state [ss] to instantiate the metavariable [m] by a fresh axiom added to
@@ -61,7 +62,7 @@ let admit_meta : Sig_state.t -> popt -> meta -> Sig_state.t =
     (* This assertion should be ensured by the typechecking algorithm. *)
     assert (not (MetaSet.mem m ms));
     LibMeta.iter true (admit (MetaSet.add m ms)) [] !(m.meta_type);
-    Stdlib.(ss := add_axiom !ss sym_pos m)
+    Stdlib.(ss := fst (add_axiom !ss sym_pos m))
   in
   admit MetaSet.empty m; Stdlib.(!ss)
 
@@ -335,6 +336,31 @@ let handle :
           let p = new_problem() in
           tac_refine pos ps gt gs p (Why3_tactic.handle ss sym_pos cfg gt)
       | _ -> assert false)
+  | P_tac_skolem -> 
+    (*Gets user-defined symbol identifiers mapped using "builtin" command : *)
+    let symb_imp = Builtin.get ss pos "imp" in
+    let symb_P = Builtin.get ss pos "P" in
+    (*Extract term [t] to skolemized in a typing goal of form π(t) *)
+    let t = match get_args gt.goal_type with 
+          | Symb(s), [tl] when s == symb_P -> tl
+          | _ -> Format.print_string "@.Term not in form P (term)"; gt.goal_type
+    in
+    let skl_of_t = Skolem.handle ss sym_pos t in
+    let c = Env.to_ctxt env in
+    let p = new_problem() in 
+    (*Equisat represents "π(skl_of_t ⇒ t)"*)
+    let equisat =  mk_Appl (mk_Symb symb_P, add_args (mk_Symb symb_imp) [skl_of_t; t]) in
+    let t_meta_eqs = LibMeta.make p c equisat in
+    let meta_eqs = match t_meta_eqs with 
+        | Meta(m, _) -> m
+        |_ -> assert false
+    in
+    (*ax is the axiom of equisatisfiability between a term and its
+    skolemized form.*)
+    let _, ax = add_axiom ss sym_pos meta_eqs in
+    let meta_type = LibMeta.make p c mk_Type in
+    let meta_x = LibMeta.make p c meta_type in
+    tac_refine sym_pos ps gt gs p (mk_Appl (mk_Symb ax, meta_x))
 
 (** Representation of a tactic output. *)
 type tac_output = Sig_state.t * proof_state * Query.result

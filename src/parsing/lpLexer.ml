@@ -73,6 +73,7 @@ type token =
   | RULE
   | SEQUENTIAL
   | SIMPLIFY
+  | SKOLEM
   | SOLVE
   | SYMBOL
   | SYMMETRY
@@ -239,6 +240,7 @@ let rec token lb =
   | "rule" -> RULE
   | "sequential" -> SEQUENTIAL
   | "simplify" -> SIMPLIFY
+  | "skolem" -> SKOLEM
   | "solve" -> SOLVE
   | "symbol" -> SYMBOL
   | "symmetry" -> SYMMETRY
