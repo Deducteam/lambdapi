@@ -128,26 +128,17 @@ let sym_rule : sym -> rule pp = fun s ppf r ->
 let sign : Sign.t pp = fun ppf sign ->
   (* Get all the dependencies (every needed symbols and rewriting rules). *)
   let deps = Sign.dependencies sign in
-  (* Function to iterate over every symbols of the dependencies. *)
-  let _iter_symbols : (sym -> unit) -> unit = fun fn ->
-    let notin_ghosts _ s = if not (Unif_rule.mem s) then fn s in
-    let iter_symbols sign =
-      StrMap.iter notin_ghosts Timed.(!(sign.Sign.sign_symbols))
-    in
-    List.iter (fun (_, sign) -> iter_symbols sign) deps
-  in
   (* Translate the rules of symbol [s] to HRS. *)
-  let rules : sym pp = fun ppf s ->
+  let rules_of_sym : sym pp = fun ppf s ->
     match Timed.(!(s.sym_def)) with
     | Some d -> rule ppf (mk_Symb s, d)
     | None -> List.iter (sym_rule s ppf) Timed.(!(s.sym_rules))
   in
-  (* Translate the rules of a signature to HRS, except if it is a ghost
+  (* Translate the rules of a dependency to HRS, except if it is a ghost
      signature. *)
-  let rules : (_ * Sign.t) pp = fun ppf (_, sign) ->
+  let rules_of_dep : (_ * Sign.t) pp = fun ppf (_, sign) ->
     if sign != Unif_rule.sign then
-      let rules _ s = rules ppf s in
-      StrMap.iter rules Timed.(!(sign.sign_symbols))
+      StrMap.iter (fun _ -> rules_of_sym ppf) Timed.(!(sign.sign_symbols))
   in
   (* Function for printing the FUN section. *)
   let pp_sym_name : string SymMap.t pp = fun ppf sym_name ->
@@ -168,7 +159,7 @@ let sign : Sign.t pp = fun ppf sign ->
      necessary for generating the other sections. *)
   let b = Buffer.create 1000 in
   let ppf_rules = Format.formatter_of_buffer b in
-  List.iter (rules ppf_rules) deps;
+  List.iter (rules_of_dep ppf_rules) deps;
   (* Finally, generate the whole hrs file. *)
   out ppf "\
 (FUN
