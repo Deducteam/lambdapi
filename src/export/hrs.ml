@@ -33,14 +33,13 @@ Pattern variables of arity n are translated as variables of type term ->
    ariies (in two different rules). So pattern variable names are prefixed by
    the rule number.
 
-TO FIX:
+TO DO:
 
-- Optim: do not generate the list of dependencies but iterate over them.
-
-- Optim: output only the symbols used in the rules *)
+- Optim: output only the symbols used in the rules. *)
 
 open Lplib open Base open Extra
 open Core open Term
+open Common
 
 (** [sym_name] maps every symbol to its HRS name. *)
 let sym_name = ref SymMap.empty
@@ -124,22 +123,39 @@ let rule : (term * term) pp = fun ppf (l, r) ->
 let sym_rule : sym -> rule pp = fun s ppf r ->
   incr nb_rules; let sr = s, r in rule ppf (lhs sr, rhs sr)
 
+(** Translate the rules of symbol [s] to HRS. *)
+let rules_of_sym : sym pp = fun ppf s ->
+  match Timed.(!(s.sym_def)) with
+  | Some d -> rule ppf (mk_Symb s, d)
+  | None -> List.iter (sym_rule s ppf) Timed.(!(s.sym_rules))
+
+(** Translate the rules of a dependency to HRS, except if it is a ghost
+   signature. *)
+let rules_of_sign : Sign.t pp = fun ppf sign ->
+  if sign != Unif_rule.sign then
+    StrMap.iter (fun _ -> rules_of_sym ppf) Timed.(!(sign.sign_symbols))
+
+(** [iterate f sign] applies [f] and [sign] and its dependencies. *)
+let iterate : (Sign.t -> unit) -> Sign.t -> unit = fun f sign ->
+  let visited = ref Path.Set.empty in
+  let rec handle sign =
+    visited := Path.Set.add sign.Sign.sign_path !visited;
+    f sign;
+    let dep path _ =
+      if not (Path.Set.mem path !visited) then
+        handle (Path.Map.find path Timed.(!Sign.loaded))
+    in
+    Path.Map.iter dep Timed.(!(sign.sign_deps))
+  in handle sign
+
 (** [sign ppf s] translates the Lambdapi signature [s] to HRS. *)
 let sign : Sign.t pp = fun ppf sign ->
-  (* Get all the dependencies (every needed symbols and rewriting rules). *)
-  let deps = Sign.dependencies sign in
-  (* Translate the rules of symbol [s] to HRS. *)
-  let rules_of_sym : sym pp = fun ppf s ->
-    match Timed.(!(s.sym_def)) with
-    | Some d -> rule ppf (mk_Symb s, d)
-    | None -> List.iter (sym_rule s ppf) Timed.(!(s.sym_rules))
-  in
-  (* Translate the rules of a dependency to HRS, except if it is a ghost
-     signature. *)
-  let rules_of_dep : (_ * Sign.t) pp = fun ppf (_, sign) ->
-    if sign != Unif_rule.sign then
-      StrMap.iter (fun _ -> rules_of_sym ppf) Timed.(!(sign.sign_symbols))
-  in
+  (* First, generate the RULES section in a buffer, because it generates data
+     necessary for the other sections. *)
+  let buf_rules = Buffer.create 1000 in
+  let ppf_rules = Format.formatter_of_buffer buf_rules in
+  iterate (rules_of_sign ppf_rules) sign;
+  Format.pp_print_flush ppf_rules ();
   (* Function for printing the FUN section. *)
   let pp_sym_name : string SymMap.t pp = fun ppf sym_name ->
     let decl : string pp = fun ppf n -> out ppf "\n%s : t" n in
@@ -155,12 +171,6 @@ let sign : Sign.t pp = fun ppf sign ->
     let decl : int pp = fun ppf n -> out ppf "\n%d : t" n in
     IntSet.iter (decl ppf) bvars
   in
-  (* First, generate the RULES section in a buffer, because it generates data
-     necessary for generating the other sections. *)
-  let buf_rules = Buffer.create 1000 in
-  let ppf_rules = Format.formatter_of_buffer buf_rules in
-  List.iter (rules_of_dep ppf_rules) deps;
-  Format.pp_print_flush ppf_rules ();
   (* Finally, generate the whole hrs file. *)
   out ppf "\
 (FUN
