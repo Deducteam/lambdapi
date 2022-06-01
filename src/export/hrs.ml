@@ -157,9 +157,10 @@ let sign : Sign.t pp = fun ppf sign ->
   in
   (* First, generate the RULES section in a buffer, because it generates data
      necessary for generating the other sections. *)
-  let b = Buffer.create 1000 in
-  let ppf_rules = Format.formatter_of_buffer b in
+  let buf_rules = Buffer.create 1000 in
+  let ppf_rules = Format.formatter_of_buffer buf_rules in
   List.iter (rules_of_dep ppf_rules) deps;
+  Format.pp_print_flush ppf_rules ();
   (* Finally, generate the whole hrs file. *)
   out ppf "\
 (FUN
@@ -176,4 +177,5 @@ $z : t%a%a
 (RULES
 app(lam($x,$y),$z) -> $y($z),
 let($x,$z,$y) -> $y($z)%s
-)\n" pp_sym_name !sym_name pp_pvars !pvars pp_bvars !bvars (Buffer.contents b)
+)\n" pp_sym_name !sym_name pp_pvars !pvars pp_bvars !bvars
+    (Buffer.contents buf_rules)
