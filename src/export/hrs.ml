@@ -1,54 +1,74 @@
 (** This module provides a function to translate a signature to the HRS format
-    used in the confluence competition.
+   used in the confluence competition.
 
-    @see <http://project-coco.uibk.ac.at/problems/hrs.php>. *)
+    @see <http://project-coco.uibk.ac.at/problems/hrs.php>.
+
+- Function symbol names are prefixed by ["c_"], bound variables by ["v_"], and
+   pattern variables by ["$"] because, in the hrs format, variable names must
+   be distinct from function symbol names.
+
+- Function symbol names are fully qualified but ["."] is replaced by ["_"]
+   because ["."] cannot be used in identifiers (["."]  is used in lambda
+   abstractions).
+
+- Lambdapi terms are translated to the following HRS term algebra with a
+   unique type "term":
+
+  lam : term -> (term -> term) -> term
+
+  app : term -> term -> term
+
+  pi : term -> (term -> term) -> term
+
+TO FIX:
+
+- Have only one VAR section, one FUN section and one RULES section. Solution:
+   use 3 buffers: one for symbols, one for variables and one for rules.
+
+- Pattern variable names are not valid anymore: they should be prefixed by the
+   rule number.
+
+- Translate let by beta-redex or new symbol.
+
+- Optim: do not generate the list of dependencies but iterate over them.
+
+*)
 
 open Lplib open Base open Extra
 open Timed
 open Core open Term open Print
 
-(** [print_sym ppf s] outputs the fully qualified name of [s] to [ppf]. The
-   name is prefixed by ["c_"], and modules are separated with ["_"], not
-   ["."]. *)
-let print_sym : sym pp = fun ppf s ->
-  let print_path = List.pp string "_" in
-  out ppf "c_%a_%s" print_path s.sym_path s.sym_name
+(** [sym ppf s] outputs the symbol [s] to [ppf]. *)
+let sym : sym pp = fun ppf s ->
+  out ppf "%a_%s" (List.pp string "_") s.sym_path s.sym_name
 
-(** [print_patt ppf p] outputs TPDB format corresponding to the pattern [p],
-   to [ppf]. *)
-let print_term : bool -> term pp = fun lhs ->
-  let rec pp ppf t =
-    match unfold t with
-    (* Forbidden cases. *)
-    | Meta(_,_)    -> assert false
-    | Plac _       -> assert false
-    | TRef(_)      -> assert false
-    | TEnv(_,_)    -> assert false
-    | Wild         -> assert false
-    | Kind         -> assert false
-    (* Printing of atoms. *)
-    | Vari(x)      -> out ppf "%a" var x
-    | Type         -> out ppf "TYPE"
-    | Symb(s)      -> print_sym ppf s
-    | Patt(i,n,ts) ->
-        if ts = [||] then out ppf "$%s" n else
-          pp ppf (Array.fold_left (fun t u -> mk_Appl(t,u))
-                   (mk_Patt(i,n,[||])) ts)
-    | Appl(t,u)    -> out ppf "app(%a,%a)" pp t pp u
-    | Abst(a,t)    ->
-        let (x, t) = Bindlib.unbind t in
-        if lhs then out ppf "lam(m_typ,\\%a.%a)" var x pp t
-        else out ppf "lam(%a,\\%a.%a)" pp a var x pp t
-    | Prod(a,b)    ->
-        let (x, b) = Bindlib.unbind b in
-        out ppf "pi(%a,\\%a.%a)" pp a var x pp b
-    | LLet(_,t,u)  -> pp ppf (Bindlib.subst u t)
-  in pp
+(** [term ppf p] outputs the term [t] to [ppf]. *)
+let rec term : term pp = fun ppf t ->
+  match unfold t with
+  | Meta _ -> assert false
+  | Plac _ -> assert false
+  | TRef _ -> assert false
+  | TEnv _ -> assert false
+  | Wild -> assert false
+  | Kind -> assert false
+  | Type -> assert false
+  | Vari x -> out ppf "%a" var x
+  | Symb s -> sym ppf s
+  | Patt(_,n,[||]) -> out ppf "$%s" n
+  | Patt(i,n,ts) ->
+    term ppf
+      (Array.fold_left (fun t u -> mk_Appl(t,u)) (mk_Patt(i,n,[||])) ts)
+  | Appl(t,u) -> out ppf "app(%a,%a)" term t term u
+  | Abst(a,b) ->
+    let x, b = Bindlib.unbind b in
+    out ppf "lam(%a,\\%a.%a)" term a var x term b
+  | Prod(a,b)    ->
+    let x, b = Bindlib.unbind b in
+    out ppf "pi(%a,\\%a.%a)" term a var x term b
+  | LLet(_,t,u) -> term ppf (Bindlib.subst u t)  (*FIXME*)
 
-(** [print_rule ppf lhs rhs] outputs the rule declaration [lhs]->[rhs]
-    to [ppf] *)
-let print_rule : Format.formatter -> term -> term -> unit =
-  fun ppf lhs rhs ->
+(** [rule ppf (l,r)] outputs the rule [l --> r] to [ppf]. *)
+let rule : (term * term) pp = fun ppf (lhs, rhs) ->
   (* gets pattern and binded variable names *)
   let add_var_names : StrSet.t -> term -> StrSet.t = fun ns t ->
     let names = Stdlib.ref ns in
@@ -67,63 +87,57 @@ let print_rule : Format.formatter -> term -> term -> unit =
   let names = add_var_names names rhs in
   if not (StrSet.is_empty names) then
     begin
-      let print_name ppf x = out ppf "  %s : term\n" x in
-      let strset ppf = StrSet.iter (print_name ppf) in
+      let name ppf x = out ppf "  %s : term\n" x in
+      let strset ppf = StrSet.iter (name ppf) in
       out ppf "(VAR\n%a)\n" strset names
     end;
   (* Print the rewriting rule. *)
-  out ppf "(RULES %a" (print_term true) lhs;
-  out ppf "\n    -> %a)\n" (print_term false) rhs
+  out ppf "(RULES %a" term lhs;
+  out ppf "\n    -> %a)\n" term rhs
 
-(** [print_sym_rule ppf s r] outputs the rule declaration corresponding [r]
+(** [sym_rule ppf s r] outputs the rule declaration corresponding [r]
    (on the symbol [s]), to [ppf]. *)
-let print_sym_rule : Format.formatter -> sym -> rule -> unit = fun ppf s r ->
-  let x = s,r in print_rule ppf (lhs x) (rhs x)
+let sym_rule : sym -> rule pp = fun s ppf r ->
+  let sr = s, r in rule ppf (lhs sr, rhs sr)
 
-(** [to_HRS ppf sign] outputs a TPDB representation of the rewriting system of
-    the signature [sign] to [ppf]. *)
-let to_HRS : Format.formatter -> Sign.t -> unit = fun ppf sign ->
+(** [sign ppf s] outputs the signature [s] to [ppf]. *)
+let sign : Sign.t pp = fun ppf sign ->
   (* Get all the dependencies (every needed symbols and rewriting rules). *)
   let deps = Sign.dependencies sign in
   (* Function to iterate over every symbols. *)
   let iter_symbols : (sym -> unit) -> unit = fun fn ->
-    let not_on_ghosts _ s = if not (Unif_rule.mem s) then fn s in
+    let notin_ghosts _ s = if not (Unif_rule.mem s) then fn s in
     let iter_symbols sign =
-      StrMap.iter not_on_ghosts Sign.(!(sign.sign_symbols))
+      StrMap.iter notin_ghosts Sign.(!(sign.sign_symbols))
     in
     List.iter (fun (_, sign) -> iter_symbols sign) deps
   in
   (* Print the prelude. *)
-  let prelude =
-    [ "(FUN"
-    ; "  lam  : term -> (term -> term) -> term"
-    ; "  app  : term -> term -> term"
-    ; "  pi   : term -> (term -> term) -> term"
-    ; "  type : term"
-    ; ")"
-    ; ""
-    ; "(COMMENT beta-reduction)"
-    ; "(VAR"
-    ; "  v_x   : term"
-    ; "  m_typ : term"
-    ; "  m_B   : term"
-    ; "  m_F   : term -> term"
-    ; ")"
-    ; "(RULES app(lam(m_typ,\\v_x. m_F v_x), m_B) -> m_F(m_B))"
-    ; ""
-    ; "(COMMENT TYPE keyword)"
-    ; "(FUN TYPE : term)" ]
-  in
-  List.iter (out ppf "%s\n") prelude;
+  out ppf "\
+(FUN
+  lam  : term -> (term -> term) -> term
+  app  : term -> term -> term
+  pi   : term -> (term -> term) -> term
+  TYPE : term
+)
+
+(COMMENT beta-reduction)
+(VAR
+  m_typ : term
+  m_B   : term
+  m_F   : term -> term
+)
+(RULES app (lam m_typ m_F) m_B -> m_F m_B)
+";
   (* Print the symbol declarations. *)
   out ppf "\n(COMMENT symbols)\n";
-  let print_symbol s = out ppf "(FUN %a : term)\n" print_sym s in
-  iter_symbols print_symbol;
+  let symbol s = out ppf "(FUN %a : term)\n" sym s in
+  iter_symbols symbol;
   (* Print the rewriting rules. *)
   out ppf "\n(COMMENT rewriting rules)\n";
-  let print_rules s =
+  let rules s =
     match !(s.sym_def) with
-    | Some(d) -> print_rule ppf (mk_Symb s) d
-    | None    -> List.iter (print_sym_rule ppf s) !(s.sym_rules)
+    | Some d -> rule ppf (mk_Symb s, d)
+    | None -> List.iter (sym_rule s ppf) !(s.sym_rules)
   in
-  iter_symbols print_rules
+  iter_symbols rules
