@@ -35,8 +35,6 @@ Pattern variables of arity n are translated as variables of type term ->
 
 TO FIX:
 
-- Translate let by beta-redex or new symbol.
-
 - Optim: do not generate the list of dependencies but iterate over them.
 
 - Optim: output only the symbols used in the rules *)
@@ -110,10 +108,12 @@ let rec term : term pp = fun ppf t ->
   | Abst(a,b) ->
     let x, b = Bindlib.unbind b in add_bvar x;
     out ppf "lam(%a,\\%a.%a)" term a var x term b
-  | Prod(a,b)    ->
+  | Prod(a,b) ->
     let x, b = Bindlib.unbind b in add_bvar x;
     out ppf "pi(%a,\\%a.%a)" term a var x term b
-  | LLet(_,t,u) -> term ppf (Bindlib.subst u t)  (*FIXME*)
+  | LLet(a,t,b) ->
+    let x, b = Bindlib.unbind b in add_bvar x;
+    out ppf "let(%a,%a,\\%a.%a)" term a term t var x term b
 
 (** [rule ppf r] translates the pair of terms [r] to an HRS rule. *)
 let rule : (term * term) pp = fun ppf (l, r) ->
@@ -172,9 +172,10 @@ let sign : Sign.t pp = fun ppf sign ->
   (* Finally, generate the whole hrs file. *)
   out ppf "\
 (FUN
-lam  : t -> (t -> t) -> t
-app  : t -> t -> t
-pi   : t -> (t -> t) -> t%a
+lam : t -> (t -> t) -> t
+let : t -> t -> (t -> t) -> t
+app : t -> t -> t
+pi : t -> (t -> t) -> t%a
 )
 (VAR
 $x : t
@@ -182,5 +183,6 @@ $y : t -> t
 $z : t%a%a
 )
 (RULES
-app (lam $x $y) $z -> $y $z%s
+app(lam($x,$y),$z) -> $y($z),
+let($x,$z,$y) -> $y($z)%s
 )\n" pp_sym_name !sym_name pp_pvars !pvars pp_bvars !bvars (Buffer.contents b)
