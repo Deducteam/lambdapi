@@ -202,6 +202,7 @@ type p_tactic_aux =
   | P_tac_rewrite of bool * p_rw_patt option * p_term
   (* The boolean indicates if the equation is applied from left to right. *)
   | P_tac_simpl of p_qident option
+  | P_tac_skolem
   | P_tac_solve
   | P_tac_sym
   | P_tac_why3 of string option
@@ -560,6 +561,7 @@ let fold_idents : ('a -> p_qident -> 'a) -> 'a -> p_command list -> 'a =
     | P_tac_sym
     | P_tac_why3 _
     | P_tac_solve
+    | P_tac_skolem
     | P_tac_fail
     | P_tac_generalize _
     | P_tac_induction -> (vs, a)

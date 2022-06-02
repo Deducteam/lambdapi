@@ -65,6 +65,7 @@ let _ = let open LpLexer in
     ; "rule", RULE
     ; "sequential", SEQUENTIAL
     ; "simplify", SIMPLIFY
+    ; "skolem", SKOLEM
     ; "solve", SOLVE
     ; "symbol", SYMBOL
     ; "symmetry", SYMMETRY
@@ -275,6 +276,7 @@ let tactic : p_tactic pp = fun ppf { elt;  _ } ->
       out ppf "rewrite%a%a %a" dir b (Option.pp pat) p term t
   | P_tac_simpl None -> out ppf "simplify"
   | P_tac_simpl (Some qid) -> out ppf "simplify %a" qident qid
+  | P_tac_skolem -> out ppf "skolem"
   | P_tac_solve -> out ppf "solve"
   | P_tac_sym -> out ppf "symmetry"
   | P_tac_why3 p ->
