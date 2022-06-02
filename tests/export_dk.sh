@@ -62,8 +62,8 @@ check() {
     cd /tmp/
     echo 'remove #REQUIRE commands (to be removed when https://github.com/Deducteam/Dedukti/issues/262 is fixed) ...'
     sed -i -e 's/#REQUIRE.*$//' $dk_files    
-    echo check dk files ...
-    dkcheck -q -e `dkdep -q -s $dk_files`
+    echo check dk files using `which ${DKCHECK:-dk}` ...
+    ${DKCHECK:-dk check} -q -e `${DKDEP:-dk dep} -q -s $dk_files`
     if test $? -ne 0; then echo KO; exit 1; fi
 }
 time check
