@@ -38,7 +38,14 @@ let rule_of_pair : (term * term) pp =
   fun ppf (l,r) -> out ppf "%a ↪ %a" term l term r
 
 (** [is_ho r] says if [r] uses higher-order variables. *)
-let is_ho : rule -> bool = fun r -> Array.exists (fun i -> i > 0) r.arities
+let is_ho : rule -> bool = fun r ->
+  Array.exists (fun i -> i > 0) r.arities ||
+  let rec contains_abs t =
+    match unfold t with
+    | Abst _ | Prod _ | LLet _ -> raise Exit
+    | Appl(a,b) -> contains_abs a; contains_abs b
+    | _ -> ()
+  in try List.iter (contains_abs) r.lhs; false with Exit -> true
 
 (** [is_definable s] says if [s] is definable and non opaque but not AC. *)
 let is_definable : sym -> bool = fun s ->
