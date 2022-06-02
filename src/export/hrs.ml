@@ -6,11 +6,13 @@
 - Lambdapi terms are translated to the following HRS term algebra with a
    unique type "term":
 
-  lam : term -> (term -> term) -> term
+  A : term -> term -> term // for application
 
-  app : term -> term -> term
+  B : term -> (term -> term) -> term // for λ
 
-  pi : term -> (term -> term) -> term
+  L : term -> term -> (term -> term) -> term // for let
+
+  P : term -> (term -> term) -> term // for Π
 
 Function symbols and variables are translated as symbols of type term.
 
@@ -21,19 +23,20 @@ Pattern variables of arity n are translated as variables of type term ->
    names. So bound variables are translated into positive integers and pattern
    variables are prefixed by ["$"].
 
-- Clashes between function symbol names and lam, app and pi?
+- There is no clash between function symbol names and A, B, L, P because
+   function symbol names are fully qualified.
 
 - Function symbol names are fully qualified but ["."] is replaced by ["_"]
    because ["."] cannot be used in identifiers (["."]  is used in lambda
    abstractions).
-
-- Do HRS accept unicode characters?
 
 - Two occurrences of the same pattern variable name may have two different
    ariies (in two different rules). So pattern variable names are prefixed by
    the rule number.
 
 TO DO:
+
+- HRS does not accept unicode characters
 
 - Optim: output only the symbols used in the rules. *)
 
@@ -103,13 +106,13 @@ let rec term : term pp = fun ppf t ->
     let args ppf ts =
       for i=1 to Array.length ts - 1 do out ppf ",%a" term ts.(i) done in
     out ppf "%a(%a%a)" patt n term ts.(0) args ts
-  | Appl(t,u) -> out ppf "app(%a,%a)" term t term u
+  | Appl(t,u) -> out ppf "A(%a,%a)" term t term u
   | Abst(a,b) ->
     let x, b = Bindlib.unbind b in add_bvar x;
-    out ppf "lam(%a,\\%a.%a)" term a var x term b
+    out ppf "L(%a,\\%a.%a)" term a var x term b
   | Prod(a,b) ->
     let x, b = Bindlib.unbind b in add_bvar x;
-    out ppf "pi(%a,\\%a.%a)" term a var x term b
+    out ppf "P(%a,\\%a.%a)" term a var x term b
   | LLet(a,t,b) ->
     let x, b = Bindlib.unbind b in add_bvar x;
     out ppf "let(%a,%a,\\%a.%a)" term a term t var x term b
@@ -174,10 +177,10 @@ let sign : Sign.t pp = fun ppf sign ->
   (* Finally, generate the whole hrs file. *)
   out ppf "\
 (FUN
-lam : t -> (t -> t) -> t
-let : t -> t -> (t -> t) -> t
-app : t -> t -> t
-pi : t -> (t -> t) -> t%a
+A : t -> t -> t
+B : t -> (t -> t) -> t
+L : t -> t -> (t -> t) -> t
+P : t -> (t -> t) -> t%a
 )
 (VAR
 $x : t
@@ -185,7 +188,7 @@ $y : t -> t
 $z : t%a%a
 )
 (RULES
-app(lam($x,$y),$z) -> $y($z),
+A(L($x,$y),$z) -> $y($z),
 let($x,$z,$y) -> $y($z)%s
 )\n" pp_sym_name !sym_name pp_pvars !pvars pp_bvars !bvars
     (Buffer.contents buf_rules)
