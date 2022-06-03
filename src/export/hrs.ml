@@ -4,20 +4,20 @@
     @see <http://project-coco.uibk.ac.at/problems/hrs.php>.
 
 - Lambdapi terms are translated to the following HRS term algebra with a
-   unique type "term":
+   unique type t:
 
-  A : term -> term -> term // for application
+  A : t -> t -> t // for application
 
-  B : term -> (term -> term) -> term // for λ
+  B : t -> (t -> t) -> t // for λ
 
-  L : term -> term -> (term -> term) -> term // for let
+  L : t -> t -> (t -> t) -> t // for let
 
-  P : term -> (term -> term) -> term // for Π
+  P : t -> (t -> t) -> t // for Π
 
-Function symbols and variables are translated as symbols of type term.
+Function symbols and variables are translated as symbols of type t.
 
-Pattern variables of arity n are translated as variables of type term ->
-   ... -> term with n times ->.
+Pattern variables of arity n are translated as variables of type t ->
+   ... -> t with n times ->.
 
 - In the hrs format, variable names must be distinct from function symbol
    names. So bound variables are translated into positive integers and pattern
@@ -44,51 +44,44 @@ open Lplib open Base open Extra
 open Core open Term
 open Common
 
-(** [sym_name] maps every symbol to its HRS name. *)
-let sym_name = ref SymMap.empty
+(** [syms] maps every symbol to a name. *)
+let syms = ref SymMap.empty
 
-(** [bvars] is the set of binded variables. *)
+(** [bvars] is the set of abstracted variables. *)
 let bvars = ref IntSet.empty
 
 (** [nb_rules] is the number of rewrite rules. *)
 let nb_rules = ref 0
 
-(** [pvars] map every HRS pattern variable name to its arity. *)
-let pvars = ref StrMap.empty
+(** [pvars] map every pattern variable name to its arity. *)
+let pvars = ref []
 
-(** [reset()] resets the above references. *)
-let reset : unit -> unit = fun () ->
-  sym_name := SymMap.empty;
-  bvars := IntSet.empty;
-  nb_rules := 0;
-  pvars := StrMap.empty
+(** [sym_name s] translates the symbol name of [s]. *)
+let sym_name : sym pp = fun ppf s ->
+    out ppf "%a_%s" (List.pp string "_") s.sym_path s.sym_name
 
 (** [add_sym] declares a Lambdapi symbol. *)
-let add_sym : sym -> unit =
-  let sym : sym pp = fun ppf s ->
-    out ppf "%a_%s" (List.pp string "_") s.sym_path s.sym_name
-  in fun s ->
-  sym_name := SymMap.add s (Format.asprintf "%a" sym s) !sym_name
+let add_sym : sym -> unit = fun s ->
+  syms := SymMap.add s (Format.asprintf "%a" sym_name s) !syms
 
-(** [sym ppf s] translates the Lambdapi symbol [s] to HRS. *)
-let sym : sym pp = fun ppf s -> string ppf (SymMap.find s !sym_name)
+(** [sym ppf s] translates the Lambdapi symbol [s]. *)
+let sym : sym pp = fun ppf s -> string ppf (SymMap.find s !syms)
 
-(** [add_bvar v] declares a binded Lambdapi variable. *)
+(** [add_bvar v] declares an abstracted Lambdapi variable. *)
 let add_bvar : tvar -> unit = fun v ->
   bvars := IntSet.add (Bindlib.uid_of v) !bvars
 
-(** [var v] translates the Lambdapi variable [v] to HRS. *)
-let var : tvar pp = fun ppf v -> int ppf (Bindlib.uid_of v)
+(** [bvar v] translates the Lambdapi variable [v]. *)
+let bvar : tvar pp = fun ppf v -> int ppf (Bindlib.uid_of v)
 
-(** [patt n] translates the Lambdapi pattern variable of name [n] to HRS. *)
-let patt : string pp = fun ppf n -> out ppf "$%d_%s" !nb_rules n
+(** [pvar i] translates the pattern variable index [i]. *)
+let pvar : int pp = fun ppf i -> out ppf "$%d_%d" !nb_rules i
 
-(** [add_patt n k] declares a Lambdapi pattern variable of name [n] and arity
-   [k]. *)
-let add_patt : string -> int -> unit = fun n k ->
-  pvars := StrMap.add (Format.asprintf "%a" patt n) k !pvars
+(** [add_pvar i k] declares a pvar of index [i] and arity [k]. *)
+let add_pvar : int -> int -> unit = fun i k ->
+  pvars := (!nb_rules,i,k)::!pvars
 
-(** [term ppf t] translates the term [t] to HRS. *)
+(** [term ppf t] translates the term [t]. *)
 let rec term : term pp = fun ppf t ->
   match unfold t with
   | Meta _ -> assert false
@@ -98,42 +91,41 @@ let rec term : term pp = fun ppf t ->
   | Wild -> assert false
   | Kind -> assert false
   | Type -> assert false
-  | Vari v -> var ppf v
+  | Vari v -> bvar ppf v
   | Symb s -> add_sym s; sym ppf s
-  | Patt(_,n,[||]) -> add_patt n 0; patt ppf n
-  | Patt(_,n,ts) ->
-    add_patt n (Array.length ts);
-    let args ppf ts =
-      for i=1 to Array.length ts - 1 do out ppf ",%a" term ts.(i) done in
-    out ppf "%a(%a%a)" patt n term ts.(0) args ts
+  | Patt(None,_,_) -> assert false
+  | Patt(Some i,_,[||]) -> add_pvar i 0; pvar ppf i
+  | Patt(Some i,_,ts) ->
+    let k = Array.length ts in add_pvar i k;
+    let args ppf ts = for i=1 to k-1 do out ppf ",%a" term ts.(i) done in
+    out ppf "%a(%a%a)" pvar i term ts.(0) args ts
   | Appl(t,u) -> out ppf "A(%a,%a)" term t term u
   | Abst(a,b) ->
     let x, b = Bindlib.unbind b in add_bvar x;
-    out ppf "L(%a,\\%a.%a)" term a var x term b
+    out ppf "L(%a,\\%a.%a)" term a bvar x term b
   | Prod(a,b) ->
     let x, b = Bindlib.unbind b in add_bvar x;
-    out ppf "P(%a,\\%a.%a)" term a var x term b
+    out ppf "P(%a,\\%a.%a)" term a bvar x term b
   | LLet(a,t,b) ->
     let x, b = Bindlib.unbind b in add_bvar x;
-    out ppf "let(%a,%a,\\%a.%a)" term a term t var x term b
+    out ppf "let(%a,%a,\\%a.%a)" term a term t bvar x term b
 
-(** [rule ppf r] translates the pair of terms [r] to an HRS rule. *)
+(** [rule ppf r] translates the pair of terms [r] as a rule. *)
 let rule : (term * term) pp = fun ppf (l, r) ->
   out ppf ",\n%a -> %a" term l term r
 
 (** [sym_rule ppf s r] increases the number of rules and translates the
-   sym_rule [r] into HRS. *)
+   sym_rule [r]. *)
 let sym_rule : sym -> rule pp = fun s ppf r ->
   incr nb_rules; let sr = s, r in rule ppf (lhs sr, rhs sr)
 
-(** Translate the rules of symbol [s] to HRS. *)
+(** Translate the rules of symbol [s]. *)
 let rules_of_sym : sym pp = fun ppf s ->
   match Timed.(!(s.sym_def)) with
   | Some d -> rule ppf (mk_Symb s, d)
   | None -> List.iter (sym_rule s ppf) Timed.(!(s.sym_rules))
 
-(** Translate the rules of a dependency to HRS, except if it is a ghost
-   signature. *)
+(** Translate the rules of a dependency except if it is a ghost signature. *)
 let rules_of_sign : Sign.t pp = fun ppf sign ->
   if sign != Unif_rule.sign then
     StrMap.iter (fun _ -> rules_of_sym ppf) Timed.(!(sign.sign_symbols))
@@ -151,28 +143,29 @@ let iterate : (Sign.t -> unit) -> Sign.t -> unit = fun f sign ->
     Path.Map.iter dep Timed.(!(sign.sign_deps))
   in handle sign
 
-(** [sign ppf s] translates the Lambdapi signature [s] to HRS. *)
+(** [sign ppf s] translates the Lambdapi signature [s]. *)
 let sign : Sign.t pp = fun ppf sign ->
-  (* First, generate the RULES section in a buffer, because it generates data
+  (* First, generate the rules in a buffer, because it generates data
      necessary for the other sections. *)
   let buf_rules = Buffer.create 1000 in
   let ppf_rules = Format.formatter_of_buffer buf_rules in
   iterate (rules_of_sign ppf_rules) sign;
   Format.pp_print_flush ppf_rules ();
-  (* Function for printing the FUN section. *)
-  let pp_sym_name : string SymMap.t pp = fun ppf sym_name ->
-    let decl : string pp = fun ppf n -> out ppf "\n%s : t" n in
-    let sym _ n = decl ppf n in SymMap.iter sym sym_name
+  (* Function for printing the types of function symbols. *)
+  let pp_syms : string SymMap.t pp = fun ppf syms ->
+    let sym_decl : string pp = fun ppf n -> out ppf "\n%s : t" n in
+    let sym_decl _ n = sym_decl ppf n in SymMap.iter sym_decl syms
   in
-  (* Function for printing the pattern variables of the VAR section. *)
-  let pp_pvars : int StrMap.t pp = fun ppf pvars ->
+  (* Function for printing the types of pattern variables. *)
+  let pp_pvars : (int * int * int) list pp = fun ppf pvars ->
     let typ : int pp = fun ppf k ->
       for _i=1 to k do string ppf "t -> " done; out ppf "t" in
-    let decl n k = out ppf "\n%s : %a" n typ k in
-    StrMap.iter decl pvars in
+    let pvar_decl (n,i,k) = out ppf "\n%d_%d : %a" n i typ k in
+    List.iter pvar_decl pvars in
+  (* Function for printing the types of abstracted variables. *)
   let pp_bvars : IntSet.t pp = fun ppf bvars ->
-    let decl : int pp = fun ppf n -> out ppf "\n%d : t" n in
-    IntSet.iter (decl ppf) bvars
+    let bvar_decl : int pp = fun ppf n -> out ppf "\n%d : t" n in
+    IntSet.iter (bvar_decl ppf) bvars
   in
   (* Finally, generate the whole hrs file. *)
   out ppf "\
@@ -190,5 +183,4 @@ $z : t%a%a
 (RULES
 A(L($x,$y),$z) -> $y($z),
 let($x,$z,$y) -> $y($z)%s
-)\n" pp_sym_name !sym_name pp_pvars !pvars pp_bvars !bvars
-    (Buffer.contents buf_rules)
+)\n" pp_syms !syms pp_pvars !pvars pp_bvars !bvars (Buffer.contents buf_rules)
