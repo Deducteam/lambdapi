@@ -46,8 +46,7 @@ let check_cmd : Config.t -> int option -> string list -> unit =
         Option.iter run chk
       in
       run_checker "confluence" Export.Hrs.sign cfg.confluence "confluent";
-      run_checker
-        "termination" Export.Xtc.to_XTC cfg.termination "terminating"
+      run_checker "termination" Export.Xtc.sign cfg.termination "terminating"
     in
     List.iter handle files
   in
@@ -79,7 +78,7 @@ let export_cmd : Config.t -> string -> unit = fun cfg file ->
     | Some Hrs ->
       Export.Hrs.sign Format.std_formatter (Compile.compile_file file)
     | Some Xtc ->
-      Export.Xtc.to_XTC Format.std_formatter (Compile.compile_file file)
+      Export.Xtc.sign Format.std_formatter (Compile.compile_file file)
   in Error.handle_exceptions run
 
 (** Running the LSP server. *)
