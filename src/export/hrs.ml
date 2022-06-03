@@ -160,7 +160,7 @@ let sign : Sign.t pp = fun ppf sign ->
   let pp_pvars : (int * int * int) list pp = fun ppf pvars ->
     let typ : int pp = fun ppf k ->
       for _i=1 to k do string ppf "t -> " done; out ppf "t" in
-    let pvar_decl (n,i,k) = out ppf "\n%d_%d : %a" n i typ k in
+    let pvar_decl (n,i,k) = out ppf "\n$%d_%d : %a" n i typ k in
     List.iter pvar_decl pvars in
   (* Function for printing the types of abstracted variables. *)
   let pp_bvars : IntSet.t pp = fun ppf bvars ->
