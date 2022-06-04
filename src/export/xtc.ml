@@ -3,6 +3,15 @@
 
     @see <https://raw.githubusercontent.com/TermCOMP/TPDB/master/xml/xtc.xsd>
 
+Remarks:
+
+- SizeChangeTool accepts an extension of the XTC format with lambda and
+   application in types and:
+
+<arrow> <var>...</var> <type>...</type> <type>...</type> </arrow>
+
+<typeLevelRule> <TLlhs>...</TLlhs> <TLrhs>...</TLrhs> </typeLevelRule>
+
 *)
 
 open Lplib open Base open Extra
