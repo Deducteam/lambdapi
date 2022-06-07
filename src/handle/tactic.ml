@@ -338,25 +338,27 @@ let handle :
       | _ -> assert false)
   | P_tac_skolem -> 
     (*Gets user-defined symbol identifiers mapped using "builtin" command : *)
-    let symb_imp = Builtin.get ss pos "imp" in
     let symb_P = Builtin.get ss pos "P" in
-    (*Extract term [t] to skolemized in a typing goal of form π(t) *)
+    (*Extract term [t] in a typing goal of form π(t) *)
     let t = match get_args gt.goal_type with 
           | Symb(s), [tl] when s == symb_P -> tl
           | _ -> Format.print_string "@.Term not in form P (term)"; gt.goal_type
     in
-    let skl_of_t = Skolem.handle ss sym_pos t in
+    let skl_t = Skolem.handle ss sym_pos t in
     let c = Env.to_ctxt env in
     let p = new_problem() in 
-    (*Equisat represents "π(skl_of_t ⇒ t)"*)
-    let equisat =  mk_Appl (mk_Symb symb_P, add_args (mk_Symb symb_imp) [skl_of_t; t]) in
+    (*Equisat represents "π (skl_t) → π (t)"*)
+    let var_cst = new_tvar "cst" in
+    let proof_t =  mk_Appl (mk_Symb symb_P, t) in
+    let proof_skl_t =  mk_Appl (mk_Symb symb_P, skl_t) in
+    let equisat = mk_Prod (proof_skl_t, bind var_cst lift proof_t) in
     let t_meta_eqs = LibMeta.make p c equisat in
     let meta_eqs = match t_meta_eqs with 
         | Meta(m, _) -> m
         |_ -> assert false
     in
-    (*ax is the axiom of equisatisfiability between a term and its
-    skolemized form.*)
+    (*ax is the axiom of equisatisfiability between a proof of a term [t]
+    and a proof of its skolemized form [skl_t].*)
     let _, ax = add_axiom ss sym_pos meta_eqs in
     let meta_type = LibMeta.make p c mk_Type in
     let meta_x = LibMeta.make p c meta_type in
