@@ -245,7 +245,7 @@ let sign : Sign.t pp = fun ppf sign ->
     let pvar_decl (n,i,t) = out ppf "
         <varDeclaration>
           <var>$%d_%d</var>
-          <type>%a</type>
+          %a
         </varDeclaration>" n i typ t in
     List.iter pvar_decl pvars in
   (* Finally, generate the whole hrs file. *)
