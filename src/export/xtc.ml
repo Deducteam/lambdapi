@@ -186,12 +186,14 @@ let add_pvars : sym -> rule -> unit = fun s r ->
 
 (** [rule ppf r] translates the pair of terms [r] as a rule. *)
 let rule : (term * term) pp = fun ppf (l, r) -> out ppf "
-      <lhs>
-        %a
-      </lhs>
-      <rhs>
-        %a
-      </rhs>" term l term r
+      <rule>
+        <lhs>
+          %a
+        </lhs>
+        <rhs>
+          %a
+        </rhs>
+      </rule>" term l term r
 
 (** [sym_rule ppf s r] increases the number of rules and translates the
    sym_rule [r]. *)

@@ -3,112 +3,136 @@
 <problem xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" type="termination" xsi:noNamespaceSchemaLocation="http://dev.aspsimon.org/xtc.xsd">
   <trs>
     <rules>
-      <lhs>
-        <funapp><name>tests.OK.bool.bool_and</name><arg><var>1_0</var></arg><arg><funapp><name>tests.OK.bool.false</name></funapp></arg></funapp>
-      </lhs>
-      <rhs>
-        <funapp><name>tests.OK.bool.false</name></funapp>
-      </rhs>
-      <lhs>
-        <funapp><name>tests.OK.bool.bool_and</name><arg><var>2_0</var></arg><arg><funapp><name>tests.OK.bool.true</name></funapp></arg></funapp>
-      </lhs>
-      <rhs>
-        <var>2_0</var>
-      </rhs>
-      <lhs>
-        <funapp><name>tests.OK.bool.bool_and</name><arg><funapp><name>tests.OK.bool.false</name></funapp></arg><arg><var>3_0</var></arg></funapp>
-      </lhs>
-      <rhs>
-        <funapp><name>tests.OK.bool.false</name></funapp>
-      </rhs>
-      <lhs>
-        <funapp><name>tests.OK.bool.bool_and</name><arg><funapp><name>tests.OK.bool.true</name></funapp></arg><arg><var>4_0</var></arg></funapp>
-      </lhs>
-      <rhs>
-        <var>4_0</var>
-      </rhs>
-      <lhs>
-        <funapp><name>tests.OK.bool.bool_impl</name></funapp>
-      </lhs>
-      <rhs>
-        <lambda><var>84</var><type><basic>tests.OK.bool.B</basic></type><lambda><var>85</var><type><basic>tests.OK.bool.B</basic></type><funapp><name>tests.OK.bool.bool_or</name><arg><var>85</var></arg><arg><funapp><name>tests.OK.bool.bool_neg</name><arg><var>84</var></arg></funapp></arg></funapp></lambda></lambda>
-      </rhs>
-      <lhs>
-        <funapp><name>tests.OK.bool.bool_neg</name><arg><funapp><name>tests.OK.bool.false</name></funapp></arg></funapp>
-      </lhs>
-      <rhs>
-        <funapp><name>tests.OK.bool.true</name></funapp>
-      </rhs>
-      <lhs>
-        <funapp><name>tests.OK.bool.bool_neg</name><arg><funapp><name>tests.OK.bool.true</name></funapp></arg></funapp>
-      </lhs>
-      <rhs>
-        <funapp><name>tests.OK.bool.false</name></funapp>
-      </rhs>
-      <lhs>
-        <funapp><name>tests.OK.bool.bool_or</name><arg><var>7_0</var></arg><arg><funapp><name>tests.OK.bool.false</name></funapp></arg></funapp>
-      </lhs>
-      <rhs>
-        <var>7_0</var>
-      </rhs>
-      <lhs>
-        <funapp><name>tests.OK.bool.bool_or</name><arg><var>8_0</var></arg><arg><funapp><name>tests.OK.bool.true</name></funapp></arg></funapp>
-      </lhs>
-      <rhs>
-        <funapp><name>tests.OK.bool.true</name></funapp>
-      </rhs>
-      <lhs>
-        <funapp><name>tests.OK.bool.bool_or</name><arg><funapp><name>tests.OK.bool.false</name></funapp></arg><arg><var>9_0</var></arg></funapp>
-      </lhs>
-      <rhs>
-        <var>9_0</var>
-      </rhs>
-      <lhs>
-        <funapp><name>tests.OK.bool.bool_or</name><arg><funapp><name>tests.OK.bool.true</name></funapp></arg><arg><var>10_0</var></arg></funapp>
-      </lhs>
-      <rhs>
-        <funapp><name>tests.OK.bool.true</name></funapp>
-      </rhs>
-      <lhs>
-        <funapp><name>tests.OK.bool.bool_xor</name></funapp>
-      </lhs>
-      <rhs>
-        <lambda><var>90</var><type><basic>tests.OK.bool.B</basic></type><lambda><var>91</var><type><basic>tests.OK.bool.B</basic></type><application><lambda><var>92</var><type><basic>tests.OK.bool.B</basic></type><application><lambda><var>93</var><type><basic>tests.OK.bool.B</basic></type><funapp><name>tests.OK.bool.bool_or</name><arg><var>92</var></arg><arg><var>93</var></arg></funapp></lambda><funapp><name>tests.OK.bool.bool_and</name><arg><var>91</var></arg><arg><funapp><name>tests.OK.bool.bool_neg</name><arg><var>90</var></arg></funapp></arg></funapp></application></lambda><funapp><name>tests.OK.bool.bool_and</name><arg><var>90</var></arg><arg><funapp><name>tests.OK.bool.bool_neg</name><arg><var>91</var></arg></funapp></arg></funapp></application></lambda></lambda>
-      </rhs>
+      <rule>
+        <lhs>
+          <funapp><name>tests.OK.bool.bool_and</name><arg><var>1_0</var></arg><arg><funapp><name>tests.OK.bool.false</name></funapp></arg></funapp>
+        </lhs>
+        <rhs>
+          <funapp><name>tests.OK.bool.false</name></funapp>
+        </rhs>
+      </rule>
+      <rule>
+        <lhs>
+          <funapp><name>tests.OK.bool.bool_and</name><arg><var>2_0</var></arg><arg><funapp><name>tests.OK.bool.true</name></funapp></arg></funapp>
+        </lhs>
+        <rhs>
+          <var>2_0</var>
+        </rhs>
+      </rule>
+      <rule>
+        <lhs>
+          <funapp><name>tests.OK.bool.bool_and</name><arg><funapp><name>tests.OK.bool.false</name></funapp></arg><arg><var>3_0</var></arg></funapp>
+        </lhs>
+        <rhs>
+          <funapp><name>tests.OK.bool.false</name></funapp>
+        </rhs>
+      </rule>
+      <rule>
+        <lhs>
+          <funapp><name>tests.OK.bool.bool_and</name><arg><funapp><name>tests.OK.bool.true</name></funapp></arg><arg><var>4_0</var></arg></funapp>
+        </lhs>
+        <rhs>
+          <var>4_0</var>
+        </rhs>
+      </rule>
+      <rule>
+        <lhs>
+          <funapp><name>tests.OK.bool.bool_impl</name></funapp>
+        </lhs>
+        <rhs>
+          <lambda><var>84</var><type><basic>tests.OK.bool.B</basic></type><lambda><var>85</var><type><basic>tests.OK.bool.B</basic></type><funapp><name>tests.OK.bool.bool_or</name><arg><var>85</var></arg><arg><funapp><name>tests.OK.bool.bool_neg</name><arg><var>84</var></arg></funapp></arg></funapp></lambda></lambda>
+        </rhs>
+      </rule>
+      <rule>
+        <lhs>
+          <funapp><name>tests.OK.bool.bool_neg</name><arg><funapp><name>tests.OK.bool.false</name></funapp></arg></funapp>
+        </lhs>
+        <rhs>
+          <funapp><name>tests.OK.bool.true</name></funapp>
+        </rhs>
+      </rule>
+      <rule>
+        <lhs>
+          <funapp><name>tests.OK.bool.bool_neg</name><arg><funapp><name>tests.OK.bool.true</name></funapp></arg></funapp>
+        </lhs>
+        <rhs>
+          <funapp><name>tests.OK.bool.false</name></funapp>
+        </rhs>
+      </rule>
+      <rule>
+        <lhs>
+          <funapp><name>tests.OK.bool.bool_or</name><arg><var>7_0</var></arg><arg><funapp><name>tests.OK.bool.false</name></funapp></arg></funapp>
+        </lhs>
+        <rhs>
+          <var>7_0</var>
+        </rhs>
+      </rule>
+      <rule>
+        <lhs>
+          <funapp><name>tests.OK.bool.bool_or</name><arg><var>8_0</var></arg><arg><funapp><name>tests.OK.bool.true</name></funapp></arg></funapp>
+        </lhs>
+        <rhs>
+          <funapp><name>tests.OK.bool.true</name></funapp>
+        </rhs>
+      </rule>
+      <rule>
+        <lhs>
+          <funapp><name>tests.OK.bool.bool_or</name><arg><funapp><name>tests.OK.bool.false</name></funapp></arg><arg><var>9_0</var></arg></funapp>
+        </lhs>
+        <rhs>
+          <var>9_0</var>
+        </rhs>
+      </rule>
+      <rule>
+        <lhs>
+          <funapp><name>tests.OK.bool.bool_or</name><arg><funapp><name>tests.OK.bool.true</name></funapp></arg><arg><var>10_0</var></arg></funapp>
+        </lhs>
+        <rhs>
+          <funapp><name>tests.OK.bool.true</name></funapp>
+        </rhs>
+      </rule>
+      <rule>
+        <lhs>
+          <funapp><name>tests.OK.bool.bool_xor</name></funapp>
+        </lhs>
+        <rhs>
+          <lambda><var>90</var><type><basic>tests.OK.bool.B</basic></type><lambda><var>91</var><type><basic>tests.OK.bool.B</basic></type><application><lambda><var>92</var><type><basic>tests.OK.bool.B</basic></type><application><lambda><var>93</var><type><basic>tests.OK.bool.B</basic></type><funapp><name>tests.OK.bool.bool_or</name><arg><var>92</var></arg><arg><var>93</var></arg></funapp></lambda><funapp><name>tests.OK.bool.bool_and</name><arg><var>91</var></arg><arg><funapp><name>tests.OK.bool.bool_neg</name><arg><var>90</var></arg></funapp></arg></funapp></application></lambda><funapp><name>tests.OK.bool.bool_and</name><arg><var>90</var></arg><arg><funapp><name>tests.OK.bool.bool_neg</name><arg><var>91</var></arg></funapp></arg></funapp></application></lambda></lambda>
+        </rhs>
+      </rule>
     </rules>
     <higherOrderSignature>
       <variableTypeInfo>
         <varDeclaration>
           <var>$10_0</var>
-          <type><type><basic>tests.OK.bool.B</basic></type></type>
+          <type><basic>tests.OK.bool.B</basic></type>
         </varDeclaration>
         <varDeclaration>
           <var>$9_0</var>
-          <type><type><basic>tests.OK.bool.B</basic></type></type>
+          <type><basic>tests.OK.bool.B</basic></type>
         </varDeclaration>
         <varDeclaration>
           <var>$8_0</var>
-          <type><type><basic>tests.OK.bool.B</basic></type></type>
+          <type><basic>tests.OK.bool.B</basic></type>
         </varDeclaration>
         <varDeclaration>
           <var>$7_0</var>
-          <type><type><basic>tests.OK.bool.B</basic></type></type>
+          <type><basic>tests.OK.bool.B</basic></type>
         </varDeclaration>
         <varDeclaration>
           <var>$4_0</var>
-          <type><type><basic>tests.OK.bool.B</basic></type></type>
+          <type><basic>tests.OK.bool.B</basic></type>
         </varDeclaration>
         <varDeclaration>
           <var>$3_0</var>
-          <type><type><basic>tests.OK.bool.B</basic></type></type>
+          <type><basic>tests.OK.bool.B</basic></type>
         </varDeclaration>
         <varDeclaration>
           <var>$2_0</var>
-          <type><type><basic>tests.OK.bool.B</basic></type></type>
+          <type><basic>tests.OK.bool.B</basic></type>
         </varDeclaration>
         <varDeclaration>
           <var>$1_0</var>
-          <type><type><basic>tests.OK.bool.B</basic></type></type>
+          <type><basic>tests.OK.bool.B</basic></type>
         </varDeclaration>
       </variableTypeInfo>
       <functionSymbolTypeInfo>
