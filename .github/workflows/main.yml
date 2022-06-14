@@ -33,7 +33,7 @@ jobs:
           make sanity_check
           eval $(opam env)
           # Dedukti with cmdliner prior to breaking change
-          opam pin add dedukti git:https://github.com/Deducteam/dedukti.git#e840f3c
+          opam pin add dedukti git+https://github.com/Deducteam/dedukti.git#e840f3c
           opam install alt-ergo dedukti
           why3 config detect
           make tests
