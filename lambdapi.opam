@@ -52,7 +52,6 @@ depends: [
   "menhir" {>= "20200624"}
   "sedlex" {>= "2.2"}
   "alcotest" {with-test}
-  "alt-ergo-lib" {with-test & >= "2.4.0"}
   "dedukti" {with-test & >= "2.7"}
   "bindlib" {>= "5.0.1"}
   "timed" {>= "1.0"}
