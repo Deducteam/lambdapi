@@ -172,7 +172,7 @@ let sign : Sign.t pp = fun ppf sign ->
 (FUN
 A : t -> t -> t
 B : t -> (t -> t) -> t
-L : t -> t -> (t -> t) -> t
+L : t -> (t -> t) -> t
 P : t -> (t -> t) -> t%a
 )
 (VAR
