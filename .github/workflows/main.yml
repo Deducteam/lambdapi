@@ -32,5 +32,5 @@ jobs:
         run: |
           make sanity_check
           eval $(opam env)
-          # why3 config detect
+          #why3 config detect
           make tests
