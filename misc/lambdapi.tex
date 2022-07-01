@@ -1,9 +1,3 @@
-%\usepackage{listings}
-%\usepackage[utf8]{inputenc}
-%\usepackage{amssymb}
-%\usepackage{mathtools}
-%\usepackage{xcolor}
-\definecolor{green}{RGB}{0,130,0}
 \definecolor{lightgrey}{RGB}{240,240,240}
 
 \lstdefinelanguage{Lambdapi}
@@ -19,19 +13,25 @@
   sensitive=true,
   keywordstyle=\color{blue},
   morecomment=[l]{//},
+  morecomment=[n]{/*}{*/},
   commentstyle={\itshape\color{red}},
   string=[b]{"},
   stringstyle=\color{orange},
   showstringspaces=false,
   literate=
+  {λ}{$\lambda$}1
   {↪}{$\hookrightarrow$}1
   {→}{$\rightarrow$}1
   {Π}{$\Pi$}1
   {≔}{$\coloneqq$}1
+  {⊢}{$\vdash$}1
+  {≡}{$\equiv$}1
   {𝔹}{$\mathbb{B}$}1
   {𝕃}{$\mathbb{L}$}1
   {ℕ}{$\mathbb{N}$}1
   {α}{$\alpha$}1
+  {β}{$\beta$}1
+  {η}{$\eta$}1
   {π}{$\pi$}1
   {τ}{$\tau$}1
   {ω}{$\omega$}1
@@ -40,5 +40,5 @@
   {≠}{$\neq$}1
   {∉}{$\notin$}1
   {×}{$\times$}1
+  {⋅}{$\cdot$}1
 }
-\lstset{language={Lambdapi}}
