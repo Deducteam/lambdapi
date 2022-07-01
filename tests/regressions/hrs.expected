@@ -1,7 +1,7 @@
 (FUN
 A : t -> t -> t
 B : t -> (t -> t) -> t
-L : t -> t -> (t -> t) -> t
+L : t -> (t -> t) -> t
 P : t -> (t -> t) -> t
 tests_OK_bool_B : t
 tests_OK_bool_bool_and : t
