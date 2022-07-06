@@ -342,7 +342,7 @@ let handle :
     (*Extract term [t] in a typing goal of form π(t) *)
     let t = match get_args gt.goal_type with 
           | Symb(s), [tl] when s == symb_P -> tl
-          | _ -> Format.print_string "@.Term not in form P (term)"; gt.goal_type
+          | _ -> Format.printf "@. Typing goal not in form P (term) %a @." term gt.goal_type;  gt.goal_type
     in
     let skl_t = Skolem.handle ss sym_pos t in
     let c = Env.to_ctxt env in
