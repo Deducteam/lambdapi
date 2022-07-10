@@ -40,7 +40,9 @@ end = struct
             match Term.SymMap.find_opt sym tbl.notations with
             | Some(Infix(assoc, prio)) -> Some(Pratter.Infix assoc, prio)
             | Some(Prefix(prio)) -> Some(Pratter.Prefix, prio)
-            | _ -> None
+            | Some(Postfix(prio)) -> Some(Pratter.Postfix, prio)
+            | Some (Zero | Succ | Quant) -> None
+            | None -> None
           in
           Option.bind f sym
       | _ -> None

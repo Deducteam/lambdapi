@@ -51,6 +51,7 @@
 %token NOTATION
 %token OPAQUE
 %token OPEN
+%token POSTFIX
 %token PREFIX
 %token PRINT
 %token PRIVATE
@@ -361,6 +362,7 @@ equation: l=term EQUIV r=term { (l, r) }
 notation:
   | INFIX a=SIDE? p=float_or_nat
     { Sign.Infix(Option.get Pratter.Neither a, p) }
+  | POSTFIX p=float_or_nat { Sign.Postfix(p) }
   | PREFIX p=float_or_nat { Sign.Prefix(p) }
   | QUANTIFIER { Sign.Quant }
 
