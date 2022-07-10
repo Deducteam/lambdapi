@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ### Added
 
 - Propagate recompile flag to dependencies.
+- Postfix operators with the `notation <op> postfix <priority>;`
 
 ### Removed
 
@@ -171,7 +172,7 @@ Other modifications in the grammar:
 
 - Add tests on product matching
 - Fixed scoping of product in LHS
-- Wildcard created during tree compilation are the most general ones, any free 
+- Wildcard created during tree compilation are the most general ones, any free
   variable may appear.
 - Updated documentation of decision trees
 
@@ -184,7 +185,7 @@ single polymorphic type `Syntax.rw_patt`.
 
 Several functions are exposed,
 
-- `Parsing.Scope.rule_of_pre_rule`: converts a pre rewriting rule into a 
+- `Parsing.Scope.rule_of_pre_rule`: converts a pre rewriting rule into a
   rewriting rule,
 - `Handle.Command.handle`: now processes proof data,
 - `Handle.Command.get_proof_data`: is the old handle,
@@ -215,7 +216,7 @@ Several functions are exposed,
 - `assume` not needed before `reflexivity` anymore
 - `assume` checks that identifiers are distinct
 - `solve`: simplify goals afterwards
-- `libTerm`: permute arguments of `unbind_name`, and add `add_args_map` and `unbind2_name` 
+- `libTerm`: permute arguments of `unbind_name`, and add `add_args_map` and `unbind2_name`
 - `syntax`: add `check_notin` and `check_distinct`
 - split `misc/listings.tex` into `misc/lambdapi.tex` and `misc/example.tex`
 
@@ -390,12 +391,12 @@ and slightly improve `Ctxt.def_of`
   * `files` -> `module`
   * `handle` -> `command`
 
-- `Core` library divided into the following sub-libraries: 
+- `Core` library divided into the following sub-libraries:
   * `Common` that contains shared basic files
     (`pos`, `console`, `module` and `package`)
   * `Parsing` that contains everything related to parsing
     (`syntax`, `pretty`, lexers and parser)
-  * `Handle` that uses `Core` to type check commands and modules 
+  * `Handle` that uses `Core` to type check commands and modules
     (contains `query`, `tactic`, `command`, `compile`, `inductive`, `rewrite`,
     `proof` and `why3_tactic`)
   * `Tool` that provides miscellaneous tools that use `Core`
@@ -432,7 +433,7 @@ Syntax modifications:
   *Warning:* string `λx` is now a valid identifier. Hence, expression `λx, t`
   isn't valid, but `λ x, t` is.
 
-- Declared quantifiers now need a backquote to be applied. The syntax 
+- Declared quantifiers now need a backquote to be applied. The syntax
   `` `f x, t`` represents `f (λ x, t)` (and a fortiori `f {T} (λ x, t)`).
 
 - `assert` always takes a turnstile (or vdash) to specify a (even
@@ -446,12 +447,12 @@ Code modifications:
 - Parsing and handling are interleaved (except in the LSP server): the
   parser returns a stream of parsed commands. Requesting an item of
   the stream parses one command in the file.
-  
+
 - The type `pp_hint` is renamed to `notation` and moved to `sign.ml`.
-  
+
 - Notations (that is, ex-`pp_hint`) are kept in a `SymMap`, which allowed to
   simplify some code in `sig_state.ml` and `sign.ml`.
-  
+
 - Positions are not lazy anymore, because Sedlex doesn't use lazy positions.
 
 - `p_terms` do not have `P_BinO` and `P_UnaO` constructors anymore.
@@ -543,7 +544,7 @@ Simplification of the decision tree structure
    branch-wise unique integral identifiers;
  - graph output is more consistent: variables are the same in the
    nodes and the leaves.
-   
+
 ### Protected symbols (2019-11-14)
 
 Introducing protected and private symbols.
