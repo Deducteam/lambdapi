@@ -7,9 +7,9 @@ open Common open Pos
 
 (** Type of goals. *)
 type goal_typ =
-  { goal_meta : meta  (* Goal metavariable. *)
-  ; goal_hyps : Env.t (* Precomputed scoping environment. *)
-  ; goal_type : term  (* Precomputed type. *) }
+  { goal_meta : meta  (** Goal metavariable. *)
+  ; goal_hyps : Env.t (** Precomputed scoping environment. *)
+  ; goal_type : term  (** Precomputed type. *) }
 
 type goal =
   | Typ of goal_typ (** Typing goal. *)
@@ -53,6 +53,9 @@ module Goal = struct
 
   (** [pp ppf g] prints on [ppf] the goal [g] without its hypotheses. *)
   let pp : goal pp = fun ppf g ->
+    let add_name c (v,_,_) = Bindlib.reserve_name (Bindlib.name_of v) c in
+    let c = List.fold_left add_name Bindlib.empty_ctxt (ctxt g) in
+    let term = term_in c in
     match g with
     | Typ gt -> out ppf "%a: %a" meta gt.goal_meta term gt.goal_type
     | Unif (_, t, u) -> out ppf "%a ≡ %a" term t term u
