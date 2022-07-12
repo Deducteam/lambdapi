@@ -42,7 +42,6 @@ TO DO:
 
 open Lplib open Base open Extra
 open Core open Term
-open Common
 
 (** [syms] maps every symbol to a name. *)
 let syms = ref SymMap.empty
@@ -135,26 +134,13 @@ let rules_of_sign : Sign.t pp = fun ppf sign ->
   if sign != Unif_rule.sign then
     StrMap.iter (fun _ -> rules_of_sym ppf) Timed.(!(sign.sign_symbols))
 
-(** [iterate f sign] applies [f] on [sign] and its dependencies. *)
-let iterate : (Sign.t -> unit) -> Sign.t -> unit = fun f sign ->
-  let visited = ref Path.Set.empty in
-  let rec handle sign =
-    visited := Path.Set.add sign.Sign.sign_path !visited;
-    f sign;
-    let dep path _ =
-      if not (Path.Set.mem path !visited) then
-        handle (Path.Map.find path Timed.(!Sign.loaded))
-    in
-    Path.Map.iter dep Timed.(!(sign.sign_deps))
-  in handle sign
-
 (** [sign ppf s] translates the Lambdapi signature [s]. *)
 let sign : Sign.t pp = fun ppf sign ->
   (* First, generate the rules in a buffer, because it generates data
      necessary for the other sections. *)
   let buf_rules = Buffer.create 1000 in
   let ppf_rules = Format.formatter_of_buffer buf_rules in
-  iterate (rules_of_sign ppf_rules) sign;
+  Sign.iterate (rules_of_sign ppf_rules) sign;
   Format.pp_print_flush ppf_rules ();
   (* Function for printing the types of function symbols. *)
   let pp_syms : string SymMap.t pp = fun ppf syms ->
