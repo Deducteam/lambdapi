@@ -8,16 +8,16 @@
 
   A : t -> t -> t // for application
 
-  B : t -> (t -> t) -> t // for λ
+  L : t -> (t -> t) -> t // for λ
 
-  L : t -> t -> (t -> t) -> t // for let
+  B : t -> t -> (t -> t) -> t // for let
 
   P : t -> (t -> t) -> t // for Π
 
 Function symbols and variables are translated as symbols of type t.
 
-Pattern variables of arity n are translated as variables of type t ->
-   ... -> t with n times ->.
+Pattern variables of arity n are translated as variables of type t -> ... -> t
+   with n times ->.
 
 - In the hrs format, variable names must be distinct from function symbol
    names. So bound variables are translated into positive integers and pattern
@@ -31,12 +31,12 @@ Pattern variables of arity n are translated as variables of type t ->
    abstractions).
 
 - Two occurrences of the same pattern variable name may have two different
-   ariies (in two different rules). So pattern variable names are prefixed by
+   arities (in two different rules). So pattern variable names are prefixed by
    the rule number.
 
 TO DO:
 
-- HRS does not accept unicode characters
+- HRS does not accept unicode characters.
 
 - Optim: output only the symbols used in the rules. *)
 
@@ -108,7 +108,7 @@ let rec term : term pp = fun ppf t ->
     out ppf "P(%a,\\%a.%a)" term a bvar x term b
   | LLet(a,t,b) ->
     let x, b = Bindlib.unbind b in add_bvar x;
-    out ppf "let(%a,%a,\\%a.%a)" term a term t bvar x term b
+    out ppf "B(%a,%a,\\%a.%a)" term a term t bvar x term b
 
 (** [rule ppf r] translates the pair of terms [r] as a rule. *)
 let rule : (term * term) pp = fun ppf (l, r) ->
@@ -130,7 +130,7 @@ let rules_of_sign : Sign.t pp = fun ppf sign ->
   if sign != Unif_rule.sign then
     StrMap.iter (fun _ -> rules_of_sym ppf) Timed.(!(sign.sign_symbols))
 
-(** [iterate f sign] applies [f] and [sign] and its dependencies. *)
+(** [iterate f sign] applies [f] on [sign] and its dependencies. *)
 let iterate : (Sign.t -> unit) -> Sign.t -> unit = fun f sign ->
   let visited = ref Path.Set.empty in
   let rec handle sign =
@@ -167,13 +167,15 @@ let sign : Sign.t pp = fun ppf sign ->
     let bvar_decl : int pp = fun ppf n -> out ppf "\n%d : t" n in
     IntSet.iter (bvar_decl ppf) bvars
   in
-  (* Finally, generate the whole hrs file. *)
+  (* Finally, generate the whole hrs file. Note that the variables $x, $y and
+     $z used in the rules for beta and let cannot clash with user-defined
+     pattern variables which are integers. *)
   out ppf "\
 (FUN
 A : t -> t -> t
-B : t -> (t -> t) -> t
 L : t -> (t -> t) -> t
-P : t -> (t -> t) -> t%a
+P : t -> (t -> t) -> t
+B : t -> t -> (t -> t) -> t%a
 )
 (VAR
 $x : t
@@ -182,5 +184,5 @@ $z : t%a%a
 )
 (RULES
 A(L($x,$y),$z) -> $y($z),
-let($x,$z,$y) -> $y($z)%s
+B($x,$z,$y) -> $y($z)%s
 )\n" pp_syms !syms pp_pvars !pvars pp_bvars !bvars (Buffer.contents buf_rules)

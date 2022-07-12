@@ -1,8 +1,8 @@
 (FUN
 A : t -> t -> t
-B : t -> (t -> t) -> t
 L : t -> (t -> t) -> t
 P : t -> (t -> t) -> t
+B : t -> t -> (t -> t) -> t
 tests_OK_bool_B : t
 tests_OK_bool_bool_and : t
 tests_OK_bool_bool_impl : t
@@ -37,7 +37,7 @@ $1_0 : t
 )
 (RULES
 A(L($x,$y),$z) -> $y($z),
-let($x,$z,$y) -> $y($z),
+B($x,$z,$y) -> $y($z),
 A(A(tests_OK_bool_bool_and,$1_0),tests_OK_bool_false) -> tests_OK_bool_false,
 A(A(tests_OK_bool_bool_and,$2_0),tests_OK_bool_true) -> $2_0,
 A(A(tests_OK_bool_bool_and,tests_OK_bool_false),$3_0) -> tests_OK_bool_false,
@@ -49,5 +49,5 @@ A(A(tests_OK_bool_bool_or,$7_0),tests_OK_bool_false) -> $7_0,
 A(A(tests_OK_bool_bool_or,$8_0),tests_OK_bool_true) -> tests_OK_bool_true,
 A(A(tests_OK_bool_bool_or,tests_OK_bool_false),$9_0) -> $9_0,
 A(A(tests_OK_bool_bool_or,tests_OK_bool_true),$10_0) -> tests_OK_bool_true,
-tests_OK_bool_bool_xor -> L(tests_OK_bool_B,\82.L(tests_OK_bool_B,\83.let(tests_OK_bool_B,A(A(tests_OK_bool_bool_and,82),A(tests_OK_bool_bool_neg,83)),\84.let(tests_OK_bool_B,A(A(tests_OK_bool_bool_and,83),A(tests_OK_bool_bool_neg,82)),\85.A(A(tests_OK_bool_bool_or,84),85)))))
+tests_OK_bool_bool_xor -> L(tests_OK_bool_B,\82.L(tests_OK_bool_B,\83.B(tests_OK_bool_B,A(A(tests_OK_bool_bool_and,82),A(tests_OK_bool_bool_neg,83)),\84.B(tests_OK_bool_B,A(A(tests_OK_bool_bool_and,83),A(tests_OK_bool_bool_neg,82)),\85.A(A(tests_OK_bool_bool_or,84),85)))))
 )
