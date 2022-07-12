@@ -38,9 +38,11 @@ end = struct
           in
           let f sym =
             match Term.SymMap.find_opt sym tbl.notations with
-            | Some(Infix(assoc, prio)) -> Some(Pratter.Bin assoc, prio)
-            | Some(Prefix(prio)) -> Some(Pratter.Una, prio)
-            | _ -> None
+            | Some(Infix(assoc, prio)) -> Some(Pratter.Infix assoc, prio)
+            | Some(Prefix(prio)) -> Some(Pratter.Prefix, prio)
+            | Some(Postfix(prio)) -> Some(Pratter.Postfix, prio)
+            | Some (Zero | Succ | Quant) -> None
+            | None -> None
           in
           Option.bind f sym
       | _ -> None
@@ -56,13 +58,16 @@ end = struct
     let h, args = Syntax.p_get_args t in
     let strm = Stream.of_list (h :: args) in
     let module Parse = Pratter.Make(Pratt_terms) in
-    try Parse.expression (st, env) strm with
-    | Parse.OpConflict (t, u) ->
+    match Parse.expression (st, env) strm with
+    | Ok e -> e
+    | Error `TooFewArguments ->
+        Error.fatal t.pos "Malformed application in \"%a\"" Pretty.term t
+    | Error `OpConflict (t, u) ->
         Error.fatal t.pos "Operator conflict between \"%a\" and \"%a\""
           Pretty.term t Pretty.term u
-    | Parse.UnexpectedBin t ->
-        Error.fatal t.pos "Unexpected binary operator \"%a\"" Pretty.term t
-    | Parse.TooFewArguments ->
-        Error.fatal t.pos "Malformed application in \"%a\"" Pretty.term t
+    | Error `UnexpectedInfix t ->
+        Error.fatal t.pos "Unexpected infix operator \"%a\"" Pretty.term t
+    | Error `UnexpectedPostfix t ->
+        Error.fatal t.pos "Unexpected postfix operator \"%a\"" Pretty.term t
 end
 include Pratt
