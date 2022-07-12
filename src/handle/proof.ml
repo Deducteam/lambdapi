@@ -51,26 +51,27 @@ module Goal = struct
     | Typ gt -> Typ {gt with goal_type = f gt.goal_type}
     | Unif (c,t,u) -> Unif (c, f t, f u)
 
+  (** [bindlib_ctxt g] computes a Bindlib context from a goal. *)
+  let bindlib_ctxt : goal -> Bindlib.ctxt = fun g ->
+    match g with
+    | Typ gt ->
+      let add_name c (n,_) = Bindlib.reserve_name n c in
+      List.fold_left add_name Bindlib.empty_ctxt gt.goal_hyps
+    | Unif (c,_,_) ->
+      let add_name c (v,_,_) = Bindlib.reserve_name (Bindlib.name_of v) c in
+      List.fold_left add_name Bindlib.empty_ctxt c
+
   (** [pp ppf g] prints on [ppf] the goal [g] without its hypotheses. *)
   let pp : goal pp = fun ppf g ->
-    let add_name c (v,_,_) = Bindlib.reserve_name (Bindlib.name_of v) c in
-    let c = List.fold_left add_name Bindlib.empty_ctxt (ctxt g) in
-    let term = term_in c in
+    let term = term_in (bindlib_ctxt g) in
     match g with
     | Typ gt -> out ppf "%a: %a" meta gt.goal_meta term gt.goal_type
     | Unif (_, t, u) -> out ppf "%a ≡ %a" term t term u
 
   (** [hyps ppf g] prints on [ppf] the hypotheses of the goal [g]. *)
   let hyps : goal pp =
-    let env_elt ppf (s,(_,t,_)) =
-      out ppf "%a: %a" uid s term (Bindlib.unbox t)
-    in
-    let ctx_elt ppf (x,a,t) =
-      out ppf "%a: %a" var x term a;
-      match t with
-      | None -> ()
-      | Some t -> out ppf " ≔ %a" term t
-    in
+    fun ppf g ->
+    let term = term_in (bindlib_ctxt g) in
     let hyps hyp ppf l =
       if l <> [] then
         out ppf "@[<v>%a@,\
@@ -79,10 +80,20 @@ module Goal = struct
         (List.pp (fun ppf -> out ppf "%a@," hyp) "") (List.rev l);
 
     in
-    fun ppf g ->
     match g with
-    | Typ gt -> hyps env_elt ppf gt.goal_hyps
-    | Unif (c,_,_) -> hyps ctx_elt ppf c
+    | Typ gt ->
+      let elt ppf (s,(_,t,_)) =
+       out ppf "%a: %a" uid s term (Bindlib.unbox t)
+      in
+      hyps elt ppf gt.goal_hyps
+    | Unif (c,_,_) ->
+      let elt ppf (x,a,t) =
+        out ppf "%a: %a" var x term a;
+        match t with
+        | None -> ()
+        | Some t -> out ppf " ≔ %a" term t
+      in
+      hyps elt ppf c
 
 end
 
