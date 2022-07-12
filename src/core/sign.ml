@@ -19,6 +19,7 @@ type priority = float
 (** Notations. *)
 type notation =
   | Prefix of priority
+  | Postfix of priority
   | Infix of Pratter.associativity * priority
   | Zero
   | Succ
