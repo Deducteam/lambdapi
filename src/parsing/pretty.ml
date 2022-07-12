@@ -49,6 +49,7 @@ let _ = let open LpLexer in
     ; "on", SWITCH(true)
     ; "opaque", OPAQUE
     ; "open", OPEN
+    ; "postfix", POSTFIX
     ; "prefix", PREFIX
     ; "print", PRINT
     ; "private", PRIVATE
@@ -292,8 +293,9 @@ let side : Pratter.associativity pp = fun ppf a ->
 let notation : Sign.notation pp = fun ppf -> function
   | Infix (a, p) -> out ppf "infix%a %f" side a p
   | Prefix p -> out ppf "prefix %f" p
+  | Postfix p -> out ppf "postfix %f" p
   | Quant -> out ppf "quantifier"
-  | _ -> ()
+  | Zero | Succ -> ()
 
 let rec subproof : p_subproof pp = fun ppf sp ->
   out ppf "{@[<hv2>@ %a@ @]}" proofsteps sp
