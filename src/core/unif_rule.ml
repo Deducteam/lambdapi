@@ -9,7 +9,7 @@ open Timed
 open Term
 
 (** Path of signature containing unificaton rules symbols. *)
-let path = Sign.ghost_path "unif_rule"
+let path = Path.ghost "unif_rule"
 
 (** Ghost signature holding the symbols used in unification rules.
     - All signatures depend on it (dependency set in
