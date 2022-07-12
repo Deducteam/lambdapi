@@ -21,3 +21,6 @@ include Path
 
 module Set = Set.Make(Path)
 module Map = Map.Make(Path)
+
+(** [ghost s] creates a module path that cannot be entered by a user. *)
+let ghost : string -> Path.t = fun s -> [""; s]
