@@ -549,7 +549,11 @@ let scope_rule : bool -> sig_state -> p_rule -> sym_rule =
     let (h, args) = get_args lhs in
     match h with
     | Symb(s) ->
-        if is_constant s then fatal p_lhs.pos "Constant LHS head symbol.";
+        if is_constant s then
+          fatal p_lhs.pos
+            "Symbol %s has been declared constant, it cannot be used as the \
+            head of a rewrite rule LHS."
+            s.sym_name;
         if s.sym_expo = Protec && ss.signature.sign_path <> s.sym_path then
           fatal p_lhs.pos "Cannot define rules on foreign protected symbols.";
         (s, args)

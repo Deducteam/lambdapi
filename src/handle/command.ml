@@ -220,7 +220,7 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
       (* Check arity. *)
       let expected =
         match n with
-        | Prefix _ -> 1
+        | Prefix _ | Postfix _ -> 1
         | Infix _ -> 2
         | Zero -> 0
         | Succ -> 1

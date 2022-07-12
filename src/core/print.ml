@@ -46,6 +46,7 @@ let notation : Sign.notation pp = fun ppf notation ->
   match notation with
   | Prefix(p) -> out ppf "prefix %f" p
   | Infix(a,p) -> out ppf "infix%a %f" assoc a p
+  | Postfix(p) -> out ppf "postfix %f" p
   | Zero -> out ppf "builtin \"0\""
   | Succ -> out ppf "builtin \"+1\""
   | Quant -> out ppf "quantifier"
