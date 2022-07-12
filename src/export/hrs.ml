@@ -54,7 +54,12 @@ let bvars = ref IntSet.empty
 let nb_rules = ref 0
 
 (** [pvars] map every pattern variable name to its arity. *)
-let pvars = ref []
+module V = struct
+  type t = int * int
+  let compare = lex Int.compare Int.compare
+end
+module VMap = Map.Make(V)
+let pvars = ref VMap.empty
 
 (** [sym_name s] translates the symbol name of [s]. *)
 let sym_name : sym pp = fun ppf s ->
@@ -79,7 +84,7 @@ let pvar : int pp = fun ppf i -> out ppf "$%d_%d" !nb_rules i
 
 (** [add_pvar i k] declares a pvar of index [i] and arity [k]. *)
 let add_pvar : int -> int -> unit = fun i k ->
-  pvars := (!nb_rules,i,k)::!pvars
+  pvars := VMap.add (!nb_rules,i) k !pvars
 
 (** [term ppf t] translates the term [t]. *)
 let rec term : term pp = fun ppf t ->
@@ -157,11 +162,11 @@ let sign : Sign.t pp = fun ppf sign ->
     let sym_decl _ n = sym_decl ppf n in SymMap.iter sym_decl syms
   in
   (* Function for printing the types of pattern variables. *)
-  let pp_pvars : (int * int * int) list pp = fun ppf pvars ->
+  let pp_pvars = fun ppf pvars ->
     let typ : int pp = fun ppf k ->
       for _i=1 to k do string ppf "t -> " done; out ppf "t" in
-    let pvar_decl (n,i,k) = out ppf "\n$%d_%d : %a" n i typ k in
-    List.iter pvar_decl pvars in
+    let pvar_decl (n,i) k = out ppf "\n$%d_%d : %a" n i typ k in
+    VMap.iter pvar_decl pvars in
   (* Function for printing the types of abstracted variables. *)
   let pp_bvars : IntSet.t pp = fun ppf bvars ->
     let bvar_decl : int pp = fun ppf n -> out ppf "\n%d : t" n in
