@@ -37,6 +37,8 @@ syntax keyword KeywordOK contained associative
 syntax keyword KeywordOK contained assume
 syntax keyword KeywordOK contained begin
 syntax keyword KeywordOK contained builtin
+syntax keyword KeywordOK contained coerce
+syntax keyword KeywordOK contained coerce_rule
 syntax keyword KeywordOK contained commutative
 syntax keyword KeywordOK contained compute
 syntax keyword KeywordOK contained constant
@@ -98,6 +100,8 @@ syntax keyword KeywordKO contained associative
 syntax keyword KeywordKO contained assume
 syntax keyword KeywordKO contained begin
 syntax keyword KeywordKO contained builtin
+syntax keyword KeywordKO contained coerce
+syntax keyword KeywordKO contained coerce_rule
 syntax keyword KeywordKO contained commutative
 syntax keyword KeywordKO contained compute
 syntax keyword KeywordKO contained constant
