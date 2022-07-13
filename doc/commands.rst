@@ -21,7 +21,7 @@ Multi-line comments are opened with ``/*`` and closed with ``*/``. They can be n
       ignored /* these ones too */ */
 
 .. _require:
-      
+
 ``require``
 -----------
 
@@ -417,6 +417,47 @@ transformed into ``?x ≡ bool``.
 
 *WARNING* This feature is experimental and there is no sanity check
 performed on the rules.
+
+.. _coerce_rule:
+
+``coerce_rule``
+---------------
+
+Lambdapi can be instructed to insert function applications into terms whenever
+needed for typability. These functions are called *coercions*. For instance,
+assuming we have a type ``Float``, a type ``Int`` and a function
+``FloatOfInt : Int → Float``, the latter function can be declared
+as a coercion from integers to floats with the declaration
+
+::
+
+    coerce_rule coerce Int Float $x ↪ FloatOfInt $x;
+
+Symbol ``coerce`` is a built-in function symbol that computes the coercion.
+Whenever a term ``t`` of type ``Int`` is found when Lambadpi expected a
+``Float``, ``t`` will be replaced by ``coerce Int Float t`` and reduced.
+The declared coercion will allow the latter term to be reduced to
+``FloatOfInt t``.
+
+Coercions can call the function ``coerce`` recursively,
+which allows to write, e.g.
+
+::
+
+    coerce_rule coerce (List $a) (List $b) $l ↪
+      map (λ e: El $a, coerce $a $b e) $l
+
+where ``Set: TYPE;``, ``List : Set → TYPE``, ``El : Set → TYPE`` and ``map`` is
+the usual mapping operator on lists such that ``map f (cons x l) ≡ cons (f x)
+(map l)``.
+
+*WARNING* Coercions are still experimental, and will not mix well is
+metavariables. Indeed, the term ``coerce ?1 Float t`` will not reduce to
+``FloatOfInt t`` even if the equation ``?1 ≡ Int`` has been registered during
+typing. Furthermore, for the moment, it is unsafe to have symbols that can be
+reduced to protected symbols in the right-hand side of coercions:
+reduction may occur during coercion elaboration,
+which may generate unsound protected symbols.
 
 .. _inductive:
 
