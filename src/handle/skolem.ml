@@ -1,10 +1,9 @@
 open Common
 open Core
 open Term
-open Print
 
 (** Logging function for the skolem tactic. *)
-let log_sklm = Logger.make '!' "sklm" "the skolemization tactic"
+let log_sklm = Logger.make 'y' "sklm" "the skolemization tactic"
 
 let log_sklm = log_sklm.pp
 
@@ -38,10 +37,6 @@ let get_fol_config : Sig_state.t -> Pos.popt -> fol_config =
     symb_ex = builtin "ex";
     symb_all = builtin "all";
   }
-
-(*Context of skolemization allow to record introduced variables and their types
-  when universal quantifiers occurs.*)
-let empty_context = []
 
 let add_ctxt : ctxt -> tvar -> term -> ctxt =
  fun c var typ -> c @ [ (var, typ, None) ]
@@ -89,8 +84,15 @@ let subst_app : ctxt -> tbinder -> sym -> term =
   let f_appl = add_args (mk_Symb symb_skt) args_list in
   Bindlib.subst tb f_appl
 
-(* quant is a structure for representating quantifiers in a FOF.*)
-type quant = { symb : sym; dom : term; var : tvar; typ : term }
+type quant = {
+  symb : sym;  (** The symbol that stand for the quantifier. *)
+  dom : term;  (** The domain of the quantification. *)
+  var : tvar;  (** The variable bound by the quantification. *)
+  typ : term;
+      (** The type of the quantified variable {b NOTE} It should always be
+          [T dom] where [T] is the builtin that interprets type codes. *)
+}
+(** A structure to represent quantifiers in a FOF. *)
 
 (* add_quant ql symb_all symb_P Vari(x) type_a add in a list a representation of
    the universal quantification of x:type_a on top of the list ql, and return
@@ -98,18 +100,17 @@ type quant = { symb : sym; dom : term; var : tvar; typ : term }
 let add_quant : quant list -> sym -> term -> tvar -> term -> quant list =
  fun qlist q d v t -> { symb = q; dom = d; var = v; typ = t } :: qlist
 
-(* mk_quant builds an application of the quantifier q on the proposition f.*)
+(* [mk_quant t q] builds an application of the quantifier q on the proposition
+   f.*)
 let mk_quant : term -> quant -> term =
  fun f q ->
   let tb = bind q.var lift f in
   add_args (mk_Symb q.symb) [ q.dom; mk_Abst (q.typ, tb) ]
 
-(* nnf_term compute the negation normal form of a FOF*)
-let nnf_term : fol_config -> term -> term =
+(** [nnf_term cfg t] computes the negation normal form of a first order formula. *)
+let nnf_of : fol_config -> term -> term =
  fun cfg t ->
-  (*Printf.printf "------ Start nnf_term ------" ;*)
   let rec nnf_prop t =
-    (*Format.printf "@.-___- Start nnf_prop -___- %a @." term t;*)
     match get_args t with
     | Symb s, [ t1; t2 ] when s == cfg.symb_and ->
         add_args (mk_Symb s) [ nnf_prop t1; nnf_prop t2 ]
@@ -117,9 +118,7 @@ let nnf_term : fol_config -> term -> term =
         add_args (mk_Symb s) [ nnf_prop t1; nnf_prop t2 ]
     | Symb s, [ t1; t2 ] when s == cfg.symb_imp ->
         add_args (mk_Symb cfg.symb_or) [ neg t1; nnf_prop t2 ]
-    | Symb s, [ t ] when s == cfg.symb_not ->
-        (*Format.printf "@.NNF Not t, with t = %a @." term t;*)
-        neg t
+    | Symb s, [ t ] when s == cfg.symb_not -> neg t
     | Symb s, [ a; Abst (x, tb) ] when s == cfg.symb_all ->
         let var, p = Bindlib.unbind tb in
         let nnf_tb = bind var lift (nnf_prop p) in
@@ -128,8 +127,7 @@ let nnf_term : fol_config -> term -> term =
         let var, p = Bindlib.unbind tb in
         let nnf_tb = bind var lift (nnf_prop p) in
         add_args (mk_Symb cfg.symb_ex) [ a; mk_Abst (x, nnf_tb) ]
-    | Symb _, _
-    | Abst (_, _), _ -> t
+    | Symb _, _ | Abst (_, _), _ -> t
     | _, _ -> t
   and neg t =
     match get_args t with
@@ -139,10 +137,8 @@ let nnf_term : fol_config -> term -> term =
         add_args (mk_Symb cfg.symb_or) [ neg t1; neg t2 ]
     | Symb s, [ t1; t2 ] when s == cfg.symb_or ->
         add_args (mk_Symb cfg.symb_and) [ neg t1; neg t2 ]
-    | Symb s, [ _; _ ] when s == cfg.symb_imp ->
-        neg (nnf_prop t)
-    | Symb s, [ nt ] when s == cfg.symb_not ->
-        nnf_prop nt
+    | Symb s, [ _; _ ] when s == cfg.symb_imp -> neg (nnf_prop t)
+    | Symb s, [ nt ] when s == cfg.symb_not -> nnf_prop nt
     | Symb s, [ a; Abst (x, tb) ] when s == cfg.symb_all ->
         let var, p = Bindlib.unbind tb in
         let neg_tb = bind var lift (neg p) in
@@ -151,16 +147,13 @@ let nnf_term : fol_config -> term -> term =
         let var, p = Bindlib.unbind tb in
         let nnf_tb = bind var lift (neg p) in
         add_args (mk_Symb cfg.symb_all) [ a; mk_Abst (x, nnf_tb) ]
-    | _, _ ->
-        add_args (mk_Symb cfg.symb_not) [ t ]
+    | _, _ -> add_args (mk_Symb cfg.symb_not) [ t ]
   in
-  match get_args t with
-  | Symb s, [ t ] when s == cfg.symb_P ->
-      (*Format.printf "@.P of : %a @." term t;*)
-      mk_Appl (mk_Symb cfg.symb_P, nnf_prop t)
-  | _ -> failwith "Cant NNF a term that is not a Prop !"
+  nnf_prop t
 
-let prenex_term cfg t =
+exception PrenexFormulaNotNnf of term
+
+let prenex_of cfg t =
   let rec prenex t =
     match get_args t with
     | Symb s, [ t1; t2 ] when s == cfg.symb_and ->
@@ -175,16 +168,13 @@ let prenex_term cfg t =
         let t = add_args (mk_Symb s) [ sub1; sub2 ] in
         let qlist = qlist1 @ qlist2 in
         (qlist, t)
-    | Symb s, [ _; _ ] when s == cfg.symb_imp ->
-        failwith "Prenex : symb_imp occurs but t must be NNF"
+    | Symb s, [ _; _ ] when s == cfg.symb_imp -> raise @@ PrenexFormulaNotNnf t
     | Symb s, [ nt ] when s == cfg.symb_not ->
         let res =
           match nt with
           | Vari _ -> ([], t)
           | Symb _ -> ([], t)
-          | _ ->
-              failwith
-                "Prenex : symb_not before a formula occurs, t is not in NNF"
+          | _ -> raise @@ PrenexFormulaNotNnf t
         in
         res
     | Symb s, [ a; Abst (x, tb) ] when s == cfg.symb_all ->
@@ -199,26 +189,24 @@ let prenex_term cfg t =
         (qlist, sf)
     | _, _ -> ([], t)
   in
-  let qlist, f =
-    match get_args t with
-    | Symb s, [ t ] when s == cfg.symb_P ->
-        (*Format.printf "@.P of : %a @." term t;*) prenex t
-    | _ -> failwith "Cant PRENEX a term that is not a Prop !"
-  in
+  let qlist, f = prenex t in
   List.fold_left mk_quant f (List.rev qlist)
 
-(**Main fonction : [skolemisation ss pos t] return a skolemized form of term
-   [t]. (ie existential quantifications in [t] are removed) To this end, for
-   each existential quantifiers in [t], signature state [ss] is extended with
-   new symbol [symb_skt] in order to substitute the variable binded by the said
-   quantifier*)
+(** [handle ss pos t] returns a skolemized form of term [t] (at position [pos]).
+    A term is skolemized when it has no existential quantifiers: to this end,
+    for each existential quantifier in [t], signature state [ss] is extended
+    with a new symbol in order to substitute the variable bound by the said
+    quantifier.
+    @raise NotProp when the argument [t] is not an encoded proposition. *)
 let handle : Sig_state.t -> Pos.popt -> term -> term =
  fun ss pos t ->
   (*Gets user-defined symbol identifiers mapped using "builtin" command.*)
   let cfg = get_fol_config ss pos in
-  let t = mk_Appl (mk_Symb cfg.symb_P, t) in
-  let t = nnf_term cfg t in
-  let t = prenex_term cfg t in
+  let t = nnf_of cfg t in
+  let t =
+    try prenex_of cfg t
+    with PrenexFormulaNotNnf _ -> assert false (* [t] is put into nnf before *)
+  in
   let rec skolemisation ss ctx ctr t =
     match get_args t with
     | Symb s, [ _; Abst (y, tb) ] when s == cfg.symb_ex ->
@@ -238,10 +226,7 @@ let handle : Sig_state.t -> Pos.popt -> term -> term =
         add_args (mk_Symb s) [ a; mk_Abst (x, maj_tb) ]
     | _ -> t
   in
-  let skl_of_t =
-    Format.printf "@.La fp donne : %a @." term t;
-    skolemisation ss empty_context 0 t
-  in
+  let skl_of_t = skolemisation ss [] 0 t in
   if Logger.log_enabled () then
     log_sklm "Skolemized form of %a is %a" Print.term t Print.term skl_of_t;
   skl_of_t
