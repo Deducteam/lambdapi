@@ -189,10 +189,9 @@ let sym_decl : sym pp = fun ppf s ->
       out ppf "thm %a : %a := %a.@."
         ident s.sym_name (term true) !(s.sym_type) (term true) d
     else
-      out ppf "%a%a : %a.@.[] %a --> %a.@."
+      out ppf "%a%a : %a := %a.@."
         (List.pp (suffix string " ") "") (modifiers s)
-        ident s.sym_name (term true) !(s.sym_type)
-        ident s.sym_name (term true) d
+        ident s.sym_name (term true) !(s.sym_type) (term true) d
 
 let rule_decl : (Path.t * string * rule) pp = fun ppf (p, n, r) ->
   let xs, rhs = Bindlib.unmbind r.rhs in

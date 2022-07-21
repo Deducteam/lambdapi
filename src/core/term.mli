@@ -499,12 +499,13 @@ val lift_not_canonical : term -> tbox
 val bind : tvar -> (term -> tbox) -> term -> tbinder
 val binds : tvar array -> (term -> tbox) -> term -> tmbinder
 
-(** [cleanup t] builds a copy of the {!type:term} [t] where every instantiated
-   metavariable, instantiated term environment, and reference cell has been
-   eliminated using {!val:unfold}. Another effect of the function is that the
-   the names of bound variables are updated. This is useful to avoid any form
-   of "visual capture" while printing terms. *)
-val cleanup : term -> term
+(** [cleanup ~ctxt t] builds a copy of the {!type:term} [t] where every
+   instantiated metavariable, instantiated term environment, and reference
+   cell has been eliminated using {!val:unfold}. Another effect of the
+   function is that the names of bound variables are updated and taken away
+   from [ctxt]. This is useful to avoid any form of "visual capture" while
+   printing terms. *)
+val cleanup : ?ctxt:Bindlib.ctxt -> term -> term
 
 (** Positions in terms in reverse order. The i-th argument of a constructor
    has position i-1. *)
