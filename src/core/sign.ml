@@ -19,6 +19,7 @@ type priority = float
 (** Notations. *)
 type notation =
   | Prefix of priority
+  | Postfix of priority
   | Infix of Pratter.associativity * priority
   | Zero
   | Succ
@@ -381,6 +382,3 @@ let rec dependencies : t -> (Path.t * t) list = fun sign ->
     | d::deps -> minimize ((List.filter not_here d) :: acc) deps
   in
   List.concat (minimize [] deps)
-
-(** [ghost_path s] creates a module path that cannot be entered by a user. *)
-let ghost_path : string -> Path.t = fun s -> [ ""; s ]

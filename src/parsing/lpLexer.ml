@@ -58,6 +58,7 @@ type token =
   | NOTATION
   | OPAQUE
   | OPEN
+  | POSTFIX
   | PREFIX
   | PRINT
   | PRIVATE
@@ -224,6 +225,7 @@ let rec token lb =
   | "on" -> SWITCH(true)
   | "opaque" -> OPAQUE
   | "open" -> OPEN
+  | "postfix" -> POSTFIX
   | "prefix" -> PREFIX
   | "print" -> PRINT
   | "private" -> PRIVATE
