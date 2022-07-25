@@ -46,6 +46,7 @@ lambdapi.bnf: Makefile.bnf ../src/parsing/lpParser.mly
 	-e 's/NOTATION/"notation"/g' \
 	-e 's/OPEN/"open"/g' \
 	-e 's/OPAQUE/"opaque"/g' \
+        -e 's/POSTFIX/"postfix"/g' \
 	-e 's/PREFIX/"prefix"/g' \
 	-e 's/PRIVATE/"private"/g' \
 	-e 's/PROOFTERM/"proofterm"/g' \
