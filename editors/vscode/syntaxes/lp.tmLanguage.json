@@ -75,7 +75,7 @@
     },
 
     "keywords": {
-      "match": "\\b(as|associative|begin|builtin|commutative|constant|debug|end|flag|in|infix|injective|left|off|notation|on|opaque|postfix|prover|prover_timeout|prefix|private|protected|quantifier|right|sequential|TYPE|unif_rule)\\b",
+      "match": "\\b(as|associative|begin|builtin|commutative|constant|debug|end|flag|in|infix|injective|left|off|notation|on|opaque|postfix|prefix|private|protected|prover|prover_timeout|quantifier|right|sequential|TYPE|unif_rule)\\b",
       "name": "storage.modifier.lp"
     }
   }
