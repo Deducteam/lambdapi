@@ -11,7 +11,8 @@ See the details [here](https://code.visualstudio.com/api/working-with-extensions
 - Publish a new version on the Marketplace:
 
 ```bash
-vsce login lambdapi # and paste the Personal Access Token
+make
+vsce login Deducteam # and paste the Personal Access Token
 vsce publish [patch|minor|major]
 ```
 
