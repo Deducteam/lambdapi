@@ -42,14 +42,17 @@ let run_install : Config.t -> bool -> string list -> unit =
       (* Create directories as needed for [dest]. *)
       let cmd =
         let dest_dir = Filename.dirname dest in
-        String.concat " " ["mkdir"; "--parents"; dest_dir]
+        String.concat " " ["mkdir"; "-p"; dest_dir]
+        (* use short option for compatibility with MacOS *)
       in
       run_command dry_run cmd;
       (* Copy files. *)
       let cmd =
         let file = Filename.quote file in
         String.concat " "
-          ["cp"; "--preserve"; "--no-target-directory"; "--force"; file; dest]
+          ["cp"; "-p"; "-f"; (*"--no-target-directory";*) file; dest]
+          (* use short option for compatibility with MacOS.
+             There seems to be no option --no-target-directory in MacOS. *)
       in
       run_command dry_run cmd
     in
