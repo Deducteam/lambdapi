@@ -8,7 +8,7 @@
     "François Lefoulon <francois.lefoulon@lilo.org>",
     "Ashish Barnawal <ashbrnwl.2000@gmail.com>"
   ],
-  "version": "0.2.0",
+  "version": "0.2.1",
   "publisher": "Deducteam",
   "engines": {
     "vscode": "^1.37.0"

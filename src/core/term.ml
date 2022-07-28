@@ -753,12 +753,49 @@ let bind : tvar -> (term -> tbox) -> term -> tbinder =
 let binds : tvar array -> (term -> tbox) -> term -> tmbinder =
   fun vs lift t -> Bindlib.unbox (Bindlib.bind_mvar vs (lift t))
 
+(** [lift_in c mk_appl t] lifts the {!type:term} [t] in Bindlib context [c] to
+   the type {!type:tbox}, using the function [mk_appl] in the case of an
+   application. This has the effect of gathering its free variables, making
+   them available for binding. Bound variable names are automatically updated
+   in the process. *)
+let lift_in : (tbox -> tbox -> tbox) -> Bindlib.ctxt -> term -> tbox =
+  fun mk_appl ->
+  let rec lift c t =
+  match unfold t with
+  | Vari x      -> _Vari x
+  | Type        -> _Type
+  | Kind        -> _Kind
+  | Symb _      -> Bindlib.box t
+  | Prod(a,b)   -> _Prod (lift c a) (lift_binder c b)
+  | Abst(a,t)   -> _Abst (lift c a) (lift_binder c t)
+  | Appl(t,u)   -> mk_appl (lift c t) (lift c u)
+  | Meta(r,m)   -> _Meta r (Array.map (lift c) m)
+  | Patt(i,n,m) -> _Patt i n (Array.map (lift c) m)
+  | TEnv(te,m)  -> _TEnv (lift_term_env te) (Array.map (lift c) m)
+  | Wild        -> _Wild
+  | Plac b      -> _Plac b
+  | TRef r      -> _TRef r
+  | LLet(a,t,u) -> _LLet (lift c a) (lift c t) (lift_binder c u)
+  (* We do not use [Bindlib.box_binder] here because it is possible for a free
+     variable to disappear from a term through metavariable instantiation. As
+     a consequence we must traverse the whole term, even when we find a closed
+     binder, so that the metadata on nested binders is also updated. *)
+  and lift_binder c b =
+    let x, t, c = Bindlib.unbind_in c b in Bindlib.bind_var x (lift c t)
+  and lift_term_env : term_env -> tebox = function
+  | TE_Vari x -> _TE_Vari x
+  | TE_None   -> _TE_None
+  | TE_Some _ -> assert false (* Unreachable. *)
+  in lift
+
 (** [cleanup t] builds a copy of the {!type:term} [t] where every instantiated
    metavariable, instantiated term environment, and reference cell has been
    eliminated using {!val:unfold}. Another effect of the function is that the
    the names of bound variables are updated. This is useful to avoid any form
    of "visual capture" while printing terms. *)
-let cleanup : term -> term = fun t -> Bindlib.unbox (lift_not_canonical t)
+let cleanup : ?ctxt:Bindlib.ctxt -> term -> term =
+  fun ?(ctxt=Bindlib.empty_ctxt) t ->
+  Bindlib.unbox (lift_in _Appl_not_canonical ctxt t)
 
 (** Positions in terms in reverse order. The i-th argument of a constructor
    has position i-1. *)
