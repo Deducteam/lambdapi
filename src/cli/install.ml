@@ -42,14 +42,17 @@ let run_install : Config.t -> bool -> string list -> unit =
       (* Create directories as needed for [dest]. *)
       let cmd =
         let dest_dir = Filename.dirname dest in
-        String.concat " " ["mkdir"; "--parents"; dest_dir]
+        String.concat " " ["mkdir"; "-p"; dest_dir]
+        (* Use short options for POSIX compliance. *)
       in
       run_command dry_run cmd;
       (* Copy files. *)
       let cmd =
         let file = Filename.quote file in
         String.concat " "
-          ["cp"; "--preserve"; "--no-target-directory"; "--force"; file; dest]
+          ["cp"; "-p"; "-f"; file; dest]
+          (* Use short options for POSIX compliance. See
+        https://pubs.opengroup.org/onlinepubs/9699919799/utilities/cp.html. *)
       in
       run_command dry_run cmd
     in
