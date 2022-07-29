@@ -471,12 +471,9 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
             (* Check that the proof is indeed finished. *)
             if not (finished ps) then
               fatal pe.pos "The proof is not finished.";
-            (* Get the definition. *)
+            (* Get the final definition. *)
             let d =
-              match ps.proof_term with
-              | None -> None
-              | Some m -> Some (unfold (mk_Meta(m,[||])))
-            in
+              Option.map (fun m -> unfold (mk_Meta(m,[||]))) ps.proof_term in
             (* Add the symbol in the signature. *)
             Console.out 2 (Color.red "symbol %a : %a") uid id term a;
             fst (add_symbol ss expo prop mstrat opaq p_sym_nam a impl d)
