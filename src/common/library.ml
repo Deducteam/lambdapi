@@ -146,7 +146,8 @@ let set_lib_root : string option -> unit = fun dir ->
           (* [Sys_error] is raised if [pth] does not exist. *)
           (* We try to create [pth]. *)
           let target = Filename.quote pth in
-          let cmd = String.concat " " ["mkdir"; "--parent"; target] in
+          let cmd = String.concat " " ["mkdir"; "-p"; target] in
+          (* Use short option to be POSIX compliant. *)
           match Sys.command cmd with
           | 0 -> ()
           | _ ->
