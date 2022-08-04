@@ -3,7 +3,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
-## Unreleased
+## 2.2.1 (2022-07-04)
 
 ### Added
 
@@ -13,8 +13,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ### Removed
 
 - Logic directory since it is now available on the [Lambdapi Opam repository](https://github.com/Deducteam/opam-lambdapi-repository).
-
 - Option --recompile.
+
+### Changed
+
+- Use short options in system commands to be POSIX compliant.
 
 ## 2.2.0 (2022-03-18)
 
