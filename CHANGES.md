@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Fixed generation of metavariables through the rewriting engine.
 - Fixed application of pattern variables in rewrite rules RHS in the Dedukti
   export.
+- Fixed HRS and XTC exports.
 
 ## 2.2.1 (2022-07-04)
 
