@@ -273,7 +273,7 @@ module CM = struct
       {!type:Tree_type.TC.t}) that is a candidate for a specialization. *)
   let is_treecons : term -> bool = fun t ->
     match fst (get_args t) with
-    | TRef _ | TEnv _ | Appl _ -> assert false (* Cannot happen with get_args *)
+    | TRef _ | TEnv _ | Appl _ -> assert false (*Cannot happen with get_args*)
     | Meta _ -> assert false (* No metavars in rewrite rules LHS *)
     | Wild -> assert false
     | Plac _ -> assert false
