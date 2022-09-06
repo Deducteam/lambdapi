@@ -143,7 +143,7 @@ let rec term : bool -> term pp = fun b ppf t ->
     out ppf "(%a%a)" ident s (Array.pp (prefix " " (term b)) "") ts
   | TEnv(te, [||]) -> tenv ppf te
   | TEnv(te, ts) ->
-    out ppf "%a%a" tenv te (Array.pp (prefix " " (term b)) "") ts
+    out ppf "(%a%a)" tenv te (Array.pp (prefix " " (term b)) "") ts
   | TRef _ -> assert false
   | Wild -> assert false
   | Meta _ -> assert false

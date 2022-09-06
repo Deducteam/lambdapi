@@ -320,7 +320,6 @@ and scope_head :
   ?typ:bool -> int -> mode -> sig_state -> env -> p_term -> tbox =
   fun ?(typ=false) k md ss env t ->
   match (t.elt, md) with
-  | (P_Type, M_LHS(_)) -> fatal t.pos "TYPE is not allowed in a LHS."
   | (P_Type, _) -> _Type
 
   | (P_Iden(qid,_), _) -> scope_iden md ss env qid

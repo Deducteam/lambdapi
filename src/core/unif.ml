@@ -83,7 +83,22 @@ let try_unif_rules : problem -> ctxt -> term -> term -> bool =
         let reduced = Eval.whnf ~problem:p c start in
         if reduced != start then reduced else raise No_match
     in
-    let cs = List.map (fun (t,u) -> (c,t,u)) (unpack rhs) in
+    (* Refine generated unification problems to replace holes. *)
+    let sanitise (c, t, u) =
+      match Infer.infer_noexn p c t, Infer.infer_noexn p c u with
+      | Some (t, _), Some(u, _) -> (c, t, u)
+      | t', u' ->
+          (* Error reporting *)
+          Error.fatal_msg "@[A unification rule generated the \
+                           ill-typed unification problem@ [%a].@]"
+            Print.constr (c, t, u);
+          if t' = None then
+            Error.fatal_msg "@[Term@ [%a]@ is not typable.@]" term t;
+          if u' = None then
+            Error.fatal_msg "@[Term@ [%a]@ is not typable.@]" term u;
+          Error.fatal_no_pos "Untypable unification problem."
+    in
+    let cs = List.map (fun (t,u) -> sanitise (c,t,u)) (unpack rhs) in
     if Logger.log_enabled () then log_unif "rewrites to:%a" constrs cs;
     List.iter (add_unif_rule_constr p) cs;
     true
