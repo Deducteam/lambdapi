@@ -21,6 +21,7 @@ module TC =
           two maps) to  a higher order ( variable. They  are also used
           in the environment builder to refer  to the higher order variables a
           term may depend on. *)
+      | Type
 
     (** {b NOTE} the effective arity carried by the representation of a symbol
         is specific to a given symbol instance. Indeed, a symbol (in the sense
@@ -33,6 +34,7 @@ module TC =
       match c with
       | Vari(d)     -> int oc d
       | Symb(_,s,a) -> out oc "%s %d-ary" s a
+      | Type        -> out oc "TYPE"
 
     (** [compare c1 c2] implements a total order on constructors. *)
     let compare : t -> t -> int = Stdlib.compare

@@ -19,21 +19,21 @@ graph {
 => ghost symbol ≡ from tests.OK.unif_hint
 graph {
        0 [label="0"];
-       1 [label="0" shape="box"];
-       0 -- 1 [label=<fst<sub>2</sub>>];
+       1 [label="2"];
+       0 -- 1 [label=<+<sub>2</sub>>];
        2 [label="0" shape="box"];
-       1 -- 2 [label=<*>];
+       1 -- 2 [label=<z<sub>0</sub>>];
        3 [label="0" shape="box"];
        2 -- 3 [label=<*>];
-       4 [label="$p ≡ pair $f $s"];
+       4 [label="($x ≡ z) ; ($y ≡ z)"];
        3 -- 4 [label=<*>];
-       5 [label="2"];
-       0 -- 5 [label=<plus<sub>2</sub>>];
+       5 [label="0" shape="box"];
+       0 -- 5 [label=<fst<sub>2</sub>>];
        6 [label="0" shape="box"];
-       5 -- 6 [label=<z<sub>0</sub>>];
+       5 -- 6 [label=<*>];
        7 [label="0" shape="box"];
        6 -- 7 [label=<*>];
-       8 [label="($x ≡ z) ; ($y ≡ z)"];
+       8 [label="$p ≡ pair $f $s"];
        7 -- 8 [label=<*>];
        9 [label="0" shape="box"];
        0 -- 9 [label=<snd<sub>2</sub>>];
@@ -46,14 +46,14 @@ graph {
        13 [label="2"];
        0 -- 13 [label=<Πv0>];
        14 [label="0" shape="box"];
-       13 -- 14 [label=<T<sub>1</sub>>];
+       13 -- 14 [label=<El<sub>1</sub>>];
        15 [label="0" shape="box"];
        14 -- 15 [label=<*>];
        16 [label=< ⊆ FV(1)> shape="diamond"];
        15 -- 16 [label=<*>];
        17 [label="0" shape="box"];
        16 -- 17 [label=<✓>];
-       18 [label="($b ≡ T $eb) ; (($a ≡ T $ea) ; ($c ≡ arrow $ea $eb))"];
+       18 [label="($b ≡ El $eb) ; (($a ≡ El $ea) ; ($c ≡ arrow $ea $eb))"];
        17 -- 18 [label=<*>];
        19 [label=<!>];
        16 -- 19 [label="!"];

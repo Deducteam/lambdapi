@@ -316,9 +316,7 @@ and tree_walk : config -> dtree -> stack -> (term * stack) option =
         List.iter f rhs_subst;
         (* Complete the array with fresh meta-variables if needed. *)
         for i = r.vars_nb to env_len - 1 do
-          let mt = LibMeta.make cfg.problem cfg.context mk_Type in
-          let t = LibMeta.make cfg.problem cfg.context mt in
-          env.(i) <- Some(bind_mvar [||] t)
+          env.(i) <- Some(bind_mvar [||] (mk_Plac false))
         done;
         Some (subst_patt env r.rhs, stk)
     | Cond({ok; cond; fail})                              ->
@@ -410,6 +408,14 @@ and tree_walk : config -> dtree -> stack -> (term * stack) option =
             walk tr stk cursor vars_id id_vars
           in
           match t with
+          | Type       ->
+              begin
+                try
+                  let matched = TCMap.find TC.Type children in
+                  let stk = List.reconstruct left args right in
+                  walk matched stk cursor vars_id id_vars
+                with Not_found -> default ()
+              end
           | Symb(s)    ->
               let cons = TC.Symb(s.sym_path, s.sym_name, List.length args) in
               begin
@@ -446,7 +452,6 @@ and tree_walk : config -> dtree -> stack -> (term * stack) option =
                 | Some(id,tr) -> walk_binder a b id tr
               end
           | Kind
-          | Type
           | Patt _
           | Meta(_, _) -> default ()
           | Plac _     -> assert false

@@ -1,62 +1,60 @@
 // Simple unification hints
-symbol U: TYPE;
-injective symbol T: U → TYPE;
-symbol bool: U;
+symbol Set: TYPE;
+injective symbol El: Set → TYPE;
+symbol bool: Set;
 symbol Bool: TYPE;
-rule T bool ↪ Bool;
-
-//   &x ≡ bool
-// --------------
-//  T &x ≡ Bool
-//unif_rule (T $x) ≡ Bool ↪ [ $x ≡ bool ];
-
-symbol f : (Bool → Bool) → U;
-
-type f (λ x: T _, x);
+rule El bool ↪ Bool;
 
 symbol Nat: TYPE;
-symbol nat: U;
-rule T nat ↪ Nat;
-
-//   &x ≡ nat
-// -------------
-//  T &x ≡ Nat
-//unif_rule T $x ≡ Nat ↪ [ $x ≡ nat ];
-
-symbol G: Bool → Nat → TYPE;
-type λ x: T _, λ y: T _, G x y;
+symbol nat: Set;
+rule El nat ↪ Nat;
 
 // Need several hints
 symbol z: Nat;
 symbol s: Nat → Nat;
-symbol plus : Nat → Nat → Nat;
-rule plus z $n      ↪ $n
-with plus (s $m) $n ↪ s (plus $m $n);
+symbol + : Nat → Nat → Nat;
+rule + z $n      ↪ $n
+with + (s $m) $n ↪ s (+ $m $n);
 
 injective symbol I: Nat → TYPE;
+// Assuming [in] is of type [I n], typing [H m in] forces the unification
+// problem [m ≡? n].
 symbol H (n: Nat): I n → Nat;
 symbol iz: I z;
 //    &x ≡ z   &y ≡ z
 // -------------------
-//    plus &x &y ≡ z
-unif_rule (plus $x $y) ≡ z ↪ [ $x ≡ z; $y ≡ z ];
-// Trigger the unification problem plus ?1 ?2 ≡ z
-compute H (plus _ _) iz;
+//    + &x &y ≡ z
+unif_rule (+ $x $y) ≡ z ↪ [ $x ≡ z; $y ≡ z ];
+// Trigger the unification problem + ?1 ?2 ≡ z
+type H (+ _ _) iz;
 
-constant symbol Pair: U → TYPE;
-constant symbol pair [t: U]:  T t → T t → Pair t;
-symbol fst [t]: Pair t → T t;
-symbol snd [t]: Pair t → T t;
+constant symbol Pair: Set → TYPE;
+constant symbol pair [t: Set]:  El t → El t → Pair t;
+symbol fst [t]: Pair t → El t;
+symbol snd [t]: Pair t → El t;
 unif_rule fst $p ≡ $f ↪ [ $p ≡ pair $f $s ];
 unif_rule snd $p ≡ $s ↪ [ $p ≡ pair $f $s ];
-constant symbol K [t]: T t → TYPE;
+constant symbol K [t]: El t → TYPE;
 constant symbol J [t] (p: Pair t): K (fst p) → TYPE;
 constant symbol kz: K z;
 compute J (pair _ z) kz;
 
 // The arrow problem
-symbol arrow : U → U → U;
-rule T (arrow $t $u) ↪ T $t → T $u;
-unif_rule $a → $b ≡ T $c ↪ [ $a ≡ T $ea; $b ≡ T $eb; $c ≡ arrow $ea $eb ];
-symbol eq (t: U): T t → T t → Bool;
-compute eq _ (λ _, z) (λ _, z);
+constant symbol arrow : Set → Set → Set;
+rule El (arrow $t $u) ↪ El $t → El $u;
+unif_rule $a → $b ≡ El $c ↪ [ $a ≡ El $ea; $b ≡ El $eb; $c ≡ arrow $ea $eb ];
+symbol eq (t: Set): El t → El t → Bool;
+type eq _ (λ _, z) (λ _, z);
+
+constant symbol Vec (n: Nat): Set;
+constant symbol vec (n: Nat): El (Vec n);
+
+// Dependent arrow
+constant symbol darr : Π a: Set, (El a → Set) → Set;
+rule El (darr $d (λ x: El _, $c.[x])) ↪ Π z : El $d, El ($c.[z]);
+/*unif_rule El $e ≡ Π x : $a, $b.[x] ↪
+  [ $a ≡ El $sa // $a must be an encoded type
+  ; (λ x: El $sa, $b.[x]) ≡ (λ x: El $sa, El $sb.[x])
+    // $b as well, but with a bound variable
+  ; $e ≡ darr $sa (λ z: El $sa, $sb.[z]) ];
+type eq _ vec vec;*/

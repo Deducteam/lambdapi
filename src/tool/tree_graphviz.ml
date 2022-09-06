@@ -36,6 +36,7 @@ let to_dot : Format.formatter -> sym -> unit = fun ppf s ->
       | DotDefa              -> out ppf "*"
       | DotCons(Symb(_,n,a)) -> out ppf "%s<sub>%d</sub>" n a
       | DotCons(Vari(i))     -> out ppf "%s%d" var_px i
+      | DotCons(Type)        -> out ppf "TYPE"
       | DotSuccess           -> out ppf "✓"
       | DotFailure           -> out ppf "✗"
     in
