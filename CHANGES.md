@@ -3,13 +3,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## Unreleased
+
+### Added
+
+- - (API) the rewrite engine can match on the constant `TYPE`
+
 ## 2.2.1 (2022-07-04)
 
 ### Added
 
 - Propagate recompile flag to dependencies.
 - Postfix operators with the `notation <op> postfix <priority>;`
-- (API) the rewrite engine can match on the constant `TYPE`
 
 ### Removed
 
