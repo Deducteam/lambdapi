@@ -320,9 +320,9 @@ and tree_walk : config -> dtree -> stack -> (term * stack) option =
         List.iter f rhs_subst;
         (* Complete the array with fresh meta-variables if needed. *)
         for i = env_len - xvars to env_len - 1 do
-          let mt = LibMeta.make cfg.problem cfg.context mk_Type in
-          let t = LibMeta.make cfg.problem cfg.context mt in
-          let b = Bindlib.raw_mbinder [||] [||] 0 of_tvar (fun _ -> t) in
+          let b =
+            Bindlib.raw_mbinder [||] [||] 0 of_tvar (fun _ -> mk_Plac false)
+          in
           env.(i) <- TE_Some(b)
         done;
         Some (Bindlib.msubst act env, stk)

@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 - (API) the rewrite engine can match on the constant `TYPE`
 
+### Changed
+
+- Fixed generation of metavariables through the rewriting engine.
+- Fixed application of pattern variables in rewrite rules RHS in the Dedukti
+  export.
+
 ## 2.2.1 (2022-07-04)
 
 ### Added
