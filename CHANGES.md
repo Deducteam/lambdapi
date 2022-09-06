@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
-- - (API) the rewrite engine can match on the constant `TYPE`
+- (API) the rewrite engine can match on the constant `TYPE`
 
 ## 2.2.1 (2022-07-04)
 
