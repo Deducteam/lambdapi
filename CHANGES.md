@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 - Propagate recompile flag to dependencies.
 - Postfix operators with the `notation <op> postfix <priority>;`
+- (API) the rewrite engine can match on the constant `TYPE`
 
 ### Removed
 

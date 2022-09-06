@@ -39,9 +39,9 @@ let arrow_matching () =
   Tree.update_dtree c [];
   let lhs = parse_term "C (A → A)" |> scope_term sig_state in
   Alcotest.(check bool)
-    "ok"
-    (match Eval.snf [] lhs with Symb s -> s == ok | _ -> false)
+    "C (A → A) matches C (A → A)"
     true
+    (match Eval.snf [] lhs with Symb s -> s == ok | _ -> false)
 
 (* Revert modifications performed on the signature. *)
 let arrow_matching = Timed.pure_apply arrow_matching
@@ -52,9 +52,9 @@ let prod_matching () =
   Tree.update_dtree c [];
   let lhs = parse_term "C (A → A)" |> scope_term sig_state in
   Alcotest.(check bool)
-    "ok"
-    (match Eval.snf [] lhs with Symb s -> s == ok | _ -> false)
+    "C (A → A) matches C (Π _: _, A)"
     true
+    (match Eval.snf [] lhs with Symb s -> s == ok | _ -> false)
 
 let prod_matching = Timed.pure_apply prod_matching
 
@@ -65,17 +65,41 @@ let arrow_default () =
   Tree.update_dtree c [];
   let lhs = parse_term "C (A → A)" |> scope_term sig_state in
   Alcotest.(check bool)
-    "Ok"
-    (match Eval.snf [] lhs with Symb s -> s == ok | _ -> false)
+    "C (A → A) matches C _"
     true
+    (match Eval.snf [] lhs with Symb s -> s == ok | _ -> false)
 
 (* Revert modifications performed on the signature. *)
 let arrow_default = Timed.pure_apply arrow_default
+
+let type_matching () =
+  let rule = parse_rule "rule C TYPE ↪ Ok;" in
+  Sign.add_rule sig_state.signature c rule;
+  Tree.update_dtree c [];
+  let lhs = parse_term "C TYPE" |> scope_term sig_state in
+  Alcotest.(check bool)
+    "C TYPE matches C TYPE"
+    true
+    (match Eval.snf [] lhs with Symb s -> s == ok | _ -> false)
+
+let type_matching = Timed.pure_apply type_matching
+
+let type_default () =
+  let rule = parse_rule "rule C _ ↪ Ok;" in
+  Sign.add_rule sig_state.signature c rule;
+  Tree.update_dtree c [];
+  let lhs = parse_term "C TYPE" |> scope_term sig_state in
+  Alcotest.(check bool)
+    "C TYPE matches C _"
+    true
+    (match Eval.snf [] lhs with Symb s -> s == ok | _ -> false)
 
 let _ =
   let open Alcotest in
   run "rewrite engine" [
     ("matching", [ test_case "arrow" `Quick arrow_matching
                  ; test_case "prod" `Quick prod_matching
-                 ; test_case "default" `Quick arrow_default ] )
+                 ; test_case "arrow default" `Quick arrow_default
+                 ; test_case "TYPE" `Quick type_matching
+                 ; test_case "TYPE default" `Quick type_default ] )
   ]

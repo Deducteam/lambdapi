@@ -415,6 +415,14 @@ and tree_walk : config -> dtree -> stack -> (term * stack) option =
             walk tr stk cursor vars_id id_vars
           in
           match t with
+          | Type       ->
+              begin
+                try
+                  let matched = TCMap.find TC.Type children in
+                  let stk = List.reconstruct left args right in
+                  walk matched stk cursor vars_id id_vars
+                with Not_found -> default ()
+              end
           | Symb(s)    ->
               let cons = TC.Symb(s.sym_path, s.sym_name, List.length args) in
               begin
@@ -451,7 +459,6 @@ and tree_walk : config -> dtree -> stack -> (term * stack) option =
                 | Some(id,tr) -> walk_binder a b id tr
               end
           | Kind
-          | Type
           | Patt _
           | Meta(_, _) -> default ()
           | Plac _     -> assert false
