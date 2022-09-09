@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ### Added
 
 - (API) the rewrite engine can match on the constant `TYPE`
+- Automatic coercion insertion mechanism.
+  For example, the command `coerce_rule coerce Int Float $x ↪ FloatOfInt $x;`
+  can be used to instruct Lambdapi to automatically coerce integers to floats
+  using the function `FloatOfInt`.
 
 ### Changed
 

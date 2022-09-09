@@ -40,6 +40,7 @@ type token =
   | ASSUME
   | BEGIN
   | BUILTIN
+  | COERCE_RULE
   | COMMUTATIVE
   | COMPUTE
   | CONSTANT
@@ -203,6 +204,7 @@ let rec token lb =
   | "assume" -> ASSUME
   | "begin" -> BEGIN
   | "builtin" -> BUILTIN
+  | "coerce_rule" -> COERCE_RULE
   | "commutative" -> COMMUTATIVE
   | "compute" -> COMPUTE
   | "constant" -> CONSTANT

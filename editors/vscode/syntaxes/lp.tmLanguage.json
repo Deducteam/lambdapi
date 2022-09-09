@@ -49,7 +49,7 @@
     },
 
     "signature-commands": {
-      "match": "(inductive|symbol|rule|with)\\s+([^\\s+]*)",
+      "match": "(inductive|symbol|rule|with|coerce_rule)\\s+([^\\s+]*)",
       "captures": {
         "1": {"name": "storage.type.lp"},
         "2": {"name": "entity.name.function.theorem.lp"}
@@ -75,7 +75,7 @@
     },
 
     "keywords": {
-      "match": "\\b(as|associative|begin|builtin|commutative|constant|debug|end|flag|in|infix|injective|left|off|notation|on|opaque|postfix|prefix|private|protected|prover|prover_timeout|quantifier|right|sequential|TYPE|unif_rule)\\b",
+      "match": "\\b(as|associative|begin|builtin|coerce_rule|coerce|commutative|constant|debug|end|flag|in|infix|injective|left|off|notation|on|opaque|postfix|prefix|private|protected|prover|prover_timeout|quantifier|right|sequential|TYPE|unif_rule)\\b",
       "name": "storage.modifier.lp"
     }
   }
