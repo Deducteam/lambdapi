@@ -18,6 +18,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Fixed generation of metavariables through the rewriting engine.
 - Fixed application of pattern variables in rewrite rules RHS in the Dedukti
   export.
+- Fixed Dedukti export: invalid Dedukti module name were not brace-quoted,
+  for instance, `#REQUIRE module-name.` could be exported, while `module-name`
+  is not recognised by Dedukti2. It is now exported as `#REQUIRE {|module-name|}`,
+  and symbols are exported as `{|module-name|}.foo`.
 
 ## 2.2.1 (2022-07-04)
 

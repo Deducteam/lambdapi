@@ -101,6 +101,10 @@ and sident op buf = parse
   | eof
   { fail (get_loc lexbuf) "Unexpected end of file in ident." }
 
+and is_mident = parse
+  | mident eof { true }
+  | _ { false }
+
 and is_ident = parse
   | ident eof { true }
   | _ { false }
