@@ -90,7 +90,7 @@ let to_HRS : Format.formatter -> Sign.t -> unit = fun ppf sign ->
   let deps = Sign.dependencies sign in
   (* Function to iterate over every symbols. *)
   let iter_symbols : (sym -> unit) -> unit = fun fn ->
-    let not_on_ghosts _ s = if not (Unif_rule.mem s) then fn s in
+    let not_on_ghosts _ s = if not (Ghost.mem s) then fn s in
     let iter_symbols sign =
       StrMap.iter not_on_ghosts Sign.(!(sign.sign_symbols))
     in

@@ -19,8 +19,8 @@ open Sign
     as dependencies. *)
 let create_sign : Path.t -> Sign.t = fun sign_path ->
   let d = Sign.dummy () in
-  {d with sign_path;
-          sign_deps = ref (Path.Map.singleton Unif_rule.path StrMap.empty)}
+  let deps = Path.Map.singleton Ghost.sign.sign_path StrMap.empty in
+  {d with sign_path; sign_deps = ref deps}
 
 (** State of the signature, including aliasing and accessible symbols. *)
 type sig_state =
@@ -107,7 +107,7 @@ let open_sign : sig_state -> Sign.t -> sig_state = fun ss sign ->
 (** [of_sign sign] creates a state from the signature [sign] and open it as
    well as the ghost signatures. *)
 let of_sign : Sign.t -> sig_state = fun signature ->
-  open_sign (open_sign {dummy with signature} Unif_rule.sign) signature
+  open_sign (open_sign {dummy with signature} Ghost.sign) signature
 
 (** [find_sym ~prt ~prv b st qid] returns the symbol
     corresponding to the qualified identifier [qid]. If [fst qid.elt] is

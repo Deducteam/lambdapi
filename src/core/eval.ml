@@ -69,7 +69,7 @@ let snf : (term -> term) -> (term -> term) = fun whnf ->
     | Appl(t,u)   -> mk_Appl(snf t, snf u)
     | Meta(m,ts)  -> mk_Meta(m, Array.map snf ts)
     | Patt(i,n,ts) -> mk_Patt(i,n,Array.map snf ts)
-    | Plac _      -> assert false
+    | Plac _      -> h (* may happen when reducing coercions *)
     | Db _ -> assert false
     | Wild        -> assert false
     | TRef(_)     -> assert false
@@ -370,7 +370,7 @@ and tree_walk : config -> dtree -> stack -> (term * stack) option =
             let stk = List.reconstruct left [] right in
             walk t stk cursor vars_id id_vars
           in
-          Option.bind fn default
+          Option.bind default fn
         else
           let s = Stdlib.(!steps) in
           let (t, args) = whnf_stk cfg examined [] in
@@ -395,7 +395,7 @@ and tree_walk : config -> dtree -> stack -> (term * stack) option =
               let stk = List.reconstruct left [] right in
               walk d stk cursor vars_id id_vars
             in
-            Option.bind fn default
+            Option.bind default fn
           in
           (* [walk_binder a  b  id tr]  matches  on  binder  [b]  of type  [a]
              introducing variable  [id] and branching  on tree [tr].  The type

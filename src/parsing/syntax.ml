@@ -264,6 +264,7 @@ type p_command_aux =
   | P_builtin of string * p_qident
   | P_notation of p_qident * Sign.notation
   | P_unif_rule of p_rule
+  | P_coercion of p_rule
   | P_query of p_query
 
 (** Parser-level representation of a single (located) command. *)
@@ -418,6 +419,7 @@ let eq_p_command : p_command eq = fun {elt=c1;_} {elt=c2;_} ->
   | P_builtin(s1,q1), P_builtin(s2,q2) -> s1 = s2 && eq_p_qident q1 q2
   | P_notation(i1,n1), P_notation(i2,n2) -> eq_p_qident i1 i2 && n1 = n2
   | P_unif_rule r1, P_unif_rule r2 -> eq_p_rule r1 r2
+  | P_coercion r1, P_coercion r2 -> eq_p_rule r1 r2
   | P_query(q1), P_query(q2) -> eq_p_query q1 q2
   | _, _ -> false
 
@@ -591,6 +593,7 @@ let fold_idents : ('a -> p_qident -> 'a) -> 'a -> p_command list -> 'a =
     | P_query q -> fold_query_vars StrSet.empty a q
     | P_builtin (_, qid)
     | P_notation (qid, _) -> f a qid
+    | P_coercion r
     | P_unif_rule r -> fold_rule a r
     | P_rules rs -> List.fold_left fold_rule a rs
     | P_inductive (_, xs, ind_list) ->

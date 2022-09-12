@@ -4,7 +4,7 @@ open Lplib
 open Timed
 open Common open Error open Library
 open Parsing
-open Core open Sign open Term
+open Core open Sign
 
 (** [gen_obj] indicates whether we should generate object files when compiling
     source files. The default behaviour is not te generate them. *)
@@ -75,12 +75,10 @@ let rec compile_with :
       Path.Map.iter compile !(sign.sign_deps);
       loaded := Path.Map.add mp sign !loaded;
       Sign.link sign;
-      (* Since Unif_rule.sign is always assumed to be already loaded, we need
-         to explicitly update the decision tree of Unif_rule.equiv since it is
-         not done in linking which normally follows loading. *)
-      let sm = Path.Map.find Unif_rule.path !(sign.sign_deps) in
-      if Extra.StrMap.mem Unif_rule.equiv.sym_name sm then
-        Tree.update_dtree Unif_rule.equiv [];
+      (* Since ghost signatures are always assumed to be already loaded,
+         we need to explicitly update the decision tree of their symbols
+         because it is not done in linking which normally follows loading. *)
+      Ghost.iter (fun s -> Tree.update_dtree s []);
       sign
     end
 

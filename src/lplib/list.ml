@@ -290,3 +290,11 @@ let rec iter_head_tail : ('a -> 'a list -> unit) -> 'a list -> unit =
   match l with
   | [] -> ()
   | h::t -> f h t; iter_head_tail f t
+
+(** [sequence_opt l] is [Some [x1; x2; ...]] if all elements of [l] are of
+    the form [Some xi], and [None] if there is a [None] in [l]. *)
+let sequence_opt : 'a option list -> 'a list option = fun l ->
+    fold_right
+      (fun elt acc -> Option.Applicative.(pure cons <*> elt <*> acc))
+      l
+      (Option.Monad.return [])
