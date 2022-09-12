@@ -53,6 +53,9 @@ let _ = let open Parsing.DkTokens in
 let is_ident : string -> bool = fun s ->
   Parsing.DkLexer.is_ident (Lexing.from_string s)
 
+let is_mident : string -> bool = fun s ->
+  Parsing.DkLexer.is_mident (Lexing.from_string s)
+
 let escape : string pp = fun ppf s -> out ppf "{|%s|}" s
 
 let replace_spaces : string -> string = fun s ->
@@ -87,7 +90,12 @@ let path : Path.t pp = fun ppf p ->
   if p <> Stdlib.(!current_path) then
   match p with
   | [] -> ()
-  | p -> out ppf "%a." (List.pp path_elt "_") p
+  | p ->
+      let joined_path = Format.asprintf "%a" (List.pp path_elt "_") p in
+      if List.for_all is_mident p then
+        out ppf "%s." joined_path
+      else
+        Format.fprintf ppf "%a." escape joined_path
 
 let qid : (Path.t * string) pp = fun ppf (p, i) ->
   out ppf "%a%a" path p ident i
