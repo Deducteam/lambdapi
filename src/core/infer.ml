@@ -41,8 +41,66 @@ let unif : problem -> octxt -> term -> term -> unit =
 
 (** {1 Handling coercions} *)
 
-(* Simply unify types, no coercions yet. *)
-let coerce pb c t a b = unif pb c a b; (t, false)
+(** [reduce_coercions c t] tries to reduce coercions that are in term [t]. The
+    reduction is attempted bottom up: first simplify leaves then go up to the
+    root. It returns [None] if some coercions couldn't be simplified, and
+    [Some t] where [t] is the simplified term otherwise. *)
+let rec reduce_coercions : octxt -> term -> term option = fun c t ->
+  (* Some bindings *)
+  let open Option.Monad in
+  let is_coercion = function
+    | Symb s when s == Coercion.coerce -> true
+    | _ -> false
+  in
+  let (hd, args) = get_args t in
+  if is_coercion hd then
+    let* args = List.map (reduce_coercions c) args |> List.sequence_opt in
+    (* Try to reduce: if there's still a coercion, quit *)
+    let reduct = Eval.whnf (classic c) (add_args hd args) in
+    let hd, args = get_args reduct in
+    if is_coercion hd then None else reduce_coercions c (add_args hd args)
+  else
+    (* If the term is not a coercion, simplify subterms. *)
+    let reduce_coercions_binder b =
+      let x, b = Bindlib.unbind b in
+      let* b = reduce_coercions c b in
+      return (Bindlib.(unbox (bind_var x (Term.lift b))))
+    in
+    match unfold t with
+    | Patt _ | Wild | TEnv _ | TRef _ -> assert false
+    | Plac _
+    | Kind
+    | Type | Vari _ | Symb _ | Meta _ -> return t
+    | Appl (t, u) ->
+        let* t = reduce_coercions c t in let* u = reduce_coercions c u in
+        return (mk_Appl (t, u))
+    | Abst (a, b) ->
+        let* a = reduce_coercions c a in
+        let* b = reduce_coercions_binder b in
+        return (mk_Abst (a, b))
+    | Prod (a, b) ->
+        let* a = reduce_coercions c a in
+        let* b = reduce_coercions_binder b in
+        return (mk_Prod (a, b))
+    | LLet (a, e, b) ->
+        let* a = reduce_coercions c a in
+        let* e = reduce_coercions c e in
+        let* b = reduce_coercions_binder b in
+        return (mk_LLet (a, e, b))
+
+(** [coerce pb c t a b] coerces term [t] from type [a] to type [b] in context
+    [c] and problem [pb]. *)
+let rec coerce : problem -> octxt -> term -> term -> term -> term * bool =
+  fun pb c t a b ->
+  if Eval.pure_eq_modulo (classic c) a b then (t, false) else
+     match Coercion.apply a b t |> reduce_coercions c with
+     | None -> unif pb c a b; (t, false)
+     | Some u ->
+         if Logger.log_enabled () then
+           log "Coerced [%a : %a <: %a : %a]" term t term a term u term b;
+      (* Type check reduced again to replace holes *)
+         let u, _, _ = infer pb c u in
+         (u, true)
 
 (** {1 Other rules} *)
 
@@ -55,7 +113,7 @@ let coerce pb c t a b = unif pb c a b; (t, false)
 (** [type_enforce pb c a] returns a tuple [(a',s)] where [a'] is refined
     term [a] and [s] is a sort (Type or Kind) such that [a'] is of type
     [s]. *)
-let rec type_enforce : problem -> octxt -> term -> term * term * bool =
+and type_enforce : problem -> octxt -> term -> term * term * bool =
  fun pb c a ->
   if Logger.log_enabled () then log "Type enforce [%a]" term a;
   let a, s, cui = infer pb c a in

@@ -40,7 +40,7 @@
           <funapp><name>tests.OK.bool.bool_impl</name></funapp>
         </lhs>
         <rhs>
-          <lambda><var>84</var><type><basic>tests.OK.bool.B</basic></type><lambda><var>85</var><type><basic>tests.OK.bool.B</basic></type><funapp><name>tests.OK.bool.bool_or</name><arg><var>85</var></arg><arg><funapp><name>tests.OK.bool.bool_neg</name><arg><var>84</var></arg></funapp></arg></funapp></lambda></lambda>
+          <lambda><var>86</var><type><basic>tests.OK.bool.B</basic></type><lambda><var>87</var><type><basic>tests.OK.bool.B</basic></type><funapp><name>tests.OK.bool.bool_or</name><arg><var>87</var></arg><arg><funapp><name>tests.OK.bool.bool_neg</name><arg><var>86</var></arg></funapp></arg></funapp></lambda></lambda>
         </rhs>
       </rule>
       <rule>
@@ -96,7 +96,7 @@
           <funapp><name>tests.OK.bool.bool_xor</name></funapp>
         </lhs>
         <rhs>
-          <lambda><var>90</var><type><basic>tests.OK.bool.B</basic></type><lambda><var>91</var><type><basic>tests.OK.bool.B</basic></type><application><lambda><var>92</var><type><basic>tests.OK.bool.B</basic></type><application><lambda><var>93</var><type><basic>tests.OK.bool.B</basic></type><funapp><name>tests.OK.bool.bool_or</name><arg><var>92</var></arg><arg><var>93</var></arg></funapp></lambda><funapp><name>tests.OK.bool.bool_and</name><arg><var>91</var></arg><arg><funapp><name>tests.OK.bool.bool_neg</name><arg><var>90</var></arg></funapp></arg></funapp></application></lambda><funapp><name>tests.OK.bool.bool_and</name><arg><var>90</var></arg><arg><funapp><name>tests.OK.bool.bool_neg</name><arg><var>91</var></arg></funapp></arg></funapp></application></lambda></lambda>
+          <lambda><var>92</var><type><basic>tests.OK.bool.B</basic></type><lambda><var>93</var><type><basic>tests.OK.bool.B</basic></type><application><lambda><var>94</var><type><basic>tests.OK.bool.B</basic></type><application><lambda><var>95</var><type><basic>tests.OK.bool.B</basic></type><funapp><name>tests.OK.bool.bool_or</name><arg><var>94</var></arg><arg><var>95</var></arg></funapp></lambda><funapp><name>tests.OK.bool.bool_and</name><arg><var>93</var></arg><arg><funapp><name>tests.OK.bool.bool_neg</name><arg><var>92</var></arg></funapp></arg></funapp></application></lambda><funapp><name>tests.OK.bool.bool_and</name><arg><var>92</var></arg><arg><funapp><name>tests.OK.bool.bool_neg</name><arg><var>93</var></arg></funapp></arg></funapp></application></lambda></lambda>
         </rhs>
       </rule>
     </rules>

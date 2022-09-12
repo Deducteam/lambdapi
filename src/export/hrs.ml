@@ -131,7 +131,7 @@ let rules_of_sym : sym pp = fun ppf s ->
 
 (** Translate the rules of a dependency except if it is a ghost signature. *)
 let rules_of_sign : Sign.t pp = fun ppf sign ->
-  if sign != Unif_rule.sign then
+  if sign != Ghost.sign then
     StrMap.iter (fun _ -> rules_of_sym ppf) Timed.(!(sign.sign_symbols))
 
 (** [sign ppf s] translates the Lambdapi signature [s]. *)

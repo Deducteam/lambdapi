@@ -24,12 +24,12 @@ $7_0 : t
 $8_0 : t
 $9_0 : t
 $10_0 : t
-80 : t
-81 : t
 82 : t
 83 : t
 84 : t
 85 : t
+86 : t
+87 : t
 )
 (RULES
 A(L($x,$y),$z) -> $y($z),
@@ -38,12 +38,12 @@ A(A(tests_OK_bool_bool_and,$1_0),tests_OK_bool_false) -> tests_OK_bool_false,
 A(A(tests_OK_bool_bool_and,$2_0),tests_OK_bool_true) -> $2_0,
 A(A(tests_OK_bool_bool_and,tests_OK_bool_false),$3_0) -> tests_OK_bool_false,
 A(A(tests_OK_bool_bool_and,tests_OK_bool_true),$4_0) -> $4_0,
-tests_OK_bool_bool_impl -> L(tests_OK_bool_B,\80.L(tests_OK_bool_B,\81.A(A(tests_OK_bool_bool_or,81),A(tests_OK_bool_bool_neg,80)))),
+tests_OK_bool_bool_impl -> L(tests_OK_bool_B,\82.L(tests_OK_bool_B,\83.A(A(tests_OK_bool_bool_or,83),A(tests_OK_bool_bool_neg,82)))),
 A(tests_OK_bool_bool_neg,tests_OK_bool_false) -> tests_OK_bool_true,
 A(tests_OK_bool_bool_neg,tests_OK_bool_true) -> tests_OK_bool_false,
 A(A(tests_OK_bool_bool_or,$7_0),tests_OK_bool_false) -> $7_0,
 A(A(tests_OK_bool_bool_or,$8_0),tests_OK_bool_true) -> tests_OK_bool_true,
 A(A(tests_OK_bool_bool_or,tests_OK_bool_false),$9_0) -> $9_0,
 A(A(tests_OK_bool_bool_or,tests_OK_bool_true),$10_0) -> tests_OK_bool_true,
-tests_OK_bool_bool_xor -> L(tests_OK_bool_B,\82.L(tests_OK_bool_B,\83.B(tests_OK_bool_B,A(A(tests_OK_bool_bool_and,82),A(tests_OK_bool_bool_neg,83)),\84.B(tests_OK_bool_B,A(A(tests_OK_bool_bool_and,83),A(tests_OK_bool_bool_neg,82)),\85.A(A(tests_OK_bool_bool_or,84),85)))))
+tests_OK_bool_bool_xor -> L(tests_OK_bool_B,\84.L(tests_OK_bool_B,\85.B(tests_OK_bool_B,A(A(tests_OK_bool_bool_and,84),A(tests_OK_bool_bool_neg,85)),\86.B(tests_OK_bool_B,A(A(tests_OK_bool_bool_and,85),A(tests_OK_bool_bool_neg,84)),\87.A(A(tests_OK_bool_bool_or,86),87)))))
 )
