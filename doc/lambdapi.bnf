@@ -165,7 +165,7 @@ QID ::= [UID "."]+ UID
              | "prefix" <float_or_nat>
              | "quantifier"
 
-<float_or_nat> ::= <nat>
-                 | <float>
+<float_or_nat> ::= <float>
+                 | <nat>
 
 
