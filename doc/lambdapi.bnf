@@ -24,11 +24,11 @@ QID ::= [UID "."]+ UID
               <inductive>)* ";"
             | "rule" <rule> ("with" <rule>)* ";"
             | "builtin" <stringlit> "≔" <qid_or_nat> ";"
-            | "coerce_rule" <rule> ";"
+            | COERCE_"rule" <rule> ";"
             | "unif_rule" <unif_rule> ";"
             | "notation" <qid_or_nat> <notation> ";"
             | <query> ";"
-
+            
 
 <query> ::= <assert> <param_list>* "⊢" <term> ":" <term>
           | <assert> <param_list>* "⊢" <term> "≡" <term>
@@ -160,12 +160,12 @@ QID ::= [UID "."]+ UID
 
 <equation> ::= <term> "≡" <term>
 
-<notation> ::= "infix" [<side>] <float_or_nat>
-             | "postfix" <float_or_nat>
-             | "prefix" <float_or_nat>
+<notation> ::= "infix" [<side>] <nat_or_float>
+             | "postfix" <nat_or_float>
+             | "prefix" <nat_or_float>
              | "quantifier"
 
-<float_or_nat> ::= <float>
-                 | <nat>
+<nat_or_float> ::= <nat>
+                 | <float>
 
 

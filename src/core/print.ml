@@ -19,7 +19,7 @@ let log_prnt = log_prnt.pp
 let sig_state : sig_state ref = ref Sig_state.dummy
 
 (** [notation_of s] returns the notation of symbol [s] or [None]. *)
-let notation_of : sym -> Sign.notation option = fun s ->
+let notation_of : sym -> float Sign.notation option = fun s ->
   SymMap.find_opt s !sig_state.notations
 
 (** Flag for printing the domains of λ-abstractions. *)
@@ -42,7 +42,7 @@ let assoc : Pratter.associativity pp = fun ppf assoc ->
   | Left -> out ppf " left associative"
   | Right -> out ppf " right associative"
 
-let notation : Sign.notation pp = fun ppf notation ->
+let notation : float Sign.notation pp = fun ppf notation ->
   match notation with
   | Prefix(p) -> out ppf "prefix %f" p
   | Infix(a,p) -> out ppf "infix%a %f" assoc a p

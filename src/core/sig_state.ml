@@ -29,7 +29,7 @@ type sig_state =
   ; alias_path: Path.t StrMap.t           (** Alias to path map. *)
   ; path_alias: string Path.Map.t         (** Path to alias map. *)
   ; builtins  : sym StrMap.t              (** Builtins. *)
-  ; notations : notation SymMap.t         (** Notations. *)
+  ; notations : float notation SymMap.t   (** Notations. *)
   ; open_paths : Path.Set.t               (** Open modules. *) }
 
 type t = sig_state
@@ -60,7 +60,8 @@ let add_symbol : sig_state -> expo -> prop -> match_strat
   {ss with in_scope}, sym
 
 (** [add_notation ss s n] maps [s] notation to [n] in [ss]. *)
-let add_notation : sig_state -> sym -> notation -> sig_state = fun ss s n ->
+let add_notation : sig_state -> sym -> float notation -> sig_state =
+  fun ss s n ->
   if s.sym_path = ss.signature.sign_path then
     Sign.add_notation ss.signature s n;
   {ss with notations = SymMap.add s n ss.notations}
@@ -82,7 +83,7 @@ let add_builtin : sig_state -> string -> sym -> sig_state =
 (** [add_notations_from_builtins notmap bm] add notations for symbols mapped
    to the builtins "0" and "+1". *)
 let add_notations_from_builtins :
-      sym StrMap.t -> notation SymMap.t -> notation SymMap.t =
+      sym StrMap.t -> float notation SymMap.t -> float notation SymMap.t =
   let f builtin sym notmap =
     match builtin with
     | "0" -> SymMap.add sym Zero notmap
