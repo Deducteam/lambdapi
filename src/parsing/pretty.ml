@@ -152,7 +152,7 @@ let rec term : p_term pp = fun ppf t ->
     | (P_LLet(x,xs,a,t,u)  , `Func) ->
         out ppf "@[@[<hv2>let @[<2>%a%a%a@] ≔@ %a@ @]in@ %a@]"
           ident x params_list xs typ a func t func u
-    | (P_NLit(i)           , _    ) -> out ppf "%i" i
+    | (P_NLit(i)           , _    ) -> out ppf "%s" i
     | (P_Wrap(t)           , _    ) -> out ppf "(@[<hv2>%a@])" func t
     | (P_Expl(t)           , _    ) -> out ppf "[@[<hv2>%a@]]" func t
     | (_                   , _    ) -> out ppf "(@[<hv2>%a@])" func t
@@ -251,11 +251,11 @@ let query : p_query pp = fun ppf { elt; _ } ->
   | P_query_infer(t, _) -> out ppf "type %a" term t
   | P_query_normalize(t, _) -> out ppf "compute %a" term t
   | P_query_prover s -> out ppf "prover \"%s\"" s
-  | P_query_prover_timeout n -> out ppf "prover_timeout %d" n
+  | P_query_prover_timeout n -> out ppf "prover_timeout %s" n
   | P_query_print None -> out ppf "print"
   | P_query_print(Some qid) -> out ppf "print %a" qident qid
   | P_query_proofterm -> out ppf "proofterm"
-  | P_query_verbose i -> out ppf "verbose %i" i
+  | P_query_verbose i -> out ppf "verbose %s" i
 
 let tactic : p_tactic pp = fun ppf { elt;  _ } ->
   begin match elt with
@@ -290,10 +290,10 @@ let side : Pratter.associativity pp = fun ppf a ->
            | Pratter.Left -> " left"
            | Pratter.Right -> " right")
 
-let notation : Sign.notation pp = fun ppf -> function
-  | Infix (a, p) -> out ppf "infix%a %f" side a p
-  | Prefix p -> out ppf "prefix %f" p
-  | Postfix p -> out ppf "postfix %f" p
+let notation : string Sign.notation pp = fun ppf -> function
+  | Infix (a, p) -> out ppf "infix%a %s" side a p
+  | Prefix p -> out ppf "prefix %s" p
+  | Postfix p -> out ppf "postfix %s" p
   | Quant -> out ppf "quantifier"
   | Zero | Succ -> ()
 

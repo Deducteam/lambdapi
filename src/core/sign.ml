@@ -17,10 +17,10 @@ type ind_data =
 type priority = float
 
 (** Notations. *)
-type notation =
-  | Prefix of priority
-  | Postfix of priority
-  | Infix of Pratter.associativity * priority
+type 'a notation =
+  | Prefix of 'a
+  | Postfix of 'a
+  | Infix of Pratter.associativity * 'a
   | Zero
   | Succ
   | Quant
@@ -33,7 +33,7 @@ type t =
   ; sign_deps     : rule list StrMap.t Path.Map.t ref
   (** Maps a path to a list of pairs (symbol name, rule). *)
   ; sign_builtins : sym StrMap.t ref
-  ; sign_notations: notation SymMap.t ref
+  ; sign_notations: float notation SymMap.t ref
   (** Maps symbols to their notation if they have some. *)
   ; sign_ind      : ind_data SymMap.t ref
   ; sign_cp_pos   : cp_pos list SymMap.t ref
@@ -346,7 +346,7 @@ let add_builtin : t -> string -> sym -> unit = fun sign s sym ->
   | _ -> ()
 
 (** [add_notation sign s n] sets notation of [s] to [n] in [sign]. *)
-let add_notation : t -> sym -> notation -> unit = fun sign s n ->
+let add_notation : t -> sym -> float notation -> unit = fun sign s n ->
   sign.sign_notations := SymMap.add s n !(sign.sign_notations)
 
 (** [add_inductive sign ind_sym ind_cons ind_prop ind_prop_args] add to [sign]
