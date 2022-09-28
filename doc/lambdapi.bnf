@@ -28,7 +28,7 @@ QID ::= [UID "."]+ UID
             | "unif_rule" <unif_rule> ";"
             | "notation" <qid_or_nat> <notation> ";"
             | <query> ";"
-
+            
 
 <query> ::= <assert> <param_list>* "⊢" <term> ":" <term>
           | <assert> <param_list>* "⊢" <term> "≡" <term>

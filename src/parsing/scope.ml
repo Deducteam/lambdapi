@@ -312,22 +312,21 @@ and scope_head :
 
   | (P_Iden(qid,_), _) -> scope_iden md ss env qid
 
-  | (P_NLit(0), _) ->
-    begin match Builtin.get_opt ss "0" with
-      | Some s -> _Symb s
-      | None -> scope_iden md ss env {t with elt=([],"0")}
-    end
-  | (P_NLit(n), _) ->
-    begin match Builtin.get_opt ss "0" with
-      | None -> scope_iden md ss env {t with elt=([], string_of_int n)}
+  | (P_NLit(s), _) ->
+    begin
+      let n = try int_of_string s with Failure _ ->
+        fatal t.pos "Too big number (max is %d)." max_int
+      in
+      match Builtin.get_opt ss "0" with
+      | None -> scope_iden md ss env {t with elt=([],s)}
       | Some sym_z ->
         match Builtin.get_opt ss "+1" with
+        | None -> scope_iden md ss env {t with elt=([],s)}
         | Some sym_s ->
           let z = _Symb sym_z and s = _Symb sym_s in
           let rec unsugar_nat_lit acc n =
             if n <= 0 then acc else unsugar_nat_lit (_Appl s acc) (n-1) in
           unsugar_nat_lit z n
-        | None -> scope_iden md ss env {t with elt=([], string_of_int n)}
     end
 
   | (P_Wild, M_URHS(data)) ->
@@ -601,6 +600,8 @@ let scope_rule : bool -> sig_state -> p_rule -> pre_rule loc =
     fatal p_lhs.pos
       "Symbol %s has been declared constant, it cannot be used as the \
        head of a rewrite rule LHS." pr_sym.sym_name;
+  if Timed.(!(pr_sym.sym_def)) <> None then
+    fatal p_lhs.pos "No rewriting rule can be given on a defined symbol.";
   if pr_sym.sym_expo = Protec
     && ss.signature.sign_path <> pr_sym.sym_path then
     fatal p_lhs.pos "Cannot define rules on foreign protected symbols.";

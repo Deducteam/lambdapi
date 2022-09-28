@@ -82,7 +82,7 @@
 
 %token <bool * string> DEBUG_FLAGS
 %token <string> NAT
-%token <float> FLOAT
+%token <string> FLOAT
 %token <Pratter.associativity> SIDE
 %token <string> STRINGLIT
 %token <bool> SWITCH
@@ -182,8 +182,8 @@ query:
   | FLAG s=STRINGLIT b=SWITCH { make_pos $sloc (P_query_flag(s,b)) }
   | PROVER s=STRINGLIT { make_pos $sloc (P_query_prover(s)) }
   | PROVER_TIMEOUT n=NAT
-    { make_pos $sloc (P_query_prover_timeout(int_of_string n)) }
-  | VERBOSE n=NAT { make_pos $sloc (P_query_verbose(int_of_string n)) }
+    { make_pos $sloc (P_query_prover_timeout n) }
+  | VERBOSE n=NAT { make_pos $sloc (P_query_verbose n) }
   | TYPE_QUERY t=term
     { make_pos $sloc (P_query_infer(t, {strategy=NONE; steps=None}))}
 
@@ -256,7 +256,7 @@ aterm:
       make_pos $sloc (P_Patt(i, Option.map Array.of_list e)) }
   | L_PAREN t=term R_PAREN { make_pos $sloc (P_Wrap(t)) }
   | L_SQ_BRACKET t=term R_SQ_BRACKET { make_pos $sloc (P_Expl(t)) }
-  | n=NAT { make_pos $sloc (P_NLit(int_of_string n)) }
+  | n=NAT { make_pos $sloc (P_NLit n) }
 
 env: DOT L_SQ_BRACKET ts=separated_list(SEMICOLON, term) R_SQ_BRACKET { ts }
 
@@ -369,7 +369,7 @@ notation:
   | QUANTIFIER { Sign.Quant }
 
 float_or_nat:
-  | p=FLOAT { p }
-  | n=NAT   { float_of_int (int_of_string n) }
+  | s=FLOAT { s }
+  | s=NAT { s }
 
 %%

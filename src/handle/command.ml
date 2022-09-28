@@ -243,6 +243,22 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
       and real = Tactic.count_products [] !(s.sym_type) in
       if real < expected then
         fatal pos "Notation incompatible with the type of %a" sym s;
+      (* Convert strings into floats. *)
+      let priority s =
+        try
+          if String.contains s '.' then float_of_string s
+          else float_of_int (int_of_string s)
+        with Failure _ -> fatal pos "Too big number (max is %d)" max_int
+      in
+      let n =
+        match n with
+        | Prefix s -> Prefix (priority s)
+        | Postfix s -> Postfix (priority s)
+        | Infix(a,s) -> Infix(a, priority s)
+        | Zero -> Zero
+        | Succ -> Succ
+        | Quant -> Quant
+      in
       Console.out 2 "notation %a %a" sym s notation n;
       (add_notation ss s n, None, None)
   | P_unif_rule(h) ->
