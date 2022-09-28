@@ -24,7 +24,7 @@ QID ::= [UID "."]+ UID
               <inductive>)* ";"
             | "rule" <rule> ("with" <rule>)* ";"
             | "builtin" <stringlit> "≔" <qid_or_nat> ";"
-            | COERCE_"rule" <rule> ";"
+            | "coerce_rule" <rule> ";"
             | "unif_rule" <unif_rule> ";"
             | "notation" <qid_or_nat> <notation> ";"
             | <query> ";"
