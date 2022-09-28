@@ -49,7 +49,7 @@ and p_term_aux =
   | P_Prod of p_params list * p_term (** Product. *)
   | P_LLet of p_ident * p_params list * p_term option * p_term * p_term
     (** Let. *)
-  | P_NLit of int (** Natural number literal. *)
+  | P_NLit of string (** Natural number literal. *)
   | P_Wrap of p_term (** Term between parentheses. *)
   | P_Expl of p_term (** Term between curly brackets. *)
 
@@ -164,7 +164,7 @@ type p_assertion =
 
 (** Parser-level representation of a query command. *)
 type p_query_aux =
-  | P_query_verbose of int
+  | P_query_verbose of string
   (** Sets the verbosity level. *)
   | P_query_debug of bool * string
   (** Toggles logging functions described by string according to boolean. *)
@@ -178,7 +178,7 @@ type p_query_aux =
   (** Normalisation command. *)
   | P_query_prover of string
   (** Set the prover to use inside a proof. *)
-  | P_query_prover_timeout of int
+  | P_query_prover_timeout of string
   (** Set the timeout of the prover (in seconds). *)
   | P_query_print of p_qident option
   (** Print information about a symbol or the current goals. *)
@@ -262,7 +262,7 @@ type p_command_aux =
   | P_rules of p_rule list
   | P_inductive of p_modifier list * p_params list * p_inductive list
   | P_builtin of string * p_qident
-  | P_notation of p_qident * Sign.notation
+  | P_notation of p_qident * string Sign.notation
   | P_unif_rule of p_rule
   | P_coercion of p_rule
   | P_query of p_query
