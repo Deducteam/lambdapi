@@ -160,12 +160,12 @@ QID ::= [UID "."]+ UID
 
 <equation> ::= <term> "≡" <term>
 
-<notation> ::= "infix" [<side>] <nat_or_float>
-             | "postfix" <nat_or_float>
-             | "prefix" <nat_or_float>
+<notation> ::= "infix" [<side>] <float_or_nat>
+             | "postfix" <float_or_nat>
+             | "prefix" <float_or_nat>
              | "quantifier"
 
-<nat_or_float> ::= <nat>
+<float_or_nat> ::= <nat>
                  | <float>
 
 

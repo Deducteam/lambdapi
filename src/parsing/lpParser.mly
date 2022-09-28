@@ -362,14 +362,14 @@ unif_rule: e=equation HOOK_ARROW
 equation: l=term EQUIV r=term { (l, r) }
 
 notation:
-  | INFIX a=SIDE? p=nat_or_float
+  | INFIX a=SIDE? p=float_or_nat
     { Sign.Infix(Option.get Pratter.Neither a, p) }
-  | POSTFIX p=nat_or_float { Sign.Postfix(p) }
-  | PREFIX p=nat_or_float { Sign.Prefix(p) }
+  | POSTFIX p=float_or_nat { Sign.Postfix(p) }
+  | PREFIX p=float_or_nat { Sign.Prefix(p) }
   | QUANTIFIER { Sign.Quant }
 
-nat_or_float:
-  | s=NAT { s }
+float_or_nat:
   | s=FLOAT { s }
+  | s=NAT { s }
 
 %%
