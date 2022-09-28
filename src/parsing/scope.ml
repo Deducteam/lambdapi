@@ -32,18 +32,6 @@ let find_qid : bool -> bool -> sig_state -> env -> p_qident -> tbox =
     (* Check for symbols. *)
     _Symb (find_sym ~prt ~prv ss qid)
 
-(** [get_root ss env t] returns the symbol at the root of the term [t]. *)
-let get_root : sig_state -> Env.t -> p_term -> sym = fun ss env t ->
-  let rec get_root t =
-    match t.elt with
-    | P_Iden(qid,_) -> find_sym ~prt:true ~prv:true ss qid
-    | P_Appl(t, _)  -> get_root t
-    | P_Wrap(t)     -> get_root (Pratt.parse ss env t)
-    | _             -> assert false
-  in
-  (* Pratt parse to order terms correctly. *)
-  get_root (Pratt.parse ss env t)
-
 (** Representation of the different scoping modes.  Note that the constructors
     hold specific information for the given mode. *)
 type lhs_data =
@@ -596,10 +584,30 @@ let scope_rule : bool -> sig_state -> p_rule -> pre_rule loc =
     with Not_found -> ()
   in
   List.iter check_arity pvs_rhs;
+  (* [get_root t] returns the symbol at the root of the p_term [t]. *)
+  let rec get_root t = get_root_after_pratt (Pratt.parse ss [] t)
+  and get_root_after_pratt t =
+    match t.elt with
+    | P_Iden(qid,_) -> find_sym ~prt:true ~prv:true ss qid
+    | P_Appl(t, _) -> get_root_after_pratt t
+    | P_Wrap(t) -> get_root t
+    | _ ->
+      fatal p_lhs.pos "Rule left hand-side not headed by a function symbol."
+  in
+  (* Check that the LHS is headed by a function symbol that is definable and
+     not protected. *)
+  let pr_sym = get_root p_lhs in
+  if is_constant pr_sym then
+    fatal p_lhs.pos
+      "Symbol %s has been declared constant, it cannot be used as the \
+       head of a rewrite rule LHS." pr_sym.sym_name;
+  if pr_sym.sym_expo = Protec
+    && ss.signature.sign_path <> pr_sym.sym_path then
+    fatal p_lhs.pos "Cannot define rules on foreign protected symbols.";
   (* Scope the LHS and get the reserved index for named pattern variables. *)
   let (pr_lhs, lhs_indices, lhs_arities, pr_names, lhs_size) =
     let mode =
-      M_LHS{ m_lhs_prv     = is_private (get_root ss [] p_lhs)
+      M_LHS{ m_lhs_prv     = is_private pr_sym
            ; m_lhs_indices = Hashtbl.create 7
            ; m_lhs_arities = Hashtbl.create 7
            ; m_lhs_names   = Hashtbl.create 7
@@ -609,24 +617,9 @@ let scope_rule : bool -> sig_state -> p_rule -> pre_rule loc =
     let pr_lhs = scope 0 mode ss Env.empty p_lhs in
     match mode with
     | M_LHS{ m_lhs_indices; m_lhs_names; m_lhs_size; m_lhs_arities; _} ->
-        (Bindlib.unbox pr_lhs, m_lhs_indices, m_lhs_arities, m_lhs_names,
-         m_lhs_size)
-    | _                                                  -> assert false
-  in
-  (* Check the head symbol and build the actual LHS. *)
-  let (pr_sym, pr_lhs) =
-    let (h, args) = get_args pr_lhs in
-    match h with
-    | Symb(s) ->
-        if is_constant s then
-          fatal p_lhs.pos
-            "Symbol %s has been declared constant, it cannot be used as the \
-            head of a rewrite rule LHS."
-            s.sym_name;
-        if s.sym_expo = Protec && ss.signature.sign_path <> s.sym_path then
-          fatal p_lhs.pos "Cannot define rules on foreign protected symbols.";
-        (s, args)
-    | _ -> fatal p_lhs.pos "No head symbol in LHS."
+      let pr_lhs = snd (get_args (Bindlib.unbox pr_lhs)) in
+      (pr_lhs, m_lhs_indices, m_lhs_arities, m_lhs_names, m_lhs_size)
+    | _ -> assert false
   in
   (* Create the pattern variables that can be bound in the RHS. *)
   let pr_vars =
