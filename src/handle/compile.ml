@@ -50,7 +50,7 @@ let rec compile_with :
     begin
       let forced = if force then " (forced)" else "" in
       let src = src () in
-      Console.out 1 "Loading \"%s\"%s ..." src forced;
+      Console.out 1 "Checking \"%s\"%s ..." src forced;
       loading := mp :: !loading;
       let sign = Sig_state.create_sign mp in
       let sig_st = Stdlib.ref (Sig_state.of_sign sign) in
@@ -63,13 +63,15 @@ let rec compile_with :
       in
       Debug.stream_iter consume (Parser.parse_file src);
       Sign.strip_private sign;
-      if Stdlib.(!gen_obj) then Sign.write sign obj;
+      if Stdlib.(!gen_obj) then begin
+        Console.out 1 "Writing \"%s\" ..." obj; Sign.write sign obj
+      end;
       loading := List.tl !loading;
       sign
     end
     else
     begin
-      Console.out 1 "Loading \"%s\" ..." (src ());
+      Console.out 1 "Loadding \"%s\" ..." obj;
       let sign = Sign.read obj in
       let compile mp _ = ignore (compile_with ~handle ~force:false mp) in
       Path.Map.iter compile !(sign.sign_deps);
