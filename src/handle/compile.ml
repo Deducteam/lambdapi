@@ -23,8 +23,6 @@ let rec compile_with :
   if mp = Ghost.path then Ghost.sign else
   let base = file_of_path mp in
   let src =
-    (* Searching for source is delayed because we may not need it
-       in case of "ghost" signatures (such as for unification rules). *)
     let lp_src = base ^ lp_src_extension in
     let dk_src = base ^ dk_src_extension in
     match (Sys.file_exists lp_src, Sys.file_exists dk_src) with
