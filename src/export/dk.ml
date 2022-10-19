@@ -117,7 +117,10 @@ let cmp : decl cmp = cmp_map (Lplib.Option.cmp Pos.cmp) pos_of_decl
 (** Translation of terms. *)
 
 let tvar : tvar pp = fun ppf v -> ident ppf (Bindlib.name_of v)
-let tevar : tevar pp = fun ppf v -> ident ppf (Bindlib.name_of v)
+
+(*FIXME: possible clash with symbol names*)
+let tevar : tevar pp = fun ppf v -> out ppf "_%a" ident (Bindlib.name_of v)
+let patt : string pp = fun ppf v -> out ppf "_%s" v
 
 let tenv : term_env pp = fun ppf te ->
   match te with
@@ -146,9 +149,9 @@ let rec term : bool -> term pp = fun b ppf t ->
   | LLet(a,t,u) ->
     let x,u = Bindlib.unbind u in
     out ppf "((%a : %a := %a) => %a)" tvar x (term b) a (term b) t (term b) u
-  | Patt(_,s,[||]) -> ident ppf s
+  | Patt(_,s,[||]) -> patt ppf s
   | Patt(_,s,ts) ->
-    out ppf "(%a%a)" ident s (Array.pp (prefix " " (term b)) "") ts
+    out ppf "(%a%a)" patt s (Array.pp (prefix " " (term b)) "") ts
   | TEnv(te, [||]) -> tenv ppf te
   | TEnv(te, ts) ->
     out ppf "(%a%a)" tenv te (Array.pp (prefix " " (term b)) "") ts
