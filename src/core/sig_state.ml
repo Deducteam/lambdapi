@@ -72,25 +72,14 @@ let add_builtin : sig_state -> string -> sym -> sig_state =
   fun ss builtin sym ->
   Sign.add_builtin ss.signature builtin sym;
   let builtins = StrMap.add builtin sym ss.builtins in
-  let notations =
-    match builtin with
-    | "0"  -> SymMap.add sym Zero ss.notations
-    | "+1" -> SymMap.add sym Succ ss.notations
-    | _    -> ss.notations
-  in
+  let notations = Sign.add_notation_from_builtin builtin sym ss.notations in
   {ss with builtins; notations}
 
 (** [add_notations_from_builtins notmap bm] add notations for symbols mapped
    to the builtins "0" and "+1". *)
 let add_notations_from_builtins :
       sym StrMap.t -> float notation SymMap.t -> float notation SymMap.t =
-  let f builtin sym notmap =
-    match builtin with
-    | "0" -> SymMap.add sym Zero notmap
-    | "+1" -> SymMap.add sym Succ notmap
-    | _ -> notmap
-  in
-  StrMap.fold f
+  StrMap.fold Sign.add_notation_from_builtin
 
 (** [open_sign ss sign] extends the signature state [ss] with every symbol of
    the signature [sign]. This has the effect of putting these symbols in the

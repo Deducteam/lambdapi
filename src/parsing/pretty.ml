@@ -290,12 +290,13 @@ let side : Pratter.associativity pp = fun ppf a ->
            | Pratter.Left -> " left"
            | Pratter.Right -> " right")
 
-let notation : string Sign.notation pp = fun ppf -> function
+let rec notation : string Sign.notation pp = fun ppf -> function
   | Infix (a, p) -> out ppf "infix%a %s" side a p
   | Prefix p -> out ppf "prefix %s" p
   | Postfix p -> out ppf "postfix %s" p
   | Quant -> out ppf "quantifier"
-  | Zero | Succ -> ()
+  | Succ(Some n) -> notation ppf n
+  | Zero | Succ None -> ()
 
 let rec subproof : p_subproof pp = fun ppf sp ->
   out ppf "{@[<hv2>@ %a@ @]}" proofsteps sp

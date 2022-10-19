@@ -48,7 +48,7 @@ let notation : float Sign.notation pp = fun ppf notation ->
   | Infix(a,p) -> out ppf "infix%a %f" assoc a p
   | Postfix(p) -> out ppf "postfix %f" p
   | Zero -> out ppf "builtin \"0\""
-  | Succ -> out ppf "builtin \"+1\""
+  | Succ _ -> out ppf "builtin \"+1\""
   | Quant -> out ppf "quantifier"
 
 let uid : string pp = string
@@ -139,6 +139,7 @@ and term : term pp = fun ppf t ->
   and func ppf t = pp `Func ppf t
   and pp p ppf t =
     let (h, args) = get_args t in
+    (* standard application *)
     let pp_appl h args =
       match args with
       | []   -> head (p <> `Func) ppf h
@@ -147,6 +148,20 @@ and term : term pp = fun ppf t ->
           head true ppf h;
           List.iter (out ppf " %a" atom) args;
           if p = `Atom then out ppf ")"
+    in
+    (* postfix symbol application *)
+    let postfix h s args =
+      match args with
+      | l::args ->
+        (* Can be improved by looking at symbol priority. *)
+        if p <> `Func then out ppf "(";
+        if args = []
+        then out ppf "%a %a" appl l sym s
+        else out ppf "(%a %a)" appl l sym s;
+        List.iter (out ppf " %a" appl) args;
+        if p <> `Func then out ppf ")"
+      | [] ->
+        out ppf "("; head true ppf h; out ppf ")"
     in
     match h with
     | Symb(s) ->
@@ -158,20 +173,7 @@ and term : term pp = fun ppf t ->
               if p <> `Func then out ppf "(";
               quantifier s args;
               if p <> `Func then out ppf ")"
-          | Some (Postfix _) ->
-              begin
-                match args with
-                | l::args ->
-                    if p <> `Func then out ppf "(";
-                    (* Can be improved by looking at symbol priority. *)
-                    if args = []
-                    then out ppf "%a %a" appl l sym s
-                    else out ppf "(%a %a)" appl l sym s;
-                    List.iter (out ppf " %a" appl) args;
-                    if p <> `Func then out ppf ")"
-                | [] ->
-                  out ppf "("; head true ppf h; out ppf ")"
-              end
+          | Some (Postfix _) -> postfix h s args
           | Some (Infix _) ->
               begin
                 match args with
@@ -192,7 +194,10 @@ and term : term pp = fun ppf t ->
                   if p = `Atom then out ppf ")"
               end
           | Some Zero -> out ppf "0"
-          | Some Succ ->
+          | Some (Succ (Some (Postfix _))) ->
+              (try out ppf "%i" (nat_of_term t)
+               with Not_a_nat -> postfix h s args)
+          | Some (Succ _) ->
               (try out ppf "%i" (nat_of_term t)
                with Not_a_nat -> pp_appl h args)
           | _ -> pp_appl h args

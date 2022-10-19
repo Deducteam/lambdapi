@@ -39,10 +39,11 @@ end = struct
           in
           (match Term.SymMap.find_opt sym tbl.notations with
           | Some(Infix(assoc, prio)) -> Some(Pratter.Infix assoc, prio)
-          | Some(Prefix(prio)) -> Some(Pratter.Prefix, prio)
-          | Some(Postfix(prio)) -> Some(Pratter.Postfix, prio)
-          | Some (Zero | Succ | Quant) -> None
-          | None -> None)
+          | Some(Prefix(prio)) | Some(Succ(Some(Prefix(prio)))) ->
+            Some(Pratter.Prefix, prio)
+          | Some(Postfix(prio)) | Some(Succ(Some(Postfix(prio)))) ->
+            Some(Pratter.Postfix, prio)
+          | Some (Zero | Succ _ | Quant) | None -> None)
       | _ -> None
 
     let make_appl t u = Pos.make (Pos.cat t.pos u.pos) (P_Appl(t, u))
