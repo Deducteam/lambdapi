@@ -1,5 +1,4 @@
-require open tests.OK.for_set tests.OK.for_prop tests.OK.for_eq
-  tests.OK.for_bool;
+require open tests.OK.Set tests.OK.Prop tests.OK.Eq tests.OK.Bool;
 
 inductive ℕ : TYPE ≔
 | 0 : ℕ

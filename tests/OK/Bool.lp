@@ -1,4 +1,4 @@
-require open tests.OK.for_set tests.OK.for_prop;
+require open tests.OK.Set tests.OK.Prop;
 
 inductive 𝔹 : TYPE ≔ // `dB or \BbbB
 | true : 𝔹

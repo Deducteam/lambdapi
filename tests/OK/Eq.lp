@@ -1,4 +1,4 @@
-require open tests.OK.for_prop tests.OK.for_set;
+require open tests.OK.Prop tests.OK.Set;
 
 constant symbol = [a] : τ a → τ a → Prop;
 
