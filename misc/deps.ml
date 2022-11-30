@@ -1,5 +1,5 @@
 (** Simple (and very naive) tool to generate all the #REQUIRE statements for a
-    given legacy syntax file.
+    given dk syntax file.
 
     Example use: "ocaml deps.ml file.dk modname", where "modname" simply gives
     the module name corresponding to "file.dk" (in this case, "file"). This is

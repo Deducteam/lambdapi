@@ -48,8 +48,8 @@ let rec mark_close_stag old = function
   | stag -> old stag
 
 let update_with_color fmt =
-  if Stdlib.(!color) then begin
-    Format.pp_set_tags fmt true;
+  if Stdlib.(!color) <> Format.pp_get_mark_tags fmt () then begin
+    Format.pp_set_tags fmt Stdlib.(!color);
     let old_stag_functions = Format.pp_get_formatter_stag_functions fmt () in
     let mark_open_stag = mark_open_stag old_stag_functions.mark_open_stag
     and mark_close_stag = mark_close_stag old_stag_functions.mark_close_stag
@@ -63,7 +63,7 @@ let colorize k format =
     ("@{<" ^ string_of_color k ^ ">" ^ string_of_format format ^ "@}")
   format
 
-let pp_color p_col printer fmt =
+let pp p_col printer fmt =
   update_with_color fmt;
   let a : _ format = "%a" in
   Format.fprintf fmt (p_col a) printer

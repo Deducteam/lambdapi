@@ -1,19 +1,20 @@
-(** Term representation.
+(** Internal representation of terms.
 
-    This module contains the definition of the core abstract syntax tree (AST)
-    of the language, together with smart constructors and low level operation.
-    The representation strongly relies on the {!module:Bindlib} library, which
-    provides a convenient abstraction to work with binders.
+   This module contains the definition of the internal representation of
+   terms, together with smart constructors and low level operation. The
+   representation strongly relies on the {!module:Bindlib} library, which
+   provides a convenient abstraction to work with binders.
 
     @see <https://rlepigre.github.io/ocaml-bindlib/> *)
 
 open Timed
-open Lplib.Base
+open Lplib open Base
+open Common
 
 (** {3 Term (and symbol) representation} *)
 
 (** Representation of a possibly qualified identifier. *)
-type qident = Common.Path.t * string
+type qident = Path.t * string
 
 (** Pattern-matching strategy modifiers. *)
 type match_strat =
@@ -56,7 +57,10 @@ type term = private
   (** Pattern variable application (only used in rewriting rules LHS). *)
   | TEnv of term_env * term array
   (** Term environment (only used in rewriting rules RHS). *)
-  | Wild (** Wildcard (only used for surface matching, never in a LHS). *)
+  | Wild (** Wildcard (only used for surface matching, never in LHS). *)
+  | Plac of bool
+  (** [Plac b] is a placeholder, or hole, for not given terms. Boolean
+      [b] is true if the placeholder stands for a type. *)
   | TRef of term option ref (** Reference cell (used in surface matching). *)
   | LLet of term * term * tbinder
   (** [LLet(a, t, u)] is [let x : a ≔ t in u] (with [x] bound in [u]). *)
@@ -79,10 +83,10 @@ and dtree = (rhs * int) Tree_type.dtree
 
 (** Representation of a user-defined symbol. Symbols carry a "mode" indicating
     whether they may be given rewriting rules or a definition. Invariants must
-    be enforced for "mode" consistency (see {!type:sym_prop}).  *)
+    be enforced for "mode" consistency (see {!type:prop}).  *)
 and sym =
   { sym_expo  : expo (** Visibility. *)
-  ; sym_path  : Common.Path.t (** Module in which the symbol is defined. *)
+  ; sym_path  : Path.t (** Module in which the symbol is defined. *)
   ; sym_name  : string (** Name. *)
   ; sym_type  : term ref (** Type. *)
   ; sym_impl  : bool list (** Implicit arguments ([true] meaning implicit). *)
@@ -91,7 +95,8 @@ and sym =
   ; sym_opaq  : bool (** Opacity. *)
   ; sym_rules : rule list ref (** Rewriting rules. *)
   ; sym_mstrat: match_strat (** Matching strategy. *)
-  ; sym_dtree : dtree ref (** Decision tree used for matching. *) }
+  ; sym_dtree : dtree ref (** Decision tree used for matching. *)
+  ; sym_pos   : Pos.popt (** Position in source file. *) }
 
 (** {b NOTE} that {!field:sym_type} holds a (timed) reference for a  technical
     reason related to the writing of signatures as binary files  (in  relation
@@ -108,7 +113,7 @@ and sym =
 (** {b NOTE} the value of the {!field:sym_prop} field of symbols restricts the
     value of their {!field:sym_def} and {!field:sym_rules} fields. A symbol is
     not allowed to be given rewriting rules (or a definition) when its mode is
-    set to {!constructor:Constant}. Moreover, a symbol should not be given at
+    set to {!constructor:Const}. Moreover, a symbol should not be given at
     the same time a definition (i.e., {!field:sym_def} different from [None])
     and rewriting rules (i.e., {!field:sym_rules} is non-empty). *)
 
@@ -127,7 +132,8 @@ and sym =
   ; vars     : tevar array
   (** Bindlib variables used to build [rhs]. The last [xvars_nb] variables
       appear only in [rhs]. *)
-  ; xvars_nb : int (** Number of variables in [rhs] but not in [lhs]. *) }
+  ; xvars_nb : int (** Number of variables in [rhs] but not in [lhs]. *)
+  ; rule_pos : Pos.popt (** Position of the rule in the source file. *) }
 
 (** The LHS (or pattern) of a rewriting rule is always formed of a head symbol
     (on which the rule is defined) applied to a list of pattern arguments. The
@@ -174,11 +180,11 @@ and sym =
     that are constructed when matching the LHS of the rule. *)
 
 (** All variables of rewriting rules that appear in the RHS must appear in the
-    LHS. This constraint is checked in {!module:Sr}.In the case of unification
-    rules, we allow variables to appear only in the RHS.  In that case, these
-    variables are replaced by fresh meta-variables each time the rule is used.
-    The last  {!field:terms.rule.xvars} variables of  {!field:terms.rule.vars}
-    are such RHS-only variables. *)
+   LHS. This constraint is checked in {!module:Tool.Sr}.In the case of
+   unification rules, we allow variables to appear only in the RHS.  In that
+   case, these variables are replaced by fresh meta-variables each time the
+   rule is used.  The last {!field:Term.rule.xvars_nb} variables of
+   {!field:Term.rule.vars} are such RHS-only variables. *)
 
 (** Representation of a "term with environment", which intuitively corresponds
     to a term with bound variables (or a "higher-order" term) represented with
@@ -201,28 +207,27 @@ and sym =
     with the environment [env]. *)
 
 (** During evaluation, we only try to apply rewriting rules when we reduce the
-    application of a symbol [s] to a list of argument [ts]. At this point, the
-    symbol [s] contains  every rule [r] that can potentially be applied in its
-    {!field:sym_rules} field.  To check if a rule [r] applies,  we  match  the
-    elements of [r.lhs] with those of [ts] while building an environment [env]
-    of type {!type:term_env array}. During this process, a pattern of the form
-    {!constructor:Patt}[(Some i,s,e)] matched against a term [u] will  results
-    in [env.(i)] being set to [u]. If all terms of [ts] can be matched against
-    corresponding patterns, then environment [env] is fully constructed and it
-    can hence be substituted in [r.rhs] with [Bindlib.msubst r.rhs env] to get
-    the result of the application of the rule. *)
+   application of a symbol [s] to a list of argument [ts]. At this point, the
+   symbol [s] contains every rule [r] that can potentially be applied in its
+   {!field:sym_rules} field. To check if a rule [r] applies, we match the
+   elements of [r.lhs] with those of [ts] while building an environment [env]
+   of type [{!type:Term.term_env} array]. During this process, a pattern of
+   the form {!constructor:Patt}[(Some i,s,e)] matched against a term [u] will
+   results in [env.(i)] being set to [u]. If all terms of [ts] can be matched
+   against corresponding patterns, then environment [env] is fully constructed
+   and it can hence be substituted in [r.rhs] with [Bindlib.msubst r.rhs env]
+   to get the result of the application of the rule. *)
 
 (** {3 Metavariables and related functions} *)
 
-(** Representation of a metavariable,  which corresponds to a place-holder for
-    a (yet unknown) term which free variables are bound by an environment. The
-    substitution of the free variables with the environment is suspended until
-    the metavariable is instantiated (i.e., set to a particular term).  When a
-    metavariable [m] is instantiated,  the suspended substitution is  unlocked
-    and terms of the form {!constructor:Meta}[(m,env)] can be unfolded. *)
+(** Representation of a metavariable,  which corresponds to a yet unknown
+    term typable in some context. The substitution of the free variables
+    of the context is suspended until the metavariable is instantiated
+    (i.e., set to a particular term).  When a metavariable [m] is
+    instantiated,  the suspended substitution is  unlocked and terms of
+    the form {!constructor:Meta}[(m,env)] can be unfolded. *)
  and meta =
   { meta_key   : int (** Unique key. *)
-  ; meta_name  : string option (** Optional name. *)
   ; meta_type  : term ref (** Type. *)
   ; meta_arity : int (** Arity (environment size). *)
   ; meta_value : tmbinder option ref (** Definition. *) }
@@ -239,17 +244,25 @@ type tbox = term Bindlib.box
 
 type tebox = term_env Bindlib.box
 
-(** Minimize [impl] to enforce our invariant (see {!type:Terms.sym}). *)
+(** Minimize [impl] to enforce our invariant (see {!type:Term.sym}). *)
 val minimize_impl : bool list -> bool list
 
 (** Basic printing function (for debug). *)
-val pp_term : term pp
+module Raw : sig
+  val term : term pp
+end
 
 (** Typing context associating a [Bindlib] variable to a type and possibly a
-   definition. The typing environment [x1:A1,..,xn:An] is represented by the
-   list [xn:An;..;x1:A1] in reverse order (last added variable comes
-   first). *)
+    definition. The typing environment [x1:A1,..,xn:An] is represented by the
+    list [xn:An;..;x1:A1] in reverse order (last added variable comes
+    first). *)
 type ctxt = (tvar * term * term option) list
+
+(** Typing context with lifted terms. Used to optimise type checking and avoid
+    lifting terms several times. Definitions are not included because these
+    contexts are used to create meta variables types, which do not use [let]
+    definitions. *)
+type bctxt = (tvar * tbox) list
 
 (** Type of unification constraints. *)
 type constr = ctxt * term * term
@@ -281,11 +294,11 @@ module SymSet : Set.S with type elt = sym
 module SymMap : Map.S with type key = sym
 
 (** [create_sym path expo prop opaq name typ impl] creates a new symbol with
-   path [path], exposition [expo], property [prop], opacity [opaq], matching
-   strategy [mstrat], name [name], type [typ], implicit arguments [impl], no
-   definition and no rules. *)
-val create_sym : Common.Path.t -> expo -> prop -> match_strat -> bool ->
-  string -> term -> bool list -> sym
+   position [pos], path [path], exposition [expo], property [prop], opacity
+   [opaq], matching strategy [mstrat], name [name.elt], type [typ], implicit
+   arguments [impl], position [name.pos], no definition and no rules. *)
+val create_sym : Path.t -> expo -> prop -> match_strat -> bool ->
+  Pos.strloc -> term -> bool list -> sym
 
 (** [is_constant s] tells whether the symbol is a constant. *)
 val is_constant : sym -> bool
@@ -378,10 +391,11 @@ val mk_Meta : meta * term array -> term
 val mk_Patt : int option * string * term array -> term
 val mk_TEnv : term_env * term array -> term
 val mk_Wild : term
+val mk_Plac : bool -> term
 val mk_TRef : term option ref -> term
 val mk_LLet : term * term * tbinder -> term
 
-(** mk_Appl_not_canonical t u] builds the non-canonical (wrt. C and AC
+(** [mk_Appl_not_canonical t u] builds the non-canonical (wrt. C and AC
    symbols) application of [t] to [u]. WARNING: to use only in Sign.link. *)
 val mk_Appl_not_canonical : term * term -> term
 
@@ -458,6 +472,9 @@ val _TEnv : tebox -> tbox array -> tbox
 (** [_Wild] injects the constructor [Wild] into the {!type:tbox} type. *)
 val _Wild : tbox
 
+(** [_Plac] injects the constructor [Plac] into the {!type:tbox} type. *)
+val _Plac : bool -> tbox
+
 (** [_TRef r] injects the constructor [TRef(r)] into the {!type:tbox} type. It
     should be the case that [!r] is [None]. *)
 val _TRef : term option ref -> tbox
@@ -476,10 +493,38 @@ val _TE_None : tebox
     effect of gathering its free variables, making them available for binding.
     Bound variable names are automatically updated in the process. *)
 val lift : term -> tbox
+val lift_not_canonical : term -> tbox
 
-(** [cleanup t] builds a copy of the {!type:term} [t] where every instantiated
-   metavariable, instantiated term environment, and reference cell has been
-   eliminated using {!val:unfold}. Another effect of the function is that the
-   the names of bound variables are updated. This is useful to avoid any form
-   of "visual capture" while printing terms. *)
-val cleanup : term -> term
+(** [bind v lift t] creates a tbinder by binding [v] in [lift t]. *)
+val bind : tvar -> (term -> tbox) -> term -> tbinder
+val binds : tvar array -> (term -> tbox) -> term -> tmbinder
+
+(** [cleanup ~ctxt t] builds a copy of the {!type:term} [t] where every
+   instantiated metavariable, instantiated term environment, and reference
+   cell has been eliminated using {!val:unfold}. Another effect of the
+   function is that the names of bound variables are updated and taken away
+   from [ctxt]. This is useful to avoid any form of "visual capture" while
+   printing terms. *)
+val cleanup : ?ctxt:Bindlib.ctxt -> term -> term
+
+(** Positions in terms in reverse order. The i-th argument of a constructor
+   has position i-1. *)
+type subterm_pos = int list
+
+val subterm_pos : subterm_pos pp
+
+(** Type of critical pair positions (pos,l,r,p,l_p). *)
+type cp_pos = Pos.popt * term * term * subterm_pos * term
+
+(** [term_of_rhs r] converts the RHS (right hand side) of the rewriting rule
+    [r] into a term. The bound higher-order variables of the original RHS are
+    substituted using [Patt] constructors. They are thus represented as their
+    LHS counterparts. This is a more convenient way of representing terms when
+    analysing confluence or termination. *)
+val term_of_rhs : rule -> term
+
+(** Type of a symbol and a rule. *)
+type sym_rule = sym * rule
+
+val lhs : sym_rule -> term
+val rhs : sym_rule -> term

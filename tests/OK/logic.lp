@@ -47,7 +47,7 @@ rule nat_ind $p $u $v (s $n) ↪ $v $n (nat_ind $p $u $v $n);
 
 // Leibniz equality.
 
-constant symbol = {a} : T a → T a → Prop;
+constant symbol = [a] : T a → T a → Prop;
 notation = infix 1;
 
 constant symbol refl  : Π a (x:T a), P (x = x);
@@ -91,14 +91,14 @@ symbol imp_elim         : Π (p : Prop) (q : Prop), P (imp p q) → P p → P q;
 opaque symbol not_elimp : Π (A : Prop), P (not (not A)) → P A
 ≔ begin
     assume A nnp;
-    refine or_elim A (not A) A _ _ _;
-    refine excl_mid A;
-    assume pa;
-    refine pa;
-    assume pna;
+    refine or_elim A (not A) A _ _ _
+    {refine excl_mid A}
+    {assume pa;
+    refine pa}
+    {assume pna;
     apply bot_elim;
     apply not_elim (not A) nnp;
-    apply pna;
+    apply pna}
 end;
 
 builtin "P"     ≔ P;
@@ -113,3 +113,7 @@ builtin "imp"   ≔ imp;
 builtin "and"   ≔ {|and|};
 builtin "or"    ≔ or;
 builtin "not"   ≔ not;
+
+constant symbol ex: Π (a : U), (T a → Prop) → Prop;
+builtin "ex" ≔ ex; 
+builtin "all" ≔ all;

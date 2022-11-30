@@ -1,11 +1,7 @@
 (** Signature for symbols. *)
 
-open! Lplib
-open Lplib.Extra
-
-open Common
-open Error
-open Pos
+open Lplib open Extra
+open Common open Error open Pos
 open Timed
 open Term
 
@@ -21,9 +17,10 @@ type ind_data =
 type priority = float
 
 (** Notations. *)
-type notation =
-  | Prefix of priority
-  | Infix of Pratter.associativity * priority
+type 'a notation =
+  | Prefix of 'a
+  | Postfix of 'a
+  | Infix of Pratter.associativity * 'a
   | Zero
   | Succ
   | Quant
@@ -31,14 +28,17 @@ type notation =
 (** Representation of a signature. It roughly corresponds to a set of symbols,
     defined in a single module (or file). *)
 type t =
-  { sign_symbols  : (sym * Pos.popt) StrMap.t ref
+  { sign_symbols  : sym StrMap.t ref
   ; sign_path     : Path.t
   ; sign_deps     : rule list StrMap.t Path.Map.t ref
   (** Maps a path to a list of pairs (symbol name, rule). *)
   ; sign_builtins : sym StrMap.t ref
-  ; sign_notations: notation SymMap.t ref
+  ; sign_notations: float notation SymMap.t ref
   (** Maps symbols to their notation if they have some. *)
-  ; sign_ind      : ind_data SymMap.t ref }
+  ; sign_ind      : ind_data SymMap.t ref
+  ; sign_cp_pos   : cp_pos list SymMap.t ref
+  (** Maps a symbol to the critical pair positions it is heading in the
+     rules. *) }
 
 (* NOTE the [deps] field contains a hashtable binding the external modules on
    which the current signature depends to an association list mapping symbols
@@ -50,12 +50,13 @@ type t =
 let dummy : unit -> t = fun () ->
   { sign_symbols = ref StrMap.empty; sign_path = []
   ; sign_deps = ref Path.Map.empty; sign_builtins = ref StrMap.empty
-  ; sign_notations = ref SymMap.empty; sign_ind = ref SymMap.empty }
+  ; sign_notations = ref SymMap.empty; sign_ind = ref SymMap.empty
+  ; sign_cp_pos = ref SymMap.empty }
 
 (** [find sign name] finds the symbol named [name] in [sign] if it exists, and
     raises the [Not_found] exception otherwise. *)
 let find : t -> string -> sym =
-  fun sign name -> fst (StrMap.find name !(sign.sign_symbols))
+  fun sign name -> StrMap.find name !(sign.sign_symbols)
 
 (** [mem sign name] checks whether a symbol named [name] exists in [sign]. *)
 let mem : t -> string -> bool =
@@ -81,64 +82,56 @@ let loading : Path.t list ref = ref []
 let current_path : unit -> Path.t =
   fun () -> (Path.Map.find (List.hd !loading) !loaded).sign_path
 
-(** [create_sym expo prop opaq name typ impl] creates a new symbol with the
-   exposition [expo], property [prop], name [name], type [typ], implicit
-   arguments [impl], opacity [opaq]. *)
-let create_sym : expo -> prop -> bool -> string -> term -> bool list -> sym =
-  fun sym_expo sym_prop sym_opaq sym_name typ sym_impl ->
-  let sym_path = current_path() in
-  { sym_expo; sym_path; sym_name; sym_type = ref typ; sym_impl; sym_prop;
-    sym_def = ref None; sym_opaq; sym_rules = ref [];
-    sym_mstrat = Eager; sym_dtree = ref Tree_type.empty_dtree }
-
 (** [link sign] establishes physical links to the external symbols. *)
 let link : t -> unit = fun sign ->
-  let rec link_term mk_Appl t =
-    let link_binder b =
-      let (x,t) = Bindlib.unbind b in
-      Bindlib.unbox (Bindlib.bind_var x (lift (link_term mk_Appl t)))
-    in
-    match unfold t with
-    | Vari(_)     -> t
-    | Type        -> t
-    | Kind        -> t
-    | Symb(s)     -> mk_Symb(link_symb s)
-    | Prod(a,b)   -> mk_Prod(link_term mk_Appl a, link_binder b)
-    | Abst(a,t)   -> mk_Abst(link_term mk_Appl a, link_binder t)
-    | LLet(a,t,u) ->
-        mk_LLet(link_term mk_Appl a, link_term mk_Appl t, link_binder u)
-    | Appl(t,u)   -> mk_Appl(link_term mk_Appl t, link_term mk_Appl u)
-    | Meta(_,_)   -> assert false
-    | Patt(i,n,m) -> mk_Patt(i, n, Array.map (link_term mk_Appl) m)
-    | TEnv(t,m)   -> mk_TEnv(t, Array.map (link_term mk_Appl) m)
-    | Wild        -> assert false
-    | TRef(_)     -> assert false
-  and link_rule r =
-    let lhs = List.map (link_term mk_Appl_not_canonical) r.lhs in
-    let (xs, rhs) = Bindlib.unmbind r.rhs in
-    let rhs = lift (link_term mk_Appl rhs) in
-    let rhs = Bindlib.unbox (Bindlib.bind_mvar xs rhs) in
-    {r with lhs ; rhs}
-  and link_symb s =
+  let link_symb s =
     if s.sym_path = sign.sign_path then s else
     try find (Path.Map.find s.sym_path !loaded) s.sym_name
     with Not_found -> assert false
   in
-  let f _ (s,_) =
-    s.sym_type  := link_term mk_Appl !(s.sym_type);
-    s.sym_def   := Option.map (link_term mk_Appl) !(s.sym_def);
-    s.sym_rules := List.map link_rule !(s.sym_rules)
+  let link_term mk_Appl =
+    let rec link_term t =
+      match unfold t with
+      | Vari _
+      | Type
+      | Kind -> t
+      | Symb s -> mk_Symb(link_symb s)
+      | Prod(a,b) -> mk_Prod(link_term a, link_binder b)
+      | Abst(a,b) -> mk_Abst(link_term a, link_binder b)
+      | LLet(a,t,b) -> mk_LLet(link_term a, link_term t, link_binder b)
+      | Appl(a,b)   -> mk_Appl(link_term a, link_term b)
+      | Patt(i,n,ts)-> mk_Patt(i, n, Array.map link_term ts)
+      | TEnv(te,ts) -> mk_TEnv(te, Array.map link_term ts)
+      | Meta _ -> assert false
+      | Plac _ -> assert false
+      | Wild -> assert false
+      | TRef _ -> assert false
+    and link_binder b =
+      let (x,t) = Bindlib.unbind b in bind x lift (link_term t)
+    in link_term
+  in
+  let link_lhs = link_term mk_Appl_not_canonical
+  and link_term = link_term mk_Appl in
+  let link_rule r =
+    let lhs = List.map link_lhs r.lhs in
+    let (xs, rhs) = Bindlib.unmbind r.rhs in
+    let rhs = lift (link_term rhs) in
+    let rhs = Bindlib.unbox (Bindlib.bind_mvar xs rhs) in
+    {r with lhs ; rhs}
+  in
+  let f _ s =
+    s.sym_type := link_term !(s.sym_type);
+    s.sym_def := Option.map link_term !(s.sym_def);
+    s.sym_rules := List.map link_rule !(s.sym_rules);
+    Tree.update_dtree s []
   in
   StrMap.iter f !(sign.sign_symbols);
   let f mp sm =
     let sign = Path.Map.find mp !loaded in
     let g n rs =
       let s = find sign n in
-      s.sym_rules := !(s.sym_rules) @ List.map link_rule rs
-      (* /!\ The update of s.sym_dtree is not done here but later as a side
-         effect of link (dtree update of sign_symbols below) since
-         dependencies are recompiled or loaded and, in case a dependency is
-         loaded, it is linked too. *)
+      s.sym_rules := !(s.sym_rules) @ List.map link_rule rs;
+      Tree.update_dtree s []
     in
     StrMap.iter g sm
   in
@@ -147,55 +140,54 @@ let link : t -> unit = fun sign ->
   sign.sign_notations :=
     SymMap.fold (fun s n m -> SymMap.add (link_symb s) n m)
       !(sign.sign_notations) SymMap.empty;
-  StrMap.iter (fun _ (s, _) -> Tree.update_dtree s) !(sign.sign_symbols);
   let link_ind_data i =
     { ind_cons = List.map link_symb i.ind_cons;
       ind_prop = link_symb i.ind_prop; ind_nb_params = i.ind_nb_params;
       ind_nb_types = i.ind_nb_types; ind_nb_cons = i.ind_nb_cons }
   in
   let f s i m = SymMap.add (link_symb s) (link_ind_data i) m in
-  sign.sign_ind := SymMap.fold f !(sign.sign_ind) SymMap.empty
+  sign.sign_ind := SymMap.fold f !(sign.sign_ind) SymMap.empty;
+  let link_cp_pos (pos,l,r,p,l_p) =
+    pos, link_lhs l, link_term r, p, link_lhs l_p in
+  let f s cps m = SymMap.add (link_symb s) (List.map link_cp_pos cps) m in
+  sign.sign_cp_pos := SymMap.fold f !(sign.sign_cp_pos) SymMap.empty
 
 let link s = Debug.(record_time Sharing (fun () -> link s))
 
 (** [unlink sign] removes references to external symbols (and thus signatures)
-    in the signature [sign]. This function is used to minimize the size of our
+    in the signature [sign]. This function is used to minimize the size of
     object files, by preventing a recursive inclusion of all the dependencies.
     Note however that [unlink] processes [sign] in place, which means that the
     signature is invalidated in the process. *)
 let unlink : t -> unit = fun sign ->
   let unlink_sym s =
-    s.sym_dtree := Tree_type.empty_dtree ;
+    s.sym_dtree := Tree_type.empty_dtree;
     if s.sym_path <> sign.sign_path then
       (s.sym_type := mk_Kind; s.sym_rules := [])
   in
   let rec unlink_term t =
-    let unlink_binder b = unlink_term (snd (Bindlib.unbind b)) in
-    let unlink_term_env t =
-      match t with
-      | TE_Vari(_) -> ()
-      | _          -> assert false (* Should not happen, matching-specific. *)
-    in
     match unfold t with
-    | Vari(_)      -> ()
-    | Type         -> ()
-    | Kind         -> ()
-    | Symb(s)      -> unlink_sym s
-    | Prod(a,b)    -> unlink_term a; unlink_binder b
-    | Abst(a,t)    -> unlink_term a; unlink_binder t
-    | LLet(a,t,u)  -> unlink_term a; unlink_term t; unlink_binder u
-    | Appl(t,u)    -> unlink_term t; unlink_term u
-    | Meta(_,_)    -> assert false (* Should not happen, uninstantiated. *)
-    | Patt(_,_,_)  -> () (* The environment only contains variables. *)
-    | TEnv(t,m)    -> unlink_term_env t; Array.iter unlink_term m
-    | Wild         -> ()
-    | TRef(_)      -> ()
-  and unlink_rule r =
+    | Symb s -> unlink_sym s
+    | Prod(a,b)
+    | Abst(a,b) -> unlink_term a; unlink_binder b
+    | LLet(a,t,b) -> unlink_term a; unlink_term t; unlink_binder b
+    | Appl(a,b) -> unlink_term a; unlink_term b
+    | Meta _ -> assert false
+    | Plac _ -> assert false
+    | Wild   -> assert false
+    | TRef _ -> assert false
+    | TEnv(_,ts) -> Array.iter unlink_term ts
+    | Patt _
+    | Vari _
+    | Type
+    | Kind -> ()
+  and unlink_binder b = unlink_term (snd (Bindlib.unbind b)) in
+  let unlink_rule r =
     List.iter unlink_term r.lhs;
     let (_, rhs) = Bindlib.unmbind r.rhs in
     unlink_term rhs
   in
-  let f _ (s,_) =
+  let f _ s =
     unlink_term !(s.sym_type);
     Option.iter unlink_term !(s.sym_def);
     List.iter unlink_rule !(s.sym_rules)
@@ -206,35 +198,34 @@ let unlink : t -> unit = fun sign ->
   StrMap.iter (fun _ s -> unlink_sym s) !(sign.sign_builtins);
   SymMap.iter (fun s _ -> unlink_sym s) !(sign.sign_notations);
   let unlink_ind_data i =
-    List.iter unlink_sym i.ind_cons; unlink_sym i.ind_prop
-  in
+    List.iter unlink_sym i.ind_cons; unlink_sym i.ind_prop in
   let f s i = unlink_sym s; unlink_ind_data i in
-  SymMap.iter f !(sign.sign_ind)
+  SymMap.iter f !(sign.sign_ind);
+  let unlink_cp_pos (_,l,r,_,l_p) =
+    unlink_term l; unlink_term r; unlink_term l_p in
+  let f s cps = unlink_sym s; List.iter unlink_cp_pos cps in
+  SymMap.iter f !(sign.sign_cp_pos)
 
 (** [add_symbol sign expo prop mstrat opaq name typ impl] adds in the
    signature [sign] a symbol with name [name], exposition [expo], property
    [prop], matching strategy [strat], opacity [opaq], type [typ], implicit
    arguments [impl], no definition and no rules. [name] should not already be
    used in [sign]. The created symbol is returned. *)
-let add_symbol :
-      t -> expo -> prop -> match_strat -> bool -> strloc -> term ->
+let add_symbol : t -> expo -> prop -> match_strat -> bool -> strloc -> term ->
       bool list -> sym =
-  fun sign sym_expo sym_prop sym_mstrat sym_opaq {elt=sym_name;pos} typ
-      impl ->
+  fun sign sym_expo sym_prop sym_mstrat sym_opaq name typ impl ->
   let sym =
-    { sym_path = sign.sign_path; sym_name; sym_type = ref (cleanup typ);
-      sym_impl = minimize_impl impl; sym_def = ref None; sym_opaq;
-      sym_rules = ref []; sym_dtree = ref Tree_type.empty_dtree; sym_mstrat;
-      sym_prop; sym_expo }
+    create_sym sign.sign_path sym_expo sym_prop sym_mstrat sym_opaq name
+      (cleanup typ) (minimize_impl impl)
   in
-  sign.sign_symbols := StrMap.add sym_name (sym, pos) !(sign.sign_symbols);
+  sign.sign_symbols := StrMap.add name.elt sym !(sign.sign_symbols);
   sym
 
 (** [strip_private sign] removes private symbols from signature [sign]. *)
 let strip_private : t -> unit = fun sign ->
   let not_prv sym = not (Term.is_private sym) in
   sign.sign_symbols :=
-    StrMap.filter (fun _ s -> not_prv (fst s)) !(sign.sign_symbols);
+    StrMap.filter (fun _ s -> not_prv s) !(sign.sign_symbols);
   sign.sign_notations :=
     Term.SymMap.filter (fun s _ -> not_prv s) !(sign.sign_notations)
 
@@ -265,71 +256,88 @@ let read : string -> t = fun fname ->
       close_in ic; sign
     with Failure _ ->
       close_in ic;
-      fatal_no_pos "File %S is incompatible with current binary." fname
+      fatal_no_pos "File \"%s\" is incompatible with current binary." fname
   in
   (* Timed references need reset after unmarshaling (see [Timed] doc). *)
-  let reset_timed_refs sign =
-    unsafe_reset sign.sign_symbols;
-    unsafe_reset sign.sign_deps;
-    unsafe_reset sign.sign_builtins;
-    unsafe_reset sign.sign_notations;
-    let rec reset_term t =
-      let reset_binder b = reset_term (snd (Bindlib.unbind b)) in
-      match unfold t with
-      | Vari(_)     -> ()
-      | Type        -> ()
-      | Kind        -> ()
-      | Symb(s)     -> shallow_reset_sym s
-      | Prod(a,b)   -> reset_term a; reset_binder b
-      | Abst(a,t)   -> reset_term a; reset_binder t
-      | LLet(a,t,u) -> reset_term a; reset_term t; reset_binder u
-      | Appl(t,u)   -> reset_term t; reset_term u
-      | Meta(_,_)   -> assert false
-      | Patt(_,_,m) -> Array.iter reset_term m
-      | TEnv(_,m)   -> Array.iter reset_term m
-      | Wild        -> ()
-      | TRef(r)     -> unsafe_reset r; Option.iter reset_term !r
-    and reset_rule r =
-      List.iter reset_term r.lhs;
-      reset_term (snd (Bindlib.unmbind r.rhs))
-    and shallow_reset_sym s =
-      unsafe_reset s.sym_type;
-      unsafe_reset s.sym_def;
-      unsafe_reset s.sym_rules
-    in
-    let reset_sym s =
-      shallow_reset_sym s;
-      reset_term !(s.sym_type);
-      Option.iter reset_term !(s.sym_def);
-      List.iter reset_rule !(s.sym_rules)
-    in
-    StrMap.iter (fun _ (s,_) -> reset_sym s) !(sign.sign_symbols);
-    StrMap.iter (fun _ s -> shallow_reset_sym s) !(sign.sign_builtins);
-    SymMap.iter (fun s _ -> shallow_reset_sym s) !(sign.sign_notations);
-    let f _ sm = StrMap.iter (fun _ rs -> List.iter reset_rule rs) sm in
-    Path.Map.iter f !(sign.sign_deps);
-    let shallow_reset_ind_data i =
-      shallow_reset_sym i.ind_prop;
-      List.iter shallow_reset_sym i.ind_cons
-    in
-    let f s i = shallow_reset_sym s; shallow_reset_ind_data i in
-    SymMap.iter f !(sign.sign_ind);
-    sign
+  unsafe_reset sign.sign_symbols;
+  unsafe_reset sign.sign_deps;
+  unsafe_reset sign.sign_builtins;
+  unsafe_reset sign.sign_notations;
+  unsafe_reset sign.sign_ind;
+  unsafe_reset sign.sign_cp_pos;
+  let shallow_reset_sym s =
+    unsafe_reset s.sym_type;
+    unsafe_reset s.sym_def;
+    unsafe_reset s.sym_rules;
+    (* s.sym_dtree is not reset since it is recomputed. *)
   in
-  reset_timed_refs sign
+  let rec reset_term t =
+    match unfold t with
+    | Vari _
+    | Type
+    | Kind -> ()
+    | Symb s -> shallow_reset_sym s
+    | Prod(a,b)
+    | Abst(a,b) -> reset_term a; reset_binder b
+    | LLet(a,t,b) -> reset_term a; reset_term t; reset_binder b
+    | Appl(a,b) -> reset_term a; reset_term b
+    | Patt(_,_,ts)
+    | TEnv(_,ts) -> Array.iter reset_term ts
+    | TRef r -> unsafe_reset r; Option.iter reset_term !r
+    | Wild -> assert false
+    | Meta _ -> assert false
+    | Plac _ -> assert false
+  and reset_binder b = reset_term (snd (Bindlib.unbind b)) in
+  let reset_rule r =
+    List.iter reset_term r.lhs;
+    reset_term (snd (Bindlib.unmbind r.rhs))
+  in
+  let reset_sym s =
+    shallow_reset_sym s;
+    reset_term !(s.sym_type);
+    Option.iter reset_term !(s.sym_def);
+    List.iter reset_rule !(s.sym_rules)
+  in
+  StrMap.iter (fun _ s -> reset_sym s) !(sign.sign_symbols);
+  StrMap.iter (fun _ s -> shallow_reset_sym s) !(sign.sign_builtins);
+  SymMap.iter (fun s _ -> shallow_reset_sym s) !(sign.sign_notations);
+  let f _ sm = StrMap.iter (fun _ rs -> List.iter reset_rule rs) sm in
+  Path.Map.iter f !(sign.sign_deps);
+  let reset_ind i =
+    shallow_reset_sym i.ind_prop; List.iter shallow_reset_sym i.ind_cons in
+  let f s i = shallow_reset_sym s; reset_ind i in
+  SymMap.iter f !(sign.sign_ind);
+  let reset_cp_pos (_,l,r,_,l_p) =
+    reset_term l; reset_term r; reset_term l_p in
+  let f s cps = shallow_reset_sym s; List.iter reset_cp_pos cps in
+  SymMap.iter f !(sign.sign_cp_pos);
+  sign
 
 let read =
   let open Stdlib in let r = ref (dummy ()) in fun n ->
   Debug.(record_time Reading (fun () -> r := read n)); !r
 
 (** [add_rule sign sym r] adds the new rule [r] to the symbol [sym].  When the
-    rule does not correspond to a symbol of signature [sign],  it is stored in
-    its dependencies. *)
+   rule does not correspond to a symbol of signature [sign], it is stored in
+   its dependencies. /!\ does not update the decision tree or the critical
+   pairs. *)
 let add_rule : t -> sym -> rule -> unit = fun sign sym r ->
   sym.sym_rules := !(sym.sym_rules) @ [r];
   if sym.sym_path <> sign.sign_path then
     let sm = Path.Map.find sym.sym_path !(sign.sign_deps) in
     let f = function None -> Some [r] | Some rs -> Some (rs @ [r]) in
+    let sm = StrMap.update sym.sym_name f sm in
+    sign.sign_deps := Path.Map.add sym.sym_path sm !(sign.sign_deps)
+
+(** [add_rules sign sym rs] adds the new rules [rs] to the symbol [sym]. When
+   the rules do not correspond to a symbol of signature [sign], they are
+   stored in its dependencies. /!\ does not update the decision tree or the
+   critical pairs. *)
+let add_rules : t -> sym -> rule list -> unit = fun sign sym rs ->
+  sym.sym_rules := !(sym.sym_rules) @ rs;
+  if sym.sym_path <> sign.sign_path then
+    let sm = Path.Map.find sym.sym_path !(sign.sign_deps) in
+    let f = function None -> Some rs | Some rs' -> Some (rs' @ rs) in
     let sm = StrMap.update sym.sym_name f sm in
     sign.sign_deps := Path.Map.add sym.sym_path sm !(sign.sign_deps)
 
@@ -343,7 +351,7 @@ let add_builtin : t -> string -> sym -> unit = fun sign s sym ->
   | _ -> ()
 
 (** [add_notation sign s n] sets notation of [s] to [n] in [sign]. *)
-let add_notation : t -> sym -> notation -> unit = fun sign s n ->
+let add_notation : t -> sym -> float notation -> unit = fun sign s n ->
   sign.sign_notations := SymMap.add s n !(sign.sign_notations)
 
 (** [add_inductive sign ind_sym ind_cons ind_prop ind_prop_args] add to [sign]
@@ -374,6 +382,3 @@ let rec dependencies : t -> (Path.t * t) list = fun sign ->
     | d::deps -> minimize ((List.filter not_here d) :: acc) deps
   in
   List.concat (minimize [] deps)
-
-(** [ghost_path s] creates a module path that cannot be entered by a user. *)
-let ghost_path : string -> Path.t = fun s -> [ ""; s ]

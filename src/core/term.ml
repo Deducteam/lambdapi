@@ -1,17 +1,15 @@
-(** Term representation.
+(** Internal representation of terms.
 
-    This module contains the definition of the core abstract syntax tree (AST)
-    of the language, together with smart constructors and low level operation.
-    The representation strongly relies on the {!module:Bindlib} library, which
-    provides a convenient abstraction to work with binders.
+   This module contains the definition of the internal representation of
+   terms, together with smart constructors and low level operation. The
+   representation strongly relies on the {!module:Bindlib} library, which
+   provides a convenient abstraction to work with binders.
 
     @see <https://rlepigre.github.io/ocaml-bindlib/> *)
 
 open Timed
-open Lplib.Base
-open Common
-open Debug
-open! Lplib
+open Lplib open Base
+open Common open Debug
 
 let log_term = Logger.make 'm' "term" "term building"
 let log_term = log_term.pp
@@ -19,7 +17,7 @@ let log_term = log_term.pp
 (** {3 Term (and symbol) representation} *)
 
 (** Representation of a possibly qualified identifier. *)
-type qident = Common.Path.t * string
+type qident = Path.t * string
 
 (** Pattern-matching strategy modifiers. *)
 type match_strat =
@@ -62,7 +60,8 @@ type term =
   (** Pattern variable application (only used in rewriting rules LHS). *)
   | TEnv of term_env * term array
   (** Term environment (only used in rewriting rules RHS). *)
-  | Wild (** Wildcard (only used for surface matching, never in a LHS). *)
+  | Wild
+  | Plac of bool
   | TRef of term option ref (** Reference cell (used in surface matching). *)
   | LLet of term * term * tbinder
   (** [LLet(a, t, u)] is [let x : a ≔ t in u] (with [x] bound in [u]). *)
@@ -88,7 +87,7 @@ and dtree = (rhs * int) Tree_type.dtree
     be enforced for "mode" consistency (see {!type:sym_prop}).  *)
 and sym =
   { sym_expo  : expo (** Visibility. *)
-  ; sym_path  : Common.Path.t (** Module in which the symbol is defined. *)
+  ; sym_path  : Path.t (** Module in which the symbol is defined. *)
   ; sym_name  : string (** Name. *)
   ; sym_type  : term ref (** Type. *)
   ; sym_impl  : bool list (** Implicit arguments ([true] meaning implicit). *)
@@ -97,26 +96,31 @@ and sym =
   ; sym_opaq  : bool (** Opacity. *)
   ; sym_rules : rule list ref (** Rewriting rules. *)
   ; sym_mstrat: match_strat (** Matching strategy. *)
-  ; sym_dtree : dtree ref (** Decision tree used for matching. *) }
+  ; sym_dtree : dtree ref (** Decision tree used for matching. *)
+  ; sym_pos   : Pos.popt (** Position in source file. *) }
 
-(** {b NOTE} that {!field:sym_type} holds a (timed) reference for a  technical
+(** {b NOTE} {!field:sym_type} holds a (timed) reference for a  technical
     reason related to the writing of signatures as binary files  (in  relation
-    to {!val:Sign.link} and {!val:Sign.unlink}).  This is necessary to enforce
+    to {!val:Sign.link} and {!val:Sign.unlink}).  This is necessary to
     ensure that two identical symbols are always physically equal, even across
     signatures. It should NOT be otherwise mutated. *)
 
-(** {b NOTE} we maintain the invariant that {!field:sym_impl} never ends  with
+(** {b NOTE} We maintain the invariant that {!field:sym_impl} never ends  with
     [false]. Indeed, this information would be redundant. If a symbol has more
     arguments than there are booleans in the list then the extra arguments are
     all explicit. Finally, note that {!field:sym_impl} is empty if and only if
     the symbol has no implicit parameters. *)
 
-(** {b NOTE} the value of the {!field:sym_prop} field of symbols restricts the
-    value of their {!field:sym_def} and {!field:sym_rules} fields. A symbol is
+(** {b NOTE} {!field:sym_prop} restricts the possible
+    values of {!field:sym_def} and {!field:sym_rules} fields. A symbol is
     not allowed to be given rewriting rules (or a definition) when its mode is
     set to {!constructor:Constant}. Moreover, a symbol should not be given at
     the same time a definition (i.e., {!field:sym_def} different from [None])
     and rewriting rules (i.e., {!field:sym_rules} is non-empty). *)
+
+(** {b NOTE} For generated symbols (recursors, axioms), {!field:sym_pos} may
+   not be valid positions in the source. These virtual positions are however
+   important for exporting lambdapi files to other formats. *)
 
 (** {3 Representation of rewriting rules} *)
 
@@ -133,16 +137,20 @@ and sym =
   ; vars     : tevar array
   (** Bindlib variables used to build [rhs]. The last [xvars_nb] variables
       appear only in [rhs]. *)
-  ; xvars_nb : int (** Number of variables in [rhs] but not in [lhs]. *) }
+  ; xvars_nb : int (** Number of variables in [rhs] but not in [lhs]. *)
+  ; rule_pos : Pos.popt (** Position of the rule in the source file. *) }
 
-(** {b NOTE} that the second parameter of the {!constructor:Patt}  constructor
-    holds an array of terms. This is essential for variables binding: using an
-    array of variables would NOT suffice. *)
+(** {b NOTE} The second parameter of {!constructor:Patt} holds an array of
+   terms. This is essential for variables binding: using an array of variables
+   would NOT suffice. *)
 
-(** {b NOTE} that the value of the {!field:arity} field  (of a rewriting rule)
-    gives the number of arguments contained in its LHS. As a consequence,  the
-    value of [r.arity] is always equal to [List.length r.lhs] and it gives the
-    minimal number of arguments required to match the LHS of the rule. *)
+(** {b NOTE} {!field:arity} gives the number of arguments contained in the
+   LHS. As a consequence, it is always equal to [List.length r.lhs] and it
+   gives the minimal number of arguments required to match the LHS. *)
+
+(** {b NOTE} For generated rules, {!field:rule_pos} may not be valid positions
+   in the source. These virtual positions are however important for exporting
+   lambdapi files to other formats. *)
 
 (** The RHS (or action) or a rewriting rule is represented by a term, in which
     (higher-order) variables representing "terms with environments" (see the
@@ -192,15 +200,14 @@ and sym =
 
 (** {3 Metavariables and related functions} *)
 
-(** Representation of a metavariable,  which corresponds to a place-holder for
-    a (yet unknown) term which free variables are bound by an environment. The
-    substitution of the free variables with the environment is suspended until
-    the metavariable is instantiated (i.e., set to a particular term).  When a
-    metavariable [m] is instantiated,  the suspended substitution is  unlocked
-    and terms of the form {!constructor:Meta}[(m,env)] can be unfolded. *)
+(** Representation of a metavariable,  which corresponds to a yet unknown
+    term typable in some context. The substitution of the free variables
+    of the context is suspended until the metavariable is instantiated
+    (i.e., set to a particular term).  When a metavariable [m] is
+    instantiated,  the suspended substitution is  unlocked and terms of
+    the form {!constructor:Meta}[(m,env)] can be unfolded. *)
  and meta =
   { meta_key   : int (** Unique key. *)
-  ; meta_name  : string option (** Optional name. *)
   ; meta_type  : term ref (** Type. *)
   ; meta_arity : int (** Arity (environment size). *)
   ; meta_value : tmbinder option ref (** Definition. *) }
@@ -223,51 +230,57 @@ let minimize_impl : bool list -> bool list =
   fun l -> List.rev (rem_false (List.rev l))
 
 (** Printing functions for debug. *)
-let rec pp_term : term pp = fun ppf t ->
+module Raw = struct
+let rec term : term pp = fun ppf t ->
   match t with
-  | Vari v -> pp_var ppf v
+  | Vari v -> var ppf v
   | Type -> out ppf "TYPE"
   | Kind -> out ppf "KIND"
-  | Symb s -> pp_sym ppf s
+  | Symb s -> sym ppf s
   | Prod(a,b) ->
       if Bindlib.binder_constant b then
-        let _, b = Bindlib.unbind b in out ppf "(%a → %a)" pp_term a pp_term b
-      else out ppf "(Π %a)" pp_binder (a,b)
-  | Abst(a,b) -> out ppf "(λ %a)" pp_binder (a,b)
-  | Appl(a,b) -> out ppf "(%a %a)" pp_term a pp_term b
-  | Meta(m,ts) -> out ppf "?%a%a" pp_meta m pp_terms ts
-  | Patt(i,s,ts) ->
-    out ppf "$%a_%s%a" (D.option D.int) i s pp_terms ts
-  | TEnv(te,ts) -> out ppf "<%a>%a" pp_tenv te pp_terms ts
+        let _, b = Bindlib.unbind b in out ppf "(%a → %a)" term a term b
+      else out ppf "(Π %a)" binder (a,b)
+  | Abst(a,b) -> out ppf "(λ %a)" binder (a,b)
+  | Appl(a,b) -> out ppf "(%a %a)" term a term b
+  | Meta(m,ts) -> out ppf "?%a%a" meta m terms ts
+  | Patt(i,s,ts) -> out ppf "$%a_%s%a" (D.option D.int) i s terms ts
+  | Plac(_) -> out ppf "_"
+  | TEnv(te,ts) -> out ppf "<%a>%a" tenv te terms ts
   | Wild -> out ppf "_"
-  | TRef r -> out ppf "&%a" (Option.pp pp_term) !r
+  | TRef r -> out ppf "&%a" (Option.pp term) !r
   | LLet(a,t,u) ->
       let x, u = Bindlib.unbind u in
-      out ppf "let %a: %a ≔ %a in %a" pp_var x pp_term a pp_term t pp_term u
-and pp_terms : term array pp = fun ppf ts ->
-  (*if Array.length ts > 0 then*) D.array pp_term ppf ts
-and pp_var : tvar pp = fun ppf v -> out ppf "%s" (Bindlib.name_of v)
-and pp_binder : (term * tbinder) pp = fun ppf (a,b) ->
+      out ppf "let %a: %a ≔ %a in %a" var x term a term t term u
+and terms : term array pp = fun ppf ts ->
+  (*if Array.length ts > 0 then*) D.array term ppf ts
+and var : tvar pp = fun ppf v -> out ppf "%s" (Bindlib.name_of v)
+and binder : (term * tbinder) pp = fun ppf (a,b) ->
   let x, b = Bindlib.unbind b in
-  out ppf "%a: %a, %a" pp_var x pp_term a pp_term b
-and pp_meta : meta pp = fun ppf m ->
-  match m.meta_name with
-  | None -> out ppf "%d" m.meta_key
-  | Some s -> out ppf "%s" s
-and pp_sym : sym pp = fun ppf s -> out ppf "%s" s.sym_name
-and pp_tenv : term_env pp = fun ppf te ->
+  out ppf "%a: %a, %a" var x term a term b
+and meta : meta pp = fun ppf m ->
+  out ppf "%d" m.meta_key
+and sym : sym pp = fun ppf s -> out ppf "%s" s.sym_name
+and tenv : term_env pp = fun ppf te ->
   match te with
   | TE_Vari v -> out ppf "%s" (Bindlib.name_of v)
   | TE_Some mb ->
     let vs, b = Bindlib.unmbind mb in
-    out ppf "%a,%a" (D.array pp_var) vs pp_term b
+    out ppf "%a,%a" (D.array var) vs term b
   | TE_None -> ()
+end
 
 (** Typing context associating a [Bindlib] variable to a type and possibly a
-   definition. The typing environment [x1:A1,..,xn:An] is represented by the
-   list [xn:An;..;x1:A1] in reverse order (last added variable comes
-   first). *)
+    definition. The typing environment [x1:A1,..,xn:An] is represented by the
+    list [xn:An;..;x1:A1] in reverse order (last added variable comes
+    first). *)
 type ctxt = (tvar * term * term option) list
+
+(** Typing context with lifted terms. Used to optimise type checking and avoid
+    lifting terms several times. Definitions are not included because these
+    contexts are used to create meta variables types, which do not use [let]
+    definitions. *)
+type bctxt = (tvar * tbox) list
 
 (** Type of unification constraints. *)
 type constr = ctxt * term * term
@@ -289,7 +302,7 @@ let new_tvar : string -> tvar = Bindlib.new_var of_tvar
 
 (** [new_tvar_ind s i] creates a new [tvar] of name [s ^ string_of_int i]. *)
 let new_tvar_ind : string -> int -> tvar = fun s i ->
-  new_tvar (Common.Escape.add_prefix s (string_of_int i))
+  new_tvar (Escape.add_prefix s (string_of_int i))
 
 (** [of_tevar x] injects the [Bindlib] variable [x] in a {!type:term_env}. *)
 let of_tevar : tevar -> term_env = fun x -> TE_Vari(x)
@@ -338,14 +351,15 @@ let new_problem : unit -> problem = fun () ->
 
 (** [create_sym path expo prop opaq name typ impl] creates a new symbol with
    path [path], exposition [expo], property [prop], opacity [opaq], matching
-   strategy [mstrat], name [name], type [typ], implicit arguments [impl], no
-   definition and no rules. *)
-let create_sym : Common.Path.t -> expo -> prop -> match_strat -> bool ->
-  string -> term -> bool list -> sym =
-  fun sym_path sym_expo sym_prop sym_mstrat sym_opaq sym_name typ sym_impl ->
+   strategy [mstrat], name [name.elt], type [typ], implicit arguments [impl],
+   position [name.pos], no definition and no rules. *)
+let create_sym : Path.t -> expo -> prop -> match_strat -> bool ->
+  Pos.strloc -> term -> bool list -> sym =
+  fun sym_path sym_expo sym_prop sym_mstrat sym_opaq
+    { elt = sym_name; pos = sym_pos } typ sym_impl ->
   {sym_path; sym_name; sym_type = ref typ; sym_impl; sym_def = ref None;
    sym_opaq; sym_rules = ref []; sym_dtree = ref Tree_type.empty_dtree;
-   sym_mstrat; sym_prop; sym_expo }
+   sym_mstrat; sym_prop; sym_expo; sym_pos }
 
 (** [is_constant s] tells whether [s] is a constant. *)
 let is_constant : sym -> bool = fun s -> s.sym_prop = Const
@@ -403,27 +417,6 @@ let is_symb : sym -> term -> bool = fun s t ->
 
 (** Total order on terms. *)
 let cmp : term cmp =
-  (* Total precedence on term constructors (must be injective). *)
-  (*let prec = function
-    | Vari _ -> 0
-    | Type -> 1
-    | Kind -> 2
-    | Symb _ -> 3
-    | Prod _ -> 4
-    | Abst _ -> 5
-    | Appl _ -> 6
-    | Meta _ -> 7
-    | Patt _ -> 8
-    | TEnv _ -> 9
-    | Wild -> 10
-    | TRef _ -> 11
-    | LLet _ -> 12
-  in
-  let prec_tenv = function
-    | TE_Vari _ -> 0
-    | TE_Some _ -> 1
-    | TE_None -> 2
-  in*)
   let rec cmp t t' =
     match unfold t, unfold t' with
     | Vari x, Vari x' -> Bindlib.compare_vars x x'
@@ -496,6 +489,7 @@ let mk_Abst (a,b) = Abst (a,b)
 let mk_Meta (m,ts) = Meta (m,ts)
 let mk_Patt (i,s,ts) = Patt (i,s,ts)
 let mk_Wild = Wild
+let mk_Plac b = Plac b
 let mk_TRef x = TRef x
 
 let mk_LLet (a,t,u) =
@@ -557,12 +551,13 @@ let right_aliens : sym -> term -> term list = fun s ->
         else aliens (u :: acc) us
   in fun t -> let r = aliens [] [t] in
   if Logger.log_enabled () then
-    log_term "right_aliens %a %a = %a" pp_sym s pp_term t (D.list pp_term) r;
+    log_term "right_aliens %a %a = %a"
+      Raw.sym s Raw.term t (D.list Raw.term) r;
   r
 
 (* unit test *)
 let _ =
-  let s = create_sym [] Privat (AC true) Eager false "+" Kind [] in
+  let s = create_sym [] Privat (AC true) Eager false (Pos.none "+") Kind [] in
   let t1 = Vari (new_tvar "x1") in
   let t2 = Vari (new_tvar "x2") in
   let t3 = Vari (new_tvar "x3") in
@@ -579,7 +574,7 @@ let _ =
    or AC symbols. *)
 let mk_Appl : term * term -> term = fun (t, u) ->
   (* if Logger.log_enabled () then
-    log_term "mk_Appl(%a, %a)" pp_term t pp_term u;
+    log_term "mk_Appl(%a, %a)" term t term u;
   let r = *)
   match get_args t with
   | Symb s, [t1] ->
@@ -602,7 +597,7 @@ let mk_Appl : term * term -> term = fun (t, u) ->
   | _ -> Appl (t, u)
   (* in
   if Logger.log_enabled () then
-    log_term "mk_Appl(%a, %a) = %a" pp_term t pp_term u pp_term r;
+    log_term "mk_Appl(%a, %a) = %a" term t term u term r;
   r *)
 
 (** mk_Appl_not_canonical t u] builds the non-canonical (wrt. C and AC
@@ -694,6 +689,9 @@ let _TEnv : tebox -> tbox array -> tbox = fun te ts ->
 (** [_Wild] injects the constructor [Wild] into the {!type:tbox} type. *)
 let _Wild : tbox = Bindlib.box Wild
 
+let _Plac : bool -> tbox = fun b ->
+  Bindlib.box (mk_Plac b)
+
 (** [_TRef r] injects the constructor [TRef(r)] into the {!type:tbox} type. It
     should be the case that [!r] is [None]. *)
 let _TRef : term option ref -> tbox = fun r ->
@@ -728,6 +726,7 @@ let lift : (tbox -> tbox -> tbox) -> term -> tbox = fun mk_appl ->
   | Patt(i,n,m) -> _Patt i n (Array.map lift m)
   | TEnv(te,m)  -> _TEnv (lift_term_env te) (Array.map lift m)
   | Wild        -> _Wild
+  | Plac b      -> _Plac b
   | TRef r      -> _TRef r
   | LLet(a,t,u) -> _LLet (lift a) (lift t) (lift_binder u)
   (* We do not use [Bindlib.box_binder] here because it is possible for a free
@@ -742,16 +741,87 @@ let lift : (tbox -> tbox -> tbox) -> term -> tbox = fun mk_appl ->
   | TE_Some _ -> assert false (* Unreachable. *)
   in lift
 
+(** [lift t] lifts the {!type:term} [t] to the type {!type:tbox}. This has the
+   effect of gathering its free variables, making them available for binding.
+   Bound variable names are automatically updated in the process. *)
+let lift = lift _Appl
+and lift_not_canonical = lift _Appl_not_canonical
+
+(** [bind v lift t] creates a tbinder by binding [v] in [lift t]. *)
+let bind : tvar -> (term -> tbox) -> term -> tbinder =
+  fun v lift t -> Bindlib.unbox (Bindlib.bind_var v (lift t))
+let binds : tvar array -> (term -> tbox) -> term -> tmbinder =
+  fun vs lift t -> Bindlib.unbox (Bindlib.bind_mvar vs (lift t))
+
+(** [lift_in c mk_appl t] lifts the {!type:term} [t] in Bindlib context [c] to
+   the type {!type:tbox}, using the function [mk_appl] in the case of an
+   application. This has the effect of gathering its free variables, making
+   them available for binding. Bound variable names are automatically updated
+   in the process. *)
+let lift_in : (tbox -> tbox -> tbox) -> Bindlib.ctxt -> term -> tbox =
+  fun mk_appl ->
+  let rec lift c t =
+  match unfold t with
+  | Vari x      -> _Vari x
+  | Type        -> _Type
+  | Kind        -> _Kind
+  | Symb _      -> Bindlib.box t
+  | Prod(a,b)   -> _Prod (lift c a) (lift_binder c b)
+  | Abst(a,t)   -> _Abst (lift c a) (lift_binder c t)
+  | Appl(t,u)   -> mk_appl (lift c t) (lift c u)
+  | Meta(r,m)   -> _Meta r (Array.map (lift c) m)
+  | Patt(i,n,m) -> _Patt i n (Array.map (lift c) m)
+  | TEnv(te,m)  -> _TEnv (lift_term_env te) (Array.map (lift c) m)
+  | Wild        -> _Wild
+  | Plac b      -> _Plac b
+  | TRef r      -> _TRef r
+  | LLet(a,t,u) -> _LLet (lift c a) (lift c t) (lift_binder c u)
+  (* We do not use [Bindlib.box_binder] here because it is possible for a free
+     variable to disappear from a term through metavariable instantiation. As
+     a consequence we must traverse the whole term, even when we find a closed
+     binder, so that the metadata on nested binders is also updated. *)
+  and lift_binder c b =
+    let x, t, c = Bindlib.unbind_in c b in Bindlib.bind_var x (lift c t)
+  and lift_term_env : term_env -> tebox = function
+  | TE_Vari x -> _TE_Vari x
+  | TE_None   -> _TE_None
+  | TE_Some _ -> assert false (* Unreachable. *)
+  in lift
+
 (** [cleanup t] builds a copy of the {!type:term} [t] where every instantiated
    metavariable, instantiated term environment, and reference cell has been
    eliminated using {!val:unfold}. Another effect of the function is that the
    the names of bound variables are updated. This is useful to avoid any form
    of "visual capture" while printing terms. *)
-let cleanup : term -> term =
-  let mk_appl = Bindlib.box_apply2 (fun t u -> Appl(t,u)) in
-  fun t -> Bindlib.unbox (lift mk_appl t)
+let cleanup : ?ctxt:Bindlib.ctxt -> term -> term =
+  fun ?(ctxt=Bindlib.empty_ctxt) t ->
+  Bindlib.unbox (lift_in _Appl_not_canonical ctxt t)
 
-(** [lift t] lifts the {!type:term} [t] to the type {!type:tbox}. This has the
-   effect of gathering its free variables, making them available for binding.
-   Bound variable names are automatically updated in the process. *)
-let lift = lift _Appl
+(** Positions in terms in reverse order. The i-th argument of a constructor
+   has position i-1. *)
+type subterm_pos = int list
+
+let subterm_pos : subterm_pos pp = fun ppf l -> D.(list int) ppf (List.rev l)
+
+(** Type of critical pair positions (pos,l,r,p,l_p). *)
+type cp_pos = Pos.popt * term * term * subterm_pos * term
+
+(** [term_of_rhs r] converts the RHS (right hand side) of the rewriting rule
+    [r] into a term. The bound higher-order variables of the original RHS are
+    substituted using [Patt] constructors. They are thus represented as their
+    LHS counterparts. This is a more convenient way of representing terms when
+    analysing confluence or termination. *)
+let term_of_rhs : rule -> term = fun r ->
+  let fn i x =
+    let (name, arity) = (Bindlib.name_of x, r.arities.(i)) in
+    let vars = Array.init arity (new_tvar_ind "x") in
+    let p = _Patt (Some i) name (Array.map _Vari vars) in
+    TE_Some(Bindlib.unbox (Bindlib.bind_mvar vars p))
+  in
+  Bindlib.msubst r.rhs (Array.mapi fn r.vars)
+
+(** Type of a symbol and a rule. *)
+type sym_rule = sym * rule
+
+let lhs : sym_rule -> term = fun (s, r) -> add_args (mk_Symb s) r.lhs
+let rhs : sym_rule -> term = fun (_, r) -> term_of_rhs r

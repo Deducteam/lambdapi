@@ -1,8 +1,7 @@
-(** Flag management. *)
+(** Verbose level and loggers management. *)
 
 open Timed
-open Lplib.Base
-open Lplib.Extra
+open Lplib open Base open Extra
 
 (** [out_fmt] main output formatter. *)
 let out_fmt = Stdlib.ref Format.std_formatter

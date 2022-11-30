@@ -24,21 +24,21 @@ constant symbol list : Set → Set;
 
 symbol L a ≔ τ (list a);
 
-constant symbol □ {a} : L a;
-constant symbol ⸬ {a} : τ a → L a → L a;
+constant symbol □ [a] : L a;
+constant symbol ⸬ [a] : τ a → L a → L a;
 
 notation ⸬ infix right 4;
 
 // Length of a list
 
-symbol length {a} : L a → N;
+symbol length [a] : L a → N;
 
 rule length □ ↪ zero
 with length (_ ⸬ $l) ↪ succ (length $l);
 
 // Concatenation of two lists
 
-symbol ⋅ {a} : L a → L a → L a;
+symbol ⋅ [a] : L a → L a → L a;
 
 notation ⋅ infix right 5;
 

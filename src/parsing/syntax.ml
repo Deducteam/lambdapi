@@ -1,10 +1,7 @@
 (** Parser-level abstract syntax. *)
 
-open! Lplib
-open Lplib.Base
-open Lplib.Extra
-open Common
-open Pos
+open Lplib open Base open Extra
+open Common open Pos
 open Core
 
 (** Representation of a (located) identifier. *)
@@ -28,15 +25,13 @@ let rec check_distinct : p_ident option list -> unit = function
   | Some {elt=id;_} :: idopts -> check_notin id idopts; check_distinct idopts
 
 (** Identifier of a metavariable. *)
-type meta_ident = Name of string | Numb of int
-type p_meta_ident = meta_ident loc
+type p_meta_ident = int loc
 
 (** Representation of a module name. *)
 type p_path = Path.t loc
 
 (** Representation of a possibly qualified (and located) identifier. *)
-type qident = Term.qident
-type p_qident = qident loc
+type p_qident = Term.qident loc
 
 (** Parser-level (located) term representation. *)
 type p_term = p_term_aux loc
@@ -45,8 +40,8 @@ and p_term_aux =
   | P_Iden of p_qident * bool (** Identifier. The boolean indicates whether
                                  the identifier is prefixed by "@". *)
   | P_Wild (** Underscore. *)
-  | P_Meta of p_meta_ident * p_term array option
-    (** Meta-variable application. *)
+  | P_Meta of p_meta_ident * p_term array
+    (** Meta-variable with explicit substitution. *)
   | P_Patt of p_ident option * p_term array option (** Pattern. *)
   | P_Appl of p_term * p_term (** Application. *)
   | P_Arro of p_term * p_term (** Arrow. *)
@@ -54,7 +49,7 @@ and p_term_aux =
   | P_Prod of p_params list * p_term (** Product. *)
   | P_LLet of p_ident * p_params list * p_term option * p_term * p_term
     (** Let. *)
-  | P_NLit of int (** Natural number literal. *)
+  | P_NLit of string (** Natural number literal. *)
   | P_Wrap of p_term (** Term between parentheses. *)
   | P_Expl of p_term (** Term between curly brackets. *)
 
@@ -85,7 +80,8 @@ and get_impl_term_aux : p_term_aux -> bool list = fun t ->
   | P_Wrap(t) -> get_impl_term t
   | _ -> []
 
-(** [p_get_args t] is {!val:LibTerm.get_args} on syntax-level terms. *)
+(** [p_get_args t] is like {!val:Core.Term.get_args} but on syntax-level
+   terms. *)
 let p_get_args : p_term -> p_term * p_term list = fun t ->
   let rec p_get_args t acc =
     match t.elt with
@@ -168,7 +164,7 @@ type p_assertion =
 
 (** Parser-level representation of a query command. *)
 type p_query_aux =
-  | P_query_verbose of int
+  | P_query_verbose of string
   (** Sets the verbosity level. *)
   | P_query_debug of bool * string
   (** Toggles logging functions described by string according to boolean. *)
@@ -182,7 +178,7 @@ type p_query_aux =
   (** Normalisation command. *)
   | P_query_prover of string
   (** Set the prover to use inside a proof. *)
-  | P_query_prover_timeout of int
+  | P_query_prover_timeout of string
   (** Set the timeout of the prover (in seconds). *)
   | P_query_print of p_qident option
   (** Print information about a symbol or the current goals. *)
@@ -191,13 +187,12 @@ type p_query_aux =
 
 type p_query = p_query_aux loc
 
-(** Parser-level representation of a proof tactic. *)
+(** Parser-level representation of a tactic. *)
 type p_tactic_aux =
   | P_tac_admit
   | P_tac_apply of p_term
   | P_tac_assume of p_ident option list
   | P_tac_fail
-  | P_tac_focus of int
   | P_tac_generalize of p_ident
   | P_tac_have of p_ident * p_term
   | P_tac_induction
@@ -213,7 +208,16 @@ type p_tactic_aux =
 
 type p_tactic = p_tactic_aux loc
 
-(** Parser-level representation of a proof terminator. *)
+(** [is_destructive t] says whether tactic [t] changes the current goal. *)
+let is_destructive {elt;_} = match elt with P_tac_have _ -> false | _ -> true
+
+(** Parser-level representation of a proof. *)
+type p_subproof = p_proofstep list
+
+and p_proofstep = Tactic of p_tactic * p_subproof list
+
+type p_proof = p_subproof list
+
 type p_proof_end_aux =
   | P_proof_end
   (** The proof is done and fully checked. *)
@@ -245,7 +249,7 @@ type p_symbol =
   ; p_sym_arg : p_params list (** arguments before ":" *)
   ; p_sym_typ : p_term option (** symbol type *)
   ; p_sym_trm : p_term option (** symbol definition *)
-  ; p_sym_prf : (p_tactic list * p_proof_end) option (** proof script *)
+  ; p_sym_prf : (p_proof * p_proof_end) option (** proof script *)
   ; p_sym_def : bool (** is it a definition ? *) }
 
 (** Parser-level representation of a single command. *)
@@ -258,8 +262,9 @@ type p_command_aux =
   | P_rules of p_rule list
   | P_inductive of p_modifier list * p_params list * p_inductive list
   | P_builtin of string * p_qident
-  | P_notation of p_qident * Sign.notation
+  | P_notation of p_qident * string Sign.notation
   | P_unif_rule of p_rule
+  | P_coercion of p_rule
   | P_query of p_query
 
 (** Parser-level representation of a single (located) command. *)
@@ -284,7 +289,7 @@ let rec eq_p_term : p_term eq = fun {elt=t1;_} {elt=t2;_} ->
   | P_Wild, P_Wild -> true
   | P_Iden(q1,b1), P_Iden(q2,b2) -> eq_p_qident q1 q2 && b1 = b2
   | P_Meta(i1,ts1), P_Meta(i2,ts2) ->
-      eq_p_meta_ident i1 i2 && Option.eq (Array.eq eq_p_term) ts1 ts2
+      eq_p_meta_ident i1 i2 && Array.eq eq_p_term ts1 ts2
   | P_Patt(io1,ts1), P_Patt(io2,ts2) ->
       Option.eq eq_p_ident io1 io2
       && Option.eq (Array.eq eq_p_term) ts1 ts2
@@ -359,7 +364,6 @@ let eq_p_tactic : p_tactic eq = fun {elt=t1;_} {elt=t2;_} ->
       b1 = b2 && Option.eq eq_p_rw_patt p1 p2 && eq_p_term t1 t2
   | P_tac_query q1, P_tac_query q2 -> eq_p_query q1 q2
   | P_tac_why3 so1, P_tac_why3 so2 -> so1 = so2
-  | P_tac_focus n1, P_tac_focus n2 -> n1 = n2
   | P_tac_simpl q1, P_tac_simpl q2 -> Option.eq eq_p_qident q1 q2
   | P_tac_generalize i1, P_tac_generalize i2 -> eq_p_ident i1 i2
   | P_tac_admit, P_tac_admit
@@ -370,22 +374,32 @@ let eq_p_tactic : p_tactic eq = fun {elt=t1;_} {elt=t2;_} ->
   | P_tac_sym, P_tac_sym -> true
   | _, _ -> false
 
-let eq_p_symbol : p_symbol eq =
-  let eq_tac (ts1,pe1) (ts2,pe2) =
-    List.eq eq_p_tactic ts1 ts2 && pe1.elt = pe2.elt in
-  fun
-    { p_sym_mod=p_sym_mod1; p_sym_nam=p_sym_nam1; p_sym_arg=p_sym_arg1;
-      p_sym_typ=p_sym_typ1; p_sym_trm=p_sym_trm1; p_sym_prf=p_sym_prf1;
-      p_sym_def=p_sym_def1}
-    { p_sym_mod=p_sym_mod2; p_sym_nam=p_sym_nam2; p_sym_arg=p_sym_arg2;
-      p_sym_typ=p_sym_typ2; p_sym_trm=p_sym_trm2; p_sym_prf=p_sym_prf2;
-      p_sym_def=p_sym_def2} ->
+let rec eq_p_subproof : p_subproof eq = fun sp1 sp2 ->
+  List.eq eq_p_proofstep sp1 sp2
+
+and eq_p_proofstep : p_proofstep eq = fun ps1 ps2 ->
+  match ps1, ps2 with
+  | Tactic(t1,spl1), Tactic(t2,spl2) ->
+    eq_p_tactic t1 t2 && List.eq eq_p_subproof spl1 spl2
+
+let eq_p_proof : p_proof eq = List.eq eq_p_subproof
+
+let eq_p_sym_prf : (p_proof * p_proof_end) eq = fun (p1, pe1) (p2, pe2) ->
+  pe1.elt = pe2.elt && eq_p_proof p1 p2
+
+let eq_p_symbol : p_symbol eq = fun
+  { p_sym_mod=p_sym_mod1; p_sym_nam=p_sym_nam1; p_sym_arg=p_sym_arg1;
+    p_sym_typ=p_sym_typ1; p_sym_trm=p_sym_trm1; p_sym_prf=p_sym_prf1;
+    p_sym_def=p_sym_def1}
+  { p_sym_mod=p_sym_mod2; p_sym_nam=p_sym_nam2; p_sym_arg=p_sym_arg2;
+    p_sym_typ=p_sym_typ2; p_sym_trm=p_sym_trm2; p_sym_prf=p_sym_prf2;
+    p_sym_def=p_sym_def2} ->
   p_sym_mod1 = p_sym_mod2
   && eq_p_ident p_sym_nam1 p_sym_nam2
   && List.eq eq_p_params p_sym_arg1 p_sym_arg2
   && Option.eq eq_p_term p_sym_typ1 p_sym_typ2
   && Option.eq eq_p_term p_sym_trm1 p_sym_trm2
-  && Option.eq eq_tac p_sym_prf1 p_sym_prf2
+  && Option.eq eq_p_sym_prf p_sym_prf1 p_sym_prf2
   && p_sym_def1 = p_sym_def2
 
 (** [eq_command c1 c2] tells whether [c1] and [c2] are the same commands. They
@@ -405,8 +419,18 @@ let eq_p_command : p_command eq = fun {elt=c1;_} {elt=c2;_} ->
   | P_builtin(s1,q1), P_builtin(s2,q2) -> s1 = s2 && eq_p_qident q1 q2
   | P_notation(i1,n1), P_notation(i2,n2) -> eq_p_qident i1 i2 && n1 = n2
   | P_unif_rule r1, P_unif_rule r2 -> eq_p_rule r1 r2
+  | P_coercion r1, P_coercion r2 -> eq_p_rule r1 r2
   | P_query(q1), P_query(q2) -> eq_p_query q1 q2
   | _, _ -> false
+
+(** [fold_proof f acc p] recursively builds a value of type ['a] by starting
+   from [acc] and by applying [f] to every tactic of [p]. *)
+let fold_proof : ('a -> p_tactic -> int -> 'a) -> 'a -> p_proof -> 'a =
+  fun f ->
+  let rec subproof a sp = List.fold_left proofstep a sp
+  and proofstep a (Tactic(t, spl)) =
+    List.fold_left subproof (f a t (List.length spl)) spl
+  in List.fold_left subproof
 
 (** [fold_idents f a ast] allows to recursively build a value of type ['a]
    starting from [a] and by applying [f] on each identifier occurring in [ast]
@@ -448,11 +472,10 @@ let fold_idents : ('a -> p_qident -> 'a) -> 'a -> p_command list -> 'a =
 
     | P_Type
     | P_Wild
-    | P_Meta (_, None)
     | P_Patt (_, None)
     | P_NLit _ -> a
 
-    | P_Meta (_, Some ts)
+    | P_Meta (_, ts)
     | P_Patt (_, Some ts) -> Array.fold_left (fold_term_vars vs) a ts
 
     | P_Appl (t, u)
@@ -537,7 +560,6 @@ let fold_idents : ('a -> p_qident -> 'a) -> 'a -> p_command list -> 'a =
     | P_tac_admit
     | P_tac_refl
     | P_tac_sym
-    | P_tac_focus _
     | P_tac_why3 _
     | P_tac_solve
     | P_tac_fail
@@ -551,8 +573,8 @@ let fold_idents : ('a -> p_qident -> 'a) -> 'a -> p_command list -> 'a =
     List.fold_left fold_cons a ((id,t)::cons_list)
   in
 
-  let fold_proof : 'a -> (p_tactic list * p_proof_end) -> 'a =
-    fun a (ts, _) -> snd (List.fold_left fold_tactic (StrSet.empty, a) ts)
+  let fold_sym_prf : 'a -> (p_proof * p_proof_end) -> 'a = fun a (p, _) ->
+    let f a t _  = fold_tactic a t in snd (fold_proof f (StrSet.empty, a) p)
   in
 
   let fold_args : StrSet.t * 'a -> p_params -> StrSet.t * 'a =
@@ -571,6 +593,7 @@ let fold_idents : ('a -> p_qident -> 'a) -> 'a -> p_command list -> 'a =
     | P_query q -> fold_query_vars StrSet.empty a q
     | P_builtin (_, qid)
     | P_notation (qid, _) -> f a qid
+    | P_coercion r
     | P_unif_rule r -> fold_rule a r
     | P_rules rs -> List.fold_left fold_rule a rs
     | P_inductive (_, xs, ind_list) ->
@@ -579,7 +602,7 @@ let fold_idents : ('a -> p_qident -> 'a) -> 'a -> p_command list -> 'a =
     | P_symbol {p_sym_nam;p_sym_arg;p_sym_typ;p_sym_trm;p_sym_prf;_} ->
         let d = Pos.none P_Type in
         let t = match p_sym_trm with Some t -> t | None -> d in
-        Option.fold fold_proof
+        Option.fold fold_sym_prf
           (fold_term a
              (Pos.make pos
                 (P_LLet (p_sym_nam, p_sym_arg, p_sym_typ, t, d))))

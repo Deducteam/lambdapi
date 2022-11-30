@@ -8,7 +8,7 @@
 (require 'highlight)
 (require 'cl-lib)
 
-(defconst lambdapi-terminators '(";" "begin")
+(defconst lambdapi-terminators '(";" "begin" "{")
   "List of terminators for electric terminator mode.")
 
 (defface lambdapi-proof-face
@@ -66,48 +66,6 @@ no errors."
          (point-min) (min (1+ pos) (point-max))
          'lambdapi-proof-face)))))
 
-(defun lp-focus-goal (goalno &optional proofbuf proofpos)
-  "Focus on GOALNOth goal (zero-indexed). PROOFBUF is the buffer
-containing the corresponding proof for *Goals* buffer"
-  (interactive "nEnter Goal Number: ")
-  (if (null proofbuf)
-      (setq proofbuf (plist-get proof-line-position :buffer)
-            proofpos (plist-get proof-line-position :pos)))
-  (select-window (get-buffer-window proofbuf))
-  (with-current-buffer proofbuf
-    (goto-char proofpos)
-    ;; Don't focus the goalno 0
-    (if (not (eq goalno 0))
-        (progn
-          (forward-char)
-          (insert (format "\nfocus %S;" goalno))
-          (smie-indent-line)
-          (eglot--signal-textDocument/didChange)
-          (lp-move-proof-line `(lambda (_) ,(1- (point))))))))
-
-(defun lp-make-goal-clickable (goalstr goalNo proofbuf proofpos)
-  "Return GOALSTR with text properties added making the string call
-lp-focus-goal with GOALNO and PROOFBUF on click. Also makes the string
-bold if GOALNO is 0"
-  (let ((goalkeymap (make-sparse-keymap)))
-    (define-key goalkeymap [mouse-1]
-      `(lambda ()
-         (interactive)
-         (lp-focus-goal ,goalNo ,proofbuf ,proofpos)))
-    (add-text-properties
-     0 (length goalstr)
-     `(face
-       ,(pcase goalNo
-          (0 'bold)
-          (_ 'default))
-       mouse-face highlight
-       help-echo ,(pcase goalNo
-                    (0 "current goal")
-                    (_ "click to focus"))
-       keymap    ,goalkeymap)
-     goalstr)
-    goalstr))
-
 (defun lp-format-string-hyps-goal (goal)
   "Return the string associated to the hypotheses of single typing goal GOAL."
   (let ((tog (plist-get goal :typeofgoal)))
@@ -119,23 +77,18 @@ bold if GOALNO is 0"
               hs))))
 
 (defun lp-format-string-goal (goal goalNo proofbuf proofpos)
-  "Return the string associated to a GOAL.
-Add text-properties to make it clickable."
+  "Return the string associated to a GOAL."
   (let ((tog (plist-get goal :typeofgoal)))
     (if (string= tog "Typ")
         (let* ((id (plist-get goal :gid))
                (type (plist-get goal :type))
-               (clk-text (lp-make-goal-clickable
-                          (format "%s: %s" id type)
-                          goalNo proofbuf proofpos)))
+               (goal-text (format "%s: %s" id type)))
           (format "%s\n\n"
-                  clk-text))
+                  goal-text))
       (let* ((constr (plist-get goal :constr))
-             (clk-text (lp-make-goal-clickable
-                        (format "%s" constr)
-                        goalNo proofbuf proofpos)))
+             (goal-text (format "%s" constr)))
         (format "%s\n\n"
-                clk-text)))))
+                goal-text)))))
 
 ;; taken from cus-edit.el
 (defun lp--draw-horizontal-line ()

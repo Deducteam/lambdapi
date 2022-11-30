@@ -12,11 +12,11 @@ assert x y ⊢ x * y ≡ y * x;
 assert x y z ⊢ (x * y) * z ≡ x * (y * z);
 assert x y z ⊢ (x * y) * z ≡ (z * x) * y;
 
-left associative commutative symbol @ : A → A → A;
-notation @ infix 10;
-assert x y ⊢ x @ y ≡ y @ x;
-assert x y z ⊢ (x @ y) @ z ≡ x @ (y @ z);
-assert x y z ⊢ (x @ y) @ z ≡ (z @ x) @ y;
+left associative commutative symbol ^ : A → A → A;
+notation ^ infix 10;
+assert x y ⊢ x ^ y ≡ y ^ x;
+assert x y z ⊢ (x ^ y) ^ z ≡ x ^ (y ^ z);
+assert x y z ⊢ (x ^ y) ^ z ≡ (z ^ x) ^ y;
 
 // #642
 

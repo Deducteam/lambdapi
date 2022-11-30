@@ -6,10 +6,10 @@ let unzip = split
 
 open Base
 
-(** [pp pp_elt sep oc l] prints the list [l] on the channel [oc] using [sep]
-   as separator, and [pp_elt] for printing the elements. *)
-let pp : 'a pp -> unit outfmt -> 'a list pp = fun pp_elt sep ->
-  Format.pp_print_list ~pp_sep:(pp_unit sep) pp_elt
+(** [pp elt sep ppf l] prints the list [l] on the formatter [ppf] using
+   [sep] as separator, and [elt] for printing the elements. *)
+let pp : 'a pp -> unit outfmt -> 'a list pp = fun elt sep ->
+  Format.pp_print_list ~pp_sep:(unit sep) elt
 
 (** Total order on lists. *)
 let cmp : 'a cmp -> 'a list cmp = fun cmp_elt ->
@@ -85,7 +85,7 @@ let filteri_map : (int -> 'a -> 'b option) -> 'a list -> 'b list = fun f l ->
   in loop 0 l
 
 (** [cut l k] returns a pair of lists [(l1, l2)] such that [l1] has length
-    [max (List.length l) k] and [l1 @ l2] is equal to [l]. *)
+    [min (List.length l) k] and [l1 @ l2] is equal to [l]. *)
 let cut : 'a list -> int -> 'a list * 'a list = fun l k ->
   let rec cut acc l k =
     if k <= 0 then (L.rev acc, l)
@@ -94,6 +94,13 @@ let cut : 'a list -> int -> 'a list * 'a list = fun l k ->
          | x :: l -> cut (x :: acc) l (k - 1)
   in
   if k <= 0 then ([], l) else cut [] l k
+
+let _ =
+  assert (cut [1;2;3] 0 = ([], [1;2;3]));
+  assert (cut [1;2;3] 1 = ([1], [2;3]));
+  assert (cut [1;2;3] 2 = ([1;2], [3]));
+  assert (cut [1;2;3] 3 = ([1;2;3], []));
+  assert (cut [1;2;3] 4 = ([1;2;3], []))
 
 (** [add_array a1 a2 l] returns a list containing the elements of [l], and the
     (corresponding) elements of [a1] and [a2]. Note that [a1] and [a2] should
@@ -153,12 +160,12 @@ let destruct : 'a list -> int -> 'a list * 'a * 'a list =
     | v :: r, i -> destruct (v :: l) (i - 1) r
   in
   fun e i ->
-  if i < 0 then invalid_arg "Extra.List.deconstruct";
+  if i < 0 then invalid_arg __LOC__;
   destruct [] i e
 
 (** [reconstruct left_rev l right] concatenates (reversed) [left_rev], [l] and
     [right]. This function will typically be used in combination with
-    {!val:deconstruct} to insert a sublist [l] in the place of the element at
+    {!val:destruct} to insert a sublist [l] in the place of the element at
     the specified position in the specified list. *)
 let reconstruct : 'a list -> 'a list -> 'a list -> 'a list = fun l m r ->
   L.rev_append l (m @ r)
@@ -276,3 +283,18 @@ let split : ('a -> bool) -> 'a list -> 'a list * 'a * 'a list = fun f ->
     | [] -> raise Not_found
     | x::m -> if f x then (L.rev acc, x, m) else split (x::acc) m
   in split []
+
+(** [iter_head_tail f l] iterates [f] on all pairs (head, tail) of [l]. *)
+let rec iter_head_tail : ('a -> 'a list -> unit) -> 'a list -> unit =
+  fun f l ->
+  match l with
+  | [] -> ()
+  | h::t -> f h t; iter_head_tail f t
+
+(** [sequence_opt l] is [Some [x1; x2; ...]] if all elements of [l] are of
+    the form [Some xi], and [None] if there is a [None] in [l]. *)
+let sequence_opt : 'a option list -> 'a list option = fun l ->
+    fold_right
+      (fun elt acc -> Option.Applicative.(pure cons <*> elt <*> acc))
+      l
+      (Option.Monad.return [])

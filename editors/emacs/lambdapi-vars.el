@@ -23,7 +23,8 @@
 (defconst lambdapi-sig-commands
   '("as"
     "begin"
-    "builtin"   
+    "builtin"
+    "coerce_rule"
     "end"
     "in"
     "inductive"
@@ -62,6 +63,7 @@
 
 (defconst lambdapi-misc-keywords
   '("associative"
+    "coerce"
     "commutative"
     "constant"
     "left"

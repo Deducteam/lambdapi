@@ -7,14 +7,14 @@ symbol Set: TYPE;
 symbol El: Set → TYPE;
 symbol psub (t: Set) (_: El t → Prop): Set;
 
-symbol foo: Π {T: Set} {S_pred : El T → Prop},
+symbol foo: Π [T: Set] [S_pred : El T → Prop],
             let S : Set ≔ psub T S_pred in // The let in between the arguments
-            Π {e: El S}, El S ≔
-  λ{T:Set} {S_pred: El T → Prop},
+            Π [e: El S], El S ≔
+  λ[T:Set] [S_pred: El T → Prop],
   let S : Set ≔ psub T S_pred in
-  λ {e: El S}, e;
+  λ [e: El S], e;
 
 constant symbol i: Set;
 constant symbol i_pred: El i → Prop;
 symbol x : El (psub i i_pred);
-assert ⊢ foo {i} {i_pred} {x} ≡ x;
+assert ⊢ foo [i] [i_pred] [x] ≡ x;

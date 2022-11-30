@@ -1,5 +1,6 @@
-open Lplib.Base
-open Lplib.Extra
+(** Helper functions for debugging. **)
+
+open Lplib open Base open Extra
 
 (** Printing functions. *)
 module D = struct
@@ -17,7 +18,7 @@ module D = struct
 
   let int : int pp = fun ppf i -> out ppf "%d" i
 
-  let string : string pp = fun ppf s -> out ppf "%S" s
+  let string : string pp = fun ppf s -> out ppf "\"%s\"" s
 
   let option : 'a pp -> 'a option pp = fun elt ppf o ->
     match o with
@@ -54,17 +55,20 @@ module D = struct
   let strmap : 'a pp -> 'a StrMap.t pp = fun elt ->
     map StrMap.iter string ", " elt "; "
 
-  let iter ?sep:(pp_sep = Format.pp_print_cut) iter pp_elt ppf v =
+  let intmap : 'a pp -> 'a IntMap.t pp = fun elt ->
+    map IntMap.iter int ", " elt "; "
+
+  let iter ?sep:(sep = Format.pp_print_cut) iter elt ppf v =
     let is_first = ref true in
-    let pp_elt v =
-      if !is_first then (is_first := false) else pp_sep ppf ();
-      pp_elt ppf v
+    let elt v =
+      if !is_first then (is_first := false) else sep ppf ();
+      elt ppf v
     in
-    iter pp_elt v
+    iter elt v
 
   (* To be used in a hov (and not default) box *)
   let surround beg fin inside =
-    fun fmt v -> Format.fprintf fmt "%s@;<0 2>@[<hv>%a@]@,%s" beg inside v fin
+    fun fmt v -> out fmt "%s@;<0 2>@[<hv>%a@]@,%s" beg inside v fin
 
   let bracket inside = surround "[" "]" inside
 
@@ -115,15 +119,15 @@ let index = function
 let nb_tasks = 9
 
 let task_name ppf = function
-  | 0 -> Format.pp_print_string ppf "lexing"
-  | 1 -> Format.pp_print_string ppf "parsing"
-  | 2 -> Format.pp_print_string ppf "scoping"
-  | 3 -> Format.pp_print_string ppf "rewriting"
-  | 4 -> Format.pp_print_string ppf "typing"
-  | 5 -> Format.pp_print_string ppf "solving"
-  | 6 -> Format.pp_print_string ppf "reading"
-  | 7 -> Format.pp_print_string ppf "sharing"
-  | 8 -> Format.pp_print_string ppf "writing"
+  | 0 -> string ppf "lexing"
+  | 1 -> string ppf "parsing"
+  | 2 -> string ppf "scoping"
+  | 3 -> string ppf "rewriting"
+  | 4 -> string ppf "typing"
+  | 5 -> string ppf "solving"
+  | 6 -> string ppf "reading"
+  | 7 -> string ppf "sharing"
+  | 8 -> string ppf "writing"
   | _ -> assert false
 
 (** [record_time s f] records under [s] the time spent in calling [f].
@@ -150,10 +154,10 @@ let record_time, print_time =
     if !do_record_time && !do_print_time then begin
       let total = Sys.time () -. t0 in
       Format.printf "total %.2fs" total;
-      let pp_task i d =
+      let task i d =
         Format.printf " %a %.2fs (%.0f%%)" task_name i d (100.0 *. d /. total)
       in
-      Float.Array.iteri pp_task tm;
+      Float.Array.iteri task tm;
       let d = total -. (Float.Array.fold_left (+.) 0.0 tm) in
       Format.printf " other %.2fs (%.0f%%)@." d (100.0 *. d /. total)
     end
@@ -165,7 +169,7 @@ let record_time, print_time =
 let stream_iter : ('a -> unit) -> 'a Stream.t -> unit =
   if not !do_print_time then Stream.iter else fun f strm ->
   let peek strm =
-    let open Stdlib in let r = ref None in
+    let r = ref None in
     record_time Parsing (fun () -> r := Stream.peek strm); !r
   in
   let rec do_rec () =

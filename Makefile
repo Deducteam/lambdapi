@@ -15,25 +15,26 @@ odoc:
 	@dune build --only-packages lambdapi @doc
 
 .PHONY: doc
-doc:
-	$(MAKE) -C docs syntax.bnf syntax_dedukti.bnf html
+doc: bnf
+	$(MAKE) -C doc html
+
+.PHONY: bnf
+bnf:
+	$(MAKE) -C doc -f Makefile.bnf
 
 #### Unit tests and sanity check #############################################
 
-OK_TESTFILES = $(sort $(wildcard tests/OK/*.dk tests/OK/*.lp))
-KO_TESTFILES = $(sort $(wildcard tests/KO/*.dk tests/KO/*.lp))
-
 .PHONY: tests
 tests: bin
-	@dune runtest --only-packages lambdapi
-	@printf "## Decision tree tests ##\n"
+	@dune runtest
+	@dune exec --only-packages lambdapi -- tests/runtests.sh
 	@dune exec --only-packages lambdapi -- tests/dtrees.sh
+	@dune exec --only-packages lambdapi -- tests/export_dk.sh
+	@dune exec --only-packages lambdapi -- tests/export_lp.sh
 
-.PHONY: real_tests
-real_tests: bin
-	@dune runtest --only-packages lambdapi
-	@printf "## Decision tree tests ##\n"
-	@dune exec --only-packages lambdapi -- tests/dtrees.sh
+.PHONY: tests_alt_ergo
+tests_alt_ergo: bin
+	@dune exec --only-packages lambdapi -- lambdapi check tests/OK/why3*.lp
 
 .PHONY: sanity_check
 sanity_check: misc/sanity_check.sh
@@ -78,11 +79,16 @@ zenon_modulo: bin
 
 #### Cleaning targets ########################################################
 
+.PHONY: lpoclean
+lpoclean:
+	@find . -type f -name "*.lpo" -exec rm {} \;
+
 .PHONY: clean
-clean:
+clean: lpoclean
 	@dune clean
 	@$(MAKE) -C editors/emacs clean
 	@$(MAKE) -C editors/vscode clean
+	@$(MAKE) -C Logic clean
 
 .PHONY: distclean
 distclean: clean
@@ -94,7 +100,6 @@ distclean: clean
 	@cd libraries && ./dklib.sh clean
 	@cd libraries && ./zenon_modulo.sh clean
 	@find . -type f -name "*~" -exec rm {} \;
-	@find . -type f -name "*.lpo" -exec rm {} \;
 	@find . -type f -name "*.gv" -exec rm {} \;
 
 .PHONY: fullclean
@@ -141,24 +146,3 @@ else
 	@dune install lambdapi-mode
 	@printf "\e[36mEmacs mode installed.\e[39m\n"
 endif
-
-.PHONY: install_vscode
-install_vscode:
-	$(MAKE) -C editors/vscode
-
-opam-release:
-	dune-release distrib
-	dune-release opam pkg
-
-OPAM_REPO=/home/egallego/external/coq/opam-deducteam
-OPAM_LP_VER=$(shell dune-release log -t)
-# Prior to build:
-# - dune-release log edit && dune-release tag commit [or edit by yourself]
-# - dune-release tag                                 [or git tag]
-repos_release:
-	rm -rf _build
-	dune-release distrib
-	dune-release publish distrib
-	dune-release opam pkg -p lambdapi
-	cp -a _build/lambdapi.$(OPAM_LP_VER) $(OPAM_REPO)/packages/lambdapi/
-	cd $(OPAM_REPO) && git add -A && git commit -a -m "[lambdapi] new version $(OPAM_LP_VER)"

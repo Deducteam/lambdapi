@@ -5,12 +5,8 @@
 
     @see <https://dblp.uni-trier.de/rec/html/conf/ml/Maranget08> *)
 
-open! Lplib
-open Lplib.Base
-open Lplib.Extra
-
+open Lplib open Base open Extra
 open Common
-
 open Timed
 open Term
 open LibTerm
@@ -22,7 +18,7 @@ let log = log.pp
 (** {1 Types for decision trees}
 
     The types involved in the definition of decision trees are given in module
-    {!module:Tree_types} (they could not be defined here as this would lead to
+    {!module:Tree_type} (they could not be defined here as this would lead to
     a cyclic dependency).
 
     {b Example:} let us consider the rewrite system for symbol [f] defined as:
@@ -42,7 +38,7 @@ let log = log.pp
     a matching on symbol [u] or a variable or wildcard when [?]. Typically the
     portion [S─∘─Z] is made possible by a swap. *)
 
-(** Representation of a tree (see {!type:Term.tree}). *)
+(** Representation of a tree (see {!type:Tree_type.tree}). *)
 type tree = (rhs * int) Tree_type.tree
 
 (** {1 Conditions for decision trees}
@@ -172,11 +168,11 @@ end
 
 (** {1 Clause matrix and pattern matching problem} *)
 
-(** {b NOTE} we ideally need the {!type:stack} of terms used during evaluation
+(** {b NOTE} We ideally need the type [stack] of terms used during evaluation
     (argument [stk] of {!val:Eval.tree_walk}) to have fast element access (for
     swaps) as well as fast destruction and reconstruction operations (for more
-    information on these operations have a look at  {!val:Extra.List.destruct}
-    and {!val:Extra.List.reconstruct}).  These operations are intuitively used
+    information on these operations have a look at  {!val:Lplib.List.destruct}
+    and {!val:Lplib.List.reconstruct}).  These operations are intuitively used
     to inspect a particular element, reduce it, and then reinsert it. It seems
     that in practice,  the naive representation based on lists performs better
     than more elaborate solutions, unless there are rules with many arguments.
@@ -191,16 +187,16 @@ end
     is attached. When reducing a term,  if a line filters the term  (i.e., the
     term matches the pattern) then term is rewritten to the RHS. *)
 module CM = struct
-  (** [pp_head ppf t] prints head of term [t]. *)
-  let pp_head : term pp = fun ppf t ->
-    let open Format in
-    pp_print_string ppf
+  (** [head ppf t] prints head of term [t]. *)
+  let head : term pp = fun ppf t ->
+    string ppf
       ( match get_args t with
         | Symb s, _ -> s.sym_name
         | Patt _, _ -> "$"
         | Vari _, _ -> "x"
         | Abst _, _ -> "λ"
         | Prod _, _ -> "Π"
+        | Type, _   -> "TYPE"
         | _ -> assert false (* Terms that souldn't appear in lhs *) )
 
   (** Representation of a subterm in argument position in a pattern. *)
@@ -208,13 +204,10 @@ module CM = struct
     { arg_path : int list (** Reversed path to the subterm. *)
     ; arg_rank : int      (** Number of binders along the path. *) }
 
-  (** [pp_arg_path ppf pth] prints path [pth] as a dotted list of integers to
+  (** [arg_path ppf pth] prints path [pth] as a dotted list of integers to
       formatter [ppf]. *)
-  let pp_arg_path : int list pp = fun ppf pth ->
-    Format.(
-      fprintf ppf "{%a}"
-        (pp_print_list ~pp_sep:(Base.pp_sep ".") pp_print_int)
-        (List.rev pth))
+  let arg_path : int list pp = fun ppf pth ->
+    out ppf "{%a}" (List.pp int ".") (List.rev pth)
 
   (** {b NOTE} the {!field:arg_path} describes a path to the represented term.
       The idea is that each index of the list tells under which argument to go
@@ -239,12 +232,10 @@ module CM = struct
     ; cond_pool   : CP.t
     (** Condition pool with convertibility and free variable constraints. *) }
 
-  (** [pp_clause ppf c] pretty prints clause [c] to formatter [ppf]. *)
-  let pp_clause : clause pp = fun ppf {c_lhs; _} ->
-    let open Format in
-    fprintf ppf "| @[<h>%a@] |"
-      (pp_print_list ~pp_sep:(Base.pp_sep " | ") pp_head)
-      (Array.to_list c_lhs)
+  (** [clause ppf c] pretty prints clause [c] to formatter [ppf]. *)
+  let clause : clause pp = fun ppf {c_lhs; _} ->
+    out ppf "| @[<h>%a@] |"
+      (List.pp head " | ") (Array.to_list c_lhs)
 
   (** Type of clause matrices. *)
   type t =
@@ -258,9 +249,8 @@ module CM = struct
 
   (** [pp ppf cm] pretty prints clause matrix [cm] to formatter [ppf]. *)
   let pp : t pp = fun ppf {clauses; _} ->
-    let open Format in
-    fprintf ppf "[@[<v>%a@]]" (pp_print_list ~pp_sep:pp_print_space pp_clause)
-      clauses
+    out ppf "[@[<v>%a@]]"
+      Format.(pp_print_list ~pp_sep:pp_print_space clause) clauses
 
   (** Available operations on clause matrices. Every operation corresponds to
       decision made during evaluation. This type is not used outside of the
@@ -283,12 +273,18 @@ module CM = struct
       {!type:Tree_type.TC.t}) that is a candidate for a specialization. *)
   let is_treecons : term -> bool = fun t ->
     match fst (get_args t) with
+    | TRef _ | TEnv _ | Appl _ -> assert false (*Cannot happen with get_args*)
+    | Meta _ -> assert false (* No metavars in rewrite rules LHS *)
+    | Wild -> assert false
+    | Plac _ -> assert false
+    | LLet _ -> assert false
+    | Kind
     | Patt(_) -> false
     | Vari(_)
     | Abst(_)
     | Prod(_)
+    | Type
     | Symb(_) -> true
-    | _       -> assert false
 
   (** [of_rules rs] transforms rewriting rules [rs] into a clause matrix. *)
   let of_rules : rule list -> t = fun rs ->
@@ -431,6 +427,7 @@ module CM = struct
           Some(TC.Symb(sym_path, sym_name, arity), e)
       | Vari(x)                       ->
           Some(TC.Vari(VarMap.find x vars_id), e)
+      | Type                          -> Some(TC.Type, e)
       | _                             -> None
     in
     let tc_fst_cmp (tca, _) (tcb, _) = TC.compare tca tcb in
@@ -479,7 +476,7 @@ module CM = struct
               if Logger.log_enabled () then
                 log "Registering non linearity constraint on position [%a] \
                      on %d"
-                  pp_arg_path a.arg_path i;
+                  arg_path a.arg_path i;
               CP.register_nl mem i cond_pool
           | None    -> cond_pool
         in
@@ -536,6 +533,10 @@ module CM = struct
           if lenh = lenp && Bindlib.eq_vars x y
           then Some({r with c_lhs = insert (Array.of_list args)})
           else None
+      | Type, Type ->
+          if lenh = lenp (* they should be 0 if terms are well-typed *)
+          then Some({r with c_lhs = insert (Array.of_list args)})
+          else None
       | _      , Patt(_) ->
           let arity = List.length pargs in
           let e = Array.make arity (mk_wildcard free_vars) in
@@ -569,6 +570,7 @@ module CM = struct
           in
           Some({r with c_lhs})
       | Prod(_)
+      | Type
       | Symb(_) | Abst(_)
       | Vari(_) | Appl(_) -> None
       | _ -> assert false in
@@ -684,12 +686,13 @@ let harvest :
     having (as head structure) symbol [s] will be accepted.
 
     The second bullet is managed by the substitution of type
-    {!type:rhs_substit}. If a LHS contains a named pattern variable, then it
+    {!type:Tree_type.rhs_substit}. If a LHS contains a named pattern variable,
+    then it
     is used in the RHS. Sub-terms that are filtered by named variables that
     are bound in the RHS are saved into an array during evaluation. When a
     leaf is reached, the substitution is applied on the RHS, copying terms
     from that array to the RHS. Subterms are saved into the array when field
-    {!field:CM.store} of nodes is true. *)
+    [store] of nodes is true. *)
 
 (** [compile mstrat m] translates the pattern matching problem encoded by the
     matrix [m] into a decision tree following strategy [mstrat]. *)
@@ -708,7 +711,7 @@ let compile : match_strat -> CM.t -> tree = fun mstrat m ->
   | Yield({c_rhs; c_subst; c_lhs; _}) ->
       harvest c_lhs c_rhs c_subst vars_id slot
   | Condition(cond)                        ->
-      if Logger.log_enabled () then log "Condition [%a]" pp_tree_cond cond;
+      if Logger.log_enabled () then log "Condition [%a]" tree_cond cond;
       let ok   = compile_cv {cm with clauses = CM.cond_ok   cond clauses} in
       let fail = compile_cv {cm with clauses = CM.cond_fail cond clauses} in
       Cond({ok; cond; fail})
@@ -767,9 +770,11 @@ let compile : match_strat -> CM.t -> tree = fun mstrat m ->
   in
   compile VarMap.empty m
 
-(** [update_dtree s] updates decision tree of symbol [s]. *)
-let update_dtree : sym -> unit = fun symb ->
-  let rules = lazy (CM.of_rules !(symb.sym_rules)) in
-  let tree = lazy (compile symb.sym_mstrat (Lazy.force rules)) in
+(** [update_dtree s rs] updates the decision tree of the symbol [s] by adding
+   rules [rs]. *)
+let update_dtree : sym -> rule list -> unit = fun symb rs ->
+  let rs = if rs = [] then !(symb.sym_rules) else !(symb.sym_rules) @ rs in
+  let cm = lazy (CM.of_rules rs) in
+  let tree = lazy (compile symb.sym_mstrat (Lazy.force cm)) in
   let cap = lazy (Tree_type.tree_capacity (Lazy.force tree)) in
   symb.sym_dtree := (cap, tree)

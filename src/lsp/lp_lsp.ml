@@ -10,10 +10,8 @@
 (* Status: Very Experimental                                            *)
 (************************************************************************)
 
-open! Lplib
-open Lplib.Extra
+open Lplib open Extra
 open Common
-
 open Core
 
 module F = Format
@@ -142,14 +140,14 @@ let do_symbols ofmt ~id params =
   let sym = Pure.get_symbols doc.final in
   let sym =
     Extra.StrMap.fold
-      (fun _ (s,p) l ->
+      (fun _ s l ->
         let open Term in
         (* LIO.log_error "sym"
          ( s.sym_name ^ " | "
-         ^ Format.asprintf "%a" pp_term !(s.sym_type)); *)
+         ^ Format.asprintf "%a" term !(s.sym_type)); *)
         Option.map_default
           (fun p -> mk_syminfo file
-              (s.sym_name, s.sym_path, kind_of_type s, p) :: l) l p)
+              (s.sym_name, s.sym_path, kind_of_type s, p) :: l) l s.sym_pos)
       sym [] in
   let msg = LSP.mk_reply ~id ~result:(`List sym) in
   LIO.send_json ofmt msg
@@ -333,22 +331,25 @@ let do_definition ofmt ~id params =
   let sym = Pure.get_symbols doc.final in
   let map_pp : string =
     Extra.StrMap.bindings sym
-    |> List.map (fun (key, (sym,pos)) ->
+    |> List.map (fun (key, sym) ->
         Format.asprintf "{%s} / %s: @[%a@]"
-          key sym.Term.sym_name Pos.pp pos)
+          key sym.Term.sym_name Pos.pp sym.sym_pos)
     |> String.concat "\n"
   in
   LIO.log_error "symbol map" map_pp;
 
   let sym_info =
     match StrMap.find_opt sym_target sym with
-    | None
-    | Some (_, None) -> `Null
-    | Some (s, Some pos) ->
+    | None -> `Null
+    | Some s ->
+      match s.sym_pos with
+      | None -> `Null
+      | Some pos ->
       (* A JSON with the path towards the definition of the term
          and its position is returned
          /!\ : extension is fixed, only works for .lp files *)
-      mk_definfo Library.(file_of_path s.Term.sym_path ^ src_extension) pos
+        mk_definfo
+          Library.(file_of_path s.Term.sym_path ^ lp_src_extension) pos
   in
   let msg = LSP.mk_reply ~id ~result:sym_info in
   LIO.send_json ofmt msg
@@ -403,9 +404,9 @@ let hover_symInfo ofmt ~id params =
 
   let map_pp : string =
     Extra.StrMap.bindings sym
-    |> List.map (fun (key, (sym,pos)) ->
+    |> List.map (fun (key, sym) ->
         Format.asprintf "{%s} / %s: @[%a@]"
-          key sym.Term.sym_name Pos.pp pos)
+          key sym.Term.sym_name Pos.pp sym.sym_pos)
     |> String.concat "\n"
   in
   LIO.log_error "symbol map" map_pp;
@@ -415,13 +416,10 @@ let hover_symInfo ofmt ~id params =
       let open Timed in
       let open Term in
       match StrMap.find_opt sym_target sym with
-      | None
-      | Some (_, None) ->
-        msg_fail "hover_SymInfo" "Sym not found"
-      | Some (sym, Some _) ->
-        !(sym.sym_type)
+      | None -> msg_fail "hover_SymInfo" "Sym not found"
+      | Some sym -> !(sym.sym_type)
     in
-    let sym_type = Format.asprintf "%a" Print.pp_term sym_found in
+    let sym_type = Format.asprintf "%a" Core.Print.term sym_found in
     let result : J.t =
       `Assoc [ "contents", `String sym_type; "range", range ] in
     let msg = LSP.mk_reply ~id ~result in

@@ -1,5 +1,5 @@
 {
-  (* parsing/lexer.mll *)
+  (** Dedukti source file parsing/lexer.mll. *)
 
   open DkBasic
   open Lexing
@@ -61,8 +61,8 @@ rule token = parse
   | mident as md '.' '{' '|'
   {sident (Some (mk_mident md)) (Buffer.create 42) lexbuf}
   | '"' { string (Buffer.create 42) lexbuf }
-  | _   as s
-  { let msg = sprintf "Unexpected characters '%s'." (String.make 1 s) in
+  | _   as c
+  { let msg = sprintf "Unexpected character '%c'." c in
     fail (get_loc lexbuf) msg }
   | eof { EOF }
 
@@ -100,3 +100,11 @@ and sident op buf = parse
   { Buffer.add_char buf c; sident op buf lexbuf }
   | eof
   { fail (get_loc lexbuf) "Unexpected end of file in ident." }
+
+and is_mident = parse
+  | mident eof { true }
+  | _ { false }
+
+and is_ident = parse
+  | ident eof { true }
+  | _ { false }

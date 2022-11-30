@@ -1,14 +1,14 @@
 (** Basic operations on terms. *)
 
 open Term
-open Lplib.Extra
+open Lplib open Extra
 
 (** [to_tvar t] returns [x] if [t] is of the form [Vari x] and fails
     otherwise. *)
 let to_tvar : term -> tvar = fun t ->
   match t with Vari(x) -> x | _ -> assert false
 
-(** {b NOTE} the {!val:Array.map to_tvar} function is useful when working
+(** {b NOTE} the [Array.map to_tvar] function is useful when working
    with multiple binders. For example, this is the case when manipulating
    pattern variables ([Patt] constructor) or metatavariables ([Meta]
    constructor).  Remark that it is important for these constructors to hold
@@ -43,6 +43,7 @@ let iter : (term -> unit) -> term -> unit = fun action ->
     action t;
     match t with
     | Wild
+    | Plac _
     | TRef(_)
     | Vari(_)
     | Type
@@ -155,20 +156,5 @@ let sym_to_var : tvar StrMap.t -> term -> term = fun map ->
     | TRef _ -> assert false
     | _ -> t
   and to_var_binder b =
-    let (x,b) = Bindlib.unbind b in
-    Bindlib.unbox (Bindlib.bind_var x (lift (to_var b)))
+    let (x,b) = Bindlib.unbind b in bind x lift (to_var b)
   in fun t -> if StrMap.is_empty map then t else to_var t
-
-(** [term_of_rhs r] converts the RHS (right hand side) of the rewriting rule
-    [r] into a term. The bound higher-order variables of the original RHS are
-    substituted using [Patt] constructors. They are thus represented as their
-    LHS counterparts. This is a more convenient way of representing terms when
-    analysing confluence or termination. *)
-let term_of_rhs : rule -> term = fun r ->
-  let fn i x =
-    let (name, arity) = (Bindlib.name_of x, r.arities.(i)) in
-    let vars = Array.init arity (new_tvar_ind "x") in
-    let p = _Patt (Some i) name (Array.map _Vari vars) in
-    TE_Some(Bindlib.unbox (Bindlib.bind_mvar vars p))
-  in
-  Bindlib.msubst r.rhs (Array.mapi fn r.vars)

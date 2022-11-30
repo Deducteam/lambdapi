@@ -1,14 +1,13 @@
 {
   "compilerOptions": {
     "module": "commonjs",
-    "target": "es6",
+    "target": "es2020",
     "outDir": "out",
     "sourceMap": true,
     "strict": true,
     "rootDir": "."
   },
   "files": [
-    // "vscode.proposed.d.ts",
     "src/client.ts"
   ],
   // Default if not specified is node_modules, out, etc...

@@ -1,13 +1,10 @@
-(** Type-checking and inference. *)
+(** Checking that a rule preserves typing (subject reduction property). *)
 
-open! Lplib
+open Lplib
 open Timed
-open Common
-open Error
-open Core
+open Common open Error
+open Core open Term open Print
 open Parsing
-open Term
-open Print
 
 (** Logging function for typing. *)
 let log_subj = Logger.make 's' "subj" "subject-reduction"
@@ -44,7 +41,7 @@ let build_meta_type : problem -> int -> term = fun p k ->
 (** [patt_to_tenv vars t] converts pattern variables of [t] into corresponding
     term environment variables of [vars]. The index [i] in [Patt(Some(i),_,_)]
     indicates the index of the corresponding variable in [vars]. *)
-let patt_to_tenv : term_env Bindlib.var array -> term -> tbox = fun vars ->
+let patt_to_tenv : tevar array -> term -> tbox = fun vars ->
   let get_te i =
     match i with
     | None    -> assert false (* Cannot appear in LHS. *)
@@ -62,6 +59,7 @@ let patt_to_tenv : term_env Bindlib.var array -> term -> tbox = fun vars ->
     | Kind        -> assert false (* Cannot appear in LHS. *)
     | Prod(_,_)   -> assert false (* Cannot appear in LHS. *)
     | LLet(_,_,_) -> assert false (* Cannot appear in LHS. *)
+    | Plac _      -> assert false (* Cannot appear in LHS. *)
     | Meta(_,_)   -> assert false (* Cannot appear in LHS. *)
     | TEnv(_,_)   -> assert false (* Cannot appear in LHS. *)
     | Wild        -> assert false (* Cannot appear in LHS. *)
@@ -116,6 +114,8 @@ let symb_to_tenv
           (_LLet (symb_to_tenv a) (symb_to_tenv t) b, ts)
       | Meta(_,_)   ->
           fatal pos "A metavariable could not be instantiated in the RHS."
+      | Plac _      ->
+          fatal pos "A placeholder hasn't been instantiated in the RHS."
       | TEnv(_,_)   -> assert false (* TEnv have been replaced in [t]. *)
       | Appl(_,_)   -> assert false (* Cannot appear in RHS. *)
       | Patt(_,_,_) -> assert false (* Cannot appear in RHS. *)
@@ -135,8 +135,7 @@ let check_rule : Scope.pre_rule Pos.loc -> rule = fun ({pos; elt} as pr) ->
   (* Check that the variables of the RHS are in the LHS. *)
   if pr_xvars_nb <> 0 then
     (let xvars = Array.drop (Array.length vars - pr_xvars_nb) vars in
-     fatal pos "Unknown pattern variables: %a"
-       (Array.pp Print.pp_var ",") xvars);
+     fatal pos "Unknown pattern variables: %a" (Array.pp var ",") xvars);
   let arity = List.length lhs in
   if Logger.log_enabled () then
     begin
@@ -144,55 +143,49 @@ let check_rule : Scope.pre_rule Pos.loc -> rule = fun ({pos; elt} as pr) ->
          unboxed twice. However things should be fine here since the result is
          only used for printing. *)
       let rhs = Bindlib.(unbox (bind_mvar vars pr_rhs)) in
-      let naive_rule = {lhs; rhs; arity; arities; vars; xvars_nb = 0} in
-      log_subj (Color.red "%a") pp_rule (s, naive_rule);
+      let naive_rule =
+        {lhs; rhs; arity; arities; vars; xvars_nb = 0; rule_pos = pos} in
+      log_subj (Color.red "%a") sym_rule (s, naive_rule);
     end;
   (* Replace [Patt] nodes of LHS with corresponding elements of [vars]. *)
   let lhs_vars = _Appl_Symb s (List.map (patt_to_tenv vars) lhs) in
-  (* Create metavariables that will stand for the variables of [vars].
-     These metavariables are prefixed by "$" so that we can recognize them. *)
-  let var_names = Array.map (fun x -> "$" ^ Bindlib.name_of x) vars in
   let p = new_problem() in
   let metas =
-    let f i name =
+    let f i _ =
       let arity = arities.(i) in
       (*FIXME: build_meta_type should take a sort as argument as some pattern
          variables are types and thus of sort KIND! *)
-      LibMeta.fresh p ~name (build_meta_type p arity) arity
-    in Array.mapi f var_names
+      LibMeta.fresh p (build_meta_type p arity) arity
+    in Array.mapi f vars
   in
   (* Substitute them in the LHS and in the RHS. *)
   let lhs_with_metas, rhs_with_metas =
     let lhs_rhs = Bindlib.box_pair lhs_vars pr_rhs in
-    let b = Bindlib.bind_mvar vars lhs_rhs in
-    let b = Bindlib.unbox b in
+    let b = Bindlib.unbox (Bindlib.bind_mvar vars lhs_rhs) in
     let meta_to_tenv m =
       let xs = Array.init m.meta_arity (new_tvar_ind "x") in
       let ts = Array.map _Vari xs in
       TE_Some(Bindlib.unbox (Bindlib.bind_mvar xs (_Meta m ts)))
     in
-    let te_envs = Array.map meta_to_tenv metas in
-    Bindlib.msubst b te_envs
+    Bindlib.msubst b (Array.map meta_to_tenv metas)
   in
   if Logger.log_enabled () then
     log_subj "replace pattern variables by metavariables:@ %a ↪ %a"
-      pp_term lhs_with_metas pp_term rhs_with_metas;
+      term lhs_with_metas term rhs_with_metas;
   (* Infer the typing constraints of the LHS. *)
   match Infer.infer_noexn p [] lhs_with_metas with
   | None -> fatal pos "The LHS is not typable."
-  | Some ty_lhs ->
+  | Some (lhs_with_metas, ty_lhs) ->
   (* Try to simplify constraints. Don't check typing when instantiating
      a metavariable. *)
   if not (Unif.solve_noexn ~type_check:false p) then
     fatal pos "The LHS is not typable.";
-  let lhs_constrs = !p.unsolved in
+  let norm_constr (c,t,u) = (c, Eval.snf [] t, Eval.snf [] u) in
+  let lhs_constrs = List.map norm_constr !p.unsolved in
   if Logger.log_enabled () then
-    log_subj "LHS: %a%a@ %a ↪ %a"
-      pp_term ty_lhs pp_constrs lhs_constrs
-      pp_term lhs_with_metas pp_term rhs_with_metas;
-  (* We build a map allowing to find a variable index from its name. *)
-  let htbl : index_tbl = Hashtbl.create (Array.length vars) in
-  Array.iteri (fun i name -> Hashtbl.add htbl name i) var_names;
+    log_subj "@[<v>LHS type: %a@ LHS constraints: %a@ %a ↪ %a@]"
+      term ty_lhs constrs lhs_constrs
+      term lhs_with_metas term rhs_with_metas;
   (* We instantiate all the uninstantiated metavariables of the LHS (including
      those appearing in the types of these metavariables) using fresh function
      symbols. We also keep a list of those symbols. *)
@@ -201,54 +194,83 @@ let check_rule : Scope.pre_rule Pos.loc -> rule = fun ({pos; elt} as pr) ->
     let rec instantiate m =
       match !(m.meta_value) with
       | Some _ ->
-          (* Instantiate recursively the meta-variables of the definition. *)
-          let t = mk_Meta(m, Array.make m.meta_arity mk_Kind) in
-          LibMeta.iter true instantiate [] t
+        (* Instantiate recursively the meta-variables of the definition. *)
+        let t = mk_Meta(m, Array.make m.meta_arity mk_Kind) in
+        LibMeta.iter true instantiate [] t
       | None ->
-          (* Instantiate recursively the meta-variables of the type. *)
-          LibMeta.iter true instantiate [] !(m.meta_type);
-          (* Instantiation of [m]. *)
-          let s = Term.create_sym (Sign.current_path()) Privat Defin Eager
-                    false (LibMeta.name m) !(m.meta_type) [] in
-          Stdlib.(symbols := s :: !symbols);
-          (* Build a definition for [m]. *)
-          let xs = Array.init m.meta_arity (new_tvar_ind "x") in
-          let s = _Symb s in
-          let def = Array.fold_left (fun t x -> _Appl t (_Vari x)) s xs in
-          m.meta_value := Some(Bindlib.unbox (Bindlib.bind_mvar xs def))
+        (* Instantiate recursively the meta-variables of the type. *)
+        LibMeta.iter true instantiate [] !(m.meta_type);
+        (* Instantiation of [m]. *)
+        let s =
+          let name = Pos.none @@ Printf.sprintf "$%d" m.meta_key in
+          Term.create_sym (Sign.current_path()) Privat Defin Eager
+            false name !(m.meta_type) [] in
+        Stdlib.(symbols := s :: !symbols);
+        (* Build a definition for [m]. *)
+        let xs = Array.init m.meta_arity (new_tvar_ind "x") in
+        let s = _Symb s in
+        let def = Array.fold_left (fun t x -> _Appl t (_Vari x)) s xs in
+        m.meta_value := Some(Bindlib.unbox (Bindlib.bind_mvar xs def))
     in
-    Array.iter instantiate metas; Stdlib.(!symbols)
+    Array.iter instantiate metas;
+    Stdlib.(!symbols)
   in
   if Logger.log_enabled () then
     log_subj "replace LHS metavariables by function symbols:@ %a ↪ %a"
-      pp_term lhs_with_metas pp_term rhs_with_metas;
+      term lhs_with_metas term rhs_with_metas;
   (* TODO complete the constraints into a set of rewriting rule on
      the function symbols of [symbols]. *)
   (* Compute the constraints for the RHS to have the same type as the LHS. *)
   let p = new_problem() in
-  if not (Infer.check_noexn p [] rhs_with_metas ty_lhs) then
-    fatal pos "The RHS does not have the same type as the LHS.";
+  match Infer.check_noexn p [] rhs_with_metas ty_lhs with
+  | None -> fatal pos "The RHS does not have the same type as the LHS."
+  | Some rhs_with_metas ->
   (* Solving the typing constraints of the RHS. *)
   if not (Unif.solve_noexn p) then
     fatal pos "The rewriting rule does not preserve typing.";
-  let is_lhs_constr c =
-    (* Contexts ignored: [Infer.check] is called with an empty context and
-       neither [Infer.check] nor [Unif.solve] generate contexts with defined
-       variables. *)
-    let eq (_,t1,u1) (_,t2,u2) =
-      Eval.(eq_modulo [] t1 t2 && eq_modulo [] u1 u2)
-      || Eval.(eq_modulo [] t1 u2 && eq_modulo [] t2 u1) in
-    List.exists (eq c) lhs_constrs
+  let rhs_constrs = List.map norm_constr !p.unsolved in
+  (* [matches p t] says if [t] is an instance of [p]. *)
+  let matches p t =
+    let rec matches s l =
+      match l with
+      | [] -> ()
+      | (p,t)::l ->
+        (*if Logger.log_enabled() then
+          log_subj "matches [%a] [%a]" term p term t;*)
+        match unfold p, unfold t with
+        | Vari x, _ ->
+          begin match VarMap.find_opt x s with
+            | Some u ->
+              if Eval.eq_modulo [] t u then matches s l else raise Exit
+            | None -> matches (VarMap.add x t s) l
+          end
+        | Symb f, Symb g when f == g -> matches s l
+        | Appl(t1,u1), Appl(t2,u2) -> matches s ((t1,t2)::(u1,u2)::l)
+        | _ -> raise Exit
+    in try matches VarMap.empty [p,t]; true with Exit -> false
   in
-  let cs = List.filter (fun c -> not (is_lhs_constr c)) !p.unsolved in
+  (* Function saying if a constraint is an instance of another one. *)
+  let is_inst ((_c1,t1,u1) as x1) ((_c2,t2,u2) as x2) =
+    if Logger.log_enabled() then
+      log_subj "is_inst [%a] [%a]" constr x1 constr x2;
+    let cons t u = add_args (mk_Symb Unif_rule.equiv) [t; u] in
+    matches (cons t1 u1) (cons t2 u2) || matches (cons t1 u1) (cons u2 t2)
+  in
+  let is_lhs_constr rc = List.exists (fun lc -> is_inst lc rc) lhs_constrs in
+  let cs = List.filter (fun rc -> not (is_lhs_constr rc)) rhs_constrs in
   if cs <> [] then
     begin
-      List.iter (fatal_msg "Cannot solve %a@." pp_constr) cs;
+      List.iter (fatal_msg "Cannot solve %a@." constr) cs;
       fatal pos "Unable to prove type preservation."
     end;
+  (* We build a map allowing to find a variable index from its key. *)
+  let htbl : index_tbl = Hashtbl.create (Array.length vars) in
+  Array.iteri
+    (fun i m -> Hashtbl.add htbl (Printf.sprintf "$%d" m.meta_key) i)
+    metas;
   (* Replace metavariable symbols by term_env variables, and bind them. *)
   let rhs = symb_to_tenv pr symbols htbl rhs_with_metas in
   (* TODO environment minimisation ? *)
   (* Construct the rule. *)
   let rhs = Bindlib.unbox (Bindlib.bind_mvar vars rhs) in
-  { lhs ; rhs ; arity ; arities ; vars; xvars_nb = 0 }
+  { lhs ; rhs ; arity ; arities ; vars; xvars_nb = 0; rule_pos = pos }

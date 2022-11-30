@@ -1,4 +1,7 @@
 %{
+    (** Modified version of the Dedukti source file
+       parsing/menhir_parser.mly. *)
+
     open Common.Pos
     open Syntax
     open DkBasic
@@ -76,7 +79,6 @@
 
     let require (lps,id) = make_pos lps (P_require(false,[make_pos lps [id]]))
 
-(* parsing/menhir_parser.mly *)
 %}
 
 %token EOF

@@ -1,7 +1,5 @@
 open Syntax
-open Common
-open Pos
-open Error
+open Common open Pos open Error
 open Lplib
 
 (** [get_args t] decomposes the parser level term [t] into a spine [(h,args)],
@@ -9,7 +7,7 @@ open Lplib
     of all its arguments.  The arguments are stored together with the position
     of the corresponding application node in the source code. Note that [h] is
     guaranteed not to be a [P_Appl] node. Term constructors with no equivalent
-    in the legacy syntax (like binary symbol applications) are not handled. *)
+    in the dk syntax (like binary symbol applications) are not handled. *)
 let get_args : p_term -> p_term * (popt * p_term) list = fun t ->
   let rec get_args acc t =
     match t.elt with
@@ -57,21 +55,21 @@ let to_p_rule : p_dk_rule -> p_rule = fun r ->
               with Not_found -> Hashtbl.add arity x nb_args
             end
       | P_Wild            -> ()
-      | P_Type            -> fatal h.pos "Type in legacy pattern."
-      | P_Prod(_,_)       -> fatal h.pos "Product in legacy pattern."
+      | P_Type            -> fatal h.pos "Type in dk pattern."
+      | P_Prod(_,_)       -> fatal h.pos "Product in dk pattern."
       | P_Abst(xs,t)      ->
           begin
             match xs with
             | [(_       ,Some(a),_)] ->
-                fatal a.pos "Annotation in legacy pattern."
+                fatal a.pos "Annotation in dk pattern."
             | [([Some x],None   ,_)] ->
                 compute_arities (x.elt::env) t
             | [([None  ],None   ,_)] ->
                 compute_arities env t
             | _                      -> assert false
           end
-      | P_Arro(_,_)       -> fatal h.pos "Implication in legacy pattern."
-      | P_LLet(_,_,_,_,_) -> fatal h.pos "Let expression in legacy rule."
+      | P_Arro(_,_)       -> fatal h.pos "Implication in dk pattern."
+      | P_LLet(_,_,_,_,_) -> fatal h.pos "Let expression in dk rule."
       | P_Meta(_,_)       -> assert false
       | P_Patt(_,_)       -> assert false
       | P_NLit(_)         -> assert false
@@ -158,12 +156,12 @@ let to_p_rule : p_dk_rule -> p_rule = fun r ->
         in
         Pos.make t.pos (P_Abst([([x],a,false)], u))
     | P_Appl(t1,t2)     -> Pos.make t.pos (P_Appl(build env t1, build env t2))
-    | P_Meta(_,_)       -> fatal t.pos "Invalid legacy rule syntax."
-    | P_Patt(_,_)       -> fatal h.pos "Pattern in legacy rule."
-    | P_LLet(_,_,_,_,_) -> fatal h.pos "Let expression in legacy rule."
-    | P_NLit(_)         -> fatal h.pos "Nat literal in legacy rule."
-    | P_Wrap(_)         -> fatal h.pos "Wrapping constructor in legacy rule."
-    | P_Expl(_)         -> fatal h.pos "Explicit argument in legacy rule."
+    | P_Meta(_,_)       -> fatal t.pos "Invalid dk rule syntax."
+    | P_Patt(_,_)       -> fatal h.pos "Pattern in dk rule."
+    | P_LLet(_,_,_,_,_) -> fatal h.pos "Let expression in dk rule."
+    | P_NLit(_)         -> fatal h.pos "Nat literal in dk rule."
+    | P_Wrap(_)         -> fatal h.pos "Wrapping constructor in dk rule."
+    | P_Expl(_)         -> fatal h.pos "Explicit argument in dk rule."
   in
   (* NOTE the computation order is important for setting arities properly. *)
   let lhs = build [] lhs in

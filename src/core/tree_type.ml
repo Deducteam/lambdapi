@@ -1,7 +1,6 @@
 (** Miscellaneous types and utilities for decision trees. *)
 
-open Lplib
-open Lplib.Base
+open Lplib open Base
 open Common
 
 (** {3 Atomic pattern constructor representation} *)
@@ -22,6 +21,7 @@ module TC =
           two maps) to  a higher order (Bindlib) variable. They  are also used
           in the environment builder to refer  to the higher order variables a
           term may depend on. *)
+      | Type
 
     (** {b NOTE} the effective arity carried by the representation of a symbol
         is specific to a given symbol instance. Indeed, a symbol (in the sense
@@ -32,8 +32,9 @@ module TC =
     (** [pp oc c] prints tree constructor [c] to output channel [o]. *)
     let pp : t pp = fun oc c ->
       match c with
-      | Vari(d)     -> Format.pp_print_int oc d
-      | Symb(_,s,a) -> Format.fprintf oc "%s %d-ary" s a
+      | Vari(d)     -> int oc d
+      | Symb(_,s,a) -> out oc "%s %d-ary" s a
+      | Type        -> out oc "TYPE"
 
     (** [compare c1 c2] implements a total order on constructors. *)
     let compare : t -> t -> int = Stdlib.compare
@@ -54,16 +55,16 @@ type tree_cond =
   (** Are the (indexed) bound variables (which are free at the time of the
       checking) of the term at the given index in the array? *)
 
-(** {!b NOTE} that when performing a {!constructor:tree_cond.CondFV} check, we
+(** {b NOTE} that when performing a {!constructor:tree_cond.CondFV} check, we
     are concerned about variables that were bound in the term being reduced
     and that may appear free while deconstructing it.  If the term being
     reduced contains free variables, those can appear in a subterm even if not
     in the array. *)
 
-let pp_tree_cond : tree_cond pp = fun ppf tc ->
+let tree_cond : tree_cond pp = fun ppf tc ->
   match tc with
-  | CondNL(i, j) -> Format.fprintf ppf "Nl(%d, %d)" i j
-  | CondFV(i, _) -> Format.fprintf ppf "Fv(%d)" i
+  | CondNL(i, j) -> out ppf "Nl(%d, %d)" i j
+  | CondFV(i, _) -> out ppf "Fv(%d)" i
 
 (** Substitution of variables in a RHS. During the filtering process, some
     subterms of the filtered term may be stored in an array. Let [v] be that
@@ -99,8 +100,9 @@ type 'rhs tree =
   (** Conditional branching according to a condition. *)
   | Eos of 'rhs tree * 'rhs tree
   (** End of stack node, branches on left tree if the stack is finished, on
-      the right if it isn't.  Required when there are rules with a lower arity
-      than some other rule above and when {!val:Tree.rule_order} is set. *)
+     the right if it isn't.  Required when there are rules with a lower arity
+     than some other rule above and when {!field:Term.sym.sym_mstrat} is
+     {!constructor:Term.match_strat.Sequen}. *)
   | Node of
       { swap : int
       (** Indicates on which term of the input stack (counting from the head),
@@ -116,7 +118,7 @@ type 'rhs tree =
       (** Specialisation by product with the involved free variable. *)
       ; default : 'rhs tree option
       (** When the available patterns contain a wildcard, this subtree is used
-          as a last resort (if none of the {!field:children} match). *) }
+          as a last resort (if none of the [children] match). *) }
   (** Arbitrarily branching node allowing to perform switches (a switch is the
       matching of a pattern). The node contains one subtree per switch, plus a
       possible default case as well as an abstraction case. *)
@@ -127,7 +129,7 @@ type 'rhs tree =
     constraint. The capacity is the maximum number of such terms that may need
     to be saved. More precisely, let [P] be the set of all paths from the root
     to leaves in the tree [t], and let [nb_store] be a function mapping a path
-    to the number of nodes that have the {!field:store} tag to [true]. We then
+    to the number of nodes that have the [store] tag to [true]. We then
     define the capacity [c] of [t] is [c = max{nb_store(p) | p ∈ P}]. *)
 let rec tree_capacity : 'r tree -> int = fun tr ->
   match tr with
@@ -148,10 +150,10 @@ let rec tree_capacity : 'r tree -> int = fun tr ->
       let c = List.max [c_ch; c_default; c_abs; c_prod] in
       if r.store then c + 1 else c
 
-(** A tree with its capacity and as lazy structures.  For the definition of
-    the capacity, see {!val:capacity}.  Laziness allows to (sometimes) avoid
-    creating several times the same trees when the rules are not given in one
-    go. *)
+(** A tree with its capacity and as lazy structures. For the definition of
+   the capacity, see {!val:Tree_type.tree_capacity}. Laziness allows to
+   (sometimes) avoid creating several times the same trees when the rules are
+   not given in one go. *)
 type 'rhs dtree = int Lazy.t * 'rhs tree Lazy.t
 
 (** [empty_dtree] is the empty decision tree. *)

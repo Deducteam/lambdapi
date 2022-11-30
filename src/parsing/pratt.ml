@@ -1,8 +1,7 @@
-(** This module defines functions needed by the Pratt parser of the Pratter
-    library.
+(** Parsing of infix operators using the Pratter library.
 
     The interface for the Pratter library can be seen at
-    @see <https://forge.tedomum.net/koizel/pratter> *)
+    @see <https://forge.tedomum.net/koizel/pratter>. *)
 
 open Common
 open Core
@@ -30,20 +29,20 @@ end = struct
     let get (tbl, env) t =
       match t.elt with
       | P_Iden({elt=(mp, s); _} as id, false) ->
-          let sym =
+          let open Option.Monad in
+          let* sym =
             try (* Look if [id] is in [env]... *)
               if mp <> [] then raise Not_found;
               ignore (Env.find s env); None
             with Not_found -> (* ... or look into the signature *)
               Some(Sig_state.find_sym ~prt:true ~prv:true tbl id)
           in
-          let f sym =
-            match Term.SymMap.find_opt sym tbl.notations with
-            | Some(Infix(assoc, prio)) -> Some(Pratter.Bin assoc, prio)
-            | Some(Prefix(prio)) -> Some(Pratter.Una, prio)
-            | _ -> None
-          in
-          Option.bind f sym
+          (match Term.SymMap.find_opt sym tbl.notations with
+          | Some(Infix(assoc, prio)) -> Some(Pratter.Infix assoc, prio)
+          | Some(Prefix(prio)) -> Some(Pratter.Prefix, prio)
+          | Some(Postfix(prio)) -> Some(Pratter.Postfix, prio)
+          | Some (Zero | Succ | Quant) -> None
+          | None -> None)
       | _ -> None
 
     let make_appl t u = Pos.make (Pos.cat t.pos u.pos) (P_Appl(t, u))
@@ -57,13 +56,16 @@ end = struct
     let h, args = Syntax.p_get_args t in
     let strm = Stream.of_list (h :: args) in
     let module Parse = Pratter.Make(Pratt_terms) in
-    try Parse.expression (st, env) strm with
-    | Parse.OpConflict (t, u) ->
+    match Parse.expression (st, env) strm with
+    | Ok e -> e
+    | Error `TooFewArguments ->
+        Error.fatal t.pos "Malformed application in \"%a\"" Pretty.term t
+    | Error `OpConflict (t, u) ->
         Error.fatal t.pos "Operator conflict between \"%a\" and \"%a\""
           Pretty.term t Pretty.term u
-    | Parse.UnexpectedBin t ->
-        Error.fatal t.pos "Unexpected binary operator \"%a\"" Pretty.term t
-    | Parse.TooFewArguments ->
-        Error.fatal t.pos "Malformed application in \"%a\"" Pretty.term t
+    | Error `UnexpectedInfix t ->
+        Error.fatal t.pos "Unexpected infix operator \"%a\"" Pretty.term t
+    | Error `UnexpectedPostfix t ->
+        Error.fatal t.pos "Unexpected postfix operator \"%a\"" Pretty.term t
 end
 include Pratt

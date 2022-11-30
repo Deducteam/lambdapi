@@ -1,17 +1,8 @@
 (** Typing context. *)
 
 open Term
+open Lplib
 open Timed
-
-(** [unbind ctx a def b] returns a triple [(x,t,new_ctx)] such that [(x,t)] is
-   an unbinding of [b] (in the sense of [Bindlib.unbind]) and [new_ctx] is an
-   extension of the context [ctx] with the declaration that [x] has type [a]
-   (only if [x] occurs in [t]). If [def] is of the form [Some(u)], the context
-   also registers the term [u] as the definition of variable [x]. *)
-let unbind : ctxt -> term -> term option -> tbinder -> tvar * term * ctxt =
-  fun ctx a def b ->
-  let (x, t) = Bindlib.unbind b in
-  (x, t, if Bindlib.binder_occur b then (x, a, def) :: ctx else ctx)
 
 (** [type_of x ctx] returns the type of [x] in the context [ctx] when it
     appears in it, and
@@ -42,6 +33,20 @@ let to_prod : ctxt -> term -> term * int = fun ctx t ->
   let t, c = List.fold_left f (lift t, 0) ctx in
   Bindlib.unbox t, c
 
+(** [to_prod_box bctx t] is similar to [to_prod bctx t] but operates on boxed
+    contexts and terms. *)
+let to_prod_box : bctxt -> tbox -> tbox * int = fun bctx t ->
+  let f (t, c) (x, a) =
+    let b = Bindlib.bind_var x t in
+    (_Prod a b, c + 1)
+  in
+  List.fold_left f (t, 0) bctx
+
+(** [box_context ctx] lifts context [ctx] to a boxed context. *)
+let box_context : ctxt -> bctxt =
+  List.filter_map
+    (fun (x, t, u) -> if u = None then Some (x, lift t) else None)
+
 (** [to_abst ctx t] builds a sequence of abstractions over the context [ctx],
     in the term [t]. *)
 let to_abst : ctxt -> term -> term = fun ctx t ->
@@ -64,7 +69,7 @@ let sub : ctxt -> tvar array -> ctxt = fun ctx vs ->
   in
   List.fold_right f ctx []
 
-(** [unfold ctx t] behaves like {!val:Term.unfold t} unless term[t] is of the
+(** [unfold ctx t] behaves like {!val:Term.unfold} unless term [t] is of the
     form [Vari(x)] with [x] defined in [ctx]. In this case, [t] is replaced by
     the definition of [x] in [ctx].  In particular, if no operation is carried
     out on [t], we have [unfold ctx t == t]. *)
@@ -91,7 +96,7 @@ let rec unfold : ctxt -> term -> term = fun ctx t ->
       end
   | _ -> t
 
-(** [get_args ctx t] decomposes term [t] as {!val:LibTerm.get_args} does, but
+(** [get_args ctx t] decomposes term [t] as {!val:Term.get_args} does, but
     any variable encountered is replaced by its definition in [ctx] (if it
     exists). *)
 let get_args : ctxt -> term -> term * term list = fun ctx t ->

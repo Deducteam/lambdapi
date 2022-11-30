@@ -1,32 +1,22 @@
-(** Scoping: transforms p_term's into term's. *)
+(** Scoping. Convert parsed terms in core terms by finding out which
+   identifiers are bound variables or function symbol declared in open
+   modules. *)
 
-open Core
-open Sig_state
-open Term
-open Env
+open Core open Sig_state open Term open Env
 open Syntax
-open Common
-open Pos
+open Common open Pos
 
-(** [scope expo ss env p mok mon t] turns into a term a pterm [t] in the
-   signature state [ss], the environment [env] (for bound variables). [mok k]
-   says if there already exists a meta with key [k]. [mon n] says if there
-   already exissts a meta with name [n]. Generated metas are added to [p]. If
-   [expo] is {!constructor:Public}, then the term must not contain any private
-   subterms. *)
+(** [scope ~typ ~mok prv expo ss env p t] turns a pterm [t] into a term in
+    the signature state [ss] and environment [env] (for bound
+    variables). If [expo] is {!constructor:Public}, then the term must not
+    contain any private subterms. If [~typ] is [true], then [t] must be
+    a type (defaults to [false]). No {b new} metavariables may appear in
+    [t], but metavariables in the image of [mok] may be used. The function
+    [mok] defaults to the function constant to [None] *)
 val scope_term :
-      bool -> sig_state -> env
-      -> problem -> (int -> meta option) -> (string -> meta option)
-      -> p_term -> term
-
-(** [scope_term_with_params expo ss env p mok mon t] is similar to [scope_term
-   expo ss env p mok mon t] except that [t] must be a product or an
-   abstraction. In this case, no warnings are issued if the top binders are
-   constant. *)
-val scope_term_with_params :
-      bool -> sig_state -> env
-      -> problem -> (int -> meta option) -> (string -> meta option)
-      -> p_term -> term
+  ?typ:bool (* default: false *) ->
+  ?mok:(int -> meta option) ->
+  bool -> sig_state -> env -> p_term -> term
 
 (** Representation of a rewriting rule prior to SR-checking. *)
 type pre_rule =
@@ -47,7 +37,7 @@ type pre_rule =
   (** Number of variables that appear in the RHS but not in the LHS. *) }
 
 (** [rule_of_pre_rule r] converts a pre-rewrite rule into a rewrite rule. *)
-val rule_of_pre_rule : pre_rule -> rule
+val rule_of_pre_rule : pre_rule loc -> rule
 
 (** [scope_rule ur ss r] turns a parser-level rewriting rule [r], or a
     unification rule if [ur] is true, into a pre-rewriting rule. *)

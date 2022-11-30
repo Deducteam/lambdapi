@@ -1,31 +1,17 @@
 (** Parsing functions for Lambdapi.
 
     This module includes two parsers: a parser for the Lambdapi syntax whose
-    functions are available either through the submodule
-    {!module:Parser.Lp}, or directly in {!module:Parser}; and another
-    parser for the Dedukti 2.7 syntax, available through
-    {!module:Parser.Dk}. *)
+    functions are available either through the submodule {!module:Parser.Lp}
+    or directly in {!module:Parser}, and a parser for the Dedukti syntax
+    available through {!module:Parser.Dk}. *)
 
-open! Lplib
-open Base
+open Lplib open Base
 open Common
 
-(** [parser_fatal loc fmt] is a wrapper for [Error.fatal] that enforces
+(** [parser_fatal pos fmt] is a wrapper for [Error.fatal] that enforces
     that the error has an attached source code position. *)
-let parser_fatal : Pos.pos -> ('a,'b) koutfmt -> 'a = fun loc fmt ->
-  Error.fatal (Some(loc)) fmt
-
-(** [qident_of_string s] converts the string [s] into a path. *)
-let qident_of_string : string -> (Syntax.qident, Pos.popt) result = fun s ->
-    let lexbuf = Sedlexing.Utf8.from_string s in
-    let lexer = LpLexer.lexer lexbuf in
-    let parse =
-      MenhirLib.Convert.Simplified.traditional2revised LpParser.id in
-    try Ok(let Pos.{elt;_} = parse lexer in elt)
-    with LpLexer.SyntaxError(s) -> Error(s.pos)
-       | LpParser.Error ->
-           let loc = Pos.locate (Sedlexing.lexing_positions lexbuf) in
-           Error(Some(loc))
+let parser_fatal : Pos.pos -> ('a,'b) koutfmt -> 'a = fun pos fmt ->
+  Error.fatal (Some(pos)) fmt
 
 (** Module type of a parser. *)
 module type PARSER = sig
@@ -47,37 +33,35 @@ end
 module Lp : PARSER = struct
 
   (* Needed to workaround serious bug in sedlex, see #549 *)
-  let lp_lexbuf_fixup lexbuf fname =
+  let lexbuf_fixup lb fname =
     let pos = Lexing.
                 { pos_fname = fname
                 ; pos_lnum = 1
                 ; pos_bol = 0
                 ; pos_cnum = 0 } in
-    Sedlexing.set_position lexbuf pos
+    Sedlexing.set_position lb pos
 
   let stream_of_lexbuf :
     ?inchan:in_channel -> ?fname:string -> Sedlexing.lexbuf ->
     (* Input channel passed as parameter to be closed at the end of stream. *)
     Syntax.p_command Stream.t =
-    fun ?inchan ?fname lexbuf ->
-      Option.iter (Sedlexing.set_filename lexbuf) fname;
-      Option.iter (lp_lexbuf_fixup lexbuf) fname;
+    fun ?inchan ?fname lb ->
+      Option.iter (Sedlexing.set_filename lb) fname;
+      Option.iter (lexbuf_fixup lb) fname;
       let parse =
         MenhirLib.Convert.Simplified.traditional2revised LpParser.command
       in
-      let lexer = LpLexer.lexer lexbuf in
+      let token = LpLexer.token lb in
       let generator _ =
-        try Some(parse lexer)
+        try Some(parse token)
         with
         | End_of_file -> Option.iter close_in inchan; None
-        | LpLexer.SyntaxError(s) ->
-            let loc = match s.pos with Some(l) -> l | None -> assert false in
-            parser_fatal loc "Unexpected character: [%s]" s.elt
+        | LpLexer.SyntaxError {pos=None; _} -> assert false
+        | LpLexer.SyntaxError {pos=Some pos; elt} -> parser_fatal pos "%s" elt
         | LpParser.Error ->
-            let loc = Sedlexing.lexing_positions lexbuf in
-            let loc = Pos.locate loc in
-            parser_fatal loc "Unexpected token [%s]."
-              (Sedlexing.Utf8.lexeme lexbuf)
+            let pos = Pos.locate (Sedlexing.lexing_positions lb) in
+            parser_fatal pos "Unexpected token: \"%s\"."
+              (Sedlexing.Utf8.lexeme lb)
       in
       Stream.from generator
 
@@ -92,7 +76,7 @@ module Lp : PARSER = struct
     stream_of_lexbuf ~fname (Sedlexing.Utf8.from_string s)
 end
 
-(** Parsing legacy (Dedukti2) syntax. *)
+(** Parsing dk syntax. *)
 module Dk : PARSER = struct
 
   let token : Lexing.lexbuf -> DkTokens.token =
@@ -108,21 +92,19 @@ module Dk : PARSER = struct
     ?inchan:in_channel -> ?fname:string -> Lexing.lexbuf ->
     (* Input channel passed as parameter to be closed at the end of stream. *)
     Syntax.p_command Stream.t =
-    fun ?inchan ?fname lexbuf ->
+    fun ?inchan ?fname lb ->
       let fn n =
-        lexbuf.lex_curr_p <- {lexbuf.lex_curr_p with pos_fname = n}
+        lb.lex_curr_p <- {lb.lex_curr_p with pos_fname = n}
       in
       Option.iter fn fname;
-        (*In OCaml >= 4.11: Lexing.set_filename lexbuf fname;*)
+        (*In OCaml >= 4.11: Lexing.set_filename lb fname;*)
       let generator _ =
-        try Some (command token lexbuf)
+        try Some (command token lb)
         with
         | End_of_file -> Option.iter close_in inchan; None
         | DkParser.Error ->
-            let loc =
-              Lexing.(lexbuf.lex_start_p, lexbuf.lex_curr_p) in
-            let loc = Pos.locate loc in
-            parser_fatal loc "Unexpected token [%s]." (Lexing.lexeme lexbuf)
+            let pos = Pos.locate (Lexing.(lb.lex_start_p, lb.lex_curr_p)) in
+            parser_fatal pos "Unexpected token \"%s\"." (Lexing.lexeme lb)
       in
       Stream.from generator
 
@@ -139,3 +121,35 @@ end
 
 (* Include parser of new syntax so that functions are directly available.*)
 include Lp
+
+(** [path_of_string s] converts the string [s] into a path. *)
+let path_of_string : string -> Path.t = fun s ->
+  let open LpLexer in
+  let lb = Sedlexing.Utf8.from_string s in
+  try
+    begin match token lb () with
+      | UID s, _, _ -> [s]
+      | QID p, _, _ -> List.rev p
+      | _ -> Error.fatal_no_pos "\"%s\" is not a path." s
+    end
+  with SyntaxError _ -> Error.fatal_no_pos "\"%s\" is not a path." s
+
+(** [qident_of_string s] converts the string [s] into a qident. *)
+let qident_of_string : string -> Core.Term.qident = fun s ->
+  let open LpLexer in
+  let lb = Sedlexing.Utf8.from_string s in
+  try
+    begin match token lb () with
+      | QID [], _, _ -> assert false
+      | QID (s::p), _, _ -> (List.rev p, s)
+      | _ -> Error.fatal_no_pos "\"%s\" is not a qualified identifier." s
+    end
+  with SyntaxError _ ->
+    Error.fatal_no_pos "\"%s\" is not a qualified identifier." s
+
+(** [parse_file fname] selects and runs the correct parser on file [fname], by
+    looking at its extension. *)
+let parse_file : string -> Syntax.ast = fun fname ->
+  match Filename.check_suffix fname Library.lp_src_extension with
+  | true  -> Lp.parse_file fname
+  | false -> Dk.parse_file fname

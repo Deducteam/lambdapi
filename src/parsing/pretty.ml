@@ -3,26 +3,87 @@
     This module defines functions that allow printing elements of syntax found
     in the parser-level abstract syntax. This is used, for example, to print a
     file in the Lambdapi syntax, given the AST obtained when parsing a file in
-    the legacy (Dedukti) syntax. *)
+    the Dedukti syntax. *)
 
-open! Lplib
-open Base
-open Common
-open Pos
+open Lplib open Base
+open Common open Pos
 open Syntax
 open Format
 open Core
 
+(** Keywords table. *)
+let keyword_table = Hashtbl.create 59
+
+let is_keyword : string -> bool = Hashtbl.mem keyword_table
+
+let _ = let open LpLexer in
+  List.iter (fun (s, k) -> Hashtbl.add keyword_table s k)
+    [ "abort", ABORT
+    ; "admit", ADMIT
+    ; "admitted", ADMITTED
+    ; "apply", APPLY
+    ; "as", AS
+    ; "assert", ASSERT false
+    ; "assertnot", ASSERT true
+    ; "associative", ASSOCIATIVE
+    ; "assume", ASSUME
+    ; "begin", BEGIN
+    ; "builtin", BUILTIN
+    ; "commutative", COMMUTATIVE
+    ; "compute", COMPUTE
+    ; "constant", CONSTANT
+    ; "debug", DEBUG
+    ; "end", END
+    ; "fail", FAIL
+    ; "flag", FLAG
+    ; "generalize", GENERALIZE
+    ; "have", HAVE
+    ; "in", IN
+    ; "induction", INDUCTION
+    ; "inductive", INDUCTIVE
+    ; "infix", INFIX
+    ; "injective", INJECTIVE
+    ; "left", SIDE(Pratter.Left)
+    ; "let", LET
+    ; "off", SWITCH(false)
+    ; "on", SWITCH(true)
+    ; "opaque", OPAQUE
+    ; "open", OPEN
+    ; "postfix", POSTFIX
+    ; "prefix", PREFIX
+    ; "print", PRINT
+    ; "private", PRIVATE
+    ; "proofterm", PROOFTERM
+    ; "protected", PROTECTED
+    ; "prover", PROVER
+    ; "prover_timeout", PROVER_TIMEOUT
+    ; "quantifier", QUANTIFIER
+    ; "refine", REFINE
+    ; "reflexivity", REFLEXIVITY
+    ; "require", REQUIRE
+    ; "rewrite", REWRITE
+    ; "right", SIDE(Pratter.Right)
+    ; "rule", RULE
+    ; "sequential", SEQUENTIAL
+    ; "simplify", SIMPLIFY
+    ; "solve", SOLVE
+    ; "symbol", SYMBOL
+    ; "symmetry", SYMMETRY
+    ; "type", TYPE_QUERY
+    ; "TYPE", TYPE_TERM
+    ; "unif_rule", UNIF_RULE
+    ; "verbose", VERBOSE
+    ; "why3", WHY3
+    ; "with", WITH ]
+
 let raw_ident : string pp = fun ppf s ->
-  if LpLexer.is_keyword s then out ppf "{|%a|}" Print.pp_uid s
-  else Print.pp_uid ppf s
+  if is_keyword s then out ppf "{|%s|}" s
+  else string ppf s
 
 let ident : p_ident pp = fun ppf {elt;_} -> raw_ident ppf elt
 
 let meta_ident : p_meta_ident pp = fun ppf {elt;_} ->
-  match elt with
-  | Name s -> raw_ident ppf s
-  | Numb i -> out ppf "%d" i
+  out ppf "%d" elt
 
 let param_id : p_ident option pp = fun ppf idopt ->
   match idopt with
@@ -43,9 +104,9 @@ let qident : p_qident pp = fun ppf {elt=(mp,s);_} ->
 (* ends with a space *)
 let modifier : p_modifier pp = fun ppf {elt; _} ->
   match elt with
-  | P_expo(e)   -> Print.pp_expo ppf e
-  | P_mstrat(s) -> Print.pp_match_strat ppf s
-  | P_prop(p)   -> Print.pp_prop ppf p
+  | P_expo(e)   -> Print.expo ppf e
+  | P_mstrat(s) -> Print.match_strat ppf s
+  | P_prop(p)   -> Print.prop ppf p
   | P_opaq      -> out ppf "opaque "
 
 (* ends with a space if the list is not empty *)
@@ -65,14 +126,15 @@ let rec term : p_term pp = fun ppf t ->
       match ts with
       | None -> ()
       | Some [||] when !empty_context -> ()
-      | Some ts -> out ppf "[%a]" (Array.pp func "; ") ts
+      | Some ts -> out ppf ".[%a]" (Array.pp func "; ") ts
     in
     match (t.elt, priority) with
     | (P_Type              , _    ) -> out ppf "TYPE"
     | (P_Iden(qid,false)   , _    ) -> out ppf "%a" qident qid
     | (P_Iden(qid,true )   , _    ) -> out ppf "@@%a" qident qid
     | (P_Wild              , _    ) -> out ppf "_"
-    | (P_Meta(mid,ts)      , _    ) -> out ppf "?%a%a" meta_ident mid env ts
+    | (P_Meta(mid,ts)      , _    ) ->
+        out ppf "?%a%a" meta_ident mid env (Some ts)
     | (P_Patt(idopt,ts)    , _    ) -> out ppf "$%a%a" param_id idopt env ts
     | (P_Appl(t,u)         , `Appl)
     | (P_Appl(t,u)         , `Func) -> out ppf "@[%a@ %a@]" appl t atom u
@@ -90,10 +152,9 @@ let rec term : p_term pp = fun ppf t ->
     | (P_LLet(x,xs,a,t,u)  , `Func) ->
         out ppf "@[@[<hv2>let @[<2>%a%a%a@] ≔@ %a@ @]in@ %a@]"
           ident x params_list xs typ a func t func u
-    | (P_NLit(i)           , _    ) -> out ppf "%i" i
-    (* We print minimal parentheses, and ignore the [Wrap] constructor. *)
-    | (P_Wrap(t)           , _    ) -> pp priority ppf t
-    | (P_Expl(t)           , _    ) -> out ppf "{@[<hv2>%a@]}" func t
+    | (P_NLit(i)           , _    ) -> out ppf "%s" i
+    | (P_Wrap(t)           , _    ) -> out ppf "(@[<hv2>%a@])" func t
+    | (P_Expl(t)           , _    ) -> out ppf "[@[<hv2>%a@]]" func t
     | (_                   , _    ) -> out ppf "(@[<hv2>%a@])" func t
   in
   let rec toplevel ppf t =
@@ -109,9 +170,10 @@ let rec term : p_term pp = fun ppf t ->
   toplevel ppf t
 
 and params : p_params pp = fun ppf (ids, t, b) ->
-  match b with
-  | false -> out ppf "@[(@,@[<2>%a%a@]@,)@]" param_ids ids typ t
-  | true  -> out ppf "@[{@,@[<2>%a%a@]@,}@]" param_ids ids typ t
+  if b then out ppf "@[[@,@[<2>%a%a@]@,]@]" param_ids ids typ t
+  else match t with
+    | Some t -> out ppf "@[(@,@[<2>%a : %a@]@,)@]" param_ids ids term t
+    | None -> out ppf "@[@,@[<2>%a@]@,@]" param_ids ids
 
 (* starts with a space if the list is not empty *)
 and params_list : p_params list pp = fun ppf ->
@@ -125,9 +187,9 @@ let rule : string -> p_rule pp = fun kw ppf {elt=(l,r);_} ->
   out ppf "%s %a ↪ %a" kw term l term r
 
 let inductive : string -> p_inductive pp =
-  let cons ppf (id,a) = out ppf "| %a : %a" ident id term a in
+  let cons ppf (id,a) = out ppf "@,| %a : %a" ident id term a in
   fun kw ppf {elt=(id,a,cs);_} ->
-  out ppf "@[<v>%s %a : %a ≔@,%a@]" kw ident id term a (List.pp cons "@,") cs
+  out ppf "@[<v>%s %a : %a ≔%a@]" kw ident id term a (List.pp cons "") cs
 
 let equiv : (p_term * p_term) pp = fun ppf (l,r) ->
   out ppf "%a ≡ %a" term l term r
@@ -136,7 +198,7 @@ let equiv : (p_term * p_term) pp = fun ppf (l,r) ->
    (LpLexer.equiv t u) (LpLexer.cons (LpLexer.equiv v w) ...)]  into a
    list [[(t,u); (v,w); ...]]. See unif_rule.ml. *)
 let rec unpack : p_term -> (p_term * p_term) list = fun eqs ->
-  let is (p,s) id = p = Unif_rule.path && s = id.Term.sym_name in
+  let is (p,s) id = p = Ghost.sign.sign_path && s = id.Term.sym_name in
   match Syntax.p_get_args eqs with
   | ({elt=P_Iden({elt;_},_); _}, [v; w]) ->
       if is elt Unif_rule.cons then
@@ -182,27 +244,26 @@ let query : p_query pp = fun ppf { elt; _ } ->
   match elt with
   | P_query_assert(true, a) -> out ppf "assertnot ⊢ %a" assertion a
   | P_query_assert(false,a) -> out ppf "assert ⊢ %a" assertion a
-  | P_query_debug(true ,s) -> out ppf "set debug \"+%s\"" s
-  | P_query_debug(false,s) -> out ppf "set debug \"-%s\"" s
+  | P_query_debug(true ,s) -> out ppf "debug +%s" s
+  | P_query_debug(false,s) -> out ppf "debug -%s" s
   | P_query_flag(s, b) ->
-      out ppf "set flag %S %s" s (if b then "on" else "off")
+      out ppf "flag \"%s\" %s" s (if b then "on" else "off")
   | P_query_infer(t, _) -> out ppf "type %a" term t
   | P_query_normalize(t, _) -> out ppf "compute %a" term t
-  | P_query_prover s -> out ppf "set prover %S" s
-  | P_query_prover_timeout n -> out ppf "set prover_timeout %d" n
+  | P_query_prover s -> out ppf "prover \"%s\"" s
+  | P_query_prover_timeout n -> out ppf "prover_timeout %s" n
   | P_query_print None -> out ppf "print"
   | P_query_print(Some qid) -> out ppf "print %a" qident qid
   | P_query_proofterm -> out ppf "proofterm"
-  | P_query_verbose i -> out ppf "set verbose %i" i
+  | P_query_verbose i -> out ppf "verbose %s" i
 
 let tactic : p_tactic pp = fun ppf { elt;  _ } ->
   begin match elt with
   | P_tac_admit -> out ppf "admit"
   | P_tac_apply t -> out ppf "apply %a" term t
   | P_tac_assume ids ->
-      out ppf "assume%a" (List.pp (pp_unit " " |+ param_id) "") ids
+      out ppf "assume%a" (List.pp (unit " " |+ param_id) "") ids
   | P_tac_fail -> out ppf "fail"
-  | P_tac_focus i -> out ppf "focus %i" i
   | P_tac_generalize id -> out ppf "generalize %a" ident id
   | P_tac_have (id, t) -> out ppf "have %a: %a" ident id term t
   | P_tac_induction -> out ppf "induction"
@@ -211,57 +272,70 @@ let tactic : p_tactic pp = fun ppf { elt;  _ } ->
   | P_tac_refl -> out ppf "reflexivity"
   | P_tac_rewrite(b,p,t)     ->
       let dir ppf b = if not b then out ppf " left" in
-      let pat ppf p = out ppf " [%a]" rw_patt p in
+      let pat ppf p = out ppf " .[%a]" rw_patt p in
       out ppf "rewrite%a%a %a" dir b (Option.pp pat) p term t
-  | P_tac_simpl None -> out ppf "simpl"
-  | P_tac_simpl (Some qid) -> out ppf "simpl %a" qident qid
+  | P_tac_simpl None -> out ppf "simplify"
+  | P_tac_simpl (Some qid) -> out ppf "simplify %a" qident qid
   | P_tac_solve -> out ppf "solve"
   | P_tac_sym -> out ppf "symmetry"
   | P_tac_why3 p ->
-      let prover ppf s = out ppf " %S" s in
+      let prover ppf s = out ppf " \"%s\"" s in
       out ppf "why3%a" (Option.pp prover) p
-  end;
-  out ppf ";"
+  end
 
 (* starts with a space if distinct from [Pratter.Neither] *)
-let assoc : Pratter.associativity pp = fun ppf a ->
+let side : Pratter.associativity pp = fun ppf a ->
   out ppf (match a with
            | Pratter.Neither -> ""
            | Pratter.Left -> " left"
            | Pratter.Right -> " right")
 
-let notation : Sign.notation pp = fun ppf -> function
-  | Infix (a, p) -> out ppf "infix%a %f" assoc a p
-  | Prefix p -> out ppf "prefix %f" p
+let notation : string Sign.notation pp = fun ppf -> function
+  | Infix (a, p) -> out ppf "infix%a %s" side a p
+  | Prefix p -> out ppf "prefix %s" p
+  | Postfix p -> out ppf "postfix %s" p
   | Quant -> out ppf "quantifier"
-  | _ -> ()
+  | Zero | Succ -> ()
 
-let proof : (p_tactic list * p_proof_end) pp = fun ppf (prf, prf_end) ->
-  out ppf "begin@ @[<2>%a@]@ %a"
-    (List.pp tactic "@ ") prf
-    proof_end prf_end
+let rec subproof : p_subproof pp = fun ppf sp ->
+  out ppf "{@[<hv2>@ %a@ @]}" proofsteps sp
+
+and subproofs : p_subproof list pp = fun ppf spl ->
+  out ppf "@[<hv>%a@]" (pp_print_list ~pp_sep:pp_print_space subproof) spl
+
+and proofsteps : p_proofstep list pp = fun ppf psl ->
+  pp_print_list ~pp_sep:pp_print_space proofstep ppf psl
+
+and proofstep : p_proofstep pp = fun ppf (Tactic (t, spl)) ->
+  out ppf "@[<hv2>%a@,%a;@]" tactic t subproofs spl
+
+let proof : (p_proof * p_proof_end) pp = fun ppf (p, pe) ->
+  out ppf "begin@ @[<hv2>%a@]@ %a"
+    (fun ppf -> function
+       | [block] -> proofsteps ppf block
+       (* No braces for a single toplevel block *)
+       | blocks -> subproofs ppf blocks) p
+    proof_end pe
 
 let command : p_command pp = fun ppf { elt; _ } ->
   begin match elt with
-  | P_builtin (s, qid) -> out ppf "@[builtin %S@ ≔ %a@]" s qident qid
+  | P_builtin (s, qid) -> out ppf "@[builtin \"%s\"@ ≔ %a@]" s qident qid
   | P_inductive (_, _, []) -> assert false (* not possible *)
   | P_inductive (ms, xs, i :: il) ->
-      out ppf "@[<v>@[%a%a@]%a@,%a@,end@]"
-        modifiers ms
-        (List.pp params " ") xs
-        (inductive "inductive") i
-        (List.pp (inductive "with") "@,") il
+    let with_ind ppf i = out ppf "@,%a" (inductive "with") i in
+    out ppf "@[<v>@[%a%a@]%a%a@]"
+      modifiers ms (List.pp params " ") xs
+      (inductive "inductive") i (List.pp with_ind "") il
   | P_notation (qid, n) -> out ppf "notation %a %a" qident qid notation n
   | P_open ps -> out ppf "open %a" (List.pp path " ") ps
   | P_query q -> query ppf q
   | P_require (b, ps) ->
-      out ppf "require%a %a"
-        (pp_if b (pp_unit " open")) ()
-        (List.pp path " ") ps
+    out ppf "require%a %a" (pp_if b (unit " open")) () (List.pp path " ") ps
   | P_require_as (p,i) -> out ppf "@[require %a@ as %a@]" path p ident i
   | P_rules [] -> assert false (* not possible *)
   | P_rules (r :: rs) ->
-      out ppf "@[<v>%a@,%a@]" (rule "rule") r (List.pp (rule "with") "@,") rs
+    let with_rule ppf r = out ppf "@.%a" (rule "with") r in
+    rule "rule" ppf r; List.iter (with_rule ppf) rs
   | P_symbol
     { p_sym_mod; p_sym_nam; p_sym_arg; p_sym_typ;
       p_sym_trm; p_sym_prf; p_sym_def } ->
@@ -271,16 +345,14 @@ let command : p_command pp = fun ppf { elt; _ } ->
         ident p_sym_nam
         params_list p_sym_arg
         typ p_sym_typ
-        (pp_if p_sym_def (pp_unit "@ ≔")) ()
-        (Option.pp (pp_sep " " |+ term)) p_sym_trm
-        (Option.pp (pp_unit "@," |+ proof)) p_sym_prf
+        (pp_if p_sym_def (unit "@ ≔")) ()
+        (Option.pp (sep " " |+ term)) p_sym_trm
+        (Option.pp (unit "@," |+ proof)) p_sym_prf
     end
   | P_unif_rule ur -> out ppf "unif_rule %a" unif_rule ur
+  | P_coercion c -> out ppf "%a" (rule "coerce_rule") c
   end;
   out ppf ";"
 
 let ast : ast pp = fun ppf ->
-  Stream.iter ((command +| pp_unit "@.") ppf)
-
-(** [beautify cmds] pretty-prints the commands [cmds] to standard output. *)
-let beautify : ast -> unit = ast std_formatter
+  Stream.iter ((command +| unit "@.") ppf)

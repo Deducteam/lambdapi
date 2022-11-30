@@ -9,16 +9,11 @@
    In the OCaml code, the prefix "ind" is used for inductive types. The prefix
    "rec" is used for recursors, aka induction principles. *)
 
-open! Lplib
+open Lplib
 open Timed
-open Common
-open Pos
-open Error
-open Core
-open Term
-open Print
-open Parsing
-open Syntax
+open Common open Pos open Error
+open Core open Term open Print
+open Parsing open Syntax
 
 (** Logging function for generating of inductive principle. *)
 let log_ind = Logger.make 'g' "indu" "induction principles generation"
@@ -68,27 +63,27 @@ let gen_safe_prefixes : inductive -> string * string * string =
    generating the induction principles. *)
 type data = { ind_var : tvar (** predicate variable *)
             ; ind_type : tbox (** predicate variable type *)
-            ; ind_conclu : tbox (** induction principle conlusion *) }
+            ; ind_conclu : tbox (** induction principle conclusion *) }
 type ind_pred_map = (sym * data) list
 
-(** [ind_typ_with_codom pos ind_sym ind_env codom s a] assumes that [a] is of
+(** [ind_typ_with_codom pos ind_sym env codom x_str a] assumes that [a] is of
    the form [Π(i1:a1),...,Π(in:an), TYPE]. It then generates a [tbox] similar
    to this type except that [TYPE] is replaced by [codom [i1;...;in]]. The
-   string [s] is used as prefix for the variables [ik]. *)
+   string [x_str] is used as prefix for the variables [ik]. *)
 let ind_typ_with_codom :
       popt -> sym -> Env.t -> (tbox list -> tbox) -> string -> term -> tbox =
-  fun pos ind_sym env codom s a ->
-  let rec aux : tvar list -> term -> tbox = fun xs a ->
+  fun pos ind_sym env codom x_str a ->
+  let rec aux : tvar list -> int -> term -> tbox = fun xs k a ->
     match get_args a with
     | (Type, _) -> codom (List.rev_map _Vari xs)
     | (Prod(a,b), _) ->
-        let (x,b) = LibTerm.unbind_name s b in
-        _Prod (lift a) (Bindlib.bind_var x (aux (x::xs) b))
-    | _ -> fatal pos "The type of %a is not supported" pp_sym ind_sym
+        let (x,b) = LibTerm.unbind_name (x_str ^ string_of_int k) b in
+        _Prod (lift a) (Bindlib.bind_var x (aux (x::xs) (k+1) b))
+    | _ -> fatal pos "The type of %a is not supported" sym ind_sym
   in
-  aux (List.map (fun (_,(v,_,_)) -> v) env) a
+  aux (List.map (fun (_,(v,_,_)) -> v) env) 0 a
 
-(** [create_ind_pred_map pos c ind_list a_str p_str x_str] builds an
+(** [create_ind_pred_map pos c arity ind_list a_str p_str x_str] builds an
    [ind_pred_map] from [ind_list]. The resulting list is in reverse order wrt
    [ind_list]. [a_str] is used as prefix for parameter names, [p_str] is used
    as prefix for predicate variable names, and [x_str] is used as prefix for
@@ -102,8 +97,7 @@ let create_ind_pred_map :
   let env =
     match ind_list with
     | [] -> assert false (* there must be at least one type definition *)
-    | (ind_sym, _) :: _ ->
-        fst (Env.of_prod_using [] vs !(ind_sym.sym_type))
+    | (ind_sym, _) :: _ -> fst (Env.of_prod_using [] vs !(ind_sym.sym_type))
   in
   (* create the ind_pred_map *)
   let create_sym_pred_data i (ind_sym,_) =
@@ -185,17 +179,17 @@ let fold_cons_type
       (codom : 'var list -> 'a -> tvar -> term list -> 'c)
 
     : 'c =
-  let rec fold : 'var list -> 'a -> term -> 'c = fun xs acc t ->
+  let rec fold : 'var list -> int -> 'a -> term -> 'c = fun xs n acc t ->
     match get_args t with
     | (Symb(s), ts) ->
         if s == ind_sym then
           let d = List.assq ind_sym ind_pred_map in
           codom xs acc d.ind_var ts
         else fatal pos "%a is not a constructor of %a"
-               pp_sym cons_sym pp_sym ind_sym
+               sym cons_sym sym ind_sym
     | (Prod(t,u), _) ->
-       let x, u = LibTerm.unbind_name x_str u in
-       let x = inj_var (List.length xs) x in
+       let x, u = LibTerm.unbind_name (x_str ^ string_of_int n) u in
+       let x = inj_var (Array.length vs + n) x in
        begin
          let env, b = Env.of_prod [] "y" t in
          match get_args b with
@@ -204,22 +198,22 @@ let fold_cons_type
                match List.assq_opt s ind_pred_map with
                | Some d ->
                    let v = aux env s d.ind_var ts x in
-                   let next = fold (x::xs) (acc_rec_dom acc x v) u in
+                   let next = fold (x::xs) (n+1) (acc_rec_dom acc x v) u in
                    rec_dom t x v next
                | None ->
-                   let next = fold (x::xs) (acc_nonrec_dom acc x) u in
+                   let next = fold (x::xs) (n+1) (acc_nonrec_dom acc x) u in
                    nonrec_dom t x next
              end
-         | _ -> fatal pos "The type of %a is not supported" pp_sym cons_sym
+         | _ -> fatal pos "The type of %a is not supported" sym cons_sym
        end
-    | _ -> fatal pos "The type of %a is not supported" pp_sym cons_sym
+    | _ -> fatal pos "The type of %a is not supported" sym cons_sym
   in
   let _, t = Env.of_prod_using [] vs !(cons_sym.sym_type) in
-  fold (List.mapi inj_var (Array.to_list vs)) init t
+  fold (List.mapi inj_var (Array.to_list vs)) 0 init t
 
-(** [gen_rec_type ss pos n ind_list ind_pred_map x_str] generates the
+(** [gen_rec_type c pos ind_list vs env ind_pred_map x_str] generates the
    induction principles for each type in the inductive definition [ind_list]
-   defined at the position [pos] whose number of parameters is [n]. [x_str] is
+   defined at the position [pos] whose parameters are [vs]. [x_str] is
    a string used for prefixing variable names that are generated. Remark: in
    the generated induction principles, each recursive argument is followed by
    its induction hypothesis. For instance, with [inductive T:TYPE := c:
@@ -270,8 +264,7 @@ let gen_rec_types :
     let add_quantifier t (_,d) =
       _Prod d.ind_type (Bindlib.bind_var d.ind_var t) in
     let rec_typ = List.fold_left add_quantifier rec_typ ind_pred_map in
-    let rec_typ = Env.to_prod_box env rec_typ in
-    Bindlib.unbox rec_typ
+    Bindlib.unbox (Env.to_prod_box env rec_typ)
   in
 
   List.map gen_rec_type ind_pred_map
@@ -294,32 +287,34 @@ let iter_rec_rules :
       popt -> inductive -> tvar array -> ind_pred_map
       -> (p_rule -> unit) -> unit =
   fun pos ind_list vs ind_pred_map f ->
+  (* Rules are declared after recursor declarations. *)
+  let rules_pos = shift (List.length ind_list + 1) (end_pos pos) in
   let n = Array.length vs in
 
   (* variable name used for a recursor case argument *)
   let case_arg_name cons_sym = cons_sym.sym_name in
 
-  (* [app_rec sym_ind ts t] generates the application of the recursor of
+  (* [arec sym_ind ts t] generates the application of the recursor of
      [ind_sym] to the type parameters [ts] and the constructor argument
      [t]. *)
-  let app_rec : sym -> term list -> p_term -> p_term = fun sym_ind ts t ->
+  let arec : sym -> term list -> p_term -> p_term = fun sym_ind ts t ->
     (* Note: there cannot be name clashes between pattern variable names and
        function symbol names since pattern variables are prefixed by $. *)
-    let app_patt t n = P.appl t (P.patt0 n) in
+    let apatt t n = P.appl t (P.patt0 n) in
     let head = P.iden (rec_name sym_ind) in
     (* add a wildcard for each parameter *)
     let head = P.appl_wild head n in
     (* add a predicate variable for each inductive type *)
     let head =
-      let app_pred (_,d) t = app_patt t (Bindlib.name_of d.ind_var) in
-      List.fold_right app_pred ind_pred_map head
+      let apred (_,d) t = apatt t (Bindlib.name_of d.ind_var) in
+      List.fold_right apred ind_pred_map head
     in
     (* add a case variable for each constructor *)
-    let app_case t cons_sym = app_patt t (case_arg_name cons_sym) in
-    let app_cases t (_, cons_sym_list) =
-      List.fold_left app_case t cons_sym_list
+    let acase t cons_sym = apatt t (case_arg_name cons_sym) in
+    let acases t (_, cons_sym_list) =
+      List.fold_left acase t cons_sym_list
     in
-    let head = List.fold_left app_cases head ind_list in
+    let head = List.fold_left acases head ind_list in
     P.appl (P.appl_wild head (List.length ts - n)) t
   in
 
@@ -337,7 +332,7 @@ let iter_rec_rules :
         List.fold_right (fun (_,(x,_,_)) t -> P.appl t (P.var x)) env t in
       let add_abst t (_,(x,_,_)) =
         P.abst (Some (Pos.none (Bindlib.name_of x))) t in
-      List.fold_left add_abst (app_rec s ts (env_appl x env)) env
+      List.fold_left add_abst (arec s ts (env_appl x env)) env
     in
     let acc_rec_dom acc x aux = P.appl (P.appl acc x) aux in
     let rec_dom _ _ _ next = next in
@@ -345,7 +340,7 @@ let iter_rec_rules :
     let nonrec_dom _ _ next = next in
     let codom xs rhs _ ts =
       let cons_arg = P.appl_list (P.iden cons_sym.sym_name) (List.rev xs) in
-      P.rule (app_rec ind_sym ts cons_arg) rhs
+      Pos.make rules_pos (arec ind_sym ts cons_arg, rhs)
     in
     fold_cons_type pos ind_pred_map "" ind_sym vs cons_sym inj_var
       init aux acc_rec_dom rec_dom acc_nonrec_dom nonrec_dom codom

@@ -1,0 +1,5 @@
+(library
+ (name export)
+ (public_name lambdapi.export)
+ (modules :standard)
+ (libraries lambdapi.core lambdapi.parsing lambdapi.lplib))

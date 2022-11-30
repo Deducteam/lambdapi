@@ -1,5 +1,6 @@
-(** Source code position management.  This module may be used to map sequences
-    of characters in a source file to an abstract syntax tree. *)
+(** Positions in Lambdapi files. *)
+
+open Lplib open Base
 
 (** Type of a position, corresponding to a continuous range of characters in a
     (utf8-encoded) source. *)
@@ -9,6 +10,13 @@ type pos =
   ; start_col  : int (** Column number (utf8) of the starting point. *)
   ; end_line   : int (** Line number of the ending point.            *)
   ; end_col    : int (** Column number (utf8) of the ending point.   *) }
+
+(** Total comparison function on pos. *)
+let cmp : pos cmp = fun p1 p2 ->
+  let cmp = Int.compare in
+  lex3 cmp cmp (lex3 (Option.cmp String.compare) cmp cmp)
+    (p1.start_line, p1.start_col, (p1.fname, p1.end_line, p1.end_col))
+    (p2.start_line, p2.start_col, (p2.fname, p2.end_line, p2.end_col))
 
 (** Convenient short name for an optional position. *)
 type popt = pos option
@@ -61,6 +69,15 @@ let cat : popt -> popt -> popt = fun p1 p2 ->
   | None, Some p -> Some p
   | None, None -> None
 
+(** [shift k p] returns a position that is [k] characters before [p]. *)
+let shift : int -> popt -> popt = fun k p ->
+  match p with
+  | None -> assert false
+  | Some ({start_col; _} as p) -> Some {p with start_col = start_col + k}
+
+let after = shift 1
+let before = shift (-1)
+
 (** [to_string ?print_fname pos] transforms [pos] into a readable string. If
     [print_fname] is [true] (the default), the filename contained in [pos] is
     printed. *)
@@ -82,15 +99,15 @@ let to_string : ?print_fname:bool -> pos -> string =
 (** [pp ppf pos] prints the optional position [pos] on [ppf]. *)
 let pp : popt Lplib.Base.pp = fun ppf p ->
   match p with
-  | None    -> Format.pp_print_string ppf "unknown location"
-  | Some(p) -> Format.pp_print_string ppf (to_string p)
+  | None    -> string ppf "unknown location"
+  | Some(p) -> string ppf (to_string p)
 
-(** [pp_short ppf pos] prints the optional position [pos] on [ppf]. *)
-let pp_short : popt Lplib.Base.pp = fun ppf p ->
+(** [short ppf pos] prints the optional position [pos] on [ppf]. *)
+let short : popt Lplib.Base.pp = fun ppf p ->
   match p with
-  | None    -> Format.pp_print_string ppf "unknown location"
+  | None    -> string ppf "unknown location"
   | Some(p) -> let print_fname=false in
-               Format.pp_print_string ppf (to_string ~print_fname p)
+               string ppf (to_string ~print_fname p)
 
 (** [map f loc] applies function [f] on the value of [loc] and keeps the
     position unchanged. *)

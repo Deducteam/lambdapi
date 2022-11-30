@@ -9,10 +9,8 @@
    but through the current module only, in order to setup the [sig_state]
    properly. *)
 
-open Lplib.Extra
-open Common
-open Error
-open Pos
+open Lplib open Extra
+open Common open Error open Pos
 open Timed
 open Term
 open Sign
@@ -21,17 +19,17 @@ open Sign
     as dependencies. *)
 let create_sign : Path.t -> Sign.t = fun sign_path ->
   let d = Sign.dummy () in
-  {d with sign_path;
-          sign_deps = ref (Path.Map.singleton Unif_rule.path StrMap.empty)}
+  let deps = Path.Map.singleton Ghost.sign.sign_path StrMap.empty in
+  {d with sign_path; sign_deps = ref deps}
 
 (** State of the signature, including aliasing and accessible symbols. *)
 type sig_state =
   { signature : Sign.t                    (** Current signature. *)
-  ; in_scope  : (sym * Pos.popt) StrMap.t (** Symbols in scope.  *)
+  ; in_scope  : sym StrMap.t              (** Symbols in scope.  *)
   ; alias_path: Path.t StrMap.t           (** Alias to path map. *)
   ; path_alias: string Path.Map.t         (** Path to alias map. *)
   ; builtins  : sym StrMap.t              (** Builtins. *)
-  ; notations : notation SymMap.t         (** Notations. *)
+  ; notations : float notation SymMap.t   (** Notations. *)
   ; open_paths : Path.Set.t               (** Open modules. *) }
 
 type t = sig_state
@@ -58,11 +56,12 @@ let add_symbol : sig_state -> expo -> prop -> match_strat
     | Some t -> sym.sym_def := Some (cleanup t)
     | None -> ()
   end;
-  let in_scope = StrMap.add id.elt (sym, id.pos) ss.in_scope in
+  let in_scope = StrMap.add id.elt sym ss.in_scope in
   {ss with in_scope}, sym
 
 (** [add_notation ss s n] maps [s] notation to [n] in [ss]. *)
-let add_notation : sig_state -> sym -> notation -> sig_state = fun ss s n ->
+let add_notation : sig_state -> sym -> float notation -> sig_state =
+  fun ss s n ->
   if s.sym_path = ss.signature.sign_path then
     Sign.add_notation ss.signature s n;
   {ss with notations = SymMap.add s n ss.notations}
@@ -84,7 +83,7 @@ let add_builtin : sig_state -> string -> sym -> sig_state =
 (** [add_notations_from_builtins notmap bm] add notations for symbols mapped
    to the builtins "0" and "+1". *)
 let add_notations_from_builtins :
-      sym StrMap.t -> notation SymMap.t -> notation SymMap.t =
+      sym StrMap.t -> float notation SymMap.t -> float notation SymMap.t =
   let f builtin sym notmap =
     match builtin with
     | "0" -> SymMap.add sym Zero notmap
@@ -107,11 +106,10 @@ let open_sign : sig_state -> Sign.t -> sig_state = fun ss sign ->
   let open_paths = Path.Set.add sign.sign_path ss.open_paths in
   {ss with in_scope; builtins; notations; open_paths}
 
-(** [of_sign sign] creates a state from the signature [sign] with ghost
-    signatures opened. *)
+(** [of_sign sign] creates a state from the signature [sign] and open it as
+   well as the ghost signatures. *)
 let of_sign : Sign.t -> sig_state = fun signature ->
-  let open_paths = Path.Set.singleton signature.sign_path in
-  open_sign {dummy with signature; open_paths} Unif_rule.sign
+  open_sign (open_sign {dummy with signature} Ghost.sign) signature
 
 (** [find_sym ~prt ~prv b st qid] returns the symbol
     corresponding to the qualified identifier [qid]. If [fst qid.elt] is
@@ -129,7 +127,7 @@ let find_sym : prt:bool -> prv:bool -> sig_state -> qident loc -> sym =
     match mp with
     | [] -> (* Symbol in scope. *)
         begin
-          try fst (StrMap.find s st.in_scope)
+          try StrMap.find s st.in_scope
           with Not_found -> fatal pos "Unknown object %s." s
         end
     | [m] when StrMap.mem m st.alias_path -> (* Aliased module path. *)

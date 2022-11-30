@@ -1,7 +1,5 @@
-/* --------------------------------------------------------------------------------------------
- * Copyright (c) Microsoft Corporation. All rights reserved.
- * Licensed under the MIT License. See License.txt in the project root for license information.
- * ------------------------------------------------------------------------------------------ */
+// VSCode extension for https://github.com/Deducteam/lambdapi
+// a proof assistant based on the λΠ-calculus modulo rewriting
 
 import { workspace, ExtensionContext, Position, Uri, commands, window, WebviewPanel, ViewColumn, TextEditor, TextDocument, SnippetString, Range, TextEditorDecorationType, Pseudoterminal, EventEmitter, TreeItemCollapsibleState, WebviewViewProvider, CancellationToken, WebviewView, WebviewViewResolveContext, TextDocumentChangeEvent, Diagnostic, languages } from 'vscode';
 
@@ -67,10 +65,12 @@ export function activate(context: ExtensionContext) {
 
     //Following mode : whether the window follows proofState automatically or not
     context.workspaceState.update('follow', true);
+    
+    const lspServerPath = workspace.getConfiguration('lambdapi').path;
+    console.log(lspServerPath);
 
-    // XXX: Get from configuration
     let serverOptions = {
-        command: 'lambdapi',
+        command: lspServerPath,
         args: [ 'lsp' ]
         // args: [ '--std' ]
     };
@@ -86,8 +86,8 @@ export function activate(context: ExtensionContext) {
         }
 
         client = new LanguageClient(
-            'LambdaPi-VSCode',
-            'Lambdapi Language Server',
+            'lambdapi',
+            'lambdapi language server',
             serverOptions,
             clientOptions
         );
@@ -129,33 +129,33 @@ export function activate(context: ExtensionContext) {
                 *if true, the "Proof" panel is updated when the cursor is moved
                 *if false, updated when keybindings are pressed
             */
-            commands.registerCommand('extension.vscode-lp.cursor', () => toggleCursorMode(context));
+            commands.registerCommand('extension.lambdapi.cursor', () => toggleCursorMode(context));
  
             //Navigate proof : step forward in a proof 
-            commands.registerCommand('extension.vscode-lp.fw', () => checkProofForward(context));
+            commands.registerCommand('extension.lambdapi.fw', () => checkProofForward(context));
             
             //Navigate proof : step backward in a proof
-            commands.registerCommand('extension.vscode-lp.bw', () => checkProofBackward(context));
+            commands.registerCommand('extension.lambdapi.bw', () => checkProofBackward(context));
 
-            //Navigate proof : move proof higlight to cursor
-            commands.registerCommand('extension.vscode-lp.tc', () => checkProofUntilCursor(context));
+            //Navigate proof : move proof highlight to cursor
+            commands.registerCommand('extension.lambdapi.tc', () => checkProofUntilCursor(context));
             
             //Window follows proof or not
-            commands.registerCommand('extension.vscode-lp.reveal', () => toggleFollowMode(context))
+            commands.registerCommand('extension.lambdapi.reveal', () => toggleFollowMode(context))
 
             //Center window on proof state
-            commands.registerCommand('extension.vscode-lp.center', () => goToProofState(context));
+            commands.registerCommand('extension.lambdapi.center', () => goToProofState(context));
 
             //Go to next/previous proof
-            commands.registerCommand('extension.vscode-lp.nx', () => nextProof(context, true));
-            commands.registerCommand('extension.vscode-lp.pv', () => nextProof(context, false));
+            commands.registerCommand('extension.lambdapi.nx', () => nextProof(context, true));
+            commands.registerCommand('extension.lambdapi.pv', () => nextProof(context, false));
 
         });
 
         context.subscriptions.push(client.start());
     };
     
-    commands.registerCommand('extension.vscode-lp.restart', restart);
+    commands.registerCommand('extension.lambdapi.restart', restart);
     
     restart();
 }
@@ -344,46 +344,28 @@ function decorate(openEditor : TextEditor, range : Range | null, decorationType 
 }
 
 // returns the Position of next or previous command
-function stepCommand(document: TextDocument, currentPos: Position, forward: boolean, terminators? : string[]){
+function stepCommand(document: TextDocument, currentPos: Position, forward: boolean, terminators?: string[]){
 
-    if (terminators == undefined)
-        terminators = [';', 'begin'];
+    if(terminators === undefined || terminators === null)
+        terminators = [';', 'begin', '{'];
 
     let docBegin : Position = document.positionAt(0);
     let docEnd : Position = new Position(document.lineCount, 0);
-    if (forward){
-        let textAfter : string = document.getText(new Range(currentPos, docEnd));
-        
-        // get the positions of end of matched terminators
-        let positions = terminators.map((term) => {
-            let pos = textAfter.indexOf(term);
-            return pos < 0 ? -1 : pos + term.length;
-        }).filter(x => x > 0);
 
-        if (!positions || positions.length == 0) 
-            return docEnd;
-        
-        let res = Math.min(...positions);
-        let nextCmdPos : Position = document.positionAt(document.offsetAt(currentPos) + res);
-        return nextCmdPos;
-    } else {
-        let textBefore : string = document.getText(new Range(docBegin, currentPos));
-        // remove last character
-        textBefore = textBefore.substr(0, textBefore.length - 1);
-        
-        // get the positions of end of matched terminators
-        let positions = terminators.map((term) => {
-            let pos = textBefore.lastIndexOf(term);
-            return pos < 0 ? -1 : pos + term.length - 1; // off by 1
-        }).filter(x => x > 0);
+    const minPos = (a : Position, b : Position) => a.compareTo(b) < 0 ? a : b;
+    const maxPos = (a : Position, b : Position) => a.compareTo(b) > 0 ? a : b;
+    const termRegex = new RegExp(terminators.join("|"), 'gi');
 
-        if (!positions || positions.length == 0) 
-            return docBegin;
+    let termPositions = [...document.getText().matchAll(termRegex)]
+        .map(rm => rm.index ? rm.index + rm[0].length : undefined)
+        .filter((x) : x is number => x !== undefined) // remove undefined
+        .map(x => document.positionAt(x));
 
-        let res =  Math.max(...positions);
-        let prevCmdPos : Position = document.positionAt(res + 1);
-        return prevCmdPos;
-    }
+    let nextCmdPos = termPositions
+        .filter(p => currentPos.compareTo(p) * (forward ? 1 : -1) < 0)
+        .reduce(forward ? minPos : maxPos, forward ? docEnd : docBegin);
+
+    return nextCmdPos;
 }
 
 function checkProofForward(context : ExtensionContext) {

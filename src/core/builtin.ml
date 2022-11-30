@@ -1,21 +1,21 @@
 (** Registering and checking builtin symbols. *)
 
-open Lplib.Base
-open Lplib.Extra
-
+open Lplib open Base open Extra
 open Timed
-open Common
+open Common open Error open Pos
 open Term
-open Error
-open Pos
 open Sig_state
 
-(** [get pos map name] returns the symbol mapped to the “builtin symbol” named
-   [name] i n the map [map], which should contain all the builtin symbols that
-   are in scope. If the symbol cannot be found then [Fatal] is raised. *)
+(** [get ss pos name] returns the symbol mapped to the builtin [name]. If the
+   symbol cannot be found then [Fatal] is raised. *)
 let get : sig_state -> popt -> string -> sym = fun ss pos name ->
   try StrMap.find name ss.builtins with Not_found ->
-    fatal pos "Builtin symbol %S undefined." name
+    fatal pos "Builtin symbol \"%s\" undefined." name
+
+(** [get_opt ss name] returns [Some s] where [s] is the symbol mapped to
+   the builtin [name], and [None] otherwise. *)
+let get_opt : sig_state -> string -> sym option = fun ss name ->
+  try Some (StrMap.find name ss.builtins) with Not_found -> None
 
 (** Hash-table used to record checking functions for builtins. *)
 let htbl : (string, sig_state -> popt -> sym -> unit) Hashtbl.t =
@@ -27,7 +27,7 @@ let htbl : (string, sig_state -> popt -> sym -> unit) Hashtbl.t =
    and the [pos] argument is used for error reporting. *)
 let check : sig_state -> popt -> string -> sym -> unit =
   fun ss pos name sym ->
-  try (Hashtbl.find htbl name) ss pos sym with Not_found -> ()
+  try Hashtbl.find htbl name ss pos sym with Not_found -> ()
 
 (** [register name check] registers the checking function [check], for the
    builtin symbols named [name]. When the check is run, [check] receives as

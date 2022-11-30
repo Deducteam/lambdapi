@@ -1,5 +1,6 @@
 #!/bin/sh
-# Test Lambdapi decision-tree command
+
+echo '############ test decision-tree ############'
 
 set -uf
 
@@ -12,8 +13,7 @@ ok() {
     printf '\033[32mOK\033[0m %s\n' "$1"
 }
 
-LAMBDAPI="lambdapi decision-tree --verbose 0 \
---map-dir=tests:tests"
+LAMBDAPI='dune exec -- lambdapi decision-tree -v 0 -w --map-dir=tests:tests'
 
 out="$(${LAMBDAPI} tests.OK.nat.+)"
 if [ -z "$out" ]; then
@@ -22,7 +22,7 @@ else
     ok 'tests.OK.nat.+'
 fi
 
-# Escaped characters (with no rule)
+# Escaped identifier with no rule
 out="$(${LAMBDAPI} 'tests.OK.Escaped.{|KIND|}' 2>/dev/null)"
 if [ "$?" = 1 ]; then
     ko 'tests.OK.Escaped.{|KIND|}'
@@ -31,7 +31,7 @@ if [ -z "$out" ]; then
     ok 'tests.OK.Escaped.{|KIND|}'
 fi
 
-# Escaped with dots (no rule on symbol)
+# Escaped identifier with dots and no rule
 out="$(${LAMBDAPI} 'tests.OK.Escaped.{|KIND.OF.BLUE|}' 2>/dev/null)"
 if [ "$?" = 1 ]; then
     ko 'tests.OK.Escaped.{|KIND.OF.BLUE|}'
@@ -40,20 +40,20 @@ if [ -z "$out" ]; then
     ok 'tests.OK.Escaped.{|KIND.OF.BLUE|}'
 fi
 
-# Escaped with rules
+# Escaped identifier with rules
 out="$(${LAMBDAPI} 'tests.OK.Escaped.{|set|}' 2>/dev/null)"
-if [ -z "$out" ]; then
+if [ "$?" = 1 ] || [ -z "$out" ]; then
     ko 'tests.OK.Escaped.{|set|}'
 else
     ok 'tests.OK.Escaped.{|set|}'
 fi
 
-# Ghost symbols
-# TODO put back tests.OK.unif_hint.#equiv when OK/unif_hint.lp is fixed
-# out="$(${LAMBDAPI} 'tests.OK.unif_hint.#equiv' 2>/dev/null)"
-# if [ "$?" = 1 ] || [ -z "$out" ]; then
-#     ko 'tests.OK.unif_hint.#equiv'
-# else
-#     ok 'tests.OK.unif_hint.#equiv'
-# fi
+# Ghost symbol
+out="$(${LAMBDAPI} --ghost 'tests.OK.unif_hint.≡' 2>/dev/null)"
+if [ "$?" = 1 ] || [ -z "$out" ]; then
+    ko 'tests.OK.unif_hint.≡'
+else
+    ok 'tests.OK.unif_hint.≡'
+fi
+
 exit 0

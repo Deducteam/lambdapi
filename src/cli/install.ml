@@ -1,7 +1,6 @@
 open Cmdliner
-open Common
-open Library
-open Error
+open Common open Library open Error
+open Parsing
 
 let run_command : bool -> string -> unit = fun dry_run cmd ->
   if dry_run then Console.out 1 "%s" cmd else
@@ -43,14 +42,17 @@ let run_install : Config.t -> bool -> string list -> unit =
       (* Create directories as needed for [dest]. *)
       let cmd =
         let dest_dir = Filename.dirname dest in
-        String.concat " " ["mkdir"; "--parents"; dest_dir]
+        String.concat " " ["mkdir"; "-p"; dest_dir]
+        (* Use short options for POSIX compliance. *)
       in
       run_command dry_run cmd;
       (* Copy files. *)
       let cmd =
         let file = Filename.quote file in
         String.concat " "
-          ["cp"; "--preserve"; "--no-target-directory"; "--force"; file; dest]
+          ["cp"; "-p"; "-f"; file; dest]
+          (* Use short options for POSIX compliance. See
+        https://pubs.opengroup.org/onlinepubs/9699919799/utilities/cp.html. *)
       in
       run_command dry_run cmd
     in
@@ -105,18 +107,18 @@ let files : string list Term.t =
   let doc =
     Printf.sprintf
       "Source file with the [%s] extension (or with the [%s] extension when \
-       using the legacy Dedukti syntax), object file with the [%s] extension,
+       using the Dedukti syntax), object file with the [%s] extension,
        or package configuration file $(b,%s)."
-       src_extension legacy_src_extension obj_extension Package.pkg_file
+       lp_src_extension dk_src_extension obj_extension Package.pkg_file
   in
   Arg.(value & (pos_all non_dir_file []) & info [] ~docv:"FILE" ~doc)
 
 let install_cmd =
   let doc = "Install the given files under the library root." in
-  Term.(const run_install $ Config.minimal $ dry_run $ files),
-  Term.info "install" ~doc
+  Cmd.v (Cmd.info "install" ~doc)
+    Cmdliner.Term.(const run_install $ Config.minimal $ dry_run $ files)
 
 let uninstall_cmd =
   let doc = "Uninstall the files corresponding to the given package file." in
-  Term.(const run_uninstall $ Config.minimal $ dry_run $ pkg_file),
-  Term.info "uninstall" ~doc
+  Cmd.v (Cmd.info "uninstall" ~doc)
+    Cmdliner.Term.(const run_uninstall $ Config.minimal $ dry_run $ pkg_file)

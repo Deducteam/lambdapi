@@ -1,11 +1,8 @@
 (** Lambdapi library management. *)
 
-open Lplib
-open Lplib.Base
-open Lplib.Extra
+open Lplib open Base open Extra
 open Timed
-open Error
-open Debug
+open Error open Debug
 
 let log_lib = Logger.make 'l' "libr" "library files"
 let log_lib = log_lib.pp
@@ -52,7 +49,7 @@ module LibMap :
     type t = Node of string option * t StrMap.t
 
     let rec pp ppf (Node(po, map)) =
-      Format.fprintf ppf "Node(%a,%a)"
+      out ppf "Node(%a,%a)"
         (D.option D.string) po (D.strmap pp) map
 
     let empty = Node(None, StrMap.empty)
@@ -84,7 +81,7 @@ module LibMap :
         List.fold_left Filename.concat root ks in
       let rec get (root, old_ks) ks map =
         if Logger.log_enabled () then
-          log_lib "get @[<hv>%S@ [%a]@ [%a]@ %a@]" root
+          log_lib "get @[<hv>\"%s\"@ [%a]@ [%a]@ %a@]" root
             (D.list D.string) old_ks (D.list D.string) ks (D.strmap pp) map;
         match ks with
         | []      -> concat root old_ks
@@ -149,15 +146,16 @@ let set_lib_root : string option -> unit = fun dir ->
           (* [Sys_error] is raised if [pth] does not exist. *)
           (* We try to create [pth]. *)
           let target = Filename.quote pth in
-          let cmd = String.concat " " ["mkdir"; "--parent"; target] in
+          let cmd = String.concat " " ["mkdir"; "-p"; target] in
+          (* Use short option to be POSIX compliant. *)
           match Sys.command cmd with
           | 0 -> ()
           | _ ->
               fatal_msg "Library root cannot be set:@.";
-              fatal_no_pos "Command %S had a non-zero exit." cmd
+              fatal_no_pos "Command \"%s\" had a non-zero exit." cmd
           | exception Failure msg ->
               fatal_msg "Library root cannot be set:@.";
-              fatal_msg "Command %S failed:@." cmd;
+              fatal_msg "Command \"%s\" failed:@." cmd;
               fatal_no_pos "%s" msg
       end;
       (* Register the library root as part of the module mapping.
@@ -168,8 +166,7 @@ let set_lib_root : string option -> unit = fun dir ->
    the file name [fn] if [mn] is not already mapped and [fn] is a valid
    directory. In case of failure the program terminates and a graceful error
    message is displayed. *)
-let add_mapping : string * string -> unit = fun (mn, fn) ->
-  let mp = Path.of_string mn in
+let add_mapping : Path.t * string -> unit = fun (mp, fn) ->
   let fn =
     try Filename.realpath fn
     with Invalid_argument f -> fatal_no_pos "%s: No such file or directory" f
@@ -189,34 +186,34 @@ let file_of_path : Path.t -> string = fun mp ->
   try
     let fp = LibMap.get mp !lib_mappings in
     if Logger.log_enabled () then
-      log_lib "file_of_path @[<hv>%a@ %a@ = %S@]"
+      log_lib "file_of_path @[<hv>%a@ %a@ = \"%s\"@]"
         Path.pp mp LibMap.pp !lib_mappings fp;
     fp
   with LibMap.Root_not_set -> fatal_no_pos "Library root not set."
 
-(** [src_extension] is the expected extension for source files. *)
-let src_extension : string = ".lp"
+(** [lp_src_extension] is the expected extension for source files. *)
+let lp_src_extension : string = ".lp"
 
-(** [legacy_src_extension] is the extension for legacy source files. *)
-let legacy_src_extension : string = ".dk"
+(** [dk_src_extension] is the extension for dk source files. *)
+let dk_src_extension : string = ".dk"
 
 (** [is_valid_src_extension s] returns [true] iff [s] ends with
-   [src_extension] or [legacy_src_extension]. *)
+   [lp_src_extension] or [dk_src_extension]. *)
 let is_valid_src_extension : string -> bool = fun s ->
-  Filename.check_suffix s src_extension
-  || Filename.check_suffix s legacy_src_extension
+  Filename.check_suffix s lp_src_extension
+  || Filename.check_suffix s dk_src_extension
 
 (** [obj_extension] is the expected extension for binary (object) files. *)
 let obj_extension : string = ".lpo"
 
 (** [valids_extensions] is the list of valid file extensions. *)
 let valid_extensions : string list =
-  [src_extension; legacy_src_extension; obj_extension]
+  [lp_src_extension; dk_src_extension; obj_extension]
 
 (** [path_of_file escape fname] computes the module path that corresponds to
    the filename [fname]. [escape] converts irregular path elements into
    escaped identifiers if needed.
-@raise [Fatal] if [fn] doesn't have a valid extension. *)
+@raise [Fatal] if [fname] doesn't have a valid extension. *)
 let path_of_file : (string -> string) -> string -> Path.t =
   fun escape fname ->
   (* Sanity check: source file extension. *)
@@ -224,8 +221,8 @@ let path_of_file : (string -> string) -> string -> Path.t =
   if not (List.mem ext valid_extensions) then
     begin
       fatal_msg "Invalid extension for [%s].@." fname;
-      let pp_exp = List.pp (fun ppf -> Format.fprintf ppf "[%s]") ", " in
-      fatal_no_pos "Expected any of: %a." pp_exp valid_extensions
+      let exp = List.pp (fun ppf -> out ppf "[%s]") ", " in
+      fatal_no_pos "Expected any of: %a." exp valid_extensions
     end;
   (* Normalizing the file path. *)
   let fname = Filename.normalize fname in
@@ -244,7 +241,7 @@ let path_of_file : (string -> string) -> string -> Path.t =
   let (mp, fp) =
     match !mapping with
     | Some(mp, fp) -> (mp, fp)
-    | None           ->
+    | None ->
         fatal_msg "%s cannot be mapped under the library root.@." fname;
         fatal_msg "Consider adding a package file under your source tree, ";
         fatal_no_pos "or use the [--map-dir] option."
@@ -256,7 +253,7 @@ let path_of_file : (string -> string) -> string -> Path.t =
     String.sub base (len_fp + 1) (len_base - len_fp - 1)
   in
   let full_mp = mp @ List.map escape (String.split_on_char '/' rest) in
-  log_lib "path_of_file @[<hv>%S@ = %a@]" fname Path.pp full_mp;
+  log_lib "path_of_file @[<hv>\"%s\"@ = %a@]" fname Path.pp full_mp;
   full_mp
 
 (** [install_path fname] prefixes the filename [fname] by the path to the
