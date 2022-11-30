@@ -14,15 +14,11 @@ let translate_ident : string -> string = function
   | "exists" -> "_exists"
   | s -> s
 
-let raw_ident : string pp = fun ppf s ->
-  Print.pp_uid ppf (translate_ident s)
+let raw_ident : string pp = fun ppf s -> Print.uid ppf (translate_ident s)
 
 let ident : p_ident pp = fun ppf {elt;_} -> raw_ident ppf elt
 
-let meta_ident : p_meta_ident pp = fun ppf {elt;_} ->
-  match elt with
-  | Name s -> raw_ident ppf s
-  | Numb i -> out ppf "%d" i
+let meta_ident : p_meta_ident pp = fun ppf {elt;_} -> out ppf "%d" elt
 
 let param_id : p_ident option pp = fun ppf idopt ->
   match idopt with
@@ -43,9 +39,9 @@ let qident : p_qident pp = fun ppf {elt=(mp,s);_} ->
 (* ends with a space *)
 let modifier : p_modifier pp = fun ppf {elt; _} ->
   match elt with
-  | P_expo(e)   -> Print.pp_expo ppf e
-  | P_mstrat(s) -> Print.pp_match_strat ppf s
-  | P_prop(p)   -> Print.pp_prop ppf p
+  | P_expo(e)   -> Print.expo ppf e
+  | P_mstrat(s) -> Print.match_strat ppf s
+  | P_prop(p)   -> Print.prop ppf p
   | P_opaq      -> out ppf "opaque "
 
 (* ends with a space if the list is not empty *)
@@ -72,7 +68,7 @@ let rec term : p_term pp = fun ppf t ->
     | P_Iden(qid,false), _ -> out ppf "%a" qident qid
     | P_Iden(qid,true), _ -> out ppf "@@%a" qident qid
     | P_Wild, _ -> out ppf "_"
-    | P_Meta(mid,ts), _ -> out ppf "TODO(*?%a%a*)" meta_ident mid env ts
+    | P_Meta(mid,_), _ -> out ppf "TODO(*?%a*)" meta_ident mid
     | P_Patt(idopt,ts), _ -> out ppf "%a%a" param_id idopt env ts
     | P_Appl(t,u), (`Appl|`Func) -> out ppf "@[%a@ %a@]" appl t atom u
     | P_Arro(a,b), `Func -> out ppf "@[%a@ -> %a@]" appl a func b
@@ -89,7 +85,7 @@ let rec term : p_term pp = fun ppf t ->
     | P_LLet(x,xs,a,t,u), `Func ->
         out ppf "@[@[<hv2>let @[<2>%a%a%a@] :=@ %a@ @]in@ %a@]"
           ident x params_list xs typ a func t func u
-    | P_NLit i, _ -> out ppf "TODO(*%i*)" i
+    | P_NLit i, _ -> out ppf "TODO(*%s*)" i
     | P_Wrap t, _ -> pp priority ppf t
     | P_Expl t, _ -> out ppf "TODO(*{@[<hv2>%a@]}*)" func t
     | _ -> out ppf "(@[<hv2>%a@])" func t
@@ -153,9 +149,8 @@ let tactic : p_tactic pp = fun ppf { elt;  _ } ->
   | P_tac_admit -> out ppf "admit"
   | P_tac_apply t -> out ppf "apply %a" term t
   | P_tac_assume ids ->
-      out ppf "assume%a" (List.pp (pp_unit " " |+ param_id) "") ids
+      out ppf "assume%a" (List.pp (unit " " |+ param_id) "") ids
   | P_tac_fail -> out ppf "fail"
-  | P_tac_focus i -> out ppf "focus %i" i
   | P_tac_generalize id -> out ppf "generalize %a" ident id
   | P_tac_have (id, t) -> out ppf "have %a: %a" ident id term t
   | P_tac_induction -> out ppf "induction"
@@ -183,19 +178,32 @@ let assoc : Pratter.associativity pp = fun ppf a ->
            | Pratter.Left -> " left"
            | Pratter.Right -> " right")
 
-let notation : Sign.notation pp = fun ppf -> function
-  | Infix (a, p) -> out ppf "infix%a %f" assoc a p
-  | Prefix p -> out ppf "prefix %f" p
+let notation : string Sign.notation pp = fun ppf -> function
+  | Infix (a, p) -> out ppf "infix%a %s" assoc a p
+  | Prefix p -> out ppf "prefix %s" p
   | Quant -> out ppf "quantifier"
   | _ -> ()
 
-let proof : (p_tactic list * p_proof_end) pp = fun ppf (prf, prf_end) ->
+let rec subproof : p_subproof pp = fun ppf sp ->
+  out ppf "{@[<hv2>@ %a@ @]}" proofsteps sp
+
+and subproofs : p_subproof list pp = fun ppf spl ->
+  out ppf "@[<hv>%a@]" (pp_print_list ~pp_sep:pp_print_space subproof) spl
+
+and proofsteps : p_proofstep list pp = fun ppf psl ->
+  pp_print_list ~pp_sep:pp_print_space proofstep ppf psl
+
+and proofstep : p_proofstep pp = fun ppf (Tactic (t, spl)) ->
+  out ppf "@[<hv2>%a@,%a;@]" tactic t subproofs spl
+
+let proof : (p_proof * p_proof_end) pp = fun ppf (prf, prf_end) ->
   out ppf "Proof.@ @[<2>%a@]@ %a"
-    (List.pp tactic "@ ") prf
+    (List.pp subproof "@ ") prf
     proof_end prf_end
 
 let command : p_command pp = fun ppf { elt; _ } ->
   begin match elt with
+  | P_coercion _ -> ()
   | P_builtin _ -> ()
   | P_inductive (_, _, []) -> assert false (* not possible *)
   | P_inductive (ms, xs, i :: il) ->
@@ -210,7 +218,7 @@ let command : p_command pp = fun ppf { elt; _ } ->
   | P_query _ -> ()
   | P_require (b, ps) ->
       out ppf "Require%a %a.@."
-        (pp_if b (pp_unit " Import")) ()
+        (pp_if b (unit " Import")) ()
         (List.pp path " ") ps
   | P_require_as (p,i) -> out ppf "@[Module %a@ := %a@].@." ident i path p
   | P_rules [] -> assert false (* not possible *)
@@ -225,9 +233,9 @@ let command : p_command pp = fun ppf { elt; _ } ->
         ident p_sym_nam
         params_list p_sym_arg
         typ p_sym_typ
-        (pp_if p_sym_def (pp_unit "@ :=")) ()
-        (Option.pp (pp_sep " " |+ term)) p_sym_trm
-        (Option.pp (pp_unit "@," |+ proof)) p_sym_prf
+        (pp_if p_sym_def (unit "@ :=")) ()
+        (Option.pp (sep " " |+ term)) p_sym_trm
+        (Option.pp (unit "@," |+ proof)) p_sym_prf
     end
   | P_unif_rule _ -> ()
   end

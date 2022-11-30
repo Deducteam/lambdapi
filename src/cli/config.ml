@@ -12,7 +12,7 @@ module CLT = Cmdliner.Term
 (** {3 Configuration type for common values} *)
 
 (** Output formats for the export command. *)
-type output = Lp | Dk | Hrs | Xtc
+type output = Lp | Dk | Hrs | Xtc | Coq
 
 (** Configuration value for the commonly available options. *)
 type config =
@@ -203,6 +203,7 @@ let output : output option CLT.t =
       | "dk" -> Ok Dk
       | "hrs" -> Ok Hrs
       | "xtc" -> Ok Xtc
+      | "coq" -> Ok Coq
       | _ -> Error(`Msg "Invalid format")
     in
     let print fmt o =
@@ -211,13 +212,14 @@ let output : output option CLT.t =
          | Lp -> "lp"
          | Dk -> "dk"
          | Hrs -> "hrs"
-         | Xtc -> "xtc")
+         | Xtc -> "xtc"
+         | Coq -> "coq")
     in
     Arg.conv (parse, print)
   in
   let doc =
-    "Set the output format of the export command. The value of $(docv) must \
-     `lp', `dk`, `hrs` or `xtc` (default=lp)."
+    "Set the output format of the export command. The value of $(docv) \
+     must be `lp' (default), `dk`, `hrs`, `xtc` or `coq`."
   in
   Arg.(value & opt (some output) None & info ["output";"o"] ~docv:"FMT" ~doc)
 

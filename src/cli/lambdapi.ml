@@ -72,7 +72,6 @@ let parse_cmd : Config.t -> string list -> unit = fun cfg files ->
 let export_cmd : Config.t -> string -> unit = fun cfg file ->
   let run _ =
     Config.init {cfg with verbose = Some 0};
-    let cmds = Parser.parse_file file in
     match cfg.output with
     | None
     | Some Lp -> Pretty.ast Format.std_formatter (Parser.parse_file file)
@@ -81,7 +80,7 @@ let export_cmd : Config.t -> string -> unit = fun cfg file ->
       Export.Hrs.to_HRS Format.std_formatter (Compile.compile_file file)
     | Some Xtc ->
       Export.Xtc.to_XTC Format.std_formatter (Compile.compile_file file)
-    | Some Coq -> To_coq.print (Compile.parse_file file)
+    | Some Coq -> To_coq.print (Parser.parse_file file)
   in Error.handle_exceptions run
 
 (** Running the LSP server. *)
