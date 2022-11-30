@@ -1,10 +1,8 @@
 (** Translate the parser-level AST to Coq. *)
 
-open! Lplib
-open Base
-open Common
-open Pos
-open Syntax
+open Lplib open Base
+open Common open Pos
+open Parsing open Syntax
 open Format
 open Core
 
