@@ -14,9 +14,12 @@ type logger =
   ; logger_enabled : bool ref (** Is the log enabled? *)
   ; logger_pp : logger_pp (** Type of a logging function. *)
   }
+let cmp l1 l2 = Stdlib.compare l1.logger_key l2.logger_key
 
 (** [loggers] contains the registered logging functions. *)
 let loggers : logger list Stdlib.ref = Stdlib.ref []
+
+let add_logger l = Stdlib.(loggers := Lplib.List.insert cmp l !loggers)
 
 (** [log_enabled] is the cached result of whether there exists an enabled
    logging function. Its main use is to guard logging operations to avoid
@@ -54,7 +57,7 @@ let make logger_key logger_name logger_desc =
     { logger_key ; logger_name
     ; logger_desc ; logger_enabled ; logger_pp = { pp } }
   in
-  Stdlib.(loggers := logger :: !loggers);
+  add_logger logger;
 
   logger.logger_pp
 
