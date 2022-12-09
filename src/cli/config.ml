@@ -140,13 +140,13 @@ let no_warnings : bool CLT.t =
 
 let debug : string CLT.t =
   let descs =
-    let fn (k, d) = Printf.sprintf "$(b,\"%c\") (for %s)" k d in
+    let fn (k, d) = Printf.sprintf "$(b,%c) for %s" k d in
     String.concat ", " (List.map fn (Logger.log_summary ()))
   in
   let doc =
     Printf.sprintf
       "Enables the debugging flags specified in $(docv). Every character of \
-       $(docv) correspond to a flag. The available values are %s." descs
+       $(docv) correspond to a flag. The available values are: %s." descs
   in
   Arg.(value & opt string "" & info ["debug"] ~docv:"FLAGS" ~doc)
 
