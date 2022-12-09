@@ -5,7 +5,7 @@ open Common open Error
 open Core
 
 (** Logging function for external checkers. *)
-let log_xtrn = Logger.make 'x' "xtrn" "external tools"
+let log_xtrn = Logger.make 'z' "xtrn" "external tools"
 let log_xtrn = log_xtrn.pp
 
 (** [run prop pp cmd sign] runs the external checker given by the Unix command
