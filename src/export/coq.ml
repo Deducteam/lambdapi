@@ -6,11 +6,25 @@ open Parsing open Syntax
 open Format
 open Core
 
-let translate_ident : string -> string = function
-  | "forall" -> "_forall"
-  | "Type" -> "_Type"
-  | "exists" -> "_exists"
-  | s -> s
+let log = Logger.make 'x' "xpor" "export"
+let log = log.pp
+
+let stt = Stdlib.ref true
+
+let translate_ident : string -> string =
+  let re = Str.regexp "[():\\<>^]" in
+  fun s ->
+    match s with
+    (* Coq keywords
+       https://coq.inria.fr/distrib/current/refman/language/core/basic.html *)
+    | "_" | "Axiom" | "CoFixpoint" | "Definition" | "Fixpoint" | "Hypothesis"
+    | "Parameter" | "Prop" | "SProp" | "Set" | "Theorem" | "Type" | "Variable"
+    | "as" | "at" | "cofix" | "else" | "end" | "fix" | "for" | "forall"
+    | "fun" | "if" | "in" | "let" | "match" | "return" | "then" | "where"
+    | "with" | "by" | "exists" | "exists2" | "using" -> "_" ^ s
+    | _ ->
+      let s = Str.global_replace re "_" (Escape.unescape s) in
+      if s <> "" && s.[0] = '\'' then "_" ^ s else s
 
 let raw_ident : string pp = fun ppf s -> Print.uid ppf (translate_ident s)
 
@@ -55,20 +69,18 @@ let rec term : p_term pp = fun ppf t ->
   and appl ppf t = pp `Appl ppf t
   and func ppf t = pp `Func ppf t
   and pp priority ppf t =
-    let env ppf ts =
-      match ts with
-      | None -> ()
-      | Some [||] when !empty_context -> ()
-      | Some ts -> out ppf "[%a]" (Array.pp func "; ") ts
-    in
+    if Logger.log_enabled() then log "%a: %a" Pos.short t.pos Pretty.term t;
     match (t.elt, priority) with
     | P_Type, _ -> out ppf "Type"
+    | P_Iden({elt=(["STTfa"],"Set");_},_), _
+      when Stdlib.(!stt) -> out ppf "Type"
+    | P_Iden({elt=(["STTfa"],"prop");_},_), _
+      when Stdlib.(!stt) -> out ppf "Prop"
     | P_Iden(qid,false), _ -> out ppf "%a" qident qid
     | P_Iden(qid,true), _ -> out ppf "@@%a" qident qid
     | P_Wild, _ -> out ppf "_"
     | P_Meta(mid,_), _ -> out ppf "TODO(*?%a*)" meta_ident mid
     | P_Patt(idopt,ts), _ -> out ppf "%a%a" param_id idopt env ts
-    | P_Appl(t,u), (`Appl|`Func) -> out ppf "@[%a@ %a@]" appl t atom u
     | P_Arro(a,b), `Func -> out ppf "@[%a@ -> %a@]" appl a func b
     | P_Abst(xs,t), `Func ->
         let fn (ids,_,_) = List.for_all ((=) None) ids in
@@ -86,7 +98,30 @@ let rec term : p_term pp = fun ppf t ->
     | P_NLit i, _ -> out ppf "TODO(*%s*)" i
     | P_Wrap t, _ -> pp priority ppf t
     | P_Expl t, _ -> out ppf "TODO(*{@[<hv2>%a@]}*)" func t
+    | P_Appl(a,b), _ ->
+      begin
+        match p_get_args t with
+        | {elt=P_Iden({elt=(["STTfa"],("El"|"Prf"));_},_);_}, [u]
+          when Stdlib.(!stt) -> pp priority ppf u
+        (* The cases below are not necessary: they just unfold the definitions
+           of arr, imp and all in STTfa.v. *)
+        | {elt=P_Iden({elt=(["STTfa"],("arr"|"imp"));_},_);_}, [u1;u2]
+          when Stdlib.(!stt) -> pp priority ppf {t with elt=P_Arro(u1,u2)}
+        | {elt=P_Iden({elt=(["STTfa"],"all");_},_);_},
+          [_;{elt=P_Abst([_] as xs,u2);_}] when Stdlib.(!stt) ->
+          pp priority ppf {t with elt=P_Prod(xs,u2)}
+        | _ -> application priority ppf t a b
+      end
     | _ -> out ppf "(@[<hv2>%a@])" func t
+  and application priority ppf t a b =
+    match priority with
+    | `Appl | `Func -> out ppf "@[%a@ %a@]" appl a atom b
+    | _ -> out ppf "(@[<hv2>%a@])" func t
+  and env ppf ts =
+    match ts with
+    | None -> ()
+    | Some [||] when !empty_context -> ()
+    | Some ts -> out ppf "[%a]" (Array.pp func "; ") ts
   in
   let rec toplevel ppf t =
     match t.elt with
@@ -240,5 +275,7 @@ let command : p_command pp = fun ppf { elt; _ } ->
 
 let ast : ast pp = fun ppf -> Stream.iter (command ppf)
 
-(** [to_coq ast] translate the [ast] to Coq on standard output. *)
-let print : ast -> unit = ast std_formatter
+(** [print b ast] sets [stt] to [b] and translates [ast] to Coq on standard
+    output. *)
+let print : bool -> ast -> unit = fun b ->
+  Stdlib.(stt := b); ast std_formatter

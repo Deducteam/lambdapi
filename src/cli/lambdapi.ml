@@ -80,7 +80,8 @@ let export_cmd : Config.t -> string -> unit = fun cfg file ->
       Export.Hrs.to_HRS Format.std_formatter (Compile.compile_file file)
     | Some Xtc ->
       Export.Xtc.to_XTC Format.std_formatter (Compile.compile_file file)
-    | Some Coq -> Export.Coq.print (Parser.parse_file file)
+    | Some RawCoq -> Export.Coq.print false (Parser.parse_file file)
+    | Some SttCoq -> Export.Coq.print true (Parser.parse_file file)
   in Error.handle_exceptions run
 
 (** Running the LSP server. *)

@@ -12,7 +12,7 @@ module CLT = Cmdliner.Term
 (** {3 Configuration type for common values} *)
 
 (** Output formats for the export command. *)
-type output = Lp | Dk | Hrs | Xtc | Coq
+type output = Lp | Dk | Hrs | Xtc | RawCoq | SttCoq
 
 (** Configuration value for the commonly available options. *)
 type config =
@@ -203,7 +203,8 @@ let output : output option CLT.t =
       | "dk" -> Ok Dk
       | "hrs" -> Ok Hrs
       | "xtc" -> Ok Xtc
-      | "coq" -> Ok Coq
+      | "raw_coq" -> Ok RawCoq
+      | "stt_coq" -> Ok SttCoq
       | _ -> Error(`Msg "Invalid format")
     in
     let print fmt o =
@@ -213,7 +214,8 @@ let output : output option CLT.t =
          | Dk -> "dk"
          | Hrs -> "hrs"
          | Xtc -> "xtc"
-         | Coq -> "coq")
+         | RawCoq -> "raw_coq"
+         | SttCoq -> "stt_coq")
     in
     Arg.conv (parse, print)
   in
