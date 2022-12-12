@@ -221,7 +221,7 @@ let output : output option CLT.t =
   in
   let doc =
     "Set the output format of the export command. The value of $(docv) \
-     must be `lp' (default), `dk`, `hrs`, `xtc` or `coq`."
+     must be `lp' (default), `dk`, `hrs`, `xtc`, `raw_coq` or `stt_coq`."
   in
   Arg.(value & opt (some output) None & info ["output";"o"] ~docv:"FMT" ~doc)
 
