@@ -142,6 +142,7 @@ Specific flags for the ``export`` command
 
 ``-o <FMT>``, ``--output=<FMT>`` instructs ``lambdapi`` to translate
 the files given in argument according to ``<FMT>``:
+
 * ``lp``: Lambdapi format
 * ``dk``:  `Dedukti <https://github.com/Deducteam/dedukti>`__ format
 * ``hrs``: `HRS <http://project-coco.uibk.ac.at/problems/hrs.php>`__ format of the confluence competition
