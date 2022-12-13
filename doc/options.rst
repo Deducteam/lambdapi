@@ -3,34 +3,31 @@ Command line interface
 
 The main Lambdapi executable is called ``lambdapi``, and it can be
 invoked using ``lambdapi COMMAND ...``. To see the list of the supported
-commands, simply run ``lambdapi --help`` or ``lambdapi help``. To get
+commands, simply run ``lambdapi help`` or ``lambdapi --help``. To get
 the documentation of a specific command run ``lambdapi COMMAND --help``.
-It will contain the list of flags that are supported for the command.
+It will contain the list of options that are supported by the command.
 
 The available commands are:
 
+* ``check``: check the correctness of input files.
+* ``decision-tree``: output the decision tree of a symbol as a Dot graph (see :doc:`dtrees`)
+* ``export``: translate the input file to other formats.
 * ``help``: display the main help message.
-* ``version``: give the current version of Lambdapi.
-* ``check``: runs the main type-checking mode on input source files.
-* ``init``: creates a new Lambdapi package. For more information have a look at
-  the :doc:`getting_started` section.
-* ``install``: installs the specified files according to package configuration.
+* ``init``: create a new Lambdapi package (see :doc:`getting_started`).
+* ``install``: install the specified files according to package configuration.
+* ``lsp``: run the Lambdapi LSP server.
+* ``parse``: parse the input files.
 * ``uninstall``: uninstalls the specified package.
-* ``parse``: runs the parsing-only mode on input source files.
-* ``export``: translates a Lambdapi file to other formats.
-* ``lsp``: runs the Lambdapi LSP server.
-* ``decision-tree``: compiles the decision tree of a symbol to a Dot graph and
-  prints it to the standard output. Refer to :doc:`dtrees` for more
-  information.
+* ``version``: give the current version of Lambdapi.
 
 **Note:** the ``parse`` and ``export`` commands can trigger the
 compilation of dependencies if the required object files (``.lpo``
 extension) are not present.
 
-**Note:** the commands that expect files are not limited to a single one.
-The given files are all handled independently (in the order they are
-given). The program immediately stops on the first failure, without
-going to the next file (if any).
+**Note:** if a command takes several files as argument, the files are
+handled independently in the order they are given. The program
+immediately stops on the first failure, without going to the next file
+(if any).
 
 Input files
 -----------
@@ -39,12 +36,14 @@ The commands ``check``, ``parse`` and ``export`` expect input files
 with either the ``.lp`` extension or the ``.dk`` extension.
 The appropriate parser is selected automatically.
 
+**Note:** The ``export`` command outputs the translation of all the
+ input files on the standard output.
+
 Common flags
 ------------
 
-The commands ``check``, ``parse``, ``export``, ``lsp`` and
-``decision-tree`` all support the following command line arguments and
-flags.
+The commands ``check``, ``decision-tree``, ``export``, ``parse``,
+``lsp`` all support the following command line arguments and flags.
 
 Configuration flags
 ^^^^^^^^^^^^^^^^^^^
@@ -142,9 +141,18 @@ Specific flags for the ``export`` command
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 ``-o <FMT>``, ``--output=<FMT>`` instructs ``lambdapi`` to translate
-the file given in argument to the format ``<FMT>``, which can be
-``lp`` or ``dk``.
+the files given in argument according to ``<FMT>``:
+* ``lp``: Lambdapi format
+* ``dk``:  `Dedukti <https://github.com/Deducteam/dedukti>`__ format
+* ``hrs``: `HRS <http://project-coco.uibk.ac.at/problems/hrs.php>`__ format of the confluence competition
+* ``xtc``: `XTC <https://raw.githubusercontent.com/TermCOMP/TPDB/master/xml/xtc.xsd>`__ format of the termination competition
+* ``raw_coq``: `Coq <https://coq.inria.fr/>`__ format
+* ``stt_coq``: `Coq <https://coq.inria.fr/>`__ format using [Coq.v](https://github.com/fblanqui/lambdapi/blob/to_coq/libraries/Coq.v) which should be added to the translated files and renamed into STTfa.v.
 
+**Note:** For the format``stt_coq``, the input files are assumed to be in the encoding of simple type theory [STTfa.lp](https://github.com/Deducteam/isabelle_dedukti/blob/master/STTfa.lp) or [STTfa.dk](https://github.com/Deducteam/isabelle_dedukti/blob/master/STTfa.dk).
+
+**Note:** For the format``raw_coq``, note that the encoding of simple type theory can be defined in Coq using [STTfa.v](https://github.com/fblanqui/lambdapi/blob/to_coq/libraries/STTfa.v).
+  
 Specific flags for the ``lsp`` command
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
