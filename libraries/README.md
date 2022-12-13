@@ -6,6 +6,8 @@ From the root of the project do:
 make holide
 cd libraries/holide
 ../patch-holide-dkfiles.sh
+# to check patched dk files:
+# cp ../STTfa.dk .
 # dk check -e STTfa.dk
 # dk check -e hol.dk
 # dk check *.dk
