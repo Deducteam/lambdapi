@@ -148,11 +148,11 @@ the files given in argument according to ``<FMT>``:
 * ``hrs``: `HRS <http://project-coco.uibk.ac.at/problems/hrs.php>`__ format of the confluence competition
 * ``xtc``: `XTC <https://raw.githubusercontent.com/TermCOMP/TPDB/master/xml/xtc.xsd>`__ format of the termination competition
 * ``raw_coq``: `Coq <https://coq.inria.fr/>`__ format
-* ``stt_coq``: `Coq <https://coq.inria.fr/>`__ format using [Coq.v](https://github.com/fblanqui/lambdapi/blob/to_coq/libraries/Coq.v) which should be added to the translated files and renamed into STTfa.v.
+* ``stt_coq``: `Coq <https://coq.inria.fr/>`__ format using `Coq.v <https://github.com/fblanqui/lambdapi/blob/to_coq/libraries/Coq.v>`__ which should be added to the translated files and renamed into STTfa.v.
 
-**Note:** For the format``stt_coq``, the input files are assumed to be in the encoding of simple type theory [STTfa.lp](https://github.com/Deducteam/isabelle_dedukti/blob/master/STTfa.lp) or [STTfa.dk](https://github.com/Deducteam/isabelle_dedukti/blob/master/STTfa.dk).
+**Note:** For the format``stt_coq``, the input files are assumed to be in the encoding of simple type theory `STTfa.lp <https://github.com/Deducteam/isabelle_dedukti/blob/master/STTfa.lp>`__ or `STTfa.dk <https://github.com/Deducteam/isabelle_dedukti/blob/master/STTfa.dk>`__.
 
-**Note:** For the format``raw_coq``, note that the encoding of simple type theory can be defined in Coq using [STTfa.v](https://github.com/fblanqui/lambdapi/blob/to_coq/libraries/STTfa.v).
+**Note:** For the format``raw_coq``, note that the encoding of simple type theory can be defined in Coq using `STTfa.v <https://github.com/fblanqui/lambdapi/blob/to_coq/libraries/STTfa.v>`__.
   
 Specific flags for the ``lsp`` command
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
