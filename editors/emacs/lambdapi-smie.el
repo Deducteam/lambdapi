@@ -141,6 +141,7 @@ Indent by `lambdapi-indent-basic' in proofs, and 0 otherwise."
                ("notation" ident "infix" "right" sterm ";")
                ("notation" ident "infix" sterm ";")
                ("notation" ident "prefix" sterm ";")
+               ("notation" ident "postfix" sterm ";")
                ("notation" ident "quantifier" ";")
                ("open" ident ";")
                ("opaque" "inductive" inddec ";")

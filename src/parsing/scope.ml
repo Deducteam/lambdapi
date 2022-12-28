@@ -167,9 +167,14 @@ let _ =
 let rec scope : ?typ:bool -> int -> mode -> sig_state -> env -> p_term ->
   tbox =
   fun ?(typ=false) k md ss env t ->
-  scope_parsed ~typ k md ss env (Pratt.parse ss env t)
+  if Logger.log_enabled () then
+    log_scop "%a before Pratt: %a" D.depth k Pretty.term t;
+  let u = Pratt.parse ss env t in
+  if Logger.log_enabled () then
+    log_scop "%a after Pratt: %a" D.depth k Pretty.term u;
+  scope_parsed ~typ k md ss env u
 
-(** [scope_parsed ~typ md ss env t] turns a parser-level, Pratt-parsed
+(** [scope_parsed ~typ md ss env t] turns a parser-level Pratt-parsed
     term [t] into an actual term. *)
 and scope_parsed :
   ?typ:bool -> int -> mode -> sig_state -> env -> p_term -> tbox =
@@ -214,7 +219,7 @@ and scope_parsed :
   (* Scope and insert the (implicit) arguments. *)
   add_impl k md ss env t.pos h impl args
   |> D.log_and_return
-    (fun e -> log_scop "%agot %a" D.depth k term (Bindlib.unbox e))
+    (fun e -> log_scop "%agot %a" D.depth k Raw.term (Bindlib.unbox e))
 
 (** [add_impl md ss env loc h impl args] scopes [args] and returns the
    application of [h] to the scoped arguments. [impl] is a boolean list

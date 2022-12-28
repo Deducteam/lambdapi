@@ -71,6 +71,7 @@
     "infix"
     "injective"
     "opaque"
+    "postfix"
     "prefix"
     "private"
     "protected"

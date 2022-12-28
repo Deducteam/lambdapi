@@ -1,6 +1,6 @@
 (** Handling of commands. *)
 
-open Lplib open Extra
+open Lplib open Base open Extra
 open Timed
 open Common open Error open Pos
 open Core open Term open Sign open Sig_state open Print
@@ -238,28 +238,29 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
         | Prefix _ | Postfix _ -> 1
         | Infix _ -> 2
         | Zero -> 0
-        | Succ -> 1
+        | Succ _ -> 1
         | Quant -> 1
       and real = Tactic.count_products [] !(s.sym_type) in
       if real < expected then
         fatal pos "Notation incompatible with the type of %a" sym s;
       (* Convert strings into floats. *)
-      let priority s =
+      let float_priority_from_string_priority s =
         try
           if String.contains s '.' then float_of_string s
           else float_of_int (int_of_string s)
         with Failure _ -> fatal pos "Too big number (max is %d)" max_int
       in
-      let n =
+      let rec float_notation_from_string_notation n =
         match n with
-        | Prefix s -> Prefix (priority s)
-        | Postfix s -> Postfix (priority s)
-        | Infix(a,s) -> Infix(a, priority s)
+        | Prefix s -> Prefix (float_priority_from_string_priority s)
+        | Postfix s -> Postfix (float_priority_from_string_priority s)
+        | Infix(a,s) -> Infix(a, float_priority_from_string_priority s)
+        | Succ x -> Succ (Option.map float_notation_from_string_notation x)
         | Zero -> Zero
-        | Succ -> Succ
         | Quant -> Quant
       in
-      Console.out 2 "notation %a %a" sym s notation n;
+      let n = float_notation_from_string_notation n in
+      Console.out 2 "notation %a %a" sym s (notation float) n;
       (add_notation ss s n, None, None)
   | P_unif_rule(h) ->
       (* Approximately same processing as rules without SR checking. *)
