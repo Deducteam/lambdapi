@@ -75,12 +75,6 @@ let add_builtin : sig_state -> string -> sym -> sig_state =
   let notations = Sign.add_notation_from_builtin builtin sym ss.notations in
   {ss with builtins; notations}
 
-(** [add_notations_from_builtins notmap bm] add notations for symbols mapped
-   to the builtins "0" and "+1". *)
-let add_notations_from_builtins :
-      sym StrMap.t -> float notation SymMap.t -> float notation SymMap.t =
-  StrMap.fold Sign.add_notation_from_builtin
-
 (** [open_sign ss sign] extends the signature state [ss] with every symbol of
    the signature [sign]. This has the effect of putting these symbols in the
    scope when (possibly masking symbols with the same name). Builtins and
@@ -90,8 +84,6 @@ let open_sign : sig_state -> Sign.t -> sig_state = fun ss sign ->
   let in_scope = StrMap.union f ss.in_scope !(sign.sign_symbols) in
   let builtins = StrMap.union f ss.builtins !(sign.sign_builtins) in
   let notations = SymMap.union f ss.notations !(sign.sign_notations) in
-  let notations =
-    add_notations_from_builtins !(sign.sign_builtins) notations in
   let open_paths = Path.Set.add sign.sign_path ss.open_paths in
   {ss with in_scope; builtins; notations; open_paths}
 

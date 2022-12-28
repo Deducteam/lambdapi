@@ -42,14 +42,18 @@ let assoc : Pratter.associativity pp = fun ppf assoc ->
   | Left -> out ppf " left associative"
   | Right -> out ppf " right associative"
 
-let notation : float Sign.notation pp = fun ppf notation ->
-  match notation with
-  | Prefix(p) -> out ppf "prefix %f" p
-  | Infix(a,p) -> out ppf "infix%a %f" assoc a p
-  | Postfix(p) -> out ppf "postfix %f" p
+let notation : 'a pp -> 'a Sign.notation pp = fun elt ->
+  let rec notation ppf = function
+  | Sign.Prefix(p) -> out ppf "prefix %a" elt p
+  | Infix(a,p) -> out ppf "infix%a %a" assoc a elt p
+  | Postfix(p) -> out ppf "postfix %a" elt p
   | Zero -> out ppf "builtin \"0\""
-  | Succ _ -> out ppf "builtin \"+1\""
+  | Succ None -> out ppf "builtin \"+1\""
+  | Succ (Some n) -> out ppf "%a (builtin \"+1\")" notation n
   | Quant -> out ppf "quantifier"
+  in notation
+
+let notation = notation float
 
 let uid : string pp = string
 

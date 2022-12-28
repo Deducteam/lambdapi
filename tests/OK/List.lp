@@ -14,22 +14,5 @@ rule τ (list $a) ↪ 𝕃 $a;
 
 symbol size [a] : 𝕃 a → ℕ;
 
-rule size □ ↪ 0;
-
-type size (0 ⸬ □);
-
-symbol + : ℕ → ℕ → ℕ; notation + infix right 10;
-
-symbol - : ℕ → ℕ; notation - prefix 20;
-
-debug +o;
-
-type 0 + 0;
-
-type - - 0;
-
-type 0 +1;
-
-type (size □) +1;
-
-rule size (_ ⸬ $l) ↪ (size $l) +1;
+rule size □ ↪ 0
+with size (_ ⸬ $l) ↪ (size $l) +1;
