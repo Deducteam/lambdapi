@@ -196,6 +196,7 @@ module CM = struct
         | Vari _, _ -> "x"
         | Abst _, _ -> "λ"
         | Prod _, _ -> "Π"
+        | Type, _   -> "TYPE"
         | _ -> assert false (* Terms that souldn't appear in lhs *) )
 
   (** Representation of a subterm in argument position in a pattern. *)
@@ -272,12 +273,18 @@ module CM = struct
       {!type:Tree_type.TC.t}) that is a candidate for a specialization. *)
   let is_treecons : term -> bool = fun t ->
     match fst (get_args t) with
+    | TRef _ | TEnv _ | Appl _ -> assert false (*Cannot happen with get_args*)
+    | Meta _ -> assert false (* No metavars in rewrite rules LHS *)
+    | Wild -> assert false
+    | Plac _ -> assert false
+    | LLet _ -> assert false
+    | Kind
     | Patt(_) -> false
     | Vari(_)
     | Abst(_)
     | Prod(_)
+    | Type
     | Symb(_) -> true
-    | _       -> assert false
 
   (** [of_rules rs] transforms rewriting rules [rs] into a clause matrix. *)
   let of_rules : rule list -> t = fun rs ->
@@ -420,6 +427,7 @@ module CM = struct
           Some(TC.Symb(sym_path, sym_name, arity), e)
       | Vari(x)                       ->
           Some(TC.Vari(VarMap.find x vars_id), e)
+      | Type                          -> Some(TC.Type, e)
       | _                             -> None
     in
     let tc_fst_cmp (tca, _) (tcb, _) = TC.compare tca tcb in
@@ -525,6 +533,10 @@ module CM = struct
           if lenh = lenp && Bindlib.eq_vars x y
           then Some({r with c_lhs = insert (Array.of_list args)})
           else None
+      | Type, Type ->
+          if lenh = lenp (* they should be 0 if terms are well-typed *)
+          then Some({r with c_lhs = insert (Array.of_list args)})
+          else None
       | _      , Patt(_) ->
           let arity = List.length pargs in
           let e = Array.make arity (mk_wildcard free_vars) in
@@ -558,6 +570,7 @@ module CM = struct
           in
           Some({r with c_lhs})
       | Prod(_)
+      | Type
       | Symb(_) | Abst(_)
       | Vari(_) | Appl(_) -> None
       | _ -> assert false in

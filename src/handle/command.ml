@@ -1,6 +1,6 @@
 (** Handling of commands. *)
 
-open Lplib open Extra
+open Lplib open Base open Extra
 open Timed
 open Common open Error open Pos
 open Core open Term open Sign open Sig_state open Print
@@ -238,12 +238,29 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
         | Prefix _ | Postfix _ -> 1
         | Infix _ -> 2
         | Zero -> 0
-        | Succ -> 1
+        | Succ _ -> 1
         | Quant -> 1
       and real = Tactic.count_products [] !(s.sym_type) in
       if real < expected then
         fatal pos "Notation incompatible with the type of %a" sym s;
-      Console.out 2 "notation %a %a" sym s notation n;
+      (* Convert strings into floats. *)
+      let float_priority_from_string_priority s =
+        try
+          if String.contains s '.' then float_of_string s
+          else float_of_int (int_of_string s)
+        with Failure _ -> fatal pos "Too big number (max is %d)" max_int
+      in
+      let rec float_notation_from_string_notation n =
+        match n with
+        | Prefix s -> Prefix (float_priority_from_string_priority s)
+        | Postfix s -> Postfix (float_priority_from_string_priority s)
+        | Infix(a,s) -> Infix(a, float_priority_from_string_priority s)
+        | Succ x -> Succ (Option.map float_notation_from_string_notation x)
+        | Zero -> Zero
+        | Quant -> Quant
+      in
+      let n = float_notation_from_string_notation n in
+      Console.out 2 "notation %a %a" sym s (notation float) n;
       (add_notation ss s n, None, None)
   | P_unif_rule(h) ->
       (* Approximately same processing as rules without SR checking. *)
@@ -252,6 +269,13 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
       Sign.add_rule ss.signature Unif_rule.equiv urule;
       Tree.update_dtree Unif_rule.equiv [];
       Console.out 2 "unif_rule %a" unif_rule urule;
+      (ss, None, None)
+  | P_coercion c ->
+      let pc = scope_rule false ss c in
+      let r = Scope.rule_of_pre_rule pc in
+      Sign.add_rule ss.signature Coercion.coerce r;
+      Tree.update_dtree Coercion.coerce [];
+      Console.out 2 "coercion %a" (rule_of Coercion.coerce) r;
       (ss, None, None)
 
   | P_inductive(ms, params, p_ind_list) ->
@@ -471,10 +495,12 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
             (* Check that the proof is indeed finished. *)
             if not (finished ps) then
               fatal pe.pos "The proof is not finished.";
+            (* Get the final definition. *)
+            let d =
+              Option.map (fun m -> unfold (mk_Meta(m,[||]))) ps.proof_term in
             (* Add the symbol in the signature. *)
             Console.out 2 (Color.red "symbol %a : %a") uid id term a;
-            let t = Option.map (fun t -> t.elt) t in
-            fst (add_symbol ss expo prop mstrat opaq p_sym_nam a impl t)
+            fst (add_symbol ss expo prop mstrat opaq p_sym_nam a impl d)
       in
       (* Create the proof state. *)
       let pdata_state =

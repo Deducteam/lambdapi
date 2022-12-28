@@ -29,22 +29,21 @@ end = struct
     let get (tbl, env) t =
       match t.elt with
       | P_Iden({elt=(mp, s); _} as id, false) ->
-          let sym =
+          let open Option.Monad in
+          let* sym =
             try (* Look if [id] is in [env]... *)
               if mp <> [] then raise Not_found;
               ignore (Env.find s env); None
             with Not_found -> (* ... or look into the signature *)
               Some(Sig_state.find_sym ~prt:true ~prv:true tbl id)
           in
-          let f sym =
-            match Term.SymMap.find_opt sym tbl.notations with
-            | Some(Infix(assoc, prio)) -> Some(Pratter.Infix assoc, prio)
-            | Some(Prefix(prio)) -> Some(Pratter.Prefix, prio)
-            | Some(Postfix(prio)) -> Some(Pratter.Postfix, prio)
-            | Some (Zero | Succ | Quant) -> None
-            | None -> None
-          in
-          Option.bind f sym
+          (match Term.SymMap.find_opt sym tbl.notations with
+          | Some(Infix(assoc, prio)) -> Some(Pratter.Infix assoc, prio)
+          | Some(Prefix(prio)) | Some(Succ(Some(Prefix(prio)))) ->
+            Some(Pratter.Prefix, prio)
+          | Some(Postfix(prio)) | Some(Succ(Some(Postfix(prio)))) ->
+            Some(Pratter.Postfix, prio)
+          | Some (Zero | Succ _ | Quant) | None -> None)
       | _ -> None
 
     let make_appl t u = Pos.make (Pos.cat t.pos u.pos) (P_Appl(t, u))

@@ -17,12 +17,12 @@ type ind_data =
 type priority = float
 
 (** Notations. *)
-type notation =
-  | Prefix of priority
-  | Postfix of priority
-  | Infix of Pratter.associativity * priority
+type 'a notation =
+  | Prefix of 'a
+  | Postfix of 'a
+  | Infix of Pratter.associativity * 'a
   | Zero
-  | Succ
+  | Succ of 'a notation option (* Prefix or Postfix only *)
   | Quant
 
 (** Representation of a signature. It roughly corresponds to a set of symbols,
@@ -33,7 +33,7 @@ type t =
   ; sign_deps     : rule list StrMap.t Path.Map.t ref
   (** Maps a path to a list of pairs (symbol name, rule). *)
   ; sign_builtins : sym StrMap.t ref
-  ; sign_notations: notation SymMap.t ref
+  ; sign_notations: float notation SymMap.t ref
   (** Maps symbols to their notation if they have some. *)
   ; sign_ind      : ind_data SymMap.t ref
   ; sign_cp_pos   : cp_pos list SymMap.t ref
@@ -341,18 +341,26 @@ let add_rules : t -> sym -> rule list -> unit = fun sign sym rs ->
     let sm = StrMap.update sym.sym_name f sm in
     sign.sign_deps := Path.Map.add sym.sym_path sm !(sign.sign_deps)
 
+(** [add_notation sign s n] sets notation of [s] to [n] in [sign]. *)
+let add_notation : t -> sym -> float notation -> unit = fun sign s n ->
+  sign.sign_notations := SymMap.add s n !(sign.sign_notations)
+
+(** [add_notation_from_builtin builtin sym notation_map] adds in
+    [notation_map] the notation required when [builtin] is mapped to [sym]. *)
+let add_notation_from_builtin :
+  string -> sym -> 'a notation SymMap.t -> 'a notation SymMap.t =
+  fun builtin sym notation_map ->
+  match builtin with
+  | "0"  -> SymMap.add sym Zero notation_map
+  | "+1" -> let f x = Some(Succ x) in SymMap.update sym f notation_map
+  | _    -> notation_map
+
 (** [add_builtin sign name sym] binds the builtin name [name] to [sym] (in the
     signature [sign]). The previous binding, if any, is discarded. *)
-let add_builtin : t -> string -> sym -> unit = fun sign s sym ->
-  sign.sign_builtins := StrMap.add s sym !(sign.sign_builtins);
-  match s with
-  | "0" -> sign.sign_notations := SymMap.add sym Zero !(sign.sign_notations)
-  | "+1" -> sign.sign_notations := SymMap.add sym Succ !(sign.sign_notations)
-  | _ -> ()
-
-(** [add_notation sign s n] sets notation of [s] to [n] in [sign]. *)
-let add_notation : t -> sym -> notation -> unit = fun sign s n ->
-  sign.sign_notations := SymMap.add s n !(sign.sign_notations)
+let add_builtin : t -> string -> sym -> unit = fun sign builtin sym ->
+  sign.sign_builtins := StrMap.add builtin sym !(sign.sign_builtins);
+  sign.sign_notations :=
+    add_notation_from_builtin builtin sym !(sign.sign_notations)
 
 (** [add_inductive sign ind_sym ind_cons ind_prop ind_prop_args] add to [sign]
    the inductive type [ind_sym] with constructors [ind_cons], induction
@@ -362,6 +370,20 @@ let add_inductive : t -> sym -> sym list -> sym -> int -> int -> unit =
   let ind_nb_cons = List.length ind_cons in
   let ind = {ind_cons; ind_prop; ind_nb_params; ind_nb_types; ind_nb_cons} in
   sign.sign_ind := SymMap.add ind_sym ind !(sign.sign_ind)
+
+(** [iterate f sign] applies [f] on [sign] and its dependencies
+   recursively. *)
+let iterate : (t -> unit) -> t -> unit = fun f sign ->
+  let visited = Stdlib.ref Path.Set.empty in
+  let rec handle sign =
+    Stdlib.(visited := Path.Set.add sign.sign_path !visited);
+    f sign;
+    let dep path _ =
+      if not (Path.Set.mem path Stdlib.(!visited)) then
+        handle (Path.Map.find path !loaded)
+    in
+    Path.Map.iter dep Timed.(!(sign.sign_deps))
+  in handle sign
 
 (** [dependencies sign] returns an association list containing (the transitive
     closure of) the dependencies of the signature [sign].  Note that the order

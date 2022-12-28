@@ -67,6 +67,8 @@ let handle : Sig_state.t -> proof_state option -> p_query -> result =
       Console.out 1 "debug %s%s" (if e then "+" else "-") s;
       None
   | P_query_verbose(i) ->
+      let i = try int_of_string i with Failure _ ->
+        fatal pos "Too big number (max is %d)" max_int in
       if Timed.(!Console.verbose) = 0 then
         (Timed.(Console.verbose := i);
          Console.out 1 "verbose %i" i)
@@ -80,7 +82,10 @@ let handle : Sig_state.t -> proof_state option -> p_query -> result =
       Console.out 1 "flag %s %s" id (if b then "on" else "off");
       None
   | P_query_prover(s) -> Timed.(Why3_tactic.default_prover := s); None
-  | P_query_prover_timeout(n) -> Timed.(Why3_tactic.timeout := n); None
+  | P_query_prover_timeout(n) ->
+      let n = try int_of_string n with Failure _ ->
+        fatal pos "Too big number (max is %d)" max_int in
+      Timed.(Why3_tactic.timeout := n); None
   | P_query_print(None) ->
       begin
         match ps with
@@ -95,7 +100,7 @@ let handle : Sig_state.t -> proof_state option -> p_query -> result =
         (* Function to print a notation *)
         let notation ppf s =
           Option.iter
-            (out ppf "notation %a %a;@." sym s notation)
+            (out ppf "notation %a %a;@." sym s (notation float))
             (notation_of s) in
         (* Function to print rules. *)
         let rules ppf s =

@@ -77,7 +77,6 @@ make doc                    # Build the user documentation (avalaible on readthe
 make odoc                   # Build the developer documentation
 make install                # Install lambdapi
 make install_emacs          # Install emacs mode
-make install_vscode         # Install vscode extension
 make install_vim            # Install vim support
 ```
 

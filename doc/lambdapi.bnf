@@ -24,6 +24,7 @@ QID ::= [UID "."]+ UID
               <inductive>)* ";"
             | "rule" <rule> ("with" <rule>)* ";"
             | "builtin" <stringlit> "≔" <qid_or_nat> ";"
+            | "coerce_rule" <rule> ";"
             | "unif_rule" <unif_rule> ";"
             | "notation" <qid_or_nat> <notation> ";"
             | <query> ";"
@@ -160,6 +161,7 @@ QID ::= [UID "."]+ UID
 <equation> ::= <term> "≡" <term>
 
 <notation> ::= "infix" [<side>] <float_or_nat>
+             | "postfix" <float_or_nat>
              | "prefix" <float_or_nat>
              | "quantifier"
 

@@ -67,7 +67,7 @@ let snf : (term -> term) -> (term -> term) = fun whnf ->
     | Appl(t,u)   -> mk_Appl(snf t, snf u)
     | Meta(m,ts)  -> mk_Meta(m, Array.map snf ts)
     | Patt(i,n,ts) -> mk_Patt(i,n,Array.map snf ts)
-    | Plac _      -> assert false
+    | Plac _      -> h (* may happen when reducing coercions *)
     | TEnv(_,_)   -> assert false
     | Wild        -> assert false
     | TRef(_)     -> assert false
@@ -320,9 +320,9 @@ and tree_walk : config -> dtree -> stack -> (term * stack) option =
         List.iter f rhs_subst;
         (* Complete the array with fresh meta-variables if needed. *)
         for i = env_len - xvars to env_len - 1 do
-          let mt = LibMeta.make cfg.problem cfg.context mk_Type in
-          let t = LibMeta.make cfg.problem cfg.context mt in
-          let b = Bindlib.raw_mbinder [||] [||] 0 of_tvar (fun _ -> t) in
+          let b =
+            Bindlib.raw_mbinder [||] [||] 0 of_tvar (fun _ -> mk_Plac false)
+          in
           env.(i) <- TE_Some(b)
         done;
         Some (Bindlib.msubst act env, stk)
@@ -377,7 +377,7 @@ and tree_walk : config -> dtree -> stack -> (term * stack) option =
             let stk = List.reconstruct left [] right in
             walk t stk cursor vars_id id_vars
           in
-          Option.bind fn default
+          Option.bind default fn
         else
           let s = Stdlib.(!steps) in
           let (t, args) = whnf_stk cfg examined [] in
@@ -402,7 +402,7 @@ and tree_walk : config -> dtree -> stack -> (term * stack) option =
               let stk = List.reconstruct left [] right in
               walk d stk cursor vars_id id_vars
             in
-            Option.bind fn default
+            Option.bind default fn
           in
           (* [walk_binder a  b  id tr]  matches  on  binder  [b]  of type  [a]
              introducing variable  [id] and branching  on tree [tr].  The type
@@ -415,6 +415,14 @@ and tree_walk : config -> dtree -> stack -> (term * stack) option =
             walk tr stk cursor vars_id id_vars
           in
           match t with
+          | Type       ->
+              begin
+                try
+                  let matched = TCMap.find TC.Type children in
+                  let stk = List.reconstruct left args right in
+                  walk matched stk cursor vars_id id_vars
+                with Not_found -> default ()
+              end
           | Symb(s)    ->
               let cons = TC.Symb(s.sym_path, s.sym_name, List.length args) in
               begin
@@ -451,7 +459,6 @@ and tree_walk : config -> dtree -> stack -> (term * stack) option =
                 | Some(id,tr) -> walk_binder a b id tr
               end
           | Kind
-          | Type
           | Patt _
           | Meta(_, _) -> default ()
           | Plac _     -> assert false

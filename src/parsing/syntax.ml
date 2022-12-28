@@ -49,7 +49,7 @@ and p_term_aux =
   | P_Prod of p_params list * p_term (** Product. *)
   | P_LLet of p_ident * p_params list * p_term option * p_term * p_term
     (** Let. *)
-  | P_NLit of int (** Natural number literal. *)
+  | P_NLit of string (** Natural number literal. *)
   | P_Wrap of p_term (** Term between parentheses. *)
   | P_Expl of p_term (** Term between curly brackets. *)
 
@@ -164,7 +164,7 @@ type p_assertion =
 
 (** Parser-level representation of a query command. *)
 type p_query_aux =
-  | P_query_verbose of int
+  | P_query_verbose of string
   (** Sets the verbosity level. *)
   | P_query_debug of bool * string
   (** Toggles logging functions described by string according to boolean. *)
@@ -178,7 +178,7 @@ type p_query_aux =
   (** Normalisation command. *)
   | P_query_prover of string
   (** Set the prover to use inside a proof. *)
-  | P_query_prover_timeout of int
+  | P_query_prover_timeout of string
   (** Set the timeout of the prover (in seconds). *)
   | P_query_print of p_qident option
   (** Print information about a symbol or the current goals. *)
@@ -263,8 +263,9 @@ type p_command_aux =
   | P_rules of p_rule list
   | P_inductive of p_modifier list * p_params list * p_inductive list
   | P_builtin of string * p_qident
-  | P_notation of p_qident * Sign.notation
+  | P_notation of p_qident * string Sign.notation
   | P_unif_rule of p_rule
+  | P_coercion of p_rule
   | P_query of p_query
 
 (** Parser-level representation of a single (located) command. *)
@@ -419,6 +420,7 @@ let eq_p_command : p_command eq = fun {elt=c1;_} {elt=c2;_} ->
   | P_builtin(s1,q1), P_builtin(s2,q2) -> s1 = s2 && eq_p_qident q1 q2
   | P_notation(i1,n1), P_notation(i2,n2) -> eq_p_qident i1 i2 && n1 = n2
   | P_unif_rule r1, P_unif_rule r2 -> eq_p_rule r1 r2
+  | P_coercion r1, P_coercion r2 -> eq_p_rule r1 r2
   | P_query(q1), P_query(q2) -> eq_p_query q1 q2
   | _, _ -> false
 
@@ -593,6 +595,7 @@ let fold_idents : ('a -> p_qident -> 'a) -> 'a -> p_command list -> 'a =
     | P_query q -> fold_query_vars StrSet.empty a q
     | P_builtin (_, qid)
     | P_notation (qid, _) -> f a qid
+    | P_coercion r
     | P_unif_rule r -> fold_rule a r
     | P_rules rs -> List.fold_left fold_rule a rs
     | P_inductive (_, xs, ind_list) ->

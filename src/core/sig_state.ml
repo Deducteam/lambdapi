@@ -19,8 +19,8 @@ open Sign
     as dependencies. *)
 let create_sign : Path.t -> Sign.t = fun sign_path ->
   let d = Sign.dummy () in
-  {d with sign_path;
-          sign_deps = ref (Path.Map.singleton Unif_rule.path StrMap.empty)}
+  let deps = Path.Map.singleton Ghost.sign.sign_path StrMap.empty in
+  {d with sign_path; sign_deps = ref deps}
 
 (** State of the signature, including aliasing and accessible symbols. *)
 type sig_state =
@@ -29,7 +29,7 @@ type sig_state =
   ; alias_path: Path.t StrMap.t           (** Alias to path map. *)
   ; path_alias: string Path.Map.t         (** Path to alias map. *)
   ; builtins  : sym StrMap.t              (** Builtins. *)
-  ; notations : notation SymMap.t         (** Notations. *)
+  ; notations : float notation SymMap.t   (** Notations. *)
   ; open_paths : Path.Set.t               (** Open modules. *) }
 
 type t = sig_state
@@ -60,7 +60,8 @@ let add_symbol : sig_state -> expo -> prop -> match_strat
   {ss with in_scope}, sym
 
 (** [add_notation ss s n] maps [s] notation to [n] in [ss]. *)
-let add_notation : sig_state -> sym -> notation -> sig_state = fun ss s n ->
+let add_notation : sig_state -> sym -> float notation -> sig_state =
+  fun ss s n ->
   if s.sym_path = ss.signature.sign_path then
     Sign.add_notation ss.signature s n;
   {ss with notations = SymMap.add s n ss.notations}
@@ -71,25 +72,8 @@ let add_builtin : sig_state -> string -> sym -> sig_state =
   fun ss builtin sym ->
   Sign.add_builtin ss.signature builtin sym;
   let builtins = StrMap.add builtin sym ss.builtins in
-  let notations =
-    match builtin with
-    | "0"  -> SymMap.add sym Zero ss.notations
-    | "+1" -> SymMap.add sym Succ ss.notations
-    | _    -> ss.notations
-  in
+  let notations = Sign.add_notation_from_builtin builtin sym ss.notations in
   {ss with builtins; notations}
-
-(** [add_notations_from_builtins notmap bm] add notations for symbols mapped
-   to the builtins "0" and "+1". *)
-let add_notations_from_builtins :
-      sym StrMap.t -> notation SymMap.t -> notation SymMap.t =
-  let f builtin sym notmap =
-    match builtin with
-    | "0" -> SymMap.add sym Zero notmap
-    | "+1" -> SymMap.add sym Succ notmap
-    | _ -> notmap
-  in
-  StrMap.fold f
 
 (** [open_sign ss sign] extends the signature state [ss] with every symbol of
    the signature [sign]. This has the effect of putting these symbols in the
@@ -100,15 +84,13 @@ let open_sign : sig_state -> Sign.t -> sig_state = fun ss sign ->
   let in_scope = StrMap.union f ss.in_scope !(sign.sign_symbols) in
   let builtins = StrMap.union f ss.builtins !(sign.sign_builtins) in
   let notations = SymMap.union f ss.notations !(sign.sign_notations) in
-  let notations =
-    add_notations_from_builtins !(sign.sign_builtins) notations in
   let open_paths = Path.Set.add sign.sign_path ss.open_paths in
   {ss with in_scope; builtins; notations; open_paths}
 
 (** [of_sign sign] creates a state from the signature [sign] and open it as
    well as the ghost signatures. *)
 let of_sign : Sign.t -> sig_state = fun signature ->
-  open_sign (open_sign {dummy with signature} Unif_rule.sign) signature
+  open_sign (open_sign {dummy with signature} Ghost.sign) signature
 
 (** [find_sym ~prt ~prv b st qid] returns the symbol
     corresponding to the qualified identifier [qid]. If [fst qid.elt] is

@@ -153,7 +153,7 @@ let rec term : p_term pp = fun ppf t ->
     | (P_LLet(x,xs,a,t,u)  , `Func) ->
         out ppf "@[@[<hv2>let @[<2>%a%a%a@] ≔@ %a@ @]in@ %a@]"
           ident x params_list xs typ a func t func u
-    | (P_NLit(i)           , _    ) -> out ppf "%i" i
+    | (P_NLit(i)           , _    ) -> out ppf "%s" i
     | (P_Wrap(t)           , _    ) -> out ppf "(@[<hv2>%a@])" func t
     | (P_Expl(t)           , _    ) -> out ppf "[@[<hv2>%a@]]" func t
     | (_                   , _    ) -> out ppf "(@[<hv2>%a@])" func t
@@ -199,7 +199,7 @@ let equiv : (p_term * p_term) pp = fun ppf (l,r) ->
    (LpLexer.equiv t u) (LpLexer.cons (LpLexer.equiv v w) ...)]  into a
    list [[(t,u); (v,w); ...]]. See unif_rule.ml. *)
 let rec unpack : p_term -> (p_term * p_term) list = fun eqs ->
-  let is (p,s) id = p = Unif_rule.path && s = id.Term.sym_name in
+  let is (p,s) id = p = Ghost.sign.sign_path && s = id.Term.sym_name in
   match Syntax.p_get_args eqs with
   | ({elt=P_Iden({elt;_},_); _}, [v; w]) ->
       if is elt Unif_rule.cons then
@@ -252,11 +252,11 @@ let query : p_query pp = fun ppf { elt; _ } ->
   | P_query_infer(t, _) -> out ppf "type %a" term t
   | P_query_normalize(t, _) -> out ppf "compute %a" term t
   | P_query_prover s -> out ppf "prover \"%s\"" s
-  | P_query_prover_timeout n -> out ppf "prover_timeout %d" n
+  | P_query_prover_timeout n -> out ppf "prover_timeout %s" n
   | P_query_print None -> out ppf "print"
   | P_query_print(Some qid) -> out ppf "print %a" qident qid
   | P_query_proofterm -> out ppf "proofterm"
-  | P_query_verbose i -> out ppf "verbose %i" i
+  | P_query_verbose i -> out ppf "verbose %s" i
 
 let tactic : p_tactic pp = fun ppf { elt;  _ } ->
   begin match elt with
@@ -284,20 +284,6 @@ let tactic : p_tactic pp = fun ppf { elt;  _ } ->
       let prover ppf s = out ppf " \"%s\"" s in
       out ppf "why3%a" (Option.pp prover) p
   end
-
-(* starts with a space if distinct from [Pratter.Neither] *)
-let side : Pratter.associativity pp = fun ppf a ->
-  out ppf (match a with
-           | Pratter.Neither -> ""
-           | Pratter.Left -> " left"
-           | Pratter.Right -> " right")
-
-let notation : Sign.notation pp = fun ppf -> function
-  | Infix (a, p) -> out ppf "infix%a %f" side a p
-  | Prefix p -> out ppf "prefix %f" p
-  | Postfix p -> out ppf "postfix %f" p
-  | Quant -> out ppf "quantifier"
-  | Zero | Succ -> ()
 
 let rec subproof : p_subproof pp = fun ppf sp ->
   out ppf "{@[<hv2>@ %a@ @]}" proofsteps sp
@@ -328,7 +314,8 @@ let command : p_command pp = fun ppf { elt; _ } ->
     out ppf "@[<v>@[%a%a@]%a%a@]"
       modifiers ms (List.pp params " ") xs
       (inductive "inductive") i (List.pp with_ind "") il
-  | P_notation (qid, n) -> out ppf "notation %a %a" qident qid notation n
+  | P_notation (qid, n) ->
+    out ppf "notation %a %a" qident qid (Print.notation string) n
   | P_open ps -> out ppf "open %a" (List.pp path " ") ps
   | P_query q -> query ppf q
   | P_require (b, ps) ->
@@ -352,6 +339,7 @@ let command : p_command pp = fun ppf { elt; _ } ->
         (Option.pp (unit "@," |+ proof)) p_sym_prf
     end
   | P_unif_rule ur -> out ppf "unif_rule %a" unif_rule ur
+  | P_coercion c -> out ppf "%a" (rule "coerce_rule") c
   end;
   out ppf ";"
 

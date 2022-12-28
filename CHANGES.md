@@ -7,14 +7,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Add export to Coq.
+- (API) the rewrite engine can match on the constant `TYPE`.
+- Automatic coercion insertion mechanism.
+  For example, the command `coerce_rule coerce Int Float $x ↪ FloatOfInt $x;`
+  can be used to instruct Lambdapi to automatically coerce integers to floats
+  using the function `FloatOfInt`.
+
+### Changed
+
+- Fixed generation of metavariables through the rewriting engine.
+- Fixed application of pattern variables in rewrite rules RHS in the Dedukti
+  export.
+- Fixed Dedukti export: invalid Dedukti module name were not brace-quoted,
+  for instance, `#REQUIRE module-name.` could be exported, while `module-name`
+  is not recognised by Dedukti2. It is now exported as `#REQUIRE {|module-name|}`,
+  and symbols are exported as `{|module-name|}.foo`.
+- Fixed HRS and XTC exports.
+
+## 2.2.1 (2022-07-04)
+
+### Added
+
 - Propagate recompile flag to dependencies.
 - Postfix operators with the `notation <op> postfix <priority>;`
 
 ### Removed
 
 - Logic directory since it is now available on the [Lambdapi Opam repository](https://github.com/Deducteam/opam-lambdapi-repository).
-
 - Option --recompile.
+
+### Changed
+
+- Use short options in system commands to be POSIX compliant.
 
 ## 2.2.0 (2022-03-18)
 

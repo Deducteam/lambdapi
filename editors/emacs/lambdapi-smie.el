@@ -35,6 +35,7 @@
 (defconst lambdapi--cmds
   (append
    '("builtin"
+     "coerce_rule"
      "debug"
      "flag"
      "inductive"
@@ -140,6 +141,7 @@ Indent by `lambdapi-indent-basic' in proofs, and 0 otherwise."
                ("notation" ident "infix" "right" sterm ";")
                ("notation" ident "infix" sterm ";")
                ("notation" ident "prefix" sterm ";")
+               ("notation" ident "postfix" sterm ";")
                ("notation" ident "quantifier" ";")
                ("open" ident ";")
                ("opaque" "inductive" inddec ";")
@@ -153,6 +155,7 @@ Indent by `lambdapi-indent-basic' in proofs, and 0 otherwise."
                ("require" ident "as" ident ";")
                ("require" ident ";")
                ("rule" rules ";")
+	       ("coerce_rule" sterm "↪" sterm ";")
                ("verbose" ident)
                (query ";")
                ("unif_rule" sterm "≡" sterm "↪" unif-rule-rhs ";")
@@ -193,7 +196,7 @@ The default lexer is used because the syntax is primarily made of sexps."
     (`(:before . "solve") `(column . ,lambdapi-indent-basic))
     (`(:before . "symmetry") `(column . ,lambdapi-indent-basic))
     (`(:before . "why3") `(column . ,lambdapi-indent-basic))
-    
+
     (`(:before . ,(or "abort" "admitted" "end")) '(column . 0))
     (`(:after . ,(or "abort" "admitted" "end")) '(column . 0))
 
@@ -208,7 +211,7 @@ The default lexer is used because the syntax is primarily made of sexps."
 
     (`(:list-intro . ,(or "with" "rule" "λ" "Π" "begin")) t)
     (`(:after . "begin") lambdapi-indent-basic)
-    (`(:after . ,(or "rule" "with")) (* 2 lambdapi-indent-basic))
+    (`(:after . ,(or "rule" "with" "coerce_rule")) (* 2 lambdapi-indent-basic))
     (`(:after . "in") (smie-rule-parent))
     (`(:after . ,(or "symbol" "inductive")) lambdapi-indent-basic)
     (`(:after . ,(or "apply" "assume" "fail" "focus" "generalize" "have"
@@ -220,11 +223,12 @@ The default lexer is used because the syntax is primarily made of sexps."
     (`(:before . "associative") '(column . 0))
     (`(:before . "begin") '(column . 0))
     (`(:before . "builtin") '(column . 0))
+    (`(:before . "coerce_rule") '(column . 0))
     (`(:before . "commutative") '(column . 0))
     (`(:before . "constant") '(column . 0))
     (`(:before . "debug") '(column . 0))
     (`(:before . "flag") '(column . 0))
-    (`(:before . "inductive") '(column . 0))    
+    (`(:before . "inductive") '(column . 0))
     (`(:before . "injective") '(column . 0))
     (`(:before . "notation") '(column . 0))
     (`(:before . "open") '(column . 0))

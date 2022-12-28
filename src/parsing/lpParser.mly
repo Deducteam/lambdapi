@@ -33,6 +33,7 @@
 %token ASSUME
 %token BEGIN
 %token BUILTIN
+%token COERCE_RULE
 %token COMMUTATIVE
 %token COMPUTE
 %token CONSTANT
@@ -82,7 +83,7 @@
 
 %token <bool * string> DEBUG_FLAGS
 %token <string> NAT
-%token <float> FLOAT
+%token <string> FLOAT
 %token <Pratter.associativity> SIDE
 %token <string> STRINGLIT
 %token <bool> SWITCH
@@ -157,6 +158,7 @@ command:
       { make_pos $sloc (P_rules(rs)) }
   | BUILTIN s=STRINGLIT ASSIGN i=qid_or_nat SEMICOLON
     { make_pos $loc (P_builtin(s,i)) }
+  | COERCE_RULE r=rule SEMICOLON { make_pos $loc (P_coercion r) }
   | UNIF_RULE r=unif_rule SEMICOLON { make_pos $loc (P_unif_rule(r)) }
   | NOTATION i=qid_or_nat n=notation SEMICOLON
     { make_pos $loc (P_notation(i,n)) }
@@ -181,8 +183,8 @@ query:
   | FLAG s=STRINGLIT b=SWITCH { make_pos $sloc (P_query_flag(s,b)) }
   | PROVER s=STRINGLIT { make_pos $sloc (P_query_prover(s)) }
   | PROVER_TIMEOUT n=NAT
-    { make_pos $sloc (P_query_prover_timeout(int_of_string n)) }
-  | VERBOSE n=NAT { make_pos $sloc (P_query_verbose(int_of_string n)) }
+    { make_pos $sloc (P_query_prover_timeout n) }
+  | VERBOSE n=NAT { make_pos $sloc (P_query_verbose n) }
   | TYPE_QUERY t=term
     { make_pos $sloc (P_query_infer(t, {strategy=NONE; steps=None}))}
 
@@ -255,7 +257,7 @@ aterm:
       make_pos $sloc (P_Patt(i, Option.map Array.of_list e)) }
   | L_PAREN t=term R_PAREN { make_pos $sloc (P_Wrap(t)) }
   | L_SQ_BRACKET t=term R_SQ_BRACKET { make_pos $sloc (P_Expl(t)) }
-  | n=NAT { make_pos $sloc (P_NLit(int_of_string n)) }
+  | n=NAT { make_pos $sloc (P_NLit n) }
 
 env: DOT L_SQ_BRACKET ts=separated_list(SEMICOLON, term) R_SQ_BRACKET { ts }
 
@@ -349,8 +351,8 @@ rule: l=term HOOK_ARROW r=term { make_pos $sloc (l, r) }
 unif_rule: e=equation HOOK_ARROW
   L_SQ_BRACKET es=separated_nonempty_list(SEMICOLON, equation) R_SQ_BRACKET
     { (* FIXME: give sensible positions instead of Pos.none and P.appl. *)
-      let equiv = P.qiden Unif_rule.path Unif_rule.equiv.sym_name in
-      let cons = P.qiden Unif_rule.path Unif_rule.cons.sym_name in
+      let equiv = P.qiden Ghost.sign.sign_path Unif_rule.equiv.sym_name in
+      let cons = P.qiden Ghost.sign.sign_path Unif_rule.cons.sym_name in
       let mk_equiv (t, u) = P.appl (P.appl equiv t) u in
       let lhs = mk_equiv e in
       let es = List.rev_map mk_equiv es in
@@ -369,7 +371,7 @@ notation:
   | QUANTIFIER { Sign.Quant }
 
 float_or_nat:
-  | p=FLOAT { p }
-  | n=NAT   { float_of_int (int_of_string n) }
+  | s=FLOAT { s }
+  | s=NAT { s }
 
 %%

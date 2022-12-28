@@ -1,86 +1,49 @@
 (FUN
-  lam  : term -> (term -> term) -> term
-  app  : term -> term -> term
-  pi   : term -> (term -> term) -> term
-  type : term
+A : t -> t -> t
+L : t -> (t -> t) -> t
+P : t -> (t -> t) -> t
+B : t -> t -> (t -> t) -> t
+tests_OK_bool_B : t
+tests_OK_bool_bool_and : t
+tests_OK_bool_bool_impl : t
+tests_OK_bool_bool_neg : t
+tests_OK_bool_bool_or : t
+tests_OK_bool_bool_xor : t
+tests_OK_bool_false : t
+tests_OK_bool_true : t
 )
-
-(COMMENT beta-reduction)
 (VAR
-  v_x   : term
-  m_typ : term
-  m_B   : term
-  m_F   : term -> term
+$x : t
+$y : t -> t
+$z : t
+$1_0 : t
+$2_0 : t
+$3_0 : t
+$4_0 : t
+$7_0 : t
+$8_0 : t
+$9_0 : t
+$10_0 : t
+82 : t
+83 : t
+84 : t
+85 : t
+86 : t
+87 : t
 )
-(RULES app(lam(m_typ,\v_x. m_F v_x), m_B) -> m_F(m_B))
-
-(COMMENT TYPE keyword)
-(FUN TYPE : term)
-
-(COMMENT symbols)
-(FUN c_tests_OK_bool_B : term)
-(FUN c_tests_OK_bool_bool_and : term)
-(FUN c_tests_OK_bool_bool_impl : term)
-(FUN c_tests_OK_bool_bool_neg : term)
-(FUN c_tests_OK_bool_bool_or : term)
-(FUN c_tests_OK_bool_bool_xor : term)
-(FUN c_tests_OK_bool_false : term)
-(FUN c_tests_OK_bool_true : term)
-
-(COMMENT rewriting rules)
-(VAR
-  $0 : term
+(RULES
+A(L($x,$y),$z) -> $y($z),
+B($x,$z,$y) -> $y($z),
+A(A(tests_OK_bool_bool_and,$1_0),tests_OK_bool_false) -> tests_OK_bool_false,
+A(A(tests_OK_bool_bool_and,$2_0),tests_OK_bool_true) -> $2_0,
+A(A(tests_OK_bool_bool_and,tests_OK_bool_false),$3_0) -> tests_OK_bool_false,
+A(A(tests_OK_bool_bool_and,tests_OK_bool_true),$4_0) -> $4_0,
+tests_OK_bool_bool_impl -> L(tests_OK_bool_B,\82.L(tests_OK_bool_B,\83.A(A(tests_OK_bool_bool_or,83),A(tests_OK_bool_bool_neg,82)))),
+A(tests_OK_bool_bool_neg,tests_OK_bool_false) -> tests_OK_bool_true,
+A(tests_OK_bool_bool_neg,tests_OK_bool_true) -> tests_OK_bool_false,
+A(A(tests_OK_bool_bool_or,$7_0),tests_OK_bool_false) -> $7_0,
+A(A(tests_OK_bool_bool_or,$8_0),tests_OK_bool_true) -> tests_OK_bool_true,
+A(A(tests_OK_bool_bool_or,tests_OK_bool_false),$9_0) -> $9_0,
+A(A(tests_OK_bool_bool_or,tests_OK_bool_true),$10_0) -> tests_OK_bool_true,
+tests_OK_bool_bool_xor -> L(tests_OK_bool_B,\84.L(tests_OK_bool_B,\85.B(tests_OK_bool_B,A(A(tests_OK_bool_bool_and,84),A(tests_OK_bool_bool_neg,85)),\86.B(tests_OK_bool_B,A(A(tests_OK_bool_bool_and,85),A(tests_OK_bool_bool_neg,84)),\87.A(A(tests_OK_bool_bool_or,86),87)))))
 )
-(RULES app(app(c_tests_OK_bool_bool_and,$0),c_tests_OK_bool_false)
-    -> c_tests_OK_bool_false)
-(VAR
-  $0 : term
-)
-(RULES app(app(c_tests_OK_bool_bool_and,$0),c_tests_OK_bool_true)
-    -> $0)
-(VAR
-  $0 : term
-)
-(RULES app(app(c_tests_OK_bool_bool_and,c_tests_OK_bool_false),$0)
-    -> c_tests_OK_bool_false)
-(VAR
-  $0 : term
-)
-(RULES app(app(c_tests_OK_bool_bool_and,c_tests_OK_bool_true),$0)
-    -> $0)
-(VAR
-  a : term
-  b : term
-)
-(RULES c_tests_OK_bool_bool_impl
-    -> lam(c_tests_OK_bool_B,\a.lam(c_tests_OK_bool_B,\b.app(app(c_tests_OK_bool_bool_or,b),app(c_tests_OK_bool_bool_neg,a)))))
-(RULES app(c_tests_OK_bool_bool_neg,c_tests_OK_bool_false)
-    -> c_tests_OK_bool_true)
-(RULES app(c_tests_OK_bool_bool_neg,c_tests_OK_bool_true)
-    -> c_tests_OK_bool_false)
-(VAR
-  $0 : term
-)
-(RULES app(app(c_tests_OK_bool_bool_or,$0),c_tests_OK_bool_false)
-    -> $0)
-(VAR
-  $0 : term
-)
-(RULES app(app(c_tests_OK_bool_bool_or,$0),c_tests_OK_bool_true)
-    -> c_tests_OK_bool_true)
-(VAR
-  $0 : term
-)
-(RULES app(app(c_tests_OK_bool_bool_or,c_tests_OK_bool_false),$0)
-    -> $0)
-(VAR
-  $0 : term
-)
-(RULES app(app(c_tests_OK_bool_bool_or,c_tests_OK_bool_true),$0)
-    -> c_tests_OK_bool_true)
-(VAR
-  a : term
-  b : term
-)
-(RULES c_tests_OK_bool_bool_xor
-    -> lam(c_tests_OK_bool_B,\a.lam(c_tests_OK_bool_B,\b.app(app(c_tests_OK_bool_bool_or,app(app(c_tests_OK_bool_bool_and,a),app(c_tests_OK_bool_bool_neg,b))),app(app(c_tests_OK_bool_bool_and,b),app(c_tests_OK_bool_bool_neg,a))))))

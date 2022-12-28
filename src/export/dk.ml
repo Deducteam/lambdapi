@@ -53,6 +53,9 @@ let _ = let open Parsing.DkTokens in
 let is_ident : string -> bool = fun s ->
   Parsing.DkLexer.is_ident (Lexing.from_string s)
 
+let is_mident : string -> bool = fun s ->
+  Parsing.DkLexer.is_mident (Lexing.from_string s)
+
 let escape : string pp = fun ppf s -> out ppf "{|%s|}" s
 
 let replace_spaces : string -> string = fun s ->
@@ -87,7 +90,12 @@ let path : Path.t pp = fun ppf p ->
   if p <> Stdlib.(!current_path) then
   match p with
   | [] -> ()
-  | p -> out ppf "%a." (List.pp path_elt "_") p
+  | p ->
+      let joined_path = Format.asprintf "%a" (List.pp path_elt "_") p in
+      if List.for_all is_mident p then
+        out ppf "%s." joined_path
+      else
+        Format.fprintf ppf "%a." escape joined_path
 
 let qid : (Path.t * string) pp = fun ppf (p, i) ->
   out ppf "%a%a" path p ident i
@@ -109,7 +117,10 @@ let cmp : decl cmp = cmp_map (Lplib.Option.cmp Pos.cmp) pos_of_decl
 (** Translation of terms. *)
 
 let tvar : tvar pp = fun ppf v -> ident ppf (Bindlib.name_of v)
-let tevar : tevar pp = fun ppf v -> ident ppf (Bindlib.name_of v)
+
+(*FIXME: possible clash with symbol names*)
+let tevar : tevar pp = fun ppf v -> out ppf "_%a" ident (Bindlib.name_of v)
+let patt : string pp = fun ppf v -> out ppf "_%s" v
 
 let tenv : term_env pp = fun ppf te ->
   match te with
@@ -138,12 +149,12 @@ let rec term : bool -> term pp = fun b ppf t ->
   | LLet(a,t,u) ->
     let x,u = Bindlib.unbind u in
     out ppf "((%a : %a := %a) => %a)" tvar x (term b) a (term b) t (term b) u
-  | Patt(_,s,[||]) -> ident ppf s
+  | Patt(_,s,[||]) -> patt ppf s
   | Patt(_,s,ts) ->
-    out ppf "(%a%a)" ident s (Array.pp (prefix " " (term b)) "") ts
+    out ppf "(%a%a)" patt s (Array.pp (prefix " " (term b)) "") ts
   | TEnv(te, [||]) -> tenv ppf te
   | TEnv(te, ts) ->
-    out ppf "%a%a" tenv te (Array.pp (prefix " " (term b)) "") ts
+    out ppf "(%a%a)" tenv te (Array.pp (prefix " " (term b)) "") ts
   | TRef _ -> assert false
   | Wild -> assert false
   | Meta _ -> assert false
@@ -209,7 +220,10 @@ let decl : decl pp = fun ppf decl ->
 let decls_of_sign : Sign.t -> decl list = fun sign ->
   let add_sym l s = List.insert cmp (Sym s) l
   and add_rule p n l r =
-    if p = Unif_rule.path then l else List.insert cmp (Rule (p, n, r)) l in
+    if p = Ghost.sign.sign_path
+    then l
+    else List.insert cmp (Rule (p, n, r)) l
+  in
   let add_sign_symbol n s l =
     List.fold_left (add_rule [] n) (add_sym l s) !(s.sym_rules) in
   let add_rules p n rs l = List.fold_left (add_rule p n) l rs in
@@ -220,7 +234,7 @@ let decls_of_sign : Sign.t -> decl list = fun sign ->
 (** Translation of a signature. *)
 
 let require : Path.t -> _ -> unit = fun p _ ->
-  if p <> Unif_rule.path then Format.printf "#REQUIRE %a@." path p
+  if p <> Ghost.sign.sign_path then Format.printf "#REQUIRE %a@." path p
 
 let sign : Sign.t -> unit = fun sign ->
   Path.Map.iter require !(sign.sign_deps);
