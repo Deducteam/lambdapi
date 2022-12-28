@@ -7,7 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
-- (API) the rewrite engine can match on the constant `TYPE`
+- Add export to Coq.
+- (API) the rewrite engine can match on the constant `TYPE`.
 - Automatic coercion insertion mechanism.
   For example, the command `coerce_rule coerce Int Float $x ↪ FloatOfInt $x;`
   can be used to instruct Lambdapi to automatically coerce integers to floats
@@ -22,6 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   for instance, `#REQUIRE module-name.` could be exported, while `module-name`
   is not recognised by Dedukti2. It is now exported as `#REQUIRE {|module-name|}`,
   and symbols are exported as `{|module-name|}.foo`.
+- Fixed HRS and XTC exports.
 
 ## 2.2.1 (2022-07-04)
 

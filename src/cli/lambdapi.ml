@@ -45,9 +45,8 @@ let check_cmd : Config.t -> int option -> string list -> unit =
         in
         Option.iter run chk
       in
-      run_checker "confluence" Export.Hrs.to_HRS cfg.confluence "confluent";
-      run_checker
-        "termination" Export.Xtc.to_XTC cfg.termination "terminating"
+      run_checker "confluence" Export.Hrs.sign cfg.confluence "confluent";
+      run_checker "termination" Export.Xtc.sign cfg.termination "terminating"
     in
     List.iter handle files
   in
@@ -72,14 +71,16 @@ let parse_cmd : Config.t -> string list -> unit = fun cfg files ->
 let export_cmd : Config.t -> string -> unit = fun cfg file ->
   let run _ =
     Config.init {cfg with verbose = Some 0};
-    let cmds = Parser.parse_file file in
     match cfg.output with
-    | Some Lp | None -> Pretty.ast Format.std_formatter cmds
+    | None
+    | Some Lp -> Pretty.ast Format.std_formatter (Parser.parse_file file)
     | Some Dk -> Export.Dk.sign (Compile.compile_file file)
     | Some Hrs ->
-      Export.Hrs.to_HRS Format.std_formatter (Compile.compile_file file)
+      Export.Hrs.sign Format.std_formatter (Compile.compile_file file)
     | Some Xtc ->
-      Export.Xtc.to_XTC Format.std_formatter (Compile.compile_file file)
+      Export.Xtc.sign Format.std_formatter (Compile.compile_file file)
+    | Some RawCoq -> Export.Coq.print false (Parser.parse_file file)
+    | Some SttCoq -> Export.Coq.print true (Parser.parse_file file)
   in Error.handle_exceptions run
 
 (** Running the LSP server. *)

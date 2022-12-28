@@ -6,7 +6,7 @@ open Common open Error
 open Core open Term open Print
 
 (** Logging function for external prover calling with Why3. *)
-let log_why3 = Logger.make 'w' "why3" "why3 provers"
+let log_why3 = Logger.make 'y' "why3" "why3 provers"
 let log_why3 = log_why3.pp
 
 (** [default_prover] contains the name of the current prover. Note that it can
