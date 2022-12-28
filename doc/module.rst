@@ -55,7 +55,10 @@ It must contain the following fields (an example is given below for the syntax):
   ``<ROOT_PATH>.a.b.c``. In other words, this is equivalent to ``--map-dir
   <ROOT_PATH>:<REPO_ROOT>`` on the command line.
 
-In the future, more useful meta data will be added to the configuration
+Remark: `.lpo` files needs to be removed and regenerated if the
+root_path is changed.
+
+In the future, more useful meta data may be added to the configuration
 file, for example the name of the author, the version number, the dependencies,
 …
 

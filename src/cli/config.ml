@@ -12,7 +12,7 @@ module CLT = Cmdliner.Term
 (** {3 Configuration type for common values} *)
 
 (** Output formats for the export command. *)
-type output = Lp | Dk | Hrs | Xtc
+type output = Lp | Dk | Hrs | Xtc | RawCoq | SttCoq
 
 (** Configuration value for the commonly available options. *)
 type config =
@@ -140,13 +140,13 @@ let no_warnings : bool CLT.t =
 
 let debug : string CLT.t =
   let descs =
-    let fn (k, d) = Printf.sprintf "$(b,\"%c\") (for %s)" k d in
+    let fn (k, d) = Printf.sprintf "$(b,%c) for %s" k d in
     String.concat ", " (List.map fn (Logger.log_summary ()))
   in
   let doc =
     Printf.sprintf
       "Enables the debugging flags specified in $(docv). Every character of \
-       $(docv) correspond to a flag. The available values are %s." descs
+       $(docv) correspond to a flag. The available values are: %s." descs
   in
   Arg.(value & opt string "" & info ["debug"] ~docv:"FLAGS" ~doc)
 
@@ -203,6 +203,8 @@ let output : output option CLT.t =
       | "dk" -> Ok Dk
       | "hrs" -> Ok Hrs
       | "xtc" -> Ok Xtc
+      | "raw_coq" -> Ok RawCoq
+      | "stt_coq" -> Ok SttCoq
       | _ -> Error(`Msg "Invalid format")
     in
     let print fmt o =
@@ -211,13 +213,15 @@ let output : output option CLT.t =
          | Lp -> "lp"
          | Dk -> "dk"
          | Hrs -> "hrs"
-         | Xtc -> "xtc")
+         | Xtc -> "xtc"
+         | RawCoq -> "raw_coq"
+         | SttCoq -> "stt_coq")
     in
     Arg.conv (parse, print)
   in
   let doc =
-    "Set the output format of the export command. The value of $(docv) must \
-     `lp', `dk`, `hrs` or `xtc` (default=lp)."
+    "Set the output format of the export command. The value of $(docv) \
+     must be `lp' (default), `dk`, `hrs`, `xtc`, `raw_coq` or `stt_coq`."
   in
   Arg.(value & opt (some output) None & info ["output";"o"] ~docv:"FMT" ~doc)
 

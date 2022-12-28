@@ -698,7 +698,7 @@ let mk_Plac b = Plac b
 let mk_TRef x = TRef x
 let mk_LLet (a,t,b) = if binder_occur b then LLet (a,t,b) else subst b Kind
 
-(** mk_Appl_not_canonical t u] builds the non-canonical (wrt. C and AC
+(** [mk_Appl_not_canonical t u] builds the non-canonical (wrt. C and AC
    symbols) application of [t] to [u]. WARNING: to use only in Sign.link. *)
 let mk_Appl_not_canonical : term * term -> term = fun (t, u) -> Appl(t, u)
 

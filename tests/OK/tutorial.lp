@@ -71,19 +71,32 @@ with succ $x × $y ↪ $y + $x × $y;
 
 /* We now would like to prove some theorem about +. To this end, since
 Lambdapi does not come with a pre-defined logic, we first need to
-define what is a proposition and what is a proof. You usually just
-need to import a file already doing this like
-"https://github.com/fblanqui/lib/blob/master/FOL.lp". */
+define what is a proposition and what is a proof.
 
-require tests.OK.logic;
-  /* Tells Lambdapi to load in the environment the symbols, rules, etc.
-  declared in the file tests/OK/logic.lp, assuming that the root_path has
-  been set by a command line option or, preferably, by a lambdapi.pkg file.
-  A symbol f of tests/OK/logic.lp can then be refered to
-  by tests.OK.logic.f. To avoid writing tests.OK.logic, you can do: */
-open tests.OK.logic;
+You usually just need to install a package defining some logics and
+require it in your development. For instance, using Opam, you can do:
 
-// But we are going to redefine it here to show that it is simple.
+opam install lambdapi-logics
+
+Then, in your development, you can use one of the logics defined in
+this package (see https://github.com/Deducteam/lambdapi-logics for
+more details) as follows:
+
+require Logic.TFF.Main;
+
+This tells Lambdapi to load in the environment the symbols, rules,
+etc.  declared in the package Logic.TFF, which defines multi-sorted
+first-order logic. A symbol f of Logic.TFF can then be refered to by
+Logic.TFF.f.  To avoid writing Logic.TFF every time, you can do:
+
+open Logic.TFF.Main;
+
+The two operations can also be done at the same time by simply writing;
+
+require open Logic.TFF;
+
+But we are going to define our own logic hereafter to show that it is
+simple. */
 
 // We first declare a type for propositions:
 symbol Prop : TYPE;
@@ -318,3 +331,18 @@ induction
   { simplify; reflexivity; }
   { assume x hyp_on_x; simplify; rewrite hyp_on_x; reflexivity; }
 end;
+
+/* Note finally that a development can be split into several
+files. For instance, imagine that your development is made of file1.lp
+and file2.lp, and that file2.lp uses symbols defined in
+file1.lp. Then, you should create a file lambdapi.pkg with the
+following two lines:
+
+package_name = my_package
+root_path = my_package
+
+where my_package is the name of your package. Then, at the beginning
+of file2.lp, you should add:
+
+require my_package.file1;
+*/
