@@ -17,9 +17,9 @@ let log_tact = log_tact.pp
 let admitted : int Stdlib.ref = Stdlib.ref (-1)
 
 (** [add_axiom ss sym_pos m] adds in signature state [ss] a new axiom symbol
-   of type [!(m.meta_type)] and instantiate [m] with it. WARNING: It does not
-   check whether the type of [m] contains metavariables. Return updated signature
-   state [ss] and the new axiom symbol.*)
+    of type [!(m.meta_type)] and instantiate [m] with it. WARNING: It does not
+    check whether the type of [m] contains metavariables. Return updated
+    signature state [ss] and the new axiom symbol.*)
 let add_axiom : Sig_state.t -> popt -> meta -> Sig_state.t * sym =
   fun ss sym_pos m ->
   let name =
@@ -336,24 +336,26 @@ let handle :
           let p = new_problem() in
           tac_refine pos ps gt gs p (Why3_tactic.handle ss sym_pos cfg gt)
       | _ -> assert false)
-  | P_tac_skolem -> 
+  | P_tac_skolem ->
     (*Gets user-defined symbol identifiers mapped using "builtin" command : *)
     let symb_P = Builtin.get ss pos "P" in
     (*Extract term [t] in a typing goal of form π(t) *)
-    let t = match get_args gt.goal_type with 
+    let t = match get_args gt.goal_type with
           | Symb(s), [tl] when s == symb_P -> tl
-          | _ -> Format.printf "@. Typing goal not in form P (term) %a @." term gt.goal_type;  gt.goal_type
+          | _ ->
+            Format.printf "@. Typing goal not in form P (term) %a @."
+              term gt.goal_type;  gt.goal_type
     in
     let skl_t = Skolem.handle ss sym_pos t in
     let c = Env.to_ctxt env in
-    let p = new_problem() in 
+    let p = new_problem() in
     (*Equisat represents "π (skl_t) → π (t)"*)
     let var_cst = new_tvar "cst" in
     let proof_t =  mk_Appl (mk_Symb symb_P, t) in
     let proof_skl_t =  mk_Appl (mk_Symb symb_P, skl_t) in
     let equisat = mk_Prod (proof_skl_t, bind var_cst lift proof_t) in
     let t_meta_eqs = LibMeta.make p c equisat in
-    let meta_eqs = match t_meta_eqs with 
+    let meta_eqs = match t_meta_eqs with
         | Meta(m, _) -> m
         |_ -> assert false
     in
