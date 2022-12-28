@@ -290,14 +290,6 @@ let side : Pratter.associativity pp = fun ppf a ->
            | Pratter.Left -> " left"
            | Pratter.Right -> " right")
 
-let rec notation : string Sign.notation pp = fun ppf -> function
-  | Infix (a, p) -> out ppf "infix%a %s" side a p
-  | Prefix p -> out ppf "prefix %s" p
-  | Postfix p -> out ppf "postfix %s" p
-  | Quant -> out ppf "quantifier"
-  | Succ(Some n) -> notation ppf n
-  | Zero | Succ None -> ()
-
 let rec subproof : p_subproof pp = fun ppf sp ->
   out ppf "{@[<hv2>@ %a@ @]}" proofsteps sp
 
@@ -327,7 +319,8 @@ let command : p_command pp = fun ppf { elt; _ } ->
     out ppf "@[<v>@[%a%a@]%a%a@]"
       modifiers ms (List.pp params " ") xs
       (inductive "inductive") i (List.pp with_ind "") il
-  | P_notation (qid, n) -> out ppf "notation %a %a" qident qid notation n
+  | P_notation (qid, n) ->
+    out ppf "notation %a %a" qident qid (Print.notation string) n
   | P_open ps -> out ppf "open %a" (List.pp path " ") ps
   | P_query q -> query ppf q
   | P_require (b, ps) ->

@@ -47,13 +47,11 @@ let notation : 'a pp -> 'a Sign.notation pp = fun elt ->
   | Sign.Prefix(p) -> out ppf "prefix %a" elt p
   | Infix(a,p) -> out ppf "infix%a %a" assoc a elt p
   | Postfix(p) -> out ppf "postfix %a" elt p
-  | Zero -> out ppf "builtin \"0\""
-  | Succ None -> out ppf "builtin \"+1\""
-  | Succ (Some n) -> out ppf "%a (builtin \"+1\")" notation n
+  | Zero -> ()
+  | Succ None -> ()
+  | Succ (Some n) -> notation ppf n
   | Quant -> out ppf "quantifier"
   in notation
-
-let notation = notation float
 
 let uid : string pp = string
 

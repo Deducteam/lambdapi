@@ -1,6 +1,6 @@
 (** Handling of commands. *)
 
-open Lplib open Extra
+open Lplib open Base open Extra
 open Timed
 open Common open Error open Pos
 open Core open Term open Sign open Sig_state open Print
@@ -260,7 +260,7 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
         | Quant -> Quant
       in
       let n = float_not_from_string_not n in
-      Console.out 2 "notation %a %a" sym s notation n;
+      Console.out 2 "notation %a %a" sym s (notation float) n;
       (add_notation ss s n, None, None)
   | P_unif_rule(h) ->
       (* Approximately same processing as rules without SR checking. *)
