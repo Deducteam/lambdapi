@@ -1,40 +1,10 @@
 open Common
 open Core
 open Term
+open Fol
 
 let log = Logger.make 'a' "sklm" "skolemization"
 let log = log.pp
-
-type fol_config = {
-  symb_P : sym;  (** Encoding of propositions. *)
-  symb_T : sym;  (** Encoding of types. *)
-  symb_or : sym;  (** Disjunction(∨) symbol. *)
-  symb_and : sym;  (** Conjunction(∧) symbol. *)
-  symb_imp : sym;  (** Implication(⇒) symbol. *)
-  symb_bot : sym;  (** Bot(⊥) symbol. *)
-  symb_top : sym;  (** Top(⊤) symbol. *)
-  symb_not : sym;  (** Not(¬) symbol. *)
-  symb_ex : sym;  (** Exists(∃) symbol. *)
-  symb_all : sym;  (** Forall(∀) symbol. *)
-}
-(** Builtin configuration for propositional logic. *)
-
-(** [get_fol_config ss pos] build the configuration using [ss]. *)
-let get_fol_config : Sig_state.t -> Pos.popt -> fol_config =
- fun ss pos ->
-  let builtin = Builtin.get ss pos in
-  {
-    symb_P = builtin "P";
-    symb_T = builtin "T";
-    symb_or = builtin "or";
-    symb_and = builtin "and";
-    symb_imp = builtin "imp";
-    symb_bot = builtin "bot";
-    symb_top = builtin "top";
-    symb_not = builtin "not";
-    symb_ex = builtin "ex";
-    symb_all = builtin "all";
-  }
 
 let add_ctxt : ctxt -> tvar -> term -> ctxt =
  fun c var typ -> c @ [ (var, typ, None) ]
@@ -107,7 +77,7 @@ let mk_quant : term -> quant -> term =
 
 (** [nnf_term cfg t] computes the negation normal form of a first order
     formula. *)
-let nnf_of : fol_config -> term -> term =
+let nnf_of : config -> term -> term =
  fun cfg t ->
   let rec nnf_prop t =
     match get_args t with
@@ -201,7 +171,7 @@ let prenex_of cfg t =
 let handle : Sig_state.t -> Pos.popt -> term -> term =
  fun ss pos t ->
   (*Gets user-defined symbol identifiers mapped using "builtin" command.*)
-  let cfg = get_fol_config ss pos in
+  let cfg = get_config ss pos in
   let t = nnf_of cfg t in
   let t =
     try prenex_of cfg t

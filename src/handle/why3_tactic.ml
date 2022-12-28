@@ -4,6 +4,7 @@ open Lplib open Extra
 open Timed
 open Common open Error
 open Core open Term open Print
+open Fol
 
 (** Logging function for external prover calling with Why3. *)
 let log_why3 = Logger.make 'y' "why3" "why3 provers"
@@ -36,33 +37,6 @@ let why3_datadir : string = Why3.Whyconf.datadir why3_main
 (** [why3_env] is the initialized Why3 environment. *)
 let why3_env : Why3.Env.env =
   Why3.Env.create_env (Why3.Whyconf.loadpath why3_main)
-
-(** Builtin configuration for propositional logic. *)
-type config =
-  { symb_P   : sym (** Encoding of propositions. *)
-  ; symb_T   : sym (** Encoding of types. *)
-  ; symb_or  : sym (** Disjunction(∨) symbol. *)
-  ; symb_and : sym (** Conjunction(∧) symbol. *)
-  ; symb_imp : sym (** Implication(⇒) symbol. *)
-  ; symb_bot : sym (** Bot(⊥) symbol. *)
-  ; symb_top : sym (** Top(⊤) symbol. *)
-  ; symb_not : sym (** Not(¬) symbol. *)
-  ; symb_ex  : sym (** Exists(∃) symbol. *)
-  ; symb_all : sym (** Forall(∀) symbol. *) }
-
-(** [get_config ss pos] build the configuration using [ss]. *)
-let get_config : Sig_state.t -> Pos.popt -> config = fun ss pos ->
-  let builtin = Builtin.get ss pos in
-  { symb_P   = builtin "P"
-  ; symb_T   = builtin "T"
-  ; symb_or  = builtin "or"
-  ; symb_and = builtin "and"
-  ; symb_imp = builtin "imp"
-  ; symb_bot = builtin "bot"
-  ; symb_top = builtin "top"
-  ; symb_not = builtin "not"
-  ; symb_ex  = builtin "ex"
-  ; symb_all = builtin "all" }
 
 (** A map from lambdapi terms to Why3 constants. *)
 type cnst_table = (term * Why3.Term.lsymbol) list
