@@ -22,7 +22,7 @@ type 'a notation =
   | Postfix of 'a
   | Infix of Pratter.associativity * 'a
   | Zero
-  | Succ
+  | Succ of 'a notation option (* Prefix or Postfix only *)
   | Quant
 
 (** Representation of a signature. It roughly corresponds to a set of symbols,
@@ -336,18 +336,26 @@ let add_rules : t -> sym -> rule list -> unit = fun sign sym rs ->
     let sm = StrMap.update sym.sym_name f sm in
     sign.sign_deps := Path.Map.add sym.sym_path sm !(sign.sign_deps)
 
-(** [add_builtin sign name sym] binds the builtin name [name] to [sym] (in the
-    signature [sign]). The previous binding, if any, is discarded. *)
-let add_builtin : t -> string -> sym -> unit = fun sign s sym ->
-  sign.sign_builtins := StrMap.add s sym !(sign.sign_builtins);
-  match s with
-  | "0" -> sign.sign_notations := SymMap.add sym Zero !(sign.sign_notations)
-  | "+1" -> sign.sign_notations := SymMap.add sym Succ !(sign.sign_notations)
-  | _ -> ()
-
 (** [add_notation sign s n] sets notation of [s] to [n] in [sign]. *)
 let add_notation : t -> sym -> float notation -> unit = fun sign s n ->
   sign.sign_notations := SymMap.add s n !(sign.sign_notations)
+
+(** [add_notation_from_builtin builtin sym notation_map] adds in
+    [notation_map] the notation required when [builtin] is mapped to [sym]. *)
+let add_notation_from_builtin :
+  string -> sym -> 'a notation SymMap.t -> 'a notation SymMap.t =
+  fun builtin sym notation_map ->
+  match builtin with
+  | "0"  -> SymMap.add sym Zero notation_map
+  | "+1" -> let f x = Some(Succ x) in SymMap.update sym f notation_map
+  | _    -> notation_map
+
+(** [add_builtin sign name sym] binds the builtin name [name] to [sym] (in the
+    signature [sign]). The previous binding, if any, is discarded. *)
+let add_builtin : t -> string -> sym -> unit = fun sign builtin sym ->
+  sign.sign_builtins := StrMap.add builtin sym !(sign.sign_builtins);
+  sign.sign_notations :=
+    add_notation_from_builtin builtin sym !(sign.sign_notations)
 
 (** [add_inductive sign ind_sym ind_cons ind_prop ind_prop_args] add to [sign]
    the inductive type [ind_sym] with constructors [ind_cons], induction
