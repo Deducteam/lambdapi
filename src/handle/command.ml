@@ -244,22 +244,22 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
       if real < expected then
         fatal pos "Notation incompatible with the type of %a" sym s;
       (* Convert strings into floats. *)
-      let float_prio_from_string_prio s =
+      let float_priority_from_string_priority s =
         try
           if String.contains s '.' then float_of_string s
           else float_of_int (int_of_string s)
         with Failure _ -> fatal pos "Too big number (max is %d)" max_int
       in
-      let rec float_not_from_string_not n =
+      let rec float_notation_from_string_notation n =
         match n with
-        | Prefix s -> Prefix (float_prio_from_string_prio s)
-        | Postfix s -> Postfix (float_prio_from_string_prio s)
-        | Infix(a,s) -> Infix(a, float_prio_from_string_prio s)
-        | Succ x -> Succ (Option.map float_not_from_string_not x)
+        | Prefix s -> Prefix (float_priority_from_string_priority s)
+        | Postfix s -> Postfix (float_priority_from_string_priority s)
+        | Infix(a,s) -> Infix(a, float_priority_from_string_priority s)
+        | Succ x -> Succ (Option.map float_notation_from_string_notation x)
         | Zero -> Zero
         | Quant -> Quant
       in
-      let n = float_not_from_string_not n in
+      let n = float_notation_from_string_notation n in
       Console.out 2 "notation %a %a" sym s (notation float) n;
       (add_notation ss s n, None, None)
   | P_unif_rule(h) ->
