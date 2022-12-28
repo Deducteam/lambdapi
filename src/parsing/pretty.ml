@@ -283,13 +283,6 @@ let tactic : p_tactic pp = fun ppf { elt;  _ } ->
       out ppf "why3%a" (Option.pp prover) p
   end
 
-(* starts with a space if distinct from [Pratter.Neither] *)
-let side : Pratter.associativity pp = fun ppf a ->
-  out ppf (match a with
-           | Pratter.Neither -> ""
-           | Pratter.Left -> " left"
-           | Pratter.Right -> " right")
-
 let rec subproof : p_subproof pp = fun ppf sp ->
   out ppf "{@[<hv2>@ %a@ @]}" proofsteps sp
 

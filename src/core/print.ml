@@ -39,8 +39,8 @@ let print_contexts : bool ref = Console.register_flag "print_contexts" false
 let assoc : Pratter.associativity pp = fun ppf assoc ->
   match assoc with
   | Neither -> ()
-  | Left -> out ppf " left associative"
-  | Right -> out ppf " right associative"
+  | Left -> out ppf " left"
+  | Right -> out ppf " right"
 
 let notation : 'a pp -> 'a Sign.notation pp = fun elt ->
   let rec notation ppf = function
