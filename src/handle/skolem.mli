@@ -3,22 +3,17 @@ open Core
 open Term
 open Fol
 
-(** [nnf_of cfg phi] computes the negation normal form of first order formula
-    [phi]. *)
-val nnf_of : config -> term -> term
+(** [nnf cfg phi] returns the negation normal form of [phi], assuming it is
+    the encoding of a first-order formula using [cfg]. *)
+val nnf : config -> term -> term
 
-(** Raised by [prenex_of] when its formula is not in negation normal form. *)
-exception PrenexFormulaNotNnf of term
+exception NotInNnf of term
 
-(** [prenex_of cfg phi] computes the prenex normal form of first order formula
-    [phi].
-    @raise PrenexFormulaNotNnf when formula [phi] is not in negation normal
-      form. *)
-val prenex_of : config -> term -> term
+(** [pnf cfg phi] returns the prenex normal form of [phi].
+    @raise NotInNnf when formula [phi] is not in negation normal form. *)
+val pnf : config -> term -> term
 
-(** [handle ss pos t] returns a skolemized form of term [t] (at position
-    [pos]).  A term is skolemized when it has no existential quantifiers: to
-    this end, for each existential quantifier in [t], signature state [ss] is
-    extended with a new symbol in order to substitute the variable bound by
-    the said quantifier. *)
+(** [skolem ss pos t] returns the skolemized form of [t] ([pos] is used for
+    error messages). Existential quantifiers are replaced by new symbols that
+    are added in the signature state [ss]. *)
 val handle : Sig_state.t -> Pos.popt -> term -> term

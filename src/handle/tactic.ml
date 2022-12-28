@@ -311,24 +311,20 @@ let handle :
   | P_tac_sym ->
       let cfg = Rewrite.get_eq_config ss pos in
       let (a,l,r), vs = Rewrite.get_eq_data cfg pos gt.goal_type in
-      begin match ps.proof_goals with
-      | Typ gt::gs ->
-        let a,l,r =
-          if Array.length vs = 0 then a,l,r
-          else fst (Rewrite.get_eq_data cfg pos gt.goal_type)
-        in
-        let p = new_problem() in
-        let prf =
-          let mt =
-            mk_Appl(mk_Symb cfg.symb_P,
-                    add_args (mk_Symb cfg.symb_eq) [a; r; l]) in
-          let meta_term = LibMeta.make p (Env.to_ctxt gt.goal_hyps) mt in
-          (* The proofterm is [eqind a r l M (λx,eq a l x) (refl a l)]. *)
-          Rewrite.swap cfg a r l meta_term
-        in
-        tac_refine pos ps gt gs p prf
-      | _ -> assert false
-      end
+      let a,l,r =
+        if Array.length vs = 0 then a,l,r
+        else fst (Rewrite.get_eq_data cfg pos gt.goal_type)
+      in
+      let p = new_problem() in
+      let prf =
+        let mt =
+          mk_Appl(mk_Symb cfg.symb_P,
+                  add_args (mk_Symb cfg.symb_eq) [a; r; l]) in
+        let meta_term = LibMeta.make p (Env.to_ctxt gt.goal_hyps) mt in
+        (* The proofterm is [eqind a r l M (λx,eq a l x) (refl a l)]. *)
+        Rewrite.swap cfg a r l meta_term
+      in
+      tac_refine pos ps gt gs p prf
   | P_tac_why3 cfg ->
       let ps = assume (count_products (Env.to_ctxt env) gt.goal_type) in
       (match ps.proof_goals with
@@ -337,34 +333,30 @@ let handle :
           tac_refine pos ps gt gs p (Why3_tactic.handle ss sym_pos cfg gt)
       | _ -> assert false)
   | P_tac_skolem ->
-    (*Gets user-defined symbol identifiers mapped using "builtin" command : *)
-    let symb_P = Builtin.get ss pos "P" in
-    (*Extract term [t] in a typing goal of form π(t) *)
-    let t = match get_args gt.goal_type with
-          | Symb(s), [tl] when s == symb_P -> tl
-          | _ ->
-            Format.printf "@. Typing goal not in form P (term) %a @."
-              term gt.goal_type;  gt.goal_type
+    let sym_P = Builtin.get ss pos "P" in
+    let t =
+      match get_args gt.goal_type with
+      | Symb(s), [t] when s == sym_P -> t
+      | _ -> fatal pos "Goal not of form (%a _)@." sym sym_P
     in
     let skl_t = Skolem.handle ss sym_pos t in
+    (* FIXME. We currently generate an axiom ax: P skl_t → P t in order to
+       build a proof of P t from a proof of P skl_t. *)
     let c = Env.to_ctxt env in
     let p = new_problem() in
-    (*Equisat represents "π (skl_t) → π (t)"*)
     let var_cst = new_tvar "cst" in
-    let proof_t =  mk_Appl (mk_Symb symb_P, t) in
-    let proof_skl_t =  mk_Appl (mk_Symb symb_P, skl_t) in
+    let proof_t =  mk_Appl (mk_Symb sym_P, t) in
+    let proof_skl_t =  mk_Appl (mk_Symb sym_P, skl_t) in
     let equisat = mk_Prod (proof_skl_t, bind var_cst lift proof_t) in
     let t_meta_eqs = LibMeta.make p c equisat in
     let meta_eqs = match t_meta_eqs with
         | Meta(m, _) -> m
         |_ -> assert false
     in
-    (*ax is the axiom of equisatisfiability between a proof of a term [t]
-    and a proof of its skolemized form [skl_t].*)
     let _, ax = add_axiom ss sym_pos meta_eqs in
     let meta_type = LibMeta.make p c mk_Type in
     let meta_x = LibMeta.make p c meta_type in
-    tac_refine sym_pos ps gt gs p (mk_Appl (mk_Symb ax, meta_x))
+    tac_refine pos ps gt gs p (mk_Appl (mk_Symb ax, meta_x))
 
 (** Representation of a tactic output. *)
 type tac_output = Sig_state.t * proof_state * Query.result

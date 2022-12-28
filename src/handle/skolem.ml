@@ -1,35 +1,30 @@
+(** Skolemization tactic. *)
+
 open Common
-open Core
-open Term
+open Core open Term
 open Fol
 
 let log = Logger.make 'a' "sklm" "skolemization"
 let log = log.pp
 
-let add_ctxt : ctxt -> tvar -> term -> ctxt =
+let add_var : ctxt -> tvar -> term -> ctxt =
  fun c var typ -> c @ [ (var, typ, None) ]
 
-(**Skolemization*)
-
-(*[new_skolem ss ctx cpt ex_typ] is called when existantial quantifier ("∃y")
-  occurs. [ex_typ] is the type of quantificated variable "y". In order to
-  eliminate ∃ quantifier, we need to extend signature state [ss] with a skolem
-  term, represented by a fresh symbol that will later replace the binded
-  variable ("y"). Such skolem term may either be a skolem function or a skolem
-  constant : The type of a skolem term depends on registered variables in
-  [ctx] For example, if a set of variables x1:a1, x2:a2,..., xn:an were
-  previously introduced by an universal quantifier, A skolem term "skt" will
-  take as arguments x1, ..., xn, and must therefore be typed as follows : skt
-  (x1, x2, ..., xn) : a1 -> a2 -> ... -> an -> ex_typ. A skolem term is a
-  constant if skolemized term is not in the scope of any universal quantifier,
-  namely, [ctx] is empty. For the sake of clarity, we use a counter [cpt] for
-  naming the generated symbol. OUT : Updated signature state [upt_sig] is
-  returned, as well as introduced symbol [symb_skt] and updated counter*)
+(* [new_skolem ss ctx ctr ex_typ] is called when existantial quantifier "∃y"
+   occurs. [ex_typ] is the type of the quantified variable "y". In order to
+   eliminate ∃ quantifier, we need to extend signature state [ss] with a
+   skolem term, represented by a fresh symbol that will later replace the
+   binded variable "y". Such skolem term may either be a skolem function or a
+   skolem constant: the type of a skolem term depends on registered variables
+   in [ctx]. For example, if a set of variables x1:a1, x2:a2,..., xn:an were
+   previously introduced by an universal quantifier, A skolem term "skt" will
+   take as arguments x1, ..., xn, and must therefore have type a1 -> a2 ->
+   ... -> an -> ex_typ. We use a counter [ctr] for naming the generated
+   symbols. OUT : Updated signature state [upt_sig] is returned, as well as
+   introduced symbol [symb_skt] and updated counter. *)
 let new_skolem : Sig_state.t -> ctxt -> int -> term -> Sig_state.t * sym * int
   = fun ss ctx ctr ex_typ ->
-  let skt_name =
-    if ctx == [] then "c" ^ string_of_int ctr else "f" ^ string_of_int ctr
-  in
+  let skt_name = "f" ^ string_of_int ctr in
   let skt, _ = Ctxt.to_prod ctx ex_typ in
   let upt_sig, symb_skt =
     Sig_state.add_symbol ss Public Const Eager true (Pos.none skt_name) skt []
@@ -77,7 +72,7 @@ let mk_quant : term -> quant -> term =
 
 (** [nnf_term cfg t] computes the negation normal form of a first order
     formula. *)
-let nnf_of : config -> term -> term =
+let nnf : config -> term -> term =
  fun cfg t ->
   let rec nnf_prop t =
     match get_args t with
@@ -120,9 +115,9 @@ let nnf_of : config -> term -> term =
   in
   nnf_prop t
 
-exception PrenexFormulaNotNnf of term
+exception NotInNnf of term
 
-let prenex_of cfg t =
+let pnf cfg t =
   let rec prenex t =
     match get_args t with
     | Symb s, [ t1; t2 ] when s == cfg.symb_and ->
@@ -138,13 +133,13 @@ let prenex_of cfg t =
         let qlist = qlist1 @ qlist2 in
         (qlist, t)
     | Symb s, [ _; _ ] when s == cfg.symb_imp ->
-      raise @@ PrenexFormulaNotNnf t
+      raise @@ NotInNnf t
     | Symb s, [ nt ] when s == cfg.symb_not ->
         let res =
           match nt with
           | Vari _ -> ([], t)
           | Symb _ -> ([], t)
-          | _ -> raise @@ PrenexFormulaNotNnf t
+          | _ -> raise @@ NotInNnf t
         in
         res
     | Symb s, [ a; Abst (x, tb) ] when s == cfg.symb_all ->
@@ -172,10 +167,10 @@ let handle : Sig_state.t -> Pos.popt -> term -> term =
  fun ss pos t ->
   (*Gets user-defined symbol identifiers mapped using "builtin" command.*)
   let cfg = get_config ss pos in
-  let t = nnf_of cfg t in
+  let t = nnf cfg t in
   let t =
-    try prenex_of cfg t
-    with PrenexFormulaNotNnf _ ->
+    try pnf cfg t
+    with NotInNnf _ ->
       assert false (* [t] is put into nnf before *)
   in
   let rec skolemisation ss ctx ctr t =
@@ -190,7 +185,7 @@ let handle : Sig_state.t -> Pos.popt -> term -> term =
         (* When universal quantification occurs, quantified variable is added
            to context*)
         let var, f = Bindlib.unbind tb in
-        let maj_ctx = add_ctxt ctx var a in
+        let maj_ctx = add_var ctx var a in
         let maj_f = skolemisation ss maj_ctx ctr f in
         let maj_tb = bind var lift maj_f in
         (*Reconstruct a term of form ∀ x : P, t', with t' skolemized*)
