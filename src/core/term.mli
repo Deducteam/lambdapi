@@ -384,7 +384,7 @@ val subst_patt : mbinder option array -> term -> term
 (** [cleanup t] unfold all metas and TRef's in [t]. *)
 val cleanup : term -> term
 
-(** Typing context associating a [ variable to a type and possibly a
+(** Typing context associating a variable to a type and possibly a
     definition. The typing environment [x1:A1,..,xn:An] is represented by the
     list [xn:An;..;x1:A1] in reverse order (last added variable comes
     first). *)

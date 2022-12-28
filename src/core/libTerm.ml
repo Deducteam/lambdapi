@@ -3,6 +3,13 @@
 open Term
 open Lplib open Extra
 
+(** [is_kind t] tells whether [t] is of the form Π x1, .., Π xn, TYPE. *)
+let rec is_kind : term -> bool = fun t ->
+  match unfold t with
+  | Type -> true
+  | Prod(_,b) -> is_kind (subst b mk_Kind)
+  | _ -> false
+
 (** [to_var t] returns [x] if [t] is of the form [Vari x] and fails
     otherwise. *)
 let to_var : term -> var = fun t ->

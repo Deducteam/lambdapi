@@ -25,8 +25,8 @@ let set : problem -> meta -> mbinder -> unit = fun p m v ->
   m.meta_type := mk_Kind; (* to save memory *) m.meta_value := Some v;
   p := {!p with metas = MetaSet.remove m !p.metas}
 
-(** [make p ctx a] creates a fresh metavariable term named [?name] (if
-    provided) of type [a] in the context [ctx], and adds it to [p]. *)
+(** [make p ctx a] creates a fresh metavariable term of type [a] in the
+   context [ctx], and adds it to [p]. *)
 let make : problem -> ctxt -> term -> term =
   fun p ctx a ->
   let a, k = Ctxt.to_prod ctx a in

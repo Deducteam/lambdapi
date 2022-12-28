@@ -23,6 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   for instance, `#REQUIRE module-name.` could be exported, while `module-name`
   is not recognised by Dedukti2. It is now exported as `#REQUIRE {|module-name|}`,
   and symbols are exported as `{|module-name|}.foo`.
+- Fixed HRS and XTC exports.
 
 ## 2.2.1 (2022-07-04)
 

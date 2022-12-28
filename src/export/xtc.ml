@@ -1,299 +1,262 @@
-(** This module provides a function to translate a signature to the XTC format
-    used in the termination competition.
-    @see <http://cl2-informatik.uibk.ac.at/mercurial.cgi/TPDB/file/tip/xml/xtc.xsd>
+(** This module provides a function to translate a simply typed signature to
+   the XTC format used in the termination competition.
+
+    @see <https://raw.githubusercontent.com/TermCOMP/TPDB/master/xml/xtc.xsd>
+
+Remarks:
+
+- SizeChangeTool accepts an extension of the XTC format with lambda and
+   application in types and:
+
+<arrow> <var>...</var> <type>...</type> <type>...</type> </arrow>
+
+<typeLevelRule> <TLlhs>...</TLlhs> <TLrhs>...</TLrhs> </typeLevelRule>
+
 *)
 
 open Lplib open Base open Extra
-open Timed
-open Core open Term open Print
+open Core open Term
+open Common open Error
 
-(** [print_sym ppf s] outputs the fully qualified name of [s] to
-   [ppf]. Modules are separated with ["."]. *)
-let print_sym : sym pp = fun ppf s ->
-  out ppf "%a.%a" path s.sym_path uid s.sym_name
+(** [syms] maps every symbol to a name. *)
+let syms = ref SymMap.empty
 
-type symb_status = Object_level | Basic_type | Type_cstr
+(** [bvars] is the set of abstracted variables. *)
+let bvars = ref StrSet.empty
 
-(** [status s] returns [Type_cstr] if [s] has a type of the form
-    T1 -> ... -> Tn -> [TYPE] with n > 0, [Basic_type] if [s] has type [TYPE]
-    and [Object_level] otherwise. *)
-let status : sym -> symb_status = fun s ->
-  (* the argument [b] of [is_arrow_kind] is a boolean saying if we have
-     already gone under a product *)
-  let rec is_arrow_kind : Term.term -> bool -> symb_status = fun t b ->
-    match t with
-    | Prod(_,b) -> is_arrow_kind (snd (unbind b)) true
-    | Type      -> if b then Type_cstr else Basic_type
-    | _         -> Object_level
-  in is_arrow_kind !(s.sym_type) false
+(** [nb_rules] is the number of rewrite rules. *)
+let nb_rules = ref 0
 
-(** [print_term ppf p] outputs XTC format corresponding to the term [t], to
-    [ppf]. *)
-let rec print_term : int -> string -> term pp = fun i s ppf t ->
+(** [pvars] is the list of all pattern variables with their type. *)
+let pvars = ref []
+
+(** [typ] is a reference to the types of the pvars of the current rules. *)
+let type_of_pvar = ref [||]
+
+(** [sym_name s] translates the symbol name of [s]. *)
+let sym_name : sym pp = fun ppf s ->
+  out ppf "%a.%s" Path.pp s.sym_path s.sym_name
+
+(** [add_sym] declares a Lambdapi symbol. *)
+let add_sym : sym -> unit = fun s ->
+  syms := SymMap.add s (Format.asprintf "%a" sym_name s) !syms
+
+(** [type_sym ppf s] translates the Lambdapi type symbol [s]. *)
+let type_sym : sym pp = fun ppf s ->
+  out ppf "<type><basic>%a</basic></type>" sym_name s
+
+(** [sym ppf s] translates the Lambdapi symbol [s]. *)
+let sym : sym pp = fun ppf s ->
+  out ppf "<name>%s</name>"
+    (try SymMap.find s !syms with Not_found -> assert false)
+
+(** [add_bvar v] declares an abstracted Lambdapi variable. *)
+let add_bvar : var -> unit = fun v ->
+  bvars := StrSet.add (name_of v) !bvars
+
+(** [bvar v] translates the Lambdapi bound variable [v]. *)
+let bvar : var pp = fun ppf v -> out ppf "<var>%s</var>" (name_of v)
+
+(** [pvar i] translates the Lambdapi pattern variable [i]. *)
+let pvar : int pp = fun ppf i -> out ppf "<var>%d_%d</var>" !nb_rules i
+
+(** [term ppf t] translates the term [t]. *)
+let rec term : term pp = fun ppf t ->
+  let h, ts = get_args t in
+  match h with
+  | Symb s when LibTerm.is_kind Timed.(!(s.sym_type)) ->
+    fatal s.sym_pos "Type symbol in a term."
+  | Symb s -> add_sym s;
+    let arg ppf t = out ppf "<arg>%a</arg>" term t in
+    out ppf "<funapp>%a%a</funapp>" sym s (List.pp arg "") ts
+  | _ ->
+    match ts with
+    | [] -> head ppf h
+    | t::ts ->
+      let rec args : (term * term list) pp = fun ppf (t,ts) ->
+        match ts with
+        | [] -> term ppf t
+        | u::us ->
+          out ppf "<application>%a%a</application>" term t args (u,us)
+      in
+      out ppf "<application>%a%a</application>" head h args (t,ts)
+
+and head : term pp = fun ppf t ->
   match unfold t with
-  (* Forbidden cases. *)
-  | Meta(_,_)               -> assert false
-  | Plac _                  -> assert false
-  | TRef(_)                 -> assert false
+  | Meta _ -> assert false
+  | Plac _ -> assert false
+  | TRef _ -> assert false
   | Db _ -> assert false
-  | Wild                    -> assert false
-  | Kind                    -> assert false
-  (* [TYPE] and products are necessarily at type level *)
-  | Type                    -> assert false
-  | Prod(_,_)               -> assert false
-  (* Printing of atoms. *)
-  | Vari(x)                 -> out ppf "<var>v_%a</var>@." var x
-  | Symb(s)                 ->
-     out ppf "<funapp>@.<name>%a</name>@.</funapp>@." print_sym s
+  | Wild -> assert false
+  | Kind -> assert false
+  | Type -> assert false
+  | Vari v -> bvar ppf v
+  | Symb _ -> assert false (* done in term *)
   | Patt(None,_,_) -> assert false
-  | Patt(Some j,n,ts)            ->
-     if ts = [||] then out ppf "<var>%s_%i_%i</var>@." s i j else
-       print_term i s ppf
-         (Array.fold_left
-            (fun t u -> mk_Appl(t,u)) (mk_Patt(Some j,n,[||])) ts)
-  | Appl(t,u)               -> out ppf "<application>@.%a%a</application>@."
-                                 (print_term i s) t (print_term i s) u
-  | Abst(a,t)               ->
-     let (x, t) = unbind t in
-     out ppf "<lambda>@.<var>v_%a</var>@.<type>%a<type>@.%a</lambda>@."
-       var x (print_type i s) a (print_term i s) t
-  | LLet(_,t,u)             -> print_term i s ppf (subst u t)
+  | Patt(Some i,_,ts) -> pvar_app ppf (i,ts)
+  | Appl(t,u) -> out ppf "<application>%a%a</application>" term t term u
+  | Abst(a,b) ->
+    let x, b = unbind b in add_bvar x;
+    out ppf "<lambda>%a%a%a</lambda>" bvar x typ a term b
+  | Prod _ -> assert false
+  | LLet(a,t,b) -> term ppf (mk_Appl(mk_Abst(a,b),t))
 
-and print_type : int -> string -> term pp = fun i s ppf t ->
+and pvar_app : (int * term array) pp = fun ppf (i,ts) ->
+  let arity = Array.length ts in
+  let rec arg ppf k =
+    if k < 0 then pvar ppf i
+    else out ppf "<application>%a%a</application>" arg (k-1) term ts.(k)
+  in arg ppf (arity - 1)
+
+and typ : term pp = fun ppf t ->
   match unfold t with
-  (* Forbidden cases. *)
-  | Meta(_,_)               -> assert false
-  | Plac _                  -> assert false
-  | TRef(_)                 -> assert false
+  | Meta _ -> assert false
+  | Plac _ -> assert false
+  | TRef _ -> assert false
   | Db _ -> assert false
-  | Wild                    -> assert false
-  | Kind                    -> assert false
-  (* Variables are necessarily at object level *)
-  | Vari(_)                 -> assert false
-  | Patt(_,_,_)             -> assert false
-  (* Printing of atoms. *)
-  | Type                    -> out ppf "<TYPE/>@."
-  | Symb(s)                 -> out ppf "<basic>%a</basic>@." print_sym s
-  | Appl(t,u)               -> out ppf "<application>@.%a%a</application>@."
-                      (print_type i s) t (print_term i s) u
-  | Abst(a,t)               ->
-     let (x, t) = unbind t in
-     out ppf "<lambda>@.<var>v_%a</var>@.<type>%a<type>@.%a</lambda>@."
-       var x (print_type i s) a (print_type i s) t
-  | Prod(a,b)               ->
-     if binder_occur b
-     then
-       let (x, b) = unbind b in
-       out ppf "<arrow>@.<var>v_%a</var>@." var x;
-       out ppf "<type>@.%a</type>@.<type>@.%a</type>@.</arrow>@."
-         (print_type i s) a (print_type i s) b
-     else
-       out ppf "<arrow>@.<type>@.%a</type>@.<type>@.%a</type>@.</arrow>@."
-         (print_type i s) a
-         (print_type i s) (snd (unbind b))
-  | LLet(_,t,u)             -> print_type i s ppf (subst u t)
+  | Wild -> assert false
+  | Kind -> assert false
+  | Type -> assert false
+  | Vari _ -> assert false
+  | Symb s -> type_sym ppf s
+  | Patt(None,_,_) -> assert false
+  | Patt(Some i,_,[||]) -> typ ppf !type_of_pvar.(i)
+  | Patt(Some _,_,_) -> assert false
+  | Appl _ -> fatal_no_pos "Dependent type."
+  | Abst _ -> fatal_no_pos "Dependent type."
+  | Prod(a,b) ->
+    if binder_occur b then fatal_no_pos "Dependent type." else
+    let x, b = unbind b in add_bvar x;
+    out ppf "<type><arrow>%a%a</arrow></type>" typ a typ b
+  | LLet(_,t,b) -> typ ppf (subst b t)
 
-(** [print_rule ppf s r] outputs the rule declaration corresponding [r] (on
-   the symbol [s]), to [ppf]. *)
-let print_rule : Format.formatter -> int -> sym -> rule -> unit =
-  fun ppf i s r ->
-  let x = s,r in let lhs = lhs x and rhs = rhs x in
-  out ppf "<rule>@.<lhs>@.%a</lhs>@." (print_term i s.sym_name) lhs;
-  out ppf "<rhs>@.%a</rhs>@.</rule>@." (print_term i s.sym_name) rhs
-
-(** [print_tl_rule] is identical to [print_rule] but for type-level rule  *)
-let print_tl_rule : Format.formatter -> int -> sym -> rule -> unit =
-  fun ppf i s r ->
-  let x = s,r in let lhs = lhs x and rhs = rhs x in
-  out ppf "<typeLevelRule>@.<TLlhs>@.%a</TLlhs>@."
-    (print_type i s.sym_name) lhs;
-  out ppf "<TLrhs>@.%a</TLrhs>@.</typeLevelRule>@."
-    (print_type i s.sym_name) rhs
-
-(** [get_vars s r] returns the list of variables used in the rule [r],
-    in the form of a pair containing the name of the variable and its type,
-    inferred by the solver. *)
-let get_vars : sym -> rule -> (string * Term.term) list = fun s r ->
-  let rule_ctx : var option array = Array.make r.vars_nb None in
-  let var_list : var list ref = ref [] in
-  let rec subst_patt v t =
-    match t with
-    | Type
-    | Kind
-    | Db _
-    | Meta (_, _)
-    | Plac _
-    | TRef _
-    | Wild
-    | Prod (_, _)
-    | LLet(_) (* No let in LHS *)
-    | Vari _              -> assert false
-    | Symb (_)            -> t
-    | Abst (t1, b)        ->
-       let (x,t2) = unbind b in
-       mk_Abst(subst_patt v t1, bind_var x (subst_patt v t2))
-    | Appl (t1, t2)        -> mk_Appl(subst_patt v t1, subst_patt v t2)
-    | Patt (None, _, _)    -> assert false
-    | Patt (Some(i), _, a) ->
-       if v.(i) = None
-       then
-         (let v_i = new_var (string_of_int i) in
-          var_list := v_i :: !var_list;
-          v.(i) <- Some(v_i));
-       let v_i =
-         match v.(i) with
-         |Some(vi) -> vi
-         |None -> assert false
-       in
-       Array.fold_left (fun acc t -> mk_Appl(acc,t)) (mk_Vari v_i) a
+(** [add_pvars s r] adds the types of the pvars of [r] in [pvars]. *)
+let add_pvars : sym -> rule -> unit = fun s r ->
+  let n = r.vars_nb in
+  (* Generate n fresh variables and n fresh metas for their types. *)
+  let var = Array.init n (new_var_ind "$") in
+  let p = new_problem() in
+  type_of_pvar := Array.init n (fun _ -> LibMeta.make p [] mk_Type);
+  (* Replace in lhs pattern variables by variables. *)
+  let rec subst_patt t =
+    match unfold t with
+    | Type -> assert false
+    | Kind -> assert false
+    | Db _ -> assert false
+    | Meta _ -> assert false
+    | Plac _ -> assert false
+    | TRef _ -> assert false
+    | Wild -> assert false
+    | Prod _ -> assert false
+    | LLet _ -> assert false
+    | Vari _
+    | Symb _ -> t
+    | Abst(a,b) ->
+      begin
+        match unfold a with
+        | Patt(Some i,_,[||]) ->
+          let x,b = unbind b in
+          mk_Abst(!type_of_pvar.(i), bind_var x (subst_patt b))
+        | Patt(Some _,_,_) -> assert false (*FIXME*)
+        | _ -> assert false
+      end
+    | Appl(a,b) -> mk_Appl(subst_patt a, subst_patt b)
+    | Patt(None, _, _) -> assert false
+    | Patt(Some i, _, ts) ->
+      Array.fold_left (fun acc t -> mk_Appl(acc,t)) (mk_Vari var.(i)) ts
   in
   let lhs =
-    List.fold_left
-      (fun t h -> mk_Appl(t, subst_patt rule_ctx (unfold h)))
-      (mk_Symb s) r.lhs
+    List.fold_left (fun h t -> mk_Appl(h, subst_patt t)) (mk_Symb s) r.lhs
   in
+  (* Create a typing context mapping every variable to its type. *)
   let ctx =
-    let p = new_problem() in
-    let f l x = (x, (mk_Meta(LibMeta.fresh p mk_Type 0,[||])), None) :: l in
-    List.fold_left f [] !var_list
-  in
-  let p = new_problem() in
+    Array.to_list (Array.mapi (fun i v -> v, !type_of_pvar.(i), None) var) in
+  (* Infer the type of lhs in ctx. *)
+  (*Logger.set_debug true "+iu"; Console.set_flag "print_domaines" true;*)
   match Infer.infer_noexn p ctx lhs with
   | None -> assert false
   | Some _ ->
-  let cs = List.rev_map (fun (_,t,u) -> (t,u)) !p.to_solve in
-  let ctx = List.map (fun (x,a,_) -> (x,a)) ctx in
-  List.map (fun (v,ty) -> name_of v, List.assoc ty cs) ctx
+    (* Solve constraints. *)
+    if Unif.solve_noexn ~type_check:false p then
+      (* Add the infered type of each pvar. *)
+      for i=0 to n-1 do
+        pvars := (!nb_rules, i, !type_of_pvar.(i))::!pvars
+      done
+    else fatal_no_pos "Cannot infer the type of %a" Print.sym_rule (s,r)
 
-(** [to_XTC ppf sign] outputs a XTC representation of the rewriting system of
-    the signature [sign] to [ppf]. *)
-let to_XTC : Format.formatter -> Sign.t -> unit = fun ppf sign ->
-  (* Get all the dependencies (every needed symbols and rewriting rules). *)
-  let deps = Sign.dependencies sign in
-  (* Function to iterate over every symbols. *)
-  let iter_symbols : (sym -> unit) -> unit = fun fn ->
-    (* Iterate on all symbols of a signature, excluding ghost symbols. *)
-    let iter_symbols sign =
-      let not_on_ghosts _ s = if not (Ghost.mem s) then fn s in
-      StrMap.iter not_on_ghosts Sign.(!(sign.sign_symbols))
-    in
-    List.iter (fun (_, sign) -> iter_symbols sign) deps
+(** [rule ppf r] translates the pair of terms [r] as a rule. *)
+let rule : (term * term) pp = fun ppf (l, r) -> out ppf "
+      <rule>
+        <lhs>
+          %a
+        </lhs>
+        <rhs>
+          %a
+        </rhs>
+      </rule>" term l term r
+
+(** [sym_rule ppf s r] increases the number of rules and translates the
+   sym_rule [r]. *)
+let sym_rule : sym -> rule pp = fun s ppf r ->
+  incr nb_rules; add_pvars s r; let sr = s, r in rule ppf (lhs sr, rhs sr)
+
+(** Translate the rules of symbol [s]. *)
+let rules_of_sym : sym pp = fun ppf s ->
+  match Timed.(!(s.sym_def)) with
+  | Some d -> rule ppf (mk_Symb s, d)
+  | None -> List.iter (sym_rule s ppf) Timed.(!(s.sym_rules))
+
+(** Translate the rules of a dependency except if it is a ghost signature. *)
+let rules_of_sign : Sign.t pp = fun ppf sign ->
+  if sign != Ghost.sign then
+    StrMap.iter (fun _ -> rules_of_sym ppf) Timed.(!(sign.sign_symbols))
+
+(** [sign ppf s] translates the Lambdapi signature [s]. *)
+let sign : Sign.t pp = fun ppf sign ->
+  (* First, generate the RULES section in a buffer, because it generates data
+     necessary for the other sections. *)
+  let buf_rules = Buffer.create 1000 in
+  let ppf_rules = Format.formatter_of_buffer buf_rules in
+  Sign.iterate (rules_of_sign ppf_rules) sign;
+  Format.pp_print_flush ppf_rules ();
+  (* Function for printing the types of function symbols. *)
+  let pp_syms : string SymMap.t pp = fun ppf syms ->
+    let sym_decl : (sym * string) pp = fun ppf (s,n) ->
+      out ppf "
+        <funcDeclaration>
+          <name>%s</name>
+          <typeDeclaration>%a</typeDeclaration>
+        </funcDeclaration>" n typ Timed.(!(s.sym_type)) in
+    let sym_decl s n = sym_decl ppf (s,n) in SymMap.iter sym_decl syms
   in
-  (* Print the prelude and the postlude. *)
-  let prelude =
-    [ "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
-    ; "<?xml-stylesheet href=\"xtc2tpdb.xsl\" type=\"text/xsl\"?>"
-    ; "<problem xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\""
-    ; "type=\"termination\""
-    ; "xsi:noNamespaceSchemaLocation=\"http://dev.aspsimon.org/xtc.xsd\">"
-    ; "<trs>" ]
-  in
-  let postlude =
-    [ "</trs>"
-    ; "<strategy>FULL</strategy>"
-    ; "<metainformation>"
-    ; "<originalfilename>Produced from a Dedukti file</originalfilename>"
-    ; "</metainformation>"
-    ; "</problem>" ]
-  in
-  (* Print the object level rewrite rules. *)
-  let print_object_rules : sym -> unit = fun s ->
-    if status s = Object_level then
-      match !(s.sym_def) with
-      | Some(d) ->
-         out ppf
-           "<rule>@.<lhs>@.<funapp>@.<name>%a</name>@.</funapp>@.</lhs>@."
-           print_sym s;
-         out ppf
-           "<rhs>@.%a</rhs>@.</rule>@." (print_term 0 s.sym_name) d
-      | None    ->
-         let c = ref 0 in
-         List.iter (fun x -> incr c; print_rule ppf !c s x) !(s.sym_rules)
-  in
-  (* Print the type level rewrite rules. *)
-  let print_type_rules : sym -> unit = fun s ->
-    if status s != Object_level then
-      match !(s.sym_def) with
-      | Some(d) ->
-         out ppf
-           "<rule>@.<lhs>@.<funapp>@.<name>%a</name>@.</funapp>@.</lhs>@."
-           print_sym s;
-         out ppf
-           "<rhs>@.%a</rhs>@.</rule>@." (print_term 0 s.sym_name) d
-      | None    ->
-         let c = ref 0 in
-         List.iter (incr c; print_tl_rule ppf !c s) !(s.sym_rules)
-  in
-  (* Print the variable declarations *)
-  let print_vars : sym -> unit = fun s ->
-    let c = ref 0 in
-    List.iter
-      (fun r ->
-        incr c;
-        List.iter
-          (fun (x,ty) ->
-            out ppf
-              "<varDeclaration>@.<var>%s_%i_%s</var>@." s.sym_name !c x;
-            out ppf
-              "<type>@.%a</type>@.</varDeclaration>@."
-              (print_type !c s.sym_name) ty
-          )
-          (get_vars s r)
-      )
-      !(s.sym_rules)
-  in
-  (* Print the symbol declarations at object level. *)
-  let print_symbol : sym -> unit = fun s ->
-    if status s = Object_level then (
-      out ppf "<funcDeclaration>@.<name>%a</name>@." print_sym s;
-      out ppf
-        "<typeDeclaration>@.<type>@.%a</type>@."
-        (print_type 0 s.sym_name) !(s.sym_type);
-      out ppf "</typeDeclaration>@.</funcDeclaration>@."
-    )
-  in
-  (* Print the type constructor declarations. *)
-  let print_type_cstr : sym -> unit = fun s ->
-    (* We don't declare type constant which do not take arguments for
-       compatibility issue with simply-typed higher order category of the
-       competition. *)
-    if status s = Type_cstr then (
-      out ppf "<typeConstructorDeclaration>@.<name>%a</name>@."
-        print_sym s;
-      out ppf "<typeDeclaration>@.<type>@.%a</type>@."
-        (print_type 0 s.sym_name) !(s.sym_type);
-      out ppf "</typeDeclaration>@.</typeConstructorDeclaration>@."
-    )
-  in
-  List.iter (out ppf "%s@.") prelude;
-  out ppf "<rules>@.";
-  iter_symbols print_object_rules;
-  out ppf "</rules>@.";
-  let type_rule_presence = ref false in
-  iter_symbols
-    (fun s ->
-      if status s != Object_level && !(s.sym_def) != None
-         && !(s.sym_rules) != []
-      then type_rule_presence := true);
-  if !type_rule_presence then (
-    out ppf "<typeLevelRules>@.";
-    iter_symbols print_type_rules;
-    out ppf "</typeLevelRules>@."
-  );
-  out ppf "<higherOrderSignature>@.";
-  out ppf "<variableTypeInfo>@.";
-  iter_symbols print_vars;
-  out ppf "</variableTypeInfo>@.";
-  out ppf "<functionSymbolTypeInfo>@.";
-  iter_symbols print_symbol;
-  out ppf "</functionSymbolTypeInfo>@.";
-  let type_cstr_presence = ref false in
-  iter_symbols
-    (fun s -> if status s = Type_cstr then type_cstr_presence := true);
-  if !type_cstr_presence then (
-    out ppf "<typeConstructorTypeInfo>@.";
-    iter_symbols print_type_cstr;
-    out ppf "</typeConstructorTypeInfo>@."
-  );
-  out ppf "</higherOrderSignature>@.";
-  List.iter (out ppf "%s@.") postlude
+  (* Function for printing the types of pattern variables. *)
+  let pp_pvars : (int * int * term) list pp = fun ppf pvars ->
+    let pvar_decl (n,i,t) = out ppf "
+        <varDeclaration>
+          <var>$%d_%d</var>
+          %a
+        </varDeclaration>" n i typ t in
+    List.iter pvar_decl pvars in
+  (* Finally, generate the whole hrs file. *)
+  out ppf "\
+<?xml version=\"1.0\" encoding=\"UTF-8\"?>
+<?xml-stylesheet href=\"xtc2tpdb.xsl\" type=\"text/xsl\"?>
+<problem xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" \
+type=\"termination\" \
+xsi:noNamespaceSchemaLocation=\"http://dev.aspsimon.org/xtc.xsd\">
+  <trs>
+    <rules>%s
+    </rules>
+    <higherOrderSignature>
+      <variableTypeInfo>%a
+      </variableTypeInfo>
+      <functionSymbolTypeInfo>%a
+      </functionSymbolTypeInfo>
+    </higherOrderSignature>
+  </trs>
+  <strategy>FULL</strategy>
+  <metainformation>
+    <originalfilename>%a.lp</originalfilename>
+  </metainformation>
+</problem>\n" (Buffer.contents buf_rules) pp_pvars !pvars pp_syms !syms
+  Path.pp sign.sign_path
