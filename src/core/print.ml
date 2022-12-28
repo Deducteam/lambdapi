@@ -158,6 +158,20 @@ and term : term pp = fun ppf t ->
               if p <> `Func then out ppf "(";
               quantifier s args;
               if p <> `Func then out ppf ")"
+          | Some (Postfix _) ->
+              begin
+                match args with
+                | l::args ->
+                    if p <> `Func then out ppf "(";
+                    (* Can be improved by looking at symbol priority. *)
+                    if args = []
+                    then out ppf "%a %a" appl l sym s
+                    else out ppf "(%a %a)" appl l sym s;
+                    List.iter (out ppf " %a" appl) args;
+                    if p <> `Func then out ppf ")"
+                | [] ->
+                  out ppf "("; head true ppf h; out ppf ")"
+              end
           | Some (Infix _) ->
               begin
                 match args with

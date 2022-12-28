@@ -600,7 +600,7 @@ let mk_Appl : term * term -> term = fun (t, u) ->
     log_term "mk_Appl(%a, %a) = %a" term t term u term r;
   r *)
 
-(** mk_Appl_not_canonical t u] builds the non-canonical (wrt. C and AC
+(** [mk_Appl_not_canonical t u] builds the non-canonical (wrt. C and AC
    symbols) application of [t] to [u]. WARNING: to use only in Sign.link. *)
 let mk_Appl_not_canonical : term * term -> term = fun (t, u) -> Appl(t, u)
 
