@@ -363,6 +363,20 @@ let add_inductive : t -> sym -> sym list -> sym -> int -> int -> unit =
   let ind = {ind_cons; ind_prop; ind_nb_params; ind_nb_types; ind_nb_cons} in
   sign.sign_ind := SymMap.add ind_sym ind !(sign.sign_ind)
 
+(** [iterate f sign] applies [f] on [sign] and its dependencies
+   recursively. *)
+let iterate : (t -> unit) -> t -> unit = fun f sign ->
+  let visited = Stdlib.ref Path.Set.empty in
+  let rec handle sign =
+    Stdlib.(visited := Path.Set.add sign.sign_path !visited);
+    f sign;
+    let dep path _ =
+      if not (Path.Set.mem path Stdlib.(!visited)) then
+        handle (Path.Map.find path !loaded)
+    in
+    Path.Map.iter dep Timed.(!(sign.sign_deps))
+  in handle sign
+
 (** [dependencies sign] returns an association list containing (the transitive
     closure of) the dependencies of the signature [sign].  Note that the order
     of the list gives one possible loading order for the signatures. Note also
