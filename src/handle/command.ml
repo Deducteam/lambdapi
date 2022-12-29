@@ -470,22 +470,19 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
         match pe.elt with
         | P_proof_abort -> wrn pe.pos "Proof aborted."; ss
         | P_proof_admitted ->
-            (* If the proof is finished, display a warning. *)
-            let ss =
             if finished ps then
-              ( wrn pe.pos "The proof is finished. Use 'end' instead."; ss )
-            else
-              (* We admit all the remaining typing goals. *)
-              let admit_goal ss g =
-                match g with
-                | Unif _ -> fatal pos "Cannot admit unification goals."
-                | Typ gt ->
-                  let m = gt.goal_meta in
-                  match !(m.meta_value) with
-                  | None -> Tactic.admit_meta ss p_sym_nam.pos m
-                  | Some _ -> ss
-              in List.fold_left admit_goal ss ps.proof_goals
+              fatal pe.pos "The proof is finished. Use 'end' instead.";
+            (* Admit all the remaining typing goals. *)
+            let admit_goal g =
+              match g with
+              | Unif _ -> fatal pos "Cannot admit unification goals."
+              | Typ gt ->
+                let m = gt.goal_meta in
+                match !(m.meta_value) with
+                | None -> Tactic.admit_meta ss p_sym_nam.pos m
+                | Some _ -> ()
             in
+            List.iter admit_goal ps.proof_goals;
             (* Add the symbol in the signature with a warning. *)
             Console.out 2 (Color.red "symbol %a : %a") uid id term a;
             wrn pe.pos "Proof admitted.";
@@ -564,7 +561,7 @@ let handle : compiler -> Sig_state.t -> Syntax.p_command -> Sig_state.t =
   match p with
   | None -> ss
   | Some d ->
-    let ss, ps, _ =
-      fold_proof (Tactic.handle d.pdata_sym_pos d.pdata_prv)
-        (ss, d.pdata_state, None) d.pdata_proof
+    let ps, _ =
+      fold_proof (Tactic.handle ss d.pdata_sym_pos d.pdata_prv)
+        (d.pdata_state, None) d.pdata_proof
     in d.pdata_finalize ss ps

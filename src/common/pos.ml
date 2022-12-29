@@ -69,7 +69,7 @@ let cat : popt -> popt -> popt = fun p1 p2 ->
   | None, Some p -> Some p
   | None, None -> None
 
-(** [shift k p] returns a position that is [k] characters before [p]. *)
+(** [shift k p] returns a position that is [k] characters after [p]. *)
 let shift : int -> popt -> popt = fun k p ->
   match p with
   | None -> assert false

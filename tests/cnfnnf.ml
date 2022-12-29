@@ -33,7 +33,7 @@ let fol_symb_str = [ "P"; "t"; "∨"; "∧"; "⇒"; "⊥"; "⊤"; "¬"; "∃"; "
 (** [get_config ss pos] build the configuration using [ss]. *)
 let get_config slist =
   let get n = List.nth slist n in
-  Handle.Skolem.
+  Handle.Fol.
     {
       symb_P = get 0;
       symb_T = get 1;
@@ -65,8 +65,9 @@ let sig_state, cfg =
   (ss, get_config (List.rev symlist))
 
 (** An environment defining two variables [A] and [B]. *)
-let env =
-  Env.empty |> Env.add (new_tvar "A") _Kind None |> Env.add (new_tvar "B") _Kind None
+let env = Env.empty
+          |> Env.add (new_tvar "A") _Kind None
+          |> Env.add (new_tvar "B") _Kind None
 
 let test_nnf () =
   let formula =
@@ -76,7 +77,7 @@ let test_nnf () =
   let witness = "∀ P (λ x1, ∀ B (λ y1, ∧ (∧ (¬ x1) (¬ y1)) ⊤))" in
   Alcotest.(check string)
     "Negation normal form" witness
-    (Format.asprintf "%a" Print.term (Handle.Skolem.nnf_of cfg formula))
+    (Format.asprintf "%a" Print.term (Handle.Skolem.nnf cfg formula))
 
 let test_pnf () =
   let formula =
@@ -85,7 +86,7 @@ let test_pnf () =
   let witness = "∀ P (λ x1, ∨ x1 A)" in
   Alcotest.(check string)
     "Prenex normal form" witness
-    (Format.asprintf "%a" Print.term (Handle.Skolem.prenex_of cfg formula))
+    (Format.asprintf "%a" Print.term (Handle.Skolem.pnf cfg formula))
 
 let _ =
   let open Alcotest in

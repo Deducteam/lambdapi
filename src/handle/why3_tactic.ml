@@ -259,6 +259,7 @@ let handle :
     fatal pos "\"%s\" did not find a proof" prover_name;
   (* Create a new axiom name that represents the proved goal. *)
   let axiom_name = new_axiom_name () in
+  (*FIXME: we should check that there is no meta in the type of m. *)
   (* Add the axiom to the current signature. *)
   let a =
     Sign.add_symbol ss.signature Public Defin Eager true
