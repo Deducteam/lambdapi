@@ -349,8 +349,6 @@ let handle :
     let m = LibMeta.fresh (new_problem()) ax_typ arity in
     (*FIXME: check that ax_typ has no meta.*)
     let ax = add_axiom ss sym_pos m in
-    (*let gt = match Goal.of_meta m with Typ gt -> gt | _ -> assert false in
-      let _, ps = tac_admit ss sym_pos ps gt in*)
     let p = new_problem() in
     let new_goal = LibMeta.make p c p_skl_t in
     tac_refine pos ps gt gs p (mk_Appl (mk_Symb ax, new_goal))
