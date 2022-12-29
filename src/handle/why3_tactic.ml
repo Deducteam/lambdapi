@@ -4,6 +4,7 @@ open Lplib open Extra
 open Timed
 open Common open Error
 open Core open Term open Print
+open Fol
 
 (** Logging function for external prover calling with Why3. *)
 let log_why3 = Logger.make 'y' "why3" "why3 provers"
@@ -36,33 +37,6 @@ let why3_datadir : string = Why3.Whyconf.datadir why3_main
 (** [why3_env] is the initialized Why3 environment. *)
 let why3_env : Why3.Env.env =
   Why3.Env.create_env (Why3.Whyconf.loadpath why3_main)
-
-(** Builtin configuration for propositional logic. *)
-type config =
-  { symb_P   : sym (** Encoding of propositions. *)
-  ; symb_T   : sym (** Encoding of types. *)
-  ; symb_or  : sym (** Disjunction(∨) symbol. *)
-  ; symb_and : sym (** Conjunction(∧) symbol. *)
-  ; symb_imp : sym (** Implication(⇒) symbol. *)
-  ; symb_bot : sym (** Bot(⊥) symbol. *)
-  ; symb_top : sym (** Top(⊤) symbol. *)
-  ; symb_not : sym (** Not(¬) symbol. *)
-  ; symb_ex  : sym (** Exists(∃) symbol. *)
-  ; symb_all : sym (** Forall(∀) symbol. *) }
-
-(** [get_config ss pos] build the configuration using [ss]. *)
-let get_config : Sig_state.t -> Pos.popt -> config = fun ss pos ->
-  let builtin = Builtin.get ss pos in
-  { symb_P   = builtin "P"
-  ; symb_T   = builtin "T"
-  ; symb_or  = builtin "or"
-  ; symb_and = builtin "and"
-  ; symb_imp = builtin "imp"
-  ; symb_bot = builtin "bot"
-  ; symb_top = builtin "top"
-  ; symb_not = builtin "not"
-  ; symb_ex  = builtin "ex"
-  ; symb_all = builtin "all" }
 
 (** A map from lambdapi terms to Why3 constants. *)
 type cnst_table = (term * Why3.Term.lsymbol) list
@@ -123,11 +97,6 @@ end = struct
     in
     List.fold_left f acc tbl
 end
-
-(** [new_axiom_name ()] generates a fresh axiom name. *)
-let new_axiom_name : unit -> string =
-  let counter = ref 0 in
-  fun _ -> incr counter; "Why3axiom_" ^ (string_of_int !counter)
 
 (** [translate_term cfg tbl t] translates the given lambdapi term [t] into the
     correspondig Why3 term, using the configuration [cfg] and constants in the
@@ -266,14 +235,12 @@ let run_task : Why3.Task.task -> Pos.popt -> string -> bool =
         ~limit driver tsk in
   Why3.Call_provers.((wait_on_call call).pr_answer = Valid)
 
-(** [handle ss pos prover_name g] runs the Why3 prover corresponding
-    to the name [prover_name] (if given or a default one otherwise)
-    on the goal [g].
-    If the prover succeeded to prove the goal, then this is reflected by a new
-    axiom that is added to signature [ss]. *)
+(** [handle ss pos prover_name gt] runs the Why3 prover corresponding to
+    [prover_name] (if given or a default one otherwise) on the goal type [gt],
+    and fails if no proof is found. *)
 let handle :
-  Sig_state.t -> Pos.popt -> string option -> Proof.goal_typ -> term =
-  fun ss pos prover_name {goal_meta = m; goal_hyps = hyps; goal_type = trm} ->
+  Sig_state.t -> Pos.popt -> string option -> Proof.goal_typ -> unit =
+  fun ss pos prover_name {goal_meta = _; goal_hyps = hyps; goal_type = trm} ->
   (* Get the name of the prover. *)
   let prover_name = Option.get !default_prover prover_name in
   if Logger.log_enabled () then
@@ -282,17 +249,4 @@ let handle :
   let tsk = encode ss pos hyps trm in
   (* Run the task with the prover named [prover_name]. *)
   if not (run_task tsk pos prover_name) then
-    fatal pos "\"%s\" did not find a proof" prover_name;
-  (* Create a new axiom name that represents the proved goal. *)
-  let axiom_name = new_axiom_name () in
-  (* Add the axiom to the current signature. *)
-  let a =
-    Sign.add_symbol ss.signature Public Defin Eager true
-      (Pos.make pos axiom_name) !(m.meta_type) []
-  in
-  if Logger.log_enabled () then
-    log_why3 "axiom %a created" uid axiom_name;
-  (* Return the variable terms of each item in the context. *)
-  let terms = List.rev_map (fun (_, (x, _, _)) -> mk_Vari x) hyps in
-  (* Apply the instance of the axiom with context. *)
-  add_args (mk_Symb a) terms
+    fatal pos "\"%s\" did not find a proof" prover_name
