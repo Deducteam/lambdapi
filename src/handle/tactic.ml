@@ -329,11 +329,9 @@ let handle :
   | P_tac_why3 cfg ->
       let ps = assume (count_products (Env.to_ctxt env) gt.goal_type) in
       (match ps.proof_goals with
-       | Typ gt::gs ->
-         (*FIXME: Why3_tactic.handle should return an updated ss.*)
-         let t = Why3_tactic.handle ss pos cfg gt in
-         tac_refine pos ps gt gs (new_problem()) t
-      | _ -> assert false)
+       | Typ gt::_ ->
+         Why3_tactic.handle ss pos cfg gt; tac_admit ss sym_pos ps gt
+       | _ -> assert false)
   | P_tac_skolem ->
     let sym_P = Builtin.get ss pos "P" in
     let t =
@@ -344,7 +342,7 @@ let handle :
     let skl_t = Skolem.handle ss sym_pos t in
     (* FIXME. We generate an axiom ax: P skl_t → P t in order to build a proof
        of P t from a proof of P skl_t. *)
-    let p_skl_t =  mk_Appl (mk_Symb sym_P, skl_t) in
+    let p_skl_t = mk_Appl (mk_Symb sym_P, skl_t) in
     let c = Env.to_ctxt env in
     let ax_typ = mk_Prod (p_skl_t, bind (new_tvar "_") lift gt.goal_type) in
     let ax_typ, arity = Ctxt.to_prod c ax_typ in

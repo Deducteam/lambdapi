@@ -1,7 +1,7 @@
 (** Calling a prover using Why3. *)
 
 open Common
-open Core open Term
+open Core
 open Timed
 
 (** [default_prover] contains the name of the current prover. Note that it can
@@ -12,8 +12,7 @@ val default_prover : string ref
     a proof. It can be changed with "set prover <int>". *)
 val timeout : int ref
 
-(** [handle ss pos ps prover_name g] runs the Why3 prover corresponding to the
-    name [prover_name] (if given or a default one otherwise) on the goal  [g].
-    If the prover succeeded to prove the goal, then this is reflected by a new
-    axiom that is added to signature [ss]. *)
-val handle: Sig_state.t -> Pos.popt -> string option -> Proof.goal_typ -> term
+(** [handle ss pos ps prover_name gt] runs the Why3 prover corresponding to
+    [prover_name] (if given or a default one otherwise) on the goal type [gt],
+    and fails if no proof is found. *)
+val handle: Sig_state.t -> Pos.popt -> string option -> Proof.goal_typ -> unit

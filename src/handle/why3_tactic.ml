@@ -98,11 +98,6 @@ end = struct
     List.fold_left f acc tbl
 end
 
-(** [new_axiom_name ()] generates a fresh axiom name. *)
-let new_axiom_name : unit -> string =
-  let counter = ref 0 in
-  fun _ -> incr counter; "Why3axiom_" ^ (string_of_int !counter)
-
 (** [translate_term cfg tbl t] translates the given lambdapi term [t] into the
     correspondig Why3 term, using the configuration [cfg] and constants in the
     association list [tbl]. *)
@@ -240,14 +235,12 @@ let run_task : Why3.Task.task -> Pos.popt -> string -> bool =
         ~limit driver tsk in
   Why3.Call_provers.((wait_on_call call).pr_answer = Valid)
 
-(** [handle ss pos prover_name g] runs the Why3 prover corresponding
-    to the name [prover_name] (if given or a default one otherwise)
-    on the goal [g].
-    If the prover succeeded to prove the goal, then this is reflected by a new
-    axiom that is added to signature [ss]. *)
+(** [handle ss pos prover_name gt] runs the Why3 prover corresponding to
+    [prover_name] (if given or a default one otherwise) on the goal type [gt],
+    and fails if no proof is found. *)
 let handle :
-  Sig_state.t -> Pos.popt -> string option -> Proof.goal_typ -> term =
-  fun ss pos prover_name {goal_meta = m; goal_hyps = hyps; goal_type = trm} ->
+  Sig_state.t -> Pos.popt -> string option -> Proof.goal_typ -> unit =
+  fun ss pos prover_name {goal_meta = _; goal_hyps = hyps; goal_type = trm} ->
   (* Get the name of the prover. *)
   let prover_name = Option.get !default_prover prover_name in
   if Logger.log_enabled () then
@@ -256,18 +249,4 @@ let handle :
   let tsk = encode ss pos hyps trm in
   (* Run the task with the prover named [prover_name]. *)
   if not (run_task tsk pos prover_name) then
-    fatal pos "\"%s\" did not find a proof" prover_name;
-  (* Create a new axiom name that represents the proved goal. *)
-  let axiom_name = new_axiom_name () in
-  (*FIXME: we should check that there is no meta in the type of m. *)
-  (* Add the axiom to the current signature. *)
-  let a =
-    Sign.add_symbol ss.signature Public Defin Eager true
-      (Pos.make pos axiom_name) !(m.meta_type) []
-  in
-  if Logger.log_enabled () then
-    log_why3 "axiom %a created" uid axiom_name;
-  (* Return the variable terms of each item in the context. *)
-  let terms = List.rev_map (fun (_, (x, _, _)) -> mk_Vari x) hyps in
-  (* Apply the instance of the axiom with context. *)
-  add_args (mk_Symb a) terms
+    fatal pos "\"%s\" did not find a proof" prover_name
