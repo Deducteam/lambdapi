@@ -128,12 +128,28 @@ $(LIB_ROOT):
 	mkdir -p $@
 
 .PHONY: install
-install: bin $(LIB_ROOT) install_emacs_mode
-	@dune install lambdapi
+install: bin
+	@dune install lambdapi lambdapi-mode
+	mkdir -p $(LIB_ROOT)
 
 .PHONY: uninstall
-uninstall: uninstall_emacs_mode
-	@dune uninstall lambdapi
+uninstall:
+	@dune uninstall lambdapi lambdapi-mode
+
+.PHONY: install_emacs_mode
+install_emacs_mode:
+ifeq ($(EMACS),)
+	@printf "\e[36mNo 'emacs' binary available in path and EMACS variable \
+is not set, \nEmacs mode won't be installed.\e[39m\n"
+else
+	@dune build --only-packages lambdapi-mode @install
+	@dune install lambdapi-mode
+	@printf "\e[36mEmacs mode installed.\e[39m\n"
+endif
+
+.PHONY: uninstall_emacs_mode
+uninstall_emacs_mode:
+	@dune uninstall lambdapi-mode
 
 .PHONY: install_vim_mode
 install_vim_mode: $(wildcard editors/vim/*/*.vim)
@@ -155,18 +171,3 @@ uninstall_vim_mode:
 	rm -f $(VIMDIR)/syntax/lambdapi.vim
 	rm -f $(VIMDIR)/ftdetect/dedukti.vim
 	rm -f $(VIMDIR)/ftdetect/lambdapi.vim
-
-.PHONY: install_emacs_mode
-install_emacs_mode:
-ifeq ($(EMACS),)
-	@printf "\e[36mNo 'emacs' binary available in path and EMACS variable \
-is not set, \nEmacs mode won't be installed.\e[39m\n"
-else
-	@dune build --only-packages lambdapi-mode @install
-	@dune install lambdapi-mode
-	@printf "\e[36mEmacs mode installed.\e[39m\n"
-endif
-
-.PHONY: uninstall_emacs_mode
-uninstall_emacs_mode:
-	@dune uninstall lambdapi-mode
