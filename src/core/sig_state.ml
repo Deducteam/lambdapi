@@ -64,7 +64,7 @@ let add_notation : sig_state -> sym -> float notation -> sig_state =
   fun ss s n ->
   if s.sym_path = ss.signature.sign_path then
     Sign.add_notation ss.signature s n;
-  {ss with notations = SymMap.add s n ss.notations}
+  {ss with notations = SymMap.update s (Sign.update_notation n) ss.notations}
 
 (** [add_builtin ss n s] generates a new signature state from [ss] by mapping
    the builtin [n] to [s]. *)
