@@ -76,8 +76,8 @@ make                        # Build lambdapi
 make doc                    # Build the user documentation (avalaible on readthedocs)
 make odoc                   # Build the developer documentation
 make install                # Install lambdapi
-make install_emacs          # Install emacs mode
-make install_vim            # Install vim support
+make install_emacs_mode     # Install emacs mode
+make install_vim_mode       # Install vim support
 ```
 
 You can run `lambdapi` without installing it with `dune exec -- lambdapi`.
