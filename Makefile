@@ -9,7 +9,7 @@ LIB_ROOT := $(shell\
     then echo $(OPAM_SWITCH_PREFIX);\
     else echo /usr/local;\
     fi;\
-  fi)/lambdapi/lib_root
+  fi)/lib/lambdapi/lib_root
 
 #### Compilation (binary, library and documentation) #########################
 
