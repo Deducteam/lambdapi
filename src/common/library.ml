@@ -139,28 +139,11 @@ let set_lib_root : string option -> unit = fun dir ->
   match !lib_root with
   | None -> assert false (* pth is set above. *)
   | Some(pth) ->
-      begin
-        try if not (Sys.is_directory pth) then
-            fatal_no_pos "Invalid library root: [%s] is not a directory." pth
-        with Sys_error(_) ->
-          (* [Sys_error] is raised if [pth] does not exist. *)
-          (* We try to create [pth]. *)
-          let target = Filename.quote pth in
-          let cmd = String.concat " " ["mkdir"; "-p"; target] in
-          (* Use short option to be POSIX compliant. *)
-          match Sys.command cmd with
-          | 0 -> ()
-          | _ ->
-              fatal_msg "Library root cannot be set:@.";
-              fatal_no_pos "Command \"%s\" had a non-zero exit." cmd
-          | exception Failure msg ->
-              fatal_msg "Library root cannot be set:@.";
-              fatal_msg "Command \"%s\" failed:@." cmd;
-              fatal_no_pos "%s" msg
-      end;
-      (* Register the library root as part of the module mapping.
+    if not (Sys.is_directory pth) then
+      fatal_no_pos "Invalid library root: \"%s\" is not a directory." pth;
+    (* Register the library root as part of the module mapping.
          Required by [module_to_file]. *)
-      Timed.(lib_mappings := LibMap.set_root pth !lib_mappings)
+    Timed.(lib_mappings := LibMap.set_root pth !lib_mappings)
 
 (** [add_mapping (mn, fn)] adds a new mapping from the module name [mn] to
    the file name [fn] if [mn] is not already mapped and [fn] is a valid
