@@ -13,8 +13,8 @@ LIB_ROOT := $(shell\
 
 #### Compilation (binary, library and documentation) #########################
 
-.PHONY: all
-all: bin
+.PHONY: default
+default: bin
 
 .PHONY: bin
 bin:
@@ -35,8 +35,7 @@ bnf:
 #### Unit tests and sanity check #############################################
 
 .PHONY: tests
-tests: bin
-	mkdir -p $(LIB_ROOT)
+tests: bin $(LIB_ROOT)
 	@dune runtest
 	@dune exec --only-packages lambdapi -- tests/runtests.sh
 	@dune exec --only-packages lambdapi -- tests/dtrees.sh
@@ -125,18 +124,19 @@ fullclean: distclean
 
 #### Installation and release targets ########################################
 
+$(LIB_ROOT):
+	mkdir -p $@
+
 .PHONY: install
-install: bin
+install: bin $(LIB_ROOT) install_emacs_mode
 	@dune install lambdapi
-	@mkdir -p $(LIB_ROOT)
-	@echo default lib root: $(LIB_ROOT)
 
 .PHONY: uninstall
-uninstall:
+uninstall: uninstall_emacs_mode
 	@dune uninstall lambdapi
 
-.PHONY: install_vim
-install_vim: $(wildcard editors/vim/*/*.vim)
+.PHONY: install_vim_mode
+install_vim_mode: $(wildcard editors/vim/*/*.vim)
 ifeq ($(wildcard $(VIMDIR)/.),)
 	@printf "\e[36mWill not install vim mode.\e[39m\n"
 else
@@ -149,8 +149,15 @@ else
 	@printf "\e[36mVim mode installed.\e[39m\n"
 endif
 
-.PHONY: install_emacs
-install_emacs:
+.PHONY: uninstall_vim_mode
+uninstall_vim_mode:
+	rm -f $(VIMDIR)/syntax/dedukti.vim
+	rm -f $(VIMDIR)/syntax/lambdapi.vim
+	rm -f $(VIMDIR)/ftdetect/dedukti.vim
+	rm -f $(VIMDIR)/ftdetect/lambdapi.vim
+
+.PHONY: install_emacs_mode
+install_emacs_mode:
 ifeq ($(EMACS),)
 	@printf "\e[36mNo 'emacs' binary available in path and EMACS variable \
 is not set, \nEmacs mode won't be installed.\e[39m\n"
@@ -159,3 +166,7 @@ else
 	@dune install lambdapi-mode
 	@printf "\e[36mEmacs mode installed.\e[39m\n"
 endif
+
+.PHONY: uninstall_emacs_mode
+uninstall_emacs_mode:
+	@dune uninstall lambdapi-mode
