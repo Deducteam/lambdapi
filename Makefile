@@ -36,8 +36,8 @@ bnf:
 
 .PHONY: tests
 tests: bin
+	mkdir -p $(LIB_ROOT)
 	@dune runtest
-	@mkdir -p $(LIB_ROOT)
 	@dune exec --only-packages lambdapi -- tests/runtests.sh
 	@dune exec --only-packages lambdapi -- tests/dtrees.sh
 	@dune exec --only-packages lambdapi -- tests/export_dk.sh
