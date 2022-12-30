@@ -14,10 +14,10 @@ LIB_ROOT := $(shell\
 #### Compilation (binary, library and documentation) #########################
 
 .PHONY: default
-default: bin
+default: lambdapi
 
-.PHONY: bin
-bin:
+.PHONY: lambdapi
+lambdapi:
 	@dune build --only-packages lambdapi @install
 
 .PHONY: odoc
@@ -35,7 +35,7 @@ bnf:
 #### Unit tests and sanity check #############################################
 
 .PHONY: tests
-tests: bin $(LIB_ROOT)
+tests: lambdapi $(LIB_ROOT)
 	@dune runtest
 	@dune exec --only-packages lambdapi -- tests/runtests.sh
 	@dune exec --only-packages lambdapi -- tests/dtrees.sh
@@ -43,7 +43,7 @@ tests: bin $(LIB_ROOT)
 	@dune exec --only-packages lambdapi -- tests/export_lp.sh
 
 .PHONY: tests_alt_ergo
-tests_alt_ergo: bin
+tests_alt_ergo: lambdapi
 	@dune exec --only-packages lambdapi -- lambdapi check tests/OK/why3*.lp
 
 .PHONY: sanity_check
@@ -53,37 +53,37 @@ sanity_check: misc/sanity_check.sh
 #### Library tests ###########################################################
 
 .PHONY: matita
-matita: bin
+matita: lambdapi
 	@printf "## Compiling the Matita's arithmetic library ##\n"
 	@cd libraries && dune exec -- ./matita.sh
 
 .PHONY: focalide
-focalide: bin
+focalide: lambdapi
 	@printf "## Compiling focalide library ##\n"
 	@cd libraries && dune exec -- ./focalide.sh
 
 .PHONY: holide
-holide: bin
+holide: lambdapi
 	@printf "## Compiling holide library ##\n"
 	@cd libraries && dune exec -- ./holide.sh
 
 .PHONY: verine
-verine: bin
+verine: lambdapi
 	@printf "## Compiling verine library ##\n"
 	@cd libraries && dune exec -- ./verine.sh
 
 .PHONY: iprover
-iprover: bin
+iprover: lambdapi
 	@printf "## Compiling iProverModulo library ##\n"
 	@cd libraries && dune exec -- ./iprover.sh
 
 .PHONY: dklib
-dklib: bin
+dklib: lambdapi
 	@printf "## Compiling the dklib library ##\n"
 	@cd libraries && dune exec -- ./dklib.sh
 
 .PHONY: zenon_modulo
-zenon_modulo: bin
+zenon_modulo: lambdapi
 	@printf "## Compiling the zenon library ##\n"
 	@cd libraries && dune exec -- ./zenon_modulo.sh
 
@@ -128,21 +128,29 @@ $(LIB_ROOT):
 	mkdir -p $@
 
 .PHONY: install
-install: bin
-	@dune install lambdapi lambdapi-mode
-	mkdir -p $(LIB_ROOT)
+install: install_lambdapi install_emacs_mode $(LIB_ROOT)
 
 .PHONY: uninstall
+uninstall: uninstall_lambdapi uninstall_emacs_mode
+
+.PHONY: install_lambdapi
+install_lambdapi: lambdapi
+	@dune install lambdapi
+
+.PHONY: uninstall_lambdapi
 uninstall:
-	@dune uninstall lambdapi lambdapi-mode
+	@dune uninstall lambdapi
+
+.PHONY: emacs_mode
+emacs_mode:
+	@dune build --only-packages lambdapi-mode @install
 
 .PHONY: install_emacs_mode
-install_emacs_mode:
+install_emacs_mode: emacs_mode
 ifeq ($(EMACS),)
 	@printf "\e[36mNo 'emacs' binary available in path and EMACS variable \
 is not set, \nEmacs mode won't be installed.\e[39m\n"
 else
-	@dune build --only-packages lambdapi-mode @install
 	@dune install lambdapi-mode
 	@printf "\e[36mEmacs mode installed.\e[39m\n"
 endif
