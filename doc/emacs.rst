@@ -39,7 +39,7 @@ Installation
 ------------
 
 The ``lambdapi-mode`` is automatically installed when using ``opam``
-(provided that emacs is available at installation time). It can be also
+(provided that emacs is available at installation time). It can also
 be installed from the sources and from `MELPA <https://melpa.org>`__
 using any package manager of Emacs (``package.el``,
 `straight <https://github.com/raxod502/straight.el>`__, …). Installation
@@ -78,7 +78,7 @@ Installing with `opam`_:
          (add-to-list 'load-path (concat opshare "/emacs/site-lisp/")))
 
   The ``opam`` installation does not handle dependencies. The following
-  packages might be missing (available on `elpa`_):
+  packages might be missing (but they are available on `elpa`_):
 
   * `eglot`_,
   * `highlight`_,
@@ -93,7 +93,7 @@ Installing from sources:
   .. code:: shell
 
      cd lambdapi
-     make install_emacs
+     make install_emacs_mode
 
   This command will byte-compile a file using the emacs binary available
   in the path. The ``EMACS`` variable of the makefile can be modified to
