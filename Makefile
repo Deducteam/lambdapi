@@ -114,9 +114,21 @@ fullclean: distclean
 
 #### Installation and release targets ########################################
 
+LIB_ROOT := $(shell\
+  if test -n "$(LAMBDAPI_LIB_ROOT)";\
+  then echo $(LAMBDAPI_LIB_ROOT);\
+  else\
+    if test -n "$(OPAM_SWITCH_PREFIX)";\
+    then echo $(OPAM_SWITCH_PREFIX);\
+    else echo /usr/local;\
+    fi;\
+  fi)/lambdapi/lib_root
+
 .PHONY: install
 install: bin
 	@dune install lambdapi
+	@mkdir -p $(LIB_ROOT)
+	@echo default lib root: $(LIB_ROOT)
 
 .PHONY: uninstall
 uninstall:
