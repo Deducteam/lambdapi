@@ -1,6 +1,16 @@
 VIMDIR = $(HOME)/.vim
 EMACS  = $(shell which emacs)
 
+LIB_ROOT := $(shell\
+  if test -n "$(LAMBDAPI_LIB_ROOT)";\
+  then echo $(LAMBDAPI_LIB_ROOT);\
+  else\
+    if test -n "$(OPAM_SWITCH_PREFIX)";\
+    then echo $(OPAM_SWITCH_PREFIX);\
+    else echo /usr/local;\
+    fi;\
+  fi)/lambdapi/lib_root
+
 #### Compilation (binary, library and documentation) #########################
 
 .PHONY: all
@@ -27,6 +37,7 @@ bnf:
 .PHONY: tests
 tests: bin
 	@dune runtest
+	@mkdir -p $(LIB_ROOT)
 	@dune exec --only-packages lambdapi -- tests/runtests.sh
 	@dune exec --only-packages lambdapi -- tests/dtrees.sh
 	@dune exec --only-packages lambdapi -- tests/export_dk.sh
@@ -113,16 +124,6 @@ fullclean: distclean
 	@cd libraries && ./zenon_modulo.sh fullclean
 
 #### Installation and release targets ########################################
-
-LIB_ROOT := $(shell\
-  if test -n "$(LAMBDAPI_LIB_ROOT)";\
-  then echo $(LAMBDAPI_LIB_ROOT);\
-  else\
-    if test -n "$(OPAM_SWITCH_PREFIX)";\
-    then echo $(OPAM_SWITCH_PREFIX);\
-    else echo /usr/local;\
-    fi;\
-  fi)/lambdapi/lib_root
 
 .PHONY: install
 install: bin
