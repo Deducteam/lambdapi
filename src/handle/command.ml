@@ -147,7 +147,7 @@ let handle_inductive_symbol : sig_state -> expo -> prop -> match_strat
   end;
   (* Actually add the symbol to the signature and the state. *)
   Console.out 2 (Color.red "symbol %a : %a") uid name term typ;
-  let r = add_symbol ss expo prop mstrat false id typ impl None in
+  let r = Sig_state.add_symbol ss expo prop mstrat false id typ impl None in
   sig_state := fst r; r
 
 (** Representation of a yet unchecked proof. The structure is initialized when
@@ -212,9 +212,15 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
       (ss, None, None)
   | P_builtin(n,qid) ->
       let s = find_sym ~prt:true ~prv:true ss qid in
-      Builtin.check ss pos n s;
-      Console.out 2 "builtin \"%s\" ≔ %a" n sym s;
-      (add_builtin ss n s, None, None)
+      begin
+        match StrMap.find_opt n ss.builtins with
+        | Some s' when s' == s ->
+          fatal pos "Builtin \"%s\" already mapped to %a" n sym s
+        | _ ->
+          Builtin.check ss pos n s;
+          Console.out 2 "builtin \"%s\" ≔ %a" n sym s;
+          (Sig_state.add_builtin ss n s, None, None)
+      end
   | P_notation(qid,n) ->
       let s = find_sym ~prt:true ~prv:true ss qid in
       (* Check arity. *)
@@ -246,7 +252,7 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
       in
       let n = float_notation_from_string_notation n in
       Console.out 2 "notation %a %a" sym s (notation float) n;
-      (add_notation ss s n, None, None)
+      (Sig_state.add_notation ss s n, None, None)
   | P_unif_rule(pr) ->
       (* Approximately same processing as rules without SR/LCR checking. *)
       let (_,r) as sr = scope_rule true ss pr in
@@ -330,7 +336,8 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
           (* Recursors are declared after the types and constructors. *)
           let pos = after (end_pos pos) in
           let id = Pos.make pos rec_name in
-          let r = add_symbol ss expo Defin Eager false id rec_typ [] None
+          let r =
+            Sig_state.add_symbol ss expo Defin Eager false id rec_typ [] None
           in sig_state := fst r; r
         in
         (ss, rec_sym::rec_sym_list)
@@ -458,27 +465,25 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
         match pe.elt with
         | P_proof_abort -> wrn pe.pos "Proof aborted."; ss
         | P_proof_admitted ->
-            (* If the proof is finished, display a warning. *)
-            let ss =
             if finished ps then
-              ( wrn pe.pos "The proof is finished. Use 'end' instead."; ss )
-            else
-              (* We admit all the remaining typing goals. *)
-              let admit_goal ss g =
-                match g with
-                | Unif _ -> fatal pos "Cannot admit unification goals."
-                | Typ gt ->
-                  let m = gt.goal_meta in
-                  match !(m.meta_value) with
-                  | None -> Tactic.admit_meta ss p_sym_nam.pos m
-                  | Some _ -> ss
-              in List.fold_left admit_goal ss ps.proof_goals
+              fatal pe.pos "The proof is finished. Use 'end' instead.";
+            (* Admit all the remaining typing goals. *)
+            let admit_goal g =
+              match g with
+              | Unif _ -> fatal pos "Cannot admit unification goals."
+              | Typ gt ->
+                let m = gt.goal_meta in
+                match !(m.meta_value) with
+                | None -> Tactic.admit_meta ss p_sym_nam.pos m
+                | Some _ -> ()
             in
+            List.iter admit_goal ps.proof_goals;
             (* Add the symbol in the signature with a warning. *)
             Console.out 2 (Color.red "symbol %a : %a") uid id term a;
             wrn pe.pos "Proof admitted.";
             let t = Option.map (fun t -> t.elt) t in
-            fst (add_symbol ss expo prop mstrat opaq p_sym_nam a impl t)
+            fst (Sig_state.add_symbol
+                   ss expo prop mstrat opaq p_sym_nam a impl t)
         | P_proof_end ->
             (* Check that the proof is indeed finished. *)
             if not (finished ps) then
@@ -488,7 +493,8 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
               Option.map (fun m -> unfold (mk_Meta(m,[||]))) ps.proof_term in
             (* Add the symbol in the signature. *)
             Console.out 2 (Color.red "symbol %a : %a") uid id term a;
-            fst (add_symbol ss expo prop mstrat opaq p_sym_nam a impl d)
+            fst (Sig_state.add_symbol
+                   ss expo prop mstrat opaq p_sym_nam a impl d)
       in
       (* Create the proof state. *)
       let pdata_state =
@@ -552,7 +558,7 @@ let handle : compiler -> Sig_state.t -> Syntax.p_command -> Sig_state.t =
   match p with
   | None -> ss
   | Some d ->
-    let ss, ps, _ =
-      fold_proof (Tactic.handle d.pdata_sym_pos d.pdata_prv)
-        (ss, d.pdata_state, None) d.pdata_proof
+    let ps, _ =
+      fold_proof (Tactic.handle ss d.pdata_sym_pos d.pdata_prv)
+        (d.pdata_state, None) d.pdata_proof
     in d.pdata_finalize ss ps

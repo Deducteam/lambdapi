@@ -336,9 +336,18 @@ let add_rules : t -> sym -> rule list -> unit = fun sign sym rs ->
     let sm = StrMap.update sym.sym_name f sm in
     sign.sign_deps := Path.Map.add sym.sym_path sm !(sign.sign_deps)
 
+(** [update_notation n] provides an update function for [n] to be used with
+    [Map.S.update]. *)
+let update_notation: 'a notation -> 'a notation option -> 'a notation option =
+  fun new_notation current_notation_opt ->
+  match current_notation_opt with
+  | Some (Succ _) -> Some (Succ (Some new_notation))
+  | _ -> Some new_notation
+
 (** [add_notation sign s n] sets notation of [s] to [n] in [sign]. *)
 let add_notation : t -> sym -> float notation -> unit = fun sign s n ->
-  sign.sign_notations := SymMap.add s n !(sign.sign_notations)
+  sign.sign_notations :=
+    SymMap.update s (update_notation n) !(sign.sign_notations)
 
 (** [add_notation_from_builtin builtin sym notation_map] adds in
     [notation_map] the notation required when [builtin] is mapped to [sym]. *)

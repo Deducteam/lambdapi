@@ -10,3 +10,5 @@ builtin "+1" ≔ +1;
 constant symbol nat : Set;
 
 rule τ nat ↪ ℕ;
+
+symbol + : ℕ → ℕ → ℕ; notation + infix 20;

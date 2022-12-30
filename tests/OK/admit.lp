@@ -18,7 +18,7 @@ symbol π_f: Prf (f _)
 begin
   admit
   // Adds an axiom [ax_?]
-admitted;
+end;
 
 // Two metas, one depending on the other
 symbol prop2: Prf prop1 → Prop;

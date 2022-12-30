@@ -166,8 +166,7 @@ let handle_command : state -> Command.t -> command_result =
 let handle_tactic : proof_state -> Tactic.t -> int -> tactic_result =
   fun (_, ss, ps, finalize, prv, sym_pos) tac n ->
   try
-    let ss, ps, qres =
-      Handle.Tactic.handle sym_pos prv (ss, ps, None) tac n in
+    let ps, qres = Handle.Tactic.handle ss sym_pos prv (ps, None) tac n in
     let qres = Option.map (fun f -> f ()) qres in
     Tac_OK((Time.save (), ss, ps, finalize, prv, sym_pos), qres)
   with Fatal(p,m) -> Tac_Error(p,m)
