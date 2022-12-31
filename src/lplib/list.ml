@@ -276,8 +276,8 @@ let rec remove_heads n = function
   | xs -> xs
 
 (** [split f l] returns the tuple [(l1,x,l2)] such that [x] is the first
-   element of [l] satisying [f], [l1] is the sub-list of [l] preceding [x],
-   and [l2] is the sub-list of [l] following [x].
+    element of [l] satisying [f], [l1] is the sub-list of [l] preceding [x],
+    and [l2] is the sub-list of [l] following [x]: [l = l1 :: x :: l2].
 @raise Not_found if there is no element of [l] satisying [f]. *)
 let split : ('a -> bool) -> 'a list -> 'a list * 'a * 'a list = fun f ->
   let rec split acc = function

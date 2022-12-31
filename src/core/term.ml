@@ -273,7 +273,8 @@ end
 (** Typing context associating a [Bindlib] variable to a type and possibly a
     definition. The typing environment [x1:A1,..,xn:An] is represented by the
     list [xn:An;..;x1:A1] in reverse order (last added variable comes
-    first). *)
+    first). Note that it cannot be implemented by a map as the order is
+    important. *)
 type ctxt = (tvar * term * term option) list
 
 (** Typing context with lifted terms. Used to optimise type checking and avoid

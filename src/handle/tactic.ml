@@ -8,8 +8,8 @@ open Proof
 open Timed
 
 (** Logging function for tactics. *)
-let log_tact = Logger.make 't' "tact" "tactics"
-let log_tact = log_tact.pp
+let log = Logger.make 't' "tact" "tactics"
+let log = log.pp
 
 (** Number of admitted axioms in the current signature. Used to name the
     generated axioms. This reference is reset in {!module:Compile} for each
@@ -76,7 +76,7 @@ let tac_admit: Sig_state.t -> popt -> proof_state -> goal_typ -> proof_state =
 (** [tac_solve pos ps] tries to simplify the unification goals of the proof
    state [ps] and fails if constraints are unsolvable. *)
 let tac_solve : popt -> proof_state -> proof_state = fun pos ps ->
-  if Logger.log_enabled () then log_tact "@[<v>tac_solve@ %a@]" goals ps;
+  if Logger.log_enabled () then log "@[<v>tac_solve@ %a@]" goals ps;
   let gs_typ, gs_unif = List.partition is_typ ps.proof_goals in
   let p = new_problem() in
   let f ms = function
@@ -103,7 +103,7 @@ let tac_refine : ?check:bool ->
       -> proof_state =
   fun ?(check=true) pos ps gt gs p t ->
   if Logger.log_enabled () then
-    log_tact "@[tac_refine@ %a@]" term t;
+    log "@[tac_refine@ %a@]" term t;
   let c = Env.to_ctxt gt.goal_hyps in
   if LibMeta.occurs gt.goal_meta c t then fatal pos "Circular refinement.";
   (* Check that [t] has the required type. *)
@@ -116,10 +116,10 @@ let tac_refine : ?check:bool ->
     else t
   in
   if Logger.log_enabled () then
-    log_tact (Color.red "%a ≔ %a") meta gt.goal_meta term t;
+    log (Color.red "%a ≔ %a") meta gt.goal_meta term t;
   LibMeta.set p gt.goal_meta (binds (Env.vars gt.goal_hyps) lift t);
   (* Convert the metas and constraints of [p] not in [gs] into new goals. *)
-  if Logger.log_enabled () then log_tact "%a" problem p;
+  if Logger.log_enabled () then log "%a" problem p;
   tac_solve pos {ps with proof_goals = Proof.add_goals_of_problem p gs}
 
 (** [ind_data t] returns the [ind_data] structure of [s] if [t] is of the
@@ -255,7 +255,7 @@ let handle :
           let me1 = Bindlib.unbox (_Meta m (Env.to_tbox e1)) in
           let t =
             List.fold_left (fun t (_,(v,_,_)) -> mk_Appl(t, mk_Vari v))
-              me1 (x::e2)
+              me1 (x :: List.rev e2)
           in
           tac_refine pos ps gt gs p t
         with Not_found -> fatal idpos "Unknown hypothesis %a" uid id;
@@ -364,14 +364,14 @@ let handle :
   match elt with
   | P_tac_fail -> fatal pos "Call to tactic \"fail\""
   | P_tac_query(q) ->
-    if Logger.log_enabled () then log_tact "%a@." Pretty.tactic tac;
+    if Logger.log_enabled () then log "%a@." Pretty.tactic tac;
     ps, Query.handle ss (Some ps) q
   | _ ->
   match ps.proof_goals with
   | [] -> fatal pos "No remaining goals."
   | g::_ ->
     if Logger.log_enabled () then
-      log_tact ("%a@\n" ^^ Color.red "%a") Proof.Goal.pp g Pretty.tactic tac;
+      log ("%a@\n" ^^ Color.red "%a") Proof.Goal.pp g Pretty.tactic tac;
     handle ss sym_pos prv ps tac, None
 
 (** [handle sym_pos prv r tac n] applies the tactic [tac] from the previous
