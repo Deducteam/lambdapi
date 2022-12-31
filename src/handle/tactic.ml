@@ -1,7 +1,7 @@
 (** Handling of tactics. *)
 
 open Lplib
-open Common open Error open Pos open Base open Debug
+open Common open Error open Pos
 open Parsing open Syntax
 open Core open Term open Print
 open Proof
@@ -249,10 +249,6 @@ let handle :
         try
           let p = new_problem() in
           let e2, x, e1 = List.split (fun (s,_) -> s = id) env in
-          let env ppf e =
-            let elt ppf (n,_) = string ppf n in D.list elt ppf e
-          in
-          if Logger.log_enabled() then log "e2 = %a; e1 = %a" env e2 env e1;
           let u = lift gt.goal_type in
           let q = Env.to_prod_box [x] (Env.to_prod_box e2 u) in
           let m = LibMeta.fresh p (Env.to_prod e1 q) (List.length e1) in
