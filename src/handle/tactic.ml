@@ -259,7 +259,7 @@ let handle :
           let me1 = Bindlib.unbox (_Meta m (Env.to_tbox e1)) in
           let t =
             List.fold_left (fun t (_,(v,_,_)) -> mk_Appl(t, mk_Vari v))
-              me1 (x::e2)
+              me1 (x :: List.rev e2)
           in
           tac_refine pos ps gt gs p t
         with Not_found -> fatal idpos "Unknown hypothesis %a" uid id;
