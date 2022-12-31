@@ -40,7 +40,7 @@
           <funapp><name>tests.OK.bool.bool_impl</name></funapp>
         </lhs>
         <rhs>
-          <lambda><var>86</var><type><basic>tests.OK.bool.B</basic></type><lambda><var>87</var><type><basic>tests.OK.bool.B</basic></type><funapp><name>tests.OK.bool.bool_or</name><arg><var>87</var></arg><arg><funapp><name>tests.OK.bool.bool_neg</name><arg><var>86</var></arg></funapp></arg></funapp></lambda></lambda>
+          <lambda><var>a</var><type><basic>tests.OK.bool.B</basic></type><lambda><var>b</var><type><basic>tests.OK.bool.B</basic></type><funapp><name>tests.OK.bool.bool_or</name><arg><var>b</var></arg><arg><funapp><name>tests.OK.bool.bool_neg</name><arg><var>a</var></arg></funapp></arg></funapp></lambda></lambda>
         </rhs>
       </rule>
       <rule>
@@ -96,7 +96,7 @@
           <funapp><name>tests.OK.bool.bool_xor</name></funapp>
         </lhs>
         <rhs>
-          <lambda><var>92</var><type><basic>tests.OK.bool.B</basic></type><lambda><var>93</var><type><basic>tests.OK.bool.B</basic></type><application><lambda><var>94</var><type><basic>tests.OK.bool.B</basic></type><application><lambda><var>95</var><type><basic>tests.OK.bool.B</basic></type><funapp><name>tests.OK.bool.bool_or</name><arg><var>94</var></arg><arg><var>95</var></arg></funapp></lambda><funapp><name>tests.OK.bool.bool_and</name><arg><var>93</var></arg><arg><funapp><name>tests.OK.bool.bool_neg</name><arg><var>92</var></arg></funapp></arg></funapp></application></lambda><funapp><name>tests.OK.bool.bool_and</name><arg><var>92</var></arg><arg><funapp><name>tests.OK.bool.bool_neg</name><arg><var>93</var></arg></funapp></arg></funapp></application></lambda></lambda>
+          <lambda><var>a</var><type><basic>tests.OK.bool.B</basic></type><lambda><var>b</var><type><basic>tests.OK.bool.B</basic></type><application><lambda><var>a_and_not_b</var><type><basic>tests.OK.bool.B</basic></type><application><lambda><var>b_and_not_a</var><type><basic>tests.OK.bool.B</basic></type><funapp><name>tests.OK.bool.bool_or</name><arg><var>a_and_not_b</var></arg><arg><var>b_and_not_a</var></arg></funapp></lambda><funapp><name>tests.OK.bool.bool_and</name><arg><var>b</var></arg><arg><funapp><name>tests.OK.bool.bool_neg</name><arg><var>a</var></arg></funapp></arg></funapp></application></lambda><funapp><name>tests.OK.bool.bool_and</name><arg><var>a</var></arg><arg><funapp><name>tests.OK.bool.bool_neg</name><arg><var>b</var></arg></funapp></arg></funapp></application></lambda></lambda>
         </rhs>
       </rule>
     </rules>
