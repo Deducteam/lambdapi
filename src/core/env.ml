@@ -6,8 +6,10 @@ open Term
 (** Type of an environment, used in scoping to associate names to
     corresponding variables and types. Note that it cannot be
     implemented by a map as the order is important. The structure is similar
-    to then one of {!type:Term.ctxt}, a tuple [(x,a,t)] is a variable [x],
-    its type [a] and possibly its definition [t] *)
+    to {!type:Term.ctxt}, a tuple [(x,a,t)] is a variable [x], its type [a]
+    and possibly its definition [t]. The typing environment [x1:A1,..,xn:An]
+    is represented by the list [xn:An;..;x1:A1] in reverse order (last added
+    variable comes first). *)
 type env = (string * (var * term * term option)) list
 
 type t = env

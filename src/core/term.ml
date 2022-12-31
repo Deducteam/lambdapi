@@ -778,7 +778,7 @@ let subterm_pos : subterm_pos pp = fun ppf l -> D.(list int) ppf (List.rev l)
 (** Type of critical pair positions (pos,l,r,p,l_p). *)
 type cp_pos = Pos.popt * term * term * subterm_pos * term
 
-(** Typing context associating a [ variable to a type and possibly a
+(** Typing context associating a variable to a type and possibly a
     definition. The typing environment [x1:A1,..,xn:An] is represented by the
     list [xn:An;..;x1:A1] in reverse order (last added variable comes
     first). *)
