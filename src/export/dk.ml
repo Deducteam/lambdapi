@@ -116,7 +116,9 @@ let cmp : decl cmp = cmp_map (Lplib.Option.cmp Pos.cmp) pos_of_decl
 
 (** Translation of terms. *)
 
-let var : var pp = fun ppf v -> ident ppf (name_of v)
+let var : var pp = fun ppf v -> string ppf (uniq_name v)
+
+let patt : int pp = fun ppf i -> out ppf "x%d" i
 
 (** [term b ppf t] prints term [t]. Print abstraction domains if [b]. *)
 let rec term : bool -> term pp = fun b ppf t ->
@@ -141,9 +143,9 @@ let rec term : bool -> term pp = fun b ppf t ->
     let x,u = unbind u in
     out ppf "((%a : %a := %a) => %a)" var x (term b) a (term b) t (term b) u
   | Patt(None,_,_) -> assert false
-  | Patt(Some i,_,[||]) -> int ppf i
+  | Patt(Some i,_,[||]) -> patt ppf i
   | Patt(Some i,_,ts) ->
-    out ppf "(%d%a)" i (Array.pp (prefix " " (term b)) "") ts
+    out ppf "(%a%a)" patt i (Array.pp (prefix " " (term b)) "") ts
   | Db _ -> assert false
   | TRef _ -> assert false
   | Wild -> assert false
@@ -197,8 +199,8 @@ let sym_decl : sym pp = fun ppf s ->
 let rule_decl : (Path.t * string * rule) pp = fun ppf (p, n, r) ->
   let rec var ppf i =
     if i < 0 then ()
-    else if i = 0 then out ppf "0"
-    else out ppf "%a,%d" var (i-1) i
+    else if i = 0 then patt ppf 0
+    else out ppf "%a,%a" var (i-1) patt i
   in
   out ppf "[%a] %a%a --> %a.@." var (r.vars_nb - 1) qid (p, n)
     (List.pp (prefix " " (term false)) "") r.lhs (term true) r.rhs

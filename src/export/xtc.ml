@@ -52,10 +52,10 @@ let sym : sym pp = fun ppf s ->
 
 (** [add_bvar v] declares an abstracted Lambdapi variable. *)
 let add_bvar : var -> unit = fun v ->
-  bvars := StrSet.add (name_of v) !bvars
+  bvars := StrSet.add (base_name v) !bvars
 
 (** [bvar v] translates the Lambdapi bound variable [v]. *)
-let bvar : var pp = fun ppf v -> out ppf "<var>%s</var>" (name_of v)
+let bvar : var pp = fun ppf v -> out ppf "<var>%s</var>" (base_name v)
 
 (** [pvar i] translates the Lambdapi pattern variable [i]. *)
 let pvar : int pp = fun ppf i -> out ppf "<var>%d_%d</var>" !nb_rules i

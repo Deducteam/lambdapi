@@ -249,8 +249,12 @@ val new_var : string -> var
 (** [new_var_ind s i] creates a new [var] of name [s ^ string_of_int i]. *)
 val new_var_ind : string -> int -> var
 
-(** [name_of x] returns the name of the variable [x]. *)
-val name_of : var -> string
+(** [base_name x] returns the base name of the variable [x]. Note that this
+    base name is not unique: two distinct variables may have the same name. *)
+val base_name : var -> string
+
+(** [uniq_name x] returns a string uniquely identifying the variable [x]. *)
+val uniq_name : var -> string
 
 (** Sets and maps of term variables. *)
 module Var : Map.OrderedType with type t = var

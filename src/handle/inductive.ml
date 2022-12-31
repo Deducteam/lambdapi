@@ -49,7 +49,7 @@ let gen_safe_prefixes : inductive -> string * string * string =
       match unfold t with
       | Prod(_,b) ->
         let x,b = unbind b in
-        add_name_from_type (StrSet.add (name_of x) set) b
+        add_name_from_type (StrSet.add (base_name x) set) b
       | _ -> set
     in
     let add_name_from_sym set sym =
@@ -318,7 +318,7 @@ let iter_rec_rules :
     let head = P.appl_wild head n in
     (* add a predicate variable for each inductive type *)
     let head =
-      let apred (_,d) t = apatt t (name_of d.ind_var) in
+      let apred (_,d) t = apatt t (base_name d.ind_var) in
       List.fold_right apred ind_pred_map head
     in
     (* add a case variable for each constructor *)
@@ -343,7 +343,7 @@ let iter_rec_rules :
       let env_appl t env =
         List.fold_right (fun (_,(x,_,_)) t -> P.appl t (P.var x)) env t in
       let add_abst t (_,(x,_,_)) =
-        P.abst (Some (Pos.none (name_of x))) t in
+        P.abst (Some (Pos.none (base_name x))) t in
       List.fold_left add_abst (arec s ts (env_appl x env)) env
     in
     let acc_rec_dom acc x aux = P.appl (P.appl acc x) aux in

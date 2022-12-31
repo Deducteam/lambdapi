@@ -45,6 +45,41 @@ type mbinder_info = {mbinder_name : string array; mbinder_bound : bool array}
 
 let binder_name : binder_info -> string = fun bi -> bi.binder_name
 
+(** Type for free variables. *)
+type var = int * string
+
+(** [compare_vars x y] safely compares [x] and [y]. Note that it is unsafe to
+    compare variables using [Pervasive.compare]. *)
+let compare_vars : var -> var -> int = fun (i,_) (j,_) -> Stdlib.compare i j
+
+(** [eq_vars x y] safely computes the equality of [x] and [y]. Note that it is
+    unsafe to compare variables with the polymorphic equality function. *)
+let eq_vars : var -> var -> bool = fun x y -> compare_vars x y = 0
+
+(** [new_var name] creates a new unique variable of name [name]. *)
+let new_var : string -> var =
+  let open Stdlib in let n = ref 0 in fun name -> incr n; !n, name
+
+(** [new_var_ind s i] creates a new [var] of name [s ^ string_of_int i]. *)
+let new_var_ind : string -> int -> var = fun s i ->
+  new_var (Escape.add_prefix s (string_of_int i))
+
+(** [base_name x] returns the base name of variable [x]. Note that this name
+    is not unique: two distinct variables may have the same name. *)
+let base_name : var -> string = fun (_i,n) -> n
+
+(** [uniq_name x] returns a string uniquely identifying the variable [x]. *)
+let uniq_name : var -> string = fun (i,_) -> "v" ^ string_of_int i
+
+(** Sets and maps of variables. *)
+module Var = struct
+  type t = var
+  let compare = compare_vars
+end
+
+module VarSet = Set.Make(Var)
+module VarMap = Map.Make(Var)
+
 (** Representation of a term (or types) in a general sense. Values of the type
     are also used, for example, in the representation of patterns or rewriting
     rules. Specific constructors are included for such applications,  and they
@@ -66,9 +101,6 @@ type term =
   | TRef of term option ref (** Reference cell (used in surface matching). *)
   | LLet of term * term * binder
   (** [LLet(a, t, u)] is [let x : a ≔ t in u] (with [x] bound in [u]). *)
-
-(** Type for free variables. *)
-and var = int * string
 
 (** Type for binders. *)
 and binder = binder_info * term
@@ -236,34 +268,6 @@ end
 
 module MetaSet = Set.Make(Meta)
 module MetaMap = Map.Make(Meta)
-
-(** [compare_vars x y] safely compares [x] and [y].  Note that it is unsafe to
-    compare variables using [Pervasive.compare]. *)
-let compare_vars : var -> var -> int = fun (i,_) (j,_) -> Stdlib.compare i j
-
-(** [eq_vars x y] safely computes the equality of [x] and [y]. Note that it is
-    unsafe to compare variables with the polymorphic equality function. *)
-let eq_vars : var -> var -> bool = fun x y -> compare_vars x y = 0
-
-(** [new_var name] creates a new unique variable of name [name]. *)
-let new_var : string -> var =
-  let open Stdlib in let n = ref 0 in fun name -> incr n; !n, name
-
-(** [new_var_ind s i] creates a new [var] of name [s ^ string_of_int i]. *)
-let new_var_ind : string -> int -> var = fun s i ->
-  new_var (Escape.add_prefix s (string_of_int i))
-
-(** [name_of x] returns the name of variable [x]. *)
-let name_of : var -> string = fun (_i,n) -> n (*^ string_of_int i*)
-
-(** Sets and maps of variables. *)
-module Var = struct
-  type t = var
-  let compare = compare_vars
-end
-
-module VarSet = Set.Make(Var)
-module VarMap = Map.Make(Var)
 
 let mk_bin s t1 t2 = Appl(Appl(Symb s, t1), t2)
 
@@ -617,7 +621,7 @@ let bind_mvar : var array -> term -> mbinder =
   let b = bind 1 t in
   if Logger.log_enabled() then
     log_term "bind_mvar %a %a = %a" (D.array var) xs term t term b;
-  let bi = { mbinder_name = Array.map name_of xs; mbinder_bound } in
+  let bi = { mbinder_name = Array.map base_name xs; mbinder_bound } in
   bi, b
 
 (** [binder_occur b] tests whether the bound variable occurs in [b]. *)

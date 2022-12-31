@@ -127,7 +127,7 @@ let of_prod_nth : ctxt -> int -> term -> env * term = fun c n t ->
     if i >= n then env, t
     else match_prod c t (fun a b ->
              let x, b = unbind b in
-             build_env (i+1) (add (name_of x) x a None env) b)
+             build_env (i+1) (add (base_name x) x a None env) b)
   in build_env 0 [] t
 
 (** [of_prod_using c xs t] is similar to [of_prod s c n t] where [n =
@@ -141,7 +141,7 @@ let of_prod_using : ctxt -> var array -> term -> env * term = fun c xs t ->
     if i >= n then env, t
     else match_prod c t (fun a b ->
              let xi = xs.(i) in
-             let name = name_of xi in
+             let name = base_name xi in
              let env = add name xi a None env in
              build_env (i+1) env (subst b (mk_Vari xi)))
   in build_env 0 [] t
