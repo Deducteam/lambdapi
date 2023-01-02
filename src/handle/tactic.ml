@@ -102,8 +102,7 @@ let tac_refine : ?check:bool ->
       popt -> proof_state -> goal_typ -> goal list -> problem -> term
       -> proof_state =
   fun ?(check=true) pos ps gt gs p t ->
-  if Logger.log_enabled () then
-    log "@[tac_refine@ %a@]" term t;
+  if Logger.log_enabled () then log "@[tac_refine@ %a@]" term t;
   let c = Env.to_ctxt gt.goal_hyps in
   if LibMeta.occurs gt.goal_meta c t then fatal pos "Circular refinement.";
   (* Check that [t] has the required type. *)
