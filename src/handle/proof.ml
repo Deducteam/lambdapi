@@ -58,8 +58,7 @@ module Goal = struct
     | Unif (_, t, u) -> out ppf "%a ≡ %a" term t term u
 
   (** [hyps ppf g] prints on [ppf] the hypotheses of the goal [g]. *)
-  let hyps : goal pp =
-    fun ppf g ->
+  let hyps : goal pp = fun ppf g ->
     let hyps hyp ppf l =
       if l <> [] then
         out ppf "@[<v>%a@,\
