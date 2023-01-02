@@ -63,15 +63,16 @@ module Goal = struct
 
   (** [pp ppf g] prints on [ppf] the goal [g] without its hypotheses. *)
   let pp : goal pp = fun ppf g ->
-    let term = term_in (bindlib_ctxt g) in
+    let bctx = bindlib_ctxt g in
+    let term = term_in bctx in
     match g with
     | Typ gt -> out ppf "%a: %a" meta gt.goal_meta term gt.goal_type
     | Unif (_, t, u) -> out ppf "%a ≡ %a" term t term u
 
   (** [hyps ppf g] prints on [ppf] the hypotheses of the goal [g]. *)
-  let hyps : goal pp =
-    fun ppf g ->
-    let term = term_in (bindlib_ctxt g) in
+  let hyps : goal pp = fun ppf g ->
+    let bctx = bindlib_ctxt g in
+    let term = term_in bctx in
     let hyps hyp ppf l =
       if l <> [] then
         out ppf "@[<v>%a@,\
