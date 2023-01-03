@@ -444,7 +444,7 @@ which allows to write, e.g.
 
 ::
 
-    coerce_rule coerce (List $a) (List $b) $l ↪ map (λ e: El $a, coerce $a $b e) $l
+    coerce_rule coerce (List $a) (List $b) $l ↪ map (λ e: El $a, coerce $a $b e) $l;
 
 where ``Set: TYPE;``, ``List : Set → TYPE``, ``El : Set → TYPE`` and ``map`` is
 the usual map operator on lists such that ``map f (cons x l) ≡ cons (f x) (map l)``.
