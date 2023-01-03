@@ -98,7 +98,6 @@ clean: lpoclean
 	@dune clean
 	@$(MAKE) -C editors/emacs clean
 	@$(MAKE) -C editors/vscode clean
-	@$(MAKE) -C Logic clean
 
 .PHONY: distclean
 distclean: clean
