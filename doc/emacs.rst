@@ -39,19 +39,12 @@ Installation
 ------------
 
 The ``lambdapi-mode`` can be installed from `MELPA
-<https://melpa.org>`__ using any package manager of Emacs
+<https://melpa.org>`__ using any package manager
 (``package.el``, `straight
-<https://github.com/raxod502/straight.el>`__, …).  Provided that Emacs
+<https://github.com/raxod502/straight.el>`__, …). Provided that Emacs
 is properly configured (see https://melpa.org/#/getting-started to
 configure Emacs to use MELPA), the mode can be installed with ``M-x
 package-install RET lambdapi-mode``.
-
-If you have `use-package`_, it can be automatically installed by
-adding to your configuration file:
-
-  .. code:: emacs-lisp
-
-     (use-package lambdapi-mode)
 
 Usage
 -----
