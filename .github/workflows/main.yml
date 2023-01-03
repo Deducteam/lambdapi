@@ -13,6 +13,10 @@ jobs:
     steps:
       - name: checking out lambdapi repo ...
         uses: actions/checkout@v2
+      - name: install emacs ...
+        uses: jcs090218/setup-emacs@master
+        with:
+          version: 27.2
       - name: recovering cached opam files ...
         uses: actions/cache@v2
         with:
@@ -22,10 +26,6 @@ jobs:
         uses: avsm/setup-ocaml@v1
         with:
           ocaml-version: ${{ matrix.ocaml-version }}
-      - name: install emacs ...
-        uses: purcell/setup-emacs@master
-        with:
-          version: 27.2
       - name: installing dependencies ...
         run: |
           opam update
