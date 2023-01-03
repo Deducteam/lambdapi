@@ -3,7 +3,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
-## 2.3.0 (2023-01-02)
+## 2.3.0 (2023-01-03)
 
 ### Added
 
@@ -24,6 +24,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   is not recognised by Dedukti2. It is now exported as `#REQUIRE {|module-name|}`,
   and symbols are exported as `{|module-name|}.foo`.
 - HRS and XTC exports.
+
+### Changed
+
+- Do not propose installation of Emacs mode via opam anymore as it can easily be installed from Emacs.
 
 ## 2.2.1 (2022-07-04)
 

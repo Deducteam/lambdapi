@@ -444,14 +444,12 @@ which allows to write, e.g.
 
 ::
 
-    coerce_rule coerce (List $a) (List $b) $l ↪
-      map (λ e: El $a, coerce $a $b e) $l
+    coerce_rule coerce (List $a) (List $b) $l ↪ map (λ e: El $a, coerce $a $b e) $l
 
 where ``Set: TYPE;``, ``List : Set → TYPE``, ``El : Set → TYPE`` and ``map`` is
-the usual mapping operator on lists such that ``map f (cons x l) ≡ cons (f x)
-(map l)``.
+the usual map operator on lists such that ``map f (cons x l) ≡ cons (f x) (map l)``.
 
-*WARNING* Coercions are still experimental, and will not mix well is
+*WARNING* Coercions are still experimental and may not mix well with
 metavariables. Indeed, the term ``coerce ?1 Float t`` will not reduce to
 ``FloatOfInt t`` even if the equation ``?1 ≡ Int`` has been registered during
 typing. Furthermore, for the moment, it is unsafe to have symbols that can be
