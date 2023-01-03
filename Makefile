@@ -128,10 +128,10 @@ $(LIB_ROOT):
 	mkdir -p $@
 
 .PHONY: install
-install: install_lambdapi install_emacs_mode $(LIB_ROOT)
+install: install_lambdapi $(LIB_ROOT)
 
 .PHONY: uninstall
-uninstall: uninstall_lambdapi uninstall_emacs_mode
+uninstall: uninstall_lambdapi
 
 .PHONY: install_lambdapi
 install_lambdapi: lambdapi

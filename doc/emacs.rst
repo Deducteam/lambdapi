@@ -38,76 +38,16 @@ keybindings, you can change them easily!
 Installation
 ------------
 
-The ``lambdapi-mode`` is automatically installed when using ``opam``
-(provided that emacs is available at installation time). It can also
-be installed from the sources and from `MELPA <https://melpa.org>`__
-using any package manager of Emacs (``package.el``,
-`straight <https://github.com/raxod502/straight.el>`__, …). Installation
-from opam or the sources requires less configuration on the Emacs side,
-but installation through Melpa takes care automatically of dependencies.
+The ``lambdapi-mode`` can be installed from `MELPA
+<https://melpa.org>`__ using any package manager of Emacs
+(``package.el``, `straight
+<https://github.com/raxod502/straight.el>`__, …).  Provided that Emacs
+is properly configured (see https://melpa.org/#/getting-started to
+configure Emacs to use MELPA), the mode can be installed with ``M-x
+package-install RET lambdapi-mode``.
 
-Installing with `opam`_:
-  opam installs both lambdapi and the emacs mode. So if lambdapi has been
-  installed using opam, the lambdapi-mode should be as well. If it is not the
-  case, it may still be installed using one of the other two installation
-  methods. To activate the mode when editing ``.lp`` and ``.dk`` files, add to
-  the configuration file of Emacs (``~/.emacs.d/init.el`` or ``~/.emacs``):
-
-  .. code:: emacs-lisp
-
-     (load "lambdapi-site-file")
-
-  If Emacs fails on startup with the following message:
-
-     ``Cannot open load file: No such file or directory, lambdapi-site-file``
-
-  then you have to add the folder containing the emacs-lisp files to the load
-  path of Emacs. For this, there are two options
-
-  * `opam`_ (or rather
-    `opam-user-setup <https://github.com/OCamlPro/opam-user-setup>`_)
-    can set that up for you with ``opam user-setup install``
-  * it can be done manually, editing Emacs’ configuration file, adding *before*
-    ``(load "lambdapi-site-file")``
-
-    .. code:: emacs-lisp
-
-       (require 'subr-x)
-       (let* ((opshare (shell-command-to-string "opam var share"))
-              (opshare (string-trim opshare)))
-         (add-to-list 'load-path (concat opshare "/emacs/site-lisp/")))
-
-  The ``opam`` installation does not handle dependencies. The following
-  packages might be missing (but they are available on `elpa`_):
-
-  * `eglot`_,
-  * `highlight`_,
-  * `math-symbol-lists`_,
-  * `company`_ (optional) for tooltip unicode completion,
-  * `company-math`_ (optional) for tooltip unicode completion).
-
-Installing from sources:
-  the lambdapi emacs mode can be installed
-  from the sources:
-
-  .. code:: shell
-
-     cd lambdapi
-     make install_emacs_mode
-
-  This command will byte-compile a file using the emacs binary available
-  in the path. The ``EMACS`` variable of the makefile can be modified to
-  specify which emacs binary is to be used. The configuration steps are
-  the same as for the installation with opam.
-
-Installing from MELPA:
-  provided that Emacs is properly configured
-  (or see https://melpa.org/#/getting-started to configure
-  Emacs to use MELPA), the mode can be installed with
-  ``M-x package-install RET lambdapi-mode``.
-
-  If you have `use-package`_, it can be automatically installed by adding to
-  your configuration file:
+If you have `use-package`_, it can be automatically installed by
+adding to your configuration file:
 
   .. code:: emacs-lisp
 

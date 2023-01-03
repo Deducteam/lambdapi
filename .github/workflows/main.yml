@@ -13,10 +13,6 @@ jobs:
     steps:
       - name: checking out lambdapi repo ...
         uses: actions/checkout@v2
-      - name: install emacs ...
-        uses: jcs090218/setup-emacs@master
-        with:
-          version: 27.2
       - name: recovering cached opam files ...
         uses: actions/cache@v2
         with:
@@ -30,8 +26,6 @@ jobs:
         run: |
           opam update
           opam upgrade
-          opam install conf-emacs
-          opam depext
           opam pin add -n -k path lambdapi .
           opam install --deps-only -d -t lambdapi
       - name: running tests ...
