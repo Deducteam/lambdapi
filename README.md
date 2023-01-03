@@ -37,8 +37,9 @@ The installation gives you:
 
 * a main executable ``lambdapi`` in your ``PATH``
 * OCaml libraries
-* a ``lambdapi`` mode for ``vim``
-* a ``lambdapi`` mode for ``emacs``
+
+The Emacs extension is available on `MELPA <https://melpa.org/#/lambdapi-mode>`_
+.
 
 The VSCode extension is available on the [Marketplace](https://marketplace.visualstudio.com/items?itemName=Deducteam.lambdapi).
 
@@ -59,7 +60,7 @@ git clone https://github.com/Deducteam/lambdapi.git
 ```
 
 Dependencies are described in `lambdapi.opam`. The command `why3 config detect`
-must be run to make Why3 know the available provers.
+must be run for Why3 to know the available provers.
 
 Using Opam, a suitable OCaml environment can be setup as follows:
 ```bash
@@ -74,10 +75,11 @@ Use the `--help` option for more information. Other make targets are:
 ```bash
 make                        # Build lambdapi
 make doc                    # Build the user documentation (avalaible on readthedocs)
+make bnf                    # Build the BNF grammar
 make odoc                   # Build the developer documentation
 make install                # Install lambdapi
 make install_emacs_mode     # Install emacs mode
-make install_vim_mode       # Install vim support
+make install_vim_mode       # Install vim mode
 ```
 
 You can run `lambdapi` without installing it with `dune exec -- lambdapi`.
