@@ -3,27 +3,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
-## Unreleased
+## 2.3.0 (2023-01-03)
 
 ### Added
 
-- Add export to Coq.
+- Export to Coq.
 - (API) the rewrite engine can match on the constant `TYPE`.
 - Automatic coercion insertion mechanism.
   For example, the command `coerce_rule coerce Int Float $x ↪ FloatOfInt $x;`
   can be used to instruct Lambdapi to automatically coerce integers to floats
   using the function `FloatOfInt`.
 
-### Changed
+### Fixed
 
-- Fixed generation of metavariables through the rewriting engine.
-- Fixed application of pattern variables in rewrite rules RHS in the Dedukti
+- Generation of metavariables through the rewriting engine.
+- Application of pattern variables in rewrite rules RHS in the Dedukti
   export.
-- Fixed Dedukti export: invalid Dedukti module name were not brace-quoted,
+- Dedukti export: invalid Dedukti module name were not brace-quoted,
   for instance, `#REQUIRE module-name.` could be exported, while `module-name`
   is not recognised by Dedukti2. It is now exported as `#REQUIRE {|module-name|}`,
   and symbols are exported as `{|module-name|}.foo`.
-- Fixed HRS and XTC exports.
+- HRS and XTC exports.
+
+### Changed
+
+- Do not propose installation of Emacs mode via opam anymore as it can easily be installed from Emacs.
 
 ## 2.2.1 (2022-07-04)
 
@@ -78,7 +82,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   two new builtins ("ex" and "all"). Codewise, it requires a new
   translation from encoded types to Why3 types.
 
-- Tems may be _placeholders_. Placeholders are holes in the
+- Terms may be _placeholders_. Placeholders are holes in the
   concrete syntax. They are refined into metavariables. *Placeholders
   cannot appear nonlinearly in terms*. From [A Bidirectional Refinement
   Algorithm...](https://arxiv.org/abs/1202.4905), p. 31,
