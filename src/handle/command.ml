@@ -509,7 +509,7 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
         | P_proof_end ->
             (* Check that the proof is indeed finished. *)
             if not (finished ps) then
-              fatal pe.pos "The proof is not finished.";
+              fatal pe.pos "The proof is not finished.@.%a" goals ps;
             (* Get the final definition. *)
             let d =
               Option.map (fun m -> unfold (mk_Meta(m,[||]))) ps.proof_term in
