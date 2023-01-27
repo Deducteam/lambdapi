@@ -79,6 +79,8 @@
 
     let require (lps,id) = make_pos lps (P_require(false,[make_pos lps [id]]))
 
+    let arrow lps a b = make_pos lps (P_Arro (a, b))
+    let binary lps a = arrow lps a (arrow lps a a)
 %}
 
 %token EOF
@@ -137,9 +139,9 @@ line:
   | KW_PRV KW_INJ id=ID COLON ty=term DOT
     { symbol $sloc [protec $1; inj $2] id [] (Some ty) None }
   | KW_DEFAC id=ID LEFTSQU ty=term RIGHTSQU DOT
-    { symbol $sloc [ac $1] id [] (Some ty) None }
+    { symbol $sloc [ac $1] id [] (Some (binary $loc(ty) ty)) None }
   | KW_PRV KW_DEFAC id=ID LEFTSQU ty=term RIGHTSQU DOT
-    { symbol $sloc [protec $1; ac $2] id [] (Some ty) None }
+    { symbol $sloc [protec $1; ac $2] id [] (Some (binary $loc(ty) ty)) None }
   | KW_DEFACU id=ID LEFTSQU ty=term COMMA neu=term RIGHTSQU DOT
     { let _ = id and _ = ty and _ = neu in fail $1 "Unsupported command" }
   | KW_PRV KW_DEFACU id=ID LEFTSQU ty=term COMMA neu=term RIGHTSQU DOT
@@ -263,7 +265,7 @@ term:
   | LEFTPAR ID COLON aterm RIGHTPAR ARROW term
       { prod $sloc $2 $4 $7 }
   | aterm ARROW term
-      { make_pos $sloc (P_Arro ($1, $3)) }
+      { arrow $sloc $1 $3 }
   | pid FATARROW term
       { abst $sloc $1 None $3 }
   | pid COLON aterm FATARROW term
