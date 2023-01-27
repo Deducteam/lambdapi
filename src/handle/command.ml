@@ -198,6 +198,14 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
   Console.out 3 (Color.cya "%a") Pos.pp pos;
   Console.out 4 "%a" Pretty.command cmd;
   match elt with
+  | P_type_class({ Pos.elt = id; pos }) ->
+    let sym = Sig_state.find_sym ~prt:false ~prv:false ss { Pos.elt = ([],id); pos} in
+    Sign.add_tc ss.signature sym;
+      ss, None, None
+  | P_type_class_instance ({ Pos.elt = id; pos }) ->
+    let sym = Sig_state.find_sym ~prt:false ~prv:false ss { Pos.elt = ([],id); pos} in
+    Sign.add_tc_inst ss.signature sym;
+    ss, None, None
   | P_elpi(file,pred,arg) ->
       (ss, None, (Elpi_handle.run ss file pred arg; None))
   | P_query(q) -> (ss, None, Query.handle ss None q)

@@ -239,4 +239,6 @@ let require : Path.t -> _ -> unit = fun p _ ->
 let sign : Sign.t -> unit = fun sign ->
   Path.Map.iter require !(sign.sign_deps);
   Stdlib.(current_path := sign.sign_path);
-  List.iter (decl Format.std_formatter) (decls_of_sign sign)
+  List.iter (decl Format.std_formatter) (decls_of_sign sign);
+  SymSet.iter (fun symb -> Format.printf "#TYPE_CLASS %s.\n" symb.sym_name) !(sign.sign_tc);
+  SymSet.iter (fun symb -> Format.printf "#TYPE_CLASS_INSTANCE %s.\n" symb.sym_name) !(sign.sign_tc_inst)

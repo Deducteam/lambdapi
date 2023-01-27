@@ -12,7 +12,7 @@ touch tmp/cupicef.dk
 (cd tmp; for i in *.dk; do ../add_requires.sh $i > $i.imports ; done)
 
 # next line is to drop # directives temporarily
-cp tmp/*.dk .
+#cp tmp/*.dk .
 
 for i in *.dk; do cat header tmp/$i.imports > `basename $i .dk`.lp && lambdapi export -o lp $i >> `basename $i .dk`.lp ; done
 cp cupicef.lp.handmade cupicef.lp

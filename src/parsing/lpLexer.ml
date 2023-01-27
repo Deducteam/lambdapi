@@ -47,6 +47,7 @@ type token =
   | DEBUG
   | ELPI
   | END
+  | EXISTING
   | FAIL
   | FLAG
   | GENERALIZE
@@ -213,6 +214,7 @@ let rec token lb =
   | "debug" -> DEBUG
   | "elpi" -> ELPI
   | "end" -> END
+  | "existing" -> EXISTING
   | "fail" -> FAIL
   | "flag" -> FLAG
   | "generalize" -> GENERALIZE

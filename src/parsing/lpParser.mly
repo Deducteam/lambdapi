@@ -40,6 +40,7 @@
 %token DEBUG
 %token ELPI
 %token END
+%token EXISTING
 %token FAIL
 %token FLAG
 %token GENERALIZE
@@ -141,6 +142,10 @@ command:
     { make_pos $sloc (P_require_as(p,i)) }
   | OPEN l=list(path) SEMICOLON
     { make_pos $sloc (P_open l) }
+  | EXISTING INSTANCE id=UID SEMICOLON
+    { make_pos $sloc (P_type_class_instance(make_pos $sloc id)) }
+  | EXISTING TYPECLASS id=UID SEMICOLON
+    { make_pos $sloc (P_type_class(make_pos $sloc id)) }
   | ms=modifier* SYMBOL s=uid_or_nat al=param_list* COLON a=term
     po=proof? SEMICOLON
     { let sym =

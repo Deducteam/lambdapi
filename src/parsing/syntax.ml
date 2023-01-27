@@ -259,6 +259,8 @@ type p_command_aux =
   | P_require  of bool * p_path list
     (* "require open" if the boolean is true *)
   | P_require_as of p_path * p_ident
+  | P_type_class of p_ident
+  | P_type_class_instance of p_ident
   | P_open of p_path list
   | P_symbol of p_symbol
   | P_rules of p_rule list

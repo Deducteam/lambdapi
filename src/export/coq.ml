@@ -274,6 +274,8 @@ let command : p_command pp = fun ppf { elt; _ } ->
     end
   | P_unif_rule _ -> ()
   | P_elpi _ -> ()
+  | P_type_class( { Pos.elt = id; _ } ) -> out ppf "Existing Class %s. " id
+  | P_type_class_instance( { Pos.elt = id; _ } ) -> out ppf "Existing Instance %s. " id
   end
 
 let ast : ast pp = fun ppf -> Stream.iter (command ppf)

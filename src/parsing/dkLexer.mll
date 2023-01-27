@@ -53,6 +53,8 @@ rule token = parse
   | "#ASSERTNOT"{ ASSERTNOT  ( get_loc lexbuf ) }
   | "#PRINT"    { PRINT      ( get_loc lexbuf ) }
   | "#GDT"      { GDT        ( get_loc lexbuf ) }
+  | "#TYPE_CLASS" space+ (ident as md)     { TYPE_CLASS        ( get_loc lexbuf , mk_ident md) }
+  | "#TYPE_CLASS_INSTANCE"  space+ (ident as md)    { TYPE_CLASS_INSTANCE        ( get_loc lexbuf , mk_ident md) }
   | mident as md '.' (ident as id)
   { QID ( get_loc lexbuf , mk_mident md , mk_ident id ) }
   | ident  as id
