@@ -10,7 +10,7 @@ open Proof
     refinement of [t]. Note that [p] gets modified. Context [c] must well
     sorted.
     @raise Fatal if [t] cannot be typed. *)
-val infer : popt -> problem -> ctxt -> term -> term * term
+val infer : ?scope:(Parsing.Syntax.p_term -> Core.Term.term * (int * string) list) -> Sig_state.t -> popt -> problem -> ctxt -> term -> term * term
 
 (** [check pos p c t a] checks that the term [t] has type [a] in context [c]
     and under the constraints of [p], and returns [t] refined. Context [c]

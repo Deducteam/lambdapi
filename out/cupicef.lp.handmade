@@ -1,0 +1,364 @@
+constant symbol Sort : TYPE;
+symbol sup : Sort → Sort → Sort;
+constant symbol Univ : Π (s : Sort), TYPE;
+symbol Term : Π (s : Sort), Π (a : Univ s), TYPE;
+constant symbol Bool : TYPE;
+constant symbol eps : Bool → TYPE;
+constant symbol true : Bool;
+constant symbol I : eps true;
+symbol Axiom : Sort → Sort → Bool;
+symbol Rule : Sort → Sort → Sort → Bool;
+symbol Cumul : Sort → Sort → Bool;
+symbol Eq : Sort → Sort → Bool;
+rule Eq $x $x ↪ true;
+associative commutative symbol and : Bool → Bool → Bool;
+rule and true $c ↪ $c;
+rule and $c true ↪ $c;
+symbol BoolO : TYPE;
+constant symbol BoolNone : BoolO;
+constant symbol BoolSome : Bool → BoolO;
+symbol Multi : Bool → BoolO → TYPE;
+rule Multi $A BoolNone ↪ eps $A
+with Multi $A (BoolSome $B) ↪ eps $B
+                                → Π (C : BoolO), Multi (and $A $B) C;
+constant symbol pair : Π (A : BoolO), Multi true A;
+symbol SortO : TYPE;
+constant symbol SortNone : SortO;
+constant symbol SortSome : Sort → SortO;
+symbol Trans : Sort → Sort → SortO → TYPE;
+rule Trans $s1 $s2 SortNone ↪ eps (Cumul $s1 $s2)
+with Trans $s1 $s2 (SortSome $s3) ↪ eps (Cumul $s2 $s3)
+                                      → Π (so : SortO), Trans $s1 $s3 so;
+constant symbol trans : Π (s : Sort), Π (so : SortO), Trans s s so;
+constant symbol cumul_eq
+  : Π (s1 : Sort), Π (s2 : Sort), eps (Eq s1 s2) → eps (Cumul s1 s2);
+constant symbol eq_sym
+  : Π (s1 : Sort), Π (s2 : Sort), eps (Eq s1 s2) → eps (Eq s2 s1);
+symbol univ : Π (s : Sort), Π (s' : Sort), eps (Axiom s s') → Univ s';
+symbol prod
+  : Π (s1 : Sort),
+      Π (s2 : Sort),
+        Π (s3 : Sort),
+          eps (Rule s1 s2 s3)
+          → Π (a : Univ s1), Π (b : Term s1 a → Univ s2), Univ s3;
+symbol SubType : Π (s : Sort), Π (s' : Sort), Univ s → Univ s' → Bool;
+symbol cast
+  : Π (s : Sort),
+      Π (s' : Sort),
+        Π (a : Univ s),
+          Π (b : Univ s'), eps (SubType s s' a b) → Term s a → Term s' b;
+constant symbol sinf : Sort;
+symbol Code ≔ Univ sinf;
+symbol Decode : Code → TYPE;
+symbol uncode : Π (t : Code), Code → Decode t;
+symbol code : Π (t : Code), Decode t → Code;
+constant symbol cU : Π (s : Sort), Code;
+constant symbol cPi : Π (A : Code), (Decode A → Code) → Code;
+constant symbol cLam : Π (A : Code), (Decode A → Code) → Code;
+symbol cApp : Code → Code → Code;
+rule Decode (cU $s) ↪ Univ $s;
+rule Decode (cPi $a $b) ↪ Π (x : Decode $a), Decode ($b x);
+rule code (cU sinf) $t ↪ $t;
+rule uncode (cU sinf) $t ↪ $t;
+rule Term $s $t ↪ Decode (code (cU $s) $t);
+rule univ $s $s' $p ↪ uncode (cU $s') (cU $s);
+rule prod $s1 $s2 $s3 $p $a $b ↪ uncode (cU $s3)
+                                   (cPi (code (cU $s1) $a)
+                                    (λ x, code (cU $s2.[]) ($b.[] x)));
+rule cast $s1 $s2 $a $b _ $t ↪ uncode (code (cU $s2) $b)
+                                 (code (code (cU $s1) $a) $t);
+rule Cumul $s $s ↪ true;
+symbol forall : (Code → Bool) → Bool;
+rule forall (λ x, $B.[]) ↪ $B;
+symbol ST : Code → Code → Bool;
+symbol EQ : Code → Code → Bool;
+rule ST (cU $s1) (cU $s2) ↪ Cumul $s1 $s2;
+rule EQ (cU $s1) (cU $s2) ↪ Eq $s1 $s2;
+rule ST (cPi $a $b) (cPi $a' $b') ↪ and (EQ $a $a')
+                                      (forall
+                                       (λ (x : Code),
+                                          ST ($b.[] (uncode $a.[] x))
+                                          ($b'.[] (uncode $a'.[] x))));
+rule EQ (cPi $a $b) (cPi $a' $b') ↪ and (EQ $a $a')
+                                      (forall
+                                       (λ (x : Code),
+                                          EQ ($b.[] (uncode $a.[] x))
+                                          ($b'.[] (uncode $a'.[] x))));
+rule EQ $A $A ↪ true;
+rule ST $A $A ↪ true;
+rule SubType $sa $sb $a $b ↪ ST (code (cU $sa) $a) (code (cU $sb) $b);
+rule code _ (uncode _ $t) ↪ $t;
+rule code (cPi $A $B) $F ↪ cLam $A
+                             (λ (x : Decode $A), code ($B.[] x) ($F.[] x));
+rule uncode (cPi $A $B) $F $U ↪ uncode ($B $U) (cApp $F (code $A $U));
+rule uncode (cPi $A $B) (cLam $A' $F) ↪ λ (x : Decode $A),
+                                            uncode ($B x)
+                                            ($F (uncode $A' (code $A x)));
+rule cApp (code (cPi $A $B) $F) $U ↪ code ($B (uncode $A $U))
+                                       ($F (uncode $A $U));
+rule cApp (cLam $A $F) $U ↪ $F (uncode $A $U);
+rule uncode $s (code $s $t) ↪ $t;
+symbol univ' (s : Sort) (s' : Sort) ≔ uncode (cU s') (cU s);
+symbol lift' (s : Sort) (s' : Sort) (t : Univ s)
+  ≔ uncode (cU s') (code (cU s) t);
+symbol prod' (s1 : Sort) (s2 : Sort) (s : Sort) (A : Univ s1)
+  (B : Term s1 A → Univ s2) : Univ s
+  ≔ uncode (cU s) (cPi (code (cU s1) A) (λ x, code (cU s2) (B x)));
+constant symbol Nat : TYPE;
+symbol s : Nat → Nat;
+constant symbol z : Nat;
+constant symbol prop : Sort;
+constant symbol {|type|} : Nat → Sort;
+symbol set : Sort ≔ {|type|} z;
+symbol type0 : Sort ≔ {|type|} (s z);
+associative commutative symbol max : Nat → Nat → Nat;
+rule max $i z ↪ $i;
+rule s (max $i $j) ↪ max (s $i) (s $j);
+rule max $i $i ↪ $i
+with max $i (max $i $j) ↪ max $i $j
+with max $i (s $i) ↪ s $i
+with max $i (max (s $i) $j) ↪ max (s $i) $j
+with max $i (s (max $i $j)) ↪ s (max $i $j)
+with max (max $i $k) (s (max $i $j)) ↪ max $k (s (max $i $j));
+
+rule max z $i ↪ $i;
+rule max (max $i $j) $i ↪ max $i $j
+with max (max $j $i) $i ↪ max $i $j
+with max $i (max $j $i) ↪ max $i $j
+with max (s $i) $i ↪ s $i
+with max (max (s $i) $j) $i ↪ max (s $i) $j
+with max (max $j (s $i)) $i ↪ max (s $i) $j
+with max $i (max $j (s $i)) ↪ max (s $i) $j
+with max $i (s (max $j $i)) ↪ s (max $i $j)
+with max (s (max $i $j)) $i ↪ s (max $i $j)
+with max (s (max $j $i)) $i ↪ s (max $i $j)
+with max (max $k $i) (s (max $i $j)) ↪ max $k (s (max $i $j))
+with max (max $k $i) (s (max $j $i)) ↪ max $k (s (max $i $j))
+with max (max $i $k) (s (max $j $i)) ↪ max $k (s (max $i $j))
+with max (s (max $i $j)) (max $i $k) ↪ max $k (s (max $i $j))
+with max (s (max $i $j)) (max $k $i) ↪ max $k (s (max $i $j))
+with max (s (max $j $i)) (max $i $k) ↪ max $k (s (max $i $j))
+with max (s (max $j $i)) (max $k $i) ↪ max $k (s (max $i $j));
+
+rule sup prop $s ↪ $s
+with sup $s prop ↪ $s
+with sup ({|type|} $i) ({|type|} $j) ↪ {|type|} (max $i $j);
+symbol Leq : Nat → Nat → Bool;
+rule Leq z $j ↪ true
+with Leq (s $i) (s $j) ↪ Leq $i $j
+with Leq (max $i $j) $k ↪ and (Leq $i $k) (Leq $j $k)
+with Leq $i $i ↪ true
+with Leq $i (s $i) ↪ true
+with Leq $i (max $i $j) ↪ true
+with Leq $i (max $j $i) ↪ true
+with Leq $i (max (s $i) $j) ↪ true
+with Leq $i (max $j (s $i)) ↪ true;
+rule Axiom prop ({|type|} _) ↪ true
+with Axiom ({|type|} $i) ({|type|} $j) ↪ Leq $i $j;
+rule Rule _ prop prop ↪ true
+with Rule prop ({|type|} $i) ({|type|} $i) ↪ true
+with Rule ({|type|} $i) ({|type|} $j) ({|type|} $k) ↪ Leq (max $i $j) $k;
+rule Cumul prop prop ↪ true
+with Cumul prop ({|type|} $i) ↪ true
+with Cumul ({|type|} $i) ({|type|} $j) ↪ Leq $i $j;
+symbol axiom : Sort → Sort;
+rule axiom prop ↪ {|type|} z
+with axiom ({|type|} $i) ↪ {|type|} (s $i);
+rule Axiom $x (axiom $x) ↪ true;
+symbol {|rule|} : Sort → Sort → Sort;
+rule {|rule|} prop $s ↪ $s
+with {|rule|} _ prop ↪ prop
+with {|rule|} ({|type|} $i) ({|type|} $j) ↪ {|type|} (max $i $j);
+rule Rule $s1 $s2 ({|rule|} $s1 $s2) ↪ true;
+rule Rule $s $s $s ↪ true;
+constant symbol N : TYPE;
+constant symbol 0 : N;
+constant symbol _S : N → N;
+symbol 1 ≔ _S 0;
+symbol 2 ≔ _S 1;
+symbol 3 ≔ _S 2;
+symbol 4 ≔ _S 3;
+symbol 5 ≔ _S 4;
+symbol 6 ≔ _S 5;
+symbol 7 ≔ _S 6;
+symbol 8 ≔ _S 7;
+symbol 9 ≔ _S 8;
+constant symbol SingleArity : TYPE;
+constant symbol SAcons : N → Code → SingleArity;
+symbol SA_code : SingleArity → Code;
+rule SA_code (SAcons _ $A) ↪ $A;
+constant symbol MutualArity : N → TYPE;
+constant symbol MAnil : MutualArity 0;
+constant symbol MAcons
+  : Π (n : N), SingleArity → MutualArity n → MutualArity (_S n);
+symbol MA_ith_SA : Π (n : N), MutualArity n → N → SingleArity;
+rule MA_ith_SA _ (MAcons _ $SA _) 0 ↪ $SA;
+rule MA_ith_SA _ (MAcons $n _ $MA) (_S $i) ↪ MA_ith_SA $n $MA $i;
+symbol MA_ith_code (n : N) (MA : MutualArity n) (i : N) : Code
+  ≔ SA_code (MA_ith_SA n MA i);
+symbol MA_lift_code : Code → Π (m : N), MutualArity m → Code;
+rule MA_lift_code $B _ MAnil ↪ $B;
+rule MA_lift_code $B _ (MAcons $m $SA $MA) ↪ cPi (SA_code $SA)
+                                               (λ f,
+                                                  MA_lift_code $B.[] $m.[]
+                                                  $MA.[]);
+symbol MA_code (n : N) (MA : MutualArity n) (i : N) : Code
+  ≔ MA_lift_code (MA_ith_code n MA i) n MA;
+constant symbol MutualFixpointAux
+  : Π (n : N), MutualArity n → Π (i : N), MutualArity i → TYPE;
+symbol MutualFixpoint (n : N) (MA : MutualArity n) : TYPE
+  ≔ MutualFixpointAux n MA n MA;
+constant symbol MFTnil
+  : Π (n : N), Π (MA : MutualArity n), MutualFixpointAux n MA 0 MAnil;
+constant symbol MFTcons
+  : Π (n : N),
+      Π (MAn : MutualArity n),
+        Π (i : N),
+          Π (MAi : MutualArity i),
+            Π (SA : SingleArity),
+              Decode (MA_lift_code (SA_code SA) n MAn)
+              → MutualFixpointAux n MAn i MAi
+                  → MutualFixpointAux n MAn (_S i) (MAcons i SA MAi);
+symbol fix_body
+  : Π (n : N),
+      Π (MA : MutualArity n),
+        MutualFixpoint n MA → Π (i : N), Decode (MA_code n MA i);
+symbol fix_body'
+  : Π (n : N),
+      Π (MAn : MutualArity n),
+        Π (i : N),
+          Π (MAi : MutualArity i),
+            MutualFixpointAux n MAn i MAi
+            → Π (j : N),
+                  Decode (MA_lift_code (SA_code (MA_ith_SA i MAi j)) n MAn);
+rule fix_body $n $MA $MF $i ↪ fix_body' $n $MA $n $MA $MF $i;
+rule fix_body' $n $MA (_S _) (MAcons _ $SA _) (MFTcons _ _ _ _ _ $t _) 0 ↪ $t;
+rule fix_body' $n $MA (_S _) (MAcons $i _ $MAi) (MFTcons _ _ _ _ _ _ $MFT)
+     (_S $j) ↪ fix_body' $n $MA $i $MAi $MFT $j;
+symbol app_body
+  : Π (n : N),
+      Π (MA : MutualArity n),
+        Π (A : Code),
+          Π (B : Decode A → Code),
+            Π (body : Decode (MA_lift_code (cPi A B) n MA)),
+              Π (a : Decode A), Decode (MA_lift_code (B a) n MA);
+rule app_body _ MAnil _ _ $body $a ↪ $body $a;
+rule app_body _ (MAcons $n $SA $MA) $A $B $body $a ↪ λ
+                                                         (
+                                                         f : Decode
+                                                             (SA_code $SA)
+                                                         ),
+                                                         app_body $n $MA $A
+                                                         $B ($body f) $a;
+constant symbol Guarded? : TYPE;
+constant symbol guarded : Guarded?;
+symbol code_guarded? : Π (Ind : Code), Decode Ind → Guarded?;
+symbol guarded? : Π (s : Sort), Π (Ind : Univ s), Term s Ind → Guarded?;
+rule guarded? $s $Ind $c ↪ code_guarded? (code (cU $s) $Ind) $c;
+symbol fix_proj
+  : Π (n : N),
+      Π (MA : MutualArity n),
+        MutualFixpoint n MA → Π (i : N), Decode (MA_ith_code n MA i);
+symbol fix_proj_1
+  : Π (n : N),
+      Π (MA : MutualArity n),
+        MutualFixpoint n MA
+        → Π (SA : SingleArity),
+              Decode (MA_lift_code (SA_code SA) n MA) → Decode (SA_code SA);
+rule fix_proj $n $MA $MF $i ↪ fix_proj_1 $n $MA $MF (MA_ith_SA $n $MA $i)
+                                (fix_body $n $MA $MF $i);
+rule fix_proj_1 $n $MA $MF (SAcons (_S $i) (cPi $A $B)) $body $a ↪ 
+fix_proj_1 $n $MA $MF (SAcons $i ($B $a)) (app_body $n $MA $A $B $body $a);
+symbol fix_proj_2
+  : Π (n : N),
+      Π (MA : MutualArity n),
+        MutualFixpoint n MA
+        → Π (A : Code),
+              Decode (MA_lift_code A n MA) → Guarded? → Decode A;
+rule fix_proj_1 $n $MA $MF (SAcons 0 (cPi $Ind $B)) $body $a ↪ fix_proj_2
+                                                                 $n $MA $MF
+                                                                 (cPi $Ind $B)
+                                                                 $body
+                                                                 (code_guarded?
+                                                                  $Ind $a)
+                                                                 $a;
+symbol fix_proj_3
+  : Π (A : Code),
+      Π (i : N),
+        Π (MAi : MutualArity i),
+          Π (f : Π (k : N), Decode (MA_ith_code i MAi k)),
+            Decode (MA_lift_code A i MAi) → Decode A;
+rule fix_proj_2 $n $MA $MF $A $body guarded ↪ fix_proj_3 $A $n $MA
+                                                (λ (k : N),
+                                                   fix_proj $n.[] $MA.[]
+                                                   $MF.[] k)
+                                                $body;
+rule fix_proj_3 _ _ MAnil _ $body ↪ $body;
+rule fix_proj_3 $A _ (MAcons $i _ $MAi) $f $body ↪ fix_proj_3 $A $i $MAi
+                                                     (λ (k : N),
+                                                        $f.[] (_S k))
+                                                     ($body ($f 0));
+symbol MutualArity' : N → N → TYPE;
+rule MutualArity' $n 0 ↪ MutualArity $n;
+rule MutualArity' $n (_S $i) ↪ SingleArity → MutualArity' $n $i;
+symbol MA_magic
+  : Π (n : N),
+      Π (m : N), SingleArity → MutualArity' n m → MutualArity' (_S n) m;
+rule MA_magic $n 0 $A $MA ↪ MAcons $n $A $MA;
+rule MA_magic $n (_S $m) $A $MA $A' ↪ MA_magic $n $m $A ($MA $A');
+symbol make_MA : Π (n : N), MutualArity' n n;
+rule make_MA 0 ↪ MAnil;
+rule make_MA (_S $n) $SA ↪ MA_magic $n $n $SA (make_MA $n);
+symbol MutualFixpoint'
+  : Π (n : N),
+      MutualArity n
+      → Π (i : N), MutualArity i → Π (j : N), MutualArity j → TYPE;
+rule MutualFixpoint' $n $MAn $i $MAi _ MAnil ↪ MutualFixpointAux $n $MAn $i
+                                                 $MAi;
+rule MutualFixpoint' $n $MAn $i $MAi _ (MAcons $j $SA $MAj) ↪ Decode
+                                                                (MA_lift_code
+                                                                 (SA_code $SA)
+                                                                 $n $MAn)
+                                                                → MutualFixpoint'
+                                                                    $n $MAn
+                                                                    $i $MAi
+                                                                    $j $MAj;
+symbol fix_magic
+  : Π (n : N),
+      Π (MAn : MutualArity n),
+        Π (i : N),
+          Π (MAi : MutualArity i),
+            Π (j : N),
+              Π (MAj : MutualArity j),
+                Π (SA : SingleArity),
+                  Decode (MA_lift_code (SA_code SA) n MAn)
+                  → MutualFixpoint' n MAn i MAi j MAj
+                      → MutualFixpoint' n MAn (_S i) (MAcons i SA MAi) j
+                          MAj;
+rule fix_magic $n $MAn $i $MAi _ MAnil $SA $t $MFT ↪ MFTcons $n $MAn $i
+                                                       $MAi $SA $t $MFT;
+rule fix_magic $n $MAn $i $MAi (_S _) (MAcons $j _ $MAj) $SA $t $MFT $t' ↪ 
+fix_magic $n $MAn $i $MAi $j $MAj $SA $t ($MFT $t');
+symbol make_fix
+  : Π (n : N),
+      Π (MAn : MutualArity n),
+        Π (i : N),
+          Π (MAi : MutualArity i), MutualFixpoint' n MAn i MAi i MAi;
+rule make_fix $n $MAn _ MAnil ↪ MFTnil $n $MAn;
+rule make_fix $n $MAn (_S _) (MAcons $j $SA $MAj) $t ↪ fix_magic $n $MAn $j
+                                                         $MAj $j $MAj $SA $t
+                                                         (make_fix $n $MAn $j
+                                                          $MAj);
+symbol SA : N → Π (s : Sort), Univ s → SingleArity;
+rule SA $n $s $t ↪ SAcons $n (code (cU $s) $t);
+symbol fix
+  : Π (n : N), Π (MA : MutualArity n), MutualFixpoint' n MA n MA n MA;
+rule fix $n $MAn ↪ make_fix $n $MAn $n $MAn;
+symbol fixproj
+  : Π (n : N),
+      Π (MA : MutualArity' n n → MutualArity n),
+        (MutualFixpoint' n (MA (make_MA n)) n (MA (make_MA n)) n
+         (MA (make_MA n)) → MutualFixpoint n (MA (make_MA n)))
+        → Π (i : N), Decode (MA_ith_code n (MA (make_MA n)) i);
+rule fixproj $n $MA $MF ↪ fix_proj $n ($MA (make_MA $n))
+                            ($MF (fix $n ($MA (make_MA $n))));

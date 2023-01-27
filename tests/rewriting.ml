@@ -15,7 +15,7 @@ let scope_term ss = Scope.scope_term true ss []
 
 let add_sym ss id =
   Sig_state.add_symbol ss Public Defin Eager true (Pos.none id) Term.mk_Kind []
-    None
+    false false None
 
 (* Define a signature state and some symbols. *)
 

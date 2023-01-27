@@ -80,17 +80,19 @@ let handle_require_as : compiler -> sig_state -> p_path -> p_ident ->
 
 (** [handle_modifiers ms] verifies that the modifiers in [ms] are compatible.
     If so, they are returned as a tuple. Otherwise, it fails. *)
-let handle_modifiers : p_modifier list -> prop * expo * match_strat =
+let handle_modifiers : p_modifier list -> prop * expo * match_strat * bool * bool =
   fun ms ->
-  let rec get_modifiers ((props, expos, strats) as acc) = function
+  let rec get_modifiers ((props, expos, strats,tc,tci) as acc) = function
     | [] -> acc
-    | {elt=P_prop _;_} as p::ms -> get_modifiers (p::props, expos, strats) ms
-    | {elt=P_expo _;_} as e::ms -> get_modifiers (props, e::expos, strats) ms
+    | {elt=P_typeclass;_}::ms -> get_modifiers (props, expos, strats,true, tci) ms
+    | {elt=P_typeclass_instance;_}::ms -> get_modifiers (props, expos, strats,tc, true) ms
+    | {elt=P_prop _;_} as p::ms -> get_modifiers (p::props, expos, strats,tc,tci) ms
+    | {elt=P_expo _;_} as e::ms -> get_modifiers (props, e::expos, strats,tc,tci) ms
     | {elt=P_mstrat _;_} as s::ms ->
-        get_modifiers (props, expos, s::strats) ms
+        get_modifiers (props, expos, s::strats,tc,tci) ms
     | {elt=P_opaq;_}::ms -> get_modifiers acc ms
   in
-  let props, expos, strats = get_modifiers ([],[],[]) ms in
+  let props, expos, strats, tc, tci = get_modifiers ([],[],[],false,false) ms in
   let prop =
     match props with
     | [{elt=P_prop (Assoc b);_};{elt=P_prop Commu;_}]
@@ -119,7 +121,7 @@ let handle_modifiers : p_modifier list -> prop * expo * match_strat =
     | [] -> Eager
     | _ -> assert false
   in
-  (prop, expo, strat)
+  (prop, expo, strat, tc, tci)
 
 (** [check_rule ss syms r] checks rule [r] and returns the head symbol of the
    lhs and the rule itself. *)
@@ -163,7 +165,8 @@ let handle_inductive_symbol : sig_state -> expo -> prop -> match_strat
   end;
   (* Actually add the symbol to the signature and the state. *)
   Console.out 2 (Color.red "symbol %a : %a") uid name term typ;
-  let r = Sig_state.add_symbol ss expo prop mstrat false id typ impl None in
+  let r =
+    Sig_state.add_symbol ss expo prop mstrat false id typ impl false false None in
   sig_state := fst r; r
 
 (** Representation of a yet unchecked proof. The structure is initialized when
@@ -195,6 +198,8 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
   Console.out 3 (Color.cya "%a") Pos.pp pos;
   Console.out 4 "%a" Pretty.command cmd;
   match elt with
+  | P_elpi(file,pred,arg) ->
+      (ss, None, (Elpi_handle.run ss file pred arg; None))
   | P_query(q) -> (ss, None, Query.handle ss None q)
   | P_require(b,ps) ->
       (List.fold_left (handle_require compile b) ss ps, None, None)
@@ -286,7 +291,11 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
 
   | P_inductive(ms, params, p_ind_list) ->
       (* Check modifiers. *)
-      let (prop, expo, mstrat) = handle_modifiers ms in
+      let (prop, expo, mstrat,tc,tci) = handle_modifiers ms in
+      if tc then
+        fatal pos "Property typeclass cannot be used on inductive types.";
+      if tci then
+        fatal pos "Property instance cannot be used on inductive types.";
       if prop <> Defin then
         fatal pos "Property modifiers cannot be used on inductive types.";
       if mstrat <> Eager then
@@ -354,7 +363,8 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
           let pos = after (end_pos pos) in
           let id = Pos.make pos rec_name in
           let r =
-            Sig_state.add_symbol ss expo Defin Eager false id rec_typ [] None
+            Sig_state.add_symbol
+              ss expo Defin Eager false id rec_typ [] false false None
           in sig_state := fst r; r
         in
         (ss, rec_sym::rec_sym_list)
@@ -392,7 +402,7 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
       | _ -> ()
     end;
     (* Verify modifiers. *)
-    let prop, expo, mstrat = handle_modifiers p_sym_mod in
+    let prop, expo, mstrat, tc, tci = handle_modifiers p_sym_mod in
     let opaq = List.exists Syntax.is_opaq p_sym_mod in
     let pdata_prv = expo = Privat || (p_sym_def && opaq) in
     (match p_sym_def, opaq, prop, mstrat with
@@ -495,18 +505,18 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
             wrn pe.pos "Proof admitted.";
             let t = Option.map (fun t -> t.elt) t in
             fst (Sig_state.add_symbol
-                   ss expo prop mstrat opaq p_sym_nam a impl t)
+                   ss expo prop mstrat opaq p_sym_nam a impl tc tci t)
         | P_proof_end ->
             (* Check that the proof is indeed finished. *)
             if not (finished ps) then
-              fatal pe.pos "The proof is not finished.";
+              fatal pe.pos "The proof is not finished.@.%a" goals ps;
             (* Get the final definition. *)
             let d =
               Option.map (fun m -> unfold (mk_Meta(m,[||]))) ps.proof_term in
             (* Add the symbol in the signature. *)
             Console.out 2 (Color.red "symbol %a : %a") uid id term a;
             fst (Sig_state.add_symbol
-                   ss expo prop mstrat opaq p_sym_nam a impl d)
+                   ss expo prop mstrat opaq p_sym_nam a impl tc tci d)
       in
       (* Create the proof state. *)
       let pdata_state =
@@ -554,8 +564,10 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
   | Fatal(Some(Some(_)),_) as e -> raise e
   | Fatal(None         ,m)      -> fatal pos "Error on command.@.%s" m
   | Fatal(Some(None)   ,m)      -> fatal pos "Error on command.@.%s" m
+  (*
   | e                           ->
       fatal pos "Uncaught exception: %s." (Printexc.to_string e)
+*)
 
 (** [handle compile_mod ss cmd] retrieves proof data from [cmd] (with
     {!val:get_proof_data}) and handles proofs using functions from

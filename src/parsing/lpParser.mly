@@ -38,6 +38,7 @@
 %token COMPUTE
 %token CONSTANT
 %token DEBUG
+%token ELPI
 %token END
 %token FAIL
 %token FLAG
@@ -48,6 +49,7 @@
 %token INDUCTIVE
 %token INFIX
 %token INJECTIVE
+%token INSTANCE
 %token LET
 %token NOTATION
 %token OPAQUE
@@ -73,6 +75,7 @@
 %token SYMMETRY
 %token TYPE_QUERY
 %token TYPE_TERM
+%token TYPECLASS
 %token UNIF_RULE
 %token VERBOSE
 %token WHY3
@@ -162,6 +165,8 @@ command:
   | NOTATION i=qid_or_nat n=notation SEMICOLON
     { make_pos $loc (P_notation(i,n)) }
   | q=query SEMICOLON { make_pos $sloc (P_query(q)) }
+  | ELPI f=STRINGLIT p=STRINGLIT a=term SEMICOLON
+    { make_pos $sloc (P_elpi(f,p,a)) }
   | EOF { raise End_of_file }
 
 query:
@@ -202,6 +207,8 @@ modifier:
   | PRIVATE { make_pos $sloc (P_expo Term.Privat) }
   | PROTECTED { make_pos $sloc (P_expo Term.Protec) }
   | SEQUENTIAL { make_pos $sloc (P_mstrat Term.Sequen) }
+  | TYPECLASS { make_pos $sloc P_typeclass }
+  | INSTANCE { make_pos $sloc P_typeclass_instance }
 
 uid: s=UID { make_pos $sloc s}
 

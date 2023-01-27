@@ -321,7 +321,7 @@ let rewrite : Sig_state.t -> problem -> popt -> goal_typ -> bool ->
 
   (* Infer the type of [t] (the argument given to the tactic). *)
   let g_ctxt = Env.to_ctxt g_env in
-  let (t, t_type) = Query.infer pos p g_ctxt t in
+  let (t, t_type) = Query.infer ss pos p g_ctxt t in
 
   (* Check that [t_type ≡ Π x1:a1, ..., Π xn:an, P (eq a l r)]. *)
   let (a, l, r), vars  = get_eq_data cfg pos t_type in
