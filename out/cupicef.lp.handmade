@@ -88,9 +88,10 @@ rule EQ $A $A ↪ true;
 rule ST $A $A ↪ true;
 rule SubType $sa $sb $a $b ↪ ST (code (cU $sa) $a) (code (cU $sb) $b);
 rule code _ (uncode _ $t) ↪ $t;
-rule code (cPi $A $B) $F ↪ cLam $A (λ x, code ($B.[] x) ($F.[] x));
+rule code (cPi $A $B) $F ↪ cLam $A
+                             (λ (x : Decode $A), code ($B.[] x) ($F.[] x));
 rule uncode (cPi $A $B) $F $U ↪ uncode ($B $U) (cApp $F (code $A $U));
-rule uncode (cPi $A $B) (cLam $A' $F) ↪ λ x,
+rule uncode (cPi $A $B) (cLam $A' $F) ↪ λ (x : Decode $A),
                                             uncode ($B x)
                                             ($F (uncode $A' (code $A x)));
 rule cApp (code (cPi $A $B) $F) $U ↪ code ($B (uncode $A $U))
@@ -242,7 +243,11 @@ symbol app_body
             Π (body : Decode (MA_lift_code (cPi A B) n MA)),
               Π (a : Decode A), Decode (MA_lift_code (B a) n MA);
 rule app_body _ MAnil _ _ $body $a ↪ $body $a;
-rule app_body _ (MAcons $n $SA $MA) $A $B $body $a ↪ λ f,
+rule app_body _ (MAcons $n $SA $MA) $A $B $body $a ↪ λ
+                                                         (
+                                                         f : Decode
+                                                             (SA_code $SA)
+                                                         ),
                                                          app_body $n $MA $A
                                                          $B ($body f) $a;
 constant symbol Guarded? : TYPE;
@@ -284,13 +289,14 @@ symbol fix_proj_3
           Π (f : Π (k : N), Decode (MA_ith_code i MAi k)),
             Decode (MA_lift_code A i MAi) → Decode A;
 rule fix_proj_2 $n $MA $MF $A $body guarded ↪ fix_proj_3 $A $n $MA
-                                                (λ k,
+                                                (λ (k : N),
                                                    fix_proj $n.[] $MA.[]
                                                    $MF.[] k)
                                                 $body;
 rule fix_proj_3 _ _ MAnil _ $body ↪ $body;
 rule fix_proj_3 $A _ (MAcons $i _ $MAi) $f $body ↪ fix_proj_3 $A $i $MAi
-                                                     (λ k, $f.[] (_S k))
+                                                     (λ (k : N),
+                                                        $f.[] (_S k))
                                                      ($body ($f 0));
 symbol MutualArity' : N → N → TYPE;
 rule MutualArity' $n 0 ↪ MutualArity $n;
