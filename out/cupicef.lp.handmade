@@ -13,6 +13,7 @@ symbol Eq : Sort → Sort → Bool;
 rule Eq $x $x ↪ true;
 associative commutative symbol and : Bool → Bool → Bool;
 rule and true $c ↪ $c;
+rule and $c true ↪ $c;
 symbol BoolO : TYPE;
 constant symbol BoolNone : BoolO;
 constant symbol BoolSome : Bool → BoolO;
@@ -120,13 +121,23 @@ with max $i (s (max $i $j)) ↪ s (max $i $j)
 with max (max $i $k) (s (max $i $j)) ↪ max $k (s (max $i $j));
 
 rule max z $i ↪ $i;
-rule s (max $i $j) ↪ max (s $i) (s $j);
-rule max $i $i ↪ $i
-with max (max $i $j) $i ↪ max $i $j
+rule max (max $i $j) $i ↪ max $i $j
+with max (max $j $i) $i ↪ max $i $j
+with max $i (max $j $i) ↪ max $i $j
 with max (s $i) $i ↪ s $i
 with max (max (s $i) $j) $i ↪ max (s $i) $j
+with max (max $j (s $i)) $i ↪ max (s $i) $j
+with max $i (max $j (s $i)) ↪ max (s $i) $j
+with max $i (s (max $j $i)) ↪ s (max $i $j)
 with max (s (max $i $j)) $i ↪ s (max $i $j)
-with max (s (max $i $j)) (max $i $k) ↪ max $k (s (max $i $j));
+with max (s (max $j $i)) $i ↪ s (max $i $j)
+with max (max $k $i) (s (max $i $j)) ↪ max $k (s (max $i $j))
+with max (max $k $i) (s (max $j $i)) ↪ max $k (s (max $i $j))
+with max (max $i $k) (s (max $j $i)) ↪ max $k (s (max $i $j))
+with max (s (max $i $j)) (max $i $k) ↪ max $k (s (max $i $j))
+with max (s (max $i $j)) (max $k $i) ↪ max $k (s (max $i $j))
+with max (s (max $j $i)) (max $i $k) ↪ max $k (s (max $i $j))
+with max (s (max $j $i)) (max $k $i) ↪ max $k (s (max $i $j));
 
 rule sup prop $s ↪ $s
 with sup $s prop ↪ $s
@@ -138,7 +149,9 @@ with Leq (max $i $j) $k ↪ and (Leq $i $k) (Leq $j $k)
 with Leq $i $i ↪ true
 with Leq $i (s $i) ↪ true
 with Leq $i (max $i $j) ↪ true
-with Leq $i (max (s $i) $j) ↪ true;
+with Leq $i (max $j $i) ↪ true
+with Leq $i (max (s $i) $j) ↪ true
+with Leq $i (max $j (s $i)) ↪ true;
 rule Axiom prop ({|type|} _) ↪ true
 with Axiom ({|type|} $i) ({|type|} $j) ↪ Leq $i $j;
 rule Rule _ prop prop ↪ true
