@@ -14,8 +14,9 @@ let log = log.pp
 (** Number of admitted axioms in the current signature. Used to name the
     generated axioms. This reference is reset in {!module:Compile} for each
     new compiled module. *)
-let admitted : int Stdlib.ref = Stdlib.ref min_int
-let reset_admitted() = Stdlib.(admitted := min_int)
+let admitted_initial_value = min_int
+let admitted : int Stdlib.ref = Stdlib.ref admitted_initial_value
+let reset_admitted() = Stdlib.(admitted := admitted_initial_value)
 
 (** [add_axiom ss sym_pos m] adds in signature state [ss] a new axiom symbol
     of type [!(m.meta_type)] and instantiate [m] with it. WARNING: It does not
