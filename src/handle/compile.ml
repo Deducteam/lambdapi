@@ -55,7 +55,7 @@ let rec compile_with :
       (* [sign] is added to [loaded] before processing the commands so that it
          is possible to qualify the symbols of the current modules. *)
       loaded := Path.Map.add mp sign !loaded;
-      Stdlib.(Tactic.admitted := -1);
+      Tactic.reset_admitted();
       let consume cmd =
         Stdlib.(sig_st := handle (compile_with ~handle ~force) !sig_st cmd)
       in
