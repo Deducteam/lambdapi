@@ -102,6 +102,22 @@ pred msolve o:list sealed-goal.
       else raise No_clause)),
     DocAbove);
 
+  MLCode(Pred("lp.snf",
+    In(term,"X",
+    Out(term,"SX",
+    Read (ContextualConversion.unit_ctx, "SX is the snf of X"))),
+    (fun t _ ~depth:_ _ _ _ ->
+      !: (Eval.snf ~tags:[`NoExpand] [] t))),
+    DocAbove);
+
+  MLCode(Pred("lp.eq_modulo",
+    In(term,"X",
+    In(term,"Y",
+    Read (ContextualConversion.unit_ctx, "X = Y upto rewrite"))),
+    (fun x y ~depth:_ _ _ _ ->
+      if Eval.pure_eq_modulo [] x y then () else raise No_clause)),
+    DocAbove);
+
   MLCode(Pred("lp.term->string",
     In(term,"T",
     Out(string,"S",

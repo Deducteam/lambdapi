@@ -3,15 +3,16 @@ msolve L :-
   print "RULES:" Cl,
   Cl => std.forall L (open tc).
 
-pred open i:(term -> term -> prop), i:sealed-goal.
+pred open i:(symbol -> term -> term -> prop), i:sealed-goal.
 open P (nabla F) :- pi x\ open P (F x).
 open P (seal (goal Ctx Ty Wit)) :-
   print "TC PROBLEM:\n" Ctx "|-\n" Wit ":" Ty "\n",
-  Ctx => P Ty Wit,
+  Ty = appl (appl {{ bios.Term }} _) Term,
+  safe-dest-app Term (symb Class) _, lp.tc? Class,
+  Ctx => P Class Ty Wit,
   print "TC INSTANCE:\n" Ctx "|-\n" Wit ":" Ty "\n".
 
-:index(_ 4)
-pred tc o:term, o:term.
+pred tc o:symbol, o:term, o:term.
 
 pred safe-dest-app i:term, o:term, o:list term.
 safe-dest-app (appl HD ARG) H AS :- !,
@@ -24,21 +25,27 @@ compile (prod (appl (appl {{ bios.Term }} _Univ) Term as W) F) TODO H (pi x\ C x
   safe-dest-app Term (symb S) _, lp.tc? S,
   !,
   pi x\
-    compile (F x) [tc W x |TODO] (appl H x) (C x).
-
+    compile (F x) [tc S W x |TODO] (appl H x) (C x).
 
 compile (prod (appl T U) F) TODO H (pi x\ C x) :-
   T = symb S, lp.tc? S,
   !,
   pi x\
-    compile (F x) [tc (appl T U) x |TODO] (appl H x) (C x).
+    compile (F x) [tc S (appl T U) x |TODO] (appl H x) (C x).
 
 compile (prod _ F) TODO H (pi x\ C x) :-
   !,
   pi x\
     compile (F x) TODO (appl H x) (C x).
 
-compile End TODO HD (tc End HD :- TODO).
+compile (appl (appl {{ bios.Term }} Univ) Term) TODO HD (pi u t\ tc S (End u t) HD :- [Conv u t|TODO]) :- !,
+  safe-dest-app Term (symb S) _,
+  pi u t\
+    End u t = (appl (appl {{ bios.Term }} u) t),
+    Conv u t = (/*lp.eq_modulo*/ u = Univ, /*lp.eq_modulo*/ t = Term). 
+  
+
+compile End TODO HD (tc S End HD :- TODO) :- safe-dest-app End (symb S) _. 
 
 pred compile_all o:list prop.
 compile_all Props :-

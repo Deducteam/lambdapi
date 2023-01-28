@@ -5,7 +5,6 @@ require coq.Coq__Init__Logic as y;
 
 open "tc" coq.Coq__Classes__RelationClasses;
 
-
 flag "print_implicits" on; // default is off
 flag "print_contexts" on; // default is off
 flag "print_domains" on; // default is off
