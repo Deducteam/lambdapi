@@ -82,12 +82,15 @@ let pb = State.declare ~name:"elpi:problem"
 let embed_term : ?pats:(int * string) list -> ?ctx:RawData.constant Term.actxt -> Term.term Conversion.embedding = fun ?(pats=[]) ?(ctx=[]) ~depth st t ->
   let open RawData in
   let open Term in
+  (*Common.Console.out 1 "BEFORE EMBED:@ %a@\n" Print.term t;*)
   let gls = ref [] in
   let call f ~depth s x =
     let s, x, g = f ~depth s x in gls := g @ !gls; s, x in
   let rec aux ~depth ctx st t =
+    (*Common.Console.out 1 "EMBED:@ %d |- %a@\n" (List.length ctx) Print.term t;*)
     match Term.unfold t with
     | Vari v ->
+
         let d = Ctxt.type_of v ctx in
         st, mkBound d
     | Type -> st, mkGlobal typec
@@ -97,12 +100,12 @@ let embed_term : ?pats:(int * string) list -> ?ctx:RawData.constant Term.actxt -
         st, mkApp symbc s []
     | Prod (src, tgt) ->
         let st, src = aux ~depth ctx st src in
-        let _,tgt,ctx = Ctxt.unbind ctx depth None tgt in
+        let _,tgt,ctx = Ctxt.unbind ~keep:true ctx depth None tgt in
         let st, tgt = aux ~depth:(depth+1) ctx st tgt in
         st, mkApp prodc src [mkLam tgt]
     | Abst (ty, body) ->
         let st, ty = aux ~depth ctx st ty in
-        let _,body,ctx = Ctxt.unbind ctx depth None body in
+        let _,body,ctx = Ctxt.unbind ~keep:true ctx depth None body in
         let st, body = aux ~depth:(depth+1) ctx st body in
         st, mkApp prodc ty [mkLam body]
     | Appl (hd, arg) ->

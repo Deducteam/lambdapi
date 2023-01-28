@@ -16,26 +16,33 @@ let embed_goal : Term.meta Conversion.embedding = fun ~depth st m ->
   let ty =
     let open Timed in
     !(m.meta_type) in 
+
   let open RawData in
   let open Utils in
+  (*Common.Console.out 1 "BEFORE EMBED GOAL:@ %a@\n" Print.term ty;*)
+
   let rec aux ~depth st (c,ctx,i,args) ty =
     match unfold ty with
     | Prod (dom,b) ->
+      (*Common.Console.out 1 "EMBED HYP:@ %a@\n" Print.term dom;*)
       let st, dom, gls = embed_term ~ctx:c ~depth st dom in
-      let x,b,c = Ctxt.unbind c depth None b in
+      let x,b,c = Ctxt.unbind ~keep:true c depth None b in
       let st, g, gls1 =
         aux ~depth:(depth+1) st
           (c,(depth+1,mkApp ofc (mkBound depth) [dom])::ctx,i,x::args) b in
       st, mkApp nablac (mkLam g) [], gls @ gls1
     | _ ->
+       (*Common.Console.out 1 "EMBED CONCL:@ %d %d |- %a@\n" (List.length c) (List.length ctx) Print.term ty;*)
        let ctx = List.map (fun (from,t) -> move ~from ~to_:depth t) ctx in
        let st, ty, gls = embed_term ~ctx:c ~depth st ty in
        let m = mk_Meta (i,List.rev args |> List.map Term.of_tvar |> Array.of_list) in
        let st, i, gls1 = embed_term ~ctx:c ~depth st m in
        st, mkApp sealc (mkApp goalc (list_to_lp_list ctx) [ty; i]) [], gls @ gls1
   in
-  aux ~depth st ([],[],m,[]) ty
-
+  let rc = aux ~depth st ([],[],m,[]) ty in
+  (*Common.Console.out 1 "EMBED GOAL END ------------:@ %a@\n" Print.term ty;*)
+  rc
+   
 let goal : Term.meta Conversion.t = {
   Conversion.embed = embed_goal;
   readback = (fun ~depth:_ _ _ -> assert false);
