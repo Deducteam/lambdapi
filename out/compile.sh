@@ -4,21 +4,19 @@
 
 #export PATH=$PWD/_build/install/default/bin:$PATH
 
-# add the exports
-mkdir tmp
-for i in *.dk.gz; do gunzip -k $i; done
-for i in *.dk; do cat $i | sed "s/^#.*$//g" > tmp/$i; done
-touch tmp/cupicef.dk
-(cd tmp; for i in *.dk; do ../add_requires.sh $i > $i.imports ; done)
+for i in *.dk.gz; do rm -f `basename $i .gz`; gunzip -k $i; done
+touch cupicef.dk
 
-# next line is to drop # directives temporarily
-#cp tmp/*.dk .
-
-for i in *.dk; do cat header tmp/$i.imports > `basename $i .dk`.lp && lambdapi export -o lp $i >> `basename $i .dk`.lp ; done
+for i in *.dk; do
+  LPFILE=`basename $i .dk`.lp
+  # add the flags
+  cat header > $LPFILE
+  # add the exports
+  ./add_requires.sh $i >> $LPFILE
+  lambdapi export -o lp $i >> $LPFILE ;
+done
 cp cupicef.lp.handmade cupicef.lp
 
-lambdapi check -c cupicef.lp
-lambdapi check -c Coq__Init__Logic.lp
-lambdapi check -c Coq__Init__Datatypes.lp
+rm *.dk
 
-rm -rf tmp *.dk
+lambdapi check -c Coq__Init__Peano.lp
