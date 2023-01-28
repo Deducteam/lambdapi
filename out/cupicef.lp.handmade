@@ -12,8 +12,11 @@ symbol Cumul : Sort → Sort → Bool;
 symbol Eq : Sort → Sort → Bool;
 rule Eq $x $x ↪ true;
 associative commutative symbol and : Bool → Bool → Bool;
+associative commutative symbol or : Bool → Bool → Bool;
 rule and true $c ↪ $c;
 rule and $c true ↪ $c;
+rule or true $c ↪ true;
+rule or $c true ↪ true;
 symbol BoolO : TYPE;
 constant symbol BoolNone : BoolO;
 constant symbol BoolSome : Bool → BoolO;
@@ -143,7 +146,7 @@ with max (s (max $j $i)) (max $k $i) ↪ max $k (s (max $i $j));
 rule sup prop $s ↪ $s
 with sup $s prop ↪ $s
 with sup ({|type|} $i) ({|type|} $j) ↪ {|type|} (max $i $j);
-symbol Leq : Nat → Nat → Bool;
+sequential symbol Leq : Nat → Nat → Bool;
 rule Leq z $j ↪ true
 with Leq (s $i) (s $j) ↪ Leq $i $j
 with Leq (max $i $j) $k ↪ and (Leq $i $k) (Leq $j $k)
@@ -153,6 +156,9 @@ with Leq $i (max $i $j) ↪ true
 with Leq $i (max $j $i) ↪ true
 with Leq $i (max (s $i) $j) ↪ true
 with Leq $i (max $j (s $i)) ↪ true;
+
+rule Leq $i (max $j $k) ↪ or (Leq $i $j) (Leq $i $k);
+
 rule Axiom prop ({|type|} _) ↪ true
 with Axiom ({|type|} $i) ({|type|} $j) ↪ Leq $i $j;
 rule Rule _ prop prop ↪ true
