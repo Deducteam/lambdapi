@@ -186,13 +186,13 @@ let is_tc_instance : Sig_state.t -> Term.ctxt -> Term.meta -> bool =
   in
     aux c !(m.meta_type)
 
-let tc_metas_of_term : Sig_state.t -> Term.ctxt -> Term.term -> Term.meta list =
-  fun ss c t ->
+let metas_of_term : Term.ctxt -> Term.term -> Term.meta list =
+  fun c t ->
   let open Term in
   let acc = ref [] in
   let rec aux c t =
     match unfold t with
-    | Meta(m,_) when is_tc_instance ss c m && not (List.memq m !acc) ->
+    | Meta(m,_) when not (List.memq m !acc) ->
        acc := m :: !acc
     | Abst (dom, b) | Prod(dom, b) ->
        aux c dom;
@@ -225,12 +225,16 @@ let hack s c = { c with Conversion.embed =
 let solve_tc : ?scope:(Parsing.Syntax.p_term -> Term.term * (int * string) list) -> Sig_state.t -> Common.Pos.popt -> Term.problem -> Term.ctxt ->
   Term.term * Term.term -> Term.term * Term.term =
   fun ?scope ss pos _pb ctxt (t,ty) ->
-    let tc = tc_metas_of_term ss ctxt t in
+    let tc = metas_of_term ctxt t in
     if tc <> [] then begin
       let elpi = match !elpi with None -> assert false | Some x -> x in
       Option.iter (fun f -> scope_ref := f) scope;
 
       Common.Console.out 1 "BEFORE TC RESOLUTION:@ %a : %a@\n" Print.term t Print.term ty;
+      List.iter
+        (fun m ->
+          Common.Console.out 1 "META TY:@ %d : %a@\n" m.Term.meta_key Print.term (Timed.(!(m.Term.meta_type))))
+          tc;
 
       let file = "tcsolver.elpi" in
       let predicate = "msolve" in
