@@ -18,7 +18,7 @@ type x.reflexivity;
 symbol A : bios.Univ (bios.type (bios.s bios.z));
 
 type
-λ a , x.reflexivity A (y.eq (
+x.reflexivity A (y.eq (
     
 bios.cast
 (bios.axiom (bios.{|type|} (bios.s bios.z)))
@@ -28,8 +28,6 @@ bios.cast
 (bios.univ (bios.{|type|} (bios.s (bios.s bios.z)))
  (bios.axiom (bios.{|type|} (bios.s (bios.s bios.z))))
  bios.I)
-bios.I
+_
 
-A)) _ a;
-
-
+A)) _ _;
