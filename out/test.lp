@@ -17,8 +17,25 @@ type x.reflexivity;
 // We hack it with a section variable
 symbol A : bios.Univ (bios.type (bios.s bios.z));
 
+// cast from Type[1] to Type[2]
+coerce_rule coerce (bios.Univ (bios.{|type|} (bios.s bios.z))) (bios.Univ (bios.{|type|} (bios.s (bios.s bios.z)))) $X ↪ (bios.cast (bios.axiom (bios.{|type|} (bios.s bios.z)))
+ (bios.axiom (bios.{|type|} (bios.s (bios.s bios.z))))
+ (bios.univ (bios.{|type|} (bios.s bios.z))
+  (bios.axiom (bios.{|type|} (bios.s bios.z))) bios.I)
+ (bios.univ (bios.{|type|} (bios.s (bios.s bios.z)))
+  (bios.axiom (bios.{|type|} (bios.s (bios.s bios.z)))) bios.I)
+ bios.I
+ $X);
+
+//debug +i;
+//debug +e;
+
+type x.reflexivity A (y.eq A) _ _;
+
+/*
 type
-x.reflexivity A (y.eq (
+x.reflexivity A (y.eq
+(
     
 bios.cast
 (bios.axiom (bios.{|type|} (bios.s bios.z)))
@@ -31,3 +48,4 @@ bios.cast
 _
 
 A)) _ _;
+*/
