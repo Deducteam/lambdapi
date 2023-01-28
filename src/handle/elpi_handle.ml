@@ -35,7 +35,9 @@ let embed_goal : Term.meta Conversion.embedding = fun ~depth st m ->
        (*Common.Console.out 1 "EMBED CONCL:@ %d %d |- %a@\n" (List.length c) (List.length ctx) Print.term ty;*)
        let ctx = List.map (fun (from,t) -> move ~from ~to_:depth t) ctx in
        let st, ty, gls = embed_term ~ctx:c ~depth st ty in
-       let m = mk_Meta (i,List.rev args |> List.map Term.of_tvar |> Array.of_list) in
+       let args = List.rev args |> List.map Term.of_tvar in
+       let args1,args2 = Lplib.List.cut args (i.Term.meta_arity) in
+       let m = Term.add_args (mk_Meta (i, args1 |> Array.of_list)) args2 in
        let st, i, gls1 = embed_term ~ctx:c ~depth st m in
        st, mkApp sealc (mkApp goalc (list_to_lp_list ctx) [ty; i]) [], gls @ gls1
   in
@@ -271,7 +273,7 @@ let solve_tc : ?scope:(Parsing.Syntax.p_term -> Term.term * (int * string) list)
     
       if not (Elpi.API.Compile.static_check
                 ~checker:(Elpi.Builtin.default_checker ()) query) then
-        Common.Error.fatal_no_pos "elpi: type error in %s" file;
+        Common.Console.out 1 "elpi: type error in %s" file;
     
       match Execute.once (Elpi.API.Compile.optimize query) with
       | Execute.Success { Data.state; output = (); _ } ->
