@@ -60,7 +60,7 @@ let add_symbol : sig_state -> expo -> prop -> match_strat
   if tc then Sign.add_tc ss.signature sym;
   let active_tc = if tc then SymSet.add sym ss.active_tc else ss.active_tc in
   if tci then Sign.add_tc_inst ss.signature sym;
-  let active_tc_inst = if tc then SymSet.add sym ss.active_tc_inst else ss.active_tc_inst in
+  let active_tc_inst = if tci then SymSet.add sym ss.active_tc_inst else ss.active_tc_inst in
   begin
     match def with
     | Some t -> sym.sym_def := Some (cleanup t)
