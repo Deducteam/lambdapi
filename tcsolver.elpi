@@ -1,5 +1,6 @@
 msolve L :- 
   compile_all Cl,
+  print "RULES:" Cl,
   Cl => std.forall L (open tc).
 
 pred open i:(term -> term -> prop), i:sealed-goal.
@@ -12,7 +13,20 @@ open P (seal (goal Ctx Ty Wit)) :-
 :index(_ 4)
 pred tc o:term, o:term.
 
+pred safe-dest-app i:term, o:term, o:list term.
+safe-dest-app (appl HD ARG) H AS :- !,
+  safe-dest-app HD H A,
+  std.append A [ARG] AS.
+safe-dest-app X X [].
+
 pred compile i:term, i:list prop, i:term, o:prop.
+compile (prod (appl (appl {{ bios.Term }} _Univ) Term as W) F) TODO H (pi x\ C x) :-
+  safe-dest-app Term (symb S) _, lp.tc? S,
+  !,
+  pi x\
+    compile (F x) [tc W x |TODO] (appl H x) (C x).
+
+
 compile (prod (appl T U) F) TODO H (pi x\ C x) :-
   T = symb S, lp.tc? S,
   !,
@@ -29,6 +43,7 @@ compile End TODO HD (tc End HD :- TODO).
 pred compile_all o:list prop.
 compile_all Props :-
   lp.tc-instances Candidates,
+  print "instances" Candidates,
   std.map Candidates
     (N\claus\ sigma T\ lp.sig N T, compile T [] (symb N) claus)
     Props.

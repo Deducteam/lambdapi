@@ -24,7 +24,8 @@ symbol mk_Pair [i] [j] : T i → T j → Pair i j;
 symbol pair : U → U → U;
 rule T (pair $i $j) ↪ Pair $i $j;
 
-instance symbol bool_eqdec : eqdec bool ≔ mk_eqdec eq_bool /* p */;
+symbol bool_eqdec : eqdec bool ≔ mk_eqdec eq_bool /* p */;
+existing instance bool_eqdec;
 instance symbol nat_eqdec  : eqdec nat ≔ mk_eqdec eq_nat /* p */;
 instance symbol pair_eqdec : Π i j, eqdec i → eqdec j → eqdec (pair i j);
   /* ≔ mk_eqdec eq_nat ; */
