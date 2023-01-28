@@ -5,12 +5,14 @@ msolve L :-
 
 pred open i:(symbol -> term -> term -> prop), i:sealed-goal.
 open P (nabla F) :- pi x\ open P (F x).
-open P (seal (goal Ctx Ty Wit)) :-
+open P (seal (goal Ctx Ty Wit)) :- var Wit,
   print "TC PROBLEM:\n" Ctx "|-\n" Wit ":" Ty "\n",
   Ty = appl (appl {{ bios.Term }} _) Term,
-  safe-dest-app Term (symb Class) _, lp.tc? Class,
+  safe-dest-app Term (symb Class) _, lp.tc? Class, !,
   Ctx => P Class Ty Wit,
   print "TC INSTANCE:\n" Ctx "|-\n" Wit ":" Ty "\n".
+open P (seal (goal Ctx Ty Wit)) :-
+  print "NOT A TC INFERENCE PROBLEM:\n" Ctx "|-\n" Wit ":" Ty "\n".
 
 pred tc o:symbol, o:term, o:term.
 
