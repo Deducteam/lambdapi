@@ -29,6 +29,7 @@ coerce_rule coerce (bios.Univ (bios.{|type|} (bios.s bios.z))) (bios.Univ (bios.
 
 //debug +i;
 //debug +e;
+//debug +u;
 
 type x.reflexivity A (y.eq A) _ _;
 type x.match____RewriteRelation _ A (y.eq A) _ _ _;

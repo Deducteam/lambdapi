@@ -46,6 +46,9 @@ external pred lp.snf i:term, o:term.
 % [lp.eq_modulo X Y] X = Y upto rewrite
 external pred lp.eq_modulo i:term, i:term.
 
+% [lp.unif X Y] unify X with Y
+external pred lp.unif i:term, i:term.
+
 % [lp.term->string T S] Pretty prints a term T to the string S
 external pred lp.term->string i:term, o:string.
 

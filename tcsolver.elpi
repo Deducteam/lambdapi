@@ -48,7 +48,8 @@ compile (appl (appl {{ bios.Term }} Univ) Term) TODO HD (pi u t\ tc S (End u t) 
   safe-dest-app Term (symb S) _,
   pi u t\
     End u t = (appl (appl {{ bios.Term }} u) t),
-    Conv u t = (/*lp.eq_modulo*/ u = Univ, (t = Term ; (sigma T'\ sigma Term'\ lp.snf t T', lp.snf Term Term', (T' = Term')) ; lp.eq_modulo t Term)). 
+    Conv u t = (/*lp.eq_modulo*/ u = Univ, (t = Term ; (sigma T'\ sigma Term'\ lp.snf t T', lp.snf Term Term', (T' = Term')) ; lp.eq_modulo t Term)).
+    /*Conv u t = (/*lp.eq_modulo*/ u = Univ, std.spy(lp.unif t Term)). */
   
 
 compile End TODO HD (tc S End HD :- TODO) :- safe-dest-app End (symb S) _. 

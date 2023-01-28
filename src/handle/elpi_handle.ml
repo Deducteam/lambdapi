@@ -120,6 +120,24 @@ pred msolve o:list sealed-goal.
       if Eval.pure_eq_modulo [] x y then () else raise No_clause)),
     DocAbove);
 
+  MLCode(Pred("lp.unif",
+    In(term,"X",
+    In(term,"Y",
+    Read (ContextualConversion.unit_ctx, "unify X with Y"))),
+    (fun x y ~depth:_ _ _ state ->
+      let problem = State.get pb state in
+      let open Timed in
+      (* CSC: empty context is bad here *)
+      Common.Console.out 1 "\n***UNIF before: %a == %a\n" Print.term x Print.term y;
+      assert (List.length !problem.Term.unsolved = 0);
+      problem := Term.{ !problem with to_solve = ([],x,y)::!problem.to_solve } ;
+      if Unif.solve_noexn problem then begin
+       assert (List.length !problem.Term.unsolved = 0);
+       Common.Console.out 1 "\n***UNIF after: %a == %a\n" Print.term x Print.term y;
+       ()
+      end else raise No_clause)),
+    DocAbove);
+
   MLCode(Pred("lp.term->string",
     In(term,"T",
     Out(string,"S",
