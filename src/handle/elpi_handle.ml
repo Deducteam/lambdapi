@@ -89,16 +89,16 @@ pred msolve o:list sealed-goal.
     Out(list sym,"L",
     Read (ContextualConversion.unit_ctx, "Gives the list of type class instances")),
     (fun _ ~depth:_ _ _ state ->
-      let s = (State.get ss state).Sig_state.signature in
-      !: ((Timed.(!) s.Sign.sign_tc_inst) |> Term.SymSet.elements))),
+      let s = State.get ss state in
+      !: (s.Sig_state.active_tc_inst |> Term.SymSet.elements))),
     DocAbove);
 
   MLCode(Pred("lp.tc?",
     In(sym,"S",
     Read (ContextualConversion.unit_ctx, "Tells if S is a type class")),
     (fun sym ~depth:_ _ _ state ->
-      let s = (State.get ss state).Sig_state.signature in
-      if ((Timed.(!) s.Sign.sign_tc) |> Term.SymSet.mem sym) then ()
+      let s = State.get ss state in
+      if (s.Sig_state.active_tc |> Term.SymSet.mem sym) then ()
       else raise No_clause)),
     DocAbove);
 

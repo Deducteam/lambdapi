@@ -50,6 +50,19 @@ let handle_open : sig_state -> p_path -> sig_state =
   (* Obtain the signature corresponding to [p]. *)
   open_sign ss (Path.Map.find p !(Sign.loaded))
 
+let handle_open_tc : sig_state -> p_path -> sig_state =
+  fun ss {elt=p;pos} ->
+  (* Check that [p] is not an alias. *)
+  match p with
+  | [a] when StrMap.mem a ss.alias_path ->
+    fatal pos "Module aliases cannot be open."
+  | _ ->
+  (* Check that [p] has been required. *)
+  if not (Path.Map.mem p !(ss.signature.sign_deps)) then
+    fatal pos "Module %a needs to be required first." path p;
+  (* Obtain the signature corresponding to [p]. *)
+  open_sign_tc ss (Path.Map.find p !(Sign.loaded))
+
 (** [handle_require b ss p] handles the command [require p] (or [require
    open p] if b is true) with [ss] as the signature state and [compile] the
    main compile function (passed as argument to avoid cyclic dependencies).
@@ -201,18 +214,20 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
   | P_type_class({ Pos.elt = id; pos }) ->
     let sym = Sig_state.find_sym ~prt:false ~prv:false ss { Pos.elt = ([],id); pos} in
     Sign.add_tc ss.signature sym;
-      ss, None, None
+    { ss with Sig_state.active_tc = SymSet.add sym ss.active_tc }, None, None
   | P_type_class_instance ({ Pos.elt = id; pos }) ->
     let sym = Sig_state.find_sym ~prt:false ~prv:false ss { Pos.elt = ([],id); pos} in
     Sign.add_tc_inst ss.signature sym;
-    ss, None, None
+    { ss with Sig_state.active_tc_inst = SymSet.add sym ss.active_tc_inst }, None, None
   | P_elpi(file,pred,arg) ->
       (ss, None, (Elpi_handle.run ss file pred arg; None))
   | P_query(q) -> (ss, None, Query.handle ss None q)
   | P_require(b,ps) ->
       (List.fold_left (handle_require compile b) ss ps, None, None)
   | P_require_as(p,id) -> (handle_require_as compile ss p id, None, None)
-  | P_open(ps) -> (List.fold_left handle_open ss ps, None, None)
+  | P_open([],ps) -> (List.fold_left handle_open ss ps, None, None)
+  | P_open(["tc"],ps) -> (List.fold_left handle_open_tc ss ps, None, None)
+  | P_open _ -> fatal pos "only \"tc\" filter implemented"
   | P_rules(rs) ->
     (* Scope rules, and check that they preserve typing. Return the list of
        rules [srs] and also a map [map] mapping every symbol defined by a rule

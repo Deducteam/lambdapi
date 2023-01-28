@@ -30,8 +30,10 @@ type sig_state =
   ; path_alias: string Path.Map.t         (** Path to alias map. *)
   ; builtins  : sym StrMap.t              (** Builtins. *)
   ; notations : float notation SymMap.t   (** Notations. *)
-  ; open_paths : Path.Set.t               (** Open modules. *) }
-
+  ; open_paths : Path.Set.t               (** Open modules. *)
+  ; active_tc       : SymSet.t            (** Active TC *)
+  ; active_tc_inst  : SymSet.t            (** Active TC instances *)
+  }
 type t = sig_state
 
 (** Dummy [sig_state]. *)
@@ -39,7 +41,10 @@ let dummy : sig_state =
   { signature = Sign.dummy (); in_scope = StrMap.empty;
     alias_path = StrMap.empty; path_alias = Path.Map.empty;
     builtins = StrMap.empty; notations = SymMap.empty;
-    open_paths = Path.Set.empty }
+    open_paths = Path.Set.empty;
+    active_tc = SymSet.empty;
+    active_tc_inst = SymSet.empty;
+  }
 
 (** [add_symbol ss expo prop mstrat opaq id typ impl tc def] generates a new
    signature state from [ss] by creating a new symbol with expo [e], property
@@ -53,14 +58,16 @@ let add_symbol : sig_state -> expo -> prop -> match_strat
     Sign.add_symbol ss.signature expo prop mstrat opaq id
       (cleanup typ) impl in
   if tc then Sign.add_tc ss.signature sym;
+  let active_tc = if tc then SymSet.add sym ss.active_tc else ss.active_tc in
   if tci then Sign.add_tc_inst ss.signature sym;
+  let active_tc_inst = if tc then SymSet.add sym ss.active_tc_inst else ss.active_tc_inst in
   begin
     match def with
     | Some t -> sym.sym_def := Some (cleanup t)
     | None -> ()
   end;
   let in_scope = StrMap.add id.elt sym ss.in_scope in
-  {ss with in_scope}, sym
+  {ss with in_scope; active_tc; active_tc_inst}, sym
 
 (** [add_notation ss s n] maps [s] notation to [n] in [ss]. *)
 let add_notation : sig_state -> sym -> float notation -> sig_state =
@@ -89,6 +96,13 @@ let open_sign : sig_state -> Sign.t -> sig_state = fun ss sign ->
   let notations = SymMap.union f ss.notations !(sign.sign_notations) in
   let open_paths = Path.Set.add sign.sign_path ss.open_paths in
   {ss with in_scope; builtins; notations; open_paths}
+
+let open_sign_tc : sig_state -> Sign.t -> sig_state = fun ss sign ->
+  Common.Console.out 1 "ACTIVATING %d classes." (SymSet.cardinal !(sign.sign_tc_inst));
+  { ss with 
+      active_tc = SymSet.union ss.active_tc !(sign.sign_tc);
+      active_tc_inst = SymSet.union ss.active_tc_inst !(sign.sign_tc_inst);
+  }
 
 (** [of_sign sign] creates a state from the signature [sign] and open it as
    well as the ghost signatures. *)

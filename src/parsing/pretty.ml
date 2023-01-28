@@ -314,7 +314,9 @@ let command : p_command pp = fun ppf { elt; _ } ->
       (inductive "inductive") i (List.pp with_ind "") il
   | P_notation (qid, n) ->
     out ppf "notation %a %a" qident qid (Print.notation string) n
-  | P_open ps -> out ppf "open %a" (List.pp path " ") ps
+  | P_open(f,ps) -> out ppf "open %a %a"
+      (List.pp (fun fmt x ->
+         Format.fprintf fmt "\"%s\"" x) "") f (List.pp path " ") ps
   | P_query q -> query ppf q
   | P_require (b, ps) ->
     out ppf "require%a %a" (pp_if b (unit " open")) () (List.pp path " ") ps

@@ -140,8 +140,8 @@ command:
     { make_pos $sloc (P_require(false,l)) }
   | REQUIRE p=path AS i=uid SEMICOLON
     { make_pos $sloc (P_require_as(p,i)) }
-  | OPEN l=list(path) SEMICOLON
-    { make_pos $sloc (P_open l) }
+  | OPEN f=list(STRINGLIT) l=list(path) SEMICOLON
+    { make_pos $sloc (P_open(f,l)) }
   | EXISTING INSTANCE id=UID SEMICOLON
     { make_pos $sloc (P_type_class_instance(make_pos $sloc id)) }
   | EXISTING TYPECLASS id=UID SEMICOLON

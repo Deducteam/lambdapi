@@ -249,7 +249,7 @@ let command : p_command pp = fun ppf { elt; _ } ->
         (List.pp (inductive "and") "@,") il
   | P_notation (qid, n) ->
     out ppf "(*Notation %a %a.*)@." qident qid notation n
-  | P_open ps -> out ppf "Import %a@." (List.pp path " ") ps
+  | P_open(_,ps) -> out ppf "Import %a@." (List.pp path " ") ps
   | P_query _ -> ()
   | P_require (b, ps) ->
       out ppf "Require%a %a.@."
