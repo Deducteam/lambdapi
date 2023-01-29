@@ -53,8 +53,8 @@ let add_symbol : sig_state -> expo -> prop -> match_strat
       (cleanup typ) impl in
   begin
     match def with
-    | Some t -> sym.sym_def := Some (cleanup t)
-    | None -> ()
+    | Some t when not opaq -> sym.sym_def := Some (cleanup t)
+    | _ -> ()
   end;
   let in_scope = StrMap.add id.elt sym ss.in_scope in
   {ss with in_scope}, sym
