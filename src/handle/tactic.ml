@@ -27,7 +27,7 @@ let add_axiom : Sig_state.t -> popt -> meta -> sym =
   let name =
     let i = Stdlib.(incr admitted; !admitted) in
     assert (i<=0);
-    Printf.sprintf "_ax%i" (-i)
+    Printf.sprintf "_ax%i" (i + max_int)
   in
   (* Create a symbol with the same type as the metavariable *)
   let sym =
