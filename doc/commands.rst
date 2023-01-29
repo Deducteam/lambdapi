@@ -248,6 +248,9 @@ negation with some priority level.
   let ``-`` be a prefix operator, then ``- f x`` is always parsed ``- (f x)``,
   no matter what the binding power of ``-`` is.
 
+* The functional arrow has a lower binding power than any operator, therefore
+  for any prefix operator ``-``, ``- A → A`` is always parsed ``(- A) → A``
+
 * Parsing of operators is performed with the `pratter`_ library.
 
 
