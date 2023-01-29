@@ -52,8 +52,11 @@ symbol cast
           Π (b : Univ s'), eps (SubType s s' a b) → Term s a → Term s' b;
 constant symbol sinf : Sort;
 symbol Code ≔ Univ sinf;
+//injective symbol Decode : Code → TYPE;
 symbol Decode : Code → TYPE;
+//injective symbol uncode : Π (t : Code), Code → Decode t;
 symbol uncode : Π (t : Code), Code → Decode t;
+//injective symbol code : Π (t : Code), Decode t → Code;
 symbol code : Π (t : Code), Decode t → Code;
 constant symbol cU : Π (s : Sort), Code;
 constant symbol cPi : Π (A : Code), (Decode A → Code) → Code;
