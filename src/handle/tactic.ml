@@ -14,7 +14,9 @@ let log = log.pp
 (** Number of admitted axioms in the current signature. Used to name the
     generated axioms. This reference is reset in {!module:Compile} for each
     new compiled module. *)
-let admitted : int Stdlib.ref = Stdlib.ref (-1)
+let admitted_initial_value = min_int
+let admitted : int Stdlib.ref = Stdlib.ref admitted_initial_value
+let reset_admitted() = Stdlib.(admitted := admitted_initial_value)
 
 (** [add_axiom ss sym_pos m] adds in signature state [ss] a new axiom symbol
     of type [!(m.meta_type)] and instantiate [m] with it. WARNING: It does not
@@ -24,19 +26,15 @@ let add_axiom : Sig_state.t -> popt -> meta -> sym =
   fun ss sym_pos m ->
   let name =
     let i = Stdlib.(incr admitted; !admitted) in
-    Printf.sprintf "_ax%i" i
+    assert (i<=0);
+    Printf.sprintf "_ax%i" (i + max_int)
   in
   (* Create a symbol with the same type as the metavariable *)
   let sym =
-    Console.out 1 (Color.red "axiom %a: %a")
-      uid name term !(m.meta_type);
+    Console.out 1 (Color.red "axiom %a: %a") uid name term !(m.meta_type);
     (* Temporary hack for axioms to have a declaration position in the order
        they are created. *)
-    let pos =
-      let n = Stdlib.(!admitted) in
-      if n > 100 then assert false
-      else shift (n - 100) sym_pos
-    in
+    let pos = shift Stdlib.(!admitted) sym_pos in
     let id = Pos.make pos name in
     (* We ignore the new ss returned by Sig_state.add_symbol: axioms do not
        need to be in scope. *)

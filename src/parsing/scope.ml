@@ -528,7 +528,7 @@ let scope_rule : bool -> sig_state -> p_rule -> sym_rule =
     fatal p_lhs.pos
       "Symbol %s has been declared constant, it cannot be used as the \
        head of a rewrite rule LHS." sym.sym_name;
-  if Timed.(!(sym.sym_def)) <> None then
+  if sym.sym_opaq || Timed.(!(sym.sym_def)) <> None then
     fatal rule_pos "No rewriting rule can be given on a defined symbol.";
   if sym.sym_expo = Protec
     && ss.signature.sign_path <> sym.sym_path then

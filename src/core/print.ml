@@ -281,7 +281,7 @@ let rec prod : (term * bool list) pp = fun ppf (t, impl) ->
   match unfold t, impl with
   | Prod(a,b), true::impl ->
       let x, b = unbind b in
-      out ppf "Π {%a: %a}, %a" var x term a prod (b, impl)
+      out ppf "Π [%a: %a], %a" var x term a prod (b, impl)
   | Prod(a,b), false::impl ->
       let x, b = unbind b in
       out ppf "Π %a: %a, %a" var x term a prod (b, impl)
