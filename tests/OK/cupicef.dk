@@ -1,0 +1,950 @@
+(;-----------------------------------------------------------------;)
+(;----------------------  PUBLIC DEFINITIONS  ---------------------;)
+(;-----------------------------------------------------------------;)
+
+(;---------------------------  Sorts  -----------------------------;)
+
+Sort : Type.
+
+def sup : Sort -> Sort -> Sort.
+
+
+(;---------------------  Types and terms  -------------------------;)
+
+(; Type for encoded type codes ;)
+Univ : s : Sort -> Type.
+
+(; Type decoding function ;)
+def Term : s : Sort -> a : Univ s -> Type.
+
+
+(;------------------------  CTS predicates  -----------------------;)
+
+Bool : Type.
+eps : Bool -> Type.
+true : Bool.
+I : eps true.
+
+def Axiom : Sort -> Sort -> Bool.
+def Rule  : Sort -> Sort -> Sort -> Bool.
+
+def Cumul : Sort -> Sort -> Bool.
+def Eq : Sort -> Sort -> Bool.
+[x] Eq x x --> true.
+(;
+Note:
+  A -> B  subtype of  C -> D
+iif
+  and (Eq A C) (Cumul B D)
+;)
+
+defac and [Bool].
+[c] and true c --> c.
+
+
+
+(;-------------------  CTS predicates constructors  ---------------;)
+def BoolO : Type.
+BoolNone : BoolO.
+BoolSome : Bool -> BoolO.
+
+def Multi : Bool -> BoolO -> Type.
+[A  ] Multi A  BoolNone    -->  eps A
+[A,B] Multi A (BoolSome B) -->  eps B -> C : BoolO -> Multi (and A B) C.
+
+pair : A : BoolO -> Multi true A.
+(; An inhabitant of the conjunction of three satisfied constraints
+     c1 : A
+     c2 : B
+     c3 : C
+   is encoded as:
+     pair (Some A) c1 (Some B) c2 (Some C) c3 None : eps (and {A,B,C})
+;)
+
+
+def SortO : Type.
+SortNone : SortO.
+SortSome : Sort -> SortO.
+
+def Trans : Sort -> Sort -> SortO -> Type.
+[s1,s2   ] Trans s1 s2 SortNone      -->  eps (Cumul s1 s2)
+[s1,s2,s3] Trans s1 s2 (SortSome s3) -->  eps (Cumul s2 s3) -> so : SortO -> Trans s1 s3 so.
+
+trans : s : Sort -> so : SortO -> Trans s s so.
+(; Assume three satisfied and transitively compatible constraints
+     c1 : s0 < s1
+     c2 : s1 < s2
+     c3 : s2 < s3
+   then s0 < s3 can be inhabited with:
+     trans s1 (Some s1) c1 (Some s2) c2 (Some s3) c3 None : eps (Cumul s0 s3)
+;)
+
+
+
+cumul_eq : s1 : Sort -> s2 : Sort -> eps (Eq s1 s2) -> eps (Cumul s1 s2).
+
+eq_sym   : s1 : Sort -> s2 : Sort -> eps (Eq s1 s2) -> eps (Eq s2 s1).
+
+
+
+(;--------------------  Term public constructors  -----------------;)
+
+def univ : s : Sort -> s' : Sort ->
+           eps (Axiom s s') -> Univ s'.
+
+def prod : s1 : Sort -> s2 : Sort -> s3 : Sort ->
+           eps (Rule s1 s2 s3) ->
+           a : Univ s1 -> b : (Term s1 a -> Univ s2) -> Univ s3.
+
+def SubType : s : Sort -> s' : Sort -> Univ s -> Univ s' -> Bool.
+
+def cast : s : Sort -> s' : Sort ->
+           a : Univ s -> b  : Univ s' ->
+           eps (SubType s s' a b) ->
+           Term s a -> Term s' b.
+
+
+(;------------------------  Coqine parameters  --------------------;)
+
+(;
+Coqine syntax = Dedukti
+
+Coqine Sort = Sort
+Coqine Univ = Univ
+Coqine Term = Term
+Coqine sup  = sup
+Coqine univ = univ
+Coqine prod = prod
+Coqine cast = cast
+
+Coqine use_cast  = true    Use casts instead of lifts
+Coqine pred_univ = true    Univ is predicative
+Coqine pred_prod = true    Prod is predicative
+Coqine pred_cast = true    Cast is predicative
+
+Coqine pred_prod = true    Prod is predicative
+
+Coqine eps   = eps
+Coqine Cumul = Cumul
+Coqine Eq    = Eq
+
+--- Predicate constructors:
+Coqine I     = I
+
+Coqine pair  = pair
+Coqine BoolNone  = BoolNone
+Coqine BoolSome  = BoolSome
+
+Coqine SortNone  = SortNone
+Coqine SortSome  = SortSome
+Coqine trans = trans
+
+Coqine cumul_eq    = cumul_eq
+Coqine eq_sym      = eq_sym
+;)
+
+
+(;-----------------------------------------------------------------;)
+(;---------------------  PRIVATE DEFINITIONS  ---------------------;)
+(;-----------------------------------------------------------------;)
+
+(; Codes are (more or less) a special "unsafe" universe
+   containing all typable terms ;)
+sinf : Sort.
+def Code := Univ sinf.
+
+def Decode : Code -> Type.
+def uncode : t : Code -> Code -> Decode t.
+def code : t : Code -> Decode t -> Code.
+
+cU : s : Sort -> Code.
+cPi  : A : Code -> (Decode A -> Code) -> Code.
+cLam : A : Code -> (Decode A -> Code) -> Code.
+def cApp : Code -> Code -> Code.
+
+[s]   Decode (cU s)    --> Univ s.
+[a,b] Decode (cPi a b) --> x : Decode a -> Decode (b x).
+
+[t]   code (cU sinf) t --> t.
+[t] uncode (cU sinf) t --> t.
+
+(;----------------------------  Term  -----------------------------;)
+
+[s,t] Term s t --> Decode (code (cU s) t).
+
+
+(;----------------------------  Axiom  ----------------------------;)
+
+[s,s',p] univ s s' p --> uncode (cU s') (cU s).
+
+
+(;----------------------------  Rule  -----------------------------;)
+
+[s1,s2,s3,p,a,b]
+  prod s1 s2 s3 p a b -->
+  uncode (cU s3) (cPi (code (cU s1) a) (x => code (cU s2) (b x))).
+
+
+(;---------------------------  Casts  -----------------------------;)
+
+[s1,s2,a,b,t] cast s1 s2 a b _ t --> uncode (code (cU s2) b) (code (code (cU s1) a) t).
+
+
+
+(;-------------------------  Subtyping ----------------------------;)
+
+[s] Cumul s s --> true.
+
+def forall : (Code -> Bool) -> Bool.
+[B] forall (x => B) --> B.
+
+def ST : Code -> Code -> Bool.
+def EQ : Code -> Code -> Bool.
+
+[s1, s2] ST (cU s1) (cU s2) --> Cumul s1 s2.
+[s1, s2] EQ (cU s1) (cU s2) --> Eq s1 s2.
+
+[a,a',b,b']
+  ST (cPi a b) (cPi a' b')
+  -->
+  and (EQ a a') (forall (x:Code => ST (b (uncode a x)) (b' (uncode a' x)))).
+
+[a,a',b,b']
+  EQ (cPi a b) (cPi a' b')
+  -->
+  and (EQ a a') (forall (x:Code => EQ (b (uncode a x)) (b' (uncode a' x)))).
+
+[A] EQ A A --> true.
+[A] ST A A --> true.
+
+[sa,sb,a,b] SubType sa sb a b --> ST (code (cU sa) a) (code (cU sb) b).
+
+
+
+(;---------------------  Canonicity rules -------------------------;)
+
+[  t] code _ (uncode _ t) --> t.
+
+[A,B,F]
+  code (cPi A B) F -->
+  cLam A (x => code (B x) (F x)).
+
+[A,B,F,U]
+  uncode (cPi A B) F U -->
+  uncode (B U) (cApp F (code A U)).
+
+[A,A',B,F]
+  uncode (cPi A B) (cLam A' F)
+  -->
+  x => uncode (B x) (F (uncode A' (code A x))).
+
+[A,B,F,U]
+  cApp (code (cPi A B) F) U -->
+  code (B (uncode A U)) (F (uncode A U)).
+
+[A,F,U]
+  cApp (cLam A F) U --> F (uncode A U).
+
+[s,t] uncode s (code s t) --> t.
+
+
+
+(;--------------------  Extra private definitions  ----------------;)
+
+def univ' (s:Sort) (s':Sort) := uncode (cU s') (cU s).
+
+def lift' (s:Sort) (s':Sort) (t:Univ s) := uncode (cU s') (code (cU s) t).
+
+def prod' (s1:Sort) (s2:Sort) (s:Sort) (A:Univ s1) (B:(Term s1 A -> Univ s2)) : Univ s :=
+  uncode
+    (cU s)
+    (cPi
+      (code (cU s1) A)
+      (x => code (cU s2) (B x))).
+
+
+
+(;------------------------  Coqine parameters  --------------------;)
+
+(;
+Normal forms of lifted types are uncoded codes:
+Coqine lifted_type_pattern = recoded
+
+Coqine _code      = code
+Coqine _uncode    = uncode
+Coqine _code_univ = cU
+Coqine _code_prod = cPi
+Coqine _code_app  = cApp
+Coqine _code_abs  = cLam
+Coqine _code_sinf = sinf
+;)
+
+
+
+(;-----------------------------------------------------------------;)
+(;-------------------------  Coq encoding  ------------------------;)
+(;-----------------------------------------------------------------;)
+
+(;-------------------------  Nat definition  ----------------------;)
+
+Nat : Type.     (; Type of predicative Type levels ;)
+def s : Nat -> Nat.
+z : Nat.
+(; Set is the smallest (predicative) Type. ;)
+(; Careful:  Coq's   Type@{0} = Type@{Set+1}   is    type (s z)  ;)
+
+
+
+(;----------------------  CTS Sorts definition  -------------------;)
+
+prop : Sort.
+type : Nat -> Sort.
+
+def set   : Sort := type z.
+def type0 : Sort := type (s z).
+
+(;
+Coqine prop  = prop
+Coqine type  = type
+Coqine set   = set
+Coqine type0 = type0
+
+Coqine Lvl    = Nat (; Universe polymorphism quantification space ;)
+Coqine lvl0   = z   (; Nat representation of lowest level (Set)   ;)
+Coqine lvlS   = s   (; Nat representation of Type@{i+1}           ;)
+Coqine lvlMax = max (; Nat representation of Type@{max(i,j)} ;)
+;)
+
+
+
+(;-----------------------  LUB wrt Cumulativity  ------------------;)
+
+defac max [Nat].
+[i  ] max i z --> i.
+
+[i,j] s (max i j) --> max (s i) (s j).
+
+[i  ] max i i --> i
+[i,j] max i (max i j) --> max i j
+
+[i    ] max i (s i) --> s i
+[i,j  ] max i (max (s i) j) --> max (s i) j
+[i,j  ] max i (s (max i j)) --> s (max i j)
+[i,j,k] max (max i k) (s (max i j)) --> max k (s (max i j)).
+
+
+[s  ] sup prop     s        --> s
+[s  ] sup s        prop     --> s
+[i,j] sup (type i) (type j) --> type (max i j).
+
+
+def Leq : Nat -> Nat -> Bool.
+[  j  ] Leq z      j         --> true
+[i,j  ] Leq (s i)     (s j)     --> Leq i j
+[i,j,k] Leq (max i j) k         --> and (Leq i k) (Leq j k)
+[i    ] Leq i         i         --> true
+[i    ] Leq i         (s i)     --> true
+[i,j  ] Leq i         (max i j) --> true
+[i,j  ] Leq i         (max (s i) j) --> true.
+
+(;---------------------  CTS Axiom definition  --------------------;)
+
+[   ] Axiom prop     (type _) --> true
+[i,j] Axiom (type i) (type j) --> Leq i j.
+
+
+(;-----------------------  CTS Rule definition  -------------------;)
+
+[     ] Rule _        prop      prop    --> true
+[i    ] Rule prop     (type i) (type i) --> true
+[i,j,k] Rule (type i) (type j) (type k) --> Leq (max i j) k.
+
+
+(;-------------------  CTS Cumulativity definition  ---------------;)
+
+[   ] Cumul prop     prop     --> true
+[i  ] Cumul prop     (type i) --> true
+[i,j] Cumul (type i) (type j) --> Leq i j.
+
+
+
+(;------------------------  Other definitions  -------------------;)
+
+(; These functions are provided to simplify the translation.
+   - Axiom s (axiom s)       should reduce to true
+   - Rule s1 s2 (rule s1 s2) should reduce to true
+;)
+
+
+def axiom : Sort -> Sort.
+[]  axiom prop     --> type z
+[i] axiom (type i) --> type (s i).
+(; Coqine axiom = axiom ;)
+
+[x] Axiom x (axiom x) --> true.
+
+def rule : Sort -> Sort -> Sort.
+[s  ] rule prop     s        --> s
+[   ] rule _        prop     --> prop
+[i,j] rule (type i) (type j) --> type (max i j).
+(; Coqine rule = rule ;)
+
+[s1,s2] Rule s1 s2 (rule s1 s2) --> true.
+
+
+
+(;-----------------------------------------------------------------;)
+(;-----------------  FIXPOINTS DEFINITION SCHEME  -----------------;)
+(;-----------------------------------------------------------------;)
+(; Coqine inlined_fixpoint = true ;)
+
+(; Required rule ;)
+[s] Rule s s s --> true.
+
+(; Natural numbers ;)
+N : Type.
+0 : N.
+_S : N -> N.
+
+(; Short names ;)
+def 1 := _S 0.
+def 2 := _S 1.
+def 3 := _S 2.
+def 4 := _S 3.
+def 5 := _S 4.
+def 6 := _S 5.
+def 7 := _S 6.
+def 8 := _S 7.
+def 9 := _S 8.
+
+
+(;-----------------------------------------------------------------;)
+(;--------------------------  SingleArity  ------------------------;)
+(;-----------------------------------------------------------------;)
+
+(; [SAcons k s A]   builds a pair of
+   - the arity of a single body in a mutually recursive block
+     (without the recursive call parameters)
+   - the index of expected structurally decreasing inductive argument in arity
+   We write these pairs (k / A).
+;)
+SingleArity : Type.
+SAcons : N -> Code -> SingleArity.
+
+(;-----------------  Fetch type from SingleArity  -----------------;)
+
+(;  Fetches code A  from  (k / A)  ;)
+def SA_code : SingleArity -> Code.
+[A] SA_code (SAcons _ A) --> A.
+
+
+(;-----------------------------------------------------------------;)
+(;--------------------------  MutualArity  ------------------------;)
+(;-----------------------------------------------------------------;)
+
+(; [MutualArity s n]  is the type of lists of s-SA of size n
+   We write these lists:   { k1 / A1, ..., kn / An }
+;)
+MutualArity : N -> Type.
+
+(; Builds {} ;)
+MAnil  : MutualArity 0.
+
+(; Builds { k1 / A1, ..., kn+1 / An+1 }
+   from
+     kn+1
+     An+1
+     { k1 / A1, ..., kn / An }
+;)
+MAcons : n : N -> SingleArity -> MutualArity n -> MutualArity (_S n).
+
+(;-----------------  Fetch Arity from Arity List  -----------------;)
+
+(;  Fetches  (ki / Ai)  from  { k1 / A1, ..., kn / An }  ;)
+def MA_ith_SA  : n : N -> MutualArity n -> N -> SingleArity.
+[SA]     MA_ith_SA _ (MAcons _ SA _) 0     --> SA.
+[n,i,MA] MA_ith_SA _ (MAcons n _ MA) (_S i) --> MA_ith_SA n MA i.
+
+(;-----------------  Fetch type code from Arity List  ------------------;)
+
+(;  Fetches  Ai  from  { k1 / A1, ..., kn / An }  ;)
+def MA_ith_code (n : N) (MA : MutualArity n) (i : N) : Code :=
+  SA_code (MA_ith_SA n MA i).
+
+(;------  Fetch type with recursive call arguments from Arity List  -----;)
+
+(;  Builds the code type
+      A1 -> ... -> An -> B
+    from  code B  and  { k1 / A1, ..., kn / An }  ;)
+def MA_lift_code :
+  Code -> m : N -> MutualArity m -> Code.
+
+[B] MA_lift_code B _ MAnil --> B.
+
+[B,m,SA,MA]
+  MA_lift_code B _ (MAcons m SA MA)
+  -->
+  cPi (SA_code SA) (f => MA_lift_code B m MA).
+
+(;  Builds the code type
+      A1 -> ... -> An -> Ai
+    from  i  and  { k1 / A1, ..., kn / An }  ;)
+def MA_code (n : N) (MA : MutualArity n) (i : N) : Code
+  := MA_lift_code (MA_ith_code n MA i) n MA.
+
+
+
+(;-----------------------------------------------------------------;)
+(;------------------------  MutualFixpoint  -----------------------;)
+(;-----------------------------------------------------------------;)
+
+MutualFixpointAux :
+  (n : N) -> MutualArity n ->
+  (i : N) -> MutualArity i -> Type.
+
+def MutualFixpoint (n : N) (MA : MutualArity n) : Type
+  :=
+  MutualFixpointAux n MA n MA.
+
+(; MutualFixpoint n { k1 / A1, ..., kn / An }
+   is a list of size n whose i-th element is the body of the the i-th fixpoint body:
+     A1 -> ... -> An -> Ai
+   We write these lists
+     { k1 / A1 := body1, ..., kn / An := bodyn }
+
+   MutualFixpointAux n { k1 / A1, ..., kn / An } i { k(n-i+1) / B(n-i+1), ..., kn / Bn }
+   is a list of size i whose j-th element has type:
+     A1 -> ... -> An -> B(n-i+j)
+   When A = B, this is something like
+     { k1 / A1 := f1, ..., k1 / A1 := fn }[n-i+1 ... n]
+   ! This is different from   { k(n-i+1) / A(n-i+1) := f(n-i+1), ..., kn / An := fn }
+
+   We provide constructors only for MutualFixpointAux.
+
+   It is clear, from their types that
+     MutualFixpoint n MA == MutualFixpointAux n MA n MA
+;)
+
+MFTnil :
+  (n : N) -> (MA : MutualArity n) ->
+  MutualFixpointAux n MA 0 MAnil.
+
+MFTcons :
+  (n : N) -> (MAn : MutualArity n) ->
+  (i : N) -> (MAi : MutualArity i) ->
+  SA : SingleArity ->
+  Decode (MA_lift_code (SA_code SA) n MAn) ->
+  MutualFixpointAux n MAn i MAi ->
+  MutualFixpointAux n MAn (_S i) (MAcons i SA MAi).
+
+
+
+(;-----------------------------------------------------------------;)
+(;--------------  Fetch body from MutualFixpoint  -----------------;)
+(;-----------------------------------------------------------------;)
+
+(; Fetches  fi  from  i  and  { k1 / A1 := body1, ..., kn / An := bodyn }  ;)
+def fix_body :
+  n : N ->
+  MA: MutualArity n ->
+  MutualFixpoint n MA ->
+  i : N ->
+  Decode (MA_code n MA i).
+
+(; Fetches  f(i+j)  from  i, j  and both
+   { k1       / A1       := body1      , ..., kn / An := bodyn }
+   and
+   { k(n-i+1) / A(n-i+1) := body(n-i+1), ..., kn / An := bodyn }
+;)
+def fix_body' :
+  n : N -> MAn : MutualArity n ->
+  i : N -> MAi : MutualArity i ->
+  MutualFixpointAux n MAn i MAi ->
+  j : N ->
+  Decode (MA_lift_code (SA_code (MA_ith_SA i MAi j)) n MAn).
+[n,MA,MF,i] fix_body n MA MF i --> fix_body' n MA n MA MF i.
+
+[n,MA,SA,t]
+  fix_body' n MA (_S _) (MAcons _ SA _) (MFTcons _ _ _ _ _ t _  ) 0
+  -->
+  t.
+
+[n,MA,i,MAi,MFT,j]
+  fix_body' n MA (_S _) (MAcons i _ MAi) (MFTcons _ _ _ _ _ _ MFT) (_S j)
+  -->
+  fix_body' n MA i MAi MFT j.
+
+
+
+(;-----------------------------------------------------------------;)
+(;---------------------------  Utils  -----------------------------;)
+(;-----------------------------------------------------------------;)
+
+(; Input:
+     { k1 / A1, ..., kn / An }
+     body : A1 -> ... -> An -> x : A -> B x
+     a : A
+   Output:
+     g1 => ... => gn => body a
+   of type
+     A1 -> ... -> An -> B a
+;)
+def app_body :
+  n : N -> MA : MutualArity n ->
+  A : Code ->
+  B : (Decode A -> Code) ->
+  body : Decode (MA_lift_code (cPi A B) n MA) ->
+  a : Decode A ->
+  Decode (MA_lift_code (B a) n MA).
+
+[body,a]
+  app_body _ MAnil _ _ body a --> body a.
+
+[n,SA,MA,A,B,body,a]
+  app_body _ (MAcons n SA MA) A B body a
+  -->
+  f => app_body n MA A B (body f) a.
+
+(; guarded? s A x --> guarded   iif x starts with a constructor   ;)
+Guarded? : Type.
+guarded : Guarded?.
+def code_guarded? : Ind : Code -> Decode Ind -> Guarded?.
+def guarded? : s : Sort -> Ind : Univ s -> Term s Ind -> Guarded?.
+[s,Ind,c] guarded? s Ind c --> code_guarded? (code (cU s) Ind) c.
+
+(;-----------------------------------------------------------------;)
+(;-------------------  Fixpoint projections  ----------------------;)
+(;-----------------------------------------------------------------;)
+
+(; This returns the i-th fixpoint projection of the given
+    { k1 / A1 := body1, ..., kn / An := bodyn }
+   We write this
+     Fix fi{ f1 / k1 : A1 := body1, ..., fn / kn : An := bodyn }
+   of type Ai
+;)
+def fix_proj :
+  n : N -> MA: MutualArity n ->
+  MutualFixpoint n MA ->
+  i : N ->
+  Decode (MA_ith_code n MA i).
+
+(; Returns a term
+     Fix1 fi { f1 / k1 : A1 := body1, ..., fn / kn : An := bodyn } (k / A) body
+   Such that when applied to  t1, ..., tk with tk constructor headed, it reduces to
+     body
+       Fix f1{ f1 / k1 : A1 := body1, ..., fn / kn : An := bodyn }
+       ...
+       Fix fn{ f1 / k1 : A1 := body1, ..., fn / kn : An := bodyn }
+       t1
+       ...
+       tk
+;)
+def fix_proj_1 :
+  n : N -> MA : MutualArity n ->
+  MutualFixpoint n MA ->
+  SA : SingleArity ->
+  Decode (MA_lift_code (SA_code SA) n MA) ->
+  Decode (SA_code SA).
+
+[n,MA,MF,i]
+  fix_proj n MA MF i
+  -->
+  fix_proj_1 n MA MF (MA_ith_SA n MA i) (fix_body n MA MF i).
+
+[n,MA,MF,i,A,B,body,a]
+  fix_proj_1 n MA MF
+    (SAcons (_S i) (cPi A B))
+    body a
+  -->
+  fix_proj_1 n MA MF
+    (SAcons i (B a))
+    (app_body n MA A B body a).
+
+(; Returns a term
+     Fix2 fi { f1 / k1 : A1 := body1, ..., fn / kn : An := bodyn } A body
+   Such that when applied to "guarded", it reduces to
+     body
+       Fix f1{ f1 / k1 : A1 := body1, ..., fn / kn : An := bodyn }
+       ...
+       Fix fn{ f1 / k1 : A1 := body1, ..., fn / kn : An := bodyn }
+;)
+def fix_proj_2 :
+  n : N -> MA : MutualArity n ->
+  MutualFixpoint n MA ->
+  A : Code ->
+  Decode (MA_lift_code A n MA) ->
+  Guarded? ->
+  Decode A.
+
+[n,MA,MF,Ind,B,body,a]
+  fix_proj_1 n MA MF
+    (SAcons 0 (cPi Ind B))
+    body a
+  -->
+  fix_proj_2 n MA MF
+    (cPi Ind B)
+    body (code_guarded? Ind a) a.
+
+(; Returns a term
+     Fix3 A { k1 / A1, ..., kn / An }
+       f : (k -> Ak -> ... -> An -> A)
+       body
+   That reduces to   body (f 1) ... (f n) : A
+;)
+def fix_proj_3 :
+  A : Code ->
+  i : N -> MAi : MutualArity i ->
+  f : (k : N -> Decode (MA_ith_code i MAi k)) ->
+  Decode (MA_lift_code A i MAi) ->
+  Decode A.
+
+[n,MA,MF,A,body]
+  fix_proj_2 n MA MF A body guarded
+  -->
+  fix_proj_3 A n MA (k => fix_proj n MA MF k) body.
+
+[body] fix_proj_3 _ _ MAnil _ body --> body.
+
+[i,MAi,A,f,body]
+  fix_proj_3 A
+    _ (MAcons i _ MAi)
+    f
+    body
+  -->
+  fix_proj_3 A
+    i MAi
+    (k => f (_S k))
+    (body (f 0)).
+
+
+
+(;-----------------------------------------------------------------;)
+(;-------------  Short constructor of MutualArity  ----------------;)
+(;-----------------------------------------------------------------;)
+
+(;  MA' s n i  =  SA -> ... (i) ... -> SA -> MA n ;)
+def MutualArity' : N -> N -> Type.
+[n  ] MutualArity' n 0      --> MutualArity n.
+[n,i] MutualArity' n (_S i) --> SingleArity -> MutualArity' n i.
+
+def MA_magic :
+  n : N -> m : N ->
+  SingleArity ->
+  MutualArity' n      m -> (;  SA -> ...(m)... -> SA -> MA n      ;)
+  MutualArity' (_S n) m.   (;  SA -> ...(m)... -> SA -> MA (n+1)  ;)
+
+(; Dark magic occuring here ;)
+[n  ,A,MA   ] MA_magic n 0     A MA     --> MAcons n A MA.
+[n,m,A,MA,A'] MA_magic n (_S m) A MA A' --> MA_magic n m A (MA A').
+
+def make_MA : n : N -> MutualArity' n n.
+[    ] make_MA 0        --> MAnil.
+[n,SA] make_MA (_S n) SA --> MA_magic n n SA (make_MA n).
+
+(; The idea here is quite complexe:
+   1) First we start from a function
+     make_MA s n n  :  SA -> ...(n)... -> SA -> MA s n
+   2) When a first argument "sa" is provided, we integrate it and build a function
+     MA_magic s (n-1) (n-1) sa (make_MA s (n-1) (n-1))
+   of type
+     SA -> ...(n-1)... -> SA -> MA s n
+   where only n-1 arguments are now required to build the MA s n :
+   - the last argument "make_MA s (n-1) (n-1)" builds MA s (n-1) from n-1 arguments
+   - the 4th argument "sa" remembers the first provided argument
+   3) When a second argument sa2 is provided,
+     3a) MA_magic forward the extra argument to its "(n-1)-builder" function
+         MA_magic s (n-1) (n-1) sa (make_MA s (n-1) (n-1)) sa2
+         -->
+         MA_magic s (n-1) (n-2) sa (make_MA s (n-1) (n-1) sa2)
+       The 3rd argument is decreased to account for the fact that
+       the new "(n-1)-builder" function require one less argument to build MA s (n-1).
+     3b) Then make_MA can process the argument and become
+         MA_magic s (n-1) (n-2) sa (make_MA s (n-1) (n-1) sa2)
+         -->
+         MA_magic s (n-1) (n-2) sa
+           (MA_magic s (n-2) (n-2) sa2 (make_MA s (n-2) (n-2)))
+   4) When yet an other argument sa3 is provided, it is forwarded from
+      MA_magic s (n-1) (n-1)   to   MA_magic s (n-2) (n-2)
+      then eventually to    make_MA s (n-2) (n-2)   which build
+      MA_magic s (n-3) (n-3) sa3 (make_MA s (n-3))
+   5) This keeps on until make_MA s 0 is reached.
+      The term now looks something like:
+        MA_magic s (n-1) 0 sa
+          (MA_magic s (n-2) 0 sa2
+            (MA_magic s (n-3) 0 sa3
+              (...
+                   (MA_magic s 0 0 san (make_MA s 0))...)))
+      At this point, no extra argument is expected and MAnil s is produced.
+   6) The innermost MA_magic s 0 0 san (MAnil s)  then builds
+        MAcons s n san (MAnil s)
+   7) The next one keeps on producing a MAcons
+        MA_magic s 1 0 sa(n-1)  (MAcons s n san (MAnil s))
+        -->
+        MA_cons s 1 sa(n-1) (MAcons s n san (MAnil s))
+   8) This keeps on until the last one produces the expected list :
+        MA_magic s (n-1) 0 sa l
+        -->
+        MA_cons s (n-1) sa l   :  MA s n
+   Note) In practice the "backward" production of MAcons-es occur first
+         at the head (MA_magic s (n-1) ...) and eventually produces the
+         "0-builder" (MAnil s) from "MA_magic s 0".
+         I find it easier to understand when looking at the innermost
+         production first. All the productions occur anyway
+
+   To build a s-MA of size 3 you may now use directly:    make_MA s 3 a b c
+;)
+
+
+
+(;-----------------------------------------------------------------;)
+(;------------  Short constructor of MutualFixpoint  --------------;)
+(;-----------------------------------------------------------------;)
+
+(; At this point try just to convince yourself the same thing
+  is happening here than above... ;)
+
+def MutualFixpoint' :
+  (n : N) -> MutualArity n ->
+  (i : N) -> MutualArity i ->
+  (j : N) -> MutualArity j ->
+  Type.
+
+[n,MAn,i,MAi]
+  MutualFixpoint' n MAn i MAi _ MAnil
+  -->
+  MutualFixpointAux n MAn i MAi.
+
+[n,MAn,i,MAi,SA,j,MAj]
+  MutualFixpoint' n MAn i MAi _ (MAcons j SA MAj)
+  -->
+  Decode (MA_lift_code (SA_code SA) n MAn) ->
+  MutualFixpoint' n MAn i MAi j MAj.
+
+def fix_magic :
+  (n : N) -> (MAn : MutualArity n) ->
+  (i : N) -> (MAi : MutualArity i) ->
+  (j : N) -> (MAj : MutualArity j) ->
+  SA : SingleArity ->
+  Decode (MA_lift_code (SA_code SA) n MAn) ->
+  MutualFixpoint' n MAn i      MAi               j MAj ->
+  MutualFixpoint' n MAn (_S i) (MAcons i SA MAi) j MAj.
+
+[n,MAn,i,MAi,SA,t,MFT]
+  fix_magic n MAn i MAi _ MAnil SA t MFT
+  -->
+  MFTcons n MAn i MAi SA t MFT.
+
+[n,MAn,i,MAi,j,MAj,SA,t,MFT,t']
+  fix_magic n MAn i MAi (_S _) (MAcons j _ MAj) SA t MFT t'
+  -->
+  fix_magic n MAn i MAi j MAj SA t (MFT t').
+
+def make_fix :
+  (n : N) -> (MAn : MutualArity n) ->
+  (i : N) -> (MAi : MutualArity i) ->
+  MutualFixpoint' n MAn i MAi i MAi.
+
+[n,MAn]
+  make_fix n MAn _ MAnil
+  -->
+  MFTnil n MAn.
+
+[n,MAn,j,MAj,SA,t]
+  make_fix n MAn (_S _) (MAcons j SA MAj) t
+  -->
+  fix_magic n MAn j MAj j MAj SA t (make_fix n MAn j MAj).
+
+
+
+
+(;-----------------------------------------------------------------;)
+(;----  Public symbols with convenient types and shorter names  ---;)
+(;-----------------------------------------------------------------;)
+
+def SA : N -> s : Sort -> Univ s -> SingleArity.
+[n,s,t] SA n s t --> SAcons n (code (cU s) t).
+
+def fix :
+  n : N ->
+  MA: MutualArity n -> MutualFixpoint' n MA n MA n MA.
+[n,MAn] fix n MAn --> make_fix n MAn n MAn.
+
+def fixproj :
+  n : N ->
+  MA :(MutualArity' n n -> MutualArity n) ->
+  (
+     MutualFixpoint' n (MA (make_MA n)) n (MA (make_MA n)) n (MA (make_MA n)) ->
+     MutualFixpoint n (MA (make_MA n))
+  ) ->
+  i : N ->
+  Decode (MA_ith_code n (MA (make_MA n)) i).
+
+[n,MA,MF]
+  fixproj n MA MF
+  -->
+  fix_proj n
+    (MA (make_MA n))
+    (MF (fix n (MA (make_MA n)))).
+
+
+(;-----------------------------------------------------------------;)
+(;--------------------------  Recap  ------------------------------;)
+(;-----------------------------------------------------------------;)
+(;
+
+To build a SingleArity   (k / A)
+  SA : N -> s : Sort -> Univ s -> SingleArity
+
+To build a MutualArity  { k1 / A1, ..., kn / An }
+  make_MA : SingleArity -> ... (n) ... -> SingleArity -> MutualArity
+
+To build a MutualFixpoint  { k1 / A1 := body1, ..., kn / An := bodyn }
+  fix :
+    { k1 / A1, ..., kn / An } : MutualArity ->
+    (A1 -> ... -> An -> A1) ->
+    ...
+    (A1 -> ... -> An -> An) -> MutualFixpoint
+
+To build the i-th MutualFixpoint projection
+      Fix fi { f1 / k1 : A1 := body1, ..., fn / kn : An := bodyn } : Ai
+  fix_proj :
+    { k1 / A1 := body1, ..., kn / An := bodyn } : MutualFixpoint ->
+    i : N -> Ai.
+
+
+And finally, to build all in a one liner:
+
+fixproj :
+    n : N ->
+    (c => c (k1 / A1)
+            ...
+            (kn / An)
+    ) ->
+    (c => c body1
+            ...
+            bodyn
+    ) ->
+    i : N
+
+This is well typed, somehow...
+;)
+
+
+(;------------------------  Coqine parameters  --------------------;)
+
+(;
+Coqine inlined_fixpoint = true
+Coqine fix_arity_sort   = true  (; Fixpoint sort for each arity ;)
+Coqine code_guarded     = true  (; Guards are on code version of constructors ;)
+
+Coqine 0           = 0
+Coqine S           = _S
+Coqine SA          = SA
+Coqine MA          = make_MA
+Coqine fix         = fix
+Coqine fix_proj    = fix_proj
+Coqine fix_oneline = fixproj
+Coqine guard       = guarded?
+Coqine code_guard  = code_guarded?
+Coqine guarded     = guarded
+;)
