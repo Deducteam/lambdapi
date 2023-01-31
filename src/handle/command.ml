@@ -389,8 +389,6 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
      | true, _, _, Sequen ->
          fatal pos "Definitions cannot have matching strategies."
      | _ -> ());
-    (* Problem recording metavariables and constraints. *)
-    let p = new_problem() in
     (* Scoping the definition and the type. *)
     let scope ?(typ=false) = scope_term ~typ (expo = Privat) ss Env.empty in
     (* Scoping function keeping track of the position. *)
@@ -423,6 +421,8 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
                  Pos.make pos (P_Prod(p_sym_arg, a))
           in Some (scope ~typ:true a), Syntax.get_impl_term a
     in
+    (* Problem recording metavariables and constraints. *)
+    let p = new_problem() in
     (* Build proof data. *)
     let pdata =
       (* Type of the symbol. *)
@@ -457,11 +457,8 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
         | None -> [], Pos.make (Pos.end_pos pos) P_proof_end
         | Some (ts, pe) -> ts, pe
       in
-      (* Initialize proof state. *)
-      Console.State.push ();
       (* Build finalizer. *)
       let pdata_finalize ss ps =
-        Console.State.pop ();
         match pe.elt with
         | P_proof_abort -> wrn pe.pos "Proof aborted."; ss
         | P_proof_admitted ->
@@ -481,16 +478,25 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
             (* Add the symbol in the signature with a warning. *)
             Console.out 2 (Color.red "symbol %a : %a") uid id term a;
             wrn pe.pos "Proof admitted.";
-            let t = Option.map (fun t -> t.elt) t in
+            (* Keep the definition only if the symbol is not opaque. *)
+            let d =
+              if opaq then None
+              else
+                Option.map (fun m -> unfold (mk_Meta(m,[||]))) ps.proof_term
+            in
+            (* Add the symbol in the signature. *)
             fst (Sig_state.add_symbol
-                   ss expo prop mstrat opaq p_sym_nam a impl t)
+                   ss expo prop mstrat opaq p_sym_nam a impl d)
         | P_proof_end ->
             (* Check that the proof is indeed finished. *)
             if not (finished ps) then
               fatal pe.pos "The proof is not finished:@.%a" goals ps;
-            (* Get the final definition. *)
+            (* Keep the definition only if the symbol is not opaque. *)
             let d =
-              Option.map (fun m -> unfold (mk_Meta(m,[||]))) ps.proof_term in
+              if opaq then None
+              else
+                Option.map (fun m -> unfold (mk_Meta(m,[||]))) ps.proof_term
+            in
             (* Add the symbol in the signature. *)
             Console.out 2 (Color.red "symbol %a : %a") uid id term a;
             fst (Sig_state.add_symbol
