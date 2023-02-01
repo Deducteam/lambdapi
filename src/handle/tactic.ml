@@ -368,14 +368,15 @@ let handle :
     match nb_newgoals + 1 - nb_subproofs with
     | 0 -> a
     | n when n > 0 ->
-      fatal t.pos "Missing subproofs (%d subproofs for %d subgoals)."
-        nb_subproofs (nb_newgoals + 1)
-    | _ -> fatal t.pos "Too many subproofs (%d subproofs for %d subgoals)."
-             nb_subproofs (nb_newgoals + 1)
+      fatal t.pos "Missing subproofs (%d subproofs for %d subgoals):@.%a"
+        nb_subproofs (nb_newgoals + 1) goals ps'
+    | _ ->
+      fatal t.pos "Too many subproofs (%d subproofs for %d subgoals):@.%a"
+        nb_subproofs (nb_newgoals + 1) goals ps'
   else match nb_newgoals - nb_subproofs with
     | 0 -> a
     | n when n > 0 ->
-      fatal t.pos "Missing subproofs (%d subproofs for %d subgoals)."
-        nb_subproofs nb_newgoals
+      fatal t.pos "Missing subproofs (%d subproofs for %d subgoals):@.%a"
+        nb_subproofs nb_newgoals goals ps'
     | _ -> fatal t.pos "Too many subproofs (%d subproofs for %d subgoals)."
              nb_subproofs nb_newgoals
