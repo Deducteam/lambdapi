@@ -127,13 +127,15 @@ let link : t -> unit = fun sign ->
   in
   StrMap.iter f !(sign.sign_symbols);
   let f mp sm =
-    let sign = Path.Map.find mp !loaded in
-    let g n rs =
-      let s = find sign n in
-      s.sym_rules := !(s.sym_rules) @ List.map link_rule rs;
-      Tree.update_dtree s []
-    in
-    StrMap.iter g sm
+    if sm <> Extra.StrMap.empty then
+      let sign =
+        try Path.Map.find mp !loaded with Not_found -> assert false in
+      let g n rs =
+        let s = try find sign n with Not_found -> assert false in
+        s.sym_rules := !(s.sym_rules) @ List.map link_rule rs;
+        Tree.update_dtree s []
+      in
+      StrMap.iter g sm
   in
   Path.Map.iter f !(sign.sign_deps);
   sign.sign_builtins := StrMap.map link_symb !(sign.sign_builtins);
