@@ -65,8 +65,15 @@ depends: [
 ]
 build: [
   ["dune" "subst"] {dev}
-  [make]
-]
-install: [
-  [make "install"]
+  [
+    "dune"
+    "build"
+    "-p"
+    name
+    "-j"
+    jobs
+    "@install"
+    "@runtest" {with-test}
+    "@doc" {with-doc}
+  ]
 ]
