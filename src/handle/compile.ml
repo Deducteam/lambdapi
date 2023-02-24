@@ -56,9 +56,8 @@ let rec compile_with :
          is possible to qualify the symbols of the current modules. *)
       loaded := Path.Map.add mp sign !loaded;
       Tactic.reset_admitted();
-      let consume cmd =
-        Stdlib.(sig_st := handle (compile_with ~handle ~force) !sig_st cmd)
-      in
+      let compile = compile_with ~handle ~force in
+      let consume cmd = Stdlib.(sig_st := handle compile !sig_st cmd) in
       Debug.stream_iter consume (Parser.parse_file src);
       Sign.strip_private sign;
       if Stdlib.(!gen_obj) then begin
@@ -71,7 +70,8 @@ let rec compile_with :
     begin
       Console.out 1 "Loading \"%s\" ..." obj;
       let sign = Sign.read obj in
-      let compile mp _ = ignore (compile_with ~handle ~force:false mp) in
+      (* We recursively load every module [mp'] on which [mp] depends. *)
+      let compile mp' _ = ignore (compile_with ~handle ~force:false mp') in
       Path.Map.iter compile !(sign.sign_deps);
       loaded := Path.Map.add mp sign !loaded;
       Sign.link sign;

@@ -10,5 +10,5 @@
 (* Status: Experimental                                                 *)
 (************************************************************************)
 
-module Make (R : Range_intf.S) : RangeMap_intf.S
+module Make : Range_intf.S -> RangeMap_intf.S
 include RangeMap_intf.S with module Range = Range
