@@ -120,9 +120,7 @@ let iter : (Path.t -> string -> unit) -> unit = fun f ->
     - [$OPAM_SWITCH_PREFIX/lib/lambdapi/lib_root]
     - [$LAMBDAPI_LIB_ROOT/lib/lambdapi/lib_root]
     - the directory given as parameter of the [--lib-root] command line
-      argument.
-    If the directory given on command line is not a valid existing directory,
-    the program terminates with a graceful error message. *)
+      argument. *)
 let set_lib_root : string option -> unit = fun dir ->
   let open Stdlib in
   let prefix = Stdlib.ref "/usr/local" in
@@ -139,8 +137,6 @@ let set_lib_root : string option -> unit = fun dir ->
   match !lib_root with
   | None -> assert false (* pth is set above. *)
   | Some(pth) ->
-    if not (Sys.is_directory pth) then
-      fatal_no_pos "Invalid library root: \"%s\" is not a directory." pth;
     (* Register the library root as part of the module mapping.
          Required by [module_to_file]. *)
     Timed.(lib_mappings := LibMap.set_root pth !lib_mappings)

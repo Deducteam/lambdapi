@@ -47,7 +47,7 @@ homepage: "https://github.com/Deducteam/lambdapi"
 bug-reports: "https://github.com/Deducteam/lambdapi/issues"
 dev-repo: "git+https://github.com/Deducteam/lambdapi.git"
 depends: [
-  "dune" {>= "2.7"}
+  "dune" {>= "3.7"}
   "ocaml" {>= "4.08.0"}
   "menhir" {>= "20200624"}
   "sedlex" {>= "2.2"}
@@ -66,8 +66,15 @@ depends: [
 ]
 build: [
   ["dune" "subst"] {dev}
-  [make]
-]
-install: [
-  [make "install"]
+  [
+    "dune"
+    "build"
+    "-p"
+    name
+    "-j"
+    jobs
+    "@install"
+    "@runtest" {with-test}
+    "@doc" {with-doc}
+  ]
 ]
