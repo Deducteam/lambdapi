@@ -15,7 +15,7 @@ Examples of developments made with Lambdapi:
 - [some logic definitions](https://github.com/Deducteam/lambdapi-logics)
 - [inductive-recursive type definition](https://github.com/Deducteam/lambdapi/blob/master/tests/OK/indrec.lp)
 - [inductive-inductive type definition](https://github.com/Deducteam/lambdapi/blob/master/tests/OK/indind.lp)
-- [library on natural numbers and polymorphic lists](https://github.com/fblanqui/lib)
+- [library on natural numbers, integers and polymorphic lists](https://github.com/Deducteam/lambdapi-stdlib)
 - [Opam repository of Lambdapi libraries](https://github.com/Deducteam/opam-lambdapi-repository)
 - [test files](https://github.com/Deducteam/lambdapi/tree/master/tests/OK)
 
