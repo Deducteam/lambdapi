@@ -10,14 +10,25 @@ Issues can be reported on the following
 Questions can be asked on the following
 [forum](https://github.com/Deducteam/lambdapi/discussions).
 
-Examples of developments made with Lambdapi:
-- [tutorial](https://raw.githubusercontent.com/Deducteam/lambdapi/master/tests/OK/tutorial.lp)
+User interfaces
+---------------
+
+- [Emacs](https://lambdapi.readthedocs.io/en/latest/emacs.html)
+- [VSCode](https://lambdapi.readthedocs.io/en/latest/vscode.html)
+
+Libraries
+---------
+
+Lambdapi libraries can be found on the [Opam repository of Lambdapi libraries](https://github.com/Deducteam/opam-lambdapi-repository).
+
+Examples of developments made with Lambdapi
+-------------------------------------------
+
+- [tutorial](https://raw.githubusercontent.com/Deducteam/lambdapi/master/tests/OK/tutorial.lp) (learn Lambdapi in 15 minutes)
 - [some logic definitions](https://github.com/Deducteam/lambdapi-logics)
 - [inductive-recursive type definition](https://github.com/Deducteam/lambdapi/blob/master/tests/OK/indrec.lp)
 - [inductive-inductive type definition](https://github.com/Deducteam/lambdapi/blob/master/tests/OK/indind.lp)
 - [library on natural numbers, integers and polymorphic lists](https://github.com/Deducteam/lambdapi-stdlib)
-- [Opam repository of Lambdapi libraries](https://github.com/Deducteam/opam-lambdapi-repository)
-- [test files](https://github.com/Deducteam/lambdapi/tree/master/tests/OK)
 
 Operating systems
 -----------------
@@ -32,14 +43,9 @@ Installation via Opam
 ```bash
 opam install lambdapi
 ```
+gives you the command ``lambdapi``.
 
-The installation gives you:
-
-* a main executable ``lambdapi`` in your ``PATH``
-* OCaml libraries
-
-The Emacs extension is available on `MELPA <https://melpa.org/#/lambdapi-mode>`_
-.
+The Emacs extension is available on [MELPA](https://melpa.org/#/lambdapi-mode).
 
 The VSCode extension is available on the [Marketplace](https://marketplace.visualstudio.com/items?itemName=Deducteam.lambdapi).
 
@@ -50,6 +56,22 @@ odig doc lambdapi
 ```
 
 To install Lambdapi libraries, see the [opam-lambdapi-repository](https://github.com/Deducteam/opam-lambdapi-repository).
+
+**Remark:** To install Opam, see [here](https://opam.ocaml.org/).
+
+To make sure that programs installed via opam are in your path, you
+should have in your `.bashrc` (or any other shell initial file) the
+following line that can be automatically added when you do `opam
+init`:
+
+```bash
+test -r /home/blanqui/.opam/opam-init/init.sh && . /home/blanqui/.opam/opam-init/init.sh > /dev/null 2> /dev/null || true
+```
+
+To update your path, you can also do:
+```bash
+eval `opam env`
+```
 
 Compilation from the sources
 ----------------------------
@@ -102,7 +124,9 @@ make distclean # Same as clean, but also removes library checking files.
 make fullclean # Same as distclean, but also removes downloaded libraries.
 ```
 
+<!--
 [gitter-badge]: https://badges.gitter.im/Deducteam/lambdapi.svg
 [gitter-link]: https://gitter.im/Deducteam/lambdapi
 [matrix-badge]: http://strk.kbt.io/tmp/matrix_badge.svg
 [matrix-link]: https://riot.im/app/#/room/#lambdapi:matrix.org
+-->
