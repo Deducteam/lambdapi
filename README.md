@@ -1,4 +1,4 @@
-Lambdapi, a proof assistant based on the λΠ-calculus modulo rewriting [![Gitter][gitter-badge]][gitter-link] [![Matrix][matrix-badge]][matrix-link]
+Lambdapi, a proof assistant based on the λΠ-calculus modulo rewriting <!--[![Gitter][gitter-badge]][gitter-link] [![Matrix][matrix-badge]][matrix-link]-->
 =====================================================================
 
 ``>>>>>`` [User Manual](https://lambdapi.readthedocs.io) ``<<<<<``
