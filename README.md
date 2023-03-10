@@ -4,10 +4,10 @@ Lambdapi, a proof assistant based on the λΠ-calculus modulo rewriting <!--[![G
 ``>>>>>`` [User Manual](https://lambdapi.readthedocs.io) ``<<<<<``
 ------------------------------------------------------------------
 
-Issues can be reported on the following
+Issues can be reported on the
 [issue tracker](https://github.com/Deducteam/lambdapi/issues).
 
-Questions can be asked on the following
+Questions can be asked on the
 [forum](https://github.com/Deducteam/lambdapi/discussions).
 
 User interfaces
@@ -21,8 +21,8 @@ Libraries
 
 Lambdapi libraries can be found on the [Opam repository of Lambdapi libraries](https://github.com/Deducteam/opam-lambdapi-repository).
 
-Examples of developments made with Lambdapi
--------------------------------------------
+Examples
+--------
 
 - [tutorial](https://raw.githubusercontent.com/Deducteam/lambdapi/master/tests/OK/tutorial.lp) (learn Lambdapi in 15 minutes)
 - [some logic definitions](https://github.com/Deducteam/lambdapi-logics)
@@ -45,9 +45,9 @@ opam install lambdapi
 ```
 gives you the command ``lambdapi``.
 
-The Emacs extension is available on [MELPA](https://melpa.org/#/lambdapi-mode).
+The [Emacs](https://lambdapi.readthedocs.io/en/latest/emacs.html) extension is available on [MELPA](https://melpa.org/#/lambdapi-mode).
 
-The VSCode extension is available on the [Marketplace](https://marketplace.visualstudio.com/items?itemName=Deducteam.lambdapi).
+The [VSCode](https://lambdapi.readthedocs.io/en/latest/vscode.html) extension is available on the [Marketplace](https://marketplace.visualstudio.com/items?itemName=Deducteam.lambdapi).
 
 To browse the source code documentation, you can do:
 ```bash
