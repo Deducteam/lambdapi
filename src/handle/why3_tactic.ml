@@ -31,8 +31,6 @@ let why3_config : Why3.Whyconf.config =
 
 (** [why3_main] is the main section of the Why3 configuration. *)
 let why3_main : Why3.Whyconf.main = Why3.Whyconf.get_main why3_config
-let why3_libdir : string = Why3.Whyconf.libdir why3_main
-let why3_datadir : string = Why3.Whyconf.datadir why3_main
 
 (** [why3_env] is the initialized Why3 environment. *)
 let why3_env : Why3.Env.env =
@@ -223,16 +221,16 @@ let run_task : Why3.Task.task -> Pos.popt -> string -> bool =
   (* Return the prover configuration and load the driver. *)
   let prover = snd (Why3.Whyconf.Mprover.max_binding provers) in
   let driver =
-    try Why3.Whyconf.(load_driver why3_main why3_env prover)
+    try Why3.Driver.(load_driver_for_prover why3_main why3_env prover)
     with e -> fatal pos "Failed to load driver for \"%s\": %a"
                 prover.prover.prover_name Why3.Exn_printer.exn_printer e
   in
   (* Actually run the prover. *)
   let command = prover.Why3.Whyconf.command
-  and limit = {Why3.Call_provers.empty_limit with limit_time = !timeout} in
+  and limit = {Why3.Call_provers.empty_limit
+              with limit_time = float_of_int!timeout} in
   let call =
-    Why3.Driver.prove_task ~command ~libdir:why3_libdir ~datadir:why3_datadir
-        ~limit driver tsk in
+    Why3.Driver.prove_task ~command ~config:why3_main ~limit driver tsk in
   Why3.Call_provers.((wait_on_call call).pr_answer = Valid)
 
 (** [handle ss pos prover_name gt] runs the Why3 prover corresponding to
