@@ -11,6 +11,6 @@
             alcotest)
  (flags -w +3))
 
-(rule
- (alias runtest)
-  (action (run why3 config detect)))
+;(rule
+; (alias runtest)
+;  (action (run why3 config detect)))
