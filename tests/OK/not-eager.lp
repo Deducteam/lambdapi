@@ -1,5 +1,5 @@
 // Tests evaluation laziness.  If too eager, 99! will be computed...
-require open tests.OK.nat;
+require open tests.OK.natural;
 
 symbol l : N → N → N;
 rule l $x      0     ↪ l 0 $x

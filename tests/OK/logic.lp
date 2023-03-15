@@ -1,5 +1,5 @@
-require open tests.OK.bool;
-require open tests.OK.nat;
+require open tests.OK.boolean;
+require open tests.OK.natural;
 
 // Type of data type.
 

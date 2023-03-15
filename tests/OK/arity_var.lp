@@ -1,5 +1,5 @@
 // Test on variable arity
-require open tests.OK.nat;
+require open tests.OK.natural;
 
 symbol F : N → TYPE;
 rule F 0      ↪ N

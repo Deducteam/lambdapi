@@ -1,5 +1,5 @@
 // A simple loop to benchmark the rewriting engine
-require open tests.OK.nat;
+require open tests.OK.natural;
 
 symbol upper ≔ 3000;
 

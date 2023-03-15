@@ -1,5 +1,5 @@
 // Triggers heavy memory consumption with trees
-require open tests.OK.nat;
+require open tests.OK.natural;
 
 symbol triangle : N → N;
 rule triangle (s $n) ↪ (s $n) + (triangle $n)

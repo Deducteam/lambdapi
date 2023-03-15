@@ -1,4 +1,4 @@
-require open tests.OK.nat;
+require open tests.OK.natural;
 // Multiple recursions
 symbol fib : N → N;
 rule fib z          ↪ 0

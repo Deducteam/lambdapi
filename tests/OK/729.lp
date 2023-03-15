@@ -1,4 +1,4 @@
-require tests.OK.bool as B;
+require tests.OK.boolean as B;
 symbol T : (B.B → B.B) → TYPE;
 symbol bool_neg: B.B → B.B;
 symbol foo : T B.bool_neg;
