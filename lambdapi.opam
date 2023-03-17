@@ -77,3 +77,4 @@ build: [
     "@doc" {with-doc}
   ]
 ]
+available: arch != "ppc64"
