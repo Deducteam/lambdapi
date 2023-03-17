@@ -1,5 +1,5 @@
 require open tests.OK.logic;
-require open tests.OK.nat;
+require open tests.OK.natural;
 
 prover "Alt-Ergo";
 prover_timeout 2;

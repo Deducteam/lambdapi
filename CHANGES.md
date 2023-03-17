@@ -3,11 +3,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
-## Unreleased
+## 2.3.1 (2023-03-13)
 
 ### Fixed
 
 - Opaque definitions are not kept in memory and in lpo files anymore
+- A few bug fixes.
+
+### Changed
+
+- Why3 dependency updated to 1.6.
 
 ## 2.3.0 (2023-01-03)
 

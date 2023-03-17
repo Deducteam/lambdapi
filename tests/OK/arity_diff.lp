@@ -1,5 +1,5 @@
 // Rules with different arities
-require open tests.OK.nat;
+require open tests.OK.natural;
 
 symbol id : N → N;
 rule id $x ↪ $x;

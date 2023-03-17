@@ -1,6 +1,6 @@
 // Tests correctness of rewriting engine on left non linear rules
-require open tests.OK.nat;
-require open tests.OK.bool;
+require open tests.OK.natural;
+require open tests.OK.boolean;
 
 symbol eq_nl : N → N → B;
 

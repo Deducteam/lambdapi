@@ -1,6 +1,6 @@
 require open tests.OK.logic;
-require open tests.OK.bool;
-require open tests.OK.nat;
+require open tests.OK.boolean;
+require open tests.OK.natural;
 
 // Symmetry of the equality (first option, rewrite).
 opaque symbol eq_sym a (x y:T a) : P (x = y) → P (y = x)

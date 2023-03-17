@@ -1,4 +1,4 @@
-require open tests.OK.nat;
+require open tests.OK.natural;
 symbol ! (_: N): N;
 notation ! postfix 9;
 

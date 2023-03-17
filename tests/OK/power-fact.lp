@@ -1,4 +1,4 @@
-require open tests.OK.nat;
+require open tests.OK.natural;
 
 symbol power : N → N → N;
 rule power _      0  ↪ 1
