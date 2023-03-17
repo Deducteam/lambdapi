@@ -1,5 +1,5 @@
 require open tests.OK.logic;
-require open tests.OK.bool;
+require open tests.OK.boolean;
 
 rule T bool ↪ B;
 

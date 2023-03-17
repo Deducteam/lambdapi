@@ -3,14 +3,14 @@ A : t -> t -> t
 L : t -> (t -> t) -> t
 P : t -> (t -> t) -> t
 B : t -> t -> (t -> t) -> t
-tests_OK_bool_B : t
-tests_OK_bool_bool_and : t
-tests_OK_bool_bool_impl : t
-tests_OK_bool_bool_neg : t
-tests_OK_bool_bool_or : t
-tests_OK_bool_bool_xor : t
-tests_OK_bool_false : t
-tests_OK_bool_true : t
+tests_OK_boolean_B : t
+tests_OK_boolean_bool_and : t
+tests_OK_boolean_bool_impl : t
+tests_OK_boolean_bool_neg : t
+tests_OK_boolean_bool_or : t
+tests_OK_boolean_bool_xor : t
+tests_OK_boolean_false : t
+tests_OK_boolean_true : t
 )
 (VAR
 $x : t
@@ -32,16 +32,16 @@ b_and_not_a : t
 (RULES
 A(L($x,$y),$z) -> $y($z),
 B($x,$z,$y) -> $y($z),
-A(A(tests_OK_bool_bool_and,$1_0),tests_OK_bool_false) -> tests_OK_bool_false,
-A(A(tests_OK_bool_bool_and,$2_0),tests_OK_bool_true) -> $2_0,
-A(A(tests_OK_bool_bool_and,tests_OK_bool_false),$3_0) -> tests_OK_bool_false,
-A(A(tests_OK_bool_bool_and,tests_OK_bool_true),$4_0) -> $4_0,
-tests_OK_bool_bool_impl -> L(tests_OK_bool_B,\a.L(tests_OK_bool_B,\b.A(A(tests_OK_bool_bool_or,b),A(tests_OK_bool_bool_neg,a)))),
-A(tests_OK_bool_bool_neg,tests_OK_bool_false) -> tests_OK_bool_true,
-A(tests_OK_bool_bool_neg,tests_OK_bool_true) -> tests_OK_bool_false,
-A(A(tests_OK_bool_bool_or,$7_0),tests_OK_bool_false) -> $7_0,
-A(A(tests_OK_bool_bool_or,$8_0),tests_OK_bool_true) -> tests_OK_bool_true,
-A(A(tests_OK_bool_bool_or,tests_OK_bool_false),$9_0) -> $9_0,
-A(A(tests_OK_bool_bool_or,tests_OK_bool_true),$10_0) -> tests_OK_bool_true,
-tests_OK_bool_bool_xor -> L(tests_OK_bool_B,\a.L(tests_OK_bool_B,\b.B(tests_OK_bool_B,A(A(tests_OK_bool_bool_and,a),A(tests_OK_bool_bool_neg,b)),\a_and_not_b.B(tests_OK_bool_B,A(A(tests_OK_bool_bool_and,b),A(tests_OK_bool_bool_neg,a)),\b_and_not_a.A(A(tests_OK_bool_bool_or,a_and_not_b),b_and_not_a)))))
+A(A(tests_OK_boolean_bool_and,$1_0),tests_OK_boolean_false) -> tests_OK_boolean_false,
+A(A(tests_OK_boolean_bool_and,$2_0),tests_OK_boolean_true) -> $2_0,
+A(A(tests_OK_boolean_bool_and,tests_OK_boolean_false),$3_0) -> tests_OK_boolean_false,
+A(A(tests_OK_boolean_bool_and,tests_OK_boolean_true),$4_0) -> $4_0,
+tests_OK_boolean_bool_impl -> L(tests_OK_boolean_B,\a.L(tests_OK_boolean_B,\b.A(A(tests_OK_boolean_bool_or,b),A(tests_OK_boolean_bool_neg,a)))),
+A(tests_OK_boolean_bool_neg,tests_OK_boolean_false) -> tests_OK_boolean_true,
+A(tests_OK_boolean_bool_neg,tests_OK_boolean_true) -> tests_OK_boolean_false,
+A(A(tests_OK_boolean_bool_or,$7_0),tests_OK_boolean_false) -> $7_0,
+A(A(tests_OK_boolean_bool_or,$8_0),tests_OK_boolean_true) -> tests_OK_boolean_true,
+A(A(tests_OK_boolean_bool_or,tests_OK_boolean_false),$9_0) -> $9_0,
+A(A(tests_OK_boolean_bool_or,tests_OK_boolean_true),$10_0) -> tests_OK_boolean_true,
+tests_OK_boolean_bool_xor -> L(tests_OK_boolean_B,\a.L(tests_OK_boolean_B,\b.B(tests_OK_boolean_B,A(A(tests_OK_boolean_bool_and,a),A(tests_OK_boolean_bool_neg,b)),\a_and_not_b.B(tests_OK_boolean_B,A(A(tests_OK_boolean_bool_and,b),A(tests_OK_boolean_bool_neg,a)),\b_and_not_a.A(A(tests_OK_boolean_bool_or,a_and_not_b),b_and_not_a)))))
 )

@@ -1,5 +1,5 @@
 // Performance on non linear tests.
-require open tests.OK.nat;
+require open tests.OK.natural;
 
 symbol upper ≔ 500;
 

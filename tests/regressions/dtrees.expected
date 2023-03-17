@@ -1,4 +1,4 @@
-=> tests.OK.bool.bool_or
+=> tests.OK.boolean.bool_or
 graph {
        0 [label="0" shape="box"];
        1 [label="0" shape="box"];

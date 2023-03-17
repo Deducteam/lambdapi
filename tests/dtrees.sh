@@ -15,7 +15,7 @@ ok() {
 
 LAMBDAPI='dune exec -- lambdapi decision-tree -v 0 -w --map-dir=tests:tests'
 
-out="$(${LAMBDAPI} tests.OK.nat.+)"
+out="$(${LAMBDAPI} tests.OK.natural.+)"
 if [ -z "$out" ]; then
     ko 'tests.OK.nat.+'
 else

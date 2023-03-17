@@ -1,4 +1,4 @@
-require open tests.OK.nat;
+require open tests.OK.natural;
 
 symbol VectN : N → TYPE;
 symbol nil: VectN 0;

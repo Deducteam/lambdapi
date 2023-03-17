@@ -1,4 +1,4 @@
-require open tests.OK.bool;
+require open tests.OK.boolean;
 
 // Data type of natural numbers.
 

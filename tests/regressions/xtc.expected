@@ -5,15 +5,15 @@
     <rules>
       <rule>
         <lhs>
-          <funapp><name>tests.OK.bool.bool_and</name><arg><var>1_0</var></arg><arg><funapp><name>tests.OK.bool.false</name></funapp></arg></funapp>
+          <funapp><name>tests.OK.boolean.bool_and</name><arg><var>1_0</var></arg><arg><funapp><name>tests.OK.boolean.false</name></funapp></arg></funapp>
         </lhs>
         <rhs>
-          <funapp><name>tests.OK.bool.false</name></funapp>
+          <funapp><name>tests.OK.boolean.false</name></funapp>
         </rhs>
       </rule>
       <rule>
         <lhs>
-          <funapp><name>tests.OK.bool.bool_and</name><arg><var>2_0</var></arg><arg><funapp><name>tests.OK.bool.true</name></funapp></arg></funapp>
+          <funapp><name>tests.OK.boolean.bool_and</name><arg><var>2_0</var></arg><arg><funapp><name>tests.OK.boolean.true</name></funapp></arg></funapp>
         </lhs>
         <rhs>
           <var>2_0</var>
@@ -21,15 +21,15 @@
       </rule>
       <rule>
         <lhs>
-          <funapp><name>tests.OK.bool.bool_and</name><arg><funapp><name>tests.OK.bool.false</name></funapp></arg><arg><var>3_0</var></arg></funapp>
+          <funapp><name>tests.OK.boolean.bool_and</name><arg><funapp><name>tests.OK.boolean.false</name></funapp></arg><arg><var>3_0</var></arg></funapp>
         </lhs>
         <rhs>
-          <funapp><name>tests.OK.bool.false</name></funapp>
+          <funapp><name>tests.OK.boolean.false</name></funapp>
         </rhs>
       </rule>
       <rule>
         <lhs>
-          <funapp><name>tests.OK.bool.bool_and</name><arg><funapp><name>tests.OK.bool.true</name></funapp></arg><arg><var>4_0</var></arg></funapp>
+          <funapp><name>tests.OK.boolean.bool_and</name><arg><funapp><name>tests.OK.boolean.true</name></funapp></arg><arg><var>4_0</var></arg></funapp>
         </lhs>
         <rhs>
           <var>4_0</var>
@@ -37,31 +37,31 @@
       </rule>
       <rule>
         <lhs>
-          <funapp><name>tests.OK.bool.bool_impl</name></funapp>
+          <funapp><name>tests.OK.boolean.bool_impl</name></funapp>
         </lhs>
         <rhs>
-          <lambda><var>a</var><type><basic>tests.OK.bool.B</basic></type><lambda><var>b</var><type><basic>tests.OK.bool.B</basic></type><funapp><name>tests.OK.bool.bool_or</name><arg><var>b</var></arg><arg><funapp><name>tests.OK.bool.bool_neg</name><arg><var>a</var></arg></funapp></arg></funapp></lambda></lambda>
+          <lambda><var>a</var><type><basic>tests.OK.boolean.B</basic></type><lambda><var>b</var><type><basic>tests.OK.boolean.B</basic></type><funapp><name>tests.OK.boolean.bool_or</name><arg><var>b</var></arg><arg><funapp><name>tests.OK.boolean.bool_neg</name><arg><var>a</var></arg></funapp></arg></funapp></lambda></lambda>
         </rhs>
       </rule>
       <rule>
         <lhs>
-          <funapp><name>tests.OK.bool.bool_neg</name><arg><funapp><name>tests.OK.bool.false</name></funapp></arg></funapp>
+          <funapp><name>tests.OK.boolean.bool_neg</name><arg><funapp><name>tests.OK.boolean.false</name></funapp></arg></funapp>
         </lhs>
         <rhs>
-          <funapp><name>tests.OK.bool.true</name></funapp>
+          <funapp><name>tests.OK.boolean.true</name></funapp>
         </rhs>
       </rule>
       <rule>
         <lhs>
-          <funapp><name>tests.OK.bool.bool_neg</name><arg><funapp><name>tests.OK.bool.true</name></funapp></arg></funapp>
+          <funapp><name>tests.OK.boolean.bool_neg</name><arg><funapp><name>tests.OK.boolean.true</name></funapp></arg></funapp>
         </lhs>
         <rhs>
-          <funapp><name>tests.OK.bool.false</name></funapp>
+          <funapp><name>tests.OK.boolean.false</name></funapp>
         </rhs>
       </rule>
       <rule>
         <lhs>
-          <funapp><name>tests.OK.bool.bool_or</name><arg><var>7_0</var></arg><arg><funapp><name>tests.OK.bool.false</name></funapp></arg></funapp>
+          <funapp><name>tests.OK.boolean.bool_or</name><arg><var>7_0</var></arg><arg><funapp><name>tests.OK.boolean.false</name></funapp></arg></funapp>
         </lhs>
         <rhs>
           <var>7_0</var>
@@ -69,15 +69,15 @@
       </rule>
       <rule>
         <lhs>
-          <funapp><name>tests.OK.bool.bool_or</name><arg><var>8_0</var></arg><arg><funapp><name>tests.OK.bool.true</name></funapp></arg></funapp>
+          <funapp><name>tests.OK.boolean.bool_or</name><arg><var>8_0</var></arg><arg><funapp><name>tests.OK.boolean.true</name></funapp></arg></funapp>
         </lhs>
         <rhs>
-          <funapp><name>tests.OK.bool.true</name></funapp>
+          <funapp><name>tests.OK.boolean.true</name></funapp>
         </rhs>
       </rule>
       <rule>
         <lhs>
-          <funapp><name>tests.OK.bool.bool_or</name><arg><funapp><name>tests.OK.bool.false</name></funapp></arg><arg><var>9_0</var></arg></funapp>
+          <funapp><name>tests.OK.boolean.bool_or</name><arg><funapp><name>tests.OK.boolean.false</name></funapp></arg><arg><var>9_0</var></arg></funapp>
         </lhs>
         <rhs>
           <var>9_0</var>
@@ -85,18 +85,18 @@
       </rule>
       <rule>
         <lhs>
-          <funapp><name>tests.OK.bool.bool_or</name><arg><funapp><name>tests.OK.bool.true</name></funapp></arg><arg><var>10_0</var></arg></funapp>
+          <funapp><name>tests.OK.boolean.bool_or</name><arg><funapp><name>tests.OK.boolean.true</name></funapp></arg><arg><var>10_0</var></arg></funapp>
         </lhs>
         <rhs>
-          <funapp><name>tests.OK.bool.true</name></funapp>
+          <funapp><name>tests.OK.boolean.true</name></funapp>
         </rhs>
       </rule>
       <rule>
         <lhs>
-          <funapp><name>tests.OK.bool.bool_xor</name></funapp>
+          <funapp><name>tests.OK.boolean.bool_xor</name></funapp>
         </lhs>
         <rhs>
-          <lambda><var>a</var><type><basic>tests.OK.bool.B</basic></type><lambda><var>b</var><type><basic>tests.OK.bool.B</basic></type><application><lambda><var>a_and_not_b</var><type><basic>tests.OK.bool.B</basic></type><application><lambda><var>b_and_not_a</var><type><basic>tests.OK.bool.B</basic></type><funapp><name>tests.OK.bool.bool_or</name><arg><var>a_and_not_b</var></arg><arg><var>b_and_not_a</var></arg></funapp></lambda><funapp><name>tests.OK.bool.bool_and</name><arg><var>b</var></arg><arg><funapp><name>tests.OK.bool.bool_neg</name><arg><var>a</var></arg></funapp></arg></funapp></application></lambda><funapp><name>tests.OK.bool.bool_and</name><arg><var>a</var></arg><arg><funapp><name>tests.OK.bool.bool_neg</name><arg><var>b</var></arg></funapp></arg></funapp></application></lambda></lambda>
+          <lambda><var>a</var><type><basic>tests.OK.boolean.B</basic></type><lambda><var>b</var><type><basic>tests.OK.boolean.B</basic></type><application><lambda><var>a_and_not_b</var><type><basic>tests.OK.boolean.B</basic></type><application><lambda><var>b_and_not_a</var><type><basic>tests.OK.boolean.B</basic></type><funapp><name>tests.OK.boolean.bool_or</name><arg><var>a_and_not_b</var></arg><arg><var>b_and_not_a</var></arg></funapp></lambda><funapp><name>tests.OK.boolean.bool_and</name><arg><var>b</var></arg><arg><funapp><name>tests.OK.boolean.bool_neg</name><arg><var>a</var></arg></funapp></arg></funapp></application></lambda><funapp><name>tests.OK.boolean.bool_and</name><arg><var>a</var></arg><arg><funapp><name>tests.OK.boolean.bool_neg</name><arg><var>b</var></arg></funapp></arg></funapp></application></lambda></lambda>
         </rhs>
       </rule>
     </rules>
@@ -104,71 +104,71 @@
       <variableTypeInfo>
         <varDeclaration>
           <var>$10_0</var>
-          <type><basic>tests.OK.bool.B</basic></type>
+          <type><basic>tests.OK.boolean.B</basic></type>
         </varDeclaration>
         <varDeclaration>
           <var>$9_0</var>
-          <type><basic>tests.OK.bool.B</basic></type>
+          <type><basic>tests.OK.boolean.B</basic></type>
         </varDeclaration>
         <varDeclaration>
           <var>$8_0</var>
-          <type><basic>tests.OK.bool.B</basic></type>
+          <type><basic>tests.OK.boolean.B</basic></type>
         </varDeclaration>
         <varDeclaration>
           <var>$7_0</var>
-          <type><basic>tests.OK.bool.B</basic></type>
+          <type><basic>tests.OK.boolean.B</basic></type>
         </varDeclaration>
         <varDeclaration>
           <var>$4_0</var>
-          <type><basic>tests.OK.bool.B</basic></type>
+          <type><basic>tests.OK.boolean.B</basic></type>
         </varDeclaration>
         <varDeclaration>
           <var>$3_0</var>
-          <type><basic>tests.OK.bool.B</basic></type>
+          <type><basic>tests.OK.boolean.B</basic></type>
         </varDeclaration>
         <varDeclaration>
           <var>$2_0</var>
-          <type><basic>tests.OK.bool.B</basic></type>
+          <type><basic>tests.OK.boolean.B</basic></type>
         </varDeclaration>
         <varDeclaration>
           <var>$1_0</var>
-          <type><basic>tests.OK.bool.B</basic></type>
+          <type><basic>tests.OK.boolean.B</basic></type>
         </varDeclaration>
       </variableTypeInfo>
       <functionSymbolTypeInfo>
         <funcDeclaration>
-          <name>tests.OK.bool.bool_and</name>
-          <typeDeclaration><type><arrow><type><basic>tests.OK.bool.B</basic></type><type><arrow><type><basic>tests.OK.bool.B</basic></type><type><basic>tests.OK.bool.B</basic></type></arrow></type></arrow></type></typeDeclaration>
+          <name>tests.OK.boolean.bool_and</name>
+          <typeDeclaration><type><arrow><type><basic>tests.OK.boolean.B</basic></type><type><arrow><type><basic>tests.OK.boolean.B</basic></type><type><basic>tests.OK.boolean.B</basic></type></arrow></type></arrow></type></typeDeclaration>
         </funcDeclaration>
         <funcDeclaration>
-          <name>tests.OK.bool.bool_impl</name>
-          <typeDeclaration><type><arrow><type><basic>tests.OK.bool.B</basic></type><type><arrow><type><basic>tests.OK.bool.B</basic></type><type><basic>tests.OK.bool.B</basic></type></arrow></type></arrow></type></typeDeclaration>
+          <name>tests.OK.boolean.bool_impl</name>
+          <typeDeclaration><type><arrow><type><basic>tests.OK.boolean.B</basic></type><type><arrow><type><basic>tests.OK.boolean.B</basic></type><type><basic>tests.OK.boolean.B</basic></type></arrow></type></arrow></type></typeDeclaration>
         </funcDeclaration>
         <funcDeclaration>
-          <name>tests.OK.bool.bool_neg</name>
-          <typeDeclaration><type><arrow><type><basic>tests.OK.bool.B</basic></type><type><basic>tests.OK.bool.B</basic></type></arrow></type></typeDeclaration>
+          <name>tests.OK.boolean.bool_neg</name>
+          <typeDeclaration><type><arrow><type><basic>tests.OK.boolean.B</basic></type><type><basic>tests.OK.boolean.B</basic></type></arrow></type></typeDeclaration>
         </funcDeclaration>
         <funcDeclaration>
-          <name>tests.OK.bool.bool_or</name>
-          <typeDeclaration><type><arrow><type><basic>tests.OK.bool.B</basic></type><type><arrow><type><basic>tests.OK.bool.B</basic></type><type><basic>tests.OK.bool.B</basic></type></arrow></type></arrow></type></typeDeclaration>
+          <name>tests.OK.boolean.bool_or</name>
+          <typeDeclaration><type><arrow><type><basic>tests.OK.boolean.B</basic></type><type><arrow><type><basic>tests.OK.boolean.B</basic></type><type><basic>tests.OK.boolean.B</basic></type></arrow></type></arrow></type></typeDeclaration>
         </funcDeclaration>
         <funcDeclaration>
-          <name>tests.OK.bool.bool_xor</name>
-          <typeDeclaration><type><arrow><type><basic>tests.OK.bool.B</basic></type><type><arrow><type><basic>tests.OK.bool.B</basic></type><type><basic>tests.OK.bool.B</basic></type></arrow></type></arrow></type></typeDeclaration>
+          <name>tests.OK.boolean.bool_xor</name>
+          <typeDeclaration><type><arrow><type><basic>tests.OK.boolean.B</basic></type><type><arrow><type><basic>tests.OK.boolean.B</basic></type><type><basic>tests.OK.boolean.B</basic></type></arrow></type></arrow></type></typeDeclaration>
         </funcDeclaration>
         <funcDeclaration>
-          <name>tests.OK.bool.false</name>
-          <typeDeclaration><type><basic>tests.OK.bool.B</basic></type></typeDeclaration>
+          <name>tests.OK.boolean.false</name>
+          <typeDeclaration><type><basic>tests.OK.boolean.B</basic></type></typeDeclaration>
         </funcDeclaration>
         <funcDeclaration>
-          <name>tests.OK.bool.true</name>
-          <typeDeclaration><type><basic>tests.OK.bool.B</basic></type></typeDeclaration>
+          <name>tests.OK.boolean.true</name>
+          <typeDeclaration><type><basic>tests.OK.boolean.B</basic></type></typeDeclaration>
         </funcDeclaration>
       </functionSymbolTypeInfo>
     </higherOrderSignature>
   </trs>
   <strategy>FULL</strategy>
   <metainformation>
-    <originalfilename>tests.OK.bool.lp</originalfilename>
+    <originalfilename>tests.OK.boolean.lp</originalfilename>
   </metainformation>
 </problem>
