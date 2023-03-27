@@ -402,7 +402,7 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
          fatal pos "Definitions cannot have matching strategies."
      | _ -> ());
     (* Scoping the definition and the type. *)
-    let scope ?(typ=false) = scope_term ~typ (expo = Privat) ss Env.empty in
+    let scope ?(typ=false) = scope_term ~typ pdata_prv ss Env.empty in
     (* Scoping function keeping track of the position. *)
     let scope ?(typ=false) t = Pos.make t.pos (scope ~typ t) in
     (* Desugaring of parameters and scoping of [p_sym_trm]. *)
