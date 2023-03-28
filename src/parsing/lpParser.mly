@@ -68,6 +68,7 @@
 %token RULE
 %token SEQUENTIAL
 %token SIMPLIFY
+%token SKOLEM
 %token SOLVE
 %token SYMBOL
 %token SYMMETRY
@@ -313,6 +314,7 @@ tactic:
   | REWRITE d=SIDE? p=rw_patt_spec? t=term
     { let b = match d with Some Pratter.Left -> false | _ -> true in
       make_pos $sloc (P_tac_rewrite(b,p,t)) }
+  | SKOLEM { make_pos $loc P_tac_skolem }
   | SIMPLIFY i=qid_or_nat? { make_pos $sloc (P_tac_simpl i) }
   | SOLVE { make_pos $sloc P_tac_solve }
   | SYMMETRY { make_pos $sloc P_tac_sym }

@@ -329,6 +329,26 @@ let handle :
        | Typ gt::_ ->
          Why3_tactic.handle ss pos cfg gt; tac_admit ss sym_pos ps gt
        | _ -> assert false)
+  | P_tac_skolem ->
+    let sym_P = Builtin.get ss pos "P" in
+    let t =
+      match get_args gt.goal_type with
+      | Symb(s), [t] when s == sym_P -> t
+      | _ -> fatal pos "Goal not of form (%a _)@." sym sym_P
+    in
+    let skl_t = Skolem.handle ss sym_pos t in
+    (* FIXME. We generate an axiom ax: P skl_t → P t in order to build a proof
+       of P t from a proof of P skl_t. *)
+    let p_skl_t = mk_Appl (mk_Symb sym_P, skl_t) in
+    let c = Env.to_ctxt env in
+    let ax_typ = mk_Prod (p_skl_t, bind (new_tvar "_") lift gt.goal_type) in
+    let ax_typ, arity = Ctxt.to_prod c ax_typ in
+    let m = LibMeta.fresh (new_problem()) ax_typ arity in
+    (*FIXME: check that ax_typ has no meta.*)
+    let ax = add_axiom ss sym_pos m in
+    let p = new_problem() in
+    let new_goal = LibMeta.make p c p_skl_t in
+    tac_refine pos ps gt gs p (mk_Appl (mk_Symb ax, new_goal))
 
 (** Representation of a tactic output. *)
 type tac_output = proof_state * Query.result

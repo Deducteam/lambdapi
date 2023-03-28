@@ -179,6 +179,7 @@ let rw_patt : p_rw_patt pp = fun ppf p ->
 
 let tactic : p_tactic pp = fun ppf { elt;  _ } ->
   begin match elt with
+  | P_tac_skolem -> out ppf "skolem"
   | P_tac_admit -> out ppf "admit"
   | P_tac_apply t -> out ppf "apply %a" term t
   | P_tac_assume ids ->
