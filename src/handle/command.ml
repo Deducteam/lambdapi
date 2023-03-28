@@ -492,7 +492,7 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
             wrn pe.pos "Proof admitted.";
             (* Keep the definition only if the symbol is not opaque. *)
             let d =
-              if opaq then None
+              if pdata_prv then None
               else
                 Option.map (fun m -> unfold (mk_Meta(m,[||]))) ps.proof_term
             in
@@ -503,9 +503,10 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
             (* Check that the proof is indeed finished. *)
             if not (finished ps) then
               fatal pe.pos "The proof is not finished:@.%a" goals ps;
-            (* Keep the definition only if the symbol is not opaque. *)
+            (* Keep the definition only if the symbol is not private and not
+               opaque. *)
             let d =
-              if opaq then None
+              if pdata_prv then None
               else
                 Option.map (fun m -> unfold (mk_Meta(m,[||]))) ps.proof_term
             in
