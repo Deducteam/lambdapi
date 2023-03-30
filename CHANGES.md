@@ -3,6 +3,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## Unreleased
+
+### Added
+
+- Option `--config <FILE>` for export -o stt_coq.
+
+### Changed
+
+- Private definitions are not kept in memory and in lpo files anymore.
+
 ## 2.3.1 (2023-03-13)
 
 ### Fixed

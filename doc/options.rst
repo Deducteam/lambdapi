@@ -20,39 +20,31 @@ The available commands are:
 * ``uninstall``: uninstalls the specified package.
 * ``version``: give the current version of Lambdapi.
 
-**Note:** the ``parse`` and ``export`` commands can trigger the
+The ``parse`` and ``export`` commands can trigger the
 compilation of dependencies if the required object files (``.lpo``
 extension) are not present.
 
-**Note:** if a command takes several files as argument, the files are
-handled independently in the order they are given. The program
-immediately stops on the first failure, without going to the next file
-(if any).
-
-Input files
------------
+**Input files:**
 
 The commands ``check``, ``parse`` and ``export`` expect input files
 with either the ``.lp`` extension or the ``.dk`` extension.
 The appropriate parser is selected automatically.
 
-**Note:** The ``export`` command outputs the translation of all the
- input files on the standard output.
+The ``export`` command outputs the translation of all the input files
+on the standard output.
 
-Common flags
-------------
+If a command takes several files as argument, the files are
+handled independently in the order they are given. The program
+immediately stops on the first failure, without going to the next file
+(if any).
+
+**Common flags:**
 
 The commands ``check``, ``decision-tree``, ``export``, ``parse``,
 ``lsp`` all support the following command line arguments and flags.
 
 Configuration flags
-^^^^^^^^^^^^^^^^^^^
-
-``-c``, ``--gen-obj`` instructs ``lambdapi`` to generate object files
-for every checked module (including dependencies). Object files have
-the extension ``.lpo`` and they are automatically read back when
-necessary if they exist and are up to date (they are regenerated
-otherwise).
+-------------------
 
 ``-v <NUM>``, ``--verbose=<NUM>`` sets the verbosity level to the given natural
 number (the default value is 1). A value of 0 should not print
@@ -74,7 +66,7 @@ source tree. More information on that is given in the section about
 the module system.
 
 Debugging flags
-^^^^^^^^^^^^^^^
+---------------
 
 ``--debug=<FLAGS>`` enables the debugging modes specified by every
 character of ``FLAGS``. Details on available character flags are
@@ -84,8 +76,71 @@ obtained using ``--help``.
 seconds.  Note that the timeout is reset between each file, and that
 the parameter of the command is expected to be a natural number.
 
+``check``
+---------
+
+``-c``, ``--gen-obj`` instructs ``lambdapi`` to generate object files
+for every checked module (including dependencies). Object files have
+the extension ``.lpo`` and they are automatically read back when
+necessary if they exist and are up to date (they are regenerated
+otherwise).
+
+
+``--too-long=<FLOAT>`` gives a warning for each interpreted source
+file command taking more than the given number of seconds to be
+checked. The parameter ``FLOAT`` is expected to be a floating point
+number.
+
+``export``
+----------
+
+``-o <FMT>``, ``--output=<FMT>`` instructs ``lambdapi`` to translate
+the files given in argument according to ``<FMT>``:
+
+* ``lp``: Lambdapi format
+* ``dk``:  `Dedukti <https://github.com/Deducteam/dedukti>`__ format
+* ``hrs``: `HRS <http://project-coco.uibk.ac.at/problems/hrs.php>`__ format of the confluence competition
+* ``xtc``: `XTC <https://raw.githubusercontent.com/TermCOMP/TPDB/master/xml/xtc.xsd>`__ format of the termination competition
+* ``raw_coq``: `Coq <https://coq.inria.fr/>`__ format
+* ``stt_coq``: `Coq <https://coq.inria.fr/>`__ format using `Coq.v <https://github.com/fblanqui/lambdapi/blob/to_coq/libraries/Coq.v>`__ which should be added to the translated files and renamed into STTfa.v.
+
+For the format ``raw_coq``, note that the encoding of simple type theory can be defined in Coq using `STTfa.v <https://github.com/fblanqui/lambdapi/blob/to_coq/libraries/STTfa.v>`__.
+
+For the format ``stt_coq``, ``--config <FILE>`` instructs ``lambdapi`` to use the Simple Type Theory encoding specified in ``<FILE>``. The default configuration is:
+
+::
+   
+   builtin "Set" ≔ STTfa.Set;
+   builtin "prop" ≔ STTfa.prop; // : Set 
+   builtin "arr" ≔ STTfa.arr; // : Set → Set → Set
+   builtin "El" ≔ STTfa.El; // : Set → TYPE
+   builtin "imp" ≔ STTfa.imp; // : El prop → El prop → El prop
+   builtin "all" ≔ STTfa.all; // Π a : Set, (El a → El prop) → El prop
+   builtin "Prf" ≔ STTfa.Prf; // : El prop → TYPE
+
+``lsp``
+-------
+
+``--standard-lsp`` restricts to standard LSP protocol (no extension).
+
+``--log-file=<FILE>`` sets the log file for the LSP server. If not
+given, the file ``/tmp/lambdapi_lsp_log.txt`` is used.
+
+``install`` and ``uninstall``
+-----------------------------
+
+``--dry-run`` prints the system commands that should be called instead
+of running them.
+
+``decision-tree``
+-----------------
+
+``--ghost`` print the decision tree of a ghost symbol. Ghost symbols
+are symbols used internally that cannot be used in the concrete
+syntax.
+
 Confluence checking
-^^^^^^^^^^^^^^^^^^^
+-------------------
 
 ``--confluence=<CMD>`` checks the confluence of the rewriting system by
 calling an external prover with the command ``CMD``. The given command
@@ -104,7 +159,7 @@ following dummy command:
 ``--confluence "cat > output.trs; echo MAYBE"``.
 
 Termination checking
-^^^^^^^^^^^^^^^^^^^^
+--------------------
 
 ``--termination=<CMD>`` checks the termination of the rewriting system
 by calling an external prover with the command ``CMD``. The given
@@ -128,52 +183,6 @@ first generate a ``.xml`` file as described below.
 To inspect the ``.xml`` file generated by Lambdapi, one may use the
 following dummy command:
 ``--termination "cat > output.xml; echo MAYBE"``.
-
-Specific flags for the ``check`` command
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-``--too-long=<FLOAT>`` gives a warning for each interpreted source
-file command taking more than the given number of seconds to be
-checked. The parameter ``FLOAT`` is expected to be a floating point
-number.
-
-Specific flags for the ``export`` command
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-``-o <FMT>``, ``--output=<FMT>`` instructs ``lambdapi`` to translate
-the files given in argument according to ``<FMT>``:
-
-* ``lp``: Lambdapi format
-* ``dk``:  `Dedukti <https://github.com/Deducteam/dedukti>`__ format
-* ``hrs``: `HRS <http://project-coco.uibk.ac.at/problems/hrs.php>`__ format of the confluence competition
-* ``xtc``: `XTC <https://raw.githubusercontent.com/TermCOMP/TPDB/master/xml/xtc.xsd>`__ format of the termination competition
-* ``raw_coq``: `Coq <https://coq.inria.fr/>`__ format
-* ``stt_coq``: `Coq <https://coq.inria.fr/>`__ format using `Coq.v <https://github.com/fblanqui/lambdapi/blob/to_coq/libraries/Coq.v>`__ which should be added to the translated files and renamed into STTfa.v.
-
-**Note:** For the format ``stt_coq``, the input files are assumed to be in the encoding of simple type theory `STTfa.lp <https://github.com/Deducteam/isabelle_dedukti/blob/master/STTfa.lp>`__ or `STTfa.dk <https://github.com/Deducteam/isabelle_dedukti/blob/master/STTfa.dk>`__.
-
-**Note:** For the format ``raw_coq``, note that the encoding of simple type theory can be defined in Coq using `STTfa.v <https://github.com/fblanqui/lambdapi/blob/to_coq/libraries/STTfa.v>`__.
-  
-Specific flags for the ``lsp`` command
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-``--standard-lsp`` restricts to standard LSP protocol (no extension).
-
-``--log-file=<FILE>`` sets the log file for the LSP server. If not
-given, the file ``/tmp/lambdapi_lsp_log.txt`` is used.
-
-Specific flags for the ``install`` and ``uninstall`` commands
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-``--dry-run`` prints the system commands that should be called instead
-of running them.
-
-Specific flags for the ``decision-tree`` command
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-``--ghost`` print the decision tree of a ghost symbol. Ghost symbols
-are symbols used internally that cannot be used in the concrete
-syntax.
 
 .. _HRS: http://project-coco.uibk.ac.at/problems/hrs.php
 .. _CSI^ho: http://cl-informatik.uibk.ac.at/software/csi/ho/

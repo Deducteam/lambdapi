@@ -390,7 +390,7 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
          fatal pos "Definitions cannot have matching strategies."
      | _ -> ());
     (* Scoping the definition and the type. *)
-    let scope ?(typ=false) = scope_term ~typ (expo = Privat) ss Env.empty in
+    let scope ?(typ=false) = scope_term ~typ pdata_prv ss Env.empty in
     (* Scoping function keeping track of the position. *)
     let scope ?(typ=false) t = Pos.make t.pos (scope ~typ t) in
     (* Desugaring of parameters and scoping of [p_sym_trm]. *)
@@ -480,7 +480,7 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
             wrn pe.pos "Proof admitted.";
             (* Keep the definition only if the symbol is not opaque. *)
             let d =
-              if opaq then None
+              if pdata_prv then None
               else
                 Option.map (fun m -> unfold (mk_Meta(m,[||]))) ps.proof_term
             in
@@ -491,9 +491,10 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
             (* Check that the proof is indeed finished. *)
             if not (finished ps) then
               fatal pe.pos "The proof is not finished:@.%a" goals ps;
-            (* Keep the definition only if the symbol is not opaque. *)
+            (* Keep the definition only if the symbol is not private and not
+               opaque. *)
             let d =
-              if opaq then None
+              if pdata_prv then None
               else
                 Option.map (fun m -> unfold (mk_Meta(m,[||]))) ps.proof_term
             in

@@ -79,8 +79,12 @@ let export_cmd : Config.t -> string -> unit = fun cfg file ->
       Export.Hrs.sign Format.std_formatter (Compile.compile_file file)
     | Some Xtc ->
       Export.Xtc.sign Format.std_formatter (Compile.compile_file file)
-    | Some RawCoq -> Export.Coq.print false (Parser.parse_file file)
-    | Some SttCoq -> Export.Coq.print true (Parser.parse_file file)
+    | Some RawCoq -> Export.Coq.print None (Parser.parse_file file)
+    | Some SttCoq ->
+        let cfg =
+          Option.map_default Export.Coq.get_config
+            Export.Coq.default_config cfg.export in
+        Export.Coq.print (Some cfg) (Parser.parse_file file)
   in Error.handle_exceptions run
 
 (** Running the LSP server. *)
