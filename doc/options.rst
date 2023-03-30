@@ -31,7 +31,7 @@ with either the ``.lp`` extension or the ``.dk`` extension.
 The appropriate parser is selected automatically.
 
 The ``export`` command outputs the translation of all the input files
- on the standard output.
+on the standard output.
 
 If a command takes several files as argument, the files are
 handled independently in the order they are given. The program
@@ -44,7 +44,7 @@ The commands ``check``, ``decision-tree``, ``export``, ``parse``,
 ``lsp`` all support the following command line arguments and flags.
 
 Configuration flags
-^^^^^^^^^^^^^^^^^^^
+-------------------
 
 ``-v <NUM>``, ``--verbose=<NUM>`` sets the verbosity level to the given natural
 number (the default value is 1). A value of 0 should not print
@@ -66,7 +66,7 @@ source tree. More information on that is given in the section about
 the module system.
 
 Debugging flags
-^^^^^^^^^^^^^^^
+---------------
 
 ``--debug=<FLAGS>`` enables the debugging modes specified by every
 character of ``FLAGS``. Details on available character flags are
