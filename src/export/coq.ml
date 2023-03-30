@@ -1,15 +1,64 @@
 (** Translate the parser-level AST to Coq. *)
 
 open Lplib open Base
-open Common open Pos
+open Common open Pos open Error
 open Parsing open Syntax
 open Format
-open Core
+open Core open Term
 
-let log = Logger.make 'x' "xpor" "export"
+let log = Logger.make 'x' "xprt" "export"
 let log = log.pp
 
 let stt = Stdlib.ref true
+
+type config =
+  { sym_Set : qident
+  ; sym_prop : qident (* : Set *)
+  ; sym_arr : qident (* : Set → Set → Set *)
+  ; sym_El : qident (* : Set → TYPE *)
+  ; sym_imp : qident (* El prop → El prop → El prop *)
+  ; sym_all : qident (* Π [a : Set], (El a → El prop) → El prop *)
+  ; sym_Prf : qident (* El prop → TYPE *) }
+
+let default_config =
+  let path = ["STTfa"] in
+  { sym_Set = path, "Set"
+  ; sym_prop = path, "prop"
+  ; sym_arr = path, "arr"
+  ; sym_El = path, "El"
+  ; sym_imp = path, "imp"
+  ; sym_all = path, "all"
+  ; sym_Prf = path, "Prf" }
+
+let get_config : string -> config = fun f ->
+  let sym_Set = ref None and sym_prop = ref None and sym_arr = ref None
+  and sym_El = ref None and sym_imp = ref None and sym_all = ref None
+  and sym_Prf = ref None in
+  let consume = function
+    | {elt=P_builtin("Set",{elt;_});_} -> sym_Set := Some elt
+    | {elt=P_builtin("prop",{elt;_});_} -> sym_prop := Some elt
+    | {elt=P_builtin("arr",{elt;_});_} -> sym_arr := Some elt
+    | {elt=P_builtin("El",{elt;_});_} -> sym_El := Some elt
+    | {elt=P_builtin("imp",{elt;_});_} -> sym_imp := Some elt
+    | {elt=P_builtin("all",{elt;_});_} -> sym_all := Some elt
+    | {elt=P_builtin("Prf",{elt;_});_} -> sym_Prf := Some elt
+    | {pos;_} -> fatal pos "Invalid command."
+  in
+  Stream.iter consume (Parser.parse_file f);
+  let get n = function
+    | Some x -> x
+    | None ->
+        let pos =
+          Some {fname=Some f;start_line=0;start_col=0;end_line=0;end_col=0} in
+        fatal pos "Builtin %s undefined." n
+  in
+  { sym_Set = get "Set" !sym_Set;
+    sym_prop = get "prop" !sym_prop;
+    sym_arr = get "arr" !sym_arr;
+    sym_El = get "El" !sym_El;
+    sym_imp = get "imp" !sym_imp;
+    sym_all = get "all" !sym_all;
+    sym_Prf = get "Prf" !sym_Prf }
 
 let translate_ident : string -> string =
   let re = Str.regexp "[():\\<>^]" in
@@ -63,6 +112,8 @@ let modifiers : p_modifier list pp = List.pp modifier ""
    and product), [`Appl] (application) and [`Atom] (smallest priority). *)
 type priority = [`Func | `Appl | `Atom]
 
+let cfg = Stdlib.ref default_config
+
 let rec term : p_term pp = fun ppf t ->
   let empty_context = ref true in
   let rec atom ppf t = pp `Atom ppf t
@@ -72,10 +123,10 @@ let rec term : p_term pp = fun ppf t ->
     if Logger.log_enabled() then log "%a: %a" Pos.short t.pos Pretty.term t;
     match (t.elt, priority) with
     | P_Type, _ -> out ppf "Type"
-    | P_Iden({elt=(["STTfa"],"Set");_},_), _
-      when Stdlib.(!stt) -> out ppf "Type"
-    | P_Iden({elt=(["STTfa"],"prop");_},_), _
-      when Stdlib.(!stt) -> out ppf "Prop"
+    | P_Iden({elt;_},_), _
+      when !stt && elt = !cfg.sym_Set -> out ppf "Type"
+    | P_Iden({elt;_},_), _
+      when !stt && elt = !cfg.sym_prop -> out ppf "Prop"
     | P_Iden(qid,false), _ -> out ppf "%a" qident qid
     | P_Iden(qid,true), _ -> out ppf "@@%a" qident qid
     | P_Wild, _ -> out ppf "_"
@@ -101,14 +152,16 @@ let rec term : p_term pp = fun ppf t ->
     | P_Appl(a,b), _ ->
       begin
         match p_get_args t with
-        | {elt=P_Iden({elt=(["STTfa"],("El"|"Prf"));_},_);_}, [u]
-          when Stdlib.(!stt) -> pp priority ppf u
+        | {elt=P_Iden({elt;_},_);_}, [u]
+             when !stt && (elt = !cfg.sym_El || elt = !cfg.sym_Prf) ->
+            pp priority ppf u
         (* The cases below are not necessary: they just unfold the definitions
            of arr, imp and all in STTfa.v. *)
-        | {elt=P_Iden({elt=(["STTfa"],("arr"|"imp"));_},_);_}, [u1;u2]
-          when Stdlib.(!stt) -> pp priority ppf {t with elt=P_Arro(u1,u2)}
-        | {elt=P_Iden({elt=(["STTfa"],"all");_},_);_},
-          [_;{elt=P_Abst([_] as xs,u2);_}] when Stdlib.(!stt) ->
+        | {elt=P_Iden({elt;_},_);_}, [u1;u2]
+             when !stt && (elt = !cfg.sym_arr || elt = !cfg.sym_imp) ->
+            pp priority ppf {t with elt=P_Arro(u1,u2)}
+        | {elt=P_Iden({elt;_},_);_},[_;{elt=P_Abst([_] as xs,u2);_}]
+             when !stt && elt = !cfg.sym_all ->
           pp priority ppf {t with elt=P_Prod(xs,u2)}
         | _ -> application priority ppf t a b
       end
@@ -277,5 +330,8 @@ let ast : ast pp = fun ppf -> Stream.iter (command ppf)
 
 (** [print b ast] sets [stt] to [b] and translates [ast] to Coq on standard
     output. *)
-let print : bool -> ast -> unit = fun b ->
-  Stdlib.(stt := b); ast std_formatter
+let print : config option -> ast -> unit = fun c a ->
+  begin match c with
+  | None -> stt := false
+  | Some c -> stt := true; cfg := c
+  end; ast std_formatter a
