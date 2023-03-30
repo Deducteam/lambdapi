@@ -27,7 +27,8 @@ type config =
   ; too_long    : float
   ; confluence  : string option
   ; termination : string option
-  ; output      : output option }
+  ; output      : output option
+  ; export      : string option }
 
 (** Short synonym of the [config] type. *)
 type t = config
@@ -45,7 +46,8 @@ let default_config =
   ; too_long    = infinity
   ; confluence  = None
   ; termination = None
-  ; output      = None }
+  ; output      = None
+  ; export      = None }
 
 (** [init cfg] runs the necessary initializations according to [cfg]. This has
     to be done prior to any other (non-trivial) task. *)
@@ -225,18 +227,30 @@ let output : output option CLT.t =
   in
   Arg.(value & opt (some output) None & info ["output";"o"] ~docv:"FMT" ~doc)
 
+(** Config file option for export coq_stt command. *)
+
+let export : string option CLT.t =
+  let export : string Arg.conv =
+    let parse (s: string) : (string, [>`Msg of string]) result = Ok s in
+    let print fmt s = string fmt s in
+    Arg.conv (parse, print)
+  in
+  let doc = "Set config file for the command export -o stt_coq." in
+  Arg.(value & opt (some export) None & info ["config"] ~docv:"FILE" ~doc)
+
 (** Gathering options under a configuration. *)
 
 (** [full] gathers the command line arguments common to most commands. *)
 let full : config CLT.t =
   let fn gen_obj lib_root map_dir verbose no_warnings debug
-      no_colors record_time too_long confluence termination output =
-    { gen_obj ; lib_root ; map_dir ; verbose ; no_warnings ; debug
-    ; no_colors ; record_time ; too_long ; confluence ; termination ; output }
+      no_colors record_time too_long confluence termination output export =
+    {gen_obj; lib_root; map_dir; verbose; no_warnings; debug; no_colors;
+     record_time; too_long; confluence; termination; output; export }
   in
   let open Term in
   const fn $ gen_obj $ lib_root $ map_dir $ verbose $ no_warnings $ debug
   $ no_colors $ record_time $ too_long $ confluence $ termination $ output
+  $ export
 
 (** [minimal] gathers the minimal command line options to enable debugging and
     access to the library root. *)
