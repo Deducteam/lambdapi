@@ -257,7 +257,7 @@ let command : p_command pp = fun ppf ({ elt; _ } as cmd) ->
       out ppf "Require %a." (List.pp path " ") ps
   | P_require_as (p,i) -> out ppf "Module %a := %a." ident i path p
   | P_symbol
-    { p_sym_mod=_; p_sym_nam; p_sym_arg; p_sym_typ;
+    { p_sym_mod; p_sym_nam; p_sym_arg; p_sym_typ;
       p_sym_trm; p_sym_prf=_; p_sym_def } ->
       begin match code p_sym_nam.elt with
       | Set -> ()
@@ -268,8 +268,14 @@ let command : p_command pp = fun ppf ({ elt; _ } as cmd) ->
       | Other ->
           match p_sym_def, p_sym_trm, p_sym_arg, p_sym_typ with
           | true, Some t, _, _ ->
-              out ppf "Definition %a%a%a := %a."
-                ident p_sym_nam params_list p_sym_arg typopt p_sym_typ term t
+              if List.exists is_opaq p_sym_mod then
+                out ppf "Lemma %a%a%a. Proof. exact (%a). Qed."
+                  ident p_sym_nam params_list p_sym_arg typopt p_sym_typ
+                  term t
+              else
+                out ppf "Definition %a%a%a := %a."
+                  ident p_sym_nam params_list p_sym_arg typopt p_sym_typ
+                  term t
           | false, _, [], Some t ->
               out ppf "Axiom %a : %a." ident p_sym_nam term t
           | false, _, _, Some t ->
