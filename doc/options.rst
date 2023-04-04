@@ -102,14 +102,15 @@ the files given in argument according to ``<FMT>``:
 * ``hrs``: `HRS <http://project-coco.uibk.ac.at/problems/hrs.php>`__ format of the confluence competition
 * ``xtc``: `XTC <https://raw.githubusercontent.com/TermCOMP/TPDB/master/xml/xtc.xsd>`__ format of the termination competition
 * ``raw_coq``: `Coq <https://coq.inria.fr/>`__ format
-* ``stt_coq``: `Coq <https://coq.inria.fr/>`__ format using `Coq.v <https://github.com/fblanqui/lambdapi/blob/to_coq/libraries/Coq.v>`__ which should be added to the translated files and renamed into STTfa.v.
+* ``stt_coq``: `Coq <https://coq.inria.fr/>`__ format assuming that the input file is in an encoding of simple type theory
 
-For the format ``raw_coq``, note that the encoding of simple type theory can be defined in Coq using `STTfa.v <https://github.com/fblanqui/lambdapi/blob/to_coq/libraries/STTfa.v>`__.
+The options ``raw_coq`` and ``stt_coq`` are still experimental.
 
-For the format ``stt_coq``, ``--config <FILE>`` instructs ``lambdapi`` to use the Simple Type Theory encoding specified in ``<FILE>``. The default configuration is:
+With the options ``raw_coq`` and ``stt_coq``, rules are ignored. The encoding of simple type theory can however be defined in Coq using `STTfa.v <https://github.com/Deducteam/lambdapi/blob/master/libraries/STTfa.v>`__.
+
+For the format ``stt_coq``, ``--encoding <FILE>`` instructs ``lambdapi`` to use the encoding specified in ``<FILE>``. The default encoding is:
 
 ::
-   
    builtin "Set" ≔ STTfa.Set;
    builtin "prop" ≔ STTfa.prop; // : Set 
    builtin "arr" ≔ STTfa.arr; // : Set → Set → Set
@@ -117,6 +118,13 @@ For the format ``stt_coq``, ``--config <FILE>`` instructs ``lambdapi`` to use th
    builtin "imp" ≔ STTfa.imp; // : El prop → El prop → El prop
    builtin "all" ≔ STTfa.all; // Π a : Set, (El a → El prop) → El prop
    builtin "Prf" ≔ STTfa.Prf; // : El prop → TYPE
+
+And ``--renaming <FILE>`` instructs ``lambdapi`` to apply the renaming map defined in ``<FILE>`` as follows:
+
+::
+   builtin "id1" ≔ id2; // to rename id1 into id2
+   builtin "id3 ≔ id4; // to rename id3 into id4
+   // etc.
 
 ``lsp``
 -------
