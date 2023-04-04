@@ -7,7 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
-- Option `--config <FILE>` for export -o stt_coq.
+- Option `--encoding <FILE>` for export -o stt_coq.
+- Option `--renaming <FILE>` for export -o stt_coq.
 
 ### Changed
 
