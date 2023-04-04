@@ -67,7 +67,7 @@ let parse_cmd : Config.t -> string list -> unit = fun cfg files ->
   in
   Error.handle_exceptions run
 
-(** Running the pretty-printing mode. *)
+(** Running the export mode. *)
 let export_cmd : Config.t -> string -> unit = fun cfg file ->
   let run _ =
     Config.init {cfg with verbose = Some 0};
@@ -79,12 +79,15 @@ let export_cmd : Config.t -> string -> unit = fun cfg file ->
       Export.Hrs.sign Format.std_formatter (Compile.compile_file file)
     | Some Xtc ->
       Export.Xtc.sign Format.std_formatter (Compile.compile_file file)
-    | Some RawCoq -> Export.Coq.print None (Parser.parse_file file)
+    | Some RawCoq ->
+        Export.Coq.stt := false;
+        Option.iter Export.Coq.set_renaming cfg.renaming;
+        Export.Coq.print (Parser.parse_file file)
     | Some SttCoq ->
-        let cfg =
-          Option.map_default Export.Coq.get_config
-            Export.Coq.default_config cfg.export in
-        Export.Coq.print (Some cfg) (Parser.parse_file file)
+        Export.Coq.stt := true;
+        Option.iter Export.Coq.set_renaming cfg.renaming;
+        Option.iter Export.Coq.set_encoding cfg.encoding;
+        Export.Coq.print (Parser.parse_file file)
   in Error.handle_exceptions run
 
 (** Running the LSP server. *)
