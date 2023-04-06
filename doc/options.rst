@@ -133,7 +133,7 @@ It tells ``lambdapi`` which Lambdapi symbols are used in the encoding.
 ::
    builtin "lp_id" ≔ coq_id;
 
-telling ``lambdapi`` to generate no declaration for ``lp_id`` and replace any occurrence of ``lp_id`` by ``coq_id``.
+telling ``lambdapi`` to generate no declaration for ``lp_id`` and replace any occurrence of ``lp_id`` by ``coq_id``. It is not necessary to declare here the symbols corresponding to the builtins ``"El"`` and ``"Prf"`` declared with the option ``-encoding`` since they are erased automatically.
 
 * ``--renaming <FILE>`` where ``<FILE>`` is a .lp file containing a sequence of builtin declarations like for the option ``--erasing``. It instructs ``lambdapi`` to replace any occurrence of ``lp_id`` by ``coq_id``.
 

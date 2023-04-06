@@ -127,7 +127,12 @@ let set_encoding : string -> unit = fun f ->
   let consume = function
     | {elt=P_builtin(n,{elt;_});pos} ->
         begin match index_of_name n with
-        | Some i -> builtin.(i) <- elt; found.(i) <- true
+        | Some i ->
+            builtin.(i) <- elt; found.(i) <- true;
+            begin match builtin_of_index i with
+            | El | Prf -> erase := StrSet.add n !erase
+            | _ -> ()
+            end
         | None -> fatal pos "Unknown builtin."
         end
     | {pos;_} -> fatal pos "Invalid command."
