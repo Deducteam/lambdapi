@@ -104,14 +104,15 @@ the files given in argument according to ``<FMT>``:
 * ``raw_coq``: `Coq <https://coq.inria.fr/>`__ format
 * ``stt_coq``: `Coq <https://coq.inria.fr/>`__ format assuming that the input file is in an encoding of simple type theory
 
-The options ``raw_coq`` and ``stt_coq`` are still experimental.
+*WARNING*: The options ``raw_coq`` and ``stt_coq`` are still experimental.
 
 With the options ``raw_coq`` and ``stt_coq``, rules are ignored. The encoding of simple type theory can however be defined in Coq using `STTfa.v <https://github.com/Deducteam/lambdapi/blob/master/libraries/STTfa.v>`__.
 
-For the format ``stt_coq``, ``--encoding <FILE>`` instructs ``lambdapi`` to use the encoding specified in ``<FILE>``. ``<FILE>`` should contain the following builtin definitions:
+For the format ``stt_coq``, several other options are available:
+
+* ``--encoding <FILE>`` where ``<FILE>`` is a .lp file containing the following sequence of builtin declarations:
 
 ::
-   // symbols erased in Coq
    builtin "El" ≔ ...; // : Set → TYPE
    builtin "Prf" ≔ ...; // : El prop → TYPE
 
@@ -127,28 +128,18 @@ For the format ``stt_coq``, ``--encoding <FILE>`` instructs ``lambdapi`` to use 
    builtin "all" ≔ ...; // : Π [a : Set], (El a → El prop) → El prop
    builtin "ex" ≔ ...; // : Π [a : Set], (El a → El prop) → El prop
 
-   // other symbols definable in Coq
-   builtin "true" ≔ ...; // : El prop
-   builtin "false" ≔ ...; // : El prop
-   builtin "top" ≔ ...; // : Prf true
-   builtin "and_intro" ≔ ...; // : Π [p : El bool], Prf p → Π [q : El bool], Prf q → Prf (and p q)
-   builtin "and_elim1" ≔ ...; // : Π [p q : El bool], Prf (and p q) → Prf p
-   builtin "and_elim2" ≔ ...; // : Π [p q : El bool], Prf (and p q) → Prf q
-   builtin "or_intro1" ≔ ...; // : Π [p : El bool], Prf p → Π q : El bool, Prf (or p q)
-   builtin "or_intro2" ≔ ...; // : Π p : El bool, Π [q : El bool], Prf q → Prf (or p q)
-   builtin "or_elim" ≔ ...; // : Π [p q : El bool], Prf (or p q) → Π [r], (Prf p → Prf r) → (Prf q → Prf r) → Prf r
-   builtin "ex_intro" ≔ ...; // : Π [a] (p : El a → El bool) (t : El a), Prf (p t) → Prf (ex p)
-   builtin "ex_elim" ≔ ...; // : Π [a] [p : El a → El bool], Prf (ex (λ x, p x)) → Π [r : El bool], (Π x : El a, Prf (p x) → Prf r) → Prf r
-   builtin "refl" ≔ ...; // : Π [a] (t : El a) : Prf (eq t t)
-   builtin "eqmp" ≔ ...; // : Π [p q : El bool] : Prf (eq p q) → Prf p → Prf q;
-   builtin "mkcomb" ≔ ...; // : Π [a b] [s t : El (fun a b)] [u v : El a], Prf (eq s t) → Prf (eq u v) → Prf (eq (s u) (t v))
-   
-And ``--renaming <FILE>`` instructs ``lambdapi`` to apply the renaming map defined in ``<FILE>`` as follows:
+It tells ``lambdapi`` which Lambdapi symbols are used in the encoding.
+
+* ``--erasing <FILE>`` where ``<FILE>`` is a .lp file containing a sequence of builtin declarations
 
 ::
-   builtin "id1" ≔ id2; // to rename id1 into id2
-   builtin "id3 ≔ id4; // to rename id3 into id4
-   // etc.
+   builtin "lp_id" ≔ coq_id;
+
+telling ``lambdapi`` to generate no declaration for ``lp_id`` and replace any occurrence of ``lp_id`` by ``coq_id``.
+
+* ``--renaming <FILE>`` where ``<FILE>`` is a .lp file containing a sequence of builtin declarations like for the option ``--erasing``. It instructs ``lambdapi`` to replace any occurrence of ``lp_id`` by ``coq_id``.
+
+* ``--requiring <FILE>`` where ``<FILE>`` is a Coq .v file containing the declarations of the symbols erased by the option ``--erasing``.
 
 ``lsp``
 -------

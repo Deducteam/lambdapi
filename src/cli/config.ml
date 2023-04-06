@@ -29,7 +29,9 @@ type config =
   ; termination : string option
   ; output      : output option
   ; encoding    : string option
-  ; renaming    : string option }
+  ; renaming    : string option
+  ; erasing     : string option
+  ; requiring   : string option }
 
 (** Short synonym of the [config] type. *)
 type t = config
@@ -49,7 +51,9 @@ let default_config =
   ; termination = None
   ; output      = None
   ; encoding    = None
-  ; renaming    = None }
+  ; renaming    = None
+  ; erasing     = None
+  ; requiring   = None }
 
 (** [init cfg] runs the necessary initializations according to [cfg]. This has
     to be done prior to any other (non-trivial) task. *)
@@ -229,7 +233,7 @@ let output : output option CLT.t =
   in
   Arg.(value & opt (some output) None & info ["output";"o"] ~docv:"FMT" ~doc)
 
-(** Options for export -o coq_stt command. *)
+(** Options for export command. *)
 
 let encoding : string option CLT.t =
   let encoding : string Arg.conv =
@@ -249,20 +253,40 @@ let renaming : string option CLT.t =
   let doc = "Set config file for the command export -o stt_coq." in
   Arg.(value & opt (some renaming) None & info ["renaming"] ~docv:"FILE" ~doc)
 
+let erasing : string option CLT.t =
+  let erasing : string Arg.conv =
+    let parse (s: string) : (string, [>`Msg of string]) result = Ok s in
+    let print fmt s = string fmt s in
+    Arg.conv (parse, print)
+  in
+  let doc = "Set config file for the command export -o stt_coq." in
+  Arg.(value & opt (some erasing) None & info ["erasing"] ~docv:"FILE" ~doc)
+
+let requiring : string option CLT.t =
+  let requiring : string Arg.conv =
+    let parse (s: string) : (string, [>`Msg of string]) result = Ok s in
+    let print fmt s = string fmt s in
+    Arg.conv (parse, print)
+  in
+  let doc = "Set config file for the command export -o stt_coq." in
+  Arg.(value & opt (some requiring) None
+       & info ["requiring"] ~docv:"FILE" ~doc)
+
 (** Gathering options under a configuration. *)
 
 (** [full] gathers the command line arguments common to most commands. *)
 let full : config CLT.t =
   let f gen_obj lib_root map_dir verbose no_warnings debug no_colors
-        record_time too_long confluence termination output encoding renaming =
+        record_time too_long confluence termination output encoding renaming
+        erasing requiring =
     {gen_obj; lib_root; map_dir; verbose; no_warnings; debug; no_colors;
      record_time; too_long; confluence; termination; output; encoding;
-     renaming }
+     renaming; erasing; requiring }
   in
   let open Term in
   const f $ gen_obj $ lib_root $ map_dir $ verbose $ no_warnings $ debug
   $ no_colors $ record_time $ too_long $ confluence $ termination $ output
-  $ encoding $ renaming
+  $ encoding $ renaming $ erasing $ requiring
 
 (** [minimal] gathers the minimal command line options to enable debugging and
     access to the library root. *)

@@ -106,7 +106,7 @@ let _ = update_sym_map()
 let builtin_of_name n =
   try Some (StrMap.find n !sym_map) with Not_found -> None
 
-(* Get renaming from a file. *)
+(* Set renaming map from file. *)
 
 let rmap = ref StrMap.empty
 
@@ -127,7 +127,21 @@ let set_renaming : string -> unit = fun f ->
   in
   Stream.iter consume (Parser.parse_file f)
 
-(* Get encoding from a file. *)
+(* Set renaming map from file. *)
+
+let erase = ref StrSet.empty
+
+let set_erasing : string -> unit = fun f ->
+  let consume = function
+    | {elt=P_builtin(n,{elt=(p,s);_});_} ->
+        erase := StrSet.add n !erase;
+        let v = if p = [] then s else String.concat "." p ^ "." ^ s in
+        rmap := StrMap.add n v !rmap
+    | {pos;_} -> fatal pos "Invalid command."
+  in
+  Stream.iter consume (Parser.parse_file f)
+
+(* Set encoding from file. *)
 
 let set_encoding : string -> unit = fun f ->
   let found = Array.make nb_builtins false in
@@ -310,37 +324,8 @@ let command : p_command pp = fun ppf { elt; _ } ->
   | P_symbol
     { p_sym_mod; p_sym_nam; p_sym_arg; p_sym_typ;
       p_sym_trm; p_sym_prf=_; p_sym_def } ->
-      begin match builtin_of_name p_sym_nam.elt with
-      | Some Imp -> out ppf "Definition imp (p q : Prop) := p -> q.@."
-      | Some Arr ->
-          out ppf "Definition arr (a : Type) (b : Type) := a -> b.@."
-      | Some All ->
-          out ppf "Definition all {a : Type} (p : a -> Prop) := \
-                   forall x:a, p x.@."
-      | Some Or_intro1 ->
-          out ppf "Lemma or_intro1 {p:Prop} (h : p) (q:Prop) : p \\/ q.\n\
-                   Proof. exact (@or_introl p q h). Qed.@."
-      | Some Or_intro2 ->
-          out ppf "Lemma or_intro2 (p:Prop) {q:Prop} (h : q) : p \\/ q.\n\
-                   Proof. exact (@or_intror p q h). Qed.@."
-      | Some Or_elim ->
-          out ppf "Lemma or_elim {p q : Prop} (h : p \\/ q) {r : Prop} \
-                   (h1: p -> r) (h2: q -> r) : r.\n\
-                   Proof. exact (@or_ind p q r h1 h2 h). Qed.@."
-      | Some Ex_elim ->
-          out ppf "Lemma ex_elim {a} {p : a -> Prop} (h1 : exists x, p x) \
-                   {r : Prop} (h2 : forall x : a, (p x) -> r) : r.\n\
-                   Proof. exact (@ex_ind a p r h2 h1). Qed.@."
-      | Some Eqmp ->
-          out ppf "Lemma EQ_MP {p q : Prop} (e : p = q) (h : p) : q.\n\
-                   Proof. rewrite <- e. apply h. Qed.@."
-      | Some Mkcomb ->
-          out ppf "Lemma MK_COMB {a b : Type} {s t : a -> b} {u v : a} \
-                   (h1 : s = t) (h2 : u = v) : (s u) = (t v).\n\
-                   Proof. rewrite h1, h2. reflexivity. Qed.@."
-      | Some _ -> ()
-      | None ->
-          match p_sym_def, p_sym_trm, p_sym_arg, p_sym_typ with
+      if not (StrSet.mem p_sym_nam.elt !erase) then
+        begin match p_sym_def, p_sym_trm, p_sym_arg, p_sym_typ with
           | true, Some t, _, _ ->
               if List.exists is_lem p_sym_mod then
                 out ppf "Lemma %a%a%a.\nProof. exact (%a). Qed.@."
@@ -348,18 +333,29 @@ let command : p_command pp = fun ppf { elt; _ } ->
                   term t
               else
                 out ppf "Definition %a%a := %a.@."
-                  ident p_sym_nam params_list p_sym_arg (*typopt p_sym_typ*)
-                  term t
+                  ident p_sym_nam params_list p_sym_arg term t
           | false, _, [], Some t ->
               out ppf "Axiom %a : %a.@." ident p_sym_nam term t
           | false, _, _, Some t ->
               out ppf "Axiom %a : forall%a, %a.@."
                 ident p_sym_nam params_list p_sym_arg term t
           | _ -> assert false
-      end
+        end
   | _ -> if !stt then () else assert false
   end
 
 let ast : ast pp = fun ppf -> Stream.iter (command ppf)
 
-let print : ast -> unit = ast std_formatter
+(* Set requiring from file. *)
+
+let require = ref None
+
+let set_requiring : string -> unit = fun f -> require := Some f
+
+let print : ast -> unit = fun s ->
+  begin match !require with
+  | Some f ->
+      out std_formatter "Require Import %s.\n" (Filename.chop_extension f)
+  | None -> ()
+  end;
+  ast std_formatter s
