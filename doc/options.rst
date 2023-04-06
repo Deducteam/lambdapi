@@ -116,9 +116,10 @@ For the format ``stt_coq``, ``--encoding <FILE>`` instructs ``lambdapi`` to use 
    builtin "arr" ≔ STTfa.arr; // : Set → Set → Set
    builtin "El" ≔ STTfa.El; // : Set → TYPE
    builtin "imp" ≔ STTfa.imp; // : El prop → El prop → El prop
-   builtin "all" ≔ STTfa.all; // Π a : Set, (El a → El prop) → El prop
+   builtin "all" ≔ STTfa.all; // : Π a : Set, (El a → El prop) → El prop
    builtin "Prf" ≔ STTfa.Prf; // : El prop → TYPE
-
+   builtin "eq" ≔ STTfa.eq; // : Π a : Set, El a → El a → El prop
+   
 And ``--renaming <FILE>`` instructs ``lambdapi`` to apply the renaming map defined in ``<FILE>`` as follows:
 
 ::
