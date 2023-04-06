@@ -251,13 +251,11 @@ let rec term : p_term pp = fun ppf t ->
             out ppf "%a /\\ %a" func u func v
         | {elt=P_Iden({elt;_},false);_}, [u] when !stt && elt = sym Not ->
             out ppf "~ %a" appl u
-        | _ -> application priority ppf t a b
+        | _ ->
+            if priority = `Atom then out ppf "(%a %a)" appl a atom b
+            else out ppf "%a %a" appl a atom b
       end
     | P_Wrap t, _ -> out ppf "(%a)" func t
-    | _ -> out ppf "(%a)" func t
-  and application priority ppf t a b =
-    match priority with
-    | `Appl | `Func -> out ppf "%a %a" appl a atom b
     | _ -> out ppf "(%a)" func t
   in
   let rec toplevel ppf t =
