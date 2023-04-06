@@ -113,13 +113,11 @@ For the format ``stt_coq``, several other options are available:
 * ``--encoding <FILE>`` where ``<FILE>`` is a .lp file containing the following sequence of builtin declarations:
 
 ::
-   builtin "El" ≔ ...; // : Set → TYPE
-   builtin "Prf" ≔ ...; // : El prop → TYPE
-
-   // symbols with special notations in Coq
    builtin "Set" ≔ ...; // : TYPE
    builtin "prop" ≔ ...; // : Set
    builtin "arr" ≔ ...; // : Set → Set → Set
+   builtin "El" ≔ ...; // : Set → TYPE
+   builtin "Prf" ≔ ...; // : El prop → TYPE
    builtin "eq" ≔ ...; // : Π [a : Set], El a → El a → El prop
    builtin "not" ≔ ...; // : El prop → El prop
    builtin "imp" ≔ ...; // : El prop → El prop → El prop

@@ -27,25 +27,17 @@ let log = log.pp
 (** Symbols necessary to encode STT. *)
 
 type builtin =
-  Set | Prop | Arr | El | Imp | All | Prf | Eq | Or | And | True | False | Ex
-  | Not | Top | And_intro | And_elim1 | And_elim2 | Or_intro1 | Or_intro2
-  | Or_elim | Ex_intro | Ex_elim | Refl | Eqmp | Mkcomb
+  Set | Prop | Arr | El | Imp | All | Prf | Eq | Or | And | Ex | Not
 
 let index_of_builtin = function
   | Set -> 0 | Prop -> 1 | Arr -> 2 | El -> 3 | Imp -> 4 | All -> 5
-  | Prf -> 6 | Eq -> 7 | Or -> 8 | And -> 9 | True -> 10 | False -> 11
-  | Ex -> 12 | Not -> 13 | Top -> 14 | And_intro -> 15 | And_elim1 -> 16
-  | And_elim2 -> 17 | Or_intro1 -> 18 | Or_intro2 -> 19 | Or_elim -> 20
-  | Ex_intro -> 21 | Ex_elim -> 22 | Refl -> 23 | Eqmp -> 24 | Mkcomb -> 25
+  | Prf -> 6 | Eq -> 7 | Or -> 8 | And -> 9 | Ex -> 10 | Not -> 11
 
-let nb_builtins = 26
+let nb_builtins = 12
 
 let builtin_of_index = function
   | 0 -> Set | 1 -> Prop | 2 -> Arr | 3 -> El | 4 -> Imp | 5 -> All
-  | 6 -> Prf | 7 -> Eq | 8 -> Or | 9 -> And | 10 -> True | 11 -> False
-  | 12 -> Ex | 13 -> Not | 14 -> Top | 15 -> And_intro | 16 -> And_elim1
-  | 17 -> And_elim2 | 18 -> Or_intro1 | 19 -> Or_intro2 | 20 -> Or_elim
-  | 21 -> Ex_intro | 22 -> Ex_elim | 23 -> Refl | 24 -> Eqmp | 25 -> Mkcomb
+  | 6 -> Prf | 7 -> Eq | 8 -> Or | 9 -> And | 10 -> Ex | 11 -> Not
   | _ -> assert false
 
 let _ = (* sanity check *)
@@ -56,21 +48,12 @@ let _ = (* sanity check *)
 let index_of_name = function
   | "Set" -> Some 0 | "prop" -> Some 1 | "arr" -> Some 2 | "El" -> Some 3
   | "imp" -> Some 4 | "all" -> Some 5 | "Prf" -> Some 6 | "eq" -> Some 7
-  | "or" -> Some 8 | "and" -> Some 9 | "true" -> Some 10 | "false" -> Some 11
-  | "ex" -> Some 12 | "not" -> Some 13 | "top" -> Some 14
-  | "and_intro" -> Some 15 | "and_elim1" -> Some 16 | "and_elim2" -> Some 17
-  | "or_intro1" -> Some 18 | "or_intro2" -> Some 19 | "or_elim" -> Some 20
-  | "ex_intro" -> Some 21 | "ex_elim" -> Some 22 | "refl" -> Some 23
-  | "eqmp" -> Some 24 | "mkcomb" -> Some 25
+  | "or" -> Some 8 | "and" -> Some 9 | "ex" -> Some 10 | "not" -> Some 11
   | _ -> None
 
 let name_of_index = function
-  | 0 -> "Set" | 1 -> "prop" | 2 -> "arr" | 3 -> "El" | 4 -> "imp"
-  | 5 -> "all" | 6 -> "Prf" | 7 -> "eq" | 8 -> "or" | 9 -> "and"
-  | 10 -> "true" | 11 -> "false" | 12 -> "ex" | 13 -> "not" | 14 -> "top"
-  | 15 -> "and_intro" | 16 -> "and_elim1" | 17 -> "and_elim2"
-  | 18 -> "or_intro1" | 19 -> "or_intro2" | 20 -> "or_elim" | 21 -> "ex_intro"
-  | 22 -> "ex_elim" | 23 -> "refl" | 24 -> "eqmp" | 25 -> "mkcomb"
+  | 0 -> "Set" | 1 -> "prop" | 2 -> "arr" | 3 -> "El" | 4 -> "imp"| 5 -> "all"
+  | 6 -> "Prf" | 7 -> "eq" | 8 -> "or" | 9 -> "and" | 10 -> "ex" | 11 -> "not"
   | _ -> assert false
 
 let _ = (* sanity check *)
@@ -81,11 +64,7 @@ let _ = (* sanity check *)
 let coq_name = function
   | 0 -> Some "Type" | 1 -> Some "Prop" | 2 -> Some "arr" | 4 -> Some "imp"
   | 5 -> Some "all" | 7 -> Some "eq" | 8 -> Some "or" | 9 -> Some "and"
-  | 10 -> Some "True" | 11 -> Some "False" | 12 -> Some "ex"
-  | 13 -> Some "not" | 14 -> Some "Logic.I" | 15 -> Some "conj"
-  | 16 -> Some "proj1" | 17 -> Some "proj2" | 18 -> Some "or_intro1"
-  | 19 -> Some "or_intro2" | 20 -> Some "or_elim" | 21 -> Some "ex_intro"
-  | 22 -> Some "ex_elim" | 23 -> Some "eq_refl"
+  | 10 -> Some "ex" | 11 -> Some "not"
   | _ -> None
 
 let builtin : (Path.t * string) array =
