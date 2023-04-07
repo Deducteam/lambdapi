@@ -46,65 +46,40 @@ The commands ``check``, ``decision-tree``, ``export``, ``parse``,
 Configuration flags
 -------------------
 
-``-v <NUM>``, ``--verbose=<NUM>`` sets the verbosity level to the given natural
-number (the default value is 1). A value of 0 should not print
-anything, and the higher values print more and more information.
+* ``-v <NUM>``, ``--verbose=<NUM>`` sets the verbosity level to the given natural number (the default value is 1). A value of 0 should not print anything, and the higher values print more and more information.
 
-``--lib-root=<DIR>`` sets the library root, that is, the folder
-corresponding to the entry point of the Lambdapi package system. This
-is the folder under which every package is installed, and a default
-value is only known if the program has been installed. In development
-mode, ``--lib-root lib`` must be given (assuming Lambdapi is run at
-the root of the repository).
+* ``--lib-root=<DIR>`` sets the library root, that is, the folder corresponding to the entry point of the Lambdapi package system. This is the folder under which every package is installed, and a default value is only known if the program has been installed. In development mode, ``--lib-root lib`` must be given (assuming Lambdapi is run at the root of the repository).
 
-``--map-dir=<MOD>:<DIR>`` maps an arbitrary directory ``DIR`` under a
-module path ``MOD`` (relative to the root directory). This option is
-mainly useful during the development of a package (before it has been
-installed). However it can also be accessed using a package
-configuration file (``lambdapi.pkg``) at the root of the library’s
-source tree. More information on that is given in the section about
-the module system.
+* ``--map-dir=<MOD>:<DIR>`` maps an arbitrary directory ``DIR`` under a module path ``MOD`` (relative to the root directory). This option is mainly useful during the development of a package (before it has been installed). However it can also be accessed using a package configuration file (``lambdapi.pkg``) at the root of the library’s source tree. More information on that is given in the section about the module system.
 
 Debugging flags
 ---------------
 
-``--debug=<FLAGS>`` enables the debugging modes specified by every
-character of ``FLAGS``. Details on available character flags are
-obtained using ``--help``.
+* ``--debug=<FLAGS>`` enables the debugging modes specified by every character of ``FLAGS``. Details on available character flags are obtained using ``--help``.
 
-``--timeout=<NUM>`` gives up type-checking after the given number of
-seconds.  Note that the timeout is reset between each file, and that
-the parameter of the command is expected to be a natural number.
+* ``--timeout=<NUM>`` gives up type-checking after the given number of seconds.  Note that the timeout is reset between each file, and that the parameter of the command is expected to be a natural number.
 
 ``check``
 ---------
 
-``-c``, ``--gen-obj`` instructs ``lambdapi`` to generate object files
-for every checked module (including dependencies). Object files have
-the extension ``.lpo`` and they are automatically read back when
-necessary if they exist and are up to date (they are regenerated
-otherwise).
+* ``-c``, ``--gen-obj`` instructs ``lambdapi`` to generate object files for every checked module (including dependencies). Object files have the extension ``.lpo`` and they are automatically read back when necessary if they exist and are up to date (they are regenerated otherwise).
 
 
-``--too-long=<FLOAT>`` gives a warning for each interpreted source
-file command taking more than the given number of seconds to be
-checked. The parameter ``FLOAT`` is expected to be a floating point
-number.
+* ``--too-long=<FLOAT>`` gives a warning for each interpreted source file command taking more than the given number of seconds to be checked. The parameter ``FLOAT`` is expected to be a floating point number.
 
 ``export``
 ----------
 
-``-o <FMT>``, ``--output=<FMT>`` instructs ``lambdapi`` to translate
-the files given in argument according to ``<FMT>``:
+* ``-o <FMT>``, ``--output=<FMT>`` instructs ``lambdapi`` to translate the files given in argument according to ``<FMT>``:
 
-* ``lp``: Lambdapi format
-* ``dk``:  `Dedukti <https://github.com/Deducteam/dedukti>`__ format
-* ``hrs``: `HRS <http://project-coco.uibk.ac.at/problems/hrs.php>`__ format of the confluence competition
-* ``xtc``: `XTC <https://raw.githubusercontent.com/TermCOMP/TPDB/master/xml/xtc.xsd>`__ format of the termination competition
-* ``raw_coq``: `Coq <https://coq.inria.fr/>`__ format
-* ``stt_coq``: `Coq <https://coq.inria.fr/>`__ format assuming that the input file is in an encoding of simple type theory
+  - ``lp``: Lambdapi format
+  - ``dk``:  `Dedukti <https://github.com/Deducteam/dedukti>`__ format
+  - ``hrs``: `HRS <http://project-coco.uibk.ac.at/problems/hrs.php>`__ format of the confluence competition
+  - ``xtc``: `XTC <https://raw.githubusercontent.com/TermCOMP/TPDB/master/xml/xtc.xsd>`__ format of the termination competition
+  - ``raw_coq``: `Coq <https://coq.inria.fr/>`__ format
+  - ``stt_coq``: `Coq <https://coq.inria.fr/>`__ format assuming that the input file is in an encoding of simple type theory
 
-*WARNING*: The options ``raw_coq`` and ``stt_coq`` are still experimental.
+**WARNING**: The options ``raw_coq`` and ``stt_coq`` are still experimental.
 
 With the options ``raw_coq`` and ``stt_coq``, rules are ignored. The encoding of simple type theory can however be defined in Coq using `STTfa.v <https://github.com/Deducteam/lambdapi/blob/master/libraries/STTfa.v>`__.
 
@@ -144,68 +119,40 @@ telling ``lambdapi`` to generate no declaration for ``lp_id`` and replace any oc
 ``lsp``
 -------
 
-``--standard-lsp`` restricts to standard LSP protocol (no extension).
+* ``--standard-lsp`` restricts to standard LSP protocol (no extension).
 
-``--log-file=<FILE>`` sets the log file for the LSP server. If not
-given, the file ``/tmp/lambdapi_lsp_log.txt`` is used.
+* ``--log-file=<FILE>`` sets the log file for the LSP server. If not given, the file ``/tmp/lambdapi_lsp_log.txt`` is used.
 
 ``install`` and ``uninstall``
 -----------------------------
 
-``--dry-run`` prints the system commands that should be called instead
-of running them.
+* ``--dry-run`` prints the system commands that should be called instead of running them.
 
 ``decision-tree``
 -----------------
 
-``--ghost`` print the decision tree of a ghost symbol. Ghost symbols
-are symbols used internally that cannot be used in the concrete
-syntax.
+* ``--ghost`` print the decision tree of a ghost symbol. Ghost symbols are symbols used internally that cannot be used in the concrete syntax.
 
 Confluence checking
 -------------------
 
-``--confluence=<CMD>`` checks the confluence of the rewriting system by
-calling an external prover with the command ``CMD``. The given command
-receives `HRS`_ formatted text on its standard input, and is expected
-to output on the first line of its standard output either ``YES``,
-``NO`` or ``MAYBE``.  As an example, ``echo MAYBE`` is the simplest
-possible (valid) confluence checker that can be used.
-
+* ``--confluence=<CMD>`` checks the confluence of the rewriting system by calling an external prover with the command ``CMD``. The given command receives `HRS`_ formatted text on its standard input, and is expected to output on the first line of its standard output either ``YES``, ``NO`` or ``MAYBE``.  As an example, ``echo MAYBE`` is the simplest possible (valid) confluence checker that can be used.
 
 For now, only the `CSI^ho`_ confluence checker has been tested with Lambdapi. It
-can be called using the flag
-``--confluence "path/to/csiho.sh --ext trs --stdin"``.
+can be called using the flag ``--confluence "path/to/csiho.sh --ext trs --stdin"``.
 
-To inspect the ``.trs`` file generated by Lambdapi, one may use the
-following dummy command:
-``--confluence "cat > output.trs; echo MAYBE"``.
+To inspect the ``.trs`` file generated by Lambdapi, one may use the following dummy command: ``--confluence "cat > output.trs; echo MAYBE"``.
 
 Termination checking
 --------------------
 
-``--termination=<CMD>`` checks the termination of the rewriting system
-by calling an external prover with the command ``CMD``. The given
-command receives `XTC`_ formatted text on its standard input, and is
-expected to output on the first line of its standard output either
-``YES``, ``NO`` or ``MAYBE``.  ``echo MAYBE`` is the simplest (valid)
-command for checking termination.
+* ``--termination=<CMD>`` checks the termination of the rewriting system by calling an external prover with the command ``CMD``. The given command receives `XTC`_ formatted text on its standard input, and is expected to output on the first line of its standard output either ``YES``, ``NO`` or ``MAYBE``.  ``echo MAYBE`` is the simplest (valid) command for checking termination.
 
-To the best of our knowledge, the only termination checker that is
-compatible with all the features of Lambdapi is
-`SizeChangeTool <https://github.com/Deducteam/SizeChangeTool>`__. It
-can be called using the flag
-``--termination "path/to/sct.native --no-color --stdin=xml"``
+To the best of our knowledge, the only termination checker that is compatible with all the features of Lambdapi is `SizeChangeTool <https://github.com/Deducteam/SizeChangeTool>`__. It can be called using the flag ``--termination "path/to/sct.native --no-color --stdin=xml"``
 
-If no type-level rewriting is used
-`Wanda <http://wandahot.sourceforge.net/>`_ can also be used.
-However, it does not directly accept input on its standard input, so it
-is tricky to have Lambdapi call it directly. Alternatively, one can
-first generate a ``.xml`` file as described below.
+If no type-level rewriting is used `Wanda <http://wandahot.sourceforge.net/>`_ can also be used. However, it does not directly accept input on its standard input, so it is tricky to have Lambdapi call it directly. Alternatively, one can first generate a ``.xml`` file as described below.
 
-To inspect the ``.xml`` file generated by Lambdapi, one may use the
-following dummy command:
-``--termination "cat > output.xml; echo MAYBE"``.
+To inspect the ``.xml`` file generated by Lambdapi, one may use the following dummy command:``--termination "cat > output.xml; echo MAYBE"``.
 
 .. _HRS: http://project-coco.uibk.ac.at/problems/hrs.php
 .. _CSI^ho: http://cl-informatik.uibk.ac.at/software/csi/ho/
