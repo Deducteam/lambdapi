@@ -87,6 +87,8 @@ let export_cmd : Config.t -> string -> unit = fun cfg file ->
         Export.Coq.stt := true;
         Option.iter Export.Coq.set_renaming cfg.renaming;
         Option.iter Export.Coq.set_encoding cfg.encoding;
+        Option.iter Export.Coq.set_erasing cfg.erasing;
+        Option.iter Export.Coq.set_requiring cfg.requiring;
         Export.Coq.print (Parser.parse_file file)
   in Error.handle_exceptions run
 
