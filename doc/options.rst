@@ -113,6 +113,7 @@ For the format ``stt_coq``, several other options are available:
 * ``--encoding <FILE>`` where ``<FILE>`` is a .lp file containing the following sequence of builtin declarations:
 
 ::
+
    builtin "Set" ≔ ...; // : TYPE
    builtin "prop" ≔ ...; // : Set
    builtin "arr" ≔ ...; // : Set → Set → Set
@@ -131,6 +132,7 @@ It tells ``lambdapi`` which Lambdapi symbols are used in the encoding.
 * ``--erasing <FILE>`` where ``<FILE>`` is a .lp file containing a sequence of builtin declarations
 
 ::
+   
    builtin "lp_id" ≔ coq_id;
 
 telling ``lambdapi`` to generate no declaration for ``lp_id`` and replace any occurrence of ``lp_id`` by ``coq_id``. It is not necessary to declare here the symbols corresponding to the builtins ``"El"`` and ``"Prf"`` declared with the option ``-encoding`` since they are erased automatically.
