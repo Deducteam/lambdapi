@@ -128,6 +128,10 @@ if the symbols corresponding to the builtins ``"arr"``, ``"imp"`` and ``"all"`` 
 
 * ``--use-notations`` instructs Lambdapi to use the usual Coq notations for the symbols corresponding to the builtins ``"eq"``, ``"not"``, ``"and"`` and ``"or"``.
 
+Examples of libraries exported to Coq:
+- In the Lambdapi sources, see how to export the Holide Dedukti library obtained from OpenTheory in `README.md <https://github.com/Deducteam/lambdapi/blob/master/libraries/README.md>`.
+- See in `hol2dk <https://github.com/Deducteam/hol2dk>` how to export the Lambdapi library obtained from HOL-Light.
+
 ``lsp``
 -------
 
