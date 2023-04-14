@@ -49,6 +49,8 @@ package-install RET lambdapi-mode``.
 Usage
 -----
 
+Make sure you have a `lambdapi.pkg <https://lambdapi.readthedocs.io/en/latest/module.html#package-configuration-file>`__ file in your folder when editing a Lambdapi file in it.
+
 Commenting regions
 ^^^^^^^^^^^^^^^^^^
 
