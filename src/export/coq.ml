@@ -216,11 +216,11 @@ let rec term : p_term pp = fun ppf t ->
           match !use_notations, !use_implicits && expl, builtin, ts with
           | _, _, (El|Prf), [u] -> term ppf u
           | _, _, (Arr|Imp), [u;v] -> arrow ppf u v
-          | _, true, All, [{elt=P_Wrap({elt=P_Abst([_] as xs,u);_});_}]
-          | _, false, All, [_;{elt=P_Wrap({elt=P_Abst([_] as xs,u);_});_}]
+          | _, true, All, [_;{elt=P_Wrap({elt=P_Abst([_] as xs,u);_});_}]
+          | _, false, All, [{elt=P_Wrap({elt=P_Abst([_] as xs,u);_});_}]
             -> prod ppf xs u
-          | _, true, Ex, [{elt=P_Wrap({elt=P_Abst([x],u);_});_}]
-          | _, false, Ex, [_;{elt=P_Wrap({elt=P_Abst([x],u);_});_}] ->
+          | _, true, Ex, [_;{elt=P_Wrap({elt=P_Abst([x],u);_});_}]
+          | _, false, Ex, [{elt=P_Wrap({elt=P_Abst([x],u);_});_}] ->
               out ppf "exists %a, %a" raw_params x term u
           | true, true, Eq, [_;u;v]
           | true, false, Eq, [u;v] -> out ppf "%a = %a" paren u paren v
