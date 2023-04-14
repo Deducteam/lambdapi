@@ -15,6 +15,10 @@ inputing common mathematical symbols.
 Logs (command ``debug``) are displayed in a terminal which opens
 automatically when needed.
 
+**Usage**
+
+Make sure you have a ```lambdapi.pkg`` file <https://lambdapi.readthedocs.io/en/latest/module.html#package-configuration-file>`__ in your folder when editing a Lambdapi file in it.
+
 **Proof navigation**
 
 Goals are visualised in a panel on the right side of the editor. You can
