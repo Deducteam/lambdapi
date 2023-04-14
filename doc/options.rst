@@ -46,151 +46,129 @@ The commands ``check``, ``decision-tree``, ``export``, ``parse``,
 Configuration flags
 -------------------
 
-``-v <NUM>``, ``--verbose=<NUM>`` sets the verbosity level to the given natural
-number (the default value is 1). A value of 0 should not print
-anything, and the higher values print more and more information.
+* ``-v <NUM>``, ``--verbose=<NUM>`` sets the verbosity level to the given natural number (the default value is 1). A value of 0 should not print anything, and the higher values print more and more information.
 
-``--lib-root=<DIR>`` sets the library root, that is, the folder
-corresponding to the entry point of the Lambdapi package system. This
-is the folder under which every package is installed, and a default
-value is only known if the program has been installed. In development
-mode, ``--lib-root lib`` must be given (assuming Lambdapi is run at
-the root of the repository).
+* ``--lib-root=<DIR>`` sets the library root, that is, the folder corresponding to the entry point of the Lambdapi package system. This is the folder under which every package is installed, and a default value is only known if the program has been installed. In development mode, ``--lib-root lib`` must be given (assuming Lambdapi is run at the root of the repository).
 
-``--map-dir=<MOD>:<DIR>`` maps an arbitrary directory ``DIR`` under a
-module path ``MOD`` (relative to the root directory). This option is
-mainly useful during the development of a package (before it has been
-installed). However it can also be accessed using a package
-configuration file (``lambdapi.pkg``) at the root of the library’s
-source tree. More information on that is given in the section about
-the module system.
+* ``--map-dir=<MOD>:<DIR>`` maps an arbitrary directory ``DIR`` under a module path ``MOD`` (relative to the root directory). This option is mainly useful during the development of a package (before it has been installed). However it can also be accessed using a package configuration file (``lambdapi.pkg``) at the root of the library’s source tree. More information on that is given in the section about the module system.
 
 Debugging flags
 ---------------
 
-``--debug=<FLAGS>`` enables the debugging modes specified by every
-character of ``FLAGS``. Details on available character flags are
-obtained using ``--help``.
+* ``--debug=<FLAGS>`` enables the debugging modes specified by every character of ``FLAGS``. Details on available character flags are obtained using ``--help``.
 
-``--timeout=<NUM>`` gives up type-checking after the given number of
-seconds.  Note that the timeout is reset between each file, and that
-the parameter of the command is expected to be a natural number.
+* ``--timeout=<NUM>`` gives up type-checking after the given number of seconds.  Note that the timeout is reset between each file, and that the parameter of the command is expected to be a natural number.
 
 ``check``
 ---------
 
-``-c``, ``--gen-obj`` instructs ``lambdapi`` to generate object files
-for every checked module (including dependencies). Object files have
-the extension ``.lpo`` and they are automatically read back when
-necessary if they exist and are up to date (they are regenerated
-otherwise).
+* ``-c``, ``--gen-obj`` instructs Lambdapi to generate object files for every checked module (including dependencies). Object files have the extension ``.lpo`` and they are automatically read back when necessary if they exist and are up to date (they are regenerated otherwise).
 
 
-``--too-long=<FLOAT>`` gives a warning for each interpreted source
-file command taking more than the given number of seconds to be
-checked. The parameter ``FLOAT`` is expected to be a floating point
-number.
+* ``--too-long=<FLOAT>`` gives a warning for each interpreted source file command taking more than the given number of seconds to be checked. The parameter ``FLOAT`` is expected to be a floating point number.
 
 ``export``
 ----------
 
-``-o <FMT>``, ``--output=<FMT>`` instructs ``lambdapi`` to translate
-the files given in argument according to ``<FMT>``:
+* ``-o <FMT>``, ``--output=<FMT>`` instructs Lambdapi to translate the files given in argument according to ``<FMT>``:
 
-* ``lp``: Lambdapi format
-* ``dk``:  `Dedukti <https://github.com/Deducteam/dedukti>`__ format
-* ``hrs``: `HRS <http://project-coco.uibk.ac.at/problems/hrs.php>`__ format of the confluence competition
-* ``xtc``: `XTC <https://raw.githubusercontent.com/TermCOMP/TPDB/master/xml/xtc.xsd>`__ format of the termination competition
-* ``raw_coq``: `Coq <https://coq.inria.fr/>`__ format
-* ``stt_coq``: `Coq <https://coq.inria.fr/>`__ format assuming that the input file is in an encoding of simple type theory
+  - ``lp``: Lambdapi format
+  - ``dk``:  `Dedukti <https://github.com/Deducteam/dedukti>`__ format
+  - ``hrs``: `HRS <http://project-coco.uibk.ac.at/problems/hrs.php>`__ format of the confluence competition
+  - ``xtc``: `XTC <https://raw.githubusercontent.com/TermCOMP/TPDB/master/xml/xtc.xsd>`__ format of the termination competition
+  - ``raw_coq``: `Coq <https://coq.inria.fr/>`__ format
+  - ``stt_coq``: `Coq <https://coq.inria.fr/>`__ format assuming that the input file is in an encoding of simple type theory
 
-The options ``raw_coq`` and ``stt_coq`` are still experimental.
+**WARNING**: The options ``raw_coq`` and ``stt_coq`` are still experimental.
 
 With the options ``raw_coq`` and ``stt_coq``, rules are ignored. The encoding of simple type theory can however be defined in Coq using `STTfa.v <https://github.com/Deducteam/lambdapi/blob/master/libraries/STTfa.v>`__.
 
-For the format ``stt_coq``, ``--encoding <FILE>`` instructs ``lambdapi`` to use the encoding specified in ``<FILE>``. The default encoding is:
+For the format ``stt_coq``, several other options are available:
+
+* ``--encoding <LP_FILE>`` (mandatory option) where ``<LP_FILE>`` contains the following sequence of builtin declarations:
 
 ::
-   builtin "Set" ≔ STTfa.Set;
-   builtin "prop" ≔ STTfa.prop; // : Set 
-   builtin "arr" ≔ STTfa.arr; // : Set → Set → Set
-   builtin "El" ≔ STTfa.El; // : Set → TYPE
-   builtin "imp" ≔ STTfa.imp; // : El prop → El prop → El prop
-   builtin "all" ≔ STTfa.all; // Π a : Set, (El a → El prop) → El prop
-   builtin "Prf" ≔ STTfa.Prf; // : El prop → TYPE
 
-And ``--renaming <FILE>`` instructs ``lambdapi`` to apply the renaming map defined in ``<FILE>`` as follows:
+   builtin "Set" ≔ ...; // : TYPE
+   builtin "prop" ≔ ...; // : Set
+   builtin "arr" ≔ ...; // : Set → Set → Set
+   builtin "El" ≔ ...; // : Set → TYPE
+   builtin "Prf" ≔ ...; // : El prop → TYPE
+   builtin "eq" ≔ ...; // : Π [a : Set], El a → El a → El prop
+   builtin "not" ≔ ...; // : El prop → El prop
+   builtin "imp" ≔ ...; // : El prop → El prop → El prop
+   builtin "and" ≔ ...; // : El prop → El prop → El prop
+   builtin "or" ≔ ...; // : El prop → El prop → El prop
+   builtin "all" ≔ ...; // : Π [a : Set], (El a → El prop) → El prop
+   builtin "ex" ≔ ...; // : Π [a : Set], (El a → El prop) → El prop
+
+It tells Lambdapi which symbols of the input files are used for the encoding. The first argument ``a`` of the symbols corresponding to the builtins``"eq"``, ``"all"` and ``"ex"`` need not be declared as implicit. Example: `encoding.lp <https://github.com/Deducteam/lambdapi/blob/master/libraries/encoding.lp>`.
+
+* ``--no-implicits`` instructs Lambdapi that the symbols of the encoding have no implicit arguments.
+
+* ``--renaming <LP_FILE>`` where ``<LP_FILE>`` contains a sequence of builtin declarations of the form
 
 ::
-   builtin "id1" ≔ id2; // to rename id1 into id2
-   builtin "id3 ≔ id4; // to rename id3 into id4
-   // etc.
+   
+   builtin "coq_expr" ≔ lp_id;
+
+It instructs Lambdapi to replace any occurrence of the unqualified identifier ``lp_id`` by ``coq_expr``, which can be any Coq expression. Example: `renaming.lp <https://github.com/Deducteam/lambdapi/blob/master/libraries/renaming.lp>`.
+
+* ``--requiring <COQ_FILE>`` to add ``Require Import <COQ_FILE>`` at the beginning of the output. ``<COQ_FILE>`` usually needs to contain at least the following definitions:
+
+::
+
+   Definition arr (A:Type) (B:Type) := A -> B.
+   Definition imp (P Q: Prop) := P -> Q.
+   Definition all (A:Type) (P:A->Prop) := forall x:A, P x.
+
+if the symbols corresponding to the builtins ``"arr"``, ``"imp"`` and ``"all"`` occurs partially applied in the input file. Example: `coq.v <https://github.com/Deducteam/lambdapi/blob/master/libraries/coq.v>`.
+
+* ``--erasing <LP_FILE>`` where ``<LP_FILE>`` contains a sequence of builtin declarations like for the option ``--renaming`` except that, this time, ``lp_id`` can be a qualified identifier. It has the same effect as the option ``--renaming`` plus it removes any declaration of the renamed symbols. ``coq_expr`` therefore needs to be defined in Coq standard library or in the Coq file specified with the option ``-requiring``. It is not necessary to have entries for the symbols corresponding to the builtins ``"El"`` and ``"Prf"`` declared with the option ``--encoding`` since they are erased automatically. Example: `erasing.lp <https://github.com/Deducteam/lambdapi/blob/master/libraries/erasing.lp>`.
+
+* ``--use-notations`` instructs Lambdapi to use the usual Coq notations for the symbols corresponding to the builtins ``"eq"``, ``"not"``, ``"and"`` and ``"or"``.
+
+Examples of libraries exported to Coq:
+- In the Lambdapi sources, see how to export the Holide Dedukti library obtained from OpenTheory in `README.md <https://github.com/Deducteam/lambdapi/blob/master/libraries/README.md>`.
+- See in `hol2dk <https://github.com/Deducteam/hol2dk>` how to export the Lambdapi library obtained from HOL-Light.
 
 ``lsp``
 -------
 
-``--standard-lsp`` restricts to standard LSP protocol (no extension).
+* ``--standard-lsp`` restricts to standard LSP protocol (no extension).
 
-``--log-file=<FILE>`` sets the log file for the LSP server. If not
-given, the file ``/tmp/lambdapi_lsp_log.txt`` is used.
+* ``--log-file=<FILE>`` sets the log file for the LSP server. If not given, the file ``/tmp/lambdapi_lsp_log.txt`` is used.
 
 ``install`` and ``uninstall``
 -----------------------------
 
-``--dry-run`` prints the system commands that should be called instead
-of running them.
+* ``--dry-run`` prints the system commands that should be called instead of running them.
 
 ``decision-tree``
 -----------------
 
-``--ghost`` print the decision tree of a ghost symbol. Ghost symbols
-are symbols used internally that cannot be used in the concrete
-syntax.
+* ``--ghost`` print the decision tree of a ghost symbol. Ghost symbols are symbols used internally that cannot be used in the concrete syntax.
 
 Confluence checking
 -------------------
 
-``--confluence=<CMD>`` checks the confluence of the rewriting system by
-calling an external prover with the command ``CMD``. The given command
-receives `HRS`_ formatted text on its standard input, and is expected
-to output on the first line of its standard output either ``YES``,
-``NO`` or ``MAYBE``.  As an example, ``echo MAYBE`` is the simplest
-possible (valid) confluence checker that can be used.
-
+* ``--confluence=<CMD>`` checks the confluence of the rewriting system by calling an external prover with the command ``CMD``. The given command receives `HRS`_ formatted text on its standard input, and is expected to output on the first line of its standard output either ``YES``, ``NO`` or ``MAYBE``.  As an example, ``echo MAYBE`` is the simplest possible (valid) confluence checker that can be used.
 
 For now, only the `CSI^ho`_ confluence checker has been tested with Lambdapi. It
-can be called using the flag
-``--confluence "path/to/csiho.sh --ext trs --stdin"``.
+can be called using the flag ``--confluence "path/to/csiho.sh --ext trs --stdin"``.
 
-To inspect the ``.trs`` file generated by Lambdapi, one may use the
-following dummy command:
-``--confluence "cat > output.trs; echo MAYBE"``.
+To inspect the ``.trs`` file generated by Lambdapi, one may use the following dummy command: ``--confluence "cat > output.trs; echo MAYBE"``.
 
 Termination checking
 --------------------
 
-``--termination=<CMD>`` checks the termination of the rewriting system
-by calling an external prover with the command ``CMD``. The given
-command receives `XTC`_ formatted text on its standard input, and is
-expected to output on the first line of its standard output either
-``YES``, ``NO`` or ``MAYBE``.  ``echo MAYBE`` is the simplest (valid)
-command for checking termination.
+* ``--termination=<CMD>`` checks the termination of the rewriting system by calling an external prover with the command ``CMD``. The given command receives `XTC`_ formatted text on its standard input, and is expected to output on the first line of its standard output either ``YES``, ``NO`` or ``MAYBE``.  ``echo MAYBE`` is the simplest (valid) command for checking termination.
 
-To the best of our knowledge, the only termination checker that is
-compatible with all the features of Lambdapi is
-`SizeChangeTool <https://github.com/Deducteam/SizeChangeTool>`__. It
-can be called using the flag
-``--termination "path/to/sct.native --no-color --stdin=xml"``
+To the best of our knowledge, the only termination checker that is compatible with all the features of Lambdapi is `SizeChangeTool <https://github.com/Deducteam/SizeChangeTool>`__. It can be called using the flag ``--termination "path/to/sct.native --no-color --stdin=xml"``
 
-If no type-level rewriting is used
-`Wanda <http://wandahot.sourceforge.net/>`_ can also be used.
-However, it does not directly accept input on its standard input, so it
-is tricky to have Lambdapi call it directly. Alternatively, one can
-first generate a ``.xml`` file as described below.
+If no type-level rewriting is used `Wanda <http://wandahot.sourceforge.net/>`_ can also be used. However, it does not directly accept input on its standard input, so it is tricky to have Lambdapi call it directly. Alternatively, one can first generate a ``.xml`` file as described below.
 
-To inspect the ``.xml`` file generated by Lambdapi, one may use the
-following dummy command:
-``--termination "cat > output.xml; echo MAYBE"``.
+To inspect the ``.xml`` file generated by Lambdapi, one may use the following dummy command:``--termination "cat > output.xml; echo MAYBE"``.
 
 .. _HRS: http://project-coco.uibk.ac.at/problems/hrs.php
 .. _CSI^ho: http://cl-informatik.uibk.ac.at/software/csi/ho/

@@ -1,6 +1,6 @@
 (** Configuration for the CLI and common flags. *)
 
-open Lplib open Base
+open Lplib
 open Cmdliner
 open Common open Library
 open Parsing
@@ -10,9 +10,6 @@ type qident = Core.Term.qident
 module CLT = Cmdliner.Term
 
 (** {3 Configuration type for common values} *)
-
-(** Output formats for the export command. *)
-type output = Lp | Dk | Hrs | Xtc | RawCoq | SttCoq
 
 (** Configuration value for the commonly available options. *)
 type config =
@@ -26,10 +23,7 @@ type config =
   ; record_time : bool
   ; too_long    : float
   ; confluence  : string option
-  ; termination : string option
-  ; output      : output option
-  ; encoding    : string option
-  ; renaming    : string option }
+  ; termination : string option }
 
 (** Short synonym of the [config] type. *)
 type t = config
@@ -46,10 +40,7 @@ let default_config =
   ; record_time = false
   ; too_long    = infinity
   ; confluence  = None
-  ; termination = None
-  ; output      = None
-  ; encoding    = None
-  ; renaming    = None }
+  ; termination = None }
 
 (** [init cfg] runs the necessary initializations according to [cfg]. This has
     to be done prior to any other (non-trivial) task. *)
@@ -197,72 +188,18 @@ let termination : string option CLT.t =
   in
   Arg.(value & opt (some string) None & info ["termination"] ~docv:"CMD" ~doc)
 
-(** Output format option. *)
-
-let output : output option CLT.t =
-  let output : output Arg.conv =
-    let parse (s: string) : (output, [>`Msg of string]) result =
-      match s with
-      | "lp" -> Ok Lp
-      | "dk" -> Ok Dk
-      | "hrs" -> Ok Hrs
-      | "xtc" -> Ok Xtc
-      | "raw_coq" -> Ok RawCoq
-      | "stt_coq" -> Ok SttCoq
-      | _ -> Error(`Msg "Invalid format")
-    in
-    let print fmt o =
-      string fmt
-        (match o with
-         | Lp -> "lp"
-         | Dk -> "dk"
-         | Hrs -> "hrs"
-         | Xtc -> "xtc"
-         | RawCoq -> "raw_coq"
-         | SttCoq -> "stt_coq")
-    in
-    Arg.conv (parse, print)
-  in
-  let doc =
-    "Set the output format of the export command. The value of $(docv) \
-     must be `lp' (default), `dk`, `hrs`, `xtc`, `raw_coq` or `stt_coq`."
-  in
-  Arg.(value & opt (some output) None & info ["output";"o"] ~docv:"FMT" ~doc)
-
-(** Options for export -o coq_stt command. *)
-
-let encoding : string option CLT.t =
-  let encoding : string Arg.conv =
-    let parse (s: string) : (string, [>`Msg of string]) result = Ok s in
-    let print fmt s = string fmt s in
-    Arg.conv (parse, print)
-  in
-  let doc = "Set config file for the command export -o stt_coq." in
-  Arg.(value & opt (some encoding) None & info ["encoding"] ~docv:"FILE" ~doc)
-
-let renaming : string option CLT.t =
-  let renaming : string Arg.conv =
-    let parse (s: string) : (string, [>`Msg of string]) result = Ok s in
-    let print fmt s = string fmt s in
-    Arg.conv (parse, print)
-  in
-  let doc = "Set config file for the command export -o stt_coq." in
-  Arg.(value & opt (some renaming) None & info ["renaming"] ~docv:"FILE" ~doc)
-
 (** Gathering options under a configuration. *)
 
 (** [full] gathers the command line arguments common to most commands. *)
 let full : config CLT.t =
   let f gen_obj lib_root map_dir verbose no_warnings debug no_colors
-        record_time too_long confluence termination output encoding renaming =
+        record_time too_long confluence termination =
     {gen_obj; lib_root; map_dir; verbose; no_warnings; debug; no_colors;
-     record_time; too_long; confluence; termination; output; encoding;
-     renaming }
+     record_time; too_long; confluence; termination }
   in
   let open Term in
   const f $ gen_obj $ lib_root $ map_dir $ verbose $ no_warnings $ debug
-  $ no_colors $ record_time $ too_long $ confluence $ termination $ output
-  $ encoding $ renaming
+  $ no_colors $ record_time $ too_long $ confluence $ termination
 
 (** [minimal] gathers the minimal command line options to enable debugging and
     access to the library root. *)

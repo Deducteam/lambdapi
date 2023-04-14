@@ -81,7 +81,8 @@ and get_impl_term_aux : p_term_aux -> bool list = fun t ->
   | _ -> []
 
 (** [p_get_args t] is like {!val:Core.Term.get_args} but on syntax-level
-   terms. *)
+    terms. Note that P_Wrap's are not decomposed (important for handling infix
+    symbols used in prefix notation. *)
 let p_get_args : p_term -> p_term * p_term list = fun t ->
   let rec p_get_args t acc =
     match t.elt with
@@ -237,10 +238,11 @@ type p_modifier_aux =
 
 type p_modifier = p_modifier_aux loc
 
-let is_prop {elt; _} = match elt with P_prop(_) -> true | _ -> false
+let is_prop {elt; _} = match elt with P_prop _ -> true | _ -> false
 let is_opaq {elt; _} = match elt with P_opaq -> true | _ -> false
-let is_expo {elt; _} = match elt with P_expo(_) -> true | _ -> false
-let is_mstrat {elt; _} = match elt with P_mstrat(_) -> true | _ -> false
+let is_expo {elt; _} = match elt with P_expo _ -> true | _ -> false
+let is_mstrat {elt; _} = match elt with P_mstrat _ -> true | _ -> false
+let is_priv {elt; _} = match elt with P_expo Privat -> true | _ -> false
 
 (** Parser-level representation of symbol declarations. *)
 type p_symbol =

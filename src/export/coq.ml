@@ -26,91 +26,114 @@ let log = log.pp
 
 (** Symbols necessary to encode STT. *)
 
-let path = ["STTfa"]
+type builtin =
+  Set | Prop | Arr | El | Imp | All | Prf | Eq | Or | And | Ex | Not
 
-let sym_Set = Stdlib.ref (path,"Set") (* : TYPE *)
-let sym_prop = Stdlib.ref (path,"prop") (* : Set *)
-let sym_arr = Stdlib.ref (path,"arr") (* : Set → Set → Set *)
-let sym_El = Stdlib.ref (path,"El") (* : Set → TYPE *)
-let sym_imp = Stdlib.ref (path,"imp") (* El prop → El prop → El prop *)
-let sym_all = Stdlib.ref (path,"all")
-  (* Π [a : Set], (El a → El prop) → El prop *)
-let sym_Prf = Stdlib.ref (path,"Prf") (* El prop → TYPE *)
+let index_of_builtin = function
+  | Set -> 0 | Prop -> 1 | Arr -> 2 | El -> 3 | Imp -> 4 | All -> 5
+  | Prf -> 6 | Eq -> 7 | Or -> 8 | And -> 9 | Ex -> 10 | Not -> 11
 
-let sym_Set_name = Stdlib.ref (snd !sym_Set)
-let sym_prop_name = Stdlib.ref (snd !sym_prop)
-let sym_arr_name = Stdlib.ref (snd !sym_arr)
-let sym_El_name = Stdlib.ref (snd !sym_El)
-let sym_imp_name = Stdlib.ref (snd !sym_imp)
-let sym_all_name = Stdlib.ref (snd !sym_all)
-let sym_Prf_name = Stdlib.ref (snd !sym_Prf)
+let nb_builtins = 12
 
-type code = Arr | Imp | All | Set | Other
+let builtin_of_index = function
+  | 0 -> Set | 1 -> Prop | 2 -> Arr | 3 -> El | 4 -> Imp | 5 -> All
+  | 6 -> Prf | 7 -> Eq | 8 -> Or | 9 -> And | 10 -> Ex | 11 -> Not
+  | _ -> assert false
 
-let sym_map = Stdlib.ref StrMap.empty
+let _ = (* sanity check *)
+  for i = 0 to nb_builtins - 1 do
+    assert (index_of_builtin (builtin_of_index i) = i)
+  done
 
-let update_sym_map() =
-  sym_map :=
-    StrMap.add !sym_arr_name Arr
-      (StrMap.add !sym_imp_name Imp
-         (StrMap.add !sym_all_name All
-            (StrMap.add !sym_Set_name Set
-               (StrMap.add !sym_prop_name Set
-                  (StrMap.add !sym_El_name Set
-                     (StrMap.add !sym_Prf_name Set
-                        StrMap.empty))))))
+let index_of_name = function
+  | "Set" -> Some 0 | "prop" -> Some 1 | "arr" -> Some 2 | "El" -> Some 3
+  | "imp" -> Some 4 | "all" -> Some 5 | "Prf" -> Some 6 | "eq" -> Some 7
+  | "or" -> Some 8 | "and" -> Some 9 | "ex" -> Some 10 | "not" -> Some 11
+  | _ -> None
 
-let _ = update_sym_map()
+let name_of_index = function
+  | 0 -> "Set" | 1 -> "prop" | 2 -> "arr" | 3 -> "El" | 4 -> "imp"| 5 -> "all"
+  | 6 -> "Prf" | 7 -> "eq" | 8 -> "or" | 9 -> "and" | 10 -> "ex" | 11 -> "not"
+  | _ -> assert false
 
-let code n = try StrMap.find n !sym_map with Not_found -> Other
+let _ = (* sanity check *)
+  for i = 0 to nb_builtins - 1 do
+    assert (index_of_name (name_of_index i) = Some i)
+  done
 
-let set_encoding : string -> unit = fun f ->
-  let opt_sym_Set = ref None and opt_sym_prop = ref None
-  and opt_sym_arr = ref None and opt_sym_El = ref None
-  and opt_sym_imp = ref None and opt_sym_all = ref None
-  and opt_sym_Prf = ref None in
-  let consume = function
-    | {elt=P_builtin("Set",{elt;_});_} -> opt_sym_Set := Some elt
-    | {elt=P_builtin("prop",{elt;_});_} -> opt_sym_prop := Some elt
-    | {elt=P_builtin("arr",{elt;_});_} -> opt_sym_arr := Some elt
-    | {elt=P_builtin("El",{elt;_});_} -> opt_sym_El := Some elt
-    | {elt=P_builtin("imp",{elt;_});_} -> opt_sym_imp := Some elt
-    | {elt=P_builtin("all",{elt;_});_} -> opt_sym_all := Some elt
-    | {elt=P_builtin("Prf",{elt;_});_} -> opt_sym_Prf := Some elt
-    | {pos;_} -> fatal pos "Invalid command."
-  in
-  Stream.iter consume (Parser.parse_file f);
-  let get n = function
-    | Some x -> x
-    | None ->
-        let pos =
-          Some {fname=Some f;start_line=0;start_col=0;end_line=0;end_col=0} in
-        fatal pos "Builtin %s undefined." n
-  in
-  sym_Set := get "Set" !opt_sym_Set; sym_Set_name := snd !sym_Set;
-  sym_prop := get "prop" !opt_sym_prop; sym_prop_name := snd !sym_prop;
-  sym_arr := get "arr" !opt_sym_arr; sym_arr_name := snd !sym_arr;
-  sym_El := get "El" !opt_sym_El; sym_El_name := snd !sym_El;
-  sym_imp := get "imp" !opt_sym_imp; sym_imp_name := snd !sym_imp;
-  sym_all := get "all" !opt_sym_all; sym_all_name := snd !sym_all;
-  sym_Prf := get "Prf" !opt_sym_Prf; sym_Prf_name := snd !sym_Prf;
-  update_sym_map()
-;;
+let builtin : Term.qident array =
+  let path = ["STTfa"] in
+  Array.init nb_builtins (fun i -> path, name_of_index i)
 
-(* Get a renaming map from a file. *)
+let sym b = builtin.(index_of_builtin b)
+
+(** Set renaming map from file. *)
 
 let rmap = ref StrMap.empty
 
 let set_renaming : string -> unit = fun f ->
   let consume = function
-    | {elt=P_builtin(n,{elt=(p,s);_});_} ->
-        let v = if p = [] then s else String.concat "." p ^ "." ^ s in
-        rmap := StrMap.add n v !rmap
+    | {elt=P_builtin(coq_id,{elt=([],lp_id);_});_} ->
+        if Logger.log_enabled() then log "rename %s into %s" lp_id coq_id;
+        rmap := StrMap.add lp_id coq_id !rmap
     | {pos;_} -> fatal pos "Invalid command."
   in
   Stream.iter consume (Parser.parse_file f)
 
-(* Translation. *)
+(** Set symbols whose declarations have to be erased. *)
+
+let erase = ref StrSet.empty
+
+module Qid = struct type t = Term.qident let compare = Stdlib.compare end
+module QidMap = Map.Make(Qid)
+
+let map_erased_qid_coq = ref QidMap.empty
+
+let set_erasing : string -> unit = fun f ->
+  let consume = function
+    | {elt=P_builtin(coq_id,lp_qid);_} ->
+        if Logger.log_enabled() then
+          log "rename %a into %s" Pretty.qident lp_qid coq_id;
+        if Logger.log_enabled() then log "erase %s" (snd lp_qid.elt);
+        erase := StrSet.add (snd lp_qid.elt) !erase;
+        map_erased_qid_coq := QidMap.add lp_qid.elt coq_id !map_erased_qid_coq
+    | {pos;_} -> fatal pos "Invalid command."
+  in
+  Stream.iter consume (Parser.parse_file f)
+
+(** Set encoding. *)
+
+let map_qid_builtin = ref QidMap.empty
+
+let set_encoding : string -> unit = fun f ->
+  let found = Array.make nb_builtins false in
+  let consume = function
+    | {elt=P_builtin(n,lp_qid);pos} ->
+        begin match index_of_name n with
+        | Some i ->
+            if Logger.log_enabled() then
+              log "builtin \"%s\" = %a" n Pretty.qident lp_qid;
+            builtin.(i) <- lp_qid.elt;
+            found.(i) <- true;
+            let b = builtin_of_index i in
+            map_qid_builtin := QidMap.add lp_qid.elt b !map_qid_builtin;
+            if b = El || b = Prf then
+              (if Logger.log_enabled() then log "erase %s" (snd lp_qid.elt);
+               erase := StrSet.add (snd lp_qid.elt) !erase)
+        | None -> fatal pos "Unknown builtin."
+        end
+    | {pos;_} -> fatal pos "Invalid command."
+  in
+  Stream.iter consume (Parser.parse_file f);
+  Array.iteri
+    (fun i b ->
+      if not b then
+        let pos =
+          Some {fname=Some f;start_line=0;start_col=0;end_line=0;end_col=0}
+        in fatal pos "Builtin %s undefined." (name_of_index i))
+    found
+
+(** Translation of identifiers. *)
 
 let translate_ident : string -> string = fun s ->
   try StrMap.find s !rmap with Not_found -> s
@@ -118,8 +141,6 @@ let translate_ident : string -> string = fun s ->
 let raw_ident : string pp = fun ppf s -> Print.uid ppf (translate_ident s)
 
 let ident : p_ident pp = fun ppf {elt;_} -> raw_ident ppf elt
-
-let meta_ident : p_meta_ident pp = fun ppf {elt;_} -> out ppf "%d" elt
 
 let param_id : p_ident option pp = fun ppf idopt ->
   match idopt with
@@ -137,157 +158,173 @@ let qident : p_qident pp = fun ppf {elt=(mp,s);_} ->
   | [] -> raw_ident ppf s
   | _::_ -> out ppf "%a.%a" raw_path mp raw_ident s
 
-(* ends with a space *)
-let modifier : p_modifier pp = fun ppf {elt; _} ->
-  match elt with
-  | P_expo(e)   -> Print.expo ppf e
-  | P_mstrat(s) -> Print.match_strat ppf s
-  | P_prop(p)   -> Print.prop ppf p
-  | P_opaq      -> out ppf "opaque "
-
-(* ends with a space if the list is not empty *)
-let modifiers : p_modifier list pp = List.pp modifier ""
-
-(** The possible priority levels are [`Func] (top level, including abstraction
-   and product), [`Appl] (application) and [`Atom] (smallest priority). *)
-type priority = [`Func | `Appl | `Atom]
+(** Translation of terms. *)
 
 let stt = Stdlib.ref false
+let use_implicits = Stdlib.ref false
+let use_notations = Stdlib.ref false
+
+(* redefinition of p_get_args ignoring P_Wrap's. *)
+let p_get_args : p_term -> p_term * p_term list = fun t ->
+  let rec p_get_args t acc =
+    match t.elt with
+    | P_Appl(t, u) -> p_get_args t (u::acc)
+    | P_Wrap t -> p_get_args t acc
+    | _ -> t, acc
+  in p_get_args t []
+
+let app t default cases =
+  let h, ts = p_get_args t in
+  if !stt then
+    match h.elt with
+    | P_Iden({elt;_},expl) ->
+        begin match QidMap.find_opt elt !map_qid_builtin with
+        | None -> default h ts
+        | Some builtin -> cases h ts expl builtin
+        end
+    | _ -> default h ts
+  else default h ts
 
 let rec term : p_term pp = fun ppf t ->
-  let empty_context = ref true in
-  let rec atom ppf t = pp `Atom ppf t
-  and appl ppf t = pp `Appl ppf t
-  and func ppf t = pp `Func ppf t
-  and pp priority ppf t =
-    if Logger.log_enabled() then log "%a: %a" Pos.short t.pos Pretty.term t;
-    match t.elt, priority with
-    | P_Type, _ -> out ppf "Type"
-    | P_Iden({elt;_},_), _
-      when !stt && elt = !sym_Set -> out ppf "Type"
-    | P_Iden({elt;_},_), _
-      when !stt && elt = !sym_prop -> out ppf "Prop"
-    | P_Iden(qid,true), _ -> out ppf "@@%a" qident qid
-    | P_Iden(qid,false), _ -> qident ppf qid
-    | P_NLit i, _ -> raw_ident ppf i
-    | P_Wild, _ -> out ppf "_"
-    | P_Meta(mid,_), _ -> out ppf "TODO(*?%a*)" meta_ident mid
-    | P_Patt _, _ -> assert false
-    | P_Arro(a,b), `Func -> out ppf "%a -> %a" appl a func b
-    | P_Abst(xs,t), `Func ->
-        let fn (ids,_,_) = List.for_all ((=) None) ids in
-        let ec = !empty_context in
-        empty_context := ec && List.for_all fn xs;
-        out ppf "fun%a => %a" params_list xs func t;
-        empty_context := ec
-    | P_Prod(xs,b), `Func ->
-        out ppf "forall%a, %a" params_list xs func b
-    | P_LLet(x,xs,a,t,u), `Func ->
-        out ppf "let %a%a%a := %a in %a"
-          ident x params_list xs typopt a func t func u
-    | P_Expl t, _ -> out ppf "TODO(*{%a}*)" func t
-    | P_Appl(a,b), _ ->
-      begin
-        match p_get_args t with
-        | {elt=P_Iden({elt;_},_);_}, [u]
-             when !stt && (elt = !sym_El || elt = !sym_Prf) ->
-            pp priority ppf u
-        (* The cases below are not necessary: they just unfold the definitions
-           of arr, imp and all in STTfa.v. *)
-        | {elt=P_Iden({elt;_},_);_}, [u1;u2]
-             when !stt && (elt = !sym_arr || elt = !sym_imp) ->
-            pp priority ppf {t with elt=P_Arro(u1,u2)}
-        | {elt=P_Iden({elt;_},_);_},[_;{elt=P_Abst([_] as xs,u2);_}]
-             when !stt && elt = !sym_all ->
-          pp priority ppf {t with elt=P_Prod(xs,u2)}
-        | _ -> application priority ppf t a b
-      end
-    | P_Wrap t, _ -> out ppf "(%a)" func t
-    | _ -> out ppf "(%a)" func t
-  and application priority ppf t a b =
-    match priority with
-    | `Appl | `Func -> out ppf "%a %a" appl a atom b
-    | _ -> out ppf "(%a)" func t
-  in
-  let rec toplevel ppf t =
-    match t.elt with
-    | P_Abst(xs,t) -> out ppf "fun%a => %a" params_list xs toplevel t
-    | P_Prod(xs,b) -> out ppf "forall%a, %a" params_list xs toplevel b
-    | P_Arro(a,b) -> out ppf "%a -> %a" appl a toplevel b
-    | P_LLet(x,xs,a,t,u) ->
-        out ppf "let %a%a%a := %a in %a"
-          ident x params_list xs typopt a toplevel t toplevel u
-    | _ -> func ppf t
-  in
-  toplevel ppf t
+  (*if Logger.log_enabled() then
+    log "pp %a" (*Pos.short t.pos*) Pretty.term t;*)
+  match t.elt with
+  | P_Meta _ -> wrn t.pos "TODO"; assert false
+  | P_Patt _ -> wrn t.pos "TODO"; assert false
+  | P_Expl _ -> wrn t.pos "TODO"; assert false
+  | P_Type -> out ppf "Type"
+  | P_Wild -> out ppf "_"
+  | P_NLit i -> raw_ident ppf i
+  | P_Iden(qid,b) ->
+      if b then out ppf "@@";
+      if !stt then
+        match QidMap.find_opt qid.elt !map_erased_qid_coq with
+        | Some s -> string ppf s
+        | None -> qident ppf qid
+      else qident ppf qid
+  | P_Arro(u,v) -> arrow ppf u v
+  | P_Abst(xs,u) -> abst ppf xs u
+  | P_Prod(xs,u) -> prod ppf xs u
+  | P_LLet(x,xs,a,u,v) ->
+      out ppf "let %a%a%a := %a in %a"
+        ident x params_list xs typopt a term u term v
+  | P_Wrap u -> term ppf u
+  | P_Appl _ ->
+      let default h ts = out ppf "%a %a" paren h (List.pp paren " ") ts in
+      app t default
+        (fun h ts expl builtin ->
+          match !use_notations, !use_implicits && expl, builtin, ts with
+          | _, _, (El|Prf), [u] -> term ppf u
+          | _, _, (Arr|Imp), [u;v] -> arrow ppf u v
+          | _, true, All, [{elt=P_Wrap({elt=P_Abst([_] as xs,u);_});_}]
+          | _, false, All, [_;{elt=P_Wrap({elt=P_Abst([_] as xs,u);_});_}]
+            -> prod ppf xs u
+          | _, true, Ex, [{elt=P_Wrap({elt=P_Abst([x],u);_});_}]
+          | _, false, Ex, [_;{elt=P_Wrap({elt=P_Abst([x],u);_});_}] ->
+              out ppf "exists %a, %a" raw_params x term u
+          | true, true, Eq, [_;u;v]
+          | true, false, Eq, [u;v] -> out ppf "%a = %a" paren u paren v
+          | true, _, Or, [u;v] -> out ppf "%a \\/ %a" paren u paren v
+          | true, _, And, [u;v] ->  out ppf "%a /\\ %a" paren u paren v
+          | true, _, Not, [u] -> out ppf "~ %a" paren u
+          | _ -> default h ts)
 
-and params : p_params pp = fun ppf (ids, t, b) ->
+and arrow ppf u v = out ppf "%a -> %a" paren u term v
+and abst ppf xs u = out ppf "fun%a => %a" params_list_in_abs xs term u
+and prod ppf xs u = out ppf "forall%a, %a" params_list_in_abs xs term u
+
+and paren : p_term pp = fun ppf t ->
+  let default() = out ppf "(%a)" term t in
+  match t.elt with
+  | P_Arro _ | P_Abst _ | P_Prod _ | P_LLet _ | P_Wrap _ -> default()
+  | P_Appl _ ->
+      app t (fun _ _ -> default())
+        (fun _ ts _ builtin ->
+          match builtin, ts with
+          | (El|Prf), [u] -> paren ppf u
+          | _ -> default())
+  | _ -> term ppf t
+
+and raw_params : p_params pp = fun ppf (ids,t,_) ->
+  out ppf "%a%a" param_ids ids typopt t
+
+and params : p_params pp = fun ppf ((ids,t,b) as x) ->
   match b, t with
-  | true, Some t -> out ppf "{%a : %a}" param_ids ids term t
-  | false, Some t -> out ppf "(%a : %a)" param_ids ids term t
-  | true, None -> out ppf "{%a}" param_ids ids
+  | true, _ -> out ppf "{%a}" raw_params x
+  | false, Some _ -> out ppf "(%a)" raw_params x
   | false, None -> param_ids ppf ids
 
 (* starts with a space if the list is not empty *)
 and params_list : p_params list pp = fun ppf ->
   List.iter (out ppf " %a" params)
 
+(* starts with a space if the list is not empty *)
+and params_list_in_abs : p_params list pp = fun ppf l ->
+  match l with
+  | [ids,t,false] -> out ppf " %a%a" param_ids ids typopt t
+  | _ -> List.iter (out ppf " %a" params) l
+
 (* starts with a space if <> None *)
 and typopt : p_term option pp = fun ppf t ->
   Option.iter (out ppf " : %a" term) t
 
-let inductive : string -> p_inductive pp =
-  let cons ppf (id,a) = out ppf "| %a : %a" ident id term a in
-  fun kw ppf {elt=(id,a,cs);_} ->
-  out ppf "@[<v>%s %a : %a :=@,%a@]" kw ident id term a (List.pp cons "@,") cs
+(** Translation of commands. *)
 
-let command : p_command pp = fun ppf ({ elt; _ } as cmd) ->
+let is_lem x = is_opaq x || is_priv x
+
+let command : p_command pp = fun ppf {elt; pos} ->
   begin match elt with
-  | P_inductive (_, _, []) -> assert false
-  | P_inductive (ms, xs, i :: il) ->
-      out ppf "@[<v>@[%a%a@]%a@,%a@,end@]"
-        modifiers ms
-        (List.pp params " ") xs
-        (inductive "Inductive") i
-        (List.pp (inductive "and") "@,") il
-  | P_open ps -> out ppf "Import %a" (List.pp path " ") ps
+  | P_inductive _ -> wrn pos "TODO"; assert false
+  | P_open ps -> out ppf "Import %a@." (List.pp path " ") ps
   | P_require (true, ps) ->
-      out ppf "Require Import %a." (List.pp path " ") ps
+      out ppf "Require Import %a.@." (List.pp path " ") ps
   | P_require (false, ps) ->
-      out ppf "Require %a." (List.pp path " ") ps
-  | P_require_as (p,i) -> out ppf "Module %a := %a." ident i path p
+      out ppf "Require %a.@." (List.pp path " ") ps
+  | P_require_as (p,i) -> out ppf "Module %a := %a.@." ident i path p
   | P_symbol
     { p_sym_mod; p_sym_nam; p_sym_arg; p_sym_typ;
       p_sym_trm; p_sym_prf=_; p_sym_def } ->
-      begin match code p_sym_nam.elt with
-      | Set -> ()
-      | Imp -> out ppf "Definition imp (P Q: Prop) := P -> Q."
-      | Arr -> out ppf "Definition arr (A:Type) (B:Type) := A -> B."
-      | All ->
-          out ppf "Definition all (A:Type) (P:A->Prop) := forall x:A, P x."
-      | Other ->
-          match p_sym_def, p_sym_trm, p_sym_arg, p_sym_typ with
+      if not (StrSet.mem p_sym_nam.elt !erase) then
+        let p_sym_arg =
+          if !stt then
+            let pos = None in
+            let _Set = {elt=P_Iden({elt=sym Set;pos},false);pos} in
+            List.map (function ids, None, b -> ids, Some _Set, b | x -> x)
+              p_sym_arg
+          else p_sym_arg
+        in
+        begin match p_sym_def, p_sym_trm, p_sym_arg, p_sym_typ with
           | true, Some t, _, _ ->
-              if List.exists is_opaq p_sym_mod then
-                out ppf "Lemma %a%a%a. Proof. exact (%a). Qed."
+              if List.exists is_lem p_sym_mod then
+                out ppf "Lemma %a%a%a.\nProof. exact (%a). Qed.@."
                   ident p_sym_nam params_list p_sym_arg typopt p_sym_typ
                   term t
               else
-                out ppf "Definition %a%a%a := %a."
-                  ident p_sym_nam params_list p_sym_arg typopt p_sym_typ
-                  term t
+                out ppf "Definition %a%a := %a.@."
+                  ident p_sym_nam params_list p_sym_arg term t
           | false, _, [], Some t ->
-              out ppf "Axiom %a : %a." ident p_sym_nam term t
+              out ppf "Axiom %a : %a.@." ident p_sym_nam term t
           | false, _, _, Some t ->
-              out ppf "Axiom %a : forall%a, %a."
+              out ppf "Axiom %a : forall%a, %a.@."
                 ident p_sym_nam params_list p_sym_arg term t
           | _ -> assert false
-      end
-  | _ -> out ppf "(*%a*)" Pretty.command cmd
+        end
+  | P_rules _ -> wrn pos "rules are not translated"
+  | _ -> if !stt then () else (wrn pos "TODO"; assert false)
   end
-
-let command ppf = out ppf "%a@." command
 
 let ast : ast pp = fun ppf -> Stream.iter (command ppf)
 
-let print : ast -> unit = ast std_formatter
+(** Set Coq required file. *)
+
+let require = ref None
+
+let set_requiring : string -> unit = fun f -> require := Some f
+
+let print : ast -> unit = fun s ->
+  begin match !require with
+  | Some f ->
+      out std_formatter "Require Import %s.\n" (Filename.chop_extension f)
+  | None -> ()
+  end;
+  ast std_formatter s
