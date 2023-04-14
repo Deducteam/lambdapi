@@ -102,7 +102,7 @@ For the format ``stt_coq``, several other options are available:
    builtin "all" ≔ ...; // : Π [a : Set], (El a → El prop) → El prop
    builtin "ex" ≔ ...; // : Π [a : Set], (El a → El prop) → El prop
 
-It tells Lambdapi which symbols of the input files are used for the encoding. The first argument ``a`` of the symbols corresponding to the builtins``"eq"``, ``"all"` and ``"ex"`` need not be declared as implicit.
+It tells Lambdapi which symbols of the input files are used for the encoding. The first argument ``a`` of the symbols corresponding to the builtins``"eq"``, ``"all"` and ``"ex"`` need not be declared as implicit. Example: `encoding.lp <https://github.com/Deducteam/lambdapi/blob/master/libraries/encoding.lp>`.
 
 * ``--no-implicits`` instructs Lambdapi that the symbols of the encoding have no implicit arguments.
 
@@ -112,7 +112,7 @@ It tells Lambdapi which symbols of the input files are used for the encoding. Th
    
    builtin "coq_expr" ≔ lp_id;
 
-It instructs Lambdapi to replace any occurrence of the unqualified identifier ``lp_id`` by ``coq_expr``, which can be any Coq expression.
+It instructs Lambdapi to replace any occurrence of the unqualified identifier ``lp_id`` by ``coq_expr``, which can be any Coq expression. Example: `renaming.lp <https://github.com/Deducteam/lambdapi/blob/master/libraries/renaming.lp>`.
 
 * ``--requiring <COQ_FILE>`` to add ``Require Import <COQ_FILE>`` at the beginning of the output. ``<COQ_FILE>`` usually needs to contain at least the following definitions:
 
@@ -122,9 +122,9 @@ It instructs Lambdapi to replace any occurrence of the unqualified identifier ``
    Definition imp (P Q: Prop) := P -> Q.
    Definition all (A:Type) (P:A->Prop) := forall x:A, P x.
 
-if the symbols corresponding to the builtins ``"arr"``, ``"imp"`` and ``"all"`` occurs partially applied in the input file.
+if the symbols corresponding to the builtins ``"arr"``, ``"imp"`` and ``"all"`` occurs partially applied in the input file. Example: `coq.v <https://github.com/Deducteam/lambdapi/blob/master/libraries/coq.v>`.
 
-* ``--erasing <LP_FILE>`` where ``<LP_FILE>`` contains a sequence of builtin declarations like for the option ``--renaming`` except that, this time, ``lp_id`` can be a qualified identifier. It has the same effect as the option ``--renaming`` plus it removes any declaration of the renamed symbols. ``coq_expr`` therefore needs to be defined in Coq standard library or in the Coq file specified with the option ``-requiring``. It is not necessary to have entries for the symbols corresponding to the builtins ``"El"`` and ``"Prf"`` declared with the option ``--encoding`` since they are erased automatically.
+* ``--erasing <LP_FILE>`` where ``<LP_FILE>`` contains a sequence of builtin declarations like for the option ``--renaming`` except that, this time, ``lp_id`` can be a qualified identifier. It has the same effect as the option ``--renaming`` plus it removes any declaration of the renamed symbols. ``coq_expr`` therefore needs to be defined in Coq standard library or in the Coq file specified with the option ``-requiring``. It is not necessary to have entries for the symbols corresponding to the builtins ``"El"`` and ``"Prf"`` declared with the option ``--encoding`` since they are erased automatically. Example: `erasing.lp <https://github.com/Deducteam/lambdapi/blob/master/libraries/erasing.lp>`.
 
 * ``--use-notations`` instructs Lambdapi to use the usual Coq notations for the symbols corresponding to the builtins ``"eq"``, ``"not"``, ``"and"`` and ``"or"``.
 
