@@ -67,11 +67,19 @@ let parse_cmd : Config.t -> string list -> unit = fun cfg files ->
   in
   Error.handle_exceptions run
 
+(** Possible outputs for the export command. *)
+type output = Lp | Dk | Hrs | Xtc | RawCoq | SttCoq
+
 (** Running the export mode. *)
-let export_cmd : Config.t -> string -> unit = fun cfg file ->
+let export_cmd (cfg:Config.t) (output:output option) (encoding:string option)
+      (erasing:string option) (renaming:string option)
+      (requiring:string option) (no_implicits:bool) (use_notations:bool)
+      (file:string) : unit =
   let run _ =
     Config.init {cfg with verbose = Some 0};
-    match cfg.output with
+    Export.Coq.use_implicits := not no_implicits;
+    Export.Coq.use_notations := use_notations;
+    match output with
     | None
     | Some Lp -> Pretty.ast Format.std_formatter (Parser.parse_file file)
     | Some Dk -> Export.Dk.sign (Compile.compile_file file)
@@ -81,14 +89,14 @@ let export_cmd : Config.t -> string -> unit = fun cfg file ->
       Export.Xtc.sign Format.std_formatter (Compile.compile_file file)
     | Some RawCoq ->
         Export.Coq.stt := false;
-        Option.iter Export.Coq.set_renaming cfg.renaming;
+        Option.iter Export.Coq.set_renaming renaming;
         Export.Coq.print (Parser.parse_file file)
     | Some SttCoq ->
         Export.Coq.stt := true;
-        Option.iter Export.Coq.set_renaming cfg.renaming;
-        Option.iter Export.Coq.set_encoding cfg.encoding;
-        Option.iter Export.Coq.set_erasing cfg.erasing;
-        Option.iter Export.Coq.set_requiring cfg.requiring;
+        Option.iter Export.Coq.set_renaming renaming;
+        Option.iter Export.Coq.set_encoding encoding;
+        Option.iter Export.Coq.set_erasing erasing;
+        Option.iter Export.Coq.set_requiring requiring;
         Export.Coq.print (Parser.parse_file file)
   in Error.handle_exceptions run
 
@@ -162,7 +170,7 @@ let lsp_log_file : string CLT.t =
   in
   Arg.(value & opt string default & info ["log-file"] ~docv:"FILE" ~doc)
 
-(** Specific to the ["decision-tree"] command. *)
+(** Options specific to the ["decision-tree"] command. *)
 
 let qident : qident CLT.t =
   let qident : qident Arg.conv =
@@ -180,6 +188,83 @@ let qident : qident CLT.t =
 let ghost : bool CLT.t =
   let doc = "Print the decision tree of a ghost symbol." in
   Arg.(value & flag & info [ "ghost" ] ~doc)
+
+(** Options specific to the export command. *)
+
+let output : output option CLT.t =
+  let output : output Arg.conv =
+    let parse (s: string) : (output, [>`Msg of string]) result =
+      match s with
+      | "lp" -> Ok Lp
+      | "dk" -> Ok Dk
+      | "hrs" -> Ok Hrs
+      | "xtc" -> Ok Xtc
+      | "raw_coq" -> Ok RawCoq
+      | "stt_coq" -> Ok SttCoq
+      | _ -> Error(`Msg "Invalid format")
+    in
+    let print fmt o =
+      string fmt
+        (match o with
+         | Lp -> "lp"
+         | Dk -> "dk"
+         | Hrs -> "hrs"
+         | Xtc -> "xtc"
+         | RawCoq -> "raw_coq"
+         | SttCoq -> "stt_coq")
+    in
+    Arg.conv (parse, print)
+  in
+  let doc =
+    "Set the output format of the export command. The value of $(docv) \
+     must be `lp' (default), `dk`, `hrs`, `xtc`, `raw_coq` or `stt_coq`."
+  in
+  Arg.(value & opt (some output) None & info ["output";"o"] ~docv:"FMT" ~doc)
+
+let encoding : string option CLT.t =
+  let encoding : string Arg.conv =
+    let parse (s: string) : (string, [>`Msg of string]) result = Ok s in
+    let print fmt s = string fmt s in
+    Arg.conv (parse, print)
+  in
+  let doc = "Set config file for the command export -o stt_coq." in
+  Arg.(value & opt (some encoding) None & info ["encoding"] ~docv:"FILE" ~doc)
+
+let renaming : string option CLT.t =
+  let renaming : string Arg.conv =
+    let parse (s: string) : (string, [>`Msg of string]) result = Ok s in
+    let print fmt s = string fmt s in
+    Arg.conv (parse, print)
+  in
+  let doc = "Set config file for the command export -o stt_coq." in
+  Arg.(value & opt (some renaming) None & info ["renaming"] ~docv:"FILE" ~doc)
+
+let erasing : string option CLT.t =
+  let erasing : string Arg.conv =
+    let parse (s: string) : (string, [>`Msg of string]) result = Ok s in
+    let print fmt s = string fmt s in
+    Arg.conv (parse, print)
+  in
+  let doc = "Set config file for the command export -o stt_coq." in
+  Arg.(value & opt (some erasing) None & info ["erasing"] ~docv:"FILE" ~doc)
+
+let requiring : string option CLT.t =
+  let requiring : string Arg.conv =
+    let parse (s: string) : (string, [>`Msg of string]) result = Ok s in
+    let print fmt s = string fmt s in
+    Arg.conv (parse, print)
+  in
+  let doc = "Set config file for the command export -o stt_coq." in
+  Arg.(value & opt (some requiring) None
+       & info ["requiring"] ~docv:"FILE" ~doc)
+
+let no_implicits : bool CLT.t =
+  let doc = "Indicates that input symbols have no implicit arguments." in
+  Arg.(value & flag & info ["no-implicits"] ~doc)
+
+let use_notations : bool CLT.t =
+  let doc = "Generate Coq code using notations." in
+  Arg.(value & flag & info ["use-notations"] ~doc)
 
 (** Remaining arguments: source files. *)
 
@@ -251,7 +336,8 @@ let parse_cmd =
 let export_cmd =
   let doc = "Translate the given files to other formats." in
   Cmd.v (Cmd.info "export" ~doc ~man:man_pkg_file)
-    CLT.(const export_cmd $ Config.full $ file)
+    CLT.(const export_cmd $ Config.full $ output $ encoding $ erasing
+         $ renaming $ requiring $ no_implicits $ use_notations $ file)
 
 let lsp_server_cmd =
   let doc = "Runs the LSP server." in

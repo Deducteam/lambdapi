@@ -62,7 +62,7 @@ Debugging flags
 ``check``
 ---------
 
-* ``-c``, ``--gen-obj`` instructs ``lambdapi`` to generate object files for every checked module (including dependencies). Object files have the extension ``.lpo`` and they are automatically read back when necessary if they exist and are up to date (they are regenerated otherwise).
+* ``-c``, ``--gen-obj`` instructs Lambdapi to generate object files for every checked module (including dependencies). Object files have the extension ``.lpo`` and they are automatically read back when necessary if they exist and are up to date (they are regenerated otherwise).
 
 
 * ``--too-long=<FLOAT>`` gives a warning for each interpreted source file command taking more than the given number of seconds to be checked. The parameter ``FLOAT`` is expected to be a floating point number.
@@ -70,7 +70,7 @@ Debugging flags
 ``export``
 ----------
 
-* ``-o <FMT>``, ``--output=<FMT>`` instructs ``lambdapi`` to translate the files given in argument according to ``<FMT>``:
+* ``-o <FMT>``, ``--output=<FMT>`` instructs Lambdapi to translate the files given in argument according to ``<FMT>``:
 
   - ``lp``: Lambdapi format
   - ``dk``:  `Dedukti <https://github.com/Deducteam/dedukti>`__ format
@@ -85,7 +85,7 @@ With the options ``raw_coq`` and ``stt_coq``, rules are ignored. The encoding of
 
 For the format ``stt_coq``, several other options are available:
 
-* ``--encoding <FILE>`` where ``<FILE>`` is a .lp file containing the following sequence of builtin declarations:
+* ``--encoding <LP_FILE>`` (mandatory option) where ``<LP_FILE>`` contains the following sequence of builtin declarations:
 
 ::
 
@@ -102,19 +102,31 @@ For the format ``stt_coq``, several other options are available:
    builtin "all" ≔ ...; // : Π [a : Set], (El a → El prop) → El prop
    builtin "ex" ≔ ...; // : Π [a : Set], (El a → El prop) → El prop
 
-It tells ``lambdapi`` which Lambdapi symbols are used in the encoding.
+It tells Lambdapi which symbols of the input files are used for the encoding. The first argument ``a`` of the symbols corresponding to the builtins``"eq"``, ``"all"` and ``"ex"`` need not be declared as implicit.
 
-* ``--erasing <FILE>`` where ``<FILE>`` is a .lp file containing a sequence of builtin declarations
+* ``--no-implicits`` instructs Lambdapi that the symbols of the encoding have no implicit arguments.
+
+* ``--renaming <LP_FILE>`` where ``<LP_FILE>`` contains a sequence of builtin declarations of the form
 
 ::
    
-   builtin "lp_id" ≔ coq_id;
+   builtin "coq_expr" ≔ lp_id;
 
-telling ``lambdapi`` to generate no declaration for ``lp_id`` and replace any occurrence of ``lp_id`` by ``coq_id``. It is not necessary to declare here the symbols corresponding to the builtins ``"El"`` and ``"Prf"`` declared with the option ``-encoding`` since they are erased automatically.
+It instructs Lambdapi to replace any occurrence of the unqualified identifier ``lp_id`` by ``coq_expr``, which can be any Coq expression.
 
-* ``--renaming <FILE>`` where ``<FILE>`` is a .lp file containing a sequence of builtin declarations like for the option ``--erasing``. It instructs ``lambdapi`` to replace any occurrence of ``lp_id`` by ``coq_id``.
+* ``--requiring <COQ_FILE>`` to add ``Require Import <COQ_FILE>`` at the beginning of the output. ``<COQ_FILE>`` usually needs to contain at least the following definitions:
 
-* ``--requiring <FILE>`` where ``<FILE>`` is a Coq .v file containing the declarations of the symbols erased by the option ``--erasing``.
+::
+
+   Definition arr (A:Type) (B:Type) := A -> B.
+   Definition imp (P Q: Prop) := P -> Q.
+   Definition all (A:Type) (P:A->Prop) := forall x:A, P x.
+
+if the symbols corresponding to the builtins ``"arr"``, ``"imp"`` and ``"all"`` occurs partially applied in the input file.
+
+* ``--erasing <LP_FILE>`` where ``<LP_FILE>`` contains a sequence of builtin declarations like for the option ``--renaming`` except that, this time, ``lp_id`` can be a qualified identifier. It has the same effect as the option ``--renaming`` plus it removes any declaration of the renamed symbols. ``coq_expr`` therefore needs to be defined in Coq standard library or in the Coq file specified with the option ``-requiring``. It is not necessary to have entries for the symbols corresponding to the builtins ``"El"`` and ``"Prf"`` declared with the option ``--encoding`` since they are erased automatically.
+
+* ``--use-notations`` instructs Lambdapi to use the usual Coq notations for the symbols corresponding to the builtins ``"eq"``, ``"not"``, ``"and"`` and ``"or"``.
 
 ``lsp``
 -------

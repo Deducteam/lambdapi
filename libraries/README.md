@@ -1,17 +1,27 @@
-How to translate the Holide library to Coq?
+How to translate the Holide Dedukti library to Coq?
 -------------------------------------------
 
-From the root of the project do:
+Extracting and patching the Holide library:
 ```
 make holide
 cd libraries/holide
-../patch-holide-dkfiles.sh
-# to check patched dk files:
-# cp ../STTfa.dk .
-# dk check -e STTfa.dk
-# dk check -e hol.dk
-# dk check *.dk
-../dk2coq.sh *.dk
-cp -f ../Coq.v STTfa.v
-../check-holide-vfiles.sh
+../patch-filenames.sh
+cp . ../holide-bak
+```
+
+Checking the Holide dk files (optional):
+```
+make -j 7 -f ../coq2dk dko
+```
+
+To translate Holide dk files to Coq, we need to patch those dk files a little bit. See the sources of the following scripts for details.
+
+Convert the Holide dk files to raw Coq files, and check them:
+```
+../dk2rawcoq.sh
+```
+
+Convert the Holide dk files to Coq files using the fact that the Holide dk files use an encoding of simple type theory, and check them:
+```
+../dk2sttcoq.sh
 ```

@@ -24,4 +24,3 @@ Fixpoint Prf (p:El prop) : Type :=
   | imp x y => Prf x -> Prf y
   | all a q => forall x : El a, Prf (q x)
   end.
-
