@@ -61,78 +61,65 @@ let _ = (* sanity check *)
     assert (index_of_name (name_of_index i) = Some i)
   done
 
-let coq_name = function
-  | 0 -> Some "Type" | 1 -> Some "Prop" | 2 -> Some "arr" | 4 -> Some "imp"
-  | 5 -> Some "all" | 7 -> Some "eq" | 8 -> Some "or" | 9 -> Some "and"
-  | 10 -> Some "ex" | 11 -> Some "not"
-  | _ -> None
-
-let builtin : (Path.t * string) array =
+let builtin : Term.qident array =
   let path = ["STTfa"] in
   Array.init nb_builtins (fun i -> path, name_of_index i)
 
 let sym b = builtin.(index_of_builtin b)
 
-let sym_map = Stdlib.ref StrMap.empty
-
-let update_sym_map() =
-  Array.iteri
-    (fun i (_,n) -> sym_map := StrMap.add n (builtin_of_index i) !sym_map)
-    builtin
-
-let _ = update_sym_map()
-
-let builtin_of_name n =
-  try Some (StrMap.find n !sym_map) with Not_found -> None
-
-(* Set renaming map from file. *)
+(** Set renaming map from file. *)
 
 let rmap = ref StrMap.empty
 
-let update_rmap() =
-  Array.iteri
-    (fun i (_,n) ->
-      match coq_name i with
-      | Some s -> rmap := StrMap.add n s !rmap
-      | None -> ())
-    builtin
-
 let set_renaming : string -> unit = fun f ->
   let consume = function
-    | {elt=P_builtin(n,{elt=(p,s);_});_} ->
-        let v = if p = [] then s else String.concat "." p ^ "." ^ s in
-        rmap := StrMap.add n v !rmap
+    | {elt=P_builtin(coq_id,{elt=([],lp_id);_});_} ->
+        if Logger.log_enabled() then log "rename %s into %s" lp_id coq_id;
+        rmap := StrMap.add lp_id coq_id !rmap
     | {pos;_} -> fatal pos "Invalid command."
   in
   Stream.iter consume (Parser.parse_file f)
 
-(* Set renaming map from file. *)
+(** Set symbols whose declarations have to be erased. *)
 
 let erase = ref StrSet.empty
 
+module Qid = struct type t = Term.qident let compare = Stdlib.compare end
+module QidMap = Map.Make(Qid)
+
+let map_erased_qid_coq = ref QidMap.empty
+
 let set_erasing : string -> unit = fun f ->
   let consume = function
-    | {elt=P_builtin(n,{elt=(p,s);_});_} ->
-        erase := StrSet.add n !erase;
-        let v = if p = [] then s else String.concat "." p ^ "." ^ s in
-        rmap := StrMap.add n v !rmap
+    | {elt=P_builtin(coq_id,lp_qid);_} ->
+        if Logger.log_enabled() then
+          log "rename %a into %s" Pretty.qident lp_qid coq_id;
+        if Logger.log_enabled() then log "erase %s" (snd lp_qid.elt);
+        erase := StrSet.add (snd lp_qid.elt) !erase;
+        map_erased_qid_coq := QidMap.add lp_qid.elt coq_id !map_erased_qid_coq
     | {pos;_} -> fatal pos "Invalid command."
   in
   Stream.iter consume (Parser.parse_file f)
 
-(* Set encoding from file. *)
+(** Set encoding. *)
+
+let map_qid_builtin = ref QidMap.empty
 
 let set_encoding : string -> unit = fun f ->
   let found = Array.make nb_builtins false in
   let consume = function
-    | {elt=P_builtin(n,{elt;_});pos} ->
+    | {elt=P_builtin(n,lp_qid);pos} ->
         begin match index_of_name n with
         | Some i ->
-            builtin.(i) <- elt; found.(i) <- true;
-            begin match builtin_of_index i with
-            | El | Prf -> erase := StrSet.add n !erase
-            | _ -> ()
-            end
+            if Logger.log_enabled() then
+              log "builtin \"%s\" = %a" n Pretty.qident lp_qid;
+            builtin.(i) <- lp_qid.elt;
+            found.(i) <- true;
+            let b = builtin_of_index i in
+            map_qid_builtin := QidMap.add lp_qid.elt b !map_qid_builtin;
+            if b = El || b = Prf then
+              (if Logger.log_enabled() then log "erase %s" (snd lp_qid.elt);
+               erase := StrSet.add (snd lp_qid.elt) !erase)
         | None -> fatal pos "Unknown builtin."
         end
     | {pos;_} -> fatal pos "Invalid command."
@@ -144,11 +131,9 @@ let set_encoding : string -> unit = fun f ->
         let pos =
           Some {fname=Some f;start_line=0;start_col=0;end_line=0;end_col=0}
         in fatal pos "Builtin %s undefined." (name_of_index i))
-    found;
-  update_sym_map();
-  update_rmap()
+    found
 
-(* Translation of identifiers. *)
+(** Translation of identifiers. *)
 
 let translate_ident : string -> string = fun s ->
   try StrMap.find s !rmap with Not_found -> s
@@ -173,6 +158,12 @@ let qident : p_qident pp = fun ppf {elt=(mp,s);_} ->
   | [] -> raw_ident ppf s
   | _::_ -> out ppf "%a.%a" raw_path mp raw_ident s
 
+(** Translation of terms. *)
+
+let stt = Stdlib.ref false
+let use_implicits = Stdlib.ref false
+let use_notations = Stdlib.ref false
+
 (* redefinition of p_get_args ignoring P_Wrap's. *)
 let p_get_args : p_term -> p_term * p_term list = fun t ->
   let rec p_get_args t acc =
@@ -182,101 +173,80 @@ let p_get_args : p_term -> p_term * p_term list = fun t ->
     | _ -> t, acc
   in p_get_args t []
 
-(* Translation of terms. *)
-
-(* The possible priority levels are [`Func] (top level, including abstraction
-   and product), [`Appl] (application) and [`Atom] (smallest priority). *)
-type priority = [`Func | `Appl | `Atom]
-
-let stt = Stdlib.ref false
+let app t default cases =
+  let h, ts = p_get_args t in
+  if !stt then
+    match h.elt with
+    | P_Iden({elt;_},expl) ->
+        begin match QidMap.find_opt elt !map_qid_builtin with
+        | None -> default h ts
+        | Some builtin -> cases h ts expl builtin
+        end
+    | _ -> default h ts
+  else default h ts
 
 let rec term : p_term pp = fun ppf t ->
-  let rec atom ppf t = pp `Atom ppf t
-  and appl ppf t = pp `Appl ppf t
-  and func ppf t = pp `Func ppf t
-  and pp priority ppf t =
-    if Logger.log_enabled() then log "%a: %a" Pos.short t.pos Pretty.term t;
-    match t.elt, priority with
-    | P_Type, _ -> out ppf "Type"
-    | P_Iden(qid,true), _ -> out ppf "@@%a" qident qid
-    | P_Iden(qid,false), _ -> qident ppf qid
-    | P_NLit i, _ -> raw_ident ppf i
-    | P_Wild, _ -> out ppf "_"
-    | P_Meta _, _ -> assert false
-    | P_Patt _, _ -> assert false
-    | P_Arro(a,{elt=P_Wrap b;_}), `Func
-    | P_Arro(a,b), `Func -> out ppf "%a -> %a" appl a func b
-    | P_Abst([x],{elt=P_Wrap t;_}), `Func ->
-        out ppf "fun %a => %a" raw_params x func t
-    | P_Abst([x],t), `Func ->
-        out ppf "fun %a => %a" raw_params x func t
-    | P_Abst(xs,t), `Func ->
-        out ppf "fun%a => %a" params_list xs func t
-    | P_Prod([x],{elt=P_Wrap t;_}), `Func ->
-        out ppf "forall %a, %a" raw_params x func t
-    | P_Prod([x],t), `Func ->
-        out ppf "forall %a, %a" raw_params x func t
-    | P_Prod(xs,t), `Func ->
-        out ppf "forall%a, %a" params_list xs func t
-    | P_LLet(x,xs,a,t,u), `Func ->
-        out ppf "let %a%a%a := %a in %a"
-          ident x params_list xs typopt a func t func u
-    | P_Expl _, _ -> assert false
-    | P_Appl({elt=P_Wrap({elt=P_Appl _;_} as a);_},b), _ ->
-        pp priority ppf {t with elt=P_Appl(a,b)}
-    | P_Appl(a,b), _ ->
-      begin
-        match p_get_args t with
-        | {elt=P_Iden({elt;_},_);_}, [u]
-             when !stt && (elt = sym El || elt = sym Prf) ->
-            pp priority ppf u
-        | {elt=P_Iden({elt;_},_);_}, [u1;u2]
-             when !stt && (elt = sym Arr || elt = sym Imp) ->
-            pp priority ppf {t with elt=P_Arro(u1,u2)}
-        | {elt=P_Iden({elt;_},_);_},
-          [{elt=P_Wrap({elt=P_Abst([_] as xs,u);_});_}]
-             when !stt && elt = sym All ->
-            pp priority ppf {t with elt=P_Prod(xs,u)}
-        | {elt=P_Iden({elt;_},_);_},
-          [{elt=P_Wrap({elt=P_Abst([x],u);_});_}]
-             when !stt && elt = sym Ex ->
-            out ppf "exists %a, %a" raw_params x func u
-        | {elt=P_Iden({elt;_},false);_}, [u;v] when !stt && elt = sym Eq ->
-            out ppf "%a = %a" func u func v
-        | {elt=P_Iden({elt;_},false);_}, [u;v] when !stt && elt = sym Or ->
-            out ppf "%a \\/ %a" func u func v
-        | {elt=P_Iden({elt;_},false);_}, [u;v] when !stt && elt = sym And ->
-            out ppf "%a /\\ %a" func u func v
-        | {elt=P_Iden({elt;_},false);_}, [u] when !stt && elt = sym Not ->
-            out ppf "~ %a" appl u
-        | _ ->
-            if priority = `Atom then out ppf "(%a %a)" appl a atom b
-            else out ppf "%a %a" appl a atom b
-      end
-    | P_Wrap t, _ -> out ppf "(%a)" func t
-    | _ -> out ppf "(%a)" func t
-  in
-  let rec toplevel ppf t =
-    match t.elt with
-    | P_Abst([x],t) -> out ppf "fun %a => %a" raw_params x toplevel t
-    | P_Abst(xs,t) -> out ppf "fun%a => %a" params_list xs toplevel t
-    | P_Prod([x],t) -> out ppf "forall %a, %a" raw_params x toplevel t
-    | P_Prod(xs,t) -> out ppf "forall%a, %a" params_list xs toplevel t
-    | P_Arro(a,b) -> out ppf "%a -> %a" appl a toplevel b
-    | P_LLet(x,xs,a,t,u) ->
-        out ppf "let %a%a%a := %a in %a"
-          ident x params_list xs typopt a toplevel t toplevel u
-    | P_Wrap u -> toplevel ppf u
-    | P_Appl({elt=P_Iden({elt;_},_);_}, u)
-         when !stt && (elt = sym El || elt = sym Prf) -> toplevel ppf u
-    | _ -> func ppf t
-  in
-  toplevel ppf t
+  (*if Logger.log_enabled() then
+    log "pp %a" (*Pos.short t.pos*) Pretty.term t;*)
+  match t.elt with
+  | P_Meta _ -> wrn t.pos "TODO"; assert false
+  | P_Patt _ -> wrn t.pos "TODO"; assert false
+  | P_Expl _ -> wrn t.pos "TODO"; assert false
+  | P_Type -> out ppf "Type"
+  | P_Wild -> out ppf "_"
+  | P_NLit i -> raw_ident ppf i
+  | P_Iden(qid,b) ->
+      if b then out ppf "@@";
+      if !stt then
+        match QidMap.find_opt qid.elt !map_erased_qid_coq with
+        | Some s -> string ppf s
+        | None -> qident ppf qid
+      else qident ppf qid
+  | P_Arro(u,v) -> arrow ppf u v
+  | P_Abst(xs,u) -> abst ppf xs u
+  | P_Prod(xs,u) -> prod ppf xs u
+  | P_LLet(x,xs,a,u,v) ->
+      out ppf "let %a%a%a := %a in %a"
+        ident x params_list xs typopt a term u term v
+  | P_Wrap u -> term ppf u
+  | P_Appl _ ->
+      let default h ts = out ppf "%a %a" paren h (List.pp paren " ") ts in
+      app t default
+        (fun h ts expl builtin ->
+          match !use_notations, !use_implicits && expl, builtin, ts with
+          | _, _, (El|Prf), [u] -> term ppf u
+          | _, _, (Arr|Imp), [u;v] -> arrow ppf u v
+          | _, true, All, [{elt=P_Wrap({elt=P_Abst([_] as xs,u);_});_}]
+          | _, false, All, [_;{elt=P_Wrap({elt=P_Abst([_] as xs,u);_});_}]
+            -> prod ppf xs u
+          | _, true, Ex, [{elt=P_Wrap({elt=P_Abst([x],u);_});_}]
+          | _, false, Ex, [_;{elt=P_Wrap({elt=P_Abst([x],u);_});_}] ->
+              out ppf "exists %a, %a" raw_params x term u
+          | true, true, Eq, [_;u;v]
+          | true, false, Eq, [u;v] -> out ppf "%a = %a" paren u paren v
+          | true, _, Or, [u;v] -> out ppf "%a \\/ %a" paren u paren v
+          | true, _, And, [u;v] ->  out ppf "%a /\\ %a" paren u paren v
+          | true, _, Not, [u] -> out ppf "~ %a" paren u
+          | _ -> default h ts)
+
+and arrow ppf u v = out ppf "%a -> %a" paren u term v
+and abst ppf xs u = out ppf "fun%a => %a" params_list_in_abs xs term u
+and prod ppf xs u = out ppf "forall%a, %a" params_list_in_abs xs term u
+
+and paren : p_term pp = fun ppf t ->
+  let default() = out ppf "(%a)" term t in
+  match t.elt with
+  | P_Arro _ | P_Abst _ | P_Prod _ | P_LLet _ | P_Wrap _ -> default()
+  | P_Appl _ ->
+      app t (fun _ _ -> default())
+        (fun _ ts _ builtin ->
+          match builtin, ts with
+          | (El|Prf), [u] -> paren ppf u
+          | _ -> default())
+  | _ -> term ppf t
 
 and raw_params : p_params pp = fun ppf (ids,t,_) ->
-  match t with
-  | Some t -> out ppf "%a : %a" param_ids ids term t
-  | None -> param_ids ppf ids
+  out ppf "%a%a" param_ids ids typopt t
 
 and params : p_params pp = fun ppf ((ids,t,b) as x) ->
   match b, t with
@@ -288,27 +258,41 @@ and params : p_params pp = fun ppf ((ids,t,b) as x) ->
 and params_list : p_params list pp = fun ppf ->
   List.iter (out ppf " %a" params)
 
+(* starts with a space if the list is not empty *)
+and params_list_in_abs : p_params list pp = fun ppf l ->
+  match l with
+  | [ids,t,false] -> out ppf " %a%a" param_ids ids typopt t
+  | _ -> List.iter (out ppf " %a" params) l
+
 (* starts with a space if <> None *)
 and typopt : p_term option pp = fun ppf t ->
   Option.iter (out ppf " : %a" term) t
 
-(* Translation of commands. *)
+(** Translation of commands. *)
 
 let is_lem x = is_opaq x || is_priv x
 
-let command : p_command pp = fun ppf { elt; _ } ->
+let command : p_command pp = fun ppf {elt; pos} ->
   begin match elt with
-  | P_inductive _ -> assert false
+  | P_inductive _ -> wrn pos "TODO"; assert false
   | P_open ps -> out ppf "Import %a@." (List.pp path " ") ps
   | P_require (true, ps) ->
       out ppf "Require Import %a.@." (List.pp path " ") ps
   | P_require (false, ps) ->
-      out ppf "Require %a." (List.pp path " ") ps
+      out ppf "Require %a.@." (List.pp path " ") ps
   | P_require_as (p,i) -> out ppf "Module %a := %a.@." ident i path p
   | P_symbol
     { p_sym_mod; p_sym_nam; p_sym_arg; p_sym_typ;
       p_sym_trm; p_sym_prf=_; p_sym_def } ->
       if not (StrSet.mem p_sym_nam.elt !erase) then
+        let p_sym_arg =
+          if !stt then
+            let pos = None in
+            let _Set = {elt=P_Iden({elt=sym Set;pos},false);pos} in
+            List.map (function ids, None, b -> ids, Some _Set, b | x -> x)
+              p_sym_arg
+          else p_sym_arg
+        in
         begin match p_sym_def, p_sym_trm, p_sym_arg, p_sym_typ with
           | true, Some t, _, _ ->
               if List.exists is_lem p_sym_mod then
@@ -325,12 +309,13 @@ let command : p_command pp = fun ppf { elt; _ } ->
                 ident p_sym_nam params_list p_sym_arg term t
           | _ -> assert false
         end
-  | _ -> if !stt then () else assert false
+  | P_rules _ -> wrn pos "rules are not translated"
+  | _ -> if !stt then () else (wrn pos "TODO"; assert false)
   end
 
 let ast : ast pp = fun ppf -> Stream.iter (command ppf)
 
-(* Set requiring from file. *)
+(** Set Coq required file. *)
 
 let require = ref None
 
