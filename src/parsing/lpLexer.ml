@@ -71,8 +71,10 @@ type token =
   | REFINE
   | REFLEXIVITY
   | REQUIRE
+  | RESOLVE
   | REWRITE
   | RULE
+  | SEARCH
   | SEQUENTIAL
   | SIMPLIFY
   | SOLVE
@@ -237,9 +239,11 @@ let rec token lb =
   | "refine" -> REFINE
   | "reflexivity" -> REFLEXIVITY
   | "require" -> REQUIRE
+  | "resolve" -> RESOLVE
   | "rewrite" -> REWRITE
   | "right" -> SIDE(Pratter.Right)
   | "rule" -> RULE
+  | "search" -> SEARCH
   | "sequential" -> SEQUENTIAL
   | "simplify" -> SIMPLIFY
   | "solve" -> SOLVE

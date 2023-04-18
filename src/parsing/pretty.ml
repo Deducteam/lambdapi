@@ -256,6 +256,8 @@ let query : p_query pp = fun ppf { elt; _ } ->
   | P_query_print(Some qid) -> out ppf "print %a" qident qid
   | P_query_proofterm -> out ppf "proofterm"
   | P_query_verbose i -> out ppf "verbose %s" i
+  | P_query_resolve_name s -> out ppf "resolve %s" s.elt
+  | P_query_search t -> out ppf "search %a" term t
 
 let tactic : p_tactic pp = fun ppf { elt;  _ } ->
   begin match elt with

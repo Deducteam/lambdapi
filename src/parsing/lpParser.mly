@@ -64,8 +64,10 @@
 %token REFINE
 %token REFLEXIVITY
 %token REQUIRE
+%token RESOLVE
 %token REWRITE
 %token RULE
+%token SEARCH
 %token SEQUENTIAL
 %token SIMPLIFY
 %token SOLVE
@@ -186,6 +188,10 @@ query:
   | VERBOSE n=NAT { make_pos $sloc (P_query_verbose n) }
   | TYPE_QUERY t=term
     { make_pos $sloc (P_query_infer(t, {strategy=NONE; steps=None}))}
+  | RESOLVE s=uid
+    { make_pos $sloc (P_query_resolve_name s) }
+  | SEARCH t=term
+    { make_pos $sloc (P_query_search t) }
 
 path:
   | UID { LpLexer.syntax_error $sloc "Unqualified identifier" }

@@ -177,5 +177,35 @@ module DB = struct
  let search k = search !db k
  let dump_to ~filename = dump_to ~filename !db
  let restore_from ~filename = db := restore_from ~filename
- let resolve_name name = resolve_name !db name
+ let resolve_name name =
+  restore_from ~filename:"LPSearch.db" ;
+  resolve_name !db name
+
+ let find_sym ~prt:_prt ~prv:_prv _sig_state {Common.Pos.elt=(mp,name) ; pos} =
+  let mp =
+   match mp with
+     [] ->
+      (match resolve_name name with
+          [((mp,_),_)] -> mp
+        | [] -> Common.Error.fatal pos "Unknown object %s." name
+        | ((mp,_),_)::_ ->
+           prerr_endline "OVERLOADED SYMBOL, PICKING FIRST INTERPRETATION";
+           mp)
+    | _::_ -> mp
+  in
+   Core.Term.create_sym mp Core.Term.Public Core.Term.Defin Core.Term.Sequen
+    false (Common.Pos.make pos name) Core.Term.mk_Type [] 
+ 
+ let pp_item_list =
+  Lplib.List.pp
+   (fun ppf ((p,n),pos) ->
+     Lplib.Base.out ppf "Found %a.%s@%a@." Core.Print.path p n Common.Pos.pp pos)
+   "\n"
+
+ let search_pterm pterm =
+  restore_from ~filename:"LPSearch.db" ;
+  let sig_state = Core.Sig_state.dummy in
+  let env = [] in
+  let query = Parsing.Scope.scope_lhs ~find_sym false sig_state env pterm in
+  search query
 end

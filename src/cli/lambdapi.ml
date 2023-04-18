@@ -21,35 +21,11 @@ module LPSearchMain =
 struct
 let db_name = "LPSearch.db"
 
-exception NameUnknown
-
-let find_sym ~prt:_prt ~prv:_prv _sig_state {Common.Pos.elt=(mp,name) ; pos} =
- let mp =
-  match mp with
-     [] ->
-      (match Tool.Indexing.DB.resolve_name name with
-          [((mp,_),_)] -> mp
-        | [] -> raise NameUnknown
-        | ((mp,_),_)::_ ->
-           prerr_endline "OVERLOADED SYMBOL, PICKING FIRST INTERPRETATION";
-           mp)
-   | _::_ -> mp
- in
-  Core.Term.create_sym mp Core.Term.Public Core.Term.Defin Core.Term.Sequen false
-   (Common.Pos.make pos name) Core.Term.mk_Type [] 
-
 let answer_query {Common.Pos.elt=cmd ; _} =
  match cmd with
     Parsing.Syntax.P_query {elt=Parsing.Syntax.P_query_infer (pterm,_) ; _} ->
-      let sig_state = Core.Sig_state.dummy in
-      let env = [] in
-      let query = Parsing.Scope.scope_lhs ~find_sym false sig_state env pterm in
-      Format.printf "Query %a\n" Core.Print.term query ;
-      let vs = Tool.Indexing.DB.search query in
-      List.iter
-       (fun ((p,n),pos) -> Format.printf "Equivalent to %a.%s@%a\n" Core.Print.path p n Common.Pos.pp pos)
-       vs ;
-      Format.printf "\n"
+      let items = Tool.Indexing.DB.search_pterm pterm in
+      out Format.std_formatter "%a@." Tool.Indexing.DB.pp_item_list items
   | _ ->
       prerr_endline "Syntax error"
 
@@ -62,16 +38,16 @@ let rec search () =
       search ()
    | exception End_of_file -> ()
 
-let search_cmd () =
+let search_cmd cfg () =
+  Config.init cfg;
   Tool.Indexing.DB.restore_from ~filename:db_name ;
   search()
 
-let resolve_cmd name =
+let resolve_cmd cfg name =
+  Config.init cfg;
   Tool.Indexing.DB.restore_from ~filename:db_name ;
-  let vs = Tool.Indexing.DB.resolve_name name in
-  List.iter
-   (fun ((p,n),pos) -> Format.printf "Equivalent to %a.%s@%a\n" Core.Print.path p n Common.Pos.pp pos)
-   vs
+  let items = Tool.Indexing.DB.resolve_name name in
+  out Format.std_formatter "%a@." Tool.Indexing.DB.pp_item_list items
 
 let index file =
  let sign = Handle.Compile.PureUpToSign.compile_file file in
@@ -93,9 +69,8 @@ let index file =
       ((Tool.Indexing.name_of_sym sym),sym.sym_pos))
    Timed.(!syms)
 
-let index_cmd files =
- Common.Library.set_lib_root (Some (Sys.getcwd ())) ;
- Stdlib.(Handle.Compile.gen_obj := true) ;
+let index_cmd cfg files =
+ Config.init cfg;
  List.iter index files ;
  Tool.Indexing.DB.dump_to ~filename:db_name
 
@@ -447,17 +422,17 @@ let name_as_arg : string Cmdliner.Term.t =
 let index_cmd =
  let doc = "Index the given files." in
  Cmd.v (Cmd.info "index" ~doc ~man:man_pkg_file)
-  Cmdliner.Term.(const LPSearchMain.index_cmd $ files)
+  Cmdliner.Term.(const LPSearchMain.index_cmd $ Config.full $ files)
 
 let search_cmd =
  let doc = "Run queries against the index." in
  Cmd.v (Cmd.info "search" ~doc ~man:man_pkg_file)
-  Cmdliner.Term.(const LPSearchMain.search_cmd $ const ())
+  Cmdliner.Term.(const LPSearchMain.search_cmd $ Config.full $ const ())
 
 let resolve_cmd =
  let doc = "Resolve a name." in
  Cmd.v (Cmd.info "resolve" ~doc ~man:man_pkg_file)
-  Cmdliner.Term.(const LPSearchMain.resolve_cmd $ name_as_arg)
+  Cmdliner.Term.(const LPSearchMain.resolve_cmd $ Config.full $ name_as_arg)
 
 let _ =
   let t0 = Sys.time () in
