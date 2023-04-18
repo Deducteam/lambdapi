@@ -92,6 +92,10 @@ let open_sign : sig_state -> Sign.t -> sig_state = fun ss sign ->
 let of_sign : Sign.t -> sig_state = fun signature ->
   open_sign (open_sign {dummy with signature} Ghost.sign) signature
 
+(** [find_sym] is the type of functions used to return the symbol
+    corresponding to a qualified / non qualified name *)
+type find_sym = prt:bool -> prv:bool -> sig_state -> qident loc -> sym
+
 (** [find_sym ~prt ~prv b st qid] returns the symbol
     corresponding to the qualified identifier [qid]. If [fst qid.elt] is
     empty, we search for the name [snd qid.elt] in the opened modules of [st].
@@ -102,7 +106,7 @@ let of_sign : Sign.t -> sig_state = fun signature ->
     are allowed in left-hand side of rewrite rules (only) iff [~prt] is true.
     {!constructor:Term.expo.Privat} symbols are allowed iff [~prv]
     is [true]. *)
-let find_sym : prt:bool -> prv:bool -> sig_state -> qident loc -> sym =
+let find_sym : find_sym =
   fun ~prt ~prv st {elt = (mp, s); pos} ->
   let s =
     match mp with
