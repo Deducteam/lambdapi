@@ -17,6 +17,90 @@ module CLT = Cmdliner.Term
 
 (** {3 Evaluation of commands. *)
 
+module LPSearchMain =
+struct
+let db_name = "LPSearch.db"
+
+exception NameUnknown
+
+let find_sym ~prt:_prt ~prv:_prv _sig_state {Common.Pos.elt=(mp,name) ; pos} =
+ let mp =
+  match mp with
+     [] ->
+      (match Tool.Indexing.DB.resolve_name name with
+          [((mp,_),_)] -> mp
+        | [] -> raise NameUnknown
+        | ((mp,_),_)::_ ->
+           prerr_endline "OVERLOADED SYMBOL, PICKING FIRST INTERPRETATION";
+           mp)
+   | _::_ -> mp
+ in
+  Core.Term.create_sym mp Core.Term.Public Core.Term.Defin Core.Term.Sequen false
+   (Common.Pos.make pos name) Core.Term.mk_Type [] 
+
+let answer_query {Common.Pos.elt=cmd ; _} =
+ match cmd with
+    Parsing.Syntax.P_query {elt=Parsing.Syntax.P_query_infer (pterm,_) ; _} ->
+      let sig_state = Core.Sig_state.dummy in
+      let env = [] in
+      let query = Parsing.Scope.scope_lhs ~find_sym false sig_state env pterm in
+      Format.printf "Query %a\n" Core.Print.term query ;
+      let vs = Tool.Indexing.DB.search query in
+      List.iter
+       (fun ((p,n),pos) -> Format.printf "Equivalent to %a.%s@%a\n" Core.Print.path p n Common.Pos.pp pos)
+       vs ;
+      Format.printf "\n"
+  | _ ->
+      prerr_endline "Syntax error"
+
+let rec search () =
+  Format.printf "Enter query with syntax \"type query;\": @." ;
+  match input_line stdin with
+     s ->
+      let aststream = Parsing.Parser.Lp.parse_string "LPSearch" s in
+      Stream.iter answer_query aststream ;
+      search ()
+   | exception End_of_file -> ()
+
+let search_cmd () =
+  Tool.Indexing.DB.restore_from ~filename:db_name ;
+  search()
+
+let resolve_cmd name =
+  Tool.Indexing.DB.restore_from ~filename:db_name ;
+  let vs = Tool.Indexing.DB.resolve_name name in
+  List.iter
+   (fun ((p,n),pos) -> Format.printf "Equivalent to %a.%s@%a\n" Core.Print.path p n Common.Pos.pp pos)
+   vs
+
+let index file =
+ let sign = Handle.Compile.PureUpToSign.compile_file file in
+ let syms = sign.sign_symbols in
+ (*
+ let rules = sign.sign_deps in
+  Path.Map.fold
+   Str.Map.fold
+    List.fold
+     rule ->
+
+       sym_path sym_name
+       sym_type : term ref
+       sym_def : term option ref
+       sym_rules : rule list ref *)
+  Lplib.Extra.StrMap.iter
+   (fun _ sym ->
+     Tool.Indexing.DB.insert Timed.(!(sym.Core.Term.sym_type))
+      ((Tool.Indexing.name_of_sym sym),sym.sym_pos))
+   Timed.(!syms)
+
+let index_cmd files =
+ Common.Library.set_lib_root (Some (Sys.getcwd ())) ;
+ Stdlib.(Handle.Compile.gen_obj := true) ;
+ List.iter index files ;
+ Tool.Indexing.DB.dump_to ~filename:db_name
+
+end
+
 (** Running the main type-checking mode. *)
 let check_cmd : Config.t -> int option -> string list -> unit =
     fun cfg timeout files ->
@@ -353,6 +437,28 @@ let version_cmd =
   let doc = "Display the current version of Lambdapi." in
   Cmd.v (Cmd.info "version" ~doc) CLT.(const run $ const ())
 
+  (* CSC: move name_as_arg above; I am not sure this is implemented correctly,
+     though: I just want to parse the next string and it should be mandatory,
+     not defaulting to "xxx" *)
+let name_as_arg : string Cmdliner.Term.t =
+  let doc = "Name of constant to be resolved." in
+  Arg.(value & pos 0 string "xxx" & info [] ~docv:"NAME" ~doc)
+
+let index_cmd =
+ let doc = "Index the given files." in
+ Cmd.v (Cmd.info "index" ~doc ~man:man_pkg_file)
+  Cmdliner.Term.(const LPSearchMain.index_cmd $ files)
+
+let search_cmd =
+ let doc = "Run queries against the index." in
+ Cmd.v (Cmd.info "search" ~doc ~man:man_pkg_file)
+  Cmdliner.Term.(const LPSearchMain.search_cmd $ const ())
+
+let resolve_cmd =
+ let doc = "Resolve a name." in
+ Cmd.v (Cmd.info "resolve" ~doc ~man:man_pkg_file)
+  Cmdliner.Term.(const LPSearchMain.resolve_cmd $ name_as_arg)
+
 let _ =
   let t0 = Sys.time () in
   Stdlib.at_exit (Debug.print_time t0);
@@ -360,7 +466,8 @@ let _ =
   let cmds =
     [ check_cmd ; parse_cmd ; export_cmd ; lsp_server_cmd
     ; decision_tree_cmd ; help_cmd ; version_cmd
-    ; Init.cmd ; Install.install_cmd ; Install.uninstall_cmd ]
+    ; Init.cmd ; Install.install_cmd ; Install.uninstall_cmd
+    ; index_cmd ; search_cmd ; resolve_cmd ]
   in
   let doc = "A type-checker for the lambdapi-calculus modulo rewriting." in
   let sdocs = Manpage.s_common_options in
