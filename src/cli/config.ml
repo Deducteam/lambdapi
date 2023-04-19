@@ -23,7 +23,8 @@ type config =
   ; record_time : bool
   ; too_long    : float
   ; confluence  : string option
-  ; termination : string option }
+  ; termination : string option
+  ; no_sr_check : bool }
 
 (** Short synonym of the [config] type. *)
 type t = config
@@ -40,7 +41,8 @@ let default_config =
   ; record_time = false
   ; too_long    = infinity
   ; confluence  = None
-  ; termination = None }
+  ; termination = None
+  ; no_sr_check = false }
 
 (** [init cfg] runs the necessary initializations according to [cfg]. This has
     to be done prior to any other (non-trivial) task. *)
@@ -55,6 +57,7 @@ let init : config -> unit = fun cfg ->
   Color.color := not cfg.no_colors;
   Debug.do_record_time := cfg.record_time;
   Handle.Command.too_long := cfg.too_long;
+  Handle.Command.sr_check := not cfg.no_sr_check;
   (* Log some configuration data. *)
   if Logger.log_enabled () then
     begin
@@ -81,6 +84,10 @@ let gen_obj : bool CLT.t =
        the case then the outdated file is overwritten." obj_extension
   in
   Arg.(value & flag & info ["gen-obj"; "c"] ~doc)
+
+let no_sr_check : bool CLT.t =
+  let doc = "Disable the verification that rewrite rules preserve typing." in
+  Arg.(value & flag & info ["no-sr-check"] ~doc)
 
 let lib_root : string option CLT.t =
   let doc =
@@ -193,13 +200,14 @@ let termination : string option CLT.t =
 (** [full] gathers the command line arguments common to most commands. *)
 let full : config CLT.t =
   let f gen_obj lib_root map_dir verbose no_warnings debug no_colors
-        record_time too_long confluence termination =
+        record_time too_long confluence termination no_sr_check =
     {gen_obj; lib_root; map_dir; verbose; no_warnings; debug; no_colors;
-     record_time; too_long; confluence; termination }
+     record_time; too_long; confluence; termination; no_sr_check }
   in
   let open Term in
   const f $ gen_obj $ lib_root $ map_dir $ verbose $ no_warnings $ debug
   $ no_colors $ record_time $ too_long $ confluence $ termination
+  $ no_sr_check
 
 (** [minimal] gathers the minimal command line options to enable debugging and
     access to the library root. *)

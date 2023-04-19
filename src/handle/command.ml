@@ -121,6 +121,9 @@ let handle_modifiers : p_modifier list -> prop * expo * match_strat =
   in
   (prop, expo, strat)
 
+(** [sr_check] indicates whether subject-reduction should be checked. *)
+let sr_check = Stdlib.ref true
+
 (** [check_rule ss syms r] checks rule [r] and returns the head symbol of the
    lhs and the rule itself. *)
 let check_rule : sig_state -> p_rule -> sym_rule = fun ss r ->
@@ -130,7 +133,11 @@ let check_rule : sig_state -> p_rule -> sym_rule = fun ss r ->
   let s = pr.elt.pr_sym in
   if !(s.sym_def) <> None then
     fatal pr.pos "No rewriting rule can be given on a defined symbol.";
-  s, Tool.Sr.check_rule pr
+  let r =
+    if Stdlib.(!sr_check) then Tool.Sr.check_rule pr
+    else Scope.rule_of_pre_rule pr
+  in
+  s, r
 
 (** [handle_rule ss syms r] checks rule [r], adds it in [ss] and returns the
    head symbol of the lhs and the rule itself. *)
