@@ -318,7 +318,7 @@ let normalize typ =
  Core.Eval.snf ~dtree [] typ
 
 let subterms_to_index t =
- let rec aux ?(top=false) t =
+ let rec aux ?(top=false) ?(spine=false) t =
   (if top || Core.Term.is_patt t then [] else [t]) @
   match Core.Term.unfold t with
   | Vari _
@@ -329,7 +329,12 @@ let subterms_to_index t =
      let _, t2 = Bindlib.unbind b in
      aux t @ aux t2
   | Prod(t,b) ->
-      aux t @ aux (Bindlib.subst b (Core.Term.mk_Patt (None,"dummy",[||])))
+     if spine then
+      aux t @
+       aux ~spine:true (Bindlib.subst b (Core.Term.mk_Patt (None,"dummy",[||])))
+     else
+      let _, t2 = Bindlib.unbind b in
+      aux t @ aux t2 
   | Appl(t1,t2) ->
      aux t1 @ aux t2
   | Patt (_var,_varname,args) ->
@@ -337,14 +342,14 @@ let subterms_to_index t =
   | LLet (t1,t2,b) ->
      (* we do not expand the let-in when indexing subterms *)
      let _, t3 = Bindlib.unbind b in
-     aux t1 @ aux t2 @ aux t3
+     aux t1 @ aux t2 @ aux ~spine:true t3
   | Meta _
   | Plac _ -> assert false (* not for meta-closed terms *)
   | Wild -> assert false (* used only by tactics and reduction *)
   | TRef _  -> assert false (* destroyed by unfold *)
   | TEnv _ (* used in rewriting rules RHS *) ->
       assert false (* use term_of_rhs *)
- in aux ~top:true t
+ in aux ~top:true ~spine:true t
 
 let index_rule sym ({Core.Term.lhs=lhsargs ; rule_pos ; _} as rule) =
  let rule_pos = match rule_pos with None -> assert false | Some pos -> pos in
