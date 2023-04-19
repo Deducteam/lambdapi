@@ -356,6 +356,9 @@ val is_prod : term -> bool
 (** [is_vari t] returns [true] iff [t] is of the form [Vari(_)]. *)
 val is_vari : term -> bool
 
+(** [is_patt t] returns [true] iff [t] is of the form [Patt(_)]. *)
+val is_patt : term -> bool
+
 (** [is_unset m] returns [true] if [m] is not instantiated. *)
 val is_unset : meta -> bool
 

@@ -171,10 +171,17 @@ let restore_from ~filename =
   i
 
 module DB = struct
+ type side = Lhs | Rhs
+ type match_type = Exact | Inside
  type item =
   | Name of sym_name * Common.Pos.pos option
-  | Type of sym_name * Common.Pos.pos option
-  | InType of sym_name * Common.Pos.pos option
+  | Type of match_type * sym_name * Common.Pos.pos option
+  | Xhs of side * match_type * Common.Pos.pos
+ 
+ let pp_side fmt =
+  function
+   | Lhs -> Lplib.Base.out fmt "lhs"
+   | Rhs -> Lplib.Base.out fmt "rhs"
 
  let dbpath = "LPSearch.db"
 
@@ -231,12 +238,18 @@ module DB = struct
       | Name ((p,n),pos) ->
          Lplib.Base.out ppf "Name of %a.%s@%a@." Core.Print.path p n
           Common.Pos.pp pos
-      | Type ((p,n),pos) ->
+      | Type (Exact,(p,n),pos) ->
          Lplib.Base.out ppf "Type of %a.%s@%a@." Core.Print.path p n
           Common.Pos.pp pos
-      | InType ((p,n),pos) ->
+      | Type (Inside,(p,n),pos) ->
          Lplib.Base.out ppf "Strict subterm of the type of %a.%s@%a@."
-          Core.Print.path p n Common.Pos.pp pos)
+          Core.Print.path p n Common.Pos.pp pos
+      | Xhs (side,Exact,pos) ->
+         Lplib.Base.out ppf "The %a of %a@." pp_side side
+          Common.Pos.pp (Some pos)
+      | Xhs (side,Inside,pos) ->
+         Lplib.Base.out ppf "Inside %a of %a@." pp_side side
+          Common.Pos.pp (Some pos))
    "\n"
 
  let search_pterm pterm =
@@ -282,15 +295,17 @@ module HL = struct
 
  let meta_rules = lazy (load_meta_rules ())
 
- let dtree sym =
-  try
-   QNameMap.find (name_of_sym sym) (Lazy.force meta_rules)
-  with
-   Not_found -> Core.Tree_type.empty_dtree
+ let normalize typ =
+  let dtree sym =
+   try
+    QNameMap.find (name_of_sym sym) (Lazy.force meta_rules)
+   with
+    Not_found -> Core.Tree_type.empty_dtree in
+  Core.Eval.snf ~dtree [] typ
 
  let subterms_to_index t =
   let rec aux ?(top=false) t =
-   (if top || Core.Term.is_vari t then [] else [t]) @
+   (if top || Core.Term.is_vari t || Core.Term.is_patt t then [] else [t]) @
    match Core.Term.unfold t with
    | Vari _
    | Type
@@ -317,38 +332,35 @@ module HL = struct
        assert false (* use term_of_rhs *)
   in aux ~top:true t
 
-  (*
-  { lhs      : term list (** Left hand side (LHS). *)
-  ; rhs      : rhs (** Right hand side (RHS). *)
-  ; arity    : int (** Required number of arguments to be applicable. *)
-  ; arities  : int array
-  (** Arities of the pattern variables bound in the RHS. *)
-  ; vars     : tevar array
-  (** Bindlib variables used to build [rhs]. The last [xvars_nb] variables
-      appear only in [rhs]. *)
-  ; xvars_nb : int (** Number of variables in [rhs] but not in [lhs]. *)
-  ; rule_pos : Pos.popt (** Position of the rule in the source file. *) }
- *)
- let index_rule sym {Core.Term.lhs=lhsargs ; rhs ; rule_pos ; _} =
+ let index_rule sym ({Core.Term.lhs=lhsargs ; rule_pos ; _} as rule) =
+  let rule_pos = match rule_pos with None -> assert false | Some pos -> pos in
   let lhs = Core.Term.add_args (Core.Term.mk_Symb sym) lhsargs in
+  let rhs = Core.Term.term_of_rhs rule in
   let _ = (lhs,rhs,rule_pos) in
-  ()(*
-  DB.insert Timed.(!(sym.Core.Term.sym_type))
-   ((name_of_sym sym),sym.sym_pos)*)
+  let lhs = normalize lhs in
+  let rhs = normalize rhs in
+  DB.insert lhs (Xhs(Lhs,Exact,rule_pos)) ;
+  DB.insert rhs (Xhs(Rhs,Exact,rule_pos)) ;
+  let sublhs = List.sort_uniq Core.Term.cmp (subterms_to_index lhs) in
+  List.iter (fun s -> DB.insert s (Xhs (Lhs,Inside,rule_pos))) sublhs ;
+  let subrhs = List.sort_uniq Core.Term.cmp (subterms_to_index rhs) in
+  List.iter (fun s -> DB.insert s (Xhs (Rhs,Inside,rule_pos))) subrhs
 
  let index_sym sym =
   let qname = name_of_sym sym in
   (* Name *)
   DB.insert_name (snd qname) (Name (qname,sym.sym_pos)) ;
   (* Type *)
-  let typ as typ' = Timed.(!(sym.Core.Term.sym_type)) in
-  let typ = Core.Eval.snf ~dtree [] typ in
+  let typ as _typ' = Timed.(!(sym.Core.Term.sym_type)) in
+  let typ = normalize typ in
+  (*
   Format.printf "%a REWRITTEN TO %a@."
    Core.Print.term typ' Core.Print.term typ ;
-  DB.insert typ (Type (qname,sym.sym_pos)) ;
+  *)
+  DB.insert typ (Type (Exact,qname,sym.sym_pos)) ;
   (* InType *)
   let subterms = List.sort_uniq Core.Term.cmp (subterms_to_index typ) in
-  List.iter (fun s -> DB.insert s (InType (qname,sym.sym_pos))) subterms ;
+  List.iter (fun s -> DB.insert s (Type (Inside,qname,sym.sym_pos))) subterms ;
   (* InBody??? sym.sym_def : term option ref
      but all the subterms are too much; collect only the constants? *)
   (* Rules *)
