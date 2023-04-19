@@ -57,7 +57,7 @@ sig
                 ; pos_cnum = 0 } in
     Sedlexing.set_position lb pos
 
-  let stream_of_lexbuf : 
+  let stream_of_lexbuf :
     grammar_entry:(LpLexer.token,'b) MenhirLib.Convert.traditional ->
     ?inchan:in_channel -> ?fname:string -> Sedlexing.lexbuf ->
     (* Input channel passed as parameter to be closed at the end of stream. *)
@@ -84,7 +84,8 @@ sig
       Stream.from generator
 
   let parse ~grammar_entry inchan =
-    stream_of_lexbuf ~grammar_entry ~inchan (Sedlexing.Utf8.from_channel inchan)
+    stream_of_lexbuf ~grammar_entry ~inchan
+      (Sedlexing.Utf8.from_channel inchan)
 
   let parse_file ~grammar_entry fname =
     let inchan = open_in fname in

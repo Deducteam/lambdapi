@@ -34,7 +34,7 @@ module DB : sig
  (*val restore_from : filename:string -> unit *)
 
  val pp_item_list : item list Lplib.Base.pp
-end 
+end
 
 module HL : sig
  val index_sym : Core.Term.sym -> unit

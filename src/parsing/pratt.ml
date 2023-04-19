@@ -8,12 +8,14 @@ open Core
 open Syntax
 
 module Pratt : sig
-  val parse : ?find_sym:Core.Sig_state.find_sym -> Sig_state.t -> Env.t -> p_term -> p_term
+  val parse : ?find_sym:Core.Sig_state.find_sym -> Sig_state.t -> Env.t
+              -> p_term -> p_term
   (** [parse ~find_sym ss env t] Pratt parses term [t], unsugaring infix
-      operators and prefix operators using signature state [ss] and environment
-      [env] to determine which term is an operator, and to build new terms.
-      Note that it doesn't recurse into abstractions or implications and alike.
-      [~find_sym] is used to scope symbol identifiers. *)
+      operators and prefix operators using signature state [ss] and
+      environment [env] to determine which term is an operator, and to build
+      new terms.  Note that it doesn't recurse into abstractions or
+      implications and alike.  [~find_sym] is used to scope symbol
+      identifiers. *)
 end = struct
 
   open Lplib

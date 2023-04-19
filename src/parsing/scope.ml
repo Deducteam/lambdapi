@@ -20,7 +20,9 @@ let log_scop = log_scop.pp
    is true, protected symbols from external modules are allowed (protected
    symbols from current modules are always allowed). If [prv] is true, private
    symbols are allowed. *)
-let find_qid : ?find_sym:find_sym -> bool -> bool -> sig_state -> env -> p_qident -> tbox =
+let find_qid :
+      ?find_sym:find_sym -> bool -> bool -> sig_state -> env -> p_qident
+      -> tbox =
   fun ?(find_sym = find_sym) prt prv ss env qid ->
   if Logger.log_enabled () then log_scop "find_qid %a" Pretty.qident qid;
   let (mp, s) = qid.elt in
@@ -454,13 +456,14 @@ and scope_head : ?find_sym:find_sym ->
 
   | (P_Prod(_,_), M_Patt) ->
       fatal t.pos "Dependent products are not allowed in patterns."
-  | (P_Prod(xs,b), _) -> scope_binder ?find_sym ~typ:true k md ss _Prod env xs (Some(b))
+  | (P_Prod(xs,b), _) ->
+      scope_binder ?find_sym ~typ:true k md ss _Prod env xs (Some b)
 
   | (P_LLet(x,xs,a,t,u), (M_Term _|M_URHS _|M_RHS _)) ->
       let a = scope_binder ?find_sym ~typ:true (k+1) md ss _Prod env xs a in
       let t = scope_binder ?find_sym (k+1) md ss _Abst env xs (Some(t)) in
       let v = new_tvar x.elt in
-      let u = scope ?find_sym ~typ (k+1) md ss (Env.add v a (Some(t)) env) u in
+      let u = scope ?find_sym ~typ (k+1) md ss (Env.add v a (Some t) env) u in
       if not (Bindlib.occur v u) then
         wrn x.pos "Useless let-binding (%s is not bound)." x.elt;
       _LLet a t (Bindlib.bind_var v u)
@@ -477,8 +480,11 @@ and scope_head : ?find_sym:find_sym ->
   | (P_Expl(_), _) -> fatal t.pos "Explicit argument not allowed here."
 
 let scope =
-  let open Stdlib in let r = ref _Kind in fun ?find_sym ?(typ=false) k md ss env t ->
-  Debug.(record_time Scoping (fun () -> r := scope ?find_sym ~typ k md ss env t)); !r
+  let open Stdlib in
+  let r = ref _Kind in
+  fun ?find_sym ?(typ=false) k md ss env t ->
+  Debug.(record_time Scoping
+           (fun () -> r := scope ?find_sym ~typ k md ss env t)); !r
 
 (** [scope ~find_sym ~typ ~mok prv ss env t] turns a pterm [t] into a
     term in the signature state [ss] and environment [env] (for bound
@@ -488,8 +494,9 @@ let scope =
     [t], but metavariables in the image of [mok] may be used. The function
     [mok] defaults to the function constant to [None]. The function
     [~find_sym] is used to scope symbol identifiers. *)
-let scope_term : ?find_sym:find_sym -> ?typ:bool -> ?mok:(int -> meta option) ->
-  bool -> sig_state -> env -> p_term -> term =
+let scope_term :
+      ?find_sym:find_sym -> ?typ:bool -> ?mok:(int -> meta option)
+      -> bool -> sig_state -> env -> p_term -> term =
   fun ?find_sym ?(typ=false) ?(mok=fun _ -> None) m_term_prv ss env t ->
   let md = M_Term {m_term_meta_of_key=mok; m_term_prv} in
   Bindlib.unbox (scope ?find_sym ~typ 0 md ss env t)

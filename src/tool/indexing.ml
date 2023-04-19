@@ -1,4 +1,5 @@
-open Core.Term
+open Core open Term
+open Common open Pos
 
 type sym_name = Common.Path.t * string
 let name_of_sym s = (s.sym_path, s.sym_name)
@@ -49,7 +50,8 @@ let rec node_of_stack t s v =
  | Prod(t1,bind) ->
     let _, t2 = Bindlib.unbind bind in
     IRigid(IProd, index_of_stack (t1::t2::s) v)
- | Patt (_var,_varname,args) -> (* variable application, used in rewriting rules LHS *)
+ | Patt (_var,_varname,args) ->
+     (* variable application, used in rewriting rules LHS *)
     node_of_stack (term_of_patt (_var,_varname,args)) s v
  | LLet (_typ, bod, bind) ->
     (* Let-ins are expanded during indexing *)
@@ -58,7 +60,8 @@ let rec node_of_stack t s v =
  | Plac _ -> assert false (* not for meta-closed terms *)
  | Wild -> assert false (* used only by tactics and reduction *)
  | TRef _  -> assert false (* destroyed by unfold *)
- | TEnv _ (* used in rewriting rules RHS *) -> assert false (* use term_of_rhs *)
+ | TEnv _ (* used in rewriting rules RHS *) ->
+     assert false (* use term_of_rhs *)
 and index_of_stack stack v =
  match stack with
  | [] -> Leaf [v]
@@ -80,7 +83,8 @@ let rec match_rigid r term =
  | IProd, Prod(t1,bind) ->
     let _, t2 = Bindlib.unbind bind in
     [t1;t2]
- | _, Patt (_var,_varname,args) -> match_rigid r (term_of_patt (_var,_varname,args))
+ | _, Patt (_var,_varname,args) ->
+     match_rigid r (term_of_patt (_var,_varname,args))
  | _, LLet (_typ, bod, bind) -> match_rigid r (Bindlib.subst bind bod)
  | _, (Meta _ | Plac _ | Wild | TRef _ | TEnv _) -> assert false
  | _, _ -> raise NoMatch
@@ -96,7 +100,8 @@ let rec match_flexible =
       | ISymb _ -> [i]
       | IAppl
       | IAbst
-      | IProd -> List.concat (List.map match_flexible_index (match_flexible_index i))
+      | IProd ->
+          List.concat (List.map match_flexible_index (match_flexible_index i))
 and match_flexible_index =
  function
     Leaf _ -> assert false (* ill-typed term *)
@@ -164,7 +169,7 @@ let restore_from ~filename =
   close_in ch ;
   i
 
-module DB = struct 
+module DB = struct
  type item =
   | Name of sym_name * Common.Pos.pos option
   | Type of sym_name * Common.Pos.pos option
@@ -202,7 +207,7 @@ module DB = struct
  let resolve_name name =
   resolve_name (Lazy.force !db) name
 
- let find_sym ~prt:_prt ~prv:_prv _sig_state {Common.Pos.elt=(mp,name) ; pos} =
+ let find_sym ~prt:_prt ~prv:_prv _sig_state {elt=(mp,name); pos} =
   let mp =
    match mp with
      [] ->
@@ -216,8 +221,8 @@ module DB = struct
     | _::_ -> mp
   in
    Core.Term.create_sym mp Core.Term.Public Core.Term.Defin Core.Term.Sequen
-    false (Common.Pos.make pos name) Core.Term.mk_Type [] 
- 
+    false (Common.Pos.make pos name) Core.Term.mk_Type []
+
  let pp_item_list =
   Lplib.List.pp
    (fun ppf item ->
@@ -266,7 +271,8 @@ module HL = struct
    | Plac _ -> assert false (* not for meta-closed terms *)
    | Wild -> assert false (* used only by tactics and reduction *)
    | TRef _  -> assert false (* destroyed by unfold *)
-   | TEnv _ (* used in rewriting rules RHS *) -> assert false (* use term_of_rhs *)
+   | TEnv _ (* used in rewriting rules RHS *) ->
+       assert false (* use term_of_rhs *)
   in aux ~top:true t
 
  (*

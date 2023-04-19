@@ -144,8 +144,8 @@ let handle : Sig_state.t -> proof_state option -> p_query -> result =
            match ps.proof_term with
            | Some m -> return term (mk_Meta(m,[||]))
            | None -> fatal pos "Not in a definition")
-  | P_query_resolve_name s ->
-      return Tool.Indexing.DB.pp_item_list (Tool.Indexing.DB.resolve_name s.elt)
+  | P_query_resolve_name {elt;_} ->
+      return Tool.Indexing.DB.pp_item_list (Tool.Indexing.DB.resolve_name elt)
   | P_query_search t ->
       return Tool.Indexing.DB.pp_item_list (Tool.Indexing.DB.search_pterm t)
   | _ ->
