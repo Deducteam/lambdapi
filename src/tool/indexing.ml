@@ -28,7 +28,7 @@ and rigid =
 
 type 'a db = 'a list StrMap.t * 'a index
 
-let empty =  StrMap.empty, Choice []
+let empty : 'a db =  StrMap.empty, Choice []
 
 let term_of_patt (_var, _varname, args) =
  let var = Bindlib.new_var mk_Vari "dummy" in
