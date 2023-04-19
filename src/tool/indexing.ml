@@ -7,10 +7,16 @@ let name_of_sym s = (s.sym_path, s.sym_name)
 (* discrimination tree *)
 (* substitution trees would be best *)
 
-(* - all variables are mapped to HOLE
+(* - all variables are indexed equally, ignoring the name
    - let-ins are expanded when indexed, but not when computing subterms
      to index
-   - HOLES (i.e. variables, i.e. is_vari) are not indexed as subterms
+   - patterns (e.g. $x.[t1 .. tn]) are indexed as HOLES, ignoring the
+     arguments t1 .. tn
+   - we consider t1 ... tn as subterms when computing the subterms to index
+   - HOLES (i.e. patterns $x.[t1 .. tn]) are not indexed as subterms
+   - when computing the subterms to index, when entering a product the
+     bound variable is replaced with a pattern to simulate modus-ponens
+     e.g. "pi x : T. x + x"  has as subterm "$x + $x"
 *)
 
 module Pure = struct
@@ -22,6 +28,7 @@ and 'a node =
  | IHOLE of 'a index
  | IRigid of rigid * 'a index
 and rigid =
+ | IVar
  | IKind
  | IType
  | ISymb of sym_name
@@ -33,15 +40,17 @@ type 'a db = 'a list Lplib.Extra.StrMap.t * 'a index
 
 let empty : 'a db =  Lplib.Extra.StrMap.empty, Choice []
 
+(* unused
 let term_of_patt (_var, _varname, args) =
  let var = Bindlib.new_var mk_Vari "dummy" in
  Array.fold_left (fun t a -> mk_Appl (t,a)) (mk_Vari var) args
+*)
 
 let rec node_of_stack t s v =
  match unfold t with
  | Kind -> IRigid(IKind, index_of_stack s v)
  | Type -> IRigid(IType, index_of_stack s v)
- | Vari _ -> IHOLE (index_of_stack s v)
+ | Vari _ -> IRigid(IVar, index_of_stack s v)
  | Symb sym  -> IRigid(ISymb (name_of_sym sym), index_of_stack s v)
  | Appl(t1,t2) -> IRigid(IAppl, index_of_stack (t1::t2::s) v)
  | Abst(t1,bind) ->
@@ -50,9 +59,8 @@ let rec node_of_stack t s v =
  | Prod(t1,bind) ->
     let _, t2 = Bindlib.unbind bind in
     IRigid(IProd, index_of_stack (t1::t2::s) v)
- | Patt (_var,_varname,args) ->
-     (* variable application, used in rewriting rules LHS *)
-    node_of_stack (term_of_patt (_var,_varname,args)) s v
+ | Patt (_var,_varname,_args) ->
+    IHOLE (index_of_stack s v)
  | LLet (_typ, bod, bind) ->
     (* Let-ins are expanded during indexing *)
     node_of_stack (Bindlib.subst bind bod) s v
@@ -75,6 +83,7 @@ let rec match_rigid r term =
  match r,unfold term with
  | IKind, Kind -> []
  | IType, Type -> []
+ | IVar, Vari _ -> []
  | ISymb n, Symb sym  when n = name_of_sym sym -> []
  | IAppl, Appl(t1,t2) -> [t1;t2]
  | IAbst, Abst(t1,bind) ->
@@ -83,8 +92,6 @@ let rec match_rigid r term =
  | IProd, Prod(t1,bind) ->
     let _, t2 = Bindlib.unbind bind in
     [t1;t2]
- | _, Patt (_var,_varname,args) ->
-     match_rigid r (term_of_patt (_var,_varname,args))
  | _, LLet (_typ, bod, bind) -> match_rigid r (Bindlib.subst bind bod)
  | _, (Meta _ | Plac _ | Wild | TRef _ | TEnv _) -> assert false
  | _, _ -> raise NoMatch
@@ -95,6 +102,7 @@ let rec match_flexible =
     IHOLE i -> [i]
   | IRigid(r,i) ->
      match r with
+      | IVar
       | IKind
       | IType
       | ISymb _ -> [i]
@@ -124,7 +132,8 @@ let rec insert_index index stack v =
  | _, _ -> assert false (* ill-typed term *)
 and insert_node node term s v =
  match node,term with
- | IHOLE i, Vari _ -> IHOLE (insert_index i s v)
+ (* Patterns are holes, holes are patterns *)
+ | IHOLE i, Patt _ -> IHOLE (insert_index i s v)
  | IRigid(r,i), t ->
     let s' = match_rigid r t in
     IRigid(r,insert_index i (s'@s) v)
@@ -310,21 +319,21 @@ let normalize typ =
 
 let subterms_to_index t =
  let rec aux ?(top=false) t =
-  (if top || Core.Term.is_vari t || Core.Term.is_patt t then [] else [t]) @
+  (if top || Core.Term.is_patt t then [] else [t]) @
   match Core.Term.unfold t with
   | Vari _
   | Type
   | Kind
   | Symb _ -> []
-  | Prod(t,b)
   | Abst(t,b) ->
      let _, t2 = Bindlib.unbind b in
      aux t @ aux t2
+  | Prod(t,b) ->
+      aux t @ aux (Bindlib.subst b (Core.Term.mk_Patt (None,"dummy",[||])))
   | Appl(t1,t2) ->
      aux t1 @ aux t2
   | Patt (_var,_varname,args) ->
-     (* variable application, used in rewriting rules LHS *)
-     aux (Pure.term_of_patt (_var,_varname,args))
+     List.concat (List.map aux (Array.to_list args))
   | LLet (t1,t2,b) ->
      (* we do not expand the let-in when indexing subterms *)
      let _, t3 = Bindlib.unbind b in
