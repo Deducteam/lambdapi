@@ -13,6 +13,8 @@ let name_of_sym s = (s.sym_path, s.sym_name)
    - HOLES (i.e. variables, i.e. is_vari) are not indexed as subterms
 *)
 
+module Pure = struct
+
 type 'a index =
  | Leaf of 'a list
  | Choice of 'a node list
@@ -170,7 +172,11 @@ let restore_from ~filename =
   close_in ch ;
   i
 
+end
+
 module DB = struct
+ (* fix codomain type *)
+
  type side = Lhs | Rhs
  type match_type = Exact | Inside
  type item =
@@ -182,54 +188,6 @@ module DB = struct
   function
    | Lhs -> Lplib.Base.out fmt "lhs"
    | Rhs -> Lplib.Base.out fmt "rhs"
-
- let dbpath = "LPSearch.db"
-
- let restore_from_disk () =
-  try
-   restore_from ~filename:dbpath
-  with
-   Sys_error msg ->
-     Common.Error.wrn None "Error loading DB. %s\nDefaulting to empty index"
-      msg ;
-     empty
-
- let db = ref (lazy (restore_from_disk ()))
-
- let empty () = db := lazy empty
-
- let insert k v =
-   let db' = insert (Lazy.force !db) k v in
-   db := lazy db'
-
- let insert_name k v =
-   let db' = insert_name (Lazy.force !db) k v in
-   db := lazy db'
-
- let search k = search (Lazy.force !db) k
-
- let dump () = dump_to ~filename:dbpath (Lazy.force !db)
-
- (*let restore_from ~filename = db := lazy (restore_from ~filename)*)
-
- let resolve_name name =
-  resolve_name (Lazy.force !db) name
-
- let find_sym ~prt:_prt ~prv:_prv _sig_state {elt=(mp,name); pos} =
-  let mp =
-   match mp with
-     [] ->
-      (match resolve_name name with
-          [Name ((mp,_),_)] -> mp
-        | [] -> Common.Error.fatal pos "Unknown object %s." name
-        | (Name((mp,_),_))::_ ->
-           prerr_endline "OVERLOADED SYMBOL, PICKING FIRST INTERPRETATION";
-           mp
-        | _::_ -> assert false)
-    | _::_ -> mp
-  in
-   Core.Term.create_sym mp Core.Term.Public Core.Term.Defin Core.Term.Sequen
-    false (Common.Pos.make pos name) Core.Term.mk_Type []
 
  let pp_item_list =
   Lplib.List.pp
@@ -252,131 +210,179 @@ module DB = struct
           Common.Pos.pp (Some pos))
    "\n"
 
- let search_pterm pterm =
-  let sig_state = Core.Sig_state.dummy in
-  let env = [] in
-  let query = Parsing.Scope.scope_lhs ~find_sym false sig_state env pterm in
-  search query
-end
+ (* disk persistence *)
 
-module HL = struct
+ let dbpath = "LPSearch.db"
 
- module QNameMap =
-  Map.Make(struct type t = sym_name let compare = Stdlib.compare end)
+ let restore_from_disk () =
+  try
+   Pure.restore_from ~filename:dbpath
+  with
+   Sys_error msg ->
+     Common.Error.wrn None "Error loading DB. %s\nDefaulting to empty index"
+      msg ;
+     Pure.empty
 
- let check_rule : Parsing.Syntax.p_rule -> sym_rule = fun r ->
-  let ss = Core.Sig_state.dummy in
-  let pr = Parsing.Scope.scope_rule ~find_sym:DB.find_sym false ss r in
-  let s = pr.elt.pr_sym in
-  let r = Parsing.Scope.rule_of_pre_rule pr in
-  s, r
+ let db : item Pure.db Lazy.t ref = ref (lazy (restore_from_disk ()))
 
- let load_meta_rules () =
-  let cmdstream =
-    Parsing.Parser.Dk.parse_file "LPsearch.dk" in
-  let rules = ref [] in
-  Stream.iter
-   (fun {elt ; _ } ->
-     match elt with
-       Parsing.Syntax.P_rules r -> rules := List.rev_append r !rules
-     | _ -> ())
-   cmdstream ;
-  let rules = List.rev !rules in
-  let handle_rule map r =
-    let (s,r) = check_rule r in
-    let h = function Some rs -> Some(r::rs) | None -> Some[r] in
-    SymMap.update s h map in
-  let map = List.fold_left handle_rule SymMap.empty rules in
-  SymMap.iter Tree.update_dtree map;
-  SymMap.fold
-   (fun sym _rs map' ->
-     QNameMap.add (name_of_sym sym) (Timed.(!(sym.sym_dtree))) map')
-   map QNameMap.empty
+ let empty () = db := lazy Pure.empty
 
- let meta_rules = lazy (load_meta_rules ())
+ let insert k v =
+   let db' = Pure.insert (Lazy.force !db) k v in
+   db := lazy db'
 
- let normalize typ =
-  let dtree sym =
-   try
-    QNameMap.find (name_of_sym sym) (Lazy.force meta_rules)
-   with
-    Not_found -> Core.Tree_type.empty_dtree in
-  Core.Eval.snf ~dtree [] typ
+ let insert_name k v =
+   let db' = Pure.insert_name (Lazy.force !db) k v in
+   db := lazy db'
 
- let subterms_to_index t =
-  let rec aux ?(top=false) t =
-   (if top || Core.Term.is_vari t || Core.Term.is_patt t then [] else [t]) @
-   match Core.Term.unfold t with
-   | Vari _
-   | Type
-   | Kind
-   | Symb _ -> []
-   | Prod(t,b)
-   | Abst(t,b) ->
-      let _, t2 = Bindlib.unbind b in
-      aux t @ aux t2
-   | Appl(t1,t2) ->
-      aux t1 @ aux t2
-   | Patt (_var,_varname,args) ->
-      (* variable application, used in rewriting rules LHS *)
-      aux (term_of_patt (_var,_varname,args))
-   | LLet (t1,t2,b) ->
-      (* we do not expand the let-in when indexing subterms *)
-      let _, t3 = Bindlib.unbind b in
-      aux t1 @ aux t2 @ aux t3
-   | Meta _
-   | Plac _ -> assert false (* not for meta-closed terms *)
-   | Wild -> assert false (* used only by tactics and reduction *)
-   | TRef _  -> assert false (* destroyed by unfold *)
-   | TEnv _ (* used in rewriting rules RHS *) ->
-       assert false (* use term_of_rhs *)
-  in aux ~top:true t
+ let search k = Pure.search (Lazy.force !db) k
 
- let index_rule sym ({Core.Term.lhs=lhsargs ; rule_pos ; _} as rule) =
-  let rule_pos = match rule_pos with None -> assert false | Some pos -> pos in
-  let lhs = Core.Term.add_args (Core.Term.mk_Symb sym) lhsargs in
-  let rhs = Core.Term.term_of_rhs rule in
-  let _ = (lhs,rhs,rule_pos) in
-  let lhs = normalize lhs in
-  let rhs = normalize rhs in
-  DB.insert lhs (Xhs(Lhs,Exact,rule_pos)) ;
-  DB.insert rhs (Xhs(Rhs,Exact,rule_pos)) ;
-  let sublhs = List.sort_uniq Core.Term.cmp (subterms_to_index lhs) in
-  List.iter (fun s -> DB.insert s (Xhs (Lhs,Inside,rule_pos))) sublhs ;
-  let subrhs = List.sort_uniq Core.Term.cmp (subterms_to_index rhs) in
-  List.iter (fun s -> DB.insert s (Xhs (Rhs,Inside,rule_pos))) subrhs
+ let dump () = Pure.dump_to ~filename:dbpath (Lazy.force !db)
 
- let index_sym sym =
-  let qname = name_of_sym sym in
-  (* Name *)
-  DB.insert_name (snd qname) (Name (qname,sym.sym_pos)) ;
-  (* Type *)
-  let typ as _typ' = Timed.(!(sym.Core.Term.sym_type)) in
-  let typ = normalize typ in
-  (*
-  Format.printf "%a REWRITTEN TO %a@."
-   Core.Print.term typ' Core.Print.term typ ;
-  *)
-  DB.insert typ (Type (Exact,qname,sym.sym_pos)) ;
-  (* InType *)
-  let subterms = List.sort_uniq Core.Term.cmp (subterms_to_index typ) in
-  List.iter (fun s -> DB.insert s (Type (Inside,qname,sym.sym_pos))) subterms ;
-  (* InBody??? sym.sym_def : term option ref
-     but all the subterms are too much; collect only the constants? *)
-  (* Rules *)
-  List.iter (index_rule sym) Timed.(!(sym.Core.Term.sym_rules))
-
- let index_sign sign =
-  let syms = Timed.(!(sign.Core.Sign.sign_symbols)) in
-  let rules = Timed.(!(sign.Core.Sign.sign_deps)) in
-  Lplib.Extra.StrMap.iter (fun _ sym -> index_sym sym) syms ;
-  Common.Path.Map.iter
-   (fun path rules ->
-     Lplib.Extra.StrMap.iter
-      (fun name rules ->
-        let sym = Core.Sign.find_sym path name in
-        List.iter (index_rule sym) rules)
-      rules)
-   rules
+ let resolve_name name =
+  Pure.resolve_name (Lazy.force !db) name
 
 end
+
+let find_sym ~prt:_prt ~prv:_prv _sig_state {elt=(mp,name); pos} =
+ let mp =
+  match mp with
+    [] ->
+     (match DB.resolve_name name with
+         [DB.Name ((mp,_),_)] -> mp
+       | [] -> Common.Error.fatal pos "Unknown object %s." name
+       | (DB.Name((mp,_),_))::_ ->
+          prerr_endline "OVERLOADED SYMBOL, PICKING FIRST INTERPRETATION";
+          mp
+       | _::_ -> assert false)
+   | _::_ -> mp
+ in
+  Core.Term.create_sym mp Core.Term.Public Core.Term.Defin Core.Term.Sequen
+   false (Common.Pos.make pos name) Core.Term.mk_Type []
+
+let search_pterm pterm =
+ let sig_state = Core.Sig_state.dummy in
+ let env = [] in
+ let query = Parsing.Scope.scope_lhs ~find_sym false sig_state env pterm in
+ DB.search query
+
+module QNameMap =
+ Map.Make(struct type t = sym_name let compare = Stdlib.compare end)
+
+let check_rule : Parsing.Syntax.p_rule -> sym_rule = fun r ->
+ let ss = Core.Sig_state.dummy in
+ let pr = Parsing.Scope.scope_rule ~find_sym false ss r in
+ let s = pr.elt.pr_sym in
+ let r = Parsing.Scope.rule_of_pre_rule pr in
+ s, r
+
+let load_meta_rules () =
+ let cmdstream =
+   Parsing.Parser.Dk.parse_file "LPsearch.dk" in
+ let rules = ref [] in
+ Stream.iter
+  (fun {elt ; _ } ->
+    match elt with
+      Parsing.Syntax.P_rules r -> rules := List.rev_append r !rules
+    | _ -> ())
+  cmdstream ;
+ let rules = List.rev !rules in
+ let handle_rule map r =
+   let (s,r) = check_rule r in
+   let h = function Some rs -> Some(r::rs) | None -> Some[r] in
+   SymMap.update s h map in
+ let map = List.fold_left handle_rule SymMap.empty rules in
+ SymMap.iter Tree.update_dtree map;
+ SymMap.fold
+  (fun sym _rs map' ->
+    QNameMap.add (name_of_sym sym) (Timed.(!(sym.sym_dtree))) map')
+  map QNameMap.empty
+
+let meta_rules = lazy (load_meta_rules ())
+
+let normalize typ =
+ let dtree sym =
+  try
+   QNameMap.find (name_of_sym sym) (Lazy.force meta_rules)
+  with
+   Not_found -> Core.Tree_type.empty_dtree in
+ Core.Eval.snf ~dtree [] typ
+
+let subterms_to_index t =
+ let rec aux ?(top=false) t =
+  (if top || Core.Term.is_vari t || Core.Term.is_patt t then [] else [t]) @
+  match Core.Term.unfold t with
+  | Vari _
+  | Type
+  | Kind
+  | Symb _ -> []
+  | Prod(t,b)
+  | Abst(t,b) ->
+     let _, t2 = Bindlib.unbind b in
+     aux t @ aux t2
+  | Appl(t1,t2) ->
+     aux t1 @ aux t2
+  | Patt (_var,_varname,args) ->
+     (* variable application, used in rewriting rules LHS *)
+     aux (Pure.term_of_patt (_var,_varname,args))
+  | LLet (t1,t2,b) ->
+     (* we do not expand the let-in when indexing subterms *)
+     let _, t3 = Bindlib.unbind b in
+     aux t1 @ aux t2 @ aux t3
+  | Meta _
+  | Plac _ -> assert false (* not for meta-closed terms *)
+  | Wild -> assert false (* used only by tactics and reduction *)
+  | TRef _  -> assert false (* destroyed by unfold *)
+  | TEnv _ (* used in rewriting rules RHS *) ->
+      assert false (* use term_of_rhs *)
+ in aux ~top:true t
+
+let index_rule sym ({Core.Term.lhs=lhsargs ; rule_pos ; _} as rule) =
+ let rule_pos = match rule_pos with None -> assert false | Some pos -> pos in
+ let lhs = Core.Term.add_args (Core.Term.mk_Symb sym) lhsargs in
+ let rhs = Core.Term.term_of_rhs rule in
+ let _ = (lhs,rhs,rule_pos) in
+ let lhs = normalize lhs in
+ let rhs = normalize rhs in
+ DB.insert lhs (Xhs(Lhs,Exact,rule_pos)) ;
+ DB.insert rhs (Xhs(Rhs,Exact,rule_pos)) ;
+ let sublhs = List.sort_uniq Core.Term.cmp (subterms_to_index lhs) in
+ List.iter (fun s -> DB.insert s (Xhs (Lhs,Inside,rule_pos))) sublhs ;
+ let subrhs = List.sort_uniq Core.Term.cmp (subterms_to_index rhs) in
+ List.iter (fun s -> DB.insert s (Xhs (Rhs,Inside,rule_pos))) subrhs
+
+let index_sym sym =
+ let qname = name_of_sym sym in
+ (* Name *)
+ DB.insert_name (snd qname) (Name (qname,sym.sym_pos)) ;
+ (* Type *)
+ let typ as _typ' = Timed.(!(sym.Core.Term.sym_type)) in
+ let typ = normalize typ in
+ (*
+ Format.printf "%a REWRITTEN TO %a@."
+  Core.Print.term typ' Core.Print.term typ ;
+ *)
+ DB.insert typ (Type (Exact,qname,sym.sym_pos)) ;
+ (* InType *)
+ let subterms = List.sort_uniq Core.Term.cmp (subterms_to_index typ) in
+ List.iter (fun s -> DB.insert s (Type (Inside,qname,sym.sym_pos))) subterms ;
+ (* InBody??? sym.sym_def : term option ref
+    but all the subterms are too much; collect only the constants? *)
+ (* Rules *)
+ List.iter (index_rule sym) Timed.(!(sym.Core.Term.sym_rules))
+
+let index_sign sign =
+ let syms = Timed.(!(sign.Core.Sign.sign_symbols)) in
+ let rules = Timed.(!(sign.Core.Sign.sign_deps)) in
+ Lplib.Extra.StrMap.iter (fun _ sym -> index_sym sym) syms ;
+ Common.Path.Map.iter
+  (fun path rules ->
+    Lplib.Extra.StrMap.iter
+     (fun name rules ->
+       let sym = Core.Sign.find_sym path name in
+       List.iter (index_rule sym) rules)
+     rules)
+  rules
+
+(* let's flatten the interface *)
+include DB

@@ -25,26 +25,26 @@ let search_cmd cfg s =
   let ptermstream = Parsing.Parser.Lp.parse_term_string "LPSearch" s in
   try
    let pterm = Stream.next ptermstream in
-   let items = Tool.Indexing.DB.search_pterm pterm in
-   out Format.std_formatter "%a@." Tool.Indexing.DB.pp_item_list items
+   let items = Tool.Indexing.search_pterm pterm in
+   out Format.std_formatter "%a@." Tool.Indexing.pp_item_list items
   with
    Stream.Failure ->
     Common.Error.fatal_no_pos "Syntax error: a term is expected"
 
 let resolve_cmd cfg name =
   Config.init cfg;
-  let items = Tool.Indexing.DB.resolve_name name in
-  out Format.std_formatter "%a@." Tool.Indexing.DB.pp_item_list items
+  let items = Tool.Indexing.resolve_name name in
+  out Format.std_formatter "%a@." Tool.Indexing.pp_item_list items
 
 let index file =
  let sign = Handle.Compile.PureUpToSign.compile_file file in
- Tool.Indexing.HL.index_sign sign
+ Tool.Indexing.index_sign sign
 
 let index_cmd cfg files =
  Config.init cfg;
- Tool.Indexing.DB.empty () ;
+ Tool.Indexing.empty () ;
  List.iter index files ;
- Tool.Indexing.DB.dump ()
+ Tool.Indexing.dump ()
 
 end
 
