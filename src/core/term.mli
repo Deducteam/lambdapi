@@ -353,6 +353,9 @@ val is_abst : term -> bool
 (** [is_prod t] returns [true] iff [t] is of the form [Prod(_)]. *)
 val is_prod : term -> bool
 
+(** [is_vari t] returns [true] iff [t] is of the form [Vari(_)]. *)
+val is_vari : term -> bool
+
 (** [is_unset m] returns [true] if [m] is not instantiated. *)
 val is_unset : meta -> bool
 

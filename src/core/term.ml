@@ -409,6 +409,10 @@ let is_abst : term -> bool = fun t ->
 let is_prod : term -> bool = fun t ->
   match unfold t with Prod(_) -> true | _ -> false
 
+(** [is_vari t] returns [true] iff [t] is of the form [Vari(_)]. *)
+let is_vari : term -> bool = fun t ->
+  match unfold t with Vari(_) -> true | _ -> false
+
 (** [is_unset m] returns [true] if [m] is not instantiated. *)
 let is_unset : meta -> bool = fun m -> !(m.meta_value) = None
 
