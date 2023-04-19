@@ -21,6 +21,7 @@ module DB : sig
  (*
  val insert : Core.Term.term -> item -> unit
  *)
+ val empty : unit -> unit
  val resolve_name : string -> item list
  val search : Core.Term.term -> item list
  val search_pterm : Parsing.Syntax.p_term -> item list
@@ -29,8 +30,8 @@ module DB : sig
  val find_sym : Core.Sig_state.find_sym
  *)
 
- val dump_to : filename:string -> unit
- val restore_from : filename:string -> unit (* unused too! *)
+ val dump : unit -> unit
+ (*val restore_from : filename:string -> unit *)
 
  val pp_item_list : item list Lplib.Base.pp
 end 

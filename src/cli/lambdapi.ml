@@ -19,7 +19,6 @@ module CLT = Cmdliner.Term
 
 module LPSearchMain =
 struct
-let db_name = "LPSearch.db"
 
 let search_cmd cfg s =
   Config.init cfg;
@@ -53,8 +52,9 @@ let index file =
 
 let index_cmd cfg files =
  Config.init cfg;
+ Tool.Indexing.DB.empty () ;
  List.iter index files ;
- Tool.Indexing.DB.dump_to ~filename:db_name
+ Tool.Indexing.DB.dump ()
 
 end
 

@@ -183,6 +183,8 @@ module DB = struct
 
  let db = ref (lazy (restore_from_disk ()))
 
+ let empty () = db := lazy empty
+
  let insert k v =
    let db' = insert (Lazy.force !db) k v in
    db := lazy db'
@@ -193,9 +195,9 @@ module DB = struct
 
  let search k = search (Lazy.force !db) k
 
- let dump_to ~filename = dump_to ~filename (Lazy.force !db)
+ let dump () = dump_to ~filename:dbpath (Lazy.force !db)
 
- let restore_from ~filename = db := lazy (restore_from ~filename)
+ (*let restore_from ~filename = db := lazy (restore_from ~filename)*)
 
  let resolve_name name =
   resolve_name (Lazy.force !db) name
