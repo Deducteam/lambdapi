@@ -39,23 +39,17 @@ let resolve_cmd cfg name =
 
 let index file =
  let sign = Handle.Compile.PureUpToSign.compile_file file in
- let syms = sign.sign_symbols in
- (*
- let rules = sign.sign_deps in
-  Path.Map.fold
-   Str.Map.fold
-    List.fold
-     rule ->
-
-       sym_path sym_name
-       sym_type : term ref
-       sym_def : term option ref
-       sym_rules : rule list ref *)
-  Lplib.Extra.StrMap.iter
-   (fun _ sym ->
-     Tool.Indexing.DB.insert Timed.(!(sym.Core.Term.sym_type))
-      ((Tool.Indexing.name_of_sym sym),sym.sym_pos))
-   Timed.(!syms)
+ let syms = Timed.(!(sign.sign_symbols)) in
+ let rules = Timed.(!(sign.sign_deps)) in
+ Lplib.Extra.StrMap.iter
+  (fun _ sym -> Tool.Indexing.HL.index_sym sym)
+  syms ;
+ Path.Map.iter
+  (fun _ rules ->
+    StrMap.iter
+     (fun _ rules -> List.iter Tool.Indexing.HL.index_rule rules)
+     rules)
+  rules
 
 let index_cmd cfg files =
  Config.init cfg;

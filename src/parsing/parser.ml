@@ -67,7 +67,7 @@ sig
       Option.iter (lexbuf_fixup lb) fname;
       let parse =
         MenhirLib.Convert.Simplified.traditional2revised
-         grammar_entry (*LpParser.command*)
+         grammar_entry
       in
       let token = LpLexer.token lb in
       let generator _ =

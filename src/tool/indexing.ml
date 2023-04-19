@@ -123,10 +123,12 @@ and insert_node node term s v =
     IRigid(r,insert_index i (s'@s) v)
  | _, _ -> raise NoMatch
 
-let insert symname_of (namemap,index) term v =
- let name = symname_of v in
+let insert (namemap,index) term v =
+ namemap, insert_index index [term] v
+
+let insert_name (namemap,index) name v =
  let vs = match StrMap.find_opt name namemap with None -> [] | Some l -> l in
- StrMap.add name (v::vs) namemap, insert_index index [term] v
+ StrMap.add name (v::vs) namemap, index
 
 let rec search_index index stack =
  match index,stack with
@@ -161,7 +163,9 @@ let restore_from ~filename =
   i
 
 module DB = struct 
- type item = sym_name * Common.Pos.pos option
+ type item =
+  | Name of sym_name * Common.Pos.pos option
+  | Type of sym_name * Common.Pos.pos option
 
  let dbpath = "LPSearch.db"
 
@@ -177,16 +181,12 @@ module DB = struct
  let db = ref (lazy (restore_from_disk ()))
 
  let insert k v =
-   let db' = insert (fun ((_,name),_) -> name) (Lazy.force !db) k v in
-   db := lazy db'(*;
-   let vs = search !db k in
-   prerr_endline "XXXXXXXXXXXXXXXXXXX" ;
-   Format.printf "Indexing %a@." Core.Print.term k ;
-   List.iter
-    (fun ((p,n),pos) -> Format.printf "Equivalent to %a.%s@%a@." Core.Print.path p n Common.Pos.pp pos)
-    vs ;
-   prerr_endline ("")
-*)
+   let db' = insert (Lazy.force !db) k v in
+   db := lazy db'
+
+ let insert_name k v =
+   let db' = insert_name (Lazy.force !db) k v in
+   db := lazy db'
 
  let search k = search (Lazy.force !db) k
 
@@ -202,11 +202,12 @@ module DB = struct
    match mp with
      [] ->
       (match resolve_name name with
-          [((mp,_),_)] -> mp
+          [Name ((mp,_),_)] -> mp
         | [] -> Common.Error.fatal pos "Unknown object %s." name
-        | ((mp,_),_)::_ ->
+        | (Name((mp,_),_))::_ ->
            prerr_endline "OVERLOADED SYMBOL, PICKING FIRST INTERPRETATION";
-           mp)
+           mp
+        | _::_ -> assert false)
     | _::_ -> mp
   in
    Core.Term.create_sym mp Core.Term.Public Core.Term.Defin Core.Term.Sequen
@@ -214,8 +215,14 @@ module DB = struct
  
  let pp_item_list =
   Lplib.List.pp
-   (fun ppf ((p,n),pos) ->
-     Lplib.Base.out ppf "Found %a.%s@%a@." Core.Print.path p n Common.Pos.pp pos)
+   (fun ppf item ->
+     match item with
+      | Name ((p,n),pos) ->
+         Lplib.Base.out ppf "Name of %a.%s@%a@." Core.Print.path p n
+          Common.Pos.pp pos
+      | Type ((p,n),pos) ->
+         Lplib.Base.out ppf "Type of %a.%s@%a@." Core.Print.path p n
+          Common.Pos.pp pos)
    "\n"
 
  let search_pterm pterm =
@@ -223,4 +230,23 @@ module DB = struct
   let env = [] in
   let query = Parsing.Scope.scope_lhs ~find_sym false sig_state env pterm in
   search query
+end
+
+module HL = struct
+ (*
+       sym_path sym_name
+       sym_type : term ref
+       sym_def : term option ref
+       sym_rules : rule list ref *)
+ let index_rule _rule =
+  ()(*
+  DB.insert Timed.(!(sym.Core.Term.sym_type))
+   ((name_of_sym sym),sym.sym_pos)*)
+
+ let index_sym sym =
+  let typ = Timed.(!(sym.Core.Term.sym_type)) in
+  let qname = name_of_sym sym in
+  DB.insert typ (Type (qname,sym.sym_pos)) ;
+  DB.insert_name (snd qname) (Name (qname,sym.sym_pos))
+
 end
