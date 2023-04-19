@@ -37,7 +37,8 @@ let resolve_cmd cfg name =
   out Format.std_formatter "%a@." Tool.Indexing.pp_item_list items
 
 let index file =
- let sign = Handle.Compile.PureUpToSign.compile_file file in
+ let sign =
+  Common.Error.with_no_wrn Handle.Compile.PureUpToSign.compile_file file in
  Tool.Indexing.index_sign sign
 
 let index_cmd cfg files =
