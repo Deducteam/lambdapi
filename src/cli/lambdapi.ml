@@ -40,12 +40,10 @@ let rec search () =
 
 let search_cmd cfg () =
   Config.init cfg;
-  Tool.Indexing.DB.restore_from ~filename:db_name ;
   search()
 
 let resolve_cmd cfg name =
   Config.init cfg;
-  Tool.Indexing.DB.restore_from ~filename:db_name ;
   let items = Tool.Indexing.DB.resolve_name name in
   out Format.std_formatter "%a@." Tool.Indexing.DB.pp_item_list items
 

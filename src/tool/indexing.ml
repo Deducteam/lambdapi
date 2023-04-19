@@ -163,9 +163,23 @@ let restore_from ~filename =
 
 module DB = struct 
  type item = sym_name * Common.Pos.pos option
- let db = ref empty
+
+ let dbpath = "LPSearch.db"
+
+ let restore_from_disk () =
+  try
+   restore_from ~filename:dbpath
+  with
+   Sys_error msg ->
+     Common.Error.wrn None "Error loading DB. %s\nDefaulting to empty index"
+      msg ;
+     empty
+
+ let db = ref (lazy (restore_from_disk ()))
+
  let insert k v =
-   db := insert (fun ((_,name),_) -> name) !db k v(*;
+   let db' = insert (fun ((_,name),_) -> name) (Lazy.force !db) k v in
+   db := lazy db'(*;
    let vs = search !db k in
    prerr_endline "XXXXXXXXXXXXXXXXXXX" ;
    Format.printf "Indexing %a@." Core.Print.term k ;
@@ -174,12 +188,15 @@ module DB = struct
     vs ;
    prerr_endline ("")
 *)
- let search k = search !db k
- let dump_to ~filename = dump_to ~filename !db
- let restore_from ~filename = db := restore_from ~filename
+
+ let search k = search (Lazy.force !db) k
+
+ let dump_to ~filename = dump_to ~filename (Lazy.force !db)
+
+ let restore_from ~filename = db := lazy (restore_from ~filename)
+
  let resolve_name name =
-  restore_from ~filename:"LPSearch.db" ;
-  resolve_name !db name
+  resolve_name (Lazy.force !db) name
 
  let find_sym ~prt:_prt ~prv:_prv _sig_state {Common.Pos.elt=(mp,name) ; pos} =
   let mp =
@@ -203,7 +220,6 @@ module DB = struct
    "\n"
 
  let search_pterm pterm =
-  restore_from ~filename:"LPSearch.db" ;
   let sig_state = Core.Sig_state.dummy in
   let env = [] in
   let query = Parsing.Scope.scope_lhs ~find_sym false sig_state env pterm in
