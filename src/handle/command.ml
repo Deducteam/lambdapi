@@ -139,7 +139,7 @@ let check_rule : sig_state -> p_rule -> sym_rule = fun ss r ->
   in
   s, r
 
-(** [handle_rule ss syms r] checks rule [r], adds it in [ss] and returns the
+(** [add_rule ss syms r] checks rule [r], adds it in [ss] and returns the
    head symbol of the lhs and the rule itself. *)
 let add_rule : sig_state -> sym_rule -> unit = fun ss ((s,r) as x) ->
   Sign.add_rule ss.signature s r;

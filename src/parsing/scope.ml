@@ -602,10 +602,12 @@ let rule_of_pre_rule : pre_rule loc -> rule =
   ; xvars_nb = pr_xvars_nb
   ; rule_pos }
 
-(** [scope_rule ur ss r] turns a parser-level rewriting rule [r], or a
-    unification rule if [ur] is true, into a pre-rewriting rule. *)
-let scope_rule : bool -> sig_state -> p_rule -> pre_rule loc =
-  fun ur ss { elt = (p_lhs, p_rhs); pos } ->
+(** [scope_rule ~find_sym ur ss r] turns a parser-level rewriting rule [r],
+    or a unification rule if [ur] is true, into a pre-rewriting rule.
+    The function [~find_sym] is used to scope symbol identifiers. *)
+let scope_rule :
+  ?find_sym:find_sym -> bool -> sig_state -> p_rule -> pre_rule loc =
+  fun ?(find_sym=Sig_state.find_sym) ur ss { elt = (p_lhs, p_rhs); pos } ->
   (* Compute the set of pattern variables on both sides. *)
   let (pvs_lhs, nl) = patt_vars p_lhs in
   (* NOTE to reject non-left-linear rules check [nl = []] here. *)
@@ -620,7 +622,7 @@ let scope_rule : bool -> sig_state -> p_rule -> pre_rule loc =
   in
   List.iter check_arity pvs_rhs;
   (* [get_root t] returns the symbol at the root of the p_term [t]. *)
-  let rec get_root t = get_root_after_pratt (Pratt.parse ss [] t)
+  let rec get_root t = get_root_after_pratt (Pratt.parse ~find_sym ss [] t)
   and get_root_after_pratt t =
     match t.elt with
     | P_Iden(qid,_) -> find_sym ~prt:true ~prv:true ss qid
@@ -651,7 +653,7 @@ let scope_rule : bool -> sig_state -> p_rule -> pre_rule loc =
            ; m_lhs_size    = 0
            ; m_lhs_in_env  = nl @ List.map fst pvs_rhs }
     in
-    let pr_lhs = scope 0 mode ss Env.empty p_lhs in
+    let pr_lhs = scope ~find_sym 0 mode ss Env.empty p_lhs in
     match mode with
     | M_LHS{ m_lhs_indices; m_lhs_names; m_lhs_size; m_lhs_arities; _} ->
       let pr_lhs = snd (get_args (Bindlib.unbox pr_lhs)) in
@@ -672,7 +674,7 @@ let scope_rule : bool -> sig_state -> p_rule -> pre_rule loc =
       M_RHS{ m_rhs_prv = is_private pr_sym; m_rhs_data = htbl_vars;
              m_rhs_new_metas = new_problem() }
   in
-  let pr_rhs = scope 0 mode ss Env.empty p_rhs in
+  let pr_rhs = scope ~find_sym 0 mode ss Env.empty p_rhs in
   let prerule =
     (* We put everything together to build the pre-rule. *)
     let pr_arities =

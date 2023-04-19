@@ -53,9 +53,11 @@ type pre_rule =
 (** [rule_of_pre_rule r] converts a pre-rewrite rule into a rewrite rule. *)
 val rule_of_pre_rule : pre_rule loc -> rule
 
-(** [scope_rule ur ss r] turns a parser-level rewriting rule [r], or a
-    unification rule if [ur] is true, into a pre-rewriting rule. *)
-val scope_rule : bool -> sig_state -> p_rule -> pre_rule loc
+(** [scope_rule ~find_sym ur ss r] turns a parser-level rewriting rule [r],
+    or a unification rule if [ur] is true, into a pre-rewriting rule.
+    The function [~find_sym] is used to scope symbol identifiers. *)
+val scope_rule :
+ ?find_sym:find_sym -> bool -> sig_state -> p_rule -> pre_rule loc
 
 (** [scope_rw_patt ss env t] turns a parser-level rewrite tactic specification
     [s] into an actual rewrite specification (possibly containing variables of

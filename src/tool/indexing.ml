@@ -132,7 +132,10 @@ let insert (namemap,index) term v =
  namemap, insert_index index [term] v
 
 let insert_name (namemap,index) name v =
- let vs = match Lplib.Extra.StrMap.find_opt name namemap with None -> [] | Some l -> l in
+ let vs =
+  match Lplib.Extra.StrMap.find_opt name namemap with
+     None -> []
+   | Some l -> l in
  Lplib.Extra.StrMap.add name (v::vs) namemap, index
 
 let rec search_index index stack =
@@ -244,6 +247,47 @@ module DB = struct
 end
 
 module HL = struct
+
+ module QNameMap =
+  Map.Make(struct type t = sym_name let compare = Stdlib.compare end)
+
+ let check_rule : Parsing.Syntax.p_rule -> sym_rule = fun r ->
+  let ss = Core.Sig_state.dummy in
+  let pr = Parsing.Scope.scope_rule ~find_sym:DB.find_sym false ss r in
+  let s = pr.elt.pr_sym in
+  let r = Parsing.Scope.rule_of_pre_rule pr in
+  s, r
+
+ let load_meta_rules () =
+  let cmdstream =
+    Parsing.Parser.Dk.parse_file "LPsearch.dk" in
+  let rules = ref [] in
+  Stream.iter
+   (fun {elt ; _ } ->
+     match elt with
+       Parsing.Syntax.P_rules r -> rules := List.rev_append r !rules
+     | _ -> ())
+   cmdstream ;
+  let rules = List.rev !rules in
+  let handle_rule map r =
+    let (s,r) = check_rule r in
+    let h = function Some rs -> Some(r::rs) | None -> Some[r] in
+    SymMap.update s h map in
+  let map = List.fold_left handle_rule SymMap.empty rules in
+  SymMap.iter Tree.update_dtree map;
+  SymMap.fold
+   (fun sym _rs map' ->
+     QNameMap.add (name_of_sym sym) (Timed.(!(sym.sym_dtree))) map')
+   map QNameMap.empty
+
+ let meta_rules = lazy (load_meta_rules ())
+
+ let dtree sym =
+  try
+   QNameMap.find (name_of_sym sym) (Lazy.force meta_rules)
+  with
+   Not_found -> Core.Tree_type.empty_dtree
+
  let subterms_to_index t =
   let rec aux ?(top=false) t =
    (if top || Core.Term.is_vari t then [] else [t]) @
@@ -297,7 +341,10 @@ module HL = struct
   (* Name *)
   DB.insert_name (snd qname) (Name (qname,sym.sym_pos)) ;
   (* Type *)
-  let typ = Timed.(!(sym.Core.Term.sym_type)) in
+  let typ as typ' = Timed.(!(sym.Core.Term.sym_type)) in
+  let typ = Core.Eval.snf ~dtree [] typ in
+  Format.printf "%a REWRITTEN TO %a@."
+   Core.Print.term typ' Core.Print.term typ ;
   DB.insert typ (Type (qname,sym.sym_pos)) ;
   (* InType *)
   let subterms = List.sort_uniq Core.Term.cmp (subterms_to_index typ) in
