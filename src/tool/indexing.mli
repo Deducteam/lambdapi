@@ -14,9 +14,9 @@ val resolve_name : 'a db -> string -> 'a list
 *)
 
 module DB : sig
- type item =
+ type item (*=
   | Name of sym_name * Common.Pos.pos option
-  | Type of sym_name * Common.Pos.pos option
+  | Type of sym_name * Common.Pos.pos option*)
 
  (*
  val insert : Core.Term.term -> item -> unit

@@ -9,7 +9,9 @@ module StrMap = Map.Make(String)
 (* substitution trees would be best *)
 
 (* - all variables are mapped to HOLE
-   - let-ins are expanded
+   - let-ins are expanded when indexed, but not when computing subterms
+     to index
+   - HOLES (i.e. variables, i.e. is_vari) are not indexed as subterms
 *)
 
 type 'a index =
@@ -166,6 +168,7 @@ module DB = struct
  type item =
   | Name of sym_name * Common.Pos.pos option
   | Type of sym_name * Common.Pos.pos option
+  | InType of sym_name * Common.Pos.pos option
 
  let dbpath = "LPSearch.db"
 
@@ -222,7 +225,10 @@ module DB = struct
           Common.Pos.pp pos
       | Type ((p,n),pos) ->
          Lplib.Base.out ppf "Type of %a.%s@%a@." Core.Print.path p n
-          Common.Pos.pp pos)
+          Common.Pos.pp pos
+      | InType ((p,n),pos) ->
+         Lplib.Base.out ppf "Strict subterm of the type of %a.%s@%a@."
+          Core.Print.path p n Common.Pos.pp pos)
    "\n"
 
  let search_pterm pterm =
@@ -233,6 +239,34 @@ module DB = struct
 end
 
 module HL = struct
+ let subterms_to_index t =
+  let rec aux ?(top=false) t =
+   (if top || Core.Term.is_vari t then [] else [t]) @
+   match Core.Term.unfold t with
+   | Vari _
+   | Type
+   | Kind
+   | Symb _ -> []
+   | Prod(t,b)
+   | Abst(t,b) ->
+      let _, t2 = Bindlib.unbind b in
+      aux t @ aux t2
+   | Appl(t1,t2) ->
+      aux t1 @ aux t2
+   | Patt (_var,_varname,args) ->
+      (* variable application, used in rewriting rules LHS *)
+      aux (term_of_patt (_var,_varname,args))
+   | LLet (t1,t2,b) ->
+      (* we do not expand the let-in when indexing subterms *)
+      let _, t3 = Bindlib.unbind b in
+      aux t1 @ aux t2 @ aux t3
+   | Meta _
+   | Plac _ -> assert false (* not for meta-closed terms *)
+   | Wild -> assert false (* used only by tactics and reduction *)
+   | TRef _  -> assert false (* destroyed by unfold *)
+   | TEnv _ (* used in rewriting rules RHS *) -> assert false (* use term_of_rhs *)
+  in aux ~top:true t
+
  (*
        sym_path sym_name
        sym_type : term ref
@@ -247,6 +281,8 @@ module HL = struct
   let typ = Timed.(!(sym.Core.Term.sym_type)) in
   let qname = name_of_sym sym in
   DB.insert typ (Type (qname,sym.sym_pos)) ;
+  let subterms = List.sort_uniq Core.Term.cmp (subterms_to_index typ) in
+  List.iter (fun s -> DB.insert s (InType (qname,sym.sym_pos))) subterms ;
   DB.insert_name (snd qname) (Name (qname,sym.sym_pos))
 
 end
