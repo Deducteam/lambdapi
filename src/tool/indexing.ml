@@ -4,8 +4,6 @@ open Common open Pos
 type sym_name = Common.Path.t * string
 let name_of_sym s = (s.sym_path, s.sym_name)
 
-module StrMap = Map.Make(String)
-
 (* discrimination tree *)
 (* substitution trees would be best *)
 
@@ -29,9 +27,9 @@ and rigid =
  | IAbst
  | IProd
 
-type 'a db = 'a list StrMap.t * 'a index
+type 'a db = 'a list Lplib.Extra.StrMap.t * 'a index
 
-let empty : 'a db =  StrMap.empty, Choice []
+let empty : 'a db =  Lplib.Extra.StrMap.empty, Choice []
 
 let term_of_patt (_var, _varname, args) =
  let var = Bindlib.new_var mk_Vari "dummy" in
@@ -134,8 +132,8 @@ let insert (namemap,index) term v =
  namemap, insert_index index [term] v
 
 let insert_name (namemap,index) name v =
- let vs = match StrMap.find_opt name namemap with None -> [] | Some l -> l in
- StrMap.add name (v::vs) namemap, index
+ let vs = match Lplib.Extra.StrMap.find_opt name namemap with None -> [] | Some l -> l in
+ Lplib.Extra.StrMap.add name (v::vs) namemap, index
 
 let rec search_index index stack =
  match index,stack with
@@ -156,7 +154,7 @@ and search_node node term s =
 
 let search (_,index) term = search_index index [term]
 let resolve_name (namemap,_) name =
-  match StrMap.find_opt name namemap with None -> [] | Some l -> l
+  match Lplib.Extra.StrMap.find_opt name namemap with None -> [] | Some l -> l
 
 let dump_to ~filename i =
  let ch = open_out_bin filename in
@@ -275,22 +273,51 @@ module HL = struct
        assert false (* use term_of_rhs *)
   in aux ~top:true t
 
- (*
-       sym_path sym_name
-       sym_type : term ref
-       sym_def : term option ref
-       sym_rules : rule list ref *)
- let index_rule _rule =
+  (*
+  { lhs      : term list (** Left hand side (LHS). *)
+  ; rhs      : rhs (** Right hand side (RHS). *)
+  ; arity    : int (** Required number of arguments to be applicable. *)
+  ; arities  : int array
+  (** Arities of the pattern variables bound in the RHS. *)
+  ; vars     : tevar array
+  (** Bindlib variables used to build [rhs]. The last [xvars_nb] variables
+      appear only in [rhs]. *)
+  ; xvars_nb : int (** Number of variables in [rhs] but not in [lhs]. *)
+  ; rule_pos : Pos.popt (** Position of the rule in the source file. *) }
+ *)
+ let index_rule sym {Core.Term.lhs=lhsargs ; rhs ; rule_pos ; _} =
+  let lhs = Core.Term.add_args (Core.Term.mk_Symb sym) lhsargs in
+  let _ = (lhs,rhs,rule_pos) in
   ()(*
   DB.insert Timed.(!(sym.Core.Term.sym_type))
    ((name_of_sym sym),sym.sym_pos)*)
 
  let index_sym sym =
-  let typ = Timed.(!(sym.Core.Term.sym_type)) in
   let qname = name_of_sym sym in
+  (* Name *)
+  DB.insert_name (snd qname) (Name (qname,sym.sym_pos)) ;
+  (* Type *)
+  let typ = Timed.(!(sym.Core.Term.sym_type)) in
   DB.insert typ (Type (qname,sym.sym_pos)) ;
+  (* InType *)
   let subterms = List.sort_uniq Core.Term.cmp (subterms_to_index typ) in
   List.iter (fun s -> DB.insert s (InType (qname,sym.sym_pos))) subterms ;
-  DB.insert_name (snd qname) (Name (qname,sym.sym_pos))
+  (* InBody??? sym.sym_def : term option ref
+     but all the subterms are too much; collect only the constants? *)
+  (* Rules *)
+  List.iter (index_rule sym) Timed.(!(sym.Core.Term.sym_rules))
+
+ let index_sign sign =
+  let syms = Timed.(!(sign.Core.Sign.sign_symbols)) in
+  let rules = Timed.(!(sign.Core.Sign.sign_deps)) in
+  Lplib.Extra.StrMap.iter (fun _ sym -> index_sym sym) syms ;
+  Common.Path.Map.iter
+   (fun path rules ->
+     Lplib.Extra.StrMap.iter
+      (fun name rules ->
+        let sym = Core.Sign.find_sym path name in
+        List.iter (index_rule sym) rules)
+      rules)
+   rules
 
 end

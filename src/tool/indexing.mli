@@ -37,6 +37,9 @@ module DB : sig
 end
 
 module HL : sig
+ (*
  val index_sym : Core.Term.sym -> unit
- val index_rule : Core.Term.rule -> unit
+ val index_rule : Core.Term.sym -> Core.Term.rule -> unit
+ *)
+ val index_sign : Core.Sign.t -> unit
 end

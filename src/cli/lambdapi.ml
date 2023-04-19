@@ -38,17 +38,7 @@ let resolve_cmd cfg name =
 
 let index file =
  let sign = Handle.Compile.PureUpToSign.compile_file file in
- let syms = Timed.(!(sign.sign_symbols)) in
- let rules = Timed.(!(sign.sign_deps)) in
- Lplib.Extra.StrMap.iter
-  (fun _ sym -> Tool.Indexing.HL.index_sym sym)
-  syms ;
- Path.Map.iter
-  (fun _ rules ->
-    StrMap.iter
-     (fun _ rules -> List.iter Tool.Indexing.HL.index_rule rules)
-     rules)
-  rules
+ Tool.Indexing.HL.index_sign sign
 
 let index_cmd cfg files =
  Config.init cfg;

@@ -68,6 +68,11 @@ let mem : t -> string -> bool =
     making copies of terms when loading an object file. *)
 let loaded : t Path.Map.t ref = ref Path.Map.empty
 
+(** [find_sym path name] returns the symbol identified by [path] and [name]
+    in the known modules (already compiled or currently being compiled) *)
+let find_sym : Path.t -> string -> sym = fun path name ->
+ find (Path.Map.find path !loaded) name
+
 (* NOTE that the current module is stored in [loaded] so that the symbols that
    it contains can be qualified with the name of the module. This behavior was
    inherited from previous versions of Dedukti. *)
