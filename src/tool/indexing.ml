@@ -138,7 +138,6 @@ let rec search_index index stack =
 and search_node node term s =
  match node,term with
  | _, Patt _ ->
-     prerr_endline "FLESSIBILE" ;
      List.concat (List.map (fun i -> search_index i s) (match_flexible node))
  | IHOLE i, _ -> search_index i s
  | IRigid(r,i), t ->
