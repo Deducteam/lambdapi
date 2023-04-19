@@ -21,26 +21,16 @@ module LPSearchMain =
 struct
 let db_name = "LPSearch.db"
 
-let answer_query {Common.Pos.elt=cmd ; _} =
- match cmd with
-    Parsing.Syntax.P_query {elt=Parsing.Syntax.P_query_infer (pterm,_) ; _} ->
-      let items = Tool.Indexing.DB.search_pterm pterm in
-      out Format.std_formatter "%a@." Tool.Indexing.DB.pp_item_list items
-  | _ ->
-      prerr_endline "Syntax error"
-
-let rec search () =
-  Format.printf "Enter query with syntax \"type query;\": @." ;
-  match input_line stdin with
-     s ->
-      let aststream = Parsing.Parser.Lp.parse_string "LPSearch" s in
-      Stream.iter answer_query aststream ;
-      search ()
-   | exception End_of_file -> ()
-
-let search_cmd cfg () =
+let search_cmd cfg s =
   Config.init cfg;
-  search()
+  let ptermstream = Parsing.Parser.Lp.parse_term_string "LPSearch" s in
+  try
+   let pterm = Stream.next ptermstream in
+   let items = Tool.Indexing.DB.search_pterm pterm in
+   out Format.std_formatter "%a@." Tool.Indexing.DB.pp_item_list items
+  with
+   Stream.Failure ->
+    Common.Error.fatal_no_pos "Syntax error: a term is expected"
 
 let resolve_cmd cfg name =
   Config.init cfg;
@@ -423,9 +413,9 @@ let index_cmd =
   Cmdliner.Term.(const LPSearchMain.index_cmd $ Config.full $ files)
 
 let search_cmd =
- let doc = "Run queries against the index." in
+ let doc = "Run a search query against the index." in
  Cmd.v (Cmd.info "search" ~doc ~man:man_pkg_file)
-  Cmdliner.Term.(const LPSearchMain.search_cmd $ Config.full $ const ())
+  Cmdliner.Term.(const LPSearchMain.search_cmd $ Config.full $ name_as_arg)
 
 let resolve_cmd =
  let doc = "Resolve a name." in

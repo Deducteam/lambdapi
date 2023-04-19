@@ -15,7 +15,6 @@ let parser_fatal : Pos.pos -> ('a,'b) koutfmt -> 'a = fun pos fmt ->
 
 (** Module type of a parser. *)
 module type PARSER = sig
-
   val parse : in_channel -> Syntax.ast
   (** [parse inchan] returns a stream of commands parsed from
       channel [inchan]. Commands are parsed lazily and the channel is
@@ -30,7 +29,24 @@ module type PARSER = sig
       which comes from file [f] ([f] can be anything). *)
 end
 
-module Lp : PARSER = struct
+module Lp :
+sig
+  include PARSER
+
+  val parse_term : in_channel -> Syntax.p_term Stream.t
+  (** [parse inchan] returns a stream of terms parsed from
+      channel [inchan]. Terms are parsed lazily and the channel is
+      closed once all entries are parsed. *)
+
+  val parse_term_file : string -> Syntax.p_term Stream.t
+  (** [parse_file fname] returns a stream of parsed terms of file
+      [fname]. Terms are parsed lazily. *)
+
+  val parse_term_string : string -> string -> Syntax.p_term Stream.t
+  (** [parse_string f s] returns a stream of parsed terms from string [s]
+      which comes from file [f] ([f] can be anything). *)
+  end
+= struct
 
   (* Needed to workaround serious bug in sedlex, see #549 *)
   let lexbuf_fixup lb fname =
@@ -41,15 +57,17 @@ module Lp : PARSER = struct
                 ; pos_cnum = 0 } in
     Sedlexing.set_position lb pos
 
-  let stream_of_lexbuf :
+  let stream_of_lexbuf : 
+    grammar_entry:(LpLexer.token,'b) MenhirLib.Convert.traditional ->
     ?inchan:in_channel -> ?fname:string -> Sedlexing.lexbuf ->
     (* Input channel passed as parameter to be closed at the end of stream. *)
-    Syntax.p_command Stream.t =
-    fun ?inchan ?fname lb ->
+    'a Stream.t =
+    fun ~grammar_entry ?inchan ?fname lb ->
       Option.iter (Sedlexing.set_filename lb) fname;
       Option.iter (lexbuf_fixup lb) fname;
       let parse =
-        MenhirLib.Convert.Simplified.traditional2revised LpParser.command
+        MenhirLib.Convert.Simplified.traditional2revised
+         grammar_entry (*LpParser.command*)
       in
       let token = LpLexer.token lb in
       let generator _ =
@@ -65,15 +83,24 @@ module Lp : PARSER = struct
       in
       Stream.from generator
 
-  let parse inchan =
-    stream_of_lexbuf ~inchan (Sedlexing.Utf8.from_channel inchan)
+  let parse ~grammar_entry inchan =
+    stream_of_lexbuf ~grammar_entry ~inchan (Sedlexing.Utf8.from_channel inchan)
 
-  let parse_file fname =
+  let parse_file ~grammar_entry fname =
     let inchan = open_in fname in
-    stream_of_lexbuf ~inchan ~fname (Sedlexing.Utf8.from_channel inchan)
+    stream_of_lexbuf ~grammar_entry ~inchan ~fname
+     (Sedlexing.Utf8.from_channel inchan)
 
-  let parse_string fname s =
-    stream_of_lexbuf ~fname (Sedlexing.Utf8.from_string s)
+  let parse_string ~grammar_entry fname s =
+    stream_of_lexbuf ~grammar_entry ~fname (Sedlexing.Utf8.from_string s)
+
+  let parse_term = parse ~grammar_entry:LpParser.term_alone
+  let parse_term_string = parse_string ~grammar_entry:LpParser.term_alone
+  let parse_term_file = parse_file ~grammar_entry:LpParser.term_alone
+
+  let parse = parse ~grammar_entry:LpParser.command
+  let parse_string = parse_string ~grammar_entry:LpParser.command
+  let parse_file = parse_file ~grammar_entry:LpParser.command
 end
 
 (** Parsing dk syntax. *)
