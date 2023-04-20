@@ -41,9 +41,9 @@ let index file =
   Common.Error.with_no_wrn Handle.Compile.PureUpToSign.compile_file file in
  Tool.Indexing.index_sign sign
 
-let index_cmd cfg files =
+let index_cmd cfg add_only files =
  Config.init cfg;
- Tool.Indexing.empty () ;
+ if not add_only then Tool.Indexing.empty () ;
  List.iter index files ;
  Tool.Indexing.dump ()
 
@@ -392,10 +392,19 @@ let name_as_arg : string Cmdliner.Term.t =
   let doc = "Name of constant to be resolved." in
   Arg.(value & pos 0 string "xxx" & info [] ~docv:"NAME" ~doc)
 
+  (* CSC: same *)
+let add_only_arg : bool CLT.t =
+  let arginfo =
+   Arg.info ["add"]
+      ~doc:"Adds more terms to the index without cleaning it first." in
+  let default = false in
+  Arg.(value (opt bool default arginfo))
+
 let index_cmd =
  let doc = "Index the given files." in
  Cmd.v (Cmd.info "index" ~doc ~man:man_pkg_file)
-  Cmdliner.Term.(const LPSearchMain.index_cmd $ Config.full $ files)
+  Cmdliner.Term.(const LPSearchMain.index_cmd $ Config.full $
+   add_only_arg $ files)
 
 let search_cmd =
  let doc = "Run a search query against the index." in
