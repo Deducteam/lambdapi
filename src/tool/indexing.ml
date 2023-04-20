@@ -339,7 +339,7 @@ let rec is_flexible t =
 let subterms_to_index t =
  let rec aux ?(top=false) ?(spine=false) t =
   let t = Core.Term.unfold t in
-  (if top then [] else [t]) @
+  [(if top then DB.Exact else DB.Inside),t] @
   match t with
   | Vari _
   | Type
@@ -384,9 +384,12 @@ let index_term_and_subterms t item =
  Format.printf "%a : %a REWRITTEN TO %a@."
   pp_item (item Exact) Core.Print.term t Core.Print.term tn ;
  *)
- insert_rigid tn (item DB.Exact) ;
- let subterms = List.sort_uniq Core.Term.cmp (subterms_to_index tn) in
- List.iter (fun s -> insert_rigid s (item Inside)) subterms
+ let cmp (where1,t1) (where2,t2) =
+  let res = compare where1 where2 in
+  if res = 0 then Core.Term.cmp t1 t2 else res in
+ let subterms =
+  List.sort_uniq cmp (subterms_to_index tn) in
+ List.iter (fun (where,s) -> insert_rigid s (item where)) subterms
 
 let index_rule sym ({Core.Term.lhs=lhsargs ; rule_pos ; _} as rule) =
  let rule_pos = match rule_pos with None -> assert false | Some pos -> pos in
