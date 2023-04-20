@@ -1,0 +1,2 @@
+[x] cic.Term _ x --> x.
+[x] cic.lift _ _ x --> x.
