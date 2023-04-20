@@ -373,43 +373,36 @@ let subterms_to_index t =
  in aux ~top:true ~spine:true t
 
 let insert_rigid t v =
- if not (is_flexible t) then
+ if not (is_flexible t) then begin
   DB.insert t v
+  (* assert (List.mem v (DB.search t)); *)
+ end
+
+let index_term_and_subterms t item =
+ let tn = normalize t in
+ (*
+ Format.printf "%a : %a REWRITTEN TO %a@."
+  pp_item (item Exact) Core.Print.term t Core.Print.term tn ;
+ *)
+ insert_rigid tn (item DB.Exact) ;
+ let subterms = List.sort_uniq Core.Term.cmp (subterms_to_index tn) in
+ List.iter (fun s -> insert_rigid s (item Inside)) subterms
 
 let index_rule sym ({Core.Term.lhs=lhsargs ; rule_pos ; _} as rule) =
  let rule_pos = match rule_pos with None -> assert false | Some pos -> pos in
  let lhs = Core.Term.add_args (Core.Term.mk_Symb sym) lhsargs in
  let rhs = Core.Term.term_of_rhs rule in
  let _ = (lhs,rhs,rule_pos) in
- let lhs = normalize lhs in
- let rhs = normalize rhs in
- insert_rigid lhs (Xhs(Lhs,Exact,rule_pos)) ;
- insert_rigid rhs (Xhs(Rhs,Exact,rule_pos)) ;
- let sublhs = List.sort_uniq Core.Term.cmp (subterms_to_index lhs) in
- List.iter (fun s -> insert_rigid s (Xhs (Lhs,Inside,rule_pos))) sublhs ;
- let subrhs = List.sort_uniq Core.Term.cmp (subterms_to_index rhs) in
- List.iter (fun s -> insert_rigid s (Xhs (Rhs,Inside,rule_pos))) subrhs
+ index_term_and_subterms lhs (fun p -> (Xhs(Lhs,p,rule_pos))) ;
+ index_term_and_subterms rhs (fun p -> (Xhs(Rhs,p,rule_pos)))
 
 let index_sym sym =
  let qname = name_of_sym sym in
  (* Name *)
  DB.insert_name (snd qname) (Name (qname,sym.sym_pos)) ;
- (* Type *)
- let typ as _typ' = Timed.(!(sym.Core.Term.sym_type)) in
- let typ = normalize typ in
- (*
- Format.printf "%a.%s : %a REWRITTEN TO %a@."
-  Core.Print.path (fst (name_of_sym sym)) (snd (name_of_sym sym))
-  Core.Print.term typ' Core.Print.term typ ;
- *)
- insert_rigid typ (Type (Exact,qname,sym.sym_pos)) ;
- (*
- assert (List.mem (DB.Type (Exact,qname,sym.sym_pos)) (DB.search typ));
- *)
- (* InType *)
- let subterms = List.sort_uniq Core.Term.cmp (subterms_to_index typ) in
- List.iter (fun s -> insert_rigid s (Type (Inside,qname,sym.sym_pos)))
-  subterms ;
+ (* Type + InType *)
+ let typ = Timed.(!(sym.Core.Term.sym_type)) in
+ index_term_and_subterms typ (fun p -> (Type (p,qname,sym.sym_pos))) ;
  (* InBody??? sym.sym_def : term option ref
     but all the subterms are too much; collect only the constants? *)
  (* Rules *)
