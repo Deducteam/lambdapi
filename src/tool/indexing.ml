@@ -222,6 +222,7 @@ module DB = struct
  (* disk persistence *)
 
  let dbpath = "LPSearch.db"
+ let rwpath = "LPSearch.dk"
 
  let restore_from_disk () =
   try
@@ -287,7 +288,7 @@ let check_rule : Parsing.Syntax.p_rule -> sym_rule = fun r ->
 
 let load_meta_rules () =
  let cmdstream =
-   Parsing.Parser.Dk.parse_file "LPsearch.dk" in
+   Parsing.Parser.Dk.parse_file DB.rwpath in
  let rules = ref [] in
  Stream.iter
   (fun {elt ; _ } ->
