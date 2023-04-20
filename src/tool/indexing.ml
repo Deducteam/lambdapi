@@ -262,7 +262,9 @@ let find_sym ~prt:_prt ~prv:_prv _sig_state {elt=(mp,name); pos} =
          [DB.Name ((mp,_),_)] -> mp
        | [] -> Common.Error.fatal pos "Unknown object %s." name
        | (DB.Name((mp,_),_))::_ ->
-          prerr_endline "OVERLOADED SYMBOL, PICKING FIRST INTERPRETATION";
+          Common.Error.wrn pos
+           "Overloaded symbol %s, choosing the one declared in %a" name
+            Common.Path.pp mp ;
           mp
        | _::_ -> assert false)
    | _::_ -> mp
