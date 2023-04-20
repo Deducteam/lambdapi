@@ -13,30 +13,38 @@ The available commands are:
 * ``decision-tree``: output the decision tree of a symbol as a Dot graph (see :doc:`dtrees`)
 * ``export``: translate the input file to other formats.
 * ``help``: display the main help message.
+* ``index``: create an index of symbols and rules of input files.
 * ``init``: create a new Lambdapi package (see :doc:`getting_started`).
 * ``install``: install the specified files according to package configuration.
+* ``locate``: provide the list of modules where the identifier given as argument is defined.
 * ``lsp``: run the Lambdapi LSP server.
 * ``parse``: parse the input files.
+* ``search``: provide the list of symbols and rules matching a given pattern.
 * ``uninstall``: uninstalls the specified package.
 * ``version``: give the current version of Lambdapi.
 
-The ``parse`` and ``export`` commands can trigger the
+The commands ``parse``, ``export`` and ``index`` can trigger the
 compilation of dependencies if the required object files (``.lpo``
 extension) are not present.
 
 **Input files:**
 
-The commands ``check``, ``parse`` and ``export`` expect input files
+The commands ``check``, ``parse``, ``export`` and ``index`` expect input files
 with either the ``.lp`` extension or the ``.dk`` extension.
-The appropriate parser is selected automatically.
-
-The ``export`` command outputs the translation of all the input files
-on the standard output.
+The appropriate parser is selected automatically. The ``export`` command accept only one file as argument.
 
 If a command takes several files as argument, the files are
 handled independently in the order they are given. The program
 immediately stops on the first failure, without going to the next file
 (if any).
+
+**index/search/locate:**
+
+The ``index`` command generates a file ``LPSearch.db`` in the directory where Lambdapi is run. This file contains an indexation of all the symbols and rules occurring in the dk/lp files given in argument. The option ``--add`` appends the symbols and rules in the existing index file. Without this option, the previous index file is erased first. Before indexation, terms are normalized by using the rewrite rules given in the file ``LPSearch.dk`` in the directory where Lambdapi is run. In this file, symbols must be fully qualified but no ``require`` is needed. Moreover, the rules do not need to preserve typing (there are parser using the option ``--no-sr-check``).
+
+The command ``locate`` takes as argument a non-qualified identifier. It returns the list of qualified symbols having the same name in the current index file.
+
+The command ``search`` takes as argument a term which can contain pattern variables ``$<id>`` or underscores like for a LHS rewrite rule. A non-qualified symbol is interpreted by the first symbol given by the ``locate`` command. It fails if there is no interpretation. A warning is printed if there are several possible interpretations. The command prints detailed information on where the pattern is matched (as the left or right hand-side of a rule, inside the left or right hand-side of a rule, as a type of a symbol, or inside the type of a symbol).
 
 **Common flags:**
 
@@ -125,6 +133,11 @@ if the symbols corresponding to the builtins ``"arr"``, ``"imp"`` and ``"all"`` 
 Examples of libraries exported to Coq:
   - In the Lambdapi sources, see how to export the Holide Dedukti library obtained from OpenTheory in `README.md <https://github.com/Deducteam/lambdapi/blob/master/libraries/README.md>`__.
   - See in `hol2dk <https://github.com/Deducteam/hol2dk>`__ how to export the Lambdapi library obtained from HOL-Light.
+
+index
+-----
+
+* ``--add`` tells lambdapi to add the symbols and rules to the existing index
 
 lsp
 -------

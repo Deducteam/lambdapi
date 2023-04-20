@@ -12,6 +12,8 @@ QID ::= [UID "."]+ UID
 <assert> ::= "assert"
            | "assertnot"
 
+<term_alone> ::= <term> EOF
+
 <command> ::= "require" "open" <path>* ";"
             | "require" <path>* ";"
             | "require" <path> "as" <uid> ";"
@@ -41,6 +43,8 @@ QID ::= [UID "."]+ UID
           | "prover_timeout" <nat>
           | "verbose" <nat>
           | "type" <term>
+          | RE"solve" <uid>
+          | SEARCH <term>
 
 <path> ::= UID
          | QID
