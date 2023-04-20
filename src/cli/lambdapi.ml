@@ -31,9 +31,9 @@ let search_cmd cfg s =
    Stream.Failure ->
     Common.Error.fatal_no_pos "Syntax error: a term is expected"
 
-let resolve_cmd cfg name =
+let locate_cmd cfg name =
   Config.init cfg;
-  let items = Tool.Indexing.resolve_name name in
+  let items = Tool.Indexing.locate_name name in
   out Format.std_formatter "%a@." Tool.Indexing.pp_item_list items
 
 let index file =
@@ -389,16 +389,14 @@ let version_cmd =
      though: I just want to parse the next string and it should be mandatory,
      not defaulting to "xxx" *)
 let name_as_arg : string Cmdliner.Term.t =
-  let doc = "Name of constant to be resolved." in
+  let doc = "Name of constant to be located." in
   Arg.(value & pos 0 string "xxx" & info [] ~docv:"NAME" ~doc)
 
   (* CSC: same *)
 let add_only_arg : bool CLT.t =
-  let arginfo =
-   Arg.info ["add"]
-      ~doc:"Adds more terms to the index without cleaning it first." in
-  let default = false in
-  Arg.(value (opt bool default arginfo))
+  let doc =
+    "Adds more terms to the index without cleaning it first." in
+  Arg.(value & flag & info ["add"] ~doc)
 
 let index_cmd =
  let doc = "Index the given files." in
@@ -411,10 +409,10 @@ let search_cmd =
  Cmd.v (Cmd.info "search" ~doc ~man:man_pkg_file)
   Cmdliner.Term.(const LPSearchMain.search_cmd $ Config.full $ name_as_arg)
 
-let resolve_cmd =
- let doc = "Resolve a name." in
- Cmd.v (Cmd.info "resolve" ~doc ~man:man_pkg_file)
-  Cmdliner.Term.(const LPSearchMain.resolve_cmd $ Config.full $ name_as_arg)
+let locate_cmd =
+ let doc = "Given a symbol name, returns the list of modules where the symbol is defined." in
+ Cmd.v (Cmd.info "locate" ~doc ~man:man_pkg_file)
+  Cmdliner.Term.(const LPSearchMain.locate_cmd $ Config.full $ name_as_arg)
 
 let _ =
   let t0 = Sys.time () in
@@ -424,7 +422,7 @@ let _ =
     [ check_cmd ; parse_cmd ; export_cmd ; lsp_server_cmd
     ; decision_tree_cmd ; help_cmd ; version_cmd
     ; Init.cmd ; Install.install_cmd ; Install.uninstall_cmd
-    ; index_cmd ; search_cmd ; resolve_cmd ]
+    ; index_cmd ; search_cmd ; locate_cmd ]
   in
   let doc = "A type-checker for the lambdapi-calculus modulo rewriting." in
   let sdocs = Manpage.s_common_options in

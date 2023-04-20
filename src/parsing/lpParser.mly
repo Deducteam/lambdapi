@@ -64,7 +64,7 @@
 %token REFINE
 %token REFLEXIVITY
 %token REQUIRE
-%token RESOLVE
+%token LOCATE
 %token REWRITE
 %token RULE
 %token SEARCH
@@ -193,8 +193,8 @@ query:
   | VERBOSE n=NAT { make_pos $sloc (P_query_verbose n) }
   | TYPE_QUERY t=term
     { make_pos $sloc (P_query_infer(t, {strategy=NONE; steps=None}))}
-  | RESOLVE s=uid
-    { make_pos $sloc (P_query_resolve_name s) }
+  | LOCATE s=uid
+    { make_pos $sloc (P_query_locate_name s) }
   | SEARCH t=term
     { make_pos $sloc (P_query_search t) }
 

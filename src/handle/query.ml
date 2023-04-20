@@ -144,8 +144,8 @@ let handle : Sig_state.t -> proof_state option -> p_query -> result =
            match ps.proof_term with
            | Some m -> return term (mk_Meta(m,[||]))
            | None -> fatal pos "Not in a definition")
-  | P_query_resolve_name {elt;_} ->
-      return Tool.Indexing.pp_item_list (Tool.Indexing.resolve_name elt)
+  | P_query_locate_name {elt;_} ->
+      return Tool.Indexing.pp_item_list (Tool.Indexing.locate_name elt)
   | P_query_search t ->
       return Tool.Indexing.pp_item_list (Tool.Indexing.search_pterm t)
   | _ ->
@@ -159,7 +159,7 @@ let handle : Sig_state.t -> proof_state option -> p_query -> result =
   let ctxt = Env.to_ctxt env in
   let p = new_problem() in
   match elt with
-  | P_query_resolve_name _
+  | P_query_locate_name _
   | P_query_search _
   | P_query_debug(_,_)
   | P_query_verbose(_)

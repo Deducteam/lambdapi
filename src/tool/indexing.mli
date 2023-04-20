@@ -5,6 +5,6 @@ val empty : unit -> unit
 val index_sign : Core.Sign.t -> unit
 val dump : unit -> unit
 
-val resolve_name : string -> item list
+val locate_name : string -> item list
 val search : Core.Term.term -> item list
 val search_pterm : Parsing.Syntax.p_term -> item list

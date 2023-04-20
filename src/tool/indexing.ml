@@ -167,7 +167,7 @@ and search_node node term s =
      | exception NoMatch -> []
 
 let search (_,index) term = search_index index [term]
-let resolve_name (namemap,_) name =
+let locate_name (namemap,_) name =
   match Lplib.Extra.StrMap.find_opt name namemap with None -> [] | Some l -> l
 
 let dump_to ~filename i =
@@ -249,8 +249,8 @@ module DB = struct
 
  let dump () = Pure.dump_to ~filename:dbpath (Lazy.force !db)
 
- let resolve_name name =
-  Pure.resolve_name (Lazy.force !db) name
+ let locate_name name =
+  Pure.locate_name (Lazy.force !db) name
 
 end
 
@@ -258,7 +258,7 @@ let find_sym ~prt:_prt ~prv:_prv _sig_state {elt=(mp,name); pos} =
  let mp =
   match mp with
     [] ->
-     (match DB.resolve_name name with
+     (match DB.locate_name name with
          [DB.Name ((mp,_),_)] -> mp
        | [] -> Common.Error.fatal pos "Unknown object %s." name
        | (DB.Name((mp,_),_))::_ ->
