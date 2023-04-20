@@ -192,7 +192,7 @@ module DB = struct
   | Name of sym_name * Common.Pos.pos option
   | Type of match_type * sym_name * Common.Pos.pos option
   | Xhs of side * match_type * Common.Pos.pos
- 
+
  let pp_side fmt =
   function
    | Lhs -> Lplib.Base.out fmt "lhs"
@@ -334,10 +334,11 @@ let subterms_to_index t =
   | Prod(t,b) ->
      if spine then
       aux t @
-       aux ~spine:true (Bindlib.subst b (Core.Term.mk_Patt (None,"dummy",[||])))
+        aux ~spine:true
+          (Bindlib.subst b (Core.Term.mk_Patt (None,"dummy",[||])))
      else
       let _, t2 = Bindlib.unbind b in
-      aux t @ aux t2 
+      aux t @ aux t2
   | Appl(t1,t2) ->
      aux t1 @ aux t2
   | Patt (_var,_varname,args) ->

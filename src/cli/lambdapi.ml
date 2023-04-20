@@ -410,9 +410,11 @@ let search_cmd =
   Cmdliner.Term.(const LPSearchMain.search_cmd $ Config.full $ name_as_arg)
 
 let locate_cmd =
- let doc = "Given a symbol name, returns the list of modules where the symbol is defined." in
- Cmd.v (Cmd.info "locate" ~doc ~man:man_pkg_file)
-  Cmdliner.Term.(const LPSearchMain.locate_cmd $ Config.full $ name_as_arg)
+  let doc =
+    "Given an unqualified identifier, returns the list of modules \
+     where the identifier is a declared symbol." in
+  Cmd.v (Cmd.info "locate" ~doc ~man:man_pkg_file)
+    Cmdliner.Term.(const LPSearchMain.locate_cmd $ Config.full $ name_as_arg)
 
 let _ =
   let t0 = Sys.time () in
