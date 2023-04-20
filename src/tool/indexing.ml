@@ -188,16 +188,31 @@ module DB = struct
  (* fix codomain type *)
 
  type side = Lhs | Rhs
- type match_type = Exact | Inside
+ type inside = Exact | Inside
+ type where =
+  | Spine of inside
+  | Hypothesis of inside
+  | Conclusion of inside
  type item =
-  | Name of sym_name * Common.Pos.pos option
-  | Type of match_type * sym_name * Common.Pos.pos option
-  | Xhs of side * match_type * Common.Pos.pos
+  | Name of         sym_name * Common.Pos.pos option
+  | Type of where * sym_name * Common.Pos.pos option
+  | Xhs  of where * side     * Common.Pos.pos
 
  let pp_side fmt =
   function
    | Lhs -> Lplib.Base.out fmt "lhs"
    | Rhs -> Lplib.Base.out fmt "rhs"
+
+ let pp_inside fmt =
+  function
+    | Exact -> Lplib.Base.out fmt "The exact"
+    | Inside -> Lplib.Base.out fmt "Inside the"
+
+ let pp_where fmt =
+  function
+   | Spine ins -> Lplib.Base.out fmt "%a spine of" pp_inside ins
+   | Hypothesis ins -> Lplib.Base.out fmt "%a hypothesis of" pp_inside ins
+   | Conclusion ins -> Lplib.Base.out fmt "%a conclusion of" pp_inside ins
 
  let pp_item_list =
   Lplib.List.pp
@@ -206,18 +221,12 @@ module DB = struct
       | Name ((p,n),pos) ->
          Lplib.Base.out ppf "Name of %a.%s@%a@." Core.Print.path p n
           Common.Pos.pp pos
-      | Type (Exact,(p,n),pos) ->
-         Lplib.Base.out ppf "Type of %a.%s@%a@." Core.Print.path p n
-          Common.Pos.pp pos
-      | Type (Inside,(p,n),pos) ->
-         Lplib.Base.out ppf "Strict subterm of the type of %a.%s@%a@."
-          Core.Print.path p n Common.Pos.pp pos
-      | Xhs (side,Exact,pos) ->
-         Lplib.Base.out ppf "The %a of %a@." pp_side side
-          Common.Pos.pp (Some pos)
-      | Xhs (side,Inside,pos) ->
-         Lplib.Base.out ppf "Inside %a of %a@." pp_side side
-          Common.Pos.pp (Some pos))
+      | Type (where,(p,n),pos) ->
+         Lplib.Base.out ppf "%a the type of %a.%s@%a@."
+          pp_where where Core.Print.path p n Common.Pos.pp pos
+      | Xhs (where,side,pos) ->
+         Lplib.Base.out ppf "%a the %a of %a@."
+          pp_where where pp_side side Common.Pos.pp (Some pos))
    ""
 
  (* disk persistence *)
@@ -336,10 +345,29 @@ let rec is_flexible t =
   | TEnv _ (* used in rewriting rules RHS *) ->
       assert false (* use term_of_rhs *)
 
+let enter =
+ DB.(function
+  | Hypothesis _ -> Hypothesis Inside
+  | Spine _
+  | Conclusion _ -> Conclusion Inside)
+
+let enter_pi_source =
+ DB.(function
+  | Spine _ -> Hypothesis Exact
+  | Hypothesis _ -> Hypothesis Inside
+  | Conclusion _ -> Conclusion Inside)
+
+let enter_pi_target ~is_prod =
+ DB.(function
+  | Spine _ when is_prod -> Spine Inside
+  | Spine _ -> Conclusion Exact
+  | Hypothesis _ -> Hypothesis Inside
+  | Conclusion _ -> Conclusion Inside)
+
 let subterms_to_index t =
- let rec aux ?(top=false) ?(spine=false) t =
+ let rec aux ~where t =
   let t = Core.Term.unfold t in
-  [(if top then DB.Exact else DB.Inside),t] @
+  [where,t] @
   match t with
   | Vari _
   | Type
@@ -347,30 +375,34 @@ let subterms_to_index t =
   | Symb _ -> []
   | Abst(t,b) ->
      let _, t2 = Bindlib.unbind b in
-     aux t @ aux t2
+     aux ~where:(enter where) t @ aux ~where:(enter where) t2
   | Prod(t,b) ->
-     if spine then
-      aux t @
-       aux ~spine:true
-        (Bindlib.subst b (Core.Term.mk_Patt (None,"dummy",[||])))
-     else
-      let _, t2 = Bindlib.unbind b in
-      aux t @ aux t2
+     (match where with
+       | Spine _ ->
+          let t2 = Bindlib.subst b (Core.Term.mk_Patt (None,"dummy",[||])) in
+          aux ~where:(enter_pi_source where) t @
+           aux ~where:(enter_pi_target ~is_prod:(Core.Term.is_prod t2) where)
+            t2
+       | _ ->
+         let _, t2 = Bindlib.unbind b in
+         aux ~where:(enter_pi_source where) t @
+          aux ~where:(enter_pi_target ~is_prod:false where) t2)
   | Appl(t1,t2) ->
-     aux t1 @ aux t2
+     aux ~where:(enter where) t1 @ aux ~where:(enter where) t2
   | Patt (_var,_varname,args) ->
-     List.concat (List.map aux (Array.to_list args))
+     List.concat (List.map (aux ~where:(enter where)) (Array.to_list args))
   | LLet (t1,t2,b) ->
      (* we do not expand the let-in when indexing subterms *)
      let _, t3 = Bindlib.unbind b in
-     aux t1 @ aux t2 @ aux ~spine:true t3
+     aux ~where:(enter where) t1 @ aux ~where:(enter where) t2 @
+      aux ~where:(enter where) t3
   | Meta _
   | Plac _ -> assert false (* not for meta-closed terms *)
   | Wild -> assert false (* used only by tactics and reduction *)
   | TRef _  -> assert false (* destroyed by unfold *)
   | TEnv _ (* used in rewriting rules RHS *) ->
       assert false (* use term_of_rhs *)
- in aux ~top:true ~spine:true t
+ in aux ~where:(Spine Exact) t
 
 let insert_rigid t v =
  if not (is_flexible t) then begin
@@ -396,8 +428,8 @@ let index_rule sym ({Core.Term.lhs=lhsargs ; rule_pos ; _} as rule) =
  let lhs = Core.Term.add_args (Core.Term.mk_Symb sym) lhsargs in
  let rhs = Core.Term.term_of_rhs rule in
  let _ = (lhs,rhs,rule_pos) in
- index_term_and_subterms lhs (fun p -> (Xhs(Lhs,p,rule_pos))) ;
- index_term_and_subterms rhs (fun p -> (Xhs(Rhs,p,rule_pos)))
+ index_term_and_subterms lhs (fun where -> (Xhs(where,Lhs,rule_pos))) ;
+ index_term_and_subterms rhs (fun where -> (Xhs(where,Rhs,rule_pos)))
 
 let index_sym sym =
  let qname = name_of_sym sym in
@@ -405,7 +437,7 @@ let index_sym sym =
  DB.insert_name (snd qname) (Name (qname,sym.sym_pos)) ;
  (* Type + InType *)
  let typ = Timed.(!(sym.Core.Term.sym_type)) in
- index_term_and_subterms typ (fun p -> (Type (p,qname,sym.sym_pos))) ;
+ index_term_and_subterms typ (fun where -> (Type (where,qname,sym.sym_pos))) ;
  (* InBody??? sym.sym_def : term option ref
     but all the subterms are too much; collect only the constants? *)
  (* Rules *)
