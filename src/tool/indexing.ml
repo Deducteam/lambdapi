@@ -401,7 +401,9 @@ let index_sym sym =
  Format.printf "%a.%s : %a REWRITTEN TO %a@."
   Core.Print.path (fst (name_of_sym sym)) (snd (name_of_sym sym))
   Core.Print.term typ' Core.Print.term typ ;
+ *)
  insert_rigid typ (Type (Exact,qname,sym.sym_pos)) ;
+ (*
  assert (List.mem (DB.Type (Exact,qname,sym.sym_pos)) (DB.search typ));
  *)
  (* InType *)
