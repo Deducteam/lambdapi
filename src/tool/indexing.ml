@@ -13,7 +13,8 @@ let name_of_sym s = (s.sym_path, s.sym_name)
    - patterns (e.g. $x.[t1 .. tn]) are indexed as HOLES, ignoring the
      arguments t1 .. tn
    - we consider t1 ... tn as subterms when computing the subterms to index
-   - HOLES (i.e. patterns $x.[t1 .. tn]) are not indexed as subterms
+   - flexible terms, i.e. applyed HOLES (i.e. applied patterns $x.[t1 .. tn])
+     are not indexed as subterms
    - when computing the subterms to index, when entering a product the
      bound variable is replaced with a pattern to simulate modus-ponens
      e.g. "pi x : T. x + x"  has as subterm "$x + $x"
@@ -217,7 +218,7 @@ module DB = struct
       | Xhs (side,Inside,pos) ->
          Lplib.Base.out ppf "Inside %a of %a@." pp_side side
           Common.Pos.pp (Some pos))
-   "\n"
+   ""
 
  (* disk persistence *)
 
@@ -318,12 +319,28 @@ let normalize typ =
    QNameMap.find (name_of_sym sym) (Lazy.force meta_rules)
   with
    Not_found -> Core.Tree_type.empty_dtree in
- Core.Eval.snf ~dtree [] typ
+ Core.Eval.snf ~dtree ~tags:[`NoExpand] [] typ
+
+let rec is_flexible t =
+ match Core.Term.unfold t with
+  | Patt _ -> true
+  | Appl(t,_) -> is_flexible t
+  | LLet(_,_,b) ->
+     let _, t = Bindlib.unbind b in
+     is_flexible t
+  | Vari _ | Type | Kind | Symb _ | Prod _ | Abst _ -> false
+  | Meta _
+  | Plac _ -> assert false (* not for meta-closed terms *)
+  | Wild -> assert false (* used only by tactics and reduction *)
+  | TRef _  -> assert false (* destroyed by unfold *)
+  | TEnv _ (* used in rewriting rules RHS *) ->
+      assert false (* use term_of_rhs *)
 
 let subterms_to_index t =
  let rec aux ?(top=false) ?(spine=false) t =
-  (if top || Core.Term.is_patt t then [] else [t]) @
-  match Core.Term.unfold t with
+  let t = Core.Term.unfold t in
+  (if top then [] else [t]) @
+  match t with
   | Vari _
   | Type
   | Kind
@@ -334,8 +351,8 @@ let subterms_to_index t =
   | Prod(t,b) ->
      if spine then
       aux t @
-        aux ~spine:true
-          (Bindlib.subst b (Core.Term.mk_Patt (None,"dummy",[||])))
+       aux ~spine:true
+        (Bindlib.subst b (Core.Term.mk_Patt (None,"dummy",[||])))
      else
       let _, t2 = Bindlib.unbind b in
       aux t @ aux t2
@@ -355,6 +372,10 @@ let subterms_to_index t =
       assert false (* use term_of_rhs *)
  in aux ~top:true ~spine:true t
 
+let insert_rigid t v =
+ if not (is_flexible t) then
+  DB.insert t v
+
 let index_rule sym ({Core.Term.lhs=lhsargs ; rule_pos ; _} as rule) =
  let rule_pos = match rule_pos with None -> assert false | Some pos -> pos in
  let lhs = Core.Term.add_args (Core.Term.mk_Symb sym) lhsargs in
@@ -362,12 +383,12 @@ let index_rule sym ({Core.Term.lhs=lhsargs ; rule_pos ; _} as rule) =
  let _ = (lhs,rhs,rule_pos) in
  let lhs = normalize lhs in
  let rhs = normalize rhs in
- DB.insert lhs (Xhs(Lhs,Exact,rule_pos)) ;
- DB.insert rhs (Xhs(Rhs,Exact,rule_pos)) ;
+ insert_rigid lhs (Xhs(Lhs,Exact,rule_pos)) ;
+ insert_rigid rhs (Xhs(Rhs,Exact,rule_pos)) ;
  let sublhs = List.sort_uniq Core.Term.cmp (subterms_to_index lhs) in
- List.iter (fun s -> DB.insert s (Xhs (Lhs,Inside,rule_pos))) sublhs ;
+ List.iter (fun s -> insert_rigid s (Xhs (Lhs,Inside,rule_pos))) sublhs ;
  let subrhs = List.sort_uniq Core.Term.cmp (subterms_to_index rhs) in
- List.iter (fun s -> DB.insert s (Xhs (Rhs,Inside,rule_pos))) subrhs
+ List.iter (fun s -> insert_rigid s (Xhs (Rhs,Inside,rule_pos))) subrhs
 
 let index_sym sym =
  let qname = name_of_sym sym in
@@ -377,13 +398,16 @@ let index_sym sym =
  let typ as _typ' = Timed.(!(sym.Core.Term.sym_type)) in
  let typ = normalize typ in
  (*
- Format.printf "%a REWRITTEN TO %a@."
+ Format.printf "%a.%s : %a REWRITTEN TO %a@."
+  Core.Print.path (fst (name_of_sym sym)) (snd (name_of_sym sym))
   Core.Print.term typ' Core.Print.term typ ;
+ insert_rigid typ (Type (Exact,qname,sym.sym_pos)) ;
+ assert (List.mem (DB.Type (Exact,qname,sym.sym_pos)) (DB.search typ));
  *)
- DB.insert typ (Type (Exact,qname,sym.sym_pos)) ;
  (* InType *)
  let subterms = List.sort_uniq Core.Term.cmp (subterms_to_index typ) in
- List.iter (fun s -> DB.insert s (Type (Inside,qname,sym.sym_pos))) subterms ;
+ List.iter (fun s -> insert_rigid s (Type (Inside,qname,sym.sym_pos)))
+  subterms ;
  (* InBody??? sym.sym_def : term option ref
     but all the subterms are too much; collect only the constants? *)
  (* Rules *)
