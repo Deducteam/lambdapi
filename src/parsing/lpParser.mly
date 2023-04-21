@@ -50,6 +50,7 @@
 %token INFIX
 %token INJECTIVE
 %token LET
+%token LOCATE
 %token NOTATION
 %token OPAQUE
 %token OPEN
@@ -65,7 +66,6 @@
 %token REFINE
 %token REFLEXIVITY
 %token REQUIRE
-%token LOCATE
 %token REWRITE
 %token RULE
 %token SEARCH

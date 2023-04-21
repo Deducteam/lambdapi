@@ -224,6 +224,7 @@ let rec token lb =
   | "injective" -> INJECTIVE
   | "left" -> SIDE(Pratter.Left)
   | "let" -> LET
+  | "locate" -> LOCATE
   | "notation" -> NOTATION
   | "off" -> SWITCH(false)
   | "on" -> SWITCH(true)
@@ -241,7 +242,6 @@ let rec token lb =
   | "refine" -> REFINE
   | "reflexivity" -> REFLEXIVITY
   | "require" -> REQUIRE
-  | "locate" -> LOCATE
   | "rewrite" -> REWRITE
   | "right" -> SIDE(Pratter.Right)
   | "rule" -> RULE
