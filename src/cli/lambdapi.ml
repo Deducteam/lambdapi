@@ -29,12 +29,19 @@ let search_cmd cfg holes_in_index s =
    out Format.std_formatter "%a@." Tool.Indexing.pp_item_set items
   with
    Stream.Failure ->
-    Common.Error.fatal_no_pos "Syntax error: a term is expected"
+    Common.Error.fatal_no_pos "Syntax error: a term was expected"
 
-let locate_cmd cfg name =
-  Config.init cfg;
-  let items = Tool.Indexing.locate_name name in
-  out Format.std_formatter "%a@." Tool.Indexing.pp_item_set items
+let locate_cmd cfg s =
+  let qid = Parsing.Parser.Lp.parse_qid s in
+  match qid with
+   | [],name ->
+      Config.init cfg;
+      let items = Tool.Indexing.locate_name name in
+      out Format.std_formatter "%a@." Tool.Indexing.pp_item_set items
+  | _ ->
+      Common.Error.fatal_no_pos
+       "Syntax error: an unqualified identifier was expected, found %a.%s"
+        Path.pp (fst qid) (snd qid)
 
 let index file =
  let sign =

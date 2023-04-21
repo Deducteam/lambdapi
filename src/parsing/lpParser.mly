@@ -126,6 +126,7 @@
 
 %start <Syntax.p_command> command
 %start <Syntax.p_qident> qid
+%start <Syntax.p_qident> qid_alone
 %start <Syntax.p_term> term_alone
 
 // patch (see https://github.com/Deducteam/lambdapi/pull/798)
@@ -136,6 +137,10 @@
 term_alone:
   | t=term EOF
     { t }
+
+qid_alone:
+  | q=qid EOF
+    { q }
 
 command:
   | REQUIRE OPEN l=list(path) SEMICOLON

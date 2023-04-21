@@ -45,6 +45,8 @@ sig
   val parse_term_string : string -> string -> Syntax.p_term Stream.t
   (** [parse_string f s] returns a stream of parsed terms from string [s]
       which comes from file [f] ([f] can be anything). *)
+
+  val parse_qid : string -> Core.Term.qident
   end
 = struct
 
@@ -99,9 +101,14 @@ sig
   let parse_term_string = parse_string ~grammar_entry:LpParser.term_alone
   let parse_term_file = parse_file ~grammar_entry:LpParser.term_alone
 
+  let parse_qid s =
+   let stream = parse_string ~grammar_entry:LpParser.qid_alone "LPSearch" s in
+   (Stream.next stream).elt
+
   let parse = parse ~grammar_entry:LpParser.command
   let parse_string = parse_string ~grammar_entry:LpParser.command
   let parse_file = parse_file ~grammar_entry:LpParser.command
+
 end
 
 (** Parsing dk syntax. *)
