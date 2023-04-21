@@ -200,9 +200,9 @@ module DB = struct
   | Conclusion of inside
   | Hypothesis of inside
  type item =
-  | Name of         sym_name * Common.Pos.pos option
-  | Type of where * sym_name * Common.Pos.pos option
-  | Xhs  of where * side     * Common.Pos.pos
+  | Name of                 sym_name * Common.Pos.pos option
+  | Type of where         * sym_name * Common.Pos.pos option
+  | Xhs  of inside * side *            Common.Pos.pos
 
  let pp_side fmt =
   function
@@ -233,9 +233,9 @@ module DB = struct
       | Type (where,(p,n),pos) ->
          Lplib.Base.out ppf "%a the type of %a.%s@%a@."
           pp_where where Core.Print.path p n Common.Pos.pp pos
-      | Xhs (where,side,pos) ->
-         Lplib.Base.out ppf "%a the %a of %a@."
-          pp_where where pp_side side Common.Pos.pp (Some pos))
+      | Xhs (inside,side,pos) ->
+         Lplib.Base.out ppf "%a %a of %a@."
+          pp_inside inside pp_side side Common.Pos.pp (Some pos))
    ""
 
  let pp_item_set fmt set = pp_item_list fmt (ItemSet.elements set)
@@ -377,7 +377,7 @@ let enter_pi_target ~is_prod =
   | Hypothesis _ -> Hypothesis Inside
   | Conclusion _ -> Conclusion Inside)
 
-let subterms_to_index t =
+let subterms_to_index ~is_spine t =
  let rec aux ~where t =
   let t = Core.Term.unfold t in
   [where,t] @
@@ -415,7 +415,7 @@ let subterms_to_index t =
   | TRef _  -> assert false (* destroyed by unfold *)
   | TEnv _ (* used in rewriting rules RHS *) ->
       assert false (* use term_of_rhs *)
- in aux ~where:(Spine Exact) t
+ in aux ~where:(if is_spine then Spine Exact else Conclusion Exact) t
 
 let insert_rigid t v =
  if not (is_flexible t) then begin
@@ -423,7 +423,7 @@ let insert_rigid t v =
   (* assert (List.mem v (DB.search t)); *)
  end
 
-let index_term_and_subterms t item =
+let index_term_and_subterms ~is_spine t item =
  let tn = normalize t in
  (*
  Format.printf "%a : %a REWRITTEN TO %a@."
@@ -433,7 +433,7 @@ let index_term_and_subterms t item =
   let res = compare where1 where2 in
   if res = 0 then Core.Term.cmp t1 t2 else res in
  let subterms =
-  List.sort_uniq cmp (subterms_to_index tn) in
+  List.sort_uniq cmp (subterms_to_index ~is_spine tn) in
  List.iter (fun (where,s) -> insert_rigid s (item where)) subterms
 
 let index_rule sym ({Core.Term.lhs=lhsargs ; rule_pos ; _} as rule) =
@@ -441,8 +441,11 @@ let index_rule sym ({Core.Term.lhs=lhsargs ; rule_pos ; _} as rule) =
  let lhs = Core.Term.add_args (Core.Term.mk_Symb sym) lhsargs in
  let rhs = Core.Term.term_of_rhs rule in
  let _ = (lhs,rhs,rule_pos) in
- index_term_and_subterms lhs (fun where -> (Xhs(where,Lhs,rule_pos))) ;
- index_term_and_subterms rhs (fun where -> (Xhs(where,Rhs,rule_pos)))
+ let get_inside = function | DB.Conclusion ins -> ins | _ -> assert false in
+ index_term_and_subterms ~is_spine:false lhs
+  (fun where -> (Xhs(get_inside where,Lhs,rule_pos))) ;
+ index_term_and_subterms ~is_spine:false rhs
+  (fun where -> (Xhs(get_inside where,Rhs,rule_pos)))
 
 let index_sym sym =
  let qname = name_of_sym sym in
@@ -450,7 +453,8 @@ let index_sym sym =
  DB.insert_name (snd qname) (Name (qname,sym.sym_pos)) ;
  (* Type + InType *)
  let typ = Timed.(!(sym.Core.Term.sym_type)) in
- index_term_and_subterms typ (fun where -> (Type (where,qname,sym.sym_pos))) ;
+ index_term_and_subterms ~is_spine:true typ
+  (fun where -> (Type (where,qname,sym.sym_pos))) ;
  (* InBody??? sym.sym_def : term option ref
     but all the subterms are too much; collect only the constants? *)
  (* Rules *)
