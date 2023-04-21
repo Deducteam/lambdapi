@@ -297,7 +297,8 @@ let find_sym ~prt:_prt ~prv:_prv _sig_state {elt=(mp,name); pos} =
 
 let search_pterm ~holes_in_index pterm =
  let sig_state = Core.Sig_state.dummy in
- let env = [] in
+ let env =
+  ["V#",(Bindlib.new_var mk_Vari "V#" ,Bindlib.box Term.mk_Type,None) ] in
  let query = Parsing.Scope.scope_lhs ~find_sym false sig_state env pterm in
  DB.search ~holes_in_index query
 
