@@ -284,9 +284,7 @@ let find_sym ~prt:_prt ~prv:_prv _sig_state {elt=(mp,name); pos} =
              Common.Path.pp mp ;
            mp
        | Some _ -> assert false) (* locate only returns DB.Name*)
-  | _::_ ->
-    Common.Error.fatal pos "Bad input: %a.%s should be a non-qualified name."
-     Core.Print.path mp name
+  | _::_ -> mp
  in
   Core.Term.create_sym mp Core.Term.Public Core.Term.Defin Core.Term.Sequen
    false (Common.Pos.make pos name) Core.Term.mk_Type []
