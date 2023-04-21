@@ -282,7 +282,7 @@ let find_sym ~prt:_prt ~prv:_prv _sig_state {elt=(mp,name); pos} =
     [] ->
      let res = DB.locate_name name in
      (match DB.ItemSet.choose_opt res with
-       | None -> Common.Error.fatal pos "Unknown object %s." name
+       | None -> Common.Error.fatal pos "Unknown symbol %s." name
        | Some (DB.Name ((mp,_),_)) ->
           if DB.ItemSet.cardinal res > 1 then
            Common.Error.wrn pos
@@ -352,12 +352,7 @@ let rec is_flexible t =
      let _, t = Bindlib.unbind b in
      is_flexible t
   | Vari _ | Type | Kind | Symb _ | Prod _ | Abst _ -> false
-  | Meta _
-  | Plac _ -> assert false (* not for meta-closed terms *)
-  | Wild -> assert false (* used only by tactics and reduction *)
-  | TRef _  -> assert false (* destroyed by unfold *)
-  | TEnv _ (* used in rewriting rules RHS *) ->
-      assert false (* use term_of_rhs *)
+  | Meta _ | Plac _ | Wild | TRef _ | TEnv _ -> assert false
 
 let enter =
  DB.(function
@@ -410,12 +405,7 @@ let subterms_to_index ~is_spine t =
      let _, t3 = Bindlib.unbind b in
      aux ~where:(enter where) t1 @ aux ~where:(enter where) t2 @
       aux ~where:(enter where) t3
-  | Meta _
-  | Plac _ -> assert false (* not for meta-closed terms *)
-  | Wild -> assert false (* used only by tactics and reduction *)
-  | TRef _  -> assert false (* destroyed by unfold *)
-  | TEnv _ (* used in rewriting rules RHS *) ->
-      assert false (* use term_of_rhs *)
+  | Meta _ | Plac _ | Wild | TRef _ | TEnv _ -> assert false
  in aux ~where:(if is_spine then Spine Exact else Conclusion Exact) t
 
 let insert_rigid t v =
@@ -438,7 +428,12 @@ let index_term_and_subterms ~is_spine t item =
  List.iter (fun (where,s) -> insert_rigid s (item where)) subterms
 
 let index_rule sym ({Core.Term.lhs=lhsargs ; rule_pos ; _} as rule) =
- let rule_pos = match rule_pos with None -> assert false | Some pos -> pos in
+ let rule_pos =
+   match rule_pos with
+    | None -> assert false (* this probably may happen, but it is BAD!
+                              I leave the assert false to detect when it
+                              happens and let the team decide what to do *)
+    | Some pos -> pos in
  let lhs = Core.Term.add_args (Core.Term.mk_Symb sym) lhsargs in
  let rhs = Core.Term.term_of_rhs rule in
  let _ = (lhs,rhs,rule_pos) in
