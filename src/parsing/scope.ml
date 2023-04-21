@@ -63,6 +63,8 @@ type mode =
   (** Scoping mode for patterns in the rewrite tactic. *)
   | M_LHS of lhs_data
   (** Scoping mode for rewriting rule left-hand sides. *)
+  | M_SearchPatt of (int -> meta option) * lhs_data
+  (** Scoping mode for search queries *)
   | M_RHS of
       { m_rhs_prv  : bool
       (** True if private symbols are allowed. *)
@@ -91,9 +93,10 @@ type mode =
 let scope_iden : ?find_sym:find_sym ->
   mode -> sig_state -> env -> p_qident -> tbox =
   fun ?find_sym md ss env qid ->
-  let prt = match md with M_LHS _ -> true | _ -> false
+  let prt = match md with M_LHS _ | M_SearchPatt _ -> true | _ -> false
   and prv =
     match md with
+    | M_SearchPatt _ -> true
     | M_LHS(d) -> d.m_lhs_prv
     | M_Term(d) -> d.m_term_prv
     | M_RHS(d) -> d.m_rhs_prv
@@ -232,7 +235,10 @@ and scope_parsed : ?find_sym:find_sym ->
 and add_impl : ?find_sym:find_sym -> int -> mode -> sig_state ->
                Env.t -> popt -> tbox -> bool list -> p_term list -> tbox =
   fun ?find_sym k md ss env loc h impl args ->
-  let appl = match md with M_LHS _ -> _Appl_not_canonical | _ -> _Appl in
+  let appl =
+   match md with
+      M_LHS _ | M_SearchPatt _ -> _Appl_not_canonical
+    | _ -> _Appl in
   let appl_p_term t u = appl t (scope_parsed ?find_sym (k+1) md ss env u) in
   let appl_meta t = appl t (scope_head ?find_sym (k+1) md ss env P.wild) in
   match impl, args with
@@ -265,7 +271,7 @@ and scope_domain : ?find_sym:find_sym ->
   int -> mode -> sig_state -> env -> p_term option -> tbox =
   fun ?find_sym k md ss env a ->
   match a, md with
-  | (Some {elt=P_Wild;_}|None), M_LHS data ->
+  | (Some {elt=P_Wild;_}|None), (M_LHS data | M_SearchPatt (_,data)) ->
       fresh_patt data None (Env.to_tbox env)
   | (Some {elt=P_Wild;_}|None), _ -> _Plac true
   | Some a, _ -> scope ?find_sym ~typ:true k md ss env a
@@ -349,11 +355,13 @@ and scope_head : ?find_sym:find_sym ->
       x
     in
     _TEnv (_TE_Vari x) (Env.to_tbox env)
-  | (P_Wild, M_LHS data) -> fresh_patt data None (Env.to_tbox env)
+  | (P_Wild, (M_LHS data | M_SearchPatt (_,data))) ->
+      fresh_patt data None (Env.to_tbox env)
   | (P_Wild, M_Patt) -> _Wild
   | (P_Wild, (M_RHS _|M_Term _)) -> _Plac typ
 
-  | (P_Meta({elt;pos} as mk,ts), M_Term {m_term_meta_of_key;_}) -> (
+  | (P_Meta({elt;pos} as mk,ts),
+    (M_Term {m_term_meta_of_key;_} | M_SearchPatt(m_term_meta_of_key,_))) -> (
       match m_term_meta_of_key elt with
       | None ->
           fatal pos "Metavariable %a not found among generated variables: \
@@ -362,7 +370,7 @@ and scope_head : ?find_sym:find_sym ->
       | Some m -> _Meta m (Array.map (scope ?find_sym (k + 1) md ss env) ts))
   | (P_Meta(_), _) -> fatal t.pos "Metavariables are not allowed here."
 
-  | (P_Patt(id,ts), M_LHS(d)) ->
+  | (P_Patt(id,ts), (M_LHS(d) | M_SearchPatt(_,d))) ->
       (* Check that [ts] are variables. *)
       let scope_var t =
         match unfold (Bindlib.unbox (scope ?find_sym (k+1) md ss env t)) with
@@ -459,7 +467,7 @@ and scope_head : ?find_sym:find_sym ->
   | (P_Prod(xs,b), _) ->
       scope_binder ?find_sym ~typ:true k md ss _Prod env xs (Some b)
 
-  | (P_LLet(x,xs,a,t,u), (M_Term _|M_URHS _|M_RHS _)) ->
+  | (P_LLet(x,xs,a,t,u), (M_Term _|M_URHS _|M_RHS _|M_SearchPatt _)) ->
       let a = scope_binder ?find_sym ~typ:true (k+1) md ss _Prod env xs a in
       let t = scope_binder ?find_sym (k+1) md ss _Abst env xs (Some(t)) in
       let v = new_tvar x.elt in
@@ -486,10 +494,10 @@ let scope =
   Debug.(record_time Scoping
            (fun () -> r := scope ?find_sym ~typ k md ss env t)); !r
 
-(** [scope ~find_sym ~typ ~mok prv ss env t] turns a pterm [t] into a
+(** [scope_term ~find_sym ~typ ~mok prv ss env t] turns a pterm [t] into a
     term in the signature state [ss] and environment [env] (for bound
-    variables). If [prv] is [true], then the term must not
-    contain any private subterms. If [~typ] is [true], then [t] must be
+    variables). If [prv] is [true], then the term can
+    contain private symbols. If [~typ] is [true], then [t] must be
     a type (defaults to [false]). No {b new} metavariables may appear in
     [t], but metavariables in the image of [mok] may be used. The function
     [mok] defaults to the function constant to [None]. The function
@@ -501,23 +509,22 @@ let scope_term :
   let md = M_Term {m_term_meta_of_key=mok; m_term_prv} in
   Bindlib.unbox (scope ?find_sym ~typ 0 md ss env t)
 
-(** [scope ~find_sym ~typ prv ss env t] turns a pterm [t] meant to
-    be a lhs of a rewrite rule into a term in the signature state [ss]
-    and environment [env] (for bound variables). If [prv] is [true], then
-    the term must not contain any private subterms. If [~typ] is [true],
+(** [scope_search_pattern ~find_sym ~typ prv ss env t] turns a pterm [t] meant
+    to be a search patter into a term in the signature state [ss]
+    and environment [env] (for bound variables). If [~typ] is [true],
     then [t] must be a type (defaults to [false]). No {b new} metavariables
     may appear in [t]. The function [~find_sym] is used to scope symbol
     identifiers. *)
-let scope_lhs : ?find_sym:find_sym -> ?typ:bool ->
-  bool -> sig_state -> env -> p_term -> term =
-  fun ?find_sym ?(typ=false) m_term_prv ss env t ->
+let scope_search_pattern : ?find_sym:find_sym -> ?typ:bool ->
+  ?mok:(int -> meta option) -> sig_state -> env -> p_term -> term =
+  fun ?find_sym ?(typ=false) ?(mok=fun _ -> None) ss env t ->
   let md =
-   M_LHS{m_lhs_prv = m_term_prv
+   M_SearchPatt(mok,{m_lhs_prv = true
     ; m_lhs_indices = Hashtbl.create 7
     ; m_lhs_arities = Hashtbl.create 7
     ; m_lhs_names   = Hashtbl.create 7
     ; m_lhs_size    = 0
-    ; m_lhs_in_env  = [] } in
+    ; m_lhs_in_env  = [] }) in
   Bindlib.unbox (scope ?find_sym ~typ 0 md ss env t)
 
 (** [patt_vars t] returns a couple [(pvs,nl)]. The first compoment [pvs] is an

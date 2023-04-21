@@ -146,10 +146,6 @@ let handle : Sig_state.t -> proof_state option -> p_query -> result =
            | None -> fatal pos "Not in a definition")
   | P_query_locate_name {elt;_} ->
       return Tool.Indexing.pp_item_set (Tool.Indexing.locate_name elt)
-  | P_query_search (t,holes_in_index) ->
-      let env = Proof.focus_env ps in
-      return Tool.Indexing.pp_item_set
-       (Tool.Indexing.search_pterm ~holes_in_index env t)
   | _ ->
   let env = Proof.focus_env ps in
   let mok =
@@ -161,8 +157,10 @@ let handle : Sig_state.t -> proof_state option -> p_query -> result =
   let ctxt = Env.to_ctxt env in
   let p = new_problem() in
   match elt with
+  | P_query_search (t,holes_in_index) ->
+      return Tool.Indexing.pp_item_set
+       (Tool.Indexing.search_pterm ~holes_in_index ~mok env t)
   | P_query_locate_name _
-  | P_query_search _
   | P_query_debug(_,_)
   | P_query_verbose(_)
   | P_query_flag(_,_)

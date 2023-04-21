@@ -8,4 +8,5 @@ val dump : unit -> unit
 
 val locate_name : string -> ItemSet.t
 val search_pterm :
-  holes_in_index:bool -> Core.Env.env -> Parsing.Syntax.p_term -> ItemSet.t
+  holes_in_index:bool -> mok:(int -> Core.Term.meta option) -> Core.Env.env ->
+   Parsing.Syntax.p_term -> ItemSet.t

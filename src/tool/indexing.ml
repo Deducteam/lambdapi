@@ -295,11 +295,12 @@ let find_sym ~prt:_prt ~prv:_prv _sig_state {elt=(mp,name); pos} =
   Core.Term.create_sym mp Core.Term.Public Core.Term.Defin Core.Term.Sequen
    false (Common.Pos.make pos name) Core.Term.mk_Type []
 
-let search_pterm ~holes_in_index env pterm =
+let search_pterm ~holes_in_index ~mok env pterm =
  let sig_state = Core.Sig_state.dummy in
  let env =
   ("V#",(Bindlib.new_var mk_Vari "V#" ,Bindlib.box Term.mk_Type,None))::env in
- let query = Parsing.Scope.scope_lhs ~find_sym false sig_state env pterm in
+ let query =
+  Parsing.Scope.scope_search_pattern ~find_sym ~mok sig_state env pterm in
  DB.search ~holes_in_index query
 
 module QNameMap =

@@ -25,7 +25,8 @@ let search_cmd cfg holes_in_index s =
   let ptermstream = Parsing.Parser.Lp.parse_term_string "LPSearch" s in
   try
    let pterm = Stream.next ptermstream in
-   let items = Tool.Indexing.search_pterm ~holes_in_index [] pterm in
+   let mok _ = None in
+   let items = Tool.Indexing.search_pterm ~holes_in_index ~mok [] pterm in
    out Format.std_formatter "%a@." Tool.Indexing.pp_item_set items
   with
    Stream.Failure ->
