@@ -20,12 +20,12 @@ module CLT = Cmdliner.Term
 module LPSearchMain =
 struct
 
-let search_cmd cfg s =
+let search_cmd cfg holes_in_index s =
   Config.init cfg;
   let ptermstream = Parsing.Parser.Lp.parse_term_string "LPSearch" s in
   try
    let pterm = Stream.next ptermstream in
-   let items = Tool.Indexing.search_pterm pterm in
+   let items = Tool.Indexing.search_pterm ~holes_in_index pterm in
    out Format.std_formatter "%a@." Tool.Indexing.pp_item_set items
   with
    Stream.Failure ->
@@ -398,6 +398,12 @@ let add_only_arg : bool CLT.t =
     "Adds more terms to the index without cleaning it first." in
   Arg.(value & flag & info ["add"] ~doc)
 
+let holes_in_index_arg : bool CLT.t =
+  let doc =
+    "Allow to match patterns against terms indexed instantiating products \
+     with holes." in
+  Arg.(value & flag & info ["holes_in_index"] ~doc)
+
 let index_cmd =
  let doc = "Index the given files." in
  Cmd.v (Cmd.info "index" ~doc ~man:man_pkg_file)
@@ -407,7 +413,8 @@ let index_cmd =
 let search_cmd =
  let doc = "Run a search query against the index." in
  Cmd.v (Cmd.info "search" ~doc ~man:man_pkg_file)
-  Cmdliner.Term.(const LPSearchMain.search_cmd $ Config.full $ name_as_arg)
+  Cmdliner.Term.(const LPSearchMain.search_cmd $ Config.full $
+   holes_in_index_arg $ name_as_arg)
 
 let locate_cmd =
  let doc =

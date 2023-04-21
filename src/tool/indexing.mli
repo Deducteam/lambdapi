@@ -7,5 +7,5 @@ val index_sign : Core.Sign.t -> unit
 val dump : unit -> unit
 
 val locate_name : string -> ItemSet.t
-val search : Core.Term.term -> ItemSet.t
-val search_pterm : Parsing.Syntax.p_term -> ItemSet.t
+(*val search : holes_in_index:bool -> Core.Term.term -> ItemSet.t*)
+val search_pterm : holes_in_index:bool -> Parsing.Syntax.p_term -> ItemSet.t

@@ -150,24 +150,30 @@ let insert_name (namemap,index) name v =
    | Some l -> l in
  Lplib.Extra.StrMap.add name (v::vs) namemap, index
 
-let rec search_index index stack =
+let rec search_index ~holes_in_index index stack =
  match index,stack with
  | Leaf vs, [] -> vs
  | Choice l, t::s ->
     List.fold_right
-     (fun n res -> search_node n t s @ res) l []
+     (fun n res -> search_node ~holes_in_index n t s @ res) l []
  | _, _ -> assert false (* ill-typed term *)
-and search_node node term s =
+and search_node ~holes_in_index node term s =
  match node,term with
  | _, Patt _ ->
-     List.concat (List.map (fun i -> search_index i s) (match_flexible node))
- | IHOLE i, _ -> search_index i s
+     List.concat
+      (List.map
+        (fun i -> search_index ~holes_in_index i s) (match_flexible node))
+ | IHOLE i, _ when holes_in_index -> search_index ~holes_in_index i s
+ | IHOLE i, t -> search_node ~holes_in_index (IRigid(IVar,i)) t s
  | IRigid(r,i), t ->
      match match_rigid r t with
-     | s' -> search_index i (s'@s)
+     | s' -> search_index ~holes_in_index i (s'@s)
      | exception NoMatch -> []
 
-let search (_,index) term = search_index index [term]
+(* when [~holes_in_index] is fase, all holes in the index are matched
+   only by variables *)
+let search ~holes_in_index (_,index) term =
+ search_index ~holes_in_index index [term]
 let locate_name (namemap,_) name =
   match Lplib.Extra.StrMap.find_opt name namemap with None -> [] | Some l -> l
 
@@ -260,8 +266,8 @@ module DB = struct
    let db' = Pure.insert_name (Lazy.force !db) k v in
    db := lazy db'
 
- let search k =
-  ItemSet.of_list (Pure.search (Lazy.force !db) k)
+ let search ~holes_in_index  k =
+  ItemSet.of_list (Pure.search ~holes_in_index  (Lazy.force !db) k)
 
  let dump () = Pure.dump_to ~filename:dbpath (Lazy.force !db)
 
@@ -289,11 +295,11 @@ let find_sym ~prt:_prt ~prv:_prv _sig_state {elt=(mp,name); pos} =
   Core.Term.create_sym mp Core.Term.Public Core.Term.Defin Core.Term.Sequen
    false (Common.Pos.make pos name) Core.Term.mk_Type []
 
-let search_pterm pterm =
+let search_pterm ~holes_in_index pterm =
  let sig_state = Core.Sig_state.dummy in
  let env = [] in
  let query = Parsing.Scope.scope_lhs ~find_sym false sig_state env pterm in
- DB.search query
+ DB.search ~holes_in_index query
 
 module QNameMap =
  Map.Make(struct type t = sym_name let compare = Stdlib.compare end)

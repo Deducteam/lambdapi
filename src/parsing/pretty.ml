@@ -38,6 +38,7 @@ let _ = let open LpLexer in
     ; "flag", FLAG
     ; "generalize", GENERALIZE
     ; "have", HAVE
+    ; "holes_in_index", HOLES_IN_INDEX
     ; "in", IN
     ; "induction", INDUCTION
     ; "inductive", INDUCTIVE
@@ -257,7 +258,11 @@ let query : p_query pp = fun ppf { elt; _ } ->
   | P_query_proofterm -> out ppf "proofterm"
   | P_query_verbose i -> out ppf "verbose %s" i
   | P_query_locate_name s -> out ppf "locate %s" s.elt
-  | P_query_search t -> out ppf "search %a" term t
+  | P_query_search (t,b) ->
+     if b then
+      out ppf "search %a" term t
+     else
+      out ppf "search holes_in_index %a" term t
 
 let tactic : p_tactic pp = fun ppf { elt;  _ } ->
   begin match elt with

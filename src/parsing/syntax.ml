@@ -187,8 +187,9 @@ type p_query_aux =
   (** Print the current proof term (possibly containing open goals). *)
   | P_query_locate_name of strloc
   (** Resolves a symbol name using the search index *)
-  | P_query_search of p_term
-  (** Searches for a symbol whose type matches a given pattern *)
+  | P_query_search of p_term * bool
+  (** Searches for a symbol whose type matches a given pattern; the boolean
+      is the holes_in_index argument to search *)
 
 type p_query = p_query_aux loc
 
@@ -549,7 +550,7 @@ let fold_idents : ('a -> p_qident -> 'a) -> 'a -> p_command list -> 'a =
     | P_query_normalize (t, _) -> fold_term_vars vs a t
     | P_query_print (Some qid) -> f a qid
     | P_query_locate_name _ -> a
-    | P_query_search t -> fold_term_vars vs a t
+    | P_query_search (t,_) -> fold_term_vars vs a t
   in
 
   let fold_tactic : StrSet.t * 'a -> p_tactic -> StrSet.t * 'a =

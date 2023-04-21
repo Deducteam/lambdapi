@@ -43,6 +43,7 @@
 %token FLAG
 %token GENERALIZE
 %token HAVE
+%token HOLES_IN_INDEX
 %token IN
 %token INDUCTION
 %token INDUCTIVE
@@ -195,8 +196,10 @@ query:
     { make_pos $sloc (P_query_infer(t, {strategy=NONE; steps=None}))}
   | LOCATE s=uid
     { make_pos $sloc (P_query_locate_name s) }
+  | SEARCH HOLES_IN_INDEX t=term
+    { make_pos $sloc (P_query_search (t,true)) }
   | SEARCH t=term
-    { make_pos $sloc (P_query_search t) }
+    { make_pos $sloc (P_query_search (t,false)) }
 
 path:
   | UID { LpLexer.syntax_error $sloc "Unqualified identifier" }

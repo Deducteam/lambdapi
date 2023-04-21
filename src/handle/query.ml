@@ -146,8 +146,9 @@ let handle : Sig_state.t -> proof_state option -> p_query -> result =
            | None -> fatal pos "Not in a definition")
   | P_query_locate_name {elt;_} ->
       return Tool.Indexing.pp_item_set (Tool.Indexing.locate_name elt)
-  | P_query_search t ->
-      return Tool.Indexing.pp_item_set (Tool.Indexing.search_pterm t)
+  | P_query_search (t,holes_in_index) ->
+      return Tool.Indexing.pp_item_set
+       (Tool.Indexing.search_pterm ~holes_in_index t)
   | _ ->
   let env = Proof.focus_env ps in
   let mok =
