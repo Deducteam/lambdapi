@@ -145,9 +145,9 @@ let handle : Sig_state.t -> proof_state option -> p_query -> result =
            | Some m -> return term (mk_Meta(m,[||]))
            | None -> fatal pos "Not in a definition")
   | P_query_locate_name {elt;_} ->
-      return Tool.Indexing.pp_item_list (Tool.Indexing.locate_name elt)
+      return Tool.Indexing.pp_item_set (Tool.Indexing.locate_name elt)
   | P_query_search t ->
-      return Tool.Indexing.pp_item_list (Tool.Indexing.search_pterm t)
+      return Tool.Indexing.pp_item_set (Tool.Indexing.search_pterm t)
   | _ ->
   let env = Proof.focus_env ps in
   let mok =

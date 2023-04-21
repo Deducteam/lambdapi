@@ -191,8 +191,8 @@ module DB = struct
  type inside = Exact | Inside
  type where =
   | Spine of inside
-  | Hypothesis of inside
   | Conclusion of inside
+  | Hypothesis of inside
  type item =
   | Name of         sym_name * Common.Pos.pos option
   | Type of where * sym_name * Common.Pos.pos option
@@ -214,6 +214,9 @@ module DB = struct
    | Hypothesis ins -> Lplib.Base.out fmt "%a hypothesis of" pp_inside ins
    | Conclusion ins -> Lplib.Base.out fmt "%a conclusion of" pp_inside ins
 
+ module ItemSet =
+  Set.Make(struct type t = item let compare = compare end)
+
  let pp_item_list =
   Lplib.List.pp
    (fun ppf item ->
@@ -228,6 +231,8 @@ module DB = struct
          Lplib.Base.out ppf "%a the %a of %a@."
           pp_where where pp_side side Common.Pos.pp (Some pos))
    ""
+
+ let pp_item_set fmt set = pp_item_list fmt (ItemSet.elements set)
 
  (* disk persistence *)
 
@@ -255,12 +260,13 @@ module DB = struct
    let db' = Pure.insert_name (Lazy.force !db) k v in
    db := lazy db'
 
- let search k = Pure.search (Lazy.force !db) k
+ let search k =
+  ItemSet.of_list (Pure.search (Lazy.force !db) k)
 
  let dump () = Pure.dump_to ~filename:dbpath (Lazy.force !db)
 
  let locate_name name =
-  Pure.locate_name (Lazy.force !db) name
+  ItemSet.of_list (Pure.locate_name (Lazy.force !db) name)
 
 end
 
@@ -268,16 +274,19 @@ let find_sym ~prt:_prt ~prv:_prv _sig_state {elt=(mp,name); pos} =
  let mp =
   match mp with
     [] ->
-     (match DB.locate_name name with
-         [DB.Name ((mp,_),_)] -> mp
-       | [] -> Common.Error.fatal pos "Unknown object %s." name
-       | (DB.Name((mp,_),_))::_ ->
-          Common.Error.wrn pos
-           "Overloaded symbol %s, choosing the one declared in %a" name
-            Common.Path.pp mp ;
-          mp
-       | _::_ -> assert false)
-   | _::_ -> mp
+     let res = DB.locate_name name in
+     (match DB.ItemSet.choose_opt res with
+       | None -> Common.Error.fatal pos "Unknown object %s." name
+       | Some (DB.Name ((mp,_),_)) ->
+          if DB.ItemSet.cardinal res > 1 then
+           Common.Error.wrn pos
+            "Overloaded symbol %s, choosing the one declared in %a" name
+             Common.Path.pp mp ;
+           mp
+       | Some _ -> assert false) (* locate only returns DB.Name*)
+  | _::_ ->
+    Common.Error.fatal pos "Bad input: %a.%s should be a non-qualified name."
+     Core.Print.path mp name
  in
   Core.Term.create_sym mp Core.Term.Public Core.Term.Defin Core.Term.Sequen
    false (Common.Pos.make pos name) Core.Term.mk_Type []

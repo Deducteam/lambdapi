@@ -26,7 +26,7 @@ let search_cmd cfg s =
   try
    let pterm = Stream.next ptermstream in
    let items = Tool.Indexing.search_pterm pterm in
-   out Format.std_formatter "%a@." Tool.Indexing.pp_item_list items
+   out Format.std_formatter "%a@." Tool.Indexing.pp_item_set items
   with
    Stream.Failure ->
     Common.Error.fatal_no_pos "Syntax error: a term is expected"
@@ -34,7 +34,7 @@ let search_cmd cfg s =
 let locate_cmd cfg name =
   Config.init cfg;
   let items = Tool.Indexing.locate_name name in
-  out Format.std_formatter "%a@." Tool.Indexing.pp_item_list items
+  out Format.std_formatter "%a@." Tool.Indexing.pp_item_set items
 
 let index file =
  let sign =
