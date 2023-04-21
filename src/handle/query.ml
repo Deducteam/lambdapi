@@ -147,8 +147,9 @@ let handle : Sig_state.t -> proof_state option -> p_query -> result =
   | P_query_locate_name {elt;_} ->
       return Tool.Indexing.pp_item_set (Tool.Indexing.locate_name elt)
   | P_query_search (t,holes_in_index) ->
+      let env = Proof.focus_env ps in
       return Tool.Indexing.pp_item_set
-       (Tool.Indexing.search_pterm ~holes_in_index t)
+       (Tool.Indexing.search_pterm ~holes_in_index env t)
   | _ ->
   let env = Proof.focus_env ps in
   let mok =
