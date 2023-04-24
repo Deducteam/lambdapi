@@ -180,3 +180,59 @@ let end_proof : proof_state -> command_result =
 
 let get_symbols : state -> Term.sym Extra.StrMap.t =
   fun (_, ss) -> ss.in_scope
+
+(* Equality on *)
+let test_file = "./tests/foo.lp"
+
+let%test _ =
+  let st = initial_state test_file in
+  let (c,_) = parse_text st ~fname:test_file "constant symbol B : TYPE;" in
+  List.equal Command.equal c c
+
+(* Equality not *)
+let%test _ =
+  let st = initial_state test_file in
+  let (c,_) = parse_text st ~fname:test_file "constant symbol B : TYPE;" in
+  let (d,_) = parse_text st ~fname:test_file "constant symbol C : TYPE;" in
+  not (List.equal Command.equal c d)
+
+(* Equality is not sensitive to whitespace *)
+let%test _ =
+  let st = initial_state test_file in
+  let (c,_) = parse_text st ~fname:test_file "constant   symbol  B : TYPE;" in
+  let (d,_) = parse_text st ~fname:test_file "  constant symbol B :   TYPE; " in
+  List.equal Command.equal c d
+
+(* More complex test stressing most commands *)
+let%test _ =
+  let st = initial_state test_file in
+  let (c,_) = parse_text st ~fname:test_file
+                (* copied from tests/OK/foo.lp. keep in sync. *)
+"constant symbol B : TYPE;
+
+constant symbol true  : B;
+constant symbol false : B;
+
+symbol neg : B → B;
+
+rule neg true  ↪ false;
+rule neg false ↪ true;
+
+constant symbol Prop : TYPE;
+
+injective symbol P : Prop → TYPE;
+
+constant symbol eq : B → B → Prop;
+constant symbol refl b : P (eq b b);
+
+constant symbol case (p : B → Prop) : P (p true) → P (p false) → Π b, P b;
+
+opaque symbol notK : Π b, P (eq (neg (neg b)) b)
+≔ begin
+  assume b;
+  apply case (λ b, eq (neg (neg b)) b)
+  {apply refl}
+  {apply refl}
+end;
+" in
+  List.equal Command.equal c c
