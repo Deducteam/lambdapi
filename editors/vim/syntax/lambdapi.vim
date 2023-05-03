@@ -13,6 +13,9 @@ endif
 syntax keyword Todo contained TODO FIXME NOTE
 syntax region Comment start="//\($\|[^/]\)" end="$" contains=Todo
 
+" Multi-line comments.
+syntax region Comment start="/\*" end="\*/" contains=Todo
+
 " Documentation comments (FIXME).
 syntax include @markdown syntax/markdown.vim
 syntax region Comment start="///" end="$" contains=@markdown
