@@ -31,6 +31,7 @@
 %token <bool> ASSERT
 %token ASSOCIATIVE
 %token ASSUME
+%token REMOVE
 %token BEGIN
 %token BUILTIN
 %token COERCE_RULE
@@ -304,6 +305,7 @@ tactic:
   | ADMIT { make_pos $sloc P_tac_admit }
   | APPLY t=term { make_pos $sloc (P_tac_apply t) }
   | ASSUME xs=param+ { make_pos $sloc (P_tac_assume xs) }
+  | REMOVE xs=uid+ { make_pos $sloc (P_tac_remove xs) }
   | FAIL { make_pos $sloc P_tac_fail }
   | GENERALIZE i=uid { make_pos $sloc (P_tac_generalize i) }
   | HAVE i=uid COLON t=term { make_pos $sloc (P_tac_have(i,t)) }

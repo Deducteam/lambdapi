@@ -38,6 +38,7 @@ syntax keyword KeywordOK contained assert
 syntax keyword KeywordOK contained assertnot
 syntax keyword KeywordOK contained associative
 syntax keyword KeywordOK contained assume
+syntax keyword KeywordOK contained remove
 syntax keyword KeywordOK contained begin
 syntax keyword KeywordOK contained builtin
 syntax keyword KeywordOK contained coerce
@@ -101,6 +102,7 @@ syntax keyword KeywordKO contained assert
 syntax keyword KeywordKO contained assertnot
 syntax keyword KeywordKO contained associative
 syntax keyword KeywordKO contained assume
+syntax keyword KeywordKO contained remove
 syntax keyword KeywordKO contained begin
 syntax keyword KeywordKO contained builtin
 syntax keyword KeywordKO contained coerce

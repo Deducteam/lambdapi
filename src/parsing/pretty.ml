@@ -263,6 +263,8 @@ let tactic : p_tactic pp = fun ppf { elt;  _ } ->
   | P_tac_apply t -> out ppf "apply %a" term t
   | P_tac_assume ids ->
       out ppf "assume%a" (List.pp (unit " " |+ param_id) "") ids
+  | P_tac_remove ids ->
+      out ppf "remove%a"  (List.pp (unit " " |+ ident) "") ids
   | P_tac_fail -> out ppf "fail"
   | P_tac_generalize id -> out ppf "generalize %a" ident id
   | P_tac_have (id, t) -> out ppf "have %a: %a" ident id term t
