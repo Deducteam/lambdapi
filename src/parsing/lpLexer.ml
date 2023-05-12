@@ -38,7 +38,6 @@ type token =
   | ASSERT of bool (* true for "assertnot" *)
   | ASSOCIATIVE
   | ASSUME
-  | REMOVE
   | BEGIN
   | BUILTIN
   | COERCE_RULE
@@ -71,6 +70,7 @@ type token =
   | QUANTIFIER
   | REFINE
   | REFLEXIVITY
+  | REMOVE
   | REQUIRE
   | REWRITE
   | RULE
