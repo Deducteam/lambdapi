@@ -239,16 +239,6 @@ let handle :
       Syntax.check_distinct idopts;
       let p = new_problem() in
       tac_refine pos ps gt gs p (scope (P.abst_list idopts P.wild))
-  | P_tac_remove ids ->
-    let p = new_problem() in
-    let hyps_to_remove = List.map (fun i -> i.elt) ids in
-    let hyps_after_remove =
-      List.filter (fun (id, _) -> not (List.mem id hyps_to_remove))
-        gt.goal_hyps in
-    let t = Env.to_prod hyps_after_remove (lift gt.goal_type) in
-    let m = LibMeta.fresh p t (List.length hyps_after_remove)  in
-    let gt' = Goal.of_meta m in
-      {ps with proof_goals = gt'::gs }
   | P_tac_generalize {elt=id; pos=idpos} ->
       (* From a goal [e1,id:a,e2 ⊢ ?[e1,id,e2] : u], generate a new goal [e1 ⊢
          ?m[e1] : Π id:a, Π e2, u], and refine [?[e]] with [?m[e1] id e2]. *)
@@ -311,6 +301,16 @@ let handle :
         tac_refine pos ps gt gs (new_problem()) prf
       | _ -> assert false
       end
+  | P_tac_remove ids ->
+    let p = new_problem() in
+    let hyps_to_remove = List.map (fun i -> i.elt) ids in
+    let hyps_after_remove =
+      List.filter (fun (id, _) -> not (List.mem id hyps_to_remove))
+        gt.goal_hyps in
+    let t = Env.to_prod hyps_after_remove (lift gt.goal_type) in
+    let m = LibMeta.fresh p t (List.length hyps_after_remove)  in
+    let gt' = Goal.of_meta m in
+      {ps with proof_goals = gt'::gs }
   | P_tac_rewrite(l2r,pat,eq) ->
       let pat = Option.map (Scope.scope_rw_patt ss env) pat in
       let p = new_problem() in
