@@ -242,7 +242,9 @@ let handle :
   | P_tac_remove ids ->
     let p = new_problem() in
     let hyps_to_remove = List.map (fun i -> i.elt) ids in
-    let hyps_after_remove = List.filter (fun (id, _) -> not (List.mem id hyps_to_remove)) gt.goal_hyps in
+    let hyps_after_remove =
+      List.filter (fun (id, _) -> not (List.mem id hyps_to_remove))
+        gt.goal_hyps in
     let t = Env.to_prod hyps_after_remove (lift gt.goal_type) in
     let m = LibMeta.fresh p t (List.length hyps_after_remove)  in
     let gt' = Goal.of_meta m in

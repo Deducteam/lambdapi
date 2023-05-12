@@ -263,8 +263,6 @@ let tactic : p_tactic pp = fun ppf { elt;  _ } ->
   | P_tac_apply t -> out ppf "apply %a" term t
   | P_tac_assume ids ->
       out ppf "assume%a" (List.pp (unit " " |+ param_id) "") ids
-  | P_tac_remove ids ->
-      out ppf "remove%a"  (List.pp (unit " " |+ ident) "") ids
   | P_tac_fail -> out ppf "fail"
   | P_tac_generalize id -> out ppf "generalize %a" ident id
   | P_tac_have (id, t) -> out ppf "have %a: %a" ident id term t
@@ -272,6 +270,8 @@ let tactic : p_tactic pp = fun ppf { elt;  _ } ->
   | P_tac_query q -> query ppf q
   | P_tac_refine t -> out ppf "refine %a" term t
   | P_tac_refl -> out ppf "reflexivity"
+  | P_tac_remove ids ->
+      out ppf "remove%a"  (List.pp (unit " " |+ ident) "") ids
   | P_tac_rewrite(b,p,t)     ->
       let dir ppf b = if not b then out ppf " left" in
       let pat ppf p = out ppf " .[%a]" rw_patt p in

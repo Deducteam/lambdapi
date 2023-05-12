@@ -202,7 +202,6 @@ let rec token lb =
   | "assertnot" -> ASSERT true
   | "associative" -> ASSOCIATIVE
   | "assume" -> ASSUME
-  | "remove" -> REMOVE
   | "begin" -> BEGIN
   | "builtin" -> BUILTIN
   | "coerce_rule" -> COERCE_RULE
@@ -238,6 +237,7 @@ let rec token lb =
   | "quantifier" -> QUANTIFIER
   | "refine" -> REFINE
   | "reflexivity" -> REFLEXIVITY
+  | "remove" -> REMOVE
   | "require" -> REQUIRE
   | "rewrite" -> REWRITE
   | "right" -> SIDE(Pratter.Right)

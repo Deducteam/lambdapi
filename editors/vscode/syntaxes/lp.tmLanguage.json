@@ -25,7 +25,7 @@
   ],
   "repository": {
     "commands": {
-      "match": "\\b(abort|admit|admitted|apply|as|assert|assertnot|associative|assume|remove|begin|builtin|commutative|compute|constant|debug|end|fail|flag|focus|generalize|have|in|induction|inductive|infix|injective|left|let|notation|off|on|open|opaque|postfix|prefix|print|private|proofterm|protected|prover|prover_timeout|quantifier|refine|reflexivity|require|rewrite|rule|sequential|simplify|symbol|symmetry|type|TYPE|unif_rule|why3|with)\\b",
+      "match": "\\b(abort|admit|admitted|apply|as|assert|assertnot|associative|assume|begin|builtin|commutative|compute|constant|debug|end|fail|flag|focus|generalize|have|in|induction|inductive|infix|injective|left|let|notation|off|on|open|opaque|postfix|prefix|print|private|proofterm|protected|prover|prover_timeout|quantifier|refine|reflexivity|remove|require|rewrite|rule|sequential|simplify|symbol|symmetry|type|TYPE|unif_rule|why3|with)\\b",
       "name": "keyword.control.lp"
     },
     "comments": {
@@ -44,7 +44,7 @@
     },
 
     "tactics": {
-      "match": "\\b(apply|assume|remove|fail|focus|generalize|have|induction|refine|reflexivity|rewrite|simplify|solve|symmetry|why3)\\b",
+      "match": "\\b(apply|assume|fail|focus|generalize|have|induction|refine|reflexivity|remove|rewrite|simplify|solve|symmetry|why3)\\b",
       "name": "keyword.control.tactics.lp"
     },
 

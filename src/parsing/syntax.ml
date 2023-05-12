@@ -193,7 +193,6 @@ type p_tactic_aux =
   | P_tac_admit
   | P_tac_apply of p_term
   | P_tac_assume of p_ident option list
-  | P_tac_remove of p_ident list
   | P_tac_fail
   | P_tac_generalize of p_ident
   | P_tac_have of p_ident * p_term
@@ -201,6 +200,7 @@ type p_tactic_aux =
   | P_tac_query of p_query
   | P_tac_refine of p_term
   | P_tac_refl
+  | P_tac_remove of p_ident list
   | P_tac_rewrite of bool * p_rw_patt option * p_term
   (* The boolean indicates if the equation is applied from left to right. *)
   | P_tac_simpl of p_qident option
@@ -557,7 +557,8 @@ let fold_idents : ('a -> p_qident -> 'a) -> 'a -> p_command list -> 'a =
         (vs, fold_term_vars vs (fold_rw_patt_vars vs a p) t)
     | P_tac_query q -> (vs, fold_query_vars vs a q)
     | P_tac_assume idopts -> (add_idopts vs idopts, a)
-    | P_tac_remove idopts -> (List.fold_left (fun vs id -> StrSet.add id.elt vs) vs idopts, a)
+    | P_tac_remove idopts ->
+        (List.fold_left (fun vs id -> StrSet.add id.elt vs) vs idopts, a)
     | P_tac_have(id,t) -> (StrSet.add id.elt vs, fold_term_vars vs a t)
     | P_tac_simpl (Some qid) -> (vs, f a qid)
     | P_tac_simpl None

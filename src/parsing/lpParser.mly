@@ -31,7 +31,6 @@
 %token <bool> ASSERT
 %token ASSOCIATIVE
 %token ASSUME
-%token REMOVE
 %token BEGIN
 %token BUILTIN
 %token COERCE_RULE
@@ -64,6 +63,7 @@
 %token QUANTIFIER
 %token REFINE
 %token REFLEXIVITY
+%token REMOVE
 %token REQUIRE
 %token REWRITE
 %token RULE
@@ -305,13 +305,13 @@ tactic:
   | ADMIT { make_pos $sloc P_tac_admit }
   | APPLY t=term { make_pos $sloc (P_tac_apply t) }
   | ASSUME xs=param+ { make_pos $sloc (P_tac_assume xs) }
-  | REMOVE xs=uid+ { make_pos $sloc (P_tac_remove xs) }
   | FAIL { make_pos $sloc P_tac_fail }
   | GENERALIZE i=uid { make_pos $sloc (P_tac_generalize i) }
   | HAVE i=uid COLON t=term { make_pos $sloc (P_tac_have(i,t)) }
   | INDUCTION { make_pos $sloc P_tac_induction }
   | REFINE t=term { make_pos $sloc (P_tac_refine t) }
   | REFLEXIVITY { make_pos $sloc P_tac_refl }
+  | REMOVE xs=uid+ { make_pos $sloc (P_tac_remove xs) }
   | REWRITE d=SIDE? p=rw_patt_spec? t=term
     { let b = match d with Some Pratter.Left -> false | _ -> true in
       make_pos $sloc (P_tac_rewrite(b,p,t)) }
