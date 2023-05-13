@@ -85,6 +85,15 @@ If the focused typing goal is of the form ``Π x₁ … xₙ,T``, then
 ``assume h₁ … hₙ`` replaces it by ``T`` with ``xᵢ`` replaced by
 ``hᵢ``.
 
+.. _remove:
+
+``remove``
+----------
+
+``remove h₁ … hₙ`` erases the hypotheses ``h₁ … hₙ`` from the context of the current goal.
+The remaining hypotheses and the goal must not depend directly or indirectly on the erased hypotheses.
+The order of removed hypotheses is not relevant.
+
 .. _generalize:
 
 ``generalize``
