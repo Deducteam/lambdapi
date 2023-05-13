@@ -165,3 +165,11 @@ let sym_to_var : tvar StrMap.t -> term -> term = fun map ->
   and to_var_binder b =
     let (x,b) = Bindlib.unbind b in bind x lift (to_var b)
   in fun t -> if StrMap.is_empty map then t else to_var t
+
+(** [codom_binder n t] returns the [n]-th binder of [t] if [t] is a product of
+    arith >= [n]. *)
+let rec codom_binder : int -> term -> tbinder = fun n t ->
+  match unfold t with
+  | Prod(_,b) ->
+      if n <= 0 then b else codom_binder (n-1) (Bindlib.subst b mk_Kind)
+  | _ -> assert false

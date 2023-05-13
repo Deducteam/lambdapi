@@ -236,7 +236,7 @@ let handle :
       (* Check that the given identifiers are not already used. *)
       List.iter (Option.iter check) idopts;
       (* Check that the given identifiers are pairwise distinct. *)
-      Syntax.check_distinct idopts;
+      Syntax.check_distinct_idopts idopts;
       let p = new_problem() in
       tac_refine pos ps gt gs p (scope (P.abst_list idopts P.wild))
   | P_tac_generalize {elt=id; pos=idpos} ->
@@ -301,6 +301,44 @@ let handle :
         tac_refine pos ps gt gs (new_problem()) prf
       | _ -> assert false
       end
+  | P_tac_remove ids ->
+      (* Remove hypothesis [id] in goal [g]. *)
+      let remove g id =
+        match g with
+        | Unif _ -> assert false
+        | Typ gt ->
+            let k =
+              try List.pos (fun (s,_) -> s = id.elt) gt.goal_hyps
+              with Not_found -> fatal id.pos "Unknown hypothesis."
+            in
+            let m = gt.goal_meta in
+            let env = gt.goal_hyps in
+            let n = m.meta_arity - 1 in
+            let a = cleanup !(m.meta_type) in (* cleanup necessary *)
+            let b = LibTerm.codom_binder (n - k) a in
+            if Bindlib.binder_occur b then
+              fatal id.pos "%s cannot be removed because of dependencies."
+                id.elt;
+            let env' = List.filter (fun (s,_) -> s <> id.elt) env in
+            let a' = Env.to_prod env' (lift gt.goal_type) in
+            let p = new_problem() in
+            let m' = LibMeta.fresh p a' n in
+            let t = _Meta m' (Env.to_tbox env') in
+            let v = Bindlib.bind_mvar (Env.vars env) t in
+            LibMeta.set p m (Bindlib.unbox v);
+            Goal.of_meta m'
+      in
+      Syntax.check_distinct ids;
+      (* Reorder [ids] wrt their positions. *)
+      let n = gt.goal_meta.meta_arity - 1 in
+      let id_pos id =
+        try id, n - List.pos (fun (s,_) -> s = id.elt) gt.goal_hyps
+        with Not_found -> fatal id.pos "Unknown hypothesis."
+      in
+      let cmp (_,k1) (_,k2) = Stdlib.compare k2 k1 in
+      let ids = List.map fst (List.sort cmp (List.map id_pos ids)) in
+      let g = List.fold_left remove g ids in
+      {ps with proof_goals = g::gs}
   | P_tac_rewrite(l2r,pat,eq) ->
       let pat = Option.map (Scope.scope_rw_patt ss env) pat in
       let p = new_problem() in

@@ -299,3 +299,11 @@ let sequence_opt : 'a option list -> 'a list option = fun l ->
       (fun elt acc -> Option.Applicative.(pure cons <*> elt <*> acc))
       l
       (Option.Monad.return [])
+
+(** [pos f xs] returns the position (counting from 0) of the first element of
+    [xs] which satisfies [f], or raise [Not_found]. *)
+let pos : ('a -> bool) -> 'a list -> int = fun f ->
+  let rec pos k = function
+    | [] -> raise Not_found
+    | x::xs -> if f x then k else pos (k+1) xs
+  in pos 0

@@ -74,6 +74,7 @@ syntax keyword KeywordOK contained prover_timeout
 syntax keyword KeywordOK contained quantifier
 syntax keyword KeywordOK contained refine
 syntax keyword KeywordOK contained reflexivity
+syntax keyword KeywordOK contained remove
 syntax keyword KeywordOK contained require
 syntax keyword KeywordOK contained rewrite
 syntax keyword KeywordOK contained right
@@ -137,6 +138,7 @@ syntax keyword KeywordKO contained prover_timeout
 syntax keyword KeywordKO contained quantifier
 syntax keyword KeywordKO contained refine
 syntax keyword KeywordKO contained reflexivity
+syntax keyword KeywordKO contained remove
 syntax keyword KeywordKO contained require
 syntax keyword KeywordKO contained rewrite
 syntax keyword KeywordKO contained right
