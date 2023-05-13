@@ -574,8 +574,8 @@ let fold_idents : ('a -> p_qident -> 'a) -> 'a -> p_command list -> 'a =
         (vs, fold_term_vars vs (fold_rw_patt_vars vs a p) t)
     | P_tac_query q -> (vs, fold_query_vars vs a q)
     | P_tac_assume idopts -> (add_idopts vs idopts, a)
-    | P_tac_remove idopts ->
-        (List.fold_left (fun vs id -> StrSet.add id.elt vs) vs idopts, a)
+    | P_tac_remove ids ->
+        (List.fold_left (fun vs id -> StrSet.add id.elt vs) vs ids, a)
     | P_tac_have(id,t) -> (StrSet.add id.elt vs, fold_term_vars vs a t)
     | P_tac_simpl (Some qid) -> (vs, f a qid)
     | P_tac_simpl None

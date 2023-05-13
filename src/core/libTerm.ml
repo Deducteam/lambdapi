@@ -167,7 +167,7 @@ let sym_to_var : tvar StrMap.t -> term -> term = fun map ->
   in fun t -> if StrMap.is_empty map then t else to_var t
 
 (** [codom_binder n t] returns the [n]-th binder of [t] if [t] is a product of
-    arith >= n. *)
+    arith >= [n]. *)
 let rec codom_binder : int -> term -> tbinder = fun n t ->
   match unfold t with
   | Prod(_,b) ->
