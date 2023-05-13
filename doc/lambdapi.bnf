@@ -134,6 +134,7 @@ QID ::= [UID "."]+ UID
            | "induction"
            | "refine" <term>
            | "reflexivity"
+           | REMOVE <uid>+
            | "rewrite" [<side>] [<rw_patt_spec>] <term>
            | "simplify" [<qid_or_nat>]
            | "solve"
