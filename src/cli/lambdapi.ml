@@ -68,7 +68,7 @@ let parse_cmd : Config.t -> string list -> unit = fun cfg files ->
   Error.handle_exceptions run
 
 (** Possible outputs for the export command. *)
-type output = Lp | Dk | Hrs | Xtc | RawCoq | SttCoq
+type output = Lp | Dk | Hrs | Sol | Xtc | RawCoq | SttCoq
 
 (** Running the export mode. *)
 let export_cmd (cfg:Config.t) (output:output option) (encoding:string option)
@@ -85,6 +85,8 @@ let export_cmd (cfg:Config.t) (output:output option) (encoding:string option)
     | Some Dk -> Export.Dk.sign (Compile.compile_file file)
     | Some Hrs ->
       Export.Hrs.sign Format.std_formatter (Compile.compile_file file)
+    | Some Sol ->
+      Export.Sol.sign Format.std_formatter (Compile.compile_file file)
     | Some Xtc ->
       Export.Xtc.sign Format.std_formatter (Compile.compile_file file)
     | Some RawCoq ->
@@ -198,6 +200,7 @@ let output : output option CLT.t =
       | "lp" -> Ok Lp
       | "dk" -> Ok Dk
       | "hrs" -> Ok Hrs
+      | "sol" -> Ok Sol
       | "xtc" -> Ok Xtc
       | "raw_coq" -> Ok RawCoq
       | "stt_coq" -> Ok SttCoq
@@ -209,6 +212,7 @@ let output : output option CLT.t =
          | Lp -> "lp"
          | Dk -> "dk"
          | Hrs -> "hrs"
+         | Sol -> "Sol"
          | Xtc -> "xtc"
          | RawCoq -> "raw_coq"
          | SttCoq -> "stt_coq")
