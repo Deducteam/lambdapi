@@ -295,7 +295,7 @@ let iter_rec_rules :
   let case_arg_name cons_sym = cons_sym.sym_name in
 
   (* [arec sym_ind ts t] generates the application of the recursor of
-     [ind_sym] to the type parameters [ts] and the constructor argument
+     [sym_ind] to the type parameters [ts] and the constructor argument
      [t]. *)
   let arec : sym -> term list -> p_term -> p_term = fun sym_ind ts t ->
     (* Note: there cannot be name clashes between pattern variable names and
