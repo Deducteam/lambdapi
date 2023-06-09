@@ -7,8 +7,24 @@ open Core
 (** Representation of a (located) identifier. *)
 type p_ident = strloc
 
-(** [notin id idopts] checks that [id] does not occur in [idopts]. *)
-let check_notin : string -> p_ident option list -> unit = fun id ->
+(** [check_notin id ids] checks that [id] does not occur in [ids]. *)
+let check_notin : string -> p_ident list -> unit = fun id ->
+  let rec notin = function
+    | [] -> ()
+    | {elt=id';pos} :: ids ->
+        if id' = id then Error.fatal pos "%s already used." id
+        else notin ids
+  in notin
+
+(** [check_distinct ids] checks that the elements of [ids] are pairwise
+    distinct. *)
+let rec check_distinct : p_ident list -> unit = function
+  | [] -> ()
+  | id::ids -> check_notin id.elt ids; check_distinct ids
+
+(** [check_notin_idopts id idopts] checks that [id] does not occur in
+    [idopts]. *)
+let check_notin_idopts : string -> p_ident option list -> unit = fun id ->
   let rec notin = function
     | [] -> ()
     | None :: idopts -> notin idopts
@@ -17,12 +33,13 @@ let check_notin : string -> p_ident option list -> unit = fun id ->
         else notin idopts
   in notin
 
-(** [are_distinct idopts] checks that the elements of [idopts] of the form
-   [Some _] are pairwise distinct. *)
-let rec check_distinct : p_ident option list -> unit = function
+(** [check_distinct_idopts idopts] checks that the elements of [idopts] of the
+    form [Some _] are pairwise distinct. *)
+let rec check_distinct_idopts : p_ident option list -> unit = function
   | [] -> ()
-  | None :: idopts -> check_distinct idopts
-  | Some {elt=id;_} :: idopts -> check_notin id idopts; check_distinct idopts
+  | None :: idopts -> check_distinct_idopts idopts
+  | Some {elt=id;_} :: idopts ->
+      check_notin_idopts id idopts; check_distinct_idopts idopts
 
 (** Identifier of a metavariable. *)
 type p_meta_ident = int loc
@@ -200,6 +217,7 @@ type p_tactic_aux =
   | P_tac_query of p_query
   | P_tac_refine of p_term
   | P_tac_refl
+  | P_tac_remove of p_ident list
   | P_tac_rewrite of bool * p_rw_patt option * p_term
   (* The boolean indicates if the equation is applied from left to right. *)
   | P_tac_simpl of p_qident option
@@ -556,6 +574,8 @@ let fold_idents : ('a -> p_qident -> 'a) -> 'a -> p_command list -> 'a =
         (vs, fold_term_vars vs (fold_rw_patt_vars vs a p) t)
     | P_tac_query q -> (vs, fold_query_vars vs a q)
     | P_tac_assume idopts -> (add_idopts vs idopts, a)
+    | P_tac_remove ids ->
+        (List.fold_left (fun vs id -> StrSet.add id.elt vs) vs ids, a)
     | P_tac_have(id,t) -> (StrSet.add id.elt vs, fold_term_vars vs a t)
     | P_tac_simpl (Some qid) -> (vs, f a qid)
     | P_tac_simpl None

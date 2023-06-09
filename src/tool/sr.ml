@@ -145,9 +145,9 @@ let check_rule : Pos.popt -> sym_rule -> sym_rule =
         Stdlib.(symbols := SymSet.add s !symbols);
         (* Build a definition for [m]. *)
         let xs = Array.init m.meta_arity (new_var_ind "x") in
-        let s = mk_Symb s in
-        let def = Array.fold_left (fun t x -> _Appl t (mk_Vari x)) s xs in
-        m.meta_value := Some(bind_mvar xs def)
+        let app_var t x = _Appl t (mk_Vari x)) in
+        let d = Array.fold_left app_var (mk_Symb s) xs in
+        m.meta_value := Some(bind_mvar xs d)
     in
     Array.iter instantiate metas;
     Stdlib.(!symbols)
@@ -179,7 +179,8 @@ let check_rule : Pos.popt -> sym_rule -> sym_rule =
   if Logger.log_enabled () then
     log_subj "replace LHS metavariables by function symbols:@ %a ↪ %a"
       term lhs_with_metas term rhs_with_metas;
-  (* TODO complete the constraints into a set of rewriting rules. *)
+  (* TODO complete the constraints into a set of rewriting rules on
+     the function symbols of [symbols]. *)
   (* Compute the constraints for the RHS to have the same type as the LHS. *)
   let p = new_problem() in
   match Infer.check_noexn p [] rhs_with_metas ty_lhs with

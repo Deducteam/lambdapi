@@ -70,6 +70,7 @@ type token =
   | QUANTIFIER
   | REFINE
   | REFLEXIVITY
+  | REMOVE
   | REQUIRE
   | REWRITE
   | RULE
@@ -236,6 +237,7 @@ let rec token lb =
   | "quantifier" -> QUANTIFIER
   | "refine" -> REFINE
   | "reflexivity" -> REFLEXIVITY
+  | "remove" -> REMOVE
   | "require" -> REQUIRE
   | "rewrite" -> REWRITE
   | "right" -> SIDE(Pratter.Right)

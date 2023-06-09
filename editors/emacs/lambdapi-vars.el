@@ -13,6 +13,7 @@
     "have"
     "refine"
     "reflexivity"
+    "remove"
     "rewrite"
     "simplify"
     "solve"
