@@ -208,9 +208,8 @@ let check_rule : Scope.pre_rule Pos.loc -> rule = fun ({pos; elt} as pr) ->
         Stdlib.(symbols := s :: !symbols);
         (* Build a definition for [m]. *)
         let xs = Array.init m.meta_arity (new_tvar_ind "x") in
-        let s = _Symb s in
-        let def = Array.fold_left (fun t x -> _Appl t (_Vari x)) s xs in
-        m.meta_value := Some(Bindlib.unbox (Bindlib.bind_mvar xs def))
+        let d = Array.fold_left (fun t x -> _Appl t (_Vari x)) (_Symb s) xs in
+        m.meta_value := Some(Bindlib.unbox (Bindlib.bind_mvar xs d))
     in
     Array.iter instantiate metas;
     Stdlib.(!symbols)
@@ -218,7 +217,7 @@ let check_rule : Scope.pre_rule Pos.loc -> rule = fun ({pos; elt} as pr) ->
   if Logger.log_enabled () then
     log_subj "replace LHS metavariables by function symbols:@ %a ↪ %a"
       term lhs_with_metas term rhs_with_metas;
-  (* TODO complete the constraints into a set of rewriting rule on
+  (* TODO complete the constraints into a set of rewriting rules on
      the function symbols of [symbols]. *)
   (* Compute the constraints for the RHS to have the same type as the LHS. *)
   let p = new_problem() in

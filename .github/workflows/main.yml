@@ -19,9 +19,9 @@ jobs:
           path: ~/.opam
           key: ${{ runner.os }}-ocaml-${{ matrix.ocaml-version }}
       - name: setting up opam ...
-        uses: avsm/setup-ocaml@v1
+        uses: avsm/setup-ocaml@v2
         with:
-          ocaml-version: ${{ matrix.ocaml-version }}
+          ocaml-compiler: ${{ matrix.ocaml-version }}
       - name: installing dependencies ...
         run: |
           opam update
