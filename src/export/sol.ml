@@ -8,7 +8,7 @@ open Core open Term
 (** [syms] contains the set of symbols used in rules. *)
 let syms = ref SymSet.empty
 
-(** [add_sym s] add [s] in [!syms]. *)
+(** [add_sym s] add [s] in [!syms] and [!eqths] if it has axioms. *)
 let add_sym : sym -> unit = fun s -> syms := SymSet.add s !syms
 
 (** [sym s] translates the symbol [s]. *)
@@ -26,7 +26,6 @@ let rec term : term pp = fun ppf t ->
   match get_args t with
   | Symb s, [] -> add_sym s; sym ppf s
   | Symb s, ts -> add_sym s; out ppf "%a(%a)" sym s (List.pp term ",") ts
-(*| h, ts -> out ppf "(%a%a)" head h (List.pp (prefix " " term) "") ts*)
   | _ -> raw_term ppf t
 
 and raw_term : term pp = fun ppf t ->
@@ -113,11 +112,24 @@ let sign : Sign.t pp = fun ppf sign ->
   let ppf_rules = Format.formatter_of_buffer buf_rules in
   Sign.iterate (rules_of_sign ppf_rules) sign;
   Format.pp_print_flush ppf_rules ();
-  (* Function for printing the types of function symbols. *)
+  (* Function for declaring the types of function symbols. *)
   let pp_syms : SymSet.t pp = fun ppf syms ->
     let sym_decl : sym pp = fun ppf s ->
       out ppf "\n  %a : %a" sym s typ_decl Timed.(!(s.sym_type)) in
     SymSet.iter (sym_decl ppf) syms
+  in
+  (* Function for declaring the axioms of function symbols. *)
+  let pp_axioms : SymSet.t pp = fun ppf syms ->
+    let rec prop s ppf p =
+      match p with
+      | Commu -> out ppf "\n  (%a_com) %a(X,Y) = %a(Y,X)" sym s sym s sym s
+      | Assoc _ ->
+          out ppf "\n  (%a_assoc) %a(%a(X,Y),Z) = %a(X,%a(Y,Z))"
+            sym s sym s sym s sym s sym s
+      | AC _ -> prop s ppf Commu; prop s ppf (Assoc true)
+      | _ -> ()
+    in
+    SymSet.iter (fun s -> prop s ppf s.sym_prop) syms
   in
   out ppf "\
 sig = [signature|
@@ -125,4 +137,6 @@ sig = [signature|
 |]
 rules = [rule|
   (beta) app(x.M[x],N) => M[N]%s
-|]\n" pp_syms !syms (Buffer.contents buf_rules)
+|]
+axioms = [axiom|%a
+|]\n" pp_syms !syms (Buffer.contents buf_rules) pp_axioms !syms
