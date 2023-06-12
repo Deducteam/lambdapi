@@ -47,7 +47,7 @@ type rw_tag =
 
 (** [whnf ?problem ?tags c t] computes a whnf of the term [t] in context
     [c]. *)
-val whnf : ?problem:problem -> ?tags:rw_tag list -> ctxt -> term -> term
+val whnf : ?tags:rw_tag list -> ctxt -> term -> term
 
 (** [eq_modulo c a b] tests the convertibility of [a] and [b] in context
     [c]. *)
@@ -57,13 +57,13 @@ val eq_modulo : ctxt -> term -> term -> bool
    [c] with no side effects. *)
 val pure_eq_modulo : ctxt -> term -> term -> bool
 
-(** [snf ?problem ?tags c t] computes the strong normal form of the term [t]
+(** [snf ?tags c t] computes the strong normal form of the term [t]
     in the context [c]. *)
-val snf : ?problem:problem -> ?tags:rw_tag list -> ctxt -> term -> term
+val snf : ?tags:rw_tag list -> ctxt -> term -> term
 
 (** [hnf ?problem ?tags c t] computes a head-normal form of the term [t] in
     context [c]. *)
-val hnf : ?problem:problem -> ?tags:rw_tag list -> ctxt -> term -> term
+val hnf : ?tags:rw_tag list -> ctxt -> term -> term
 
 (** [simplify t] computes a beta whnf of [t] belonging to the set S such that:
     - terms of S are in beta whnf normal format
