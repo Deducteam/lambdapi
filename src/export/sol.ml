@@ -1,6 +1,16 @@
 (** This module provides a function to translate a signature to the format
    used by the SOL confluence and termination checker.
-   @see <https://github.com/ssl-gunma-univ/SOL> *)
+   @see <https://github.com/hamana55/sol>
+
+SOL allowed identifiers for types, function symbols, bound variables, rule
+names:
+- [0-9][a-zA-Z0-9_^'-!%/]*
+- <[a-zA-Z0-9_^'-*+!%/]+
+- [a-z_-%][a-zA-Z0-9_^'-*+!%/]+
+
+SOL allowed identifiers for metavariables:
+- [A-Z][a-zA-Z0-9_^'-*!%/<>]*
+*)
 
 open Lplib open Base open Extra
 open Core open Term
