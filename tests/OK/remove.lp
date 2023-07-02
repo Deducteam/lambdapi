@@ -2,7 +2,7 @@ symbol A:TYPE;
 symbol B:A → TYPE;
 symbol C a:B a → TYPE;
 
-debug +t;
+//debug +t;
 
 opaque symbol lemma : A → A ≔
 begin
