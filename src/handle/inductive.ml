@@ -209,7 +209,7 @@ let fold_cons_type
     | _ -> fatal pos "The type of %a is not supported" sym cons_sym
   in
   let _, t = Env.of_prod_using [] vs !(cons_sym.sym_type) in
-  fold (List.mapi inj_var (Array.to_list vs)) 0 init t
+  fold (List.rev_mapi inj_var (Array.to_list vs)) 0 init t
 
 (** [gen_rec_type c pos ind_list vs env ind_pred_map x_str] generates the
    induction principles for each type in the inductive definition [ind_list]
