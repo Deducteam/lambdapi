@@ -77,10 +77,10 @@ let try_unif_rules : problem -> ctxt -> term -> term -> bool =
   try
     let rhs =
       let start = add_args (mk_Symb equiv) [s;t] in
-      let reduced = Eval.whnf ~problem:p c start in
+      let reduced = Eval.whnf c start in
       if reduced != start then reduced else
         let start = add_args (mk_Symb equiv) [t;s] in
-        let reduced = Eval.whnf ~problem:p c start in
+        let reduced = Eval.whnf c start in
         if reduced != start then reduced else raise No_match
     in
     (* Refine generated unification problems to replace holes. *)
