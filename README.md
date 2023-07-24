@@ -30,6 +30,16 @@ Examples
 - [inductive-inductive type definition](https://github.com/Deducteam/lambdapi/blob/master/tests/OK/indind.lp)
 - [library on natural numbers, integers and polymorphic lists](https://github.com/Deducteam/lambdapi-stdlib)
 
+Some users
+----------
+
+- [Stephan Merz](https://members.loria.fr/Stephan.Merz/) and [Alessio Coltellacci](https://github.com/NotBad4U): certification of [TLAPS](https://tla.msr-inria.inria.fr/tlaps/content/Home.html) proofs
+- [Claude Stolze](https://perso.eleves.ens-rennes.fr/people/claude.stolze/): certification of [Atelier B](https://www.atelierb.eu/) proofs
+- [Jean-Paul Bodeveix](https://www.irit.fr/~Jean-Paul.Bodeveix/): certification of [Rodin](http://www.event-b.org/platform.html) proofs for Event-B
+- [Simon Guilloud](https://people.epfl.ch/simon.guilloud): certification of [LISA](https://github.com/epfl-lara/lisa) proofs
+- Thomas Traversié: [An Implementation of Set Theory with Pointed Graphs](https://hal.inria.fr/hal-03740004)
+- [Quentin Garchery](https://www.lri.fr/~garchery/): certification of [Why3](http://why3.lri.fr/) proof task transformations
+
 Operating systems
 -----------------
 

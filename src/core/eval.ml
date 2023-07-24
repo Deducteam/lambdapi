@@ -278,7 +278,7 @@ and whnf_stk : config -> term -> stack -> term * stack = fun cfg t stk ->
     machine is returned in case of success.  Even if matching fails, the stack
     [stk] may be imperatively updated since a reduction step taken in elements
     of the stack is preserved (this is done using
-    {!constructor:Term.term.TRef}).  *)
+    {!constructor:Term.term.TRef}). *)
 and tree_walk : config -> dtree -> stack -> (term * stack) option =
   fun cfg tree stk ->
   let (lazy capacity, lazy tree) = tree in

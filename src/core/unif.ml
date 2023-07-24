@@ -459,7 +459,7 @@ let solve : problem -> unit = fun p ->
     -> error t1 t2
 
   | ((Vari _|Abst _|Prod _), Symb s
-    | Symb s, (Type|Kind|Vari _|Abst _|Prod _)) when s.sym_prop = Const ->
+  | Symb s, (Type|Kind|Vari _|Abst _|Prod _)) when s.sym_prop = Const ->
     error t1 t2
 
   | Symb s1, Symb s2 -> sym_sym_whnf p c t1 s1 ts1 t2 s2 ts2

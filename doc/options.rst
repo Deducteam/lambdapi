@@ -83,7 +83,7 @@ export
 
 **WARNING**: The options ``raw_coq`` and ``stt_coq`` are still experimental.
 
-With the options ``raw_coq`` and ``stt_coq``, rules are ignored. The encoding of simple type theory can however be defined in Coq using `STTfa.v <https://github.com/Deducteam/lambdapi/blob/master/libraries/STTfa.v>`__.
+With the options ``raw_coq`` and ``stt_coq``, rules are ignored. The encoding of simple type theory can however be defined in Coq using `STTfa.v <https://github.com/Deducteam/lambdapi/blob/master/libraries/sttfa.v>`__.
 
 For the format ``stt_coq``, several other options are available:
 
@@ -104,7 +104,7 @@ For the format ``stt_coq``, several other options are available:
    builtin "all" ≔ ...; // : Π [a : Set], (El a → El prop) → El prop
    builtin "ex" ≔ ...; // : Π [a : Set], (El a → El prop) → El prop
 
-It tells Lambdapi which symbols of the input files are used for the encoding. The first argument ``a`` of the symbols corresponding to the builtins``"eq"``, ``"all"` and ``"ex"`` need not be declared as implicit. Example: `encoding.lp <https://github.com/Deducteam/lambdapi/blob/master/libraries/encoding.lp>`__.
+It tells Lambdapi which symbols of the input files are used for the encoding. Example: `encoding.lp <https://github.com/Deducteam/lambdapi/blob/master/libraries/encoding.lp>`__. The first argument ``a`` of the symbols corresponding to the builtins ``"eq"``, ``"all"`` and ``"ex"`` need not be declared as implicit.
 
 * ``--no-implicits`` instructs Lambdapi that the symbols of the encoding have no implicit arguments.
 

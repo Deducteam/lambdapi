@@ -213,17 +213,17 @@ let rec term : p_term pp = fun ppf t ->
       let default h ts = out ppf "%a %a" paren h (List.pp paren " ") ts in
       app t default
         (fun h ts expl builtin ->
-          match !use_notations, !use_implicits && expl, builtin, ts with
+          match !use_notations, !use_implicits && not expl, builtin, ts with
           | _, _, (El|Prf), [u] -> term ppf u
           | _, _, (Arr|Imp), [u;v] -> arrow ppf u v
-          | _, true, All, [_;{elt=P_Wrap({elt=P_Abst([_] as xs,u);_});_}]
-          | _, false, All, [{elt=P_Wrap({elt=P_Abst([_] as xs,u);_});_}]
+          | _, _, All, [_;{elt=P_Wrap({elt=P_Abst([_] as xs,u);_});_}]
+          | _, true, All, [{elt=P_Wrap({elt=P_Abst([_] as xs,u);_});_}]
             -> prod ppf xs u
-          | _, true, Ex, [_;{elt=P_Wrap({elt=P_Abst([x],u);_});_}]
-          | _, false, Ex, [{elt=P_Wrap({elt=P_Abst([x],u);_});_}] ->
+          | _, _, Ex, [_;{elt=P_Wrap({elt=P_Abst([x],u);_});_}]
+          | _, true, Ex, [{elt=P_Wrap({elt=P_Abst([x],u);_});_}] ->
               out ppf "exists %a, %a" raw_params x term u
-          | true, true, Eq, [_;u;v]
-          | true, false, Eq, [u;v] -> out ppf "%a = %a" paren u paren v
+          | true, _, Eq, [_;u;v]
+          | true, true, Eq, [u;v] -> out ppf "%a = %a" paren u paren v
           | true, _, Or, [u;v] -> out ppf "%a \\/ %a" paren u paren v
           | true, _, And, [u;v] ->  out ppf "%a /\\ %a" paren u paren v
           | true, _, Not, [u] -> out ppf "~ %a" paren u

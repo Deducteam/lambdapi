@@ -2,7 +2,7 @@ Active Contributors (in alphabetical order)
 ===========================================
 
 - Frédéric Blanqui (coordinator)
-
+- Alessio Coltellacci (2023-)
 
 Past Contributors (in alphabetical order)
 =========================================

@@ -8,8 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ### Added
 
 - Several options for export -o stt_coq.
+- Tactic remove
 
-### Imroved
+### Improved
 
 - Output for export -o stt_coq.
 

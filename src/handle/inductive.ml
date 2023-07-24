@@ -209,7 +209,7 @@ let fold_cons_type
     | _ -> fatal pos "The type of %a is not supported" sym cons_sym
   in
   let _, t = Env.of_prod_using [] vs !(cons_sym.sym_type) in
-  fold (List.mapi inj_var (Array.to_list vs)) 0 init t
+  fold (List.rev_mapi inj_var (Array.to_list vs)) 0 init t
 
 (** [gen_rec_type c pos ind_list vs env ind_pred_map x_str] generates the
    induction principles for each type in the inductive definition [ind_list]
@@ -295,7 +295,7 @@ let iter_rec_rules :
   let case_arg_name cons_sym = cons_sym.sym_name in
 
   (* [arec sym_ind ts t] generates the application of the recursor of
-     [ind_sym] to the type parameters [ts] and the constructor argument
+     [sym_ind] to the type parameters [ts] and the constructor argument
      [t]. *)
   let arec : sym -> term list -> p_term -> p_term = fun sym_ind ts t ->
     (* Note: there cannot be name clashes between pattern variable names and

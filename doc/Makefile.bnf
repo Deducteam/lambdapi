@@ -40,6 +40,7 @@ lambdapi.bnf: Makefile.bnf ../src/parsing/lpParser.mly
 	-e 's/INJECTIVE/"injective"/g' \
 	-e 's/PRINT/"print"/g' \
 	-e 's/REFINE/"refine"/g' \
+        -e 's/REMOVE/"remove"/g' \
 	-e 's/STRINGLIT/<stringlit>/g' \
 	-e 's/NAT/<nat>/g' \
 	-e 's/IN/"in"/g' \
