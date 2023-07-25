@@ -15,12 +15,12 @@ type 'inside where =
  | Spine of 'inside
  | Conclusion of 'inside
  | Hypothesis of 'inside
- type constr =
-  | QType of (inside option) where option
-  | QXhs  of inside option * side option
- type base_query =
-  | QName of string
-  | QSearch of Parsing.Syntax.p_term * (*holes_in_index:*)bool * constr option
+type constr =
+ | QType of (inside option) where option
+ | QXhs  of inside option * side option
+type base_query =
+ | QName of string
+ | QSearch of Parsing.Syntax.p_term * (*holes_in_index:*)bool * constr option
 type op =
  | Intersect
  | Union
