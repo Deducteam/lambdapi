@@ -223,44 +223,38 @@ module DB = struct
  module ItemSet =
   Set.Make(struct type t = item let compare = compare end)
 
- let pp_item_list =
+ let generic_pp_of_item_list ~separator ~delimiters ~lis:(lisb,lise)
+  ~pres:(preb,pree)
+ =
   Lplib.List.pp
    (fun ppf item ->
      match item with
       | Name ((p,n),pos) ->
-         Lplib.Base.out ppf "Name of %a.%s@%a@." Core.Print.path p n
-          Common.Pos.pp pos
-      | Type (where,(p,n),pos) ->
-         Lplib.Base.out ppf "%a the type of %a.%s@%a@."
-          pp_where where Core.Print.path p n Common.Pos.pp pos
-      | Xhs (inside,side,pos) ->
-         Lplib.Base.out ppf "%a %a of %a@."
-          pp_inside inside pp_side side Common.Pos.pp (Some pos))
-   ""
-
- let pp_item_set fmt set = pp_item_list fmt (ItemSet.elements set)
-
- let html_of_item_list =
-  Lplib.List.pp
-   (fun ppf item ->
-     match item with
-      | Name ((p,n),pos) ->
-         Lplib.Base.out ppf "<li>Name of %a.%s@%a<br><pre>%a</pre></li>@."
-          Core.Print.path p n Common.Pos.pp pos
-           (Common.Pos.deref ~separator:"<br>\n" ~delimiters:("<p>","</p>"))
-           pos
+         Lplib.Base.out ppf "%sName of %a.%s@%a%s%s%a%s%s@."
+          lisb Core.Print.path p n Common.Pos.pp pos separator
+           preb (Common.Pos.deref ~separator ~delimiters) pos pree lise
       | Type (where,(p,n),pos) ->
          Lplib.Base.out ppf
-          "<li>%a the type of %a.%s@%a<br><pre>%a</pre></li>@."
-          pp_where where Core.Print.path p n Common.Pos.pp pos
-          (Common.Pos.deref ~separator:"<br>\n" ~delimiters:("<p>","</p>"))
-          pos
+          "%s%a the type of %a.%s@%a%s%s%a%s%s@."
+          lisb pp_where where Core.Print.path p n Common.Pos.pp pos
+          separator preb (Common.Pos.deref ~separator ~delimiters) pos pree
+          lise
       | Xhs (inside,side,pos) ->
-         Lplib.Base.out ppf "<li>%a %a of %a<br><pre>%a</pre></li>@."
-          pp_inside inside pp_side side Common.Pos.pp (Some pos)
-           (Common.Pos.deref ~separator:"<br>\n" ~delimiters:("<p>","</p>"))
-           (Some pos))
+         Lplib.Base.out ppf "%s%a %a of %a%s%s%a%s%s@."
+          lisb pp_inside inside pp_side side Common.Pos.pp (Some pos)
+          separator preb (Common.Pos.deref ~separator ~delimiters) (Some pos)
+          pree lise)
    ""
+
+ let html_of_item_list =
+  generic_pp_of_item_list ~separator:"<br>\n" ~delimiters:("<p>","</p>")
+   ~lis:("<li>","</li>") ~pres:("<pre>","</pre>")
+
+ let pp_item_list =
+  generic_pp_of_item_list ~separator:"\n" ~delimiters:("","")
+   ~lis:("* ","") ~pres:("","")
+
+ let pp_item_set fmt set = pp_item_list fmt (ItemSet.elements set)
 
  let html_of_item_set fmt set =
   Lplib.Base.out fmt "<ul>%a</ul>" html_of_item_list (ItemSet.elements set)
