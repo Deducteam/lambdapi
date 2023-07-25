@@ -246,16 +246,20 @@ module DB = struct
      match item with
       | Name ((p,n),pos) ->
          Lplib.Base.out ppf "<li>Name of %a.%s@%a<br><pre>%a</pre></li>@."
-          Core.Print.path p n Common.Pos.pp pos Common.Pos.deref pos
+          Core.Print.path p n Common.Pos.pp pos
+           (Common.Pos.deref ~separator:"<br>\n" ~delimiters:("<p>","</p>"))
+           pos
       | Type (where,(p,n),pos) ->
          Lplib.Base.out ppf
           "<li>%a the type of %a.%s@%a<br><pre>%a</pre></li>@."
           pp_where where Core.Print.path p n Common.Pos.pp pos
-          Common.Pos.deref pos
+          (Common.Pos.deref ~separator:"<br>\n" ~delimiters:("<p>","</p>"))
+          pos
       | Xhs (inside,side,pos) ->
          Lplib.Base.out ppf "<li>%a %a of %a<br><pre>%a</pre></li>@."
           pp_inside inside pp_side side Common.Pos.pp (Some pos)
-           Common.Pos.deref (Some pos))
+           (Common.Pos.deref ~separator:"<br>\n" ~delimiters:("<p>","</p>"))
+           (Some pos))
    ""
 
  let html_of_item_set fmt set =
