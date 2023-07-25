@@ -200,9 +200,9 @@ module DB = struct
   | Conclusion of 'inside
   | Hypothesis of 'inside
  type item =
-  | Name of                 sym_name * Common.Pos.pos option
-  | Type of inside where  * sym_name * Common.Pos.pos option
-  | Xhs  of inside * side *            Common.Pos.pos
+  | Name of                 sym_name      * Common.Pos.pos option
+  | Type of inside where  * sym_name      * Common.Pos.pos option
+  | Xhs  of inside * side * Common.Path.t * Common.Pos.pos
 
  let pp_side fmt =
   function
@@ -223,8 +223,8 @@ module DB = struct
  let path_of_item =
   function
    | Name ((p,_),_)
-   | Type (_,(p,_),_) -> p
-   | Xhs  _ -> (*CSC: TODO XXX fixme adding module_path to Xhs *) assert false
+   | Type (_,(p,_),_)
+   | Xhs  (_,_,p,_) -> p
 
  module ItemSet =
   Set.Make(struct type t = item let compare = compare end)
@@ -245,10 +245,11 @@ module DB = struct
           lisb pp_where where Core.Print.path p n Common.Pos.pp pos
           separator preb (Common.Pos.deref ~separator ~delimiters) pos pree
           lise
-      | Xhs (inside,side,pos) ->
-         Lplib.Base.out ppf "%s%a %a of %a%s%s%a%s%s@."
-          lisb pp_inside inside pp_side side Common.Pos.pp (Some pos)
-          separator preb (Common.Pos.deref ~separator ~delimiters) (Some pos)
+      | Xhs (inside,side,path,pos) ->
+         Lplib.Base.out ppf "%s%a %a in %a of %a%s%s%a%s%s@."
+          lisb pp_inside inside pp_side side Common.Path.pp path
+          Common.Pos.pp (Some pos) separator preb
+          (Common.Pos.deref ~separator ~delimiters) (Some pos)
           pree lise)
    ""
 
@@ -464,12 +465,13 @@ let index_rule sym ({Core.Term.lhs=lhsargs ; rule_pos ; _} as rule) =
     | Some pos -> pos in
  let lhs = Core.Term.add_args (Core.Term.mk_Symb sym) lhsargs in
  let rhs = Core.Term.term_of_rhs rule in
- let _ = (lhs,rhs,rule_pos) in
  let get_inside = function | DB.Conclusion ins -> ins | _ -> assert false in
+ let filename = Option.get rule_pos.fname in
+ let path = Library.path_of_file Parsing.LpLexer.escape filename in
  index_term_and_subterms ~is_spine:false lhs
-  (fun where -> (Xhs(get_inside where,Lhs,rule_pos))) ;
+  (fun where -> (Xhs(get_inside where,Lhs,path,rule_pos))) ;
  index_term_and_subterms ~is_spine:false rhs
-  (fun where -> (Xhs(get_inside where,Rhs,rule_pos)))
+  (fun where -> (Xhs(get_inside where,Rhs,path,rule_pos)))
 
 let index_sym sym =
  let qname = name_of_sym sym in
@@ -540,7 +542,7 @@ module QueryLanguage = struct
  let filter_constr constr item =
   match constr, item with
    | QType wherep, Type (where,_,_) -> match_where wherep where
-   | QXhs (insp,sidep), Xhs (ins, side,_) ->
+   | QXhs (insp,sidep), Xhs (ins, side,_,_) ->
       match_opt insp ins && match_opt sidep side
    | _, _ -> false
 
