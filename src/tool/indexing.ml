@@ -494,7 +494,9 @@ let index_sign sign =
 (* let's flatten the interface *)
 include DB
 
-let locate_cmd_gen ~fail ~pp_results s =
+module UserLevelQueries = struct
+
+ let locate_cmd_gen ~fail ~pp_results s =
   try
    let qid = Parsing.Parser.Lp.parse_qid s in
    match qid with
@@ -509,14 +511,14 @@ let locate_cmd_gen ~fail ~pp_results s =
    exn ->
      fail (Format.asprintf "%s@." (Printexc.to_string exn))
 
-let locate_cmd_html s =
- locate_cmd_gen ~fail:(fun x -> x) ~pp_results:html_of_item_set s
+ let locate_cmd_html s =
+  locate_cmd_gen ~fail:(fun x -> x) ~pp_results:html_of_item_set s
 
-let locate_cmd_txt s =
- locate_cmd_gen ~fail:(fun x -> Common.Error.fatal_no_pos "%s" x)
-  ~pp_results:pp_item_set s
+ let locate_cmd_txt s =
+  locate_cmd_gen ~fail:(fun x -> Common.Error.fatal_no_pos "%s" x)
+   ~pp_results:pp_item_set s
 
-let search_cmd_gen ~fail ?(holes_in_index=false) ~pp_results s =
+ let search_cmd_gen ~fail ?(holes_in_index=false) ~pp_results s =
   try
    let ptermstream = Parsing.Parser.Lp.parse_term_string "LPSearch" s in
    let pterm = Stream.next ptermstream in
@@ -529,10 +531,15 @@ let search_cmd_gen ~fail ?(holes_in_index=false) ~pp_results s =
    | exn ->
       fail (Format.asprintf "%s@." (Printexc.to_string exn))
 
-let search_cmd_html ?holes_in_index s =
- search_cmd_gen ~fail:(fun x -> x) ~pp_results:html_of_item_set
-  ?holes_in_index s
+ let search_cmd_html ?holes_in_index s =
+  search_cmd_gen ~fail:(fun x -> x) ~pp_results:html_of_item_set
+   ?holes_in_index s
 
-let search_cmd_txt ?holes_in_index s =
- search_cmd_gen ~fail:(fun x -> Common.Error.fatal_no_pos "%s" x)
- ~pp_results:pp_item_set ?holes_in_index s
+ let search_cmd_txt ?holes_in_index s =
+  search_cmd_gen ~fail:(fun x -> Common.Error.fatal_no_pos "%s" x)
+  ~pp_results:pp_item_set ?holes_in_index s
+
+end
+
+(* let's flatten the interface *)
+include UserLevelQueries
