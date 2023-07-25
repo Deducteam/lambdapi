@@ -38,18 +38,15 @@ lambdapi.bnf: Makefile.bnf ../src/parsing/lpParser.mly
 	-e 's/INDUCTIVE/"inductive"/g' \
 	-e 's/INFIX/"infix"/g' \
 	-e 's/INJECTIVE/"injective"/g' \
-	-e 's/PRINT/"print"/g' \
-	-e 's/REFINE/"refine"/g' \
-        -e 's/REMOVE/"remove"/g' \
-	-e 's/STRINGLIT/<stringlit>/g' \
-	-e 's/NAT/<nat>/g' \
-	-e 's/IN/"in"/g' \
 	-e 's/LET/"let"/g' \
+	-e 's/LOCATE/"locate"/g' \
+	-e 's/NAT/<nat>/g' \
 	-e 's/NOTATION/"notation"/g' \
 	-e 's/OPEN/"open"/g' \
 	-e 's/OPAQUE/"opaque"/g' \
 	-e 's/POSTFIX/"postfix"/g' \
 	-e 's/PREFIX/"prefix"/g' \
+	-e 's/PRINT/"print"/g' \
 	-e 's/PRIVATE/"private"/g' \
 	-e 's/PROOFTERM/"proofterm"/g' \
 	-e 's/PROTECTED/"protected"/g' \
@@ -57,14 +54,19 @@ lambdapi.bnf: Makefile.bnf ../src/parsing/lpParser.mly
 	-e 's/PROVER/"prover"/g' \
 	-e 's/QUANTIFIER/"quantifier"/g' \
 	-e 's/REFLEXIVITY/"reflexivity"/g' \
+	-e 's/REFINE/"refine"/g' \
+        -e 's/REMOVE/"remove"/g' \
 	-e 's/REQUIRE/"require"/g' \
+        -e 's/RESOLVE/"resolve"/g' \
 	-e 's/REWRITE/"rewrite"/g' \
-	-e 's/SIDE/<side>/g' \
 	-e 's/UNIF_RULE/"unif_rule"/g' \
 	-e 's/RULE/"rule"/g' \
+	-e 's/SIDE/<side>/g' \
+	-e 's/SEARCH/"search"/g' \
 	-e 's/SEQUENTIAL/"sequential"/g' \
 	-e 's/SIMPLIFY/"simplify"/g' \
 	-e 's/SOLVE/"solve"/g' \
+        -e 's/STRINGLIT/<stringlit>/g' \
 	-e 's/SYMBOL/"symbol"/g' \
 	-e 's/SYMMETRY/"symmetry"/g' \
 	-e 's/TYPE_QUERY/"type"/g' \
@@ -72,6 +74,7 @@ lambdapi.bnf: Makefile.bnf ../src/parsing/lpParser.mly
 	-e 's/VERBOSE/"verbose"/g' \
 	-e 's/WHY3/"why3"/g' \
 	-e 's/WITH/"with"/g' \
+        -e 's/IN/"in"/g' \
 	-e 's/FLOAT/<float>/g' \
 	-e 's/HOOK_ARROW/"↪"/g' \
 	-e 's/ARROW/"→"/g' \

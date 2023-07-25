@@ -56,7 +56,10 @@ let end_pos : popt -> popt = fun po ->
 (** [cat p1 p2] returns a position starting from [p1] start and ending with
    [p2] end. [p1] and [p2] must have the same filename. *)
 let cat : pos -> pos -> pos = fun p1 p2 ->
-  { fname = if p1.fname <> p2.fname then invalid_arg __LOC__ else p1.fname
+  { fname = p2.fname
+    (*FIXME: temporary fix for
+      https://github.com/Deducteam/lambdapi/issues/1001
+      if p1.fname <> p2.fname then invalid_arg __LOC__ else p1.fname*)
   ; start_line = p1.start_line
   ; start_col = p1.start_col
   ; end_line = p2.end_line

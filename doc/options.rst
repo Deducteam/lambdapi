@@ -147,7 +147,7 @@ index
 search
 -----
 
-* ``--holes_in_index`` matches an index built replacing pi-quantifications in the spine of types of symbols with holes, to simulate the application of the symbols to the pattern seen as the current goal.
+* ``--generalize`` matches an index built replacing pi-quantifications in the spine of types of symbols with holes, to simulate the application of the symbols to the pattern seen as the current goal.
 
 lsp
 -------

@@ -14,6 +14,8 @@ QID ::= [UID "."]+ UID
 
 <term_alone> ::= <term> EOF
 
+<qid_alone> ::= <qid> EOF
+
 <command> ::= "require" "open" <path>* ";"
             | "require" <path>* ";"
             | "require" <path> "as" <uid> ";"
@@ -43,8 +45,9 @@ QID ::= [UID "."]+ UID
           | "prover_timeout" <nat>
           | "verbose" <nat>
           | "type" <term>
-          | RE"solve" <uid>
-          | SEARCH <term>
+          | "locate" <uid>
+          | "search" "generalize" <term>
+          | "search" <term>
 
 <path> ::= UID
          | QID

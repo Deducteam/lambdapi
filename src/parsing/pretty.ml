@@ -38,7 +38,6 @@ let _ = let open LpLexer in
     ; "flag", FLAG
     ; "generalize", GENERALIZE
     ; "have", HAVE
-    ; "holes_in_index", HOLES_IN_INDEX
     ; "in", IN
     ; "induction", INDUCTION
     ; "inductive", INDUCTIVE
@@ -262,7 +261,7 @@ let query : p_query pp = fun ppf { elt; _ } ->
      if b then
       out ppf "search %a" term t
      else
-      out ppf "search holes_in_index %a" term t
+      out ppf "search generalize %a" term t
 
 let tactic : p_tactic pp = fun ppf { elt;  _ } ->
   begin match elt with

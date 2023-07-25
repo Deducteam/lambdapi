@@ -393,7 +393,6 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
   | P_symbol {p_sym_mod;p_sym_nam;p_sym_arg;p_sym_typ;p_sym_trm;p_sym_prf;
               p_sym_def} ->
     (* We check that the identifier is not already used. *)
-    let declpos = Pos.cat pos (Option.bind p_sym_typ (fun x -> x.pos)) in
     let {elt=id; _} = p_sym_nam in
     if Sign.mem ss.signature id then
       fatal p_sym_nam.pos "Symbol %a already exists." uid id;
@@ -483,6 +482,7 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
         | Some (ts, pe) -> ts, pe
       in
       (* Build finalizer. *)
+      let declpos = Pos.cat pos (Option.bind p_sym_typ (fun x -> x.pos)) in
       let pdata_finalize ss ps =
         match pe.elt with
         | P_proof_abort -> wrn pe.pos "Proof aborted."; ss

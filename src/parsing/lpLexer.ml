@@ -50,7 +50,6 @@ type token =
   | FLAG
   | GENERALIZE
   | HAVE
-  | HOLES_IN_INDEX
   | IN
   | INDUCTION
   | INDUCTIVE
@@ -217,7 +216,6 @@ let rec token lb =
   | "flag" -> FLAG
   | "generalize" -> GENERALIZE
   | "have" -> HAVE
-  | "holes_in_index" -> HOLES_IN_INDEX
   | "in" -> IN
   | "induction" -> INDUCTION
   | "inductive" -> INDUCTIVE

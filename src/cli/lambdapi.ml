@@ -400,21 +400,19 @@ let version_cmd =
   (* CSC: move name_as_arg above; I am not sure this is implemented correctly,
      though: I just want to parse the next string and it should be mandatory,
      not defaulting to "xxx" *)
-let name_as_arg : string Cmdliner.Term.t =
+let name_as_arg : string CLT.t =
   let doc = "Name of constant to be located." in
   Arg.(value & pos 0 string "xxx" & info [] ~docv:"NAME" ~doc)
 
-  (* CSC: same *)
 let add_only_arg : bool CLT.t =
-  let doc =
-    "Adds more terms to the index without cleaning it first." in
+  let doc = "Adds more terms to the index without cleaning it first." in
   Arg.(value & flag & info ["add"] ~doc)
 
-let holes_in_index_arg : bool CLT.t =
+let generalize_arg : bool CLT.t =
   let doc =
     "Allow to match patterns against terms indexed instantiating products \
      with holes." in
-  Arg.(value & flag & info ["holes_in_index"] ~doc)
+  Arg.(value & flag & info ["generalize"] ~doc)
 
 let index_cmd =
  let doc = "Index the given files." in
@@ -426,7 +424,7 @@ let search_cmd =
  let doc = "Run a search query against the index." in
  Cmd.v (Cmd.info "search" ~doc ~man:man_pkg_file)
   Cmdliner.Term.(const LPSearchMain.search_cmd $ Config.full $
-   holes_in_index_arg $ name_as_arg)
+   generalize_arg $ name_as_arg)
 
 let locate_cmd =
  let doc =
