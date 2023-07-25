@@ -1,7 +1,6 @@
 type item
 module ItemSet : Set.S with type elt = item
 val pp_item_set : ItemSet.t Lplib.Base.pp
-val html_of_item_set : ItemSet.t Lplib.Base.pp
 
 val empty : unit -> unit
 val index_sign : Core.Sign.t -> unit
