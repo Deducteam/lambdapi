@@ -195,13 +195,13 @@ module DB = struct
 
  type side = Lhs | Rhs
  type inside = Exact | Inside
- type where =
-  | Spine of inside
-  | Conclusion of inside
-  | Hypothesis of inside
+ type 'inside where =
+  | Spine of 'inside
+  | Conclusion of 'inside
+  | Hypothesis of 'inside
  type item =
   | Name of                 sym_name * Common.Pos.pos option
-  | Type of where         * sym_name * Common.Pos.pos option
+  | Type of inside where  * sym_name * Common.Pos.pos option
   | Xhs  of inside * side *            Common.Pos.pos
 
  let pp_side fmt =
@@ -219,6 +219,12 @@ module DB = struct
    | Spine ins -> Lplib.Base.out fmt "%a spine of" pp_inside ins
    | Hypothesis ins -> Lplib.Base.out fmt "%a hypothesis of" pp_inside ins
    | Conclusion ins -> Lplib.Base.out fmt "%a conclusion of" pp_inside ins
+
+ let path_of_item =
+  function
+   | Name ((p,_),_)
+   | Type (_,(p,_),_) -> p
+   | Xhs  _ -> (*CSC: TODO XXX fixme adding module_path to Xhs *) assert false
 
  module ItemSet =
   Set.Make(struct type t = item let compare = compare end)
@@ -493,6 +499,87 @@ let index_sign sign =
 
 (* let's flatten the interface *)
 include DB
+
+module QueryLanguage = struct
+
+ type constr =
+  | QType of (inside option) where option
+  | QXhs  of inside option * side option
+
+ type base_query =
+  | QName of string
+  | QSearch of Parsing.Syntax.p_term * (*holes_in_index:*)bool * constr option
+
+ type op =
+  | Intersect
+  | Union
+
+ type filter =
+  | Path of string
+
+ type query =
+  | QBase of base_query
+  | QOpp of query * op * query
+  | QFilter of query * filter
+
+ let match_opt p x =
+  match p,x with
+  | None, _ -> true
+  | Some x', x -> x=x'
+
+ let match_where p x =
+  match p with
+  | None -> true
+  | Some p ->
+     match p,x with
+      | Spine insp, Spine ins
+      | Conclusion insp, Conclusion ins
+      | Hypothesis insp, Hypothesis ins -> match_opt insp ins
+      | _, _ -> false
+
+ let filter_constr constr item =
+  match constr, item with
+   | QType wherep, Type (where,_,_) -> match_where wherep where
+   | QXhs (insp,sidep), Xhs (ins, side,_) ->
+      match_opt insp ins && match_opt sidep side
+   | _, _ -> false
+
+ let answer_base_query ~mok env =
+  function
+   | QName s -> locate_name s
+   | QSearch (patt,holes_in_index,constr) ->
+      let res = search_pterm ~holes_in_index ~mok env patt in
+      (match constr with
+        | None -> res
+        | Some constr -> ItemSet.filter (filter_constr constr) res)
+
+ let perform_op =
+  function
+   | Intersect -> ItemSet.inter
+   | Union -> ItemSet.union
+
+ let filter set f =
+  let f x =
+   match f with
+   | Path p ->
+      let p' = path_of_item x in
+      let string_of_path x = Format.asprintf "%a" Common.Path.pp x in
+       Lplib.String.is_prefix (string_of_path p') p in
+  ItemSet.filter f set
+
+ let answer_query ~mok env =
+  let rec aux =
+   function
+    | QBase bq -> answer_base_query ~mok env bq
+    | QOpp (q1,op,q2) -> perform_op op (aux q1) (aux q2)
+    | QFilter (q,f) -> filter (aux q) f
+  in
+   aux
+
+end
+
+(* let's flatten the interface *)
+include QueryLanguage
 
 module UserLevelQueries = struct
 

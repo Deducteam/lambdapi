@@ -1,10 +1,38 @@
+(* indexing *)
+val empty : unit -> unit
+val index_sign : Core.Sign.t -> unit
+val dump : unit -> unit
+
+(* answers *)
 type item
 module ItemSet : Set.S with type elt = item
 val pp_item_set : ItemSet.t Lplib.Base.pp
 
-val empty : unit -> unit
-val index_sign : Core.Sign.t -> unit
-val dump : unit -> unit
+(* query language *)
+type side = Lhs | Rhs
+type inside = Exact | Inside
+type 'inside where =
+ | Spine of 'inside
+ | Conclusion of 'inside
+ | Hypothesis of 'inside
+ type constr =
+  | QType of (inside option) where option
+  | QXhs  of inside option * side option
+ type base_query =
+  | QName of string
+  | QSearch of Parsing.Syntax.p_term * (*holes_in_index:*)bool * constr option
+type op =
+ | Intersect
+ | Union
+type filter =
+ | Path of string
+type query =
+ | QBase of base_query
+ | QOpp of query * op * query
+ | QFilter of query * filter
+
+val answer_query :
+  mok:(int -> Core.Term.meta option) -> Core.Env.env -> query -> ItemSet.t
 
 (* search commands used by tactics *)
 val locate_name : string -> ItemSet.t
