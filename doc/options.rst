@@ -22,6 +22,7 @@ The available commands are:
 * ``search``: provide the list of symbols and rules matching a given pattern.
 * ``uninstall``: uninstalls the specified package.
 * ``version``: give the current version of Lambdapi.
+* ``webserver``: starts a webserver at 8080 to run locate/search queries using a web interface.
 
 The commands ``parse``, ``export`` and ``index`` can trigger the
 compilation of dependencies if the required object files (``.lpo``
@@ -45,6 +46,10 @@ The ``index`` command generates a file ``LPSearch.db`` in the directory where La
 The command ``locate`` takes as argument a non-qualified identifier. It returns the list of qualified symbols having the same name in the current index file.
 
 The command ``search`` takes as argument a term which can contain pattern variables ``$<id>`` or underscores like for a LHS rewrite rule. It can also contain variable placeholders ``V#`` that stand for any variable. A non-qualified symbol is interpreted by the first symbol given by the ``locate`` command. It fails if there is no interpretation. A warning is printed if there are several possible interpretations. The command prints detailed information on where the pattern occurs: 1: in the left or right hand-side of a rule, or in the type of a rule; 2: if it occurs in a side of a rewriting rule, if the occurrence is the whole side or a subterm of it; 3: it it occurs in the type of a symbol, if it matches exactly the type, or if it matches a suffix of the spine of the type, or if it matches exactly the conclusion or the hypothesis of the type, or if it occurs inside the conclusion or the hypothesis of the type). The option ``--holes_in_index`` matches an index built replacing pi-quantifications in the spine of types of symbols with holes, to simulate the application of the symbols to the pattern seen as the current goal. Similary, parameter of rewriting rules are seen as holes to simulate application of the rewriting rule. Activating the option tipically returns many more matches, but most of them are likely to be wrong because of type errors.
+
+**webserver:**
+
+The command ``webserver`` runs a webser at port 8080. The webserver runs a web interface for locate/search queries.
 
 **Common flags:**
 
