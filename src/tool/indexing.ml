@@ -199,10 +199,13 @@ module DB = struct
   | Spine of 'inside
   | Conclusion of 'inside
   | Hypothesis of 'inside
- type item =
-  | Name of                 sym_name      * Common.Pos.pos option
-  | Type of inside where  * sym_name      * Common.Pos.pos option
-  | Xhs  of inside * side * Common.Path.t * Common.Pos.pos
+ (* the "name" in the sym_name of rules is just the printed position of
+    the rule; the associated position is never None *)
+ type position =
+  | Name
+  | Type of inside where
+  | Xhs  of inside * side
+ type item = sym_name * Common.Pos.pos option
 
  let pp_side fmt =
   function
@@ -211,8 +214,8 @@ module DB = struct
 
  let pp_inside fmt =
   function
-    | Exact -> Lplib.Base.out fmt "The exact"
-    | Inside -> Lplib.Base.out fmt "Inside the"
+    | Exact -> Lplib.Base.out fmt "the exact"
+    | Inside -> Lplib.Base.out fmt "inside the"
 
  let pp_where fmt =
   function
@@ -220,37 +223,43 @@ module DB = struct
    | Hypothesis ins -> Lplib.Base.out fmt "%a hypothesis of" pp_inside ins
    | Conclusion ins -> Lplib.Base.out fmt "%a conclusion of" pp_inside ins
 
- let path_of_item =
-  function
-   | Name ((p,_),_)
-   | Type (_,(p,_),_)
-   | Xhs  (_,_,p,_) -> p
-
  module ItemSet =
-  Set.Make(struct type t = item let compare = compare end)
+  struct
+   include Map.Make(struct type t = item let compare = compare end)
+
+   let of_list l =
+    List.fold_left
+     (fun m (k,v) ->
+       update k
+        (function
+          | None -> Some v
+          | Some l -> Some (v@l))
+        m) empty l
+  end
+
+ type answer = (position list) ItemSet.t
+
+ let generic_pp_of_position_list =
+  Lplib.List.pp
+   (fun ppf position ->
+     match position with
+      | Name ->
+         Lplib.Base.out ppf "Name"
+      | Type where ->
+         Lplib.Base.out ppf "%a the type" pp_where where
+      | Xhs (inside,side) ->
+         Lplib.Base.out ppf "%a %a" pp_inside inside pp_side side)
+   " and "
 
  let generic_pp_of_item_list ~separator ~delimiters ~lis:(lisb,lise)
   ~pres:(preb,pree)
  =
   Lplib.List.pp
-   (fun ppf item ->
-     match item with
-      | Name ((p,n),pos) ->
-         Lplib.Base.out ppf "%sName of %a.%s@%a%s%s%a%s%s@."
-          lisb Core.Print.path p n Common.Pos.pp pos separator
-           preb (Common.Pos.deref ~separator ~delimiters) pos pree lise
-      | Type (where,(p,n),pos) ->
-         Lplib.Base.out ppf
-          "%s%a the type of %a.%s@%a%s%s%a%s%s@."
-          lisb pp_where where Core.Print.path p n Common.Pos.pp pos
-          separator preb (Common.Pos.deref ~separator ~delimiters) pos pree
-          lise
-      | Xhs (inside,side,path,pos) ->
-         Lplib.Base.out ppf "%s%a %a in %a of %a%s%s%a%s%s@."
-          lisb pp_inside inside pp_side side Common.Path.pp path
-          Common.Pos.pp (Some pos) separator preb
-          (Common.Pos.deref ~separator ~delimiters) (Some pos)
-          pree lise)
+   (fun ppf (((p,n),pos),positions) ->
+     Lplib.Base.out ppf "%s%a.%s@%a%s%a%s%s%a%s%s@."
+      lisb Core.Print.path p n Common.Pos.pp pos separator
+      generic_pp_of_position_list positions
+      separator preb (Common.Pos.deref ~separator ~delimiters) pos pree lise)
    ""
 
  let html_of_item_list =
@@ -261,10 +270,10 @@ module DB = struct
   generic_pp_of_item_list ~separator:"\n" ~delimiters:("","")
    ~lis:("* ","") ~pres:("","")
 
- let pp_item_set fmt set = pp_item_list fmt (ItemSet.elements set)
+ let pp_item_set fmt set = pp_item_list fmt (ItemSet.bindings set)
 
  let html_of_item_set fmt set =
-  Lplib.Base.out fmt "<ul>%a</ul>" html_of_item_list (ItemSet.elements set)
+  Lplib.Base.out fmt "<ul>%a</ul>" html_of_item_list (ItemSet.bindings set)
 
  (* disk persistence *)
 
@@ -280,7 +289,8 @@ module DB = struct
       msg ;
      Pure.empty
 
- let db : item Pure.db Lazy.t ref = ref (lazy (restore_from_disk ()))
+ let db : (item * position list) Pure.db Lazy.t ref =
+   ref (lazy (restore_from_disk ()))
 
  let empty () = db := lazy Pure.empty
 
@@ -309,7 +319,7 @@ let find_sym ~prt:_prt ~prv:_prv _sig_state {elt=(mp,name); pos} =
      let res = DB.locate_name name in
      (match DB.ItemSet.choose_opt res with
        | None -> Common.Error.fatal pos "Unknown symbol %s." name
-       | Some (DB.Name ((mp,_),_)) ->
+       | Some (((mp,_),_),[DB.Name]) ->
           if DB.ItemSet.cardinal res > 1 then
            Common.Error.wrn pos
             "Overloaded symbol %s, choosing the one declared in %a" name
@@ -468,19 +478,20 @@ let index_rule sym ({Core.Term.lhs=lhsargs ; rule_pos ; _} as rule) =
  let get_inside = function | DB.Conclusion ins -> ins | _ -> assert false in
  let filename = Option.get rule_pos.fname in
  let path = Library.path_of_file Parsing.LpLexer.escape filename in
+ let rule_name = (path,Common.Pos.to_string ~print_fname:false rule_pos) in
  index_term_and_subterms ~is_spine:false lhs
-  (fun where -> (Xhs(get_inside where,Lhs,path,rule_pos))) ;
+  (fun where -> ((rule_name,Some rule_pos),[Xhs(get_inside where,Lhs)])) ;
  index_term_and_subterms ~is_spine:false rhs
-  (fun where -> (Xhs(get_inside where,Rhs,path,rule_pos)))
+  (fun where -> ((rule_name,Some rule_pos),[Xhs(get_inside where,Rhs)]))
 
 let index_sym sym =
  let qname = name_of_sym sym in
  (* Name *)
- DB.insert_name (snd qname) (Name (qname,sym.sym_decl_pos)) ;
+ DB.insert_name (snd qname) ((qname,sym.sym_decl_pos),[Name]) ;
  (* Type + InType *)
  let typ = Timed.(!(sym.Core.Term.sym_type)) in
  index_term_and_subterms ~is_spine:true typ
-  (fun where -> (Type (where,qname,sym.sym_decl_pos))) ;
+  (fun where -> ((qname,sym.sym_decl_pos),[Type where])) ;
  (* InBody??? sym.sym_def : term option ref
     but all the subterms are too much; collect only the constants? *)
  (* Rules *)
@@ -539,10 +550,11 @@ module QueryLanguage = struct
       | Hypothesis insp, Hypothesis ins -> match_opt insp ins
       | _, _ -> false
 
- let filter_constr constr item =
-  match constr, item with
-   | QType wherep, Type (where,_,_) -> match_where wherep where
-   | QXhs (insp,sidep), Xhs (ins, side,_,_) ->
+ let filter_constr constr _ position =
+  (* invariant here: all position lists have length one after a base query *)
+  match constr, position with
+   | QType wherep, [Type where] -> match_where wherep where
+   | QXhs (insp,sidep), [Xhs (ins, side)] ->
       match_opt insp ins && match_opt sidep side
    | _, _ -> false
 
@@ -557,14 +569,20 @@ module QueryLanguage = struct
 
  let perform_op =
   function
-   | Intersect -> ItemSet.inter
-   | Union -> ItemSet.union
+   | Intersect ->
+       ItemSet.merge
+        (fun _ positions1 positions2 ->
+          match positions1, positions2 with
+           | Some l1, Some l2 -> Some (l1@l2)
+           | _,_ -> None)
+   | Union ->
+       ItemSet.union
+        (fun _ positions1 positions2 -> Some (positions1 @ positions2))
 
  let filter set f =
-  let f x =
+  let f ((p',_),_) _ =
    match f with
    | Path p ->
-      let p' = path_of_item x in
       let string_of_path x = Format.asprintf "%a" Common.Path.pp x in
        Lplib.String.is_prefix (string_of_path p') p in
   ItemSet.filter f set

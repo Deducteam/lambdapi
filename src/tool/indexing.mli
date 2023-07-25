@@ -4,9 +4,8 @@ val index_sign : Core.Sign.t -> unit
 val dump : unit -> unit
 
 (* answers *)
-type item
-module ItemSet : Set.S with type elt = item
-val pp_item_set : ItemSet.t Lplib.Base.pp
+type answer
+val pp_item_set : answer Lplib.Base.pp
 
 (* query language *)
 type side = Lhs | Rhs
@@ -32,13 +31,13 @@ type query =
  | QFilter of query * filter
 
 val answer_query :
-  mok:(int -> Core.Term.meta option) -> Core.Env.env -> query -> ItemSet.t
+  mok:(int -> Core.Term.meta option) -> Core.Env.env -> query -> answer
 
 (* search commands used by tactics *)
-val locate_name : string -> ItemSet.t
+val locate_name : string -> answer
 val search_pterm :
   holes_in_index:bool -> mok:(int -> Core.Term.meta option) -> Core.Env.env ->
-   Parsing.Syntax.p_term -> ItemSet.t
+   Parsing.Syntax.p_term -> answer
 
 (* search commands used by cli *)
 val locate_cmd_txt : string -> string
