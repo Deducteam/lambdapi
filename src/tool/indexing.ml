@@ -223,40 +223,38 @@ module DB = struct
  module ItemSet =
   Set.Make(struct type t = item let compare = compare end)
 
- let pp_item_list =
+ let generic_pp_of_item_list ~separator ~delimiters ~lis:(lisb,lise)
+  ~pres:(preb,pree)
+ =
   Lplib.List.pp
    (fun ppf item ->
      match item with
       | Name ((p,n),pos) ->
-         Lplib.Base.out ppf "Name of %a.%s@%a@." Core.Print.path p n
-          Common.Pos.pp pos
-      | Type (where,(p,n),pos) ->
-         Lplib.Base.out ppf "%a the type of %a.%s@%a@."
-          pp_where where Core.Print.path p n Common.Pos.pp pos
-      | Xhs (inside,side,pos) ->
-         Lplib.Base.out ppf "%a %a of %a@."
-          pp_inside inside pp_side side Common.Pos.pp (Some pos))
-   ""
-
- let pp_item_set fmt set = pp_item_list fmt (ItemSet.elements set)
-
- let html_of_item_list =
-  Lplib.List.pp
-   (fun ppf item ->
-     match item with
-      | Name ((p,n),pos) ->
-         Lplib.Base.out ppf "<li>Name of %a.%s@%a<br><pre>%a</pre></li>@."
-          Core.Print.path p n Common.Pos.pp pos Common.Pos.deref pos
+         Lplib.Base.out ppf "%sName of %a.%s@%a%s%s%a%s%s@."
+          lisb Core.Print.path p n Common.Pos.pp pos separator
+           preb (Common.Pos.deref ~separator ~delimiters) pos pree lise
       | Type (where,(p,n),pos) ->
          Lplib.Base.out ppf
-          "<li>%a the type of %a.%s@%a<br><pre>%a</pre></li>@."
-          pp_where where Core.Print.path p n Common.Pos.pp pos
-          Common.Pos.deref pos
+          "%s%a the type of %a.%s@%a%s%s%a%s%s@."
+          lisb pp_where where Core.Print.path p n Common.Pos.pp pos
+          separator preb (Common.Pos.deref ~separator ~delimiters) pos pree
+          lise
       | Xhs (inside,side,pos) ->
-         Lplib.Base.out ppf "<li>%a %a of %a<br><pre>%a</pre></li>@."
-          pp_inside inside pp_side side Common.Pos.pp (Some pos)
-           Common.Pos.deref (Some pos))
+         Lplib.Base.out ppf "%s%a %a of %a%s%s%a%s%s@."
+          lisb pp_inside inside pp_side side Common.Pos.pp (Some pos)
+          separator preb (Common.Pos.deref ~separator ~delimiters) (Some pos)
+          pree lise)
    ""
+
+ let html_of_item_list =
+  generic_pp_of_item_list ~separator:"<br>\n" ~delimiters:("<p>","</p>")
+   ~lis:("<li>","</li>") ~pres:("<pre>","</pre>")
+
+ let pp_item_list =
+  generic_pp_of_item_list ~separator:"\n" ~delimiters:("","")
+   ~lis:("* ","") ~pres:("","")
+
+ let pp_item_set fmt set = pp_item_list fmt (ItemSet.elements set)
 
  let html_of_item_set fmt set =
   Lplib.Base.out fmt "<ul>%a</ul>" html_of_item_list (ItemSet.elements set)
@@ -495,3 +493,53 @@ let index_sign sign =
 
 (* let's flatten the interface *)
 include DB
+
+module UserLevelQueries = struct
+
+ let locate_cmd_gen ~fail ~pp_results s =
+  try
+   let qid = Parsing.Parser.Lp.parse_qid s in
+   match qid with
+    | [],name ->
+       let items = locate_name name in
+       Format.asprintf "%a@." pp_results items
+   | _ ->
+       fail (Format.asprintf
+        "Syntax error: an unqualified identifier was expected, found %a.%s"
+         Common.Path.pp (fst qid) (snd qid))
+  with
+   exn ->
+     fail (Format.asprintf "%s@." (Printexc.to_string exn))
+
+ let locate_cmd_html s =
+  locate_cmd_gen ~fail:(fun x -> x) ~pp_results:html_of_item_set s
+
+ let locate_cmd_txt s =
+  locate_cmd_gen ~fail:(fun x -> Common.Error.fatal_no_pos "%s" x)
+   ~pp_results:pp_item_set s
+
+ let search_cmd_gen ~fail ?(holes_in_index=false) ~pp_results s =
+  try
+   let ptermstream = Parsing.Parser.Lp.parse_term_string "LPSearch" s in
+   let pterm = Stream.next ptermstream in
+   let mok _ = None in
+   let items = search_pterm ~holes_in_index ~mok [] pterm in
+   Format.asprintf "%a@." pp_results items
+  with
+   | Stream.Failure ->
+      fail (Format.asprintf "Syntax error: a term was expected")
+   | exn ->
+      fail (Format.asprintf "%s@." (Printexc.to_string exn))
+
+ let search_cmd_html ?holes_in_index s =
+  search_cmd_gen ~fail:(fun x -> x) ~pp_results:html_of_item_set
+   ?holes_in_index s
+
+ let search_cmd_txt ?holes_in_index s =
+  search_cmd_gen ~fail:(fun x -> Common.Error.fatal_no_pos "%s" x)
+  ~pp_results:pp_item_set ?holes_in_index s
+
+end
+
+(* let's flatten the interface *)
+include UserLevelQueries

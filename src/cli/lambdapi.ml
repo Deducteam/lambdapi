@@ -22,27 +22,13 @@ struct
 
 let search_cmd cfg holes_in_index s =
   Config.init cfg;
-  let ptermstream = Parsing.Parser.Lp.parse_term_string "LPSearch" s in
-  try
-   let pterm = Stream.next ptermstream in
-   let mok _ = None in
-   let items = Tool.Indexing.search_pterm ~holes_in_index ~mok [] pterm in
-   out Format.std_formatter "%a@." Tool.Indexing.pp_item_set items
-  with
-   Stream.Failure ->
-    Common.Error.fatal_no_pos "Syntax error: a term was expected"
+  out Format.std_formatter "%s@."
+   (Tool.Indexing.search_cmd_txt ~holes_in_index s)
 
 let locate_cmd cfg s =
-  let qid = Parsing.Parser.Lp.parse_qid s in
-  match qid with
-   | [],name ->
-      Config.init cfg;
-      let items = Tool.Indexing.locate_name name in
-      out Format.std_formatter "%a@." Tool.Indexing.pp_item_set items
-  | _ ->
-      Common.Error.fatal_no_pos
-       "Syntax error: an unqualified identifier was expected, found %a.%s"
-        Path.pp (fst qid) (snd qid)
+  Config.init cfg;
+  out Format.std_formatter "%s@."
+   (Tool.Indexing.locate_cmd_txt s)
 
 let webserver_cmd cfg =
  Config.init cfg;
@@ -397,12 +383,13 @@ let version_cmd =
   let doc = "Display the current version of Lambdapi." in
   Cmd.v (Cmd.info "version" ~doc) CLT.(const run $ const ())
 
-  (* CSC: move name_as_arg above; I am not sure this is implemented correctly,
-     though: I just want to parse the next string and it should be mandatory,
-     not defaulting to "xxx" *)
 let name_as_arg : string CLT.t =
   let doc = "Name of constant to be located." in
-  Arg.(value & pos 0 string "xxx" & info [] ~docv:"NAME" ~doc)
+  Arg.(required & pos 0 (some string) None & info [] ~docv:"NAME" ~doc)
+
+let pattern_as_arg : string Cmdliner.Term.t =
+  let doc = "Term pattern to be matched." in
+  Arg.(required & pos 0 (some string) None & info [] ~docv:"PATTERN" ~doc)
 
 let add_only_arg : bool CLT.t =
   let doc = "Adds more terms to the index without cleaning it first." in
@@ -424,7 +411,7 @@ let search_cmd =
  let doc = "Run a search query against the index." in
  Cmd.v (Cmd.info "search" ~doc ~man:man_pkg_file)
   Cmdliner.Term.(const LPSearchMain.search_cmd $ Config.full $
-   generalize_arg $ name_as_arg)
+   generalize_arg $ pattern_as_arg)
 
 let locate_cmd =
  let doc =
