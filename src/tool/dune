@@ -2,4 +2,10 @@
  (name tool)
  (public_name lambdapi.tool)
  (modules :standard)
- (libraries lambdapi.parsing lambdapi.core))
+ (libraries lambdapi.parsing lambdapi.core dream)
+ (preprocess (pps lwt_ppx)))
+
+(rule
+ (targets webserver.ml)
+ (deps webserver.eml.ml)
+ (action (run dream_eml %{deps} --workspace %{workspace_root})))

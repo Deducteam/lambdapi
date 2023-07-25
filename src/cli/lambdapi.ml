@@ -44,6 +44,10 @@ let locate_cmd cfg s =
        "Syntax error: an unqualified identifier was expected, found %a.%s"
         Path.pp (fst qid) (snd qid)
 
+let webserver_cmd cfg =
+ Config.init cfg;
+ Tool.Webserver.start ()
+
 let index file =
  let sign =
   Common.Error.with_no_wrn Handle.Compile.PureUpToSign.compile_file file in
@@ -431,6 +435,12 @@ let locate_cmd =
  Cmd.v (Cmd.info "locate" ~doc ~man:man_pkg_file)
   Cmdliner.Term.(const LPSearchMain.locate_cmd $ Config.full $ name_as_arg)
 
+let webserver_cmd =
+ let doc =
+  "Starts a webserver for searching the library on port 8080." in
+ Cmd.v (Cmd.info "webserver" ~doc ~man:man_pkg_file)
+  Cmdliner.Term.(const LPSearchMain.webserver_cmd $ Config.full)
+
 let _ =
   let t0 = Sys.time () in
   Stdlib.at_exit (Debug.print_time t0);
@@ -439,7 +449,7 @@ let _ =
     [ check_cmd ; parse_cmd ; export_cmd ; lsp_server_cmd
     ; decision_tree_cmd ; help_cmd ; version_cmd
     ; Init.cmd ; Install.install_cmd ; Install.uninstall_cmd
-    ; index_cmd ; search_cmd ; locate_cmd ]
+    ; index_cmd ; search_cmd ; locate_cmd ; webserver_cmd ]
   in
   let doc = "A type-checker for the lambdapi-calculus modulo rewriting." in
   let sdocs = Manpage.s_common_options in
