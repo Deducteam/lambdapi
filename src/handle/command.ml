@@ -145,13 +145,13 @@ let add_rule : sig_state -> sym_rule -> unit = fun ss ((s,r) as x) ->
   Sign.add_rule ss.signature s r;
   Console.out 2 (Color.red "rule %a") sym_rule x
 
-(** [handle_inductive_symbol ss e p strat x pos xs a] handles the command
+(** [handle_inductive_symbol ss e p strat x declpos xs a] handles the command
     [e p strat symbol x xs : a] with [ss] as the signature state.
     The command is at position [pos].
     On success, an updated signature state and the new symbol are returned. *)
 let handle_inductive_symbol : sig_state -> expo -> prop -> match_strat
     -> p_ident -> popt -> p_params list -> p_term -> sig_state * sym =
-  fun ss expo prop mstrat ({elt=name;pos} as id) decl xs typ ->
+  fun ss expo prop mstrat ({elt=name;pos} as id) declpos xs typ ->
   (* We check that [id] is not already used. *)
   if Sign.mem ss.signature name then
     fatal pos "Symbol %a already exists." uid name;
@@ -172,7 +172,7 @@ let handle_inductive_symbol : sig_state -> expo -> prop -> match_strat
   (* Actually add the symbol to the signature and the state. *)
   Console.out 2 (Color.red "symbol %a : %a") uid name term typ;
   let r =
-   Sig_state.add_symbol ss expo prop mstrat false id decl typ impl None in
+   Sig_state.add_symbol ss expo prop mstrat false id declpos typ impl None in
   sig_state := fst r; r
 
 (** Representation of a yet unchecked proof. The structure is initialized when

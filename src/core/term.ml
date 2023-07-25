@@ -98,7 +98,8 @@ and sym =
   ; sym_mstrat: match_strat (** Matching strategy. *)
   ; sym_dtree : dtree ref (** Decision tree used for matching. *)
   ; sym_pos   : Pos.popt (** Position in source file of symbol name. *)
-  ; sym_decl_pos : Pos.popt (** Position in source file of symbol decl. *) }
+  ; sym_decl_pos : Pos.popt (** Position in source file of symbol declaration
+                                without its definition. *) }
 
 (** {b NOTE} {!field:sym_type} holds a (timed) reference for a  technical
     reason related to the writing of signatures as binary files  (in  relation

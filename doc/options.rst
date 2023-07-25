@@ -49,7 +49,7 @@ The command ``search`` takes as argument a term which can contain pattern variab
 
 **webserver:**
 
-The command ``webserver`` runs a webser at port 8080. The webserver runs a web interface for locate/search queries.
+The command ``webserver`` runs a webserver at port 8080. The webserver runs a web interface for locate/search queries.
 
 **Common flags:**
 

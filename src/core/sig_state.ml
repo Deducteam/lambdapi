@@ -41,17 +41,17 @@ let dummy : sig_state =
     builtins = StrMap.empty; notations = SymMap.empty;
     open_paths = Path.Set.empty }
 
-(** [add_symbol ss expo prop mstrat opaq id decl typ impl def] generates a new
-   signature state from [ss] by creating a new symbol with expo [e], property
-   [p], strategy [st], name [x], type [a], implicit arguments [impl] and
-   optional definition [def]. [decl] is the location of the
-   declaration/definition. This new symbol is returned too. *)
+(** [add_symbol ss expo prop mstrat opaq id pos typ impl def] generates a new
+    signature state from [ss] by creating a new symbol with expo [e], property
+    [p], strategy [st], name [x], type [a], implicit arguments [impl] and
+    optional definition [def]. [pos] is the position of the declaration
+    without its definition. This new symbol is returned too. *)
 let add_symbol : sig_state -> expo -> prop -> match_strat
     -> bool -> strloc -> popt -> term -> bool list -> term option ->
     sig_state * sym =
-  fun ss expo prop mstrat opaq id decl typ impl def ->
+  fun ss expo prop mstrat opaq id pos typ impl def ->
   let sym =
-    Sign.add_symbol ss.signature expo prop mstrat opaq id decl
+    Sign.add_symbol ss.signature expo prop mstrat opaq id pos
       (cleanup typ) impl in
   begin
     match def with
