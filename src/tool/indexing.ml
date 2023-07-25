@@ -493,3 +493,46 @@ let index_sign sign =
 
 (* let's flatten the interface *)
 include DB
+
+let locate_cmd_gen ~fail ~pp_results s =
+  try
+   let qid = Parsing.Parser.Lp.parse_qid s in
+   match qid with
+    | [],name ->
+       let items = locate_name name in
+       Format.asprintf "%a@." pp_results items
+   | _ ->
+       fail (Format.asprintf
+        "Syntax error: an unqualified identifier was expected, found %a.%s"
+         Common.Path.pp (fst qid) (snd qid))
+  with
+   exn ->
+     fail (Format.asprintf "%s@." (Printexc.to_string exn))
+
+let locate_cmd_html s =
+ locate_cmd_gen ~fail:(fun x -> x) ~pp_results:html_of_item_set s
+
+let locate_cmd_txt s =
+ locate_cmd_gen ~fail:(fun x -> Common.Error.fatal_no_pos "%s" x)
+  ~pp_results:pp_item_set s
+
+let search_cmd_gen ~fail ?(holes_in_index=false) ~pp_results s =
+  try
+   let ptermstream = Parsing.Parser.Lp.parse_term_string "LPSearch" s in
+   let pterm = Stream.next ptermstream in
+   let mok _ = None in
+   let items = search_pterm ~holes_in_index ~mok [] pterm in
+   Format.asprintf "%a@." pp_results items
+  with
+   | Stream.Failure ->
+      fail (Format.asprintf "Syntax error: a term was expected")
+   | exn ->
+      fail (Format.asprintf "%s@." (Printexc.to_string exn))
+
+let search_cmd_html ?holes_in_index s =
+ search_cmd_gen ~fail:(fun x -> x) ~pp_results:html_of_item_set
+  ?holes_in_index s
+
+let search_cmd_txt ?holes_in_index s =
+ search_cmd_gen ~fail:(fun x -> Common.Error.fatal_no_pos "%s" x)
+ ~pp_results:pp_item_set ?holes_in_index s

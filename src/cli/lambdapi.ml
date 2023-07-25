@@ -22,27 +22,13 @@ struct
 
 let search_cmd cfg holes_in_index s =
   Config.init cfg;
-  let ptermstream = Parsing.Parser.Lp.parse_term_string "LPSearch" s in
-  try
-   let pterm = Stream.next ptermstream in
-   let mok _ = None in
-   let items = Tool.Indexing.search_pterm ~holes_in_index ~mok [] pterm in
-   out Format.std_formatter "%a@." Tool.Indexing.pp_item_set items
-  with
-   Stream.Failure ->
-    Common.Error.fatal_no_pos "Syntax error: a term was expected"
+  out Format.std_formatter "%s@."
+   (Tool.Indexing.search_cmd_txt ~holes_in_index s)
 
 let locate_cmd cfg s =
-  let qid = Parsing.Parser.Lp.parse_qid s in
-  match qid with
-   | [],name ->
-      Config.init cfg;
-      let items = Tool.Indexing.locate_name name in
-      out Format.std_formatter "%a@." Tool.Indexing.pp_item_set items
-  | _ ->
-      Common.Error.fatal_no_pos
-       "Syntax error: an unqualified identifier was expected, found %a.%s"
-        Path.pp (fst qid) (snd qid)
+  Config.init cfg;
+  out Format.std_formatter "%s@."
+   (Tool.Indexing.locate_cmd_txt s)
 
 let webserver_cmd cfg =
  Config.init cfg;
