@@ -11,7 +11,7 @@ let open_sign_default () =
   let sign = Sig_state.create_sign [ "dummy" ] in
   let _ =
     Sign.add_symbol sign Term.Public Term.Defin Term.Eager false
-      (Pos.none "foo") Term.mk_Type []
+      (Pos.none "foo") (Pos.none "") Term.mk_Type []
   in
   let ss = Sig_state.of_sign sign in
   Alcotest.(check unit)

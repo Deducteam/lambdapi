@@ -14,7 +14,7 @@ let parse_term s =
 let scope_term ss = Scope.scope_term true ss []
 
 let add_sym ss id =
-  Sig_state.add_symbol ss Public Defin Eager false (Pos.none id)
+  Sig_state.add_symbol ss Public Defin Eager false (Pos.none id) (Pos.none "")
     Term.mk_Kind [] None
 
 (* Define a signature state and some symbols. *)

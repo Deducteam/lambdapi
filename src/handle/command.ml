@@ -145,12 +145,13 @@ let add_rule : sig_state -> sym_rule -> unit = fun ss ((s,r) as x) ->
   Sign.add_rule ss.signature s r;
   Console.out 2 (Color.red "rule %a") sym_rule x
 
-(** [handle_inductive_symbol ss e p strat x xs a] handles the command
+(** [handle_inductive_symbol ss e p strat x pos xs a] handles the command
     [e p strat symbol x xs : a] with [ss] as the signature state.
+    The command is at position [pos].
     On success, an updated signature state and the new symbol are returned. *)
 let handle_inductive_symbol : sig_state -> expo -> prop -> match_strat
-    -> p_ident -> p_params list -> p_term -> sig_state * sym =
-  fun ss expo prop mstrat ({elt=name;pos} as id) xs typ ->
+    -> p_ident -> popt -> p_params list -> p_term -> sig_state * sym =
+  fun ss expo prop mstrat ({elt=name;pos} as id) decl xs typ ->
   (* We check that [id] is not already used. *)
   if Sign.mem ss.signature name then
     fatal pos "Symbol %a already exists." uid name;
@@ -170,7 +171,8 @@ let handle_inductive_symbol : sig_state -> expo -> prop -> match_strat
   end;
   (* Actually add the symbol to the signature and the state. *)
   Console.out 2 (Color.red "symbol %a : %a") uid name term typ;
-  let r = Sig_state.add_symbol ss expo prop mstrat false id typ impl None in
+  let r =
+   Sig_state.add_symbol ss expo prop mstrat false id decl typ impl None in
   sig_state := fst r; r
 
 (** Representation of a yet unchecked proof. The structure is initialized when
@@ -305,7 +307,8 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
           (* All inductive types are declared at position [pos]
              so that constructors are declared afterwards. *)
           let id = {id with pos} in
-          handle_inductive_symbol ss expo Const Eager id params pt in
+          handle_inductive_symbol ss expo Const Eager id pos
+           params pt in
         (ss, ind_sym::ind_sym_list)
       in
       let (ss, ind_sym_list_rev) =
@@ -318,7 +321,8 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
             (ss, cons_sym_list_list) {elt=(_,_,p_cons_list); _} =
         let add_cons_sym (ss, cons_sym_list) (id, pt) =
           let (ss, cons_sym) =
-            handle_inductive_symbol ss expo Const Eager id params pt in
+            handle_inductive_symbol ss expo Const Eager id pos
+            params pt in
           (ss, cons_sym::cons_sym_list)
         in
         let (ss, cons_sym_list_rev) =
@@ -361,7 +365,8 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
           let pos = after (end_pos pos) in
           let id = Pos.make pos rec_name in
           let r =
-            Sig_state.add_symbol ss expo Defin Eager false id rec_typ [] None
+            Sig_state.add_symbol ss expo Defin Eager false id
+             None rec_typ [] None
           in sig_state := fst r; r
         in
         (ss, rec_sym::rec_sym_list)
@@ -388,6 +393,7 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
   | P_symbol {p_sym_mod;p_sym_nam;p_sym_arg;p_sym_typ;p_sym_trm;p_sym_prf;
               p_sym_def} ->
     (* We check that the identifier is not already used. *)
+    let declpos = Pos.cat pos (Option.bind p_sym_typ (fun x -> x.pos)) in
     let {elt=id; _} = p_sym_nam in
     if Sign.mem ss.signature id then
       fatal p_sym_nam.pos "Symbol %a already exists." uid id;
@@ -505,7 +511,7 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
             in
             (* Add the symbol in the signature. *)
             fst (Sig_state.add_symbol
-                   ss expo prop mstrat opaq p_sym_nam a impl d)
+                   ss expo prop mstrat opaq p_sym_nam declpos a impl d)
         | P_proof_end ->
             (* Check that the proof is indeed finished. *)
             if not (finished ps) then
@@ -520,7 +526,7 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
             (* Add the symbol in the signature. *)
             Console.out 2 (Color.red "symbol %a : %a") uid id term a;
             fst (Sig_state.add_symbol
-                   ss expo prop mstrat opaq p_sym_nam a impl d)
+                   ss expo prop mstrat opaq p_sym_nam declpos a impl d)
       in
       (* Create the proof state. *)
       let pdata_state =

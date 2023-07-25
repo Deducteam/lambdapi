@@ -314,7 +314,9 @@ let find_sym ~prt:_prt ~prv:_prv _sig_state {elt=(mp,name); pos} =
   | _::_ -> mp
  in
   Core.Term.create_sym mp Core.Term.Public Core.Term.Defin Core.Term.Sequen
-   false (Common.Pos.make pos name) Core.Term.mk_Type []
+   (* CSC: TODO XXX is the position below wrong? It should come from
+      locate_name! *)
+   false (Common.Pos.make pos name) None Core.Term.mk_Type []
 
 let search_pterm ~holes_in_index ~mok env pterm =
  let sig_state = Core.Sig_state.dummy in
@@ -468,11 +470,11 @@ let index_rule sym ({Core.Term.lhs=lhsargs ; rule_pos ; _} as rule) =
 let index_sym sym =
  let qname = name_of_sym sym in
  (* Name *)
- DB.insert_name (snd qname) (Name (qname,sym.sym_pos)) ;
+ DB.insert_name (snd qname) (Name (qname,sym.sym_decl_pos)) ;
  (* Type + InType *)
  let typ = Timed.(!(sym.Core.Term.sym_type)) in
  index_term_and_subterms ~is_spine:true typ
-  (fun where -> (Type (where,qname,sym.sym_pos))) ;
+  (fun where -> (Type (where,qname,sym.sym_decl_pos))) ;
  (* InBody??? sym.sym_def : term option ref
     but all the subterms are too much; collect only the constants? *)
  (* Rules *)

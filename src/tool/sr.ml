@@ -204,7 +204,7 @@ let check_rule : Scope.pre_rule Pos.loc -> rule = fun ({pos; elt} as pr) ->
         let s =
           let name = Pos.none @@ Printf.sprintf "$%d" m.meta_key in
           Term.create_sym (Sign.current_path()) Privat Defin Eager
-            false name !(m.meta_type) [] in
+            false name None !(m.meta_type) [] in
         Stdlib.(symbols := s :: !symbols);
         (* Build a definition for [m]. *)
         let xs = Array.init m.meta_arity (new_tvar_ind "x") in
