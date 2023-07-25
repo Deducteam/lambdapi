@@ -240,6 +240,27 @@ module DB = struct
 
  let pp_item_set fmt set = pp_item_list fmt (ItemSet.elements set)
 
+ let html_of_item_list =
+  Lplib.List.pp
+   (fun ppf item ->
+     match item with
+      | Name ((p,n),pos) ->
+         Lplib.Base.out ppf "<li>Name of %a.%s@%a<br><pre>%a</pre></li>@."
+          Core.Print.path p n Common.Pos.pp pos Common.Pos.deref pos
+      | Type (where,(p,n),pos) ->
+         Lplib.Base.out ppf
+          "<li>%a the type of %a.%s@%a<br><pre>%a</pre></li>@."
+          pp_where where Core.Print.path p n Common.Pos.pp pos
+          Common.Pos.deref pos
+      | Xhs (inside,side,pos) ->
+         Lplib.Base.out ppf "<li>%a %a of %a<br><pre>%a</pre></li>@."
+          pp_inside inside pp_side side Common.Pos.pp (Some pos)
+           Common.Pos.deref (Some pos))
+   ""
+
+ let html_of_item_set fmt set =
+  Lplib.Base.out fmt "<ul>%a</ul>" html_of_item_list (ItemSet.elements set)
+
  (* disk persistence *)
 
  let dbpath = "LPSearch.db"

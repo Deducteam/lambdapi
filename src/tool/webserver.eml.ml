@@ -12,7 +12,7 @@ let show_form ?output request =
 %   begin match output with
 %   | None -> ()
 %   | Some output ->
-      <p>You entered: <b><%s output %>!</b></p>
+    <%s! output %>
 %   end;
 
   </body>
@@ -24,7 +24,7 @@ let locate_cmd s =
    match qid with
     | [],name ->
        let items = Indexing.locate_name name in
-       Format.asprintf "%a@." Indexing.pp_item_set items
+       Format.asprintf "%a@." Indexing.html_of_item_set items
    | _ ->
        Format.asprintf
         "Syntax error: an unqualified identifier was expected, found %a.%s"
@@ -39,7 +39,7 @@ let search_cmd ?(holes_in_index=false)s =
    let pterm = Stream.next ptermstream in
    let mok _ = None in
    let items = Indexing.search_pterm ~holes_in_index ~mok [] pterm in
-   Format.asprintf "%a@." Indexing.pp_item_set items
+   Format.asprintf "%a@." Indexing.html_of_item_set items
   with
    | Stream.Failure ->
       Format.asprintf "Syntax error: a term was expected"

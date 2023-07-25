@@ -129,3 +129,29 @@ let locate : ?fname:string -> Lexing.position * Lexing.position -> pos =
    [lps] and the element [elt]. *)
 let make_pos : Lexing.position * Lexing.position -> 'a -> 'a loc =
   fun lps elt -> in_pos (locate lps) elt
+
+(** [deref pos] prints the text at the position, if possible *)
+let deref : popt Lplib.Base.pp =
+ fun ppf pos ->
+  match pos with
+  | Some { fname=Some fname; start_line; start_col; end_line; end_col } ->
+     let ch = open_in fname in
+     let out = Buffer.create ((end_line - start_line) * 80 + end_col + 1) in
+     for i = 0 to start_line - 2 do
+      ignore (input_line ch)
+     done ;
+     for i = 0 to start_col - 1 do
+      ignore (input_char ch)
+     done ;
+     for i = 0 to end_line - start_line - 1 do
+       Buffer.add_string out (input_line ch) ;
+       Buffer.add_string out "<br>\n"
+     done ;
+     let end_col =
+      if start_line = end_line then end_col - start_col else end_col in
+     for i = 0 to end_col - 1 do
+      Buffer.add_char out (input_char ch)
+     done ;
+     close_in ch ;
+     string ppf (Buffer.contents out)
+  | None | Some {fname=None} -> string ppf "<p>unknown location</p>"
