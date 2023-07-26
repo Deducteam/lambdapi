@@ -568,7 +568,7 @@ module QueryLanguage = struct
    match f with
    | Path p ->
       let string_of_path x = Format.asprintf "%a" Common.Path.pp x in
-       Lplib.String.is_prefix (string_of_path p') p in
+       Lplib.String.is_prefix p (string_of_path p') in
   ItemSet.filter f set
 
  let answer_query ~mok env =
