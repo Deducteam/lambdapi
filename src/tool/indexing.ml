@@ -242,15 +242,18 @@ module DB = struct
  let generic_pp_of_position_list =
   Lplib.List.pp
    (fun ppf position ->
+     Print.without_qualifying (fun () ->
      match position with
       | _,Name ->
          Lplib.Base.out ppf "Name"
       | term,Type where ->
-         Lplib.Base.out ppf "%a occurs %a the type" Print.term term
+         Lplib.Base.out ppf "%a occurs %a the type"
+          Print.term term
           pp_where where
       | term,Xhs (inside,side) ->
-         Lplib.Base.out ppf "%a occurs %a %a" Print.term term
-          pp_inside inside pp_side side)
+         Lplib.Base.out ppf "%a occurs %a %a"
+          Print.term term
+          pp_inside inside pp_side side))
    " and "
 
  let generic_pp_of_item_list ~separator ~delimiters ~lis:(lisb,lise)
