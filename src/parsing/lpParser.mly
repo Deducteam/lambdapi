@@ -425,7 +425,13 @@ asearch_query:
       match k,t.elt with
        | "name",P_Iden(id,false) ->
            assert (fst id.elt = []) ;
-           QBase(QName (snd id.elt))
+           if w <> None then
+             LpLexer.syntax_error $sloc "\"name\" expects only \":\""
+           else if g = true then
+             LpLexer.syntax_error $sloc
+              "\"generalize\" cannot be used with \"name\""
+           else
+             QBase(QName (snd id.elt))
        | "name",_ ->
            LpLexer.syntax_error $sloc "Path prefix expected after \"name:\""
        | "match",_ ->
