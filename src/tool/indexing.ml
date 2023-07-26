@@ -534,13 +534,18 @@ module QueryLanguage = struct
       | Hypothesis insp, Hypothesis ins -> match_opt insp ins
       | _, _ -> false
 
- let filter_constr constr _ position =
-  (* invariant here: all position lists have length one after a base query *)
-  match constr, position with
-   | QType wherep, [Type where] -> match_where wherep where
-   | QXhs (insp,sidep), [Xhs (ins, side)] ->
-      match_opt insp ins && match_opt sidep side
-   | _, _ -> false
+ let filter_constr constr _ positions =
+  match constr with
+   | QType wherep ->
+      List.exists
+       (function
+         | Type where -> match_where wherep where
+         | _ -> false) positions
+   | QXhs (insp,sidep) ->
+      List.exists
+       (function
+         | Xhs (ins,side) -> match_opt insp ins && match_opt sidep side
+         | _ -> false) positions
 
  let answer_base_query ~mok env =
   function

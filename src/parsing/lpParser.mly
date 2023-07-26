@@ -398,14 +398,33 @@ float_or_nat:
   | s=NAT { s }
 
 asearch_query:
+  (* "type" is a keyword... *)
+  | TYPE_QUERY COLON t=aterm
+    { SearchQuerySyntax.QBase(QSearch(t,false,Some (QType None))) }
+  | RULE COLON t=aterm
+    { SearchQuerySyntax.QBase(QSearch(t,false,Some (QXhs(None,None)))) }
   | k=UID COLON t=aterm
-    { match k,t.elt with
-         "name",P_Iden(id,false) ->
+    { let open SearchQuerySyntax in
+      match k,t.elt with
+       | "name",P_Iden(id,false) ->
            assert (fst id.elt = []) ;
-           SearchQuerySyntax.QBase(QName (snd id.elt))
+           QBase(QName (snd id.elt))
        | "name",_ ->
            LpLexer.syntax_error $sloc "Path prefix expected after \"name:\""
-       | _,_ -> SearchQuerySyntax.QBase(QSearch(t,false,None))
+       | "match",_ ->
+           QBase(QSearch(t,false,None))
+       | "spine",_ ->
+           QBase(QSearch(t,false,Some (QType (Some (Spine None)))))
+       | "concl",_ ->
+           QBase(QSearch(t,false,Some (QType (Some (Conclusion None)))))
+       | "hyp",_ ->
+           QBase(QSearch(t,false,Some (QType (Some (Hypothesis None)))))
+       | "lhs",_ ->
+           QBase(QSearch(t,false,Some (QXhs(None,Some Lhs))))
+       | "rhs",_ ->
+           QBase(QSearch(t,false,Some (QXhs(None,Some Rhs))))
+       | _,_ ->
+           LpLexer.syntax_error $sloc ("Unknown keyword: " ^ k)
     }
   | L_PAREN q=search_query R_PAREN
     { q }
