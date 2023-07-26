@@ -35,9 +35,9 @@ let locate_cmd cfg s =
   out Format.std_formatter "%s@."
    (Tool.Indexing.locate_cmd_txt s)
 
-let websearch_cmd cfg =
+let websearch_cmd cfg port =
  Config.init cfg;
- Tool.Websearch.start ()
+ Tool.Websearch.start ~port ()
 
 let index file =
  let sign =
@@ -410,6 +410,11 @@ let generalize_arg : bool CLT.t =
      with holes." in
   Arg.(value & flag & info ["generalize"] ~doc)
 
+let port_arg : int CLT.t =
+  let doc =
+    "Port used by the webserver." in
+  Arg.(value & opt int 8080 & info ["port"] ~docv:"PORT" ~doc)
+
 let index_cmd =
  let doc = "Index the given files." in
  Cmd.v (Cmd.info "index" ~doc ~man:man_pkg_file)
@@ -437,9 +442,9 @@ let locate_cmd =
 
 let websearch_cmd =
  let doc =
-  "Starts a webserver for searching the library on port 8080." in
+  "Starts a webserver for searching the library." in
  Cmd.v (Cmd.info "websearch" ~doc ~man:man_pkg_file)
-  Cmdliner.Term.(const LPSearchMain.websearch_cmd $ Config.full)
+  Cmdliner.Term.(const LPSearchMain.websearch_cmd $ Config.full $ port_arg)
 
 let _ =
   let t0 = Sys.time () in
