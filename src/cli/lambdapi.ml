@@ -20,10 +20,15 @@ module CLT = Cmdliner.Term
 module LPSearchMain =
 struct
 
-let search_cmd cfg holes_in_index s =
+let search_query_cmd cfg s =
   Config.init cfg;
   out Format.std_formatter "%s@."
-   (Tool.Indexing.search_cmd_txt ~holes_in_index s)
+   (Tool.Indexing.search_query_cmd_txt s)
+
+let search_cmd cfg generalize s =
+  Config.init cfg;
+  out Format.std_formatter "%s@."
+   (Tool.Indexing.search_cmd_txt ~generalize s)
 
 let locate_cmd cfg s =
   Config.init cfg;
@@ -391,6 +396,10 @@ let pattern_as_arg : string Cmdliner.Term.t =
   let doc = "Term pattern to be matched." in
   Arg.(required & pos 0 (some string) None & info [] ~docv:"PATTERN" ~doc)
 
+let query_as_arg : string Cmdliner.Term.t =
+  let doc = "Query to be executed." in
+  Arg.(required & pos 0 (some string) None & info [] ~docv:"QUERY" ~doc)
+
 let add_only_arg : bool CLT.t =
   let doc = "Adds more terms to the index without cleaning it first." in
   Arg.(value & flag & info ["add"] ~doc)
@@ -407,8 +416,14 @@ let index_cmd =
   Cmdliner.Term.(const LPSearchMain.index_cmd $ Config.full $
    add_only_arg $ files)
 
-let search_cmd =
+let search_query_cmd =
  let doc = "Run a search query against the index." in
+ Cmd.v (Cmd.info "search-query" ~doc ~man:man_pkg_file)
+  Cmdliner.Term.(const LPSearchMain.search_query_cmd $ Config.full
+   $ query_as_arg)
+
+let search_cmd =
+ let doc = "Match a term pattern against the index." in
  Cmd.v (Cmd.info "search" ~doc ~man:man_pkg_file)
   Cmdliner.Term.(const LPSearchMain.search_cmd $ Config.full $
    generalize_arg $ pattern_as_arg)
@@ -434,7 +449,7 @@ let _ =
     [ check_cmd ; parse_cmd ; export_cmd ; lsp_server_cmd
     ; decision_tree_cmd ; help_cmd ; version_cmd
     ; Init.cmd ; Install.install_cmd ; Install.uninstall_cmd
-    ; index_cmd ; search_cmd ; locate_cmd ; webserver_cmd ]
+    ; index_cmd ; search_cmd ; locate_cmd ; search_query_cmd ; webserver_cmd ]
   in
   let doc = "A type-checker for the lambdapi-calculus modulo rewriting." in
   let sdocs = Manpage.s_common_options in

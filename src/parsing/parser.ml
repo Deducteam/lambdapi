@@ -46,6 +46,11 @@ sig
   (** [parse_string f s] returns a stream of parsed terms from string [s]
       which comes from file [f] ([f] can be anything). *)
 
+  val parse_search_query_string :
+    string -> string -> SearchQuerySyntax.query Stream.t
+  (** [parse_search_query_string f s] returns a stream of parsed terms from
+      string [s] which comes from file [f] ([f] can be anything). *)
+
   val parse_qid : string -> Core.Term.qident
   end
 = struct
@@ -99,6 +104,8 @@ sig
 
   let parse_term = parse ~grammar_entry:LpParser.term_alone
   let parse_term_string = parse_string ~grammar_entry:LpParser.term_alone
+  let parse_search_query_string =
+    parse_string ~grammar_entry:LpParser.search_query_alone
   let parse_term_file = parse_file ~grammar_entry:LpParser.term_alone
 
   let parse_qid s =

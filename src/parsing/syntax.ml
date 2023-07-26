@@ -205,8 +205,11 @@ type p_query_aux =
   | P_query_locate_name of strloc
   (** Resolves a symbol name using the search index *)
   | P_query_search of p_term * bool
-  (** Searches for a symbol whose type matches a given pattern; the boolean
-      is the holes_in_index argument to search *)
+  (** Matches a pattern against symbol types or rules; the boolean
+      is true if the matching is up to generalization *)
+  | P_query_search_query of string
+  (** Runs a search query *) (* I use a string here to be parsed later
+  to avoid polluting LambdaPi code with index and retrieval code *)
 
 type p_query = p_query_aux loc
 
@@ -569,6 +572,7 @@ let fold_idents : ('a -> p_qident -> 'a) -> 'a -> p_command list -> 'a =
     | P_query_print (Some qid) -> f a qid
     | P_query_locate_name _ -> a
     | P_query_search (t,_) -> fold_term_vars vs a t
+    | P_query_search_query _ -> a
   in
 
   let fold_tactic : StrSet.t * 'a -> p_tactic -> StrSet.t * 'a =

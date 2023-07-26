@@ -262,6 +262,8 @@ let query : p_query pp = fun ppf { elt; _ } ->
       out ppf "search %a" term t
      else
       out ppf "search generalize %a" term t
+  | P_query_search_query s ->
+      out ppf "search-query \"%s\"" s
 
 let tactic : p_tactic pp = fun ppf { elt;  _ } ->
   begin match elt with

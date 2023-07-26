@@ -119,3 +119,35 @@ beginning, the timeout is set to 2s.
 ::
 
    prover_timeout 60;
+
+``locate``
+------------------
+
+It takes a non-qualified identifier and locates it in the library, using
+the index.
+
+::
+
+   locate nat;
+
+``search``
+------------------
+
+It matches a term pattern agains the symbol types and rules in the
+library, using the index. If ``generalize`` is used, the matching works
+up to generalization.
+
+::
+
+  search (nat → nat);
+  search generalize (nat → nat);
+
+``search-query``
+------------------
+
+It runs a query against the index. See :doc:`query_language` for the query
+language specification.
+
+::
+
+  search-query "spine: (nat → nat) , hyp: bool";
