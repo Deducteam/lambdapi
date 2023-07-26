@@ -29,8 +29,10 @@
   '("assert"
     "assertnot"
     "compute"
+    "locate"
     "print"
     "proofterm"
+    "search"
     "type")
   "Queries.")
 (defconst lambdapi--cmds
@@ -113,8 +115,11 @@ Indent by `lambdapi-indent-basic' in proofs, and 0 otherwise."
              ("assertnot" args "⊢" sterm ":" sterm)
              ("assertnot" args "⊢" sterm "≡" sterm)
              ("compute" sterm)
+             ("locate" ident)
              ("print")
              ("proofterm")
+             ("search" sterm)
+             ("search" "generalize" sterm)
              ("type" sterm))
       (prfcontent (tactic)
                   (query))
@@ -203,8 +208,8 @@ The default lexer is used because the syntax is primarily made of sexps."
     (`(:before . ,(or "abort" "admitted" "end")) '(column . 0))
     (`(:after . ,(or "abort" "admitted" "end")) '(column . 0))
 
-    (`(:before . ,(or "assert" "assertnot" "compute" "print" "proofterm"
-                      "type"))
+    (`(:before . ,(or "assert" "assertnot" "compute" "locate"
+                      "print" "proofterm" "search" "type"))
      (lambdapi--query-indent))
 
     (`(,_ . ,(or "," "↪" "→" "≡")) (smie-rule-separator kind))

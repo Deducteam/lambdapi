@@ -52,19 +52,21 @@
     "compute"
     "debug"
     "flag"
+    "locate"
     "off"
     "on"
     "print"
     "proofterm"
     "prover"
     "prover_timeout"
+    "search"
+    "search-query"
     "type"
     "verbose")
   "Commands producing side-effects.")
 
 (defconst lambdapi-misc-keywords
   '("associative"
-    "coerce"
     "commutative"
     "constant"
     "left"

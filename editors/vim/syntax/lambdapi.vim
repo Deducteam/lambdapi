@@ -40,7 +40,6 @@ syntax keyword KeywordOK contained associative
 syntax keyword KeywordOK contained assume
 syntax keyword KeywordOK contained begin
 syntax keyword KeywordOK contained builtin
-syntax keyword KeywordOK contained coerce
 syntax keyword KeywordOK contained coerce_rule
 syntax keyword KeywordOK contained commutative
 syntax keyword KeywordOK contained compute
@@ -59,6 +58,7 @@ syntax keyword KeywordOK contained infix
 syntax keyword KeywordOK contained injective
 syntax keyword KeywordOK contained left
 syntax keyword KeywordOK contained let
+syntax keyword KeywordOK contained locate
 syntax keyword KeywordOK contained notation
 syntax keyword KeywordOK contained off
 syntax keyword KeywordOK contained on
@@ -79,6 +79,8 @@ syntax keyword KeywordOK contained require
 syntax keyword KeywordOK contained rewrite
 syntax keyword KeywordOK contained right
 syntax keyword KeywordOK contained rule
+syntax keyword KeywordOK contained search
+syntax keyword KeywordOK contained search-query
 syntax keyword KeywordOK contained sequential
 syntax keyword KeywordOK contained simplify
 syntax keyword KeywordOK contained solve
@@ -104,7 +106,6 @@ syntax keyword KeywordKO contained associative
 syntax keyword KeywordKO contained assume
 syntax keyword KeywordKO contained begin
 syntax keyword KeywordKO contained builtin
-syntax keyword KeywordKO contained coerce
 syntax keyword KeywordKO contained coerce_rule
 syntax keyword KeywordKO contained commutative
 syntax keyword KeywordKO contained compute
@@ -123,6 +124,7 @@ syntax keyword KeywordKO contained infix
 syntax keyword KeywordKO contained injective
 syntax keyword KeywordKO contained left
 syntax keyword KeywordKO contained let
+syntax keyword KeywordKO contained location
 syntax keyword KeywordKO contained notation
 syntax keyword KeywordKO contained off
 syntax keyword KeywordKO contained on
@@ -143,6 +145,8 @@ syntax keyword KeywordKO contained require
 syntax keyword KeywordKO contained rewrite
 syntax keyword KeywordKO contained right
 syntax keyword KeywordKO contained rule
+syntax keyword KeywordKO contained search
+syntax keyword KeywordKO contained search-query
 syntax keyword KeywordKO contained sequential
 syntax keyword KeywordKO contained simplify
 syntax keyword KeywordKO contained solve
