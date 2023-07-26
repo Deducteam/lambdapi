@@ -397,11 +397,15 @@ float_or_nat:
   | s=FLOAT { s }
   | s=NAT { s }
 
+maybe_generalize:
+  | g = GENERALIZE?
+    { g <> None }
+
 where:
-  | COLON
-    { None }
-  | u = UID
-    { match u with
+  | COLON g=maybe_generalize
+    { g,None }
+  | u = UID g=maybe_generalize
+    { g, match u with
        | "=" -> Some SearchQuerySyntax.Exact
        | "~" -> Some SearchQuerySyntax.Inside
        | _ ->
@@ -410,12 +414,14 @@ where:
 
 asearch_query:
   (* "type" is a keyword... *)
-  | TYPE_QUERY COLON t=aterm
-    { SearchQuerySyntax.QBase(QSearch(t,false,Some (QType None))) }
-  | RULE w=where t=aterm
-    { SearchQuerySyntax.QBase(QSearch(t,false,Some (QXhs(w,None)))) }
-  | k=UID w=where t=aterm
+  | TYPE_QUERY COLON g=maybe_generalize t=aterm
+    { SearchQuerySyntax.QBase(QSearch(t,g,Some (QType None))) }
+  | RULE gw=where t=aterm
+    { let g,w = gw in
+      SearchQuerySyntax.QBase(QSearch(t,g,Some (QXhs(w,None)))) }
+  | k=UID gw=where t=aterm
     { let open SearchQuerySyntax in
+      let g,w = gw in
       match k,t.elt with
        | "name",P_Iden(id,false) ->
            assert (fst id.elt = []) ;
@@ -423,17 +429,17 @@ asearch_query:
        | "name",_ ->
            LpLexer.syntax_error $sloc "Path prefix expected after \"name:\""
        | "match",_ ->
-           QBase(QSearch(t,false,None))
+           QBase(QSearch(t,g,None))
        | "spine",_ ->
-           QBase(QSearch(t,false,Some (QType (Some (Spine w)))))
+           QBase(QSearch(t,g,Some (QType (Some (Spine w)))))
        | "concl",_ ->
-           QBase(QSearch(t,false,Some (QType (Some (Conclusion w)))))
+           QBase(QSearch(t,g,Some (QType (Some (Conclusion w)))))
        | "hyp",_ ->
-           QBase(QSearch(t,false,Some (QType (Some (Hypothesis w)))))
+           QBase(QSearch(t,g,Some (QType (Some (Hypothesis w)))))
        | "lhs",_ ->
-           QBase(QSearch(t,false,Some (QXhs(w,Some Lhs))))
+           QBase(QSearch(t,g,Some (QXhs(w,Some Lhs))))
        | "rhs",_ ->
-           QBase(QSearch(t,false,Some (QXhs(w,Some Rhs))))
+           QBase(QSearch(t,g,Some (QXhs(w,Some Rhs))))
        | _,_ ->
            LpLexer.syntax_error $sloc ("Unknown keyword: " ^ k)
     }
