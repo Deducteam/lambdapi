@@ -18,6 +18,7 @@ where
 * the precedence order is ``,`` > ``;`` > ``|``
 * parentheses can be used as usual to force a different precedence order
 * ``match`` can be paired only with ``:`` and ``name`` can be paired only with ``:`` and no ``generalize``
+* a pattern should be wrapped in parentheses, unless it is atomic (e.g. an identifier or a placeholder)
 
 The semantics of the query language is the following:
 
