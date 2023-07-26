@@ -2,6 +2,9 @@ let show_form ?output request =
   <html>
   <body>
 
+    <h1><a href="https://github.com/Deducteam/lambdapi">LambdaPi</a>
+     Search Engine</h1>
+
     <form method="POST" action="/">
       <%s! Dream.csrf_tag request %>
       <input name="message" autofocus>
