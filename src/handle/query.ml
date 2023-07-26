@@ -160,6 +160,8 @@ let handle : Sig_state.t -> proof_state option -> p_query -> result =
   | P_query_search (t,generalize) ->
       return Tool.Indexing.pp_item_set
        (Tool.Indexing.search_pterm ~generalize ~mok env t)
+  | P_query_search_query s ->
+      return string (Tool.Indexing.search_query_cmd_txt s)
   | P_query_locate_name _
   | P_query_debug(_,_)
   | P_query_verbose(_)
