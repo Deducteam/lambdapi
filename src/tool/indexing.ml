@@ -214,7 +214,7 @@ module DB = struct
 
  let pp_inside fmt =
   function
-    | Exact -> Lplib.Base.out fmt "the exact"
+    | Exact -> Lplib.Base.out fmt "as the exact"
     | Inside -> Lplib.Base.out fmt "inside the"
 
  let pp_where fmt =
@@ -237,18 +237,20 @@ module DB = struct
         m) empty l
   end
 
- type answer = (position list) ItemSet.t
+ type answer = ((term * position) list) ItemSet.t
 
  let generic_pp_of_position_list =
   Lplib.List.pp
    (fun ppf position ->
      match position with
-      | Name ->
+      | _,Name ->
          Lplib.Base.out ppf "Name"
-      | Type where ->
-         Lplib.Base.out ppf "%a the type" pp_where where
-      | Xhs (inside,side) ->
-         Lplib.Base.out ppf "%a %a" pp_inside inside pp_side side)
+      | term,Type where ->
+         Lplib.Base.out ppf "%a occurs %a the type" Print.term term
+          pp_where where
+      | term,Xhs (inside,side) ->
+         Lplib.Base.out ppf "%a occurs %a %a" Print.term term
+          pp_inside inside pp_side side)
    " and "
 
  let generic_pp_of_item_list ~separator ~delimiters ~lis:(lisb,lise)
@@ -302,13 +304,22 @@ module DB = struct
    let db' = Pure.insert_name (Lazy.force !db) k v in
    db := lazy db'
 
- let search ~generalize  k =
-  ItemSet.of_list (Pure.search ~generalize  (Lazy.force !db) k)
+ let set_of_list k l =
+  ItemSet.of_list
+   (List.map
+     (fun (i,pos) ->
+       i, List.map (fun x -> k,x) pos) l)
+
+ let search ~generalize k =
+  set_of_list k
+   (Pure.search ~generalize  (Lazy.force !db) k)
 
  let dump () = Pure.dump_to ~filename:dbpath (Lazy.force !db)
 
  let locate_name name =
-  ItemSet.of_list (Pure.locate_name (Lazy.force !db) name)
+  let k = Term.mk_Wild (* dummy, unused *) in
+  set_of_list k
+   (Pure.locate_name (Lazy.force !db) name)
 
 end
 
@@ -319,7 +330,7 @@ let find_sym ~prt:_prt ~prv:_prv _sig_state {elt=(mp,name); pos} =
      let res = DB.locate_name name in
      (match DB.ItemSet.choose_opt res with
        | None -> Common.Error.fatal pos "Unknown symbol %s." name
-       | Some (((mp,_),_),[DB.Name]) ->
+       | Some (((mp,_),_),[_,DB.Name]) ->
           if DB.ItemSet.cardinal res > 1 then
            Common.Error.wrn pos
             "Overloaded symbol %s, choosing the one declared in %a" name
@@ -539,12 +550,12 @@ module QueryLanguage = struct
    | QType wherep ->
       List.exists
        (function
-         | Type where -> match_where wherep where
+         | _,Type where -> match_where wherep where
          | _ -> false) positions
    | QXhs (insp,sidep) ->
       List.exists
        (function
-         | Xhs (ins,side) -> match_opt insp ins && match_opt sidep side
+         | _,Xhs (ins,side) -> match_opt insp ins && match_opt sidep side
          | _ -> false) positions
 
  let answer_base_query ~mok env =
