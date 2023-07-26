@@ -16,6 +16,8 @@ QID ::= [UID "."]+ UID
 
 <qid_alone> ::= <qid> EOF
 
+<search_query_alone> ::= <search_query> EOF
+
 <command> ::= "require" "open" <path>* ";"
             | "require" <path>* ";"
             | "require" <path> "as" <uid> ";"
@@ -46,6 +48,7 @@ QID ::= [UID "."]+ UID
           | "verbose" <nat>
           | "type" <term>
           | "locate" <uid>
+          | "search"QUERY <stringlit>
           | "search" "generalize" <term>
           | "search" <term>
 
@@ -175,5 +178,22 @@ QID ::= [UID "."]+ UID
 
 <float_or_nat> ::= <float>
                  | <nat>
+
+<maybe_generalize> ::= ["generalize"]
+
+<where> ::= ":" <maybe_generalize>
+          | UID <maybe_generalize>
+
+<asearch_query> ::= "type" ":" <maybe_generalize> <aterm>
+                  | "rule" <where> <aterm>
+                  | UID <where> <aterm>
+                  | "(" <search_query> ")"
+
+<csearch_query> ::= <asearch_query> ("," <asearch_query>)*
+
+<ssearch_query> ::= <csearch_query> (";" <csearch_query>)*
+
+<search_query> ::= <ssearch_query>
+                 | <search_query> "|" UID
 
 
