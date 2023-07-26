@@ -136,13 +136,10 @@ let make_pos : Lexing.position * Lexing.position -> 'a -> 'a loc =
 (** [deref escape sep dels pos] prints the text at the position, if possible.
     [sep] is the separator used between entries (e.g. "<br>\n")
     [dels] is a pair of delimiters used to wrap the "unknown location"
-    message returned when the position does not refer to a file.
-    The [escape] function is used to escape the retrieved file content
-    (e.g. to make it acceptable HTML code) *)
-let deref :
- escape:(string -> string) -> separator:string -> delimiters:(string*string)
-  -> popt Lplib.Base.pp =
- fun ~escape ~separator ~delimiters:(db,de) ppf pos ->
+    message returned when the position does not refer to a file. *)
+let deref : separator:string -> delimiters:(string*string) ->
+  popt Lplib.Base.pp =
+ fun ~separator ~delimiters:(db,de) ppf pos ->
   match pos with
   | Some { fname=Some fname; start_line; start_col; end_line; end_col } ->
      let ch = open_in fname in
@@ -163,5 +160,5 @@ let deref :
       Buffer.add_char out (input_char ch)
      done ;
      close_in ch ;
-     string ppf (escape (Buffer.contents out))
+     string ppf (Buffer.contents out)
   | None | Some {fname=None} -> string ppf (db ^ "unknown location" ^ de)

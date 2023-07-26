@@ -258,25 +258,36 @@ module DB = struct
           pp_inside inside pp_side side))
    " and "
 
- let generic_pp_of_item_list ~escape ~separator ~delimiters ~lis:(lisb,lise)
-  ~pres:(preb,pree)
+ type ho_pp = { run : 'a. 'a Lplib.Base.pp -> 'a Lplib.Base.pp }
+
+ let identity_escaper : ho_pp =
+  { run = fun x -> x }
+
+ let html_escaper : ho_pp =
+  { run  = fun pp fmt x ->
+     let res = Dream.html_escape (Format.asprintf "%a" pp x) in
+     Format.pp_print_string fmt res
+  }
+
+ let generic_pp_of_item_list ~escaper ~separator ~delimiters
+  ~lis:(lisb,lise) ~pres:(preb,pree)
  =
   Lplib.List.pp
    (fun ppf (((p,n),pos),positions) ->
      Lplib.Base.out ppf "%s%a.%s@%a%s%a%s%s%a%s%s@."
-      lisb Core.Print.path p n Common.Pos.pp pos separator
-      generic_pp_of_position_list positions
-      separator preb (Common.Pos.deref ~escape ~separator ~delimiters)
+      lisb (escaper.run Core.Print.path) p n (escaper.run Common.Pos.pp)
+      pos separator (escaper.run generic_pp_of_position_list) positions
+      separator preb (escaper.run (Common.Pos.deref ~separator ~delimiters))
       pos pree lise)
    ""
 
  let html_of_item_list =
-  generic_pp_of_item_list ~escape:Dream.html_escape
+  generic_pp_of_item_list ~escaper:html_escaper
    ~separator:"<br>\n" ~delimiters:("<p>","</p>")
    ~lis:("<li>","</li>") ~pres:("<pre>","</pre>")
 
  let pp_item_list =
-  generic_pp_of_item_list ~escape:(fun s -> s)
+  generic_pp_of_item_list ~escaper:identity_escaper
    ~separator:"\n" ~delimiters:("","")
    ~lis:("* ","") ~pres:("","")
 
