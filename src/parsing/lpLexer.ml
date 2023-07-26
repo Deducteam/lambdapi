@@ -76,7 +76,7 @@ type token =
   | REWRITE
   | RULE
   | SEARCH
-  | SEARCHQUERY
+  | SEARCH_QUERY
   | SEQUENTIAL
   | SIMPLIFY
   | SOLVE
@@ -247,7 +247,7 @@ let rec token lb =
   | "right" -> SIDE(Pratter.Right)
   | "rule" -> RULE
   | "search" -> SEARCH
-  | "search-query" -> SEARCHQUERY
+  | "search-query" -> SEARCH_QUERY
   | "sequential" -> SEQUENTIAL
   | "simplify" -> SIMPLIFY
   | "solve" -> SOLVE

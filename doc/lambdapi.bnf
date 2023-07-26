@@ -48,7 +48,7 @@ QID ::= [UID "."]+ UID
           | "verbose" <nat>
           | "type" <term>
           | "locate" <uid>
-          | "search"QUERY <stringlit>
+          | "search-query" <stringlit>
           | "search" "generalize" <term>
           | "search" <term>
 

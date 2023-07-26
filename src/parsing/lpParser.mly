@@ -69,7 +69,7 @@
 %token REWRITE
 %token RULE
 %token SEARCH
-%token SEARCHQUERY
+%token SEARCH_QUERY
 %token SEQUENTIAL
 %token SIMPLIFY
 %token SOLVE
@@ -207,7 +207,7 @@ query:
     { make_pos $sloc (P_query_infer(t, {strategy=NONE; steps=None}))}
   | LOCATE s=uid
     { make_pos $sloc (P_query_locate_name s) }
-  | SEARCHQUERY s=STRINGLIT
+  | SEARCH_QUERY s=STRINGLIT
     { make_pos $sloc (P_query_search_query s) }
   | SEARCH GENERALIZE t=term
     { make_pos $sloc (P_query_search (t,true)) }
