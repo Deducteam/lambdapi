@@ -410,7 +410,7 @@ where:
 
 asearch_query:
   (* "type" is a keyword... *)
-  | TYPE_QUERY where t=aterm
+  | TYPE_QUERY COLON t=aterm
     { SearchQuerySyntax.QBase(QSearch(t,false,Some (QType None))) }
   | RULE w=where t=aterm
     { SearchQuerySyntax.QBase(QSearch(t,false,Some (QXhs(w,None)))) }
