@@ -397,13 +397,24 @@ float_or_nat:
   | s=FLOAT { s }
   | s=NAT { s }
 
+where:
+  | COLON
+    { None }
+  | u = UID
+    { match u with
+       | "=" -> Some SearchQuerySyntax.Exact
+       | "~" -> Some SearchQuerySyntax.Inside
+       | _ ->
+           LpLexer.syntax_error $sloc "Only \":\", \"=\" and \"~\" accepted"
+    }
+
 asearch_query:
   (* "type" is a keyword... *)
-  | TYPE_QUERY COLON t=aterm
+  | TYPE_QUERY where t=aterm
     { SearchQuerySyntax.QBase(QSearch(t,false,Some (QType None))) }
-  | RULE COLON t=aterm
-    { SearchQuerySyntax.QBase(QSearch(t,false,Some (QXhs(None,None)))) }
-  | k=UID COLON t=aterm
+  | RULE w=where t=aterm
+    { SearchQuerySyntax.QBase(QSearch(t,false,Some (QXhs(w,None)))) }
+  | k=UID w=where t=aterm
     { let open SearchQuerySyntax in
       match k,t.elt with
        | "name",P_Iden(id,false) ->
@@ -414,15 +425,15 @@ asearch_query:
        | "match",_ ->
            QBase(QSearch(t,false,None))
        | "spine",_ ->
-           QBase(QSearch(t,false,Some (QType (Some (Spine None)))))
+           QBase(QSearch(t,false,Some (QType (Some (Spine w)))))
        | "concl",_ ->
-           QBase(QSearch(t,false,Some (QType (Some (Conclusion None)))))
+           QBase(QSearch(t,false,Some (QType (Some (Conclusion w)))))
        | "hyp",_ ->
-           QBase(QSearch(t,false,Some (QType (Some (Hypothesis None)))))
+           QBase(QSearch(t,false,Some (QType (Some (Hypothesis w)))))
        | "lhs",_ ->
-           QBase(QSearch(t,false,Some (QXhs(None,Some Lhs))))
+           QBase(QSearch(t,false,Some (QXhs(w,Some Lhs))))
        | "rhs",_ ->
-           QBase(QSearch(t,false,Some (QXhs(None,Some Rhs))))
+           QBase(QSearch(t,false,Some (QXhs(w,Some Rhs))))
        | _,_ ->
            LpLexer.syntax_error $sloc ("Unknown keyword: " ^ k)
     }
