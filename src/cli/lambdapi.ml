@@ -35,9 +35,9 @@ let locate_cmd cfg s =
   out Format.std_formatter "%s@."
    (Tool.Indexing.locate_cmd_txt s)
 
-let webserver_cmd cfg =
+let websearch_cmd cfg port =
  Config.init cfg;
- Tool.Webserver.start ()
+ Tool.Websearch.start ~port ()
 
 let index file =
  let sign =
@@ -410,6 +410,11 @@ let generalize_arg : bool CLT.t =
      with holes." in
   Arg.(value & flag & info ["generalize"] ~doc)
 
+let port_arg : int CLT.t =
+  let doc =
+    "Port used by the webserver." in
+  Arg.(value & opt int 8080 & info ["port"] ~docv:"PORT" ~doc)
+
 let index_cmd =
  let doc = "Index the given files." in
  Cmd.v (Cmd.info "index" ~doc ~man:man_pkg_file)
@@ -435,11 +440,11 @@ let locate_cmd =
  Cmd.v (Cmd.info "locate" ~doc ~man:man_pkg_file)
   Cmdliner.Term.(const LPSearchMain.locate_cmd $ Config.full $ name_as_arg)
 
-let webserver_cmd =
+let websearch_cmd =
  let doc =
-  "Starts a webserver for searching the library on port 8080." in
- Cmd.v (Cmd.info "webserver" ~doc ~man:man_pkg_file)
-  Cmdliner.Term.(const LPSearchMain.webserver_cmd $ Config.full)
+  "Starts a webserver for searching the library." in
+ Cmd.v (Cmd.info "websearch" ~doc ~man:man_pkg_file)
+  Cmdliner.Term.(const LPSearchMain.websearch_cmd $ Config.full $ port_arg)
 
 let _ =
   let t0 = Sys.time () in
@@ -449,7 +454,7 @@ let _ =
     [ check_cmd ; parse_cmd ; export_cmd ; lsp_server_cmd
     ; decision_tree_cmd ; help_cmd ; version_cmd
     ; Init.cmd ; Install.install_cmd ; Install.uninstall_cmd
-    ; index_cmd ; search_cmd ; locate_cmd ; search_query_cmd ; webserver_cmd ]
+    ; index_cmd ; search_cmd ; locate_cmd ; search_query_cmd ; websearch_cmd ]
   in
   let doc = "A type-checker for the lambdapi-calculus modulo rewriting." in
   let sdocs = Manpage.s_common_options in

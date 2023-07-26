@@ -23,7 +23,7 @@ The available commands are:
 * ``search-query``: runs a search query against the index.
 * ``uninstall``: uninstalls the specified package.
 * ``version``: give the current version of Lambdapi.
-* ``webserver``: starts a webserver at 8080 to run locate/search queries using a web interface.
+* ``websearch``: starts a webserver to search the libray.
 
 The commands ``parse``, ``export`` and ``index`` can trigger the
 compilation of dependencies if the required object files (``.lpo``
@@ -50,9 +50,10 @@ The command ``search`` takes as argument a term which can contain pattern variab
 
 The command ``search-query`` takes as argument a search query and runs it against the index. The query allows to combine the output of basic queries (locate and search queries) and filter them in multiple ways. See :doc:`query_language` for the specification of the query language.
 
-**webserver:**
+**websearch:**
 
-The command ``webserver`` runs a webserver at port 8080. The webserver runs a web interface for locate/search queries.
+The command ``websearch`` runs a webserver to search the library.
+Use ``--port`` to specify the port. The default is port 8080.
 
 **Common flags:**
 

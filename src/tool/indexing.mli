@@ -24,7 +24,7 @@ val locate_cmd_txt : string -> string
 val search_cmd_txt : ?generalize:bool -> string -> string
 val search_query_cmd_txt: string -> string
 
-(* search commands used by webserver *)
+(* search commands used by websearch *)
 val locate_cmd_html : string -> string
 val search_cmd_html : ?generalize:bool -> string -> string
 val search_query_cmd_html: string -> string

@@ -32,8 +32,8 @@ let show_form ?output request =
   </body>
   </html>
 
-let start () =
-  Dream.run
+let start ~port () =
+  Dream.run ~port
   @@ Dream.logger
   @@ Dream.memory_sessions
   @@ Dream.router [
