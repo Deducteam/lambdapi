@@ -258,7 +258,7 @@ module DB = struct
           pp_inside inside pp_side side))
    " and "
 
- let generic_pp_of_item_list ~separator ~delimiters ~lis:(lisb,lise)
+ let generic_pp_of_item_list ~escape ~separator ~delimiters ~lis:(lisb,lise)
   ~pres:(preb,pree)
  =
   Lplib.List.pp
@@ -266,15 +266,18 @@ module DB = struct
      Lplib.Base.out ppf "%s%a.%s@%a%s%a%s%s%a%s%s@."
       lisb Core.Print.path p n Common.Pos.pp pos separator
       generic_pp_of_position_list positions
-      separator preb (Common.Pos.deref ~separator ~delimiters) pos pree lise)
+      separator preb (Common.Pos.deref ~escape ~separator ~delimiters)
+      pos pree lise)
    ""
 
  let html_of_item_list =
-  generic_pp_of_item_list ~separator:"<br>\n" ~delimiters:("<p>","</p>")
+  generic_pp_of_item_list ~escape:Dream.html_escape
+   ~separator:"<br>\n" ~delimiters:("<p>","</p>")
    ~lis:("<li>","</li>") ~pres:("<pre>","</pre>")
 
  let pp_item_list =
-  generic_pp_of_item_list ~separator:"\n" ~delimiters:("","")
+  generic_pp_of_item_list ~escape:(fun s -> s)
+   ~separator:"\n" ~delimiters:("","")
    ~lis:("* ","") ~pres:("","")
 
  let pp_item_set fmt set = pp_item_list fmt (ItemSet.bindings set)
