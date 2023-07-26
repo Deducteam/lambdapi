@@ -7,6 +7,7 @@ let show_form ?output request =
       <input name="message" autofocus>
       <input type="submit" value="locate" name="locate">
       <input type="submit" value="search" name="search">
+      <input type="submit" value="query" name="query">
     </form>
 
 %   begin match output with
@@ -36,6 +37,9 @@ let start () =
           Dream.html (show_form ~output request)
         | `Ok [ "message", message; "search", _search ] ->
           let output = Indexing.search_cmd_html message in
+          Dream.html (show_form ~output request)
+        | `Ok [ "message", message; "query", _search ] ->
+          let output = Indexing.search_query_cmd_html message in
           Dream.html (show_form ~output request)
         (* debugging code
         | `Ok l ->

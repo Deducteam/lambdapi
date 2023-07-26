@@ -150,30 +150,30 @@ let insert_name (namemap,index) name v =
    | Some l -> l in
  Lplib.Extra.StrMap.add name (v::vs) namemap, index
 
-let rec search_index ~holes_in_index index stack =
+let rec search_index ~generalize index stack =
  match index,stack with
  | Leaf vs, [] -> vs
  | Choice l, t::s ->
     List.fold_right
-     (fun n res -> search_node ~holes_in_index n t s @ res) l []
+     (fun n res -> search_node ~generalize n t s @ res) l []
  | _, _ -> assert false (* ill-typed term *)
-and search_node ~holes_in_index node term s =
+and search_node ~generalize node term s =
  match node,term with
  | _, Patt _ ->
      List.concat
       (List.map
-        (fun i -> search_index ~holes_in_index i s) (match_flexible node))
- | IHOLE i, _ when holes_in_index -> search_index ~holes_in_index i s
- | IHOLE i, t -> search_node ~holes_in_index (IRigid(IVar,i)) t s
+        (fun i -> search_index ~generalize i s) (match_flexible node))
+ | IHOLE i, _ when generalize -> search_index ~generalize i s
+ | IHOLE i, t -> search_node ~generalize (IRigid(IVar,i)) t s
  | IRigid(r,i), t ->
      match match_rigid r t with
-     | s' -> search_index ~holes_in_index i (s'@s)
+     | s' -> search_index ~generalize i (s'@s)
      | exception NoMatch -> []
 
-(* when [~holes_in_index] is fase, all holes in the index are matched
-   only by variables *)
-let search ~holes_in_index (_,index) term =
- search_index ~holes_in_index index [term]
+(* when [~generalize] is false, all holes in the index are matched
+   only by variables, i.e. the pattern is not matched up to generalization *)
+let search ~generalize (_,index) term =
+ search_index ~generalize index [term]
 let locate_name (namemap,_) name =
   match Lplib.Extra.StrMap.find_opt name namemap with None -> [] | Some l -> l
 
@@ -193,9 +193,9 @@ end
 module DB = struct
  (* fix codomain type *)
 
- type side = Lhs | Rhs
- type inside = Exact | Inside
- type 'inside where =
+ type side = Parsing.SearchQuerySyntax.side = Lhs | Rhs
+ type inside = Parsing.SearchQuerySyntax.inside = Exact | Inside
+ type 'inside where = 'inside Parsing.SearchQuerySyntax.where =
   | Spine of 'inside
   | Conclusion of 'inside
   | Hypothesis of 'inside
@@ -302,8 +302,8 @@ module DB = struct
    let db' = Pure.insert_name (Lazy.force !db) k v in
    db := lazy db'
 
- let search ~holes_in_index  k =
-  ItemSet.of_list (Pure.search ~holes_in_index  (Lazy.force !db) k)
+ let search ~generalize  k =
+  ItemSet.of_list (Pure.search ~generalize  (Lazy.force !db) k)
 
  let dump () = Pure.dump_to ~filename:dbpath (Lazy.force !db)
 
@@ -333,13 +333,13 @@ let find_sym ~prt:_prt ~prv:_prv _sig_state {elt=(mp,name); pos} =
       locate_name! *)
    false (Common.Pos.make pos name) None Core.Term.mk_Type []
 
-let search_pterm ~holes_in_index ~mok env pterm =
+let search_pterm ~generalize ~mok env pterm =
  let sig_state = Core.Sig_state.dummy in
  let env =
   ("V#",(Bindlib.new_var mk_Vari "V#" ,Bindlib.box Term.mk_Type,None))::env in
  let query =
   Parsing.Scope.scope_search_pattern ~find_sym ~mok sig_state env pterm in
- DB.search ~holes_in_index query
+ DB.search ~generalize query
 
 module QNameMap =
  Map.Make(struct type t = sym_name let compare = Stdlib.compare end)
@@ -515,25 +515,9 @@ include DB
 
 module QueryLanguage = struct
 
- type constr =
-  | QType of (inside option) where option
-  | QXhs  of inside option * side option
+ type query = Parsing.SearchQuerySyntax.query
 
- type base_query =
-  | QName of string
-  | QSearch of Parsing.Syntax.p_term * (*holes_in_index:*)bool * constr option
-
- type op =
-  | Intersect
-  | Union
-
- type filter =
-  | Path of string
-
- type query =
-  | QBase of base_query
-  | QOpp of query * op * query
-  | QFilter of query * filter
+ open Parsing.SearchQuerySyntax
 
  let match_opt p x =
   match p,x with
@@ -561,8 +545,8 @@ module QueryLanguage = struct
  let answer_base_query ~mok env =
   function
    | QName s -> locate_name s
-   | QSearch (patt,holes_in_index,constr) ->
-      let res = search_pterm ~holes_in_index ~mok env patt in
+   | QSearch (patt,generalize,constr) ->
+      let res = search_pterm ~generalize ~mok env patt in
       (match constr with
         | None -> res
         | Some constr -> ItemSet.filter (filter_constr constr) res)
@@ -625,12 +609,12 @@ module UserLevelQueries = struct
   locate_cmd_gen ~fail:(fun x -> Common.Error.fatal_no_pos "%s" x)
    ~pp_results:pp_item_set s
 
- let search_cmd_gen ~fail ?(holes_in_index=false) ~pp_results s =
+ let search_cmd_gen ~fail ?(generalize=false) ~pp_results s =
   try
    let ptermstream = Parsing.Parser.Lp.parse_term_string "LPSearch" s in
    let pterm = Stream.next ptermstream in
    let mok _ = None in
-   let items = search_pterm ~holes_in_index ~mok [] pterm in
+   let items = search_pterm ~generalize ~mok [] pterm in
    Format.asprintf "%a@." pp_results items
   with
    | Stream.Failure ->
@@ -638,13 +622,33 @@ module UserLevelQueries = struct
    | exn ->
       fail (Format.asprintf "%s@." (Printexc.to_string exn))
 
- let search_cmd_html ?holes_in_index s =
+ let search_cmd_html ?generalize s =
   search_cmd_gen ~fail:(fun x -> x) ~pp_results:html_of_item_set
-   ?holes_in_index s
+   ?generalize s
 
- let search_cmd_txt ?holes_in_index s =
+ let search_cmd_txt ?generalize s =
   search_cmd_gen ~fail:(fun x -> Common.Error.fatal_no_pos "%s" x)
-  ~pp_results:pp_item_set ?holes_in_index s
+  ~pp_results:pp_item_set ?generalize s
+
+ let search_query_cmd_gen ~fail ~pp_results s =
+  try
+   let pstream = Parsing.Parser.Lp.parse_search_query_string "LPSearch" s in
+   let pq = Stream.next pstream in
+   let mok _ = None in
+   let items = answer_query ~mok [] pq in
+   Format.asprintf "%a@." pp_results items
+  with
+   | Stream.Failure ->
+      fail (Format.asprintf "Syntax error: a query was expected")
+   | exn ->
+      fail (Format.asprintf "%s@." (Printexc.to_string exn))
+
+ let search_query_cmd_html s =
+  search_query_cmd_gen ~fail:(fun x -> x) ~pp_results:html_of_item_set s
+
+ let search_query_cmd_txt s =
+  search_query_cmd_gen ~fail:(fun x -> Common.Error.fatal_no_pos "%s" x)
+  ~pp_results:pp_item_set s
 
 end
 

@@ -128,6 +128,7 @@
 %start <Syntax.p_qident> qid
 %start <Syntax.p_qident> qid_alone
 %start <Syntax.p_term> term_alone
+%start <SearchQuerySyntax.query> search_query_alone
 
 // patch (see https://github.com/Deducteam/lambdapi/pull/798)
 %type <Syntax.p_term * Syntax.p_term> equation
@@ -140,6 +141,10 @@ term_alone:
 
 qid_alone:
   | q=qid EOF
+    { q }
+
+search_query_alone:
+  | q=search_query EOF
     { q }
 
 command:
@@ -391,5 +396,36 @@ notation:
 float_or_nat:
   | s=FLOAT { s }
   | s=NAT { s }
+
+asearch_query:
+  | k=UID COLON t=aterm
+    { match k,t.elt with
+         "name",P_Iden(id,false) ->
+           assert (fst id.elt = []) ;
+           SearchQuerySyntax.QBase(QName (snd id.elt))
+       | "name",_ ->
+           LpLexer.syntax_error $sloc "Path prefix expected after \"name:\""
+       | _,_ -> SearchQuerySyntax.QBase(QSearch(t,false,None))
+    }
+  | L_PAREN q=search_query R_PAREN
+    { q }
+
+csearch_query:
+  | q=asearch_query
+    { q }
+  | q1=csearch_query COMMA q2=asearch_query
+    { SearchQuerySyntax.QOpp (q1,SearchQuerySyntax.Intersect,q2) }
+
+ssearch_query:
+  | q=csearch_query
+    { q }
+  | q1=ssearch_query SEMICOLON q2=csearch_query
+    { SearchQuerySyntax.QOpp (q1,SearchQuerySyntax.Union,q2) }
+
+search_query:
+  | q=ssearch_query
+    { q }
+  | q=search_query VBAR path=UID
+    { SearchQuerySyntax.QFilter (q,Path path) }
 
 %%

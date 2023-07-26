@@ -20,10 +20,10 @@ module CLT = Cmdliner.Term
 module LPSearchMain =
 struct
 
-let search_cmd cfg holes_in_index s =
+let search_cmd cfg generalize s =
   Config.init cfg;
   out Format.std_formatter "%s@."
-   (Tool.Indexing.search_cmd_txt ~holes_in_index s)
+   (Tool.Indexing.search_cmd_txt ~generalize s)
 
 let locate_cmd cfg s =
   Config.init cfg;
