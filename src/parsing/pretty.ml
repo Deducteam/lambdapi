@@ -257,11 +257,8 @@ let query : p_query pp = fun ppf { elt; _ } ->
   | P_query_proofterm -> out ppf "proofterm"
   | P_query_verbose i -> out ppf "verbose %s" i
   | P_query_locate_name s -> out ppf "locate %s" s.elt
-  | P_query_search (t,b) ->
-     if b then
-      out ppf "search %a" term t
-     else
-      out ppf "search generalize %a" term t
+  | P_query_search (t,true) -> out ppf "search %a" term t
+  | P_query_search (t,false) -> out ppf "search generalize %a" term t
   | P_query_search_query s ->
       out ppf "search-query \"%s\"" s
 
