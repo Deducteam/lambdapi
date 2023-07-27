@@ -47,10 +47,7 @@ QID ::= [UID "."]+ UID
           | "prover_timeout" <nat>
           | "verbose" <nat>
           | "type" <term>
-          | "locate" <uid>
-          | "search-query" <stringlit>
-          | "search" "generalize" <term>
-          | "search" <term>
+          | "search" <stringlit>
 
 <path> ::= UID
          | QID
