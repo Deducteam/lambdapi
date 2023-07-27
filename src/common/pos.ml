@@ -144,23 +144,56 @@ let print_file_contents :
   fun ~escape ~separator ~delimiters:(db,de) ppf pos ->
   match pos with
   | Some { fname=Some fname; start_line; start_col; end_line; end_col } ->
+     (* WARNING: do not try to understand the following code!
+        It's dangerous for your health! *)
+
+     (* ignore the lines before the start_line *)
      let ch = open_in fname in
      let out = Buffer.create ((end_line - start_line) * 80 + end_col + 1) in
      for i = 0 to start_line - 2 do
       ignore (input_line ch)
      done ;
+
+     (* skip the first start_col UTF8 codepoints of the start_line *)
+     let startl = input_line ch in
+     assert (String.is_valid_utf_8 startl) ;
+     let bytepos = ref 0 in
      for i = 0 to start_col - 1 do
-      ignore (input_char ch)
+      let uchar = String.get_utf_8_uchar startl !bytepos in
+      assert (Uchar.utf_decode_is_valid uchar) ;
+      bytepos := !bytepos + Uchar.utf_decode_length uchar
      done ;
-     for i = 0 to end_line - start_line - 1 do
+     let startstr =
+       String.sub startl !bytepos (String.length startl - !bytepos) in
+
+     (* add what is left of the start_line, unless it is the end_line
+        as well  *)
+     if end_line <> start_line then
+      Buffer.add_string out (escape startstr) ;
+
+     (* add the lines in between the start_line and the end_line *)
+     for i = 0 to end_line - start_line - 2 do
        Buffer.add_string out (escape (input_line ch)) ;
        Buffer.add_string out separator
      done ;
-     let end_col =
-      if start_line = end_line then end_col - start_col else end_col in
+
+     (* identify what the end_line is and how many UTF8 codepoints to keep *)
+     let endl,end_col =
+      if start_line = end_line then
+        startstr, end_col - start_col
+      else input_line ch, end_col in
+
+     (* keep the first end_col UTF8 codepoints of the end_line *)
+     assert (String.is_valid_utf_8 endl) ;
+     let bytepos = ref 0 in
      for i = 0 to end_col - 1 do
-      Buffer.add_string out (escape (String.make 1 (input_char ch)))
+      let uchar = String.get_utf_8_uchar endl !bytepos in
+      assert (Uchar.utf_decode_is_valid uchar) ;
+      bytepos := !bytepos + Uchar.utf_decode_length uchar
      done ;
+     let str = String.sub endl 0 !bytepos in
+     Buffer.add_string out (escape str) ;
+
      close_in ch ;
      string ppf (Buffer.contents out)
   | None | Some {fname=None} -> string ppf (db ^ "unknown location" ^ de)
