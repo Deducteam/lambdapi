@@ -1,4 +1,4 @@
-let show_form ?output request =
+let show_form ?(message="") ?output request =
   <html>
   <body>
 
@@ -15,7 +15,8 @@ let show_form ?output request =
       <%s! Dream.csrf_tag request %>
       <p>
       <input type="search" required="true" size="100"
-        name="message" autofocus></p>
+        name="message" value="<%s message %>"
+        onfocus="this.select();" autofocus></p>
       <p>
       <input type="submit" value="locate" name="locate">
       <input type="submit" value="search" name="search">
@@ -47,13 +48,13 @@ let start ~port () =
         match%lwt Dream.form request with
         | `Ok [ "locate", _locate; "message", message ] ->
           let output = Indexing.locate_cmd_html message in
-          Dream.html (show_form ~output request)
+          Dream.html (show_form ~message ~output request)
         | `Ok [ "message", message; "search", _search ] ->
           let output = Indexing.search_cmd_html message in
-          Dream.html (show_form ~output request)
+          Dream.html (show_form ~message ~output request)
         | `Ok [ "message", message; "query", _search ] ->
           let output = Indexing.search_query_cmd_html message in
-          Dream.html (show_form ~output request)
+          Dream.html (show_form ~message ~output request)
         (* debugging code
         | `Ok l ->
             let output =
