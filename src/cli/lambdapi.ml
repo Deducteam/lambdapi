@@ -39,16 +39,19 @@ let websearch_cmd cfg port =
  Config.init cfg;
  Tool.Websearch.start ~port ()
 
-let index file =
- let sign =
-  Common.Error.with_no_wrn Handle.Compile.PureUpToSign.compile_file file in
- Tool.Indexing.index_sign sign
-
 let index_cmd cfg add_only files =
- Config.init cfg;
- if not add_only then Tool.Indexing.empty () ;
- List.iter index files ;
- Tool.Indexing.dump ()
+  Config.init cfg;
+  if not add_only then Tool.Indexing.empty ();
+  (* We save time to run each file in the same environment. *)
+  let open Timed in
+  let time = Time.save () in
+  let handle file =
+    Console.reset_default ();
+    Time.restore time;
+    Tool.Indexing.index_sign (with_no_wrn Compile.compile_file file)
+  in
+  List.iter handle files;
+  Tool.Indexing.dump ()
 
 end
 
