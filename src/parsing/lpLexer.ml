@@ -72,11 +72,9 @@ type token =
   | REFLEXIVITY
   | REMOVE
   | REQUIRE
-  | LOCATE
   | REWRITE
   | RULE
   | SEARCH
-  | SEARCH_QUERY
   | SEQUENTIAL
   | SIMPLIFY
   | SOLVE
@@ -224,7 +222,6 @@ let rec token lb =
   | "injective" -> INJECTIVE
   | "left" -> SIDE(Pratter.Left)
   | "let" -> LET
-  | "locate" -> LOCATE
   | "notation" -> NOTATION
   | "off" -> SWITCH(false)
   | "on" -> SWITCH(true)
@@ -247,7 +244,6 @@ let rec token lb =
   | "right" -> SIDE(Pratter.Right)
   | "rule" -> RULE
   | "search" -> SEARCH
-  | "search-query" -> SEARCH_QUERY
   | "sequential" -> SEQUENTIAL
   | "simplify" -> SIMPLIFY
   | "solve" -> SOLVE

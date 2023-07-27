@@ -20,26 +20,11 @@ module CLT = Cmdliner.Term
 module LPSearchMain =
 struct
 
-let search_query_cmd cfg s =
+let search_cmd cfg s =
  Config.init cfg;
- let run () =
-  out Format.std_formatter "%s@."
-   (Tool.Indexing.search_query_cmd_txt s) in
+ let run () = out Format.std_formatter "%s@."
+   (Tool.Indexing.search_cmd_txt s) in
  Error.handle_exceptions run
-
-let search_cmd cfg generalize s =
- Config.init cfg;
- let run () =
-  out Format.std_formatter "%s@."
-   (Tool.Indexing.search_cmd_txt ~generalize s) in
- Error.handle_exceptions run
-
-let locate_cmd cfg s =
-  Config.init cfg;
-  let run () =
-   out Format.std_formatter "%s@."
-    (Tool.Indexing.locate_cmd_txt s) in
-  Error.handle_exceptions run
 
 let websearch_cmd cfg port =
  Config.init cfg;
@@ -400,14 +385,6 @@ let version_cmd =
   let doc = "Display the current version of Lambdapi." in
   Cmd.v (Cmd.info "version" ~doc) CLT.(const run $ const ())
 
-let name_as_arg : string CLT.t =
-  let doc = "Name of constant to be located." in
-  Arg.(required & pos 0 (some string) None & info [] ~docv:"NAME" ~doc)
-
-let pattern_as_arg : string Cmdliner.Term.t =
-  let doc = "Term pattern to be matched." in
-  Arg.(required & pos 0 (some string) None & info [] ~docv:"PATTERN" ~doc)
-
 let query_as_arg : string Cmdliner.Term.t =
   let doc = "Query to be executed." in
   Arg.(required & pos 0 (some string) None & info [] ~docv:"QUERY" ~doc)
@@ -415,12 +392,6 @@ let query_as_arg : string Cmdliner.Term.t =
 let add_only_arg : bool CLT.t =
   let doc = "Adds more terms to the index without cleaning it first." in
   Arg.(value & flag & info ["add"] ~doc)
-
-let generalize_arg : bool CLT.t =
-  let doc =
-    "Allow to match patterns against terms indexed instantiating products \
-     with holes." in
-  Arg.(value & flag & info ["generalize"] ~doc)
 
 let port_arg : int CLT.t =
   let doc =
@@ -439,24 +410,11 @@ let index_cmd =
   Cmdliner.Term.(const LPSearchMain.index_cmd $ Config.full $
    add_only_arg $ rules_arg $ files)
 
-let search_query_cmd =
- let doc = "Run a search query against the index." in
- Cmd.v (Cmd.info "search-query" ~doc ~man:man_pkg_file)
-  Cmdliner.Term.(const LPSearchMain.search_query_cmd $ Config.full
-   $ query_as_arg)
-
 let search_cmd =
- let doc = "Match a term pattern against the index." in
+ let doc = "Run a search query against the index." in
  Cmd.v (Cmd.info "search" ~doc ~man:man_pkg_file)
-  Cmdliner.Term.(const LPSearchMain.search_cmd $ Config.full $
-   generalize_arg $ pattern_as_arg)
-
-let locate_cmd =
- let doc =
-  "Given a symbol name, returns the list of modules where the \
-   symbol is defined." in
- Cmd.v (Cmd.info "locate" ~doc ~man:man_pkg_file)
-  Cmdliner.Term.(const LPSearchMain.locate_cmd $ Config.full $ name_as_arg)
+  Cmdliner.Term.(const LPSearchMain.search_cmd $ Config.full
+   $ query_as_arg)
 
 let websearch_cmd =
  let doc =
@@ -472,7 +430,7 @@ let _ =
     [ check_cmd ; parse_cmd ; export_cmd ; lsp_server_cmd
     ; decision_tree_cmd ; help_cmd ; version_cmd
     ; Init.cmd ; Install.install_cmd ; Install.uninstall_cmd
-    ; index_cmd ; search_cmd ; locate_cmd ; search_query_cmd ; websearch_cmd ]
+    ; index_cmd ; search_cmd ; websearch_cmd ]
   in
   let doc = "A type-checker for the lambdapi-calculus modulo rewriting." in
   let sdocs = Manpage.s_common_options in

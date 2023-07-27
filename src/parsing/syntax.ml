@@ -202,12 +202,7 @@ type p_query_aux =
   (** Print information about a symbol or the current goals. *)
   | P_query_proofterm
   (** Print the current proof term (possibly containing open goals). *)
-  | P_query_locate_name of strloc
-  (** Resolves a symbol name using the search index *)
-  | P_query_search of p_term * bool
-  (** Matches a pattern against symbol types or rules; the boolean
-      is true if the matching is up to generalization *)
-  | P_query_search_query of string
+  | P_query_search of string
   (** Runs a search query *) (* I use a string here to be parsed later
   to avoid polluting LambdaPi code with index and retrieval code *)
 
@@ -570,9 +565,7 @@ let fold_idents : ('a -> p_qident -> 'a) -> 'a -> p_command list -> 'a =
     | P_query_infer (t, _)
     | P_query_normalize (t, _) -> fold_term_vars vs a t
     | P_query_print (Some qid) -> f a qid
-    | P_query_locate_name _ -> a
-    | P_query_search (t,_) -> fold_term_vars vs a t
-    | P_query_search_query _ -> a
+    | P_query_search _ -> a
   in
 
   let fold_tactic : StrSet.t * 'a -> p_tactic -> StrSet.t * 'a =

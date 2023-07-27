@@ -237,7 +237,7 @@ module DB = struct
         m) empty l
   end
 
- type answer = (((*generalized:*)bool * term * position) list) ItemSet.t
+ type answer = ((*generalized:*)bool * term * position) list
 
  type ho_pp = { run : 'a. 'a Lplib.Base.pp -> 'a Lplib.Base.pp }
 
@@ -276,7 +276,7 @@ module DB = struct
    Lplib.Base.out fmt "Nothing found"
   else
    Lplib.List.pp
-    (fun ppf (((p,n),pos),positions) ->
+    (fun ppf (((p,n),pos),(positions : answer)) ->
      Lplib.Base.out ppf "%s%a.%s@%a%s%a%s%s%a%s%s@."
       lisb (escaper.run Core.Print.path) p n (escaper.run Common.Pos.pp)
       pos separator (generic_pp_of_position_list ~escaper ~sep) positions
@@ -548,8 +548,6 @@ include DB
 
 module QueryLanguage = struct
 
- type query = Parsing.SearchQuerySyntax.query
-
  open Parsing.SearchQuerySyntax
 
  let match_opt p x =
@@ -625,55 +623,7 @@ include QueryLanguage
 
 module UserLevelQueries = struct
 
- let locate_cmd_gen ~fail ~pp_results s =
-  try
-   let qid = Parsing.Parser.Lp.parse_qid s in
-   match qid with
-    | [],name ->
-       let items = locate_name name in
-       Format.asprintf "%a@." pp_results items
-   | _ ->
-       fail (Format.asprintf
-        "Syntax error: an unqualified identifier was expected, found %a.%s"
-         Common.Path.pp (fst qid) (snd qid))
-  with
-   | Common.Error.Fatal(_,msg) ->
-      fail (Format.asprintf "Error: %s@." msg)
-   | exn ->
-      fail (Format.asprintf "%s@." (Printexc.to_string exn))
-
- let locate_cmd_html s =
-  locate_cmd_gen ~fail:(fun x -> "<font color=\"red\">" ^ x ^ "</font>")
-   ~pp_results:html_of_item_set s
-
- let locate_cmd_txt s =
-  locate_cmd_gen ~fail:(fun x -> Common.Error.fatal_no_pos "%s" x)
-   ~pp_results:pp_item_set s
-
- let search_cmd_gen ~fail ?(generalize=false) ~pp_results s =
-  try
-   let ptermstream = Parsing.Parser.Lp.parse_term_string "LPSearch" s in
-   let pterm = Stream.next ptermstream in
-   let mok _ = None in
-   let items = search_pterm ~generalize ~mok [] pterm in
-   Format.asprintf "%a@." pp_results items
-  with
-   | Stream.Failure ->
-      fail (Format.asprintf "Syntax error: a term was expected")
-   | Common.Error.Fatal(_,msg) ->
-      fail (Format.asprintf "Error: %s@." msg)
-   | exn ->
-      fail (Format.asprintf "%s@." (Printexc.to_string exn))
-
- let search_cmd_html ?generalize s =
-  search_cmd_gen ~fail:(fun x -> "<font color=\"red\">" ^ x ^ "</font>")
-   ~pp_results:html_of_item_set ?generalize s
-
- let search_cmd_txt ?generalize s =
-  search_cmd_gen ~fail:(fun x -> Common.Error.fatal_no_pos "%s" x)
-  ~pp_results:pp_item_set ?generalize s
-
- let search_query_cmd_gen ~fail ~pp_results s =
+ let search_cmd_gen ~fail ~pp_results s =
   try
    let pstream = Parsing.Parser.Lp.parse_search_query_string "LPSearch" s in
    let pq = Stream.next pstream in
@@ -688,12 +638,12 @@ module UserLevelQueries = struct
    | exn ->
       fail (Format.asprintf "Error: %s@." (Printexc.to_string exn))
 
- let search_query_cmd_html s =
-  search_query_cmd_gen ~fail:(fun x -> "<font color=\"red\">" ^ x ^ "</font>")
+ let search_cmd_html s =
+  search_cmd_gen ~fail:(fun x -> "<font color=\"red\">" ^ x ^ "</font>")
    ~pp_results:html_of_item_set s
 
- let search_query_cmd_txt s =
-  search_query_cmd_gen ~fail:(fun x -> Common.Error.fatal_no_pos "%s" x)
+ let search_cmd_txt s =
+  search_cmd_gen ~fail:(fun x -> Common.Error.fatal_no_pos "%s" x)
   ~pp_results:pp_item_set s
 
 end

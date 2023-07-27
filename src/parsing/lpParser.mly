@@ -49,7 +49,6 @@
 %token INFIX
 %token INJECTIVE
 %token LET
-%token LOCATE
 %token NOTATION
 %token OPAQUE
 %token OPEN
@@ -69,7 +68,6 @@
 %token REWRITE
 %token RULE
 %token SEARCH
-%token SEARCH_QUERY
 %token SEQUENTIAL
 %token SIMPLIFY
 %token SOLVE
@@ -205,14 +203,8 @@ query:
   | VERBOSE n=NAT { make_pos $sloc (P_query_verbose n) }
   | TYPE_QUERY t=term
     { make_pos $sloc (P_query_infer(t, {strategy=NONE; steps=None}))}
-  | LOCATE s=uid
-    { make_pos $sloc (P_query_locate_name s) }
-  | SEARCH_QUERY s=STRINGLIT
-    { make_pos $sloc (P_query_search_query s) }
-  | SEARCH GENERALIZE t=term
-    { make_pos $sloc (P_query_search (t,true)) }
-  | SEARCH t=term
-    { make_pos $sloc (P_query_search (t,false)) }
+  | SEARCH s=STRINGLIT
+    { make_pos $sloc (P_query_search s) }
 
 path:
   | UID { LpLexer.syntax_error $sloc "Unqualified identifier" }
