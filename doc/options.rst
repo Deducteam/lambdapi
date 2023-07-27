@@ -42,7 +42,7 @@ immediately stops on the first failure, without going to the next file
 
 **index/search/search-query/locate:**
 
-The ``index`` command generates a file ``LPSearch.db`` in the directory where Lambdapi is run. This file contains an indexation of all the symbols and rules occurring in the dk/lp files given in argument. The option ``--add`` appends the symbols and rules in the existing index file. Without this option, the previous index file is erased first. Before indexation, terms are normalized by using the rewrite rules given in the file ``LPSearch.lp`` in the directory where Lambdapi is run. In this file, symbols must be fully qualified but no ``require`` is needed. Moreover, the rules do not need to preserve typing.
+The ``index`` command generates a file ``LPSearch.db`` in the directory where Lambdapi is run. This file contains an indexation of all the symbols and rules occurring in the dk/lp files given in argument. The option ``--add`` appends the symbols and rules in the existing index file. Without this option, the previous index file is erased first. Before indexation, terms are normalized by using the rewrite rules given in the files passed with the option ``--rules``. In these files, symbols must be fully qualified but no ``require`` is needed. Moreover, the rules do not need to preserve typing.
 
 The command ``locate`` takes as argument a non-qualified identifier. It returns the list of qualified symbols having the same name in the current index file.
 
