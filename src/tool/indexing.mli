@@ -1,6 +1,6 @@
 (* indexing *)
 val empty : unit -> unit
-val index_sign : Core.Sign.t -> unit
+val index_sign : rules:string list -> Core.Sign.t -> unit
 val dump : unit -> unit
 
 (* answers *)

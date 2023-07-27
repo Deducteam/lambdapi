@@ -300,7 +300,7 @@ module DB = struct
  (* disk persistence *)
 
  let dbpath = "LPSearch.db"
- let rwpath = "LPSearch.lp"
+ let rwpaths = ref []
 
  let restore_from_disk () =
   try
@@ -383,15 +383,16 @@ let check_rule : Parsing.Syntax.p_rule -> sym_rule = fun r ->
  s, r
 
 let load_meta_rules () =
- let cmdstream =
-   Parsing.Parser.Lp.parse_file DB.rwpath in
  let rules = ref [] in
- Stream.iter
-  (fun {elt ; _ } ->
-    match elt with
-      Parsing.Syntax.P_rules r -> rules := List.rev_append r !rules
-    | _ -> ())
-  cmdstream ;
+ List.iter (fun rwpath ->
+  let cmdstream =
+    Parsing.Parser.Lp.parse_file rwpath in
+  Stream.iter
+   (fun {elt ; _ } ->
+     match elt with
+       Parsing.Syntax.P_rules r -> rules := List.rev_append r !rules
+     | _ -> ())
+   cmdstream) !DB.rwpaths ;
  let rules = List.rev !rules in
  let handle_rule map r =
    let (s,r) = check_rule r in
@@ -528,7 +529,8 @@ let index_sym sym =
  (* Rules *)
  List.iter (index_rule sym) Timed.(!(sym.Core.Term.sym_rules))
 
-let index_sign sign =
+let index_sign ~rules:rwrules sign =
+ DB.rwpaths := rwrules ;
  let syms = Timed.(!(sign.Core.Sign.sign_symbols)) in
  let rules = Timed.(!(sign.Core.Sign.sign_deps)) in
  Lplib.Extra.StrMap.iter (fun _ sym -> index_sym sym) syms ;

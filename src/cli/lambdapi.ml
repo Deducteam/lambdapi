@@ -39,17 +39,16 @@ let websearch_cmd cfg port =
  Config.init cfg;
  Tool.Websearch.start ~port ()
 
-let index_cmd cfg add_only files =
+let index_cmd cfg add_only rules files =
   Config.init cfg;
   if not add_only then Tool.Indexing.empty ();
   (* We save time to run each file in the same environment. *)
   let open Timed in
   let time = Time.save () in
   let handle file =
-    Console.reset_default ();
-    Time.restore time;
-    Tool.Indexing.index_sign (with_no_wrn Compile.compile_file file)
-  in
+   Console.reset_default ();
+   Time.restore time;
+   Tool.Indexing.index_sign ~rules (with_no_wrn Compile.compile_file file) in
   List.iter handle files;
   Tool.Indexing.dump ()
 
@@ -418,11 +417,17 @@ let port_arg : int CLT.t =
     "Port used by the webserver." in
   Arg.(value & opt int 8080 & info ["port"] ~docv:"PORT" ~doc)
 
+let rules_arg : string list CLT.t =
+  let doc =
+    "File holding rewriting rules applied before indexing. Use option \
+     multiple times to fetch rules from multiple files." in
+  Arg.(value & opt_all string [] & info ["rules"] ~docv:"FILENAME" ~doc)
+
 let index_cmd =
  let doc = "Index the given files." in
  Cmd.v (Cmd.info "index" ~doc ~man:man_pkg_file)
   Cmdliner.Term.(const LPSearchMain.index_cmd $ Config.full $
-   add_only_arg $ files)
+   add_only_arg $ rules_arg $ files)
 
 let search_query_cmd =
  let doc = "Run a search query against the index." in
