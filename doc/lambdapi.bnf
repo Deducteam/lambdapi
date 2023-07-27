@@ -181,10 +181,9 @@ QID ::= [UID "."]+ UID
 
 <maybe_generalize> ::= ["generalize"]
 
-<where> ::= ":" <maybe_generalize>
-          | UID <maybe_generalize>
+<where> ::= UID <maybe_generalize>
 
-<asearch_query> ::= "type" ":" <maybe_generalize> <aterm>
+<asearch_query> ::= "type" <where> <aterm>
                   | "rule" <where> <aterm>
                   | UID <where> <aterm>
                   | "(" <search_query> ")"
@@ -194,6 +193,6 @@ QID ::= [UID "."]+ UID
 <ssearch_query> ::= <csearch_query> (";" <csearch_query>)*
 
 <search_query> ::= <ssearch_query>
-                 | <search_query> "|" UID
+                 | <search_query> "|" <qid>
 
 
