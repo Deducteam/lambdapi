@@ -41,3 +41,15 @@ The semantics of the query language is the following:
   * ``>=`` and ``≥`` matches without restrictions
   * ``=`` the pattern must match the whole position
   * ``>`` the pattern must match a strict subterm of the position
+
+Examples:
+
+  *  ``hyp = (nat → bool) , hyp >= (list nat)``
+     searches for theorem that have an hypothesis ``nat → bool`` and such that ``list nat`` occurs in some (other) hypothesis. The query can return ``filter_nat_list: list nat → (nat → bool) → list nat``
+  *  ``concl > plus | math.arithmetics``
+     searches for theorems having an hypothesis containing ``plus`` and located
+     in a module whose path is a suffix of ``math.arithmetics``. The query
+     can return ``plus_O : ∀x: nat. plus x O = x`` where ``plus_O`` has
+     fully qualified name ``math.arithmetics.addition.plus``
+  *  ``name = nat ; name = NAT``
+     searches for symbols named either ``nat`` or ``NAT``
