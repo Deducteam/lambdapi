@@ -21,26 +21,35 @@ module LPSearchMain =
 struct
 
 let search_query_cmd cfg s =
-  Config.init cfg;
+ Config.init cfg;
+ let run () =
   out Format.std_formatter "%s@."
-   (Tool.Indexing.search_query_cmd_txt s)
+   (Tool.Indexing.search_query_cmd_txt s) in
+ Error.handle_exceptions run
 
 let search_cmd cfg generalize s =
-  Config.init cfg;
+ Config.init cfg;
+ let run () =
   out Format.std_formatter "%s@."
-   (Tool.Indexing.search_cmd_txt ~generalize s)
+   (Tool.Indexing.search_cmd_txt ~generalize s) in
+ Error.handle_exceptions run
 
 let locate_cmd cfg s =
   Config.init cfg;
-  out Format.std_formatter "%s@."
-   (Tool.Indexing.locate_cmd_txt s)
+  let run () =
+   out Format.std_formatter "%s@."
+    (Tool.Indexing.locate_cmd_txt s) in
+  Error.handle_exceptions run
 
 let websearch_cmd cfg port =
  Config.init cfg;
- Tool.Websearch.start ~port ()
+ let run () =
+  Tool.Websearch.start ~port () in
+ Error.handle_exceptions run
 
 let index_cmd cfg add_only rules files =
-  Config.init cfg;
+ Config.init cfg;
+ let run () =
   if not add_only then Tool.Indexing.empty ();
   (* We save time to run each file in the same environment. *)
   let open Timed in
@@ -50,7 +59,8 @@ let index_cmd cfg add_only rules files =
    Time.restore time;
    Tool.Indexing.index_sign ~rules (with_no_wrn Compile.compile_file file) in
   List.iter handle files;
-  Tool.Indexing.dump ()
+  Tool.Indexing.dump () in
+ Error.handle_exceptions run
 
 end
 
