@@ -270,10 +270,13 @@ module DB = struct
    sep
 
  let generic_pp_of_item_list ~escape ~escaper ~separator ~sep ~delimiters
-  ~lis:(lisb,lise) ~pres:(preb,pree)
+  ~lis:(lisb,lise) ~pres:(preb,pree) fmt l
  =
-  Lplib.List.pp
-   (fun ppf (((p,n),pos),positions) ->
+  if l = [] then
+   Lplib.Base.out fmt "Nothing found"
+  else
+   Lplib.List.pp
+    (fun ppf (((p,n),pos),positions) ->
      Lplib.Base.out ppf "%s%a.%s@%a%s%a%s%s%a%s%s@."
       lisb (escaper.run Core.Print.path) p n (escaper.run Common.Pos.pp)
       pos separator (generic_pp_of_position_list ~escaper ~sep) positions
@@ -281,7 +284,7 @@ module DB = struct
       (Common.Pos.print_file_contents ~escape ~separator
        ~delimiters)
       pos pree lise)
-   ""
+    "" fmt l
 
  let html_of_item_list =
   generic_pp_of_item_list ~escape:Dream.html_escape ~escaper:html_escaper
