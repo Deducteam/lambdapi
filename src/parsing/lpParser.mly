@@ -405,20 +405,26 @@ maybe_generalize:
     { g <> None }
 
 where:
-  | COLON g=maybe_generalize
-    { g,None }
   | u = UID g=maybe_generalize
     { g, match u with
        | "=" -> Some SearchQuerySyntax.Exact
-       | "~" -> Some SearchQuerySyntax.Inside
+       | ">" -> Some SearchQuerySyntax.Inside
+       | "≥"
+       | ">=" -> None
        | _ ->
-           LpLexer.syntax_error $sloc "Only \":\", \"=\" and \"~\" accepted"
+          LpLexer.syntax_error $sloc
+           "Only \">\", \"=\", \"≥\" and \">=\" accepted"
     }
 
 asearch_query:
   (* "type" is a keyword... *)
-  | TYPE_QUERY COLON g=maybe_generalize t=aterm
-    { SearchQuerySyntax.QBase(QSearch(t,g,Some (QType None))) }
+  | TYPE_QUERY gw=where t=aterm
+    { let g,w = gw in
+      if w <> None then
+        LpLexer.syntax_error $sloc
+         "Only \"≥\" and \">=\" accepted for \"type\""
+      else
+       SearchQuerySyntax.QBase(QSearch(t,g,Some (QType None))) }
   | RULE gw=where t=aterm
     { let g,w = gw in
       SearchQuerySyntax.QBase(QSearch(t,g,Some (QXhs(w,None)))) }
@@ -428,8 +434,9 @@ asearch_query:
       match k,t.elt with
        | "name",P_Iden(id,false) ->
            assert (fst id.elt = []) ;
-           if w <> None then
-             LpLexer.syntax_error $sloc "\"name\" expects only \":\""
+           if w <> Some Exact then
+             LpLexer.syntax_error $sloc
+              "Only \"=\" accepted for \"name\""
            else if g = true then
              LpLexer.syntax_error $sloc
               "\"generalize\" cannot be used with \"name\""
