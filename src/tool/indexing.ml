@@ -269,7 +269,7 @@ module DB = struct
           pp_inside inside pp_side side))
    sep
 
- let generic_pp_of_item_list ~escaper ~separator ~sep ~delimiters
+ let generic_pp_of_item_list ~escape ~escaper ~separator ~sep ~delimiters
   ~lis:(lisb,lise) ~pres:(preb,pree)
  =
   Lplib.List.pp
@@ -278,17 +278,18 @@ module DB = struct
       lisb (escaper.run Core.Print.path) p n (escaper.run Common.Pos.pp)
       pos separator (generic_pp_of_position_list ~escaper ~sep) positions
       separator preb
-      (escaper.run (Common.Pos.print_file_contents ~separator ~delimiters))
+      (Common.Pos.print_file_contents ~escape ~separator
+       ~delimiters)
       pos pree lise)
    ""
 
  let html_of_item_list =
-  generic_pp_of_item_list ~escaper:html_escaper
+  generic_pp_of_item_list ~escape:Dream.html_escape ~escaper:html_escaper
    ~separator:"<br>\n" ~sep:" and<br>\n" ~delimiters:("<p>","</p>")
    ~lis:("<li>","</li>") ~pres:("<pre>","</pre>")
 
  let pp_item_list =
-  generic_pp_of_item_list ~escaper:identity_escaper
+  generic_pp_of_item_list ~escape:(fun x -> x) ~escaper:identity_escaper
    ~separator:"\n" ~sep:" and\n" ~delimiters:("","")
    ~lis:("* ","") ~pres:("","")
 

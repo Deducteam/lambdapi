@@ -137,10 +137,11 @@ let make_pos : Lexing.position * Lexing.position -> 'a -> 'a loc =
     file at position [pos]. [sep] is the separator replacing each newline
     (e.g. "<br>\n"). [delimiters] is a pair of delimiters used to wrap the
     "unknown location" message returned when the position does not refer to a
-    file. *)
+    file. [escape] is used to escape the file contents.*)
 let print_file_contents :
-      separator:string -> delimiters:(string*string) -> popt Lplib.Base.pp =
-  fun ~separator ~delimiters:(db,de) ppf pos ->
+  escape:(string -> string) -> separator:string ->
+    delimiters:(string*string) -> popt Lplib.Base.pp =
+  fun ~escape ~separator ~delimiters:(db,de) ppf pos ->
   match pos with
   | Some { fname=Some fname; start_line; start_col; end_line; end_col } ->
      let ch = open_in fname in
@@ -152,13 +153,13 @@ let print_file_contents :
       ignore (input_char ch)
      done ;
      for i = 0 to end_line - start_line - 1 do
-       Buffer.add_string out (input_line ch) ;
+       Buffer.add_string out (escape (input_line ch)) ;
        Buffer.add_string out separator
      done ;
      let end_col =
       if start_line = end_line then end_col - start_col else end_col in
      for i = 0 to end_col - 1 do
-      Buffer.add_char out (input_char ch)
+      Buffer.add_string out (escape (String.make 1 (input_char ch)))
      done ;
      close_in ch ;
      string ppf (Buffer.contents out)
