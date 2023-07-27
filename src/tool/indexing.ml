@@ -277,7 +277,8 @@ module DB = struct
      Lplib.Base.out ppf "%s%a.%s@%a%s%a%s%s%a%s%s@."
       lisb (escaper.run Core.Print.path) p n (escaper.run Common.Pos.pp)
       pos separator (generic_pp_of_position_list ~escaper ~sep) positions
-      separator preb (escaper.run (Common.Pos.deref ~separator ~delimiters))
+      separator preb
+      (escaper.run (Common.Pos.print_file_contents ~separator ~delimiters))
       pos pree lise)
    ""
 

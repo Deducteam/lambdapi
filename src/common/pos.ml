@@ -133,13 +133,14 @@ let locate : ?fname:string -> Lexing.position * Lexing.position -> pos =
 let make_pos : Lexing.position * Lexing.position -> 'a -> 'a loc =
   fun lps elt -> in_pos (locate lps) elt
 
-(** [deref escape sep dels pos] prints the text at the position, if possible.
-    [sep] is the separator used between entries (e.g. "<br>\n")
-    [dels] is a pair of delimiters used to wrap the "unknown location"
-    message returned when the position does not refer to a file. *)
-let deref : separator:string -> delimiters:(string*string) ->
-  popt Lplib.Base.pp =
- fun ~separator ~delimiters:(db,de) ppf pos ->
+(** [print_file_contents escape sep delimiters pos] prints the contents of the
+    file at position [pos]. [sep] is the separator replacing each newline
+    (e.g. "<br>\n"). [delimiters] is a pair of delimiters used to wrap the
+    "unknown location" message returned when the position does not refer to a
+    file. *)
+let print_file_contents :
+      separator:string -> delimiters:(string*string) -> popt Lplib.Base.pp =
+  fun ~separator ~delimiters:(db,de) ppf pos ->
   match pos with
   | Some { fname=Some fname; start_line; start_col; end_line; end_col } ->
      let ch = open_in fname in
