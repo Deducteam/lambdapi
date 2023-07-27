@@ -679,11 +679,14 @@ module UserLevelQueries = struct
   with
    | Stream.Failure ->
       fail (Format.asprintf "Syntax error: a query was expected")
+   | Common.Error.Fatal(_,msg) ->
+      fail (Format.asprintf "Error: %s@." msg)
    | exn ->
-      fail (Format.asprintf "%s@." (Printexc.to_string exn))
+      fail (Format.asprintf "Error: %s@." (Printexc.to_string exn))
 
  let search_query_cmd_html s =
-  search_query_cmd_gen ~fail:(fun x -> x) ~pp_results:html_of_item_set s
+  search_query_cmd_gen ~fail:(fun x -> "<font color=\"red\">" ^ x ^ "</font>")
+   ~pp_results:html_of_item_set s
 
  let search_query_cmd_txt s =
   search_query_cmd_gen ~fail:(fun x -> Common.Error.fatal_no_pos "%s" x)
