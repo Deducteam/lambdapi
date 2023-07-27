@@ -311,8 +311,8 @@ module DB = struct
    Pure.restore_from ~filename:dbpath
   with
    Sys_error msg ->
-     Common.Error.wrn None "Error loading DB. %s\nDefaulting to empty index"
-      msg ;
+     Common.Error.wrn None "%s.\n\
+      Type \"lambdapi index --help\" to learn how to create the index." msg ;
      Pure.empty
 
  let db : (item * position list) Pure.db Lazy.t ref =
