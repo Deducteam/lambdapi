@@ -348,24 +348,21 @@ module DB = struct
 end
 
 let find_sym ~prt:_prt ~prv:_prv _sig_state {elt=(mp,name); pos} =
- let mp =
+ let pos,mp =
   match mp with
     [] ->
      let res = DB.locate_name name in
+     if DB.ItemSet.cardinal res > 1 then
+      Common.Error.fatal pos
+      "Overloaded symbol %s, use \"locate %s\" to know how to disambiguate it"
+       name name ;
      (match DB.ItemSet.choose_opt res with
        | None -> Common.Error.fatal pos "Unknown symbol %s." name
-       | Some (((mp,_),_),[_,_,DB.Name]) ->
-          if DB.ItemSet.cardinal res > 1 then
-           Common.Error.wrn pos
-            "Overloaded symbol %s, choosing the one declared in %a" name
-             Common.Path.pp mp ;
-           mp
+       | Some (((mp,_),sympos),[_,_,DB.Name]) -> sympos,mp
        | Some _ -> assert false) (* locate only returns DB.Name*)
-  | _::_ -> mp
+  | _::_ -> None,mp
  in
   Core.Term.create_sym mp Core.Term.Public Core.Term.Defin Core.Term.Sequen
-   (* CSC: TODO XXX is the position below wrong? It should come from
-      locate_name! *)
    false (Common.Pos.make pos name) None Core.Term.mk_Type []
 
 let search_pterm ~generalize ~mok env pterm =
