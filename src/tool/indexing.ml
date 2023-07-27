@@ -353,7 +353,8 @@ let find_sym ~prt:_prt ~prv:_prv _sig_state {elt=(mp,name); pos} =
      let res = DB.locate_name name in
      if DB.ItemSet.cardinal res > 1 then
       Common.Error.fatal pos
-      "Overloaded symbol %s, use \"locate %s\" to know how to disambiguate it"
+       "Overloaded symbol %s, search for \"name = %s\" to know how \
+        to disambiguate it"
        name name ;
      (match DB.ItemSet.choose_opt res with
        | None -> Common.Error.fatal pos "Unknown symbol %s." name
