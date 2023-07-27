@@ -436,8 +436,12 @@ asearch_query:
              QBase(QName (snd id.elt))
        | "name",_ ->
            LpLexer.syntax_error $sloc "Path prefix expected after \"name:\""
-       | "match",_ ->
-           QBase(QSearch(t,g,None))
+       | "anywhere",_ ->
+           if w <> None then
+             LpLexer.syntax_error $sloc
+              "Only \"≥\" and \">=\" accepted for \"anywhere\""
+           else
+             QBase(QSearch(t,g,None))
        | "spine",_ ->
            QBase(QSearch(t,g,Some (QType (Some (Spine w)))))
        | "concl",_ ->
