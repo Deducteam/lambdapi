@@ -168,8 +168,10 @@ let print_file_contents :
 
      (* add what is left of the start_line, unless it is the end_line
         as well  *)
-     if end_line <> start_line then
+     if end_line <> start_line then begin
       Buffer.add_string out (escape startstr) ;
+      Buffer.add_string out "\n"
+     end ;
 
      (* add the lines in between the start_line and the end_line *)
      for i = 0 to end_line - start_line - 2 do
