@@ -638,11 +638,14 @@ module UserLevelQueries = struct
         "Syntax error: an unqualified identifier was expected, found %a.%s"
          Common.Path.pp (fst qid) (snd qid))
   with
-   exn ->
-     fail (Format.asprintf "%s@." (Printexc.to_string exn))
+   | Common.Error.Fatal(_,msg) ->
+      fail (Format.asprintf "Error: %s@." msg)
+   | exn ->
+      fail (Format.asprintf "%s@." (Printexc.to_string exn))
 
  let locate_cmd_html s =
-  locate_cmd_gen ~fail:(fun x -> x) ~pp_results:html_of_item_set s
+  locate_cmd_gen ~fail:(fun x -> "<font color=\"red\">" ^ x ^ "</font>")
+   ~pp_results:html_of_item_set s
 
  let locate_cmd_txt s =
   locate_cmd_gen ~fail:(fun x -> Common.Error.fatal_no_pos "%s" x)
@@ -658,12 +661,14 @@ module UserLevelQueries = struct
   with
    | Stream.Failure ->
       fail (Format.asprintf "Syntax error: a term was expected")
+   | Common.Error.Fatal(_,msg) ->
+      fail (Format.asprintf "Error: %s@." msg)
    | exn ->
       fail (Format.asprintf "%s@." (Printexc.to_string exn))
 
  let search_cmd_html ?generalize s =
-  search_cmd_gen ~fail:(fun x -> x) ~pp_results:html_of_item_set
-   ?generalize s
+  search_cmd_gen ~fail:(fun x -> "<font color=\"red\">" ^ x ^ "</font>")
+   ~pp_results:html_of_item_set ?generalize s
 
  let search_cmd_txt ?generalize s =
   search_cmd_gen ~fail:(fun x -> Common.Error.fatal_no_pos "%s" x)
