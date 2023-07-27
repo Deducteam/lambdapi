@@ -16,14 +16,12 @@ The available commands are:
 * ``index``: create an index of symbols and rules of input files.
 * ``init``: create a new Lambdapi package (see :doc:`getting_started`).
 * ``install``: install the specified files according to package configuration.
-* ``locate``: provide the list of modules where the identifier given as argument is defined.
 * ``lsp``: run the Lambdapi LSP server.
 * ``parse``: parse the input files.
-* ``search``: provide the list of symbols and rules matching a given pattern.
-* ``search-query``: runs a search query against the index.
+* ``search``: runs a search query against the index.
 * ``uninstall``: uninstalls the specified package.
 * ``version``: give the current version of Lambdapi.
-* ``websearch``: starts a webserver to search the libray.
+* ``websearch``: starts a webserver to search the library.
 
 The commands ``parse``, ``export`` and ``index`` can trigger the
 compilation of dependencies if the required object files (``.lpo``
@@ -40,20 +38,13 @@ handled independently in the order they are given. The program
 immediately stops on the first failure, without going to the next file
 (if any).
 
-**index/search/search-query/locate:**
+**index:**
 
-The ``index`` command generates a file ``~/.LPSearch.db``. This file contains an indexation of all the symbols and rules occurring in the dk/lp files given in argument. The option ``--add`` appends the symbols and rules in the existing index file. Without this option, the previous index file is erased first. Before indexation, terms are normalized by using the rewrite rules given in the files passed with the option ``--rules``. In these files, symbols must be fully qualified but no ``require`` is needed. Moreover, the rules do not need to preserve typing.
+The ``index`` command generates the file ``~/.LPSearch.db``. This file contains an indexation of all the symbols and rules occurring in the dk/lp files given in argument. By default, the file ``~/.LPSearch.db`` is erased first. To append new symbols and rules, use the option ``--add``. It is also possile to normalize terms wrt some rules before indexation by using ``--rules`` options.
 
-The command ``locate`` takes as argument a non-qualified identifier. It returns the list of qualified symbols having the same name in the current index file.
+**search:**
 
-The command ``search`` takes as argument a term which can contain pattern variables ``$id`` or underscores like for a LHS rewrite rule. It can also contain variable placeholders ``V#`` that stand for any variable. A non-qualified symbol is interpreted by the first symbol given by the ``locate`` command. It fails if there is no interpretation. A warning is printed if there are several possible interpretations. The command prints detailed information on where the pattern occurs: 1) in the left or right hand-side of a rule, or in the type of a rule; 2) if it occurs in a side of a rewriting rule, if the occurrence is the whole side or a subterm of it; 3) if it occurs in the type of a symbol, if it matches exactly the type, or if it matches a suffix of the spine of the type, or if it matches exactly the conclusion or the hypothesis of the type, or if it occurs inside the conclusion or the hypothesis of the type. The option ``--generalize`` matches an index built replacing variables bound by a product in the spine of types of symbols with holes, to simulate the application of the symbols to the pattern seen as the current goal. Similary, parameter of rewriting rules are seen as holes to simulate application of the rewriting rule. Activating the option typically returns many more matches, but most of them are likely to be wrong because of type errors.
-
-The command ``search-query`` takes as argument a search query and runs it against the index. The query allows to combine the output of basic queries (locate and search queries) and filter them in multiple ways. See :doc:`query_language` for the specification of the query language.
-
-**websearch:**
-
-The command ``websearch`` runs a webserver to search the library.
-Use ``--port`` to specify the port. The default is port 8080.
+The command ``search`` takes as argument a query and runs it against the index file ``~/.LPSearch.db``. See :doc:`query_language` for the specification of the query language.
 
 **Common flags:**
 
@@ -67,7 +58,7 @@ The commands ``check``, ``decision-tree``, ``export``, ``parse``,
 * ``--map-dir=<MOD>:<DIR>`` maps an arbitrary directory ``DIR`` under a module path ``MOD`` (relative to the root directory). This option is mainly useful during the development of a package (before it has been installed). However it can also be accessed using a package configuration file (``lambdapi.pkg``) at the root of the library’s source tree. More information on that is given in the section about the module system.
 
 * ``--no-sr-check`` disables subject reduction checking.
-    
+
 * ``--timeout=<NUM>`` gives up type-checking after the given number of seconds.  Note that the timeout is reset between each file, and that the parameter of the command is expected to be a natural number.
 
 * ``-v <NUM>``, ``--verbose=<NUM>`` sets the verbosity level to the given natural number (the default value is 1). A value of 0 should not print anything, and the higher values print more and more information.
@@ -149,12 +140,14 @@ Examples of libraries exported to Coq:
 index
 -----
 
-* ``--add`` tells lambdapi to add the symbols and rules to the existing index
+* ``--add`` tells lambdapi to not erase ``~/.LPSearch.db`` before adding new symbols and rules.
 
-search
-------
+* ``--rules <LPSearch.lp>`` tells lambdapi to normalize terms using the rules given in the file ``<LPSearch.lp>`` before indexing. Several files can be specified by using several ``--rules`` options. In these files, symbols must be fully qualified but no ``require`` command is needed. Moreover, the rules do not need to preserve typing.
 
-* ``--generalize`` matches an index built replacing pi-quantifications in the spine of types of symbols with holes, to simulate the application of the symbols to the pattern seen as the current goal.
+websearch
+---------
+
+* ``--port=<N>`` specifies the port number to use (default is 8080).
 
 lsp
 -------

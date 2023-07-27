@@ -52,7 +52,6 @@
     "compute"
     "debug"
     "flag"
-    "locate"
     "off"
     "on"
     "print"
@@ -60,7 +59,6 @@
     "prover"
     "prover_timeout"
     "search"
-    "search-query"
     "type"
     "verbose")
   "Commands producing side-effects.")

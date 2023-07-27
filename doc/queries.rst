@@ -60,18 +60,6 @@ rewrite engine by reducing η-redexes.
    flag "print_domains" on; // default is off
    flag "print_meta_types" on; // default is off
 
-.. _locate:
-   
-``locate``
-------------------
-
-It takes a non-qualified identifier and locates it in the library, using
-the index.
-
-::
-
-   locate nat;
-
 .. _print:
 
 ``print``
@@ -112,31 +100,18 @@ beginning, the timeout is set to 2s.
 
    prover_timeout 60;
 
-.. _cmd_search:
+.. _search:
 
 ``search``
-----------
-
-It matches a term pattern agains the symbol types and rules in the
-library, using the index. If ``generalize`` is used, the matching works
-up to generalization.
-
-::
-
-  search (nat → nat);
-  search generalize (nat → nat);
-
-.. _search-query:
-
-``search-query``
 ------------------
 
-It runs a query against the index. See :doc:`query_language` for the query
-language specification.
+Runs a query between double quotes against the index file
+``~/.LPSearch.db``. See :doc:`query_language` for the query language
+specification.
 
 ::
 
-  search-query "spine: (nat → nat) , hyp: bool";
+  search "spine: (nat → nat) , hyp: bool";
 
 .. _type:
 

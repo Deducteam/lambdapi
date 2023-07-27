@@ -29,7 +29,6 @@
   '("assert"
     "assertnot"
     "compute"
-    "locate"
     "print"
     "proofterm"
     "search"
@@ -115,7 +114,6 @@ Indent by `lambdapi-indent-basic' in proofs, and 0 otherwise."
              ("assertnot" args "⊢" sterm ":" sterm)
              ("assertnot" args "⊢" sterm "≡" sterm)
              ("compute" sterm)
-             ("locate" ident)
              ("print")
              ("proofterm")
              ("search" sterm)
@@ -208,7 +206,7 @@ The default lexer is used because the syntax is primarily made of sexps."
     (`(:before . ,(or "abort" "admitted" "end")) '(column . 0))
     (`(:after . ,(or "abort" "admitted" "end")) '(column . 0))
 
-    (`(:before . ,(or "assert" "assertnot" "compute" "locate"
+    (`(:before . ,(or "assert" "assertnot" "compute"
                       "print" "proofterm" "search" "type"))
      (lambdapi--query-indent))
 
@@ -219,7 +217,7 @@ The default lexer is used because the syntax is primarily made of sexps."
 
     (`(:list-intro . ,(or "with" "rule" "λ" "Π" "begin")) t)
     (`(:after . "begin") lambdapi-indent-basic)
-    (`(:after . ,(or "rule" "with" "coerce_rule")) (* 2 lambdapi-indent-basic))
+    (`(:after . ,(or "rule" "with" "coerce_rule" "unif_rule")) (* 2 lambdapi-indent-basic))
     (`(:after . "in") (smie-rule-parent))
     (`(:after . ,(or "symbol" "inductive")) lambdapi-indent-basic)
     (`(:after . ,(or "apply" "assume" "fail" "focus" "generalize" "have"
