@@ -22,7 +22,7 @@ where
 
 The semantics of the query language is the following:
 
-* a query ``Q`` is either a base query ``B``, the conjunction ``Q1,Q2`` of two queries ``Q1`` and ``Q2``, their disjunction ``Q1;Q2`` or the query ``Q|PATH`` that behaves as ``Q``, but only keeps the results whose path is a suffix of ``PATH`` (that must be a valid path prefix, e.g. it must not contain spaces)
+* a query ``Q`` is either a base query ``B``, the conjunction ``Q1,Q2`` of two queries ``Q1`` and ``Q2``, their disjunction ``Q1;Q2`` or the query ``Q|PATH`` that behaves as ``Q``, but only keeps the results whose path is a suffix of ``PATH`` (that must be a valid path prefix)
 * a base query ``name: ID`` looks for symbols with name ``ID`` in the library.
   The identifier ``ID`` must not be qualified.
 * a base query ``WHERE HOW GENERALIZE? PATTERN`` looks in the library for occurrences of the pattern ``PATTERN`` **up to normalization rules** and, if ``generalize`` is specified, also **up to generalization** of the pattern. The normalization rules are library specific and are employed during indexing. They can be used, for example, to remove the clutter associated to encodings, to align concepts by mapping symbols to cross-library standard ones, or to standardize the shape of statements to improve recall (e.g. replacing occurrence of ``x > y`` with ``y < x``).

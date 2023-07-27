@@ -470,7 +470,12 @@ ssearch_query:
 search_query:
   | q=ssearch_query
     { q }
-  | q=search_query VBAR path=UID
-    { SearchQuerySyntax.QFilter (q,Path path) }
+  | q=search_query VBAR qid=qid
+    { let p,n = qid.elt in
+      let path =
+       if p = [] then n
+       else
+        Format.asprintf "%a.%a" Core.Print.path p Core.Print.uid n in
+      SearchQuerySyntax.QFilter (q,Path path) }
 
 %%
