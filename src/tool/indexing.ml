@@ -281,8 +281,7 @@ module DB = struct
       lisb (escaper.run Core.Print.path) p n (escaper.run Common.Pos.pp)
       pos separator (generic_pp_of_position_list ~escaper ~sep) positions
       separator preb
-      (Common.Pos.print_file_contents ~escape ~separator
-       ~delimiters)
+      (Common.Pos.print_file_contents ~escape ~delimiters)
       pos pree lise)
     "" fmt l
 

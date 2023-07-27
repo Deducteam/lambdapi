@@ -139,9 +139,9 @@ let make_pos : Lexing.position * Lexing.position -> 'a -> 'a loc =
     "unknown location" message returned when the position does not refer to a
     file. [escape] is used to escape the file contents.*)
 let print_file_contents :
-  escape:(string -> string) -> separator:string ->
+  escape:(string -> string) ->
     delimiters:(string*string) -> popt Lplib.Base.pp =
-  fun ~escape ~separator ~delimiters:(db,de) ppf pos ->
+  fun ~escape ~delimiters:(db,de) ppf pos ->
   match pos with
   | Some { fname=Some fname; start_line; start_col; end_line; end_col } ->
      (* WARNING: do not try to understand the following code!
@@ -174,7 +174,7 @@ let print_file_contents :
      (* add the lines in between the start_line and the end_line *)
      for i = 0 to end_line - start_line - 2 do
        Buffer.add_string out (escape (input_line ch)) ;
-       Buffer.add_string out separator
+       Buffer.add_string out "\n"
      done ;
 
      (* identify what the end_line is and how many UTF8 codepoints to keep *)
