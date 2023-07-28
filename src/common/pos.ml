@@ -156,7 +156,7 @@ let print_file_contents :
 
      (* skip the first start_col UTF8 codepoints of the start_line *)
      let startl = input_line ch in
-     (* with ocaml >= 4.14.1: assert (String.is_valid_utf_8 startl); *)
+     assert (String.is_valid_utf_8 startl);
      let bytepos = ref 0 in
      for i = 0 to start_col - 1 do
       let uchar = String.get_utf_8_uchar startl !bytepos in
@@ -186,7 +186,7 @@ let print_file_contents :
       else input_line ch, end_col in
 
      (* keep the first end_col UTF8 codepoints of the end_line *)
-     (* with ocaml >= 4.14.1: assert (String.is_valid_utf_8 endl); *)
+     assert (String.is_valid_utf_8 endl);
      let bytepos = ref 0 in
      for i = 0 to end_col - 1 do
       let uchar = String.get_utf_8_uchar endl !bytepos in
