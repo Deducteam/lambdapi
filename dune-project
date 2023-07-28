@@ -62,4 +62,6 @@ the Why3 platform.")
   (why3 (and (>= 1.6.0) (< 1.7~)))
   (yojson (>= 1.6.0))
   (cmdliner (>= 1.1.0))
-  (stdlib-shims (>= 0.1.0))))
+  (stdlib-shims (>= 0.1.0))
+  lwt_ppx
+  dream))

@@ -1,36 +1,6 @@
 Queries
 =======
 
-.. _print:
-
-``print``
----------
-
-When called with a symbol identifier as argument, displays information
-(type, notation, rules, etc.) about that symbol. Without argument,
-displays the list of current goals (in proof mode only).
-
-.. _proofterm:
-
-``proofterm``
--------------
-
-Outputs the current proof term (in proof mode only).
-
-.. _type:
-
-``type``
---------
-
-Returns the type of a term.
-
-.. _compute:
-
-``compute``
------------
-
-Computes the normal form of a term.
-
 .. _assert:
 .. _assertnot:
 
@@ -49,18 +19,12 @@ negative tests.
    assertnot ⊢ zero ≡ succ zero;
    assertnot ⊢ succ : Nat;
 
-.. _verbose:
-   
-``verbose``
+.. _compute:
+
+``compute``
 -----------
 
-Takes as argument a non-negative integer. Higher is the verbose
-level, more details are printed. At the beginning, the verbose is set
-to 1.
-
-::
-
-   verbose 3;
+Computes the normal form of a term.
 
 .. _debug:
    
@@ -96,6 +60,22 @@ rewrite engine by reducing η-redexes.
    flag "print_domains" on; // default is off
    flag "print_meta_types" on; // default is off
 
+.. _print:
+
+``print``
+---------
+
+When called with a symbol identifier as argument, displays information
+(type, notation, rules, etc.) about that symbol. Without argument,
+displays the list of current goals (in proof mode only).
+
+.. _proofterm:
+
+``proofterm``
+-------------
+
+Outputs the current proof term (in proof mode only).
+
 .. _prover:
 
 ``prover``
@@ -119,3 +99,36 @@ beginning, the timeout is set to 2s.
 ::
 
    prover_timeout 60;
+
+.. _search_cmd:
+
+``search``
+------------------
+
+Runs a query between double quotes against the index file
+``~/.LPSearch.db``. See :doc:`query_language` for the query language
+specification.
+
+::
+
+  search "spine: (nat → nat) , hyp: bool";
+
+.. _type:
+
+``type``
+--------
+
+Returns the type of a term.
+
+.. _verbose:
+
+``verbose``
+-----------
+
+Takes as argument a non-negative integer. Higher is the verbose
+level, more details are printed. At the beginning, the verbose is set
+to 1.
+
+::
+
+   verbose 3;

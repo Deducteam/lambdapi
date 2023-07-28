@@ -13,45 +13,56 @@ The available commands are:
 * ``decision-tree``: output the decision tree of a symbol as a Dot graph (see :doc:`dtrees`)
 * ``export``: translate the input file to other formats.
 * ``help``: display the main help message.
+* ``index``: create an index of symbols and rules of input files.
 * ``init``: create a new Lambdapi package (see :doc:`getting_started`).
 * ``install``: install the specified files according to package configuration.
 * ``lsp``: run the Lambdapi LSP server.
 * ``parse``: parse the input files.
+* ``search``: runs a search query against the index.
 * ``uninstall``: uninstalls the specified package.
 * ``version``: give the current version of Lambdapi.
+* ``websearch``: starts a webserver to search the library.
 
-The ``parse`` and ``export`` commands can trigger the
+The commands ``parse``, ``export`` and ``index`` can trigger the
 compilation of dependencies if the required object files (``.lpo``
 extension) are not present.
 
 **Input files:**
 
-The commands ``check``, ``parse`` and ``export`` expect input files
+The commands ``check``, ``parse``, ``export`` and ``index`` expect input files
 with either the ``.lp`` extension or the ``.dk`` extension.
-The appropriate parser is selected automatically.
-
-The ``export`` command outputs the translation of all the input files
-on the standard output.
+The appropriate parser is selected automatically. The ``export`` command accept only one file as argument.
 
 If a command takes several files as argument, the files are
 handled independently in the order they are given. The program
 immediately stops on the first failure, without going to the next file
 (if any).
 
+**index:**
+
+The ``index`` command generates the file ``~/.LPSearch.db``. This file contains an indexation of all the symbols and rules occurring in the dk/lp files given in argument. By default, the file ``~/.LPSearch.db`` is erased first. To append new symbols and rules, use the option ``--add``. It is also possile to normalize terms wrt some rules before indexation by using ``--rules`` options.
+
+**search:**
+
+The command ``search`` takes as argument a query and runs it against the index file ``~/.LPSearch.db``. See :doc:`query_language` for the specification of the query language.
+
 **Common flags:**
 
 The commands ``check``, ``decision-tree``, ``export``, ``parse``,
 ``lsp`` all support the following command line arguments and flags.
 
-* ``-v <NUM>``, ``--verbose=<NUM>`` sets the verbosity level to the given natural number (the default value is 1). A value of 0 should not print anything, and the higher values print more and more information.
+* ``--debug=<FLAGS>`` enables the debugging modes specified by every character of ``FLAGS``. Details on available character flags are obtained using ``--help``.
 
 * ``--lib-root=<DIR>`` sets the library root, that is, the folder corresponding to the entry point of the Lambdapi package system. This is the folder under which every package is installed, and a default value is only known if the program has been installed. In development mode, ``--lib-root lib`` must be given (assuming Lambdapi is run at the root of the repository).
 
 * ``--map-dir=<MOD>:<DIR>`` maps an arbitrary directory ``DIR`` under a module path ``MOD`` (relative to the root directory). This option is mainly useful during the development of a package (before it has been installed). However it can also be accessed using a package configuration file (``lambdapi.pkg``) at the root of the library’s source tree. More information on that is given in the section about the module system.
 
-* ``--debug=<FLAGS>`` enables the debugging modes specified by every character of ``FLAGS``. Details on available character flags are obtained using ``--help``.
+* ``--no-sr-check`` disables subject reduction checking.
 
 * ``--timeout=<NUM>`` gives up type-checking after the given number of seconds.  Note that the timeout is reset between each file, and that the parameter of the command is expected to be a natural number.
+
+* ``-v <NUM>``, ``--verbose=<NUM>`` sets the verbosity level to the given natural number (the default value is 1). A value of 0 should not print anything, and the higher values print more and more information.
+
 
 check
 -----
@@ -125,6 +136,25 @@ if the symbols corresponding to the builtins ``"arr"``, ``"imp"`` and ``"all"`` 
 Examples of libraries exported to Coq:
   - In the Lambdapi sources, see how to export the Holide Dedukti library obtained from OpenTheory in `README.md <https://github.com/Deducteam/lambdapi/blob/master/libraries/README.md>`__.
   - See in `hol2dk <https://github.com/Deducteam/hol2dk>`__ how to export the Lambdapi library obtained from HOL-Light.
+
+index
+-----
+
+* ``--add`` tells lambdapi to not erase ``~/.LPSearch.db`` before adding new symbols and rules.
+
+* ``--rules <LPSearch.lp>`` tells lambdapi to normalize terms using the rules given in the file ``<LPSearch.lp>`` before indexing. Several files can be specified by using several ``--rules`` options. In these files, symbols must be fully qualified but no ``require`` command is needed. Moreover, the rules do not need to preserve typing. On the other hand, right hand-side of rules must contain implicit arguments.
+
+  For instance, to index the Matita library, you can use the following rules:
+
+::
+
+   rule cic.Term _ $x ↪ $x;
+   rule cic.lift _ _ $x ↪ $x;
+
+websearch
+---------
+
+* ``--port=<N>`` specifies the port number to use (default is 8080).
 
 lsp
 -------

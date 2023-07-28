@@ -96,7 +96,9 @@ and sym =
   ; sym_rules : rule list ref (** Rewriting rules. *)
   ; sym_mstrat: match_strat (** Matching strategy. *)
   ; sym_dtree : dtree ref (** Decision tree used for matching. *)
-  ; sym_pos   : Pos.popt (** Position in source file. *) }
+  ; sym_pos   : Pos.popt (** Position in source file of symbol name. *)
+  ; sym_decl_pos : Pos.popt (** Position in source file of symbol declaration
+                                without its definition. *) }
 
 (** {b NOTE} that {!field:sym_type} holds a (timed) reference for a  technical
     reason related to the writing of signatures as binary files  (in  relation
@@ -293,12 +295,13 @@ module Sym : Map.OrderedType with type t = sym
 module SymSet : Set.S with type elt = sym
 module SymMap : Map.S with type key = sym
 
-(** [create_sym path expo prop opaq name typ impl] creates a new symbol with
-   position [pos], path [path], exposition [expo], property [prop], opacity
-   [opaq], matching strategy [mstrat], name [name.elt], type [typ], implicit
-   arguments [impl], position [name.pos], no definition and no rules. *)
+(** [create_sym path expo prop opaq name pos typ impl] creates a new symbol
+   with path [path], exposition [expo], property [prop], opacity [opaq],
+   matching strategy [mstrat], name [name.elt], type [typ], implicit arguments
+   [impl], position [name.pos], declaration position [pos], no definition
+   and no rules. *)
 val create_sym : Path.t -> expo -> prop -> match_strat -> bool ->
-  Pos.strloc -> term -> bool list -> sym
+  Pos.strloc -> Pos.popt -> term -> bool list -> sym
 
 (** [is_constant s] tells whether the symbol is a constant. *)
 val is_constant : sym -> bool
@@ -352,6 +355,12 @@ val is_abst : term -> bool
 
 (** [is_prod t] returns [true] iff [t] is of the form [Prod(_)]. *)
 val is_prod : term -> bool
+
+(** [is_vari t] returns [true] iff [t] is of the form [Vari(_)]. *)
+val is_vari : term -> bool
+
+(** [is_patt t] returns [true] iff [t] is of the form [Patt(_)]. *)
+val is_patt : term -> bool
 
 (** [is_unset m] returns [true] if [m] is not instantiated. *)
 val is_unset : meta -> bool

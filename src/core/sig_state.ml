@@ -41,15 +41,17 @@ let dummy : sig_state =
     builtins = StrMap.empty; notations = SymMap.empty;
     open_paths = Path.Set.empty }
 
-(** [add_symbol ss expo prop mstrat opaq id typ impl def] generates a new
-   signature state from [ss] by creating a new symbol with expo [e], property
-   [p], strategy [st], name [x], type [a], implicit arguments [impl] and
-   optional definition [def]. This new symbol is returned too. *)
+(** [add_symbol ss expo prop mstrat opaq id pos typ impl def] generates a new
+    signature state from [ss] by creating a new symbol with expo [e], property
+    [p], strategy [st], name [x], type [a], implicit arguments [impl] and
+    optional definition [def]. [pos] is the position of the declaration
+    without its definition. This new symbol is returned too. *)
 let add_symbol : sig_state -> expo -> prop -> match_strat
-    -> bool -> strloc -> term -> bool list -> term option -> sig_state * sym =
-  fun ss expo prop mstrat opaq id typ impl def ->
+    -> bool -> strloc -> popt -> term -> bool list -> term option ->
+    sig_state * sym =
+  fun ss expo prop mstrat opaq id pos typ impl def ->
   let sym =
-    Sign.add_symbol ss.signature expo prop mstrat opaq id
+    Sign.add_symbol ss.signature expo prop mstrat opaq id pos
       (cleanup typ) impl in
   begin
     match def with
@@ -92,6 +94,10 @@ let open_sign : sig_state -> Sign.t -> sig_state = fun ss sign ->
 let of_sign : Sign.t -> sig_state = fun signature ->
   open_sign (open_sign {dummy with signature} Ghost.sign) signature
 
+(** [find_sym] is the type of functions used to return the symbol
+    corresponding to a qualified / non qualified name *)
+type find_sym = prt:bool -> prv:bool -> sig_state -> qident loc -> sym
+
 (** [find_sym ~prt ~prv b st qid] returns the symbol
     corresponding to the qualified identifier [qid]. If [fst qid.elt] is
     empty, we search for the name [snd qid.elt] in the opened modules of [st].
@@ -102,7 +108,7 @@ let of_sign : Sign.t -> sig_state = fun signature ->
     are allowed in left-hand side of rewrite rules (only) iff [~prt] is true.
     {!constructor:Term.expo.Privat} symbols are allowed iff [~prv]
     is [true]. *)
-let find_sym : prt:bool -> prv:bool -> sig_state -> qident loc -> sym =
+let find_sym : find_sym =
   fun ~prt ~prv st {elt = (mp, s); pos} ->
   let s =
     match mp with

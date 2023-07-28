@@ -45,7 +45,7 @@ type rw_tag =
 (** {b NOTE} that all reduction functions, and {!eq_modulo}, may reduce
     in-place some subterms of the reduced term. *)
 
-(** [whnf ?problem ?tags c t] computes a whnf of the term [t] in context
+(** [whnf ?tags c t] computes a whnf of the term [t] in context
     [c]. *)
 val whnf : ?tags:rw_tag list -> ctxt -> term -> term
 
@@ -57,11 +57,11 @@ val eq_modulo : ctxt -> term -> term -> bool
    [c] with no side effects. *)
 val pure_eq_modulo : ctxt -> term -> term -> bool
 
-(** [snf ?tags c t] computes the strong normal form of the term [t]
-    in the context [c]. *)
-val snf : ?tags:rw_tag list -> ctxt -> term -> term
+(** [snf ~dtree c t] computes a snf of [t], unfolding the variables defined in
+    the context [c]. The function [dtree] maps symbols to dtrees. *)
+val snf : ?dtree:(sym -> dtree) -> ?tags:rw_tag list -> ctxt -> term -> term
 
-(** [hnf ?problem ?tags c t] computes a head-normal form of the term [t] in
+(** [hnf ?tags c t] computes a head-normal form of the term [t] in
     context [c]. *)
 val hnf : ?tags:rw_tag list -> ctxt -> term -> term
 

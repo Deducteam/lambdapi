@@ -97,7 +97,9 @@ and sym =
   ; sym_rules : rule list ref (** Rewriting rules. *)
   ; sym_mstrat: match_strat (** Matching strategy. *)
   ; sym_dtree : dtree ref (** Decision tree used for matching. *)
-  ; sym_pos   : Pos.popt (** Position in source file. *) }
+  ; sym_pos   : Pos.popt (** Position in source file of symbol name. *)
+  ; sym_decl_pos : Pos.popt (** Position in source file of symbol declaration
+                                without its definition. *) }
 
 (** {b NOTE} {!field:sym_type} holds a (timed) reference for a  technical
     reason related to the writing of signatures as binary files  (in  relation
@@ -350,17 +352,19 @@ type problem = problem_aux ref
 let new_problem : unit -> problem = fun () ->
  ref {to_solve  = []; unsolved = []; recompute = false; metas = MetaSet.empty}
 
-(** [create_sym path expo prop opaq name typ impl] creates a new symbol with
-   path [path], exposition [expo], property [prop], opacity [opaq], matching
-   strategy [mstrat], name [name.elt], type [typ], implicit arguments [impl],
-   position [name.pos], no definition and no rules. *)
+(** [create_sym path expo prop opaq name decl typ impl] creates a new symbol
+   with path [path], exposition [expo], property [prop], opacity [opaq],
+   matching strategy [mstrat], name [name.elt], type [typ], implicit arguments
+   [impl], position [name.pos], declaration position [decl.pos], no definition
+   and no rules. *)
 let create_sym : Path.t -> expo -> prop -> match_strat -> bool ->
-  Pos.strloc -> term -> bool list -> sym =
+  Pos.strloc -> Pos.popt -> term -> bool list -> sym =
   fun sym_path sym_expo sym_prop sym_mstrat sym_opaq
-    { elt = sym_name; pos = sym_pos } typ sym_impl ->
+    { elt = sym_name; pos = sym_pos } sym_decl_pos
+    typ sym_impl ->
   {sym_path; sym_name; sym_type = ref typ; sym_impl; sym_def = ref None;
    sym_opaq; sym_rules = ref []; sym_dtree = ref Tree_type.empty_dtree;
-   sym_mstrat; sym_prop; sym_expo; sym_pos }
+   sym_mstrat; sym_prop; sym_expo; sym_pos ; sym_decl_pos }
 
 (** [is_constant s] tells whether [s] is a constant. *)
 let is_constant : sym -> bool = fun s -> s.sym_prop = Const
@@ -408,6 +412,14 @@ let is_abst : term -> bool = fun t ->
 (** [is_prod t] returns [true] iff [t] is of the form [Prod(_)]. *)
 let is_prod : term -> bool = fun t ->
   match unfold t with Prod(_) -> true | _ -> false
+
+(** [is_vari t] returns [true] iff [t] is of the form [Vari(_)]. *)
+let is_vari : term -> bool = fun t ->
+  match unfold t with Vari(_) -> true | _ -> false
+
+(** [is_patt t] returns [true] iff [t] is of the form [Patt(_)]. *)
+let is_patt : term -> bool = fun t ->
+  match unfold t with Patt(_) -> true | _ -> false
 
 (** [is_unset m] returns [true] if [m] is not instantiated. *)
 let is_unset : meta -> bool = fun m -> !(m.meta_value) = None
@@ -558,7 +570,9 @@ let right_aliens : sym -> term -> term list = fun s ->
 
 (* unit test *)
 let _ =
-  let s = create_sym [] Privat (AC true) Eager false (Pos.none "+") Kind [] in
+  let s =
+   create_sym [] Privat (AC true) Eager false (Pos.none "+") None Kind
+    [] in
   let t1 = Vari (new_tvar "x1") in
   let t2 = Vari (new_tvar "x2") in
   let t3 = Vari (new_tvar "x3") in

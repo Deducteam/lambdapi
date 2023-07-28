@@ -56,7 +56,10 @@ let end_pos : popt -> popt = fun po ->
 (** [cat p1 p2] returns a position starting from [p1] start and ending with
    [p2] end. [p1] and [p2] must have the same filename. *)
 let cat : pos -> pos -> pos = fun p1 p2 ->
-  { fname = if p1.fname <> p2.fname then invalid_arg __LOC__ else p1.fname
+  { fname = p2.fname
+    (*FIXME: temporary fix for
+      https://github.com/Deducteam/lambdapi/issues/1001
+      if p1.fname <> p2.fname then invalid_arg __LOC__ else p1.fname*)
   ; start_line = p1.start_line
   ; start_col = p1.start_col
   ; end_line = p2.end_line
@@ -129,3 +132,70 @@ let locate : ?fname:string -> Lexing.position * Lexing.position -> pos =
    [lps] and the element [elt]. *)
 let make_pos : Lexing.position * Lexing.position -> 'a -> 'a loc =
   fun lps elt -> in_pos (locate lps) elt
+
+(** [print_file_contents escape sep delimiters pos] prints the contents of the
+    file at position [pos]. [sep] is the separator replacing each newline
+    (e.g. "<br>\n"). [delimiters] is a pair of delimiters used to wrap the
+    "unknown location" message returned when the position does not refer to a
+    file. [escape] is used to escape the file contents.*)
+let print_file_contents :
+  escape:(string -> string) ->
+    delimiters:(string*string) -> popt Lplib.Base.pp =
+  fun ~escape ~delimiters:(db,de) ppf pos ->
+  match pos with
+  | Some { fname=Some fname; start_line; start_col; end_line; end_col } ->
+     (* WARNING: do not try to understand the following code!
+        It's dangerous for your health! *)
+
+     (* ignore the lines before the start_line *)
+     let ch = open_in fname in
+     let out = Buffer.create ((end_line - start_line) * 80 + end_col + 1) in
+     for i = 0 to start_line - 2 do
+      ignore (input_line ch)
+     done ;
+
+     (* skip the first start_col UTF8 codepoints of the start_line *)
+     let startl = input_line ch in
+     assert (String.is_valid_utf_8 startl);
+     let bytepos = ref 0 in
+     for i = 0 to start_col - 1 do
+      let uchar = String.get_utf_8_uchar startl !bytepos in
+      assert (Uchar.utf_decode_is_valid uchar) ;
+      bytepos := !bytepos + Uchar.utf_decode_length uchar
+     done ;
+     let startstr =
+       String.sub startl !bytepos (String.length startl - !bytepos) in
+
+     (* add what is left of the start_line, unless it is the end_line
+        as well  *)
+     if end_line <> start_line then begin
+      Buffer.add_string out (escape startstr) ;
+      Buffer.add_string out "\n"
+     end ;
+
+     (* add the lines in between the start_line and the end_line *)
+     for i = 0 to end_line - start_line - 2 do
+       Buffer.add_string out (escape (input_line ch)) ;
+       Buffer.add_string out "\n"
+     done ;
+
+     (* identify what the end_line is and how many UTF8 codepoints to keep *)
+     let endl,end_col =
+      if start_line = end_line then
+        startstr, end_col - start_col
+      else input_line ch, end_col in
+
+     (* keep the first end_col UTF8 codepoints of the end_line *)
+     assert (String.is_valid_utf_8 endl);
+     let bytepos = ref 0 in
+     for i = 0 to end_col - 1 do
+      let uchar = String.get_utf_8_uchar endl !bytepos in
+      assert (Uchar.utf_decode_is_valid uchar) ;
+      bytepos := !bytepos + Uchar.utf_decode_length uchar
+     done ;
+     let str = String.sub endl 0 !bytepos in
+     Buffer.add_string out (escape str) ;
+
+     close_in ch ;
+     string ppf (Buffer.contents out)
+  | None | Some {fname=None} -> string ppf (db ^ "unknown location" ^ de)

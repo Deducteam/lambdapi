@@ -17,6 +17,38 @@ module CLT = Cmdliner.Term
 
 (** {3 Evaluation of commands. *)
 
+module LPSearchMain =
+struct
+
+let search_cmd cfg s =
+ Config.init cfg;
+ let run () = out Format.std_formatter "%s@."
+   (Tool.Indexing.search_cmd_txt s) in
+ Error.handle_exceptions run
+
+let websearch_cmd cfg port =
+ Config.init cfg;
+ let run () =
+  Tool.Websearch.start ~port () in
+ Error.handle_exceptions run
+
+let index_cmd cfg add_only rules files =
+ Config.init cfg;
+ let run () =
+  if not add_only then Tool.Indexing.empty ();
+  (* We save time to run each file in the same environment. *)
+  let open Timed in
+  let time = Time.save () in
+  let handle file =
+   Console.reset_default ();
+   Time.restore time;
+   Tool.Indexing.index_sign ~rules (with_no_wrn Compile.compile_file file) in
+  List.iter handle files;
+  Tool.Indexing.dump () in
+ Error.handle_exceptions run
+
+end
+
 (** Running the main type-checking mode. *)
 let check_cmd : Config.t -> int option -> string list -> unit =
     fun cfg timeout files ->
@@ -353,6 +385,43 @@ let version_cmd =
   let doc = "Display the current version of Lambdapi." in
   Cmd.v (Cmd.info "version" ~doc) CLT.(const run $ const ())
 
+let query_as_arg : string Cmdliner.Term.t =
+  let doc = "Query to be executed." in
+  Arg.(required & pos 0 (some string) None & info [] ~docv:"QUERY" ~doc)
+
+let add_only_arg : bool CLT.t =
+  let doc = "Adds more terms to the index without cleaning it first." in
+  Arg.(value & flag & info ["add"] ~doc)
+
+let port_arg : int CLT.t =
+  let doc =
+    "Port used by the webserver." in
+  Arg.(value & opt int 8080 & info ["port"] ~docv:"PORT" ~doc)
+
+let rules_arg : string list CLT.t =
+  let doc =
+    "File holding rewriting rules applied before indexing. Use option \
+     multiple times to fetch rules from multiple files." in
+  Arg.(value & opt_all string [] & info ["rules"] ~docv:"FILENAME" ~doc)
+
+let index_cmd =
+ let doc = "Index the given files." in
+ Cmd.v (Cmd.info "index" ~doc ~man:man_pkg_file)
+  Cmdliner.Term.(const LPSearchMain.index_cmd $ Config.full $
+   add_only_arg $ rules_arg $ files)
+
+let search_cmd =
+ let doc = "Run a search query against the index." in
+ Cmd.v (Cmd.info "search" ~doc ~man:man_pkg_file)
+  Cmdliner.Term.(const LPSearchMain.search_cmd $ Config.full
+   $ query_as_arg)
+
+let websearch_cmd =
+ let doc =
+  "Starts a webserver for searching the library." in
+ Cmd.v (Cmd.info "websearch" ~doc ~man:man_pkg_file)
+  Cmdliner.Term.(const LPSearchMain.websearch_cmd $ Config.full $ port_arg)
+
 let _ =
   let t0 = Sys.time () in
   Stdlib.at_exit (Debug.print_time t0);
@@ -360,7 +429,8 @@ let _ =
   let cmds =
     [ check_cmd ; parse_cmd ; export_cmd ; lsp_server_cmd
     ; decision_tree_cmd ; help_cmd ; version_cmd
-    ; Init.cmd ; Install.install_cmd ; Install.uninstall_cmd ]
+    ; Init.cmd ; Install.install_cmd ; Install.uninstall_cmd
+    ; index_cmd ; search_cmd ; websearch_cmd ]
   in
   let doc = "A type-checker for the lambdapi-calculus modulo rewriting." in
   let sdocs = Manpage.s_common_options in

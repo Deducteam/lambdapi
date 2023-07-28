@@ -25,7 +25,7 @@
   ],
   "repository": {
     "commands": {
-      "match": "\\b(abort|admit|admitted|apply|as|assert|assertnot|associative|assume|begin|builtin|commutative|compute|constant|debug|end|fail|flag|focus|generalize|have|in|induction|inductive|infix|injective|left|let|notation|off|on|open|opaque|postfix|prefix|print|private|proofterm|protected|prover|prover_timeout|quantifier|refine|reflexivity|remove|require|rewrite|rule|sequential|simplify|symbol|symmetry|type|TYPE|unif_rule|why3|with)\\b",
+      "match": "\\b(abort|admit|admitted|apply|as|assert|assertnot|associative|assume|begin|builtin|coerce_rule|commutative|compute|constant|debug|end|fail|flag|focus|generalize|have|in|induction|inductive|infix|injective|left|let|notation|off|on|open|opaque|postfix|prefix|print|private|proofterm|protected|prover|prover_timeout|quantifier|refine|reflexivity|remove|require|rewrite|rule|search|sequential|simplify|symbol|symmetry|type|TYPE|unif_rule|why3|with)\\b",
       "name": "keyword.control.lp"
     },
     "comments": {
@@ -49,7 +49,7 @@
     },
 
     "signature-commands": {
-      "match": "(inductive|symbol|rule|with|coerce_rule)\\s+([^\\s+]*)",
+      "match": "(coerce_rule|inductive|rule|symbol|unif_rule|with)\\s+([^\\s+]*)",
       "captures": {
         "1": {"name": "storage.type.lp"},
         "2": {"name": "entity.name.function.theorem.lp"}
@@ -70,12 +70,12 @@
     },
 
     "misc": {
-      "match": "\\b(assert|assertnot|compute|print|proofterm|type)\\b",
+      "match": "\\b(assert|assertnot|compute|print|proofterm|search|type)\\b",
       "name": "keyword.control.query.lp"
     },
 
     "keywords": {
-      "match": "\\b(as|associative|begin|builtin|coerce_rule|coerce|commutative|constant|debug|end|flag|in|infix|injective|left|off|notation|on|opaque|postfix|prefix|private|protected|prover|prover_timeout|quantifier|right|sequential|TYPE|unif_rule)\\b",
+      "match": "\\b(as|associative|begin|builtin|coerce_rule|commutative|constant|debug|end|flag|in|infix|injective|left|off|notation|on|opaque|postfix|prefix|private|protected|prover|prover_timeout|quantifier|right|sequential|TYPE|unif_rule)\\b",
       "name": "storage.modifier.lp"
     }
   }

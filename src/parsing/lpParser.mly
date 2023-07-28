@@ -67,6 +67,7 @@
 %token REQUIRE
 %token REWRITE
 %token RULE
+%token SEARCH
 %token SEQUENTIAL
 %token SIMPLIFY
 %token SOLVE
@@ -124,11 +125,26 @@
 
 %start <Syntax.p_command> command
 %start <Syntax.p_qident> qid
+%start <Syntax.p_qident> qid_alone
+%start <Syntax.p_term> term_alone
+%start <SearchQuerySyntax.query> search_query_alone
 
 // patch (see https://github.com/Deducteam/lambdapi/pull/798)
 %type <Syntax.p_term * Syntax.p_term> equation
 
 %%
+
+term_alone:
+  | t=term EOF
+    { t }
+
+qid_alone:
+  | q=qid EOF
+    { q }
+
+search_query_alone:
+  | q=search_query EOF
+    { q }
 
 command:
   | REQUIRE OPEN l=list(path) SEMICOLON
@@ -187,6 +203,8 @@ query:
   | VERBOSE n=NAT { make_pos $sloc (P_query_verbose n) }
   | TYPE_QUERY t=term
     { make_pos $sloc (P_query_infer(t, {strategy=NONE; steps=None}))}
+  | SEARCH s=STRINGLIT
+    { make_pos $sloc (P_query_search s) }
 
 path:
   | UID { LpLexer.syntax_error $sloc "Unqualified identifier" }
@@ -373,5 +391,94 @@ notation:
 float_or_nat:
   | s=FLOAT { s }
   | s=NAT { s }
+
+maybe_generalize:
+  | g = GENERALIZE?
+    { g <> None }
+
+where:
+  | u = UID g=maybe_generalize
+    { g, match u with
+       | "=" -> Some SearchQuerySyntax.Exact
+       | ">" -> Some SearchQuerySyntax.Inside
+       | "≥"
+       | ">=" -> None
+       | _ ->
+          LpLexer.syntax_error $sloc
+           "Only \">\", \"=\", \"≥\" and \">=\" accepted"
+    }
+
+asearch_query:
+  (* "type" is a keyword... *)
+  | TYPE_QUERY gw=where t=aterm
+    { let g,w = gw in
+      if w <> None then
+        LpLexer.syntax_error $sloc
+         "Only \"≥\" and \">=\" accepted for \"type\""
+      else
+       SearchQuerySyntax.QBase(QSearch(t,g,Some (QType None))) }
+  | RULE gw=where t=aterm
+    { let g,w = gw in
+      SearchQuerySyntax.QBase(QSearch(t,g,Some (QXhs(w,None)))) }
+  | k=UID gw=where t=aterm
+    { let open SearchQuerySyntax in
+      let g,w = gw in
+      match k,t.elt with
+       | "name",P_Iden(id,false) ->
+           assert (fst id.elt = []) ;
+           if w <> Some Exact then
+             LpLexer.syntax_error $sloc
+              "Only \"=\" accepted for \"name\""
+           else if g = true then
+             LpLexer.syntax_error $sloc
+              "\"generalize\" cannot be used with \"name\""
+           else
+             QBase(QName (snd id.elt))
+       | "name",_ ->
+           LpLexer.syntax_error $sloc "Path prefix expected after \"name:\""
+       | "anywhere",_ ->
+           if w <> None then
+             LpLexer.syntax_error $sloc
+              "Only \"≥\" and \">=\" accepted for \"anywhere\""
+           else
+             QBase(QSearch(t,g,None))
+       | "spine",_ ->
+           QBase(QSearch(t,g,Some (QType (Some (Spine w)))))
+       | "concl",_ ->
+           QBase(QSearch(t,g,Some (QType (Some (Conclusion w)))))
+       | "hyp",_ ->
+           QBase(QSearch(t,g,Some (QType (Some (Hypothesis w)))))
+       | "lhs",_ ->
+           QBase(QSearch(t,g,Some (QXhs(w,Some Lhs))))
+       | "rhs",_ ->
+           QBase(QSearch(t,g,Some (QXhs(w,Some Rhs))))
+       | _,_ ->
+           LpLexer.syntax_error $sloc ("Unknown keyword: " ^ k)
+    }
+  | L_PAREN q=search_query R_PAREN
+    { q }
+
+csearch_query:
+  | q=asearch_query
+    { q }
+  | q1=csearch_query COMMA q2=asearch_query
+    { SearchQuerySyntax.QOpp (q1,SearchQuerySyntax.Intersect,q2) }
+
+ssearch_query:
+  | q=csearch_query
+    { q }
+  | q1=ssearch_query SEMICOLON q2=csearch_query
+    { SearchQuerySyntax.QOpp (q1,SearchQuerySyntax.Union,q2) }
+
+search_query:
+  | q=ssearch_query
+    { q }
+  | q=search_query VBAR qid=qid
+    { let p,n = qid.elt in
+      let path =
+       if p = [] then n
+       else
+        Format.asprintf "%a.%a" Core.Print.path p Core.Print.uid n in
+      SearchQuerySyntax.QFilter (q,Path path) }
 
 %%

@@ -8,7 +8,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ### Added
 
 - Several options for export -o stt_coq.
-- Tactic remove
+- Tactic remove.
+- Option --no-sr-check to disable subject reduction checking.
+- CLI command index to build ~/.LPSearch.db.
+- Indexed terms can be normalized wrt rules with the option --rules
+  (note that this new option --rules could be used to implement the equivalent
+  of dkmeta later).
+- CLI command search and LP command search to send queries to the index.
+- Query language.
+- CLI command websearch to run a webserver that can answer search queries.
+- Option --port to specify the port to use.
 
 ### Improved
 
@@ -17,6 +26,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ### Changed
 
 - Private definitions are not kept in memory and in lpo files anymore.
+- The record type Eval.config is extended with a new field allowing to specify
+  which dtree to use for each symbol.
 
 ## 2.3.1 (2023-03-13)
 
