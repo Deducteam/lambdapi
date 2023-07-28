@@ -100,7 +100,7 @@ beginning, the timeout is set to 2s.
 
    prover_timeout 60;
 
-.. _search:
+.. _search_cmd:
 
 ``search``
 ------------------
