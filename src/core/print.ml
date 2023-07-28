@@ -91,7 +91,7 @@ let without_qualifying f =
 let sym : sym pp = fun ppf s ->
   if !print_implicits && s.sym_impl <> [] then out ppf "@";
   let ss = !sig_state and n = s.sym_name and p = s.sym_path in
-  if Path.Set.mem p ss.open_paths || !do_not_qualify then uid ppf n
+  if !do_not_qualify || Path.Set.mem p ss.open_paths then uid ppf n
   else
     match Path.Map.find_opt p ss.path_alias with
     | None ->
