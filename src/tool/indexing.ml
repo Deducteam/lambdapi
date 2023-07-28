@@ -2,6 +2,7 @@ open Core open Term
 open Common open Pos
 
 type sym_name = Common.Path.t * string
+
 let name_of_sym s = (s.sym_path, s.sym_name)
 
 (* discrimination tree *)
@@ -25,9 +26,11 @@ module Pure = struct
 type 'a index =
  | Leaf of 'a list
  | Choice of 'a node list
+
 and 'a node =
  | IHOLE of 'a index
  | IRigid of rigid * 'a index
+
 and rigid =
  | IVar
  | IKind
@@ -40,12 +43,6 @@ and rigid =
 type 'a db = 'a list Lplib.Extra.StrMap.t * 'a index
 
 let empty : 'a db =  Lplib.Extra.StrMap.empty, Choice []
-
-(* unused
-let term_of_patt (_var, _varname, args) =
- let var = Bindlib.new_var mk_Vari "dummy" in
- Array.fold_left (fun t a -> mk_Appl (t,a)) (mk_Vari var) args
-*)
 
 let rec node_of_stack t s v =
  match unfold t with
@@ -71,6 +68,7 @@ let rec node_of_stack t s v =
  | TRef _  -> assert false (* destroyed by unfold *)
  | TEnv _ (* used in rewriting rules RHS *) ->
      assert false (* use term_of_rhs *)
+
 and index_of_stack stack v =
  match stack with
  | [] -> Leaf [v]
@@ -111,6 +109,7 @@ let rec match_flexible =
       | IAbst
       | IProd ->
           List.concat (List.map match_flexible_index (match_flexible_index i))
+
 and match_flexible_index =
  function
     Leaf _ -> assert false (* ill-typed term *)
@@ -131,6 +130,7 @@ let rec insert_index index stack v =
         NoMatch -> n :: aux nl
     in Choice(aux l)
  | _, _ -> assert false (* ill-typed term *)
+
 and insert_node node term s v =
  match node,term with
  (* Patterns are holes, holes are patterns *)
@@ -157,6 +157,7 @@ let rec search_index ~generalize index stack =
     List.fold_right
      (fun n res -> search_node ~generalize n t s @ res) l []
  | _, _ -> assert false (* ill-typed term *)
+
 and search_node ~generalize node term s =
  match node,term with
  | _, Patt _ ->
@@ -174,6 +175,7 @@ and search_node ~generalize node term s =
    only by variables, i.e. the pattern is not matched up to generalization *)
 let search ~generalize (_,index) term =
  search_index ~generalize index [term]
+
 let locate_name (namemap,_) name =
   match Lplib.Extra.StrMap.find_opt name namemap with None -> [] | Some l -> l
 
@@ -194,17 +196,21 @@ module DB = struct
  (* fix codomain type *)
 
  type side = Parsing.SearchQuerySyntax.side = Lhs | Rhs
+
  type inside = Parsing.SearchQuerySyntax.inside = Exact | Inside
+
  type 'inside where = 'inside Parsing.SearchQuerySyntax.where =
   | Spine of 'inside
   | Conclusion of 'inside
   | Hypothesis of 'inside
  (* the "name" in the sym_name of rules is just the printed position of
     the rule; the associated position is never None *)
+
  type position =
   | Name
   | Type of inside where
   | Xhs  of inside * side
+
  type item = sym_name * Common.Pos.pos option
 
  let pp_side fmt =
@@ -306,10 +312,8 @@ module DB = struct
  let rwpaths = ref []
 
  let restore_from_disk () =
-  try
-   Pure.restore_from ~filename:dbpath
-  with
-   Sys_error msg ->
+  try Pure.restore_from ~filename:dbpath
+  with Sys_error msg ->
      Common.Error.wrn None "%s.\n\
       Type \"lambdapi index --help\" to learn how to create the index." msg ;
      Pure.empty
@@ -386,8 +390,7 @@ let check_rule : Parsing.Syntax.p_rule -> sym_rule = fun r ->
 let load_meta_rules () =
  let rules = ref [] in
  List.iter (fun rwpath ->
-  let cmdstream =
-    Parsing.Parser.Lp.parse_file rwpath in
+  let cmdstream = Parsing.Parser.Lp.parse_file rwpath in
   Stream.iter
    (fun {elt ; _ } ->
      match elt with
@@ -410,19 +413,15 @@ let meta_rules = lazy (load_meta_rules ())
 
 let normalize typ =
  let dtree sym =
-  try
-   QNameMap.find (name_of_sym sym) (Lazy.force meta_rules)
-  with
-   Not_found -> Core.Tree_type.empty_dtree in
+  try QNameMap.find (name_of_sym sym) (Lazy.force meta_rules)
+  with Not_found -> Core.Tree_type.empty_dtree in
  Core.Eval.snf ~dtree ~tags:[`NoExpand] [] typ
 
 let rec is_flexible t =
  match Core.Term.unfold t with
   | Patt _ -> true
   | Appl(t,_) -> is_flexible t
-  | LLet(_,_,b) ->
-     let _, t = Bindlib.unbind b in
-     is_flexible t
+  | LLet(_,_,b) -> let _, t = Bindlib.unbind b in is_flexible t
   | Vari _ | Type | Kind | Symb _ | Prod _ | Abst _ -> false
   | Meta _ | Plac _ | Wild | TRef _ | TEnv _ -> assert false
 
