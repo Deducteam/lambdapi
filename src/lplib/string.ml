@@ -36,7 +36,7 @@ let for_all : (char -> bool) -> string -> bool =
   let rec for_all i = i >= len_s || (p (S.get s i) && for_all (i + 1)) in
   for_all 0
 
-(* definitions of functions available from ocaml >= 4.14.1 only *)
+(* Taken from string.ml in OCaml 4.14.1. *)
 module B = Bytes
 let bos = B.unsafe_of_string
 let get_utf_8_uchar s i = B.get_utf_8_uchar (bos s) i
