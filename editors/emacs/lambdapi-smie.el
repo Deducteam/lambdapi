@@ -31,6 +31,7 @@
     "compute"
     "print"
     "proofterm"
+    "search"
     "type")
   "Queries.")
 (defconst lambdapi--cmds
@@ -115,6 +116,7 @@ Indent by `lambdapi-indent-basic' in proofs, and 0 otherwise."
              ("compute" sterm)
              ("print")
              ("proofterm")
+             ("search" sterm)
              ("type" sterm))
       (prfcontent (tactic)
                   (query))
@@ -203,8 +205,8 @@ The default lexer is used because the syntax is primarily made of sexps."
     (`(:before . ,(or "abort" "admitted" "end")) '(column . 0))
     (`(:after . ,(or "abort" "admitted" "end")) '(column . 0))
 
-    (`(:before . ,(or "assert" "assertnot" "compute" "print" "proofterm"
-                      "type"))
+    (`(:before . ,(or "assert" "assertnot" "compute"
+                      "print" "proofterm" "search" "type"))
      (lambdapi--query-indent))
 
     (`(,_ . ,(or "," "↪" "→" "≡")) (smie-rule-separator kind))
@@ -214,7 +216,7 @@ The default lexer is used because the syntax is primarily made of sexps."
 
     (`(:list-intro . ,(or "with" "rule" "λ" "Π" "begin")) t)
     (`(:after . "begin") lambdapi-indent-basic)
-    (`(:after . ,(or "rule" "with" "coerce_rule")) (* 2 lambdapi-indent-basic))
+    (`(:after . ,(or "rule" "with" "coerce_rule" "unif_rule")) (* 2 lambdapi-indent-basic))
     (`(:after . "in") (smie-rule-parent))
     (`(:after . ,(or "symbol" "inductive")) lambdapi-indent-basic)
     (`(:after . ,(or "apply" "assume" "fail" "focus" "generalize" "have"

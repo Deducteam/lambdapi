@@ -3,7 +3,7 @@ open Term
 
 let coerce : sym =
   let id = Pos.none "coerce" in
-  Sign.add_symbol Ghost.sign Public Defin Eager false id mk_Kind []
+  Sign.add_symbol Ghost.sign Public Defin Eager false id None mk_Kind []
 
 let apply a b t : term = add_args (mk_Symb coerce) [a; b; t]
 

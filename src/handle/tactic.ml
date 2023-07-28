@@ -39,7 +39,7 @@ let add_axiom : Sig_state.t -> popt -> meta -> sym =
     (* We ignore the new ss returned by Sig_state.add_symbol: axioms do not
        need to be in scope. *)
     snd (Sig_state.add_symbol ss
-           Public Defin Eager true id !(m.meta_type) [] None)
+           Public Defin Eager true id None !(m.meta_type) [] None)
   in
   (* Create the value which will be substituted for the metavariable. This
      value is [sym x0 ... xn] where [xi] are variables that will be

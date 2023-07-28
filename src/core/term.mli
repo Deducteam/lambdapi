@@ -96,7 +96,9 @@ and sym =
   ; sym_rules : rule list ref (** Rewriting rules. *)
   ; sym_mstrat: match_strat (** Matching strategy. *)
   ; sym_dtree : dtree ref (** Decision tree used for matching. *)
-  ; sym_pos   : Pos.popt (** Position in source file. *) }
+  ; sym_pos   : Pos.popt (** Position in source file of symbol name. *)
+  ; sym_decl_pos : Pos.popt (** Position in source file of symbol declaration
+                                without its definition. *) }
 
 (** {b NOTE} that {!field:sym_type} holds a (timed) reference for a  technical
     reason related to the writing of signatures as binary files  (in  relation
@@ -210,12 +212,13 @@ val mbinder_arity : mbinder -> int
 (** Minimize [impl] to enforce our invariant (see {!type:Term.sym}). *)
 val minimize_impl : bool list -> bool list
 
-(** [create_sym path expo prop opaq name typ impl] creates a new symbol with
-   position [pos], path [path], exposition [expo], property [prop], opacity
-   [opaq], matching strategy [mstrat], name [name.elt], type [typ], implicit
-   arguments [impl], position [name.pos], no definition and no rules. *)
+(** [create_sym path expo prop opaq mstrat name pos typ impl] creates a new
+    symbol with path [path], exposition [expo], property [prop], opacity
+    [opaq], matching strategy [mstrat], name [name], name [name], declaration
+    position [pos], type [typ], implicit arguments [impl], no definition and
+    no rules. *)
 val create_sym : Path.t -> expo -> prop -> match_strat -> bool ->
-  Pos.strloc -> term -> bool list -> sym
+  Pos.strloc -> Pos.popt -> term -> bool list -> sym
 
 (** [is_constant s] tells whether the symbol is a constant. *)
 val is_constant : sym -> bool

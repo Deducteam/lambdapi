@@ -8,11 +8,14 @@ open Core
 open Syntax
 
 module Pratt : sig
-  val parse : Sig_state.t -> Env.t -> p_term -> p_term
-  (** [parse ss env t] Pratt parses term [t], unsugaring infix operators and
-      prefix operators using signature state [ss] and environment [env] to
-      determine which term is an operator, and to build new terms. Note that
-      it doesn't recurse into abstractions or implications and alike. *)
+  val parse : ?find_sym:Core.Sig_state.find_sym -> Sig_state.t -> Env.t
+              -> p_term -> p_term
+  (** [parse ~find_sym ss env t] Pratt parses term [t], unsugaring infix
+      operators and prefix operators using signature state [ss] and
+      environment [env] to determine which term is an operator, and to build
+      new terms.  Note that it doesn't recurse into abstractions or
+      implications and alike.  [~find_sym] is used to scope symbol
+      identifiers. *)
 end = struct
 
   open Lplib
@@ -20,13 +23,13 @@ end = struct
 
   module Pratt_terms : Pratter.SUPPORT
     with type term = p_term
-     and type table = Sig_state.t * Env.t
+     and type table = Core.Sig_state.find_sym * Sig_state.t * Env.t
   = struct
     type term = p_term
-    type table = Sig_state.t * Env.t
+    type table = Core.Sig_state.find_sym * Sig_state.t * Env.t
 
     (* Get properties of term [t] if its an operator. *)
-    let get (tbl, env) t =
+    let get ((find_sym : Core.Sig_state.find_sym), tbl, env) t =
       match t.elt with
       | P_Iden({elt=(mp, s); _} as id, false) ->
           let open Option.Monad in
@@ -35,7 +38,7 @@ end = struct
               if mp <> [] then raise Not_found;
               ignore (Env.find s env); None
             with Not_found -> (* ... or look into the signature *)
-              Some(Sig_state.find_sym ~prt:true ~prv:true tbl id)
+              Some(find_sym ~prt:true ~prv:true tbl id)
           in
           (match Term.SymMap.find_opt sym tbl.notations with
           | Some(Infix(assoc, prio)) -> Some(Pratter.Infix assoc, prio)
@@ -53,11 +56,13 @@ end = struct
    rebuilt into appl nodes by [Pratt.parse], and then decomposed again into a
    list by [get_args]. We could make [Pratt.parse] return a list of terms
    instead. *)
-  let parse : Sig_state.t -> Env.t -> p_term -> p_term = fun st env t ->
+  let parse : ?find_sym:Core.Sig_state.find_sym ->
+    Sig_state.t -> Env.t -> p_term -> p_term =
+    fun ?(find_sym=Sig_state.find_sym) st env t ->
     let h, args = Syntax.p_get_args t in
     let strm = Stream.of_list (h :: args) in
     let module Parse = Pratter.Make(Pratt_terms) in
-    match Parse.expression (st, env) strm with
+    match Parse.expression (find_sym, st, env) strm with
     | Ok e -> e
     | Error `TooFewArguments ->
         Error.fatal t.pos "Malformed application in \"%a\"" Pretty.term t

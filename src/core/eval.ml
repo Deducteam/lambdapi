@@ -86,17 +86,19 @@ module Config = struct
     ; varmap : term VarMap.t (** Variable definitions. *)
     ; rewrite : bool (** Whether to apply user-defined rewriting rules. *)
     ; expand_defs : bool (** Whether to expand definitions. *)
-    ; beta : bool (** Whether to beta-normalise *) }
+    ; beta : bool (** Whether to beta-normalise *)
+    ; dtree : sym -> dtree (** Retrieves the dtree of a symbol *) }
 
-  (** [make ?problem ?rewrite c] creates a new configuration with problem
-      [?problem] (being new if not provided), tags [?rewrite] (being empty if
-      not provided) and context [c]. By default, beta reduction and rewriting
-      is enabled for all symbols. *)
-  let make : ?tags:rw_tag list -> ctxt -> t = fun ?(tags=[]) context ->
+  (** [make ?dtree ?rewrite c] creates a new configuration with
+      tags [?rewrite] (being empty if not provided), context [c] and
+      dtree map [?dtree] (defaulting to getting the dtree from the symbol).
+      By default, beta reduction and rewriting is enabled for all symbols. *)
+  let make : ?dtree:(sym -> dtree) -> ?tags:rw_tag list -> ctxt -> t =
+  fun ?(dtree=fun sym -> !(sym.sym_dtree)) ?(tags=[]) context ->
     let beta = not @@ List.mem `NoBeta tags in
     let expand_defs = not @@ List.mem `NoExpand tags in
     let rewrite = not @@ List.mem `NoRw tags in
-    {context; varmap = Ctxt.to_map context; rewrite; expand_defs; beta}
+    {context; varmap = Ctxt.to_map context; rewrite; expand_defs; beta; dtree}
 
   (** [unfold cfg a] unfolds [a] if it's a variable defined in the
       configuration [cfg]. *)
@@ -238,7 +240,7 @@ and whnf_stk : config -> term -> stack -> term * stack = fun cfg t stk ->
             snd (get_args (add_args h stk'))
         else stk
       in
-      match tree_walk cfg !(s.sym_dtree) stk with
+      match tree_walk cfg (cfg.dtree s) stk with
       | None -> h, stk
       | Some (t', stk') ->
         if Logger.log_enabled () then
@@ -468,16 +470,16 @@ let time_reducer (f: reducer): reducer =
   let open Stdlib in let r = ref mk_Kind in fun ?tags cfg t ->
     Debug.(record_time Rewriting (fun () -> r := f ?tags cfg t)); !r
 
-(** [snf c t] computes a snf of [t], unfolding the variables defined in the
-    context [c]. *)
-let snf : reducer = fun ?tags c t ->
+(** [snf ~dtree c t] computes a snf of [t], unfolding the variables defined in
+    the context [c]. The function [dtree] maps symbols to dtrees. *)
+let snf : ?dtree:(sym -> dtree) -> reducer = fun ?dtree ?tags c t ->
   Stdlib.(steps := 0);
-  let u = snf (whnf (Config.make ?tags c)) t in
+  let u = snf (whnf (Config.make ?dtree ?tags c)) t in
   let r = if Stdlib.(!steps = 0) then unfold t else u in
   (*if Logger.log_enabled () then
     log_eval "snf %a%a\n= %a" ctxt cfg term t term r;*) r
 
-let snf = time_reducer snf
+let snf ?dtree = time_reducer (snf ?dtree)
 
 (** [hnf c t] computes a hnf of [t], unfolding the variables defined in the
     context [c], and using user-defined rewrite rules. *)

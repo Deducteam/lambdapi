@@ -9,6 +9,9 @@ open Common open Pos
     indicate commands that take too long to execute. *)
 val too_long : float Stdlib.ref
 
+(** [sr_check] indicates whether subject-reduction should be checked. *)
+val sr_check : bool Stdlib.ref
+
 (** Type alias for a function that compiles a Lambdapi module. *)
 type compiler = Common.Path.t -> Sign.t
 

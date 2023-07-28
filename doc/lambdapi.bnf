@@ -12,6 +12,12 @@ QID ::= [UID "."]+ UID
 <assert> ::= "assert"
            | "assertnot"
 
+<term_alone> ::= <term> EOF
+
+<qid_alone> ::= <qid> EOF
+
+<search_query_alone> ::= <search_query> EOF
+
 <command> ::= "require" "open" <path>* ";"
             | "require" <path>* ";"
             | "require" <path> "as" <uid> ";"
@@ -41,6 +47,7 @@ QID ::= [UID "."]+ UID
           | "prover_timeout" <nat>
           | "verbose" <nat>
           | "type" <term>
+          | "search" <stringlit>
 
 <path> ::= UID
          | QID
@@ -168,5 +175,21 @@ QID ::= [UID "."]+ UID
 
 <float_or_nat> ::= <float>
                  | <nat>
+
+<maybe_generalize> ::= ["generalize"]
+
+<where> ::= UID <maybe_generalize>
+
+<asearch_query> ::= "type" <where> <aterm>
+                  | "rule" <where> <aterm>
+                  | UID <where> <aterm>
+                  | "(" <search_query> ")"
+
+<csearch_query> ::= <asearch_query> ("," <asearch_query>)*
+
+<ssearch_query> ::= <csearch_query> (";" <csearch_query>)*
+
+<search_query> ::= <ssearch_query>
+                 | <search_query> "|" <qid>
 
 

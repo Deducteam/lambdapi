@@ -270,7 +270,8 @@ let _ =
   let v0 = var 0
   and v1 = var 1 in
   let sym name =
-    create_sym [] Public Defin Eager false (Pos.none name) mk_Type [] in
+    create_sym [] Public Defin Eager false (Pos.none name) None
+     mk_Type [] in
   let a_ = sym "a"
   and b_ = sym "b"
   and s_ = sym "s"
@@ -421,7 +422,7 @@ let typability_constraints : Pos.popt -> term -> subs option = fun pos t ->
     try
       let i,n = MetaMap.find m !m2p in
       let s = create_sym (Sign.current_path())
-          Public Defin Eager false (Pos.none n) mk_Kind [] in
+          Public Defin Eager false (Pos.none n) None mk_Kind [] in
       let t = bind_mvar [||] (mk_Symb s) in
       Timed.(m.meta_value := Some t);
       s2p := SymMap.add s i !s2p

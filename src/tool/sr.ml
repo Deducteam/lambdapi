@@ -141,7 +141,7 @@ let check_rule : Pos.popt -> sym_rule -> sym_rule =
         let s =
           let name = Pos.none @@ Printf.sprintf "$%d" m.meta_key in
           Term.create_sym (Sign.current_path()) Privat Defin Eager
-            false name !(m.meta_type) [] in
+            false name None !(m.meta_type) [] in
         Stdlib.(symbols := SymSet.add s !symbols);
         (* Build a definition for [m]. *)
         let xs = Array.init m.meta_arity (new_var_ind "x") in
@@ -161,7 +161,7 @@ let check_rule : Pos.popt -> sym_rule -> sym_rule =
       let s =
         let name = Pos.none @@ Printf.sprintf "$%d" m.meta_key in
         Term.create_sym (Sign.current_path())
-          Privat Defin Eager false name !(m.meta_type) []
+          Privat Defin Eager false name None !(m.meta_type) []
       in
       Stdlib.(map := SymMap.add s None !map; m2s := MetaMap.add m s !m2s);
       let xs = Array.init m.meta_arity (new_var_ind "x") in

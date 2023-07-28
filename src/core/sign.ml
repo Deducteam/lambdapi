@@ -68,6 +68,11 @@ let mem : t -> string -> bool =
     making copies of terms when loading an object file. *)
 let loaded : t Path.Map.t ref = ref Path.Map.empty
 
+(** [find_sym path name] returns the symbol identified by [path] and [name]
+    in the known modules (already compiled or currently being compiled) *)
+let find_sym : Path.t -> string -> sym = fun path name ->
+ find (Path.Map.find path !loaded) name
+
 (* NOTE that the current module is stored in [loaded] so that the symbols that
    it contains can be qualified with the name of the module. This behavior was
    inherited from previous versions of Dedukti. *)
@@ -203,16 +208,17 @@ let unlink : t -> unit = fun sign ->
   let f s cps = unlink_sym s; List.iter unlink_cp_pos cps in
   SymMap.iter f !(sign.sign_cp_pos)
 
-(** [add_symbol sign expo prop mstrat opaq name typ impl] adds in the
-   signature [sign] a symbol with name [name], exposition [expo], property
-   [prop], matching strategy [strat], opacity [opaq], type [typ], implicit
-   arguments [impl], no definition and no rules. [name] should not already be
-   used in [sign]. The created symbol is returned. *)
-let add_symbol : t -> expo -> prop -> match_strat -> bool -> strloc -> term ->
-      bool list -> sym =
-  fun sign sym_expo sym_prop sym_mstrat sym_opaq name typ impl ->
+(** [add_symbol sign expo prop mstrat opaq name pos typ impl] adds in the
+    signature [sign] a symbol with name [name], exposition [expo], property
+    [prop], matching strategy [strat], opacity [opaq], type [typ], implicit
+    arguments [impl], no definition and no rules. [name] should not already be
+    used in [sign]. [pos] is the position of the declaration (without its
+    definition). The created symbol is returned. *)
+let add_symbol : t -> expo -> prop -> match_strat -> bool -> strloc ->
+  popt -> term -> bool list -> sym =
+  fun sign sym_expo sym_prop sym_mstrat sym_opaq name pos typ impl ->
   let sym =
-    create_sym sign.sign_path sym_expo sym_prop sym_mstrat sym_opaq name
+    create_sym sign.sign_path sym_expo sym_prop sym_mstrat sym_opaq name pos
       (cleanup typ) (minimize_impl impl)
   in
   sign.sign_symbols := StrMap.add name.elt sym !(sign.sign_symbols);

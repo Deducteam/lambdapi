@@ -10,13 +10,17 @@ open Term
 (** Symbol "≡". *)
 let equiv : sym =
   let id = Pos.none "≡" in
-  let s = Sign.add_symbol Ghost.sign Public Defin Eager false id mk_Kind [] in
+  let s =
+   Sign.add_symbol Ghost.sign Public Defin Eager false id None
+    mk_Kind [] in
   Sign.add_notation Ghost.sign s (Infix(Pratter.Neither, 2.0)); s
 
 (** Symbol ";". *)
 let cons : sym =
   let id = Pos.none ";" in
-  let s = Sign.add_symbol Ghost.sign Public Const Eager true id mk_Kind [] in
+  let s =
+   Sign.add_symbol Ghost.sign Public Const Eager true id None
+    mk_Kind [] in
   Sign.add_notation Ghost.sign s (Infix(Pratter.Right, 1.0)); s
 
 (** [unpack eqs] transforms a term of the form
