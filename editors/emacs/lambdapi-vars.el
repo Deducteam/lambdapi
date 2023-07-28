@@ -61,7 +61,7 @@
     "search"
     "type"
     "verbose")
-  "Commands producing side-effects.")
+  "Commands not affecting the signature.")
 
 (defconst lambdapi-misc-keywords
   '("associative"

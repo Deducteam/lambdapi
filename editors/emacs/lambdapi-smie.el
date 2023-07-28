@@ -117,7 +117,6 @@ Indent by `lambdapi-indent-basic' in proofs, and 0 otherwise."
              ("print")
              ("proofterm")
              ("search" sterm)
-             ("search" "generalize" sterm)
              ("type" sterm))
       (prfcontent (tactic)
                   (query))
