@@ -380,12 +380,26 @@ let search_pterm ~generalize ~mok env pterm =
 module QNameMap =
  Map.Make(struct type t = sym_name let compare = Stdlib.compare end)
 
-let check_rule : Parsing.Syntax.p_rule -> sym_rule = fun r ->
+let no_implicits_in_term t =
+ let res = ref true in
+ Core.LibTerm.iter
+  (function
+    | Plac _ -> res := false
+    | Wild | TRef _ -> assert false
+    | _ -> ()) t ;
+ !res
+
+let check_rule : Parsing.Syntax.p_rule -> sym_rule = fun (r as rr) ->
  let ss = Core.Sig_state.dummy in
  let pr = Parsing.Scope.scope_rule ~find_sym false ss r in
  let s = pr.elt.pr_sym in
  let r = Parsing.Scope.rule_of_pre_rule pr in
- s, r
+ if no_implicits_in_term (snd (Bindlib.unmbind r.rhs)) then
+  s, r
+ else
+  Common.Error.fatal (rr.pos)
+   "The rule has implicit terms in the right-hand-side: %a"
+   (Parsing.Pretty.rule "") rr
 
 let load_meta_rules () =
  let rules = ref [] in
