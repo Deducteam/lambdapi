@@ -16,10 +16,6 @@ An identifier can be:
 **Remark:** for any regular identifier ``i``, ``{|i|}`` and ``i`` are
 identified.
 
-**Remark:** Escaped identifiers or regular identifiers ending with a
-non-negative integer with leading zeros cannot be used for bound
-variable names.
-
 **Convention:** identifiers starting with an uppercase letter denote
 types (e.g.  ``Nat``, ``List``), and identifiers starting with a
 lowercase letter denote constructors, functions and proofs
