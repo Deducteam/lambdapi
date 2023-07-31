@@ -63,8 +63,8 @@ depends: [
   "cmdliner" {>= "1.1.0"}
   "stdlib-shims" {>= "0.1.0"}
   "odoc" {with-doc}
-  "dream"
-  "lwt_ppx"
+  "lwt_ppx" {>= "1.0.0"}
+  "dream" {>= "1.0.0~alpha3"}
 ]
 build: [
   ["dune" "subst"] {dev}
