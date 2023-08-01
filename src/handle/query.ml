@@ -134,7 +134,8 @@ let handle : Sig_state.t -> proof_state option -> p_query -> result =
             decl ppf ind.ind_prop
           with Not_found -> ()
         in
-        decl ppf s; ind ppf s
+        if s == Unif_rule.equiv || s == Coercion.coerce then rules ppf s
+        else (decl ppf s; ind ppf s)
       in
       return sym_info (Sig_state.find_sym ~prt:true ~prv:true ss qid)
   | P_query_proofterm ->
