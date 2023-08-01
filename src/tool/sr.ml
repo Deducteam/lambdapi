@@ -92,7 +92,8 @@ let symb_to_tenv
             (* A symbol may also come from a metavariable that appeared in the
                type of a metavariable that was replaced by a symbol. We do not
                have concrete examples of that happening yet. *)
-            fatal pos "Introduced symbol [%s] cannot be removed." f.sym_name
+            fatal pos "Bug. Introduced symbol [%s] cannot be removed. \
+                       Please contact the developers." f.sym_name
           in
           let (ts1, ts2) = List.cut ts arities.(i) in
           (_TEnv (_TE_Vari vars.(i)) (Array.of_list ts1), ts2)
@@ -149,6 +150,7 @@ let check_rule : Scope.pre_rule Pos.loc -> rule = fun ({pos; elt} as pr) ->
     end;
   (* Replace [Patt] nodes of LHS with corresponding elements of [vars]. *)
   let lhs_vars = _Appl_Symb s (List.map (patt_to_tenv vars) lhs) in
+  (* Replace [vars] by fresh metas. *)
   let p = new_problem() in
   let metas =
     let f i _ =
@@ -158,7 +160,6 @@ let check_rule : Scope.pre_rule Pos.loc -> rule = fun ({pos; elt} as pr) ->
       LibMeta.fresh p (build_meta_type p arity) arity
     in Array.mapi f vars
   in
-  (* Substitute them in the LHS and in the RHS. *)
   let lhs_with_metas, rhs_with_metas =
     let lhs_rhs = Bindlib.box_pair lhs_vars pr_rhs in
     let b = Bindlib.unbox (Bindlib.bind_mvar vars lhs_rhs) in
