@@ -2,25 +2,22 @@
 
 echo '############ test export -o lp ############'
 
+lambdapi=${lambdapi:-_build/install/default/bin/lambdapi}
+
 TIMEFORMAT="%Es"
-root=`pwd`
-lambdapi='dune exec -- lambdapi'
 
-cd tests
-
-outdir=.tmp
-#rm -rf $outdir
-mkdir -p "$outdir/OK/a b"
-cp -f lambdapi.pkg $outdir
+rm -rf /tmp/tests
+mkdir -p "/tmp/tests/OK/a b"
+cp tests/lambdapi.pkg /tmp/tests/
 
 # translate lp files
 translate() {
     echo translate lp files ...
-    for f in OK/*.lp 'OK/a b/escape file.lp'
+    for f in tests/OK/*.lp 'tests/OK/a b/escape file.lp'
     do
         case $f in
-            OK/why3*.lp);; #FIXME
-            *) out=$outdir/$f
+            tests/OK/why3*.lp);; #FIXME
+            *) out=/tmp/$f
                echo "$f --> $out ..."
                $lambdapi export -o lp -w -v 0 "$f" > "$out"
                if test $? -ne 0; then echo KO; exit 1; fi
@@ -31,12 +28,11 @@ time translate
 
 # check lp files
 check() {
-    cd $outdir
     echo check lp files ...
-    for f in OK/*.lp 'OK/a b/escape file.lp'
+    for f in /tmp/tests/OK/*.lp '/tmp/tests/OK/a b/escape file.lp'
     do
         case $f in
-            OK/why3*.lp);; #FIXME
+            /tmp/tests/OK/why3*.lp);; #FIXME
             *) echo "lambdapi check $f ..."
                $lambdapi check -w -v 0 "$f"
                if test $? -ne 0; then echo KO; exit 1; fi
@@ -45,5 +41,5 @@ check() {
 }
 time check
 
-cd $root
+#cd $root
 echo OK
