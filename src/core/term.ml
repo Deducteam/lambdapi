@@ -11,8 +11,8 @@ open Timed
 open Lplib open Base
 open Common open Debug
 
-let log_term = Logger.make 'm' "term" "term building"
-let log_term = log_term.pp
+let log = Logger.make 'm' "term" "term building"
+let log = log.pp
 
 (** {3 Term (and symbol) representation} *)
 
@@ -60,8 +60,10 @@ type term =
   (** Pattern variable application (only used in rewriting rules LHS). *)
   | TEnv of term_env * term array
   (** Term environment (only used in rewriting rules RHS). *)
-  | Wild
+  | Wild (** Wildcard (only used for surface matching, never in LHS). *)
   | Plac of bool
+  (** [Plac b] is a placeholder, or hole, for not given terms. Boolean [b] is
+      true if the placeholder stands for a type. *)
   | TRef of term option ref (** Reference cell (used in surface matching). *)
   | LLet of term * term * tbinder
   (** [LLet(a, t, u)] is [let x : a ≔ t in u] (with [x] bound in [u]). *)
@@ -564,7 +566,7 @@ let right_aliens : sym -> term -> term list = fun s ->
         else aliens (u :: acc) us
   in fun t -> let r = aliens [] [t] in
   if Logger.log_enabled () then
-    log_term "right_aliens %a %a = %a"
+    log "right_aliens %a %a = %a"
       Raw.sym s Raw.term t (D.list Raw.term) r;
   r
 
@@ -589,7 +591,7 @@ let _ =
    or AC symbols. *)
 let mk_Appl : term * term -> term = fun (t, u) ->
   (* if Logger.log_enabled () then
-    log_term "mk_Appl(%a, %a)" term t term u;
+    log "mk_Appl(%a, %a)" term t term u;
   let r = *)
   match get_args t with
   | Symb s, [t1] ->
@@ -612,7 +614,7 @@ let mk_Appl : term * term -> term = fun (t, u) ->
   | _ -> Appl (t, u)
   (* in
   if Logger.log_enabled () then
-    log_term "mk_Appl(%a, %a) = %a" term t term u term r;
+    log "mk_Appl(%a, %a) = %a" term t term u term r;
   r *)
 
 (** [mk_Appl_not_canonical t u] builds the non-canonical (wrt. C and AC
@@ -827,13 +829,12 @@ type cp_pos = Pos.popt * term * term * subterm_pos * term
     LHS counterparts. This is a more convenient way of representing terms when
     analysing confluence or termination. *)
 let term_of_rhs : rule -> term = fun r ->
-  let fn i x =
-    let (name, arity) = (Bindlib.name_of x, r.arities.(i)) in
-    let vars = Array.init arity (new_tvar_ind "x") in
-    let p = _Patt (Some i) name (Array.map _Vari vars) in
+  let f i x =
+    let vars = Array.init r.arities.(i) (new_tvar_ind "x") in
+    let p = _Patt (Some i) (Bindlib.name_of x) (Array.map _Vari vars) in
     TE_Some(Bindlib.unbox (Bindlib.bind_mvar vars p))
   in
-  Bindlib.msubst r.rhs (Array.mapi fn r.vars)
+  Bindlib.msubst r.rhs (Array.mapi f r.vars)
 
 (** Type of a symbol and a rule. *)
 type sym_rule = sym * rule

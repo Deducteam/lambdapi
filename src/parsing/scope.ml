@@ -412,7 +412,9 @@ and scope_head : ?find_sym:find_sym ->
   | (P_Patt(id,ts), M_URHS(r)) ->
       let x =
         match id with
-        | None     -> fatal t.pos "Wildcard pattern not allowed in a URHS."
+        | None ->
+            fatal t.pos "Wildcard pattern not allowed in the right \
+                         hand-side of a unification rule."
         | Some {elt=id;_} ->
             (* Search in variables declared in LHS. *)
             try Hashtbl.find r.m_urhs_data id
@@ -685,11 +687,11 @@ let scope_rule :
   let prerule =
     (* We put everything together to build the pre-rule. *)
     let pr_arities =
-      let fn i =
+      let f i =
         try Hashtbl.find lhs_arities i
         with Not_found -> assert false (* Unreachable. *)
       in
-      Array.init lhs_size fn
+      Array.init lhs_size f
     in
     if ur then (* Unification rule. *)
       (* We scope the RHS and retrieve variables not occurring in the LHS. *)
