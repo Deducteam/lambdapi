@@ -39,7 +39,7 @@ QID ::= [UID "."]+ UID
 <query> ::= <assert> <param_list>* "⊢" <term> ":" <term>
           | <assert> <param_list>* "⊢" <term> "≡" <term>
           | "compute" <term>
-          | "print" [<qid>]
+          | "print" [<qid_or_rule>]
           | "proofterm"
           | "debug" ("+"|"-") <string>
           | "flag" <stringlit> <switch>
@@ -48,6 +48,10 @@ QID ::= [UID "."]+ UID
           | "verbose" <nat>
           | "type" <term>
           | "search" <stringlit>
+
+<qid_or_rule> ::= <qid>
+                | "unif_rule"
+                | "coerce_rule"
 
 <path> ::= UID
          | QID
