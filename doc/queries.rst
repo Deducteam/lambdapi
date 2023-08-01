@@ -66,8 +66,11 @@ rewrite engine by reducing η-redexes.
 ---------
 
 When called with a symbol identifier as argument, displays information
-(type, notation, rules, etc.) about that symbol. Without argument,
-displays the list of current goals (in proof mode only).
+(type, notation, rules, etc.) about that symbol. When called with
+``unif_rule`` as argument, displays the list of unification
+rules. When called with ``coerce_rule`` as argument, displays the list
+of coercions. Without argument, displays the list of current goals (in
+proof mode only).
 
 .. _proofterm:
 
