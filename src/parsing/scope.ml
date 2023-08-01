@@ -360,7 +360,9 @@ and scope_head : ?find_sym:find_sym ->
   | (P_Patt(id,ts), M_URHS(r)) ->
       let i =
         match id with
-        | None     -> fatal t.pos "Wildcard pattern not allowed in a URHS."
+        | None ->
+            fatal t.pos "Wildcard pattern not allowed in the right \
+                         hand-side of a unification rule."
         | Some {elt=id;_} ->
             (* Search in variables declared in LHS. *)
             try Hashtbl.find r.m_urhs_data id
@@ -417,7 +419,7 @@ and scope_head : ?find_sym:find_sym ->
   | (P_Prod(xs,b), _) ->
     scope_binder ?find_sym ~typ:true k md ss mk_Prod env xs (Some b)
 
-  | (P_LLet(x,xs,a,t,u), (M_Term _|M_URHS _|M_RHS _)) ->
+  | (P_LLet(x,xs,a,t,u), (M_Term _|M_URHS _|M_RHS _|M_SearchPatt _)) ->
       let a = scope_binder ?find_sym ~typ:true (k+1) md ss mk_Prod env xs a in
       let t = scope_binder ?find_sym (k+1) md ss mk_Abst env xs (Some(t)) in
       let v = new_var x.elt in

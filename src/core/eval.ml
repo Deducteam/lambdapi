@@ -104,7 +104,7 @@ module Config = struct
       configuration [cfg]. *)
   let rec unfold : t -> term -> term = fun cfg a ->
     match Term.unfold a with
-    | Vari x as a->
+    | Vari x as a ->
       begin match VarMap.find_opt x cfg.varmap with
         | None -> a
         | Some v -> unfold cfg v
@@ -494,17 +494,18 @@ let hnf = time_reducer hnf
 
 (** [eq_modulo c a b] tests the convertibility of [a] and [b] in context
     [c]. WARNING: may have side effects in TRef's introduced by whnf. *)
-let eq_modulo : ctxt -> term -> term -> bool = fun c ->
-  eq_modulo whnf (Config.make c)
+let eq_modulo : ?tags:rw_tag list -> ctxt -> term -> term -> bool =
+  fun ?tags c -> eq_modulo whnf (Config.make ?tags c)
 
 let eq_modulo =
-  let open Stdlib in let r = ref false in fun c t u ->
-  Debug.(record_time Rewriting (fun () -> r := eq_modulo c t u)); !r
+  let open Stdlib in let r = ref false in fun ?tags c t u ->
+  Debug.(record_time Rewriting (fun () -> r := eq_modulo ?tags c t u)); !r
 
 (** [pure_eq_modulo c a b] tests the convertibility of [a] and [b] in context
     [c] with no side effects. *)
-let pure_eq_modulo : ctxt -> term -> term -> bool = fun c a b ->
-  Timed.pure_test (fun (c,a,b) -> eq_modulo c a b) (c,a,b)
+let pure_eq_modulo : ?tags:rw_tag list -> ctxt -> term -> term -> bool =
+  fun ?tags c a b ->
+  Timed.pure_test (fun (c,a,b) -> eq_modulo ?tags c a b) (c,a,b)
 
 (** [whnf c t] computes a whnf of [t], unfolding the variables defined in the
    context [c], and using user-defined rewrite rules if [~rewrite]. *)

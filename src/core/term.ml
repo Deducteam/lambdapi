@@ -4,11 +4,11 @@
    terms, together with smart constructors and low level operation. *)
 
 open Timed
-open Lplib open Base
+open Lplib open Base open Extra
 open Common open Debug
 
-let log_term = Logger.make 'm' "term" "term building"
-let log_term = log_term.pp
+let log = Logger.make 'm' "term" "term building"
+let log = log.pp
 
 (** {3 Term (and symbol) representation} *)
 
@@ -96,8 +96,10 @@ type term =
   | Patt of int option * string * term array
   (** Pattern variable application (only used in rewriting rules). *)
   | Db of int (** Bound variable as de Bruijn index. *)
-  | Wild
+  | Wild (** Wildcard (only used for surface matching, never in LHS). *)
   | Plac of bool
+  (** [Plac b] is a placeholder, or hole, for not given terms. Boolean [b] is
+      true if the placeholder stands for a type. *)
   | TRef of term option ref (** Reference cell (used in surface matching). *)
   | LLet of term * term * binder
   (** [LLet(a, t, u)] is [let x : a ≔ t in u] (with [x] bound in [u]). *)
@@ -347,7 +349,7 @@ and lift : int -> term -> term = fun l t ->
     | _ -> t
   in
   let r = lift 1 t in
-  if Logger.log_enabled() then log_term "lift %d %a = %a" l term t term r;
+  if Logger.log_enabled() then log "lift %d %a = %a" l term t term r;
   r
 
 (** [msubst b vs] substitutes the variables bound by [b] with the values [vs].
@@ -360,7 +362,7 @@ and msubst : mbinder -> term array -> term = fun (bi,t) vs ->
      for all [0 <= j < n]. *)
   let rec msubst i t =
     if Logger.log_enabled() then
-      log_term "msubst %d %a %a" i (D.array term) vs term t;
+      log "msubst %d %a %a" i (D.array term) vs term t;
     match unfold t with
     | Db k -> let j = k-i in
       if j<0 then t else (assert(j<n); lift (i-1) vs.(n-1-j))
@@ -376,7 +378,7 @@ and msubst : mbinder -> term array -> term = fun (bi,t) vs ->
     if n = 0 || Array.for_all ((=) false) bi.mbinder_bound then t
     else msubst 1 t in
   if Logger.log_enabled() then
-    log_term "msubst %a %a = %a" term t (D.array term) vs term r;
+    log "msubst %a %a = %a" term t (D.array term) vs term r;
   r
 
 (** Total order on terms. *)
@@ -462,14 +464,14 @@ and right_aliens : sym -> term -> term list = fun s ->
         else aliens (u :: acc) us
   in fun t -> let r = aliens [] [t] in
   if Logger.log_enabled () then
-    log_term "right_aliens %a %a = %a" sym s term t (D.list term) r;
+    log "right_aliens %a %a = %a" sym s term t (D.list term) r;
   r
 
 (** [mk_Appl t u] puts the application of [t] to [u] in canonical form wrt C
    or AC symbols. *)
 and mk_Appl : term * term -> term = fun (t, u) ->
   (* if Logger.log_enabled () then
-    log_term "mk_Appl(%a, %a)" term t term u;
+    log "mk_Appl(%a, %a)" term t term u;
   let r = *)
   match get_args t with
   | Symb s, [t1] ->
@@ -492,7 +494,7 @@ and mk_Appl : term * term -> term = fun (t, u) ->
   | _ -> Appl (t, u)
   (* in
   if Logger.log_enabled () then
-    log_term "mk_Appl(%a, %a) = %a" term t term u term r;
+    log "mk_Appl(%a, %a) = %a" term t term u term r;
   r *)
 
 (* unit test *)
@@ -525,7 +527,7 @@ let subst : binder -> term -> term = fun (bi,t) v ->
     begin
       let rec subst i t =
         (*if Logger.log_enabled() then
-          log_term "subst [%d≔%a] %a" i term v term t;*)
+          log "subst [%d≔%a] %a" i term v term t;*)
         match unfold t with
         | Db k -> if k = i then lift (i-1) v else t
         | Appl(a,b) -> mk_Appl(subst i a, subst i b)
@@ -538,7 +540,7 @@ let subst : binder -> term -> term = fun (bi,t) v ->
       in
       let r = subst 1 t in
       if Logger.log_enabled() then
-        log_term "subst %a [%a] = %a" term t term v term r;
+        log "subst %a [%a] = %a" term t term v term r;
       r
     end
   else t
@@ -570,7 +572,7 @@ let unmbind : mbinder -> var array * term =
 let bind_var  : var -> term -> binder = fun ((_,n) as x) t ->
   let bound = Stdlib.ref false in
   let rec bind i t =
-    (*if Logger.log_enabled() then log_term "bind_var %d %a" i term t;*)
+    (*if Logger.log_enabled() then log "bind_var %d %a" i term t;*)
     match unfold t with
     | Vari y when y == x -> Stdlib.(bound := true); Db i
     | Appl(a,b) -> Appl(bind i a, bind i b)
@@ -585,7 +587,7 @@ let bind_var  : var -> term -> binder = fun ((_,n) as x) t ->
   in
   let b = bind 1 t in
   if Logger.log_enabled() then
-    log_term "bind_var %a %a = %a" var x term t term b;
+    log "bind_var %a %a = %a" var x term t term b;
   {binder_name=n; binder_bound=Stdlib.(!bound)}, b
 
 (** [binder f b] applies f inside [b]. *)
@@ -599,13 +601,12 @@ let bind_mvar : var array -> term -> mbinder =
   fun xs t ->
   let n = Array.length xs in
   if n = 0 then empty, t else
-  let open Stdlib in let open Extra in
   (*if Logger.log_enabled() then
-    log_term "bind_mvar %a" (D.array var) xs;*)
+    log "bind_mvar %a" (D.array var) xs;*)
   let map = ref IntMap.empty and mbinder_bound = Array.make n false in
   Array.iteri (fun i (ki,_) -> map := IntMap.add ki (n-1-i) !map) xs;
   let rec bind i t =
-    (*if Logger.log_enabled() then log_term "bind_mvar %d %a" i term t;*)
+    (*if Logger.log_enabled() then log "bind_mvar %d %a" i term t;*)
     match unfold t with
     | Vari (key,_) ->
       begin match IntMap.find_opt key !map with
@@ -624,7 +625,7 @@ let bind_mvar : var array -> term -> mbinder =
   in
   let b = bind 1 t in
   if Logger.log_enabled() then
-    log_term "bind_mvar %a %a = %a" (D.array var) xs term t term b;
+    log "bind_mvar %a %a = %a" (D.array var) xs term t term b;
   let bi = { mbinder_name = Array.map base_name xs; mbinder_bound } in
   bi, b
 
@@ -632,7 +633,7 @@ let bind_mvar : var array -> term -> mbinder =
 let binder_occur : binder -> bool = fun (bi,_) -> bi.binder_bound
 (*  let rec check i t =
     (*if Logger.log_enabled() then
-      log_term "binder_occur %d %a" i term t;*)
+      log "binder_occur %d %a" i term t;*)
     match unfold t with
     | Db k when k = i -> raise Exit
     | Appl(a,b) -> check i a; check i b
@@ -645,7 +646,7 @@ let binder_occur : binder -> bool = fun (bi,_) -> bi.binder_bound
   in
   let r = try check 1 t; false with Exit -> true in
   if Logger.log_enabled() then
-    log_term "binder_occur 1 %a = %b" term t r;
+    log "binder_occur 1 %a = %b" term t r;
   r
 *)
 

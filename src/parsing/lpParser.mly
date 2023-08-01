@@ -192,7 +192,7 @@ query:
       make_pos $sloc (P_query_assert(k, P_assert_conv(t, u))) }
   | COMPUTE t=term
     { make_pos $sloc (P_query_normalize(t, {strategy=SNF; steps=None})) }
-  | PRINT i=qid? { make_pos $sloc (P_query_print i) }
+  | PRINT i=qid_or_rule? { make_pos $sloc (P_query_print i) }
   | PROOFTERM { make_pos $sloc P_query_proofterm }
   | DEBUG fl=DEBUG_FLAGS
     { let (b, s) = fl in make_pos $sloc (P_query_debug(b, s)) }
@@ -205,6 +205,13 @@ query:
     { make_pos $sloc (P_query_infer(t, {strategy=NONE; steps=None}))}
   | SEARCH s=STRINGLIT
     { make_pos $sloc (P_query_search s) }
+
+qid_or_rule:
+  | i=qid { i }
+  | UNIF_RULE
+    { make_pos $sloc (Ghost.sign.sign_path, Unif_rule.equiv.sym_name) }
+  | COERCE_RULE
+    { make_pos $sloc (Ghost.sign.sign_path, Coercion.coerce.sym_name) }
 
 path:
   | UID { LpLexer.syntax_error $sloc "Unqualified identifier" }

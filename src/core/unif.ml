@@ -49,24 +49,6 @@ let add_constr : problem -> constr -> unit = fun p c ->
   if Logger.log_enabled () then log (mag "add %a") constr c;
   p := {!p with to_solve = c::!p.to_solve}
 
-(** [add_unif_rule_constr p (c,t,u)] adds to [p] the constraint [(c,t,u)]
-    as well as the constraint [(c,a,b)] where [a] is the type of [t] and [b]
-    the type of [u] if they can be infered. *)
-let add_unif_rule_constr : problem -> constr -> unit = fun p (c,t,u) ->
-  match Infer.infer_noexn p c t with
-  | None ->
-      Error.fatal_no_pos "@[Unification rule lead to an untypable term:@ %a@]"
-        term t
-  | Some (t, a) ->
-      match Infer.infer_noexn p c u with
-      | None ->
-          Error.fatal_no_pos
-            "@[Unification rule lead to an untypable term:@ %a@]"
-            term u
-      | Some (u, b) ->
-          add_constr p (c, t, u);
-          if not (Eval.pure_eq_modulo c a b) then add_constr p (c, a, b)
-
 (** [try_unif_rules p c s t] tries to simplify the unification problem [c
    ⊢ s ≡ t] with the user-defined unification rules. *)
 let try_unif_rules : problem -> ctxt -> term -> term -> bool =
@@ -86,7 +68,8 @@ let try_unif_rules : problem -> ctxt -> term -> term -> bool =
     (* Refine generated unification problems to replace holes. *)
     let sanitise (c, t, u) =
       match Infer.infer_noexn p c t, Infer.infer_noexn p c u with
-      | Some (t, _), Some(u, _) -> (c, t, u)
+      | Some (t, a), Some(u, b) ->
+          add_constr p (c,t,u); add_constr p (c,a,b); (c,t,u)
       | t', u' ->
           (* Error reporting *)
           Error.fatal_msg "@[A unification rule generated the \
@@ -99,8 +82,7 @@ let try_unif_rules : problem -> ctxt -> term -> term -> bool =
           Error.fatal_no_pos "Untypable unification problem."
     in
     let cs = List.map (fun (t,u) -> sanitise (c,t,u)) (unpack rhs) in
-    if Logger.log_enabled () then log "rewrites to:%a" constrs cs;
-    List.iter (add_unif_rule_constr p) cs;
+    if Logger.log_enabled () then log "rewrites to: %a" constrs cs;
     true
   with No_match ->
     if Logger.log_enabled () then log "found no unif_rule";
@@ -355,7 +337,7 @@ let sym_sym_whnf :
       | Some (t, u) -> add_constr p (c,t,u)
       | None -> inverse p c t2 s2 ts2 t1
 
-(** [solve_noexn p] tries to simplify the constraints of [p].
+(** [solve p] tries to simplify the constraints of [p].
 @raise [Unsolvable] if it finds a constraint that cannot be satisfied.
 Otherwise, [p.to_solve] is empty but [p.unsolved] may still contain
 constraints that could not be simplified. *)
@@ -374,9 +356,12 @@ let solve : problem -> unit = fun p ->
   p := {!p with to_solve};
 
   (* We first try without normalizing wrt user-defined rules. *)
-  let t1 = Eval.whnf ~tags:[`NoRw; `NoExpand] c t1
-  and t2 = Eval.whnf ~tags:[`NoRw; `NoExpand] c t2 in
+  let tags = [`NoRw; `NoExpand] in
+  let t1 = Eval.whnf ~tags c t1 and t2 = Eval.whnf ~tags c t2 in
   if Logger.log_enabled () then log (gre "solve %a") constr (c,t1,t2);
+  if Eval.pure_eq_modulo ~tags c t1 t2 then
+    (if Logger.log_enabled () then log "equivalent terms")
+  else
   let h1, ts1 = get_args t1 and h2, ts2 = get_args t2 in
 
   match h1, h2 with

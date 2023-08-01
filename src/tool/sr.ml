@@ -49,7 +49,8 @@ let symb_to_patt : Pos.popt -> (int * int) option SymMap.t -> term -> term =
             (* A symbol may also come from a metavariable that appeared in the
                type of a metavariable that was replaced by a symbol. We do not
                have concrete examples of that happening yet. *)
-            fatal pos "Introduced symbol [%s] cannot be removed." f.sym_name
+            fatal pos "Bug. Introduced symbol [%s] cannot be removed. \
+                       Please contact the developers." f.sym_name
           | Some (Some (i, arity)) ->
             let (ts1, ts2) = List.cut ts arity in
             (mk_Patt (Some i, string_of_int i, Array.of_list ts1), ts2)
