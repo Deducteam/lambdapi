@@ -51,11 +51,11 @@ val whnf : ?tags:rw_tag list -> ctxt -> term -> term
 
 (** [eq_modulo c a b] tests the convertibility of [a] and [b] in context
     [c]. *)
-val eq_modulo : ctxt -> term -> term -> bool
+val eq_modulo : ?tags:rw_tag list -> ctxt -> term -> term -> bool
 
 (** [pure_eq_modulo c a b] tests the convertibility of [a] and [b] in context
    [c] with no side effects. *)
-val pure_eq_modulo : ctxt -> term -> term -> bool
+val pure_eq_modulo : ?tags:rw_tag list -> ctxt -> term -> term -> bool
 
 (** [snf ~dtree c t] computes a snf of [t], unfolding the variables defined in
     the context [c]. The function [dtree] maps symbols to dtrees. *)

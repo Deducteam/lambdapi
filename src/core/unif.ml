@@ -354,7 +354,7 @@ let sym_sym_whnf :
       | Some (t, u) -> add_constr p (c,t,u)
       | None -> inverse p c t2 s2 ts2 t1
 
-(** [solve_noexn p] tries to simplify the constraints of [p].
+(** [solve p] tries to simplify the constraints of [p].
 @raise [Unsolvable] if it finds a constraint that cannot be satisfied.
 Otherwise, [p.to_solve] is empty but [p.unsolved] may still contain
 constraints that could not be simplified. *)
@@ -372,9 +372,12 @@ let solve : problem -> unit = fun p ->
   p := {!p with to_solve};
 
   (* We first try without normalizing wrt user-defined rules. *)
-  let t1 = Eval.whnf ~tags:[`NoRw; `NoExpand] c t1
-  and t2 = Eval.whnf ~tags:[`NoRw; `NoExpand] c t2 in
+  let tags = [`NoRw; `NoExpand] in
+  let t1 = Eval.whnf ~tags c t1 and t2 = Eval.whnf ~tags c t2 in
   if Logger.log_enabled () then log_unif (gre "solve %a") constr (c,t1,t2);
+  if Eval.pure_eq_modulo ~tags c t1 t2 then
+    (if Logger.log_enabled () then log_unif "equivalent terms")
+  else
   let h1, ts1 = get_args t1 and h2, ts2 = get_args t2 in
 
   match h1, h2 with
