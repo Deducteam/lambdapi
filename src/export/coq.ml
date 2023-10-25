@@ -94,8 +94,9 @@ let set_erasing : string -> unit = fun f ->
     | {elt=P_builtin(coq_id,lp_qid);_} ->
         if Logger.log_enabled() then
           log "rename %a into %s" Pretty.qident lp_qid coq_id;
-        if Logger.log_enabled() then log "erase %s" (snd lp_qid.elt);
-        erase := StrSet.add (snd lp_qid.elt) !erase;
+        let id = snd lp_qid.elt in
+        if Logger.log_enabled() then log "erase %s" id;
+        erase := StrSet.add id !erase;
         map_erased_qid_coq := QidMap.add lp_qid.elt coq_id !map_erased_qid_coq
     | {pos;_} -> fatal pos "Invalid command."
   in
@@ -194,7 +195,12 @@ let rec term : p_term pp = fun ppf t ->
   | P_Expl _ -> wrn t.pos "TODO"; assert false
   | P_Type -> out ppf "Type"
   | P_Wild -> out ppf "_"
-  | P_NLit i -> raw_ident ppf i
+  | P_NLit i ->
+      if !stt then
+        match QidMap.find_opt ([],i) !map_erased_qid_coq with
+        | Some s -> string ppf s
+        | None -> raw_ident ppf i
+      else raw_ident ppf i
   | P_Iden(qid,b) ->
       if b then out ppf "@@";
       if !stt then
