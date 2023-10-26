@@ -19,7 +19,7 @@ if [[ "$#" -ne 0 ]]; then
 fi
 
 # Prepare the library if necessary.
-if [[ ! -d ${DIR} ]]; then
+if [[ ! -f ${DIR}/matita.dk ]]; then
   # The directory is not ready, so we need to work.
   echo "Preparing the library:"
 
