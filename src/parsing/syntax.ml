@@ -289,7 +289,7 @@ type p_command_aux =
   | P_unif_rule of p_rule
   | P_coercion of p_rule
   | P_query of p_query
-
+  | P_opaque of p_qident
 (** Parser-level representation of a single (located) command. *)
 type p_command = p_command_aux loc
 
@@ -613,6 +613,7 @@ let fold_idents : ('a -> p_qident -> 'a) -> 'a -> p_command list -> 'a =
 
   let fold_command : 'a -> p_command -> 'a = fun a {elt;pos} ->
     match elt with
+    | P_opaque _ -> a
     | P_require (_, _)
     | P_require_as (_, _)
     | P_open _ -> a

@@ -147,6 +147,7 @@ search_query_alone:
     { q }
 
 command:
+  | OPAQUE i=qid_or_nat SEMICOLON { make_pos $sloc (P_opaque i) }
   | REQUIRE OPEN l=list(path) SEMICOLON
     { make_pos $sloc (P_require(true,l)) }
   | REQUIRE l=list(path) SEMICOLON

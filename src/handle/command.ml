@@ -204,6 +204,13 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
   Console.out 3 (Color.cya "%a") Pos.pp pos;
   Console.out 4 "%a" Pretty.command cmd;
   match elt with
+  | P_opaque {elt = (_, id); _} ->
+    let ss = {
+      ss with in_scope =  StrMap.update id (fun s ->  match s with
+      | Some (si) -> Some ({si with sym_opaq = true ; sym_def = ref None })
+      | _ -> fatal pos "Can not make opaque %s because it does not exists" id  ) ss.in_scope
+    } in
+    (ss, None, None)
   | P_query(q) -> (ss, None, Query.handle ss None q)
   | P_require(b,ps) ->
       (List.fold_left (handle_require compile b) ss ps, None, None)
