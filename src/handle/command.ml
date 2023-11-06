@@ -207,8 +207,8 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
   | P_opaque {elt = (_, id); _} ->
     let ss = {
       ss with in_scope =  StrMap.update id (fun s ->  match s with
-      | Some (si) -> Some ({si with sym_opaq = true ; sym_def = ref None })
-      | _ -> fatal pos "Can not make opaque %s because it does not exists" id  ) ss.in_scope
+      | Some (si) -> Some ({si with sym_opaq = true ; sym_def = ref None; sym_prop = Const  })
+      | _ -> fatal pos "Can not make opaque %s because it does not exist" id  ) ss.in_scope
     } in
     (ss, None, None)
   | P_query(q) -> (ss, None, Query.handle ss None q)

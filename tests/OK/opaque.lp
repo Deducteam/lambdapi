@@ -34,15 +34,11 @@ end;
 opaque πᶜ;
 opaque ∨ᶜ;
 
-print πᶜ;
-print ∨ᶜ;
-
-print ∨ᶜᵢ₁;
-
 opaque symbol ∨ᶜᵢ₁' [p q] : πᶜ p → πᶜ (p ∨ᶜ q) ≔
 begin
     assume p q Hp;
     simplify;
     apply ∨ᶜᵢ₁;
+    //refine ∨ᶜᵢ₁ { apply Hp };
     //apply Hp;
 end;
