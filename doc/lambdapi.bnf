@@ -33,6 +33,7 @@ QID ::= [UID "."]+ UID
             | "coerce_rule" <rule> ";"
             | "unif_rule" <unif_rule> ";"
             | "notation" <qid_or_nat> <notation> ";"
+            | "opaque" <qid_or_nat> ";"
             | <query> ";"
             
 
