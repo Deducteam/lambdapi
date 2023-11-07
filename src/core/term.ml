@@ -374,7 +374,7 @@ let is_constant : sym -> bool = fun s -> s.sym_prop = Const
 (** [is_injective s] tells whether [s] is injective, which is in partiular the
    case if [s] is constant. *)
 let is_injective : sym -> bool = fun s ->
-  s.sym_opaq || (match s.sym_prop with Const | Injec -> true | _ -> false)
+  match s.sym_prop with Const | Injec -> true | _ -> !(s.sym_opaq)
 
 (** [is_private s] tells whether the symbol [s] is private. *)
 let is_private : sym -> bool = fun s -> s.sym_expo = Privat
