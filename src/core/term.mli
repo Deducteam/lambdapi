@@ -92,7 +92,7 @@ and sym =
   ; sym_impl  : bool list (** Implicit arguments ([true] meaning implicit). *)
   ; sym_prop  : prop (** Property. *)
   ; sym_def   : term option ref (** Definition with ≔. *)
-  ; sym_opaq  : bool (** Opacity. *)
+  ; sym_opaq  : bool ref (** Opacity. *)
   ; sym_rules : rule list ref (** Rewriting rules. *)
   ; sym_mstrat: match_strat (** Matching strategy. *)
   ; sym_dtree : dtree ref (** Decision tree used for matching. *)

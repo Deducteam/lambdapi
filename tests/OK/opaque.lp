@@ -19,7 +19,7 @@ constant symbol ∨ᵢ₁ [p q] : π p → π (p ∨ q);
 
 symbol πᶜ p ≔ π (¬ ¬ p);
 
-symbol ∨ᶜ p q ≔ (¬ (¬ p)) ∨ (¬ (¬ q)); notation ∨ᶜ infix right 20;
+symbol ∨ᶜ p q ≔ (¬ ¬ p) ∨ (¬ ¬ q); notation ∨ᶜ infix right 20;
 
 opaque symbol ∨ᶜᵢ₁ [p q] : πᶜ p → πᶜ (p ∨ᶜ q) ≔
 begin
@@ -39,6 +39,5 @@ begin
     assume p q Hp;
     simplify;
     apply ∨ᶜᵢ₁;
-    //refine ∨ᶜᵢ₁ { apply Hp };
-    //apply Hp;
+    apply Hp;
 end;

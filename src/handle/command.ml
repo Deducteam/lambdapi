@@ -205,12 +205,12 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
   Console.out 4 "%a" Pretty.command cmd;
   match elt with
   | P_opaque {elt = (_, id); _} ->
-    let ss = {
-      ss with in_scope =  StrMap.update id (fun s ->  match s with
-      | Some (si) -> Some ({si with sym_opaq = true ; sym_def = ref None; sym_prop = Const  })
-      | _ -> fatal pos "Can not make opaque %s because it does not exist" id  ) ss.in_scope
-    } in
-    (ss, None, None)
+    let sym = try StrMap.find id ss.in_scope
+      with Not_found ->
+        fatal pos "Can not make opaque %s because it does not exist" id ss.in_scope
+    in
+      sym.sym_opaq := true;
+      (ss, None, None)
   | P_query(q) -> (ss, None, Query.handle ss None q)
   | P_require(b,ps) ->
       (List.fold_left (handle_require compile b) ss ps, None, None)
