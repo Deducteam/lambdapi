@@ -168,9 +168,9 @@ command:
         {p_sym_mod=ms; p_sym_nam=s; p_sym_arg=al; p_sym_typ=ao;
          p_sym_trm=fst tp; p_sym_prf=snd tp; p_sym_def=true}
       in make_pos $sloc (P_symbol(sym)) }
-  | ms=modifier* xs=param_list* INDUCTIVE
+  | xs=param_list* INDUCTIVE
     is=separated_nonempty_list(WITH, inductive) SEMICOLON
-      { make_pos $sloc (P_inductive(ms,xs,is)) }
+      { make_pos $sloc (P_inductive([],xs,is)) }
   | RULE rs=separated_nonempty_list(WITH, rule) SEMICOLON
       { make_pos $sloc (P_rules(rs)) }
   | BUILTIN s=STRINGLIT ASSIGN i=qid_or_nat SEMICOLON
