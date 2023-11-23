@@ -206,6 +206,7 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
   match elt with
   | P_opaque qid ->
     let s = Sig_state.find_sym ~prt:true ~prv:true ss qid in
+    if !(s.sym_opaq) then fatal pos "Symbol already opaque.";
     s.sym_opaq := true;
     (ss, None, None)
   | P_query(q) -> (ss, None, Query.handle ss None q)

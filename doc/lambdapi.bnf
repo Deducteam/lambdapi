@@ -27,8 +27,8 @@ QID ::= [UID "."]+ UID
               [<proof>] ";"
             | <modifier>* "symbol" <uid_or_nat> <param_list>* [":" <term>]
               "≔" <term_proof> ";"
-            | <param_list>* "inductive" <inductive> ("with" <inductive>)*
-              ";"
+            | [<exposition>] <param_list>* "inductive" <inductive> ("with"
+              <inductive>)* ";"
             | "rule" <rule> ("with" <rule>)* ";"
             | "builtin" <stringlit> "≔" <qid_or_nat> ";"
             | "coerce_rule" <rule> ";"
@@ -62,9 +62,11 @@ QID ::= [UID "."]+ UID
              | "constant"
              | "injective"
              | "opaque"
-             | "private"
-             | "protected"
              | "sequential"
+             | <exposition>
+
+<exposition> ::= "private"
+               | "protected"
 
 <uid> ::= UID
 
