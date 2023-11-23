@@ -287,6 +287,18 @@ and ``"+1"`` as follows:
    builtin "+1" ≔ succ; // : N → N
    type 42;
 
+.. _opaque:
+
+``opaque``
+---------------
+
+The command ``opaque`` allows to set opaque (see **Opacity modifier**) a previously defined symbol.
+
+::
+
+   symbol πᶜ p ≔ π (¬ ¬ p); // interpretation of classical propositions as types
+   opaque πᶜ;
+
 .. _rule:
 
 ``rule``

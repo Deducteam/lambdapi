@@ -147,6 +147,7 @@ search_query_alone:
     { q }
 
 command:
+  | OPAQUE i=qid_or_nat SEMICOLON { make_pos $sloc (P_opaque i) }
   | REQUIRE OPEN l=list(path) SEMICOLON
     { make_pos $sloc (P_require(true,l)) }
   | REQUIRE l=list(path) SEMICOLON
@@ -167,9 +168,9 @@ command:
         {p_sym_mod=ms; p_sym_nam=s; p_sym_arg=al; p_sym_typ=ao;
          p_sym_trm=fst tp; p_sym_prf=snd tp; p_sym_def=true}
       in make_pos $sloc (P_symbol(sym)) }
-  | ms=modifier* xs=param_list* INDUCTIVE
+  | exp=exposition? xs=param_list* INDUCTIVE
     is=separated_nonempty_list(WITH, inductive) SEMICOLON
-      { make_pos $sloc (P_inductive(ms,xs,is)) }
+      { make_pos $sloc (P_inductive(Option.to_list exp,xs,is)) }
   | RULE rs=separated_nonempty_list(WITH, rule) SEMICOLON
       { make_pos $sloc (P_rules(rs)) }
   | BUILTIN s=STRINGLIT ASSIGN i=qid_or_nat SEMICOLON
@@ -225,9 +226,12 @@ modifier:
   | CONSTANT { make_pos $sloc (P_prop Term.Const) }
   | INJECTIVE { make_pos $sloc (P_prop Term.Injec) }
   | OPAQUE { make_pos $sloc P_opaq }
-  | PRIVATE { make_pos $sloc (P_expo Term.Privat) }
-  | PROTECTED { make_pos $sloc (P_expo Term.Protec) }
   | SEQUENTIAL { make_pos $sloc (P_mstrat Term.Sequen) }
+  | exp=exposition { exp }
+
+exposition:
+| PRIVATE { make_pos $sloc (P_expo Term.Privat) }
+| PROTECTED { make_pos $sloc (P_expo Term.Protec) }
 
 uid: s=UID { make_pos $sloc s}
 
