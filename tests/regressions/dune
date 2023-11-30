@@ -1,3 +1,4 @@
 (tests
  (names hrs xtc dtrees)
- (libraries timed lambdapi.export lambdapi.core lambdapi.common lambdapi.handle))
+ (libraries timed lambdapi.export lambdapi.core lambdapi.common lambdapi.handle) (deps ../OK/boolean.lp ../OK/unif_hint.lp ../lambdapi.pkg)
+)
