@@ -184,6 +184,11 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
   Console.out 3 (Color.cya "%a") Pos.pp pos;
   Console.out 4 "%a" Pretty.command cmd;
   match elt with
+  | P_opaque qid ->
+    let s = Sig_state.find_sym ~prt:true ~prv:true ss qid in
+    if !(s.sym_opaq) then fatal pos "Symbol already opaque.";
+    s.sym_opaq := true;
+    (ss, None, None)
   | P_query(q) -> (ss, None, Query.handle ss None q)
   | P_require(b,ps) ->
       (List.fold_left (handle_require compile b) ss ps, None, None)

@@ -3,6 +3,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+- Add the command `opaque` that opacifies a symbol already defined.
+
+## 2.4.1 (2023-11-22)
+
+### Added
+
+- support for Pratter 3.0.0
+- printing of unification and coercion rules
+
+### Improved
+
+- unification
+
+### Fixed
+
+- Coq export
+- matita.sh script
+
 ## 2.4.0 (2023-07-28)
 
 ### Added

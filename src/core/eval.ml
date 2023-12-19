@@ -222,7 +222,7 @@ and whnf_stk : config -> term -> stack -> term * stack = fun cfg t stk ->
   | (Symb s as h, stk) as r ->
     begin match !(s.sym_def) with
     | Some t ->
-      if s.sym_opaq || not cfg.Config.expand_defs then r else
+      if !(s.sym_opaq) || not cfg.Config.expand_defs then r else
         (Stdlib.incr steps; whnf_stk cfg t stk)
     | None when not cfg.Config.rewrite -> r
     | None ->
@@ -559,7 +559,7 @@ let unfold_sym : sym -> term -> term =
     in unfold_sym
   in
   fun s ->
-  if s.sym_opaq then fun t -> t else
+  if !(s.sym_opaq) then fun t -> t else
   match !(s.sym_def) with
   | Some d -> unfold_sym s (add_args d)
   | None ->

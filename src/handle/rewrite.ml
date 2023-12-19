@@ -158,22 +158,19 @@ let matches : term -> term -> bool =
     match l with
     | [] -> ()
     | (p,t)::l ->
+      if Term.cmp p t = 0 then eq l else begin
       let hp, ps, k = get_args_len p and ht, ts, n = get_args_len t in
       if Logger.log_enabled() then
         log_rewr "matches %a %a ≡ %a %a"
           term hp (D.list term) ps term ht (D.list term) ts;
       match hp with
-      | Wild -> assert false
-      | Meta _ -> assert false
-      | Patt _ -> assert false
+      | Wild -> assert false (* used in user syntax only *)
+      | Patt _ -> assert false (* used in rules only *)
+      | Plac _ -> assert false (* used in scoping only *)
+      | Appl _ -> assert false (* not possible after get_args_len *)
+      | Type -> assert false (* not possible because of typing *)
+      | Kind -> assert false (* not possible because of typing *)
       | Db _ -> assert false
-      | Plac _ -> assert false
-      | Appl _ -> assert false
-      | Prod _ -> assert false
-      | Abst _ -> assert false
-      | LLet _ -> assert false
-      | Type -> assert false
-      | Kind -> assert false
       | TRef r ->
         if k > n then raise Not_equal;
         let ts1, ts2 = List.cut ts (n-k) in
@@ -182,7 +179,12 @@ let matches : term -> term -> bool =
           log_rewr (Color.red "<TRef> ≔ %a") term u;
         r := Some u;
         eq (List.fold_left2 (fun l pi ti -> (pi,ti)::l) l ps ts2)
-      | _ ->
+      | Meta _
+      | Prod _
+      | Abst _
+      | LLet _
+      | Symb _
+      | Vari _ ->
         if k <> n then raise Not_equal;
         let add_args l =
           List.fold_left2 (fun l pi ti -> (pi,ti)::l) l ps ts in
@@ -192,6 +194,7 @@ let matches : term -> term -> bool =
         | _ ->
           if Logger.log_enabled() then log_rewr "distinct heads";
           raise Not_equal
+      end
   in
   fun p t ->
     try

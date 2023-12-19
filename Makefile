@@ -1,16 +1,6 @@
 VIMDIR = $(HOME)/.vim
 EMACS  = $(shell which emacs)
 
-LIB_ROOT := $(shell\
-  if test -n "$(LAMBDAPI_LIB_ROOT)";\
-  then echo $(LAMBDAPI_LIB_ROOT);\
-  else\
-    if test -n "$(OPAM_SWITCH_PREFIX)";\
-    then echo $(OPAM_SWITCH_PREFIX);\
-    else echo /usr/local;\
-    fi;\
-  fi)/lib/lambdapi/lib_root
-
 #### Compilation (binary, library and documentation) #########################
 
 .PHONY: default
@@ -35,7 +25,7 @@ bnf:
 #### Unit tests and sanity check #############################################
 
 .PHONY: tests
-tests: lambdapi $(LIB_ROOT)
+tests: lambdapi
 	@dune runtest
 	@dune exec --only-packages lambdapi -- tests/runtests.sh
 	@dune exec --only-packages lambdapi -- tests/dtrees.sh
@@ -123,11 +113,8 @@ fullclean: distclean
 
 #### Installation and release targets ########################################
 
-$(LIB_ROOT):
-	mkdir -p $@
-
 .PHONY: install
-install: install_lambdapi $(LIB_ROOT)
+install: install_lambdapi
 
 .PHONY: uninstall
 uninstall: uninstall_lambdapi

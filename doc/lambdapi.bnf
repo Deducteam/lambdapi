@@ -18,7 +18,8 @@ QID ::= [UID "."]+ UID
 
 <search_query_alone> ::= <search_query> EOF
 
-<command> ::= "require" "open" <path>* ";"
+<command> ::= "opaque" <qid_or_nat> ";"
+            | "require" "open" <path>* ";"
             | "require" <path>* ";"
             | "require" <path> "as" <uid> ";"
             | "open" <path>* ";"
@@ -26,7 +27,7 @@ QID ::= [UID "."]+ UID
               [<proof>] ";"
             | <modifier>* "symbol" <uid_or_nat> <param_list>* [":" <term>]
               "≔" <term_proof> ";"
-            | <modifier>* <param_list>* "inductive" <inductive> ("with"
+            | [<exposition>] <param_list>* "inductive" <inductive> ("with"
               <inductive>)* ";"
             | "rule" <rule> ("with" <rule>)* ";"
             | "builtin" <stringlit> "≔" <qid_or_nat> ";"
@@ -61,9 +62,11 @@ QID ::= [UID "."]+ UID
              | "constant"
              | "injective"
              | "opaque"
-             | "private"
-             | "protected"
              | "sequential"
+             | <exposition>
+
+<exposition> ::= "private"
+               | "protected"
 
 <uid> ::= UID
 

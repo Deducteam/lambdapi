@@ -50,7 +50,7 @@ let is_ho : rule -> bool = fun r ->
 (** [is_definable s] says if [s] is definable and non opaque but not AC. *)
 let is_definable : sym -> bool = fun s ->
   (match s.sym_prop with Defin | Injec -> true | _ -> false)
-  && not s.sym_opaq
+  && not !(s.sym_opaq)
 
 (** [rule_of_def s d] creates the rule [s --> d]. *)
 let rule_of_def : sym -> term -> rule = fun s rhs ->

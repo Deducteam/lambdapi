@@ -127,7 +127,7 @@ and sym =
   ; sym_impl  : bool list (** Implicit arguments ([true] meaning implicit). *)
   ; sym_prop  : prop (** Property. *)
   ; sym_def   : term option ref (** Definition with ≔. *)
-  ; sym_opaq  : bool (** Opacity. *)
+  ; sym_opaq  : bool ref (** Opacity. *)
   ; sym_rules : rule list ref (** Rewriting rules. *)
   ; sym_mstrat: match_strat (** Matching strategy. *)
   ; sym_dtree : dtree ref (** Decision tree used for matching. *)
@@ -231,7 +231,7 @@ let create_sym : Path.t -> expo -> prop -> match_strat -> bool ->
   fun sym_path sym_expo sym_prop sym_mstrat sym_opaq
     { elt = sym_name; pos = sym_pos } sym_decl_pos typ sym_impl ->
   {sym_path; sym_name; sym_type = ref typ; sym_impl; sym_def = ref None;
-   sym_opaq; sym_rules = ref []; sym_dtree = ref Tree_type.empty_dtree;
+   sym_opaq = ref sym_opaq; sym_rules = ref []; sym_dtree = ref Tree_type.empty_dtree;
    sym_mstrat; sym_prop; sym_expo; sym_pos ; sym_decl_pos }
 
 (** [is_constant s] tells whether [s] is a constant. *)
@@ -240,7 +240,7 @@ let is_constant : sym -> bool = fun s -> s.sym_prop = Const
 (** [is_injective s] tells whether [s] is injective, which is in partiular the
    case if [s] is constant. *)
 let is_injective : sym -> bool = fun s ->
-  match s.sym_prop with Const | Injec -> true | _ -> false
+  match s.sym_prop with Const | Injec -> true | _ -> !(s.sym_opaq)
 
 (** [is_private s] tells whether the symbol [s] is private. *)
 let is_private : sym -> bool = fun s -> s.sym_expo = Privat

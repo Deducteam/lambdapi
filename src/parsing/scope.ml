@@ -569,8 +569,9 @@ let scope_rule :
     fatal p_lhs.pos
       "Symbol %s has been declared constant, it cannot be used as the \
        head of a rewrite rule LHS." sym.sym_name;
-  if sym.sym_opaq || Timed.(!(sym.sym_def)) <> None then
-    fatal rule_pos "No rewriting rule can be given on a defined symbol.";
+  if Timed.(!(sym.sym_opaq) || !(sym.sym_def) <> None) then
+    fatal rule_pos "No rewriting rule can be added on an opaque symbol or \
+                    a symbol already defined with ≔.";
   if sym.sym_expo = Protec
     && ss.signature.sign_path <> sym.sym_path then
     fatal p_lhs.pos "Cannot define rules on foreign protected symbols.";

@@ -188,7 +188,7 @@ let sym_decl : sym pp = fun ppf s ->
           ident s.sym_name (term true) !(s.sym_type)
     end
   | Some d ->
-    if s.sym_opaq then
+    if !(s.sym_opaq) then
       out ppf "thm %a : %a := %a.@."
         ident s.sym_name (term true) !(s.sym_type) (term true) d
     else
