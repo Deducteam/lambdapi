@@ -430,7 +430,7 @@ let is_unset : meta -> bool = fun m -> !(m.meta_value) = None
 let is_symb : sym -> term -> bool = fun s t ->
   match unfold t with Symb(r) -> r == s | _ -> false
 
-(** Total order on terms. *)
+(** Total order on terms modulo alpha-conversion. *)
 let cmp : term cmp =
   let rec cmp t t' =
     match unfold t, unfold t' with
