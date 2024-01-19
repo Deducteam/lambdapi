@@ -233,7 +233,7 @@ let output : output option CLT.t =
       match s with
       | "lp" -> Ok Lp
       | "dk" -> Ok Dk
-      | "hrs" -> Ok Hrs      
+      | "hrs" -> Ok Hrs
       | "xtc" -> Ok Xtc
       | "afsm" -> Ok Afsm
       | "trs" -> Ok Trs

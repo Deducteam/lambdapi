@@ -1,13 +1,13 @@
-(** This module provides a function to translate a signature to the AFSM format
-   used by the Wanda termination checker. Note that because termination is 
-   checked at the untyped level, Wanda will *always* answer NO, as we have an 
-   untyped beta rule. However, by removing the beta rule we can sometimes show 
-   termination of the rest of the system. This can be useful when showing 
-   confluence of the system: by Von Oostrom's orthogonal combinations 
-   criterion, if the system without beta is confluent, then by combining it
-   with beta it stays confluent. Thus, if the system without beta is weakly 
-   confluent, then by checking its termination we can deduce the confluence
-   of the system with beta.
+(** This module provides a function to translate a signature to the AFSM
+   format used by the Wanda termination checker. Note that because
+   termination is checked at the untyped level, Wanda will *always* answer NO,
+   as we have an untyped beta rule. However, by removing the beta rule we can
+   sometimes show termination of the rest of the system. This can be useful
+   when showing confluence of the system: by Von Oostrom's orthogonal
+   combinations criterion, if the system without beta is confluent, then by
+   combining it with beta it stays confluent. Thus, if the system without beta
+   is weakly confluent, then by checking its termination we can deduce the
+   confluence of the system with beta.
 
 - Lambdapi terms are translated to terms over the following base signature:
 
@@ -28,16 +28,16 @@ Pattern variables of arity n are translated as variables of type t -> ... -> t
    names. So bound variables are translated into positive integers and pattern
    variables are translated as XiNj where i is the number of the rule and j
    is the indice of the variable. Function symbols are translated directly
-   by their unqualified names. If a function symbol name clashes with the 
-   name of a variable, metavariable or a symbol declared in the base 
-   signature, we prefix it with !. In order to do this, we assume that no 
+   by their unqualified names. If a function symbol name clashes with the
+   name of a variable, metavariable or a symbol declared in the base
+   signature, we prefix it with !. In order to do this, we assume that no
    function symbol starts with !.
 
 - Unicode is translated as unicode, and Wanda does not accept it. We chose not
-   to implement a translation to their codes, as the output would be unreadable. 
-   In this case, it is better if the user removes manually the unicode from their
-   file, this way they can chose a more readable replacement for the occuring
-   unicode characters.
+   to implement a translation to their codes, as the output would be
+   unreadable. In this case, it is better if the user removes manually the
+   unicode from their file, this way they can chose a more readable
+   replacement for the occuring unicode characters.
  *)
 
 open Lplib open Base open Extra
@@ -49,19 +49,19 @@ let syms = ref SymMap.empty
 (** [nb_rules] is the number of rewrite rules. *)
 let nb_rules = ref 0
 
-let sanitize_name : string -> string = fun s -> 
+let sanitize_name : string -> string = fun s ->
   (* we considere names starting with '!' as forbiden, so we can
      use it as an escape character to prevent clashes *)
   if s.[0] = '!' then assert false;
-  match s with   
-  | "A" | "L" | "P" | "B" -> 
+  match s with
+  | "A" | "L" | "P" | "B" ->
     (* prevents clashes with the names in the base signature *)
-    "!" ^ s 
-  | _ -> 
+    "!" ^ s
+  | _ ->
     (* prevent clashes metavariable names *)
-    if s.[0] = 'X' then "!" ^ s 
+    if s.[0] = 'X' then "!" ^ s
     (* prevent clashes with variable names, which are just numbers *)
-    else if Str.string_match (Str.regexp "[0-9]+$") s 0 then "!" ^ s  
+    else if Str.string_match (Str.regexp "[0-9]+$") s 0 then "!" ^ s
     else s (* ok names *)
 
 (** [sym_name s] translates the symbol name of [s]. *)
@@ -109,7 +109,7 @@ let rec term : term pp = fun ppf t ->
   | LLet(a,t,b) ->
     let x, b = Bindlib.unbind b in
     out ppf "B %a %a (/\\%a.%a)" term_safe a term_safe t bvar x term b
-and term_safe : term pp = fun ppf t -> 
+and term_safe : term pp = fun ppf t ->
   match unfold t with
   | Vari v -> bvar ppf v
   | Symb s -> add_sym s; sym ppf s
@@ -117,7 +117,7 @@ and term_safe : term pp = fun ppf t ->
   | Patt(Some i,_,ts) ->
     let k = Array.length ts in
     let args ppf ts = for i=1 to k-1 do out ppf ",%a" term ts.(i) done in
-    out ppf "%a[%a%a]" pvar i term ts.(0) args ts  
+    out ppf "%a[%a%a]" pvar i term ts.(0) args ts
   | _ -> out ppf "(%a)" term t
 
 (** [rule ppf r] translates the pair of terms [r] as a rule. *)
@@ -152,7 +152,7 @@ let sign : Sign.t pp = fun ppf sign ->
   let pp_syms : string SymMap.t pp = fun ppf syms ->
     let sym_decl : string pp = fun ppf n -> out ppf "\n%s : t" n in
     let sym_decl _ n = sym_decl ppf n in SymMap.iter sym_decl syms
-  in    
+  in
   out ppf "\
 A : t -> t -> t
 L : t -> (t -> t) -> t
