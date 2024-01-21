@@ -114,6 +114,5 @@ let sign : Sign.t pp = fun ppf sign ->
     for i = 0 to k do out ppf " $%d" i done in
   out ppf "\
 (VAR%a)
-(RULES
-%s
+(RULES%s
 )\n" pp_vars !max_var (Buffer.contents buf_rules)
