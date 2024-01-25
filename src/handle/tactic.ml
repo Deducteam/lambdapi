@@ -170,7 +170,7 @@ let count_products : ctxt -> term -> int = fun c ->
 
 (** [handle ss sym_pos prv ps tac] applies tactic [tac] in the proof state
    [ps] and returns the new proof state. *)
-let handle :
+let rec handle :
   Sig_state.t -> popt -> bool -> proof_state -> p_tactic -> proof_state =
   fun ss sym_pos prv ps {elt;pos} ->
   match ps.proof_goals with
@@ -367,6 +367,9 @@ let handle :
        | Typ gt::_ ->
          Why3_tactic.handle ss pos cfg gt; tac_admit ss sym_pos ps gt
        | _ -> assert false)
+  | P_tac_try tactic -> 
+    try handle ss sym_pos prv ps tactic 
+    with Fatal(_, _s) -> ps 
 
 (** Representation of a tactic output. *)
 type tac_output = proof_state * Query.result
