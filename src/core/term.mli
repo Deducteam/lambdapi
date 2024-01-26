@@ -45,6 +45,10 @@ type mbinder_info
 
 val binder_name : binder_info -> string
 
+(** Type for binders. *)
+type binder
+type mbinder
+
 (** Representation of a term (or types) in a general sense. Values of the type
     are also used, for example, in the representation of patterns or rewriting
     rules. Specific constructors are included for such applications,  and they
@@ -68,10 +72,6 @@ type term = private
   | TRef of term option ref (** Reference cell (used in surface matching). *)
   | LLet of term * term * binder
   (** [LLet(a, t, u)] is [let x : a ≔ t in u] (with [x] bound in [u]). *)
-
-(** Type for binders. *)
-and binder = binder_info * term
-and mbinder = mbinder_info * term
 
 (** {b NOTE} that a wildcard "_" of the concrete (source code) syntax may have
     a different representation depending on the context. For instance, the
