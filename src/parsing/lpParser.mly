@@ -73,9 +73,9 @@
 %token SOLVE
 %token SYMBOL
 %token SYMMETRY
+%token TRY
 %token TYPE_QUERY
 %token TYPE_TERM
-%token TRY
 %token UNIF_RULE
 %token VERBOSE
 %token WHY3

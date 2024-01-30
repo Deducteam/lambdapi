@@ -227,9 +227,8 @@ type p_tactic_aux =
   | P_tac_solve
   | P_tac_sym
   | P_tac_why3 of string option
-  | P_tac_try of p_tactic_aux loc
-
-type p_tactic = p_tactic_aux loc
+  | P_tac_try of p_tactic
+and p_tactic = p_tactic_aux loc
 
 (** [is_destructive t] says whether tactic [t] changes the current goal. *)
 let is_destructive {elt;_} = match elt with P_tac_have _ -> false | _ -> true

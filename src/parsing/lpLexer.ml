@@ -80,9 +80,9 @@ type token =
   | SOLVE
   | SYMBOL
   | SYMMETRY
+  | TRY
   | TYPE_QUERY
   | TYPE_TERM
-  | TRY
   | UNIF_RULE
   | VERBOSE
   | WHY3
@@ -250,9 +250,9 @@ let rec token lb =
   | "solve" -> SOLVE
   | "symbol" -> SYMBOL
   | "symmetry" -> SYMMETRY
+  | "try" -> TRY
   | "type" -> TYPE_QUERY
   | "TYPE" -> TYPE_TERM
-  | "try" -> TRY
   | "unif_rule" -> UNIF_RULE
   | "verbose" -> VERBOSE
   | "why3" -> WHY3

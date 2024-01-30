@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 - Add the command `opaque` that opacifies a symbol already defined.
+- Add the tactic `try` that tries to apply a tactic to the focused goal.
+  If the application of the tactic fails, it catches the error and leaves the goal unchanged.
 
 ## 2.4.1 (2023-11-22)
 

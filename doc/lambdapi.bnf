@@ -153,7 +153,7 @@ QID ::= [UID "."]+ UID
            | "simplify" [<qid_or_nat>]
            | "solve"
            | "symmetry"
-           | TRY <tactic>
+           | "try" <tactic>
            | "why3" [<stringlit>]
 
 <rw_patt> ::= <term>
