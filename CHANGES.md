@@ -5,7 +5,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
-- Add the command `opaque` that opacifies a symbol already defined.
+### Added
+
+- Add the `opaque` command to turn a defined symbol into a constant
+
+### Fixed
+
+- Coq export: do not rename module names
+- Sequential symbols: fix order of rules
 
 ## 2.4.1 (2023-11-22)
 
