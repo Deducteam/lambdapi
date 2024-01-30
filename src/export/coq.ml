@@ -139,7 +139,7 @@ let set_encoding : string -> unit = fun f ->
 let translate_ident : string -> string = fun s ->
   try StrMap.find s !rmap with Not_found -> s
 
-let raw_ident : string pp = fun ppf s -> Print.uid ppf (translate_ident s)
+let raw_ident : string pp = fun ppf s -> string ppf (translate_ident s)
 
 let ident : p_ident pp = fun ppf {elt;_} -> raw_ident ppf elt
 
@@ -150,7 +150,7 @@ let param_id : p_ident option pp = fun ppf idopt ->
 
 let param_ids : p_ident option list pp = List.pp param_id " "
 
-let raw_path : Path.t pp = List.pp raw_ident "."
+let raw_path : Path.t pp = List.pp string "."
 
 let path : p_path pp = fun ppf {elt;_} -> raw_path ppf elt
 
