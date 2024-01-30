@@ -73,6 +73,7 @@
 %token SOLVE
 %token SYMBOL
 %token SYMMETRY
+%token TRY
 %token TYPE_QUERY
 %token TYPE_TERM
 %token UNIF_RULE
@@ -347,6 +348,7 @@ tactic:
   | SIMPLIFY i=qid_or_nat? { make_pos $sloc (P_tac_simpl i) }
   | SOLVE { make_pos $sloc P_tac_solve }
   | SYMMETRY { make_pos $sloc P_tac_sym }
+  | TRY t=tactic { make_pos $sloc (P_tac_try t) }
   | WHY3 s=STRINGLIT? { make_pos $sloc (P_tac_why3 s) }
 
 rw_patt:

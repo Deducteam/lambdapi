@@ -86,6 +86,7 @@ syntax keyword KeywordOK contained simplify
 syntax keyword KeywordOK contained solve
 syntax keyword KeywordOK contained symbol
 syntax keyword KeywordOK contained symmetry
+syntax keyword KeywordOK contained try
 syntax keyword KeywordOK contained type
 syntax keyword KeywordOK contained TYPE
 syntax keyword KeywordOK contained unif_rule
@@ -152,6 +153,7 @@ syntax keyword KeywordKO contained simplify
 syntax keyword KeywordKO contained solve
 syntax keyword KeywordKO contained symbol
 syntax keyword KeywordKO contained symmetry
+syntax keyword KeywordKO contained try
 syntax keyword KeywordKO contained type
 syntax keyword KeywordKO contained TYPE
 syntax keyword KeywordKO contained unif_rule

@@ -200,6 +200,7 @@ The default lexer is used because the syntax is primarily made of sexps."
     (`(:before . "simplify") `(column . ,lambdapi-indent-basic))
     (`(:before . "solve") `(column . ,lambdapi-indent-basic))
     (`(:before . "symmetry") `(column . ,lambdapi-indent-basic))
+    (`(:before . "try") `(column . ,lambdapi-indent-basic))
     (`(:before . "why3") `(column . ,lambdapi-indent-basic))
 
     (`(:before . ,(or "abort" "admitted" "end")) '(column . 0))

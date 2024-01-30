@@ -18,6 +18,7 @@
     "simplify"
     "solve"
     "symmetry"
+    "try"
     "why3")
   "Proof tactics.")
 

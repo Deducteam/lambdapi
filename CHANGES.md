@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ### Added
 
 - Add the `opaque` command to turn a defined symbol into a constant
+- Add the tactic `try` that tries to apply a tactic to the focused goal.
+  If the application of the tactic fails, it catches the error and leaves the goal unchanged.
 
 ### Fixed
 
