@@ -240,7 +240,9 @@ module CM = struct
   (** Type of clause matrices. *)
   type t =
     { clauses   : clause list
-    (** The rules. *)
+    (** The rewrite rules. The order is significant when the {!Sequen}
+        strategy is used: the rewrite rules are ordered by decreasing
+        priority. *)
     ; slot      : int
     (** Index of next slot to use in [vars] array to store variables. *)
     ; positions : arg list
