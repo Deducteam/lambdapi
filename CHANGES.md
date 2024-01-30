@@ -5,9 +5,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
-- Add the command `opaque` that opacifies a symbol already defined.
+### Added
+
+- Add the `opaque` command to turn a defined symbol into a constant
 - Add the tactic `try` that tries to apply a tactic to the focused goal.
   If the application of the tactic fails, it catches the error and leaves the goal unchanged.
+
+### Fixed
+
+- Coq export: do not rename module names
+- Sequential symbols: fix order of rules
 
 ## 2.4.1 (2023-11-22)
 
