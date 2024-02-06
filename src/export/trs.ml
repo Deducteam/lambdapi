@@ -17,10 +17,9 @@
 
   P // binary symbol for Π
 
-- Function symbols are translated directly by their unqualified names. If a
-   function symbol name clashes with the name of a variable, metavariable or
-   a symbol declared in the base signature, we prefix it with !. In order to
-   do this, we assume that no function symbol starts with !.
+- Function symbol names are fully qualified but ["."] is replaced by ["_"],
+   and metavariable names are printed unchanged (they do not clash with
+   function symbols because they start with ["$"]).
 
 TODO:
 
@@ -32,21 +31,12 @@ TODO:
 *)
 
 open Lplib open Base open Extra
+open Common open Error
 open Core open Term
-
-let sanitize_name : string -> string = fun s ->
-  (* we considere names starting with '!' as forbiden, so we can
-     use it as an escape character to prevent clashes *)
-  if s.[0] = '!' then assert false;
-  match s with
-  | "A" | "L" | "P" | "B" ->
-    (* prevents clashes with the names in the base signature *)
-    "!" ^ s
-  | _ -> s
 
 (** [sym_name s] translates the symbol name of [s]. *)
 let sym_name : sym pp = fun ppf s ->
-    out ppf "%s" (sanitize_name s.sym_name)
+  out ppf "%a_%s" (List.pp string "_") s.sym_path s.sym_name
 
 (** [pvar i] translates the pattern variable index [i]. *)
 let pvar : int pp = fun ppf i -> out ppf "$%d" i
@@ -66,11 +56,11 @@ let rec term : term pp = fun ppf t ->
   | Wild -> assert false
   | Kind -> assert false
   | Type -> assert false
-  | Vari _ -> assert false
+  | Vari _ -> fatal_no_pos "This file cannot be interpreted as a TRS."
   | Symb s -> sym_name ppf s
   | Patt(None,_,_) -> assert false
   | Patt(Some i,_,[||]) -> set_max_var i; pvar ppf i
-  | Patt(Some i,_,_) -> (* todo: check it's only applied to bound vars*)
+  | Patt(Some i,_,_) -> (* TODO: check it's only applied to bound vars*)
     set_max_var i; pvar ppf i
   | Appl(t,u) -> out ppf "A(%a, %a)" term t term u
   | Abst(a,b) ->
