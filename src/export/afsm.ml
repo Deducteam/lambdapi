@@ -158,7 +158,5 @@ A : t -> t -> t
 L : t -> (t -> t) -> t
 P : t -> (t -> t) -> t
 B : t -> t -> (t -> t) -> t%a
-
-A (L V Y) Z => Y Z
-B V Z Y => Y Z%s
+%s
 \n" pp_syms !syms (Buffer.contents buf_rules)
