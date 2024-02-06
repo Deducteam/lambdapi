@@ -258,7 +258,7 @@ let query : p_query pp = fun ppf { elt; _ } ->
   | P_query_verbose i -> out ppf "verbose %s" i
   | P_query_search s -> out ppf "search \"%s\"" s
 
-let tactic : p_tactic pp = fun ppf { elt;  _ } ->
+let rec tactic : p_tactic pp = fun ppf { elt;  _ } ->
   begin match elt with
   | P_tac_admit -> out ppf "admit"
   | P_tac_apply t -> out ppf "apply %a" term t
@@ -281,6 +281,7 @@ let tactic : p_tactic pp = fun ppf { elt;  _ } ->
   | P_tac_simpl (Some qid) -> out ppf "simplify %a" qident qid
   | P_tac_solve -> out ppf "solve"
   | P_tac_sym -> out ppf "symmetry"
+  | P_tac_try t -> out ppf "try %a" tactic t 
   | P_tac_why3 p ->
       let prover ppf s = out ppf " \"%s\"" s in
       out ppf "why3%a" (Option.pp prover) p

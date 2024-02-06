@@ -218,12 +218,17 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
     (* Scope rules, and check that they preserve typing. Return the list of
        rules [srs] and also a map [map] mapping every symbol defined by a rule
        of [srs] to its defining rules. *)
-      let handle_rule (srs, map) r =
+      let handle_rule r (srs, map) =
         let (s,r) as sr = check_rule ss r in
         let h = function Some rs -> Some(r::rs) | None -> Some[r] in
         sr::srs, SymMap.update s h map
       in
-      let srs, map = List.fold_left handle_rule ([], SymMap.empty) rs in
+      (* The order of rules must be kept between [rs] and [srs].
+         That is, the following assertion should hold
+         [assert (srs = List.map (check_rule ss) rs);] if we could compare
+         functional values. Failure to keep that invariant breaks some
+         evaluation strategies. *)
+      let srs, map = List.fold_right handle_rule rs ([], SymMap.empty) in
       (* /!\ Update decision trees without adding the rules themselves. It is
          important for local confluence checking. *)
       SymMap.iter Tree.update_dtree map;

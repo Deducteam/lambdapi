@@ -97,7 +97,9 @@ let set_erasing : string -> unit = fun f ->
         let id = snd lp_qid.elt in
         if Logger.log_enabled() then log "erase %s" id;
         erase := StrSet.add id !erase;
-        map_erased_qid_coq := QidMap.add lp_qid.elt coq_id !map_erased_qid_coq
+        map_erased_qid_coq := QidMap.add lp_qid.elt coq_id !map_erased_qid_coq;
+        if fst lp_qid.elt = [] && id <> coq_id then
+          rmap := StrMap.add id coq_id !rmap
     | {pos;_} -> fatal pos "Invalid command."
   in
   Stream.iter consume (Parser.parse_file f)
@@ -139,7 +141,7 @@ let set_encoding : string -> unit = fun f ->
 let translate_ident : string -> string = fun s ->
   try StrMap.find s !rmap with Not_found -> s
 
-let raw_ident : string pp = fun ppf s -> Print.uid ppf (translate_ident s)
+let raw_ident : string pp = fun ppf s -> string ppf (translate_ident s)
 
 let ident : p_ident pp = fun ppf {elt;_} -> raw_ident ppf elt
 
@@ -150,7 +152,7 @@ let param_id : p_ident option pp = fun ppf idopt ->
 
 let param_ids : p_ident option list pp = List.pp param_id " "
 
-let raw_path : Path.t pp = List.pp raw_ident "."
+let raw_path : Path.t pp = List.pp string "."
 
 let path : p_path pp = fun ppf {elt;_} -> raw_path ppf elt
 
