@@ -91,12 +91,14 @@ You can get the sources using `git` as follows:
 git clone https://github.com/Deducteam/lambdapi.git
 ```
 
-Dependencies are described in `lambdapi.opam`. The command `why3 config detect`
-must be run for Why3 to know the available provers.
+Dependencies are described in `lambdapi.opam`. The command `why3
+config detect` must be run for Why3 to know the available provers for
+the `why3` tactic.
 
 Using Opam, a suitable OCaml environment can be setup as follows:
 ```bash
-opam install dune bindlib timed sedlex menhir pratter yojson cmdliner why3 alcotest alt-ergo odoc
+cd lambdapi
+opam install .
 why3 config detect
 ```
 
