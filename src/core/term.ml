@@ -324,8 +324,7 @@ and unfold : term -> term = fun t ->
       begin
         match !(m.meta_value) with
         | None    -> t
-        | Some(b) -> (* Note: terms of ts may have free dB: opn=true *)
-            unfold (msubst b ts)
+        | Some(b) -> unfold (msubst b ts)
       end
   | TRef(r) ->
       begin
@@ -335,24 +334,6 @@ and unfold : term -> term = fun t ->
       end
   | _ -> t
 
-(** [lift l t] updates indices when [t] is moved under [l] binders. *)
-(*and lift : int -> term -> term = fun l t ->
-  let rec lift t =
-    match unfold t with
-    | Db k -> Db (k+l)
-    | Appl(a,b) -> Appl(lift a, lift b)
-    (* No need to call mk_Appl here as we only change indices. *)
-    | Abst(a,(n,u,e)) -> Abst(lift a, (n, u, List.map lift e))
-    | Prod(a,(n,u,e)) -> Prod(lift a, (n ,u, List.map lift e))
-    | LLet(a,t,(n,u,e)) -> LLet(lift a, lift t, (n, u, List.map lift e))
-    | Meta(m,ts) -> Meta(m, Array.map lift ts)
-    | Patt(j,n,ts) -> Patt(j,n, Array.map lift ts)
-    | _ -> t
-  in
-  (* When l=0, lift is the identity: avoid unnecessary allocation *)
-  let r = if l=0 then t else lift t in
-  if Logger.log_enabled() then log "lift %d %a = %a" l term t term r;
-  r*)
 
 (** [msubst b vs] substitutes the variables bound by [b] with the values [vs].
    Note that the length of the [vs] array should match the arity of the
@@ -361,19 +342,19 @@ and msubst : mbinder -> term array -> term = fun (bi,t,e) vs ->
   let n = Array.length bi.mbinder_name in
   assert (Array.length vs = n);
   Array.iteri (fun i bnd -> if not bnd then vs.(i) <- Wild) bi.mbinder_bound;
+  (* Turn e into an array once for faster access *)
   let env = Array.of_list e in
   let m = n+Array.length env in
-  (* [msubst i t] replaces [Db(i+j)] by [lift (i-1) vs.(n-j-1)]
-     for all [0 <= j < n]. *)
+  (* [msubst t] replaces
+     [Db(j)] by [vs.(n-j)]  for all [1 <= j <= n] (current substitution)
+     and [Db(j)] by [e.(m-j)] for all [n < j <= m] (propagation of previous
+     substituttions). *)
   let rec msubst t =
     if Logger.log_enabled() then
       log "msubst %a %a" (D.array term) vs term t;
     match unfold t with
     | Db k -> assert(k<=m);
-              if k <= n then
-                (if vs.(n-k) = Wild then
-                  (log "***** msubst %a#%a %a found %d" term t terms env terms vs k; assert (vs.(n-k) <> Wild));
-                 vs.(n-k))
+              if k <= n then (assert (vs.(n-k) <> Wild); vs.(n-k))
               else env.(m-k)
     | Appl(a,b) -> mk_Appl(msubst a, msubst b)
     | Abst(a,(n,u,e)) -> Abst(msubst a, (n, u, List.map msubst e))
@@ -384,7 +365,9 @@ and msubst : mbinder -> term array -> term = fun (bi,t,e) vs ->
     | Type | Kind | Vari _ | Wild | Symb _ | Plac _ | TRef _ -> t
   in
   let r =
-    if Array.for_all ((=) false) bi.mbinder_bound && Array.length env = 0 then t
+    (* TODO: generalizes to case where env is the identity *)
+    if Array.for_all ((=) false) bi.mbinder_bound && Array.length env = 0
+    then t
     else msubst t in
   if Logger.log_enabled() then
     log "msubst %a[%a] %a = %a" term t terms (Array.of_list e) (D.array term) vs term r;
@@ -528,24 +511,34 @@ let is_abst : term -> bool = fun t ->
 
 (** [is_prod t] returns [true] iff [t] is of the form [Prod(_)]. *)
 let is_prod : term -> bool = fun t ->
-  match unfold t with Prod(_) -> true | _ -> false
+  (match unfold t with Prod(_) -> true | _ -> false)
 
-
-(** [occur x t] tells whether variable [x] occurs in [t]. *)
-let occur : var -> term -> bool = fun x ->
+(** [iter_var_symb f g t] applies f to every occurrence of a variable in t,
+   and g to every occurrence of a symbol. *)
+let iter_var_sym : (var -> unit) -> (sym -> unit) -> term -> unit =
+  fun f g t ->
   let rec check t =
     match unfold t with
-    | Vari y when y == x -> raise Exit
+    | Vari x -> f x
+    | Symb s -> g s
     | Appl(a,b) -> check a; check b
     | Abst(a,(_,u,e))
     | Prod(a,(_,u,e)) -> check a; check u; List.iter check e
     | LLet(a,t,(_,u,e)) -> check a; check t; check u; List.iter check e
     | Meta(_,ts)
     | Patt(_,_,ts) -> Array.iter check ts
-    | _ -> ()
-  in fun t -> try check t; false with Exit -> true
+    | _ -> () in
+  check t
 
-let occur_mbinder : var -> mbinder -> bool = fun x (_,t,e) -> occur x t || List.exists (occur x) e
+
+(** [occur x t] tells whether variable [x] occurs in [t]. *)
+let occur : var -> term -> bool =
+  fun x t ->
+  try iter_var_sym (fun y -> if x==y then raise Exit) (fun _->()) t; false
+  with Exit -> true
+
+let occur_mbinder : var -> mbinder -> bool =
+  fun x (_,t,e) -> occur x t || List.exists (occur x) e
 
                                            
 (** [subst b v] substitutes the variable bound by [b] with the value [v].
@@ -557,10 +550,12 @@ let subst : binder -> term -> term = fun (bi,t,e) v ->
     if Logger.log_enabled() then
       log "subst [1≔%a] %a" term v term t;
     match unfold t with
-    | Db 1 -> assert bi.binder_bound; v
-    | Db k -> let j = k-1 in
-              assert (j <= n);
-              assert (env.(n-j) <> Wild); env.(n-j)
+    | Db k -> if k==1 then (assert bi.binder_bound; v)
+              else begin
+                  let j = k-1 in
+                  assert (j <= n); assert (env.(n-j) <> Wild);
+                  env.(n-j)
+                end
     | Appl(a,b) -> mk_Appl(subst a, subst b)
     | Abst(a,(n,u,e)) -> Abst(subst a, (n, u, List.map subst e))
     | Prod(a,(n,u,e)) -> Prod(subst a, (n ,u, List.map subst e))
@@ -599,7 +594,7 @@ let unmbind : mbinder -> var array * term =
   let xs = Array.init (Array.length names) (fun i -> new_var names.(i)) in
   xs, msubst b (Array.map (fun x -> Vari x) xs)
 
-(* For debugging purposes, [db_closed n t] checks that all free de Bruinj appearing
+(* For debugging purposes, [db_closed bv n t] checks that all free de Bruinj appearing
    in [t] are in the range [1..n]*)
 let _db_closed : ?bv:bool array -> int -> term -> bool =
   fun ?(bv=[||]) i t ->
@@ -654,13 +649,16 @@ let bind_var  : var -> term -> binder = fun ((_,n) as x) t ->
   and bind_binder i (n,u,e as b) =
     let e' = List.map (bind i) e in
     let j = List.length e+2 in
+    (* [j] is the first unused variable: Db(1) is the variable bound by this
+       binder, dB [2..|e|+1] are the variables substituted by [e], so j=|e|+2
+       is the first unused variable, corresponding to a slot created at the
+       head of [e] *)
     let u' = bind j u in
     if u==u' then (* x does not occur in u *)
       if List.for_all2 (==) e e' then b
       else (n, u', e')
-    else (* x occurs, it has been by a db which corresponds to a slot in the tail of e *)
-      ((*if not (db_closed j u') then
-         (log "******** bind_binder %d %a[%a] = %a[%a]" i term u terms (Array.of_list e) term u' terms (Array.of_list e');assert false);*)
+    else (* x occurs, it has been replaced by [Db(j)] *)
+      ((*assert (db_closed j u'); *)
        (n, u', Db i::e') ) in
 
   (* assert (db_closed 0 t); *)
@@ -680,7 +678,7 @@ let bind_mvar : var array -> term -> mbinder =
   let empty = {mbinder_name=[||]; mbinder_bound=[||]} in
   fun xs t ->
   let n = Array.length xs in
-  if n = 0 then empty, t,[] else
+  if n = 0 then empty, t, [] else
   (*if Logger.log_enabled() then
     log "bind_mvar %a" (D.array var) xs;*)
   let map = ref IntMap.empty and mbinder_bound = Array.make n false in
@@ -723,18 +721,26 @@ let bind_mvar : var array -> term -> mbinder =
   and bind_binder i (bi,u,e as b) =
     let e' = List.map (bind i) e in
     let j = List.length e+2 in
+    (* [j] is the first unused variable: Db(1) is the variable bound by this
+       binder, dB [2..|e|+1] are the variables substituted by [e], so j=|e|+2
+       is the first unused variable, corresponding to a slot created at the
+       head of [e] *)
     let u' = bind j u in
-    if u==u' then (* x does not occur in u *)
+    if u==u' then (* none of the vars of [xs] does occur in u *)
       if List.for_all2 (==) e e' then b
       else (bi, u', e')
-    else (* x occurs, it has been replaced by a db which corresponds to a slot in the tail of e *)
-      (let e'' = Stdlib.Array.init n (fun k -> Db(i+n-1-k)) in
-       (* approximation: mbinder_bound may contain true for variables occuring in another subterm (i.e. not in u) *)
-       Array.iteri (fun i b -> if not b then e''.(i) <- Wild ) mbinder_bound;
-       (*if not (db_closed (j+n-1) u') then
-        (log "******** mbind_binder %d [%a] %a[%a] = %a[%a]" j (D.array var) xs term u terms (Array.of_list e) term u' terms (Array.of_list e');assert false);
-       log "bind_mbinder(n=%d) %d %a#[%a] = %a#%a+%a" n i term u terms (Array.of_list e) term u' terms (Array.of_list e') terms (Array.of_list e'');*)
-       (bi, u', Array.to_list e''@e') ) in
+    else (* one var of [xs] occurs, replaced by [Db(j)..Db(j+n-1)] *)
+      (let e'' =
+         let rec f k e =
+           if k<0 then e
+           else
+             let t =
+               (* approximation: mbinder_bound may contain true for variables
+                  occuring in another subterm (i.e. not in u) *)
+               if mbinder_bound.(k) then Db(i+n-1-k) else Wild in
+             f (k-1) (t::e) in f (n-1) e' in
+       (*assert (db_closed (j+n-1) u');*)
+       (bi, u', e'') ) in
 
   (*assert (db_closed 0 t);*)
   let b = bind 1 t in
@@ -746,40 +752,16 @@ let bind_mvar : var array -> term -> mbinder =
 
 (** [binder_occur b] tests whether the bound variable occurs in [b]. *)
 let binder_occur : binder -> bool = fun (bi,_,_) -> bi.binder_bound
-(*  let rec check i t =
-    (*if Logger.log_enabled() then
-      log "binder_occur %d %a" i term t;*)
-    match unfold t with
-    | Db k when k = i -> raise Exit
-    | Appl(a,b) -> check i a; check i b
-    | Abst(a,(_,u))
-    | Prod(a,(_,u)) -> check i a; check (i+1) u
-    | LLet(a,t,(_,u)) -> check i a; check i t; check (i+1) u
-    | Meta(_,ts)
-    | Patt(_,_,ts) -> Array.iter (check i) ts
-    | _ -> ()
-  in
-  let r = try check 1 t; false with Exit -> true in
-  if Logger.log_enabled() then
-    log "binder_occur 1 %a = %b" term t r;
-  r
-*)
 
+                                                  
 (** [is_closed t] checks whether [t] is closed. *)
 let is_closed : term -> bool =
-  let rec check t =
-    match unfold t with
-    | Vari _ -> raise Exit
-    | Appl(a,b) -> check a; check b
-    | Abst(a,(_,u,e))
-    | Prod(a,(_,u,e)) -> check a; check u; List.iter check e
-    | LLet(a,t,(_,u,e)) -> check a; check t; check u; List.iter check e
-    | Meta(_,ts)
-    | Patt(_,_,ts) -> Array.iter check ts
-    | _ -> ()
-  in fun t -> try check t; true with Exit -> false
+  fun t ->
+  try iter_var_sym (fun _ -> raise Exit) (fun _ -> ()) t; true
+  with Exit -> false
 
-let is_closed_mbinder : mbinder -> bool = fun (_,t,e) -> is_closed t && List.for_all is_closed e
+let is_closed_mbinder : mbinder -> bool =
+  fun (_,t,e) -> is_closed t && List.for_all is_closed e
 
 (** Construction functions of the private type [term]. They ensure some
    invariants:
