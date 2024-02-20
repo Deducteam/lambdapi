@@ -362,18 +362,19 @@ and msubst : mbinder -> term array -> term = fun (bi,t,e) vs ->
   assert (Array.length vs = n);
   Array.iteri (fun i bnd -> if not bnd then vs.(i) <- Wild) bi.mbinder_bound;
   let env = Array.of_list e in
+  let m = n+Array.length env in
   (* [msubst i t] replaces [Db(i+j)] by [lift (i-1) vs.(n-j-1)]
      for all [0 <= j < n]. *)
   let rec msubst t =
     if Logger.log_enabled() then
       log "msubst %a %a" (D.array term) vs term t;
     match unfold t with
-    | Db k -> assert(k<=n+Array.length env);
+    | Db k -> assert(k<=m);
               if k <= n then
                 (if vs.(n-k) = Wild then
                   (log "***** msubst %a#%a %a found %d" term t terms env terms vs k; assert (vs.(n-k) <> Wild));
                  vs.(n-k))
-              else env.(k-n-1)
+              else env.(m-k)
     | Appl(a,b) -> mk_Appl(msubst a, msubst b)
     | Abst(a,(n,u,e)) -> Abst(msubst a, (n, u, List.map msubst e))
     | Prod(a,(n,u,e)) -> Prod(msubst a, (n, u, List.map msubst e))
@@ -550,15 +551,16 @@ let occur_mbinder : var -> mbinder -> bool = fun x (_,t,e) -> occur x t || List.
 (** [subst b v] substitutes the variable bound by [b] with the value [v].
     Assumes v is closed (since only called from outside the term library. *)
 let subst : binder -> term -> term = fun (bi,t,e) v ->
-  let vs = Array.of_list (v::e) in
-  if not bi.binder_bound then vs.(0) <- Wild;
-(*    (log "*************** subst %a[%a] [%a]" term t terms (Array.of_list e) term v;
-      vs.(0) <- Wild);*)
+  let env = Array.of_list e in
+  let n = Array.length env in
   let rec subst t =
     if Logger.log_enabled() then
       log "subst [1≔%a] %a" term v term t;
     match unfold t with
-    | Db k -> assert (k <= Array.length vs); assert (vs.(k-1) <> Wild); vs.(k-1)
+    | Db 1 -> assert bi.binder_bound; v
+    | Db k -> let j = k-1 in
+              assert (j <= n);
+              assert (env.(n-j) <> Wild); env.(n-j)
     | Appl(a,b) -> mk_Appl(subst a, subst b)
     | Abst(a,(n,u,e)) -> Abst(subst a, (n, u, List.map subst e))
     | Prod(a,(n,u,e)) -> Prod(subst a, (n ,u, List.map subst e))
@@ -568,7 +570,7 @@ let subst : binder -> term -> term = fun (bi,t,e) v ->
     | _ -> t
   in
   let r =
-    if bi.binder_bound = false && Array.length vs = 1 then t
+    if bi.binder_bound = false && Array.length env = 0 then t
     else subst t in
   if Logger.log_enabled() then
     log "subst %a[%a] [%a] = %a" term t terms (Array.of_list e) term v term r;
@@ -659,7 +661,7 @@ let bind_var  : var -> term -> binder = fun ((_,n) as x) t ->
     else (* x occurs, it has been by a db which corresponds to a slot in the tail of e *)
       ((*if not (db_closed j u') then
          (log "******** bind_binder %d %a[%a] = %a[%a]" i term u terms (Array.of_list e) term u' terms (Array.of_list e');assert false);*)
-       (n, u', e'@[Db i]) ) in
+       (n, u', Db i::e') ) in
 
   (* assert (db_closed 0 t); *)
   let b = bind 1 t in
@@ -726,13 +728,13 @@ let bind_mvar : var array -> term -> mbinder =
       if List.for_all2 (==) e e' then b
       else (bi, u', e')
     else (* x occurs, it has been replaced by a db which corresponds to a slot in the tail of e *)
-      (let e'' = Stdlib.Array.init n (fun k -> Db(i+k)) in
+      (let e'' = Stdlib.Array.init n (fun k -> Db(i+n-1-k)) in
        (* approximation: mbinder_bound may contain true for variables occuring in another subterm (i.e. not in u) *)
-       Array.iteri (fun i b -> if not b then e''.(n-1-i) <- Wild ) mbinder_bound;
+       Array.iteri (fun i b -> if not b then e''.(i) <- Wild ) mbinder_bound;
        (*if not (db_closed (j+n-1) u') then
         (log "******** mbind_binder %d [%a] %a[%a] = %a[%a]" j (D.array var) xs term u terms (Array.of_list e) term u' terms (Array.of_list e');assert false);
        log "bind_mbinder(n=%d) %d %a#[%a] = %a#%a+%a" n i term u terms (Array.of_list e) term u' terms (Array.of_list e') terms (Array.of_list e'');*)
-       (bi, u', e'@Array.to_list e'') ) in
+       (bi, u', Array.to_list e''@e') ) in
 
   (*assert (db_closed 0 t);*)
   let b = bind 1 t in
