@@ -354,7 +354,7 @@ and msubst : mbinder -> term array -> term = fun (bi,t,e) vs ->
       log "msubst %a %a" (D.array term) vs term t;
     match unfold t with
     | Db k -> assert(k<=m);
-              if k <= n then (assert (vs.(n-k) <> Wild); vs.(n-k))
+              if k <= n then (assert (vs.(k-1) <> Wild); vs.(k-1))
               else env.(m-k)
     | Appl(a,b) -> mk_Appl(msubst a, msubst b)
     | Abst(a,(n,u,e)) -> Abst(msubst a, (n, u, List.map msubst e))
@@ -381,8 +381,8 @@ and cmp : term cmp = fun t t' ->
   | Kind, Kind
   | Wild, Wild -> 0
   | Symb s, Symb s' -> Sym.compare s s'
-  | Prod(t,(_,u,e)), Prod(t',(_,u',e'))
-  | Abst(t,(_,u,e)), Abst(t',(_,u',e')) -> lex3 cmp cmp (List.cmp cmp) (t,u,e) (t',u',e')
+  | Prod(t,u), Prod(t',u')
+  | Abst(t,u), Abst(t',u') -> lex cmp cmp_binder (t,u) (t',u')
   | Appl(t,u), Appl(t',u') -> lex cmp cmp (u,t) (u',t')
   | Meta(m,ts), Meta(m',ts') ->
     lex Meta.compare (Array.cmp cmp) (m,ts) (m',ts')
@@ -391,10 +391,17 @@ and cmp : term cmp = fun t t' ->
       (i,s,ts) (i',s',ts')
   | Db i, Db j -> Stdlib.compare i j
   | TRef r, TRef r' -> Stdlib.compare r r'
-  | LLet(a,t,(_,u,e)), LLet(a',t',(_,u',e')) ->
-    lex cmp (lex3 cmp cmp (List.cmp cmp)) (a,(t,u,e)) (a',(t',u',e'))
+  | LLet(a,t,u), LLet(a',t',u') ->
+    lex3 cmp cmp cmp_binder (a,t,u) (a',t',u')
   | t, t' -> cmp_tag t t'
 
+and cmp_binder : binder cmp =
+(*  fun ({binder_name;binder_bound},u,e) (bi',u',e') ->
+  let mbi = {mbinder_name=[|binder_name|];mbinder_bound=[|binder_bound|]} in
+  let var = Vari(new_var binder_name) in
+  cmp (msubst (mbi,u,e)[|var|]) (msubst({mbi with mbinder_bound=[|bi'.binder_bound|]},u',e')[|var|])*)
+  fun (_,u,e) (_,u',e') -> lex cmp (List.cmp cmp) (u,e) (u',e')
+  
 (** [get_args t] decomposes the {!type:term} [t] into a pair [(h,args)], where
     [h] is the head term of [t] and [args] is the list of arguments applied to
     [h] in [t]. The returned [h] cannot be an [Appl] node. *)
@@ -601,8 +608,9 @@ let _db_closed : ?bv:bool array -> int -> term -> bool =
   let n = Array.length bv in
   let rec check t =
     match unfold t with
-    | Db k when k>i -> raise Exit
-    | Db k when k<=n && bv.(n-k)=false -> raise Exit
+    | Db k when k>i -> log "_dbclosed: %d > %d" k i; raise Exit
+    | Db k when k<=n && bv.(k-1)=false ->
+        log "_dbclosed: xs.(%d-%d) should not occur" k 1; raise Exit
     | Appl(a,b) -> check a; check b
     | Abst(a,(_,_,e))
     | Prod(a,(_,_,e)) -> check a; List.iter check e
@@ -658,14 +666,14 @@ let bind_var  : var -> term -> binder = fun ((_,n) as x) t ->
       if List.for_all2 (==) e e' then b
       else (n, u', e')
     else (* x occurs, it has been replaced by [Db(j)] *)
-      ((*assert (db_closed j u'); *)
+      ((*assert (_db_closed j u');*)
        (n, u', Db i::e') ) in
 
-  (* assert (db_closed 0 t); *)
+  (*assert (_db_closed 0 t);*)
   let b = bind 1 t in
   if Logger.log_enabled() then
     log "bind_var %a %a = %a" var x term t term b;
-  (*assert (db_closed ~bv:[|Stdlib.(!bound)|] 1 b);*)
+  (*assert (_db_closed ~bv:[|Stdlib.(!bound)|] 1 b);*)
   {binder_name=n; binder_bound=Stdlib.(!bound)}, b, []
 
 (** [binder f b] applies f inside [b]. *)
@@ -688,7 +696,7 @@ let bind_mvar : var array -> term -> mbinder =
     match unfold t with
     | Vari (key,_) ->
       begin match IntMap.find_opt key !map with
-        | Some k -> mbinder_bound.(k) <- true; Db (i+n-1-k)
+        | Some k -> mbinder_bound.(k) <- true; Db (i+k)
         | None -> t
       end
     | Appl(a,b) ->
@@ -732,22 +740,26 @@ let bind_mvar : var array -> term -> mbinder =
     else (* one var of [xs] occurs, replaced by [Db(j)..Db(j+n-1)] *)
       (let e'' =
          let rec f k e =
-           if k<0 then e
+           if k=n then e
            else
              let t =
                (* approximation: mbinder_bound may contain true for variables
                   occuring in another subterm (i.e. not in u) *)
-               if mbinder_bound.(k) then Db(i+n-1-k) else Wild in
-             f (k-1) (t::e) in f (n-1) e' in
-       (*assert (db_closed (j+n-1) u');*)
+               if mbinder_bound.(k) then Db(i+k) else Wild in
+             f (k+1) (t::e) in f 0 e' in
+       assert (_db_closed (j+n-1) u');
        (bi, u', e'') ) in
 
-  (*assert (db_closed 0 t);*)
+  (*assert (_db_closed 0 t);*)
   let b = bind 1 t in
   if Logger.log_enabled() then
-    log "bind_mvar %a %a = %a %a" (D.array var) xs term t (D.array (fun ppf b -> if b then out ppf "*" else out ppf "_")) mbinder_bound term b;
-  (*assert (db_closed ~bv:mbinder_bound n b);*)
+    log "bind_mvar %a %a = %a %a" (D.array var) xs term t
+      (D.array (fun ppf b -> if b then out ppf "*" else out ppf "_"))
+      mbinder_bound term b;
+  (*assert (_db_closed ~bv:mbinder_bound n b);*)
   let bi = { mbinder_name = Array.map base_name xs; mbinder_bound } in
+  (* Too strong (or improve cmp) *)
+  (*assert (cmp t (msubst (bi,b,[]) (Array.map (fun x->Vari x) xs)) =0);*)
   bi, b, []
 
 (** [binder_occur b] tests whether the bound variable occurs in [b]. *)
