@@ -416,7 +416,7 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
     (* Verify modifiers. *)
     let prop, expo, mstrat = handle_modifiers p_sym_mod in
     let opaq = List.exists Syntax.is_opaq p_sym_mod in
-    let pdata_prv = expo = Privat || (p_sym_def && opaq) in
+    let pdata_prv = opaq || expo = Privat in
     (match p_sym_def, opaq, prop, mstrat with
      | false, true, _, _ -> fatal pos "Symbol declarations cannot be opaque."
      | true, _, Const, _ -> fatal pos "Definitions cannot be constant."
@@ -515,9 +515,8 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
             wrn pe.pos "Proof admitted.";
             (* Keep the definition only if the symbol is not opaque. *)
             let d =
-              if pdata_prv then None
-              else
-                Option.map (fun m -> unfold (mk_Meta(m,[||]))) ps.proof_term
+              if opaq then None
+              else Option.map (fun m -> unfold (mk_Meta(m,[||]))) ps.proof_term
             in
             (* Add the symbol in the signature. *)
             fst (Sig_state.add_symbol
@@ -526,12 +525,10 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
             (* Check that the proof is indeed finished. *)
             if not (finished ps) then
               fatal pe.pos "The proof is not finished:@.%a" goals ps;
-            (* Keep the definition only if the symbol is not private and not
-               opaque. *)
+            (* Keep the definition only if the symbol is not opaque. *)
             let d =
-              if pdata_prv then None
-              else
-                Option.map (fun m -> unfold (mk_Meta(m,[||]))) ps.proof_term
+              if opaq then None
+              else Option.map (fun m -> unfold (mk_Meta(m,[||]))) ps.proof_term
             in
             (* Add the symbol in the signature. *)
             Console.out 2 (Color.red "symbol %a : %a") uid id term a;
