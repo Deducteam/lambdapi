@@ -3,6 +3,11 @@
 open Lplib
 open Term
 open Timed
+open Common
+
+(** Logging function for unification. *)
+let log = Logger.make 'a' "meta" "metavariables"
+let log = log.pp
 
 let meta_counter : int Stdlib.ref = Stdlib.ref (-1)
 
@@ -11,12 +16,13 @@ let reset_meta_counter () = Stdlib.(meta_counter := -1)
 
 (** [fresh p ?name a n] creates a fresh metavariable of type [a] and arity [n]
    with the optional name [name], and adds it to [p]. *)
-let fresh : problem -> term -> int -> meta =
-  fun p a n ->
+let fresh : problem -> term -> int -> meta = fun p a n ->
   let m = {meta_key = Stdlib.(incr meta_counter; !meta_counter);
-           meta_type = ref a; meta_arity = n;
-           meta_value = ref None } in
-  p := {!p with metas = MetaSet.add m !p.metas}; m
+           meta_type = ref a; meta_arity = n; meta_value = ref None } in
+  if Logger.log_enabled() then log "fresh ?%d" m.meta_key;
+  p := {!p with metas = MetaSet.add m !p.metas};
+  if Logger.log_enabled() then log "%a" Print.problem p;
+  m
 
 (** [fresh_box p a n] is the boxed counterpart of [fresh_meta]. It is
     only useful in the rare cases where the type of a metavariable
@@ -40,8 +46,7 @@ let set : problem -> meta -> tmbinder -> unit = fun p m v ->
 
 (** [make p ctx a] creates a fresh metavariable term of type [a] in the
    context [ctx], and adds it to [p]. *)
-let make : problem -> ctxt -> term -> term =
-  fun p ctx a ->
+let make : problem -> ctxt -> term -> term = fun p ctx a ->
   let a, k = Ctxt.to_prod ctx a in
   let m = fresh p a k in
   let get_var (x,_,d) = if d = None then Some (mk_Vari x) else None in
@@ -51,8 +56,7 @@ let make : problem -> ctxt -> term -> term =
     a fresh {e boxed} metavariable in {e boxed} context [bctx] of {e
     boxed} type [a]. It is the same as [lift (make p c b)] (provided that
     [bctx] is boxed [c] and [a] is boxed [b]), but more efficient. *)
-let bmake : problem -> bctxt -> tbox -> tbox =
-  fun p bctx a ->
+let bmake : problem -> bctxt -> tbox -> tbox = fun p bctx a ->
   let (a, k) = Ctxt.to_prod_box bctx a in
   let m = fresh_box p a k in
   let get_var (x, _) = _Vari x in

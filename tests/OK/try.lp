@@ -47,7 +47,7 @@ symbol ∨ₑ [p q r] : P (p ∨ q) → (P p → P r) → (P q → P r) → P r;
 
 symbol ¬: Prop → Prop; notation ¬ prefix 2;
 
-symbol eq_simp x : P ((x = x) = ⊤);
+symbol eq_simp [a] (x:T a) : P ((x = x) = ⊤);
 symbol eq_simp_neg_l x : P ((¬ x = x) = ⊥);
 symbol eq_simp_refl_r x : P ((¬ x = x) = ⊥);
 symbol eq_simp_2 x : P ((⊥ = x) = ¬ x);
