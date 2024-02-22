@@ -5,8 +5,9 @@ DIR="holide"
 
 # Cleaning command (clean and exit).
 if [[ "$#" -eq 1 && ("$1" = "clean" || "$1" = "fullclean") ]]; then
-  rm -rf ${DIR}
+  if [[ -d ${DIR} ]]; then find ${DIR} -name '*.lpo' -delete; fi
   if [[ "$1" = "fullclean" ]]; then
+    if [[ -d ${DIR} ]]; then find ${DIR} -name '*.dk' -delete; fi
     rm -f holide.tar.gz
   fi
   exit 0
