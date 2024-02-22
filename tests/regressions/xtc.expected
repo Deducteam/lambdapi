@@ -5,7 +5,15 @@
     <rules>
       <rule>
         <lhs>
-          <funapp><name>tests.OK.boolean.bool_and</name><arg><var>1_0</var></arg><arg><funapp><name>tests.OK.boolean.false</name></funapp></arg></funapp>
+          <funapp><name>tests.OK.boolean.bool_and</name><arg><funapp><name>tests.OK.boolean.true</name></funapp></arg><arg><var>1_0</var></arg></funapp>
+        </lhs>
+        <rhs>
+          <var>1_0</var>
+        </rhs>
+      </rule>
+      <rule>
+        <lhs>
+          <funapp><name>tests.OK.boolean.bool_and</name><arg><funapp><name>tests.OK.boolean.false</name></funapp></arg><arg><var>2_0</var></arg></funapp>
         </lhs>
         <rhs>
           <funapp><name>tests.OK.boolean.false</name></funapp>
@@ -13,26 +21,18 @@
       </rule>
       <rule>
         <lhs>
-          <funapp><name>tests.OK.boolean.bool_and</name><arg><var>2_0</var></arg><arg><funapp><name>tests.OK.boolean.true</name></funapp></arg></funapp>
+          <funapp><name>tests.OK.boolean.bool_and</name><arg><var>3_0</var></arg><arg><funapp><name>tests.OK.boolean.true</name></funapp></arg></funapp>
         </lhs>
         <rhs>
-          <var>2_0</var>
+          <var>3_0</var>
         </rhs>
       </rule>
       <rule>
         <lhs>
-          <funapp><name>tests.OK.boolean.bool_and</name><arg><funapp><name>tests.OK.boolean.false</name></funapp></arg><arg><var>3_0</var></arg></funapp>
+          <funapp><name>tests.OK.boolean.bool_and</name><arg><var>4_0</var></arg><arg><funapp><name>tests.OK.boolean.false</name></funapp></arg></funapp>
         </lhs>
         <rhs>
           <funapp><name>tests.OK.boolean.false</name></funapp>
-        </rhs>
-      </rule>
-      <rule>
-        <lhs>
-          <funapp><name>tests.OK.boolean.bool_and</name><arg><funapp><name>tests.OK.boolean.true</name></funapp></arg><arg><var>4_0</var></arg></funapp>
-        </lhs>
-        <rhs>
-          <var>4_0</var>
         </rhs>
       </rule>
       <rule>
@@ -45,14 +45,6 @@
       </rule>
       <rule>
         <lhs>
-          <funapp><name>tests.OK.boolean.bool_neg</name><arg><funapp><name>tests.OK.boolean.false</name></funapp></arg></funapp>
-        </lhs>
-        <rhs>
-          <funapp><name>tests.OK.boolean.true</name></funapp>
-        </rhs>
-      </rule>
-      <rule>
-        <lhs>
           <funapp><name>tests.OK.boolean.bool_neg</name><arg><funapp><name>tests.OK.boolean.true</name></funapp></arg></funapp>
         </lhs>
         <rhs>
@@ -61,15 +53,7 @@
       </rule>
       <rule>
         <lhs>
-          <funapp><name>tests.OK.boolean.bool_or</name><arg><var>7_0</var></arg><arg><funapp><name>tests.OK.boolean.false</name></funapp></arg></funapp>
-        </lhs>
-        <rhs>
-          <var>7_0</var>
-        </rhs>
-      </rule>
-      <rule>
-        <lhs>
-          <funapp><name>tests.OK.boolean.bool_or</name><arg><var>8_0</var></arg><arg><funapp><name>tests.OK.boolean.true</name></funapp></arg></funapp>
+          <funapp><name>tests.OK.boolean.bool_neg</name><arg><funapp><name>tests.OK.boolean.false</name></funapp></arg></funapp>
         </lhs>
         <rhs>
           <funapp><name>tests.OK.boolean.true</name></funapp>
@@ -77,18 +61,34 @@
       </rule>
       <rule>
         <lhs>
-          <funapp><name>tests.OK.boolean.bool_or</name><arg><funapp><name>tests.OK.boolean.false</name></funapp></arg><arg><var>9_0</var></arg></funapp>
+          <funapp><name>tests.OK.boolean.bool_or</name><arg><funapp><name>tests.OK.boolean.true</name></funapp></arg><arg><var>7_0</var></arg></funapp>
         </lhs>
         <rhs>
-          <var>9_0</var>
+          <funapp><name>tests.OK.boolean.true</name></funapp>
         </rhs>
       </rule>
       <rule>
         <lhs>
-          <funapp><name>tests.OK.boolean.bool_or</name><arg><funapp><name>tests.OK.boolean.true</name></funapp></arg><arg><var>10_0</var></arg></funapp>
+          <funapp><name>tests.OK.boolean.bool_or</name><arg><funapp><name>tests.OK.boolean.false</name></funapp></arg><arg><var>8_0</var></arg></funapp>
+        </lhs>
+        <rhs>
+          <var>8_0</var>
+        </rhs>
+      </rule>
+      <rule>
+        <lhs>
+          <funapp><name>tests.OK.boolean.bool_or</name><arg><var>9_0</var></arg><arg><funapp><name>tests.OK.boolean.true</name></funapp></arg></funapp>
         </lhs>
         <rhs>
           <funapp><name>tests.OK.boolean.true</name></funapp>
+        </rhs>
+      </rule>
+      <rule>
+        <lhs>
+          <funapp><name>tests.OK.boolean.bool_or</name><arg><var>10_0</var></arg><arg><funapp><name>tests.OK.boolean.false</name></funapp></arg></funapp>
+        </lhs>
+        <rhs>
+          <var>10_0</var>
         </rhs>
       </rule>
       <rule>

@@ -227,8 +227,8 @@ type p_tactic_aux =
   | P_tac_solve
   | P_tac_sym
   | P_tac_why3 of string option
-
-type p_tactic = p_tactic_aux loc
+  | P_tac_try of p_tactic
+and p_tactic = p_tactic_aux loc
 
 (** [is_destructive t] says whether tactic [t] changes the current goal. *)
 let is_destructive {elt;_} = match elt with P_tac_have _ -> false | _ -> true
@@ -569,7 +569,7 @@ let fold_idents : ('a -> p_qident -> 'a) -> 'a -> p_command list -> 'a =
     | P_query_search _ -> a
   in
 
-  let fold_tactic : StrSet.t * 'a -> p_tactic -> StrSet.t * 'a =
+  let rec fold_tactic : StrSet.t * 'a -> p_tactic -> StrSet.t * 'a =
     fun (vs,a) t ->
     match t.elt with
     | P_tac_refine t
@@ -592,6 +592,7 @@ let fold_idents : ('a -> p_qident -> 'a) -> 'a -> p_command list -> 'a =
     | P_tac_fail
     | P_tac_generalize _
     | P_tac_induction -> (vs, a)
+    | P_tac_try tactic -> fold_tactic (vs,a) tactic
   in
 
   let fold_inductive_vars : StrSet.t -> 'a -> p_inductive -> 'a =

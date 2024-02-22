@@ -7,8 +7,8 @@ open Print
 open Lplib
 
 (** Logging function for unification. *)
-let log_inv = Logger.make 'v' "invr" "inverse"
-let log_inv = log_inv.pp
+let log = Logger.make 'v' "invr" "inverse"
+let log = log.pp
 
 (** [cache f s] is equivalent to [f s] but [f s] is computed only once unless
    the rules of [s] are changed. *)
@@ -23,10 +23,10 @@ let cache : (sym -> 'a) -> (sym -> 'a) = fun f ->
 (** [const_graph s] returns the list of pairs [(s0,s1)] such that [s]
    has a rule of the form [s (s0 ...) ↪ s1 ...]. *)
 let const_graph : sym -> (sym * sym) list = fun s ->
-  if Logger.log_enabled () then log_inv "check rules of %a" sym s;
+  if Logger.log_enabled () then log "check rules of %a" sym s;
   let add s0 s1 l =
     if Logger.log_enabled () then
-      log_inv (Color.yel "%a %a ↪ %a") sym s sym s0 sym s1;
+      log (Color.yel "%a %a ↪ %a") sym s sym s0 sym s1;
     (s0,s1)::l
   in
   let f l rule =
@@ -59,12 +59,12 @@ let inverse_const : sym -> sym -> sym = fun s s' ->
    a rule of the form [s (s0 _ _) ↪ Π x:s1 _, s2 r] with [b=true] iff [x]
    occurs in [r]. *)
 let prod_graph : sym -> (sym * sym * sym * bool) list = fun s ->
-  if Logger.log_enabled () then log_inv "check rules of %a" sym s;
+  if Logger.log_enabled () then log "check rules of %a" sym s;
   let add (s0,s1,s2,b) l =
     if Logger.log_enabled () then
-      if b then log_inv (Color.yel "%a (%a _ _) ↪ Π x:%a _, %a _[x]")
+      if b then log (Color.yel "%a (%a _ _) ↪ Π x:%a _, %a _[x]")
                   sym s sym s0 sym s1 sym s2
-      else log_inv (Color.yel "%a (%a _ _) ↪ %a _ → %a _")
+      else log (Color.yel "%a (%a _ _) ↪ %a _ → %a _")
              sym s sym s0 sym s1 sym s2;
     (s0,s1,s2,b)::l
   in
@@ -115,7 +115,7 @@ let inverse_prod : sym -> sym -> sym * sym * sym * bool = fun s s' ->
 (** [inverse s v] tries to compute a term [u] such that [s(u)] reduces to [v].
 @raise [Not_found] otherwise. *)
 let rec inverse : sym -> term -> term = fun s v ->
-  if Logger.log_enabled () then log_inv "compute %a⁻¹(%a)" sym s term v;
+  if Logger.log_enabled () then log "compute %a⁻¹(%a)" sym s term v;
   match get_args v with
   | Symb s', [t] when s' == s -> t
   | Symb s', ts -> add_args (mk_Symb (inverse_const s s')) ts
@@ -137,5 +137,5 @@ let rec inverse : sym -> term -> term = fun s v ->
 let inverse : sym -> term -> term = fun s v ->
   let t = inverse s v in let v' = mk_Appl(mk_Symb s,t) in
   if Eval.eq_modulo [] v' v then t
-  else (if Logger.log_enabled() then log_inv "%a ≢ %a@" term v' term v;
+  else (if Logger.log_enabled() then log "%a ≢ %a@" term v' term v;
         raise Not_found)

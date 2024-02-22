@@ -80,6 +80,7 @@ type token =
   | SOLVE
   | SYMBOL
   | SYMMETRY
+  | TRY
   | TYPE_QUERY
   | TYPE_TERM
   | UNIF_RULE
@@ -249,6 +250,7 @@ let rec token lb =
   | "solve" -> SOLVE
   | "symbol" -> SYMBOL
   | "symmetry" -> SYMMETRY
+  | "try" -> TRY
   | "type" -> TYPE_QUERY
   | "TYPE" -> TYPE_TERM
   | "unif_rule" -> UNIF_RULE

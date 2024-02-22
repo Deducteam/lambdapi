@@ -198,14 +198,19 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
     (* Scope rules, and check that they preserve typing. Return the list of
        rules [srs] and also a [map] mapping every symbol defined by a rule
        of [srs] to its defining rules. *)
-      let handle_rule (srs, map) pr =
-        let sr = scope_rule false ss pr in
+      let handle_rule r (srs, map) =
+        let sr = scope_rule false ss r in
         let (s,r) as sr =
-          if Stdlib.(!sr_check) then Tool.Sr.check_rule pr.pos sr else sr in
+          if Stdlib.(!sr_check) then Tool.Sr.check_rule r.pos sr else sr in
         let h = function Some rs -> Some(r::rs) | None -> Some[r] in
         sr::srs, SymMap.update s h map
       in
-      let srs, map = List.fold_left handle_rule ([], SymMap.empty) rs in
+      (* The order of rules must be kept between [rs] and [srs].
+         That is, the following assertion should hold
+         [assert (srs = List.map (check_rule ss) rs);] if we could compare
+         functional values. Failure to keep that invariant breaks some
+         evaluation strategies. *)
+      let srs, map = List.fold_right handle_rule rs ([], SymMap.empty) in
       (* /!\ Update decision trees without adding the rules themselves. It is
          important for local confluence checking. *)
       SymMap.iter Tree.update_dtree map;
@@ -395,7 +400,7 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
     (* Verify modifiers. *)
     let prop, expo, mstrat = handle_modifiers p_sym_mod in
     let opaq = List.exists Syntax.is_opaq p_sym_mod in
-    let pdata_prv = expo = Privat || (p_sym_def && opaq) in
+    let pdata_prv = opaq || expo = Privat in
     (match p_sym_def, opaq, prop, mstrat with
      | false, true, _, _ -> fatal pos "Symbol declarations cannot be opaque."
      | true, _, Const, _ -> fatal pos "Definitions cannot be constant."
@@ -494,9 +499,8 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
             wrn pe.pos "Proof admitted.";
             (* Keep the definition only if the symbol is not opaque. *)
             let d =
-              if pdata_prv then None
-              else
-                Option.map (fun m -> unfold (mk_Meta(m,[||]))) ps.proof_term
+              if opaq then None
+              else Option.map (fun m -> unfold (mk_Meta(m,[||]))) ps.proof_term
             in
             (* Add the symbol in the signature. *)
             fst (Sig_state.add_symbol
@@ -505,12 +509,10 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
             (* Check that the proof is indeed finished. *)
             if not (finished ps) then
               fatal pe.pos "The proof is not finished:@.%a" goals ps;
-            (* Keep the definition only if the symbol is not private and not
-               opaque. *)
+            (* Keep the definition only if the symbol is not opaque. *)
             let d =
-              if pdata_prv then None
-              else
-                Option.map (fun m -> unfold (mk_Meta(m,[||]))) ps.proof_term
+              if opaq then None
+              else Option.map (fun m -> unfold (mk_Meta(m,[||]))) ps.proof_term
             in
             (* Add the symbol in the signature. *)
             Console.out 2 (Color.red "symbol %a : %a") uid id term a;

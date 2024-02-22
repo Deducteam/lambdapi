@@ -8,8 +8,8 @@ open LibTerm
 open Print
 
 (** Logging function for unification. *)
-let logger = Logger.make 'u' "unif" "unification"
-let log = logger.pp
+let log = Logger.make 'u' "unif" "unification"
+let log = log.pp
 
 (** Given a meta [m] of type [Πx1:a1,..,Πxn:an,b], [set_to_prod p m] sets [m]
    to a product term of the form [Πy:m1[x1;..;xn],m2[x1;..;xn;y]] with [m1]
@@ -31,8 +31,7 @@ let set_to_prod : problem -> meta -> unit = fun p m ->
   let b = bind_var y (mk_Meta (m2, Array.append xs [|mk_Vari y|])) in
   (* result *)
   let r = mk_Prod (a, b) in
-  if Logger.log_enabled () then
-    log (red "%a ≔ %a") meta m term r;
+  if Logger.log_enabled () then log (red "%a ≔ %a") meta m term r;
   LibMeta.set p m (bind_mvar vs r)
 
 (** [type_app c a ts] returns [Some u] where [u] is a type of [add_args x ts]
@@ -118,7 +117,7 @@ let instantiate : problem -> ctxt -> meta -> term array -> term -> bool =
   if Logger.log_enabled () then log "try instantiate";
   match instantiation c m ts u with
   | Some b when is_closed_mbinder b ->
-      let do_instantiate() =
+      let do_instantiate p =
         if Logger.log_enabled () then log (red "%a ≔ %a") meta m term u;
         LibMeta.set p m b;
         p := {!p with recompute = true}; true
@@ -131,13 +130,10 @@ let instantiate : problem -> ctxt -> meta -> term array -> term -> bool =
             | Some a -> a
             | None -> assert false
           in
-          let r = (*Logger.set_debug_in false 'i'*)
-            (Infer.check_noexn p c u) typ_mts
-          in
-          if r <> None then do_instantiate()
+          if Infer.check_noexn p c u typ_mts <> None then do_instantiate p
           else (if Logger.log_enabled () then log "typing failed"; false)
         end
-      else do_instantiate()
+      else do_instantiate p
   | i ->
       if Logger.log_enabled () then
         begin
@@ -280,8 +276,7 @@ let imitate_lam : problem -> ctxt -> meta -> unit = fun p c m ->
     let u1 = mk_Meta (m1, Env.to_terms env') in
     let xu1 = mk_Abst (a, bind_var x u1) in
     let v = bind_mvar (Env.vars env) xu1 in
-    if Logger.log_enabled () then
-      log (red "%a ≔ %a") meta m term xu1;
+    if Logger.log_enabled () then log (red "%a ≔ %a") meta m term xu1;
     LibMeta.set p m v
 
 (** [inverse_opt s ts v] returns [Some(t, inverse s v)] if [ts=[t]], [s] is
@@ -342,7 +337,8 @@ let sym_sym_whnf :
 Otherwise, [p.to_solve] is empty but [p.unsolved] may still contain
 constraints that could not be simplified. *)
 let solve : problem -> unit = fun p ->
-  while !p.to_solve <> [] || (!p.recompute && !p.unsolved <> []) do
+  while !p.to_solve <> [] || (!p.recompute && !p.unsolved <> []) do begin
+  log "solve %a" problem p;
   match !p.to_solve with
   | [] ->
       if Logger.log_enabled () then log "recompute";
@@ -350,7 +346,6 @@ let solve : problem -> unit = fun p ->
   | (c,t1,t2)::to_solve ->
   (*if Logger.log_enabled () then
     log "%d constraints" (1 + List.length to_solve);*)
-  if Logger.log_enabled() then log "solve problem %a" problem p;
 
   (* We remove the first constraint from [p] for not looping. *)
   p := {!p with to_solve};
@@ -484,7 +479,7 @@ let solve : problem -> unit = fun p ->
   | _, Symb s -> inverse p c t2 s ts2 t1
 
   | _ -> add_to_unsolved p c t1 t2
-  done
+  end done
 
 (** [solve_noexn ~type_check p] tries to simplify the constraints of [p]. It
    returns [false] if it finds a constraint that cannot be

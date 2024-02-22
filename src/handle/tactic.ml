@@ -75,24 +75,38 @@ let tac_admit: Sig_state.t -> popt -> proof_state -> goal_typ -> proof_state =
    state [ps] and fails if constraints are unsolvable. *)
 let tac_solve : popt -> proof_state -> proof_state = fun pos ps ->
   if Logger.log_enabled () then log "@[<v>tac_solve@ %a@]" goals ps;
+  (* convert the proof_state into a problem *)
   let gs_typ, gs_unif = List.partition is_typ ps.proof_goals in
   let p = new_problem() in
-  let f ms = function
+  let add_meta ms = function
     | Unif _ -> ms
     | Typ gt -> MetaSet.add gt.goal_meta ms
   in
-  p := {!p with metas = List.fold_left f MetaSet.empty gs_typ
+  p := {!p with metas = List.fold_left add_meta MetaSet.empty gs_typ
               ; to_solve = List.rev_map get_constr gs_unif};
+  (* try to solve the problem *)
   if not (Unif.solve_noexn p) then
     fatal pos "Unification goals are unsatisfiable.";
-  (* remove in [gs_typ] the goals that have been instantiated, and simplify
-     the others. *)
-  let not_instantiated = function
-    | Typ gt when !(gt.goal_meta.meta_value) <> None -> None
-    | gt -> Some (Goal.simpl Eval.simplify gt)
+  (* compute the new list of goals by preserving the order of initial goals
+     and adding the new goals at the end *)
+  let non_instantiated = function
+    | Typ gt -> !(gt.goal_meta.meta_value) = None
+    | _ -> assert false
   in
-  let gs_typ = List.filter_map not_instantiated gs_typ in
-  {ps with proof_goals = List.map (fun c -> Unif c) !p.unsolved @ gs_typ}
+  let gs_typ = List.filter non_instantiated gs_typ in
+  let is_eq_goal_meta m = function
+    | Typ gt -> m == gt.goal_meta
+    | _ -> assert false
+  in
+  let add_goal m gs =
+    if List.exists (is_eq_goal_meta m) gs_typ then gs
+    else Goal.of_meta m :: gs
+  in
+  let proof_goals =
+    gs_typ @ MetaSet.fold add_goal (!p).metas
+               (List.map (fun c -> Unif c) (!p).unsolved)
+  in
+  {ps with proof_goals}
 
 (** [tac_refine pos ps gt gs p t] refines the typing goal [gt] with [t]. [p]
    is the set of metavariables created by the scoping of [t]. *)
@@ -170,7 +184,7 @@ let count_products : ctxt -> term -> int = fun c ->
 
 (** [handle ss sym_pos prv ps tac] applies tactic [tac] in the proof state
    [ps] and returns the new proof state. *)
-let handle :
+let rec handle :
   Sig_state.t -> popt -> bool -> proof_state -> p_tactic -> proof_state =
   fun ss sym_pos prv ps {elt;pos} ->
   match ps.proof_goals with
@@ -377,6 +391,9 @@ let handle :
        | Typ gt::_ ->
          Why3_tactic.handle ss pos cfg gt; tac_admit ss sym_pos ps gt
        | _ -> assert false)
+  | P_tac_try tactic -> 
+    try handle ss sym_pos prv ps tactic 
+    with Fatal(_, _s) -> ps 
 
 (** Representation of a tactic output. *)
 type tac_output = proof_state * Query.result
