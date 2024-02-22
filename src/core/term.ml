@@ -9,7 +9,7 @@ open Common open Debug
 
 let log = Logger.make 'm' "term" "term building"
 let log = log.pp
-
+        
 (** {3 Term (and symbol) representation} *)
 
 (** Representation of a possibly qualified identifier. *)
@@ -324,7 +324,8 @@ and unfold : term -> term = fun t ->
       begin
         match !(m.meta_value) with
         | None    -> t
-        | Some(b) -> unfold (msubst b ts)
+        | Some(b) -> (* Note: terms of ts may have free dB: opn=true *)
+            unfold (msubst true b ts)
       end
   | TRef(r) ->
       begin
@@ -348,14 +349,18 @@ and lift : int -> term -> term = fun l t ->
     | Patt(j,n,ts) -> Patt(j,n, Array.map (lift i) ts)
     | _ -> t
   in
-  let r = lift 1 t in
+  (* When l=0, lift is the identity: avoid unnecessary allocation *)
+  let r = if l=0 then t else lift 1 t in
   if Logger.log_enabled() then log "lift %d %a = %a" l term t term r;
   r
 
-(** [msubst b vs] substitutes the variables bound by [b] with the values [vs].
+(** [msubst opn b vs] substitutes the variables bound by [b] with the values [vs].
    Note that the length of the [vs] array should match the arity of the
-   multiple binder [b]. *)
-and msubst : mbinder -> term array -> term = fun (bi,t) vs ->
+   multiple binder [b]. Boolean [opn] indicates whether terms of [vs] may contain
+   free de Bruijn indices, needing term relocation. This happens from within the
+   Term library but the interface ensures that from the outside all terms have
+   no free de Bruinj indices (locally nameless convention). *)
+and msubst : bool -> mbinder -> term array -> term = fun opn (bi,t) vs ->
   let n = Array.length bi.mbinder_name in
   assert (Array.length vs = n);
   (* [msubst i t] replaces [Db(i+j)] by [lift (i-1) vs.(n-j-1)]
@@ -365,14 +370,16 @@ and msubst : mbinder -> term array -> term = fun (bi,t) vs ->
       log "msubst %d %a %a" i (D.array term) vs term t;
     match unfold t with
     | Db k -> let j = k-i in
-      if j<0 then t else (assert(j<n); lift (i-1) vs.(n-1-j))
+              if j<0 then t
+              else (assert(j<n);
+                    if opn then lift (i-1) vs.(n-1-j) else vs.(n-1-j))
     | Appl(a,b) -> mk_Appl(msubst i a, msubst i b)
     | Abst(a,(n,u)) -> Abst(msubst i a, (n, msubst (i+1) u))
     | Prod(a,(n,u)) -> Prod(msubst i a, (n, msubst (i+1) u))
     | LLet(a,t,(n,u)) -> LLet(msubst i a, msubst i t, (n, msubst (i+1) u))
     | Meta(m,ts) -> Meta(m, Array.map (msubst i) ts)
     | Patt(j,n,ts) -> Patt(j,n, Array.map (msubst i) ts)
-    | _ -> t
+    | Type | Kind | Vari _ | Wild | Symb _ | Plac _ | TRef _ -> t
   in
   let r =
     if n = 0 || Array.for_all ((=) false) bi.mbinder_bound then t
@@ -521,7 +528,8 @@ let is_abst : term -> bool = fun t ->
 let is_prod : term -> bool = fun t ->
   match unfold t with Prod(_) -> true | _ -> false
 
-(** [subst b v] substitutes the variable bound by [b] with the value [v]. *)
+(** [subst b v] substitutes the variable bound by [b] with the value [v].
+    Assumes v is closed (since only called from outside the term library. *)
 let subst : binder -> term -> term = fun (bi,t) v ->
   if bi.binder_bound then
     begin
@@ -529,7 +537,7 @@ let subst : binder -> term -> term = fun (bi,t) v ->
         (*if Logger.log_enabled() then
           log "subst [%d≔%a] %a" i term v term t;*)
         match unfold t with
-        | Db k -> if k = i then lift (i-1) v else t
+        | Db k -> if k = i then v else t
         | Appl(a,b) -> mk_Appl(subst i a, subst i b)
         | Abst(a,(n,u)) -> Abst(subst i a, (n, subst (i+1) u))
         | Prod(a,(n,u)) -> Prod(subst i a, (n ,subst (i+1) u))
@@ -566,7 +574,7 @@ let unbind2 : ?name:string -> binder -> binder -> var * term * term =
 let unmbind : mbinder -> var array * term =
   fun (({mbinder_name=names;_},_) as b) ->
   let xs = Array.init (Array.length names) (fun i -> new_var names.(i)) in
-  xs, msubst b (Array.map (fun x -> Vari x) xs)
+  xs, msubst false b (Array.map (fun x -> Vari x) xs)
 
 (** [bind_var x t] binds the variable [x] in [t], producing a binder. *)
 let bind_var  : var -> term -> binder = fun ((_,n) as x) t ->
@@ -734,8 +742,8 @@ let subst_patt : mbinder option array -> term -> term = fun env ->
     match unfold t with
     | Patt(Some i,n,ts) when 0 <= i && i < Array.length env ->
       begin match env.(i) with
-        | Some b -> msubst b (Array.map subst_patt ts)
-        | None -> mk_Patt(Some i,n,Array.map subst_patt ts)
+      | Some b -> msubst true b (Array.map subst_patt ts)
+      | None -> mk_Patt(Some i,n,Array.map subst_patt ts)
       end
     | Patt(i,n,ts) -> mk_Patt(i, n, Array.map subst_patt ts)
     | Prod(a,(n,b)) -> mk_Prod(subst_patt a, (n, subst_patt b))
@@ -754,6 +762,10 @@ let subst_patt : mbinder option array -> term -> term = fun env ->
     | Symb _ -> t
   in subst_patt
 
+(** From the outside of the library, substituted terms ae all closed
+    (locally nameless convention) *)
+let msubst = msubst false
+   
 (** [cleanup t] unfold all metas and TRef's in [t]. *)
 let rec cleanup : term -> term = fun t ->
   match unfold t with
