@@ -9,7 +9,7 @@ open Common open Debug
 
 let log = Logger.make 'm' "term" "term building"
 let log = log.pp
-        
+
 (** {3 Term (and symbol) representation} *)
 
 (** Representation of a possibly qualified identifier. *)
@@ -231,7 +231,8 @@ let create_sym : Path.t -> expo -> prop -> match_strat -> bool ->
   fun sym_path sym_expo sym_prop sym_mstrat sym_opaq
     { elt = sym_name; pos = sym_pos } sym_decl_pos typ sym_impl ->
   {sym_path; sym_name; sym_type = ref typ; sym_impl; sym_def = ref None;
-   sym_opaq = ref sym_opaq; sym_rules = ref []; sym_dtree = ref Tree_type.empty_dtree;
+   sym_opaq = ref sym_opaq; sym_rules = ref [];
+   sym_dtree = ref Tree_type.empty_dtree;
    sym_mstrat; sym_prop; sym_expo; sym_pos ; sym_decl_pos }
 
 (** [is_constant s] tells whether [s] is a constant. *)
@@ -354,12 +355,12 @@ and lift : int -> term -> term = fun l t ->
   if Logger.log_enabled() then log "lift %d %a = %a" l term t term r;
   r
 
-(** [msubst opn b vs] substitutes the variables bound by [b] with the values [vs].
-   Note that the length of the [vs] array should match the arity of the
-   multiple binder [b]. Boolean [opn] indicates whether terms of [vs] may contain
-   free de Bruijn indices, needing term relocation. This happens from within the
-   Term library but the interface ensures that from the outside all terms have
-   no free de Bruinj indices (locally nameless convention). *)
+(** [msubst opn b vs] substitutes the variables bound by [b] with the values
+    [vs].  Note that the length of the [vs] array should match the arity of
+    the multiple binder [b]. Boolean [opn] indicates whether terms of [vs] may
+    contain free de Bruijn indices, needing term relocation. This happens from
+    within the Term library but the interface ensures that from the outside
+    all terms have no free de Bruinj indices (locally nameless convention). *)
 and msubst : bool -> mbinder -> term array -> term = fun opn (bi,t) vs ->
   let n = Array.length bi.mbinder_name in
   assert (Array.length vs = n);
@@ -765,7 +766,7 @@ let subst_patt : mbinder option array -> term -> term = fun env ->
 (** From the outside of the library, substituted terms ae all closed
     (locally nameless convention) *)
 let msubst = msubst false
-   
+
 (** [cleanup t] unfold all metas and TRef's in [t]. *)
 let rec cleanup : term -> term = fun t ->
   match unfold t with
