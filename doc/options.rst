@@ -81,6 +81,7 @@ export
   - ``dk``:  `Dedukti <https://github.com/Deducteam/dedukti>`__ format
   - ``hrs``: `HRS <http://project-coco.uibk.ac.at/problems/hrs.php>`__ format of the confluence competition
   - ``xtc``: `XTC <https://raw.githubusercontent.com/TermCOMP/TPDB/master/xml/xtc.xsd>`__ format of the termination competition
+  - ``sol``: format of the `SOL <http://solweb.mydns.jp/hamana/>`__ confluence and termination checker
   - ``raw_coq``: `Coq <https://coq.inria.fr/>`__ format
   - ``stt_coq``: `Coq <https://coq.inria.fr/>`__ format assuming that the input file is in an encoding of simple type theory
 
