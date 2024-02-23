@@ -34,3 +34,4 @@ jobs:
           eval $(opam env)
           #why3 config detect
           make tests
+          make build-vscode-extension

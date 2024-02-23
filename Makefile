@@ -165,3 +165,8 @@ uninstall_vim_mode:
 	rm -f $(VIMDIR)/syntax/lambdapi.vim
 	rm -f $(VIMDIR)/ftdetect/dedukti.vim
 	rm -f $(VIMDIR)/ftdetect/lambdapi.vim
+
+.PHONY: build-vscode-extension
+build-vscode-extension:
+	cd editors/vscode && make
+	
