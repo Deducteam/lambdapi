@@ -194,9 +194,6 @@
    '(lambdapi-mode . ("lambdapi" "lsp" "--standard-lsp")))
   (eglot-ensure)
 
-  ;; set column offsets for lambdapi's LSP server
-  (setq-local eglot-move-to-column-function #'eglot-move-to-column)
-
   ;; Hooks for goals
   (add-hook 'post-command-hook #'lambdapi-update-line-number nil :local)
   ;; Hook binding line change to re-execution of proof/goals
