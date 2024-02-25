@@ -89,11 +89,13 @@ let tac_solve : popt -> proof_state -> proof_state = fun pos ps ->
     fatal pos "Unification goals are unsatisfiable.";
   (* compute the new list of goals by preserving the order of initial goals
      and adding the new goals at the end *)
-  let non_instantiated = function
-    | Typ gt -> !(gt.goal_meta.meta_value) = None
-    | _ -> assert false
+  let non_instantiated g =
+    match g with
+    | Typ gt when !(gt.goal_meta.meta_value) = None ->
+        Some (Goal.simpl Eval.simplify g)
+    | _ -> None
   in
-  let gs_typ = List.filter non_instantiated gs_typ in
+  let gs_typ = List.filter_map non_instantiated gs_typ in
   let is_eq_goal_meta m = function
     | Typ gt -> m == gt.goal_meta
     | _ -> assert false
