@@ -75,7 +75,7 @@ following line that can be automatically added when you do `opam
 init`:
 
 ```bash
-test -r /home/blanqui/.opam/opam-init/init.sh && . /home/blanqui/.opam/opam-init/init.sh > /dev/null 2> /dev/null || true
+test -r ~/.opam/opam-init/init.sh && . ~/.opam/opam-init/init.sh > /dev/null 2> /dev/null || true
 ```
 
 To update your path, you can also do:

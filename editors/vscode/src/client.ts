@@ -1,7 +1,31 @@
 // VSCode extension for https://github.com/Deducteam/lambdapi
 // a proof assistant based on the λΠ-calculus modulo rewriting
 
-import { workspace, ExtensionContext, Position, Uri, commands, window, WebviewPanel, ViewColumn, TextEditor, TextDocument, SnippetString, Range, TextEditorDecorationType, Pseudoterminal, EventEmitter, TreeItemCollapsibleState, WebviewViewProvider, CancellationToken, WebviewView, WebviewViewResolveContext, TextDocumentChangeEvent, Diagnostic, languages } from 'vscode';
+import { 
+    workspace, 
+    ExtensionContext, 
+    Position, 
+    Uri, 
+    commands, 
+    window, 
+    WebviewPanel, 
+    ViewColumn, 
+    TextEditor, 
+    TextDocument, 
+    SnippetString, 
+    Range, 
+    TextEditorDecorationType, 
+    Pseudoterminal, 
+    EventEmitter, 
+    TreeItemCollapsibleState, 
+    WebviewViewProvider, 
+    CancellationToken, 
+    WebviewView, 
+    WebviewViewResolveContext, 
+    TextDocumentChangeEvent, 
+    Diagnostic, 
+    languages 
+} from 'vscode';
 
 // Insiders API, disabled
 // import { WebviewEditorInset } from 'vscode';
@@ -9,14 +33,12 @@ import { workspace, ExtensionContext, Position, Uri, commands, window, WebviewPa
 import {
     LanguageClient,
     LanguageClientOptions,
-    ServerOptions,
-    TransportKind,
     RequestType,
     NotificationType,
     TextDocumentIdentifier,
     RegistrationRequest,
     DocumentSymbolRequest,
-} from 'vscode-languageclient';
+} from 'vscode-languageclient/node';
 
 import { assert, time } from 'console';
 
@@ -92,7 +114,7 @@ export function activate(context: ExtensionContext) {
             clientOptions
         );
 
-        client.onReady().then( () => {
+        client.start().then( () => {
 
             // Create and show panel for proof goals
             const panel = window.createWebviewPanel(
@@ -152,7 +174,7 @@ export function activate(context: ExtensionContext) {
 
         });
 
-        context.subscriptions.push(client.start());
+        context.subscriptions.push(client);
     };
     
     commands.registerCommand('extension.lambdapi.restart', restart);
@@ -571,7 +593,7 @@ function sendGoalsRequest(position: Position, panel : WebviewPanel, docUri : Uri
 
     let doc = {uri : docUri.toString()}
     let cursor = {textDocument : doc, position : position};
-    const req = new RequestType<ParamsGoals, GoalResp, void, void>("proof/goals");
+    const req = new RequestType<ParamsGoals, GoalResp, void>("proof/goals");
     client.sendRequest(req, cursor).then((goals) => {
         
         updateTerminalText(goals.logs);
