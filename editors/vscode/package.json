@@ -11,7 +11,7 @@
   "version": "0.2.1",
   "publisher": "Deducteam",
   "engines": {
-    "vscode": "^1.37.0"
+    "vscode": "^1.82.0"
   },
   "categories": [
     "Programming Languages"
@@ -161,13 +161,13 @@
   },
   "devDependencies": {
     "@types/mocha": "^2.2.42",
-    "@types/node": "^10.14.15",
-    "@types/vscode": "^1.37",
-    "typescript": "^3.3.1"
+    "@types/node": "^18.18.1",
+    "@types/vscode": "^1.75.0",
+    "typescript": "^5.2.2"
   },
   "dependencies": {
-    "@vscode/vsce": "^2.20.0",
+    "@vscode/vsce": "^2.21.1",
     "fs-extra": "^9.0.1",
-    "vscode-languageclient": "5.2.1"
+    "vscode-languageclient": "^9.0.1"
   }
 }
