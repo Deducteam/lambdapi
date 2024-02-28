@@ -21,7 +21,8 @@ Pattern variables of arity n are translated as variables of type t -> ... -> t
 
 - In the hrs format, variable names must be distinct from function symbol
    names. So bound variables are translated into positive integers and pattern
-   variables are prefixed by ["$"].
+   variables are prefixed by ["*"] (the character ["$"] is not accepted
+   by SOL).
 
 - There is no clash between function symbol names and A, B, L, P because
    function symbol names are fully qualified.
@@ -79,7 +80,7 @@ let add_bvar : tvar -> unit = fun v ->
 let bvar : tvar pp = fun ppf v -> int ppf (Bindlib.uid_of v)
 
 (** [pvar i] translates the pattern variable index [i]. *)
-let pvar : int pp = fun ppf i -> out ppf "$%d_%d" !nb_rules i
+let pvar : int pp = fun ppf i -> out ppf "*%d_%d" !nb_rules i
 
 (** [add_pvar i k] declares a pvar of index [i] and arity [k]. *)
 let add_pvar : int -> int -> unit = fun i k ->
@@ -151,15 +152,15 @@ let sign : Sign.t pp = fun ppf sign ->
   let pp_pvars = fun ppf pvars ->
     let typ : int pp = fun ppf k ->
       for _i=1 to k do string ppf "t -> " done; out ppf "t" in
-    let pvar_decl (n,i) k = out ppf "\n$%d_%d : %a" n i typ k in
+    let pvar_decl (n,i) k = out ppf "\n*%d_%d : %a" n i typ k in
     VMap.iter pvar_decl pvars in
   (* Function for printing the types of abstracted variables. *)
   let pp_bvars : IntSet.t pp = fun ppf bvars ->
     let bvar_decl : int pp = fun ppf n -> out ppf "\n%d : t" n in
     IntSet.iter (bvar_decl ppf) bvars
   in
-  (* Finally, generate the whole hrs file. Note that the variables $x, $y and
-     $z used in the rules for beta and let cannot clash with user-defined
+  (* Finally, generate the whole hrs file. Note that the variables *x, *y and
+     *z used in the rules for beta and let cannot clash with user-defined
      pattern variables which are integers. *)
   out ppf "\
 (FUN
@@ -169,11 +170,11 @@ P : t -> (t -> t) -> t
 B : t -> t -> (t -> t) -> t%a
 )
 (VAR
-$x : t
-$y : t -> t
-$z : t%a%a
+*x : t
+*y : t -> t
+*z : t%a%a
 )
 (RULES
-A(L($x,$y),$z) -> $y($z),
-B($x,$z,$y) -> $y($z)%s
+A(L(*x,*y),*z) -> *y(*z),
+B(*x,*z,*y) -> *y(*z)%s
 )\n" pp_syms !syms pp_pvars !pvars pp_bvars !bvars (Buffer.contents buf_rules)
