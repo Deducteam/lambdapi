@@ -34,3 +34,17 @@ jobs:
           eval $(opam env)
           #why3 config detect
           make tests
+      - name: Use Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: latest
+      - name: generate-vscode-extension
+        run: |
+          npm install -g @types/vscode
+          npm install -g vsce 
+          make build-vscode-extension
+      - name: publish vscode extension
+        uses: actions/upload-artifact@v2
+        with: 
+          name: assets-for-download
+          path: editors/vscode/extensionFolder
