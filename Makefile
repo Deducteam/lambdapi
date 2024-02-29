@@ -26,12 +26,12 @@ bnf:
 
 .PHONY: tests
 tests: lambdapi
-	@dune exec --only-packages lambdapi -- tests/export_raw_dk.sh
 	@dune runtest
 	@dune exec --only-packages lambdapi -- tests/runtests.sh
 	@dune exec --only-packages lambdapi -- tests/dtrees.sh
 	@dune exec --only-packages lambdapi -- tests/export_dk.sh
 	@dune exec --only-packages lambdapi -- tests/export_lp.sh
+	@dune exec --only-packages lambdapi -- tests/export_raw_dk.sh
 
 .PHONY: tests_alt_ergo
 tests_alt_ergo: lambdapi

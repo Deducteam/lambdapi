@@ -97,11 +97,9 @@ time translate
 # check dk files
 check() {
     cd $outdir
-    #echo 'remove #REQUIRE commands (to be removed when https://github.com/Deducteam/Dedukti/issues/262 is fixed) ...'
-    #sed -i -e 's/#REQUIRE.*$//' $dk_files
     #https://github.com/Deducteam/Dedukti/issues/321
     #dk_files=`$dkdep -q -s $dk_files`
-    cat > Makefile <<__END__
+    echo > Makefile <<__END__
 FILES := \$(wildcard *.dk)
 default: \$(FILES:%.dk=%.dko)
 %.dko: %.dk

@@ -126,7 +126,7 @@ let rec pvars_lhs : p_term -> StrSet.t = fun {elt;pos} ->
       StrSet.singleton elt
   | P_Appl(u,v) ->
       StrSet.union (pvars_lhs u) (pvars_lhs v)
-  | P_Abst(_,u)
+  | P_Abst(_,u) (*FIXME: get pattern variables in types?*)
   | P_Wrap u
   | P_Expl u
     -> pvars_lhs u

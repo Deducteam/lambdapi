@@ -168,13 +168,6 @@ let _ =
   assert (Stdlib.compare Commu (Assoc true) < 0)
   ;assert (Stdlib.compare Commu (Assoc false) < 0)
 
-(* translation of lists of modifiers:
-- [opaque] --> "thm"
-- [protected?; associative; commutative] --> "private"? "defac"
-- [protected?; injective] --> "private"? "injective"
-- [protected] --> "private"
-- [constant] --> ""
-- [] --> "def" *)
 let modifiers : p_term option -> p_modifier list pp = fun p_sym_typ ppf ms ->
   match partition_modifiers ms with
   | [], [], [], [] -> out ppf "def "
