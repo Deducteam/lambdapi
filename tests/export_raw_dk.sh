@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -e
+
 echo '############ test export -o raw_dk ############'
 
 lambdapi=${LAMBDAPI:-_build/install/default/bin/lambdapi}
@@ -24,23 +26,44 @@ for f in *.lp
 do
     f=${f%.lp}
     case $f in
-        ac);; # because dedukti does not handle commutative and non associative symbols
-        π/utf_path);; # because dedukti does not accept unicode characters in module names
-        escape_path|'tests/OK/a b/escape file');; # because dedukti does not accept spaces in module names
-        262_private_in_lhs);; # because dedukti does not accept protected symbols in rule LHS arguments
-        273|tests/OK/813);; # because dedukti SR algorithm fails
-        file.with.dot|req.file.with.dot);; #FIXME
-        indind);; #FIXME
-        rule_order);; #because it contains sequential
-        xor|Set|quant*|Prop|prefix|parametricCoercions|opaque|nat_id*|michael|max-suc-alg|lpparse);; #because it contains notation
-        require_nondkmident);; #because it uses a nested module name
-        why3*|tutorial|try|tautologies|rewrite*|remove|natproofs);; #because it contains proofs
-        triangular|power-fact|postfix|perf_rw_*|not-eager|nonLeftLinear2|natural|Nat|lpparse2);; #because it contains open
-        plus_ac);; #because it contains associative or commutative alone
-        strictly_positive_*);; #because it contains inductive
-        *) lp_files="tests/OK/$f.lp $lp_files";
-           f=`echo $f | sed -e 's/\//_/g'`;
-           dk_files="tests/OK/$f.dk $dk_files";;
+        # commutative and non associative symbol
+        ac);;
+        # unicode character in module name
+        π/utf_path);;
+        # space in module name
+        escape_path|'tests/OK/a b/escape file');;
+        # protected symbol in rule LHS argument
+        262_private_in_lhs);;
+        # dedukti SR algorithm fails
+        273|tests/OK/813);;
+        # FIXME
+        file.with.dot|req.file.with.dot);;
+        indind);;
+        # "sequential"
+        rule_order|813|1033);;
+        # "as"
+        729);;
+        # "notation"
+        xor|Set|quant*|Prop|prefix|parametricCoercions|opaque|nat_id*|michael|max-suc-alg|lpparse|iss861|infix|infer|indrec|implicitArgs[34]|group|cr_qu|cp*|coercions|builtin_zero_succ|plus_ac|693|693_assume|679|665|655|655b|649_fo_27|595_and_elim|584_c_slow|579_or_elim_long|579_long_no_duplicate|359|328|245|245b|244|1026);;
+        # "quantifier"
+        683|650|573|565|430);;
+        # nested module name
+        require_nondkmident);;
+        # proofs
+        why3*|tutorial|try|tautologies|rewrite*|remove|natproofs|have|generalize|foo|comment_in_qid|apply|anonymous|admit);;
+        # "open"
+        triangular|power-fact|postfix|perf_rw_*|not-eager|nonLeftLinear2|natural|Nat|lpparse2|logic|List|FOL|Eq|doc|Bool|arity_var|arity_diff|922|262_pair_ex_2|215);;
+        # "inductive"
+        strictly_positive_*|inductive|989|904|830|341);;
+        # underscore in query
+        unif_hint|patterns|let|767);;
+        # abstracted variable type in rule LHS
+        573-2);;
+        # domain-free lambda/product
+        298_lp|262_parsing|tail|698_abst_impl|330|330b|1035|varmatch|patt|freevars-constraints|eta_equality|declared|boolean|abstractions|303|301|292|225);;
+        # opaque definition with no type (https://github.com/Deducteam/Dedukti/issues/319)
+        547);;
+        *) lp_files="tests/OK/$f.lp $lp_files";;
     esac
 done
 cd ../..
@@ -74,11 +97,20 @@ time translate
 # check dk files
 check() {
     cd $outdir
-    echo 'remove #REQUIRE commands (to be removed when https://github.com/Deducteam/Dedukti/issues/262 is fixed) ...'
-    sed -i -e 's/#REQUIRE.*$//' $dk_files
-    dk_files=`$dkdep -q -s $dk_files`
-    echo $dkcheck -q -e $dk_files ...
-    $dkcheck -q -e $dk_files
+    #echo 'remove #REQUIRE commands (to be removed when https://github.com/Deducteam/Dedukti/issues/262 is fixed) ...'
+    #sed -i -e 's/#REQUIRE.*$//' $dk_files
+    #https://github.com/Deducteam/Dedukti/issues/321
+    #dk_files=`$dkdep -q -s $dk_files`
+    cat > Makefile <<__END__
+FILES := \$(wildcard *.dk)
+default: \$(FILES:%.dk=%.dko)
+%.dko: %.dk
+	dk check -e \$<
+__END__
+    $dkdep -q *.dk >> Makefile
+    #echo $dkcheck -q -e $dk_files ...
+    #$dkcheck -q -e $dk_files
+    make
     res=$?
     cd $root
     if test $res -ne 0; then echo KO; else echo OK; fi

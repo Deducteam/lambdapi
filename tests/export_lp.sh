@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -e
+
 echo '############ test export -o lp ############'
 
 lambdapi=${lambdapi:-_build/install/default/bin/lambdapi}

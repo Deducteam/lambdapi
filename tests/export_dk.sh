@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -e
+
 echo '############ test export -o dk ############'
 
 lambdapi=${LAMBDAPI:-_build/install/default/bin/lambdapi}
@@ -23,14 +25,20 @@ for f in tests/OK/*.lp
 do
     f=${f%.lp}
     case $f in
-        tests/OK/ac);; # because dedukti does not handle commutative and non associative symbols
-        tests/OK/π/utf_path);; # because dedukti does not accept unicode characters in module names
-        tests/OK/escape_path|'tests/OK/a b/escape file');; # because dedukti does not accept spaces in module names
-        tests/OK/262_private_in_lhs);; # because dedukti does not accept protected symbols in rule LHS arguments
-        tests/OK/273|tests/OK/813);; # because dedukti SR algorithm fails
-        tests/OK/file.with.dot|tests/OK/req.file.with.dot);; #FIXME
-        tests/OK/indind);; #FIXME
-        tests/OK/why3*);; #FIXME
+        # commutative and non associative symbol
+        tests/OK/ac);;
+        # unicode character in module name
+        tests/OK/π/utf_path);;
+        # space in module name
+        tests/OK/escape_path|'tests/OK/a b/escape file');;
+        # protected symbol in rule LHS arguments
+        tests/OK/262_private_in_lhs);;
+        # dedukti SR algorithm fails
+        tests/OK/273|tests/OK/813);;
+        #FIXME
+        tests/OK/file.with.dot|tests/OK/req.file.with.dot);;
+        tests/OK/indind);;
+        tests/OK/why3*);;
         *) lp_files="$f.lp $lp_files";
            f=`echo $f | sed -e 's/\//_/g'`;
            dk_files="$f.dk $dk_files";;
@@ -68,9 +76,17 @@ check() {
     cd $outdir
     echo 'remove #REQUIRE commands (to be removed when https://github.com/Deducteam/Dedukti/issues/262 is fixed) ...'
     sed -i -e 's/#REQUIRE.*$//' $dk_files
-    dk_files=`$dkdep -q -s $dk_files`
-    echo $dkcheck -q -e $dk_files ...
-    $dkcheck -q -e $dk_files
+    #dk_files=`$dkdep -q -s $dk_files`
+    echo > Makefile <<__END__
+FILES := $(wildcard *.dk)
+default: $(FILES:%.dk=%.dko)
+%.dko: %.dk
+	dk check -e $<
+__END__
+    $dkdep -q $dk_files >> Makefile
+    #echo $dkcheck -q -e $dk_files ...
+    #$dkcheck -q -e $dk_files
+    make
     res=$?
     cd $root
     if test $res -ne 0; then echo KO; else echo OK; fi

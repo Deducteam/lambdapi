@@ -173,7 +173,7 @@ let escid = [%sedlex.regexp?
 
 (** [escape s] converts a string [s] into an escaped identifier if it is not
    regular. We do not check whether [s] contains ["|}"]. FIXME? *)
-let escape s = if is_regid s then s else "{|" ^ s ^ "|}"
+let escape s = if is_regid s then s else Escape.escape s
 
 (** [remove_useless_escape s] replaces escaped regular identifiers by their
    unescape form. *)
