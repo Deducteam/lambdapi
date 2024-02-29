@@ -1,6 +1,6 @@
 (** Translate the parser-level AST to Dedukti. *)
 
-open Lplib open Base
+open Lplib open Base open Extra
 open Common open Pos open Error
 open Parsing open Syntax
 open Format
@@ -19,11 +19,11 @@ let raw_path : Path.t pp = List.pp string "."
 
 let path : p_path pp = fun ppf {elt;_} -> raw_path ppf elt
 
-let qident : p_qident pp = fun ppf {elt=(mp,s);pos} ->
+let qident : p_qident pp = fun ppf ({elt=(mp,s);pos} as qid) ->
   match mp with
   | [] -> raw_ident ppf s
   | [_;m] -> out ppf "%a.%a" raw_ident m raw_ident s
-  | _ -> fatal pos "Cannot be translated."
+  | _ -> fatal pos "Cannot be translated: %a.@." Pretty.qident qid
 
 let rec term : p_term pp = fun ppf t ->
   match t.elt with
@@ -79,7 +79,7 @@ let strat : Eval.strat pp = fun ppf {strategy; steps} ->
   | SNF, None -> ()
   | SNF, Some k -> out ppf "[%d]" k
 
-let query : p_query pp = fun ppf {elt;pos} ->
+let query : p_query pp = fun ppf ({elt;pos} as q) ->
   match elt with
   | P_query_verbose _
   | P_query_debug _
@@ -88,56 +88,75 @@ let query : p_query pp = fun ppf {elt;pos} ->
   | P_query_print _
   | P_query_proofterm
   | P_query_search _
-  | P_query_flag _
+  | P_query_flag _ -> out ppf "(;%a;)" Pretty.query q (*FIXME?*)
   | P_query_infer(_,{strategy=(SNF|HNF|WHNF);_})
   | P_query_normalize(_,{strategy=(NONE|HNF);_}) ->
-      fatal pos "Cannot be translated."
+      fatal pos "Cannot be translated: %a" Pretty.query q
   | P_query_assert(b,a) -> assertion ppf (b,a)
   | P_query_infer(t,{strategy=NONE;_}) -> out ppf "#INFER %a.@." term t
   | P_query_normalize(t,s) -> out ppf "#EVAL%a %a.@." strat s term t
 
-let modifier : p_modifier pp = fun ppf {elt;pos} ->
+let modifier : bool -> p_modifier pp = fun ac ppf ({elt;pos} as m) ->
   match elt with
   | P_mstrat Eager
   | P_expo Public
   | P_prop Const -> ()
   | P_expo Protec -> out ppf "private "
-  | P_prop Defin -> out ppf "def "
+  | P_prop Defin -> if ac then out ppf "defac " else out ppf "def "
   | P_prop Injec -> out ppf "injective "
-  | P_prop (AC _) -> out ppf "AC "
   | P_opaq -> out ppf "thm "
-  | P_mstrat Sequen
-  | P_expo Privat
-  | P_prop Commu
-  | P_prop (Assoc _) -> fatal pos "Cannot be translated."
+  | P_expo Privat -> out ppf "(;private;) " (*FIXME?*)
+  | P_mstrat Sequen ->
+      fatal pos "Cannot be translated: %a@." Pretty.modifier m
+  | P_prop (AC _) -> assert false
+  | P_prop Commu -> assert false
+  | P_prop (Assoc _) -> assert false
 
-let rule : p_rule pp = fun ppf {elt=(l,r);_} ->
-  let vars = [] in
-  out ppf "[%a] %a --> %a.@." (List.pp ident " ") vars term l term r
+let a_or_c {elt;_} =
+  match elt with
+  | P_prop (AC _) -> assert false
+  | P_prop Commu | P_prop (Assoc _) -> true
+  | _ -> false
 
-let command : p_command pp = fun ppf {elt; pos} ->
+let is_ac ms =
+  match ms with
+  | [] -> false
+  | [{elt=P_prop Commu;_}; {elt=P_prop(Assoc _);_}]
+  | [{elt=P_prop(Assoc _);_}; {elt=P_prop Commu;_}] -> true
+  | [{elt=P_prop Commu;pos} as m]
+  | [{elt=P_prop(Assoc _);pos} as m] ->
+      fatal pos "Cannot be translated: %a@." Pretty.modifier m
+  | {pos;_}::_ -> fatal pos "Modifier repetition."
+
+let rule : p_rule pp =
+  let varset ppf set = List.pp string " " ppf (StrSet.elements set) in
+  fun ppf {elt=(l,r);_} ->
+  out ppf "[%a] %a --> %a.@." varset (pvars_lhs l) term l term r
+
+let command : p_command pp = fun ppf ({elt; pos} as c) ->
   match elt with
   | P_query q -> query ppf q
   | P_require(false,ps) -> out ppf "#REQUIRE %a.@." (List.pp path " ") ps
-  | P_symbol{p_sym_mod; p_sym_nam=n; p_sym_arg=xs; p_sym_typ=Some a;
+  | P_symbol{p_sym_mod; p_sym_nam=n; p_sym_arg=xs; p_sym_typ;
              p_sym_trm; p_sym_prf=None; p_sym_def=_;} ->
-      let dfn ppf = out ppf " := %a%a.@." abs xs term in
-      out ppf "%a%a : %a%a%a.@."
-        (List.pp modifier "") p_sym_mod ident n prod xs term a
-        (Option.pp dfn) p_sym_trm
-  | P_rules _ -> assert false (*TODO*)
+      let typ ppf = out ppf " : %a%a" prod xs term in
+      let dfn ppf = out ppf " := %a%a" abs xs term in
+      let ac, ms = List.partition a_or_c p_sym_mod in
+      out ppf "%a%a%a%a.@." (List.pp (modifier (is_ac ac)) "") ms ident n
+        (Option.pp typ) p_sym_typ (Option.pp dfn) p_sym_trm
+  | P_rules rs -> List.iter (rule ppf) rs
+  | P_builtin _
+  | P_unif_rule _
+  | P_coercion _
+    -> () (*FIXME?*)
   | P_inductive _
   | P_open _
   | P_require_as _
-  | P_builtin _
   | P_notation _
-  | P_unif_rule _
-  | P_coercion _
   | P_opaque _
   | P_require(true,_)
-  | P_symbol{p_sym_typ=None; p_sym_prf=None; _}
   | P_symbol{p_sym_prf=Some _; _}
-    -> fatal pos "Cannot be translated."
+    -> fatal pos "Cannot be translated: %a" Pretty.command c
 
 let ast : ast pp = fun ppf -> Stream.iter (command ppf)
 

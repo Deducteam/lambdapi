@@ -26,6 +26,7 @@ bnf:
 
 .PHONY: tests
 tests: lambdapi
+	@dune exec --only-packages lambdapi -- tests/export_raw_dk.sh
 	@dune runtest
 	@dune exec --only-packages lambdapi -- tests/runtests.sh
 	@dune exec --only-packages lambdapi -- tests/dtrees.sh
@@ -169,4 +170,3 @@ uninstall_vim_mode:
 .PHONY: build-vscode-extension
 build-vscode-extension:
 	cd editors/vscode && make && mkdir extensionFolder && vsce package -o extensionFolder
-	
