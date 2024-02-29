@@ -22,6 +22,15 @@ export PATH=$node_dir:$PATH
 export NODE_PATH=$node_dir/lib/node_modules:$NODE_PATH
 ```
 
+Please note that adding nodejs to the `$PATH` by executing the `export` commands from the terminal will make it work only in the terminal where these commands have been run. 
+
+Thus, you need to re-execute them each time you work from a new terminal.
+If you intend to do this often, it is recomanded to add the two `export` commands to your `~/.bashrc` or `~/.profile` files and then apply changes with :
+ ```bash
+ source ~/.bashrc
+ source ~/.profile
+ ```
+
 - install dependencies:
 
 ```bash
