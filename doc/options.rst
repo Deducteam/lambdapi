@@ -83,11 +83,11 @@ export
   - ``raw_coq``: `Coq <https://coq.inria.fr/>`__ format
   - ``stt_coq``: `Coq <https://coq.inria.fr/>`__ format assuming that the input file is in an encoding of simple type theory
 
-**WARNING**: With the formats ``raw_coq``, ``stt_coq`` and ``raw_dk``, the translation is done after parsing but before elaboration. So they cannot translate any input file, and the output may be incomplete or fail to type-check.
+**WARNING**: With the formats ``raw_coq``, ``stt_coq`` and ``raw_dk``, the translation is done just after parsing, thus before scoping and elaboration. So Lambdapi cannot translate any input file, and the output may be incomplete or fail to type-check.
 
-The format ``raw_dk`` does not accept the commands notation and inductive, and proofs, which require elaboration.
+The format ``raw_dk`` does not accept the commands ``notation`` and ``inductive``, and proofs and tactics, which require elaboration.
 
-With the formats ``raw_coq`` and ``stt_coq``, rules are ignored. The encoding of simple type theory can however be defined in Coq using `STTfa.v <https://github.com/Deducteam/lambdapi/blob/master/libraries/sttfa.v>`__.
+The formats ``raw_coq`` and ``stt_coq`` only accept the commands ``require``, ``open``, ``symbol`` and ``rule``, but rules are simply ignored. The encoding of simple type theory can however be defined in Coq using `STTfa.v <https://github.com/Deducteam/lambdapi/blob/master/libraries/sttfa.v>`__.
 
 For the format ``stt_coq``, several other options are available:
 
