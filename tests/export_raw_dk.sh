@@ -4,13 +4,13 @@ set -e
 
 echo '############ test export -o raw_dk ############'
 
-lambdapi=${LAMBDAPI:-_build/install/default/bin/lambdapi}
+root=`pwd`
+
+lambdapi=${LAMBDAPI:-$root/_build/install/default/bin/lambdapi}
 dkcheck=${DKCHECK:-dk check}
 dkdep=${DKDEP:-dk dep}
 
 TIMEFORMAT="%Es"
-
-root=`pwd`
 
 outdir=/tmp/export_raw_dk
 
@@ -20,7 +20,15 @@ reset_outdir() {
 }
 reset_outdir
 
-# compute lp files to test
+translate() {
+    f=tests/OK/${1%.lp}
+    out=$outdir/`echo $f | sed -e 's/\//_/g'`
+    echo "$f.lp --> $out.dk ..."
+    $lambdapi export -w -v 0 -o raw_dk $1 > $out.dk
+    if test $? -ne 0; then echo KO; exit 1; fi
+}
+
+echo translate files ...
 cd tests/OK
 for f in *.lp
 do
@@ -63,43 +71,20 @@ do
         298_lp|262_parsing|tail|698_abst_impl|330|330b|1035|varmatch|patt|freevars-constraints|eta_equality|declared|boolean|abstractions|303|301|292|225);;
         # opaque definition with no type (https://github.com/Deducteam/Dedukti/issues/319)
         547);;
-        *) lp_files="tests/OK/$f.lp $lp_files";;
+
+        # default case:
+        *) translate $f.lp;;
     esac
 done
 cd ../..
 
-# compile lp files
-compile() {
-    echo 'compile lp files ...'
-    #$lambdapi check -w -c $lp_files # does not work because of #802
-    for f in $lp_files
-    do
-        echo "compile $f ..."
-        $lambdapi check -w -v 0 -c $f
-    done
-}
-#time compile
-
-# translate lp files to dk files
-translate() {
-    echo 'translate lp files ...'
-    for f in $lp_files
-    do
-        f=${f%.lp}
-        out=$outdir/`echo $f | sed -e 's/\//_/g'`
-        echo "$f.lp --> $out.dk ..."
-        $lambdapi export -w -v 0 -o raw_dk $f.lp > $out.dk
-        if test $? -ne 0; then echo KO; exit 1; fi
-    done
-}
-time translate
-
-# check dk files
 check() {
+    echo
+    echo check translated files ...
     cd $outdir
     #https://github.com/Deducteam/Dedukti/issues/321
     #dk_files=`$dkdep -q -s $dk_files`
-    echo > Makefile <<__END__
+    cat > Makefile <<__END__
 FILES := \$(wildcard *.dk)
 default: \$(FILES:%.dk=%.dko)
 %.dko: %.dk
@@ -114,4 +99,4 @@ __END__
     if test $res -ne 0; then echo KO; else echo OK; fi
     exit $res
 }
-time check
+check
