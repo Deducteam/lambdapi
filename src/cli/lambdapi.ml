@@ -100,7 +100,7 @@ let parse_cmd : Config.t -> string list -> unit = fun cfg files ->
   Error.handle_exceptions run
 
 (** Possible outputs for the export command. *)
-type output = Lp | Dk | Hrs | Xtc | RawCoq | SttCoq
+type output = Lp | Dk | RawDk | Hrs | Xtc | RawCoq | SttCoq
 
 (** Running the export mode. *)
 let export_cmd (cfg:Config.t) (output:output option) (encoding:string option)
@@ -115,6 +115,7 @@ let export_cmd (cfg:Config.t) (output:output option) (encoding:string option)
     | None
     | Some Lp -> Pretty.ast Format.std_formatter (Parser.parse_file file)
     | Some Dk -> Export.Dk.sign (Compile.compile_file file)
+    | Some RawDk -> Export.Rawdk.print (Parser.parse_file file)
     | Some Hrs ->
       Export.Hrs.sign Format.std_formatter (Compile.compile_file file)
     | Some Xtc ->
@@ -229,6 +230,7 @@ let output : output option CLT.t =
       match s with
       | "lp" -> Ok Lp
       | "dk" -> Ok Dk
+      | "raw_dk" -> Ok RawDk
       | "hrs" -> Ok Hrs
       | "xtc" -> Ok Xtc
       | "raw_coq" -> Ok RawCoq
@@ -240,6 +242,7 @@ let output : output option CLT.t =
         (match o with
          | Lp -> "lp"
          | Dk -> "dk"
+         | RawDk -> "raw_dk"
          | Hrs -> "hrs"
          | Xtc -> "xtc"
          | RawCoq -> "raw_coq"
@@ -249,7 +252,8 @@ let output : output option CLT.t =
   in
   let doc =
     "Set the output format of the export command. The value of $(docv) \
-     must be `lp' (default), `dk`, `hrs`, `xtc`, `raw_coq` or `stt_coq`."
+     must be `lp' (default), `raw_dk`, `dk`, `hrs`, `xtc`, `raw_coq` or \
+     `stt_coq`."
   in
   Arg.(value & opt (some output) None & info ["output";"o"] ~docv:"FMT" ~doc)
 

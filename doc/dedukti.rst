@@ -19,13 +19,11 @@ accept the same class of identifiers and module/file names), we try to
 rename them instead of failing:
 
 - ``lp`` identifiers that are not valid ``dk`` identifiers or that are
-  ``dk`` keywords are enclosed between ``{|`` and ``|}`` and, in
-  escaped identifiers, spaces and newlines are replaced by
-  underscores.
+  ``dk`` keywords are enclosed between ``{|`` and ``|}``.
 
 - In module names, dots are replaced by underscores and, if a ``lp``
   file requires the module ``mylib.logic.untyped.fol``, its
   translation will require the file
   ``mylib_logic_untyped_fol.dk``. Therefore, in a package whose
-  ``root_path`` is ``mylib.logic``, the file ``untyped/fol.lp`` should
-  be translated into ``mylib_logic_untyped_fol.dk``.
+  ``root_path`` is ``mylib.logic``, the file ``untyped/fol.lp`` is
+  translated into ``mylib_logic_untyped_fol.dk``.

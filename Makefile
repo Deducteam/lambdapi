@@ -31,6 +31,7 @@ tests: lambdapi
 	@dune exec --only-packages lambdapi -- tests/dtrees.sh
 	@dune exec --only-packages lambdapi -- tests/export_dk.sh
 	@dune exec --only-packages lambdapi -- tests/export_lp.sh
+	@dune exec --only-packages lambdapi -- tests/export_raw_dk.sh
 
 .PHONY: tests_alt_ergo
 tests_alt_ergo: lambdapi
@@ -169,4 +170,3 @@ uninstall_vim_mode:
 .PHONY: build-vscode-extension
 build-vscode-extension:
 	cd editors/vscode && make && mkdir extensionFolder && vsce package -o extensionFolder
-	

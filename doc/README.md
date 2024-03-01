@@ -14,7 +14,10 @@ Where do I start?
 
 The documentation is available at <https://lambdapi.readthedocs.io>.
 
-It can also be generated from the sources and browsed locally using any web
+The online documentation generation is triggered each time new code is pushed to the master branch of the lambdapi repository on Github.
+To this end, make sure the `.readthedocs.yaml` file is placed in the top-most directory of the Lambdapi repository and contains the well-suited configuration instructions as described in the [readthedocs documentation](https://docs.readthedocs.io/en/stable/config-file/index.html).
+
+The Lamdbapi user manual can also be generated from the sources and browsed locally using any web
 browser.
 
 To generate the documentation, [Sphinx](https://www.sphinx-doc.org/)
@@ -26,9 +29,9 @@ sudo apt install python3-pip
 pip install -U sphinx sphinx_rtd_theme
 ```
 
-Change to directory `docs/` from the root of the sources
-and use `make html` to generate `html` files into `docs/_build/html`.
-The entry point of the documentation is `docs/_build/html/index.html`.
+Change to directory `doc/` from the root of the sources
+and use `make html` to generate `html` files into `doc/_build/html`.
+The entry point of the documentation is `doc/_build/html/index.html`.
 
 How do I contribute?
 --------------------

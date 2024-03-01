@@ -107,6 +107,30 @@ let p_get_args : p_term -> p_term * p_term list = fun t ->
     | _            -> t, acc
   in p_get_args t []
 
+(** [pvars_lhs t] computes the set of pattern variable names in [t], assuming
+    that [t] is a rule LHS. *)
+let rec pvars_lhs : p_term -> StrSet.t = fun {elt;pos} ->
+  match elt with
+  | P_Type
+  | P_Iden _
+  | P_Wild
+  | P_Patt(None,_)
+  | P_NLit _
+    -> StrSet.empty
+  | P_Meta _
+  | P_LLet _
+  | P_Arro _
+  | P_Prod _
+    -> assert false
+  | P_Patt(Some{elt;_},_) ->
+      StrSet.singleton elt
+  | P_Appl(u,v) ->
+      StrSet.union (pvars_lhs u) (pvars_lhs v)
+  | P_Abst(_,u) (*FIXME: get pattern variables in types?*)
+  | P_Wrap u
+  | P_Expl u
+    -> pvars_lhs u
+
 (** Parser-level rewriting rule representation. *)
 type p_rule_aux = p_term * p_term
 type p_rule = p_rule_aux loc
