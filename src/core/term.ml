@@ -365,7 +365,8 @@ let create_sym : Path.t -> expo -> prop -> match_strat -> bool ->
     { elt = sym_name; pos = sym_pos } sym_decl_pos
     typ sym_impl ->
   {sym_path; sym_name; sym_type = ref typ; sym_impl; sym_def = ref None;
-   sym_opaq = ref sym_opaq; sym_rules = ref []; sym_dtree = ref Tree_type.empty_dtree;
+   sym_opaq = ref sym_opaq; sym_rules = ref [];
+   sym_dtree = ref Tree_type.empty_dtree;
    sym_mstrat; sym_prop; sym_expo; sym_pos ; sym_decl_pos }
 
 (** [is_constant s] tells whether [s] is a constant. *)

@@ -1,5 +1,5 @@
-`Vim <https://www.vim.org/>`__
-==============================
+`Vim <https://www.vim.org/>`__ (not maintained anymore)
+=======================================================
 
 A minimal Vim mode is provided to edit Lambdapi files. It provides
 syntax highlighting and abbreviations to enter unicode characters.

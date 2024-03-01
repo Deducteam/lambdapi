@@ -5,8 +5,6 @@ open Timed
 open Common
 open Core open Term
 
-let string = string
-
 (** Translation of identifiers. Lambdapi identifiers that are Dedukti keywords
    or invalid Dedukti identifiers are escaped, a feature offered by
    Dedukti. *)
@@ -56,9 +54,7 @@ let is_ident : string -> bool = fun s ->
 let is_mident : string -> bool = fun s ->
   Parsing.DkLexer.is_mident (Lexing.from_string s)
 
-let escape : string pp = fun ppf s -> out ppf "{|%s|}" s
-
-let replace_spaces : string -> string = fun s ->
+(*let replace_spaces : string -> string = fun s ->
   let open Bytes in
   let b = of_string s in
   for i=0 to length b - 1 do
@@ -66,23 +62,22 @@ let replace_spaces : string -> string = fun s ->
     | ' ' | '\n' -> set b i '_'
     | _ -> ()
   done;
-  to_string b
+  to_string b*)
 
 let ident : string pp = fun ppf s ->
-  if s = "" then escape ppf s
-  else if s.[0] = '{' then string ppf (replace_spaces s)
-  else if is_keyword s then escape ppf s
-  else if is_ident s then string ppf s
-  else escape ppf s
+  string ppf
+    (if s = "" then Escape.escape s
+     else if s.[0] = '{' then s
+     else if is_keyword s then Escape.escape s
+     else if is_ident s then s
+     else Escape.escape s)
 
 (** Translation of paths. Paths equal to the [!current_path] are not
    printed. Non-empty paths end with a dot. We assume that the module p1.p2.p3
    is in the file p1_p2_p3.dk. *)
 
 let path_elt : string pp = fun ppf s ->
-  if s <> "" && s.[0] = '{' then
-    string ppf (replace_spaces (Escape.unescape s))
-  else string ppf s
+  string ppf (if Escape.is_escaped s then Escape.unescape s else s)
 
 let current_path = Stdlib.ref []
 
@@ -91,11 +86,9 @@ let path : Path.t pp = fun ppf p ->
   match p with
   | [] -> ()
   | p ->
-      let joined_path = Format.asprintf "%a" (List.pp path_elt "_") p in
-      if List.for_all is_mident p then
-        out ppf "%s." joined_path
-      else
-        Format.fprintf ppf "%a." escape joined_path
+      let m = Format.asprintf "%a" (List.pp path_elt "_") p in
+      let m = if is_mident m then m else Escape.escape m in
+      out ppf "%s." m
 
 let qid : (Path.t * string) pp = fun ppf (p, i) ->
   out ppf "%a%a" path p ident i

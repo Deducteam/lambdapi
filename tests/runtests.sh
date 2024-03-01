@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -e
+
 lambdapi='dune exec -- lambdapi check'
 TIMEFORMAT="%Es"
 

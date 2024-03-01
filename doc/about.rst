@@ -10,15 +10,23 @@ This allows to simplify some proofs, and formalize complex
 mathematical objects that are otherwise impossible or difficult to
 formalize in more traditional proof systems.
 
-Lambdapi can also take as input `Dedukti`_ files, and can thus be used
-as an interoperability tool.
+Lambdapi is mostly compatible with `Dedukti`_ in the sense that it can
+take Dedukti files as input and output Dedukti files as well.
 
-Lambdapi is a logical framework and does not come with a pre-defined
-logic. However, it is easy to define a logic by a few symbols and
-rules. See for instance, the file `FOL.lp
+Definitions and proofs written in Lambdapi can be exported to Coq as
+well, to some extent. Lambdapi can thus be used as an interoperability
+tool.
+
+Finally, Lambdapi is a logical framework, that is, it does not come
+with a pre-defined logic. Instead, one has to start defining its own
+logic. It is usually not too difficult to define a logic with a few
+symbols and rewrite rules, and Lambdapi comes with a `repository of
+pre-defined logics
+<https://github.com/Deducteam/lambdapi-logics>`__. See for instance,
+the file `FOL.lp
 <https://github.com/fblanqui/lib/blob/master/FOL.lp>`__ which defines
 (polymorphic) first-order logic. There also exist definitions for the
-logics of HOL, Coq or Agda.
+logics of HOL-Light, Coq or Agda.
 
 Here are some of the features of Lambdapi:
 
