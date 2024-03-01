@@ -38,11 +38,11 @@ handled independently in the order they are given. The program
 immediately stops on the first failure, without going to the next file
 (if any).
 
-**index:**
+**Remark on index:**
 
 The ``index`` command generates the file ``~/.LPSearch.db``. This file contains an indexation of all the symbols and rules occurring in the dk/lp files given in argument. By default, the file ``~/.LPSearch.db`` is erased first. To append new symbols and rules, use the option ``--add``. It is also possile to normalize terms wrt some rules before indexation by using ``--rules`` options.
 
-**search:**
+**Remark on search:**
 
 The command ``search`` takes as argument a query and runs it against the index file ``~/.LPSearch.db``. See :doc:`query_language` for the specification of the query language.
 
@@ -63,12 +63,10 @@ The commands ``check``, ``decision-tree``, ``export``, ``parse``,
 
 * ``-v <NUM>``, ``--verbose=<NUM>`` sets the verbosity level to the given natural number (the default value is 1). A value of 0 should not print anything, and the higher values print more and more information.
 
-
 check
 -----
 
 * ``-c``, ``--gen-obj`` instructs Lambdapi to generate object files for every checked module (including dependencies). Object files have the extension ``.lpo`` and they are automatically read back when necessary if they exist and are up to date (they are regenerated otherwise).
-
 
 * ``--too-long=<FLOAT>`` gives a warning for each interpreted source file command taking more than the given number of seconds to be checked. The parameter ``FLOAT`` is expected to be a floating point number.
 
@@ -79,14 +77,17 @@ export
 
   - ``lp``: Lambdapi format
   - ``dk``:  `Dedukti <https://github.com/Deducteam/dedukti>`__ format
+  - ``raw_dk``:  `Dedukti <https://github.com/Deducteam/dedukti>`__ format
   - ``hrs``: `HRS <http://project-coco.uibk.ac.at/problems/hrs.php>`__ format of the confluence competition
   - ``xtc``: `XTC <https://raw.githubusercontent.com/TermCOMP/TPDB/master/xml/xtc.xsd>`__ format of the termination competition
   - ``raw_coq``: `Coq <https://coq.inria.fr/>`__ format
   - ``stt_coq``: `Coq <https://coq.inria.fr/>`__ format assuming that the input file is in an encoding of simple type theory
 
-**WARNING**: The options ``raw_coq`` and ``stt_coq`` are still experimental.
+**WARNING**: With the formats ``raw_coq``, ``stt_coq`` and ``raw_dk``, the translation is done after parsing but before elaboration. So they cannot translate any input file, and the output may be incomplete or fail to type-check.
 
-With the options ``raw_coq`` and ``stt_coq``, rules are ignored. The encoding of simple type theory can however be defined in Coq using `STTfa.v <https://github.com/Deducteam/lambdapi/blob/master/libraries/sttfa.v>`__.
+The format ``raw_dk`` does not accept the commands notation and inductive, and proofs, which require elaboration.
+
+With the formats ``raw_coq`` and ``stt_coq``, rules are ignored. The encoding of simple type theory can however be defined in Coq using `STTfa.v <https://github.com/Deducteam/lambdapi/blob/master/libraries/sttfa.v>`__.
 
 For the format ``stt_coq``, several other options are available:
 
