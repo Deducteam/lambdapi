@@ -21,27 +21,28 @@ reset_outdir() {
 reset_outdir
 
 # compute lp files to test
-for f in tests/OK/*.lp
+cd tests/OK
+for f in *.lp
 do
     f=${f%.lp}
     case $f in
         # commutative and non associative symbol
-        tests/OK/ac);;
-        # unicode character in module name
-        tests/OK/π/utf_path);;
-        # space in module name
-        tests/OK/escape_path|'tests/OK/a b/escape file');;
+        ac);;
         # protected symbol in rule LHS arguments
-        tests/OK/262_private_in_lhs);;
+        262_private_in_lhs);;
         # dedukti SR algorithm fails
-        tests/OK/273|tests/OK/813);;
-        #FIXME
-        tests/OK/file.with.dot|tests/OK/req.file.with.dot);;
-        tests/OK/indind);;
-        tests/OK/why3*);;
+        273|813);;
+        # FIXME
+        file.with.dot|req.file.with.dot);;
+        indind);;
+        why3*);;
+        # require escaped module name
+        π/utf_path|escape_path|'a b/escape file'|require_nondkmident);;
+        # default case
         *) lp_files="$f.lp $lp_files";;
     esac
 done
+cd ../..
 
 # compile lp files
 compile() {
@@ -50,7 +51,7 @@ compile() {
     for f in $lp_files
     do
         echo "compile $f ..."
-        $lambdapi check -w -v 0 -c $f
+        $lambdapi check -w -v 0 -c tests/OK/$f
     done
 }
 #time compile
@@ -60,7 +61,7 @@ translate() {
     echo 'translate lp files ...'
     for f in $lp_files
     do
-        f=${f%.lp}
+        f=tests/OK/${f%.lp}
         out=$outdir/`echo $f | sed -e 's/\//_/g'`
         echo "$f.lp --> $out.dk ..."
         $lambdapi export -w -v 0 -o dk $f.lp > $out.dk
