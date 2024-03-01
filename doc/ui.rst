@@ -14,6 +14,6 @@ currently, deactivate goal display.
 
    emacs.rst
    vscode.rst
-   vim.rst
+   vim.rst (not maintained anymore)
 
 .. _LSP protocol: https://microsoft.github.io/language-server-protocol/

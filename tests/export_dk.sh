@@ -39,9 +39,7 @@ do
         tests/OK/file.with.dot|tests/OK/req.file.with.dot);;
         tests/OK/indind);;
         tests/OK/why3*);;
-        *) lp_files="$f.lp $lp_files";
-           f=`echo $f | sed -e 's/\//_/g'`;
-           dk_files="$f.dk $dk_files";;
+        *) lp_files="$f.lp $lp_files";;
     esac
 done
 
@@ -82,7 +80,7 @@ default: \$(FILES:%.dk=%.dko)
 %.dko: %.dk
 	dk check -e \$<
 __END__
-    $dkdep -q $dk_files >> Makefile
+    $dkdep -q *.dk >> Makefile
     #echo $dkcheck -q -e $dk_files ...
     #$dkcheck -q -e $dk_files
     make

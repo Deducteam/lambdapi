@@ -10,20 +10,13 @@ let raw_ident : string pp = fun ppf s -> Dk.ident ppf s
 
 let ident : p_ident pp = fun ppf {elt;_} -> raw_ident ppf elt
 
+let qident : p_qident pp = fun ppf {elt=(mp,s);_} ->
+  out ppf "%a%a" Dk.path mp raw_ident s
+
 let param_id : p_ident option pp = fun ppf idopt ->
   match idopt with
   | Some id -> ident ppf id
   | None     -> out ppf "_"
-
-let raw_path : Path.t pp = List.pp string "."
-
-let path : p_path pp = fun ppf {elt;_} -> raw_path ppf elt
-
-let qident : p_qident pp = fun ppf ({elt=(mp,s);pos} as qid) ->
-  match mp with
-  | [] -> raw_ident ppf s
-  | [_;m] -> out ppf "%a.%a" raw_ident m raw_ident s
-  | _ -> fatal pos "Cannot be translated: %a.@." Pretty.qident qid
 
 let rec term : p_term pp = fun ppf t ->
   match t.elt with

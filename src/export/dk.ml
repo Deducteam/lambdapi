@@ -5,8 +5,6 @@ open Timed
 open Common
 open Core open Term
 
-let string = string
-
 (** Translation of identifiers. Lambdapi identifiers that are Dedukti keywords
    or invalid Dedukti identifiers are escaped, a feature offered by
    Dedukti. *)
