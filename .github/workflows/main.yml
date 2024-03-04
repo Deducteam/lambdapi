@@ -44,7 +44,7 @@ jobs:
           npm install -g vsce 
           make build-vscode-extension
       - name: publish vscode extension
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with: 
           name: assets-for-download
           path: editors/vscode/extensionFolder
