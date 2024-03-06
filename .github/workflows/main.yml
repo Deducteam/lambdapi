@@ -4,7 +4,7 @@ on:
   push:
   workflow_dispatch:
 jobs:
-  build:
+  build_lambdapi:
     strategy:
       fail-fast: false
       matrix:
@@ -34,8 +34,15 @@ jobs:
           eval $(opam env)
           #why3 config detect
           make tests
+  build_vscode_extension:
+    strategy:
+      fail-fast: false
+    runs-on: ubuntu-latest
+    steps:
+      - name: checking out lambdapi repo ...
+        uses: actions/checkout@v4
       - name: Use Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: latest
       - name: generate-vscode-extension
