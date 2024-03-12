@@ -24,16 +24,23 @@ import {
     WebviewViewResolveContext, 
     TextDocumentChangeEvent, 
     Diagnostic, 
-    languages 
+    languages,
+    WorkspaceConfiguration
 } from 'vscode';
 
 // Insiders API, disabled
 // import { WebviewEditorInset } from 'vscode';
 
 import {
-    LanguageClient,
+    BaseLanguageClient,
     LanguageClientOptions,
     RequestType,
+    RevealOutputChannelOn,
+    VersionedTextDocumentIdentifier,
+  } from "vscode-languageclient";
+
+import {
+    LanguageClient,
     NotificationType,
     TextDocumentIdentifier,
     RegistrationRequest,
@@ -42,9 +49,17 @@ import {
 
 import { assert, time } from 'console';
 
-let client: LanguageClient;
+let client: BaseLanguageClient;
 
-export function activateClientLSP(context: ExtensionContext) {
+// Client Factory types
+export type ClientFactoryType = (
+    context: ExtensionContext,
+    clientOptions: LanguageClientOptions,
+    wsConfig: WorkspaceConfiguration
+  ) => BaseLanguageClient;
+
+export function activateClientLSP(context: ExtensionContext,
+    clientFactory: ClientFactoryType) {
 
     workspace.onDidChangeTextDocument((e)=>{
         lpDocChangeHandler(e, context);
@@ -107,7 +122,10 @@ export function activateClientLSP(context: ExtensionContext) {
             client.stop();
         }
 
-        client = new LanguageClient(
+        const wsConfig = workspace.getConfiguration("lambdapi");
+
+        // client = clientFactory(context, clientOptions, wsConfig);
+        client =  new LanguageClient(
             'lambdapi',
             'lambdapi language server',
             serverOptions,
