@@ -44,7 +44,7 @@ import { assert, time } from 'console';
 
 let client: LanguageClient;
 
-export function activate(context: ExtensionContext) {
+export function activateClientLSP(context: ExtensionContext) {
 
     workspace.onDidChangeTextDocument((e)=>{
         lpDocChangeHandler(e, context);
@@ -611,7 +611,7 @@ function sendGoalsRequest(position: Position, panel : WebviewPanel, docUri : Uri
 }
 
 
-export function deactivate(): Thenable<void> | undefined {
+export function deactivateClientLSP(): Thenable<void> | undefined {
     if (!client) {
         return undefined;
     }

@@ -5,10 +5,12 @@
     "outDir": "out",
     "sourceMap": true,
     "strict": true,
-    "rootDir": "."
+    "rootDir": ".",
+    "skipLibCheck": true
   },
   "files": [
-    "src/client.ts"
+    "src/client.ts",
+    "src/browser.ts"
   ],
   // Default if not specified is node_modules, out, etc...
   "exclude": [
