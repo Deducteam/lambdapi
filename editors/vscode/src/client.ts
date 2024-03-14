@@ -65,7 +65,10 @@ export function activateClientLSP(context: ExtensionContext,
         lpDocChangeHandler(e, context);
     })
 
-
+    function registerCommand(command: string, fn: () => void) {
+        let disposable = commands.registerCommand(command, fn);
+        context.subscriptions.push(disposable);
+      }
 
 function goToProofState() {
 
@@ -194,6 +197,42 @@ function checkProofUntilCursor() {
 }
 
 
+
+function goToNextProof() {
+    nextProof(true);
+}
+
+function goToPreviousProof() {
+    nextProof(false);
+}
+function nextProof(direction: boolean) {
+
+    //Checking workspace
+    const openEditor: TextEditor | undefined = window.activeTextEditor;
+    if (!openEditor) {
+        console.log("No editor opened");
+        return;
+    }
+
+    const proofState: Position | undefined = context.workspaceState.get('proofState');
+    const panel: WebviewPanel | undefined = context.workspaceState.get('panel');
+
+    if (!proofState || !panel) {
+        console.log('nextProof : workspace variables are not properly defined');
+        return;
+    }
+
+    //The position of the next proof
+    let nextProofPos: Position = stepCommand(openEditor.document, proofState, direction, ['begin']);
+
+    context.workspaceState.update('proofState', nextProofPos); //proof state is set to the position of the next proof keyword
+
+    refreshGoals(panel, openEditor, nextProofPos, context); //Goals panel is refreshed
+
+    highlight(context, nextProofPos, openEditor);
+}
+
+
     //___Declaration of workspace variables___
 
     //Position of the proof cursor : colored highlights show until which point the proof was surveyed
@@ -298,33 +337,41 @@ function checkProofUntilCursor() {
                 *if true, the "Proof" panel is updated when the cursor is moved
                 *if false, updated when keybindings are pressed
             */
-            commands.registerCommand('extension.lambdapi.cursor', () => toggleCursorMode());
+            registerCommand('extension.lambdapi.cursor', toggleCursorMode);
+            //commands.registerCommand('extension.lambdapi.cursor', () => toggleCursorMode());
 
             //Navigate proof : step forward in a proof 
-            commands.registerCommand('extension.lambdapi.fw', () => checkProofForward());
+            registerCommand('extension.lambdapi.fw', checkProofForward);
+//            commands.registerCommand('extension.lambdapi.fw', () => checkProofForward());
 
             //Navigate proof : step backward in a proof
-            commands.registerCommand('extension.lambdapi.bw', () => checkProofBackward());
+            registerCommand('extension.lambdapi.bw', checkProofBackward);
+//            commands.registerCommand('extension.lambdapi.bw', () => checkProofBackward());
 
             //Navigate proof : move proof highlight to cursor
-            commands.registerCommand('extension.lambdapi.tc', () => checkProofUntilCursor());
+            registerCommand('extension.lambdapi.tc', checkProofUntilCursor);
+            // commands.registerCommand('extension.lambdapi.tc', () => checkProofUntilCursor());
 
             //Window follows proof or not
-            commands.registerCommand('extension.lambdapi.reveal', () => toggleFollowMode())
+            registerCommand('extension.lambdapi.reveal', toggleFollowMode);
+            // commands.registerCommand('extension.lambdapi.reveal', () => toggleFollowMode())
 
             //Center window on proof state
-            commands.registerCommand('extension.lambdapi.center', () => goToProofState());
+            registerCommand('extension.lambdapi.center', goToProofState);
+            // commands.registerCommand('extension.lambdapi.center', () => goToProofState());
 
             //Go to next/previous proof
-            commands.registerCommand('extension.lambdapi.nx', () => nextProof(context, true));
-            commands.registerCommand('extension.lambdapi.pv', () => nextProof(context, false));
+            registerCommand('extension.lambdapi.nx', goToNextProof);
+            registerCommand('extension.lambdapi.pv', goToPreviousProof);
+            // commands.registerCommand('extension.lambdapi.nx', () => nextProof(context, true));
+            // commands.registerCommand('extension.lambdapi.pv', () => nextProof(context, false));
 
         });
 
         context.subscriptions.push(client);
     };
-
-    commands.registerCommand('extension.lambdapi.restart', restart);
+    registerCommand('extension.lambdapi.restart', restart);
+//    commands.registerCommand('extension.lambdapi.restart', restart);
 
     restart();
 }
@@ -422,33 +469,6 @@ function lpRefresh(context: ExtensionContext, proofPos: Position, panel: Webview
     refreshGoals(panel, openEditor, proofPos, context); //Goals panel is refreshed
 
     highlight(context, proofPos, openEditor);
-}
-
-function nextProof(context: ExtensionContext, direction: boolean) {
-
-    //Checking workspace
-    const openEditor: TextEditor | undefined = window.activeTextEditor;
-    if (!openEditor) {
-        console.log("No editor opened");
-        return;
-    }
-
-    const proofState: Position | undefined = context.workspaceState.get('proofState');
-    const panel: WebviewPanel | undefined = context.workspaceState.get('panel');
-
-    if (!proofState || !panel) {
-        console.log('nextProof : workspace variables are not properly defined');
-        return;
-    }
-
-    //The position of the next proof
-    let nextProofPos: Position = stepCommand(openEditor.document, proofState, direction, ['begin']);
-
-    context.workspaceState.update('proofState', nextProofPos); //proof state is set to the position of the next proof keyword
-
-    refreshGoals(panel, openEditor, nextProofPos, context); //Goals panel is refreshed
-
-    highlight(context, nextProofPos, openEditor);
 }
 
 function decorate(openEditor: TextEditor, range: Range | null, decorationType: TextEditorDecorationType) {
