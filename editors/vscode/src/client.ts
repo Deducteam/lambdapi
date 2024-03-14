@@ -67,7 +67,7 @@ export function activateClientLSP(context: ExtensionContext,
 
 
 
-function goToProofState(context: ExtensionContext) {
+function goToProofState() {
 
     const proofState: Position | undefined = context.workspaceState.get('proofState');
     if (!proofState) {
@@ -78,7 +78,7 @@ function goToProofState(context: ExtensionContext) {
     commands.executeCommand('revealLine', { lineNumber: proofState.line, at: 'center' });
 }
 
-function toggleCursorMode(context: ExtensionContext): boolean {
+function toggleCursorMode(): boolean {
     let cursorMode: boolean = context.workspaceState.get('cursorMode') ?? false;
 
     cursorMode = !cursorMode;
@@ -90,7 +90,7 @@ function toggleCursorMode(context: ExtensionContext): boolean {
 
         //By default, follow mode is disabled in cursor mode (because it may be nausea-inducing)
         if (context.workspaceState.get('follow'))
-            toggleFollowMode(context);
+            toggleFollowMode();
     }
 
     else {
@@ -99,13 +99,13 @@ function toggleCursorMode(context: ExtensionContext): boolean {
 
         //By default, follow mode is enabled when cursor mode is off (because it is more practical)
         if (!context.workspaceState.get('follow'))
-            toggleFollowMode(context);
+            toggleFollowMode();
     }
 
     return cursorMode;
 }
 
-function toggleFollowMode(context: ExtensionContext): boolean {
+function toggleFollowMode(): boolean {
     let follow: boolean = context.workspaceState.get('follow') ?? false;
 
     follow = !follow;
@@ -121,7 +121,7 @@ function toggleFollowMode(context: ExtensionContext): boolean {
     return follow;
 }
 
-function checkProofForward(context: ExtensionContext) {
+function checkProofForward() {
 
     //Checking workspace
     const openEditor: TextEditor | undefined = window.activeTextEditor;
@@ -140,7 +140,7 @@ function checkProofForward(context: ExtensionContext) {
         lpRefresh(context, newPos, panel, openEditor);
 }
 
-function checkProofBackward(context: ExtensionContext) {
+function checkProofBackward() {
 
     //Checking workspace
     const openEditor: TextEditor | undefined = window.activeTextEditor;
@@ -161,7 +161,7 @@ function checkProofBackward(context: ExtensionContext) {
         lpRefresh(context, newPos, panel, openEditor);
 }
 
-function checkProofUntilCursor(context: ExtensionContext) {
+function checkProofUntilCursor() {
 
     //Checking workspace
     const openEditor: TextEditor | undefined = window.activeTextEditor;
@@ -291,29 +291,29 @@ function checkProofUntilCursor(context: ExtensionContext) {
                 if (!cursorMode)
                     return;
 
-                checkProofUntilCursor(context);
+                checkProofUntilCursor();
             });
 
             /*Toggle cursor mode (defaults to false)
                 *if true, the "Proof" panel is updated when the cursor is moved
                 *if false, updated when keybindings are pressed
             */
-            commands.registerCommand('extension.lambdapi.cursor', () => toggleCursorMode(context));
+            commands.registerCommand('extension.lambdapi.cursor', () => toggleCursorMode());
 
             //Navigate proof : step forward in a proof 
-            commands.registerCommand('extension.lambdapi.fw', () => checkProofForward(context));
+            commands.registerCommand('extension.lambdapi.fw', () => checkProofForward());
 
             //Navigate proof : step backward in a proof
-            commands.registerCommand('extension.lambdapi.bw', () => checkProofBackward(context));
+            commands.registerCommand('extension.lambdapi.bw', () => checkProofBackward());
 
             //Navigate proof : move proof highlight to cursor
-            commands.registerCommand('extension.lambdapi.tc', () => checkProofUntilCursor(context));
+            commands.registerCommand('extension.lambdapi.tc', () => checkProofUntilCursor());
 
             //Window follows proof or not
-            commands.registerCommand('extension.lambdapi.reveal', () => toggleFollowMode(context))
+            commands.registerCommand('extension.lambdapi.reveal', () => toggleFollowMode())
 
             //Center window on proof state
-            commands.registerCommand('extension.lambdapi.center', () => goToProofState(context));
+            commands.registerCommand('extension.lambdapi.center', () => goToProofState());
 
             //Go to next/previous proof
             commands.registerCommand('extension.lambdapi.nx', () => nextProof(context, true));
