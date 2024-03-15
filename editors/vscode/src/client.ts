@@ -32,6 +32,12 @@ import {
 // import { WebviewEditorInset } from 'vscode';
 
 import {
+    LspClientConfig,
+    LspServerConfig,
+    LSPDocumentSelector,
+  } from "./config";
+
+import {
     BaseLanguageClient,
     LanguageClientOptions,
     RequestType,
@@ -55,7 +61,8 @@ let client: BaseLanguageClient;
 export type ClientFactoryType = (
     context: ExtensionContext,
     clientOptions: LanguageClientOptions,
-    wsConfig: WorkspaceConfiguration
+    wsConfig: WorkspaceConfiguration,
+    lspServerPath: any,
 ) => BaseLanguageClient;
 
 export function activateClientLSP(context: ExtensionContext,
@@ -274,14 +281,22 @@ function nextProof(direction: boolean) {
     const lspServerPath = workspace.getConfiguration('lambdapi').path;
     console.log(lspServerPath);
 
-    let serverOptions = {
-        command: lspServerPath,
-        args: ['lsp']
-        // args: [ '--std' ]
-    };
+    const wsConfig = workspace.getConfiguration("lambdapi");
 
-    let clientOptions: LanguageClientOptions = {
-        documentSelector: [{ scheme: 'file', language: 'lp' }],
+    let client_version = context.extension.packageJSON.version;
+    const initializationOptions = LspServerConfig.create(
+      client_version,
+      wsConfig
+    );
+    const clientOptions: LanguageClientOptions = {
+        documentSelector: [
+            { scheme: 'file', language: 'lp' },
+            { scheme: "file", language: "markdown", pattern: "**/*.lp" },
+        ],
+        outputChannelName: "Lambdapi LSP Server Events",
+        revealOutputChannelOn: RevealOutputChannelOn.Info,
+        initializationOptions,
+        markdown: { isTrusted: true, supportHtml: true },
     };
 
     const restart = () => {
@@ -290,18 +305,15 @@ function nextProof(direction: boolean) {
             client.stop();
         }
 
-        const wsConfig = workspace.getConfiguration("lambdapi");
 
-        // client = clientFactory(context, clientOptions, wsConfig);
-        client = new LanguageClient(
-            'lambdapi',
-            'lambdapi language server',
-            serverOptions,
-            clientOptions
-        );
+        let cP = new Promise<BaseLanguageClient>((resolve) => {
+            client = clientFactory(context, clientOptions, wsConfig, lspServerPath);
+            resolve(client);
+          });
 
-        client.start().then(() => {
-
+        window.showInformationMessage("client created");
+        cP.then((client) => client.start().then(() => {
+            window.showInformationMessage("client started");
             // Create and show panel for proof goals
             const panel = window.createWebviewPanel(
                 'goals',
@@ -366,7 +378,7 @@ function nextProof(direction: boolean) {
             // commands.registerCommand('extension.lambdapi.nx', () => nextProof(context, true));
             // commands.registerCommand('extension.lambdapi.pv', () => nextProof(context, false));
 
-        });
+        }));
 
         context.subscriptions.push(client);
     };

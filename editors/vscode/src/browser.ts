@@ -1,18 +1,18 @@
-import { ExtensionContext } from "vscode";
-import { LanguageClient } from "vscode-languageclient/browser";
-import { activateClientLSP, ClientFactoryType, deactivateClientLSP} from "./client";
+import { ExtensionContext, window } from "vscode";
+import { LanguageClient } from "vscode-languageclient/node";
+import { activateClientLSP, ClientFactoryType, deactivateClientLSP } from "./client";
 
 export function activate(context: ExtensionContext): void {
-  const cf: ClientFactoryType = (context, clientOptions, wsConfig) => {
-    // Pending on having the API to fetch the worker file.
-    throw "Worker not found";
-    let worker = new Worker("");
+  const cf: ClientFactoryType = (context, clientOptions, wsConfig, lspServerPath) => {
+    let serverOptions = {
+      command: lspServerPath,
+      args: ['lsp']
+    };
     return new LanguageClient(
       "lambdapi",
       "lambdapi language server",
-      clientOptions,
-      worker
-    );
+      serverOptions,
+      clientOptions);
   };
   activateClientLSP(context, cf);
 }
