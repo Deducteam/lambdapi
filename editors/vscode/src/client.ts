@@ -35,7 +35,7 @@ import {
     LspClientConfig,
     LspServerConfig,
     LSPDocumentSelector,
-  } from "./config";
+} from "./config";
 
 import {
     BaseLanguageClient,
@@ -72,172 +72,215 @@ export function activateClientLSP(context: ExtensionContext,
         lpDocChangeHandler(e, context);
     })
 
+
+    /*Toggle cursor mode (defaults to false)
+*if true, the "Proof" panel is updated when the cursor is moved
+*if false, updated when keybindings are pressed
+*/
+    registerCommand('extension.lambdapi.cursor', toggleCursorMode);
+    //Navigate proof : step forward in a proof 
+    registerCommand('extension.lambdapi.fw', checkProofForward);
+    //Navigate proof : step backward in a proof
+    registerCommand('extension.lambdapi.bw', checkProofBackward);
+    //Navigate proof : move proof highlight to cursor
+    registerCommand('extension.lambdapi.tc', checkProofUntilCursor);
+    //Window follows proof or not
+    registerCommand('extension.lambdapi.reveal', toggleFollowMode);
+    //Center window on proof state
+    registerCommand('extension.lambdapi.center', goToProofState);
+    //Go to next/previous proof
+    registerCommand('extension.lambdapi.nx', goToNextProof);
+    registerCommand('extension.lambdapi.pv', goToPreviousProof);
+    // context.subscriptions.push(client);
+
+    window.onDidChangeActiveTextEditor(e => {
+
+        const proofState: Position | undefined = context.workspaceState.get('proofState');
+        const panel: WebviewPanel | undefined = context.workspaceState.get('panel');
+
+        if (!proofState || !panel) {
+            console.log('onDidChangeActiveTextEditor : workspace variables are not properly defined');
+            return;
+        }
+
+        refreshGoals(panel, e, proofState, context);
+    });
+
+    window.onDidChangeTextEditorSelection(e => {
+
+        const cursorMode: boolean = context.workspaceState.get('cursorMode') ?? false;
+        if (!cursorMode)
+            return;
+
+        checkProofUntilCursor();
+    });
+
     function registerCommand(command: string, fn: () => void) {
         let disposable = commands.registerCommand(command, fn);
         context.subscriptions.push(disposable);
-      }
-
-function goToProofState() {
-
-    const proofState: Position | undefined = context.workspaceState.get('proofState');
-    if (!proofState) {
-        console.log("goToProofState : proofState workspace variable not set properly");
-        return;
     }
 
-    commands.executeCommand('revealLine', { lineNumber: proofState.line, at: 'center' });
-}
+    function goToProofState() {
 
-function toggleCursorMode(): boolean {
-    let cursorMode: boolean = context.workspaceState.get('cursorMode') ?? false;
+        const proofState: Position | undefined = context.workspaceState.get('proofState');
+        if (!proofState) {
+            console.log("goToProofState : proofState workspace variable not set properly");
+            return;
+        }
 
-    cursorMode = !cursorMode;
-    context.workspaceState.update('cursorMode', cursorMode);
-
-    if (cursorMode) {
-
-        window.showInformationMessage("Cursor navigation enabled");
-
-        //By default, follow mode is disabled in cursor mode (because it may be nausea-inducing)
-        if (context.workspaceState.get('follow'))
-            toggleFollowMode();
+        commands.executeCommand('revealLine', { lineNumber: proofState.line, at: 'center' });
     }
 
-    else {
+    function toggleCursorMode(): boolean {
+        let cursorMode: boolean = context.workspaceState.get('cursorMode') ?? false;
 
-        window.showInformationMessage("Cursor navigation disabled");
+        cursorMode = !cursorMode;
+        context.workspaceState.update('cursorMode', cursorMode);
 
-        //By default, follow mode is enabled when cursor mode is off (because it is more practical)
-        if (!context.workspaceState.get('follow'))
-            toggleFollowMode();
+        if (cursorMode) {
+
+            window.showInformationMessage("Cursor navigation enabled");
+
+            //By default, follow mode is disabled in cursor mode (because it may be nausea-inducing)
+            if (context.workspaceState.get('follow'))
+                toggleFollowMode();
+        }
+
+        else {
+
+            window.showInformationMessage("Cursor navigation disabled");
+
+            //By default, follow mode is enabled when cursor mode is off (because it is more practical)
+            if (!context.workspaceState.get('follow'))
+                toggleFollowMode();
+        }
+
+        return cursorMode;
     }
 
-    return cursorMode;
-}
+    function toggleFollowMode(): boolean {
+        let follow: boolean = context.workspaceState.get('follow') ?? false;
 
-function toggleFollowMode(): boolean {
-    let follow: boolean = context.workspaceState.get('follow') ?? false;
-
-    follow = !follow;
-    context.workspaceState.update('follow', follow);
+        follow = !follow;
+        context.workspaceState.update('follow', follow);
 
 
-    if (follow)
-        window.showInformationMessage("Window follows highlights");
+        if (follow)
+            window.showInformationMessage("Window follows highlights");
 
-    else
-        window.showInformationMessage("Window doesn't follow highlights");
+        else
+            window.showInformationMessage("Window doesn't follow highlights");
 
-    return follow;
-}
-
-function checkProofForward() {
-
-    //Checking workspace
-    const openEditor: TextEditor | undefined = window.activeTextEditor;
-    if (!openEditor)
-        return;
-
-    const proofState: Position | undefined = context.workspaceState.get('proofState');
-    const panel: WebviewPanel | undefined = context.workspaceState.get('panel');
-    if (!proofState || !panel) {
-        console.log('checkProofForward : Workspace variables are not properly defined');
-        return;
+        return follow;
     }
 
-    let newPos = stepCommand(openEditor.document, proofState, true);
-    if (newPos)
-        lpRefresh(context, newPos, panel, openEditor);
-}
+    function checkProofForward() {
 
-function checkProofBackward() {
+        //Checking workspace
+        const openEditor: TextEditor | undefined = window.activeTextEditor;
+        if (!openEditor)
+            return;
 
-    //Checking workspace
-    const openEditor: TextEditor | undefined = window.activeTextEditor;
-    if (!openEditor)
-        return;
+        const proofState: Position | undefined = context.workspaceState.get('proofState');
+        const panel: WebviewPanel | undefined = context.workspaceState.get('panel');
+        if (!proofState || !panel) {
+            console.log('checkProofForward : Workspace variables are not properly defined');
+            return;
+        }
 
-    const proofState: Position | undefined = context.workspaceState.get('proofState');
-    const panel: WebviewPanel | undefined = context.workspaceState.get('panel');
-    if (!proofState || !panel) {
-        console.log('checkProofBackward : Workspace variables are not properly defined');
-        return;
+        let newPos = stepCommand(openEditor.document, proofState, true);
+        if (newPos)
+            lpRefresh(context, newPos, panel, openEditor);
     }
 
-    let newPos = stepCommand(openEditor.document, proofState, false);
+    function checkProofBackward() {
 
-    //Case the end has not been reached
-    if (newPos)
-        lpRefresh(context, newPos, panel, openEditor);
-}
+        //Checking workspace
+        const openEditor: TextEditor | undefined = window.activeTextEditor;
+        if (!openEditor)
+            return;
 
-function checkProofUntilCursor() {
+        const proofState: Position | undefined = context.workspaceState.get('proofState');
+        const panel: WebviewPanel | undefined = context.workspaceState.get('panel');
+        if (!proofState || !panel) {
+            console.log('checkProofBackward : Workspace variables are not properly defined');
+            return;
+        }
 
-    //Checking workspace
-    const openEditor: TextEditor | undefined = window.activeTextEditor;
-    if (!openEditor)
-        return;
+        let newPos = stepCommand(openEditor.document, proofState, false);
 
-    const proofState: Position | undefined = context.workspaceState.get('proofState');
-    const panel: WebviewPanel | undefined = context.workspaceState.get('panel');
-
-    if (!proofState || !panel) {
-        console.log('checkProofUntilCursor : workspace variables are not properly defined');
-        return;
+        //Case the end has not been reached
+        if (newPos)
+            lpRefresh(context, newPos, panel, openEditor);
     }
 
-    //The current position of the cursor
-    let cursorPosition: Position = openEditor.selection.active;
-    if (proofState.line == cursorPosition.line)
-        return;
+    function checkProofUntilCursor() {
 
-    //To simplify the code, proof states are always at the beggining of the highlighted line
-    //So must be the cursor position since it is the new proof state
-    if (cursorPosition.character != 0)
-        cursorPosition = new Position(cursorPosition.line, 0);
+        //Checking workspace
+        const openEditor: TextEditor | undefined = window.activeTextEditor;
+        if (!openEditor)
+            return;
 
-    context.workspaceState.update('proofState', cursorPosition); //proof state is set to the cursor position
+        const proofState: Position | undefined = context.workspaceState.get('proofState');
+        const panel: WebviewPanel | undefined = context.workspaceState.get('panel');
 
-    refreshGoals(panel, openEditor, cursorPosition, context); //Goals panel is refreshed
+        if (!proofState || !panel) {
+            console.log('checkProofUntilCursor : workspace variables are not properly defined');
+            return;
+        }
 
-    highlight(context, cursorPosition, openEditor);
-}
+        //The current position of the cursor
+        let cursorPosition: Position = openEditor.selection.active;
+        if (proofState.line == cursorPosition.line)
+            return;
 
+        //To simplify the code, proof states are always at the beggining of the highlighted line
+        //So must be the cursor position since it is the new proof state
+        if (cursorPosition.character != 0)
+            cursorPosition = new Position(cursorPosition.line, 0);
 
+        context.workspaceState.update('proofState', cursorPosition); //proof state is set to the cursor position
 
-function goToNextProof() {
-    nextProof(true);
-}
+        refreshGoals(panel, openEditor, cursorPosition, context); //Goals panel is refreshed
 
-function goToPreviousProof() {
-    nextProof(false);
-}
-function nextProof(direction: boolean) {
-
-    //Checking workspace
-    const openEditor: TextEditor | undefined = window.activeTextEditor;
-    if (!openEditor) {
-        console.log("No editor opened");
-        return;
+        highlight(context, cursorPosition, openEditor);
     }
 
-    const proofState: Position | undefined = context.workspaceState.get('proofState');
-    const panel: WebviewPanel | undefined = context.workspaceState.get('panel');
 
-    if (!proofState || !panel) {
-        console.log('nextProof : workspace variables are not properly defined');
-        return;
+
+    function goToNextProof() {
+        nextProof(true);
     }
 
-    //The position of the next proof
-    let nextProofPos: Position = stepCommand(openEditor.document, proofState, direction, ['begin']);
+    function goToPreviousProof() {
+        nextProof(false);
+    }
+    function nextProof(direction: boolean) {
 
-    context.workspaceState.update('proofState', nextProofPos); //proof state is set to the position of the next proof keyword
+        //Checking workspace
+        const openEditor: TextEditor | undefined = window.activeTextEditor;
+        if (!openEditor) {
+            console.log("No editor opened");
+            return;
+        }
 
-    refreshGoals(panel, openEditor, nextProofPos, context); //Goals panel is refreshed
+        const proofState: Position | undefined = context.workspaceState.get('proofState');
+        const panel: WebviewPanel | undefined = context.workspaceState.get('panel');
 
-    highlight(context, nextProofPos, openEditor);
-}
+        if (!proofState || !panel) {
+            console.log('nextProof : workspace variables are not properly defined');
+            return;
+        }
+
+        //The position of the next proof
+        let nextProofPos: Position = stepCommand(openEditor.document, proofState, direction, ['begin']);
+
+        context.workspaceState.update('proofState', nextProofPos); //proof state is set to the position of the next proof keyword
+
+        refreshGoals(panel, openEditor, nextProofPos, context); //Goals panel is refreshed
+
+        highlight(context, nextProofPos, openEditor);
+    }
 
 
     //___Declaration of workspace variables___
@@ -285,8 +328,8 @@ function nextProof(direction: boolean) {
 
     let client_version = context.extension.packageJSON.version;
     const initializationOptions = LspServerConfig.create(
-      client_version,
-      wsConfig
+        client_version,
+        wsConfig
     );
     const clientOptions: LanguageClientOptions = {
         documentSelector: [
@@ -299,17 +342,14 @@ function nextProof(direction: boolean) {
         markdown: { isTrusted: true, supportHtml: true },
     };
 
-    const restart = () => {
 
-        if (client) {
-            client.stop();
-        }
 
+    const start = () => {
 
         let cP = new Promise<BaseLanguageClient>((resolve) => {
             client = clientFactory(context, clientOptions, wsConfig, lspServerPath);
             resolve(client);
-          });
+        });
 
         window.showInformationMessage("client created");
         cP.then((client) => client.start().then(() => {
@@ -322,70 +362,26 @@ function nextProof(direction: boolean) {
                 {}
             );
             context.workspaceState.update('panel', panel);
+        })
+        )
 
-            window.onDidChangeActiveTextEditor(e => {
-
-                const proofState: Position | undefined = context.workspaceState.get('proofState');
-                const panel: WebviewPanel | undefined = context.workspaceState.get('panel');
-
-                if (!proofState || !panel) {
-                    console.log('onDidChangeActiveTextEditor : workspace variables are not properly defined');
-                    return;
-                }
-
-                refreshGoals(panel, e, proofState, context);
-            });
-
-            window.onDidChangeTextEditorSelection(e => {
-
-                const cursorMode: boolean = context.workspaceState.get('cursorMode') ?? false;
-                if (!cursorMode)
-                    return;
-
-                checkProofUntilCursor();
-            });
-
-            /*Toggle cursor mode (defaults to false)
-                *if true, the "Proof" panel is updated when the cursor is moved
-                *if false, updated when keybindings are pressed
-            */
-            registerCommand('extension.lambdapi.cursor', toggleCursorMode);
-            //commands.registerCommand('extension.lambdapi.cursor', () => toggleCursorMode());
-
-            //Navigate proof : step forward in a proof 
-            registerCommand('extension.lambdapi.fw', checkProofForward);
-//            commands.registerCommand('extension.lambdapi.fw', () => checkProofForward());
-
-            //Navigate proof : step backward in a proof
-            registerCommand('extension.lambdapi.bw', checkProofBackward);
-//            commands.registerCommand('extension.lambdapi.bw', () => checkProofBackward());
-
-            //Navigate proof : move proof highlight to cursor
-            registerCommand('extension.lambdapi.tc', checkProofUntilCursor);
-            // commands.registerCommand('extension.lambdapi.tc', () => checkProofUntilCursor());
-
-            //Window follows proof or not
-            registerCommand('extension.lambdapi.reveal', toggleFollowMode);
-            // commands.registerCommand('extension.lambdapi.reveal', () => toggleFollowMode())
-
-            //Center window on proof state
-            registerCommand('extension.lambdapi.center', goToProofState);
-            // commands.registerCommand('extension.lambdapi.center', () => goToProofState());
-
-            //Go to next/previous proof
-            registerCommand('extension.lambdapi.nx', goToNextProof);
-            registerCommand('extension.lambdapi.pv', goToPreviousProof);
-            // commands.registerCommand('extension.lambdapi.nx', () => nextProof(context, true));
-            // commands.registerCommand('extension.lambdapi.pv', () => nextProof(context, false));
-
-        }));
-
-        context.subscriptions.push(client);
     };
-    registerCommand('extension.lambdapi.restart', restart);
-//    commands.registerCommand('extension.lambdapi.restart', restart);
 
-    restart();
+    const stop = () => { }
+
+    const restart = () => {
+
+        if (client) {
+            client.stop();
+        }
+
+        start();
+
+    };
+
+    registerCommand('extension.lambdapi.restart', restart);
+
+    start();
 }
 
 function lpDocChangeHandler(event: TextDocumentChangeEvent, context: ExtensionContext) {
