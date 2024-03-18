@@ -127,8 +127,9 @@ function checkProofForward(context: ExtensionContext) {
         return;
 
     const proofState: Position | undefined = context.workspaceState.get('proofState');
-    const panel: WebviewPanel | undefined = context.workspaceState.get('panel');
-    if (!proofState || !panel) {
+    let panel: WebviewPanel | undefined | null = context.workspaceState.get('panel');
+
+    if (!proofState) {
         console.log('checkProofForward : Workspace variables are not properly defined');
         return;
     }
@@ -146,8 +147,8 @@ function checkProofBackward(context: ExtensionContext) {
         return;
 
     const proofState: Position | undefined = context.workspaceState.get('proofState');
-    const panel: WebviewPanel | undefined = context.workspaceState.get('panel');
-    if (!proofState || !panel) {
+    const panel: WebviewPanel | undefined | null = context.workspaceState.get('panel');
+    if (!proofState) {
         console.log('checkProofBackward : Workspace variables are not properly defined');
         return;
     }
@@ -167,9 +168,9 @@ function checkProofUntilCursor(context: ExtensionContext) {
         return;
 
     const proofState: Position | undefined = context.workspaceState.get('proofState');
-    const panel: WebviewPanel | undefined = context.workspaceState.get('panel');
+    const panel: WebviewPanel | undefined | null = context.workspaceState.get('panel');
 
-    if (!proofState || !panel) {
+    if (!proofState) {
         console.log('checkProofUntilCursor : workspace variables are not properly defined');
         return;
     }
@@ -209,9 +210,9 @@ function nextProof(context: ExtensionContext, direction: boolean) {
     }
 
     const proofState: Position | undefined = context.workspaceState.get('proofState');
-    const panel: WebviewPanel | undefined = context.workspaceState.get('panel');
+    const panel: WebviewPanel | undefined | null = context.workspaceState.get('panel');
 
-    if (!proofState || !panel) {
+    if (!proofState) {
         console.log('nextProof : workspace variables are not properly defined');
         return;
     }
@@ -262,7 +263,7 @@ export function activateClientLSP(context: ExtensionContext,
     window.onDidChangeActiveTextEditor(e => {
 
         const proofState: Position | undefined = context.workspaceState.get('proofState');
-        const panel: WebviewPanel | undefined = context.workspaceState.get('panel');
+        const panel: WebviewPanel | undefined | null = context.workspaceState.get('panel');
 
         if (!proofState || !panel) {
             console.log('onDidChangeActiveTextEditor : workspace variables are not properly defined');
@@ -355,17 +356,7 @@ export function activateClientLSP(context: ExtensionContext,
         cP.then((client) => client.start().then(() => {
             // window.showInformationMessage("client started");
             // Create and show panel for proof goals
-            let panel : WebviewPanel | null = window.createWebviewPanel(
-                'goals',
-                'Goals',
-                ViewColumn.Two,
-                {}
-            );
-            panel.onDidDispose(() => {
-                window.showInformationMessage("Panel has been disposed");
-                panel = null;
-            })
-            context.workspaceState.update('panel', panel);
+            createInfoPanel(context);
         })
         )
 
@@ -386,6 +377,20 @@ export function activateClientLSP(context: ExtensionContext,
     registerCommand('extension.lambdapi.restart', context, restart);
 
     start();
+}
+
+function createInfoPanel(context: ExtensionContext) {
+    let panel: WebviewPanel | null = window.createWebviewPanel(
+        'goals',
+        'Goals',
+        ViewColumn.Two,
+        {}
+    );
+    panel.onDidDispose(() => {
+        window.showInformationMessage("Panel has been disposed");
+        context.workspaceState.update('panel', null);
+    });
+    context.workspaceState.update('panel', panel);
 }
 
 function lpDocChangeHandler(event: TextDocumentChangeEvent, context: ExtensionContext) {
@@ -413,7 +418,7 @@ function lpDocChangeHandler(event: TextDocumentChangeEvent, context: ExtensionCo
         // update the proofState
         let newPos = stepCommand(event.document, firstChange, false);
 
-        const panel: WebviewPanel | undefined = context.workspaceState.get('panel');
+        const panel: WebviewPanel | undefined | null = context.workspaceState.get('panel');
         if (!panel) {
             console.log('lpDocChangeHandler : workspace variables are not properly defined');
             return;
@@ -474,7 +479,7 @@ function highlight(context: ExtensionContext, newProofState: Position, openEdito
         commands.executeCommand('revealLine', { lineNumber: newProofState.line, at: 'center' });
 }
 
-function lpRefresh(context: ExtensionContext, proofPos: Position, panel: WebviewPanel, openEditor: TextEditor) {
+function lpRefresh(context: ExtensionContext, proofPos: Position, panel: WebviewPanel | null | undefined, openEditor: TextEditor) {
 
     context.workspaceState.update('proofState', proofPos);
 
@@ -514,14 +519,26 @@ function stepCommand(document: TextDocument, currentPos: Position, forward: bool
 
     return nextCmdPos;
 }
-function refreshGoals(panel: WebviewPanel, editor: TextEditor | undefined, proofState: Position, context: ExtensionContext) {
+function refreshGoals(panel: WebviewPanel | null | undefined, editor: TextEditor | undefined, proofState: Position, context: ExtensionContext) {
+    window.showInformationMessage("running refreshGoals");
     if (!editor) {
-        window.showInformationMessage("refreshGoals : no editor found");
+        window.showErrorMessage("refreshGoals : no editor found");
         return;
     }
 
-    const styleUri = panel.webview.asWebviewUri(Uri.joinPath(context.extensionUri, 'media', 'styles.css'))
-    sendGoalsRequest(proofState, panel, editor.document.uri, styleUri);
+    if(panel == null || !panel) {
+        window.showErrorMessage("refreshGoals : no panel found");
+        createInfoPanel(context);
+        panel = context.workspaceState.get('panel')!;
+        window.showInformationMessage("refreshGoals : a new panel has been created");
+    }
+
+   if(panel != null) {
+     const styleUri = panel.webview.asWebviewUri(Uri.joinPath(context.extensionUri, 'media', 'styles.css'))
+    sendGoalsRequest(proofState, panel, editor.document.uri, styleUri); 
+    } else {
+        window.showErrorMessage("refreshGoals : still no panel found");
+    }
 }
 
 // returns the HTML code of goals environment
