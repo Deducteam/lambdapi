@@ -351,16 +351,20 @@ export function activateClientLSP(context: ExtensionContext,
             resolve(client);
         });
 
-        window.showInformationMessage("client created");
+        // window.showInformationMessage("client created");
         cP.then((client) => client.start().then(() => {
-            window.showInformationMessage("client started");
+            // window.showInformationMessage("client started");
             // Create and show panel for proof goals
-            const panel = window.createWebviewPanel(
+            let panel : WebviewPanel | null = window.createWebviewPanel(
                 'goals',
                 'Goals',
                 ViewColumn.Two,
                 {}
             );
+            panel.onDidDispose(() => {
+                window.showInformationMessage("Panel has been disposed");
+                panel = null;
+            })
             context.workspaceState.update('panel', panel);
         })
         )
