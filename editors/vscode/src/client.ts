@@ -383,7 +383,7 @@ function createInfoPanel(context: ExtensionContext) {
     let panel: WebviewPanel | null = window.createWebviewPanel(
         'goals',
         'Goals',
-        ViewColumn.Two,
+        { preserveFocus: true, viewColumn: ViewColumn.Two },
         {}
     );
     panel.onDidDispose(() => {
