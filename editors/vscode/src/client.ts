@@ -535,12 +535,8 @@ function refreshGoals(panel: WebviewPanel | null | undefined, editor: TextEditor
         panel = context.workspaceState.get('panel')!;
     }
 
-
-    if (panel != null) {
-        const styleUri = panel!.webview.asWebviewUri(Uri.joinPath(context.extensionUri, 'media', 'styles.css'))
-        sendGoalsRequest(proofState, panel!, editor.document.uri, styleUri);
-    } else {
-    }
+    const styleUri = panel!.webview.asWebviewUri(Uri.joinPath(context.extensionUri, 'media', 'styles.css'))
+    sendGoalsRequest(proofState, panel!, editor.document.uri, styleUri);
 }
 
 // returns the HTML code of goals environment
