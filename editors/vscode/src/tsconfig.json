@@ -1,0 +1,13 @@
+{
+//  "extends": "../tsconfig-base.json",
+  "compilerOptions": {
+    "module": "CommonJS",
+    "target": "ESNext"
+  },
+
+  "files": [
+    "client.ts",
+    "browser.ts"
+  ],
+ // "include": ["**/*.ts", "../lib/**/*.ts"]
+}

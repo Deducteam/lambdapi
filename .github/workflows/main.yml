@@ -4,11 +4,11 @@ on:
   push:
   workflow_dispatch:
 jobs:
-  build:
+  build_lambdapi:
     strategy:
       fail-fast: false
       matrix:
-        ocaml-version: [5.1.0, 5.0.0, 4.14.1, 4.13.1, 4.12.1, 4.11.2, 4.10.2, 4.09.1, 4.08.1]
+        ocaml-version: [5.1.1, 5.0.0, 4.14.1, 4.13.1, 4.12.1, 4.11.2, 4.10.2, 4.09.1, 4.08.1]
     runs-on: ubuntu-latest
     steps:
       - name: checking out lambdapi repo ...
@@ -34,8 +34,15 @@ jobs:
           eval $(opam env)
           #why3 config detect
           make tests
+  build_vscode_extension:
+    strategy:
+      fail-fast: false
+    runs-on: ubuntu-latest
+    steps:
+      - name: checking out lambdapi repo ...
+        uses: actions/checkout@v4
       - name: Use Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: latest
       - name: generate-vscode-extension
@@ -44,7 +51,7 @@ jobs:
           npm install -g vsce 
           make build-vscode-extension
       - name: publish vscode extension
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with: 
           name: assets-for-download
           path: editors/vscode/extensionFolder

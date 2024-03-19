@@ -4,6 +4,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
+- code refactoring of the client for maintenability.
+- fix the bug that causes the proof navigation to malfunction when the Goals panel is closed by the user. Now the panel is recreated whenever needed.
 
 ## [0.1.2] - 2020-12-10
 - use vscode configuration for lambdapi.path to call the lambdapi LSP server
