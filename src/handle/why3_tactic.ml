@@ -80,7 +80,7 @@ end = struct
           let sym = Why3.(Ty.create_tysymbol id [] Ty.NoDef) in
           ((te,TySym sym)::tbl, Why3.Ty.ty_app sym [])
         | Vari x, [] ->
-          let sym = Why3.Ty.tv_of_string (Bindlib.name_of x) in
+          let sym = Why3.Ty.tv_of_string (base_name x) in
           ((te,TyVar sym)::tbl, Why3.Ty.ty_var sym)
         | _ ->
           let id = Why3.Ident.id_fresh "ty" in
@@ -125,10 +125,10 @@ let translate_term : config -> cnst_table -> TyTable.t -> term ->
         (tbl, ty_tbl, Why3.Term.t_true)
     | Symb(s), [a;Abst(_,t)] when s == cfg.symb_ex || s == cfg.symb_all ->
         let (ty_tbl, ty) = TyTable.ty_of_term ty_tbl a in
-        let x, t = Bindlib.unbind t in
+        let x, t = unbind t in
         let (tbl, ty_tbl ,t) = translate_prop tbl ty_tbl t in
         let tquant =
-          let id = Why3.Ident.id_fresh (Bindlib.name_of x) in
+          let id = Why3.Ident.id_fresh (base_name x) in
           let vid = Why3.(Term.create_vsymbol id) ty in
           let close =
             if s == cfg.symb_ex then Why3.Term.t_exists_close
@@ -152,19 +152,19 @@ let translate_term : config -> cnst_table -> TyTable.t -> term ->
   | (Symb(s), [t]) when s == cfg.symb_P -> Some (translate_prop tbl ty_tbl t)
   | _ -> None
 
-(** [encode ss pos hs g] translates the hypotheses [hs] and the goal [g]
+(** [encode ss pos env g] translates the environment [env] and the goal [g]
     into Why3 terms, to construct a Why3 task. *)
 let encode : Sig_state.t -> Pos.popt -> Env.env -> term -> Why3.Task.task =
-  fun ss pos hs g ->
+  fun ss pos env g ->
   let cfg = get_config ss pos in
-  let (constants, types, hypothesis) =
+  let (constants, types, hyps) =
     let translate_hyp (tbl,ty_tbl, map) (name, (_, hyp, _)) =
-      match translate_term cfg tbl ty_tbl (Bindlib.unbox hyp) with
+      match translate_term cfg tbl ty_tbl hyp with
       | Some(tbl, ty_tbl, why3_hyp) ->
         (tbl, ty_tbl, StrMap.add name why3_hyp map)
       | None -> (tbl, ty_tbl , map)
     in
-    List.fold_left translate_hyp ([], TyTable.empty, StrMap.empty) hs
+    List.fold_left translate_hyp ([], TyTable.empty, StrMap.empty) env
   in
   (* Translate the goal term. *)
   let (tbl, ty_tbl, why3_term) =
@@ -187,7 +187,7 @@ let encode : Sig_state.t -> Pos.popt -> Env.env -> term -> Why3.Task.task =
     let axiom = Why3.Decl.create_prsymbol (Why3.Ident.id_fresh name) in
     Why3.Task.add_prop_decl tsk Why3.Decl.Paxiom axiom t
   in
-  let tsk = StrMap.fold fn hypothesis tsk in
+  let tsk = StrMap.fold fn hyps tsk in
   (* Add the goal itself. *)
   let goal = Why3.Decl.create_prsymbol (Why3.Ident.id_fresh "main_goal") in
   (* Return the task that contains the encoded lambdapi formula in Why3. *)

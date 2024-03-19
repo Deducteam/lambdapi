@@ -51,28 +51,14 @@ module Goal = struct
     | Typ gt -> Typ {gt with goal_type = f gt.goal_type}
     | Unif (c,t,u) -> Unif (c, f t, f u)
 
-  (** [bindlib_ctxt g] computes a Bindlib context from a goal. *)
-  let bindlib_ctxt : goal -> Bindlib.ctxt = fun g ->
-    match g with
-    | Typ gt ->
-      let add_name c (n,_) = Bindlib.reserve_name n c in
-      List.fold_left add_name Bindlib.empty_ctxt gt.goal_hyps
-    | Unif (c,_,_) ->
-      let add_name c (v,_,_) = Bindlib.reserve_name (Bindlib.name_of v) c in
-      List.fold_left add_name Bindlib.empty_ctxt c
-
   (** [pp ppf g] prints on [ppf] the goal [g] without its hypotheses. *)
   let pp : goal pp = fun ppf g ->
-    let bctx = bindlib_ctxt g in
-    let term = term_in bctx in
     match g with
     | Typ gt -> out ppf "%a: %a" meta gt.goal_meta term gt.goal_type
     | Unif (_, t, u) -> out ppf "%a ≡ %a" term t term u
 
   (** [hyps ppf g] prints on [ppf] the hypotheses of the goal [g]. *)
   let hyps : goal pp = fun ppf g ->
-    let bctx = bindlib_ctxt g in
-    let term = term_in bctx in
     let hyps hyp ppf l =
       if l <> [] then
         out ppf "@[<v>%a@,\
@@ -83,9 +69,7 @@ module Goal = struct
     in
     match g with
     | Typ gt ->
-      let elt ppf (s,(_,t,_)) =
-       out ppf "%a: %a" uid s term (Bindlib.unbox t)
-      in
+      let elt ppf (s,(_,t,_)) = out ppf "%a: %a" uid s term t in
       hyps elt ppf gt.goal_hyps
     | Unif (c,_,_) ->
       let elt ppf (x,a,t) =

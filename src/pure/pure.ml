@@ -105,9 +105,7 @@ let string_of_goal : Proof.goal -> goal =
   in
   fun g ->
   let open Print in
-  let bctx = Proof.Goal.bindlib_ctxt g in
-  let term = term_in bctx in
-  let env_elt (s,(_,t,_)) = s, to_string term (Bindlib.unbox t) in
+  let env_elt (s,(_,t,_)) = s, to_string term t in
   let ctx_elt (x,a,_) = to_string var x, to_string term a in
   match g with
   | Proof.Typ gt ->

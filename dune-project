@@ -29,13 +29,16 @@ Find Lambdapi user manual on https://lambdapi.readthedocs.io/.
 
 Lambdapi provides a rich type system with dependent types.
 In Lambdapi, one can define both type and function symbols
-by using rewriting rules (oriented equations). The declaration
-of symbols and rewriting rules is separated so that one can
-easily define inductive-recursive types for instance.
-Rewrite rules can be exported to the TRS and XTC formats
-for checking confluence and termination with external tools.
+by using rewriting rules (oriented equations).
 A symbol can be declared associative and commutative.
 Lambdapi supports unicode symbols and infix operators.
+The declaration of symbols and rewriting rules is separated
+so that one can easily define inductive-recursive types.
+
+Lambdapi checks that rules are locally confluent (by checking
+the joinability of critical pairs) and preserve typing.
+Rewrite rules can also be exported to the TRS and XTC formats
+for checking confluence and termination with external tools.
 
 Lambdapi does not come with a pre-defined logic. It is a
 powerful logical framework in which one can easily define
@@ -54,6 +57,7 @@ the Why3 platform.")
   (menhir (>= 20200624))
   (sedlex (>= 2.2))
   (alcotest :with-test)
+  (alt-ergo :with-test)
   (dedukti (and :with-test (>= 2.7)))
   (bindlib (>= 5.0.1))
   (timed (>= 1.0))
