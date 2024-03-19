@@ -352,9 +352,7 @@ export function activateClientLSP(context: ExtensionContext,
             resolve(client);
         });
 
-        // window.showInformationMessage("client created");
         cP.then((client) => client.start().then(() => {
-            // window.showInformationMessage("client started");
             // Create and show panel for proof goals
             createInfoPanel(context);
         })
@@ -387,7 +385,6 @@ function createInfoPanel(context: ExtensionContext) {
         {}
     );
     panel.onDidDispose(() => {
-        window.showInformationMessage("Panel has been disposed");
         context.workspaceState.update('panel', null);
     });
     context.workspaceState.update('panel', panel);
@@ -520,24 +517,19 @@ function stepCommand(document: TextDocument, currentPos: Position, forward: bool
     return nextCmdPos;
 }
 function refreshGoals(panel: WebviewPanel | null | undefined, editor: TextEditor | undefined, proofState: Position, context: ExtensionContext) {
-    window.showInformationMessage("running refreshGoals");
     if (!editor) {
-        window.showErrorMessage("refreshGoals : no editor found");
         return;
     }
 
     if(panel == null || !panel) {
-        window.showErrorMessage("refreshGoals : no panel found");
         createInfoPanel(context);
         panel = context.workspaceState.get('panel')!;
-        window.showInformationMessage("refreshGoals : a new panel has been created");
     }
 
    if(panel != null) {
      const styleUri = panel.webview.asWebviewUri(Uri.joinPath(context.extensionUri, 'media', 'styles.css'))
     sendGoalsRequest(proofState, panel, editor.document.uri, styleUri); 
     } else {
-        window.showErrorMessage("refreshGoals : still no panel found");
     }
 }
 
