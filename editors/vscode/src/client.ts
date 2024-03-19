@@ -65,6 +65,7 @@ export type ClientFactoryType = (
     lspServerPath: any,
 ) => BaseLanguageClient;
 
+// The implementation of the VSCode lambdapi extension commands.
 function goToProofState(context: ExtensionContext) {
 
     const proofState: Position | undefined = context.workspaceState.get('proofState');
@@ -227,11 +228,13 @@ function nextProof(context: ExtensionContext, direction: boolean) {
     highlight(context, nextProofPos, openEditor);
 }
 
-function registerCommand(command: string, context : ExtensionContext, fn: (context: ExtensionContext) => void) {
+// Associate the command command to function fn defined above
+function registerCommand(command: string, context: ExtensionContext, fn: (context: ExtensionContext) => void) {
     let disposable = commands.registerCommand(command, () => fn(context));
     context.subscriptions.push(disposable);
 }
 
+// This function is called by VSCode when the extension is activated
 export function activateClientLSP(context: ExtensionContext,
     clientFactory: ClientFactoryType) {
 
@@ -239,11 +242,12 @@ export function activateClientLSP(context: ExtensionContext,
         lpDocChangeHandler(e, context);
     })
 
-    /*Toggle cursor mode (defaults to false)
-*if true, the "Proof" panel is updated when the cursor is moved
-*if false, updated when keybindings are pressed
-*/
+    // Please refer to package.json section keybindings, to see the key binding corresponding to the following commands
 
+    /*Toggle cursor mode (defaults to false)
+    *if true, the "Proof" panel is updated when the cursor is moved
+    *if false, updated when keybindings are pressed
+    */
     registerCommand('extension.lambdapi.cursor', context, toggleCursorMode);
     //Navigate proof : step forward in a proof 
     registerCommand('extension.lambdapi.fw', context, checkProofForward);
@@ -258,7 +262,6 @@ export function activateClientLSP(context: ExtensionContext,
     //Go to next/previous proof
     registerCommand('extension.lambdapi.nx', context, goToNextProof);
     registerCommand('extension.lambdapi.pv', context, goToPreviousProof);
-    // context.subscriptions.push(client);
 
     window.onDidChangeActiveTextEditor(e => {
 
@@ -281,8 +284,6 @@ export function activateClientLSP(context: ExtensionContext,
 
         checkProofUntilCursor(context);
     });
-
-
 
     //___Declaration of workspace variables___
 
@@ -343,11 +344,11 @@ export function activateClientLSP(context: ExtensionContext,
         markdown: { isTrusted: true, supportHtml: true },
     };
 
-
-
+    // This function starts the client and the server
     const start = () => {
 
         let cP = new Promise<BaseLanguageClient>((resolve) => {
+            // Create a client using the factory
             client = clientFactory(context, clientOptions, wsConfig, lspServerPath);
             resolve(client);
         });
@@ -363,7 +364,7 @@ export function activateClientLSP(context: ExtensionContext,
     const stop = () => { }
 
     const restart = () => {
-
+        // If the client is running then stop it before starting it again
         if (client) {
             client.stop();
         }
@@ -371,12 +372,13 @@ export function activateClientLSP(context: ExtensionContext,
         start();
 
     };
-
+    // associate the VSCode command "Lambdapi: restart the Lambdapi VSCode mode" with the restart function
     registerCommand('extension.lambdapi.restart', context, restart);
 
     start();
 }
 
+//This function creates the Goals panel when proofs are navigated
 function createInfoPanel(context: ExtensionContext) {
     let panel: WebviewPanel | null = window.createWebviewPanel(
         'goals',
@@ -384,6 +386,7 @@ function createInfoPanel(context: ExtensionContext) {
         { preserveFocus: true, viewColumn: ViewColumn.Two },
         {}
     );
+    // When the panel is closed for some reason, put null to reopen it when the user naviagate proofs again
     panel.onDidDispose(() => {
         context.workspaceState.update('panel', null);
     });
@@ -516,19 +519,26 @@ function stepCommand(document: TextDocument, currentPos: Position, forward: bool
 
     return nextCmdPos;
 }
+
+/*
+This function is called when the server communicates new Goals to the client
+The function checks first that the Goal panel is open and open a new one otherwise
+*/
 function refreshGoals(panel: WebviewPanel | null | undefined, editor: TextEditor | undefined, proofState: Position, context: ExtensionContext) {
     if (!editor) {
         return;
     }
 
-    if(panel == null || !panel) {
+    // Check the panel is open. Recreate it otherwise
+    if (panel == null || !panel) {
         createInfoPanel(context);
         panel = context.workspaceState.get('panel')!;
     }
 
-   if(panel != null) {
-     const styleUri = panel.webview.asWebviewUri(Uri.joinPath(context.extensionUri, 'media', 'styles.css'))
-    sendGoalsRequest(proofState, panel, editor.document.uri, styleUri); 
+
+    if (panel != null) {
+        const styleUri = panel!.webview.asWebviewUri(Uri.joinPath(context.extensionUri, 'media', 'styles.css'))
+        sendGoalsRequest(proofState, panel!, editor.document.uri, styleUri);
     } else {
     }
 }
@@ -651,6 +661,7 @@ export interface GoalResp {
     logs: string
 }
 
+// Build a request, send it to the server and update the Goals panel when the answer is received
 function sendGoalsRequest(position: Position, panel: WebviewPanel, docUri: Uri, styleUri: Uri) {
 
     let doc = { uri: docUri.toString() }
@@ -672,7 +683,7 @@ function sendGoalsRequest(position: Position, panel: WebviewPanel, docUri: Uri, 
     }, () => { panel.webview.html = buildGoalsContent([], styleUri); });
 }
 
-
+// Deactivate the Lambdapi extension. Stop the client.
 export function deactivateClientLSP(): Thenable<void> | undefined {
     if (!client) {
         return undefined;
