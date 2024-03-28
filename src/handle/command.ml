@@ -511,7 +511,6 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
             in
             List.iter admit_goal ps.proof_goals;
             (* Add the symbol in the signature with a warning. *)
-            Console.out 2 (Color.red "symbol %a : %a") uid id term a;
             wrn pe.pos "Proof admitted.";
             (* Keep the definition only if the symbol is not opaque. *)
             let d =
@@ -531,10 +530,10 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
                 Option.map (fun m -> unfold (mk_Meta(m,[||]))) ps.proof_term
             in
             (* Add the symbol in the signature. *)
-            Console.out 2 (Color.red "symbol %a : %a") uid id term a;
             fst (Sig_state.add_symbol
                    ss expo prop mstrat opaq p_sym_nam declpos a impl d)
       in
+      
       (* Create the proof state. *)
       let pdata_state =
         let proof_goals = Proof.add_goals_of_problem p [] in
@@ -555,10 +554,15 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
       in
       if p_sym_prf = None && not (finished pdata_state) then wrn pos
         "Some metavariables could not be solved: a proof must be given";
+      let ffff = match pe.elt with
+      | P_proof_abort -> Format.ifprintf Stdlib.(!(Stdlib.ref Format.std_formatter)) ("%s" ^^ "@.") "Print nothing!"
+      | P_proof_admitted -> Console.out 2 (Color.red "symbol %a : %a") uid id term a
+      | P_proof_end -> Console.out 2 (Color.red "symbol %a : %a") uid id term a
+      in ffff;
       { pdata_sym_pos=p_sym_nam.pos; pdata_state; pdata_proof
       ; pdata_finalize; pdata_end_pos=pe.pos; pdata_prv }
     in
-    (ss, Some pdata, None)
+      (ss, Some pdata, None)
 
 (** [too_long] indicates the duration after which a warning should be given to
     indicate commands that take too long to execute. *)
