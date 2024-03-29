@@ -493,10 +493,11 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
       in
       (* Build finalizer. *)
       let declpos = Pos.cat pos (Option.bind p_sym_typ (fun x -> x.pos)) in
-      let pdata_finalize ss ps =
+      let pdata_finalize =
         match pe.elt with
-        | P_proof_abort -> wrn pe.pos "Proof aborted."; ss
+        | P_proof_abort -> wrn pe.pos "Proof aborted."; fun ss _ps -> ss
         | P_proof_admitted ->
+          let pdata_finalize_fct ss ps =
             if finished ps then
               fatal pe.pos "The proof is finished. Use 'end' instead.";
             (* Admit all the remaining typing goals. *)
@@ -519,8 +520,10 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
             in
             (* Add the symbol in the signature. *)
             fst (Sig_state.add_symbol
-                   ss expo prop mstrat opaq p_sym_nam declpos a impl d)
+                   ss expo prop mstrat opaq p_sym_nam declpos a impl d) in
+                   pdata_finalize_fct
         | P_proof_end ->
+          let pdata_finalize_fct ss ps =
             (* Check that the proof is indeed finished. *)
             if not (finished ps) then
               fatal pe.pos "The proof is not finished:@.%a" goals ps;
@@ -531,7 +534,8 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
             in
             (* Add the symbol in the signature. *)
             fst (Sig_state.add_symbol
-                   ss expo prop mstrat opaq p_sym_nam declpos a impl d)
+                   ss expo prop mstrat opaq p_sym_nam declpos a impl d) in
+                   pdata_finalize_fct
       in
       
       (* Create the proof state. *)
