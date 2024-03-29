@@ -495,7 +495,8 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
       let declpos = Pos.cat pos (Option.bind p_sym_typ (fun x -> x.pos)) in
       let pdata_finalize, printfct =
         match pe.elt with
-        | P_proof_abort -> wrn pe.pos "Proof aborted."; (fun ss _ps -> ss), fun() -> ()
+        | P_proof_abort ->
+          (fun ss _ps -> ss), fun() -> wrn pe.pos "Proof aborted.";
         | P_proof_admitted ->
           let pdata_finalize_fct ss ps =
             if finished ps then
@@ -512,16 +513,21 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
             in
             List.iter admit_goal ps.proof_goals;
             (* Add the symbol in the signature with a warning. *)
-            wrn pe.pos "Proof admitted.";
             (* Keep the definition only if the symbol is not opaque. *)
             let d =
-              if opaq then None else
+              if opaq then None
+              else
                 Option.map (fun m -> unfold (mk_Meta(m,[||]))) ps.proof_term
             in
             (* Add the symbol in the signature. *)
             fst (Sig_state.add_symbol
                    ss expo prop mstrat opaq p_sym_nam declpos a impl d) in
-                   pdata_finalize_fct, fun() -> ()
+                     pdata_finalize_fct,
+                     fun() ->
+                        Console.out 2
+                        (Color.red "symbol %a : %a")
+                        uid id term a;
+                        wrn pe.pos "Proof admitted."
         | P_proof_end ->
           let pdata_finalize_fct ss ps =
             (* Check that the proof is indeed finished. *)
@@ -535,9 +541,12 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
             (* Add the symbol in the signature. *)
             fst (Sig_state.add_symbol
                    ss expo prop mstrat opaq p_sym_nam declpos a impl d) in
-                   pdata_finalize_fct, fun() -> ()
+                     pdata_finalize_fct,
+                     fun() ->
+                       Console.out 2
+                       (Color.red "symbol %a : %a")
+                       uid id term a
       in
-      
       (* Create the proof state. *)
       let pdata_state =
         let proof_goals = Proof.add_goals_of_problem p [] in
