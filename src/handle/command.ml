@@ -493,9 +493,9 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
       in
       (* Build finalizer. *)
       let declpos = Pos.cat pos (Option.bind p_sym_typ (fun x -> x.pos)) in
-      let pdata_finalize =
+      let pdata_finalize, printfct =
         match pe.elt with
-        | P_proof_abort -> wrn pe.pos "Proof aborted."; fun ss _ps -> ss
+        | P_proof_abort -> wrn pe.pos "Proof aborted."; (fun ss _ps -> ss), fun() -> ()
         | P_proof_admitted ->
           let pdata_finalize_fct ss ps =
             if finished ps then
@@ -521,7 +521,7 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
             (* Add the symbol in the signature. *)
             fst (Sig_state.add_symbol
                    ss expo prop mstrat opaq p_sym_nam declpos a impl d) in
-                   pdata_finalize_fct
+                   pdata_finalize_fct, fun() -> ()
         | P_proof_end ->
           let pdata_finalize_fct ss ps =
             (* Check that the proof is indeed finished. *)
@@ -535,7 +535,7 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
             (* Add the symbol in the signature. *)
             fst (Sig_state.add_symbol
                    ss expo prop mstrat opaq p_sym_nam declpos a impl d) in
-                   pdata_finalize_fct
+                   pdata_finalize_fct, fun() -> ()
       in
       
       (* Create the proof state. *)
@@ -558,11 +558,7 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
       in
       if p_sym_prf = None && not (finished pdata_state) then wrn pos
         "Some metavariables could not be solved: a proof must be given";
-      let ffff = match pe.elt with
-      | P_proof_abort -> Format.ifprintf Stdlib.(!(Stdlib.ref Format.std_formatter)) ("%s" ^^ "@.") "Print nothing!"
-      | P_proof_admitted -> Console.out 2 (Color.red "symbol %a : %a") uid id term a
-      | P_proof_end -> Console.out 2 (Color.red "symbol %a : %a") uid id term a
-      in ffff;
+      printfct();
       { pdata_sym_pos=p_sym_nam.pos; pdata_state; pdata_proof
       ; pdata_finalize; pdata_end_pos=pe.pos; pdata_prv }
     in
