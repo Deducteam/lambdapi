@@ -97,7 +97,8 @@ let set_erasing : string -> unit = fun f ->
         let id = snd lp_qid.elt in
         if Logger.log_enabled() then log "erase %s" id;
         erase := StrSet.add id !erase;
-        map_erased_qid_coq := QidMap.add lp_qid.elt coq_id !map_erased_qid_coq;
+        map_erased_qid_coq :=
+          QidMap.add lp_qid.elt coq_id !map_erased_qid_coq;
         if fst lp_qid.elt = [] && id <> coq_id then
           rmap := StrMap.add id coq_id !rmap
     | {pos;_} -> fatal pos "Invalid command."

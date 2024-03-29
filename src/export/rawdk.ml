@@ -137,7 +137,8 @@ let rec remove_wraps ({elt;_} as t) =
 let rule : p_rule pp =
   let varset ppf set = List.pp string ", " ppf (StrSet.elements set) in
   fun ppf {elt=(l,r);_} ->
-  out ppf "[%a] %a --> %a.@." varset (pvars_lhs l) term (remove_wraps l) term r
+  out ppf "[%a] %a --> %a.@."
+    varset (pvars_lhs l) term (remove_wraps l) term r
 
 let partition_modifiers ms =
   let ms = List.map (fun {elt;_} -> elt) ms in
