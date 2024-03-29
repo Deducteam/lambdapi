@@ -280,7 +280,7 @@ let rec tactic : p_tactic pp = fun ppf { elt;  _ } ->
   | P_tac_simpl (Some qid) -> out ppf "simplify %a" qident qid
   | P_tac_solve -> out ppf "solve"
   | P_tac_sym -> out ppf "symmetry"
-  | P_tac_try t -> out ppf "try %a" tactic t 
+  | P_tac_try t -> out ppf "try %a" tactic t
   | P_tac_why3 p ->
       let prover ppf s = out ppf " \"%s\"" s in
       out ppf "why3%a" (Option.pp prover) p
