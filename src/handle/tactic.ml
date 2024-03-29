@@ -383,9 +383,9 @@ let rec handle :
        | Typ gt::_ ->
          Why3_tactic.handle ss pos cfg gt; tac_admit ss sym_pos ps gt
        | _ -> assert false)
-  | P_tac_try tactic -> 
-    try handle ss sym_pos prv ps tactic 
-    with Fatal(_, _s) -> ps 
+  | P_tac_try tactic ->
+    try handle ss sym_pos prv ps tactic
+    with Fatal(_, _s) -> ps
 
 (** Representation of a tactic output. *)
 type tac_output = proof_state * Query.result

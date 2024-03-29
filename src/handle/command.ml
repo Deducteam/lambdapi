@@ -515,8 +515,8 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
             wrn pe.pos "Proof admitted.";
             (* Keep the definition only if the symbol is not opaque. *)
             let d =
-              if opaq then None
-              else Option.map (fun m -> unfold (mk_Meta(m,[||]))) ps.proof_term
+              if opaq then None else
+                Option.map (fun m -> unfold (mk_Meta(m,[||]))) ps.proof_term
             in
             (* Add the symbol in the signature. *)
             fst (Sig_state.add_symbol
@@ -527,8 +527,8 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
               fatal pe.pos "The proof is not finished:@.%a" goals ps;
             (* Keep the definition only if the symbol is not opaque. *)
             let d =
-              if opaq then None
-              else Option.map (fun m -> unfold (mk_Meta(m,[||]))) ps.proof_term
+              if opaq then None else
+                Option.map (fun m -> unfold (mk_Meta(m,[||]))) ps.proof_term
             in
             (* Add the symbol in the signature. *)
             Console.out 2 (Color.red "symbol %a : %a") uid id term a;
