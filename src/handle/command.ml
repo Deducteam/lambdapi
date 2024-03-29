@@ -515,8 +515,7 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
             (* Add the symbol in the signature with a warning. *)
             (* Keep the definition only if the symbol is not opaque. *)
             let d =
-              if opaq then None
-              else
+              if opaq then None else
                 Option.map (fun m -> unfold (mk_Meta(m,[||]))) ps.proof_term
             in
             (* Add the symbol in the signature. *)
