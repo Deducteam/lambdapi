@@ -493,12 +493,10 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
       in
       (* Build finalizer. *)
       let declpos = Pos.cat pos (Option.bind p_sym_typ (fun x -> x.pos)) in
-      let pdata_finalize, printfct =
+      let pdata_finalize ss ps =
         match pe.elt with
-        | P_proof_abort ->
-          (fun ss _ps -> ss), fun() -> wrn pe.pos "Proof aborted.";
+        | P_proof_abort -> wrn pe.pos "Proof aborted."; ss
         | P_proof_admitted ->
-          let pdata_finalize_fct ss ps =
             if finished ps then
               fatal pe.pos "The proof is finished. Use 'end' instead.";
             (* Admit all the remaining typing goals. *)
@@ -513,6 +511,8 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
             in
             List.iter admit_goal ps.proof_goals;
             (* Add the symbol in the signature with a warning. *)
+            Console.out 2 (Color.red "symbol %a : %a") uid id term a;
+            wrn pe.pos "Proof admitted.";
             (* Keep the definition only if the symbol is not opaque. *)
             let d =
               if opaq then None else
@@ -520,15 +520,8 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
             in
             (* Add the symbol in the signature. *)
             fst (Sig_state.add_symbol
-                   ss expo prop mstrat opaq p_sym_nam declpos a impl d) in
-                     pdata_finalize_fct,
-                     fun() ->
-                        Console.out 2
-                        (Color.red "symbol %a : %a")
-                        uid id term a;
-                        wrn pe.pos "Proof admitted."
+                   ss expo prop mstrat opaq p_sym_nam declpos a impl d)
         | P_proof_end ->
-          let pdata_finalize_fct ss ps =
             (* Check that the proof is indeed finished. *)
             if not (finished ps) then
               fatal pe.pos "The proof is not finished:@.%a" goals ps;
@@ -538,13 +531,9 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
                 Option.map (fun m -> unfold (mk_Meta(m,[||]))) ps.proof_term
             in
             (* Add the symbol in the signature. *)
+            Console.out 2 (Color.red "symbol %a : %a") uid id term a;
             fst (Sig_state.add_symbol
-                   ss expo prop mstrat opaq p_sym_nam declpos a impl d) in
-                     pdata_finalize_fct,
-                     fun() ->
-                       Console.out 2
-                       (Color.red "symbol %a : %a")
-                       uid id term a
+                   ss expo prop mstrat opaq p_sym_nam declpos a impl d)
       in
       (* Create the proof state. *)
       let pdata_state =
@@ -566,7 +555,6 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
       in
       if p_sym_prf = None && not (finished pdata_state) then wrn pos
         "Some metavariables could not be solved: a proof must be given";
-      printfct();
       { pdata_sym_pos=p_sym_nam.pos; pdata_state; pdata_proof
       ; pdata_finalize; pdata_end_pos=pe.pos; pdata_prv }
     in
