@@ -558,7 +558,7 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
       { pdata_sym_pos=p_sym_nam.pos; pdata_state; pdata_proof
       ; pdata_finalize; pdata_end_pos=pe.pos; pdata_prv }
     in
-    (ss, Some pdata, None)
+      (ss, Some pdata, None)
 
 (** [too_long] indicates the duration after which a warning should be given to
     indicate commands that take too long to execute. *)
