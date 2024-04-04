@@ -278,9 +278,6 @@ and typopt : p_term option pp = fun ppf t ->
   Option.iter (out ppf " : %a" term) t
 
 (** Translation of commands. *)
-
-let is_lem x = is_opaq x || is_priv x
-
 let command : p_command pp = fun ppf {elt; pos} ->
   begin match elt with
   | P_inductive _ -> wrn pos "TODO"; assert false
@@ -304,13 +301,10 @@ let command : p_command pp = fun ppf {elt; pos} ->
         in
         begin match p_sym_def, p_sym_trm, p_sym_arg, p_sym_typ with
           | true, Some t, _, _ ->
-              if List.exists is_lem p_sym_mod then
-                out ppf "Lemma %a%a%a.\nProof. exact (%a). Qed.@."
-                  ident p_sym_nam params_list p_sym_arg typopt p_sym_typ
-                  term t
-              else
-                out ppf "Definition %a%a := %a.@."
-                  ident p_sym_nam params_list p_sym_arg term t
+            out ppf "Definition %a%a%a := %a.@."
+              ident p_sym_nam params_list p_sym_arg typopt p_sym_typ term t;
+            if List.exists is_opaq p_sym_mod then
+                out ppf "Opaque %a.@." ident p_sym_nam
           | false, _, [], Some t ->
               out ppf "Axiom %a : %a.@." ident p_sym_nam term t
           | false, _, _, Some t ->
