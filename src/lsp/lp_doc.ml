@@ -128,7 +128,7 @@ let new_doc ~uri ~version ~text =
       (* We remove the ["file://"] prefix. *)
       assert(String.is_prefix "file://" uri);
       let path = String.sub uri 7 (String.length uri - 7) in
-      Some(Pure.initial_state path), [] 
+      Some(Pure.initial_state path), []
     with Error.Fatal(_pos, msg) ->
       let loc : Pos.pos =
         {
@@ -137,7 +137,7 @@ let new_doc ~uri ~version ~text =
           start_col  = 0;
           end_line = 0;
           end_col = 0
-        } in 
+        } in
       (None, [(1, msg), Some(loc)])
   in
   { uri;
@@ -164,11 +164,11 @@ let dummy_loc =
 
 let check_text ~doc =
   let uri, version = doc.uri, doc.version in
-  let root = 
+  let root =
     match doc.root with
     | Some(ss) -> ss
-    | None -> 
-      raise(Error.fatal_no_pos "Root signature is missing 
+    | None ->
+      raise(Error.fatal_no_pos "Root signature is missing
       probably because new_doc has raised exception")
   in
   try

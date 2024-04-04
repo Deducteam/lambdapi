@@ -55,7 +55,20 @@ let completed_table : (string, Lp_doc.t) Hashtbl.t = Hashtbl.create 39
 
 (* Notification handling; reply is optional / asynchronous *)
 let do_check_text ofmt ~doc =
-  let doc, diags = Lp_doc.check_text ~doc in
+  let doc, diags =
+    try
+      Lp_doc.check_text ~doc
+    with Common.Error.Fatal(_pos, msg) ->
+      let loc : Pos.pos =
+        {
+          fname = Some(doc.uri);
+          start_line = 0;
+          start_col  = 0;
+          end_line = 0;
+          end_col = 0
+        } in
+      (doc, Lp_doc.mk_error ~doc loc msg)
+  in
   Hashtbl.replace doc_table doc.uri doc;
   Hashtbl.replace completed_table doc.uri doc;
   LIO.send_json ofmt @@ diags
@@ -137,20 +150,26 @@ let kind_of_type tm =
 
 let do_symbols ofmt ~id params =
   let file, _, doc = grab_doc params in
-  let sym = Pure.get_symbols doc.final in
-  let sym =
-    Extra.StrMap.fold
-      (fun _ s l ->
-        let open Term in
-        (* LIO.log_error "sym"
-         ( s.sym_name ^ " | "
-         ^ Format.asprintf "%a" term !(s.sym_type)); *)
-        Option.map_default
-          (fun p -> mk_syminfo file
-              (s.sym_name, s.sym_path, kind_of_type s, p) :: l) l s.sym_pos)
-      sym [] in
-  let msg = LSP.mk_reply ~id ~result:(`List sym) in
-  LIO.send_json ofmt msg
+  match doc.final with
+  | None    ->
+    let msg = LSP.mk_reply ~id ~result:`Null in
+    LIO.send_json ofmt msg
+  | Some ss ->
+    let sym = Pure.get_symbols ss in
+    let sym =
+      Extra.StrMap.fold
+        (fun _ s l ->
+          let open Term in
+          (* LIO.log_error "sym"
+          ( s.sym_name ^ " | "
+          ^ Format.asprintf "%a" term !(s.sym_type)); *)
+          Option.map_default
+            (fun p -> mk_syminfo file
+                (s.sym_name, s.sym_path, kind_of_type s, p) :: l) l s.sym_pos)
+        sym [] in
+    let msg = LSP.mk_reply ~id ~result:(`List sym) in
+    LIO.send_json ofmt msg
+
 
 let get_docTextPosition params =
   let document = dict_field "textDocument" params in
@@ -314,45 +333,50 @@ let get_symbol : Range.point ->
 let do_definition ofmt ~id params =
 
   let _, _, doc = grab_doc params in
-  let ln, pos = get_textPosition params in
+  match doc.final with
+  | None    ->
+    let msg = LSP.mk_reply ~id ~result:`Null in
+    LIO.send_json ofmt msg
+  | Some ss ->
+    let ln, pos = get_textPosition params in
 
-  (* Lines send by the client start at 0 *)
-  let pt = Range.make_point (ln + 1) pos in
-  let sym_target =
-    match get_symbol pt doc.map with
-    | None -> "No symbol found"
-    | Some(token, _) -> token
-  in
+    (* Lines send by the client start at 0 *)
+    let pt = Range.make_point (ln + 1) pos in
+    let sym_target =
+      match get_symbol pt doc.map with
+      | None -> "No symbol found"
+      | Some(token, _) -> token
+    in
 
-  (*Some printing in the log*)
-  LIO.log_error "token map" (RangeMap.to_string snd doc.map);
-  LIO.log_error "do_definition" sym_target;
+    (*Some printing in the log*)
+    LIO.log_error "token map" (RangeMap.to_string snd doc.map);
+    LIO.log_error "do_definition" sym_target;
 
-  let sym = Pure.get_symbols doc.final in
-  let map_pp : string =
-    Extra.StrMap.bindings sym
-    |> List.map (fun (key, sym) ->
-        Format.asprintf "{%s} / %s: @[%a@]"
-          key sym.Term.sym_name Pos.pp sym.sym_pos)
-    |> String.concat "\n"
-  in
-  LIO.log_error "symbol map" map_pp;
+    let sym = Pure.get_symbols ss in
+    let map_pp : string =
+      Extra.StrMap.bindings sym
+      |> List.map (fun (key, sym) ->
+          Format.asprintf "{%s} / %s: @[%a@]"
+            key sym.Term.sym_name Pos.pp sym.sym_pos)
+      |> String.concat "\n"
+    in
+    LIO.log_error "symbol map" map_pp;
 
-  let sym_info =
-    match StrMap.find_opt sym_target sym with
-    | None -> `Null
-    | Some s ->
-      match s.sym_pos with
+    let sym_info =
+      match StrMap.find_opt sym_target sym with
       | None -> `Null
-      | Some pos ->
-      (* A JSON with the path towards the definition of the term
-         and its position is returned
-         /!\ : extension is fixed, only works for .lp files *)
-        mk_definfo
-          Library.(file_of_path s.Term.sym_path ^ lp_src_extension) pos
-  in
-  let msg = LSP.mk_reply ~id ~result:sym_info in
-  LIO.send_json ofmt msg
+      | Some s ->
+        match s.sym_pos with
+        | None -> `Null
+        | Some pos ->
+        (* A JSON with the path towards the definition of the term
+          and its position is returned
+          /!\ : extension is fixed, only works for .lp files *)
+          mk_definfo
+            Library.(file_of_path s.Term.sym_path ^ lp_src_extension) pos
+    in
+    let msg = LSP.mk_reply ~id ~result:sym_info in
+    LIO.send_json ofmt msg
 
 let hover_symInfo ofmt ~id params =
 
@@ -382,36 +406,39 @@ let hover_symInfo ofmt ~id params =
   LIO.log_error "hoverSymInfo" sym_target;
   LIO.log_error "hoverSymInfo" (Range.interval_to_string interval); *)
 
-  (* The information about the tokens is stored *)
-  let sym = Pure.get_symbols doc.final in
-
-  (* The start/finish positions are used to hover the full qualified term,
-     not just the token *)
-  let start = Range.interval_start interval
-  and finish = Range.interval_end interval in
-
-  (* FIXME: types and typed conversion should take care of this *)
-  let sl, sc, fl, fc =
-    (Range.line start - 1),
-    (Range.column start - 1),
-    (Range.line finish - 1),
-    (Range.column finish - 1)
-  in
-
-  let s = `Assoc["line", `Int sl; "character", `Int sc] in
-  let f = `Assoc["line", `Int fl; "character", `Int fc] in
-  let range = `Assoc["start", s; "end", f] in
-
-  let map_pp : string =
-    Extra.StrMap.bindings sym
-    |> List.map (fun (key, sym) ->
-        Format.asprintf "{%s} / %s: @[%a@]"
-          key sym.Term.sym_name Pos.pp sym.sym_pos)
-    |> String.concat "\n"
-  in
-  LIO.log_error "symbol map" map_pp;
-
   try
+    (* The information about the tokens is stored *)
+    let sym =
+      match doc.final with
+      | Some ss -> Pure.get_symbols ss
+      | None    -> raise (Error.fatal_no_pos("Horror")) in
+
+    (* The start/finish positions are used to hover the full qualified term,
+      not just the token *)
+    let start = Range.interval_start interval
+    and finish = Range.interval_end interval in
+
+    (* FIXME: types and typed conversion should take care of this *)
+    let sl, sc, fl, fc =
+      (Range.line start - 1),
+      (Range.column start - 1),
+      (Range.line finish - 1),
+      (Range.column finish - 1)
+    in
+
+    let s = `Assoc["line", `Int sl; "character", `Int sc] in
+    let f = `Assoc["line", `Int fl; "character", `Int fc] in
+    let range = `Assoc["start", s; "end", f] in
+
+    let map_pp : string =
+      Extra.StrMap.bindings sym
+      |> List.map (fun (key, sym) ->
+          Format.asprintf "{%s} / %s: @[%a@]"
+            key sym.Term.sym_name Pos.pp sym.sym_pos)
+      |> String.concat "\n"
+    in
+    LIO.log_error "symbol map" map_pp;
+
     let sym_found =
       let open Timed in
       let open Term in
