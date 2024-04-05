@@ -411,7 +411,8 @@ let hover_symInfo ofmt ~id params =
     let sym =
       match doc.final with
       | Some ss -> Pure.get_symbols ss
-      | None    -> raise (Error.fatal_no_pos("Horror")) in
+      | None    -> raise (Error.fatal_no_pos("Root state is missing
+      probably because new_doc has raised exception")) in
 
     (* The start/finish positions are used to hover the full qualified term,
       not just the token *)

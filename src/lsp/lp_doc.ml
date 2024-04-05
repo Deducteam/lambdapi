@@ -168,7 +168,7 @@ let check_text ~doc =
     match doc.root with
     | Some(ss) -> ss
     | None ->
-      raise(Error.fatal_no_pos "Root signature is missing
+      raise(Error.fatal_no_pos "Root state is missing
       probably because new_doc has raised exception")
   in
   try
