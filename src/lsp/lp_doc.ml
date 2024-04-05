@@ -35,8 +35,8 @@ type t = {
   uri : string;
   version: int;
   text : string;
-  mutable root  : Pure.state; (* Only mutated after parsing. *)
-  mutable final : Pure.state; (* Only mutated after parsing. *)
+  mutable root  : Pure.state option; (* Only mutated after parsing. *)
+  mutable final : Pure.state option; (* Only mutated after parsing. *)
   nodes : doc_node list;
   (* severity is same as LSP specifications : https://git.io/JiGAB *)
   logs : ((int * string) * Pos.popt) list; (*((severity, message), location)*)
@@ -123,11 +123,22 @@ let process_cmd _file (nodes,st,dg,logs) ast =
     nodes, st, (loc, 1, msg, None) :: dg, ((1, msg), loc) :: logs
 
 let new_doc ~uri ~version ~text =
-  let root =
-    (* We remove the ["file://"] prefix. *)
-    assert(String.is_prefix "file://" uri);
-    let path = String.sub uri 7 (String.length uri - 7) in
-    Pure.initial_state path
+  let root, logs =
+    try
+      (* We remove the ["file://"] prefix. *)
+      assert(String.is_prefix "file://" uri);
+      let path = String.sub uri 7 (String.length uri - 7) in
+      Some(Pure.initial_state path), []
+    with Error.Fatal(_pos, msg) ->
+      let loc : Pos.pos =
+        {
+          fname = Some(uri);
+          start_line = 0;
+          start_col  = 0;
+          end_line = 0;
+          end_col = 0
+        } in
+      (None, [(1, msg), Some(loc)])
   in
   { uri;
     text;
@@ -135,7 +146,7 @@ let new_doc ~uri ~version ~text =
     root;
     final = root;
     nodes = [];
-    logs = [];
+    logs = logs;
     map = RangeMap.empty;
   }
 
@@ -153,20 +164,27 @@ let dummy_loc =
 
 let check_text ~doc =
   let uri, version = doc.uri, doc.version in
+  let root =
+    match doc.root with
+    | Some(ss) -> ss
+    | None ->
+      raise(Error.fatal_no_pos "Root state is missing
+      probably because new_doc has raised exception")
+  in
   try
     let cmds =
-      let (cmds, root) = Pure.parse_text doc.root ~fname:uri doc.text in
+      let (cmds, root) = Pure.parse_text root ~fname:uri doc.text in
       (* One shot state update after parsing. *)
-      doc.root <- root; doc.final <- root; cmds
+      doc.root <- Some(root); doc.final <- Some(root); cmds
     in
 
     (* compute rangemap *)
     let map = Pure.rangemap cmds in
 
     let nodes, final, diag, logs =
-      List.fold_left (process_cmd uri) ([],doc.root,[],[]) cmds in
+      List.fold_left (process_cmd uri) ([],root,[],[]) cmds in
     let logs = List.rev logs in
-    let doc = { doc with nodes; final; map; logs } in
+    let doc = { doc with nodes; final=Some(final); map; logs } in
     doc,
     LSP.mk_diagnostics ~uri ~version @@
     List.fold_left (fun acc (pos,lvl,msg,goal) ->
