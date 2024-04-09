@@ -15,7 +15,7 @@ In both modes, a renaming map can be provided to rename some identifiers.
 The renaming map can be specified through a lambdapi file (option --renaming).
 *)
 
-open Lplib open Base open Extra
+open Lplib open Extra
 open Common open Pos open Error
 open Parsing open Syntax
 open Format
@@ -137,30 +137,44 @@ let set_encoding : string -> unit = fun f ->
         in fatal pos "Builtin %s undefined." (name_of_index i))
     found
 
+(** Basic printing functions. We use Printf for efficiency reasons. *)
+let out = Printf.printf
+
+let char = output_char
+let string = output_string
+
+let prefix pre elt oc x = string oc pre; elt oc x
+let suffix elt suf oc x = elt oc x; string oc suf
+
+let list elt sep oc xs =
+  match xs with
+  | [] -> ()
+  | x::xs -> elt oc x; List.iter (prefix sep elt oc) xs
+
 (** Translation of identifiers. *)
 
 let translate_ident : string -> string = fun s ->
   try StrMap.find s !rmap with Not_found -> s
 
-let raw_ident : string pp = fun ppf s -> string ppf (translate_ident s)
+let raw_ident oc s = string oc (translate_ident s)
 
-let ident : p_ident pp = fun ppf {elt;_} -> raw_ident ppf elt
+let ident oc {elt;_} = raw_ident oc elt
 
-let param_id : p_ident option pp = fun ppf idopt ->
+let param_id oc idopt =
   match idopt with
-  | Some(id) -> out ppf "%a" ident id
-  | None     -> out ppf "_"
+  | Some id -> ident oc id
+  | None    -> char oc '_'
 
-let param_ids : p_ident option list pp = List.pp param_id " "
+let param_ids = list param_id " "
 
-let raw_path : Path.t pp = List.pp string "."
+let raw_path = list string "."
 
-let path : p_path pp = fun ppf {elt;_} -> raw_path ppf elt
+let path oc {elt;_} = raw_path oc elt
 
-let qident : p_qident pp = fun ppf {elt=(mp,s);_} ->
+let qident oc {elt=(mp,s);_} =
   match mp with
-  | [] -> raw_ident ppf s
-  | _::_ -> out ppf "%a.%a" raw_path mp raw_ident s
+  | [] -> raw_ident oc s
+  | _::_ -> raw_path oc mp; char oc '.'; raw_ident oc s
 
 (** Translation of terms. *)
 
@@ -189,107 +203,109 @@ let app t default cases =
     | _ -> default h ts
   else default h ts
 
-let rec term : p_term pp = fun ppf t ->
+let rec term oc t =
   (*if Logger.log_enabled() then
     log "pp %a" (*Pos.short t.pos*) Pretty.term t;*)
   match t.elt with
   | P_Meta _ -> wrn t.pos "TODO"; assert false
   | P_Patt _ -> wrn t.pos "TODO"; assert false
   | P_Expl _ -> wrn t.pos "TODO"; assert false
-  | P_Type -> out ppf "Type"
-  | P_Wild -> out ppf "_"
+  | P_Type -> string oc "Type"
+  | P_Wild -> char oc '_'
   | P_NLit i ->
       if !stt then
         match QidMap.find_opt ([],i) !map_erased_qid_coq with
-        | Some s -> string ppf s
-        | None -> raw_ident ppf i
-      else raw_ident ppf i
+        | Some s -> string oc s
+        | None -> raw_ident oc i
+      else raw_ident oc i
   | P_Iden(qid,b) ->
-      if b then out ppf "@@";
+      if b then string oc "@@";
       if !stt then
         match QidMap.find_opt qid.elt !map_erased_qid_coq with
-        | Some s -> string ppf s
-        | None -> qident ppf qid
-      else qident ppf qid
-  | P_Arro(u,v) -> arrow ppf u v
-  | P_Abst(xs,u) -> abst ppf xs u
-  | P_Prod(xs,u) -> prod ppf xs u
+        | Some s -> string oc s
+        | None -> qident oc qid
+      else qident oc qid
+  | P_Arro(u,v) -> arrow oc u v
+  | P_Abst(xs,u) -> abst oc xs u
+  | P_Prod(xs,u) -> prod oc xs u
   | P_LLet(x,xs,a,u,v) ->
-      out ppf "let %a%a%a := %a in %a"
-        ident x params_list xs typopt a term u term v
-  | P_Wrap u -> term ppf u
+    string oc "let "; ident oc x; params_list oc xs; typopt oc a;
+    string oc " := "; term oc u; string oc " in "; term oc v
+  | P_Wrap u -> term oc u
   | P_Appl _ ->
-      let default h ts = out ppf "%a %a" paren h (List.pp paren " ") ts in
+      let default h ts = paren oc h; char oc ' '; list paren " " oc ts in
       app t default
         (fun h ts expl builtin ->
           match !use_notations, !use_implicits && not expl, builtin, ts with
-          | _, _, (El|Prf), [u] -> term ppf u
-          | _, _, (Arr|Imp), [u;v] -> arrow ppf u v
+          | _, _, (El|Prf), [u] -> term oc u
+          | _, _, (Arr|Imp), [u;v] -> arrow oc u v
           | _, _, All, [_;{elt=P_Wrap({elt=P_Abst([_] as xs,u);_});_}]
           | _, true, All, [{elt=P_Wrap({elt=P_Abst([_] as xs,u);_});_}]
-            -> prod ppf xs u
+            -> prod oc xs u
           | _, _, Ex, [_;{elt=P_Wrap({elt=P_Abst([x],u);_});_}]
           | _, true, Ex, [{elt=P_Wrap({elt=P_Abst([x],u);_});_}] ->
-              out ppf "exists %a, %a" raw_params x term u
+              string oc "exists "; raw_params oc x; string oc ", "; term oc u
           | true, _, Eq, [_;u;v]
-          | true, true, Eq, [u;v] -> out ppf "%a = %a" paren u paren v
-          | true, _, Or, [u;v] -> out ppf "%a \\/ %a" paren u paren v
-          | true, _, And, [u;v] ->  out ppf "%a /\\ %a" paren u paren v
-          | true, _, Not, [u] -> out ppf "~ %a" paren u
+          | true, true, Eq, [u;v] -> paren oc u; string oc " = "; paren oc v
+          | true, _, Or, [u;v] -> paren oc u; string oc " \\/ "; paren oc v
+          | true, _, And, [u;v] ->  paren oc u; string oc " /\\ "; paren oc v
+          | true, _, Not, [u] -> string oc "~ "; paren oc u
           | _ -> default h ts)
 
-and arrow ppf u v = out ppf "%a -> %a" paren u term v
-and abst ppf xs u = out ppf "fun%a => %a" params_list_in_abs xs term u
-and prod ppf xs u = out ppf "forall%a, %a" params_list_in_abs xs term u
+and arrow oc u v = paren oc u; string oc " -> "; term oc v
+and abst oc xs u =
+  string oc "fun"; params_list_in_abs oc xs; string oc " => "; term oc u
+and prod oc xs u =
+  string oc "forall"; params_list_in_abs oc xs; string oc ", "; term oc u
 
-and paren : p_term pp = fun ppf t ->
-  let default() = out ppf "(%a)" term t in
+and paren oc t =
+  let default() = char oc '('; term oc t; char oc ')' in
   match t.elt with
   | P_Arro _ | P_Abst _ | P_Prod _ | P_LLet _ | P_Wrap _ -> default()
   | P_Appl _ ->
       app t (fun _ _ -> default())
         (fun _ ts _ builtin ->
           match builtin, ts with
-          | (El|Prf), [u] -> paren ppf u
+          | (El|Prf), [u] -> paren oc u
           | _ -> default())
-  | _ -> term ppf t
+  | _ -> term oc t
 
-and raw_params : p_params pp = fun ppf (ids,t,_) ->
-  out ppf "%a%a" param_ids ids typopt t
+and raw_params oc (ids,t,_) = param_ids oc ids; typopt oc t
 
-and params : p_params pp = fun ppf ((ids,t,b) as x) ->
+and params oc ((ids,t,b) as x) =
   match b, t with
-  | true, _ -> out ppf "{%a}" raw_params x
-  | false, Some _ -> out ppf "(%a)" raw_params x
-  | false, None -> param_ids ppf ids
+  | true, _ -> char oc '{'; raw_params oc x; char oc '}'
+  | false, Some _ -> char oc '('; raw_params oc x; char oc ')'
+  | false, None -> param_ids oc ids
 
 (* starts with a space if the list is not empty *)
-and params_list : p_params list pp = fun ppf ->
-  List.iter (out ppf " %a" params)
+and params_list oc = List.iter (prefix " " params oc)
 
 (* starts with a space if the list is not empty *)
-and params_list_in_abs : p_params list pp = fun ppf l ->
+and params_list_in_abs oc l =
   match l with
-  | [ids,t,false] -> out ppf " %a%a" param_ids ids typopt t
-  | _ -> List.iter (out ppf " %a" params) l
+  | [ids,t,false] -> char oc ' '; param_ids oc ids; typopt oc t
+  | _ -> params_list oc l
 
 (* starts with a space if <> None *)
-and typopt : p_term option pp = fun ppf t ->
-  Option.iter (out ppf " : %a" term) t
+and typopt oc t = Option.iter (prefix " : " term oc) t
 
 (** Translation of commands. *)
 
 let is_lem x = is_opaq x || is_priv x
 
-let command : p_command pp = fun ppf {elt; pos} ->
+let rec command oc c = command_aux oc c; string oc ".\n"
+
+and command_aux oc {elt; pos} =
   begin match elt with
   | P_inductive _ -> wrn pos "TODO"; assert false
-  | P_open ps -> out ppf "Import %a@." (List.pp path " ") ps
+  | P_open ps -> string oc "Import "; list path " " oc ps
   | P_require (true, ps) ->
-      out ppf "Require Import %a.@." (List.pp path " ") ps
+      string oc "Require Import "; list path " " oc ps
   | P_require (false, ps) ->
-      out ppf "Require %a.@." (List.pp path " ") ps
-  | P_require_as (p,i) -> out ppf "Module %a := %a.@." ident i path p
+      string oc "Require "; list path " " oc ps
+  | P_require_as (p,i) ->
+    string oc "Module "; ident oc i; string oc " := "; path oc p
   | P_symbol
     { p_sym_mod; p_sym_nam; p_sym_arg; p_sym_typ;
       p_sym_trm; p_sym_prf=_; p_sym_def } ->
@@ -303,26 +319,31 @@ let command : p_command pp = fun ppf {elt; pos} ->
           else p_sym_arg
         in
         begin match p_sym_def, p_sym_trm, p_sym_arg, p_sym_typ with
+          | true, Some t, _, Some a when List.exists is_lem p_sym_mod ->
+            (* If they have a type, opaque or private defined symbols are
+               translated as Lemma's so that their definition is loaded in
+               memory only when it is necessary. *)
+            string oc "Lemma "; ident oc p_sym_nam; params_list oc p_sym_arg;
+            string oc " : "; term oc a; string oc ".\nProof. exact (";
+            term oc t; string oc "). Qed"
           | true, Some t, _, _ ->
-              if List.exists is_lem p_sym_mod then
-                out ppf "Lemma %a%a%a.\nProof. exact (%a). Qed.@."
-                  ident p_sym_nam params_list p_sym_arg typopt p_sym_typ
-                  term t
-              else
-                out ppf "Definition %a%a := %a.@."
-                  ident p_sym_nam params_list p_sym_arg term t
+            string oc "Definition "; ident oc p_sym_nam;
+            params_list oc p_sym_arg; typopt oc p_sym_typ;
+            string oc " := "; term oc t;
+            if List.exists is_opaq p_sym_mod then
+              string oc ".\nOpaque "; ident oc p_sym_nam
           | false, _, [], Some t ->
-              out ppf "Axiom %a : %a.@." ident p_sym_nam term t
+            string oc "Axiom "; ident oc p_sym_nam; string oc " : "; term oc t
           | false, _, _, Some t ->
-              out ppf "Axiom %a : forall%a, %a.@."
-                ident p_sym_nam params_list p_sym_arg term t
+            string oc "Axiom "; ident oc p_sym_nam; string oc " : forall";
+            params_list oc p_sym_arg; string oc ", "; term oc t
           | _ -> assert false
         end
   | P_rules _ -> wrn pos "rules are not translated"
   | _ -> if !stt then () else (wrn pos "TODO"; assert false)
   end
 
-let ast : ast pp = fun ppf -> Stream.iter (command ppf)
+let ast oc = Stream.iter (command oc)
 
 (** Set Coq required file. *)
 
@@ -333,7 +354,8 @@ let set_requiring : string -> unit = fun f -> require := Some f
 let print : ast -> unit = fun s ->
   begin match !require with
   | Some f ->
-      out std_formatter "Require Import %s.\n" (Filename.chop_extension f)
+    print_string "Require Import ";
+    print_string (Filename.chop_extension f); print_string ".\n"
   | None -> ()
   end;
-  ast std_formatter s
+  ast stdout s
