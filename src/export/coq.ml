@@ -18,7 +18,6 @@ The renaming map can be specified through a lambdapi file (option --renaming).
 open Lplib open Extra
 open Common open Pos open Error
 open Parsing open Syntax
-open Format
 open Core
 
 let log = Logger.make 'x' "xprt" "export"
@@ -219,7 +218,7 @@ let rec term oc t =
         | None -> raw_ident oc i
       else raw_ident oc i
   | P_Iden(qid,b) ->
-      if b then string oc "@@";
+      if b then char oc '@';
       if !stt then
         match QidMap.find_opt qid.elt !map_erased_qid_coq with
         | Some s -> string oc s
@@ -294,18 +293,17 @@ and typopt oc t = Option.iter (prefix " : " term oc) t
 
 let is_lem x = is_opaq x || is_priv x
 
-let rec command oc c = command_aux oc c; string oc ".\n"
-
-and command_aux oc {elt; pos} =
+let command oc {elt; pos} =
   begin match elt with
   | P_inductive _ -> wrn pos "TODO"; assert false
-  | P_open ps -> string oc "Import "; list path " " oc ps
+  | P_open ps -> string oc "Import "; list path " " oc ps; string oc ".\n"
   | P_require (true, ps) ->
-      string oc "Require Import "; list path " " oc ps
+      string oc "Require Import "; list path " " oc ps; string oc ".\n"
   | P_require (false, ps) ->
-      string oc "Require "; list path " " oc ps
+      string oc "Require "; list path " " oc ps; string oc ".\n"
   | P_require_as (p,i) ->
-    string oc "Module "; ident oc i; string oc " := "; path oc p
+    string oc "Module "; ident oc i; string oc " := "; path oc p;
+    string oc ".\n"
   | P_symbol
     { p_sym_mod; p_sym_nam; p_sym_arg; p_sym_typ;
       p_sym_trm; p_sym_prf=_; p_sym_def } ->
@@ -325,18 +323,21 @@ and command_aux oc {elt; pos} =
                memory only when it is necessary. *)
             string oc "Lemma "; ident oc p_sym_nam; params_list oc p_sym_arg;
             string oc " : "; term oc a; string oc ".\nProof. exact (";
-            term oc t; string oc "). Qed"
+            term oc t; string oc "). Qed.\n"
           | true, Some t, _, _ ->
             string oc "Definition "; ident oc p_sym_nam;
             params_list oc p_sym_arg; typopt oc p_sym_typ;
             string oc " := "; term oc t;
             if List.exists is_opaq p_sym_mod then
-              string oc ".\nOpaque "; ident oc p_sym_nam
+              (string oc ".\nOpaque "; ident oc p_sym_nam);
+            string oc ".\n"
           | false, _, [], Some t ->
-            string oc "Axiom "; ident oc p_sym_nam; string oc " : "; term oc t
+            string oc "Axiom "; ident oc p_sym_nam; string oc " : ";
+            term oc t; string oc ".\n"
           | false, _, _, Some t ->
             string oc "Axiom "; ident oc p_sym_nam; string oc " : forall";
-            params_list oc p_sym_arg; string oc ", "; term oc t
+            params_list oc p_sym_arg; string oc ", "; term oc t;
+            string oc ".\n"
           | _ -> assert false
         end
   | P_rules _ -> wrn pos "rules are not translated"
@@ -352,10 +353,11 @@ let require = ref None
 let set_requiring : string -> unit = fun f -> require := Some f
 
 let print : ast -> unit = fun s ->
+  let oc = stdout in
   begin match !require with
-  | Some f ->
-    print_string "Require Import ";
-    print_string (Filename.chop_extension f); print_string ".\n"
+    | Some f ->
+      string oc "Require Import ";
+      string oc (Filename.chop_extension f); string oc ".\n"
   | None -> ()
   end;
-  ast stdout s
+  ast oc s
