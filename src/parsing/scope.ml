@@ -512,9 +512,9 @@ let scope_term :
     let md = M_Term {m_term_meta_of_key=mok; m_term_prv} in
     Bindlib.unbox (scope ?find_sym ~typ 0 md ss env t)
   with Fatal(Some p,    msg) ->
-    Console.out 3 (Color.red "%a") Pos.pp p;
+    Console.out 3 (Color.red "[%a]") Pos.pp p;
     (**  Get ride of the position because the error message is displayed here
-        There is no more need of the position and this avoids the message 
+        There is no more need of the position and this avoids the message
         to be displayed twice in [Error.handle_exceptions] *)
     raise(Fatal(None,    msg))
 
