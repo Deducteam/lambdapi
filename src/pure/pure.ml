@@ -171,7 +171,9 @@ let handle_tactic : proof_state -> Tactic.t -> int -> tactic_result =
     let ps, qres = Handle.Tactic.handle ss sym_pos prv (ps, None) tac n in
     let qres = Option.map (fun f -> f ()) qres in
     Tac_OK((Time.save (), ss, ps, finalize, prv, sym_pos), qres)
-  with Fatal(p,m) -> Tac_Error(p,m)
+  with Fatal(Some p,m) ->
+    Console.out 3 (Color.red "%a") Pos.pp p;
+    Tac_Error(Some p,m)
 
 let end_proof : proof_state -> command_result =
   fun (_, ss, ps, finalize, _, _) ->
