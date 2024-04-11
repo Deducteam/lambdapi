@@ -99,18 +99,20 @@ let to_string : ?print_fname:bool -> pos -> string =
   else
     Printf.sprintf "%s%d:%d-%d" fname start_line start_col end_col
 
+let popt_to_string : ?print_fname:bool -> popt -> string =
+  fun ?(print_fname=true) pop ->
+  match pop with
+    | None -> "Unknown location "
+    | Some (p) -> to_string ~print_fname p ^ " "
+
 (** [pp ppf pos] prints the optional position [pos] on [ppf]. *)
 let pp : popt Lplib.Base.pp = fun ppf p ->
-  match p with
-  | None    -> string ppf "unknown location"
-  | Some(p) -> string ppf (to_string p)
+  string ppf (popt_to_string p)
 
 (** [short ppf pos] prints the optional position [pos] on [ppf]. *)
 let short : popt Lplib.Base.pp = fun ppf p ->
-  match p with
-  | None    -> string ppf "unknown location"
-  | Some(p) -> let print_fname=false in
-               string ppf (to_string ~print_fname p)
+  let print_fname=false in
+  string ppf (popt_to_string ~print_fname p)
 
 (** [map f loc] applies function [f] on the value of [loc] and keeps the
     position unchanged. *)
