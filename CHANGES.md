@@ -7,7 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
-- add export format `raw_dk`
+- Add export format `raw_dk`
+- Fix of the color of the text in command line when console.out is used.
+- Use black text instead of red when diplaying queries answers.
 
 ## 2.5.0 (2024-02-25)
 
