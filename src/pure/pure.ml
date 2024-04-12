@@ -163,7 +163,8 @@ let handle_command : state -> Command.t -> command_result =
         (t, ss, d.pdata_state, d.pdata_finalize, d.pdata_prv, d.pdata_sym_pos)
       in
         Cmd_Proof(ps, d.pdata_proof, d.pdata_sym_pos, d.pdata_end_pos)
-  with Fatal(p,m) -> Cmd_Error(p,m)
+  with Fatal(Some p,m) ->
+    Cmd_Error(Some p, Pos.popt_to_string p ^ m)
 
 let handle_tactic : proof_state -> Tactic.t -> int -> tactic_result =
   fun (_, ss, ps, finalize, prv, sym_pos) tac n ->
@@ -171,12 +172,14 @@ let handle_tactic : proof_state -> Tactic.t -> int -> tactic_result =
     let ps, qres = Handle.Tactic.handle ss sym_pos prv (ps, None) tac n in
     let qres = Option.map (fun f -> f ()) qres in
     Tac_OK((Time.save (), ss, ps, finalize, prv, sym_pos), qres)
-  with Fatal(p,m) -> Tac_Error(p,m)
+  with Fatal(Some p,m) ->
+    Tac_Error(Some p, Pos.popt_to_string p ^ m)
 
 let end_proof : proof_state -> command_result =
   fun (_, ss, ps, finalize, _, _) ->
   try Cmd_OK((Time.save (), finalize ss ps), None)
-  with Fatal(p,m) -> Cmd_Error(p,m)
+  with Fatal(Some p,m) ->
+    Cmd_Error(Some p, Pos.popt_to_string p ^ m)
 
 let get_symbols : state -> Term.sym Extra.StrMap.t =
   fun (_, ss) -> ss.in_scope
