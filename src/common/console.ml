@@ -20,6 +20,7 @@ let set_default_verbose : int -> unit = fun i ->
     [lvl] is strictly greater than the current verbosity level.  Note that the
     output channel is automatically flushed if logging modes are enabled. *)
 let out : int -> 'a outfmt -> 'a = fun lvl fmt ->
+  Color.update_with_color Stdlib.(!out_fmt);
   let out = Format.(if lvl > !verbose then ifprintf else fprintf) in
   out Stdlib.(!out_fmt) (fmt ^^ "@.")
 
