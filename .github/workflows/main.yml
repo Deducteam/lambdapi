@@ -50,6 +50,9 @@ jobs:
           npm install -g @types/vscode
           npm install -g vsce 
           make build-vscode-extension
+          make publish-vscode-extension
+        env:
+          PAT: ${{secrets.VSCODE_PAT}}
       - name: publish vscode extension
         uses: actions/upload-artifact@v4
         with: 

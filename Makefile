@@ -170,3 +170,11 @@ uninstall_vim_mode:
 .PHONY: build-vscode-extension
 build-vscode-extension:
 	cd editors/vscode && make && mkdir extensionFolder && vsce package -o extensionFolder
+
+.PHONY: publish-vscode-extension
+publish-vscode-extension:
+ifeq ($(shell vsce show --json deducteam.lambdapi | jq '.versions[0]' | jq '.version'), $(shell cat editors/vscode/package.json | jq '.version'))
+	echo "extension already exists. Skip"
+else
+	cd editors/vscode && vsce publish -p ${PAT}
+endif
