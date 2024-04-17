@@ -527,7 +527,7 @@ let process_input ofmt (com : J.t) =
     let bt = Printexc.get_backtrace () in
     LIO.log_error "[BT]" bt;
     LIO.log_error "process_input" (Printexc.to_string exn);
-    (*Send an "empty" answer with Null goals that will be treated specifically by the client*)
+    (*Send an "empty" answer with Null goals when exception occurs*)
     let id     = oint_field "id" (U.to_assoc com) in
     let goals = None in
     let logs = "" in
