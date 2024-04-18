@@ -2,7 +2,7 @@
  (targets version.ml)
  (action
   (with-stdout-to version.ml
-    (run ocaml unix.cma %{dep:../../misc/gen_version.ml})))
+    (run ocaml -I +unix unix.cma %{dep:../../misc/gen_version.ml})))
  (mode fallback))
 
 (library
