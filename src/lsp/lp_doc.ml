@@ -164,35 +164,29 @@ let dummy_loc =
 
 let check_text ~doc =
   let uri, version = doc.uri, doc.version in
+  let cmds, error = Pure.parse_text ~fname:uri doc.text in
   let root =
     match doc.root with
-    | Some(ss) -> ss
+    | Some ss -> ss
     | None ->
-      raise(Error.fatal_no_pos "Root state is missing
-      probably because new_doc has raised exception")
+        raise(Error.fatal_no_pos "Root state is missing probably because \
+                                  new_doc raised an exception")
   in
-  try
-    let cmds =
-      let (cmds, root) = Pure.parse_text root ~fname:uri doc.text in
-      (* One shot state update after parsing. *)
-      doc.root <- Some(root); doc.final <- Some(root); cmds
-    in
-
-    (* compute rangemap *)
-    let map = Pure.rangemap cmds in
-
-    let nodes, final, diag, logs =
-      List.fold_left (process_cmd uri) ([],root,[],[]) cmds in
-    let logs = List.rev logs in
-    let doc = { doc with nodes; final=Some(final); map; logs } in
-    doc,
-    LSP.mk_diagnostics ~uri ~version @@
+  let nodes, final, diags, logs =
+    List.fold_left (process_cmd uri) ([],root,[],[]) cmds in
+  let logs = List.rev logs
+  and diags = (* filter out diagnostics with no position *)
     List.fold_left (fun acc (pos,lvl,msg,goal) ->
         match pos with
         | None     -> acc
         | Some pos -> (pos,lvl,msg,goal) :: acc
-      ) [] diag
-  with
-  | Pure.Parse_error(loc, msg) ->
-    let logs = [((1, msg), Some loc)] in
-    {doc with logs}, mk_error ~doc loc msg
+      ) [] diags
+  in
+  let logs, diags =
+    match error with
+    | None -> logs, diags
+    | Some(pos,msg) -> ((1, msg), Some pos)::logs, (pos,1,msg,None)::diags
+  in
+  let map = Pure.rangemap cmds in
+  let doc = { doc with nodes; final=Some(final); map; logs } in
+  doc, LSP.mk_diagnostics ~uri ~version diags
