@@ -220,7 +220,7 @@ path:
   | p=QID { make_pos $sloc (List.rev p) }
 
 modifier:
-  | d=SIDE? ASSOCIATIVE
+  | d=ioption(SIDE) ASSOCIATIVE
     { let b = match d with Some Pratter.Left -> true | _ -> false in
       make_pos $sloc (P_prop (Term.Assoc b)) }
   | COMMUTATIVE { make_pos $sloc (P_prop Term.Commu) }
