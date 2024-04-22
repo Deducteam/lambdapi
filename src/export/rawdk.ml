@@ -167,7 +167,8 @@ let modifiers : p_term option -> p_modifier list pp = fun p_sym_typ ppf ms ->
   | [], [], [], [] -> out ppf "def "
   | [], [], [], [P_opaq] when p_sym_typ <> None -> out ppf "thm "
   (*https://github.com/Deducteam/Dedukti/issues/319*)
-  | [Commu;Assoc _], [Protec], [], [] -> out ppf "defac "
+  | [Commu;Assoc _], [], [], [] -> out ppf "defac "
+  | [Commu;Assoc _], [Protec], [], [] -> out ppf "private defac "
   | [Injec], [Protec], [], [] -> out ppf "private injective "
   | [Injec], [], [], [] -> out ppf "injective "
   | [], [Protec], [], [] -> out ppf "private "
