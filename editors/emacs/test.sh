@@ -7,14 +7,16 @@
 ## Takes the version of the mode as first argument
 set -eu
 tmp="$(mktemp -d)"
-cp "dist/lambdapi-mode-$1.tar" "${tmp}"
+make dist
+cp "lambdapi-$1.tar" "${tmp}"
 (cd "${tmp}" || exit 1
  curl https://sanemacs.com/sanemacs.el > sanemacs.el
  {
+     echo '(setq package-check-signature nil)';
      echo '(use-package eglot)';
      echo '(use-package math-symbol-lists)';
      echo '(use-package highlight)';
  } >> sanemacs.el
  emacs --quick -l sanemacs.el \
-     --eval "(package-install-file \"lambdapi-mode-$1.tar\")")
+     --eval "(package-install-file \"lambdapi-$1.tar\")")
 rm -rf "${tmp}"
