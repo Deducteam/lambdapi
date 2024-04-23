@@ -3,7 +3,7 @@
 VERSION = 1.1.0
 NAME = lambdapi
 
-EMACS   = emacs
+EMACS = emacs
 
 SRC =
 SRC += lambdapi-abbrev.el
@@ -19,13 +19,17 @@ SRC += lambdapi-vars.el
 $(NAME)-$(VERSION).tar: $(SRC)
 	mkdir -p "$(NAME)-$(VERSION)"
 	cp *.el "$(NAME)-$(VERSION)"
-	tar --create --file "$(NAME)-$(VERSION)".tar "$(NAME)-$(VERSION)"
-	rm -r "$(NAME)-$(VERSION)"
+	tar -cf "$(NAME)-$(VERSION)".tar "$(NAME)-$(VERSION)"
 
 .PHONY: install
-install: $(NAME)-$(VERSION).tar
-	@echo "To install the mode in emacs, use"
-	@echo "> M-x package-install-file RET $(NAME)-$(VERSION).tar RET"
+install:
+	@echo "See https://lambdapi.readthedocs.io/en/latest/emacs.html \
+	for instructions on how to install the lambdapi mode for Emacs. \
+	If you know what you're doing, you can install the development version with" \
+	| fmt
+	@echo "$$ make dist"
+	@echo "and in emacs"
+	@echo "M-x package-install-file RET $(NAME)-$(VERSION).tar RET"
 
 .PHONY: dist
 dist: $(NAME)-$(VERSION).tar
@@ -36,5 +40,5 @@ check: dist
 
 .PHONY: clean
 clean:
-	rm -rf "$(NAME)-$(VERSION)"
 	rm -f "$(NAME)-$(VERSION)".tar
+	rm -rf "$(NAME)-$(VERSION)"
