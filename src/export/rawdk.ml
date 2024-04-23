@@ -120,7 +120,7 @@ let query : p_query pp = fun ppf ({elt;pos} as q) ->
   | P_query_print _
   | P_query_proofterm
   | P_query_search _
-  | P_query_flag _ -> out ppf "(;%a;)" Pretty.query q (*FIXME?*)
+  | P_query_flag _ -> out ppf "(;%a;)@." Pretty.query q (*FIXME?*)
   | P_query_infer(_,{strategy=(SNF|HNF|WHNF);_})
   | P_query_normalize(_,{strategy=(NONE|HNF);_}) ->
       fatal pos "Cannot be translated: %a" Pretty.query q
@@ -140,7 +140,10 @@ let rule : p_rule pp =
   out ppf "[%a] %a --> %a.@."
     varset (pvars_lhs l) term (remove_wraps l) term r
 
-let partition_modifiers ms =
+type modifiers
+  = prop list * expo list * match_strat list * p_modifier_aux list
+
+let partition_modifiers (ms:p_modifier list) : modifiers =
   let ms = List.map (fun {elt;_} -> elt) ms in
   let ms = List.sort_uniq Stdlib.compare ms in
   let is_prop elt = match elt with P_prop _ -> true | _ -> false in
@@ -167,7 +170,8 @@ let modifiers : p_term option -> p_modifier list pp = fun p_sym_typ ppf ms ->
   | [], [], [], [] -> out ppf "def "
   | [], [], [], [P_opaq] when p_sym_typ <> None -> out ppf "thm "
   (*https://github.com/Deducteam/Dedukti/issues/319*)
-  | [Commu;Assoc _], [Protec], [], [] -> out ppf "defac "
+  | [Commu;Assoc _], [], [], [] -> out ppf "defac "
+  | [Commu;Assoc _], [Protec], [], [] -> out ppf "private defac "
   | [Injec], [Protec], [], [] -> out ppf "private injective "
   | [Injec], [], [], [] -> out ppf "injective "
   | [], [Protec], [], [] -> out ppf "private "
@@ -177,23 +181,52 @@ let modifiers : p_term option -> p_modifier list pp = fun p_sym_typ ppf ms ->
       | [] -> assert false
       | {pos;_}::_ -> fatal pos "Cannot translate: %a.@." Pretty.modifiers ms
 
+let get_ac_typ :
+  popt -> modifiers -> p_params list -> p_term option -> p_term option
+  = fun pos ms p_sym_arg p_sym_typ ->
+  match ms with
+  | ([Commu;Assoc _], _, _, _) ->
+      begin match p_sym_arg, p_sym_typ with
+      | [], Some {elt=P_Arro(a,{elt=P_Arro(b,_);_});_} when eq_p_term a b ->
+          Some a
+      | _, Some {pos;_} -> fatal pos "Not a type of the form \"a → a → _\""
+      | _, None -> fatal pos "Type missing"
+      end
+  | _ -> None
+
 let command : p_command pp = fun ppf ({elt; pos} as c) ->
   match elt with
   | P_query q -> query ppf q
   | P_require(false,ps) ->
       List.iter (fun {elt;_} -> out ppf "#REQUIRE %a@." Dk.path elt) ps
-  | P_symbol{p_sym_mod; p_sym_nam=n; p_sym_arg=xs; p_sym_typ;
+  | P_symbol{p_sym_mod; p_sym_nam=n; p_sym_arg; p_sym_typ;
              p_sym_trm; p_sym_prf=None; p_sym_def=_;} ->
-      begin match p_sym_trm, p_sym_typ with
-      | Some t, _ ->
-          let dfn ppf = out ppf " := %a" term in
-          out ppf "%a%a%a%a%a.@." (modifiers p_sym_typ) p_sym_mod ident n
-            arg xs (Option.pp typ) p_sym_typ dfn t
-      | None, Some a ->
-          (*https://github.com/Deducteam/Dedukti/issues/322*)
-          out ppf "%a%a : %a%a.@." (modifiers p_sym_typ) p_sym_mod ident n
-            prod xs term a
-      | _ -> assert false
+      let ms = partition_modifiers p_sym_mod in
+      begin match get_ac_typ pos ms p_sym_arg p_sym_typ with
+      | Some a ->
+          begin match p_sym_trm, p_sym_typ with
+          | Some t, _ ->
+              let dfn ppf = out ppf " := %a" term in
+              out ppf "%a%a [%a]%a.@." (modifiers p_sym_typ) p_sym_mod ident n
+                term a dfn t
+          | None, Some _ ->
+              (*https://github.com/Deducteam/Dedukti/issues/322*)
+              out ppf "%a%a [%a].@." (modifiers p_sym_typ) p_sym_mod ident n
+                term a
+          | _ -> assert false
+          end
+      | None ->
+          begin match p_sym_trm, p_sym_typ with
+          | Some t, _ ->
+              let dfn ppf = out ppf " := %a" term in
+              out ppf "%a%a%a%a%a.@." (modifiers p_sym_typ) p_sym_mod ident n
+                arg p_sym_arg (Option.pp typ) p_sym_typ dfn t
+          | None, Some a ->
+              (*https://github.com/Deducteam/Dedukti/issues/322*)
+              out ppf "%a%a : %a%a.@." (modifiers p_sym_typ) p_sym_mod ident n
+                prod p_sym_arg term a
+          | _ -> assert false
+          end
       end
   | P_rules rs -> List.iter (rule ppf) rs
   | P_builtin _

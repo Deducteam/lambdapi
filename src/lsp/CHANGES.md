@@ -3,6 +3,8 @@
 
 - First standalone release; code is the same, but we don't build a
   lambdapi package anymore.
+- Logs : show an error message in Debug terminal if 
+  the lambdapi.pkg is missing
 
 0.0.8.7
 -------
