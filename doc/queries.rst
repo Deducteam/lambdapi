@@ -49,7 +49,7 @@ functionalities, run the command ``lambdapi check --help``.
 --------
 
 Sets some flags ``on`` or ``off``, mainly for modifying the printing
-behavior. Only the flag ``"eta_equalify"`` changes the behavior of the
+behavior. Only the flag ``"eta_equality"`` changes the behavior of the
 rewrite engine by reducing η-redexes.
 
 ::
