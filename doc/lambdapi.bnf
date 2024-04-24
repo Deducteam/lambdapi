@@ -176,12 +176,13 @@ QID ::= [UID "."]+ UID
 
 <equation> ::= <term> "≡" <term>
 
-<notation> ::= "infix" [<side>] <float_or_nat>
-             | "postfix" <float_or_nat>
-             | "prefix" <float_or_nat>
+<notation> ::= "infix" [<side>] <float_or_int>
+             | "postfix" <float_or_int>
+             | "prefix" <float_or_int>
              | "quantifier"
 
-<float_or_nat> ::= <float>
+<float_or_int> ::= <float>
+                 | "-"<nat>
                  | <nat>
 
 <maybe_generalize> ::= ["generalize"]
