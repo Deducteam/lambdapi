@@ -39,7 +39,7 @@ lambdapi.bnf: Makefile.bnf ../src/parsing/lpParser.mly
 	-e 's/INFIX/"infix"/g' \
 	-e 's/INJECTIVE/"injective"/g' \
 	-e 's/LET/"let"/g' \
-	-e 's/NEG_NAT/<neg_nat>/g' \
+        -e 's/NEG_NAT/"-"<nat>/g' \
 	-e 's/NAT/<nat>/g' \
 	-e 's/NOTATION/"notation"/g' \
 	-e 's/OPEN/"open"/g' \
