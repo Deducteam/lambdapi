@@ -183,8 +183,10 @@ function checkProofUntilCursor(context: ExtensionContext) {
 
     //To simplify the code, proof states are always at the beggining of the highlighted line
     //So must be the cursor position since it is the new proof state
-    if (cursorPosition.character != 0)
-        cursorPosition = new Position(cursorPosition.line, 0);
+    // if (cursorPosition.character != 0)
+    //     cursorPosition = new Position(cursorPosition.line, 0);
+
+    cursorPosition = stepCommand(openEditor.document, cursorPosition, true);
 
     context.workspaceState.update('proofState', cursorPosition); //proof state is set to the cursor position
 
