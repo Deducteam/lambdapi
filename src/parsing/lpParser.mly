@@ -85,6 +85,7 @@
 
 %token <bool * string> DEBUG_FLAGS
 %token <string> NAT
+%token <string> INT
 %token <string> FLOAT
 %token <Pratter.associativity> SIDE
 %token <string> STRINGLIT
@@ -395,15 +396,15 @@ unif_rule: e=equation HOOK_ARROW
 equation: l=term EQUIV r=term { (l, r) }
 
 notation:
-  | INFIX a=SIDE? p=float_or_nat
+  | INFIX a=SIDE? p=float_or_int
     { Sign.Infix(Option.get Pratter.Neither a, p) }
-  | POSTFIX p=float_or_nat { Sign.Postfix(p) }
-  | PREFIX p=float_or_nat { Sign.Prefix(p) }
+  | POSTFIX p=float_or_int { Sign.Postfix(p) }
+  | PREFIX p=float_or_int { Sign.Prefix(p) }
   | QUANTIFIER { Sign.Quant }
 
-float_or_nat:
+float_or_int:
   | s=FLOAT { s }
-  | s=NAT { s }
+  | s=INT { s }
 
 maybe_generalize:
   | g = GENERALIZE?
