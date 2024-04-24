@@ -182,7 +182,7 @@ QID ::= [UID "."]+ UID
              | "quantifier"
 
 <float_or_int> ::= <float>
-                 | NEG_<nat>
+                 | <neg_nat>
                  | <nat>
 
 <maybe_generalize> ::= ["generalize"]
