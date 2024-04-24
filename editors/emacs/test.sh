@@ -4,11 +4,13 @@
 ## directory and launches emacs in it. You  can create a new 'foo.lp' to try the
 ## mode.
 ##
-## Takes the version of the mode as first argument
+## Usage: tests.sh NAME VERSION
 set -eu
+NAME="$1"
+VERSION="$2"
 tmp="$(mktemp -d)"
 make dist
-cp "lambdapi-$1.tar" "${tmp}"
+cp "${NAME}-${VERSION}.tar" "${tmp}"
 (cd "${tmp}" || exit 1
  curl https://sanemacs.com/sanemacs.el > sanemacs.el
  {
@@ -18,5 +20,5 @@ cp "lambdapi-$1.tar" "${tmp}"
      echo '(use-package highlight)';
  } >> sanemacs.el
  emacs --quick -l sanemacs.el \
-     --eval "(package-install-file \"lambdapi-$1.tar\")")
+     --eval "(package-install-file \"${NAME}-${VERSION}.tar\")")
 rm -rf "${tmp}"

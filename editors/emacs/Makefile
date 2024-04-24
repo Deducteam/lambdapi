@@ -1,7 +1,7 @@
 .POSIX:
 
 VERSION = 1.1.0
-NAME = lambdapi
+NAME = lambdapi-mode
 
 EMACS = emacs
 
@@ -11,7 +11,7 @@ SRC += lambdapi-capf.el
 SRC += lambdapi-input.el
 SRC += lambdapi-layout.el
 SRC += lambdapi-mode.el
-SRC += lambdapi-pkg.el
+SRC += lambdapi-mode-pkg.el
 SRC += lambdapi-proofs.el
 SRC += lambdapi-smie.el
 SRC += lambdapi-vars.el
@@ -36,7 +36,7 @@ dist: $(NAME)-$(VERSION).tar
 
 .PHONY: check
 check: dist
-	./test.sh $(VERSION)
+	./test.sh "$(NAME)" "$(VERSION)"
 
 .PHONY: clean
 clean:
