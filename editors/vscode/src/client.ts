@@ -178,13 +178,6 @@ function checkProofUntilCursor(context: ExtensionContext) {
 
     //The current position of the cursor
     let cursorPosition: Position = openEditor.selection.active;
-    if (proofState.line == cursorPosition.line)
-        return;
-
-    //To simplify the code, proof states are always at the beggining of the highlighted line
-    //So must be the cursor position since it is the new proof state
-    // if (cursorPosition.character != 0)
-    //     cursorPosition = new Position(cursorPosition.line, 0);
 
     cursorPosition = stepCommand(openEditor.document, cursorPosition, true);
 
