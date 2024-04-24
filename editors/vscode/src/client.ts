@@ -511,7 +511,11 @@ function stepCommand(document: TextDocument, currentPos: Position, forward: bool
     const termRegex = new RegExp(terminators.join("|"), 'gi');
 
     let termPositions = [...document.getText().matchAll(termRegex)]
-        .map(rm => rm.index ? rm.index + rm[0].length : undefined)
+        .map(rm => { 
+            if (rm[0] === ";") {
+                return rm.index ? rm.index + rm[0].length : undefined
+            }
+            else return rm.index ? rm.index : undefined })
         .filter((x): x is number => x !== undefined) // remove undefined
         .map(x => document.positionAt(x));
 
