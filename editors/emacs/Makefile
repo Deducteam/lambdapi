@@ -36,7 +36,10 @@ dist: $(NAME)-$(VERSION).tar
 
 .PHONY: check
 check: dist
-	./test.sh "$(NAME)" "$(VERSION)"
+	# This rule depends on the layout of dune. It builds the lambdapi
+	# binary so that the "sandboxed" emacs can access it.
+	cd ../.. && $(MAKE) lambdapi
+	./test.sh "$(NAME)" "$(VERSION)" "../../_build/install/default/bin/lambdapi"
 
 .PHONY: clean
 clean:
