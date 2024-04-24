@@ -38,13 +38,16 @@ keybindings, you can change them easily!
 Installation
 ------------
 
-The ``lambdapi-mode`` can be installed from `MELPA
-<https://melpa.org>`__ using any package manager
-(``package.el``, `straight
-<https://github.com/raxod502/straight.el>`__, …). Provided that Emacs
-is properly configured (see https://melpa.org/#/getting-started to
-configure Emacs to use MELPA), the mode can be installed with ``M-x
-package-install RET lambdapi-mode``.
+The ``lambdapi-mode`` is distributed through `MELPA <https://melpa.org>`__,
+so you can use any package manager for Emacs.
+
+Or, provided that MELPA is correctly
+`configured <https://melpa.org/#/getting-started>`__,
+use the following command inside Emacs::
+
+    M-x package-install RET lambdapi-mode RET
+
+where ``M-x`` is usually Alt+x and ``RET`` denotes the Return or Enter key.
 
 Usage
 -----
