@@ -2,6 +2,8 @@
 
 VERSION = 1.1.0
 NAME = lambdapi-mode
+# The path to lambdapi built by dune
+LAMBDAPI = ../../_build/install/default/bin/lambdapi
 
 EMACS = emacs
 
@@ -39,7 +41,7 @@ check: dist
 	# This rule depends on the layout of dune. It builds the lambdapi
 	# binary so that the "sandboxed" emacs can access it.
 	cd ../.. && $(MAKE) lambdapi
-	./test.sh "$(NAME)" "$(VERSION)" "../../_build/install/default/bin/lambdapi"
+	./test.sh "$(NAME)" "$(VERSION)" "$(LAMBDAPI)"
 
 .PHONY: clean
 clean:
