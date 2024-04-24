@@ -85,7 +85,7 @@
 
 %token <bool * string> DEBUG_FLAGS
 %token <string> NAT
-%token <string> INT
+%token <string> NEG_NAT
 %token <string> FLOAT
 %token <Pratter.associativity> SIDE
 %token <string> STRINGLIT
@@ -404,7 +404,8 @@ notation:
 
 float_or_int:
   | s=FLOAT { s }
-  | s=INT { s }
+  | s=NEG_NAT { s }
+  | s=NAT { s }
 
 maybe_generalize:
   | g = GENERALIZE?
