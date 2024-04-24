@@ -78,7 +78,7 @@ following files:
 - `editors/emacs/lambdapi-smie.el` (grammar and indentation)
 - `editors/vscode/lp.configuration.json` (comments configuration),
 - `editors/vscode/syntaxes/lp.tmLanguage.json` (syntax highlighting),
-- `tools/listings.tex`
+- `misc/lambdapi.tex`
 - `doc/Makefile.bnf`
 - the User Manual files in the `doc/` repository
 
