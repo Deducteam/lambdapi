@@ -55,15 +55,6 @@ sig
   end
 = struct
 
-  (* Needed to workaround serious bug in sedlex, see #549 *)
-  let lexbuf_fixup lb fname =
-    let pos = Lexing.
-                { pos_fname = fname
-                ; pos_lnum = 1
-                ; pos_bol = 0
-                ; pos_cnum = 0 } in
-    Sedlexing.set_position lb pos
-
   let stream_of_lexbuf :
     grammar_entry:(LpLexer.token,'b) MenhirLib.Convert.traditional ->
     ?inchan:in_channel -> ?fname:string -> Sedlexing.lexbuf ->
@@ -71,7 +62,6 @@ sig
     'a Stream.t =
     fun ~grammar_entry ?inchan ?fname lb ->
       Option.iter (Sedlexing.set_filename lb) fname;
-      Option.iter (lexbuf_fixup lb) fname;
       let parse =
         MenhirLib.Convert.Simplified.traditional2revised
          grammar_entry
