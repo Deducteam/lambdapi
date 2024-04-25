@@ -1,52 +1,49 @@
-VERSION = 1.0
+.POSIX:
 
-CASK    =
-EMACS   = emacs
-INSTALL = install
+VERSION = 1.1.0
+NAME = lambdapi-mode
+# The path to lambdapi built by dune
+LAMBDAPI = ../../_build/install/default/bin/lambdapi
 
-INSTALL_DIR = $(shell opam config var share)/emacs/site-lisp
-CURDIR = $(shell pwd)
+EMACS = emacs
 
-SRC = $(wildcard *.el)
-BUILD_FILES =
+SRC =
+SRC += lambdapi-abbrev.el
+SRC += lambdapi-capf.el
+SRC += lambdapi-input.el
+SRC += lambdapi-layout.el
+SRC += lambdapi-mode.el
+SRC += lambdapi-mode-pkg.el
+SRC += lambdapi-proofs.el
+SRC += lambdapi-smie.el
+SRC += lambdapi-vars.el
 
-# If not using Cask, build only the site file
-ifndef CASK
-BUILD_FILES += lambdapi-site-file.elc
-endif
-
-.PHONY: build
-build: $(SRC)
-ifdef CASK
-	$(CASK) build
-else
-	$(MAKE) $(BUILD_FILES)
-endif
-
-.SUFFIXES = .elc .el
-.el.elc:
-	$(EMACS) --batch --eval "(add-to-list 'load-path \"$(CURDIR)\")" \
---eval '(byte-compile-file "$<")'
+$(NAME)-$(VERSION).tar: $(SRC)
+	mkdir -p "$(NAME)-$(VERSION)"
+	cp *.el "$(NAME)-$(VERSION)"
+	tar -cf "$(NAME)-$(VERSION)".tar "$(NAME)-$(VERSION)"
 
 .PHONY: install
-install: $(SRC) lambdapi-site-file.elc
-	$(INSTALL) -m 644 -t $(INSTALL_DIR) $^
-	$(MAKE) clean
+install:
+	@echo "See https://lambdapi.readthedocs.io/en/latest/emacs.html \
+	for instructions on how to install the lambdapi mode for Emacs. \
+	If you know what you're doing, you can install the development version with" \
+	| fmt
+	@echo "$$ make dist"
+	@echo "and in emacs"
+	@echo "M-x package-install-file RET $(NAME)-$(VERSION).tar RET"
 
 .PHONY: dist
-dist:
-ifdef CASK
-	$(CASK) package
-endif
+dist: $(NAME)-$(VERSION).tar
 
-.PHONY: test
-tests: dist
-	./test.sh $(VERSION)
+.PHONY: check
+check: dist
+	# This rule depends on the layout of dune. It builds the lambdapi
+	# binary so that the "sandboxed" emacs can access it.
+	cd ../.. && $(MAKE) lambdapi
+	./test.sh "$(NAME)" "$(VERSION)" "$(LAMBDAPI)"
 
 .PHONY: clean
 clean:
-ifdef CASK
-	$(CASK) clean-elc
-else
-	find . -name '*.elc' -exec rm -f {} \;
-endif
+	rm -f "$(NAME)-$(VERSION)".tar
+	rm -rf "$(NAME)-$(VERSION)"
