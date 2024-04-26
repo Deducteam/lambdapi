@@ -64,6 +64,7 @@ let parse_text : state -> fname:string -> string -> Command.t list * state =
     fun (t,st) ~fname s ->
   let dk_syntax = Filename.check_suffix fname dk_src_extension in
   try
+    LibMeta.reset_meta_counter();
     Time.restore t;
     let ast =
       let strm =
