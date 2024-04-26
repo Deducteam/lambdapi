@@ -405,6 +405,11 @@ let rec unfold : term -> term = fun t ->
       end
   | _ -> t
 
+let rec unfold_let : term -> term = fun t ->
+  match unfold t with
+  | LLet(_,u,v) -> unfold_let (Bindlib.subst v u)
+  | t -> t
+
 (** {b NOTE} that {!val:unfold} must (almost) always be called before matching
     over a value of type {!type:term}. *)
 

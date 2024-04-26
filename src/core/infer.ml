@@ -172,7 +172,7 @@ and infer_aux : problem -> octxt -> term -> term * term * bool =
       let rec ref_esubst i range =
         (* Refine terms of the explicit substitution. *)
         if i >= Array.length ts then range else
-          match unfold range with
+          match unfold_let range with
           | Prod(ai, b) ->
               let (tsi, cuf) = force pb c ts.(i) ai in
               ts.(i) <- tsi;

@@ -343,6 +343,7 @@ val new_problem : unit -> problem
    reference cell. The returned value is physically equal to [t] if no
    unfolding was performed. *)
 val unfold : term -> term
+val unfold_let : term -> term
 
 (** {b NOTE} that {!val:unfold} must (almost) always be called before matching
     over a value of type {!type:term}. *)

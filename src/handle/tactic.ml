@@ -299,7 +299,26 @@ let rec handle :
         let u = Bindlib.unbox (_Meta m2 (Array.append ts [|_Meta m1 ts|])) in
         tac_refine pos ps gt gs p u
       end
-  | P_tac_set(_id, _t) -> ps
+  | P_tac_set(id,t) ->
+      (* From a goal [e ⊢ ?[e]:a], generate a new goal [e,id:b ⊢ ?1[e,x]:a],
+         where [b] is the type of [t], and refine [?[e]] with [?1[e,t]]. *)
+      check id;
+      let p = new_problem() in
+      let t = scope t in
+      let c = Env.to_ctxt gt.goal_hyps in
+      begin
+        match Infer.infer_noexn p c t with
+        | None -> fatal pos "%a is not typable." term t
+        | Some (t,b) ->
+          let x = new_tvar id.elt in
+          let bt = lift t in
+          let e = gt.goal_hyps in
+          let e' = Env.add x (lift b) None e in
+          let a = lift gt.goal_type in
+          let m = LibMeta.fresh p (Env.to_prod e' a) (List.length e') in
+          let u = _Meta m (Array.append (Env.to_tbox e) [|bt|]) in
+          tac_refine pos ps gt gs p (Bindlib.unbox u)
+      end
   | P_tac_induction -> tac_induction pos ps gt gs
   | P_tac_refine t -> tac_refine pos ps gt gs (new_problem()) (scope t)
   | P_tac_refl ->
