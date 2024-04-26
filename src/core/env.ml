@@ -35,12 +35,7 @@ let mem : string -> env -> bool = List.mem_assoc
     body is the term [t]. By calling [to_prod [(xn,an,None);⋯;(x1,a1,None)] t]
     you obtain a term of the form [Πx1:a1,..,Πxn:an,t]. *)
 let to_prod_box : env -> tbox -> tbox = fun env t ->
-  let add_prod t (_,(x,a,u)) =
-    let b = Bindlib.bind_var x t in
-    match u with
-    | Some u -> _LLet a u b
-    | None -> _Prod a b
-  in
+  let add_prod t (_,(x,a,_u)) = _Prod a (Bindlib.bind_var x t) in
   List.fold_left add_prod t env
 
 (** [to_prod] is an “unboxed” version of [to_prod_box]. *)
@@ -61,24 +56,21 @@ let to_abst : env -> tbox -> term = fun env t ->
   in
   Bindlib.unbox (List.fold_left add_abst t env)
 
-(** [vars env] extracts the array of the {e not defined} Bindlib variables in
-    [env]. Note that the order is reversed: [vars [(xn,an);..;(x1,a1)] =
-    [|x1;..;xn|]]. *)
+(** [vars env] extracts the array of the Bindlib variables in [env]. Note that
+    the order is reversed: [vars [(xn,an);..;(x1,a1)] = [|x1;..;xn|]]. *)
 let vars : env -> tvar array = fun env ->
-  let f (_, (x, _, u)) = if u = None then Some(x) else None in
-  Array.of_list (List.filter_rev_map f env)
+  Array.of_list (List.rev_map (fun (_,(x,_,_)) -> x) env)
 
 (** [appl t env] applies [t] to the variables of [env]. *)
 let appl : tbox -> env -> tbox = fun t env ->
   List.fold_right (fun (_,(x,_,_)) t -> _Appl t (_Vari x)) env t
 
-(** [to_tbox env] extracts the array of the {e not defined} variables in [env]
-   and injects them in the [tbox] type.  This is the same as [Array.map _Vari
-   (vars env)]. Note that the order is reversed: [to_tbox [(xn,an);..;(x1,a1)]
-   = [|x1;..;xn|]]. *)
+(** [to_tbox env] extracts the array of the variables in [env] and injects
+    them in [tbox]. This is the same as [Array.map _Vari (vars env)]. Note
+    that the order is reversed: [to_tbox [(xn,an);..;(x1,a1)] =
+    [|x1;..;xn|]]. *)
 let to_tbox : env -> tbox array = fun env ->
-  let f (_, (x, _, u)) = if u = None then Some(_Vari x) else None in
-  Array.of_list (List.filter_rev_map f env)
+  Array.of_list (List.rev_map (fun (_,(x,_,_)) -> _Vari x) env)
 
 (** [to_ctxt e] converts an environment into a context. *)
 let to_ctxt : env -> ctxt =
@@ -88,12 +80,14 @@ let to_ctxt : env -> ctxt =
 (** [match_prod c t f] returns [f a b] if [t] matches [Prod(a,b)] possibly
    after reduction.
 @raise [Invalid_argument] if [t] is not a product. *)
-let match_prod : ctxt -> term -> (term -> tbinder -> 'a) -> 'a = fun c t f ->
+let match_prod : ctxt -> term -> (term -> term option -> tbinder -> 'a) -> 'a
+  = fun c t f ->
   match unfold t with
-  | Prod(a,b) -> f a b
+  | Prod(a,b) -> f a None b
+  | LLet(a,d,b) -> f a (Some d) b
   | _ ->
       match Eval.whnf c t with
-      | Prod(a,b) -> f a b
+      | Prod(a,b) -> f a None b
       | _ -> invalid_arg __LOC__
 
 (** [of_prod c s t] returns a tuple [(env,b)] where [b] is constructed from
@@ -105,10 +99,17 @@ let match_prod : ctxt -> term -> (term -> tbinder -> 'a) -> 'a = fun c t f ->
 let of_prod : ctxt -> string -> term -> env * term = fun c s t ->
   let i = Stdlib.ref (-1) in
   let rec build_env env t =
-    try match_prod c t (fun a b ->
-            let name = Stdlib.(incr i; s ^ string_of_int !i) in
-            let x, b = LibTerm.unbind_name name b in
-            build_env (add x (lift a) None env) b)
+    try match_prod c t (fun a d b ->
+            match d with
+            | None ->
+                let name = Stdlib.(incr i; s ^ string_of_int !i) in
+                let x, b = LibTerm.unbind_name name b in
+                build_env (add x (lift a) None env) b
+            | Some d ->
+                let name = Stdlib.(incr i; s ^ string_of_int !i) in
+                let x, b = LibTerm.unbind_name name b in
+                build_env (add x (lift a) (Some (lift d)) env) b
+          )
     with Invalid_argument _ -> env, t
   in build_env [] t
 
@@ -123,9 +124,15 @@ let of_prod : ctxt -> string -> term -> env * term = fun c s t ->
 let of_prod_nth : ctxt -> int -> term -> env * term = fun c n t ->
   let rec build_env i env t =
     if i >= n then env, t
-    else match_prod c t (fun a b ->
-             let x, b = Bindlib.unbind b in
-             build_env (i+1) (add x (lift a) None env) b)
+    else match_prod c t (fun a d b ->
+             match d with
+             | None ->
+                 let x, b = Bindlib.unbind b in
+                 build_env (i+1) (add x (lift a) None env) b
+             | Some d ->
+                 let x, b = Bindlib.unbind b in
+                 build_env i (add x (lift a) (Some (lift d)) env) b
+           )
   in build_env 0 [] t
 
 (** [of_prod_using c xs t] is similar to [of_prod s c n t] where [n =
@@ -137,7 +144,8 @@ let of_prod_using : ctxt -> tvar array -> term -> env * term = fun c xs t ->
   let n = Array.length xs in
   let rec build_env i env t =
     if i >= n then env, t
-    else match_prod c t (fun a b ->
-             let env = add xs.(i) (lift a) None env in
+    else match_prod c t (fun a d b ->
+             let d = Option.map lift d in
+             let env = add xs.(i) (lift a) d env in
              build_env (i+1) env (Bindlib.subst b (mk_Vari(xs.(i)))))
   in build_env 0 [] t

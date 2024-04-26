@@ -83,8 +83,10 @@ module Goal = struct
     in
     match g with
     | Typ gt ->
-      let elt ppf (s,(_,t,_)) =
-       out ppf "%a: %a" uid s term (Bindlib.unbox t)
+      let elt ppf (s,(_,t,u)) =
+        match u with
+        | None -> out ppf "%a: %a" uid s term (Bindlib.unbox t)
+        | Some u -> out ppf "%a ≔ %a" uid s term (Bindlib.unbox u)
       in
       hyps elt ppf gt.goal_hyps
     | Unif (c,_,_) ->

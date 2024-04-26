@@ -313,11 +313,16 @@ let rec handle :
           let x = new_tvar id.elt in
           let bt = lift t in
           let e = gt.goal_hyps in
-          let e' = Env.add x (lift b) None e in
+          let e' = Env.add x (lift b) (Some bt) e in
           let a = lift gt.goal_type in
           let m = LibMeta.fresh p (Env.to_prod e' a) (List.length e') in
           let u = _Meta m (Array.append (Env.to_tbox e) [|bt|]) in
-          tac_refine pos ps gt gs p (Bindlib.unbox u)
+          (*tac_refine pos ps gt gs p (Bindlib.unbox u)*)
+          LibMeta.set p gt.goal_meta
+            (Bindlib.unbox (Bindlib.bind_mvar (Env.vars gt.goal_hyps) u));
+          (*let g = Goal.of_meta m in*)
+          let g = Typ {goal_meta=m; goal_hyps=e'; goal_type=gt.goal_type} in
+          {ps with proof_goals = g :: gs}
       end
   | P_tac_induction -> tac_induction pos ps gt gs
   | P_tac_refine t -> tac_refine pos ps gt gs (new_problem()) (scope t)

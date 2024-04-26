@@ -514,7 +514,7 @@ let mk_Plac b = Plac b
 let mk_TRef x = TRef x
 
 let mk_LLet (a,t,u) =
-  if Bindlib.binder_constant u then Bindlib.subst u Kind else LLet (a,t,u)
+  (*if Bindlib.binder_constant u then Bindlib.subst u Kind else*) LLet (a,t,u)
 
 let mk_TEnv (te,ts) =
   match te with

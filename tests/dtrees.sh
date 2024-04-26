@@ -41,11 +41,11 @@ if [ -z "$out" ]; then
 fi
 
 # Escaped identifier with rules
-out="$(${LAMBDAPI} 'tests.OK.Escaped.{|set|}' 2>/dev/null)"
+out="$(${LAMBDAPI} 'tests.OK.Escaped.{|_set|}' 2>/dev/null)"
 if [ "$?" = 1 ] || [ -z "$out" ]; then
-    ko 'tests.OK.Escaped.{|set|}'
+    ko 'tests.OK.Escaped.{|_set|}'
 else
-    ok 'tests.OK.Escaped.{|set|}'
+    ok 'tests.OK.Escaped.{|_set|}'
 fi
 
 # Ghost symbol

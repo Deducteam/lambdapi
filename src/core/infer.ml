@@ -177,8 +177,10 @@ and infer_aux : problem -> octxt -> term -> term * term * bool =
               let (tsi, cuf) = force pb c ts.(i) ai in
               ts.(i) <- tsi;
               Stdlib.(cu := !cu || cuf);
-              let b = Bindlib.subst b ts.(i) in
-              ref_esubst (i + 1) b
+              ref_esubst (i+1) (Bindlib.subst b tsi)
+          | LLet(_,d,b) ->
+              ts.(i) <- d;
+              ref_esubst (i+1) (Bindlib.subst b d)
           | _ ->
               (* Meta type must be a product of arity greater or equal
                  to the environment *)
