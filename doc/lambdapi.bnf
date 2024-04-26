@@ -145,6 +145,7 @@ QID ::= [UID "."]+ UID
            | "fail"
            | "generalize" <uid>
            | "have" <uid> ":" <term>
+           | "set" <uid> "≔" <term>
            | "induction"
            | "refine" <term>
            | "reflexivity"

@@ -299,6 +299,7 @@ let rec handle :
         let u = Bindlib.unbox (_Meta m2 (Array.append ts [|_Meta m1 ts|])) in
         tac_refine pos ps gt gs p u
       end
+  | P_tac_set(_id, _t) -> ps
   | P_tac_induction -> tac_induction pos ps gt gs
   | P_tac_refine t -> tac_refine pos ps gt gs (new_problem()) (scope t)
   | P_tac_refl ->

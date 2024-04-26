@@ -76,6 +76,7 @@ type token =
   | RULE
   | SEARCH
   | SEQUENTIAL
+  | SET
   | SIMPLIFY
   | SOLVE
   | SYMBOL
