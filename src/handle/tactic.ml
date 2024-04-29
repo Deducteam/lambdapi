@@ -197,10 +197,10 @@ let rec handle :
   | P_tac_query _ -> assert false (* done before *)
   (* Tactics that apply to both unification and typing goals: *)
   | P_tac_simpl None ->
-      {ps with proof_goals = Goal.simpl (Eval.snf []) g :: gs}
+      {ps with proof_goals = Goal.simpl Eval.snf g :: gs}
   | P_tac_simpl (Some qid) ->
       let s = Sig_state.find_sym ~prt:true ~prv:true ss qid in
-      {ps with proof_goals = Goal.simpl (Eval.unfold_sym s) g :: gs}
+      {ps with proof_goals = Goal.simpl (fun _ -> Eval.unfold_sym s) g :: gs}
   | P_tac_solve -> tac_solve pos ps
   | _ ->
   (* Tactics that apply to typing goals only: *)

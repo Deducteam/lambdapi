@@ -529,17 +529,18 @@ let whnf = time_reducer whnf
 (** [simplify t] computes a beta whnf of [t] belonging to the set S such that:
 - terms of S are in beta whnf normal format
 - if [t] is a product, then both its domain and codomain are in S. *)
-let rec simplify : term -> term = fun t ->
+let simplify : ctxt -> term -> term = fun c ->
   let tags = [`NoRw; `NoExpand ] in
-  match get_args (whnf ~tags [] t) with
-  | Prod(a,b), _ ->
-     let x, b = Bindlib.unbind b in
-     mk_Prod (simplify a, bind x lift (simplify b))
-  | h, ts -> add_args_map h (whnf ~tags []) ts
+  let rec simp t =
+    match get_args (whnf ~tags c t) with
+    | Prod(a,b), _ ->
+        let x, b = Bindlib.unbind b in mk_Prod (simp a, bind x lift (simp b))
+    | h, ts -> add_args_map h (whnf ~tags c) ts
+  in simp
 
 let simplify =
-  let open Stdlib in let r = ref mk_Kind in fun t ->
-  Debug.(record_time Rewriting (fun () -> r := simplify t)); !r
+  let open Stdlib in let r = ref mk_Kind in fun c t ->
+  Debug.(record_time Rewriting (fun () -> r := simplify c t)); !r
 
 (** If [s] is a non-opaque symbol having a definition, [unfold_sym s t]
    replaces in [t] all the occurrences of [s] by its definition. *)
