@@ -6,7 +6,7 @@ Installation from the sources
 - extract node:
 
 ```bash
-sudo apt-get install xz-utils # if you do not have xz already installed
+sudo apt-get install jq xz-utils
 tar xfa $node_file.tar.xz # creates $node_dir
 ```
 
@@ -35,7 +35,7 @@ If you intend to do this often, it is recomanded to add the two `export` command
 
 ```bash
 npm install -g @types/vscode
-npm install -g vsce # for creating VSCE packages only
+npm install -g @vscode/vsce # to create VSCE packages
 ```
 
 - compilation:

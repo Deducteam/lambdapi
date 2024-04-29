@@ -295,7 +295,6 @@ let is_lem x = is_opaq x || is_priv x
 
 let command oc {elt; pos} =
   begin match elt with
-  | P_inductive _ -> wrn pos "TODO"; assert false
   | P_open ps -> string oc "Import "; list path " " oc ps; string oc ".\n"
   | P_require (true, ps) ->
       string oc "Require Import "; list path " " oc ps; string oc ".\n"
@@ -311,6 +310,7 @@ let command oc {elt; pos} =
         let p_sym_arg =
           if !stt then
             let pos = None in
+            (* Parameters with no type are assumed to be of type [Set]. *)
             let _Set = {elt=P_Iden({elt=sym Set;pos},false);pos} in
             List.map (function ids, None, b -> ids, Some _Set, b | x -> x)
               p_sym_arg
@@ -338,10 +338,9 @@ let command oc {elt; pos} =
             string oc "Axiom "; ident oc p_sym_nam; string oc " : forall";
             params_list oc p_sym_arg; string oc ", "; term oc t;
             string oc ".\n"
-          | _ -> assert false
+          | _ -> wrn pos "Command not translated."
         end
-  | P_rules _ -> wrn pos "rules are not translated"
-  | _ -> if !stt then () else (wrn pos "TODO"; assert false)
+  | _ -> wrn pos "Command not translated."
   end
 
 let ast oc = Stream.iter (command oc)

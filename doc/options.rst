@@ -110,6 +110,8 @@ For the format ``stt_coq``, several other options are available:
 
 It tells Lambdapi which symbols of the input files are used for the encoding. Example: `encoding.lp <https://github.com/Deducteam/lambdapi/blob/master/libraries/encoding.lp>`__. The first argument ``a`` of the symbols corresponding to the builtins ``"eq"``, ``"all"`` and ``"ex"`` need not be declared as implicit.
 
+In symbol declarations or definitions, parameters with no type are assumed to be of type the term associated with the builtin ``"Set"``.
+
 * ``--no-implicits`` instructs Lambdapi that the symbols of the encoding have no implicit arguments.
 
 * ``--renaming <LP_FILE>`` where ``<LP_FILE>`` contains a sequence of builtin declarations of the form

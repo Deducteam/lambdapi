@@ -85,6 +85,7 @@
 
 %token <bool * string> DEBUG_FLAGS
 %token <string> NAT
+%token <string> NEG_NAT
 %token <string> FLOAT
 %token <Pratter.associativity> SIDE
 %token <string> STRINGLIT
@@ -220,7 +221,7 @@ path:
   | p=QID { make_pos $sloc (List.rev p) }
 
 modifier:
-  | d=SIDE? ASSOCIATIVE
+  | d=ioption(SIDE) ASSOCIATIVE
     { let b = match d with Some Pratter.Left -> true | _ -> false in
       make_pos $sloc (P_prop (Term.Assoc b)) }
   | COMMUTATIVE { make_pos $sloc (P_prop Term.Commu) }
@@ -395,14 +396,15 @@ unif_rule: e=equation HOOK_ARROW
 equation: l=term EQUIV r=term { (l, r) }
 
 notation:
-  | INFIX a=SIDE? p=float_or_nat
+  | INFIX a=SIDE? p=float_or_int
     { Sign.Infix(Option.get Pratter.Neither a, p) }
-  | POSTFIX p=float_or_nat { Sign.Postfix(p) }
-  | PREFIX p=float_or_nat { Sign.Prefix(p) }
+  | POSTFIX p=float_or_int { Sign.Postfix(p) }
+  | PREFIX p=float_or_int { Sign.Prefix(p) }
   | QUANTIFIER { Sign.Quant }
 
-float_or_nat:
+float_or_int:
   | s=FLOAT { s }
+  | s=NEG_NAT { s }
   | s=NAT { s }
 
 maybe_generalize:

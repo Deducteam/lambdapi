@@ -224,7 +224,7 @@ priority levels ``6`` and ``7`` respectively.
 The modifier ``infix``, ``infix right`` and ``infix left`` can be used
 to specify whether the defined symbol is non-associative, associative to
 the right, or associative to the left.
-Priority levels are non-negative floating point numbers, hence a
+Priority levels are floating point numbers, hence a
 priority can (almost) always be inserted between two different levels.
 
 As explained above, at this point, ``+`` is not a valid term anymore, as it was
@@ -250,8 +250,6 @@ negation with some priority level.
 
 * The functional arrow has a lower binding power than any operator, therefore
   for any prefix operator ``-``, ``- A → A`` is always parsed ``(- A) → A``
-
-* Parsing of operators is performed with the `pratter`_ library.
 
 
 **quantifier** Allows to write ```f x, t`` instead of ``f (λ x, t)``:

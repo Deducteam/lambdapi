@@ -1,15 +1,15 @@
 ;;; lambdapi-mode.el --- A major mode for editing Lambdapi source code -*- lexical-binding: t; -*-
 
-;; Copyright (C) 2020 Deducteam
+;; Copyright (C) 2020-2024 Deducteam
 
 ;; Authors: Ashish Barnawal, Diego Riviero, Gabriel Hondet, Rodolphe Lepigre
 ;; Maintainer: Deducteam <dedukti-dev@inria.fr>
-;; Version: 1.0
+;; Version: 1.1.0
 ;; SPDX-License-Identifier: CECILL-2.1
 ;; Homepage: https://github.com/Deducteam/lambdapi
 ;; Keywords: languages
-;; Compatibility: GNU Emacs 26.1
-;; Package-Requires: ((emacs "26.1") (eglot "1.5") (math-symbol-lists "1.2.1") (highlight "20190710.1527"))
+;; Compatibility: GNU Emacs 28.1
+;; Package-Requires: ((emacs "28.1") (eglot "1.6") (math-symbol-lists "1.2.1") (highlight "20190710.1527"))
 
 ;;; Commentary:
 

@@ -151,6 +151,7 @@ let check_rule : Scope.pre_rule Pos.loc -> rule = fun ({pos; elt} as pr) ->
   (* Replace [Patt] nodes of LHS with corresponding elements of [vars]. *)
   let lhs_vars = _Appl_Symb s (List.map (patt_to_tenv vars) lhs) in
   (* Replace [vars] by fresh metas. *)
+  LibMeta.reset_meta_counter();
   let p = new_problem() in
   let metas =
     let f i _ =

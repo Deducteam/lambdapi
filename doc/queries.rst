@@ -49,7 +49,7 @@ functionalities, run the command ``lambdapi check --help``.
 --------
 
 Sets some flags ``on`` or ``off``, mainly for modifying the printing
-behavior. Only the flag ``"eta_equalify"`` changes the behavior of the
+behavior. Only the flag ``"eta_equality"`` changes the behavior of the
 rewrite engine by reducing η-redexes.
 
 ::
@@ -59,6 +59,7 @@ rewrite engine by reducing η-redexes.
    flag "print_contexts" on; // default is off
    flag "print_domains" on; // default is off
    flag "print_meta_types" on; // default is off
+   flag "print_meta_args" on; // default is off
 
 .. _print:
 
