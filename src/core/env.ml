@@ -145,7 +145,13 @@ let of_prod_using : ctxt -> tvar array -> term -> env * term = fun c xs t ->
   let rec build_env i env t =
     if i >= n then env, t
     else match_prod c t (fun a d b ->
-             let d = Option.map lift d in
-             let env = add xs.(i) (lift a) d env in
-             build_env (i+1) env (Bindlib.subst b (mk_Vari(xs.(i)))))
+             match d with
+             | None ->
+                 let env = add xs.(i) (lift a) None env in
+                 build_env (i+1) env (Bindlib.subst b (mk_Vari(xs.(i))))
+             | Some d ->
+                 let x, b = Bindlib.unbind b in
+                 let env = add x (lift a) (Some (lift d)) env in
+                 build_env i env b
+           )
   in build_env 0 [] t
