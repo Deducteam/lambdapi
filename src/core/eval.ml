@@ -526,9 +526,9 @@ let whnf : reducer = fun ?tags c t ->
 
 let whnf = time_reducer whnf
 
-(** [simplify t] computes a beta whnf of [t] belonging to the set S such that:
-- terms of S are in beta whnf normal format
-- if [t] is a product, then both its domain and codomain are in S. *)
+(** [simplify c t] computes a beta whnf of [t] in context [c] belonging to the
+    set S such that (1) terms of S are in beta whnf normal format, (2) if [t]
+    is a product, then both its domain and codomain are in S. *)
 let simplify : ctxt -> term -> term = fun c ->
   let tags = [`NoRw; `NoExpand ] in
   let rec simp t =

@@ -280,7 +280,7 @@ let rec handle :
       let p = new_problem() in
       let t = scope t in
       (* Generate the constraints for [t] to be of type [Type]. *)
-      let c = Env.to_ctxt gt.goal_hyps in
+      let c = Env.to_ctxt env in
       begin
         match Infer.check_noexn p c t mk_Type with
         | None -> fatal pos "%a is not of type Type." term t
@@ -305,21 +305,20 @@ let rec handle :
       check id;
       let p = new_problem() in
       let t = scope t in
-      let c = Env.to_ctxt gt.goal_hyps in
+      let c = Env.to_ctxt env in
       begin
         match Infer.infer_noexn p c t with
         | None -> fatal pos "%a is not typable." term t
         | Some (t,b) ->
           let x = new_tvar id.elt in
           let bt = lift t in
-          let e = gt.goal_hyps in
-          let e' = Env.add x (lift b) (Some bt) e in
+          let e' = Env.add x (lift b) (Some bt) env in
           let a = lift gt.goal_type in
           let m = LibMeta.fresh p (Env.to_prod e' a) (List.length e') in
-          let u = _Meta m (Array.append (Env.to_tbox e) [|bt|]) in
+          let u = _Meta m (Array.append (Env.to_tbox env) [|bt|]) in
           (*tac_refine pos ps gt gs p (Bindlib.unbox u)*)
           LibMeta.set p gt.goal_meta
-            (Bindlib.unbox (Bindlib.bind_mvar (Env.vars gt.goal_hyps) u));
+            (Bindlib.unbox (Bindlib.bind_mvar (Env.vars env) u));
           (*let g = Goal.of_meta m in*)
           let g = Typ {goal_meta=m; goal_hyps=e'; goal_type=gt.goal_type} in
           {ps with proof_goals = g :: gs}
@@ -349,11 +348,10 @@ let rec handle :
         | Unif _ -> assert false
         | Typ gt ->
             let k =
-              try List.pos (fun (s,_) -> s = id.elt) gt.goal_hyps
+              try List.pos (fun (s,_) -> s = id.elt) env
               with Not_found -> fatal id.pos "Unknown hypothesis."
             in
             let m = gt.goal_meta in
-            let env = gt.goal_hyps in
             let n = m.meta_arity - 1 in
             let a = cleanup !(m.meta_type) in (* cleanup necessary *)
             let b = LibTerm.codom_binder (n - k) a in
@@ -373,7 +371,7 @@ let rec handle :
       (* Reorder [ids] wrt their positions. *)
       let n = gt.goal_meta.meta_arity - 1 in
       let id_pos id =
-        try id, n - List.pos (fun (s,_) -> s = id.elt) gt.goal_hyps
+        try id, n - List.pos (fun (s,_) -> s = id.elt) env
         with Not_found -> fatal id.pos "Unknown hypothesis."
       in
       let cmp (_,k1) (_,k2) = Stdlib.compare k2 k1 in
@@ -397,7 +395,7 @@ let rec handle :
         let mt =
           mk_Appl(mk_Symb cfg.symb_P,
                   add_args (mk_Symb cfg.symb_eq) [a; r; l]) in
-        let meta_term = LibMeta.make p (Env.to_ctxt gt.goal_hyps) mt in
+        let meta_term = LibMeta.make p (Env.to_ctxt env) mt in
         (* The proofterm is [eqind a r l M (λx,eq a l x) (refl a l)]. *)
         Rewrite.swap cfg a r l meta_term
       in
