@@ -36,6 +36,9 @@ let print_meta_types : bool ref =
 (** Flag for printing contexts in unification problems. *)
 let print_contexts : bool ref = Console.register_flag "print_contexts" false
 
+(** Flag for printing metavariable arguments. *)
+let print_meta_args : bool ref = Console.register_flag "print_meta_args" false
+
 let assoc : Pratter.associativity pp = fun ppf assoc ->
   match assoc with
   | Neither -> ()
@@ -245,7 +248,8 @@ and term : term pp = fun ppf t ->
     | Type        -> out ppf "TYPE"
     | Kind        -> out ppf "KIND"
     | Symb(s)     -> sym ppf s
-    | Meta(m,e)   -> out ppf "%a%a" meta m env e
+    | Meta(m,e)   ->
+        if !print_meta_args then out ppf "%a%a" meta m env e else meta ppf m
     | Plac(_)     -> out ppf "_"
     | Patt(_,n,e) -> out ppf "$%a%a" uid n env e
     | Db _        -> assert false

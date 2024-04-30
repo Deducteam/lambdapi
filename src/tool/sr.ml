@@ -92,6 +92,7 @@ let check_rule : Pos.popt -> sym_rule -> sym_rule =
   assert (xvars_nb = 0);
   if Logger.log_enabled () then log_subj (Color.red "%a") sym_rule sr;
   (* Create a metavariable for each LHS pattern variable. *)
+  LibMeta.reset_meta_counter();
   let p = new_problem() in
   let metas =
     Array.init vars_nb

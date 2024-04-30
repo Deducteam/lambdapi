@@ -18,22 +18,22 @@ QID ::= [UID "."]+ UID
 
 <search_query_alone> ::= <search_query> EOF
 
-<command> ::= "opaque" <qid_or_nat> ";"
+<command> ::= "opaque" <qid_or_int> ";"
             | "require" "open" <path>* ";"
             | "require" <path>* ";"
             | "require" <path> "as" <uid> ";"
             | "open" <path>* ";"
-            | <modifier>* "symbol" <uid_or_nat> <param_list>* ":" <term>
+            | <modifier>* "symbol" <uid_or_int> <param_list>* ":" <term>
               [<proof>] ";"
-            | <modifier>* "symbol" <uid_or_nat> <param_list>* [":" <term>]
+            | <modifier>* "symbol" <uid_or_int> <param_list>* [":" <term>]
               "≔" <term_proof> ";"
             | [<exposition>] <param_list>* "inductive" <inductive> ("with"
               <inductive>)* ";"
             | "rule" <rule> ("with" <rule>)* ";"
-            | "builtin" <stringlit> "≔" <qid_or_nat> ";"
+            | "builtin" <stringlit> "≔" <qid_or_int> ";"
             | "coerce_rule" <rule> ";"
             | "unif_rule" <unif_rule> ";"
-            | "notation" <qid_or_nat> <notation> ";"
+            | "notation" <qid_or_int> <notation> ";"
             | <query> ";"
             
 
@@ -70,11 +70,11 @@ QID ::= [UID "."]+ UID
 
 <uid> ::= UID
 
-<uid_or_nat> ::= <uid>
-               | <nat>
+<uid_or_int> ::= <uid>
+               | <int>
 
-<qid_or_nat> ::= <qid>
-               | <nat>
+<qid_or_int> ::= <qid>
+               | <int>
 
 <param_list> ::= <param>
                | "(" <param>+ ":" <term> ")"
@@ -104,6 +104,7 @@ QID ::= [UID "."]+ UID
           | "(" <term> ")"
           | "[" <term> "]"
           | <nat>
+          | "-"<nat>
 
 <env> ::= "." "[" [<term> (";" <term>)*] "]"
 
@@ -150,7 +151,7 @@ QID ::= [UID "."]+ UID
            | "reflexivity"
            | "remove" <uid>+
            | "rewrite" [<side>] [<rw_patt_spec>] <term>
-           | "simplify" [<qid_or_nat>]
+           | "simplify" [<qid_or_int>]
            | "solve"
            | "symmetry"
            | "try" <tactic>
@@ -167,7 +168,7 @@ QID ::= [UID "."]+ UID
 <inductive> ::= <uid> <param_list>* ":" <term> "≔" ["|"] [<constructor>
                 ("|" <constructor>)*]
 
-<constructor> ::= <uid_or_nat> <param_list>* ":" <term>
+<constructor> ::= <uid_or_int> <param_list>* ":" <term>
 
 <rule> ::= <term> "↪" <term>
 
@@ -176,13 +177,16 @@ QID ::= [UID "."]+ UID
 
 <equation> ::= <term> "≡" <term>
 
-<notation> ::= "infix" [<side>] <float_or_nat>
-             | "postfix" <float_or_nat>
-             | "prefix" <float_or_nat>
+<notation> ::= "infix" [<side>] <float_or_int>
+             | "postfix" <float_or_int>
+             | "prefix" <float_or_int>
              | "quantifier"
 
-<float_or_nat> ::= <float>
-                 | <nat>
+<float_or_int> ::= <float>
+                 | <int>
+
+<int> ::= "-"<nat>
+        | <nat>
 
 <maybe_generalize> ::= ["generalize"]
 

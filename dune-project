@@ -55,7 +55,7 @@ the Why3 platform.")
  (depends
   (ocaml (>= 4.08.0))
   (menhir (>= 20200624))
-  (sedlex (>= 2.2))
+  (sedlex (>= 3.2))
   (alcotest :with-test)
   (alt-ergo :with-test)
   (dedukti (and :with-test (>= 2.7)))
