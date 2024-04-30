@@ -97,7 +97,7 @@ let try_unif_rules : problem -> ctxt -> term -> term -> bool =
    be instantiated. It does not check whether the instantiation is closed
    though. *)
 let instantiable : ctxt -> meta -> term array -> term -> bool =
-  fun c m ts u -> nl_distinct_vars c ts <> None && not (LibMeta.occurs m c u)
+  fun c m ts u -> nl_distinct_vars ts <> None && not (LibMeta.occurs m c u)
 
 (** [instantiation c m ts u] tells whether, in a problem [m[ts]=u], [m] can
    be instantiated and returns the corresponding instantiation, simplified. It
@@ -105,7 +105,7 @@ let instantiable : ctxt -> meta -> term array -> term -> bool =
 let instantiation :
       ctxt -> meta -> term array -> term -> tmbinder Bindlib.box option =
   fun c m ts u ->
-  match nl_distinct_vars c ts with
+  match nl_distinct_vars ts with
     | None -> None
     | Some(vs, map) ->
         if LibMeta.occurs m c u then None
@@ -258,7 +258,7 @@ let imitate_lam : problem -> ctxt -> meta -> unit = fun p c m ->
     let x, a, env', b =
       match Eval.whnf c t with
       | Prod(a,b) -> of_prod a b
-      | Meta(n,ts) as t when nl_distinct_vars c ts <> None ->
+      | Meta(n,ts) as t when nl_distinct_vars ts <> None ->
           begin
             set_to_prod p n;
             match unfold t with
@@ -411,10 +411,10 @@ let solve : problem -> unit = fun p ->
       imitate_prod p c m h1 h2
 
   | Meta(m,ts), _ when imitate_lam_cond h1 ts1
-                      && nl_distinct_vars c ts <> None ->
+                      && nl_distinct_vars ts <> None ->
       imitate_lam p c m; add_constr p (c,t1,t2)
   | _, Meta(m,ts) when imitate_lam_cond h2 ts2
-                      && nl_distinct_vars c ts <> None ->
+                      && nl_distinct_vars ts <> None ->
       imitate_lam p c m; add_constr p (c,t1,t2)
 
   | _ ->
@@ -465,10 +465,10 @@ let solve : problem -> unit = fun p ->
       imitate_prod p c m h1 h2
 
   | Meta(m,ts), _ when imitate_lam_cond h1 ts1
-                      && nl_distinct_vars c ts <> None ->
+                      && nl_distinct_vars ts <> None ->
       imitate_lam p c m; add_constr p (c,t1,t2)
   | _, Meta(m,ts) when imitate_lam_cond h2 ts2
-                      && nl_distinct_vars c ts <> None ->
+                      && nl_distinct_vars ts <> None ->
       imitate_lam p c m; add_constr p (c,t1,t2)
 
   | Meta(m,ts), Symb s ->

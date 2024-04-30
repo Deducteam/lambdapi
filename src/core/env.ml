@@ -30,7 +30,7 @@ let find : string -> env -> tvar = fun n env ->
 (** [mem n env] returns [true] iff [n] is mapped to a variable in [env]. *)
 let mem : string -> env -> bool = List.mem_assoc
 
-(** [to_prod env t] builds a sequence of products whose domains are the
+(** [to_prod env t] builds a sequence of products/lets whose domains are the
     variables of the environment [env] (from left to right), and whose body is
     the term [t]. By calling [to_prod [(xn,an,None);⋯;(x1,a1,None)] t] you
     obtain a term of the form [Πx1:a1,..,Πxn:an,t]. *)
