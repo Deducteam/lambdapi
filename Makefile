@@ -82,7 +82,7 @@ zenon_modulo: lambdapi
 
 .PHONY: lpoclean
 lpoclean:
-	@find . -type f -name "*.lpo" -exec rm {} \;
+	@find . -type f -name '*.lpo' -delete
 
 .PHONY: clean
 clean: lpoclean
@@ -99,8 +99,7 @@ distclean: clean
 	@cd libraries && ./iprover.sh clean
 	@cd libraries && ./dklib.sh clean
 	@cd libraries && ./zenon_modulo.sh clean
-	@find . -type f -name "*~" -exec rm {} \;
-	@find . -type f -name "*.gv" -exec rm {} \;
+	@find . -type f -name '*~' -delete
 
 .PHONY: fullclean
 fullclean: distclean
@@ -171,10 +170,18 @@ uninstall_vim_mode:
 build-vscode-extension:
 	cd editors/vscode && make && mkdir extensionFolder && vsce package -o extensionFolder
 
+VSCE = $(shell which vsce)
+JQ = $(shell which jq)
+
+ifneq ($(VSCE),)
+ifneq ($(JQ),)
+EXT = $(shell vsce show --json deducteam.lambdapi 2>/dev/null | jq '.versions[0]' | jq '.version')
 .PHONY: publish-vscode-extension
 publish-vscode-extension:
-ifeq ($(shell vsce show --json deducteam.lambdapi | jq '.versions[0]' | jq '.version'), $(shell cat editors/vscode/package.json | jq '.version'))
+ifeq ($(EXT), $(shell cat editors/vscode/package.json | jq '.version'))
 	echo "extension already exists. Skip"
 else
 	cd editors/vscode && vsce publish -p ${PAT}
+endif
+endif
 endif
