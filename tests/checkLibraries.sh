@@ -9,7 +9,7 @@ checkoutLib() {
 }
 
 checkLib() {
-    for f in $(find $1 -name *.lp)
+    for f in $(find $1 -name *.lp)  $(find $1 -name *.dk)
     do
         echo lambdapi check $options $f ...
         $lambdapi "$f" > $out 2>&1
