@@ -52,7 +52,7 @@ do
         # "as"
         729);;
         # "notation"
-        xor|Set|quant*|Prop|prefix|parametricCoercions|opaque|nat_id*|michael|max-suc-alg|lpparse|iss861|infix|infer|indrec|implicitArgs[34]|group|cr_qu|cp*|coercions|builtin_zero_succ|plus_ac|693|693_assume|679|665|655|655b|649_fo_27|595_and_elim|584_c_slow|579_or_elim_long|579_long_no_duplicate|359|328|245|245b|244|1026|iss706);;
+        xor|Set|quant*|Prop|prefix|parametricCoercions|opaque|nat_id*|michael|max-suc-alg|lpparse|iss861|infix|infer|indrec|implicitArgs[34]|group|cr_qu|cp*|coercions|builtin_zero_succ|plus_ac|693|693_assume|679|665|655|655b|649_fo_27|595_and_elim|584_c_slow|579_or_elim_long|579_long_no_duplicate|359|328|245|245b|244|1026|iss706|1101);;
         # "quantifier"
         683|650|573|565|430);;
         # nested module name

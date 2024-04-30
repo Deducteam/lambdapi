@@ -122,8 +122,11 @@ let eq_modulo : (config -> term -> term) -> config -> term -> term -> bool =
     | [] -> ()
     | (a,b)::l ->
     if Logger.log_enabled () then log_conv "eq: %a ≡ %a" term a term b;
-    let a = Config.unfold cfg a and b = Config.unfold cfg b in
     if a == b then eq cfg l else
+    match a, b with
+    | Vari x, Vari y when Bindlib.eq_vars x y -> eq cfg l
+    | _ ->
+    let a = Config.unfold cfg a and b = Config.unfold cfg b in
     match a, b with
     | LLet(_,t,u), _ ->
       let x,u = Bindlib.unbind u in
