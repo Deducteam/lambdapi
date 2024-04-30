@@ -15,7 +15,7 @@ type octxt = ctxt * bctxt
 let boxed = snd
 let classic = fst
 let extend (cctx, bctx) v ?def ty =
-  ((v, ty, def) :: cctx, if def <> None then bctx else (v, lift ty) :: bctx)
+  ((v, ty, def) :: cctx, (v, lift ty, Option.map lift def) :: bctx)
 
 let unbox = Bindlib.unbox
 

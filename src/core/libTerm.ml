@@ -111,7 +111,7 @@ let distinct_vars : ctxt -> term array -> tvar array option = fun ctx ts ->
    [sr.ml] which replaces pattern variables by metavariables. *)
 let nl_distinct_vars
     : ctxt -> term array -> (tvar array * tvar StrMap.t) option =
-  fun ctx ts ->
+  fun _ctx ts ->
   let exception Not_a_var in
   let open Stdlib in
   let vars = ref VarSet.empty (* variables already seen (linear or not) *)
@@ -119,7 +119,7 @@ let nl_distinct_vars
   and patt_vars = ref StrMap.empty in
   (* map from pattern variables to actual Bindlib variables *)
   let rec to_var t =
-    match Ctxt.unfold ctx t with
+    match unfold t with
     | Vari(v) ->
         if VarSet.mem v !vars then nl_vars := VarSet.add v !nl_vars
         else vars := VarSet.add v !vars;

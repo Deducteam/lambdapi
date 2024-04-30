@@ -39,10 +39,15 @@ let set_to_prod : problem -> meta -> unit = fun p m ->
    in context [c] where [x] is any term of type [a] if [x] can be applied to
    at least [List.length ts] arguments, and [None] otherwise. *)
 let rec type_app : ctxt -> term -> term list -> term option = fun c a ts ->
-  match Eval.whnf c a, ts with
-  | Prod(_,b), t::ts -> type_app c (Bindlib.subst b t) ts
+  match a, ts with
   | _, [] -> Some a
-  | _, _ -> None
+  | Prod(_,b), t::ts -> type_app c (Bindlib.subst b t) ts
+  | LLet(_,d,b), t::ts ->
+      assert (Eval.pure_eq_modulo c d t); type_app c (Bindlib.subst b d) ts
+  | _ ->
+      match Eval.whnf c a, ts with
+      | Prod(_,b), t::ts -> type_app c (Bindlib.subst b t) ts
+      | _ -> None
 
 (** [add_constr p c] adds the constraint [c] into [p.to_solve]. *)
 let add_constr : problem -> constr -> unit = fun p c ->

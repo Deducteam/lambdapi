@@ -20,7 +20,7 @@ let empty : env = []
 (** [add v a t env] extends the environment [env] by mapping the string
     [Bindlib.name_of v] to [(v,a,t)]. *)
 let add : tvar -> tbox -> tbox option -> env -> env = fun v a t env ->
-  (Bindlib.name_of v, (v, a, t)) :: env
+  (Bindlib.name_of v, (v,a,t)) :: env
 
 (** [find n env] returns the Bindlib variable associated to the variable  name
     [n] in the environment [env]. If none is found, [Not_found] is raised. *)

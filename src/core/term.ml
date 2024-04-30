@@ -281,11 +281,8 @@ end
     important. *)
 type ctxt = (tvar * term * term option) list
 
-(** Typing context with lifted terms. Used to optimise type checking and avoid
-    lifting terms several times. Definitions are not included because these
-    contexts are used to create meta variables types, which do not use [let]
-    definitions. *)
-type bctxt = (tvar * tbox) list
+(** Typing context with lifted terms. *)
+type bctxt = (tvar * tbox * tbox option) list
 
 (** Type of unification constraints. *)
 type constr = ctxt * term * term
