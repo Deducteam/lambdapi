@@ -22,6 +22,10 @@ doc: bnf
 bnf:
 	$(MAKE) -C doc -f Makefile.bnf
 
+.PHONY: checkLibraries
+checkLibraries: lambdapi
+	@dune exec --only-packages lambdapi -- tests/checkBibs.sh https://github.com/Deducteam/lambdapi-logics.git lambdapi-logics
+
 #### Unit tests and sanity check #############################################
 
 .PHONY: tests
