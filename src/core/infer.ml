@@ -22,11 +22,9 @@ let unbox = Bindlib.unbox
 (** Exception that may be raised by type inference. *)
 exception NotTypable
 
-(** [unif pb c a b] solves the unification problem [c ⊢ a ≡ b]. Current
-    implementation collects constraints in {!val:constraints} then solves
-    them at the end of type checking. *)
-let unif : problem -> octxt -> term -> term -> unit =
- fun pb c a b ->
+(** [unif p c a b] adds the constraint [c |- a==b] in [p] if [a] is not
+    convertible to [b]. *)
+let unif : problem -> octxt -> term -> term -> unit = fun pb c a b ->
  if not (Eval.pure_eq_modulo (classic c) a b) then
  (* NOTE: eq_modulo is used because the unification algorithm counts on
     the fact that no constraint is added in some cases (see test
@@ -34,8 +32,7 @@ let unif : problem -> octxt -> term -> term -> unit =
     [eq_modulo]. *)
    begin
      if Logger.log_enabled () then
-       log (Color.yel "add constraint %a") constr
-         (classic c, a, b);
+       log (Color.yel "add constraint %a") constr (classic c, a, b);
      pb := {!pb with to_solve = (classic c, a, b) :: !pb.to_solve}
    end
 
@@ -172,14 +169,14 @@ and infer_aux : problem -> octxt -> term -> term * term * bool =
       let rec ref_esubst i range =
         (* Refine terms of the explicit substitution. *)
         if i >= Array.length ts then range else
-          match unfold_let range with
+          match unfold range with
           | Prod(ai, b) ->
               let (tsi, cuf) = force pb c ts.(i) ai in
               ts.(i) <- tsi;
               Stdlib.(cu := !cu || cuf);
               ref_esubst (i+1) (Bindlib.subst b tsi)
           | LLet(_,d,b) ->
-              ts.(i) <- d;
+              unif pb c ts.(i) d;
               ref_esubst (i+1) (Bindlib.subst b d)
           | _ ->
               (* Meta type must be a product of arity greater or equal

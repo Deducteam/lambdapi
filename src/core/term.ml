@@ -405,11 +405,6 @@ let rec unfold : term -> term = fun t ->
       end
   | _ -> t
 
-let rec unfold_let : term -> term = fun t ->
-  match unfold t with
-  | LLet(_,u,v) -> unfold_let (Bindlib.subst v u)
-  | t -> t
-
 (** {b NOTE} that {!val:unfold} must (almost) always be called before matching
     over a value of type {!type:term}. *)
 
@@ -512,9 +507,7 @@ let mk_Patt (i,s,ts) = Patt (i,s,ts)
 let mk_Wild = Wild
 let mk_Plac b = Plac b
 let mk_TRef x = TRef x
-
-let mk_LLet (a,t,u) =
-  (*if Bindlib.binder_constant u then Bindlib.subst u Kind else*) LLet (a,t,u)
+let mk_LLet (a,t,u) = LLet (a,t,u)
 
 let mk_TEnv (te,ts) =
   match te with
@@ -720,7 +713,7 @@ let _Plac : bool -> tbox = fun b ->
 let _TRef : term option ref -> tbox = fun r ->
   Bindlib.box (TRef(r))
 
-(** [_LLet t a u] lifts let binding [let x := t : a in u<x>]. *)
+(** [_LLet a t u] lifts let binding [let x : a := t in u]. *)
 let _LLet : tbox -> tbox -> tbinder Bindlib.box -> tbox =
   Bindlib.box_apply3 (fun a t u -> mk_LLet(a, t, u))
 

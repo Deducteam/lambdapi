@@ -35,7 +35,12 @@ let mem : string -> env -> bool = List.mem_assoc
     the term [t]. By calling [to_prod [(xn,an,None);⋯;(x1,a1,None)] t] you
     obtain a term of the form [Πx1:a1,..,Πxn:an,t]. *)
 let to_prod_box : env -> tbox -> tbox = fun env t ->
-  let add_prod t (_,(x,a,_)) = _Prod a (Bindlib.bind_var x t) in
+  (*let add_prod t (_,(x,a,_)) = _Prod a (Bindlib.bind_var x t) in*)
+  let add_prod t (_,(x,a,d)) =
+    match d with
+    | None -> _Prod a (Bindlib.bind_var x t)
+    | Some d -> _LLet a d (Bindlib.bind_var x t)
+  in
   List.fold_left add_prod t env
 
 (** [to_prod] is an “unboxed” version of [to_prod_box]. *)
@@ -100,15 +105,9 @@ let of_prod : ctxt -> string -> term -> env * term = fun c s t ->
   let i = Stdlib.ref (-1) in
   let rec build_env env t =
     try match_prod c t (fun a d b ->
-            match d with
-            | None ->
-                let name = Stdlib.(incr i; s ^ string_of_int !i) in
-                let x, b = LibTerm.unbind_name name b in
-                build_env (add x (lift a) None env) b
-            | Some d ->
-                let name = Stdlib.(incr i; s ^ string_of_int !i) in
-                let x, b = LibTerm.unbind_name name b in
-                build_env (add x (lift a) (Some (lift d)) env) b
+            let name = Stdlib.(incr i; s ^ string_of_int !i) in
+            let x, b = LibTerm.unbind_name name b in
+            build_env (add x (lift a) (Option.map lift d) env) b
           )
     with Invalid_argument _ -> env, t
   in build_env [] t
@@ -125,13 +124,8 @@ let of_prod_nth : ctxt -> int -> term -> env * term = fun c n t ->
   let rec build_env i env t =
     if i >= n then env, t
     else match_prod c t (fun a d b ->
-             match d with
-             | None ->
-                 let x, b = Bindlib.unbind b in
-                 build_env (i+1) (add x (lift a) None env) b
-             | Some d ->
-                 let x, b = Bindlib.unbind b in
-                 build_env i (add x (lift a) (Some (lift d)) env) b
+             let x, b = Bindlib.unbind b in
+             build_env (i+1) (add x (lift a) (Option.map lift d) env) b
            )
   in build_env 0 [] t
 
@@ -145,13 +139,7 @@ let of_prod_using : ctxt -> tvar array -> term -> env * term = fun c xs t ->
   let rec build_env i env t =
     if i >= n then env, t
     else match_prod c t (fun a d b ->
-             match d with
-             | None ->
-                 let env = add xs.(i) (lift a) None env in
-                 build_env (i+1) env (Bindlib.subst b (mk_Vari(xs.(i))))
-             | Some d ->
-                 let x, b = Bindlib.unbind b in
-                 let env = add x (lift a) (Some (lift d)) env in
-                 build_env i env b
+             let env = add xs.(i) (lift a) (Option.map lift d) env in
+             build_env (i+1) env (Bindlib.subst b (mk_Vari(xs.(i))))
            )
   in build_env 0 [] t
