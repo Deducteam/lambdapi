@@ -10,7 +10,7 @@ checkout_lib() {
     IFS='/' read -ra ADDR <<< "$1"
     repo_name="${ADDR[-1]}"
     IFS='.' read -ra ADDR <<< "$repo_name"
-    repo_name="${ADDR[0]}"
+    repo_name="/tmp/${ADDR[0]}"
     git clone $1 $repo_name
 }
 
