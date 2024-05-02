@@ -24,9 +24,9 @@ bnf:
 
 .PHONY: test_libs
 test_libs: lambdapi
-	@dune exec --only-packages lambdapi -- tests/test_libs.sh https://github.com/Deducteam/lambdapi-logics.git
-	@dune exec --only-packages lambdapi -- tests/test_libs.sh https://github.com/Deducteam/lambdapi-stdlib.git
-	
+	@dune exec --only-packages lambdapi -- tests/test_lib.sh https://github.com/Deducteam/lambdapi-logics.git
+	@dune exec --only-packages lambdapi -- tests/test_lib.sh https://github.com/Deducteam/lambdapi-stdlib.git
+
 #### Unit tests and sanity check #############################################
 
 .PHONY: tests
@@ -37,6 +37,7 @@ tests: lambdapi
 	@dune exec --only-packages lambdapi -- tests/export_dk.sh
 	@dune exec --only-packages lambdapi -- tests/export_lp.sh
 	@dune exec --only-packages lambdapi -- tests/export_raw_dk.sh
+	$(MAKE) test_libs
 
 .PHONY: tests_alt_ergo
 tests_alt_ergo: lambdapi
