@@ -8,7 +8,11 @@ TIMEFORMAT="%Es"
 out=/tmp/lambdapi.output
 
 checkout_lib() {
-    git clone $1 $2
+    IFS='/' read -ra ADDR <<< "$1"
+    repo_name="${ADDR[-1]}"
+    IFS='.' read -ra ADDR <<< "$repo_name"
+    repo_name="${ADDR[0]}"
+    git clone $1 $repo_name
 }
 
 test_Lib() {
@@ -19,6 +23,6 @@ test_Lib() {
     done
 }
 
-checkout_lib $1 $2
+checkout_lib $1
 options='-w'
-time test_Lib $2
+time test_Lib $repo_name

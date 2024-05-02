@@ -24,8 +24,8 @@ bnf:
 
 .PHONY: test_libs
 test_libs: lambdapi
-	@dune exec --only-packages lambdapi -- tests/test_libs.sh https://github.com/Deducteam/lambdapi-logics.git lambdapi-logics
-	@dune exec --only-packages lambdapi -- tests/test_libs.sh https://github.com/Deducteam/lambdapi-stdlib.git lambdapi-stdlib
+	@dune exec --only-packages lambdapi -- tests/test_libs.sh https://github.com/Deducteam/lambdapi-logics.git
+	@dune exec --only-packages lambdapi -- tests/test_libs.sh https://github.com/Deducteam/lambdapi-stdlib.git
 	
 #### Unit tests and sanity check #############################################
 
