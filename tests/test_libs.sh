@@ -1,22 +1,22 @@
 #!/bin/bash
 
+set -e
+
 lambdapi='dune exec -- lambdapi check'
 TIMEFORMAT="%Es"
-out=/tmp/lambdapi.output
 
 checkoutLib() {
     git clone $1 $2
 }
 
-checkLib() {
+test_Lib() {
     for f in $(find $1 -name *.lp)  $(find $1 -name *.dk)
     do
         echo lambdapi check $options $f ...
-        $lambdapi "$f" > $out 2>&1
-        if test $? -ne 0; then cat $out; exit 1; fi;
+        $lambdapi $options "$f"
     done
 }
 
 checkoutLib $1 $2
 options='-w'
-checkLib $2
+time test_Lib $2

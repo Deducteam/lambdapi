@@ -23,14 +23,14 @@ bnf:
 	$(MAKE) -C doc -f Makefile.bnf
 
 .PHONY: checkLibraries
-checkLibraries: lambdapi
-	@dune exec --only-packages lambdapi -- tests/checkLibraries.sh https://github.com/Deducteam/lambdapi-logics.git lambdapi-logics
-	@dune exec --only-packages lambdapi -- tests/checkLibraries.sh https://github.com/Deducteam/lambdapi-stdlib.git lambdapi-stdlib
+test_libs: lambdapi
+	@dune exec --only-packages lambdapi -- tests/test_libs.sh https://github.com/Deducteam/lambdapi-logics.git lambdapi-logics
+	@dune exec --only-packages lambdapi -- tests/test_libs.sh https://github.com/Deducteam/lambdapi-stdlib.git lambdapi-stdlib
 	
 #### Unit tests and sanity check #############################################
 
 .PHONY: tests
-tests: lambdapi
+tests: lambdapi test_libs
 	@dune runtest
 	@dune exec --only-packages lambdapi -- tests/runtests.sh
 	@dune exec --only-packages lambdapi -- tests/dtrees.sh
