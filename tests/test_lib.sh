@@ -16,12 +16,11 @@ checkout_lib() {
     if [ -d "$repo_path" ] ; then
         rm -fr "$repo_path"
     fi
-
     git clone $1 $repo_path
 }
 
 test_lib() {
-    for f in $(find $1 -name *.lp)  $(find $1 -name *.dk)
+    for f in $(find $1 -name '*.lp' -o -name '*.dk')
     do
         echo lambdapi check $options $f ...
         $lambdapi "$f" > $out 2>&1 || (cat $out; exit 1)
