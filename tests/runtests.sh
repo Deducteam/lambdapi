@@ -5,6 +5,8 @@ set -e
 lambdapi='dune exec -- lambdapi check'
 TIMEFORMAT="%Es"
 
+out=/tmp/lambdapi.output
+
 ok_tests() {
     for f in 'tests/OK/a b/escape file.lp' tests/OK/*.lp tests/OK/*.dk
     do
@@ -12,7 +14,7 @@ ok_tests() {
             tests/OK/why3*.lp);; #FIXME
             *)
                 echo lambdapi check $options $f ...
-                $lambdapi "$f"
+                $lambdapi "$f" > $out 2>&1 || (cat $out; exit 1)
         esac
     done
 }
