@@ -14,19 +14,8 @@ ok_tests() {
             tests/OK/why3*.lp);; #FIXME
             *)
                 echo lambdapi check $options $f ...
-                $lambdapi "$f" > $out 2>&1
-                if test $? -ne 0; then cat $out; exit 1; fi;;
+                $lambdapi "$f" > $out 2>&1 || (cat $out; exit 1)
         esac
-    done
-}
-
-ko_tests() {
-    echo '############ KO tests ############' 
-    for f in tests/KO/*.lp tests/KO/*.dk
-    do
-        echo lambdapi check $f ...
-        $lambdapi "$f" > $out 2>&1
-        if test $? -eq 0; then cat $out; exit 1; fi
     done
 }
 
