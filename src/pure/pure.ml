@@ -58,30 +58,23 @@ end
 type state = Time.t * Sig_state.t
 
 (** Exception raised by [parse_text] on error. *)
-exception Parse_error of Pos.pos * string
 
-let parse_text : state -> fname:string -> string -> Command.t list * state =
-    fun (t,st) ~fname s ->
-  let dk_syntax = Filename.check_suffix fname dk_src_extension in
+let parse_text :
+      fname:string -> string -> Command.t list * (Pos.pos * string) option =
+  fun ~fname s ->
+  let parse_string =
+    if Filename.check_suffix fname dk_src_extension then
+      Parser.Dk.parse_string
+    else Parser.parse_string
+  in
+  let cmds = Stdlib.ref [] in
   try
-    LibMeta.reset_meta_counter();
-    Time.restore t;
-    let ast =
-      let strm =
-        if dk_syntax then Parser.Dk.parse_string fname s
-        else Parser.parse_string fname s
-      in
-      (* NOTE this processing could be avoided with a parser for a list of
-         commands. Such a parser is not trivially done. *)
-      let cmds = Stdlib.ref [] in
-      Stream.iter (fun c -> Stdlib.(cmds := c :: !cmds)) strm;
-      List.rev Stdlib.(!cmds)
-    in
-    (ast, (Time.save (), st))
+    Stream.iter (fun c -> Stdlib.(cmds := c :: !cmds)) (parse_string fname s);
+    List.rev Stdlib.(!cmds), None
   with
-  | Fatal(Some(Some(pos)), msg) -> raise (Parse_error(pos, msg))
-  | Fatal(Some(None)     , _  ) -> assert false (* Should not produce. *)
-  | Fatal(None           , _  ) -> assert false (* Should not produce. *)
+  | Fatal(Some(Some(pos)), msg) -> List.rev Stdlib.(!cmds), Some(pos, msg)
+  | Fatal(Some(None)     , _  ) -> assert false
+  | Fatal(None           , _  ) -> assert false
 
 type proof_finalizer = Sig_state.t -> Proof.proof_state -> Sig_state.t
 

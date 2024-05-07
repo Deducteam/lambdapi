@@ -163,6 +163,34 @@ function checkProofBackward(context: ExtensionContext) {
 
 function checkProofUntilCursor(context: ExtensionContext) {
 
+    function previousCaracterSkippingSpaces(document: TextDocument, currentPos: Position) {
+        const index = document.offsetAt(currentPos)
+        const slicedText = document.getText().slice(0, index);
+
+    // Match the last letter before a series of spaces and tabulations
+        const regex =/(\S)(?=[ \t]*$)/;
+
+    // Find the last letter before spaces
+        let myMatch = slicedText.match(regex);
+
+    // return the last letter if found
+        return myMatch ? myMatch[1] : null;
+    }
+
+    function nextCaracterSkippingSpaces(document: TextDocument, currentPos: Position) {
+        const index = document.offsetAt(currentPos)
+        const slicedText = document.getText().slice(index);
+
+    // Match the last letter after spaces and tabulations
+        const regex = /(\S)(?=[ \t]*$)/;
+
+    // Find the last letter after spaces
+        let myMatch = slicedText.split(/\r?\n/)[0].match(regex);
+
+    // return the last letter if found
+        return myMatch ? myMatch[0] : null;
+    }
+
     //Checking workspace
     const openEditor: TextEditor | undefined = window.activeTextEditor;
     if (!openEditor)
@@ -178,13 +206,16 @@ function checkProofUntilCursor(context: ExtensionContext) {
 
     //The current position of the cursor
     let cursorPosition: Position = openEditor.selection.active;
-    if (proofState.line == cursorPosition.line)
-        return;
 
-    //To simplify the code, proof states are always at the beggining of the highlighted line
-    //So must be the cursor position since it is the new proof state
-    if (cursorPosition.character != 0)
-        cursorPosition = new Position(cursorPosition.line, 0);
+    const cursorIsAtEndOfCommand = previousCaracterSkippingSpaces(openEditor.document, cursorPosition) === ";";
+    const commandExistsAfterCursorinSameLine = nextCaracterSkippingSpaces(openEditor.document, cursorPosition) != null;
+
+    // If the cursor is at the begining or in the middle of a command or there are more commands in the same line,
+    // then do not move the green zone further.
+    // Else, stop at the current position
+    if(!cursorIsAtEndOfCommand || commandExistsAfterCursorinSameLine) {
+        cursorPosition = stepCommand(openEditor.document, cursorPosition, true);
+    }
 
     context.workspaceState.update('proofState', cursorPosition); //proof state is set to the cursor position
 
@@ -509,7 +540,11 @@ function stepCommand(document: TextDocument, currentPos: Position, forward: bool
     const termRegex = new RegExp(terminators.join("|"), 'gi');
 
     let termPositions = [...document.getText().matchAll(termRegex)]
-        .map(rm => rm.index ? rm.index + rm[0].length : undefined)
+        .map(rm => { 
+            if (rm[0] === ";") {
+                return rm.index ? rm.index + rm[0].length : undefined
+            }
+            else return rm.index ? rm.index : undefined })
         .filter((x): x is number => x !== undefined) // remove undefined
         .map(x => document.positionAt(x));
 
