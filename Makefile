@@ -182,12 +182,22 @@ JQ = $(shell which jq)
 ifneq ($(VSCE),)
 ifneq ($(JQ),)
 EXT = $(shell vsce show --json deducteam.lambdapi 2>/dev/null | jq '.versions[0]' | jq '.version')
+
 .PHONY: publish-vscode-extension
 publish-vscode-extension:
 ifeq ($(EXT), $(shell cat editors/vscode/package.json | jq '.version'))
 	echo "extension already exists. Skip"
 else
+ifeq ($(PAT),)
+	echo "The \"PAT\" secret is not set. Please add a secret named \"PAT\" to be able to publish the Vscode extension."
+else
+ifeq ('master', $(GITHUB_REF_NAME))
 	cd editors/vscode && vsce publish -p ${PAT}
+else
+	echo "Env Variable \"GITHUB_REF_NAME\" is set to \"$(GITHUB_REF_NAME)\". Please set it to \"master\" to force publishing the extension"
 endif
+endif
+endif
+
 endif
 endif

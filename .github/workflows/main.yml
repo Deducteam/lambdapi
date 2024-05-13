@@ -52,7 +52,7 @@ jobs:
           make build-vscode-extension
           make publish-vscode-extension
         env:
-          PAT: ${{secrets.VSCODE_PAT}}
+          PAT: ${{secrets.PAT}}
       - name: publish vscode extension
         uses: actions/upload-artifact@v4
         with: 
