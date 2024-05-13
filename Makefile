@@ -188,6 +188,7 @@ publish-vscode-extension:
 ifeq ($(EXT), $(shell cat editors/vscode/package.json | jq '.version'))
 	echo "extension already exists. Skip"
 else
+	echo "repo name is $(GITHUB_REPOSITORY)" 
 ifeq ($(PAT),)
 	echo "The \"PAT\" secret is not set. Please add a secret named \"PAT\" to be able to publish the Vscode extension."
 else

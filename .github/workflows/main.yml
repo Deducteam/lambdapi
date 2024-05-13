@@ -53,6 +53,7 @@ jobs:
           make publish-vscode-extension
         env:
           PAT: ${{ secrets.VSCODE_PAT }}
+          REPONAME: ${{ GITHUB_REPOSITORY }}
       - name: publish vscode extension
         uses: actions/upload-artifact@v4
         with: 
