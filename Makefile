@@ -188,14 +188,18 @@ publish-vscode-extension:
 ifeq ($(EXT), $(shell cat editors/vscode/package.json | jq '.version'))
 	echo "extension already exists. Skip"
 else
-	echo "repo name is $(GITHUB_REPOSITORY)" 
 ifeq ($(PAT),)
-	echo "The \"PAT\" secret is not set. Please add a secret named \"PAT\" to be able to publish the Vscode extension."
+	# Note, when pushing code from a fork of the Lambdapi repository, PAT secret is not "reachable". 
+	# The extension is only published when merge occurs.
+	echo "The \"PAT\" secret is not set. Please check a PAT exists with permissions to publish to Vscode market"
 else
 ifeq ('master', $(GITHUB_REF_NAME))
+	# The extension is only published when code is pushed to master to avoid publishing from feature branches
 	cd editors/vscode && vsce publish -p ${PAT}
 else
-	echo "Env Variable \"GITHUB_REF_NAME\" is set to \"$(GITHUB_REF_NAME)\". Please set it to \"master\" to force publishing the extension"
+	echo "Env Variable \"GITHUB_REF_NAME\" is set to \"$(GITHUB_REF_NAME)\"."
+	echo "Extension will only be published when pushing to master."
+	echo "If used manualy, please set Variable \"GITHUB_REF_NAME\" to \"master\" to force publishing the extension"
 endif
 endif
 endif
