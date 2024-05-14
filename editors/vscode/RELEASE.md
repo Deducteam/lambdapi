@@ -4,10 +4,10 @@ TODO list for a new release on the VSCode Marketplace
 
 The github DICD pipeline detects the existance of a new version of the Lambdapi extension for Vscode based on the `version` field in the `editors/vscode/package.json` file and publishes it on the Marketplace.
 
-Please note that a valid Azure Personal Access Token (PAT) is required for this operation. This PAT must be saved in the `PAT` environment variable as described [here](https://docs.github.com/en/actions/security-guides/using-secrets-in-github-actions).
+Please note that a valid Azure Personal Access Token (PAT) is required for this operation. This PAT must be saved in the `VSCODE_PAT` environment variable as described [here](https://docs.github.com/en/actions/security-guides/using-secrets-in-github-actions).
 
 If the pipeline fails at publishing the extension, it may be due to the PAT being expired.
-Please generate a new one on [Azure](https://dev.azure.com/lambdapi/) and update the `PAT` env variable value as described in the link above.
+Please generate a new one on [Azure](https://dev.azure.com/lambdapi/) and update the `VSCODE_PAT` env variable value as described in the link above.
 
 **manual release**
 
