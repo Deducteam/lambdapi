@@ -193,7 +193,7 @@ ifeq ($(PAT),)
 	# The extension is only published when merge occurs.
 	echo "The \"PAT\" secret is not set. Please check a PAT exists with permissions to publish to Vscode market"
 else
-ifeq ('master', $(GITHUB_REF_NAME))
+ifeq ("$(GITHUB_REF_NAME)", "master")
 	# The extension is only published when code is pushed to master to avoid publishing from feature branches
 	cd editors/vscode && vsce publish -p ${PAT}
 else
