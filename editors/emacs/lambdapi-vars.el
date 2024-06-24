@@ -15,6 +15,7 @@
     "reflexivity"
     "remove"
     "rewrite"
+    "set"
     "simplify"
     "solve"
     "symmetry"

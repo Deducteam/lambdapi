@@ -281,11 +281,8 @@ end
     important. *)
 type ctxt = (tvar * term * term option) list
 
-(** Typing context with lifted terms. Used to optimise type checking and avoid
-    lifting terms several times. Definitions are not included because these
-    contexts are used to create meta variables types, which do not use [let]
-    definitions. *)
-type bctxt = (tvar * tbox) list
+(** Typing context with lifted terms. *)
+type bctxt = (tvar * tbox * tbox option) list
 
 (** Type of unification constraints. *)
 type constr = ctxt * term * term
@@ -507,9 +504,7 @@ let mk_Patt (i,s,ts) = Patt (i,s,ts)
 let mk_Wild = Wild
 let mk_Plac b = Plac b
 let mk_TRef x = TRef x
-
-let mk_LLet (a,t,u) =
-  if Bindlib.binder_constant u then Bindlib.subst u Kind else LLet (a,t,u)
+let mk_LLet (a,t,u) = LLet (a,t,u)
 
 let mk_TEnv (te,ts) =
   match te with
@@ -715,7 +710,7 @@ let _Plac : bool -> tbox = fun b ->
 let _TRef : term option ref -> tbox = fun r ->
   Bindlib.box (TRef(r))
 
-(** [_LLet t a u] lifts let binding [let x := t : a in u<x>]. *)
+(** [_LLet a t u] lifts let binding [let x : a := t in u]. *)
 let _LLet : tbox -> tbox -> tbinder Bindlib.box -> tbox =
   Bindlib.box_apply3 (fun a t u -> mk_LLet(a, t, u))
 

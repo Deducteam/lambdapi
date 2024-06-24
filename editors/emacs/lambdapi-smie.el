@@ -20,6 +20,7 @@
     "reflexivity"
     "remove"
     "rewrite"
+    "set"
     "simplify"
     "solve"
     "symmetry"
@@ -98,12 +99,13 @@ Indent by `lambdapi-indent-basic' in proofs, and 0 otherwise."
               ("fail")
               ("focus" ident)
               ("generalize" ident)
-              ("have" sterm)
+              ("have" ident ":" sterm)
               ("induction")
               ("refine" sterm)
               ("reflexivity")
               ("remove" ident)
               ("rewrite" "[" rw-patt "]")
+              ("set" ident "≔" sterm)
               ("simplify")
               ("simplify" ident)
               ("solve")
@@ -197,6 +199,7 @@ The default lexer is used because the syntax is primarily made of sexps."
     (`(:before . "reflexivity") `(column . ,lambdapi-indent-basic))
     (`(:before . "remove") `(column . ,lambdapi-indent-basic))
     (`(:before . "rewrite") `(column . ,lambdapi-indent-basic))
+    (`(:before . "set") `(column . ,lambdapi-indent-basic))
     (`(:before . "simplify") `(column . ,lambdapi-indent-basic))
     (`(:before . "solve") `(column . ,lambdapi-indent-basic))
     (`(:before . "symmetry") `(column . ,lambdapi-indent-basic))
@@ -222,7 +225,7 @@ The default lexer is used because the syntax is primarily made of sexps."
     (`(:after . ,(or "symbol" "inductive")) lambdapi-indent-basic)
     (`(:after . ,(or "apply" "assume" "fail" "focus" "generalize" "have"
                      "induction" "refine" "reflexivity" "remove" "rewrite"
-                     "simplify" "solve" "symmetry" "why3"))
+                     "set" "simplify" "solve" "symmetry" "why3"))
      lambdapi-indent-basic)
 
     ;; Toplevel

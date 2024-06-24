@@ -59,6 +59,7 @@ lambdapi.bnf: Makefile.bnf ../src/parsing/lpParser.mly
 	-e 's/REQUIRE/"require"/g' \
         -e 's/RESOLVE/"resolve"/g' \
 	-e 's/REWRITE/"rewrite"/g' \
+        -e 's/SET/"set"/g' \
 	-e 's/UNIF_RULE/"unif_rule"/g' \
 	-e 's/RULE/"rule"/g' \
 	-e 's/SIDE/<side>/g' \

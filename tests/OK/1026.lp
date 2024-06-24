@@ -16,13 +16,13 @@ builtin "eq"    ≔ =;
 builtin "refl"  ≔ eq_refl;
 builtin "eqind" ≔ ind_eq;
 
-symbol set: Set;
-symbol cset [T]: (τ T → Prop) → τ set;
+symbol _set: Set;
+symbol cset [T]: (τ T → Prop) → τ _set;
 
 symbol T: Set;
 symbol P: τ T → Prop;
-symbol U: τ set;
-symbol Q: τ set → Prop;
+symbol U: τ _set;
+symbol Q: τ _set → Prop;
 symbol th: π (cset (λ x, P x) = U) → π (Q U) → π (Q (cset (λ x, P x))) ≔
 begin
   assume h1 h2;
