@@ -22,6 +22,11 @@ doc: bnf
 bnf:
 	$(MAKE) -C doc -f Makefile.bnf
 
+.PHONY: test_libs
+test_libs: lambdapi
+	@dune exec --only-packages lambdapi -- tests/test_lib.sh https://github.com/Deducteam/lambdapi-logics.git
+	@dune exec --only-packages lambdapi -- tests/test_lib.sh https://github.com/Deducteam/lambdapi-stdlib.git
+
 #### Unit tests and sanity check #############################################
 
 .PHONY: tests
@@ -32,6 +37,7 @@ tests: lambdapi
 	@dune exec --only-packages lambdapi -- tests/export_dk.sh
 	@dune exec --only-packages lambdapi -- tests/export_lp.sh
 	@dune exec --only-packages lambdapi -- tests/export_raw_dk.sh
+	$(MAKE) test_libs
 
 .PHONY: tests_alt_ergo
 tests_alt_ergo: lambdapi
@@ -176,12 +182,27 @@ JQ = $(shell which jq)
 ifneq ($(VSCE),)
 ifneq ($(JQ),)
 EXT = $(shell vsce show --json deducteam.lambdapi 2>/dev/null | jq '.versions[0]' | jq '.version')
+
 .PHONY: publish-vscode-extension
 publish-vscode-extension:
 ifeq ($(EXT), $(shell cat editors/vscode/package.json | jq '.version'))
 	echo "extension already exists. Skip"
 else
+ifeq ($(PAT),)
+	# Note, when pushing code from a fork of the Lambdapi repository, PAT secret is not "reachable". 
+	# The extension is only published when merge occurs.
+	echo "The \"PAT\" secret is not set. Please check a PAT exists with permissions to publish to Vscode market"
+else
+ifeq ("$(GITHUB_REF_NAME)", "master")
+	# The extension is only published when code is pushed to master to avoid publishing from feature branches
 	cd editors/vscode && vsce publish -p ${PAT}
+else
+	echo "Env Variable \"GITHUB_REF_NAME\" is set to \"$(GITHUB_REF_NAME)\"."
+	echo "Extension will only be published when pushing to master."
+	echo "If used manualy, please set Variable \"GITHUB_REF_NAME\" to \"master\" to force publishing the extension"
 endif
+endif
+endif
+
 endif
 endif

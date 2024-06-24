@@ -338,7 +338,10 @@ and comment next i lb =
 (** [token buf] is a lexing function on buffer [buf] that can be passed to
     a parser. *)
 let token : lexbuf -> unit -> token * Lexing.position * Lexing.position =
-  with_tokenizer token
+  fun lb () -> try with_tokenizer token lb () with
+  | Sedlexing.MalFormed -> fail lb "Not Utf8 encoded file"
+  | Sedlexing.InvalidCodepoint k ->
+      fail lb ("Invalid Utf8 code point " ^ string_of_int k)
 
 let token =
   let r = ref (EOF, Lexing.dummy_pos, Lexing.dummy_pos) in fun lb () ->

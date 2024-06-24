@@ -238,7 +238,7 @@ let get_node_at_pos doc line pos =
 let rec get_goals ~doc ~line ~pos =
   let node = get_node_at_pos doc line pos in
   let goals = match node with
-    | None -> None
+    | None -> Some([], None)
     | Some n ->
         closest_before (line+1, pos) n.goals in
   match goals with
@@ -294,7 +294,7 @@ let get_logs ~doc ~line ~pos : string =
       (fun ((_,msg),loc) ->
          match loc with
          | Some Pos.{start_line; start_col; _}
-           when compare (start_line,start_col) end_limit <= 0 -> Some msg
+           when compare (start_line,start_col) end_limit < 0 -> Some msg
          | _ -> None)
       doc.Lp_doc.logs
   in
@@ -526,7 +526,14 @@ let process_input ofmt (com : J.t) =
   | exn ->
     let bt = Printexc.get_backtrace () in
     LIO.log_error "[BT]" bt;
-    LIO.log_error "process_input" (Printexc.to_string exn)
+    LIO.log_error "process_input" (Printexc.to_string exn);
+    (*Send an "empty" answer with Null goals when exception occurs*)
+    let id     = oint_field "id" (U.to_assoc com) in
+    let goals = None in
+    let logs = "" in
+    let result = LSP.json_of_goals goals ~logs in
+    let msg = LSP.mk_reply ~id ~result in
+    LIO.send_json ofmt msg
 
 let main std log_file =
 

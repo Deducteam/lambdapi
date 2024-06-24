@@ -8,7 +8,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        ocaml-version: [5.1.1, 5.0.0, 4.14.1, 4.13.1, 4.12.1, 4.11.2, 4.10.2, 4.09.1, 4.08.1]
+        ocaml-version: [5.2.0, 5.1.1, 5.0.0, 4.14.1, 4.13.1, 4.12.1, 4.11.2, 4.10.2, 4.09.1, 4.08.1]
     runs-on: ubuntu-latest
     steps:
       - name: checking out lambdapi repo ...
@@ -48,12 +48,12 @@ jobs:
       - name: generate-vscode-extension
         run: |
           npm install -g @types/vscode
-          npm install -g vsce 
+          npm install -g @vscode/vsce 
           make build-vscode-extension
           make publish-vscode-extension
         env:
-          PAT: ${{secrets.VSCODE_PAT}}
-      - name: publish vscode extension
+          PAT: ${{ secrets.VSCODE_PAT }}
+      - name: upload vscode extension
         uses: actions/upload-artifact@v4
         with: 
           name: assets-for-download

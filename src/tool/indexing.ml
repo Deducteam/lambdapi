@@ -308,7 +308,7 @@ module DB = struct
 
  (* disk persistence *)
 
- let dbpath = Sys.getenv "HOME" ^ "/.LPSearch.db"
+ let dbpath = "~/.LPSearch.db"
  let rwpaths = ref []
 
  let restore_from_disk () =
