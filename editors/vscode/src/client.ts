@@ -705,7 +705,7 @@ function sendGoalsRequest(position: Position, panel: WebviewPanel, docUri: Uri, 
         }
         // Take focus back if the goal panel lost it.
         if(!panel.active) {
-            panel.reveal(2, false);
+            panel.reveal(2, true);
         }
 
         updateTerminalText(goals.logs);
