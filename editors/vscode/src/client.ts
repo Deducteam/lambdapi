@@ -704,9 +704,8 @@ function sendGoalsRequest(position: Position, panel: WebviewPanel, docUri: Uri, 
             return;
         }
         // Take focus back if the goal panel lost it.
-        window.showErrorMessage("Going through Goals");
         if(!panel.active) {
-            panel.reveal(2, false);
+            panel.reveal(2, true);
         }
 
         updateTerminalText(goals.logs);
