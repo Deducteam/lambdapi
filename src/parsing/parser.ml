@@ -104,7 +104,22 @@ sig
 
   let parse = parse ~grammar_entry:LpParser.command
   let parse_string = parse_string ~grammar_entry:LpParser.command
-  let parse_file = parse_file ~grammar_entry:LpParser.command
+  let parse_file fname = (*parse_file ~grammar_entry:LpParser.command fname*)
+    let inchan = open_in fname in
+    let lb = Sedlexing.Utf8.from_channel inchan in
+    Sedlexing.set_filename lb fname;
+    let generator _ =
+      try Some(Ll1.command lb)
+      with
+      | End_of_file -> close_in inchan; None
+      | LpLexer.SyntaxError {pos=None; _} -> assert false
+      | LpLexer.SyntaxError {pos=Some pos; elt} -> parser_fatal pos "%s" elt
+      | LpParser.Error ->
+          let pos = Pos.locate (Sedlexing.lexing_positions lb) in
+          parser_fatal pos "Unexpected token: \"%s\"."
+            (Sedlexing.Utf8.lexeme lb)
+    in
+    Stream.from generator
 
 end
 
