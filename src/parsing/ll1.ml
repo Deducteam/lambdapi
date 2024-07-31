@@ -6,8 +6,10 @@ open LpLexer
 open Lexing
 open Sedlexing
 
-let log = Logger.make 'n' "pars" "parsing"
-let log = log.pp
+(*let log = Logger.make 'n' "pars" "parsing"
+let log = log.pp*)
+
+(* token management *)
 
 let the_current_token : (token * position * position) Stdlib.ref =
   Stdlib.ref (EOF, dummy_pos, dummy_pos)
@@ -23,6 +25,8 @@ let current_pos() : position * position =
 let consume_token (lb:lexbuf) : unit =
   the_current_token := LpLexer.token lb ()(*;
   if log_enabled() then log "read new token"*)
+
+(* building positions and terms *)
 
 let make_pos (lps:position * position): 'a -> 'a loc =
   Pos.make_pos (fst lps, snd (current_pos()))
@@ -45,6 +49,103 @@ let ident_of_term pos1 {elt; _} =
   | P_Iden({elt=([], x); pos}, _) -> Pos.make pos x
   | _ -> LpLexer.syntax_error pos1 "not an identifier"
 
+(* error messages *)
+
+let string_of_token = function
+  | EOF -> "end of file"
+  | ABORT -> "abort"
+  | ADMIT -> "admit"
+  | ADMITTED -> "admitted"
+  | APPLY -> "apply"
+  | AS -> "as"
+  | ASSERT _ -> "assert or assertnot"
+  | ASSOCIATIVE -> "associative"
+  | ASSUME -> "assume"
+  | BEGIN -> "begin"
+  | BUILTIN -> "builtin"
+  | COERCE_RULE -> "coerce_rule"
+  | COMMUTATIVE -> "commutative"
+  | COMPUTE -> "compute"
+  | CONSTANT -> "constant"
+  | DEBUG -> "debug"
+  | END -> "end"
+  | FAIL -> "fail"
+  | FLAG -> "flag"
+  | GENERALIZE -> "generalize"
+  | HAVE -> "have"
+  | IN -> "in"
+  | INDUCTION -> "induction"
+  | INDUCTIVE -> "inductive"
+  | INFIX -> "infix"
+  | INJECTIVE -> "injective"
+  | LET -> "let"
+  | NOTATION -> "notation"
+  | OPAQUE -> "opaque"
+  | OPEN -> "open"
+  | POSTFIX -> "postfix"
+  | PREFIX -> "prefix"
+  | PRINT -> "print"
+  | PRIVATE -> "private"
+  | PROOFTERM -> "proofterm"
+  | PROTECTED -> "protected"
+  | PROVER -> "prover"
+  | PROVER_TIMEOUT -> "prover_timeout"
+  | QUANTIFIER -> "quantifier"
+  | REFINE -> "refine"
+  | REFLEXIVITY -> "reflexivity"
+  | REMOVE -> "remove"
+  | REQUIRE -> "require"
+  | REWRITE -> "rewrite"
+  | RULE -> "rule"
+  | SEARCH -> "search"
+  | SEQUENTIAL -> "sequential"
+  | SIMPLIFY -> "simplify"
+  | SOLVE -> "solve"
+  | SYMBOL -> "symbol"
+  | SYMMETRY -> "symmetry"
+  | TRY -> "try"
+  | TYPE_QUERY -> "type"
+  | TYPE_TERM -> "TYPE"
+  | UNIF_RULE -> "unif_rule"
+  | VERBOSE -> "verbose"
+  | WHY3 -> "why3"
+  | WITH -> "with"
+  | DEBUG_FLAGS _ -> "debug flags"
+  | NAT _ -> "natural number"
+  | NEG_NAT _ -> "negative integer"
+  | FLOAT _ -> "float"
+  | SIDE _ -> "left or right"
+  | STRINGLIT _ -> "string literal"
+  | SWITCH _ -> "on or off"
+  | ASSIGN -> "≔"
+  | ARROW -> "→"
+  | BACKQUOTE -> "`"
+  | COMMA -> ","
+  | COLON -> ":"
+  | DOT -> "."
+  | EQUIV -> "≡"
+  | HOOK_ARROW -> "↪"
+  | LAMBDA -> "λ"
+  | L_CU_BRACKET -> "{"
+  | L_PAREN -> "("
+  | L_SQ_BRACKET -> "["
+  | PI -> "Π"
+  | R_CU_BRACKET -> "}"
+  | R_PAREN -> ")"
+  | R_SQ_BRACKET -> "]"
+  | SEMICOLON -> ";"
+  | TURNSTILE -> "⊢"
+  | VBAR -> "|"
+  | UNDERSCORE -> "_"
+  | UID _ -> "non-qualified identifier"
+  | UID_EXPL _ -> "@-prefixed non-qualified identifier"
+  | UID_META _ -> "?-prefixed metavariable number"
+  | UID_PATT _ -> "$-prefixed non-qualified identifier"
+  | QID _ -> "qualified identifier"
+  | QID_EXPL _ -> "@-prefixed qualified identifier"
+
+let pp_token ppf t = Base.string ppf (string_of_token t)
+
 let expected (msg:string) (tokens:token list): 'a =
   if msg <> "" then syntax_error (current_pos()) ("expected: "^msg)
   else
@@ -54,6 +155,8 @@ let expected (msg:string) (tokens:token list): 'a =
       let soft = string_of_token in
       syntax_error (current_pos())
         (List.fold_left (fun s t -> s^", "^soft t) ("expected: "^soft t) ts)
+
+(* generic parsing functions *)
 
 let list (elt:lexbuf -> 'a) (lb:lexbuf): 'a list =
   (*if log_enabled() then log "expected: %s" __FUNCTION__;*)
@@ -72,6 +175,8 @@ let consume (token:token) (lb:lexbuf): unit =
 
 let prefix (token:token) (elt:lexbuf -> 'a) (lb:lexbuf): 'a =
   consume token lb; elt lb
+
+(* parsing functions *)
 
 let consume_STRINGLIT (lb:lexbuf): string =
   match current_token() with
