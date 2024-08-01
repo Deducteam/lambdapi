@@ -5,6 +5,7 @@ open Core
 open LpLexer
 open Lexing
 open Sedlexing
+open SearchQuerySyntax
 
 (*let log = Logger.make 'n' "pars" "parsing"
 let log = log.pp*)
@@ -357,6 +358,8 @@ let term_id (lb:lexbuf): p_term =
   | _ ->
       expected "" [UID"";QID[];UID_EXPL"";QID_EXPL[]]
 
+(* commands *)
+
 let rec command pos1 p_sym_mod (lb:lexbuf): p_command =
   (*if log_enabled() then log "expected: %s" __FUNCTION__;*)
   match current_token() with
@@ -684,6 +687,8 @@ and equation (lb:lexbuf): p_term * p_term =
   let r = term lb in
   (l, r)
 
+(* queries *)
+
 and query (lb:lexbuf): p_query =
   (*if log_enabled() then log "expected: %s" __FUNCTION__;*)
   match current_token() with
@@ -786,6 +791,8 @@ and term_proof (lb:lexbuf): p_term option * (p_proof * p_proof_end) option =
         | _ ->
             Some t, None
       end
+
+(* proofs *)
 
 and proof (lb:lexbuf): p_proof * p_proof_end =
   (*if log_enabled() then log "expected: %s" __FUNCTION__;*)
@@ -1129,6 +1136,8 @@ and rw_patt_spec (lb:lexbuf): p_rw_patt =
   | _ ->
       expected "" [L_SQ_BRACKET]
 
+(* terms *)
+
 and params (lb:lexbuf): p_params =
   (*if log_enabled() then log "expected: %s" __FUNCTION__;*)
   match current_token() with
@@ -1412,6 +1421,113 @@ and binder (lb:lexbuf): p_params list * p_term =
       end
   | _ ->
       expected "" [UID"";NAT"";UNDERSCORE;L_PAREN;L_SQ_BRACKET]
+
+(* search *)
+
+and where (lb:lexbuf): bool * inside option =
+  (*if log_enabled() then log "expected: %s" __FUNCTION__;*)
+  match current_token() with
+  | UID u ->
+      let r =
+        match u with
+        | "=" -> Some Exact
+        | ">" -> Some Inside
+        | "≥"
+        | ">=" -> None
+        | _ -> expected "\">\", \"=\", \"≥\",\">=\"" []
+      in
+      consume_token lb;
+      let g =
+        match current_token() with
+        | GENERALIZE -> consume_token lb; true
+        | _ -> false
+      in
+      g,r
+  | _ ->
+      expected "\">\", \"=\", \"≥\",\">=\"" []
+
+and asearch_query(lb:lexbuf): query =
+  (*if log_enabled() then log "expected: %s" __FUNCTION__;*)
+  match current_token() with
+  | TYPE_QUERY ->
+      consume_token lb;
+      let g, w = where lb in
+      let t = aterm lb in
+      if w <> None then expected "\"≥\", \">=\"" []
+      else QBase(QSearch(t,g,Some(QType None)))
+  | RULE ->
+      consume_token lb;
+      let g, w = where lb in
+      let t = aterm lb in
+      QBase(QSearch(t,g,Some (QXhs(w,None))))
+  | UID k ->
+      consume_token lb;
+      let g, w = where lb in
+      let t = aterm lb in
+      begin
+        match k, t.elt with
+        | "name", P_Iden(id,false) ->
+            assert (fst id.elt = []);
+            if w <> Some Exact then expected "\"=\"" []
+            else if g then
+              expected "\"generalize\" cannot be used with \"name\"" []
+            else QBase(QName(snd id.elt))
+        | "name", _ ->
+            expected "path prefix" []
+        | "anywhere", _ ->
+            if w <> None then expected "\"≥\", \">=\"" []
+            else QBase(QSearch(t,g,None))
+        | "spine",_ ->
+            QBase(QSearch(t,g,Some(QType(Some(Spine w)))))
+        | "concl",_ ->
+            QBase(QSearch(t,g,Some(QType(Some(Conclusion w)))))
+        | "hyp",_ ->
+            QBase(QSearch(t,g,Some(QType(Some(Hypothesis w)))))
+        | "lhs",_ ->
+            QBase(QSearch(t,g,Some(QXhs(w,Some Lhs))))
+        | "rhs",_ ->
+            QBase(QSearch(t,g,Some(QXhs(w,Some Rhs))))
+        | _ ->
+            expected "Unknown keyword" []
+      end
+  | L_PAREN ->
+      consume_token lb;
+      let q = search_query lb in
+      consume R_PAREN lb;
+      q
+  | _ ->
+      expected "" [TYPE_QUERY;RULE;UID"";L_PAREN]
+
+and csearch_query (lb:lexbuf): query =
+  (*if log_enabled() then log "expected: %s" __FUNCTION__;*)
+  let aq = asearch_query lb in
+  match current_token() with
+  | COMMA ->
+      let aqs = list (prefix COMMA asearch_query) lb in
+      List.fold_left (fun x aq -> QOpp(x,Intersect,aq)) aq aqs
+  | _ ->
+      aq
+
+and ssearch_query (lb:lexbuf): query =
+  (*if log_enabled() then log "expected: %s" __FUNCTION__;*)
+  let cq = csearch_query lb in
+  match current_token() with
+  | SEMICOLON ->
+      let cqs = list (prefix SEMICOLON csearch_query) lb in
+      List.fold_left (fun x cq -> QOpp(x,Union,cq)) cq cqs
+  | _ ->
+      cq
+
+and search_query (lb:lexbuf): query =
+  (*if log_enabled() then log "expected: %s" __FUNCTION__;*)
+  let q = ssearch_query lb in
+  let qids = list (prefix VBAR qid) lb in
+  let path_of_qid qid =
+    let p,n = qid.elt in
+    if p = [] then n
+    else Format.asprintf "%a.%a" Print.path p Print.uid n
+  in
+  List.fold_left (fun x qid -> QFilter(x,Path(path_of_qid qid))) q qids
 
 let command (lb:lexbuf): p_command =
   (*if log_enabled() then log "------------------- start reading command";*)
