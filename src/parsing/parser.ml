@@ -7,6 +7,10 @@
 
 open Lplib open Base
 open Common
+open Syntax
+open Lexing
+
+type lexpos = Lexing.position
 
 (** [parser_fatal pos fmt] is a wrapper for [Error.fatal] that enforces
     that the error has an attached source code position. *)
@@ -15,158 +19,187 @@ let parser_fatal : Pos.pos -> ('a,'b) koutfmt -> 'a = fun pos fmt ->
 
 (** Module type of a parser. *)
 module type PARSER = sig
-  val parse : in_channel -> Syntax.ast
-  (** [parse inchan] returns a stream of commands parsed from
-      channel [inchan]. Commands are parsed lazily and the channel is
+  val parse_in_channel : in_channel -> ast
+  (** [parse ic] returns a stream of commands parsed from
+      channel [ic]. Commands are parsed lazily and the channel is
       closed once all entries are parsed. *)
 
-  val parse_file : string -> Syntax.ast
+  val parse_file : string -> ast
   (** [parse_file fname] returns a stream of parsed commands of file
       [fname]. Commands are parsed lazily. *)
 
-  val parse_string : string -> string -> Syntax.ast
+  val parse_string : string -> string -> ast
   (** [parse_string f s] returns a stream of parsed commands from string [s]
       which comes from file [f] ([f] can be anything). *)
 end
 
+(** Parsing dk syntax. *)
+module Dk : PARSER = struct
+
+  open Lexing
+
+  (* defined in OCaml >= 4.11 only *)
+  let set_filename (lb:lexbuf) (fname:string): unit =
+    lb.lex_curr_p <- {lb.lex_curr_p with pos_fname = fname}
+
+  (* old code:
+  let parse_lexbuf :
+        ?ic:in_channel -> ?fname:string -> lexbuf -> p_command Stream.t =
+    fun ?ic ?fname lb ->
+    Option.iter (set_filename lb) fname;
+    let generator _ =
+      try Some (command lb)
+      with
+      | End_of_file -> Option.iter close_in ic; None
+      | DkParser.Error ->
+          let pos = Pos.locate (lb.lex_start_p, lb.lex_curr_p) in
+          parser_fatal pos "Unexpected token \"%s\"." (lexeme lb)
+    in
+    Stream.from generator
+
+  let parse_string fname s = parse_lexbuf ~fname (from_string s)
+
+  let parse_in_channel ic =
+    try parse_lexbuf ~ic (from_channel ic)
+    with e -> close_in ic; raise e
+
+  let parse_file fname =
+    let ic = open_in fname in
+    parse_lexbuf ~ic ~fname (from_channel ic)*)
+
+  let parse_lexbuf (icopt:in_channel option) (entry:lexbuf -> 'a) (lb:lexbuf)
+      : 'a Stream.t =
+    let generator _ =
+      try Some(entry lb)
+      with
+      | End_of_file -> Option.iter close_in icopt; None
+      | DkParser.Error ->
+          let pos = Pos.locate (lb.lex_start_p, lb.lex_curr_p) in
+          parser_fatal pos "Unexpected token \"%s\"." (lexeme lb)
+    in
+    Stream.from generator
+
+  let parse_in_channel (entry:lexbuf -> 'a) (ic:in_channel): 'a Stream.t =
+    parse_lexbuf (Some ic) entry (from_channel ic)
+
+  let parse_file entry fname = parse_in_channel entry (open_in fname)
+
+  let parse_string (entry: lexbuf -> 'a) (fname:string) (s:string)
+      : 'a Stream.t =
+    let lb = from_string s in
+    set_filename lb fname;
+    parse_lexbuf None entry lb
+
+  let command =
+    let r = ref (Pos.none (P_open [])) in
+    fun (lb:lexbuf): p_command ->
+    Debug.(record_time Parsing
+             (fun () -> r := DkParser.line DkLexer.token lb)); !r
+
+  (* exported functions *)
+  let parse_string = parse_string command
+  let parse_in_channel = parse_in_channel command
+  let parse_file = parse_file command
+
+end
+
+(** Parsing lp syntax. *)
 module Lp :
 sig
   include PARSER
-
-  val parse_term : in_channel -> Syntax.p_term Stream.t
-  (** [parse inchan] returns a stream of terms parsed from
-      channel [inchan]. Terms are parsed lazily and the channel is
-      closed once all entries are parsed. *)
-
-  val parse_term_file : string -> Syntax.p_term Stream.t
-  (** [parse_file fname] returns a stream of parsed terms of file
-      [fname]. Terms are parsed lazily. *)
-
-  val parse_term_string : string -> string -> Syntax.p_term Stream.t
-  (** [parse_string f s] returns a stream of parsed terms from string [s]
-      which comes from file [f] ([f] can be anything). *)
 
   val parse_search_query_string :
     string -> string -> SearchQuerySyntax.query Stream.t
   (** [parse_search_query_string f s] returns a stream of parsed terms from
       string [s] which comes from file [f] ([f] can be anything). *)
 
-  val parse_qid : string -> Core.Term.qident
   end
 = struct
 
-  let stream_of_lexbuf :
-    grammar_entry:(LpLexer.token,'b) MenhirLib.Convert.traditional ->
-    ?inchan:in_channel -> ?fname:string -> Sedlexing.lexbuf ->
+  open LpLexer
+  open Sedlexing
+
+  (* old Menhir parser *)
+
+  type tokenizer = unit -> token * lexpos * lexpos
+  type 'a parser = tokenizer -> 'a
+
+  let parse_lexbuf :
+    grammar_entry:(token,'b) MenhirLib.Convert.traditional ->
+    ?ic:in_channel -> ?fname:string -> lexbuf ->
     (* Input channel passed as parameter to be closed at the end of stream. *)
     'a Stream.t =
-    fun ~grammar_entry ?inchan ?fname lb ->
-      Option.iter (Sedlexing.set_filename lb) fname;
-      let parse =
-        MenhirLib.Convert.Simplified.traditional2revised
-         grammar_entry
-      in
+    fun ~grammar_entry ?ic ?fname lb ->
+      Option.iter (set_filename lb) fname;
+      let parse: 'a parser =
+        MenhirLib.Convert.Simplified.traditional2revised grammar_entry in
       let token = LpLexer.token lb in
       let generator _ =
-        try Some(parse token)
+        try Some (parse token)
         with
-        | End_of_file -> Option.iter close_in inchan; None
-        | LpLexer.SyntaxError {pos=None; _} -> assert false
-        | LpLexer.SyntaxError {pos=Some pos; elt} -> parser_fatal pos "%s" elt
+        | End_of_file -> Option.iter close_in ic; None
+        | SyntaxError {pos=None; _} -> assert false
+        | SyntaxError {pos=Some pos; elt} -> parser_fatal pos "%s" elt
         | LpParser.Error ->
-            let pos = Pos.locate (Sedlexing.lexing_positions lb) in
-            parser_fatal pos "Unexpected token: \"%s\"."
-              (Sedlexing.Utf8.lexeme lb)
+            let pos = Pos.locate (lexing_positions lb) in
+            parser_fatal pos "Unexpected token: \"%s\"." (Utf8.lexeme lb)
       in
       Stream.from generator
 
-  let parse ~grammar_entry inchan =
-    stream_of_lexbuf ~grammar_entry ~inchan
-      (Sedlexing.Utf8.from_channel inchan)
-
-  let parse_file ~grammar_entry fname =
-    let inchan = open_in fname in
-    stream_of_lexbuf ~grammar_entry ~inchan ~fname
-     (Sedlexing.Utf8.from_channel inchan)
-
   let parse_string ~grammar_entry fname s =
-    stream_of_lexbuf ~grammar_entry ~fname (Sedlexing.Utf8.from_string s)
+    parse_lexbuf ~grammar_entry ~fname (Utf8.from_string s)
 
-  let parse_term = parse ~grammar_entry:LpParser.term_alone
-  let parse_term_string = parse_string ~grammar_entry:LpParser.term_alone
   let parse_search_query_string =
     parse_string ~grammar_entry:LpParser.search_query_alone
-  let parse_term_file = parse_file ~grammar_entry:LpParser.term_alone
 
-  let parse_qid s =
-   let stream = parse_string ~grammar_entry:LpParser.qid_alone "LPSearch" s in
-   (Stream.next stream).elt
+  (*let parse_in_channel ~grammar_entry ic =
+    parse_lexbuf ~grammar_entry ~ic (Utf8.from_channel ic)
 
-  let parse = parse ~grammar_entry:LpParser.command
-  let parse_string = parse_string ~grammar_entry:LpParser.command
-  let parse_file fname = (*parse_file ~grammar_entry:LpParser.command fname*)
-    let inchan = open_in fname in
-    let lb = Sedlexing.Utf8.from_channel inchan in
-    Sedlexing.set_filename lb fname;
+  let parse_file ~grammar_entry fname =
+    let ic = open_in fname in
+    parse_lexbuf ~grammar_entry ~ic ~fname (Utf8.from_channel ic)
+
+  let parse_in_channel = parse_in_channel ~grammar_entry:LpParser.command
+  let parse_file fname = parse_file ~grammar_entry:LpParser.command fname
+  let parse_string = parse_string ~grammar_entry:LpParser.command*)
+
+  (* new parser *)
+
+  let parse_lexbuf icopt entry lb =
     let generator _ =
-      try Some(Ll1.command lb)
+      try Some(entry lb)
       with
-      | End_of_file -> close_in inchan; None
-      | LpLexer.SyntaxError {pos=None; _} -> assert false
-      | LpLexer.SyntaxError {pos=Some pos; elt} -> parser_fatal pos "%s" elt
-      | LpParser.Error ->
-          let pos = Pos.locate (Sedlexing.lexing_positions lb) in
-          parser_fatal pos "Unexpected token: \"%s\"."
-            (Sedlexing.Utf8.lexeme lb)
+      | End_of_file -> Option.iter close_in icopt; None
+      | SyntaxError{pos=None; _} -> assert false
+      | SyntaxError{pos=Some pos; elt} -> parser_fatal pos "%s" elt
     in
     Stream.from generator
 
+  let parse_string entry fname s =
+    let lb = Utf8.from_string s in
+    set_filename lb fname;
+    parse_lexbuf None entry lb
+
+  let parse_in_channel entry ic =
+    parse_lexbuf (Some ic) entry (Utf8.from_channel ic)
+
+  (*let parse_file entry fname =
+    let ic = open_in fname in
+    let lb = Utf8.from_channel ic in
+    set_filename lb fname; (* useful? *)
+    let x = parse_lexbuf entry lb in
+    close_in ic;
+    x*)
+
+  let parse_file entry fname = parse_in_channel entry (open_in fname)
+
+  (* exported functions *)
+  let parse_string = parse_string Ll1.command
+  let parse_in_channel = parse_in_channel Ll1.command
+  let parse_file = parse_file Ll1.command
+
 end
 
-(** Parsing dk syntax. *)
-module Dk : PARSER = struct
-
-  let token : Lexing.lexbuf -> DkTokens.token =
-    let r = ref DkTokens.EOF in fun lb ->
-    Debug.(record_time Lexing (fun () -> r := DkLexer.token lb)); !r
-
-  let command :
-    (Lexing.lexbuf -> DkTokens.token) -> Lexing.lexbuf -> Syntax.p_command =
-    let r = ref (Pos.none (Syntax.P_open [])) in fun token lb ->
-    Debug.(record_time Parsing (fun () -> r := DkParser.line token lb)); !r
-
-  let stream_of_lexbuf :
-    ?inchan:in_channel -> ?fname:string -> Lexing.lexbuf ->
-    (* Input channel passed as parameter to be closed at the end of stream. *)
-    Syntax.p_command Stream.t =
-    fun ?inchan ?fname lb ->
-      let fn n =
-        lb.lex_curr_p <- {lb.lex_curr_p with pos_fname = n}
-      in
-      Option.iter fn fname;
-        (*In OCaml >= 4.11: Lexing.set_filename lb fname;*)
-      let generator _ =
-        try Some (command token lb)
-        with
-        | End_of_file -> Option.iter close_in inchan; None
-        | DkParser.Error ->
-            let pos = Pos.locate (Lexing.(lb.lex_start_p, lb.lex_curr_p)) in
-            parser_fatal pos "Unexpected token \"%s\"." (Lexing.lexeme lb)
-      in
-      Stream.from generator
-
-  let parse inchan =
-    try stream_of_lexbuf ~inchan (Lexing.from_channel inchan)
-    with e -> close_in inchan; raise e
-
-  let parse_file fname =
-    let inchan = open_in fname in
-    stream_of_lexbuf ~inchan ~fname (Lexing.from_channel inchan)
-
-  let parse_string fname s = stream_of_lexbuf ~fname (Lexing.from_string s)
-end
-
-(* Include parser of new syntax so that functions are directly available.*)
 include Lp
 
 (** [path_of_string s] converts the string [s] into a path. *)
@@ -196,7 +229,7 @@ let qident_of_string : string -> Core.Term.qident = fun s ->
 
 (** [parse_file fname] selects and runs the correct parser on file [fname], by
     looking at its extension. *)
-let parse_file : string -> Syntax.ast = fun fname ->
+let parse_file : string -> ast = fun fname ->
   match Filename.check_suffix fname Library.lp_src_extension with
   | true  -> Lp.parse_file fname
   | false -> Dk.parse_file fname

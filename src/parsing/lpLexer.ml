@@ -4,13 +4,13 @@ open Lplib
 open Sedlexing
 open Common open Pos
 
-let remove_first : Sedlexing.lexbuf -> string = fun lb ->
+let remove_first : lexbuf -> string = fun lb ->
   Utf8.sub_lexeme lb 1 (lexeme_length lb - 1)
 
-let remove_last : Sedlexing.lexbuf -> string = fun lb ->
+let remove_last : lexbuf -> string = fun lb ->
   Utf8.sub_lexeme lb 0 (lexeme_length lb - 1)
 
-let remove_ends : Sedlexing.lexbuf -> string = fun lb ->
+let remove_ends : lexbuf -> string = fun lb ->
   Utf8.sub_lexeme lb 1 (lexeme_length lb - 2)
 
 exception SyntaxError of strloc
@@ -18,10 +18,10 @@ exception SyntaxError of strloc
 let syntax_error : Lexing.position * Lexing.position -> string -> 'a =
   fun pos msg -> raise (SyntaxError (Pos.make_pos pos msg))
 
-let fail : Sedlexing.lexbuf -> string -> 'a = fun lb msg ->
-  syntax_error (Sedlexing.lexing_positions lb) msg
+let fail : lexbuf -> string -> 'a = fun lb msg ->
+  syntax_error (lexing_positions lb) msg
 
-let invalid_character : Sedlexing.lexbuf -> 'a = fun lb ->
+let invalid_character : lexbuf -> 'a = fun lb ->
   fail lb "Invalid character"
 
 (** Tokens. *)
@@ -337,8 +337,8 @@ and comment next i lb =
     a parser. *)
 let token : lexbuf -> unit -> token * Lexing.position * Lexing.position =
   fun lb () -> try with_tokenizer token lb () with
-  | Sedlexing.MalFormed -> fail lb "Not Utf8 encoded file"
-  | Sedlexing.InvalidCodepoint k ->
+  | MalFormed -> fail lb "Not Utf8 encoded file"
+  | InvalidCodepoint k ->
       fail lb ("Invalid Utf8 code point " ^ string_of_int k)
 
 let token =

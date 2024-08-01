@@ -176,6 +176,9 @@ let consume (token:token) (lb:lexbuf): unit =
 let prefix (token:token) (elt:lexbuf -> 'a) (lb:lexbuf): 'a =
   consume token lb; elt lb
 
+let alone (entry:lexbuf -> 'a) (lb:lexbuf): 'a =
+  let x = entry lb in if current_token() != EOF then expected "" [EOF] else x
+
 (* parsing functions *)
 
 let consume_STRINGLIT (lb:lexbuf): string =
