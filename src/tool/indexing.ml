@@ -195,11 +195,11 @@ end
 module DB = struct
  (* fix codomain type *)
 
- type side = Parsing.SearchQuerySyntax.side = Lhs | Rhs
+ type side = Parsing.Syntax.side = Lhs | Rhs
 
- type inside = Parsing.SearchQuerySyntax.inside = Exact | Inside
+ type inside = Parsing.Syntax.inside = Exact | Inside
 
- type 'inside where = 'inside Parsing.SearchQuerySyntax.where =
+ type 'inside where = 'inside Parsing.Syntax.where =
   | Spine of 'inside
   | Conclusion of 'inside
   | Hypothesis of 'inside
@@ -562,7 +562,7 @@ include DB
 
 module QueryLanguage = struct
 
- open Parsing.SearchQuerySyntax
+ open Parsing.Syntax
 
  let match_opt p x =
   match p,x with
@@ -637,28 +637,19 @@ include QueryLanguage
 
 module UserLevelQueries = struct
 
- let search_cmd_gen ~fail ~pp_results s =
-  try
-   let pstream = Parsing.Parser.Lp.parse_search_query_string "LPSearch" s in
-   let pq = Stream.next pstream in
-   let mok _ = None in
-   let items = answer_query ~mok [] pq in
-   Format.asprintf "%a@." pp_results items
-  with
-   | Stream.Failure ->
-      fail (Format.asprintf "Syntax error: a query was expected")
-   | Common.Error.Fatal(_,msg) ->
-      fail (Format.asprintf "Error: %s@." msg)
-   | exn ->
-      fail (Format.asprintf "Error: %s@." (Printexc.to_string exn))
+  let query_results_gen pp_results q =
+    let mok _ = None in
+    let items = answer_query ~mok [] q in
+    Format.asprintf "%a@." pp_results items
 
- let search_cmd_html s =
-  search_cmd_gen ~fail:(fun x -> "<font color=\"red\">" ^ x ^ "</font>")
-   ~pp_results:html_of_item_set s
+  let search_cmd_html s =
+    query_results_gen html_of_item_set
+      (Parsing.Parser.Lp.parse_search_query_string "" s)
 
- let search_cmd_txt s =
-  search_cmd_gen ~fail:(fun x -> Common.Error.fatal_no_pos "%s" x)
-  ~pp_results:pp_item_set s
+  let query_results = query_results_gen pp_item_set
+
+  let search_cmd_txt s =
+    query_results (Parsing.Parser.Lp.parse_search_query_string "" s)
 
 end
 

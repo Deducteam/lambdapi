@@ -10,8 +10,6 @@ open Common
 open Syntax
 open Lexing
 
-type lexpos = Lexing.position
-
 (** [parser_fatal pos fmt] is a wrapper for [Error.fatal] that enforces
     that the error has an attached source code position. *)
 let parser_fatal : Pos.pos -> ('a,'b) koutfmt -> 'a = fun pos fmt ->
@@ -103,25 +101,22 @@ module Dk : PARSER = struct
 
 end
 
+open LpLexer
+open Sedlexing
+
 (** Parsing lp syntax. *)
 module Lp :
 sig
   include PARSER
 
-  val parse_search_query_string :
-    string -> string -> SearchQuerySyntax.query Stream.t
-  (** [parse_search_query_string f s] returns a stream of parsed terms from
-      string [s] which comes from file [f] ([f] can be anything). *)
+  val parse_search_query_string : (*fname*)string -> (*query*)string -> query
 
   end
 = struct
 
-  open LpLexer
-  open Sedlexing
-
   (* old Menhir parser *)
 
-  type tokenizer = unit -> token * lexpos * lexpos
+  type tokenizer = unit -> token * position * position
   type 'a parser = tokenizer -> 'a
 
   let parse_lexbuf :
@@ -139,7 +134,8 @@ sig
         with
         | End_of_file -> Option.iter close_in ic; None
         | SyntaxError {pos=None; _} -> assert false
-        | SyntaxError {pos=Some pos; elt} -> parser_fatal pos "%s" elt
+        | SyntaxError {pos=Some pos; elt} ->
+            parser_fatal pos "Syntax error. %s" elt
         | LpParser.Error ->
             let pos = Pos.locate (lexing_positions lb) in
             parser_fatal pos "Unexpected token: \"%s\"." (Utf8.lexeme lb)
@@ -149,8 +145,8 @@ sig
   let parse_string ~grammar_entry fname s =
     parse_lexbuf ~grammar_entry ~fname (Utf8.from_string s)
 
-  let parse_search_query_string =
-    parse_string ~grammar_entry:LpParser.search_query_alone
+  (*let parse_search_query_string =
+    parse_string ~grammar_entry:LpParser.search_query_alone*)
 
   (*let parse_in_channel ~grammar_entry ic =
     parse_lexbuf ~grammar_entry ~ic (Utf8.from_channel ic)
@@ -165,22 +161,25 @@ sig
 
   (* new parser *)
 
-  let parse_lexbuf icopt entry lb =
+  let parse_lexbuf (icopt: in_channel option) (entry: lexbuf -> 'a)
+        (lb: lexbuf): 'a Stream.t =
     let generator _ =
       try Some(entry lb)
       with
       | End_of_file -> Option.iter close_in icopt; None
       | SyntaxError{pos=None; _} -> assert false
-      | SyntaxError{pos=Some pos; elt} -> parser_fatal pos "%s" elt
+      | SyntaxError{pos=Some pos; elt} ->
+          parser_fatal pos "Syntax error. %s" elt
     in
     Stream.from generator
 
-  let parse_string entry fname s =
+  let parse_string (entry: lexbuf -> 'a) (fname: string) (s: string)
+      : 'a Stream.t =
     let lb = Utf8.from_string s in
     set_filename lb fname;
     parse_lexbuf None entry lb
 
-  let parse_in_channel entry ic =
+  let parse_in_channel (entry: lexbuf -> 'a) (ic: in_channel): 'a Stream.t =
     parse_lexbuf (Some ic) entry (Utf8.from_channel ic)
 
   (*let parse_file entry fname =
@@ -191,9 +190,13 @@ sig
     close_in ic;
     x*)
 
-  let parse_file entry fname = parse_in_channel entry (open_in fname)
+  let parse_file (entry: lexbuf -> 'a) (fname: string): 'a Stream.t =
+    parse_in_channel entry (open_in fname)
 
   (* exported functions *)
+  let parse_search_query_string (fname: string) (s: string): query =
+    Stream.next (parse_string (Ll1.alone Ll1.search) fname s)
+
   let parse_string = parse_string Ll1.command
   let parse_in_channel = parse_in_channel Ll1.command
   let parse_file = parse_file Ll1.command
@@ -202,30 +205,32 @@ end
 
 include Lp
 
+open Error
+
 (** [path_of_string s] converts the string [s] into a path. *)
 let path_of_string : string -> Path.t = fun s ->
-  let open LpLexer in
-  let lb = Sedlexing.Utf8.from_string s in
+  let lb = Utf8.from_string s in
   try
     begin match token lb () with
       | UID s, _, _ -> [s]
       | QID p, _, _ -> List.rev p
-      | _ -> Error.fatal_no_pos "\"%s\" is not a path." s
+      | _ -> fatal_no_pos "Syntax error: \"%s\" is not a path." s
     end
-  with SyntaxError _ -> Error.fatal_no_pos "\"%s\" is not a path." s
+  with SyntaxError _ ->
+    fatal_no_pos "Syntax error: \"%s\" is not a path." s
 
 (** [qident_of_string s] converts the string [s] into a qident. *)
 let qident_of_string : string -> Core.Term.qident = fun s ->
-  let open LpLexer in
-  let lb = Sedlexing.Utf8.from_string s in
+  let lb = Utf8.from_string s in
   try
     begin match token lb () with
       | QID [], _, _ -> assert false
       | QID (s::p), _, _ -> (List.rev p, s)
-      | _ -> Error.fatal_no_pos "\"%s\" is not a qualified identifier." s
+      | _ ->
+          fatal_no_pos "Syntax error: \"%s\" is not a qualified identifier." s
     end
   with SyntaxError _ ->
-    Error.fatal_no_pos "\"%s\" is not a qualified identifier." s
+    fatal_no_pos "Syntax error: \"%s\" is not a qualified identifier." s
 
 (** [parse_file fname] selects and runs the correct parser on file [fname], by
     looking at its extension. *)

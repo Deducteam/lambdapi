@@ -204,6 +204,29 @@ type p_assertion =
   | P_assert_conv   of p_term * p_term
   (** The two given terms should be convertible. *)
 
+(** Search queries. *)
+type side = Lhs | Rhs
+type inside = Exact | Inside
+type 'a where =
+ | Spine of 'a
+ | Conclusion of 'a
+ | Hypothesis of 'a
+type constr =
+ | QType of (inside option) where option
+ | QXhs  of inside option * side option
+type base_query =
+ | QName of string
+ | QSearch of p_term * (*generalize:*)bool * constr option
+type op =
+ | Intersect
+ | Union
+type filter =
+ | Path of string
+type query =
+ | QBase of base_query
+ | QOpp of query * op * query
+ | QFilter of query * filter
+
 (** Parser-level representation of a query command. *)
 type p_query_aux =
   | P_query_verbose of string
@@ -226,7 +249,7 @@ type p_query_aux =
   (** Print information about a symbol or the current goals. *)
   | P_query_proofterm
   (** Print the current proof term (possibly containing open goals). *)
-  | P_query_search of string
+  | P_query_search of query
   (** Runs a search query *) (* I use a string here to be parsed later
   to avoid polluting LambdaPi code with index and retrieval code *)
 
@@ -252,6 +275,7 @@ type p_tactic_aux =
   | P_tac_sym
   | P_tac_why3 of string option
   | P_tac_try of p_tactic
+
 and p_tactic = p_tactic_aux loc
 
 (** [is_destructive t] says whether tactic [t] changes the current goal. *)
@@ -398,6 +422,7 @@ let eq_p_query : p_query eq = fun {elt=q1;_} {elt=q2;_} ->
   | P_query_verbose n1, P_query_verbose n2 -> n1 = n2
   | P_query_debug (b1,s1), P_query_debug (b2,s2) -> b1 = b2 && s1 = s2
   | P_query_proofterm, P_query_proofterm -> true
+  | P_query_search q1, P_query_search q2 -> q1 = q2
   | _, _ -> false
 
 let eq_p_tactic : p_tactic eq = fun {elt=t1;_} {elt=t2;_} ->
