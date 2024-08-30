@@ -4,6 +4,12 @@
 visualize this file and the generated subgoals in proofs
 (this is a multi-lines comment). */
 
+/* Put this file and
+https://github.com/Deducteam/lambdapi/blob/master/tests/lambdapi.pkg
+in the same directory, and run emacs or vscode from this
+directory. Make sure that lambdapi is in your path (do "eval `opam
+env`" if you installed lambdapi with opam). */
+
 /* In Lambdapi, you can declare type and object symbols. Symbol names
 can contain unicode characters (utf8). */
 
@@ -65,7 +71,7 @@ assert ⊢ zero + zero ≡ zero;
 // The definition of + can be completed by adding a new rule later:
 rule $x + succ $y ↪ succ ($x + $y);
 
-// Several rules can also be given as once:
+// Several rules can also be given at once:
 rule zero × $y ↪ zero
 with succ $x × $y ↪ $y + $x × $y;
 
