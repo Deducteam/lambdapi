@@ -14,7 +14,7 @@ builtin "P" ≔ π;
 
 constant symbol ⊤ : Prop; // \top
 
-constant symbol top : π ⊤;
+constant symbol ⊤ᵢ : π ⊤;
 
 // false
 
