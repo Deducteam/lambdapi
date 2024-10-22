@@ -391,6 +391,11 @@ let rec handle :
 (** Representation of a tactic output. *)
 type tac_output = proof_state * Query.result
 
+exception Tactic_error of tac_output * Pos.popt option * string
+let tactic_error : tac_output -> Pos.popt -> ('a,'b) Lplib.Base.koutfmt -> 'a = fun a pos fmt ->
+  let cont _ = raise (Tactic_error(a, Some(pos), Format.flush_str_formatter ())) in
+  Format.kfprintf cont Format.str_formatter fmt
+
 (** [handle ss sym_pos prv ps tac] applies tactic [tac] in the proof state
    [ps] and returns the new proof state. *)
 let handle :
@@ -421,20 +426,20 @@ let handle :
   let nb_newgoals = nb_goals_after - nb_goals_before in
   if nb_newgoals <= 0 then
     if nb_subproofs = 0 then a
-    else fatal t.pos "A subproof is given but there is no subgoal."
+    else tactic_error a t.pos "A subproof is given but there is no subgoal."
   else if is_destructive t then
     match nb_newgoals + 1 - nb_subproofs with
     | 0 -> a
     | n when n > 0 ->
-      fatal t.pos "Missing subproofs (%d subproofs for %d subgoals):@.%a"
+      tactic_error a t.pos "Missing subproofs (%d subproofs for %d subgoals):@.%a"
         nb_subproofs (nb_newgoals + 1) goals ps'
     | _ ->
-      fatal t.pos "Too many subproofs (%d subproofs for %d subgoals):@.%a"
+      tactic_error a t.pos "Too many subproofs (%d subproofs for %d subgoals):@.%a"
         nb_subproofs (nb_newgoals + 1) goals ps'
   else match nb_newgoals - nb_subproofs with
     | 0 -> a
     | n when n > 0 ->
-      fatal t.pos "Missing subproofs (%d subproofs for %d subgoals):@.%a"
+      tactic_error a t.pos "Missing subproofs (%d subproofs for %d subgoals):@.%a"
         nb_subproofs nb_newgoals goals ps'
-    | _ -> fatal t.pos "Too many subproofs (%d subproofs for %d subgoals)."
+    | _ -> tactic_error a t.pos "Too many subproofs (%d subproofs for %d subgoals)."
              nb_subproofs nb_newgoals

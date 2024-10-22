@@ -63,11 +63,15 @@ let process_pstep (pstate,diags,logs) tac nb_subproofs =
     let goals = Some (current_goals pstate) in
     let qres = match qres with None -> "OK" | Some x -> x in
     pstate, (tac_loc, 4, qres, goals) :: diags, logs
-  | Tac_Error(loc,msg) ->
-    let loc = option_default loc tac_loc in
-    pstate, (loc, 1, msg, None) :: diags, ((1, msg), loc) :: logs
-
-let process_proof pstate tacs logs =
+  | Tac_Error(a, loc,msg) ->
+    match a with 
+    | None -> let loc = option_default loc tac_loc in
+      pstate, (loc, 1, msg, None) :: diags, ((1, msg), loc) :: logs
+    | Some pstate -> 
+      let goals = Some (current_goals pstate) in
+      pstate, (tac_loc, 4, "qres", goals) :: diags, logs
+      
+      let process_proof pstate tacs logs =
   Pure.ProofTree.fold process_pstep (pstate,[],logs) tacs
 
 let get_goals dg_proof =
