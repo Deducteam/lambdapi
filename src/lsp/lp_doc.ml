@@ -69,7 +69,7 @@ let process_pstep (pstate,diags,logs) tac nb_subproofs =
       pstate, (loc, 1, msg, None) :: diags, ((1, msg), loc) :: logs
     | Some pstate -> 
       let goals = Some (current_goals pstate) in
-      pstate, (tac_loc, 4, "qres", goals) :: diags, logs
+      pstate, (tac_loc, 4, msg, goals) :: diags, logs
       
       let process_proof pstate tacs logs =
   Pure.ProofTree.fold process_pstep (pstate,[],logs) tacs
