@@ -145,6 +145,7 @@ let ind_data : popt -> Env.t -> term -> Sign.ind_data = fun pos env a ->
       begin
         try
           let ind = SymMap.find s !(sign.sign_ind) in
+          let _, ts = List.cut ts ind.ind_nb_params (*remove parameters*) in
           let ctxt = Env.to_ctxt env in
           if LibTerm.distinct_vars ctxt (Array.of_list ts) = None
           then fatal pos "%a is not applied to distinct variables." sym s

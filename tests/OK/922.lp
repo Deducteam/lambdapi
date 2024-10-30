@@ -20,5 +20,5 @@ with is0 (_ +1) ↪ false;
 
 opaque symbol s≠0 [n] : π (n +1 ≠ 0) ≔
 begin
-  assume n h; refine ind_eq h (λ n, istrue(is0 n)) top
+  assume n h; refine ind_eq h (λ n, istrue(is0 n)) ⊤ᵢ
 end;
