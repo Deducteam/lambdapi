@@ -125,7 +125,7 @@ type command_result =
 
 type tactic_result =
   | Tac_OK    of proof_state * string option
-  | Tac_Error of Pos.popt option * string
+  | Tac_Error of proof_state option * Pos.popt option * string
 
 let t0 : Time.t Stdlib.ref = Stdlib.ref (Time.save ())
 
@@ -166,8 +166,12 @@ let handle_tactic : proof_state -> Tactic.t -> int -> tactic_result =
     let ps, qres = Handle.Tactic.handle ss sym_pos prv (ps, None) tac n in
     let qres = Option.map (fun f -> f ()) qres in
     Tac_OK((Time.save (), ss, ps, finalize, prv, sym_pos), qres)
-  with Fatal(Some p,m) ->
-    Tac_Error(Some p, Pos.popt_to_string p ^ m)
+  with 
+  | Fatal(Some p,m) ->
+    Tac_Error(None , Some p, Pos.popt_to_string p ^ m)
+  | Handle.Tactic.Tactic_error(a, Some p,m) ->
+    let ps, _qres = a in
+    Tac_Error(Some (Time.save (), ss, ps, finalize, prv, sym_pos), Some p, Pos.popt_to_string p ^ m)
 
 let end_proof : proof_state -> command_result =
   fun (_, ss, ps, finalize, _, _) ->

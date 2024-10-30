@@ -64,7 +64,7 @@ type command_result =
 (** Result type of the [handle_tactic] function. *)
 type tactic_result =
   | Tac_OK    of proof_state * string option
-  | Tac_Error of Pos.popt option * string
+  | Tac_Error of proof_state option * Pos.popt option * string
 
 (** [initial_state fname] gives an initial state for working with the (source)
     file [fname]. The resulting state can be used by [handle_command]. *)
