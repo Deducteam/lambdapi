@@ -35,10 +35,8 @@ let const_graph : sym -> (sym * sym) list = fun s ->
         begin
           match get_args l1 with
           | Symb s0, _ ->
-              let n = Bindlib.mbinder_arity rule.rhs in
-              let r = Bindlib.msubst rule.rhs (Array.make n TE_None) in
               begin
-                match get_args r with
+                match get_args rule.rhs with
                 | Symb s1, _ -> add s0 s1 l
                 | _ -> l
               end
@@ -76,17 +74,15 @@ let prod_graph : sym -> (sym * sym * sym * bool) list = fun s ->
     begin
       match get_args l1 with
       | Symb s0, [_;_] ->
-        let n = Bindlib.mbinder_arity rule.rhs in
-        let r = Bindlib.msubst rule.rhs (Array.make n TE_None) in
         begin
-        match r with
+        match rule.rhs with
         | Prod(a,b) ->
           begin
           match get_args a with
           | Symb s1, [_] ->
             begin
-            match get_args (Bindlib.subst b mk_Kind) with
-            | Symb(s2), [_] -> add (s0,s1,s2,Bindlib.binder_occur b) l
+            match get_args (subst b mk_Kind) with
+            | Symb(s2), [_] -> add (s0,s1,s2,binder_occur b) l
             | _ -> l
             end
           | _ -> l
@@ -131,11 +127,9 @@ let rec inverse : sym -> term -> term = fun s v ->
       in
       let t1 = inverse s1 a in
       let t2 =
-        let x, b = Bindlib.unbind b in
+        let x, b = unbind b in
         let b = inverse s2 b in
-        if occ then
-          Bindlib.unbox (_Abst (lift a) (Bindlib.bind_var x (lift b)))
-        else b
+        if occ then mk_Abst (a, bind_var x b) else b
       in
       add_args (mk_Symb s0) [t1;t2]
   | _ -> raise Not_found
