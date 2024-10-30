@@ -133,6 +133,13 @@ unification algorithms will then try to instantiate some of the
 metavariables. The new metavariables that cannot be solved are added
 as new goals.
 
+.. _set:
+
+``set``
+-------
+
+``set x ≔ t`` extends the current context with ``x ≔ t``.
+
 .. _simplify:
 
 ``simplify``

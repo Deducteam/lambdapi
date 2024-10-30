@@ -46,10 +46,11 @@ module Goal = struct
     Typ {goal_meta = m; goal_hyps; goal_type}
 
   (** [simpl f g] simplifies the goal [g] with the function [f]. *)
-  let simpl : (term -> term) -> goal -> goal = fun f g ->
+  let simpl : (ctxt -> term -> term) -> goal -> goal = fun f g ->
     match g with
-    | Typ gt -> Typ {gt with goal_type = f gt.goal_type}
-    | Unif (c,t,u) -> Unif (c, f t, f u)
+    | Typ gt ->
+        Typ {gt with goal_type = f (Env.to_ctxt gt.goal_hyps) gt.goal_type}
+    | Unif (c,t,u) -> Unif (c, f c t, f c u)
 
   (** [bindlib_ctxt g] computes a Bindlib context from a goal. *)
   let bindlib_ctxt : goal -> Bindlib.ctxt = fun g ->
@@ -83,8 +84,10 @@ module Goal = struct
     in
     match g with
     | Typ gt ->
-      let elt ppf (s,(_,t,_)) =
-       out ppf "%a: %a" uid s term (Bindlib.unbox t)
+      let elt ppf (s,(_,t,u)) =
+        match u with
+        | None -> out ppf "%a: %a" uid s term (Bindlib.unbox t)
+        | Some u -> out ppf "%a ≔ %a" uid s term (Bindlib.unbox u)
       in
       hyps elt ppf gt.goal_hyps
     | Unif (c,_,_) ->

@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Add tactic `set`.
 - Add export format `raw_dk`.
 - Fix of the color of the text in command line when console.out is used.
 - Use black text instead of red when diplaying query answers.

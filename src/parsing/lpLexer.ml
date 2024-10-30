@@ -76,6 +76,7 @@ type token =
   | RULE
   | SEARCH
   | SEQUENTIAL
+  | SET
   | SIMPLIFY
   | SOLVE
   | SYMBOL
@@ -249,6 +250,7 @@ let rec token lb =
   | "rule" -> RULE
   | "search" -> SEARCH
   | "sequential" -> SEQUENTIAL
+  | "set" -> SET
   | "simplify" -> SIMPLIFY
   | "solve" -> SOLVE
   | "symbol" -> SYMBOL
