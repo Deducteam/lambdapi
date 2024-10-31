@@ -90,7 +90,7 @@ module Protect : sig
       | Completed of ('a, 'l Error.t) result
       | Interrupted (* signal sent, eval didn't complete *)
 
-    val error : string -> ('a, 'l) t
+    val error : ?range:'l -> string -> ('a, 'l) t
     val map : f:('a -> 'b) -> ('a, 'l) t -> ('b, 'l) t
 
     val map_error :
@@ -111,7 +111,7 @@ module Protect : sig
     val map_loc : f:('l -> 'm) -> ('a, 'l) t -> ('a, 'm) t
     val bind : f:('a -> ('b, 'l) t) -> ('a, 'l) t -> ('b, 'l) t
     val ok : 'a -> ('a, 'l) t
-    val error : string -> ('a, 'l) t
+    val error : ?range:'l -> string -> ('a, 'l) t
 
     module O : sig
       val ( let+ ) : ('a, 'l) t -> ('a -> 'b) -> ('b, 'l) t
@@ -217,10 +217,6 @@ module Files : sig
 end
 
 module Parsing : sig
-  module Stream : sig
-    type 'a t
-    val of_string : ?offset:int -> string -> char t
-  end
 
   module Lexer : sig
     val after : Loc_t.t -> Loc_t.t
@@ -229,7 +225,7 @@ module Parsing : sig
   module Parsable : sig
     type t
 
-    val make : ?loc:Loc_t.t -> char Stream.t -> t
+    val make : ?loc:Loc_t.t -> string -> t
     val loc : t -> Loc_t.t
   end
 

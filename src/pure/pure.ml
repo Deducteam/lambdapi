@@ -329,15 +329,287 @@ end;
   List.equal Command.equal c_string c_file
 
 (* test: Check that parsing commutes *)
+module Loc_t = struct
+
+  type source =
+    | InFile of
+        { dirpath : string option
+        ; file : string
+        }
+    | ToplevelInput
+
+  type t =
+  { fname : source  (** Filename or toplevel input. *)
+  ; line_nb : int  (** Start line number. *)
+  ; bol_pos : int  (** Position of the beginning of start line. *)
+  ; line_nb_last : int  (** End line number. *)
+  ; bol_pos_last : int  (** Position of the beginning of end line. *)
+  ; bp : int  (** Start position. *)
+  ; ep : int  (** End position. *)
+  }
+
+  let initial fname =
+    { fname
+    ; line_nb = 0
+    ; bol_pos = 0
+    ; line_nb_last = 0
+    ; bol_pos_last = 0
+    ; bp = 0
+    ; ep = 0
+    }
+
+  let of_pos (p : Pos.pos) : t =
+    let { Pos.fname; start_line; start_col; start_offset; end_line; end_col; end_offset } = p in
+    let fname = match fname with
+      | None -> ToplevelInput
+      | Some file -> InFile { dirpath = None; file }
+    in
+    let line_nb = start_line in
+    let bol_pos = start_offset - start_col in
+    let line_nb_last = end_line in
+    let bol_pos_last = end_offset - end_col in
+    let bp, ep = start_offset, end_offset in
+    { fname; line_nb; bol_pos; line_nb_last; bol_pos_last; bp; ep }
+
+  let to_pos (p : t) : Pos.pos =
+    let { fname; line_nb; bol_pos; line_nb_last; bol_pos_last; bp; ep } = p in
+    let fname = match fname with
+      | InFile { file; _ } -> Some file
+      | ToplevelInput -> None
+    in
+    let start_line = line_nb in
+    let start_col = bp - bol_pos in
+    let end_line = line_nb_last in
+    let end_col = ep - bol_pos_last in
+    let start_offset = bp in
+    let end_offset = ep in
+    { Pos.fname; start_line; start_col; start_offset; end_line; end_col; end_offset }
+
+end
+
+module Limits = struct
+
+  (* check memprof-limits manual for how to use it *)
+  module Token = struct
+    type t = bool ref
+
+    let create () = ref false
+    let set r = r := true
+  end
+
+  let limit ~token:_ ~f x = Ok (f x)
+end
+
+module Pp_t = struct
+  type t = string
+  let to_string x = x
+  let pp_with = Format.pp_print_string
+  let str x = x
+  let int i = string_of_int i
+  let (++) = String.cat
+end
+
+module Message = struct
+  module Payload = struct
+    type 'l t = { range : 'l option
+                ; quickFix: 'l Lang.Qf.t list option
+                ; msg: Pp_t.t
+                }
+
+    let make ?range ?quickFix msg =
+      { range; quickFix; msg }
+
+    let map ~f { range; quickFix; msg } =
+      let quickFix = Option.map (List.map (Lang.Qf.map ~f)) quickFix in
+      { range = Option.map f range; quickFix; msg }
+  end
+
+  type 'l t = Lang.Diagnostic.Severity.t * 'l Payload.t
+  let map ~f (lvl, pl) = (lvl, Payload.map ~f pl)
+
+end
+
+(* For profiling we use newProfile.ml from Rocq, also look at memtrace *)
+module Protect = struct
+  module Error = struct
+    type 'l t =
+      | User of 'l Message.Payload.t
+      | Anomaly of 'l Message.Payload.t
+
+    let map ~f = function
+      | User e -> User (f e)
+      | Anomaly e -> Anomaly (f e)
+  end
+
+  module R = struct
+    type ('a, 'l) t =
+      | Completed of ('a, 'l Error.t) result
+      | Interrupted (* signal sent, eval didn't complete *)
+
+    let error ?range msg =
+      let payload = Message.Payload.make ?range msg in
+      Completed (Error (Error.User payload))
+
+    let map ~f = function
+      | Completed (Result.Ok r) -> Completed (Result.Ok (f r))
+      | Completed (Result.Error r) -> Completed (Result.Error r)
+      | Interrupted -> Interrupted
+
+    let map_error ~f = function
+      | Completed (Error e) -> Completed (Error (Error.map ~f e))
+      | Completed (Ok r) -> Completed (Ok r)
+      | Interrupted -> Interrupted
+
+    (* Similar to Message.map, but missing the priority field, this is due to Coq
+       having to sources of feedback, an async one, and the exn sync one.
+       Ultimately both carry the same [payload].
+
+       See coq/coq#5479 for some information about this, among some other relevant
+       issues. AFAICT, the STM tried to use a full async error reporting however
+       due to problems the more "legacy" exn is the actuall error mechanism in
+       use *)
+    let map_loc ~f =
+      let f = Message.Payload.map ~f in
+      map_error ~f
+  end
+
+  (* Eval and reify exceptions *)
+  let eval_exn ~token ~f x =
+    match Limits.limit ~token ~f x with
+    | Ok res -> R.Completed (Ok res)
+    | Error _ ->
+      (* Vernacstate.Interp.invalidate_cache (); *)
+      R.Interrupted
+    | exception exn ->
+      (* TODO *)
+      let exn_msg = Printexc.to_string exn in
+      let range = Some (Loc_t.initial (InFile { dirpath = None; file = "FIXME"})) in
+      let quickFix = None in
+      (* let e, info = Exninfo.capture exn in *)
+      (* let range = Loc.(get_loc info) in *)
+      (* let msg = CErrors.iprint (e, info) in *)
+      (* let quickFix = *)
+      (*   match Quickfix.from_exception exn with *)
+      (*   | Ok [] | Error _ -> None *)
+      (*   | Ok qf -> Some (List.map qf_of_coq qf) *)
+      (* in *)
+      let payload = Message.Payload.make ?range ?quickFix exn_msg in
+      (* Vernacstate.Interp.invalidate_cache (); *)
+      (* if CErrors.is_async e || CErrors.is_sync_anomaly e then R.Completed (Error (Anomaly payload)) *)
+      (* else *)
+      R.Completed (Error (User payload))
+
+  let _bind_exn ~f x =
+    match x with
+    | R.Interrupted -> R.Interrupted
+    | R.Completed (Error e) -> R.Completed (Error e)
+    | R.Completed (Ok r) -> f r
+
+  let fb_queue : Loc_t.t Message.t list Stdlib.ref = Stdlib.ref []
+
+  module E = struct
+    type ('a, 'l) t =
+      { r : ('a, 'l) R.t
+      ; feedback : 'l Message.t list
+      }
+
+    let eval ~token ~f x =
+      let open Stdlib in
+      let r = eval_exn ~token ~f x in
+      let feedback = List.rev !fb_queue in
+      let () = fb_queue := [] in
+      { r; feedback }
+
+    let map ~f { r; feedback } = { r = R.map ~f r; feedback }
+
+    let map_loc ~f { r; feedback } =
+      { r = R.map_loc ~f r; feedback = List.map (Message.map ~f) feedback }
+
+    let bind ~f { r; feedback } =
+      match r with
+      | R.Interrupted -> { r = R.Interrupted; feedback }
+      | R.Completed (Error e) -> { r = R.Completed (Error e); feedback }
+      | R.Completed (Ok r) ->
+        let { r; feedback = fb2 } = f r in
+        { r; feedback = feedback @ fb2 }
+
+    let ok v = { r = Completed (Ok v); feedback = [] }
+    let error ?range err = { r = R.error ?range err; feedback = [] }
+
+    module O = struct
+      let ( let+ ) x f = map ~f x
+      let ( let* ) x f = bind ~f x
+    end
+  end
+
+  (* Eval with reified exceptions and feedback *)
+  let eval ~token ~f x = E.eval ~token ~f x
+end
+
+module State = struct
+  type t = state
+
+  (* XXX: Improve *)
+  let compare st1 st2 = Stdlib.compare st1 st2
+  let hash st = Hashtbl.hash st
+
+  module Proof = struct
+    type t = proof_state
+  end
+
+  (* XXX: Fixme *)
+  let lemmas st = Obj.magic st
+
+  let in_state ~token ~st ~f x =
+    Time.restore (fst st);
+    Protect.eval ~token ~f x
+
+end
+
+module Ast = struct
+  type t = Command.t
+
+  let compare c1 c2 = Stdlib.compare c1 c2
+  let hash cmd = Hashtbl.hash cmd
+  let loc cmd = Command.get_pos cmd |> Option.map Loc_t.of_pos
+  let print _ = Pp_t.str "TODO"
+  let make_info ~st:_ ~lines:_ _cmd = None
+
+end
 
 (* New parsing API for Flèche / LP-LSP *)
 module Parsing : sig
+
   type t
 
   val make : pos:Lexing.position -> string -> t
   val loc : t -> Lexing.position
   val zero_pos : string -> Lexing.position
-  val parse : t -> (Command.t, Pos.popt * string) Result.t
+  val parse_core : t -> (Command.t, Pos.popt * string) Result.t
+
+  (* module Stream : sig *)
+  (*   type 'a t *)
+  (*   val of_string : ?offset:int -> string -> char t *)
+  (* end *)
+
+  module Lexer : sig
+    val after : Loc_t.t -> Loc_t.t
+  end
+
+  module Parsable : sig
+    type t
+
+    val make : ?loc:Loc_t.t -> string -> t
+    val loc : t -> Loc_t.t
+  end
+
+  val parse :
+    token:Limits.Token.t
+    -> st:State.t
+    -> Parsable.t
+    -> (Ast.t option, Loc_t.t) Protect.E.t
+
+  val discard_to_dot : Parsable.t -> unit
 
 end = struct
 
@@ -359,9 +631,75 @@ end = struct
 
   let loc pa = Sedlexing.lexing_position_curr pa
 
-  let parse pa =
+  let parse_core pa =
     let p = Parser.parse_from_lexbuf pa in
     parse_command p
+
+  (* FIXME *)
+  (* module Stream = struct *)
+  (*   type 'a t = Sedlexing.lexbuf *)
+  (*   let of_string ?offset:_ str = make  *)
+  (* end *)
+
+  module Lexer = struct
+    (* FIXME / Verify *)
+    let after (loc : Loc_t.t) =
+      Loc_t.{ loc with
+              line_nb = loc.line_nb_last;
+              bol_pos = loc.bol_pos_last;
+              bp      = loc.ep;
+            }
+  end
+
+  module Parsable = struct
+    type t = Sedlexing.lexbuf
+
+    let to_sedlex (p : Pos.pos) =
+      let { Pos.fname; start_line; start_col; start_offset; end_line; end_col; end_offset } = p in
+      { Lexing.pos_fname = Option.value fname ~default:"fixme"
+      ; pos_lnum = end_line
+      ; pos_bol = end_offset - end_col
+      ; pos_cnum = end_col
+      }
+
+    (* Usually end is the important here *)
+    let of_sedlex (p : Lexing.position) : Loc_t.t =
+      let { Lexing.pos_fname; pos_lnum; pos_bol; pos_cnum } = p in
+      { fname = InFile { dirpath = None; file = pos_fname }
+      ; line_nb = 0
+      ; bol_pos = pos_bol
+      ; line_nb_last = pos_lnum
+      ; bol_pos_last = pos_bol
+      ; bp = 0
+      ; ep = pos_bol + pos_cnum
+      }
+
+    let make ?loc x =
+      let loc = Option.map Loc_t.to_pos loc in
+      let loc = Option.(value (map to_sedlex loc) ~default:(zero_pos "fixme")) in
+      make ~pos:loc x
+
+    let loc pa = loc pa |> of_sedlex
+  end
+
+  let parse ~token ~st:_ pa : (Ast.t option, Loc_t.t) Protect.E.t =
+    (* Add protect? *)
+    let p = Parser.parse_from_lexbuf pa in
+    match Stream.peek p with
+    (* EOF *)
+    | None -> Protect.E.ok None
+    | Some c -> Protect.E.ok (Some c)
+    (* Traiter dans protect *)
+    | exception Fatal(Some(Some(pos)), msg) ->
+      let range = Loc_t.of_pos pos in
+      Protect.E.error ~range msg
+    | exception Fatal(Some(None)     , _  ) ->
+      assert false
+    | exception Fatal(None           , _  ) ->
+      assert false
+
+  let discard_to_dot _pa = ()
+
 end
 
 (* auxiliary function *)
@@ -372,7 +710,7 @@ let parse_with_pos ~fname pos cmd_l =
     | t :: cmd_l ->
       let (let*) = Result.bind in
       let pa = Parsing.make ~pos t in
-      let* c = Parsing.parse pa in
+      let* c = Parsing.parse_core pa in
       let pos = Parsing.loc pa in
       aux pos cmd_l (c :: acc)
   in
@@ -450,3 +788,138 @@ constant symbol case (p : B → Prop) : P (p true) → P (p false) → Π b, P b
 
 (* TODO test for positions: check that the positions are correct, including
    when we resume parsing from the middle of the file *)
+
+(* FIXME *)
+let version = "0.0"
+
+module Args = struct
+end
+
+(* Rocq stores location information
+  - for line/column in utf-8 offset
+  - for offsets in bytes
+
+   For lambdapi you can store in the way you want, but the below function must
+   convert LSP format:
+  - for line/column: to utf-16 offset
+  - for offsets: to bytes
+
+ *)
+module Utils = struct
+  (* convert from internal lambdapi positions to utf, likely FIXME *)
+  let to_range ~lines:_ { Loc_t.fname = _; line_nb; bol_pos; line_nb_last; bol_pos_last; bp; ep } =
+
+    (* Rocq lines start at 1, lsp lines start at 0, lp lines start at 0 *)
+    let start_line = line_nb in
+    let end_line = line_nb_last in
+
+    (* cols *)
+    let start_col = bp - bol_pos in
+    let end_col = ep - bol_pos_last in
+
+  (* Fixme for lambdapi *)
+
+  (* let start_col = *)
+  (*   utf16_offset_of_utf8_offset ~lines ~line:start_line ~byte:start_col *)
+  (* in *)
+  (*  *)
+  (* let end_col = *)
+  (*   utf16_offset_of_utf8_offset ~lines ~line:end_line ~byte:end_col *)
+  (* in *)
+
+  Lang.Range.
+    { start = { line = start_line; character = start_col; offset = bp }
+    ; end_ = { line = end_line; character = end_col; offset = ep }
+    }
+end
+
+type conclusion =
+  | Typ of string * string (** Metavariable name and type. *)
+  | Unif of string * string (** LHS and RHS of the unification goal. *)
+
+type goal = (string * string) list * conclusion
+
+module Init = struct
+  let init () =
+    Library.add_mapping (["home"; "egallego"; "research"; "coq-lsp"], "test");
+    initial_state "./toplevel.lp"
+end
+
+module Files = struct
+  type t = unit
+  let make () = ()
+end
+
+module Interp = struct
+  let lp_logger = Buffer.create 100
+
+  let buf_get_and_clear buf =
+    let res = Buffer.contents buf in
+    Buffer.clear buf; res
+
+  let do_pstep (pstate,diags,logs) tac nb_subproofs =
+    let tac_loc = Tactic.get_pos tac in
+    let hndl_tac_res = handle_tactic pstate tac nb_subproofs in
+    let logs = ((3, buf_get_and_clear lp_logger), tac_loc) :: logs in
+    match hndl_tac_res with
+    | Tac_OK (pstate, qres) ->
+      let goals = Some (current_goals pstate) in
+      let qres = match qres with None -> "OK" | Some x -> x in
+      pstate, (tac_loc, 4, qres, goals) :: diags, logs
+    | Tac_Error(loc,msg) ->
+      let loc = Option.value loc ~default:tac_loc in
+      let goals = Some (current_goals pstate) in
+      pstate, (loc, 1, msg, goals) :: diags, ((1, msg), loc) :: logs
+
+  let do_proof st pst pt cmd_loc thm_loc qed_loc =
+    let pst, _, _ = ProofTree.fold do_pstep (pst,[],[]) pt in
+    let dg_proof, logs = [], [] in
+    let st, dg_proof, logs =
+      match end_proof pst with
+      | Cmd_OK (st, qres)   ->
+        let qres = match qres with None -> "OK" | Some x -> x in
+        let pg = qed_loc, 4, qres, None in
+        let logs = ((3, buf_get_and_clear lp_logger), cmd_loc) :: logs in
+        st, pg :: dg_proof, logs
+      | Cmd_Error(_loc,msg) ->
+        let pg = qed_loc, 1, msg, None in
+        st, pg :: dg_proof, ((1, msg), qed_loc) :: logs
+      | Cmd_Proof _ ->
+        (* Fleche.Io.log_error "process_cmd" "closing proof is nested"; *)
+        assert false
+    in
+    Protect.E.ok st
+
+  let interp ~token:_ ~st cmd =
+    match handle_command st cmd with
+    | Cmd_OK (st, _msg) -> Protect.E.ok st
+    | Cmd_Error(None, msg) ->
+      Protect.E.error msg
+    | Cmd_Error(Some loc, msg) ->
+      let range = Option.map Loc_t.of_pos loc in
+      Protect.E.error ?range msg
+    | Cmd_Proof (pst, pt, thm_loc, qed_loc) ->
+      let cmd_loc = Command.get_pos cmd in
+      do_proof st pst pt cmd_loc thm_loc qed_loc
+end
+
+module Goals = struct
+  type ('a, 'pp) t = goal list
+  (* FIXME *)
+  let goals _ = None
+end
+
+module Workspace = struct
+  type t = unit
+
+  module CmdLine = struct
+    type t = unit
+    let make () = ()
+  end
+
+  let guess ~token:_ ~debug:_ ~cmdline:_ ~dir:_ = Ok ()
+
+  let default ~debug:_ ~cmdline:_ = ()
+
+  let describe_guess _ = "fixed workspace", "more details here"
+end
