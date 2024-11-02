@@ -128,14 +128,14 @@ the system with additional information on its properties and behavior.
     for every canonical term of the form ``f t u``, we have ``t ≤ u``,
     where ``≤`` is a total ordering on terms left unspecified.
 
-    If a symbol ``f`` is ``associative left`` then there is no
-    canonical term of the form ``f t (f u v)`` and thus every
-    canonical term headed by ``f`` is of the form ``f … (f (f t₁ t₂)
-    t₃) …  tₙ``. If a symbol ``f`` is ``associative`` or ``associative
-    right`` then there is no canonical term of the form ``f (f t u)
-    v`` and thus every canonical term headed by ``f`` is of the form
-    ``f t₁ (f t₂ (f t₃ … tₙ) … )``. Moreover, in both cases, if ``f``
-    is also ``commutative`` then we have ``t₁ ≤ t₂ ≤ … ≤ tₙ``.
+    If a symbol ``f`` is ``commutative`` and ``associative left`` then
+    there is no canonical term of the form ``f t (f u v)`` and thus
+    every canonical term headed by ``f`` is of the form ``f … (f (f t₁
+    t₂) t₃) …  tₙ``. If a symbol ``f`` is ``commutative`` and
+    ``associative`` or ``associative right`` then there is no
+    canonical term of the form ``f (f t u) v`` and thus every
+    canonical term headed by ``f`` is of the form ``f t₁ (f t₂ (f t₃ …
+    tₙ) … )``. Moreover, in both cases, we have ``t₁ ≤ t₂ ≤ … ≤ tₙ``.
 
 - **Exposition modifiers** define how a symbol can be used outside the
   module where it is defined. By default, the symbol can be used
