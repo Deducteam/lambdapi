@@ -101,8 +101,20 @@ let string_of_goal : Proof.goal -> goal =
   let open Print in
   let bctx = Proof.Goal.bindlib_ctxt g in
   let term = term_in bctx in
-  let env_elt (s,(_,t,_)) = s, to_string term (Bindlib.unbox t) in
-  let ctx_elt (x,a,_) = to_string var x, to_string term a in
+  let env_elt (s,(_,t,d)) =
+    let t = to_string term (Bindlib.unbox t) in
+    s,
+    match d with
+    | None -> t
+    | Some d -> t^" ≔ "^to_string term (Bindlib.unbox d)
+  in
+  let ctx_elt (x,a,d) =
+    let a = to_string term a in
+    to_string var x,
+    match d with
+    | None -> a
+    | Some d -> a^" ≔ "^to_string term d
+  in
   match g with
   | Proof.Typ gt ->
       let meta = to_string meta gt.goal_meta in
