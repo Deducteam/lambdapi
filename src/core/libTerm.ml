@@ -107,8 +107,7 @@ let distinct_vars : ctxt -> term array -> tvar array option = fun ctx ts ->
    The symbols prefixed by ['$'] are introduced by [infer.ml] which converts
    metavariables into fresh symbols, and those metavariables are introduced by
    [sr.ml] which replaces pattern variables by metavariables. *)
-let nl_distinct_vars
-    : term array -> (tvar array * tvar StrMap.t) option =
+let nl_distinct_vars : term array -> (tvar array * tvar StrMap.t) option =
   fun ts ->
   let exception Not_a_var in
   let open Stdlib in

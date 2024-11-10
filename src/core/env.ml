@@ -35,7 +35,6 @@ let mem : string -> env -> bool = List.mem_assoc
     the term [t]. By calling [to_prod [(xn,an,None);⋯;(x1,a1,None)] t] you
     obtain a term of the form [Πx1:a1,..,Πxn:an,t]. *)
 let to_prod_box : env -> tbox -> tbox = fun env t ->
-  (*let add_prod t (_,(x,a,_)) = _Prod a (Bindlib.bind_var x t) in*)
   let add_prod t (_,(x,a,d)) =
     match d with
     | None -> _Prod a (Bindlib.bind_var x t)
