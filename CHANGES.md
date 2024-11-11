@@ -3,11 +3,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
-## 2.5.1 (2024-07-22)
+## Unreleased
 
 ### Added
 
 - Add tactic `set`.
+
+### Fixed
+
+- Induction tactic.
+
+## 2.5.1 (2024-07-22)
+
+### Added
+
 - Add export format `raw_dk`.
 - Fix of the color of the text in command line when console.out is used.
 - Use black text instead of red when diplaying query answers.
