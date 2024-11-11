@@ -46,6 +46,10 @@ module D = struct
       out ppf "]"
     end
 
+  let hashtbl : 'a pp -> 'b pp -> ('a, 'b) Hashtbl.t pp = fun key elt ->
+    let tbl ppf = Hashtbl.iter (fun k v -> out ppf "%a,%a; " key k elt v) in
+    fun ppf -> out ppf "[%a]" tbl
+
   let map : (('key -> 'elt -> unit) -> 'map -> unit)
     -> 'key pp -> string -> 'elt pp -> string -> 'map pp =
     fun iter key sep1 elt sep2 ppf m ->
