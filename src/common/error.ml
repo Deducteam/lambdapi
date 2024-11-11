@@ -73,4 +73,5 @@ let handle_exceptions : (unit -> unit) -> unit = fun f ->
   try f () with
   | Fatal(None,    msg) -> exit_with "%s" msg
   | Fatal(Some(p), msg) -> exit_with "[%a] %s" Pos.pp p msg
-  | e                   -> exit_with "Uncaught [%s]." (Printexc.to_string e)
+  | e                   ->
+      exit_with "Uncaught exception: %s" (Printexc.to_string e)
