@@ -19,7 +19,7 @@ let reset_meta_counter () = Stdlib.(meta_counter := -1)
 let fresh : problem -> term -> int -> meta = fun p a n ->
   let m = {meta_key = Stdlib.(incr meta_counter; !meta_counter);
            meta_type = ref a; meta_arity = n; meta_value = ref None } in
-  if Logger.log_enabled() then log "fresh ?%d" m.meta_key;
+  if Logger.log_enabled() then log "fresh ?%d#%d: %a" m.meta_key n Raw.term a;
   p := {!p with metas = MetaSet.add m !p.metas};
   if Logger.log_enabled() then log "%a" Print.problem p;
   m
@@ -28,16 +28,16 @@ let fresh : problem -> term -> int -> meta = fun p a n ->
    check is performed, so this function may lead to cyclic terms. To use with
    care. *)
 let set : problem -> meta -> mbinder -> unit = fun p m v ->
-  m.meta_type := mk_Kind; (* to save memory *) m.meta_value := Some v;
+  m.meta_value := Some v;
+  m.meta_type := mk_Kind (* to save memory *);
   p := {!p with metas = MetaSet.remove m !p.metas}
 
 (** [make p ctx a] creates a fresh metavariable term of type [a] in the
    context [ctx], and adds it to [p]. *)
 let make : problem -> ctxt -> term -> term = fun p ctx a ->
-  let a, k = Ctxt.to_prod ctx a in
+  let a,k = Ctxt.to_prod ctx a in
   let m = fresh p a k in
-  let get_var (x,_,d) = if d = None then Some (mk_Vari x) else None in
-  mk_Meta(m, Array.of_list (List.filter_rev_map get_var ctx))
+  mk_Meta(m, Array.of_list (List.rev_map (fun (x,_,_) -> mk_Vari x) ctx))
 
 (** [make_codomain p ctx a] creates a fresh metavariable term of type [Type]
     in the context [ctx] extended with a fresh variable of type [a], and

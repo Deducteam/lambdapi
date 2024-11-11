@@ -13,11 +13,9 @@ let log = log.pp
 (** Exception that may be raised by type inference. *)
 exception NotTypable
 
-(** [unif pb c a b] solves the unification problem [c ⊢ a ≡ b]. Current
-    implementation collects constraints in {!val:constraints} then solves
-    them at the end of type checking. *)
-let unif : problem -> ctxt -> term -> term -> unit =
- fun pb c a b ->
+(** [unif p c a b] adds the constraint [c |- a==b] in [p] if [a] is not
+    convertible to [b]. *)
+let unif : problem -> ctxt -> term -> term -> unit = fun pb c a b ->
  if not (Eval.pure_eq_modulo c a b) then
  (* NOTE: eq_modulo is used because the unification algorithm counts on
     the fact that no constraint is added in some cases (see test
@@ -165,8 +163,10 @@ and infer_aux : problem -> ctxt -> term -> term * term * bool =
               let (tsi, cuf) = force pb c ts.(i) ai in
               ts.(i) <- tsi;
               Stdlib.(cu := !cu || cuf);
-              let b = subst b ts.(i) in
-              ref_esubst (i + 1) b
+              ref_esubst (i+1) (subst b ts.(i))
+          | LLet(_,d,b) ->
+              unif pb c ts.(i) d;
+              ref_esubst (i+1) (subst b d)
           | _ ->
               (* Meta type must be a product of arity greater or equal
                  to the environment *)

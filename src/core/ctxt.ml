@@ -24,13 +24,16 @@ let mem : var -> ctxt -> bool = fun x ->
 (** [to_prod ctx t] builds a product by abstracting over the context [ctx], in
     the term [t]. It returns the number of products as well. *)
 let to_prod : ctxt -> term -> term * int = fun ctx t ->
-  let f (t,c) (x,a,v) =
+  let f (t,k) (x,a,d) =
     let b = bind_var x t in
-    match v with
-    | None -> mk_Prod (a, b), c + 1
-    | Some v -> mk_LLet (a, v, b), c
+    let u =
+      match d with
+      | None -> mk_Prod (a,b)
+      | Some d -> mk_LLet (a,d,b)
+    in
+    u, k+1
   in
-  List.fold_left f (t, 0) ctx
+  List.fold_left f (t,0) ctx
 
 (** [to_abst ctx t] builds a sequence of abstractions over the context [ctx],
     in the term [t]. *)

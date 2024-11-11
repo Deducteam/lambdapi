@@ -221,11 +221,11 @@ let minimize_impl : bool list -> bool list =
   let rec rem_false l = match l with false::l -> rem_false l | _ -> l in
   fun l -> List.rev (rem_false (List.rev l))
 
-(** [create_sym path expo prop opaq mstrat name pos typ impl] creates a new
+(** [create_sym path expo prop mstrat opaq name pos typ impl] creates a new
     symbol with path [path], exposition [expo], property [prop], opacity
-    [opaq], matching strategy [mstrat], name [name], name [name], declaration
-    position [pos], type [typ], implicit arguments [impl], no definition and
-    no rules. *)
+    [opaq], matching strategy [mstrat], name [name.elt], type [typ], implicit
+    arguments [impl], position [name.pos], declaration position [pos], no
+    definition and no rules. *)
 let create_sym : Path.t -> expo -> prop -> match_strat -> bool ->
   Pos.strloc -> Pos.popt -> term -> bool list -> sym =
   fun sym_path sym_expo sym_prop sym_mstrat sym_opaq
@@ -714,7 +714,7 @@ let mk_Patt (i,s,ts) = Patt (i,s,ts)
 let mk_Wild = Wild
 let mk_Plac b = Plac b
 let mk_TRef x = TRef x
-let mk_LLet (a,t,b) = if binder_occur b then LLet (a,t,b) else subst b Kind
+let mk_LLet (a,t,b) = LLet (a,t,b)
 
 (** [mk_Appl_not_canonical t u] builds the non-canonical (wrt. C and AC
    symbols) application of [t] to [u]. WARNING: to use only in Sign.link. *)
@@ -806,6 +806,14 @@ type cp_pos = Pos.popt * term * term * subterm_pos * term
     first). *)
 type ctxt = (var * term * term option) list
 
+let decl ppf (v,a,d) =
+  out ppf "%a: %a" var v term a;
+  match d with
+  | None -> ()
+  | Some d -> out ppf " ≔ %a" term d
+
+let ctxt : ctxt pp = fun ppf c -> List.pp decl ", " ppf (List.rev c)
+
 (** Type of unification constraints. *)
 type constr = ctxt * term * term
 
@@ -830,4 +838,5 @@ let new_problem : unit -> problem = fun () ->
 module Raw = struct
   let sym = sym let _ = sym
   let term = term let _ = term
+  let ctxt = ctxt let _ = ctxt
 end

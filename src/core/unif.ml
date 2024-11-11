@@ -16,7 +16,10 @@ let log = log.pp
    and [m2] fresh metavariables, and adds these metavariables to [p]. *)
 let set_to_prod : problem -> meta -> unit = fun p m ->
   let n = m.meta_arity in
-  let env, s = Env.of_prod_nth [] n !(m.meta_type) in
+  let env, s =
+    try Env.of_prod_nth [] n !(m.meta_type)
+    with Invalid_argument _ -> assert false
+  in
   let vs = Env.vars env in
   let xs = Array.map mk_Vari vs in
   (* domain *)
@@ -38,10 +41,15 @@ let set_to_prod : problem -> meta -> unit = fun p m ->
    in context [c] where [x] is any term of type [a] if [x] can be applied to
    at least [List.length ts] arguments, and [None] otherwise. *)
 let rec type_app : ctxt -> term -> term list -> term option = fun c a ts ->
-  match Eval.whnf c a, ts with
-  | Prod(_,b), t::ts -> type_app c (subst b t) ts
+  match a, ts with
   | _, [] -> Some a
-  | _, _ -> None
+  | Prod(_,b), t::ts -> type_app c (subst b t) ts
+  | LLet(_,d,b), t::ts ->
+      assert (Eval.pure_eq_modulo c d t); type_app c (subst b d) ts
+  | _ ->
+      match Eval.whnf c a, ts with
+      | Prod(_,b), t::ts -> type_app c (subst b t) ts
+      | _ -> None
 
 (** [add_constr p c] adds the constraint [c] into [p.to_solve]. *)
 let add_constr : problem -> constr -> unit = fun p c ->
@@ -91,7 +99,7 @@ let try_unif_rules : problem -> ctxt -> term -> term -> bool =
    be instantiated. It does not check whether the instantiation is closed
    though. *)
 let instantiable : ctxt -> meta -> term array -> term -> bool =
-  fun c m ts u -> nl_distinct_vars c ts <> None && not (LibMeta.occurs m c u)
+  fun c m ts u -> nl_distinct_vars ts <> None && not (LibMeta.occurs m c u)
 
 (** [instantiation c m ts u] tells whether, in a problem [m[ts]=u], [m] can
    be instantiated and returns the corresponding instantiation, simplified. It
@@ -99,11 +107,11 @@ let instantiable : ctxt -> meta -> term array -> term -> bool =
 let instantiation :
       ctxt -> meta -> term array -> term -> mbinder option =
   fun c m ts u ->
-  match nl_distinct_vars c ts with
+  match nl_distinct_vars ts with
     | None -> None
     | Some(vs, map) ->
         if LibMeta.occurs m c u then None
-        else let u = Eval.simplify (Ctxt.to_let c (sym_to_var map u)) in
+        else let u = Eval.simplify c (sym_to_var map u) in
           Some ((*Logger.set_debug_in false 'm'*) (bind_mvar vs) u)
 
 (** Checking type or not during meta instanciation. *)
@@ -200,7 +208,10 @@ let imitate_inj :
       | Some vars -> vars
     in
     (* Build the environment (yk-1,ak-1{y0=v0,..,yk-2=vk-2});..;(y0,a0). *)
-    let env, _ = Env.of_prod_using c vars !(m.meta_type) in
+    let env, _ =
+      try Env.of_prod_using c vars !(m.meta_type)
+      with Invalid_argument _ -> assert false
+    in
     (* Build the term s(m0[vs],..,mn-1[vs]). *)
     let k = Array.length vars in
     let t =
@@ -242,7 +253,10 @@ let imitate_lam_cond : term -> term list -> bool = fun h ts ->
 let imitate_lam : problem -> ctxt -> meta -> unit = fun p c m ->
     if Logger.log_enabled () then log "imitate_lam %a" meta m;
     let n = m.meta_arity in
-    let env, t = Env.of_prod_nth c n !(m.meta_type) in
+    let env, t =
+      try Env.of_prod_nth c n !(m.meta_type)
+      with Invalid_argument _ -> assert false
+    in
     let of_prod a b =
       let x,b = unbind ~name:"x" b in
       let env' = Env.add "x" x a None env in
@@ -251,7 +265,7 @@ let imitate_lam : problem -> ctxt -> meta -> unit = fun p c m ->
     let x, a, env', b =
       match Eval.whnf c t with
       | Prod(a,b) -> of_prod a b
-      | Meta(n,ts) as t when nl_distinct_vars c ts <> None ->
+      | Meta(n,ts) as t when nl_distinct_vars ts <> None ->
           begin
             set_to_prod p n;
             match unfold t with
@@ -403,10 +417,10 @@ let solve : problem -> unit = fun p ->
       imitate_prod p c m h1 h2
 
   | Meta(m,ts), _ when imitate_lam_cond h1 ts1
-                      && nl_distinct_vars c ts <> None ->
+                      && nl_distinct_vars ts <> None ->
       imitate_lam p c m; add_constr p (c,t1,t2)
   | _, Meta(m,ts) when imitate_lam_cond h2 ts2
-                      && nl_distinct_vars c ts <> None ->
+                      && nl_distinct_vars ts <> None ->
       imitate_lam p c m; add_constr p (c,t1,t2)
 
   | _ ->
@@ -457,10 +471,10 @@ let solve : problem -> unit = fun p ->
       imitate_prod p c m h1 h2
 
   | Meta(m,ts), _ when imitate_lam_cond h1 ts1
-                      && nl_distinct_vars c ts <> None ->
+                      && nl_distinct_vars ts <> None ->
       imitate_lam p c m; add_constr p (c,t1,t2)
   | _, Meta(m,ts) when imitate_lam_cond h2 ts2
-                      && nl_distinct_vars c ts <> None ->
+                      && nl_distinct_vars ts <> None ->
       imitate_lam p c m; add_constr p (c,t1,t2)
 
   | Meta(m,ts), Symb s ->

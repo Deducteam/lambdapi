@@ -81,20 +81,17 @@ let distinct_vars : ctxt -> term array -> var array option = fun ctx ts ->
   try Some (Array.map to_var ts) with Not_unique_var -> None
 
 (** If [ts] is not made of variables or function symbols prefixed by ['$']
-   only, then [nl_distinct_vars ctx ts] returns [None]. Otherwise, it returns
+   only, then [nl_distinct_vars ts] returns [None]. Otherwise, it returns
    a pair [(vs, map)] where [vs] is an array of variables made of the linear
    variables of [ts] and fresh variables for the non-linear variables and the
    symbols prefixed by ['$'], and [map] records by which variable each linear
    symbol prefixed by ['$'] is replaced.
 
-   Variables defined in [ctx] are unfolded.
-
    The symbols prefixed by ['$'] are introduced by [infer.ml] which converts
    metavariables into fresh symbols, and those metavariables are introduced by
    [sr.ml] which replaces pattern variables by metavariables. *)
-let nl_distinct_vars
-    : ctxt -> term array -> (var array * var StrMap.t) option =
-  fun ctx ts ->
+let nl_distinct_vars : term array -> (var array * var StrMap.t) option =
+  fun ts ->
   let exception Not_a_var in
   let open Stdlib in
   let vars = ref VarSet.empty (* variables already seen (linear or not) *)
@@ -102,7 +99,7 @@ let nl_distinct_vars
   and patt_vars = ref StrMap.empty in
   (* map from pattern variables to actual variables *)
   let rec to_var t =
-    match Ctxt.unfold ctx t with
+    match unfold t with
     | Vari(v) ->
         if VarSet.mem v !vars then nl_vars := VarSet.add v !nl_vars
         else vars := VarSet.add v !vars;

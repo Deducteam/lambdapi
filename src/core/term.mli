@@ -212,11 +212,11 @@ val mbinder_arity : mbinder -> int
 (** Minimize [impl] to enforce our invariant (see {!type:Term.sym}). *)
 val minimize_impl : bool list -> bool list
 
-(** [create_sym path expo prop opaq mstrat name pos typ impl] creates a new
+(** [create_sym path expo prop mstrat opaq name pos typ impl] creates a new
     symbol with path [path], exposition [expo], property [prop], opacity
-    [opaq], matching strategy [mstrat], name [name], name [name], declaration
-    position [pos], type [typ], implicit arguments [impl], no definition and
-    no rules. *)
+    [opaq], matching strategy [mstrat], name [name.elt], type [typ], implicit
+    arguments [impl], position [name.pos], declaration position [pos], no
+    definition and no rules. *)
 val create_sym : Path.t -> expo -> prop -> match_strat -> bool ->
   Pos.strloc -> Pos.popt -> term -> bool list -> sym
 
@@ -434,4 +434,5 @@ val rhs : sym_rule -> term
 (** Basic printing function (for debug). *)
 module Raw : sig
   val term : term pp
+  val ctxt : ctxt pp
 end
