@@ -65,10 +65,10 @@ val snf : ?dtree:(sym -> dtree) -> ?tags:rw_tag list -> ctxt -> term -> term
     context [c]. *)
 val hnf : ?tags:rw_tag list -> ctxt -> term -> term
 
-(** [simplify t] computes a beta whnf of [t] belonging to the set S such that:
-    - terms of S are in beta whnf normal format
-    - if [t] is a product, then both its domain and codomain are in S. *)
-val simplify : term -> term
+(** [simplify c t] computes a beta whnf of [t] in context [c] belonging to the
+    set S such that (1) terms of S are in beta whnf normal format, (2) if [t]
+    is a product, then both its domain and codomain are in S. *)
+val simplify : ctxt -> term -> term
 
 (** If [s] is a non-opaque symbol having a definition, [unfold_sym s t]
    replaces in [t] all the occurrences of [s] by its definition. *)
