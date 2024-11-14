@@ -294,7 +294,7 @@ let get_logs ~doc ~line ~pos : string =
       (fun ((_,msg),loc) ->
          match loc with
          | Some Pos.{start_line; start_col; _}
-           when compare (start_line,start_col) end_limit < 0 -> Some msg
+           when compare (start_line,start_col) end_limit <= 0 -> Some msg
          | _ -> None)
       doc.Lp_doc.logs
   in
