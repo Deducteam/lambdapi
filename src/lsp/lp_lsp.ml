@@ -235,18 +235,6 @@ let get_node_at_pos doc line pos =
       res
     ) doc.Lp_doc.nodes
 
-let rec get_goals ~doc ~line ~pos =
-  let node = get_node_at_pos doc line pos in
-  let goals = match node with
-    | None -> Some([], None)
-    | Some n ->
-        closest_before (line+1, pos) n.goals in
-  match goals with
-    | None -> begin match node with
-              | None   -> None
-              | Some _ -> get_goals ~doc ~line:(line-1) ~pos:0 end
-    | Some (v,_) -> Some v
-
 (** [get_first_error doc] returns the first error inferred from doc.logs *)
 let get_first_error doc =
   List.fold_left (fun acc b ->
@@ -261,6 +249,25 @@ let get_first_error doc =
         if compare (apos.start_line, apos.start_col)
                    (bpos.start_line, bpos.start_col) <= 0 then
           acc else Some b) None doc.Lp_doc.logs
+
+let rec get_goals ~doc ~line ~pos =
+  let (line,pos) =
+    match get_first_error doc with
+    | Some ((_,_), Some errpos) ->
+      let errpos = (errpos.start_line, errpos.start_col) in
+      if compare errpos (line, pos) <= 0 then errpos else (line, pos)
+    | _ -> (line,pos)
+  in
+  let node = get_node_at_pos doc line pos in
+  let goals = match node with
+    | None -> Some([], None)
+    | Some n ->
+        closest_before (line+1, pos) n.goals in
+  match goals with
+    | None -> begin match node with
+              | None   -> None
+              | Some _ -> get_goals ~doc ~line:(line-1) ~pos:0 end
+    | Some (v,_) -> Some v
 
 let get_logs ~doc ~line ~pos : string =
   (* DEBUG LOG START *)
@@ -303,12 +310,6 @@ let get_logs ~doc ~line ~pos : string =
 let do_goals ofmt ~id params =
   let uri, line, pos = get_docTextPosition params in
   let doc = Hashtbl.find completed_table uri in
-  let line, pos = match get_first_error doc with
-    | Some ((_, _), Some loc) ->
-      let eline, epos = loc.start_line, loc.start_col in
-      if compare (eline, epos) (line, pos) <= 0 then
-        eline, epos else line, pos
-    | _ -> line, pos in
   let goals = get_goals ~doc ~line ~pos in
   let logs = get_logs ~doc ~line ~pos in
   let result = LSP.json_of_goals goals ~logs in
