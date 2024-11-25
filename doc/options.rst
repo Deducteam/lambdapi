@@ -122,7 +122,7 @@ In symbol declarations or definitions, parameters with no type are assumed to be
 
 It instructs Lambdapi to replace any occurrence of the unqualified identifier ``lp_id`` by ``coq_expr``, which can be any Coq expression. Example: `renaming.lp <https://github.com/Deducteam/lambdapi/blob/master/libraries/renaming.lp>`__.
 
-* ``--requiring <COQ_FILE>`` to add ``Require Import <COQ_FILE>`` at the beginning of the output. ``<COQ_FILE>`` usually needs to contain at least the following definitions:
+* ``--requiring <MODNAME>`` to add ``Require Import <MODNAME>`` at the beginning of the output. ``<MODNAME>.v`` usually needs to contain at least the following definitions:
 
 ::
 
