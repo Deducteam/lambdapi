@@ -355,7 +355,7 @@ let print : ast -> unit = fun s ->
   let oc = stdout in
   begin match !require with
     | Some f ->
-      string oc "Require Import ";
+      string oc "Require Export ";
       string oc (Filename.chop_extension f); string oc ".\n"
   | None -> ()
   end;
