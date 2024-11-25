@@ -13,6 +13,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 - Induction tactic.
 
+### Changed
+
+- The export option `--requiring` does not require as argument a file with extension `.v` anymore: the argument must be a module name.
+
 ## 2.5.1 (2024-07-22)
 
 ### Added
