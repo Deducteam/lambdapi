@@ -354,7 +354,7 @@ let set_requiring : string -> unit = fun f -> require := Some f
 let print : ast -> unit = fun s ->
   let oc = stdout in
   begin match !require with
-  | Some f -> string oc ("Require Export "^f^".\n")
+  | Some f -> string oc ("Require Import "^f^".\n")
   | None -> ()
   end;
   ast oc s
