@@ -52,9 +52,8 @@ let to_dot : Format.formatter -> sym -> unit = fun ppf s ->
     let rec write_tree father_l swon t =
       incr node_count;
       match t with
-      | Leaf(_,(a,_))                                                    ->
-          let _, acte = Bindlib.unmbind a in
-          out ppf "@ %d [label=\"%a\"];" !node_count Print.term acte;
+      | Leaf(_,r)                                                        ->
+          out ppf "@ %d [label=\"%a\"];" !node_count Print.term r.rhs;
           out ppf "@ %d -- %d [label=<%a>];"
             father_l !node_count dotterm swon
       | Node({swap; children; store; abstraction=abs; default; product}) ->
