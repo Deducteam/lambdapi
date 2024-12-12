@@ -5,16 +5,27 @@ This extension provides support for the [Lambdapi](https://github.com/Deducteam/
 Goals are visualised in a panel on the right side of the editor.
 You can navigate in proof with the following key-bindings:
 
+***Linux and Windows***
+
+
 - ``Ctrl+Right`` (``Ctrl+fn+Right`` in `Mac OS X`): go one step forward
-- ``Ctrl+Left`` (``Ctrl+fn+left`` in `Mac OS X`): go one step backward
+- ``Ctrl+Left`` (``Ctrl+fn+Left`` in `Mac OS X`): go one step backward
 - ``Ctrl+Up``: go to the previous proof <sup>*</sup> (or the beginning)
 - ``Ctrl+Down``: go to the next proof <sup>*</sup> (or the end)
 - ``Ctrl+Enter``: go to the position of the cursor
 - ``Ctrl+Alt+c``: toggle cursor mode (proof highlight follows the cursor or not)
+- ``Ctrl+Alt+w``: toggle follow mode (proof highligsht is always centered in the window when keybindings are pressed)
+- ``Shift+Alt+w``: center proof highlight in the current window
+
+***Mac OS X***
+- ``Ctrl+fn+Right``: go one step forward
+- ``Ctrl+fn+Left``: go one step backward
+- ``Ctrl+Enter``: go to the position of the cursor
+- ``Ctrl+Alt+c``: toggle cursor mode (proof highlight follows the cursor or not)
 - ``Ctrl+Alt+w``: toggle follow mode (proof highlight is always centered in the window when keybindings are pressed)
 - ``Shift+Alt+w``: center proof highlight in the current window
-  
-  <sup> *</sup> In `Mac OS X`, ``Ctrl+Up/Down/Down`` are the shortcuts for switching between workspaces. We recommand the definition of new key bindings for `go to the previous/next proof` in ``Code->Preferences->keyboard shortcuts`` (also reachable with `Command+K Command+S`). The advised shortcuts  are `Ctrl+Option+Up` and `Ctrl+Option+Down`
+
+For `go to the previous proof` and `go to the next proof` Key bindings need to be changed in Code->Preferences->keyboard shortcuts (also reachable with Command+K Command+S) because default ones are used by Mac OS X
 
 **Hover and go-to-definition**
 
