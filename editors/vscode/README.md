@@ -6,8 +6,6 @@ Goals are visualised in a panel on the right side of the editor.
 You can navigate in proof with the following key-bindings:
 
 ***Linux and Windows***
-
-
 - ``Ctrl+Right`` (``Ctrl+fn+Right`` in `Mac OS X`): go one step forward
 - ``Ctrl+Left`` (``Ctrl+fn+Left`` in `Mac OS X`): go one step backward
 - ``Ctrl+Up``: go to the previous proof <sup>*</sup> (or the beginning)
@@ -25,7 +23,7 @@ You can navigate in proof with the following key-bindings:
 - ``Ctrl+Alt+w``: toggle follow mode (proof highlight is always centered in the window when keybindings are pressed)
 - ``Shift+Alt+w``: center proof highlight in the current window
 
-For `go to the previous proof` and `go to the next proof` Key bindings need to be changed in Code->Preferences->keyboard shortcuts (also reachable with Command+K Command+S) because default ones are used by Mac OS X
+For `go to the previous proof` and `go to the next proof`, Key bindings need to be changed in Code->Preferences->keyboard shortcuts (also reachable with Command+K Command+S) because default ones are used by Mac OS X
 
 **Hover and go-to-definition**
 
