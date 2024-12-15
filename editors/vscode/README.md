@@ -6,8 +6,8 @@ Goals are visualised in a panel on the right side of the editor.
 You can navigate in proof with the following key-bindings:
 
 ***Linux and Windows***
-- ``Ctrl+Right`` (``Ctrl+fn+Right`` in `Mac OS X`): go one step forward
-- ``Ctrl+Left`` (``Ctrl+fn+Left`` in `Mac OS X`): go one step backward
+- ``Ctrl+Right``: go one step forward
+- ``Ctrl+Left``: go one step backward
 - ``Ctrl+Up``: go to the previous proof <sup>*</sup> (or the beginning)
 - ``Ctrl+Down``: go to the next proof <sup>*</sup> (or the end)
 - ``Ctrl+Enter``: go to the position of the cursor
