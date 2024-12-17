@@ -3,6 +3,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## Unreleased
+
+### Added
+
+### Fixed
+
+### Changed
+- Changed the `go to the previous/next proof` commands shortcuts for Mac OS X operating system because previous ones are used by Mac OS.
+
 ## [0.2.2]
 - code refactoring of the client for maintenability.
 - fix the bug that causes the proof navigation to malfunction when the `Goals` panel is closed by the user. Now the panel is recreated whenever needed. If focus is taken away frol the `Goals` panel, focus is given back to it when user starts navigating proofs again.
