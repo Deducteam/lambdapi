@@ -59,6 +59,13 @@
           "type": "string",
           "default": "lambdapi",
           "description": "Path to lambdapi binary"
+        },
+        "lambdapi.args": {
+          "type": "list",
+          "default": [
+            "lsp"
+          ],
+          "description": "lambdapi argument to start Lsp server"
         }
       }
     },
