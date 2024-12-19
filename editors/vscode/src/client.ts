@@ -62,7 +62,8 @@ export type ClientFactoryType = (
     context: ExtensionContext,
     clientOptions: LanguageClientOptions,
     wsConfig: WorkspaceConfiguration,
-    lspServerPath: any,
+    lpLaunchCommand: any,
+    lspServerArgs: any,
 ) => BaseLanguageClient;
 
 // The implementation of the VSCode lambdapi extension commands.
@@ -354,8 +355,10 @@ export function activateClientLSP(context: ExtensionContext,
     //Following mode : whether the window follows proofState automatically or not
     context.workspaceState.update('follow', true);
 
-    const lspServerPath = workspace.getConfiguration('lambdapi').path;
-    console.log(lspServerPath);
+    const lpLaunchCommand = workspace.getConfiguration('lambdapi').path;
+    const lspLaunchArgs = workspace.getConfiguration('lambdapi').args;
+    console.log(lpLaunchCommand);
+    console.log(lspLaunchArgs);
 
     const wsConfig = workspace.getConfiguration("lambdapi");
 
@@ -380,7 +383,7 @@ export function activateClientLSP(context: ExtensionContext,
 
         let cP = new Promise<BaseLanguageClient>((resolve) => {
             // Create a client using the factory
-            client = clientFactory(context, clientOptions, wsConfig, lspServerPath);
+            client = clientFactory(context, clientOptions, wsConfig, lpLaunchCommand, lspLaunchArgs);
             resolve(client);
         });
 

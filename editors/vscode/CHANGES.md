@@ -3,6 +3,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## Unreleased
+
+### Added
+
+### Fixed
+
+### Changed
+- When calling lambdapi to launch the lsp server from the Vscode extension, read the `lsp` argument from `package.json` instead of hard-coding it to allow using a custom command to launch the server especially in Windows as discussed in issue #1163 (Many thanks to Akihisa Yamada)
+
 ## [0.2.2]
 - code refactoring of the client for maintenability.
 - fix the bug that causes the proof navigation to malfunction when the `Goals` panel is closed by the user. Now the panel is recreated whenever needed. If focus is taken away frol the `Goals` panel, focus is given back to it when user starts navigating proofs again.
