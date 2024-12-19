@@ -145,12 +145,22 @@
       {
         "key": "ctrl+up",
         "command": "extension.lambdapi.pv",
-        "when": "editorTextFocus && editorLangId == lp"
+        "when": "editorTextFocus && editorLangId == lp && (isWindows || isLinux)"
       },
       {
         "key": "ctrl+down",
         "command": "extension.lambdapi.nx",
-        "when": "editorTextFocus && editorLangId == lp"
+        "when": "editorTextFocus && editorLangId == lp && (isWindows || isLinux)"
+      },
+      {
+        "key": "ctrl+alt+up",
+        "command": "extension.lambdapi.pv",
+        "when": "editorTextFocus && editorLangId == lp && isMac"
+      },
+      {
+        "key": "ctrl+alt+down",
+        "command": "extension.lambdapi.nx",
+        "when": "editorTextFocus && editorLangId == lp && isMac"
       }
     ],
     "snippets": [
