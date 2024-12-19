@@ -192,11 +192,11 @@ let handle : Sig_state.t -> proof_state option -> p_query -> result =
              fatal pos "Assertion failed."
         end else begin
           List.iter (wrn pos "Cannot solve [%a]." constr) !p.unsolved;
-          fatal pos "[%a] has type [%a],@ [%a] has type [%a]@.\
+          fatal pos "[%a] has type [%a],@ [%a] has type [%a].@.\
                     Those two types are not unifiable."
             term t term a term u term b
         end else
-          fatal pos "[%a] has type [%a].,@ [%a] has type [%a].@.\
+          fatal pos "[%a] has type [%a],@ [%a] has type [%a].@.\
                     Those two types are not unifiable."
             term t term a term u term b;
       None

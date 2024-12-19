@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Changed
 - Changed the `go to the previous/next proof` commands shortcuts for Mac OS X operating system because previous ones are used by Mac OS.
+- When calling lambdapi to launch the lsp server from the Vscode extension, read the `lsp` argument from `package.json` instead of hard-coding it to allow using a custom command to launch the server especially in Windows as discussed in issue #1163 (Many thanks to Akihisa Yamada)
 
 ## [0.2.2]
 - code refactoring of the client for maintenability.
