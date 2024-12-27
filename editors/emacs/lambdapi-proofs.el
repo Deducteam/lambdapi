@@ -127,6 +127,14 @@ This works for both graphical and text displays."
                                      collect x))))
             (remove-overlays)
             (erase-buffer)
+
+            (let ((goalswin (get-buffer-window goalsbuf)))
+              (if goalswin
+                  (with-selected-window goalswin
+                    (goto-char (+ 1 (point-max)))
+                    (beginning-of-line)
+                    (recenter -1))))
+                    
             (goto-char (point-max))
             (mapc 'insert hypsstr)
             (mapc (lambda (gstr)
