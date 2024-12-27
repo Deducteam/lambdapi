@@ -338,7 +338,7 @@ and 0 if there is no previous command."
 
 (defun lp--next-command-pos (&optional pos)
   "Return the position of the next command's terminator
-and POS if there is no next command"
+and (point-max) if there is no next command to display the last error in logs"
   (setq npos (1+ (or pos (point))))
   (save-excursion
     (let ((term-regex
@@ -351,7 +351,7 @@ and POS if there is no next command"
             (setq npos (re-search-forward term-regex nil t))
             (and npos (lp--in-comment-p npos)))
         (goto-char npos))
-      (if npos (max (point-min) (1- npos)) pos))))
+      (if npos (max (point-min) (1- npos)) (point-max)))))
 
 (defun lp--post-self-insert-function ()
   (save-excursion
