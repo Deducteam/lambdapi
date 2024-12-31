@@ -184,6 +184,7 @@ This works for both graphical and text displays."
         (let ((response (jsonrpc-request server :proof/goals params)))
           (if response
               (progn
+                (lambdapi-refresh-window-layout)
                 (lp-display-goals (plist-get response :goals))
                 (lp-display-logs (plist-get response :logs)))
             (let ((goalsbuf (get-buffer-create "*Goals*"))
