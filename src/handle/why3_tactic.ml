@@ -7,8 +7,8 @@ open Core open Term open Print
 open Fol
 
 (** Logging function for external prover calling with Why3. *)
-let log_why3 = Logger.make 'y' "why3" "why3 provers"
-let log_why3 = log_why3.pp
+let log = Logger.make 'y' "why3" "why3 provers"
+let log = log.pp
 
 (** [default_prover] contains the name of the current prover. Note that it can
     be changed by using the "set prover <string>" command. *)
@@ -36,110 +36,90 @@ let why3_main : Why3.Whyconf.main = Why3.Whyconf.get_main why3_config
 let why3_env : Why3.Env.env =
   Why3.Env.create_env (Why3.Whyconf.loadpath why3_main)
 
-(** A map from lambdapi terms to Why3 constants. *)
+(** Type for maps from Lambdapi terms to Why3 constants. *)
 type cnst_table = (term * Why3.Term.lsymbol) list
 
-(** Table of declared types, these types may be variables or constants. *)
-module TyTable : sig
-  type t
+(** Type for maps from Lambdapi terms to Why3 type constants. *)
+type ty_table = (term * Why3.Ty.tysymbol) list
 
-  val empty : t
+let id_user n = Why3.Ident.id_user n Why3.Loc.dummy_position
 
-  val ty_of_term : t -> term -> t * Why3.Ty.ty
-  (** [ty_of_term tbl te] fetches the type associated to term [te] in
-      table [tbl] if it exists, or it creates such a type and return
-      the created type and the new table. *)
+let tysymbol s = Why3.Ty.create_tysymbol (id_user s.sym_name) [] Why3.Ty.NoDef
 
-  (** {b FIXME} the translation of types {!ty_of_term} is correct on
-      non empty types only. *)
+let tvsymbol x = Why3.Ty.tv_of_string (Bindlib.name_of x)
 
-  val fold_left :
-    do_var:('a -> term -> Why3.Ty.tvsymbol -> 'a) ->
-    do_sym:('a -> term -> Why3.Ty.tysymbol -> 'a) -> 'a -> t -> 'a
-  (** [fold_left ~do_var ~do_sym init tbl] folds over the table [tbl]
-      with initial value [init] using [do_var] to operate on type
-      variables and [do_sym] to operate on type symbols. *)
-end = struct
-  (* The module is created to hide the type [sym_or_var] *)
-  type sym_or_var = TySym of Why3.Ty.tysymbol | TyVar of Why3.Ty.tvsymbol
+let vsymbol x = Why3.Term.create_vsymbol (id_user (Bindlib.name_of x))
 
-  type t = (term * sym_or_var) list
+let rec tys_of_terms tbl ts =
+  let tbl, ts =
+    List.fold_right
+      (fun t (tbl,ts) -> let tbl, t = ty_of_term tbl t in tbl, t::ts)
+      ts (tbl,[])
+  in
+  tbl, ts
 
-  let empty = []
-
-  let ty_of_term tbl te =
-    match List.assoc_eq (Eval.eq_modulo []) te tbl with
-    | TySym s -> (tbl, Why3.Ty.ty_app s [])
-    | TyVar v -> (tbl, Why3.Ty.ty_var v)
-    | exception Not_found -> (
-        (* FIXME generate a new goal to ensure that types translated as
-           fresh constants are inhabited. *)
-        match get_args te with
-        | Symb s, [] ->
-          let id = Why3.Ident.id_fresh s.sym_name in
-          let sym = Why3.(Ty.create_tysymbol id [] Ty.NoDef) in
-          ((te,TySym sym)::tbl, Why3.Ty.ty_app sym [])
-        | Vari x, [] ->
-          let sym = Why3.Ty.tv_of_string (Bindlib.name_of x) in
-          ((te,TyVar sym)::tbl, Why3.Ty.ty_var sym)
-        | _ ->
+and ty_of_term tbl te =
+  match get_args te with
+  | Symb s, ts ->
+      let tbl, ts = tys_of_terms tbl ts in
+      tbl, Why3.Ty.ty_app (tysymbol s) ts
+  | Vari x, [] ->
+      tbl, Why3.Ty.ty_var (tvsymbol x)
+  | _ ->
+      match List.assoc_eq (Eval.eq_modulo []) te tbl with
+      | sym -> tbl, Why3.Ty.ty_app sym []
+      | exception Not_found ->
           let id = Why3.Ident.id_fresh "ty" in
-          let sym = Why3.(Ty.create_tysymbol id [] Ty.NoDef) in
-          ((te,TySym sym)::tbl, Why3.Ty.ty_app sym []))
+          let sym = Why3.Ty.create_tysymbol id [] Why3.Ty.NoDef in
+          (te,sym)::tbl, Why3.Ty.ty_app sym []
 
-  let fold_left ~do_var ~do_sym acc tbl =
-    let f acc (t,s_or_v) =
-      match s_or_v with
-      | TySym s -> do_sym acc t s
-      | TyVar v -> do_var acc t v
-    in
-    List.fold_left f acc tbl
-end
+type vtyp_table = (term Bindlib.var * Why3.Ty.ty) list
 
 (** [translate_term cfg tbl t] translates the given lambdapi term [t] into the
     correspondig Why3 term, using the configuration [cfg] and constants in the
     association list [tbl]. *)
-let translate_term : config -> cnst_table -> TyTable.t -> term ->
-                       (cnst_table * TyTable.t * Why3.Term.term) option =
-  fun cfg tbl ty_tbl t ->
-  let rec translate_prop tbl ty_tbl t =
+let translate_term :
+      config -> cnst_table -> ty_table -> vtyp_table -> term
+      -> (cnst_table * ty_table * Why3.Term.term) option =
+  fun cfg tbl ty_tbl vtyps t ->
+  let rec translate_prop tbl ty_tbl vtyps t =
     match get_args t with
     | Symb(s), [t1; t2] when s == cfg.symb_and ->
-        let (tbl, ty_tbl, t1) = translate_prop tbl ty_tbl t1 in
-        let (tbl, ty_tbl, t2) = translate_prop tbl ty_tbl t2 in
+        let (tbl, ty_tbl, t1) = translate_prop tbl ty_tbl vtyps t1 in
+        let (tbl, ty_tbl, t2) = translate_prop tbl ty_tbl vtyps t2 in
         (tbl, ty_tbl, Why3.Term.t_and t1 t2)
     | Symb(s), [t1; t2] when s == cfg.symb_or  ->
-        let (tbl, ty_tbl, t1) = translate_prop tbl ty_tbl t1 in
-        let (tbl, ty_tbl, t2) = translate_prop tbl ty_tbl t2 in
+        let (tbl, ty_tbl, t1) = translate_prop tbl ty_tbl vtyps t1 in
+        let (tbl, ty_tbl, t2) = translate_prop tbl ty_tbl vtyps t2 in
         (tbl, ty_tbl, Why3.Term.t_or t1 t2)
     | Symb(s), [t1; t2] when s == cfg.symb_imp ->
-        let (tbl, ty_tbl, t1) = translate_prop tbl ty_tbl t1 in
-        let (tbl, ty_tbl, t2) = translate_prop tbl ty_tbl t2 in
+        let (tbl, ty_tbl, t1) = translate_prop tbl ty_tbl vtyps t1 in
+        let (tbl, ty_tbl, t2) = translate_prop tbl ty_tbl vtyps t2 in
         (tbl, ty_tbl, Why3.Term.t_implies t1 t2)
     | Symb(s), [t] when s == cfg.symb_not ->
-        let (tbl, ty_tbl, t) = translate_prop tbl ty_tbl t in
+        let (tbl, ty_tbl, t) = translate_prop tbl ty_tbl vtyps t in
         (tbl, ty_tbl, Why3.Term.t_not t)
     | Symb(s), [] when s == cfg.symb_bot ->
         (tbl, ty_tbl, Why3.Term.t_false)
     | Symb(s), [] when s == cfg.symb_top ->
         (tbl, ty_tbl, Why3.Term.t_true)
-    | Symb(s), [a;Abst(_,t)] when s == cfg.symb_ex || s == cfg.symb_all ->
-        let (ty_tbl, ty) = TyTable.ty_of_term ty_tbl a in
-        let x, t = Bindlib.unbind t in
-        let (tbl, ty_tbl ,t) = translate_prop tbl ty_tbl t in
-        let tquant =
-          let id = Why3.Ident.id_fresh (Bindlib.name_of x) in
-          let vid = Why3.(Term.create_vsymbol id) ty in
-          let close =
-            if s == cfg.symb_ex then Why3.Term.t_exists_close
-            else Why3.Term.t_forall_close
-           (* Other cases excluded by pattern matching *)
-          in
-          close [vid] [] t
-        in
-        (tbl, ty_tbl, tquant)
+    | Vari x, [] ->
+        let ty = try List.assoc x vtyps with Not_found -> assert false in
+        (tbl, ty_tbl, Why3.Term.t_var (vsymbol x ty))
+    | Symb(s), [a;Abst(_,t)] when s == cfg.symb_ex ->
+        let (ty_tbl, ty) = ty_of_term ty_tbl a
+        and x, t = Bindlib.unbind t in
+        let vtyps = (x, ty) :: vtyps in
+        let (tbl, ty_tbl, t) = translate_prop tbl ty_tbl vtyps t in
+        (tbl, ty_tbl, Why3.Term.t_exists_close [vsymbol x ty] [] t)
+    | Symb(s), [a;Abst(_,t)] when s == cfg.symb_all ->
+        let (ty_tbl, ty) = ty_of_term ty_tbl a
+        and x, t = Bindlib.unbind t in
+        let vtyps = (x, ty) :: vtyps in
+        let (tbl, ty_tbl, t) = translate_prop tbl ty_tbl vtyps t in
+        (tbl, ty_tbl, Why3.Term.t_forall_close [vsymbol x ty] [] t)
     | _ ->
-        (* If the term [p] is mapped in [tbl] then use it. *)
+        (* If the term [t] is mapped in [tbl] then use it. *)
         try
           let sym = List.assoc_eq (Eval.eq_modulo []) t tbl in
           (tbl, ty_tbl, Why3.Term.ps_app sym [])
@@ -149,7 +129,8 @@ let translate_term : config -> cnst_table -> TyTable.t -> term ->
           ((t, sym)::tbl, ty_tbl, Why3.Term.ps_app sym [])
   in
   match get_args t with
-  | (Symb(s), [t]) when s == cfg.symb_P -> Some (translate_prop tbl ty_tbl t)
+  | (Symb(s), [t]) when s == cfg.symb_P ->
+      Some (translate_prop tbl ty_tbl vtyps t)
   | _ -> None
 
 (** [encode ss pos hs g] translates the hypotheses [hs] and the goal [g]
@@ -158,40 +139,44 @@ let encode : Sig_state.t -> Pos.popt -> Env.env -> term -> Why3.Task.task =
   fun ss pos hs g ->
   let cfg = get_config ss pos in
   let (constants, types, hypothesis) =
-    let translate_hyp (tbl,ty_tbl, map) (name, (_, hyp, _)) =
-      match translate_term cfg tbl ty_tbl (Bindlib.unbox hyp) with
+    let translate_hyp (tbl,ty_tbl,map) (name, (_, hyp, _)) =
+      match translate_term cfg tbl ty_tbl [] (Bindlib.unbox hyp) with
       | Some(tbl, ty_tbl, why3_hyp) ->
         (tbl, ty_tbl, StrMap.add name why3_hyp map)
       | None -> (tbl, ty_tbl , map)
     in
-    List.fold_left translate_hyp ([], TyTable.empty, StrMap.empty) hs
+    List.fold_left translate_hyp ([], [], StrMap.empty) hs
   in
   (* Translate the goal term. *)
   let (tbl, ty_tbl, why3_term) =
-    match translate_term cfg constants types g with
+    match translate_term cfg constants types [] g with
     | Some(tbl, ty_tbl, why3_term) -> (tbl, ty_tbl, why3_term)
     | None                         ->
         fatal pos "The goal [%a] is not of the form [P _]" term g
   in
+  let tsk = None in
+  log "%a" Why3.Pretty.print_task tsk;
   (* Add the declaration of every constant in a task. *)
   let fn tsk (_,t) = Why3.Task.add_param_decl tsk t in
-  let tsk = List.fold_left fn None tbl in
-  (* Same for types. *)
-  let tsk =
-    let do_sym tsk _ tys = Why3.Task.add_ty_decl tsk tys in
-    let do_var tsk _ _ = tsk in
-    TyTable.fold_left ~do_var ~do_sym tsk ty_tbl
-  in
+  let tsk = List.fold_left fn tsk tbl in
+  log "%a" Why3.Pretty.print_task tsk;
+  (* Add the declarations of every type in a task. *)
+  let decl_sym tsk (_,sym) = Why3.Task.add_ty_decl tsk sym in
+  let tsk = List.fold_left decl_sym tsk ty_tbl in
+  log "%a" Why3.Pretty.print_task tsk;
   (* Add the declaration of every hypothesis in the task. *)
   let fn name t tsk =
     let axiom = Why3.Decl.create_prsymbol (Why3.Ident.id_fresh name) in
     Why3.Task.add_prop_decl tsk Why3.Decl.Paxiom axiom t
   in
   let tsk = StrMap.fold fn hypothesis tsk in
+  log "%a" Why3.Pretty.print_task tsk;
   (* Add the goal itself. *)
   let goal = Why3.Decl.create_prsymbol (Why3.Ident.id_fresh "main_goal") in
   (* Return the task that contains the encoded lambdapi formula in Why3. *)
-  Why3.Task.add_prop_decl tsk Why3.Decl.Pgoal goal why3_term
+  let tsk = Why3.Task.add_prop_decl tsk Why3.Decl.Pgoal goal why3_term in
+  log "%a" Why3.Pretty.print_task tsk;
+  tsk
 
 (** [run_task tsk pos prover_name] Run the task [tsk] with the specified
     prover named [prover_name] and return the answer of the prover. *)
@@ -242,7 +227,7 @@ let handle :
   (* Get the name of the prover. *)
   let prover_name = Option.get !default_prover prover_name in
   if Logger.log_enabled () then
-    log_why3 "running with prover \"%s\"" prover_name;
+    log "running with prover \"%s\"" prover_name;
   (* Encode the goal in Why3. *)
   let tsk = encode ss pos hyps trm in
   (* Run the task with the prover named [prover_name]. *)
