@@ -280,6 +280,7 @@ and scope_binder :
       (tbox -> tbinder Bindlib.box -> tbox) -> Env.t -> p_params list ->
       p_term option -> tbox =
   fun ?find_sym ?(typ=false) k md ss cons env params_list t ->
+  (* [n] is used to give different names to parameters of the form "_" *)
   let rec scope_params_list n env params_list =
     match params_list with
     | [] ->
@@ -296,7 +297,7 @@ and scope_binder :
       match idopts with
       | [] -> scope_params_list n env params_list
       | None::idopts ->
-          let v = new_tvar_ind "_" n in
+          let v = if n = 0 then new_tvar "_" else new_tvar_ind "_" n in
           let t = aux (n+1) env idopts in
           cons a (Bindlib.bind_var v t)
       | Some {elt=id;pos}::idopts ->
