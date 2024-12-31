@@ -127,20 +127,22 @@ This works for both graphical and text displays."
                                      collect x))))
             (remove-overlays)
             (erase-buffer)
-
-            (let ((goalswin (get-buffer-window goalsbuf)))
-              (if goalswin
-                  (with-selected-window goalswin
-                    (goto-char (+ 1 (point-max)))
-                    (beginning-of-line)
-                    (recenter -1))))
-                    
             (goto-char (point-max))
             (mapc 'insert hypsstr)
+            (setq saved-point (point))
             (mapc (lambda (gstr)
                     (lp--draw-horizontal-line)
                     (insert gstr))
-                  goalsstr))
+                  goalsstr)
+                  
+            (let ((goalswin (get-buffer-window goalsbuf)))
+              (if goalswin
+                  (with-selected-window goalswin
+                    (goto-char (+ 1 saved-point))
+                    (beginning-of-line)
+                    (recenter -1))))
+
+                  )
         (remove-overlays)
         (erase-buffer)
         (insert "No goals"))
