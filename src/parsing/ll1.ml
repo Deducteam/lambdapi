@@ -61,6 +61,7 @@ let string_of_token = function
   | RULE -> "rule"
   | SEARCH -> "search"
   | SEQUENTIAL -> "sequential"
+  | SET -> "set"
   | SIMPLIFY -> "simplify"
   | SOLVE -> "solve"
   | SYMBOL -> "symbol"
@@ -827,6 +828,7 @@ and proof (lb:lexbuf): p_proof * p_proof_end =
   | REFLEXIVITY
   | REMOVE
   | REWRITE
+  | SET
   | SIMPLIFY
   | SOLVE
   | SYMMETRY
@@ -880,6 +882,7 @@ and steps (lb:lexbuf): p_proofstep list =
   | REFLEXIVITY
   | REMOVE
   | REWRITE
+  | SET
   | SIMPLIFY
   | SOLVE
   | SYMMETRY
@@ -1013,6 +1016,13 @@ and tactic (lb:lexbuf): p_tactic =
             let t = term lb in
             make_pos pos1 (P_tac_rewrite(true,None,t))
       end
+  | SET ->
+      let pos1 = current_pos() in
+      consume_token lb;
+      let i = uid lb in
+      consume ASSIGN lb;
+      let t = term lb in
+      make_pos pos1 (P_tac_set(i,t))
   | SIMPLIFY ->
       let pos1 = current_pos() in
       consume_token lb;
