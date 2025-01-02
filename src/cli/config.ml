@@ -61,10 +61,10 @@ let init : config -> unit = fun cfg ->
   (* Log some configuration data. *)
   if Logger.log_enabled () then
     begin
-      Library.log_lib "running directory: %s" (Filename.current_dir ());
-      Library.log_lib "library root path: %s"
+      Library.log "running directory: %s" (Filename.current_dir ());
+      Library.log "library root path: %s"
         (match !lib_root with None -> assert false | Some(p) -> p);
-      let f = Library.log_lib "mapping: %a → %s" Path.pp in
+      let f = Library.log "mapping: %a → %s" Path.pp in
       Library.iter f
     end;
   (* Initialise the [Pure] interface (this must come last). *)
