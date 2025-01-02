@@ -24,6 +24,7 @@ depends: [
   "menhir" {>= "20200624"}
   "sedlex" {>= "3.2"}
   "alcotest" {with-test}
+  "alt-ergo" {with-test}
   "dedukti" {with-test & >= "2.7"}
   "bindlib" {>= "6.0.0"}
   "timed" {>= "1.0"}
