@@ -250,6 +250,9 @@ let rec handle :
       let p = new_problem () in
       tac_refine pos ps gt gs p t
   | P_tac_assume idopts ->
+      (* Check that no idopt is None. *)
+      if List.exists ((=) None) idopts then
+        fatal pos "underscores not allowed in assume";
       (* Check that the given identifiers are not already used. *)
       List.iter (Option.iter check) idopts;
       (* Check that the given identifiers are pairwise distinct. *)
