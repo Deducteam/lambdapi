@@ -69,6 +69,7 @@
 %token RULE
 %token SEARCH
 %token SEQUENTIAL
+%token SET
 %token SIMPLIFY
 %token SOLVE
 %token SYMBOL
@@ -340,6 +341,7 @@ tactic:
   | FAIL { make_pos $sloc P_tac_fail }
   | GENERALIZE i=uid { make_pos $sloc (P_tac_generalize i) }
   | HAVE i=uid COLON t=term { make_pos $sloc (P_tac_have(i,t)) }
+  | SET i=uid ASSIGN t=term { make_pos $sloc (P_tac_set(i,t)) }
   | INDUCTION { make_pos $sloc P_tac_induction }
   | REFINE t=term { make_pos $sloc (P_tac_refine t) }
   | REFLEXIVITY { make_pos $sloc P_tac_refl }

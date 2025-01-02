@@ -58,7 +58,14 @@
         "lambdapi.path": {
           "type": "string",
           "default": "lambdapi",
-          "description": "Path to lambdapi binary"
+          "description": "Command to launch lambdapi"
+        },
+        "lambdapi.args": {
+          "type": "list",
+          "default": [
+            "lsp"
+          ],
+          "description": "Arguments to start the Lsp server"
         }
       }
     },
@@ -138,12 +145,22 @@
       {
         "key": "ctrl+up",
         "command": "extension.lambdapi.pv",
-        "when": "editorTextFocus && editorLangId == lp"
+        "when": "editorTextFocus && editorLangId == lp && (isWindows || isLinux)"
       },
       {
         "key": "ctrl+down",
         "command": "extension.lambdapi.nx",
-        "when": "editorTextFocus && editorLangId == lp"
+        "when": "editorTextFocus && editorLangId == lp && (isWindows || isLinux)"
+      },
+      {
+        "key": "ctrl+alt+up",
+        "command": "extension.lambdapi.pv",
+        "when": "editorTextFocus && editorLangId == lp && isMac"
+      },
+      {
+        "key": "ctrl+alt+down",
+        "command": "extension.lambdapi.nx",
+        "when": "editorTextFocus && editorLangId == lp && isMac"
       }
     ],
     "snippets": [

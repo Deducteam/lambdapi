@@ -28,7 +28,7 @@ let to_prod : ctxt -> term -> term * int = fun ctx t ->
     let b = Bindlib.bind_var x t in
     match v with
     | None -> _Prod (lift a) b, c + 1
-    | Some v -> _LLet (lift a) (lift v) b, c
+    | Some v -> _LLet (lift a) (lift v) b, c + 1
   in
   let t, c = List.fold_left f (lift t, 0) ctx in
   Bindlib.unbox t, c
@@ -36,16 +36,17 @@ let to_prod : ctxt -> term -> term * int = fun ctx t ->
 (** [to_prod_box bctx t] is similar to [to_prod bctx t] but operates on boxed
     contexts and terms. *)
 let to_prod_box : bctxt -> tbox -> tbox * int = fun bctx t ->
-  let f (t, c) (x, a) =
+  let f (t,c) (x,a,v) =
     let b = Bindlib.bind_var x t in
-    (_Prod a b, c + 1)
+    match v with
+    | None -> _Prod a b, c + 1
+    | Some v -> _LLet a v b, c + 1
   in
   List.fold_left f (t, 0) bctx
 
 (** [box_context ctx] lifts context [ctx] to a boxed context. *)
 let box_context : ctxt -> bctxt =
-  List.filter_map
-    (fun (x, t, u) -> if u = None then Some (x, lift t) else None)
+  List.map (fun (x,t,u) -> (x,lift t,Option.map lift u))
 
 (** [to_abst ctx t] builds a sequence of abstractions over the context [ctx],
     in the term [t]. *)

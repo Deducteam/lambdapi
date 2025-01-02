@@ -47,34 +47,32 @@ let set : problem -> meta -> tmbinder -> unit = fun p m v ->
 (** [make p ctx a] creates a fresh metavariable term of type [a] in the
    context [ctx], and adds it to [p]. *)
 let make : problem -> ctxt -> term -> term = fun p ctx a ->
-  let a, k = Ctxt.to_prod ctx a in
+  let a,k = Ctxt.to_prod ctx a in
   let m = fresh p a k in
-  let get_var (x,_,d) = if d = None then Some (mk_Vari x) else None in
-  mk_Meta(m, Array.of_list (List.filter_rev_map get_var ctx))
+  mk_Meta(m, Array.of_list (List.rev_map (fun (x,_,_) -> mk_Vari x) ctx))
 
 (** [bmake p bctx a] is the boxed version of {!make}: it creates
     a fresh {e boxed} metavariable in {e boxed} context [bctx] of {e
     boxed} type [a]. It is the same as [lift (make p c b)] (provided that
     [bctx] is boxed [c] and [a] is boxed [b]), but more efficient. *)
 let bmake : problem -> bctxt -> tbox -> tbox = fun p bctx a ->
-  let (a, k) = Ctxt.to_prod_box bctx a in
+  let a,k = Ctxt.to_prod_box bctx a in
   let m = fresh_box p a k in
-  let get_var (x, _) = _Vari x in
-  _Meta_full m (Array.of_list (List.rev_map get_var bctx))
+  _Meta_full m (Array.of_list (List.rev_map (fun (x,_,_) -> _Vari x) bctx))
 
 (** [make_codomain p ctx a] creates a fresh metavariable term of type [Type]
     in the context [ctx] extended with a fresh variable of type [a], and
     updates [p] with generated metavariables. *)
 let make_codomain : problem -> ctxt -> term -> tbinder = fun p ctx a ->
   let x = new_tvar "x" in
-  bind x lift (make p ((x, a, None) :: ctx) mk_Type)
+  bind x lift (make p ((x,a,None)::ctx) mk_Type)
 
 (** [bmake_codomain p bctx a] is [make_codomain p bctx a] but on boxed
     terms. *)
 let bmake_codomain : problem -> bctxt -> tbox -> tbinder Bindlib.box =
   fun p bctx a ->
   let x = new_tvar "x" in
-  let b = bmake p ((x, a) :: bctx) _Type in
+  let b = bmake p ((x,a,None)::bctx) _Type in
   Bindlib.bind_var x b
 
 (** [iter b f c t] applies the function [f] to every metavariable of [t] and,

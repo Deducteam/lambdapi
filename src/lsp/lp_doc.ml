@@ -65,7 +65,8 @@ let process_pstep (pstate,diags,logs) tac nb_subproofs =
     pstate, (tac_loc, 4, qres, goals) :: diags, logs
   | Tac_Error(loc,msg) ->
     let loc = option_default loc tac_loc in
-    pstate, (loc, 1, msg, None) :: diags, ((1, msg), loc) :: logs
+    let goals = Some (current_goals pstate) in
+    pstate, (loc, 1, msg, goals) :: diags, ((1, msg), loc) :: logs
 
 let process_proof pstate tacs logs =
   Pure.ProofTree.fold process_pstep (pstate,[],logs) tacs
@@ -125,6 +126,7 @@ let process_cmd _file (nodes,st,dg,logs) ast =
 let new_doc ~uri ~version ~text =
   let root, logs =
     try
+      let uri = Uri.pct_decode uri in
       (* We remove the ["file://"] prefix. *)
       assert(String.is_prefix "file://" uri);
       let path = String.sub uri 7 (String.length uri - 7) in

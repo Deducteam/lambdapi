@@ -3,47 +3,40 @@ A : t -> t -> t
 L : t -> (t -> t) -> t
 P : t -> (t -> t) -> t
 B : t -> t -> (t -> t) -> t
-tests_OK_boolean_B : t
-tests_OK_boolean_bool_and : t
-tests_OK_boolean_bool_impl : t
-tests_OK_boolean_bool_neg : t
-tests_OK_boolean_bool_or : t
-tests_OK_boolean_bool_xor : t
-tests_OK_boolean_false : t
-tests_OK_boolean_true : t
+tests_OK_group_1 : t
+tests_OK_group_inv : t
+tests_OK_group_⋅ : t
 )
 (VAR
 $x : t
 $y : t -> t
 $z : t
-$1_0 : t
 $2_0 : t
 $3_0 : t
+$3_1 : t
 $4_0 : t
+$4_1 : t
+$4_2 : t
+$5_0 : t
+$6_0 : t
 $7_0 : t
 $8_0 : t
 $9_0 : t
+$9_1 : t
 $10_0 : t
-82 : t
-83 : t
-84 : t
-85 : t
-86 : t
-87 : t
+$10_1 : t
 )
 (RULES
 A(L($x,$y),$z) -> $y($z),
 B($x,$z,$y) -> $y($z),
-A(A(tests_OK_boolean_bool_and,tests_OK_boolean_true),$1_0) -> $1_0,
-A(A(tests_OK_boolean_bool_and,tests_OK_boolean_false),$2_0) -> tests_OK_boolean_false,
-A(A(tests_OK_boolean_bool_and,$3_0),tests_OK_boolean_true) -> $3_0,
-A(A(tests_OK_boolean_bool_and,$4_0),tests_OK_boolean_false) -> tests_OK_boolean_false,
-tests_OK_boolean_bool_impl -> L(tests_OK_boolean_B,\82.L(tests_OK_boolean_B,\83.A(A(tests_OK_boolean_bool_or,83),A(tests_OK_boolean_bool_neg,82)))),
-A(tests_OK_boolean_bool_neg,tests_OK_boolean_true) -> tests_OK_boolean_false,
-A(tests_OK_boolean_bool_neg,tests_OK_boolean_false) -> tests_OK_boolean_true,
-A(A(tests_OK_boolean_bool_or,tests_OK_boolean_true),$7_0) -> tests_OK_boolean_true,
-A(A(tests_OK_boolean_bool_or,tests_OK_boolean_false),$8_0) -> $8_0,
-A(A(tests_OK_boolean_bool_or,$9_0),tests_OK_boolean_true) -> tests_OK_boolean_true,
-A(A(tests_OK_boolean_bool_or,$10_0),tests_OK_boolean_false) -> $10_0,
-tests_OK_boolean_bool_xor -> L(tests_OK_boolean_B,\84.L(tests_OK_boolean_B,\85.B(tests_OK_boolean_B,A(A(tests_OK_boolean_bool_and,84),A(tests_OK_boolean_bool_neg,85)),\86.B(tests_OK_boolean_B,A(A(tests_OK_boolean_bool_and,85),A(tests_OK_boolean_bool_neg,84)),\87.A(A(tests_OK_boolean_bool_or,86),87)))))
+A(tests_OK_group_inv,tests_OK_group_1) -> tests_OK_group_1,
+A(tests_OK_group_inv,A(tests_OK_group_inv,$2_0)) -> $2_0,
+A(tests_OK_group_inv,A(A(tests_OK_group_⋅,$3_0),$3_1)) -> A(A(tests_OK_group_⋅,A(tests_OK_group_inv,$3_1)),A(tests_OK_group_inv,$3_0)),
+A(A(tests_OK_group_⋅,A(A(tests_OK_group_⋅,$4_0),$4_1)),$4_2) -> A(A(tests_OK_group_⋅,$4_0),A(A(tests_OK_group_⋅,$4_1),$4_2)),
+A(A(tests_OK_group_⋅,tests_OK_group_1),$5_0) -> $5_0,
+A(A(tests_OK_group_⋅,$6_0),tests_OK_group_1) -> $6_0,
+A(A(tests_OK_group_⋅,A(tests_OK_group_inv,$7_0)),$7_0) -> tests_OK_group_1,
+A(A(tests_OK_group_⋅,$8_0),A(tests_OK_group_inv,$8_0)) -> tests_OK_group_1,
+A(A(tests_OK_group_⋅,A(tests_OK_group_inv,$9_0)),A(A(tests_OK_group_⋅,$9_0),$9_1)) -> $9_1,
+A(A(tests_OK_group_⋅,$10_0),A(A(tests_OK_group_⋅,A(tests_OK_group_inv,$10_0)),$10_1)) -> $10_1
 )
