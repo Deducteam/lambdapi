@@ -5,14 +5,27 @@ This extension provides support for the [Lambdapi](https://github.com/Deducteam/
 Goals are visualised in a panel on the right side of the editor.
 You can navigate in proof with the following key-bindings:
 
+***Linux and Windows***
 - ``Ctrl+Right``: go one step forward
 - ``Ctrl+Left``: go one step backward
 - ``Ctrl+Up``: go to the previous proof (or the beginning)
 - ``Ctrl+Down``: go to the next proof (or the end)
 - ``Ctrl+Enter``: go to the position of the cursor
 - ``Ctrl+Alt+c``: toggle cursor mode (proof highlight follows the cursor or not)
+- ``Ctrl+Alt+w``: toggle follow mode (proof highligsht is always centered in the window when keybindings are pressed)
+- ``Shift+Alt+w``: center proof highlight in the current window
+
+***Mac OS X***
+- ``Ctrl+fn+Right``: go one step forward
+- ``Ctrl+fn+Left``: go one step backward
+- ``Ctrl+Alt+Up``: go to the previous proof (or the beginning)
+- ``Ctrl+Alt+Down``: go to the next proof (or the end)
+- ``Ctrl+Enter``: go to the position of the cursor
+- ``Ctrl+Alt+c``: toggle cursor mode (proof highlight follows the cursor or not)
 - ``Ctrl+Alt+w``: toggle follow mode (proof highlight is always centered in the window when keybindings are pressed)
 - ``Shift+Alt+w``: center proof highlight in the current window
+
+Please note that these key-bindings can be changed in Code->Preferences->keyboard shortcuts (also reachable with Ctrl+K Ctrl+S or Command+K Command+S in Mac OS X).
 
 **Hover and go-to-definition**
 
