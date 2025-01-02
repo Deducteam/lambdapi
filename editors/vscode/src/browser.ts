@@ -3,10 +3,10 @@ import { LanguageClient } from "vscode-languageclient/node";
 import { activateClientLSP, ClientFactoryType, deactivateClientLSP } from "./client";
 
 export function activate(context: ExtensionContext): void {
-  const cf: ClientFactoryType = (context, clientOptions, wsConfig, lspServerPath) => {
+  const cf: ClientFactoryType = (context, clientOptions, wsConfig, lpLaunchCommand, lspLaunchArgs) => {
     let serverOptions = {
-      command: lspServerPath,
-      args: ['lsp']
+      command: lpLaunchCommand,
+      args: lspLaunchArgs
     };
     return new LanguageClient(
       "lambdapi",

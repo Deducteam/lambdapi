@@ -4,8 +4,8 @@ open Lplib open Base open Extra
 open Timed
 open Error open Debug
 
-let log_lib = Logger.make 'l' "libr" "library files"
-let log_lib = log_lib.pp
+let log = Logger.make 'l' "libr" "library files"
+let log = log.pp
 
 (** Representation of the mapping from module paths to files. *)
 module LibMap :
@@ -81,7 +81,7 @@ module LibMap :
         List.fold_left Filename.concat root ks in
       let rec get (root, old_ks) ks map =
         if Logger.log_enabled () then
-          log_lib "get @[<hv>\"%s\"@ [%a]@ [%a]@ %a@]" root
+          log "get @[<hv>\"%s\"@ [%a]@ [%a]@ %a@]" root
             (D.list D.string) old_ks (D.list D.string) ks (D.strmap pp) map;
         match ks with
         | []      -> concat root old_ks
@@ -137,8 +137,7 @@ let set_lib_root : string option -> unit = fun dir ->
   match !lib_root with
   | None -> assert false (* pth is set above. *)
   | Some(pth) ->
-    (* Register the library root as part of the module mapping.
-         Required by [module_to_file]. *)
+    (* Register the library root as part of the module mapping. *)
     Timed.(lib_mappings := LibMap.set_root pth !lib_mappings)
 
 (** [add_mapping (mn, fn)] adds a new mapping from the module name [mn] to
@@ -165,7 +164,7 @@ let file_of_path : Path.t -> string = fun mp ->
   try
     let fp = LibMap.get mp !lib_mappings in
     if Logger.log_enabled () then
-      log_lib "file_of_path @[<hv>%a@ %a@ = \"%s\"@]"
+      log "file_of_path @[<hv>%a@ %a@ = \"%s\"@]"
         Path.pp mp LibMap.pp !lib_mappings fp;
     fp
   with LibMap.Root_not_set -> fatal_no_pos "Library root not set."
@@ -232,7 +231,7 @@ let path_of_file : (string -> string) -> string -> Path.t =
     String.sub base (len_fp + 1) (len_base - len_fp - 1)
   in
   let full_mp = mp @ List.map escape (String.split_on_char '/' rest) in
-  log_lib "path_of_file @[<hv>\"%s\"@ = %a@]" fname Path.pp full_mp;
+  log "path_of_file @[<hv>\"%s\"@ = %a@]" fname Path.pp full_mp;
   full_mp
 
 (** [install_path fname] prefixes the filename [fname] by the path to the
