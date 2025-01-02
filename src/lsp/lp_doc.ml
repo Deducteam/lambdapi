@@ -126,6 +126,7 @@ let process_cmd _file (nodes,st,dg,logs) ast =
 let new_doc ~uri ~version ~text =
   let root, logs =
     try
+      let uri = Uri.pct_decode uri in
       (* We remove the ["file://"] prefix. *)
       assert(String.is_prefix "file://" uri);
       let path = String.sub uri 7 (String.length uri - 7) in
