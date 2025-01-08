@@ -4,10 +4,14 @@ require open tests.OK.natural;
 prover "Alt-Ergo";
 prover_timeout 2;
 
+debug +y;
+
 opaque symbol tautology : Π (a : Prop), P a → P a
 ≔ begin
     why3;
 end;
+
+debug -y;
 
 opaque symbol thm_and1 : Π (a b : Prop), P ({|and|} a b) → P a
 ≔ begin

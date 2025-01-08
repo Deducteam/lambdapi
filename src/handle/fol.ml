@@ -1,11 +1,12 @@
 (** Configuration for tactics based on first-order logic. *)
 
-open Common
+open Common open Error
 open Core open Term
 
 (** Builtin configuration for propositional logic. *)
 type config =
-  { symb_P   : sym (** Encoding of propositions. *)
+  { symb_Prop: sym (** Type of propositions. *)
+  ; symb_P   : sym (** Encoding of propositions. *)
   ; symb_T   : sym (** Encoding of types. *)
   ; symb_or  : sym (** Disjunction(∨) symbol. *)
   ; symb_and : sym (** Conjunction(∧) symbol. *)
@@ -19,7 +20,21 @@ type config =
 (** [get_config ss pos] build the configuration using [ss]. *)
 let get_config : Sig_state.t -> Pos.popt -> config = fun ss pos ->
   let builtin = Builtin.get ss pos in
-  { symb_P   = builtin "P"
+  let symb_P = builtin "P" in
+  let symb_Prop =
+    match unfold Timed.(!(symb_P.sym_type)) with
+    | Prod(a,_) ->
+        begin
+          match unfold a with
+          | Symb s -> s
+          | _ ->
+              fatal pos "The type of %a is not of the form Prop → _ \
+                         with Prop a symbol." Print.sym symb_P
+        end
+    | _ -> fatal pos "The type of %a is not a product" Print.sym symb_P
+  in
+  { symb_Prop
+  ; symb_P
   ; symb_T   = builtin "T"
   ; symb_or  = builtin "or"
   ; symb_and = builtin "and"
