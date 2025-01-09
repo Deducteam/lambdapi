@@ -13,15 +13,15 @@ let term = Raw.term
 let log_scop = Logger.make 'o' "scop" "term scoping"
 let log_scop = log_scop.pp
 
-(** [find_qid prt prv ss env qid] returns a term corresponding to a
-   variable of the environment [env] (or to a symbol) which name corresponds
-   to [qid]. In the case where the module path [fst qid.elt] is empty, we
-   first search for the name [snd qid.elt] in the environment, and if it is
-   not mapped we also search in the opened modules. The exception [Fatal] is
-   raised if an error occurs (e.g., when the name cannot be found). If [prt]
-   is true, protected symbols from external modules are allowed (protected
-   symbols from current modules are always allowed). If [prv] is true, private
-   symbols are allowed. *)
+(** [find_qid ~find_sym prt prv ss env qid] returns a boxed term corresponding
+    to a variable of the environment [env] or a symbol which name corresponds
+    to [qid]. In case of a qualified identifier, we search in symbols using
+    [find_sym]. In case of an unqualified identifier, we first search in [env]
+    and the in symbols using [find_sym]. The exception [Fatal] is raised if an
+    error occurs (e.g. when the name cannot be found). If [prt] is true,
+    protected symbols from external modules are allowed (protected symbols
+    from current modules are always allowed). If [prv] is true, private
+    symbols are allowed. *)
 let find_qid :
       ?find_sym:find_sym -> bool -> bool -> sig_state -> env -> p_qident
       -> term =
@@ -91,7 +91,8 @@ type mode =
   (** Scoping mode for unification rule right-hand sides. During  scoping, we
       always have [m_urhs_vars_nb = m_lhs_size + length m_urhs_xvars]. *)
 
-(** [scope_iden md ss env qid] scopes [qid] as a symbol. *)
+(** [scope_iden ~find_sym md ss env qid] calls [find_qid] with the [prt] and
+    [prv] flags set according to [md]. *)
 let scope_iden : ?find_sym:find_sym ->
   mode -> sig_state -> env -> p_qident -> term =
   fun ?find_sym md ss env qid ->
@@ -129,12 +130,8 @@ let fresh_patt : lhs_data -> string option -> term array -> term =
       let i = fresh_index () in
       mk_Patt (Some i, string_of_int i, ts)
 
-(** [scope ~typ md ss env t] turns a parser-level term [t] into an actual
-    term. The variables of the environment [env] may appear in [t],
-    and the scoping mode [md] changes the behaviour related to certain
-    constructors. The signature state [ss] is used to convert identifiers
-    into symbols according to [find_qid]. If [typ] is true, then [t]
-    must be a type (defaults to false). *)
+(** [scope ~find_sym ~typ k md ss env t] turns a parser-level term [t] into an
+    actual term. *)
 let rec scope : ?find_sym:find_sym ->
   ?typ:bool -> int -> mode -> sig_state -> env -> p_term -> term =
   fun ?find_sym ?(typ=false) k md ss env t ->
@@ -145,8 +142,8 @@ let rec scope : ?find_sym:find_sym ->
     log_scop "%a after Pratt: %a" D.depth k Pretty.term u;
   scope_parsed ?find_sym ~typ k md ss env u
 
-(** [scope_parsed ~typ md ss env t] turns a parser-level Pratt-parsed
-    term [t] into an actual term. *)
+(** [scope_parsed ~find_sym ~typ k md ss env t] turns a parser-level
+    Pratt-parsed term [t] into an actual term. *)
 and scope_parsed : ?find_sym:find_sym ->
   ?typ:bool -> int -> mode -> sig_state -> env -> p_term -> term =
   fun ?find_sym ?(typ=false) k md ss env t ->
@@ -186,10 +183,10 @@ and scope_parsed : ?find_sym:find_sym ->
   add_impl ?find_sym k md ss env t.pos h impl args
   |> D.log_and_return (fun e -> log_scop "%agot %a" D.depth k Raw.term e)
 
-(** [add_impl md ss env loc h impl args] scopes [args] and returns the
-   application of [h] to the scoped arguments. [impl] is a boolean list
-   described the implicit arguments. Implicit arguments are added as
-   underscores before scoping. *)
+(** [add_impl ~find_sym k md ss env loc h impl args] scopes [args] and returns
+    the application of [h] to the scoped arguments. [impl] is a boolean list
+    described the implicit arguments. Implicit arguments are added as
+    underscores before scoping. *)
 and add_impl : ?find_sym:find_sym -> int -> mode -> sig_state ->
                Env.t -> popt -> term -> bool list -> p_term list -> term =
   fun ?find_sym k md ss env loc h impl args ->
@@ -223,8 +220,8 @@ and add_impl : ?find_sym:find_sym -> int -> mode -> sig_state ->
       (* NOTE this could be improved with more general implicits. *)
       fatal loc "More arguments are required to instantiate implicits."
 
-(** [scope_domain md ss env t] scopes [t] as the domain of an abstraction or
-   product. *)
+(** [scope_domain ~find_sym k md ss env t] scopes [t] as the domain of an
+    abstraction or product. *)
 and scope_domain : ?find_sym:find_sym ->
   int -> mode -> sig_state -> env -> p_term option -> term =
   fun ?find_sym k md ss env a ->
@@ -234,18 +231,15 @@ and scope_domain : ?find_sym:find_sym ->
   | (Some {elt=P_Wild;_}|None), _ -> mk_Plac true
   | Some a, _ -> scope ?find_sym ~typ:true k md ss env a
 
-(** [scope_binder ~typ mode ss cons env params_list t] scopes [t] in
-   mode [md], signature state [ss] and environment [env]. [params_list] is a
-   list of paramters to abstract on. For each parameter, a tbox is built using
-   [cons] (either [_Abst] or [_Prod]). If [warn] is true (the default), a
-   warning is printed when the variable that is bound by the binder does not
-   appear in the body. [typ] indicates if we scope a type (default is
-   false). *)
+(** [scope_binder ~find_sym ~typ k md ss cons env params_list t] scopes [t],
+    abstract [params_list] and returns a term using [cons] (either [_Abst] or
+    [_Prod]). *)
 and scope_binder :
   ?find_sym:find_sym -> ?typ:bool -> int -> mode -> sig_state ->
   (term * binder -> term) -> Env.t -> p_params list -> p_term option -> term =
   fun ?find_sym ?(typ=false) k md ss cons env params_list t ->
-  let rec scope_params_list env params_list =
+  (* [n] is used to give different names to parameters of the form "_" *)
+  let rec scope_params_list n env params_list =
     match params_list with
     | [] ->
         begin
@@ -255,25 +249,25 @@ and scope_binder :
         end
     | (idopts,typopt,_implicit)::params_list ->
       let dom = scope_domain ?find_sym (k+1) md ss env typopt in
-      scope_params env idopts dom params_list
-  and scope_params env idopts a params_list =
-    let rec scope_params_aux env idopts =
+      scope_params n env idopts dom params_list
+  and scope_params n env idopts a params_list =
+    let rec aux n env idopts =
       match idopts with
-      | [] -> scope_params_list env params_list
+      | [] -> scope_params_list n env params_list
       | None::idopts ->
-          let v = new_var "_" in
-          let t = scope_params_aux env idopts in
+          let v = if n = 0 then new_tvar "_" else new_tvar_ind "_" n in
+          let t = aux (n+1) env idopts in
           cons (a, bind_var v t)
       | Some {elt=id;_}::idopts ->
           let v = new_var id in
           let env = Env.add id v a None env in
-          let t = scope_params_aux env idopts in
+          let t = aux n env idopts in
           cons (a, bind_var v t)
-    in scope_params_aux env idopts
+    in aux n env idopts
   in
-  scope_params_list env params_list
+  scope_params_list 0 env params_list
 
-(** [scope_head ~typ md ss env t] scopes [t] as term head. *)
+(** [scope_head ~find_sym ~typ k md ss env t] scopes [t] as term head. *)
 and scope_head : ?find_sym:find_sym ->
   ?typ:bool -> int -> mode -> sig_state -> env -> p_term -> term =
   fun ?find_sym ?(typ=false) k md ss env t ->
@@ -447,14 +441,9 @@ let scope =
   Debug.(record_time Scoping
            (fun () -> r := scope ?find_sym ~typ k md ss env t)); !r
 
-(** [scope_term ~find_sym ~typ ~mok prv ss env t] turns a pterm [t] into a
-    term in the signature state [ss] and environment [env] (for bound
-    variables). If [prv] is [true], then the term can
-    contain private symbols. If [~typ] is [true], then [t] must be
-    a type (defaults to [false]). No {b new} metavariables may appear in
-    [t], but metavariables in the image of [mok] may be used. The function
-    [mok] defaults to the function constant to [None]. The function
-    [~find_sym] is used to scope symbol identifiers. *)
+(** [scope_term ~find_sym ~typ ~mok prv ss env t] scopes [t] in mode [M_Term]
+    with [m_term_prv] set to [prv], and [m_term_meta_of_key] set to [mok]
+    (which defaults to the constant function equal to [None]). *)
 let scope_term :
       ?find_sym:find_sym -> ?typ:bool -> ?mok:(int -> meta option)
       -> bool -> sig_state -> env -> p_term -> term =
@@ -462,12 +451,9 @@ let scope_term :
   let md = M_Term {m_term_meta_of_key=mok; m_term_prv} in
   scope ?find_sym ~typ 0 md ss env t
 
-(** [scope_search_pattern ~find_sym ~typ prv ss env t] turns a pterm [t] meant
-    to be a search patter into a term in the signature state [ss]
-    and environment [env] (for bound variables). If [~typ] is [true],
-    then [t] must be a type (defaults to [false]). No {b new} metavariables
-    may appear in [t]. The function [~find_sym] is used to scope symbol
-    identifiers. *)
+(** [scope_search_pattern ~find_sym ~typ prv ss env t] scopes [t] in mode
+    [M_SearchPatt] with [m_term_meta_of_key] set to [mok] (which defaults to
+    the constant function equal to [None]). *)
 let scope_search_pattern : ?find_sym:find_sym -> ?typ:bool ->
   ?mok:(int -> meta option) -> sig_state -> env -> p_term -> term =
   fun ?find_sym ?(typ=false) ?(mok=fun _ -> None) ss env t ->
@@ -533,8 +519,7 @@ let patt_vars : p_term -> (string * int) list * string list =
   patt_vars ([],[])
 
 (** [scope_rule ~find_sym ur ss r] turns a parser-level rewriting rule [r],
-    or a unification rule if [ur] is true, into a pre-rewriting rule.
-    The function [~find_sym] is used to scope symbol identifiers. *)
+    or a unification rule if [ur] is true, into a pre-rewriting rule. *)
 let scope_rule :
   ?find_sym:find_sym -> bool -> sig_state -> p_rule -> sym_rule =
   fun ?(find_sym=Sig_state.find_sym) ur ss
@@ -618,13 +603,12 @@ let scope_rule :
   (sym,r)
 
 (** [scope_pattern ss env t] turns a parser-level term [t] into an actual term
-    that will correspond to selection pattern (rewrite tactic). *)
+    in mode [M_Patt], i.e. as a selection pattern in a rewrite tactic. *)
 let scope_pattern : sig_state -> env -> p_term -> term = fun ss env t ->
   scope 0 M_Patt ss env t
 
-(** [scope_rw_patt ss env t] turns a parser-level rewrite tactic specification
-    [s] into an actual rewrite specification (possibly containing variables of
-    [env] and using [ss] for aliasing). *)
+(** [scope_rw_patt ss env s] scopes the parser-level rewrite tactic
+    specification [s] into an actual rewrite specification. *)
 let scope_rw_patt : sig_state -> env -> p_rw_patt -> (term, binder) rw_patt =
   fun ss env s ->
   match s.elt with
