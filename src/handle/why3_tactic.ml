@@ -170,10 +170,10 @@ let translate_goal :
       Sig_state.t -> Pos.popt -> Env.env -> term -> Why3.Task.task =
   fun ss pos env g ->
   let cfg = get_config ss pos in
-  (* Translate assumptions. *)
-  let translate_hyp (name,(x,a,_)) (m,hyps) =
+  (* Translate environment. *)
+  let translate_env_elt (name,(x,a,_)) (m,hyps) =
     let a = Bindlib.unbox a in
-    (*if Logger.log_enabled() then log "translate_hyp %a %a %s : %a"
+    (*if Logger.log_enabled() then log "translate_env_elt %a %a %s : %a"
       l2y m Debug.D.(list (pair string Why3.Pretty.print_term)) hyps
       name term a;*)
     match get_args a with
@@ -195,8 +195,8 @@ let translate_goal :
         m, (name,t)::hyps
     | _ -> m, hyps
   in
-  let translate_hyp b m = try translate_hyp b m with Exit -> m in
-  let m, hyps = List.fold_right translate_hyp env (empty_l2y, []) in
+  let translate_env_elt b m = try translate_env_elt b m with Exit -> m in
+  let m, hyps = List.fold_right translate_env_elt env (empty_l2y, []) in
   if Logger.log_enabled() then log "hyps: %a"
     Debug.D.(list (pair string Why3.Pretty.print_term)) hyps;
   (* Translate the goal. *)
