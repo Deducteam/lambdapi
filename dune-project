@@ -27,7 +27,7 @@ provides commands to export Lambdapi files to other formats or
 systems: Dedukti, Coq, HRS, CPF.")
 
  (depends
-  (ocaml (>= 4.08.0))
+  (ocaml (>= 4.09.0))
   (menhir (>= 20200624))
   (sedlex (>= 3.2))
   (alcotest :with-test)
