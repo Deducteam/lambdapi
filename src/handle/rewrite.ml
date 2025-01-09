@@ -30,7 +30,7 @@ let get_eq_config : Sig_state.t -> popt -> eq_config = fun ss pos ->
 
 (* Register checks for the builtin symbols related to rewriting. *)
 let _ =
-  let check_t_or_p _ss pos sym =
+  let check_codomain_is_Type _ss pos sym =
     let valid =
       match Eval.whnf [] !(sym.sym_type) with
       | Prod(_, b) -> Eval.eq_modulo [] (snd (Bindlib.unbind b)) mk_Type
@@ -40,9 +40,9 @@ let _ =
       fatal pos "The type of [%s] is not of the form [_ → TYPE]." sym.sym_name
   in
   (* The type of the builtin ["T"] should be [U → TYPE]. *)
-  Builtin.register "T" check_t_or_p;
+  Builtin.register "T" check_codomain_is_Type;
   (* The type of the builtin ["P"] should be [Prop → TYPE]. *)
-  Builtin.register "P" check_t_or_p;
+  Builtin.register "P" check_codomain_is_Type;
   let get_domain_of_type s =
     match Eval.whnf [] !(s.sym_type) with
     | Prod(a,_) -> a

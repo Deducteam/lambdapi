@@ -10,13 +10,11 @@ rule T o ↪ Prop;
 constant symbol nat: U;
 symbol even (_: T nat): Prop;
 
-debug +y;
-
 // Test a quantification on the boolean type
-/*opaque symbol thm_ex : P (ex o (λ p: T o, imp p p))
+opaque symbol thm_ex : P (ex o (λ p: T o, imp p p))
 ≔ begin 
   why3;
-end;*/
+end;
 
 // Quantification on a type symbol
 opaque symbol thm_even : P (ex nat (λ n: T nat, imp (even n) (even n)))

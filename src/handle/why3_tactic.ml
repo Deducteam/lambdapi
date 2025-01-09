@@ -38,48 +38,65 @@ let why3_env : Why3.Env.env =
   Why3.Env.create_env (Why3.Whyconf.loadpath why3_main)
 
 (** Data used to translate Lambdapi terms to Why3. *)
-type lp2y_map =
-  { tsym : (term * Why3.Ty.tysymbol) list
-  (* Types not in the Why3 language are abstracted by new type symbols. *)
-  ; lsym : (term * Why3.Term.lsymbol) list
-  (* Terms not in the Why3 language are abstracted by new symbols. *)
-  ; etys : (term Bindlib.var * (Why3.Term.lsymbol * bool)) list
+type l2y =
+  { s2ts : (sym * Why3.Ty.tysymbol) list
+  (* Mapping of type symbols. *)
+  ; v2tv : (tvar * Why3.Ty.tvsymbol) list
+  (* Mapping of type variables. *)
+  ; t2ts : (term * Why3.Ty.tysymbol) list
+  (* Mapping of non-Why3 subtypes. *)
+  ; v2ls : (tvar * (Why3.Term.lsymbol * bool)) list
   (* Mapping of environment variables.
      [true] is used for propositional variables. *)
-  ; vtys : (term Bindlib.var * Why3.Term.vsymbol) list
+  ; v2vs : (tvar * Why3.Term.vsymbol) list
   (* Mapping of quantified variables. *)
+  ; t2ls : (term * Why3.Term.lsymbol) list
+  (* Mapping of non-Why3 subterms. *)
   }
 
-let lp2y_empty_map = { tsym = []; lsym = []; etys = []; vtys = [] }
+let empty_l2y = {s2ts=[]; v2tv=[]; t2ts=[]; v2ls=[]; v2vs=[]; t2ls=[]}
 
-let lp2y_map ppf m =
+let l2y ppf m =
   let open Debug.D in
-  Base.out ppf "{tsym=%a; lsym=%a; etys=%a; vtys=%a}"
-    (list (pair term Why3.Pretty.print_ts)) m.tsym
-    (list (pair term Why3.Pretty.print_ls)) m.lsym
-    (list (pair var (pair Why3.Pretty.print_ls bool))) m.etys
-    (list (pair var Why3.Pretty.print_vs)) m.vtys
+  Base.out ppf "{s2ts=%a; v2tv=%a; t2ts=%a; v2ls=%a; v2vs=%a; t2ls=%a}"
+    (list (pair sym Why3.Pretty.print_ts)) m.s2ts
+    (list (pair var Why3.Pretty.print_tv)) m.v2tv
+    (list (pair term Why3.Pretty.print_ts)) m.t2ts
+    (list (pair var (pair Why3.Pretty.print_ls bool))) m.v2ls
+    (list (pair var Why3.Pretty.print_vs)) m.v2vs
+    (list (pair term Why3.Pretty.print_ls)) m.t2ls
 
 (* [translate_type m t] returns [(m',a)] where [a] is the Why3 type
    corresponding to the Lambdapi term [t], with the subterms equivalent to
-   those in the domain of [m.tsym] replaced by their images, and the subterms
+   those in the domain of [m.t2ts] replaced by their images, and the subterms
    not in the language of Why3 replaced by new type constants added in
-   [m']. *)
+   [m']. Raises [Exit] if [t] cannot be translated. *)
 let rec translate_type m t =
   match get_args t with
   | Symb s, ts ->
       let m, ts = translate_types m ts in
-      let id = Why3.Ident.id_fresh s.sym_name in
-      let s = Why3.Ty.create_tysymbol id [] Why3.Ty.NoDef in
+      let m, s =
+        match List.assoc_opt s m.s2ts with
+        | Some s' -> m, s'
+        | None ->
+            let id = Why3.Ident.id_fresh s.sym_name in
+            let s' = Why3.Ty.create_tysymbol id [] Why3.Ty.NoDef in
+            {m with s2ts=(s,s')::m.s2ts}, s'
+      in
       m, Why3.Ty.ty_app s ts
   | Vari x, [] ->
-      m, Why3.Ty.ty_var (Why3.Ty.tv_of_string (Bindlib.name_of x))
+      begin
+        match List.assoc_eq_opt Bindlib.eq_vars x m.v2tv with
+        | Some tv -> m, Why3.Ty.ty_var tv
+        | None -> raise Exit
+      end
   | _ ->
-      try m, Why3.Ty.ty_app (List.assoc_eq (Eval.eq_modulo []) t m.tsym) []
+      raise Exit
+      (*try m, Why3.Ty.ty_app (List.assoc_eq (Eval.eq_modulo []) t m.t2ts) []
       with Not_found ->
-        let id = Why3.Ident.id_fresh "ty" in
-        let sym = Why3.Ty.create_tysymbol id [] Why3.Ty.NoDef in
-        {m with tsym = (t,sym)::m.tsym}, Why3.Ty.ty_app sym []
+        let id = Why3.Ident.id_fresh "T" in
+        let s = Why3.Ty.create_tysymbol id [] Why3.Ty.NoDef in
+        {m with t2ts = (t,s)::m.t2ts}, Why3.Ty.ty_app s []*)
 
 and translate_types m ts =
   List.fold_right
@@ -88,21 +105,21 @@ and translate_types m ts =
 
 (** [translate_prop cfg m t] returns [(m',u)] where [u] is the Why3
     proposition corresponding to the Lambdapi term [t], with the subterms
-    equivalent to those in the domain of [m.lsym] and [m.tsym] replaced by
+    equivalent to those in the domain of [m.t2ls] and [m.t2ts] replaced by
     their images, and the subterms not in the language of Why3 replaced by new
-    symbols added in [m']. *)
+    symbols added in [m']. Raises [Exit] if [t] cannot be translated. *)
 let rec translate_prop :
-          config -> lp2y_map -> term -> lp2y_map * Why3.Term.term =
+          config -> l2y -> term -> l2y * Why3.Term.term =
   let default m t =
     try
-      let sym = List.assoc_eq (Eval.eq_modulo []) t m.lsym in
+      let sym = List.assoc_eq (Eval.eq_modulo []) t m.t2ls in
       (m, Why3.Term.ps_app sym [])
     with Not_found ->
       let sym = Why3.Term.create_psymbol (Why3.Ident.id_fresh "X") [] in
-      ({m with lsym = (t,sym)::m.lsym}, Why3.Term.ps_app sym [])
+      ({m with t2ls = (t,sym)::m.t2ls}, Why3.Term.ps_app sym [])
   in
   fun cfg m t ->
-  log "translate_prop %a %a" lp2y_map m term t;
+  (*if Logger.log_enabled() then log "translate_prop %a %a" l2y m term t;*)
   match get_args t with
   | Symb s, [t1;t2] when s == cfg.symb_and ->
       let (m,t1) = translate_prop cfg m t1 in
@@ -124,24 +141,24 @@ let rec translate_prop :
   | Symb s, [] when s == cfg.symb_top ->
       (m, Why3.Term.t_true)
   | Symb s, [a;Abst(_,t)] when s == cfg.symb_ex ->
-      let (m,a) = translate_type m a
+      let m,a = translate_type m a
       and x,t = Bindlib.unbind t in
       let id = Why3.Ident.id_fresh (Bindlib.name_of x) in
       let v = Why3.Term.create_vsymbol id a in
-      let m = {m with vtys = (x,v)::m.vtys} in
+      let m = {m with v2vs = (x,v)::m.v2vs} in
       let (m,t) = translate_prop cfg m t in
       (m, Why3.Term.t_exists_close [v] [] t)
   | Symb s, [a;Abst(_,t)] when s == cfg.symb_all ->
-      let (m,a) = translate_type m a
+      let m,a = translate_type m a
       and x,t = Bindlib.unbind t in
       let id = Why3.Ident.id_fresh (Bindlib.name_of x) in
       let v = Why3.Term.create_vsymbol id a in
-      let m = {m with vtys = (x,v)::m.vtys} in
+      let m = {m with v2vs = (x,v)::m.v2vs} in
       let (m,t) = translate_prop cfg m t in
       (m, Why3.Term.t_forall_close [v] [] t)
   | Vari x, [] ->
       begin
-        match List.assoc_eq_opt Bindlib.eq_vars x m.etys with
+        match List.assoc_eq_opt Bindlib.eq_vars x m.v2ls with
         | Some(s, true) -> (m, Why3.Term.ps_app s [])
         | _ -> default m t
       end
@@ -156,59 +173,66 @@ let translate_goal :
   (* Translate assumptions. *)
   let translate_hyp (name,(x,a,_)) (m,hyps) =
     let a = Bindlib.unbox a in
-    log "translate_hyp %a %a %s : %a"
-      lp2y_map m Debug.D.(list (pair string Why3.Pretty.print_term)) hyps
-      name term a;
+    (*if Logger.log_enabled() then log "translate_hyp %a %a %s : %a"
+      l2y m Debug.D.(list (pair string Why3.Pretty.print_term)) hyps
+      name term a;*)
     match get_args a with
-    | Symb s, [t] when s == cfg.symb_P -> (* proposition *)
-        let m,t = translate_prop cfg m t in
-        m, (name,t)::hyps
+    | Symb s, [] when s == cfg.symb_Set -> (* type variable *)
+        let id = Why3.Ident.id_fresh (Bindlib.name_of x) in
+        let tv = Why3.Ty.create_tvsymbol id in
+        {m with v2tv = (x,tv)::m.v2tv}, hyps
     | Symb s, [t] when s == cfg.symb_T -> (* object *)
         let m,t = translate_type m t in
         let id = Why3.Ident.id_fresh name in
         let f = Why3.Term.create_fsymbol id [] t in
-        {m with etys = (x,(f,false))::m.etys}, hyps
+        {m with v2ls = (x,(f,false))::m.v2ls}, hyps
     | Symb s, [] when s == cfg.symb_Prop -> (* propositional variable *)
         let id = Why3.Ident.id_fresh (Bindlib.name_of x) in
         let f = Why3.Term.create_psymbol id [] in
-        {m with etys = (x,(f,true))::m.etys}, hyps
+        {m with v2ls = (x,(f,true))::m.v2ls}, hyps
+    | Symb s, [t] when s == cfg.symb_P -> (* proposition *)
+        let m,t = translate_prop cfg m t in
+        m, (name,t)::hyps
     | _ -> m, hyps
   in
-  let m, hyps = List.fold_right translate_hyp env (lp2y_empty_map, []) in
-  log "after translate_hyp: %a %a" lp2y_map m
+  let translate_hyp b m = try translate_hyp b m with Exit -> m in
+  let m, hyps = List.fold_right translate_hyp env (empty_l2y, []) in
+  if Logger.log_enabled() then log "hyps: %a"
     Debug.D.(list (pair string Why3.Pretty.print_term)) hyps;
   (* Translate the goal. *)
   let m, g =
     match get_args g with
-    | Symb s, [t] when s == cfg.symb_P -> translate_prop cfg m t
-    | _ -> fatal pos "The goal is not of the form [%a _]" sym cfg.symb_P
+    | Symb s, [t] when s == cfg.symb_P ->
+        begin
+          try translate_prop cfg m t
+          with Exit -> fatal pos "The goal cannot be translated to Why3."
+        end
+    | _ -> fatal pos "The goal is not of the form [%a _]." sym cfg.symb_P
   in
-  log "after translate goal: %a %a" lp2y_map m Why3.Pretty.print_term g;
+  if Logger.log_enabled() then log "goal: %a" Why3.Pretty.print_term g;
+  if Logger.log_enabled() then log "map: %a" l2y m;
   (* Build the task. *)
   let tsk = None in
-  (* Add the declarations of abstracted types. *)
-  let add_tsym_decl tsk (_,tsym) = Why3.Task.add_ty_decl tsk tsym in
-  let tsk = List.fold_left add_tsym_decl tsk m.tsym in
-  log "add abstracted types:\n%a" Why3.Pretty.print_task tsk;
-  (* Add the declarations of abstracted terms. *)
-  let add_lsym_decl tsk (_,lsym) = Why3.Task.add_param_decl tsk lsym in
-  let tsk = List.fold_left add_lsym_decl tsk m.lsym in
-  log "add abstracted terms:\n%a" Why3.Pretty.print_task tsk;
-  (* Add the declarations of the environment symbols. *)
-  let add_ovar_decl tsk (_,(s,_)) = Why3.Task.add_param_decl tsk s in
-  let tsk = List.fold_left add_ovar_decl tsk m.etys in
-  log "add environment symbols:\n%a" Why3.Pretty.print_task tsk;
+  (* Add the declarations of type symbols. *)
+  let add_s2ts_decl tsk (_,tsym) = Why3.Task.add_ty_decl tsk tsym in
+  let tsk = List.fold_left add_s2ts_decl tsk m.s2ts in
+  let add_t2ts_decl tsk (_,tsym) = Why3.Task.add_ty_decl tsk tsym in
+  let tsk = List.fold_left add_t2ts_decl tsk m.t2ts in
+  (* Add the declarations of term symbols. *)
+  let add_ovar_decl tsk (_,(lsym,_)) = Why3.Task.add_param_decl tsk lsym in
+  let tsk = List.fold_left add_ovar_decl tsk m.v2ls in
+  let add_t2ls_decl tsk (_,lsym) = Why3.Task.add_param_decl tsk lsym in
+  let tsk = List.fold_left add_t2ls_decl tsk m.t2ls in
   (* Add the declarations of assumptions. *)
   let add_hyp_decl tsk (name,prop) =
     let axiom = Why3.Decl.create_prsymbol (Why3.Ident.id_fresh name) in
     Why3.Task.add_prop_decl tsk Why3.Decl.Paxiom axiom prop
   in
   let tsk = List.fold_left add_hyp_decl tsk hyps in
-  log "add hyps:\n%a" Why3.Pretty.print_task tsk;
-  (* Add the goal itself. *)
+  (* Add the goal. *)
   let goal = Why3.Decl.create_prsymbol (Why3.Ident.id_fresh "G") in
   let tsk = Why3.Task.add_prop_decl tsk Why3.Decl.Pgoal goal g in
-  log "add goal:\n%a" Why3.Pretty.print_task tsk;
+  if Logger.log_enabled() then log "%a" Why3.Pretty.print_task tsk;
   tsk
 
 (** [run tsk pos prover_name] sends [tsk] to [prover_name]. *)
@@ -259,12 +283,12 @@ let handle :
   fun ss pos prover_name
       ({goal_meta = _; goal_hyps = hyps; goal_type = t} as gt) ->
   let g = Typ gt in
-  if Logger.log_enabled () then log "%a%a" Goal.hyps g Goal.pp g;
-  (* Get the name of the prover. *)
-  let prover_name = Option.get !default_prover prover_name in
-  if Logger.log_enabled () then log "running with prover \"%s\"" prover_name;
+  if Logger.log_enabled() then log "%a%a" Goal.hyps g Goal.pp g;
   (* Encode the goal in Why3. *)
   let tsk = translate_goal ss pos hyps t in
+  (* Get the name of the prover. *)
+  let prover_name = Option.get !default_prover prover_name in
+  if Logger.log_enabled() then log "running with prover \"%s\"" prover_name;
   (* Run the task with the prover named [prover_name]. *)
   if not (run tsk pos prover_name) then
     fatal pos "\"%s\" did not find a proof" prover_name
