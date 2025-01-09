@@ -98,16 +98,12 @@ let of_sign : Sign.t -> sig_state = fun signature ->
     corresponding to a qualified / non qualified name *)
 type find_sym = prt:bool -> prv:bool -> sig_state -> qident loc -> sym
 
-(** [find_sym ~prt ~prv b st qid] returns the symbol
-    corresponding to the qualified identifier [qid]. If [fst qid.elt] is
-    empty, we search for the name [snd qid.elt] in the opened modules of [st].
-    The boolean [b] only indicates if the error message should mention
-    variables, in the case where the module path is empty and the symbol is
-    unbound. This is reported using the [Fatal] exception.
-    {!constructor:Term.expo.Protec} symbols from other modules
-    are allowed in left-hand side of rewrite rules (only) iff [~prt] is true.
-    {!constructor:Term.expo.Privat} symbols are allowed iff [~prv]
-    is [true]. *)
+(** [find_sym ~prt ~prv b st qid] returns the symbol corresponding to the
+    possibly qualified identifier [qid], or raises [Fatal]. The boolean [b]
+    indicates if the error message should mention variables when [qid] is
+    unqualified. [~prt] indicates whether {!constructor:Term.expo.Protec}
+    symbols from other modules are allowed. [~prv] indicates whether
+    {!constructor:Term.expo.Privat} symbols are allowed. *)
 let find_sym : find_sym =
   fun ~prt ~prv st {elt = (mp, s); pos} ->
   let s =
