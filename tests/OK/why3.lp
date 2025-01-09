@@ -38,3 +38,24 @@ opaque symbol thm_imp : Π (a b : Prop), P (imp a b) → P a → P b
 ≔ begin
     why3;
 end;
+
+symbol o : U;
+rule T o ↪ Prop;
+
+constant symbol nat: U;
+symbol even (_: T nat): Prop;
+
+opaque symbol thm_ex : P (ex o (λ p: T o, imp p p))
+≔ begin 
+  why3;
+end;
+
+opaque symbol thm_even : P (ex nat (λ n: T nat, imp (even n) (even n)))
+≔ begin
+  why3;
+end;
+
+opaque symbol tyvar (a: U) (q: T a → T o): P (ex a (λ n: T a, imp (q n) (q n)))
+≔ begin
+  why3;
+end; 
