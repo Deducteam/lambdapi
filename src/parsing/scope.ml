@@ -255,7 +255,7 @@ and scope_binder :
       match idopts with
       | [] -> scope_params_list n env params_list
       | None::idopts ->
-          let v = if n = 0 then new_tvar "_" else new_tvar_ind "_" n in
+          let v = if n = 0 then new_var "_" else new_var_ind "_" n in
           let t = aux (n+1) env idopts in
           cons (a, bind_var v t)
       | Some {elt=id;_}::idopts ->
