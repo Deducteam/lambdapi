@@ -46,9 +46,9 @@ let add_axiom : Sig_state.t -> popt -> meta -> sym =
      substituted by the terms of the explicit substitution of the
      metavariable. *)
   let meta_value =
-    let vars = Array.init m.meta_arity (new_tvar_ind "x") in
-    let ax = _Appl_Symb sym (Array.to_list vars |> List.map _Vari) in
-    Bindlib.(bind_mvar vars ax |> unbox)
+    let vars = Array.init m.meta_arity (new_var_ind "x") in
+    let ax = add_args (mk_Symb sym) (List.map mk_Vari (Array.to_list vars)) in
+    bind_mvar vars ax
   in
   LibMeta.set (new_problem()) m meta_value; sym
 
@@ -130,7 +130,7 @@ let tac_refine : ?check:bool ->
   in
   if Logger.log_enabled () then
     log (Color.red "%a ≔ %a") meta gt.goal_meta term t;
-  LibMeta.set p gt.goal_meta (binds (Env.vars gt.goal_hyps) lift t);
+  LibMeta.set p gt.goal_meta (bind_mvar (Env.vars gt.goal_hyps) t);
   (* Convert the metas and constraints of [p] not in [gs] into new goals. *)
   if Logger.log_enabled () then log "%a" problem p;
   tac_solve pos {ps with proof_goals = Proof.add_goals_of_problem p gs}
@@ -181,7 +181,7 @@ let tac_induction : popt -> proof_state -> goal_typ -> goal list
 let count_products : ctxt -> term -> int = fun c ->
   let rec count acc t =
     match Eval.whnf c t with
-    | Prod(_,b) -> count (acc + 1) (Bindlib.subst b mk_Kind)
+    | Prod(_,b) -> count (acc + 1) (subst b mk_Kind)
     | _ -> acc
   in count 0
 
@@ -257,8 +257,22 @@ let rec handle :
       List.iter (Option.iter check) idopts;
       (* Check that the given identifiers are pairwise distinct. *)
       Syntax.check_distinct_idopts idopts;
-      let p = new_problem() in
-      tac_refine pos ps gt gs p (scope (P.abst_list idopts P.wild))
+      let p = new_problem() and t = P.abst_list idopts P.wild in
+      let ps = tac_refine pos ps gt gs p (scope t) in
+      (* Rename assumed variables. *)
+      begin match ps.proof_goals with
+        | Typ gt::gs ->
+          let rec rename env idopts =
+            match env, idopts with
+            | x::env, None::idopts -> x::rename env idopts
+            | (_,v)::env, Some n::idopts -> (n.elt,v)::rename env idopts
+            | env, [] -> env
+            | [], _ -> assert false
+          in
+          let goal_hyps = rename gt.goal_hyps (List.rev idopts) in
+          {ps with proof_goals = Typ{gt with goal_hyps}::gs}
+        | _ -> assert false
+      end
   | P_tac_generalize {elt=id; pos=idpos} ->
       (* From a goal [e1,id:a,e2 ⊢ ?[e1,id,e2] : u], generate a new goal [e1 ⊢
          ?m[e1] : Π id:a, Π e2, u], and refine [?[e]] with [?m[e1] id e2]. *)
@@ -266,10 +280,10 @@ let rec handle :
         try
           let p = new_problem() in
           let e2, x, e1 = List.split (fun (s,_) -> s = id) env in
-          let u = lift gt.goal_type in
-          let q = Env.to_prod_box [x] (Env.to_prod_box e2 u) in
+          let u = gt.goal_type in
+          let q = Env.to_prod [x] (Env.to_prod e2 u) in
           let m = LibMeta.fresh p (Env.to_prod e1 q) (List.length e1) in
-          let me1 = Bindlib.unbox (_Meta m (Env.to_tbox e1)) in
+          let me1 = mk_Meta (m, Env.to_terms e1) in
           let t =
             List.fold_left (fun t (_,(v,_,_)) -> mk_Appl(t, mk_Vari v))
               me1 (x :: List.rev e2)
@@ -291,16 +305,13 @@ let rec handle :
         | Some t ->
         (* Create a new goal of type [t]. *)
         let n = List.length env in
-        let bt = lift t in
-        let m1 = LibMeta.fresh p (Env.to_prod env bt) n in
+        let m1 = LibMeta.fresh p (Env.to_prod env t) n in
         (* Refine the focused goal. *)
-        let v = new_tvar id.elt in
-        let env' = Env.add v bt None env in
-        let m2 =
-          LibMeta.fresh p (Env.to_prod env' (lift gt.goal_type)) (n+1)
-        in
-        let ts = Env.to_tbox env in
-        let u = Bindlib.unbox (_Meta m2 (Array.append ts [|_Meta m1 ts|])) in
+        let v = new_var id.elt in
+        let env' = Env.add id.elt v t None env in
+        let m2 = LibMeta.fresh p (Env.to_prod env' gt.goal_type) (n+1) in
+        let ts = Env.to_terms env in
+        let u = mk_Meta (m2, Array.append ts [|mk_Meta (m1, ts)|]) in
         tac_refine pos ps gt gs p u
       end
   | P_tac_set(id,t) ->
@@ -314,15 +325,13 @@ let rec handle :
         match Infer.infer_noexn p c t with
         | None -> fatal pos "%a is not typable." term t
         | Some (t,b) ->
-          let x = new_tvar id.elt in
-          let bt = lift t in
-          let e' = Env.add x (lift b) (Some bt) env in
-          let a = lift gt.goal_type in
+          let x = new_var id.elt in
+          let e' = Env.add id.elt x b (Some t) env in
+          let a = gt.goal_type in
           let m = LibMeta.fresh p (Env.to_prod e' a) (List.length e') in
-          let u = _Meta m (Array.append (Env.to_tbox env) [|bt|]) in
+          let u = mk_Meta(m, Array.append (Env.to_terms env) [|t|]) in
           (*tac_refine pos ps gt gs p (Bindlib.unbox u)*)
-          LibMeta.set p gt.goal_meta
-            (Bindlib.unbox (Bindlib.bind_mvar (Env.vars env) u));
+          LibMeta.set p gt.goal_meta (bind_mvar (Env.vars env) u);
           (*let g = Goal.of_meta m in*)
           let g = Typ {goal_meta=m; goal_hyps=e'; goal_type=gt.goal_type} in
           {ps with proof_goals = g :: gs}
@@ -359,16 +368,15 @@ let rec handle :
             let n = m.meta_arity - 1 in
             let a = cleanup !(m.meta_type) in (* cleanup necessary *)
             let b = LibTerm.codom_binder (n - k) a in
-            if Bindlib.binder_occur b then
+            if binder_occur b then
               fatal id.pos "%s cannot be removed because of dependencies."
                 id.elt;
             let env' = List.filter (fun (s,_) -> s <> id.elt) env in
-            let a' = Env.to_prod env' (lift gt.goal_type) in
+            let a' = Env.to_prod env' gt.goal_type in
             let p = new_problem() in
             let m' = LibMeta.fresh p a' n in
-            let t = _Meta m' (Env.to_tbox env') in
-            let v = Bindlib.bind_mvar (Env.vars env) t in
-            LibMeta.set p m (Bindlib.unbox v);
+            let t = mk_Meta(m',Env.to_terms env') in
+            LibMeta.set p m (bind_mvar (Env.vars env) t);
             Goal.of_meta m'
       in
       Syntax.check_distinct ids;
