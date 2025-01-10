@@ -139,6 +139,8 @@ let assoc_eq : 'a eq -> 'a -> ('a * 'b) list -> 'b = fun eq k ->
     | _ :: t -> loop t
   in loop
 
+let assoc_eq_opt eq x l = try Some (assoc_eq eq x l) with Not_found -> None
+
 (** [remove_phys_dups l] uniqify list [l] keeping only the last element, using
     physical equality. *)
 let rec remove_phys_dups : 'a list -> 'a list = function
