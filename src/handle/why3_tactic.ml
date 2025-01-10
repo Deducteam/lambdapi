@@ -415,10 +415,10 @@ let run : Why3.Task.task -> Pos.popt -> string -> bool =
   in
   (* Actually run the prover. *)
   let command = prover.Why3.Whyconf.command
-  and limit = {Why3.Call_provers.empty_limit
-              with limit_time = float_of_int!timeout} in
+  and limits = {Why3.Call_provers.empty_limits
+              with limit_time = float_of_int !timeout} in
   let call =
-    Why3.Driver.prove_task ~command ~config:why3_main ~limit driver tsk in
+    Why3.Driver.prove_task ~command ~config:why3_main ~limits driver tsk in
   Why3.Call_provers.((wait_on_call call).pr_answer = Valid)
 
 (** [handle ss pos prover_name gt] runs the Why3 prover corresponding to
