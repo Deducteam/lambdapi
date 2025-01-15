@@ -40,6 +40,7 @@ Some users
 - [Frédéric Blanqui](https://blanqui.gitlabpages.inria.fr/): translation of HOL-Light proofs to Coq [[github]](https://github.com/Deducteam/hol2dk) [[LPAR'24]](https://doi.org/10.29007/6k4x)
 - Nicolas Margulies: a formalization of cubical type theory in Lambdapi [[github]](https://github.com/nicomarg/CubicalDk)
 - [Thomas Traversié](https://thomastraversie.github.io/): implementation of set theory with pointed graphs [[LFMTP'22]](https://hal.inria.fr/hal-03740004)
+- Luc Chabassier: formalization of some category theory [[github]](https://github.com/dwarfmaster/categories-in-lp) and of extensional type theory [[github]](https://github.com/dwarfmaster/ett-in-lambdapi)
 - [Quentin Garchery](https://www.lri.fr/~garchery/): certification of Why3 proof task transformations in Lambdapi [[PhD thesis]](https://inria.hal.science/tel-03560564)
 - Gabriel Hondet: translation of PVS statements to Lambdapi [[github]](https://github.com/Deducteam/personoj) [[PhD thesis]](https://inria.hal.science/tel-03855351)
  
