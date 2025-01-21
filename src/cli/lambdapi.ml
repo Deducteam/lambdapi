@@ -104,7 +104,7 @@ type output = Lp | Dk | RawDk | Hrs | Xtc | RawCoq | SttCoq
 
 (** Running the export mode. *)
 let export_cmd (cfg:Config.t) (output:output option) (encoding:string option)
-      (erasing:string option) (renaming:string option)
+      (mapping:string option) (renaming:string option)
       (requiring:string option) (no_implicits:bool) (use_notations:bool)
       (file:string) : unit =
   let run _ =
@@ -128,7 +128,7 @@ let export_cmd (cfg:Config.t) (output:output option) (encoding:string option)
         Export.Coq.stt := true;
         Option.iter Export.Coq.set_renaming renaming;
         Option.iter Export.Coq.set_encoding encoding;
-        Option.iter Export.Coq.set_erasing erasing;
+        Option.iter Export.Coq.set_mapping mapping;
         Option.iter Export.Coq.set_requiring requiring;
         Export.Coq.print (Parser.parse_file file)
   in Error.handle_exceptions run
@@ -275,14 +275,14 @@ let renaming : string option CLT.t =
   let doc = "Set config file for the command export -o stt_coq." in
   Arg.(value & opt (some renaming) None & info ["renaming"] ~docv:"FILE" ~doc)
 
-let erasing : string option CLT.t =
-  let erasing : string Arg.conv =
+let mapping : string option CLT.t =
+  let mapping : string Arg.conv =
     let parse (s: string) : (string, [>`Msg of string]) result = Ok s in
     let print fmt s = string fmt s in
     Arg.conv (parse, print)
   in
   let doc = "Set config file for the command export -o stt_coq." in
-  Arg.(value & opt (some erasing) None & info ["erasing"] ~docv:"FILE" ~doc)
+  Arg.(value & opt (some mapping) None & info ["mapping"] ~docv:"FILE" ~doc)
 
 let requiring : string option CLT.t =
   let requiring : string Arg.conv =
@@ -372,7 +372,7 @@ let parse_cmd =
 let export_cmd =
   let doc = "Translate the given files to other formats." in
   Cmd.v (Cmd.info "export" ~doc ~man:man_pkg_file)
-    CLT.(const export_cmd $ Config.full $ output $ encoding $ erasing
+    CLT.(const export_cmd $ Config.full $ output $ encoding $ mapping
          $ renaming $ requiring $ no_implicits $ use_notations $ file)
 
 let lsp_server_cmd =

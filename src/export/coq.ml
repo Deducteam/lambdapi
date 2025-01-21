@@ -88,7 +88,7 @@ module QidMap = Map.Make(Qid)
 
 let map_erased_qid_coq = ref QidMap.empty
 
-let set_erasing : string -> unit = fun f ->
+let set_mapping : string -> unit = fun f ->
   let consume = function
     | {elt=P_builtin(coq_id,lp_qid);_} ->
         if Logger.log_enabled() then
