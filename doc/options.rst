@@ -40,7 +40,7 @@ immediately stops on the first failure, without going to the next file
 
 **Remark on index:**
 
-The ``index`` command generates the file ``~/.LPSearch.db``. This file contains an indexation of all the symbols and rules occurring in the dk/lp files given in argument. By default, the file ``~/.LPSearch.db`` is erased first. To append new symbols and rules, use the option ``--add``. It is also possile to normalize terms wrt some rules before indexation by using ``--rules`` options.
+The ``index`` command generates the file ``~/.LPSearch.db`` if ``$HOME`` is defined, and ``.LPSearch.db`` otherwise. This file contains an indexation of all the symbols and rules occurring in the dk/lp files given in argument. By default, the db file is erased first. To append new symbols and rules, use the option ``--add``. It is also possile to normalize terms wrt some rules before indexation by using ``--rules`` options.
 
 **Remark on search:**
 
