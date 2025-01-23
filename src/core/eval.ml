@@ -115,24 +115,24 @@ type config = Config.t
 
 (** [eq_alpha a b] tests the equality modulo alpha of [a] and [b]. *)
 let rec eq_alpha a b =
- match unfold a, unfold b with
- | Vari x, Vari y -> Bindlib.eq_vars x y
- | Type, Type
- | Kind, Kind -> true
- | Symb s1, Symb s2 -> s1==s2
- | Prod(a1,b1), Prod(a2,b2)
- | Abst(a1,b1), Abst(a2,b2) ->
-   eq_alpha a1 a2 && let _,b1,b2 = Bindlib.unbind2 b1 b2 in eq_alpha b1 b2
- | Appl(a1,b1), Appl(a2,b2) -> eq_alpha a1 a2 && eq_alpha b1 b2
- | Meta(m1,a1), Meta(m2,a2) -> m1 == m2 && Array.for_all2 eq_alpha a1 a2
- | LLet(a1,t1,u1), LLet(a2,t2,u2) ->
-     eq_alpha a1 a2 && eq_alpha t1 t2
-     && let _,u1,u2 = Bindlib.unbind2 u1 u2 in eq_alpha u1 u2
- | Patt(Some i,_,ts), Patt(Some j,_,us) ->
-     i=j && Array.for_all2 eq_alpha ts us
- | Patt(None,_,_), _ | _, Patt(None,_,_) -> assert false
- | TEnv _, _| _, TEnv _ -> assert false
- | _ -> false
+  match unfold a, unfold b with
+  | Vari x, Vari y -> Bindlib.eq_vars x y
+  | Type, Type
+  | Kind, Kind -> true
+  | Symb s1, Symb s2 -> s1==s2
+  | Prod(a1,b1), Prod(a2,b2)
+  | Abst(a1,b1), Abst(a2,b2) ->
+      eq_alpha a1 a2 && let _,b1,b2 = Bindlib.unbind2 b1 b2 in eq_alpha b1 b2
+  | Appl(a1,b1), Appl(a2,b2) -> eq_alpha a1 a2 && eq_alpha b1 b2
+  | Meta(m1,a1), Meta(m2,a2) -> m1 == m2 && Array.for_all2 eq_alpha a1 a2
+  | LLet(a1,t1,u1), LLet(a2,t2,u2) ->
+      eq_alpha a1 a2 && eq_alpha t1 t2
+      && let _,u1,u2 = Bindlib.unbind2 u1 u2 in eq_alpha u1 u2
+  | Patt(Some i,_,ts), Patt(Some j,_,us) ->
+      i=j && Array.for_all2 eq_alpha ts us
+  | Patt(None,_,_), _ | _, Patt(None,_,_) -> assert false
+  | TEnv _, _| _, TEnv _ -> assert false
+  | _ -> false
 
 (** [eq_modulo whnf a b] tests the convertibility of [a] and [b] using
     [whnf]. *)
