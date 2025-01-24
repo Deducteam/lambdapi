@@ -1,12 +1,12 @@
 symbol B:TYPE;
 
-symbol 0:B;
+symbol O:B;
 associative commutative symbol +:B → B → B; notation + infix right 20;
 
-rule 0 + $x ↪ $x
-with $x + 0 ↪ $x
-with $x + $x ↪ 0;
+rule O + $x ↪ $x
+with $x + O ↪ $x
+with $x + $x ↪ O;
 
-compute λ x, (x + 0) + (x + x + x);
+compute λ x, (x + O) + (x + x + x);
 
-assert x ⊢ x + 0 ≡ x + x + x;
+assert x ⊢ x + O ≡ x + x + x;

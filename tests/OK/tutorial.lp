@@ -25,19 +25,14 @@ symbol zero : ℕ; // is an object declaration
 symbol succ : ℕ → ℕ; /* means that "succ" takes an argument of type ℕ
   and returns something of type ℕ. */
 
-/* We can use the usual decimal notation for natural numbers by mapping
-Lambdapi builtin symbols to user-defined symbols: */
-builtin "0" ≔ zero;
-builtin "+1" ≔ succ;
-
 // We can make definitions as follows:
-symbol ten ≔ 10;
+symbol one ≔ succ zero;
 
 // We can ask Lambdapi the type of a term:
-type ten;
+type one;
 
 // We can check that a term has a given type:
-assert ⊢ ten : ℕ;
+assert ⊢ one : ℕ;
 
 // or that a term does not have a given type:
 assertnot ⊢ succ : ℕ;
@@ -268,7 +263,7 @@ rules:
   ind_Nat $v0_p0 $v1_z $v2_s z ↪ $v1_z
   ind_Nat $v0_p0 $v1_z $v2_s (s $v3_x0) ↪ $v2_s $v3_x0 (ind_Nat $v0_p0 $v1_z $v2_s $v3_x0)
 */
-print ten; // to see the definition of ten
+print one; // to see the definition of ten
 print +; // to see the type, notation and rules of +
 
 /* It is also possible now to replace the tactic "refine ind_Nat _ _ _"

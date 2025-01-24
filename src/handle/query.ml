@@ -68,7 +68,8 @@ let handle : Sig_state.t -> proof_state option -> p_query -> result =
       None
   | P_query_verbose(i) ->
       let i = try int_of_string i with Failure _ ->
-        fatal pos "Too big number (max is %d)" max_int in
+                fatal pos "Too big number (max is %d)" max_int in
+      if i < 0 then fatal pos "Negative number";
       if Timed.(!Console.verbose) = 0 then
         (Timed.(Console.verbose := i);
          Console.out 1 "verbose %i" i)
@@ -84,8 +85,10 @@ let handle : Sig_state.t -> proof_state option -> p_query -> result =
   | P_query_prover(s) -> Timed.(Why3_tactic.default_prover := s); None
   | P_query_prover_timeout(n) ->
       let n = try int_of_string n with Failure _ ->
-        fatal pos "Too big number (max is %d)" max_int in
-      Timed.(Why3_tactic.timeout := n); None
+                fatal pos "Too big number (max is %d)" max_int in
+      if n < 0 then fatal pos "Negative number";
+      Timed.(Why3_tactic.timeout := n);
+      None
   | P_query_print(None) ->
       begin
         match ps with

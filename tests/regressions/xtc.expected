@@ -5,10 +5,10 @@
     <rules>
       <rule>
         <lhs>
-          <funapp><name>tests.OK.group.inv</name><arg><funapp><name>tests.OK.group.1</name></funapp></arg></funapp>
+          <funapp><name>tests.OK.group.inv</name><arg><funapp><name>tests.OK.group.e</name></funapp></arg></funapp>
         </lhs>
         <rhs>
-          <funapp><name>tests.OK.group.1</name></funapp>
+          <funapp><name>tests.OK.group.e</name></funapp>
         </rhs>
       </rule>
       <rule>
@@ -37,7 +37,7 @@
       </rule>
       <rule>
         <lhs>
-          <funapp><name>tests.OK.group.⋅</name><arg><funapp><name>tests.OK.group.1</name></funapp></arg><arg><var>5_0</var></arg></funapp>
+          <funapp><name>tests.OK.group.⋅</name><arg><funapp><name>tests.OK.group.e</name></funapp></arg><arg><var>5_0</var></arg></funapp>
         </lhs>
         <rhs>
           <var>5_0</var>
@@ -45,7 +45,7 @@
       </rule>
       <rule>
         <lhs>
-          <funapp><name>tests.OK.group.⋅</name><arg><var>6_0</var></arg><arg><funapp><name>tests.OK.group.1</name></funapp></arg></funapp>
+          <funapp><name>tests.OK.group.⋅</name><arg><var>6_0</var></arg><arg><funapp><name>tests.OK.group.e</name></funapp></arg></funapp>
         </lhs>
         <rhs>
           <var>6_0</var>
@@ -56,7 +56,7 @@
           <funapp><name>tests.OK.group.⋅</name><arg><funapp><name>tests.OK.group.inv</name><arg><var>7_0</var></arg></funapp></arg><arg><var>7_0</var></arg></funapp>
         </lhs>
         <rhs>
-          <funapp><name>tests.OK.group.1</name></funapp>
+          <funapp><name>tests.OK.group.e</name></funapp>
         </rhs>
       </rule>
       <rule>
@@ -64,7 +64,7 @@
           <funapp><name>tests.OK.group.⋅</name><arg><var>8_0</var></arg><arg><funapp><name>tests.OK.group.inv</name><arg><var>8_0</var></arg></funapp></arg></funapp>
         </lhs>
         <rhs>
-          <funapp><name>tests.OK.group.1</name></funapp>
+          <funapp><name>tests.OK.group.e</name></funapp>
         </rhs>
       </rule>
       <rule>
@@ -145,7 +145,7 @@
       </variableTypeInfo>
       <functionSymbolTypeInfo>
         <funcDeclaration>
-          <name>tests.OK.group.1</name>
+          <name>tests.OK.group.e</name>
           <typeDeclaration><type><basic>tests.OK.group.G</basic></type></typeDeclaration>
         </funcDeclaration>
         <funcDeclaration>

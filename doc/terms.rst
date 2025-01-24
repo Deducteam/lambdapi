@@ -8,7 +8,8 @@ Identifiers
 An identifier can be:
 
 * a *regular* identifier: ``/`` or an arbitrary non-empty sequence of
-  UTF-8 codepoints not among ``\t\r\n :,;`(){}[]".@$|?/``
+  UTF-8 codepoints not among ``\t\r\n :,;`(){}[]".@$|?/`` that is not
+  an integer number
 
 * an *escaped* identifier: an arbitrary sequence of characters
   enclosed between ``{|`` and ``|}``
@@ -76,8 +77,7 @@ A user-defined term can be either:
   variable in a rule left-hand side, applied to all the variables of
   the context.
 
-* an integer between 0 and 2^30-1 if the :ref:`builtins <builtin>`
-  ``"0"`` and ``"+1"`` are defined
+* an integer if the appropriate :ref:`builtins <builtin>` are defined
 
 * a term enclosed between square brackets ``[`` … ``]`` for explicitly
   giving the value of an argument declared as implicit

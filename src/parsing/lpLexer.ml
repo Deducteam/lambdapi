@@ -92,8 +92,7 @@ type token =
   (* other tokens *)
   | DEBUG_FLAGS of (bool * string)
       (* Tuple constructor (with parens) required by Menhir. *)
-  | NAT of string
-  | NEG_NAT of string
+  | INT of string
   | FLOAT of string
   | SIDE of Pratter.associativity
   | STRINGLIT of string
@@ -132,10 +131,9 @@ type token =
 (** Some regexp definitions. *)
 let space = [%sedlex.regexp? Chars " \t\n\r"]
 let digit = [%sedlex.regexp? '0' .. '9']
-let pos = [%sedlex.regexp? ('1' .. '9', Star digit)]
-let nat = [%sedlex.regexp? '0' | pos]
-let neg_nat = [%sedlex.regexp? '-', pos]
-let float = [%sedlex.regexp? (nat | neg_nat), '.', Plus digit]
+let nat = [%sedlex.regexp? Star digit]
+let int = [%sedlex.regexp? nat | '-', nat]
+let float = [%sedlex.regexp? int, '.', Plus digit]
 let oneline_comment = [%sedlex.regexp? "//", Star (Compl ('\n' | '\r'))]
 let string = [%sedlex.regexp? '"', Star (Compl '"'), '"']
 
@@ -266,8 +264,7 @@ let rec token lb =
   (* other tokens *)
   | '+', Plus lowercase -> DEBUG_FLAGS(true, remove_first lb)
   | '-', Plus lowercase -> DEBUG_FLAGS(false, remove_first lb)
-  | neg_nat -> NEG_NAT(Utf8.lexeme lb)
-  | nat -> NAT(Utf8.lexeme lb)
+  | int -> INT(Utf8.lexeme lb)
   | float -> FLOAT(Utf8.lexeme lb)
   | string -> STRINGLIT(Utf8.sub_lexeme lb 1 (lexeme_length lb - 2))
 

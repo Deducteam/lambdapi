@@ -275,14 +275,19 @@ identifiers for zero and the successor function (see hereafter); to
 use tactics on equality, one needs to define some specific builtins;
 etc.
 
-**notation for natural numbers** It is possible to use the standard
-decimal notation for natural numbers by defining the builtins ``"0"``
-and ``"+1"`` as follows:
+**decimal notation for integers** It is possible to use the standard
+decimal notation for integers by defining the builtins ``"0"`` to
+``"10"``, ``"+"``, ``"*"``, and ``"-"`` (optional):
 
 ::
 
-   builtin "0"  ≔ zero; // : N
-   builtin "+1" ≔ succ; // : N → N
+   builtin "0"  ≔ ...;  // : N
+   builtin "1"  ≔ ...;  // : N
+   ...
+   builtin "10" := ...; // : N
+   builtin "+" := ....; // : N → N → N
+   builtin "*" := ....; // : N → N → N
+   builtin "-" := ....; // : N → N // (optional)
    type 42;
 
 .. _opaque:

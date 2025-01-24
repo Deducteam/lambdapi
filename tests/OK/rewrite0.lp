@@ -26,16 +26,13 @@ symbol N ≔ T nat;
 constant symbol z : N;
 constant symbol s : N → N;
 
-builtin "0"  ≔ z;
-builtin "+1" ≔ s;
-
 // Addition on natural numbers.
 
 symbol + : N → N → N;
 
 notation + infix left 3;
 
-rule 0 + $x ↪ $x
+rule z + $x ↪ $x
 with s $x + $y ↪ s ($x + $y);
 
 // Multiplication on natural numbers.
@@ -44,7 +41,7 @@ symbol * : N → N → N;
 
 notation * infix left 4;
 
-rule 0 * _  ↪ 0
+rule z * _  ↪ z
 with s $x * $y ↪ $y + $x * $y;
 
 // Type of propositions and their interpretation as types.
@@ -59,19 +56,19 @@ rule P (all $f) ↪ Π x, P ($f x);
 
 // Induction principle on N.
 
-symbol nat_ind p : P(p 0) → (Π n, P(p n) → P(p (s n))) → Π n, P(p n);
+symbol nat_ind p : P(p z) → (Π n, P(p n) → P(p (s n))) → Π n, P(p n);
 
-rule nat_ind _  $u _  0      ↪ $u
+rule nat_ind _  $u _  z      ↪ $u
 with nat_ind $p $u $v (s $n) ↪ $v $n (nat_ind $p $u $v $n);
 
 // Boolean equality on N.
 
 symbol beq : N → N → B;
 
-rule beq 0      0      ↪ true
+rule beq z      z      ↪ true
 with beq (s $x) (s $y) ↪ beq $x $y
-with beq 0      (s _ ) ↪ false
-with beq (s _ ) 0      ↪ false;
+with beq z      (s _ ) ↪ false
+with beq (s _ ) z      ↪ false;
 
 // Leibniz equality.
 
@@ -97,7 +94,7 @@ opaque symbol add_succ_r n m : P (n + s m = s (n + m))
 ≔ begin
   assume n m;
   refine nat_ind (λ n, n + s m = s (n + m)) _ _ n
-  { // Case 0;
+  { // Case z;
   simplify;
   reflexivity }
   { // Case s;
