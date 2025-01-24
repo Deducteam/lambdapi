@@ -40,7 +40,7 @@ immediately stops on the first failure, without going to the next file
 
 **Remark on index:**
 
-The ``index`` command generates the file ``~/.LPSearch.db``. This file contains an indexation of all the symbols and rules occurring in the dk/lp files given in argument. By default, the file ``~/.LPSearch.db`` is erased first. To append new symbols and rules, use the option ``--add``. It is also possile to normalize terms wrt some rules before indexation by using ``--rules`` options.
+The ``index`` command generates the file ``~/.LPSearch.db`` if ``$HOME`` is defined, and ``.LPSearch.db`` otherwise. This file contains an indexation of all the symbols and rules occurring in the dk/lp files given in argument. By default, the db file is erased first. To append new symbols and rules, use the option ``--add``. It is also possile to normalize terms wrt some rules before indexation by using ``--rules`` options.
 
 **Remark on search:**
 
@@ -132,7 +132,7 @@ It instructs Lambdapi to replace any occurrence of the unqualified identifier ``
 
 if the symbols corresponding to the builtins ``"arr"``, ``"imp"`` and ``"all"`` occurs partially applied in the input file. Example: `coq.v <https://github.com/Deducteam/lambdapi/blob/master/libraries/coq.v>`__.
 
-* ``--erasing <LP_FILE>`` where ``<LP_FILE>`` contains a sequence of builtin declarations like for the option ``--renaming`` except that, this time, ``lp_id`` can be a qualified identifier. It has the same effect as the option ``--renaming`` plus it removes any declaration of the renamed symbols. ``coq_expr`` therefore needs to be defined in Coq standard library or in the Coq file specified with the option ``--requiring``. It is not necessary to have entries for the symbols corresponding to the builtins ``"El"`` and ``"Prf"`` declared with the option ``--encoding`` since they are erased automatically. Example: `erasing.lp <https://github.com/Deducteam/lambdapi/blob/master/libraries/erasing.lp>`__.
+* ``--mapping <LP_FILE>`` where ``<LP_FILE>`` contains a sequence of builtin declarations like for the option ``--renaming`` except that, this time, ``lp_id`` can be a qualified identifier. It has the same effect as the option ``--renaming`` plus it removes any declaration of the renamed symbols. ``coq_expr`` therefore needs to be defined in Coq standard library or in the Coq file specified with the option ``--requiring``. It is not necessary to have entries for the symbols corresponding to the builtins ``"El"`` and ``"Prf"`` declared with the option ``--encoding`` since they are erased automatically. Example: `mapping.lp <https://github.com/Deducteam/lambdapi/blob/master/libraries/mapping.lp>`__.
 
 * ``--use-notations`` instructs Lambdapi to use the usual Coq notations for the symbols corresponding to the builtins ``"eq"``, ``"not"``, ``"and"`` and ``"or"``.
 
