@@ -15,7 +15,7 @@ do
 done
 sed -i -e 's/^hol.//' -e 's/def hol./def /' -e 's/thm hol./thm /' hol.dk
 
-# because "type" is not accepted in erasing.lp
+# because "type" is not accepted in mapping.lp
 echo replace \"hol.type\" by \"hol.typ\" in all dk files ...
 sed -i -e 's/^type /typ /' hol.dk
 sed -i -e 's/hol.type/hol.typ/g' *.dk
