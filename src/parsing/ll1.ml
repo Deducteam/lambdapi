@@ -40,6 +40,7 @@ let string_of_token = function
   | INDUCTIVE -> "inductive"
   | INFIX -> "infix"
   | INJECTIVE -> "injective"
+  | INT _ -> "integer"
   | LET -> "let"
   | NOTATION -> "notation"
   | OPAQUE -> "opaque"
@@ -74,8 +75,6 @@ let string_of_token = function
   | WHY3 -> "why3"
   | WITH -> "with"
   | DEBUG_FLAGS _ -> "debug flags"
-  | NAT _ -> "natural number"
-  | NEG_NAT _ -> "negative integer"
   | FLOAT _ -> "float"
   | SIDE _ -> "left or right"
   | STRINGLIT _ -> "string literal"
@@ -199,13 +198,13 @@ let consume_SWITCH (lb:lexbuf): bool =
   | _ ->
       expected "" [SWITCH true]
 
-let consume_NAT (lb:lexbuf): string =
+let consume_INT (lb:lexbuf): string =
   match current_token() with
-  | NAT s ->
+  | INT s ->
       consume_token lb;
       s
   | _ ->
-      expected "" [NAT""]
+      expected "" [INT""]
 
 let qid (lb:lexbuf): (string list * string) loc =
   (*if log_enabled() then log "Expected: %s" __FUNCTION__;*)
@@ -248,8 +247,7 @@ let uid (lb:lexbuf): string loc =
 let param (lb:lexbuf): string loc option =
   (*if log_enabled() then log "Expected: %s" __FUNCTION__;*)
   match current_token() with
-  | UID s
-  | NAT s ->
+  | UID s ->
       let pos1 = current_pos() in
       consume_token lb;
       Some (make_pos pos1 s)
@@ -257,56 +255,26 @@ let param (lb:lexbuf): string loc option =
       consume_token lb;
       None
   | _ ->
-      expected "non-qualified identifier or \"_\"" [UID"";NAT"";UNDERSCORE]
+      expected "non-qualified identifier or \"_\"" [UID"";UNDERSCORE]
 
 let int (lb:lexbuf): string =
   (*if log_enabled() then log "Expected: %s" __FUNCTION__;*)
   match current_token() with
-  | NAT s
-  | NEG_NAT s ->
+  | INT s ->
       consume_token lb;
       s
   | _ ->
-      expected "integer" [NAT"";NEG_NAT""]
+      expected "integer" [INT""]
 
 let float_or_int (lb:lexbuf): string =
   (*if log_enabled() then log "Expected: %s" __FUNCTION__;*)
   match current_token() with
-  | NAT s
-  | NEG_NAT s
+  | INT s
   | FLOAT s ->
       consume_token lb;
       s
   | _ ->
-      expected "integer or float" [NAT"";NEG_NAT"";FLOAT""]
-
-let uid_or_int (lb:lexbuf): string loc =
-  (*if log_enabled() then log "Expected: %s" __FUNCTION__;*)
-  match current_token() with
-  | UID s
-  | NAT s
-  | NEG_NAT s ->
-      let pos1 = current_pos() in
-      consume_token lb;
-      make_pos pos1 s
-  | _ ->
-      expected "non-qualified identifier" [UID"";NAT"";NEG_NAT""]
-
-let qid_or_int (lb:lexbuf): (string list * string) loc =
-  (*if log_enabled() then log "Expected: %s" __FUNCTION__;*)
-  match current_token() with
-  | QID p ->
-      let pos1 = current_pos() in
-      consume_token lb;
-      qid_of_path pos1 p
-  | UID s
-  | NAT s
-  | NEG_NAT s ->
-      let pos1 = current_pos() in
-      consume_token lb;
-      make_pos pos1 ([],s)
-  | _ ->
-      expected "possibly qualified identifier" [UID"";QID[];NAT"";NEG_NAT""]
+      expected "integer or float" [INT"";FLOAT""]
 
 let path (lb:lexbuf): string list loc =
   (*if log_enabled() then log "Expected: %s" __FUNCTION__;*)
@@ -376,15 +344,13 @@ let rec command pos1 p_sym_mod (lb:lexbuf): p_command =
       assert (p_sym_mod = []);
       let pos1 = current_pos() in
       command pos1 (nelist modifier lb) lb
-  (* qid_or_int *)
+  (* qid *)
   | UID _
-  | QID _
-  | NAT _
-  | NEG_NAT _ ->
+  | QID _ ->
       begin
         match p_sym_mod with
         | [{elt=P_opaq;_}] ->
-            let i = qid_or_int lb in
+            let i = qid lb in
             make_pos pos1 (P_opaque i)
         | [] ->
             expected "command keyword missing" []
@@ -429,7 +395,7 @@ let rec command pos1 p_sym_mod (lb:lexbuf): p_command =
   | SYMBOL ->
       let pos1 = current_pos() in
       consume_token lb;
-      let p_sym_nam = uid_or_int lb in
+      let p_sym_nam = uid lb in
       let p_sym_arg = list params lb in
       begin
         match current_token() with
@@ -534,7 +500,7 @@ let rec command pos1 p_sym_mod (lb:lexbuf): p_command =
         | STRINGLIT s ->
             consume_token lb;
             consume ASSIGN lb;
-            let i = qid_or_int lb in
+            let i = qid lb in
             make_pos pos1 (P_builtin(s,i))
         | _ ->
             expected "" [STRINGLIT""]
@@ -543,7 +509,7 @@ let rec command pos1 p_sym_mod (lb:lexbuf): p_command =
       if p_sym_mod <> [] then expected "" [SYMBOL]; (*or modifiers*)
       let pos1 = current_pos() in
       consume_token lb;
-      let i = qid_or_int lb in
+      let i = qid lb in
       let n = notation lb in
       make_pos pos1 (P_notation(i,n))
   | _ ->
@@ -564,9 +530,7 @@ and inductive (lb:lexbuf): p_inductive =
   consume ASSIGN lb;
   begin
     match current_token() with
-    | UID _
-    | NAT _
-    | NEG_NAT _ ->
+    | UID _ ->
         let c = constructor lb in
         let cs = list (prefix VBAR constructor) lb in
         let l = c::cs in
@@ -582,7 +546,7 @@ and inductive (lb:lexbuf): p_inductive =
     end
 
 and constructor (lb:lexbuf): p_ident * p_term =
-  let i = uid_or_int lb in
+  let i = uid lb in
   let pos1 = current_pos() in
   let ps = list params lb in
   consume COLON lb;
@@ -757,12 +721,12 @@ and query (lb:lexbuf): p_query =
   | PROVER_TIMEOUT ->
       let pos1 = current_pos() in
       consume_token lb;
-      let n = consume_NAT lb in
+      let n = consume_INT lb in
       make_pos pos1 (P_query_prover_timeout n)
   | VERBOSE ->
       let pos1 = current_pos() in
       consume_token lb;
-      let n = consume_NAT lb in
+      let n = consume_INT lb in
       make_pos pos1 (P_query_verbose n)
   | TYPE_QUERY ->
       let pos1 = current_pos() in
@@ -1029,10 +993,8 @@ and tactic (lb:lexbuf): p_tactic =
       begin
         match current_token() with
         | UID _
-        | QID _
-        | NAT _
-        | NEG_NAT _ ->
-            let i = Some (qid_or_int lb) in
+        | QID _ ->
+            let i = Some (qid lb) in
             make_pos pos1 (P_tac_simpl i)
         | _ ->
             let i = None in
@@ -1083,8 +1045,7 @@ and rw_patt (lb:lexbuf): p_rw_patt =
   | UID_PATT _
   | L_PAREN
   | L_SQ_BRACKET
-  | NAT _
-  | NEG_NAT _ ->
+  | INT _ ->
       let pos1 = current_pos() in
       let t1 = term lb in
       begin
@@ -1208,8 +1169,7 @@ and term (lb:lexbuf): p_term =
   | UID_PATT _
   | L_PAREN
   | L_SQ_BRACKET
-  | NAT _
-  | NEG_NAT _ ->
+  | INT _ ->
       let pos1 = current_pos() in
       let h = aterm lb in
       app pos1 h lb
@@ -1230,8 +1190,7 @@ and app (pos1:position * position) (t: p_term) (lb:lexbuf): p_term =
   | UID_PATT _
   | L_PAREN
   | L_SQ_BRACKET
-  | NAT _
-  | NEG_NAT _ ->
+  | INT _ ->
       let u = aterm lb in
       app pos1 (make_pos pos1 (P_Appl(t,u))) lb
   (* bterm *)
@@ -1347,14 +1306,10 @@ and aterm (lb:lexbuf): p_term =
         let t = term lb in
         consume R_SQ_BRACKET lb;
         make_pos pos1 (P_Expl(t))
-    | NAT n ->
+    | INT n ->
         let pos1 = current_pos() in
         consume_token lb;
         make_pos pos1 (P_NLit n)
-    | NEG_NAT n ->
-        let pos1 = current_pos() in
-        consume_token lb;
-        make_pos pos1 (P_Iden(make_pos pos1 ([],n), false))
     | _ ->
         expected "identifier, \"_\", or term between parentheses or square \
                   brackets" []
@@ -1382,13 +1337,11 @@ and binder (lb:lexbuf): p_params list * p_term =
   (*if log_enabled() then log "Expected: %s" __FUNCTION__;*)
   match current_token() with
   | UID _
-  | NAT _
   | UNDERSCORE ->
       let s = param lb in
       begin
         match current_token() with
         | UID _
-        | NAT _
         | UNDERSCORE
         | L_PAREN
         | L_SQ_BRACKET ->
@@ -1408,7 +1361,7 @@ and binder (lb:lexbuf): p_params list * p_term =
             [p], term lb
         | _ ->
             expected "parameter list"
-              [UID"";NAT"";UNDERSCORE;L_PAREN;L_SQ_BRACKET;COMMA]
+              [UID"";UNDERSCORE;L_PAREN;L_SQ_BRACKET;COMMA]
       end
   | L_PAREN ->
       let ps = nelist params lb in
@@ -1431,7 +1384,7 @@ and binder (lb:lexbuf): p_params list * p_term =
             expected "" [COMMA]
       end
   | _ ->
-      expected "" [UID"";NAT"";UNDERSCORE;L_PAREN;L_SQ_BRACKET]
+      expected "" [UID"";UNDERSCORE;L_PAREN;L_SQ_BRACKET]
 
 (* search *)
 
