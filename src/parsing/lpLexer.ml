@@ -131,7 +131,7 @@ type token =
 (** Some regexp definitions. *)
 let space = [%sedlex.regexp? Chars " \t\n\r"]
 let digit = [%sedlex.regexp? '0' .. '9']
-let nat = [%sedlex.regexp? Star digit]
+let nat = [%sedlex.regexp? Plus digit]
 let int = [%sedlex.regexp? nat | '-', nat]
 let float = [%sedlex.regexp? int, '.', Plus digit]
 let oneline_comment = [%sedlex.regexp? "//", Star (Compl ('\n' | '\r'))]
