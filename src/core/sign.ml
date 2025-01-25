@@ -24,6 +24,12 @@ type 'a notation =
   | Zero
   | Succ of 'a notation option (* Prefix or Postfix only *)
   | Quant
+  | PosOne
+  | PosDouble
+  | PosSuccDouble
+  | IntZero
+  | IntPos
+  | IntNeg
 
 (** Representation of a signature. It roughly corresponds to a set of symbols,
     defined in a single module (or file). *)
@@ -363,8 +369,14 @@ let add_notation_from_builtin :
   string -> sym -> 'a notation SymMap.t -> 'a notation SymMap.t =
   fun builtin sym notation_map ->
   match builtin with
-  | "0"  -> SymMap.add sym Zero notation_map
-  | "+1" -> let f x = Some(Succ x) in SymMap.update sym f notation_map
+  | "nat_zero"  -> SymMap.add sym Zero notation_map
+  | "nat_succ" -> let f x = Some(Succ x) in SymMap.update sym f notation_map
+  | "pos_one"  -> SymMap.add sym PosOne notation_map
+  | "pos_double"  -> SymMap.add sym PosDouble notation_map
+  | "pos_succ_double"  -> SymMap.add sym PosSuccDouble notation_map
+  | "int_zero"  -> SymMap.add sym IntZero notation_map
+  | "int_positive"  -> SymMap.add sym IntPos notation_map
+  | "int_negative"  -> SymMap.add sym IntNeg notation_map
   | _    -> notation_map
 
 (** [add_builtin sign name sym] binds the builtin name [name] to [sym] (in the

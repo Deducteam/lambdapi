@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ### Added
 
 - Add tactic `set`.
+- Decimal notation for integers.
 
 ### Fixed
 
@@ -15,8 +16,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Changed
 
-- Option '--erasing' renamed into '--mapping'.
 - The export option `--requiring` does not require as argument a file with extension `.v` anymore: the argument must be a module name.
+- Option '--erasing' renamed into '--mapping'.
+- Builtins necessary for the decimal notation.
 
 ## 2.5.1 (2024-07-22)
 

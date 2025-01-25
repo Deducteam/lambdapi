@@ -109,17 +109,14 @@ assert p pz psucc n ⊢ ind_N p pz psucc (succ n) ≡ psucc n (ind_N p pz psucc 
 constant symbol nat : Set;
 rule τ nat ↪ N;
 
-builtin "0"  ≔ z;
-builtin "+1" ≔ succ;
-
 symbol + : N → N → N;
 notation + infix left 6;
-rule       0 + $y ↪ $y
+rule       z + $y ↪ $y
 with succ $x + $y ↪ succ ($x + $y);
 
 symbol × : N → N → N;
 notation × infix left 7;
-rule       0 × _  ↪ 0
+rule       z × _  ↪ z
 with succ $x × $y ↪ $y + $x × $y;
 
 assert x y z ⊢ x + y × z ≡ x + (y × z);
@@ -336,27 +333,27 @@ c2 (ind_CExp pA pB pC paLit paAdd paIf pbLit pbEq pcSkip pcAss pcSeq pcIf c2);
 ////////////////////// Even and odd
 
 inductive even : N → TYPE ≔
-  | even_O : even 0
+  | even_O : even z
   | even_S : Π n, odd n → even (succ n)
 with odd : N → TYPE ≔
   | odd_S : Π n, even n → odd (succ n);
 
 assert ⊢ even : N → TYPE;
-assert ⊢ even_O : even 0;
+assert ⊢ even_O : even z;
 assert ⊢ even_S : Π n, odd n → even (succ n);
 assert ⊢ odd : N → TYPE;
 assert ⊢ odd_S : Π n, even n → odd (succ n);
 
 assert ⊢ ind_even :
   Π p0: Π x: N, even x → Prop, Π p1: Π x: N, odd x → Prop,
-    π(p0 0 even_O) →
+    π(p0 z even_O) →
    (Π n: τ nat, Π x: odd n, π(p1 n x) → π(p0 (succ n) (even_S n x))) →
    (Π n: τ nat, Π x: even n, π(p0 n x) → π(p1 (succ n) (odd_S n x))) →
   Π x: N, Π x0: even x, π(p0 x x0);
 
 assert ⊢ ind_odd :
   Π p0: Π x: N, even x → Prop, Π p1: Π x: N, odd x → Prop,
-    π(p0 0 even_O) →
+    π(p0 z even_O) →
     (Π n: τ nat, Π x: odd n, π(p1 n x) → π(p0 (succ n) (even_S n x))) →
     (Π n: τ nat, Π x: even n, π(p0 n x) → π(p1 (succ n) (odd_S n x))) →
   Π x: N, Π x0: odd x, π(p1 x x0);
@@ -565,19 +562,19 @@ assert p pnil pcons b x xb l
 
 inductive rom : N → TYPE ≔
  | mty : rom z // leaf node
- | bin : Π e1 e2, rom e1 → rom e2 → rom (e1 + e2 + 1)  // binary nodes
- | unl : Π e k, π(k ≤ 2 × e) → rom e → rom (succ e); // unary labeled nodes
+ | bin : Π e1 e2, rom e1 → rom e2 → rom (e1 + e2 + succ z)  // binary nodes
+ | unl : Π e k, π(k ≤ (succ(succ z)) × e) → rom e → rom (succ e); // unary labeled nodes
 
 assert ⊢ rom : N → TYPE;
 assert ⊢ mty : rom z;
-assert ⊢ bin : Π e1 e2, rom e1 → rom e2 → rom (e1 + e2 + 1);
-assert ⊢ unl : Π e k, π(k ≤ 2 × e) → rom e → rom (succ e);
+assert ⊢ bin : Π e1 e2, rom e1 → rom e2 → rom (e1 + e2 + succ z);
+assert ⊢ unl : Π e k, π(k ≤ (succ(succ z)) × e) → rom e → rom (succ e);
 
 assert ⊢ ind_rom : Π p: Π x: N, rom x → Prop,
-  π(p 0 mty) →
+  π(p z mty) →
   (Π e1:N, Π e2:N, Π x:rom e1, π(p e1 x) → Π x0:rom e2, π(p e2 x0) →
-     π(p ((e1 + e2) + 1) (bin e1 e2 x x0))) → 
-  (Π e:N, Π k:N, Π x:π(k ≤ (2 × e)), Π x0:rom e, π(p e x0) →
+     π(p ((e1 + e2) + succ z) (bin e1 e2 x x0))) → 
+  (Π e:N, Π k:N, Π x:π(k ≤ ((succ(succ z)) × e)), Π x0:rom e, π(p e x0) →
     π(p (succ e) (unl e k x x0))) → 
   Π x:N, Π x0:rom x, π(p x x0);
 
@@ -611,8 +608,8 @@ assert ⊢ ind_fibo : Π p: Π x: N, Π x0: N, fibo x x0 → Prop,
      Π x0: fibo n r1, π(p n r1 x0) →
      Π x1: fibo (succ n) r2, π(p (succ n) r2 x1) →
   π(p (succ (succ n)) (r1 + r2) (cgen' n r1 r2 x0 x1))) →
-  π(p 0 1 cbase1) →
-  π(p 1 1 cbase2) →
+  π(p z (succ z) cbase1) →
+  π(p (succ z) (succ z) cbase2) →
   Π x:N, Π x0:N, Π x1:fibo x x0, π(p x x0 x1);
 
 assert p pcgen' pcbase1 pcbase2 n r1 r2 hypF1 hypF2
@@ -664,13 +661,13 @@ builtin "eqind" ≔ eq_ind;
 // Some proofs
 /////////////////////////////
 
-opaque symbol plus_0_n n : π(0 + n = n) ≔
+opaque symbol plus_0_n n : π(z + n = n) ≔
 begin
   assume n;
   reflexivity
 end;
 
-opaque symbol plus_n_0 (n:N) : π(n + 0 = n) ≔
+opaque symbol plus_n_0 (n:N) : π(n + z = n) ≔
 begin
   induction
   {// Case n = O
@@ -685,7 +682,7 @@ end;
 // About lists
 
 symbol length : List → N;
-rule length nil ↪ 0
+rule length nil ↪ z
  with length (cons _ $l) ↪ succ (length $l);
 
 symbol app : List → List → List;
