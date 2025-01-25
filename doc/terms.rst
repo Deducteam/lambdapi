@@ -77,9 +77,24 @@ A user-defined term can be either:
   variable in a rule left-hand side, applied to all the variables of
   the context.
 
-* an integer if the appropriate :ref:`builtins <builtin>` are defined
+* an integer if the appropriate builtins are defined (see below)
 
 * a term enclosed between square brackets ``[`` … ``]`` for explicitly
   giving the value of an argument declared as implicit
   
 Subterms can be parenthesized to avoid ambiguities.
+
+**decimal notation for integers** It is possible to use the standard
+decimal notation for integers by defining the following :ref:`builtins
+<builtin>`:
+
+::
+
+   builtin "0"  ≔ ...;  // : T
+   builtin "1"  ≔ ...;  // : T
+   ...
+   builtin "10" := ...; // : T
+   builtin "+" := ....; // : T → T → T
+   builtin "*" := ....; // : T → T → T
+   builtin "-" := ....; // : T → T // (optional)
+   type 42;

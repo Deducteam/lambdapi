@@ -265,6 +265,12 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
         | Zero -> 0
         | Succ _ -> 1
         | Quant -> 1
+        | PosOne -> 0
+        | PosDouble -> 1
+        | PosSuccDouble -> 1
+        | IntZero -> 0
+        | IntPos -> 1
+        | IntNeg -> 1
       and real = Tactic.count_products [] !(s.sym_type) in
       if real < expected then
         fatal pos "Notation incompatible with the type of %a" sym s;
@@ -283,6 +289,12 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
         | Succ x -> Succ (Option.map float_notation_from_string_notation x)
         | Zero -> Zero
         | Quant -> Quant
+        | PosOne -> PosOne
+        | PosDouble -> PosDouble
+        | PosSuccDouble -> PosSuccDouble
+        | IntZero -> IntZero
+        | IntPos -> IntPos
+        | IntNeg -> IntNeg
       in
       let n = float_notation_from_string_notation n in
       Console.out 2 "notation %a %a" sym s (notation float) n;

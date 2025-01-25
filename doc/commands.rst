@@ -206,11 +206,10 @@ commands :ref:`notation` and :ref:`builtin`.
 
 The ``notation`` command allows to change the behaviour of the parser.
 
-When declared as notations, identifiers then must be used at correct places
-and as such cannot make valid terms on their own anymore.
-To reaccess the value of the identifier without the notation properties,
-wrap it in parentheses.
-
+When declared as notations, identifiers must be used at correct places
+and are not valid terms on their own anymore.  To reaccess the value
+of the identifier without the notation properties, wrap it in
+parentheses like in ``(+)`` if ``+`` is declared ``infix``.
 
 **infix** The following code defines infix symbols for addition
 and multiplication. Both are associative to the left, and they have
@@ -251,7 +250,6 @@ negation with some priority level.
 * The functional arrow has a lower binding power than any operator, therefore
   for any prefix operator ``-``, ``- A → A`` is always parsed ``(- A) → A``
 
-
 **quantifier** Allows to write ```f x, t`` instead of ``f (λ x, t)``:
 
 ::
@@ -262,6 +260,31 @@ negation with some priority level.
    type λ p, `∀ x, p; // quantifiers can be written as such
    type λ p, `f x, p; // works as well if f is any symbol
 
+**printing numbers in decimal notation** It is possible to print various number types in decimal notation by defining the following builtins:
+
+* Natural numbers in base 1 (Peano numbers):
+
+::
+   
+   builtin "nat_zero" ≔ ...; // : N
+   builtin "nat_succ" ≔ ...; // : N → N
+
+* Positive natural numbers in base 2:
+
+::
+   
+   builtin "pos_one" ≔ ...; // : P
+   builtin "pos_double" ≔ ...; // : P → P
+   builtin "pos_succ_double" ≔ ...; // : P → P
+
+* Integer numbers in base 2:
+
+::
+   
+   builtin "int_zero" ≔ ...; // : Z
+   builtin "int_positive" ≔ ...; // : P → Z
+   builtin "int_negative" ≔ ...; // : P → Z
+
 .. _builtin:
 
 ``builtin``
@@ -269,26 +292,7 @@ negation with some priority level.
 
 The command ``builtin`` allows to map a “builtin“
 string to a user-defined symbol identifier. Those mappings are
-necessary for other commands or tactics. For instance, to use decimal
-numbers, one needs to map the builtins “0“ and “+1“ to some symbol
-identifiers for zero and the successor function (see hereafter); to
-use tactics on equality, one needs to define some specific builtins;
-etc.
-
-**decimal notation for integers** It is possible to use the standard
-decimal notation for integers by defining the builtins ``"0"`` to
-``"10"``, ``"+"``, ``"*"``, and ``"-"`` (optional):
-
-::
-
-   builtin "0"  ≔ ...;  // : N
-   builtin "1"  ≔ ...;  // : N
-   ...
-   builtin "10" := ...; // : N
-   builtin "+" := ....; // : N → N → N
-   builtin "*" := ....; // : N → N → N
-   builtin "-" := ....; // : N → N // (optional)
-   type 42;
+necessary for other commands, tactics or notations to work.
 
 .. _opaque:
 
