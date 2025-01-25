@@ -18,22 +18,22 @@ QID ::= [UID "."]+ UID
 
 <search_query_alone> ::= <search_query> EOF
 
-<command> ::= "opaque" <qid_or_int> ";"
+<command> ::= "opaque" <qid> ";"
             | "require" "open" <path>* ";"
             | "require" <path>* ";"
             | "require" <path> "as" <uid> ";"
             | "open" <path>* ";"
-            | <modifier>* "symbol" <uid_or_int> <param_list>* ":" <term>
-              [<proof>] ";"
-            | <modifier>* "symbol" <uid_or_int> <param_list>* [":" <term>]
-              "≔" <term_proof> ";"
+            | <modifier>* "symbol" <uid> <param_list>* ":" <term> [<proof>]
+              ";"
+            | <modifier>* "symbol" <uid> <param_list>* [":" <term>] "≔"
+              <term_proof> ";"
             | [<exposition>] <param_list>* "inductive" <inductive> ("with"
               <inductive>)* ";"
             | "rule" <rule> ("with" <rule>)* ";"
-            | "builtin" <stringlit> "≔" <qid_or_int> ";"
+            | "builtin" <stringlit> "≔" <qid> ";"
             | "coerce_rule" <rule> ";"
             | "unif_rule" <unif_rule> ";"
-            | "notation" <qid_or_int> <notation> ";"
+            | "notation" <qid> <notation> ";"
             | <query> ";"
             
 
@@ -45,8 +45,8 @@ QID ::= [UID "."]+ UID
           | "debug" ("+"|"-") <string>
           | "flag" <stringlit> <switch>
           | "prover" <stringlit>
-          | "prover_timeout" <nat>
-          | "verbose" <nat>
+          | "prover_timeout" "in"T
+          | "verbose" "in"T
           | "type" <term>
           | "search" <stringlit>
 
@@ -70,18 +70,11 @@ QID ::= [UID "."]+ UID
 
 <uid> ::= UID
 
-<uid_or_int> ::= <uid>
-               | <int>
-
-<qid_or_int> ::= <qid>
-               | <int>
-
 <param_list> ::= <param>
                | "(" <param>+ ":" <term> ")"
                | "[" <param>+ [":" <term>] "]"
 
 <param> ::= <uid>
-          | <nat>
           | "_"
 
 <term> ::= <bterm>
@@ -103,8 +96,7 @@ QID ::= [UID "."]+ UID
           | "$" UID [<env>]
           | "(" <term> ")"
           | "[" <term> "]"
-          | <nat>
-          | "-"<nat>
+          | "in"T
 
 <env> ::= "." "[" [<term> (";" <term>)*] "]"
 
@@ -152,7 +144,7 @@ QID ::= [UID "."]+ UID
            | "reflexivity"
            | "remove" <uid>+
            | "rewrite" [<side>] [<rw_patt_spec>] <term>
-           | "simplify" [<qid_or_int>]
+           | "simplify" [<qid>]
            | "solve"
            | "symmetry"
            | "try" <tactic>
@@ -169,7 +161,7 @@ QID ::= [UID "."]+ UID
 <inductive> ::= <uid> <param_list>* ":" <term> "≔" ["|"] [<constructor>
                 ("|" <constructor>)*]
 
-<constructor> ::= <uid_or_int> <param_list>* ":" <term>
+<constructor> ::= <uid> <param_list>* ":" <term>
 
 <rule> ::= <term> "↪" <term>
 
@@ -184,10 +176,7 @@ QID ::= [UID "."]+ UID
              | "quantifier"
 
 <float_or_int> ::= <float>
-                 | <int>
-
-<int> ::= "-"<nat>
-        | <nat>
+                 | "in"T
 
 <maybe_generalize> ::= ["generalize"]
 

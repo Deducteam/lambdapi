@@ -61,23 +61,18 @@ constant symbol nat : Set;
 
 rule τ nat ↪ ℕ;
 
-// Enabling the use of decimal notation
-
-builtin "0"  ≔ zero;
-builtin "+1" ≔ s;
-
 // Addition
 
 symbol + : ℕ → ℕ → ℕ;
 
 notation + infix left 20;
 
-rule 0 + $y ↪ $y
+rule zero + $y ↪ $y
 with s $x + $y ↪ s ($x + $y);
 
 // Addition is commutative
 
-opaque symbol add0r x : π (x + 0 = x) ≔
+opaque symbol add0r x : π (x + zero = x) ≔
 begin
   induction
   {// case x = 0
@@ -86,7 +81,7 @@ begin
   assume x' h; simplify; rewrite h; reflexivity}
 end;
 
-rule $x + 0 ↪ $x;
+rule $x + zero ↪ $x;
 
 opaque symbol addsr x y : π (x + s y = s (x + y)) ≔
 begin
@@ -135,7 +130,7 @@ end;
 
 symbol f : ℕ → (ℕ → ℕ) → ℕ;
 
-symbol test2 a b : π (f (a + b) (λ _, 0) = f (b + a) (λ _, 0))
+symbol test2 a b : π (f (a + b) (λ _, zero) = f (b + a) (λ _, zero))
 ≔ begin
   assume a b;
   rewrite add_com;

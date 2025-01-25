@@ -165,6 +165,9 @@ let _ =
   assert (valid "case_ex02_intro1");
   assert (valid "case_ex02_intro10")
 
+(* used in desugaring decimal notations *)
+let strint = Array.init 11 string_of_int
+
 (** [scope ~find_sym ~typ k md ss env t] turns a parser-level term [t] into an
     actual term. *)
 let rec scope : ?find_sym:find_sym ->
@@ -323,21 +326,28 @@ and scope_head : ?find_sym:find_sym ->
   | (P_Iden(qid,_), _) -> scope_iden ?find_sym md ss env qid
 
   | (P_NLit(s), _) ->
-    begin
-      let n = try int_of_string s with Failure _ ->
-        fatal t.pos "Too big number (max is %d)." max_int
+      let neg, s =
+        let neg = s.[0] = '-' in
+        let s = if neg then String.sub s 1 (String.length s - 1) else s in
+        neg, s
       in
-      match Builtin.get_opt ss "0" with
-      | None -> scope_iden md ss env {t with elt=([],s)}
-      | Some sym_z ->
-        match Builtin.get_opt ss "+1" with
-        | None -> scope_iden md ss env {t with elt=([],s)}
-        | Some sym_s ->
-          let z = _Symb sym_z and s = _Symb sym_s in
-          let rec unsugar_nat_lit acc n =
-            if n <= 0 then acc else unsugar_nat_lit (_Appl s acc) (n-1) in
-          unsugar_nat_lit z n
-    end
+      let sym_of s = _Symb (Builtin.get ss t.pos s) in
+      let sym = Array.map sym_of strint in
+      let digit = function
+        | '0' -> sym.(0) | '1' -> sym.(1) | '2' -> sym.(2) | '3' -> sym.(3)
+        | '4' -> sym.(4) | '5' -> sym.(5) | '6' -> sym.(6) | '7' -> sym.(7)
+        | '8' -> sym.(8) | '9' -> sym.(9) | _ -> assert false
+      in
+      let sym_add = sym_of "+" in
+      let add x y = _Appl (_Appl sym_add x) y in
+      let sym_mul = sym_of "*" in
+      let mul x y = _Appl (_Appl sym_mul x) y in
+      let rec unsugar i =
+        if i <= 0 then digit s.[0]
+        else add (digit s.[i]) (mul sym.(10) (unsugar (i-1)))
+      in
+      let n = unsugar (String.length s - 1) in
+      if neg then _Appl (sym_of "-") n else n
 
   | (P_Wild, M_URHS(data)) ->
     let x =

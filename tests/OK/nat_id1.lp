@@ -1,9 +1,9 @@
 symbol G:TYPE;
 
-symbol 1:G;
+symbol e:G;
 
-compute 1;
+compute e;
 
 symbol *:G → G → G; notation * infix 10;
 
-compute 1 * 1;
+compute e * e;
