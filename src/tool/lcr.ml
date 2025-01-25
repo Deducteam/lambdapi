@@ -297,7 +297,7 @@ let _ =
   assert (unif a b = None);
   assert (unif v0 (s v0) = None)
 
-(** [can_handle r] says if the sym_rule [r] can be handled. *)
+(** [can_handle sr] says if the sym_rule [sr] can be handled. *)
 let can_handle : sym_rule -> bool = fun (s,r) ->
   not (s.sym_mstrat = Sequen || is_modulo s || is_ho r)
 
@@ -585,8 +585,8 @@ let check_cps_subterms_eq : Pos.popt -> sym_rule -> unit =
   in
   iter_subterms_eq pos f l
 
-(** [check_cps_sign_with pos rs'] checks all the critical pairs between all
-   the rules of the signature and [rs']. *)
+(** [check_cps_sign_with pos sign sym_map] checks all the critical pairs
+    between all the rules of the signature and [sym_map]. *)
 let check_cps_sign_with : Pos.popt -> Sign.t -> rule list SymMap.t -> unit =
   fun pos sign sym_map ->
   let f s' rs' =
