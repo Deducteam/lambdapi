@@ -3,7 +3,7 @@ A : t -> t -> t
 L : t -> (t -> t) -> t
 P : t -> (t -> t) -> t
 B : t -> t -> (t -> t) -> t
-tests_OK_group_1 : t
+tests_OK_group_e : t
 tests_OK_group_inv : t
 tests_OK_group_⋅ : t
 )
@@ -29,14 +29,14 @@ $10_1 : t
 (RULES
 A(L($x,$y),$z) -> $y($z),
 B($x,$z,$y) -> $y($z),
-A(tests_OK_group_inv,tests_OK_group_1) -> tests_OK_group_1,
+A(tests_OK_group_inv,tests_OK_group_e) -> tests_OK_group_e,
 A(tests_OK_group_inv,A(tests_OK_group_inv,$2_0)) -> $2_0,
 A(tests_OK_group_inv,A(A(tests_OK_group_⋅,$3_0),$3_1)) -> A(A(tests_OK_group_⋅,A(tests_OK_group_inv,$3_1)),A(tests_OK_group_inv,$3_0)),
 A(A(tests_OK_group_⋅,A(A(tests_OK_group_⋅,$4_0),$4_1)),$4_2) -> A(A(tests_OK_group_⋅,$4_0),A(A(tests_OK_group_⋅,$4_1),$4_2)),
-A(A(tests_OK_group_⋅,tests_OK_group_1),$5_0) -> $5_0,
-A(A(tests_OK_group_⋅,$6_0),tests_OK_group_1) -> $6_0,
-A(A(tests_OK_group_⋅,A(tests_OK_group_inv,$7_0)),$7_0) -> tests_OK_group_1,
-A(A(tests_OK_group_⋅,$8_0),A(tests_OK_group_inv,$8_0)) -> tests_OK_group_1,
+A(A(tests_OK_group_⋅,tests_OK_group_e),$5_0) -> $5_0,
+A(A(tests_OK_group_⋅,$6_0),tests_OK_group_e) -> $6_0,
+A(A(tests_OK_group_⋅,A(tests_OK_group_inv,$7_0)),$7_0) -> tests_OK_group_e,
+A(A(tests_OK_group_⋅,$8_0),A(tests_OK_group_inv,$8_0)) -> tests_OK_group_e,
 A(A(tests_OK_group_⋅,A(tests_OK_group_inv,$9_0)),A(A(tests_OK_group_⋅,$9_0),$9_1)) -> $9_1,
 A(A(tests_OK_group_⋅,$10_0),A(A(tests_OK_group_⋅,A(tests_OK_group_inv,$10_0)),$10_1)) -> $10_1
 )

@@ -12,9 +12,6 @@ constant symbol N : TYPE;
 constant symbol z : N;
 constant symbol s : N → N;
 
-builtin "0"  ≔ z;
-builtin "+1" ≔ s;
-
 // Addition on natural numbers.
 
 symbol add : N → N → N;
@@ -165,7 +162,7 @@ opaque symbol addcomm : Π n m, P (eq nat (add n m) (add m n))
 end;
 
 // Adding the same value is the same as multiplying by 2.
-opaque symbol add_same_times_two : Π x, P (eq nat (add x x) (mul 2 x))
+opaque symbol add_same_times_two : Π x, P (eq nat (add x x) (mul (s(s z)) x))
 ≔ begin
   assume x;
   simplify;

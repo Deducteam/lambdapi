@@ -50,10 +50,9 @@ let notation : 'a pp -> 'a Sign.notation pp = fun elt ->
   | Sign.Prefix(p) -> out ppf "prefix %a" elt p
   | Infix(a,p) -> out ppf "infix%a %a" assoc a elt p
   | Postfix(p) -> out ppf "postfix %a" elt p
-  | Zero -> ()
-  | Succ None -> ()
   | Succ (Some n) -> notation ppf n
   | Quant -> out ppf "quantifier"
+  | _ -> ()
   in notation
 
 let uid : string pp = string
@@ -108,25 +107,43 @@ let var : 'a Bindlib.var pp = fun ppf x -> uid ppf (Bindlib.name_of x)
 
 (** Exception raised when trying to convert a term into a nat. *)
 exception Not_a_nat
+let builtin name =
+  try StrMap.find name (!sig_state).builtins with Not_found -> raise Not_a_nat
 
 (** [nat_of_term t] converts a term into a natural number.
     @raise Not_a_nat if this is not possible. *)
 let nat_of_term : term -> int = fun t ->
-  let get_builtin name =
-    try StrMap.find name (!sig_state).builtins
-    with Not_found -> raise Not_a_nat
-  in
-  let zero = get_builtin "0" in
-  match get_args t with
-  | (Symb s, []) when s == zero -> 0
-  | _ ->
-  let succ = get_builtin "+1" in
+  let zero = builtin "nat_zero" and succ = builtin "nat_succ" in
   let rec nat acc = fun t ->
     match get_args t with
     | (Symb s, [u]) when s == succ -> nat (acc+1) u
     | (Symb s,  []) when s == zero -> acc
     | _ -> raise Not_a_nat
   in nat 0 t
+
+(** [pos_of_term t] converts a term into a positive number.
+    @raise Not_a_nat if this is not possible. *)
+let pos_of_term : term -> int = fun t ->
+  let one = builtin "pos_one" and dbl = builtin "pos_double"
+  and suc_dbl = builtin "pos_succ_double" in
+  let rec pos acc = fun t ->
+    match get_args t with
+    | (Symb s, [u]) when s == dbl -> pos (2*acc) u
+    | (Symb s, [u]) when s == suc_dbl -> pos (2*acc+1) u
+    | (Symb s,  []) when s == one -> acc
+    | _ -> raise Not_a_nat
+  in pos 1 t
+
+(** [int_of_term t] converts a term into a positive number.
+    @raise Not_a_nat if this is not possible. *)
+let int_of_term : term -> int = fun t ->
+  let zero = builtin "int_zero" and pos = builtin "int_positive"
+  and neg = builtin "int_negative" in
+  match get_args t with
+  | (Symb s, [u]) when s == pos -> pos_of_term u
+  | (Symb s, [u]) when s == neg -> - (pos_of_term u)
+  | (Symb s,  []) when s == zero -> 0
+  | _ -> raise Not_a_nat
 
 (** [are_quant_args args] returns [true] iff [args] has only one argument
    that is an abstraction. *)
@@ -181,6 +198,8 @@ and term : term pp = fun ppf t ->
     | Symb(s) ->
         if !print_implicits && s.sym_impl <> [] then pp_appl h args
         else
+          let number f t =
+            try out ppf "%i" (f t) with Not_a_nat -> pp_appl h args in
           let args = LibTerm.remove_impl_args s args in
           begin match notation_of s with
           | Some Quant when are_quant_args args ->
@@ -207,13 +226,14 @@ and term : term pp = fun ppf t ->
                   List.iter (out ppf " %a" atom) args;
                   if p = `Atom then out ppf ")"
               end
-          | Some Zero -> out ppf "0"
+          | Some (Zero|IntZero) -> out ppf "0"
           | Some (Succ (Some (Postfix _))) ->
               (try out ppf "%i" (nat_of_term t)
                with Not_a_nat -> postfix h s args)
-          | Some (Succ _) ->
-              (try out ppf "%i" (nat_of_term t)
-               with Not_a_nat -> pp_appl h args)
+          | Some (Succ _) -> number nat_of_term t
+          | Some PosOne -> out ppf "1"
+          | Some (PosDouble|PosSuccDouble) -> number pos_of_term t
+          | Some (IntPos|IntNeg) -> number int_of_term t
           | _ -> pp_appl h args
           end
     | _ -> pp_appl h args

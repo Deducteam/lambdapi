@@ -40,7 +40,7 @@ end = struct
              Some(Pratter.Prefix, prio)
          | Some(Postfix(prio)) | Some(Succ(Some(Postfix(prio)))) ->
              Some(Pratter.Postfix, prio)
-         | Some (Zero | Succ _ | Quant) | None -> None)
+         | _ -> None)
      | _ -> None
 
    let appl : p_term -> p_term -> p_term = fun t u ->

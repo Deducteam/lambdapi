@@ -38,26 +38,26 @@ builtin "refl"  ≔ eq_refl;
 builtin "eqind" ≔ ind_eq;
 
 symbol nat:Set;
-symbol 0:τ nat;
+symbol O:τ nat;
 symbol +:τ(nat ↦ nat ↦ nat);
 notation + infix right 20;
-rule $x + 0 ↪ $x;
+rule $x + O ↪ $x;
 symbol f:τ(nat ↦ (nat ↦ nat) ↦ nat);
 symbol add_com a b : π(a + b = b + a);
 
-symbol test1 a b : π (f (a + b) (λ _, 0) = f (b + a) (λ _, 0))
+symbol test1 a b : π (f (a + b) (λ _, O) = f (b + a) (λ _, O))
 ≔ begin
   assume a b;
   rewrite add_com;
   reflexivity
 end;
 
-symbol test2' a b : π (f (a + b) (λ _, 0) = f (b + a) (λ _, 0))
+symbol test2' a b : π (f (a + b) (λ _, O) = f (b + a) (λ _, O))
 ≔ begin
   assume a b;
   simplify;
   set p ≔ (a + b);
-  set g ≔ (a + b + 0 + 0);
+  set g ≔ (a + b + O + O);
   //type p;
   //compute p;
   //compute g;

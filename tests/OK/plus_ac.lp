@@ -1,5 +1,5 @@
 symbol N:TYPE;
-symbol 0:N;
+symbol O:N;
 symbol s:N → N;
 associative commutative symbol +:N → N → N;
 notation + infix 10;
