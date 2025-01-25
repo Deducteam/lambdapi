@@ -3,7 +3,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
-## Unreleased
+## 2.6.0 (2025-01-25)
 
 ### Added
 
@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Changed
 
+- Improved Core.Term.eq_modulo (Claudio Sacerdoti) -> speed up factor between 2 and 9
 - The export option `--requiring` does not require as argument a file with extension `.v` anymore: the argument must be a module name.
 - Option '--erasing' renamed into '--mapping'.
 - Builtins necessary for the decimal notation.
