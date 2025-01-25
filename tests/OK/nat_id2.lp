@@ -1,10 +1,7 @@
 symbol N:TYPE;
 
-symbol 0:N; builtin "0" ≔ 0;
-symbol s:N → N; builtin "+1" ≔ s;
-
-compute 0;
-compute 3;
+symbol O:N;
+symbol s:N → N;
 
 symbol G:TYPE;
 
@@ -16,8 +13,8 @@ with e * $x ↪ $x;
 
 symbol ⋅:N → G → G; notation ⋅ infix 20;
 
-rule 0 ⋅ $x ↪ e
+rule O ⋅ $x ↪ e
 with s $n ⋅ $x ↪ $x * $n ⋅ $x;
 
-compute λ x, 0 ⋅ x;
-compute λ x, 3 ⋅ x;
+compute λ x, O ⋅ x;
+compute λ x, (s(s(s O))) ⋅ x;

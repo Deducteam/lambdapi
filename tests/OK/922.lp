@@ -1,7 +1,7 @@
 require open tests.OK.Set tests.OK.Prop tests.OK.Eq tests.OK.Bool;
 
 inductive ℕ : TYPE ≔
-| 0 : ℕ
+| O : ℕ
 | +1 : ℕ → ℕ;
 
 constant symbol nat : Set;
@@ -10,15 +10,12 @@ rule τ nat ↪ ℕ;
 
 notation +1 postfix 10;
 
-builtin "0"  ≔ 0;
-builtin "+1" ≔ +1;
+symbol isO : ℕ → 𝔹;
 
-symbol is0 : ℕ → 𝔹;
+rule isO O ↪ true
+with isO (_ +1) ↪ false;
 
-rule is0 0 ↪ true
-with is0 (_ +1) ↪ false;
-
-opaque symbol s≠0 [n] : π (n +1 ≠ 0) ≔
+opaque symbol s≠O [n] : π (n +1 ≠ O) ≔
 begin
-  assume n h; refine ind_eq h (λ n, istrue(is0 n)) ⊤ᵢ
+  assume n h; refine ind_eq h (λ n, istrue(isO n)) ⊤ᵢ
 end;
