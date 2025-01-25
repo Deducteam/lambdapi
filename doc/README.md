@@ -21,9 +21,11 @@ The Lamdbapi user manual can also be generated from the sources and browsed loca
 browser.
 
 To generate the documentation, [Sphinx](https://www.sphinx-doc.org/)
-and `sphinx_rtd_theme` are required.  They can be installed using
-`pip` as follows:
-
+and `sphinx_rtd_theme` are required. They can be globally installed with:
+```bash
+sudo apt install python3-sphinx-rtd-theme
+```
+and locally with:
 ```bash
 sudo apt install python3-pip
 pip install -U sphinx sphinx_rtd_theme

@@ -7,13 +7,6 @@ constant symbol N : TYPE;
 constant symbol z : N;
 constant symbol s : N → N;
 
-// Enabling built-in natural number literal, and example.
-
-builtin "0"  ≔ z;
-builtin "+1" ≔ s;
-
-symbol forty_two ≔ 42;
-
 // Addition function.
 
 symbol + : N → N → N;
@@ -33,6 +26,44 @@ rule z      × _      ↪ z
 with (s $m) × $n     ↪ $n + $m × $n
 with _      × z      ↪ z
 with $m     × (s $n) ↪ $m + $m × $n;
+
+// Enabling decimal notation
+
+symbol n1 ≔ s z;
+symbol n2 ≔ s n1;
+symbol n3 ≔ s n2;
+symbol n4 ≔ s n3;
+symbol n5 ≔ s n4;
+symbol n6 ≔ s n5;
+symbol n7 ≔ s n6;
+symbol n8 ≔ s n7;
+symbol n9 ≔ s n8;
+symbol n10 ≔ s n9;
+
+builtin "0"  ≔ z;
+builtin "1" ≔ n1;
+builtin "2" ≔ n2;
+builtin "3" ≔ n3;
+builtin "4" ≔ n4;
+builtin "5" ≔ n5;
+builtin "6" ≔ n6;
+builtin "7" ≔ n7;
+builtin "8" ≔ n8;
+builtin "9" ≔ n9;
+builtin "10" ≔ n10;
+
+builtin "+" ≔ +;
+builtin "*" ≔ ×;
+
+symbol forty_two ≔ 42;
+
+//print forty_two;
+
+assert ⊢ forty_two
+  ≡ let two ≔ s(s z) in
+    let four ≔ two + two in
+    let ten ≔ four + four + two in
+    four × ten + two;
 
 // Doubling function.
 
