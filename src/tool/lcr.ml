@@ -299,7 +299,7 @@ let _ =
 
 (** [can_handle r] says if the sym_rule [r] can be handled. *)
 let can_handle : sym_rule -> bool = fun (s,r) ->
-  not (is_modulo s || is_ho r || s.sym_mstrat = Sequen)
+  not (s.sym_mstrat = Sequen || is_modulo s || is_ho r)
 
 (** [iter_rules h rs] iterates function [f] on every rule of [rs]. *)
 let iter_rules : (rule -> unit) -> sym -> rule list -> unit = fun h ->
