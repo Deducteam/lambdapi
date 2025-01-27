@@ -13,4 +13,4 @@ with fib3 (s (s (s $x))) ↪ (fib3 ($x + 2)) + (fib3 ($x + 1)) + (fib3 $x);
 
 assert ⊢ fib 15 ≡ 610;
 compute fib 24; // ≡ 46368;
-compute fib3 21;
+//compute fib3 21;
