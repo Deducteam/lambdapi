@@ -236,18 +236,17 @@ let rec handle :
   | Unif _ -> fatal pos "Not a typing goal."
   | Typ ({goal_hyps=env;_} as gt) ->
   let scope t = Scope.scope_term ~mok:(Proof.meta_of_key ps) prv ss env t in
-  (* Function for checking that an identifier is not already in use. *)
-  let check id =
-    if Env.mem id.elt env then fatal id.pos "Identifier already in use." in
   (* Function to apply the assume tactic several times without checking the
      validity of identifiers. *)
   let assume idopts =
     match idopts with
     | [] -> ps
-    | _ ->
-      let p = new_problem() in
-      tac_refine pos ps gt gs p (scope (P.abst_list idopts P.wild))
+    | _ -> tac_refine pos ps gt gs (new_problem())
+             (scope (P.abst_list idopts P.wild))
   in
+  (* Function for checking that an identifier is not already in use. *)
+  let check id =
+    if Env.mem id.elt env then fatal id.pos "Identifier already in use." in
   match elt with
   | P_tac_fail
   | P_tac_query _
@@ -349,24 +348,6 @@ let rec handle :
   | P_tac_refine t -> tac_refine pos ps gt gs (new_problem()) (scope t)
   | P_tac_refl ->
       begin
-        (*let cfg = Rewrite.get_eq_config ss pos in
-        let (a,l,_), vs = Rewrite.get_eq_data cfg pos gt.goal_type in
-        (* We first do [n] times the [assume] tactic. *)
-        let idopts =
-          List.mapi (fun i _ -> Some(Pos.none("x"^string_of_int i))) vs in
-        let ps = assume idopts in
-        (* We then apply reflexivity. *)
-        match ps.proof_goals with
-        | Typ gt::gs ->
-          let a,l =
-            if vs = [] then a,l
-            else let (a,l,_),_ =
-              Rewrite.get_eq_data cfg pos gt.goal_type in a,l
-          in
-          let prf = add_args (mk_Symb cfg.symb_refl) [a; l] in
-          tac_refine pos ps gt gs (new_problem()) prf
-        | _ -> assert false*)
-
         let cfg = Rewrite.get_eq_config ss pos in
         let _,vs = Rewrite.get_eq_data cfg pos gt.goal_type in
         let idopts = gen_valid_idopts env (List.map Bindlib.name_of vs) in
@@ -424,11 +405,6 @@ let rec handle :
         (Rewrite.rewrite ss p pos gt l2r pat (scope eq))
   | P_tac_sym ->
       let cfg = Rewrite.get_eq_config ss pos in
-      (*let (a,l,r), vs = Rewrite.get_eq_data cfg pos gt.goal_type in
-      let a,l,r =
-        if vs = [] then a,l,r
-        else fst (Rewrite.get_eq_data cfg pos gt.goal_type)
-      in*)
       let (a,l,r),_ = Rewrite.get_eq_data cfg pos gt.goal_type in
       let p = new_problem() in
       let prf =
