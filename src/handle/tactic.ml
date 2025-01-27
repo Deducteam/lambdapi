@@ -185,6 +185,33 @@ let count_products : ctxt -> term -> int = fun c ->
     | _ -> acc
   in count 0
 
+(** [get_prod_ids env do_whnf t] returns the list [v1;..;vn] if [do_whnf] is
+    true and [whnf t] is of the form [Π v1:A1, .., Π vn:An, u] with [u] not a
+    product, or if [do_whnf] is false and [t] is of the form [Π v1:A1, .., Π
+    vn:An, u] with [u] not a product. *)
+let get_prod_ids env =
+  let rec aux acc do_whnf t =
+    match get_args t with
+    | Prod(_,b), _ ->
+        let x,b = Bindlib.unbind b in
+        aux (Bindlib.name_of x::acc) do_whnf b
+    | _ ->
+        if do_whnf then aux acc false (Eval.whnf (Env.to_ctxt env) t)
+        else List.rev acc
+  in aux []
+
+(** [gen_valid_idopts env ids] generates a list of pairwise distinct
+    identifiers distinct from those of [env] to replace [ids]. *)
+let gen_valid_idopts env ids =
+  let add_decl ids (s,_) = Extra.StrSet.add s ids in
+  let idset = ref (List.fold_left add_decl Extra.StrSet.empty env) in
+  let f id idopts =
+    let id = Extra.get_safe_prefix id !idset in
+    idset := Extra.StrSet.add id !idset;
+    Some(Pos.none id)::idopts
+  in
+  List.fold_right f ids []
+
 (** [handle ss sym_pos prv ps tac] applies tactic [tac] in the proof state
    [ps] and returns the new proof state. *)
 let rec handle :
@@ -212,22 +239,14 @@ let rec handle :
   (* Function for checking that an identifier is not already in use. *)
   let check id =
     if Env.mem id.elt env then fatal id.pos "Identifier already in use." in
-  (* Function to apply [n] times the assume tactic. *)
-  let assume n =
-    if n <= 0 then ps
-    else
-      let add_decl strings (s,_) = Extra.StrSet.add s strings in
-      let strings = List.fold_left add_decl Extra.StrSet.empty env in
-      let h = Extra.get_safe_prefix "h" strings in
-      let rec mk_idopts acc k =
-        if k <= 0 then acc
-        else
-          let idopt = Some (Pos.make pos (h ^ string_of_int k)) in
-          mk_idopts (idopt::acc) (k-1)
-      in
-      let t = P.abst_list (mk_idopts [] n) P.wild in
+  (* Function to apply the assume tactic several times without checking the
+     validity of identifiers. *)
+  let assume idopts =
+    match idopts with
+    | [] -> ps
+    | _ ->
       let p = new_problem() in
-      tac_refine pos ps gt gs p (scope t)
+      tac_refine pos ps gt gs p (scope (P.abst_list idopts P.wild))
   in
   match elt with
   | P_tac_fail
@@ -257,8 +276,7 @@ let rec handle :
       List.iter (Option.iter check) idopts;
       (* Check that the given identifiers are pairwise distinct. *)
       Syntax.check_distinct_idopts idopts;
-      let p = new_problem() in
-      tac_refine pos ps gt gs p (scope (P.abst_list idopts P.wild))
+      assume idopts
   | P_tac_generalize {elt=id; pos=idpos} ->
       (* From a goal [e1,id:a,e2 ⊢ ?[e1,id,e2] : u], generate a new goal [e1 ⊢
          ?m[e1] : Π id:a, Π e2, u], and refine [?[e]] with [?m[e1] id e2]. *)
@@ -330,20 +348,37 @@ let rec handle :
   | P_tac_induction -> tac_induction pos ps gt gs
   | P_tac_refine t -> tac_refine pos ps gt gs (new_problem()) (scope t)
   | P_tac_refl ->
-      let cfg = Rewrite.get_eq_config ss pos in
-      let (a,l,_), vs = Rewrite.get_eq_data cfg pos gt.goal_type in
-      (* We first do [n] times the [assume] tactic. *)
-      let ps = assume (Array.length vs) in
-      (* We then apply reflexivity. *)
-      begin match ps.proof_goals with
-      | Typ gt::gs ->
-        let a,l =
-          if Array.length vs = 0 then a,l
-          else let (a,l,_),_ = Rewrite.get_eq_data cfg pos gt.goal_type in a,l
-        in
-        let prf = add_args (mk_Symb cfg.symb_refl) [a; l] in
-        tac_refine pos ps gt gs (new_problem()) prf
-      | _ -> assert false
+      begin
+        (*let cfg = Rewrite.get_eq_config ss pos in
+        let (a,l,_), vs = Rewrite.get_eq_data cfg pos gt.goal_type in
+        (* We first do [n] times the [assume] tactic. *)
+        let idopts =
+          List.mapi (fun i _ -> Some(Pos.none("x"^string_of_int i))) vs in
+        let ps = assume idopts in
+        (* We then apply reflexivity. *)
+        match ps.proof_goals with
+        | Typ gt::gs ->
+          let a,l =
+            if vs = [] then a,l
+            else let (a,l,_),_ =
+              Rewrite.get_eq_data cfg pos gt.goal_type in a,l
+          in
+          let prf = add_args (mk_Symb cfg.symb_refl) [a; l] in
+          tac_refine pos ps gt gs (new_problem()) prf
+        | _ -> assert false*)
+
+        let cfg = Rewrite.get_eq_config ss pos in
+        let _,vs = Rewrite.get_eq_data cfg pos gt.goal_type in
+        let idopts = gen_valid_idopts env (List.map Bindlib.name_of vs) in
+        let ps = assume idopts in
+        match ps.proof_goals with
+        | [] -> assert false
+        | Unif _::_ -> assert false
+        | Typ gt::gs ->
+            let cfg = Rewrite.get_eq_config ss pos in
+            let (a,l,_),_ = Rewrite.get_eq_data cfg pos gt.goal_type in
+            let prf = add_args (mk_Symb cfg.symb_refl) [a; l] in
+            tac_refine pos ps gt gs (new_problem()) prf
       end
   | P_tac_remove ids ->
       (* Remove hypothesis [id] in goal [g]. *)
@@ -389,27 +424,31 @@ let rec handle :
         (Rewrite.rewrite ss p pos gt l2r pat (scope eq))
   | P_tac_sym ->
       let cfg = Rewrite.get_eq_config ss pos in
-      let (a,l,r), vs = Rewrite.get_eq_data cfg pos gt.goal_type in
+      (*let (a,l,r), vs = Rewrite.get_eq_data cfg pos gt.goal_type in
       let a,l,r =
-        if Array.length vs = 0 then a,l,r
+        if vs = [] then a,l,r
         else fst (Rewrite.get_eq_data cfg pos gt.goal_type)
-      in
+      in*)
+      let (a,l,r),_ = Rewrite.get_eq_data cfg pos gt.goal_type in
       let p = new_problem() in
       let prf =
-        let mt =
-          mk_Appl(mk_Symb cfg.symb_P,
-                  add_args (mk_Symb cfg.symb_eq) [a; r; l]) in
+        let mt = mk_Appl(mk_Symb cfg.symb_P,
+                         add_args (mk_Symb cfg.symb_eq) [a;r;l]) in
         let meta_term = LibMeta.make p (Env.to_ctxt env) mt in
         (* The proofterm is [eqind a r l M (λx,eq a l x) (refl a l)]. *)
         Rewrite.swap cfg a r l meta_term
       in
       tac_refine pos ps gt gs p prf
   | P_tac_why3 cfg ->
-      let ps = assume (count_products (Env.to_ctxt env) gt.goal_type) in
-      (match ps.proof_goals with
-       | Typ gt::_ ->
-         Why3_tactic.handle ss pos cfg gt; tac_admit ss sym_pos ps gt
-       | _ -> assert false)
+      begin
+        let ids = get_prod_ids env false gt.goal_type in
+        let idopts = gen_valid_idopts env ids in
+        let ps = assume idopts in
+        match ps.proof_goals with
+        | Typ gt::_ ->
+            Why3_tactic.handle ss pos cfg gt; tac_admit ss sym_pos ps gt
+        | _ -> assert false
+      end
   | P_tac_try tactic ->
     try handle ss sym_pos prv ps tactic
     with Fatal(_, _s) -> ps

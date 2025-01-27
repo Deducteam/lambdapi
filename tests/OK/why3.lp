@@ -25,6 +25,8 @@ opaque symbol test8 a p: π (`∃ x:τ a, p x ⇒ p x) ≔ begin why3 end;
 
 opaque symbol test9 a p : π (¬ (`∃ x:τ a, p x) ⇔ (`∀ x, ¬ (p x))) ≔ begin why3 end;
 
+opaque symbol test10 a p x q : π ((`∀ x:τ a, p x ⇒ q) ⇒ p x ⇒ q) ≔ begin why3 end;
+
 //constant symbol o:Set;
 //rule τ o ↪ Prop;
 
