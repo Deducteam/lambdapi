@@ -27,7 +27,7 @@ with (s $m) × $n     ↪ $n + $m × $n
 with _      × z      ↪ z
 with $m     × (s $n) ↪ $m + $m × $n;
 
-// Enabling decimal notation
+// Enabling parsing of decimal notation
 
 symbol n1 ≔ s z;
 symbol n2 ≔ s n1;
@@ -57,13 +57,18 @@ builtin "*" ≔ ×;
 
 symbol forty_two ≔ 42;
 
-//print forty_two;
-
 assert ⊢ forty_two
   ≡ let two ≔ s(s z) in
     let four ≔ two + two in
     let ten ≔ four + four + two in
     four × ten + two;
+
+// Enabling printing of decimal notation
+
+builtin "nat_zero" ≔ z;
+builtin "nat_succ" ≔ s;
+
+compute 4 + 5;
 
 // Doubling function.
 

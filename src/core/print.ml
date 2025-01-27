@@ -107,6 +107,7 @@ let var : 'a Bindlib.var pp = fun ppf x -> uid ppf (Bindlib.name_of x)
 
 (** Exception raised when trying to convert a term into a nat. *)
 exception Not_a_nat
+
 let builtin name =
   try StrMap.find name (!sig_state).builtins with Not_found -> raise Not_a_nat
 
