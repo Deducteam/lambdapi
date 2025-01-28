@@ -26,7 +26,7 @@ module D = struct
     | Some x -> out ppf "Some(%a)" elt x
 
   let pair : 'a pp -> 'b pp -> ('a * 'b) pp = fun elt1 elt2 ppf (x1,x2) ->
-    out ppf "%a,%a" elt1 x1 elt2 x2
+    out ppf "(%a,%a)" elt1 x1 elt2 x2
 
   let list : 'a pp -> 'a list pp = fun elt ppf l ->
     match l with

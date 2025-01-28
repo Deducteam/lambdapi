@@ -30,7 +30,7 @@ let get_eq_config : Sig_state.t -> popt -> eq_config = fun ss pos ->
 
 (* Register checks for the builtin symbols related to rewriting. *)
 let _ =
-  let check_t_or_p _ss pos sym =
+  let check_codomain_is_Type _ss pos sym =
     let valid =
       match Eval.whnf [] !(sym.sym_type) with
       | Prod(_, b) -> Eval.eq_modulo [] (snd (Bindlib.unbind b)) mk_Type
@@ -40,9 +40,9 @@ let _ =
       fatal pos "The type of [%s] is not of the form [_ → TYPE]." sym.sym_name
   in
   (* The type of the builtin ["T"] should be [U → TYPE]. *)
-  Builtin.register "T" check_t_or_p;
+  Builtin.register "T" check_codomain_is_Type;
   (* The type of the builtin ["P"] should be [Prop → TYPE]. *)
-  Builtin.register "P" check_t_or_p;
+  Builtin.register "P" check_codomain_is_Type;
   let get_domain_of_type s =
     match Eval.whnf [] !(s.sym_type) with
     | Prod(a,_) -> a
@@ -109,7 +109,7 @@ let _ =
 (** [get_eq_data pos cfg a] returns [((a,l,r),[v1;..;vn])] if [a ≡ Π v1:A1,
    .., Π vn:An, P (eq a l r)] and fails otherwise. *)
 let get_eq_data :
-  eq_config -> popt -> term -> (term * term * term) * tvar array = fun cfg ->
+  eq_config -> popt -> term -> (term * term * term) * tvar list = fun cfg ->
   let exception Not_eq of term in
   let get_eq_args u =
     if Logger.log_enabled () then log_rewr "get_eq_args %a" term u;
@@ -118,14 +118,14 @@ let get_eq_data :
     | _ -> raise (Not_eq u)
   in
   let exception Not_P of term in
-  let return vs r = r, Array.of_list (List.rev vs) in
+  let return vs r = r, List.rev vs in
   let rec get_eq vs t notin_whnf =
     if Logger.log_enabled () then log_rewr "get_eq %a" term t;
     match get_args t with
     | Prod(_,t), _ -> let v,t = Bindlib.unbind t in get_eq (v::vs) t true
     | p, [u] when is_symb cfg.symb_P p ->
       begin
-        let u = Eval.whnf ~tags:[`NoRw; `NoExpand] [] u in
+        let u = Eval.whnf ~tags:[`NoRw;`NoExpand] [] u in
         try return vs (get_eq_args u)
         with Not_eq _ ->
           (try return vs (get_eq_args (Eval.whnf [] u))
@@ -327,7 +327,8 @@ let rewrite : Sig_state.t -> problem -> popt -> goal_typ -> bool ->
   let (t, t_type) = Query.infer pos p g_ctxt t in
 
   (* Check that [t_type ≡ Π x1:a1, ..., Π xn:an, P (eq a l r)]. *)
-  let (a, l, r), vars  = get_eq_data cfg pos t_type in
+  let (a, l, r), vars = get_eq_data cfg pos t_type in
+  let vars = Array.of_list vars in
 
   (* Apply [t] to the variables of [vars] to get a witness of the equality. *)
   let t = Array.fold_left (fun t x -> mk_Appl(t, mk_Vari x)) t vars in
