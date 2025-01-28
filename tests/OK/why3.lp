@@ -1,41 +1,39 @@
-require open tests.OK.logic;
-require open tests.OK.natural;
+require open tests.OK.Prop tests.OK.Set tests.OK.FOL;
 
 prover "Alt-Ergo";
 prover_timeout 2;
 
-opaque symbol tautology : Π (a : Prop), P a → P a
-≔ begin
-    why3;
-end;
+opaque symbol test1 p : π p → π p ≔ begin why3 end;
 
-opaque symbol thm_and1 : Π (a b : Prop), P ({|and|} a b) → P a
-≔ begin
-    why3;
-end;
+opaque symbol test2 p q : π (p ∧ q) → π p ≔ begin why3 end;
 
+opaque symbol test3 : Π p q, π (p ∧ q) → π p ≔ begin why3 end;
 
-opaque symbol thm_and2 : Π (a b : Prop), P ({|and|} a b) → P b
-≔ begin
-    why3;
-end;
+opaque symbol test4 p : π (p ∨ ¬ p) ≔ begin why3 end;
 
-opaque symbol excluded_middle : Π (a : Prop), P (or a (not a))
-≔ begin
-    why3;
-end;
+opaque symbol test5 p q : π p → π (p ∨ q) ≔ begin why3 end;
 
-opaque symbol thm_or1 : Π (a b : Prop), P a → P (or a b)
-≔ begin
-    why3;
-end;
+opaque symbol test6 p q : π (p ⇒ q) → π p → π q ≔ begin why3 end;
 
-opaque symbol thm_or2 : Π (a b : Prop), P b → P (or a b)
-≔ begin
-    why3;
-end;
+constant symbol nat:Set;
 
-opaque symbol thm_imp : Π (a b : Prop), P (imp a b) → P a → P b
-≔ begin
-    why3;
-end;
+symbol even : τ nat → Prop;
+
+opaque symbol test7 : π (`∃ n, even n ⇒ even n) ≔ begin why3 end;
+
+opaque symbol test8 a p: π (`∃ x:τ a, p x ⇒ p x) ≔ begin why3 end;
+
+opaque symbol test9 a p : π (¬ (`∃ x:τ a, p x) ⇔ (`∀ x, ¬ (p x))) ≔ begin why3 end;
+
+opaque symbol test10 a p x q : π ((`∀ x:τ a, p x ⇒ q) ⇒ p x ⇒ q) ≔ begin why3 end;
+
+//opaque symbol test a p x q : π ((`∀ x:τ a, p x ⇒ (λ y, q y) x) ⇒ p x ⇒ (λ y, q y) x) ≔ begin why3 end;
+
+//opaque symbol test a p x q : π ((`∀ x:τ a, p x ⇒ q ((λ y,y)x)) ⇒ p x ⇒ q ((λ y,y)x)) ≔ begin why3 end;
+
+//constant symbol o:Set;
+//rule τ o ↪ Prop;
+
+//opaque symbol test a (p:τ(nat ⤳ o)) : π (¬ (`∃ x:τ a, p x) ⇔ (`∀ x, ¬ (p x))) ≔ begin why3 end;
+
+//opaque symbol test : π (`∃ p, p ⇒ p) ≔ begin why3 end;
