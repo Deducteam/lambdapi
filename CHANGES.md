@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- Why3 tactic.
 - Induction tactic.
 
 ### Changed
