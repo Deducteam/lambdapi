@@ -652,6 +652,10 @@ module UserLevelQueries = struct
       fail (Format.asprintf "Syntax error: a query was expected")
    | Common.Error.Fatal(_,msg) ->
       fail (Format.asprintf "Error: %s@." msg)
+   | Stack_overflow ->
+      fail
+       (Format.asprintf
+         "Error: too many results. Please refine your query.@." )
    | exn ->
       fail (Format.asprintf "Error: %s@." (Printexc.to_string exn))
 
