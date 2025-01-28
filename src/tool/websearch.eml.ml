@@ -45,8 +45,11 @@ let start ~port () =
       (fun request ->
         match%lwt Dream.form request with
         | `Ok [ "message", message; "search", _search ] ->
-          let output = Indexing.search_cmd_html message in
+          let output =
+            Indexing.search_cmd_html ~from:0 ~how_many:100 message in
+          Dream.log "Result obtained" ;
           Dream.html (show_form ~message ~output request)
+          (*Dream.stream (show_form_stream ~message ~output request)*)
         | _ ->
           Dream.empty `Bad_Request);
 

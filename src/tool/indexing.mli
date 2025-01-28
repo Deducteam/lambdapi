@@ -7,4 +7,4 @@ val dump : unit -> unit
 val search_cmd_txt: string -> string
 
 (* search command used by websearch *)
-val search_cmd_html: string -> string
+val search_cmd_html: from:int -> how_many:int -> string -> string

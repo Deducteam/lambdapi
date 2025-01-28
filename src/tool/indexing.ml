@@ -301,10 +301,10 @@ module DB = struct
    ~separator:"\n" ~sep:" and\n" ~delimiters:("","")
    ~lis:("* ","") ~pres:("","")
 
- let pp_item_set fmt set = pp_item_list fmt (ItemSet.bindings set)
+ let pp_results_list fmt l = pp_item_list fmt l
 
- let html_of_item_set fmt set =
-  Lplib.Base.out fmt "<ul>%a</ul>" html_of_item_list (ItemSet.bindings set)
+ let html_of_results_list fmt l =
+  Lplib.Base.out fmt "<ul>%a</ul>" html_of_item_list l
 
  (* disk persistence *)
 
@@ -640,13 +640,17 @@ include QueryLanguage
 
 module UserLevelQueries = struct
 
- let search_cmd_gen ~fail ~pp_results s =
+ let search_cmd_gen ~from ~how_many ~fail ~pp_results s =
   try
    let pstream = Parsing.Parser.Lp.parse_search_query_string "LPSearch" s in
    let pq = Stream.next pstream in
    let mok _ = None in
-   let items = answer_query ~mok [] pq in
-   Format.asprintf "%a@." pp_results items
+   let items = ItemSet.bindings (answer_query ~mok [] pq) in
+   let resultsno = List.length items in
+   let _,items = Lplib.List.cut items (from-1) in
+   let items,_ = Lplib.List.cut items how_many in
+   Format.asprintf "<h1>Numer of results: %d<h1>%a@."
+    resultsno pp_results items
   with
    | Stream.Failure ->
       fail (Format.asprintf "Syntax error: a query was expected")
@@ -659,13 +663,15 @@ module UserLevelQueries = struct
    | exn ->
       fail (Format.asprintf "Error: %s@." (Printexc.to_string exn))
 
- let search_cmd_html s =
-  search_cmd_gen ~fail:(fun x -> "<font color=\"red\">" ^ x ^ "</font>")
-   ~pp_results:html_of_item_set s
+ let search_cmd_html ~from ~how_many s =
+  search_cmd_gen ~from ~how_many
+   ~fail:(fun x -> "<font color=\"red\">" ^ x ^ "</font>")
+   ~pp_results:html_of_results_list s
 
  let search_cmd_txt s =
-  search_cmd_gen ~fail:(fun x -> Common.Error.fatal_no_pos "%s" x)
-  ~pp_results:pp_item_set s
+  search_cmd_gen ~from:0 ~how_many:999999
+   ~fail:(fun x -> Common.Error.fatal_no_pos "%s" x)
+   ~pp_results:pp_results_list s
 
 end
 
