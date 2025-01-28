@@ -18,6 +18,7 @@ let (|+) p1 p2 : 'a pp = fun ppf arg -> (p1 ++ p2) ppf ((), arg)
 let (+|) p1 p2 : 'a pp = fun ppf arg -> (p1 ++ p2) ppf (arg, ())
 
 let int : int pp = Format.pp_print_int
+let char : char pp = Format.pp_print_char
 let string : string pp = Format.pp_print_string
 let float : float pp = fun ppf -> out ppf "%f"
 let unit : unit outfmt -> unit pp = fun fmt ppf () -> out ppf fmt

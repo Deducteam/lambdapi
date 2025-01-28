@@ -6,6 +6,8 @@ injective symbol τ : Set → TYPE; // `t or \tau
 
 builtin "T" ≔ τ;
 
-symbol ↦ : Set → Set → Set; notation ↦ infix 20;
+symbol ⤳ : Set → Set → Set; // \leadsto
 
-rule τ($a ↦ $b) ↪ τ $a → τ $b;
+notation ⤳ infix 20;
+
+rule τ($a ⤳ $b) ↪ τ $a → τ $b;

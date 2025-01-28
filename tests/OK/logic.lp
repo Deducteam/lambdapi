@@ -117,3 +117,6 @@ builtin "not"   ≔ not;
 constant symbol ex: Π (a : U), (T a → Prop) → Prop;
 builtin "ex" ≔ ex; 
 builtin "all" ≔ all;
+
+symbol eqv p q ≔ {|and|} (imp p q) (imp q p);
+builtin "eqv" ≔ eqv;
