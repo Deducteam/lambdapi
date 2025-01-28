@@ -303,8 +303,8 @@ module DB = struct
 
  let pp_results_list fmt l = pp_item_list fmt l
 
- let html_of_results_list fmt l =
-  Lplib.Base.out fmt "<ul>%a</ul>" html_of_item_list l
+ let html_of_results_list from fmt l =
+  Lplib.Base.out fmt "<ol start=\"%d\">%a</ol>" from html_of_item_list l
 
  (* disk persistence *)
 
@@ -647,9 +647,9 @@ module UserLevelQueries = struct
    let mok _ = None in
    let items = ItemSet.bindings (answer_query ~mok [] pq) in
    let resultsno = List.length items in
-   let _,items = Lplib.List.cut items (from-1) in
+   let _,items = Lplib.List.cut items from in
    let items,_ = Lplib.List.cut items how_many in
-   Format.asprintf "<h1>Numer of results: %d<h1>%a@."
+   Format.asprintf "<h1>Numer of results: %d</h1>%a@."
     resultsno pp_results items
   with
    | Stream.Failure ->
@@ -666,7 +666,7 @@ module UserLevelQueries = struct
  let search_cmd_html ~from ~how_many s =
   search_cmd_gen ~from ~how_many
    ~fail:(fun x -> "<font color=\"red\">" ^ x ^ "</font>")
-   ~pp_results:html_of_results_list s
+   ~pp_results:(html_of_results_list from) s
 
  let search_cmd_txt s =
   search_cmd_gen ~from:0 ~how_many:999999
