@@ -205,12 +205,12 @@ let rec translate_prop : config -> l2y -> term -> l2y * Why3.Term.term =
   let default m t =
     try
       let sym = List.assoc_eq (Eval.eq_modulo []) t m.t2ls in
-      (m, Why3.Term.ps_app sym [])
+      m, Why3.Term.ps_app sym []
     with Not_found ->
       let sym = Why3.Term.create_psymbol (Why3.Ident.id_fresh "X") [] in
       if Logger.log_enabled() then
         log "abstract [%a] as psymbol %a" term t Why3.Pretty.print_ls sym;
-      ({m with t2ls = (t,sym)::m.t2ls}, Why3.Term.ps_app sym [])
+      {m with t2ls = (t,sym)::m.t2ls}, Why3.Term.ps_app sym []
   in
   fun cfg m t ->
   if Logger.log_enabled() then log "translate_prop %a [%a]" l2y m term t;
