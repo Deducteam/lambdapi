@@ -26,9 +26,10 @@ let search_cmd cfg s =
    (Tool.Indexing.search_cmd_txt s) in
  Error.handle_exceptions run
 
-let websearch_cmd cfg port =
+let websearch_cmd cfg rules port =
  Config.init cfg;
  let run () =
+  Tool.Indexing.load_rewriting_rules rules ;
   Tool.Websearch.start ~port () in
  Error.handle_exceptions run
 
@@ -42,7 +43,8 @@ let index_cmd cfg add_only rules files =
   let handle file =
    Console.reset_default ();
    Time.restore time;
-   Tool.Indexing.index_sign ~rules (with_no_wrn Compile.compile_file file) in
+   Tool.Indexing.load_rewriting_rules rules ;
+   Tool.Indexing.index_sign (with_no_wrn Compile.compile_file file) in
   List.iter handle files;
   Tool.Indexing.dump () in
  Error.handle_exceptions run
@@ -411,8 +413,8 @@ let rules_arg : string list CLT.t =
 let index_cmd =
  let doc = "Index the given files." in
  Cmd.v (Cmd.info "index" ~doc ~man:man_pkg_file)
-  Cmdliner.Term.(const LPSearchMain.index_cmd $ Config.full $
-   add_only_arg $ rules_arg $ files)
+  Cmdliner.Term.(const LPSearchMain.index_cmd $ Config.full
+   $ add_only_arg $ rules_arg $ files)
 
 let search_cmd =
  let doc = "Run a search query against the index." in
@@ -424,7 +426,8 @@ let websearch_cmd =
  let doc =
   "Starts a webserver for searching the library." in
  Cmd.v (Cmd.info "websearch" ~doc ~man:man_pkg_file)
-  Cmdliner.Term.(const LPSearchMain.websearch_cmd $ Config.full $ port_arg)
+  Cmdliner.Term.(const LPSearchMain.websearch_cmd $ Config.full
+   $ rules_arg $ port_arg)
 
 let _ =
   let t0 = Sys.time () in

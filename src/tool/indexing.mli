@@ -1,6 +1,7 @@
 (* indexing *)
 val empty : unit -> unit
-val index_sign : rules:string list -> Core.Sign.t -> unit
+val load_rewriting_rules: string list -> unit
+val index_sign : Core.Sign.t -> unit
 val dump : unit -> unit
 
 (* search command used by cli *)

@@ -372,14 +372,6 @@ let find_sym ~prt:_prt ~prv:_prv _sig_state {elt=(mp,name); pos} =
   Core.Term.create_sym mp Core.Term.Public Core.Term.Defin Core.Term.Sequen
    false (Common.Pos.make pos name) None Core.Term.mk_Type []
 
-let search_pterm ~generalize ~mok env pterm =
- let sig_state = Core.Sig_state.dummy in
- let env =
-  ("V#",(Bindlib.new_var mk_Vari "V#" ,Bindlib.box Term.mk_Type,None))::env in
- let query =
-  Parsing.Scope.scope_search_pattern ~find_sym ~mok sig_state env pterm in
- DB.search ~generalize query
-
 module QNameMap =
  Map.Make(struct type t = sym_name let compare = Stdlib.compare end)
 
@@ -433,6 +425,17 @@ let normalize typ =
   try QNameMap.find (name_of_sym sym) (Lazy.force meta_rules)
   with Not_found -> Core.Tree_type.empty_dtree in
  Core.Eval.snf ~dtree ~tags:[`NoExpand] [] typ
+
+let search_pterm ~generalize ~mok env pterm =
+ let sig_state = Core.Sig_state.dummy in
+ let env =
+  ("V#",(Bindlib.new_var mk_Vari "V#" ,Bindlib.box Term.mk_Type,None))::env in
+ let query =
+  Parsing.Scope.scope_search_pattern ~find_sym ~mok sig_state env pterm in
+ Dream.log "QUERY before: %a" Core.Print.term query ;
+ let query = normalize query in
+ Dream.log "QUERY after: %a" Core.Print.term query ;
+ DB.search ~generalize query
 
 let rec is_flexible t =
  match Core.Term.unfold t with
@@ -546,8 +549,10 @@ let index_sym sym =
  (* Rules *)
  List.iter (index_rule sym) Timed.(!(sym.Core.Term.sym_rules))
 
-let index_sign ~rules:rwrules sign =
- DB.rwpaths := rwrules ;
+let load_rewriting_rules rwrules =
+ DB.rwpaths := rwrules
+
+let index_sign sign =
  let syms = Timed.(!(sign.Core.Sign.sign_symbols)) in
  let rules = Timed.(!(sign.Core.Sign.sign_deps)) in
  Lplib.Extra.StrMap.iter (fun _ sym -> index_sym sym) syms ;
