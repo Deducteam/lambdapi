@@ -1,7 +1,7 @@
 .POSIX:
 LAMBDAPI_FILE = lambdapi-mode.el
 VERSION = $(shell cat $(LAMBDAPI_FILE) | grep ";; Version:" | sed "s/;; Version: \(.*\)/\1/")
-NAME = $(shell cat $(LAMBDAPI_FILE) | grep "provide " | grep -v legacy | sed "s/(provide '\(.*\))/\1/")
+NAME = $(shell cat $(LAMBDAPI_FILE) | grep "^(provide" | grep ")" | grep -v "legacy" | sed "s/(provide '\(.*\))/\1/")
 # The path to lambdapi built by dune
 LAMBDAPI = ../../_build/install/default/bin/lambdapi
 
@@ -22,8 +22,6 @@ $(NAME)-$(VERSION).tar: $(SRC)
 	mkdir -p "$(NAME)-$(VERSION)"
 	cp *.el "$(NAME)-$(VERSION)"
 	tar -cf "$(NAME)-$(VERSION)".tar "$(NAME)-$(VERSION)"
-
-FILENAME = $(shell head @<)
 
 .PHONY: lambdapi-mode-pkg.el
 lambdapi-mode-pkg.el: $(LAMBDAPI_FILE)
