@@ -30,10 +30,11 @@ lambdapi-mode-pkg.el: lambdapi-mode.el
 	$(eval packageName := $(shell cat $< | grep "provide " | grep -v legacy | sed "s/(provide '\(.*\))/\1/"))
 	$(eval packageVersion := $(shell cat $< | grep ";; Version:" | sed "s/;; Version: \(.*\)/\1/"))
 	$(eval description := $(shell cat $< | grep ";;; lambdapi-mode.el ---" | sed "s/;;; lambdapi-mode.el --- \(.*\)-\*- lexical-binding:.*/\1/"))
-	$(eval requirements := $(shell cat lambdapi-mode.el | grep ";; Package-Requires: " | sed "s/;; Package-Requires: \(.*\)/\1/"))
+	$(eval requirements := $(shell cat lambdapi-mode.el | grep ";; Package-Requires: " | sed "s/;; Package-Requires: \(.*\)/\1/" | sed 's/"/\\"/g' | cut -d' ' -f3-100))
 	echo "(define-package \"$(packageName)\" \"$(packageVersion)\"" > $@
 	echo "  \"$(description)\"" >> $@
-	echo "  '$(requirements))" >> $@
+	echo "  '($(requirements))" >> $@
+
 
 .PHONY: install
 install:
