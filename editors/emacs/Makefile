@@ -1,7 +1,7 @@
 .POSIX:
 LAMBDAPI_FILE = lambdapi-mode.el
-VERSION = $(shell cat $(LAMBDAPI_FILE) | grep ";; Version:" | sed "s/;; Version: \(.*\)/\1/")
-NAME = $(shell cat $(LAMBDAPI_FILE) | grep "^(provide" | grep ")" | grep -v "legacy" | sed "s/(provide '\(.*\))/\1/")
+VERSION = $(shell awk '/^;; Version: /{print $$3;exit}' $(LAMBDAPI_FILE))
+NAME = $(shell grep "^(provide" $(LAMBDAPI_FILE) | grep ")" | grep -v "legacy" | sed "s/(provide '\(.*\))/\1/")
 # The path to lambdapi built by dune
 LAMBDAPI = ../../_build/install/default/bin/lambdapi
 
@@ -25,8 +25,8 @@ $(NAME)-$(VERSION).tar: $(SRC)
 
 .PHONY: lambdapi-mode-pkg.el
 lambdapi-mode-pkg.el: $(LAMBDAPI_FILE)
-	$(eval description := $(shell cat $< | grep ";;; $(LAMBDAPI_FILE) ---" | sed "s/;;; $(LAMBDAPI_FILE) --- \(.*\)-\*- lexical-binding:.*/\1/"))
-	$(eval requirements := $(shell cat $(LAMBDAPI_FILE) | grep ";; Package-Requires: " | sed "s/;; Package-Requires: \(.*\)/\1/" | sed 's/"/\\"/g' | cut -d' ' -f3-100))
+	$(eval description := "A major mode for editing Lambdapi source code.")
+	$(eval requirements := $(shell grep ";; Package-Requires: " $(LAMBDAPI_FILE) | sed 's/"/\\"/g' | cut -d' ' -f5-))
 	@echo "(define-package \"$(NAME)\" \"$(VERSION)\"" > $@
 	@echo "  \"$(description)\"" >> $@
 	@echo "  '($(requirements))" >> $@
