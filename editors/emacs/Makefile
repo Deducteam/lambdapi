@@ -31,16 +31,6 @@ lambdapi-mode-pkg.el: $(LAMBDAPI_FILE)
 	@echo "  \"$(description)\"" >> $@
 	@echo "  '($(requirements))" >> $@
 
-.PHONY: install
-install:
-	@echo "See https://lambdapi.readthedocs.io/en/latest/emacs.html \
-	for instructions on how to install the lambdapi mode for Emacs. \
-	If you know what you're doing, you can install the development version with" \
-	| fmt
-	@echo "$$ make dist"
-	@echo "and in emacs"
-	@echo "M-x package-install-file RET $(NAME)-$(VERSION).tar RET"
-
 .PHONY: dist
 dist: $(NAME)-$(VERSION).tar
 
