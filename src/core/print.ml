@@ -18,10 +18,6 @@ let log_prnt = log_prnt.pp
 (** Current signature state. *)
 let sig_state : sig_state ref = ref Sig_state.dummy
 
-(** [notation_of s] returns the notation of symbol [s] or [None]. *)
-let notation_of : sym -> float notation option = fun s ->
-  SymMap.find_opt s !sig_state.notations
-
 (** Flag for printing the domains of λ-abstractions. *)
 let print_domains : bool ref = Console.register_flag "print_domains" false
 
@@ -50,7 +46,7 @@ let notation : 'a pp -> 'a notation pp = fun elt ->
   | Prefix(p) -> out ppf "prefix %a" elt p
   | Infix(a,p) -> out ppf "infix%a %a" assoc a elt p
   | Postfix(p) -> out ppf "postfix %a" elt p
-  | Succ (Some n) -> notation ppf n
+  | Succ n -> notation ppf n
   | Quant -> out ppf "quantifier"
   | _ -> ()
   in notation
@@ -202,13 +198,13 @@ and term : term pp = fun ppf t ->
           let number f t =
             try out ppf "%i" (f t) with Not_a_nat -> pp_appl h args in
           let args = LibTerm.remove_impl_args s args in
-          begin match notation_of s with
-          | Some Quant when are_quant_args args ->
+          begin match !(s.sym_not) with
+          | Quant when are_quant_args args ->
               if p <> `Func then out ppf "(";
               quantifier s args;
               if p <> `Func then out ppf ")"
-          | Some (Postfix _) -> postfix h s args
-          | Some (Infix _) ->
+          | Postfix _ -> postfix h s args
+          | Infix _ ->
               begin
                 match args with
                 | l::r::args ->
@@ -227,14 +223,14 @@ and term : term pp = fun ppf t ->
                   List.iter (out ppf " %a" atom) args;
                   if p = `Atom then out ppf ")"
               end
-          | Some (Zero|IntZero) -> out ppf "0"
-          | Some (Succ (Some (Postfix _))) ->
+          | Zero | IntZero -> out ppf "0"
+          | Succ (Postfix _) ->
               (try out ppf "%i" (nat_of_term t)
                with Not_a_nat -> postfix h s args)
-          | Some (Succ _) -> number nat_of_term t
-          | Some PosOne -> out ppf "1"
-          | Some (PosDouble|PosSuccDouble) -> number pos_of_term t
-          | Some (IntPos|IntNeg) -> number int_of_term t
+          | Succ _ -> number nat_of_term t
+          | PosOne -> out ppf "1"
+          | PosDouble | PosSuccDouble -> number pos_of_term t
+          | IntPos | IntNeg -> number int_of_term t
           | _ -> pp_appl h args
           end
     | _ -> pp_appl h args

@@ -29,7 +29,6 @@ type sig_state =
   ; alias_path: Path.t StrMap.t           (** Alias to path map. *)
   ; path_alias: string Path.Map.t         (** Path to alias map. *)
   ; builtins  : sym StrMap.t              (** Builtins. *)
-  ; notations : float notation SymMap.t   (** Notations. *)
   ; open_paths : Path.Set.t               (** Open modules. *) }
 
 type t = sig_state
@@ -38,8 +37,7 @@ type t = sig_state
 let dummy : sig_state =
   { signature = Sign.dummy (); in_scope = StrMap.empty;
     alias_path = StrMap.empty; path_alias = Path.Map.empty;
-    builtins = StrMap.empty; notations = SymMap.empty;
-    open_paths = Path.Set.empty }
+    builtins = StrMap.empty; open_paths = Path.Set.empty }
 
 (** [add_symbol ss expo prop mstrat opaq id pos typ impl def] generates a new
     signature state from [ss] by creating a new symbol with expo [e], property
@@ -61,21 +59,36 @@ let add_symbol : sig_state -> expo -> prop -> match_strat
   let in_scope = StrMap.add id.elt sym ss.in_scope in
   {ss with in_scope}, sym
 
-(** [add_notation ss s n] maps [s] notation to [n] in [ss]. *)
-let add_notation : sig_state -> sym -> float notation -> sig_state =
-  fun ss s n ->
-  if s.sym_path = ss.signature.sign_path then
-    Sign.add_notation ss.signature s n;
-  {ss with notations = SymMap.update s (Sign.update_notation n) ss.notations}
-
 (** [add_builtin ss n s] generates a new signature state from [ss] by mapping
    the builtin [n] to [s]. *)
 let add_builtin : sig_state -> string -> sym -> sig_state =
   fun ss builtin sym ->
   Sign.add_builtin ss.signature builtin sym;
   let builtins = StrMap.add builtin sym ss.builtins in
-  let notations = Sign.add_notation_from_builtin builtin sym ss.notations in
-  {ss with builtins; notations}
+  let n =
+    match builtin with
+    | "nat_zero"  -> Zero
+    | "nat_succ" ->
+        begin
+          let old_not = !(sym.sym_not) in
+          match old_not with
+          | NoNotation | Prefix _ | Postfix _ -> Succ old_not
+          | _ -> assert false
+        end
+    | "pos_one"  -> PosOne
+    | "pos_double"  -> PosDouble
+    | "pos_succ_double"  -> PosSuccDouble
+    | "int_zero"  -> IntZero
+    | "int_positive"  -> IntPos
+    | "int_negative"  -> IntNeg
+    | _ -> NoNotation
+  in
+  begin
+    match n with
+    | NoNotation -> ()
+    | _ -> sym.sym_not := n
+  end;
+  {ss with builtins}
 
 (** [open_sign ss sign] extends the signature state [ss] with every symbol of
    the signature [sign]. This has the effect of putting these symbols in the
@@ -85,9 +98,8 @@ let open_sign : sig_state -> Sign.t -> sig_state = fun ss sign ->
   let f _key _v1 v2 = Some(v2) in (* hides previous symbols *)
   let in_scope = StrMap.union f ss.in_scope !(sign.sign_symbols) in
   let builtins = StrMap.union f ss.builtins !(sign.sign_builtins) in
-  let notations = SymMap.union f ss.notations !(sign.sign_notations) in
   let open_paths = Path.Set.add sign.sign_path ss.open_paths in
-  {ss with in_scope; builtins; notations; open_paths}
+  {ss with in_scope; builtins; open_paths}
 
 (** [of_sign sign] creates a state from the signature [sign] and open it as
    well as the ghost signatures. *)

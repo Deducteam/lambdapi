@@ -50,7 +50,7 @@ type 'a notation =
   | Postfix of 'a
   | Infix of Pratter.associativity * 'a
   | Zero
-  | Succ of 'a notation option (* Prefix or Postfix only *)
+  | Succ of 'a notation (* NoNotation, Prefix or Postfix only *)
   | Quant
   | PosOne
   | PosDouble

@@ -53,7 +53,7 @@ type 'a notation =
   | Postfix of 'a
   | Infix of Pratter.associativity * 'a
   | Zero
-  | Succ of 'a notation option (* Prefix or Postfix only *)
+  | Succ of 'a notation (* NoNotation, Prefix or Postfix only *)
   | Quant
   | PosOne
   | PosDouble
@@ -371,11 +371,11 @@ type problem = problem_aux ref
 let new_problem : unit -> problem = fun () ->
  ref {to_solve  = []; unsolved = []; recompute = false; metas = MetaSet.empty}
 
-(** [create_sym path expo prop opaq name decl typ impl] creates a new symbol
-   with path [path], exposition [expo], property [prop], opacity [opaq],
-   matching strategy [mstrat], name [name.elt], type [typ], implicit arguments
-   [impl], position [name.pos], declaration position [decl.pos], no definition
-   and no rules. *)
+(** [create_sym path expo prop opaq name decl typ impl notation] creates a new
+    symbol with path [path], exposition [expo], property [prop], opacity
+    [opaq], matching strategy [mstrat], name [name.elt], type [typ], implicit
+    arguments [impl], position [name.pos], declaration position [decl.pos], no
+    notation, no definition and no rules. *)
 let create_sym : Path.t -> expo -> prop -> match_strat -> bool ->
   Pos.strloc -> Pos.popt -> term -> bool list -> sym =
   fun sym_path sym_expo sym_prop sym_mstrat sym_opaq

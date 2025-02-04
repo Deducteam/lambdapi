@@ -102,9 +102,10 @@ let handle : Sig_state.t -> proof_state option -> p_query -> result =
         let def ppf = Option.iter (out ppf "@ ≔ %a" term) in
         (* Function to print a notation *)
         let notation ppf s =
-          Option.iter
-            (out ppf "notation %a %a;@." sym s (notation float))
-            (notation_of s) in
+          match !(s.sym_not) with
+          | NoNotation -> ()
+          | n -> out ppf "notation %a %a;@." sym s (notation float) n
+        in
         (* Function to print rules. *)
         let rules ppf s =
           match !(s.sym_rules) with

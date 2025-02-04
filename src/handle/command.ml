@@ -288,7 +288,7 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
         | Prefix s -> Prefix (float_priority_from_string_priority s)
         | Postfix s -> Postfix (float_priority_from_string_priority s)
         | Infix(a,s) -> Infix(a, float_priority_from_string_priority s)
-        | Succ x -> Succ (Option.map float_notation_from_string_notation x)
+        | Succ x -> Succ (float_notation_from_string_notation x)
         | Zero -> Zero
         | Quant -> Quant
         | PosOne -> PosOne
@@ -300,7 +300,8 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
       in
       let n = float_notation_from_string_notation n in
       Console.out 2 "notation %a %a" sym s (notation float) n;
-      (Sig_state.add_notation ss s n, None, None)
+      s.sym_not := n;
+      (ss, None, None)
   | P_unif_rule(h) ->
       (* Approximately same processing as rules without SR checking. *)
       let pur = scope_rule true ss h in
