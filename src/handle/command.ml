@@ -260,18 +260,11 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
       (* Check arity. *)
       let expected =
         match n with
-        | NoNotation -> max_int
-        | Prefix _ | Postfix _ -> 1
+        | Zero | IntZero | PosOne -> 0
+        | Prefix _ | Postfix _ | Succ _| Quant | PosDouble | PosSuccDouble
+        | IntPos | IntNeg -> 1
         | Infix _ -> 2
-        | Zero -> 0
-        | Succ _ -> 1
-        | Quant -> 1
-        | PosOne -> 0
-        | PosDouble -> 1
-        | PosSuccDouble -> 1
-        | IntZero -> 0
-        | IntPos -> 1
-        | IntNeg -> 1
+        | NoNotation -> max_int
       and real = Tactic.count_products [] !(s.sym_type) in
       if real < expected then
         fatal pos "Notation incompatible with the type of %a" sym s;

@@ -327,10 +327,10 @@ let add_rules : t -> sym -> rule list -> unit = fun sign sym rs ->
     let sm = StrMap.update sym.sym_name f sm in
     sign.sign_deps := Path.Map.add sym.sym_path sm !(sign.sign_deps)
 
-(** [add_builtin sign name sym] binds the builtin name [name] to [sym] (in the
-    signature [sign]). The previous binding, if any, is discarded. *)
-let add_builtin : t -> string -> sym -> unit = fun sign builtin sym ->
-  sign.sign_builtins := StrMap.add builtin sym !(sign.sign_builtins)
+(** [add_builtin sign name sym] binds the builtin [name] to [sym] in the
+    signature [sign]. The previous binding, if any, is discarded. *)
+let add_builtin : t -> string -> sym -> unit = fun sign name sym ->
+  sign.sign_builtins := StrMap.add name sym !(sign.sign_builtins)
 
 (** [add_inductive sign ind_sym ind_cons ind_prop ind_prop_args] add to [sign]
    the inductive type [ind_sym] with constructors [ind_cons], induction

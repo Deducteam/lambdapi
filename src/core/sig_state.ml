@@ -59,22 +59,17 @@ let add_symbol : sig_state -> expo -> prop -> match_strat
   let in_scope = StrMap.add id.elt sym ss.in_scope in
   {ss with in_scope}, sym
 
-(** [add_builtin ss n s] generates a new signature state from [ss] by mapping
-   the builtin [n] to [s]. *)
+(** [add_builtin ss b s] generates a new signature state from [ss] by mapping
+   the builtin string [b] to symbol [s]. *)
 let add_builtin : sig_state -> string -> sym -> sig_state =
-  fun ss builtin sym ->
-  Sign.add_builtin ss.signature builtin sym;
-  let builtins = StrMap.add builtin sym ss.builtins in
+  fun ss b s ->
+  (* Update the builtins of the current signature. *)
+  Sign.add_builtin ss.signature b s;
+  (* Update the notation of [s] if [b] is a builtin used for printing. *)
   let n =
-    match builtin with
+    match b with
     | "nat_zero"  -> Zero
-    | "nat_succ" ->
-        begin
-          let old_not = !(sym.sym_not) in
-          match old_not with
-          | NoNotation | Prefix _ | Postfix _ -> Succ old_not
-          | _ -> assert false
-        end
+    | "nat_succ" -> Succ !(s.sym_not)
     | "pos_one"  -> PosOne
     | "pos_double"  -> PosDouble
     | "pos_succ_double"  -> PosSuccDouble
@@ -86,8 +81,10 @@ let add_builtin : sig_state -> string -> sym -> sig_state =
   begin
     match n with
     | NoNotation -> ()
-    | _ -> sym.sym_not := n
+    | _ -> s.sym_not := n
   end;
+  (* Update the builtins of the sig_state. *)
+  let builtins = StrMap.add b s ss.builtins in
   {ss with builtins}
 
 (** [open_sign ss sign] extends the signature state [ss] with every symbol of
