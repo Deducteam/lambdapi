@@ -13,24 +13,6 @@ type ind_data =
   ; ind_nb_types : int  (** Number of mutually defined types. *)
   ; ind_nb_cons : int   (** Number of constructors. *) }
 
-(** The priority of an infix operator is a floating-point number. *)
-type priority = float
-
-(** Notations. *)
-type 'a notation =
-  | Prefix of 'a
-  | Postfix of 'a
-  | Infix of Pratter.associativity * 'a
-  | Zero
-  | Succ of 'a notation option (* Prefix or Postfix only *)
-  | Quant
-  | PosOne
-  | PosDouble
-  | PosSuccDouble
-  | IntZero
-  | IntPos
-  | IntNeg
-
 (** Representation of a signature. It roughly corresponds to a set of symbols,
     defined in a single module (or file). *)
 type t =

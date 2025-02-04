@@ -260,6 +260,7 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
       (* Check arity. *)
       let expected =
         match n with
+        | NoNotation -> max_int
         | Prefix _ | Postfix _ -> 1
         | Infix _ -> 2
         | Zero -> 0
@@ -283,6 +284,7 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
       in
       let rec float_notation_from_string_notation n =
         match n with
+        | NoNotation -> NoNotation
         | Prefix s -> Prefix (float_priority_from_string_priority s)
         | Postfix s -> Postfix (float_priority_from_string_priority s)
         | Infix(a,s) -> Infix(a, float_priority_from_string_priority s)
