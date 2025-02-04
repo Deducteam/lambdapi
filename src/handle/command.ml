@@ -10,7 +10,8 @@ open Proof
 (** Type alias for a function that compiles a Lambdapi module. *)
 type compiler = Path.t -> Sign.t
 
-(** Register a check for the type of the builtin symbols "0" and "+1". *)
+(** Register a check for the type of the builtin symbols "nat_zero" and
+    "nat_succ". *)
 let _ =
   (* [eq_noexn t u] tries to unify the terms [t] and [u]. *)
   let eq_noexn : term -> term -> bool = fun t u ->
@@ -20,20 +21,20 @@ let _ =
   let register = Builtin.register_expected_type eq_noexn term in
   let expected_zero_type ss _pos =
     try
-      match !((StrMap.find "+1" ss.builtins).sym_type) with
+      match !((StrMap.find "nat_succ" ss.builtins).sym_type) with
       | Prod(a,_) -> a
       | _ -> assert false
     with Not_found -> mk_Meta (LibMeta.fresh (new_problem()) mk_Type 0, [||])
   in
-  register "0" expected_zero_type;
+  register "nat_zero" expected_zero_type;
   let expected_succ_type ss _pos =
     let typ_0 =
-      try lift !((StrMap.find "0" ss.builtins).sym_type)
+      try lift !((StrMap.find "nat_zero" ss.builtins).sym_type)
       with Not_found -> _Meta (LibMeta.fresh (new_problem()) mk_Type 0) [||]
     in
     Bindlib.unbox (_Impl typ_0 typ_0)
   in
-  register "+1" expected_succ_type
+  register "nat_succ" expected_succ_type
 
 (** [handle_open ss p] handles the command [open p] with [ss] as the
    signature state. On success, an updated signature state is returned. *)
@@ -260,17 +261,9 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
       (* Check arity. *)
       let expected =
         match n with
-        | Prefix _ | Postfix _ -> 1
+        | Prefix _ | Postfix _ | Quant -> 1
         | Infix _ -> 2
-        | Zero -> 0
-        | Succ _ -> 1
-        | Quant -> 1
-        | PosOne -> 0
-        | PosDouble -> 1
-        | PosSuccDouble -> 1
-        | IntZero -> 0
-        | IntPos -> 1
-        | IntNeg -> 1
+        | _ -> assert false
       and real = Tactic.count_products [] !(s.sym_type) in
       if real < expected then
         fatal pos "Notation incompatible with the type of %a" sym s;
@@ -281,20 +274,13 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
           else float_of_int (int_of_string s)
         with Failure _ -> fatal pos "Too big number (max is %d)" max_int
       in
-      let rec float_notation_from_string_notation n =
+      let float_notation_from_string_notation n =
         match n with
         | Prefix s -> Prefix (float_priority_from_string_priority s)
         | Postfix s -> Postfix (float_priority_from_string_priority s)
         | Infix(a,s) -> Infix(a, float_priority_from_string_priority s)
-        | Succ x -> Succ (Option.map float_notation_from_string_notation x)
-        | Zero -> Zero
         | Quant -> Quant
-        | PosOne -> PosOne
-        | PosDouble -> PosDouble
-        | PosSuccDouble -> PosSuccDouble
-        | IntZero -> IntZero
-        | IntPos -> IntPos
-        | IntNeg -> IntNeg
+        | _ -> assert false
       in
       let n = float_notation_from_string_notation n in
       Console.out 2 "notation %a %a" sym s (notation float) n;
