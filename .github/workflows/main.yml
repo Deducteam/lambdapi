@@ -1,6 +1,6 @@
 on:
   pull_request:
-    types: [opened, synchronize, edited, reopened]
+    types: [opened, synchronize, reopened]
   push:
   workflow_dispatch:
 jobs:
