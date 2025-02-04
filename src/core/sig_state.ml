@@ -60,7 +60,8 @@ let add_symbol : sig_state -> expo -> prop -> match_strat
   {ss with in_scope}, sym
 
 (** [add_builtin ss b s] generates a new signature state from [ss] by mapping
-   the builtin string [b] to symbol [s]. *)
+    the builtin string [b] to the symbol [s], and by updating the notation of
+    [s] when [b] is a builtin used for printing. *)
 let add_builtin : sig_state -> string -> sym -> sig_state =
   fun ss b s ->
   (* Update the builtins of the current signature. *)
