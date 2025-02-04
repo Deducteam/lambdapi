@@ -260,11 +260,9 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
       (* Check arity. *)
       let expected =
         match n with
-        | Zero | IntZero | PosOne -> 0
-        | Prefix _ | Postfix _ | Succ _| Quant | PosDouble | PosSuccDouble
-        | IntPos | IntNeg -> 1
+        | Prefix _ | Postfix _ | Quant -> 1
         | Infix _ -> 2
-        | NoNotation -> max_int
+        | _ -> assert false
       and real = Tactic.count_products [] !(s.sym_type) in
       if real < expected then
         fatal pos "Notation incompatible with the type of %a" sym s;
@@ -275,21 +273,13 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
           else float_of_int (int_of_string s)
         with Failure _ -> fatal pos "Too big number (max is %d)" max_int
       in
-      let rec float_notation_from_string_notation n =
+      let float_notation_from_string_notation n =
         match n with
-        | NoNotation -> NoNotation
         | Prefix s -> Prefix (float_priority_from_string_priority s)
         | Postfix s -> Postfix (float_priority_from_string_priority s)
         | Infix(a,s) -> Infix(a, float_priority_from_string_priority s)
-        | Succ x -> Succ (float_notation_from_string_notation x)
-        | Zero -> Zero
         | Quant -> Quant
-        | PosOne -> PosOne
-        | PosDouble -> PosDouble
-        | PosSuccDouble -> PosSuccDouble
-        | IntZero -> IntZero
-        | IntPos -> IntPos
-        | IntNeg -> IntNeg
+        | _ -> assert false
       in
       let n = float_notation_from_string_notation n in
       Console.out 2 "notation %a %a" sym s (notation float) n;
