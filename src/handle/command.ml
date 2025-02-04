@@ -60,11 +60,15 @@ let handle_require : compiler -> bool -> sig_state -> p_path -> sig_state =
   if Path.Map.mem p !(ss.signature.sign_deps) then
     fatal pos "Module %a is already required." path p;
   (* Compile required path (adds it to [Sign.loaded] among other things) *)
-  ignore (compile p);
+  let new_sign = compile p in
   (* Add the dependency (it was compiled already while parsing). *)
-  ss.signature.sign_deps
-    := Path.Map.add p StrMap.empty !(ss.signature.sign_deps);
-  if b then open_sign ss (Path.Map.find p !(Sign.loaded)) else ss
+  ss.signature.sign_deps :=
+    Path.Map.add p StrMap.empty !(ss.signature.sign_deps);
+  (* Add builtins. *)
+  let f _k _v1 v2 = Some v2 in (* hides previous symbols *)
+  let builtins = StrMap.union f ss.builtins !(new_sign.sign_builtins) in
+  let ss = {ss with builtins} in
+  if b then open_sign ss new_sign else ss
 
 (** [handle_require_as compile ss p id] handles the command
     [require p as id] with [ss] as the signature state and [compile] the main

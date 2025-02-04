@@ -64,8 +64,6 @@ let add_symbol : sig_state -> expo -> prop -> match_strat
     [s] when [b] is a builtin used for printing. *)
 let add_builtin : sig_state -> string -> sym -> sig_state =
   fun ss b s ->
-  (* Update the builtins of the current signature. *)
-  Sign.add_builtin ss.signature b s;
   (* Update the notation of [s] if [b] is a builtin used for printing. *)
   let n =
     match b with
@@ -84,20 +82,20 @@ let add_builtin : sig_state -> string -> sym -> sig_state =
     | NoNotation -> ()
     | _ -> s.sym_not := n
   end;
+  (* Update the builtins of the current signature. *)
+  Sign.add_builtin ss.signature b s;
   (* Update the builtins of the sig_state. *)
   let builtins = StrMap.add b s ss.builtins in
   {ss with builtins}
 
 (** [open_sign ss sign] extends the signature state [ss] with every symbol of
    the signature [sign]. This has the effect of putting these symbols in the
-   scope when (possibly masking symbols with the same name). Builtins and
-   notations are also handled in a similar way. *)
+   scope, possibly masking symbols with the same name. *)
 let open_sign : sig_state -> Sign.t -> sig_state = fun ss sign ->
-  let f _key _v1 v2 = Some(v2) in (* hides previous symbols *)
+  let f _key _v1 v2 = Some v2 in (* hides previous symbols *)
   let in_scope = StrMap.union f ss.in_scope !(sign.sign_symbols) in
-  let builtins = StrMap.union f ss.builtins !(sign.sign_builtins) in
   let open_paths = Path.Set.add sign.sign_path ss.open_paths in
-  {ss with in_scope; builtins; open_paths}
+  {ss with in_scope; open_paths}
 
 (** [of_sign sign] creates a state from the signature [sign] and open it as
    well as the ghost signatures. *)
