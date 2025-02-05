@@ -42,6 +42,4 @@ check: dist
 
 .PHONY: clean
 clean:
-	rm -f "$(NAME)-$(VERSION)".tar
-	rm -rf "$(NAME)-$(VERSION)"
-	rm -f lambdapi-mode-pkg.el
+	rm -fr "$(NAME)-$(VERSION)".tar "$(NAME)-$(VERSION)" lambdapi-mode-pkg.el
