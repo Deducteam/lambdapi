@@ -1,7 +1,6 @@
 .POSIX:
-LAMBDAPI_FILE = lambdapi-mode.el
-VERSION = $(shell awk '/^;; Version: /{print $$3;exit}' $(LAMBDAPI_FILE))
-NAME = $(shell grep "^(provide" $(LAMBDAPI_FILE) | grep ")" | grep -v "legacy" | sed "s/(provide '\(.*\))/\1/")
+VERSION = $(shell awk '/^;; Version: /{print $$3;exit}' lambdapi-mode.el)
+NAME = lambdapi-mode
 # The path to lambdapi built by dune
 LAMBDAPI = ../../_build/install/default/bin/lambdapi
 
@@ -12,7 +11,7 @@ SRC += lambdapi-abbrev.el
 SRC += lambdapi-capf.el
 SRC += lambdapi-input.el
 SRC += lambdapi-layout.el
-SRC += $(LAMBDAPI_FILE)
+SRC += lambdapi-mode.el
 SRC += lambdapi-mode-pkg.el
 SRC += lambdapi-proofs.el
 SRC += lambdapi-smie.el
@@ -24,9 +23,9 @@ $(NAME)-$(VERSION).tar: $(SRC)
 	tar -cf "$(NAME)-$(VERSION)".tar "$(NAME)-$(VERSION)"
 
 .PHONY: lambdapi-mode-pkg.el
-lambdapi-mode-pkg.el: $(LAMBDAPI_FILE)
+lambdapi-mode-pkg.el: lambdapi-mode.el
 	$(eval description := "A major mode for editing Lambdapi source code.")
-	$(eval requirements := $(shell grep ";; Package-Requires: " $(LAMBDAPI_FILE) | sed 's/"/\\"/g' | cut -d' ' -f5-))
+	$(eval requirements := $(shell grep ";; Package-Requires: " lambdapi-mode.el | sed 's/"/\\"/g' | cut -d' ' -f5-))
 	@echo "(define-package \"$(NAME)\" \"$(VERSION)\"" > $@
 	@echo "  \"$(description)\"" >> $@
 	@echo "  '($(requirements))" >> $@
@@ -45,3 +44,4 @@ check: dist
 clean:
 	rm -f "$(NAME)-$(VERSION)".tar
 	rm -rf "$(NAME)-$(VERSION)"
+	rm -f lambdapi-mode-pkg.el
