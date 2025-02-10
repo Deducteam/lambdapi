@@ -389,10 +389,10 @@ equation: l=term EQUIV r=term { (l, r) }
 
 notation:
   | INFIX a=SIDE? p=float_or_int
-    { Sign.Infix(Option.get Pratter.Neither a, p) }
-  | POSTFIX p=float_or_int { Sign.Postfix(p) }
-  | PREFIX p=float_or_int { Sign.Prefix(p) }
-  | QUANTIFIER { Sign.Quant }
+    { Term.Infix(Option.get Pratter.Neither a, p) }
+  | POSTFIX p=float_or_int { Term.Postfix(p) }
+  | PREFIX p=float_or_int { Term.Prefix(p) }
+  | QUANTIFIER { Term.Quant }
 
 float_or_int:
   | s=FLOAT { s }

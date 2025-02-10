@@ -334,7 +334,7 @@ type p_command_aux =
   | P_rules of p_rule list
   | P_inductive of p_modifier list * p_params list * p_inductive list
   | P_builtin of string * p_qident
-  | P_notation of p_qident * string Sign.notation
+  | P_notation of p_qident * string Term.notation
   | P_unif_rule of p_rule
   | P_coercion of p_rule
   | P_query of p_query
