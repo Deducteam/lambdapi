@@ -95,7 +95,7 @@ type term =
   | Meta of meta * term array (** Metavariable application. *)
   | Patt of int option * string * term array
   (** Pattern variable application (only used in rewriting rules). *)
-  | Db of int (** Bound variable as de Bruijn index. *)
+  | Db of int (** Bound variable as de Bruijn index (starting at 1). *)
   | Wild (** Wildcard (only used for surface matching, never in LHS). *)
   | Plac of bool
   (** [Plac b] is a placeholder, or hole, for not given terms. Boolean [b] is
@@ -105,8 +105,8 @@ type term =
   (** [LLet(a, t, u)] is [let x : a ≔ t in u] (with [x] bound in [u]). *)
 
 (** Type for binders. *)
-and binder = binder_info * term
-and mbinder = mbinder_info * term
+and binder = binder_info * term * term list
+and mbinder = mbinder_info * term * term list
 
 (** {b NOTE} that a wildcard "_" of the concrete (source code) syntax may have
     a different representation depending on the context. For instance, the
@@ -214,7 +214,7 @@ and meta =
   ; meta_value : mbinder option ref (** Definition. *) }
 
 (** [mbinder_arity b] gives the arity of the [mbinder]. *)
-let mbinder_arity : mbinder -> int = fun (i,_) -> Array.length i.mbinder_name
+let mbinder_arity : mbinder -> int = fun (i,_,_) -> Array.length i.mbinder_name
 
 (** Minimize [impl] to enforce our invariant (see {!type:Terms.sym}). *)
 let minimize_impl : bool list -> bool list =
@@ -297,16 +297,16 @@ let rec term : term pp = fun ppf t ->
   | Type -> out ppf "TYPE"
   | Kind -> out ppf "KIND"
   | Symb s -> sym ppf s
-  | Prod(a,(n,b)) -> out ppf "(Π %s: %a, %a)" n.binder_name term a term b
-  | Abst(a,(n,b)) -> out ppf "(λ %s: %a, %a)" n.binder_name term a term b
+  | Prod(a,(n,b,e)) -> out ppf "(Π %s: %a, %a)#[%a]" n.binder_name term a term b terms (Array.of_list e)
+  | Abst(a,(n,b,e)) -> out ppf "(λ %s: %a, %a)#[%a]" n.binder_name term a term b terms (Array.of_list e)
   | Appl(a,b) -> out ppf "(%a %a)" term a term b
   | Meta(m,ts) -> out ppf "?%d%a" m.meta_key terms ts
   | Patt(i,s,ts) -> out ppf "$%a_%s%a" (D.option D.int) i s terms ts
   | Plac(_) -> out ppf "_"
   | Wild -> out ppf "_"
   | TRef r -> out ppf "&%a" (Option.pp term) !r
-  | LLet(a,t,(n,b)) ->
-    out ppf "let %s : %a ≔ %a in %a" n.binder_name term a term t term b
+  | LLet(a,t,(n,b,e)) ->
+    out ppf "let %s : %a ≔ %a in (%a)@[%a]" n.binder_name term a term t term b terms (Array.of_list e)
 and var : var pp = fun ppf (i,n) -> out ppf "%s%d" n i
 and sym : sym pp = fun ppf s -> string ppf s.sym_name
 and terms : term array pp = fun ppf ts ->
@@ -326,7 +326,7 @@ and unfold : term -> term = fun t ->
         match !(m.meta_value) with
         | None    -> t
         | Some(b) -> (* Note: terms of ts may have free dB: opn=true *)
-            unfold (msubst true b ts)
+            unfold (msubst b ts)
       end
   | TRef(r) ->
       begin
@@ -336,57 +336,39 @@ and unfold : term -> term = fun t ->
       end
   | _ -> t
 
-(** [lift l t] updates indices when [t] is moved under [l] binders. *)
-and lift : int -> term -> term = fun l t ->
-  let rec lift i t =
-    match unfold t with
-    | Db k -> if k < i then t else Db (k+l)
-    | Appl(a,b) -> Appl(lift i a, lift i b)
-    (* No need to call mk_Appl here as we only change indices. *)
-    | Abst(a,(n,u)) -> Abst(lift i a, (n, lift (i+1) u))
-    | Prod(a,(n,u)) -> Prod(lift i a, (n ,lift (i+1) u))
-    | LLet(a,t,(n,u)) -> LLet(lift i a, lift i t, (n, lift (i+1) u))
-    | Meta(m,ts) -> Meta(m, Array.map (lift i) ts)
-    | Patt(j,n,ts) -> Patt(j,n, Array.map (lift i) ts)
-    | _ -> t
-  in
-  (* When l=0, lift is the identity: avoid unnecessary allocation *)
-  let r = if l=0 then t else lift 1 t in
-  if Logger.log_enabled() then log "lift %d %a = %a" l term t term r;
-  r
-
-(** [msubst opn b vs] substitutes the variables bound by [b] with the values
+(** [msubst b vs] substitutes the variables bound by [b] with the values
     [vs].  Note that the length of the [vs] array should match the arity of
-    the multiple binder [b]. Boolean [opn] indicates whether terms of [vs] may
-    contain free de Bruijn indices, needing term relocation. This happens from
-    within the Term library but the interface ensures that from the outside
-    all terms have no free de Bruinj indices (locally nameless convention). *)
-and msubst : bool -> mbinder -> term array -> term = fun opn (bi,t) vs ->
+    the multiple binder [b]. *)
+and msubst : mbinder -> term array -> term = fun (bi,t,e) vs ->
   let n = Array.length bi.mbinder_name in
   assert (Array.length vs = n);
-  (* [msubst i t] replaces [Db(i+j)] by [lift (i-1) vs.(n-j-1)]
-     for all [0 <= j < n]. *)
-  let rec msubst i t =
+  Array.iteri (fun i bnd -> if not bnd then vs.(i) <- Wild) bi.mbinder_bound;
+  let env = Array.of_list e in
+  (* [msubst t] replaces [Db(k)] by [vs.(n-k)] when [0 < k <= n]
+     and by [e.(k-n)] when [k>n] (where [e] is the closure environment of [b]. *)
+  let rec msubst t =
     if Logger.log_enabled() then
-      log "msubst %d %a %a" i (D.array term) vs term t;
+      log "msubst %a %a" (D.array term) vs term t;
     match unfold t with
-    | Db k -> let j = k-i in
-              if j<0 then t
-              else (assert(j<n);
-                    if opn then lift (i-1) vs.(n-1-j) else vs.(n-1-j))
-    | Appl(a,b) -> mk_Appl(msubst i a, msubst i b)
-    | Abst(a,(n,u)) -> Abst(msubst i a, (n, msubst (i+1) u))
-    | Prod(a,(n,u)) -> Prod(msubst i a, (n, msubst (i+1) u))
-    | LLet(a,t,(n,u)) -> LLet(msubst i a, msubst i t, (n, msubst (i+1) u))
-    | Meta(m,ts) -> Meta(m, Array.map (msubst i) ts)
-    | Patt(j,n,ts) -> Patt(j,n, Array.map (msubst i) ts)
+    | Db k -> assert(k<=n+Array.length env);
+              if k <= n then
+                (if vs.(n-k) = Wild then
+                  (log "***** msubst %a#%a %a found %d" term t terms env terms vs k; assert (vs.(n-k) <> Wild));
+                 vs.(n-k))
+              else env.(k-n-1)
+    | Appl(a,b) -> mk_Appl(msubst a, msubst b)
+    | Abst(a,(n,u,e)) -> Abst(msubst a, (n, u, List.map msubst e))
+    | Prod(a,(n,u,e)) -> Prod(msubst a, (n, u, List.map msubst e))
+    | LLet(a,t,(n,u,e)) -> LLet(msubst a, msubst t, (n, u, List.map msubst e))
+    | Meta(m,ts) -> Meta(m, Array.map msubst ts)
+    | Patt(j,n,ts) -> Patt(j,n, Array.map msubst ts)
     | Type | Kind | Vari _ | Wild | Symb _ | Plac _ | TRef _ -> t
   in
   let r =
-    if n = 0 || Array.for_all ((=) false) bi.mbinder_bound then t
-    else msubst 1 t in
+    if Array.for_all ((=) false) bi.mbinder_bound && Array.length env = 0 then t
+    else msubst t in
   if Logger.log_enabled() then
-    log "msubst %a %a = %a" term t (D.array term) vs term r;
+    log "msubst %a[%a] %a = %a" term t terms (Array.of_list e) (D.array term) vs term r;
   r
 
 (** Total order on terms. *)
@@ -397,8 +379,8 @@ and cmp : term cmp = fun t t' ->
   | Kind, Kind
   | Wild, Wild -> 0
   | Symb s, Symb s' -> Sym.compare s s'
-  | Prod(t,(_,u)), Prod(t',(_,u'))
-  | Abst(t,(_,u)), Abst(t',(_,u')) -> lex cmp cmp (t,u) (t',u')
+  | Prod(t,(_,u,e)), Prod(t',(_,u',e'))
+  | Abst(t,(_,u,e)), Abst(t',(_,u',e')) -> lex3 cmp cmp (List.cmp cmp) (t,u,e) (t',u',e')
   | Appl(t,u), Appl(t',u') -> lex cmp cmp (u,t) (u',t')
   | Meta(m,ts), Meta(m',ts') ->
     lex Meta.compare (Array.cmp cmp) (m,ts) (m',ts')
@@ -407,8 +389,8 @@ and cmp : term cmp = fun t t' ->
       (i,s,ts) (i',s',ts')
   | Db i, Db j -> Stdlib.compare i j
   | TRef r, TRef r' -> Stdlib.compare r r'
-  | LLet(a,t,(_,u)), LLet(a',t',(_,u')) ->
-    lex3 cmp cmp cmp (a,t,u) (a',t',u')
+  | LLet(a,t,(_,u,e)), LLet(a',t',(_,u',e')) ->
+    lex cmp (lex3 cmp cmp (List.cmp cmp)) (a,(t,u,e)) (a',(t',u',e'))
   | t, t' -> cmp_tag t t'
 
 (** [get_args t] decomposes the {!type:term} [t] into a pair [(h,args)], where
@@ -529,43 +511,63 @@ let is_abst : term -> bool = fun t ->
 let is_prod : term -> bool = fun t ->
   match unfold t with Prod(_) -> true | _ -> false
 
+
+(** [occur x t] tells whether variable [x] occurs in [t]. *)
+let occur : var -> term -> bool = fun x ->
+  let rec check t =
+    match unfold t with
+    | Vari y when y == x -> raise Exit
+    | Appl(a,b) -> check a; check b
+    | Abst(a,(_,u,e))
+    | Prod(a,(_,u,e)) -> check a; check u; List.iter check e
+    | LLet(a,t,(_,u,e)) -> check a; check t; check u; List.iter check e
+    | Meta(_,ts)
+    | Patt(_,_,ts) -> Array.iter check ts
+    | _ -> ()
+  in fun t -> try check t; false with Exit -> true
+
+let occur_mbinder : var -> mbinder -> bool = fun x (_,t,e) -> occur x t || List.exists (occur x) e
+
+                                           
 (** [subst b v] substitutes the variable bound by [b] with the value [v].
     Assumes v is closed (since only called from outside the term library. *)
-let subst : binder -> term -> term = fun (bi,t) v ->
-  if bi.binder_bound then
-    begin
-      let rec subst i t =
-        (*if Logger.log_enabled() then
-          log "subst [%d≔%a] %a" i term v term t;*)
-        match unfold t with
-        | Db k -> if k = i then v else t
-        | Appl(a,b) -> mk_Appl(subst i a, subst i b)
-        | Abst(a,(n,u)) -> Abst(subst i a, (n, subst (i+1) u))
-        | Prod(a,(n,u)) -> Prod(subst i a, (n ,subst (i+1) u))
-        | LLet(a,t,(n,u)) -> LLet(subst i a, subst i t, (n, subst (i+1) u))
-        | Meta(m,ts) -> Meta(m, Array.map (subst i) ts)
-        | Patt(j,n,ts) -> Patt(j,n, Array.map (subst i) ts)
-        | _ -> t
-      in
-      let r = subst 1 t in
-      if Logger.log_enabled() then
-        log "subst %a [%a] = %a" term t term v term r;
-      r
-    end
-  else t
+let subst : binder -> term -> term = fun (bi,t,e) v ->
+  let vs = Array.of_list (v::e) in
+  if not bi.binder_bound then vs.(0) <- Wild;
+(*    (log "*************** subst %a[%a] [%a]" term t terms (Array.of_list e) term v;
+      vs.(0) <- Wild);*)
+  let rec subst t =
+    if Logger.log_enabled() then
+      log "subst [1≔%a] %a" term v term t;
+    match unfold t with
+    | Db k -> assert (k <= Array.length vs); assert (vs.(k-1) <> Wild); vs.(k-1)
+    | Appl(a,b) -> mk_Appl(subst a, subst b)
+    | Abst(a,(n,u,e)) -> Abst(subst a, (n, u, List.map subst e))
+    | Prod(a,(n,u,e)) -> Prod(subst a, (n ,u, List.map subst e))
+    | LLet(a,t,(n,u,e)) -> LLet(subst a, subst t, (n, u, List.map subst e))
+    | Meta(m,ts) -> Meta(m, Array.map subst ts)
+    | Patt(j,n,ts) -> Patt(j,n, Array.map subst ts)
+    | _ -> t
+  in
+  let r =
+    if bi.binder_bound = false && Array.length vs = 1 then t
+    else subst t in
+  if Logger.log_enabled() then
+    log "subst %a[%a] [%a] = %a" term t terms (Array.of_list e) term v term r;
+  r
 
 (** [unbind b] substitutes the binder [b] by a fresh variable of name [name]
    if given, or the binder name otherwise. The variable and the result of the
    substitution are returned. *)
 let unbind : ?name:string -> binder -> var * term =
-  fun ?(name="") ((bn,_) as b) ->
+  fun ?(name="") ((bn,_,_) as b) ->
   let n = if name="" then bn.binder_name else name in
   let x = new_var n in x, subst b (Vari x)
 
 (** [unbind2 f g] is similar to [unbind f], but it substitutes two binders [f]
    and [g] at once using the same fresh variable. *)
 let unbind2 : ?name:string -> binder -> binder -> var * term * term =
-  fun ?(name="") ((bn1,_) as b1) b2 ->
+  fun ?(name="") ((bn1,_,_) as b1) b2 ->
   let n = if name="" then bn1.binder_name else name in
   let x = new_var n in x, subst b1 (Vari x), subst b2 (Vari x)
 
@@ -573,10 +575,28 @@ let unbind2 : ?name:string -> binder -> binder -> var * term * term =
     function is analogous to [unbind] for binders. Note that the names used to
     create the fresh variables are based on those of the multiple binder. *)
 let unmbind : mbinder -> var array * term =
-  fun (({mbinder_name=names;_},_) as b) ->
+  fun (({mbinder_name=names;_},_,_) as b) ->
   let xs = Array.init (Array.length names) (fun i -> new_var names.(i)) in
-  xs, msubst false b (Array.map (fun x -> Vari x) xs)
+  xs, msubst b (Array.map (fun x -> Vari x) xs)
 
+(* For debugging purposes, [db_closed n t] checks that all free de Bruinj appearing
+   in [t] are in the range [1..n]*)
+let _db_closed : ?bv:bool array -> int -> term -> bool =
+  fun ?(bv=[||]) i t ->
+  let n = Array.length bv in
+  let rec check t =
+    match unfold t with
+    | Db k when k>i -> raise Exit
+    | Db k when k<=n && bv.(n-k)=false -> raise Exit
+    | Appl(a,b) -> check a; check b
+    | Abst(a,(_,_,e))
+    | Prod(a,(_,_,e)) -> check a; List.iter check e
+    | LLet(a,t,(_,_,e)) -> check a; check t; List.iter check e
+    | Meta(_,ts)
+    | Patt(_,_,ts) -> Array.iter check ts
+    | _ -> ()
+  in try check t; true with Exit -> false
+  
 (** [bind_var x t] binds the variable [x] in [t], producing a binder. *)
 let bind_var  : var -> term -> binder = fun ((_,n) as x) t ->
   let bound = Stdlib.ref false in
@@ -584,20 +604,51 @@ let bind_var  : var -> term -> binder = fun ((_,n) as x) t ->
     (*if Logger.log_enabled() then log "bind_var %d %a" i term t;*)
     match unfold t with
     | Vari y when y == x -> Stdlib.(bound := true); Db i
-    | Appl(a,b) -> Appl(bind i a, bind i b)
+    | Appl(a,b) ->
+        let a' = bind i a in
+        let b' = bind i b in
+        if a==a' && b==b' then t else Appl(a', b')
     (* No need to call mk_Appl here as we only replace free variables by de
        Bruijn indices. *)
-    | Abst(a,(n,u)) -> Abst(bind i a, (n, bind (i+1) u))
-    | Prod(a,(n,u)) -> Prod(bind i a, (n, bind (i+1) u))
-    | LLet(a,t,(n,u)) -> LLet(bind i a, bind i t, (n, bind (i+1) u))
-    | Meta(m,ts) -> Meta(m, Array.map (bind i) ts)
-    | Patt(j,n,ts) -> Patt(j,n, Array.map (bind i) ts)
+    | Abst(a,b) ->
+        let a' = bind i a in
+        let b' = bind_binder i b in
+        if a==a' && b==b' then t else Abst(a', b')
+    | Prod(a,b) ->
+        let a' = bind i a in
+        let b' = bind_binder i b in
+        if a==a' && b==b' then t else Prod(a', b')
+    | LLet(a,m,b) ->
+        let a' = bind i a in
+        let m' = bind i m in
+        let b' = bind_binder i b in
+        if a==a' && m==m' && b==b' then t else LLet(a', m', b')
+    | Meta(m,ts) ->
+        let ts' = Array.map (bind i) ts in
+        if Array.for_all2 (==) ts ts' then t else Meta(m, ts')
+    | Patt(j,n,ts) ->
+        let ts' = Array.map (bind i) ts in
+        if Array.for_all2 (==) ts ts' then t else Patt(j,n,ts')
     | _ -> t
-  in
+
+  and bind_binder i (n,u,e as b) =
+    let e' = List.map (bind i) e in
+    let j = List.length e+2 in
+    let u' = bind j u in
+    if u==u' then (* x does not occur in u *)
+      if List.for_all2 (==) e e' then b
+      else (n, u', e')
+    else (* x occurs, it has been by a db which corresponds to a slot in the tail of e *)
+      ((*if not (db_closed j u') then
+         (log "******** bind_binder %d %a[%a] = %a[%a]" i term u terms (Array.of_list e) term u' terms (Array.of_list e');assert false);*)
+       (n, u', e'@[Db i]) ) in
+
+  (* assert (db_closed 0 t); *)
   let b = bind 1 t in
   if Logger.log_enabled() then
     log "bind_var %a %a = %a" var x term t term b;
-  {binder_name=n; binder_bound=Stdlib.(!bound)}, b
+  (*assert (db_closed ~bv:[|Stdlib.(!bound)|] 1 b);*)
+  {binder_name=n; binder_bound=Stdlib.(!bound)}, b, []
 
 (** [binder f b] applies f inside [b]. *)
 let binder : (term -> term) -> binder -> binder = fun f b ->
@@ -609,37 +660,72 @@ let bind_mvar : var array -> term -> mbinder =
   let empty = {mbinder_name=[||]; mbinder_bound=[||]} in
   fun xs t ->
   let n = Array.length xs in
-  if n = 0 then empty, t else
+  if n = 0 then empty, t,[] else
   (*if Logger.log_enabled() then
     log "bind_mvar %a" (D.array var) xs;*)
   let map = ref IntMap.empty and mbinder_bound = Array.make n false in
-  Array.iteri (fun i (ki,_) -> map := IntMap.add ki (n-1-i) !map) xs;
+  Array.iteri (fun i (ki,_) -> map := IntMap.add ki i !map) xs;
   let rec bind i t =
     (*if Logger.log_enabled() then log "bind_mvar %d %a" i term t;*)
     match unfold t with
     | Vari (key,_) ->
       begin match IntMap.find_opt key !map with
-        | Some k -> mbinder_bound.(k) <- true; Db (i+k)
+        | Some k -> mbinder_bound.(k) <- true; Db (i+n-1-k)
         | None -> t
       end
-    | Appl(a,b) -> Appl(bind i a, bind i b)
+    | Appl(a,b) ->
+        let a' = bind i a in
+        let b' = bind i b in
+        if a==a' && b==b' then t else Appl(a', b')
     (* No need to call mk_Appl here as we only replace free variables by de
        Bruijn indices. *)
-    | Abst(a,(n,u)) -> Abst(bind i a, (n, bind (i+1) u))
-    | Prod(a,(n,u)) -> Prod(bind i a, (n, bind (i+1) u))
-    | LLet(a,t,(n,u)) -> LLet(bind i a, bind i t, (n, bind (i+1) u))
-    | Meta(m,ts) -> Meta(m, Array.map (bind i) ts)
-    | Patt(j,n,ts) -> Patt(j,n, Array.map (bind i) ts)
+    | Abst(a,b) ->
+        let a' = bind i a in
+        let b' = bind_binder i b in
+        if a==a' && b==b' then t else Abst(a', b')
+    | Prod(a,b) ->
+        let a' = bind i a in
+        let b' = bind_binder i b in
+        if a==a' && b==b' then t else Prod(a', b')
+    | LLet(a,m,b) ->
+        let a' = bind i a in
+        let m' = bind i m in
+        let b' = bind_binder i b in
+        if a==a' && m==m' && b==b' then t else LLet(a', m', b')
+    | Meta(m,ts) ->
+        let ts' = Array.map (bind i) ts in
+        if Array.for_all2 (==) ts ts' then t else Meta(m, ts')
+    | Patt(j,n,ts) ->
+        let ts' = Array.map (bind i) ts in
+        if Array.for_all2 (==) ts ts' then t else Patt(j,n,ts')
     | _ -> t
-  in
+
+  and bind_binder i (bi,u,e as b) =
+    let e' = List.map (bind i) e in
+    let j = List.length e+2 in
+    let u' = bind j u in
+    if u==u' then (* x does not occur in u *)
+      if List.for_all2 (==) e e' then b
+      else (bi, u', e')
+    else (* x occurs, it has been replaced by a db which corresponds to a slot in the tail of e *)
+      (let e'' = Stdlib.Array.init n (fun k -> Db(i+k)) in
+       (* approximation: mbinder_bound may contain true for variables occuring in another subterm (i.e. not in u) *)
+       Array.iteri (fun i b -> if not b then e''.(n-1-i) <- Wild ) mbinder_bound;
+       (*if not (db_closed (j+n-1) u') then
+        (log "******** mbind_binder %d [%a] %a[%a] = %a[%a]" j (D.array var) xs term u terms (Array.of_list e) term u' terms (Array.of_list e');assert false);
+       log "bind_mbinder(n=%d) %d %a#[%a] = %a#%a+%a" n i term u terms (Array.of_list e) term u' terms (Array.of_list e') terms (Array.of_list e'');*)
+       (bi, u', e'@Array.to_list e'') ) in
+
+  (*assert (db_closed 0 t);*)
   let b = bind 1 t in
   if Logger.log_enabled() then
-    log "bind_mvar %a %a = %a" (D.array var) xs term t term b;
+    log "bind_mvar %a %a = %a %a" (D.array var) xs term t (D.array (fun ppf b -> if b then out ppf "*" else out ppf "_")) mbinder_bound term b;
+  (*assert (db_closed ~bv:mbinder_bound n b);*)
   let bi = { mbinder_name = Array.map base_name xs; mbinder_bound } in
-  bi, b
+  bi, b, []
 
 (** [binder_occur b] tests whether the bound variable occurs in [b]. *)
-let binder_occur : binder -> bool = fun (bi,_) -> bi.binder_bound
+let binder_occur : binder -> bool = fun (bi,_,_) -> bi.binder_bound
 (*  let rec check i t =
     (*if Logger.log_enabled() then
       log "binder_occur %d %a" i term t;*)
@@ -665,31 +751,15 @@ let is_closed : term -> bool =
     match unfold t with
     | Vari _ -> raise Exit
     | Appl(a,b) -> check a; check b
-    | Abst(a,(_,u))
-    | Prod(a,(_,u)) -> check a; check u
-    | LLet(a,t,(_,u)) -> check a; check t; check u
+    | Abst(a,(_,u,e))
+    | Prod(a,(_,u,e)) -> check a; check u; List.iter check e
+    | LLet(a,t,(_,u,e)) -> check a; check t; check u; List.iter check e
     | Meta(_,ts)
     | Patt(_,_,ts) -> Array.iter check ts
     | _ -> ()
   in fun t -> try check t; true with Exit -> false
 
-let is_closed_mbinder : mbinder -> bool = fun (_,t) -> is_closed t
-
-(** [occur x t] tells whether variable [x] occurs in [t]. *)
-let occur : var -> term -> bool = fun x ->
-  let rec check t =
-    match unfold t with
-    | Vari y when y == x -> raise Exit
-    | Appl(a,b) -> check a; check b
-    | Abst(a,(_,u))
-    | Prod(a,(_,u)) -> check a; check u
-    | LLet(a,t,(_,u)) -> check a; check t; check u
-    | Meta(_,ts)
-    | Patt(_,_,ts) -> Array.iter check ts
-    | _ -> ()
-  in fun t -> try check t; false with Exit -> true
-
-let occur_mbinder : var -> mbinder -> bool = fun x (_,t) -> occur x t
+let is_closed_mbinder : mbinder -> bool = fun (_,t,e) -> is_closed t && List.for_all is_closed e
 
 (** Construction functions of the private type [term]. They ensure some
    invariants:
@@ -743,16 +813,16 @@ let subst_patt : mbinder option array -> term -> term = fun env ->
     match unfold t with
     | Patt(Some i,n,ts) when 0 <= i && i < Array.length env ->
       begin match env.(i) with
-      | Some b -> msubst true b (Array.map subst_patt ts)
+      | Some b -> msubst b (Array.map subst_patt ts)
       | None -> mk_Patt(Some i,n,Array.map subst_patt ts)
       end
     | Patt(i,n,ts) -> mk_Patt(i, n, Array.map subst_patt ts)
-    | Prod(a,(n,b)) -> mk_Prod(subst_patt a, (n, subst_patt b))
-    | Abst(a,(n,b)) -> mk_Abst(subst_patt a, (n, subst_patt b))
+    | Prod(a,(n,b,e)) -> mk_Prod(subst_patt a, (n, subst_patt b, List.map subst_patt e))
+    | Abst(a,(n,b,e)) -> mk_Abst(subst_patt a, (n, subst_patt b, List.map subst_patt e))
     | Appl(a,b) -> mk_Appl(subst_patt a, subst_patt b)
     | Meta(m,ts) -> mk_Meta(m, Array.map subst_patt ts)
-    | LLet(a,t,(n,b)) ->
-      mk_LLet(subst_patt a, subst_patt t, (n, subst_patt b))
+    | LLet(a,t,(n,b,e)) ->
+      mk_LLet(subst_patt a, subst_patt t, (n, subst_patt b, List.map subst_patt e))
     | Wild
     | Plac _
     | TRef _
@@ -762,10 +832,6 @@ let subst_patt : mbinder option array -> term -> term = fun env ->
     | Kind
     | Symb _ -> t
   in subst_patt
-
-(** From the outside of the library, substituted terms ae all closed
-    (locally nameless convention) *)
-let msubst = msubst false
 
 (** [cleanup t] unfold all metas and TRef's in [t]. *)
 let rec cleanup : term -> term = fun t ->
