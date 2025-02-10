@@ -22,7 +22,6 @@ $(NAME)-$(VERSION).tar: $(SRC)
 	cp *.el "$(NAME)-$(VERSION)"
 	tar -cf "$(NAME)-$(VERSION)".tar "$(NAME)-$(VERSION)"
 
-.PHONY: lambdapi-mode-pkg.el
 lambdapi-mode-pkg.el: lambdapi-mode.el
 	$(eval description := "A major mode for editing Lambdapi source code.")
 	$(eval requirements := $(shell grep ";; Package-Requires: " lambdapi-mode.el | sed 's/"/\\"/g' | cut -d' ' -f5-))
