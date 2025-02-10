@@ -40,6 +40,25 @@ type prop =
   | Assoc of bool (** Associative left if [true], right if [false]. *)
   | AC of bool (** Associative and commutative. *)
 
+(** The priority of an infix operator is a floating-point number. *)
+type priority = float
+
+(** Notations. *)
+type 'a notation =
+  | NoNotation
+  | Prefix of 'a
+  | Postfix of 'a
+  | Infix of Pratter.associativity * 'a
+  | Zero
+  | Succ of 'a notation (* NoNotation, Prefix or Postfix only *)
+  | Quant
+  | PosOne
+  | PosDouble
+  | PosSuccDouble
+  | IntZero
+  | IntPos
+  | IntNeg
+
 (** Representation of a term (or types) in a general sense. Values of the type
     are also used, for example, in the representation of patterns or rewriting
     rules. Specific constructors are included for such applications,  and they
@@ -91,6 +110,7 @@ and sym =
   ; sym_type  : term ref (** Type. *)
   ; sym_impl  : bool list (** Implicit arguments ([true] meaning implicit). *)
   ; sym_prop  : prop (** Property. *)
+  ; sym_not   : float notation ref (** Notation. *)
   ; sym_def   : term option ref (** Definition with ≔. *)
   ; sym_opaq  : bool ref (** Opacity. *)
   ; sym_rules : rule list ref (** Rewriting rules. *)

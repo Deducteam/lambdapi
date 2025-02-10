@@ -61,11 +61,15 @@ let handle_require : compiler -> bool -> sig_state -> p_path -> sig_state =
   if Path.Map.mem p !(ss.signature.sign_deps) then
     fatal pos "Module %a is already required." path p;
   (* Compile required path (adds it to [Sign.loaded] among other things) *)
-  ignore (compile p);
+  let new_sign = compile p in
   (* Add the dependency (it was compiled already while parsing). *)
-  ss.signature.sign_deps
-    := Path.Map.add p StrMap.empty !(ss.signature.sign_deps);
-  if b then open_sign ss (Path.Map.find p !(Sign.loaded)) else ss
+  ss.signature.sign_deps :=
+    Path.Map.add p StrMap.empty !(ss.signature.sign_deps);
+  (* Add builtins. *)
+  let f _k _v1 v2 = Some v2 in (* hides previous symbols *)
+  let builtins = StrMap.union f ss.builtins !(new_sign.sign_builtins) in
+  let ss = {ss with builtins} in
+  if b then open_sign ss new_sign else ss
 
 (** [handle_require_as compile ss p id] handles the command
     [require p as id] with [ss] as the signature state and [compile] the main
@@ -284,7 +288,8 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
       in
       let n = float_notation_from_string_notation n in
       Console.out 2 "notation %a %a" sym s (notation float) n;
-      (Sig_state.add_notation ss s n, None, None)
+      Sign.add_notation ss.signature s n;
+      (ss, None, None)
   | P_unif_rule(h) ->
       (* Approximately same processing as rules without SR checking. *)
       let pur = scope_rule true ss h in
