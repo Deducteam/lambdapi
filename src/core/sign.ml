@@ -13,33 +13,14 @@ type ind_data =
   ; ind_nb_types : int  (** Number of mutually defined types. *)
   ; ind_nb_cons : int   (** Number of constructors. *) }
 
-(** The priority of an infix operator is a floating-point number. *)
-type priority = float
-
-(** Notations. *)
-type 'a notation =
-  | Prefix of 'a
-  | Postfix of 'a
-  | Infix of Pratter.associativity * 'a
-  | Zero
-  | Succ of 'a notation option (* Prefix or Postfix only *)
-  | Quant
-  | PosOne
-  | PosDouble
-  | PosSuccDouble
-  | IntZero
-  | IntPos
-  | IntNeg
-
 (** Representation of a signature. It roughly corresponds to a set of symbols,
     defined in a single module (or file). *)
 type t =
   { sign_symbols  : sym StrMap.t ref
   ; sign_path     : Path.t
-  ; sign_deps     : rule list StrMap.t Path.Map.t ref
+  ; sign_deps     : (rule list*float notation option) StrMap.t Path.Map.t ref
   (** Maps a path to a list of pairs (symbol name, rule). *)
   ; sign_builtins : sym StrMap.t ref
-  ; sign_notations: float notation SymMap.t ref
   (** Maps symbols to their notation if they have some. *)
   ; sign_ind      : ind_data SymMap.t ref
   ; sign_cp_pos   : cp_pos list SymMap.t ref
@@ -56,8 +37,7 @@ type t =
 let dummy : unit -> t = fun () ->
   { sign_symbols = ref StrMap.empty; sign_path = []
   ; sign_deps = ref Path.Map.empty; sign_builtins = ref StrMap.empty
-  ; sign_notations = ref SymMap.empty; sign_ind = ref SymMap.empty
-  ; sign_cp_pos = ref SymMap.empty }
+  ; sign_ind = ref SymMap.empty; sign_cp_pos = ref SymMap.empty }
 
 (** [find sign name] finds the symbol named [name] in [sign] if it exists, and
     raises the [Not_found] exception otherwise. *)
@@ -137,18 +117,16 @@ let link : t -> unit = fun sign ->
     if sm <> Extra.StrMap.empty then
       let sign =
         try Path.Map.find mp !loaded with Not_found -> assert false in
-      let g n rs =
+      let g n (rs,nota) =
         let s = try find sign n with Not_found -> assert false in
         s.sym_rules := !(s.sym_rules) @ List.map link_rule rs;
+        Option.iter (fun nota -> s.sym_not := nota) nota;
         Tree.update_dtree s []
       in
       StrMap.iter g sm
   in
   Path.Map.iter f !(sign.sign_deps);
   sign.sign_builtins := StrMap.map link_symb !(sign.sign_builtins);
-  sign.sign_notations :=
-    SymMap.fold (fun s n m -> SymMap.add (link_symb s) n m)
-      !(sign.sign_notations) SymMap.empty;
   let link_ind_data i =
     { ind_cons = List.map link_symb i.ind_cons;
       ind_prop = link_symb i.ind_prop; ind_nb_params = i.ind_nb_params;
@@ -201,10 +179,9 @@ let unlink : t -> unit = fun sign ->
     List.iter unlink_rule !(s.sym_rules)
   in
   StrMap.iter f !(sign.sign_symbols);
-  let f _ sm = StrMap.iter (fun _ rs -> List.iter unlink_rule rs) sm in
+  let f _ sm = StrMap.iter (fun _ (rs,_) -> List.iter unlink_rule rs) sm in
   Path.Map.iter f !(sign.sign_deps);
   StrMap.iter (fun _ s -> unlink_sym s) !(sign.sign_builtins);
-  SymMap.iter (fun s _ -> unlink_sym s) !(sign.sign_notations);
   let unlink_ind_data i =
     List.iter unlink_sym i.ind_cons; unlink_sym i.ind_prop in
   let f s i = unlink_sym s; unlink_ind_data i in
@@ -214,12 +191,12 @@ let unlink : t -> unit = fun sign ->
   let f s cps = unlink_sym s; List.iter unlink_cp_pos cps in
   SymMap.iter f !(sign.sign_cp_pos)
 
-(** [add_symbol sign expo prop mstrat opaq name pos typ impl] adds in the
-    signature [sign] a symbol with name [name], exposition [expo], property
-    [prop], matching strategy [strat], opacity [opaq], type [typ], implicit
-    arguments [impl], no definition and no rules. [name] should not already be
-    used in [sign]. [pos] is the position of the declaration (without its
-    definition). The created symbol is returned. *)
+(** [add_symbol sign expo prop mstrat opaq name pos typ impl notation] adds in
+    the signature [sign] a symbol with name [name], exposition [expo],
+    property [prop], matching strategy [strat], opacity [opaq], type [typ],
+    implicit arguments [impl], no notation, no definition and no rules. [name]
+    should not already be used in [sign]. [pos] is the position of the
+    declaration (without its definition). The created symbol is returned. *)
 let add_symbol : t -> expo -> prop -> match_strat -> bool -> strloc ->
   popt -> term -> bool list -> sym =
   fun sign sym_expo sym_prop sym_mstrat sym_opaq name pos typ impl ->
@@ -234,9 +211,7 @@ let add_symbol : t -> expo -> prop -> match_strat -> bool -> strloc ->
 let strip_private : t -> unit = fun sign ->
   let not_prv sym = not (Term.is_private sym) in
   sign.sign_symbols :=
-    StrMap.filter (fun _ s -> not_prv s) !(sign.sign_symbols);
-  sign.sign_notations :=
-    Term.SymMap.filter (fun s _ -> not_prv s) !(sign.sign_notations)
+    StrMap.filter (fun _ s -> not_prv s) !(sign.sign_symbols)
 
 (** [write sign file] writes the signature [sign] to the file [fname]. *)
 let write : t -> string -> unit = fun sign fname ->
@@ -271,7 +246,6 @@ let read : string -> t = fun fname ->
   unsafe_reset sign.sign_symbols;
   unsafe_reset sign.sign_deps;
   unsafe_reset sign.sign_builtins;
-  unsafe_reset sign.sign_notations;
   unsafe_reset sign.sign_ind;
   unsafe_reset sign.sign_cp_pos;
   let shallow_reset_sym s =
@@ -309,8 +283,7 @@ let read : string -> t = fun fname ->
   in
   StrMap.iter (fun _ s -> reset_sym s) !(sign.sign_symbols);
   StrMap.iter (fun _ s -> shallow_reset_sym s) !(sign.sign_builtins);
-  SymMap.iter (fun s _ -> shallow_reset_sym s) !(sign.sign_notations);
-  let f _ sm = StrMap.iter (fun _ rs -> List.iter reset_rule rs) sm in
+  let f _ sm = StrMap.iter (fun _ (rs,_) -> List.iter reset_rule rs) sm in
   Path.Map.iter f !(sign.sign_deps);
   let reset_ind i =
     shallow_reset_sym i.ind_prop; List.iter shallow_reset_sym i.ind_cons in
@@ -334,7 +307,10 @@ let add_rule : t -> sym_rule -> unit = fun sign (sym,r) ->
   sym.sym_rules := !(sym.sym_rules) @ [r];
   if sym.sym_path <> sign.sign_path then
     let sm = Path.Map.find sym.sym_path !(sign.sign_deps) in
-    let f = function None -> Some [r] | Some rs -> Some (rs @ [r]) in
+    let f = function
+      | None -> Some([r],None)
+      | Some(rs,n) -> Some(rs@[r],n)
+    in
     let sm = StrMap.update sym.sym_name f sm in
     sign.sign_deps := Path.Map.add sym.sym_path sm !(sign.sign_deps)
 
@@ -346,45 +322,30 @@ let add_rules : t -> sym -> rule list -> unit = fun sign sym rs ->
   sym.sym_rules := !(sym.sym_rules) @ rs;
   if sym.sym_path <> sign.sign_path then
     let sm = Path.Map.find sym.sym_path !(sign.sign_deps) in
-    let f = function None -> Some rs | Some rs' -> Some (rs' @ rs) in
+    let f = function
+      | None -> Some(rs,None)
+      | Some(rs',n) -> Some(rs'@rs,n)
+    in
     let sm = StrMap.update sym.sym_name f sm in
     sign.sign_deps := Path.Map.add sym.sym_path sm !(sign.sign_deps)
 
-(** [update_notation n] provides an update function for [n] to be used with
-    [Map.S.update]. *)
-let update_notation: 'a notation -> 'a notation option -> 'a notation option =
-  fun new_notation current_notation_opt ->
-  match current_notation_opt with
-  | Some (Succ _) -> Some (Succ (Some new_notation))
-  | _ -> Some new_notation
+(** [add_notation sign sym nota] changes the notation of [sym] to [nota] in
+    the signature [sign]. *)
+let add_notation : t -> sym -> float notation -> unit = fun sign sym nota ->
+  sym.sym_not := nota;
+  if sym.sym_path <> sign.sign_path then
+    let sm = Path.Map.find sym.sym_path !(sign.sign_deps) in
+    let f = function
+      | None -> Some([],Some nota)
+      | Some(rs,_) -> Some(rs,Some nota)
+    in
+    let sm = StrMap.update sym.sym_name f sm in
+    sign.sign_deps := Path.Map.add sym.sym_path sm !(sign.sign_deps)
 
-(** [add_notation sign s n] sets notation of [s] to [n] in [sign]. *)
-let add_notation : t -> sym -> float notation -> unit = fun sign s n ->
-  sign.sign_notations :=
-    SymMap.update s (update_notation n) !(sign.sign_notations)
-
-(** [add_notation_from_builtin builtin sym notation_map] adds in
-    [notation_map] the notation required when [builtin] is mapped to [sym]. *)
-let add_notation_from_builtin :
-  string -> sym -> 'a notation SymMap.t -> 'a notation SymMap.t =
-  fun builtin sym notation_map ->
-  match builtin with
-  | "nat_zero"  -> SymMap.add sym Zero notation_map
-  | "nat_succ" -> let f x = Some(Succ x) in SymMap.update sym f notation_map
-  | "pos_one"  -> SymMap.add sym PosOne notation_map
-  | "pos_double"  -> SymMap.add sym PosDouble notation_map
-  | "pos_succ_double"  -> SymMap.add sym PosSuccDouble notation_map
-  | "int_zero"  -> SymMap.add sym IntZero notation_map
-  | "int_positive"  -> SymMap.add sym IntPos notation_map
-  | "int_negative"  -> SymMap.add sym IntNeg notation_map
-  | _    -> notation_map
-
-(** [add_builtin sign name sym] binds the builtin name [name] to [sym] (in the
-    signature [sign]). The previous binding, if any, is discarded. *)
-let add_builtin : t -> string -> sym -> unit = fun sign builtin sym ->
-  sign.sign_builtins := StrMap.add builtin sym !(sign.sign_builtins);
-  sign.sign_notations :=
-    add_notation_from_builtin builtin sym !(sign.sign_notations)
+(** [add_builtin sign name sym] binds the builtin [name] to [sym] in the
+    signature [sign]. The previous binding, if any, is discarded. *)
+let add_builtin : t -> string -> sym -> unit = fun sign name sym ->
+  sign.sign_builtins := StrMap.add name sym !(sign.sign_builtins)
 
 (** [add_inductive sign ind_sym ind_cons ind_prop ind_prop_args] add to [sign]
    the inductive type [ind_sym] with constructors [ind_cons], induction

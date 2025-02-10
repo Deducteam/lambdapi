@@ -39,6 +39,25 @@ type prop =
   | Assoc of bool (** Associative left if [true], right if [false]. *)
   | AC of bool (** Associative and commutative. *)
 
+(** The priority of an infix operator is a floating-point number. *)
+type priority = float
+
+(** Notations. *)
+type 'a notation =
+  | NoNotation
+  | Prefix of 'a
+  | Postfix of 'a
+  | Infix of Pratter.associativity * 'a
+  | Zero
+  | Succ of 'a notation (* NoNotation, Prefix or Postfix only *)
+  | Quant
+  | PosOne
+  | PosDouble
+  | PosSuccDouble
+  | IntZero
+  | IntPos
+  | IntNeg
+
 (** Data of a binder. *)
 type binder_info = {binder_name : string; binder_bound : bool}
 type mbinder_info = {mbinder_name : string array; mbinder_bound : bool array}
@@ -126,6 +145,7 @@ and sym =
   ; sym_type  : term ref (** Type. *)
   ; sym_impl  : bool list (** Implicit arguments ([true] meaning implicit). *)
   ; sym_prop  : prop (** Property. *)
+  ; sym_not   : float notation ref (** Notation. *)
   ; sym_def   : term option ref (** Definition with ≔. *)
   ; sym_opaq  : bool ref (** Opacity. *)
   ; sym_rules : rule list ref (** Rewriting rules. *)
@@ -221,17 +241,17 @@ let minimize_impl : bool list -> bool list =
   let rec rem_false l = match l with false::l -> rem_false l | _ -> l in
   fun l -> List.rev (rem_false (List.rev l))
 
-(** [create_sym path expo prop mstrat opaq name pos typ impl] creates a new
+(** [create_sym path expo prop mstrat opaq name decl typ impl] creates a new
     symbol with path [path], exposition [expo], property [prop], opacity
     [opaq], matching strategy [mstrat], name [name.elt], type [typ], implicit
-    arguments [impl], position [name.pos], declaration position [pos], no
-    definition and no rules. *)
+    arguments [impl], position [name.pos], declaration position [decl.pos], no
+    notation, no definition and no rules. *)
 let create_sym : Path.t -> expo -> prop -> match_strat -> bool ->
   Pos.strloc -> Pos.popt -> term -> bool list -> sym =
   fun sym_path sym_expo sym_prop sym_mstrat sym_opaq
     { elt = sym_name; pos = sym_pos } sym_decl_pos typ sym_impl ->
   {sym_path; sym_name; sym_type = ref typ; sym_impl; sym_def = ref None;
-   sym_opaq = ref sym_opaq; sym_rules = ref [];
+   sym_opaq = ref sym_opaq; sym_rules = ref []; sym_not = ref NoNotation;
    sym_dtree = ref Tree_type.empty_dtree;
    sym_mstrat; sym_prop; sym_expo; sym_pos ; sym_decl_pos }
 
