@@ -287,7 +287,7 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
       in
       let n = float_notation_from_string_notation n in
       Console.out 2 "notation %a %a" sym s (notation float) n;
-      s.sym_not := n;
+      Sign.add_notation ss.signature s n;
       (ss, None, None)
   | P_unif_rule(h) ->
       (* Approximately same processing as rules without SR checking. *)
