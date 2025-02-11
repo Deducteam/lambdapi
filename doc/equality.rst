@@ -1,7 +1,7 @@
-Tactics on equality
-===================
+Proof tactics on equality
+=========================
 
-Reminder: the BNF grammar of tactics is in `lambdapi.bnf <https://raw.githubusercontent.com/Deducteam/lambdapi/master/doc/lambdapi.bnf>`__.
+The BNF grammar of tactics is in `lambdapi.bnf <https://raw.githubusercontent.com/Deducteam/lambdapi/master/doc/lambdapi.bnf>`__.
 
 The tactics ``reflexivity``, ``symmetry`` and ``rewrite`` assume the
 existence of terms with approriate types mapped to the builtins ``T``,

@@ -1,6 +1,8 @@
 Tacticals
 =========
 
+The BNF grammar of tactics is in `lambdapi.bnf <https://raw.githubusercontent.com/Deducteam/lambdapi/master/doc/lambdapi.bnf>`__.
+
 .. _orelse:
 
 ``orelse``
