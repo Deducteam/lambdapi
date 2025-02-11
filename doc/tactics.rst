@@ -163,14 +163,6 @@ focused goal.
 
 Simplify unification goals as much as possible.
 
-.. _try:
-
-``try``
----------
-
-If ``T`` is a tactic, then ``try T`` is a tactic that applies ``T`` to the focused goal.
-If the application of ``T`` fails in the focused goal, it catches the error and leaves the goal unchanged.
-
 .. _why3:
 
 ``why3``

@@ -16,14 +16,17 @@
     "generalize"
     "have"
     "induction"
+    "orelse"
     "refine"
     "reflexivity"
     "remove"
+    "repeat"
     "rewrite"
     "set"
     "simplify"
     "solve"
     "symmetry"
+    "try"
     "why3")
   "Proof tactics.")
 (defconst lambdapi--queries
@@ -101,15 +104,18 @@ Indent by `lambdapi-indent-basic' in proofs, and 0 otherwise."
               ("generalize" ident)
               ("have" ident ":" sterm)
               ("induction")
+              ("orelse" tactic)
               ("refine" sterm)
               ("reflexivity")
               ("remove" ident)
+              ("repeat" tactic)
               ("rewrite" "[" rw-patt "]")
               ("set" ident "≔" sterm)
               ("simplify")
               ("simplify" ident)
               ("solve")
               ("symmetry")
+              ("try" tactic)
               ("why3"))
       (query ("assert" args "⊢" sterm ":" sterm)
              ("assert" args "⊢" sterm "≡" sterm)
@@ -195,9 +201,11 @@ The default lexer is used because the syntax is primarily made of sexps."
     (`(:before . "generalize") `(column . ,lambdapi-indent-basic))
     (`(:before . "have") `(column . ,lambdapi-indent-basic))
     (`(:before . "induction") `(column . ,lambdapi-indent-basic))
+    (`(:before . "orelse") `(column . ,lambdapi-indent-basic))
     (`(:before . "refine") `(column . ,lambdapi-indent-basic))
     (`(:before . "reflexivity") `(column . ,lambdapi-indent-basic))
     (`(:before . "remove") `(column . ,lambdapi-indent-basic))
+    (`(:before . "repeat") `(column . ,lambdapi-indent-basic))
     (`(:before . "rewrite") `(column . ,lambdapi-indent-basic))
     (`(:before . "set") `(column . ,lambdapi-indent-basic))
     (`(:before . "simplify") `(column . ,lambdapi-indent-basic))

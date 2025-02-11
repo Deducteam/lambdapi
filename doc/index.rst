@@ -51,6 +51,7 @@ Examples of developments made with Lambdapi:
    terms.rst
    commands.rst
    tactics.rst
+   tacticals.rst
    queries.rst
    query_language.rst
    dedukti.rst

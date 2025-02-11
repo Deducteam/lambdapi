@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- tacticals orelse and repeat
+
+### Changed
+
 - tactic set x ≔ t: replace all subterms equal to t by x
 
 ### Fixed
