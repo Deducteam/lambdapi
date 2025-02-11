@@ -138,18 +138,18 @@ QID ::= [UID "."]+ UID
            | "fail"
            | "generalize" <uid>
            | "have" <uid> ":" <term>
-           | "set" <uid> "≔" <term>
            | "induction"
+           | "orelse" <tactic> <tactic>
            | "refine" <term>
            | "reflexivity"
            | "remove" <uid>+
+           | "repeat" <tactic>
            | "rewrite" [<side>] [<rw_patt_spec>] <term>
+           | "set" <uid> "≔" <term>
            | "simplify" [<qid>]
            | "solve"
            | "symmetry"
            | "try" <tactic>
-           | "orelse" <tactic> <tactic>
-           | "repeat" <tactic>
            | "why3" [<stringlit>]
 
 <rw_patt> ::= <term>
