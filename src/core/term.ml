@@ -44,6 +44,7 @@ type binder_info = {binder_name : string; binder_bound : bool}
 type mbinder_info = {mbinder_name : string array; mbinder_bound : bool array}
 
 let binder_name : binder_info -> string = fun bi -> bi.binder_name
+let pr_bound = D.array (fun ppf b -> if b then out ppf "*" else out ppf "_")
 
 (** Type for free variables. *)
 type var = int * string
@@ -325,8 +326,7 @@ and unfold : term -> term = fun t ->
       begin
         match !(m.meta_value) with
         | None    -> t
-        | Some(b) -> (* Note: terms of ts may have free dB: opn=true *)
-            unfold (msubst b ts)
+        | Some(b) -> unfold (msubst b ts)
       end
   | TRef(r) ->
       begin
@@ -339,11 +339,11 @@ and unfold : term -> term = fun t ->
 (** [msubst b vs] substitutes the variables bound by [b] with the values
     [vs].  Note that the length of the [vs] array should match the arity of
     the multiple binder [b]. *)
-and msubst : mbinder -> term array -> term = fun (bi,t,e) vs ->
+and msubst : mbinder -> term array -> term = fun (bi,tm,e) vs ->
   let n = Array.length bi.mbinder_name in
   assert (Array.length vs = n);
-  Array.iteri (fun i bnd -> if not bnd then vs.(i) <- Wild) bi.mbinder_bound;
   let env = Array.of_list e in
+  (*assert (_db_closed ~bv:bi.mbinder_bound (n+Array.length env) tm);*)
   (* [msubst t] replaces [Db(k)] by [vs.(n-k)] when [0 < k <= n]
      and by [e.(k-n)] when [k>n] (where [e] is the closure environment of [b]. *)
   let rec msubst t =
@@ -352,8 +352,9 @@ and msubst : mbinder -> term array -> term = fun (bi,t,e) vs ->
     match unfold t with
     | Db k -> assert(k<=n+Array.length env);
               if k <= n then
-                (if vs.(n-k) = Wild then
-                  (log "***** msubst %a#%a %a found %d" term t terms env terms vs k; assert (vs.(n-k) <> Wild));
+                (if not bi.mbinder_bound.(n-k) then
+                   (log "***** msubst %a#%a %a found %d"
+                      term tm terms env terms vs k; assert false);
                  vs.(n-k))
               else env.(k-n-1)
     | Appl(a,b) -> mk_Appl(msubst a, msubst b)
@@ -365,10 +366,10 @@ and msubst : mbinder -> term array -> term = fun (bi,t,e) vs ->
     | Type | Kind | Vari _ | Wild | Symb _ | Plac _ | TRef _ -> t
   in
   let r =
-    if Array.for_all ((=) false) bi.mbinder_bound && Array.length env = 0 then t
-    else msubst t in
+    if Array.for_all ((=) false) bi.mbinder_bound && Array.length env = 0 then tm
+    else msubst tm in
   if Logger.log_enabled() then
-    log "msubst %a[%a] %a = %a" term t terms (Array.of_list e) (D.array term) vs term r;
+    log "msubst %a[%a] %a = %a" term tm terms env (D.array term) vs term r;
   r
 
 (** Total order on terms. *)
@@ -487,6 +488,26 @@ and mk_Appl : term * term -> term = fun (t, u) ->
     log "mk_Appl(%a, %a) = %a" term t term u term r;
   r *)
 
+(* For debugging purposes, [db_closed i t] checks that all free de Bruijn appearing
+   in [t] are in the range [1..i]. Additionally [bv] specifies which of [1..n] are allowed to occur. *)
+and _db_closed : ?bv:bool array -> int -> term -> bool =
+  fun ?(bv=[||]) i t ->
+  let n = Array.length bv in
+  if Logger.log_enabled () then
+    log "db_closed: fv(%a) in [1..%d]&[%a]" term t i pr_bound bv;
+  let rec check t =
+    match unfold t with
+    | Db k when k>i -> raise Exit
+    | Db k when k<=n && bv.(n-k)=false -> raise Exit
+    | Appl(a,b) -> check a; check b
+    | Abst(a,(_,_,e))
+    | Prod(a,(_,_,e)) -> check a; List.iter check e
+    | LLet(a,t,(_,_,e)) -> check a; check t; List.iter check e
+    | Meta(_,ts)
+    | Patt(_,_,ts) -> Array.iter check ts
+    | _ -> ()
+  in try check t; true with Exit -> false
+
 (* unit test *)
 let _ =
   let s =
@@ -578,24 +599,6 @@ let unmbind : mbinder -> var array * term =
   fun (({mbinder_name=names;_},_,_) as b) ->
   let xs = Array.init (Array.length names) (fun i -> new_var names.(i)) in
   xs, msubst b (Array.map (fun x -> Vari x) xs)
-
-(* For debugging purposes, [db_closed n t] checks that all free de Bruinj appearing
-   in [t] are in the range [1..n]*)
-let _db_closed : ?bv:bool array -> int -> term -> bool =
-  fun ?(bv=[||]) i t ->
-  let n = Array.length bv in
-  let rec check t =
-    match unfold t with
-    | Db k when k>i -> raise Exit
-    | Db k when k<=n && bv.(n-k)=false -> raise Exit
-    | Appl(a,b) -> check a; check b
-    | Abst(a,(_,_,e))
-    | Prod(a,(_,_,e)) -> check a; List.iter check e
-    | LLet(a,t,(_,_,e)) -> check a; check t; List.iter check e
-    | Meta(_,ts)
-    | Patt(_,_,ts) -> Array.iter check ts
-    | _ -> ()
-  in try check t; true with Exit -> false
   
 (** [bind_var x t] binds the variable [x] in [t], producing a binder. *)
 let bind_var  : var -> term -> binder = fun ((_,n) as x) t ->
@@ -643,11 +646,11 @@ let bind_var  : var -> term -> binder = fun ((_,n) as x) t ->
          (log "******** bind_binder %d %a[%a] = %a[%a]" i term u terms (Array.of_list e) term u' terms (Array.of_list e');assert false);*)
        (n, u', e'@[Db i]) ) in
 
-  (* assert (db_closed 0 t); *)
+  (*assert (_db_closed 0 t);*)
   let b = bind 1 t in
   if Logger.log_enabled() then
     log "bind_var %a %a = %a" var x term t term b;
-  (*assert (db_closed ~bv:[|Stdlib.(!bound)|] 1 b);*)
+  (*assert (_db_closed ~bv:[|Stdlib.(!bound)|] 1 b);*)
   {binder_name=n; binder_bound=Stdlib.(!bound)}, b, []
 
 (** [binder f b] applies f inside [b]. *)
@@ -716,11 +719,11 @@ let bind_mvar : var array -> term -> mbinder =
        log "bind_mbinder(n=%d) %d %a#[%a] = %a#%a+%a" n i term u terms (Array.of_list e) term u' terms (Array.of_list e') terms (Array.of_list e'');*)
        (bi, u', e'@Array.to_list e'') ) in
 
-  (*assert (db_closed 0 t);*)
+  (*assert (_db_closed 0 t);*)
   let b = bind 1 t in
   if Logger.log_enabled() then
-    log "bind_mvar %a %a = %a %a" (D.array var) xs term t (D.array (fun ppf b -> if b then out ppf "*" else out ppf "_")) mbinder_bound term b;
-  (*assert (db_closed ~bv:mbinder_bound n b);*)
+    log "bind_mvar %a %a = %a %a" (D.array var) xs term t pr_bound mbinder_bound term b;
+  (*assert (_db_closed ~bv:mbinder_bound n b);*)
   let bi = { mbinder_name = Array.map base_name xs; mbinder_bound } in
   bi, b, []
 
