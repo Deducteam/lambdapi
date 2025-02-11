@@ -207,7 +207,7 @@ query:
   | TYPE_QUERY t=term
     { make_pos $sloc (P_query_infer(t, {strategy=NONE; steps=None}))}
   | SEARCH s=STRINGLIT
-    { make_pos $sloc (P_query_search s) }
+    { make_pos $sloc (P_query_search(QBase(QName s))) }
 
 qid_or_rule:
   | i=qid { i }
