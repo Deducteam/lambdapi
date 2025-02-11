@@ -50,7 +50,9 @@ Examples of developments made with Lambdapi:
    module.rst
    terms.rst
    commands.rst
+   proof.rst
    tactics.rst
+   equality.rst
    tacticals.rst
    queries.rst
    query_language.rst
