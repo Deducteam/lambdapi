@@ -271,6 +271,16 @@ let get_proof_data : compiler -> sig_state -> p_command -> cmd_output =
       and real = Tactic.count_products [] !(s.sym_type) in
       if real < expected then
         fatal pos "Notation incompatible with the type of %a" sym s;
+      (* Check that the notation is compatible with the theory. *)
+      begin
+        match s.sym_prop, n with
+        | (Assoc true | AC true), Infix (Pratter.Right,_)
+        | (Assoc false | AC false), Infix (Pratter.Left,_)
+          -> fatal pos
+               "notation incompatible with symbol property \
+                (e.g. infix right notation on left associative symbol)"
+        | _ -> ()
+      end;
       (* Convert strings into floats. *)
       let float_priority_from_string_priority s =
         try

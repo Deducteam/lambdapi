@@ -5,6 +5,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## Unreleased
 
+### Added
+
+- tactic set x ≔ t: replace all subterms equal to t by x
+
 ### Fixed
 
 - Notations on external symbols are now exported
