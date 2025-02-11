@@ -321,7 +321,7 @@ let rec handle :
         tac_refine pos ps gt gs p u
       end
   | P_tac_set(id,t) ->
-      (* From a goal [e ⊢ ?[e]:a], generate a new goal [e,id:b ⊢ ?1[e,x]:a],
+      (* From a goal [e ⊢ ?[e]:a], generate a new goal [e,x:b≔t ⊢ ?1[e,x]:a],
          where [b] is the type of [t], and refine [?[e]] with [?1[e,t]]. *)
       check id;
       let p = new_problem() in
@@ -334,14 +334,15 @@ let rec handle :
           let x = new_tvar id.elt in
           let bt = lift t in
           let e' = Env.add x (lift b) (Some bt) env in
-          let a = lift gt.goal_type in
-          let m = LibMeta.fresh p (Env.to_prod e' a) (List.length e') in
+          let n = List.length e' in
+          let v = LibTerm.fold x t gt.goal_type in
+          let m = LibMeta.fresh p (Env.to_prod e' (lift v)) n in
           let u = _Meta m (Array.append (Env.to_tbox env) [|bt|]) in
           (*tac_refine pos ps gt gs p (Bindlib.unbox u)*)
           LibMeta.set p gt.goal_meta
             (Bindlib.unbox (Bindlib.bind_mvar (Env.vars env) u));
           (*let g = Goal.of_meta m in*)
-          let g = Typ {goal_meta=m; goal_hyps=e'; goal_type=gt.goal_type} in
+          let g = Typ {goal_meta=m; goal_hyps=e'; goal_type=v} in
           {ps with proof_goals = g :: gs}
       end
   | P_tac_induction -> tac_induction pos ps gt gs
