@@ -254,7 +254,7 @@ and arrow oc u v = paren oc u; string oc " -> "; term oc v
 and abst oc xs u =
   string oc "fun"; params_list_in_abs oc xs; string oc " => "; term oc u
 and prod oc xs u =
-  string oc "forall"; params_list_in_abs oc xs; string oc ", "; term oc u
+  string oc "∀"; params_list_in_abs oc xs; string oc ", "; term oc u
 
 and paren oc t =
   let default() = char oc '('; term oc t; char oc ')' in
@@ -350,10 +350,11 @@ let require = ref None
 
 let set_requiring : string -> unit = fun f -> require := Some f
 
-let print : ast -> unit = fun s ->
+let print : string -> ast -> unit = fun file s ->
   let oc = stdout in
   begin match !require with
   | Some f -> string oc ("import "^f^"\nopen "^f^"\n")
   | None -> ()
   end;
+  string oc ("namespace "^file^"\n");
   ast oc s

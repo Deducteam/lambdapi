@@ -135,14 +135,14 @@ let export_cmd (cfg:Config.t) (output:output option) (encoding:string option)
     | Some RawLean ->
         Export.Lean.stt := false;
         Option.iter Export.Lean.set_renaming renaming;
-        Export.Lean.print (Parser.parse_file file)
+        Export.Lean.print file (Parser.parse_file file)
     | Some SttLean ->
         Export.Lean.stt := true;
         Option.iter Export.Lean.set_renaming renaming;
         Option.iter Export.Lean.set_encoding encoding;
         Option.iter Export.Lean.set_mapping mapping;
         Option.iter Export.Lean.set_requiring requiring;
-        Export.Lean.print (Parser.parse_file file)
+        Export.Lean.print file (Parser.parse_file file)
   in Error.handle_exceptions run
 
 (** Running the LSP server. *)
