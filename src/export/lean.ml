@@ -179,10 +179,11 @@ let handle_requires s =
 
 let print : string -> ast -> unit = fun file s ->
   let oc = stdout in
-  Option.iter (fun f -> string oc ("import "^f^"\nopen "^f^"\n")) !require;
+  Option.iter (fun s -> string oc ("import "^s^"\n")) !require;
   match handle_requires s with
   | None -> ()
   | Some c ->
+  Option.iter (fun s -> string oc ("open "^s^"\n")) !require;
   List.iter (open_mod oc) (List.rev !openings);
   string oc "\nnamespace ";
   string oc (Filename.chop_extension file);
