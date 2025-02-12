@@ -364,6 +364,6 @@ let print : string -> ast -> unit = fun file s ->
   List.iter import (List.rev !requires);
   List.iter opening (List.rev !openings);
   string oc "\nnamespace ";
-  string oc "HOLLight."; string oc (Filename.chop_extension file);
+  string oc (Filename.chop_extension file);
   string oc "\n\n";
   ast oc s
