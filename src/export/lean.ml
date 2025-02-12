@@ -163,16 +163,29 @@ let command oc {elt; pos} =
   | _ -> wrn pos "Command not translated."
   end
 
-let ast oc = Stream.iter (command oc)
+let commands oc = Stream.iter (command oc)
+
+let handle_requires s =
+  let rec handle_next_elt() =
+    let x = Stream.next s in
+    match x.elt with
+    | P_require (b, ps) ->
+        List.iter (req_mod stdout) ps;
+        if b then openings := List.rev_append ps !openings;
+        handle_next_elt()
+    | _ -> Some x
+  in
+  try handle_next_elt() with Stream.Failure -> None
 
 let print : string -> ast -> unit = fun file s ->
   let oc = stdout in
-  begin match !require with
-  | Some f -> string oc ("import "^f^"\nopen "^f^"\n")
+  Option.iter (fun f -> string oc ("import "^f^"\nopen "^f^"\n")) !require;
+  match handle_requires s with
   | None -> ()
-  end;
+  | Some c ->
   List.iter (open_mod oc) (List.rev !openings);
   string oc "\nnamespace ";
   string oc (Filename.chop_extension file);
   string oc "\n\n";
-  ast oc s
+  command oc c;
+  commands oc s

@@ -161,7 +161,7 @@ let command oc {elt; pos} =
   | _ -> wrn pos "Command not translated."
   end
 
-let ast oc = Stream.iter (command oc)
+let commands oc = Stream.iter (command oc)
 
 (** Set Coq required file. *)
 
@@ -171,4 +171,4 @@ let print : ast -> unit = fun s ->
   | Some f -> string oc ("Require Import "^f^".\n")
   | None -> ()
   end;
-  ast oc s
+  commands oc s
