@@ -105,7 +105,16 @@ type term =
   | LLet of term * term * binder
   (** [LLet(a, t, u)] is [let x : a ≔ t in u] (with [x] bound in [u]). *)
 
-(** Type for binders. *)
+(** Type for binders, implemented as closures. The closure term must have
+    all its de Bruijn indices bound either by the binder itself or by 
+    the closure environment.
+
+    In a simple binder [(bi,u,e)], dB [1] of [u] refers to the bound variable,
+    and dB [i] of [u] with [i>1] refers to [e.(i-2)].
+
+    In a multiple binder [(bi,u,e)] of arity [n], dB [i] in [1..n] of [u]
+    refers to the bound variable at position [n-i] in the binder array,
+    and dB [i] of [u] with [i>n] refers to [e.(i-n-1)] *)
 and binder = binder_info * term * term list
 and mbinder = mbinder_info * term * term list
 
@@ -371,7 +380,7 @@ and msubst : mbinder -> term array -> term = fun (bi,tm,e) vs ->
   if Logger.log_enabled() then
     log "msubst %a[%a] %a = %a" term tm terms env (D.array term) vs term r;
   r
-
+  
 (** Total order on terms. *)
 and cmp : term cmp = fun t t' ->
   match unfold t, unfold t' with
@@ -668,6 +677,7 @@ let bind_mvar : var array -> term -> mbinder =
     log "bind_mvar %a" (D.array var) xs;*)
   let map = ref IntMap.empty and mbinder_bound = Array.make n false in
   Array.iteri (fun i (ki,_) -> map := IntMap.add ki i !map) xs;
+  (* Replace variables [xs.(k)] by de Bruijn index [i+n-1-k] *)
   let rec bind i t =
     (*if Logger.log_enabled() then log "bind_mvar %d %a" i term t;*)
     match unfold t with
@@ -703,11 +713,15 @@ let bind_mvar : var array -> term -> mbinder =
         if Array.for_all2 (==) ts ts' then t else Patt(j,n,ts')
     | _ -> t
 
+  (* Replace variables [xs.(k)] by de Bruijn index [i+n-1-k] in a binder *)
   and bind_binder i (bi,u,e as b) =
+    (* First we bind variables in [e]. [e'] will binder indices [2..|e'|+1]
+       (remember 1 is the variable bound by this binder) *)
     let e' = List.map (bind i) e in
+    (* If variables of xs appear in [u], they will be replaced by de Bruijn indices from [j = |e|+2] *)
     let j = List.length e+2 in
     let u' = bind j u in
-    if u==u' then (* x does not occur in u *)
+    if u==u' then (* If [u==u'] then [x] does not occur in [u] *)
       if List.for_all2 (==) e e' then b
       else (bi, u', e')
     else (* x occurs, it has been replaced by a db which corresponds to a slot in the tail of e *)
@@ -729,40 +743,40 @@ let bind_mvar : var array -> term -> mbinder =
 
 (** [binder_occur b] tests whether the bound variable occurs in [b]. *)
 let binder_occur : binder -> bool = fun (bi,_,_) -> bi.binder_bound
-(*  let rec check i t =
-    (*if Logger.log_enabled() then
-      log "binder_occur %d %a" i term t;*)
-    match unfold t with
-    | Db k when k = i -> raise Exit
-    | Appl(a,b) -> check i a; check i b
-    | Abst(a,(_,u))
-    | Prod(a,(_,u)) -> check i a; check (i+1) u
-    | LLet(a,t,(_,u)) -> check i a; check i t; check (i+1) u
-    | Meta(_,ts)
-    | Patt(_,_,ts) -> Array.iter (check i) ts
-    | _ -> ()
-  in
-  let r = try check 1 t; false with Exit -> true in
-  if Logger.log_enabled() then
-    log "binder_occur 1 %a = %b" term t r;
-  r
-*)
-
-(** [is_closed t] checks whether [t] is closed. *)
+         
+(** [is_closed t] checks whether [t] is closed.
+    We have to be careful with binders since in the current implementation
+    closure environment may contain slots for variables that don't actually appear
+ *)
 let is_closed : term -> bool =
-  let rec check t =
+  let rec check dbs t =
     match unfold t with
     | Vari _ -> raise Exit
-    | Appl(a,b) -> check a; check b
-    | Abst(a,(_,u,e))
-    | Prod(a,(_,u,e)) -> check a; check u; List.iter check e
-    | LLet(a,t,(_,u,e)) -> check a; check t; check u; List.iter check e
+    | Db k -> if IntSet.mem k dbs then raise Exit
+    | Appl(a,b) -> check dbs a; check dbs b
+    | Abst(a,b)
+    | Prod(a,b) -> check dbs a; check_binder dbs b
+    | LLet(a,t,b) -> check dbs a; check dbs t; check_binder dbs b
     | Meta(_,ts)
-    | Patt(_,_,ts) -> Array.iter check ts
+    | Patt(_,_,ts) -> Array.iter (check dbs) ts
     | _ -> ()
-  in fun t -> try check t; true with Exit -> false
+  and check_binder dbs (_,u,e) =
+    (* positions in env (i.e. in [0..n-1] (n=length e) that are not closed: *)
+    let pos = List.mapi(fun i u -> if safe_check dbs u then None else Some i) e in
+    (* Translte this set into a set of dB  i-th pos in env corresponds to dB i+2
+       (yields dB in [2..n+1], dB 1 is the bound variable) *)
+    let dbs' =
+      List.fold_left
+        (fun s o -> match o with None -> s | Some i -> IntSet.add (i+2) s)
+        IntSet.empty pos in
+    check dbs' u
+  and safe_check dbs t =
+    try check dbs t; true with Exit -> false in
 
-let is_closed_mbinder : mbinder -> bool = fun (_,t,e) -> is_closed t && List.for_all is_closed e
+  safe_check IntSet.empty
+
+let is_closed_mbinder : mbinder -> bool =
+  fun (_bi,u,e) -> is_closed u && List.for_all is_closed e
 
 (** Construction functions of the private type [term]. They ensure some
    invariants:
