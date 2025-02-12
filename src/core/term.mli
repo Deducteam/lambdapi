@@ -48,6 +48,9 @@ val binder_name : binder_info -> string
 (** Type for binders. *)
 type binder
 type mbinder
+   
+(** Type of bound variables. *)
+type bvar
 
 (** Representation of a term (or types) in a general sense. Values of the type
     are also used, for example, in the representation of patterns or rewriting
@@ -64,7 +67,7 @@ type term = private
   | Meta of meta * term array (** Metavariable application. *)
   | Patt of int option * string * term array
   (** Pattern variable application (only used in rewriting rules). *)
-  | Db of int (** Bound variable as de Bruijn index. *)
+  | Db of bvar (** Bound variable as de Bruijn index. *)
   | Wild (** Wildcard (only used for surface matching, never in LHS). *)
   | Plac of bool
   (** [Plac b] is a placeholder, or hole, for not given terms. Boolean
