@@ -111,19 +111,18 @@ and typopt oc t = Option.iter (prefix " : " term oc) t
 
 (** Translation of commands. *)
 
-let requires = ref []
+let req_mod oc p = string oc "import "; path oc p; string oc "\n"
+let open_mod oc p = string oc "open "; path oc p; string oc "\n"
+
 let openings = ref []
 
 let command oc {elt; pos} =
   begin match elt with
-  | P_open ps -> openings := List.rev_append ps !openings
-  | P_require (true, ps) ->
-      requires := List.rev_append ps !requires;
-      openings := List.rev_append ps !openings
-  | P_require (false, ps) ->
-      requires := List.rev_append ps !requires
-  | P_require_as _ ->
-    wrn pos "Command not translated."
+  | P_open ps -> List.iter (open_mod oc) ps
+  | P_require (b, ps) ->
+      List.iter (req_mod oc) ps;
+      if b then openings := List.rev_append ps !openings
+  | P_require_as _ -> wrn pos "Command not translated."
   | P_symbol
     { p_sym_mod; p_sym_nam; p_sym_arg; p_sym_typ;
       p_sym_trm; p_sym_prf=_; p_sym_def } ->
@@ -172,10 +171,7 @@ let print : string -> ast -> unit = fun file s ->
   | Some f -> string oc ("import "^f^"\nopen "^f^"\n")
   | None -> ()
   end;
-  let import r = string oc "import "; path oc r; string oc "\n" in
-  let opening r = string oc "open "; path oc r; string oc "\n" in
-  List.iter import (List.rev !requires);
-  List.iter opening (List.rev !openings);
+  List.iter (open_mod oc) (List.rev !openings);
   string oc "\nnamespace ";
   string oc (Filename.chop_extension file);
   string oc "\n\n";
