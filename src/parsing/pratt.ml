@@ -25,21 +25,21 @@ end = struct
      (t: p_term) : (Pratter.fixity * float * p_term) list =
      match t.elt with
      | P_Iden({elt=(mp, s); _} as id, false) ->
-         let open List.Monad in
-         let* sym =
+         let sym =
            try (* Look if [id] is in [env]... *)
              if mp <> [] then raise Not_found;
              ignore (Env.find s env); []
            with Not_found -> (* ... or look into the signature *)
              [find_sym ~prt:true ~prv:true ss id]
          in
-         (match Timed.(!(sym.sym_not)) with
-         | Term.Infix(assoc, prio) -> [Pratter.Infix assoc, prio, t]
-         | Term.Prefix(prio) | Succ(Prefix(prio)) ->
-             [Pratter.Prefix, prio, t]
-         | Term.Postfix(prio) | Succ(Postfix(prio)) ->
-             [Pratter.Postfix, prio, t]
-         | _ -> [])
+         List.concat_map (fun (sym: Term.sym) ->
+           match Timed.(!(sym.sym_not)) with
+           | Term.Infix(assoc, prio) -> [Pratter.Infix assoc, prio, t]
+           | Term.Prefix(prio) | Succ(Prefix(prio)) ->
+               [Pratter.Prefix, prio, t]
+           | Term.Postfix(prio) | Succ(Postfix(prio)) ->
+               [Pratter.Postfix, prio, t]
+           | _ -> []) sym
      | _ -> []
 
    let appl : p_term -> p_term -> p_term = fun t u ->

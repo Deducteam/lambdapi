@@ -309,14 +309,3 @@ let pos : ('a -> bool) -> 'a list -> int = fun f ->
     | [] -> raise Not_found
     | x::xs -> if f x then k else pos (k+1) xs
   in pos 0
-
-(** The list monad can be seen as a representation of nondeterministic
-    computations *)
-module Monad = struct
-  let return : 'a -> 'a t = fun x -> [x]
-  let join : 'a t t -> 'a t = concat
-  let bind : 'a t -> ('a -> 'b t) -> 'b t = fun m f ->
-    join ((map f) m)
-
-  let ( let* ) = bind
-end
