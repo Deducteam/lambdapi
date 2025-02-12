@@ -59,6 +59,7 @@ type token =
   | NOTATION
   | OPAQUE
   | OPEN
+  | ORELSE
   | POSTFIX
   | PREFIX
   | PRINT
@@ -71,6 +72,7 @@ type token =
   | REFINE
   | REFLEXIVITY
   | REMOVE
+  | REPEAT
   | REQUIRE
   | REWRITE
   | RULE
@@ -230,6 +232,7 @@ let rec token lb =
   | "on" -> SWITCH(true)
   | "opaque" -> OPAQUE
   | "open" -> OPEN
+  | "orelse" -> ORELSE
   | "postfix" -> POSTFIX
   | "prefix" -> PREFIX
   | "print" -> PRINT
@@ -242,6 +245,7 @@ let rec token lb =
   | "refine" -> REFINE
   | "reflexivity" -> REFLEXIVITY
   | "remove" -> REMOVE
+  | "repeat" -> REPEAT
   | "require" -> REQUIRE
   | "rewrite" -> REWRITE
   | "right" -> SIDE(Pratter.Right)

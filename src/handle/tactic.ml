@@ -216,7 +216,7 @@ let gen_valid_idopts env ids =
    [ps] and returns the new proof state. *)
 let rec handle :
   Sig_state.t -> popt -> bool -> proof_state -> p_tactic -> proof_state =
-  fun ss sym_pos prv ps {elt;pos} ->
+  fun ss sym_pos prv ps ({elt;pos} as tac) ->
   match ps.proof_goals with
   | [] -> assert false (* done before *)
   | g::gs ->
@@ -427,8 +427,24 @@ let rec handle :
         | _ -> assert false
       end
   | P_tac_try tactic ->
-    try handle ss sym_pos prv ps tactic
-    with Fatal(_, _s) -> ps
+      begin
+        try handle ss sym_pos prv ps tactic
+        with Fatal(_, _s) -> ps
+      end
+  | P_tac_orelse(t1,t2) ->
+      begin
+        try handle ss sym_pos prv ps t1
+        with Fatal(_, _s) -> handle ss sym_pos prv ps t2
+      end
+  | P_tac_repeat t ->
+      begin
+        try
+          let nb_goals = List.length ps.proof_goals in
+          let ps = handle ss sym_pos prv ps t in
+          if List.length ps.proof_goals < nb_goals then ps
+          else handle ss sym_pos prv ps tac
+        with Fatal(_, _s) -> ps
+      end
 
 (** Representation of a tactic output. *)
 type tac_output = proof_state * Query.result

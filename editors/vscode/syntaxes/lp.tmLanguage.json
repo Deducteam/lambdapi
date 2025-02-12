@@ -25,7 +25,7 @@
   ],
   "repository": {
     "commands": {
-      "match": "\\b(abort|admit|admitted|apply|as|assert|assertnot|associative|assume|begin|builtin|coerce_rule|commutative|compute|constant|debug|end|fail|flag|focus|generalize|have|in|induction|inductive|infix|injective|left|let|notation|off|on|open|opaque|postfix|prefix|print|private|proofterm|protected|prover|prover_timeout|quantifier|refine|reflexivity|remove|require|rewrite|rule|search|sequential|set|simplify|symbol|symmetry|try|type|TYPE|unif_rule|why3|with)\\b",
+      "match": "\\b(abort|admit|admitted|apply|as|assert|assertnot|associative|assume|begin|builtin|coerce_rule|commutative|compute|constant|debug|end|fail|flag|focus|generalize|have|in|induction|inductive|infix|injective|left|let|notation|off|on|open|opaque|orelse|postfix|prefix|print|private|proofterm|protected|prover|prover_timeout|quantifier|refine|reflexivity|remove|repeat|require|rewrite|rule|search|sequential|set|simplify|symbol|symmetry|try|type|TYPE|unif_rule|why3|with)\\b",
       "name": "keyword.control.lp"
     },
     "comments": {
@@ -44,7 +44,7 @@
     },
 
     "tactics": {
-      "match": "\\b(apply|assume|fail|focus|generalize|have|induction|refine|reflexivity|remove|rewrite|set|simplify|solve|symmetry|try|why3)\\b",
+      "match": "\\b(apply|assume|fail|focus|generalize|have|induction|orelse|refine|reflexivity|remove|repeat|rewrite|set|simplify|solve|symmetry|try|why3)\\b",
       "name": "keyword.control.tactics.lp"
     },
 
@@ -75,7 +75,7 @@
     },
 
     "keywords": {
-      "match": "\\b(as|associative|begin|builtin|coerce_rule|commutative|constant|debug|end|flag|in|infix|injective|left|off|notation|on|opaque|postfix|prefix|private|protected|prover|prover_timeout|quantifier|right|sequential|TYPE|unif_rule)\\b",
+      "match": "\\b(as|associative|begin|builtin|coerce_rule|commutative|constant|debug|end|flag|in|infix|injective|left|notation|off|on|opaque|postfix|prefix|private|protected|prover|prover_timeout|quantifier|right|sequential|TYPE|unif_rule)\\b",
       "name": "storage.modifier.lp"
     }
   }

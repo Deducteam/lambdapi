@@ -64,6 +64,7 @@ syntax keyword KeywordOK contained off
 syntax keyword KeywordOK contained on
 syntax keyword KeywordOK contained opaque
 syntax keyword KeywordOK contained open
+syntax keyword KeywordOK contained orelse
 syntax keyword KeywordOK contained prefix
 syntax keyword KeywordOK contained print
 syntax keyword KeywordOK contained private
@@ -75,6 +76,7 @@ syntax keyword KeywordOK contained quantifier
 syntax keyword KeywordOK contained refine
 syntax keyword KeywordOK contained reflexivity
 syntax keyword KeywordOK contained remove
+syntax keyword KeywordOK contained repeat
 syntax keyword KeywordOK contained require
 syntax keyword KeywordOK contained rewrite
 syntax keyword KeywordOK contained right
@@ -132,6 +134,7 @@ syntax keyword KeywordKO contained off
 syntax keyword KeywordKO contained on
 syntax keyword KeywordKO contained opaque
 syntax keyword KeywordKO contained open
+syntax keyword KeywordKO contained orelse
 syntax keyword KeywordKO contained prefix
 syntax keyword KeywordKO contained print
 syntax keyword KeywordKO contained private
@@ -143,6 +146,7 @@ syntax keyword KeywordKO contained quantifier
 syntax keyword KeywordKO contained refine
 syntax keyword KeywordKO contained reflexivity
 syntax keyword KeywordKO contained remove
+syntax keyword KeywordKO contained repeat
 syntax keyword KeywordKO contained require
 syntax keyword KeywordKO contained rewrite
 syntax keyword KeywordKO contained right
