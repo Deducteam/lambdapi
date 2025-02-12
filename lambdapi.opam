@@ -27,7 +27,7 @@ depends: [
   "dedukti" {with-test & >= "2.7"}
   "bindlib" {>= "6.0.0"}
   "timed" {>= "1.0"}
-  "pratter" {>= "3.0.0" & < "4"}
+  "pratter" {>= "5.0.0" & < "6"}
   "camlp-streams" {>= "5.0"}
   "why3" {>= "1.8.0"}
   "yojson" {>= "1.6.0"}
@@ -52,4 +52,8 @@ build: [
   ]
 ]
 conflicts: [ "ocaml-option-bytecode-only" ]
+# TODO remove this when Pratter 5 is uploaded on opam
+pin-depends: [
+  ["pratter.5.0.0" "git+https://forge.tedomum.net/koizel/pratter#5.0.0"]
+]
 
