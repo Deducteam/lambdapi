@@ -363,6 +363,7 @@ let print : string -> ast -> unit = fun file s ->
   let opening r = string oc "open "; path oc r; string oc "\n" in
   List.iter import (List.rev !requires);
   List.iter opening (List.rev !openings);
-  let mp = Library.path_of_file LpLexer.escape file in
-  string oc "\nnamespace "; path oc (Pos.none mp); string oc "\n\n";
+  (*let root = match cfg.lib_root with None -> assert false | Some s -> s in*)
+  let mp = Pos.none (Library.path_of_file LpLexer.escape file) in
+  string oc "\nnamespace "; path oc mp; string oc "\n\n";
   ast oc s
