@@ -20,8 +20,7 @@ open Common open Pos open Error
 open Parsing open Syntax
 open Core
 
-let log = Logger.make 'b' "xprt" "export"
-let log = log.pp
+let log = Coq.log
 
 (** Symbols necessary to encode STT. *)
 
