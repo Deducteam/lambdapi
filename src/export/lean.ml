@@ -294,14 +294,14 @@ let is_lem x = is_opaq x || is_priv x
 
 let command oc {elt; pos} =
   begin match elt with
-  | P_open ps -> string oc "Import "; list path " " oc ps; string oc ".\n"
+  | P_open ps -> string oc "open "; list path " " oc ps; string oc "\n"
   | P_require (true, ps) ->
-      string oc "Require Import "; list path " " oc ps; string oc ".\n"
+      string oc "import "; list path " " oc ps; string oc "\n";
+      string oc "open "; list path " " oc ps; string oc "\n"
   | P_require (false, ps) ->
-      string oc "Require "; list path " " oc ps; string oc ".\n"
-  | P_require_as (p,i) ->
-    string oc "Module "; ident oc i; string oc " := "; path oc p;
-    string oc ".\n"
+      string oc "import "; list path " " oc ps; string oc "\n"
+  | P_require_as _ ->
+    wrn pos "Command not translated."
   | P_symbol
     { p_sym_mod; p_sym_nam; p_sym_arg; p_sym_typ;
       p_sym_trm; p_sym_prf=_; p_sym_def } ->
@@ -320,23 +320,23 @@ let command oc {elt; pos} =
             (* If they have a type, opaque or private defined symbols are
                translated as Lemma's so that their definition is loaded in
                memory only when it is necessary. *)
-            string oc "Lemma "; ident oc p_sym_nam; params_list oc p_sym_arg;
-            string oc " : "; term oc a; string oc ".\nProof. exact (";
-            term oc t; string oc "). Qed.\n"
+            string oc "theorem "; ident oc p_sym_nam;
+            params_list oc p_sym_arg; string oc " : "; term oc a;
+            string oc " := "; term oc t; string oc "\n"
           | true, Some t, _, _ ->
-            string oc "Definition "; ident oc p_sym_nam;
+            if List.exists is_opaq p_sym_mod then string oc "opaque "
+            else string oc "def ";
+            ident oc p_sym_nam;
             params_list oc p_sym_arg; typopt oc p_sym_typ;
             string oc " := "; term oc t;
-            if List.exists is_opaq p_sym_mod then
-              (string oc ".\nOpaque "; ident oc p_sym_nam);
-            string oc ".\n"
+            string oc "\n"
           | false, _, [], Some t ->
-            string oc "Axiom "; ident oc p_sym_nam; string oc " : ";
-            term oc t; string oc ".\n"
+            string oc "axiom "; ident oc p_sym_nam; string oc " : ";
+            term oc t; string oc "\n"
           | false, _, _, Some t ->
-            string oc "Axiom "; ident oc p_sym_nam; string oc " : forall";
+            string oc "axiom "; ident oc p_sym_nam; string oc " : ∀";
             params_list oc p_sym_arg; string oc ", "; term oc t;
-            string oc ".\n"
+            string oc "\n"
           | _ -> wrn pos "Command not translated."
         end
   | _ -> wrn pos "Command not translated."
@@ -353,7 +353,7 @@ let set_requiring : string -> unit = fun f -> require := Some f
 let print : ast -> unit = fun s ->
   let oc = stdout in
   begin match !require with
-  | Some f -> string oc ("Require Import "^f^".\n")
+  | Some f -> string oc ("import "^f^"\nopen "^f^"\n")
   | None -> ()
   end;
   ast oc s
