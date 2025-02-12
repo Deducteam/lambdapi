@@ -292,14 +292,17 @@ and typopt oc t = Option.iter (prefix " : " term oc) t
 
 let is_lem x = is_opaq x || is_priv x
 
+let requires = ref []
+let openings = ref []
+
 let command oc {elt; pos} =
   begin match elt with
-  | P_open ps -> string oc "open "; list path " " oc ps; string oc "\n"
+  | P_open ps -> openings := List.rev_append ps !openings
   | P_require (true, ps) ->
-      string oc "import "; list path " " oc ps; string oc "\n";
-      string oc "open "; list path " " oc ps; string oc "\n"
+      requires := List.rev_append ps !requires;
+      openings := List.rev_append ps !openings
   | P_require (false, ps) ->
-      string oc "import "; list path " " oc ps; string oc "\n"
+      requires := List.rev_append ps !requires
   | P_require_as _ ->
     wrn pos "Command not translated."
   | P_symbol
@@ -356,5 +359,9 @@ let print : string -> ast -> unit = fun file s ->
   | Some f -> string oc ("import "^f^"\nopen "^f^"\n")
   | None -> ()
   end;
-  string oc ("namespace "^file^"\n");
+  let import r = string oc "import "; path oc r; string oc "\n" in
+  let opening r = string oc "open "; path oc r; string oc "\n" in
+  List.iter import (List.rev !requires);
+  List.iter opening (List.rev !openings);
+  string oc ("\nnamespace "^Filename.chop_extension file^"\n");
   ast oc s
