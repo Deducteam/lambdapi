@@ -363,5 +363,6 @@ let print : string -> ast -> unit = fun file s ->
   let opening r = string oc "open "; path oc r; string oc "\n" in
   List.iter import (List.rev !requires);
   List.iter opening (List.rev !openings);
-  string oc ("\nnamespace "^Filename.chop_extension file^"\n");
+  let mp = Library.path_of_file LpLexer.escape file in
+  string oc "\nnamespace "; path oc (Pos.none mp); string oc "\n\n";
   ast oc s
