@@ -110,8 +110,8 @@ let export_cmd (cfg:Config.t) (output:output option) (encoding:string option)
       (file:string) : unit =
   let run _ =
     Config.init {cfg with verbose = Some 0};
-    Export.Coq.use_implicits := not no_implicits;
-    Export.Coq.use_notations := use_notations;
+    Export.Stt.use_implicits := not no_implicits;
+    Export.Stt.use_notations := use_notations;
     match output with
     | None
     | Some Lp -> Pretty.ast Format.std_formatter (Parser.parse_file file)
@@ -122,26 +122,26 @@ let export_cmd (cfg:Config.t) (output:output option) (encoding:string option)
     | Some Xtc ->
       Export.Xtc.sign Format.std_formatter (Compile.compile_file file)
     | Some RawCoq ->
-        Export.Coq.stt := false;
-        Option.iter Export.Coq.set_renaming renaming;
+        Export.Stt.stt := false;
+        Option.iter Export.Stt.set_renaming renaming;
         Export.Coq.print (Parser.parse_file file)
     | Some SttCoq ->
-        Export.Coq.stt := true;
-        Option.iter Export.Coq.set_renaming renaming;
-        Option.iter Export.Coq.set_encoding encoding;
-        Option.iter Export.Coq.set_mapping mapping;
-        Option.iter Export.Coq.set_requiring requiring;
+        Export.Stt.stt := true;
+        Option.iter Export.Stt.set_renaming renaming;
+        Option.iter Export.Stt.set_encoding encoding;
+        Option.iter Export.Stt.set_mapping mapping;
+        Option.iter Export.Stt.set_requiring requiring;
         Export.Coq.print (Parser.parse_file file)
     | Some RawLean ->
-        Export.Lean.stt := false;
-        Option.iter Export.Lean.set_renaming renaming;
+        Export.Stt.stt := false;
+        Option.iter Export.Stt.set_renaming renaming;
         Export.Lean.print file (Parser.parse_file file)
     | Some SttLean ->
-        Export.Lean.stt := true;
-        Option.iter Export.Lean.set_renaming renaming;
-        Option.iter Export.Lean.set_encoding encoding;
-        Option.iter Export.Lean.set_mapping mapping;
-        Option.iter Export.Lean.set_requiring requiring;
+        Export.Stt.stt := true;
+        Option.iter Export.Stt.set_renaming renaming;
+        Option.iter Export.Stt.set_encoding encoding;
+        Option.iter Export.Stt.set_mapping mapping;
+        Option.iter Export.Stt.set_requiring requiring;
         Export.Lean.print file (Parser.parse_file file)
   in Error.handle_exceptions run
 
