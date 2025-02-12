@@ -227,6 +227,7 @@ and whnf_stk : config -> term -> stack -> term * stack = fun cfg t stk ->
         (Stdlib.incr steps; whnf_stk cfg t stk)
     | None when not cfg.Config.rewrite -> r
     | _ ->
+      log_eval "trying to rewrite %a" term t ;
       (* If [s] is modulo C or AC, we put its arguments in whnf and reorder
          them to have a term in AC-canonical form. *)
       let stk =

@@ -26,7 +26,7 @@ type dot_term =
    performed to give birth to the child node. The label on the edge between a
    node and one of its children represents the term matched to generate the
    next pattern matrix (the one of the child node). *)
-let to_dot : Format.formatter -> sym -> unit = fun ppf s ->
+let tree_to_dot : Format.formatter -> _ dtree -> unit = fun ppf dtree ->
   let output_tree ppf tree =
     let dotterm : dot_term pp = fun ppf dh ->
       let var_px = "v" in
@@ -100,4 +100,7 @@ let to_dot : Format.formatter -> sym -> unit = fun ppf s ->
     end;
     out ppf "@.}@\n@?"
   in
-  output_tree ppf (Lazy.force (snd !(s.sym_dtree)))
+  output_tree ppf (Lazy.force (snd dtree))
+
+let to_dot : Format.formatter -> sym -> unit = fun ppf s ->
+ tree_to_dot ppf !(s.sym_dtree)
