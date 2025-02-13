@@ -1,0 +1,8 @@
+* Too many results found?
+
+anywhere >= (Π x: _, (= _ V# V#))
+anywhere >= (Π x: _, (= _ x x))
+
+* normalize queries when given as commands in lambdapi
+
+* mise à jour du manual

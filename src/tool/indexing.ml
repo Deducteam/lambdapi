@@ -353,7 +353,7 @@ module DB = struct
 
 end
 
-let find_sym ~prt:_prt ~prv:_prv _sig_state {elt=(mp,name); pos} =
+let find_sym ~prt ~prv sig_state ({elt=(mp,name); pos} as s) =
  let pos,mp =
   match mp with
     [] ->
@@ -369,8 +369,12 @@ let find_sym ~prt:_prt ~prv:_prv _sig_state {elt=(mp,name); pos} =
        | Some _ -> assert false) (* locate only returns DB.Name*)
   | _::_ -> None,mp
  in
-  Core.Term.create_sym mp Core.Term.Public Core.Term.Defin Core.Term.Sequen
-   false (Common.Pos.make pos name) None Core.Term.mk_Type []
+ try
+  Core.Sig_state.find_sym ~prt ~prv sig_state s
+ with
+  Common.Error.Fatal _ ->
+   Core.Term.create_sym mp Core.Term.Public Core.Term.Defin Core.Term.Sequen
+    false (Common.Pos.make pos name) None Core.Term.mk_Type []
 
 module QNameMap =
  Map.Make(struct type t = sym_name let compare = Stdlib.compare end)
@@ -426,12 +430,11 @@ let normalize typ =
   with Not_found -> Core.Tree_type.empty_dtree in
  Core.Eval.snf ~dtree ~tags:[`NoExpand] [] typ
 
-let search_pterm ~generalize ~mok env pterm =
- let sig_state = Core.Sig_state.dummy in
+let search_pterm ~generalize ~mok ss env pterm =
  let env =
   ("V#",(Bindlib.new_var mk_Vari "V#" ,Bindlib.box Term.mk_Type,None))::env in
  let query =
-  Parsing.Scope.scope_search_pattern ~find_sym ~mok sig_state env pterm in
+  Parsing.Scope.scope_search_pattern ~find_sym ~mok ss env pterm in
  Dream.log "QUERY before: %a" Core.Print.term query ;
  let query = normalize query in
  Dream.log "QUERY after: %a" Core.Print.term query ;
@@ -508,8 +511,11 @@ let insert_rigid t v =
 let index_term_and_subterms ~is_spine t item =
  let tn = normalize t in
  (*
- Format.printf "%a : %a REWRITTEN TO %a@."
-  pp_item (item Exact) Core.Print.term t Core.Print.term tn ;
+ let pp_item ppf (((p,n),_ ), _) =
+   Lplib.Base.out ppf "%a.%s" Core.Print.path p n in
+ Format.printf "%a :(%a) REWRITTEN TO (%a)@."
+  pp_item (item (DB.Conclusion DB.Exact))
+  Core.Print.term t Core.Print.term tn ;
  *)
  let cmp (where1,t1) (where2,t2) =
   let res = compare where1 where2 in
@@ -553,6 +559,9 @@ let load_rewriting_rules rwrules =
  DB.rwpaths := rwrules
 
 let index_sign sign =
+ (*Console.set_flag "print_domains" true ;
+ Console.set_flag "print_implicits" true ;
+ Common.Logger.set_debug true "e" ;*)
  let syms = Timed.(!(sign.Core.Sign.sign_symbols)) in
  let rules = Timed.(!(sign.Core.Sign.sign_deps)) in
  Lplib.Extra.StrMap.iter (fun _ sym -> index_sym sym) syms ;
@@ -600,11 +609,11 @@ module QueryLanguage = struct
          | _,_,Xhs (ins,side) -> match_opt insp ins && match_opt sidep side
          | _ -> false) positions
 
- let answer_base_query ~mok env =
+ let answer_base_query ~mok ss env =
   function
    | QName s -> locate_name s
    | QSearch (patt,generalize,constr) ->
-      let res = search_pterm ~generalize ~mok env patt in
+      let res = search_pterm ~generalize ~mok ss env patt in
       (match constr with
         | None -> res
         | Some constr -> ItemSet.filter (filter_constr constr) res)
@@ -629,10 +638,10 @@ module QueryLanguage = struct
        Lplib.String.is_prefix p (string_of_path p') in
   ItemSet.filter f set
 
- let answer_query ~mok env =
+ let answer_query ~mok ss env =
   let rec aux =
    function
-    | QBase bq -> answer_base_query ~mok env bq
+    | QBase bq -> answer_base_query ~mok ss env bq
     | QOpp (q1,op,q2) -> perform_op op (aux q1) (aux q2)
     | QFilter (q,f) -> filter (aux q) f
   in
@@ -645,12 +654,12 @@ include QueryLanguage
 
 module UserLevelQueries = struct
 
- let search_cmd_gen ~from ~how_many ~fail ~pp_results s =
+ let search_cmd_gen ss ~from ~how_many ~fail ~pp_results s =
   try
    let pstream = Parsing.Parser.Lp.parse_search_query_string "LPSearch" s in
    let pq = Stream.next pstream in
    let mok _ = None in
-   let items = ItemSet.bindings (answer_query ~mok [] pq) in
+   let items = ItemSet.bindings (answer_query ~mok ss [] pq) in
    let resultsno = List.length items in
    let _,items = Lplib.List.cut items from in
    let items,_ = Lplib.List.cut items how_many in
@@ -668,13 +677,13 @@ module UserLevelQueries = struct
    | exn ->
       fail (Format.asprintf "Error: %s@." (Printexc.to_string exn))
 
- let search_cmd_html ~from ~how_many s =
-  search_cmd_gen ~from ~how_many
+ let search_cmd_html ss ~from ~how_many s =
+  search_cmd_gen ss ~from ~how_many
    ~fail:(fun x -> "<font color=\"red\">" ^ x ^ "</font>")
    ~pp_results:(html_of_results_list from) s
 
- let search_cmd_txt s =
-  search_cmd_gen ~from:0 ~how_many:999999
+ let search_cmd_txt ss s =
+  search_cmd_gen ss ~from:0 ~how_many:999999
    ~fail:(fun x -> Common.Error.fatal_no_pos "%s" x)
    ~pp_results:pp_results_list s
 
