@@ -7,4 +7,6 @@ anywhere >= (Π x: _, (= _ x x))
 
 * mise à jour du manual
 
+* alignments with same name ==> automatic preference?
+
 * better pagination
