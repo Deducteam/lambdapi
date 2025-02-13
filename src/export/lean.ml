@@ -146,7 +146,7 @@ let command oc {elt; pos} =
             string oc " := "; term oc t; string oc "\n"
           | true, Some t, _, _ ->
             if List.exists is_opaq p_sym_mod then string oc "opaque "
-            else string oc "def ";
+            else string oc "noncomputable def ";
             ident oc p_sym_nam;
             params_list oc p_sym_arg; typopt oc p_sym_typ;
             string oc " := "; term oc t;
