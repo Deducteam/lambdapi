@@ -353,16 +353,15 @@ module DB = struct
 
 end
 
+exception Overloaded of string * DB.answer DB.ItemSet.t
+
 let find_sym ~prt ~prv sig_state ({elt=(mp,name); pos} as s) =
  let pos,mp =
   match mp with
     [] ->
      let res = DB.locate_name name in
      if DB.ItemSet.cardinal res > 1 then
-      Common.Error.fatal pos
-       "Overloaded symbol %s, search for \"name = %s\" to know how \
-        to disambiguate it"
-       name name ;
+       raise (Overloaded (name,res)) ;
      (match DB.ItemSet.choose_opt res with
        | None -> Common.Error.fatal pos "Unknown symbol %s." name
        | Some (((mp,_),sympos),[_,_,DB.Name]) -> sympos,mp
@@ -670,6 +669,11 @@ module UserLevelQueries = struct
       fail (Format.asprintf "Syntax error: a query was expected")
    | Common.Error.Fatal(_,msg) ->
       fail (Format.asprintf "Error: %s@." msg)
+   | Overloaded(name,res) ->
+      fail (Format.asprintf
+       "Overloaded symbol %s. Please rewrite the query replacing %s \
+        with a fully qualified identifier among the following: %a"
+        name name pp_results (ItemSet.bindings res))
    | Stack_overflow ->
       fail
        (Format.asprintf
