@@ -71,7 +71,7 @@ let rec term oc t =
           | true, _, Not, [u] -> string oc "~ "; paren oc u
           | _ -> default h ts)
 
-and arrow oc u v = paren oc u; string oc " -> "; term oc v
+and arrow oc u v = string oc "arr "; paren oc u; paren oc v
 and abst oc xs u =
   string oc "fun"; params_list_in_abs oc xs; string oc " => "; term oc u
 and prod oc xs u =
