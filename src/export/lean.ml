@@ -149,15 +149,14 @@ let command oc {elt; pos} =
             else string oc "noncomputable def ";
             ident oc p_sym_nam;
             params_list oc p_sym_arg; typopt oc p_sym_typ;
-            string oc " := "; term oc t;
-            string oc "\n"
+            string oc " := "; term oc t; string oc "\n"
           | false, _, [], Some t ->
             string oc "axiom "; ident oc p_sym_nam; string oc " : ";
             term oc t; string oc "\n"
           | false, _, _, Some t ->
-            string oc "axiom "; ident oc p_sym_nam; string oc " : ∀";
-            params_list oc p_sym_arg; string oc ", "; term oc t;
-            string oc "\n"
+            string oc "axiom "; ident oc p_sym_nam;
+            string oc " : ∀"; params_list oc p_sym_arg; string oc ", ";
+            term oc t; string oc "\n"
           | _ -> wrn pos "Command not translated."
         end
   | _ -> wrn pos "Command not translated."
