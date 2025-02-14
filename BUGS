@@ -9,8 +9,6 @@ anywhere >= (Π x: _, (= _ x x))
 
 * normalize queries when given as commands in lambdapi
 
-* mise à jour du manual
-
 * alignments with same name ==> automatic preference?
 
 * better pagination

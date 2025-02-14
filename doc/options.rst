@@ -44,7 +44,7 @@ The ``index`` command generates the file ``~/.LPSearch.db`` if ``$HOME`` is defi
 
 **Remark on search:**
 
-The command ``search`` takes as argument a query and runs it against the index file ``~/.LPSearch.db``. See :doc:`query_language` for the specification of the query language.
+The command ``search`` takes as argument a query and runs it against the index file ``~/.LPSearch.db``. It is also possile to normalize terms in the query wrt some rules by using ``--rules`` options. It is advised to use the same set of rules previously used during indexing. It is also possible to pass via ``--require`` a file to be required and opened before performing the query, e.g. to specify implicit arguments for symbols. See :doc:`query_language` for the specification of the query language.
 
 **Common flags:**
 
@@ -154,10 +154,21 @@ index
    rule cic.Term _ $x ↪ $x;
    rule cic.lift _ _ $x ↪ $x;
 
+search
+---------
+
+* ``--rules <LPSearch.lp>`` tells lambdapi to normalize terms in the query using the rules given in the file ``<LPSearch.lp>``. Several files can be specified by using several ``--rules`` options. In these files, symbols must be fully qualified but no ``require`` command is needed. Moreover, the rules do not need to preserve typing. On the other hand, right hand-side of rules must contain implicit arguments. It is advised to use the same set of rules previously used during indexing.
+
+* ``-- require <FILE.lp>`` requires and open the file ``<FILE.lp>`` when starting the search engine. The file can use used for example to specify implicit arguments for symbols used in the queries.
+
 websearch
 ---------
 
 * ``--port=<N>`` specifies the port number to use (default is 8080).
+
+* ``--rules <LPSearch.lp>`` tells lambdapi to normalize terms in the queries using the rules given in the file ``<LPSearch.lp>``. Several files can be specified by using several ``--rules`` options. In these files, symbols must be fully qualified but no ``require`` command is needed. Moreover, the rules do not need to preserve typing. On the other hand, right hand-side of rules must contain implicit arguments. It is advised to use the same set of rules previously used during indexing.
+
+* ``-- require <FILE.lp>`` requires and open the file ``<FILE.lp>`` when starting the search engine. The file can use used for example to specify implicit arguments for symbols used in the queries.
 
 lsp
 -------
