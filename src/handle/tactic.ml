@@ -261,8 +261,24 @@ let get_config (ss:Sig_state.t) (pos:Pos.popt) : (string,tactic) Hashtbl.t =
 let get_arg1 = function [x1] -> x1 | _ -> assert false
 let get_args12 = function [x1;x2] -> x1,x2 | _ -> assert false
 
-(** [tactic_of_term t] interprets the term [t] as a tactic. *)
-let tactic_of_term (ss:Sig_state.t) (pos:popt) :term -> p_tactic =
+let p_term_of_term (pos:popt) :term -> p_term =
+  let mk = Pos.make pos in
+  let rec term t = Pos.make pos (aux t)
+  and params x a = [Some(Pos.make pos (Bindlib.name_of x))],Some(term a),false
+  and aux (t:term) :p_term_aux =
+    match unfold t with
+    | Type -> P_Type
+    | Symb s -> P_Iden(mk(s.sym_path,s.sym_name),false)
+    | Vari v -> P_Iden(mk([],Bindlib.name_of v),false)
+    | Appl(u,v) -> P_Appl(term u,term v)
+    | Prod(a,b) -> let x,b = Bindlib.unbind b in P_Prod([params x a],term b)
+    | Abst(a,b) -> let x,b = Bindlib.unbind b in P_Abst([params x a],term b)
+    (*| LLet(a,u,v)*)
+    | _ -> assert false
+  in term
+
+(** [p_tactic_of_term t] interprets the term [t] as a tactic. *)
+let p_tactic_of_term (ss:Sig_state.t) (pos:popt) :term -> p_tactic =
   let c = get_config ss pos in
   let rec tac t = Pos.make pos (aux t)
   and aux t =
@@ -284,7 +300,9 @@ let tactic_of_term (ss:Sig_state.t) (pos:popt) :term -> p_tactic =
             | T_reflexivity -> P_tac_refl
             | T_remove -> assert false
             | T_repeat -> P_tac_repeat(tac(get_arg1 ts))
-            | T_rewrite -> assert false
+            | T_rewrite ->
+                let _,t2 = get_args12 ts in
+                P_tac_rewrite(false,None,p_term_of_term pos t2)
             | T_set -> assert false
             | T_simplify -> P_tac_simpl None
             | T_solve -> P_tac_solve
@@ -531,7 +549,7 @@ let rec handle :
       end
   | P_tac_eval pt ->
       let t = Eval.snf (Env.to_ctxt env) (scope pt) in
-      handle ss sym_pos prv ps (tactic_of_term ss pos t)
+      handle ss sym_pos prv ps (p_tactic_of_term ss pos t)
 
 (** Representation of a tactic output. *)
 type tac_output = proof_state * Query.result
