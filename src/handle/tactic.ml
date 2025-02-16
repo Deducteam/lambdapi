@@ -279,11 +279,11 @@ let p_term_of_term (pos:popt) :term -> p_term =
     | _ -> assert false
   in term
 
-(** [p_tactics_of_term t] interprets the term [t] as a list of tactics. *)
-let p_tactics_of_term (ss:Sig_state.t) (pos:popt) :term -> p_tactic list =
+(** [p_tactic_of_term t] interprets the term [t] as a tactic. *)
+let p_tactic_of_term (ss:Sig_state.t) (pos:popt) :term -> p_tactic =
   let c = get_config ss pos in
-  let rec tac t = Pos.make pos (aux t)
-  and aux t =
+  let rec tac t = Pos.make pos (tac_aux t)
+  and tac_aux t =
     match get_args t with
     | Symb s, ts ->
         begin
@@ -309,28 +309,13 @@ let p_tactics_of_term (ss:Sig_state.t) (pos:popt) :term -> p_tactic list =
             | T_simplify -> P_tac_simpl None
             | T_solve -> P_tac_solve
             | T_symmetry -> P_tac_sym
-            | T_then -> assert false
+            | T_then -> let t1,t2 = get_args12 ts in P_tac_and(tac t1,tac t2)
             | T_try -> P_tac_try(tac(get_arg1 ts))
             | T_why3 -> P_tac_why3 None
           with Not_found -> assert false
         end
     | _ -> assert false
-  in
-  let rec tacs acc ts =
-    match ts with
-    | [] -> List.rev acc
-    | u::us ->
-    match get_args u with
-    | Symb s, ts ->
-        begin
-          try
-            match Hashtbl.find c s.sym_name with
-            | T_then -> let t1,t2 = get_args12 ts in tacs acc (t1::t2::us)
-            | _ -> tacs (tac u::acc) us
-          with Not_found -> assert false
-        end
-    | _ -> assert false
-  in fun t -> tacs [] [t]
+  in tac
 
 (** [handle ss sym_pos prv ps tac] applies tactic [tac] in the proof state
    [ps] and returns the new proof state. *)
@@ -565,9 +550,12 @@ let rec handle :
           else handle ss sym_pos prv ps tac
         with Fatal(_, _s) -> ps
       end
+  | P_tac_and(t1,t2) ->
+      let ps = handle ss sym_pos prv ps t1 in
+      handle ss sym_pos prv ps t2
   | P_tac_eval pt ->
       let t = Eval.snf (Env.to_ctxt env) (scope pt) in
-      List.fold_left (handle ss sym_pos prv) ps (p_tactics_of_term ss pos t)
+      handle ss sym_pos prv ps (p_tactic_of_term ss pos t)
 
 (** Representation of a tactic output. *)
 type tac_output = proof_state * Query.result

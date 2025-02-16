@@ -254,6 +254,7 @@ type p_tactic_aux =
   | P_tac_simpl of p_qident option
   | P_tac_solve
   | P_tac_sym
+  | P_tac_and of p_tactic * p_tactic
   | P_tac_try of p_tactic
   | P_tac_why3 of string option
 and p_tactic = p_tactic_aux loc
@@ -622,9 +623,10 @@ let fold_idents : ('a -> p_qident -> 'a) -> 'a -> p_command list -> 'a =
     | P_tac_fail
     | P_tac_generalize _
     | P_tac_induction -> (vs, a)
-    | P_tac_try tactic -> fold_tactic (vs,a) tactic
-    | P_tac_orelse(t1,t2) -> fold_tactic (fold_tactic (vs,a) t1) t2
-    | P_tac_repeat tactic -> fold_tactic (vs,a) tactic
+    | P_tac_try t
+    | P_tac_repeat t -> fold_tactic (vs,a) t
+    | P_tac_orelse(t1,t2)
+    | P_tac_and(t1,t2) -> fold_tactic (fold_tactic (vs,a) t1) t2
   in
 
   let fold_inductive_vars : StrSet.t -> 'a -> p_inductive -> 'a =
