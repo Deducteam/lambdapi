@@ -46,6 +46,7 @@ type token =
   | CONSTANT
   | DEBUG
   | END
+  | EVAL
   | FAIL
   | FLAG
   | GENERALIZE
@@ -216,6 +217,7 @@ let rec token lb =
   | "constant" -> CONSTANT
   | "debug" -> DEBUG
   | "end" -> END
+  | "eval" -> EVAL
   | "fail" -> FAIL
   | "flag" -> FLAG
   | "generalize" -> GENERALIZE

@@ -287,6 +287,7 @@ let rec tactic : p_tactic pp = fun ppf { elt;  _ } ->
   | P_tac_why3 p ->
       let prover ppf s = out ppf " \"%s\"" s in
       out ppf "why3%a" (Option.pp prover) p
+  | P_tac_eval t -> out ppf "eval %a" term t
   end
 
 let rec subproof : p_subproof pp = fun ppf sp ->

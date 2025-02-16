@@ -135,6 +135,7 @@ QID ::= [UID "."]+ UID
            | "admit"
            | "apply" <term>
            | "assume" <param>+
+           | EVAL <term>
            | "fail"
            | "generalize" <uid>
            | "have" <uid> ":" <term>
