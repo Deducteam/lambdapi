@@ -75,9 +75,9 @@ symbol #times : ℕ → Tactic → Tactic;
 notation #times infix 20;
 
 rule 0 #times _ ↪ #nothing
-with ($n +1) #times $t ↪ $t #and ($n #times $t);
+with $n +1 #times $t ↪ $t #and ($n #times $t);
 
-require open tests.OK.Eq tests.OK.FOL;
+require open tests.OK.Eq;
 
 symbol lemma x y z t : π (((x + y) + z) + t = x + (y + (z + t))) ≔
 begin
