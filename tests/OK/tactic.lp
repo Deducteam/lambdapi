@@ -67,15 +67,15 @@ builtin "why3" ≔ #why3;
 
 /*****************************************************************************/
 
-symbol #nothing ≔ #repeat #fail;
+symbol nothing ≔ #repeat #fail;
 
 require open tests.OK.Nat;
 
-symbol #times : ℕ → Tactic → Tactic;
-notation #times infix 20;
+symbol times : ℕ → Tactic → Tactic;
+notation times infix 20;
 
-rule 0 #times _ ↪ #nothing
-with $n +1 #times $t ↪ $t #and ($n #times $t);
+rule 0 times _ ↪ nothing
+with $n +1 times $t ↪ $t #and ($n times $t);
 
 require open tests.OK.Eq;
 
@@ -83,6 +83,6 @@ symbol lemma x y z t : π (((x + y) + z) + t = x + (y + (z + t))) ≔
 begin
   assume x y z t;
   //rewrite addnA; rewrite addnA; reflexivity
-  compute 2 #times #rewrite addnA;
-  eval 2 #times #rewrite addnA #and #reflexivity
+  compute 2 times #rewrite addnA;
+  eval 2 times #rewrite addnA #and #reflexivity
 end;
