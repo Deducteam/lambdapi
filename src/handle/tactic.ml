@@ -279,8 +279,8 @@ let p_term_of_term (pos:popt) :term -> p_term =
     | _ -> assert false
   in term
 
-(** [p_tactic_of_term t] interprets the term [t] as a tactic. *)
-let p_tactic_of_term (ss:Sig_state.t) (pos:popt) :term -> p_tactic =
+(** [p_tactics_of_term t] interprets the term [t] as a list of tactics. *)
+let p_tactics_of_term (ss:Sig_state.t) (pos:popt) :term -> p_tactic list =
   let c = get_config ss pos in
   let rec tac t = Pos.make pos (aux t)
   and aux t =
@@ -315,7 +315,22 @@ let p_tactic_of_term (ss:Sig_state.t) (pos:popt) :term -> p_tactic =
           with Not_found -> assert false
         end
     | _ -> assert false
-  in tac
+  in
+  let rec tacs acc ts =
+    match ts with
+    | [] -> List.rev acc
+    | u::us ->
+    match get_args u with
+    | Symb s, ts ->
+        begin
+          try
+            match Hashtbl.find c s.sym_name with
+            | T_then -> let t1,t2 = get_args12 ts in tacs acc (t1::t2::us)
+            | _ -> tacs (tac u::acc) us
+          with Not_found -> assert false
+        end
+    | _ -> assert false
+  in fun t -> tacs [] [t]
 
 (** [handle ss sym_pos prv ps tac] applies tactic [tac] in the proof state
    [ps] and returns the new proof state. *)
@@ -552,7 +567,7 @@ let rec handle :
       end
   | P_tac_eval pt ->
       let t = Eval.snf (Env.to_ctxt env) (scope pt) in
-      handle ss sym_pos prv ps (p_tactic_of_term ss pos t)
+      List.fold_left (handle ss sym_pos prv) ps (p_tactics_of_term ss pos t)
 
 (** Representation of a tactic output. *)
 type tac_output = proof_state * Query.result
