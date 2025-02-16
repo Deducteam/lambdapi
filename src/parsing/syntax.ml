@@ -235,6 +235,7 @@ type p_query = p_query_aux loc
 (** Parser-level representation of a tactic. *)
 type p_tactic_aux =
   | P_tac_admit
+  | P_tac_and of p_tactic * p_tactic
   | P_tac_apply of p_term
   | P_tac_assume of p_ident option list
   | P_tac_eval of p_term
@@ -254,7 +255,6 @@ type p_tactic_aux =
   | P_tac_simpl of p_qident option
   | P_tac_solve
   | P_tac_sym
-  | P_tac_and of p_tactic * p_tactic
   | P_tac_try of p_tactic
   | P_tac_why3 of string option
 and p_tactic = p_tactic_aux loc

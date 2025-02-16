@@ -1,3 +1,5 @@
+// define a type representing Lambdapi tactics
+
 require open tests.OK.Set tests.OK.Prop;
 
 constant symbol Tactic : TYPE;
