@@ -60,7 +60,7 @@ do
         # proofs
         why3*|tutorial|try|tautologies|rewrite*|remove|natproofs|have|generalize|foo|comment_in_qid|apply|anonymous|admit);;
         # "open"
-        triangular|power-fact|postfix|perf_rw_*|not-eager|nonLeftLinear2|natural|Nat|lpparse2|logic|List|FOL|Eq|doc|Bool|arity_var|arity_diff|922|262_pair_ex_2|215|1141);;
+        triangular|power-fact|postfix|perf_rw_*|not-eager|nonLeftLinear2|natural|Nat|lpparse2|logic|List|FOL|Eq|doc|Bool|arity_var|arity_diff|922|262_pair_ex_2|215|1141|tactic);;
         # "inductive"
         strictly_positive_*|inductive|989|904|830|341);;
         # underscore in query
@@ -71,7 +71,6 @@ do
         298_lp|262_parsing|tail|698_abst_impl|330|330b|1035|varmatch|patt|freevars-constraints|eta_equality|declared|boolean|abstractions|303|301|292|225);;
         # opaque definition with no type (https://github.com/Deducteam/Dedukti/issues/319)
         547);;
-
         # default case:
         *) translate $f.lp;;
     esac
