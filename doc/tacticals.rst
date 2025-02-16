@@ -32,22 +32,22 @@ An example of use is given in `tactic.lp <https://github.com/Deducteam/lambdapi/
 
 ::
 
-   symbol #nothing ≔ #repeat #fail;
+   symbol do_nothing ≔ #repeat #fail;
 
    require open tests.OK.Nat;
 
-   symbol #times : ℕ → Tactic → Tactic;
-   notation #times infix 20;
+   symbol * : ℕ → Tactic → Tactic;
+   notation * infix 20;
 
-   rule 0 #times _ ↪ #nothing
-   with $n +1 #times $t ↪ $t #and ($n #times $t);
+   rule 0 * _ ↪ do_nothing
+   with $n +1 * $t ↪ $t & ($n * $t);
 
-   require open Stdlib.Eq Stdlib.FOL;
+   require open Stdlib.Eq;
 
    symbol lemma x y z t : π (((x + y) + z) + t = x + (y + (z + t))) ≔
    begin
      assume x y z t;
-     eval 2 #times #rewrite addnA #and #reflexivity
+     eval 2 * #rewrite addnA & #reflexivity
    end;
 
 .. _orelse:

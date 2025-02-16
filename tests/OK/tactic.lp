@@ -7,9 +7,9 @@ constant symbol Tactic : TYPE;
 constant symbol #admit : Tactic;
 builtin "admit" ≔ #admit;
 
-symbol #and : Tactic → Tactic → Tactic;
-builtin "and" ≔ #and;
-notation #and infix right 10;
+symbol & : Tactic → Tactic → Tactic;
+builtin "and" ≔ &;
+notation & infix right 10;
 
 constant symbol #apply [p] : π p → Tactic;
 builtin "apply" ≔ #apply;
@@ -71,11 +71,11 @@ symbol nothing ≔ #repeat #fail;
 
 require open tests.OK.Nat;
 
-symbol times : ℕ → Tactic → Tactic;
-notation times infix 20;
+symbol * : ℕ → Tactic → Tactic;
+notation * infix 20;
 
-rule 0 times _ ↪ nothing
-with $n +1 times $t ↪ $t #and ($n times $t);
+rule 0 * _ ↪ nothing
+with $n +1 * $t ↪ $t & ($n * $t);
 
 require open tests.OK.Eq;
 
@@ -83,6 +83,6 @@ symbol lemma x y z t : π (((x + y) + z) + t = x + (y + (z + t))) ≔
 begin
   assume x y z t;
   //rewrite addnA; rewrite addnA; reflexivity
-  compute 2 times #rewrite addnA;
-  eval 2 times #rewrite addnA #and #reflexivity
+  compute 2 * #rewrite addnA;
+  eval 2 * #rewrite addnA & #reflexivity
 end;
