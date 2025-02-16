@@ -265,9 +265,9 @@ let get_args12 = function [x1;x2] -> x1,x2 | _ -> assert false
 
 let p_term_of_term (pos:popt) :term -> p_term =
   let mk = Pos.make pos in
-  let rec term t = Pos.make pos (aux t)
+  let rec term t = Pos.make pos (term_aux t)
   and params x a = [Some(Pos.make pos (Bindlib.name_of x))],Some(term a),false
-  and aux (t:term) :p_term_aux =
+  and term_aux (t:term) :p_term_aux =
     match unfold t with
     | Type -> P_Type
     | Symb s -> P_Iden(mk(s.sym_path,s.sym_name),false)
@@ -275,8 +275,11 @@ let p_term_of_term (pos:popt) :term -> p_term =
     | Appl(u,v) -> P_Appl(term u,term v)
     | Prod(a,b) -> let x,b = Bindlib.unbind b in P_Prod([params x a],term b)
     | Abst(a,b) -> let x,b = Bindlib.unbind b in P_Abst([params x a],term b)
-    (*| LLet(a,u,v)*)
-    | _ -> assert false
+    | LLet(a,t,b) ->
+        let x,b = Bindlib.unbind b in
+        let id = Pos.make pos (Bindlib.name_of x) in
+        P_LLet(id,[],Some(term a),term t,term b)
+    | _ -> fatal pos "Unhandled term expression: %a." Print.term t
   in term
 
 (** [p_tactic_of_term t] interprets the term [t] as a tactic. *)
@@ -312,9 +315,10 @@ let p_tactic_of_term (ss:Sig_state.t) (pos:popt) :term -> p_tactic =
             | T_then -> let t1,t2 = get_args12 ts in P_tac_and(tac t1,tac t2)
             | T_try -> P_tac_try(tac(get_arg1 ts))
             | T_why3 -> P_tac_why3 None
-          with Not_found -> assert false
+          with Not_found ->
+            fatal pos "Unhandled tactic expression: %a." term t
         end
-    | _ -> assert false
+    | _ -> fatal pos "Unhandled tactic expression: %a." term t
   in tac
 
 (** [handle ss sym_pos prv ps tac] applies tactic [tac] in the proof state
