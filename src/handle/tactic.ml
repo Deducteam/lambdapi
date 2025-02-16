@@ -230,32 +230,32 @@ type tactic =
   | T_simplify
   | T_solve
   | T_symmetry
+  | T_then
   | T_try
   | T_why3
 
 (** [get_config ss pos] build the configuration using [ss]. *)
 let get_config (ss:Sig_state.t) (pos:Pos.popt) : (string,tactic) Hashtbl.t =
   let t = Hashtbl.create 17 in
-  let add n v =
-    try let s = Builtin.get ss pos n in Hashtbl.add t s.sym_name v
-    with Not_found -> () in
+  let add n v = let s = Builtin.get ss pos n in Hashtbl.add t s.sym_name v in
   add "admit" T_admit;
-  add "apply" T_apply;
-  add "assume" T_assume;
+  (*add "apply" T_apply;*)
+  (*add "assume" T_assume;*)
   add "fail" T_fail;
-  add "generalize" T_generalize;
-  add "have" T_have;
+  (*add "generalize" T_generalize;*)
+  (*add "have" T_have;*)
   add "induction" T_induction;
   add "orelse" T_orelse;
-  add "refine" T_refine;
+  (*add "refine" T_refine;*)
   add "reflexivity" T_reflexivity;
-  add "remove" T_remove;
+  (*add "remove" T_remove;*)
   add "repeat" T_repeat;
   add "rewrite" T_rewrite;
-  add "set" T_set;
+  (*add "set" T_set;*)
   add "simplify" T_simplify;
   add "solve" T_solve;
   add "symmetry" T_symmetry;
+  add "then" T_then;
   add "try" T_try;
   add "why3" T_why3;
   t
@@ -309,6 +309,7 @@ let p_tactic_of_term (ss:Sig_state.t) (pos:popt) :term -> p_tactic =
             | T_simplify -> P_tac_simpl None
             | T_solve -> P_tac_solve
             | T_symmetry -> P_tac_sym
+            | T_then -> assert false
             | T_try -> P_tac_try(tac(get_arg1 ts))
             | T_why3 -> P_tac_why3 None
           with Not_found -> assert false
