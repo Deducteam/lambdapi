@@ -30,6 +30,7 @@ lambdapi.bnf: Makefile.bnf ../src/parsing/lpParser.mly
 	-e 's/DEBUG/"debug"/g' \
 	-e 's/DOT/"."/g' \
 	-e 's/END/"end"/g' \
+        -e 's/EVAL/"eval"/g' \
 	-e 's/FAIL/"fail"/g' \
 	-e 's/FLAG/"flag"/g' \
 	-e 's/GENERALIZE/"generalize"/g' \
