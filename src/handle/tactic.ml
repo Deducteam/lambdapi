@@ -341,7 +341,7 @@ let rec handle :
   | [] -> assert false (* done before *)
   | g::gs ->
   match elt with
-  | P_tac_fail
+  | P_tac_fail -> fatal pos "Call to tactic \"fail\""
   | P_tac_query _ -> assert false (* done before *)
   (* Tactics that apply to both unification and typing goals: *)
   | P_tac_simpl None ->
