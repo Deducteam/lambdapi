@@ -42,7 +42,7 @@ An example of use is given in `tactic.lp <https://github.com/Deducteam/lambdapi/
    rule 0 * _ ↪ do_nothing
    with $n +1 * $t ↪ $t & ($n * $t);
 
-   require open Stdlib.Eq;
+   require open tests.OK.Eq;
 
    symbol lemma x y z t : π (((x + y) + z) + t = x + (y + (z + t))) ≔
    begin
